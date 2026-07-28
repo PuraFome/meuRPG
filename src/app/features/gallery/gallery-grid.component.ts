@@ -346,8 +346,9 @@ export class GalleryGridComponent implements OnInit, OnDestroy {
 
   private applySort(): void {
     const sorted = [...this.items];
+    const field = this.sortField();
 
-    switch (this.sortField()) {
+    switch (field) {
       case 'name':
         sorted.sort((a, b) => a.name.localeCompare(b.name));
         break;
