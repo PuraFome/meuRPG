@@ -4,6 +4,13 @@ export const routes: Routes = [
   {
     path: '',
     loadComponent: () =>
-      import('./rules.component').then((m) => m.RulesComponent),
+      import('./rules-list.component').then((m) => m.RulesListComponent),
+    title: 'MeuRPG — Regras',
+  },
+  {
+    path: ':id',
+    loadComponent: () =>
+      import('./rules-reader.component').then((m) => m.RulesReaderComponent),
+    title: 'MeuRPG — Leitor de PDF',
   },
 ];
