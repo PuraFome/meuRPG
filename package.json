@@ -5,7 +5,9 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
-    "watch": "ng build --watch --configuration development"
+    "watch": "ng build --watch --configuration development",
+    "test": "vitest",
+    "test:watch": "vitest --watch"
   },
   "private": true,
   "packageManager": "npm@10.9.4",
@@ -31,7 +33,12 @@
     "@angular/build": "^21.2.19",
     "@angular/cli": "^21.2.19",
     "@angular/compiler-cli": "^21.2.0",
+    "@angular/platform-browser-dynamic": "^21.2.18",
+    "@testing-library/angular": "^19.4.1",
+    "@testing-library/dom": "^10.4.1",
+    "jsdom": "^29.1.1",
     "prettier": "^3.8.1",
-    "typescript": "~5.9.2"
+    "typescript": "~5.9.2",
+    "vitest": "^4.1.10"
   }
 }
