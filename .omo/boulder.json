@@ -1,0 +1,35 @@
+{
+  "schema_version": 2,
+  "active_work_id": "mvp-rpg-frontend-1e8f7c04",
+  "works": {
+    "mvp-rpg-frontend-1e8f7c04": {
+      "work_id": "mvp-rpg-frontend-1e8f7c04",
+      "active_plan": "C:\\Users\\Pura Fome\\Documents\\portifolio\\meuRPG\\.omo\\plans\\mvp-rpg-frontend.md",
+      "plan_name": "mvp-rpg-frontend",
+      "status": "active",
+      "started_at": "2026-07-28T21:18:25.052Z",
+      "updated_at": "2026-07-28T21:18:25.052Z",
+      "session_ids": [
+        "opencode:ses_055682b20ffeU56JT37TAUXckF"
+      ],
+      "session_origins": {
+        "opencode:ses_055682b20ffeU56JT37TAUXckF": "direct"
+      },
+      "agent": "atlas",
+      "task_sessions": {}
+    }
+  },
+  "active_plan": "C:\\Users\\Pura Fome\\Documents\\portifolio\\meuRPG\\.omo\\plans\\mvp-rpg-frontend.md",
+  "started_at": "2026-07-28T21:18:25.052Z",
+  "status": "active",
+  "updated_at": "2026-07-28T21:18:25.052Z",
+  "session_ids": [
+    "opencode:ses_055682b20ffeU56JT37TAUXckF"
+  ],
+  "session_origins": {
+    "opencode:ses_055682b20ffeU56JT37TAUXckF": "direct"
+  },
+  "plan_name": "mvp-rpg-frontend",
+  "task_sessions": {},
+  "agent": "atlas"
+}
