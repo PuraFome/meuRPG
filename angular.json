@@ -45,6 +45,7 @@
           "builder": "@angular/build:application",
           "options": {
             "allowedCommonJsDependencies": ["quill", "pdfjs-dist"],
+            "statsJson": true,
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
