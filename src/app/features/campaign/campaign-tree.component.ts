@@ -8,6 +8,8 @@ import {
   OnInit,
   OnDestroy,
   computed,
+  ViewChild,
+  ElementRef,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -21,6 +23,7 @@ import {
 } from '@angular/cdk/drag-drop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
 import { Subscription } from 'rxjs';
 import { StoreService, CampaignFolder } from '../../core';
@@ -28,6 +31,17 @@ import {
   ConfirmDialogComponent,
   ConfirmDialogData,
 } from '../../shared';
+import {
+  EntitySelectorDialogComponent,
+  EntitySelectorData,
+} from './entity-selector-dialog.component';
+
+// ─── Entity drop event model ─────────────────────────────────
+export interface EntityDropEvent {
+  targetFolderId: string;
+  entityType: 'character' | 'map' | 'session';
+  entityId: string;
+}
 
 // ─── Tree node type ────────────────────────────────────────────
 export interface FolderNode {
@@ -91,6 +105,7 @@ function uniqueListId(): string {
     CdkDragHandle,
     MatButtonModule,
     MatIconModule,
+    MatTooltipModule,
   ],
   template: `
     <!-- Root header -->
@@ -109,120 +124,145 @@ function uniqueListId(): string {
       </div>
     }
 
-    <!-- Folder list with CDK drag-drop -->
-    @if (nodes.length > 0) {
-      <div
-        cdkDropList
-        [id]="listId"
-        [cdkDropListData]="nodes"
-        [cdkDropListConnectedTo]="allListIds()"
-        (cdkDropListDropped)="onDrop($event)"
-        class="folder-list"
-        [class.root-list]="depth === 0"
-      >
-        @for (node of nodes; track node.id; let idx = $index) {
-          <div cdkDrag class="folder-item" [class.selected]="selectedId === node.id">
-            <!-- Drag handle visual cue -->
-            <div class="drag-handle" cdkDragHandle>
-              <mat-icon>drag_indicator</mat-icon>
-            </div>
-
-            <!-- Folder row content -->
+    <!-- Entity drop zone (root only) -->
+    <div
+      #entityDropZone
+      cdkDropList
+      [id]="entityDropListId"
+      [cdkDropListConnectedTo]="allEntitySourceIds()"
+      (cdkDropListDropped)="onEntityDrop($event)"
+      class="entity-drop-zone"
+      [class.entity-drop-active]="depth === 0 && isEntityDragActive"
+    >
+      <!-- Folder list with CDK drag-drop -->
+      @if (nodes.length > 0) {
+        <div
+          cdkDropList
+          [id]="listId"
+          [cdkDropListData]="nodes"
+          [cdkDropListConnectedTo]="allListIds()"
+          (cdkDropListDropped)="onDrop($event)"
+          class="folder-list"
+          [class.root-list]="depth === 0"
+        >
+          @for (node of nodes; track node.id; let idx = $index) {
             <div
-              class="folder-row"
-              [style.--folder-depth]="depth"
-              (click)="selectFolder(node)"
+              cdkDrag
+              class="folder-item"
+              [class.selected]="selectedId === node.id"
+              [attr.data-folder-id]="node.id"
             >
-              <!-- Expand/collapse toggle -->
-              <button
-                mat-icon-button
-                type="button"
-                class="toggle-btn"
-                (click)="toggleExpand(node); $event.stopPropagation()"
-              >
-                @if (node.children.length > 0) {
-                  <mat-icon>{{
-                    node.expanded ? 'expand_more' : 'chevron_right'
-                  }}</mat-icon>
-                } @else {
-                  <mat-icon class="blank-icon">circle</mat-icon>
-                }
-              </button>
-
-              <!-- Folder icon -->
-              <mat-icon class="folder-icon" [class.expanded]="node.expanded"
-                >{{ node.expanded ? 'folder_open' : 'folder' }}</mat-icon
-              >
-
-              <!-- Inline edit or display name -->
-              @if (editingId === node.id) {
-                <input
-                  #inlineInput
-                  [(ngModel)]="editName"
-                  (blur)="saveRename(node)"
-                  (keydown.enter)="saveRename(node)"
-                  (keydown.escape)="cancelRename()"
-                  (click)="$event.stopPropagation()"
-                  class="inline-edit"
-                  autofocus
-                />
-              } @else {
-                <span class="folder-name">{{ node.name }}</span>
-              }
-
-              <!-- Folder actions -->
-              <span class="folder-actions" (click)="$event.stopPropagation()">
-                <button
-                  mat-icon-button
-                  type="button"
-                  matTooltip="Adicionar subpasta"
-                  (click)="addSubfolder(node)"
-                >
-                  <mat-icon>create_new_folder</mat-icon>
-                </button>
-                <button
-                  mat-icon-button
-                  type="button"
-                  matTooltip="Renomear"
-                  (click)="startRename(node)"
-                >
-                  <mat-icon>edit</mat-icon>
-                </button>
-                <button
-                  mat-icon-button
-                  type="button"
-                  matTooltip="Excluir"
-                  (click)="deleteFolder(node)"
-                >
-                  <mat-icon>delete</mat-icon>
-                </button>
-              </span>
-            </div>
-
-            <!-- Children (recursive) -->
-            @if (node.expanded && node.children.length > 0) {
-              <div class="children-wrapper">
-                <app-campaign-tree
-                  [nodes]="node.children"
-                  [depth]="depth + 1"
-                  [selectedId]="selectedId"
-                  (folderSelected)="onChildSelected($event)"
-                />
+              <!-- Drag handle visual cue -->
+              <div class="drag-handle" cdkDragHandle>
+                <mat-icon>drag_indicator</mat-icon>
               </div>
-            }
-          </div>
-        }
-      </div>
-    } @else if (depth === 0) {
-      <!-- Empty state -->
-      <div class="empty-state">
-        <mat-icon class="empty-icon">folder_off</mat-icon>
-        <p class="empty-message">Nenhuma pasta ainda.</p>
-        <p class="empty-hint">
-          Crie sua primeira pasta de campanha para organizar seu mundo.
-        </p>
-      </div>
-    }
+
+              <!-- Folder row content -->
+              <div
+                class="folder-row"
+                [style.--folder-depth]="depth"
+                (click)="selectFolder(node)"
+              >
+                <!-- Expand/collapse toggle -->
+                <button
+                  mat-icon-button
+                  type="button"
+                  class="toggle-btn"
+                  (click)="toggleExpand(node); $event.stopPropagation()"
+                >
+                  @if (node.children.length > 0) {
+                    <mat-icon>{{
+                      node.expanded ? 'expand_more' : 'chevron_right'
+                    }}</mat-icon>
+                  } @else {
+                    <mat-icon class="blank-icon">circle</mat-icon>
+                  }
+                </button>
+
+                <!-- Folder icon -->
+                <mat-icon class="folder-icon" [class.expanded]="node.expanded"
+                  >{{ node.expanded ? 'folder_open' : 'folder' }}</mat-icon
+                >
+
+                <!-- Inline edit or display name -->
+                @if (editingId === node.id) {
+                  <input
+                    #inlineInput
+                    [(ngModel)]="editName"
+                    (blur)="saveRename(node)"
+                    (keydown.enter)="saveRename(node)"
+                    (keydown.escape)="cancelRename()"
+                    (click)="$event.stopPropagation()"
+                    class="inline-edit"
+                    autofocus
+                  />
+                } @else {
+                  <span class="folder-name">{{ node.name }}</span>
+                }
+
+                <!-- Folder actions -->
+                <span class="folder-actions" (click)="$event.stopPropagation()">
+                  <button
+                    mat-icon-button
+                    type="button"
+                    [matTooltip]="(node.entityIds.characterIds.length + node.entityIds.mapIds.length + node.entityIds.sessionIds.length) + ' entidades associadas | Associar entidades'"
+                    (click)="openAssociateDialog(node)"
+                  >
+                    <mat-icon>link</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    type="button"
+                    matTooltip="Adicionar subpasta"
+                    (click)="addSubfolder(node)"
+                  >
+                    <mat-icon>create_new_folder</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    type="button"
+                    matTooltip="Renomear"
+                    (click)="startRename(node)"
+                  >
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    type="button"
+                    matTooltip="Excluir"
+                    (click)="deleteFolder(node)"
+                  >
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </span>
+              </div>
+
+              <!-- Children (recursive) -->
+              @if (node.expanded && node.children.length > 0) {
+                <div class="children-wrapper">
+                  <app-campaign-tree
+                    [nodes]="node.children"
+                    [depth]="depth + 1"
+                    [selectedId]="selectedId"
+                    (folderSelected)="onChildSelected($event)"
+                    (entityDroppedOnFolder)="onChildEntityDropped($event)"
+                  />
+                </div>
+              }
+            </div>
+          }
+        </div>
+      } @else if (depth === 0) {
+        <!-- Empty state -->
+        <div class="empty-state">
+          <mat-icon class="empty-icon">folder_off</mat-icon>
+          <p class="empty-message">Nenhuma pasta ainda.</p>
+          <p class="empty-hint">
+            Crie sua primeira pasta de campanha para organizar seu mundo.
+          </p>
+        </div>
+      }
+    </div>
   `,
   styles: [
     `
@@ -445,11 +485,21 @@ export class CampaignTreeComponent implements OnInit, OnDestroy {
   @Input() depth = 0;
   @Input() selectedId: string | null = null;
   @Output() folderSelected = new EventEmitter<string>();
+  @Output() entityDroppedOnFolder = new EventEmitter<EntityDropEvent>();
+
+  @ViewChild('entityDropZone', { read: ElementRef })
+  entityDropZoneEl!: ElementRef<HTMLElement>;
 
   // ── State ─────────────────────────────────────────────────────
   editingId: string | null = null;
   editName = '';
   listId = uniqueListId();
+  entityDropListId = `entity-drop-${uniqueListId()}`;
+  isEntityDragActive = false;
+
+  // Connected entity source list IDs (set by root)
+  private entitySourceIdsSet = new Set<string>();
+  allEntitySourceIds = computed(() => Array.from(this.entitySourceIdsSet));
 
   // ── Shared drop-list IDs (for cross-level connected lists) ───
   private allDropListIds = inject(TREE_DROP_LIST_IDS, {
@@ -473,7 +523,7 @@ export class CampaignTreeComponent implements OnInit, OnDestroy {
       this.allDropListIds.add(this.listId);
     }
 
-    // Root instance subscribes to store
+    // Root instance subscribes to store and registers entity source
     if (this.depth === 0) {
       // Save expanded state before each rebuild
       let prevExpanded = this.captureExpanded();
@@ -492,6 +542,14 @@ export class CampaignTreeComponent implements OnInit, OnDestroy {
       this.allDropListIds.delete(this.listId);
     }
     this.subscription?.unsubscribe();
+  }
+
+  /**
+   * Register an entity source list ID to connect to the tree drop zone.
+   * Called by parent campaign component via template reference.
+   */
+  addEntitySourceId(id: string) {
+    this.entitySourceIdsSet.add(id);
   }
 
   // ── Expanded state management ─────────────────────────────────
@@ -609,6 +667,11 @@ export class CampaignTreeComponent implements OnInit, OnDestroy {
 
   // ── Drag-drop ─────────────────────────────────────────────────
   onDrop(event: CdkDragDrop<FolderNode[]>) {
+    // Guard: ignore drops of non-folder items (e.g. entity cards)
+    if (event.previousContainer.data.length === 0) return;
+    const item = event.previousContainer.data[event.previousIndex];
+    if (!item || typeof item.parentId === 'undefined') return;
+
     if (event.previousContainer === event.container) {
       // Reorder within same list
       moveItemInArray(
@@ -618,7 +681,6 @@ export class CampaignTreeComponent implements OnInit, OnDestroy {
       );
     } else {
       // Move between lists (reparent)
-      const moved = event.previousContainer.data[event.previousIndex];
       transferArrayItem(
         event.previousContainer.data,
         event.container.data,
@@ -626,7 +688,7 @@ export class CampaignTreeComponent implements OnInit, OnDestroy {
         event.currentIndex,
       );
       // Determine new parentId from target container
-      moved.parentId = this.findParentForContainer(event.container.data);
+      item.parentId = this.findParentForContainer(event.container.data);
     }
 
     // Persist all folders in their new order/parents
@@ -678,5 +740,68 @@ export class CampaignTreeComponent implements OnInit, OnDestroy {
         this.store.set('campaigns', folder);
       }
     }
+  }
+
+  // ── Entity drag-drop ─────────────────────────────────────────
+  onEntityDrop(event: CdkDragDrop<unknown[]>) {
+    if (this.depth !== 0) return;
+
+    // Extract entity data from the drag item
+    const dragData = event.item.data;
+    if (!dragData || typeof dragData !== 'object') return;
+
+    const { type, id } = dragData as {
+      type: string;
+      id: string;
+    };
+    if (!type || !id) return;
+    if (type !== 'character' && type !== 'map' && type !== 'session') return;
+
+    // Find the target folder by cursor position
+    const dropPoint = event.dropPoint;
+    const targetFolderId = this.findFolderAtPoint(dropPoint.x, dropPoint.y);
+    if (!targetFolderId) return;
+
+    this.entityDroppedOnFolder.emit({
+      targetFolderId,
+      entityType: type,
+      entityId: id,
+    });
+  }
+
+  onChildEntityDropped(event: EntityDropEvent) {
+    // Bubbles up from child tree instances
+    this.entityDroppedOnFolder.emit(event);
+  }
+
+  private findFolderAtPoint(x: number, y: number): string | null {
+    const elements = document.elementsFromPoint(x, y);
+    for (const el of elements) {
+      const folderEl = (el as HTMLElement).closest('[data-folder-id]');
+      if (folderEl) {
+        return folderEl.getAttribute('data-folder-id');
+      }
+    }
+    return null;
+  }
+
+  // ── Entity association dialog ────────────────────────────────
+  openAssociateDialog(node: FolderNode) {
+    const dialogRef = this.dialog.open(EntitySelectorDialogComponent, {
+      width: '520px',
+      maxWidth: '95vw',
+      data: {
+        folderId: node.id,
+        currentEntityIds: node.entityIds,
+      } as EntitySelectorData,
+    });
+
+    dialogRef.afterClosed().subscribe((result) => {
+      if (result) {
+        this.store.patch('campaigns', node.id, {
+          entityIds: result,
+        } as Partial<CampaignFolder>);
+      }
+    });
   }
 }

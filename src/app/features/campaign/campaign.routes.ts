@@ -4,6 +4,6 @@ export const routes: Routes = [
   {
     path: '',
     loadComponent: () =>
-      import('./campaign-tree.component').then((m) => m.CampaignTreeComponent),
+      import('./campaign.component').then((m) => m.CampaignComponent),
   },
 ];
