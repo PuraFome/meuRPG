@@ -1,10 +1,14 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
+import { Subscription } from 'rxjs';
 import { PageHeaderComponent } from '../../shared/components/page-header.component';
 import { GalleryUploadComponent } from './gallery-upload.component';
 import { GalleryGridComponent } from './gallery-grid.component';
+import { GalleryLightboxComponent } from './gallery-lightbox.component';
+import { StoreService } from '../../core/store/store.service';
+import type { GalleryItem } from '../../core/models/gallery';
 
 @Component({
   selector: 'app-gallery',
@@ -16,6 +20,7 @@ import { GalleryGridComponent } from './gallery-grid.component';
     PageHeaderComponent,
     GalleryUploadComponent,
     GalleryGridComponent,
+    GalleryLightboxComponent,
   ],
   template: `
     <div class="gallery-page">
@@ -47,9 +52,17 @@ import { GalleryGridComponent } from './gallery-grid.component';
           }
         </section>
 
-        <app-gallery-grid />
+        <app-gallery-grid (lightboxOpen)="openLightbox($event)" />
       </div>
     </div>
+
+    <app-gallery-lightbox
+      [visible]="lightboxVisible()"
+      [items]="lightboxItems()"
+      [currentIndex]="lightboxIndex()"
+      (close)="closeLightbox()"
+      (indexChange)="lightboxIndex.set($event)"
+    />
   `,
   styles: `
     :host {
@@ -109,9 +122,39 @@ import { GalleryGridComponent } from './gallery-grid.component';
     }
   `,
 })
-export class GalleryComponent {
+export class GalleryComponent implements OnDestroy {
+  private readonly store = inject(StoreService<GalleryItem>);
+  private readonly subscription: Subscription;
+
   readonly breadcrumbs = [{ label: 'Galeria' }];
   readonly showUpload = signal(true);
+
+  readonly lightboxVisible = signal(false);
+  readonly lightboxItems = signal<GalleryItem[]>([]);
+  readonly lightboxIndex = signal(0);
+
+  constructor() {
+    this.subscription = this.store.getAll('gallery').subscribe((items) => {
+      this.lightboxItems.set(items);
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.subscription?.unsubscribe();
+  }
+
+  openLightbox(item: GalleryItem): void {
+    const items = this.lightboxItems();
+    const idx = items.findIndex((i) => i.id === item.id);
+    if (idx >= 0) {
+      this.lightboxIndex.set(idx);
+      this.lightboxVisible.set(true);
+    }
+  }
+
+  closeLightbox(): void {
+    this.lightboxVisible.set(false);
+  }
 
   onUploadComplete(): void {
     // Auto-collapse upload section after successful upload

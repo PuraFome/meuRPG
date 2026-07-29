@@ -1,7 +1,9 @@
 import {
   Component,
   ElementRef,
+  EventEmitter,
   Input,
+  Output,
   ViewChild,
   AfterViewInit,
   OnDestroy,
@@ -152,6 +154,7 @@ import { MatButtonModule } from '@angular/material/button';
 export class AudioPlayerComponent implements AfterViewInit, OnDestroy {
   @Input() src = '';
   @Input() title?: string;
+  @Output() ended = new EventEmitter<void>();
 
   @ViewChild('audioEl') audioEl!: ElementRef<HTMLAudioElement>;
 
@@ -210,6 +213,7 @@ export class AudioPlayerComponent implements AfterViewInit, OnDestroy {
   onEnded(): void {
     this.playing.set(false);
     this.currentSeconds.set(0);
+    this.ended.emit();
   }
 
   onError(): void {
