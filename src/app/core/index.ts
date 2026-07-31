@@ -31,5 +31,4 @@ export type { FileRecord } from './repositories/indexed-db-file-repository';
 
 // Services
 export { SearchService } from './services/search.service';
-export { SidebarService } from './services/sidebar.service';
 export { PersistenceService } from './services/persistence.service';
