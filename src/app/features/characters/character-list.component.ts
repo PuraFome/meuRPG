@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { AsyncPipe } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { BehaviorSubject, combineLatest, Subject } from 'rxjs';
 import {
   debounceTime,
@@ -255,6 +255,7 @@ import type { Character } from '../../core/models/character';
 })
 export class CharacterListComponent {
   private readonly store = inject(StoreService<Character>);
+  private readonly router = inject(Router);
 
   /** Current type filter value. */
   activeType = 'all';
@@ -322,6 +323,6 @@ export class CharacterListComponent {
 
   /** Navigate to the new-character screen. */
   onNewCharacter(): void {
-    // RouterLink on the button handles navigation
+    this.router.navigate(['/personagens', 'novo']);
   }
 }

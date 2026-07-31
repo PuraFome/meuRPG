@@ -21,7 +21,7 @@ export interface BreadcrumbItem {
   template: `
     <mat-toolbar class="page-header">
       <div class="header-left">
-        @if (breadcrumbs?.length) {
+        @if (breadcrumbs.length) {
           <nav class="breadcrumbs">
             @for (crumb of breadcrumbs; track $index) {
               @if (crumb.route) {

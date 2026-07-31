@@ -1,4 +1,5 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-home',
@@ -10,8 +11,8 @@ import { Component } from '@angular/core';
           <h1 class="title">MeuRPG</h1>
           <p class="subtitle">Crie suas aventuras, construa mundos, viva histórias épicas.</p>
           <div class="cta-buttons">
-            <button class="btn btn-primary">Começar Jornada</button>
-            <button class="btn btn-secondary">Explorar</button>
+            <button class="btn btn-primary" (click)="router.navigate(['/personagens', 'novo'])">Começar Jornada</button>
+            <button class="btn btn-secondary" (click)="router.navigate(['/personagens'])">Explorar</button>
           </div>
         </div>
       </header>
@@ -161,4 +162,6 @@ import { Component } from '@angular/core';
     `,
   ],
 })
-export class HomeComponent {}
+export class HomeComponent {
+  readonly router = inject(Router);
+}

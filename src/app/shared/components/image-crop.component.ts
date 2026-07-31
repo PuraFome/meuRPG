@@ -270,13 +270,6 @@ export class ImageCropComponent implements AfterViewInit, OnDestroy {
     const dataUrl = this.canvasEl.toDataURL('image/png');
     this.previewUrl.set(dataUrl);
     this.cropComplete.emit(dataUrl);
-
-    // Also emit Blob
-    this.canvasEl.toBlob((blob) => {
-      if (blob) {
-        this.cropComplete.emit(blob);
-      }
-    }, 'image/png');
   }
 
   resetCrop(): void {

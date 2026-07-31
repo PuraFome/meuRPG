@@ -38,7 +38,7 @@ import { MatButtonModule } from '@angular/material/button';
         Arraste arquivos aqui ou clique para selecionar
       </p>
       <span class="upload-hint"
-        >{{ acceptedTypes?.join(', ') || 'Todos os tipos' }} •
+        >{{ acceptedTypes.join(', ') || 'Todos os tipos' }} •
         Máx {{ maxSize / (1024 * 1024) }} MB</span
       >
     </div>
@@ -110,8 +110,9 @@ import { MatButtonModule } from '@angular/material/button';
         display: inline-block;
       }
       .preview {
-        max-width: 200px;
-        max-height: 200px;
+        max-width: min(200px, 100%);
+        max-height: min(200px, 50vh);
+        object-fit: contain;
         border-radius: 8px;
         display: block;
       }
