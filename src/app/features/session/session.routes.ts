@@ -4,6 +4,6 @@ export const routes: Routes = [
   {
     path: '',
     loadComponent: () =>
-      import('./session.component').then((m) => m.SessionComponent),
+      import('./session-cockpit.component').then((m) => m.SessionCockpitComponent),
   },
 ];

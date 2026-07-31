@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/angular';
 import userEvent from '@testing-library/user-event';
 import { ConfirmDialogComponent } from './confirm-dialog.component';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
 
 describe('ConfirmDialogComponent', () => {
   const mockDialogRef = {
@@ -16,6 +17,7 @@ describe('ConfirmDialogComponent', () => {
   async function setup(overrides: Record<string, unknown> = {}) {
     return render(ConfirmDialogComponent, {
       providers: [
+        provideNoopAnimations(),
         { provide: MatDialogRef, useValue: mockDialogRef },
         {
           provide: MAT_DIALOG_DATA,

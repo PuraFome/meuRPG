@@ -5,9 +5,12 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "build:prod": "ng build --configuration production",
     "watch": "ng build --watch --configuration development",
-    "test": "vitest",
-    "test:watch": "vitest --watch"
+    "test": "vitest run",
+    "test:watch": "vitest --watch",
+    "lint": "ng lint",
+    "analyze": "ng build --configuration production --stats-json"
   },
   "private": true,
   "packageManager": "npm@10.9.4",
@@ -40,6 +43,7 @@
     "@testing-library/user-event": "^14.6.1",
     "@types/three": "^0.185.1",
     "jsdom": "^29.1.1",
+    "playwright": "^1.62.1",
     "prettier": "^3.8.1",
     "typescript": "~5.9.2",
     "vitest": "^4.1.10"

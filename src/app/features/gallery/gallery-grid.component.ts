@@ -18,7 +18,7 @@ import { StoreService } from '../../core/store/store.service';
 import { IndexedDbFileRepository } from '../../core/repositories/indexed-db-file-repository';
 import type { GalleryItem } from '../../core/models/gallery';
 import { EmptyStateComponent } from '../../shared/components/empty-state.component';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner.component';
 
 type SortField = 'name' | 'date' | 'type';
 
@@ -33,7 +33,7 @@ type SortField = 'name' | 'date' | 'type';
     MatFormFieldModule,
     FormsModule,
     EmptyStateComponent,
-    MatProgressSpinnerModule,
+    LoadingSpinnerComponent,
   ],
   template: `
     <div class="grid-section">
@@ -51,9 +51,7 @@ type SortField = 'name' | 'date' | 'type';
       </div>
 
       @if (loading()) {
-        <div class="loading-container">
-          <mat-progress-spinner mode="indeterminate" diameter="36" />
-        </div>
+        <app-loading-spinner [isLoading]="true" message="Carregando galeria..." />
       } @else if (sortedItems().length === 0) {
         <app-empty-state
           icon="collections_bookmark"
@@ -108,13 +106,6 @@ type SortField = 'name' | 'date' | 'type';
 
     .grid-section {
       padding: 0 24px 24px;
-    }
-
-    .loading-container {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 48px 0;
     }
 
     .grid-toolbar {

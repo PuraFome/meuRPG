@@ -67,4 +67,60 @@ export class SearchService {
   snapshot(): SearchResult[] {
     return this.index.value;
   }
+
+  searchGrouped(query: string): Observable<SearchResultGroup[]> {
+    const typeOrder: EntityType[] = [
+      'character',
+      'campaign',
+      'gallery',
+      'rules',
+      'map',
+      'session',
+    ];
+    const typeLabels: Record<EntityType, string> = {
+      character: 'Personagens',
+      campaign: 'Campanha',
+      gallery: 'Galeria',
+      map: 'Mapas',
+      session: 'Sessões',
+      rules: 'Regras',
+    };
+    const typeIcons: Record<EntityType, string> = {
+      character: 'person',
+      campaign: 'folder',
+      gallery: 'collections_bookmark',
+      map: 'map',
+      session: 'event',
+      rules: 'menu_book',
+    };
+
+    return this.search(query).pipe(
+      map((results) => {
+        const grouped = new Map<EntityType, SearchResult[]>();
+        for (const result of results) {
+          const group = grouped.get(result.type);
+          if (group) {
+            group.push(result);
+          } else {
+            grouped.set(result.type, [result]);
+          }
+        }
+        return typeOrder
+          .filter((type) => grouped.has(type))
+          .map((type) => ({
+            type,
+            label: typeLabels[type],
+            icon: typeIcons[type],
+            items: grouped.get(type)!,
+          }));
+      }),
+    );
+  }
+}
+
+export interface SearchResultGroup {
+  type: EntityType;
+  label: string;
+  icon: string;
+  items: SearchResult[];
 }

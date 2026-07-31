@@ -37,6 +37,8 @@ export interface SubmapPin {
   y: number;
   targetMapId: string;
   label: string;
+  icon?: string;
+  color?: string;
 }
 
 export interface MapData {

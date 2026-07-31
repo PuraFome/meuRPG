@@ -2,7 +2,8 @@
   "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
   "version": 1,
   "cli": {
-    "packageManager": "npm"
+    "packageManager": "npm",
+    "analytics": "cadf2c8f-58e7-4f51-8497-c0a7f78beae6"
   },
   "newProjectRoot": "projects",
   "projects": {
@@ -59,6 +60,8 @@
           },
           "configurations": {
             "production": {
+              "optimization": true,
+              "sourceMap": false,
               "budgets": [
                 {
                   "type": "initial",

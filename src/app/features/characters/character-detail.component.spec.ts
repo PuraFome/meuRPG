@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/angular';
 import { CharacterDetailComponent } from './character-detail.component';
 import { StoreService } from '../../core/store/store.service';
 import { of } from 'rxjs';
+import { MatDialogModule } from '@angular/material/dialog';
 
 function mockCharacter(overrides: Partial<{
   id: string;
@@ -9,6 +10,9 @@ function mockCharacter(overrides: Partial<{
   description: string;
   type: 'npc' | 'player' | 'boss';
   history: string;
+  masterNotes?: string;
+  imageUrl?: string;
+  quotes: string[];
 }> = {}) {
   return {
     id: '1',
@@ -35,6 +39,7 @@ describe('CharacterDetailComponent', () => {
   const setup = () =>
     render(CharacterDetailComponent, {
       componentProperties: { id: '1' },
+      imports: [MatDialogModule],
       providers: [
         {
           provide: StoreService,

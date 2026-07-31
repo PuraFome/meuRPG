@@ -1,4 +1,6 @@
 import { Injectable, inject, NgZone } from '@angular/core';
+import { StoreService } from '../../core/store/store.service';
+import type { MapData, SubmapPin } from '../../core/models/map';
 
 type OlMap = import('ol/Map').default;
 type OlVectorLayer = import('ol/layer/Vector').default;
@@ -21,18 +23,23 @@ export class MapService {
   private map: OlMap | null = null;
   private initPromise: Promise<OlMap> | null = null;
   private readonly zone = inject(NgZone);
+  private readonly store = inject(StoreService<MapData>);
+
+  private currentMapId: string | null = null;
 
   // Vector layer references
   private hexGridLayer: OlVectorLayer | null = null;
   private squareGridLayer: OlVectorLayer | null = null;
   private fogLayer: OlVectorLayer | null = null;
   private markersLayer: OlVectorLayer | null = null;
+  private submapPinsLayer: OlVectorLayer | null = null;
 
   // Visibility state
   private hexGridVisible = false;
   private squareGridVisible = false;
   private fogVisible = false;
   private markersVisible = false;
+  private submapPinsVisible = false;
 
   /**
    * Initialize the OpenLayers map inside the given container element.
@@ -116,8 +123,25 @@ export class MapService {
     return this.map.getView().getZoom() ?? 10;
   }
 
+  onMapClick(handler: (coords: [number, number]) => void): () => void {
+    if (!this.map) return () => {};
+
+    const key = this.map.on('singleclick', (evt) => {
+      import('ol/proj').then((proj) => {
+        const lonLat = proj.toLonLat(evt.coordinate);
+        handler([lonLat[0], lonLat[1]]);
+      });
+    });
+
+    return () => this.map?.un('singleclick', key.listener);
+  }
+
   /** Destroy the map and release resources. */
   destroy(): void {
+    if (this.submapPinsLayer) {
+      this.map?.removeLayer(this.submapPinsLayer);
+      this.submapPinsLayer = null;
+    }
     if (this.map) {
       this.map.setTarget(undefined);
       this.map = null;
@@ -191,6 +215,162 @@ export class MapService {
     if (this.fogVisible) {
       this.map.addLayer(await this.getOrCreateFogLayer());
     }
+  }
+
+  // ──────────────────────────────────────────
+  //  Submap Pins
+  // ──────────────────────────────────────────
+
+  /** Set the current map context by id. */
+  setCurrentMapId(id: string | null): void {
+    this.currentMapId = id;
+  }
+
+  /** Get the current map id. */
+  getCurrentMapId(): string | null {
+    return this.currentMapId;
+  }
+
+  /** Get a map by id from the store. */
+  getMapById(id: string): MapData | undefined {
+    return this.store.snapshot('maps').find((m) => m.id === id);
+  }
+
+  /** Get all maps from the store. */
+  getAllMaps(): MapData[] {
+    return this.store.snapshot('maps');
+  }
+
+  /** Find which map has a submap pin pointing to the given map id. */
+  getParentMapId(mapId: string): string | null {
+    const maps = this.store.snapshot('maps');
+    for (const m of maps) {
+      if (m.submaps?.some((p) => p.targetMapId === mapId)) {
+        return m.id;
+      }
+    }
+    return null;
+  }
+
+  /** Build breadcrumb hierarchy for a map id. */
+  getMapHierarchy(mapId: string): { id: string; name: string }[] {
+    const chain: { id: string; name: string }[] = [];
+    let currentId: string | null = mapId;
+    while (currentId) {
+      const map = this.getMapById(currentId);
+      if (!map) break;
+      chain.unshift({ id: map.id, name: map.name });
+      currentId = this.getParentMapId(currentId);
+    }
+    return chain;
+  }
+
+  /** Add a submap pin to the current map's data and re-render. */
+  async addSubmapPin(pin: SubmapPin): Promise<void> {
+    if (!this.currentMapId) return;
+    const map = this.getMapById(this.currentMapId);
+    if (!map) return;
+
+    const updated = {
+      ...map,
+      submaps: [...(map.submaps ?? []), pin],
+      updatedAt: new Date(),
+    };
+    this.store.update('maps', this.currentMapId, updated);
+
+    await this.renderSubmapPins(updated.submaps);
+  }
+
+  /** Remove a submap pin by id and re-render. */
+  async removeSubmapPin(pinId: string): Promise<void> {
+    if (!this.currentMapId) return;
+    const map = this.getMapById(this.currentMapId);
+    if (!map) return;
+
+    const updated = {
+      ...map,
+      submaps: (map.submaps ?? []).filter((p) => p.id !== pinId),
+      updatedAt: new Date(),
+    };
+    this.store.update('maps', this.currentMapId, updated);
+
+    await this.renderSubmapPins(updated.submaps);
+  }
+
+  /** Get submap pins for the current map. */
+  getSubmapPins(): SubmapPin[] {
+    if (!this.currentMapId) return [];
+    const map = this.getMapById(this.currentMapId);
+    return map?.submaps ?? [];
+  }
+
+  /** Toggle submap pins layer visibility. */
+  async toggleSubmapPins(): Promise<void> {
+    if (!this.map) return;
+
+    this.submapPinsVisible = !this.submapPinsVisible;
+    if (this.submapPinsVisible) {
+      const layer = await this.getOrCreateSubmapPinsLayer();
+      if (this.map.getLayers().getArray().indexOf(layer) === -1) {
+        this.map.addLayer(layer);
+      }
+    } else if (this.submapPinsLayer) {
+      this.map.removeLayer(this.submapPinsLayer);
+    }
+  }
+
+  /** Ensure submap pins layer is visible on the map without toggling state. */
+  async showSubmapPinsLayer(): Promise<void> {
+    if (!this.map) return;
+    this.submapPinsVisible = true;
+    const layer = await this.getOrCreateSubmapPinsLayer();
+    if (this.map.getLayers().getArray().indexOf(layer) === -1) {
+      this.map.addLayer(layer);
+    }
+  }
+
+  /** Re-render submap pins from the given pin data. */
+  async renderSubmapPins(pins: SubmapPin[]): Promise<void> {
+    const layer = await this.getOrCreateSubmapPinsLayer();
+    const source = layer.getSource();
+    if (!source) return;
+
+    source.clear();
+
+    if (pins.length === 0) return;
+
+    const [
+      OLFeature,
+      OLPoint,
+      OLStyle,
+      OLFill,
+      OLStroke,
+      OLCircle,
+      OLText,
+      projModule,
+    ] = await Promise.all([
+      import('ol/Feature').then((m) => m.default),
+      import('ol/geom/Point').then((m) => m.default),
+      import('ol/style/Style').then((m) => m.default),
+      import('ol/style/Fill').then((m) => m.default),
+      import('ol/style/Stroke').then((m) => m.default),
+      import('ol/style/Circle').then((m) => m.default),
+      import('ol/style/Text').then((m) => m.default),
+      import('ol/proj'),
+    ]);
+
+    const features = pins.map((pin) => {
+      const feature = new OLFeature({
+        geometry: new OLPoint(projModule.fromLonLat([pin.x, pin.y])),
+      });
+      feature.set('id', pin.id);
+      feature.set('label', pin.label);
+      feature.set('targetMapId', pin.targetMapId);
+      feature.set('color', pin.color ?? '#e53935');
+      return feature;
+    });
+
+    source.addFeatures(features);
   }
 
   // ──────────────────────────────────────────
@@ -446,6 +626,52 @@ export class MapService {
         ]),
       }),
     ];
+  }
+
+  private async getOrCreateSubmapPinsLayer(): Promise<OlVectorLayer> {
+    if (this.submapPinsLayer) return this.submapPinsLayer;
+
+    const [
+      OLVectorLayer,
+      OLVectorSource,
+      OLStyle,
+      OLFill,
+      OLStroke,
+      OLCircle,
+      OLText,
+    ] = await Promise.all([
+      import('ol/layer/Vector').then((m) => m.default),
+      import('ol/source/Vector').then((m) => m.default),
+      import('ol/style/Style').then((m) => m.default),
+      import('ol/style/Fill').then((m) => m.default),
+      import('ol/style/Stroke').then((m) => m.default),
+      import('ol/style/Circle').then((m) => m.default),
+      import('ol/style/Text').then((m) => m.default),
+    ]);
+
+    const source = new OLVectorSource();
+    const layer = new OLVectorLayer({
+      source,
+      style: (feature) =>
+        new OLStyle({
+          image: new OLCircle({
+            radius: 12,
+            fill: new OLFill({ color: feature.get('color') ?? '#7c4dff' }),
+            stroke: new OLStroke({ color: '#ffffff', width: 3 }),
+          }),
+          text: new OLText({
+            text: feature.get('label') ?? '',
+            font: 'bold 13px Roboto, sans-serif',
+            fill: new OLFill({ color: '#ffffff' }),
+            stroke: new OLStroke({ color: '#000000', width: 3 }),
+            offsetY: -22,
+          }),
+        }),
+      zIndex: 100,
+    });
+
+    this.submapPinsLayer = layer;
+    return layer;
   }
 
   /** Create point features with labels for demonstration markers. */

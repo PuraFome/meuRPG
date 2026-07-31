@@ -30,6 +30,7 @@ import { StoreService, CampaignFolder } from '../../core';
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,
+  EmptyStateComponent,
 } from '../../shared';
 import {
   EntitySelectorDialogComponent,
@@ -106,6 +107,7 @@ function uniqueListId(): string {
     MatButtonModule,
     MatIconModule,
     MatTooltipModule,
+    EmptyStateComponent,
   ],
   template: `
     <!-- Root header -->
@@ -169,6 +171,7 @@ function uniqueListId(): string {
                   type="button"
                   class="toggle-btn"
                   (click)="toggleExpand(node); $event.stopPropagation()"
+                  [attr.aria-label]="node.expanded ? 'Recolher pasta' : 'Expandir pasta'"
                 >
                   @if (node.children.length > 0) {
                     <mat-icon>{{
@@ -207,6 +210,7 @@ function uniqueListId(): string {
                     type="button"
                     [matTooltip]="(node.entityIds.characterIds.length + node.entityIds.mapIds.length + node.entityIds.sessionIds.length) + ' entidades associadas | Associar entidades'"
                     (click)="openAssociateDialog(node)"
+                    aria-label="Associar entidades"
                   >
                     <mat-icon>link</mat-icon>
                   </button>
@@ -215,6 +219,7 @@ function uniqueListId(): string {
                     type="button"
                     matTooltip="Adicionar subpasta"
                     (click)="addSubfolder(node)"
+                    aria-label="Adicionar subpasta"
                   >
                     <mat-icon>create_new_folder</mat-icon>
                   </button>
@@ -223,6 +228,7 @@ function uniqueListId(): string {
                     type="button"
                     matTooltip="Renomear"
                     (click)="startRename(node)"
+                    aria-label="Renomear pasta"
                   >
                     <mat-icon>edit</mat-icon>
                   </button>
@@ -231,6 +237,7 @@ function uniqueListId(): string {
                     type="button"
                     matTooltip="Excluir"
                     (click)="deleteFolder(node)"
+                    aria-label="Excluir pasta"
                   >
                     <mat-icon>delete</mat-icon>
                   </button>
@@ -253,14 +260,10 @@ function uniqueListId(): string {
           }
         </div>
       } @else if (depth === 0) {
-        <!-- Empty state -->
-        <div class="empty-state">
-          <mat-icon class="empty-icon">folder_off</mat-icon>
-          <p class="empty-message">Nenhuma pasta ainda.</p>
-          <p class="empty-hint">
-            Crie sua primeira pasta de campanha para organizar seu mundo.
-          </p>
-        </div>
+        <app-empty-state
+          icon="folder_off"
+          message="Nenhuma pasta ainda. Crie sua primeira pasta de campanha para organizar seu mundo."
+        />
       }
     </div>
   `,
@@ -448,34 +451,7 @@ function uniqueListId(): string {
         margin-left: 28px;
       }
 
-      /* ── Empty state ────────────────────── */
-      .empty-state {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 48px 16px;
-        text-align: center;
-      }
-      .empty-icon {
-        font-size: 3rem;
-        width: 3rem;
-        height: 3rem;
-        margin-bottom: 12px;
-        opacity: 0.35;
-      }
-      .empty-message {
-        font-size: 1rem;
-        margin: 0 0 4px;
-        opacity: 0.6;
-      }
-      .empty-hint {
-        font-size: 0.85rem;
-        margin: 0;
-        opacity: 0.4;
-        max-width: 320px;
-        line-height: 1.4;
-      }
+      /* ── Empty state handled by EmptyStateComponent ── */
     `,
   ],
 })
