@@ -1,0 +1,36 @@
+[33m❯[39m Building...
+[32m✔[39m Building...
+[1mInitial chunk files[22m[2m | [22m[1mNames[22m                     [2m | [22m [1mRaw size[22m
+[32mstyles.css[39m         [2m | [22m[2mstyles[22m                    [2m | [22m [36m63.99 kB[39m[2m | [22m
+[32mchunk-PBGZ5GZI.js[39m  [2m | [22m[2m-[22m                         [2m | [22m [36m29.14 kB[39m[2m | [22m
+[32mmain.js[39m            [2m | [22m[2mmain[22m                      [2m | [22m [36m27.96 kB[39m[2m | [22m
+[32mchunk-U46WQCWP.js[39m  [2m | [22m[2m-[22m                         [2m | [22m  [36m6.01 kB[39m[2m | [22m
+[32mchunk-KSJBO7CJ.js[39m  [2m | [22m[2m-[22m                         [2m | [22m  [36m3.33 kB[39m[2m | [22m
+[32mchunk-GOMI4DH3.js[39m  [2m | [22m[2m-[22m                         [2m | [22m  [36m1.37 kB[39m[2m | [22m
+
+[1m [22m                  [2m | [22m[1mInitial total[22m             [2m | [22m[1m131.79 kB[22m
+
+[1mLazy chunk files[22m   [2m | [22m[1mNames[22m                     [2m | [22m [1mRaw size[22m
+[32mchunk-NLNFF6TZ.js[39m  [2m | [22m[2mcampaign-component[22m        [2m | [22m[36m115.26 kB[39m[2m | [22m
+[32mchunk-KVP2PR2G.js[39m  [2m | [22m[2mgallery-component[22m         [2m | [22m [36m82.40 kB[39m[2m | [22m
+[32mchunk-X3VUQCQK.js[39m  [2m | [22m[2mcharacter-detail-component[22m[2m | [22m [36m81.24 kB[39m[2m | [22m
+[32mchunk-57LK4SH4.js[39m  [2m | [22m[2mmap-view-component[22m        [2m | [22m [36m77.47 kB[39m[2m | [22m
+[32mchunk-CGMKLBD4.js[39m  [2m | [22m[2msession-cockpit-component[22m [2m | [22m [36m71.80 kB[39m[2m | [22m
+[32mchunk-SLCF76FC.js[39m  [2m | [22m[2mrules-reader-component[22m    [2m | [22m [36m33.05 kB[39m[2m | [22m
+[32mchunk-6H76OIAC.js[39m  [2m | [22m[2mcharacter-list-component[22m  [2m | [22m [36m21.54 kB[39m[2m | [22m
+[32mchunk-JAYACET6.js[39m  [2m | [22m[2m-[22m                         [2m | [22m [36m16.36 kB[39m[2m | [22m
+[32mchunk-M3NAWDII.js[39m  [2m | [22m[2m-[22m                         [2m | [22m [36m15.89 kB[39m[2m | [22m
+[32mchunk-P7UVRTVT.js[39m  [2m | [22m[2m-[22m                         [2m | [22m [36m14.23 kB[39m[2m | [22m
+[32mchunk-Q5FELHC2.js[39m  [2m | [22m[2mrules-list-component[22m      [2m | [22m [36m13.66 kB[39m[2m | [22m
+[32mchunk-3IBXSZ34.js[39m  [2m | [22m[2m-[22m                         [2m | [22m  [36m8.69 kB[39m[2m | [22m
+[32mchunk-X7PLZU22.js[39m  [2m | [22m[2m-[22m                         [2m | [22m  [36m5.70 kB[39m[2m | [22m
+[32mchunk-FT7GZ3WN.js[39m  [2m | [22m[2m-[22m                         [2m | [22m  [36m4.64 kB[39m[2m | [22m
+[32mchunk-VXXXBHLM.js[39m  [2m | [22m[2m-[22m                         [2m | [22m  [36m2.45 kB[39m[2m | [22m
+[2m...and 8 more lazy chunks files. Use "--verbose" to show all the files.[22m
+
+Application bundle generation complete. [8.485 seconds] - 2026-07-31T15:05:10.252Z
+
+Watch mode enabled. Watching for file changes...
+NOTE: Raw file sizes do not reflect development server per-request transformations.
+[2m12:05:10[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m Re-optimizing dependencies because lockfile has changed
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m4200[22m/[39m

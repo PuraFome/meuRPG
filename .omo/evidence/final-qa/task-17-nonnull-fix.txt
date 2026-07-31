@@ -1,0 +1,10 @@
+Task 17: CharacterDetail non-null assertion QA
+==============================================
+Date: 2026-07-29
+Method: grep code inspection
+
+'error()!' matches: 0 ✓
+'error() ??' matches: 1 ✓
+  [message]="error() ?? 'Erro desconhecido'"
+
+VERDICT: PASS - Safe null-coalescing operator used, no non-null assertion

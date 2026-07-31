@@ -199,7 +199,7 @@ Max Concurrent: 6 (Waves 2-4)
 
 ## TODOs
 
-- [ ] 1. **Project Setup + Dependency Installation**
+- [x] 1. **Project Setup + Dependency Installation**
 
   **What to do**:
   - Instalar dependências: `@angular/material@21.2`, `@angular/cdk`, `ngx-quill@30`, `quill`, `ol`, `three`, `ng2-pdf-viewer`, `pdfjs-dist`
@@ -245,7 +245,7 @@ Max Concurrent: 6 (Waves 2-4)
 
 ---
 
-- [ ] 2. **Test Infrastructure (Vitest + Angular Testing Library)**
+- [x] 2. **Test Infrastructure (Vitest + Angular Testing Library)**
 
   **What to do**:
   - Instalar `vitest`, `@testing-library/angular`, `@testing-library/dom`, `jsdom`
@@ -296,7 +296,7 @@ Max Concurrent: 6 (Waves 2-4)
 
 ---
 
-- [ ] 3. **Core Infrastructure (Models, Store, Repositories, Router)**
+- [x] 3. **Core Infrastructure (Models, Store, Repositories, Router)**
 
   **What to do**:
   - Criar interfaces/models em `src/app/core/models/`:
@@ -361,7 +361,7 @@ Max Concurrent: 6 (Waves 2-4)
 
 ---
 
-- [ ] 4. **App Shell (Layout, Sidebar, Global Search Modal)**
+- [x] 4. **App Shell (Layout, Sidebar, Global Search Modal)**
 
   **What to do**:
   - Criar `src/app/layout/shell.component.ts` — layout principal:
@@ -434,7 +434,7 @@ Max Concurrent: 6 (Waves 2-4)
 
 ---
 
-- [ ] 5. **Shared UI Components**
+- [x] 5. **Shared UI Components**
 
   **What to do**:
   - Criar componentes compartilhados em `src/app/shared/components/`:
@@ -477,7 +477,7 @@ Max Concurrent: 6 (Waves 2-4)
 
 ---
 
-- [ ] 6. **Characters — Routing + List View (TDD)**
+- [x] 6. **Characters — Routing + List View (TDD)**
 
   **What to do**:
   - Criar `src/app/features/characters/` como módulo lazy
@@ -526,7 +526,7 @@ Max Concurrent: 6 (Waves 2-4)
 
 ---
 
-- [ ] 7. **Campaign — Tree View + Drag-Drop (TDD)**
+- [x] 7. **Campaign — Tree View + Drag-Drop (TDD)**
 
   **What to do**:
   - Criar `src/app/features/campaign/` como módulo lazy
@@ -580,7 +580,7 @@ Max Concurrent: 6 (Waves 2-4)
 
 ---
 
-- [ ] 8. **Gallery — Dropzone + Thumbnail Grid**
+- [x] 8. **Gallery — Dropzone + Thumbnail Grid**
 
   **What to do**:
   - Criar `src/app/features/gallery/` como módulo lazy
@@ -634,7 +634,7 @@ Max Concurrent: 6 (Waves 2-4)
 
 ---
 
-- [ ] 9. **Map — OpenLayers Integration**
+- [x] 9. **Map — OpenLayers Integration**
 
   **What to do**:
   - Criar `src/app/features/map/` como módulo lazy
@@ -691,7 +691,7 @@ Max Concurrent: 6 (Waves 2-4)
 
 ---
 
-- [ ] 10. **Rules — Upload + PDF Viewer Setup**
+- [x] 10. **Rules — Upload + PDF Viewer Setup**
 
   **What to do**:
   - Criar `src/app/features/rules/` como módulo lazy
@@ -743,7 +743,7 @@ Max Concurrent: 6 (Waves 2-4)
 
 ---
 
-- [ ] 11. **Characters — Detail View with Tabs + Rich Text (TDD)**
+- [x] 11. **Characters — Detail View with Tabs + Rich Text (TDD)**
 
   **What to do**:
   - Criar `character-detail.component.ts`:
@@ -800,7 +800,7 @@ Max Concurrent: 6 (Waves 2-4)
 
 ---
 
-- [ ] 12. **Characters — Character Sheet (FormArray FORM/DES/CON/INT/SAB/CAR + Skills + Inventory)**
+- [x] 12. **Characters — Character Sheet (FormArray FORM/DES/CON/INT/SAB/CAR + Skills + Inventory)**
 
   **What to do**:
   - Criar `character-sheet.component.ts`:
@@ -857,7 +857,7 @@ Max Concurrent: 6 (Waves 2-4)
 
 ---
 
-- [ ] 13. **Campaign — Entity Association UI**
+- [x] 13. **Campaign — Entity Association UI**
 
   **What to do**:
   - Criar `entity-selector-dialog.component.ts`:
@@ -904,7 +904,7 @@ Max Concurrent: 6 (Waves 2-4)
 
 ---
 
-- [ ] 14. **Gallery — Lightbox + Audio Player**
+- [x] 14. **Gallery — Lightbox + Audio Player**
 
   **What to do**:
   - Criar `gallery-lightbox.component.ts`:
@@ -962,7 +962,7 @@ Max Concurrent: 6 (Waves 2-4)
 
 ---
 
-- [ ] 15. **Map — Layer Config Panel (Grid, Fog of War, Markers)**
+- [x] 15. **Map — Layer Config Panel (Grid, Fog of War, Markers)**
 
   **What to do**:
   - Criar `map-config-panel.component.ts`:
@@ -1019,7 +1019,7 @@ Max Concurrent: 6 (Waves 2-4)
 
 ---
 
-- [ ] 16. **Map — 2.5D Three.js Toggle**
+- [x] 16. **Map — 2.5D Three.js Toggle**
 
   **What to do**:
   - Criar `map-three.service.ts` (wrapping Three.js):
@@ -1073,7 +1073,7 @@ Max Concurrent: 6 (Waves 2-4)
 
 ---
 
-- [ ] 17. **Characters — Image Upload/Crop + Master Notes + Quotes**
+- [x] 17. **Characters — Image Upload/Crop + Master Notes + Quotes**
 
   **What to do**:
   - Criar/Atualizar cabeçalho do personagem (RF-02):
@@ -1139,7 +1139,7 @@ Max Concurrent: 6 (Waves 2-4)
 
 ---
 
-- [ ] 18. **Map — Submap Pins**
+- [x] 18. **Map — Submap Pins**
 
   **What to do**:
   - Adicionar funcionalidade de **Pins de Submapa** (RF-15):
@@ -1192,7 +1192,7 @@ Max Concurrent: 6 (Waves 2-4)
 
 ---
 
-- [ ] 19. **Rules — PDF Reader with Bookmarks and Pagination**
+- [x] 19. **Rules — PDF Reader with Bookmarks and Pagination**
 
   **What to do**:
   - Atualizar `rules-reader.component.ts` com funcionalidades completas (RF-17, RF-18):
@@ -1248,7 +1248,7 @@ Max Concurrent: 6 (Waves 2-4)
 
 ---
 
-- [ ] 20. **Session — Split-Screen Layout + Toolbar**
+- [x] 20. **Session — Split-Screen Layout + Toolbar**
 
   **What to do**:
   - Criar `src/app/features/session/` como módulo lazy
@@ -1310,7 +1310,7 @@ Max Concurrent: 6 (Waves 2-4)
 
 ---
 
-- [ ] 21. **Session — Quick Search Dialog**
+- [x] 21. **Session — Quick Search Dialog**
 
   **What to do**:
   - Criar `session-quick-search.component.ts` (RF-20):
@@ -1367,7 +1367,7 @@ Max Concurrent: 6 (Waves 2-4)
 
 ---
 
-- [ ] 22. **Global Search (Ctrl+K) Integration**
+- [x] 22. **Global Search (Ctrl+K) Integration**
 
   **What to do**:
   - Completar `search-modal.component.ts` com funcionalidade cross-module:
@@ -1419,7 +1419,7 @@ Max Concurrent: 6 (Waves 2-4)
 
 ---
 
-- [ ] 23. **Polish — Error States, Empty States, Loading States**
+- [x] 23. **Polish — Error States, Empty States, Loading States**
 
   **What to do**:
   - Revisar TODOS os componentes para incluir estados:
@@ -1471,7 +1471,7 @@ Max Concurrent: 6 (Waves 2-4)
 
 ---
 
-- [ ] 24. **npm Scripts + Build Optimization**
+- [x] 24. **npm Scripts + Build Optimization**
 
   **What to do**:
   - Adicionar scripts úteis em `package.json`:
@@ -1529,19 +1529,19 @@ Max Concurrent: 6 (Waves 2-4)
 
 > 4 review agents run in PARALLEL. ALL must APPROVE. Present consolidated results to user and get explicit "okay" before completing.
 
-- [ ] F1. **Plan Compliance Audit** — `oracle`
+- [x] F1. **Plan Compliance Audit** — `oracle`
   Read the plan end-to-end. For each "Must Have": verify implementation exists (read file, curl endpoint, run command). For each "Must NOT Have": search codebase for forbidden patterns — reject with file:line if found. Check evidence files exist in .omo/evidence/. Compare deliverables against plan.
   Output: `Must Have [N/N] | Must NOT Have [N/N] | Tasks [N/N] | VERDICT`
 
-- [ ] F2. **Code Quality Review** — `unspecified-high`
+- [x] F2. **Code Quality Review** — `unspecified-high`
   Run `ng build --configuration production` + `npx vitest run`. Review all changed files for: `as any`/`@ts-ignore`, empty catches, console.log in prod, commented-out code, unused imports. Check AI slop: excessive comments, over-abstraction, generic names.
   Output: `Build [PASS/FAIL] | Tests [N pass/N fail] | Files [N clean/N issues] | VERDICT`
 
-- [ ] F3. **Real Manual QA** — `unspecified-high` (+ `playwright` skill)
+- [x] F3. **Real Manual QA** — `unspecified-high` (+ `playwright` skill)
   Start from clean state. Execute EVERY QA scenario from EVERY task. Test cross-task integration. Test edge cases: empty state, invalid input, rapid actions. Save to `.omo/evidence/final-qa/`.
   Output: `Scenarios [N/N pass] | Integration [N/N] | Edge Cases [N tested] | VERDICT`
 
-- [ ] F4. **Scope Fidelity Check** — `deep`
+- [x] F4. **Scope Fidelity Check** — `deep`
   For each task: read "What to do", read actual diff. Verify 1:1 — everything in spec was built, nothing beyond spec. Check "Must NOT do" compliance. Detect cross-task contamination.
   Output: `Tasks [N/N compliant] | Contamination [CLEAN/N issues] | Unaccounted [CLEAN/N files] | VERDICT`
 

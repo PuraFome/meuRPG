@@ -1,0 +1,99 @@
+{
+  "timestamp": "2026-07-31T16:56:13.976Z",
+  "baseUrl": "http://localhost:4200",
+  "scenarios": [
+    {
+      "scenario": "Home page title",
+      "status": "PASS",
+      "detail": "Title: \"MeuRPG — Início\""
+    },
+    {
+      "scenario": "Botão \"Começar Jornada\"",
+      "status": "PASS",
+      "detail": "Found"
+    },
+    {
+      "scenario": "Botão \"Explorar\"",
+      "status": "PASS",
+      "detail": "Found"
+    },
+    {
+      "scenario": "Hero title \"MeuRPG\"",
+      "status": "PASS",
+      "detail": "Visible"
+    },
+    {
+      "scenario": "Feature cards section",
+      "status": "PASS",
+      "detail": "3 cards found (expected ≥3)"
+    },
+    {
+      "scenario": "Personagens page loads",
+      "status": "PASS",
+      "detail": "Page content visible"
+    },
+    {
+      "scenario": "Toolbar visible",
+      "status": "PASS",
+      "detail": "Found"
+    },
+    {
+      "scenario": "Sessão page loads",
+      "status": "PASS",
+      "detail": "Content visible"
+    },
+    {
+      "scenario": "Dice roller button",
+      "status": "PASS",
+      "detail": "Found"
+    },
+    {
+      "scenario": "Dice roller dialog opens",
+      "status": "PASS",
+      "detail": "Dialog visible"
+    },
+    {
+      "scenario": "Scenario 3: Session Page",
+      "status": "FAIL",
+      "detail": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.roll-btn, button').filter({ hasText: 'Rolar' })\u001b[22m\n\u001b[2m    - locator resolved to <button color=\"primary\" disabled=\"true\" mat-raised-button=\"\" _ngcontent-ng-c1515016469=\"\" mat-ripple-loader-disabled=\"\" mat-ripple-loader-uninitialized=\"\" mat-ripple-loader-class-name=\"mat-mdc-button-ripple\" class=\"mdc-button mat-mdc-button-base roll-btn ng-tns-c1515016469-0 mdc-button--raised mat-mdc-raised-button mat-primary mat-mdc-button-disabled\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    57 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+    },
+    {
+      "scenario": "Search button in toolbar",
+      "status": "PASS",
+      "detail": "Found"
+    },
+    {
+      "scenario": "Search modal opens",
+      "status": "PASS",
+      "detail": "Dialog appeared"
+    },
+    {
+      "scenario": "Sidebar navigation links",
+      "status": "PASS",
+      "detail": "7 links found (expected ≥6)"
+    },
+    {
+      "scenario": "Navigation to Mapa page",
+      "status": "PASS",
+      "detail": "Clicked sidebar link"
+    },
+    {
+      "scenario": "404 redirect to /",
+      "status": "PASS",
+      "detail": "Redirected to: http://localhost:4200/"
+    }
+  ],
+  "consoleErrors": [
+    {
+      "url": "http://localhost:4200/mapa",
+      "text": "Falha ao inicializar mapa: RuntimeError: NG0951: Child query result is required but no value is available. Find more at https://v21.angular.dev/errors/NG0951\n    at Object.computation (http://localhost:4200/@fs/C:/Users/Pura%20Fome/Documents/portifolio/meuRPG/.angular/cache/21.2.19/meu-rpg/vite/deps/chunk-XGBB7327.js?v=8d523f51:12991:13)\n    at Object.producerRecomputeValue (http://localhost:4200/@fs/C:/Users/Pura%20Fome/Documents/portifolio/meuRPG/.angular/cache/21.2.19/meu-rpg/vite/deps/chunk-XGBB7327.js?v=8d523f51:308:25)\n    at producerUpdateValueVersion (http://localhost:4200/@fs/C:/Users/Pura%20Fome/Documents/portifolio/meuRPG/.angular/cache/21.2.19/meu-rpg/vite/deps/chunk-XGBB7327.js?v=8d523f51:109:8)\n    at _MapViewComponent.computed2 [as mapContainer] (http://localhost:4200/@fs/C:/Users/Pura%20Fome/Documents/portifolio/meuRPG/.angular/cache/21.2.19/meu-rpg/vite/deps/chunk-XGBB7327.js?v=8d523f51:271:5)\n    at _MapViewComponent.ngOnInit (http://localhost:4200/chunk-57LK4SH4.js:1483:45)\n    at callHookInternal (http://localhost:4200/@fs/C:/Users/Pura%20Fome/Documents/portifolio/meuRPG/.angular/cache/21.2.19/meu-rpg/vite/deps/chunk-XGBB7327.js?v=8d523f51:4079:10)\n    at callHook (http://localhost:4200/@fs/C:/Users/Pura%20Fome/Documents/portifolio/meuRPG/.angular/cache/21.2.19/meu-rpg/vite/deps/chunk-XGBB7327.js?v=8d523f51:4094:7)\n    at callHooks (http://localhost:4200/@fs/C:/Users/Pura%20Fome/Documents/portifolio/meuRPG/.angular/cache/21.2.19/meu-rpg/vite/deps/chunk-XGBB7327.js?v=8d523f51:4068:9)\n    at executeInitAndCheckHooks (http://localhost:4200/@fs/C:/Users/Pura%20Fome/Documents/portifolio/meuRPG/.angular/cache/21.2.19/meu-rpg/vite/deps/chunk-XGBB7327.js?v=8d523f51:4037:5)\n    at refreshView (http://localhost:4200/@fs/C:/Users/Pura%20Fome/Documents/portifolio/meuRPG/.angular/cache/21.2.19/meu-rpg/vite/deps/chunk-XGBB7327.js?v=8d523f51:9262:11)"
+    }
+  ],
+  "summary": {
+    "passed": 15,
+    "failed": 1,
+    "warned": 0,
+    "total": 16
+  },
+  "verdict": "REJECT"
+}

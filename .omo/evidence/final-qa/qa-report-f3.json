@@ -1,0 +1,150 @@
+{
+  "timestamp": "2026-07-31T17:01:17.717Z",
+  "baseUrl": "http://localhost:4200",
+  "script": "qa-mobile.mjs",
+  "scenarios": [
+    {
+      "scenario": "Persistence: seeded character survives reload",
+      "status": "PASS",
+      "detail": "card \"QA F3 Teste\" @ http://localhost:4200/personagens"
+    },
+    {
+      "scenario": "Persistence: no horizontal overflow after reload",
+      "status": "PASS",
+      "detail": "scrollWidth=1440 clientWidth=1440"
+    },
+    {
+      "scenario": "Persistence: corrupt JSON does not crash app",
+      "status": "PASS",
+      "detail": "toolbar=2 pageErrors=0 emptyState=true text=\"auto_stories MeuRPG home Início people Personagens map Mapa \""
+    },
+    {
+      "scenario": "Home CTA: \"Começar Jornada\" navigates to /personagens/novo",
+      "status": "PASS",
+      "detail": "URL=http://localhost:4200/personagens/novo"
+    },
+    {
+      "scenario": "Home CTA: \"Explorar\" navigates to /personagens",
+      "status": "PASS",
+      "detail": "URL=http://localhost:4200/personagens"
+    },
+    {
+      "scenario": "Empty state visible with \"Criar Personagem\" action",
+      "status": "PASS",
+      "detail": "message=\"Nenhum personagem encontrado\" button=1"
+    },
+    {
+      "scenario": "Empty state action navigates to /personagens/novo",
+      "status": "PASS",
+      "detail": "URL=http://localhost:4200/personagens/novo"
+    },
+    {
+      "scenario": "Dice dialog opens (single overlay)",
+      "status": "PASS",
+      "detail": "dialogs=1"
+    },
+    {
+      "scenario": "Dice dialog closes (0 overlays)",
+      "status": "PASS",
+      "detail": "dialogs=0"
+    },
+    {
+      "scenario": "Dice dialog reopens (single overlay)",
+      "status": "PASS",
+      "detail": "dialogs=1"
+    },
+    {
+      "scenario": "Dice dialog closes again",
+      "status": "PASS",
+      "detail": "dialogs=0"
+    },
+    {
+      "scenario": "Quick search trigger reachable via UI",
+      "status": "FAIL",
+      "detail": "NOT reachable — session.component not routed (/sessao loads cockpit); host component of SessionQuickSearchComponent is un-routed"
+    },
+    {
+      "scenario": "Dice: Rolar button enabled after typing notation",
+      "status": "FAIL",
+      "detail": "input=\"2d6+3\" disabled=true"
+    },
+    {
+      "scenario": "QuickSearch mobile",
+      "status": "FAIL",
+      "detail": "locator.boundingBox: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.qs-container')\u001b[22m\n"
+    },
+    {
+      "scenario": "Cockpit panels stack vertically on mobile",
+      "status": "PASS",
+      "detail": "flexDirection=column leftW=327 rightW=327"
+    },
+    {
+      "scenario": "Cockpit: no horizontal overflow (mobile)",
+      "status": "PASS",
+      "detail": "scrollWidth=375 clientWidth=375"
+    },
+    {
+      "scenario": "CharacterSheet dynamic rows wrap on mobile",
+      "status": "PASS",
+      "detail": "flexWrap=wrap"
+    },
+    {
+      "scenario": "CharacterSheet: no horizontal overflow (mobile)",
+      "status": "PASS",
+      "detail": "scrollWidth=375 clientWidth=375"
+    },
+    {
+      "scenario": "RulesReader mobile",
+      "status": "FAIL",
+      "detail": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('button').filter({ hasText: 'Adicionar Livro' }).first()\u001b[22m\n"
+    },
+    {
+      "scenario": "Dice dialog width ≤ 375px (mobile)",
+      "status": "PASS",
+      "detail": "width=337.5px"
+    },
+    {
+      "scenario": "Confirm dialog width ≤ 375px (mobile)",
+      "status": "PASS",
+      "detail": "width=343px"
+    },
+    {
+      "scenario": "Desktop spot-check",
+      "status": "FAIL",
+      "detail": "page.evaluate: TypeError: Failed to fetch dynamically imported module: http://localhost:4200/src/app/features/session/session-quick-search.component.ts"
+    },
+    {
+      "scenario": "Mapa page renders (edge check)",
+      "status": "PASS",
+      "detail": "text=\"auto_stories MeuRPG home Início people Personagens map Mapa folder Campanha coll\""
+    }
+  ],
+  "consoleErrors": [
+    {
+      "url": "http://localhost:4200/sessao",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "scenario": "F1 quicksearch mobile"
+    },
+    {
+      "url": "http://localhost:4200/regras",
+      "text": "ERROR ɵNotFound: NG0201: No provider found for `IndexedDbFileRepository`. Source: Standalone[_RulesListComponent]. Find more at https://v21.angular.dev/errors/NG0201\n    at createRuntimeError (http://localhost:4200/@fs/C:/Users/Pura%20Fome/Documents/portifolio/meuRPG/.angular/cache/21.2.19/meu-rpg/vite/deps/chunk-XGBB7327.js?v=8d523f51:1208:17)\n    at NullInjector.get (http://localhost:4200/@fs/C:/Users/Pura%20Fome/Documents/portifolio/meuRPG/.angular/cache/21.2.19/meu-rpg/vite/deps/chunk-XGBB7327.js?v=8d523f51:1480:21)\n    at R3Injector.get (http://localhost:4200/@fs/C:/Users/Pura%20Fome/Documents/portifolio/meuRPG/.angular/cache/21.2.19/meu-rpg/vite/deps/chunk-XGBB7327.js?v=8d523f51:1803:27)\n    at R3Injector.get (http://localhost:4200/@fs/C:/Users/Pura%20Fome/Documents/portifolio/meuRPG/.angular/cache/21.2.19/meu-rpg/vite/deps/chunk-XGBB7327.js?v=8d523f51:1803:27)\n    at R3Injector.get (http://localhost:4200/@fs/C:/Users/Pura%20Fome/Documents/portifolio/meuRPG/.angular/cache/21.2.19/meu-rpg/vite/deps/chunk-XGBB7327.js?v=8d523f51:1803:27)\n    at ChainedInjector.get (http://localhost:4200/@fs/C:/Users/Pura%20Fome/Documents/portifolio/meuRPG/.angular/cache/21.2.19/meu-rpg/vite/deps/chunk-XGBB7327.js?v=8d523f51:11260:32)\n    at lookupTokenUsingModuleInjector (http://localhost:4200/@fs/C:/Users/Pura%20Fome/Documents/portifolio/meuRPG/.angular/cache/21.2.19/meu-rpg/vite/deps/chunk-XGBB7327.js?v=8d523f51:4410:31)\n    at getOrCreateInjectable (http://localhost:4200/@fs/C:/Users/Pura%20Fome/Documents/portifolio/meuRPG/.angular/cache/21.2.19/meu-rpg/vite/deps/chunk-XGBB7327.js?v=8d523f51:4433:10)\n    at ɵɵdirectiveInject (http://localhost:4200/@fs/C:/Users/Pura%20Fome/Documents/portifolio/meuRPG/.angular/cache/21.2.19/meu-rpg/vite/deps/chunk-XGBB7327.js?v=8d523f51:11292:17)\n    at ɵɵinject (http://localhost:4200/@fs/C:/Users/Pura%20Fome/Documents/portifolio/meuRPG/.angular/cache/21.2.19/meu-rpg/vite/deps/chunk-XGBB7327.js?v=8d523f51:1288:59)",
+      "scenario": "F4 rules mobile"
+    },
+    {
+      "url": "http://localhost:4200/sessao",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "scenario": "G desktop"
+    },
+    {
+      "url": "http://localhost:4200/mapa",
+      "text": "Falha ao inicializar mapa: RuntimeError: NG0951: Child query result is required but no value is available. Find more at https://v21.angular.dev/errors/NG0951\n    at Object.computation (http://localhost:4200/@fs/C:/Users/Pura%20Fome/Documents/portifolio/meuRPG/.angular/cache/21.2.19/meu-rpg/vite/deps/chunk-XGBB7327.js?v=8d523f51:12991:13)\n    at Object.producerRecomputeValue (http://localhost:4200/@fs/C:/Users/Pura%20Fome/Documents/portifolio/meuRPG/.angular/cache/21.2.19/meu-rpg/vite/deps/chunk-XGBB7327.js?v=8d523f51:308:25)\n    at producerUpdateValueVersion (http://localhost:4200/@fs/C:/Users/Pura%20Fome/Documents/portifolio/meuRPG/.angular/cache/21.2.19/meu-rpg/vite/deps/chunk-XGBB7327.js?v=8d523f51:109:8)\n    at _MapViewComponent.computed2 [as mapContainer] (http://localhost:4200/@fs/C:/Users/Pura%20Fome/Documents/portifolio/meuRPG/.angular/cache/21.2.19/meu-rpg/vite/deps/chunk-XGBB7327.js?v=8d523f51:271:5)\n    at _MapViewComponent.ngOnInit (http://localhost:4200/chunk-57LK4SH4.js:1483:45)\n    at callHookInternal (http://localhost:4200/@fs/C:/Users/Pura%20Fome/Documents/portifolio/meuRPG/.angular/cache/21.2.19/meu-rpg/vite/deps/chunk-XGBB7327.js?v=8d523f51:4079:10)\n    at callHook (http://localhost:4200/@fs/C:/Users/Pura%20Fome/Documents/portifolio/meuRPG/.angular/cache/21.2.19/meu-rpg/vite/deps/chunk-XGBB7327.js?v=8d523f51:4094:7)\n    at callHooks (http://localhost:4200/@fs/C:/Users/Pura%20Fome/Documents/portifolio/meuRPG/.angular/cache/21.2.19/meu-rpg/vite/deps/chunk-XGBB7327.js?v=8d523f51:4068:9)\n    at executeInitAndCheckHooks (http://localhost:4200/@fs/C:/Users/Pura%20Fome/Documents/portifolio/meuRPG/.angular/cache/21.2.19/meu-rpg/vite/deps/chunk-XGBB7327.js?v=8d523f51:4037:5)\n    at refreshView (http://localhost:4200/@fs/C:/Users/Pura%20Fome/Documents/portifolio/meuRPG/.angular/cache/21.2.19/meu-rpg/vite/deps/chunk-XGBB7327.js?v=8d523f51:9262:11)",
+      "scenario": "H mapa"
+    }
+  ],
+  "summary": {
+    "passed": 18,
+    "failed": 5,
+    "warned": 0,
+    "total": 23
+  }
+}

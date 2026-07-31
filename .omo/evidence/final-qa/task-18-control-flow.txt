@@ -1,0 +1,14 @@
+Task 18: Control flow dice-roller-dialog QA
+===========================================
+Date: 2026-07-29
+Method: grep code inspection
+
+'*ngIf' matches in dice-roller-dialog.component.ts: 0 ✓
+'@if' matches: 5 ✓
+  - @if (notation) {
+  - @if (isRolling) {
+  - @if (currentResult) {
+  - @if (currentResult.modifier !== 0) {
+  - @if (rollHistory.length > 0) {
+
+VERDICT: PASS - Consistent control flow syntax (@if only, no *ngIf)

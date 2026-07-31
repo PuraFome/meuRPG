@@ -1,0 +1,11 @@
+[1m[33mBuild JSON statistics output (`statsJson` option) has been disabled. The development server does not support this option.[39m[22m
+[1m[31mThe request id "C:\Users\Pura Fome\Documents\portifolio\meuRPG\src\app\features\session\session-quick-search.component.ts" is outside of Vite serving allow list.[39m[22m
+[1m[33m
+- C:/Users/Pura Fome/Documents/portifolio/meuRPG/.angular/cache/21.2.19/meu-rpg/vite
+- C:/Users/Pura Fome/Documents/portifolio/meuRPG/node_modules
+- C:/Users/Pura Fome/Documents/portifolio/meuRPG/public/favicon.ico
+
+Refer to docs https://vite.dev/config/server-options.html#server-fs-allow for configurations and more details.
+[39m[22m
+[1m[33m[33mThe file does not exist at "C:/Users/Pura Fome/Documents/portifolio/meuRPG/.angular/cache/21.2.19/meu-rpg/vite/deps/session-quick-search.component.ts" which is in the optimize deps directory. The dependency might be incompatible with the dep optimizer. Try adding it to `optimizeDeps.exclude`.[33m[39m[22m
+[1m[31mThe request id "C:\Users\Pura Fome\Documents\portifolio\meuRPG\src\app\features\session\session-quick-search.component.ts" is outside of Vite serving allow list.[39m[22m

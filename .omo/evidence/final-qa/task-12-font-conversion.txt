@@ -1,0 +1,20 @@
+Task 12: Font px->rem conversion QA
+=====================================
+Date: 2026-07-29
+Method: grep code inspection
+
+Files checked:
+  - map-config-panel.component.ts
+  - map-view.component.ts  
+  - submap-pin-dialog.component.ts
+
+Target conversions:
+  - map-config-panel: 14px -> 0.875rem ✓
+  - map-config-panel: 12px -> 0.75rem ✓
+  - map-view: 13px -> 0.8125rem ✓ (2 occurrences)
+  - submap-pin-dialog: 13px -> 0.8125rem ✓
+
+Remaining px font-size in map files:
+  submap-pin-dialog.component.ts:163: font-size: 22px; (Material icon - intentionally excluded)
+
+VERDICT: PASS - All 5 targeted font-size values converted to rem

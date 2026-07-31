@@ -1,35 +1,237 @@
 {
   "schema_version": 2,
-  "active_work_id": "mvp-rpg-frontend-1e8f7c04",
+  "active_work_id": "responsividade-correcao-f3bb3668",
   "works": {
-    "mvp-rpg-frontend-1e8f7c04": {
-      "work_id": "mvp-rpg-frontend-1e8f7c04",
-      "active_plan": "C:\\Users\\Pura Fome\\Documents\\portifolio\\meuRPG\\.omo\\plans\\mvp-rpg-frontend.md",
-      "plan_name": "mvp-rpg-frontend",
-      "status": "active",
-      "started_at": "2026-07-28T21:18:25.052Z",
-      "updated_at": "2026-07-28T21:18:25.052Z",
+    "responsividade-correcao-f3bb3668": {
+      "work_id": "responsividade-correcao-f3bb3668",
+      "active_plan": "C:\\Users\\Pura Fome\\Documents\\portifolio\\meuRPG\\.omo\\plans\\responsividade-correcao.md",
+      "plan_name": "responsividade-correcao",
+      "status": "completed",
+      "started_at": "2026-07-29T16:29:10.452Z",
+      "updated_at": "2026-07-31T17:10:55.128Z",
       "session_ids": [
-        "opencode:ses_055682b20ffeU56JT37TAUXckF"
+        "opencode:ses_0514a9ee7ffed4SrbEHM171Nwm",
+        "opencode:ses_05004f28cffeNLnvfTj73mwwwZ",
+        "opencode:ses_04c4aa8efffeiSroVH6imEY4rQ",
+        "opencode:ses_0474d7988ffey4aAATwmqwenop",
+        "opencode:ses_046e8f42bffeY9X6b2IBq0jWOo"
       ],
       "session_origins": {
-        "opencode:ses_055682b20ffeU56JT37TAUXckF": "direct"
+        "opencode:ses_0514a9ee7ffed4SrbEHM171Nwm": "direct",
+        "opencode:ses_05004f28cffeNLnvfTj73mwwwZ": "direct",
+        "opencode:ses_04c4aa8efffeiSroVH6imEY4rQ": "direct",
+        "opencode:ses_0474d7988ffey4aAATwmqwenop": "direct",
+        "opencode:ses_046e8f42bffeY9X6b2IBq0jWOo": "direct"
       },
       "agent": "atlas",
-      "task_sessions": {}
+      "task_sessions": {
+        "todo:1": {
+          "task_key": "todo:1",
+          "task_label": "1",
+          "task_title": "**Integrar PersistenceService.init() via APP_INITIALIZER**",
+          "session_id": "opencode:ses_051499a1fffeukYJLtC0gPuSrq",
+          "agent": "Sisyphus-Junior",
+          "category": "quick",
+          "updated_at": "2026-07-29T16:32:23.261Z",
+          "started_at": "2026-07-29T16:31:35.149Z",
+          "status": "completed",
+          "ended_at": "2026-07-29T16:32:23.261Z",
+          "elapsed_ms": 48112
+        },
+        "todo:3": {
+          "task_key": "todo:3",
+          "task_label": "3",
+          "task_title": "**CharacterListComponent — implementar onNewCharacter()**",
+          "session_id": "opencode:ses_05146e7a8ffeHrZ81zRKSIWb3V",
+          "agent": "Sisyphus-Junior",
+          "category": "quick",
+          "updated_at": "2026-07-29T16:36:05.969Z",
+          "started_at": "2026-07-29T16:34:49.591Z",
+          "status": "completed",
+          "ended_at": "2026-07-29T16:36:05.969Z",
+          "elapsed_ms": 76378
+        },
+        "todo:6": {
+          "task_key": "todo:6",
+          "task_label": "6",
+          "task_title": "**SessionQuickSearch — width 560px fixo → responsivo**",
+          "session_id": "opencode:ses_05143d6bfffefiM6Xbkh7ZBv1s",
+          "agent": "Sisyphus-Junior",
+          "category": "visual-engineering",
+          "updated_at": "2026-07-29T16:43:03.887Z",
+          "started_at": "2026-07-29T16:37:42.494Z",
+          "status": "completed",
+          "ended_at": "2026-07-29T16:43:03.887Z",
+          "elapsed_ms": 321393
+        },
+        "todo:16": {
+          "task_key": "todo:16",
+          "task_label": "16",
+          "task_title": "**Tipar rules-reader.component.ts — substituir 4 `any` por interfaces**",
+          "session_id": "opencode:ses_0513d1b2dffezEi6M0V4Qytw6c",
+          "agent": "Sisyphus-Junior",
+          "category": "unspecified-high",
+          "updated_at": "2026-07-29T16:48:08.077Z",
+          "started_at": "2026-07-29T16:48:02.299Z",
+          "status": "completed",
+          "ended_at": "2026-07-29T16:48:08.077Z",
+          "elapsed_ms": 5778
+        },
+        "final-wave:f1": {
+          "task_key": "final-wave:f1",
+          "task_label": "F1",
+          "task_title": "**Plan Compliance Audit** — `oracle`",
+          "session_id": "opencode:ses_046e78b9fffeTIPmuKGBkPm877",
+          "agent": "Sisyphus-Junior",
+          "category": "unspecified-high",
+          "started_at": "2026-07-29T16:50:24.019Z",
+          "status": "completed",
+          "updated_at": "2026-07-31T17:09:43.171Z",
+          "ended_at": "2026-07-31T17:09:43.171Z",
+          "elapsed_ms": 173959152
+        },
+        "final-wave:f2": {
+          "task_key": "final-wave:f2",
+          "task_label": "F2",
+          "task_title": "**Code Quality Review** — Run `ng build` + `ng test`. Review all changed files for: lint issues, `as any`/`@ts-ignore`, empty catches, console.log in prod, commented-out code, unused imports.",
+          "session_id": "opencode:ses_04faaa547ffeq63EejotLmUjoQ",
+          "agent": "oracle",
+          "started_at": "2026-07-29T16:50:40.388Z",
+          "status": "completed",
+          "updated_at": "2026-07-31T17:09:43.767Z",
+          "ended_at": "2026-07-31T17:09:43.767Z",
+          "elapsed_ms": 173943379
+        },
+        "final-wave:f4": {
+          "task_key": "final-wave:f4",
+          "task_label": "F4",
+          "task_title": "**Scope Fidelity Check** — For each task: read \"What to do\" from the plan, read actual diff (git diff/log). Verify 1:1 — everything in spec was built (no missing), nothing beyond spec was built (no scope creep). Check \"Must NOT do\" compliance.",
+          "session_id": "opencode:ses_04faa69c3ffedrpkY5koSnuWyt",
+          "agent": "Sisyphus-Junior",
+          "category": "deep",
+          "updated_at": "2026-07-31T17:09:44.940Z",
+          "started_at": "2026-07-30T00:06:29.315Z",
+          "status": "completed",
+          "ended_at": "2026-07-31T17:09:44.940Z",
+          "elapsed_ms": 147795625
+        }
+      },
+      "ended_at": "2026-07-31T17:10:55.128Z",
+      "elapsed_ms": 175304676
     }
   },
-  "active_plan": "C:\\Users\\Pura Fome\\Documents\\portifolio\\meuRPG\\.omo\\plans\\mvp-rpg-frontend.md",
-  "started_at": "2026-07-28T21:18:25.052Z",
-  "status": "active",
-  "updated_at": "2026-07-28T21:18:25.052Z",
+  "active_plan": "C:\\Users\\Pura Fome\\Documents\\portifolio\\meuRPG\\.omo\\plans\\responsividade-correcao.md",
+  "started_at": "2026-07-29T16:29:10.452Z",
+  "status": "completed",
+  "updated_at": "2026-07-31T17:10:55.128Z",
   "session_ids": [
-    "opencode:ses_055682b20ffeU56JT37TAUXckF"
+    "opencode:ses_0514a9ee7ffed4SrbEHM171Nwm",
+    "opencode:ses_05004f28cffeNLnvfTj73mwwwZ",
+    "opencode:ses_04c4aa8efffeiSroVH6imEY4rQ",
+    "opencode:ses_0474d7988ffey4aAATwmqwenop",
+    "opencode:ses_046e8f42bffeY9X6b2IBq0jWOo"
   ],
   "session_origins": {
-    "opencode:ses_055682b20ffeU56JT37TAUXckF": "direct"
+    "opencode:ses_0514a9ee7ffed4SrbEHM171Nwm": "direct",
+    "opencode:ses_05004f28cffeNLnvfTj73mwwwZ": "direct",
+    "opencode:ses_04c4aa8efffeiSroVH6imEY4rQ": "direct",
+    "opencode:ses_0474d7988ffey4aAATwmqwenop": "direct",
+    "opencode:ses_046e8f42bffeY9X6b2IBq0jWOo": "direct"
   },
-  "plan_name": "mvp-rpg-frontend",
-  "task_sessions": {},
-  "agent": "atlas"
+  "plan_name": "responsividade-correcao",
+  "task_sessions": {
+    "todo:1": {
+      "task_key": "todo:1",
+      "task_label": "1",
+      "task_title": "**Integrar PersistenceService.init() via APP_INITIALIZER**",
+      "session_id": "opencode:ses_051499a1fffeukYJLtC0gPuSrq",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-07-29T16:32:23.261Z",
+      "started_at": "2026-07-29T16:31:35.149Z",
+      "status": "completed",
+      "ended_at": "2026-07-29T16:32:23.261Z",
+      "elapsed_ms": 48112
+    },
+    "todo:3": {
+      "task_key": "todo:3",
+      "task_label": "3",
+      "task_title": "**CharacterListComponent — implementar onNewCharacter()**",
+      "session_id": "opencode:ses_05146e7a8ffeHrZ81zRKSIWb3V",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-07-29T16:36:05.969Z",
+      "started_at": "2026-07-29T16:34:49.591Z",
+      "status": "completed",
+      "ended_at": "2026-07-29T16:36:05.969Z",
+      "elapsed_ms": 76378
+    },
+    "todo:6": {
+      "task_key": "todo:6",
+      "task_label": "6",
+      "task_title": "**SessionQuickSearch — width 560px fixo → responsivo**",
+      "session_id": "opencode:ses_05143d6bfffefiM6Xbkh7ZBv1s",
+      "agent": "Sisyphus-Junior",
+      "category": "visual-engineering",
+      "updated_at": "2026-07-29T16:43:03.887Z",
+      "started_at": "2026-07-29T16:37:42.494Z",
+      "status": "completed",
+      "ended_at": "2026-07-29T16:43:03.887Z",
+      "elapsed_ms": 321393
+    },
+    "todo:16": {
+      "task_key": "todo:16",
+      "task_label": "16",
+      "task_title": "**Tipar rules-reader.component.ts — substituir 4 `any` por interfaces**",
+      "session_id": "opencode:ses_0513d1b2dffezEi6M0V4Qytw6c",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-07-29T16:48:08.077Z",
+      "started_at": "2026-07-29T16:48:02.299Z",
+      "status": "completed",
+      "ended_at": "2026-07-29T16:48:08.077Z",
+      "elapsed_ms": 5778
+    },
+    "final-wave:f1": {
+      "task_key": "final-wave:f1",
+      "task_label": "F1",
+      "task_title": "**Plan Compliance Audit** — `oracle`",
+      "session_id": "opencode:ses_046e78b9fffeTIPmuKGBkPm877",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "started_at": "2026-07-29T16:50:24.019Z",
+      "status": "completed",
+      "updated_at": "2026-07-31T17:09:43.171Z",
+      "ended_at": "2026-07-31T17:09:43.171Z",
+      "elapsed_ms": 173959152
+    },
+    "final-wave:f2": {
+      "task_key": "final-wave:f2",
+      "task_label": "F2",
+      "task_title": "**Code Quality Review** — Run `ng build` + `ng test`. Review all changed files for: lint issues, `as any`/`@ts-ignore`, empty catches, console.log in prod, commented-out code, unused imports.",
+      "session_id": "opencode:ses_04faaa547ffeq63EejotLmUjoQ",
+      "agent": "oracle",
+      "started_at": "2026-07-29T16:50:40.388Z",
+      "status": "completed",
+      "updated_at": "2026-07-31T17:09:43.767Z",
+      "ended_at": "2026-07-31T17:09:43.767Z",
+      "elapsed_ms": 173943379
+    },
+    "final-wave:f4": {
+      "task_key": "final-wave:f4",
+      "task_label": "F4",
+      "task_title": "**Scope Fidelity Check** — For each task: read \"What to do\" from the plan, read actual diff (git diff/log). Verify 1:1 — everything in spec was built (no missing), nothing beyond spec was built (no scope creep). Check \"Must NOT do\" compliance.",
+      "session_id": "opencode:ses_04faa69c3ffedrpkY5koSnuWyt",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-07-31T17:09:44.940Z",
+      "started_at": "2026-07-30T00:06:29.315Z",
+      "status": "completed",
+      "ended_at": "2026-07-31T17:09:44.940Z",
+      "elapsed_ms": 147795625
+    }
+  },
+  "agent": "atlas",
+  "ended_at": "2026-07-31T17:10:55.128Z",
+  "elapsed_ms": 175304676
 }

@@ -1,0 +1,21 @@
+Task 14: Gallery NG8107 QA
+===========================
+Date: 2026-07-29
+Method: grep code inspection
+
+Template expressions with optional chaining (preserved):
+  1. {{ currentItem()?.name }} (line 37)
+  2. @if (currentItem()?.type === 'image') (line 61)
+  3. [alt]="currentItem()?.name" (line 64)
+  4. @else if (currentItem()?.type === 'audio') (line 70)
+  5. {{ currentItem()?.name }} (line 107)
+
+Computed signal:
+  readonly currentItem = computed((): GalleryItem | null => {
+    ...
+    return (all[idx] ?? null) as GalleryItem | null;
+  });
+  ✓ Explicit return type GalleryItem | null
+  ✓ Cast as GalleryItem | null
+
+VERDICT: PASS - Template safety preserved (5 optional chaining), warning resolved by typing
