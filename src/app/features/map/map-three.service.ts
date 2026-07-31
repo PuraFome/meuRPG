@@ -21,16 +21,16 @@ export class MapThreeService {
   // ── Stores for dynamically imported modules (typed via `any` to avoid
   //    complex type gymnastics with inline `typeof import(...)` patterns
   //    that confuse the Angular template compiler). ──
-  private _THREE: any = null;
-  private _OrbitControls: any = null;
+  private _THREE: typeof import('three') | null = null;
+  private _OrbitControls: typeof import('three/examples/jsm/controls/OrbitControls.js').OrbitControls | null = null;
 
-  private scene: any = null;
-  private camera: any = null;
-  private renderer: any = null;
-  private controls: any = null;
-  private grid: any = null;
-  private mapPlane: any = null;
-  private markerMeshes: any[] = [];
+  private scene: import('three').Scene | null = null;
+  private camera: import('three').OrthographicCamera | null = null;
+  private renderer: import('three').WebGLRenderer | null = null;
+  private controls: import('three/examples/jsm/controls/OrbitControls.js').OrbitControls | null = null;
+  private grid: import('three').GridHelper | null = null;
+  private mapPlane: import('three').Mesh | null = null;
+  private markerMeshes: import('three').Mesh[] = [];
 
   private container: HTMLElement | null = null;
   private animationId: number | null = null;
@@ -48,7 +48,7 @@ export class MapThreeService {
   //  Internal helpers
   // ─────────────────────────────────────────────────────────────────
 
-  private async loadDeps(): Promise<{ THREE: any; OrbitControls: any }> {
+  private async loadDeps(): Promise<{ THREE: typeof import('three'); OrbitControls: typeof import('three/examples/jsm/controls/OrbitControls.js').OrbitControls }> {
     if (this._THREE && this._OrbitControls) {
       return { THREE: this._THREE, OrbitControls: this._OrbitControls };
     }
@@ -147,7 +147,7 @@ export class MapThreeService {
     this.isActive = true;
     this.container.style.display = 'block';
 
-    const THREE = this._THREE;
+    const THREE = this._THREE!;
 
     this.centerLon = center[0];
     this.centerLat = center[1];
@@ -171,7 +171,7 @@ export class MapThreeService {
       const plane = new THREE.Mesh(geometry, material);
       plane.rotation.x = -Math.PI / 2;
       plane.position.y = 0;
-      this.scene.add(plane);
+      this.scene!.add(plane);
       this.mapPlane = plane;
     }
 
@@ -196,7 +196,7 @@ export class MapThreeService {
     const THREE = this._THREE;
     const grid = new THREE.GridHelper(2400, 48, 0x4a4a8a, 0x3a3a6a);
     grid.position.y = -1;
-    this.scene.add(grid);
+    this.scene!.add(grid);
     this.grid = grid;
   }
 
@@ -258,13 +258,14 @@ export class MapThreeService {
       }
     }
 
-    this.scene?.traverse((child: any) => {
-      if (child.geometry) child.geometry.dispose();
-      if (child.material) {
-        if (Array.isArray(child.material)) {
-          child.material.forEach((m: any) => m.dispose());
+    this.scene?.traverse((child: import('three').Object3D) => {
+      const mesh = child as import('three').Mesh;
+      if (mesh.geometry) mesh.geometry.dispose();
+      if (mesh.material) {
+        if (Array.isArray(mesh.material)) {
+          mesh.material.forEach((m: import('three').Material) => m.dispose());
         } else {
-          child.material.dispose();
+          mesh.material.dispose();
         }
       }
     });
@@ -291,8 +292,8 @@ export class MapThreeService {
   getZoom(): number {
     return this.controls
       ? Math.round(
-          this.controls.object instanceof this._THREE?.OrthographicCamera
-            ? this.controls.zoom
+          this.controls.object instanceof this._THREE!.OrthographicCamera
+            ? (this.controls.object as import('three').OrthographicCamera).zoom
             : 10,
         )
       : 10;
@@ -324,7 +325,7 @@ export class MapThreeService {
       this.scene.remove(this.mapPlane);
       this.mapPlane.geometry.dispose();
       if (Array.isArray(this.mapPlane.material)) {
-        this.mapPlane.material.forEach((m: any) => m.dispose());
+        this.mapPlane.material.forEach((m: import('three').Material) => m.dispose());
       } else {
         this.mapPlane.material.dispose();
       }
@@ -338,7 +339,7 @@ export class MapThreeService {
       this.scene.remove(m);
       m.geometry.dispose();
       if (Array.isArray(m.material)) {
-        m.material.forEach((mat: any) => mat.dispose());
+        m.material.forEach((mat: import('three').Material) => mat.dispose());
       } else {
         m.material.dispose();
       }

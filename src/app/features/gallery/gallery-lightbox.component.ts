@@ -373,10 +373,10 @@ export class GalleryLightboxComponent implements OnDestroy {
   private readonly fileRepo = new IndexedDbFileRepository();
   private blobUrls = new Map<string, string>();
 
-  readonly currentItem = computed(() => {
+  readonly currentItem = computed((): GalleryItem | null => {
     const all = this.items();
     const idx = this.currentIndex();
-    return all[idx] ?? null;
+    return (all[idx] ?? null) as GalleryItem | null;
   });
 
   readonly audioItems = computed(() =>
