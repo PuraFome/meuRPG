@@ -121,7 +121,7 @@ interface SelectableEntity {
       }
 
       .dialog-content {
-        min-width: 420px;
+        min-width: min(420px, 90vw);
         max-width: 520px;
         min-height: 320px;
         display: flex;

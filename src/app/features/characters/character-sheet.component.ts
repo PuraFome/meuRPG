@@ -316,14 +316,14 @@ export interface InventoryFormValue {
       display: flex;
       align-items: flex-start;
       gap: 8px;
-      flex-wrap: nowrap;
+      flex-wrap: wrap;
     }
 
     .dynamic-row mat-form-field {
       flex-shrink: 0;
     }
 
-    .flex-1 { flex: 1 1 80px; min-width: 70px; }
+    .flex-1 { flex: 1 1 80px; min-width: 60px; }
     .flex-2 { flex: 2 1 160px; min-width: 120px; }
     .flex-3 { flex: 3 1 200px; min-width: 140px; }
 

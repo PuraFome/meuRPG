@@ -26,6 +26,9 @@ import { MapService } from './map.service';
         <mat-checkbox (change)="toggleMarkers()">
           Marcadores do Mestre
         </mat-checkbox>
+        <mat-checkbox (change)="toggleSubmapPins()">
+          Pins de Submapa
+        </mat-checkbox>
       </div>
 
       <div class="slider-section">
@@ -67,7 +70,7 @@ import { MapService } from './map.service';
 
     .panel-title {
       margin: 0;
-      font-size: 14px;
+      font-size: 0.875rem;
       font-weight: 500;
       color: rgba(255, 255, 255, 0.87);
       text-transform: uppercase;
@@ -91,7 +94,7 @@ import { MapService } from './map.service';
     }
 
     .slider-label {
-      font-size: 12px;
+      font-size: 0.75rem;
       color: rgba(255, 255, 255, 0.6);
     }
 
@@ -113,6 +116,10 @@ export class MapConfigPanelComponent {
 
   toggleMarkers(): void {
     this.mapService.toggleMarkers();
+  }
+
+  toggleSubmapPins(): void {
+    this.mapService.toggleSubmapPins();
   }
 
   setFogOpacity(value: number | null): void {
