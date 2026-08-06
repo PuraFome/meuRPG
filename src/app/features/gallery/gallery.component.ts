@@ -26,6 +26,7 @@ import type { GalleryItem } from '../../core/models/gallery';
     <div class="gallery-page">
       <app-page-header
         title="Galeria"
+        icon="collections_bookmark"
         [breadcrumbs]="breadcrumbs"
       />
 

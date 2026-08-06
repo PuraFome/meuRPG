@@ -43,7 +43,7 @@ import { MatButtonModule } from '@angular/material/button';
       >
     </div>
 
-    @if (previewUrl()) {
+    @if (showPreview && previewUrl()) {
       <div class="preview-wrapper">
         <img [src]="previewUrl()" class="preview" alt="Preview" />
         <button
@@ -141,6 +141,7 @@ import { MatButtonModule } from '@angular/material/button';
 export class FileUploadComponent {
   @Input() acceptedTypes: string[] = [];
   @Input() maxSize = 10 * 1024 * 1024; // 10 MB
+  @Input() showPreview = true;
   @Output() fileChange = new EventEmitter<File>();
 
   readonly isDragOver = signal(false);
@@ -150,7 +151,7 @@ export class FileUploadComponent {
   private selectedFile: File | null = null;
 
   get acceptString(): () => string {
-    const fn = () => this.acceptedTypes?.join(',') ?? '';
+    const fn = () => this.acceptedTypes.join(',') ?? '';
     return fn;
   }
 

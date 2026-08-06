@@ -18,6 +18,8 @@ export interface MapMarker {
   label: string;
   icon?: string;
   color?: string;
+  description?: string;
+  targetMapId?: string;
 }
 
 export interface MapLayer {
@@ -45,6 +47,7 @@ export interface MapData {
   id: string;
   name: string;
   description?: string;
+  backgroundImage?: string;
   width: number;
   height: number;
   layers: MapLayer[];

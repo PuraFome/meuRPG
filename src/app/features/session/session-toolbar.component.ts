@@ -68,6 +68,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 
     .toolbar {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       gap: 12px;
       padding: 8px 16px;

@@ -112,6 +112,17 @@ import { Router } from '@angular/router';
         border: 2px solid #e2b714;
       }
 
+      @media (max-width: 600px) {
+        .title {
+          font-size: clamp(2rem, 8vw, 2.4rem);
+          letter-spacing: 1px;
+        }
+
+        .cta-buttons {
+          flex-wrap: wrap;
+        }
+      }
+
       .features {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

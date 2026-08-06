@@ -42,6 +42,7 @@ const SESSION_ID = 'current-session';
       <app-page-header
         [breadcrumbs]="breadcrumbs"
         title="Painel da Sessão"
+        icon="event"
       />
 
       <!-- Session Toolbar -->
@@ -130,6 +131,9 @@ const SESSION_ID = 'current-session';
                     <mat-icon matListItemIcon>article</mat-icon>
                     <span matListItemTitle>{{ ref.title }}</span>
                     <span matListItemLine class="ref-excerpt">{{ ref.content | slice:0:80 }}{{ ref.content.length > 80 ? '...' : '' }}</span>
+                    @if (expandedReferenceId === ref.id) {
+                      <div class="ref-expanded">{{ ref.content }}</div>
+                    }
                   </mat-list-item>
                 }
               </mat-list>
@@ -337,6 +341,17 @@ const SESSION_ID = 'current-session';
       opacity: 0.55;
     }
 
+    .ref-expanded {
+      padding: 10px 12px;
+      border-left: 3px solid rgba(179, 136, 255, 0.6);
+      background: rgba(255, 255, 255, 0.05);
+      font-size: 0.85rem;
+      line-height: 1.5;
+      opacity: 0.9;
+      white-space: pre-wrap;
+      margin-top: 4px;
+    }
+
     /* ── Mobile: ≤768px ─────────────────────── */
 
     @media (max-width: 768px) {
@@ -370,6 +385,9 @@ export class SessionCockpitComponent implements OnInit, OnDestroy {
 
   /** Search query for filtering references. */
   searchQuery = '';
+
+  /** ID of the quick reference currently expanded, or null when collapsed. */
+  expandedReferenceId: string | null = null;
 
   /** Filtered references for display. */
   filteredReferences: QuickReference[] = [];
@@ -512,7 +530,7 @@ export class SessionCockpitComponent implements OnInit, OnDestroy {
   }
 
   focusReference(ref: QuickReference): void {
-    // For MVP: could be expanded or navigated; for now just a visual focus placeholder
+    this.expandedReferenceId = this.expandedReferenceId === ref.id ? null : ref.id;
   }
 
   /* ── Helpers ────────────────────────────── */

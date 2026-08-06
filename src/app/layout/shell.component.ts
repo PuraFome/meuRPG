@@ -136,6 +136,12 @@ interface NavItem {
       min-height: calc(100vh - 64px);
     }
 
+    @media (max-width: 600px) {
+      .content {
+        padding: 16px;
+      }
+    }
+
     .active-link {
       background: rgba(255, 255, 255, 0.06);
     }

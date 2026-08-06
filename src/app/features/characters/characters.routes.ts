@@ -9,7 +9,7 @@ export const routes: Routes = [
   {
     path: 'novo',
     loadComponent: () =>
-      import('./characters.component').then((m) => m.CharactersComponent),
+      import('./character-form.component').then((m) => m.CharacterFormComponent),
   },
   {
     path: ':id',

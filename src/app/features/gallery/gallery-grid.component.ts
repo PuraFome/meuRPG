@@ -108,6 +108,12 @@ type SortField = 'name' | 'date' | 'type';
       padding: 0 24px 24px;
     }
 
+    @media (max-width: 480px) {
+      .grid-section {
+        padding: 0 16px 16px;
+      }
+    }
+
     .grid-toolbar {
       display: flex;
       align-items: center;

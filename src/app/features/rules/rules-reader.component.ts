@@ -78,6 +78,7 @@ function flattenOutline(items: PdfOutlineItem[], level: number = 0): FlatBookmar
   template: `
     <app-page-header
       [title]="ruleName()"
+      icon="menu_book"
       [breadcrumbs]="[
         { label: 'Regras', route: '/regras' },
         { label: ruleName() }
@@ -292,6 +293,19 @@ function flattenOutline(items: PdfOutlineItem[], level: number = 0): FlatBookmar
         text-align: center;
         opacity: 0.8;
         font-variant-numeric: tabular-nums;
+      }
+
+      @media (max-width: 560px) {
+        .reader-toolbar {
+          gap: 4px;
+          row-gap: 4px;
+        }
+        .toolbar-section {
+          gap: 0;
+        }
+        .page-info {
+          gap: 2px;
+        }
       }
 
       .reader-layout {

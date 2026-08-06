@@ -54,7 +54,7 @@ import { MapService } from './map.service';
       right: 16px;
       top: 64px;
       z-index: 10;
-      width: 240px;
+      width: min(240px, calc(100vw - 32px));
     }
 
     .config-panel {

@@ -1,32 +1,43 @@
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { trigger, transition, style, animate } from '@angular/animations';
 import { MatButtonModule } from '@angular/material/button';
-import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import {
+  MatDialogModule,
+  MatDialogRef,
+  MAT_DIALOG_DATA,
+} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { MapService } from './map.service';
-import type { MapData, SubmapPin } from '../../core/models/map';
+import type { MapData, MapMarker } from '../../core/models/map';
 
-export interface SubmapPinDialogData {
+export interface PoiDialogData {
   x: number;
   y: number;
+  existing?: MapMarker;
+  availableMaps: MapData[];
+  currentMapId: string | null;
 }
 
-const PIN_COLORS = [
+export type PoiDialogResult =
+  | { action: 'save'; marker: MapMarker }
+  | { action: 'delete' }
+  | { action: 'open' }
+  | null;
+
+const POI_COLORS = [
   '#7c4dff', '#e53935', '#ff6d00', '#ffd600', '#00c853',
   '#2979ff', '#00bcd4', '#ff4081', '#6d4c41', '#78909c',
 ];
 
-const PIN_ICONS = [
-  'pin_drop', 'location_on', 'flag', 'star', 'circle',
-  'room', 'navigation', 'place', 'explore', 'my_location',
+const POI_ICONS = [
+  'place', 'location_on', 'flag', 'star', 'circle',
+  'room', 'navigation', 'explore', 'my_location', 'castle',
 ];
 
 @Component({
-  selector: 'app-submap-pin-dialog',
+  selector: 'app-poi-dialog',
   standalone: true,
   imports: [
     FormsModule,
@@ -38,21 +49,35 @@ const PIN_ICONS = [
     MatSelectModule,
   ],
   template: `
-    <h2 mat-dialog-title>Adicionar Pin</h2>
+    <h2 mat-dialog-title>
+      {{ existing ? 'Editar Ponto de Interesse' : 'Novo Ponto de Interesse' }}
+    </h2>
     <mat-dialog-content>
-      <div class="pin-form">
+      <div class="poi-form">
         <mat-form-field appearance="fill" class="full-width">
-          <mat-label>Nome do Pin</mat-label>
-          <input matInput [(ngModel)]="label" placeholder="Ex: Entrada da Taverna" />
+          <mat-label>Nome do local</mat-label>
+          <input matInput [(ngModel)]="label" placeholder="Ex: Porto de Neverwinter" />
         </mat-form-field>
 
         <mat-form-field appearance="fill" class="full-width">
-          <mat-label>Mapa de destino</mat-label>
+          <mat-label>Descrição</mat-label>
+          <textarea
+            matInput
+            [(ngModel)]="description"
+            rows="3"
+            placeholder="O que os aventureiros veem ao chegar aqui?"
+          ></textarea>
+        </mat-form-field>
+
+        <mat-form-field appearance="fill" class="full-width">
+          <mat-label>Mapa de destino (opcional)</mat-label>
           <mat-select [(ngModel)]="selectedMapId">
+            <mat-option [value]="null">Nenhum</mat-option>
             @for (map of availableMaps; track map.id) {
               <mat-option [value]="map.id">{{ map.name }}</mat-option>
             }
           </mat-select>
+          <mat-hint>Ao clicar no POI, abre este mapa.</mat-hint>
         </mat-form-field>
 
         <label class="section-label">Cor do pin</label>
@@ -86,24 +111,37 @@ const PIN_ICONS = [
       </div>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
+      @if (existing) {
+        <button mat-button color="warn" (click)="onDelete()">
+          <mat-icon>delete</mat-icon>
+          Excluir
+        </button>
+        @if (existing.targetMapId) {
+          <button mat-stroked-button (click)="onOpen()">
+            <mat-icon>open_in_new</mat-icon>
+            Abrir mapa
+          </button>
+        }
+      }
       <button mat-button (click)="onCancel()">Cancelar</button>
       <button
         mat-raised-button
         color="primary"
-        [disabled]="!label || !selectedMapId"
-        (click)="onConfirm()"
+        [disabled]="!label.trim()"
+        (click)="onSave()"
       >
-        Adicionar
+        <mat-icon>check</mat-icon>
+        Salvar
       </button>
     </mat-dialog-actions>
   `,
   styles: [
     `
-      .pin-form {
+      .poi-form {
         display: flex;
         flex-direction: column;
         gap: 16px;
-        min-width: 360px;
+        min-width: min(380px, 90vw);
         padding: 8px 0;
       }
       .full-width {
@@ -159,57 +197,53 @@ const PIN_ICONS = [
         border-color: #7c4dff;
         background: rgba(124,77,255,0.2);
       }
-      .icon-option .material-symbols-outlined {
-        font-size: 22px;
-        color: rgba(255,255,255,0.87);
-      }
     `,
   ],
-  animations: [
-    trigger('fadeSlide', [
-      transition(':enter', [
-        style({ opacity: 0, transform: 'translateY(-12px)' }),
-        animate('250ms ease-out', style({ opacity: 1, transform: 'translateY(0)' })),
-      ]),
-    ]),
-  ],
-  host: { '[@fadeSlide]': '' },
 })
-export class SubmapPinDialogComponent {
-  private readonly dialogRef = inject(MatDialogRef<SubmapPinDialogComponent, SubmapPin>);
-  private readonly data = inject<SubmapPinDialogData>(MAT_DIALOG_DATA);
-  private readonly mapService = inject(MapService);
+export class PoiDialogComponent {
+  private readonly dialogRef = inject(
+    MatDialogRef<PoiDialogComponent, PoiDialogResult>,
+  );
+  private readonly data = inject<PoiDialogData>(MAT_DIALOG_DATA);
 
-  protected readonly colors = PIN_COLORS;
-  protected readonly icons = PIN_ICONS;
+  protected readonly colors = POI_COLORS;
+  protected readonly icons = POI_ICONS;
 
-  protected label = '';
-  protected selectedMapId: string | null = null;
-  protected selectedColor = PIN_COLORS[0];
-  protected selectedIcon = PIN_ICONS[0];
+  protected existing: MapMarker | undefined = this.data.existing;
+  protected availableMaps = this.data.availableMaps;
 
-  protected availableMaps: MapData[] = [];
-
-  constructor() {
-    this.availableMaps = this.mapService.getAllMaps().filter((m) => m.id !== this.mapService.getCurrentMapId());
-  }
+  protected label = this.data.existing?.label ?? '';
+  protected description = this.data.existing?.description ?? '';
+  protected selectedMapId: string | null =
+    this.data.existing?.targetMapId ?? null;
+  protected selectedColor = this.data.existing?.color ?? POI_COLORS[0];
+  protected selectedIcon = this.data.existing?.icon ?? POI_ICONS[0];
 
   onCancel(): void {
-    this.dialogRef.close();
+    this.dialogRef.close(null);
   }
 
-  onConfirm(): void {
-    if (!this.label || !this.selectedMapId) return;
+  onDelete(): void {
+    this.dialogRef.close({ action: 'delete' });
+  }
 
-    const pin: SubmapPin = {
-      id: crypto.randomUUID(),
+  onOpen(): void {
+    this.dialogRef.close({ action: 'open' });
+  }
+
+  onSave(): void {
+    if (!this.label.trim()) return;
+
+    const marker: MapMarker = {
+      id: this.existing?.id ?? crypto.randomUUID(),
       x: this.data.x,
       y: this.data.y,
-      targetMapId: this.selectedMapId,
-      label: this.label,
+      label: this.label.trim(),
+      description: this.description.trim() || undefined,
       icon: this.selectedIcon,
       color: this.selectedColor,
+      targetMapId: this.selectedMapId ?? undefined,
     };
-    this.dialogRef.close(pin);
+    this.dialogRef.close({ action: 'save', marker });
   }
 }

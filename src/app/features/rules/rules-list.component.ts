@@ -30,6 +30,7 @@ import type { RuleBook } from '../../core';
   template: `
     <app-page-header
       title="Regras"
+      icon="menu_book"
       [breadcrumbs]="[{ label: 'Regras' }]"
     />
 

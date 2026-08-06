@@ -279,6 +279,12 @@ export interface InventoryFormValue {
       gap: 16px;
     }
 
+    @media (max-width: 480px) {
+      .attributes-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
     .attribute-field {
       display: flex;
       flex-direction: column;

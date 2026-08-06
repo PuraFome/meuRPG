@@ -429,7 +429,8 @@ function uniqueListId(): string {
         transition: opacity 0.15s;
         flex-shrink: 0;
       }
-      .folder-item:hover .folder-actions {
+      .folder-item:hover .folder-actions,
+      .folder-item:focus-within .folder-actions {
         opacity: 1;
       }
       .folder-actions button {
@@ -442,6 +443,12 @@ function uniqueListId(): string {
         width: 16px;
         height: 16px;
         line-height: 16px;
+      }
+
+      @media (hover: none) {
+        .folder-actions {
+          opacity: 0.6;
+        }
       }
 
       /* ── Children wrapper ───────────────── */

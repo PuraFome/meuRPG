@@ -13,6 +13,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { QuillModule } from 'ngx-quill';
 import { AvatarCropDialogComponent } from './avatar-crop-dialog.component';
+import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.component';
 import { StoreService } from '../../core/store/store.service';
 import { PageHeaderComponent } from '../../shared/components/page-header.component';
 import { CharacterSheetComponent } from './character-sheet.component';
@@ -46,10 +47,23 @@ import type { BreadcrumbItem } from '../../shared/components/page-header.compone
     <app-page-header
       [breadcrumbs]="breadcrumbs"
       [title]="character?.name ?? 'Personagens'"
+      icon="person"
     >
       <button mat-icon-button actions (click)="goBack()" aria-label="Voltar">
         <mat-icon>arrow_back</mat-icon>
       </button>
+      @if (character) {
+        <button
+          mat-icon-button
+          actions
+          (click)="deleteCharacter()"
+          color="warn"
+          aria-label="Excluir personagem"
+          matTooltip="Excluir personagem"
+        >
+          <mat-icon>delete</mat-icon>
+        </button>
+      }
     </app-page-header>
 
     @if (loading()) {
@@ -379,6 +393,13 @@ import type { BreadcrumbItem } from '../../shared/components/page-header.compone
       padding-top: 4px;
     }
 
+    @media (max-width: 560px) {
+      .quote-item {
+        flex-direction: column;
+        gap: 8px;
+      }
+    }
+
     .empty-quotes {
       display: flex;
       flex-direction: column;
@@ -537,6 +558,30 @@ export class CharacterDetailComponent implements OnInit, OnDestroy {
     this.router.navigate(['/personagens']);
   }
 
+  // ── Delete ────────────────────────────────────
+  deleteCharacter(): void {
+    const character = this.character;
+    if (!character) return;
+
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Excluir personagem',
+        message: `Tem certeza que deseja excluir "${character.name}"?`,
+        confirmText: 'Excluir',
+        cancelText: 'Cancelar',
+      },
+      width: '420px',
+      maxWidth: '95vw',
+    });
+
+    dialogRef.afterClosed().pipe(takeUntil(this.destroy$)).subscribe((confirmed: boolean) => {
+      if (confirmed) {
+        this.store.delete('characters', character.id);
+        this.router.navigate(['/personagens']);
+      }
+    });
+  }
+
   // ── History ────────────────────────────────────
   onHistoryChange(html: string): void {
     this.historySaveSubject.next(html);
@@ -564,6 +609,7 @@ export class CharacterDetailComponent implements OnInit, OnDestroy {
         const dialogRef = this.dialog.open(AvatarCropDialogComponent, {
           data: dataUrl,
           width: '500px',
+          maxWidth: '95vw',
         });
 
         dialogRef.afterClosed().pipe(takeUntil(this.destroy$)).subscribe((croppedUrl?: string) => {

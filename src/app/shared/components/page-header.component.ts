@@ -42,7 +42,12 @@ export interface BreadcrumbItem {
             }
           </nav>
         }
-        <span class="header-title">{{ title }}</span>
+        <div class="header-title-row">
+          @if (icon) {
+            <mat-icon class="header-icon" aria-hidden="true">{{ icon }}</mat-icon>
+          }
+          <span class="header-title">{{ title }}</span>
+        </div>
       </div>
       <div class="header-actions">
         <ng-content select="[actions]" />
@@ -91,6 +96,18 @@ export interface BreadcrumbItem {
         height: 1rem;
         opacity: 0.4;
       }
+      .header-title-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .header-icon {
+        font-size: 1.4rem;
+        width: 1.4rem;
+        height: 1.4rem;
+        opacity: 0.85;
+        color: rgb(var(--mat-app-primary, 63, 81, 181));
+      }
       .header-title {
         font-size: 1.25rem;
         font-weight: 500;
@@ -106,5 +123,6 @@ export interface BreadcrumbItem {
 })
 export class PageHeaderComponent {
   @Input() title = '';
+  @Input() icon = '';
   @Input() breadcrumbs: BreadcrumbItem[] = [];
 }

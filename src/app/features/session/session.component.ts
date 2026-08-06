@@ -10,7 +10,10 @@ import { SessionQuickSearchComponent } from './session-quick-search.component';
   template: `
     <div class="session-shell">
       <div class="session-topbar">
-        <span class="session-title">Sessão</span>
+        <div class="session-title-row">
+          <mat-icon class="session-title-icon">event</mat-icon>
+          <span class="session-title">Sessão</span>
+        </div>
         <button
           mat-icon-button
           class="session-search-btn"
@@ -42,6 +45,20 @@ import { SessionQuickSearchComponent } from './session-quick-search.component';
         justify-content: space-between;
         padding: 8px 16px;
         border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .session-title-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .session-title-icon {
+        font-size: 1.2rem;
+        width: 1.2rem;
+        height: 1.2rem;
+        opacity: 0.8;
+        color: rgb(var(--mat-app-primary, 63, 81, 181));
       }
 
       .session-title {

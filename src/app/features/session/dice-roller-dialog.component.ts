@@ -48,6 +48,7 @@ interface DiceRollResult {
           matInput
           [(ngModel)]="notation"
           placeholder="ex: 1d20"
+          (ngModelChange)="parseNotation()"
           (keyup.enter)="roll()"
           [disabled]="isRolling"
           #notationInput

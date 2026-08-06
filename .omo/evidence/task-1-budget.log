@@ -1,8 +1,0 @@
-﻿
-angular.json:47:            "allowedCommonJsDependencies": ["quill", "pdfjs-dist"],
-angular.json:64:                  "maximumWarning": "2MB",
-angular.json:65:                  "maximumError": "3MB"
-angular.json:69:                  "maximumWarning": "16kB",
-angular.json:70:                  "maximumError": "32kB"
-
-

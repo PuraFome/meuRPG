@@ -73,7 +73,7 @@ import { FolderContentComponent } from './folder-content.component';
         padding: 8px 0 16px 24px;
       }
 
-      @media (max-width: 768px) {
+      @media (max-width: 900px) {
         .campaign-layout {
           grid-template-columns: 1fr;
         }

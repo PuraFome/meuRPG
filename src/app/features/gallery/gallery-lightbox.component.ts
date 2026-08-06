@@ -358,6 +358,32 @@ import type { GalleryItem } from '../../core/models/gallery';
       font-variant-numeric: tabular-nums;
       opacity: 0.5;
     }
+
+    /* ── Mobile ── */
+    @media (max-width: 480px) {
+      .lightbox-topbar {
+        padding: 8px 10px;
+        gap: 8px;
+      }
+
+      .item-name {
+        font-size: 0.8rem;
+        margin-right: 8px;
+      }
+
+      .lightbox-topbar .close-btn {
+        width: 36px;
+        height: 36px;
+        line-height: 36px;
+      }
+
+      .lightbox-topbar .close-btn mat-icon {
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+        line-height: 20px;
+      }
+    }
   `,
 })
 export class GalleryLightboxComponent implements OnDestroy {

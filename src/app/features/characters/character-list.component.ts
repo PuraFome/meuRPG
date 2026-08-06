@@ -39,7 +39,10 @@ import type { Character } from '../../core/models/character';
     <div class="characters-page">
       <!-- Header -->
       <div class="page-header">
-        <h1 class="page-title">Personagens</h1>
+        <div class="page-title-row">
+          <mat-icon class="page-title-icon">people</mat-icon>
+          <h1 class="page-title">Personagens</h1>
+        </div>
         <button mat-raised-button color="primary" routerLink="novo">
           <mat-icon>add</mat-icon>
           Novo Personagem
@@ -129,6 +132,19 @@ import type { Character } from '../../core/models/character';
       flex-wrap: wrap;
     }
 
+    .page-title-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .page-title-icon {
+      font-size: 1.75rem;
+      width: 1.75rem;
+      height: 1.75rem;
+      color: rgb(var(--mat-app-primary, 63, 81, 181));
+    }
+
     .page-title {
       margin: 0;
       font-size: 1.75rem;
@@ -165,7 +181,7 @@ import type { Character } from '../../core/models/character';
 
     .character-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
       gap: 20px;
     }
 

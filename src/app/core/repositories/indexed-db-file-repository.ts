@@ -1,3 +1,5 @@
+import { Injectable } from '@angular/core';
+
 export interface FileRecord {
   id: string;
   name: string;
@@ -25,6 +27,9 @@ function openDb(): Promise<IDBDatabase> {
   });
 }
 
+@Injectable({
+  providedIn: 'root',
+})
 export class IndexedDbFileRepository {
   /** Save (create or overwrite) a binary file. */
   async save(record: FileRecord): Promise<void> {
