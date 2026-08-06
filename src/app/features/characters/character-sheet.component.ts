@@ -13,7 +13,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { StoreService } from '../../core/store/store.service';
-import type { Character } from '../../core/models/character';
+import type { Character, DndSheet } from '../../core/models/character';
 
 export interface SkillFormValue {
   name: string;
@@ -42,6 +42,90 @@ export interface InventoryFormValue {
   ],
   template: `
     <form [formGroup]="sheetForm" class="character-sheet" (ngSubmit)="onSave()">
+      @if (isFullSheet) {
+        <!-- ═══════════════ Identidade ═══════════════ -->
+        <section class="sheet-section">
+          <h2 class="section-title">Identidade</h2>
+          <div class="identity-grid" formGroupName="identity">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Raça</mat-label>
+              <input matInput formControlName="race" placeholder="Ex.: Humano" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Classe</mat-label>
+              <input matInput formControlName="class" placeholder="Ex.: Guerreiro" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Nível</mat-label>
+              <input matInput type="number" min="1" max="20" formControlName="level" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Antecedente</mat-label>
+              <input matInput formControlName="background" placeholder="Ex.: Soldado" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Alinhamento</mat-label>
+              <input matInput formControlName="alignment" placeholder="Ex.: Leal e Bom" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>XP</mat-label>
+              <input matInput type="number" min="0" formControlName="xp" />
+            </mat-form-field>
+          </div>
+        </section>
+
+        <!-- ═══════════════ Combate ═══════════════ -->
+        <section class="sheet-section">
+          <h2 class="section-title">Combate</h2>
+          <div class="combat-grid" formGroupName="combat">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>PV Máximo</mat-label>
+              <input matInput type="number" min="1" formControlName="hpMax" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>PV Atuais</mat-label>
+              <input matInput type="number" min="0" formControlName="hpCurrent" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>PV Temporários</mat-label>
+              <input matInput type="number" min="0" formControlName="hpTemp" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>CA</mat-label>
+              <input matInput type="number" min="0" formControlName="armorClass" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Iniciativa</mat-label>
+              <input matInput type="number" formControlName="initiative" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Deslocamento</mat-label>
+              <input matInput type="number" min="0" formControlName="speed" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Dados de Vida</mat-label>
+              <input matInput formControlName="hitDice" placeholder="Ex.: 1d10" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Bônus de Proficiência</mat-label>
+              <input matInput type="number" min="1" formControlName="proficiencyBonus" />
+            </mat-form-field>
+          </div>
+        </section>
+      }
+
       <!-- ═══════════════ Atributos ═══════════════ -->
       <section class="sheet-section">
         <h2 class="section-title">Atributos</h2>
@@ -204,6 +288,129 @@ export interface InventoryFormValue {
         </div>
       </section>
 
+      @if (isFullSheet) {
+        <!-- ═══════════════ Proficiências e Idiomas ═══════════════ -->
+        <section class="sheet-section">
+          <div class="section-header">
+            <h2 class="section-title">Proficiências e Idiomas</h2>
+            <div class="section-actions">
+              <button
+                mat-stroked-button
+                type="button"
+                size="small"
+                (click)="addProficiency()"
+              >
+                <mat-icon>add</mat-icon>
+                Proficiência
+              </button>
+              <button
+                mat-stroked-button
+                type="button"
+                size="small"
+                (click)="addLanguage()"
+              >
+                <mat-icon>add</mat-icon>
+                Idioma
+              </button>
+            </div>
+          </div>
+
+          <div class="dual-list">
+            <div>
+              <h3 class="sub-title">Proficiências</h3>
+              @if (proficiencies.length === 0) {
+                <p class="empty-hint">Nenhuma proficiência.</p>
+              }
+              <div formArrayName="proficiencies" class="dynamic-list">
+                @for (proficiency of proficiencies.controls; track proficiency; let i = $index) {
+                  <div class="simple-row">
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="flex-2">
+                      <mat-label>Proficiência</mat-label>
+                      <input matInput [formControlName]="i" placeholder="Ex.: Armaduras pesadas" />
+                    </mat-form-field>
+                    <button
+                      mat-icon-button
+                      type="button"
+                      (click)="removeProficiency(i)"
+                      class="remove-btn"
+                      aria-label="Remover proficiência"
+                    >
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </div>
+                }
+              </div>
+            </div>
+
+            <div>
+              <h3 class="sub-title">Idiomas</h3>
+              @if (languages.length === 0) {
+                <p class="empty-hint">Nenhum idioma.</p>
+              }
+              <div formArrayName="languages" class="dynamic-list">
+                @for (language of languages.controls; track language; let i = $index) {
+                  <div class="simple-row">
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="flex-2">
+                      <mat-label>Idioma</mat-label>
+                      <input matInput [formControlName]="i" placeholder="Ex.: Comum, Élfico" />
+                    </mat-form-field>
+                    <button
+                      mat-icon-button
+                      type="button"
+                      (click)="removeLanguage(i)"
+                      class="remove-btn"
+                      aria-label="Remover idioma"
+                    >
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ═══════════════ Traços e Características ═══════════════ -->
+        <section class="sheet-section">
+          <div class="section-header">
+            <h2 class="section-title">Traços e Características</h2>
+            <button
+              mat-stroked-button
+              type="button"
+              size="small"
+              (click)="addFeature()"
+            >
+              <mat-icon>add</mat-icon>
+              Adicionar
+            </button>
+          </div>
+
+          @if (features.length === 0) {
+            <p class="empty-hint">Nenhum traço adicionado.</p>
+          }
+
+          <div formArrayName="features" class="dynamic-list">
+            @for (feature of features.controls; track feature; let i = $index) {
+              <div class="simple-row">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="flex-2">
+                  <mat-label>Traço</mat-label>
+                  <input matInput [formControlName]="i" placeholder="Ex.: Ataque Extra" />
+                </mat-form-field>
+                <button
+                  mat-icon-button
+                  type="button"
+                  (click)="removeFeature(i)"
+                  class="remove-btn"
+                  aria-label="Remover traço"
+                >
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            }
+          </div>
+        </section>
+      }
+
       <!-- ═══════════════ Ações ═══════════════ -->
       <div class="form-actions">
         <button
@@ -264,11 +471,51 @@ export interface InventoryFormValue {
       margin: 0;
     }
 
+    .section-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .sub-title {
+      margin: 0 0 12px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      opacity: 0.8;
+    }
+
     .empty-hint {
       text-align: center;
       opacity: 0.5;
       font-size: 0.875rem;
       margin: 16px 0;
+    }
+
+    /* ── Identity / combat grids ──────────── */
+
+    .identity-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    .combat-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    @media (max-width: 720px) {
+      .combat-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 480px) {
+      .identity-grid,
+      .combat-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
     /* ── Attributes grid ──────────────────── */
@@ -333,6 +580,12 @@ export interface InventoryFormValue {
     .flex-2 { flex: 2 1 160px; min-width: 120px; }
     .flex-3 { flex: 3 1 200px; min-width: 140px; }
 
+    .simple-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
     .remove-btn {
       margin-top: 4px;
       flex-shrink: 0;
@@ -341,6 +594,19 @@ export interface InventoryFormValue {
     .row-removing {
       opacity: 0.4;
       pointer-events: none;
+    }
+
+    .dual-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 640px) {
+      .dual-list {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
     }
 
     /* ── Actions ──────────────────────────── */
@@ -396,12 +662,29 @@ export class CharacterSheetComponent implements OnInit {
   /** Whether the form was just saved. */
   saved = false;
 
+  /** Full D&D sheet applies to Jogador and Boss types only. */
+  get isFullSheet(): boolean {
+    return this.character?.type === 'player' || this.character?.type === 'boss';
+  }
+
   get skills(): FormArray {
     return this.sheetForm.get('skills') as FormArray;
   }
 
   get inventory(): FormArray {
     return this.sheetForm.get('inventory') as FormArray;
+  }
+
+  get proficiencies(): FormArray {
+    return this.sheetForm.get('proficiencies') as FormArray;
+  }
+
+  get languages(): FormArray {
+    return this.sheetForm.get('languages') as FormArray;
+  }
+
+  get features(): FormArray {
+    return this.sheetForm.get('features') as FormArray;
   }
 
   ngOnInit(): void {
@@ -411,7 +694,16 @@ export class CharacterSheetComponent implements OnInit {
   // ─── Form initialization ───────────────────────────────
 
   private initForm(): void {
+    const sheet = this.character?.sheet;
     this.sheetForm = this.fb.group({
+      identity: this.fb.group({
+        race: [sheet?.race ?? ''],
+        class: [sheet?.class ?? ''],
+        level: [sheet?.level ?? 1, [Validators.required, Validators.min(1), Validators.max(20)]],
+        background: [sheet?.background ?? ''],
+        alignment: [sheet?.alignment ?? ''],
+        xp: [sheet?.xp ?? 0, [Validators.min(0)]],
+      }),
       attributes: this.fb.group({
         for: [
           this.character?.attributes?.['for'] ?? 10,
@@ -438,8 +730,21 @@ export class CharacterSheetComponent implements OnInit {
           [Validators.required, Validators.min(1), Validators.max(30)],
         ],
       }),
+      combat: this.fb.group({
+        hpMax: [sheet?.hpMax ?? 10, [Validators.required, Validators.min(1)]],
+        hpCurrent: [sheet?.hpCurrent ?? 10, [Validators.min(0)]],
+        hpTemp: [sheet?.hpTemp ?? 0, [Validators.min(0)]],
+        armorClass: [sheet?.armorClass ?? 10, [Validators.min(0)]],
+        initiative: [sheet?.initiative ?? 0],
+        speed: [sheet?.speed ?? 30, [Validators.min(0)]],
+        hitDice: [sheet?.hitDice ?? '1d10'],
+        proficiencyBonus: [sheet?.proficiencyBonus ?? 2, [Validators.required, Validators.min(1)]],
+      }),
       skills: this.fb.array(this.parseSkills()),
       inventory: this.fb.array(this.parseInventory()),
+      proficiencies: this.fb.array(sheet?.proficiencies ?? []),
+      languages: this.fb.array(sheet?.languages ?? []),
+      features: this.fb.array(sheet?.features ?? []),
     });
   }
 
@@ -526,6 +831,34 @@ export class CharacterSheetComponent implements OnInit {
     }, 200);
   }
 
+  // ─── Proficiencies / languages ────────────────────────
+
+  addProficiency(): void {
+    this.proficiencies.push(this.fb.control(''));
+  }
+
+  removeProficiency(index: number): void {
+    this.proficiencies.removeAt(index);
+  }
+
+  addLanguage(): void {
+    this.languages.push(this.fb.control(''));
+  }
+
+  removeLanguage(index: number): void {
+    this.languages.removeAt(index);
+  }
+
+  // ─── Features ─────────────────────────────────────────
+
+  addFeature(): void {
+    this.features.push(this.fb.control(''));
+  }
+
+  removeFeature(index: number): void {
+    this.features.removeAt(index);
+  }
+
   // ─── Save ─────────────────────────────────────────────
 
   onSave(): void {
@@ -542,6 +875,30 @@ export class CharacterSheetComponent implements OnInit {
       ),
       updatedAt: new Date(),
     };
+
+    if (this.isFullSheet) {
+      const identity = formValue.identity;
+      const combat = formValue.combat;
+      updated.sheet = {
+        race: identity.race ?? '',
+        class: identity.class ?? '',
+        level: identity.level ?? 1,
+        background: identity.background ?? '',
+        alignment: identity.alignment ?? '',
+        xp: identity.xp ?? 0,
+        hpMax: combat.hpMax ?? 10,
+        hpCurrent: combat.hpCurrent ?? 10,
+        hpTemp: combat.hpTemp ?? 0,
+        armorClass: combat.armorClass ?? 10,
+        initiative: combat.initiative ?? 0,
+        speed: combat.speed ?? 30,
+        hitDice: combat.hitDice ?? '1d10',
+        proficiencyBonus: combat.proficiencyBonus ?? 2,
+        proficiencies: (formValue.proficiencies as string[]).filter(Boolean),
+        languages: (formValue.languages as string[]).filter(Boolean),
+        features: (formValue.features as string[]).filter(Boolean),
+      } satisfies DndSheet;
+    }
 
     this.store.update('characters', updated.id, updated);
     this.saved = true;
