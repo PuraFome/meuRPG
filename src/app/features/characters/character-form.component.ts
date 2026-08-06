@@ -15,6 +15,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { PageHeaderComponent } from '../../shared/components/page-header.component';
 import { StoreService } from '../../core/store/store.service';
+import { DndOptionSelectComponent } from './dnd-option-select.component';
 import type { Character, DndSheet } from '../../core/models/character';
 import type { BreadcrumbItem } from '../../shared/components/page-header.component';
 
@@ -43,6 +44,7 @@ export interface InventoryFormValue {
     MatInputModule,
     MatSelectModule,
     PageHeaderComponent,
+    DndOptionSelectComponent,
   ],
   template: `
     <!-- Breadcrumbs + Title -->
@@ -100,30 +102,34 @@ export interface InventoryFormValue {
         <section class="form-section">
           <h2 class="section-title">Identidade</h2>
           <div class="identity-grid" formGroupName="identity">
-            <mat-form-field appearance="outline" subscriptSizing="dynamic">
-              <mat-label>Raça</mat-label>
-              <input matInput formControlName="race" placeholder="Ex.: Humano" />
-            </mat-form-field>
+            <app-dnd-option-select
+              formControlName="race"
+              category="race"
+              label="Raça"
+            />
 
-            <mat-form-field appearance="outline" subscriptSizing="dynamic">
-              <mat-label>Classe</mat-label>
-              <input matInput formControlName="class" placeholder="Ex.: Guerreiro" />
-            </mat-form-field>
+            <app-dnd-option-select
+              formControlName="class"
+              category="class"
+              label="Classe"
+            />
 
             <mat-form-field appearance="outline" subscriptSizing="dynamic">
               <mat-label>Nível</mat-label>
               <input matInput type="number" min="1" max="20" formControlName="level" />
             </mat-form-field>
 
-            <mat-form-field appearance="outline" subscriptSizing="dynamic">
-              <mat-label>Antecedente</mat-label>
-              <input matInput formControlName="background" placeholder="Ex.: Soldado" />
-            </mat-form-field>
+            <app-dnd-option-select
+              formControlName="background"
+              category="background"
+              label="Antecedente"
+            />
 
-            <mat-form-field appearance="outline" subscriptSizing="dynamic">
-              <mat-label>Alinhamento</mat-label>
-              <input matInput formControlName="alignment" placeholder="Ex.: Leal e Bom" />
-            </mat-form-field>
+            <app-dnd-option-select
+              formControlName="alignment"
+              category="alignment"
+              label="Alinhamento"
+            />
 
             <mat-form-field appearance="outline" subscriptSizing="dynamic">
               <mat-label>XP</mat-label>
@@ -189,10 +195,11 @@ export interface InventoryFormValue {
               <input matInput type="number" min="0" formControlName="speed" />
             </mat-form-field>
 
-            <mat-form-field appearance="outline" subscriptSizing="dynamic">
-              <mat-label>Dados de Vida</mat-label>
-              <input matInput formControlName="hitDice" placeholder="Ex.: 1d10" />
-            </mat-form-field>
+            <app-dnd-option-select
+              formControlName="hitDice"
+              category="hitDice"
+              label="Dados de Vida"
+            />
 
             <mat-form-field appearance="outline" subscriptSizing="dynamic">
               <mat-label>Bônus de Proficiência</mat-label>
