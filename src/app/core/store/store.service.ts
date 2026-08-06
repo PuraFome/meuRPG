@@ -39,41 +39,67 @@ export class StoreService<T extends { id: string }> {
   /** Set (create or overwrite) an item. */
   set(collection: string, item: T): void {
     const subject = this.getSubject(collection);
-    const current = new Map(subject.value);
+    const previous = new Map(subject.value);
+    const current = new Map(previous);
     current.set(item.id, item);
-    subject.next(current);
-    this.eventsSubject.next({ type: 'created', collection, id: item.id, payload: item });
+    try {
+      subject.next(current);
+      this.eventsSubject.next({ type: 'created', collection, id: item.id, payload: item });
+    } catch (err) {
+      // Persistence or downstream subscriber failed: roll back the in-memory
+      // state so a failed save doesn't leave a ghost/duplicate item behind.
+      subject.next(previous);
+      throw err;
+    }
   }
 
   /** Replace an existing item. */
   update(collection: string, id: string, item: T): void {
     const subject = this.getSubject(collection);
-    const current = new Map(subject.value);
+    const previous = new Map(subject.value);
+    const current = new Map(previous);
     current.set(id, item);
-    subject.next(current);
-    this.eventsSubject.next({ type: 'updated', collection, id, payload: item });
+    try {
+      subject.next(current);
+      this.eventsSubject.next({ type: 'updated', collection, id, payload: item });
+    } catch (err) {
+      subject.next(previous);
+      throw err;
+    }
   }
 
   /** Partially update an existing item. */
   patch(collection: string, id: string, partial: Partial<T>): void {
     const subject = this.getSubject(collection);
-    const current = new Map(subject.value);
+    const previous = new Map(subject.value);
+    const current = new Map(previous);
     const existing = current.get(id);
     if (existing) {
       const updated = { ...existing, ...partial };
       current.set(id, updated);
-      subject.next(current);
-      this.eventsSubject.next({ type: 'updated', collection, id, payload: updated });
+      try {
+        subject.next(current);
+        this.eventsSubject.next({ type: 'updated', collection, id, payload: updated });
+      } catch (err) {
+        subject.next(previous);
+        throw err;
+      }
     }
   }
 
   /** Delete an item by id. */
   delete(collection: string, id: string): void {
     const subject = this.getSubject(collection);
-    const current = new Map(subject.value);
+    const previous = new Map(subject.value);
+    const current = new Map(previous);
     current.delete(id);
-    subject.next(current);
-    this.eventsSubject.next({ type: 'deleted', collection, id });
+    try {
+      subject.next(current);
+      this.eventsSubject.next({ type: 'deleted', collection, id });
+    } catch (err) {
+      subject.next(previous);
+      throw err;
+    }
   }
 
   /** Subscribe to collection changes with a callback (returns unsubscribe handle). */

@@ -2,6 +2,50 @@
 
 @include mat.core();
 
+@import 'quill/dist/quill.snow.css';
+
+/* ─── Quill editor (História / Notas do Mestre) ─────────── */
+quill-editor .ql-toolbar {
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.ql-toolbar.ql-snow {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.ql-toolbar.ql-snow .ql-formats button {
+  border-radius: 6px;
+}
+
+.ql-toolbar.ql-snow .ql-picker-label,
+.ql-toolbar.ql-snow .ql-picker-item {
+  color: inherit;
+}
+
+quill-editor .ql-container {
+  min-height: 220px;
+  font-size: 1rem;
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.ql-container.ql-snow {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+quill-editor .ql-editor {
+  font-family: Roboto, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+quill-editor .ql-editor.ql-blank::before {
+  color: rgba(255, 255, 255, 0.4);
+  font-style: italic;
+}
+
 $theme: mat.define-theme((
   color: (
     theme-type: dark,

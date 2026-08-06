@@ -419,15 +419,25 @@ export interface InventoryFormValue {
       }
 
       <!-- ═══════════════ Ações ═══════════════ -->
+      @if (saveError) {
+        <div class="save-error" role="alert">
+          <mat-icon>error_outline</mat-icon>
+          <div>
+            <strong>Não foi possível salvar a ficha.</strong>
+            <span>{{ saveError }}</span>
+          </div>
+        </div>
+      }
+
       <div class="form-actions">
         <button
           mat-raised-button
           color="primary"
           type="submit"
-          [disabled]="sheetForm.invalid"
+          [disabled]="sheetForm.invalid || saving"
         >
-          <mat-icon>save</mat-icon>
-          Salvar
+          <mat-icon>{{ saving ? 'hourglass_top' : 'save' }}</mat-icon>
+          {{ saving ? 'Salvando...' : 'Salvar' }}
         </button>
 
         @if (saved) {
@@ -625,6 +635,31 @@ export interface InventoryFormValue {
       padding: 8px 0;
     }
 
+    .save-error {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: 10px;
+      border: 1px solid rgba(239, 68, 68, 0.5);
+      background: rgba(239, 68, 68, 0.12);
+      color: #fecaca;
+    }
+
+    .save-error mat-icon {
+      flex-shrink: 0;
+      margin-top: 2px;
+      color: #f87171;
+    }
+
+    .save-error div {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+
     .save-feedback {
       color: #4ade80;
       font-size: 0.875rem;
@@ -668,6 +703,12 @@ export class CharacterSheetComponent implements OnInit {
 
   /** Whether the form was just saved. */
   saved = false;
+
+  /** True while a save is in progress (prevents double-submit). */
+  saving = false;
+
+  /** Human-readable message of the last save failure, or null when no error. */
+  saveError: string | null = null;
 
   /** Full D&D sheet applies to Jogador and Boss types only. */
   get isFullSheet(): boolean {
@@ -869,12 +910,41 @@ export class CharacterSheetComponent implements OnInit {
   // ─── Save ─────────────────────────────────────────────
 
   onSave(): void {
-    if (this.sheetForm.invalid || !this.character) return;
+    if (this.sheetForm.invalid || this.saving || !this.character) return;
+    this.saving = true;
+    this.saveError = null;
 
+    try {
+      const updated = this.buildUpdated();
+
+      this.store.update('characters', updated.id, updated);
+      this.character = updated;
+      this.saved = true;
+      setTimeout(() => (this.saved = false), 2000);
+    } catch (err) {
+      this.saveError = this.describeSaveError(err);
+    } finally {
+      this.saving = false;
+    }
+  }
+
+  private describeSaveError(err: unknown): string {
+    if (err instanceof Error && err.message) {
+      const e = err as unknown as { name?: string };
+      if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+        return 'O armazenamento do navegador está cheio. Exclua personagens ou dados antigos para liberar espaço.';
+      }
+      return err.message;
+    }
+    return 'Ocorreu um erro inesperado ao salvar. Tente novamente.';
+  }
+
+  private buildUpdated(): Character {
+    const character = this.character!;
     const formValue = this.sheetForm.value;
 
     const updated: Character = {
-      ...this.character,
+      ...character,
       attributes: formValue.attributes as Record<string, number>,
       skills: (formValue.skills as SkillFormValue[]).map((s) => JSON.stringify(s)),
       inventory: (formValue.inventory as InventoryFormValue[]).map((item) =>
@@ -907,8 +977,6 @@ export class CharacterSheetComponent implements OnInit {
       } satisfies DndSheet;
     }
 
-    this.store.update('characters', updated.id, updated);
-    this.saved = true;
-    setTimeout(() => (this.saved = false), 2000);
+    return updated;
   }
 }

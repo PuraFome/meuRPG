@@ -447,9 +447,14 @@ export class CharacterDetailComponent implements OnInit, OnDestroy {
 
   readonly quillModules = {
     toolbar: [
-      ['bold', 'italic'],
-      [{ list: 'ordered' }, { list: 'bullet' }],
       [{ header: [1, 2, 3, false] }],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ color: [] }, { background: [] }],
+      [{ list: 'ordered' }, { list: 'bullet' }, { list: 'check' }],
+      [{ align: [] }],
+      ['blockquote', 'code-block'],
+      ['link'],
+      ['clean'],
     ],
   };
 
@@ -468,6 +473,9 @@ export class CharacterDetailComponent implements OnInit, OnDestroy {
   }
 
   private quotesInitialized = false;
+
+  /** Id of the character the quotes form was built from. Guards one-time init. */
+  private quotesLoadedForId: string | null = null;
 
   // ── Breadcrumbs ────────────────────────────────────────────
   get breadcrumbs(): BreadcrumbItem[] {
@@ -525,7 +533,10 @@ export class CharacterDetailComponent implements OnInit, OnDestroy {
         this.loading.set(false);
         if (c) {
           this.character = c;
-          this.initQuotesForm();
+          if (this.quotesLoadedForId !== c.id) {
+            this.quotesLoadedForId = c.id;
+            this.initQuotesForm();
+          }
         } else {
           this.error.set('Personagem não encontrado');
         }

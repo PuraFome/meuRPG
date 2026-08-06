@@ -462,19 +462,30 @@ export interface InventoryFormValue {
         </section>
       }
 
+      <!-- ═══════════════ Erro ao salvar ═══════════════ -->
+      @if (saveError) {
+        <div class="save-error" role="alert">
+          <mat-icon>error_outline</mat-icon>
+          <div>
+            <strong>Não foi possível salvar o personagem.</strong>
+            <span>{{ saveError }}</span>
+          </div>
+        </div>
+      }
+
       <!-- ═══════════════ Ações ═══════════════ -->
       <div class="form-actions">
         <button
           mat-raised-button
           color="primary"
           type="submit"
-          [disabled]="characterForm.invalid"
+          [disabled]="characterForm.invalid || saving"
         >
-          <mat-icon>save</mat-icon>
-          Salvar
+          <mat-icon>{{ saving ? 'hourglass_top' : 'save' }}</mat-icon>
+          {{ saving ? 'Salvando...' : 'Salvar' }}
         </button>
 
-        <button mat-button type="button" (click)="onCancel()">
+        <button mat-button type="button" [disabled]="saving" (click)="onCancel()">
           <mat-icon>arrow_back</mat-icon>
           Cancelar
         </button>
@@ -668,6 +679,33 @@ export interface InventoryFormValue {
       }
     }
 
+    /* ── Save error ────────────────────────── */
+
+    .save-error {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: 10px;
+      border: 1px solid rgba(239, 68, 68, 0.5);
+      background: rgba(239, 68, 68, 0.12);
+      color: #fecaca;
+    }
+
+    .save-error mat-icon {
+      flex-shrink: 0;
+      margin-top: 2px;
+      color: #f87171;
+    }
+
+    .save-error div {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+
     /* ── Actions ──────────────────────────── */
 
     .form-actions {
@@ -682,6 +720,12 @@ export class CharacterFormComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
   private readonly store = inject(StoreService<Character>);
+
+  /** True while a save is in progress (prevents double-submit / duplicate characters). */
+  saving = false;
+
+  /** Human-readable message of the last save failure, or null when no error. */
+  saveError: string | null = null;
 
   readonly attributeKeys = ['for', 'des', 'con', 'int', 'sab', 'car'] as const;
 
@@ -780,8 +824,26 @@ export class CharacterFormComponent implements OnInit {
 
   /** Build a new Character and persist it via the store. */
   onSubmit(): void {
-    if (this.characterForm.invalid) return;
+    if (this.characterForm.invalid || this.saving) return;
 
+    this.saving = true;
+    this.saveError = null;
+
+    const character = this.buildCharacter();
+
+    try {
+      this.store.set('characters', character);
+    } catch (err) {
+      this.saving = false;
+      this.saveError = this.describeSaveError(err);
+      return;
+    }
+
+    this.saving = false;
+    this.router.navigate(['/personagens', character.id]);
+  }
+
+  private buildCharacter(): Character {
     const formValue = this.characterForm.value;
 
     const character: Character = {
@@ -823,8 +885,19 @@ export class CharacterFormComponent implements OnInit {
       } satisfies DndSheet;
     }
 
-    this.store.set('characters', character);
-    this.router.navigate(['/personagens', character.id]);
+    return character;
+  }
+
+  private describeSaveError(err: unknown): string {
+    if (err instanceof Error && err.message) {
+      // storage quota/security errors carry a code, not a helpful message
+      const e = err as unknown as { name?: string };
+      if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+        return 'O armazenamento do navegador está cheio. Exclua personagens ou dados antigos para liberar espaço.';
+      }
+      return err.message;
+    }
+    return 'Ocorreu um erro inesperado ao salvar. Tente novamente.';
   }
 
   // ─── Skills management ────────────────────────────────
