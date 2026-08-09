@@ -1,1 +1,0 @@
-import"./chunk-QXIBXHVB.js";var t=[{path:"",loadComponent:()=>import("./chunk-OMNYRW2Z.js").then(o=>o.CharacterListComponent)},{path:"novo",loadComponent:()=>import("./chunk-24RZJOOO.js").then(o=>o.CharacterFormComponent)},{path:":id",loadComponent:()=>import("./chunk-EKRWKBZY.js").then(o=>o.CharacterDetailComponent)}];export{t as routes};
