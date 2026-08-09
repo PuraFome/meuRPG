@@ -1,4 +1,4 @@
-import { Component, signal, computed, inject } from '@angular/core';
+import { Component, signal, computed, inject, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   CdkDropListGroup,
@@ -91,19 +91,27 @@ import { FolderContentComponent } from './folder-content.component';
     `,
   ],
 })
-export class CampaignComponent {
+export class CampaignComponent implements OnDestroy {
   private readonly store = inject(StoreService);
 
   readonly selectedFolderId = signal<string | null>(null);
 
   readonly treeNodes = signal<any[]>([]);
 
+  private readonly campaigns = signal<CampaignFolder[]>([]);
+  private readonly campaignsSub = this.store
+    .getAll('campaigns')
+    .subscribe((items) => this.campaigns.set(items as CampaignFolder[]));
+
   readonly selectedFolder = computed(() => {
     const id = this.selectedFolderId();
     if (!id) return null;
-    const folders = this.store.snapshot('campaigns') as CampaignFolder[];
-    return folders.find((f) => f.id === id) ?? null;
+    return this.campaigns().find((f) => f.id === id) ?? null;
   });
+
+  ngOnDestroy() {
+    this.campaignsSub.unsubscribe();
+  }
 
   onFolderSelected(id: string) {
     this.selectedFolderId.set(id);

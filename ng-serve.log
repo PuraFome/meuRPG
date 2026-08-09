@@ -1,0 +1,74 @@
+[1m[33mBuild JSON statistics output (`statsJson` option) has been disabled. The development server does not support this option.[39m[22m
+[33m❯[39m Building...
+[32m✔[39m Building...
+[1mInitial chunk files[22m[2m | [22m[1mNames[22m                     [2m | [22m [1mRaw size[22m
+[32mstyles.css[39m         [2m | [22m[2mstyles[22m                    [2m | [22m [36m92.45 kB[39m[2m | [22m
+[32mchunk-4TTZIHZR.js[39m  [2m | [22m[2m-[22m                         [2m | [22m [36m29.14 kB[39m[2m | [22m
+[32mmain.js[39m            [2m | [22m[2mmain[22m                      [2m | [22m [36m28.51 kB[39m[2m | [22m
+[32mchunk-3V4PQ26D.js[39m  [2m | [22m[2m-[22m                         [2m | [22m  [36m3.85 kB[39m[2m | [22m
+[32mchunk-UIJXKDOH.js[39m  [2m | [22m[2m-[22m                         [2m | [22m  [36m3.35 kB[39m[2m | [22m
+[32mchunk-U653NTTP.js[39m  [2m | [22m[2m-[22m                         [2m | [22m  [36m2.75 kB[39m[2m | [22m
+[32mchunk-GOMI4DH3.js[39m  [2m | [22m[2m-[22m                         [2m | [22m  [36m1.37 kB[39m[2m | [22m
+
+[1m [22m                  [2m | [22m[1mInitial total[22m             [2m | [22m[1m161.42 kB[22m
+
+[1mLazy chunk files[22m   [2m | [22m[1mNames[22m                     [2m | [22m [1mRaw size[22m
+[32mchunk-57P2FKWP.js[39m  [2m | [22m[2mcampaign-component[22m        [2m | [22m[36m138.49 kB[39m[2m | [22m
+[32mchunk-3TABFGJJ.js[39m  [2m | [22m[2mcharacter-detail-component[22m[2m | [22m[36m114.89 kB[39m[2m | [22m
+[32mchunk-VYNFZ4EE.js[39m  [2m | [22m[2mmap-view-component[22m        [2m | [22m [36m95.08 kB[39m[2m | [22m
+[32mchunk-H4RZHDEA.js[39m  [2m | [22m[2mgallery-component[22m         [2m | [22m [36m83.59 kB[39m[2m | [22m
+[32mchunk-XHOGWDFT.js[39m  [2m | [22m[2m-[22m                         [2m | [22m [36m73.62 kB[39m[2m | [22m
+[32mchunk-ITGYFQ64.js[39m  [2m | [22m[2mcharacter-form-component[22m  [2m | [22m [36m67.50 kB[39m[2m | [22m
+[32mchunk-ZXFNHF2E.js[39m  [2m | [22m[2mrules-reader-component[22m    [2m | [22m [36m33.51 kB[39m[2m | [22m
+[32mchunk-5IB34HW2.js[39m  [2m | [22m[2m-[22m                         [2m | [22m [36m22.36 kB[39m[2m | [22m
+[32mchunk-44WTNIOA.js[39m  [2m | [22m[2mcharacter-list-component[22m  [2m | [22m [36m22.34 kB[39m[2m | [22m
+[32mchunk-6LUYMQRR.js[39m  [2m | [22m[2m-[22m                         [2m | [22m [36m19.86 kB[39m[2m | [22m
+[32mchunk-XS4F5IN4.js[39m  [2m | [22m[2mmap-list-component[22m        [2m | [22m [36m18.61 kB[39m[2m | [22m
+[32mchunk-M3NAWDII.js[39m  [2m | [22m[2m-[22m                         [2m | [22m [36m15.89 kB[39m[2m | [22m
+[32mchunk-BXSCN3RX.js[39m  [2m | [22m[2m-[22m                         [2m | [22m [36m15.78 kB[39m[2m | [22m
+[32mchunk-NTWDNLW2.js[39m  [2m | [22m[2m-[22m                         [2m | [22m [36m14.35 kB[39m[2m | [22m
+[32mchunk-5F7DKFNR.js[39m  [2m | [22m[2mrules-list-component[22m      [2m | [22m [36m13.74 kB[39m[2m | [22m
+[2m...and 13 more lazy chunks files. Use "--verbose" to show all the files.[22m
+
+Application bundle generation complete. [9.680 seconds] - 2026-08-07T04:29:32.407Z
+
+Watch mode enabled. Watching for file changes...
+NOTE: Raw file sizes do not reflect development server per-request transformations.
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m4200[22m/[39m
+[2m[32m  ➜[39m[22m[2m  press [22m[1mh + enter[22m[2m to show help[22m
+[33m❯[39m Changes detected. Rebuilding...
+[32m✔[39m Changes detected. Rebuilding...
+[1mInitial chunk files[22m[2m | [22m[1mNames[22m             [2m | [22m [1mRaw size[22m
+[32mmain.js[39m            [2m | [22m[2mmain[22m              [2m | [22m [36m28.51 kB[39m[2m | [22m
+
+[1mLazy chunk files[22m   [2m | [22m[1mNames[22m             [2m | [22m [1mRaw size[22m
+[32mchunk-LOSH745M.js[39m  [2m | [22m[2mcampaign-component[22m[2m | [22m[36m138.80 kB[39m[2m | [22m
+[32mchunk-X3P3QN3V.js[39m  [2m | [22m[2mcampaign-routes[22m   [2m | [22m[36m271 bytes[39m[2m | [22m
+
+Application bundle generation complete. [3.235 seconds] - 2026-08-07T04:33:06.162Z
+
+Page reload sent to client(s).
+[33m❯[39m Changes detected. Rebuilding...
+[32m✔[39m Changes detected. Rebuilding...
+[1mInitial chunk files[22m[2m | [22m[1mNames[22m             [2m | [22m [1mRaw size[22m
+[32mmain.js[39m            [2m | [22m[2mmain[22m              [2m | [22m [36m28.51 kB[39m[2m | [22m
+
+[1mLazy chunk files[22m   [2m | [22m[1mNames[22m             [2m | [22m [1mRaw size[22m
+[32mchunk-WY3PJ7BW.js[39m  [2m | [22m[2mcampaign-component[22m[2m | [22m[36m138.80 kB[39m[2m | [22m
+[32mchunk-HZE6BQTE.js[39m  [2m | [22m[2mcampaign-routes[22m   [2m | [22m[36m271 bytes[39m[2m | [22m
+
+Application bundle generation complete. [0.545 seconds] - 2026-08-07T04:33:11.595Z
+
+Page reload sent to client(s).
+[33m❯[39m Changes detected. Rebuilding...
+[32m✔[39m Changes detected. Rebuilding...
+[1mInitial chunk files[22m[2m | [22m[1mNames[22m             [2m | [22m [1mRaw size[22m
+[32mmain.js[39m            [2m | [22m[2mmain[22m              [2m | [22m [36m28.51 kB[39m[2m | [22m
+
+[1mLazy chunk files[22m   [2m | [22m[1mNames[22m             [2m | [22m [1mRaw size[22m
+[32mchunk-PNKESDUQ.js[39m  [2m | [22m[2mcampaign-component[22m[2m | [22m[36m138.71 kB[39m[2m | [22m
+[32mchunk-5UFCGK7J.js[39m  [2m | [22m[2mcampaign-routes[22m   [2m | [22m[36m271 bytes[39m[2m | [22m
+
+Application bundle generation complete. [0.462 seconds] - 2026-08-07T04:33:12.892Z
+
+Page reload sent to client(s).

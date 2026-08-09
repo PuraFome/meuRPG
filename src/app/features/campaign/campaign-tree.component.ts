@@ -26,7 +26,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
 import { Subscription } from 'rxjs';
-import { StoreService, CampaignFolder } from '../../core';
+import { StoreService, CampaignFolder, IndexedDbFileRepository } from '../../core';
+import { CampaignCoverService } from './campaign-cover.service';
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,
@@ -165,6 +166,16 @@ function uniqueListId(): string {
                 [style.--folder-depth]="depth"
                 (click)="selectFolder(node)"
               >
+                <!-- Cover thumbnail -->
+                @if (thumbOf(node.id); as thumbUrl) {
+                  <img
+                    [src]="thumbUrl"
+                    class="folder-thumb"
+                    alt=""
+                    loading="lazy"
+                  />
+                }
+
                 <!-- Expand/collapse toggle -->
                 <button
                   mat-icon-button
@@ -343,6 +354,14 @@ function uniqueListId(): string {
         user-select: none;
       }
 
+      .folder-thumb {
+        width: 26px;
+        height: 26px;
+        border-radius: 5px;
+        object-fit: cover;
+        flex-shrink: 0;
+      }
+
       .drag-handle {
         display: flex;
         align-items: center;
@@ -497,7 +516,15 @@ export class CampaignTreeComponent implements OnInit, OnDestroy {
   // ── Dependencies ─────────────────────────────────────────────
   private store = inject(StoreService<CampaignFolder>);
   private dialog = inject(MatDialog);
+  private coverService = inject(CampaignCoverService);
+  private fileRepo = inject(IndexedDbFileRepository);
   private subscription: Subscription | null = null;
+
+  // Track thumbnail loads so the template re-renders when ready
+  readonly thumbOf = (folderId: string): string | undefined => {
+    this.coverService.thumbVersion();
+    return this.coverService.thumbUrl(folderId);
+  };
 
   // ── Lifecycle ─────────────────────────────────────────────────
   ngOnInit() {
@@ -513,6 +540,7 @@ export class CampaignTreeComponent implements OnInit, OnDestroy {
 
       this.subscription = this.store.getAll('campaigns').subscribe((folders) => {
         this.nodes = buildTree(folders);
+        void this.coverService.syncThumbnails(folders);
         this.restoreExpanded(prevExpanded, this.nodes);
         prevExpanded = this.captureExpanded();
       });
@@ -525,6 +553,7 @@ export class CampaignTreeComponent implements OnInit, OnDestroy {
       this.allDropListIds.delete(this.listId);
     }
     this.subscription?.unsubscribe();
+    if (this.depth === 0) this.coverService.revokeAll();
   }
 
   /**
@@ -644,6 +673,12 @@ export class CampaignTreeComponent implements OnInit, OnDestroy {
     const children = allFolders.filter((f) => f.parentId === id);
     for (const child of children) {
       this.deleteRecursive(child.id);
+    }
+    const folder = allFolders.find((f) => f.id === id);
+    const coverFileId = folder?.coverFileId;
+    if (coverFileId) {
+      void this.fileRepo.delete(coverFileId).catch(() => undefined);
+      void this.fileRepo.delete(coverFileId + '-thumb').catch(() => undefined);
     }
     this.store.delete('campaigns', id);
   }

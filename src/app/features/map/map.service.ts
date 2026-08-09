@@ -281,7 +281,13 @@ export class MapService {
         minZoom: -3,
         maxZoom: 8,
       });
-      view.fit(extent, { padding: [24, 24, 24, 24] });
+      // Fit the whole map image into the viewport so it fills the screen on open.
+      view.fit(extent, { padding: [0, 0, 0, 0] });
+      // Zooming out decreases the zoom value, so clamping minZoom to the fitted
+      // level makes the whole-map view the farthest-out limit: the user can zoom
+      // in for detail, but cannot zoom out past the full map.
+      const fitZoom = view.getZoom() ?? view.getMinZoom();
+      view.setMinZoom(fitZoom);
       this.map?.setView(view);
     });
   }

@@ -5,6 +5,7 @@ import {
   signal,
   computed,
   effect,
+  OnDestroy,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
@@ -26,6 +27,15 @@ import {
   ConfirmDialogData,
 } from '../../shared';
 import { EntitySelectorDialogComponent, EntitySelectorData } from './entity-selector-dialog.component';
+import { CampaignCoverService } from './campaign-cover.service';
+import {
+  CampaignCoverDialogComponent,
+  CampaignCoverDialogData,
+} from './campaign-cover-dialog.component';
+import {
+  CampaignGuideDialogComponent,
+  CampaignGuideDialogData,
+} from './campaign-guide-dialog.component';
 
 // ─── Entity display model ────────────────────────────────────
 export interface EntityRef {
@@ -39,6 +49,25 @@ export interface EntityRef {
 let nextEntitySourceId = 0;
 function uniqueEntitySourceId(): string {
   return `entity-source-${nextEntitySourceId++}`;
+}
+
+function isValidHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function extractGoogleDocId(value: string): string | null {
+  const match = value.match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
+  return match?.[1] ?? null;
+}
+
+function extractDocsUrlFromHtml(html: string): string | null {
+  const match = html.match(/https?:\/\/docs\.google\.com\/document\/d\/[a-zA-Z0-9_/?=&.-]+/);
+  return match?.[0] ?? null;
 }
 
 // ─── Component ───────────────────────────────────────────────
@@ -60,6 +89,34 @@ function uniqueEntitySourceId(): string {
   template: `
     @if (folder(); as folder) {
       <div class="folder-content" cdkDropListGroup>
+        <!-- Cover -->
+        @if (coverUrl(); as url) {
+          <div class="cover-wrapper">
+            <img
+              [src]="url"
+              class="cover-banner"
+              [alt]="'Capa de ' + folder.name"
+            />
+            <button
+              mat-icon-button
+              class="cover-edit-btn"
+              aria-label="Alterar capa"
+              (click)="openCoverDialog()"
+            >
+              <mat-icon>photo_camera</mat-icon>
+            </button>
+          </div>
+        } @else {
+          <button
+            type="button"
+            class="cover-placeholder"
+            (click)="openCoverDialog()"
+          >
+            <mat-icon>add_photo_alternate</mat-icon>
+            Adicionar capa
+          </button>
+        }
+
         <!-- Header -->
         <div class="content-header">
           <div class="header-left">
@@ -77,6 +134,70 @@ function uniqueEntitySourceId(): string {
               Associar
             </button>
           </div>
+        </div>
+
+        <!-- Campaign guide (Google Docs) -->
+        <div class="guide-section">
+          @if (editingGuideUrl()) {
+            <div class="guide-edit">
+              <input
+                [value]="guideDraft()"
+                (input)="guideDraft.set($any($event.target).value)"
+                (blur)="saveGuideUrl()"
+                (keydown.enter)="saveGuideUrl()"
+                (keydown.escape)="cancelGuideEdit()"
+                placeholder="https://docs.google.com/document/d/..."
+                aria-label="Link do guia da campanha (Google Docs)"
+                class="guide-input"
+                autofocus
+              />
+              @if (guideDraftError()) {
+                <span class="guide-error">
+                  URL inválida. Informe um endereço completo iniciando com http:// ou https://
+                </span>
+              }
+            </div>
+          } @else if (guideDoc(); as guide) {
+            <div
+              class="guide-card"
+              role="button"
+              tabindex="0"
+              (click)="openGuideDialog(guide)"
+              (keydown.enter)="openGuideDialog(guide)"
+              aria-label="Abrir guia da campanha"
+            >
+              <div class="guide-card-icon">
+                <mat-icon>description</mat-icon>
+              </div>
+              <div class="guide-card-body">
+                <span class="guide-card-name">Guia da campanha</span>
+                <span class="guide-card-sub">Documento Google Docs</span>
+              </div>
+              <button
+                mat-icon-button
+                type="button"
+                class="guide-card-action"
+                (click)="startGuideEdit(); $event.stopPropagation()"
+                aria-label="Editar link do guia"
+              >
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                type="button"
+                class="guide-card-action"
+                (click)="removeGuide(); $event.stopPropagation()"
+                aria-label="Remover guia"
+              >
+                <mat-icon>link_off</mat-icon>
+              </button>
+            </div>
+          } @else {
+            <button type="button" class="guide-add" (click)="startGuideEdit()">
+              <mat-icon>add_link</mat-icon>
+              Adicionar guia da campanha (Google Docs)
+            </button>
+          }
         </div>
 
         <!-- Summary chips -->
@@ -210,6 +331,51 @@ function uniqueEntitySourceId(): string {
         line-height: 1.5;
       }
 
+      /* ── Cover ──────────────────────────── */
+      .cover-wrapper {
+        position: relative;
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      .cover-banner {
+        display: block;
+        width: 100%;
+        height: 180px;
+        object-fit: cover;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+      }
+      .cover-edit-btn {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: rgba(0, 0, 0, 0.55);
+      }
+      .cover-edit-btn:hover {
+        background: rgba(0, 0, 0, 0.75);
+      }
+      .cover-placeholder {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        height: 120px;
+        border: 2px dashed rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.02);
+        color: rgba(255, 255, 255, 0.55);
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: border-color 0.2s, background 0.2s, color 0.2s;
+      }
+      .cover-placeholder:hover {
+        border-color: rgba(255, 255, 255, 0.4);
+        background: rgba(255, 255, 255, 0.05);
+        color: rgba(255, 255, 255, 0.85);
+      }
+
       /* ── Header ────────────────────────── */
       .content-header {
         display: flex;
@@ -237,6 +403,126 @@ function uniqueEntitySourceId(): string {
       }
       .assoc-btn mat-icon {
         margin-right: 4px;
+      }
+
+      /* ── Campaign guide (Google Docs) ─── */
+      .guide-section {
+        display: flex;
+      }
+      .guide-card {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.03);
+        cursor: pointer;
+        flex: 1;
+        max-width: 420px;
+        transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+      }
+      .guide-card:hover,
+      .guide-card:focus-visible {
+        background: rgba(255, 255, 255, 0.07);
+        border-color: rgba(255, 255, 255, 0.25);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        outline: none;
+      }
+      .guide-card-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        flex-shrink: 0;
+        background: rgba(49, 130, 206, 0.15);
+        color: #63b3ed;
+      }
+      .guide-card-icon mat-icon {
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+      }
+      .guide-card-body {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .guide-card-name {
+        font-size: 0.9rem;
+        font-weight: 500;
+      }
+      .guide-card-sub {
+        font-size: 0.7rem;
+        opacity: 0.5;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .guide-card-action {
+        width: 28px;
+        height: 28px;
+        line-height: 28px;
+        opacity: 0;
+        transition: opacity 0.15s;
+        flex-shrink: 0;
+      }
+      .guide-card:hover .guide-card-action,
+      .guide-card:focus-within .guide-card-action {
+        opacity: 1;
+      }
+      .guide-card-action mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+        line-height: 16px;
+      }
+      .guide-add {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: 8px;
+        border: 2px dashed rgba(255, 255, 255, 0.2);
+        background: transparent;
+        color: rgba(255, 255, 255, 0.55);
+        cursor: pointer;
+        font-size: 0.85rem;
+        transition: border-color 0.2s, background 0.2s, color 0.2s;
+      }
+      .guide-add:hover {
+        border-color: rgba(255, 255, 255, 0.4);
+        background: rgba(255, 255, 255, 0.05);
+        color: rgba(255, 255, 255, 0.85);
+      }
+      .guide-add mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+      .guide-edit {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        width: 100%;
+        max-width: 520px;
+      }
+      .guide-input {
+        width: 100%;
+        font-size: 0.85rem;
+        border: 1px solid rgba(var(--mat-app-primary, 63, 81, 181), 0.5);
+        border-radius: 6px;
+        padding: 8px 10px;
+        background: rgba(0, 0, 0, 0.2);
+        color: inherit;
+        outline: none;
+      }
+      .guide-error {
+        font-size: 0.75rem;
+        color: #f87171;
       }
 
       /* ── Summary chips ─────────────────── */
@@ -441,7 +727,7 @@ function uniqueEntitySourceId(): string {
     `,
   ],
 })
-export class FolderContentComponent {
+export class FolderContentComponent implements OnDestroy {
   // ── Inputs ──────────────────────────────────────────────────
   readonly folder = input<CampaignFolder | null>(null);
 
@@ -450,13 +736,32 @@ export class FolderContentComponent {
   // ── Dependencies ────────────────────────────────────────────
   private readonly store = inject(StoreService);
   private readonly dialog = inject(MatDialog);
+  private readonly coverService = inject(CampaignCoverService);
 
   // ── State ───────────────────────────────────────────────────
   readonly activeFilter = signal<'all' | 'character' | 'map' | 'session'>('all');
 
   readonly entities = signal<EntityRef[]>([]);
 
+  readonly coverUrl = signal<string | null>(null);
+  private loadedCoverFileId: string | null = null;
+
   private readonly storeSub = signal<boolean>(false);
+
+  // ── Campaign guide (Google Docs) ────────────────────────────
+  readonly editingGuideUrl = signal(false);
+  readonly guideDraft = signal('');
+  readonly guideDraftError = signal(false);
+
+  /** Validated Google Doc info, or null when absent/invalid. */
+  readonly guideDoc = computed(() => {
+    const raw = this.folder()?.googleDocUrl?.trim();
+    if (!raw || !isValidHttpUrl(raw)) return null;
+    return {
+      url: raw,
+      docId: extractGoogleDocId(raw),
+    };
+  });
 
   constructor() {
     // Reload entities when folder changes
@@ -464,10 +769,47 @@ export class FolderContentComponent {
       const f = this.folder();
       if (f) {
         this.loadEntities(f);
+        this.migrateLegacyGuide(f);
       } else {
         this.entities.set([]);
       }
     });
+
+    // Load the folder cover when it changes
+    effect(() => {
+      const f = this.folder();
+      const coverFileId = f?.coverFileId ?? null;
+      if (coverFileId !== this.loadedCoverFileId) {
+        if (this.loadedCoverFileId) this.coverService.revokeFull(this.loadedCoverFileId);
+        this.loadedCoverFileId = coverFileId;
+        if (coverFileId) {
+          this.coverService.loadFull(coverFileId).then((url) => {
+            if (this.folder()?.coverFileId === coverFileId) this.coverUrl.set(url);
+          });
+        } else {
+          this.coverUrl.set(null);
+        }
+      }
+    });
+  }
+
+  ngOnDestroy() {
+    if (this.loadedCoverFileId) this.coverService.revokeFull(this.loadedCoverFileId);
+  }
+
+  /**
+   * Migrate the guide link pasted into the legacy in-app editor (guideHtml)
+   * into googleDocUrl, so it becomes a folder item. Runs once per folder.
+   */
+  private migrateLegacyGuide(f: CampaignFolder) {
+    const html = f.guideHtml ?? '';
+    if (f.googleDocUrl || !html) return;
+    const url = extractDocsUrlFromHtml(html);
+    if (!url) return;
+    this.store.patch('campaigns', f.id, {
+      googleDocUrl: url,
+      guideHtml: undefined,
+    } as Partial<CampaignFolder>);
   }
 
   private loadEntities(folder: CampaignFolder) {
@@ -551,6 +893,87 @@ export class FolderContentComponent {
     this.activeFilter.set(filter);
   }
 
+  // ── Campaign guide actions ─────────────────────────────────
+  startGuideEdit() {
+    this.guideDraft.set(this.folder()?.googleDocUrl ?? '');
+    this.guideDraftError.set(false);
+    this.editingGuideUrl.set(true);
+  }
+
+  saveGuideUrl() {
+    const f = this.folder();
+    if (!f) {
+      this.editingGuideUrl.set(false);
+      return;
+    }
+    const draft = this.guideDraft().trim();
+
+    if (draft === '') {
+      if (f.googleDocUrl) {
+        this.store.patch('campaigns', f.id, {
+          googleDocUrl: undefined,
+        } as Partial<CampaignFolder>);
+      }
+      this.editingGuideUrl.set(false);
+      return;
+    }
+
+    if (!isValidHttpUrl(draft)) {
+      this.guideDraftError.set(true);
+      return;
+    }
+
+    this.store.patch('campaigns', f.id, {
+      googleDocUrl: draft,
+    } as Partial<CampaignFolder>);
+    this.editingGuideUrl.set(false);
+  }
+
+  cancelGuideEdit() {
+    this.editingGuideUrl.set(false);
+    this.guideDraftError.set(false);
+  }
+
+  openGuideDialog(guide: { url: string; docId: string | null }) {
+    const f = this.folder();
+    if (!f) return;
+    if (!guide.docId) {
+      window.open(guide.url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    this.dialog.open(CampaignGuideDialogComponent, {
+      width: 'min(860px, 94vw)',
+      maxWidth: '96vw',
+      data: {
+        docId: guide.docId,
+        editUrl: guide.url,
+        folderName: f.name,
+      } as CampaignGuideDialogData,
+    });
+  }
+
+  removeGuide() {
+    const f = this.folder();
+    if (!f) return;
+
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '420px',
+      data: {
+        title: 'Remover Guia',
+        message: 'Tem certeza que deseja remover o link do guia da campanha? O documento no Google Docs não será afetado.',
+        confirmText: 'Remover',
+        cancelText: 'Cancelar',
+      } as ConfirmDialogData,
+    });
+
+    dialogRef.afterClosed().subscribe((confirmed) => {
+      if (!confirmed) return;
+      this.store.patch('campaigns', f.id, {
+        googleDocUrl: undefined,
+      } as Partial<CampaignFolder>);
+    });
+  }
+
   typeLabel(type: string): string {
     switch (type) {
       case 'character':
@@ -562,6 +985,27 @@ export class FolderContentComponent {
       default:
         return type;
     }
+  }
+
+  openCoverDialog() {
+    const f = this.folder();
+    if (!f) return;
+
+    const dialogRef = this.dialog.open(CampaignCoverDialogComponent, {
+      width: 'min(520px, 92vw)',
+      maxWidth: '95vw',
+      data: {
+        folderName: f.name,
+        currentCoverFileId: f.coverFileId ?? null,
+      } as CampaignCoverDialogData,
+    });
+
+    dialogRef.afterClosed().subscribe((result?: { fileId: string | null }) => {
+      if (result === undefined) return;
+      this.store.patch('campaigns', f.id, {
+        coverFileId: result.fileId,
+      } as Partial<CampaignFolder>);
+    });
   }
 
   openAssociateDialog() {
