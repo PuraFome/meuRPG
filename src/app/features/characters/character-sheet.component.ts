@@ -44,9 +44,27 @@ export interface InventoryFormValue {
   ],
   template: `
     <form [formGroup]="sheetForm" class="character-sheet" (ngSubmit)="onSave()">
-      @if (isFullSheet) {
-        <!-- ═══════════════ Identidade ═══════════════ -->
+      @if (isMinion) {
+        <!-- ═══════════════ Combate do Minion ═══════════════ -->
         <section class="sheet-section">
+          <h2 class="section-title">Combate do Minion</h2>
+          <div class="combat-grid" formGroupName="minion">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>PV</mat-label>
+              <input matInput type="number" min="1" formControlName="hp" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Ataque</mat-label>
+              <input matInput type="number" min="1" formControlName="attack" />
+            </mat-form-field>
+          </div>
+        </section>
+      }
+      @if (!isMinion) {
+        @if (isFullSheet) {
+          <!-- ═══════════════ Identidade ═══════════════ -->
+          <section class="sheet-section">
           <h2 class="section-title">Identidade</h2>
           <div class="identity-grid" formGroupName="identity">
             <app-dnd-option-select
@@ -417,6 +435,7 @@ export interface InventoryFormValue {
           </div>
         </section>
       }
+      }
 
       <!-- ═══════════════ Ações ═══════════════ -->
       @if (saveError) {
@@ -715,6 +734,10 @@ export class CharacterSheetComponent implements OnInit {
     return this.character?.type === 'player' || this.character?.type === 'boss';
   }
 
+  get isMinion(): boolean {
+    return this.character?.type === 'minion';
+  }
+
   get skills(): FormArray {
     return this.sheetForm.get('skills') as FormArray;
   }
@@ -793,6 +816,10 @@ export class CharacterSheetComponent implements OnInit {
       proficiencies: this.fb.array(sheet?.proficiencies ?? []),
       languages: this.fb.array(sheet?.languages ?? []),
       features: this.fb.array(sheet?.features ?? []),
+      minion: this.fb.group({
+        hp: [this.character?.minion?.hp ?? 10, [Validators.required, Validators.min(1)]],
+        attack: [this.character?.minion?.attack ?? 3, [Validators.required, Validators.min(1)]],
+      }),
     });
   }
 
@@ -975,6 +1002,17 @@ export class CharacterSheetComponent implements OnInit {
         languages: (formValue.languages as string[]).filter(Boolean),
         features: (formValue.features as string[]).filter(Boolean),
       } satisfies DndSheet;
+    }
+
+    if (this.isMinion) {
+      const minion = formValue.minion;
+      updated.minion = {
+        hp: minion.hp ?? 10,
+        attack: minion.attack ?? 3,
+      };
+      updated.attributes = {};
+      updated.skills = [];
+      updated.inventory = [];
     }
 
     return updated;

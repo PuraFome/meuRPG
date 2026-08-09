@@ -70,6 +70,7 @@ import type { Character } from '../../core/models/character';
           <mat-chip-option value="npc">NPC</mat-chip-option>
           <mat-chip-option value="player">Jogador</mat-chip-option>
           <mat-chip-option value="boss">Boss</mat-chip-option>
+          <mat-chip-option value="minion">Minion</mat-chip-option>
         </mat-chip-listbox>
       </div>
 
@@ -226,6 +227,10 @@ import type { Character } from '../../core/models/character';
       background: linear-gradient(135deg, #7f1d1d, #dc2626);
     }
 
+    .card-avatar.type-minion {
+      background: linear-gradient(135deg, #4a044e, #a21caf);
+    }
+
     /* ── Card content ──────────────────────────── */
 
     .card-name {
@@ -255,6 +260,10 @@ import type { Character } from '../../core/models/character';
 
     .type-badge.type-boss {
       background: #dc2626;
+    }
+
+    .type-badge.type-minion {
+      background: #a21caf;
     }
 
     .card-description {
@@ -315,7 +324,7 @@ export class CharacterListComponent {
   );
 
   /** Human-readable label for each character type. */
-  typeLabel(type: 'npc' | 'player' | 'boss'): string {
+  typeLabel(type: 'npc' | 'player' | 'boss' | 'minion'): string {
     switch (type) {
       case 'player':
         return 'Jogador';
@@ -323,6 +332,8 @@ export class CharacterListComponent {
         return 'NPC';
       case 'boss':
         return 'Boss';
+      case 'minion':
+        return 'Minion';
     }
   }
 

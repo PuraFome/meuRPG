@@ -267,6 +267,10 @@ import type { BreadcrumbItem } from '../../shared/components/page-header.compone
       background: linear-gradient(135deg, #7f1d1d, #dc2626);
     }
 
+    .avatar-placeholder.type-minion {
+      background: linear-gradient(135deg, #4a044e, #a21caf);
+    }
+
     .avatar-upload-btn {
       position: absolute;
       bottom: -4px;
@@ -321,6 +325,10 @@ import type { BreadcrumbItem } from '../../shared/components/page-header.compone
 
     .type-badge.type-boss {
       background: #dc2626;
+    }
+
+    .type-badge.type-minion {
+      background: #a21caf;
     }
 
     /* ── Tabs ────────────────────────────────── */
@@ -553,7 +561,7 @@ export class CharacterDetailComponent implements OnInit, OnDestroy {
   }
 
   // ── Labels ────────────────────────────────────
-  typeLabel(type: 'npc' | 'player' | 'boss'): string {
+  typeLabel(type: 'npc' | 'player' | 'boss' | 'minion'): string {
     switch (type) {
       case 'player':
         return 'Jogador';
@@ -561,6 +569,8 @@ export class CharacterDetailComponent implements OnInit, OnDestroy {
         return 'NPC';
       case 'boss':
         return 'Boss';
+      case 'minion':
+        return 'Minion';
     }
   }
 

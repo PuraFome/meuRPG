@@ -8,7 +8,7 @@ function mockCharacter(overrides: Partial<{
   id: string;
   name: string;
   description: string;
-  type: 'npc' | 'player' | 'boss';
+  type: 'npc' | 'player' | 'boss' | 'minion';
   history: string;
   masterNotes?: string;
   imageUrl?: string;

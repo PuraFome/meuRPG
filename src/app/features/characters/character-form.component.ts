@@ -78,6 +78,7 @@ export interface InventoryFormValue {
               <mat-option value="player">Jogador</mat-option>
               <mat-option value="npc">NPC</mat-option>
               <mat-option value="boss">Boss</mat-option>
+              <mat-option value="minion">Minion</mat-option>
             </mat-select>
           </mat-form-field>
         </div>
@@ -140,25 +141,57 @@ export interface InventoryFormValue {
       }
 
       <!-- ═══════════════ Atributos ═══════════════ -->
-      <section class="form-section">
-        <h2 class="section-title">Atributos</h2>
-        <div class="attributes-grid" formGroupName="attributes">
-          @for (attr of attributeKeys; track attr) {
+      @if (isMinion) {
+        <section class="form-section">
+          <h2 class="section-title">Combate do Minion</h2>
+          <div class="attributes-grid" formGroupName="minion">
             <div class="attribute-field">
               <mat-form-field appearance="outline" subscriptSizing="dynamic">
-                <mat-label>{{ attr | uppercase }}</mat-label>
+                <mat-label>PV</mat-label>
                 <input
                   matInput
                   type="number"
                   min="1"
-                  max="30"
-                  [formControlName]="attr"
+                  max="999"
+                  formControlName="hp"
                 />
               </mat-form-field>
             </div>
-          }
-        </div>
-      </section>
+            <div class="attribute-field">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>Ataque</mat-label>
+                <input
+                  matInput
+                  type="number"
+                  min="1"
+                  max="999"
+                  formControlName="attack"
+                />
+              </mat-form-field>
+            </div>
+          </div>
+        </section>
+      } @else {
+        <section class="form-section">
+          <h2 class="section-title">Atributos</h2>
+          <div class="attributes-grid" formGroupName="attributes">
+            @for (attr of attributeKeys; track attr) {
+              <div class="attribute-field">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                  <mat-label>{{ attr | uppercase }}</mat-label>
+                  <input
+                    matInput
+                    type="number"
+                    min="1"
+                    max="30"
+                    [formControlName]="attr"
+                  />
+                </mat-form-field>
+              </div>
+            }
+          </div>
+        </section>
+      }
 
       @if (isFullSheet) {
         <!-- ═══════════════ Combate ═══════════════ -->
@@ -758,6 +791,10 @@ export class CharacterFormComponent implements OnInit {
     );
   }
 
+  get isMinion(): boolean {
+    return this.characterForm?.get('type')?.value === 'minion';
+  }
+
   get skills(): FormArray {
     return this.characterForm.get('skills') as FormArray;
   }
@@ -808,6 +845,10 @@ export class CharacterFormComponent implements OnInit {
         speed: [30, [Validators.min(0)]],
         hitDice: ['1d10'],
         proficiencyBonus: [2, [Validators.required, Validators.min(1)]],
+      }),
+      minion: this.fb.group({
+        hp: [10, [Validators.required, Validators.min(1)]],
+        attack: [3, [Validators.required, Validators.min(1)]],
       }),
       skills: this.fb.array([]),
       inventory: this.fb.array([]),
@@ -883,6 +924,17 @@ export class CharacterFormComponent implements OnInit {
         languages: (formValue.languages as string[]).filter(Boolean),
         features: (formValue.features as string[]).filter(Boolean),
       } satisfies DndSheet;
+    }
+
+    if (this.isMinion) {
+      const minion = formValue.minion;
+      character.minion = {
+        hp: minion.hp ?? 10,
+        attack: minion.attack ?? 3,
+      };
+      character.attributes = {};
+      character.skills = [];
+      character.inventory = [];
     }
 
     return character;

@@ -26,7 +26,7 @@ export interface Character {
   id: string;
   name: string;
   description: string;
-  type: 'npc' | 'player' | 'boss';
+  type: 'npc' | 'player' | 'boss' | 'minion';
   imageUrl?: string;
   history?: string;
   masterNotes?: string;
@@ -36,6 +36,8 @@ export interface Character {
   quotes: string[];
   /** Full D&D sheet for player/boss types; absent for NPC. */
   sheet?: DndSheet;
+  /** Simplified combat stats for minions; absent for other types. */
+  minion?: { hp: number; attack: number };
   createdAt: Date;
   updatedAt: Date;
 }

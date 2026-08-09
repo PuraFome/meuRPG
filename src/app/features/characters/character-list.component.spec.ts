@@ -8,7 +8,7 @@ function mockCharacter(overrides: Partial<{
   id: string;
   name: string;
   description: string;
-  type: 'npc' | 'player' | 'boss';
+  type: 'npc' | 'player' | 'boss' | 'minion';
 }> = {}) {
   return {
     id: '1',
@@ -29,6 +29,7 @@ const mockCharacters = [
   mockCharacter({ id: '1', name: 'Zagreus', type: 'player' }),
   mockCharacter({ id: '2', name: 'Cerberus', type: 'boss' }),
   mockCharacter({ id: '3', name: 'Oráculo', type: 'npc' }),
+  mockCharacter({ id: '4', name: 'Lacaio', type: 'minion' }),
 ];
 
 describe('CharacterListComponent', () => {
@@ -61,6 +62,7 @@ describe('CharacterListComponent', () => {
       expect(screen.getByText('Zagreus')).toBeTruthy();
       expect(screen.getByText('Cerberus')).toBeTruthy();
       expect(screen.getByText('Oráculo')).toBeTruthy();
+      expect(screen.getByText('Lacaio')).toBeTruthy();
     });
   });
 
@@ -88,6 +90,32 @@ describe('CharacterListComponent', () => {
       expect(screen.getByText('Oráculo')).toBeTruthy();
       expect(screen.queryByText('Zagreus')).toBeNull();
       expect(screen.queryByText('Cerberus')).toBeNull();
+    });
+  });
+
+  it('filters by minion type chip click', async () => {
+    const user = userEvent.setup();
+    await render(CharacterListComponent, {
+      providers: [
+        {
+          provide: StoreService,
+          useValue: { getAll: vi.fn().mockReturnValue(of(mockCharacters)) },
+        },
+      ],
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Lacaio')).toBeTruthy();
+    });
+
+    const chip = screen.getAllByText('Minion')[0];
+    await user.click(chip);
+
+    await waitFor(() => {
+      expect(screen.getByText('Lacaio')).toBeTruthy();
+      expect(screen.queryByText('Zagreus')).toBeNull();
+      expect(screen.queryByText('Cerberus')).toBeNull();
+      expect(screen.queryByText('Oráculo')).toBeNull();
     });
   });
 
