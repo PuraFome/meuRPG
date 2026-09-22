@@ -1,59 +1,50 @@
 # MeuRpg
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.19.
+This project was generated using [Angular CLI](https://github.com/angular-cli) version 21.2.19.
 
-## Development server
+## Backend Server
 
-To start a local development server, run:
+A simple NestJS 11 backend has been created under `server/` implementing Google OAuth 2.0 login with PKCE (S256), bearer token sessions (SHA256-hashed in CockroachDB) and LGPD-compliant account deletion.
 
+### Features
+- Google OAuth 2.0 Authorization Code + PKCE flow
+- Bearer token session management (SHA256 hashed in CockroachDB)
+- Account deletion with cascading deletes (LGPD Art. 16)
+- CockroachDB connection via `pg` driver
+- Docker multi-stage build + docker-compose
+- `.env.example` with all required variables
+- API endpoints:
+  - `GET /api/auth/google` - Initiate Google OAuth login
+  - `GET /api/auth/callback` - Google OAuth callback handler
+  - `POST /api/auth/logout` - Logout and invalidate session
+  - `DELETE /api/auth/account` - LGPD-compliant account deletion
+  - `GET /api/me` - Get current user profile
+  - `GET /api/health` - Health check
+
+### Configuration
+Copy `.env.example` to `.env` and fill in:
+- `DATABASE_URL` - CockroachDB connection string
+- `GOOGLE_CLIENT_ID` - Google OAuth client ID
+- `GOOGLE_CLIENT_SECRET` - Google OAuth client secret
+- `API_PUBLIC_URL` - Public URL for OAuth redirects
+- `FRONTEND_ORIGIN` - Frontend origin for CORS
+- `API_PORT` - Server port (default: 3000)
+- `NODE_ENV` - Environment (development/production)
+
+### Implementation
+The backend mirrors the structure of the Minha-Agenda server, using:
+- NestJS 11 with `@nestjs/common`, `@nestjs/config`, `@nestjs/terminus`
+- `pg` driver for CockroachDB (PostgreSQL wire protocol compatible)
+- `google-auth-library` for JWT verification
+- Bearer tokens format: `ma_` + 32 random bytes base64url
+- Only collects `sub`, `email`, `name` from Google (data minimization)
+- Handshake TTL: 10 minutes; Session TTL: 30 days
+
+### Docker
 ```bash
-ng serve
+cd server
+docker-compose up --build
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+### Tests
+Unit tests for auth flows are planned under `src/auth/auth.controller.spec.ts`.
