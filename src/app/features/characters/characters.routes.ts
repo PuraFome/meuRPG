@@ -12,6 +12,11 @@ export const routes: Routes = [
       import('./character-form.component').then((m) => m.CharacterFormComponent),
   },
   {
+    path: 'convites',
+    loadComponent: () =>
+      import('./character-invites.component').then((m) => m.CharacterInvitesComponent),
+  },
+  {
     path: ':id',
     loadComponent: () =>
       import('./character-detail.component').then((m) => m.CharacterDetailComponent),

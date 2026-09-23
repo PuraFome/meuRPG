@@ -43,10 +43,16 @@ import type { Character } from '../../core/models/character';
           <mat-icon class="page-title-icon">people</mat-icon>
           <h1 class="page-title">Personagens</h1>
         </div>
-        <button mat-raised-button color="primary" routerLink="novo">
-          <mat-icon>add</mat-icon>
-          Novo Personagem
-        </button>
+        <div class="page-actions">
+          <button mat-stroked-button routerLink="convites">
+            <mat-icon>person_add</mat-icon>
+            Convidar jogador
+          </button>
+          <button mat-raised-button color="primary" routerLink="novo">
+            <mat-icon>add</mat-icon>
+            Novo Personagem
+          </button>
+        </div>
       </div>
 
       <!-- Filters -->
@@ -137,6 +143,13 @@ import type { Character } from '../../core/models/character';
       display: flex;
       align-items: center;
       gap: 10px;
+    }
+
+    .page-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
     }
 
     .page-title-icon {
