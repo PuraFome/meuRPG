@@ -1,4 +1,5 @@
-import { Pool } from 'pg';
+import * as fs from 'fs';
+import * as path from 'path';
 import { PgService } from './pg.service';
 
 /**
@@ -7,8 +8,7 @@ import { PgService } from './pg.service';
  */
 export async function migrate(pgService: PgService): Promise<void> {
   const pool = pgService.getPool();
-  const schemaPath = new URL('./schema.sql', import.meta.url).pathname;
-  const fs = await import('fs');
+  const schemaPath = path.join(__dirname, 'schema.sql');
   const schema = fs.readFileSync(schemaPath, 'utf-8');
   const statements = schema.split(';').filter((s) => s.trim());
 
