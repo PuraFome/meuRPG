@@ -1,4 +1,11 @@
-import { Component, OnInit, inject } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  Input,
+  OnInit,
+  Output,
+  inject,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   FormArray,
@@ -15,7 +22,9 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { PageHeaderComponent } from '../../shared/components/page-header.component';
 import { StoreService } from '../../core/store/store.service';
+import { CharactersService } from '../../core/services/characters.service';
 import { DndOptionSelectComponent } from './dnd-option-select.component';
+import { rollAttributeSet } from './dice-roll.util';
 import type { Character, DndSheet } from '../../core/models/character';
 import type { BreadcrumbItem } from '../../shared/components/page-header.component';
 
@@ -72,15 +81,22 @@ export interface InventoryFormValue {
             }
           </mat-form-field>
 
-          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="type-field">
-            <mat-label>Tipo</mat-label>
-            <mat-select formControlName="type">
-              <mat-option value="player">Jogador</mat-option>
-              <mat-option value="npc">NPC</mat-option>
-              <mat-option value="boss">Boss</mat-option>
-              <mat-option value="minion">Minion</mat-option>
-            </mat-select>
-          </mat-form-field>
+          @if (!isJoinMode) {
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="type-field">
+              <mat-label>Tipo</mat-label>
+              <mat-select formControlName="type">
+                <mat-option value="player">Jogador</mat-option>
+                <mat-option value="npc">NPC</mat-option>
+                <mat-option value="boss">Boss</mat-option>
+                <mat-option value="minion">Minion</mat-option>
+              </mat-select>
+            </mat-form-field>
+          } @else {
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="type-field">
+              <mat-label>Tipo</mat-label>
+              <input matInput value="Jogador" readonly />
+            </mat-form-field>
+          }
         </div>
 
         <mat-form-field
@@ -173,7 +189,33 @@ export interface InventoryFormValue {
         </section>
       } @else {
         <section class="form-section">
-          <h2 class="section-title">Atributos</h2>
+          <div class="section-header">
+            <h2 class="section-title">Atributos</h2>
+            <div class="section-actions">
+              <button mat-stroked-button type="button" (click)="onRollAttributes()">
+                <mat-icon>casino</mat-icon>
+                Rolar Atributos (4d6)
+              </button>
+              @if (hasRoll) {
+                <button mat-button type="button" (click)="onClearRoll()">
+                  <mat-icon>backspace</mat-icon>
+                  Limpar
+                </button>
+              }
+            </div>
+          </div>
+
+          @if (hasRoll) {
+            <p class="roll-pool">
+              <span class="roll-pool-label">
+                {{ rolledPool.length ? 'Valores disponíveis' : 'Todos os valores distribuídos' }}
+              </span>
+              @for (value of rolledPool; track $index) {
+                <span class="roll-chip">{{ value }}</span>
+              }
+            </p>
+          }
+
           <div class="attributes-grid" formGroupName="attributes">
             @for (attr of attributeKeys; track attr) {
               <div class="attribute-field">
@@ -187,6 +229,27 @@ export interface InventoryFormValue {
                     [formControlName]="attr"
                   />
                 </mat-form-field>
+
+                @if (hasRoll) {
+                  <mat-form-field
+                    appearance="outline"
+                    subscriptSizing="dynamic"
+                    class="assign-field"
+                  >
+                    <mat-label>Distribuir</mat-label>
+                    <mat-select
+                      [value]="assigned[attr] ?? null"
+                      [attr.data-assign]="attr"
+                      (selectionChange)="onAssign(attr, $event.value)"
+                    >
+                      @for (option of optionsFor(attr); track $index) {
+                        <mat-option [value]="option.value" [disabled]="option.disabled">
+                          {{ option.value }}
+                        </mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
+                }
               </div>
             }
           </div>
@@ -665,6 +728,42 @@ export interface InventoryFormValue {
       font-weight: 700;
     }
 
+    .attribute-field .assign-field input {
+      font-size: 1rem;
+      font-weight: 500;
+    }
+
+    /* ── Rolled attribute pool ────────────── */
+
+    .roll-pool {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0 0 16px;
+    }
+
+    .roll-pool-label {
+      font-size: 0.875rem;
+      opacity: 0.6;
+      margin-right: 4px;
+    }
+
+    .roll-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 36px;
+      padding: 4px 8px;
+      border-radius: 8px;
+      background: rgba(196, 181, 253, 0.12);
+      border: 1px solid rgba(196, 181, 253, 0.28);
+      color: #c4b5fd;
+      font-size: 1rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
     /* ── Dynamic list ─────────────────────── */
 
     .dynamic-list {
@@ -753,6 +852,30 @@ export class CharacterFormComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
   private readonly store = inject(StoreService<Character>);
+  private readonly characters = inject(CharactersService);
+
+  /**
+   * `'default'` — standalone creation page (write-through store + navigation).
+   * `'join'` — embedded in a share-link page: player-only, saves via the join API.
+   */
+  @Input() mode: 'default' | 'join' = 'default';
+
+  /** Share-link token, required when `mode === 'join'`. */
+  @Input() joinToken: string | null = null;
+
+  @Output() saved = new EventEmitter<Character>();
+
+  get isJoinMode(): boolean {
+    return this.mode === 'join';
+  }
+
+  /** Remaining unassigned values from the last 4d6 roll (descending). */
+  rolledPool: number[] = [];
+
+  assigned: Record<string, number> = {};
+
+  /** Every value of the last roll, kept so already-used options render as disabled. */
+  private rolledAll: number[] = [];
 
   /** True while a save is in progress (prevents double-submit / duplicate characters). */
   saving = false;
@@ -856,6 +979,12 @@ export class CharacterFormComponent implements OnInit {
       languages: this.fb.array([]),
       features: this.fb.array([]),
     });
+
+    if (this.isJoinMode) {
+      const type = this.characterForm.get('type');
+      type?.setValue('player');
+      type?.disable({ emitEvent: false });
+    }
   }
 
   /** Navigate back to the character list. */
@@ -871,6 +1000,20 @@ export class CharacterFormComponent implements OnInit {
     this.saveError = null;
 
     const character = this.buildCharacter();
+
+    if (this.isJoinMode && this.joinToken) {
+      this.characters.join(this.joinToken, character).subscribe({
+        next: (created) => {
+          this.saving = false;
+          this.saved.emit(created);
+        },
+        error: (err: unknown) => {
+          this.saving = false;
+          this.saveError = this.describeSaveError(err);
+        },
+      });
+      return;
+    }
 
     try {
       this.store.set('characters', character);
@@ -891,7 +1034,7 @@ export class CharacterFormComponent implements OnInit {
       id: crypto.randomUUID(),
       name: (formValue.name ?? '') as string,
       description: (formValue.description ?? '') as string,
-      type: (formValue.type ?? 'player') as Character['type'],
+      type: (this.isJoinMode ? 'player' : (formValue.type ?? 'player')) as Character['type'],
       attributes: formValue.attributes as Record<string, number>,
       skills: (formValue.skills as SkillFormValue[]).map((s) => JSON.stringify(s)),
       inventory: (formValue.inventory as InventoryFormValue[]).map((item) =>
@@ -950,6 +1093,81 @@ export class CharacterFormComponent implements OnInit {
       return err.message;
     }
     return 'Ocorreu um erro inesperado ao salvar. Tente novamente.';
+  }
+
+  // ─── Rolled attributes (4d6 drop lowest) ──────────────
+
+  get hasRoll(): boolean {
+    return this.rolledAll.length > 0;
+  }
+
+  get hasAssignments(): boolean {
+    return Object.keys(this.assigned).length > 0;
+  }
+
+  /** Roll a fresh set of six scores and clear the attribute inputs for assignment. */
+  onRollAttributes(): void {
+    this.rolledAll = rollAttributeSet();
+    this.rolledPool = [...this.rolledAll];
+    this.assigned = {};
+
+    const attributes = this.characterForm.get('attributes');
+    for (const attr of this.attributeKeys) {
+      attributes?.get(attr)?.setValue(null);
+    }
+  }
+
+  /**
+   * Take `value` from the pool for `attr`. A previous assignment on the same
+   * attribute is returned to the pool first, so re-assigning never loses a die.
+   */
+  onAssign(attr: string, value: number | null): void {
+    if (value === null || value === undefined) return;
+
+    const previous = this.assigned[attr];
+    if (previous === value) return;
+
+    const pool = previous === undefined ? [...this.rolledPool] : [...this.rolledPool, previous];
+    const index = pool.indexOf(value);
+    if (index === -1) return;
+
+    pool.splice(index, 1);
+    pool.sort((a, b) => b - a);
+
+    this.rolledPool = pool;
+    this.assigned = { ...this.assigned, [attr]: value };
+    this.characterForm.get('attributes')?.get(attr)?.setValue(value);
+  }
+
+  /** Every distinct rolled value, disabled once no occurrence is left for `attr`. */
+  optionsFor(attr: string): { value: number; disabled: boolean }[] {
+    const remaining = new Map<number, number>();
+    for (const value of this.rolledPool) {
+      remaining.set(value, (remaining.get(value) ?? 0) + 1);
+    }
+
+    const current = this.assigned[attr];
+    const distinct = [...new Set(this.rolledAll)].sort((a, b) => b - a);
+
+    return distinct.map((value) => ({
+      value,
+      disabled: value !== current && (remaining.get(value) ?? 0) === 0,
+    }));
+  }
+
+  /** Discard the roll, keeping typed values and restoring a default for cleared ones. */
+  onClearRoll(): void {
+    this.rolledAll = [];
+    this.rolledPool = [];
+    this.assigned = {};
+
+    const attributes = this.characterForm.get('attributes');
+    for (const attr of this.attributeKeys) {
+      const control = attributes?.get(attr);
+      if (control && (control.value === null || control.value === '')) {
+        control.setValue(10);
+      }
+    }
   }
 
   // ─── Skills management ────────────────────────────────
