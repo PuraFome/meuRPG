@@ -39,10 +39,14 @@ async function bootstrap() {
   if (!frontendOrigin) {
     throw new Error('FRONTEND_ORIGIN is not configured');
   }
+  const frontendOrigins = frontendOrigin
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
   const corsOrigins =
     process.env.NODE_ENV === 'production'
-      ? [frontendOrigin]
-      : [frontendOrigin, 'http://localhost:4200'];
+      ? frontendOrigins
+      : [...frontendOrigins, 'http://localhost:4200'];
   app.enableCors({ origin: corsOrigins });
 
   app.useGlobalPipes(

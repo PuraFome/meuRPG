@@ -60,6 +60,7 @@
           },
           "configurations": {
             "production": {
+              "baseHref": "/meuRPG/",
               "fileReplacements": [
                 {
                   "replace": "src/environments/environment.ts",
