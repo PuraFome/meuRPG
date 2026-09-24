@@ -1,11 +1,12 @@
 import { render, screen } from '@testing-library/angular';
 import userEvent from '@testing-library/user-event';
+import { By } from '@angular/platform-browser';
 import { of } from 'rxjs';
 import { CharacterFormComponent } from './character-form.component';
+import { CharacterSheetFieldsComponent } from './character-sheet-fields.component';
 import { StoreService } from '../../core/store/store.service';
 import { CharactersService } from '../../core/services/characters.service';
 import { AuthService } from '../../core/auth/auth.service';
-import { Router } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import type { Character } from '../../core/models/character';
@@ -41,51 +42,50 @@ async function setup(inputs: { mode?: 'default' | 'join'; joinToken?: string | n
     ],
   });
 
-  return { ...result, storeSet, charactersJoin };
+  const fields = result.fixture.debugElement.query(By.directive(CharacterSheetFieldsComponent))
+    .componentInstance as CharacterSheetFieldsComponent;
+
+  return { ...result, storeSet, charactersJoin, fields };
 }
 
 describe('CharacterFormComponent', () => {
-  it('click "Rolar Atributos (4d6)" populates six options in rolledPool', async () => {
-    const user = userEvent.setup();
-    const { fixture } = await setup();
+  it('rolling attributes populates six options in the roll pool', async () => {
+    const { fields } = await setup();
 
-    await user.click(screen.getByRole('button', { name: /Rolar Atributos \(4d6\)/i }));
+    fields.onRollAttributes();
 
-    const component = fixture.componentInstance;
-    expect(component.rolledPool.length).toBe(6);
-    component.rolledPool.forEach((v) => {
+    expect(fields.rolledPool.length).toBe(6);
+    fields.rolledPool.forEach((v) => {
       expect(v).toBeGreaterThanOrEqual(3);
       expect(v).toBeLessThanOrEqual(18);
     });
   });
 
-  it('assigning all six attributeKeys sets each control and empties rolledPool', async () => {
-    const user = userEvent.setup();
-    const { fixture } = await setup();
+  it('assigning all six attribute keys sets each control and empties the pool', async () => {
+    const { fixture, fields } = await setup();
 
-    await user.click(screen.getByRole('button', { name: /Rolar Atributos \(4d6\)/i }));
+    fields.onRollAttributes();
     await fixture.whenStable();
 
     const component = fixture.componentInstance;
-    const pool = [...component.rolledPool];
+    const pool = [...fields.rolledPool];
 
-    for (const attr of component.attributeKeys) {
-      const value = pool.pop()!;
-      component.onAssign(attr, value);
+    for (const attr of fields.attributeKeys) {
+      fields.onAssign(attr, pool.pop()!);
     }
     await fixture.whenStable();
 
-    for (const attr of component.attributeKeys) {
+    for (const attr of fields.attributeKeys) {
       const control = component.characterForm.get('attributes')?.get(attr);
-      expect(control?.value).toBe(component.assigned[attr]);
+      expect(control?.value).toBe(fields.assigned[attr]);
     }
 
-    expect(component.rolledPool.length).toBe(0);
+    expect(fields.rolledPool.length).toBe(0);
   });
 
-  it('join mode hides type mat-select and calls join() not store.set on submit', async () => {
+  it('join mode hides the type select and calls join() not store.set on submit', async () => {
     const user = userEvent.setup();
-    const { storeSet, charactersJoin, fixture } = await setup({
+    const { storeSet, charactersJoin, fixture, fields } = await setup({
       mode: 'join',
       joinToken: 'tok',
     });
@@ -98,13 +98,8 @@ describe('CharacterFormComponent', () => {
 
     await user.type(screen.getByLabelText('Nome') as HTMLInputElement, 'Join Hero');
 
-    const component = fixture.componentInstance;
-    component.onRollAttributes();
-    await fixture.whenStable();
-
-    for (const attr of component.attributeKeys) {
-      const value = component.rolledPool[0] ?? 10;
-      component.onAssign(attr, value);
+    for (const attr of fields.attributeKeys) {
+      fixture.componentInstance.characterForm.get('attributes')?.get(attr)?.setValue(12);
     }
     await fixture.whenStable();
 
@@ -117,20 +112,15 @@ describe('CharacterFormComponent', () => {
 
   it('built character type is "player" in join mode', async () => {
     const user = userEvent.setup();
-    const { charactersJoin, fixture } = await setup({
+    const { charactersJoin, fixture, fields } = await setup({
       mode: 'join',
       joinToken: 'tok',
     });
 
     await user.type(screen.getByLabelText('Nome') as HTMLInputElement, 'Join Hero');
 
-    const component = fixture.componentInstance;
-    component.onRollAttributes();
-    await fixture.whenStable();
-
-    for (const attr of component.attributeKeys) {
-      const value = component.rolledPool[0] ?? 10;
-      component.onAssign(attr, value);
+    for (const attr of fields.attributeKeys) {
+      fixture.componentInstance.characterForm.get('attributes')?.get(attr)?.setValue(12);
     }
     await fixture.whenStable();
 
@@ -141,7 +131,7 @@ describe('CharacterFormComponent', () => {
     expect(character.type).toBe('player');
   });
 
-  it('invalid form (empty name) calls neither join nor store.set', async () => {
+  it('invalid form (empty name) disables submit and never persists', async () => {
     const { storeSet, charactersJoin, fixture } = await setup({
       mode: 'join',
       joinToken: 'tok',

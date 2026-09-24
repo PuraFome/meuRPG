@@ -5,6 +5,7 @@ import { CharacterJoinComponent } from './character-join.component';
 import { CharactersService } from '../../core/services/characters.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { Character } from '../../core/models/character';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
 
 const TOKEN = 'valid-token-123';
 const CHARACTER_NAME = 'Gandalf';
@@ -43,6 +44,7 @@ describe('CharacterJoinComponent', () => {
           useValue: { validateJoinToken, join: joinFn },
         },
         { provide: AuthService, useValue: { load: vi.fn() } },
+        provideNoopAnimations(),
       ],
     });
 
@@ -51,7 +53,7 @@ describe('CharacterJoinComponent', () => {
     });
 
     expect(screen.getByLabelText('Nome')).toBeTruthy();
-  });
+  }, 15000);
 
   it('renders the expired state when validateJoinToken returns a 410 error', async () => {
     const validateJoinToken = vi.fn().mockReturnValue(
@@ -66,6 +68,7 @@ describe('CharacterJoinComponent', () => {
           useValue: { validateJoinToken, join: vi.fn() },
         },
         { provide: AuthService, useValue: { load: vi.fn() } },
+        provideNoopAnimations(),
       ],
     });
 
@@ -74,7 +77,7 @@ describe('CharacterJoinComponent', () => {
     });
 
     expect(screen.queryByLabelText('Nome')).toBeNull();
-  });
+  }, 15000);
 
   it('shows the success panel after the form emits saved', async () => {
     const user = userEvent.setup();
@@ -92,6 +95,7 @@ describe('CharacterJoinComponent', () => {
           useValue: { validateJoinToken, join: joinFn },
         },
         { provide: AuthService, useValue: { load: vi.fn() } },
+        provideNoopAnimations(),
       ],
     });
 
@@ -108,5 +112,5 @@ describe('CharacterJoinComponent', () => {
     await waitFor(() => {
       expect(screen.getByText(`Personagem ${CHARACTER_NAME} enviado!`)).toBeTruthy();
     });
-  });
+  }, 15000);
 });

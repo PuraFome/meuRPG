@@ -1,4 +1,11 @@
 import { Injectable } from '@angular/core';
+import {
+  DND_ALIGNMENTS,
+  DND_BACKGROUNDS,
+  DND_CLASSES,
+  DND_HIT_DICE,
+  DND_RACES,
+} from './dnd-data';
 
 export type DndOptionCategory =
   | 'race'
@@ -8,57 +15,11 @@ export type DndOptionCategory =
   | 'hitDice';
 
 const STANDARD_OPTIONS: Record<DndOptionCategory, string[]> = {
-  race: [
-    'Anão',
-    'Elfo',
-    'Halfling',
-    'Humano',
-    'Draconato',
-    'Gnomo',
-    'Meio-Elfo',
-    'Meio-Orc',
-    'Tiefling',
-  ],
-  class: [
-    'Bárbaro',
-    'Bardo',
-    'Bruxo',
-    'Clérigo',
-    'Druida',
-    'Feiticeiro',
-    'Guerreiro',
-    'Ladino',
-    'Mago',
-    'Monge',
-    'Paladino',
-    'Patrulheiro',
-  ],
-  background: [
-    'Acólito',
-    'Artesão de Guilda',
-    'Charlatão',
-    'Criminoso',
-    'Eremita',
-    'Forasteiro',
-    'Herói do Povo',
-    'Marinheiro',
-    'Nobre',
-    'Órfão',
-    'Sábio',
-    'Soldado',
-  ],
-  alignment: [
-    'Leal e Bom',
-    'Neutro e Bom',
-    'Caótico e Bom',
-    'Leal e Neutro',
-    'Neutro',
-    'Caótico e Neutro',
-    'Leal e Mau',
-    'Neutro e Mau',
-    'Caótico e Mau',
-  ],
-  hitDice: ['1d4', '1d6', '1d8', '1d10', '1d12', '1d20'],
+  race: DND_RACES.map((r) => r.name),
+  class: DND_CLASSES.map((c) => c.name),
+  background: [...DND_BACKGROUNDS],
+  alignment: [...DND_ALIGNMENTS],
+  hitDice: [...DND_HIT_DICE],
 };
 
 const STORAGE_KEY = 'meurpg_dnd_options';

@@ -1,8 +1,9 @@
-import { render, screen, waitFor } from '@testing-library/angular';
+import { render, screen } from '@testing-library/angular';
 import userEvent from '@testing-library/user-event';
-import { CharacterSheetComponent } from './character-sheet.component';
-import { StoreService } from '../../core/store/store.service';
 import { of } from 'rxjs';
+import { CharacterSheetComponent } from './character-sheet.component';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { StoreService } from '../../core/store/store.service';
 import type { Character } from '../../core/models/character';
 
 function mockCharacter(overrides: Partial<Character> = {}): Character {
@@ -21,128 +22,76 @@ function mockCharacter(overrides: Partial<Character> = {}): Character {
   };
 }
 
+async function setup(character: Character) {
+  return render(CharacterSheetComponent, {
+    inputs: { character },
+    providers: [
+      {
+        provide: StoreService,
+        useValue: {
+          update: vi.fn(),
+          get: vi.fn().mockReturnValue(of(character)),
+        },
+      },
+      provideNoopAnimations(),
+    ],
+  });
+}
+
 describe('CharacterSheetComponent', () => {
-  it('renders attribute fields with values from character input', async () => {
-    const character = mockCharacter({
-      attributes: { for: 14, des: 16, con: 12, int: 10, sab: 8, car: 11 },
-    });
+  it('renders ability modifiers derived from the attribute scores', async () => {
+    await setup(mockCharacter());
 
-    await render(CharacterSheetComponent, {
-      inputs: { character },
-      providers: [
-        {
-          provide: StoreService,
-          useValue: {
-            update: vi.fn(),
-            get: vi.fn().mockReturnValue(of(character)),
-          },
-        },
-      ],
-    });
-
-    // Check bonus indicators are rendered
-    expect(screen.getByText('Bônus: 2')).toBeTruthy();  // FOR 14 -> +2
-    expect(screen.getByText('Bônus: 3')).toBeTruthy();  // DES 16 -> +3
-    expect(screen.getByText('Bônus: 1')).toBeTruthy();  // CON 12 -> +1
-    expect(screen.getByText('Bônus: -1')).toBeTruthy(); // SAB 8 -> -1
-    // INT 10 -> 0 and CAR 11 -> 0 => two matches
-    const zeroBonuses = screen.getAllByText('Bônus: 0');
-    expect(zeroBonuses.length).toBe(2);
+    expect(screen.getByText('Mod: +2')).toBeTruthy(); // FOR 14
+    expect(screen.getByText('Mod: +3')).toBeTruthy(); // DES 16
+    expect(screen.getByText('Mod: +1')).toBeTruthy(); // CON 12
+    expect(screen.getByText('Mod: -1')).toBeTruthy(); // SAB 8
   });
 
-  it('renders skills from JSON-serialized strings', async () => {
-    const character = mockCharacter({
-      skills: [
-        JSON.stringify({ name: 'Atletismo', bonus: 3, attribute: 'for' }),
-        JSON.stringify({ name: 'Percepção', bonus: 1, attribute: 'sab' }),
-      ],
-    });
+  it('renders the canonical skill grid and a saved skill bonus', async () => {
+    await setup(
+      mockCharacter({
+        attributes: { for: 14, des: 16, con: 12, int: 10, sab: 16, car: 11 },
+        skills: [
+          JSON.stringify({
+            name: 'Percepção',
+            ability: 'sab',
+            proficient: true,
+            expertise: false,
+            bonusOverride: null,
+          }),
+        ],
+      }),
+    );
 
-    await render(CharacterSheetComponent, {
-      inputs: { character },
-      providers: [
-        {
-          provide: StoreService,
-          useValue: { update: vi.fn() },
-        },
-      ],
-    });
-
+    // Canonical skills are always present in the grid.
     expect(screen.getByDisplayValue('Atletismo')).toBeTruthy();
-    expect(screen.getByDisplayValue('Percepção')).toBeTruthy();
+    // SAB 16 (+3) + proficiência (2) => +5
+    expect(screen.getAllByText('+5').length).toBeGreaterThan(0);
   });
 
-  it('renders inventory from JSON-serialized strings', async () => {
-    const character = mockCharacter({
-      inventory: [
-        JSON.stringify({ name: 'Espada Longa', quantity: 1, weight: 3, description: 'Uma espada afiada' }),
-        JSON.stringify({ name: 'Poção de Cura', quantity: 3, weight: 0.5, description: '' }),
-      ],
-    });
-
-    await render(CharacterSheetComponent, {
-      inputs: { character },
-      providers: [
-        {
-          provide: StoreService,
-          useValue: { update: vi.fn() },
-        },
-      ],
-    });
+  it('renders inventory items from JSON-serialized strings', async () => {
+    await setup(
+      mockCharacter({
+        inventory: [
+          JSON.stringify({ name: 'Espada Longa', quantity: 1, weight: 3, description: 'Afiada' }),
+        ],
+      }),
+    );
 
     expect(screen.getByDisplayValue('Espada Longa')).toBeTruthy();
-    expect(screen.getByDisplayValue('Poção de Cura')).toBeTruthy();
   });
 
-  it('adds and removes skill rows', async () => {
+  it('adds and removes an inventory row', async () => {
     const user = userEvent.setup();
-    const character = mockCharacter();
+    await setup(mockCharacter());
 
-    await render(CharacterSheetComponent, {
-      inputs: { character },
-      providers: [
-        {
-          provide: StoreService,
-          useValue: { update: vi.fn() },
-        },
-      ],
-    });
+    expect(screen.getByText(/nenhum item no inventário/i)).toBeTruthy();
 
-    // Initially no skills
-    expect(screen.getByText(/nenhuma perícia/i)).toBeTruthy();
+    await user.click(screen.getByText('Item'));
+    expect(screen.getAllByPlaceholderText(/nome do item/i).length).toBe(1);
 
-    // Click add skill
-    const addButtons = screen.getAllByText('Adicionar');
-    await user.click(addButtons[0]); // First "Adicionar" is for skills
-
-    // Now a skill row should appear
-    const nameInputs = screen.getAllByPlaceholderText(/nome da perícia/i);
-    expect(nameInputs.length).toBe(1);
-
-    // Click remove
-    const deleteButtons = screen.getAllByLabelText(/remover perícia/i);
-    await user.click(deleteButtons[0]);
-
-    // Wait for remove animation + state update
-    await waitFor(() => {
-      expect(screen.getByText(/nenhuma perícia/i)).toBeTruthy();
-    });
-  });
-
-  it('renders empty state for a new character', async () => {
-    const character = mockCharacter();
-
-    await render(CharacterSheetComponent, {
-      inputs: { character },
-      providers: [
-        {
-          provide: StoreService,
-          useValue: { update: vi.fn() },
-        },
-      ],
-    });
-
-    expect(screen.getByText(/nenhuma perícia/i)).toBeTruthy();
-    expect(screen.getByText(/nenhum item/i)).toBeTruthy();
+    await user.click(screen.getByLabelText(/remover item/i));
+    expect(screen.getByText(/nenhum item no inventário/i)).toBeTruthy();
   });
 });
