@@ -32,12 +32,12 @@ export class CharactersService {
 
   /** Create a new character. */
   create(c: Character): Observable<Character> {
-    return this.http.post<Character>(`${this.base}/api/characters`, c);
+    return this.http.post<Character>(`${this.base}/api/characters`, this.toPayload(c));
   }
 
   /** Update an existing character. */
   update(id: string, c: Partial<Character>): Observable<Character> {
-    return this.http.patch<Character>(`${this.base}/api/characters/${id}`, c);
+    return this.http.patch<Character>(`${this.base}/api/characters/${id}`, this.toPayload(c));
   }
 
   /** Delete a character. */
@@ -59,6 +59,21 @@ export class CharactersService {
 
   /** Join via token, creating a player character. */
   join(token: string, c: Character): Observable<Character> {
-    return this.http.post<Character>(`${this.base}/api/characters/join/${token}`, c);
+    return this.http.post<Character>(
+      `${this.base}/api/characters/join/${token}`,
+      this.toPayload(c),
+    );
+  }
+
+  /**
+   * The server DTO is whitelisted (forbidNonWhitelisted), so client-managed
+   * timestamps must be stripped: they are omitted from the create/update DTOs
+   * and would otherwise trigger a 400 Bad Request.
+   */
+  private toPayload(c: Character | Partial<Character>): unknown {
+    const payload: Partial<Character> = { ...c };
+    delete payload.createdAt;
+    delete payload.updatedAt;
+    return payload;
   }
 }

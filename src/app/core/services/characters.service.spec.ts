@@ -48,7 +48,8 @@ describe('CharactersService', () => {
     const req = httpMock.expectOne(`${base}/api/characters`);
     expect(req.request.method).toBe('POST');
     expect(req.request.url).toBe(`${base}/api/characters`);
-    expect(req.request.body).toEqual(character);
+    const { createdAt: _c, updatedAt: _u, ...payload } = character;
+    expect(req.request.body).toEqual(payload);
     req.flush(character);
     expect(result).toEqual(character);
   });
@@ -80,7 +81,8 @@ describe('CharactersService', () => {
     const req = httpMock.expectOne(`${base}/api/characters/join/${token}`);
     expect(req.request.method).toBe('POST');
     expect(req.request.url).toBe(`${base}/api/characters/join/${token}`);
-    expect(req.request.body).toEqual(character);
+    const { createdAt: _c, updatedAt: _u, ...payload } = character;
+    expect(req.request.body).toEqual(payload);
     req.flush(character);
     expect(result).toEqual(character);
   });
