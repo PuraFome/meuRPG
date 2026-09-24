@@ -1,0 +1,1 @@
+import{a as o}from"./chunk-BRSZIMGH.js";import{c as a}from"./chunk-M35B6LPO.js";import{$ as r}from"./chunk-FQ65REHX.js";var s=async t=>{if(t.data?.public===!0)return!0;let e=r(o),n=r(a);return await e.ready(),e.user()?!0:n.createUrlTree(["/login"])},m=async()=>{let t=r(o),e=r(a);return await t.ready(),t.user()?e.createUrlTree(["/"]):!0};export{s as a,m as b};
