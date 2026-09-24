@@ -1,0 +1,1 @@
+import"./chunk-QXIBXHVB.js";var e=[{path:"",loadComponent:()=>import("./chunk-4WTUAQBA.js").then(t=>t.RulesListComponent),title:"MeuRPG \u2014 Regras"},{path:":id",loadComponent:()=>import("./chunk-DO53L4S3.js").then(t=>t.RulesReaderComponent),title:"MeuRPG \u2014 Leitor de PDF"}];export{e as routes};
