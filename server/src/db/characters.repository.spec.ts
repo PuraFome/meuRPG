@@ -21,49 +21,68 @@ if (!process.env.DATABASE_URL) {
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PgService } from './pg.service';
 import { CharactersRepository } from './characters.repository';
+import { UsersRepository } from './users.repository';
 
 const liveDescribe = process.env.DATABASE_URL ? describe : describe.skip;
 
 liveDescribe('CharactersRepository (live DB)', () => {
   let pg: PgService;
   let repo: CharactersRepository;
-  const createdIds: string[] = [];
+  let users: UsersRepository;
+  let ownerId: string;
+  let otherOwnerId: string;
+  const ownerSub = `spec-owner-${Date.now()}`;
+  const otherOwnerSub = `spec-other-${Date.now()}`;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     pg = new PgService();
     repo = new CharactersRepository(pg);
+    users = new UsersRepository(pg);
+    ownerId = await users.upsertByGoogleSub(
+      ownerSub,
+      'spec-owner@example.com',
+      'Spec Owner',
+    );
+    otherOwnerId = await users.upsertByGoogleSub(
+      otherOwnerSub,
+      'spec-other@example.com',
+      'Spec Other',
+    );
   });
 
   afterAll(async () => {
-    for (const id of createdIds) {
-      await repo.deleteById(id).catch(() => undefined);
-    }
+    // Deleting the throwaway users cascades their characters and join tokens.
+    await users.deleteBySub(ownerSub).catch(() => undefined);
+    await users.deleteBySub(otherOwnerSub).catch(() => undefined);
     await pg.getPool().end();
   });
 
-  it('create -> findById round-trip keeps nested JSONB intact', async () => {
-    const created = await repo.create({
-      type: 'player',
-      name: 'Spec Hero',
-      description: 'A hero from the spec suite',
-      imageUrl: 'https://example.com/hero.png',
-      history: 'Raised by wolves',
-      masterNotes: 'Secretly the villain',
-      attributes: { str: 10, dex: 14, cha: 8 },
-      skills: ['stealth', 'perception'],
-      inventory: ['rope', 'torch'],
-      quotes: ['I have a plan'],
-      sheet: { race: 'elf', class: 'ranger', level: 3 },
-      minion: null,
-    });
-    createdIds.push(created.id);
+  it('create -> findByIdForUser round-trip keeps nested JSONB intact', async () => {
+    const created = await repo.create(
+      {
+        type: 'player',
+        name: 'Spec Hero',
+        description: 'A hero from the spec suite',
+        imageUrl: 'https://example.com/hero.png',
+        history: 'Raised by wolves',
+        masterNotes: 'Secretly the villain',
+        attributes: { str: 10, dex: 14, cha: 8 },
+        skills: ['stealth', 'perception'],
+        inventory: ['rope', 'torch'],
+        quotes: ['I have a plan'],
+        sheet: { race: 'elf', class: 'ranger', level: 3 },
+        minion: null,
+      },
+      ownerId,
+    );
 
     expect(created.id).toBeTruthy();
+    expect(created.userId).toBe(ownerId);
     expect(created.type).toBe('player');
     expect(created.createdAt).toBeInstanceOf(Date);
     expect(created.updatedAt).toBeInstanceOf(Date);
 
-    const found = await repo.findById(created.id);
+    const found = await repo.findByIdForUser(created.id, ownerId);
     expect(found).not.toBeNull();
     expect(found!.name).toBe('Spec Hero');
     expect(found!.imageUrl).toBe('https://example.com/hero.png');
@@ -81,26 +100,48 @@ liveDescribe('CharactersRepository (live DB)', () => {
   it('create with forcedType overrides input.type', async () => {
     const created = await repo.create(
       { type: 'npc', name: 'Forced Player' },
+      ownerId,
       'player',
     );
-    createdIds.push(created.id);
     expect(created.type).toBe('player');
   });
 
-  it('findById returns null for unknown id', async () => {
-    const found = await repo.findById('00000000-0000-0000-0000-000000000000');
+  it('findByIdForUser does not expose another owner’s character', async () => {
+    const created = await repo.create(
+      { type: 'npc', name: 'Owner A Secret' },
+      ownerId,
+    );
+
+    const found = await repo.findByIdForUser(created.id, otherOwnerId);
     expect(found).toBeNull();
   });
 
-  it('updateById patches only provided fields and bumps updated_at', async () => {
-    const created = await repo.create({
-      type: 'npc',
-      name: 'Before Patch',
-      attributes: { hp: 5 },
-    });
-    createdIds.push(created.id);
+  it('findByIdForUser returns null for unknown id', async () => {
+    const found = await repo.findByIdForUser(
+      '00000000-0000-0000-0000-000000000000',
+      ownerId,
+    );
+    expect(found).toBeNull();
+  });
 
-    const patched = await repo.updateById(created.id, {
+  it('findAllForUser only lists the owner’s characters', async () => {
+    const mine = await repo.create({ type: 'npc', name: 'Mine' }, ownerId);
+
+    const mineList = await repo.findAllForUser(ownerId);
+    const otherList = await repo.findAllForUser(otherOwnerId);
+
+    expect(mineList.map((c) => c.id)).toContain(mine.id);
+    expect(otherList.map((c) => c.id)).not.toContain(mine.id);
+    expect(mineList.every((c) => c.userId === ownerId)).toBe(true);
+  });
+
+  it('updateByIdForUser patches only provided fields and bumps updated_at', async () => {
+    const created = await repo.create(
+      { type: 'npc', name: 'Before Patch', attributes: { hp: 5 } },
+      ownerId,
+    );
+
+    const patched = await repo.updateByIdForUser(created.id, ownerId, {
       name: 'After Patch',
       inventory: ['key'],
     });
@@ -115,35 +156,63 @@ liveDescribe('CharactersRepository (live DB)', () => {
     );
   });
 
-  it('updateById returns null for unknown id', async () => {
-    const patched = await repo.updateById(
+  it('updateByIdForUser cannot touch another owner’s row', async () => {
+    const created = await repo.create(
+      { type: 'npc', name: 'Not Yours' },
+      ownerId,
+    );
+
+    const patched = await repo.updateByIdForUser(created.id, otherOwnerId, {
+      name: 'Hijacked',
+    });
+    expect(patched).toBeNull();
+  });
+
+  it('updateByIdForUser returns null for unknown id', async () => {
+    const patched = await repo.updateByIdForUser(
       '00000000-0000-0000-0000-000000000000',
+      ownerId,
       { name: 'Ghost' },
     );
     expect(patched).toBeNull();
   });
 
-  it('deleteById returns true for existing row, false for unknown', async () => {
-    const created = await repo.create({ type: 'minion', name: 'Ephemeral' });
-    expect(await repo.deleteById(created.id)).toBe(true);
-    expect(await repo.deleteById(created.id)).toBe(false);
+  it('deleteByIdForUser returns true for owned row, false for unknown/other owner', async () => {
+    const created = await repo.create({ type: 'minion', name: 'Ephemeral' }, ownerId);
+    expect(await repo.deleteByIdForUser(created.id, otherOwnerId)).toBe(false);
+    expect(await repo.deleteByIdForUser(created.id, ownerId)).toBe(true);
+    expect(await repo.deleteByIdForUser(created.id, ownerId)).toBe(false);
   });
 
-  it('join token create/find round-trip', async () => {
-    const { token, expiresAt, type } = await repo.createJoinToken();
+  it('join token create/find round-trip records the creator', async () => {
+    const { token, expiresAt, type, createdBy } =
+      await repo.createJoinToken(ownerId);
     expect(token).toBeTruthy();
     expect(type).toBe('player');
+    expect(createdBy).toBe(ownerId);
     expect(expiresAt).toBeInstanceOf(Date);
 
     const found = await repo.findJoinToken(token);
     expect(found).not.toBeNull();
     expect(found!.token).toBe(token);
     expect(found!.type).toBe('player');
+    expect(found!.createdBy).toBe(ownerId);
     expect(found!.expiresAt).toBeInstanceOf(Date);
   });
 
+  it('a character created from a join token belongs to the token creator', async () => {
+    const { token, createdBy } = await repo.createJoinToken(ownerId);
+    const redeemed = await repo.create(
+      { type: 'npc', name: 'Redeemed' },
+      createdBy,
+      'player',
+    );
+    expect(redeemed.userId).toBe(ownerId);
+    expect(redeemed.type).toBe('player');
+  });
+
   it('expired join token (ttlMs: -60000) returns null, no throw', async () => {
-    const { token } = await repo.createJoinToken(-60_000);
+    const { token } = await repo.createJoinToken(ownerId, -60_000);
     await expect(repo.findJoinToken(token)).resolves.toBeNull();
   });
 

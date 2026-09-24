@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS auth_sessions (
 -- stored as JSONB, with scalar metadata in dedicated columns.
 CREATE TABLE IF NOT EXISTS characters (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   type text NOT NULL CHECK (type IN ('npc', 'player', 'boss', 'minion')),
   name text NOT NULL,
   email text,
@@ -55,14 +56,17 @@ CREATE TABLE IF NOT EXISTS characters (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
--- Frequently queried by type (master dashboard filters) and by join token.
+-- Frequently queried by type (master dashboard filters) and by owner
+-- (every read is scoped to the logged-in user).
 CREATE INDEX IF NOT EXISTS idx_characters_type ON characters (type);
 
--- Reusable share-link tokens: an anonymous visitor redeems one to create a
--- player character, with character_id backfilled once the character exists.
+-- Reusable share-link tokens: a visitor redeems one to create a player
+-- character owned by the token's creator, with character_id backfilled once
+-- the character exists.
 CREATE TABLE IF NOT EXISTS character_join_tokens (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   character_id uuid REFERENCES characters(id) ON DELETE SET NULL,
+  created_by uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   token text UNIQUE NOT NULL,
   type text NOT NULL DEFAULT 'player',
   created_at timestamptz NOT NULL DEFAULT now(),
@@ -71,3 +75,18 @@ CREATE TABLE IF NOT EXISTS character_join_tokens (
 
 -- Expiry filtering powers token cleanup sweeps.
 CREATE INDEX IF NOT EXISTS idx_character_join_tokens_expires_at ON character_join_tokens (expires_at);
+
+-- ---------------------------------------------------------------------------
+-- Live-table migrations (additive + idempotent). CREATE TABLE IF NOT EXISTS
+-- above only covers fresh databases, so these ALTERs bring pre-existing
+-- installs to the owner-aware shape without destroying already-owned rows.
+-- The user explicitly chose to discard legacy ownerless characters.
+-- ---------------------------------------------------------------------------
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS user_id uuid REFERENCES users(id) ON DELETE CASCADE;
+DELETE FROM characters WHERE user_id IS NULL;
+ALTER TABLE characters ALTER COLUMN user_id SET NOT NULL;
+ALTER TABLE character_join_tokens ADD COLUMN IF NOT EXISTS created_by uuid REFERENCES users(id) ON DELETE CASCADE;
+DELETE FROM character_join_tokens WHERE created_by IS NULL;
+ALTER TABLE character_join_tokens ALTER COLUMN created_by SET NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_characters_user_id ON characters (user_id);
+

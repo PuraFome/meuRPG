@@ -1,12 +1,13 @@
 import { Module } from '@nestjs/common';
 import { AuthController } from './auth.controller';
-import { AuthTokensRepository } from '../db/auth-tokens.repository';
-import { UsersRepository } from '../db/users.repository';
-import { DatabaseModule } from '../db/database.module';
+import { MeController } from './me.controller';
+import { SessionGuard } from './session.guard';
+import { RepositoriesModule } from '../db/repositories.module';
 
 @Module({
-  imports: [DatabaseModule],
-  controllers: [AuthController],
-  providers: [AuthTokensRepository, UsersRepository],
+  imports: [RepositoriesModule],
+  controllers: [AuthController, MeController],
+  providers: [SessionGuard],
+  exports: [SessionGuard],
 })
 export class AuthModule {}

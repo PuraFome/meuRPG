@@ -1,5 +1,5 @@
-import { Component, inject, OnInit, OnDestroy, HostListener } from '@angular/core';
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { Component, inject, OnInit, OnDestroy, HostListener, computed } from '@angular/core';
+import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { map } from 'rxjs/operators';
 import { AsyncPipe } from '@angular/common';
@@ -8,8 +8,10 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { SearchModalComponent } from '../shared/search-modal/search-modal.component';
+import { AuthService } from '../core/auth/auth.service';
 
 interface NavItem {
   path: string;
@@ -30,6 +32,7 @@ interface NavItem {
     MatListModule,
     MatIconModule,
     MatButtonModule,
+    MatMenuModule,
   ],
   template: `
     <mat-sidenav-container class="shell-container" [autosize]="true">
@@ -81,6 +84,36 @@ interface NavItem {
           >
             <mat-icon>search</mat-icon>
           </button>
+
+          @if (auth.user(); as user) {
+            <button
+              mat-icon-button
+              class="user-menu-trigger"
+              [matMenuTriggerFor]="userMenu"
+              [attr.aria-label]="'Conta de ' + (user.name || user.email)"
+            >
+              <span class="user-avatar">{{ initials() }}</span>
+            </button>
+            <mat-menu #userMenu="matMenu">
+              <div class="user-menu-header">
+                <span class="user-menu-name">{{ user.name || 'Jogador' }}</span>
+                <span class="user-menu-email">{{ user.email }}</span>
+              </div>
+              <button mat-menu-item routerLink="/perfil">
+                <mat-icon>person</mat-icon>
+                <span>Perfil</span>
+              </button>
+              <button mat-menu-item (click)="logout()">
+                <mat-icon>logout</mat-icon>
+                <span>Sair</span>
+              </button>
+            </mat-menu>
+          } @else {
+            <button mat-button routerLink="/login">
+              <mat-icon>login</mat-icon>
+              Entrar
+            </button>
+          }
         </mat-toolbar>
 
         <main class="content">
@@ -131,6 +164,35 @@ interface NavItem {
       flex: 1 1 auto;
     }
 
+    .user-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #1a1a2e;
+      background: linear-gradient(135deg, #e0e0e0 0%, #b388ff 100%);
+    }
+
+    .user-menu-header {
+      display: flex;
+      flex-direction: column;
+      padding: 8px 16px 4px;
+      min-width: 180px;
+    }
+
+    .user-menu-name {
+      font-weight: 600;
+    }
+
+    .user-menu-email {
+      font-size: 0.75rem;
+      opacity: 0.6;
+    }
+
     .content {
       padding: 24px;
       min-height: calc(100vh - 64px);
@@ -154,6 +216,20 @@ interface NavItem {
 export class ShellComponent implements OnInit, OnDestroy {
   private readonly dialog = inject(MatDialog);
   private readonly breakpointObserver = inject(BreakpointObserver);
+  readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+
+  readonly initials = computed(() => {
+    const name = this.auth.user()?.name?.trim();
+    if (!name) {
+      return '?';
+    }
+    return name
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part.charAt(0).toUpperCase())
+      .join('');
+  });
 
   private searchDialogRef: MatDialogRef<SearchModalComponent> | null = null;
 
@@ -203,6 +279,11 @@ export class ShellComponent implements OnInit, OnDestroy {
     this.searchDialogRef.afterClosed().subscribe(() => {
       this.searchDialogRef = null;
     });
+  }
+
+  async logout(): Promise<void> {
+    await this.auth.logout();
+    await this.router.navigate(['/login']);
   }
 
   onNavClick(drawer: { close: () => void }): void {

@@ -77,13 +77,16 @@ export class AuthTokensRepository {
    * Resolve the user behind a bearer token. Returns `null` when the token is
    * unknown or expired.
    */
-  async findUserByToken(token: string): Promise<{ sub: string; email: string; name: string } | null> {
+  async findUserByToken(
+    token: string,
+  ): Promise<{ id: string; sub: string; email: string; name: string } | null> {
     const result = await this.pool.query<{
+      id: string;
       google_sub: string;
       email: string | null;
       name: string | null;
     }>(
-      `SELECT u.google_sub, u.email, u.name
+      `SELECT u.id, u.google_sub, u.email, u.name
        FROM auth_sessions s
        JOIN users u ON u.id = s.user_id
        WHERE s.token_hash = $1 AND s.expires_at > now()`,
@@ -94,6 +97,7 @@ export class AuthTokensRepository {
       return null;
     }
     return {
+      id: row.id,
       sub: row.google_sub,
       email: row.email ?? '',
       name: row.name ?? '',
