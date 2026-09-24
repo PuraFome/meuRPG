@@ -25,9 +25,10 @@ import { CurrentUser } from '../auth/current-user.decorator';
  * Route order matters: the specific `join-tokens` / `join/:token` handlers
  * are declared BEFORE `:id` so Express never matches "join" as an id.
  *
- * Every handler below is owner-scoped and guarded — except the join handlers,
- * which stay public so a visitor can redeem a share link (the created
- * character is attributed to the link's creator).
+ * Every handler below is owner-scoped and guarded. The join handler is guarded
+ * too: redeeming an invite creates a `player` character OWNED BY THE AUTHENTICATED
+ * CALLER, so each invited player can only ever manage their own character. The
+ * token merely authorizes the creation of a player (and pins its type).
  */
 @Controller('characters')
 export class CharactersController {
@@ -64,14 +65,19 @@ export class CharactersController {
   }
 
   @Post('join/:token')
-  async join(@Param('token') token: string, @Body() dto: CreateCharacterDto) {
+  @UseGuards(SessionGuard)
+  async join(
+    @Param('token') token: string,
+    @Body() dto: CreateCharacterDto,
+    @CurrentUser() user: AuthUser,
+  ) {
     const joinToken = await this.characters.findJoinToken(token);
     if (!joinToken) {
       throw new GoneException('Join token is invalid or expired');
     }
-    // The redeemed character belongs to the invite creator; forcedType pins
-    // it to 'player' — any client-sent type in the body is ignored.
-    return this.characters.create(dto, joinToken.createdBy, 'player');
+    // The redeemed character belongs to the authenticated caller; forcedType
+    // pins it to 'player' — any client-sent type in the body is ignored.
+    return this.characters.create(dto, user.id, 'player');
   }
 
   @Get(':id')

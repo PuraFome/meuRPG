@@ -24,7 +24,7 @@ export const routes: Routes = [
     path: 'convidar/:token',
     loadComponent: () =>
       import('./character-join.component').then((m) => m.CharacterJoinComponent),
-    data: { public: true },
+    canActivate: [authGuard],
   },
   {
     path: ':id',

@@ -49,8 +49,8 @@ const COPY_FEEDBACK_MS = 2000;
         <div class="invite-hero-copy">
           <h2 class="invite-hero-title">Gere um link de convite</h2>
           <p class="invite-hero-text">
-            Envie o link para o jogador. Ele abre uma ficha em branco, preenche os
-            dados e o personagem entra direto na sua campanha.
+            Envie o link para o jogador. Ele entra com a conta Google, preenche a
+            ficha e o personagem fica salvo na conta dele.
           </p>
         </div>
 

@@ -48,7 +48,7 @@ function makeJoinToken(token = 'share-token'): JoinToken {
   return {
     token,
     type: 'player',
-    createdBy: OWNER_ID,
+    createdBy: OTHER_OWNER_ID,
     expiresAt: new Date('2027-01-01T00:00:00.000Z'),
   };
 }
@@ -203,10 +203,10 @@ describe('CharactersController', () => {
     expect(res.status).toBe(410);
   });
 
-  it("POST /characters/join/:token forces type='player' and owner=creator", async () => {
+  it("POST /characters/join/:token forces type='player' and owner=session user", async () => {
     repoMock.findJoinToken.mockResolvedValue(makeJoinToken());
     repoMock.create.mockResolvedValue(
-      makeCharacter({ type: 'player', name: 'Joiner' }),
+      makeCharacter({ type: 'player', name: 'Joiner', userId: OWNER_ID }),
     );
 
     const res = await request(app.getHttpServer())
@@ -218,6 +218,11 @@ describe('CharactersController', () => {
     expect(repoMock.create).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'Joiner', type: 'npc' }),
       OWNER_ID,
+      'player',
+    );
+    expect(repoMock.create).not.toHaveBeenCalledWith(
+      expect.anything(),
+      OTHER_OWNER_ID,
       'player',
     );
   });

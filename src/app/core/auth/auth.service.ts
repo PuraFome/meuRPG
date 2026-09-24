@@ -17,6 +17,9 @@ export const AUTH_TOKEN_KEY = 'meurpg.auth.token';
 /** localStorage key used by PersistenceService to cache characters. */
 export const CHARACTERS_CACHE_KEY = 'meurpg_characters';
 
+/** localStorage key holding the in-app route to resume after a Google login round-trip. */
+export const PENDING_REDIRECT_KEY = 'meurpg.auth.pendingRedirect';
+
 /**
  * Bearer-token session store. The OAuth callback lands back on the SPA with
  * `#token=<opaque>`; browsers never send fragments to servers, so the token
