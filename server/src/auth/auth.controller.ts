@@ -154,16 +154,20 @@ export class AuthController {
   }
 
   private frontendRedirectUrl(): string {
-    const origin = this.requireConfig('FRONTEND_ORIGIN');
-    if (!origin) {
-      this.logger.error('FRONTEND_ORIGIN is not configured');
-      throw new InternalServerErrorException('FRONTEND_ORIGIN is not configured');
+    // CORS needs a bare origin (no path), but the SPA bounce-back needs the
+    // full URL. Sub-path deployments (GitHub Pages /meuRPG/) differ, so prefer
+    // FRONTEND_REDIRECT_URL and fall back to the first FRONTEND_ORIGIN entry.
+    const redirectUrl = this.config.get<string>('FRONTEND_REDIRECT_URL');
+    if (redirectUrl) {
+      return redirectUrl;
     }
-    return origin;
+    return this.requireConfig('FRONTEND_ORIGIN').split(',')[0].trim();
   }
 
   private requireConfig(key: string): string {
-    const value = this.config.get<string>(key);
+    const value =
+      this.config.get<string>(key) ||
+      (key === 'API_PUBLIC_URL' ? process.env.RENDER_EXTERNAL_URL : undefined);
     if (!value) {
       this.logger.error(`${key} is not configured`);
       throw new InternalServerErrorException(`${key} is not configured`);

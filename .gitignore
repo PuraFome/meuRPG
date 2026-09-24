@@ -52,5 +52,6 @@ Thumbs.db
 
 # Backend server (NestJS)
 server/.env
+server/.env.production
 server/dist/
 server/.nuxt
