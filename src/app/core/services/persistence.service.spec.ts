@@ -27,6 +27,7 @@ describe('PersistenceService', () => {
   let store: StoreService<Character>;
   let httpMock: HttpTestingController;
   const url = `${environment.apiBaseUrl}/api/characters`;
+  const mapsUrl = `${environment.apiBaseUrl}/api/maps`;
 
   beforeEach(() => {
     localStorage.clear();
@@ -51,6 +52,7 @@ describe('PersistenceService', () => {
     const req = httpMock.expectOne(url);
     expect(req.request.method).toBe('GET');
     req.flush([c1]);
+    httpMock.expectOne(mapsUrl).flush([]);
 
     expect(store.snapshot('characters')).toEqual([c1]);
     httpMock.expectNone((r) => r.method === 'POST' && r.url === url);
@@ -59,6 +61,7 @@ describe('PersistenceService', () => {
   it('POSTs exactly once when a character is created after hydration', () => {
     service.init();
     httpMock.expectOne(url).flush([]);
+    httpMock.expectOne(mapsUrl).flush([]);
 
     const c2 = mockCharacter({ id: 'c2' });
     store.set('characters', c2);
@@ -74,6 +77,7 @@ describe('PersistenceService', () => {
     const c1 = mockCharacter({ id: 'c1' });
     service.init();
     httpMock.expectOne(url).flush([c1]);
+    httpMock.expectOne(mapsUrl).flush([]);
 
     const updated = { ...c1, name: 'Megaera' };
     store.update('characters', c1.id, updated);
@@ -89,6 +93,7 @@ describe('PersistenceService', () => {
     const c1 = mockCharacter({ id: 'c1' });
     service.init();
     httpMock.expectOne(url).flush([c1]);
+    httpMock.expectOne(mapsUrl).flush([]);
 
     store.delete('characters', c1.id);
 
@@ -110,6 +115,7 @@ describe('PersistenceService', () => {
       httpMock
         .expectOne(url)
         .flush({ message: 'boom' }, { status: 500, statusText: 'Server Error' });
+      httpMock.expectOne(mapsUrl).flush([]);
 
       expect(store.snapshot('characters').map((c) => c.id)).toEqual(['cached']);
 

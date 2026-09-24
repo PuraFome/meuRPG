@@ -1,11 +1,17 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
 import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // Map backgrounds travel as base64 data URLs inside the JSON payload, which
+  // exceeds Express's 100kb default; raise the body limit for those saves.
+  app.useBodyParser('json', { limit: '30mb' });
+  app.useBodyParser('urlencoded', { limit: '30mb', extended: true });
 
   app.setGlobalPrefix('api');
 

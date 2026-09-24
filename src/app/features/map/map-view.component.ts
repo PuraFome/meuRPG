@@ -12,9 +12,10 @@ import { Subscription } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MapService } from './map.service';
-import { MapThreeService } from './map-three.service';
-import type { Marker3D } from './map-three.service';
+import { DungeonService } from './dungeon.service';
+import type { DungeonTool } from './dungeon.service';
 import { MapConfigPanelComponent } from './map-config-panel.component';
 import { PageHeaderComponent, BreadcrumbItem } from '../../shared/components/page-header.component';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner.component';
@@ -25,19 +26,25 @@ import { MapFormDialogComponent, MapFormDialogData } from './map-form-dialog.com
 import type { MapData, MapMarker } from '../../core/models/map';
 import { StoreService } from '../../core/store/store.service';
 
+interface DungeonToolOption {
+  tool: DungeonTool;
+  icon: string;
+  label: string;
+}
+
 @Component({
   selector: 'app-map-view',
   standalone: true,
   imports: [
     MatButtonModule,
     MatIconModule,
+    MatTooltipModule,
     MapConfigPanelComponent,
     PageHeaderComponent,
     LoadingSpinnerComponent,
     EmptyStateComponent,
   ],
   template: `
-    <!-- Page header with breadcrumbs -->
     <app-page-header
       [title]="mapTitle"
       icon="map"
@@ -45,11 +52,7 @@ import { StoreService } from '../../core/store/store.service';
     />
 
     <div class="map-stage">
-      <!-- 2D OpenLayers container (always in DOM — never conditionally hidden) -->
       <div #mapContainer class="map-container"></div>
-
-      <!-- 2.5D Three.js container (hidden by default) -->
-      <div #threeContainer class="three-container" style="display: none"></div>
 
       @if (loading()) {
         <div class="overlay">
@@ -65,7 +68,6 @@ import { StoreService } from '../../core/store/store.service';
           />
         </div>
       } @else {
-        <!-- Toolbar -->
         <div class="toolbar-row">
           @if (parentMapId) {
             <button mat-stroked-button (click)="goToParent()">
@@ -73,17 +75,44 @@ import { StoreService } from '../../core/store/store.service';
               Voltar ao mapa pai
             </button>
           }
+
           <button
             mat-stroked-button
             [class.active]="pinPlacementMode()"
+            [disabled]="drawMode()"
             (click)="togglePinPlacement()"
           >
             <mat-icon>add_location</mat-icon>
             Adicionar Ponto
           </button>
+
+          <button
+            mat-stroked-button
+            [class.active]="drawMode()"
+            [disabled]="!hasImage()"
+            [matTooltip]="hasImage() ? 'Desenhar a masmorra sobre a imagem' : 'Adicione uma imagem ao mapa para desenhar'"
+            (click)="toggleDrawMode()"
+          >
+            <mat-icon>draw</mat-icon>
+            Desenhar Masmorra
+          </button>
+
+          <button
+            mat-icon-button
+            [class.active]="gridVisible()"
+            matTooltip="Mostrar/ocultar grade"
+            (click)="toggleGrid()"
+          >
+            <mat-icon>grid_4x4</mat-icon>
+          </button>
+
           @if (pinPlacementMode()) {
-            <span class="pin-hint">Clique no mapa para posicionar o ponto</span>
+            <span class="hint">Clique no mapa para posicionar o ponto</span>
           }
+          @if (drawMode()) {
+            <span class="hint">Clique e arraste para pintar as células</span>
+          }
+
           @if (currentMapData) {
             <span class="toolbar-spacer"></span>
             <button mat-stroked-button (click)="openEditMapDialog()">
@@ -97,12 +126,27 @@ import { StoreService } from '../../core/store/store.service';
           }
         </div>
 
-        <!-- Layer config panel (floating) -->
+        @if (drawMode()) {
+          <div class="tool-row">
+            @for (option of dungeonTools; track option.tool) {
+              <button
+                mat-stroked-button
+                class="tool-btn"
+                [class.active]="dungeonTool() === option.tool"
+                [matTooltip]="option.label"
+                (click)="selectTool(option.tool)"
+              >
+                <mat-icon>{{ option.icon }}</mat-icon>
+                {{ option.label }}
+              </button>
+            }
+          </div>
+        }
+
         @if (showConfigPanel) {
           <app-map-config-panel />
         }
 
-        <!-- Layer config toggle -->
         <button
           mat-fab
           class="fab-btn config-btn"
@@ -112,7 +156,6 @@ import { StoreService } from '../../core/store/store.service';
           <mat-icon>layers</mat-icon>
         </button>
 
-        <!-- Fullscreen button -->
         <button
           mat-fab
           class="fab-btn fullscreen-btn"
@@ -121,19 +164,6 @@ import { StoreService } from '../../core/store/store.service';
         >
           <mat-icon>fullscreen</mat-icon>
         </button>
-
-        <!-- 2D / 2.5D toggle button -->
-        <button
-          mat-fab
-          class="fab-btn toggle3d-btn"
-          (click)="toggle3D()"
-          aria-label="Alternar 2D/3D"
-        >
-          <mat-icon>{{ is3D ? 'map' : 'view_in_ar' }}</mat-icon>
-        </button>
-
-        <!-- Mode label -->
-        <span class="mode-label">{{ is3D ? '2.5D' : '2D' }}</span>
       }
     </div>
   `,
@@ -153,7 +183,9 @@ import { StoreService } from '../../core/store/store.service';
       min-height: 0;
     }
 
-    .toolbar-row {
+    .toolbar-row,
+    .tool-row {
+      position: relative;
       display: flex;
       flex-wrap: wrap;
       align-items: center;
@@ -165,12 +197,19 @@ import { StoreService } from '../../core/store/store.service';
       flex-shrink: 0;
     }
 
-    .toolbar-row button.active {
+    .tool-row {
+      padding-top: 0;
+      background: rgba(0,0,0,0.22);
+    }
+
+    .toolbar-row button.active,
+    .tool-row button.active,
+    button.active {
       background: rgba(124,77,255,0.25);
       border-color: #7c4dff;
     }
 
-    .pin-hint {
+    .hint {
       font-size: 0.8125rem;
       color: rgba(255,255,255,0.6);
       font-style: italic;
@@ -180,8 +219,11 @@ import { StoreService } from '../../core/store/store.service';
       flex: 1;
     }
 
-    .map-container,
-    .three-container {
+    .tool-btn {
+      min-width: 0;
+    }
+
+    .map-container {
       position: absolute;
       inset: 0;
       width: 100%;
@@ -208,31 +250,9 @@ import { StoreService } from '../../core/store/store.service';
       right: 24px;
     }
 
-    .toggle3d-btn {
-      bottom: 24px;
-      right: 88px;
-    }
-
     .config-btn {
       top: 16px;
       right: 16px;
-    }
-
-    .mode-label {
-      position: absolute;
-      bottom: 32px;
-      right: 152px;
-      z-index: 10;
-      color: rgba(255, 255, 255, 0.85);
-      font-size: 0.8125rem;
-      font-weight: 500;
-      letter-spacing: 0.5px;
-      background: rgba(0, 0, 0, 0.45);
-      padding: 4px 12px;
-      border-radius: 12px;
-      backdrop-filter: blur(4px);
-      user-select: none;
-      pointer-events: none;
     }
 
     @media (max-width: 480px) {
@@ -243,14 +263,6 @@ import { StoreService } from '../../core/store/store.service';
       .fullscreen-btn {
         bottom: 16px;
         right: 16px;
-      }
-      .toggle3d-btn {
-        bottom: 16px;
-        right: 80px;
-      }
-      .mode-label {
-        bottom: 24px;
-        right: 144px;
       }
     }
 
@@ -264,17 +276,18 @@ export class MapViewComponent implements AfterViewInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly dialog = inject(MatDialog);
   private readonly mapService = inject(MapService);
-  private readonly mapThreeService = inject(MapThreeService);
+  private readonly dungeonService = inject(DungeonService);
   private readonly store = inject(StoreService<MapData>);
 
   private readonly mapContainer =
     viewChild.required<ElementRef<HTMLElement>>('mapContainer');
-  private readonly threeContainer =
-    viewChild.required<ElementRef<HTMLElement>>('threeContainer');
 
-  protected is3D = false;
   protected showConfigPanel = false;
   protected readonly pinPlacementMode = signal(false);
+  protected readonly drawMode = signal(false);
+  protected readonly hasImage = signal(false);
+  protected readonly gridVisible = signal(false);
+  protected readonly dungeonTool = signal<DungeonTool>('floor');
   protected mapTitle = 'Mapa';
   protected breadcrumbs: BreadcrumbItem[] = [];
   protected parentMapId: string | null = null;
@@ -282,9 +295,17 @@ export class MapViewComponent implements AfterViewInit, OnDestroy {
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
 
+  protected readonly dungeonTools: DungeonToolOption[] = [
+    { tool: 'floor', icon: 'crop_square', label: 'Piso' },
+    { tool: 'wall', icon: 'border_outer', label: 'Parede' },
+    { tool: 'door', icon: 'door_front', label: 'Porta' },
+    { tool: 'water', icon: 'water_drop', label: 'Água' },
+    { tool: 'difficult', icon: 'grass', label: 'Terreno difícil' },
+    { tool: 'erase', icon: 'cleaning_services', label: 'Apagar' },
+  ];
+
   private mapId: string | null = null;
   private routeSub: Subscription | null = null;
-  private resizeObserver: ResizeObserver | null = null;
   private clickUnregister: (() => void) | null = null;
   private featureUnregister: (() => void) | null = null;
 
@@ -292,7 +313,6 @@ export class MapViewComponent implements AfterViewInit, OnDestroy {
     this.loading.set(true);
     this.error.set(null);
 
-    // Initialise the 2D OpenLayers map
     try {
       await this.mapService.initialize(this.mapContainer().nativeElement, {
         zoom: 10,
@@ -305,21 +325,8 @@ export class MapViewComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
-    // Setup click handlers (pin placement + feature clicks)
     this.setupClickHandler();
 
-    // Watch container resize so the 3D renderer stays in sync
-    this.resizeObserver = new ResizeObserver(() => {
-      if (this.is3D) {
-        this.mapThreeService.resize();
-      }
-    });
-    const parentEl = this.mapContainer()?.nativeElement?.parentElement;
-    if (parentEl) {
-      this.resizeObserver.observe(parentEl);
-    }
-
-    // Reload map data whenever the route id changes (initial load included)
     this.routeSub = this.route.paramMap.subscribe((params) => {
       this.mapId = params.get('id');
       void this.loadMapData();
@@ -330,25 +337,42 @@ export class MapViewComponent implements AfterViewInit, OnDestroy {
     this.clickUnregister?.();
     this.featureUnregister?.();
     this.routeSub?.unsubscribe();
+    this.dungeonService.destroy();
     this.mapService.destroy();
-    this.mapThreeService.destroy();
-    this.resizeObserver?.disconnect();
   }
 
   toggleFullscreen(): void {
     this.mapService.toggleFullscreen(this.mapContainer().nativeElement);
   }
 
-  protected async toggle3D(): Promise<void> {
-    if (this.is3D) {
-      this.switchTo2D();
-    } else {
-      await this.switchTo3D();
-    }
+  protected toggleGrid(): void {
+    this.mapService.toggleGrid().then(() => {
+      this.gridVisible.set(this.mapService.isGridVisible());
+    });
   }
 
   protected togglePinPlacement(): void {
     this.pinPlacementMode.update((v) => !v);
+  }
+
+  protected async toggleDrawMode(): Promise<void> {
+    if (this.drawMode()) {
+      this.dungeonService.disable();
+      this.drawMode.set(false);
+      return;
+    }
+
+    if (!this.hasImage()) return;
+
+    this.pinPlacementMode.set(false);
+    this.dungeonService.setTool(this.dungeonTool());
+    await this.dungeonService.enable();
+    this.drawMode.set(true);
+  }
+
+  protected selectTool(tool: DungeonTool): void {
+    this.dungeonTool.set(tool);
+    this.dungeonService.setTool(tool);
   }
 
   protected goToParent(): void {
@@ -399,6 +423,9 @@ export class MapViewComponent implements AfterViewInit, OnDestroy {
   private async loadMapData(): Promise<void> {
     this.loading.set(true);
 
+    this.dungeonService.disable();
+    this.drawMode.set(false);
+
     if (this.mapId) {
       const mapData = this.store.snapshot('maps').find((m) => m.id === this.mapId);
       if (mapData) {
@@ -406,28 +433,39 @@ export class MapViewComponent implements AfterViewInit, OnDestroy {
         this.mapService.setCurrentMapId(this.mapId);
         this.mapTitle = mapData.name;
 
-        // Build breadcrumb hierarchy
         const hierarchy = this.mapService.getMapHierarchy(this.mapId);
         this.breadcrumbs = hierarchy.map((m, i) => ({
           label: m.name,
           route: i < hierarchy.length - 1 ? `/mapa/${m.id}` : undefined,
         }));
 
-        // Find parent map
         this.parentMapId = this.mapService.getParentMapId(this.mapId);
 
-        // Switch base layer: custom image or OSM tiles
         if (mapData.backgroundImage) {
           await this.mapService.setImageBackground(
             mapData.backgroundImage,
             mapData.width || 1024,
             mapData.height || 768,
           );
+          this.hasImage.set(true);
         } else {
           await this.mapService.clearImageBackground();
+          this.hasImage.set(false);
         }
 
-        // Render POIs and submap pins
+        await this.mapService.setGridConfig(mapData.grid);
+        await this.mapService.setGridVisible(false);
+        this.gridVisible.set(this.mapService.isGridVisible());
+
+        await this.dungeonService.configure({
+          mapId: this.mapId,
+          extent: [0, 0, mapData.width || 1024, mapData.height || 768],
+          cellSize: mapData.grid?.cellSize ?? 50,
+          columns: mapData.grid?.columns ?? 24,
+          rows: mapData.grid?.rows ?? 18,
+        });
+        await this.dungeonService.load(mapData.dungeon);
+
         await this.mapService.renderPois(mapData.markers ?? []);
         await this.mapService.showPoisLayer();
         await this.mapService.renderSubmapPins(mapData.submaps ?? []);
@@ -437,7 +475,6 @@ export class MapViewComponent implements AfterViewInit, OnDestroy {
         return;
       }
 
-      // Map ID provided but not found — 404
       this.currentMapData = null;
       this.mapService.setCurrentMapId(null);
       this.error.set('Mapa não encontrado');
@@ -445,7 +482,6 @@ export class MapViewComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
-    // No specific map id — back to the list
     this.currentMapData = null;
     this.mapService.setCurrentMapId(null);
     this.mapTitle = 'Mapa';
@@ -455,9 +491,8 @@ export class MapViewComponent implements AfterViewInit, OnDestroy {
   }
 
   private setupClickHandler(): void {
-    // Feature clicks take priority: POI expands, submap navigates
     this.featureUnregister = this.mapService.onFeatureClick((result) => {
-      if (this.pinPlacementMode()) return;
+      if (this.pinPlacementMode() || this.drawMode()) return;
 
       if (result.type === 'poi' && result.marker) {
         this.openPoiDialog(result.marker);
@@ -466,9 +501,8 @@ export class MapViewComponent implements AfterViewInit, OnDestroy {
       }
     });
 
-    // Empty clicks only matter in pin placement mode
     this.clickUnregister = this.mapService.onMapClick((coords) => {
-      if (!this.pinPlacementMode()) return;
+      if (!this.pinPlacementMode() || this.drawMode()) return;
 
       this.pinPlacementMode.set(false);
 
@@ -487,6 +521,7 @@ export class MapViewComponent implements AfterViewInit, OnDestroy {
 
       ref.afterClosed().subscribe((result: PoiDialogResult) => {
         if (result?.action === 'save' && result.marker) {
+          this.applyNewSubmap(result);
           void this.mapService.addPoi(result.marker);
         }
       });
@@ -510,6 +545,7 @@ export class MapViewComponent implements AfterViewInit, OnDestroy {
 
     ref.afterClosed().subscribe((result: PoiDialogResult) => {
       if (result?.action === 'save' && result.marker) {
+        this.applyNewSubmap(result);
         void this.mapService.updatePoi(result.marker);
       } else if (result?.action === 'delete') {
         void this.mapService.deletePoi(marker.id);
@@ -519,40 +555,13 @@ export class MapViewComponent implements AfterViewInit, OnDestroy {
     });
   }
 
-  // ── 2D / 2.5D switching ──
-
-  private async switchTo3D(): Promise<void> {
-    const threeContainerEl = this.threeContainer().nativeElement;
-    const mapContainerEl = this.mapContainer().nativeElement;
-
-    const olCanvas = this.mapService.getCanvas();
-    const center = this.mapService.getCenter();
-    const zoom = this.mapService.getZoom();
-
-    await this.mapThreeService.init(threeContainerEl);
-    await this.mapThreeService.activate(olCanvas, center, zoom);
-
-    this.mapThreeService.renderGrid();
-
-    const sampleMarkers: Marker3D[] = [];
-    this.mapThreeService.renderMarkers(sampleMarkers);
-
-    mapContainerEl.style.display = 'none';
-    threeContainerEl.style.display = 'block';
-
-    requestAnimationFrame(() => this.mapThreeService.resize());
-
-    this.is3D = true;
-  }
-
-  private switchTo2D(): void {
-    const threeContainerEl = this.threeContainer().nativeElement;
-    const mapContainerEl = this.mapContainer().nativeElement;
-
-    threeContainerEl.style.display = 'none';
-    mapContainerEl.style.display = 'block';
-
-    this.mapThreeService.deactivate();
-    this.is3D = false;
+  private applyNewSubmap(result: PoiDialogResult): void {
+    if (!result || result.action !== 'save' || !result.newSubmap) return;
+    const submap = this.mapService.createSubmap(
+      result.newSubmap.name,
+      result.newSubmap.kind,
+      result.newSubmap.image,
+    );
+    result.marker.targetMapId = submap.id;
   }
 }

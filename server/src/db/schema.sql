@@ -98,3 +98,33 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS role text NOT NULL DEFAULT 'master';
 ALTER TABLE characters ADD COLUMN IF NOT EXISTS master_user_id uuid REFERENCES users(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_characters_master_user_id ON characters (master_user_id);
 
+-- Maps mirror src/app/core/models/map.ts. Flexible/structured fields (grid,
+-- fog_of_war, layers, markers, submaps, dungeon) are JSONB, while scalar
+-- metadata lives in dedicated columns. `background_image` holds a data URL
+-- (base64), so it is a potentially large text column.
+CREATE TABLE IF NOT EXISTS maps (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  description text,
+  kind text NOT NULL DEFAULT 'world' CHECK (kind IN ('world', 'city', 'dungeon', 'local')),
+  background_image text,
+  width integer NOT NULL DEFAULT 1024,
+  height integer NOT NULL DEFAULT 768,
+  grid jsonb NOT NULL DEFAULT '{}',
+  fog_of_war jsonb NOT NULL DEFAULT '{}',
+  layers jsonb NOT NULL DEFAULT '[]',
+  markers jsonb NOT NULL DEFAULT '[]',
+  submaps jsonb NOT NULL DEFAULT '[]',
+  dungeon jsonb NOT NULL DEFAULT '{}',
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_maps_user_id ON maps (user_id);
+
+-- Widen the kind check on installs created before the 'local' category existed.
+ALTER TABLE maps DROP CONSTRAINT IF EXISTS maps_kind_check;
+ALTER TABLE maps ADD CONSTRAINT maps_kind_check CHECK (kind IN ('world', 'city', 'dungeon', 'local'));
+
+

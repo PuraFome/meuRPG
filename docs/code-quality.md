@@ -10,7 +10,7 @@
 | Metric | Count |
 |--------|-------|
 | Total TS source files (features + core) | ~35 |
-| `any` type usages | 19 (14 in map-three.service.ts) |
+| `any` type usages | ~5 (the old `map-three.service.ts` was removed) |
 | `@ts-*` directives | 0 ✅ |
 | `console.log` / `console.debug` | 0 ✅ |
 | `console.error` / `console.warn` | 4 (acceptable) |
@@ -77,13 +77,11 @@ Alongside Angular 17+ `@if` control flow (lines 77, 86, 113).
 | File | Count | Examples |
 |------|-------|---------|
 | `rules-reader.component.ts` | 4 | `flattenOutline(items: any[])`, `pdfDocument: any = null`, `onLoadComplete(pdf: any)`, `getOutline().then((outline: any)` |
-| `map-three.service.ts` | 14 | Heavy Three.js interop with `any` throughout |
 
 **Rules Reader Risk:** Typing pdf.js interactions as `any` means a pdf.js API version bump could silently break at runtime.
 
 **Recommendation:**
 - Create lightweight type declarations for the pdf.js subset you use (in `src/types/pdfjs.d.ts`).
-- For map-three.service, use `@types/three` and define proper interfaces for Three.js objects.
 
 ---
 
@@ -223,7 +221,7 @@ export class StoreService<T extends { id: string }> {
 | Severity | Count | Key Actions |
 |----------|-------|-------------|
 | 🔴 High | 2 | Remove simulated upload progress, type pdf.js interactions properly |
-| 🟡 Medium | 6-8 | Clean unused CommonModule imports, remove dead stub components, add type declarations for Three.js |
+| 🟡 Medium | 6-8 | Clean unused CommonModule imports, remove dead stub components, add type declarations for pdf.js |
 | 🟢 Low | 4-5 | Consider extracting large inline styles, minor subscription pattern improvements |
 
 ### Quick Wins (30-minute fixes)

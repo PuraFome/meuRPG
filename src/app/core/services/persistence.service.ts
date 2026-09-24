@@ -1,9 +1,11 @@
 import { Injectable, OnDestroy, inject } from '@angular/core';
-import { Subscription } from 'rxjs';
+import { Subscription, forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { StoreService } from '../store/store.service';
 import type { StoreEvent } from '../store/store.service';
 import { SearchService } from './search.service';
 import { CharactersService } from './characters.service';
+import { MapsService } from './maps.service';
 
 import type {
   Character,
@@ -18,21 +20,29 @@ type PersistableEntity = Character | CampaignFolder | GalleryItem | MapData | Se
 
 const STORE_KEYS = ['characters', 'campaigns', 'gallery', 'maps', 'sessions', 'rules'];
 
+/** Collections cached in localStorage (maps now live in the database). */
+const LOCAL_PERSIST_KEYS = ['characters', 'campaigns', 'gallery', 'sessions', 'rules'];
+
+/** Debounce window for map PATCHes, so rapid dungeon-cell painting coalesces. */
+const MAP_SYNC_DEBOUNCE_MS = 1000;
+
 @Injectable({
   providedIn: 'root',
 })
 export class PersistenceService implements OnDestroy {
   private subscriptions: Subscription[] = [];
   private hydrating = false;
+  private readonly mapSyncTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   private readonly store = inject<StoreService<PersistableEntity>>(StoreService);
   private readonly search = inject(SearchService);
   private readonly characters = inject(CharactersService);
+  private readonly maps = inject(MapsService);
 
-  /** Initialize persistence: load data from localStorage into the store. */
+  /** Initialize persistence: load local data, hydrate from the API, sync changes. */
   init(): void {
-    // Load each collection from localStorage
-    for (const key of STORE_KEYS) {
+    // Load cached (non-map) collections from localStorage
+    for (const key of LOCAL_PERSIST_KEYS) {
       const raw = localStorage.getItem(`meurpg_${key}`);
       if (raw) {
         try {
@@ -50,12 +60,23 @@ export class PersistenceService implements OnDestroy {
     this.subscriptions.push(
       this.store.events$.subscribe((event) => {
         const collection = event.collection;
-        if (STORE_KEYS.includes(collection)) {
-          const snapshot = this.store.snapshot(collection);
-          localStorage.setItem(`meurpg_${collection}`, JSON.stringify(snapshot));
+        if (LOCAL_PERSIST_KEYS.includes(collection)) {
+          try {
+            const snapshot = this.store.snapshot(collection);
+            localStorage.setItem(`meurpg_${collection}`, JSON.stringify(snapshot));
+          } catch (err) {
+            // Quota exceeded (e.g. large base64 images) must never roll back the
+            // in-memory save; the API remains the source of truth for maps.
+            console.warn('[persistence] localStorage write skipped', err);
+          }
         }
-        if (collection === 'characters' && !this.hydrating) {
+        if (this.hydrating) {
+          return;
+        }
+        if (collection === 'characters') {
           this.syncCharacter(event);
+        } else if (collection === 'maps') {
+          this.syncMap(event);
         }
       }),
     );
@@ -78,23 +99,54 @@ export class PersistenceService implements OnDestroy {
       ),
     );
 
+    // One-time migration: legacy maps cached in localStorage before they were
+    // stored in the database. Re-emitting them as store events POSTs them.
+    this.migrateLegacyMaps();
+
     this.hydrating = true;
-    this.subscriptions.push(
-      this.characters.list().subscribe({
-        next: (items) => {
-          for (const item of items) {
-            this.store.set('characters', item);
-          }
-        },
-        error: (e) => {
-          console.error('[persistence] hydration failed', e);
-          this.hydrating = false;
-        },
-        complete: () => {
-          this.hydrating = false;
-        },
-      }),
-    );
+    forkJoin({
+      characters: this.characters.list().pipe(
+        catchError((e) => {
+          console.error('[persistence] character hydration failed', e);
+          return of([] as Character[]);
+        }),
+      ),
+      maps: this.maps.list().pipe(
+        catchError((e) => {
+          console.error('[persistence] map hydration failed', e);
+          return of([] as MapData[]);
+        }),
+      ),
+    }).subscribe({
+      next: ({ characters, maps }) => {
+        for (const item of characters) {
+          this.store.set('characters', item);
+        }
+        for (const item of maps) {
+          this.store.set('maps', item);
+        }
+        this.hydrating = false;
+      },
+      error: () => {
+        this.hydrating = false;
+      },
+    });
+  }
+
+  private migrateLegacyMaps(): void {
+    const raw = localStorage.getItem('meurpg_maps');
+    if (!raw) {
+      return;
+    }
+    localStorage.removeItem('meurpg_maps');
+    try {
+      const legacy = JSON.parse(raw) as MapData[];
+      for (const map of legacy) {
+        this.store.set('maps', map);
+      }
+    } catch {
+      // skip corrupt legacy cache
+    }
   }
 
   private syncCharacter(event: StoreEvent): void {
@@ -112,8 +164,37 @@ export class PersistenceService implements OnDestroy {
     }
   }
 
+  private syncMap(event: StoreEvent): void {
+    const onError = (e: unknown) => console.error('[persistence] map API write failed', e);
+    switch (event.type) {
+      case 'created':
+        this.maps.create(event.payload as MapData).subscribe({ error: onError });
+        break;
+      case 'updated': {
+        const payload = event.payload as MapData;
+        const pending = this.mapSyncTimers.get(event.id);
+        if (pending) {
+          clearTimeout(pending);
+        }
+        this.mapSyncTimers.set(
+          event.id,
+          setTimeout(() => {
+            this.mapSyncTimers.delete(event.id);
+            this.maps.update(event.id, payload).subscribe({ error: onError });
+          }, MAP_SYNC_DEBOUNCE_MS),
+        );
+        break;
+      }
+      case 'deleted':
+        this.maps.remove(event.id).subscribe({ error: onError });
+        break;
+    }
+  }
+
   ngOnDestroy(): void {
     this.subscriptions.forEach((s) => s.unsubscribe());
+    this.mapSyncTimers.forEach((timer) => clearTimeout(timer));
+    this.mapSyncTimers.clear();
   }
 }
 

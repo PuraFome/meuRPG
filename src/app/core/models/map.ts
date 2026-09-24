@@ -1,4 +1,8 @@
+/** Categoria do mapa, usada para organizar mundos, cidades, masmorras e locais. */
+export type MapKind = 'world' | 'city' | 'dungeon' | 'local';
+
 export interface MapGrid {
+  /** Tamanho de uma célula em pixels da imagem de fundo. */
   cellSize: number;
   columns: number;
   rows: number;
@@ -43,10 +47,27 @@ export interface SubmapPin {
   color?: string;
 }
 
+/** Tipos de célula usados para desenhar a masmorra sobre a grade. */
+export type DungeonTileType =
+  | 'floor'
+  | 'wall'
+  | 'door'
+  | 'water'
+  | 'difficult';
+
+/**
+ * Grade esparsa da masmorra: a chave é `"col,row"` e o valor é o tipo da
+ * célula. Guardar apenas as células preenchidas mantém o JSON pequeno mesmo
+ * em masmorras grandes.
+ */
+export type DungeonTiles = Record<string, DungeonTileType>;
+
 export interface MapData {
   id: string;
   name: string;
   description?: string;
+  /** Categoria do mapa (mundo, cidade ou masmorra). */
+  kind?: MapKind;
   backgroundImage?: string;
   width: number;
   height: number;
@@ -55,6 +76,8 @@ export interface MapData {
   fogOfWar: FogOfWar;
   markers: MapMarker[];
   submaps: SubmapPin[];
+  /** Células desenhadas da masmorra (opcional em mapas antigos). */
+  dungeon?: DungeonTiles;
   createdAt: Date;
   updatedAt: Date;
 }

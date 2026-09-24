@@ -1,6 +1,14 @@
 import { Injectable, inject, NgZone } from '@angular/core';
 import { StoreService } from '../../core/store/store.service';
-import type { MapData, MapMarker, SubmapPin } from '../../core/models/map';
+import { createMapData } from './map-defaults';
+import type { MapImageInput } from './map-defaults';
+import type {
+  MapData,
+  MapGrid,
+  MapKind,
+  MapMarker,
+  SubmapPin,
+} from '../../core/models/map';
 
 type OlMap = import('ol/Map').default;
 type OlView = import('ol/View').default;
@@ -27,6 +35,12 @@ type FeatureCtor = typeof import('ol/Feature').default;
 type PolygonCtor = typeof import('ol/geom/Polygon').default;
 type LineStringCtor = typeof import('ol/geom/LineString').default;
 
+const EMOJI_PATTERN = /\p{Extended_Pictographic}/u;
+
+function isEmoji(value: string): boolean {
+  return EMOJI_PATTERN.test(value);
+}
+
 @Injectable({ providedIn: 'root' })
 export class MapService {
   private map: OlMap | null = null;
@@ -43,15 +57,16 @@ export class MapService {
   private imageMode = false;
 
   // Vector layer references
-  private hexGridLayer: OlVectorLayer | null = null;
   private squareGridLayer: OlVectorLayer | null = null;
   private fogLayer: OlVectorLayer | null = null;
   private markersLayer: OlVectorLayer | null = null;
   private poisLayer: OlVectorLayer | null = null;
   private submapPinsLayer: OlVectorLayer | null = null;
 
+  // Grid configuration (aligned to the image extent)
+  private gridConfig: MapGrid | null = null;
+
   // Visibility state
-  private hexGridVisible = false;
   private squareGridVisible = false;
   private fogVisible = false;
   private markersVisible = false;
@@ -206,6 +221,14 @@ export class MapService {
       this.map?.removeLayer(this.imageLayer);
       this.imageLayer = null;
     }
+    if (this.squareGridLayer) {
+      this.map?.removeLayer(this.squareGridLayer);
+      this.squareGridLayer = null;
+    }
+    if (this.fogLayer) {
+      this.map?.removeLayer(this.fogLayer);
+      this.fogLayer = null;
+    }
     if (this.map) {
       this.map.setTarget(undefined);
       this.map = null;
@@ -214,6 +237,11 @@ export class MapService {
     this.osmLayer = null;
     this.imageExtent = null;
     this.imageMode = false;
+    this.gridConfig = null;
+    this.squareGridVisible = false;
+    this.fogVisible = false;
+    this.poisVisible = false;
+    this.submapPinsVisible = false;
   }
 
   // ──────────────────────────────────────────
@@ -279,16 +307,18 @@ export class MapService {
         center: [width / 2, height / 2],
         zoom: 0,
         minZoom: -3,
-        maxZoom: 8,
+        maxZoom: 12,
       });
-      // Fit the whole map image into the viewport so it fills the screen on open.
-      view.fit(extent, { padding: [0, 0, 0, 0] });
-      // Zooming out decreases the zoom value, so clamping minZoom to the fitted
-      // level makes the whole-map view the farthest-out limit: the user can zoom
-      // in for detail, but cannot zoom out past the full map.
+      // Attach the view first so the map reports a size; otherwise fit() runs
+      // with no size and the image opens at 1px/unit (small) instead of filling
+      // the viewport.
+      this.map?.setView(view);
+      const size = this.map?.getSize();
+      view.fit(extent, { size: size ?? undefined, padding: [0, 0, 0, 0] });
+      // Clamping minZoom to the fitted level makes the whole-map view the
+      // farthest-out limit: zoom in for detail, but never out past the full map.
       const fitZoom = view.getZoom() ?? view.getMinZoom();
       view.setMinZoom(fitZoom);
-      this.map?.setView(view);
     });
   }
 
@@ -342,25 +372,47 @@ export class MapService {
   //  Layer toggles
   // ──────────────────────────────────────────
 
-  /** Toggle hex or square grid visibility. */
-  async toggleGrid(type: 'hex' | 'square'): Promise<void> {
+  /** Toggle the square grid overlay aligned to the map image. */
+  async toggleGrid(): Promise<void> {
     if (!this.map) return;
 
-    if (type === 'hex') {
-      this.hexGridVisible = !this.hexGridVisible;
-      if (this.hexGridVisible) {
-        this.map.addLayer(await this.getOrCreateHexGridLayer());
-      } else if (this.hexGridLayer) {
-        this.map.removeLayer(this.hexGridLayer);
+    this.squareGridVisible = !this.squareGridVisible;
+    if (this.squareGridVisible) {
+      const layer = await this.getOrCreateSquareGridLayer();
+      if (this.map.getLayers().getArray().indexOf(layer) === -1) {
+        this.map.addLayer(layer);
       }
-    } else {
-      this.squareGridVisible = !this.squareGridVisible;
-      if (this.squareGridVisible) {
-        this.map.addLayer(await this.getOrCreateSquareGridLayer());
-      } else if (this.squareGridLayer) {
-        this.map.removeLayer(this.squareGridLayer);
+    } else if (this.squareGridLayer) {
+      this.map.removeLayer(this.squareGridLayer);
+    }
+  }
+
+  /** Update the grid configuration and rebuild the grid layer. */
+  async setGridConfig(grid: MapGrid): Promise<void> {
+    this.gridConfig = grid;
+
+    const wasVisible = this.squareGridVisible;
+    if (this.squareGridLayer && this.map) {
+      this.map.removeLayer(this.squareGridLayer);
+      this.squareGridLayer = null;
+    }
+    if (wasVisible) {
+      const layer = await this.getOrCreateSquareGridLayer();
+      if (this.map && this.map.getLayers().getArray().indexOf(layer) === -1) {
+        this.map.addLayer(layer);
       }
     }
+  }
+
+  /** Whether the grid overlay is currently shown. */
+  isGridVisible(): boolean {
+    return this.squareGridVisible;
+  }
+
+  /** Force the grid overlay to the given visibility. */
+  async setGridVisible(visible: boolean): Promise<void> {
+    if (visible === this.squareGridVisible) return;
+    await this.toggleGrid();
   }
 
   /** Toggle fog-of-war overlay. */
@@ -431,6 +483,13 @@ export class MapService {
   /** Get all maps from the store. */
   getAllMaps(): MapData[] {
     return this.store.snapshot('maps');
+  }
+
+  /** Create and persist a new submap, returning it. */
+  createSubmap(name: string, kind: MapKind, image?: MapImageInput): MapData {
+    const map = createMapData(name, kind, image);
+    this.store.set('maps', map);
+    return map;
   }
 
   /** Find which map has a submap pin or POI pointing to the given map id. */
@@ -666,41 +725,6 @@ export class MapService {
   //  Private – lazy layer creation
   // ──────────────────────────────────────────
 
-  private async getOrCreateHexGridLayer(): Promise<OlVectorLayer> {
-    if (this.hexGridLayer) return this.hexGridLayer;
-
-    const [
-      OLVectorLayer,
-      OLVectorSource,
-      OLStyle,
-      OLStroke,
-      OLFill,
-      OLFeature,
-      OLPolygon,
-    ] = await Promise.all([
-      import('ol/layer/Vector').then((m) => m.default),
-      import('ol/source/Vector').then((m) => m.default),
-      import('ol/style/Style').then((m) => m.default),
-      import('ol/style/Stroke').then((m) => m.default),
-      import('ol/style/Fill').then((m) => m.default),
-      import('ol/Feature').then((m) => m.default),
-      import('ol/geom/Polygon').then((m) => m.default),
-    ]);
-
-    const source = new OLVectorSource();
-    const layer = new OLVectorLayer({
-      source,
-      style: new OLStyle({
-        stroke: new OLStroke({ color: 'rgba(255,255,255,0.3)', width: 1 }),
-        fill: new OLFill({ color: 'rgba(255,255,255,0.05)' }),
-      }),
-    });
-
-    source.addFeatures(this.createHexGrid(OLFeature, OLPolygon));
-    this.hexGridLayer = layer;
-    return layer;
-  }
-
   private async getOrCreateSquareGridLayer(): Promise<OlVectorLayer> {
     if (this.squareGridLayer) return this.squareGridLayer;
 
@@ -724,8 +748,12 @@ export class MapService {
     const layer = new OLVectorLayer({
       source,
       style: new OLStyle({
-        stroke: new OLStroke({ color: 'rgba(255,255,255,0.3)', width: 1 }),
+        stroke: new OLStroke({
+          color: this.gridConfig?.color ?? 'rgba(255,255,255,0.3)',
+          width: 1,
+        }),
       }),
+      zIndex: 20,
     });
 
     source.addFeatures(this.createSquareGrid(OLFeature, OLLineString));
@@ -790,21 +818,48 @@ export class MapService {
     const source = new OLVectorSource();
     const layer = new OLVectorLayer({
       source,
-      style: (feature) =>
-        new OLStyle({
-          image: new OLCircle({
-            radius: 9,
-            fill: new OLFill({ color: feature.get('color') ?? '#7c4dff' }),
-            stroke: new OLStroke({ color: '#ffffff', width: 2.5 }),
+      style: (feature) => {
+        const label = (feature.get('label') as string) ?? '';
+        const icon = (feature.get('icon') as string) ?? '';
+        const color = (feature.get('color') as string) ?? '#7c4dff';
+
+        const styles = [
+          new OLStyle({
+            image: new OLCircle({
+              radius: 10,
+              fill: new OLFill({ color }),
+              stroke: new OLStroke({ color: '#ffffff', width: 2.5 }),
+            }),
           }),
-          text: new OLText({
-            text: feature.get('label') ?? '',
-            font: 'bold 13px Roboto, sans-serif',
-            fill: new OLFill({ color: '#ffffff' }),
-            stroke: new OLStroke({ color: '#000000', width: 3 }),
-            offsetY: -20,
+        ];
+
+        if (isEmoji(icon)) {
+          styles.push(
+            new OLStyle({
+              text: new OLText({
+                text: icon,
+                font: '13px sans-serif',
+                textAlign: 'center',
+                offsetY: 0,
+              }),
+            }),
+          );
+        }
+
+        styles.push(
+          new OLStyle({
+            text: new OLText({
+              text: label,
+              font: 'bold 13px Roboto, sans-serif',
+              fill: new OLFill({ color: '#ffffff' }),
+              stroke: new OLStroke({ color: '#000000', width: 3 }),
+              offsetY: -22,
+            }),
           }),
-        }),
+        );
+
+        return styles;
+      },
       zIndex: 90,
     });
 
@@ -816,74 +871,36 @@ export class MapService {
   //  Private – geometry / feature generation
   // ──────────────────────────────────────────
 
-  /** Generate pointy-top hex grid features centered on the current view. */
-  private createHexGrid(
+  /** Generate square grid line features aligned to the map image extent. */
+  private createSquareGrid(
     Feature: FeatureCtor,
-    Polygon: PolygonCtor,
+    LineString: LineStringCtor,
   ): OlFeature[] {
-    const center = this.map?.getView().getCenter() ?? [0, 0];
-    const hexRadius = 5000;
-    const cols = 15;
-    const rows = 15;
-    const dx = hexRadius * Math.sqrt(3);
-    const dy = hexRadius * 1.5;
+    const [minX, minY, maxX, maxY] = this.gridExtent();
+    const cellSize = this.gridConfig?.cellSize ?? 5000;
 
     const features: OlFeature[] = [];
-    const startX = center[0] - (cols / 2) * dx;
-    const startY = center[1] - (rows / 2) * dy;
-
-    for (let row = 0; row < rows; row++) {
-      for (let col = 0; col < cols; col++) {
-        const cx = startX + col * dx + (row % 2) * (dx / 2);
-        const cy = startY + row * dy;
-
-        const vertices: Array<[number, number]> = [];
-        for (let i = 0; i < 6; i++) {
-          const angle = ((60 * i - 30) * Math.PI) / 180; // pointy-top
-          vertices.push([
-            cx + hexRadius * Math.cos(angle),
-            cy + hexRadius * Math.sin(angle),
-          ]);
-        }
-        vertices.push(vertices[0]); // close ring
-
-        features.push(new Feature({ geometry: new Polygon([vertices]) }));
-      }
+    for (let x = minX; x <= maxX + 0.01; x += cellSize) {
+      features.push(
+        new Feature({ geometry: new LineString([[x, minY], [x, maxY]]) }),
+      );
+    }
+    for (let y = minY; y <= maxY + 0.01; y += cellSize) {
+      features.push(
+        new Feature({ geometry: new LineString([[minX, y], [maxX, y]]) }),
+      );
     }
 
     return features;
   }
 
-  /** Generate square grid line features centered on the current view. */
-  private createSquareGrid(
-    Feature: FeatureCtor,
-    LineString: LineStringCtor,
-  ): OlFeature[] {
+  /** Grid area: the image extent when available, else the current view. */
+  private gridExtent(): [number, number, number, number] {
+    if (this.imageExtent) return this.imageExtent;
+
     const center = this.map?.getView().getCenter() ?? [0, 0];
-    const gridSize = 5000;
-    const halfExtent = 50000;
-
-    const features: OlFeature[] = [];
-    const startX = center[0] - halfExtent;
-    const endX = center[0] + halfExtent;
-    const startY = center[1] - halfExtent;
-    const endY = center[1] + halfExtent;
-
-    // Vertical lines
-    for (let x = startX; x <= endX; x += gridSize) {
-      features.push(
-        new Feature({ geometry: new LineString([[x, startY], [x, endY]]) }),
-      );
-    }
-
-    // Horizontal lines
-    for (let y = startY; y <= endY; y += gridSize) {
-      features.push(
-        new Feature({ geometry: new LineString([[startX, y], [endX, y]]) }),
-      );
-    }
-
-    return features;
+    const half = 50000;
+    return [center[0] - half, center[1] - half, center[0] + half, center[1] + half];
   }
 
   /** Create a large dark polygon to serve as the fog-of-war overlay. */

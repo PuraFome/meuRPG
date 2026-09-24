@@ -9,21 +9,34 @@ import {
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { StoreService } from '../../core/store/store.service';
-import type { MapData } from '../../core/models/map';
+import type { MapData, MapKind } from '../../core/models/map';
 import { FileUploadComponent } from '../../shared/components/file-upload.component';
+import {
+  DEFAULT_COLUMNS,
+  DEFAULT_ROWS,
+  createBlankBackground,
+  createDefaultGrid,
+} from './map-defaults';
 
 export interface MapFormDialogData {
   map?: MapData;
 }
 
-function defaultGrid() {
-  return { cellSize: 50, columns: 20, rows: 20, visible: false };
+interface MapKindOption {
+  value: MapKind;
+  label: string;
+  icon: string;
+  hint: string;
 }
 
-function defaultFog() {
-  return { explored: [], visible: false };
-}
+const MAP_KINDS: MapKindOption[] = [
+  { value: 'world', label: 'Mundo', icon: 'public', hint: 'Mapa regional sobre o mundo real' },
+  { value: 'city', label: 'Cidade', icon: 'location_city', hint: 'Planta de uma cidade ou vila' },
+  { value: 'dungeon', label: 'Masmorra', icon: 'castle', hint: 'Grade para desenhar salas e corredores' },
+  { value: 'local', label: 'Local', icon: 'storefront', hint: 'Interior de loja, taverna ou cômodo' },
+];
 
 function createDefaultMap(): MapData {
   const now = new Date();
@@ -31,13 +44,15 @@ function createDefaultMap(): MapData {
     id: crypto.randomUUID(),
     name: '',
     description: '',
+    kind: 'world',
     width: 1024,
     height: 768,
     layers: [],
-    grid: defaultGrid(),
-    fogOfWar: defaultFog(),
+    grid: createDefaultGrid({ visible: false }),
+    fogOfWar: { explored: [], visible: false },
     markers: [],
     submaps: [],
+    dungeon: {},
     createdAt: now,
     updatedAt: now,
   };
@@ -53,6 +68,7 @@ function createDefaultMap(): MapData {
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
+    MatSelectModule,
     FileUploadComponent,
   ],
   template: `
@@ -63,7 +79,20 @@ function createDefaultMap(): MapData {
       <div class="map-form">
         <mat-form-field appearance="fill" class="full-width">
           <mat-label>Nome do mapa</mat-label>
-          <input matInput [(ngModel)]="name" placeholder="Ex: Mundo de D&D" />
+          <input matInput [(ngModel)]="name" placeholder="Ex: Masmorra de Ravenloft" />
+        </mat-form-field>
+
+        <mat-form-field appearance="fill" class="full-width">
+          <mat-label>Tipo de mapa</mat-label>
+          <mat-select [(ngModel)]="kind">
+            @for (option of kinds; track option.value) {
+              <mat-option [value]="option.value">
+                <mat-icon class="kind-icon">{{ option.icon }}</mat-icon>
+                {{ option.label }}
+              </mat-option>
+            }
+          </mat-select>
+          <mat-hint>{{ kindHint() }}</mat-hint>
         </mat-form-field>
 
         <mat-form-field appearance="fill" class="full-width">
@@ -72,7 +101,7 @@ function createDefaultMap(): MapData {
             matInput
             [(ngModel)]="description"
             rows="3"
-            placeholder="Ex: Continente de Faerûn — o mundo onde os heróis vivem."
+            placeholder="Ex: Salões abandonados sob a montanha."
           ></textarea>
         </mat-form-field>
 
@@ -98,6 +127,19 @@ function createDefaultMap(): MapData {
             <span class="preview-dims">{{ imageWidth() }} × {{ imageHeight() }} px</span>
           </div>
         }
+
+        <mat-form-field appearance="fill" class="full-width">
+          <mat-label>Tamanho da célula (px)</mat-label>
+          <input
+            matInput
+            type="number"
+            min="10"
+            max="400"
+            step="10"
+            [(ngModel)]="cellSize"
+          />
+          <mat-hint>Grade para desenhar a masmorra: {{ gridLabel() }}</mat-hint>
+        </mat-form-field>
       </div>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
@@ -124,6 +166,13 @@ function createDefaultMap(): MapData {
       }
       .full-width {
         width: 100%;
+      }
+      .kind-icon {
+        font-size: 1.1rem;
+        width: 1.1rem;
+        height: 1.1rem;
+        margin-right: 8px;
+        vertical-align: middle;
       }
       .section-label {
         font-size: 0.8125rem;
@@ -169,13 +218,30 @@ export class MapFormDialogComponent {
   readonly data = inject<MapFormDialogData>(MAT_DIALOG_DATA);
   private readonly store = inject(StoreService<MapData>);
 
+  protected readonly kinds = MAP_KINDS;
   protected name = this.data.map?.name ?? '';
   protected description = this.data.map?.description ?? '';
+  protected kind: MapKind = this.data.map?.kind ?? 'world';
+  protected cellSize = this.data.map?.grid?.cellSize ?? 50;
   protected imagePreview = signal<string | null>(
     this.data.map?.backgroundImage ?? null,
   );
   protected imageWidth = signal(this.data.map?.width ?? 1024);
   protected imageHeight = signal(this.data.map?.height ?? 768);
+
+  protected kindHint(): string {
+    return MAP_KINDS.find((k) => k.value === this.kind)?.hint ?? '';
+  }
+
+  protected gridLabel(): string {
+    const size = Math.max(10, Math.round(this.cellSize || 50));
+    if (this.imagePreview()) {
+      const cols = Math.max(1, Math.round(this.imageWidth() / size));
+      const rows = Math.max(1, Math.round(this.imageHeight() / size));
+      return `${cols} × ${rows} células`;
+    }
+    return `${DEFAULT_COLUMNS} × ${DEFAULT_ROWS} células`;
+  }
 
   onCancel(): void {
     this.dialogRef.close(null);
@@ -206,15 +272,51 @@ export class MapFormDialogComponent {
     if (!this.name.trim()) return;
 
     const existing = this.data.map;
-    const base: MapData = existing ?? createDefaultMap();
+    const latest = existing
+      ? this.store.snapshot('maps').find((m) => m.id === existing.id)
+      : undefined;
+    const base = latest ?? existing ?? createDefaultMap();
+
+    const cellSize = Math.max(10, Math.round(this.cellSize || 50));
     const hasImage = !!this.imagePreview();
+    const isWorld = this.kind === 'world';
+
+    let width: number;
+    let height: number;
+    let backgroundImage: string | undefined;
+
+    if (hasImage) {
+      width = this.imageWidth();
+      height = this.imageHeight();
+      backgroundImage = this.imagePreview() ?? undefined;
+    } else if (isWorld) {
+      width = base.width || 1024;
+      height = base.height || 768;
+      backgroundImage = undefined;
+    } else {
+      width = DEFAULT_COLUMNS * cellSize;
+      height = DEFAULT_ROWS * cellSize;
+      backgroundImage = createBlankBackground(width, height);
+    }
+
+    const columns = Math.max(1, Math.round(width / cellSize));
+    const rows = Math.max(1, Math.round(height / cellSize));
+
     const saved: MapData = {
       ...base,
       name: this.name.trim(),
       description: this.description.trim() || undefined,
-      backgroundImage: this.imagePreview() ?? undefined,
-      width: hasImage ? this.imageWidth() : 1024,
-      height: hasImage ? this.imageHeight() : 768,
+      kind: this.kind,
+      backgroundImage,
+      width,
+      height,
+      grid: {
+        cellSize,
+        columns,
+        rows,
+        color: base.grid?.color,
+        visible: existing ? (base.grid?.visible ?? false) : false,
+      },
       updatedAt: new Date(),
     };
 

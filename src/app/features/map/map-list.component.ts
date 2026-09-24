@@ -60,6 +60,10 @@ import { MapFormDialogComponent, MapFormDialogData } from './map-form-dialog.com
                   <mat-icon>place</mat-icon>
                   {{ map.markers.length }}
                 </div>
+                <div class="kind-badge">
+                  <mat-icon>{{ kindIcon(map) }}</mat-icon>
+                  {{ kindLabel(map) }}
+                </div>
               </div>
               <mat-card-content>
                 <h3 class="map-name">{{ map.name }}</h3>
@@ -185,6 +189,26 @@ import { MapFormDialogComponent, MapFormDialogData } from './map-form-dialog.com
         height: 15px;
       }
 
+      .kind-badge {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        background: rgba(124, 77, 255, 0.8);
+        color: #fff;
+        padding: 4px 10px;
+        border-radius: 14px;
+        font-size: 0.75rem;
+        text-transform: capitalize;
+      }
+      .kind-badge mat-icon {
+        font-size: 15px;
+        width: 15px;
+        height: 15px;
+      }
+
       .map-name {
         margin: 0 0 4px;
         font-size: 1.05rem;
@@ -226,6 +250,32 @@ export class MapListComponent implements OnInit, OnDestroy {
 
   openMap(map: MapData): void {
     this.router.navigate(['/mapa', map.id]);
+  }
+
+  kindLabel(map: MapData): string {
+    switch (map.kind) {
+      case 'city':
+        return 'Cidade';
+      case 'dungeon':
+        return 'Masmorra';
+      case 'local':
+        return 'Local';
+      default:
+        return 'Mundo';
+    }
+  }
+
+  kindIcon(map: MapData): string {
+    switch (map.kind) {
+      case 'city':
+        return 'location_city';
+      case 'dungeon':
+        return 'castle';
+      case 'local':
+        return 'storefront';
+      default:
+        return 'public';
+    }
   }
 
   openCreateDialog(): void {

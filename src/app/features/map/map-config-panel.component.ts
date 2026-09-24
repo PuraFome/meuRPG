@@ -4,6 +4,7 @@ import { MatSliderModule } from '@angular/material/slider';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MapService } from './map.service';
+import { DungeonService } from './dungeon.service';
 
 @Component({
   selector: 'app-map-config-panel',
@@ -14,21 +15,11 @@ import { MapService } from './map.service';
       <h3 class="panel-title">Camadas</h3>
 
       <div class="checkbox-group">
-        <mat-checkbox (change)="toggleGrid('hex')">
-          Grade Hexagonal
-        </mat-checkbox>
-        <mat-checkbox (change)="toggleGrid('square')">
-          Grade Quadrada
-        </mat-checkbox>
-        <mat-checkbox (change)="toggleFogOfWar()">
-          Névoa da Guerra
-        </mat-checkbox>
-        <mat-checkbox (change)="toggleMarkers()">
-          Marcadores do Mestre
-        </mat-checkbox>
-        <mat-checkbox (change)="toggleSubmapPins()">
-          Pins de Submapa
-        </mat-checkbox>
+        <mat-checkbox (change)="toggleGrid()"> Grade </mat-checkbox>
+        <mat-checkbox (change)="toggleFogOfWar()"> Névoa da Guerra </mat-checkbox>
+        <mat-checkbox (change)="toggleMarkers()"> Pontos de Interesse </mat-checkbox>
+        <mat-checkbox (change)="toggleSubmapPins()"> Pins de Submapa </mat-checkbox>
+        <mat-checkbox (change)="toggleDungeon()"> Desenho da Masmorra </mat-checkbox>
       </div>
 
       <div class="slider-section">
@@ -38,13 +29,13 @@ import { MapService } from './map.service';
         </mat-slider>
       </div>
 
-      <button
-        mat-stroked-button
-        class="reset-btn"
-        (click)="resetFog()"
-      >
+      <button mat-stroked-button class="reset-btn" (click)="resetFog()">
         <mat-icon>refresh</mat-icon>
         Reset Fog of War
+      </button>
+      <button mat-stroked-button class="reset-btn danger" (click)="clearDungeon()">
+        <mat-icon>delete_sweep</mat-icon>
+        Limpar desenho da masmorra
       </button>
     </div>
   `,
@@ -101,25 +92,39 @@ import { MapService } from './map.service';
     .reset-btn {
       width: 100%;
     }
+
+    .reset-btn.danger {
+      color: #ff8a80;
+      border-color: rgba(255, 138, 128, 0.4);
+    }
   `,
 })
 export class MapConfigPanelComponent {
   private readonly mapService = inject(MapService);
+  private readonly dungeonService = inject(DungeonService);
 
-  toggleGrid(type: 'hex' | 'square'): void {
-    this.mapService.toggleGrid(type);
+  toggleGrid(): void {
+    void this.mapService.toggleGrid();
   }
 
   toggleFogOfWar(): void {
-    this.mapService.toggleFogOfWar();
+    void this.mapService.toggleFogOfWar();
   }
 
   toggleMarkers(): void {
-    this.mapService.toggleMarkers();
+    void this.mapService.toggleMarkers();
   }
 
   toggleSubmapPins(): void {
-    this.mapService.toggleSubmapPins();
+    void this.mapService.toggleSubmapPins();
+  }
+
+  toggleDungeon(): void {
+    void this.dungeonService.toggle();
+  }
+
+  clearDungeon(): void {
+    this.dungeonService.clear();
   }
 
   setFogOpacity(value: number | null): void {
@@ -129,6 +134,6 @@ export class MapConfigPanelComponent {
   }
 
   resetFog(): void {
-    this.mapService.resetFogOfWar();
+    void this.mapService.resetFogOfWar();
   }
 }
