@@ -11,12 +11,9 @@
 FROM node:22-alpine AS builder
 WORKDIR /app
 
-# Install all deps (incl. dev) so `tsc` and types are available.
-# `npm ci` requires a committed package-lock.json. Some deploy branches
-# (e.g. `main`) may not ship one yet, so fall back to `npm install` when
-# the lockfile is absent instead of failing the whole build.
+# Install all deps (incl. dev) so `tsc` and types are available
 COPY package*.json ./
-RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+RUN npm ci
 
 COPY . .
 
@@ -31,10 +28,9 @@ FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
-# Production-only dependencies (same lockfile fallback as the builder stage)
+# Production-only dependencies
 COPY package*.json ./
-RUN if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit=dev; fi \
-  && npm cache clean --force
+RUN npm ci --omit=dev && npm cache clean --force
 
 # Compiled app + schema.sql (migrate runs against DB on first boot)
 COPY --from=builder /app/dist ./dist
