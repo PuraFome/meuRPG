@@ -1,4 +1,4 @@
-import { Component, inject, type OnDestroy } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, type OnDestroy } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -363,6 +363,8 @@ const COPY_FEEDBACK_MS = 2000;
 })
 export class CharacterInvitesComponent implements OnDestroy {
   private readonly characters = inject(CharactersService);
+  // App is zoneless: async subscribe callbacks must trigger CD explicitly.
+  private readonly cdr = inject(ChangeDetectorRef);
 
   readonly breadcrumbs: BreadcrumbItem[] = [
     { label: 'Personagens', route: '/personagens' },
@@ -400,10 +402,12 @@ export class CharacterInvitesComponent implements OnDestroy {
           expiresAt: info.expiresAt,
         });
         this.generating = false;
+        this.cdr.detectChanges();
       },
       error: () => {
         this.error = GENERATE_ERROR;
         this.generating = false;
+        this.cdr.detectChanges();
       },
     });
   }
@@ -421,6 +425,7 @@ export class CharacterInvitesComponent implements OnDestroy {
       () => this.markCopied(invite.token),
       () => {
         this.error = COPY_ERROR;
+        this.cdr.detectChanges();
       },
     );
   }
@@ -434,10 +439,12 @@ export class CharacterInvitesComponent implements OnDestroy {
     this.copied = true;
     this.copiedToken = token;
     this.clearCopyTimer();
+    this.cdr.detectChanges();
     this.copyTimer = setTimeout(() => {
       this.copied = false;
       this.copiedToken = null;
       this.copyTimer = null;
+      this.cdr.detectChanges();
     }, COPY_FEEDBACK_MS);
   }
 

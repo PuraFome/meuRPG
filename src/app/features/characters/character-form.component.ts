@@ -1,4 +1,5 @@
 import {
+  ChangeDetectorRef,
   Component,
   EventEmitter,
   Input,
@@ -853,6 +854,7 @@ export class CharacterFormComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly store = inject(StoreService<Character>);
   private readonly characters = inject(CharactersService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   /**
    * `'default'` — standalone creation page (write-through store + navigation).
@@ -1006,10 +1008,12 @@ export class CharacterFormComponent implements OnInit {
         next: (created) => {
           this.saving = false;
           this.saved.emit(created);
+          this.cdr.detectChanges();
         },
         error: (err: unknown) => {
           this.saving = false;
           this.saveError = this.describeSaveError(err);
+          this.cdr.detectChanges();
         },
       });
       return;

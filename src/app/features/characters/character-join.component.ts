@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, Input, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { CharactersService } from '../../core/services/characters.service';
@@ -50,21 +50,25 @@ export class CharacterJoinComponent implements OnInit {
   joined: Character | null = null;
 
   private readonly characters = inject(CharactersService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   ngOnInit(): void {
     this.characters.validateJoinToken(this.token).subscribe({
       next: () => {
         this.valid = true;
         this.loading = false;
+        this.cdr.detectChanges();
       },
       error: () => {
         this.expired = true;
         this.loading = false;
+        this.cdr.detectChanges();
       },
     });
   }
 
   onJoined(c: Character): void {
     this.joined = c;
+    this.cdr.detectChanges();
   }
 }
