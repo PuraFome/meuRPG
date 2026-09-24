@@ -200,15 +200,25 @@ liveDescribe('CharactersRepository (live DB)', () => {
     expect(found!.expiresAt).toBeInstanceOf(Date);
   });
 
-  it('a character created from a join token belongs to the token creator', async () => {
-    const { token, createdBy } = await repo.createJoinToken(ownerId);
+  it('a character redeemed from a join token is owned by the redeemer and visible to the inviter', async () => {
+    const { token } = await repo.createJoinToken(ownerId);
+    const found = await repo.findJoinToken(token);
+    expect(found).not.toBeNull();
+
     const redeemed = await repo.create(
       { type: 'npc', name: 'Redeemed' },
-      createdBy,
+      otherOwnerId,
       'player',
+      found!.createdBy,
     );
-    expect(redeemed.userId).toBe(ownerId);
+    expect(redeemed.userId).toBe(otherOwnerId);
+    expect(redeemed.masterUserId).toBe(ownerId);
     expect(redeemed.type).toBe('player');
+
+    const guestList = await repo.findAllForUser(otherOwnerId);
+    const masterList = await repo.findAllForUser(ownerId);
+    expect(guestList.map((c) => c.id)).toContain(redeemed.id);
+    expect(masterList.map((c) => c.id)).toContain(redeemed.id);
   });
 
   it('expired join token (ttlMs: -60000) returns null, no throw', async () => {

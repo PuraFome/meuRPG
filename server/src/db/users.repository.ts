@@ -3,6 +3,8 @@ import type { Pool } from 'pg';
 import type { QueryResult } from 'pg';
 import { PgService } from './pg.service';
 
+export type UserRole = 'master' | 'visitor';
+
 @Injectable()
 export class UsersRepository {
   constructor(private readonly pg: PgService) {}
@@ -51,6 +53,17 @@ export class UsersRepository {
       `UPDATE users SET consent_at = $2 WHERE google_sub = $1`,
       [sub, consentAt],
     );
+  }
+
+  /**
+   * Set the access role of the user `id`. Used to downgrade an invited player
+   * to `visitor` once they redeem a join link.
+   */
+  async setRole(userId: string, role: UserRole): Promise<void> {
+    await this.pool.query(`UPDATE users SET role = $2 WHERE id = $1`, [
+      userId,
+      role,
+    ]);
   }
 
   /**

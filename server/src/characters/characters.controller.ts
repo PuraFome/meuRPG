@@ -16,6 +16,7 @@ import {
   CharactersRepository,
   CharacterType,
 } from '../db/characters.repository';
+import { UsersRepository } from '../db/users.repository';
 import { CreateCharacterDto, UpdateCharacterDto } from './characters.dto';
 import { SessionGuard } from '../auth/session.guard';
 import type { AuthUser } from '../auth/session.guard';
@@ -26,13 +27,16 @@ import { CurrentUser } from '../auth/current-user.decorator';
  * are declared BEFORE `:id` so Express never matches "join" as an id.
  *
  * Every handler below is owner-scoped and guarded. The join handler is guarded
- * too: redeeming an invite creates a `player` character OWNED BY THE AUTHENTICATED
- * CALLER, so each invited player can only ever manage their own character. The
- * token merely authorizes the creation of a player (and pins its type).
+ * too: redeeming an invite creates a `player` character owned by the
+ * authenticated caller, co-visible to the inviter (`masterUserId`), and pins
+ * its type. The token merely authorizes that creation.
  */
 @Controller('characters')
 export class CharactersController {
-  constructor(private readonly characters: CharactersRepository) {}
+  constructor(
+    private readonly characters: CharactersRepository,
+    private readonly users: UsersRepository,
+  ) {}
 
   @Post()
   @UseGuards(SessionGuard)
@@ -75,9 +79,19 @@ export class CharactersController {
     if (!joinToken) {
       throw new GoneException('Join token is invalid or expired');
     }
-    // The redeemed character belongs to the authenticated caller; forcedType
-    // pins it to 'player' — any client-sent type in the body is ignored.
-    return this.characters.create(dto, user.id, 'player');
+    // The redeemed character belongs to the authenticated caller, is pinned to
+    // 'player', and is co-visible to the inviter via `masterUserId`. The caller
+    // becomes a visitor (unless they are the inviter themselves).
+    const character = await this.characters.create(
+      dto,
+      user.id,
+      'player',
+      joinToken.createdBy,
+    );
+    if (user.role !== 'visitor' && user.id !== joinToken.createdBy) {
+      await this.users.setRole(user.id, 'visitor');
+    }
+    return character;
   }
 
   @Get(':id')

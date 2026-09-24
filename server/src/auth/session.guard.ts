@@ -13,6 +13,7 @@ export interface AuthUser {
   sub: string;
   email: string;
   name: string;
+  role: 'master' | 'visitor';
 }
 
 @Injectable()

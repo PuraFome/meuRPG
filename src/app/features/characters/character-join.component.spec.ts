@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { of, throwError } from 'rxjs';
 import { CharacterJoinComponent } from './character-join.component';
 import { CharactersService } from '../../core/services/characters.service';
+import { AuthService } from '../../core/auth/auth.service';
 import { Character } from '../../core/models/character';
 
 const TOKEN = 'valid-token-123';
@@ -41,6 +42,7 @@ describe('CharacterJoinComponent', () => {
           provide: CharactersService,
           useValue: { validateJoinToken, join: joinFn },
         },
+        { provide: AuthService, useValue: { load: vi.fn() } },
       ],
     });
 
@@ -63,6 +65,7 @@ describe('CharacterJoinComponent', () => {
           provide: CharactersService,
           useValue: { validateJoinToken, join: vi.fn() },
         },
+        { provide: AuthService, useValue: { load: vi.fn() } },
       ],
     });
 
@@ -88,6 +91,7 @@ describe('CharacterJoinComponent', () => {
           provide: CharactersService,
           useValue: { validateJoinToken, join: joinFn },
         },
+        { provide: AuthService, useValue: { load: vi.fn() } },
       ],
     });
 

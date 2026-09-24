@@ -18,6 +18,7 @@ import type {
 } from '../db/characters.repository';
 import { SessionGuard } from '../auth/session.guard';
 import { AuthTokensRepository } from '../db/auth-tokens.repository';
+import { UsersRepository } from '../db/users.repository';
 
 const OWNER_ID = '11111111-1111-4111-8111-111111111111';
 const OTHER_OWNER_ID = '22222222-2222-4222-8222-222222222222';
@@ -26,6 +27,7 @@ function makeCharacter(overrides: Partial<CharacterRecord> = {}): CharacterRecor
   return {
     id: '11111111-2222-4333-8444-555555555555',
     userId: OWNER_ID,
+    masterUserId: null,
     type: 'npc',
     name: 'Goblin',
     description: '',
@@ -63,6 +65,10 @@ const repoMock = {
   findJoinToken: vi.fn(),
 };
 
+const usersMock = {
+  setRole: vi.fn(),
+};
+
 describe('CharactersController', () => {
   let app: INestApplication;
 
@@ -71,6 +77,7 @@ describe('CharactersController', () => {
       controllers: [CharactersController],
       providers: [
         { provide: CharactersRepository, useValue: repoMock },
+        { provide: UsersRepository, useValue: usersMock },
         SessionGuard,
         {
           provide: AuthTokensRepository,
@@ -96,6 +103,7 @@ describe('CharactersController', () => {
             sub: 'google-sub-1',
             email: 'owner@example.com',
             name: 'Owner',
+            role: 'master',
           };
           return true;
         },
@@ -203,7 +211,7 @@ describe('CharactersController', () => {
     expect(res.status).toBe(410);
   });
 
-  it("POST /characters/join/:token forces type='player' and owner=session user", async () => {
+  it("POST /characters/join/:token forces type='player', owner=session user and master=inviter", async () => {
     repoMock.findJoinToken.mockResolvedValue(makeJoinToken());
     repoMock.create.mockResolvedValue(
       makeCharacter({ type: 'player', name: 'Joiner', userId: OWNER_ID }),
@@ -219,12 +227,9 @@ describe('CharactersController', () => {
       expect.objectContaining({ name: 'Joiner', type: 'npc' }),
       OWNER_ID,
       'player',
-    );
-    expect(repoMock.create).not.toHaveBeenCalledWith(
-      expect.anything(),
       OTHER_OWNER_ID,
-      'player',
     );
+    expect(usersMock.setRole).toHaveBeenCalledWith(OWNER_ID, 'visitor');
   });
 
   it('POST /characters/join/:token unknown -> 410 and never creates', async () => {
@@ -312,6 +317,7 @@ describe('CharactersController', () => {
       controllers: [CharactersController],
       providers: [
         { provide: CharactersRepository, useValue: repoMock },
+        { provide: UsersRepository, useValue: usersMock },
         SessionGuard,
         {
           provide: AuthTokensRepository,
@@ -337,6 +343,7 @@ describe('CharactersController', () => {
             sub: 'google-sub-2',
             email: 'other@example.com',
             name: 'Other',
+            role: 'master',
           };
           return true;
         },
@@ -363,6 +370,7 @@ describe('CharactersController (unauthenticated)', () => {
       controllers: [CharactersController],
       providers: [
         { provide: CharactersRepository, useValue: repoMock },
+        { provide: UsersRepository, useValue: usersMock },
         SessionGuard,
         {
           provide: AuthTokensRepository,

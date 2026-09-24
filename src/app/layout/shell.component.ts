@@ -48,7 +48,7 @@ interface NavItem {
         </mat-toolbar>
 
         <mat-nav-list>
-          @for (item of navItems; track item.path) {
+          @for (item of navItems(); track item.path) {
             <a
               mat-list-item
               [routerLink]="item.path"
@@ -77,13 +77,15 @@ interface NavItem {
 
           <span class="spacer"></span>
 
-          <button
-            mat-icon-button
-            (click)="openSearch()"
-            aria-label="Pesquisar (Ctrl+K)"
-          >
-            <mat-icon>search</mat-icon>
-          </button>
+          @if (!auth.isVisitor()) {
+            <button
+              mat-icon-button
+              (click)="openSearch()"
+              aria-label="Pesquisar (Ctrl+K)"
+            >
+              <mat-icon>search</mat-icon>
+            </button>
+          }
 
           @if (auth.user(); as user) {
             <button
@@ -99,10 +101,12 @@ interface NavItem {
                 <span class="user-menu-name">{{ user.name || 'Jogador' }}</span>
                 <span class="user-menu-email">{{ user.email }}</span>
               </div>
-              <button mat-menu-item routerLink="/perfil">
-                <mat-icon>person</mat-icon>
-                <span>Perfil</span>
-              </button>
+              @if (!auth.isVisitor()) {
+                <button mat-menu-item routerLink="/perfil">
+                  <mat-icon>person</mat-icon>
+                  <span>Perfil</span>
+                </button>
+              }
               <button mat-menu-item (click)="logout()">
                 <mat-icon>logout</mat-icon>
                 <span>Sair</span>
@@ -237,7 +241,13 @@ export class ShellComponent implements OnInit, OnDestroy {
     .observe(Breakpoints.Handset)
     .pipe(map((result) => result.matches));
 
-  readonly navItems: NavItem[] = [
+  readonly navItems = computed<NavItem[]>(() =>
+    this.auth.isVisitor()
+      ? this.allNavItems.filter((item) => item.path === '/personagens')
+      : this.allNavItems,
+  );
+
+  private readonly allNavItems: NavItem[] = [
     { path: '/', label: 'Início', icon: 'home' },
     { path: '/personagens', label: 'Personagens', icon: 'people' },
     { path: '/mapa', label: 'Mapa', icon: 'map' },
@@ -261,6 +271,9 @@ export class ShellComponent implements OnInit, OnDestroy {
 
   @HostListener('window:keydown', ['$event'])
   onKeydown(event: KeyboardEvent): void {
+    if (this.auth.isVisitor()) {
+      return;
+    }
     if ((event.ctrlKey || event.metaKey) && event.key === 'k') {
       event.preventDefault();
       this.openSearch();

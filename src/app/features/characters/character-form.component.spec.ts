@@ -4,6 +4,7 @@ import { of } from 'rxjs';
 import { CharacterFormComponent } from './character-form.component';
 import { StoreService } from '../../core/store/store.service';
 import { CharactersService } from '../../core/services/characters.service';
+import { AuthService } from '../../core/auth/auth.service';
 import { Router } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
@@ -35,6 +36,7 @@ async function setup(inputs: { mode?: 'default' | 'join'; joinToken?: string | n
     providers: [
       { provide: StoreService, useValue: { set: storeSet } },
       { provide: CharactersService, useValue: { join: charactersJoin } },
+      { provide: AuthService, useValue: { load: vi.fn() } },
       provideNoopAnimations(),
     ],
   });

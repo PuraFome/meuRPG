@@ -24,6 +24,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { PageHeaderComponent } from '../../shared/components/page-header.component';
 import { StoreService } from '../../core/store/store.service';
 import { CharactersService } from '../../core/services/characters.service';
+import { AuthService } from '../../core/auth/auth.service';
 import { DndOptionSelectComponent } from './dnd-option-select.component';
 import { rollAttributeSet } from './dice-roll.util';
 import type { Character, DndSheet } from '../../core/models/character';
@@ -854,6 +855,7 @@ export class CharacterFormComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly store = inject(StoreService<Character>);
   private readonly characters = inject(CharactersService);
+  private readonly auth = inject(AuthService);
   private readonly cdr = inject(ChangeDetectorRef);
 
   /**
@@ -1006,6 +1008,9 @@ export class CharacterFormComponent implements OnInit {
     if (this.isJoinMode && this.joinToken) {
       this.characters.join(this.joinToken, character).subscribe({
         next: (created) => {
+          // Redeeming an invite downgrades the account to visitor server-side;
+          // refresh so the shell reflects the restricted role immediately.
+          void this.auth.load();
           this.saving = false;
           this.saved.emit(created);
           this.cdr.detectChanges();

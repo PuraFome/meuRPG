@@ -65,7 +65,8 @@ describe('PersistenceService', () => {
 
     const req = httpMock.expectOne(url);
     expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual(c2);
+    const { createdAt: _c, updatedAt: _u, ...payload } = c2;
+    expect(req.request.body).toEqual(payload);
     req.flush(c2);
   });
 
@@ -79,7 +80,8 @@ describe('PersistenceService', () => {
 
     const req = httpMock.expectOne(`${url}/c1`);
     expect(req.request.method).toBe('PATCH');
-    expect(req.request.body).toEqual(updated);
+    const { createdAt: _c, updatedAt: _u, ...payload } = updated;
+    expect(req.request.body).toEqual(payload);
     req.flush(updated);
   });
 

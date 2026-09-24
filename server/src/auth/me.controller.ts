@@ -11,7 +11,13 @@ export class MeController {
     sub: string;
     email: string;
     name: string;
+    role: 'master' | 'visitor';
   }> {
-    return { sub: user.sub, email: user.email, name: user.name };
+    return {
+      sub: user.sub,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    };
   }
 }

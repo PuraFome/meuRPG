@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
   google_sub text UNIQUE NOT NULL,
   email text,
   name text,
+  role text NOT NULL DEFAULT 'master',
   consent_at timestamptz,
   created_at timestamptz DEFAULT now()
 );
@@ -39,6 +40,7 @@ CREATE TABLE IF NOT EXISTS auth_sessions (
 CREATE TABLE IF NOT EXISTS characters (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  master_user_id uuid REFERENCES users(id) ON DELETE SET NULL,
   type text NOT NULL CHECK (type IN ('npc', 'player', 'boss', 'minion')),
   name text NOT NULL,
   email text,
@@ -61,8 +63,7 @@ CREATE TABLE IF NOT EXISTS characters (
 CREATE INDEX IF NOT EXISTS idx_characters_type ON characters (type);
 
 -- Reusable share-link tokens: a visitor redeems one to create a player
--- character owned by the token's creator, with character_id backfilled once
--- the character exists.
+-- character owned by themselves and co-visible to the token's creator.
 CREATE TABLE IF NOT EXISTS character_join_tokens (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   character_id uuid REFERENCES characters(id) ON DELETE SET NULL,
@@ -89,4 +90,11 @@ ALTER TABLE character_join_tokens ADD COLUMN IF NOT EXISTS created_by uuid REFER
 DELETE FROM character_join_tokens WHERE created_by IS NULL;
 ALTER TABLE character_join_tokens ALTER COLUMN created_by SET NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_characters_user_id ON characters (user_id);
+
+-- Visitor role + shared ownership: a character created through a join link is
+-- owned by the invited player (`user_id`) but co-visible to the inviter
+-- (`master_user_id`), so both lists show it.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS role text NOT NULL DEFAULT 'master';
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS master_user_id uuid REFERENCES users(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_characters_master_user_id ON characters (master_user_id);
 

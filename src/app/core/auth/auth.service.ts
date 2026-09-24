@@ -1,14 +1,17 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { firstValueFrom, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
 import { environment } from '../../../environments/environment';
 
+export type UserRole = 'master' | 'visitor';
+
 export interface AuthUser {
   sub: string;
   email: string;
   name: string;
+  role: UserRole;
 }
 
 /** Bearer token delivered by the OAuth callback via the URL fragment. */
@@ -31,6 +34,9 @@ export class AuthService {
   private readonly http = inject(HttpClient);
 
   readonly user = signal<AuthUser | null>(null);
+
+  /** True when the signed-in user is an invited player restricted to the characters page. */
+  readonly isVisitor = computed(() => this.user()?.role === 'visitor');
 
   private readyPromise: Promise<void> | null = null;
 

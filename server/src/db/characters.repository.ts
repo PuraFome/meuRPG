@@ -9,6 +9,7 @@ export type CharacterType = 'npc' | 'player' | 'boss' | 'minion';
 export interface CharacterRecord {
   id: string;
   userId: string;
+  masterUserId: string | null;
   type: CharacterType;
   name: string;
   description: string;
@@ -58,6 +59,7 @@ const JOIN_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 interface CharacterRow {
   id: string;
   user_id: string;
+  master_user_id: string | null;
   type: CharacterType;
   name: string;
   description: string;
@@ -78,6 +80,7 @@ function mapRow(row: CharacterRow): CharacterRecord {
   return {
     id: row.id,
     userId: row.user_id,
+    masterUserId: row.master_user_id,
     type: row.type,
     name: row.name,
     description: row.description,
@@ -117,21 +120,24 @@ export class CharactersRepository {
 
   /**
    * Insert a character owned by `ownerUserId`. When `input.id` is absent the
-   * DB generates a uuid; `forcedType` (when given) overrides `input.type` —
-   * used by the join-link flow to pin redeemed characters to `player`.
+   * DB generates a uuid; `forcedType` (when given) overrides `input.type`.
+   * `masterUserId` marks a character redeemed from a join link as co-visible
+   * to the inviter.
    */
   async create(
     input: CreateCharacterInput,
     ownerUserId: string,
     forcedType?: CharacterType,
+    masterUserId?: string,
   ): Promise<CharacterRecord> {
     const result: QueryResult<CharacterRow> = await this.pool.query(
-      `INSERT INTO characters (id, user_id, type, name, description, image_url, history, master_notes, attributes, skills, inventory, quotes, sheet, minion)
-       VALUES (COALESCE($1::uuid, gen_random_uuid()), $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      `INSERT INTO characters (id, user_id, master_user_id, type, name, description, image_url, history, master_notes, attributes, skills, inventory, quotes, sheet, minion)
+       VALUES (COALESCE($1::uuid, gen_random_uuid()), $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
        RETURNING *`,
       [
         input.id ?? null,
         ownerUserId,
+        masterUserId ?? null,
         forcedType ?? input.type,
         input.name,
         input.description ?? '',
@@ -149,31 +155,31 @@ export class CharactersRepository {
     return mapRow(result.rows[0]);
   }
 
-  /** Fetch a character by id, scoped to its owner. Returns `null` when unknown or not owned. */
+  /** Fetch a character by id visible to `ownerUserId` (owner or inviter). Returns `null` when unknown or inaccessible. */
   async findByIdForUser(
     id: string,
     ownerUserId: string,
   ): Promise<CharacterRecord | null> {
     const result: QueryResult<CharacterRow> = await this.pool.query(
-      `SELECT * FROM characters WHERE id = $1 AND user_id = $2`,
+      `SELECT * FROM characters WHERE id = $1 AND (user_id = $2 OR master_user_id = $2)`,
       [id, ownerUserId],
     );
     const row = result.rows[0];
     return row ? mapRow(row) : null;
   }
 
-  /** List a user's characters, newest first; optionally filtered by `type`. */
+  /** List characters visible to a user (owned or invited), newest first; optionally filtered by `type`. */
   async findAllForUser(
     ownerUserId: string,
     type?: CharacterType,
   ): Promise<CharacterRecord[]> {
     const result: QueryResult<CharacterRow> = type
       ? await this.pool.query(
-          `SELECT * FROM characters WHERE user_id = $1 AND type = $2 ORDER BY created_at DESC`,
+          `SELECT * FROM characters WHERE (user_id = $1 OR master_user_id = $1) AND type = $2 ORDER BY created_at DESC`,
           [ownerUserId, type],
         )
       : await this.pool.query(
-          `SELECT * FROM characters WHERE user_id = $1 ORDER BY created_at DESC`,
+          `SELECT * FROM characters WHERE (user_id = $1 OR master_user_id = $1) ORDER BY created_at DESC`,
           [ownerUserId],
         );
     return result.rows.map(mapRow);
@@ -182,7 +188,7 @@ export class CharactersRepository {
   /**
    * Patch only the provided (non-undefined) fields; `updated_at` is always
    * bumped. Explicit `null` in the patch writes SQL NULL. Returns the updated
-   * row, or `null` when no character matches `id` for that owner.
+   * row, or `null` when no character matches `id` for that owner/inviter.
    */
   async updateByIdForUser(
     id: string,
@@ -218,17 +224,17 @@ export class CharactersRepository {
 
     const result: QueryResult<CharacterRow> = await this.pool.query(
       `UPDATE characters SET ${sets.join(', ')}
-       WHERE id = $${param++} AND user_id = $${param} RETURNING *`,
+       WHERE id = $${param++} AND (user_id = $${param} OR master_user_id = $${param}) RETURNING *`,
       values,
     );
     const row = result.rows[0];
     return row ? mapRow(row) : null;
   }
 
-  /** Delete an owned character. Returns `true` when a row was actually removed. */
+  /** Delete a character reachable by the owner or its inviter. Returns `true` when a row was actually removed. */
   async deleteByIdForUser(id: string, ownerUserId: string): Promise<boolean> {
     const result = await this.pool.query(
-      `DELETE FROM characters WHERE id = $1 AND user_id = $2`,
+      `DELETE FROM characters WHERE id = $1 AND (user_id = $2 OR master_user_id = $2)`,
       [id, ownerUserId],
     );
     return (result.rowCount ?? 0) > 0;
