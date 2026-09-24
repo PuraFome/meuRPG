@@ -15,5 +15,5 @@
     "types": ["node"],
     "declaration": false
   },
-  "exclude": ["node_modules", "dist", "scripts"]
+  "exclude": ["node_modules", "dist", "scripts", "vitest.config.ts"]
 }

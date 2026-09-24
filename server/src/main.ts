@@ -39,10 +39,14 @@ async function bootstrap() {
   if (!frontendOrigin) {
     throw new Error('FRONTEND_ORIGIN is not configured');
   }
+  const frontendOrigins = frontendOrigin
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
   const corsOrigins =
     process.env.NODE_ENV === 'production'
-      ? [frontendOrigin]
-      : [frontendOrigin, 'http://localhost:4200'];
+      ? frontendOrigins
+      : [...frontendOrigins, 'http://localhost:4200'];
   app.enableCors({ origin: corsOrigins });
 
   app.useGlobalPipes(
@@ -53,7 +57,9 @@ async function bootstrap() {
     }),
   );
 
-  const port = process.env.API_PORT || 3000;
+  // Render (and most PaaS) inject the port to bind to via PORT; fall back to
+  // API_PORT for docker-compose/local runs.
+  const port = process.env.PORT || process.env.API_PORT || 3000;
   await app.listen(port);
   console.log(`listening on ${port}`);
 }

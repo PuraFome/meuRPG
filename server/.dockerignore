@@ -1,0 +1,16 @@
+# Build context is ./server. Keep the image lean and secrets out.
+node_modules
+dist
+coverage
+
+# Never bake environment files into the image — injected at runtime instead.
+.env
+.env.*
+!.env.example
+
+# Local/build noise
+*.log
+npm-debug.log*
+.git
+.gitignore
+.vscode

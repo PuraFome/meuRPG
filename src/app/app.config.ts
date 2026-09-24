@@ -1,7 +1,9 @@
 import { APP_INITIALIZER, ApplicationConfig, Injector } from '@angular/core';
+import { provideHttpClient } from '@angular/common/http';
 import {
   provideRouter,
   withComponentInputBinding,
+  withHashLocation,
   withRouterConfig,
 } from '@angular/router';
 import { provideAnimations } from '@angular/platform-browser/animations';
@@ -21,9 +23,11 @@ export const appConfig: ApplicationConfig = {
     provideRouter(
       routes,
       withComponentInputBinding(),
+      withHashLocation(),
       withRouterConfig({ onSameUrlNavigation: 'reload' }),
     ),
     provideAnimations(),
+    provideHttpClient(),
     {
       provide: APP_INITIALIZER,
       useFactory: initializePersistence,
