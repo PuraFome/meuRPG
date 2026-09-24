@@ -1,0 +1,1 @@
+import"./chunk-QXIBXHVB.js";var t=[{path:"",loadComponent:()=>import("./chunk-CAUN4QSM.js").then(o=>o.MapListComponent)},{path:":id",loadComponent:()=>import("./chunk-DLX5RSQM.js").then(o=>o.MapViewComponent)}];export{t as routes};
