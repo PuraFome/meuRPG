@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import type { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import type { MapData } from '../models/map';
+import { buildMapPayload } from './map-payload';
 
 @Injectable({
   providedIn: 'root',
@@ -35,14 +36,11 @@ export class MapsService {
   }
 
   /**
-   * The server DTO is whitelisted (forbidNonWhitelisted), so client-managed
-   * timestamps must be stripped: they are omitted from the create/update DTOs
-   * and would otherwise trigger a 400 Bad Request.
+   * The server DTO is whitelisted (forbidNonWhitelisted), so the payload is
+   * rebuilt with only the accepted fields and width/height coerced to integers
+   * (the backend returns CockroachDB 64-bit ints as strings).
    */
   private toPayload(map: MapData | Partial<MapData>): unknown {
-    const payload: Partial<MapData> = { ...map };
-    delete payload.createdAt;
-    delete payload.updatedAt;
-    return payload;
+    return buildMapPayload(map);
   }
 }

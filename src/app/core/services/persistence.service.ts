@@ -7,6 +7,7 @@ import type { StoreEvent } from '../store/store.service';
 import { SearchService } from './search.service';
 import { CharactersService } from './characters.service';
 import { MapsService } from './maps.service';
+import { normalizeMap } from './map-payload';
 
 import type {
   Character,
@@ -120,7 +121,8 @@ export class PersistenceService implements OnDestroy {
         for (const item of characters) {
           this.store.set('characters', item);
         }
-        for (const item of maps) {
+        for (const raw of maps) {
+          const item = normalizeMap(raw as unknown as Record<string, unknown>);
           this.store.set('maps', item);
           this.mapBackgroundCache.set(item.id, item.backgroundImage);
         }
@@ -141,7 +143,7 @@ export class PersistenceService implements OnDestroy {
     try {
       const legacy = JSON.parse(raw) as MapData[];
       for (const map of legacy) {
-        this.store.set('maps', map);
+        this.store.set('maps', normalizeMap(map as unknown as Record<string, unknown>));
       }
     } catch {
       // skip corrupt legacy cache
