@@ -10,6 +10,9 @@ export interface JoinTokenInfo {
   type: 'player';
 }
 
+/** Fields the API returns but rejects on create/update. */
+const SERVER_MANAGED_FIELDS = ['userId', 'masterUserId', 'createdAt', 'updatedAt'] as const;
+
 @Injectable({
   providedIn: 'root',
 })
@@ -66,14 +69,17 @@ export class CharactersService {
   }
 
   /**
-   * The server DTO is whitelisted (forbidNonWhitelisted), so client-managed
-   * timestamps must be stripped: they are omitted from the create/update DTOs
-   * and would otherwise trigger a 400 Bad Request.
+   * The server DTO is whitelisted (forbidNonWhitelisted), so server-managed
+   * fields must be stripped: they come back on every API read (and live in the
+   * store), are omitted from the create/update DTOs, and would otherwise
+   * trigger a 400 Bad Request. Ownership (`userId`, `masterUserId`) is set by
+   * the server from the session and must never be sent by the client.
    */
   private toPayload(c: Character | Partial<Character>): unknown {
-    const payload: Partial<Character> = { ...c };
-    delete payload.createdAt;
-    delete payload.updatedAt;
+    const payload: Record<string, unknown> = { ...c };
+    for (const key of SERVER_MANAGED_FIELDS) {
+      delete payload[key];
+    }
     return payload;
   }
 }
