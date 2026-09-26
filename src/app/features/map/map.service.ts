@@ -322,6 +322,17 @@ export class MapService {
     });
   }
 
+  /** Remove the OSM base layer, leaving a blank canvas (read-only views). */
+  hideBaseLayer(): void {
+    if (
+      this.osmLayer &&
+      this.map &&
+      this.map.getLayers().getArray().indexOf(this.osmLayer) !== -1
+    ) {
+      this.map.removeLayer(this.osmLayer);
+    }
+  }
+
   /** Restore the OSM base layer and a geographic view, discarding the custom image. */
   async clearImageBackground(): Promise<void> {
     if (this.imageLayer && this.map) {

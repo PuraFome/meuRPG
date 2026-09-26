@@ -604,12 +604,19 @@ export class SessionCockpitComponent implements OnInit, OnDestroy {
 
   startSession(campaignId: string): void {
     const folder = this.campaigns().find((item) => item.id === campaignId);
+    const { maps } = gatherCampaignEntities(
+      this.campaigns(),
+      this.allMaps,
+      this.allCharacters,
+      campaignId,
+    );
     const now = new Date();
+    const activeMapId = maps[0]?.id ?? null;
     const session: SessionState = {
       id: crypto.randomUUID(),
       name: folder ? `Sessão — ${folder.name}` : 'Sessão',
       campaignId,
-      activeMapId: null,
+      activeMapId,
       quickReferences: [],
       toolbarShortcuts: [],
       notes: '',
@@ -617,6 +624,14 @@ export class SessionCockpitComponent implements OnInit, OnDestroy {
       updatedAt: now,
     };
     this.store.set('sessions', session);
+    if (activeMapId) {
+      this.broadcast.publish({
+        sessionId: session.id,
+        campaignId,
+        activeMapId,
+        revision: Date.now(),
+      });
+    }
     this.router.navigate(['/sessao', session.id]);
     const url = `${window.location.origin}${window.location.pathname}#/apresentar/${session.id}`;
     window.open(url, '_blank', 'noopener');

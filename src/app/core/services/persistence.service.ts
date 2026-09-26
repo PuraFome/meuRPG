@@ -23,16 +23,13 @@ const STORE_KEYS = ['characters', 'campaigns', 'gallery', 'maps', 'sessions', 'r
 /** Collections cached in localStorage (maps now live in the database). */
 const LOCAL_PERSIST_KEYS = ['characters', 'campaigns', 'gallery', 'sessions', 'rules'];
 
-/** Debounce window for map PATCHes, so rapid dungeon-cell painting coalesces. */
-const MAP_SYNC_DEBOUNCE_MS = 1000;
-
 @Injectable({
   providedIn: 'root',
 })
 export class PersistenceService implements OnDestroy {
   private subscriptions: Subscription[] = [];
   private hydrating = false;
-  private readonly mapSyncTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private readonly mapBackgroundCache = new Map<string, string | undefined>();
 
   private readonly store = inject<StoreService<PersistableEntity>>(StoreService);
   private readonly search = inject(SearchService);
@@ -124,6 +121,7 @@ export class PersistenceService implements OnDestroy {
         }
         for (const item of maps) {
           this.store.set('maps', item);
+          this.mapBackgroundCache.set(item.id, item.backgroundImage);
         }
         this.hydrating = false;
       },
@@ -167,25 +165,29 @@ export class PersistenceService implements OnDestroy {
   private syncMap(event: StoreEvent): void {
     const onError = (e: unknown) => console.error('[persistence] map API write failed', e);
     switch (event.type) {
-      case 'created':
-        this.maps.create(event.payload as MapData).subscribe({ error: onError });
-        break;
-      case 'updated': {
+      case 'created': {
         const payload = event.payload as MapData;
-        const pending = this.mapSyncTimers.get(event.id);
-        if (pending) {
-          clearTimeout(pending);
+        this.mapBackgroundCache.set(payload.id, payload.backgroundImage);
+        this.maps.create(payload).subscribe({ error: onError });
+        break;
+      }
+      case 'updated': {
+        const payload = { ...(event.payload as MapData) };
+        // A imagem de fundo (base64) é o campo mais pesado; só reenvia quando muda,
+        // para que pontos/desenho salvem rápido e imediatamente.
+        if (
+          this.mapBackgroundCache.has(event.id) &&
+          payload.backgroundImage === this.mapBackgroundCache.get(event.id)
+        ) {
+          delete payload.backgroundImage;
+        } else {
+          this.mapBackgroundCache.set(event.id, payload.backgroundImage);
         }
-        this.mapSyncTimers.set(
-          event.id,
-          setTimeout(() => {
-            this.mapSyncTimers.delete(event.id);
-            this.maps.update(event.id, payload).subscribe({ error: onError });
-          }, MAP_SYNC_DEBOUNCE_MS),
-        );
+        this.maps.update(event.id, payload).subscribe({ error: onError });
         break;
       }
       case 'deleted':
+        this.mapBackgroundCache.delete(event.id);
         this.maps.remove(event.id).subscribe({ error: onError });
         break;
     }
@@ -193,8 +195,6 @@ export class PersistenceService implements OnDestroy {
 
   ngOnDestroy(): void {
     this.subscriptions.forEach((s) => s.unsubscribe());
-    this.mapSyncTimers.forEach((timer) => clearTimeout(timer));
-    this.mapSyncTimers.clear();
   }
 }
 

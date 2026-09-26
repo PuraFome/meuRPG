@@ -82,12 +82,12 @@ interface SelectableEntity {
             <span>Nenhum {{ typeLabel() }} disponível</span>
           </div>
         } @else {
-          <mat-selection-list class="entity-list" [multiple]="true" #entityList>
+          <mat-selection-list class="entity-list" [multiple]="true">
             @for (entity of filteredEntities(); track entity.id) {
               <mat-list-option
                 [value]="entity.id"
                 [selected]="entity.selected"
-                (selectionChange)="onOptionChange(entity.id, $any($event))"
+                (selectedChange)="onOptionChange(entity.id, $event)"
                 class="entity-option"
               >
                 <mat-icon matListItemIcon>
@@ -286,10 +286,8 @@ export class EntitySelectorDialogComponent implements OnInit {
     this.activeType.set(type as 'characters' | 'maps' | 'sessions');
   }
 
-  onOptionChange(id: string, event: { selected: boolean }) {
-    const selected = event.selected;
-    const type = this.activeType();
-    switch (type) {
+  onOptionChange(id: string, selected: boolean) {
+    switch (this.activeType()) {
       case 'characters': {
         const next = new Set(this.selectedChars());
         if (selected) next.add(id);

@@ -74,6 +74,7 @@ import type { SessionState } from '../../core/models/session';
       align-items: center;
       justify-content: center;
       gap: 16px;
+      background: #0a0a12;
       color: rgba(255, 255, 255, 0.55);
       pointer-events: none;
     }
@@ -146,6 +147,7 @@ export class PlayerViewComponent implements AfterViewInit, OnDestroy {
       zoom: 0,
       center: [0, 0],
     });
+    this.mapService.hideBaseLayer();
 
     this.subscriptions.push(
       this.mapStore.getAll('maps').subscribe((maps) => {
