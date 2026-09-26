@@ -47,20 +47,43 @@ export interface SubmapPin {
   color?: string;
 }
 
-/** Tipos de célula usados para desenhar a masmorra sobre a grade. */
+/** Terreno/estrutura de uma célula da masmorra. */
 export type DungeonTileType =
   | 'floor'
-  | 'wall'
-  | 'door'
   | 'water'
-  | 'difficult';
+  | 'difficult'
+  | 'rubble'
+  | 'wall'
+  | 'false_wall';
+
+/** Elementos posicionados sobre uma célula (portas, armadilhas, baús, tokens). */
+export type DungeonObjectType =
+  | 'door'
+  | 'secret_door'
+  | 'trap'
+  | 'chest'
+  | 'mimic'
+  | 'character';
+
+export interface DungeonObject {
+  type: DungeonObjectType;
+  label?: string;
+  characterId?: string;
+  color?: string;
+  icon?: string;
+}
 
 /**
- * Grade esparsa da masmorra: a chave é `"col,row"` e o valor é o tipo da
- * célula. Guardar apenas as células preenchidas mantém o JSON pequeno mesmo
- * em masmorras grandes.
+ * Grade esparsa da masmorra. As chaves são `"col,row"`: `tiles` guarda o
+ * terreno/estrutura e `objects` guarda os elementos posicionados na célula.
  */
 export type DungeonTiles = Record<string, DungeonTileType>;
+export type DungeonObjects = Record<string, DungeonObject>;
+
+export interface DungeonData {
+  tiles: DungeonTiles;
+  objects: DungeonObjects;
+}
 
 export interface MapData {
   id: string;
@@ -76,8 +99,8 @@ export interface MapData {
   fogOfWar: FogOfWar;
   markers: MapMarker[];
   submaps: SubmapPin[];
-  /** Células desenhadas da masmorra (opcional em mapas antigos). */
-  dungeon?: DungeonTiles;
+  /** Células e elementos desenhados da masmorra (opcional em mapas antigos). */
+  dungeon?: DungeonData;
   createdAt: Date;
   updatedAt: Date;
 }

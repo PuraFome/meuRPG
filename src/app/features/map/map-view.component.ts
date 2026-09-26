@@ -9,13 +9,16 @@ import {
 } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
+import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MapService } from './map.service';
 import { DungeonService } from './dungeon.service';
-import type { DungeonTool } from './dungeon.service';
+import type { DungeonCharacter, DungeonTool } from './dungeon.service';
 import { MapConfigPanelComponent } from './map-config-panel.component';
 import { PageHeaderComponent, BreadcrumbItem } from '../../shared/components/page-header.component';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner.component';
@@ -24,6 +27,7 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../shared';
 import { PoiDialogComponent, PoiDialogData, PoiDialogResult } from './poi-dialog.component';
 import { MapFormDialogComponent, MapFormDialogData } from './map-form-dialog.component';
 import type { MapData, MapMarker } from '../../core/models/map';
+import type { Character } from '../../core/models/character';
 import { StoreService } from '../../core/store/store.service';
 
 interface DungeonToolOption {
@@ -32,12 +36,20 @@ interface DungeonToolOption {
   label: string;
 }
 
+const CHARACTER_COLORS = [
+  '#7c4dff', '#e53935', '#00c853', '#2979ff',
+  '#ff6d00', '#00bcd4', '#ff4081', '#ffd600',
+];
+
 @Component({
   selector: 'app-map-view',
   standalone: true,
   imports: [
+    FormsModule,
     MatButtonModule,
+    MatFormFieldModule,
     MatIconModule,
+    MatSelectModule,
     MatTooltipModule,
     MapConfigPanelComponent,
     PageHeaderComponent,
@@ -140,6 +152,29 @@ interface DungeonToolOption {
                 {{ option.label }}
               </button>
             }
+
+            @if (dungeonTool() === 'character') {
+              <mat-form-field
+                appearance="outline"
+                class="char-select"
+                subscriptSizing="dynamic"
+              >
+                <mat-label>Personagem</mat-label>
+                <mat-select
+                  [ngModel]="selectedCharacterId()"
+                  (ngModelChange)="onCharacterSelected($event)"
+                >
+                  @for (character of characters(); track character.id) {
+                    <mat-option [value]="character.id">
+                      {{ character.name }}
+                    </mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              @if (!selectedCharacterId()) {
+                <span class="hint">Escolha um personagem para carimbar</span>
+              }
+            }
           </div>
         }
 
@@ -223,6 +258,11 @@ interface DungeonToolOption {
       min-width: 0;
     }
 
+    .char-select {
+      width: 180px;
+      font-size: 0.85rem;
+    }
+
     .map-container {
       position: absolute;
       inset: 0;
@@ -278,6 +318,7 @@ export class MapViewComponent implements AfterViewInit, OnDestroy {
   private readonly mapService = inject(MapService);
   private readonly dungeonService = inject(DungeonService);
   private readonly store = inject(StoreService<MapData>);
+  private readonly characterStore = inject<StoreService<Character>>(StoreService);
 
   private readonly mapContainer =
     viewChild.required<ElementRef<HTMLElement>>('mapContainer');
@@ -288,6 +329,8 @@ export class MapViewComponent implements AfterViewInit, OnDestroy {
   protected readonly hasImage = signal(false);
   protected readonly gridVisible = signal(false);
   protected readonly dungeonTool = signal<DungeonTool>('floor');
+  protected readonly characters = signal<Character[]>([]);
+  protected readonly selectedCharacterId = signal<string | null>(null);
   protected mapTitle = 'Mapa';
   protected breadcrumbs: BreadcrumbItem[] = [];
   protected parentMapId: string | null = null;
@@ -298,14 +341,22 @@ export class MapViewComponent implements AfterViewInit, OnDestroy {
   protected readonly dungeonTools: DungeonToolOption[] = [
     { tool: 'floor', icon: 'crop_square', label: 'Piso' },
     { tool: 'wall', icon: 'border_outer', label: 'Parede' },
-    { tool: 'door', icon: 'door_front', label: 'Porta' },
+    { tool: 'false_wall', icon: 'border_style', label: 'Parede falsa' },
     { tool: 'water', icon: 'water_drop', label: 'Água' },
     { tool: 'difficult', icon: 'grass', label: 'Terreno difícil' },
+    { tool: 'rubble', icon: 'scatter_plot', label: 'Escombros' },
+    { tool: 'door', icon: 'door_front', label: 'Porta' },
+    { tool: 'secret_door', icon: 'key', label: 'Porta secreta' },
+    { tool: 'trap', icon: 'warning', label: 'Armadilha' },
+    { tool: 'chest', icon: 'redeem', label: 'Baú' },
+    { tool: 'mimic', icon: 'pest_control', label: 'Mímico' },
+    { tool: 'character', icon: 'person_add', label: 'Personagem' },
     { tool: 'erase', icon: 'cleaning_services', label: 'Apagar' },
   ];
 
   private mapId: string | null = null;
   private routeSub: Subscription | null = null;
+  private characterSub: { unsubscribe: () => void } | null = null;
   private clickUnregister: (() => void) | null = null;
   private featureUnregister: (() => void) | null = null;
 
@@ -327,6 +378,11 @@ export class MapViewComponent implements AfterViewInit, OnDestroy {
 
     this.setupClickHandler();
 
+    this.characterSub = this.characterStore.subscribe('characters', (items) => {
+      this.characters.set(items as Character[]);
+      this.applyCharacter();
+    });
+
     this.routeSub = this.route.paramMap.subscribe((params) => {
       this.mapId = params.get('id');
       void this.loadMapData();
@@ -337,6 +393,7 @@ export class MapViewComponent implements AfterViewInit, OnDestroy {
     this.clickUnregister?.();
     this.featureUnregister?.();
     this.routeSub?.unsubscribe();
+    this.characterSub?.unsubscribe();
     this.dungeonService.destroy();
     this.mapService.destroy();
   }
@@ -373,6 +430,32 @@ export class MapViewComponent implements AfterViewInit, OnDestroy {
   protected selectTool(tool: DungeonTool): void {
     this.dungeonTool.set(tool);
     this.dungeonService.setTool(tool);
+    if (tool === 'character') {
+      this.applyCharacter();
+    }
+  }
+
+  protected onCharacterSelected(id: string): void {
+    this.selectedCharacterId.set(id);
+    this.applyCharacter();
+  }
+
+  private applyCharacter(): void {
+    const id = this.selectedCharacterId();
+    const characters = this.characters();
+    const character = characters.find((c) => c.id === id);
+    if (!character) {
+      this.dungeonService.setCharacter(null);
+      return;
+    }
+    const color =
+      CHARACTER_COLORS[characters.indexOf(character) % CHARACTER_COLORS.length];
+    const dungeonCharacter: DungeonCharacter = {
+      id: character.id,
+      name: character.name,
+      color,
+    };
+    this.dungeonService.setCharacter(dungeonCharacter);
   }
 
   protected goToParent(): void {

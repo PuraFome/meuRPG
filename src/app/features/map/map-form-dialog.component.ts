@@ -52,7 +52,7 @@ function createDefaultMap(): MapData {
     fogOfWar: { explored: [], visible: false },
     markers: [],
     submaps: [],
-    dungeon: {},
+    dungeon: { tiles: {}, objects: {} },
     createdAt: now,
     updatedAt: now,
   };

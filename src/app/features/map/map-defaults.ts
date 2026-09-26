@@ -66,7 +66,7 @@ export function createMapData(
     fogOfWar: createDefaultFog(),
     markers: [],
     submaps: [],
-    dungeon: {},
+    dungeon: { tiles: {}, objects: {} },
     createdAt: now,
     updatedAt: now,
   };
