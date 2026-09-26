@@ -222,11 +222,6 @@ export class PlayerViewComponent implements AfterViewInit, OnDestroy {
     await this.mapService.setGridConfig(map.grid);
     await this.mapService.setGridVisible(false);
 
-    await this.mapService.renderPois(map.markers ?? []);
-    await this.mapService.showPoisLayer();
-    await this.mapService.renderSubmapPins(map.submaps ?? []);
-    await this.mapService.showSubmapPinsLayer();
-
     await this.dungeonService.configure({
       mapId: map.id,
       extent: [0, 0, width, height],
