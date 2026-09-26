@@ -11,6 +11,10 @@ export type {
   MapKind,
   DungeonTileType,
   DungeonTiles,
+  DungeonObject,
+  DungeonObjectType,
+  DungeonObjects,
+  DungeonData,
 } from './map';
 export type { SessionState, QuickReference, ToolbarShortcut } from './session';
 export type { RuleBook } from './rules';
