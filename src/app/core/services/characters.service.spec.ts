@@ -54,6 +54,26 @@ describe('CharactersService', () => {
     expect(result).toEqual(character);
   });
 
+  it('update() emits a PATCH without server-managed fields (ownership, timestamps)', () => {
+    // Shape of a character hydrated from GET /api/characters: the server adds
+    // ownership fields that UpdateCharacterDto forbids (400 if sent back).
+    const character = {
+      ...mockCharacter({ history: '<p>Era uma vez...</p>' }),
+      userId: 'user-1',
+      masterUserId: 'master-1',
+    };
+    let result: Character | undefined;
+
+    service.update(character.id, character).subscribe((c) => (result = c));
+
+    const req = httpMock.expectOne(`${base}/api/characters/${character.id}`);
+    expect(req.request.method).toBe('PATCH');
+    const { createdAt: _c, updatedAt: _u, userId: _o, masterUserId: _m, ...payload } = character;
+    expect(req.request.body).toEqual(payload);
+    req.flush(character);
+    expect(result).toEqual(character);
+  });
+
   it('createJoinToken() emits a POST to /api/characters/join-tokens', () => {
     const tokenInfo: JoinTokenInfo = {
       token: 'abc123',
