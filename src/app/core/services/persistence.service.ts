@@ -1,6 +1,7 @@
 import { Injectable, OnDestroy, inject } from '@angular/core';
 import { Subscription, forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
+import { HttpErrorResponse } from '@angular/common/http';
 import { StoreService } from '../store/store.service';
 import type { StoreEvent } from '../store/store.service';
 import { SearchService } from './search.service';
@@ -163,7 +164,13 @@ export class PersistenceService implements OnDestroy {
   }
 
   private syncMap(event: StoreEvent): void {
-    const onError = (e: unknown) => console.error('[persistence] map API write failed', e);
+    const onError = (e: unknown) => {
+      if (e instanceof HttpErrorResponse) {
+        console.error('[persistence] map API write failed', e.status, e.error);
+      } else {
+        console.error('[persistence] map API write failed', e);
+      }
+    };
     switch (event.type) {
       case 'created': {
         const payload = event.payload as MapData;

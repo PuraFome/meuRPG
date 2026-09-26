@@ -8,16 +8,19 @@ import {
   viewChild,
 } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { Subscription, firstValueFrom } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MapService } from './map.service';
 import { DungeonService } from './dungeon.service';
+import { MapsService } from '../../core/services/maps.service';
 import type { DungeonCharacter, DungeonTool } from './dungeon.service';
 import { MapConfigPanelComponent } from './map-config-panel.component';
 import { PageHeaderComponent, BreadcrumbItem } from '../../shared/components/page-header.component';
@@ -50,6 +53,7 @@ const CHARACTER_COLORS = [
     MatFormFieldModule,
     MatIconModule,
     MatSelectModule,
+    MatSnackBarModule,
     MatTooltipModule,
     MapConfigPanelComponent,
     PageHeaderComponent,
@@ -127,6 +131,15 @@ const CHARACTER_COLORS = [
 
           @if (currentMapData) {
             <span class="toolbar-spacer"></span>
+            <button
+              mat-raised-button
+              color="primary"
+              [disabled]="saving()"
+              (click)="saveCurrentMap()"
+            >
+              <mat-icon>{{ saving() ? 'hourglass_top' : 'save' }}</mat-icon>
+              {{ saving() ? 'Salvando...' : 'Salvar' }}
+            </button>
             <button mat-stroked-button (click)="openEditMapDialog()">
               <mat-icon>edit</mat-icon>
               Editar Mapa
@@ -317,6 +330,8 @@ export class MapViewComponent implements AfterViewInit, OnDestroy {
   private readonly dialog = inject(MatDialog);
   private readonly mapService = inject(MapService);
   private readonly dungeonService = inject(DungeonService);
+  private readonly mapsService = inject(MapsService);
+  private readonly snackBar = inject(MatSnackBar);
   private readonly store = inject(StoreService<MapData>);
   private readonly characterStore = inject<StoreService<Character>>(StoreService);
 
@@ -328,6 +343,7 @@ export class MapViewComponent implements AfterViewInit, OnDestroy {
   protected readonly drawMode = signal(false);
   protected readonly hasImage = signal(false);
   protected readonly gridVisible = signal(false);
+  protected readonly saving = signal(false);
   protected readonly dungeonTool = signal<DungeonTool>('floor');
   protected readonly characters = signal<Character[]>([]);
   protected readonly selectedCharacterId = signal<string | null>(null);
@@ -503,6 +519,40 @@ export class MapViewComponent implements AfterViewInit, OnDestroy {
     });
   }
 
+  protected async saveCurrentMap(): Promise<void> {
+    if (!this.mapId) return;
+    const map = this.store.snapshot('maps').find((m) => m.id === this.mapId);
+    if (!map) {
+      this.snackBar.open('Mapa não encontrado para salvar.', 'Fechar', { duration: 4000 });
+      return;
+    }
+
+    this.saving.set(true);
+    try {
+      await firstValueFrom(this.mapsService.update(map.id, map));
+      this.snackBar.open('Mapa salvo com sucesso!', 'OK', { duration: 3000 });
+    } catch (error) {
+      if (error instanceof HttpErrorResponse && error.status === 404) {
+        try {
+          await firstValueFrom(this.mapsService.create(map));
+          this.snackBar.open('Mapa salvo com sucesso!', 'OK', { duration: 3000 });
+        } catch (createError) {
+          this.showSaveError(createError);
+        }
+      } else {
+        this.showSaveError(error);
+      }
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  private showSaveError(error: unknown): void {
+    this.snackBar.open(`Falha ao salvar: ${describeHttpError(error)}`, 'Fechar', {
+      duration: 6000,
+    });
+  }
+
   private async loadMapData(): Promise<void> {
     this.loading.set(true);
 
@@ -647,4 +697,15 @@ export class MapViewComponent implements AfterViewInit, OnDestroy {
     );
     result.marker.targetMapId = submap.id;
   }
+}
+
+function describeHttpError(error: unknown): string {
+  if (error instanceof HttpErrorResponse) {
+    const detail = (error.error as { message?: unknown } | null)?.message;
+    if (detail) {
+      return `${error.status} ${Array.isArray(detail) ? detail.join(', ') : String(detail)}`;
+    }
+    return `${error.status} ${error.statusText || error.message}`;
+  }
+  return error instanceof Error ? error.message : 'erro desconhecido';
 }
