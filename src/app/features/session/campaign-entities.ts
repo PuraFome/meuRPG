@@ -81,6 +81,53 @@ export function groupCharactersByType(characters: Character[]): CharacterGroup[]
   })).filter((group) => group.characters.length > 0);
 }
 
+export interface SceneEntry {
+  map: MapData;
+  /** 0 = mapa principal; 1+ = submapa (nível de profundidade). */
+  depth: number;
+}
+
+/**
+ * Expande os mapas principais seguindo os vínculos de submapa (POIs e pins de
+ * submapa), para o mestre poder trocar de cena sem associar cada submapa à
+ * campanha. Percorre em largura, então os mapas principais vêm antes dos seus
+ * submapas.
+ */
+export function collectScenes(
+  allMaps: MapData[],
+  rootIds: string[],
+): SceneEntry[] {
+  const byId = new Map(allMaps.map((map) => [map.id, map]));
+  const entries: SceneEntry[] = [];
+  const visited = new Set<string>();
+
+  let level: { id: string; depth: number }[] = rootIds.map((id) => ({
+    id,
+    depth: 0,
+  }));
+
+  while (level.length > 0) {
+    const next: { id: string; depth: number }[] = [];
+    for (const { id, depth } of level) {
+      if (visited.has(id)) continue;
+      visited.add(id);
+      const map = byId.get(id);
+      if (!map) continue;
+      entries.push({ map, depth });
+      const children = [
+        ...(map.markers ?? []).map((marker) => marker.targetMapId),
+        ...(map.submaps ?? []).map((pin) => pin.targetMapId),
+      ].filter((childId): childId is string => !!childId);
+      for (const childId of children) {
+        if (!visited.has(childId)) next.push({ id: childId, depth: depth + 1 });
+      }
+    }
+    level = next;
+  }
+
+  return entries;
+}
+
 export function characterTypeLabel(type: CharacterType): string {
   return CHARACTER_TYPE_LABELS[type] ?? type;
 }

@@ -23,7 +23,12 @@ import { StoreService } from '../../core/store/store.service';
 import { SessionToolbarComponent } from './session-toolbar.component';
 import { DiceRollerDialogComponent } from './dice-roller-dialog.component';
 import { SessionBroadcastService } from './session-broadcast.service';
-import { gatherCampaignEntities, groupCharactersByType } from './campaign-entities';
+import {
+  collectScenes,
+  gatherCampaignEntities,
+  groupCharactersByType,
+} from './campaign-entities';
+import type { SceneEntry } from './campaign-entities';
 import type { SessionState } from '../../core/models/session';
 import type { CampaignFolder } from '../../core/models/campaign';
 import type { MapData } from '../../core/models/map';
@@ -111,25 +116,51 @@ import type { BreadcrumbItem } from '../../shared/components/page-header.compone
           </div>
 
           <div class="panel-body">
-            @if (maps().length === 0) {
+            <div class="preview-box">
+              @if (activeMapPreview()) {
+                <img
+                  class="preview-img"
+                  [src]="activeMapPreview()!"
+                  alt="Preview do mapa em cena"
+                />
+              } @else {
+                <div class="preview-empty">
+                  <mat-icon>map</mat-icon>
+                  <span>Nenhum mapa em cena</span>
+                </div>
+              }
+              @if (activeMapName()) {
+                <span class="preview-caption">
+                  <mat-icon>cast_connected</mat-icon>
+                  {{ activeMapName() }}
+                </span>
+              }
+            </div>
+
+            @if (scenes().length === 0) {
               <app-empty-state
                 icon="map"
-                message="Nenhum mapa associado à campanha. Associe mapas na página de Campanha."
+                message="Nenhum mapa associado à campanha. Associe o mapa principal na página de Campanha."
                 actionLabel="Ir para Campanha"
                 (action)="goToCampaign()"
               />
             } @else {
               <mat-list class="map-list">
-                @for (map of maps(); track map.id) {
+                @for (scene of scenes(); track scene.map.id) {
                   <mat-list-item
                     class="map-item"
-                    [class.active]="map.id === session()!.activeMapId"
-                    (click)="presentMap(map.id)"
+                    [class.active]="scene.map.id === session()!.activeMapId"
+                    [style.padding-left.px]="8 + scene.depth * 20"
+                    (click)="presentMap(scene.map.id)"
                   >
-                    <mat-icon matListItemIcon>{{ mapKindIcon(map) }}</mat-icon>
-                    <span matListItemTitle>{{ map.name }}</span>
-                    <span matListItemLine>{{ mapKindLabel(map) }}</span>
-                    @if (map.id === session()!.activeMapId) {
+                    <mat-icon matListItemIcon>
+                      {{ scene.depth > 0 ? 'subdirectory_arrow_right' : mapKindIcon(scene.map) }}
+                    </mat-icon>
+                    <span matListItemTitle>{{ scene.map.name }}</span>
+                    <span matListItemLine>
+                      {{ scene.depth > 0 ? 'Submapa' : mapKindLabel(scene.map) }}
+                    </span>
+                    @if (scene.map.id === session()!.activeMapId) {
                       <mat-icon matListItemMeta class="live-icon">cast_connected</mat-icon>
                     }
                   </mat-list-item>
@@ -356,6 +387,67 @@ import type { BreadcrumbItem } from '../../shared/components/page-header.compone
       padding: 8px;
     }
 
+    .preview-box {
+      position: relative;
+      margin: 4px 8px 12px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(0, 0, 0, 0.35);
+      aspect-ratio: 16 / 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .preview-img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .preview-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      color: rgba(255, 255, 255, 0.4);
+      font-size: 0.82rem;
+    }
+
+    .preview-empty mat-icon {
+      font-size: 2rem;
+      width: 2rem;
+      height: 2rem;
+    }
+
+    .preview-caption {
+      position: absolute;
+      left: 8px;
+      bottom: 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.65);
+      color: #fff;
+      font-size: 0.78rem;
+      font-weight: 500;
+      max-width: calc(100% - 16px);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .preview-caption mat-icon {
+      font-size: 0.95rem;
+      width: 0.95rem;
+      height: 0.95rem;
+      color: #69f0ae;
+    }
+
     .map-item {
       cursor: pointer;
       border-radius: 8px;
@@ -510,10 +602,12 @@ export class SessionCockpitComponent implements OnInit, OnDestroy {
 
   readonly campaigns = signal<CampaignFolder[]>([]);
   readonly session = signal<SessionState | null>(null);
-  readonly maps = signal<MapData[]>([]);
+  readonly scenes = signal<SceneEntry[]>([]);
   readonly characters = signal<Character[]>([]);
   readonly characterSearch = signal('');
   readonly notesDraft = signal('');
+
+  readonly maps = computed(() => this.scenes().map((scene) => scene.map));
 
   private allMaps: MapData[] = [];
   private allCharacters: Character[] = [];
@@ -545,6 +639,18 @@ export class SessionCockpitComponent implements OnInit, OnDestroy {
 
   readonly groupedCharacters = computed(() =>
     groupCharactersByType(this.filteredCharacters()),
+  );
+
+  readonly activeMap = computed(() => {
+    const id = this.session()?.activeMapId;
+    if (!id) return null;
+    return this.scenes().find((scene) => scene.map.id === id)?.map ?? null;
+  });
+
+  readonly activeMapName = computed(() => this.activeMap()?.name ?? '');
+
+  readonly activeMapPreview = computed(
+    () => this.activeMap()?.backgroundImage ?? null,
   );
 
   ngOnInit(): void {
@@ -588,7 +694,7 @@ export class SessionCockpitComponent implements OnInit, OnDestroy {
   private recomputeEntities(): void {
     const session = this.session();
     if (!session?.campaignId) {
-      this.maps.set([]);
+      this.scenes.set([]);
       this.characters.set([]);
       return;
     }
@@ -598,8 +704,13 @@ export class SessionCockpitComponent implements OnInit, OnDestroy {
       this.allCharacters,
       session.campaignId,
     );
-    this.maps.set(maps);
     this.characters.set(characters);
+    this.scenes.set(
+      collectScenes(
+        this.allMaps,
+        maps.map((map) => map.id),
+      ),
+    );
   }
 
   startSession(campaignId: string): void {
