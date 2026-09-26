@@ -13,7 +13,11 @@ export interface ToolbarShortcut {
 
 export interface SessionState {
   id: string;
+  /** Nome amigável da sessão (ex: "Sessão — Taverna do Dragão"). */
+  name?: string;
   campaignId?: string;
+  /** Mapa atualmente projetado na tela de apresentação. */
+  activeMapId?: string | null;
   activeEntity?: {
     type: 'character' | 'map' | 'rules' | 'note';
     id: string;

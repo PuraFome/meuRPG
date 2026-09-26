@@ -13,6 +13,15 @@ export const routes: Routes = [
     title: 'MeuRPG — Entrar',
   },
   {
+    path: 'apresentar/:id',
+    loadComponent: () =>
+      import('./features/session/player-view.component').then(
+        (m) => m.PlayerViewComponent,
+      ),
+    canActivate: [authGuard],
+    title: 'MeuRPG — Apresentação',
+  },
+  {
     path: '',
     component: ShellComponent,
     children: [
