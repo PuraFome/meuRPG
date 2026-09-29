@@ -18,7 +18,7 @@ Estes princípios guiam as decisões de produto e de arquitetura.
 2. **Sem spoiler.** O jogador só vê o que o grupo já descobriu. As notas do mestre nunca saem do servidor para um jogador.
 3. **O jogador joga pelo celular.** As telas do jogador são pensadas primeiro para a tela pequena.
 4. **Custo perto de zero.** Sem sessão ativa, o servidor fica parado e nada fica conectado.
-5. **Um passo por vez.** O app atual continua no ar enquanto cada parte migra para o novo backend, com testes antes de cada troca.
+5. **Requisitos primeiro.** Cada história tem critérios de aceite que viram testes automáticos; uma funcionalidade só está pronta quando os testes dela passam. Decidido em 29/09/2026: não há mais migração gradual a partir do app antigo — o backend novo é construído do zero, história por história.
 
 ## Ver também
 

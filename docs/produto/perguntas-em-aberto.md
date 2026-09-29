@@ -11,6 +11,8 @@ Nenhuma delas trava a Etapa 1. Todas são para o Samuel, e cada resposta vira um
 - [ ] **RN-07:** o convite serve para vários jogadores ou para um só? E vale por quanto tempo? O link de hoje pode ser reutilizado.
 - [ ] **RN-06:** a notificação para quem está com o app aberto basta no MVP, ou precisa de notificação do navegador (push) com o app fechado?
 - [ ] **RN-08:** a importação de DOCX continua? Se sim, de qual modelo? E a escolha entre D&D Beyond e ficha em português vale também para o jeito de mostrar a ficha?
+- [ ] **MR-018 e MR-019:** documento de campanha e galeria de imagens existiam no app antigo. Entram no MVP ou ficam para Depois?
+- [ ] Algum dado do app antigo (por exemplo o Pensantus) precisa vir para o sistema novo? Se sim, fazemos uma importação única.
 
 ## Em discussão desde 28/09/2026
 

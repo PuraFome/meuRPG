@@ -14,7 +14,7 @@ As respostas do Samuel de 28/09/2026 fecham as regras que faltavam para o MVP. C
 | RN-08 | **Formato da importação.** O jogador ou o mestre escolhe o formato: ficha do D&D Beyond ou ficha em português. | O importador lê os campos do PDF e mostra o resultado para revisão antes de salvar. | Decidido |
 | RN-09 | **Modo de XP.** Cada campanha dá XP por inimigos derrotados, por ouro ou por marcos. Nos dois primeiros modos, o mestre também dá XP quando quiser. | Por inimigos: soma o XP dos inimigos derrotados e divide entre o grupo, como no livro do mestre. Por ouro: converte o ouro conquistado em XP. Por marcos: o mestre sobe o nível do grupo. | Decidido |
 | RN-10 | **Mapa sem spoiler.** O jogador só vê os pontos de interesse que o grupo já descobriu. | O servidor filtra a resposta. Um ponto escondido nunca chega ao celular do jogador. | Decidido |
-| RN-11 | **Notas do mestre.** Só o mestre lê e edita as notas do mestre. | O servidor tira `master_notes` de toda resposta para jogador. Hoje o jogador consegue ler e editar: é um bug conhecido. | Proposta |
+| RN-11 | **Notas do mestre.** Só o mestre lê e edita as notas do mestre. | O servidor tira `master_notes` de toda resposta para jogador. No app antigo, o jogador conseguia ler e editar: é um bug conhecido, não corrigido lá — o sistema novo prova que ele não existe com um teste automático. | Proposta |
 | RN-12 | **Subir de nível no MVP.** A tela de subir de nível fica para depois do MVP. Até lá, o mestre aplica o novo nível na ficha. | O sistema avisa o mestre quando um personagem atinge o XP do próximo nível. | Proposta |
 
 ## Discussões que podem mudar estas regras

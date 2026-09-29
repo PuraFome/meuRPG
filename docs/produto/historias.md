@@ -1,8 +1,10 @@
 # Histórias e critérios de aceite
 
-O MVP tem 12 histórias: as 10 marcadas como MVP no plano e as duas que o Samuel acrescentou em 28/09/2026 (MR-015 e MR-016). Duas histórias que já existem em parte são pré-requisito: o convite (MR-002) leva à MR-003, e os NPCs (MR-005) são os inimigos do combate.
+O MVP tem 12 histórias, mais 2 pré-requisitos — 14 no total até o MVP: as 10 marcadas como MVP no plano, as duas que o Samuel acrescentou em 28/09/2026 (MR-015 e MR-016), e duas marcadas "MVP (pré-requisito)" desde 29/09/2026: o convite (MR-002), que leva à MR-003, e os NPCs (MR-005), que são os inimigos do combate. "Já existe em parte" não é mais uma prioridade: o app antigo é descontinuado, então nenhuma história "já existe" no sistema novo — MR-002 e MR-005 entram como qualquer outra história do MVP, com os próprios testes.
 
-Uma história está pronta quando todos os critérios dela passam. Cada critério vira um teste automático: Playwright para o que aparece na tela, teste em Go para a regra no servidor.
+MR-018 e MR-019 existiam no app antigo. Ainda não sabemos se entram no MVP ou ficam para depois; é uma pergunta em aberto para o Samuel (ver [Perguntas em aberto](perguntas-em-aberto.md)).
+
+Uma história está pronta quando todos os critérios dela passam. Cada critério vira um teste automático: Playwright para o que aparece na tela, teste em Go para a regra no servidor. Não há testes de caracterização do app antigo — o sistema novo só precisa provar os próprios critérios de aceite.
 
 MR-021 e MR-022 são novas e saíram das respostas do Samuel. Ficaram como "Depois", mas o modelo de dados já nasce preparado para as duas (ver [Modelo de dados](../dados.md)).
 
@@ -22,10 +24,10 @@ MR-021 e MR-022 são novas e saíram das respostas do Samuel. Ficaram como "Depo
 | [MR-014](#mr-014-sua-vez) | Combate | MVP |
 | [MR-015](#mr-015-ações-da-cena-de-rp) | RP | MVP |
 | [MR-016](#mr-016-dar-xp) | Progressão | MVP |
-| [MR-002](#mr-002-gerar-convite) | Campanha | Já existe em parte |
-| [MR-005](#mr-005-criar-npcs) | Personagem | Já existe em parte |
-| [MR-018](#mr-018-documento-de-campanha) | Apoio | Já existe em parte |
-| [MR-019](#mr-019-galeria-de-imagens) | Apoio | Já existe em parte |
+| [MR-002](#mr-002-gerar-convite) | Campanha | MVP (pré-requisito) |
+| [MR-005](#mr-005-criar-npcs) | Personagem | MVP (pré-requisito) |
+| [MR-018](#mr-018-documento-de-campanha) | Apoio | Existia no app antigo |
+| [MR-019](#mr-019-galeria-de-imagens) | Apoio | Existia no app antigo |
 | [MR-007](#mr-007-importar-ficha-em-pdf) | Personagem | Depois |
 | [MR-010](#mr-010-desenhar-masmorras) | Masmorra | Depois |
 | [MR-017](#mr-017-subir-de-nível) | Progressão | Depois |
@@ -207,15 +209,15 @@ MR-021 e MR-022 são novas e saíram das respostas do Samuel. Ficaram como "Depo
 - RN-09: no modo por ouro, quanto XP vale cada peça de ouro? Ver [Perguntas em aberto](perguntas-em-aberto.md).
 - As regras de classe e raça ainda estão em discussão e afetam o que cada personagem ganha ao subir de nível. Ver [Perguntas em aberto](perguntas-em-aberto.md#regras-por-classe-e-raça).
 
-## Prioridade: Já existe em parte
+## Prioridade: MVP (pré-requisito)
 
-Pré-requisitos do MVP que já têm alguma implementação no app atual.
+Pré-requisitos do MVP, decidido em 29/09/2026. Não têm implementação prévia para reaproveitar — o app antigo é descontinuado —, mas outras histórias do MVP dependem delas.
 
 ### MR-002: Gerar convite
 
 **Como** mestre, **quero** gerar um link de convite, **para** os jogadores entrarem na campanha.
 
-- Prioridade: Já existe em parte
+- Prioridade: MVP (pré-requisito)
 - Regras: RN-07
 - Módulos: campaigns
 
@@ -226,25 +228,35 @@ Pré-requisitos do MVP que já têm alguma implementação no app atual.
 
 **Como** mestre, **quero** criar NPCs de cada tipo (inimigo, boss, minion, história), com ficha completa ou básica conforme o tipo.
 
-- Prioridade: Já existe em parte
+- Prioridade: MVP (pré-requisito)
 - Regras: RN-04
 - Módulos: characters
+
+## Prioridade: Existia no app antigo
+
+Existiam no app antigo (descontinuado). Ainda não sabemos se entram no MVP ou ficam para depois do MVP — é uma pergunta em aberto para o Samuel.
 
 ### MR-018: Documento de campanha
 
 **Como** mestre, **quero** um documento de campanha com texto, imagens, links para mapas e fichas que abrem num modal.
 
-- Prioridade: Já existe em parte
+- Prioridade: Existia no app antigo
 - Regras: —
 - Módulos: campaigns
+
+#### Dúvidas
+- MVP ou Depois? Ver [Perguntas em aberto](perguntas-em-aberto.md).
 
 ### MR-019: Galeria de imagens
 
 **Como** mestre, **quero** uma galeria de imagens **para** usar nos documentos e nos mapas.
 
-- Prioridade: Já existe em parte
+- Prioridade: Existia no app antigo
 - Regras: —
 - Módulos: maps
+
+#### Dúvidas
+- MVP ou Depois? Ver [Perguntas em aberto](perguntas-em-aberto.md).
 
 ## Prioridade: Depois
 

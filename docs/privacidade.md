@@ -57,9 +57,9 @@ Copie no PR que mexe em dados, logs, telas ou fornecedores:
 | Backups do banco | Cockroach Labs | Recuperar desastre | Legítimo interesse | 30 dias |
 | Cookie de sessão e `localStorage` | Aparelho do usuário | Manter o login | Estritamente necessário | Até o logout, que limpa tudo |
 
-**Hoje vs. alvo.** O app atual ainda guarda `users.name` e tem duas colunas sem finalidade: `characters.email` e `sheet.playerName`. As três saem na migração. Hoje, mapas ficam em base64 no banco, e galeria e campanhas ficam no `localStorage`. O alvo está em [Modelo de dados](dados.md).
+**No app antigo (descontinuado)**, `users.name` era guardado, e havia duas colunas sem finalidade: `characters.email` e `sheet.playerName`. Não há migração de dados: as três simplesmente não existem no schema novo (decidido em 29/09/2026, ver [Modelo de dados](dados.md)). No app antigo, mapas ficavam em base64 no banco, e galeria e campanhas ficavam no `localStorage`.
 
-**Bug de hoje:** o logout e o "Excluir conta" do app chamam rotas que não existem no NestJS (`POST /api/auth/logout` e `DELETE /api/auth/account`). O logout só limpa o navegador, e o token continua válido no servidor até expirar. A exclusão falha, então o direito de eliminação (art. 18, VI) não funciona hoje.
+**Bug do app antigo (descontinuado):** o logout e o "Excluir conta" chamavam rotas que não existiam no NestJS (`POST /api/auth/logout` e `DELETE /api/auth/account`). O logout só limpava o navegador, e o token continuava válido no servidor até expirar. A exclusão falhava, então o direito de eliminação (art. 18, VI) não funcionava lá. Ele não é corrigido no app antigo — o sistema novo implementa os dois desde o primeiro deploy com login e prova com teste automático.
 
 ## Direitos do titular e como atendemos
 
@@ -109,8 +109,8 @@ Os dados ficam em São Paulo (`southamerica-east1`). O acesso de um fornecedor d
 | Google Cloud | Cloud Run, Cloud Logging, Cloud Storage, Secret Manager | Tudo, em São Paulo | Data Processing Addendum com as cláusulas-padrão brasileiras |
 | Cockroach Labs | Banco CockroachDB gerenciado, no Google Cloud em São Paulo | O banco e os backups | **A definir:** o contrato atual cobre o GDPR |
 | Google (login) | Sign in with Google | O Google é controlador da própria conta; nós recebemos só `sub` e e-mail | Não é nosso operador |
-| Render | NestJS atual, até a migração terminar | O que passa pela API atual | **A definir** (sai com o NestJS) |
-| GitHub Pages | Angular atual, até o Go servir o app | IP de quem visita | **A definir** (sai com o Go servindo o app) |
+| Render | App antigo (descontinuado): NestJS, mantido em `server/` só como referência | O que passava pela API do app antigo | **A definir** (sai quando `server/` for removido) |
+| GitHub Pages | App antigo (descontinuado): Angular, mantido em `src/` só como referência | IP de quem visita | **A definir** (sai quando `src/` for removido) |
 | Cloudflare Workers AI | Jev, depois do MVP | Só contexto de jogo, sem dado pessoal | **A definir** antes do Jev |
 | Have I Been Pwned | Checa se a senha nova já vazou | 5 caracteres do hash da senha, saindo do servidor. Não identifica ninguém | Não é operador |
 
@@ -118,7 +118,7 @@ Os dados ficam em São Paulo (`southamerica-east1`). O acesso de um fornecedor d
 
 - O cookie de sessão `__Host-` é estritamente necessário. A LGPD (guia de cookies da ANPD) e a Diretiva ePrivacy europeia (art. 5(3)) dispensam consentimento nesse caso. Por isso não há banner.
 - Nada de analytics. Se um dia houver, a preferência é contar no servidor, com números agregados e sem identificador. Qualquer ferramenta com cookie ou identificador exige consentimento antes de carregar, com "recusar" tão fácil quanto "aceitar".
-- Fontes e ícones passam a ser servidos pelo nosso servidor. Hoje o `index.html` busca fontes no Google, e isso manda o IP de cada visitante para lá.
+- Fontes e ícones passam a ser servidos pelo nosso servidor. No app antigo, o `index.html` busca fontes no Google, e isso manda o IP de cada visitante para lá.
 
 ## Menores de idade
 

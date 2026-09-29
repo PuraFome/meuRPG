@@ -2,26 +2,12 @@
 
 O MeuRPG é onde uma mesa de D&D 5e prepara e joga suas campanhas. O mestre prepara o mundo e conduz a sessão ao vivo; o jogador entra por convite, acompanha a ficha e age no RP e no combate com o que as regras permitem. Mais contexto em [docs/produto/visao.md](docs/produto/visao.md).
 
-O projeto está em migração. Hoje o frontend é em Angular e o backend em NestJS, no Render. O backend novo é um monólito modular em Go, com API em Protobuf + Connect, rodando no Cloud Run em São Paulo — migrando módulo por módulo, com o app atual sempre no ar. Detalhes em [docs/arquitetura.md](docs/arquitetura.md) e o estado de cada etapa em [docs/roadmap.md](docs/roadmap.md).
+O MeuRPG novo está sendo construído do zero: um backend em Go (monólito modular, API em Protobuf + Connect, rodando no Cloud Run em São Paulo) e um novo app Angular em `web/`, servido pelo mesmo servidor. Decidido em 29/09/2026: não há migração gradual. O app antigo — Angular em `src/` (GitHub Pages) e NestJS em `server/` (Render) — está descontinuado e fica no repositório só como referência, até sair num PR à parte. Detalhes em [docs/arquitetura.md](docs/arquitetura.md) e o estado de cada etapa em [docs/roadmap.md](docs/roadmap.md).
 
 - Documentação completa: [docs/README.md](docs/README.md)
 - Como rodar, testar e abrir um PR: [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## Como começar rápido
-
-Frontend (Angular), como hoje:
-
-```bash
-npm install
-npm start
-```
-
-Backend atual (NestJS), com Docker:
-
-```bash
-cd server
-docker-compose up --build
-```
 
 Backend novo (Go), com CockroachDB local no Docker:
 
@@ -31,15 +17,22 @@ make test    # testes do backend
 make down    # derruba tudo
 ```
 
-Todos os comandos estão em `make help` e no [CONTRIBUTING.md](CONTRIBUTING.md).
+App novo (`web/`, Angular): em breve. Outro agente está adicionando os comandos.
 
-## Stack atual (durante a migração)
+Todos os comandos do backend estão em `make help` e no [CONTRIBUTING.md](CONTRIBUTING.md). Os comandos do app antigo (descontinuado, só para consulta) estão na seção abaixo.
+
+## App antigo (descontinuado)
 
 ### Frontend (Angular)
 
 This project was generated using [Angular CLI](https://github.com/angular-cli) version 21.2.19.
 
-### Backend atual (NestJS)
+```bash
+npm install
+npm start
+```
+
+### Backend (NestJS)
 
 Um simples backend NestJS 11 foi criado em `server/`, implementando login Google OAuth 2.0 com PKCE (S256), sessões com bearer token (hash SHA256 no CockroachDB) e exclusão de conta conforme a LGPD.
 
