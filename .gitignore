@@ -55,3 +55,6 @@ server/.env
 server/.env.production
 server/dist/
 server/.nuxt
+
+# Architecture Decision Records live in a separate private repository
+/docs/adr/
