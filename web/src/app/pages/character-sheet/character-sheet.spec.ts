@@ -146,6 +146,8 @@ function vm(overrides: Partial<CharacterSheetVm> = {}): CharacterSheetVm {
     raceLabel: 'Gnomo da Rocha',
     classSummary: 'Mago 3',
     backgroundLabel: 'Sábio',
+    alignmentLabel: 'Neutro e bom',
+    experiencePoints: 2700,
     ...overrides,
   };
 }
@@ -428,5 +430,47 @@ describe('CharacterSheetPage', () => {
     expect(el.textContent).toContain('7');
     expect(el.textContent).toContain('1d6+1 perfurante');
     expect(el.querySelector('.ability-grid')).toBeNull();
+  });
+
+  it('shows the alignment and XP in the header, read from the stored sheet (integrator follow-up)', async () => {
+    configure();
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(vm({ alignmentLabel: 'Caótico e bom', experiencePoints: 900 }));
+
+    const el = await render();
+    const meta = el.querySelector('.sheet-meta')?.textContent ?? '';
+    expect(meta).toContain('Caótico e bom');
+    expect(meta).toContain('XP: 900');
+  });
+
+  it('shows 0 XP (a real value), but hides alignment when it is unset', async () => {
+    configure();
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(vm({ alignmentLabel: '', experiencePoints: 0 }));
+
+    const el = await render();
+    const meta = el.querySelector('.sheet-meta')?.textContent ?? '';
+    expect(meta).toContain('XP: 0');
+    expect(meta).not.toContain('Leal');
+    expect(meta).not.toContain('Neutro');
+    expect(meta).not.toContain('Caótico');
+  });
+
+  it('hides XP for an NPC basic sheet, which has none', async () => {
+    configure();
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(
+        vm({
+          characterKind: 'minion',
+          story: null,
+          alignmentLabel: '',
+          experiencePoints: null,
+          sheet: basicSheet(),
+        }),
+      );
+
+    const el = await render();
+    const meta = el.querySelector('.sheet-meta')?.textContent ?? '';
+    expect(meta).not.toContain('XP');
   });
 });

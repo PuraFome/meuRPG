@@ -38,6 +38,12 @@
 
       <p class="sheet-meta">
         {{ vm.raceLabel }} · {{ vm.classSummary }} · {{ vm.backgroundLabel }}
+        @if (vm.alignmentLabel) {
+          · {{ vm.alignmentLabel }}
+        }
+        @if (vm.experiencePoints !== null) {
+          · XP: {{ vm.experiencePoints }}
+        }
         @if (vm.playerDisplayName) {
           · Jogador: {{ vm.playerDisplayName }}
         }

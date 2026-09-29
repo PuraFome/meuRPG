@@ -214,6 +214,18 @@ export interface CharacterSheetVm {
   /** e.g. "Mago 3" (`CharacterSummary.class_summary`, plan §4). */
   readonly classSummary: string;
   readonly backgroundLabel: string;
+  /**
+   * `FullSheet.alignment`'s Portuguese label (the proto's own comments,
+   * word for word — same labels the editor's select uses), or `''` when
+   * unset or the sheet is a `BasicSheet` (integrator follow-up: the
+   * official sheet's top block, read from the stored sheet — `DerivedSheet`
+   * carries no alignment).
+   */
+  readonly alignmentLabel: string;
+  /** `FullSheet.experience_points`, or `null` for a `BasicSheet` (an NPC
+   * has no XP of its own). `0` is a real value (a fresh level-1 character)
+   * and still shows — only `null` hides it. */
+  readonly experiencePoints: number | null;
 }
 
 /**

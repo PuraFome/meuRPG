@@ -3,6 +3,7 @@ import { createClient } from '@connectrpc/connect';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 
 import {
+  Alignment as GenAlignment,
   BasicSheet as GenBasicSheet,
   Character,
   CharacterKind as GenCharacterKind,
@@ -65,6 +66,24 @@ const PROFICIENCY_FROM_GEN: Record<GenProficiencyLevel, SkillProficiency> = {
   [GenProficiencyLevel.HALF]: 'half',
   [GenProficiencyLevel.PROFICIENT]: 'proficient',
   [GenProficiencyLevel.EXPERTISE]: 'expertise',
+};
+
+/** `Alignment`'s Portuguese label, the proto's own comments word for word
+ * — same wording as the editor's select (`character-editor.types.ts`'s
+ * `ALIGNMENT_LABELS`, kept separate on purpose: this file stays
+ * self-contained, per page-folder). `''` for `UNSPECIFIED` — "nothing when
+ * unset" (integrator follow-up). */
+const ALIGNMENT_LABEL_FROM_GEN: Record<GenAlignment, string> = {
+  [GenAlignment.UNSPECIFIED]: '',
+  [GenAlignment.LAWFUL_GOOD]: 'Leal e bom',
+  [GenAlignment.NEUTRAL_GOOD]: 'Neutro e bom',
+  [GenAlignment.CHAOTIC_GOOD]: 'Caótico e bom',
+  [GenAlignment.LAWFUL_NEUTRAL]: 'Leal e neutro',
+  [GenAlignment.NEUTRAL]: 'Neutro',
+  [GenAlignment.CHAOTIC_NEUTRAL]: 'Caótico e neutro',
+  [GenAlignment.LAWFUL_EVIL]: 'Leal e mau',
+  [GenAlignment.NEUTRAL_EVIL]: 'Neutro e mau',
+  [GenAlignment.CHAOTIC_EVIL]: 'Caótico e mau',
 };
 
 function toAttackVm(attack: GenAttack): AttackVm {
@@ -233,7 +252,10 @@ const EMPTY_BASIC_SHEET_VM: BasicSheetVm = {
   description: '',
 };
 
-function toCharacterSheetVm(character: Character): CharacterSheetVm {
+/** Exported so `character-sheet-source.live.spec.ts` can test the identity
+ * fields (alignment, XP) directly, without going through the whole
+ * `getCharacterSheet` RPC round trip. */
+export function toCharacterSheetVm(character: Character): CharacterSheetVm {
   const sheetCase = character.sheet?.content.case;
   const sheet: FullSheetVm | BasicSheetVm =
     sheetCase === 'full' && character.derived
@@ -241,6 +263,11 @@ function toCharacterSheetVm(character: Character): CharacterSheetVm {
       : sheetCase === 'basic'
         ? toBasicSheetVm(character.sheet!.content.value as GenBasicSheet)
         : EMPTY_BASIC_SHEET_VM;
+  // Identity fields the official sheet's top block shows but DerivedSheet
+  // does not carry — read straight from the stored FullSheet, not
+  // computed (integrator follow-up). `undefined` for a BasicSheet: an NPC
+  // has neither.
+  const full = sheetCase === 'full' ? (character.sheet!.content.value as GenFullSheet) : undefined;
 
   return {
     id: character.id,
@@ -271,6 +298,8 @@ function toCharacterSheetVm(character: Character): CharacterSheetVm {
       ? character.derived.classes.map((c) => `${c.namePt} ${c.level}`).join(' / ')
       : '',
     backgroundLabel: character.derived?.backgroundNamePt ?? '',
+    alignmentLabel: full ? ALIGNMENT_LABEL_FROM_GEN[full.alignment] : '',
+    experiencePoints: full ? full.experiencePoints : null,
   };
 }
 
