@@ -1,0 +1,39 @@
+{
+  "effects": {
+    "feature:spellcasting-bard": [
+      {"type": "spellcasting", "ability": "cha", "progression": "full", "ritual": true}
+    ],
+    "feature:bardic-inspiration-d6": [
+      {"type": "grant_action", "economy": "bonus_action"},
+      {"type": "resource", "resource": "bardic_inspiration", "max": "max(1, mod(\"cha\"))", "recharge": "long_rest"}
+    ],
+    "feature:jack-of-all-trades": [
+      {"type": "proficiency", "proficiency": "skill:*", "level": "half"},
+      {"type": "proficiency", "proficiency": "initiative", "level": "half"}
+    ],
+    "feature:song-of-rest-d6": [
+      {"type": "note"}
+    ],
+    "feature:bard-college": [
+      {"type": "choice", "choice": "subclass", "count": 1}
+    ],
+    "feature:bard-expertise-1": [
+      {"type": "note"}
+    ],
+    "feature:bonus-proficiencies": [
+      {"type": "choice", "choice": "skill", "count": 3}
+    ],
+    "feature:cutting-words": [
+      {"type": "grant_action", "economy": "reaction"}
+    ],
+    "feature:bard-ability-score-improvement-1": [
+      {"type": "choice", "choice": "ability_score_improvement", "count": 1}
+    ],
+    "feature:bardic-inspiration-d8": [
+      {"type": "note"}
+    ],
+    "feature:font-of-inspiration": [
+      {"type": "note", "text_pt": "A Inspiração de Bardo volta também num descanso curto."}
+    ]
+  }
+}

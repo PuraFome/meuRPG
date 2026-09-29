@@ -1,0 +1,122 @@
+{
+  "effects": {
+    "trait:darkvision": [
+      {"type": "sense", "sense": "darkvision", "range_ft": 60}
+    ],
+    "trait:dwarven-resilience": [
+      {"type": "roll_mode", "roll": "advantage", "targets": ["save.all"], "tags": ["against:poison"], "text_pt": "Vantagem em testes de resistência contra veneno."},
+      {"type": "note", "text_pt": "Resistência a dano de veneno."}
+    ],
+    "trait:dwarven-combat-training": [
+      {"type": "note"}
+    ],
+    "trait:tool-proficiency": [
+      {"type": "choice", "choice": "tool", "count": 1, "from": ["proficiency:smiths-tools", "proficiency:brewers-supplies", "proficiency:masons-tools"]}
+    ],
+    "trait:stonecunning": [
+      {"type": "proficiency", "proficiency": "skill:history", "level": "expertise", "tags": ["about:stonework"], "text_pt": "História {value} sobre a origem de trabalhos em pedra."}
+    ],
+    "trait:dwarven-toughness": [
+      {"type": "modifier", "target": "hp.max", "mode": "add", "value": "level()"}
+    ],
+    "trait:keen-senses": [
+      {"type": "note"}
+    ],
+    "trait:fey-ancestry": [
+      {"type": "roll_mode", "roll": "advantage", "targets": ["save.all"], "tags": ["against:charmed"], "text_pt": "Vantagem em testes de resistência contra ficar enfeitiçado; magia não faz você dormir."}
+    ],
+    "trait:trance": [
+      {"type": "note"}
+    ],
+    "trait:elf-weapon-training": [
+      {"type": "note"}
+    ],
+    "trait:high-elf-cantrip": [
+      {"type": "choice", "choice": "cantrip", "count": 1, "from": ["class:wizard"]}
+    ],
+    "trait:extra-language": [
+      {"type": "choice", "choice": "language", "count": 1}
+    ],
+    "trait:lucky": [
+      {"type": "note", "text_pt": "Sortudo: ao tirar 1 no d20 de um ataque, teste ou teste de resistência, role de novo e fique com o novo resultado."}
+    ],
+    "trait:brave": [
+      {"type": "roll_mode", "roll": "advantage", "targets": ["save.all"], "tags": ["against:frightened"], "text_pt": "Vantagem em testes de resistência contra ficar amedrontado."}
+    ],
+    "trait:halfling-nimbleness": [
+      {"type": "note"}
+    ],
+    "trait:naturally-stealthy": [
+      {"type": "note"}
+    ],
+    "trait:draconic-ancestry": [
+      {"type": "choice", "choice": "feature", "count": 1}
+    ],
+    "trait:draconic-ancestry-black": [
+      {"type": "note", "text_pt": "Ancestral negro: sopro de ácido numa linha de 1,5 m por 9 m (teste de DES) e resistência a ácido."}
+    ],
+    "trait:draconic-ancestry-blue": [
+      {"type": "note", "text_pt": "Ancestral azul: sopro elétrico numa linha de 1,5 m por 9 m (teste de DES) e resistência a eletricidade."}
+    ],
+    "trait:draconic-ancestry-brass": [
+      {"type": "note", "text_pt": "Ancestral de latão: sopro de fogo numa linha de 1,5 m por 9 m (teste de DES) e resistência a fogo."}
+    ],
+    "trait:draconic-ancestry-bronze": [
+      {"type": "note", "text_pt": "Ancestral de bronze: sopro elétrico numa linha de 1,5 m por 9 m (teste de DES) e resistência a eletricidade."}
+    ],
+    "trait:draconic-ancestry-copper": [
+      {"type": "note", "text_pt": "Ancestral de cobre: sopro de ácido numa linha de 1,5 m por 9 m (teste de DES) e resistência a ácido."}
+    ],
+    "trait:draconic-ancestry-gold": [
+      {"type": "note", "text_pt": "Ancestral dourado: sopro de fogo num cone de 4,5 m (teste de DES) e resistência a fogo."}
+    ],
+    "trait:draconic-ancestry-green": [
+      {"type": "note", "text_pt": "Ancestral verde: sopro venenoso num cone de 4,5 m (teste de CON) e resistência a veneno."}
+    ],
+    "trait:draconic-ancestry-red": [
+      {"type": "note", "text_pt": "Ancestral vermelho: sopro de fogo num cone de 4,5 m (teste de DES) e resistência a fogo."}
+    ],
+    "trait:draconic-ancestry-silver": [
+      {"type": "note", "text_pt": "Ancestral prateado: sopro gélido num cone de 4,5 m (teste de CON) e resistência a frio."}
+    ],
+    "trait:draconic-ancestry-white": [
+      {"type": "note", "text_pt": "Ancestral branco: sopro gélido num cone de 4,5 m (teste de CON) e resistência a frio."}
+    ],
+    "trait:breath-weapon": [
+      {"type": "grant_action", "economy": "action"},
+      {"type": "resource", "resource": "breath_weapon", "max": "1", "recharge": "short_rest"},
+      {"type": "note", "value": "8 + mod(\"con\") + prof()", "text_pt": "Sopro: CD {n}; causa 2d6 (3d6 no 6º nível, 4d6 no 11º, 5d6 no 16º), metade se o alvo passar. Uma vez por descanso curto ou longo."}
+    ],
+    "trait:damage-resistance": [
+      {"type": "note"}
+    ],
+    "trait:gnome-cunning": [
+      {"type": "roll_mode", "roll": "advantage", "targets": ["save.int", "save.wis", "save.cha"], "tags": ["against:magic"], "text_pt": "Vantagem em testes de resistência de INT, SAB e CAR contra magia."}
+    ],
+    "trait:artificers-lore": [
+      {"type": "proficiency", "proficiency": "skill:history", "level": "expertise", "tags": ["about:magic-items", "about:alchemical-objects", "about:technological-devices"], "text_pt": "História {value} sobre itens mágicos, objetos alquímicos ou engenhocas."}
+    ],
+    "trait:tinker": [
+      {"type": "note"}
+    ],
+    "trait:skill-versatility": [
+      {"type": "note"}
+    ],
+    "trait:menacing": [
+      {"type": "note"}
+    ],
+    "trait:relentless-endurance": [
+      {"type": "resource", "resource": "relentless_endurance", "max": "1", "recharge": "long_rest"},
+      {"type": "note", "text_pt": "Resistência implacável: uma vez por descanso longo, ao cair a 0 PV sem morrer, fica com 1 PV."}
+    ],
+    "trait:savage-attacks": [
+      {"type": "note"}
+    ],
+    "trait:hellish-resistance": [
+      {"type": "note", "text_pt": "Resistência a dano de fogo."}
+    ],
+    "trait:infernal-legacy": [
+      {"type": "note", "spells": ["spell:thaumaturgy", "spell:hellish-rebuke", "spell:darkness"]}
+    ]
+  }
+}

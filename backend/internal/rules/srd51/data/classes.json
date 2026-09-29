@@ -1,0 +1,601 @@
+[
+ {
+  "key": "class:barbarian",
+  "name": "Barbarian",
+  "hit_die": 12,
+  "saving_throws": [
+   "str",
+   "con"
+  ],
+  "skill_choices": {
+   "choose": 2,
+   "from": [
+    "skill:animal-handling",
+    "skill:athletics",
+    "skill:intimidation",
+    "skill:nature",
+    "skill:perception",
+    "skill:survival"
+   ]
+  },
+  "proficiencies": [
+   "proficiency:light-armor",
+   "proficiency:medium-armor",
+   "proficiency:shields",
+   "proficiency:simple-weapons",
+   "proficiency:martial-weapons"
+  ],
+  "multiclass": {
+   "minimums": {
+    "str": 13
+   },
+   "proficiencies": [
+    "proficiency:shields",
+    "proficiency:simple-weapons",
+    "proficiency:martial-weapons"
+   ]
+  },
+  "subclasses": [
+   "subclass:berserker"
+  ],
+  "subclass_level": 3
+ },
+ {
+  "key": "class:bard",
+  "name": "Bard",
+  "hit_die": 8,
+  "saving_throws": [
+   "dex",
+   "cha"
+  ],
+  "skill_choices": {
+   "choose": 3,
+   "from": [
+    "skill:acrobatics",
+    "skill:animal-handling",
+    "skill:arcana",
+    "skill:athletics",
+    "skill:deception",
+    "skill:history",
+    "skill:insight",
+    "skill:intimidation",
+    "skill:investigation",
+    "skill:medicine",
+    "skill:nature",
+    "skill:perception",
+    "skill:performance",
+    "skill:persuasion",
+    "skill:religion",
+    "skill:sleight-of-hand",
+    "skill:stealth",
+    "skill:survival"
+   ]
+  },
+  "proficiencies": [
+   "proficiency:light-armor",
+   "proficiency:simple-weapons",
+   "proficiency:longswords",
+   "proficiency:rapiers",
+   "proficiency:shortswords",
+   "proficiency:hand-crossbows"
+  ],
+  "multiclass": {
+   "minimums": {
+    "cha": 13
+   },
+   "proficiencies": [
+    "proficiency:light-armor"
+   ],
+   "skill_choices": {
+    "choose": 1,
+    "from": [
+     "skill:acrobatics",
+     "skill:animal-handling",
+     "skill:arcana",
+     "skill:athletics",
+     "skill:deception",
+     "skill:history",
+     "skill:insight",
+     "skill:intimidation",
+     "skill:investigation",
+     "skill:medicine",
+     "skill:nature",
+     "skill:perception",
+     "skill:performance",
+     "skill:persuasion",
+     "skill:religion",
+     "skill:sleight-of-hand",
+     "skill:stealth",
+     "skill:survival"
+    ]
+   }
+  },
+  "spellcasting": {
+   "level": 1,
+   "ability": "cha"
+  },
+  "subclasses": [
+   "subclass:lore"
+  ],
+  "subclass_level": 3
+ },
+ {
+  "key": "class:cleric",
+  "name": "Cleric",
+  "hit_die": 8,
+  "saving_throws": [
+   "wis",
+   "cha"
+  ],
+  "skill_choices": {
+   "choose": 2,
+   "from": [
+    "skill:history",
+    "skill:insight",
+    "skill:medicine",
+    "skill:persuasion",
+    "skill:religion"
+   ]
+  },
+  "proficiencies": [
+   "proficiency:light-armor",
+   "proficiency:medium-armor",
+   "proficiency:shields",
+   "proficiency:simple-weapons"
+  ],
+  "multiclass": {
+   "minimums": {
+    "wis": 13
+   },
+   "proficiencies": [
+    "proficiency:light-armor",
+    "proficiency:medium-armor",
+    "proficiency:shields"
+   ]
+  },
+  "spellcasting": {
+   "level": 1,
+   "ability": "wis"
+  },
+  "subclasses": [
+   "subclass:life"
+  ],
+  "subclass_level": 1
+ },
+ {
+  "key": "class:druid",
+  "name": "Druid",
+  "hit_die": 8,
+  "saving_throws": [
+   "int",
+   "wis"
+  ],
+  "skill_choices": {
+   "choose": 2,
+   "from": [
+    "skill:arcana",
+    "skill:animal-handling",
+    "skill:insight",
+    "skill:medicine",
+    "skill:nature",
+    "skill:perception",
+    "skill:religion",
+    "skill:survival"
+   ]
+  },
+  "proficiencies": [
+   "proficiency:light-armor",
+   "proficiency:medium-armor",
+   "proficiency:shields",
+   "proficiency:clubs",
+   "proficiency:daggers",
+   "proficiency:javelins",
+   "proficiency:maces",
+   "proficiency:quarterstaffs",
+   "proficiency:sickles",
+   "proficiency:spears",
+   "proficiency:darts",
+   "proficiency:slings",
+   "proficiency:scimitars",
+   "proficiency:herbalism-kit"
+  ],
+  "multiclass": {
+   "minimums": {
+    "wis": 13
+   },
+   "proficiencies": [
+    "proficiency:light-armor",
+    "proficiency:medium-armor",
+    "proficiency:shields"
+   ]
+  },
+  "spellcasting": {
+   "level": 1,
+   "ability": "wis"
+  },
+  "subclasses": [
+   "subclass:land"
+  ],
+  "subclass_level": 2
+ },
+ {
+  "key": "class:fighter",
+  "name": "Fighter",
+  "hit_die": 10,
+  "saving_throws": [
+   "str",
+   "con"
+  ],
+  "skill_choices": {
+   "choose": 2,
+   "from": [
+    "skill:acrobatics",
+    "skill:animal-handling",
+    "skill:athletics",
+    "skill:history",
+    "skill:insight",
+    "skill:intimidation",
+    "skill:perception",
+    "skill:survival"
+   ]
+  },
+  "proficiencies": [
+   "proficiency:all-armor",
+   "proficiency:shields",
+   "proficiency:simple-weapons",
+   "proficiency:martial-weapons"
+  ],
+  "multiclass": {
+   "any_of": {
+    "dex": 13,
+    "str": 13
+   },
+   "proficiencies": [
+    "proficiency:light-armor",
+    "proficiency:medium-armor",
+    "proficiency:shields",
+    "proficiency:simple-weapons",
+    "proficiency:martial-weapons"
+   ]
+  },
+  "subclasses": [
+   "subclass:champion"
+  ],
+  "subclass_level": 3
+ },
+ {
+  "key": "class:monk",
+  "name": "Monk",
+  "hit_die": 8,
+  "saving_throws": [
+   "str",
+   "dex"
+  ],
+  "skill_choices": {
+   "choose": 2,
+   "from": [
+    "skill:acrobatics",
+    "skill:athletics",
+    "skill:history",
+    "skill:insight",
+    "skill:religion",
+    "skill:stealth"
+   ]
+  },
+  "proficiencies": [
+   "proficiency:simple-weapons",
+   "proficiency:shortswords"
+  ],
+  "multiclass": {
+   "minimums": {
+    "dex": 13,
+    "wis": 13
+   },
+   "proficiencies": [
+    "proficiency:simple-weapons",
+    "proficiency:shortswords"
+   ]
+  },
+  "subclasses": [
+   "subclass:open-hand"
+  ],
+  "subclass_level": 3
+ },
+ {
+  "key": "class:paladin",
+  "name": "Paladin",
+  "hit_die": 10,
+  "saving_throws": [
+   "wis",
+   "cha"
+  ],
+  "skill_choices": {
+   "choose": 2,
+   "from": [
+    "skill:athletics",
+    "skill:insight",
+    "skill:intimidation",
+    "skill:medicine",
+    "skill:persuasion",
+    "skill:religion"
+   ]
+  },
+  "proficiencies": [
+   "proficiency:all-armor",
+   "proficiency:shields",
+   "proficiency:simple-weapons",
+   "proficiency:martial-weapons"
+  ],
+  "multiclass": {
+   "minimums": {
+    "cha": 13,
+    "str": 13
+   },
+   "proficiencies": [
+    "proficiency:light-armor",
+    "proficiency:medium-armor",
+    "proficiency:shields",
+    "proficiency:simple-weapons",
+    "proficiency:martial-weapons"
+   ]
+  },
+  "spellcasting": {
+   "level": 2,
+   "ability": "cha"
+  },
+  "subclasses": [
+   "subclass:devotion"
+  ],
+  "subclass_level": 3
+ },
+ {
+  "key": "class:ranger",
+  "name": "Ranger",
+  "hit_die": 10,
+  "saving_throws": [
+   "str",
+   "dex"
+  ],
+  "skill_choices": {
+   "choose": 3,
+   "from": [
+    "skill:animal-handling",
+    "skill:athletics",
+    "skill:insight",
+    "skill:investigation",
+    "skill:nature",
+    "skill:perception",
+    "skill:stealth",
+    "skill:survival"
+   ]
+  },
+  "proficiencies": [
+   "proficiency:light-armor",
+   "proficiency:medium-armor",
+   "proficiency:shields",
+   "proficiency:simple-weapons",
+   "proficiency:martial-weapons"
+  ],
+  "multiclass": {
+   "minimums": {
+    "dex": 13,
+    "wis": 13
+   },
+   "proficiencies": [
+    "proficiency:light-armor",
+    "proficiency:medium-armor",
+    "proficiency:shields",
+    "proficiency:simple-weapons",
+    "proficiency:martial-weapons"
+   ],
+   "skill_choices": {
+    "choose": 1,
+    "from": [
+     "skill:animal-handling",
+     "skill:athletics",
+     "skill:insight",
+     "skill:investigation",
+     "skill:nature",
+     "skill:perception",
+     "skill:stealth",
+     "skill:survival"
+    ]
+   }
+  },
+  "spellcasting": {
+   "level": 2,
+   "ability": "wis"
+  },
+  "subclasses": [
+   "subclass:hunter"
+  ],
+  "subclass_level": 3
+ },
+ {
+  "key": "class:rogue",
+  "name": "Rogue",
+  "hit_die": 8,
+  "saving_throws": [
+   "dex",
+   "int"
+  ],
+  "skill_choices": {
+   "choose": 4,
+   "from": [
+    "skill:acrobatics",
+    "skill:athletics",
+    "skill:deception",
+    "skill:insight",
+    "skill:intimidation",
+    "skill:investigation",
+    "skill:perception",
+    "skill:performance",
+    "skill:persuasion",
+    "skill:sleight-of-hand",
+    "skill:stealth"
+   ]
+  },
+  "proficiencies": [
+   "proficiency:light-armor",
+   "proficiency:simple-weapons",
+   "proficiency:longswords",
+   "proficiency:rapiers",
+   "proficiency:shortswords",
+   "proficiency:hand-crossbows",
+   "proficiency:thieves-tools"
+  ],
+  "multiclass": {
+   "minimums": {
+    "dex": 13
+   },
+   "proficiencies": [
+    "proficiency:light-armor",
+    "proficiency:thieves-tools"
+   ],
+   "skill_choices": {
+    "choose": 1,
+    "from": [
+     "skill:acrobatics",
+     "skill:athletics",
+     "skill:deception",
+     "skill:insight",
+     "skill:intimidation",
+     "skill:investigation",
+     "skill:perception",
+     "skill:performance",
+     "skill:persuasion",
+     "skill:sleight-of-hand",
+     "skill:stealth"
+    ]
+   }
+  },
+  "subclasses": [
+   "subclass:thief"
+  ],
+  "subclass_level": 3
+ },
+ {
+  "key": "class:sorcerer",
+  "name": "Sorcerer",
+  "hit_die": 6,
+  "saving_throws": [
+   "con",
+   "cha"
+  ],
+  "skill_choices": {
+   "choose": 2,
+   "from": [
+    "skill:arcana",
+    "skill:deception",
+    "skill:insight",
+    "skill:intimidation",
+    "skill:persuasion",
+    "skill:religion"
+   ]
+  },
+  "proficiencies": [
+   "proficiency:daggers",
+   "proficiency:darts",
+   "proficiency:slings",
+   "proficiency:quarterstaffs",
+   "proficiency:crossbows-light"
+  ],
+  "multiclass": {
+   "minimums": {
+    "cha": 13
+   },
+   "proficiencies": []
+  },
+  "spellcasting": {
+   "level": 1,
+   "ability": "cha"
+  },
+  "subclasses": [
+   "subclass:draconic"
+  ],
+  "subclass_level": 1
+ },
+ {
+  "key": "class:warlock",
+  "name": "Warlock",
+  "hit_die": 8,
+  "saving_throws": [
+   "wis",
+   "cha"
+  ],
+  "skill_choices": {
+   "choose": 2,
+   "from": [
+    "skill:arcana",
+    "skill:deception",
+    "skill:history",
+    "skill:intimidation",
+    "skill:investigation",
+    "skill:nature",
+    "skill:religion"
+   ]
+  },
+  "proficiencies": [
+   "proficiency:light-armor",
+   "proficiency:simple-weapons"
+  ],
+  "multiclass": {
+   "minimums": {
+    "cha": 13
+   },
+   "proficiencies": [
+    "proficiency:light-armor",
+    "proficiency:simple-weapons"
+   ]
+  },
+  "spellcasting": {
+   "level": 1,
+   "ability": "cha"
+  },
+  "subclasses": [
+   "subclass:fiend"
+  ],
+  "subclass_level": 1
+ },
+ {
+  "key": "class:wizard",
+  "name": "Wizard",
+  "hit_die": 6,
+  "saving_throws": [
+   "int",
+   "wis"
+  ],
+  "skill_choices": {
+   "choose": 2,
+   "from": [
+    "skill:arcana",
+    "skill:history",
+    "skill:insight",
+    "skill:investigation",
+    "skill:medicine",
+    "skill:religion"
+   ]
+  },
+  "proficiencies": [
+   "proficiency:daggers",
+   "proficiency:darts",
+   "proficiency:slings",
+   "proficiency:quarterstaffs",
+   "proficiency:crossbows-light"
+  ],
+  "multiclass": {
+   "minimums": {
+    "int": 13
+   },
+   "proficiencies": []
+  },
+  "spellcasting": {
+   "level": 1,
+   "ability": "int"
+  },
+  "subclasses": [
+   "subclass:evocation"
+  ],
+  "subclass_level": 2
+ }
+]

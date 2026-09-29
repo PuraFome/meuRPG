@@ -1,0 +1,47 @@
+{
+  "effects": {
+    "feature:martial-arts": [
+      {"type": "handler", "handler": "monk.martial_arts"}
+    ],
+    "feature:monk-unarmored-defense": [
+      {"type": "modifier", "target": "ac.base", "mode": "max", "value": "10 + mod(\"dex\") + mod(\"wis\")", "when": "armor() == \"none\" and not shield()"}
+    ],
+    "feature:ki": [
+      {"type": "resource", "resource": "ki", "max": "classLevel(\"monk\")", "recharge": "short_rest"},
+      {"type": "note", "value": "8 + prof() + mod(\"wis\")", "text_pt": "CD dos poderes de ki: {n}."}
+    ],
+    "feature:flurry-of-blows": [
+      {"type": "grant_action", "economy": "bonus_action"}
+    ],
+    "feature:patient-defense": [
+      {"type": "grant_action", "economy": "bonus_action"}
+    ],
+    "feature:step-of-the-wind": [
+      {"type": "grant_action", "economy": "bonus_action"}
+    ],
+    "feature:unarmored-movement-1": [
+      {"type": "modifier", "target": "speed.walk", "mode": "add", "value": "classLevel(\"monk\") >= 18 ? 30 : classLevel(\"monk\") >= 14 ? 25 : classLevel(\"monk\") >= 10 ? 20 : classLevel(\"monk\") >= 6 ? 15 : 10", "when": "armor() == \"none\" and not shield()"}
+    ],
+    "feature:deflect-missiles": [
+      {"type": "grant_action", "economy": "reaction"}
+    ],
+    "feature:monastic-tradition": [
+      {"type": "choice", "choice": "subclass", "count": 1}
+    ],
+    "feature:open-hand-technique": [
+      {"type": "note"}
+    ],
+    "feature:monk-ability-score-improvement-1": [
+      {"type": "choice", "choice": "ability_score_improvement", "count": 1}
+    ],
+    "feature:slow-fall": [
+      {"type": "grant_action", "economy": "reaction"}
+    ],
+    "feature:monk-extra-attack": [
+      {"type": "note"}
+    ],
+    "feature:stunning-strike": [
+      {"type": "note"}
+    ]
+  }
+}

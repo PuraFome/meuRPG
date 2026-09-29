@@ -110,6 +110,43 @@ O sqlc fica preso na versão **1.31.1**, porque a versão vai escrita em cada ar
 
 O sqlc lê as migrations com o parser do PostgreSQL. Por isso, migration nova usa SQL que o PostgreSQL e o CockroachDB aceitam: índice numa migration própria, com `CREATE INDEX IF NOT EXISTS`, nunca uma linha `INDEX` dentro do `CREATE TABLE`; coluna coberta com `INCLUDE` (o `STORING` do CockroachDB). Opções do CockroachDB em `WITH (...)`, como o TTL por linha, funcionam. Toda migration precisa poder rodar duas vezes: o teste `TestMigrationsAreSafeToRerun` confere.
 
+## Conteúdo de regras (SRD)
+
+O módulo `rules` é puro: os testes dele rodam sem banco, sem Docker e sem rede, em cerca de um segundo. É o ciclo rápido para mexer no motor, nos efeitos ou nos nomes.
+
+| Comando (em `backend/`) | O que faz |
+| --- | --- |
+| `go test ./internal/rules/...` | Roda os testes do motor, do snapshot do SRD e das fórmulas. |
+| `go test ./internal/rules -run Golden -update` | Regrava `testdata/golden/pensantus.json` depois de uma mudança intencional nos números. Revise o diff antes do commit. |
+| `go test ./internal/rules/formula -run '^$' -fuzz FuzzCompileFormula -fuzztime 30s` | Fuzz das fórmulas: nenhuma entrada pode travar ou derrubar o motor. O CI não roda o fuzz; rode ao mexer em `formula/`. |
+| `go test ./internal/rules -run '^$' -bench Derive -benchmem` | Mede um `Derive`, que roda a cada leitura de ficha. |
+
+O conteúdo fica em `backend/internal/rules/srd51`:
+
+- `data/` é gerado pelo `cmd/srdimport` a partir do 5e-database (`packages/5e-database/src/2014/en` do repositório `5e-bits/5e-srd-api`), num commit fixado. **Nunca edite à mão:** o `TestSnapshot` compara cada arquivo com o sha256 do `manifest.json`. O diff desses arquivos aparece recolhido no PR (`.gitattributes`); revise o importador e o `manifest.json`.
+- `effects/` é escrito à mão: os efeitos de cada feature e traço (`<classe>.json`, `races.json`, `backgrounds.json`), os nomes em português (`names_pt.json`) e a revisão (`revision.json`).
+
+### Atualizar o SRD para um commit novo
+
+1. Baixe os JSON no commit novo, numa pasta fora do repositório:
+
+   ```bash
+   git clone --filter=blob:none --no-checkout https://github.com/5e-bits/5e-srd-api.git /tmp/5e-srd-api
+   git -C /tmp/5e-srd-api sparse-checkout set --no-cone packages/5e-database/src/2014/en
+   git -C /tmp/5e-srd-api checkout <commit>
+   ```
+
+2. Em `backend/cmd/srdimport/main.go`, troque `sourceCommit` e a tabela `inputHashes` (`shasum -a 256 /tmp/5e-srd-api/packages/5e-database/src/2014/en/5e-SRD-*.json`). O importador recusa qualquer arquivo com outro sha256.
+3. Gere o snapshot: `cd backend && go run ./cmd/srdimport -src /tmp/5e-srd-api/packages/5e-database/src/2014/en`.
+4. Troque o commit no `NOTICE` (o `TestSnapshot` confere).
+5. Rode `go test ./internal/rules/...`. O `TestReferences` mostra referências quebradas, o `TestEffectsCoverLevels1To5` e o `TestNamesPT` mostram o que ficou sem efeito ou sem nome, e o golden mostra os números que mudaram.
+
+### Mudar um efeito ou um nome
+
+- Uma versão de conteúdo nunca muda no lugar (ADR-0008). Depois de editar qualquer arquivo de `effects/`, o `TestSnapshot` falha e diz o `revision` e o `sha256` novos para pôr em `effects/revision.json`; o `content_version` passa de `srd51@<commit>+fx.<n>` para `fx.<n+1>`.
+- Os tipos de efeito são fechados e o carregamento recusa o resto. As fórmulas só usam `level()`, `classLevel("wizard")`, `mod("int")`, `score("int")`, `prof()`, `armor()`, `shield()`, `floor`, `ceil`, `min` e `max` (ver [Arquitetura → Módulo rules](docs/arquitetura.md#módulo-rules-regras-como-dados)).
+- Nomes e textos em `effects/` são nossos, em português. Nenhum texto de livro fora do SRD entra aqui: o repositório é público.
+
 ## Branches
 
 Crie uma branch a partir da `main`: `feat/`, `fix/`, `docs/` ou `chore/` e um nome curto. Quem não tem acesso de escrita trabalha num fork, como `vfraga/meuRPG`.

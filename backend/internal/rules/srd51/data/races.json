@@ -1,0 +1,199 @@
+[
+ {
+  "key": "race:dragonborn",
+  "name": "Dragonborn",
+  "speed_ft": 30,
+  "size": "Medium",
+  "ability_bonuses": {
+   "cha": 1,
+   "str": 2
+  },
+  "languages": [
+   "language:common",
+   "language:draconic"
+  ],
+  "traits": [
+   "trait:draconic-ancestry",
+   "trait:breath-weapon",
+   "trait:damage-resistance"
+  ],
+  "subraces": []
+ },
+ {
+  "key": "race:dwarf",
+  "name": "Dwarf",
+  "speed_ft": 25,
+  "size": "Medium",
+  "ability_bonuses": {
+   "con": 2
+  },
+  "languages": [
+   "language:common",
+   "language:dwarvish"
+  ],
+  "traits": [
+   "trait:darkvision",
+   "trait:dwarven-resilience",
+   "trait:stonecunning",
+   "trait:dwarven-combat-training",
+   "trait:tool-proficiency"
+  ],
+  "subraces": [
+   "subrace:hill-dwarf"
+  ]
+ },
+ {
+  "key": "race:elf",
+  "name": "Elf",
+  "speed_ft": 30,
+  "size": "Medium",
+  "ability_bonuses": {
+   "dex": 2
+  },
+  "languages": [
+   "language:common",
+   "language:elvish"
+  ],
+  "traits": [
+   "trait:darkvision",
+   "trait:fey-ancestry",
+   "trait:trance",
+   "trait:keen-senses"
+  ],
+  "subraces": [
+   "subrace:high-elf"
+  ]
+ },
+ {
+  "key": "race:gnome",
+  "name": "Gnome",
+  "speed_ft": 25,
+  "size": "Small",
+  "ability_bonuses": {
+   "int": 2
+  },
+  "languages": [
+   "language:common",
+   "language:gnomish"
+  ],
+  "traits": [
+   "trait:darkvision",
+   "trait:gnome-cunning"
+  ],
+  "subraces": [
+   "subrace:rock-gnome"
+  ]
+ },
+ {
+  "key": "race:half-elf",
+  "name": "Half-Elf",
+  "speed_ft": 30,
+  "size": "Medium",
+  "ability_bonuses": {
+   "cha": 2
+  },
+  "ability_bonus_choices": {
+   "choose": 2,
+   "from": [
+    "str",
+    "dex",
+    "con",
+    "int",
+    "wis"
+   ]
+  },
+  "languages": [
+   "language:common",
+   "language:elvish"
+  ],
+  "language_choices": 1,
+  "traits": [
+   "trait:darkvision",
+   "trait:fey-ancestry",
+   "trait:skill-versatility"
+  ],
+  "subraces": []
+ },
+ {
+  "key": "race:half-orc",
+  "name": "Half-Orc",
+  "speed_ft": 30,
+  "size": "Medium",
+  "ability_bonuses": {
+   "con": 1,
+   "str": 2
+  },
+  "languages": [
+   "language:common",
+   "language:orc"
+  ],
+  "traits": [
+   "trait:darkvision",
+   "trait:savage-attacks",
+   "trait:relentless-endurance",
+   "trait:menacing"
+  ],
+  "subraces": []
+ },
+ {
+  "key": "race:halfling",
+  "name": "Halfling",
+  "speed_ft": 25,
+  "size": "Small",
+  "ability_bonuses": {
+   "dex": 2
+  },
+  "languages": [
+   "language:common",
+   "language:halfling"
+  ],
+  "traits": [
+   "trait:brave",
+   "trait:halfling-nimbleness",
+   "trait:lucky"
+  ],
+  "subraces": [
+   "subrace:lightfoot-halfling"
+  ]
+ },
+ {
+  "key": "race:human",
+  "name": "Human",
+  "speed_ft": 30,
+  "size": "Medium",
+  "ability_bonuses": {
+   "cha": 1,
+   "con": 1,
+   "dex": 1,
+   "int": 1,
+   "str": 1,
+   "wis": 1
+  },
+  "languages": [
+   "language:common"
+  ],
+  "language_choices": 1,
+  "traits": [],
+  "subraces": []
+ },
+ {
+  "key": "race:tiefling",
+  "name": "Tiefling",
+  "speed_ft": 30,
+  "size": "Medium",
+  "ability_bonuses": {
+   "cha": 2,
+   "int": 1
+  },
+  "languages": [
+   "language:common",
+   "language:infernal"
+  ],
+  "traits": [
+   "trait:darkvision",
+   "trait:hellish-resistance",
+   "trait:infernal-legacy"
+  ],
+  "subraces": []
+ }
+]

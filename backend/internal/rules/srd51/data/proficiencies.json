@@ -1,0 +1,938 @@
+[
+ {
+  "key": "proficiency:alchemists-supplies",
+  "name": "Alchemist's Supplies",
+  "kind": "tool",
+  "refs": [
+   "equipment:alchemists-supplies"
+  ]
+ },
+ {
+  "key": "proficiency:all-armor",
+  "name": "All armor",
+  "kind": "armor",
+  "refs": [
+   "equipment-category:armor"
+  ]
+ },
+ {
+  "key": "proficiency:bagpipes",
+  "name": "Bagpipes",
+  "kind": "tool",
+  "refs": [
+   "equipment:bagpipes"
+  ]
+ },
+ {
+  "key": "proficiency:battleaxes",
+  "name": "Battleaxes",
+  "kind": "weapon",
+  "refs": [
+   "equipment:battleaxe"
+  ]
+ },
+ {
+  "key": "proficiency:blowguns",
+  "name": "Blowguns",
+  "kind": "weapon",
+  "refs": [
+   "equipment:blowgun"
+  ]
+ },
+ {
+  "key": "proficiency:breastplate",
+  "name": "Breastplate",
+  "kind": "armor",
+  "refs": [
+   "equipment:breastplate"
+  ]
+ },
+ {
+  "key": "proficiency:brewers-supplies",
+  "name": "Brewer's Supplies",
+  "kind": "tool",
+  "refs": [
+   "equipment:brewers-supplies"
+  ]
+ },
+ {
+  "key": "proficiency:calligraphers-supplies",
+  "name": "Calligrapher's Supplies",
+  "kind": "tool",
+  "refs": [
+   "equipment:calligraphers-supplies"
+  ]
+ },
+ {
+  "key": "proficiency:carpenters-tools",
+  "name": "Carpenter's Tools",
+  "kind": "tool",
+  "refs": [
+   "equipment:carpenters-tools"
+  ]
+ },
+ {
+  "key": "proficiency:cartographers-tools",
+  "name": "Cartographer's Tools",
+  "kind": "tool",
+  "refs": [
+   "equipment:cartographers-tools"
+  ]
+ },
+ {
+  "key": "proficiency:chain-mail",
+  "name": "Chain Mail",
+  "kind": "armor",
+  "refs": [
+   "equipment:chain-mail"
+  ]
+ },
+ {
+  "key": "proficiency:chain-shirt",
+  "name": "Chain Shirt",
+  "kind": "armor",
+  "refs": [
+   "equipment:chain-shirt"
+  ]
+ },
+ {
+  "key": "proficiency:clubs",
+  "name": "Clubs",
+  "kind": "weapon",
+  "refs": [
+   "equipment:club"
+  ]
+ },
+ {
+  "key": "proficiency:cobblers-tools",
+  "name": "Cobbler's Tools",
+  "kind": "tool",
+  "refs": [
+   "equipment:cobblers-tools"
+  ]
+ },
+ {
+  "key": "proficiency:cooks-utensils",
+  "name": "Cook's utensils",
+  "kind": "tool",
+  "refs": [
+   "equipment:cooks-utensils"
+  ]
+ },
+ {
+  "key": "proficiency:crossbows-heavy",
+  "name": "Crossbows, heavy",
+  "kind": "weapon",
+  "refs": [
+   "equipment:crossbow-heavy"
+  ]
+ },
+ {
+  "key": "proficiency:crossbows-light",
+  "name": "Crossbows, light",
+  "kind": "weapon",
+  "refs": [
+   "equipment:crossbow-light"
+  ]
+ },
+ {
+  "key": "proficiency:daggers",
+  "name": "Daggers",
+  "kind": "weapon",
+  "refs": [
+   "equipment:dagger"
+  ]
+ },
+ {
+  "key": "proficiency:darts",
+  "name": "Darts",
+  "kind": "weapon",
+  "refs": [
+   "equipment:dart"
+  ]
+ },
+ {
+  "key": "proficiency:dice-set",
+  "name": "Dice Set",
+  "kind": "tool",
+  "refs": [
+   "equipment:dice-set"
+  ]
+ },
+ {
+  "key": "proficiency:disguise-kit",
+  "name": "Disguise Kit",
+  "kind": "tool",
+  "refs": [
+   "equipment:disguise-kit"
+  ]
+ },
+ {
+  "key": "proficiency:drum",
+  "name": "Drum",
+  "kind": "tool",
+  "refs": [
+   "equipment:drum"
+  ]
+ },
+ {
+  "key": "proficiency:dulcimer",
+  "name": "Dulcimer",
+  "kind": "tool",
+  "refs": [
+   "equipment:dulcimer"
+  ]
+ },
+ {
+  "key": "proficiency:flails",
+  "name": "Flails",
+  "kind": "weapon",
+  "refs": [
+   "equipment:flail"
+  ]
+ },
+ {
+  "key": "proficiency:flute",
+  "name": "Flute",
+  "kind": "tool",
+  "refs": [
+   "equipment:flute"
+  ]
+ },
+ {
+  "key": "proficiency:forgery-kit",
+  "name": "Forgery Kit",
+  "kind": "tool",
+  "refs": [
+   "equipment:forgery-kit"
+  ]
+ },
+ {
+  "key": "proficiency:glaives",
+  "name": "Glaives",
+  "kind": "weapon",
+  "refs": [
+   "equipment:glaive"
+  ]
+ },
+ {
+  "key": "proficiency:glassblowers-tools",
+  "name": "Glassblower's Tools",
+  "kind": "tool",
+  "refs": [
+   "equipment:glassblowers-tools"
+  ]
+ },
+ {
+  "key": "proficiency:greataxes",
+  "name": "Greataxes",
+  "kind": "weapon",
+  "refs": [
+   "equipment:greataxe"
+  ]
+ },
+ {
+  "key": "proficiency:greatclubs",
+  "name": "Greatclubs",
+  "kind": "weapon",
+  "refs": [
+   "equipment:greatclub"
+  ]
+ },
+ {
+  "key": "proficiency:greatswords",
+  "name": "Greatswords",
+  "kind": "weapon",
+  "refs": [
+   "equipment:greatsword"
+  ]
+ },
+ {
+  "key": "proficiency:halberds",
+  "name": "Halberds",
+  "kind": "weapon",
+  "refs": [
+   "equipment:halberd"
+  ]
+ },
+ {
+  "key": "proficiency:half-plate-armor",
+  "name": "Half Plate Armor",
+  "kind": "armor",
+  "refs": [
+   "equipment:half-plate-armor"
+  ]
+ },
+ {
+  "key": "proficiency:hand-crossbows",
+  "name": "Hand crossbows",
+  "kind": "weapon",
+  "refs": [
+   "equipment:crossbow-hand"
+  ]
+ },
+ {
+  "key": "proficiency:handaxes",
+  "name": "Handaxes",
+  "kind": "weapon",
+  "refs": [
+   "equipment:handaxe"
+  ]
+ },
+ {
+  "key": "proficiency:heavy-armor",
+  "name": "Heavy Armor",
+  "kind": "armor",
+  "refs": [
+   "equipment-category:heavy-armor"
+  ]
+ },
+ {
+  "key": "proficiency:herbalism-kit",
+  "name": "Herbalism Kit",
+  "kind": "other",
+  "refs": [
+   "equipment:herbalism-kit"
+  ]
+ },
+ {
+  "key": "proficiency:hide-armor",
+  "name": "Hide Armor",
+  "kind": "armor",
+  "refs": [
+   "equipment:hide-armor"
+  ]
+ },
+ {
+  "key": "proficiency:horn",
+  "name": "Horn",
+  "kind": "tool",
+  "refs": [
+   "equipment:horn"
+  ]
+ },
+ {
+  "key": "proficiency:javelins",
+  "name": "Javelins",
+  "kind": "weapon",
+  "refs": [
+   "equipment:javelin"
+  ]
+ },
+ {
+  "key": "proficiency:jewelers-tools",
+  "name": "Jeweler's Tools",
+  "kind": "tool",
+  "refs": [
+   "equipment:jewelers-tools"
+  ]
+ },
+ {
+  "key": "proficiency:lances",
+  "name": "Lances",
+  "kind": "weapon",
+  "refs": [
+   "equipment:lance"
+  ]
+ },
+ {
+  "key": "proficiency:land-vehicles",
+  "name": "Land Vehicles",
+  "kind": "other",
+  "refs": [
+   "equipment-category:land-vehicles"
+  ]
+ },
+ {
+  "key": "proficiency:leather-armor",
+  "name": "Leather Armor",
+  "kind": "armor",
+  "refs": [
+   "equipment:leather-armor"
+  ]
+ },
+ {
+  "key": "proficiency:leatherworkers-tools",
+  "name": "Leatherworker's Tools",
+  "kind": "tool",
+  "refs": [
+   "equipment:leatherworkers-tools"
+  ]
+ },
+ {
+  "key": "proficiency:light-armor",
+  "name": "Light Armor",
+  "kind": "armor",
+  "refs": [
+   "equipment-category:light-armor"
+  ]
+ },
+ {
+  "key": "proficiency:light-hammers",
+  "name": "Light hammers",
+  "kind": "weapon",
+  "refs": [
+   "equipment:light-hammer"
+  ]
+ },
+ {
+  "key": "proficiency:longbows",
+  "name": "Longbows",
+  "kind": "weapon",
+  "refs": [
+   "equipment:longbow"
+  ]
+ },
+ {
+  "key": "proficiency:longswords",
+  "name": "Longswords",
+  "kind": "weapon",
+  "refs": [
+   "equipment:longsword"
+  ]
+ },
+ {
+  "key": "proficiency:lute",
+  "name": "Lute",
+  "kind": "tool",
+  "refs": [
+   "equipment:lute"
+  ]
+ },
+ {
+  "key": "proficiency:lyre",
+  "name": "Lyre",
+  "kind": "tool",
+  "refs": [
+   "equipment:lyre"
+  ]
+ },
+ {
+  "key": "proficiency:maces",
+  "name": "Maces",
+  "kind": "weapon",
+  "refs": [
+   "equipment:mace"
+  ]
+ },
+ {
+  "key": "proficiency:martial-weapons",
+  "name": "Martial Weapons",
+  "kind": "weapon",
+  "refs": [
+   "equipment-category:martial-weapons"
+  ]
+ },
+ {
+  "key": "proficiency:masons-tools",
+  "name": "Mason's Tools",
+  "kind": "tool",
+  "refs": [
+   "equipment:masons-tools"
+  ]
+ },
+ {
+  "key": "proficiency:mauls",
+  "name": "Mauls",
+  "kind": "weapon",
+  "refs": [
+   "equipment:maul"
+  ]
+ },
+ {
+  "key": "proficiency:medium-armor",
+  "name": "Medium Armor",
+  "kind": "armor",
+  "refs": [
+   "equipment-category:medium-armor"
+  ]
+ },
+ {
+  "key": "proficiency:morningstars",
+  "name": "Morningstars",
+  "kind": "weapon",
+  "refs": [
+   "equipment:morningstar"
+  ]
+ },
+ {
+  "key": "proficiency:navigators-tools",
+  "name": "Navigator's Tools",
+  "kind": "other",
+  "refs": [
+   "equipment:navigators-tools"
+  ]
+ },
+ {
+  "key": "proficiency:nets",
+  "name": "Nets",
+  "kind": "weapon",
+  "refs": [
+   "equipment:net"
+  ]
+ },
+ {
+  "key": "proficiency:padded-armor",
+  "name": "Padded Armor",
+  "kind": "armor",
+  "refs": [
+   "equipment:padded-armor"
+  ]
+ },
+ {
+  "key": "proficiency:painters-supplies",
+  "name": "Painter's Supplies",
+  "kind": "tool",
+  "refs": [
+   "equipment:painters-supplies"
+  ]
+ },
+ {
+  "key": "proficiency:pan-flute",
+  "name": "Pan flute",
+  "kind": "tool",
+  "refs": [
+   "equipment:pan-flute"
+  ]
+ },
+ {
+  "key": "proficiency:pikes",
+  "name": "Pikes",
+  "kind": "weapon",
+  "refs": [
+   "equipment:pike"
+  ]
+ },
+ {
+  "key": "proficiency:plate-armor",
+  "name": "Plate Armor",
+  "kind": "armor",
+  "refs": [
+   "equipment:plate-armor"
+  ]
+ },
+ {
+  "key": "proficiency:playing-card-set",
+  "name": "Playing Card Set",
+  "kind": "tool",
+  "refs": [
+   "equipment:playing-card-set"
+  ]
+ },
+ {
+  "key": "proficiency:poisoners-kit",
+  "name": "Poisoner's Kit",
+  "kind": "other",
+  "refs": [
+   "equipment:poisoners-kit"
+  ]
+ },
+ {
+  "key": "proficiency:potters-tools",
+  "name": "Potter's Tools",
+  "kind": "tool",
+  "refs": [
+   "equipment:potters-tools"
+  ]
+ },
+ {
+  "key": "proficiency:quarterstaffs",
+  "name": "Quarterstaffs",
+  "kind": "weapon",
+  "refs": [
+   "equipment:quarterstaff"
+  ]
+ },
+ {
+  "key": "proficiency:rapiers",
+  "name": "Rapiers",
+  "kind": "weapon",
+  "refs": [
+   "equipment:rapier"
+  ]
+ },
+ {
+  "key": "proficiency:ring-mail",
+  "name": "Ring Mail",
+  "kind": "armor",
+  "refs": [
+   "equipment:ring-mail"
+  ]
+ },
+ {
+  "key": "proficiency:saving-throw-cha",
+  "name": "Saving Throw: CHA",
+  "kind": "saving-throw",
+  "refs": [
+   "cha"
+  ]
+ },
+ {
+  "key": "proficiency:saving-throw-con",
+  "name": "Saving Throw: CON",
+  "kind": "saving-throw",
+  "refs": [
+   "con"
+  ]
+ },
+ {
+  "key": "proficiency:saving-throw-dex",
+  "name": "Saving Throw: DEX",
+  "kind": "saving-throw",
+  "refs": [
+   "dex"
+  ]
+ },
+ {
+  "key": "proficiency:saving-throw-int",
+  "name": "Saving Throw: INT",
+  "kind": "saving-throw",
+  "refs": [
+   "int"
+  ]
+ },
+ {
+  "key": "proficiency:saving-throw-str",
+  "name": "Saving Throw: STR",
+  "kind": "saving-throw",
+  "refs": [
+   "str"
+  ]
+ },
+ {
+  "key": "proficiency:saving-throw-wis",
+  "name": "Saving Throw: WIS",
+  "kind": "saving-throw",
+  "refs": [
+   "wis"
+  ]
+ },
+ {
+  "key": "proficiency:scale-mail",
+  "name": "Scale Mail",
+  "kind": "armor",
+  "refs": [
+   "equipment:scale-mail"
+  ]
+ },
+ {
+  "key": "proficiency:scimitars",
+  "name": "Scimitars",
+  "kind": "weapon",
+  "refs": [
+   "equipment:scimitar"
+  ]
+ },
+ {
+  "key": "proficiency:shawm",
+  "name": "Shawm",
+  "kind": "tool",
+  "refs": [
+   "equipment:shawm"
+  ]
+ },
+ {
+  "key": "proficiency:shields",
+  "name": "Shields",
+  "kind": "armor",
+  "refs": [
+   "equipment:shield"
+  ]
+ },
+ {
+  "key": "proficiency:shortbows",
+  "name": "Shortbows",
+  "kind": "weapon",
+  "refs": [
+   "equipment:shortbow"
+  ]
+ },
+ {
+  "key": "proficiency:shortswords",
+  "name": "Shortswords",
+  "kind": "weapon",
+  "refs": [
+   "equipment:shortsword"
+  ]
+ },
+ {
+  "key": "proficiency:sickles",
+  "name": "Sickles",
+  "kind": "weapon",
+  "refs": [
+   "equipment:sickle"
+  ]
+ },
+ {
+  "key": "proficiency:simple-weapons",
+  "name": "Simple Weapons",
+  "kind": "weapon",
+  "refs": [
+   "equipment-category:simple-weapons"
+  ]
+ },
+ {
+  "key": "proficiency:skill-acrobatics",
+  "name": "Skill: Acrobatics",
+  "kind": "skill",
+  "refs": [
+   "skill:acrobatics"
+  ]
+ },
+ {
+  "key": "proficiency:skill-animal-handling",
+  "name": "Skill: Animal Handling",
+  "kind": "skill",
+  "refs": [
+   "skill:animal-handling"
+  ]
+ },
+ {
+  "key": "proficiency:skill-arcana",
+  "name": "Skill: Arcana",
+  "kind": "skill",
+  "refs": [
+   "skill:arcana"
+  ]
+ },
+ {
+  "key": "proficiency:skill-athletics",
+  "name": "Skill: Athletics",
+  "kind": "skill",
+  "refs": [
+   "skill:athletics"
+  ]
+ },
+ {
+  "key": "proficiency:skill-deception",
+  "name": "Skill: Deception",
+  "kind": "skill",
+  "refs": [
+   "skill:deception"
+  ]
+ },
+ {
+  "key": "proficiency:skill-history",
+  "name": "Skill: History",
+  "kind": "skill",
+  "refs": [
+   "skill:history"
+  ]
+ },
+ {
+  "key": "proficiency:skill-insight",
+  "name": "Skill: Insight",
+  "kind": "skill",
+  "refs": [
+   "skill:insight"
+  ]
+ },
+ {
+  "key": "proficiency:skill-intimidation",
+  "name": "Skill: Intimidation",
+  "kind": "skill",
+  "refs": [
+   "skill:intimidation"
+  ]
+ },
+ {
+  "key": "proficiency:skill-investigation",
+  "name": "Skill: Investigation",
+  "kind": "skill",
+  "refs": [
+   "skill:investigation"
+  ]
+ },
+ {
+  "key": "proficiency:skill-medicine",
+  "name": "Skill: Medicine",
+  "kind": "skill",
+  "refs": [
+   "skill:medicine"
+  ]
+ },
+ {
+  "key": "proficiency:skill-nature",
+  "name": "Skill: Nature",
+  "kind": "skill",
+  "refs": [
+   "skill:nature"
+  ]
+ },
+ {
+  "key": "proficiency:skill-perception",
+  "name": "Skill: Perception",
+  "kind": "skill",
+  "refs": [
+   "skill:perception"
+  ]
+ },
+ {
+  "key": "proficiency:skill-performance",
+  "name": "Skill: Performance",
+  "kind": "skill",
+  "refs": [
+   "skill:performance"
+  ]
+ },
+ {
+  "key": "proficiency:skill-persuasion",
+  "name": "Skill: Persuasion",
+  "kind": "skill",
+  "refs": [
+   "skill:persuasion"
+  ]
+ },
+ {
+  "key": "proficiency:skill-religion",
+  "name": "Skill: Religion",
+  "kind": "skill",
+  "refs": [
+   "skill:religion"
+  ]
+ },
+ {
+  "key": "proficiency:skill-sleight-of-hand",
+  "name": "Skill: Sleight of Hand",
+  "kind": "skill",
+  "refs": [
+   "skill:sleight-of-hand"
+  ]
+ },
+ {
+  "key": "proficiency:skill-stealth",
+  "name": "Skill: Stealth",
+  "kind": "skill",
+  "refs": [
+   "skill:stealth"
+  ]
+ },
+ {
+  "key": "proficiency:skill-survival",
+  "name": "Skill: Survival",
+  "kind": "skill",
+  "refs": [
+   "skill:survival"
+  ]
+ },
+ {
+  "key": "proficiency:slings",
+  "name": "Slings",
+  "kind": "weapon",
+  "refs": [
+   "equipment:sling"
+  ]
+ },
+ {
+  "key": "proficiency:smiths-tools",
+  "name": "Smith's Tools",
+  "kind": "tool",
+  "refs": [
+   "equipment:smiths-tools"
+  ]
+ },
+ {
+  "key": "proficiency:spears",
+  "name": "Spears",
+  "kind": "weapon",
+  "refs": [
+   "equipment:spear"
+  ]
+ },
+ {
+  "key": "proficiency:splint-armor",
+  "name": "Splint Armor",
+  "kind": "armor",
+  "refs": [
+   "equipment:splint-armor"
+  ]
+ },
+ {
+  "key": "proficiency:studded-leather-armor",
+  "name": "Studded Leather Armor",
+  "kind": "armor",
+  "refs": [
+   "equipment:studded-leather-armor"
+  ]
+ },
+ {
+  "key": "proficiency:thieves-tools",
+  "name": "Thieves' Tools",
+  "kind": "other",
+  "refs": [
+   "equipment:thieves-tools"
+  ]
+ },
+ {
+  "key": "proficiency:tinkers-tools",
+  "name": "Tinker's Tools",
+  "kind": "tool",
+  "refs": [
+   "equipment:tinkers-tools"
+  ]
+ },
+ {
+  "key": "proficiency:tridents",
+  "name": "Tridents",
+  "kind": "weapon",
+  "refs": [
+   "equipment:trident"
+  ]
+ },
+ {
+  "key": "proficiency:viol",
+  "name": "Viol",
+  "kind": "tool",
+  "refs": [
+   "equipment:viol"
+  ]
+ },
+ {
+  "key": "proficiency:war-picks",
+  "name": "War picks",
+  "kind": "weapon",
+  "refs": [
+   "equipment:war-pick"
+  ]
+ },
+ {
+  "key": "proficiency:warhammers",
+  "name": "Warhammers",
+  "kind": "weapon",
+  "refs": [
+   "equipment:warhammer"
+  ]
+ },
+ {
+  "key": "proficiency:water-vehicles",
+  "name": "Water Vehicles",
+  "kind": "other",
+  "refs": [
+   "equipment-category:waterborne-vehicles"
+  ]
+ },
+ {
+  "key": "proficiency:weavers-tools",
+  "name": "Weaver's Tools",
+  "kind": "tool",
+  "refs": [
+   "equipment:weavers-tools"
+  ]
+ },
+ {
+  "key": "proficiency:whips",
+  "name": "Whips",
+  "kind": "weapon",
+  "refs": [
+   "equipment:whip"
+  ]
+ },
+ {
+  "key": "proficiency:woodcarvers-tools",
+  "name": "Woodcarver's Tools",
+  "kind": "tool",
+  "refs": [
+   "equipment:woodcarvers-tools"
+  ]
+ }
+]
