@@ -1,6 +1,6 @@
 # Perguntas em aberto
 
-Nenhuma delas trava a Etapa 1. Todas são para o Samuel, e cada resposta vira uma regra marcada como "Decidido". Pergunta nova, a partir de agora, entra pelo documento de acompanhamento, não aqui.
+Nenhuma delas trava a Etapa 1. Todas são para o Samuel, e cada resposta vira uma regra marcada como "Decidido". Pergunta nova, a partir de agora, entra pelo documento de acompanhamento, não aqui; quando o Samuel responde, a resposta fica registrada nesta página.
 
 ## Respondidas em 29/09/2026
 
@@ -22,38 +22,18 @@ Nenhuma delas trava a Etapa 1. Todas são para o Samuel, e cada resposta vira um
 - **Criar campanha exige conta com Google?** Confirmado para o MVP: só uma conta de mestre completa cria campanha, e hoje só a conta com Google é completa. Ver [RN-14](regras.md).
 - **Convite com aprovação.** Sim, com um adicional: pelo convite, o jogador já cria o personagem, e o mestre aprova ou recusa esse personagem para a campanha. Ver [RN-15](regras.md) e [MR-024](historias.md#mr-024-aprovar-o-personagem-do-convite).
 - **MR-002, critérios propostos.** Aceitos pelo Samuel, junto com os padrões do convite (1 uso, 7 dias) já implementados. Ver [MR-002](historias.md#mr-002-gerar-convite).
+- **Regras como dados e o Expr (ADR-0008).** Aceito: as regras viram dados, o SRD 5.1 vem com o app, o que não está nele a mesa cadastra, e as fórmulas rodam na biblioteca Expr (versão 1.17.7 ou mais nova), com as funções embutidas desligadas e limite de tamanho. Ver [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
+- **Prioridade da MR-023 e da MR-024.** A MR-024 (aprovar o personagem do convite) entra no MVP, na Etapa 4; a MR-023 (passar ou dividir a campanha) fica para depois do MVP, na Etapa 8. Ver [roadmap](../roadmap.md).
+- **Senha do jogador sem Google (RN-17).** O jogador entra sem senha. Quando a primeira sessão de 30 dias vence, o app exige uma senha ou o vínculo com o Google para continuar (ADR-0009, opção 3). Ver [RN-17](regras.md).
+- **Personagem de quem exclui a conta (RN-16).** Aceito o tratamento proposto: o personagem passa a ser do mestre, sem vínculo com a conta apagada; a tela de exclusão avisa e deixa apagar o personagem junto; o texto livre que fica não é filtrado. A espera de 30 dias do mestre usa a marca "apagar em" na conta, conferida no login. Ver [Privacidade](../privacidade.md#a-tensão-entre-manter-o-personagem-e-apagar-a-identidade).
+- **Menores de 18 anos.** O MVP é só para maiores de 18 anos, por autodeclaração. Um menor que já esteja na mesa joga sem conta própria até existir um fluxo com os responsáveis revisado por advogado. Ver [Privacidade](../privacidade.md#menores-de-idade).
+- **Controlador, encarregado e canal.** O Samuel é o controlador e o Vinicius é o encarregado. Um e-mail só para isso recebe os pedidos até existir o domínio. Ver [Privacidade](../privacidade.md).
+- **Abrir para outras mesas ou cobrar.** Não no MVP: o app é só da nossa mesa. A decisão volta antes de abrir. Ver [Privacidade](../privacidade.md).
+- **Plano do CockroachDB e backups.** Fica o plano atual, com os backups em São Paulo, guardados por no máximo 30 dias. Ver [Operação](../operacao.md).
 
 ## Em aberto
 
-### Privacidade (LGPD e GDPR)
-
-- [ ] Quem é o controlador e quem é o encarregado (DPO)? Qual e-mail recebe os pedidos?
-- [ ] Há planos de abrir o app para outras mesas ou de cobrar?
-- [ ] Qual é o plano do CockroachDB (e onde estão os backups)?
-- [ ] **Menores de 18 anos.** O Samuel perguntou o que precisamos fazer se jogadores ou mestres forem menores de 18 anos. Respondemos em 29/09/2026, no documento de acompanhamento: o MVP fica só para maiores de 18 anos, por autodeclaração, e um menor que já esteja na mesa joga sem conta própria até existir um fluxo com os responsáveis revisado por advogado (ver [Privacidade](../privacidade.md#menores-de-idade)). Falta o aceite do Samuel, e saber se há algum menor na mesa hoje.
-- [ ] O tratamento proposto para o personagem de quem exclui a conta (fica com o mestre, sem vínculo com a conta apagada, ou é apagado junto, se a pessoa preferir) e a marca "apagar em" para os 30 dias do mestre estão aceitos? Ver [Privacidade](../privacidade.md#a-tensão-entre-manter-o-personagem-e-apagar-a-identidade).
-
-### Login do jogador sem Google
-
-RN-17 já decide o login anônimo por handle de mesa (apelido do mestre junto do apelido do jogador). Falta:
-
-- [ ] Uma senha passa a ser exigida antes de acabarem os primeiros 30 dias? Sugestão (ADR-0009, opção 3): o jogador entra sem senha, e só precisa definir uma senha ou vincular o Google quando a primeira sessão vencer. Ver [ADR-0009](../adr/0009-login-do-jogador-sem-google.md).
-
-### Prioridade das histórias novas
-
-- [ ] [MR-023](historias.md#mr-023-passar-ou-dividir-a-campanha) (passar ou dividir a campanha, RN-13) e [MR-024](historias.md#mr-024-aprovar-o-personagem-do-convite) (aprovar o personagem do convite, RN-15): qual a prioridade de cada uma? Sugestão: a MR-024 no MVP, na Etapa 4, que já faz o personagem do convite; a MR-023 depois do MVP, porque o banco já guarda o papel de cada membro.
-
-## Em discussão desde 28/09/2026
-
-### Regras por classe e raça
-
-Quais classes e raças a mesa usa já foi respondido acima (todas as base, mais expansões e conteúdo da comunidade depois). Ainda em aberto: o motor de fórmulas.
-
-Proposta: as regras viram **dados**, e o módulo `rules` só calcula. O SRD 5.1 é aberto (CC-BY-4.0) e vem junto com o app; o que não está nele (outras subclasses, o antecedente Sábio, expansões e conteúdo da comunidade) é cadastrado pela própria mesa.
-
-- **Decidido pelo Vinicius (29/09):** fórmulas de regra (CD de magia, bônus) usam a biblioteca **Expr**, com as funções embutidas desligadas e limite de tamanho, porque o conteúdo cadastrado pela mesa é entrada não confiável.
-- **Pergunta:** falta o aceite do Samuel para a escolha do Expr. Ver [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
-- **Afeta:** [MR-004](historias.md#mr-004-ficha-no-formato-do-pdf), [MR-013](historias.md#mr-013-ordem-dos-turnos), [MR-014](historias.md#mr-014-sua-vez), [MR-015](historias.md#mr-015-ações-da-cena-de-rp), [MR-016](historias.md#mr-016-dar-xp), [MR-017](historias.md#mr-017-subir-de-nível) e [RN-02](regras.md).
+- [ ] **Há alguém com menos de 18 anos na mesa hoje?** Se houver, essa pessoa joga sem conta própria, e o mestre cuida da ficha, até existir um fluxo com os responsáveis (ver [Privacidade](../privacidade.md#menores-de-idade)).
 
 ## Ver também
 

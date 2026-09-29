@@ -14,7 +14,7 @@ O backend roda no Cloud Run, em `southamerica-east1` (São Paulo).
 | `min-instances` | 0 (escala a zero sem uso) |
 | `max-instances` | Baixo, valor exato **a definir** |
 
-O CockroachDB fica no Google Cloud, na mesma região. O plano e o tamanho do cluster estão **a definir**.
+O CockroachDB fica no Google Cloud, na mesma região, no plano atual do Samuel (decidido em 29/09/2026). Os backups ficam em São Paulo e são guardados por no máximo 30 dias, para cumprir o prazo de exclusão (ver [Privacidade](privacidade.md)). Falta conferir essa configuração no console antes do primeiro deploy.
 
 ## Custos estimados (São Paulo)
 
@@ -71,7 +71,7 @@ Um budget alert no Google Cloud avisa se o custo passar do esperado. Os limiares
 
 - Nome do domínio (sai do GitHub Student Developer Pack; só é necessário no primeiro deploy).
 - `max-instances` exato do Cloud Run.
-- Plano e tamanho do cluster do CockroachDB.
+- Conferir no console do CockroachDB Cloud a região e a retenção dos backups (São Paulo, no máximo 30 dias).
 - Lista completa de segredos por ambiente e quem tem acesso.
 - Limiares dos alertas de orçamento.
 - Política de ociosidade do stream em tempo real (ADR-0005, proposta).

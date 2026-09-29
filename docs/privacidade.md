@@ -7,11 +7,12 @@ O MeuRPG coleta só o que a mesa precisa para jogar, guarda tudo em São Paulo e
 ## Em resumo
 
 - **A lei que vale é a LGPD** (Lei 13.709/2018). O GDPR europeu hoje não se aplica, porque não oferecemos o app para a União Europeia. Mesmo assim, em cada tema, seguimos a regra mais rigorosa das duas.
-- **Somos agente de tratamento de pequeno porte** (Resolução CD/ANPD nº 2/2022). Mesmo dispensados, indicamos um encarregado e publicamos um canal de contato.
+- **Somos agente de tratamento de pequeno porte** (Resolução CD/ANPD nº 2/2022). Mesmo dispensados, indicamos um encarregado e publicamos um canal de contato. Decidido pelo Samuel em 29/09/2026: ele é o controlador, o Vinicius é o encarregado, e o canal é um e-mail só para isso até existir o domínio.
 - **O jogador não precisa dar e-mail nem nome real.** Decidido pelo Samuel em 29/09/2026 (RN-17): o jogador entra por um login anônimo, com o apelido do mestre junto do apelido do jogador, sem conta Google (ver [Regras de negócio](produto/regras.md)).
 - **A base legal é o contrato**, não o consentimento. O app precisa desses dados para funcionar. Segurança e logs usam legítimo interesse.
 - **Sem cookies de terceiros, analytics, pixel ou fonte de CDN.** O único cookie é o de sessão, que é estritamente necessário, então não há banner.
-- **O MVP é para maiores de 18 anos.**
+- **O MVP é para maiores de 18 anos**, por autodeclaração (decidido pelo Samuel em 29/09/2026; ver [Menores de idade](#menores-de-idade)).
+- **Só a nossa mesa no MVP.** O app não abre para outras mesas nem cobra nada no MVP (decidido pelo Samuel em 29/09/2026). Abrir muda o porte do agente de tratamento e a análise do GDPR, então a decisão volta antes disso.
 
 ## Checklist de privacidade para PRs
 
@@ -143,20 +144,20 @@ flowchart TD
     M --> K
 ```
 
-Por isso os eventos da sessão guardam só IDs: quando a dona dos dados some, o evento fica anônimo sem ninguém editar o histórico. A espera de 30 dias do mestre é proposta de implementação (uma marca de "apagar em" na conta, conferida no login, em vez de exclusão imediata da linha); falta o aceite do Samuel para esse desenho específico, embora o comportamento visível — 30 dias para voltar com a mesma conta — já seja decidido.
+Por isso os eventos da sessão guardam só IDs: quando a dona dos dados some, o evento fica anônimo sem ninguém editar o histórico. A espera de 30 dias do mestre usa uma marca de "apagar em" na conta, conferida no login, em vez da exclusão imediata da linha. O Samuel aceitou esse desenho em 29/09/2026.
 
 ### A tensão entre manter o personagem e apagar a identidade
 
 Manter o personagem de um jogador excluído vinculado ao mestre (RN-16) não pode virar um jeito de manter a identidade dessa pessoa depois que ela pediu para sumir. O vínculo com a conta apagada é removido — a linha de `users` e `user_identities` some, como em qualquer exclusão —, mas o personagem em si tem campos de texto livre (história, aparência, personalidade, citações, aliados) que a própria pessoa escreveu, e que podem conter dado pessoal dela ou de terceiros, mesmo com o aviso de "é ficção; não escreva dados reais de pessoas".
 
-**Tratamento proposto:**
+**Tratamento, aceito pelo Samuel em 29/09/2026:**
 
 1. Na exclusão, o personagem passa a pertencer ao mestre da campanha: dono anterior desvinculado, sem nenhum identificador que aponte de volta à conta apagada.
 2. Antes de confirmar a exclusão, a tela avisa: "seus personagens continuam na(s) campanha(s), com o mestre; você pode apagá-los agora, se preferir".
 3. Se a pessoa escolher apagar em vez de deixar com o mestre, o personagem (inclusive o texto livre) some como qualquer outro dado dela.
 4. O texto livre que ficar com o mestre não é filtrado nem redigido automaticamente: é conteúdo de jogo, e o mestre passa a ser quem decide o que fazer com ele, do mesmo jeito que decide sobre um NPC. Isso é uma escolha de produto, não uma garantia jurídica de que não sobra dado pessoal — por isso fica como pergunta ao advogado, abaixo.
 
-Isso ainda é proposta, aguardando o aceite do Samuel; ver [ADR-0010](adr/0010-privacidade-lgpd-gdpr.md), seção 4.3.
+O texto livre que fica com o mestre continua na lista de perguntas ao advogado (ver "A definir", abaixo). Ver [ADR-0010](adr/0010-privacidade-lgpd-gdpr.md), seção 4.3.
 
 ## Operadores e onde os dados ficam
 
@@ -192,7 +193,7 @@ O MVP é para maiores de 18 anos, declarado ao entrar. Guardamos só a data da d
 - um menor que já esteja na mesa joga sem conta própria (o mestre cuida da ficha, sem dado pessoal dele), até existir um fluxo com os responsáveis revisado por advogado;
 - antes de abrir ao público: advogado, avaliação do ECA Digital (Lei 15.211/2025; Decreto 12.880/2026) e uma aferição de idade que siga as orientações finais da ANPD.
 
-A autodeclaração não é proibida para nós (a vedação do ECA Digital, art. 9º, §1º, é para conteúdo impróprio para menores), mas a ANPD a considera pouco confiável; por isso ela só serve enquanto o app for fechado, por convite. O GDPR (art. 8) só pede idade mínima quando a base é consentimento, e nós usamos contrato. Falta o aceite do Samuel, e saber se há algum menor na mesa hoje (ver [Perguntas em aberto](produto/perguntas-em-aberto.md)).
+A autodeclaração não é proibida para nós (a vedação do ECA Digital, art. 9º, §1º, é para conteúdo impróprio para menores), mas a ANPD a considera pouco confiável; por isso ela só serve enquanto o app for fechado, por convite. O GDPR (art. 8) só pede idade mínima quando a base é consentimento, e nós usamos contrato. O Samuel aceitou essa recomendação em 29/09/2026. Falta saber se há algum menor na mesa hoje (ver [Perguntas em aberto](produto/perguntas-em-aberto.md)).
 
 ## Incidentes
 
@@ -217,12 +218,10 @@ Todo PR responde. Um "sim" pede uma seção curta de riscos e medidas no PR. Doi
 
 ## A definir
 
-- Nome do controlador e do encarregado, e o e-mail do canal (até ter domínio, um endereço só para isso).
+- Criar o e-mail do canal do encarregado (um endereço só para isso, até ter domínio) e publicá-lo no aviso de privacidade.
 - Contrato LGPD com a Cockroach Labs; contratos para Render, GitHub Pages e Cloudflare enquanto forem usados.
-- Qual plano do CockroachDB Cloud (afeta o prazo e a configuração dos backups).
-- O aceite do Samuel ao MVP só para maiores de 18 anos, e se há algum menor na mesa hoje (ver [Menores de idade](#menores-de-idade)).
-- Se o app vai abrir para outras mesas, ou cobrar (muda o porte do agente de tratamento e a análise do GDPR).
-- O aceite do Samuel ao tratamento proposto para personagens de conta excluída (ver "A tensão entre manter o personagem e apagar a identidade", acima).
+- Conferir no console do CockroachDB Cloud que os backups ficam em São Paulo e são guardados por no máximo 30 dias. O plano atual fica (decidido pelo Samuel em 29/09/2026).
+- Se há algum menor na mesa hoje (ver [Menores de idade](#menores-de-idade)).
 - Revisão por advogado do aviso de privacidade, dos termos de uso e desse tratamento, antes do primeiro deploy público.
 
 ## Roteiro do aviso de privacidade
@@ -249,5 +248,5 @@ Os termos de uso vêm junto: quem pode usar (18+), o papel do mestre, conduta (�
 - [Modelo de dados](dados.md): as tabelas citadas aqui.
 - [Operação](operacao.md): segredos, logs e alertas.
 - [Regras de negócio](produto/regras.md): RN-10 e RN-11, que também protegem o que o jogador vê; RN-16, exclusão de conta e inatividade; RN-17, login do jogador sem Google.
-- [Perguntas em aberto](produto/perguntas-em-aberto.md): controlador, encarregado, e-mail do canal, menores de idade e as demais perguntas ainda sem resposta.
+- [Perguntas em aberto](produto/perguntas-em-aberto.md): o que ainda falta responder, e o registro das respostas do Samuel.
 - `docs/adr/` (repositório privado): ADR-0002 (sessão), ADR-0009 (login do jogador sem Google), ADR-0010 (privacidade), ADR-0011 (papéis por campanha).

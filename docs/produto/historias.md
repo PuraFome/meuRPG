@@ -1,10 +1,10 @@
 # Histórias e critérios de aceite
 
-O MVP tem 14 histórias, mais 2 pré-requisitos — 16 no total até o MVP: as 10 marcadas como MVP no plano, as duas que o Samuel acrescentou em 28/09/2026 (MR-015 e MR-016), as duas que o Samuel confirmou no MVP em 29/09/2026 (MR-018 e MR-019, documento de campanha e galeria de imagens), e duas marcadas "MVP (pré-requisito)" desde 29/09/2026: o convite (MR-002), que leva à MR-003, e os NPCs (MR-005), que são os inimigos do combate. "Já existe em parte" não é mais uma prioridade: o app antigo é descontinuado, então nenhuma história "já existe" no sistema novo — MR-002 e MR-005 entram como qualquer outra história do MVP, com os próprios testes.
+O MVP tem 15 histórias, mais 2 pré-requisitos — 17 no total até o MVP: as 10 marcadas como MVP no plano, as duas que o Samuel acrescentou em 28/09/2026 (MR-015 e MR-016), as três que o Samuel pôs no MVP em 29/09/2026 (MR-018 e MR-019, documento de campanha e galeria de imagens, e MR-024, aprovar o personagem do convite), e duas marcadas "MVP (pré-requisito)" desde 29/09/2026: o convite (MR-002), que leva à MR-003, e os NPCs (MR-005), que são os inimigos do combate. "Já existe em parte" não é mais uma prioridade: o app antigo é descontinuado, então nenhuma história "já existe" no sistema novo — MR-002 e MR-005 entram como qualquer outra história do MVP, com os próprios testes.
 
 Uma história está pronta quando todos os critérios dela passam. Cada critério vira um teste automático: Playwright para o que aparece na tela, teste em Go para a regra no servidor. Não há testes de caracterização do app antigo — o sistema novo só precisa provar os próprios critérios de aceite.
 
-MR-021 e MR-022 são novas e saíram das respostas do Samuel de 28/09/2026. Ficaram como "Depois", mas o modelo de dados já nasce preparado para as duas (ver [Modelo de dados](../dados.md)). MR-023 e MR-024 são novas, das respostas do Samuel de 29/09/2026 (mais de um mestre, RN-13; convite com aprovação, RN-15); a prioridade das duas ainda está a definir.
+MR-021 e MR-022 são novas e saíram das respostas do Samuel de 28/09/2026. Ficaram como "Depois", mas o modelo de dados já nasce preparado para as duas (ver [Modelo de dados](../dados.md)). MR-023 e MR-024 são novas, das respostas do Samuel de 29/09/2026 (mais de um mestre, RN-13; convite com aprovação, RN-15). No mesmo dia, ele pôs a MR-024 no MVP, na Etapa 4, e a MR-023 depois do MVP.
 
 ## Índice
 
@@ -24,6 +24,7 @@ MR-021 e MR-022 são novas e saíram das respostas do Samuel de 28/09/2026. Fica
 | [MR-016](#mr-016-dar-xp) | Progressão | MVP |
 | [MR-018](#mr-018-documento-de-campanha) | Apoio | MVP |
 | [MR-019](#mr-019-galeria-de-imagens) | Apoio | MVP |
+| [MR-024](#mr-024-aprovar-o-personagem-do-convite) | Personagem | MVP |
 | [MR-002](#mr-002-gerar-convite) | Campanha | MVP (pré-requisito) |
 | [MR-005](#mr-005-criar-npcs) | Personagem | MVP (pré-requisito) |
 | [MR-007](#mr-007-importar-ficha-em-pdf) | Personagem | Depois |
@@ -32,8 +33,7 @@ MR-021 e MR-022 são novas e saíram das respostas do Samuel de 28/09/2026. Fica
 | [MR-020](#mr-020-consultar-o-livro-de-regras) | Apoio | Depois |
 | [MR-021](#mr-021-copiar-personagem) | Personagem | Depois |
 | [MR-022](#mr-022-reutilizar-npcs) | Personagem | Depois |
-| [MR-023](#mr-023-passar-ou-dividir-a-campanha) | Campanha | A definir |
-| [MR-024](#mr-024-aprovar-o-personagem-do-convite) | Personagem | A definir |
+| [MR-023](#mr-023-passar-ou-dividir-a-campanha) | Campanha | Depois |
 
 ## Prioridade: MVP
 
@@ -86,8 +86,8 @@ MR-021 e MR-022 são novas e saíram das respostas do Samuel de 28/09/2026. Fica
 #### Critérios de aceite
 - **Dado** um personagem completo, **quando** o jogador abre a ficha no celular, **então** vê as seções da ficha oficial (atributos, perícias, combate, magias, equipamento) **e** os valores calculados, como modificadores e CD de magia, vêm prontos do servidor.
 
-#### Dúvidas
-- As regras de classe e raça ainda estão em discussão e afetam como a ficha é calculada. Ver [Perguntas em aberto](perguntas-em-aberto.md#regras-por-classe-e-raça).
+#### Relacionadas
+- As regras como dados, com as fórmulas no Expr, calculam a ficha. O Samuel aceitou esse desenho em 29/09/2026. Ver [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
 
 ### MR-006: Ficha travada
 
@@ -165,8 +165,8 @@ MR-021 e MR-022 são novas e saíram das respostas do Samuel de 28/09/2026. Fica
 #### Critérios de aceite
 - **Dado** um combate com a iniciativa definida, **quando** o jogador abre a tela de combate, **então** vê a ordem dos turnos, onde está cada combatente visível e quanto ainda pode se mover neste turno.
 
-#### Dúvidas
-- As regras de classe e raça ainda estão em discussão e afetam o deslocamento disponível. Ver [Perguntas em aberto](perguntas-em-aberto.md#regras-por-classe-e-raça).
+#### Relacionadas
+- O deslocamento disponível vem do motor de regras (regras como dados, aceitas pelo Samuel em 29/09/2026). Ver [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
 
 ### MR-014: Sua vez
 
@@ -182,7 +182,7 @@ MR-021 e MR-022 são novas e saíram das respostas do Samuel de 28/09/2026. Fica
 
 #### Relacionadas
 - RN-02: o mestre pode corrigir PV e espaços de magia na mão (ver [Regras de negócio](regras.md)).
-- As regras de classe e raça ainda estão em discussão: quais ações, ações bônus, reações e recursos o sistema conhece depende dessa resposta. Ver [Perguntas em aberto](perguntas-em-aberto.md#regras-por-classe-e-raça).
+- Quais ações, ações bônus, reações e recursos o sistema conhece vem do motor de regras (regras como dados, aceitas pelo Samuel em 29/09/2026). Ver [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
 
 ### MR-015: Ações da cena de RP
 
@@ -199,7 +199,7 @@ MR-021 e MR-022 são novas e saíram das respostas do Samuel de 28/09/2026. Fica
 
 #### Relacionadas
 - Respondida em 29/09/2026: na cena de RP, o mestre escolhe as ações possíveis da cena, e o jogador vê o que pode fazer com o próprio bônus; no combate, quem decide e mostra as ações é o sistema, pelas regras de D&D. Ver [Regras de negócio](regras.md) e [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
-- As regras de classe e raça ainda estão em discussão e afetam quais habilidades aparecem na lista, e o cálculo do bônus de cada uma. Ver [Perguntas em aberto](perguntas-em-aberto.md#regras-por-classe-e-raça).
+- Quais habilidades aparecem na lista, e o bônus de cada uma, vêm do motor de regras (regras como dados, aceitas pelo Samuel em 29/09/2026). Ver [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
 
 ### MR-016: Dar XP
 
@@ -216,7 +216,7 @@ MR-021 e MR-022 são novas e saíram das respostas do Samuel de 28/09/2026. Fica
 
 #### Relacionadas
 - RN-09: respondida em 29/09/2026 — no modo por ouro, 1 XP por 1 peça de ouro (PO), como nas edições antigas.
-- As regras de classe e raça ainda estão em discussão e afetam o que cada personagem ganha ao subir de nível. Ver [Perguntas em aberto](perguntas-em-aberto.md#regras-por-classe-e-raça).
+- O que cada personagem ganha ao subir de nível vem do motor de regras (regras como dados, aceitas pelo Samuel em 29/09/2026). Ver [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
 
 ### MR-018: Documento de campanha
 
@@ -237,6 +237,17 @@ Existia no app antigo (descontinuado). Confirmada no MVP pelo Samuel em 29/09/20
 - Módulos: maps
 
 Existia no app antigo (descontinuado). Confirmada no MVP pelo Samuel em 29/09/2026, na Etapa 5 do [roadmap](../roadmap.md), ao lado dos mapas.
+
+### MR-024: Aprovar o personagem do convite
+
+**Como** mestre, **quero** aprovar ou recusar o personagem que um jogador criou pelo convite, **para** manter na campanha só os personagens que fazem sentido para a mesa.
+
+- Prioridade: MVP
+- Regras: RN-15
+- Módulos: campaigns, characters
+
+#### Relacionadas
+- Estende [MR-003](#mr-003-entrar-pelo-convite): o personagem nasce pendente de aprovação (ver [Ciclo de vida da ficha](regras.md#ciclo-de-vida-da-ficha), RN-01).
 
 ## Prioridade: MVP (pré-requisito)
 
@@ -304,8 +315,8 @@ Fora do MVP. Entram na Etapa 8 do [roadmap](../roadmap.md).
 - Regras: RN-12
 - Módulos: progression, rules
 
-#### Dúvidas
-- As regras de classe e raça ainda estão em discussão e são pré-requisito direto desta história. Ver [Perguntas em aberto](perguntas-em-aberto.md#regras-por-classe-e-raça).
+#### Relacionadas
+- O motor de regras (regras como dados, aceitas pelo Samuel em 29/09/2026) é pré-requisito direto desta história. Ver [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
 
 ### MR-020: Consultar o livro de regras
 
@@ -334,31 +345,16 @@ Fora do MVP. Entram na Etapa 8 do [roadmap](../roadmap.md).
 - Regras: RN-04
 - Módulos: characters
 
-## Prioridade: A definir
-
-Novas, das respostas do Samuel de 29/09/2026. Ele não disse a prioridade destas duas; ficam "a definir" até a resposta.
-
 ### MR-023: Passar ou dividir a campanha
 
 **Como** mestre, **quero** passar minha campanha para outro mestre, ou ter um segundo mestre nela, **para** a campanha continuar mesmo se eu sair.
 
-- Prioridade: A definir
+- Prioridade: Depois
 - Regras: RN-13
 - Módulos: campaigns
 
 #### Consequência
 Hoje, excluir a conta de quem criou a campanha apaga a campanha inteira (ver [Privacidade](../privacidade.md#excluir-a-conta)). Com mais de um mestre, ou depois de uma passagem de campanha, isso muda: a campanha só é apagada quando o último mestre sai. Ver [ADR-0011](../adr/0011-autorizacao-papeis-por-campanha.md), como proposta.
-
-### MR-024: Aprovar o personagem do convite
-
-**Como** mestre, **quero** aprovar ou recusar o personagem que um jogador criou pelo convite, **para** manter na campanha só os personagens que fazem sentido para a mesa.
-
-- Prioridade: A definir
-- Regras: RN-15
-- Módulos: campaigns, characters
-
-#### Relacionadas
-- Estende [MR-003](#mr-003-entrar-pelo-convite): o personagem nasce pendente de aprovação (ver [Ciclo de vida da ficha](regras.md#ciclo-de-vida-da-ficha), RN-01).
 
 ## Ver também
 

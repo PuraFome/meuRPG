@@ -7,12 +7,12 @@ flowchart TD
     E1["Etapa 1, Fundação<br/>monorepo, servidor Go, contratos Protobuf, CI, ambiente local<br/>pronta, aguardando PR; depois vem o 1º deploy"]
     E2["Etapa 2, Base de testes e web<br/>Playwright contra o stack local, com um provedor OIDC local<br/>esqueleto do app novo em web e testes de integração em Go no CI<br/>pronta, aguardando PR"]
     E3["Etapa 3, Login e campanhas<br/>MR-001, MR-002, MR-003<br/>pronta, aguardando PR; o personagem do convite vem na Etapa 4"]
-    E4["Etapa 4, Personagens<br/>MR-004, MR-005, MR-006"]
+    E4["Etapa 4, Personagens<br/>MR-004, MR-005, MR-006, MR-024<br/>em andamento"]
     E5["Etapa 5, Sessão ao vivo<br/>MR-008, MR-009, MR-011, MR-012, MR-018, MR-019"]
     E6["Etapa 6, Combate<br/>MR-013, MR-014"]
     E7["Etapa 7, RP e XP<br/>MR-015, MR-016"]
     MVP{{"MVP pronto, a mesa joga a primeira sessão inteira pelo app"}}
-    E8["Etapa 8, Depois do MVP<br/>MR-007, MR-010, MR-017, MR-020, MR-021, MR-022<br/>e tarefas de limpeza, sem história"]
+    E8["Etapa 8, Depois do MVP<br/>MR-007, MR-010, MR-017, MR-020, MR-021, MR-022, MR-023<br/>e tarefas de limpeza, sem história"]
 
     E1 --> E2 --> E3 --> E4 --> E5 --> E6 --> E7 --> MVP --> E8
 ```
@@ -22,14 +22,14 @@ flowchart TD
 | 1. Fundação | Monorepo, servidor Go, contratos Protobuf, CI, ambiente local. Pronta, aguardando PR; o 1º deploy vem depois. | — |
 | 2. Base de testes e web | Playwright contra o stack local, com um provedor OIDC local no lugar do Google; esqueleto do novo app Angular em `web/`; testes de integração em Go no CI. Pronta, aguardando PR: o esqueleto do `web/`, o devidp (provedor OIDC de desenvolvimento), os testes Playwright em `e2e/` (`make e2e` e o workflow `e2e`) e os testes de integração com CockroachDB no CI (job `go-db`). | — |
 | 3. Login e campanhas | Login do mestre por OIDC com sessão de até 30 dias, criar campanha, gerar e revogar convites, entrar pelo convite (logado ou fazendo login no caminho), com autorização por papel na campanha (ADR-0011) e nome de exibição. Pronta, aguardando PR: backend, telas e testes Playwright das três histórias. O personagem criado pelo convite (MR-003) vem com a Etapa 4. | MR-001, MR-002, MR-003 |
-| 4. Personagens | Ficha no formato do PDF, NPCs, ficha travada na primeira sessão. | MR-004, MR-005, MR-006 |
+| 4. Personagens | Ficha no formato do PDF, NPCs, ficha travada na primeira sessão, o personagem criado pelo convite (a metade da MR-003 que faltava) e a aprovação desse personagem pelo mestre (MR-024, no MVP desde 29/09/2026). Em andamento. | MR-004, MR-005, MR-006, MR-024 |
 | 5. Sessão ao vivo | Pontos de interesse, mapa sem spoiler, iniciar sessão, acompanhar sessão, documento de campanha e galeria de imagens — confirmadas no MVP pelo Samuel em 29/09/2026, nesta etapa, ao lado dos mapas. | MR-008, MR-009, MR-011, MR-012, MR-018, MR-019 |
 | 6. Combate | Ordem dos turnos, ações na vez do jogador. | MR-013, MR-014 |
 | 7. RP e XP | Ações da cena de RP, dar XP. | MR-015, MR-016 |
 | **MVP pronto** | A mesa joga a primeira sessão inteira pelo app. | — |
-| 8. Depois do MVP | Importar ficha em PDF, masmorras, subir de nível, livro de regras, copiar personagem, reutilizar NPCs. Mais duas tarefas de limpeza, sem história própria: importar só os personagens do banco antigo e descomissionar esse banco (decidido pelo Samuel em 29/09/2026, ver [Modelo de dados](dados.md) e [Privacidade](privacidade.md#o-banco-do-app-antigo)); remover `server/` (NestJS) e, depois, `src/` (Angular) do repositório. | MR-007, MR-010, MR-017, MR-020, MR-021, MR-022 |
+| 8. Depois do MVP | Importar ficha em PDF, masmorras, subir de nível, livro de regras, copiar personagem, reutilizar NPCs, passar ou dividir a campanha. Mais duas tarefas de limpeza, sem história própria: importar só os personagens do banco antigo e descomissionar esse banco (decidido pelo Samuel em 29/09/2026, ver [Modelo de dados](dados.md) e [Privacidade](privacidade.md#o-banco-do-app-antigo)); remover `server/` (NestJS) e, depois, `src/` (Angular) do repositório. | MR-007, MR-010, MR-017, MR-020, MR-021, MR-022, MR-023 |
 
-MR-023 (passar ou dividir a campanha) e MR-024 (aprovar o personagem do convite) são novas, das respostas do Samuel de 29/09/2026; a prioridade das duas ainda está a definir, então não têm etapa ainda (ver [Histórias](produto/historias.md) e [Perguntas em aberto](produto/perguntas-em-aberto.md)).
+MR-023 (passar ou dividir a campanha) e MR-024 (aprovar o personagem do convite) vieram das respostas do Samuel de 29/09/2026. No mesmo dia ele decidiu a prioridade: a MR-024 entra no MVP, na Etapa 4, e a MR-023 fica para a Etapa 8 (ver [Histórias](produto/historias.md)).
 
 Cada etapa entrega algo para o mestre e para o jogador. Não há datas: o ritmo depende do tempo livre de cada um.
 
