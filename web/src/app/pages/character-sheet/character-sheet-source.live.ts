@@ -137,6 +137,9 @@ function toFullSheetVm(full: GenFullSheet, derived: GenDerivedSheet): FullSheetV
     passiveInsight: derived.passiveInsight,
     initiative: derived.initiative,
     armorClass: derived.armorClass,
+    armorClassDescription: derived.armorClassDescription,
+    wearsArmor: full.armorKey !== '',
+    hasShield: full.shield,
     hitPointsMax: derived.hitPointsMax,
     hitDice: derived.hitDice.map((hd) => `${hd.count}d${hd.faces}`).join(' + ') || '—',
     speedWalkFt: derived.speedWalkFt,
@@ -161,7 +164,11 @@ function toFullSheetVm(full: GenFullSheet, derived: GenDerivedSheet): FullSheetV
     spellNames: derived.spells
       .filter((cs) => (cs.spell?.level ?? 0) > 0)
       .map((cs) => cs.spell?.namePt ?? ''),
-    features: derived.features.map((f) => ({ name: f.namePt, description: f.description })),
+    features: derived.features.map((f) => ({
+      name: f.namePt,
+      sourcePt: f.sourcePt,
+      description: f.description,
+    })),
     languages: derived.languages,
     proficiencies: [
       ...(derived.proficiencies?.armor ?? []),
@@ -178,6 +185,7 @@ function toFullSheetVm(full: GenFullSheet, derived: GenDerivedSheet): FullSheetV
     },
     customFeaturesText: full.customFeaturesText,
     issues: derived.issues.map((i) => ({ code: i.code, field: i.field, message: i.message })),
+    hints: derived.hints.map((h) => ({ sourceKey: h.sourceKey, text: h.text })),
     contentVersion: derived.contentVersion,
   };
 }

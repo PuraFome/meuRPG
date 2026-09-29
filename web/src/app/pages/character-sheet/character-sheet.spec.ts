@@ -89,6 +89,9 @@ function fullSheet(overrides: Partial<FullSheetVm> = {}): FullSheetVm {
     passiveInsight: 10,
     initiative: 0,
     armorClass: 10,
+    armorClassDescription: 'Sem armadura',
+    wearsArmor: false,
+    hasShield: false,
     hitPointsMax: 10,
     hitDice: '1d6',
     speedWalkFt: 25,
@@ -105,6 +108,7 @@ function fullSheet(overrides: Partial<FullSheetVm> = {}): FullSheetVm {
     coins: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
     customFeaturesText: '',
     issues: [],
+    hints: [],
     contentVersion: 'srd51@test',
     ...overrides,
   };
@@ -288,7 +292,7 @@ describe('CharacterSheetPage', () => {
     expect(el.textContent).not.toContain('nível: 4');
   });
 
-  it('renders every official-sheet section as an <h2>, in the mobile order', async () => {
+  it('renders every official-sheet section as an <h2>, grouped by desktop column (integrator fix: three independent columns, no shared grid rows)', async () => {
     configure();
     fake.getCharacterSheetFn = () =>
       Promise.resolve(
@@ -310,15 +314,59 @@ describe('CharacterSheetPage', () => {
 
     const el = await render();
     const headings = Array.from(el.querySelectorAll('h2')).map((h) => h.textContent?.trim());
+    // Document order follows the desktop column grouping (column 1:
+    // Atributos, Salvaguardas, Perícias; column 2: Combate, Magias,
+    // Equipamento; column 3: Características e traços, História) — a
+    // sensible reading order on its own. Mobile reflows the same markup
+    // into the agreed visual order (Atributos, Salvaguardas, Combate,
+    // Perícias, Magias, Equipamento, Características e traços, História)
+    // purely with CSS `order` (`character-sheet.scss`), which a unit test
+    // running in jsdom (no layout engine) cannot observe.
     expect(headings).toEqual([
       'Atributos',
-      'Combate',
+      'Salvaguardas',
       'Perícias',
+      'Combate',
       'Magias',
       'Equipamento',
       'Características e traços',
       'História',
     ]);
+  });
+
+  it('shows the six saving throws in their own "Salvaguardas" section, proficiency marked like skills', async () => {
+    configure();
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(
+        vm({
+          sheet: fullSheet({
+            savingThrows: [
+              { key: 'str', bonus: 5, proficient: true },
+              { key: 'dex', bonus: 0, proficient: false },
+              { key: 'con', bonus: 1, proficient: false },
+              { key: 'int', bonus: 6, proficient: true },
+              { key: 'wis', bonus: 1, proficient: false },
+              { key: 'cha', bonus: 0, proficient: false },
+            ],
+          }),
+        }),
+      );
+
+    const el = await render();
+    const heading = Array.from(el.querySelectorAll('h2')).find(
+      (h) => h.textContent?.trim() === 'Salvaguardas',
+    );
+    expect(heading).toBeTruthy();
+    const section = heading!.closest('section')!;
+    expect(section.textContent).toContain('Força: +5');
+    expect(section.textContent).toContain('proficiente');
+    expect(section.textContent).toContain('Destreza: +0');
+    expect(section.textContent).toContain('sem proficiência');
+    // No longer buried, unlabelled, at the top of Perícias.
+    const pericias = Array.from(el.querySelectorAll('h2')).find(
+      (h) => h.textContent?.trim() === 'Perícias',
+    );
+    expect(pericias!.closest('section')!.querySelector('.saves-list')).toBeNull();
   });
 
   it('shows the locked banner and hides "Editar ficha" when the player cannot edit', async () => {
@@ -501,5 +549,144 @@ describe('CharacterSheetPage', () => {
     const el = await render();
     const meta = el.querySelector('.sheet-meta')?.textContent ?? '';
     expect(meta).not.toContain('XP');
+  });
+
+  it('lists the armor, shield and weapons carried, not just free-text items (integrator fix)', async () => {
+    configure();
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(
+        vm({
+          sheet: fullSheet({
+            armorClassDescription: 'Armadura de couro + escudo',
+            wearsArmor: true,
+            hasShield: true,
+            attacks: [
+              {
+                key: 'equipment:shortsword',
+                namePt: 'Espada curta',
+                kind: 'weapon',
+                attackBonus: 4,
+                damage: '1d6+2',
+                damageTypePt: 'perfurante',
+                saveDc: 0,
+                saveAbility: null,
+              },
+              {
+                key: 'spell:fire-bolt',
+                namePt: 'Raio de Fogo',
+                kind: 'spell',
+                attackBonus: 6,
+                damage: '1d10',
+                damageTypePt: 'fogo',
+                saveDc: 0,
+                saveAbility: null,
+              },
+            ],
+            equipment: [{ name: 'Corda (15m)', quantity: 1 }],
+          }),
+        }),
+      );
+
+    const el = await render();
+    const heading = Array.from(el.querySelectorAll('h2')).find(
+      (h) => h.textContent?.trim() === 'Equipamento',
+    );
+    const section = heading!.closest('section')!;
+    expect(section.textContent).toContain('Armadura: Armadura de couro');
+    expect(section.textContent).toContain('Escudo');
+    expect(section.textContent).toContain('Espada curta');
+    // A damage cantrip is not a weapon — never listed as equipment.
+    expect(section.textContent).not.toContain('Raio de Fogo');
+    expect(section.textContent).toContain('Corda (15m)');
+    expect(section.textContent).not.toContain('Nenhum item cadastrado');
+  });
+
+  it('shows "Sem armadura" and no "Escudo" line when neither is carried', async () => {
+    configure();
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(vm({ sheet: fullSheet({ armorClassDescription: 'Sem armadura' }) }));
+
+    const el = await render();
+    const heading = Array.from(el.querySelectorAll('h2')).find(
+      (h) => h.textContent?.trim() === 'Equipamento',
+    );
+    const section = heading!.closest('section')!;
+    expect(section.textContent).toContain('Armadura: Sem armadura');
+    expect(section.textContent).not.toContain('Escudo');
+  });
+
+  it('says "Sem armadura" when a feature, not armor, gives the AC (Unarmored Defense)', async () => {
+    configure();
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(vm({ sheet: fullSheet({ armorClassDescription: 'Defesa sem Armadura', wearsArmor: false }) }));
+
+    const el = await render();
+    const heading = Array.from(el.querySelectorAll('h2')).find(
+      (h) => h.textContent?.trim() === 'Equipamento',
+    );
+    const section = heading!.closest('section')!;
+    expect(section.textContent).toContain('Armadura: Sem armadura');
+    expect(section.textContent).not.toContain('Armadura: Defesa sem Armadura');
+  });
+
+  it('shows each feature as a compact row, its English description collapsed by default, and lists issues and hints as "Avisos"', async () => {
+    configure();
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(
+        vm({
+          sheet: fullSheet({
+            features: [
+              {
+                name: 'Recuperação Arcana',
+                sourcePt: 'Mago 1',
+                description: 'You have learned to regain some of your magical energy.',
+              },
+            ],
+            issues: [
+              {
+                code: 'unknown_key',
+                field: 'full.armor_key',
+                message: 'A armadura escolhida não existe no conteúdo srd51@test.',
+              },
+            ],
+            hints: [
+              {
+                sourceKey: 'trait:gnome-cunning',
+                text: 'Vantagem em testes de resistência de INT, SAB e CAR contra magia.',
+              },
+            ],
+          }),
+        }),
+      );
+
+    const el = await render();
+    expect(el.textContent).toContain('Recuperação Arcana · Mago 1');
+
+    const details = el.querySelector('details');
+    expect(details).toBeTruthy();
+    expect(details!.open).toBe(false);
+    expect(details!.textContent).toContain(
+      'You have learned to regain some of your magical energy.',
+    );
+
+    const avisosHeading = Array.from(el.querySelectorAll('h3')).find(
+      (h) => h.textContent?.trim() === 'Avisos',
+    );
+    expect(avisosHeading).toBeTruthy();
+    expect(el.textContent).toContain('A armadura escolhida não existe no conteúdo srd51@test.');
+    expect(el.textContent).toContain(
+      'Vantagem em testes de resistência de INT, SAB e CAR contra magia.',
+    );
+  });
+
+  it('shows no "Avisos" heading when there are no issues or hints', async () => {
+    configure();
+    fake.getCharacterSheetFn = () => Promise.resolve(vm());
+
+    const el = await render();
+    const avisosHeading = Array.from(el.querySelectorAll('h3')).find(
+      (h) => h.textContent?.trim() === 'Avisos',
+    );
+    expect(avisosHeading).toBeUndefined();
   });
 });

@@ -64,7 +64,14 @@ export interface SpellcastingVm {
 }
 
 export interface FeatureVm {
+  /** Portuguese name (`Feature.name_pt`). */
   readonly name: string;
+  /** Where it comes from, in Portuguese, e.g. "Mago 1" or "Gnomo"
+   * (`Feature.source_pt`) — shown next to the name in the compact row. */
+  readonly sourcePt: string;
+  /** The SRD's English text (`Feature.description`), collapsed by default
+   * behind a native `<details>` — the sheet has no Portuguese text for
+   * this yet (plan §5, "open questions"). */
   readonly description: string;
 }
 
@@ -72,6 +79,15 @@ export interface IssueVm {
   readonly code: string;
   readonly field: string;
   readonly message: string;
+}
+
+/** A situational reminder the numbers above cannot express, such as
+ * advantage on a saving throw against magic (`DerivedSheet.hints`,
+ * `rules.proto`'s `Hint`). Shown next to the issues in "Avisos"
+ * (integrator fix: the sheet used to drop these on the floor). */
+export interface HintVm {
+  readonly sourceKey: string;
+  readonly text: string;
 }
 
 export interface EquipmentItemVm {
@@ -99,6 +115,17 @@ export interface FullSheetVm {
   readonly passiveInsight: number;
   readonly initiative: number;
   readonly armorClass: number;
+  /** How `armorClass` was computed, in Portuguese, e.g. "Armadura de
+   * couro + escudo", "Sem armadura", or the name of a feature such as
+   * Unarmored Defense when it gives the better AC
+   * (`DerivedSheet.armor_class_description`). */
+  readonly armorClassDescription: string;
+  /** Whether the stored sheet has body armor (`FullSheet.armor_key` is
+   * set). "Equipamento" names the armor only then: without armor, the
+   * description above may name a feature, not something carried. */
+  readonly wearsArmor: boolean;
+  /** Whether the stored sheet carries a shield (`FullSheet.shield`). */
+  readonly hasShield: boolean;
   readonly hitPointsMax: number;
   readonly hitDice: string;
   readonly speedWalkFt: number;
@@ -117,6 +144,7 @@ export interface FullSheetVm {
   /** Locks with the rest of the sheet, unlike `CharacterStoryVm` (A3). */
   readonly customFeaturesText: string;
   readonly issues: readonly IssueVm[];
+  readonly hints: readonly HintVm[];
   readonly contentVersion: string;
 }
 

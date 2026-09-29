@@ -55,16 +55,62 @@
   color: var(--mat-sys-error);
 }
 
-/* Mobile-first: sections simply stack in DOM order — Atributos, Combate,
- * Perícias, Magias, Equipamento, Características e traços, História. */
+/*
+ * Mobile-first: `.sheet-column` renders as `display: contents` (see below),
+ * so it disappears from the box tree and its sections become `.sheet-grid`'s
+ * own flex children, stacking in one column. `order` (further down) then
+ * reads them out in the agreed order — Atributos, Salvaguardas, Combate,
+ * Perícias, Magias, Equipamento, Características e traços, História —
+ * regardless of which `.sheet-column` each one's markup lives in.
+ *
+ * Desktop (900px+, below) turns `.sheet-grid` into a row of three real
+ * `.sheet-column` flex containers instead: three *independent* stacks, each
+ * sized by its own content, so a long "Características e traços" never
+ * inflates a shared row and leaves empty space under the other columns
+ * (integrator fix — CSS Grid's `grid-template-areas` did exactly that,
+ * because every cell in a row shares that row's height).
+ */
 .sheet-grid {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
 }
 
+.sheet-column {
+  display: contents;
+}
+
 .sheet-section h2 {
   margin-top: 0;
+}
+
+/* The reading order agreed for the sheet (see this file's top comment).
+ * Values only need to increase within each desktop column — see the
+ * `min-width: 900px` block below — which they do: column 1 gets 1/2/4,
+ * column 2 gets 3/5/6, column 3 gets 7/8. */
+.sheet-section--atributos {
+  order: 1;
+}
+.sheet-section--salvaguardas {
+  order: 2;
+}
+.sheet-section--combate {
+  order: 3;
+}
+.sheet-section--pericias {
+  order: 4;
+}
+.sheet-section--magias {
+  order: 5;
+}
+.sheet-section--equipamento {
+  order: 6;
+}
+.sheet-section--caracteristicas {
+  order: 7;
+}
+.sheet-section--historia {
+  order: 8;
 }
 
 .ability-grid,
@@ -105,6 +151,29 @@
   width: 100%;
 }
 
+.features-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.5rem;
+}
+
+.feature-row summary {
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.feature-description {
+  margin: 0.25rem 0 0.5rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+/* Issues (real problems) and hints (reminders, never a problem) share this
+ * list — see the template — so it is not colored as an error: an issue's
+ * own message text already says what is wrong. */
+.avisos-list {
+  padding-left: 1.25rem;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -139,38 +208,23 @@
   width: 100%;
 }
 
-/* Desktop: the official sheet's three-column layout. */
+/* Desktop: the official sheet's three-column layout, as three independent
+ * flex stacks (not CSS Grid rows, which would tie every column's row
+ * heights together — see this file's top comment). `.sheet-column` stops
+ * being `display: contents` here, becoming a real flex container: each one
+ * is now its own formatting context, so its height depends only on its own
+ * sections. */
 @media (min-width: 900px) {
   .sheet-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1.5rem;
-    grid-template-areas:
-      'atributos combate caracteristicas'
-      'pericias magias equipamento'
-      '. . historia';
-    align-items: start;
+    flex-direction: row;
+    align-items: flex-start;
   }
 
-  .sheet-section--atributos {
-    grid-area: atributos;
-  }
-  .sheet-section--combate {
-    grid-area: combate;
-  }
-  .sheet-section--pericias {
-    grid-area: pericias;
-  }
-  .sheet-section--magias {
-    grid-area: magias;
-  }
-  .sheet-section--equipamento {
-    grid-area: equipamento;
-  }
-  .sheet-section--caracteristicas {
-    grid-area: caracteristicas;
-  }
-  .sheet-section--historia {
-    grid-area: historia;
+  .sheet-column {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-width: 0;
+    gap: 1.5rem;
   }
 }

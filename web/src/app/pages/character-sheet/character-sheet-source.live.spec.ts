@@ -8,6 +8,7 @@ import {
   FullSheet,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { DerivedSheet } from '../../../gen/meurpg/rules/v1/rules_pb';
+import { FullSheetVm } from './character-sheet.types';
 import { toCharacterSheetVm, toCharacterStoryInit, toStoryVm } from './character-sheet-source.live';
 
 describe('story round-trips load → save unchanged (integrator fix, phase 2b)', () => {
@@ -215,5 +216,58 @@ describe('the sheet header shows alignment and XP, read from the stored FullShee
     const vm = toCharacterSheetVm(character);
     expect(vm.alignmentLabel).toBe('');
     expect(vm.experiencePoints).toBeNull();
+  });
+});
+
+describe('the sheet maps armor_class_description, features and hints (integrator fix)', () => {
+  it('carries armor_class_description, each feature\'s source_pt, and every hint straight through', () => {
+    const derived: DerivedSheet = {
+      ...minimalDerivedSheet(),
+      armorClassDescription: 'Armadura de couro + escudo',
+      features: [
+        {
+          $typeName: 'meurpg.rules.v1.Feature',
+          key: 'feature:arcane-recovery',
+          name: 'Arcane Recovery',
+          namePt: 'Recuperação Arcana',
+          sourcePt: 'Mago 1',
+          description: 'You have learned to regain some of your magical energy.',
+        },
+      ],
+      hints: [
+        {
+          $typeName: 'meurpg.rules.v1.Hint',
+          sourceKey: 'trait:gnome-cunning',
+          text: 'Vantagem em testes de resistência de INT, SAB e CAR contra magia.',
+        },
+      ],
+    };
+    const character = characterWithFullSheet(
+      minimalFullSheet({ armorKey: 'equipment:leather-armor', shield: true }),
+    );
+    const vm = toCharacterSheetVm({ ...character, derived });
+    const sheet = vm.sheet as FullSheetVm;
+
+    expect(sheet.armorClassDescription).toBe('Armadura de couro + escudo');
+    // The armor and shield lines come from the stored choices, not from
+    // parsing the description.
+    expect(sheet.wearsArmor).toBe(true);
+    expect(sheet.hasShield).toBe(true);
+    const unarmored = toCharacterSheetVm(characterWithFullSheet(minimalFullSheet()));
+    expect((unarmored.sheet as FullSheetVm).wearsArmor).toBe(false);
+    expect((unarmored.sheet as FullSheetVm).hasShield).toBe(false);
+    expect(sheet.features).toEqual([
+      {
+        name: 'Recuperação Arcana',
+        sourcePt: 'Mago 1',
+        description: 'You have learned to regain some of your magical energy.',
+      },
+    ]);
+    expect(sheet.hints).toEqual([
+      {
+        sourceKey: 'trait:gnome-cunning',
+        text: 'Vantagem em testes de resistência de INT, SAB e CAR contra magia.',
+      },
+    ]);
   });
 });

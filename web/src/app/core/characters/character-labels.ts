@@ -149,3 +149,32 @@ export function formatSpellSlots(slots: readonly number[]): string {
 export function lockedSheetCountLabel(count: number): string {
   return count === 1 ? '1 ficha travada.' : `${count} fichas travadas.`;
 }
+
+/** The armor's own name, split from the shield note that may follow it. */
+export interface ArmorDescriptionVm {
+  readonly armorNamePt: string;
+  readonly hasShield: boolean;
+}
+
+/**
+ * The exact suffix `armorClass` (`backend/internal/rules/armor.go`) appends
+ * to `DerivedSheet.armor_class_description` when the sheet carries a
+ * shield — see that function's `name += " + escudo"`.
+ */
+const SHIELD_SUFFIX = ' + escudo';
+
+/**
+ * Splits "Armadura de couro + escudo" into the armor's own name ("Armadura
+ * de couro") and whether a shield is carried, or "Sem armadura" with no
+ * shield into that name and `false`. "Equipamento" uses this to show the
+ * armor and the shield as two separate lines, reading both facts from the
+ * one string the server already sends — the sheet does not compute a rule
+ * (ADR-0008) or ask for a second field for something `armor_class_description`
+ * already carries.
+ */
+export function splitArmorDescription(description: string): ArmorDescriptionVm {
+  if (description.endsWith(SHIELD_SUFFIX)) {
+    return { armorNamePt: description.slice(0, -SHIELD_SUFFIX.length), hasShield: true };
+  }
+  return { armorNamePt: description, hasShield: false };
+}

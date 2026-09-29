@@ -8,6 +8,7 @@ import {
   lockedSheetCountLabel,
   skillProficiencyLabel,
   spellLevelLabel,
+  splitArmorDescription,
 } from './character-labels';
 
 describe('abilityLabel', () => {
@@ -103,6 +104,26 @@ describe('formatSpellSlots', () => {
 
   it('is empty for a character with no spell slots', () => {
     expect(formatSpellSlots([])).toBe('');
+  });
+});
+
+describe('splitArmorDescription', () => {
+  it('splits the armor name from the shield suffix `armorClass` appends', () => {
+    expect(splitArmorDescription('Armadura de couro + escudo')).toEqual({
+      armorNamePt: 'Armadura de couro',
+      hasShield: true,
+    });
+  });
+
+  it('is just the armor name (or "Sem armadura") when there is no shield', () => {
+    expect(splitArmorDescription('Sem armadura')).toEqual({
+      armorNamePt: 'Sem armadura',
+      hasShield: false,
+    });
+    expect(splitArmorDescription('Couraça')).toEqual({
+      armorNamePt: 'Couraça',
+      hasShield: false,
+    });
   });
 });
 

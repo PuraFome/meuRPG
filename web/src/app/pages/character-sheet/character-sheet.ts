@@ -17,6 +17,7 @@ import {
   formatSpeedFt,
   formatSpellSlots,
   skillProficiencyLabel,
+  splitArmorDescription,
 } from '../../core/characters/character-labels';
 import { describeCharacterError } from '../../core/characters/character-errors';
 import { FictionNotice } from '../../shared/fiction-notice/fiction-notice';
@@ -51,9 +52,11 @@ const emptyStory: CharacterStoryVm = {
 
 /**
  * "/campanhas/:id/personagens/:characterId" (MR-004): the sheet, following
- * the official PDF's layout — desktop three-column grid, mobile a single
- * column, every section a `<section>` with an `h2` (see the template and
- * `character-sheet.scss`'s `.sheet-grid`).
+ * the official PDF's layout — desktop three independent columns (each its
+ * own flex stack, so a long "Características e traços" never pushes
+ * another column's sections down), mobile a single column, every section a
+ * `<section>` with an `h2` (see the template and `character-sheet.scss`'s
+ * `.sheet-grid` / `.sheet-column`).
  *
  * The browser never computes a rule (ADR-0008): everything under `vm.sheet`
  * is exactly what `GetCharacter` sent, only formatted for display.
@@ -107,6 +110,7 @@ export class CharacterSheetPage {
   protected readonly formatSpeedFt = formatSpeedFt;
   protected readonly formatSpellSlots = formatSpellSlots;
   protected readonly skillProficiencyLabel = skillProficiencyLabel;
+  protected readonly splitArmorDescription = splitArmorDescription;
 
   protected readonly notesForm = this.fb.nonNullable.group({
     notes: ['', Validators.maxLength(20000)],
@@ -251,6 +255,16 @@ export class CharacterSheetPage {
 
   protected asBasicSheet(sheet: FullSheetVm | BasicSheetVm): BasicSheetVm {
     return sheet as BasicSheetVm;
+  }
+
+  /** "Equipamento" lists the weapons carried by name, next to the armor and
+   * shield: `DerivedSheet.attacks` already lists both weapon attacks and
+   * damage cantrips (`AttackVm.kind`), so the weapons are simply the
+   * `'weapon'` ones — no separate request for `FullSheet.weapon_keys`'
+   * names (integrator fix: the section used to show only free-text items
+   * and coins, never what the player actually equipped). */
+  protected weaponNames(sheet: FullSheetVm): readonly string[] {
+    return sheet.attacks.filter((a) => a.kind === 'weapon').map((a) => a.namePt);
   }
 
   protected async saveStory(campaignId: string, characterId: string, revision: number): Promise<void> {
