@@ -40,8 +40,8 @@ function describeInviteUnusable(state: InviteState | undefined): string {
 /**
  * The `/convite/erro?motivo=<code>` codes the server redirects to once the
  * sign-in-through-invite flow (docs/arquitetura.md#frontend-web) cannot
- * accept the invite: `expired`, `revoked`, `used_up`, `not_found` and
- * `invalid`.
+ * accept the invite: `expired`, `revoked`, `used_up`, `not_found`,
+ * `invalid` and `unavailable` (the database failed while accepting).
  */
 export function describeInviteErrorCode(motivo: string | null): string {
   switch (motivo) {
@@ -55,6 +55,8 @@ export function describeInviteErrorCode(motivo: string | null): string {
       return 'Convite não encontrado. Confira se o link está completo.';
     case 'invalid':
       return 'Link de convite inválido.';
+    case 'unavailable':
+      return 'O servidor não conseguiu aceitar o convite agora. Abra o link de novo em alguns minutos.';
     default:
       return 'Não foi possível aceitar o convite.';
   }

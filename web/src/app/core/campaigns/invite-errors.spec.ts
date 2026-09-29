@@ -49,6 +49,7 @@ describe('describeInviteErrorCode', () => {
     ['used_up', 'já foi usado'],
     ['not_found', 'não encontrado'],
     ['invalid', 'inválido'],
+    ['unavailable', 'alguns minutos'],
   ])('maps motivo=%s to a message containing %j', (motivo, fragment) => {
     expect(describeInviteErrorCode(motivo)).toContain(fragment);
   });

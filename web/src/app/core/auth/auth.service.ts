@@ -127,9 +127,15 @@ export class AuthService {
    * something the Angular router can do). `returnTo` must be a path on
    * this site: the server's `safeReturnTo` rejects anything else — a
    * malformed value here would only turn into the server's plain-text 400.
+   *
+   * The fragment is always dropped: it can hold a secret (the invite token in
+   * `/convite#t=...`, which Angular's `router.url` still carries), and this
+   * URL is a GET that ends up in the platform's request logs.
    */
   signIn(returnTo: string): void {
-    const path = returnTo.startsWith('/') && !returnTo.startsWith('//') ? returnTo : '/';
+    const withoutFragment = returnTo.split('#', 1)[0];
+    const path =
+      withoutFragment.startsWith('/') && !withoutFragment.startsWith('//') ? withoutFragment : '/';
     window.location.assign(`/auth/login?return_to=${encodeURIComponent(path)}`);
   }
 
