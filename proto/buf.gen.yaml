@@ -1,0 +1,24 @@
+# Code generation for the Go backend. Run from this directory: `buf generate`.
+# Docs: https://buf.build/docs/configuration/v2/buf-gen-yaml/
+version: v2
+# Delete the output directory before generating, so files for removed
+# .proto files do not linger.
+clean: true
+managed:
+  enabled: true
+  override:
+    # Every .proto maps to a Go package under backend/gen, e.g.
+    # meurpg/system/v1 -> github.com/PuraFome/meuRPG/backend/gen/meurpg/system/v1
+    - file_option: go_package_prefix
+      value: github.com/PuraFome/meuRPG/backend/gen
+plugins:
+  # The plugins are pinned as `tool` directives in backend/go.mod, so
+  # everyone (and CI) generates with exactly the same versions and nobody
+  # has to install protoc-gen-* binaries. `go -C ../backend` makes the go
+  # command use backend/go.mod.
+  - local: ["go", "-C", "../backend", "tool", "protoc-gen-go"]
+    out: ../backend/gen
+    opt: paths=source_relative
+  - local: ["go", "-C", "../backend", "tool", "protoc-gen-connect-go"]
+    out: ../backend/gen
+    opt: paths=source_relative

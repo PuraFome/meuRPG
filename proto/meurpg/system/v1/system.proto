@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+// Package meurpg.system.v1 holds operational RPCs that are not tied to any
+// game feature, such as asking the server which build it is running.
+package meurpg.system.v1;
+
+// SystemService exposes information about the running server.
+service SystemService {
+  // GetServerInfo returns the version and commit of the running build.
+  // It has no side effects, so Connect clients may call it with HTTP GET,
+  // which makes the response cacheable.
+  rpc GetServerInfo(GetServerInfoRequest) returns (GetServerInfoResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+// GetServerInfoRequest is intentionally empty: the RPC takes no input.
+message GetServerInfoRequest {}
+
+// GetServerInfoResponse describes the running build.
+message GetServerInfoResponse {
+  // Release version, e.g. "v0.1.0", or "dev" for local builds.
+  string version = 1;
+  // Git commit SHA the binary was built from, or "unknown".
+  string commit = 2;
+}

@@ -1,0 +1,14 @@
+# Buf workspace for MeuRPG's Protobuf contracts.
+# Run every buf command from this directory (proto/).
+# Docs: https://buf.build/docs/configuration/v2/buf-yaml/
+version: v2
+modules:
+  - path: .
+lint:
+  use:
+    - STANDARD
+breaking:
+  # FILE is the strictest level: it also protects the generated Go/TS code,
+  # not only the wire format.
+  use:
+    - FILE
