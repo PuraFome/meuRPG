@@ -1,7 +1,9 @@
 package httpserver
 
 import (
+	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -25,16 +27,45 @@ import (
 //     which trades this one relaxation for turning index.html from a
 //     cacheable static file into something rendered per request. Not worth
 //     it yet for a single low-risk directive; revisit if that changes.
-const cspHeader = "default-src 'self'; " +
-	"script-src 'self'; " +
-	"style-src 'self' 'unsafe-inline'; " +
-	"img-src 'self' data:; " +
-	"font-src 'self'; " +
-	"connect-src 'self'; " +
-	"base-uri 'self'; " +
-	"form-action 'self'; " +
-	"frame-ancestors 'none'; " +
-	"object-src 'none'"
+//   - form-action is 'self' plus the sign-in provider's origin, when one is
+//     configured (WithFormActionOrigin). Browsers apply form-action to the
+//     whole redirect chain of a form submission, so the invite page's POST
+//     to /auth/login, which the server answers with a 303 to the provider,
+//     is blocked unless the provider's origin is listed.
+func cspHeader(formActionOrigins []string) string {
+	formAction := "'self'"
+	for _, origin := range formActionOrigins {
+		formAction += " " + origin
+	}
+	return "default-src 'self'; " +
+		"script-src 'self'; " +
+		"style-src 'self' 'unsafe-inline'; " +
+		"img-src 'self' data:; " +
+		"font-src 'self'; " +
+		"connect-src 'self'; " +
+		"base-uri 'self'; " +
+		"form-action " + formAction + "; " +
+		"frame-ancestors 'none'; " +
+		"object-src 'none'"
+}
+
+// StaticOption configures NewStatic.
+type StaticOption func(*staticHandler) error
+
+// WithFormActionOrigin allows forms on the app's pages to lead to origin, an
+// absolute http(s) URL reduced to its scheme and host (for example the OIDC
+// issuer, whose authorization endpoint the sign-in redirect goes to). A URL
+// with a path, query or fragment is reduced to its origin.
+func WithFormActionOrigin(rawURL string) StaticOption {
+	return func(h *staticHandler) error {
+		u, err := url.Parse(rawURL)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			return fmt.Errorf("form-action origin must be an absolute http(s) URL, got %q", rawURL)
+		}
+		h.formActionOrigins = append(h.formActionOrigins, u.Scheme+"://"+u.Host)
+		return nil
+	}
+}
 
 // NewStatic returns a handler that serves the Angular production build
 // (index.html plus its hashed assets) from dir, falling back to index.html
@@ -44,21 +75,38 @@ const cspHeader = "default-src 'self'; " +
 // ok is false when dir is empty or has no index.html: the caller should
 // skip registering the handler and log why instead of failing to start.
 // That is the normal case outside the Docker image (e.g. `make run` on the
-// host, where WEB_DIR's default has nothing under it).
-func NewStatic(dir string) (handler http.Handler, ok bool) {
+// host, where WEB_DIR's default has nothing under it). err reports an
+// invalid option.
+func NewStatic(dir string, opts ...StaticOption) (handler http.Handler, ok bool, err error) {
 	if dir == "" {
-		return nil, false
+		return nil, false, nil
 	}
 	indexPath := filepath.Join(dir, "index.html")
-	if info, err := os.Stat(indexPath); err != nil || info.IsDir() {
-		return nil, false
+	if !isFile(indexPath) {
+		return nil, false, nil
 	}
-	return &staticHandler{dir: dir, indexPath: indexPath}, true
+	h := &staticHandler{dir: dir, indexPath: indexPath}
+	for _, opt := range opts {
+		if err := opt(h); err != nil {
+			return nil, false, err
+		}
+	}
+	h.csp = cspHeader(h.formActionOrigins)
+	return h, true, nil
+}
+
+// isFile reports whether p exists and is not a directory. A missing build is
+// the normal case outside the Docker image, so it is not an error.
+func isFile(p string) bool {
+	info, err := os.Stat(p)
+	return err == nil && !info.IsDir()
 }
 
 type staticHandler struct {
-	dir       string
-	indexPath string
+	dir               string
+	indexPath         string
+	formActionOrigins []string
+	csp               string
 }
 
 func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -123,7 +171,7 @@ func (h *staticHandler) existingAsset(cleanPath string) (string, bool) {
 
 func (h *staticHandler) setSecurityHeaders(w http.ResponseWriter) {
 	header := w.Header()
-	header.Set("Content-Security-Policy", cspHeader)
+	header.Set("Content-Security-Policy", h.csp)
 	header.Set("X-Content-Type-Options", "nosniff")
 	header.Set("Referrer-Policy", "same-origin")
 }

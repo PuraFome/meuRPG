@@ -32,16 +32,13 @@ test('jogador já logado abre o link do convite, entra na campanha e o mestre o 
   await expect(page.getByText('jogador')).toBeVisible();
 });
 
-// The sign-in-through-invite path (person opens the invite link signed out,
-// clicks "Entrar para aceitar o convite", picks a devidp user, and lands on
-// the campaign, joined) depends on the backend contract described in
-// docs/arquitetura.md#frontend-web: a POST /auth/login with
-// intent=campaign_invite and intent_payload=<token>, being built on branch
-// feat/invite-signin (../meuRPG-invite as of this writing, not yet merged
-// into this branch). The frontend side (InviteAccept.signInToAccept) is
-// already built and unit-tested (invite-accept.spec.ts). Enable this test
-// once the orchestrator integrates that branch.
-test.fixme(
+// The sign-in-through-invite path: the person opens the invite link signed
+// out, clicks "Entrar para aceitar o convite", picks a devidp user, and lands
+// on the campaign, joined. The page posts the token in the body of POST
+// /auth/login (intent=campaign_invite); the server keeps only its hash in the
+// login state and accepts the invite after the callback. The token must never
+// appear in any URL the browser requests.
+test(
   'visitante sem sessão entra pelo convite, faz login e é adicionado à campanha automaticamente',
   { tag: '@MR-003' },
   async ({ page, browser }) => {
@@ -54,6 +51,11 @@ test.fixme(
     const guestContext = await browser.newContext();
     try {
       const guestPage = await guestContext.newPage();
+      const token = new URL(link!).hash.replace(/^#t=/, '');
+      expect(token.length).toBeGreaterThan(0);
+      const requestedURLs: string[] = [];
+      guestPage.on('request', (request) => requestedURLs.push(request.url()));
+
       await guestPage.goto(link!);
       await guestPage.getByRole('button', { name: 'Entrar para aceitar o convite' }).click();
 
@@ -61,8 +63,15 @@ test.fixme(
       await guestPage.getByRole('button', { name: 'Jogador Teste', exact: true }).click();
 
       await expect(guestPage).toHaveURL(new RegExp(`/campanhas/${campaignId}$`));
+      // Playwright reports the URL without the fragment, so the invite page's
+      // own URL does not count; any other appearance would be a leak.
+      expect(requestedURLs.filter((url) => url.includes(token))).toEqual([]);
     } finally {
       await guestContext.close();
     }
+
+    // Back on the master's page: the guest is now a member.
+    await page.reload();
+    await expect(page.getByText('jogador')).toBeVisible();
   },
 );
