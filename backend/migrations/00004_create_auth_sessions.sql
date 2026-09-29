@@ -19,11 +19,11 @@ CREATE TABLE IF NOT EXISTS auth_sessions (
     created_at TIMESTAMPTZ NOT NULL,
     expires_at TIMESTAMPTZ NOT NULL,
     auth_time TIMESTAMPTZ NULL,
-    -- Every authenticated request looks a session up by token_hash. STORING
-    -- lets that lookup read only this index.
-    UNIQUE INDEX auth_sessions_token_hash_key (token_hash) STORING (user_id, created_at, expires_at),
-    -- For "sign out everywhere" and account deletion.
-    INDEX auth_sessions_user_id_idx (user_id),
+    -- Every authenticated request looks a session up by token_hash. INCLUDE
+    -- (STORING, in CockroachDB's words) lets that lookup read only this index.
+    -- The index on user_id is in 00006: sqlc reads these files with the
+    -- PostgreSQL parser, which has no inline INDEX inside CREATE TABLE.
+    CONSTRAINT auth_sessions_token_hash_key UNIQUE (token_hash) INCLUDE (user_id, created_at, expires_at),
     CONSTRAINT auth_sessions_token_hash_length CHECK (octet_length(token_hash) = 32),
     CONSTRAINT auth_sessions_lifetime CHECK (expires_at > created_at AND expires_at <= created_at + INTERVAL '30 days')
 ) WITH (ttl_expiration_expression = 'expires_at');

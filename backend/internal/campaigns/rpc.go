@@ -1,0 +1,335 @@
+package campaigns
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"connectrpc.com/connect"
+	"github.com/cockroachdb/cockroach-go/v2/crdb"
+	"github.com/jackc/pgx/v5"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
+	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/campaigns/campaignsdb"
+	"github.com/PuraFome/meuRPG/backend/internal/identity"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
+)
+
+// Every handler starts with one explicit check: identity.RequireSession
+// when any signed-in user may call it, authz.RequireCampaignMember or
+// authz.RequireCampaignRole when it is about one campaign. The check's error
+// is already the right Connect error, so handlers return it as is.
+
+// CreateCampaign implements campaignsv1connect.CampaignServiceHandler.
+func (s *Service) CreateCampaign(
+	ctx context.Context,
+	req *connect.Request[campaignsv1.CreateCampaignRequest],
+) (*connect.Response[campaignsv1.CreateCampaignResponse], error) {
+	session, err := identity.RequireSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+	name, err := names.Clean(req.Msg.GetName(), MaxNameLength)
+	if err != nil {
+		return nil, invalidArgument("name", err)
+	}
+	xpMode, ok := xpModeToDB[req.Msg.GetXpMode()]
+	if !ok {
+		return nil, invalidArgument("xp_mode", errors.New("must be enemies, gold or milestones"))
+	}
+
+	// The campaign and its master are created together, or not at all.
+	var campaign campaignsdb.Campaign
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := s.queries.WithTx(tx)
+		var err error
+		campaign, err = q.InsertCampaign(ctx, campaignsdb.InsertCampaignParams{
+			Name:      name,
+			XpMode:    xpMode,
+			CreatedBy: session.UserID,
+		})
+		if err != nil {
+			return fmt.Errorf("insert campaign: %w", err)
+		}
+		_, err = q.InsertMember(ctx, campaignsdb.InsertMemberParams{
+			CampaignID: campaign.ID,
+			UserID:     session.UserID,
+			Role:       string(authz.RoleMaster),
+		})
+		if err != nil {
+			return fmt.Errorf("insert master: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, s.dbError(ctx, "create a campaign", err)
+	}
+	return connect.NewResponse(&campaignsv1.CreateCampaignResponse{
+		Campaign: campaignToProto(campaign, authz.RoleMaster),
+	}), nil
+}
+
+// ListMyCampaigns implements campaignsv1connect.CampaignServiceHandler.
+func (s *Service) ListMyCampaigns(
+	ctx context.Context,
+	_ *connect.Request[campaignsv1.ListMyCampaignsRequest],
+) (*connect.Response[campaignsv1.ListMyCampaignsResponse], error) {
+	session, err := identity.RequireSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := s.queries.ListCampaignsOfUser(ctx, session.UserID)
+	if err != nil {
+		return nil, s.dbError(ctx, "list campaigns", err)
+	}
+	res := &campaignsv1.ListMyCampaignsResponse{}
+	for _, row := range rows {
+		res.Campaigns = append(res.Campaigns, campaignToProto(row.Campaign, authz.Role(row.Role)))
+	}
+	return connect.NewResponse(res), nil
+}
+
+// GetCampaign implements campaignsv1connect.CampaignServiceHandler.
+func (s *Service) GetCampaign(
+	ctx context.Context,
+	req *connect.Request[campaignsv1.GetCampaignRequest],
+) (*connect.Response[campaignsv1.GetCampaignResponse], error) {
+	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
+	if err != nil {
+		return nil, err
+	}
+	campaign, err := s.queries.GetCampaign(ctx, m.CampaignID)
+	if err != nil {
+		return nil, s.dbError(ctx, "get a campaign", err)
+	}
+	return connect.NewResponse(&campaignsv1.GetCampaignResponse{
+		Campaign: campaignToProto(campaign, m.Role),
+	}), nil
+}
+
+// ListMembers implements campaignsv1connect.CampaignServiceHandler.
+func (s *Service) ListMembers(
+	ctx context.Context,
+	req *connect.Request[campaignsv1.ListMembersRequest],
+) (*connect.Response[campaignsv1.ListMembersResponse], error) {
+	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
+	if err != nil {
+		return nil, err
+	}
+	members, err := s.queries.ListMembers(ctx, m.CampaignID)
+	if err != nil {
+		return nil, s.dbError(ctx, "list members", err)
+	}
+
+	userIDs := make([]string, len(members))
+	for i, member := range members {
+		userIDs[i] = member.UserID
+	}
+	displayNames, err := s.profiles.DisplayNames(ctx, userIDs)
+	if err != nil {
+		return nil, s.dbError(ctx, "read display names", err)
+	}
+
+	res := &campaignsv1.ListMembersResponse{}
+	for _, member := range members {
+		res.Members = append(res.Members, &campaignsv1.Member{
+			UserId:      member.UserID,
+			Role:        roleToProto(authz.Role(member.Role)),
+			DisplayName: displayNames[member.UserID],
+			JoinedAt:    timestamppb.New(member.JoinedAt),
+		})
+	}
+	return connect.NewResponse(res), nil
+}
+
+// CreateInvite implements campaignsv1connect.CampaignServiceHandler.
+func (s *Service) CreateInvite(
+	ctx context.Context,
+	req *connect.Request[campaignsv1.CreateInviteRequest],
+) (*connect.Response[campaignsv1.CreateInviteResponse], error) {
+	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	if err != nil {
+		return nil, err
+	}
+	maxUses, lifetime, err := inviteLimits(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+
+	token, tokenHash := newInviteToken()
+	now := s.now()
+	var invite campaignsdb.CampaignInvite
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		var err error
+		invite, err = s.queries.WithTx(tx).InsertInvite(ctx, campaignsdb.InsertInviteParams{
+			CampaignID: m.CampaignID,
+			TokenHash:  tokenHash,
+			CreatedBy:  m.UserID,
+			MaxUses:    maxUses,
+			CreatedAt:  now,
+			ExpiresAt:  now.Add(lifetime),
+		})
+		if err != nil {
+			return fmt.Errorf("insert invite: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, s.dbError(ctx, "create an invite", err)
+	}
+	return connect.NewResponse(&campaignsv1.CreateInviteResponse{
+		Invite: inviteToProto(invite, now),
+		Token:  token,
+	}), nil
+}
+
+// ListInvites implements campaignsv1connect.CampaignServiceHandler.
+func (s *Service) ListInvites(
+	ctx context.Context,
+	req *connect.Request[campaignsv1.ListInvitesRequest],
+) (*connect.Response[campaignsv1.ListInvitesResponse], error) {
+	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	if err != nil {
+		return nil, err
+	}
+	invites, err := s.queries.ListInvites(ctx, m.CampaignID)
+	if err != nil {
+		return nil, s.dbError(ctx, "list invites", err)
+	}
+	now := s.now()
+	res := &campaignsv1.ListInvitesResponse{}
+	for _, invite := range invites {
+		res.Invites = append(res.Invites, inviteToProto(invite, now))
+	}
+	return connect.NewResponse(res), nil
+}
+
+// RevokeInvite implements campaignsv1connect.CampaignServiceHandler.
+func (s *Service) RevokeInvite(
+	ctx context.Context,
+	req *connect.Request[campaignsv1.RevokeInviteRequest],
+) (*connect.Response[campaignsv1.RevokeInviteResponse], error) {
+	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	if err != nil {
+		return nil, err
+	}
+	inviteID, ok := parseUUID(req.Msg.GetInviteId())
+	if !ok {
+		return nil, errInviteNotFound()
+	}
+
+	now := s.now()
+	var invite campaignsdb.CampaignInvite
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		var err error
+		invite, err = s.queries.WithTx(tx).RevokeInvite(ctx, campaignsdb.RevokeInviteParams{
+			CampaignID: m.CampaignID,
+			ID:         inviteID,
+			Now:        &now,
+		})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errInviteNotFound()
+		}
+		if err != nil {
+			return fmt.Errorf("revoke invite: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, s.dbError(ctx, "revoke an invite", err)
+	}
+	return connect.NewResponse(&campaignsv1.RevokeInviteResponse{
+		Invite: inviteToProto(invite, now),
+	}), nil
+}
+
+// AcceptInvite implements campaignsv1connect.CampaignServiceHandler. The
+// rules are in acceptInvite (invites.go).
+func (s *Service) AcceptInvite(
+	ctx context.Context,
+	req *connect.Request[campaignsv1.AcceptInviteRequest],
+) (*connect.Response[campaignsv1.AcceptInviteResponse], error) {
+	session, err := identity.RequireSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if req.Msg.GetToken() == "" {
+		return nil, invalidArgument("token", names.ErrEmpty)
+	}
+
+	joined, err := s.acceptInvite(ctx, req.Msg.GetToken(), session.UserID)
+	if err != nil {
+		return nil, s.dbError(ctx, "accept an invite", err)
+	}
+	return connect.NewResponse(&campaignsv1.AcceptInviteResponse{
+		Campaign:      campaignToProto(joined.campaign, joined.role),
+		AlreadyMember: joined.alreadyMember,
+	}), nil
+}
+
+// dbError turns an error from the database, or from inside a transaction,
+// into the Connect error the client gets. Connect errors pass through as
+// they are: they are the answers the handlers chose (not_found,
+// failed_precondition...). Anything else is logged, without personal data,
+// and hidden behind a generic message.
+func (s *Service) dbError(ctx context.Context, action string, err error) error {
+	if connectErr, ok := errors.AsType[*connect.Error](err); ok {
+		return connectErr
+	}
+	if errors.Is(err, pgx.ErrNoRows) {
+		// The campaign passed the authorization check and was deleted
+		// before the next query: it is gone now.
+		return connect.NewError(connect.CodeNotFound, errors.New("campaign not found"))
+	}
+	s.logger.ErrorContext(ctx, "campaigns: cannot "+action, "error", err)
+	if _, ok := errors.AsType[*crdb.MaxRetriesExceededError](err); ok {
+		// db.InTx retried a serialization conflict (40001) and gave up.
+		return connect.NewError(connect.CodeAborted, errors.New("too many changes at the same time, please try again"))
+	}
+	return connect.NewError(connect.CodeUnavailable, errors.New("cannot reach the database right now, please try again"))
+}
+
+// invalidArgument is the error for a request field that breaks a rule. The
+// message names the field and the rule, never the value, which could be
+// personal data.
+func invalidArgument(field string, err error) error {
+	return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%s %w", field, err))
+}
+
+// Conversions between the database's text values and the API's enums.
+var (
+	xpModeToDB = map[campaignsv1.XpMode]string{
+		campaignsv1.XpMode_XP_MODE_ENEMIES:    "enemies",
+		campaignsv1.XpMode_XP_MODE_GOLD:       "gold",
+		campaignsv1.XpMode_XP_MODE_MILESTONES: "milestones",
+	}
+	xpModeFromDB = map[string]campaignsv1.XpMode{
+		"enemies":    campaignsv1.XpMode_XP_MODE_ENEMIES,
+		"gold":       campaignsv1.XpMode_XP_MODE_GOLD,
+		"milestones": campaignsv1.XpMode_XP_MODE_MILESTONES,
+	}
+)
+
+func roleToProto(role authz.Role) campaignsv1.Role {
+	switch role {
+	case authz.RoleMaster:
+		return campaignsv1.Role_ROLE_MASTER
+	case authz.RolePlayer:
+		return campaignsv1.Role_ROLE_PLAYER
+	default:
+		return campaignsv1.Role_ROLE_UNSPECIFIED
+	}
+}
+
+func campaignToProto(c campaignsdb.Campaign, myRole authz.Role) *campaignsv1.Campaign {
+	return &campaignsv1.Campaign{
+		Id:        c.ID,
+		Name:      c.Name,
+		XpMode:    xpModeFromDB[c.XpMode],
+		CreatedAt: timestamppb.New(c.CreatedAt),
+		MyRole:    roleToProto(myRole),
+	}
+}

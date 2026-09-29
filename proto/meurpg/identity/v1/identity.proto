@@ -30,6 +30,11 @@ service IdentityService {
   // the browser to delete the session cookie (Set-Cookie in the response).
   // It only ends this session; the user's other devices stay signed in.
   rpc SignOut(SignOutRequest) returns (SignOutResponse);
+
+  // UpdateProfile changes what the signed-in user typed about themselves:
+  // today, only the display name that other members of their campaigns see.
+  // It fails with `invalid_argument` when the name breaks the rules below.
+  rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
 }
 
 // GetMeRequest is intentionally empty: the session cookie says who is asking.
@@ -51,6 +56,10 @@ message User {
   // Stable account ID (a UUID). It never changes, even if the user later
   // signs in with another method.
   string id = 1;
+  // The name the user typed in the app, which the other members of their
+  // campaigns see. Empty until the user sets one. It never comes from the
+  // sign-in provider.
+  string display_name = 2;
 }
 
 // SignOutRequest is intentionally empty: the session cookie says which
@@ -60,3 +69,16 @@ message SignOutRequest {}
 // SignOutResponse is intentionally empty; the cookie is cleared through the
 // Set-Cookie response header.
 message SignOutResponse {}
+
+// UpdateProfileRequest carries the new profile.
+message UpdateProfileRequest {
+  // The new display name: 1 to 40 characters after trimming spaces at both
+  // ends, with no control characters such as line breaks. An empty (or
+  // all-spaces) value removes the display name.
+  string display_name = 1;
+}
+
+// UpdateProfileResponse returns the user as saved.
+message UpdateProfileResponse {
+  User user = 1;
+}

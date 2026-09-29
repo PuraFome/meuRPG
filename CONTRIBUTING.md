@@ -6,16 +6,17 @@ Os comandos e o CI abaixo passam a existir quando a Etapa 1 (ver [roadmap](docs/
 
 ## Ambiente local
 
-Ferramentas: Go 1.27, buf, sqlc, goose, golangci-lint, Docker e Node 22. No Mac, todas instalam pelo Homebrew.
+Ferramentas: Go 1.27, buf, sqlc 1.31.1, goose, golangci-lint, Docker e Node 22. No Mac, todas instalam pelo Homebrew. O sqlc é opcional: o `make sqlc` roda a versão certa sozinho.
 
 | Comando | O que faz |
 | --- | --- |
 | `make up` | Sobe o CockroachDB (um nó só), o devidp (provedor OIDC de desenvolvimento) e o backend com Docker Compose (`deploy/local/compose.yaml`); serve o app em `http://localhost:8080`, servidor e API na mesma origem, com o login funcionando (ver [Login local com o devidp](#login-local-com-o-devidp)). |
 | `make run` | Roda o backend direto no terminal, apontando para o banco do `make up`. |
 | `make proto` | Gera o código Go **e** o TypeScript a partir dos `.proto` (`backend/gen` e `web/src/gen`). Instala as dependências do `web/` sozinho, se faltarem. |
+| `make sqlc` | Gera o código Go das queries SQL (`backend/internal/<módulo>/<módulo>db`) com o sqlc 1.31.1. Ver [Queries com sqlc](#queries-com-sqlc). |
 | `make lint` | Roda `buf lint` e `golangci-lint`. |
 | `make test` | Roda `go test -race` em todo o backend. |
-| `MEURPG_TEST_DATABASE_URL='postgresql://root@localhost:26257/defaultdb?sslmode=disable' make test` | Roda os testes de integração (migrations, transações) contra o CockroachDB do `make up`. Sem a variável, eles são pulados. |
+| `MEURPG_TEST_DATABASE_URL='postgresql://root@localhost:26257/defaultdb?sslmode=disable' make test` | Roda os testes de integração (migrations, transações, login, campanhas e convites) contra o CockroachDB do `make up`. Sem a variável, eles são pulados. |
 | `make migrate` | Aplica as migrations do goose no banco local. |
 | `make e2e` | Sobe o ambiente local (como o `make up`), roda os testes Playwright de `e2e/` contra ele e mostra onde está o relatório. O ambiente continua de pé; `make down` derruba. Ver [Testes ponta a ponta](#testes-ponta-a-ponta-playwright). |
 | `make down` | Derruba o ambiente local (`docker compose down`). |
@@ -91,9 +92,23 @@ Os testes de aceite pela tela ficam em `e2e/`, um projeto Playwright em TypeScri
 - Na sua máquina, os testes usam o **Google Chrome instalado** (`channel: 'chrome'`), sem baixar navegador. No CI, usam o Chromium que o `npx playwright install chromium` baixa, na versão presa pelo `package-lock.json`. `E2E_BROWSER_CHANNEL` troca isso (vazio = o Chromium do Playwright, que precisa de `npx playwright install chromium` antes).
 - O login passa pelo devidp, clicando no usuário de teste como uma pessoa faria. As RPCs vão com `page.request`, que usa os mesmos cookies da página, e com o header `Connect-Protocol-Version: 1`.
 - Cada teste que prova um critério de aceite leva a tag da história ou da regra, como `@MR-001`. `npx playwright test --grep @MR-001` roda só os dela.
-- Enquanto a tela de login do app não existe, os testes começam direto em `/auth/login?return_to=/` (há um `TODO` em `e2e/tests/support.ts` para trocar pelo clique no botão "Entrar" quando ele chegar).
+- O `ui.spec.ts` faz o login pela tela, clicando em "Entrar" e em "Sair". Os outros testes de login começam direto em `/auth/login?return_to=/`, que é mais rápido e mantém o foco no servidor.
 
 Para adicionar ou atualizar uma dependência de `e2e/`: `cd e2e && npm install <pacote>@<versão>`. O `e2e/.npmrc` já impede scripts de instalação e grava a versão exata.
+
+## Queries com sqlc
+
+O SQL de cada módulo fica em `backend/internal/<módulo>/queries.sql`, e o sqlc gera os métodos Go tipados num pacote ao lado (`identitydb`, `campaignsdb`). O schema que o sqlc usa são as próprias migrations do goose, então não existe uma segunda cópia do schema para manter igual. A configuração está em `backend/sqlc.yaml`.
+
+Para mudar uma query ou criar uma:
+
+1. Escreva o SQL em `queries.sql`, com um comentário `-- name: NomeDaQuery :one` (ou `:many`, `:exec`, `:execrows`) em cima.
+2. Rode `make sqlc` e faça commit do código gerado junto. O CI gera de novo e falha se aparecer diferença.
+3. Escrita passa por `db.InTx`, que repete a transação no erro `40001` do CockroachDB: `s.queries.WithTx(tx).NomeDaQuery(...)`.
+
+O sqlc fica preso na versão **1.31.1**, porque a versão vai escrita em cada arquivo gerado. O `make sqlc` roda essa versão exata com `go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1`, sem instalar nada; a primeira vez leva cerca de um minuto para compilar. O `sqlc` do Homebrew na mesma versão gera o mesmo resultado.
+
+O sqlc lê as migrations com o parser do PostgreSQL. Por isso, migration nova usa SQL que o PostgreSQL e o CockroachDB aceitam: índice numa migration própria, com `CREATE INDEX IF NOT EXISTS`, nunca uma linha `INDEX` dentro do `CREATE TABLE`; coluna coberta com `INCLUDE` (o `STORING` do CockroachDB). Opções do CockroachDB em `WITH (...)`, como o TTL por linha, funcionam. Toda migration precisa poder rodar duas vezes: o teste `TestMigrationsAreSafeToRerun` confere.
 
 ## Branches
 
@@ -121,7 +136,7 @@ Fluxo resumido: fork, se for o caso → PR para `PuraFome/meuRPG` → CI verde �
 
 | Job | Verificações |
 | --- | --- |
-| backend | `buf lint`, `buf format` e `buf breaking`; código gerado igual ao dos `.proto`; `golangci-lint`; `go test -race`; `govulncheck` (dependências com falhas conhecidas); build da imagem Docker. |
+| backend | `buf lint`, `buf format` e `buf breaking`; código gerado igual ao dos `.proto` e ao das queries (`make sqlc`); `golangci-lint`; `go test -race`; `govulncheck` (dependências com falhas conhecidas); build da imagem Docker. |
 | web | `npm ci --ignore-scripts` em `web/`, testes e build do Angular. |
 | backend (`go-db`) | `go test -race` com `MEURPG_TEST_DATABASE_URL` apontando para um CockroachDB de verdade (a mesma imagem, presa pelo mesmo digest, do `compose.yaml`), então os testes de integração rodam em vez de serem pulados. |
 | e2e | Sobe o ambiente local com `docker compose up --build`, confere que a imagem de produção não tem o devidp e roda os testes Playwright de `e2e/` no Chromium. Se falhar, mostra os logs do ambiente e guarda o relatório do Playwright como artifact por 7 dias. Mudança só em documentação (`docs/`, arquivos `.md`) não roda esse job. |

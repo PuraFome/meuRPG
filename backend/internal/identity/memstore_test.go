@@ -15,7 +15,7 @@ type memStore struct {
 	mu          sync.Mutex
 	loginStates map[string]LoginState // key: string(state hash)
 	identities  map[[2]string]memIdentity
-	users       map[string]bool
+	users       map[string]string     // user ID -> display name
 	sessions    map[string]memSession // key: session ID
 }
 
@@ -34,7 +34,7 @@ func newMemStore() *memStore {
 	return &memStore{
 		loginStates: map[string]LoginState{},
 		identities:  map[[2]string]memIdentity{},
-		users:       map[string]bool{},
+		users:       map[string]string{},
 		sessions:    map[string]memSession{},
 	}
 }
@@ -66,7 +66,7 @@ func (m *memStore) UpsertUser(_ context.Context, id ExternalIdentity) (string, e
 	existing, ok := m.identities[key]
 	if !ok {
 		existing.userID = rand.Text()
-		m.users[existing.userID] = true
+		m.users[existing.userID] = ""
 	}
 	existing.email = id.Email
 	m.identities[key] = existing
@@ -76,7 +76,7 @@ func (m *memStore) UpsertUser(_ context.Context, id ExternalIdentity) (string, e
 func (m *memStore) CreateSession(_ context.Context, ns NewSession) (Session, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if !m.users[ns.UserID] {
+	if _, ok := m.users[ns.UserID]; !ok {
 		return Session{}, fmt.Errorf("user %s does not exist", ns.UserID)
 	}
 	if !ns.ExpiresAt.After(ns.CreatedAt) || ns.ExpiresAt.Sub(ns.CreatedAt) > SessionLifetime {
@@ -114,6 +114,38 @@ func (m *memStore) RevokeUserSessions(_ context.Context, userID string) error {
 		}
 	}
 	return nil
+}
+
+func (m *memStore) DisplayName(_ context.Context, userID string) (string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	name, ok := m.users[userID]
+	if !ok {
+		return "", ErrNotFound
+	}
+	return name, nil
+}
+
+func (m *memStore) SetDisplayName(_ context.Context, userID, displayName string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, ok := m.users[userID]; !ok {
+		return ErrNotFound
+	}
+	m.users[userID] = displayName
+	return nil
+}
+
+func (m *memStore) DisplayNames(_ context.Context, userIDs []string) (map[string]string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	names := map[string]string{}
+	for _, id := range userIDs {
+		if name := m.users[id]; name != "" {
+			names[id] = name
+		}
+	}
+	return names, nil
 }
 
 // tamperLoginStates changes every stored login state, e.g. to swap the PKCE

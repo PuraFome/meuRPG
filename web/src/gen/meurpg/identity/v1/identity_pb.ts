@@ -21,7 +21,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/identity/v1/identity.proto.
  */
 export const file_meurpg_identity_v1_identity: GenFile = /*@__PURE__*/
-  fileDesc("CiFtZXVycGcvaWRlbnRpdHkvdjEvaWRlbnRpdHkucHJvdG8SEm1ldXJwZy5pZGVudGl0eS52MSIOCgxHZXRNZVJlcXVlc3QibwoNR2V0TWVSZXNwb25zZRImCgR1c2VyGAEgASgLMhgubWV1cnBnLmlkZW50aXR5LnYxLlVzZXISNgoSc2Vzc2lvbl9leHBpcmVzX2F0GAIgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCISCgRVc2VyEgoKAmlkGAEgASgJIhAKDlNpZ25PdXRSZXF1ZXN0IhEKD1NpZ25PdXRSZXNwb25zZTK4AQoPSWRlbnRpdHlTZXJ2aWNlElEKBUdldE1lEiAubWV1cnBnLmlkZW50aXR5LnYxLkdldE1lUmVxdWVzdBohLm1ldXJwZy5pZGVudGl0eS52MS5HZXRNZVJlc3BvbnNlIgOQAgESUgoHU2lnbk91dBIiLm1ldXJwZy5pZGVudGl0eS52MS5TaWduT3V0UmVxdWVzdBojLm1ldXJwZy5pZGVudGl0eS52MS5TaWduT3V0UmVzcG9uc2VC1wEKFmNvbS5tZXVycGcuaWRlbnRpdHkudjFCDUlkZW50aXR5UHJvdG9QAVpEZ2l0aHViLmNvbS9QdXJhRm9tZS9tZXVSUEcvYmFja2VuZC9nZW4vbWV1cnBnL2lkZW50aXR5L3YxO2lkZW50aXR5djGiAgNNSViqAhJNZXVycGcuSWRlbnRpdHkuVjHKAhJNZXVycGdcSWRlbnRpdHlcVjHiAh5NZXVycGdcSWRlbnRpdHlcVjFcR1BCTWV0YWRhdGHqAhRNZXVycGc6OklkZW50aXR5OjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp]);
+  fileDesc("CiFtZXVycGcvaWRlbnRpdHkvdjEvaWRlbnRpdHkucHJvdG8SEm1ldXJwZy5pZGVudGl0eS52MSIOCgxHZXRNZVJlcXVlc3QibwoNR2V0TWVSZXNwb25zZRImCgR1c2VyGAEgASgLMhgubWV1cnBnLmlkZW50aXR5LnYxLlVzZXISNgoSc2Vzc2lvbl9leHBpcmVzX2F0GAIgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCIoCgRVc2VyEgoKAmlkGAEgASgJEhQKDGRpc3BsYXlfbmFtZRgCIAEoCSIQCg5TaWduT3V0UmVxdWVzdCIRCg9TaWduT3V0UmVzcG9uc2UiLAoUVXBkYXRlUHJvZmlsZVJlcXVlc3QSFAoMZGlzcGxheV9uYW1lGAEgASgJIj8KFVVwZGF0ZVByb2ZpbGVSZXNwb25zZRImCgR1c2VyGAEgASgLMhgubWV1cnBnLmlkZW50aXR5LnYxLlVzZXIyngIKD0lkZW50aXR5U2VydmljZRJRCgVHZXRNZRIgLm1ldXJwZy5pZGVudGl0eS52MS5HZXRNZVJlcXVlc3QaIS5tZXVycGcuaWRlbnRpdHkudjEuR2V0TWVSZXNwb25zZSIDkAIBElIKB1NpZ25PdXQSIi5tZXVycGcuaWRlbnRpdHkudjEuU2lnbk91dFJlcXVlc3QaIy5tZXVycGcuaWRlbnRpdHkudjEuU2lnbk91dFJlc3BvbnNlEmQKDVVwZGF0ZVByb2ZpbGUSKC5tZXVycGcuaWRlbnRpdHkudjEuVXBkYXRlUHJvZmlsZVJlcXVlc3QaKS5tZXVycGcuaWRlbnRpdHkudjEuVXBkYXRlUHJvZmlsZVJlc3BvbnNlQtcBChZjb20ubWV1cnBnLmlkZW50aXR5LnYxQg1JZGVudGl0eVByb3RvUAFaRGdpdGh1Yi5jb20vUHVyYUZvbWUvbWV1UlBHL2JhY2tlbmQvZ2VuL21ldXJwZy9pZGVudGl0eS92MTtpZGVudGl0eXYxogIDTUlYqgISTWV1cnBnLklkZW50aXR5LlYxygISTWV1cnBnXElkZW50aXR5XFYx4gIeTWV1cnBnXElkZW50aXR5XFYxXEdQQk1ldGFkYXRh6gIUTWV1cnBnOjpJZGVudGl0eTo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp]);
 
 /**
  * GetMeRequest is intentionally empty: the session cookie says who is asking.
@@ -82,6 +82,15 @@ export type User = Message<"meurpg.identity.v1.User"> & {
    * @generated from field: string id = 1;
    */
   id: string;
+
+  /**
+   * The name the user typed in the app, which the other members of their
+   * campaigns see. Empty until the user sets one. It never comes from the
+   * sign-in provider.
+   *
+   * @generated from field: string display_name = 2;
+   */
+  displayName: string;
 };
 
 /**
@@ -124,6 +133,48 @@ export const SignOutResponseSchema: GenMessage<SignOutResponse> = /*@__PURE__*/
   messageDesc(file_meurpg_identity_v1_identity, 4);
 
 /**
+ * UpdateProfileRequest carries the new profile.
+ *
+ * @generated from message meurpg.identity.v1.UpdateProfileRequest
+ */
+export type UpdateProfileRequest = Message<"meurpg.identity.v1.UpdateProfileRequest"> & {
+  /**
+   * The new display name: 1 to 40 characters after trimming spaces at both
+   * ends, with no control characters such as line breaks. An empty (or
+   * all-spaces) value removes the display name.
+   *
+   * @generated from field: string display_name = 1;
+   */
+  displayName: string;
+};
+
+/**
+ * Describes the message meurpg.identity.v1.UpdateProfileRequest.
+ * Use `create(UpdateProfileRequestSchema)` to create a new message.
+ */
+export const UpdateProfileRequestSchema: GenMessage<UpdateProfileRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_identity_v1_identity, 5);
+
+/**
+ * UpdateProfileResponse returns the user as saved.
+ *
+ * @generated from message meurpg.identity.v1.UpdateProfileResponse
+ */
+export type UpdateProfileResponse = Message<"meurpg.identity.v1.UpdateProfileResponse"> & {
+  /**
+   * @generated from field: meurpg.identity.v1.User user = 1;
+   */
+  user?: User | undefined;
+};
+
+/**
+ * Describes the message meurpg.identity.v1.UpdateProfileResponse.
+ * Use `create(UpdateProfileResponseSchema)` to create a new message.
+ */
+export const UpdateProfileResponseSchema: GenMessage<UpdateProfileResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_identity_v1_identity, 6);
+
+/**
  * IdentityService answers "who am I?" and signs the user out.
  *
  * Every method needs a valid session cookie and fails with the
@@ -157,6 +208,18 @@ export const IdentityService: GenService<{
     methodKind: "unary";
     input: typeof SignOutRequestSchema;
     output: typeof SignOutResponseSchema;
+  },
+  /**
+   * UpdateProfile changes what the signed-in user typed about themselves:
+   * today, only the display name that other members of their campaigns see.
+   * It fails with `invalid_argument` when the name breaks the rules below.
+   *
+   * @generated from rpc meurpg.identity.v1.IdentityService.UpdateProfile
+   */
+  updateProfile: {
+    methodKind: "unary";
+    input: typeof UpdateProfileRequestSchema;
+    output: typeof UpdateProfileResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_meurpg_identity_v1_identity, 0);

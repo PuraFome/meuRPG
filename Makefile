@@ -14,7 +14,14 @@ MIGRATE_ARGS ?= up
 
 COMPOSE_FILE := deploy/local/compose.yaml
 
-.PHONY: help proto proto-lint lint test run migrate up down logs docker-build web-install web-test web-build e2e
+# sqlc is pinned: its version is written into every file it generates, so
+# every machine and CI must run the same one. `go run pkg@version` builds
+# exactly that version, checked against Go's checksum database, with no
+# install step. The first run compiles it (about a minute); later runs use
+# Go's build cache.
+SQLC := go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
+
+.PHONY: help proto sqlc proto-lint lint test run migrate up down logs docker-build web-install web-test web-build e2e
 
 help: ## Show this help message
 	@echo "MeuRPG - available targets:"
@@ -30,6 +37,9 @@ web/node_modules/.bin/protoc-gen-es: web/package.json web/package-lock.json
 
 proto: web/node_modules/.bin/protoc-gen-es ## Generate Go and TypeScript code from proto/ (writes into backend/gen and web/src/gen)
 	cd proto && buf generate
+
+sqlc: ## Generate Go code from the SQL queries (backend/sqlc.yaml) into backend/internal/*/*db
+	cd backend && $(SQLC) generate
 
 proto-lint: ## Lint proto files and check formatting
 	cd proto && buf lint

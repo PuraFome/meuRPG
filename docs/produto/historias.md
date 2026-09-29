@@ -48,8 +48,11 @@ MR-021 e MR-022 são novas e saíram das respostas do Samuel. Ficaram como "Depo
 #### Critérios de aceite
 - **Dado** que estou logado, **quando** crio a campanha "Mirathel", **então** viro mestre dela **e** só os membros a veem na lista.
 
+#### Implementado
+- Backend pronto em 29/09/2026 (módulo `campaigns`, ver [Arquitetura](../arquitetura.md#módulo-campaigns-e-autorização)). Teste: `TestMR001_CreatorBecomesMasterAndOnlyMembersSeeTheCampaign`. Falta a tela e o teste Playwright.
+
 #### Dúvidas
-- RN-05: um mestre pode ser jogador em outra campanha? Ver [Perguntas em aberto](perguntas-em-aberto.md).
+- RN-05: um mestre pode ser jogador em outra campanha? Ver [Perguntas em aberto](perguntas-em-aberto.md). O backend já permite.
 
 ### MR-003: Entrar pelo convite
 
@@ -62,6 +65,10 @@ MR-021 e MR-022 são novas e saíram das respostas do Samuel. Ficaram como "Depo
 #### Critérios de aceite
 - **Dado** um convite válido para "Mirathel", **quando** o jogador abre o link e faz login com o Google, **então** vira jogador da campanha e cria um personagem do tipo jogador, que o mestre já vê na campanha.
 - **Dado** um convite expirado, **quando** alguém abre o link, **então** vê uma mensagem clara **e** nada é criado.
+
+#### Implementado
+- Backend da entrada na campanha pronto em 29/09/2026: com login, o convite vira participação como jogador; aceitar de novo não muda nada; dois jogadores disputando o último uso não entram os dois. Testes: `TestMR003_ValidInviteMakesTheUserAPlayerTheMasterSees` (primeiro critério, sem a parte do personagem) e `TestMR003_ExpiredInviteGivesAClearErrorAndCreatesNothing`.
+- Falta: criar o personagem do tipo jogador, que vem com o módulo `characters` (Etapa 4), a tela `/convite` e o teste Playwright.
 
 #### Dúvidas
 - RN-03: o jogador tem um personagem por campanha, ou pode ter outro, por exemplo quando o primeiro morre? Ver [Perguntas em aberto](perguntas-em-aberto.md).
@@ -220,6 +227,16 @@ Pré-requisitos do MVP, decidido em 29/09/2026. Não têm implementação prévi
 - Prioridade: MVP (pré-requisito)
 - Regras: RN-07
 - Módulos: campaigns
+
+#### Critérios de aceite
+Propostos em 29/09/2026, junto com o backend. Falta o aceite do Samuel, e a RN-07 ainda está em aberto.
+
+- **Dado** que sou mestre de "Mirathel", **quando** gero um convite, **então** recebo um link que vale para uma pessoa por 7 dias **e** o servidor guarda só o hash do token.
+- **Dado** um convite ainda não usado, **quando** o mestre o revoga, **então** o link para de funcionar **e** quem já entrou continua na campanha.
+- **Dado** que sou jogador de "Mirathel", **quando** tento gerar, listar ou revogar convites, **então** o servidor recusa.
+
+#### Implementado
+- Backend pronto em 29/09/2026: o mestre escolhe de 1 a 20 usos (padrão 1) e de 5 minutos a 30 dias (padrão 7 dias), e pode revogar. Testes: `TestMR002_MasterGetsASingleUseSevenDayInviteStoredAsAHash`, `TestMR002_RevokedInviteStopsWorking`, `TestMR002_OnlyTheMasterManagesInvites`. Falta a tela e o teste Playwright.
 
 #### Dúvidas
 - RN-07: ver [Perguntas em aberto](perguntas-em-aberto.md).

@@ -131,7 +131,11 @@ type User struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Stable account ID (a UUID). It never changes, even if the user later
 	// signs in with another method.
-	Id            string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// The name the user typed in the app, which the other members of their
+	// campaigns see. Empty until the user sets one. It never comes from the
+	// sign-in provider.
+	DisplayName   string `protobuf:"bytes,2,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -169,6 +173,13 @@ func (*User) Descriptor() ([]byte, []int) {
 func (x *User) GetId() string {
 	if x != nil {
 		return x.Id
+	}
+	return ""
+}
+
+func (x *User) GetDisplayName() string {
+	if x != nil {
+		return x.DisplayName
 	}
 	return ""
 }
@@ -249,6 +260,99 @@ func (*SignOutResponse) Descriptor() ([]byte, []int) {
 	return file_meurpg_identity_v1_identity_proto_rawDescGZIP(), []int{4}
 }
 
+// UpdateProfileRequest carries the new profile.
+type UpdateProfileRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The new display name: 1 to 40 characters after trimming spaces at both
+	// ends, with no control characters such as line breaks. An empty (or
+	// all-spaces) value removes the display name.
+	DisplayName   string `protobuf:"bytes,1,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateProfileRequest) Reset() {
+	*x = UpdateProfileRequest{}
+	mi := &file_meurpg_identity_v1_identity_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateProfileRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateProfileRequest) ProtoMessage() {}
+
+func (x *UpdateProfileRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_identity_v1_identity_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateProfileRequest.ProtoReflect.Descriptor instead.
+func (*UpdateProfileRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_identity_v1_identity_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *UpdateProfileRequest) GetDisplayName() string {
+	if x != nil {
+		return x.DisplayName
+	}
+	return ""
+}
+
+// UpdateProfileResponse returns the user as saved.
+type UpdateProfileResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	User          *User                  `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateProfileResponse) Reset() {
+	*x = UpdateProfileResponse{}
+	mi := &file_meurpg_identity_v1_identity_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateProfileResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateProfileResponse) ProtoMessage() {}
+
+func (x *UpdateProfileResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_identity_v1_identity_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateProfileResponse.ProtoReflect.Descriptor instead.
+func (*UpdateProfileResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_identity_v1_identity_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *UpdateProfileResponse) GetUser() *User {
+	if x != nil {
+		return x.User
+	}
+	return nil
+}
+
 var File_meurpg_identity_v1_identity_proto protoreflect.FileDescriptor
 
 const file_meurpg_identity_v1_identity_proto_rawDesc = "" +
@@ -257,14 +361,20 @@ const file_meurpg_identity_v1_identity_proto_rawDesc = "" +
 	"\fGetMeRequest\"\x87\x01\n" +
 	"\rGetMeResponse\x12,\n" +
 	"\x04user\x18\x01 \x01(\v2\x18.meurpg.identity.v1.UserR\x04user\x12H\n" +
-	"\x12session_expires_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x10sessionExpiresAt\"\x16\n" +
+	"\x12session_expires_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x10sessionExpiresAt\"9\n" +
 	"\x04User\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\x10\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
+	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\"\x10\n" +
 	"\x0eSignOutRequest\"\x11\n" +
-	"\x0fSignOutResponse2\xb8\x01\n" +
+	"\x0fSignOutResponse\"9\n" +
+	"\x14UpdateProfileRequest\x12!\n" +
+	"\fdisplay_name\x18\x01 \x01(\tR\vdisplayName\"E\n" +
+	"\x15UpdateProfileResponse\x12,\n" +
+	"\x04user\x18\x01 \x01(\v2\x18.meurpg.identity.v1.UserR\x04user2\x9e\x02\n" +
 	"\x0fIdentityService\x12Q\n" +
 	"\x05GetMe\x12 .meurpg.identity.v1.GetMeRequest\x1a!.meurpg.identity.v1.GetMeResponse\"\x03\x90\x02\x01\x12R\n" +
-	"\aSignOut\x12\".meurpg.identity.v1.SignOutRequest\x1a#.meurpg.identity.v1.SignOutResponseB\xd7\x01\n" +
+	"\aSignOut\x12\".meurpg.identity.v1.SignOutRequest\x1a#.meurpg.identity.v1.SignOutResponse\x12d\n" +
+	"\rUpdateProfile\x12(.meurpg.identity.v1.UpdateProfileRequest\x1a).meurpg.identity.v1.UpdateProfileResponseB\xd7\x01\n" +
 	"\x16com.meurpg.identity.v1B\rIdentityProtoP\x01ZDgithub.com/PuraFome/meuRPG/backend/gen/meurpg/identity/v1;identityv1\xa2\x02\x03MIX\xaa\x02\x12Meurpg.Identity.V1\xca\x02\x12Meurpg\\Identity\\V1\xe2\x02\x1eMeurpg\\Identity\\V1\\GPBMetadata\xea\x02\x14Meurpg::Identity::V1b\x06proto3"
 
 var (
@@ -279,27 +389,32 @@ func file_meurpg_identity_v1_identity_proto_rawDescGZIP() []byte {
 	return file_meurpg_identity_v1_identity_proto_rawDescData
 }
 
-var file_meurpg_identity_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_meurpg_identity_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_meurpg_identity_v1_identity_proto_goTypes = []any{
 	(*GetMeRequest)(nil),          // 0: meurpg.identity.v1.GetMeRequest
 	(*GetMeResponse)(nil),         // 1: meurpg.identity.v1.GetMeResponse
 	(*User)(nil),                  // 2: meurpg.identity.v1.User
 	(*SignOutRequest)(nil),        // 3: meurpg.identity.v1.SignOutRequest
 	(*SignOutResponse)(nil),       // 4: meurpg.identity.v1.SignOutResponse
-	(*timestamppb.Timestamp)(nil), // 5: google.protobuf.Timestamp
+	(*UpdateProfileRequest)(nil),  // 5: meurpg.identity.v1.UpdateProfileRequest
+	(*UpdateProfileResponse)(nil), // 6: meurpg.identity.v1.UpdateProfileResponse
+	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
 }
 var file_meurpg_identity_v1_identity_proto_depIdxs = []int32{
 	2, // 0: meurpg.identity.v1.GetMeResponse.user:type_name -> meurpg.identity.v1.User
-	5, // 1: meurpg.identity.v1.GetMeResponse.session_expires_at:type_name -> google.protobuf.Timestamp
-	0, // 2: meurpg.identity.v1.IdentityService.GetMe:input_type -> meurpg.identity.v1.GetMeRequest
-	3, // 3: meurpg.identity.v1.IdentityService.SignOut:input_type -> meurpg.identity.v1.SignOutRequest
-	1, // 4: meurpg.identity.v1.IdentityService.GetMe:output_type -> meurpg.identity.v1.GetMeResponse
-	4, // 5: meurpg.identity.v1.IdentityService.SignOut:output_type -> meurpg.identity.v1.SignOutResponse
-	4, // [4:6] is the sub-list for method output_type
-	2, // [2:4] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	7, // 1: meurpg.identity.v1.GetMeResponse.session_expires_at:type_name -> google.protobuf.Timestamp
+	2, // 2: meurpg.identity.v1.UpdateProfileResponse.user:type_name -> meurpg.identity.v1.User
+	0, // 3: meurpg.identity.v1.IdentityService.GetMe:input_type -> meurpg.identity.v1.GetMeRequest
+	3, // 4: meurpg.identity.v1.IdentityService.SignOut:input_type -> meurpg.identity.v1.SignOutRequest
+	5, // 5: meurpg.identity.v1.IdentityService.UpdateProfile:input_type -> meurpg.identity.v1.UpdateProfileRequest
+	1, // 6: meurpg.identity.v1.IdentityService.GetMe:output_type -> meurpg.identity.v1.GetMeResponse
+	4, // 7: meurpg.identity.v1.IdentityService.SignOut:output_type -> meurpg.identity.v1.SignOutResponse
+	6, // 8: meurpg.identity.v1.IdentityService.UpdateProfile:output_type -> meurpg.identity.v1.UpdateProfileResponse
+	6, // [6:9] is the sub-list for method output_type
+	3, // [3:6] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_identity_v1_identity_proto_init() }
@@ -313,7 +428,7 @@ func file_meurpg_identity_v1_identity_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_identity_v1_identity_proto_rawDesc), len(file_meurpg_identity_v1_identity_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

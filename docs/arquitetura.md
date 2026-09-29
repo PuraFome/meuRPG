@@ -120,9 +120,9 @@ Cada regra de negócio recusada devolve um código de erro do Connect, sempre o 
 | Código | Quando |
 | --- | --- |
 | `unauthenticated` | Sem sessão de login válida. |
-| `permission_denied` | O usuário não é membro da campanha, ou um jogador tenta uma ação de mestre. |
-| `failed_precondition` | A regra não deixa agora: ficha travada (RN-01), sessão que não começou. |
-| `not_found` | Não existe, ou o usuário não pode saber que existe (um ponto escondido, por exemplo). |
+| `permission_denied` | O usuário é membro da campanha, mas não tem o papel: um jogador tenta uma ação de mestre. |
+| `failed_precondition` | A regra não deixa agora: ficha travada (RN-01), sessão que não começou, convite expirado. |
+| `not_found` | Não existe, ou o usuário não pode saber que existe: um ponto escondido, ou uma campanha da qual ele não é membro (ADR-0011). |
 | `invalid_argument` | Entrada inválida, como um atributo acima de 30. |
 | `aborted` | Conflito de transação (`40001`) que continuou depois das novas tentativas. |
 
@@ -162,8 +162,9 @@ O mestre entra por um provedor OpenID Connect (OIDC) com Authorization Code + PK
 | --- | --- |
 | `GET /auth/login?return_to=/caminho` | Guarda o estado do login e manda o navegador para o provedor. `return_to` só aceita um caminho deste site. |
 | `GET /auth/callback` | Confere tudo, cria a sessão, grava o cookie e volta para `return_to`. |
-| `IdentityService.GetMe` | Quem está logado (só o ID da conta) e quando a sessão acaba. Aceita GET, porque a requisição é vazia. |
+| `IdentityService.GetMe` | Quem está logado (o ID da conta e o nome de exibição) e quando a sessão acaba. Aceita GET, porque a requisição é vazia. |
 | `IdentityService.SignOut` | Revoga a sessão atual no banco e apaga o cookie. As outras sessões do usuário continuam. |
+| `IdentityService.UpdateProfile` | Muda o nome de exibição (vazio apaga). O `GetMe` também devolve esse nome. |
 
 ### Diagrama: o login
 
@@ -267,6 +268,75 @@ flowchart LR
 ```
 
 O cookie `__Host-meurpg_session` exige `Secure`, e mesmo assim funciona em `http://localhost`: o Chrome trata `localhost` como contexto seguro. Um teste Playwright confere isso no navegador. O Safari não aceita, então o login local é no Chrome ou no Firefox.
+
+## Módulo campaigns e autorização
+
+O mestre cria a campanha e gera convites; o jogador faz login e aceita o convite, e vira jogador da campanha (MR-001, MR-002, MR-003). O código fica em `backend/internal/campaigns`, e quem decide o que cada um pode fazer é o pacote `backend/internal/authz` (ADR-0011: papéis por campanha, conferidos no banco a cada requisição).
+
+| Chamada do `CampaignService` | Quem pode |
+| --- | --- |
+| `CreateCampaign`, `ListMyCampaigns`, `AcceptInvite` | Qualquer pessoa logada |
+| `GetCampaign`, `ListMembers` | Membros da campanha |
+| `CreateInvite`, `ListInvites`, `RevokeInvite` | O mestre da campanha |
+
+### Autorização
+
+O papel é por campanha (RN-05): a linha em `campaign_members` diz se a pessoa é `master` ou `player` naquela campanha. Não existe papel global, nem papel guardado em token.
+
+- **O banco decide, a cada requisição.** Tirar alguém da campanha vale na chamada seguinte, sem esperar nada vencer.
+- **Uma checagem explícita no começo de cada handler:** `authz.RequireCampaignMember(ctx, id)` para qualquer membro, `authz.RequireCampaignRole(ctx, id, authz.RoleMaster)` só para o mestre, ou só `identity.RequireSession(ctx)` quando basta estar logado.
+- **Uma leitura por campanha, por requisição.** O `authz.Interceptor` dá a cada requisição um memo novo, e o memo acaba com ela.
+- **Sem o interceptor, a checagem falha** (`internal`), nunca libera.
+
+```mermaid
+flowchart TD
+    A["Chamada Connect"] --> B{"Sessão válida?"}
+    B -->|"não"| U["unauthenticated"]
+    B -->|"sim"| C{"Membro da campanha?<br/>campaign_members"}
+    C -->|"não, ou a campanha não existe"| N["not_found"]
+    C -->|"sim"| D{"Tem o papel pedido?"}
+    D -->|"não"| P["permission_denied"]
+    D -->|"sim"| OK["Handler continua"]
+```
+
+Quem não é membro recebe `not_found` tanto para uma campanha que existe quanto para uma inventada, com a mesma mensagem. Assim ninguém descobre quais campanhas existem. Um teste chama todo método do `CampaignService` como mestre, jogador, não membro e anônimo (`TestAuthorizationMatrix`), e falha se um método novo aparecer sem linha na tabela.
+
+### Convites
+
+O convite é um link `https://<app>/convite#t=<token>`. O token tem 32 bytes aleatórios e só o servidor o gera; o banco guarda só o SHA-256 dele (`campaign_invites.token_hash`), e o servidor devolve o token uma vez só, na resposta do `CreateInvite`.
+
+- **O token vai no fragmento (`#t=`),** que o navegador nunca manda para o servidor, então não aparece em log nem no `Referer`. O app lê o fragmento e manda o token no corpo do `AcceptInvite`, nunca na URL (ADR-0009).
+- **Padrão, enquanto a RN-07 não fecha:** vale para uma pessoa e por 7 dias. O mestre pode escolher de 1 a 20 usos e de 5 minutos a 30 dias, e pode revogar o convite a qualquer momento. Quem já entrou continua na campanha.
+- **Aceitar exige login** (hoje, OIDC). Quando o login do jogador sem Google chegar (ADR-0009), ele cria a conta e a sessão, e a mesma regra de aceitar convite roda depois.
+- **Aceitar de novo não muda nada:** um membro recebe a campanha de volta com `already_member`, e nenhum uso do convite é gasto.
+- **Dois jogadores disputando o último uso não entram os dois.** Tudo acontece numa transação (`db.InTx`), com a linha do convite travada (`SELECT ... FOR UPDATE`); o `UPDATE` repete as regras, e um `CHECK` no banco impede `use_count` maior que `max_uses`. O teste `TestAcceptInviteRaceForTheLastUse` põe dez pessoas ao mesmo tempo no CockroachDB.
+- **Convite que não serve** responde `failed_precondition`, com o detalhe `InviteUnusable` dizendo o motivo: expirado, revogado ou já usado. O app mostra uma mensagem clara para cada um. "Já usado" é o aviso de que o link pode ter vazado.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant M as Mestre
+    participant J as Jogador
+    participant S as Servidor Go
+    participant B as CockroachDB
+
+    M->>S: CreateInvite(campaign_id)
+    S->>B: Grava o SHA-256 do token, max_uses e expires_at
+    S-->>M: Token, só desta vez
+    M-->>J: Link do convite, com o token no fragmento, por onde quiser
+    J->>S: AcceptInvite, com o token no corpo
+    S->>B: Trava o convite e confere revogado, usos e validade
+    S->>B: use_count + 1 e grava o jogador em campaign_members
+    S-->>J: A campanha, com my_role jogador
+```
+
+### Respostas e GET
+
+Toda resposta do `CampaignService`, inclusive os erros, sai com `Cache-Control: no-store`. Só o `ListMyCampaigns` aceita GET (`NO_SIDE_EFFECTS`), porque a requisição dele é vazia. As outras leituras levam o ID da campanha, e num GET a mensagem inteira vai na URL, que fica nos logs da plataforma (ver [Privacidade](privacidade.md)). Por isso elas ficam só em POST, mesmo sem efeito colateral.
+
+### Nome de exibição
+
+Os membros aparecem pelo nome de exibição, que cada pessoa digita no app (`IdentityService.UpdateProfile`, de 1 a 40 caracteres). Ele nunca vem do provedor de login. O `campaigns` pede os nomes ao `identity` por uma interface (`Profiles`), sem ler a tabela `users`, como a regra dos módulos manda.
 
 ## Ver também
 

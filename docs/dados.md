@@ -257,12 +257,19 @@ Esta seção lista só o que já existe nas migrations de `backend/migrations/`.
 
 | Migration | Tabela | Para quê |
 | --- | --- | --- |
-| `00002_create_users` | `users` | A conta. Não guarda dado pessoal: só `id` e `created_at`. |
+| `00002_create_users` | `users` | A conta: `id` e `created_at`. O único dado pessoal é o nome de exibição (`00007`), que a própria pessoa digita. |
 | `00003_create_user_identities` | `user_identities` | Liga a conta a um login OIDC. |
 | `00004_create_auth_sessions` | `auth_sessions` | As sessões de login (o hash do token). |
 | `00005_create_oidc_login_states` | `oidc_login_states` | Logins começados e ainda não terminados. |
+| `00006_create_auth_sessions_user_id_index` | `auth_sessions` | Índice por `user_id` (sair de todos os aparelhos, excluir a conta). |
+| `00007_add_users_display_name` | `users` | Coluna `display_name`, o nome que os outros membros veem. |
+| `00008_create_campaigns` | `campaigns` | A campanha (MR-001). |
+| `00009_create_campaign_members` | `campaign_members` | Quem é membro de cada campanha, e com qual papel (RN-05). |
+| `00010_create_campaign_members_user_id_index` | `campaign_members` | Índice por `user_id` ("minhas campanhas"). |
+| `00011_create_campaign_invites` | `campaign_invites` | Os convites (MR-002, RN-07), só com o hash do token. |
+| `00012_create_campaign_invites_campaign_id_index` | `campaign_invites` | Índice por `campaign_id` (os convites de uma campanha). |
 
-Todas são do módulo `identity`. Mudanças em relação à proposta acima:
+As migrations `00002` a `00007` são do módulo `identity`; as `00008` a `00012`, do módulo `campaigns`. Mudanças em relação à proposta acima, no `identity`:
 
 - `users.google_sub` e `users.email` viraram `user_identities (issuer, subject, email)`. O par `(issuer, subject)` é a chave primária, porque o `sub` só é único dentro de um provedor. Assim o código não depende do Google, e uma conta pode ter outro jeito de entrar (ADR-0009) sem mudar `users`.
 - `UNIQUE (user_id, issuer)`: uma conta tem no máximo uma identidade por provedor, então duas contas Google nunca se juntam.
@@ -272,13 +279,25 @@ Todas são do módulo `identity`. Mudanças em relação à proposta acima:
 - Toda FK para `users` tem `ON DELETE CASCADE`: excluir a conta apaga identidades e sessões.
 - `auth_sessions` e `oidc_login_states` usam o TTL por linha do CockroachDB (`ttl_expiration_expression = 'expires_at'`). O job apaga as linhas vencidas uma vez por dia nas sessões e de hora em hora nos logins. As consultas continuam filtrando `expires_at`, porque a linha vencida existe até o job passar.
 
-Cada migration é um único `CREATE TABLE IF NOT EXISTS`, com índices e constraints dentro dele. Como o CockroachDB faz commit antes de cada DDL, isso deixa cada migration atômica e segura para rodar de novo.
+- `users.display_name` é opcional (`NULL` até a pessoa escolher), tem de 1 a 40 caracteres (um `CHECK` no banco) e nunca vem do provedor de login.
+
+No `campaigns`:
+
+- `campaign_members` não tem `id`: a chave primária é `(campaign_id, user_id)`, que já responde "esta pessoa é membro?" com uma leitura só. O índice por `user_id` responde "de quais campanhas ela é membro?".
+- `role` é texto com `CHECK` (`master` ou `player`), não um `ENUM`: acrescentar um valor a um `CHECK` é uma migration simples. O mesmo vale para `campaigns.xp_mode` (`enemies`, `gold` ou `milestones`, RN-09).
+- `campaigns.created_by` é quem criou a campanha, hoje sempre o mestre. Excluir essa conta apaga a campanha, e com ela os membros e os convites (ver [Privacidade](privacidade.md#excluir-a-conta)). Excluir a conta de um jogador apaga só a participação dele.
+- `campaign_invites` guarda `max_uses`, `use_count`, `expires_at` e `revoked_at`. Dois `CHECK` garantem que `use_count` nunca passa de `max_uses`, nem com dois jogadores aceitando ao mesmo tempo, e que nenhum convite vale mais de 30 dias. O token fica só como SHA-256 em `token_hash`, com `UNIQUE`.
+- `campaign_invites` usa o TTL por linha com `expires_at + INTERVAL '30 days'`: o convite some 30 dias depois de expirar.
+- Os nomes (`campaigns.name` até 80 caracteres, `display_name` até 40) têm `CHECK` de tamanho; o servidor também tira espaços das pontas e recusa quebra de linha e caracteres de controle.
+
+Cada migration faz uma mudança só: um `CREATE TABLE IF NOT EXISTS` com as constraints dentro, um `CREATE INDEX IF NOT EXISTS` ou um `ALTER TABLE`. Como o CockroachDB faz commit antes de cada DDL, isso deixa cada migration atômica e segura para rodar de novo, e o teste `TestMigrationsAreSafeToRerun` roda todas duas vezes para provar. O índice fica numa migration à parte, e não dentro do `CREATE TABLE`, porque o sqlc lê as migrations com o parser do PostgreSQL, que não conhece a sintaxe de índice embutido do CockroachDB (ver [CONTRIBUTING.md](../CONTRIBUTING.md#queries-com-sqlc)). Por isso a `00004` foi reescrita antes do primeiro deploy, com o mesmo resultado no banco.
 
 ```mermaid
 erDiagram
     users {
         uuid id PK
         timestamptz created_at
+        text display_name "opcional, digitado, até 40"
     }
 
     user_identities {
@@ -307,8 +326,40 @@ erDiagram
         timestamptz expires_at "10 minutos, TTL"
     }
 
+    campaigns {
+        uuid id PK
+        text name "até 80"
+        text xp_mode "enemies, gold ou milestones"
+        uuid created_by FK
+        timestamptz created_at
+    }
+
+    campaign_members {
+        uuid campaign_id PK "e FK para campaigns"
+        uuid user_id PK "e FK para users"
+        text role "master ou player"
+        timestamptz joined_at
+    }
+
+    campaign_invites {
+        uuid id PK
+        uuid campaign_id FK
+        bytea token_hash UK "SHA-256 do token"
+        uuid created_by FK
+        int4 max_uses
+        int4 use_count "até max_uses"
+        timestamptz created_at
+        timestamptz expires_at "no máximo 30 dias, TTL + 30 dias"
+        timestamptz revoked_at "opcional"
+    }
+
     users ||--o{ user_identities : "entra por"
     users ||--o{ auth_sessions : "autentica"
+    users ||--o{ campaigns : "cria"
+    users ||--o{ campaign_members : "participa como"
+    users ||--o{ campaign_invites : "gera"
+    campaigns ||--o{ campaign_members : "tem"
+    campaigns ||--o{ campaign_invites : "tem"
 ```
 
 `oidc_login_states` não liga a nenhuma conta: o login ainda não terminou, então ninguém sabe quem é.

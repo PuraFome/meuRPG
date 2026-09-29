@@ -254,3 +254,98 @@ func writeTemp(t *testing.T, content string) string {
 	}
 	return path
 }
+
+func TestUpdateProfile(t *testing.T) {
+	t.Parallel()
+	for _, store := range testStores(t) {
+		t.Run(store.name, func(t *testing.T) {
+			t.Parallel()
+			h := newHarness(t, withStore(store.new(t)))
+			session := h.signIn()
+			client := h.client(session)
+			update := func(name string) (*connect.Response[identityv1.UpdateProfileResponse], error) {
+				return client.UpdateProfile(t.Context(), connect.NewRequest(&identityv1.UpdateProfileRequest{DisplayName: name}))
+			}
+			displayName := func() string {
+				t.Helper()
+				me, err := h.getMe(session)
+				if err != nil {
+					t.Fatalf("GetMe() error = %v", err)
+				}
+				return me.Msg.GetUser().GetDisplayName()
+			}
+
+			// A new account has no display name: nothing comes from the
+			// provider, even though the fake one sends a name.
+			if got := displayName(); got != "" {
+				t.Errorf("display name of a new account = %q, want none", got)
+			}
+
+			res, err := update("  Pensantus  ")
+			if err != nil {
+				t.Fatalf("UpdateProfile() error = %v", err)
+			}
+			if got := res.Msg.GetUser().GetDisplayName(); got != "Pensantus" {
+				t.Errorf("UpdateProfile() display name = %q, want it trimmed", got)
+			}
+			if got := res.Header().Get("Cache-Control"); got != "no-store" {
+				t.Errorf("UpdateProfile Cache-Control = %q, want no-store", got)
+			}
+			if got := displayName(); got != "Pensantus" {
+				t.Errorf("GetMe() display name = %q, want Pensantus", got)
+			}
+
+			// Invalid names are refused, and the saved one stays.
+			for _, bad := range []string{strings.Repeat("x", MaxDisplayNameLength+1), "Pensan\ntus", "Pensan\u202etus"} {
+				if _, err := update(bad); connect.CodeOf(err) != connect.CodeInvalidArgument {
+					t.Errorf("UpdateProfile(%q) error = %v, want invalid_argument", bad, err)
+				}
+			}
+			if _, err := update(strings.Repeat("é", MaxDisplayNameLength)); err != nil {
+				t.Errorf("UpdateProfile(40 characters) error = %v", err)
+			}
+
+			// An empty name removes it.
+			if _, err := update("   "); err != nil {
+				t.Fatalf("UpdateProfile(empty) error = %v", err)
+			}
+			if got := displayName(); got != "" {
+				t.Errorf("display name after removing it = %q, want none", got)
+			}
+
+			if _, err := h.client(nil).UpdateProfile(t.Context(), connect.NewRequest(&identityv1.UpdateProfileRequest{DisplayName: "X"})); !isUnauthenticated(err) {
+				t.Errorf("UpdateProfile() signed out error = %v, want unauthenticated", err)
+			}
+		})
+	}
+}
+
+func TestDisplayNames(t *testing.T) {
+	t.Parallel()
+	for _, store := range testStores(t) {
+		t.Run(store.name, func(t *testing.T) {
+			t.Parallel()
+			h := newHarness(t, withStore(store.new(t)))
+			ctx := t.Context()
+			named, err := h.store.UpsertUser(ctx, ExternalIdentity{Issuer: "https://idp.test", Subject: "named"})
+			if err != nil {
+				t.Fatalf("UpsertUser() error = %v", err)
+			}
+			nameless, err := h.store.UpsertUser(ctx, ExternalIdentity{Issuer: "https://idp.test", Subject: "nameless"})
+			if err != nil {
+				t.Fatalf("UpsertUser() error = %v", err)
+			}
+			if err := h.store.SetDisplayName(ctx, named, "Ana"); err != nil {
+				t.Fatalf("SetDisplayName() error = %v", err)
+			}
+
+			got, err := h.svc.DisplayNames(ctx, []string{named, nameless})
+			if err != nil {
+				t.Fatalf("DisplayNames() error = %v", err)
+			}
+			if len(got) != 1 || got[named] != "Ana" {
+				t.Errorf("DisplayNames() = %v, want only Ana", got)
+			}
+		})
+	}
+}

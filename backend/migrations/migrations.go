@@ -14,6 +14,15 @@
 // version. To make re-running always safe:
 //   - write statements idempotently (IF NOT EXISTS / IF EXISTS);
 //   - prefer small migrations, ideally one schema change each.
+//
+// TestMigrationsAreSafeToRerun checks this: it runs every Up twice.
+//
+// sqlc reads these files too (backend/sqlc.yaml), with a PostgreSQL parser,
+// to learn the schema. So write SQL that both PostgreSQL and CockroachDB
+// accept: an index gets its own CREATE INDEX IF NOT EXISTS migration instead
+// of an INDEX line inside CREATE TABLE, and covering columns are INCLUDE
+// (CockroachDB's STORING). CockroachDB-only table options in WITH (...),
+// such as row-level TTL, are fine.
 package migrations
 
 import (

@@ -41,15 +41,18 @@ Copie no PR que mexe em dados, logs, telas ou fornecedores:
 | `sub` do Google (mestre, ou jogador que vinculou o Google) | `user_identities.subject`, com `user_identities.issuer` | Reconhecer a conta no login | Contrato | Até excluir |
 | E-mail do Google | `user_identities.email` | Só contato de segurança (incidente, pedido do titular). Nunca aparece para outros usuários. Só é gravado se o provedor diz que foi verificado, e é atualizado ou apagado a cada login | Contrato; legítimo interesse | Até excluir |
 | Nome e foto do Google | — | Não coletamos. O nome de exibição é digitado no app | — | — |
-| Handle e nome de exibição | `table_handles`, `users` | Identificar o jogador na mesa | Contrato | Até sair da mesa ou excluir |
+| Nome de exibição | `users.display_name` | Mostrar a pessoa aos outros membros das campanhas dela. Digitado no app, de 1 a 40 caracteres; nunca vem do provedor de login | Contrato | Até a pessoa apagar (nome vazio no `UpdateProfile`) ou excluir a conta |
+| Handle | `table_handles` | Identificar o jogador na mesa | Contrato | Até sair da mesa ou excluir |
 | Hash de senha (argon2id), contador de falhas | `password_credentials` | Autenticar; travar tentativas | Contrato; legítimo interesse | Até remover a senha ou excluir |
 | Hash do token de sessão, datas e `auth_time` | `auth_sessions` (`token_hash`, `created_at`, `expires_at`, `auth_time`) | Manter o login; `auth_time` só para auditoria | Contrato | No máximo 30 dias; a linha vencida some pelo TTL do banco em até 1 dia |
 | Estado do login OIDC (`state` só como hash, `code_verifier`, `nonce`, `return_to`) | `oidc_login_states` | Login com o provedor OIDC | Contrato | 10 minutos; apagado no callback, ou pelo TTL do banco em até 1 hora |
-| Convite e link de reentrada (só hash) | `campaign_invites`, `reentry_links` | Entrar na campanha; recuperar acesso | Contrato | 30 dias depois de usado ou expirado |
+| Convite: hash do token, usos, validade e quem criou | `campaign_invites` | Entrar na campanha (RN-07) | Contrato | 30 dias depois de expirar, pelo TTL do banco. O convite vale no máximo 30 dias, então a linha vive no máximo 60. Some antes se a campanha, ou a conta de quem o criou, for excluída |
+| Link de reentrada (só hash) | `reentry_links` | Recuperar acesso | Contrato | 30 dias depois de usado ou expirado |
 | Log de identidade (reentrada, vínculo e junção de contas) | Banco | Segurança e auditoria | Legítimo interesse | 180 dias, só com UUIDs |
 | IP no limitador de tentativas | Memória | Frear força bruta | Legítimo interesse | Minutos |
 | IP, user agent e URL nos logs do Cloud Run | Cloud Logging, São Paulo | Operar e proteger a plataforma | Legítimo interesse | 30 dias |
-| Membros e papéis | `campaign_members` | Controlar acesso (RN-05) | Contrato | Enquanto a campanha existir |
+| Membros e papéis (quem, em qual campanha, com qual papel, desde quando) | `campaign_members` | Controlar acesso (RN-05) | Contrato | Enquanto a campanha existir; apagado ao excluir a conta |
+| Nome da campanha e modo de XP | `campaigns` | Jogar. O nome é texto livre: a tela avisa "é ficção; não escreva dados reais de pessoas" | Contrato | Enquanto a campanha existir; apagada quando o mestre que a criou exclui a conta |
 | Ficha e texto livre do personagem | `characters` | Jogar | Contrato | Até excluir |
 | Notas do mestre | `character_master_notes` | Preparar o jogo; nunca vão para o jogador (RN-11) | Contrato | Enquanto a campanha existir |
 | Imagens (retrato, mapa, galeria) | Cloud Storage | Jogar | Contrato | Até excluir, mais 7 dias de soft delete |
@@ -73,6 +76,19 @@ O login do mestre (`backend/internal/identity`) cumpre assim os itens desta pág
 - **Excluir a conta** apaga identidades e sessões junto, por `ON DELETE CASCADE`.
 - **Limite de tentativas no `/auth/login`.** Para contar as tentativas, o servidor guarda o IP do cliente (o prefixo `/64`, no IPv6) só na memória da instância, nunca no banco nem no log. É a linha "IP no limitador de tentativas" do inventário: some em até 2 minutos depois da última tentativa, ou quando a instância para.
 - **Usuários de teste do devidp** (o provedor OIDC de desenvolvimento, ver [CONTRIBUTING.md](../CONTRIBUTING.md#login-local-com-o-devidp)) são fictícios, com e-mails em `example.com`. Ele não existe em produção, então nenhum dado real passa por ele.
+
+### O que o módulo campaigns já faz
+
+O módulo `campaigns` (`backend/internal/campaigns`) e o nome de exibição do `identity` cumprem assim os itens desta página:
+
+- **Nome de exibição digitado.** `users.display_name` nasce vazio e só muda pelo `UpdateProfile`. O nome que o provedor de login manda nunca é gravado (um teste confere com um provedor falso que manda nome). Nome vazio apaga, o que atende a correção e a eliminação (art. 18, III e VI).
+- **O `GetMe` não devolve o e-mail.** O e-mail verificado continua só como contato de segurança, em `user_identities`, e não sai em nenhuma resposta.
+- **O convite só existe como hash no banco.** O token vai no fragmento da URL (`/convite#t=...`), e o app manda no corpo do `AcceptInvite`, nunca numa query string. Um teste confere que a linha do convite não contém o token.
+- **Sem GET com dado na URL.** Só o `ListMyCampaigns`, cuja requisição é vazia, aceita GET. As outras chamadas levam o ID da campanha e ficam em POST.
+- **Respostas sem cache.** Toda resposta do `CampaignService`, inclusive erro, sai com `Cache-Control: no-store`.
+- **Quem não é membro não descobre a campanha.** A resposta é `not_found`, igual à de uma campanha que não existe (ADR-0011).
+- **Logs sem dado pessoal.** O módulo só registra falhas do banco, com a mensagem de erro do driver, que não traz os valores da linha. Nome, token e IDs nunca são passados ao log.
+- **Excluir a conta** apaga a participação nas campanhas; para o mestre, apaga também as campanhas que ele criou, com os membros e os convites (`ON DELETE CASCADE`). `TestDeletingAnAccount` confere.
 
 ## Direitos do titular e como atendemos
 

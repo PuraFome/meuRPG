@@ -1,27 +1,19 @@
 package identity
 
 import (
-	"context"
-	"database/sql"
 	"errors"
-	"fmt"
-	"net/url"
-	"os"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	_ "github.com/jackc/pgx/v5/stdlib" // the "pgx" driver for database/sql, which goose needs
 
-	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
-	"github.com/PuraFome/meuRPG/backend/migrations"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
-// These tests need CockroachDB: set MEURPG_TEST_DATABASE_URL (see
-// internal/platform/db for a one-line docker run). Without it they skip, so
-// `go test ./...` works anywhere.
+// These tests need CockroachDB: set MEURPG_TEST_DATABASE_URL (see package
+// dbtest). Without it they skip, so `go test ./...` works anywhere.
 
 // namedStore builds a fresh Store for a test.
 type namedStore struct {
@@ -34,7 +26,7 @@ type namedStore struct {
 func testStores(t *testing.T) []namedStore {
 	t.Helper()
 	stores := []namedStore{{"memory", func(*testing.T) Store { return newMemStore() }}}
-	if os.Getenv("MEURPG_TEST_DATABASE_URL") != "" {
+	if dbtest.Enabled() {
 		stores = append(stores, namedStore{"cockroachdb", func(t *testing.T) Store { return testPostgresStore(t) }})
 	}
 	return stores
@@ -49,55 +41,7 @@ func testPostgresStore(t *testing.T) *PostgresStore {
 
 func testPool(t *testing.T) *pgxpool.Pool {
 	t.Helper()
-	rawURL := os.Getenv("MEURPG_TEST_DATABASE_URL")
-	if rawURL == "" {
-		t.Skip("MEURPG_TEST_DATABASE_URL is not set; skipping database test")
-	}
-
-	admin, err := sql.Open("pgx", rawURL)
-	if err != nil {
-		t.Fatalf("open database: %v", err)
-	}
-	t.Cleanup(func() { _ = admin.Close() })
-
-	name := fmt.Sprintf("meurpg_identity_test_%d", time.Now().UnixNano())
-	mustExecSQL(t, admin, "CREATE DATABASE "+name)
-	t.Cleanup(func() { mustExecSQL(t, admin, "DROP DATABASE IF EXISTS "+name+" CASCADE") })
-
-	u, err := url.Parse(rawURL)
-	if err != nil {
-		t.Fatalf("parse MEURPG_TEST_DATABASE_URL: %v", err)
-	}
-	u.Path = "/" + name
-
-	conn, err := sql.Open("pgx", u.String())
-	if err != nil {
-		t.Fatalf("open test database: %v", err)
-	}
-	t.Cleanup(func() { _ = conn.Close() })
-	provider, err := migrations.NewProvider(conn)
-	if err != nil {
-		t.Fatalf("migrations.NewProvider() error = %v", err)
-	}
-	if _, err := provider.Up(t.Context()); err != nil {
-		t.Fatalf("migrate up: %v", err)
-	}
-
-	pool, err := db.NewPool(t.Context(), u.String())
-	if err != nil {
-		t.Fatalf("NewPool() error = %v", err)
-	}
-	t.Cleanup(pool.Close)
-	return pool
-}
-
-func mustExecSQL(t *testing.T, conn *sql.DB, query string) {
-	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	if _, err := conn.ExecContext(ctx, query); err != nil {
-		t.Fatalf("exec %q: %v", query, err)
-	}
+	return dbtest.NewPool(t, "meurpg_identity_test")
 }
 
 func TestPostgresStoreUpsertUser(t *testing.T) {
@@ -340,4 +284,43 @@ func count(t *testing.T, pool *pgxpool.Pool, table string) int {
 		t.Fatalf("count %s: %v", table, err)
 	}
 	return n
+}
+
+func TestPostgresStoreDisplayNames(t *testing.T) {
+	t.Parallel()
+	pool := testPool(t)
+	store := NewPostgresStore(pool)
+	ctx := t.Context()
+	userID, err := store.UpsertUser(ctx, ExternalIdentity{Issuer: "https://idp.example", Subject: "dn"})
+	if err != nil {
+		t.Fatalf("UpsertUser() error = %v", err)
+	}
+
+	if err := store.SetDisplayName(ctx, userID, "Pensantus"); err != nil {
+		t.Fatalf("SetDisplayName() error = %v", err)
+	}
+	if got, err := store.DisplayName(ctx, userID); err != nil || got != "Pensantus" {
+		t.Errorf("DisplayName() = %q, %v; want Pensantus", got, err)
+	}
+	// "" is stored as NULL.
+	if err := store.SetDisplayName(ctx, userID, ""); err != nil {
+		t.Fatalf("SetDisplayName(\"\") error = %v", err)
+	}
+	var stored *string
+	if err := pool.QueryRow(ctx, "SELECT display_name FROM users WHERE id = $1", userID).Scan(&stored); err != nil || stored != nil {
+		t.Errorf("display_name = %v, %v; want NULL", stored, err)
+	}
+
+	// The CHECK backs the application's 40-character limit.
+	if err := store.SetDisplayName(ctx, userID, strings.Repeat("é", MaxDisplayNameLength+1)); err == nil {
+		t.Error("SetDisplayName(41 characters) succeeded, want the CHECK to refuse it")
+	}
+
+	missing := "6f1c7a52-3b5e-4c55-9d0b-2a51f0c1e0ff"
+	if err := store.SetDisplayName(ctx, missing, "X"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("SetDisplayName(missing user) error = %v, want ErrNotFound", err)
+	}
+	if _, err := store.DisplayName(ctx, missing); !errors.Is(err, ErrNotFound) {
+		t.Errorf("DisplayName(missing user) error = %v, want ErrNotFound", err)
+	}
 }
