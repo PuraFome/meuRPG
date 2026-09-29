@@ -1,0 +1,26 @@
+# Build context: the repo root (backend/Dockerfile needs both backend/ and
+# web/). Keep the context small and the layer cache stable: only what
+# `go build` and `npm run build` actually need goes into the image build.
+*
+!backend/go.mod
+!backend/go.sum
+!backend/cmd/
+!backend/gen/
+!backend/internal/
+!backend/migrations/
+!web/package.json
+!web/package-lock.json
+!web/src/
+!web/public/
+!web/angular.json
+!web/tsconfig.json
+!web/tsconfig.app.json
+!web/tsconfig.spec.json
+
+# Never send test code or a locally-installed node_modules/dist into the
+# image build; the image runs its own `npm ci` and `go build` from scratch.
+**/*_test.go
+web/src/**/*.spec.ts
+**/node_modules/
+**/dist/
+**/.angular/

@@ -1,0 +1,29 @@
+.status-card {
+  max-width: 28rem;
+  margin: 2rem auto;
+
+  &--error {
+    border-inline-start: 4px solid var(--mat-sys-error);
+  }
+}
+
+.status-card__content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.server-info {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 1rem;
+  margin: 0;
+
+  dt {
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  dd {
+    margin: 0;
+  }
+}

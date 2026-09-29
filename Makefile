@@ -14,14 +14,21 @@ MIGRATE_ARGS ?= up
 
 COMPOSE_FILE := deploy/local/compose.yaml
 
-.PHONY: help proto proto-lint lint test run migrate up down logs docker-build web-test web-build
+.PHONY: help proto proto-lint lint test run migrate up down logs docker-build web-install web-test web-build
 
 help: ## Show this help message
 	@echo "MeuRPG - available targets:"
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  %-14s %s\n", $$1, $$2}'
 
-proto: ## Generate Go code from the proto/ definitions (writes into backend/gen)
+# buf's TypeScript plugin runs from web/node_modules/.bin (see
+# proto/buf.gen.yaml), so `proto` depends on it as a real file target:
+# installed once, then only reinstalled when package.json/package-lock.json
+# change, instead of on every `make proto`.
+web/node_modules/.bin/protoc-gen-es: web/package.json web/package-lock.json
+	cd web && npm ci --ignore-scripts
+
+proto: web/node_modules/.bin/protoc-gen-es ## Generate Go and TypeScript code from proto/ (writes into backend/gen and web/src/gen)
 	cd proto && buf generate
 
 proto-lint: ## Lint proto files and check formatting
@@ -49,15 +56,19 @@ down: ## Stop the local stack and remove its containers
 logs: ## Follow logs from the local stack
 	docker compose -f $(COMPOSE_FILE) logs -f
 
-docker-build: ## Build the backend Docker image standalone (no compose)
+docker-build: ## Build the backend+web Docker image standalone (no compose)
 	docker build \
+		-f backend/Dockerfile \
 		--build-arg VERSION=dev \
 		--build-arg COMMIT=$$(git rev-parse --short HEAD) \
 		-t meurpg-backend:dev \
-		backend
+		.
 
-web-test: ## Run the Angular unit tests (run `npm ci` first if needed)
-	npm test
+web-install: ## Install web/ dependencies (no install scripts)
+	cd web && npm ci --ignore-scripts
 
-web-build: ## Build the Angular app for production (run `npm ci` first if needed)
-	npm run build
+web-test: ## Run the Angular unit tests (run `make web-install` first if needed)
+	cd web && npm test
+
+web-build: ## Build the Angular app for production (run `make web-install` first if needed)
+	cd web && npm run build

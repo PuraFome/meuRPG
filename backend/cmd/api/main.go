@@ -98,5 +98,12 @@ func run(logger *slog.Logger, cfg config.Config) error {
 	}
 	srv.Handle(systemv1connect.NewSystemServiceHandler(system.NewService(version, commit), connectOpts...))
 
+	if static, ok := httpserver.NewStatic(cfg.WebDir); ok {
+		srv.Handle("/", static)
+		logger.Info("serving the web app", "dir", cfg.WebDir)
+	} else {
+		logger.Info("no web build found; running API-only", "dir", cfg.WebDir)
+	}
+
 	return srv.Run(ctx)
 }

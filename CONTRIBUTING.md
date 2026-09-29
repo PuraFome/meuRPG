@@ -10,15 +10,19 @@ Ferramentas: Go 1.27, buf, sqlc, goose, golangci-lint, Docker e Node 22. No Mac,
 
 | Comando | O que faz |
 | --- | --- |
-| `make up` | Sobe o CockroachDB (um nó só) e o backend com Docker Compose (`deploy/local/compose.yaml`). |
+| `make up` | Sobe o CockroachDB (um nó só) e o backend com Docker Compose (`deploy/local/compose.yaml`); serve o app em `http://localhost:8080`, servidor e API na mesma origem. |
 | `make run` | Roda o backend direto no terminal, apontando para o banco do `make up`. |
-| `make proto` | Gera o código Go a partir dos `.proto`. |
+| `make proto` | Gera o código Go **e** o TypeScript a partir dos `.proto` (`backend/gen` e `web/src/gen`). Instala as dependências do `web/` sozinho, se faltarem. |
 | `make lint` | Roda `buf lint` e `golangci-lint`. |
 | `make test` | Roda `go test -race` em todo o backend. |
 | `MEURPG_TEST_DATABASE_URL='postgresql://root@localhost:26257/defaultdb?sslmode=disable' make test` | Roda os testes de integração (migrations, transações) contra o CockroachDB do `make up`. Sem a variável, eles são pulados. |
 | `make migrate` | Aplica as migrations do goose no banco local. |
 | `make down` | Derruba o ambiente local (`docker compose down`). |
 | `npm start` | Sobe o Angular antigo (`src/`), descontinuado — mantido só como referência. |
+| `make web-install` | Instala as dependências do `web/`: `npm ci --ignore-scripts` (nunca roda scripts de instalação de terceiros). Se for adicionar ou atualizar uma dependência, use `npm install` com o Corepack ativado (`corepack enable`, uma vez só): o `web/package.json` fixa `npm@11.20.0` porque o `npm` de série (10.x) trava ao resolver o grafo de peer dependencies do Vitest 4.1; `npm ci` não tem esse problema e funciona com qualquer um dos dois. |
+| `make web-test` | Roda os testes do Angular (`cd web && npm test`). |
+| `make web-build` | Builda o Angular para produção (`cd web && npm run build`). |
+| `cd web && npm start` | Sobe o Angular sozinho, em modo dev, com `proxy.conf.json` encaminhando as rotas da API (`/meurpg.*`, `/auth`, `/healthz`, `/readyz`) para `localhost:8080`. |
 
 ## Branches
 
@@ -47,7 +51,7 @@ Fluxo resumido: fork, se for o caso → PR para `PuraFome/meuRPG` → CI verde �
 | Job | Verificações |
 | --- | --- |
 | backend | `buf lint`, `buf format` e `buf breaking`; código gerado igual ao dos `.proto`; `golangci-lint`; `go test -race`; `govulncheck` (dependências com falhas conhecidas); build da imagem Docker. |
-| web | `npm ci`, testes e build do Angular. |
+| web | `npm ci --ignore-scripts` em `web/`, testes e build do Angular. |
 
 Toda action do GitHub fica presa pelo SHA do commit, não pela tag. Quem controla uma action consegue mover uma tag para um código malicioso, mas não consegue mudar um SHA.
 
