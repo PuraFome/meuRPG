@@ -1,4 +1,6 @@
-import { expect, type APIResponse, type BrowserContext, type Page } from '@playwright/test';
+import path from 'node:path';
+
+import { expect, type APIResponse, type Browser, type BrowserContext, type BrowserContextOptions, type Page } from '@playwright/test';
 
 // devidp's issuer (deploy/local/compose.yaml). The browser resolves any
 // *.localhost name to 127.0.0.1 by itself.
@@ -16,6 +18,16 @@ export type TestUser = 'Mestre Teste' | 'Jogador Teste';
  *
  * It opens /auth/login directly, which is faster and keeps these tests about
  * the server. ui.spec.ts covers the same flow through the app's buttons.
+ *
+ * This hits the real, rate-limited `/auth/login` (`backend/internal/
+ * identity/login.go`, 20 per client then 1 every 3s). Only call it where a
+ * fresh sign-in is the point of the test — `auth.setup.ts` (once per user,
+ * per whole run), `login.spec.ts`, `ui.spec.ts`, and the signed-out half of
+ * `invite.spec.ts`'s intent=campaign_invite test. Everything else reuses
+ * the state `auth.setup.ts` already saved: see `authStatePath` and
+ * `newSignedInContext` below. In particular, never call `signIn` for a
+ * context that also calls `signOut` — signing out deletes the session on
+ * the server, so it would break every other test sharing that state.
  */
 export async function signIn(page: Page, user: TestUser = 'Mestre Teste', returnTo = '/'): Promise<void> {
   await page.goto(`/auth/login?return_to=${encodeURIComponent(returnTo)}`);
@@ -23,6 +35,28 @@ export async function signIn(page: Page, user: TestUser = 'Mestre Teste', return
   await page.getByRole('button', { name: user, exact: true }).click();
   // A relative URL is resolved against baseURL: back on the app, at returnTo.
   await expect(page).toHaveURL(returnTo);
+}
+
+/**
+ * Where `auth.setup.ts` saves each test user's signed-in `storageState`
+ * (cookies), gitignored (`e2e/.gitignore`) since a session cookie is a
+ * secret. `playwright.config.ts`'s "chrome" project depends on "setup", so
+ * these files exist by the time any other test runs.
+ */
+export function authStatePath(user: TestUser): string {
+  const slug = user === 'Mestre Teste' ? 'mestre-teste' : 'jogador-teste';
+  return path.join(__dirname, '..', '.auth', `${slug}.json`);
+}
+
+/**
+ * A new `BrowserContext` already signed in as `user`, from the state
+ * `auth.setup.ts` saved — no `/auth/login` hit, so it doesn't touch the
+ * rate limit. Use this instead of `browser.newContext()` + `signIn()` for
+ * every context that just needs to act as a signed-in user, which is most
+ * of them (see `signIn`'s doc comment for the exceptions).
+ */
+export function newSignedInContext(browser: Browser, user: TestUser, options: BrowserContextOptions = {}): Promise<BrowserContext> {
+  return browser.newContext({ ...options, storageState: authStatePath(user) });
 }
 
 /**
@@ -66,82 +100,90 @@ export async function createCampaign(page: Page, name: string): Promise<string> 
 
 // --- Etapa 4: characters, rules and the play stub --------------------------
 //
-// The character screens and RPCs do not exist yet: WP-B (rules), WP-C
-// (characters/play backend) and WP-D (web) are building them in parallel
-// branches. Every Etapa 4 spec that uses these helpers is `test.fixme` for
-// now (see characters.spec.ts, sheet-lock.spec.ts, character-rules.spec.ts,
-// credits.spec.ts). These helpers are written against the contract fixed in
-// /scratchpad/etapa4-plan.md (§4 RPC names, §5 field/button labels, §6
-// helper signatures and the pensantus fixture), so the specs compile now and
-// need no rewrite, only their `test.fixme` removed, once the feature lands.
-//
-// Two kinds of names below carry different confidence:
-//   - RPC service/method names and route paths come straight from the plan
-//     (an agreed contract with WP-A/WP-C/WP-D) and should not need changing.
-//   - Portuguese option text for content keys (race, class, subclass,
-//     skills) is this file's own best guess at the `name_pt` values WP-B's
-//     SRD translation will produce, and the stepper's "next step" button
-//     label ("Próximo") is not in the plan's label contract at all. Both are
-//     called out again next to their use, and belong in the integrator's
-//     open questions until WP-B/WP-D confirm or correct them.
+// Phase 2 (integrator, 29/09/2026): the real backend, contracts and web
+// screens landed (commits 84e43cd..43208d9). Every name and shape below was
+// re-checked against the actual running stack — `proto/meurpg/{characters,
+// rules,play}/v1/*.proto` in this worktree, the live `ListContent` and
+// `CreateCharacter` responses (probed directly against localhost:8080), and
+// the real templates under `web/src/app/pages/character-editor` and
+// `character-sheet` — not guessed. Where something is still uncertain, the
+// comment next to it says so explicitly; everything else here is confirmed.
 
 /** One class/race/background build, used by both `createCharacterViaUI` (the
- * screen) and `createCharacterRPC` (direct API setup) to create the same
- * character two ways. */
+ * screen, selects by `name_pt`) and `createCharacterRPC`/`characterRpcBody`
+ * (direct API setup, uses content keys) to create the same character two
+ * ways. */
 export interface CharacterBuild {
   name: string;
-  /** Content key's `name_pt`, e.g. "Gnomo" for `race:gnome`. */
+  raceKey: string;
+  /** The race's `name_pt` (confirmed live: `ListContent` on this stack). */
   race: string;
+  subraceKey?: string;
   subrace?: string;
+  classKey: string;
   class: string;
+  subclassKey?: string;
   subclass?: string;
   level: number;
+  /** An SRD background's content key (e.g. "background:acolyte"). Mutually
+   * exclusive with `background` (FullSheet.background is a oneof). */
+  backgroundKey?: string;
   /** Custom background name (ADR-0008: the SRD only has "Acólito"/Acolyte).
-   * Omitted picks the SRD's "Acólito" instead of "Outro (personalizado)". */
+   * Omitted picks `backgroundKey` instead of "Outro (personalizado)". */
   background?: string;
+  backgroundSkillKeys: string[];
   backgroundSkills: string[];
-  /** Skill proficiencies chosen beyond the background (e.g. the class's
-   * skill picks). */
+  /** Skill proficiencies chosen beyond the background (the class's own skill
+   * picks): content keys for the RPC path, `name_pt` for the UI path. */
+  extraSkillKeys: string[];
   extraSkills: string[];
   scores: { for: number; des: number; con: number; int: number; sab: number; car: number };
 }
 
 /**
  * The Pensantus reference build (Rock Gnome Wizard 3, School of Evocation,
- * custom background "Sábio"): Gnomo/Gnomo da Rocha, Mago 3/Evocação,
- * background "Sábio" (Arcana + História), class skills Investigação and
- * Intuição, scores FOR 12 / DES 16 / CON 15 / INT 16 / SAB 13 / CAR 12.
+ * custom background "Sábio"): scores FOR 12 / DES 16 / CON 15 / INT 16 /
+ * SAB 13 / CAR 12, class skills Investigação and Intuição. Fixed by the
+ * Etapa 4 plan (§6) and the private ADR-0008 (not reproduced here: see
+ * docs/adr/ in the main clone, gitignored in worktrees).
  *
- * The build itself (scores, level, background name, chosen skills) is fixed
- * by the Etapa 4 plan (§6) and the private ADR-0008 (not reproduced here:
- * see docs/adr/ in the main clone, gitignored in worktrees). The race,
- * subrace, class, subclass and skill *strings* below are this file's own
- * guess at the Portuguese `name_pt` values the rules content will use —
- * confirm against WP-B's SRD snapshot before enabling the specs that use
- * this fixture.
+ * Every content key and `name_pt` below was read live from this stack's
+ * `ListContent` response and from `backend/internal/rules/srd51/effects/
+ * names_pt.json` (both agree): race:gnome → "Gnomo", subrace:rock-gnome →
+ * "Gnomo das Rochas", class:wizard → "Mago", subclass:evocation → "Escola
+ * de Evocação", skill:arcana → "Arcanismo", skill:history → "História",
+ * skill:investigation → "Investigação", skill:insight → "Intuição".
  *
  * `pensantusDerived` (below) records the numbers MR-004's spec checks
- * against the server's `GetCharacter` response, from the same source: INT 18
- * after the +2 racial bonus gives modifier +4; proficiency +2 gives spell
- * save DC 14 and spell attack +6; HP 23 (the hit die's max at level 1, plus
- * two levels of the fixed average, plus the +3 CON modifier each level); AC
- * 13 unarmored (10 + the +3 DEX modifier, no shield or armor worn).
+ * against the server's `GetCharacter` response — also confirmed live by
+ * creating this exact build against the running stack: INT 18 after the +2
+ * racial bonus gives modifier +4; proficiency +2 gives spell save DC 14 and
+ * spell attack +6; HP 23 (the d6 hit die's max at level 1, plus two levels
+ * of the fixed average, plus the +3 CON modifier each level); AC 13
+ * unarmored (10 + the +3 DEX modifier, no shield or armor worn).
  */
 export const pensantus: CharacterBuild = {
   name: 'Pensantus',
-  race: 'Gnomo', // race:gnome — name_pt unconfirmed
-  subrace: 'Gnomo da Rocha', // subrace:rock-gnome — name_pt unconfirmed
-  class: 'Mago', // class:wizard — name_pt unconfirmed
-  subclass: 'Evocação', // subclass:evocation — name_pt unconfirmed
+  raceKey: 'race:gnome',
+  race: 'Gnomo',
+  subraceKey: 'subrace:rock-gnome',
+  subrace: 'Gnomo das Rochas',
+  classKey: 'class:wizard',
+  class: 'Mago',
+  subclassKey: 'subclass:evocation',
+  subclass: 'Escola de Evocação',
   level: 3,
   background: 'Sábio', // custom background, not an SRD content key (ADR-0008)
-  backgroundSkills: ['Arcana', 'História'], // skill:arcana, skill:history — name_pt unconfirmed
-  extraSkills: ['Investigação', 'Intuição'], // skill:investigation, skill:insight — name_pt unconfirmed
+  backgroundSkillKeys: ['skill:arcana', 'skill:history'],
+  backgroundSkills: ['Arcanismo', 'História'],
+  extraSkillKeys: ['skill:investigation', 'skill:insight'],
+  extraSkills: ['Investigação', 'Intuição'],
   scores: { for: 12, des: 16, con: 15, int: 16, sab: 13, car: 12 },
 };
 
 /** The server-computed numbers MR-004's spec checks for the `pensantus`
- * build, from the same source as the fixture above. */
+ * build, confirmed live against the running stack (see `pensantus`'s doc
+ * comment). */
 export const pensantusDerived = {
   intModifier: '+4',
   spellSaveDc: 14,
@@ -151,11 +193,40 @@ export const pensantusDerived = {
 };
 
 /**
+ * The exact shape of `CharacterService`'s `failed_precondition` responses
+ * (confirmed live): HTTP 400, `{code, message, details: [{type, value,
+ * debug: {reason, characterId}}]}`. `aborted` (a stale `revision`) is HTTP
+ * 409 instead, with no detail — Connect's standard code→HTTP mapping, not
+ * the plan's guess of 400 for everything.
+ */
+export interface CharacterBlockedBody {
+  code: string;
+  message: string;
+  details: Array<{ type: string; value: string; debug?: { reason: string; characterId?: string } }>;
+}
+
+/**
+ * Asserts an `APIResponse` is a `CharacterService` `failed_precondition`
+ * with a `CharacterBlocked` detail carrying the given reason (one of
+ * `CHARACTER_BLOCKED_REASON_SHEET_LOCKED`, `_CHARACTER_DEAD`,
+ * `_LIVING_CHARACTER_EXISTS`, `_STORY_LOCKED` — characters.proto's
+ * `CharacterBlockedReason`).
+ */
+export async function expectCharacterBlocked(res: APIResponse, reason: string): Promise<void> {
+  expect(res.status()).toBe(400);
+  const body = (await res.json()) as CharacterBlockedBody;
+  expect(body.code).toBe('failed_precondition');
+  expect(body.details?.[0]?.type).toBe('meurpg.characters.v1.CharacterBlocked');
+  expect(body.details?.[0]?.debug?.reason).toBe(reason);
+}
+
+/**
  * Opens an invite link in a new page of the given browser context, the way a
  * signed-in person accepting an invite would, and waits for the app to land
  * on the campaign it belongs to (MR-003's "o mestre já vê" half). The
- * context must already be signed in (see `signIn`); the signed-out path is
- * its own flow, already covered directly in invite.spec.ts.
+ * context must already be signed in — typically via `newSignedInContext`,
+ * not a fresh `signIn` call; the signed-out path is its own flow, already
+ * covered directly in invite.spec.ts.
  */
 export async function acceptInvite(context: BrowserContext, link: string): Promise<{ page: Page; campaignId: string }> {
   const page = await context.newPage();
@@ -165,63 +236,113 @@ export async function acceptInvite(context: BrowserContext, link: string): Promi
 }
 
 /**
+ * Opens a `mat-select` by its field label and picks the named option.
+ * Opens by focusing the control and pressing Enter, not by clicking its
+ * (pixel) center: the "Básico" step's fields sit in a compact CSS grid
+ * (character-editor.scss) where an empty field's floating label can overlap
+ * its own trigger's click point — observed live, a plain `.click()` on
+ * "Antecedente" retries for the full timeout against "mat-label
+ * intercepts pointer events" and never gets through. Keyboard interaction
+ * sidesteps that entirely.
+ *
+ * Locates the control by role "combobox", not `getByLabel`: while open, the
+ * option listbox shares the same `aria-labelledby` as the trigger (both
+ * point at the form field's floating label), so `getByLabel` matches both
+ * and turns strict mode against itself the moment the panel opens.
+ */
+async function selectMatOption(page: Page, label: string, optionName: string): Promise<void> {
+  const control = page.getByRole('combobox', { name: label, exact: true });
+  await control.focus();
+  await control.press('Enter');
+  await page.getByRole('option', { name: optionName, exact: true }).click();
+  await expect(control).toHaveAttribute('aria-expanded', 'false');
+}
+
+/**
  * Creates a player character through the "Criar personagem" screen
- * (`/campanhas/:id/personagens/novo`), filling the stepper with `build`
- * (default: `pensantus`) using the field and button labels the Etapa 4 plan
- * fixes in §5. The stepper's step layout (Básico, Atributos, Perícias,
- * Magias, Equipamento, História — plan §5) and its "next step" button label
- * are NOT in that contract: this helper assumes a button named "Próximo"
- * advances a step, and clicks it until "Criar personagem" (the last step's
- * submit button) is visible, skipping Magias/Equipamento/História since no
- * Etapa 4 acceptance criterion needs them filled. Confirm the "Próximo"
- * label with WP-D once the editor exists.
+ * (`/campanhas/:id/personagens/novo`), filling `build` (default:
+ * `pensantus`) into the real `character-editor` (`web/src/app/pages/
+ * character-editor/character-editor.html`).
+ *
+ * The stepper is non-linear (`[linear]="false"`) with no "next step"
+ * button at all: each step's header is its own tab
+ * (`getByRole('tab', {name})`), and the submit button sits outside the
+ * stepper, reachable from any step. This helper only visits the steps it
+ * needs (Básico, Atributos, Perícias) — Magias and Equipamento are both
+ * fully optional and left at their defaults, and there is no separate
+ * "História" step: the story is its own screen/RPC (amendment A3).
+ *
+ * `entryPath` defaults to the player's own "criar personagem" route; pass
+ * `/campanhas/:id/npcs/novo/:tipo` (tipo: inimigo/boss — the full-sheet NPC
+ * kinds) to fill the same stepper from the master's "Novo NPC" menu
+ * instead. Either way it lands on, and returns, the same kind of URL.
  *
  * Returns the created character's id, read from the sheet page's URL after
  * submit (`/campanhas/:id/personagens/:characterId`).
  */
-export async function createCharacterViaUI(page: Page, campaignId: string, build: CharacterBuild = pensantus): Promise<string> {
-  await page.goto(`/campanhas/${campaignId}/personagens/novo`);
+export async function createCharacterViaUI(
+  page: Page,
+  campaignId: string,
+  build: CharacterBuild = pensantus,
+  entryPath: string = `/campanhas/${campaignId}/personagens/novo`,
+): Promise<string> {
+  await page.goto(entryPath);
 
-  // Passo "Básico".
-  await page.getByLabel('Nome do personagem').fill(build.name);
-  await page.getByLabel('Raça').click();
-  await page.getByRole('option', { name: build.race }).click();
+  // `exact: true` throughout: `mat-stepper` renders every step's content in
+  // the DOM at once (only the active one is visible — confirmed live, not
+  // lazy per step), so a loose substring match can hit another step's
+  // field, e.g. "Raça" also matching "Sub-raça" or the "Atributos" step's
+  // "Bônus manuais (aumento de atributo, escolhas de raça, item mágico)"
+  // group label, and "Força" also matching "Força (manual)".
+
+  // Passo "Básico" (selected by default).
+  await page.getByLabel('Nome do personagem', { exact: true }).fill(build.name);
+  await selectMatOption(page, 'Raça', build.race);
   if (build.subrace) {
-    await page.getByLabel('Sub-raça').click();
-    await page.getByRole('option', { name: build.subrace }).click();
+    await selectMatOption(page, 'Sub-raça', build.subrace);
   }
-  await page.getByLabel('Classe').click();
-  await page.getByRole('option', { name: build.class }).click();
+  await selectMatOption(page, 'Classe', build.class);
   if (build.subclass) {
-    await page.getByLabel('Subclasse').click();
-    await page.getByRole('option', { name: build.subclass }).click();
+    await selectMatOption(page, 'Subclasse', build.subclass);
   }
-  await page.getByLabel('Nível').fill(String(build.level));
-  await page.getByLabel('Antecedente').click();
-  await page.getByRole('option', { name: build.background ? 'Outro (personalizado)' : 'Acólito' }).click();
+  await page.getByLabel('Nível', { exact: true }).fill(String(build.level));
+  await selectMatOption(page, 'Antecedente', build.background ? 'Outro (personalizado)' : 'Acólito');
   if (build.background) {
-    await page.getByLabel('Nome do antecedente').fill(build.background);
-  }
-  await page.getByRole('button', { name: 'Próximo' }).click();
-
-  // Passo "Atributos".
-  await page.getByLabel('Força').fill(String(build.scores.for));
-  await page.getByLabel('Destreza').fill(String(build.scores.des));
-  await page.getByLabel('Constituição').fill(String(build.scores.con));
-  await page.getByLabel('Inteligência').fill(String(build.scores.int));
-  await page.getByLabel('Sabedoria').fill(String(build.scores.sab));
-  await page.getByLabel('Carisma').fill(String(build.scores.car));
-  await page.getByRole('button', { name: 'Próximo' }).click();
-
-  // Passo "Perícias".
-  for (const skill of [...build.backgroundSkills, ...build.extraSkills]) {
-    await page.getByRole('checkbox', { name: skill }).check();
+    await page.getByLabel('Nome do antecedente', { exact: true }).fill(build.background);
+    // The background's own two skills: a separate checkbox group
+    // (aria-labelledby="background-skills-label"), right below "Nome do
+    // antecedente" on this same "Básico" step. Scoped to that group, not
+    // just matched by name: the same skill also has a checkbox of its own
+    // in the "Perícias" step's full skill list (also always in the DOM —
+    // see the note above), so an unscoped role/name match would be
+    // ambiguous whenever a background skill and a class skill coincide.
+    const backgroundSkillsGroup = page.locator('[aria-labelledby="background-skills-label"]');
+    for (const skill of build.backgroundSkills) {
+      await backgroundSkillsGroup.getByRole('checkbox', { name: skill, exact: true }).check();
+    }
   }
 
-  // Skip Magias/Equipamento/História: click through to the submit button.
-  for (let i = 0; i < 5 && !(await page.getByRole('button', { name: 'Criar personagem' }).isVisible()); i++) {
-    await page.getByRole('button', { name: 'Próximo' }).click();
+  // Passo "Atributos": jump there by clicking its tab (no "next" button).
+  await page.getByRole('tab', { name: 'Atributos' }).click();
+  await page.getByLabel('Força', { exact: true }).fill(String(build.scores.for));
+  await page.getByLabel('Destreza', { exact: true }).fill(String(build.scores.des));
+  await page.getByLabel('Constituição', { exact: true }).fill(String(build.scores.con));
+  await page.getByLabel('Inteligência', { exact: true }).fill(String(build.scores.int));
+  await page.getByLabel('Sabedoria', { exact: true }).fill(String(build.scores.sab));
+  await page.getByLabel('Carisma', { exact: true }).fill(String(build.scores.car));
+  // Pontos de Vida (Média/Rolado) defaults to "Média" — matches `pensantus`
+  // (fixed/average hit points), so nothing to select here.
+
+  // Passo "Perícias": only the class's own skill picks, scoped to this
+  // step's own group (see `backgroundSkillsGroup` above for why — the same
+  // skill name can also appear as a background skill). Each skill has two
+  // checkboxes here, itself and "Expertise"; this checks only the first.
+  await page.getByRole('tab', { name: 'Perícias' }).click();
+  const classSkillsGroup = page.getByRole('group', { name: 'Perícias', exact: true });
+  for (const skill of build.extraSkills) {
+    await classSkillsGroup.getByRole('checkbox', { name: skill, exact: true }).check();
   }
+
   await page.getByRole('button', { name: 'Criar personagem' }).click();
 
   await expect(page).toHaveURL(/\/campanhas\/[^/]+\/personagens\/[^/]+$/);
@@ -245,14 +366,15 @@ export function createCharacterRPC(page: Page, campaignId: string, body: Record<
 }
 
 /**
- * Builds a `CreateCharacter` request body from a `CharacterBuild`, using
- * content keys (`race:gnome`, `class:wizard`, ...) rather than the
- * `name_pt` strings `createCharacterViaUI` selects by — content keys are
- * fixed by the plan's `Build` Go type (§3) and far more stable than the
- * translated labels. Field names (`baseScores`, `customBackground`, ...)
- * follow §4's FullSheet shape but are this file's best guess at the actual
- * protojson field names pending WP-A's generated client; expect to adjust
- * them once `web/src/gen` exists.
+ * Builds a `CreateCharacter` request body from a `CharacterBuild`, in
+ * `FullSheet`'s exact wire shape (characters.proto, confirmed live against
+ * this stack): `baseScores` uses the ability's full name (`strength`, not
+ * `str`); the race/subrace/class/subclass are content keys under `raceKey`
+ * /`subraceKey`/`classes[].classKey`/`classes[].subclassKey`; the
+ * background is a oneof (`backgroundKey` xor `customBackground`); skills
+ * the player picked beyond the background are `skillProficiencyKeys`; and
+ * `hitPoints.method` is `"HIT_POINTS_METHOD_AVERAGE"` for `pensantus`
+ * (`HitPointsMethod` enum, characters.proto).
  */
 export function characterRpcBody(kind: 'PLAYER' | 'ENEMY' | 'BOSS' | 'MINION' | 'STORY', build: CharacterBuild): Record<string, unknown> {
   return {
@@ -261,19 +383,21 @@ export function characterRpcBody(kind: 'PLAYER' | 'ENEMY' | 'BOSS' | 'MINION' | 
     sheet: {
       full: {
         baseScores: {
-          str: build.scores.for,
-          dex: build.scores.des,
-          con: build.scores.con,
-          int: build.scores.int,
-          wis: build.scores.sab,
-          cha: build.scores.car,
+          strength: build.scores.for,
+          dexterity: build.scores.des,
+          constitution: build.scores.con,
+          intelligence: build.scores.int,
+          wisdom: build.scores.sab,
+          charisma: build.scores.car,
         },
-        race: 'race:gnome',
-        subrace: build.subrace ? 'subrace:rock-gnome' : undefined,
-        classes: [{ class: 'class:wizard', subclass: build.subclass ? 'subclass:evocation' : undefined, level: build.level }],
-        customBackground: build.background ? { name: build.background, skills: ['skill:arcana', 'skill:history'] } : undefined,
-        skillProficiencies: ['skill:investigation', 'skill:insight'],
-        hitPoints: { fixed: {} },
+        raceKey: build.raceKey,
+        subraceKey: build.subraceKey,
+        classes: [{ classKey: build.classKey, level: build.level, subclassKey: build.subclassKey }],
+        ...(build.background
+          ? { customBackground: { name: build.background, skillKeys: build.backgroundSkillKeys } }
+          : { backgroundKey: build.backgroundKey }),
+        skillProficiencyKeys: build.extraSkillKeys,
+        hitPoints: { method: 'HIT_POINTS_METHOD_AVERAGE' },
       },
     },
   };

@@ -2,81 +2,76 @@ import { expect, test } from '@playwright/test';
 
 import {
   acceptInvite,
+  authStatePath,
   callRPC,
   characterRpcBody,
   createCampaign,
   createCharacterRPC,
   createCharacterViaUI,
+  newSignedInContext,
   pensantus,
   pensantusDerived,
-  signIn,
 } from './support';
 
-// Etapa 4 (characters, rules): the "Criar meu personagem" CTA, the sheet
-// screen and the NPC screens do not exist yet — WP-B (rules), WP-C
-// (characters backend) and WP-D (web) are building them in parallel
-// branches (see /scratchpad/etapa4-plan.md). Every test here is
-// `test.fixme`, so the suite stays green; each one-line comment says what
-// unblocks it. Labels and RPC names come from the plan's §4/§5 contract;
-// where this file guesses (the "name_pt" option text in `support.ts`'s
-// `pensantus` fixture, protojson field names), it says so.
+// Etapa 4 (characters, rules): MR-003, MR-004 and MR-005, against the real
+// character editor and sheet (web/src/app/pages/character-editor,
+// character-sheet) and the real CharacterService/ContentService.
+//
+// None of these tests' own story is signing in, so every context here
+// reuses a saved state (auth.setup.ts) instead of hitting the real,
+// rate-limited /auth/login. The default page is the master's.
+test.use({ storageState: authStatePath('Mestre Teste') });
 
-test.fixme(
-  'o jogador entra pelo convite, cria o personagem e o mestre o vê na campanha',
-  { tag: '@MR-003' },
-  async ({ page, browser }) => {
-    // enabled when CharacterService.CreateCharacter (kind PLAYER), the
-    // "Criar meu personagem" CTA and the character editor land.
-    await signIn(page, 'Mestre Teste', '/');
-    const campaignId = await createCampaign(page, `Personagens ${Date.now()}`);
-    await page.getByRole('button', { name: 'Gerar convite' }).click();
-    await expect(page.getByText('não será mostrado de novo')).toBeVisible();
-    const link = (await page.locator('.invite-reveal__link').textContent())?.trim();
+test('o jogador entra pelo convite, cria o personagem e o mestre o vê na campanha', { tag: '@MR-003' }, async ({
+  page,
+  browser,
+}) => {
+  const campaignId = await createCampaign(page, `Personagens ${Date.now()}`);
+  await page.getByRole('button', { name: 'Gerar convite' }).click();
+  await expect(page.getByText('não será mostrado de novo')).toBeVisible();
+  const link = (await page.locator('.invite-reveal__link').textContent())?.trim();
 
-    const playerContext = await browser.newContext();
-    try {
-      const playerPage = await playerContext.newPage();
-      await signIn(playerPage, 'Jogador Teste', '/');
-      const { page: joinedPage } = await acceptInvite(playerContext, link!);
+  const playerContext = await newSignedInContext(browser, 'Jogador Teste');
+  try {
+    const { page: joinedPage } = await acceptInvite(playerContext, link!);
 
-      // No living character yet: the CTA offers creating one (plan §5,
-      // campaign-characters.ts).
-      await joinedPage.getByRole('button', { name: 'Criar meu personagem' }).click();
-      await expect(joinedPage).toHaveURL(new RegExp(`/campanhas/${campaignId}/personagens/novo$`));
+    // No living character yet: the CTA offers creating one
+    // (campaign-characters.html).
+    await joinedPage.getByRole('link', { name: 'Criar meu personagem' }).click();
+    await expect(joinedPage).toHaveURL(new RegExp(`/campanhas/${campaignId}/personagens/novo$`));
 
-      const characterId = await createCharacterViaUI(joinedPage, campaignId, pensantus);
-      expect(characterId).toBeTruthy();
-      await expect(joinedPage.getByRole('heading', { level: 1 })).toContainText(pensantus.name);
-    } finally {
-      await playerContext.close();
-    }
+    const characterId = await createCharacterViaUI(joinedPage, campaignId, pensantus);
+    expect(characterId).toBeTruthy();
+    await expect(joinedPage.getByRole('heading', { level: 1 })).toContainText(pensantus.name);
+  } finally {
+    await playerContext.close();
+  }
 
-    // Back on the master's page: reload to see the new character.
-    await page.reload();
-    await expect(page.getByRole('heading', { name: 'Personagens dos jogadores' })).toBeVisible();
-    await expect(page.getByText(pensantus.name)).toBeVisible();
-  },
-);
+  // Back on the master's page: reload to see the new character.
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Personagens dos jogadores' })).toBeVisible();
+  await expect(page.getByText(pensantus.name)).toBeVisible();
+});
 
-test.fixme(
+test(
   'o jogador abre a ficha no celular e vê as seções da ficha oficial com os valores calculados pelo servidor',
   { tag: '@MR-004' },
   async ({ browser }) => {
-    // enabled when CharacterService.GetCharacter, rules.Derive (WP-B) and
-    // the character-sheet screen (WP-D) land. Runs in a Chromium mobile
-    // viewport, not a real device: Safari rejects __Host- cookies on
-    // http://localhost (plan §10, e2e risks).
-    const masterContext = await browser.newContext();
-    const playerContext = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true });
+    // Chromium mobile viewport, not a real device: Safari rejects __Host-
+    // cookies on http://localhost (CONTRIBUTING.md's e2e section). Neither
+    // context signs in for real: both reuse the saved states, the mobile
+    // one alongside its own viewport/isMobile options.
+    const masterContext = await newSignedInContext(browser, 'Mestre Teste');
+    const playerContext = await newSignedInContext(browser, 'Jogador Teste', {
+      viewport: { width: 390, height: 844 },
+      isMobile: true,
+    });
     try {
       const masterPage = await masterContext.newPage();
-      await signIn(masterPage, 'Mestre Teste', '/');
       const campaignId = await createCampaign(masterPage, `Ficha mobile ${Date.now()}`);
       await masterPage.getByRole('button', { name: 'Gerar convite' }).click();
       const link = (await masterPage.locator('.invite-reveal__link').textContent())?.trim();
 
-      const playerPage = await playerContext.newPage();
-      await signIn(playerPage, 'Jogador Teste', '/');
       const { page: joinedPage } = await acceptInvite(playerContext, link!);
 
       // Created through the API, not the editor: this test's criterion is
@@ -87,20 +82,27 @@ test.fixme(
 
       await joinedPage.goto(`/campanhas/${campaignId}/personagens/${characterId}`);
 
-      // The official sheet's sections (plan §5, character-sheet.ts, mobile
-      // order), each an <h2>.
+      // The official sheet's sections (character-sheet.html), each an
+      // <h2> (Magias only shows for a caster, which Pensantus is).
       for (const section of ['Atributos', 'Combate', 'Perícias', 'Magias', 'Equipamento', 'Características e traços', 'História']) {
         await expect(joinedPage.getByRole('heading', { level: 2, name: section })).toBeVisible();
       }
 
       // The numbers come from the server's DerivedSheet, never recalculated
-      // in the browser (plan §5: "o navegador nunca calcula uma regra").
-      await expect(joinedPage.getByText(pensantusDerived.intModifier, { exact: false })).toBeVisible();
-      await expect(joinedPage.getByText('CD de magia', { exact: false })).toBeVisible();
-      await expect(joinedPage.getByText(String(pensantusDerived.spellSaveDc), { exact: false })).toBeVisible();
-      await expect(joinedPage.getByText(pensantusDerived.spellAttackBonus, { exact: false })).toBeVisible();
-      await expect(joinedPage.getByText(String(pensantusDerived.armorClass), { exact: false })).toBeVisible();
-      await expect(joinedPage.getByText(String(pensantusDerived.hitPointsMax), { exact: false })).toBeVisible();
+      // in the browser: the ability box shows "score (modifier)".
+      await expect(joinedPage.locator('dt:text-is("Inteligência") + dd')).toContainText(pensantusDerived.intModifier);
+      await expect(
+        joinedPage.getByText(new RegExp(`CD de magia ${pensantusDerived.spellSaveDc}\\b`)),
+      ).toBeVisible();
+      await expect(
+        joinedPage.getByText(new RegExp(`ataque de magia \\${pensantusDerived.spellAttackBonus}\\b`)),
+      ).toBeVisible();
+      await expect(joinedPage.locator('dt:text-is("Classe de Armadura") + dd')).toHaveText(
+        String(pensantusDerived.armorClass),
+      );
+      await expect(joinedPage.locator('dt:text-is("Pontos de Vida (máximo)") + dd')).toHaveText(
+        String(pensantusDerived.hitPointsMax),
+      );
     } finally {
       await masterContext.close();
       await playerContext.close();
@@ -108,46 +110,43 @@ test.fixme(
   },
 );
 
-test.fixme(
-  'o mestre cria um inimigo com ficha completa e um minion com ficha básica',
-  { tag: '@MR-005' },
-  async ({ page }) => {
-    // enabled when CharacterService.CreateCharacter (NPC kinds) and the
-    // "Novo NPC" menu land. The NPC creation form's own field labels are not
-    // yet in the plan's §5 contract (only the player character editor's
-    // are), so this creates through the API and asserts the screen's NPC
-    // list; the form itself needs its own spec once its labels are agreed.
-    await signIn(page, 'Mestre Teste', '/');
-    const campaignId = await createCampaign(page, `NPCs ${Date.now()}`);
+test('o mestre cria um inimigo com ficha completa e um minion com ficha básica', { tag: '@MR-005' }, async ({ page }) => {
+  const campaignId = await createCampaign(page, `NPCs ${Date.now()}`);
 
-    const enemy = await createCharacterRPC(
-      page,
-      campaignId,
-      characterRpcBody('ENEMY', { ...pensantus, name: 'Goblin Chefe' }),
-    );
-    expect(enemy.status()).toBe(200);
+  // The "Novo NPC" menu (campaign-characters.html) routes to
+  // /campanhas/:id/npcs/novo/:tipo, one per NPC kind.
+  await page.goto(`/campanhas/${campaignId}`);
+  await page.getByRole('button', { name: 'Novo NPC' }).click();
+  await page.getByRole('menuitem', { name: 'Inimigo' }).click();
+  await expect(page).toHaveURL(new RegExp(`/campanhas/${campaignId}/npcs/novo/inimigo$`));
 
-    const minion = await createCharacterRPC(page, campaignId, {
-      kind: 'CHARACTER_KIND_MINION',
-      name: 'Bandido',
-      // BasicSheet fields (plan §4): hitPointsMax, armorClass, speedFt,
-      // attackBonus, damage, description — protojson names unconfirmed.
-      sheet: { basic: { hitPointsMax: 4, armorClass: 12, speedFt: 30 } },
-    });
-    expect(minion.status()).toBe(200);
+  // Inimigo (ENEMY): full sheet, the same stepper as a player's.
+  const enemyId = await createCharacterViaUI(page, campaignId, { ...pensantus, name: 'Goblin Chefe' }, page.url());
+  expect(enemyId).toBeTruthy();
 
-    await page.reload();
-    await expect(page.getByRole('heading', { name: 'NPCs', level: 2 })).toBeVisible();
-    await expect(page.getByText('Goblin Chefe')).toBeVisible();
-    await expect(page.getByText('Bandido')).toBeVisible();
-  },
-);
+  await page.goto(`/campanhas/${campaignId}`);
+  await page.getByRole('button', { name: 'Novo NPC' }).click();
+  await page.getByRole('menuitem', { name: 'Minion' }).click();
+  await expect(page).toHaveURL(new RegExp(`/campanhas/${campaignId}/npcs/novo/minion$`));
 
-test.fixme('o jogador não vê os NPCs da campanha', { tag: '@MR-005' }, async ({ page, browser }) => {
-  // enabled with the same pieces as the test above, plus ListCharacters and
-  // GetCharacter hiding NPCs from a player (RN-04, authz), same "not_found"
-  // pattern as a hidden campaign (ADR-0011, docs/arquitetura.md).
-  await signIn(page, 'Mestre Teste', '/');
+  // Minion: a flat basic-sheet form, no stepper (character-editor.html).
+  await page.getByLabel('Nome do personagem').fill('Bandido');
+  await page.getByLabel('Pontos de Vida (máximo)').fill('4');
+  await page.getByLabel('Classe de Armadura').fill('12');
+  await page.getByLabel('Deslocamento (pés)').fill('30');
+  await page.getByLabel('Bônus de ataque').fill('2');
+  await page.getByLabel('Dano').fill('1d6+1 perfurante');
+  await page.getByRole('button', { name: 'Criar personagem' }).click();
+  await expect(page).toHaveURL(/\/campanhas\/[^/]+\/personagens\/[^/]+$/);
+
+  await page.goto(`/campanhas/${campaignId}`);
+  // "NPCs" is an <h3> (campaign-characters.html), not an <h2>.
+  await expect(page.getByRole('heading', { name: 'NPCs', level: 3 })).toBeVisible();
+  await expect(page.getByText('Goblin Chefe')).toBeVisible();
+  await expect(page.getByText('Bandido')).toBeVisible();
+});
+
+test('o jogador não vê os NPCs da campanha', { tag: '@MR-005' }, async ({ page, browser }) => {
   const campaignId = await createCampaign(page, `NPCs escondidos ${Date.now()}`);
   const npc = await createCharacterRPC(page, campaignId, characterRpcBody('ENEMY', { ...pensantus, name: 'Vilão Secreto' }));
   const npcId = (await npc.json()).character.id as string;
@@ -155,13 +154,11 @@ test.fixme('o jogador não vê os NPCs da campanha', { tag: '@MR-005' }, async (
   await page.getByRole('button', { name: 'Gerar convite' }).click();
   const link = (await page.locator('.invite-reveal__link').textContent())?.trim();
 
-  const playerContext = await browser.newContext();
+  const playerContext = await newSignedInContext(browser, 'Jogador Teste');
   try {
-    const playerPage = await playerContext.newPage();
-    await signIn(playerPage, 'Jogador Teste', '/');
     const { page: joinedPage } = await acceptInvite(playerContext, link!);
 
-    await expect(joinedPage.getByRole('heading', { name: 'NPCs', level: 2 })).toHaveCount(0);
+    await expect(joinedPage.getByRole('heading', { name: 'NPCs', level: 3 })).toHaveCount(0);
     await expect(joinedPage.getByText('Vilão Secreto')).toHaveCount(0);
 
     // The RPC itself hides it too, exactly like a campaign the caller is

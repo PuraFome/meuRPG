@@ -26,8 +26,19 @@ export default defineConfig({
   },
   projects: [
     {
-      name: 'chrome',
+      // Signs in once per test user and saves the state every other test
+      // reuses (see tests/auth.setup.ts and support.ts's `authStatePath` /
+      // `newSignedInContext`) — keeps the suite comfortably under
+      // `/auth/login`'s rate limit instead of signing in per test.
+      name: 'setup',
+      testMatch: /auth\.setup\.ts/,
       use: { ...devices['Desktop Chrome'], channel: channel || undefined },
+    },
+    {
+      name: 'chrome',
+      testIgnore: /auth\.setup\.ts/,
+      use: { ...devices['Desktop Chrome'], channel: channel || undefined },
+      dependencies: ['setup'],
     },
   ],
 });
