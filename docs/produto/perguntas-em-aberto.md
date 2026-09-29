@@ -1,6 +1,6 @@
 # Perguntas em aberto
 
-Nenhuma delas trava a Etapa 1. Todas são para o Samuel, e cada resposta vira uma regra marcada como "Decidido". Pergunta nova, a partir de agora, entra pelo documento de acompanhamento, não aqui; quando o Samuel responde, a resposta fica registrada nesta página.
+Nenhuma delas trava a Etapa 1. Todas são para o Samuel, e cada resposta vira uma regra marcada como "Decidido". Pergunta nova, a partir de agora, entra pelo documento de acompanhamento, não aqui; quando o Samuel responde (ou o Vinicius responde por ele), a resposta fica registrada nesta página.
 
 ## Respondidas em 29/09/2026
 
@@ -30,10 +30,19 @@ Nenhuma delas trava a Etapa 1. Todas são para o Samuel, e cada resposta vira um
 - **Controlador, encarregado e canal.** O Samuel é o controlador e o Vinicius é o encarregado. Um e-mail só para isso recebe os pedidos até existir o domínio. Ver [Privacidade](../privacidade.md).
 - **Abrir para outras mesas ou cobrar.** Não no MVP: o app é só da nossa mesa. A decisão volta antes de abrir. Ver [Privacidade](../privacidade.md).
 - **Plano do CockroachDB e backups.** Fica o plano atual, com os backups em São Paulo, guardados por no máximo 30 dias. Ver [Operação](../operacao.md).
+- **Menores na mesa hoje.** Não há (respondida pelo Vinicius em 29/09/2026).
+- **Personagem criado depois da primeira sessão (RN-01).** Fica editável até a próxima sessão começar (respondida pelo Vinicius em 29/09/2026). Ver [RN-01](regras.md).
+- **Texto descritivo depois da trava (RN-01).** O jogador edita a história do personagem (personalidade, aparência, história, aliados) enquanto a ficha é rascunho. Depois da trava, só quando o mestre libera, personagem por personagem, até a próxima sessão começar ou até o mestre travar de novo. Os números calculados nunca são editáveis (respondida pelo Vinicius em 29/09/2026). Ver [RN-01](regras.md).
+- **Critérios de aceite da MR-005.** Aceitos como propostos (respondida pelo Vinicius em 29/09/2026). Ver [MR-005](historias.md#mr-005-criar-npcs).
+- **RN-11 (notas do mestre).** Decidida: só o mestre lê e edita as notas do mestre (respondida pelo Vinicius em 29/09/2026). Ver [RN-11](regras.md).
+- **Texto do SRD.** Os nomes aparecem em português, numa tradução nossa; as descrições ficam em inglês por enquanto. Depois pesquisamos uma tradução em português com licença adequada (respondida pelo Vinicius em 29/09/2026).
+- **Plano do CockroachDB.** É o plano legado Unlimited, contratado antes da mudança de licenças de 2024. Trocar de plano perde o Unlimited; está em avaliação se vale migrar para o Cloud SQL ou outro produto (respondida pelo Vinicius em 29/09/2026). Ver [Operação](../operacao.md).
+- **Conteúdo cadastrado pela mesa.** Vale por campanha, porque campanhas diferentes usam materiais diferentes (respondida pelo Vinicius em 29/09/2026). Ver [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
+- **Banco do app antigo.** É desligado, com os backups, logo depois da importação única dos personagens, na Etapa 8 (respondida pelo Vinicius em 29/09/2026). Ver [roadmap](../roadmap.md).
 
 ## Em aberto
 
-- [ ] **Há alguém com menos de 18 anos na mesa hoje?** Se houver, essa pessoa joga sem conta própria, e o mestre cuida da ficha, até existir um fluxo com os responsáveis (ver [Privacidade](../privacidade.md#menores-de-idade)).
+- [ ] **Dados físicos, dados do app, ou os dois?** O motor aceita os dois; a escolha muda a tela de combate (Etapa 6). Sugestão: os dois, e cada jogador escolhe. Ver [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
 
 ## Ver também
 

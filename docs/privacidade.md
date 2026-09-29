@@ -105,7 +105,7 @@ Quase tudo é autoatendimento, dentro do app e logado. A sessão já prova quem 
 |---|---|---|---|
 | Confirmação e acesso | Art. 18, I e II | Tela "Meus dados", download em JSON | `PrivacyService.ExportMyData` |
 | Portabilidade | Art. 18, V | O mesmo JSON, com versão de schema | `PrivacyService.ExportMyData` |
-| Correção | Art. 18, III | Editar nome de exibição e handle. A trava da ficha (RN-01) vale para dado de jogo, nunca para dado pessoal | `IdentityService.UpdateProfile` |
+| Correção | Art. 18, III | Editar nome de exibição e handle. A história do personagem, depois da trava da ficha (RN-01), o jogador corrige quando o mestre libera; se o mestre não liberar, o pedido vai pelo canal do encarregado, no prazo de 15 dias | `IdentityService.UpdateProfile` |
 | Eliminação | Art. 18, VI | "Excluir minha conta", com prévia do que some | `PrivacyService.PreviewAccountDeletion`, `PrivacyService.DeleteMyAccount` |
 | Com quem compartilhamos | Art. 18, VII | Lista de operadores no aviso de privacidade | — |
 | Oposição, dúvidas, outros pedidos | Art. 18, §2º | Canal do encarregado; depois, um formulário no app | `PrivacyService.SubmitPrivacyRequest` |
@@ -193,7 +193,7 @@ O MVP é para maiores de 18 anos, declarado ao entrar. Guardamos só a data da d
 - um menor que já esteja na mesa joga sem conta própria (o mestre cuida da ficha, sem dado pessoal dele), até existir um fluxo com os responsáveis revisado por advogado;
 - antes de abrir ao público: advogado, avaliação do ECA Digital (Lei 15.211/2025; Decreto 12.880/2026) e uma aferição de idade que siga as orientações finais da ANPD.
 
-A autodeclaração não é proibida para nós (a vedação do ECA Digital, art. 9º, §1º, é para conteúdo impróprio para menores), mas a ANPD a considera pouco confiável; por isso ela só serve enquanto o app for fechado, por convite. O GDPR (art. 8) só pede idade mínima quando a base é consentimento, e nós usamos contrato. O Samuel aceitou essa recomendação em 29/09/2026. Falta saber se há algum menor na mesa hoje (ver [Perguntas em aberto](produto/perguntas-em-aberto.md)).
+A autodeclaração não é proibida para nós (a vedação do ECA Digital, art. 9º, §1º, é para conteúdo impróprio para menores), mas a ANPD a considera pouco confiável; por isso ela só serve enquanto o app for fechado, por convite. O GDPR (art. 8) só pede idade mínima quando a base é consentimento, e nós usamos contrato. O Samuel aceitou essa recomendação em 29/09/2026, e hoje não há menores na mesa (respondido pelo Vinicius no mesmo dia).
 
 ## Incidentes
 
@@ -220,8 +220,7 @@ Todo PR responde. Um "sim" pede uma seção curta de riscos e medidas no PR. Doi
 
 - Criar o e-mail do canal do encarregado (um endereço só para isso, até ter domínio) e publicá-lo no aviso de privacidade.
 - Contrato LGPD com a Cockroach Labs; contratos para Render, GitHub Pages e Cloudflare enquanto forem usados.
-- Conferir no console do CockroachDB Cloud que os backups ficam em São Paulo e são guardados por no máximo 30 dias. O plano atual fica (decidido pelo Samuel em 29/09/2026).
-- Se há algum menor na mesa hoje (ver [Menores de idade](#menores-de-idade)).
+- Conferir no console do CockroachDB Cloud que os backups ficam em São Paulo e são guardados por no máximo 30 dias. O plano atual, o legado Unlimited, fica (decidido pelo Samuel em 29/09/2026); trocar de plano perde o Unlimited, e está em avaliação se vale migrar para o Cloud SQL ou outro produto (ver [Operação](operacao.md)).
 - Revisão por advogado do aviso de privacidade, dos termos de uso e desse tratamento, antes do primeiro deploy público.
 
 ## Roteiro do aviso de privacidade

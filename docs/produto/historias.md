@@ -100,6 +100,10 @@ MR-021 e MR-022 são novas e saíram das respostas do Samuel de 28/09/2026. Fica
 #### Critérios de aceite
 - **Dado** que a primeira sessão da campanha já começou, **quando** o jogador tenta editar os atributos da própria ficha, **então** o servidor recusa **e** o mestre consegue editar a mesma ficha.
 - **Dado** que nenhuma sessão começou, **quando** o jogador edita a ficha, **então** a alteração é salva.
+- **Dado** um personagem criado depois da primeira sessão, **quando** o jogador edita a ficha antes da próxima sessão, **então** a alteração é salva **e**, quando a próxima sessão começa, a ficha trava.
+- **Dado** que a ficha travou, **quando** o jogador tenta editar a história do personagem, **então** o servidor recusa; **depois que** o mestre libera a história desse personagem, o jogador edita e salva, **e** a liberação acaba quando a próxima sessão começa.
+
+Os dois últimos critérios foram respondida pelo Vinicius em 29/09/2026.
 
 ### MR-008: Pontos de interesse
 
@@ -283,6 +287,13 @@ Aceitos pelo Samuel em 29/09/2026, junto com o backend: o mestre adora poder esc
 - Prioridade: MVP (pré-requisito)
 - Regras: RN-04
 - Módulos: characters
+
+#### Critérios de aceite
+Propostos por nós e aceitos (respondida pelo Vinicius em 29/09/2026):
+
+- **Dado** que sou mestre de "Mirathel", **quando** crio um inimigo ou um boss, **então** ele tem ficha completa; **quando** crio um minion ou um NPC de história, **então** ele tem ficha básica.
+- **Dado** que sou jogador de "Mirathel", **quando** abro a campanha, **então** não vejo nenhum NPC **e** o servidor recusa se eu tentar criar um.
+- **Dado** um NPC criado em "Mirathel", **quando** o mestre abre outra campanha, **então** o NPC não aparece lá: usar o mesmo NPC em outras campanhas é a [MR-022](#mr-022-reutilizar-npcs).
 
 ## Prioridade: Depois
 
