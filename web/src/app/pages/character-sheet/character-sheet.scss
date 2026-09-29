@@ -1,0 +1,176 @@
+.status-card {
+  max-width: 32rem;
+  margin: 1rem 0;
+}
+
+.status-card__content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.status-card--error {
+  color: var(--mat-sys-error);
+}
+
+.state-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+// Plain styled badges instead of MatChipsModule (which this page was the
+// only screen to use): one less Material/CDK module in the bundle for two
+// read-only labels.
+.state-chip {
+  padding: 0.15rem 0.75rem;
+  border-radius: 1rem;
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.sheet-meta {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.locked-banner {
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  background: var(--mat-sys-tertiary-container);
+  color: var(--mat-sys-on-tertiary-container);
+}
+
+.sheet-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+.form-error {
+  color: var(--mat-sys-error);
+}
+
+/* Mobile-first: sections simply stack in DOM order — Atributos, Combate,
+ * Perícias, Magias, Equipamento, Características e traços, História. */
+.sheet-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.sheet-section h2 {
+  margin-top: 0;
+}
+
+.ability-grid,
+.combat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem 1rem;
+  margin: 0;
+}
+
+.ability-box dt,
+.combat-grid dt {
+  font-size: 0.8rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.ability-box dd,
+.combat-grid dd {
+  margin: 0;
+  font-weight: 500;
+}
+
+.skills-list,
+.saves-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.5rem;
+}
+
+.skill-proficiency {
+  margin-left: 0.5rem;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.8rem;
+}
+
+.attacks-table,
+.equipment-list {
+  width: 100%;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.story-form,
+.story-form mat-form-field {
+  display: block;
+}
+
+.appearance-short-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 1rem;
+
+  @media (min-width: 480px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.story-form__actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.full-width {
+  width: 100%;
+}
+
+/* Desktop: the official sheet's three-column layout. */
+@media (min-width: 900px) {
+  .sheet-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    grid-template-areas:
+      'atributos combate caracteristicas'
+      'pericias magias equipamento'
+      '. . historia';
+    align-items: start;
+  }
+
+  .sheet-section--atributos {
+    grid-area: atributos;
+  }
+  .sheet-section--combate {
+    grid-area: combate;
+  }
+  .sheet-section--pericias {
+    grid-area: pericias;
+  }
+  .sheet-section--magias {
+    grid-area: magias;
+  }
+  .sheet-section--equipamento {
+    grid-area: equipamento;
+  }
+  .sheet-section--caracteristicas {
+    grid-area: caracteristicas;
+  }
+  .sheet-section--historia {
+    grid-area: historia;
+  }
+}

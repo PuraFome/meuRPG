@@ -1,0 +1,48 @@
+<mat-card class="session-card" aria-labelledby="session-heading">
+  <mat-card-content>
+    <h2 id="session-heading">Sessão</h2>
+
+    @if (state(); as s) {
+      @switch (s.status) {
+        @case ('loading') {
+          <p role="status" aria-live="polite">Carregando...</p>
+        }
+        @case ('error') {
+          <p role="alert">{{ s.message }}</p>
+        }
+        @case ('ready') {
+          @if (s.session; as session) {
+            <p>Sessão {{ session.sessionNumber }} em andamento.</p>
+            @if (lastLockedSheetCount() !== null) {
+              <p role="status">{{ lastLockedSheetCount() }} fichas travadas.</p>
+            }
+            <button
+              mat-flat-button
+              type="button"
+              [disabled]="actionState().status === 'saving'"
+              (click)="endSession(session.id)"
+            >
+              Encerrar sessão
+            </button>
+          } @else {
+            <p>Nenhuma sessão em andamento. Iniciar uma trava a ficha dos jogadores.</p>
+            <button
+              mat-flat-button
+              type="button"
+              [disabled]="actionState().status === 'saving'"
+              (click)="startSession()"
+            >
+              Iniciar sessão
+            </button>
+          }
+        }
+      }
+    }
+
+    @if (actionState(); as a) {
+      @if (a.status === 'error') {
+        <p class="form-error" role="alert">{{ a.message }}</p>
+      }
+    }
+  </mat-card-content>
+</mat-card>

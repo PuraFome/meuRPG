@@ -1,0 +1,68 @@
+.status-card {
+  max-width: 32rem;
+  margin: 1rem 0;
+}
+
+.status-card__content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.status-card--error {
+  color: var(--mat-sys-error);
+}
+
+.full-width {
+  display: block;
+  width: 100%;
+}
+
+.ability-inputs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem 1rem;
+
+  @media (min-width: 600px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.skills-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.25rem 1rem;
+
+  @media (min-width: 600px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.skills-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.skills-list__row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.hit-points-rolls {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr));
+  gap: 0.5rem 1rem;
+}
+
+.form-error {
+  color: var(--mat-sys-error);
+}
+
+.editor-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}

@@ -1,0 +1,38 @@
+/**
+ * The view-model and port `GameSessionCard` needs. Phase 2 maps
+ * `play.v1.PlayService`'s `GameSession` messages onto `GameSessionVm` —
+ * nothing below imports from `../../../../gen/...`.
+ */
+export interface GameSessionVm {
+  /** `GameSession.id` — `EndGameSession` needs it (integrator amendment,
+   * 29/09/2026). */
+  readonly id: string;
+  readonly sessionNumber: number;
+  readonly startedAt: Date;
+  readonly endedAt: Date | null;
+}
+
+/** `StartGameSession`'s response: the new session plus how many player
+ * sheets it just locked (RN-01) — shown as "N fichas travadas". */
+export interface StartGameSessionResultVm {
+  readonly session: GameSessionVm;
+  readonly lockedSheetCount: number;
+}
+
+/**
+ * The port `GameSessionCard` depends on, provided at the route level for
+ * `/campanhas/:id` (`campaign-detail.routes.ts`) by `GameSessionSourceLive`,
+ * which wraps the generated `PlayService` client. No root fallback: a route
+ * reached without this provider fails loudly (NG0201) instead of silently
+ * degrading — see `app.config.ts`.
+ */
+export abstract class GameSessionSource {
+  /** The campaign's open session (`ended_at` unset), or `null` if none is
+   * open — `ListGameSessions` ordered by `session_number desc`, taking the
+   * first one with no `ended_at`. */
+  abstract getCurrentSession(campaignId: string): Promise<GameSessionVm | null>;
+  /** RN-01: locks every unlocked player character's sheet, in the same
+   * transaction, on the server (`play.LockSheets`, plan §4). */
+  abstract startGameSession(campaignId: string): Promise<StartGameSessionResultVm>;
+  abstract endGameSession(campaignId: string, gameSessionId: string): Promise<GameSessionVm>;
+}
