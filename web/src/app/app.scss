@@ -1,8 +1,39 @@
-.app-header {
-  padding: 1rem 1.5rem;
+.app-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
 
-  h1 {
-    margin: 0;
-    font-size: 1.5rem;
+.app-toolbar__main {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.app-toolbar__brand {
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: inherit;
+  text-decoration: none;
+}
+
+.app-toolbar__spacer {
+  flex: 1 1 auto;
+}
+
+.app-toolbar__nav {
+  gap: 0.25rem;
+}
+
+.app-toolbar__nav-link--active {
+  text-decoration: underline;
+  text-underline-offset: 0.25rem;
+}
+
+.app-content {
+  padding: 1rem;
+
+  @media (min-width: 600px) {
+    padding: 1.5rem;
   }
 }

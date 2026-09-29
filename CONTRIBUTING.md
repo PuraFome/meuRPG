@@ -24,6 +24,7 @@ Ferramentas: Go 1.27, buf, sqlc, goose, golangci-lint, Docker e Node 22. No Mac,
 | `make web-test` | Roda os testes do Angular (`cd web && npm test`). |
 | `make web-build` | Builda o Angular para produção (`cd web && npm run build`). |
 | `cd web && npm start` | Sobe o Angular sozinho, em modo dev, com `proxy.conf.json` encaminhando as rotas da API (`/meurpg.*`, `/auth`, `/healthz`, `/readyz`) para `localhost:8080`. |
+| `WEB_DIR=../web/dist/web/browser PORT=8090 go run -C backend ./cmd/api` | Sobe só a API do jeito que ela roda em produção — servindo o build do Angular, com os headers de cache e o CSP de verdade — sem Docker nem banco. Rode `cd web && npm run build` antes. Sem `DATABASE_URL`, o login fica desligado e o `IdentityService` responde `unavailable`, mas a tela pública e o `SystemService.GetServerInfo` funcionam normalmente. Útil para conferir o CSP no navegador sem subir o Docker; a porta 8090 não conflita com o `make up`. |
 
 ## Login local com um provedor OIDC
 

@@ -1,0 +1,8 @@
+.status-card {
+  max-width: 28rem;
+  margin: 2rem auto;
+
+  &--error {
+    border-inline-start: 4px solid var(--mat-sys-error);
+  }
+}

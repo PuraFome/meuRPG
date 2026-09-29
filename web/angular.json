@@ -27,6 +27,11 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "{outlined.css,material-symbols-outlined.woff2}",
+                "input": "node_modules/@material-symbols/font-400",
+                "output": "material-symbols"
               }
             ],
             "styles": [

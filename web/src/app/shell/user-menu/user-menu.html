@@ -1,0 +1,18 @@
+@switch (auth.state().status) {
+  @case ('signed-in') {
+    <span class="user-menu__account">
+      <mat-icon aria-hidden="true">account_circle</mat-icon>
+      {{ accountLabel() }}
+    </span>
+    <button mat-button (click)="signOut()">Sair</button>
+  }
+  @case ('signed-out') {
+    <button mat-button (click)="signIn()">Entrar</button>
+  }
+  @case ('unavailable') {
+    <span class="user-menu__unavailable" role="status">
+      <mat-icon aria-hidden="true">cloud_off</mat-icon>
+      Servidor indisponível
+    </span>
+  }
+}
