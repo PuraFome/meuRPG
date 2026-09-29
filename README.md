@@ -55,6 +55,8 @@ Um simples backend NestJS 11 foi criado em `server/`, implementando login Google
   - `GET /api/auth/callback` - Google OAuth callback handler
   - `POST /api/auth/logout` - Logout and invalidate session
   - `DELETE /api/auth/account` - LGPD-compliant account deletion
+
+> **Atenção (29/09/2026):** `POST /api/auth/logout` e `DELETE /api/auth/account` são chamados pelo frontend, mas **não existem** no NestJS. Hoje o logout só limpa o navegador (o token continua válido no servidor até expirar), e "Excluir conta" falha. Ver [Privacidade](docs/privacidade.md).
   - `GET /api/me` - Get current user profile
   - `GET /api/health` - Health check
 

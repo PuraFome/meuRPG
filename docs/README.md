@@ -13,6 +13,7 @@ Este diretório é a fonte da verdade sobre o produto, as regras e a arquitetura
 | [produto/perguntas-em-aberto.md](produto/perguntas-em-aberto.md) | Samuel | O que ainda falta decidir |
 | [arquitetura.md](arquitetura.md) | Quem abre o PR, com revisão do Samuel | Como o sistema é montado e onde roda |
 | [dados.md](dados.md) | Quem abre o PR, com revisão do Samuel | Tabelas, relações e migrations |
+| [privacidade.md](privacidade.md) | Quem abre o PR, com revisão do Samuel e do Vinicius | Que dados pessoais guardamos, por quê e por quanto tempo, e a checklist de privacidade de todo PR |
 | [roadmap.md](roadmap.md) | Todo o time | A ordem das etapas até o MVP |
 | [operacao.md](operacao.md) | Vinicius e Samuel | Deploy, segredos, custos e alertas |
 | [code-quality.md](code-quality.md) | Quem mexe no Angular atual | Relatório de qualidade do frontend atual |

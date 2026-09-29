@@ -74,6 +74,7 @@ A documentação muda no mesmo PR que o código. Um PR que muda comportamento se
 | Deploy, segredo, alerta ou custo | `docs/operacao.md` |
 | Comando ou ferramenta nova | `README.md` ou `CONTRIBUTING.md` |
 | Termo novo | `docs/produto/glossario.md` |
+| Dado pessoal, log, cookie, imagem ou fornecedor novo | `docs/privacidade.md` (inventário e operadores) e o checklist de privacidade no PR |
 
 Como escrever:
 
