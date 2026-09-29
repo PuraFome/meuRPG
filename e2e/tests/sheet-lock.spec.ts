@@ -48,7 +48,14 @@ test('antes de qualquer sessão, o jogador edita a própria ficha e a alteraçã
     await expect(joinedPage.getByText('Ficha travada desde', { exact: false })).toHaveCount(0);
     await joinedPage.getByRole('link', { name: 'Editar ficha' }).click();
     await joinedPage.getByLabel('Nível').fill('4');
+    // Wait for the save's own response before reading the character back:
+    // a read sent right after the click can reach the server first and see
+    // the old revision (it did, once the save took ~0.5 s on a busy stack).
+    const saved$ = joinedPage.waitForResponse((res) =>
+      res.url().endsWith('/meurpg.characters.v1.CharacterService/UpdateCharacter'),
+    );
     await joinedPage.getByRole('button', { name: 'Salvar ficha' }).click();
+    expect((await saved$).ok()).toBe(true);
 
     // Saved: a fresh GetCharacter shows the new level and a higher revision
     // (optimistic concurrency, AIP-154 style — UpdateCharacter's doc
