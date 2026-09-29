@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+// Package meurpg.identity.v1 is about who is signed in.
+//
+// Signing in is not an RPC: it is a browser redirect flow with an OpenID
+// Connect provider, served by the backend at GET /auth/login and
+// GET /auth/callback. It ends with an opaque session token in the
+// __Host-meurpg_session cookie (HttpOnly, so JavaScript never sees it). The
+// RPCs below read and end that session; the browser sends the cookie on its
+// own.
+package meurpg.identity.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// IdentityService answers "who am I?" and signs the user out.
+//
+// Every method needs a valid session cookie and fails with the
+// `unauthenticated` code without one. Responses carry
+// `Cache-Control: no-store`, because they describe the signed-in user.
+service IdentityService {
+  // GetMe returns the signed-in user and when the current session ends.
+  //
+  // It has no side effects and its request is empty, so clients may call it
+  // with HTTP GET: the URL never carries personal data.
+  rpc GetMe(GetMeRequest) returns (GetMeResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // SignOut revokes the current session on the server right away and tells
+  // the browser to delete the session cookie (Set-Cookie in the response).
+  // It only ends this session; the user's other devices stay signed in.
+  rpc SignOut(SignOutRequest) returns (SignOutResponse);
+}
+
+// GetMeRequest is intentionally empty: the session cookie says who is asking.
+message GetMeRequest {}
+
+// GetMeResponse describes the signed-in user.
+message GetMeResponse {
+  // The signed-in user.
+  User user = 1;
+  // When the current session stops working. Sessions last at most 30 days
+  // and are never extended, so the app can warn the user before this time
+  // and send them through sign-in again.
+  google.protobuf.Timestamp session_expires_at = 2;
+}
+
+// User is the minimal view of an account. On purpose, it has no e-mail, name
+// or photo from the sign-in provider (see docs/privacidade.md).
+message User {
+  // Stable account ID (a UUID). It never changes, even if the user later
+  // signs in with another method.
+  string id = 1;
+}
+
+// SignOutRequest is intentionally empty: the session cookie says which
+// session to end.
+message SignOutRequest {}
+
+// SignOutResponse is intentionally empty; the cookie is cleared through the
+// Set-Cookie response header.
+message SignOutResponse {}

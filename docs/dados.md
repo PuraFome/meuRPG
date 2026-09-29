@@ -251,6 +251,68 @@ flowchart TD
     end
 ```
 
+## Esquema implementado
+
+Esta seção lista só o que já existe nas migrations de `backend/migrations/`. O resto desta página ainda é proposta. O esquema novo começa vazio (`00001_init`), e cada módulo cria as próprias tabelas.
+
+| Migration | Tabela | Para quê |
+| --- | --- | --- |
+| `00002_create_users` | `users` | A conta. Não guarda dado pessoal: só `id` e `created_at`. |
+| `00003_create_user_identities` | `user_identities` | Liga a conta a um login OIDC. |
+| `00004_create_auth_sessions` | `auth_sessions` | As sessões de login (o hash do token). |
+| `00005_create_oidc_login_states` | `oidc_login_states` | Logins começados e ainda não terminados. |
+
+Todas são do módulo `identity`. Mudanças em relação à proposta acima:
+
+- `users.google_sub` e `users.email` viraram `user_identities (issuer, subject, email)`. O par `(issuer, subject)` é a chave primária, porque o `sub` só é único dentro de um provedor. Assim o código não depende do Google, e uma conta pode ter outro jeito de entrar (ADR-0009) sem mudar `users`.
+- `UNIQUE (user_id, issuer)`: uma conta tem no máximo uma identidade por provedor, então duas contas Google nunca se juntam.
+- `email` é opcional: só é gravado quando o provedor diz que foi verificado, e é atualizado (ou apagado) a cada login. Nome e foto nunca são gravados.
+- `oauth_handshakes` virou `oidc_login_states`, com o hash do `state` como chave.
+- `auth_sessions` ganhou `id` (para listar e revogar uma sessão, ADR-0009) e `auth_time` (só registro). Um `CHECK` no banco impede sessão com mais de 30 dias.
+- Toda FK para `users` tem `ON DELETE CASCADE`: excluir a conta apaga identidades e sessões.
+- `auth_sessions` e `oidc_login_states` usam o TTL por linha do CockroachDB (`ttl_expiration_expression = 'expires_at'`). O job apaga as linhas vencidas uma vez por dia nas sessões e de hora em hora nos logins. As consultas continuam filtrando `expires_at`, porque a linha vencida existe até o job passar.
+
+Cada migration é um único `CREATE TABLE IF NOT EXISTS`, com índices e constraints dentro dele. Como o CockroachDB faz commit antes de cada DDL, isso deixa cada migration atômica e segura para rodar de novo.
+
+```mermaid
+erDiagram
+    users {
+        uuid id PK
+        timestamptz created_at
+    }
+
+    user_identities {
+        text issuer PK
+        text subject PK
+        uuid user_id FK "UNIQUE com issuer"
+        text email "opcional, só se verificado"
+        timestamptz created_at
+    }
+
+    auth_sessions {
+        uuid id PK
+        bytea token_hash UK "SHA-256 do token"
+        uuid user_id FK
+        timestamptz created_at
+        timestamptz expires_at "no máximo 30 dias, TTL"
+        timestamptz auth_time "opcional, só registro"
+    }
+
+    oidc_login_states {
+        bytea state_hash PK "SHA-256 do state"
+        text code_verifier "PKCE"
+        text nonce
+        text return_to
+        timestamptz created_at
+        timestamptz expires_at "10 minutos, TTL"
+    }
+
+    users ||--o{ user_identities : "entra por"
+    users ||--o{ auth_sessions : "autentica"
+```
+
+`oidc_login_states` não liga a nenhuma conta: o login ainda não terminou, então ninguém sabe quem é.
+
 ## Ver também
 
 - [Glossário](produto/glossario.md)

@@ -38,13 +38,13 @@ Copie no PR que mexe em dados, logs, telas ou fornecedores:
 
 | Dado | Onde fica | Para quê | Base legal | Retenção |
 |---|---|---|---|---|
-| `sub` do Google (mestre, ou jogador que vinculou o Google) | `users` | Reconhecer a conta no login | Contrato | Até excluir |
-| E-mail do Google | `users` | Só contato de segurança (incidente, pedido do titular). Nunca aparece para outros usuários | Contrato; legítimo interesse | Até excluir |
+| `sub` do Google (mestre, ou jogador que vinculou o Google) | `user_identities.subject`, com `user_identities.issuer` | Reconhecer a conta no login | Contrato | Até excluir |
+| E-mail do Google | `user_identities.email` | Só contato de segurança (incidente, pedido do titular). Nunca aparece para outros usuários. Só é gravado se o provedor diz que foi verificado, e é atualizado ou apagado a cada login | Contrato; legítimo interesse | Até excluir |
 | Nome e foto do Google | — | Não coletamos. O nome de exibição é digitado no app | — | — |
 | Handle e nome de exibição | `table_handles`, `users` | Identificar o jogador na mesa | Contrato | Até sair da mesa ou excluir |
 | Hash de senha (argon2id), contador de falhas | `password_credentials` | Autenticar; travar tentativas | Contrato; legítimo interesse | Até remover a senha ou excluir |
-| Hash do token de sessão | `auth_sessions` | Manter o login | Contrato | No máximo 30 dias; apagado por TTL do banco |
-| Estado do login OIDC | `oauth_handshakes` | Login com Google | Contrato | 10 minutos |
+| Hash do token de sessão, datas e `auth_time` | `auth_sessions` (`token_hash`, `created_at`, `expires_at`, `auth_time`) | Manter o login; `auth_time` só para auditoria | Contrato | No máximo 30 dias; a linha vencida some pelo TTL do banco em até 1 dia |
+| Estado do login OIDC (`state` só como hash, `code_verifier`, `nonce`, `return_to`) | `oidc_login_states` | Login com o provedor OIDC | Contrato | 10 minutos; apagado no callback, ou pelo TTL do banco em até 1 hora |
 | Convite e link de reentrada (só hash) | `campaign_invites`, `reentry_links` | Entrar na campanha; recuperar acesso | Contrato | 30 dias depois de usado ou expirado |
 | Log de identidade (reentrada, vínculo e junção de contas) | Banco | Segurança e auditoria | Legítimo interesse | 180 dias, só com UUIDs |
 | IP no limitador de tentativas | Memória | Frear força bruta | Legítimo interesse | Minutos |
@@ -55,11 +55,22 @@ Copie no PR que mexe em dados, logs, telas ou fornecedores:
 | Imagens (retrato, mapa, galeria) | Cloud Storage | Jogar | Contrato | Até excluir, mais 7 dias de soft delete |
 | Eventos da sessão, combatentes, XP | `session_events`, `combatants`, `xp_awards` | Histórico e tempo real (MR-012, MR-016) | Contrato | Enquanto a campanha existir |
 | Backups do banco | Cockroach Labs | Recuperar desastre | Legítimo interesse | 30 dias |
-| Cookie de sessão e `localStorage` | Aparelho do usuário | Manter o login | Estritamente necessário | Até o logout, que limpa tudo |
+| Cookie de sessão `__Host-meurpg_session` e `localStorage` | Aparelho do usuário | Manter o login | Estritamente necessário | Até o logout, que limpa tudo, ou 30 dias |
+| Cookie de login `__Host-meurpg_login` (o `state`) | Aparelho do usuário | Amarrar o login ao navegador que o começou (contra login CSRF) | Estritamente necessário | 10 minutos; apagado no callback |
 
 **No app antigo (descontinuado)**, `users.name` era guardado, e havia duas colunas sem finalidade: `characters.email` e `sheet.playerName`. Não há migração de dados: as três simplesmente não existem no schema novo (decidido em 29/09/2026, ver [Modelo de dados](dados.md)). No app antigo, mapas ficavam em base64 no banco, e galeria e campanhas ficavam no `localStorage`.
 
 **Bug do app antigo (descontinuado):** o logout e o "Excluir conta" chamavam rotas que não existiam no NestJS (`POST /api/auth/logout` e `DELETE /api/auth/account`). O logout só limpava o navegador, e o token continuava válido no servidor até expirar. A exclusão falhava, então o direito de eliminação (art. 18, VI) não funcionava lá. Ele não é corrigido no app antigo — o sistema novo implementa os dois desde o primeiro deploy com login e prova com teste automático.
+
+### O que o módulo identity já faz
+
+O login do mestre (`backend/internal/identity`) cumpre assim os itens desta página:
+
+- **Escopo `openid email`.** Nome e foto nunca são pedidos nem gravados, mesmo quando o provedor manda.
+- **Logs sem dado pessoal.** Um login que falha registra só um motivo (`state_mismatch`, `invalid_id_token`...). Token, `code`, `state`, cookie, e-mail, `sub`, ID da conta e IP nunca vão para o log. Um teste confere isso.
+- **`GetMe` devolve só o ID da conta** e a hora em que a sessão acaba. A requisição é vazia, então o GET do Connect não põe dado pessoal na URL.
+- **Respostas sem cache.** `GetMe`, `SignOut` e as rotas `/auth/*` saem com `Cache-Control: no-store`; as rotas `/auth/*` também com `Referrer-Policy: no-referrer`.
+- **Excluir a conta** apaga identidades e sessões junto, por `ON DELETE CASCADE`.
 
 ## Direitos do titular e como atendemos
 

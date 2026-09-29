@@ -31,6 +31,21 @@ Estimativas, não uma fatura. Servem para decidir arquitetura, como o stream só
 
 Credenciais (client secret do Google OAuth, connection string do banco, e outras) ficam no Secret Manager do Google Cloud, nunca em variável de ambiente solta no repositório ou no deploy. A lista exata de segredos por ambiente está **a definir**.
 
+### Segredos e configuração do login
+
+O login do mestre (módulo `identity`) precisa de um segredo novo, o client secret do provedor OIDC, e de alguns valores que não são segredo:
+
+| Variável | Segredo? | Em produção |
+| --- | --- | --- |
+| `OIDC_CLIENT_SECRET` | Sim | Secret Manager, entregue ao Cloud Run como variável de ambiente |
+| `DATABASE_URL` | Sim (tem a senha do banco) | Secret Manager |
+| `OIDC_ISSUER` | Não | `https://accounts.google.com` |
+| `OIDC_CLIENT_ID` | Não | Variável de ambiente do serviço |
+| `OIDC_REDIRECT_URL` | Não | `https://<domínio>/auth/callback`, cadastrada igual no client OAuth do Google. Trocar de domínio pede cadastrar a URL nova antes do deploy |
+| `OIDC_MAX_AGE` | Não | Não definir com o Google, que não documenta `max_age` |
+
+O backend nunca escreve o client secret no log: o tipo `config.Secret` sai como `[REDACTED]`.
+
 ## Alertas de orçamento
 
 Um budget alert no Google Cloud avisa se o custo passar do esperado. Os limiares exatos estão **a definir**.

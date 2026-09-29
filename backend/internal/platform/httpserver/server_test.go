@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 )
@@ -157,5 +158,43 @@ func waitFor(t *testing.T, cond func() bool) {
 			t.Fatal("condition not met within 1s")
 		}
 		time.Sleep(time.Millisecond)
+	}
+}
+
+func TestCrossOriginProtection(t *testing.T) {
+	t.Parallel()
+
+	srv := New(Config{Logger: discardLogger()})
+	ok := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	srv.Handle("POST /rpc", ok)
+	srv.Handle("GET /page", ok)
+
+	tests := []struct {
+		name       string
+		method     string
+		path       string
+		header     map[string]string
+		wantStatus int
+	}{
+		{"same-origin POST from a browser", http.MethodPost, "/rpc", map[string]string{"Sec-Fetch-Site": "same-origin"}, http.StatusOK},
+		{"POST from a non-browser client (no Sec-Fetch-Site, no Origin)", http.MethodPost, "/rpc", nil, http.StatusOK},
+		{"cross-site POST from a browser", http.MethodPost, "/rpc", map[string]string{"Sec-Fetch-Site": "cross-site"}, http.StatusForbidden},
+		{"same-site but cross-origin POST", http.MethodPost, "/rpc", map[string]string{"Sec-Fetch-Site": "same-site"}, http.StatusForbidden},
+		{"POST whose Origin is another host (older browser)", http.MethodPost, "/rpc", map[string]string{"Origin": "https://evil.example"}, http.StatusForbidden},
+		{"cross-site GET passes (safe method)", http.MethodGet, "/page", map[string]string{"Sec-Fetch-Site": "cross-site"}, http.StatusOK},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			req := httptest.NewRequestWithContext(t.Context(), tt.method, "http://meurpg.example"+tt.path, nil)
+			for k, v := range tt.header {
+				req.Header.Set(k, v)
+			}
+			rec := httptest.NewRecorder()
+			srv.Handler().ServeHTTP(rec, req)
+			if rec.Code != tt.wantStatus {
+				t.Errorf("status = %d, want %d", rec.Code, tt.wantStatus)
+			}
+		})
 	}
 }
