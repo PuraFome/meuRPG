@@ -22,6 +22,14 @@ overrides:
       # reaches a query.
       - db_type: uuid
         go_type: string
+      # A nullable UUID (characters.campaign_id, player_user_id,
+      # master_user_id) becomes *string, like a nullable timestamptz becomes
+      # *time.Time, instead of pgtype.UUID.
+      - db_type: uuid
+        nullable: true
+        go_type:
+          type: string
+          pointer: true
       - db_type: timestamptz
         go_type: time.Time
       - db_type: timestamptz
@@ -55,3 +63,21 @@ sql:
         <<: *go-options
         package: campaignsdb
         out: internal/campaigns/campaignsdb
+
+  - engine: postgresql
+    schema: migrations
+    queries: internal/characters/queries.sql
+    gen:
+      go:
+        <<: *go-options
+        package: charactersdb
+        out: internal/characters/charactersdb
+
+  - engine: postgresql
+    schema: migrations
+    queries: internal/play/queries.sql
+    gen:
+      go:
+        <<: *go-options
+        package: playdb
+        out: internal/play/playdb

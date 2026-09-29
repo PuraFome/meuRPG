@@ -147,7 +147,7 @@ export type Character = Message<"meurpg.characters.v1.Character"> & {
 
   /**
    * Whether the caller may call UpdateCharacter now: always for the master;
-   * for the owning player, only while the state is DRAFT.
+   * for the owning player, only while the state is DRAFT or PENDING.
    *
    * @generated from field: bool can_edit = 16;
    */
@@ -155,8 +155,8 @@ export type Character = Message<"meurpg.characters.v1.Character"> & {
 
   /**
    * Whether the caller may call UpdateCharacterStory now: always for the
-   * master; for the owning player, while the state is DRAFT or while
-   * story_editing_allowed is true.
+   * master; for the owning player, while the state is DRAFT or PENDING, or
+   * while story_editing_allowed is true.
    *
    * @generated from field: bool can_edit_story = 17;
    */
@@ -1846,7 +1846,8 @@ export const CharacterService: GenService<{
    *
    * The campaign's master may edit every character of the campaign, in
    * every state. The player who owns a character may edit it only while it
-   * is a draft: once a game session starts, the sheet is locked for them
+   * is a draft, or while it waits for the master's approval (PENDING,
+   * MR-024): once a game session starts, the sheet is locked for them
    * (RN-01), and a dead character stays as it died.
    *
    * The kind never changes, and the sheet's type must still match it.
@@ -1884,7 +1885,7 @@ export const CharacterService: GenService<{
    *   - The campaign's master may change it in every state. Only the master
    *     edits an NPC's story.
    *   - The player who owns the character may change it while the character
-   *     is a draft, and afterwards (locked or dead) only while the master
+   *     is a draft or pending, and afterwards (locked or dead) only while the master
    *     allows it with SetStoryEditing. That permission ends when the next
    *     game session starts.
    * Nobody ever edits the numbers the server derives from the sheet.

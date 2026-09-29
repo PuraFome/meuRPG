@@ -13,7 +13,7 @@ Usar as mesmas palavras nas conversas, nos documentos e no código evita muita c
 | Handle | O apelido que identifica o jogador sem Google: o apelido do mestre junto do apelido do jogador, único dentro da mesa (RN-17). | `table_handles.handle_norm` |
 | Convite | Link que **adiciona** um jogador à campanha. Guardamos só o hash do token. Pode exigir aprovação: o jogador já cria o personagem pelo convite, e o mestre aprova ou recusa (RN-15). | `campaign_invite` |
 | Link da sessão | Link que **leva** um membro direto para a sessão ao vivo. Não dá acesso a quem não é membro. | `session_link` |
-| Sessão de jogo | Um encontro da mesa, com começo e fim. | `game_session` |
+| Sessão de jogo | Um encontro da mesa, com começo e fim, numerado a partir de 1 em cada campanha. Só uma fica aberta por vez, e iniciar uma sessão trava as fichas. | `game_session`, `session_number` |
 | Sessão de login | O login de um usuário no app. Não confundir com a sessão de jogo. | `auth_session` |
 | Intenção de login | Algo que a pessoa pediu antes de entrar e que o servidor conclui logo depois do login, como aceitar um convite. Fica só no servidor, dentro do estado do login. | `intent`, `IntentHandler` |
 | Cena de RP | Momento fora de combate, aberto por um ponto de interesse. | `scene` |
@@ -21,8 +21,12 @@ Usar as mesmas palavras nas conversas, nos documentos e no código evita muita c
 | Encontro | Um combate num mapa, com iniciativa, rodadas e turnos. | `encounter` |
 | Combatente | Um personagem dentro de um encontro. Guarda PV atual, iniciativa e posição daquele combate. | `combatant` |
 | Personagem | Tem um tipo: jogador, inimigo, boss, minion ou NPC de história. O personagem de jogador que morre não é apagado: fica no sistema, como base de outro personagem ou como NPC do mestre em outra campanha (RN-03, RN-04). | `character`, `kind` |
-| Ficha | Os dados de regra de um personagem. Completa para jogador, inimigo e boss; básica para minion e NPC de história. | `sheet` |
+| Ficha | Os dados de regra de um personagem. Completa para jogador, inimigo e boss; básica para minion e NPC de história. | `sheet`, `FullSheet`, `BasicSheet` |
 | Trava da ficha | Momento em que o jogador deixa de editar a própria ficha: o início da primeira sessão da campanha, ou da próxima sessão para um personagem criado depois. A história do personagem tem trava própria, que o mestre libera. | `sheet_locked_at`, `story_editing_allowed` |
+| Estado do personagem | Onde o personagem está no ciclo de vida: rascunho, travada, morto ou pendente de aprovação. O servidor calcula a cada leitura; o NPC está sempre em rascunho. | `CharacterState` |
+| História do personagem | Personalidade, aparência, história e aliados: o texto que descreve o personagem, fora das regras. Depois da trava da ficha, o jogador só a edita quando o mestre libera (liberação da história), até a próxima sessão. | `CharacterStory`, `story_editing_allowed` |
+| Revisão do personagem | Número que sobe a cada mudança no nome, na ficha ou na história. Se o personagem mudou depois que o app o abriu, o salvamento é recusado, e a pessoa recarrega a ficha. | `revision` |
+| Notas do mestre | O que o mestre anota sobre um personagem, separado por campanha. Só o mestre lê e edita; nunca chegam ao jogador (RN-11). | `character_master_notes` |
 | Conteúdo de regras (SRD 5.1) | O conjunto de raças, classes, magias e regras que o app conhece. Vem do SRD 5.1 (CC-BY-4.0) e tem uma versão, como `srd51@a8abc93b235c+fx.1`, que a ficha mostra. | `content_version` |
 | Chave de conteúdo | O identificador estável de um item de regra, como `class:wizard` ou `spell:fire-bolt`. A ficha guarda chaves, nunca nomes. | `key` |
 | Escolhas da ficha (build) | O que o jogador escolheu: atributos base, raça, classes, antecedente, perícias, magias e equipamento. Os números nunca são guardados. | `Build`, `FullSheet` |

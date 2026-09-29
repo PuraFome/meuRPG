@@ -44,6 +44,9 @@ func TestConnectGETOnlyForRequestsWithoutData(t *testing.T) {
 		"meurpg.system.v1.SystemService",
 		"meurpg.identity.v1.IdentityService",
 		"meurpg.campaigns.v1.CampaignService",
+		"meurpg.characters.v1.CharacterService",
+		"meurpg.rules.v1.ContentService",
+		"meurpg.play.v1.PlayService",
 	} {
 		if !services[want] {
 			t.Errorf("%s was not checked; is it still linked into cmd/api?", want)

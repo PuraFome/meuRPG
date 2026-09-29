@@ -45,3 +45,38 @@ func TestClean(t *testing.T) {
 		t.Errorf("Clean(spaces) error = %v, want ErrEmpty", err)
 	}
 }
+
+func TestCleanText(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		input   string
+		want    string
+		wantErr bool
+	}{
+		{"empty is fine", "", "", false},
+		{"only spaces become empty", " \t\n ", "", false},
+		{"keeps line breaks and tabs inside", "Nasceu em\n\tMirathel.", "Nasceu em\n\tMirathel.", false},
+		{"trims blank lines at both ends", "\n\nNasceu.\n\n", "Nasceu.", false},
+		{"Windows line breaks", "linha 1\r\nlinha 2", "linha 1\nlinha 2", false},
+		{"old Mac line breaks", "linha 1\rlinha 2", "linha 1\nlinha 2", false},
+		{"exactly the limit", strings.Repeat("é", 20), strings.Repeat("é", 20), false},
+		{"one character over", strings.Repeat("é", 21), "", true},
+		{"NUL", "Mira\x00thel", "", true},
+		{"escape", "Mira\x1bthel", "", true},
+		{"right-to-left override", "Mira\u202ethel", "", true},
+		{"invalid UTF-8", "Mira\xffthel", "", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := CleanText(tt.input, 20)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("CleanText(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+			}
+			if got != tt.want {
+				t.Errorf("CleanText(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}

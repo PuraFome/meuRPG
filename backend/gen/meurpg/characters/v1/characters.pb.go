@@ -414,11 +414,11 @@ type Character struct {
 	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	// Whether the caller may call UpdateCharacter now: always for the master;
-	// for the owning player, only while the state is DRAFT.
+	// for the owning player, only while the state is DRAFT or PENDING.
 	CanEdit bool `protobuf:"varint,16,opt,name=can_edit,json=canEdit,proto3" json:"can_edit,omitempty"`
 	// Whether the caller may call UpdateCharacterStory now: always for the
-	// master; for the owning player, while the state is DRAFT or while
-	// story_editing_allowed is true.
+	// master; for the owning player, while the state is DRAFT or PENDING, or
+	// while story_editing_allowed is true.
 	CanEditStory bool `protobuf:"varint,17,opt,name=can_edit_story,json=canEditStory,proto3" json:"can_edit_story,omitempty"`
 	// Whether the caller may call MarkCharacterDead: the master, for a player
 	// character that is not dead yet.

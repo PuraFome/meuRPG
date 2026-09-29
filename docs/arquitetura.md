@@ -24,8 +24,8 @@ Cada módulo do backend fica em `backend/internal/<módulo>`. Um módulo só cha
 
 - `identity`: login do mestre, sessões de login e usuários. O login do mestre é um *relying party* OIDC genérico: Google em produção, um provedor OIDC local nos testes ponta a ponta — o módulo fala o protocolo, não um SDK do Google. O login do jogador sem Google (RN-17, decidido pelo Samuel em 29/09/2026: handle por mesa, sem e-mail) ainda não está implementado — ver [ADR-0009](adr/0009-login-do-jogador-sem-google.md). Criar campanha continua exigindo uma conta com Google no MVP (RN-14).
 - `campaigns`: campanhas, membros, papéis e convites.
-- `characters`: personagens, fichas, trava e cópias.
-- `play`: sessão de jogo, cenas, encontros, combatentes e o stream ao vivo.
+- `characters`: personagens, fichas, história, trava, notas do mestre e, depois, cópias. Também serve o catálogo de regras do editor (`ContentService`) enquanto não existe conteúdo da mesa (ver [Módulo characters](#módulo-characters-personagens-e-fichas)).
+- `play`: sessão de jogo, cenas, encontros, combatentes e o stream ao vivo. Na Etapa 4, só iniciar, encerrar e listar sessões, o que trava as fichas (ver [Módulo play](#módulo-play-sessões-de-jogo)).
 - `maps`: mapas, pontos de interesse e, depois, masmorras.
 - `progression`: modo de XP, XP dado e aviso de subir de nível.
 - `rules`: as contas do D&D 5e (modificadores, CD, bônus). Não acessa o banco, então é fácil de testar.
@@ -84,7 +84,7 @@ Regras:
 6. Campos em `snake_case` no `.proto`; o TypeScript gerado usa `camelCase` sozinho.
 7. Chamada só de leitura leva um nível de idempotência, e qual depende da requisição (decidido por Vinicius em 29/09/2026):
    - **Requisição sem ID e sem dado pessoal** (vazia, como `GetMe`, `ListMyCampaigns` e `GetServerInfo`): `idempotency_level = NO_SIDE_EFFECTS`. O Connect passa a aceitar GET, que o navegador pode guardar em cache.
-   - **Requisição com ID ou dado pessoal** (como `GetCampaign`, `ListMembers` e `ListInvites`): `idempotency_level = IDEMPOTENT`. Fica documentada como leitura e segura para repetir, mas só aceita POST: num GET, a mensagem inteira vai na URL, e a URL fica nos logs da plataforma (ver [Privacidade](privacidade.md)).
+   - **Requisição com ID ou dado pessoal** (como `GetCampaign`, `ListMembers`, `ListInvites`, `GetCharacter`, `ListCharacters`, `GetMasterNotes`, `ListContent` e `ListGameSessions`): `idempotency_level = IDEMPOTENT`. Fica documentada como leitura e segura para repetir, mas só aceita POST: num GET, a mensagem inteira vai na URL, e a URL fica nos logs da plataforma (ver [Privacidade](privacidade.md)).
    - O teste `TestConnectGETOnlyForRequestsWithoutData` (`backend/cmd/api`) falha se um método `NO_SIDE_EFFECTS` tiver requisição com campo.
 8. Os nomes seguem o Google AIP (decidido por Vinicius em 29/09/2026):
    - **Métodos padrão** começam com `Get`, `List`, `Create`, `Update` ou `Delete` mais o recurso (AIP-131 a AIP-135): `GetCampaign`, `ListMembers`, `CreateInvite`.
@@ -129,10 +129,10 @@ Cada regra de negócio recusada devolve um código de erro do Connect, sempre o 
 | --- | --- |
 | `unauthenticated` | Sem sessão de login válida. |
 | `permission_denied` | O usuário é membro da campanha, mas não tem o papel: um jogador tenta uma ação de mestre. |
-| `failed_precondition` | A regra não deixa agora: ficha travada (RN-01), sessão que não começou, convite expirado. |
+| `failed_precondition` | A regra não deixa agora: ficha travada (RN-01), sessão que não começou, convite expirado. Vem com um detalhe que diz o motivo, quando há mais de um (`InviteUnusable`, `CharacterBlocked`). |
 | `not_found` | Não existe, ou o usuário não pode saber que existe: um ponto escondido, ou uma campanha da qual ele não é membro (ADR-0011). |
 | `invalid_argument` | Entrada inválida, como um atributo acima de 30. |
-| `aborted` | Conflito de transação (`40001`) que continuou depois das novas tentativas. |
+| `aborted` | Conflito de transação (`40001`) que continuou depois das novas tentativas, ou uma ficha que mudou desde que o app a leu (revisão velha, AIP-154). O app recarrega e a pessoa tenta de novo. |
 
 ## Frontend (web/)
 
@@ -510,6 +510,79 @@ As fórmulas dos efeitos rodam no Expr (`github.com/expr-lang/expr`), pinado em 
 - **Testes.** Um teste tenta cada construção proibida, e um fuzz (`FuzzCompileFormula`) alimenta o compilador com entrada aleatória.
 
 O SRD 5.1 é CC-BY-4.0: a atribuição exata fica no `NOTICE`, em `srd51.Attribution` e na página "Créditos"; um teste confere que são o mesmo texto.
+
+## Módulo characters: personagens e fichas
+
+O jogador cria o próprio personagem e o mestre cria os NPCs; a ficha volta com os números calculados pelo servidor (MR-003, MR-004, MR-005, MR-006). O código fica em `backend/internal/characters`, e as tabelas estão em [Modelo de dados](dados.md#esquema-implementado).
+
+- **A ficha guarda escolhas, não números.** `CharacterSheet` é uma ficha completa (`FullSheet`: jogador, inimigo e boss) ou básica (`BasicSheet`: minion e NPC de história). A completa guarda chaves de conteúdo, como `class:wizard`; toda escrita passa por `rules.Validate`, e toda leitura por `rules.Derive`, que devolve o `DerivedSheet` (ver [Módulo rules](#módulo-rules-regras-como-dados)). O navegador nunca calcula uma regra.
+- **A história é à parte** (`CharacterStory`: personalidade, aparência, história, aliados), com a própria trava e a própria chamada (`UpdateCharacterStory`).
+- **Revisão.** Ficha e história dividem uma `revision`. Quem salva manda a revisão que leu; se a ficha mudou nesse meio-tempo, a resposta é `aborted` e nada muda.
+- **Notas do mestre** ficam numa tabela à parte e só saem por `GetMasterNotes`. Nenhuma outra resposta as carrega (RN-11), e um teste confere cada resposta que o jogador pode pedir.
+
+| Chamada | Mestre | Dono (jogador) | Outro jogador | Não membro | Anônimo |
+| --- | --- | --- | --- | --- | --- |
+| `CreateCharacter`, tipo jogador | `permission_denied` | Sim; `failed_precondition` se já tem um vivo (RN-03) | Sim, o próprio | `not_found` | `unauthenticated` |
+| `CreateCharacter`, NPC | Sim | `permission_denied` | `permission_denied` | `not_found` | `unauthenticated` |
+| `GetCharacter`, `UpdateCharacter`, `UpdateCharacterStory` do personagem do jogador | Sim | Sim, dentro das travas abaixo | `not_found` | `not_found` | `unauthenticated` |
+| `GetCharacter`, `UpdateCharacter`, `UpdateCharacterStory` de um NPC | Sim | `not_found` | `not_found` | `not_found` | `unauthenticated` |
+| `ListCharacters` | Todos, NPCs incluídos | Só os próprios | Só os próprios | `not_found` | `unauthenticated` |
+| `SetStoryEditing`, `MarkCharacterDead` (só personagem de jogador) | Sim | `permission_denied` | `permission_denied` | `not_found` | `unauthenticated` |
+| `GetMasterNotes`, `UpdateMasterNotes` | Sim | `permission_denied` | `permission_denied` | `not_found` | `unauthenticated` |
+| `ContentService.ListContent` | Sim | Sim | Sim | `not_found` | `unauthenticated` |
+
+Um membro que não pode ver um personagem (o de outro jogador, ou qualquer NPC para um jogador) recebe `not_found`, com a mesma mensagem de um personagem que não existe; assim ninguém descobre IDs de NPC. O teste `TestAuthorizationMatrix` chama cada método como cada um dos cinco e falha se um método novo aparecer sem linha na tabela.
+
+**As travas do jogador (RN-01).** O dono edita a ficha enquanto ela é rascunho. Depois que uma sessão começa, a ficha trava; a história também, e o jogador só a edita enquanto o mestre libera (`SetStoryEditing`), até a próxima sessão começar. O mestre edita tudo, sempre. Os números calculados nunca são editáveis.
+
+| Motivo (`CharacterBlockedReason`) | Quando |
+| --- | --- |
+| `SHEET_LOCKED` | O jogador tenta editar a ficha depois que uma sessão começou. |
+| `CHARACTER_DEAD` | O jogador tenta editar a ficha de um personagem morto (RN-03). |
+| `LIVING_CHARACTER_EXISTS` | O jogador tenta criar um segundo personagem vivo na campanha (RN-03). O detalhe traz o ID do personagem vivo. |
+| `STORY_LOCKED` | O jogador tenta editar a história de um personagem travado ou morto sem a liberação do mestre. |
+
+Esses motivos vêm no detalhe `CharacterBlocked` do `failed_precondition`, e ganham de uma revisão velha: tentar de novo não resolveria. Um `invalid_argument` diz o campo, com o caminho do proto (por exemplo, `sheet.full.base_scores.intelligence`), e nunca repete o que a pessoa digitou.
+
+**Texto livre.** O servidor tira espaços das pontas; campos de uma linha recusam quebra de linha e caracteres de controle, e os de várias linhas aceitam quebra de linha e tabulação. Os limites, em caracteres, estão nos comentários de `characters.proto`.
+
+**Respostas e GET.** Como no `campaigns`: toda resposta, inclusive os erros, sai com `Cache-Control: no-store`, e toda leitura leva um ID, então é `IDEMPOTENT` e só aceita POST.
+
+**Por que o `ContentService` fica aqui.** A ADR-0008 põe o conteúdo da mesa no `campaigns`. Na Etapa 4 o conteúdo é só o SRD embutido no `rules`, sem nada no banco, então o catálogo é montado uma vez na partida e servido pelo `characters`. A requisição já leva o `campaign_id`, porque o conteúdo da mesa vai ser por campanha (decidido pelo Samuel em 29/09/2026).
+
+## Módulo play: sessões de jogo
+
+Na Etapa 4, o `play` só inicia, encerra e lista as sessões de jogo de uma campanha, para a trava da ficha (RN-01) acontecer de verdade. A mesa ao vivo (aviso aos jogadores, turnos, ações e histórico) vem nas Etapas 5 e 6. O código fica em `backend/internal/play`.
+
+| Chamada do `PlayService` | Quem pode | Erros próprios |
+| --- | --- | --- |
+| `StartGameSession` | O mestre da campanha | `failed_precondition` se já há uma sessão aberta |
+| `EndGameSession` | O mestre da campanha | `not_found` se a sessão não é da campanha. Encerrar de novo não é erro: devolve a sessão como está |
+| `ListGameSessions` | Membros da campanha | — |
+
+**Como o `play` e o `characters` se encontram.** Iniciar uma sessão trava as fichas na mesma transação que abre a sessão. O `play` não mexe na tabela `characters`: ele declara uma interface, `SheetLocker`, que o `characters.Service` implementa com `LockSheets`, e o `cmd/api` liga os dois. Nenhum dos dois pacotes importa o outro. `LockSheets` não recebe quem está chamando: é "o sistema" da RN-01, e só o `play` o chama, depois de conferir que quem chama é o mestre.
+
+```mermaid
+sequenceDiagram
+    participant M as Mestre
+    participant P as play
+    participant C as characters
+    participant DB as CockroachDB
+    M->>P: StartGameSession
+    P->>P: authz, só o mestre
+    P->>DB: BEGIN
+    P->>DB: já há sessão aberta?
+    P->>DB: INSERT game_sessions, número seguinte
+    P->>C: LockSheets(tx, campanha, agora)
+    C->>DB: trava as fichas vivas que ainda são rascunho
+    C->>DB: desliga as liberações da história
+    P->>DB: COMMIT
+    P-->>M: a sessão e quantas fichas travaram
+```
+
+- **Uma sessão aberta por campanha.** A checagem dentro da transação dá o erro claro; um índice único parcial garante a regra quando duas chamadas correm juntas.
+- **O personagem criado depois** da primeira sessão fica rascunho até a próxima começar, porque `LockSheets` roda em todo início de sessão, não só no primeiro.
+- **Encerrar não destrava nada.** A ficha continua travada entre as sessões.
 
 ## Ver também
 
