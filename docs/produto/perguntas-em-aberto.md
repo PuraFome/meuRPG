@@ -39,10 +39,12 @@ Nenhuma delas trava a Etapa 1. Todas são para o Samuel, e cada resposta vira um
 - **Plano do CockroachDB.** É o plano legado Unlimited, contratado antes da mudança de licenças de 2024. Trocar de plano perde o Unlimited; está em avaliação se vale migrar para o Cloud SQL ou outro produto (respondida pelo Vinicius em 29/09/2026). Ver [Operação](../operacao.md).
 - **Conteúdo cadastrado pela mesa.** Vale por campanha, porque campanhas diferentes usam materiais diferentes (respondida pelo Vinicius em 29/09/2026). Ver [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
 - **Banco do app antigo.** É desligado, com os backups, logo depois da importação única dos personagens, na Etapa 8 (respondida pelo Vinicius em 29/09/2026). Ver [roadmap](../roadmap.md).
+- **Dados físicos ou do app (RN-18).** Os dois: o mestre escolhe se permite; se permitir, cada jogador escolhe entre o dado do app e o físico (decidido pelo Samuel em 29/09/2026). Ver [RN-18](regras.md).
+- **Conteúdo que não vem no SRD.** Ideia do Samuel (29/09/2026): o mestre manda o PDF das regras e o app cadastra sozinho as classes, raças e regras; quando não der, o mestre cadastra, e o jogador pode propor uma raça ou classe nova (com o PDF ou o link) para o mestre aprovar. Virou as histórias [MR-025](historias.md#mr-025-cadastrar-conteúdo-da-mesa), [MR-026](historias.md#mr-026-propor-uma-raça-ou-classe-nova) e [MR-027](historias.md#mr-027-ler-as-regras-de-um-pdf), sem prioridade ainda.
 
 ## Em aberto
 
-- [ ] **Dados físicos, dados do app, ou os dois?** O motor aceita os dois; a escolha muda a tela de combate (Etapa 6). Sugestão: os dois, e cada jogador escolhe. Ver [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
+Nenhuma aqui. As perguntas novas ficam no documento de acompanhamento: hoje, a prioridade e a forma do conteúdo cadastrado pela mesa ([MR-025](historias.md#mr-025-cadastrar-conteúdo-da-mesa), [MR-026](historias.md#mr-026-propor-uma-raça-ou-classe-nova) e [MR-027](historias.md#mr-027-ler-as-regras-de-um-pdf)).
 
 ## Ver também
 

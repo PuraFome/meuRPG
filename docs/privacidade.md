@@ -221,6 +221,7 @@ Todo PR responde. Um "sim" pede uma seção curta de riscos e medidas no PR. Doi
 - Criar o e-mail do canal do encarregado (um endereço só para isso, até ter domínio) e publicá-lo no aviso de privacidade.
 - Contrato LGPD com a Cockroach Labs; contratos para Render, GitHub Pages e Cloudflare enquanto forem usados.
 - Conferir no console do CockroachDB Cloud que os backups ficam em São Paulo e são guardados por no máximo 30 dias. O plano atual, o legado Unlimited, fica (decidido pelo Samuel em 29/09/2026); trocar de plano perde o Unlimited, e está em avaliação se vale migrar para o Cloud SQL ou outro produto (ver [Operação](operacao.md)).
+- Antes de ler PDFs de regras com IA (MR-027): escolher o operador, dizer o que sai do servidor, e tratar o direito autoral de livros oficiais (o resultado só aparece para a mesa).
 - Revisão por advogado do aviso de privacidade, dos termos de uso e desse tratamento, antes do primeiro deploy público.
 
 ## Roteiro do aviso de privacidade

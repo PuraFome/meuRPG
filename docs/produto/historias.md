@@ -34,6 +34,9 @@ MR-021 e MR-022 são novas e saíram das respostas do Samuel de 28/09/2026. Fica
 | [MR-021](#mr-021-copiar-personagem) | Personagem | Depois |
 | [MR-022](#mr-022-reutilizar-npcs) | Personagem | Depois |
 | [MR-023](#mr-023-passar-ou-dividir-a-campanha) | Campanha | Depois |
+| [MR-025](#mr-025-cadastrar-conteúdo-da-mesa) | Regras | A definir |
+| [MR-026](#mr-026-propor-uma-raça-ou-classe-nova) | Regras | A definir |
+| [MR-027](#mr-027-ler-as-regras-de-um-pdf) | Regras | A definir |
 
 ## Prioridade: MVP
 
@@ -366,6 +369,48 @@ Fora do MVP. Entram na Etapa 8 do [roadmap](../roadmap.md).
 
 #### Consequência
 Hoje, excluir a conta de quem criou a campanha apaga a campanha inteira (ver [Privacidade](../privacidade.md#excluir-a-conta)). Com mais de um mestre, ou depois de uma passagem de campanha, isso muda: a campanha só é apagada quando o último mestre sai. Ver [ADR-0011](../adr/0011-autorizacao-papeis-por-campanha.md), como proposta.
+
+## Prioridade: A definir
+
+Novas, da ideia do Samuel de 29/09/2026 para o conteúdo que não vem pronto no SRD 5.1. A prioridade está perguntada no documento de acompanhamento.
+
+### MR-025: Cadastrar conteúdo da mesa
+
+**Como** mestre, **quero** cadastrar raças, classes, subclasses, antecedentes e regras que não vêm no SRD 5.1, **para** a campanha usar o material que a mesa joga.
+
+- Prioridade: A definir
+- Regras: —
+- Módulos: rules, campaigns
+
+#### Critérios de aceite (proposta)
+- **Dado** que sou mestre de "Mirathel", **quando** cadastro uma classe nova com os dados, as perícias e as características dela, **então** a classe aparece no editor de personagem só em "Mirathel" **e** a ficha calcula os números com ela.
+- **Dado** um conteúdo cadastrado em "Mirathel", **quando** abro outra campanha minha, **então** ele não aparece lá: o conteúdo vale por campanha (decidido em 29/09/2026).
+
+### MR-026: Propor uma raça ou classe nova
+
+**Como** jogador, **quero** propor uma raça ou uma classe que não existe no app ao criar o personagem, com o PDF ou o link das regras, **para** o mestre ler e decidir.
+
+- Prioridade: A definir
+- Regras: RN-15 (a mesma ideia de aprovação do convite)
+- Módulos: rules, characters
+
+#### Critérios de aceite (proposta)
+- **Dado** que quero jogar de cozinheiro, uma classe feita por fãs, **quando** crio o personagem e proponho a classe com o link do PDF, **então** o mestre vê o pedido **e** o personagem fica esperando a decisão.
+- **Dado** um pedido de classe nova, **quando** o mestre aprova e cadastra as regras dela (MR-025), **então** o personagem passa a usar a classe; **quando** o mestre recusa, **então** o jogador escolhe outra classe.
+
+#### Exemplo do Samuel
+O jogador quer jogar de cozinheiro, uma classe não oficial. Ele cadastra a classe ao criar o personagem e põe o link do PDF (ou o PDF) para o mestre ler, aprovar ou recusar, e cadastrar como funcionam as regras dela.
+
+### MR-027: Ler as regras de um PDF
+
+**Como** mestre, **quero** mandar o PDF com as regras e ver o app cadastrar sozinho as classes, raças e regras dele, **para** não digitar tudo.
+
+- Prioridade: A definir
+- Regras: —
+- Módulos: rules
+
+#### Dúvidas
+- Ler um PDF de regras automaticamente precisa de um serviço de IA, que custa por uso e recebe o PDF. Um livro oficial tem direito autoral: o app não pode redistribuir o texto, e o resultado só pode aparecer para a mesa. Quando não der para ler o PDF, o cadastro fica com o mestre (MR-025). Perguntado no documento de acompanhamento.
 
 ## Ver também
 

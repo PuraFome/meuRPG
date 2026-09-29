@@ -31,6 +31,8 @@ flowchart TD
 
 MR-023 (passar ou dividir a campanha) e MR-024 (aprovar o personagem do convite) vieram das respostas do Samuel de 29/09/2026. No mesmo dia ele decidiu a prioridade: a MR-024 entra no MVP, na Etapa 4, e a MR-023 fica para a Etapa 8 (ver [Histórias](produto/historias.md)).
 
+MR-025, MR-026 e MR-027 (o conteúdo que a mesa cadastra, inclusive por PDF) vieram de uma ideia do Samuel de 29/09/2026 e ainda não têm prioridade nem etapa (ver [Histórias](produto/historias.md#prioridade-a-definir)).
+
 Cada etapa entrega algo para o mestre e para o jogador. Não há datas: o ritmo depende do tempo livre de cada um.
 
 ## Ver também
