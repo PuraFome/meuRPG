@@ -2,7 +2,7 @@
 
 O MeuRPG é onde uma mesa de D&D 5e prepara e joga suas campanhas. O mestre prepara o mundo e conduz a sessão ao vivo; o jogador entra por convite, acompanha a ficha e age no RP e no combate com o que as regras permitem. Mais contexto em [docs/produto/visao.md](docs/produto/visao.md).
 
-O MeuRPG novo está sendo construído do zero: um backend em Go (monólito modular, API em Protobuf + Connect, rodando no Cloud Run em São Paulo) e um novo app Angular em `web/`, servido pelo mesmo servidor. Decidido em 29/09/2026: não há migração gradual. O app antigo — Angular em `src/` (GitHub Pages) e NestJS em `server/` (Render) — está descontinuado e fica no repositório só como referência, até sair num PR à parte. Detalhes em [docs/arquitetura.md](docs/arquitetura.md) e o estado de cada etapa em [docs/roadmap.md](docs/roadmap.md).
+O MeuRPG novo está sendo construído do zero: um backend em Go (monólito modular, API em Protobuf + Connect, rodando no Cloud Run em São Paulo) e um novo app Angular em `web/`, servido pelo mesmo servidor. Decidido em 29/09/2026: não há migração gradual. O app antigo — Angular em `src/` (GitHub Pages) e NestJS em `server/` (Render) — está descontinuado. O `src/` fica no repositório só como referência, até sair num PR à parte. O `server/` (NestJS) **será removido do repositório** — decidido pelo Samuel em 29/09/2026 —, porque o backend novo em Go cobre sozinho todas as histórias do MVP; até lá, a seção abaixo continua documentando o que existe. Detalhes em [docs/arquitetura.md](docs/arquitetura.md) e o estado de cada etapa em [docs/roadmap.md](docs/roadmap.md).
 
 - Documentação completa: [docs/README.md](docs/README.md)
 - Como rodar, testar e abrir um PR: [CONTRIBUTING.md](CONTRIBUTING.md)
@@ -28,6 +28,8 @@ npm start
 Todos os comandos estão em `make help` e no [CONTRIBUTING.md](CONTRIBUTING.md). Os comandos do app antigo (descontinuado, só para consulta) estão na seção abaixo.
 
 ## App antigo (descontinuado)
+
+O `src/` (Angular) fica só como referência até sair do repositório num PR à parte. O `server/` (NestJS) será removido do repositório (decidido pelo Samuel em 29/09/2026): o backend novo em Go passa a cobrir sozinho todas as histórias do MVP, então não faz sentido manter os dois. A subseção "Backend (NestJS)" abaixo documenta o que existe até essa remoção.
 
 ### Frontend (Angular)
 

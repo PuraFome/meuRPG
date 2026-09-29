@@ -1,52 +1,58 @@
 # Perguntas em aberto
 
-Nenhuma delas trava a Etapa 1. Todas são para o Samuel, e cada resposta vira uma regra marcada como "Decidido".
+Nenhuma delas trava a Etapa 1. Todas são para o Samuel, e cada resposta vira uma regra marcada como "Decidido". Pergunta nova, a partir de agora, entra pelo documento de acompanhamento, não aqui.
 
-- [ ] **Nome do produto e domínio.** O domínio sai do Student Pack e só é necessário no primeiro deploy.
-- [ ] **RN-02:** o mestre pode corrigir PV e espaços de magia na mão durante a sessão? O guia assume que sim ("o mestre tem a palavra final").
-- [ ] **RN-05:** um mestre pode ser jogador em outra campanha? A resposta de 28/09 tratou dos personagens; o guia assume que sim.
-- [ ] **MR-015:** a lista de ações da cena sai sozinha da ficha, ou o mestre escolhe as ações de cada cena?
-- [ ] **RN-09:** no modo por ouro, quanto XP vale cada peça de ouro? As edições antigas do D&D usavam 1 XP por 1 PO.
-- [ ] **RN-03:** o jogador tem um personagem por campanha, ou pode ter outro, por exemplo quando o primeiro morre?
-- [ ] **RN-07:** o convite serve para vários jogadores ou para um só? E vale por quanto tempo? O link de hoje pode ser reutilizado.
-  - Implementado em 29/09/2026, até a resposta: um uso e 7 dias por padrão (como a ADR-0009 propõe), e o mestre pode escolher de 1 a 20 usos e de 5 minutos a 30 dias, e revogar. O convite de vários usos com aprovação do mestre (ADR-0009) ainda não existe. Os critérios de aceite propostos para a [MR-002](historias.md#mr-002-gerar-convite) também esperam o aceite.
-- [ ] **RN-06:** a notificação para quem está com o app aberto basta no MVP, ou precisa de notificação do navegador (push) com o app fechado?
-- [ ] **RN-08:** a importação de DOCX continua? Se sim, de qual modelo? E a escolha entre D&D Beyond e ficha em português vale também para o jeito de mostrar a ficha?
-- [ ] **MR-018 e MR-019:** documento de campanha e galeria de imagens existiam no app antigo. Entram no MVP ou ficam para Depois?
-- [ ] Algum dado do app antigo (por exemplo o Pensantus) precisa vir para o sistema novo? Se sim, fazemos uma importação única.
+## Respondidas em 29/09/2026
 
-## Em discussão desde 28/09/2026
+- **Nome do produto e domínio.** "our pure rpg" é nome provisório; o domínio sai só quando o nome for definitivo. Ver [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
+- **RN-02 (correção de PV na mão).** Sim, o mestre pode corrigir PV e espaços de magia a qualquer momento da sessão; o mestre tem a palavra final. Ver [RN-02](regras.md).
+- **RN-05 (mestre também jogador em outra campanha).** Sim, decidido; o backend já suportava. Ver [RN-05](regras.md).
+- **MR-015 (quem escolhe as ações da cena).** Na cena de RP, o mestre escolhe as ações possíveis; no combate, quem decide e mostra as ações é o sistema, pelas regras de D&D. Ver [MR-015](historias.md#mr-015-ações-da-cena-de-rp) e [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
+- **RN-09 (XP por ouro).** 1 XP por 1 peça de ouro (PO), como nas edições antigas. Ver [RN-09](regras.md).
+- **RN-03 (um personagem por campanha, ou outro quando o primeiro morre).** O jogador só cria um personagem novo na mesma campanha quando o atual morre; o personagem morto não é apagado — fica no sistema. Ver [RN-03](regras.md).
+- **RN-07 (usos e validade do convite).** Padrão de 1 uso e 7 dias; o mestre escolhe de 1 a 20 usos e de 5 minutos a 30 dias, e pode revogar. O comportamento já implementado vira regra. Ver [RN-07](regras.md) e [MR-002](historias.md#mr-002-gerar-convite).
+- **RN-06 (a notificação em tela basta, ou precisa de push?).** Basta a notificação em tela, para quem está com o app aberto; sem notificação push do navegador no MVP. Ver [RN-06](regras.md).
+- **RN-08 (DOCX continua? qual o formato de exibição?).** Sem DOCX: só PDF editável, no formato do D&D Beyond ou da ficha em português. A importação em si fica para depois do MVP. Ver [RN-08](regras.md) e [MR-007](historias.md#mr-007-importar-ficha-em-pdf).
+- **MR-018 e MR-019 (MVP ou Depois?).** MVP, na Etapa 5 do roadmap, ao lado dos mapas. Ver [roadmap](../roadmap.md) e [historias.md](historias.md#mr-018-documento-de-campanha).
+- **Algum dado do app antigo precisa vir para o sistema novo?** O banco antigo pode ser apagado. Só os personagens são importados para o banco novo, numa importação única. Ver [Modelo de dados](../dados.md) e [roadmap](../roadmap.md).
+- **Classes e raças que a mesa usa hoje (ADR-0008).** Todas as 12 classes e as 9 raças base do D&D 5e, com planos de acrescentar as expansões oficiais e algum conteúdo feito pela comunidade. O SRD 5.1 cobre as 12 classes e as 9 raças base, mas só uma subclasse por classe e um conjunto limitado de subraças e antecedentes; o resto (outras subclasses, o antecedente Sábio, expansões e conteúdo da comunidade) entra como conteúdo cadastrado pela mesa. Ver [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
+- **Personagens de quem exclui a conta.** Os personagens de um jogador que exclui a conta ficam vinculados ao mestre, não são apagados. O mestre que exclui a conta tem 30 dias para voltar com a mesma conta antes de tudo ser apagado. Ver [RN-16](regras.md) e [Privacidade](../privacidade.md#excluir-a-conta).
+- **Por quanto tempo guardamos uma conta sem uso?** Cada pessoa escolhe no próprio perfil; padrão de 1 ano. Ver [RN-16](regras.md).
+- **Mais de um mestre.** Sim: uma campanha pode ter mais de um mestre, e um mestre pode passar a campanha para outro. Ver [RN-13](regras.md) e [MR-023](historias.md#mr-023-passar-ou-dividir-a-campanha).
+- **Criar campanha exige conta com Google?** Confirmado para o MVP: só uma conta de mestre completa cria campanha, e hoje só a conta com Google é completa. Ver [RN-14](regras.md).
+- **Convite com aprovação.** Sim, com um adicional: pelo convite, o jogador já cria o personagem, e o mestre aprova ou recusa esse personagem para a campanha. Ver [RN-15](regras.md) e [MR-024](historias.md#mr-024-aprovar-o-personagem-do-convite).
+- **MR-002, critérios propostos.** Aceitos pelo Samuel, junto com os padrões do convite (1 uso, 7 dias) já implementados. Ver [MR-002](historias.md#mr-002-gerar-convite).
 
-Estes três temas ainda **não viraram regra**: RN-05, RN-06, MR-003 e as histórias de combate continuam valendo como estão até o Samuel aceitar. O que o Vinicius já decidiu em 29/09/2026 está marcado assim, e falta o aceite do Samuel.
-
-### Login do jogador sem Google
-
-Proposta: só o mestre entra com Google. O jogador entra pelo convite com um **handle da mesa** (único entre as campanhas do mesmo mestre, não por campanha, para a cópia de personagem da RN-03 continuar funcionando), sem e-mail nem nome real. Menos dados pessoais, o que ajuda com a LGPD (ver [Privacidade](../privacidade.md)).
-
-- **Decidido pelo Vinicius (29/09):** as sessões seguem o NIST SP 800-63B-4: login de novo a cada **30 dias**, no máximo, para todo mundo. Senha nova é checada no Pwned Passwords, e só os 5 primeiros caracteres do hash saem do servidor.
-- **Pergunta:** jogador sem senha perde o acesso a cada 30 dias e depende de um link novo do mestre. A recomendação é exigir uma senha antes de acabarem os primeiros 30 dias (passkey no lugar da senha quando o domínio existir). Vale assim?
-- **Afeta:** [RN-05](regras.md), [RN-06](regras.md), [RN-07](regras.md), [MR-003](historias.md#mr-003-entrar-pelo-convite) e o módulo `identity` (ver [Arquitetura](../arquitetura.md)).
-
-### Regras por classe e raça
-
-MR-014 (e também MR-004, MR-013, MR-015, MR-016, MR-017 e RN-02) precisa que o sistema conheça as regras da classe e da raça do personagem: ações, ação bônus, reações e recursos como espaços de magia e deslocamento.
-
-Proposta: as regras viram **dados**, e o módulo `rules` só calcula. O SRD 5.1 é aberto (CC-BY-4.0) e vem junto com o app. O PHB e o Xanathar não podem ser copiados, então esse conteúdo é cadastrado pela própria mesa. Exemplo: o Pensantus é gnomo das rochas e mago de evocação (estão no SRD), mas o antecedente Sábio não está.
-
-- **Decidido pelo Vinicius (29/09):** fórmulas de regra (CD de magia, bônus) usam a biblioteca **Expr**, com as funções embutidas desligadas e limite de tamanho, porque o conteúdo cadastrado pela mesa é entrada não confiável.
-- **Pergunta:** quais classes e raças a mesa usa hoje? Isso define o que entra primeiro para o MVP.
-- **Afeta:** [MR-004](historias.md#mr-004-ficha-no-formato-do-pdf), [MR-013](historias.md#mr-013-ordem-dos-turnos), [MR-014](historias.md#mr-014-sua-vez), [MR-015](historias.md#mr-015-ações-da-cena-de-rp), [MR-016](historias.md#mr-016-dar-xp), [MR-017](historias.md#mr-017-subir-de-nível) e [RN-02](regras.md).
+## Em aberto
 
 ### Privacidade (LGPD e GDPR)
 
-**Decidido pelo Vinicius (29/09):** a régua é a LGPD e o GDPR, sempre a regra mais rigorosa das duas. O que isso muda está em [Privacidade](../privacidade.md). Perguntas para o Samuel:
-
 - [ ] Quem é o controlador e quem é o encarregado (DPO)? Qual e-mail recebe os pedidos?
-- [ ] Algum jogador da mesa tem menos de 18 anos? A proposta é o MVP ser 18+.
-- [ ] Quando alguém exclui a conta, o que acontece com os personagens dele numa campanha de outro mestre?
-- [ ] Por quanto tempo guardamos uma conta sem uso?
 - [ ] Há planos de abrir o app para outras mesas ou de cobrar?
 - [ ] Qual é o plano do CockroachDB (e onde estão os backups)?
+- [ ] **Pergunta do Samuel, para nós:** se jogadores ou mestres forem menores de 18 anos, o que precisamos fazer para cumprir a LGPD e o GDPR? A resposta vem no documento de acompanhamento, não aqui.
+
+### Login do jogador sem Google
+
+RN-17 já decide o login anônimo por handle de mesa (apelido do mestre junto do apelido do jogador). Falta:
+
+- [ ] Uma senha passa a ser exigida antes de acabarem os primeiros 30 dias? Ver [ADR-0009](../adr/0009-login-do-jogador-sem-google.md).
+
+### Prioridade das histórias novas
+
+- [ ] [MR-023](historias.md#mr-023-passar-ou-dividir-a-campanha) (passar ou dividir a campanha, RN-13) e [MR-024](historias.md#mr-024-aprovar-o-personagem-do-convite) (aprovar o personagem do convite, RN-15): qual a prioridade de cada uma?
+
+## Em discussão desde 28/09/2026
+
+### Regras por classe e raça
+
+Quais classes e raças a mesa usa já foi respondido acima (todas as base, mais expansões e conteúdo da comunidade depois). Ainda em aberto: o motor de fórmulas.
+
+Proposta: as regras viram **dados**, e o módulo `rules` só calcula. O SRD 5.1 é aberto (CC-BY-4.0) e vem junto com o app; o que não está nele (outras subclasses, o antecedente Sábio, expansões e conteúdo da comunidade) é cadastrado pela própria mesa.
+
+- **Decidido pelo Vinicius (29/09):** fórmulas de regra (CD de magia, bônus) usam a biblioteca **Expr**, com as funções embutidas desligadas e limite de tamanho, porque o conteúdo cadastrado pela mesa é entrada não confiável.
+- **Pergunta:** falta o aceite do Samuel para a escolha do Expr. Ver [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
+- **Afeta:** [MR-004](historias.md#mr-004-ficha-no-formato-do-pdf), [MR-013](historias.md#mr-013-ordem-dos-turnos), [MR-014](historias.md#mr-014-sua-vez), [MR-015](historias.md#mr-015-ações-da-cena-de-rp), [MR-016](historias.md#mr-016-dar-xp), [MR-017](historias.md#mr-017-subir-de-nível) e [RN-02](regras.md).
 
 ## Ver também
 

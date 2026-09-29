@@ -1,10 +1,12 @@
 # Modelo de dados
 
-A campanha é o centro do banco novo. O schema começa do zero: a migration `00001_init` está vazia, e cada módulo cria as próprias tabelas conforme é construído (decidido em 29/09/2026). Não há migração de dados do app antigo — o diagrama deste documento é o alvo proposto, montado módulo por módulo, não um destino que os dados de hoje precisam alcançar.
+A campanha é o centro do banco novo. O schema começa do zero: a migration `00001_init` está vazia, e cada módulo cria as próprias tabelas conforme é construído (decidido em 29/09/2026). Não há migração gradual de dados do app antigo — o diagrama deste documento é o alvo proposto, montado módulo por módulo, não um destino que os dados de hoje precisam alcançar.
+
+**Exceção: os personagens.** Decidido pelo Samuel em 29/09/2026: o banco do app antigo pode ser apagado depois de uma importação única e pontual, só dos personagens (por exemplo, o Pensantus), para o banco novo. Não é uma migração do schema inteiro, nem uma ferramenta que fica no repositório: é uma tarefa de uma vez só, registrada no [roadmap](roadmap.md) (Etapa 8), que lê o `characters` de lá e cria as linhas equivalentes em `characters` daqui, revisada à mão. O resto do banco antigo (campanhas, mapas, sessões do app antigo, se existirem) não é importado. Ver também [Privacidade](privacidade.md#o-banco-do-app-antigo).
 
 ## O que muda em relação ao app antigo (referência)
 
-No app antigo (`server/src/db/schema.sql`, descontinuado), a campanha não existia, e tudo pertencia direto ao usuário. A tabela abaixo serve só para quem conhece o schema antigo entender as escolhas novas — nenhuma linha dele é migrada.
+No app antigo (`server/src/db/schema.sql`), a campanha não existia, e tudo pertencia direto ao usuário. A tabela abaixo serve só para quem conhece o schema antigo entender as escolhas novas — nenhuma linha dele é migrada, com a única exceção dos personagens, acima. O `server/` (NestJS) será removido do repositório (decidido pelo Samuel em 29/09/2026, ver [README.md](../README.md)); esta tabela já registra por escrito o que mudou, então a remoção do arquivo não perde o contexto.
 
 | App antigo | Novo (proposta) | Por quê |
 | --- | --- | --- |
@@ -27,6 +29,8 @@ Tabelas novas para a mesa ao vivo:
 - `scenes` e `scene_actions`: a cena de RP e a lista de ações dela (MR-015).
 
 Os pontos de interesse continuam em `jsonb` dentro do mapa por enquanto, cada um com um campo `revealed`. O servidor filtra os escondidos antes de responder (RN-10). A notificação no app não precisa de tabela no MVP: uma `game_session` sem `ended_at` já é o aviso de "sessão em andamento".
+
+**Estado do personagem, proposta.** Além de `copied_from_id` e `sheet_locked_at`, o personagem de jogador precisa guardar dois estados novos, ainda sem coluna fechada: se está morto (RN-03, para não deixar criar um segundo personagem na mesma campanha enquanto o atual está vivo) e se está pendente de aprovação do mestre (RN-15, quando o convite exige aprovação). Nenhum dos dois estados apaga a linha do personagem. O desenho exato (uma coluna `status`, ou duas colunas booleanas) fica para quando o módulo `characters` implementar RN-03 e RN-15.
 
 ## Tabelas do schema novo, e a equivalente no app antigo
 
@@ -287,7 +291,7 @@ No `campaigns`:
 
 - `campaign_members` não tem `id`: a chave primária é `(campaign_id, user_id)`, que já responde "esta pessoa é membro?" com uma leitura só. O índice por `user_id` responde "de quais campanhas ela é membro?".
 - `role` é texto com `CHECK` (`master` ou `player`), não um `ENUM`: acrescentar um valor a um `CHECK` é uma migration simples. O mesmo vale para `campaigns.xp_mode` (`enemies`, `gold` ou `milestones`, RN-09).
-- `campaigns.created_by` é quem criou a campanha, hoje sempre o mestre. Excluir essa conta apaga a campanha, e com ela os membros e os convites (ver [Privacidade](privacidade.md#excluir-a-conta)). Excluir a conta de um jogador apaga só a participação dele.
+- `campaigns.created_by` é quem criou a campanha, hoje sempre o mestre. Excluir essa conta apaga a campanha, e com ela os membros e os convites (ver [Privacidade](privacidade.md#excluir-a-conta)). Excluir a conta de um jogador não apaga o personagem dele: a participação sai, mas o personagem fica vinculado ao mestre (RN-16, ver [Privacidade](privacidade.md#excluir-a-conta)). **Consequência de RN-13 (mais de um mestre), ainda proposta:** com mais de um mestre numa campanha, ou depois de uma passagem de campanha, excluir a conta de quem a criou não pode mais apagar a campanha inteira — só quando sai o último mestre. Isso muda o `ON DELETE` de `campaigns.created_by` de um `CASCADE` simples para uma regra que primeiro confere se sobra outro mestre; fica para quando o módulo `campaigns` implementar RN-13 e a ADR-0011 (proposta) fechar o desenho exato.
 - `campaign_invites` guarda `max_uses`, `use_count`, `expires_at` e `revoked_at`. Dois `CHECK` garantem que `use_count` nunca passa de `max_uses`, nem com dois jogadores aceitando ao mesmo tempo, e que nenhum convite vale mais de 30 dias. O token fica só como SHA-256 em `token_hash`, com `UNIQUE`.
 - `campaign_invites` usa o TTL por linha com `expires_at + INTERVAL '30 days'`: o convite some 30 dias depois de expirar.
 - Os nomes (`campaigns.name` até 80 caracteres, `display_name` até 40) têm `CHECK` de tamanho; o servidor também tira espaços das pontas e recusa quebra de linha e caracteres de controle.
@@ -373,4 +377,4 @@ erDiagram
 - [Glossário](produto/glossario.md)
 - [Regras de negócio](produto/regras.md)
 - [Arquitetura](arquitetura.md): os módulos donos de cada tabela.
-- `server/src/db/schema.sql`: o schema do app antigo (descontinuado), só como referência histórica.
+- `server/src/db/schema.sql`: o schema do app antigo, referência histórica até o `server/` (NestJS) sair do repositório (decidido pelo Samuel em 29/09/2026, ver [README.md](../README.md)); esta página já registra o que muda, então a remoção não perde contexto.

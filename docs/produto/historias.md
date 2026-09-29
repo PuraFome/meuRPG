@@ -1,12 +1,10 @@
 # Histórias e critérios de aceite
 
-O MVP tem 12 histórias, mais 2 pré-requisitos — 14 no total até o MVP: as 10 marcadas como MVP no plano, as duas que o Samuel acrescentou em 28/09/2026 (MR-015 e MR-016), e duas marcadas "MVP (pré-requisito)" desde 29/09/2026: o convite (MR-002), que leva à MR-003, e os NPCs (MR-005), que são os inimigos do combate. "Já existe em parte" não é mais uma prioridade: o app antigo é descontinuado, então nenhuma história "já existe" no sistema novo — MR-002 e MR-005 entram como qualquer outra história do MVP, com os próprios testes.
-
-MR-018 e MR-019 existiam no app antigo. Ainda não sabemos se entram no MVP ou ficam para depois; é uma pergunta em aberto para o Samuel (ver [Perguntas em aberto](perguntas-em-aberto.md)).
+O MVP tem 14 histórias, mais 2 pré-requisitos — 16 no total até o MVP: as 10 marcadas como MVP no plano, as duas que o Samuel acrescentou em 28/09/2026 (MR-015 e MR-016), as duas que o Samuel confirmou no MVP em 29/09/2026 (MR-018 e MR-019, documento de campanha e galeria de imagens), e duas marcadas "MVP (pré-requisito)" desde 29/09/2026: o convite (MR-002), que leva à MR-003, e os NPCs (MR-005), que são os inimigos do combate. "Já existe em parte" não é mais uma prioridade: o app antigo é descontinuado, então nenhuma história "já existe" no sistema novo — MR-002 e MR-005 entram como qualquer outra história do MVP, com os próprios testes.
 
 Uma história está pronta quando todos os critérios dela passam. Cada critério vira um teste automático: Playwright para o que aparece na tela, teste em Go para a regra no servidor. Não há testes de caracterização do app antigo — o sistema novo só precisa provar os próprios critérios de aceite.
 
-MR-021 e MR-022 são novas e saíram das respostas do Samuel. Ficaram como "Depois", mas o modelo de dados já nasce preparado para as duas (ver [Modelo de dados](../dados.md)).
+MR-021 e MR-022 são novas e saíram das respostas do Samuel de 28/09/2026. Ficaram como "Depois", mas o modelo de dados já nasce preparado para as duas (ver [Modelo de dados](../dados.md)). MR-023 e MR-024 são novas, das respostas do Samuel de 29/09/2026 (mais de um mestre, RN-13; convite com aprovação, RN-15); a prioridade das duas ainda está a definir.
 
 ## Índice
 
@@ -24,16 +22,18 @@ MR-021 e MR-022 são novas e saíram das respostas do Samuel. Ficaram como "Depo
 | [MR-014](#mr-014-sua-vez) | Combate | MVP |
 | [MR-015](#mr-015-ações-da-cena-de-rp) | RP | MVP |
 | [MR-016](#mr-016-dar-xp) | Progressão | MVP |
+| [MR-018](#mr-018-documento-de-campanha) | Apoio | MVP |
+| [MR-019](#mr-019-galeria-de-imagens) | Apoio | MVP |
 | [MR-002](#mr-002-gerar-convite) | Campanha | MVP (pré-requisito) |
 | [MR-005](#mr-005-criar-npcs) | Personagem | MVP (pré-requisito) |
-| [MR-018](#mr-018-documento-de-campanha) | Apoio | Existia no app antigo |
-| [MR-019](#mr-019-galeria-de-imagens) | Apoio | Existia no app antigo |
 | [MR-007](#mr-007-importar-ficha-em-pdf) | Personagem | Depois |
 | [MR-010](#mr-010-desenhar-masmorras) | Masmorra | Depois |
 | [MR-017](#mr-017-subir-de-nível) | Progressão | Depois |
 | [MR-020](#mr-020-consultar-o-livro-de-regras) | Apoio | Depois |
 | [MR-021](#mr-021-copiar-personagem) | Personagem | Depois |
 | [MR-022](#mr-022-reutilizar-npcs) | Personagem | Depois |
+| [MR-023](#mr-023-passar-ou-dividir-a-campanha) | Campanha | A definir |
+| [MR-024](#mr-024-aprovar-o-personagem-do-convite) | Personagem | A definir |
 
 ## Prioridade: MVP
 
@@ -51,9 +51,6 @@ MR-021 e MR-022 são novas e saíram das respostas do Samuel. Ficaram como "Depo
 #### Implementado
 - Backend pronto em 29/09/2026 (módulo `campaigns`, ver [Arquitetura](../arquitetura.md#módulo-campaigns-e-autorização)). Teste: `TestMR001_CreatorBecomesMasterAndOnlyMembersSeeTheCampaign`.
 - Tela pronta em 29/09/2026: `/campanhas` (`web/src/app/pages/campaigns/`), lista com o papel (mestre/jogador) e o formulário "Nova campanha". Teste Playwright: `o mestre cria uma campanha pela tela e a vê como mestre na lista` (`@MR-001`, `e2e/tests/campaigns.spec.ts`).
-
-#### Dúvidas
-- RN-05: um mestre pode ser jogador em outra campanha? Ver [Perguntas em aberto](perguntas-em-aberto.md). O backend já permite.
 
 ### MR-003: Entrar pelo convite
 
@@ -73,9 +70,10 @@ MR-021 e MR-022 são novas e saíram das respostas do Samuel. Ficaram como "Depo
 - Tela pronta em 29/09/2026: `/convite` (`web/src/app/pages/invite/invite-accept.ts`), que lê o token do fragmento da URL, o apaga da URL na hora (`history.replaceState`) e aceita o convite (logado) ou oferece "Entrar para aceitar o convite" (deslogado). Teste Playwright, com um segundo usuário já logado: `jogador já logado abre o link do convite, entra na campanha e o mestre o vê nos membros` (`@MR-003`, `e2e/tests/invite.spec.ts`). O caminho de quem abre o link deslogado depende do contrato de login com convite (`intent=campaign_invite`), ainda não integrado nesta branch: o teste `visitante sem sessão entra pelo convite, faz login e é adicionado à campanha automaticamente` está escrito como `test.fixme` no mesmo arquivo, para ligar quando o backend chegar. E o caminho sem sessão, pelo login: `visitante sem sessão entra pelo convite, faz login e é adicionado à campanha automaticamente` (`@MR-003`), que também confere que o token não aparece em nenhuma URL pedida pelo navegador.
 - Falta: criar o personagem do tipo jogador, que vem com o módulo `characters` (Etapa 4).
 
-#### Dúvidas
-- RN-03: o jogador tem um personagem por campanha, ou pode ter outro, por exemplo quando o primeiro morre? Ver [Perguntas em aberto](perguntas-em-aberto.md).
-- Login do jogador sem Google ainda está em discussão e pode mudar como esta história funciona. Ver [Perguntas em aberto](perguntas-em-aberto.md#login-do-jogador-sem-google).
+#### Relacionadas
+- RN-03: respondida em 29/09/2026 — o jogador só cria um personagem novo nesta campanha quando o atual morre; o personagem morto fica no sistema (ver [Regras de negócio](regras.md)).
+- RN-17 decide o login do jogador sem Google (handle por mesa); falta só saber se uma senha passa a ser exigida antes dos primeiros 30 dias (ver [Perguntas em aberto](perguntas-em-aberto.md)).
+- Quando o convite exige aprovação (RN-15), o personagem criado aqui nasce pendente até o mestre aprovar ou recusar. Ver [MR-024](#mr-024-aprovar-o-personagem-do-convite).
 
 ### MR-004: Ficha no formato do PDF
 
@@ -138,9 +136,9 @@ MR-021 e MR-022 são novas e saíram das respostas do Samuel. Ficaram como "Depo
 - **Dado** o link da sessão, **quando** alguém que não é membro abre o link, **então** vê "peça um convite ao mestre" **e** não entra.
 - **Dado** que é a primeira sessão da campanha, **quando** o mestre inicia a sessão, **então** as fichas dos jogadores travam.
 
-#### Dúvidas
-- RN-06: a notificação para quem está com o app aberto basta no MVP, ou precisa de notificação push com o app fechado? Ver [Perguntas em aberto](perguntas-em-aberto.md).
-- RN-07: o convite serve para vários jogadores ou para um só? E vale por quanto tempo? Ver [Perguntas em aberto](perguntas-em-aberto.md).
+#### Relacionadas
+- RN-06: respondida em 29/09/2026 — a notificação em tela, para quem está com o app aberto, basta no MVP; não há notificação push do navegador.
+- RN-07: respondida em 29/09/2026 — padrão de 1 uso e 7 dias, o mestre escolhe de 1 a 20 usos e de 5 minutos a 30 dias, e pode revogar (ver [MR-002](#mr-002-gerar-convite)).
 
 ### MR-012: Acompanhar a sessão
 
@@ -153,8 +151,8 @@ MR-021 e MR-022 são novas e saíram das respostas do Samuel. Ficaram como "Depo
 #### Critérios de aceite
 - **Dado** uma sessão ativa, **quando** o mestre move um token ou o sistema aplica dano ao personagem, **então** o celular do jogador mostra a mudança sem recarregar a página **e** as notas do mestre nunca aparecem.
 
-#### Dúvidas
-- RN-02: o mestre pode corrigir PV e espaços de magia na mão durante a sessão? O guia assume que sim. Ver [Perguntas em aberto](perguntas-em-aberto.md).
+#### Relacionadas
+- RN-02: respondida em 29/09/2026 — sim, o mestre pode corrigir PV e espaços de magia na mão durante a sessão; o mestre tem a palavra final (ver [Regras de negócio](regras.md)).
 
 ### MR-013: Ordem dos turnos
 
@@ -182,13 +180,13 @@ MR-021 e MR-022 são novas e saíram das respostas do Samuel. Ficaram como "Depo
 - **Dado** um combate, **quando** chega a vez do Pensantus, **então** o jogador vê ação, ação bônus, reação e movimento disponíveis **e** as magias sem espaço de magia aparecem desabilitadas.
 - **Dado** que o Pensantus conjura Mísseis Mágicos (Magic Missile) com um espaço de 1º círculo, **quando** a ação é confirmada, **então** o sistema marca o espaço como usado.
 
-#### Dúvidas
-- RN-02: ver [Perguntas em aberto](perguntas-em-aberto.md).
+#### Relacionadas
+- RN-02: o mestre pode corrigir PV e espaços de magia na mão (ver [Regras de negócio](regras.md)).
 - As regras de classe e raça ainda estão em discussão: quais ações, ações bônus, reações e recursos o sistema conhece depende dessa resposta. Ver [Perguntas em aberto](perguntas-em-aberto.md#regras-por-classe-e-raça).
 
 ### MR-015: Ações da cena de RP
 
-**Como** jogador, **quero** ver numa lista simples as ações possíveis da cena,
+**Como** jogador, **quero** ver numa lista simples as ações que o mestre escolheu para a cena,
 **para** saber o que posso rolar e usar fora de combate.
 
 - Prioridade: MVP
@@ -196,11 +194,12 @@ MR-021 e MR-022 são novas e saíram das respostas do Samuel. Ficaram como "Depo
 - Módulos: play, rules
 
 #### Critérios de aceite
-- **Dado** uma cena de RP aberta pelo mestre, **quando** o jogador abre a cena, **então** vê uma lista simples de ações, cada rolagem com o bônus já calculado (ex.: Investigação) **e** as habilidades que só valem em combate não aparecem.
+- **Dado** uma cena de RP com as ações que o mestre escolheu para ela, **quando** o jogador abre a cena, **então** vê a lista de ações escolhidas pelo mestre, cada rolagem com o bônus do próprio personagem já calculado (ex.: Investigação) **e** as habilidades que só valem em combate não aparecem.
+- **Dado** um combate (MR-013, MR-014), **quando** o jogador vê as ações possíveis, **então** quem decide essa lista é o sistema, pelas regras de D&D — nunca o mestre. A cena de RP é o único lugar em que o mestre escolhe a lista.
 
-#### Dúvidas
-- A lista de ações da cena sai sozinha da ficha, ou o mestre escolhe as ações de cada cena? Ver [Perguntas em aberto](perguntas-em-aberto.md).
-- As regras de classe e raça ainda estão em discussão e afetam quais habilidades aparecem na lista. Ver [Perguntas em aberto](perguntas-em-aberto.md#regras-por-classe-e-raça).
+#### Relacionadas
+- Respondida em 29/09/2026: na cena de RP, o mestre escolhe as ações possíveis da cena, e o jogador vê o que pode fazer com o próprio bônus; no combate, quem decide e mostra as ações é o sistema, pelas regras de D&D. Ver [Regras de negócio](regras.md) e [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
+- As regras de classe e raça ainda estão em discussão e afetam quais habilidades aparecem na lista, e o cálculo do bônus de cada uma. Ver [Perguntas em aberto](perguntas-em-aberto.md#regras-por-classe-e-raça).
 
 ### MR-016: Dar XP
 
@@ -215,9 +214,29 @@ MR-021 e MR-022 são novas e saíram das respostas do Samuel. Ficaram como "Depo
 - **Dado** uma campanha no modo por marcos, **quando** o mestre registra um marco, **então** todos os personagens do grupo ficam marcados para subir de nível **e** nenhum XP é contado.
 - **Dado** os modos por inimigos ou por ouro, **quando** o mestre dá XP ao grupo por conta própria, **então** o XP entra nas fichas **e** o histórico da campanha mostra quem deu, quando e por quê.
 
-#### Dúvidas
-- RN-09: no modo por ouro, quanto XP vale cada peça de ouro? Ver [Perguntas em aberto](perguntas-em-aberto.md).
+#### Relacionadas
+- RN-09: respondida em 29/09/2026 — no modo por ouro, 1 XP por 1 peça de ouro (PO), como nas edições antigas.
 - As regras de classe e raça ainda estão em discussão e afetam o que cada personagem ganha ao subir de nível. Ver [Perguntas em aberto](perguntas-em-aberto.md#regras-por-classe-e-raça).
+
+### MR-018: Documento de campanha
+
+**Como** mestre, **quero** um documento de campanha com texto, imagens, links para mapas e fichas que abrem num modal.
+
+- Prioridade: MVP
+- Regras: —
+- Módulos: campaigns
+
+Existia no app antigo (descontinuado). Confirmada no MVP pelo Samuel em 29/09/2026, na Etapa 5 do [roadmap](../roadmap.md), ao lado dos mapas.
+
+### MR-019: Galeria de imagens
+
+**Como** mestre, **quero** uma galeria de imagens **para** usar nos documentos e nos mapas.
+
+- Prioridade: MVP
+- Regras: —
+- Módulos: maps
+
+Existia no app antigo (descontinuado). Confirmada no MVP pelo Samuel em 29/09/2026, na Etapa 5 do [roadmap](../roadmap.md), ao lado dos mapas.
 
 ## Prioridade: MVP (pré-requisito)
 
@@ -232,7 +251,7 @@ Pré-requisitos do MVP, decidido em 29/09/2026. Não têm implementação prévi
 - Módulos: campaigns
 
 #### Critérios de aceite
-Propostos em 29/09/2026, junto com o backend. Falta o aceite do Samuel, e a RN-07 ainda está em aberto.
+Aceitos pelo Samuel em 29/09/2026, junto com o backend: o mestre adora poder escolher o número de usos e a validade do convite, e o comportamento implementado vira a RN-07.
 
 - **Dado** que sou mestre de "Mirathel", **quando** gero um convite, **então** recebo um link que vale para uma pessoa por 7 dias **e** o servidor guarda só o hash do token.
 - **Dado** um convite ainda não usado, **quando** o mestre o revoga, **então** o link para de funcionar **e** quem já entrou continua na campanha.
@@ -242,8 +261,9 @@ Propostos em 29/09/2026, junto com o backend. Falta o aceite do Samuel, e a RN-0
 - Backend pronto em 29/09/2026: o mestre escolhe de 1 a 20 usos (padrão 1) e de 5 minutos a 30 dias (padrão 7 dias), e pode revogar. Testes: `TestMR002_MasterGetsASingleUseSevenDayInviteStoredAsAHash`, `TestMR002_RevokedInviteStopsWorking`, `TestMR002_OnlyTheMasterManagesInvites`.
 - Tela pronta em 29/09/2026: a seção "Convites" de `/campanhas/:id` (`web/src/app/pages/campaign-detail/invites/`), só para o mestre — cria convite (usos e validade com os presets 1/7/30 dias), mostra o link uma vez com aviso e botão de copiar, lista com o status (ativo/usado/expirado/revogado) e revoga. Teste Playwright: `o mestre gera um convite, vê o link uma vez e o revoga` (`@MR-002`, `e2e/tests/campaigns.spec.ts`).
 
-#### Dúvidas
-- RN-07: ver [Perguntas em aberto](perguntas-em-aberto.md).
+#### Relacionadas
+- RN-07: decidida em 29/09/2026 (ver [Regras de negócio](regras.md)).
+- RN-15 (convite com aprovação) e [MR-024](#mr-024-aprovar-o-personagem-do-convite) estendem esta história: o jogador já cria o personagem pelo convite, e o mestre aprova.
 
 ### MR-005: Criar NPCs
 
@@ -252,32 +272,6 @@ Propostos em 29/09/2026, junto com o backend. Falta o aceite do Samuel, e a RN-0
 - Prioridade: MVP (pré-requisito)
 - Regras: RN-04
 - Módulos: characters
-
-## Prioridade: Existia no app antigo
-
-Existiam no app antigo (descontinuado). Ainda não sabemos se entram no MVP ou ficam para depois do MVP — é uma pergunta em aberto para o Samuel.
-
-### MR-018: Documento de campanha
-
-**Como** mestre, **quero** um documento de campanha com texto, imagens, links para mapas e fichas que abrem num modal.
-
-- Prioridade: Existia no app antigo
-- Regras: —
-- Módulos: campaigns
-
-#### Dúvidas
-- MVP ou Depois? Ver [Perguntas em aberto](perguntas-em-aberto.md).
-
-### MR-019: Galeria de imagens
-
-**Como** mestre, **quero** uma galeria de imagens **para** usar nos documentos e nos mapas.
-
-- Prioridade: Existia no app antigo
-- Regras: —
-- Módulos: maps
-
-#### Dúvidas
-- MVP ou Depois? Ver [Perguntas em aberto](perguntas-em-aberto.md).
 
 ## Prioridade: Depois
 
@@ -291,8 +285,8 @@ Fora do MVP. Entram na Etapa 8 do [roadmap](../roadmap.md).
 - Regras: RN-08
 - Módulos: characters
 
-#### Dúvidas
-- RN-08: a importação de DOCX continua? De qual modelo? Ver [Perguntas em aberto](perguntas-em-aberto.md).
+#### Relacionadas
+- RN-08: respondida em 29/09/2026 — sem DOCX; só PDF editável, no formato do D&D Beyond ou da ficha em português.
 
 ### MR-010: Desenhar masmorras
 
@@ -329,8 +323,8 @@ Fora do MVP. Entram na Etapa 8 do [roadmap](../roadmap.md).
 - Regras: RN-03
 - Módulos: characters
 
-#### Dúvidas
-- RN-03: ver [Perguntas em aberto](perguntas-em-aberto.md).
+#### Relacionadas
+- RN-03: respondida em 29/09/2026 (ver [Regras de negócio](regras.md)).
 
 ### MR-022: Reutilizar NPCs
 
@@ -339,6 +333,32 @@ Fora do MVP. Entram na Etapa 8 do [roadmap](../roadmap.md).
 - Prioridade: Depois
 - Regras: RN-04
 - Módulos: characters
+
+## Prioridade: A definir
+
+Novas, das respostas do Samuel de 29/09/2026. Ele não disse a prioridade destas duas; ficam "a definir" até a resposta.
+
+### MR-023: Passar ou dividir a campanha
+
+**Como** mestre, **quero** passar minha campanha para outro mestre, ou ter um segundo mestre nela, **para** a campanha continuar mesmo se eu sair.
+
+- Prioridade: A definir
+- Regras: RN-13
+- Módulos: campaigns
+
+#### Consequência
+Hoje, excluir a conta de quem criou a campanha apaga a campanha inteira (ver [Privacidade](../privacidade.md#excluir-a-conta)). Com mais de um mestre, ou depois de uma passagem de campanha, isso muda: a campanha só é apagada quando o último mestre sai. Ver [ADR-0011](../adr/0011-autorizacao-papeis-por-campanha.md), como proposta.
+
+### MR-024: Aprovar o personagem do convite
+
+**Como** mestre, **quero** aprovar ou recusar o personagem que um jogador criou pelo convite, **para** manter na campanha só os personagens que fazem sentido para a mesa.
+
+- Prioridade: A definir
+- Regras: RN-15
+- Módulos: campaigns, characters
+
+#### Relacionadas
+- Estende [MR-003](#mr-003-entrar-pelo-convite): o personagem nasce pendente de aprovação (ver [Ciclo de vida da ficha](regras.md#ciclo-de-vida-da-ficha), RN-01).
 
 ## Ver também
 
