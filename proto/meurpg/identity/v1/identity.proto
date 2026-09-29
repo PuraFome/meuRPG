@@ -8,6 +8,11 @@ syntax = "proto3";
 // __Host-meurpg_session cookie (HttpOnly, so JavaScript never sees it). The
 // RPCs below read and end that session; the browser sends the cookie on its
 // own.
+//
+// POST /auth/login starts the same flow from a form, and can carry a
+// sign-in intent that the server completes right after the session exists:
+// today, intent=campaign_invite with the invite token as intent_payload.
+// The server keeps only the token's hash, inside the 10-minute login state.
 package meurpg.identity.v1;
 
 import "google/protobuf/timestamp.proto";

@@ -1,14 +1,14 @@
 -- name: InsertLoginState :exec
 INSERT INTO oidc_login_states
-    (state_hash, code_verifier, nonce, return_to, created_at, expires_at)
-VALUES ($1, $2, $3, $4, $5, $6);
+    (state_hash, code_verifier, nonce, return_to, created_at, expires_at, intent_kind, intent_data)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
 
 -- name: TakeLoginState :one
 -- Reads and deletes in one statement, so two callbacks racing with the same
 -- state cannot both get it.
 DELETE FROM oidc_login_states
 WHERE state_hash = $1
-RETURNING code_verifier, nonce, return_to, created_at, expires_at;
+RETURNING code_verifier, nonce, return_to, created_at, expires_at, intent_kind, intent_data;
 
 -- name: UpdateIdentityEmail :one
 UPDATE user_identities SET email = $3

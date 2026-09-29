@@ -1,9 +1,7 @@
 package identity
 
 import (
-	"encoding/base64"
 	"encoding/json"
-	"strings"
 	"testing"
 	"time"
 
@@ -66,35 +64,6 @@ func TestNumericDate(t *testing.T) {
 	} {
 		if got := numericDate(json.RawMessage(raw)); !got.Equal(want) {
 			t.Errorf("numericDate(%s) = %v, want %v", raw, got, want)
-		}
-	}
-}
-
-func TestSecrets(t *testing.T) {
-	t.Parallel()
-
-	value, hash := newSecret()
-	if len(value) != 43 || len(hash) != 32 {
-		t.Fatalf("newSecret() = %d chars, %d-byte hash; want 43 and 32", len(value), len(hash))
-	}
-	if got, ok := hashSecret(value); !ok || string(got) != string(hash) {
-		t.Errorf("hashSecret(newSecret()) does not give back the stored hash")
-	}
-	if other, _ := newSecret(); other == value {
-		t.Error("newSecret() returned the same value twice")
-	}
-
-	for _, bad := range []string{
-		"",
-		"short",
-		value + "A", // 33 bytes
-		value[:42],  // truncated
-		strings.ReplaceAll(value, value[:1], "+"), // not base64url
-		base64.RawURLEncoding.EncodeToString(make([]byte, 31)),
-		base64.URLEncoding.EncodeToString(make([]byte, 32)), // padded
-	} {
-		if _, ok := hashSecret(bad); ok {
-			t.Errorf("hashSecret(%q) accepted a value newSecret cannot produce", bad)
 		}
 	}
 }

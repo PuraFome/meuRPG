@@ -13,13 +13,13 @@ import (
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/campaigns/campaignsdb"
-	"github.com/PuraFome/meuRPG/backend/internal/identity"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/secret"
 )
 
-// Every handler starts with one explicit check: identity.RequireSession
-// when any signed-in user may call it, authz.RequireCampaignMember or
+// Every handler starts with one explicit check: authz.RequireSignedIn when
+// any signed-in user may call it, authz.RequireCampaignMember or
 // authz.RequireCampaignRole when it is about one campaign. The check's error
 // is already the right Connect error, so handlers return it as is.
 
@@ -28,7 +28,7 @@ func (s *Service) CreateCampaign(
 	ctx context.Context,
 	req *connect.Request[campaignsv1.CreateCampaignRequest],
 ) (*connect.Response[campaignsv1.CreateCampaignResponse], error) {
-	session, err := identity.RequireSession(ctx)
+	userID, err := authz.RequireSignedIn(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -49,14 +49,14 @@ func (s *Service) CreateCampaign(
 		campaign, err = q.InsertCampaign(ctx, campaignsdb.InsertCampaignParams{
 			Name:      name,
 			XpMode:    xpMode,
-			CreatedBy: session.UserID,
+			CreatedBy: userID,
 		})
 		if err != nil {
 			return fmt.Errorf("insert campaign: %w", err)
 		}
 		_, err = q.InsertMember(ctx, campaignsdb.InsertMemberParams{
 			CampaignID: campaign.ID,
-			UserID:     session.UserID,
+			UserID:     userID,
 			Role:       string(authz.RoleMaster),
 		})
 		if err != nil {
@@ -77,11 +77,11 @@ func (s *Service) ListMyCampaigns(
 	ctx context.Context,
 	_ *connect.Request[campaignsv1.ListMyCampaignsRequest],
 ) (*connect.Response[campaignsv1.ListMyCampaignsResponse], error) {
-	session, err := identity.RequireSession(ctx)
+	userID, err := authz.RequireSignedIn(ctx)
 	if err != nil {
 		return nil, err
 	}
-	rows, err := s.queries.ListCampaignsOfUser(ctx, session.UserID)
+	rows, err := s.queries.ListCampaignsOfUser(ctx, userID)
 	if err != nil {
 		return nil, s.dbError(ctx, "list campaigns", err)
 	}
@@ -252,16 +252,26 @@ func (s *Service) AcceptInvite(
 	ctx context.Context,
 	req *connect.Request[campaignsv1.AcceptInviteRequest],
 ) (*connect.Response[campaignsv1.AcceptInviteResponse], error) {
-	session, err := identity.RequireSession(ctx)
+	userID, err := authz.RequireSignedIn(ctx)
 	if err != nil {
 		return nil, err
 	}
 	if req.Msg.GetToken() == "" {
 		return nil, invalidArgument("token", names.ErrEmpty)
 	}
+	tokenHash, ok := secret.Hash(req.Msg.GetToken())
+	if !ok {
+		return nil, errInviteNotFound() // no invite could have this token
+	}
 
-	joined, err := s.acceptInvite(ctx, req.Msg.GetToken(), session.UserID)
-	if err != nil {
+	joined, err := s.acceptInvite(ctx, tokenHash, userID)
+	if unusable, ok := errors.AsType[*unusableInviteError](err); ok {
+		return nil, errInviteUnusable(unusable.state)
+	}
+	switch {
+	case errors.Is(err, errNoInvite):
+		return nil, errInviteNotFound()
+	case err != nil:
 		return nil, s.dbError(ctx, "accept an invite", err)
 	}
 	return connect.NewResponse(&campaignsv1.AcceptInviteResponse{

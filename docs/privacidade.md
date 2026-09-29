@@ -19,7 +19,7 @@ Copie no PR que mexe em dados, logs, telas ou fornecedores:
 
 - [ ] **Logs:** nada de headers, query, body, IP, token, e-mail, handle ou texto livre. O middleware de log registra só método, path, protocolo, status e duração.
 - [ ] **URLs:** nenhum segredo nem dado pessoal em path ou query string. Token vai no fragmento (`#t=`). Os logs da plataforma guardam a URL inteira.
-- [ ] **GET do Connect:** só ganha `idempotency_level = NO_SIDE_EFFECTS` o método cuja requisição não leva dado pessoal. No GET, a mensagem inteira vai na URL.
+- [ ] **GET do Connect:** só ganha `idempotency_level = NO_SIDE_EFFECTS` o método cuja requisição não leva ID nem dado pessoal. No GET, a mensagem inteira vai na URL. Leitura com ID leva `IDEMPOTENT` e fica em POST.
 - [ ] **Respostas com dado pessoal** saem com `Cache-Control: no-store`.
 - [ ] **Coluna ou tabela nova com dado pessoal:** entrou no [inventário](#inventário-de-dados-pessoais) com finalidade e retenção, e o módulo implementa export e exclusão (o teste de catálogo passa).
 - [ ] **Só o necessário:** cada campo novo tem um motivo. Campo opcional diz por que existe.
@@ -45,7 +45,8 @@ Copie no PR que mexe em dados, logs, telas ou fornecedores:
 | Handle | `table_handles` | Identificar o jogador na mesa | Contrato | Até sair da mesa ou excluir |
 | Hash de senha (argon2id), contador de falhas | `password_credentials` | Autenticar; travar tentativas | Contrato; legítimo interesse | Até remover a senha ou excluir |
 | Hash do token de sessão, datas e `auth_time` | `auth_sessions` (`token_hash`, `created_at`, `expires_at`, `auth_time`) | Manter o login; `auth_time` só para auditoria | Contrato | No máximo 30 dias; a linha vencida some pelo TTL do banco em até 1 dia |
-| Estado do login OIDC (`state` só como hash, `code_verifier`, `nonce`, `return_to`) | `oidc_login_states` | Login com o provedor OIDC | Contrato | 10 minutos; apagado no callback, ou pelo TTL do banco em até 1 hora |
+| Estado do login OIDC (`state` só como hash, `code_verifier`, `nonce`, `return_to` sem fragmento) | `oidc_login_states` | Login com o provedor OIDC | Contrato | 10 minutos; apagado no callback, ou pelo TTL do banco em até 1 hora |
+| Intenção de login: o tipo (`campaign_invite`) e o hash do token do convite, nunca o token | `oidc_login_states` (`intent_kind`, `intent_data`) | Aceitar o convite logo depois do login, sem guardar nada no navegador | Contrato | No máximo 10 minutos, com o resto do estado do login: apagado no callback, ou pelo TTL do banco em até 1 hora |
 | Convite: hash do token, usos, validade e quem criou | `campaign_invites` | Entrar na campanha (RN-07) | Contrato | 30 dias depois de expirar, pelo TTL do banco. O convite vale no máximo 30 dias, então a linha vive no máximo 60. Some antes se a campanha, ou a conta de quem o criou, for excluída |
 | Link de reentrada (só hash) | `reentry_links` | Recuperar acesso | Contrato | 30 dias depois de usado ou expirado |
 | Log de identidade (reentrada, vínculo e junção de contas) | Banco | Segurança e auditoria | Legítimo interesse | 180 dias, só com UUIDs |
@@ -84,6 +85,7 @@ O módulo `campaigns` (`backend/internal/campaigns`) e o nome de exibição do `
 - **Nome de exibição digitado.** `users.display_name` nasce vazio e só muda pelo `UpdateProfile`. O nome que o provedor de login manda nunca é gravado (um teste confere com um provedor falso que manda nome). Nome vazio apaga, o que atende a correção e a eliminação (art. 18, III e VI).
 - **O `GetMe` não devolve o e-mail.** O e-mail verificado continua só como contato de segurança, em `user_identities`, e não sai em nenhuma resposta.
 - **O convite só existe como hash no banco.** O token vai no fragmento da URL (`/convite#t=...`), e o app manda no corpo do `AcceptInvite`, nunca numa query string. Um teste confere que a linha do convite não contém o token.
+- **Convite aceito pelo login, sem nada no navegador.** Quem abre o convite sem estar logado manda o token no corpo do `POST /auth/login`. O servidor guarda só o hash, dentro do estado do login (no máximo 10 minutos, uso único), e o app não usa `localStorage`, `sessionStorage` nem service worker para isso (decidido por Vinicius em 29/09/2026). O `GET /auth/login` recusa o token na URL, e o `return_to` perde o fragmento. `TestSignInWithAnInviteJoinsTheCampaign` lê a linha de `oidc_login_states` e confere que nenhuma coluna tem o token; os testes de log conferem que nem o token nem o hash vão para o log.
 - **Sem GET com dado na URL.** Só o `ListMyCampaigns`, cuja requisição é vazia, aceita GET. As outras chamadas levam o ID da campanha e ficam em POST.
 - **Respostas sem cache.** Toda resposta do `CampaignService`, inclusive erro, sai com `Cache-Control: no-store`.
 - **Quem não é membro não descobre a campanha.** A resposta é `not_found`, igual à de uma campanha que não existe (ADR-0011).

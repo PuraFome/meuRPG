@@ -70,14 +70,15 @@ type CampaignServiceClient interface {
 	// first, with the caller's role in each.
 	//
 	// Its request is empty, so clients may call it with HTTP GET: the URL
-	// never carries personal data. The other read-only methods stay POST-only,
-	// because a GET would put the campaign ID in the URL, and URLs end up in
-	// the platform's request logs (docs/privacidade.md).
+	// never carries personal data.
 	ListMyCampaigns(context.Context, *connect.Request[v1.ListMyCampaignsRequest]) (*connect.Response[v1.ListMyCampaignsResponse], error)
-	// GetCampaign returns one campaign. Any member may call it.
+	// GetCampaign returns one campaign. Any member may call it. It only
+	// reads, but stays POST-only, because a GET would put the campaign ID in
+	// the URL.
 	GetCampaign(context.Context, *connect.Request[v1.GetCampaignRequest]) (*connect.Response[v1.GetCampaignResponse], error)
 	// ListMembers lists a campaign's members: the master first, then the
-	// players in the order they joined. Any member may call it.
+	// players in the order they joined. Any member may call it. It only
+	// reads, and is POST-only, like GetCampaign.
 	ListMembers(context.Context, *connect.Request[v1.ListMembersRequest]) (*connect.Response[v1.ListMembersResponse], error)
 	// CreateInvite creates an invite link for a campaign (MR-002). Only the
 	// campaign's master may call it.
@@ -89,7 +90,8 @@ type CampaignServiceClient interface {
 	// request logs and Referer headers (ADR-0009).
 	CreateInvite(context.Context, *connect.Request[v1.CreateInviteRequest]) (*connect.Response[v1.CreateInviteResponse], error)
 	// ListInvites lists a campaign's invites, newest first, without their
-	// tokens. Only the campaign's master may call it.
+	// tokens. Only the campaign's master may call it. It only reads, and is
+	// POST-only, like GetCampaign.
 	ListInvites(context.Context, *connect.Request[v1.ListInvitesRequest]) (*connect.Response[v1.ListInvitesResponse], error)
 	// RevokeInvite stops an invite from working. People who already joined
 	// with it stay members. Revoking an invite twice is not an error. Only the
@@ -97,7 +99,9 @@ type CampaignServiceClient interface {
 	RevokeInvite(context.Context, *connect.Request[v1.RevokeInviteRequest]) (*connect.Response[v1.RevokeInviteResponse], error)
 	// AcceptInvite makes the caller a player of the invite's campaign
 	// (MR-003). The app reads the token from the URL fragment and sends it
-	// here, in the request body, never in a URL.
+	// here, in the request body, never in a URL. A signed-out user does the
+	// same through sign-in instead: POST /auth/login with
+	// intent=campaign_invite and the token as intent_payload (ADR-0009).
 	//
 	// It is idempotent for members: a member of the campaign (the master
 	// included) gets the campaign back with `already_member` set, whatever
@@ -140,12 +144,14 @@ func NewCampaignServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			httpClient,
 			baseURL+CampaignServiceGetCampaignProcedure,
 			connect.WithSchema(campaignServiceMethods.ByName("GetCampaign")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
 		listMembers: connect.NewClient[v1.ListMembersRequest, v1.ListMembersResponse](
 			httpClient,
 			baseURL+CampaignServiceListMembersProcedure,
 			connect.WithSchema(campaignServiceMethods.ByName("ListMembers")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
 		createInvite: connect.NewClient[v1.CreateInviteRequest, v1.CreateInviteResponse](
@@ -158,6 +164,7 @@ func NewCampaignServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			httpClient,
 			baseURL+CampaignServiceListInvitesProcedure,
 			connect.WithSchema(campaignServiceMethods.ByName("ListInvites")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
 		revokeInvite: connect.NewClient[v1.RevokeInviteRequest, v1.RevokeInviteResponse](
@@ -236,14 +243,15 @@ type CampaignServiceHandler interface {
 	// first, with the caller's role in each.
 	//
 	// Its request is empty, so clients may call it with HTTP GET: the URL
-	// never carries personal data. The other read-only methods stay POST-only,
-	// because a GET would put the campaign ID in the URL, and URLs end up in
-	// the platform's request logs (docs/privacidade.md).
+	// never carries personal data.
 	ListMyCampaigns(context.Context, *connect.Request[v1.ListMyCampaignsRequest]) (*connect.Response[v1.ListMyCampaignsResponse], error)
-	// GetCampaign returns one campaign. Any member may call it.
+	// GetCampaign returns one campaign. Any member may call it. It only
+	// reads, but stays POST-only, because a GET would put the campaign ID in
+	// the URL.
 	GetCampaign(context.Context, *connect.Request[v1.GetCampaignRequest]) (*connect.Response[v1.GetCampaignResponse], error)
 	// ListMembers lists a campaign's members: the master first, then the
-	// players in the order they joined. Any member may call it.
+	// players in the order they joined. Any member may call it. It only
+	// reads, and is POST-only, like GetCampaign.
 	ListMembers(context.Context, *connect.Request[v1.ListMembersRequest]) (*connect.Response[v1.ListMembersResponse], error)
 	// CreateInvite creates an invite link for a campaign (MR-002). Only the
 	// campaign's master may call it.
@@ -255,7 +263,8 @@ type CampaignServiceHandler interface {
 	// request logs and Referer headers (ADR-0009).
 	CreateInvite(context.Context, *connect.Request[v1.CreateInviteRequest]) (*connect.Response[v1.CreateInviteResponse], error)
 	// ListInvites lists a campaign's invites, newest first, without their
-	// tokens. Only the campaign's master may call it.
+	// tokens. Only the campaign's master may call it. It only reads, and is
+	// POST-only, like GetCampaign.
 	ListInvites(context.Context, *connect.Request[v1.ListInvitesRequest]) (*connect.Response[v1.ListInvitesResponse], error)
 	// RevokeInvite stops an invite from working. People who already joined
 	// with it stay members. Revoking an invite twice is not an error. Only the
@@ -263,7 +272,9 @@ type CampaignServiceHandler interface {
 	RevokeInvite(context.Context, *connect.Request[v1.RevokeInviteRequest]) (*connect.Response[v1.RevokeInviteResponse], error)
 	// AcceptInvite makes the caller a player of the invite's campaign
 	// (MR-003). The app reads the token from the URL fragment and sends it
-	// here, in the request body, never in a URL.
+	// here, in the request body, never in a URL. A signed-out user does the
+	// same through sign-in instead: POST /auth/login with
+	// intent=campaign_invite and the token as intent_payload (ADR-0009).
 	//
 	// It is idempotent for members: a member of the campaign (the master
 	// included) gets the campaign back with `already_member` set, whatever
@@ -302,12 +313,14 @@ func NewCampaignServiceHandler(svc CampaignServiceHandler, opts ...connect.Handl
 		CampaignServiceGetCampaignProcedure,
 		svc.GetCampaign,
 		connect.WithSchema(campaignServiceMethods.ByName("GetCampaign")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
 	campaignServiceListMembersHandler := connect.NewUnaryHandler(
 		CampaignServiceListMembersProcedure,
 		svc.ListMembers,
 		connect.WithSchema(campaignServiceMethods.ByName("ListMembers")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
 	campaignServiceCreateInviteHandler := connect.NewUnaryHandler(
@@ -320,6 +333,7 @@ func NewCampaignServiceHandler(svc CampaignServiceHandler, opts ...connect.Handl
 		CampaignServiceListInvitesProcedure,
 		svc.ListInvites,
 		connect.WithSchema(campaignServiceMethods.ByName("ListInvites")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
 	campaignServiceRevokeInviteHandler := connect.NewUnaryHandler(

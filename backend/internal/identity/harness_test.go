@@ -95,6 +95,11 @@ func withCloudRun() harnessOption {
 	return func(_ *harness, cfg *Config) { cfg.BehindCloudRun = true }
 }
 
+// withIntents registers sign-in intent handlers.
+func withIntents(intents map[string]IntentHandler) harnessOption {
+	return func(_ *harness, cfg *Config) { cfg.Intents = intents }
+}
+
 // withMaxAge sets OIDC_MAX_AGE.
 func withMaxAge(d time.Duration) harnessOption {
 	return func(_ *harness, cfg *Config) { cfg.OIDC.MaxAge = d }
@@ -149,6 +154,20 @@ func (h *harness) get(target string, cookies ...*http.Cookie) *httptest.Response
 	}
 	rec := httptest.NewRecorder()
 	h.mux.ServeHTTP(rec, req)
+	return rec
+}
+
+// postLogin sends POST /auth/login with form as the body, like the app's
+// sign-in form. Extra headers (e.g. Sec-Fetch-Site) are set as given.
+func (h *harness) postLogin(handler http.Handler, form url.Values, headers map[string]string) *httptest.ResponseRecorder {
+	h.t.Helper()
+	req := httptest.NewRequestWithContext(h.t.Context(), http.MethodPost, "https://meurpg.test/auth/login", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
 	return rec
 }
 

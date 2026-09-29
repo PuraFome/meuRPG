@@ -2,7 +2,9 @@
 // let new players in (MR-001, MR-002, MR-003).
 //
 // A campaign's master creates it and shares invite links; a player signs in
-// and accepts an invite, which makes them a player of the campaign. Who may
+// and accepts an invite, which makes them a player of the campaign. A
+// signed-out player can do both at once: the invite rides the sign-in as an
+// identity sign-in intent (signin.go). Who may
 // do what is decided by package authz from campaign_members, which this
 // package owns: Service implements authz.MembershipSource.
 //
@@ -49,8 +51,8 @@ const (
 )
 
 // Profiles tells what to call users. The identity module implements it
-// (identity.Service.DisplayNames), so this package never reads the users
-// table itself.
+// (identity.PostgresStore.DisplayNames), so this package never reads the
+// users table itself.
 type Profiles interface {
 	// DisplayNames returns the display names of the given users, keyed by
 	// user ID. Users without one are left out.
@@ -111,20 +113,31 @@ func New(cfg Config) (*Service, error) {
 	return s, nil
 }
 
+// Sessions is what this package needs to know who is calling: an
+// interceptor that finds the caller's session, and the authz.Caller that
+// reads it back. *identity.Service is the real one. Tests pass a fake, so
+// nothing here, or in package authz, can set the caller itself
+// (docs/arquitetura.md, "Quem está chamando").
+type Sessions interface {
+	// Interceptor finds the caller's session (from the session cookie).
+	Interceptor() connect.Interceptor
+	authz.Caller
+}
+
 // Mount registers CampaignService on a mux. handle is usually
 // httpserver.Server.Handle or http.ServeMux.Handle.
 //
-// sessions is the interceptor that finds the caller's session
-// (identity.Service.Interceptor in production). Mount adds the authz
-// interceptor after it, backed by this service's campaign_members, and one
-// that marks every response `Cache-Control: no-store`. opts are the Connect
-// options shared by every service.
-func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessions connect.Interceptor, opts ...connect.HandlerOption) {
+// sessions tells who is calling (the identity service in production). Mount
+// adds its interceptor, then the authz interceptor, backed by sessions and
+// by this service's campaign_members, and one that marks every response
+// `Cache-Control: no-store`. opts are the Connect options shared by every
+// service.
+func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessions Sessions, opts ...connect.HandlerOption) {
 	// Clip so append copies instead of writing into the caller's array.
 	opts = append(slices.Clip(opts), connect.WithInterceptors(
-		noStore{},                      // no response is cacheable
-		sessions,                       // who is calling
-		authz.Interceptor(s, s.logger), // what they may do, memoized per request
+		noStore{},                                // no response is cacheable
+		sessions.Interceptor(),                   // who is calling
+		authz.Interceptor(sessions, s, s.logger), // what they may do, memoized per request
 	))
 	handle(campaignsv1connect.NewCampaignServiceHandler(s, opts...))
 }

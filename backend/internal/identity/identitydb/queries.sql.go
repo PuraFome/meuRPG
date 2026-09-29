@@ -63,8 +63,8 @@ func (q *Queries) InsertIdentity(ctx context.Context, arg InsertIdentityParams) 
 
 const insertLoginState = `-- name: InsertLoginState :exec
 INSERT INTO oidc_login_states
-    (state_hash, code_verifier, nonce, return_to, created_at, expires_at)
-VALUES ($1, $2, $3, $4, $5, $6)
+    (state_hash, code_verifier, nonce, return_to, created_at, expires_at, intent_kind, intent_data)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 `
 
 type InsertLoginStateParams struct {
@@ -74,6 +74,8 @@ type InsertLoginStateParams struct {
 	ReturnTo     string
 	CreatedAt    time.Time
 	ExpiresAt    time.Time
+	IntentKind   *string
+	IntentData   []byte
 }
 
 func (q *Queries) InsertLoginState(ctx context.Context, arg InsertLoginStateParams) error {
@@ -84,6 +86,8 @@ func (q *Queries) InsertLoginState(ctx context.Context, arg InsertLoginStatePara
 		arg.ReturnTo,
 		arg.CreatedAt,
 		arg.ExpiresAt,
+		arg.IntentKind,
+		arg.IntentData,
 	)
 	return err
 }
@@ -208,7 +212,7 @@ func (q *Queries) SetDisplayName(ctx context.Context, arg SetDisplayNameParams) 
 const takeLoginState = `-- name: TakeLoginState :one
 DELETE FROM oidc_login_states
 WHERE state_hash = $1
-RETURNING code_verifier, nonce, return_to, created_at, expires_at
+RETURNING code_verifier, nonce, return_to, created_at, expires_at, intent_kind, intent_data
 `
 
 type TakeLoginStateRow struct {
@@ -217,6 +221,8 @@ type TakeLoginStateRow struct {
 	ReturnTo     string
 	CreatedAt    time.Time
 	ExpiresAt    time.Time
+	IntentKind   *string
+	IntentData   []byte
 }
 
 // Reads and deletes in one statement, so two callbacks racing with the same
@@ -230,6 +236,8 @@ func (q *Queries) TakeLoginState(ctx context.Context, stateHash []byte) (TakeLog
 		&i.ReturnTo,
 		&i.CreatedAt,
 		&i.ExpiresAt,
+		&i.IntentKind,
+		&i.IntentData,
 	)
 	return i, err
 }

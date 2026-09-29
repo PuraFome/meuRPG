@@ -72,6 +72,19 @@ func inviteState(invite campaignsdb.CampaignInvite, now time.Time) campaignsv1.I
 	}
 }
 
+// errNoInvite is acceptInvite's error when no invite has the token.
+var errNoInvite = errors.New("no invite has this token")
+
+// unusableInviteError is acceptInvite's error for an invite that exists but
+// does not work now: expired, revoked or used up.
+type unusableInviteError struct {
+	state campaignsv1.InviteState
+}
+
+func (e *unusableInviteError) Error() string {
+	return "the invite cannot be used: " + e.state.String()
+}
+
 // errInviteUnusable is AcceptInvite's answer for an invite that exists but
 // does not work. The InviteUnusable detail tells the app which message to
 // show.
@@ -95,8 +108,10 @@ type joinResult struct {
 	alreadyMember bool
 }
 
-// acceptInvite makes userID a player of the campaign the token invites to,
-// in one transaction:
+// acceptInvite makes userID a player of the campaign whose invite token
+// hashes to tokenHash, in one transaction. Both ways of accepting an invite
+// run it: the AcceptInvite RPC, and signing in with the invite as the
+// sign-in intent (inviteIntent). The steps:
 //
 //  1. Find the invite by the token's hash and lock it (FOR UPDATE).
 //  2. Already a member? Return the campaign; nothing changes, and no use of
@@ -110,11 +125,10 @@ type joinResult struct {
 // invite used up (TestAcceptInviteRaceForTheLastUse). The UPDATE in step 4
 // repeats the rules, and a CHECK keeps use_count <= max_uses, so even a bug
 // here could not overspend an invite.
-func (s *Service) acceptInvite(ctx context.Context, token, userID string) (joinResult, error) {
-	tokenHash, ok := secret.Hash(token)
-	if !ok {
-		return joinResult{}, errInviteNotFound() // no invite could have this token
-	}
+//
+// It returns errNoInvite or an *unusableInviteError when the invite does
+// not work; any other error is the database's.
+func (s *Service) acceptInvite(ctx context.Context, tokenHash []byte, userID string) (joinResult, error) {
 	now := s.now()
 
 	var result joinResult
@@ -123,7 +137,7 @@ func (s *Service) acceptInvite(ctx context.Context, token, userID string) (joinR
 
 		invite, err := q.GetInviteByTokenHashForUpdate(ctx, tokenHash)
 		if errors.Is(err, pgx.ErrNoRows) {
-			return errInviteNotFound()
+			return errNoInvite
 		}
 		if err != nil {
 			return fmt.Errorf("get invite: %w", err)
@@ -143,7 +157,7 @@ func (s *Service) acceptInvite(ctx context.Context, token, userID string) (joinR
 		}
 
 		if state := inviteState(invite, now); state != campaignsv1.InviteState_INVITE_STATE_ACTIVE {
-			return errInviteUnusable(state)
+			return &unusableInviteError{state: state}
 		}
 		spent, err := q.IncrementInviteUses(ctx, campaignsdb.IncrementInviteUsesParams{ID: invite.ID, Now: now})
 		if err != nil {
@@ -152,7 +166,7 @@ func (s *Service) acceptInvite(ctx context.Context, token, userID string) (joinR
 		if spent == 0 {
 			// Unreachable while the row is locked and checked above; kept
 			// so that a future change cannot turn into a free pass.
-			return errInviteUnusable(campaignsv1.InviteState_INVITE_STATE_USED_UP)
+			return &unusableInviteError{state: campaignsv1.InviteState_INVITE_STATE_USED_UP}
 		}
 		_, err = q.InsertMember(ctx, campaignsdb.InsertMemberParams{
 			CampaignID: invite.CampaignID,

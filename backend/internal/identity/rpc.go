@@ -17,33 +17,42 @@ import (
 // (ADR-0009). The users_display_name_length CHECK says the same.
 const MaxDisplayNameLength = 40
 
-// sessionKey is the context key for the current Session.
+// sessionKey is the context key for the current Session. It is unexported,
+// and only authenticate (below) sets it, after looking the session cookie
+// up in the database. No exported function puts a session into a context:
+// other modules learn who is calling through UserID (the authz.Caller
+// interface), and their tests pass a fake of that interface instead
+// (docs/arquitetura.md, "Quem está chamando").
 type sessionKey struct{}
 
-// SessionFromContext returns the session that Interceptor found for this
+// sessionFromContext returns the session that Interceptor found for this
 // request, if any.
-func SessionFromContext(ctx context.Context) (Session, bool) {
+func sessionFromContext(ctx context.Context) (Session, bool) {
 	s, ok := ctx.Value(sessionKey{}).(Session)
 	return s, ok
 }
 
-// ContextWithSession returns a copy of ctx that carries session, as
-// Interceptor does after it checks the session cookie. Other packages' tests
-// use it to act as a signed-in user without an OpenID Connect provider.
-// Production code must never build a Session from anything a client sent:
-// only Interceptor, which looks the cookie up in the database, may.
-func ContextWithSession(ctx context.Context, session Session) context.Context {
-	return context.WithValue(ctx, sessionKey{}, session)
-}
-
-// RequireSession returns the caller's session, or an `unauthenticated`
+// requireSession returns the caller's session, or an `unauthenticated`
 // Connect error to return as is. It fails closed: a handler whose service
 // was mounted without Interceptor always gets the error.
-func RequireSession(ctx context.Context) (Session, error) {
-	if s, ok := SessionFromContext(ctx); ok {
+func requireSession(ctx context.Context) (Session, error) {
+	if s, ok := sessionFromContext(ctx); ok {
 		return s, nil
 	}
 	return Session{}, errUnauthenticated()
+}
+
+// UserID returns the ID of the user whose session Interceptor found for
+// this request, or an `unauthenticated` Connect error to return as is. It
+// implements authz.Caller, which is how other modules learn who is calling:
+// they mount Interceptor on their Connect service and call UserID (through
+// package authz) in their handlers. Without Interceptor, it always fails.
+func (s *Service) UserID(ctx context.Context) (string, error) {
+	session, err := requireSession(ctx)
+	if err != nil {
+		return "", err
+	}
+	return session.UserID, nil
 }
 
 // errUnauthenticated is the error for a request without a valid session.
@@ -55,10 +64,11 @@ func errUnauthenticated() error {
 
 // Interceptor returns a Connect interceptor that reads the session cookie,
 // looks the session up and, when it is valid, puts it in the context for
-// SessionFromContext and RequireSession.
+// UserID (and this package's own handlers). It is the only place a session
+// ever enters a context.
 //
 // A missing or invalid session is not an error here: some RPCs work signed
-// out, so each handler decides with RequireSession. A database failure is
+// out, so each handler decides, with UserID or requireSession. A database failure is
 // an error (`unavailable`), because answering `unauthenticated` would make
 // the app think the user signed out.
 func (s *Service) Interceptor() connect.Interceptor {
@@ -108,7 +118,7 @@ func (s *Service) authenticate(ctx context.Context, header http.Header) (context
 	session, err := s.lookupSession(ctx, token)
 	switch {
 	case err == nil:
-		return ContextWithSession(ctx, session), nil
+		return context.WithValue(ctx, sessionKey{}, session), nil
 	case errors.Is(err, errNoSession):
 		return ctx, nil
 	default:
@@ -122,7 +132,7 @@ func (s *Service) GetMe(
 	ctx context.Context,
 	_ *connect.Request[identityv1.GetMeRequest],
 ) (*connect.Response[identityv1.GetMeResponse], error) {
-	session, err := RequireSession(ctx)
+	session, err := requireSession(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +153,7 @@ func (s *Service) UpdateProfile(
 	ctx context.Context,
 	req *connect.Request[identityv1.UpdateProfileRequest],
 ) (*connect.Response[identityv1.UpdateProfileResponse], error) {
-	session, err := RequireSession(ctx)
+	session, err := requireSession(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -168,14 +178,6 @@ func (s *Service) UpdateProfile(
 	return res, nil
 }
 
-// DisplayNames returns the display names of the given users, keyed by user
-// ID; users without one are left out. It is the identity module's public
-// answer to "what do we call these people?", so that other modules, such as
-// campaigns, never read the users table themselves.
-func (s *Service) DisplayNames(ctx context.Context, userIDs []string) (map[string]string, error) {
-	return s.store.DisplayNames(ctx, userIDs)
-}
-
 // storeError logs a failed Store call and turns it into the Connect error
 // the client gets. The account of a valid session always exists (deleting
 // it deletes its sessions), so ErrNotFound means it was deleted during this
@@ -197,7 +199,7 @@ func (s *Service) SignOut(
 ) (*connect.Response[identityv1.SignOutResponse], error) {
 	clearCookie := expiredCookie(SessionCookieName).String()
 
-	session, err := RequireSession(ctx)
+	session, err := requireSession(ctx)
 	if err != nil {
 		// Also clear a stale cookie (expired or already revoked), so the
 		// browser stops sending it.
@@ -206,7 +208,7 @@ func (s *Service) SignOut(
 		}
 		return nil, err
 	}
-	if err := s.store.RevokeSession(ctx, session.ID); err != nil {
+	if err := s.store.revokeSession(ctx, session.ID); err != nil {
 		s.logger.ErrorContext(ctx, "cannot revoke the session", "error", err)
 		return nil, connect.NewError(connect.CodeUnavailable, errors.New("cannot sign out right now, please try again"))
 	}

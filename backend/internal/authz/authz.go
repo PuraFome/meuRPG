@@ -8,6 +8,7 @@
 //
 // Handlers call one explicit check before doing anything:
 //
+//	userID, err := authz.RequireSignedIn(ctx)                           // anyone signed in
 //	m, err := authz.RequireCampaignMember(ctx, campaignID)             // any member
 //	m, err := authz.RequireCampaignRole(ctx, campaignID, authz.RoleMaster) // masters only
 //	if err != nil {
@@ -21,7 +22,12 @@
 //	not a member, or no such campaign       not_found (the two look the same)
 //	a member without the needed role        permission_denied
 //
-// Interceptor must wrap the Connect service, next to identity's session
+// Who is calling comes from a Caller: the identity module in production,
+// which reads the session its own interceptor found, and a fake in tests.
+// This package never sets the caller itself, and nothing outside identity's
+// interceptor can (docs/arquitetura.md, "Quem está chamando").
+//
+// Interceptor must wrap the Connect service, after identity's session
 // interceptor. It gives each request a small memo, so a request that checks
 // the same campaign twice reads campaign_members once. Without it, every
 // check fails closed.
@@ -35,8 +41,6 @@ import (
 	"uuid"
 
 	"connectrpc.com/connect"
-
-	"github.com/PuraFome/meuRPG/backend/internal/identity"
 )
 
 // Role is what a member may do in one campaign.
@@ -59,6 +63,16 @@ type Membership struct {
 	Role       Role
 }
 
+// Caller tells who is calling. The identity module implements it
+// (identity.Service.UserID) from the session that its interceptor found for
+// the request; tests pass a fake. It only reads: there is no way to set the
+// caller from outside the identity module.
+type Caller interface {
+	// UserID returns the signed-in caller's user ID, or an `unauthenticated`
+	// Connect error to return as is.
+	UserID(ctx context.Context) (string, error)
+}
+
 // ErrNotMember is what a MembershipSource returns when the user is not a
 // member of the campaign, including when the campaign does not exist.
 var ErrNotMember = errors.New("authz: not a member of the campaign")
@@ -70,21 +84,30 @@ type MembershipSource interface {
 	CampaignRole(ctx context.Context, campaignID, userID string) (Role, error)
 }
 
+// RequireSignedIn returns the caller's user ID, or a Connect error to return
+// as is: `unauthenticated` without a session. It is the whole check for
+// methods that anyone signed in may call, such as creating a campaign.
+func RequireSignedIn(ctx context.Context) (string, error) {
+	memo, err := memoFrom(ctx)
+	if err != nil {
+		return "", err
+	}
+	return memo.caller.UserID(ctx)
+}
+
 // RequireCampaignMember returns the caller's membership in the campaign, or
 // a Connect error to return as is: `unauthenticated` without a session,
 // `not_found` if the caller is not a member (or there is no such campaign,
 // or campaignID is not even a UUID). Handlers should use the returned
 // Membership.CampaignID, which is in canonical form, from then on.
 func RequireCampaignMember(ctx context.Context, campaignID string) (Membership, error) {
-	session, err := identity.RequireSession(ctx)
+	memo, err := memoFrom(ctx)
 	if err != nil {
 		return Membership{}, err
 	}
-	memo, ok := ctx.Value(memoKey{}).(*memo)
-	if !ok {
-		// A programming error: the service was mounted without
-		// Interceptor. Refuse rather than guess.
-		return Membership{}, connect.NewError(connect.CodeInternal, errors.New("authorization is not configured for this service"))
+	userID, err := memo.caller.UserID(ctx)
+	if err != nil {
+		return Membership{}, err
 	}
 
 	// An ID that is not a UUID cannot name a campaign. Parsing here also
@@ -96,10 +119,10 @@ func RequireCampaignMember(ctx context.Context, campaignID string) (Membership, 
 	}
 	campaignID = id.String()
 
-	role, err := memo.role(ctx, campaignID, session.UserID)
+	role, err := memo.role(ctx, campaignID, userID)
 	switch {
 	case err == nil:
-		return Membership{CampaignID: campaignID, UserID: session.UserID, Role: role}, nil
+		return Membership{CampaignID: campaignID, UserID: userID, Role: role}, nil
 	case errors.Is(err, ErrNotMember):
 		return Membership{}, errNotFound()
 	default:
@@ -133,26 +156,28 @@ func noStore(err *connect.Error) *connect.Error {
 }
 
 // Interceptor returns a Connect interceptor that gives every request (and
-// every stream) its own membership memo, backed by source. Errors from
-// source are logged to logger, which may be nil for slog.Default().
+// every stream) its own memo: who the caller is (from caller) and the roles
+// already looked up (from source). Errors from source are logged to logger,
+// which may be nil for slog.Default().
 //
 // The memo lives as long as the request. For a long-lived stream that is
 // the whole stream, so a streaming handler that must notice a removal while
 // it runs has to check again with a fresh context (ADR-0011).
-func Interceptor(source MembershipSource, logger *slog.Logger) connect.Interceptor {
+func Interceptor(caller Caller, source MembershipSource, logger *slog.Logger) connect.Interceptor {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &interceptor{source: source, logger: logger}
+	return &interceptor{caller: caller, source: source, logger: logger}
 }
 
 type interceptor struct {
+	caller Caller
 	source MembershipSource
 	logger *slog.Logger
 }
 
 func (i *interceptor) withMemo(ctx context.Context) context.Context {
-	return context.WithValue(ctx, memoKey{}, &memo{source: i.source, logger: i.logger})
+	return context.WithValue(ctx, memoKey{}, &memo{caller: i.caller, source: i.source, logger: i.logger})
 }
 
 // WrapUnary implements connect.Interceptor.
@@ -180,10 +205,21 @@ func (i *interceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) co
 // memoKey is the context key for the request's memo.
 type memoKey struct{}
 
+// memoFrom returns the request's memo. Without one, the service was mounted
+// without Interceptor: a programming error, so refuse rather than guess.
+func memoFrom(ctx context.Context) (*memo, error) {
+	m, ok := ctx.Value(memoKey{}).(*memo)
+	if !ok {
+		return nil, connect.NewError(connect.CodeInternal, errors.New("authorization is not configured for this service"))
+	}
+	return m, nil
+}
+
 // memo remembers, for one request, the roles already looked up. A "not a
 // member" answer is remembered too; errors are not, so a later check in the
 // same request tries the database again.
 type memo struct {
+	caller Caller
 	source MembershipSource
 	logger *slog.Logger
 

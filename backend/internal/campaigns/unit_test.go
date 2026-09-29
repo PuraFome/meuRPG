@@ -1,22 +1,31 @@
 package campaigns
 
 import (
+	"bytes"
 	"context"
+	"encoding/hex"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1/campaignsv1connect"
 	"github.com/PuraFome/meuRPG/backend/internal/campaigns/campaignsdb"
+	"github.com/PuraFome/meuRPG/backend/internal/identity"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/secret"
 )
 
 // These tests need no database, so they also run in `go test ./...`
@@ -166,4 +175,135 @@ type noProfiles struct{}
 
 func (noProfiles) DisplayNames(context.Context, []string) (map[string]string, error) {
 	return nil, errors.New("no profiles in this test")
+}
+
+// TestInviteIntentPrepare: at login start, only a well-formed token is
+// accepted, and what is kept is its hash, never the token.
+func TestInviteIntentPrepare(t *testing.T) {
+	t.Parallel()
+	intent := inviteIntent{}
+	token, hash := secret.New()
+
+	got, err := intent.Prepare(token)
+	if err != nil || !bytes.Equal(got, hash) {
+		t.Errorf("Prepare(token) = %x, %v; want the token's SHA-256 %x", got, err, hash)
+	}
+	for name, payload := range map[string]string{
+		"empty":     "",
+		"garbage":   "not a token",
+		"padded":    token + "=",
+		"too long":  token + "A",
+		"too short": token[:42],
+	} {
+		if data, err := intent.Prepare(payload); err == nil {
+			t.Errorf("Prepare(%s) = %x, want an error", name, data)
+		} else if strings.Contains(err.Error(), payload) && payload != "" {
+			t.Errorf("Prepare(%s) error %q repeats the payload", name, err)
+		}
+	}
+}
+
+// TestInviteIntentCompleteRefusesTheZeroSignedIn: identity.SignedIn{} is
+// all this package (or any other but identity) can build, and it must not
+// act as anyone. It is refused before the database is touched: the pool here
+// cannot even connect.
+func TestInviteIntentCompleteRefusesTheZeroSignedIn(t *testing.T) {
+	t.Parallel()
+	svc, err := New(Config{Pool: lazyPool(t), Profiles: noProfiles{}, Logger: slog.New(slog.DiscardHandler)})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	_, hash := secret.New()
+	path, err := svc.InviteIntent().Complete(t.Context(), identity.SignedIn{}, hash)
+	if err == nil || path != "" {
+		t.Errorf("Complete(SignedIn{}) = %q, %v; want no path and an error", path, err)
+	}
+}
+
+// TestInviteIntentCompleteWithoutADatabase covers the failures that never
+// reach an invite: corrupt stored data, and a database that does not
+// answer. It calls complete, the step after the SignedIn check, because only
+// identity can build a SignedIn with a user; the whole Complete runs through
+// identity's real callback in signin_test.go.
+func TestInviteIntentCompleteWithoutADatabase(t *testing.T) {
+	t.Parallel()
+	svc, err := New(Config{Pool: lazyPool(t), Profiles: noProfiles{}, Logger: slog.New(slog.DiscardHandler)})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	intent := inviteIntent{s: svc}
+	_, hash := secret.New()
+
+	path, err := intent.complete(t.Context(), "user", []byte("short"))
+	if path != "/convite/erro?motivo=invalid" || err == nil {
+		t.Errorf("complete(corrupt data) = %q, %v; want the invalid page and an error", path, err)
+	}
+	path, err = intent.complete(t.Context(), "user", hash)
+	if path != "/convite/erro?motivo=unavailable" || err == nil {
+		t.Errorf("complete() with the database down = %q, %v; want the unavailable page and an error", path, err)
+	}
+	if err != nil && strings.Contains(err.Error(), hex.EncodeToString(hash)) {
+		t.Errorf("error %q contains the hash", err)
+	}
+}
+
+func TestInviteFailureReasons(t *testing.T) {
+	t.Parallel()
+	for err, want := range map[error]string{
+		&unusableInviteError{state: campaignsv1.InviteState_INVITE_STATE_EXPIRED}: InviteFailureExpired,
+		&unusableInviteError{state: campaignsv1.InviteState_INVITE_STATE_REVOKED}: InviteFailureRevoked,
+		&unusableInviteError{state: campaignsv1.InviteState_INVITE_STATE_USED_UP}: InviteFailureUsedUp,
+		&unusableInviteError{state: campaignsv1.InviteState_INVITE_STATE_ACTIVE}:  InviteFailureInvalid,
+		fmt.Errorf("in a transaction: %w", errNoInvite):                           InviteFailureNotFound,
+		errors.New("connection refused"):                                          InviteFailureUnavailable,
+	} {
+		if got := inviteFailure(err); got != want {
+			t.Errorf("inviteFailure(%v) = %q, want %q", err, got, want)
+		}
+	}
+}
+
+// TestReadsWithIDsArePostOnly: the reads that carry a campaign ID are
+// IDEMPOTENT, not NO_SIDE_EFFECTS, so the server refuses them over GET,
+// which would put the ID in the URL. ListMyCampaigns, with an empty
+// request, is the one read that GET reaches.
+func TestReadsWithIDsArePostOnly(t *testing.T) {
+	t.Parallel()
+	svc, err := New(Config{Pool: lazyPool(t), Profiles: noProfiles{}, Logger: slog.New(slog.DiscardHandler)})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	mux := http.NewServeMux()
+	svc.Mount(mux.Handle, testSessions, connect.WithRequireConnectProtocolHeader())
+
+	get := func(procedure, message string) int {
+		t.Helper()
+		target := procedure + "?connect=v1&encoding=json&message=" + url.QueryEscape(message)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, target, nil))
+		return rec.Code
+	}
+	id := `{"campaignId":"6f1c7a52-3b5e-4c55-9d0b-2a51f0c1e001"}`
+	for procedure, message := range map[string]string{
+		campaignsv1connect.CampaignServiceGetCampaignProcedure: id,
+		campaignsv1connect.CampaignServiceListMembersProcedure: id,
+		campaignsv1connect.CampaignServiceListInvitesProcedure: id,
+	} {
+		if code := get(procedure, message); code != http.StatusMethodNotAllowed {
+			t.Errorf("GET %s: status = %d, want 405", procedure, code)
+		}
+	}
+	// ListMyCampaigns reaches the handler over GET (and is refused there,
+	// signed out).
+	if code := get(campaignsv1connect.CampaignServiceListMyCampaignsProcedure, "{}"); code != http.StatusUnauthorized {
+		t.Errorf("GET ListMyCampaigns: status = %d, want 401 from the handler", code)
+	}
+
+	methods := campaignsv1.File_meurpg_campaigns_v1_campaigns_proto.Services().ByName("CampaignService").Methods()
+	for _, name := range []string{"GetCampaign", "ListMembers", "ListInvites"} {
+		opts, _ := methods.ByName(protoreflect.Name(name)).Options().(*descriptorpb.MethodOptions)
+		if opts.GetIdempotencyLevel() != descriptorpb.MethodOptions_IDEMPOTENT {
+			t.Errorf("%s idempotency_level = %v, want IDEMPOTENT", name, opts.GetIdempotencyLevel())
+		}
+	}
 }

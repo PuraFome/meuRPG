@@ -13,6 +13,7 @@ Usar as mesmas palavras nas conversas, nos documentos e no código evita muita c
 | Link da sessão | Link que **leva** um membro direto para a sessão ao vivo. Não dá acesso a quem não é membro. | `session_link` |
 | Sessão de jogo | Um encontro da mesa, com começo e fim. | `game_session` |
 | Sessão de login | O login de um usuário no app. Não confundir com a sessão de jogo. | `auth_session` |
+| Intenção de login | Algo que a pessoa pediu antes de entrar e que o servidor conclui logo depois do login, como aceitar um convite. Fica só no servidor, dentro do estado do login. | `intent`, `IntentHandler` |
 | Cena de RP | Momento fora de combate, aberto por um ponto de interesse. | `scene` |
 | Ação da cena | Um item da lista simples do que o jogador pode fazer ou rolar numa cena. | `scene_action` |
 | Encontro | Um combate num mapa, com iniciativa, rodadas e turnos. | `encounter` |

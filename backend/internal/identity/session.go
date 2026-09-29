@@ -2,13 +2,12 @@ package identity
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/sha256"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/PuraFome/meuRPG/backend/internal/platform/secret"
 )
 
 const (
@@ -22,10 +21,6 @@ const (
 	// 800-63B-4, section 2.1.3 (AAL1): reauthentication SHALL be required at
 	// least every 30 days. Using a session does not extend it.
 	SessionLifetime = 30 * 24 * time.Hour
-
-	// secretBytes is the size of session tokens and login states: 256 bits
-	// from crypto/rand, far beyond guessing.
-	secretBytes = 32
 )
 
 // Session is a valid, unexpired sign-in session.
@@ -40,35 +35,13 @@ type Session struct {
 // malformed one, an unknown or revoked token, or an expired session.
 var errNoSession = errors.New("no valid session")
 
-// newSecret returns a random secret, base64url-encoded for a cookie or URL,
-// and the SHA-256 of its raw bytes, which is all the database stores.
-func newSecret() (value string, hash []byte) {
-	raw := make([]byte, secretBytes)
-	// Since Go 1.24, crypto/rand.Read never returns an error: if the OS
-	// cannot supply randomness, the program crashes instead of going on
-	// with weak secrets.
-	_, _ = rand.Read(raw)
-	sum := sha256.Sum256(raw)
-	return base64.RawURLEncoding.EncodeToString(raw), sum[:]
-}
-
-// hashSecret returns the hash that newSecret stored for value. It returns
-// false for anything newSecret could not have produced, so garbage from a
-// client never reaches the database.
-func hashSecret(value string) ([]byte, bool) {
-	raw, err := base64.RawURLEncoding.Strict().DecodeString(value)
-	if err != nil || len(raw) != secretBytes {
-		return nil, false
-	}
-	sum := sha256.Sum256(raw)
-	return sum[:], true
-}
-
 // startSession creates a session for userID, ending SessionLifetime after
 // now, and returns its token, which goes only into the cookie.
 func (s *Service) startSession(ctx context.Context, userID string, now, authTime time.Time) (string, Session, error) {
-	token, hash := newSecret()
-	session, err := s.store.CreateSession(ctx, NewSession{
+	// Session tokens and login states are secrets like invite tokens: 256
+	// random bits, and only their SHA-256 goes to the database.
+	token, hash := secret.New()
+	session, err := s.store.createSession(ctx, NewSession{
 		TokenHash: hash,
 		UserID:    userID,
 		CreatedAt: now,
@@ -84,11 +57,11 @@ func (s *Service) startSession(ctx context.Context, userID string, now, authTime
 // lookupSession returns the session for a cookie value, or errNoSession.
 // Other errors mean the store could not answer.
 func (s *Service) lookupSession(ctx context.Context, token string) (Session, error) {
-	hash, ok := hashSecret(token)
+	hash, ok := secret.Hash(token)
 	if !ok {
 		return Session{}, errNoSession
 	}
-	session, err := s.store.LookupSession(ctx, hash, s.now())
+	session, err := s.store.lookupSession(ctx, hash, s.now())
 	if errors.Is(err, ErrNotFound) {
 		return Session{}, errNoSession
 	}

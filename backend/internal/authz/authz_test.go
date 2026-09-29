@@ -10,8 +10,6 @@ import (
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/emptypb"
-
-	"github.com/PuraFome/meuRPG/backend/internal/identity"
 )
 
 const (
@@ -59,21 +57,30 @@ func (f *fakeSource) lookupCount() int {
 	return f.lookups
 }
 
+// fakeCaller is a Caller that always answers with the same user, or
+// `unauthenticated` when userID is "". It stands in for the identity module,
+// whose session interceptor is the only thing that sets the caller in
+// production.
+type fakeCaller struct{ userID string }
+
+func (f fakeCaller) UserID(context.Context) (string, error) {
+	if f.userID == "" {
+		return "", connect.NewError(connect.CodeUnauthenticated, errors.New("sign in to continue"))
+	}
+	return f.userID, nil
+}
+
 // requestContext is the context a handler sees for a request by userID
 // ("" for signed out), with the authz interceptor installed.
 func requestContext(t *testing.T, source MembershipSource, userID string) context.Context {
 	t.Helper()
-	ctx := t.Context()
-	if userID != "" {
-		ctx = identity.ContextWithSession(ctx, identity.Session{ID: "session-" + userID, UserID: userID})
-	}
 	var got context.Context
-	handler := Interceptor(source, slog.New(slog.DiscardHandler)).WrapUnary(
+	handler := Interceptor(fakeCaller{userID}, source, slog.New(slog.DiscardHandler)).WrapUnary(
 		func(ctx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
 			got = ctx
 			return nil, nil
 		})
-	if _, err := handler(ctx, connect.NewRequest(&emptypb.Empty{})); err != nil {
+	if _, err := handler(t.Context(), connect.NewRequest(&emptypb.Empty{})); err != nil {
 		t.Fatalf("interceptor error = %v", err)
 	}
 	return got
@@ -100,6 +107,13 @@ func TestRequireCampaignMemberAndRole(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			ctx := requestContext(t, newFakeSource(), tt.user)
+
+			userID, err := RequireSignedIn(ctx)
+			if tt.user == "" {
+				checkCode(t, "RequireSignedIn", err, connect.CodeUnauthenticated)
+			} else if err != nil || userID != tt.user {
+				t.Errorf("RequireSignedIn() = %q, %v; want %q", userID, err, tt.user)
+			}
 
 			m, err := RequireCampaignMember(ctx, tt.campaign)
 			checkCode(t, "RequireCampaignMember", err, tt.wantMember)
@@ -188,7 +202,12 @@ func TestSourceFailureIsUnavailableAndNotRemembered(t *testing.T) {
 
 func TestRequireFailsClosedWithoutTheInterceptor(t *testing.T) {
 	t.Parallel()
-	ctx := identity.ContextWithSession(t.Context(), identity.Session{UserID: master})
+	// Without the interceptor there is no caller at all, so even a request
+	// that would have a session gets nowhere.
+	ctx := t.Context()
+	if _, err := RequireSignedIn(ctx); connect.CodeOf(err) != connect.CodeInternal {
+		t.Errorf("RequireSignedIn() without Interceptor error = %v, want internal", err)
+	}
 	if _, err := RequireCampaignMember(ctx, campaignA); connect.CodeOf(err) != connect.CodeInternal {
 		t.Errorf("RequireCampaignMember() without Interceptor error = %v, want internal", err)
 	}

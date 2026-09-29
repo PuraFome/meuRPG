@@ -9,13 +9,15 @@
 // confidential client, with state and nonce (ADR-0002):
 //
 //	GET /auth/login?return_to=/path  saves a login state and redirects to the provider
+//	POST /auth/login                 the same, with a sign-in intent in the form (intent.go)
 //	GET /auth/callback               checks everything, then starts a session
 //
 // A session is opaque: 32 random bytes in the __Host-meurpg_session cookie,
 // stored in the database only as a SHA-256 hash, valid for at most 30 days
-// and never extended. The Connect service IdentityService answers GetMe and
-// SignOut. Other modules add Interceptor to their Connect handlers and call
-// RequireSession to learn who is calling.
+// and never extended. The Connect service IdentityService answers GetMe,
+// UpdateProfile and SignOut. Other modules add Interceptor to their Connect
+// handlers and learn who is calling from UserID, through the authz.Caller
+// interface; nothing outside Interceptor can put a session into a context.
 package identity
 
 import (
@@ -62,6 +64,12 @@ type Config struct {
 	// X-Forwarded-For (see ratelimit.ClientKey). Never set it where clients
 	// connect directly: they could then claim any IP they like.
 	BehindCloudRun bool
+
+	// Intents are the sign-in intents that POST /auth/login accepts, by
+	// kind (e.g. "campaign_invite"): what the user may ask to finish right
+	// after signing in. Kinds are lowercase letters, digits and
+	// underscores, at most 32 characters. Nil means none.
+	Intents map[string]IntentHandler
 }
 
 // Service implements sign-in (the HTTP handlers), sessions and the
@@ -72,10 +80,13 @@ type Service struct {
 	now       func() time.Time
 	providers *providerSource
 
-	// loginLimiter caps GET /auth/login, which writes a login state row on
-	// every hit (see loginRateLimit).
+	// loginLimiter caps /auth/login (GET and POST share it), which writes a
+	// login state row on every hit (see loginRateLimit).
 	loginLimiter   *ratelimit.Limiter
 	behindCloudRun bool
+
+	// intents are the sign-in intents, by kind (see IntentHandler).
+	intents map[string]IntentHandler
 }
 
 // The compiler checks that Service implements the generated interface.
@@ -93,11 +104,16 @@ func New(ctx context.Context, cfg Config) (*Service, error) {
 	if cfg.Store == nil {
 		return nil, errors.New("identity: a Store is required")
 	}
+	intents, err := checkIntents(cfg.Intents)
+	if err != nil {
+		return nil, err
+	}
 
 	s := &Service{
-		store:  cfg.Store,
-		logger: cfg.Logger,
-		now:    cfg.Now,
+		store:   cfg.Store,
+		logger:  cfg.Logger,
+		now:     cfg.Now,
+		intents: intents,
 	}
 	if s.logger == nil {
 		s.logger = slog.Default()
@@ -112,7 +128,6 @@ func New(ctx context.Context, cfg Config) (*Service, error) {
 
 	client := cfg.HTTPClient
 	if client == nil {
-		var err error
 		if client, err = newHTTPClient(cfg.OIDC.CAFile); err != nil {
 			return nil, err
 		}
@@ -133,6 +148,7 @@ func New(ctx context.Context, cfg Config) (*Service, error) {
 // Connect-Protocol-Version requirement). Mount adds Interceptor to them.
 func (s *Service) Mount(handle func(pattern string, handler http.Handler), opts ...connect.HandlerOption) {
 	handle("GET /auth/login", http.HandlerFunc(s.handleLogin))
+	handle("POST /auth/login", http.HandlerFunc(s.handleLoginForm))
 	handle("GET "+config.CallbackPath, http.HandlerFunc(s.handleCallback))
 
 	// Clip so append copies instead of writing into the caller's array.
@@ -150,6 +166,7 @@ func MountDisabled(handle func(pattern string, handler http.Handler), opts ...co
 		http.Error(w, errDisabled.Error(), http.StatusServiceUnavailable)
 	})
 	handle("GET /auth/login", disabled)
+	handle("POST /auth/login", disabled)
 	handle("GET "+config.CallbackPath, disabled)
 	handle(identityv1connect.NewIdentityServiceHandler(disabledService{}, opts...))
 }

@@ -26,19 +26,39 @@ import (
 // Without it they skip.
 
 // testUserHeader names the signed-in user in a test request. It exists only
-// in these tests: testSessions stands in for identity's session interceptor,
-// which reads a cookie and looks it up in the database. Everything after it
-// (the authz interceptor, the handlers, the SQL) is the production code.
+// in these tests: fakeSessions stands in for the identity module, whose
+// interceptor reads a session cookie and looks it up in the database.
+// Everything after it (the authz interceptor, the handlers, the SQL) is the
+// production code.
 const testUserHeader = "Test-User-Id"
 
-var testSessions = connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
-	return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-		if userID := req.Header().Get(testUserHeader); userID != "" {
-			ctx = identity.ContextWithSession(ctx, identity.Session{ID: "session-of-" + userID, UserID: userID})
+// fakeSessions implements Sessions for tests: its interceptor trusts the
+// Test-User-Id header, and UserID reads it back. The context key is private
+// to these tests; production code has no way to set a caller.
+type fakeSessions struct{}
+
+// testUserKey is fakeSessions' context key.
+type testUserKey struct{}
+
+var testSessions Sessions = fakeSessions{}
+
+func (fakeSessions) Interceptor() connect.Interceptor {
+	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
+		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			if userID := req.Header().Get(testUserHeader); userID != "" {
+				ctx = context.WithValue(ctx, testUserKey{}, userID)
+			}
+			return next(ctx, req)
 		}
-		return next(ctx, req)
+	})
+}
+
+func (fakeSessions) UserID(ctx context.Context) (string, error) {
+	if userID, ok := ctx.Value(testUserKey{}).(string); ok {
+		return userID, nil
 	}
-})
+	return "", connect.NewError(connect.CodeUnauthenticated, errors.New("sign in to continue"))
+}
 
 // fakeClock is a clock the test moves by hand.
 type fakeClock struct {

@@ -19,6 +19,13 @@ import "google/protobuf/timestamp.proto";
 //
 // Responses carry `Cache-Control: no-store`, because they describe the
 // caller's campaigns.
+//
+// Reads are marked by their idempotency level. NO_SIDE_EFFECTS, which lets
+// clients call a method with HTTP GET, is only for requests with no IDs and
+// no personal data (ListMyCampaigns): a GET puts the whole request in the
+// URL, and URLs end up in the platform's request logs (docs/privacidade.md).
+// Reads whose requests carry an ID are IDEMPOTENT instead: safe to retry,
+// documented as reads, and POST-only.
 service CampaignService {
   // CreateCampaign creates a campaign; the caller becomes its master
   // (MR-001).
@@ -28,19 +35,24 @@ service CampaignService {
   // first, with the caller's role in each.
   //
   // Its request is empty, so clients may call it with HTTP GET: the URL
-  // never carries personal data. The other read-only methods stay POST-only,
-  // because a GET would put the campaign ID in the URL, and URLs end up in
-  // the platform's request logs (docs/privacidade.md).
+  // never carries personal data.
   rpc ListMyCampaigns(ListMyCampaignsRequest) returns (ListMyCampaignsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
-  // GetCampaign returns one campaign. Any member may call it.
-  rpc GetCampaign(GetCampaignRequest) returns (GetCampaignResponse);
+  // GetCampaign returns one campaign. Any member may call it. It only
+  // reads, but stays POST-only, because a GET would put the campaign ID in
+  // the URL.
+  rpc GetCampaign(GetCampaignRequest) returns (GetCampaignResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
 
   // ListMembers lists a campaign's members: the master first, then the
-  // players in the order they joined. Any member may call it.
-  rpc ListMembers(ListMembersRequest) returns (ListMembersResponse);
+  // players in the order they joined. Any member may call it. It only
+  // reads, and is POST-only, like GetCampaign.
+  rpc ListMembers(ListMembersRequest) returns (ListMembersResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
 
   // CreateInvite creates an invite link for a campaign (MR-002). Only the
   // campaign's master may call it.
@@ -53,8 +65,11 @@ service CampaignService {
   rpc CreateInvite(CreateInviteRequest) returns (CreateInviteResponse);
 
   // ListInvites lists a campaign's invites, newest first, without their
-  // tokens. Only the campaign's master may call it.
-  rpc ListInvites(ListInvitesRequest) returns (ListInvitesResponse);
+  // tokens. Only the campaign's master may call it. It only reads, and is
+  // POST-only, like GetCampaign.
+  rpc ListInvites(ListInvitesRequest) returns (ListInvitesResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
 
   // RevokeInvite stops an invite from working. People who already joined
   // with it stay members. Revoking an invite twice is not an error. Only the
@@ -63,7 +78,9 @@ service CampaignService {
 
   // AcceptInvite makes the caller a player of the invite's campaign
   // (MR-003). The app reads the token from the URL fragment and sends it
-  // here, in the request body, never in a URL.
+  // here, in the request body, never in a URL. A signed-out user does the
+  // same through sign-in instead: POST /auth/login with
+  // intent=campaign_invite and the token as intent_payload (ADR-0009).
   //
   // It is idempotent for members: a member of the campaign (the master
   // included) gets the campaign back with `already_member` set, whatever

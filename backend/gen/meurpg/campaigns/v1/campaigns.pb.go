@@ -1355,14 +1355,14 @@ const file_meurpg_campaigns_v1_campaigns_proto_rawDesc = "" +
 	"\x13INVITE_STATE_ACTIVE\x10\x01\x12\x18\n" +
 	"\x14INVITE_STATE_EXPIRED\x10\x02\x12\x18\n" +
 	"\x14INVITE_STATE_REVOKED\x10\x03\x12\x18\n" +
-	"\x14INVITE_STATE_USED_UP\x10\x042\xc4\x06\n" +
+	"\x14INVITE_STATE_USED_UP\x10\x042\xd3\x06\n" +
 	"\x0fCampaignService\x12i\n" +
 	"\x0eCreateCampaign\x12*.meurpg.campaigns.v1.CreateCampaignRequest\x1a+.meurpg.campaigns.v1.CreateCampaignResponse\x12q\n" +
-	"\x0fListMyCampaigns\x12+.meurpg.campaigns.v1.ListMyCampaignsRequest\x1a,.meurpg.campaigns.v1.ListMyCampaignsResponse\"\x03\x90\x02\x01\x12`\n" +
-	"\vGetCampaign\x12'.meurpg.campaigns.v1.GetCampaignRequest\x1a(.meurpg.campaigns.v1.GetCampaignResponse\x12`\n" +
-	"\vListMembers\x12'.meurpg.campaigns.v1.ListMembersRequest\x1a(.meurpg.campaigns.v1.ListMembersResponse\x12c\n" +
-	"\fCreateInvite\x12(.meurpg.campaigns.v1.CreateInviteRequest\x1a).meurpg.campaigns.v1.CreateInviteResponse\x12`\n" +
-	"\vListInvites\x12'.meurpg.campaigns.v1.ListInvitesRequest\x1a(.meurpg.campaigns.v1.ListInvitesResponse\x12c\n" +
+	"\x0fListMyCampaigns\x12+.meurpg.campaigns.v1.ListMyCampaignsRequest\x1a,.meurpg.campaigns.v1.ListMyCampaignsResponse\"\x03\x90\x02\x01\x12e\n" +
+	"\vGetCampaign\x12'.meurpg.campaigns.v1.GetCampaignRequest\x1a(.meurpg.campaigns.v1.GetCampaignResponse\"\x03\x90\x02\x02\x12e\n" +
+	"\vListMembers\x12'.meurpg.campaigns.v1.ListMembersRequest\x1a(.meurpg.campaigns.v1.ListMembersResponse\"\x03\x90\x02\x02\x12c\n" +
+	"\fCreateInvite\x12(.meurpg.campaigns.v1.CreateInviteRequest\x1a).meurpg.campaigns.v1.CreateInviteResponse\x12e\n" +
+	"\vListInvites\x12'.meurpg.campaigns.v1.ListInvitesRequest\x1a(.meurpg.campaigns.v1.ListInvitesResponse\"\x03\x90\x02\x02\x12c\n" +
 	"\fRevokeInvite\x12(.meurpg.campaigns.v1.RevokeInviteRequest\x1a).meurpg.campaigns.v1.RevokeInviteResponse\x12c\n" +
 	"\fAcceptInvite\x12(.meurpg.campaigns.v1.AcceptInviteRequest\x1a).meurpg.campaigns.v1.AcceptInviteResponseB\xdf\x01\n" +
 	"\x17com.meurpg.campaigns.v1B\x0eCampaignsProtoP\x01ZFgithub.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1;campaignsv1\xa2\x02\x03MCX\xaa\x02\x13Meurpg.Campaigns.V1\xca\x02\x13Meurpg\\Campaigns\\V1\xe2\x02\x1fMeurpg\\Campaigns\\V1\\GPBMetadata\xea\x02\x15Meurpg::Campaigns::V1b\x06proto3"
