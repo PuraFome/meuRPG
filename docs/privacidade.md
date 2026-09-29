@@ -28,6 +28,7 @@ Copie no PR que mexe em dados, logs, telas ou fornecedores:
 - [ ] **`session_events`:** o payload só tem IDs, números e códigos. Nunca nome, handle ou texto.
 - [ ] **Imagens:** upload para o nosso bucket, com EXIF removido. Nada de URL de imagem externa.
 - [ ] **Navegador:** nenhum script, fonte, pixel ou iframe de terceiros.
+- [ ] **Sem Web Storage:** nada de `localStorage`, `sessionStorage`, IndexedDB, cookie gravado pelo JavaScript, ou Worker guardando token ou dado pessoal — o único armazenamento no aparelho é o cookie de sessão `__Host-`, `HttpOnly`. `web/src/no-web-storage.spec.ts` confere isso automaticamente.
 - [ ] **Fornecedor novo ou dado saindo do servidor:** atualizar a [tabela de operadores](#operadores-e-onde-os-dados-ficam) e abrir a pergunta de contrato e de transferência internacional.
 - [ ] **Segredos:** só no Secret Manager. Nada em código, teste ou fixture.
 - [ ] **Gatilho de impacto:** respondeu às [perguntas de impacto](#perguntas-de-impacto)? Um "sim" pede uma seção de riscos no PR.
@@ -59,8 +60,10 @@ Copie no PR que mexe em dados, logs, telas ou fornecedores:
 | Imagens (retrato, mapa, galeria) | Cloud Storage | Jogar | Contrato | Até excluir, mais 7 dias de soft delete |
 | Eventos da sessão, combatentes, XP | `session_events`, `combatants`, `xp_awards` | Histórico e tempo real (MR-012, MR-016) | Contrato | Enquanto a campanha existir |
 | Backups do banco | Cockroach Labs | Recuperar desastre | Legítimo interesse | 30 dias |
-| Cookie de sessão `__Host-meurpg_session` e `localStorage` | Aparelho do usuário | Manter o login | Estritamente necessário | Até o logout, que limpa tudo, ou 30 dias |
+| Cookie de sessão `__Host-meurpg_session` | Aparelho do usuário | Manter o login | Estritamente necessário | Até o logout, que apaga a sessão no servidor, ou 30 dias |
 | Cookie de login `__Host-meurpg_login` (o `state`) | Aparelho do usuário | Amarrar o login ao navegador que o começou (contra login CSRF) | Estritamente necessário | 10 minutos; apagado no callback |
+
+**O app novo (`web/`) não guarda nada no navegador além desses dois cookies**, os dois `HttpOnly` e nunca lidos pelo JavaScript da página. Nada de `localStorage`, `sessionStorage`, IndexedDB, cookie gravado pelo JavaScript, ou Worker guardando token ou dado pessoal — regra do Vinicius, sem exceção, com uma trava automática (`web/src/no-web-storage.spec.ts`) que varre o código-fonte atrás dessas APIs. Ver [Arquitetura](arquitetura.md#nenhum-dado-no-navegador-além-do-cookie-de-sessão).
 
 **No app antigo (descontinuado)**, `users.name` era guardado, e havia duas colunas sem finalidade: `characters.email` e `sheet.playerName`. Não há migração de dados: as três simplesmente não existem no schema novo (decidido em 29/09/2026, ver [Modelo de dados](dados.md)). No app antigo, mapas ficavam em base64 no banco, e galeria e campanhas ficavam no `localStorage`.
 

@@ -1,0 +1,37 @@
+.status-card {
+  max-width: 32rem;
+  margin: 1rem 0;
+}
+
+.status-card__content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.status-card--error {
+  color: var(--mat-sys-error);
+}
+
+.campaign-meta {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.members {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.members__name {
+  font-weight: 500;
+}
+
+.members__role {
+  margin-left: 0.5rem;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
+}

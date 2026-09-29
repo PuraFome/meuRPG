@@ -1,0 +1,21 @@
+.profile-card {
+  max-width: 28rem;
+}
+
+.profile-hint {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.full-width {
+  width: 100%;
+}
+
+.form-error {
+  color: var(--mat-sys-error);
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}

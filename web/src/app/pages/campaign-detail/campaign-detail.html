@@ -1,0 +1,55 @@
+@if (state(); as s) {
+  @switch (s.status) {
+    @case ('loading') {
+      <h1>Campanha</h1>
+      <mat-card class="status-card" role="status" aria-live="polite">
+        <mat-card-content class="status-card__content">
+          <mat-spinner diameter="32" />
+          <p>Carregando a campanha...</p>
+        </mat-card-content>
+      </mat-card>
+    }
+    @case ('not-found') {
+      <h1>Campanha não encontrada</h1>
+      <mat-card class="status-card" role="alert">
+        <mat-card-content>
+          <p>Essa campanha não existe, ou você não é membro dela.</p>
+        </mat-card-content>
+        <mat-card-actions>
+          <a mat-button routerLink="/campanhas">Voltar para minhas campanhas</a>
+        </mat-card-actions>
+      </mat-card>
+    }
+    @case ('error') {
+      <h1>Não foi possível abrir a campanha</h1>
+      <mat-card class="status-card status-card--error" role="alert">
+        <mat-card-content>
+          <p>{{ s.message }}</p>
+        </mat-card-content>
+      </mat-card>
+    }
+    @case ('ready') {
+      <h1>{{ s.campaign.name }}</h1>
+      <p class="campaign-meta">
+        Você é {{ roleLabel(s.campaign.myRole) }} nesta campanha. Modo de XP:
+        {{ xpModeLabel(s.campaign.xpMode) }}.
+      </p>
+
+      <section aria-labelledby="members-heading">
+        <h2 id="members-heading">Membros</h2>
+        <ul class="members">
+          @for (m of s.members; track m.userId) {
+            <li>
+              <span class="members__name">{{ displayNameOrFallback(m.displayName) }}</span>
+              <span class="members__role">{{ roleLabel(m.role) }}</span>
+            </li>
+          }
+        </ul>
+      </section>
+
+      @if (s.campaign.myRole === Role.MASTER) {
+        <app-campaign-invites [campaignId]="s.campaign.id" />
+      }
+    }
+  }
+}

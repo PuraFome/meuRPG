@@ -1,8 +1,78 @@
-<mat-card class="empty-state">
+<h1>Minhas campanhas</h1>
+
+@if (state(); as s) {
+  @switch (s.status) {
+    @case ('loading') {
+      <mat-card class="status-card" role="status" aria-live="polite">
+        <mat-card-content class="status-card__content">
+          <mat-spinner diameter="32" />
+          <p>Carregando suas campanhas...</p>
+        </mat-card-content>
+      </mat-card>
+    }
+    @case ('error') {
+      <mat-card class="status-card status-card--error" role="alert">
+        <mat-card-content>
+          <p>{{ s.message }}</p>
+        </mat-card-content>
+      </mat-card>
+    }
+    @case ('ready') {
+      @if (s.campaigns.length === 0) {
+        <mat-card class="empty-state">
+          <mat-card-content>
+            <p>Você ainda não tem nenhuma campanha. Crie a primeira abaixo.</p>
+          </mat-card-content>
+        </mat-card>
+      } @else {
+        <mat-nav-list>
+          @for (c of s.campaigns; track c.id) {
+            <a mat-list-item [routerLink]="['/campanhas', c.id]">
+              <span matListItemTitle>{{ c.name }}</span>
+              <span matListItemLine>{{ roleLabel(c.myRole) }}</span>
+            </a>
+          }
+        </mat-nav-list>
+      }
+    }
+  }
+}
+
+<mat-card class="new-campaign">
   <mat-card-header>
-    <h1 mat-card-title>Minhas campanhas</h1>
+    <h2 mat-card-title>Nova campanha</h2>
   </mat-card-header>
   <mat-card-content>
-    <p>Em breve.</p>
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Nome da campanha</mat-label>
+        <input matInput formControlName="name" maxlength="80" required />
+        @if (form.controls.name.invalid && form.controls.name.touched) {
+          <mat-error>Informe um nome de 1 a 80 caracteres.</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Modo de XP</mat-label>
+        <mat-select formControlName="xpMode" required>
+          <mat-option [value]="XpMode.ENEMIES">Por inimigos derrotados</mat-option>
+          <mat-option [value]="XpMode.GOLD">Por ouro</mat-option>
+          <mat-option [value]="XpMode.MILESTONES">Por marcos</mat-option>
+        </mat-select>
+        @if (form.controls.xpMode.invalid && form.controls.xpMode.touched) {
+          <mat-error>Escolha um modo de XP.</mat-error>
+        }
+      </mat-form-field>
+
+      @if (createState(); as c) {
+        @if (c.status === 'error') {
+          <p class="form-error" role="alert">{{ c.message }}</p>
+        }
+      }
+
+      <button mat-flat-button type="submit" [disabled]="createState().status === 'saving'">
+        Criar campanha
+      </button>
+    </form>
   </mat-card-content>
 </mat-card>

@@ -1,9 +1,9 @@
 @switch (auth.state().status) {
   @case ('signed-in') {
-    <span class="user-menu__account">
+    <a mat-button routerLink="/perfil" class="user-menu__account">
       <mat-icon aria-hidden="true">account_circle</mat-icon>
       {{ accountLabel() }}
-    </span>
+    </a>
     <button mat-button (click)="signOut()">Sair</button>
   }
   @case ('signed-out') {

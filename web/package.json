@@ -32,6 +32,7 @@
     "@angular/cli": "21.2.24",
     "@angular/compiler-cli": "21.2.24",
     "@bufbuild/protoc-gen-es": "2.15.0",
+    "@types/node": "22.20.4",
     "jsdom": "28.1.0",
     "prettier": "3.8.1",
     "typescript": "5.9.3",

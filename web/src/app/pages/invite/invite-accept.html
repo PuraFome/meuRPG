@@ -1,0 +1,48 @@
+<h1>Convite</h1>
+
+@if (state(); as s) {
+  @switch (s.status) {
+    @case ('waiting-for-session') {
+      <mat-card class="status-card" role="status" aria-live="polite">
+        <mat-card-content class="status-card__content">
+          <mat-spinner diameter="32" />
+          <p>Confirmando sua sessão...</p>
+        </mat-card-content>
+      </mat-card>
+    }
+    @case ('accepting') {
+      <mat-card class="status-card" role="status" aria-live="polite">
+        <mat-card-content class="status-card__content">
+          <mat-spinner diameter="32" />
+          <p>Entrando na campanha...</p>
+        </mat-card-content>
+      </mat-card>
+    }
+    @case ('no-token') {
+      <mat-card class="status-card" role="alert">
+        <mat-card-content>
+          <p>Link de convite inválido. Peça um novo link a quem te convidou.</p>
+        </mat-card-content>
+      </mat-card>
+    }
+    @case ('signed-out') {
+      <mat-card class="status-card">
+        <mat-card-content>
+          <p>Entre com sua conta para aceitar o convite.</p>
+        </mat-card-content>
+        <mat-card-actions>
+          <button mat-flat-button type="button" (click)="signInToAccept()">
+            Entrar para aceitar o convite
+          </button>
+        </mat-card-actions>
+      </mat-card>
+    }
+    @case ('error') {
+      <mat-card class="status-card status-card--error" role="alert">
+        <mat-card-content>
+          <p>{{ s.message }}</p>
+        </mat-card-content>
+      </mat-card>
+    }
+  }
+}

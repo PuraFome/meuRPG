@@ -1,0 +1,151 @@
+import { Component, OnInit, inject, input, signal } from '@angular/core';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { Code } from '@connectrpc/connect';
+
+import { Invite, InviteState } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import { inviteStateLabel } from '../../../core/campaigns/campaign-labels';
+import { CampaignsService } from '../../../core/campaigns/campaigns.service';
+import { describeConnectError } from '../../../core/connect/connect-errors';
+
+type ListState =
+  | { status: 'loading' }
+  | { status: 'ready'; invites: Invite[] }
+  | { status: 'error'; message: string };
+
+type CreateState = { status: 'idle' } | { status: 'saving' } | { status: 'error'; message: string };
+
+type CopyStatus = 'idle' | 'copied' | 'error';
+
+const MASTER_ONLY_MESSAGES = {
+  [Code.PermissionDenied]: 'Só o mestre da campanha pode gerenciar convites.',
+  [Code.Unavailable]: 'Não foi possível falar com o servidor agora. Tente de novo em instantes.',
+};
+
+/**
+ * The master's "Convites" section on `/campanhas/:id` (MR-002): create an
+ * invite, see its link exactly once, and list/revoke existing invites.
+ * Only rendered by `CampaignDetail` when `my_role` is master.
+ */
+@Component({
+  selector: 'app-campaign-invites',
+  imports: [
+    MatButtonModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule,
+    ReactiveFormsModule,
+  ],
+  templateUrl: './invites.html',
+  styleUrl: './invites.scss',
+})
+export class CampaignInvites implements OnInit {
+  private readonly campaigns = inject(CampaignsService);
+  private readonly fb = inject(FormBuilder);
+
+  readonly campaignId = input.required<string>();
+
+  protected readonly inviteStateLabel = inviteStateLabel;
+  protected readonly InviteState = InviteState;
+
+  protected readonly listState = signal<ListState>({ status: 'loading' });
+  protected readonly createState = signal<CreateState>({ status: 'idle' });
+
+  /** The just-created invite's link, shown exactly once (CreateInvite's doc
+   * comment: "this is the only time the server ever returns it"). Cleared
+   * when the master dismisses the banner or creates another invite. */
+  protected readonly revealedLink = signal<string | null>(null);
+  protected readonly copyStatus = signal<CopyStatus>('idle');
+
+  protected readonly form = this.fb.nonNullable.group({
+    maxUses: [1, [Validators.required, Validators.min(1), Validators.max(20)]],
+    validityDays: [7, Validators.required],
+  });
+
+  ngOnInit(): void {
+    // Not the constructor: `TestBed.createComponent` + `setInput()` (the
+    // standard way to drive a required signal input in a spec) only
+    // applies the input value before the first change-detection pass, and
+    // ngOnInit is guaranteed to run after that — reading `campaignId()`
+    // any earlier would throw for a value that has not been set yet.
+    this.load();
+  }
+
+  private load(): void {
+    this.listState.set({ status: 'loading' });
+    this.campaigns.listInvites(this.campaignId()).then(
+      (res) => this.listState.set({ status: 'ready', invites: res.invites }),
+      (err: unknown) => {
+        this.listState.set({
+          status: 'error',
+          message: describeConnectError(err, MASTER_ONLY_MESSAGES),
+        });
+      },
+    );
+  }
+
+  protected async createInvite(): Promise<void> {
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+    const { maxUses, validityDays } = this.form.getRawValue();
+    this.createState.set({ status: 'saving' });
+    this.revealedLink.set(null);
+    this.copyStatus.set('idle');
+    try {
+      const res = await this.campaigns.createInvite(this.campaignId(), maxUses, validityDays);
+      this.createState.set({ status: 'idle' });
+      if (res.invite) {
+        const current = this.listState();
+        const invites = current.status === 'ready' ? current.invites : [];
+        this.listState.set({ status: 'ready', invites: [res.invite, ...invites] });
+      }
+      this.revealedLink.set(`${window.location.origin}/convite#t=${res.token}`);
+      this.form.reset({ maxUses: 1, validityDays: 7 });
+    } catch (err) {
+      this.createState.set({
+        status: 'error',
+        message: describeConnectError(err, {
+          ...MASTER_ONLY_MESSAGES,
+          [Code.InvalidArgument]: 'Confira o número de usos (1 a 20) e a validade escolhida.',
+        }),
+      });
+    }
+  }
+
+  protected dismissReveal(): void {
+    this.revealedLink.set(null);
+    this.copyStatus.set('idle');
+  }
+
+  protected async copyLink(link: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(link);
+      this.copyStatus.set('copied');
+    } catch {
+      this.copyStatus.set('error');
+    }
+  }
+
+  protected async revoke(invite: Invite): Promise<void> {
+    try {
+      const res = await this.campaigns.revokeInvite(this.campaignId(), invite.id);
+      const current = this.listState();
+      if (current.status === 'ready' && res.invite) {
+        this.listState.set({
+          status: 'ready',
+          invites: current.invites.map((i) => (i.id === res.invite!.id ? res.invite! : i)),
+        });
+      }
+    } catch (err) {
+      this.listState.set({
+        status: 'error',
+        message: describeConnectError(err, MASTER_ONLY_MESSAGES),
+      });
+    }
+  }
+}
