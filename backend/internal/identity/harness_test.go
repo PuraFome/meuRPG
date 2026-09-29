@@ -90,6 +90,11 @@ func withIDP(setup func(idp *fakeIDP)) harnessOption {
 	return func(h *harness, _ *Config) { setup(h.idp) }
 }
 
+// withCloudRun makes the Service read the client IP from X-Forwarded-For.
+func withCloudRun() harnessOption {
+	return func(_ *harness, cfg *Config) { cfg.BehindCloudRun = true }
+}
+
 // withMaxAge sets OIDC_MAX_AGE.
 func withMaxAge(d time.Duration) harnessOption {
 	return func(_ *harness, cfg *Config) { cfg.OIDC.MaxAge = d }

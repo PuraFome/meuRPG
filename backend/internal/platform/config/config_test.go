@@ -99,6 +99,36 @@ func TestLoad(t *testing.T) {
 			}},
 		},
 		{
+			// The local stack's issuer: the browser and the API container
+			// both reach the development provider by this name.
+			name: "oidc over plain http on a *.localhost name",
+			env: withOIDC(map[string]string{
+				"OIDC_ISSUER":       "http://idp.localhost:9090",
+				"OIDC_REDIRECT_URL": "http://localhost:8080/auth/callback",
+			}),
+			want: Config{Port: 8080, LogLevel: slog.LevelInfo, WebDir: DefaultWebDir, OIDC: OIDC{
+				IssuerURL:    "http://idp.localhost:9090",
+				ClientID:     "meurpg",
+				ClientSecret: "s3cret",
+				RedirectURL:  "http://localhost:8080/auth/callback",
+			}},
+		},
+		{
+			name:    "oidc issuer over plain http on a name that only contains localhost",
+			env:     withOIDC(map[string]string{"OIDC_ISSUER": "http://localhost.example.com"}),
+			wantErr: []string{"OIDC_ISSUER must use https"},
+		},
+		{
+			name:    "oidc issuer over plain http on a name that only ends in localhost",
+			env:     withOIDC(map[string]string{"OIDC_ISSUER": "http://evillocalhost"}),
+			wantErr: []string{"OIDC_ISSUER must use https"},
+		},
+		{
+			name: "on Cloud Run",
+			env:  map[string]string{"K_SERVICE": "meurpg-api"},
+			want: Config{Port: 8080, LogLevel: slog.LevelInfo, WebDir: DefaultWebDir, CloudRun: true},
+		},
+		{
 			name:    "oidc max_age is not a duration",
 			env:     withOIDC(map[string]string{"OIDC_MAX_AGE": "3600"}),
 			wantErr: []string{"OIDC_MAX_AGE must be a duration"},
@@ -215,5 +245,34 @@ func TestSecretNeverPrintsItself(t *testing.T) {
 	}
 	if got := Secret("").String(); got != "" {
 		t.Errorf("empty Secret prints %q, want an empty string", got)
+	}
+}
+
+func TestIsLoopbackHost(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]bool{
+		"localhost":             true,
+		"LOCALHOST":             true,
+		"localhost.":            true,
+		"idp.localhost":         true,
+		"a.b.localhost":         true,
+		"IdP.LocalHost":         true,
+		"127.0.0.1":             true,
+		"127.1.2.3":             true,
+		"::1":                   true,
+		"":                      false,
+		"localhost.example.com": false,
+		"evillocalhost":         false,
+		"example.com":           false,
+		"10.0.0.1":              false,
+		"0.0.0.0":               false,
+		"::":                    false,
+		"::ffff:10.0.0.1":       false,
+	}
+	for host, want := range tests {
+		if got := IsLoopbackHost(host); got != want {
+			t.Errorf("IsLoopbackHost(%q) = %v, want %v", host, got, want)
+		}
 	}
 }

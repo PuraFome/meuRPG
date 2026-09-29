@@ -5,7 +5,7 @@ O MVP fica pronto no fim da Etapa 7. A ordem começa pela fundação: primeiro o
 ```mermaid
 flowchart TD
     E1["Etapa 1, Fundação<br/>monorepo, servidor Go, contratos Protobuf, CI, ambiente local<br/>pronta, aguardando PR; depois vem o 1º deploy"]
-    E2["Etapa 2, Base de testes e web<br/>Playwright contra o stack local, com um provedor OIDC local<br/>esqueleto do app novo em web e testes de integração em Go no CI<br/>em andamento: esqueleto do web pronto"]
+    E2["Etapa 2, Base de testes e web<br/>Playwright contra o stack local, com um provedor OIDC local<br/>esqueleto do app novo em web e testes de integração em Go no CI<br/>pronta, aguardando PR"]
     E3["Etapa 3, Login e campanhas<br/>MR-001, MR-002, MR-003<br/>em andamento: login do mestre pronto"]
     E4["Etapa 4, Personagens<br/>MR-004, MR-005, MR-006"]
     E5["Etapa 5, Sessão ao vivo<br/>MR-008, MR-009, MR-011, MR-012<br/>MR-019 se entrar no MVP"]
@@ -20,7 +20,7 @@ flowchart TD
 | Etapa | Entrega | Histórias |
 | --- | --- | --- |
 | 1. Fundação | Monorepo, servidor Go, contratos Protobuf, CI, ambiente local. Pronta, aguardando PR; o 1º deploy vem depois. | — |
-| 2. Base de testes e web | Playwright contra o stack local, com um provedor OIDC local no lugar do Google; esqueleto do novo app Angular em `web/`; testes de integração em Go no CI. Em andamento: o esqueleto do `web/` está pronto; faltam o Playwright e os testes de integração no CI. | — |
+| 2. Base de testes e web | Playwright contra o stack local, com um provedor OIDC local no lugar do Google; esqueleto do novo app Angular em `web/`; testes de integração em Go no CI. Pronta, aguardando PR: o esqueleto do `web/`, o devidp (provedor OIDC de desenvolvimento), os testes Playwright em `e2e/` (`make e2e` e o workflow `e2e`) e os testes de integração com CockroachDB no CI (job `go-db`). | — |
 | 3. Login e campanhas | Login do mestre por OIDC com sessão de até 30 dias (pronto), criar campanha, gerar convite, entrar pelo convite. | MR-001, MR-002, MR-003 |
 | 4. Personagens | Ficha no formato do PDF, NPCs, ficha travada na primeira sessão. | MR-004, MR-005, MR-006 |
 | 5. Sessão ao vivo | Pontos de interesse, mapa sem spoiler, iniciar sessão, acompanhar sessão e, se o Samuel colocar no MVP, a galeria de imagens ([pergunta em aberto](produto/perguntas-em-aberto.md)). | MR-008, MR-009, MR-011, MR-012 (MR-019 a definir) |

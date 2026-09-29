@@ -10,13 +10,14 @@ Ferramentas: Go 1.27, buf, sqlc, goose, golangci-lint, Docker e Node 22. No Mac,
 
 | Comando | O que faz |
 | --- | --- |
-| `make up` | Sobe o CockroachDB (um nó só) e o backend com Docker Compose (`deploy/local/compose.yaml`); serve o app em `http://localhost:8080`, servidor e API na mesma origem. |
+| `make up` | Sobe o CockroachDB (um nó só), o devidp (provedor OIDC de desenvolvimento) e o backend com Docker Compose (`deploy/local/compose.yaml`); serve o app em `http://localhost:8080`, servidor e API na mesma origem, com o login funcionando (ver [Login local com o devidp](#login-local-com-o-devidp)). |
 | `make run` | Roda o backend direto no terminal, apontando para o banco do `make up`. |
 | `make proto` | Gera o código Go **e** o TypeScript a partir dos `.proto` (`backend/gen` e `web/src/gen`). Instala as dependências do `web/` sozinho, se faltarem. |
 | `make lint` | Roda `buf lint` e `golangci-lint`. |
 | `make test` | Roda `go test -race` em todo o backend. |
 | `MEURPG_TEST_DATABASE_URL='postgresql://root@localhost:26257/defaultdb?sslmode=disable' make test` | Roda os testes de integração (migrations, transações) contra o CockroachDB do `make up`. Sem a variável, eles são pulados. |
 | `make migrate` | Aplica as migrations do goose no banco local. |
+| `make e2e` | Sobe o ambiente local (como o `make up`), roda os testes Playwright de `e2e/` contra ele e mostra onde está o relatório. O ambiente continua de pé; `make down` derruba. Ver [Testes ponta a ponta](#testes-ponta-a-ponta-playwright). |
 | `make down` | Derruba o ambiente local (`docker compose down`). |
 | `npm start` | Sobe o Angular antigo (`src/`), descontinuado — mantido só como referência. |
 | `make web-install` | Instala as dependências do `web/`: `npm ci --ignore-scripts` (nunca roda scripts de instalação de terceiros). Se for adicionar ou atualizar uma dependência, use `npm install` com o Corepack ativado (`corepack enable`, uma vez só): o `web/package.json` fixa `npm@11.20.0` porque o `npm` de série (10.x) trava ao resolver o grafo de peer dependencies do Vitest 4.1; `npm ci` não tem esse problema e funciona com qualquer um dos dois. |
@@ -30,12 +31,12 @@ O login do mestre funciona com qualquer provedor OpenID Connect: o Google em pro
 
 | Variável | Obrigatória | O que é |
 | --- | --- | --- |
-| `OIDC_ISSUER` | Sim, para ligar o login | O issuer do provedor, igual ao campo `issuer` do `/.well-known/openid-configuration` dele. Precisa ser `https`; `http` só vale em `localhost`. |
+| `OIDC_ISSUER` | Sim, para ligar o login | O issuer do provedor, igual ao campo `issuer` do `/.well-known/openid-configuration` dele. Precisa ser `https`; `http` só vale em `localhost`, num nome `*.localhost` ou num IP de loopback. |
 | `OIDC_CLIENT_ID` | Sim | O client ID do MeuRPG no provedor. |
 | `OIDC_CLIENT_SECRET` | Sim | O client secret. É segredo: nunca vai para o repositório, para um issue ou para o log (o backend mostra `[REDACTED]`). |
 | `OIDC_REDIRECT_URL` | Sim | A URL pública do backend mais `/auth/callback`. Na sua máquina, `http://localhost:8080/auth/callback`. Cadastre no provedor exatamente igual. |
 | `OIDC_CA_FILE` | Não | Arquivo PEM com o certificado de um provedor local com certificado autoassinado. |
-| `OIDC_MAX_AGE` | Não | Uma duração, como `1h`. Se definida, vai como `max_age`: o provedor pede a senha de novo quando o último login nele é mais antigo que isso. Use só com provedor que documenta `max_age`. |
+| `OIDC_MAX_AGE` | Não | Uma duração, como `1h`. Se definida, vai como `max_age`: o provedor pede a senha de novo quando o último login nele é mais antigo que isso. Use só com provedor que documenta `max_age`: `1h` com o devidp (é o que o `compose.yaml` usa); **não defina com o Google**, que não documenta `max_age`. Quem garante a reautenticação pelo menos a cada 30 dias (NIST SP 800-63B-4, AAL1) é a nossa sessão no servidor, que nunca passa de 30 dias, e não o `max_age`. |
 
 Sem `OIDC_ISSUER` ou sem `DATABASE_URL`, o backend sobe do mesmo jeito, avisa no log que o login está desligado, e `/auth/login` responde 503.
 
@@ -54,6 +55,44 @@ Testes do login:
 - `make test` roda tudo com um provedor OIDC falso, dentro do próprio teste. Não precisa de rede.
 - Com `MEURPG_TEST_DATABASE_URL` apontando para um CockroachDB (por exemplo `postgresql://root@localhost:26257/defaultdb?sslmode=disable`), os mesmos testes também rodam contra o banco.
 - Com as variáveis `MEURPG_TEST_OIDC_*` (a lista está no comentário de `TestRealProviderSignIn`, em `backend/internal/identity`), um teste faz o login de verdade num provedor OIDC local, sem navegador.
+
+## Login local com o devidp
+
+O `make up` já sobe o login pronto: o serviço `idp` do `compose.yaml` roda o **devidp** (`backend/cmd/devidp`), um provedor OpenID Connect mínimo, só para a sua máquina e para o CI, no lugar do Google.
+
+1. `make up`.
+2. Abra `http://localhost:8080/auth/login?return_to=/` no Chrome. O Safari não aceita cookie `Secure` em `http://localhost`, e o Firefox ainda não foi testado com o devidp.
+3. O navegador vai para `http://idp.localhost:9090`, que lista os usuários de teste. Um clique e você volta logado.
+
+| Usuário de teste | `sub` | E-mail | Para quê |
+| --- | --- | --- | --- |
+| Mestre Teste | `devidp-mestre` | `mestre@example.com` (verificado) | O mestre dos testes. |
+| Jogador Teste | `devidp-jogador` | `jogador@example.com` (verificado) | Uma segunda pessoa, para os testes com jogador. |
+| E-mail Não Verificado | `devidp-nao-verificado` | `nao-verificado@example.com` (**não** verificado) | Conferir que um e-mail não verificado não é guardado. |
+
+O `sub` é fixo, então cada usuário de teste cai sempre na mesma conta do banco local. Não há senha: qualquer um que alcance o devidp entra como qualquer usuário de teste. Por isso ele **nunca** vai para produção:
+
+- a imagem de produção (`backend/Dockerfile`) só compila `cmd/api` e `cmd/migrate`; o devidp tem imagem própria (`deploy/local/devidp.Dockerfile`), usada só pelo `compose.yaml`, e o CI confere que a imagem de produção não tem o binário;
+- ele se recusa a subir se o issuer não estiver num host de loopback (`localhost`, `*.localhost`, `127.0.0.1`, `::1`), ou se estiver no Cloud Run (`K_SERVICE` definido); um teste cobre essa trava;
+- ao subir, ele imprime um aviso grande no log.
+
+A configuração vem de flags ou de variáveis de ambiente: `DEVIDP_ISSUER`, `DEVIDP_LISTEN`, `DEVIDP_CLIENT_ID`, `DEVIDP_CLIENT_SECRET` e `DEVIDP_REDIRECT_URIS` (a lista completa e os padrões estão no comentário de `backend/cmd/devidp/main.go`). Para rodar fora do Docker, com as portas 8080 e 9090 livres: `cd backend && go run ./cmd/devidp` num terminal e, em outro, o backend com `OIDC_ISSUER=http://localhost:9090 OIDC_CLIENT_ID=meurpg-local OIDC_CLIENT_SECRET=meurpg-local-secret OIDC_REDIRECT_URL=http://localhost:8080/auth/callback make run` (com a porta 8080 livre).
+
+O devidp também respeita `max_age` e `prompt=login|none`: ele guarda o próprio login num cookie `devidp_session`, então um segundo login no mesmo navegador, dentro de `max_age`, volta direto, sem a lista. O provedor em si fica em `backend/internal/identity/oidctest` e é o mesmo que os testes em Go usam.
+
+**Por que `idp.localhost`.** O issuer precisa ser a mesma string para o navegador e para o container da API, porque o backend confere o `iss` do ID token. O navegador resolve qualquer `*.localhost` para `127.0.0.1` sozinho (RFC 6761) e chega ao devidp pela porta publicada; o container da API resolve o mesmo nome pelo alias de rede do Docker. Detalhes em [Arquitetura](docs/arquitetura.md#testes-e-o-provedor-de-desenvolvimento).
+
+## Testes ponta a ponta (Playwright)
+
+Os testes de aceite pela tela ficam em `e2e/`, um projeto Playwright em TypeScript, com `package.json` próprio e versões fixas.
+
+- `make e2e` sobe o ambiente local, instala as dependências de `e2e/` se faltarem (`npm ci --ignore-scripts`), roda os testes e mostra onde está o relatório HTML (`cd e2e && npx playwright show-report`).
+- Na sua máquina, os testes usam o **Google Chrome instalado** (`channel: 'chrome'`), sem baixar navegador. No CI, usam o Chromium que o `npx playwright install chromium` baixa, na versão presa pelo `package-lock.json`. `E2E_BROWSER_CHANNEL` troca isso (vazio = o Chromium do Playwright, que precisa de `npx playwright install chromium` antes).
+- O login passa pelo devidp, clicando no usuário de teste como uma pessoa faria. As RPCs vão com `page.request`, que usa os mesmos cookies da página, e com o header `Connect-Protocol-Version: 1`.
+- Cada teste que prova um critério de aceite leva a tag da história ou da regra, como `@MR-001`. `npx playwright test --grep @MR-001` roda só os dela.
+- Enquanto a tela de login do app não existe, os testes começam direto em `/auth/login?return_to=/` (há um `TODO` em `e2e/tests/support.ts` para trocar pelo clique no botão "Entrar" quando ele chegar).
+
+Para adicionar ou atualizar uma dependência de `e2e/`: `cd e2e && npm install <pacote>@<versão>`. O `e2e/.npmrc` já impede scripts de instalação e grava a versão exata.
 
 ## Branches
 
@@ -83,6 +122,8 @@ Fluxo resumido: fork, se for o caso → PR para `PuraFome/meuRPG` → CI verde �
 | --- | --- |
 | backend | `buf lint`, `buf format` e `buf breaking`; código gerado igual ao dos `.proto`; `golangci-lint`; `go test -race`; `govulncheck` (dependências com falhas conhecidas); build da imagem Docker. |
 | web | `npm ci --ignore-scripts` em `web/`, testes e build do Angular. |
+| backend (`go-db`) | `go test -race` com `MEURPG_TEST_DATABASE_URL` apontando para um CockroachDB de verdade (a mesma imagem, presa pelo mesmo digest, do `compose.yaml`), então os testes de integração rodam em vez de serem pulados. |
+| e2e | Sobe o ambiente local com `docker compose up --build`, confere que a imagem de produção não tem o devidp e roda os testes Playwright de `e2e/` no Chromium. Se falhar, mostra os logs do ambiente e guarda o relatório do Playwright como artifact por 7 dias. Mudança só em documentação (`docs/`, arquivos `.md`) não roda esse job. |
 
 Toda action do GitHub fica presa pelo SHA do commit, não pela tag. Quem controla uma action consegue mover uma tag para um código malicioso, mas não consegue mudar um SHA.
 

@@ -35,3 +35,15 @@ updates:
         update-types:
           - "minor"
           - "patch"
+
+  # Playwright tests (e2e/). A new @playwright/test also moves the Chromium
+  # build CI downloads, since the lockfile pins both.
+  - package-ecosystem: "npm"
+    directory: "/e2e"
+    schedule:
+      interval: "weekly"
+    groups:
+      e2e-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"

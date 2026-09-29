@@ -71,6 +71,8 @@ O login do mestre (`backend/internal/identity`) cumpre assim os itens desta pág
 - **`GetMe` devolve só o ID da conta** e a hora em que a sessão acaba. A requisição é vazia, então o GET do Connect não põe dado pessoal na URL.
 - **Respostas sem cache.** `GetMe`, `SignOut` e as rotas `/auth/*` saem com `Cache-Control: no-store`; as rotas `/auth/*` também com `Referrer-Policy: no-referrer`.
 - **Excluir a conta** apaga identidades e sessões junto, por `ON DELETE CASCADE`.
+- **Limite de tentativas no `/auth/login`.** Para contar as tentativas, o servidor guarda o IP do cliente (o prefixo `/64`, no IPv6) só na memória da instância, nunca no banco nem no log. É a linha "IP no limitador de tentativas" do inventário: some em até 2 minutos depois da última tentativa, ou quando a instância para.
+- **Usuários de teste do devidp** (o provedor OIDC de desenvolvimento, ver [CONTRIBUTING.md](../CONTRIBUTING.md#login-local-com-o-devidp)) são fictícios, com e-mails em `example.com`. Ele não existe em produção, então nenhum dado real passa por ele.
 
 ## Direitos do titular e como atendemos
 

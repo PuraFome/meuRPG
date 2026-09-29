@@ -14,6 +14,7 @@ import (
 	"connectrpc.com/connect"
 
 	identityv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/identity/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/identity/oidctest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/config"
 )
 
@@ -142,10 +143,12 @@ func TestSignInStoresOnlyIssuerSubjectAndVerifiedEmail(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			h := newHarness(t, withIDP(func(idp *fakeIDP) { idp.user.emailVerified = tt.emailVerified }))
+			h := newHarness(t, withIDP(func(idp *fakeIDP) {
+				idp.editUser(func(u *oidctest.User) { u.EmailVerified = tt.emailVerified })
+			}))
 			h.signIn()
 
-			id, ok := h.mem.identity(h.idp.issuer(), h.idp.user.subject)
+			id, ok := h.mem.identity(h.idp.issuer(), h.idp.user().Subject)
 			if !ok {
 				t.Fatal("no identity stored for (issuer, subject)")
 			}
@@ -159,11 +162,9 @@ func TestSignInStoresOnlyIssuerSubjectAndVerifiedEmail(t *testing.T) {
 		t.Parallel()
 		h := newHarness(t)
 		h.signIn()
-		h.idp.mu.Lock()
-		h.idp.user.emailVerified = false
-		h.idp.mu.Unlock()
+		h.idp.editUser(func(u *oidctest.User) { u.EmailVerified = false })
 		h.signIn()
-		if id, _ := h.mem.identity(h.idp.issuer(), h.idp.user.subject); id.email != "" {
+		if id, _ := h.mem.identity(h.idp.issuer(), h.idp.user().Subject); id.email != "" {
 			t.Errorf("stored email = %q, want it cleared", id.email)
 		}
 	})
@@ -326,9 +327,7 @@ func TestCallbackRejects(t *testing.T) {
 		{
 			name: "unsigned ID token (alg none)",
 			setup: func(h *harness) {
-				h.idp.mu.Lock()
-				defer h.idp.mu.Unlock()
-				h.idp.unsigned = true
+				h.idp.Tweak(func(k *oidctest.Knobs) { k.Unsigned = true })
 			},
 			wantReason: "invalid_id_token",
 			wantError:  "unexpected signature algorithm",
@@ -336,9 +335,7 @@ func TestCallbackRejects(t *testing.T) {
 		{
 			name: "ID token signed with a key the provider does not publish",
 			setup: func(h *harness) {
-				h.idp.mu.Lock()
-				defer h.idp.mu.Unlock()
-				h.idp.signingKey = otherKey
+				h.idp.Tweak(func(k *oidctest.Knobs) { k.SigningKey = otherKey })
 			},
 			wantReason: "invalid_id_token",
 			wantError:  "failed to verify signature",
@@ -382,9 +379,7 @@ func TestCallbackRejects(t *testing.T) {
 
 func mutateClaims(edit func(claims map[string]any)) func(h *harness) {
 	return func(h *harness) {
-		h.idp.mu.Lock()
-		defer h.idp.mu.Unlock()
-		h.idp.mutateClaims = edit
+		h.idp.Tweak(func(k *oidctest.Knobs) { k.MutateClaims = edit })
 	}
 }
 
@@ -466,9 +461,7 @@ func TestMaxAgeAndAuthTime(t *testing.T) {
 		t.Parallel()
 		h := newHarness(t, withMaxAge(time.Hour))
 		h.beginLogin("/")
-		h.idp.mu.Lock()
-		defer h.idp.mu.Unlock()
-		if got := h.idp.lastAuthorize.Get("max_age"); got != "3600" {
+		if got := h.idp.LastAuthorize().Get("max_age"); got != "3600" {
 			t.Errorf("authorize max_age = %q, want 3600", got)
 		}
 	})
@@ -479,7 +472,8 @@ func TestMaxAgeAndAuthTime(t *testing.T) {
 	t.Run("an old auth_time is recorded and does not shorten the session", func(t *testing.T) {
 		t.Parallel()
 		authTime := time.Now().Add(-40 * 24 * time.Hour).Truncate(time.Second)
-		h := newHarness(t, withMaxAge(time.Hour), withIDP(func(idp *fakeIDP) { idp.user.authTime = authTime }))
+		h := newHarness(t, withMaxAge(time.Hour))
+		mutateClaims(func(c map[string]any) { c["auth_time"] = authTime.Unix() })(h)
 		session := h.signIn()
 
 		me, err := h.getMe(session)
@@ -494,9 +488,21 @@ func TestMaxAgeAndAuthTime(t *testing.T) {
 		}
 	})
 
+	t.Run("the provider's auth_time is recorded", func(t *testing.T) {
+		t.Parallel()
+		h := newHarness(t, withMaxAge(time.Hour))
+		before := time.Now().Truncate(time.Second)
+		session := h.signIn()
+		got := h.mem.sessionAuthTime(sessionID(t, h, session))
+		if got.Before(before) || got.After(time.Now()) {
+			t.Errorf("recorded auth_time = %v, want the time of this sign-in", got)
+		}
+	})
+
 	t.Run("no auth_time is fine", func(t *testing.T) {
 		t.Parallel()
 		h := newHarness(t, withMaxAge(time.Hour))
+		mutateClaims(func(c map[string]any) { delete(c, "auth_time") })(h)
 		session := h.signIn()
 		if got := h.mem.sessionAuthTime(sessionID(t, h, session)); !got.IsZero() {
 			t.Errorf("recorded auth_time = %v, want none", got)
@@ -552,7 +558,7 @@ func TestProviderDiscovery(t *testing.T) {
 		t.Parallel()
 		h := newHarness(t, withIDP(func(idp *fakeIDP) {
 			// Discovery at New fails; the next attempt succeeds.
-			idp.setMetadata("code_challenge_methods_supported", []string{"plain"})
+			idp.SetMetadata("code_challenge_methods_supported", []string{"plain"})
 		}))
 		if !strings.Contains(h.logs.String(), "OIDC discovery failed") {
 			t.Errorf("New() did not log the failed discovery: %s", h.logs)
@@ -560,14 +566,14 @@ func TestProviderDiscovery(t *testing.T) {
 		if rec := h.get("/auth/login"); rec.Code != http.StatusServiceUnavailable {
 			t.Errorf("GET /auth/login while discovery fails: status = %d, want 503", rec.Code)
 		}
-		h.idp.setMetadata("code_challenge_methods_supported", []string{"S256"})
+		h.idp.SetMetadata("code_challenge_methods_supported", []string{"S256"})
 		h.signIn()
 	})
 
 	t.Run("client_secret_post when the provider only supports that", func(t *testing.T) {
 		t.Parallel()
 		h := newHarness(t, withIDP(func(idp *fakeIDP) {
-			idp.setMetadata("token_endpoint_auth_methods_supported", []string{"client_secret_post"})
+			idp.SetMetadata("token_endpoint_auth_methods_supported", []string{"client_secret_post"})
 		}))
 		h.signIn()
 	})
@@ -575,7 +581,7 @@ func TestProviderDiscovery(t *testing.T) {
 	t.Run("no PKCE S256 means no sign-in", func(t *testing.T) {
 		t.Parallel()
 		h := newHarness(t, withIDP(func(idp *fakeIDP) {
-			idp.setMetadata("code_challenge_methods_supported", []string{"plain"})
+			idp.SetMetadata("code_challenge_methods_supported", []string{"plain"})
 		}))
 		if rec := h.get("/auth/login"); rec.Code != http.StatusServiceUnavailable {
 			t.Errorf("status = %d, want 503", rec.Code)
@@ -585,7 +591,7 @@ func TestProviderDiscovery(t *testing.T) {
 	t.Run("no supported client authentication means no sign-in", func(t *testing.T) {
 		t.Parallel()
 		h := newHarness(t, withIDP(func(idp *fakeIDP) {
-			idp.setMetadata("token_endpoint_auth_methods_supported", []string{"private_key_jwt"})
+			idp.SetMetadata("token_endpoint_auth_methods_supported", []string{"private_key_jwt"})
 		}))
 		if rec := h.get("/auth/login"); rec.Code != http.StatusServiceUnavailable {
 			t.Errorf("status = %d, want 503", rec.Code)
@@ -648,8 +654,8 @@ func TestLogsHaveNoSecretsOrPersonalData(t *testing.T) {
 		"state":         loginCookie.Value,
 		"code":          u.Query().Get("code"),
 		"client secret": h.idp.clientSecret,
-		"e-mail":        h.idp.user.email,
-		"subject":       h.idp.user.subject,
+		"e-mail":        h.idp.user().Email,
+		"subject":       h.idp.user().Subject,
 		"name claim":    "Nome Que Nunca Guardamos",
 		"access token":  "fake-access-token",
 		"token hash":    base64.RawURLEncoding.EncodeToString(sha256Of(session.Value)),
