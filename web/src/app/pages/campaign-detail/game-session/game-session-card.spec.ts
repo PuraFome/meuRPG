@@ -76,6 +76,37 @@ describe('GameSessionCard', () => {
     expect(el.textContent).toContain('4 fichas travadas.');
   });
 
+  it('says "1 ficha travada." — singular, not "1 fichas travadas." (integrator fix)', async () => {
+    fake.getCurrentSessionResult = Promise.resolve(null);
+    fake.startGameSession.mockResolvedValue(startResult(1, 1));
+    const { el, fixture } = await render();
+
+    const button = Array.from(el.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Iniciar sessão'),
+    ) as HTMLButtonElement;
+    button.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(el.textContent).toContain('1 ficha travada.');
+    expect(el.textContent).not.toContain('1 fichas travadas.');
+  });
+
+  it('says "0 fichas travadas." for zero — plural, still sensible', async () => {
+    fake.getCurrentSessionResult = Promise.resolve(null);
+    fake.startGameSession.mockResolvedValue(startResult(1, 0));
+    const { el, fixture } = await render();
+
+    const button = Array.from(el.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Iniciar sessão'),
+    ) as HTMLButtonElement;
+    button.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(el.textContent).toContain('0 fichas travadas.');
+  });
+
   it('shows a clear message when starting fails because one is already open', async () => {
     fake.getCurrentSessionResult = Promise.resolve(null);
     fake.startGameSession.mockRejectedValue(new ConnectError('open', Code.FailedPrecondition));

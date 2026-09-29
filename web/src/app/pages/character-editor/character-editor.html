@@ -217,21 +217,74 @@
             @if (isCaster()) {
               <mat-step label="Magias">
                 <app-fiction-notice />
+
+                <p id="cantrips-label">Truques</p>
                 <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Truques (um por linha)</mat-label>
-                  <textarea matInput formControlName="cantripsText" rows="3"></textarea>
+                  <mat-label>Buscar truque</mat-label>
+                  <input
+                    matInput
+                    [value]="cantripsFilter()"
+                    (input)="cantripsFilter.set($any($event.target).value)"
+                  />
                 </mat-form-field>
+                <div class="spell-picker" role="group" aria-labelledby="cantrips-label">
+                  @for (spell of filteredCantrips(); track spell.key) {
+                    <mat-checkbox
+                      [checked]="selectedCantrips().has(spell.key)"
+                      (change)="toggleCantrip(spell.key)"
+                    >
+                      {{ spell.namePt }}
+                    </mat-checkbox>
+                  } @empty {
+                    <p>Nenhum truque encontrado para a classe escolhida.</p>
+                  }
+                </div>
+
                 @if (spellPreparation() === 'known' || spellPreparation() === 'spellbook') {
+                  <p id="spells-known-label">Magias conhecidas</p>
                   <mat-form-field appearance="outline" class="full-width">
-                    <mat-label>Magias conhecidas (uma por linha)</mat-label>
-                    <textarea matInput formControlName="spellsKnownText" rows="4"></textarea>
+                    <mat-label>Buscar magia</mat-label>
+                    <input
+                      matInput
+                      [value]="spellsKnownFilter()"
+                      (input)="spellsKnownFilter.set($any($event.target).value)"
+                    />
                   </mat-form-field>
+                  <div class="spell-picker" role="group" aria-labelledby="spells-known-label">
+                    @for (spell of filteredSpellsKnown(); track spell.key) {
+                      <mat-checkbox
+                        [checked]="selectedSpellsKnown().has(spell.key)"
+                        (change)="toggleSpellKnown(spell.key)"
+                      >
+                        {{ spell.namePt }} ({{ spellLevelLabel(spell.level) }})
+                      </mat-checkbox>
+                    } @empty {
+                      <p>Nenhuma magia encontrada para a classe escolhida.</p>
+                    }
+                  </div>
                 }
                 @if (spellPreparation() === 'prepared' || spellPreparation() === 'spellbook') {
+                  <p id="spells-prepared-label">Magias preparadas</p>
                   <mat-form-field appearance="outline" class="full-width">
-                    <mat-label>Magias preparadas (uma por linha)</mat-label>
-                    <textarea matInput formControlName="spellsPreparedText" rows="4"></textarea>
+                    <mat-label>Buscar magia</mat-label>
+                    <input
+                      matInput
+                      [value]="spellsPreparedFilter()"
+                      (input)="spellsPreparedFilter.set($any($event.target).value)"
+                    />
                   </mat-form-field>
+                  <div class="spell-picker" role="group" aria-labelledby="spells-prepared-label">
+                    @for (spell of filteredSpellsPrepared(); track spell.key) {
+                      <mat-checkbox
+                        [checked]="selectedSpellsPrepared().has(spell.key)"
+                        (change)="toggleSpellPrepared(spell.key)"
+                      >
+                        {{ spell.namePt }} ({{ spellLevelLabel(spell.level) }})
+                      </mat-checkbox>
+                    } @empty {
+                      <p>Nenhuma magia encontrada para a classe escolhida.</p>
+                    }
+                  </div>
                 }
               </mat-step>
             }
@@ -240,12 +293,21 @@
               <app-fiction-notice />
               <mat-form-field appearance="outline">
                 <mat-label>Armadura</mat-label>
-                <input matInput formControlName="armor" />
+                <mat-select formControlName="armor">
+                  <mat-option value="">Sem armadura</mat-option>
+                  @for (a of s.catalog.armor; track a.key) {
+                    <mat-option [value]="a.key">{{ a.namePt }}</mat-option>
+                  }
+                </mat-select>
               </mat-form-field>
               <mat-checkbox formControlName="shield">Escudo</mat-checkbox>
               <mat-form-field appearance="outline" class="full-width">
-                <mat-label>Armas (uma por linha)</mat-label>
-                <textarea matInput formControlName="weaponsText" rows="3"></textarea>
+                <mat-label>Armas</mat-label>
+                <mat-select formControlName="weaponKeys" multiple>
+                  @for (w of s.catalog.weapons; track w.key) {
+                    <mat-option [value]="w.key">{{ w.namePt }}</mat-option>
+                  }
+                </mat-select>
               </mat-form-field>
               <mat-form-field appearance="outline" class="full-width">
                 <mat-label>Itens de equipamento (um por linha)</mat-label>

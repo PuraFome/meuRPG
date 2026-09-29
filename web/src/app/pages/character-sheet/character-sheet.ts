@@ -15,6 +15,7 @@ import {
   formatDateTime,
   formatModifier,
   formatSpeedFt,
+  formatSpellSlots,
   skillProficiencyLabel,
 } from '../../core/characters/character-labels';
 import { describeCharacterError } from '../../core/characters/character-errors';
@@ -104,6 +105,7 @@ export class CharacterSheetPage {
   protected readonly formatDateTime = formatDateTime;
   protected readonly formatModifier = formatModifier;
   protected readonly formatSpeedFt = formatSpeedFt;
+  protected readonly formatSpellSlots = formatSpellSlots;
   protected readonly skillProficiencyLabel = skillProficiencyLabel;
 
   protected readonly notesForm = this.fb.nonNullable.group({

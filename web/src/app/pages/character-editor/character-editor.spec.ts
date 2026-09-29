@@ -68,6 +68,24 @@ function catalog(): RulesCatalogVm {
       { key: 'skill:arcana', namePt: 'Arcanismo', ability: 'int' },
       { key: 'skill:history', namePt: 'História', ability: 'int' },
     ],
+    armor: [{ key: 'equipment:leather-armor', namePt: 'Armadura de Couro' }],
+    weapons: [
+      { key: 'equipment:quarterstaff', namePt: 'Bordão' },
+      { key: 'equipment:dagger', namePt: 'Adaga' },
+    ],
+    spells: [
+      { key: 'spell:fire-bolt', namePt: 'Raio de Fogo', level: 0, classKeys: ['class:wizard'] },
+      { key: 'spell:ray-of-frost', namePt: 'Raio de Gelo', level: 0, classKeys: ['class:wizard'] },
+      {
+        key: 'spell:magic-missile',
+        namePt: 'Mísseis Mágicos',
+        level: 1,
+        classKeys: ['class:wizard'],
+      },
+      { key: 'spell:shield', namePt: 'Escudo Arcano', level: 1, classKeys: ['class:wizard'] },
+      // Not on the Wizard's list — proves the picker filters by class.
+      { key: 'spell:cure-wounds', namePt: 'Curar Ferimentos', level: 1, classKeys: ['class:cleric'] },
+    ],
   };
 }
 
@@ -117,10 +135,10 @@ describe('CharacterEditor', () => {
       subclassName: 'subclass:evocation',
       level: 3,
       background: 'background:acolyte',
-      cantripsText: 'Fire Bolt\nRay of Frost',
       equipmentText: 'Grimório\nAdaga',
     });
     cmp.selectedSkills.set(new Set(['skill:arcana', 'skill:history']));
+    cmp.selectedCantrips.set(new Set(['spell:fire-bolt', 'spell:ray-of-frost']));
 
     await cmp.submit();
 
@@ -132,7 +150,8 @@ describe('CharacterEditor', () => {
     expect(req.full?.race).toBe('race:gnome');
     expect(req.full?.level).toBe(3);
     expect(req.full?.skillProficiencies.sort()).toEqual(['skill:arcana', 'skill:history']);
-    expect(req.full?.cantrips).toEqual(['Fire Bolt', 'Ray of Frost']);
+    // Content keys, never the typed name — the whole point of the picker.
+    expect(req.full?.cantrips.sort()).toEqual(['spell:fire-bolt', 'spell:ray-of-frost']);
     expect(req.full?.equipmentText).toBe('Grimório\nAdaga');
     expect(req.basic).toBeNull();
   });
@@ -167,6 +186,125 @@ describe('CharacterEditor', () => {
     expect(el.textContent).toContain('Truques');
     expect(el.textContent).toContain('Magias conhecidas');
     expect(el.textContent).toContain('Magias preparadas');
+  });
+
+  it('never lets a person type a content key — no free-text input for spells, weapons or armor', async () => {
+    configure({ id: 'camp-1' });
+    const { fixture, el } = await render();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cmp = fixture.componentInstance as any;
+
+    cmp.fullForm.patchValue({ className: 'class:wizard' });
+    fixture.detectChanges();
+
+    // Every remaining <textarea> is one of the genuinely free-text fields;
+    // none carries a content-key control name.
+    const textareas = Array.from(el.querySelectorAll('textarea')).map((t) =>
+      t.getAttribute('formcontrolname'),
+    );
+    expect(textareas).not.toContain('cantripsText');
+    expect(textareas).not.toContain('spellsKnownText');
+    expect(textareas).not.toContain('spellsPreparedText');
+    expect(textareas).not.toContain('weaponsText');
+    expect(textareas.sort()).toEqual(
+      ['customFeaturesText', 'equipmentText', 'languagesText', 'toolProficienciesText'].sort(),
+    );
+    // Armor is a select, not a free-text input.
+    expect(el.querySelector('input[formcontrolname="armor"]')).toBeNull();
+  });
+
+  it('filters cantrips and spells to the chosen class\'s list', async () => {
+    configure({ id: 'camp-1' });
+    const { fixture } = await render();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cmp = fixture.componentInstance as any;
+
+    cmp.fullForm.patchValue({ className: 'class:wizard' });
+
+    const cantripKeys = cmp.availableCantrips().map((s: { key: string }) => s.key);
+    expect(cantripKeys.sort()).toEqual(['spell:fire-bolt', 'spell:ray-of-frost']);
+
+    const spellKeys = cmp.availableSpells().map((s: { key: string }) => s.key);
+    // The Cleric-only spell never shows for a Wizard.
+    expect(spellKeys.sort()).toEqual(['spell:magic-missile', 'spell:shield']);
+  });
+
+  it('the search box narrows the spell picker by Portuguese name', async () => {
+    configure({ id: 'camp-1' });
+    const { fixture } = await render();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cmp = fixture.componentInstance as any;
+
+    cmp.fullForm.patchValue({ className: 'class:wizard' });
+    cmp.cantripsFilter.set('gelo');
+
+    expect(cmp.filteredCantrips().map((s: { key: string }) => s.key)).toEqual(['spell:ray-of-frost']);
+  });
+
+  it('sends chosen armor, weapons and cantrips as content keys, never typed text', async () => {
+    configure({ id: 'camp-1' });
+    const { fixture } = await render();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cmp = fixture.componentInstance as any;
+
+    cmp.fullForm.patchValue({
+      name: 'Pensantus',
+      race: 'race:gnome',
+      className: 'class:wizard',
+      background: 'background:acolyte',
+      armor: 'equipment:leather-armor',
+      weaponKeys: ['equipment:quarterstaff', 'equipment:dagger'],
+    });
+    cmp.toggleCantrip('spell:fire-bolt');
+    cmp.toggleSpellKnown('spell:magic-missile');
+    cmp.toggleSpellPrepared('spell:shield');
+
+    await cmp.submit();
+
+    const req = fake.createCharacterCalls[0];
+    expect(req.full?.armor).toBe('equipment:leather-armor');
+    expect(req.full?.weapons.sort()).toEqual(['equipment:dagger', 'equipment:quarterstaff']);
+    expect(req.full?.cantrips).toEqual(['spell:fire-bolt']);
+    expect(req.full?.spellsKnown).toEqual(['spell:magic-missile']);
+    expect(req.full?.spellsPrepared).toEqual(['spell:shield']);
+  });
+
+  it('"Sem armadura" sends an empty armor key', async () => {
+    configure({ id: 'camp-1' });
+    const { fixture } = await render();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cmp = fixture.componentInstance as any;
+
+    cmp.fullForm.patchValue({
+      name: 'Pensantus',
+      race: 'race:gnome',
+      className: 'class:wizard',
+      background: 'background:acolyte',
+      armor: '',
+    });
+
+    await cmp.submit();
+
+    expect(fake.createCharacterCalls[0].full?.armor).toBe('');
+  });
+
+  it('never sends a stale spell pick that fell off the list after the class changed', async () => {
+    configure({ id: 'camp-1' });
+    const { fixture } = await render();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cmp = fixture.componentInstance as any;
+
+    cmp.fullForm.patchValue({
+      name: 'Pensantus',
+      race: 'race:gnome',
+      className: 'class:wizard',
+      background: 'background:acolyte',
+    });
+    cmp.selectedCantrips.set(new Set(['spell:fire-bolt', 'spell:not-on-any-list']));
+
+    await cmp.submit();
+
+    expect(fake.createCharacterCalls[0].full?.cantrips).toEqual(['spell:fire-bolt']);
   });
 
   it('shows the fiction notice on every free-text group of a full sheet', async () => {

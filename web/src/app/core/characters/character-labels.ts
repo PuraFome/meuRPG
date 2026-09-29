@@ -113,3 +113,39 @@ export function skillProficiencyLabel(proficiency: SkillProficiency): string {
       return 'expertise';
   }
 }
+
+/**
+ * "1º círculo", "9º círculo" — "círculo" is the pt-BR D&D term for a
+ * spell's level (never "nível", which this app reserves for a
+ * character's own level). A cantrip (level 0) is a "Truque", never called
+ * a "círculo" (integrator fix). Used consistently on both the sheet (spell
+ * slots) and the editor (each spell option's level).
+ */
+export function spellLevelLabel(level: number): string {
+  return level === 0 ? 'Truque' : `${level}º círculo`;
+}
+
+/**
+ * "1º círculo: 4 · 2º círculo: 2" — every spell level with at least one
+ * slot, in order, index 0 = level 1 (`FullSheetVm.spellSlots`'s own
+ * contract). A plain string instead of one `<span>` per level in the
+ * template: Angular inserts no whitespace between sibling elements, so a
+ * template `@for` there used to render "1º nível: 42º nível: 2" with no
+ * separator at all (integrator fix).
+ */
+export function formatSpellSlots(slots: readonly number[]): string {
+  return slots
+    .map((count, i) => (count > 0 ? `${spellLevelLabel(i + 1)}: ${count}` : null))
+    .filter((entry): entry is string => entry !== null)
+    .join(' · ');
+}
+
+/**
+ * "0 fichas travadas.", "1 ficha travada.", "N fichas travadas." — pt-BR
+ * singular/plural of both the noun ("ficha"/"fichas") and its participle
+ * ("travada"/"travadas") agree with the count (integrator fix: this used
+ * to always say "fichas travadas", even for exactly one).
+ */
+export function lockedSheetCountLabel(count: number): string {
+  return count === 1 ? '1 ficha travada.' : `${count} fichas travadas.`;
+}

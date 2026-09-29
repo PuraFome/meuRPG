@@ -360,6 +360,16 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
         namePt: s.namePt,
         ability: ABILITY_FROM_GEN[s.ability],
       })),
+      // Body armor only, as the proto's own comment says — a shield is the
+      // sheet's separate yes/no.
+      armor: content.armor.map((a) => ({ key: a.key, namePt: a.namePt })),
+      weapons: content.weapons.map((w) => ({ key: w.key, namePt: w.namePt })),
+      spells: content.spells.map((sp) => ({
+        key: sp.key,
+        namePt: sp.namePt,
+        level: sp.level,
+        classKeys: sp.classKeys,
+      })),
     };
   }
 

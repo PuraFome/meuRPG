@@ -55,10 +55,17 @@ export const ALIGNMENT_LABELS: Record<AlignmentKey, string> = {
 export type HitPointsMethod = 'average' | 'rolled';
 
 /**
- * The form value for a player, enemy or boss (`FullSheet`). Equipment,
- * languages and tool proficiencies stay free text in the MVP editor — the
- * proto's `FullSheet.equipment`/`languages`/`tool_proficiencies` are
- * themselves free text or simple repeated strings, so a line-per-item
+ * The form value for a player, enemy or boss (`FullSheet`). Every field
+ * that is a content key (`race`, `subrace`, `className`, `subclassName`,
+ * `background`, skill/expertise keys, `armor`, `weapons`, `cantrips`,
+ * `spellsKnown`, `spellsPrepared`) is picked from the loaded
+ * `RulesCatalogVm`, never typed — a typed key almost never matches a real
+ * one, and `CreateCharacter`/`UpdateCharacter` reject it with
+ * `invalid_argument` (integrator fix: the editor must never make a person
+ * type a content key). Only genuinely free text stays free text: other
+ * equipment items, languages, tool proficiencies, and custom features —
+ * `FullSheet.equipment`/`languages`/`tool_proficiencies` are themselves
+ * free text or simple repeated strings on the wire, so a line-per-item
  * textarea maps onto them directly. Equipment quantity round-trips through
  * a "(xN)" suffix on that same line (`CharacterEditorSourceLive`'s
  * `itemsFromLines`/`lineFromItem`) rather than a separate structured
@@ -106,11 +113,21 @@ export interface CharacterFormValue {
    * class means "every level of the first class" is every level). */
   hitPointsRolls: number[];
   isCaster: boolean;
+  /** Content keys, picked from `RulesCatalogVm.spells` filtered to
+   * `level === 0` and the chosen class's list (`ClassOptionVm.key` in
+   * `Spell.classKeys`). */
   cantrips: string[];
+  /** Content keys, `RulesCatalogVm.spells` filtered to `level >= 1` and the
+   * chosen class's list. Shown when the class's preparation is "known" or
+   * "spellbook". */
   spellsKnown: string[];
+  /** Same filter as `spellsKnown`. Shown when the class's preparation is
+   * "prepared" or "spellbook". */
   spellsPrepared: string[];
+  /** A content key from `RulesCatalogVm.armor`, or `''` for "Sem armadura". */
   armor: string;
   shield: boolean;
+  /** Content keys from `RulesCatalogVm.weapons`. */
   weapons: string[];
   equipmentText: string;
   languagesText: string;
@@ -177,6 +194,29 @@ export interface SkillOptionVm {
   readonly ability: AbilityKey;
 }
 
+export interface ArmorOptionVm {
+  readonly key: string;
+  readonly namePt: string;
+}
+
+export interface WeaponOptionVm {
+  readonly key: string;
+  readonly namePt: string;
+}
+
+export interface SpellOptionVm {
+  readonly key: string;
+  readonly namePt: string;
+  /** 0 is a cantrip, 1-9 a leveled spell — this alone decides whether a
+   * spell belongs in "Truques" or in "Magias conhecidas"/"preparadas"
+   * (`rules.proto`'s own distinction; nothing here is about which
+   * character level can reach it — the browser never computes that rule,
+   * see `CharacterEditorSourceLive`'s `spellsForClass`). */
+  readonly level: number;
+  /** Content keys of the classes whose spell list has this spell. */
+  readonly classKeys: readonly string[];
+}
+
 /** `rules.v1.Content`, trimmed to what the editor's dropdowns need
  * (plan §4's `ContentService.ListContent`). */
 export interface RulesCatalogVm {
@@ -186,6 +226,10 @@ export interface RulesCatalogVm {
    * always adds a fixed "Outro (personalizado)" option after these. */
   readonly backgrounds: readonly BackgroundOptionVm[];
   readonly skills: readonly SkillOptionVm[];
+  /** Body armor only — a shield is the separate `shield` checkbox. */
+  readonly armor: readonly ArmorOptionVm[];
+  readonly weapons: readonly WeaponOptionVm[];
+  readonly spells: readonly SpellOptionVm[];
 }
 
 export interface CreateCharacterInput {

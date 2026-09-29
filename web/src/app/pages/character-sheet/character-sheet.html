@@ -197,14 +197,7 @@
                 </p>
               }
               @if (full.spellSlots.length > 0) {
-                <p class="spell-slots">
-                  Espaços de magia:
-                  @for (count of full.spellSlots; track $index) {
-                    @if (count > 0) {
-                      <span>{{ $index + 1 }}º nível: {{ count }}</span>
-                    }
-                  }
-                </p>
+                <p class="spell-slots">Espaços de magia: {{ formatSpellSlots(full.spellSlots) }}</p>
               }
               @if (full.cantripNames.length > 0) {
                 <p>Truques: {{ full.cantripNames.join(', ') }}</p>

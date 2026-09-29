@@ -3,6 +3,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { Code } from '@connectrpc/connect';
 
+import { lockedSheetCountLabel } from '../../../core/characters/character-labels';
 import { describeConnectError } from '../../../core/connect/connect-errors';
 import { GameSessionSource, GameSessionVm } from './game-session-card.types';
 
@@ -39,9 +40,12 @@ export class GameSessionCard implements OnInit {
   protected readonly state = signal<CardState>({ status: 'loading' });
   protected readonly actionState = signal<ActionState>({ status: 'idle' });
   /** The locked-sheet count from the last `StartGameSession` call in this
-   * component's lifetime — cleared on reload, shown as "N fichas travadas"
-   * right under the "em andamento" line (integrator amendment, 29/09/2026). */
+   * component's lifetime — cleared on reload, shown via
+   * `lockedSheetCountLabel` right under the "em andamento" line (integrator
+   * amendment, 29/09/2026; pt-BR singular/plural fixed, integrator
+   * follow-up: "1 ficha travada." not "1 fichas travadas."). */
   protected readonly lastLockedSheetCount = signal<number | null>(null);
+  protected readonly lockedSheetCountLabel = lockedSheetCountLabel;
 
   ngOnInit(): void {
     this.load();

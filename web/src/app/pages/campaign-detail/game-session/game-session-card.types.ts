@@ -13,7 +13,8 @@ export interface GameSessionVm {
 }
 
 /** `StartGameSession`'s response: the new session plus how many player
- * sheets it just locked (RN-01) — shown as "N fichas travadas". */
+ * sheets it just locked (RN-01) — shown via `lockedSheetCountLabel`
+ * (`core/characters/character-labels.ts`), pt-BR singular/plural included. */
 export interface StartGameSessionResultVm {
   readonly session: GameSessionVm;
   readonly lockedSheetCount: number;

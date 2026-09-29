@@ -12,7 +12,7 @@ import { MatStepperModule } from '@angular/material/stepper';
 import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 
 import { describeCharacterError } from '../../core/characters/character-errors';
-import { abilityLabel } from '../../core/characters/character-labels';
+import { abilityLabel, spellLevelLabel } from '../../core/characters/character-labels';
 import { ABILITY_KEYS, CharacterKind, isFullSheetKind } from '../../core/characters/characters.types';
 import { FictionNotice } from '../../shared/fiction-notice/fiction-notice';
 import {
@@ -48,15 +48,15 @@ type PageState = { status: 'loading' } | { status: 'error'; message: string } | 
 
 type SavingState = { status: 'idle' } | { status: 'saving' } | { status: 'error'; message: string };
 
-/** Splits a textarea's lines into a trimmed, non-empty list — the MVP
- * encoding for the sheet's free-text repeated fields (equipment, languages,
- * tool proficiencies, spell lists; see `character-editor.types.ts`'s doc
- * comment). */
-function linesOf(text: string): string[] {
-  return text
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
+/** The "search box" the catalog-backed pickers use to narrow a long list
+ * (cantrips, spells) — a plain case-insensitive substring match on the
+ * Portuguese name, no new dependency. */
+function filterByName<T extends { readonly namePt: string }>(
+  items: readonly T[],
+  query: string,
+): readonly T[] {
+  const q = query.trim().toLowerCase();
+  return q ? items.filter((item) => item.namePt.toLowerCase().includes(q)) : items;
 }
 
 /**
@@ -92,6 +92,18 @@ function linesOf(text: string): string[] {
  * any class beyond the first (multiclassing; this form only ever edits
  * one) survive a save unchanged instead of being silently wiped. See
  * `character-editor-source.live.spec.ts`'s round-trip test.
+ *
+ * **Never a typed content key** (integrator fix): race, subrace, class,
+ * subclass, background, skills, armor, weapons, cantrips and spells are
+ * all picked from `RulesCatalogVm` (`ContentService.ListContent`) —
+ * `namePt` shown, `key` sent — never typed as free text, since a typed
+ * name almost never matches the real key and the server rejects it with
+ * `invalid_argument`. Cantrips and the known/prepared spell lists are
+ * filterable checkbox pickers (`availableCantrips`/`availableSpells`,
+ * `filteredCantrips`/`filteredSpellsKnown`/`filteredSpellsPrepared`),
+ * narrowed to the chosen class's spell list; armor is a select (with "Sem
+ * armadura"); weapons is a `<mat-select multiple>`. Only genuinely free
+ * text stays free text — see `CharacterFormValue`'s doc comment.
  */
 @Component({
   selector: 'app-character-editor',
@@ -132,6 +144,16 @@ export class CharacterEditor {
    * `hitPointsMethod` is "rolled" (integrator fix, phase 2b). */
   protected readonly hitPointsRolls = signal<readonly number[]>([]);
 
+  /** Catalog-backed pickers (integrator fix: the editor must never make a
+   * person type a content key) — cantrips and the known/prepared spell
+   * lists, each a filterable checkbox list over `RulesCatalogVm.spells`. */
+  protected readonly selectedCantrips = signal<ReadonlySet<string>>(new Set());
+  protected readonly selectedSpellsKnown = signal<ReadonlySet<string>>(new Set());
+  protected readonly selectedSpellsPrepared = signal<ReadonlySet<string>>(new Set());
+  protected readonly cantripsFilter = signal('');
+  protected readonly spellsKnownFilter = signal('');
+  protected readonly spellsPreparedFilter = signal('');
+
   protected readonly abilityLabel = abilityLabel;
   protected readonly isFullSheetKind = isFullSheetKind;
   protected readonly abilityKeys = ABILITY_KEYS;
@@ -159,12 +181,12 @@ export class CharacterEditor {
     level: [1, [Validators.required, Validators.min(1), Validators.max(20)]],
     background: ['', Validators.required],
     customBackgroundName: ['', Validators.maxLength(40)],
+    /** A content key from the catalog, or `''` for "Sem armadura" — never
+     * typed (integrator fix). */
     armor: [''],
     shield: [false],
-    weaponsText: [''],
-    cantripsText: [''],
-    spellsKnownText: [''],
-    spellsPreparedText: [''],
+    /** Content keys, `<mat-select multiple>` — never typed. */
+    weaponKeys: [[] as string[]],
     equipmentText: ['', Validators.maxLength(4000)],
     languagesText: ['', Validators.maxLength(2000)],
     toolProficienciesText: ['', Validators.maxLength(2000)],
@@ -247,6 +269,37 @@ export class CharacterEditor {
    * conhecidas"; "prepared" and "spellbook" classes show "Magias
    * preparadas". Truques (cantrips) show for every caster regardless. */
   protected readonly spellPreparation = computed(() => this.selectedClass()?.preparation ?? null);
+
+  /** `RulesCatalogVm.spells` filtered to the chosen class's list — cantrips
+   * (level 0) and leveled spells (1-9) are two different pools, never
+   * character-level-gated (the browser never computes that rule; an
+   * unavailable choice shows up as a `DerivedSheet.issue` instead). */
+  protected readonly availableCantrips = computed(() => {
+    const s = this.state();
+    if (s.status !== 'ready') {
+      return [];
+    }
+    const classKey = this.selectedClassKey();
+    return s.catalog.spells.filter((sp) => sp.level === 0 && sp.classKeys.includes(classKey));
+  });
+  protected readonly availableSpells = computed(() => {
+    const s = this.state();
+    if (s.status !== 'ready') {
+      return [];
+    }
+    const classKey = this.selectedClassKey();
+    return s.catalog.spells.filter((sp) => sp.level >= 1 && sp.classKeys.includes(classKey));
+  });
+  protected readonly filteredCantrips = computed(() =>
+    filterByName(this.availableCantrips(), this.cantripsFilter()),
+  );
+  protected readonly filteredSpellsKnown = computed(() =>
+    filterByName(this.availableSpells(), this.spellsKnownFilter()),
+  );
+  protected readonly filteredSpellsPrepared = computed(() =>
+    filterByName(this.availableSpells(), this.spellsPreparedFilter()),
+  );
+  protected readonly spellLevelLabel = spellLevelLabel;
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
@@ -334,10 +387,7 @@ export class CharacterEditor {
       customBackgroundName: full.customBackgroundName,
       armor: full.armor,
       shield: full.shield,
-      weaponsText: full.weapons.join('\n'),
-      cantripsText: full.cantrips.join('\n'),
-      spellsKnownText: full.spellsKnown.join('\n'),
-      spellsPreparedText: full.spellsPrepared.join('\n'),
+      weaponKeys: full.weapons,
       equipmentText: full.equipmentText,
       languagesText: full.languagesText,
       toolProficienciesText: full.toolProficienciesText,
@@ -352,6 +402,9 @@ export class CharacterEditor {
     this.customBackgroundSkills.set(new Set(full.customBackgroundSkills ?? []));
     this.expertiseSkills.set(new Set(full.expertiseSkillKeys));
     this.hitPointsRolls.set(full.hitPointsRolls);
+    this.selectedCantrips.set(new Set(full.cantrips));
+    this.selectedSpellsKnown.set(new Set(full.spellsKnown));
+    this.selectedSpellsPrepared.set(new Set(full.spellsPrepared));
   }
 
   protected toggleSkill(key: string): void {
@@ -385,6 +438,38 @@ export class CharacterEditor {
       next.add(key);
     }
     this.expertiseSkills.set(next);
+  }
+
+  private toggleInSet(current: ReadonlySet<string>, key: string): Set<string> {
+    const next = new Set(current);
+    if (next.has(key)) {
+      next.delete(key);
+    } else {
+      next.add(key);
+    }
+    return next;
+  }
+
+  protected toggleCantrip(key: string): void {
+    this.selectedCantrips.set(this.toggleInSet(this.selectedCantrips(), key));
+  }
+
+  protected toggleSpellKnown(key: string): void {
+    this.selectedSpellsKnown.set(this.toggleInSet(this.selectedSpellsKnown(), key));
+  }
+
+  protected toggleSpellPrepared(key: string): void {
+    this.selectedSpellsPrepared.set(this.toggleInSet(this.selectedSpellsPrepared(), key));
+  }
+
+  /** Only the selected keys that are still in the (class-filtered) catalog
+   * list — see `buildFullValue`'s comment. */
+  private intersectWithAvailable(
+    selected: ReadonlySet<string>,
+    available: readonly { readonly key: string }[],
+  ): string[] {
+    const availableKeys = new Set(available.map((item) => item.key));
+    return Array.from(selected).filter((key) => availableKeys.has(key));
   }
 
   /** One roll per level after the first ("Dados de Vida", hit points
@@ -442,12 +527,19 @@ export class CharacterEditor {
       // from a higher level typed earlier is dropped, not sent stale.
       hitPointsRolls: this.hitPointsRolls().slice(0, this.rollsNeeded()),
       isCaster: this.isCaster(),
-      cantrips: linesOf(v.cantripsText),
-      spellsKnown: linesOf(v.spellsKnownText),
-      spellsPrepared: linesOf(v.spellsPreparedText),
+      // Never send a stale pick: if the class or level changed after a
+      // spell was chosen and it dropped off the (class-filtered) catalog
+      // list, it never reaches the server — no typed key ever could get
+      // here in the first place (integrator fix).
+      cantrips: this.intersectWithAvailable(this.selectedCantrips(), this.availableCantrips()),
+      spellsKnown: this.intersectWithAvailable(this.selectedSpellsKnown(), this.availableSpells()),
+      spellsPrepared: this.intersectWithAvailable(
+        this.selectedSpellsPrepared(),
+        this.availableSpells(),
+      ),
       armor: v.armor,
       shield: v.shield,
-      weapons: linesOf(v.weaponsText),
+      weapons: v.weaponKeys,
       equipmentText: v.equipmentText,
       languagesText: v.languagesText,
       toolProficienciesText: v.toolProficienciesText,

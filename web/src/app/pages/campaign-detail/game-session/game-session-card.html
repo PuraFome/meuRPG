@@ -14,7 +14,7 @@
           @if (s.session; as session) {
             <p>Sessão {{ session.sessionNumber }} em andamento.</p>
             @if (lastLockedSheetCount() !== null) {
-              <p role="status">{{ lastLockedSheetCount() }} fichas travadas.</p>
+              <p role="status">{{ lockedSheetCountLabel(lastLockedSheetCount()!) }}</p>
             }
             <button
               mat-flat-button

@@ -4,7 +4,10 @@ import {
   characterStateLabel,
   formatModifier,
   formatSpeedFt,
+  formatSpellSlots,
+  lockedSheetCountLabel,
   skillProficiencyLabel,
+  spellLevelLabel,
 } from './character-labels';
 
 describe('abilityLabel', () => {
@@ -74,5 +77,43 @@ describe('skillProficiencyLabel', () => {
     expect(skillProficiencyLabel('half')).toBe('meia proficiência');
     expect(skillProficiencyLabel('proficient')).toBe('proficiente');
     expect(skillProficiencyLabel('expertise')).toBe('expertise');
+  });
+});
+
+describe('spellLevelLabel', () => {
+  it('calls level 0 a "Truque", never a "círculo"', () => {
+    expect(spellLevelLabel(0)).toBe('Truque');
+  });
+
+  it('uses "círculo" — never "nível" — for a leveled spell (integrator fix)', () => {
+    expect(spellLevelLabel(1)).toBe('1º círculo');
+    expect(spellLevelLabel(9)).toBe('9º círculo');
+  });
+});
+
+describe('formatSpellSlots', () => {
+  it('separates every level with " · ", not run together (integrator fix)', () => {
+    // A Wizard 3: 4 first-circle slots, 2 second-circle slots.
+    expect(formatSpellSlots([4, 2])).toBe('1º círculo: 4 · 2º círculo: 2');
+  });
+
+  it('skips a level with no slots', () => {
+    expect(formatSpellSlots([4, 0, 2])).toBe('1º círculo: 4 · 3º círculo: 2');
+  });
+
+  it('is empty for a character with no spell slots', () => {
+    expect(formatSpellSlots([])).toBe('');
+  });
+});
+
+describe('lockedSheetCountLabel', () => {
+  it('uses the singular for exactly one', () => {
+    expect(lockedSheetCountLabel(1)).toBe('1 ficha travada.');
+  });
+
+  it('uses the plural for any other count, 0 included (integrator fix)', () => {
+    expect(lockedSheetCountLabel(0)).toBe('0 fichas travadas.');
+    expect(lockedSheetCountLabel(2)).toBe('2 fichas travadas.');
+    expect(lockedSheetCountLabel(4)).toBe('4 fichas travadas.');
   });
 });

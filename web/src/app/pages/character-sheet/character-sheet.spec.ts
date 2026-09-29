@@ -259,6 +259,35 @@ describe('CharacterSheetPage', () => {
     expect(el.textContent).toContain('1d12 veneno');
   });
 
+  it('shows spell slots as a readable, separated list using "círculo" (integrator fix)', async () => {
+    configure();
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(
+        vm({
+          sheet: fullSheet({
+            spellSlots: [4, 2],
+            spellcasting: [
+              {
+                className: 'Mago',
+                ability: 'int',
+                saveDc: 14,
+                attackBonus: 6,
+                cantripsKnown: 3,
+                spellsPreparedMax: 7,
+              },
+            ],
+          }),
+        }),
+      );
+
+    const el = await render();
+    expect(el.textContent).toContain('1º círculo: 4 · 2º círculo: 2');
+    // The old bug: two <span>s with nothing between them rendered as
+    // "1º nível: 42º nível: 2" — no separator, and the wrong term.
+    expect(el.textContent).not.toContain('42º');
+    expect(el.textContent).not.toContain('nível: 4');
+  });
+
   it('renders every official-sheet section as an <h2>, in the mobile order', async () => {
     configure();
     fake.getCharacterSheetFn = () =>
