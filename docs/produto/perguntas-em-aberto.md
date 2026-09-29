@@ -30,17 +30,18 @@ Nenhuma delas trava a Etapa 1. Todas são para o Samuel, e cada resposta vira um
 - [ ] Quem é o controlador e quem é o encarregado (DPO)? Qual e-mail recebe os pedidos?
 - [ ] Há planos de abrir o app para outras mesas ou de cobrar?
 - [ ] Qual é o plano do CockroachDB (e onde estão os backups)?
-- [ ] **Pergunta do Samuel, para nós:** se jogadores ou mestres forem menores de 18 anos, o que precisamos fazer para cumprir a LGPD e o GDPR? A resposta vem no documento de acompanhamento, não aqui.
+- [ ] **Menores de 18 anos.** O Samuel perguntou o que precisamos fazer se jogadores ou mestres forem menores de 18 anos. Respondemos em 29/09/2026, no documento de acompanhamento: o MVP fica só para maiores de 18 anos, por autodeclaração, e um menor que já esteja na mesa joga sem conta própria até existir um fluxo com os responsáveis revisado por advogado (ver [Privacidade](../privacidade.md#menores-de-idade)). Falta o aceite do Samuel, e saber se há algum menor na mesa hoje.
+- [ ] O tratamento proposto para o personagem de quem exclui a conta (fica com o mestre, sem vínculo com a conta apagada, ou é apagado junto, se a pessoa preferir) e a marca "apagar em" para os 30 dias do mestre estão aceitos? Ver [Privacidade](../privacidade.md#a-tensão-entre-manter-o-personagem-e-apagar-a-identidade).
 
 ### Login do jogador sem Google
 
 RN-17 já decide o login anônimo por handle de mesa (apelido do mestre junto do apelido do jogador). Falta:
 
-- [ ] Uma senha passa a ser exigida antes de acabarem os primeiros 30 dias? Ver [ADR-0009](../adr/0009-login-do-jogador-sem-google.md).
+- [ ] Uma senha passa a ser exigida antes de acabarem os primeiros 30 dias? Sugestão (ADR-0009, opção 3): o jogador entra sem senha, e só precisa definir uma senha ou vincular o Google quando a primeira sessão vencer. Ver [ADR-0009](../adr/0009-login-do-jogador-sem-google.md).
 
 ### Prioridade das histórias novas
 
-- [ ] [MR-023](historias.md#mr-023-passar-ou-dividir-a-campanha) (passar ou dividir a campanha, RN-13) e [MR-024](historias.md#mr-024-aprovar-o-personagem-do-convite) (aprovar o personagem do convite, RN-15): qual a prioridade de cada uma?
+- [ ] [MR-023](historias.md#mr-023-passar-ou-dividir-a-campanha) (passar ou dividir a campanha, RN-13) e [MR-024](historias.md#mr-024-aprovar-o-personagem-do-convite) (aprovar o personagem do convite, RN-15): qual a prioridade de cada uma? Sugestão: a MR-024 no MVP, na Etapa 4, que já faz o personagem do convite; a MR-023 depois do MVP, porque o banco já guarda o papel de cada membro.
 
 ## Em discussão desde 28/09/2026
 

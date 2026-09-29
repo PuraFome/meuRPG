@@ -186,7 +186,13 @@ Decidido pelo Samuel em 29/09/2026: o CockroachDB do app antigo (usado pelo Nest
 
 O MVP é para maiores de 18 anos, declarado ao entrar. Guardamos só a data da declaração, nunca a data de nascimento. O convite é pessoal, e o app não tem busca de mesas, perfil público nem chat com desconhecidos. Essas funcionalidades só entram depois de uma avaliação do ECA Digital (Lei 15.211/2025) feita com advogado.
 
-**Pergunta do Samuel, em 29/09/2026, para nós:** se jogadores ou mestres forem menores de 18 anos, o que precisamos fazer para cumprir a LGPD e o GDPR? Fica em aberto; a resposta vem no documento de acompanhamento, não aqui (ver [Perguntas em aberto](produto/perguntas-em-aberto.md)).
+**Pergunta do Samuel, em 29/09/2026, para nós:** se jogadores ou mestres forem menores de 18 anos, o que precisamos fazer para cumprir a LGPD e o GDPR? Respondemos no mesmo dia, no documento de acompanhamento, com a recomendação da ADR-0010 (seção 8):
+
+- o MVP fica só para maiores de 18 anos, por autodeclaração, como descrito acima;
+- um menor que já esteja na mesa joga sem conta própria (o mestre cuida da ficha, sem dado pessoal dele), até existir um fluxo com os responsáveis revisado por advogado;
+- antes de abrir ao público: advogado, avaliação do ECA Digital (Lei 15.211/2025; Decreto 12.880/2026) e uma aferição de idade que siga as orientações finais da ANPD.
+
+A autodeclaração não é proibida para nós (a vedação do ECA Digital, art. 9º, §1º, é para conteúdo impróprio para menores), mas a ANPD a considera pouco confiável; por isso ela só serve enquanto o app for fechado, por convite. O GDPR (art. 8) só pede idade mínima quando a base é consentimento, e nós usamos contrato. Falta o aceite do Samuel, e saber se há algum menor na mesa hoje (ver [Perguntas em aberto](produto/perguntas-em-aberto.md)).
 
 ## Incidentes
 
@@ -214,9 +220,10 @@ Todo PR responde. Um "sim" pede uma seção curta de riscos e medidas no PR. Doi
 - Nome do controlador e do encarregado, e o e-mail do canal (até ter domínio, um endereço só para isso).
 - Contrato LGPD com a Cockroach Labs; contratos para Render, GitHub Pages e Cloudflare enquanto forem usados.
 - Qual plano do CockroachDB Cloud (afeta o prazo e a configuração dos backups).
-- Se jogadores ou mestres podem ser menores de idade, e o que isso exige de nós (pergunta do Samuel; resposta no documento de acompanhamento).
+- O aceite do Samuel ao MVP só para maiores de 18 anos, e se há algum menor na mesa hoje (ver [Menores de idade](#menores-de-idade)).
 - Se o app vai abrir para outras mesas, ou cobrar (muda o porte do agente de tratamento e a análise do GDPR).
-- Revisão por advogado do aviso de privacidade, dos termos de uso e do tratamento proposto para personagens de conta excluída (ver "A tensão entre manter o personagem e apagar a identidade", acima) antes da Etapa 3.
+- O aceite do Samuel ao tratamento proposto para personagens de conta excluída (ver "A tensão entre manter o personagem e apagar a identidade", acima).
+- Revisão por advogado do aviso de privacidade, dos termos de uso e desse tratamento, antes do primeiro deploy público.
 
 ## Roteiro do aviso de privacidade
 
