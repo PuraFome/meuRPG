@@ -11,9 +11,16 @@
 //	userID, err := authz.RequireSignedIn(ctx)                           // anyone signed in
 //	m, err := authz.RequireCampaignMember(ctx, campaignID)             // any member
 //	m, err := authz.RequireCampaignRole(ctx, campaignID, authz.RoleMaster) // masters only
+//	m, err := authz.RequireCampaignMemberOrPending(ctx, campaignID)    // any member, or a pending one (pending.go)
 //	if err != nil {
 //		return nil, err // already the right Connect error
 //	}
+//
+// A membership is active or pending (RN-15, MR-024). Only an active member
+// is a member: RequireCampaignMember and RequireCampaignRole answer a
+// pending member exactly as they answer someone outside the campaign. The
+// few calls a pending member may make are listed in pending.go, and only
+// RequireCampaignMemberOrPending lets them in, for those calls alone.
 //
 // The errors are chosen so that nobody learns about campaigns they are not
 // in:
@@ -56,11 +63,30 @@ const (
 	RolePlayer Role = "player"
 )
 
+// Status says whether a membership is in force (RN-15, MR-024). It is
+// campaign_members.status.
+type Status string
+
+// The statuses.
+const (
+	// StatusActive is a member: everything this package talks about.
+	StatusActive Status = "active"
+	// StatusPending is someone who accepted an invite that requires
+	// approval and waits for the master to approve their character. They
+	// are not a member yet: see pending.go.
+	StatusPending Status = "pending"
+)
+
 // Membership is the caller's place in one campaign.
 type Membership struct {
 	CampaignID string
 	UserID     string
 	Role       Role
+	// Pending is true for a pending member (RN-15, MR-024). Only
+	// RequireCampaignMemberOrPending ever returns such a Membership, and
+	// only for the calls in pendingMayCall (pending.go); a handler that got
+	// one must keep the caller to what the allowance is for.
+	Pending bool
 }
 
 // Caller tells who is calling. The identity module implements it
@@ -77,11 +103,12 @@ type Caller interface {
 // member of the campaign, including when the campaign does not exist.
 var ErrNotMember = errors.New("authz: not a member of the campaign")
 
-// MembershipSource looks up a user's role in a campaign. The campaigns
+// MembershipSource looks up a user's place in a campaign. The campaigns
 // module implements it with one primary-key read of campaign_members.
 type MembershipSource interface {
-	// CampaignRole returns userID's role in campaignID, or ErrNotMember.
-	CampaignRole(ctx context.Context, campaignID, userID string) (Role, error)
+	// CampaignMembership returns userID's role and status in campaignID, or
+	// ErrNotMember.
+	CampaignMembership(ctx context.Context, campaignID, userID string) (Role, Status, error)
 }
 
 // RequireSignedIn returns the caller's user ID, or a Connect error to return
@@ -97,17 +124,33 @@ func RequireSignedIn(ctx context.Context) (string, error) {
 
 // RequireCampaignMember returns the caller's membership in the campaign, or
 // a Connect error to return as is: `unauthenticated` without a session,
-// `not_found` if the caller is not a member (or there is no such campaign,
-// or campaignID is not even a UUID). Handlers should use the returned
-// Membership.CampaignID, which is in canonical form, from then on.
+// `not_found` if the caller is not a member (or is only a pending member,
+// or there is no such campaign, or campaignID is not even a UUID). Handlers
+// should use the returned Membership.CampaignID, which is in canonical
+// form, from then on.
 func RequireCampaignMember(ctx context.Context, campaignID string) (Membership, error) {
-	memo, err := memoFrom(ctx)
+	m, _, err := lookUp(ctx, campaignID)
 	if err != nil {
 		return Membership{}, err
 	}
+	if m.Pending {
+		// Not a member yet (RN-15): the same answer as for a stranger.
+		return Membership{}, errNotFound()
+	}
+	return m, nil
+}
+
+// lookUp finds the caller's membership in the campaign, active or pending,
+// with the request's memo. Its errors are already the right Connect errors;
+// every Require* function decides what a pending membership may do.
+func lookUp(ctx context.Context, campaignID string) (Membership, *memo, error) {
+	memo, err := memoFrom(ctx)
+	if err != nil {
+		return Membership{}, nil, err
+	}
 	userID, err := memo.caller.UserID(ctx)
 	if err != nil {
-		return Membership{}, err
+		return Membership{}, nil, err
 	}
 
 	// An ID that is not a UUID cannot name a campaign. Parsing here also
@@ -115,24 +158,27 @@ func RequireCampaignMember(ctx context.Context, campaignID string) (Membership, 
 	// (lowercase, with dashes) is what Membership.CampaignID returns.
 	id, err := uuid.Parse(campaignID)
 	if err != nil {
-		return Membership{}, errNotFound()
+		return Membership{}, nil, errNotFound()
 	}
 	campaignID = id.String()
 
-	role, err := memo.role(ctx, campaignID, userID)
+	role, status, err := memo.membership(ctx, campaignID, userID)
 	switch {
 	case err == nil:
-		return Membership{CampaignID: campaignID, UserID: userID, Role: role}, nil
+		// Anything but "active" counts as pending, the most limited place:
+		// a status this code does not know can never grant more.
+		return Membership{CampaignID: campaignID, UserID: userID, Role: role, Pending: status != StatusActive}, memo, nil
 	case errors.Is(err, ErrNotMember):
-		return Membership{}, errNotFound()
+		return Membership{}, nil, errNotFound()
 	default:
 		memo.logger.ErrorContext(ctx, "cannot check campaign membership", "error", err)
-		return Membership{}, connect.NewError(connect.CodeUnavailable, errors.New("cannot check permissions right now, please try again"))
+		return Membership{}, nil, connect.NewError(connect.CodeUnavailable, errors.New("cannot check permissions right now, please try again"))
 	}
 }
 
 // RequireCampaignRole is RequireCampaignMember, plus `permission_denied`
-// when the caller's role in the campaign is not exactly role.
+// when the caller's role in the campaign is not exactly role. A pending
+// member gets `not_found`, as from RequireCampaignMember.
 func RequireCampaignRole(ctx context.Context, campaignID string, role Role) (Membership, error) {
 	m, err := RequireCampaignMember(ctx, campaignID)
 	if err != nil {
@@ -156,9 +202,10 @@ func noStore(err *connect.Error) *connect.Error {
 }
 
 // Interceptor returns a Connect interceptor that gives every request (and
-// every stream) its own memo: who the caller is (from caller) and the roles
-// already looked up (from source). Errors from source are logged to logger,
-// which may be nil for slog.Default().
+// every stream) its own memo: who the caller is (from caller), which RPC
+// was called (for pendingMayCall), and the memberships already looked up
+// (from source). Errors from source are logged to logger, which may be nil
+// for slog.Default().
 //
 // The memo lives as long as the request. For a long-lived stream that is
 // the whole stream, so a streaming handler that must notice a removal while
@@ -176,8 +223,11 @@ type interceptor struct {
 	logger *slog.Logger
 }
 
-func (i *interceptor) withMemo(ctx context.Context) context.Context {
-	return context.WithValue(ctx, memoKey{}, &memo{caller: i.caller, source: i.source, logger: i.logger})
+// withMemo returns ctx with a new memo for a call to procedure (such as
+// "/meurpg.campaigns.v1.CampaignService/GetCampaign"), which Connect's
+// handler fills in and a client cannot change.
+func (i *interceptor) withMemo(ctx context.Context, procedure string) context.Context {
+	return context.WithValue(ctx, memoKey{}, &memo{caller: i.caller, source: i.source, logger: i.logger, procedure: procedure})
 }
 
 // WrapUnary implements connect.Interceptor.
@@ -186,7 +236,7 @@ func (i *interceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 		if req.Spec().IsClient {
 			return next(ctx, req)
 		}
-		return next(i.withMemo(ctx), req)
+		return next(i.withMemo(ctx, req.Spec().Procedure), req)
 	}
 }
 
@@ -198,7 +248,7 @@ func (i *interceptor) WrapStreamingClient(next connect.StreamingClientFunc) conn
 // WrapStreamingHandler implements connect.Interceptor.
 func (i *interceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
 	return func(ctx context.Context, conn connect.StreamingHandlerConn) error {
-		return next(i.withMemo(ctx), conn)
+		return next(i.withMemo(ctx, conn.Spec().Procedure), conn)
 	}
 }
 
@@ -215,43 +265,46 @@ func memoFrom(ctx context.Context) (*memo, error) {
 	return m, nil
 }
 
-// memo remembers, for one request, the roles already looked up. A "not a
-// member" answer is remembered too; errors are not, so a later check in the
-// same request tries the database again.
+// memo remembers, for one request, the memberships already looked up. A
+// "not a member" answer is remembered too; errors are not, so a later check
+// in the same request tries the database again.
 type memo struct {
 	caller Caller
 	source MembershipSource
 	logger *slog.Logger
+	// procedure is the RPC being served, set by the interceptor.
+	procedure string
 
-	mu    sync.Mutex // a handler may check from several goroutines
-	roles map[memoEntry]memoResult
+	mu      sync.Mutex // a handler may check from several goroutines
+	members map[memoEntry]memoResult
 }
 
 type memoEntry struct{ campaignID, userID string }
 
 type memoResult struct {
-	role Role
-	err  error // nil or ErrNotMember
+	role   Role
+	status Status
+	err    error // nil or ErrNotMember
 }
 
-func (m *memo) role(ctx context.Context, campaignID, userID string) (Role, error) {
+func (m *memo) membership(ctx context.Context, campaignID, userID string) (Role, Status, error) {
 	key := memoEntry{campaignID, userID}
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if r, ok := m.roles[key]; ok {
-		return r.role, r.err
+	if r, ok := m.members[key]; ok {
+		return r.role, r.status, r.err
 	}
 
 	// Holding the lock during the lookup is fine: requests do not share a
 	// memo, and a request rarely checks two campaigns at the same time.
-	role, err := m.source.CampaignRole(ctx, campaignID, userID)
+	role, status, err := m.source.CampaignMembership(ctx, campaignID, userID)
 	if err != nil && !errors.Is(err, ErrNotMember) {
-		return "", err
+		return "", "", err
 	}
-	if m.roles == nil {
-		m.roles = map[memoEntry]memoResult{}
+	if m.members == nil {
+		m.members = map[memoEntry]memoResult{}
 	}
-	m.roles[key] = memoResult{role: role, err: err}
-	return role, err
+	m.members[key] = memoResult{role: role, status: status, err: err}
+	return role, status, err
 }

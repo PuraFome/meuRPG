@@ -10,6 +10,49 @@ import (
 	"time"
 )
 
+const activatePendingMember = `-- name: ActivatePendingMember :execrows
+UPDATE campaign_members
+SET status = 'active'
+WHERE campaign_id = $1 AND user_id = $2 AND status = 'pending'
+`
+
+type ActivatePendingMemberParams struct {
+	CampaignID string
+	UserID     string
+}
+
+// The master approved the pending member's character (RN-15): the
+// membership becomes an ordinary one. An active membership matches no row
+// and stays as it is.
+func (q *Queries) ActivatePendingMember(ctx context.Context, arg ActivatePendingMemberParams) (int64, error) {
+	result, err := q.db.Exec(ctx, activatePendingMember, arg.CampaignID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deletePendingMember = `-- name: DeletePendingMember :execrows
+DELETE FROM campaign_members
+WHERE campaign_id = $1 AND user_id = $2 AND status = 'pending'
+`
+
+type DeletePendingMemberParams struct {
+	CampaignID string
+	UserID     string
+}
+
+// The master rejected the pending member's character (RN-15): the pending
+// membership goes with it. status = 'pending' in the WHERE clause means an
+// active membership is never deleted here.
+func (q *Queries) DeletePendingMember(ctx context.Context, arg DeletePendingMemberParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deletePendingMember, arg.CampaignID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getCampaign = `-- name: GetCampaign :one
 SELECT id, name, xp_mode, created_by, created_at FROM campaigns WHERE id = $1
 `
@@ -28,7 +71,7 @@ func (q *Queries) GetCampaign(ctx context.Context, id string) (Campaign, error) 
 }
 
 const getInviteByTokenHashForUpdate = `-- name: GetInviteByTokenHashForUpdate :one
-SELECT id, campaign_id, token_hash, created_by, max_uses, use_count, created_at, expires_at, revoked_at FROM campaign_invites WHERE token_hash = $1 FOR UPDATE
+SELECT id, campaign_id, token_hash, created_by, max_uses, use_count, created_at, expires_at, revoked_at, requires_approval FROM campaign_invites WHERE token_hash = $1 FOR UPDATE
 `
 
 // FOR UPDATE locks the invite until the transaction ends. A second
@@ -47,26 +90,32 @@ func (q *Queries) GetInviteByTokenHashForUpdate(ctx context.Context, tokenHash [
 		&i.CreatedAt,
 		&i.ExpiresAt,
 		&i.RevokedAt,
+		&i.RequiresApproval,
 	)
 	return i, err
 }
 
-const getMemberRole = `-- name: GetMemberRole :one
-SELECT role FROM campaign_members WHERE campaign_id = $1 AND user_id = $2
+const getMembership = `-- name: GetMembership :one
+SELECT role, status FROM campaign_members WHERE campaign_id = $1 AND user_id = $2
 `
 
-type GetMemberRoleParams struct {
+type GetMembershipParams struct {
 	CampaignID string
 	UserID     string
 }
 
+type GetMembershipRow struct {
+	Role   string
+	Status string
+}
+
 // The query behind every authorization check (package authz): one read of
 // the primary key.
-func (q *Queries) GetMemberRole(ctx context.Context, arg GetMemberRoleParams) (string, error) {
-	row := q.db.QueryRow(ctx, getMemberRole, arg.CampaignID, arg.UserID)
-	var role string
-	err := row.Scan(&role)
-	return role, err
+func (q *Queries) GetMembership(ctx context.Context, arg GetMembershipParams) (GetMembershipRow, error) {
+	row := q.db.QueryRow(ctx, getMembership, arg.CampaignID, arg.UserID)
+	var i GetMembershipRow
+	err := row.Scan(&i.Role, &i.Status)
+	return i, err
 }
 
 const incrementInviteUses = `-- name: IncrementInviteUses :execrows
@@ -118,18 +167,19 @@ func (q *Queries) InsertCampaign(ctx context.Context, arg InsertCampaignParams) 
 
 const insertInvite = `-- name: InsertInvite :one
 INSERT INTO campaign_invites
-    (campaign_id, token_hash, created_by, max_uses, created_at, expires_at)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, campaign_id, token_hash, created_by, max_uses, use_count, created_at, expires_at, revoked_at
+    (campaign_id, token_hash, created_by, max_uses, created_at, expires_at, requires_approval)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, campaign_id, token_hash, created_by, max_uses, use_count, created_at, expires_at, revoked_at, requires_approval
 `
 
 type InsertInviteParams struct {
-	CampaignID string
-	TokenHash  []byte
-	CreatedBy  string
-	MaxUses    int32
-	CreatedAt  time.Time
-	ExpiresAt  time.Time
+	CampaignID       string
+	TokenHash        []byte
+	CreatedBy        string
+	MaxUses          int32
+	CreatedAt        time.Time
+	ExpiresAt        time.Time
+	RequiresApproval bool
 }
 
 func (q *Queries) InsertInvite(ctx context.Context, arg InsertInviteParams) (CampaignInvite, error) {
@@ -140,6 +190,7 @@ func (q *Queries) InsertInvite(ctx context.Context, arg InsertInviteParams) (Cam
 		arg.MaxUses,
 		arg.CreatedAt,
 		arg.ExpiresAt,
+		arg.RequiresApproval,
 	)
 	var i CampaignInvite
 	err := row.Scan(
@@ -152,36 +203,44 @@ func (q *Queries) InsertInvite(ctx context.Context, arg InsertInviteParams) (Cam
 		&i.CreatedAt,
 		&i.ExpiresAt,
 		&i.RevokedAt,
+		&i.RequiresApproval,
 	)
 	return i, err
 }
 
 const insertMember = `-- name: InsertMember :one
-INSERT INTO campaign_members (campaign_id, user_id, role)
-VALUES ($1, $2, $3)
-RETURNING campaign_id, user_id, role, joined_at
+INSERT INTO campaign_members (campaign_id, user_id, role, status)
+VALUES ($1, $2, $3, $4)
+RETURNING campaign_id, user_id, role, joined_at, status
 `
 
 type InsertMemberParams struct {
 	CampaignID string
 	UserID     string
 	Role       string
+	Status     string
 }
 
 func (q *Queries) InsertMember(ctx context.Context, arg InsertMemberParams) (CampaignMember, error) {
-	row := q.db.QueryRow(ctx, insertMember, arg.CampaignID, arg.UserID, arg.Role)
+	row := q.db.QueryRow(ctx, insertMember,
+		arg.CampaignID,
+		arg.UserID,
+		arg.Role,
+		arg.Status,
+	)
 	var i CampaignMember
 	err := row.Scan(
 		&i.CampaignID,
 		&i.UserID,
 		&i.Role,
 		&i.JoinedAt,
+		&i.Status,
 	)
 	return i, err
 }
 
 const listCampaignsOfUser = `-- name: ListCampaignsOfUser :many
-SELECT c.id, c.name, c.xp_mode, c.created_by, c.created_at, m.role
+SELECT c.id, c.name, c.xp_mode, c.created_by, c.created_at, m.role, m.status
 FROM campaign_members AS m
 JOIN campaigns AS c ON c.id = m.campaign_id
 WHERE m.user_id = $1
@@ -191,9 +250,11 @@ ORDER BY c.created_at DESC, c.id
 type ListCampaignsOfUserRow struct {
 	Campaign Campaign
 	Role     string
+	Status   string
 }
 
 // Newest first. The index on campaign_members (user_id) finds the rows.
+// Pending memberships (RN-15) come too: the handler shows only the name.
 func (q *Queries) ListCampaignsOfUser(ctx context.Context, userID string) ([]ListCampaignsOfUserRow, error) {
 	rows, err := q.db.Query(ctx, listCampaignsOfUser, userID)
 	if err != nil {
@@ -210,6 +271,7 @@ func (q *Queries) ListCampaignsOfUser(ctx context.Context, userID string) ([]Lis
 			&i.Campaign.CreatedBy,
 			&i.Campaign.CreatedAt,
 			&i.Role,
+			&i.Status,
 		); err != nil {
 			return nil, err
 		}
@@ -222,7 +284,7 @@ func (q *Queries) ListCampaignsOfUser(ctx context.Context, userID string) ([]Lis
 }
 
 const listInvites = `-- name: ListInvites :many
-SELECT id, campaign_id, token_hash, created_by, max_uses, use_count, created_at, expires_at, revoked_at FROM campaign_invites
+SELECT id, campaign_id, token_hash, created_by, max_uses, use_count, created_at, expires_at, revoked_at, requires_approval FROM campaign_invites
 WHERE campaign_id = $1
 ORDER BY created_at DESC, id
 `
@@ -247,6 +309,7 @@ func (q *Queries) ListInvites(ctx context.Context, campaignID string) ([]Campaig
 			&i.CreatedAt,
 			&i.ExpiresAt,
 			&i.RevokedAt,
+			&i.RequiresApproval,
 		); err != nil {
 			return nil, err
 		}
@@ -259,12 +322,13 @@ func (q *Queries) ListInvites(ctx context.Context, campaignID string) ([]Campaig
 }
 
 const listMembers = `-- name: ListMembers :many
-SELECT campaign_id, user_id, role, joined_at FROM campaign_members
-WHERE campaign_id = $1
+SELECT campaign_id, user_id, role, joined_at, status FROM campaign_members
+WHERE campaign_id = $1 AND status = 'active'
 ORDER BY role = 'master' DESC, joined_at, user_id
 `
 
-// The master first, then the players in the order they joined.
+// The master first, then the players in the order they joined. Pending
+// members (RN-15) are not members yet, so they are left out.
 func (q *Queries) ListMembers(ctx context.Context, campaignID string) ([]CampaignMember, error) {
 	rows, err := q.db.Query(ctx, listMembers, campaignID)
 	if err != nil {
@@ -279,6 +343,7 @@ func (q *Queries) ListMembers(ctx context.Context, campaignID string) ([]Campaig
 			&i.UserID,
 			&i.Role,
 			&i.JoinedAt,
+			&i.Status,
 		); err != nil {
 			return nil, err
 		}
@@ -294,7 +359,7 @@ const revokeInvite = `-- name: RevokeInvite :one
 UPDATE campaign_invites
 SET revoked_at = COALESCE(revoked_at, $3)
 WHERE campaign_id = $1 AND id = $2
-RETURNING id, campaign_id, token_hash, created_by, max_uses, use_count, created_at, expires_at, revoked_at
+RETURNING id, campaign_id, token_hash, created_by, max_uses, use_count, created_at, expires_at, revoked_at, requires_approval
 `
 
 type RevokeInviteParams struct {
@@ -318,6 +383,7 @@ func (q *Queries) RevokeInvite(ctx context.Context, arg RevokeInviteParams) (Cam
 		&i.CreatedAt,
 		&i.ExpiresAt,
 		&i.RevokedAt,
+		&i.RequiresApproval,
 	)
 	return i, err
 }

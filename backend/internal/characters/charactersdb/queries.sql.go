@@ -10,6 +10,45 @@ import (
 	"time"
 )
 
+const approveCharacter = `-- name: ApproveCharacter :one
+UPDATE characters
+SET status = 'active'
+WHERE campaign_id = $1::UUID AND id = $2 AND status = 'pending'
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at
+`
+
+type ApproveCharacterParams struct {
+	CampaignID string
+	ID         string
+}
+
+// The master approved a pending character (RN-15, MR-024): it becomes an
+// ordinary living character, a draft until the next game session starts.
+// Like death, approval changes neither the revision nor updated_at.
+func (q *Queries) ApproveCharacter(ctx context.Context, arg ApproveCharacterParams) (Character, error) {
+	row := q.db.QueryRow(ctx, approveCharacter, arg.CampaignID, arg.ID)
+	var i Character
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.Kind,
+		&i.PlayerUserID,
+		&i.MasterUserID,
+		&i.Status,
+		&i.Name,
+		&i.Sheet,
+		&i.Story,
+		&i.StoryEditingAllowed,
+		&i.SheetSchema,
+		&i.Revision,
+		&i.SheetLockedAt,
+		&i.DiedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const characterIsInCampaign = `-- name: CharacterIsInCampaign :one
 SELECT EXISTS (
     SELECT 1 FROM characters
@@ -43,6 +82,29 @@ type DeleteMasterNotesParams struct {
 func (q *Queries) DeleteMasterNotes(ctx context.Context, arg DeleteMasterNotesParams) error {
 	_, err := q.db.Exec(ctx, deleteMasterNotes, arg.CampaignID, arg.CharacterID)
 	return err
+}
+
+const deletePendingCharacter = `-- name: DeletePendingCharacter :execrows
+DELETE FROM characters
+WHERE campaign_id = $1::UUID AND id = $2 AND status = 'pending'
+`
+
+type DeletePendingCharacterParams struct {
+	CampaignID string
+	ID         string
+}
+
+// The master rejected a pending character (RN-15, MR-024): it never became
+// part of the campaign, so it is deleted, story and all; the master's notes
+// about it go too (character_master_notes cascades). status = 'pending' in
+// the WHERE clause means no other character is ever deleted here: outside
+// account deletion, characters change status, never row (RN-03).
+func (q *Queries) DeletePendingCharacter(ctx context.Context, arg DeletePendingCharacterParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deletePendingCharacter, arg.CampaignID, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const endStoryEditing = `-- name: EndStoryEditing :execrows
@@ -180,10 +242,10 @@ func (q *Queries) GetMasterNotes(ctx context.Context, arg GetMasterNotesParams) 
 const insertCharacter = `-- name: InsertCharacter :one
 
 INSERT INTO characters
-    (campaign_id, kind, player_user_id, master_user_id, name, sheet, story, created_at, updated_at)
+    (campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, created_at, updated_at)
 VALUES (
     $1::UUID, $2, $3, $4,
-    $5, $6, $7, $8, $8
+    $5, $6, $7, $8, $9, $9
 )
 RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at
 `
@@ -193,6 +255,7 @@ type InsertCharacterParams struct {
 	Kind         string
 	PlayerUserID *string
 	MasterUserID *string
+	Status       string
 	Name         string
 	Sheet        []byte
 	Story        []byte
@@ -203,12 +266,15 @@ type InsertCharacterParams struct {
 // another campaign matches no row, which the handlers answer as "not found".
 // campaign_id is nullable in the table (a deleted campaign sets it to NULL),
 // so the argument is cast to UUID to make it a plain string in Go.
+// status is 'active', or 'pending' for a character created by a pending
+// member (RN-15, MR-024).
 func (q *Queries) InsertCharacter(ctx context.Context, arg InsertCharacterParams) (Character, error) {
 	row := q.db.QueryRow(ctx, insertCharacter,
 		arg.CampaignID,
 		arg.Kind,
 		arg.PlayerUserID,
 		arg.MasterUserID,
+		arg.Status,
 		arg.Name,
 		arg.Sheet,
 		arg.Story,
@@ -244,12 +310,14 @@ WHERE campaign_id = $1::UUID
       $2::UUID IS NULL
       OR (kind = 'player' AND player_user_id = $2::UUID)
   )
+  AND ($3::TEXT IS NULL OR status = $3::TEXT)
 ORDER BY kind <> 'player', created_at, id
 `
 
 type ListCharactersParams struct {
 	CampaignID   string
 	PlayerUserID *string
+	Status       *string
 }
 
 type ListCharactersRow struct {
@@ -264,11 +332,12 @@ type ListCharactersRow struct {
 }
 
 // Without player_user_id, every character of the campaign (the master's
-// list); with it, only that player's characters. Players' characters come
-// first, then NPCs, each group oldest first. The story is left out: a list
-// does not show it.
+// list); with it, only that player's characters. With status, only the
+// characters in that status (a pending member sees only their pending
+// character, RN-15). Players' characters come first, then NPCs, each group
+// oldest first. The story is left out: a list does not show it.
 func (q *Queries) ListCharacters(ctx context.Context, arg ListCharactersParams) ([]ListCharactersRow, error) {
-	rows, err := q.db.Query(ctx, listCharacters, arg.CampaignID, arg.PlayerUserID)
+	rows, err := q.db.Query(ctx, listCharacters, arg.CampaignID, arg.PlayerUserID, arg.Status)
 	if err != nil {
 		return nil, err
 	}

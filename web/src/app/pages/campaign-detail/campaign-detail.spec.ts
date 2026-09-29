@@ -124,8 +124,8 @@ describe('CampaignDetail', () => {
 
   it('shows "campanha não encontrada" for a not_found response, and never reveals why', async () => {
     configure();
+    // ListMembers is never asked: the page loads the campaign first.
     fake.getCampaignResult = Promise.reject(new ConnectError('no such campaign', Code.NotFound));
-    fake.listMembersResult = Promise.reject(new ConnectError('no such campaign', Code.NotFound));
 
     const el = await render();
     expect(el.querySelector('h1')?.textContent).toContain('não encontrada');
@@ -177,10 +177,25 @@ describe('CampaignDetail', () => {
     expect(el.textContent).not.toContain('Iniciar sessão');
   });
 
+  it('a pending member sees the wait banner and their character, never the members (MR-024)', async () => {
+    configure();
+    fake.getCampaignResult = Promise.resolve({
+      campaign: { ...campaign('camp-1', 'Mirathel', Role.PLAYER), awaitingApproval: true },
+    });
+    const listMembers = vi.spyOn(fake, 'listMembers');
+
+    const el = await render();
+    expect(el.querySelector('h1')?.textContent).toContain('Mirathel');
+    expect(el.textContent).toContain('Esperando a aprovação do mestre');
+    expect(el.textContent).toContain('Personagens');
+    expect(el.textContent).not.toContain('Membros');
+    expect(el.textContent).not.toContain('Convites');
+    expect(listMembers).not.toHaveBeenCalled();
+  });
+
   it('shows a generic error message for a non-not_found failure', async () => {
     configure();
     fake.getCampaignResult = Promise.reject(new ConnectError('down', Code.Unavailable));
-    fake.listMembersResult = Promise.reject(new ConnectError('down', Code.Unavailable));
 
     const el = await render();
     expect(el.querySelector('h1')?.textContent).not.toContain('não encontrada');

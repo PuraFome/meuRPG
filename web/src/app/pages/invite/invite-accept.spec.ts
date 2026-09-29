@@ -127,6 +127,48 @@ describe('InviteAccept', () => {
     expect(navigateSpy).toHaveBeenCalledWith(['/campanhas', 'camp-1']);
   });
 
+  it('invite with approval: a new pending member goes straight to creating the character (MR-024)', async () => {
+    window.location.hash = '#t=abc123';
+    campaigns.acceptInvite.mockResolvedValue({
+      campaign: { ...campaign('camp-1'), awaitingApproval: true },
+      alreadyMember: false,
+    });
+    const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    const fixture = TestBed.createComponent(InviteAccept);
+    fixture.detectChanges();
+    auth.set({
+      status: 'signed-in',
+      user: { id: 'u1', displayName: null },
+      sessionExpiresAt: null,
+    });
+    await flush();
+    await fixture.whenStable();
+
+    expect(navigateSpy).toHaveBeenCalledWith(['/campanhas', 'camp-1', 'personagens', 'novo']);
+  });
+
+  it('invite with approval, already pending: goes to the campaign page, which shows the wait', async () => {
+    window.location.hash = '#t=abc123';
+    campaigns.acceptInvite.mockResolvedValue({
+      campaign: { ...campaign('camp-1'), awaitingApproval: true },
+      alreadyMember: true,
+    });
+    const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    const fixture = TestBed.createComponent(InviteAccept);
+    fixture.detectChanges();
+    auth.set({
+      status: 'signed-in',
+      user: { id: 'u1', displayName: null },
+      sessionExpiresAt: null,
+    });
+    await flush();
+    await fixture.whenStable();
+
+    expect(navigateSpy).toHaveBeenCalledWith(['/campanhas', 'camp-1']);
+  });
+
   it('signed in, invite expired: shows the specific InviteUnusable message', async () => {
     window.location.hash = '#t=abc123';
     campaigns.acceptInvite.mockRejectedValue(new ConnectError('expired', Code.FailedPrecondition));

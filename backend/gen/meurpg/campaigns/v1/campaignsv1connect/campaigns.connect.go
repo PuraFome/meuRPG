@@ -67,7 +67,10 @@ type CampaignServiceClient interface {
 	// (MR-001).
 	CreateCampaign(context.Context, *connect.Request[v1.CreateCampaignRequest]) (*connect.Response[v1.CreateCampaignResponse], error)
 	// ListMyCampaigns lists the campaigns the caller is a member of, newest
-	// first, with the caller's role in each.
+	// first, with the caller's role in each. It also lists the campaigns where
+	// the caller is a pending member (RN-15, MR-024), with only the id, the
+	// name, my_role and `awaiting_approval` set, so the player can find their
+	// way back to the campaign while they wait.
 	//
 	// Its request is empty, so clients may call it with HTTP GET: the URL
 	// never carries personal data.
@@ -75,10 +78,19 @@ type CampaignServiceClient interface {
 	// GetCampaign returns one campaign. Any member may call it. It only
 	// reads, but stays POST-only, because a GET would put the campaign ID in
 	// the URL.
+	//
+	// A pending member (RN-15, MR-024) may call it too, and gets only the
+	// campaign's id, name, my_role (ROLE_PLAYER) and `awaiting_approval` set:
+	// enough to show "esperando a aprovação do mestre".
 	GetCampaign(context.Context, *connect.Request[v1.GetCampaignRequest]) (*connect.Response[v1.GetCampaignResponse], error)
 	// ListMembers lists a campaign's members: the master first, then the
 	// players in the order they joined. Any member may call it. It only
 	// reads, and is POST-only, like GetCampaign.
+	//
+	// Pending members (RN-15, MR-024) are not listed: they are not members
+	// yet. The master sees who is waiting through their characters
+	// (CharacterService.ListCharacters, state PENDING). A pending member who
+	// calls it gets `not_found`.
 	ListMembers(context.Context, *connect.Request[v1.ListMembersRequest]) (*connect.Response[v1.ListMembersResponse], error)
 	// CreateInvite creates an invite link for a campaign (MR-002). Only the
 	// campaign's master may call it.
@@ -88,6 +100,9 @@ type CampaignServiceClient interface {
 	// shares it as https://<app>/convite#t=<token>. The token goes in the URL
 	// fragment, which browsers never send to a server, so it stays out of
 	// request logs and Referer headers (ADR-0009).
+	//
+	// With `requires_approval`, whoever accepts the invite becomes a pending
+	// member instead of a player (RN-15, MR-024): see AcceptInvite.
 	CreateInvite(context.Context, *connect.Request[v1.CreateInviteRequest]) (*connect.Response[v1.CreateInviteResponse], error)
 	// ListInvites lists a campaign's invites, newest first, without their
 	// tokens. Only the campaign's master may call it. It only reads, and is
@@ -105,7 +120,21 @@ type CampaignServiceClient interface {
 	//
 	// It is idempotent for members: a member of the campaign (the master
 	// included) gets the campaign back with `already_member` set, whatever
-	// the state of the invite, and no use of the invite is spent.
+	// the state of the invite, and no use of the invite is spent. This holds
+	// for a pending member too: they stay pending.
+	//
+	// Invites with approval (RN-15, MR-024). When the invite has
+	// `requires_approval`, the caller becomes a pending member, not a player:
+	// the returned campaign has `awaiting_approval` set and only its id, name
+	// and my_role. The app takes them straight to creating their character
+	// (CharacterService.CreateCharacter), which starts PENDING. They become a
+	// player when the master approves that character
+	// (CharacterService.ApproveCharacter); if the master rejects it
+	// (CharacterService.RejectCharacter), the pending membership is deleted
+	// and they need a new invite. Accepting it through sign-in works the same
+	// way: a new pending member lands on
+	// /campanhas/<campaign_id>/personagens/novo, and someone who was already
+	// in the campaign on /campanhas/<campaign_id>.
 	//
 	// Errors:
 	//   - `invalid_argument`: the token is empty.
@@ -240,7 +269,10 @@ type CampaignServiceHandler interface {
 	// (MR-001).
 	CreateCampaign(context.Context, *connect.Request[v1.CreateCampaignRequest]) (*connect.Response[v1.CreateCampaignResponse], error)
 	// ListMyCampaigns lists the campaigns the caller is a member of, newest
-	// first, with the caller's role in each.
+	// first, with the caller's role in each. It also lists the campaigns where
+	// the caller is a pending member (RN-15, MR-024), with only the id, the
+	// name, my_role and `awaiting_approval` set, so the player can find their
+	// way back to the campaign while they wait.
 	//
 	// Its request is empty, so clients may call it with HTTP GET: the URL
 	// never carries personal data.
@@ -248,10 +280,19 @@ type CampaignServiceHandler interface {
 	// GetCampaign returns one campaign. Any member may call it. It only
 	// reads, but stays POST-only, because a GET would put the campaign ID in
 	// the URL.
+	//
+	// A pending member (RN-15, MR-024) may call it too, and gets only the
+	// campaign's id, name, my_role (ROLE_PLAYER) and `awaiting_approval` set:
+	// enough to show "esperando a aprovação do mestre".
 	GetCampaign(context.Context, *connect.Request[v1.GetCampaignRequest]) (*connect.Response[v1.GetCampaignResponse], error)
 	// ListMembers lists a campaign's members: the master first, then the
 	// players in the order they joined. Any member may call it. It only
 	// reads, and is POST-only, like GetCampaign.
+	//
+	// Pending members (RN-15, MR-024) are not listed: they are not members
+	// yet. The master sees who is waiting through their characters
+	// (CharacterService.ListCharacters, state PENDING). A pending member who
+	// calls it gets `not_found`.
 	ListMembers(context.Context, *connect.Request[v1.ListMembersRequest]) (*connect.Response[v1.ListMembersResponse], error)
 	// CreateInvite creates an invite link for a campaign (MR-002). Only the
 	// campaign's master may call it.
@@ -261,6 +302,9 @@ type CampaignServiceHandler interface {
 	// shares it as https://<app>/convite#t=<token>. The token goes in the URL
 	// fragment, which browsers never send to a server, so it stays out of
 	// request logs and Referer headers (ADR-0009).
+	//
+	// With `requires_approval`, whoever accepts the invite becomes a pending
+	// member instead of a player (RN-15, MR-024): see AcceptInvite.
 	CreateInvite(context.Context, *connect.Request[v1.CreateInviteRequest]) (*connect.Response[v1.CreateInviteResponse], error)
 	// ListInvites lists a campaign's invites, newest first, without their
 	// tokens. Only the campaign's master may call it. It only reads, and is
@@ -278,7 +322,21 @@ type CampaignServiceHandler interface {
 	//
 	// It is idempotent for members: a member of the campaign (the master
 	// included) gets the campaign back with `already_member` set, whatever
-	// the state of the invite, and no use of the invite is spent.
+	// the state of the invite, and no use of the invite is spent. This holds
+	// for a pending member too: they stay pending.
+	//
+	// Invites with approval (RN-15, MR-024). When the invite has
+	// `requires_approval`, the caller becomes a pending member, not a player:
+	// the returned campaign has `awaiting_approval` set and only its id, name
+	// and my_role. The app takes them straight to creating their character
+	// (CharacterService.CreateCharacter), which starts PENDING. They become a
+	// player when the master approves that character
+	// (CharacterService.ApproveCharacter); if the master rejects it
+	// (CharacterService.RejectCharacter), the pending membership is deleted
+	// and they need a new invite. Accepting it through sign-in works the same
+	// way: a new pending member lands on
+	// /campanhas/<campaign_id>/personagens/novo, and someone who was already
+	// in the campaign on /campanhas/<campaign_id>.
 	//
 	// Errors:
 	//   - `invalid_argument`: the token is empty.

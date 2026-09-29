@@ -47,6 +47,7 @@ describe('characterStateLabel', () => {
     expect(characterStateLabel('draft')).toBe('Rascunho');
     expect(characterStateLabel('locked')).toBe('Travada');
     expect(characterStateLabel('dead')).toBe('Morto');
+    expect(characterStateLabel('pending')).toBe('Pendente de aprovação');
   });
 });
 

@@ -19,7 +19,9 @@ func (s *Service) ListContent(
 	ctx context.Context,
 	req *connect.Request[rulesv1.ListContentRequest],
 ) (*connect.Response[rulesv1.ListContentResponse], error) {
-	if _, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId()); err != nil {
+	// A pending member may read it too (RN-15): the editor needs it to
+	// create their character. The catalog is the same for everyone.
+	if _, err := authz.RequireCampaignMemberOrPending(ctx, req.Msg.GetCampaignId()); err != nil {
 		return nil, err
 	}
 	// The catalog is shared and never modified; marshaling it from several

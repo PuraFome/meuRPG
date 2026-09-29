@@ -55,6 +55,60 @@
         </p>
       }
 
+      <!-- Invite with approval (RN-15, MR-024). -->
+      @if (vm.state === 'pending') {
+        @if (vm.canApprove) {
+          <div class="approval-panel" role="region" aria-label="Aprovação do personagem">
+            <p>
+              Este personagem espera a sua aprovação. Aprovar põe o personagem e o jogador na
+              campanha; recusar apaga o personagem, e o jogador precisa de um convite novo para
+              tentar de novo.
+            </p>
+            <div class="sheet-actions">
+              @if (confirmingReject()) {
+                <button
+                  mat-flat-button
+                  type="button"
+                  class="approval-panel__reject"
+                  [disabled]="approvalState().status === 'saving'"
+                  (click)="reject(vm.campaignId, vm.id)"
+                >
+                  Confirmar recusa
+                </button>
+                <button mat-button type="button" (click)="confirmingReject.set(false)">Cancelar</button>
+              } @else {
+                <button
+                  mat-flat-button
+                  type="button"
+                  [disabled]="approvalState().status === 'saving'"
+                  (click)="approve(vm.campaignId, vm.id)"
+                >
+                  Aprovar personagem
+                </button>
+                <button
+                  mat-button
+                  type="button"
+                  [disabled]="approvalState().status === 'saving'"
+                  (click)="confirmingReject.set(true)"
+                >
+                  Recusar personagem
+                </button>
+              }
+            </div>
+            @if (approvalState(); as a) {
+              @if (a.status === 'error') {
+                <p class="form-error" role="alert">{{ a.message }}</p>
+              }
+            }
+          </div>
+        } @else {
+          <p class="pending-banner" role="status">
+            Esperando a aprovação do mestre. Você pode continuar editando a ficha e a história
+            enquanto isso.
+          </p>
+        }
+      }
+
       <div class="sheet-actions">
         @if (vm.canEdit) {
           <a mat-flat-button [routerLink]="['/campanhas', vm.campaignId, 'personagens', vm.id, 'editar']">

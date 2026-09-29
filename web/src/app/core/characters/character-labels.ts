@@ -49,6 +49,8 @@ export function characterStateLabel(state: CharacterState): string {
       return 'Travada';
     case 'dead':
       return 'Morto';
+    case 'pending':
+      return 'Pendente de aprovação';
   }
 }
 

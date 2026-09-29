@@ -1,6 +1,7 @@
 package campaigns
 
 import (
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -148,7 +149,13 @@ func TestInvitesAreDeletedByTheDatabase(t *testing.T) {
 	if err := h.pool.QueryRow(t.Context(), "SHOW CREATE TABLE campaign_invites").Scan(&name, &create); err != nil {
 		t.Fatalf("SHOW CREATE TABLE: %v", err)
 	}
-	if !strings.Contains(create, "ttl = 'on'") || !strings.Contains(create, `expires_at + INTERVAL \'30 days\'`) {
+	// CockroachDB prints the expression as it was written until a later
+	// ALTER TABLE (00021 adds requires_approval) makes it print its own
+	// normalized form, with a cast instead of the INTERVAL keyword. Both
+	// mean the same TTL.
+	spellings := []string{`expires_at + INTERVAL \'30 days\'`, `expires_at + \'30 days\'::INTERVAL`}
+	hasExpression := slices.ContainsFunc(spellings, func(e string) bool { return strings.Contains(create, e) })
+	if !strings.Contains(create, "ttl = 'on'") || !hasExpression {
 		t.Errorf("campaign_invites has no row-level TTL of expires_at + 30 days: %s", create)
 	}
 }

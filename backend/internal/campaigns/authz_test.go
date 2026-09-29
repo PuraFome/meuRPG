@@ -22,59 +22,66 @@ const allowed connect.Code = 0
 //	non-member  not_found for anything about the campaign, so its existence
 //	            does not leak
 //	player      permission_denied for what only the master may do
+//	pending     a pending member (RN-15, MR-024): not_found, like a
+//	            non-member, except GetCampaign (only the name) and what
+//	            any signed-in user may do
 func TestAuthorizationMatrix(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
 	master := h.newUser("Mestre")
 	player := h.newUser("Jogador")
+	pending := h.newUser("Pendente")
 	campaign := master.createCampaign(t, "Mirathel")
 	id := campaign.GetId()
 	invite, token := master.createInvite(t, id, MaxInviteUses, 0)
 	player.join(t, token)
+	_, approvalToken := master.createApprovalInvite(t, id)
+	pending.join(t, approvalToken)
 
 	type client = campaignsv1connect.CampaignServiceClient
 	methods := []struct {
 		name string
 		call func(ctx context.Context, c client) error
-		// The expected code for master, player, non-member, anonymous.
-		want [4]connect.Code
+		// The expected code for master, player, non-member, anonymous,
+		// pending member.
+		want [5]connect.Code
 	}{
 		{"CreateCampaign", func(ctx context.Context, c client) error {
 			_, err := c.CreateCampaign(ctx, connect.NewRequest(&campaignsv1.CreateCampaignRequest{Name: "Outra", XpMode: campaignsv1.XpMode_XP_MODE_GOLD}))
 			return err
-		}, [4]connect.Code{allowed, allowed, allowed, connect.CodeUnauthenticated}},
+		}, [5]connect.Code{allowed, allowed, allowed, connect.CodeUnauthenticated, allowed}},
 
 		{"ListMyCampaigns", func(ctx context.Context, c client) error {
 			_, err := c.ListMyCampaigns(ctx, connect.NewRequest(&campaignsv1.ListMyCampaignsRequest{}))
 			return err
-		}, [4]connect.Code{allowed, allowed, allowed, connect.CodeUnauthenticated}},
+		}, [5]connect.Code{allowed, allowed, allowed, connect.CodeUnauthenticated, allowed}},
 
 		{"GetCampaign", func(ctx context.Context, c client) error {
 			_, err := c.GetCampaign(ctx, connect.NewRequest(&campaignsv1.GetCampaignRequest{CampaignId: id}))
 			return err
-		}, [4]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		}, [5]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated, allowed}},
 
 		{"ListMembers", func(ctx context.Context, c client) error {
 			_, err := c.ListMembers(ctx, connect.NewRequest(&campaignsv1.ListMembersRequest{CampaignId: id}))
 			return err
-		}, [4]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		}, [5]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 
 		{"CreateInvite", func(ctx context.Context, c client) error {
 			_, err := c.CreateInvite(ctx, connect.NewRequest(&campaignsv1.CreateInviteRequest{CampaignId: id}))
 			return err
-		}, [4]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 
 		{"ListInvites", func(ctx context.Context, c client) error {
 			_, err := c.ListInvites(ctx, connect.NewRequest(&campaignsv1.ListInvitesRequest{CampaignId: id}))
 			return err
-		}, [4]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 
 		{"RevokeInvite", func(ctx context.Context, c client) error {
 			// A fresh invite each time, so the master's call really revokes.
 			fresh, _ := master.createInvite(t, id, 0, 0)
 			_, err := c.RevokeInvite(ctx, connect.NewRequest(&campaignsv1.RevokeInviteRequest{CampaignId: id, InviteId: fresh.GetId()}))
 			return err
-		}, [4]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 
 		// Any signed-in user may accept an invite: that is how a non-member
 		// becomes one. This row runs last, because it makes the non-member a
@@ -82,7 +89,7 @@ func TestAuthorizationMatrix(t *testing.T) {
 		{"AcceptInvite", func(ctx context.Context, c client) error {
 			_, err := c.AcceptInvite(ctx, connect.NewRequest(&campaignsv1.AcceptInviteRequest{Token: token}))
 			return err
-		}, [4]connect.Code{allowed, allowed, allowed, connect.CodeUnauthenticated}},
+		}, [5]connect.Code{allowed, allowed, allowed, connect.CodeUnauthenticated, allowed}},
 	}
 
 	// Every method of the service must be in the table, so a new RPC cannot
@@ -106,6 +113,7 @@ func TestAuthorizationMatrix(t *testing.T) {
 		{"player", player.api},
 		{"non-member", h.newUser("Outra pessoa").api},
 		{"anonymous", h.anonymous()},
+		{"pending", pending.api},
 	}
 	// Sequential on purpose: the AcceptInvite row changes who is a member.
 	for _, m := range methods {
@@ -124,7 +132,10 @@ func TestAuthorizationMatrix(t *testing.T) {
 	}
 
 	if n := h.useCount(invite.GetId()); n != 2 {
-		t.Errorf("use_count = %d, want 2: the player's join and the non-member's", n)
+		t.Errorf("use_count = %d, want 2: the player's join and the non-member's (the pending member was already in, and stays pending)", n)
+	}
+	if got := h.memberStatus(id, pending.id); got != "pending" {
+		t.Errorf("pending member's status after the matrix = %q, want pending", got)
 	}
 }
 

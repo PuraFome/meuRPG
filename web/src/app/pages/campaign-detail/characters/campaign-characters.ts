@@ -10,7 +10,11 @@ import {
   characterStateLabel,
 } from '../../../core/characters/character-labels';
 import { CharacterKind } from '../../../core/characters/characters.types';
-import { CampaignCharactersSource, CampaignCharactersVm } from './campaign-characters.types';
+import {
+  CampaignCharacterListItemVm,
+  CampaignCharactersSource,
+  CampaignCharactersVm,
+} from './campaign-characters.types';
 
 type ListState =
   | { status: 'loading' }
@@ -27,13 +31,16 @@ const NPC_KINDS: ReadonlyArray<{ kind: CharacterKind; tipo: string }> = [
 ];
 
 /**
- * The "Personagens" section on `/campanhas/:id` (MR-003, MR-005).
+ * The "Personagens" section on `/campanhas/:id` (MR-003, MR-005, MR-024).
  *
- * - **Master:** "Personagens dos jogadores" (name, player display name,
- *   class/level summary, state chip) and "NPCs" (name, kind chip), plus a
- *   "Novo NPC" menu.
- * - **Player:** their own characters, and a "Criar meu personagem" call to
- *   action shown only when they have no living character (RN-03).
+ * - **Master:** "Esperando aprovação" (characters created through an invite
+ *   that requires approval, RN-15 — each links to its sheet, where the
+ *   master approves or rejects it), "Personagens dos jogadores" (name,
+ *   player display name, class/level summary, state chip) and "NPCs" (name,
+ *   kind chip), plus a "Novo NPC" menu.
+ * - **Player:** their own characters (a pending one shows "Pendente de
+ *   aprovação"), and a "Criar meu personagem" call to action shown only
+ *   when they have no living character (RN-03; a pending one counts).
  */
 @Component({
   selector: 'app-campaign-characters',
@@ -51,6 +58,17 @@ export class CampaignCharacters implements OnInit {
   protected readonly characterKindLabel = characterKindLabel;
   protected readonly characterStateLabel = characterStateLabel;
   protected readonly npcKinds = NPC_KINDS;
+
+  /** Master only: the players' characters that wait for approval. */
+  protected awaitingApproval(vm: CampaignCharactersVm): readonly CampaignCharacterListItemVm[] {
+    return vm.playerCharacters.filter((c) => c.state === 'pending');
+  }
+
+  /** The master's "Personagens dos jogadores": everything already in the
+   * campaign. A player sees all of their own, pending included. */
+  protected listedPlayerCharacters(vm: CampaignCharactersVm): readonly CampaignCharacterListItemVm[] {
+    return this.isMaster() ? vm.playerCharacters.filter((c) => c.state !== 'pending') : vm.playerCharacters;
+  }
 
   ngOnInit(): void {
     // Not the constructor — see CampaignInvites's doc comment on the same

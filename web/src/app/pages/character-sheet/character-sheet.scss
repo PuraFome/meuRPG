@@ -45,6 +45,19 @@
   color: var(--mat-sys-on-tertiary-container);
 }
 
+.pending-banner,
+.approval-panel {
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+}
+
+.approval-panel__reject {
+  background: var(--mat-sys-error);
+  color: var(--mat-sys-on-error);
+}
+
 .sheet-actions {
   display: flex;
   gap: 0.5rem;

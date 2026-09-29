@@ -236,6 +236,10 @@ export interface CharacterSheetVm {
   /** `Character.can_access_master_notes`: the master. Gates both the
    * "Notas do mestre" panel and the `getMasterNotes` call (RN-11). */
   readonly canAccessMasterNotes: boolean;
+  /** `Character.can_approve`: the master, for a character waiting for
+   * approval (`state === 'pending'`, RN-15 / MR-024). Gates "Aprovar
+   * personagem" and "Recusar personagem". */
+  readonly canApprove: boolean;
   readonly isMaster: boolean;
   readonly playerDisplayName: string | null;
   readonly raceLabel: string;
@@ -283,4 +287,11 @@ export abstract class CharacterSheetSource {
     characterId: string,
     allowed: boolean,
   ): Promise<CharacterSheetVm>;
+  /** Master only (MR-024): the pending character becomes a draft, and its
+   * player a member of the campaign (`ApproveCharacter`). */
+  abstract approveCharacter(campaignId: string, characterId: string): Promise<CharacterSheetVm>;
+  /** Master only (MR-024): the pending character is deleted, and its
+   * player's pending membership too (`RejectCharacter`). Nothing comes
+   * back: the character is gone. */
+  abstract rejectCharacter(campaignId: string, characterId: string): Promise<void>;
 }

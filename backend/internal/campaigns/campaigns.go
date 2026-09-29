@@ -1,5 +1,5 @@
 // Package campaigns manages campaigns, their members and the invites that
-// let new players in (MR-001, MR-002, MR-003).
+// let new players in (MR-001, MR-002, MR-003, MR-024).
 //
 // A campaign's master creates it and shares invite links; a player signs in
 // and accepts an invite, which makes them a player of the campaign. A
@@ -7,6 +7,14 @@
 // identity sign-in intent (signin.go). Who may
 // do what is decided by package authz from campaign_members, which this
 // package owns: Service implements authz.MembershipSource.
+//
+// An invite can require the master's approval (RN-15, MR-024). Accepting
+// such an invite makes the caller a pending member (campaign_members.status
+// 'pending'), who may only work on their one character until the master
+// approves or rejects it (package authz, pending.go). The master decides in
+// package characters (ApproveCharacter, RejectCharacter), which settles the
+// membership in the same transaction through ActivatePendingMember and
+// DeletePendingMember below; cmd/api connects the two packages.
 //
 // The SQL lives in queries.sql, and sqlc turns it into package campaignsdb.
 // Every write runs inside db.InTx, which retries CockroachDB's
@@ -179,15 +187,43 @@ func (noStore) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.S
 	}
 }
 
-// CampaignRole implements authz.MembershipSource with one primary-key read
-// of campaign_members.
-func (s *Service) CampaignRole(ctx context.Context, campaignID, userID string) (authz.Role, error) {
-	role, err := s.queries.GetMemberRole(ctx, campaignsdb.GetMemberRoleParams{CampaignID: campaignID, UserID: userID})
+// CampaignMembership implements authz.MembershipSource with one
+// primary-key read of campaign_members.
+func (s *Service) CampaignMembership(ctx context.Context, campaignID, userID string) (authz.Role, authz.Status, error) {
+	m, err := s.queries.GetMembership(ctx, campaignsdb.GetMembershipParams{CampaignID: campaignID, UserID: userID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return "", authz.ErrNotMember
+		return "", "", authz.ErrNotMember
 	}
 	if err != nil {
-		return "", fmt.Errorf("get member role: %w", err)
+		return "", "", fmt.Errorf("get membership: %w", err)
 	}
-	return authz.Role(role), nil
+	return authz.Role(m.Role), authz.Status(m.Status), nil
+}
+
+// ActivatePendingMember makes userID's pending membership of campaignID an
+// ordinary one, inside tx (RN-15, MR-024). An active membership, or none,
+// stays as it is.
+//
+// Package characters calls it from ApproveCharacter, in the transaction
+// that approves the character, after checking that the caller is the
+// campaign's master. It takes no caller on purpose, like LockSheets: the
+// check is ApproveCharacter's. Nothing else calls it.
+func (s *Service) ActivatePendingMember(ctx context.Context, tx pgx.Tx, campaignID, userID string) error {
+	if _, err := s.queries.WithTx(tx).ActivatePendingMember(ctx, campaignsdb.ActivatePendingMemberParams{CampaignID: campaignID, UserID: userID}); err != nil {
+		return fmt.Errorf("activate pending member: %w", err)
+	}
+	return nil
+}
+
+// DeletePendingMember deletes userID's pending membership of campaignID,
+// inside tx (RN-15, MR-024). An active membership is never deleted.
+//
+// Package characters calls it from RejectCharacter, in the transaction that
+// deletes the rejected character, after checking that the caller is the
+// campaign's master. Nothing else calls it.
+func (s *Service) DeletePendingMember(ctx context.Context, tx pgx.Tx, campaignID, userID string) error {
+	if _, err := s.queries.WithTx(tx).DeletePendingMember(ctx, campaignsdb.DeletePendingMemberParams{CampaignID: campaignID, UserID: userID}); err != nil {
+		return fmt.Errorf("delete pending member: %w", err)
+	}
+	return nil
 }

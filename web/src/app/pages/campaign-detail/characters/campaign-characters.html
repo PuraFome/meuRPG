@@ -10,12 +10,34 @@
         <p role="alert">{{ s.message }}</p>
       }
       @case ('ready') {
+        @if (isMaster()) {
+          @let waiting = awaitingApproval(s.vm);
+          @if (waiting.length > 0) {
+            <h3 id="awaiting-approval-heading">Esperando aprovação</h3>
+            <p>Abra a ficha para aprovar ou recusar o personagem.</p>
+            <ul class="character-list" aria-labelledby="awaiting-approval-heading">
+              @for (c of waiting; track c.id) {
+                <li>
+                  <a [routerLink]="['/campanhas', campaignId(), 'personagens', c.id]">{{ c.name }}</a>
+                  @if (c.classSummary) {
+                    <span class="character-list__detail">{{ c.classSummary }}</span>
+                  }
+                  @if (c.playerDisplayName) {
+                    <span class="character-list__detail">{{ c.playerDisplayName }}</span>
+                  }
+                </li>
+              }
+            </ul>
+          }
+        }
+
+        @let listed = listedPlayerCharacters(s.vm);
         <h3>{{ isMaster() ? 'Personagens dos jogadores' : 'Meus personagens' }}</h3>
-        @if (s.vm.playerCharacters.length === 0) {
+        @if (listed.length === 0) {
           <p>Nenhum personagem ainda.</p>
         } @else {
           <ul class="character-list">
-            @for (c of s.vm.playerCharacters; track c.id) {
+            @for (c of listed; track c.id) {
               <li>
                 <a [routerLink]="['/campanhas', campaignId(), 'personagens', c.id]">{{ c.name }}</a>
                 @if (c.classSummary) {

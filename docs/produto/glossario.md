@@ -6,12 +6,13 @@ Usar as mesmas palavras nas conversas, nos documentos e no código evita muita c
 | --- | --- | --- |
 | Campanha | A história contínua de uma mesa. Sessões, personagens do jogador, mapas e documentos pertencem a ela. | `campaign` |
 | Membro | Um usuário numa campanha, com papel de mestre ou jogador. O papel vale só para aquela campanha. | `campaign_member`, `role` |
+| Membro pendente | Quem aceitou um convite com aprovação e espera o mestre aprovar o personagem que criou (RN-15). Ainda não é membro: vê só o nome da campanha e o próprio personagem. Vira jogador quando o mestre aprova; sai da campanha quando o mestre recusa. | `status = 'pending'`, `awaiting_approval` |
 | Mestre | O papel de quem conduz a campanha: cria convites e, depois, as sessões. Quem cria a campanha vira mestre dela. Uma campanha pode ter mais de um mestre, e um mestre pode passar a campanha para outro (RN-13). | `master` |
 | Jogador | O papel de quem joga na campanha. Entra por um convite. | `player` |
 | Nome de exibição | O nome que os outros membros veem. A própria pessoa digita no app; nunca vem do Google. | `display_name` |
 | Mesa | O conjunto de campanhas de um mestre. O handle do jogador sem Google é único dentro da mesa, não por campanha (RN-17). | `home_dm_user_id`, `dm_user_id` |
 | Handle | O apelido que identifica o jogador sem Google: o apelido do mestre junto do apelido do jogador, único dentro da mesa (RN-17). | `table_handles.handle_norm` |
-| Convite | Link que **adiciona** um jogador à campanha. Guardamos só o hash do token. Pode exigir aprovação: o jogador já cria o personagem pelo convite, e o mestre aprova ou recusa (RN-15). | `campaign_invite` |
+| Convite | Link que **adiciona** um jogador à campanha. Guardamos só o hash do token. Pode exigir aprovação ("Exigir aprovação do mestre"): quem o aceita vira membro pendente, já cria o personagem pelo convite, e o mestre aprova ou recusa (RN-15). | `campaign_invite`, `requires_approval` |
 | Link da sessão | Link que **leva** um membro direto para a sessão ao vivo. Não dá acesso a quem não é membro. | `session_link` |
 | Sessão de jogo | Um encontro da mesa, com começo e fim, numerado a partir de 1 em cada campanha. Só uma fica aberta por vez, e iniciar uma sessão trava as fichas. | `game_session`, `session_number` |
 | Sessão de login | O login de um usuário no app. Não confundir com a sessão de jogo. | `auth_session` |

@@ -18,37 +18,45 @@ const (
 	missing   = "6f1c7a52-3b5e-4c55-9d0b-2a51f0c1e0ff"
 	master    = "user-master"
 	player    = "user-player"
+	pending   = "user-pending" // accepted an invite that requires approval (RN-15)
 	outsider  = "user-outsider"
 )
+
+// fakeMember is one row of fakeSource.
+type fakeMember struct {
+	role   Role
+	status Status
+}
 
 // fakeSource is a MembershipSource backed by a map, which counts lookups.
 type fakeSource struct {
 	mu      sync.Mutex
-	roles   map[[2]string]Role // {campaignID, userID}
-	err     error              // returned instead, when set
+	members map[[2]string]fakeMember // {campaignID, userID}
+	err     error                    // returned instead, when set
 	lookups int
 }
 
 func newFakeSource() *fakeSource {
-	return &fakeSource{roles: map[[2]string]Role{
-		{campaignA, master}: RoleMaster,
-		{campaignA, player}: RolePlayer,
-		{campaignB, player}: RoleMaster, // the same user can be master elsewhere (RN-05)
+	return &fakeSource{members: map[[2]string]fakeMember{
+		{campaignA, master}:  {RoleMaster, StatusActive},
+		{campaignA, player}:  {RolePlayer, StatusActive},
+		{campaignA, pending}: {RolePlayer, StatusPending},
+		{campaignB, player}:  {RoleMaster, StatusActive}, // the same user can be master elsewhere (RN-05)
 	}}
 }
 
-func (f *fakeSource) CampaignRole(_ context.Context, campaignID, userID string) (Role, error) {
+func (f *fakeSource) CampaignMembership(_ context.Context, campaignID, userID string) (Role, Status, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.lookups++
 	if f.err != nil {
-		return "", f.err
+		return "", "", f.err
 	}
-	role, ok := f.roles[[2]string{campaignID, userID}]
+	m, ok := f.members[[2]string{campaignID, userID}]
 	if !ok {
-		return "", ErrNotMember
+		return "", "", ErrNotMember
 	}
-	return role, nil
+	return m.role, m.status, nil
 }
 
 func (f *fakeSource) lookupCount() int {
@@ -86,6 +94,15 @@ func requestContext(t *testing.T, source MembershipSource, userID string) contex
 	return got
 }
 
+// procedureContext is the context a handler of procedure sees for a
+// request by userID. connect.NewRequest cannot carry a handler's Spec, so
+// this builds the memo the way the interceptor does for a served request.
+func procedureContext(t *testing.T, source MembershipSource, userID, procedure string) context.Context {
+	t.Helper()
+	i := Interceptor(fakeCaller{userID}, source, slog.New(slog.DiscardHandler)).(*interceptor)
+	return i.withMemo(t.Context(), procedure)
+}
+
 func TestRequireCampaignMemberAndRole(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -98,6 +115,9 @@ func TestRequireCampaignMemberAndRole(t *testing.T) {
 		{"master", master, campaignA, 0, 0},
 		{"player", player, campaignA, 0, connect.CodePermissionDenied},
 		{"a player in one campaign is the master of another (RN-05)", player, campaignB, 0, 0},
+		// A pending member is not a member yet (RN-15): the same answer as
+		// for a stranger.
+		{"pending member", pending, campaignA, connect.CodeNotFound, connect.CodeNotFound},
 		{"non-member", outsider, campaignA, connect.CodeNotFound, connect.CodeNotFound},
 		{"campaign that does not exist", master, missing, connect.CodeNotFound, connect.CodeNotFound},
 		{"ID that is not a UUID", master, "mirathel", connect.CodeNotFound, connect.CodeNotFound},

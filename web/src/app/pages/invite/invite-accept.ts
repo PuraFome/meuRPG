@@ -89,9 +89,14 @@ export class InviteAccept {
     try {
       const res = await this.campaigns.acceptInvite(this.token!);
       const id = res.campaign?.id;
-      if (id) {
-        // Works for both a fresh join and `already_member`: either way the
-        // caller is now a member, and the campaign page is where they go.
+      if (id && res.campaign?.awaitingApproval && !res.alreadyMember) {
+        // An invite with approval (RN-15, MR-024): the new pending member
+        // goes straight to creating the character the master will approve.
+        await this.router.navigate(['/campanhas', id, 'personagens', 'novo']);
+      } else if (id) {
+        // A fresh join or `already_member` (pending or not): the campaign
+        // page is where they go. For someone still pending, it shows
+        // "esperando a aprovação do mestre" and their character.
         await this.router.navigate(['/campanhas', id]);
       }
     } catch (err) {

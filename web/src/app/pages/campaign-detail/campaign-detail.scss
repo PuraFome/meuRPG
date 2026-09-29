@@ -13,6 +13,10 @@
   color: var(--mat-sys-error);
 }
 
+.pending-banner {
+  border-left: 4px solid var(--mat-sys-primary);
+}
+
 .campaign-meta {
   color: var(--mat-sys-on-surface-variant);
 }

@@ -7,6 +7,12 @@
         <strong>Guarde este link agora.</strong> Ele não será mostrado de novo.
       </p>
       <code class="invite-reveal__link">{{ link }}</code>
+      @if (revealedRequiresApproval()) {
+        <p>
+          Quem entrar por este link cria o personagem na hora e só entra na campanha depois que
+          você aprovar.
+        </p>
+      }
       <div class="invite-reveal__actions">
         <button mat-flat-button type="button" (click)="copyLink(link)">Copiar link</button>
         <button mat-button type="button" (click)="dismissReveal()">Ok, guardei o link</button>
@@ -38,6 +44,10 @@
       </mat-select>
     </mat-form-field>
 
+    <mat-checkbox formControlName="requiresApproval" class="invite-form__approval">
+      Exigir aprovação do mestre
+    </mat-checkbox>
+
     @if (createState(); as c) {
       @if (c.status === 'error') {
         <p class="form-error" role="alert">{{ c.message }}</p>
@@ -66,6 +76,7 @@
               <tr>
                 <th scope="col">Usos</th>
                 <th scope="col">Status</th>
+                <th scope="col">Aprovação</th>
                 <th scope="col"></th>
               </tr>
             </thead>
@@ -74,6 +85,7 @@
                 <tr>
                   <td>{{ i.useCount }} / {{ i.maxUses }}</td>
                   <td>{{ inviteStateLabel(i.state) }}</td>
+                  <td>{{ i.requiresApproval ? 'exige aprovação' : 'entra direto' }}</td>
                   <td>
                     @if (i.state === InviteState.ACTIVE) {
                       <button mat-button type="button" (click)="revoke(i)">Revogar</button>

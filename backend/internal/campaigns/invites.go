@@ -106,19 +106,24 @@ type joinResult struct {
 	campaign      campaignsdb.Campaign
 	role          authz.Role
 	alreadyMember bool
+	// pending is true when the caller is a pending member (RN-15): they
+	// joined through an invite that requires approval, now or before.
+	pending bool
 }
 
 // acceptInvite makes userID a player of the campaign whose invite token
-// hashes to tokenHash, in one transaction. Both ways of accepting an invite
-// run it: the AcceptInvite RPC, and signing in with the invite as the
-// sign-in intent (inviteIntent). The steps:
+// hashes to tokenHash, in one transaction, or a pending member when the
+// invite requires approval (RN-15, MR-024). Both ways of accepting an
+// invite run it: the AcceptInvite RPC, and signing in with the invite as
+// the sign-in intent (inviteIntent). The steps:
 //
 //  1. Find the invite by the token's hash and lock it (FOR UPDATE).
-//  2. Already a member? Return the campaign; nothing changes, and no use of
-//     the invite is spent. This makes AcceptInvite idempotent, so a double
-//     click or a retry is harmless.
+//  2. Already a member, or a pending member? Return the campaign; nothing
+//     changes, and no use of the invite is spent. This makes AcceptInvite
+//     idempotent, so a double click or a retry is harmless.
 //  3. Otherwise the invite must work: not revoked, not used up, not expired.
-//  4. Spend one use and add the membership.
+//  4. Spend one use and add the membership: active, or pending when the
+//     invite requires approval.
 //
 // Two people racing for an invite's last use cannot both get in: the lock
 // makes the second transaction wait for the first, and it then finds the
@@ -147,13 +152,18 @@ func (s *Service) acceptInvite(ctx context.Context, tokenHash []byte, userID str
 			return fmt.Errorf("get campaign: %w", err)
 		}
 
-		role, err := q.GetMemberRole(ctx, campaignsdb.GetMemberRoleParams{CampaignID: invite.CampaignID, UserID: userID})
+		member, err := q.GetMembership(ctx, campaignsdb.GetMembershipParams{CampaignID: invite.CampaignID, UserID: userID})
 		switch {
 		case err == nil:
-			result = joinResult{campaign: campaign, role: authz.Role(role), alreadyMember: true}
+			result = joinResult{
+				campaign:      campaign,
+				role:          authz.Role(member.Role),
+				alreadyMember: true,
+				pending:       member.Status == string(authz.StatusPending),
+			}
 			return nil
 		case !errors.Is(err, pgx.ErrNoRows):
-			return fmt.Errorf("get member role: %w", err)
+			return fmt.Errorf("get membership: %w", err)
 		}
 
 		if state := inviteState(invite, now); state != campaignsv1.InviteState_INVITE_STATE_ACTIVE {
@@ -168,15 +178,22 @@ func (s *Service) acceptInvite(ctx context.Context, tokenHash []byte, userID str
 			// so that a future change cannot turn into a free pass.
 			return &unusableInviteError{state: campaignsv1.InviteState_INVITE_STATE_USED_UP}
 		}
+		// An invite with approval makes a pending member (RN-15): they may
+		// only work on their character until the master approves it.
+		status := authz.StatusActive
+		if invite.RequiresApproval {
+			status = authz.StatusPending
+		}
 		_, err = q.InsertMember(ctx, campaignsdb.InsertMemberParams{
 			CampaignID: invite.CampaignID,
 			UserID:     userID,
 			Role:       string(authz.RolePlayer),
+			Status:     string(status),
 		})
 		if err != nil {
 			return fmt.Errorf("insert player: %w", err)
 		}
-		result = joinResult{campaign: campaign, role: authz.RolePlayer}
+		result = joinResult{campaign: campaign, role: authz.RolePlayer, pending: invite.RequiresApproval}
 		return nil
 	})
 	return result, err
@@ -190,6 +207,8 @@ func inviteToProto(invite campaignsdb.CampaignInvite, now time.Time) *campaignsv
 		CreatedAt: timestamppb.New(invite.CreatedAt),
 		ExpiresAt: timestamppb.New(invite.ExpiresAt),
 		State:     inviteState(invite, now),
+		// Whoever accepts it becomes a pending member (RN-15).
+		RequiresApproval: invite.RequiresApproval,
 	}
 	if invite.RevokedAt != nil {
 		res.RevokedAt = timestamppb.New(*invite.RevokedAt)

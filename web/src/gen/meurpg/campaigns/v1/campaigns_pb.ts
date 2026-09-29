@@ -15,7 +15,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/campaigns/v1/campaigns.proto.
  */
 export const file_meurpg_campaigns_v1_campaigns: GenFile = /*@__PURE__*/
-  fileDesc("CiNtZXVycGcvY2FtcGFpZ25zL3YxL2NhbXBhaWducy5wcm90bxITbWV1cnBnLmNhbXBhaWducy52MSKuAQoIQ2FtcGFpZ24SCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRIsCgd4cF9tb2RlGAMgASgOMhsubWV1cnBnLmNhbXBhaWducy52MS5YcE1vZGUSLgoKY3JlYXRlZF9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASKgoHbXlfcm9sZRgFIAEoDjIZLm1ldXJwZy5jYW1wYWlnbnMudjEuUm9sZSKHAQoGTWVtYmVyEg8KB3VzZXJfaWQYASABKAkSJwoEcm9sZRgCIAEoDjIZLm1ldXJwZy5jYW1wYWlnbnMudjEuUm9sZRIUCgxkaXNwbGF5X25hbWUYAyABKAkSLQoJam9pbmVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCL6AQoGSW52aXRlEgoKAmlkGAEgASgJEhAKCG1heF91c2VzGAIgASgFEhEKCXVzZV9jb3VudBgDIAEoBRIuCgpjcmVhdGVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgpleHBpcmVzX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgpyZXZva2VkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIvCgVzdGF0ZRgHIAEoDjIgLm1ldXJwZy5jYW1wYWlnbnMudjEuSW52aXRlU3RhdGUiQQoOSW52aXRlVW51c2FibGUSLwoFc3RhdGUYASABKA4yIC5tZXVycGcuY2FtcGFpZ25zLnYxLkludml0ZVN0YXRlIlMKFUNyZWF0ZUNhbXBhaWduUmVxdWVzdBIMCgRuYW1lGAEgASgJEiwKB3hwX21vZGUYAiABKA4yGy5tZXVycGcuY2FtcGFpZ25zLnYxLlhwTW9kZSJJChZDcmVhdGVDYW1wYWlnblJlc3BvbnNlEi8KCGNhbXBhaWduGAEgASgLMh0ubWV1cnBnLmNhbXBhaWducy52MS5DYW1wYWlnbiIYChZMaXN0TXlDYW1wYWlnbnNSZXF1ZXN0IksKF0xpc3RNeUNhbXBhaWduc1Jlc3BvbnNlEjAKCWNhbXBhaWducxgBIAMoCzIdLm1ldXJwZy5jYW1wYWlnbnMudjEuQ2FtcGFpZ24iKQoSR2V0Q2FtcGFpZ25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIkYKE0dldENhbXBhaWduUmVzcG9uc2USLwoIY2FtcGFpZ24YASABKAsyHS5tZXVycGcuY2FtcGFpZ25zLnYxLkNhbXBhaWduIikKEkxpc3RNZW1iZXJzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCSJDChNMaXN0TWVtYmVyc1Jlc3BvbnNlEiwKB21lbWJlcnMYASADKAsyGy5tZXVycGcuY2FtcGFpZ25zLnYxLk1lbWJlciJrChNDcmVhdGVJbnZpdGVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhAKCG1heF91c2VzGAIgASgFEi0KCmV4cGlyZXNfaW4YAyABKAsyGS5nb29nbGUucHJvdG9idWYuRHVyYXRpb24iUgoUQ3JlYXRlSW52aXRlUmVzcG9uc2USKwoGaW52aXRlGAEgASgLMhsubWV1cnBnLmNhbXBhaWducy52MS5JbnZpdGUSDQoFdG9rZW4YAiABKAkiKQoSTGlzdEludml0ZXNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIkMKE0xpc3RJbnZpdGVzUmVzcG9uc2USLAoHaW52aXRlcxgBIAMoCzIbLm1ldXJwZy5jYW1wYWlnbnMudjEuSW52aXRlIj0KE1Jldm9rZUludml0ZVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSEQoJaW52aXRlX2lkGAIgASgJIkMKFFJldm9rZUludml0ZVJlc3BvbnNlEisKBmludml0ZRgBIAEoCzIbLm1ldXJwZy5jYW1wYWlnbnMudjEuSW52aXRlIiQKE0FjY2VwdEludml0ZVJlcXVlc3QSDQoFdG9rZW4YASABKAkiXwoUQWNjZXB0SW52aXRlUmVzcG9uc2USLwoIY2FtcGFpZ24YASABKAsyHS5tZXVycGcuY2FtcGFpZ25zLnYxLkNhbXBhaWduEhYKDmFscmVhZHlfbWVtYmVyGAIgASgIKj4KBFJvbGUSFAoQUk9MRV9VTlNQRUNJRklFRBAAEg8KC1JPTEVfTUFTVEVSEAESDwoLUk9MRV9QTEFZRVIQAipgCgZYcE1vZGUSFwoTWFBfTU9ERV9VTlNQRUNJRklFRBAAEhMKD1hQX01PREVfRU5FTUlFUxABEhAKDFhQX01PREVfR09MRBACEhYKElhQX01PREVfTUlMRVNUT05FUxADKpIBCgtJbnZpdGVTdGF0ZRIcChhJTlZJVEVfU1RBVEVfVU5TUEVDSUZJRUQQABIXChNJTlZJVEVfU1RBVEVfQUNUSVZFEAESGAoUSU5WSVRFX1NUQVRFX0VYUElSRUQQAhIYChRJTlZJVEVfU1RBVEVfUkVWT0tFRBADEhgKFElOVklURV9TVEFURV9VU0VEX1VQEAQy0wYKD0NhbXBhaWduU2VydmljZRJpCg5DcmVhdGVDYW1wYWlnbhIqLm1ldXJwZy5jYW1wYWlnbnMudjEuQ3JlYXRlQ2FtcGFpZ25SZXF1ZXN0GisubWV1cnBnLmNhbXBhaWducy52MS5DcmVhdGVDYW1wYWlnblJlc3BvbnNlEnEKD0xpc3RNeUNhbXBhaWducxIrLm1ldXJwZy5jYW1wYWlnbnMudjEuTGlzdE15Q2FtcGFpZ25zUmVxdWVzdBosLm1ldXJwZy5jYW1wYWlnbnMudjEuTGlzdE15Q2FtcGFpZ25zUmVzcG9uc2UiA5ACARJlCgtHZXRDYW1wYWlnbhInLm1ldXJwZy5jYW1wYWlnbnMudjEuR2V0Q2FtcGFpZ25SZXF1ZXN0GigubWV1cnBnLmNhbXBhaWducy52MS5HZXRDYW1wYWlnblJlc3BvbnNlIgOQAgISZQoLTGlzdE1lbWJlcnMSJy5tZXVycGcuY2FtcGFpZ25zLnYxLkxpc3RNZW1iZXJzUmVxdWVzdBooLm1ldXJwZy5jYW1wYWlnbnMudjEuTGlzdE1lbWJlcnNSZXNwb25zZSIDkAICEmMKDENyZWF0ZUludml0ZRIoLm1ldXJwZy5jYW1wYWlnbnMudjEuQ3JlYXRlSW52aXRlUmVxdWVzdBopLm1ldXJwZy5jYW1wYWlnbnMudjEuQ3JlYXRlSW52aXRlUmVzcG9uc2USZQoLTGlzdEludml0ZXMSJy5tZXVycGcuY2FtcGFpZ25zLnYxLkxpc3RJbnZpdGVzUmVxdWVzdBooLm1ldXJwZy5jYW1wYWlnbnMudjEuTGlzdEludml0ZXNSZXNwb25zZSIDkAICEmMKDFJldm9rZUludml0ZRIoLm1ldXJwZy5jYW1wYWlnbnMudjEuUmV2b2tlSW52aXRlUmVxdWVzdBopLm1ldXJwZy5jYW1wYWlnbnMudjEuUmV2b2tlSW52aXRlUmVzcG9uc2USYwoMQWNjZXB0SW52aXRlEigubWV1cnBnLmNhbXBhaWducy52MS5BY2NlcHRJbnZpdGVSZXF1ZXN0GikubWV1cnBnLmNhbXBhaWducy52MS5BY2NlcHRJbnZpdGVSZXNwb25zZULfAQoXY29tLm1ldXJwZy5jYW1wYWlnbnMudjFCDkNhbXBhaWduc1Byb3RvUAFaRmdpdGh1Yi5jb20vUHVyYUZvbWUvbWV1UlBHL2JhY2tlbmQvZ2VuL21ldXJwZy9jYW1wYWlnbnMvdjE7Y2FtcGFpZ25zdjGiAgNNQ1iqAhNNZXVycGcuQ2FtcGFpZ25zLlYxygITTWV1cnBnXENhbXBhaWduc1xWMeICH01ldXJwZ1xDYW1wYWlnbnNcVjFcR1BCTWV0YWRhdGHqAhVNZXVycGc6OkNhbXBhaWduczo6VjFiBnByb3RvMw", [file_google_protobuf_duration, file_google_protobuf_timestamp]);
+  fileDesc("CiNtZXVycGcvY2FtcGFpZ25zL3YxL2NhbXBhaWducy5wcm90bxITbWV1cnBnLmNhbXBhaWducy52MSLJAQoIQ2FtcGFpZ24SCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRIsCgd4cF9tb2RlGAMgASgOMhsubWV1cnBnLmNhbXBhaWducy52MS5YcE1vZGUSLgoKY3JlYXRlZF9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASKgoHbXlfcm9sZRgFIAEoDjIZLm1ldXJwZy5jYW1wYWlnbnMudjEuUm9sZRIZChFhd2FpdGluZ19hcHByb3ZhbBgGIAEoCCKHAQoGTWVtYmVyEg8KB3VzZXJfaWQYASABKAkSJwoEcm9sZRgCIAEoDjIZLm1ldXJwZy5jYW1wYWlnbnMudjEuUm9sZRIUCgxkaXNwbGF5X25hbWUYAyABKAkSLQoJam9pbmVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCKVAgoGSW52aXRlEgoKAmlkGAEgASgJEhAKCG1heF91c2VzGAIgASgFEhEKCXVzZV9jb3VudBgDIAEoBRIuCgpjcmVhdGVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgpleHBpcmVzX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgpyZXZva2VkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIvCgVzdGF0ZRgHIAEoDjIgLm1ldXJwZy5jYW1wYWlnbnMudjEuSW52aXRlU3RhdGUSGQoRcmVxdWlyZXNfYXBwcm92YWwYCCABKAgiQQoOSW52aXRlVW51c2FibGUSLwoFc3RhdGUYASABKA4yIC5tZXVycGcuY2FtcGFpZ25zLnYxLkludml0ZVN0YXRlIlMKFUNyZWF0ZUNhbXBhaWduUmVxdWVzdBIMCgRuYW1lGAEgASgJEiwKB3hwX21vZGUYAiABKA4yGy5tZXVycGcuY2FtcGFpZ25zLnYxLlhwTW9kZSJJChZDcmVhdGVDYW1wYWlnblJlc3BvbnNlEi8KCGNhbXBhaWduGAEgASgLMh0ubWV1cnBnLmNhbXBhaWducy52MS5DYW1wYWlnbiIYChZMaXN0TXlDYW1wYWlnbnNSZXF1ZXN0IksKF0xpc3RNeUNhbXBhaWduc1Jlc3BvbnNlEjAKCWNhbXBhaWducxgBIAMoCzIdLm1ldXJwZy5jYW1wYWlnbnMudjEuQ2FtcGFpZ24iKQoSR2V0Q2FtcGFpZ25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIkYKE0dldENhbXBhaWduUmVzcG9uc2USLwoIY2FtcGFpZ24YASABKAsyHS5tZXVycGcuY2FtcGFpZ25zLnYxLkNhbXBhaWduIikKEkxpc3RNZW1iZXJzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCSJDChNMaXN0TWVtYmVyc1Jlc3BvbnNlEiwKB21lbWJlcnMYASADKAsyGy5tZXVycGcuY2FtcGFpZ25zLnYxLk1lbWJlciKGAQoTQ3JlYXRlSW52aXRlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIQCghtYXhfdXNlcxgCIAEoBRItCgpleHBpcmVzX2luGAMgASgLMhkuZ29vZ2xlLnByb3RvYnVmLkR1cmF0aW9uEhkKEXJlcXVpcmVzX2FwcHJvdmFsGAQgASgIIlIKFENyZWF0ZUludml0ZVJlc3BvbnNlEisKBmludml0ZRgBIAEoCzIbLm1ldXJwZy5jYW1wYWlnbnMudjEuSW52aXRlEg0KBXRva2VuGAIgASgJIikKEkxpc3RJbnZpdGVzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCSJDChNMaXN0SW52aXRlc1Jlc3BvbnNlEiwKB2ludml0ZXMYASADKAsyGy5tZXVycGcuY2FtcGFpZ25zLnYxLkludml0ZSI9ChNSZXZva2VJbnZpdGVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhEKCWludml0ZV9pZBgCIAEoCSJDChRSZXZva2VJbnZpdGVSZXNwb25zZRIrCgZpbnZpdGUYASABKAsyGy5tZXVycGcuY2FtcGFpZ25zLnYxLkludml0ZSIkChNBY2NlcHRJbnZpdGVSZXF1ZXN0Eg0KBXRva2VuGAEgASgJIl8KFEFjY2VwdEludml0ZVJlc3BvbnNlEi8KCGNhbXBhaWduGAEgASgLMh0ubWV1cnBnLmNhbXBhaWducy52MS5DYW1wYWlnbhIWCg5hbHJlYWR5X21lbWJlchgCIAEoCCo+CgRSb2xlEhQKEFJPTEVfVU5TUEVDSUZJRUQQABIPCgtST0xFX01BU1RFUhABEg8KC1JPTEVfUExBWUVSEAIqYAoGWHBNb2RlEhcKE1hQX01PREVfVU5TUEVDSUZJRUQQABITCg9YUF9NT0RFX0VORU1JRVMQARIQCgxYUF9NT0RFX0dPTEQQAhIWChJYUF9NT0RFX01JTEVTVE9ORVMQAyqSAQoLSW52aXRlU3RhdGUSHAoYSU5WSVRFX1NUQVRFX1VOU1BFQ0lGSUVEEAASFwoTSU5WSVRFX1NUQVRFX0FDVElWRRABEhgKFElOVklURV9TVEFURV9FWFBJUkVEEAISGAoUSU5WSVRFX1NUQVRFX1JFVk9LRUQQAxIYChRJTlZJVEVfU1RBVEVfVVNFRF9VUBAEMtMGCg9DYW1wYWlnblNlcnZpY2USaQoOQ3JlYXRlQ2FtcGFpZ24SKi5tZXVycGcuY2FtcGFpZ25zLnYxLkNyZWF0ZUNhbXBhaWduUmVxdWVzdBorLm1ldXJwZy5jYW1wYWlnbnMudjEuQ3JlYXRlQ2FtcGFpZ25SZXNwb25zZRJxCg9MaXN0TXlDYW1wYWlnbnMSKy5tZXVycGcuY2FtcGFpZ25zLnYxLkxpc3RNeUNhbXBhaWduc1JlcXVlc3QaLC5tZXVycGcuY2FtcGFpZ25zLnYxLkxpc3RNeUNhbXBhaWduc1Jlc3BvbnNlIgOQAgESZQoLR2V0Q2FtcGFpZ24SJy5tZXVycGcuY2FtcGFpZ25zLnYxLkdldENhbXBhaWduUmVxdWVzdBooLm1ldXJwZy5jYW1wYWlnbnMudjEuR2V0Q2FtcGFpZ25SZXNwb25zZSIDkAICEmUKC0xpc3RNZW1iZXJzEicubWV1cnBnLmNhbXBhaWducy52MS5MaXN0TWVtYmVyc1JlcXVlc3QaKC5tZXVycGcuY2FtcGFpZ25zLnYxLkxpc3RNZW1iZXJzUmVzcG9uc2UiA5ACAhJjCgxDcmVhdGVJbnZpdGUSKC5tZXVycGcuY2FtcGFpZ25zLnYxLkNyZWF0ZUludml0ZVJlcXVlc3QaKS5tZXVycGcuY2FtcGFpZ25zLnYxLkNyZWF0ZUludml0ZVJlc3BvbnNlEmUKC0xpc3RJbnZpdGVzEicubWV1cnBnLmNhbXBhaWducy52MS5MaXN0SW52aXRlc1JlcXVlc3QaKC5tZXVycGcuY2FtcGFpZ25zLnYxLkxpc3RJbnZpdGVzUmVzcG9uc2UiA5ACAhJjCgxSZXZva2VJbnZpdGUSKC5tZXVycGcuY2FtcGFpZ25zLnYxLlJldm9rZUludml0ZVJlcXVlc3QaKS5tZXVycGcuY2FtcGFpZ25zLnYxLlJldm9rZUludml0ZVJlc3BvbnNlEmMKDEFjY2VwdEludml0ZRIoLm1ldXJwZy5jYW1wYWlnbnMudjEuQWNjZXB0SW52aXRlUmVxdWVzdBopLm1ldXJwZy5jYW1wYWlnbnMudjEuQWNjZXB0SW52aXRlUmVzcG9uc2VC3wEKF2NvbS5tZXVycGcuY2FtcGFpZ25zLnYxQg5DYW1wYWlnbnNQcm90b1ABWkZnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvY2FtcGFpZ25zL3YxO2NhbXBhaWduc3YxogIDTUNYqgITTWV1cnBnLkNhbXBhaWducy5WMcoCE01ldXJwZ1xDYW1wYWlnbnNcVjHiAh9NZXVycGdcQ2FtcGFpZ25zXFYxXEdQQk1ldGFkYXRh6gIVTWV1cnBnOjpDYW1wYWlnbnM6OlYxYgZwcm90bzM", [file_google_protobuf_duration, file_google_protobuf_timestamp]);
 
 /**
  * Campaign is a campaign as seen by one of its members.
@@ -53,6 +53,16 @@ export type Campaign = Message<"meurpg.campaigns.v1.Campaign"> & {
    * @generated from field: meurpg.campaigns.v1.Role my_role = 5;
    */
   myRole: Role;
+
+  /**
+   * True when the caller is a pending member (RN-15, MR-024): they accepted
+   * an invite that requires approval, and the master has not approved their
+   * character yet. Then only id, name and my_role (ROLE_PLAYER) are set:
+   * xp_mode is unspecified and created_at is unset.
+   *
+   * @generated from field: bool awaiting_approval = 6;
+   */
+  awaitingApproval: boolean;
 };
 
 /**
@@ -155,6 +165,15 @@ export type Invite = Message<"meurpg.campaigns.v1.Invite"> & {
    * @generated from field: meurpg.campaigns.v1.InviteState state = 7;
    */
   state: InviteState;
+
+  /**
+   * Whether whoever accepts it becomes a pending member, whose character
+   * the master must approve (RN-15, MR-024). See
+   * CreateInviteRequest.requires_approval.
+   *
+   * @generated from field: bool requires_approval = 8;
+   */
+  requiresApproval: boolean;
 };
 
 /**
@@ -372,6 +391,17 @@ export type CreateInviteRequest = Message<"meurpg.campaigns.v1.CreateInviteReque
    * @generated from field: google.protobuf.Duration expires_in = 3;
    */
   expiresIn?: Duration | undefined;
+
+  /**
+   * When true, whoever accepts the invite becomes a pending member: they
+   * create their character right away, and join the campaign as a player
+   * only when the master approves it (RN-15, MR-024; "Exigir aprovação do
+   * mestre" in the app). False, the default, lets them in at once, as
+   * before.
+   *
+   * @generated from field: bool requires_approval = 4;
+   */
+  requiresApproval: boolean;
 };
 
 /**
@@ -512,18 +542,23 @@ export const AcceptInviteRequestSchema: GenMessage<AcceptInviteRequest> = /*@__P
   messageDesc(file_meurpg_campaigns_v1_campaigns, 18);
 
 /**
- * AcceptInviteResponse returns the campaign the caller is now a member of.
+ * AcceptInviteResponse returns the campaign the caller is now a member of,
+ * or a pending member of.
  *
  * @generated from message meurpg.campaigns.v1.AcceptInviteResponse
  */
 export type AcceptInviteResponse = Message<"meurpg.campaigns.v1.AcceptInviteResponse"> & {
   /**
+   * The campaign. For an invite with approval, `awaiting_approval` is set
+   * and only id, name and my_role come with it (see Campaign).
+   *
    * @generated from field: meurpg.campaigns.v1.Campaign campaign = 1;
    */
   campaign?: Campaign | undefined;
 
   /**
-   * True when the caller was a member before this call, so nothing changed.
+   * True when the caller was a member, or a pending member, before this
+   * call, so nothing changed.
    *
    * @generated from field: bool already_member = 2;
    */
@@ -666,6 +701,15 @@ export const InviteStateSchema: GenEnum<InviteState> = /*@__PURE__*/
  * that does not exist, so nobody learns which campaigns exist. A member
  * without the needed role gets `permission_denied`. See ADR-0011.
  *
+ * Pending members (RN-15, MR-024). Accepting an invite that requires
+ * approval makes the caller a pending member of its campaign: they wait
+ * for the master to approve the character they create (see
+ * meurpg.characters.v1.CharacterService.ApproveCharacter). A pending member
+ * is not a member yet. They see the campaign in ListMyCampaigns and
+ * through GetCampaign, both with only its name and `awaiting_approval`
+ * set; every other method answers them `not_found`, exactly as for someone
+ * who is not in the campaign.
+ *
  * Responses carry `Cache-Control: no-store`, because they describe the
  * caller's campaigns.
  *
@@ -692,7 +736,10 @@ export const CampaignService: GenService<{
   },
   /**
    * ListMyCampaigns lists the campaigns the caller is a member of, newest
-   * first, with the caller's role in each.
+   * first, with the caller's role in each. It also lists the campaigns where
+   * the caller is a pending member (RN-15, MR-024), with only the id, the
+   * name, my_role and `awaiting_approval` set, so the player can find their
+   * way back to the campaign while they wait.
    *
    * Its request is empty, so clients may call it with HTTP GET: the URL
    * never carries personal data.
@@ -709,6 +756,10 @@ export const CampaignService: GenService<{
    * reads, but stays POST-only, because a GET would put the campaign ID in
    * the URL.
    *
+   * A pending member (RN-15, MR-024) may call it too, and gets only the
+   * campaign's id, name, my_role (ROLE_PLAYER) and `awaiting_approval` set:
+   * enough to show "esperando a aprovação do mestre".
+   *
    * @generated from rpc meurpg.campaigns.v1.CampaignService.GetCampaign
    */
   getCampaign: {
@@ -720,6 +771,11 @@ export const CampaignService: GenService<{
    * ListMembers lists a campaign's members: the master first, then the
    * players in the order they joined. Any member may call it. It only
    * reads, and is POST-only, like GetCampaign.
+   *
+   * Pending members (RN-15, MR-024) are not listed: they are not members
+   * yet. The master sees who is waiting through their characters
+   * (CharacterService.ListCharacters, state PENDING). A pending member who
+   * calls it gets `not_found`.
    *
    * @generated from rpc meurpg.campaigns.v1.CampaignService.ListMembers
    */
@@ -737,6 +793,9 @@ export const CampaignService: GenService<{
    * shares it as https://<app>/convite#t=<token>. The token goes in the URL
    * fragment, which browsers never send to a server, so it stays out of
    * request logs and Referer headers (ADR-0009).
+   *
+   * With `requires_approval`, whoever accepts the invite becomes a pending
+   * member instead of a player (RN-15, MR-024): see AcceptInvite.
    *
    * @generated from rpc meurpg.campaigns.v1.CampaignService.CreateInvite
    */
@@ -778,7 +837,21 @@ export const CampaignService: GenService<{
    *
    * It is idempotent for members: a member of the campaign (the master
    * included) gets the campaign back with `already_member` set, whatever
-   * the state of the invite, and no use of the invite is spent.
+   * the state of the invite, and no use of the invite is spent. This holds
+   * for a pending member too: they stay pending.
+   *
+   * Invites with approval (RN-15, MR-024). When the invite has
+   * `requires_approval`, the caller becomes a pending member, not a player:
+   * the returned campaign has `awaiting_approval` set and only its id, name
+   * and my_role. The app takes them straight to creating their character
+   * (CharacterService.CreateCharacter), which starts PENDING. They become a
+   * player when the master approves that character
+   * (CharacterService.ApproveCharacter); if the master rejects it
+   * (CharacterService.RejectCharacter), the pending membership is deleted
+   * and they need a new invite. Accepting it through sign-in works the same
+   * way: a new pending member lands on
+   * /campanhas/<campaign_id>/personagens/novo, and someone who was already
+   * in the campaign on /campanhas/<campaign_id>.
    *
    * Errors:
    *   - `invalid_argument`: the token is empty.

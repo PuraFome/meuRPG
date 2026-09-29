@@ -26,8 +26,11 @@
 // learn who is calling from identity (the authz.Caller interface), and each
 // member's role from campaigns (authz.MembershipSource); identity completes
 // the "accept this invite" sign-in intent through campaigns (an
-// identity.IntentHandler); and play locks the players' sheets through
-// characters (play.SheetLocker). No package imports another's internals.
+// identity.IntentHandler); play locks the players' sheets through
+// characters (play.SheetLocker); and characters settles a pending member's
+// membership through campaigns when the master approves or rejects their
+// character (characters.PendingMembers, RN-15). No package imports
+// another's internals.
 package main
 
 import (
@@ -152,6 +155,7 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		charactersService, err = characters.New(characters.Config{
 			Pool:     pool,
 			Profiles: users,
+			Members:  campaignsService, // approving or rejecting a character settles the membership (RN-15)
 			Rules:    rulesContent,
 			Logger:   logger,
 		})

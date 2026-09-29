@@ -16,6 +16,14 @@
 // only their own characters; everything else is "not found" to them, so NPC
 // IDs never leak.
 //
+// Invites with approval (RN-15, MR-024). A pending member (package authz,
+// pending.go) may create one player character, which starts 'pending', and
+// read and edit it while they wait; they see nothing else. The master
+// approves it (ApproveCharacter: the character becomes a draft and the
+// membership active) or rejects it (RejectCharacter: both are deleted), in
+// one transaction that also touches campaign_members through
+// PendingMembers, which package campaigns implements (approval.go).
+//
 // The sheet lock (RN-01) is set by package play when a game session starts,
 // through LockSheets, inside play's own transaction. Neither package imports
 // the other: cmd/api connects them.
@@ -56,12 +64,29 @@ type Profiles interface {
 	DisplayNames(ctx context.Context, userIDs []string) (map[string]string, error)
 }
 
+// PendingMembers settles a pending membership when the master decides on
+// the pending member's character (RN-15, MR-024). The campaigns module
+// implements it (campaigns.Service), because campaign_members is its table;
+// cmd/api connects the two, and neither package imports the other.
+type PendingMembers interface {
+	// ActivatePendingMember makes userID's pending membership of
+	// campaignID an ordinary one, inside tx. An active membership, or none,
+	// stays as it is.
+	ActivatePendingMember(ctx context.Context, tx pgx.Tx, campaignID, userID string) error
+	// DeletePendingMember deletes userID's pending membership of
+	// campaignID, inside tx. An active membership is never deleted.
+	DeletePendingMember(ctx context.Context, tx pgx.Tx, campaignID, userID string) error
+}
+
 // Config holds what the characters service needs.
 type Config struct {
 	// Pool is the CockroachDB connection pool. Required.
 	Pool *pgxpool.Pool
 	// Profiles gives players' display names. Required.
 	Profiles Profiles
+	// Members settles a pending member's membership when the master
+	// approves or rejects their character (RN-15). Required.
+	Members PendingMembers
 	// Rules is the rules content (rules.LoadSRD), loaded once at startup.
 	// Required.
 	Rules *rules.Content
@@ -78,6 +103,7 @@ type Service struct {
 	pool     *pgxpool.Pool
 	queries  *charactersdb.Queries
 	profiles Profiles
+	members  PendingMembers
 	rules    *rules.Content
 	logger   *slog.Logger
 	now      func() time.Time
@@ -99,6 +125,8 @@ func New(cfg Config) (*Service, error) {
 		return nil, errors.New("characters: a Pool is required")
 	case cfg.Profiles == nil:
 		return nil, errors.New("characters: Profiles is required")
+	case cfg.Members == nil:
+		return nil, errors.New("characters: Members is required")
 	case cfg.Rules == nil:
 		return nil, errors.New("characters: Rules is required")
 	}
@@ -106,6 +134,7 @@ func New(cfg Config) (*Service, error) {
 		pool:     cfg.Pool,
 		queries:  charactersdb.New(cfg.Pool),
 		profiles: cfg.Profiles,
+		members:  cfg.Members,
 		rules:    cfg.Rules,
 		logger:   cfg.Logger,
 		now:      cfg.Now,

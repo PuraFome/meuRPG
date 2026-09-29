@@ -29,7 +29,10 @@
           @for (c of s.campaigns; track c.id) {
             <a mat-list-item [routerLink]="['/campanhas', c.id]">
               <span matListItemTitle>{{ c.name }}</span>
-              <span matListItemLine>{{ roleLabel(c.myRole) }}</span>
+              <!-- A pending member (RN-15, MR-024) is not a player yet. -->
+              <span matListItemLine>{{
+                c.awaitingApproval ? 'esperando a aprovação do mestre' : roleLabel(c.myRole)
+              }}</span>
             </a>
           }
         </mat-nav-list>

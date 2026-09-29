@@ -64,7 +64,8 @@ type ContentServiceClient interface {
 	// ListContent returns the catalog the character editor offers: races,
 	// subraces, classes, subclasses, backgrounds, skills, armor, weapons and
 	// spells, each with its key and names. Any member of the campaign may call
-	// it.
+	// it, and so may a pending member (RN-15, MR-024), who needs it to create
+	// their character while they wait for the master's approval.
 	//
 	// Today every campaign gets the same SRD 5.1 content. The request still
 	// names the campaign because the table's own content (homebrew, ADR-0008)
@@ -112,7 +113,8 @@ type ContentServiceHandler interface {
 	// ListContent returns the catalog the character editor offers: races,
 	// subraces, classes, subclasses, backgrounds, skills, armor, weapons and
 	// spells, each with its key and names. Any member of the campaign may call
-	// it.
+	// it, and so may a pending member (RN-15, MR-024), who needs it to create
+	// their character while they wait for the master's approval.
 	//
 	// Today every campaign gets the same SRD 5.1 content. The request still
 	// names the campaign because the table's own content (homebrew, ADR-0008)

@@ -17,9 +17,12 @@ import (
 
 // Every handler starts with one explicit check: authz.RequireCampaignMember
 // when any member may call it, authz.RequireCampaignRole when only the
-// master may. The check's error is already the right Connect error, so
-// handlers return it as is. What a player may see and change is decided
-// next, from the character's row: canSee, playerEditsSheet and
+// master may, and authz.RequireCampaignMemberOrPending for the calls a
+// pending member may make too (RN-15: CreateCharacter, GetCharacter,
+// ListCharacters, UpdateCharacter, UpdateCharacterStory and ListContent).
+// The check's error is already the right Connect error, so handlers return
+// it as is. What a player, or a pending member, may see and change is
+// decided next, from the character's row: canSee, playerEditsSheet and
 // playerEditsStory (access.go).
 
 // CreateCharacter implements charactersv1connect.CharacterServiceHandler.
@@ -27,7 +30,9 @@ func (s *Service) CreateCharacter(
 	ctx context.Context,
 	req *connect.Request[charactersv1.CreateCharacterRequest],
 ) (*connect.Response[charactersv1.CreateCharacterResponse], error) {
-	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
+	// A pending member creates their character here (RN-15); authz makes
+	// them a player, so the kind check below applies to them too.
+	m, err := authz.RequireCampaignMemberOrPending(ctx, req.Msg.GetCampaignId())
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +64,9 @@ func (s *Service) CreateCharacter(
 	if err != nil {
 		return nil, invalidArgument(err)
 	}
-	params := charactersdb.InsertCharacterParams{CampaignID: m.CampaignID, Kind: kind, Name: name, Now: s.now()}
+	params := charactersdb.InsertCharacterParams{
+		CampaignID: m.CampaignID, Kind: kind, Status: newCharacterStatus(m), Name: name, Now: s.now(),
+	}
 	if params.Sheet, err = storeJSON.Marshal(sheet); err != nil {
 		return nil, s.dbError(ctx, "encode a sheet", err)
 	}
@@ -122,7 +129,7 @@ func (s *Service) GetCharacter(
 	ctx context.Context,
 	req *connect.Request[charactersv1.GetCharacterRequest],
 ) (*connect.Response[charactersv1.GetCharacterResponse], error) {
-	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
+	m, err := authz.RequireCampaignMemberOrPending(ctx, req.Msg.GetCampaignId())
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +141,7 @@ func (s *Service) GetCharacter(
 	if err != nil {
 		return nil, s.dbError(ctx, "get a character", err)
 	}
-	if !canSee(m, row.Kind, row.PlayerUserID) {
+	if !canSee(m, row.Kind, row.Status, row.PlayerUserID) {
 		return nil, errCharacterNotFound()
 	}
 	c, err := s.character(ctx, row, m)
@@ -149,13 +156,17 @@ func (s *Service) ListCharacters(
 	ctx context.Context,
 	req *connect.Request[charactersv1.ListCharactersRequest],
 ) (*connect.Response[charactersv1.ListCharactersResponse], error) {
-	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
+	m, err := authz.RequireCampaignMemberOrPending(ctx, req.Msg.GetCampaignId())
 	if err != nil {
 		return nil, err
 	}
 	params := charactersdb.ListCharactersParams{CampaignID: m.CampaignID}
 	if !isMaster(m) {
 		params.PlayerUserID = &m.UserID // a player sees only their own
+	}
+	if m.Pending {
+		pending := statusPending
+		params.Status = &pending // and a pending member only their pending one (canSee)
 	}
 	rows, err := s.queries.ListCharacters(ctx, params)
 	if err != nil {
@@ -203,7 +214,7 @@ func (s *Service) UpdateCharacter(
 	ctx context.Context,
 	req *connect.Request[charactersv1.UpdateCharacterRequest],
 ) (*connect.Response[charactersv1.UpdateCharacterResponse], error) {
-	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
+	m, err := authz.RequireCampaignMemberOrPending(ctx, req.Msg.GetCampaignId())
 	if err != nil {
 		return nil, err
 	}
@@ -272,7 +283,7 @@ func (s *Service) UpdateCharacterStory(
 	ctx context.Context,
 	req *connect.Request[charactersv1.UpdateCharacterStoryRequest],
 ) (*connect.Response[charactersv1.UpdateCharacterStoryResponse], error) {
-	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
+	m, err := authz.RequireCampaignMemberOrPending(ctx, req.Msg.GetCampaignId())
 	if err != nil {
 		return nil, err
 	}
@@ -399,6 +410,11 @@ func (s *Service) MarkCharacterDead(
 		if current.Kind != kindPlayer {
 			return invalidArgument(fieldErr("character_id", "is an NPC: only player characters die"))
 		}
+		// A character waiting for approval is not in the campaign yet
+		// (RN-15): the master approves or rejects it instead.
+		if current.Status == statusPending {
+			return errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_AWAITING_APPROVAL, current.ID)
+		}
 		// RN-03: the character changes status, never row.
 		row, err = q.MarkCharacterDead(ctx, charactersdb.MarkCharacterDeadParams{CampaignID: m.CampaignID, ID: id, Now: s.now()})
 		if err != nil {
@@ -513,7 +529,7 @@ func visibleForUpdate(ctx context.Context, q *charactersdb.Queries, m authz.Memb
 	if err != nil {
 		return row, wrap("read character", err)
 	}
-	if !canSee(m, row.Kind, row.PlayerUserID) {
+	if !canSee(m, row.Kind, row.Status, row.PlayerUserID) {
 		return row, errCharacterNotFound()
 	}
 	return row, nil

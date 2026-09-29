@@ -44,7 +44,7 @@ Nenhuma delas trava a Etapa 1. Todas são para o Samuel, e cada resposta vira um
 
 ## Em aberto
 
-Nenhuma aqui. As perguntas novas ficam no documento de acompanhamento: hoje, a prioridade e a forma do conteúdo cadastrado pela mesa ([MR-025](historias.md#mr-025-cadastrar-conteúdo-da-mesa), [MR-026](historias.md#mr-026-propor-uma-raça-ou-classe-nova) e [MR-027](historias.md#mr-027-ler-as-regras-de-um-pdf)).
+Nenhuma aqui. As perguntas novas ficam no documento de acompanhamento: hoje, a prioridade e a forma do conteúdo cadastrado pela mesa ([MR-025](historias.md#mr-025-cadastrar-conteúdo-da-mesa), [MR-026](historias.md#mr-026-propor-uma-raça-ou-classe-nova) e [MR-027](historias.md#mr-027-ler-as-regras-de-um-pdf)), e os critérios propostos da [MR-024](historias.md#mr-024-aprovar-o-personagem-do-convite), já implementados com as nossas escolhas padrão: o mestre escolhe em cada convite se ele exige aprovação, e a recusa apaga o personagem e a participação pendente (o jogador precisa de um convite novo).
 
 ## Ver também
 

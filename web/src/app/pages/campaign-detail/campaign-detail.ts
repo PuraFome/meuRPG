@@ -22,12 +22,20 @@ type PageState =
   | { status: 'loading' }
   | { status: 'not-found' }
   | { status: 'error'; message: string }
-  | { status: 'ready'; campaign: Campaign; members: Member[] };
+  | { status: 'ready'; campaign: Campaign; members: Member[] }
+  // A pending member (RN-15, MR-024): the server sent only the campaign's
+  // name. They see the wait banner and their own character, nothing else.
+  | { status: 'pending'; campaign: Campaign };
 
 /**
  * "/campanhas/:id" (guarded by authGuard): GetCampaign + ListMembers
  * (MR-001, MR-002), the "Personagens" section (MR-003, MR-005; everyone),
  * plus two master-only sections: "Convites" and "Sessão" (MR-006 / RN-01).
+ *
+ * A pending member (an invite with approval, RN-15 / MR-024) gets only the
+ * campaign's name from GetCampaign (`awaitingApproval`): the page shows
+ * "Esperando a aprovação do mestre" and their own character, and never
+ * asks for the members, which the server would refuse them.
  *
  * A campaign the caller is not a member of, and one that does not exist,
  * both come back as `not_found` (ADR-0011) — this page shows the same
@@ -69,18 +77,21 @@ export class CampaignDetail {
 
   private load(campaignId: string): void {
     this.state.set({ status: 'loading' });
-    Promise.all([
-      this.campaigns.getCampaign(campaignId),
-      this.campaigns.listMembers(campaignId),
-    ]).then(
-      ([campaignRes, membersRes]) => {
-        const campaign = campaignRes.campaign;
-        if (!campaign) {
-          this.state.set({ status: 'not-found' });
-          return;
-        }
-        this.state.set({ status: 'ready', campaign, members: membersRes.members });
-      },
+    // One after the other, not in parallel: whether to ask for the members
+    // at all depends on the campaign (a pending member may not list them).
+    const loaded = this.campaigns.getCampaign(campaignId).then(async (campaignRes) => {
+      const campaign = campaignRes.campaign;
+      if (!campaign) {
+        return { status: 'not-found' } as const;
+      }
+      if (campaign.awaitingApproval) {
+        return { status: 'pending', campaign } as const;
+      }
+      const membersRes = await this.campaigns.listMembers(campaignId);
+      return { status: 'ready', campaign, members: membersRes.members } as const;
+    });
+    loaded.then(
+      (state: PageState) => this.state.set(state),
       (err: unknown) => {
         const connectErr = ConnectError.from(err, Code.Unavailable);
         if (connectErr.code === Code.NotFound) {

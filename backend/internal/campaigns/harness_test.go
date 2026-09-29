@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/protobuf/types/known/durationpb"
 
@@ -187,6 +188,19 @@ func (u *user) createInvite(t *testing.T, campaignID string, maxUses int32, expi
 	return res.Msg.GetInvite(), res.Msg.GetToken()
 }
 
+// createApprovalInvite creates, as u, a single-use invite whose accepter
+// becomes a pending member (RN-15, MR-024), or fails the test.
+func (u *user) createApprovalInvite(t *testing.T, campaignID string) (*campaignsv1.Invite, string) {
+	t.Helper()
+	res, err := u.api.CreateInvite(t.Context(), connect.NewRequest(&campaignsv1.CreateInviteRequest{
+		CampaignId: campaignID, RequiresApproval: true,
+	}))
+	if err != nil {
+		t.Fatalf("CreateInvite(requires_approval) error = %v", err)
+	}
+	return res.Msg.GetInvite(), res.Msg.GetToken()
+}
+
 // accept calls AcceptInvite as u.
 func (u *user) accept(t *testing.T, token string) (*campaignsv1.AcceptInviteResponse, error) {
 	t.Helper()
@@ -225,6 +239,21 @@ func (h *harness) memberRoles(campaignID string) map[string]string {
 		h.t.Fatalf("read members: %v", err)
 	}
 	return roles
+}
+
+// memberStatus reads a membership's status directly: "active", "pending",
+// or "" when there is no membership.
+func (h *harness) memberStatus(campaignID, userID string) string {
+	h.t.Helper()
+	var status string
+	err := h.pool.QueryRow(h.t.Context(), "SELECT status FROM campaign_members WHERE campaign_id = $1 AND user_id = $2", campaignID, userID).Scan(&status)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ""
+	}
+	if err != nil {
+		h.t.Fatalf("read member status: %v", err)
+	}
+	return status
 }
 
 // useCount reads an invite's use_count directly.

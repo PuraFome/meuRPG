@@ -6,7 +6,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import {
   abilityLabel,
@@ -91,6 +91,7 @@ const emptyStory: CharacterStoryVm = {
 export class CharacterSheetPage {
   private readonly source = inject(CharacterSheetSource);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly fb = inject(FormBuilder);
 
@@ -101,6 +102,11 @@ export class CharacterSheetPage {
   protected readonly storyEditing = signal(false);
   protected readonly storySaveState = signal<SavingState>({ status: 'idle' });
   protected readonly storyToggleState = signal<SavingState>({ status: 'idle' });
+  /** "Aprovar personagem" / "Recusar personagem" (MR-024). */
+  protected readonly approvalState = signal<SavingState>({ status: 'idle' });
+  /** Rejecting deletes the character for good, so it takes a second click
+   * ("Confirmar recusa") after "Recusar personagem". */
+  protected readonly confirmingReject = signal(false);
 
   protected readonly abilityLabel = abilityLabel;
   protected readonly characterKindLabel = characterKindLabel;
@@ -244,6 +250,34 @@ export class CharacterSheetPage {
       this.storyToggleState.set({ status: 'idle' });
     } catch (err) {
       this.storyToggleState.set({ status: 'error', message: describeCharacterError(err) });
+    }
+  }
+
+  /** Master only (MR-024): the character joins the campaign as a draft, and
+   * its player as a member. The response is the approved character, so the
+   * page simply shows it. */
+  protected async approve(campaignId: string, characterId: string): Promise<void> {
+    this.approvalState.set({ status: 'saving' });
+    try {
+      const vm = await this.source.approveCharacter(campaignId, characterId);
+      this.state.set({ status: 'ready', vm });
+      this.approvalState.set({ status: 'idle' });
+    } catch (err) {
+      this.approvalState.set({ status: 'error', message: describeCharacterError(err) });
+    }
+  }
+
+  /** Master only (MR-024), after "Confirmar recusa": the character is gone,
+   * so the master goes back to the campaign's page. */
+  protected async reject(campaignId: string, characterId: string): Promise<void> {
+    this.approvalState.set({ status: 'saving' });
+    try {
+      await this.source.rejectCharacter(campaignId, characterId);
+      this.approvalState.set({ status: 'idle' });
+      await this.router.navigate(['/campanhas', campaignId]);
+    } catch (err) {
+      this.confirmingReject.set(false);
+      this.approvalState.set({ status: 'error', message: describeCharacterError(err) });
     }
   }
 

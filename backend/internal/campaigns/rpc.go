@@ -22,6 +22,11 @@ import (
 // any signed-in user may call it, authz.RequireCampaignMember or
 // authz.RequireCampaignRole when it is about one campaign. The check's error
 // is already the right Connect error, so handlers return it as is.
+//
+// GetCampaign is the one handler here that lets a pending member in
+// (authz.RequireCampaignMemberOrPending, RN-15): they see only the
+// campaign's name (campaignToProto). ListMyCampaigns lists their pending
+// campaigns the same way.
 
 // CreateCampaign implements campaignsv1connect.CampaignServiceHandler.
 func (s *Service) CreateCampaign(
@@ -58,6 +63,7 @@ func (s *Service) CreateCampaign(
 			CampaignID: campaign.ID,
 			UserID:     userID,
 			Role:       string(authz.RoleMaster),
+			Status:     string(authz.StatusActive),
 		})
 		if err != nil {
 			return fmt.Errorf("insert master: %w", err)
@@ -68,7 +74,7 @@ func (s *Service) CreateCampaign(
 		return nil, s.dbError(ctx, "create a campaign", err)
 	}
 	return connect.NewResponse(&campaignsv1.CreateCampaignResponse{
-		Campaign: campaignToProto(campaign, authz.RoleMaster),
+		Campaign: campaignToProto(campaign, authz.RoleMaster, false),
 	}), nil
 }
 
@@ -87,7 +93,8 @@ func (s *Service) ListMyCampaigns(
 	}
 	res := &campaignsv1.ListMyCampaignsResponse{}
 	for _, row := range rows {
-		res.Campaigns = append(res.Campaigns, campaignToProto(row.Campaign, authz.Role(row.Role)))
+		pending := row.Status != string(authz.StatusActive)
+		res.Campaigns = append(res.Campaigns, campaignToProto(row.Campaign, authz.Role(row.Role), pending))
 	}
 	return connect.NewResponse(res), nil
 }
@@ -97,7 +104,9 @@ func (s *Service) GetCampaign(
 	ctx context.Context,
 	req *connect.Request[campaignsv1.GetCampaignRequest],
 ) (*connect.Response[campaignsv1.GetCampaignResponse], error) {
-	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
+	// A pending member may call it (RN-15): campaignToProto gives them only
+	// the name.
+	m, err := authz.RequireCampaignMemberOrPending(ctx, req.Msg.GetCampaignId())
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +115,7 @@ func (s *Service) GetCampaign(
 		return nil, s.dbError(ctx, "get a campaign", err)
 	}
 	return connect.NewResponse(&campaignsv1.GetCampaignResponse{
-		Campaign: campaignToProto(campaign, m.Role),
+		Campaign: campaignToProto(campaign, m.Role, m.Pending),
 	}), nil
 }
 
@@ -165,12 +174,13 @@ func (s *Service) CreateInvite(
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		var err error
 		invite, err = s.queries.WithTx(tx).InsertInvite(ctx, campaignsdb.InsertInviteParams{
-			CampaignID: m.CampaignID,
-			TokenHash:  tokenHash,
-			CreatedBy:  m.UserID,
-			MaxUses:    maxUses,
-			CreatedAt:  now,
-			ExpiresAt:  now.Add(lifetime),
+			CampaignID:       m.CampaignID,
+			TokenHash:        tokenHash,
+			CreatedBy:        m.UserID,
+			MaxUses:          maxUses,
+			CreatedAt:        now,
+			ExpiresAt:        now.Add(lifetime),
+			RequiresApproval: req.Msg.GetRequiresApproval(),
 		})
 		if err != nil {
 			return fmt.Errorf("insert invite: %w", err)
@@ -275,7 +285,7 @@ func (s *Service) AcceptInvite(
 		return nil, s.dbError(ctx, "accept an invite", err)
 	}
 	return connect.NewResponse(&campaignsv1.AcceptInviteResponse{
-		Campaign:      campaignToProto(joined.campaign, joined.role),
+		Campaign:      campaignToProto(joined.campaign, joined.role, joined.pending),
 		AlreadyMember: joined.alreadyMember,
 	}), nil
 }
@@ -334,7 +344,19 @@ func roleToProto(role authz.Role) campaignsv1.Role {
 	}
 }
 
-func campaignToProto(c campaignsdb.Campaign, myRole authz.Role) *campaignsv1.Campaign {
+// campaignToProto builds the Campaign the caller sees. A pending member
+// (RN-15, MR-024) is not a member yet: they see only the id, the name and
+// their role, with awaiting_approval set, enough for the app to say
+// "esperando a aprovação do mestre".
+func campaignToProto(c campaignsdb.Campaign, myRole authz.Role, pending bool) *campaignsv1.Campaign {
+	if pending {
+		return &campaignsv1.Campaign{
+			Id:               c.ID,
+			Name:             c.Name,
+			MyRole:           campaignsv1.Role_ROLE_PLAYER,
+			AwaitingApproval: true,
+		}
+	}
 	return &campaignsv1.Campaign{
 		Id:        c.ID,
 		Name:      c.Name,
