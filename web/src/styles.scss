@@ -148,7 +148,8 @@ html {
     )
   );
 
-  // Buttons are 8px rectangles in this design, not Material's pills.
+  // Buttons are 8px rectangles in this design, not Material's pills, and
+  // at least 44px tall.
   @include mat.button-overrides(
     (
       filled-container-shape: var(--mr-radius-sm),
@@ -162,8 +163,23 @@ html {
       filled-label-text-size: 16px,
       outlined-label-text-size: 16px,
       text-label-text-size: 16px,
+      // 44px, the design's minimum target, not Material's 40px.
+      filled-container-height: 44px,
+      outlined-container-height: 44px,
+      protected-container-height: 44px,
+      text-container-height: 44px,
+      tonal-container-height: 44px,
     )
   );
+
+  // On a phone the primary action is 48px tall (docs/design.md).
+  @media (max-width: 767.98px) {
+    @include mat.button-overrides(
+      (
+        filled-container-height: 48px,
+      )
+    );
+  }
 }
 
 body {
