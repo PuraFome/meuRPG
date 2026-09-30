@@ -15,14 +15,14 @@ Decisões difíceis de desfazer viram ADR (Architecture Decision Record) no repo
 | Hospedagem | Cloud Run em `southamerica-east1`, 1 vCPU e 512 MiB, `min-instances` 0, `max-instances` baixo (ADR-0003) | Escala a zero quando ninguém usa. No uso previsto, fica abaixo de US$ 1 por mês (ver [Operação](operacao.md)). |
 | Banco | CockroachDB no Google Cloud (São Paulo), com pgx, sqlc e goose (ADR-0003) | sqlc gera Go tipado a partir do SQL. O CockroachDB roda em `SERIALIZABLE`, então toda escrita repete a transação no erro `40001`. |
 | Login | Google OIDC com PKCE; sessão com token opaco num cookie `__Host-` httpOnly (ADR-0002) | O JavaScript da página não lê o cookie, e dá para revogar a sessão na hora (logout, tirar alguém da campanha). |
-| Frontend (proposta) | O servidor Go também entrega o build do Angular, na mesma origem da API (ADR-0006, a escrever) | O cookie de sessão só funciona bem sem cookies de terceiros, e o Safari do iPhone bloqueia esses cookies. Hoje o Angular está no GitHub Pages e a API no Render, em sites diferentes. |
+| Frontend | Um novo app Angular em `web/`, sobre o cliente Connect, com as regras no servidor. O servidor Go entrega o build, na mesma origem da API (ADR-0006, ainda proposta) | O cookie de sessão só funciona bem sem cookies de terceiros, e o Safari do iPhone bloqueia esses cookies. No app antigo (descontinuado), o Angular ficava no GitHub Pages e a API no Render, em sites diferentes; componentes úteis de lá (stepper da ficha, mapa, editor) são portados para o `web/` conforme a necessidade. |
 | Jev (depois do MVP) | Cloudflare Workers AI, atrás de uma interface em Go | Trocar de provedor sem mexer no resto do código. |
 
 ## Módulos
 
 Cada módulo do backend fica em `backend/internal/<módulo>`. Um módulo só chama outro pela interface pública dele, nunca pelas tabelas.
 
-- `identity`: login com Google, sessões de login e usuários. _Em discussão: um jeito de logar sem conta Google para o jogador está sendo avaliado, ver [Perguntas em aberto](produto/perguntas-em-aberto.md#login-do-jogador-sem-google)._
+- `identity`: login do mestre, sessões de login e usuários. O login do mestre é um *relying party* OIDC genérico: Google em produção, um provedor OIDC local nos testes ponta a ponta — o módulo fala o protocolo, não um SDK do Google. _Em discussão: um jeito de logar sem conta Google para o jogador está sendo avaliado, ver [Perguntas em aberto](produto/perguntas-em-aberto.md#login-do-jogador-sem-google)._
 - `campaigns`: campanhas, membros, papéis e convites.
 - `characters`: personagens, fichas, trava e cópias.
 - `play`: sessão de jogo, cenas, encontros, combatentes e o stream ao vivo.
@@ -31,7 +31,7 @@ Cada módulo do backend fica em `backend/internal/<módulo>`. Um módulo só cha
 - `rules`: as contas do D&D 5e (modificadores, CD, bônus). Não acessa o banco, então é fácil de testar.
 - `platform`: o que é de todos: configuração, banco, servidor HTTP e logs.
 
-Durante a migração, o NestJS no Render continua no ar, e cada módulo troca de lado quando os testes dele passam no Go. Os dois lados usam o mesmo CockroachDB, então enxergam os mesmos dados.
+Cada módulo é construído do zero, direto no Go: não há troca de lado nem coexistência com o NestJS antigo, que fica descontinuado. O critério de pronto é o mesmo de qualquer história: os testes do módulo passam (ver [Visão do produto](produto/visao.md)).
 
 ### Diagrama: arquitetura alvo
 
@@ -56,7 +56,6 @@ flowchart LR
     end
 
     GoogleLogin["Google, login"]
-    NestJS["NestJS no Render, até o último módulo migrar"]
     WorkersAI["Workers AI, Jev, depois do MVP"]
 
     Nav -->|"Connect"| BFF
@@ -64,11 +63,10 @@ flowchart LR
     BFF --> Storage
     BFF -->|"OIDC"| GoogleLogin
 
-    Nav -.->|"rotas ainda não migradas"| NestJS
     BFF -.-> WorkersAI
 ```
 
-As linhas tracejadas são temporárias ou futuras: o Angular ainda chama o NestJS para as rotas que não migraram, e o Jev (Workers AI) só entra depois do MVP.
+A linha tracejada é futura: o Jev (Workers AI) só entra depois do MVP. O app antigo (Angular em `src/`, NestJS em `server/`, GitHub Pages e Render) não faz parte deste diagrama porque está descontinuado; ele fica no repositório só como referência até sair num PR à parte.
 
 Os fluxos de quem pode mexer na ficha e de como o jogador entra na sessão ficam em [Regras de negócio → Fluxos e estados](produto/regras.md#fluxos-e-estados), porque são regra de negócio, não peça de infraestrutura.
 

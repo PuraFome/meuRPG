@@ -15,9 +15,10 @@ Ferramentas: Go 1.27, buf, sqlc, goose, golangci-lint, Docker e Node 22. No Mac,
 | `make proto` | Gera o código Go a partir dos `.proto`. |
 | `make lint` | Roda `buf lint` e `golangci-lint`. |
 | `make test` | Roda `go test -race` em todo o backend. |
+| `MEURPG_TEST_DATABASE_URL='postgresql://root@localhost:26257/defaultdb?sslmode=disable' make test` | Roda os testes de integração (migrations, transações) contra o CockroachDB do `make up`. Sem a variável, eles são pulados. |
 | `make migrate` | Aplica as migrations do goose no banco local. |
 | `make down` | Derruba o ambiente local (`docker compose down`). |
-| `npm start` | Sobe o Angular, como hoje. |
+| `npm start` | Sobe o Angular antigo (`src/`), descontinuado — mantido só como referência. |
 
 ## Branches
 
@@ -56,8 +57,9 @@ Toda action do GitHub fica presa pelo SHA do commit, não pela tag. Quem control
 | --- | --- | --- |
 | Unitário | `go test`, com tabelas de casos | As contas do módulo `rules` e cada regra de negócio isolada. |
 | Integração | `go test` + CockroachDB no Docker | Queries do sqlc, migrations, a repetição no erro `40001` e quem pode fazer o quê. |
-| Ponta a ponta | Playwright + um provedor OIDC falso | Os critérios de aceite, pela tela, como o usuário faria. |
-| Caracterização | Playwright e chamadas à API atual | Grava o que o NestJS faz hoje. A versão em Go de cada módulo precisa passar nos mesmos testes antes da troca. |
+| Ponta a ponta | Playwright + um provedor OIDC local | Os critérios de aceite, pela tela, como o usuário faria. |
+
+**Teste de aceite.** Cada critério de aceite de uma história (`docs/produto/historias.md`) vira um teste automático desse tipo: `go test` para a regra que roda no servidor, Playwright para o que aparece na tela. Uma história só está pronta quando os testes dela passam. Não há teste de caracterização do app antigo — ele é descontinuado, e o sistema novo só precisa provar os próprios critérios.
 
 ## Como manter a documentação
 
@@ -74,6 +76,7 @@ A documentação muda no mesmo PR que o código. Um PR que muda comportamento se
 | Deploy, segredo, alerta ou custo | `docs/operacao.md` |
 | Comando ou ferramenta nova | `README.md` ou `CONTRIBUTING.md` |
 | Termo novo | `docs/produto/glossario.md` |
+| Dado pessoal, log, cookie, imagem ou fornecedor novo | `docs/privacidade.md` (inventário e operadores) e o checklist de privacidade no PR |
 
 Como escrever:
 
@@ -91,7 +94,7 @@ Modelo de história novo (`docs/produto/historias.md`):
 **Como** papel, **quero** o que a história entrega,
 **para** o motivo.
 
-- Prioridade: MVP | Depois | Já existe em parte
+- Prioridade: MVP | MVP (pré-requisito) | Depois | Existia no app antigo
 - Regras: RN-xx ou —
 - Módulos: nome dos módulos envolvidos
 

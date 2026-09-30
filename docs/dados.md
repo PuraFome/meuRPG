@@ -1,10 +1,12 @@
 # Modelo de dados
 
-A campanha vira o centro do banco: hoje ela não existe, e tudo pertence direto ao usuário. A tabela abaixo compara o schema atual (`server/src/db/schema.sql`) com a proposta. Cada mudança vira uma migration do goose, revisada no PR como qualquer código.
+A campanha é o centro do banco novo. O schema começa do zero: a migration `00001_init` está vazia, e cada módulo cria as próprias tabelas conforme é construído (decidido em 29/09/2026). Não há migração de dados do app antigo — o diagrama deste documento é o alvo proposto, montado módulo por módulo, não um destino que os dados de hoje precisam alcançar.
 
-## Hoje vs. proposta
+## O que muda em relação ao app antigo (referência)
 
-| Hoje | Proposta | Por quê |
+No app antigo (`server/src/db/schema.sql`, descontinuado), a campanha não existia, e tudo pertencia direto ao usuário. A tabela abaixo serve só para quem conhece o schema antigo entender as escolhas novas — nenhuma linha dele é migrada.
+
+| App antigo | Novo (proposta) | Por quê |
 | --- | --- | --- |
 | `users.role` é global (padrão `master`) | O papel vai para `campaign_members.role` | Um usuário pode ser mestre numa campanha e jogador em outra (RN-05). |
 | `characters.type` aceita `npc`, `player`, `boss`, `minion` | `characters.kind` aceita `player`, `enemy`, `boss`, `minion`, `story` | `npc` vira dois tipos: inimigo (ficha completa) e história (ficha básica). |
@@ -26,29 +28,30 @@ Tabelas novas para a mesa ao vivo:
 
 Os pontos de interesse continuam em `jsonb` dentro do mapa por enquanto, cada um com um campo `revealed`. O servidor filtra os escondidos antes de responder (RN-10). A notificação no app não precisa de tabela no MVP: uma `game_session` sem `ended_at` já é o aviso de "sessão em andamento".
 
-## Tabelas: novo vs. existente
+## Tabelas do schema novo, e a equivalente no app antigo
 
-| Tabela | Situação |
+Toda tabela abaixo é nova — nasce numa migration do goose de algum módulo, nenhuma vem de `ALTER` sobre uma tabela existente. A coluna da direita só ajuda quem conhece o app antigo a encontrar a tabela equivalente de lá.
+
+| Tabela | Equivalente no app antigo |
 | --- | --- |
-| `users` | Existente, muda: perde `role` (vai para `campaign_members`) |
-| `auth_sessions` | Existente, sem mudança |
-| `oauth_handshakes` | Existente, sem mudança |
-| `characters` | Existente, muda: `type` vira `kind`, ganha `copied_from_id` e `sheet_locked_at` |
-| `maps` | Existente, muda: `user_id` vira `campaign_id`, imagem vira URL do Cloud Storage |
-| `character_join_tokens` | Existente hoje, substituída por `campaign_invites` |
-| `campaigns` | Nova |
-| `campaign_members` | Nova |
-| `campaign_invites` | Nova |
-| `campaign_characters` | Nova |
-| `character_master_notes` | Nova |
-| `gallery_items` | Nova |
-| `game_sessions` | Nova |
-| `encounters` | Nova |
-| `combatants` | Nova |
-| `session_events` | Nova |
-| `scenes` | Nova |
-| `scene_actions` | Nova |
-| `xp_awards` | Nova |
+| `users` | Parecida com `users` de lá, mas perde `role` (vai para `campaign_members`) |
+| `auth_sessions` | Mesma ideia de `auth_sessions` de lá (hash do token) |
+| `oauth_handshakes` | Mesma ideia de `oauth_handshakes` de lá |
+| `characters` | Parecida com `characters` de lá: `type` vira `kind`, ganha `copied_from_id` e `sheet_locked_at` |
+| `maps` | Parecida com `maps` de lá: `user_id` vira `campaign_id`, imagem vira URL do Cloud Storage |
+| `campaign_invites` | Substitui a ideia de `character_join_tokens` de lá, por campanha e com token só em hash |
+| `campaigns` | Sem equivalente lá |
+| `campaign_members` | Sem equivalente lá |
+| `campaign_characters` | Sem equivalente lá |
+| `character_master_notes` | Sem equivalente lá |
+| `gallery_items` | Sem equivalente lá |
+| `game_sessions` | Sem equivalente lá |
+| `encounters` | Sem equivalente lá |
+| `combatants` | Sem equivalente lá |
+| `session_events` | Sem equivalente lá |
+| `scenes` | Sem equivalente lá |
+| `scene_actions` | Sem equivalente lá |
+| `xp_awards` | Sem equivalente lá |
 
 ## Diagrama: modelo proposto
 
@@ -253,4 +256,4 @@ flowchart TD
 - [Glossário](produto/glossario.md)
 - [Regras de negócio](produto/regras.md)
 - [Arquitetura](arquitetura.md): os módulos donos de cada tabela.
-- `server/src/db/schema.sql`: o schema real de hoje.
+- `server/src/db/schema.sql`: o schema do app antigo (descontinuado), só como referência histórica.

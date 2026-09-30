@@ -11,26 +11,41 @@ Nenhuma delas trava a Etapa 1. Todas são para o Samuel, e cada resposta vira um
 - [ ] **RN-07:** o convite serve para vários jogadores ou para um só? E vale por quanto tempo? O link de hoje pode ser reutilizado.
 - [ ] **RN-06:** a notificação para quem está com o app aberto basta no MVP, ou precisa de notificação do navegador (push) com o app fechado?
 - [ ] **RN-08:** a importação de DOCX continua? Se sim, de qual modelo? E a escolha entre D&D Beyond e ficha em português vale também para o jeito de mostrar a ficha?
+- [ ] **MR-018 e MR-019:** documento de campanha e galeria de imagens existiam no app antigo. Entram no MVP ou ficam para Depois?
+- [ ] Algum dado do app antigo (por exemplo o Pensantus) precisa vir para o sistema novo? Se sim, fazemos uma importação única.
 
-## Levantadas em 28/09/2026, ainda em discussão
+## Em discussão desde 28/09/2026
 
-Estes dois pontos entraram na conversa em 28/09/2026, mas **não estão decididos**. Ainda não viraram regra nem mudaram nenhum RN ou história abaixo — só estão registrados aqui para não perder o contexto.
+Estes três temas ainda **não viraram regra**: RN-05, RN-06, MR-003 e as histórias de combate continuam valendo como estão até o Samuel aceitar. O que o Vinicius já decidiu em 29/09/2026 está marcado assim, e falta o aceite do Samuel.
 
 ### Login do jogador sem Google
 
-Ideia em discussão: talvez só o mestre precise entrar com login do Google. O jogador escolheria um identificador único dentro da mesa (a campanha do mestre), com senha opcional, em vez de logar com uma conta Google. Vantagem: menos dados pessoais coletados, o que ajuda com a LGPD.
+Proposta: só o mestre entra com Google. O jogador entra pelo convite com um **handle da mesa** (único entre as campanhas do mesmo mestre, não por campanha, para a cópia de personagem da RN-03 continuar funcionando), sem e-mail nem nome real. Menos dados pessoais, o que ajuda com a LGPD (ver [Privacidade](../privacidade.md)).
 
-- **Afeta:** [RN-05](regras.md), [RN-06](regras.md), [MR-003](historias.md#mr-003-entrar-pelo-convite) e o módulo `identity` (ver [Arquitetura](../arquitetura.md)).
-- **Status:** em discussão, sem decisão. RN-05, RN-06 e MR-003 continuam valendo como estão até o Samuel decidir.
+- **Decidido pelo Vinicius (29/09):** as sessões seguem o NIST SP 800-63B-4: login de novo a cada **30 dias**, no máximo, para todo mundo. Senha nova é checada no Pwned Passwords, e só os 5 primeiros caracteres do hash saem do servidor.
+- **Pergunta:** jogador sem senha perde o acesso a cada 30 dias e depende de um link novo do mestre. A recomendação é exigir uma senha antes de acabarem os primeiros 30 dias (passkey no lugar da senha quando o domínio existir). Vale assim?
+- **Afeta:** [RN-05](regras.md), [RN-06](regras.md), [RN-07](regras.md), [MR-003](historias.md#mr-003-entrar-pelo-convite) e o módulo `identity` (ver [Arquitetura](../arquitetura.md)).
 
 ### Regras por classe e raça
 
-MR-014 — e também MR-004, MR-013, MR-015, MR-016, MR-017 e RN-02 — precisa que o sistema conheça as regras da classe e da raça do personagem: ações, ação bônus, reações e recursos como espaços de magia e deslocamento.
+MR-014 (e também MR-004, MR-013, MR-015, MR-016, MR-017 e RN-02) precisa que o sistema conheça as regras da classe e da raça do personagem: ações, ação bônus, reações e recursos como espaços de magia e deslocamento.
 
-A pergunta em aberto: quais livros entram? O SRD 5.1 é aberto e pode ser usado. O PHB (livro do jogador) e o Xanathar não podem ser copiados para dentro do app, então esse conteúdo viria cadastrado pela própria mesa.
+Proposta: as regras viram **dados**, e o módulo `rules` só calcula. O SRD 5.1 é aberto (CC-BY-4.0) e vem junto com o app. O PHB e o Xanathar não podem ser copiados, então esse conteúdo é cadastrado pela própria mesa. Exemplo: o Pensantus é gnomo das rochas e mago de evocação (estão no SRD), mas o antecedente Sábio não está.
 
+- **Decidido pelo Vinicius (29/09):** fórmulas de regra (CD de magia, bônus) usam a biblioteca **Expr**, com as funções embutidas desligadas e limite de tamanho, porque o conteúdo cadastrado pela mesa é entrada não confiável.
+- **Pergunta:** quais classes e raças a mesa usa hoje? Isso define o que entra primeiro para o MVP.
 - **Afeta:** [MR-004](historias.md#mr-004-ficha-no-formato-do-pdf), [MR-013](historias.md#mr-013-ordem-dos-turnos), [MR-014](historias.md#mr-014-sua-vez), [MR-015](historias.md#mr-015-ações-da-cena-de-rp), [MR-016](historias.md#mr-016-dar-xp), [MR-017](historias.md#mr-017-subir-de-nível) e [RN-02](regras.md).
-- **Status:** em discussão, sem decisão. Nenhuma dessas histórias ou regras assume ainda uma resposta.
+
+### Privacidade (LGPD e GDPR)
+
+**Decidido pelo Vinicius (29/09):** a régua é a LGPD e o GDPR, sempre a regra mais rigorosa das duas. O que isso muda está em [Privacidade](../privacidade.md). Perguntas para o Samuel:
+
+- [ ] Quem é o controlador e quem é o encarregado (DPO)? Qual e-mail recebe os pedidos?
+- [ ] Algum jogador da mesa tem menos de 18 anos? A proposta é o MVP ser 18+.
+- [ ] Quando alguém exclui a conta, o que acontece com os personagens dele numa campanha de outro mestre?
+- [ ] Por quanto tempo guardamos uma conta sem uso?
+- [ ] Há planos de abrir o app para outras mesas ou de cobrar?
+- [ ] Qual é o plano do CockroachDB (e onde estão os backups)?
 
 ## Ver também
 

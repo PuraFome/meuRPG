@@ -13,9 +13,10 @@ Este diretório é a fonte da verdade sobre o produto, as regras e a arquitetura
 | [produto/perguntas-em-aberto.md](produto/perguntas-em-aberto.md) | Samuel | O que ainda falta decidir |
 | [arquitetura.md](arquitetura.md) | Quem abre o PR, com revisão do Samuel | Como o sistema é montado e onde roda |
 | [dados.md](dados.md) | Quem abre o PR, com revisão do Samuel | Tabelas, relações e migrations |
+| [privacidade.md](privacidade.md) | Quem abre o PR, com revisão do Samuel e do Vinicius | Que dados pessoais guardamos, por quê e por quanto tempo, e a checklist de privacidade de todo PR |
 | [roadmap.md](roadmap.md) | Todo o time | A ordem das etapas até o MVP |
 | [operacao.md](operacao.md) | Vinicius e Samuel | Deploy, segredos, custos e alertas |
-| [code-quality.md](code-quality.md) | Quem mexe no Angular atual | Relatório de qualidade do frontend atual |
+| [code-quality.md](code-quality.md) | Quem consulta o Angular antigo | Relatório de qualidade do frontend antigo (`src/`, descontinuado) |
 | `adr/` | Samuel e Vinicius | Decisões difíceis de desfazer. Repositório privado separado; a pasta local está no `.gitignore` e não é versionada aqui. |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Todo o time | Como rodar, testar e abrir um PR |
 | [../README.md](../README.md) | Quem chega no repositório agora | Visão geral do projeto, com link para o resto |
