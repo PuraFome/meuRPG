@@ -71,11 +71,11 @@ MR-021 e MR-022 são novas e saíram das respostas do Samuel de 28/09/2026. Fica
 - Backend da entrada na campanha pronto em 29/09/2026: com login, o convite vira participação como jogador; aceitar de novo não muda nada; dois jogadores disputando o último uso não entram os dois. Testes: `TestMR003_ValidInviteMakesTheUserAPlayerTheMasterSees` (primeiro critério, sem a parte do personagem) e `TestMR003_ExpiredInviteGivesAClearErrorAndCreatesNothing`.
 - Backend de "abre o link e faz login" pronto em 29/09/2026: quem não está logado entra e aceita o convite num passo só (`POST /auth/login` com a intenção `campaign_invite`), sem guardar nada no navegador, e cai em `/campanhas/<id>` ou em `/convite/erro?motivo=<código>`. Testes em Go, com provedor falso e CockroachDB: `TestSignInWithAnInviteJoinsTheCampaign`, `TestSignInWithAnUnusableInvite` e `TestSignInWithAnInviteAsAMember`.
 - Tela pronta em 29/09/2026: `/convite` (`web/src/app/pages/invite/invite-accept.ts`), que lê o token do fragmento da URL, o apaga da URL na hora (`history.replaceState`) e aceita o convite (logado) ou oferece "Entrar para aceitar o convite" (deslogado). Teste Playwright, com um segundo usuário já logado: `jogador já logado abre o link do convite, entra na campanha e o mestre o vê nos membros` (`@MR-003`, `e2e/tests/invite.spec.ts`). O caminho de quem abre o link deslogado depende do contrato de login com convite (`intent=campaign_invite`), ainda não integrado nesta branch: o teste `visitante sem sessão entra pelo convite, faz login e é adicionado à campanha automaticamente` está escrito como `test.fixme` no mesmo arquivo, para ligar quando o backend chegar. E o caminho sem sessão, pelo login: `visitante sem sessão entra pelo convite, faz login e é adicionado à campanha automaticamente` (`@MR-003`), que também confere que o token não aparece em nenhuma URL pedida pelo navegador.
-- Backend do personagem pronto em 29/09/2026 (Etapa 4): o jogador cria o próprio personagem, do tipo jogador, com `CharacterService.CreateCharacter`, e o mestre o vê na lista da campanha, com o nome de exibição do jogador, a classe e a raça (`ListCharacters`). O personagem nasce como rascunho. Teste: `TestMR003_PlayerCreatesTheirCharacterAndTheMasterSeesIt`. Falta a tela de criar o personagem, que vem no PR das telas da Etapa 4.
+- Backend do personagem pronto em 29/09/2026 (Etapa 4): o jogador cria o próprio personagem, do tipo jogador, com `CharacterService.CreateCharacter`, e o mestre o vê na lista da campanha, com o nome de exibição do jogador, a classe e a raça (`ListCharacters`). O personagem nasce como rascunho. Teste: `TestMR003_PlayerCreatesTheirCharacterAndTheMasterSeesIt`. A tela de criar o personagem (o editor em passos) veio no PR das telas da Etapa 4, com o teste Playwright "o jogador entra pelo convite, cria o personagem e o mestre o vê na campanha".
 
 #### Relacionadas
 - RN-03: respondida em 29/09/2026 — o jogador só cria um personagem novo nesta campanha quando o atual morre; o personagem morto fica no sistema (ver [Regras de negócio](regras.md)).
-- RN-17 decide o login do jogador sem Google (handle por mesa); falta só saber se uma senha passa a ser exigida antes dos primeiros 30 dias (ver [Perguntas em aberto](perguntas-em-aberto.md)).
+- RN-17 decide o login do jogador sem Google (handle por mesa): ele entra sem senha e, quando a primeira sessão de 30 dias vence, precisa definir uma senha ou vincular o Google (ADR-0009, opção 3; ver [Perguntas em aberto](perguntas-em-aberto.md)).
 - Quando o convite exige aprovação (RN-15), o personagem criado aqui nasce pendente até o mestre aprovar ou recusar. Ver [MR-024](#mr-024-aprovar-o-personagem-do-convite).
 
 ### MR-004: Ficha no formato do PDF
@@ -90,7 +90,7 @@ MR-021 e MR-022 são novas e saíram das respostas do Samuel de 28/09/2026. Fica
 - **Dado** um personagem completo, **quando** o jogador abre a ficha no celular, **então** vê as seções da ficha oficial (atributos, perícias, combate, magias, equipamento) **e** os valores calculados, como modificadores e CD de magia, vêm prontos do servidor.
 
 #### Implementado
-- Backend pronto em 29/09/2026 (Etapa 4): `CharacterService.GetCharacter` devolve a ficha como o jogador a preencheu e, junto, os valores calculados pelo servidor (`DerivedSheet`): atributos e modificadores, testes de resistência, perícias, passivas, CA, PV, deslocamento, sentidos, CD e ataque de magia, espaços, magias, ataques, características e as pendências da ficha. Teste: `TestMR004_SheetComesWithServerCalculatedValues`, com o Pensantus (INT 18, +4; CD 14; ataque de magia +6; CA 13; PV 23). Falta a tela da ficha no celular, que vem no PR das telas da Etapa 4.
+- Backend pronto em 29/09/2026 (Etapa 4): `CharacterService.GetCharacter` devolve a ficha como o jogador a preencheu e, junto, os valores calculados pelo servidor (`DerivedSheet`): atributos e modificadores, testes de resistência, perícias, passivas, CA, PV, deslocamento, sentidos, CD e ataque de magia, espaços, magias, ataques, características e as pendências da ficha. Teste: `TestMR004_SheetComesWithServerCalculatedValues`, com o Pensantus (INT 18, +4; CD 14; ataque de magia +6; CA 13; PV 23). A tela da ficha veio no PR das telas da Etapa 4, com o teste Playwright "o jogador abre a ficha no celular e vê as seções da ficha oficial com os valores calculados pelo servidor".
 
 #### Relacionadas
 - As regras como dados, com as fórmulas no Expr, calculam a ficha. O Samuel aceitou esse desenho em 29/09/2026. Ver [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
@@ -117,7 +117,7 @@ Os dois últimos critérios foram respondida pelo Vinicius em 29/09/2026.
   - `TestMR006_BeforeAnySessionThePlayerEditsTheSheet`;
   - `TestMR006_CharacterCreatedAfterTheFirstSessionLocksAtTheNextOne`, e no `play`, com a sessão de verdade, `TestCharacterCreatedLaterLocksAtTheNextSession`;
   - `TestMR006_AfterTheLockTheStoryNeedsTheMastersPermission`, e no `play`, `TestStartingASessionTurnsStoryEditingOff`.
-- Falta a tela (ficha só para leitura, botões do mestre), que vem no PR das telas da Etapa 4.
+- A tela (ficha só para leitura, botões do mestre) veio no PR das telas da Etapa 4, com os testes Playwright de `e2e/tests/sheet-lock.spec.ts`.
 
 ### MR-008: Pontos de interesse
 
@@ -313,7 +313,7 @@ Propostos por nós e aceitos (respondida pelo Vinicius em 29/09/2026):
 - **Dado** um NPC criado em "Mirathel", **quando** o mestre abre outra campanha, **então** o NPC não aparece lá: usar o mesmo NPC em outras campanhas é a [MR-022](#mr-022-reutilizar-npcs).
 
 #### Implementado
-- Backend pronto em 29/09/2026 (Etapa 4): o mestre cria NPCs com `CharacterService.CreateCharacter`; inimigo e boss levam a ficha completa (com os valores calculados), minion e NPC de história a ficha básica, e o servidor recusa a ficha do tipo errado. O NPC fica na campanha em que foi criado, e o dono é o mestre. Testes: `TestMR005_MasterCreatesNpcsOfEachKind` (primeiro critério) e `TestMR005_PlayersCannotSeeOrCreateNpcs` (segundo e terceiro). Falta a tela, que vem no PR das telas da Etapa 4.
+- Backend pronto em 29/09/2026 (Etapa 4): o mestre cria NPCs com `CharacterService.CreateCharacter`; inimigo e boss levam a ficha completa (com os valores calculados), minion e NPC de história a ficha básica, e o servidor recusa a ficha do tipo errado. O NPC fica na campanha em que foi criado, e o dono é o mestre. Testes: `TestMR005_MasterCreatesNpcsOfEachKind` (primeiro critério) e `TestMR005_PlayersCannotSeeOrCreateNpcs` (segundo e terceiro). A tela veio no PR das telas da Etapa 4, com os testes Playwright "o mestre cria um inimigo com ficha completa e um minion com ficha básica" e "o jogador não vê os NPCs da campanha".
 
 ## Prioridade: Depois
 
