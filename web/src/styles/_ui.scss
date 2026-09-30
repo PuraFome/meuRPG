@@ -3,9 +3,10 @@
 // so the same thing looks the same everywhere. Anything that belongs to
 // one page lives in that page's component styles.
 
-// The page title (h1) and the line under it.
+// The page title (h1) and the line under it; the page's content starts one
+// step below whichever comes last.
 .mr-page-title {
-  margin: 0;
+  margin: 0 0 var(--mr-space-5);
   font-family: var(--mr-font-display);
   font-weight: 800;
   font-size: 34px;
@@ -18,8 +19,12 @@
   }
 }
 
+.mr-page-title:has(+ .mr-page-lead) {
+  margin-bottom: 0;
+}
+
 .mr-page-lead {
-  margin: var(--mr-space-2) 0 0;
+  margin: var(--mr-space-2) 0 var(--mr-space-5);
   font-size: 17px;
   color: var(--mr-ink-muted);
 }
