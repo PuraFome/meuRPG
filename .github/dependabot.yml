@@ -1,4 +1,6 @@
-# Keeps dependencies (including pinned GitHub Action SHAs) current.
+# Keeps dependencies (including pinned GitHub Action SHAs and image digests)
+# current. Majors that need a deliberate step (a migration, or matching the
+# runtime) are ignored here and done by hand; see CONTRIBUTING.md.
 # Docs: https://docs.github.com/code-security/dependabot/dependabot-version-updates
 version: 2
 updates:
@@ -25,16 +27,31 @@ updates:
           - "minor"
           - "patch"
 
-  # Frontend npm packages.
+  # The web app (web/). The repository root's package.json is the old,
+  # deprecated app (src/), which is frozen until it is removed, so it gets
+  # no updates.
   - package-ecosystem: "npm"
-    directory: "/"
+    directory: "/web"
     schedule:
       interval: "weekly"
     groups:
-      npm-minor-patch:
+      web-minor-patch:
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      # A new Angular major comes with `ng update` and its migrations, and
+      # it moves the TypeScript range Angular accepts: both by hand.
+      - dependency-name: "@angular/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@angular-devkit/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      # Node's types follow the Node major the app is built with (22, in
+      # CI and in backend/Dockerfile), not the newest Node.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   # Playwright tests (e2e/). A new @playwright/test also moves the Chromium
   # build CI downloads, since the lockfile pins both.
@@ -47,3 +64,30 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      # The tests run on Node 22 (CI's setup-node); newer types would
+      # accept APIs that don't exist there.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+
+  # Base images of the production image and of devidp, pinned by digest.
+  # Patch releases and new digests (security fixes) come here; a new Node
+  # or Go version goes together with CI and go.mod, by hand. The
+  # CockroachDB image is not here on purpose: deploy/local/compose.yaml and
+  # the go-db job in .github/workflows/backend.yml pin the same digest, and
+  # it changes in both at once, by hand.
+  - package-ecosystem: "docker"
+    directories:
+      - "/backend"
+      - "/deploy/local"
+    schedule:
+      interval: "weekly"
+    groups:
+      base-images:
+        patterns:
+          - "*"
+    ignore:
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "golang"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]

@@ -184,6 +184,15 @@ Fluxo resumido: fork, se for o caso → PR para `PuraFome/meuRPG` → CI verde �
 
 Toda action do GitHub fica presa pelo SHA do commit, não pela tag. Quem controla uma action consegue mover uma tag para um código malicioso, mas não consegue mudar um SHA.
 
+O Dependabot (`.github/dependabot.yml`) abre toda semana os PRs que mantêm essas travas em dia: as actions (o SHA e o comentário com a versão), os módulos Go, os pacotes npm do `web/` e do `e2e/` e as imagens base dos Dockerfiles. Versões menores e correções chegam juntas, num PR por grupo. Não chegam pelo Dependabot, e são feitas à mão:
+
+- uma major do Angular ou do TypeScript do `web/`, que vem com o `ng update` e as migrações dele;
+- uma major do `@types/node`, que acompanha a versão do Node em que o código roda (22, no CI e no `backend/Dockerfile`);
+- uma versão nova do Node ou do Go nas imagens, que muda junto com o CI e o `go.mod`;
+- a imagem do CockroachDB, que o `deploy/local/compose.yaml` e o job `go-db` prendem pelo mesmo digest.
+
+O `package.json` da raiz é o do app antigo (`src/`, descontinuado) e não recebe atualização.
+
 ## Tipos de teste
 
 | Tipo | Ferramenta | Cobre |
