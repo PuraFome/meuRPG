@@ -75,6 +75,9 @@ export interface FeatureVm {
   readonly description: string;
 }
 
+/** A real problem with the sheet (`DerivedSheet.issues`): shown in the
+ * warning notice under the header, titled from its stable `code`
+ * (`sheet-format.ts`'s `issueTitle`). */
 export interface IssueVm {
   readonly code: string;
   readonly field: string;
@@ -83,8 +86,9 @@ export interface IssueVm {
 
 /** A situational reminder the numbers above cannot express, such as
  * advantage on a saving throw against magic (`DerivedSheet.hints`,
- * `rules.proto`'s `Hint`). Shown next to the issues in "Avisos"
- * (integrator fix: the sheet used to drop these on the floor). */
+ * `rules.proto`'s `Hint`). Shown as a quiet "Lembretes" list in
+ * "Características e traços", never with the issues, which are real
+ * problems and go in the notice under the header. */
 export interface HintVm {
   readonly sourceKey: string;
   readonly text: string;
@@ -145,6 +149,8 @@ export interface FullSheetVm {
   readonly customFeaturesText: string;
   readonly issues: readonly IssueVm[];
   readonly hints: readonly HintVm[];
+  /** Internal: never shown on the page (docs/design.md, "Nada interno na
+   * tela"). */
   readonly contentVersion: string;
 }
 

@@ -80,22 +80,25 @@ export const day = 24 * 60 * 60 * 1000;
 
 /**
  * Waits until `/campanhas` shows the caller's campaigns (or "Você ainda não
- * tem nenhuma campanha"), before anything touches the "Nova campanha" form.
+ * tem nenhuma campanha"), before anything touches the "Criar campanha" form.
  *
- * The list sits above the form and pushes it down when it arrives. A "Modo
- * de XP" panel opened before that is left behind, outside the viewport, and
- * the click on its option retries until the test times out. Seen locally
- * (30/09/2026), where "Mestre Teste" has hundreds of campaigns and
- * ListMyCampaigns answered after the panel opened.
+ * Before the redesign the list sat above the form and pushed it down when
+ * it arrived, leaving an open "Modo de XP" panel outside the viewport (seen
+ * locally, 30/09/2026, with hundreds of campaigns). The form now comes
+ * first, but waiting still keeps every test on a loaded screen. The list is
+ * the region named by the page's h1.
  */
 export async function waitForCampaignList(page: Page): Promise<void> {
   await expect(
-    page.locator('mat-nav-list').or(page.getByText('Você ainda não tem nenhuma campanha.')),
+    page
+      .getByRole('region', { name: 'Minhas campanhas' })
+      .getByRole('list')
+      .or(page.getByText('Você ainda não tem nenhuma campanha.')),
   ).toBeVisible();
 }
 
 /**
- * Creates a campaign through the "Nova campanha" form on `/campanhas`, the
+ * Creates a campaign through the "Criar campanha" form on `/campanhas`, the
  * way MR-001 asks for, and returns its id from the `/campanhas/<id>` URL
  * the app navigates to afterwards.
  *
@@ -281,10 +284,11 @@ async function selectMatOption(page: Page, label: string, optionName: string): P
  * `pensantus`) into the real `character-editor` (`web/src/app/pages/
  * character-editor/character-editor.html`).
  *
- * The stepper is non-linear (`[linear]="false"`) with no "next step"
- * button at all: each step's header is its own tab
- * (`getByRole('tab', {name})`), and the submit button sits outside the
- * stepper, reachable from any step. This helper only visits the steps it
+ * The stepper (`editor-stepper/`, on the CDK stepper) is non-linear: each
+ * step's header is its own tab (`getByRole('tab', {name})`), and the submit
+ * button sits under whichever step is open, so it is reachable from any
+ * step (the "Passo anterior"/"Próximo passo" buttons at the end of each
+ * step are a convenience only). This helper only visits the steps it
  * needs (Básico, Atributos, Perícias) — Magias and Equipamento are both
  * fully optional and left at their defaults, and there is no separate
  * "História" step: the story is its own screen/RPC (amendment A3).
@@ -305,12 +309,11 @@ export async function createCharacterViaUI(
 ): Promise<string> {
   await page.goto(entryPath);
 
-  // `exact: true` throughout: `mat-stepper` renders every step's content in
-  // the DOM at once (only the active one is visible — confirmed live, not
-  // lazy per step), so a loose substring match can hit another step's
-  // field, e.g. "Raça" also matching "Sub-raça" or the "Atributos" step's
-  // "Bônus manuais (aumento de atributo, escolhas de raça, item mágico)"
-  // group label, and "Força" also matching "Força (manual)".
+  // `exact: true` throughout: the editor's stepper renders every step's
+  // content in the DOM at once (only the active one is visible), so a loose
+  // substring match can hit another step's field, e.g. "Raça" also matching
+  // "Sub-raça", and "Força" also matching the manual bonus field
+  // "Força (bônus manual)".
 
   // Passo "Básico" (selected by default).
   await page.getByLabel('Nome do personagem', { exact: true }).fill(build.name);
@@ -360,7 +363,8 @@ export async function createCharacterViaUI(
     await classSkillsGroup.getByRole('checkbox', { name: skill, exact: true }).check();
   }
 
-  await page.getByRole('button', { name: 'Criar personagem' }).click();
+  // "Criar personagem" for a player, "Criar NPC" from the master's menu.
+  await page.getByRole('button', { name: /^Criar (personagem|NPC)$/ }).click();
 
   // `(?!novo$)`: the player's own entry path, `/personagens/novo`, already
   // matches `/personagens/<anything>`, so without it this would return

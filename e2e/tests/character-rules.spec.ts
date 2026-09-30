@@ -106,7 +106,7 @@ test('as notas do mestre nunca chegam ao jogador', { tag: '@RN-11' }, async ({ p
     await playerPage.goto(`/campanhas/${campaignId}`);
     // The player's own (empty) list comes from ListCharacters, the last
     // call the screen makes.
-    await expect(playerPage.getByText('Nenhum personagem ainda.')).toBeVisible();
+    await expect(playerPage.getByText('Você ainda não tem personagem nesta campanha.')).toBeVisible();
 
     // A direct attempt at the notes RPC. page.request is not the page's
     // traffic, so its body is checked on its own below.

@@ -527,4 +527,231 @@ describe('CharacterEditor', () => {
     // character-editor-source.live.spec.ts.
     expect(fake.createCharacterCalls[0].full?.hitPointsMethod).toBe('average');
   });
+
+  describe('the redesigned page', () => {
+    function tabs(el: HTMLElement): HTMLElement[] {
+      return Array.from(el.querySelectorAll<HTMLElement>('[role="tab"]'));
+    }
+
+    it('shows one tab per step, and Magias only for a caster class', async () => {
+      configure({ id: 'camp-1' });
+      const { fixture, el } = await render();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cmp = fixture.componentInstance as any;
+
+      const names = () =>
+        tabs(el).map((t) => t.querySelector('.stepper__label')?.textContent?.trim());
+      expect(names()).toEqual(['Básico', 'Atributos', 'Perícias', 'Equipamento']);
+
+      cmp.fullForm.patchValue({ className: 'class:wizard' });
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(names()).toEqual(['Básico', 'Atributos', 'Perícias', 'Magias', 'Equipamento']);
+    });
+
+    it('sends nothing on an invalid submit, lists what to fix and marks the step', async () => {
+      configure({ id: 'camp-1' });
+      const { fixture, el } = await render();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cmp = fixture.componentInstance as any;
+
+      await cmp.submit();
+      fixture.detectChanges();
+
+      expect(fake.createCharacterCalls.length).toBe(0);
+      const notice = el.querySelector('.mr-notice--danger[role="alert"]');
+      expect(notice?.textContent).toContain('Corrija os campos marcados antes de criar.');
+      expect(notice?.textContent).toContain(
+        'Básico: Nome do personagem, Classe, Raça, Antecedente.',
+      );
+      expect(tabs(el)[0].textContent).toContain('(com erro)');
+      expect(tabs(el)[1].textContent).not.toContain('(com erro)');
+
+      // Fixing the fields clears the notice and the mark.
+      cmp.fullForm.patchValue({
+        name: 'Pensantus',
+        race: 'race:gnome',
+        className: 'class:wizard',
+        background: 'background:acolyte',
+      });
+      fixture.detectChanges();
+      expect(el.querySelector('.mr-notice--danger')).toBeNull();
+      expect(tabs(el)[0].textContent).not.toContain('(com erro)');
+    });
+
+    it('opens the step of the first invalid field, and "Bônus manuais" for a bonus', async () => {
+      configure({ id: 'camp-1' });
+      const { fixture, el } = await render();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cmp = fixture.componentInstance as any;
+
+      cmp.fullForm.patchValue({
+        name: 'Pensantus',
+        race: 'race:gnome',
+        className: 'class:wizard',
+        background: 'background:acolyte',
+        extraAbilityBonuses: { str: 0, dex: 0, con: 11, int: 0, wis: 0, cha: 0 },
+      });
+      fixture.detectChanges();
+      expect(cmp.bonusesOpen()).toBe(false);
+
+      await cmp.submit();
+      fixture.detectChanges();
+
+      expect(fake.createCharacterCalls.length).toBe(0);
+      expect(tabs(el)[1].getAttribute('aria-selected')).toBe('true');
+      expect(cmp.bonusesOpen()).toBe(true);
+      expect(el.querySelector('.mr-notice--danger')?.textContent).toContain(
+        'Atributos: bônus manual de Constituição.',
+      );
+    });
+
+    it("shows the server's reason in a danger notice when the save fails", async () => {
+      configure({ id: 'camp-1' });
+      fake.createCharacterFn = () =>
+        Promise.reject(
+          new ConnectError('exists', Code.FailedPrecondition, undefined, [
+            {
+              desc: CharacterBlockedSchema,
+              value: { reason: CharacterBlockedReason.LIVING_CHARACTER_EXISTS, characterId: '' },
+            },
+          ]),
+        );
+      const { fixture, el } = await render();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cmp = fixture.componentInstance as any;
+
+      cmp.fullForm.patchValue({
+        name: 'Pensantus',
+        race: 'race:gnome',
+        className: 'class:wizard',
+        background: 'background:acolyte',
+      });
+      await cmp.submit();
+      fixture.detectChanges();
+
+      const notice = el.querySelector('.mr-notice--danger[role="alert"]');
+      expect(notice?.textContent).toContain('O personagem não foi criado.');
+      expect(notice?.textContent).toContain('Você já tem um personagem vivo nesta campanha.');
+    });
+
+    it('says what the manual bonuses are for, and which are in use, while closed', async () => {
+      configure({ id: 'camp-1' });
+      const { fixture, el } = await render();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cmp = fixture.componentInstance as any;
+
+      const summary = el.querySelector('.bonuses__summary');
+      expect(summary?.textContent).toContain('Aumento de atributo, escolhas de raça, item mágico.');
+      expect(el.querySelector('.bonuses__state')?.textContent).toContain('Nenhum em uso');
+
+      cmp.fullForm.patchValue({
+        extraAbilityBonuses: { str: 0, dex: 0, con: 1, int: 2, wis: 0, cha: 0 },
+      });
+      fixture.detectChanges();
+
+      expect(el.querySelector('.bonuses__state')?.textContent).toContain(
+        'Em uso: Constituição +1, Inteligência +2',
+      );
+    });
+
+    it('never shares the exact field name of a score with a manual bonus', async () => {
+      configure({ id: 'camp-1' });
+      const { el } = await render();
+
+      const labels = Array.from(el.querySelectorAll('app-ability-fields mat-label')).map((l) =>
+        l.textContent?.replace(/\s+/g, ' ').trim(),
+      );
+      expect(labels.filter((l) => l === 'Força').length).toBe(1);
+      expect(labels).toContain('Força (bônus manual)');
+    });
+
+    it('keeps "Nível" the only label with that word (sheet-lock.spec.ts matches it loosely)', async () => {
+      configure({ id: 'camp-1' });
+      const { el } = await render();
+
+      const labels = Array.from(el.querySelectorAll('label, mat-label')).map(
+        (l) => l.textContent?.toLowerCase() ?? '',
+      );
+      const withLevel = new Set(labels.filter((l) => l.includes('nível')).map((l) => l.trim()));
+      expect(Array.from(withLevel)).toEqual(['nível']);
+    });
+
+    it('Cancelar goes back to the campaign when creating', async () => {
+      configure({ id: 'camp-1' });
+      const { el } = await render();
+
+      const cancel = Array.from(el.querySelectorAll('a')).find(
+        (a) => a.textContent?.trim() === 'Cancelar',
+      );
+      expect(cancel?.getAttribute('href')).toBe('/campanhas/camp-1');
+    });
+
+    it('Cancelar goes back to the sheet when editing', async () => {
+      configure({ id: 'camp-1', characterId: 'char-9' });
+      fake.loadCharacterForEditFn = () =>
+        Promise.resolve({
+          kind: 'minion',
+          revision: 1,
+          full: null,
+          basic: {
+            name: 'Goblin',
+            hitPointsMax: 7,
+            armorClass: 13,
+            speedWalkFt: 30,
+            attackBonus: 4,
+            damage: '1d6+2 perfurante',
+            description: '',
+          },
+        });
+      const { el } = await render();
+
+      const cancel = Array.from(el.querySelectorAll('a')).find(
+        (a) => a.textContent?.trim() === 'Cancelar',
+      );
+      expect(cancel?.getAttribute('href')).toBe('/campanhas/camp-1/personagens/char-9');
+      expect(el.querySelector('h1')?.textContent).toContain('Editar ficha');
+      expect(el.querySelector('button[mat-flat-button]')?.textContent).toContain('Salvar ficha');
+    });
+
+    it('titles an NPC form "Criar NPC", and its primary action says the same', async () => {
+      configure({ id: 'camp-1', tipo: 'minion' });
+      const { el } = await render();
+
+      expect(el.querySelector('h1')?.textContent).toContain('Criar NPC');
+      expect(el.querySelector('.mr-page-lead')?.textContent).toContain('Minion: ficha curta');
+      const primary = el.querySelector('button[mat-flat-button]');
+      expect(primary?.textContent).toContain('Criar NPC');
+    });
+
+    it('lists what to fix on the short NPC form too', async () => {
+      configure({ id: 'camp-1', tipo: 'minion' });
+      const { fixture, el } = await render();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cmp = fixture.componentInstance as any;
+
+      await cmp.submit();
+      fixture.detectChanges();
+
+      expect(fake.createCharacterCalls.length).toBe(0);
+      expect(el.querySelector('.mr-notice--danger')?.textContent).toContain(
+        'Nome do personagem, Dano.',
+      );
+    });
+
+    it('gives the loading spinner an accessible name', async () => {
+      configure({ id: 'camp-1' });
+      fake.loadCatalogFn = () => new Promise(() => undefined);
+      const fixture = TestBed.createComponent(CharacterEditor);
+      fixture.detectChanges();
+      const el = fixture.nativeElement as HTMLElement;
+
+      expect(el.querySelector('h1')?.textContent).toContain('Criar personagem');
+      expect(el.querySelector('mat-spinner')?.getAttribute('aria-label')).toBe(
+        'Carregando o formulário',
+      );
+    });
+  });
 });

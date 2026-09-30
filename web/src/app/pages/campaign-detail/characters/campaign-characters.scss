@@ -1,19 +1,46 @@
-.character-list {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 1rem;
+:host {
+  display: block;
+}
+
+.characters {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--mr-space-4);
 }
 
-.character-list__detail {
-  margin-left: 0.5rem;
-  color: var(--mat-sys-on-surface-variant);
-  font-size: 0.875rem;
+.panel-hint {
+  margin: 0 0 var(--mr-space-2);
+  font-size: 15px;
+  color: var(--mr-ink-muted);
 }
 
-.character-list__state {
-  margin-left: 0.5rem;
-  font-size: 0.8rem;
+// The design's pending mark: a 10px dot before the name, next to the word
+// "Revisar" (never the colour alone).
+.pending-dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--mr-warning-ink);
+}
+
+.row-action {
+  flex-shrink: 0;
+  font-weight: 700;
+  color: var(--mr-accent-text);
+}
+
+.mr-list__row {
+  padding: var(--mr-space-1) 0;
+}
+
+// A panel's own action ("Novo NPC", "Criar meu personagem") goes at its
+// end: full width on a phone, as wide as its words from a tablet up.
+.panel-action {
+  width: 100%;
+  margin-top: var(--mr-space-2);
+
+  @media (min-width: 768px) {
+    width: auto;
+  }
 }

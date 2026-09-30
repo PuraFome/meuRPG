@@ -1,0 +1,62 @@
+:host {
+  display: block;
+}
+
+// The confirmation colours (docs/design.md#cor), so the one-time link is
+// the first thing the master sees on the panel.
+.reveal {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px 12px;
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-success-surface);
+  color: var(--mr-success-ink);
+  line-height: 22px;
+
+  p {
+    margin: 0;
+  }
+}
+
+.reveal__title,
+.reveal__feedback {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+
+  .mat-icon {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.reveal__title {
+  font-family: var(--mr-font-display);
+  font-size: 19px;
+  font-weight: 700;
+}
+
+// The link in a field of its own: ink on surface, and one tap selects it
+// all, for when the clipboard is not available.
+.invite-reveal__link {
+  display: block;
+  padding: 10px 12px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 14px;
+  line-height: 20px;
+  word-break: break-all;
+  user-select: all;
+}
+
+.reveal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2);
+}

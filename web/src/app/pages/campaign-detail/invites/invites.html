@@ -1,102 +1,106 @@
-<section aria-labelledby="invites-heading" class="invites">
-  <h2 id="invites-heading">Convites</h2>
-
-  @if (revealedLink(); as link) {
-    <div class="invite-reveal" role="status">
-      <p class="invite-reveal__warning">
-        <strong>Guarde este link agora.</strong> Ele não será mostrado de novo.
-      </p>
-      <code class="invite-reveal__link">{{ link }}</code>
-      @if (revealedRequiresApproval()) {
-        <p>
-          Quem entrar por este link cria o personagem na hora e só entra na campanha depois que
-          você aprovar.
-        </p>
-      }
-      <div class="invite-reveal__actions">
-        <button mat-flat-button type="button" (click)="copyLink(link)">Copiar link</button>
-        <button mat-button type="button" (click)="dismissReveal()">Ok, guardei o link</button>
-      </div>
-      @if (copyStatus() === 'copied') {
-        <p role="status">Link copiado.</p>
-      }
-      @if (copyStatus() === 'error') {
-        <p role="alert">Não foi possível copiar automaticamente. Selecione e copie o link acima.</p>
-      }
-    </div>
-  }
-
-  <form [formGroup]="form" (ngSubmit)="createInvite()" class="invite-form">
-    <mat-form-field appearance="outline">
-      <mat-label>Quantos usos</mat-label>
-      <input matInput type="number" formControlName="maxUses" min="1" max="20" />
-      @if (form.controls.maxUses.invalid && form.controls.maxUses.touched) {
-        <mat-error>Escolha de 1 a 20 usos.</mat-error>
-      }
-    </mat-form-field>
-
-    <mat-form-field appearance="outline">
-      <mat-label>Validade</mat-label>
-      <mat-select formControlName="validityDays">
-        <mat-option [value]="1">1 dia</mat-option>
-        <mat-option [value]="7">7 dias</mat-option>
-        <mat-option [value]="30">30 dias</mat-option>
-      </mat-select>
-    </mat-form-field>
-
-    <mat-checkbox formControlName="requiresApproval" class="invite-form__approval">
-      Exigir aprovação do mestre
-    </mat-checkbox>
-
-    @if (createState(); as c) {
-      @if (c.status === 'error') {
-        <p class="form-error" role="alert">{{ c.message }}</p>
-      }
-    }
-
-    <button mat-flat-button type="submit" [disabled]="createState().status === 'saving'">
-      Gerar convite
-    </button>
-  </form>
+<section aria-labelledby="invites-heading" class="mr-panel invites">
+  <h2 class="mr-panel__title" id="invites-heading">Convites</h2>
 
   @if (listState(); as l) {
     @switch (l.status) {
       @case ('loading') {
-        <p role="status" aria-live="polite">Carregando convites...</p>
+        <p class="invites__hint" role="status">Carregando os convites...</p>
       }
       @case ('error') {
-        <p role="alert">{{ l.message }}</p>
+        <div class="mr-notice mr-notice--danger" role="alert">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <p>{{ l.message }}</p>
+        </div>
       }
       @case ('ready') {
         @if (l.invites.length === 0) {
-          <p>Nenhum convite criado ainda.</p>
+          <p class="invites__hint">Nenhum convite ainda. Gere um link abaixo e mande para quem vai jogar.</p>
         } @else {
-          <table class="invites-table">
-            <thead>
-              <tr>
-                <th scope="col">Usos</th>
-                <th scope="col">Status</th>
-                <th scope="col">Aprovação</th>
-                <th scope="col"></th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (i of l.invites; track i.id) {
-                <tr>
-                  <td>{{ i.useCount }} / {{ i.maxUses }}</td>
-                  <td>{{ inviteStateLabel(i.state) }}</td>
-                  <td>{{ i.requiresApproval ? 'exige aprovação' : 'entra direto' }}</td>
-                  <td>
-                    @if (i.state === InviteState.ACTIVE) {
-                      <button mat-button type="button" (click)="revoke(i)">Revogar</button>
-                    }
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
+          <ul class="mr-list" aria-label="Convites gerados">
+            @for (i of l.invites; track i.id) {
+              <li class="invite">
+                <span class="invite__text">
+                  <span class="invite__uses">{{ inviteUsesLabel(i) }}</span>
+                  @if (inviteDateLabel(i); as date) {
+                    <span class="invite__meta">{{ date }}</span>
+                  }
+                  <span class="invite__meta">{{ inviteApprovalLabel(i) }}</span>
+                </span>
+                <span class="mr-tag invite__tag">{{ inviteStateTag(i.state) }}</span>
+                @if (i.state === InviteState.ACTIVE) {
+                  <button mat-stroked-button class="invite__revoke" type="button" (click)="revoke(i)">
+                    Revogar
+                  </button>
+                }
+              </li>
+            }
+          </ul>
         }
       }
     }
   }
+
+  <div class="invites__new">
+    <h3 class="invites__subtitle">Novo convite</h3>
+
+    @if (revealedLink(); as link) {
+      <app-invite-reveal
+        [link]="link"
+        [requiresApproval]="revealedRequiresApproval()"
+        [copyStatus]="copyStatus()"
+        (copy)="copyLink(link)"
+        (dismiss)="dismissReveal()"
+      />
+    }
+
+    <form [formGroup]="form" (ngSubmit)="createInvite()" class="invite-form">
+      <div class="invite-form__fields">
+        <mat-form-field appearance="outline" class="invite-form__uses" hideRequiredMarker>
+          <mat-label>Quantos usos</mat-label>
+          <input matInput type="number" inputmode="numeric" formControlName="maxUses" min="1" max="20" />
+          @if (form.controls.maxUses.invalid && form.controls.maxUses.touched) {
+            <mat-error>Escolha de 1 a 20 usos.</mat-error>
+          } @else {
+            <mat-hint>De 1 a 20</mat-hint>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="invite-form__validity" hideRequiredMarker>
+          <mat-label>Validade</mat-label>
+          <mat-select formControlName="validityDays">
+            <mat-option [value]="1">1 dia</mat-option>
+            <mat-option [value]="7">7 dias</mat-option>
+            <mat-option [value]="30">30 dias</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+
+      <div class="invite-form__approval">
+        <mat-checkbox formControlName="requiresApproval" aria-describedby="invite-approval-hint">
+          Exigir aprovação do mestre
+        </mat-checkbox>
+        <p class="invites__hint" id="invite-approval-hint">
+          Você revisa o personagem de quem entrar antes de ele fazer parte da mesa.
+        </p>
+      </div>
+
+      @if (createState(); as c) {
+        @if (c.status === 'error') {
+          <div class="mr-notice mr-notice--danger" role="alert">
+            <mat-icon aria-hidden="true">error</mat-icon>
+            <p>{{ c.message }}</p>
+          </div>
+        }
+      }
+
+      <button
+        mat-stroked-button
+        class="invite-form__submit"
+        type="submit"
+        [disabled]="createState().status === 'saving'"
+      >
+        Gerar convite
+      </button>
+    </form>
+  </div>
 </section>

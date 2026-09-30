@@ -1,0 +1,35 @@
+@let init = initiative();
+@let dice = hitDice();
+<dl class="stats" [class.stats--basic]="init === null">
+  <div class="shield">
+    <dt class="stat__label">Classe de Armadura</dt>
+    <dd class="shield__value">
+      <svg class="shield__shape" width="96" height="112" viewBox="0 0 96 112" aria-hidden="true">
+        <path d="M48 3 90 17v35c0 27-18 46-42 57C24 98 6 79 6 52V17L48 3z" />
+      </svg>
+      <span class="shield__number">{{ armorClass() }}</span>
+    </dd>
+  </div>
+  @if (init !== null) {
+    <div class="box">
+      <dt class="stat__label">Iniciativa</dt>
+      <dd class="box__value">{{ formatModifier(init) }}</dd>
+    </div>
+  }
+  <div class="box">
+    <dt class="stat__label">Deslocamento ({{ speedFt() }} pés)</dt>
+    <dd class="box__value">{{ formatMeters(speedFt()) }}</dd>
+  </div>
+
+  <div class="hp" [class.hp--wide]="dice === null">
+    <dt class="hp__label">Pontos de vida máximos</dt>
+    <dd class="hp__value">{{ hitPointsMax() }}</dd>
+    <dd class="hp__note">Os atuais aparecem na sessão</dd>
+  </div>
+  @if (dice !== null) {
+    <div class="box box--dice">
+      <dt class="stat__label">Dados de vida</dt>
+      <dd class="box__value box__value--dice">{{ dice }}</dd>
+    </div>
+  }
+</dl>

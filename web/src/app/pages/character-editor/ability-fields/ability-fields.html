@@ -1,0 +1,26 @@
+<div class="abilities" [formGroup]="group()">
+  @for (key of keys; track key) {
+    <mat-form-field
+      appearance="outline"
+      subscriptSizing="dynamic"
+      hideRequiredMarker
+      class="ability"
+    >
+      <mat-label
+        >{{ abilityLabel(key) }}
+        @if (nameSuffix()) {
+          <span class="mr-visually-hidden"> {{ nameSuffix() }}</span>
+        }
+      </mat-label>
+      <input
+        matInput
+        type="number"
+        inputmode="numeric"
+        [formControlName]="key"
+        [min]="min()"
+        [max]="max()"
+      />
+      <mat-error>{{ rangeError() }}</mat-error>
+    </mat-form-field>
+  }
+</div>

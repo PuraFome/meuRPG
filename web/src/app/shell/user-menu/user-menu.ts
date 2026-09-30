@@ -1,5 +1,4 @@
 import { Component, computed, inject } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { Router, RouterLink } from '@angular/router';
 
@@ -15,17 +14,17 @@ import { AuthService } from '../../core/auth/auth.service';
  * - `signed-in`: the display name (`UpdateProfile`, "Meu perfil"), or
  *   "Minha conta" until the user sets one — never the e-mail, which the app
  *   never has (see AuthUser's doc comment) — as a link to "Meu perfil",
- *   next to a "Sair" button. Two plain buttons rather than a dropdown menu:
- *   `MatMenuModule` pulls in the CDK overlay for two menu items, which is
- *   not worth it in the app shell's initial bundle (see angular.json's
- *   budgets, which this component sits inside as it is always rendered).
+ *   next to a "Sair" button. Plain links and buttons styled with the
+ *   design tokens, not Material's: this component is always rendered, so
+ *   everything it imports lands in the initial bundle (see angular.json's
+ *   budgets), and a dropdown would pull in the CDK overlay for two items.
  * - `unavailable`: a plain, non-interactive "Servidor indisponível" label.
  *   It intentionally looks nothing like the "Entrar" button, so a signed-in
  *   user does not mistake a server hiccup for having been signed out.
  */
 @Component({
   selector: 'app-user-menu',
-  imports: [MatButtonModule, MatIconModule, RouterLink],
+  imports: [MatIconModule, RouterLink],
   templateUrl: './user-menu.html',
   styleUrl: './user-menu.scss',
 })

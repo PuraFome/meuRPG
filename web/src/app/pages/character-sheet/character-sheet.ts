@@ -1,33 +1,35 @@
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  inject,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
+import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
-import {
-  abilityLabel,
-  characterKindLabel,
-  characterStateLabel,
-  formatDateTime,
-  formatModifier,
-  formatSpeedFt,
-  formatSpellSlots,
-  skillProficiencyLabel,
-  splitArmorDescription,
-} from '../../core/characters/character-labels';
+import { formatModifier } from '../../core/characters/character-labels';
 import { describeCharacterError } from '../../core/characters/character-errors';
-import { FictionNotice } from '../../shared/fiction-notice/fiction-notice';
+import { AbilityMedallions } from './ability-medallions/ability-medallions';
+import { BasicSheet } from './basic-sheet/basic-sheet';
 import {
   BasicSheetVm,
   CharacterSheetSource,
   CharacterSheetVm,
-  CharacterStoryVm,
   FullSheetVm,
 } from './character-sheet.types';
+import { CombatColumn } from './combat-column/combat-column';
+import { FeaturesPanel } from './features-panel/features-panel';
+import { MasterNotes } from './master-notes/master-notes';
+import { ProficiencyColumn } from './proficiency-column/proficiency-column';
+import { SheetHeader } from './sheet-header/sheet-header';
+import { issueTitle } from './sheet-format';
+import { StoryPanel } from './story-panel/story-panel';
 
 type PageState =
   | { status: 'loading' }
@@ -35,55 +37,49 @@ type PageState =
   | { status: 'error'; message: string }
   | { status: 'ready'; vm: CharacterSheetVm };
 
-type MasterNotesState =
-  | { status: 'not-applicable' }
-  | { status: 'loading' }
-  | { status: 'ready'; notes: string }
-  | { status: 'error'; message: string };
-
 type SavingState = { status: 'idle' } | { status: 'saving' } | { status: 'error'; message: string };
 
-const emptyStory: CharacterStoryVm = {
-  personality: { traits: '', ideals: '', bonds: '', flaws: '' },
-  appearance: { age: '', height: '', weight: '', eyes: '', skin: '', hair: '', description: '' },
-  backstory: '',
-  allies: '',
-};
-
 /**
- * "/campanhas/:id/personagens/:characterId" (MR-004): the sheet, following
- * the official PDF's layout — desktop three independent columns (each its
- * own flex stack, so a long "Características e traços" never pushes
- * another column's sections down), mobile a single column, every section a
- * `<section>` with an `h2` (see the template and `character-sheet.scss`'s
- * `.sheet-grid` / `.sheet-column`).
+ * "/campanhas/:id/personagens/:characterId" (MR-004): the sheet as the paper
+ * sheet (docs/design.md, direction A). The header (name, state, identity
+ * fields and the viewer's actions), then the notices (approval, rules
+ * issues), then the sheet: four columns from 1200px (ability medallions;
+ * proficiencies; combat, spells and equipment; features and story), the
+ * medallions in a row over two columns on a tablet, one column in the paper
+ * sheet's order on a phone. Each column is a child component in this
+ * folder, which keeps every stylesheet under the 4 kB budget.
  *
  * The browser never computes a rule (ADR-0008): everything under `vm.sheet`
  * is exactly what `GetCharacter` sent, only formatted for display.
  *
- * Master-only: the "Notas do mestre" panel and "Marcar como morto" — never
+ * Master-only: the "Notas do mestre" panel and "Marcar como morto", never
  * fetched or rendered for a player (RN-11; `character-sheet.spec.ts` checks
- * `getMasterNotes` is never called for one).
+ * `getMasterNotes` is never called for one). "Marcar como morto" asks for a
+ * second click ("Confirmar morte"), since a death can't be undone.
  *
  * The story (personality, appearance, backstory, allies) is independent of
  * "Editar ficha" (RN-01's lock, driven by `canEdit`): the master can always
- * edit it, and can toggle whether the player currently can too — "Permitir
- * editar a história" / "Travar a história" — for a locked sheet
- * (`canToggleStoryEditing`, `storyEditingAllowed`). "Editar história" itself
- * only ever reads `canEditStory`, whatever the caller's role (integrator
- * amendment to A3, 29/09/2026).
+ * edit it, and can toggle whether the player currently can too, "Permitir
+ * editar a história" / "Travar a história", in the header's actions
+ * (`canToggleStoryEditing`, `storyEditingAllowed`). "Editar história", in
+ * the story panel, only ever reads `canEditStory`, whatever the caller's
+ * role (integrator amendment to A3, 29/09/2026).
  */
 @Component({
   selector: 'app-character-sheet',
   imports: [
-    FictionNotice,
+    AbilityMedallions,
+    BasicSheet,
+    CombatColumn,
+    FeaturesPanel,
+    MasterNotes,
     MatButtonModule,
-    MatCardModule,
-    MatFormFieldModule,
-    MatInputModule,
+    MatIconModule,
     MatProgressSpinnerModule,
-    ReactiveFormsModule,
+    ProficiencyColumn,
     RouterLink,
+    SheetHeader,
+    StoryPanel,
   ],
   templateUrl: './character-sheet.html',
   styleUrl: './character-sheet.scss',
@@ -93,14 +89,17 @@ export class CharacterSheetPage {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly fb = inject(FormBuilder);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
 
   protected readonly state = signal<PageState>({ status: 'loading' });
-  protected readonly masterNotesState = signal<MasterNotesState>({ status: 'not-applicable' });
-  protected readonly notesSaveState = signal<SavingState>({ status: 'idle' });
+  /** The campaign from the route, for "Voltar para a campanha" in every
+   * state, including the error one. */
+  protected readonly campaignId = signal('');
   protected readonly markDeadState = signal<SavingState>({ status: 'idle' });
-  protected readonly storyEditing = signal(false);
-  protected readonly storySaveState = signal<SavingState>({ status: 'idle' });
+  /** A death can't be undone, so it takes a second click ("Confirmar
+   * morte") after "Marcar como morto". */
+  protected readonly confirmingDeath = signal(false);
   protected readonly storyToggleState = signal<SavingState>({ status: 'idle' });
   /** "Aprovar personagem" / "Recusar personagem" (MR-024). */
   protected readonly approvalState = signal<SavingState>({ status: 'idle' });
@@ -108,41 +107,15 @@ export class CharacterSheetPage {
    * ("Confirmar recusa") after "Recusar personagem". */
   protected readonly confirmingReject = signal(false);
 
-  protected readonly abilityLabel = abilityLabel;
-  protected readonly characterKindLabel = characterKindLabel;
-  protected readonly characterStateLabel = characterStateLabel;
-  protected readonly formatDateTime = formatDateTime;
   protected readonly formatModifier = formatModifier;
-  protected readonly formatSpeedFt = formatSpeedFt;
-  protected readonly formatSpellSlots = formatSpellSlots;
-  protected readonly skillProficiencyLabel = skillProficiencyLabel;
-  protected readonly splitArmorDescription = splitArmorDescription;
-
-  protected readonly notesForm = this.fb.nonNullable.group({
-    notes: ['', Validators.maxLength(20000)],
-  });
-
-  protected readonly storyForm = this.fb.nonNullable.group({
-    traits: ['', Validators.maxLength(1000)],
-    ideals: ['', Validators.maxLength(1000)],
-    bonds: ['', Validators.maxLength(1000)],
-    flaws: ['', Validators.maxLength(1000)],
-    age: ['', Validators.maxLength(40)],
-    height: ['', Validators.maxLength(40)],
-    weight: ['', Validators.maxLength(40)],
-    eyes: ['', Validators.maxLength(40)],
-    skin: ['', Validators.maxLength(40)],
-    hair: ['', Validators.maxLength(40)],
-    appearanceDescription: ['', Validators.maxLength(2000)],
-    backstory: ['', Validators.maxLength(10000)],
-    allies: ['', Validators.maxLength(2000)],
-  });
+  protected readonly issueTitle = issueTitle;
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const campaignId = params.get('id');
       const characterId = params.get('characterId');
       if (campaignId && characterId) {
+        this.campaignId.set(campaignId);
         this.load(campaignId, characterId);
       }
     });
@@ -150,94 +123,63 @@ export class CharacterSheetPage {
 
   private load(campaignId: string, characterId: string): void {
     this.state.set({ status: 'loading' });
-    this.masterNotesState.set({ status: 'not-applicable' });
     this.source.getCharacterSheet(campaignId, characterId).then(
-      (vm) => {
-        this.state.set({ status: 'ready', vm });
-        if (vm.canAccessMasterNotes) {
-          this.loadMasterNotes(campaignId, characterId);
-        }
-      },
-      (err: unknown) => {
-        this.state.set({ status: 'error', message: describeCharacterError(err) });
-      },
+      (vm) => this.state.set({ status: 'ready', vm }),
+      (err: unknown) => this.state.set({ status: 'error', message: describeCharacterError(err) }),
     );
   }
 
-  private loadMasterNotes(campaignId: string, characterId: string): void {
-    this.masterNotesState.set({ status: 'loading' });
-    this.source.getMasterNotes(campaignId, characterId).then(
-      (notes) => {
-        this.masterNotesState.set({ status: 'ready', notes });
-        this.notesForm.setValue({ notes });
-      },
-      (err: unknown) => {
-        this.masterNotesState.set({ status: 'error', message: describeCharacterError(err) });
-      },
-    );
+  /** A child (the story panel) saved and got the updated character back. */
+  protected replaceVm(vm: CharacterSheetVm): void {
+    this.state.set({ status: 'ready', vm });
   }
 
-  protected async saveNotes(campaignId: string, characterId: string): Promise<void> {
-    if (this.notesForm.invalid) {
-      this.notesForm.markAllAsTouched();
-      return;
-    }
-    this.notesSaveState.set({ status: 'saving' });
-    try {
-      const notes = this.notesForm.getRawValue().notes;
-      await this.source.updateMasterNotes(campaignId, characterId, notes);
-      this.notesSaveState.set({ status: 'idle' });
-      this.masterNotesState.set({ status: 'ready', notes });
-    } catch (err) {
-      this.notesSaveState.set({ status: 'error', message: describeCharacterError(err) });
-    }
+  protected askToConfirmDeath(): void {
+    this.confirmingDeath.set(true);
+    this.focusAfterRender('.js-confirm-death');
+  }
+
+  protected cancelDeath(): void {
+    this.confirmingDeath.set(false);
+    this.focusAfterRender('.js-mark-dead');
+  }
+
+  protected askToConfirmReject(): void {
+    this.confirmingReject.set(true);
+    this.focusAfterRender('.js-confirm-reject');
+  }
+
+  protected cancelReject(): void {
+    this.confirmingReject.set(false);
+    this.focusAfterRender('.js-reject');
+  }
+
+  /** A confirmation replaces the button that asked for it, so the focus
+   * moves to its replacement instead of falling back to the page. */
+  private focusAfterRender(selector: string): void {
+    afterNextRender(() => this.host.nativeElement.querySelector<HTMLElement>(selector)?.focus(), {
+      injector: this.injector,
+    });
   }
 
   protected async markDead(campaignId: string, characterId: string): Promise<void> {
     this.markDeadState.set({ status: 'saving' });
     try {
       const vm = await this.source.markCharacterDead(campaignId, characterId);
+      this.confirmingDeath.set(false);
       this.state.set({ status: 'ready', vm });
       this.markDeadState.set({ status: 'idle' });
     } catch (err) {
-      this.markDeadState.set({
-        status: 'error',
-        message: describeCharacterError(err),
-      });
+      this.confirmingDeath.set(false);
+      this.markDeadState.set({ status: 'error', message: describeCharacterError(err) });
     }
-  }
-
-  protected startEditingStory(story: CharacterStoryVm | null): void {
-    const s = story ?? emptyStory;
-    this.storyForm.setValue({
-      traits: s.personality.traits,
-      ideals: s.personality.ideals,
-      bonds: s.personality.bonds,
-      flaws: s.personality.flaws,
-      age: s.appearance.age,
-      height: s.appearance.height,
-      weight: s.appearance.weight,
-      eyes: s.appearance.eyes,
-      skin: s.appearance.skin,
-      hair: s.appearance.hair,
-      appearanceDescription: s.appearance.description,
-      backstory: s.backstory,
-      allies: s.allies,
-    });
-    this.storySaveState.set({ status: 'idle' });
-    this.storyEditing.set(true);
-  }
-
-  protected cancelEditingStory(): void {
-    this.storyEditing.set(false);
   }
 
   /** Master only: flips whether the player may currently edit the story
    * (integrator amendment to A3, 29/09/2026; `SetStoryEditing` takes no
-   * revision and never changes one — see `CharacterSheetSource`'s doc
-   * comment). Never changes `canEditStory` directly — the next
-   * `getCharacterSheet` / mutation response is what updates it, same as
-   * every other server-computed flag. */
+   * revision and never changes one; see `CharacterSheetSource`'s doc
+   * comment). Never changes `canEditStory` directly: the response is what
+   * updates it, same as every other server-computed flag. */
   protected async toggleStoryEditingAllowed(
     campaignId: string,
     characterId: string,
@@ -245,7 +187,11 @@ export class CharacterSheetPage {
   ): Promise<void> {
     this.storyToggleState.set({ status: 'saving' });
     try {
-      const vm = await this.source.setStoryEditingAllowed(campaignId, characterId, !currentlyAllowed);
+      const vm = await this.source.setStoryEditingAllowed(
+        campaignId,
+        characterId,
+        !currentlyAllowed,
+      );
       this.state.set({ status: 'ready', vm });
       this.storyToggleState.set({ status: 'idle' });
     } catch (err) {
@@ -289,46 +235,5 @@ export class CharacterSheetPage {
 
   protected asBasicSheet(sheet: FullSheetVm | BasicSheetVm): BasicSheetVm {
     return sheet as BasicSheetVm;
-  }
-
-  /** "Equipamento" lists the weapons carried by name, next to the armor and
-   * shield: `DerivedSheet.attacks` already lists both weapon attacks and
-   * damage cantrips (`AttackVm.kind`), so the weapons are simply the
-   * `'weapon'` ones — no separate request for `FullSheet.weapon_keys`'
-   * names (integrator fix: the section used to show only free-text items
-   * and coins, never what the player actually equipped). */
-  protected weaponNames(sheet: FullSheetVm): readonly string[] {
-    return sheet.attacks.filter((a) => a.kind === 'weapon').map((a) => a.namePt);
-  }
-
-  protected async saveStory(campaignId: string, characterId: string, revision: number): Promise<void> {
-    if (this.storyForm.invalid) {
-      this.storyForm.markAllAsTouched();
-      return;
-    }
-    this.storySaveState.set({ status: 'saving' });
-    const v = this.storyForm.getRawValue();
-    const story: CharacterStoryVm = {
-      personality: { traits: v.traits, ideals: v.ideals, bonds: v.bonds, flaws: v.flaws },
-      appearance: {
-        age: v.age,
-        height: v.height,
-        weight: v.weight,
-        eyes: v.eyes,
-        skin: v.skin,
-        hair: v.hair,
-        description: v.appearanceDescription,
-      },
-      backstory: v.backstory,
-      allies: v.allies,
-    };
-    try {
-      const vm = await this.source.updateCharacterStory(campaignId, characterId, revision, story);
-      this.state.set({ status: 'ready', vm });
-      this.storySaveState.set({ status: 'idle' });
-      this.storyEditing.set(false);
-    } catch (err) {
-      this.storySaveState.set({ status: 'error', message: describeCharacterError(err) });
-    }
   }
 }

@@ -1,8 +1,7 @@
-.status-card {
-  max-width: 28rem;
-  margin: 2rem auto;
-
-  &--error {
-    border-inline-start: 4px solid var(--mat-sys-error);
-  }
+.server-unavailable-page {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--mr-space-4);
+  max-width: 640px;
 }

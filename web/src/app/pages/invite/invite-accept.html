@@ -1,48 +1,40 @@
-<h1>Convite</h1>
+<h1 class="mr-page-title">Convite</h1>
 
-@if (state(); as s) {
-  @switch (s.status) {
-    @case ('waiting-for-session') {
-      <mat-card class="status-card" role="status" aria-live="polite">
-        <mat-card-content class="status-card__content">
-          <mat-spinner diameter="32" />
+<div class="invite-page">
+  @if (state(); as s) {
+    @switch (s.status) {
+      @case ('waiting-for-session') {
+        <section class="mr-panel invite-page__loading" role="status" aria-live="polite">
+          <mat-spinner diameter="28" aria-label="Confirmando sua sessão" />
           <p>Confirmando sua sessão...</p>
-        </mat-card-content>
-      </mat-card>
-    }
-    @case ('accepting') {
-      <mat-card class="status-card" role="status" aria-live="polite">
-        <mat-card-content class="status-card__content">
-          <mat-spinner diameter="32" />
+        </section>
+      }
+      @case ('accepting') {
+        <section class="mr-panel invite-page__loading" role="status" aria-live="polite">
+          <mat-spinner diameter="28" aria-label="Entrando na campanha" />
           <p>Entrando na campanha...</p>
-        </mat-card-content>
-      </mat-card>
-    }
-    @case ('no-token') {
-      <mat-card class="status-card" role="alert">
-        <mat-card-content>
+        </section>
+      }
+      @case ('no-token') {
+        <div class="mr-notice mr-notice--danger" role="alert">
+          <mat-icon aria-hidden="true">error</mat-icon>
           <p>Link de convite inválido. Peça um novo link a quem te convidou.</p>
-        </mat-card-content>
-      </mat-card>
-    }
-    @case ('signed-out') {
-      <mat-card class="status-card">
-        <mat-card-content>
+        </div>
+      }
+      @case ('signed-out') {
+        <section class="mr-panel invite-page__prompt">
           <p>Entre com sua conta para aceitar o convite.</p>
-        </mat-card-content>
-        <mat-card-actions>
           <button mat-flat-button type="button" (click)="signInToAccept()">
             Entrar para aceitar o convite
           </button>
-        </mat-card-actions>
-      </mat-card>
-    }
-    @case ('error') {
-      <mat-card class="status-card status-card--error" role="alert">
-        <mat-card-content>
+        </section>
+      }
+      @case ('error') {
+        <div class="mr-notice mr-notice--danger" role="alert">
+          <mat-icon aria-hidden="true">error</mat-icon>
           <p>{{ s.message }}</p>
-        </mat-card-content>
-      </mat-card>
+        </div>
+      }
     }
   }
-}
+</div>

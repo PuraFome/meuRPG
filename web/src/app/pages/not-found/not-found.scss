@@ -1,10 +1,13 @@
-.not-found {
-  max-width: 28rem;
-  margin: 3rem auto;
-  text-align: center;
+.not-found-panel {
+  max-width: 640px;
 
-  h1 {
-    font-size: 3rem;
-    margin: 0;
+  p {
+    margin: 0 0 var(--mr-space-4);
   }
+}
+
+.not-found-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-3);
 }

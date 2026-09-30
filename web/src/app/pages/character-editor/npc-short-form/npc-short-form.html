@@ -1,0 +1,49 @@
+<div class="short" [formGroup]="form()">
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="short__name">
+    <mat-label>Nome do personagem</mat-label>
+    <input matInput formControlName="name" maxlength="80" autocomplete="off" />
+    <mat-error>Escreva o nome do NPC.</mat-error>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="short__hp">
+    <mat-label>Pontos de vida (máximo)</mat-label>
+    <input matInput type="number" inputmode="numeric" formControlName="hitPointsMax" min="1" />
+    <mat-error>Pelo menos 1.</mat-error>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+    <mat-label>Classe de Armadura</mat-label>
+    <input matInput type="number" inputmode="numeric" formControlName="armorClass" min="1" />
+    <mat-error>Pelo menos 1.</mat-error>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+    <mat-label>Deslocamento (pés)</mat-label>
+    <input matInput type="number" inputmode="numeric" formControlName="speedWalkFt" min="0" />
+    <mat-error>Zero ou mais.</mat-error>
+    @if (speedLabel(); as speed) {
+      <mat-hint>Na ficha: {{ speed }}</mat-hint>
+    }
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+    <mat-label>Bônus de ataque</mat-label>
+    <input matInput type="number" formControlName="attackBonus" />
+    <mat-error>Escreva um número, 0 se não houver.</mat-error>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="short__damage">
+    <mat-label>Dano</mat-label>
+    <input matInput formControlName="damage" maxlength="80" placeholder="1d6+1 perfurante" />
+    <mat-error>Escreva o dano, como 1d6+1 perfurante.</mat-error>
+    <mat-hint>Dados, bônus e tipo</mat-hint>
+  </mat-form-field>
+
+  <app-fiction-notice class="short__wide" />
+
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="short__wide">
+    <mat-label>Descrição</mat-label>
+    <textarea matInput formControlName="description" rows="4"></textarea>
+    <mat-error>Até 2.000 caracteres.</mat-error>
+  </mat-form-field>
+</div>

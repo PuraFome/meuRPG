@@ -96,9 +96,19 @@ Os testes de aceite pela tela ficam em `e2e/`, um projeto Playwright em TypeScri
   - `browser.newContext()` sem `storageState` explícito herda o `storageState` que o arquivo configurou por `test.use()`, se houver — por isso um contexto que precisa começar deslogado (o "visitante" de `invite.spec.ts`) fica num arquivo sem `test.use()` nenhum, com todo contexto explícito sobre o próprio estado.
   - Nenhum teste define o nome de exibição das contas compartilhadas: `ui.spec.ts` espera "Minha conta" (o texto padrão de `user-menu.ts` sem nome definido), que só continua certo enquanto nenhum outro teste passar por `/perfil` nessas contas.
 - Cada teste que prova um critério de aceite leva a tag da história ou da regra, como `@MR-001`. `npx playwright test --grep @MR-001` roda só os dela.
+- O `a11y.spec.ts` passa o [axe](https://github.com/dequelabs/axe-core) (`@axe-core/playwright`) nas telas principais, no tema claro e no escuro, no desktop e no celular, e falha em qualquer violação séria ou crítica das regras WCAG 2.1 A e AA. `npx playwright test --grep @a11y` roda só ele.
 - O `ui.spec.ts` faz o login pela tela, clicando em "Entrar" e em "Sair". Os outros testes de login começam direto em `/auth/login?return_to=/`, que é mais rápido e mantém o foco no servidor.
 
 Para adicionar ou atualizar uma dependência de `e2e/`: `cd e2e && npm install <pacote>@<versão>`. O `e2e/.npmrc` já impede scripts de instalação e grava a versão exata.
+
+## Telas: desenho e revisão
+
+Toda tela nova, ou mudança visível numa tela, segue o [design](docs/design.md) do app, a "ficha de papel", e passa por quatro passos:
+
+1. **Brief:** a tarefa da tela, quem usa, onde, os dados reais e todos os estados (vazio, carregando, erro, travado, pendente).
+2. **Desenho** no Claude Design, com o sistema visual do app, a 390px e a 1280px, aprovado antes do código. Correção pequena dentro do sistema não precisa de desenho.
+3. **Código com os tokens** (`--mr-*` em `web/src/styles.scss`) e as peças comuns (`web/src/styles/_ui.scss`), nunca uma cor escrita à mão.
+4. **Revisão pela tela:** prints a 390, 768 e 1280px, no tema claro e no escuro, em cada estado, conferidos com o desenho; o `a11y.spec.ts` sem violação; o PR com os prints de antes e depois e a checklist de telas preenchida.
 
 ## Queries com sqlc
 
@@ -200,6 +210,7 @@ O `package.json` da raiz é o do app antigo (`src/`, descontinuado) e não receb
 | Unitário | `go test`, com tabelas de casos | As contas do módulo `rules` e cada regra de negócio isolada. |
 | Integração | `go test` + CockroachDB no Docker | Queries do sqlc, migrations, a repetição no erro `40001` e quem pode fazer o quê. |
 | Ponta a ponta | Playwright + um provedor OIDC local | Os critérios de aceite, pela tela, como o usuário faria. |
+| Acessibilidade | axe (`@axe-core/playwright`) no Playwright | Cada tela principal, no tema claro e no escuro: nenhuma violação séria ou crítica de WCAG 2.1 A e AA. |
 
 **Teste de aceite.** Cada critério de aceite de uma história (`docs/produto/historias.md`) vira um teste automático desse tipo: `go test` para a regra que roda no servidor, Playwright para o que aparece na tela. Uma história só está pronta quando os testes dela passam. Não há teste de caracterização do app antigo — ele é descontinuado, e o sistema novo só precisa provar os próprios critérios.
 
@@ -211,7 +222,8 @@ A documentação muda no mesmo PR que o código. Um PR que muda comportamento se
 | --- | --- |
 | Regra nova ou regra mudada | `docs/produto/regras.md` (um RN novo) e a história afetada |
 | História nova ou prioridade mudada | `docs/produto/historias.md` |
-| Tela ou fluxo novo | Critérios de aceite e o teste Playwright deles |
+| Tela ou fluxo novo | Critérios de aceite e o teste Playwright deles; o desenho aprovado e os prints no PR (ver [Telas](#telas-desenho-e-revisão)) |
+| Cor, fonte, espaço ou componente visual | `docs/design.md` e o sistema visual no Claude Design |
 | Tabela ou coluna | Migration e `docs/dados.md`, com o diagrama |
 | Serviço ou mensagem da API | Comentários no `.proto`; a referência é gerada sozinha |
 | Módulo novo, serviço externo ou infraestrutura | `docs/arquitetura.md` e, se for difícil de desfazer, um ADR |

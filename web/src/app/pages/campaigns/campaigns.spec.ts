@@ -54,9 +54,12 @@ describe('Campaigns', () => {
     fake.listMyCampaignsResult = Promise.resolve({ campaigns: [] });
     const el = await render();
     expect(el.textContent).toContain('Você ainda não tem nenhuma campanha');
+    // It invites both ways in: creating one, or an invite link.
+    expect(el.textContent).toContain('Criar campanha');
+    expect(el.textContent).toContain('link de convite');
   });
 
-  it('lists campaigns with the role shown as mestre/jogador', async () => {
+  it('lists campaigns with the role shown as a Mestre/Jogador tag', async () => {
     fake.listMyCampaignsResult = Promise.resolve({
       campaigns: [
         campaign('c1', 'Mirathel', Role.MASTER),
@@ -66,12 +69,16 @@ describe('Campaigns', () => {
     const el = await render();
 
     expect(el.textContent).toContain('Mirathel');
-    expect(el.textContent).toContain('mestre');
+    expect(el.textContent).toContain('Mestre');
     expect(el.textContent).toContain('Segunda Mesa');
-    expect(el.textContent).toContain('jogador');
+    expect(el.textContent).toContain('Jogador');
 
+    // Each row is one link, with the name and the role tag inside it.
     const links = Array.from(el.querySelectorAll('a[href]'));
-    expect(links.some((a) => a.getAttribute('href') === '/campanhas/c1')).toBe(true);
+    const first = links.find((a) => a.getAttribute('href') === '/campanhas/c1');
+    expect(first?.textContent).toContain('Mirathel');
+    expect(first?.querySelector('.mr-tag')?.textContent?.trim()).toBe('Mestre');
+    expect(first?.textContent).toContain('XP por inimigos derrotados');
   });
 
   it('shows a campaign that awaits the master\'s approval as such, not as jogador (MR-024)', async () => {
@@ -79,8 +86,10 @@ describe('Campaigns', () => {
       campaigns: [{ ...campaign('c1', 'Mirathel', Role.PLAYER), awaitingApproval: true }],
     });
     const el = await render();
-    expect(el.textContent).toContain('esperando a aprovação do mestre');
+    expect(el.textContent).toContain('Esperando a aprovação do mestre');
+    expect(el.querySelector('.mr-tag')?.textContent?.trim()).toBe('Pendente');
     expect(el.textContent).not.toContain('jogador');
+    expect(el.textContent).not.toContain('Jogador');
   });
 
   it('shows a message when listing campaigns fails', async () => {

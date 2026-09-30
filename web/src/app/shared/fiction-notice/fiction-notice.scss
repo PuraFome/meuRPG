@@ -1,18 +1,23 @@
+// docs/design.md: a quiet inline note, not a full .mr-notice — it sits
+// right under a free-text field, so it must not compete with a real
+// warning or error notice.
 .fiction-notice {
   display: flex;
   align-items: flex-start;
-  gap: 0.5rem;
-  margin: 0.5rem 0 1rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 4px;
-  background: var(--mat-sys-surface-variant);
-  color: var(--mat-sys-on-surface-variant);
-  font-size: 0.875rem;
+  gap: var(--mr-space-2);
+  margin: var(--mr-space-2) 0 var(--mr-space-4);
+  padding: 6px var(--mr-space-3);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-ground);
+  color: var(--mr-ink-muted);
+  font-size: 14px;
+  line-height: 19px;
 }
 
 .fiction-notice__icon {
   flex: none;
-  font-size: 1.125rem;
-  height: 1.125rem;
-  width: 1.125rem;
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  margin-top: 1px;
 }

@@ -230,6 +230,22 @@ describe('the sheet header shows alignment and XP, read from the stored FullShee
   });
 });
 
+describe('the sheet header names the race', () => {
+  it('uses the subrace name when there is one, the race name otherwise', () => {
+    const character = characterWithFullSheet(minimalFullSheet());
+    const withSubrace = toCharacterSheetVm({
+      ...character,
+      derived: { ...minimalDerivedSheet(), raceNamePt: 'Gnomo', subraceNamePt: 'Gnomo das Rochas' },
+    });
+    expect(withSubrace.raceLabel).toBe('Gnomo das Rochas');
+    const raceOnly = toCharacterSheetVm({
+      ...character,
+      derived: { ...minimalDerivedSheet(), raceNamePt: 'Humano', subraceNamePt: '' },
+    });
+    expect(raceOnly.raceLabel).toBe('Humano');
+  });
+});
+
 describe('the sheet maps armor_class_description, features and hints (integrator fix)', () => {
   it('carries armor_class_description, each feature\'s source_pt, and every hint straight through', () => {
     const derived: DerivedSheet = {

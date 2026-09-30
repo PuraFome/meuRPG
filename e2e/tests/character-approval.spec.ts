@@ -33,8 +33,8 @@ async function campaignWithApprovalInvite(page: Page, name: string): Promise<{ c
   await expect(page.getByText('só entra na campanha depois que você aprovar')).toBeVisible();
   const link = (await page.locator('.invite-reveal__link').textContent())?.trim();
   expect(link).toBeTruthy();
-  // The invite list says so too.
-  await expect(page.getByRole('cell', { name: 'exige aprovação' })).toBeVisible();
+  // The invite list says so too (one row per invite, not a table).
+  await expect(page.getByRole('list', { name: 'Convites gerados' }).getByText('Exige aprovação do mestre')).toBeVisible();
   return { campaignId, link: link! };
 }
 
@@ -64,7 +64,8 @@ test(
       await expect(playerPage).toHaveURL(new RegExp(`/campanhas/${campaignId}/personagens/novo$`));
 
       const characterId = await createCharacterViaUI(playerPage, campaignId, pensantus);
-      await expect(playerPage.getByRole('list', { name: 'Estado do personagem' })).toContainText('Pendente de aprovação');
+      // The state tag is one word; the notice under the header spells it out.
+      await expect(playerPage.getByRole('list', { name: 'Estado do personagem' })).toContainText('Pendente');
       await expect(playerPage.getByText('Esperando a aprovação do mestre')).toBeVisible();
       // They keep editing while they wait.
       await expect(playerPage.getByRole('link', { name: 'Editar ficha' })).toBeVisible();

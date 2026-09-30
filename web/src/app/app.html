@@ -1,22 +1,38 @@
-<mat-toolbar class="app-toolbar">
-  <mat-toolbar-row class="app-toolbar__main">
-    <a class="app-toolbar__brand" routerLink="/">MeuRPG</a>
-    <span class="app-toolbar__spacer"></span>
-    <app-user-menu />
-  </mat-toolbar-row>
-  <mat-toolbar-row class="app-toolbar__nav">
-    <a
-      mat-button
-      routerLink="/"
-      routerLinkActive="app-toolbar__nav-link--active"
-      [routerLinkActiveOptions]="{ exact: true }"
-      >Início</a
-    >
-    <a mat-button routerLink="/campanhas" routerLinkActive="app-toolbar__nav-link--active"
-      >Minhas campanhas</a
-    >
-  </mat-toolbar-row>
-</mat-toolbar>
+<header class="app-bar">
+  <a class="app-bar__brand" routerLink="/">MeuRPG</a>
+
+  <button
+    type="button"
+    class="app-bar__toggle"
+    aria-controls="app-bar-menu"
+    [attr.aria-expanded]="menuOpen()"
+    [attr.aria-label]="menuOpen() ? 'Fechar o menu' : 'Abrir o menu'"
+    (click)="toggleMenu()"
+  >
+    <mat-icon aria-hidden="true">{{ menuOpen() ? 'close' : 'menu' }}</mat-icon>
+  </button>
+
+  <div id="app-bar-menu" class="app-bar__menu" [class.app-bar__menu--open]="menuOpen()">
+    <nav class="app-bar__nav" aria-label="Principal">
+      <a
+        class="app-bar__link"
+        routerLink="/"
+        routerLinkActive="app-bar__link--active"
+        ariaCurrentWhenActive="page"
+        [routerLinkActiveOptions]="{ exact: true }"
+        >Início</a
+      >
+      <a
+        class="app-bar__link"
+        routerLink="/campanhas"
+        routerLinkActive="app-bar__link--active"
+        ariaCurrentWhenActive="page"
+        >Minhas campanhas</a
+      >
+    </nav>
+    <app-user-menu class="app-bar__user" />
+  </div>
+</header>
 
 <main class="app-content">
   <router-outlet />

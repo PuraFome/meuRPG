@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
+import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { AuthService } from '../../core/auth/auth.service';
@@ -16,7 +16,7 @@ import { AuthService } from '../../core/auth/auth.service';
  */
 @Component({
   selector: 'app-server-unavailable',
-  imports: [MatButtonModule, MatCardModule],
+  imports: [MatButtonModule, MatIconModule],
   templateUrl: './server-unavailable.html',
   styleUrl: './server-unavailable.scss',
 })

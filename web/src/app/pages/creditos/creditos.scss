@@ -1,13 +1,34 @@
 :host {
   display: block;
-  max-width: 42rem;
+}
+
+// docs/design.md: three panels (regras, fontes, ícones), stacked at reading
+// width, each a self-contained subject.
+.creditos-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+  max-width: 640px;
+
+  p {
+    margin: 0 0 var(--mr-space-3);
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
 }
 
 .srd-attribution {
-  margin: 1rem 0;
-  padding: 0.75rem 1rem;
-  border-left: 3px solid var(--mat-sys-outline);
-  background: var(--mat-sys-surface-variant);
-  color: var(--mat-sys-on-surface-variant);
-  font-size: 0.9rem;
+  margin: var(--mr-space-3) 0;
+  padding: var(--mr-space-3) var(--mr-space-4);
+  border-left: 3px solid var(--mr-control-line);
+  background: var(--mr-ground);
+  color: var(--mr-ink-muted);
+  font-size: 14px;
+  line-height: 19px;
+  // The required verbatim text (docs/adr, private) carries two long,
+  // unbroken URLs; without this, they overflow the panel sideways at a
+  // narrow width instead of wrapping.
+  overflow-wrap: anywhere;
 }

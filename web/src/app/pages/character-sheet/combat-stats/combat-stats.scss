@@ -1,0 +1,158 @@
+:host {
+  display: block;
+}
+
+// Six tracks: the top row is three boxes of two tracks (or two of three on
+// a basic sheet), the hit points take four and the hit dice two.
+.stats {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  align-items: center;
+  gap: var(--mr-space-3);
+  margin: 0;
+}
+
+.shield,
+.box {
+  grid-column: span 2;
+
+  .stats--basic & {
+    grid-column: span 3;
+  }
+}
+
+// Label under the number, as on the paper sheet.
+.shield,
+.box {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.stat__label {
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 500;
+  color: var(--mr-ink-muted);
+}
+
+.shield {
+  position: relative;
+  height: 118px;
+  gap: 2px;
+}
+
+.shield__value {
+  display: flex;
+  justify-content: center;
+  margin: 0;
+}
+
+.shield__shape {
+  position: absolute;
+  top: 3px;
+  left: 50%;
+  margin-left: -48px;
+
+  path {
+    fill: var(--mr-surface);
+    stroke: var(--mr-accent);
+    stroke-width: 2.5;
+  }
+}
+
+.shield__number {
+  position: relative;
+  z-index: 1;
+  margin-top: -6px;
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 40px;
+  line-height: 40px;
+  color: var(--mr-ink);
+}
+
+// Above the shield's shape, which is absolutely positioned behind them.
+.shield .stat__label {
+  position: relative;
+  z-index: 1;
+  max-width: 76px;
+}
+
+.box {
+  box-sizing: border-box;
+  height: 110px;
+  gap: 4px;
+  padding: 8px;
+  background: var(--mr-surface);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+}
+
+.box__value {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-weight: 700;
+  font-size: 34px;
+  line-height: 38px;
+  white-space: nowrap;
+  color: var(--mr-ink);
+
+  &--dice {
+    font-size: 30px;
+    line-height: 34px;
+  }
+}
+
+.box--dice {
+  align-self: stretch;
+  height: auto;
+}
+
+.hp {
+  grid-column: span 4;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    'value label'
+    'value note';
+  align-items: center;
+  column-gap: 14px;
+  padding: 12px 18px;
+  background: var(--mr-surface);
+  border: 2px solid var(--mr-accent);
+  border-radius: var(--mr-radius-lg);
+
+  &--wide {
+    grid-column: 1 / -1;
+  }
+}
+
+.hp__label {
+  grid-area: label;
+  align-self: end;
+  font-size: 16px;
+  line-height: 20px;
+  color: var(--mr-ink);
+}
+
+.hp__value {
+  grid-area: value;
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 44px;
+  line-height: 44px;
+  color: var(--mr-ink);
+}
+
+.hp__note {
+  grid-area: note;
+  align-self: start;
+  margin: 0;
+  font-size: 14px;
+  line-height: 18px;
+  color: var(--mr-ink-muted);
+}

@@ -1,8 +1,46 @@
-.session-card {
-  max-width: 32rem;
-  margin: 1rem 0;
+:host {
+  display: block;
 }
 
-.form-error {
-  color: var(--mat-sys-error);
+// The one panel with an accent outline: the session is what the master
+// comes to this page to run (the design's campaign artboard).
+.session {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  border: 1.5px solid var(--mr-accent);
+  padding: var(--mr-space-4) 18px 18px;
+
+  .mr-panel__title {
+    margin: 0;
+  }
+}
+
+.session__text {
+  margin: 0;
+  font-size: 17px;
+  line-height: 24px;
+}
+
+.session__locked {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: 0;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+// The screen's one primary action: full width on a phone, as wide as its
+// words from a tablet up (the theme sets its height).
+.session__action {
+  @media (min-width: 768px) {
+    align-self: flex-start;
+    min-width: 12rem;
+  }
 }

@@ -82,25 +82,29 @@ test(
 
       await joinedPage.goto(`/campanhas/${campaignId}/personagens/${characterId}`);
 
-      // The official sheet's sections (character-sheet.html), each an
-      // <h2> (Magias only shows for a caster, which Pensantus is).
+      // The official sheet's sections (character-sheet.html and its child
+      // components), each an <h2>. "Atributos" and "Combate" are for screen
+      // readers (the medallions and the shield are their visible titles);
+      // "Magias de mago" only shows for a caster, which Pensantus is.
       for (const section of ['Atributos', 'Combate', 'Perícias', 'Magias', 'Equipamento', 'Características e traços', 'História']) {
         await expect(joinedPage.getByRole('heading', { level: 2, name: section })).toBeVisible();
       }
 
       // The numbers come from the server's DerivedSheet, never recalculated
-      // in the browser: the ability box shows "score (modifier)".
+      // in the browser: the ability medallion shows the modifier (the score
+      // is in its pill), and the spell DC and attack are written on rules,
+      // label under the value, like the paper sheet.
       await expect(joinedPage.locator('dt:text-is("Inteligência") + dd')).toContainText(pensantusDerived.intModifier);
-      await expect(
-        joinedPage.getByText(new RegExp(`CD de magia ${pensantusDerived.spellSaveDc}\\b`)),
-      ).toBeVisible();
-      await expect(
-        joinedPage.getByText(new RegExp(`ataque de magia \\${pensantusDerived.spellAttackBonus}\\b`)),
-      ).toBeVisible();
+      await expect(joinedPage.locator('dt:text-is("CD de magia") + dd')).toHaveText(
+        String(pensantusDerived.spellSaveDc),
+      );
+      await expect(joinedPage.locator('dt:text-is("Ataque de magia") + dd')).toHaveText(
+        pensantusDerived.spellAttackBonus,
+      );
       await expect(joinedPage.locator('dt:text-is("Classe de Armadura") + dd')).toHaveText(
         String(pensantusDerived.armorClass),
       );
-      await expect(joinedPage.locator('dt:text-is("Pontos de Vida (máximo)") + dd')).toHaveText(
+      await expect(joinedPage.locator('dt:text-is("Pontos de vida máximos") + dd')).toHaveText(
         String(pensantusDerived.hitPointsMax),
       );
     } finally {
@@ -136,7 +140,7 @@ test('o mestre cria um inimigo com ficha completa e um minion com ficha básica'
   await page.getByLabel('Deslocamento (pés)').fill('30');
   await page.getByLabel('Bônus de ataque').fill('2');
   await page.getByLabel('Dano').fill('1d6+1 perfurante');
-  await page.getByRole('button', { name: 'Criar personagem' }).click();
+  await page.getByRole('button', { name: 'Criar NPC' }).click();
   await expect(page).toHaveURL(/\/campanhas\/[^/]+\/personagens\/[^/]+$/);
 
   await page.goto(`/campanhas/${campaignId}`);

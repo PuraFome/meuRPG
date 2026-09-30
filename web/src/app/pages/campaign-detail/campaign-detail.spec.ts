@@ -1,10 +1,11 @@
-import { Injectable } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { Code, ConnectError } from '@connectrpc/connect';
 import { of } from 'rxjs';
 
 import { Campaign, Member, Role, XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import { AuthService, AuthState } from '../../core/auth/auth.service';
 import { CampaignsService } from '../../core/campaigns/campaigns.service';
 import { CampaignDetail } from './campaign-detail';
 import {
@@ -57,6 +58,15 @@ class FakeCampaignsService {
   }
 }
 
+/** Who is signed in: `u1` unless a test says otherwise. */
+class FakeAuthService {
+  readonly state = signal<AuthState>({
+    status: 'signed-in',
+    user: { id: 'u1', displayName: null },
+    sessionExpiresAt: null,
+  });
+}
+
 function campaign(id: string, name: string, myRole: Role): Campaign {
   return { id, name, myRole, xpMode: XpMode.ENEMIES, createdAt: undefined } as Campaign;
 }
@@ -89,6 +99,7 @@ describe('CampaignDetail', () => {
         { provide: ActivatedRoute, useValue: activatedRouteFor(id) },
         { provide: CampaignCharactersSource, useClass: FakeCampaignCharactersSource },
         { provide: GameSessionSource, useClass: FakeGameSessionSource },
+        { provide: AuthService, useClass: FakeAuthService },
       ],
     });
     fake = TestBed.inject(CampaignsService) as unknown as FakeCampaignsService;
@@ -116,10 +127,31 @@ describe('CampaignDetail', () => {
     const headings = el.querySelectorAll('h1');
     expect(headings.length).toBe(1);
     expect(headings[0].textContent).toContain('Mirathel');
+    expect(el.textContent).toContain('Você é mestre nesta campanha. XP por inimigos derrotados.');
     expect(el.textContent).toContain('Vinicius');
-    // Never an e-mail; the neutral fallback for someone with no name yet.
-    expect(el.textContent).toContain('Sem nome');
+    // Never an e-mail, and never a bare "Sem nome": the fallback says the role.
+    expect(el.textContent).toContain('Jogador sem nome');
+    expect(el.textContent).not.toContain('Sem nome');
     expect(el.textContent).not.toContain('@');
+  });
+
+  it('marks the viewer\'s own row, and points them to "Meu perfil" while they have no name', async () => {
+    configure();
+    fake.getCampaignResult = Promise.resolve({
+      campaign: campaign('camp-1', 'Mirathel', Role.MASTER),
+    });
+    fake.listMembersResult = Promise.resolve({
+      members: [member('u1', '', Role.MASTER), member('u2', 'Vinicius', Role.PLAYER)],
+    });
+
+    const el = await render();
+    const rows = Array.from(el.querySelectorAll('section[aria-labelledby="members-heading"] li'));
+    expect(rows[0].textContent).toContain('Mestre sem nome');
+    expect(rows[0].textContent).toContain('(você)');
+    expect(rows[0].querySelector('a')?.getAttribute('href')).toBe('/perfil');
+    // Somebody else's row: no "(você)" and no link to the viewer's profile.
+    expect(rows[1].textContent).not.toContain('(você)');
+    expect(rows[1].querySelector('a')).toBeNull();
   });
 
   it('shows "campanha não encontrada" for a not_found response, and never reveals why', async () => {

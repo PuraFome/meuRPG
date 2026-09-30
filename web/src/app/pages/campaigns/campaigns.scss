@@ -1,30 +1,57 @@
-.status-card,
-.empty-state,
-.new-campaign {
-  max-width: 32rem;
-  margin: 1rem 0;
+:host {
+  display: block;
 }
 
-.status-card__content {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
+// The form first, then the list; from 1024px the form is a column on the
+// left that stays in view while the list scrolls.
+.campaigns-layout {
+  display: grid;
+  gap: var(--mr-space-4);
+
+  @media (min-width: 1024px) {
+    grid-template-columns: 22rem minmax(0, 1fr);
+    gap: var(--mr-space-6);
+    align-items: start;
+  }
 }
 
-.status-card--error {
-  color: var(--mat-sys-error);
+.create {
+  @media (min-width: 1024px) {
+    position: sticky;
+    top: 88px;
+  }
 }
 
-.full-width {
-  width: 100%;
-}
-
-.form-error {
-  color: var(--mat-sys-error);
-  margin: 0 0 1rem;
-}
-
-form {
+.create__form {
   display: flex;
   flex-direction: column;
+  padding-top: var(--mr-space-2);
+}
+
+.create__error {
+  margin-bottom: var(--mr-space-3);
+}
+
+.campaigns-list {
+  min-width: 0;
+}
+
+.list-panel {
+  padding-block: var(--mr-space-1);
+}
+
+.list-status {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  margin: 0;
+  color: var(--mr-ink-muted);
+}
+
+.pending-dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--mr-warning-ink);
 }

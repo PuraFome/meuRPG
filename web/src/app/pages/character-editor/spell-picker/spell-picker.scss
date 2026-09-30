@@ -1,0 +1,48 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.picker__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-weight: 700;
+  font-size: 19px;
+  line-height: 24px;
+}
+
+.picker__chosen {
+  margin: 2px 0 var(--mr-space-3);
+  min-height: 19px;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.picker__search {
+  width: 100%;
+}
+
+// The list scrolls inside a quiet box, so the step stays short.
+.picker__list {
+  display: flex;
+  flex-direction: column;
+  max-height: 280px;
+  margin-top: var(--mr-space-2);
+  padding: var(--mr-space-1) var(--mr-space-2);
+  overflow-y: auto;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-sm);
+}
+
+.picker__level {
+  color: var(--mr-ink-muted);
+  font-size: 14px;
+}
+
+.picker__empty {
+  margin: 0;
+  padding: var(--mr-space-3) var(--mr-space-2);
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}

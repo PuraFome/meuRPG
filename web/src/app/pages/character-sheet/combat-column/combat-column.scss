@@ -1,0 +1,175 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+  min-width: 0;
+}
+
+.attacks {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 16px;
+  line-height: 20px;
+
+  th {
+    padding: 4px 0;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--mr-ink-muted);
+    text-align: left;
+  }
+
+  td {
+    padding: 7px 0;
+    border-top: 1px solid var(--mr-rule);
+    vertical-align: top;
+  }
+
+  .attacks__bonus {
+    padding-left: var(--mr-space-3);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  td.attacks__bonus {
+    font-weight: 700;
+  }
+
+  .attacks__damage {
+    padding-left: var(--mr-space-5);
+  }
+}
+
+.attacks__save {
+  display: block;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.spells {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+
+  .mr-panel__title {
+    margin: 0;
+  }
+}
+
+.spells__class {
+  margin: var(--mr-space-2) 0 0;
+  font-size: 17px;
+  line-height: 22px;
+}
+
+// Ability, DC and attack, written on a rule like the header fields.
+.trio {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--mr-space-2);
+  margin: 0;
+}
+
+.trio__item {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-start;
+  gap: 4px;
+  min-width: 0;
+
+  dt {
+    font-size: 13px;
+    line-height: 16px;
+    color: var(--mr-ink-muted);
+  }
+
+  dd {
+    margin: 0;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--mr-ink);
+    font-size: 19px;
+    line-height: 24px;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+}
+
+.spells__limits {
+  margin: 0;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.slots,
+.spells__names,
+.gear,
+.coins {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.slots {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.slots__row {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+}
+
+.slots__level {
+  flex-shrink: 0;
+  width: 92px;
+}
+
+.slots__circles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.slots__circle {
+  box-sizing: border-box;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--mr-ink);
+  border-radius: 50%;
+}
+
+.spells__lists {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mr-space-3);
+}
+
+.spells__label {
+  margin: 0 0 2px;
+  font-family: var(--mr-font-sans);
+  font-size: 14px;
+  line-height: 18px;
+  font-weight: 500;
+  color: var(--mr-ink-muted);
+}
+
+.gear {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 22px;
+}
+
+.coins {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-3);
+  margin-top: var(--mr-space-2);
+  font-size: 15px;
+
+  abbr {
+    text-decoration: none;
+  }
+}

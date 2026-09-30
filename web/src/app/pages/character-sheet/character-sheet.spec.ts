@@ -179,6 +179,22 @@ function flush(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
+/** The `<dd>` right after the `<dt>` with exactly this text (the page's
+ * `<dl>`s: header fields, medallions, combat numbers, the story). */
+function ddAfter(el: HTMLElement, term: string): HTMLElement | null {
+  const dt = Array.from(el.querySelectorAll('dt')).find((d) => d.textContent?.trim() === term);
+  return (dt?.nextElementSibling as HTMLElement | null) ?? null;
+}
+
+function sectionTitled(el: HTMLElement, title: string): HTMLElement {
+  const heading = Array.from(el.querySelectorAll('h2')).find((h) => h.textContent?.trim() === title);
+  return heading!.closest('section')!;
+}
+
+function buttonWithText(el: HTMLElement, text: string): HTMLButtonElement | undefined {
+  return Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim() === text);
+}
+
 describe('CharacterSheetPage', () => {
   let fake: FakeCharacterSheetSource;
 
@@ -221,7 +237,9 @@ describe('CharacterSheetPage', () => {
       );
 
     const el = await render();
-    expect(el.textContent).toContain('18 (+9)');
+    // The medallion: the modifier large, the score in the pill, verbatim.
+    expect(ddAfter(el, 'Inteligência')?.textContent?.trim()).toBe('+9');
+    expect(ddAfter(el, 'Inteligência')?.nextElementSibling?.textContent).toContain('18');
   });
 
   it('shows a weapon attack with its bonus, and a damage cantrip with its save DC', async () => {
@@ -300,14 +318,25 @@ describe('CharacterSheetPage', () => {
       );
 
     const el = await render();
-    expect(el.textContent).toContain('1º círculo: 4 · 2º círculo: 2');
+    // One row per level, "círculo" as the term, and the slots as circles
+    // with an accessible count.
+    const rows = Array.from(el.querySelectorAll('.slots__row'));
+    expect(rows.map((r) => r.querySelector('.slots__level')?.textContent?.trim())).toEqual([
+      '1º círculo',
+      '2º círculo',
+    ]);
+    expect(rows.map((r) => r.querySelectorAll('.slots__circle').length)).toEqual([4, 2]);
+    expect(rows.map((r) => r.querySelector('[role="img"]')?.getAttribute('aria-label'))).toEqual([
+      '4 espaços',
+      '2 espaços',
+    ]);
     // The old bug: two <span>s with nothing between them rendered as
     // "1º nível: 42º nível: 2" — no separator, and the wrong term.
     expect(el.textContent).not.toContain('42º');
     expect(el.textContent).not.toContain('nível: 4');
   });
 
-  it('renders every official-sheet section as an <h2>, grouped by desktop column (integrator fix: three independent columns, no shared grid rows)', async () => {
+  it('renders every official-sheet section as an <h2>, in the paper sheet\'s column order', async () => {
     configure();
     fake.getCharacterSheetFn = () =>
       Promise.resolve(
@@ -329,20 +358,18 @@ describe('CharacterSheetPage', () => {
 
     const el = await render();
     const headings = Array.from(el.querySelectorAll('h2')).map((h) => h.textContent?.trim());
-    // Document order follows the desktop column grouping (column 1:
-    // Atributos, Salvaguardas, Perícias; column 2: Combate, Magias,
-    // Equipamento; column 3: Características e traços, História) — a
-    // sensible reading order on its own. Mobile reflows the same markup
-    // into the agreed visual order (Atributos, Salvaguardas, Combate,
-    // Perícias, Magias, Equipamento, Características e traços, História)
-    // purely with CSS `order` (`character-sheet.scss`), which a unit test
-    // running in jsdom (no layout engine) cannot observe.
+    // Document order is the paper sheet's column order (the medallions;
+    // saves and skills; combat, spells and equipment; features and story),
+    // the same on every screen size: the phone shows it in one column.
+    // "Atributos" and "Combate" are for screen readers only; the
+    // medallions and the shield are their visible titles. No "Ataques"
+    // here: this sheet has no attacks.
     expect(headings).toEqual([
       'Atributos',
       'Salvaguardas',
       'Perícias',
       'Combate',
-      'Magias',
+      'Magias de mago',
       'Equipamento',
       'Características e traços',
       'História',
@@ -368,20 +395,45 @@ describe('CharacterSheetPage', () => {
       );
 
     const el = await render();
-    const heading = Array.from(el.querySelectorAll('h2')).find(
-      (h) => h.textContent?.trim() === 'Salvaguardas',
-    );
-    expect(heading).toBeTruthy();
-    const section = heading!.closest('section')!;
-    expect(section.textContent).toContain('Força: +5');
-    expect(section.textContent).toContain('proficiente');
-    expect(section.textContent).toContain('Destreza: +0');
-    expect(section.textContent).toContain('sem proficiência');
+    const section = sectionTitled(el, 'Salvaguardas');
+    const row = (name: string) =>
+      Array.from(section.querySelectorAll('li')).find((li) => li.textContent?.includes(name))!;
+    expect(section.querySelectorAll('li').length).toBe(6);
+    expect(row('Força').textContent).toContain('+5');
+    expect(row('Força').textContent).toContain('proficiente');
+    expect(row('Força').querySelector('.dot--proficient')).toBeTruthy();
+    expect(row('Destreza').textContent).toContain('+0');
+    expect(row('Destreza').textContent).toContain('sem proficiência');
+    expect(row('Destreza').querySelector('.dot--proficient')).toBeNull();
     // No longer buried, unlabelled, at the top of Perícias.
-    const pericias = Array.from(el.querySelectorAll('h2')).find(
-      (h) => h.textContent?.trim() === 'Perícias',
-    );
-    expect(pericias!.closest('section')!.querySelector('.saves-list')).toBeNull();
+    expect(sectionTitled(el, 'Perícias').textContent).not.toContain('Força');
+  });
+
+  it('shows each skill with its ability abbreviation and its proficiency level', async () => {
+    configure();
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(
+        vm({
+          sheet: fullSheet({
+            skills: [
+              { key: 'skill:arcana', namePt: 'Arcanismo', ability: 'int', bonus: 6, proficiency: 'proficient' },
+              { key: 'skill:history', namePt: 'História', ability: 'int', bonus: 8, proficiency: 'expertise' },
+              { key: 'skill:stealth', namePt: 'Furtividade', ability: 'dex', bonus: 3, proficiency: 'none' },
+            ],
+          }),
+        }),
+      );
+
+    const el = await render();
+    const rows = Array.from(sectionTitled(el, 'Perícias').querySelectorAll('li'));
+    expect(rows[0].textContent).toContain('+6');
+    expect(rows[0].querySelector('abbr')?.textContent).toBe('Int');
+    expect(rows[0].querySelector('abbr')?.getAttribute('title')).toBe('Inteligência');
+    expect(rows[0].textContent).toContain('proficiente');
+    expect(rows[1].querySelector('.dot--expertise')).toBeTruthy();
+    expect(rows[1].textContent).toContain('expertise');
+    expect(rows[2].querySelector('abbr')?.textContent).toBe('Des');
+    expect(rows[2].textContent).toContain('sem proficiência');
   });
 
   it('shows the locked banner and hides "Editar ficha" when the player cannot edit', async () => {
@@ -396,8 +448,12 @@ describe('CharacterSheetPage', () => {
       );
 
     const el = await render();
-    expect(el.textContent).toContain('Ficha travada desde');
+    expect(el.textContent).toContain('Ficha travada desde 29/09/2026');
     expect(el.textContent).not.toContain('Editar ficha');
+    // The tag says it too, with a lock icon.
+    const tags = el.querySelector('[aria-label="Estado do personagem"]')!;
+    expect(tags.textContent).toContain('Travada');
+    expect(tags.querySelector('mat-icon')?.textContent).toContain('lock');
   });
 
   it('shows "Editar ficha" for the master even when the sheet is locked', async () => {
@@ -518,10 +574,17 @@ describe('CharacterSheetPage', () => {
       );
 
     const el = await render();
-    expect(el.textContent).toContain('13');
-    expect(el.textContent).toContain('7');
-    expect(el.textContent).toContain('1d6+1 perfurante');
-    expect(el.querySelector('.ability-grid')).toBeNull();
+    expect(ddAfter(el, 'Classe de Armadura')?.textContent?.trim()).toBe('13');
+    expect(ddAfter(el, 'Pontos de vida máximos')?.textContent?.trim()).toBe('7');
+    expect(ddAfter(el, 'Bônus de ataque')?.textContent?.trim()).toBe('+3');
+    expect(ddAfter(el, 'Dano')?.textContent?.trim()).toBe('1d6+1 perfurante');
+    expect(el.textContent).toContain('Um goblin arisco.');
+    expect(el.querySelector('app-ability-medallions')).toBeNull();
+    expect(el.textContent).not.toContain('Iniciativa');
+    // An NPC's tag is its kind: it never leaves "Rascunho", so that isn't shown.
+    const tags = el.querySelector('[aria-label="Estado do personagem"]')!;
+    expect(tags.textContent).toContain('Minion');
+    expect(tags.textContent).not.toContain('Rascunho');
   });
 
   it('shows the alignment and XP in the header, read from the stored sheet (integrator follow-up)', async () => {
@@ -530,9 +593,12 @@ describe('CharacterSheetPage', () => {
       Promise.resolve(vm({ alignmentLabel: 'Caótico e bom', experiencePoints: 900 }));
 
     const el = await render();
-    const meta = el.querySelector('.sheet-meta')?.textContent ?? '';
-    expect(meta).toContain('Caótico e bom');
-    expect(meta).toContain('XP: 900');
+    expect(ddAfter(el, 'Tendência')?.textContent?.trim()).toBe('Caótico e bom');
+    expect(ddAfter(el, 'Experiência')?.textContent?.trim()).toBe('900 XP');
+    expect(ddAfter(el, 'Classe e nível')?.textContent?.trim()).toBe('Mago 3');
+    expect(ddAfter(el, 'Raça')?.textContent?.trim()).toBe('Gnomo da Rocha');
+    expect(ddAfter(el, 'Antecedente')?.textContent?.trim()).toBe('Sábio');
+    expect(ddAfter(el, 'Jogador')?.textContent?.trim()).toBe('Vinicius');
   });
 
   it('shows 0 XP (a real value), but hides alignment when it is unset', async () => {
@@ -541,11 +607,16 @@ describe('CharacterSheetPage', () => {
       Promise.resolve(vm({ alignmentLabel: '', experiencePoints: 0 }));
 
     const el = await render();
-    const meta = el.querySelector('.sheet-meta')?.textContent ?? '';
-    expect(meta).toContain('XP: 0');
-    expect(meta).not.toContain('Leal');
-    expect(meta).not.toContain('Neutro');
-    expect(meta).not.toContain('Caótico');
+    expect(ddAfter(el, 'Experiência')?.textContent?.trim()).toBe('0 XP');
+    expect(ddAfter(el, 'Tendência')).toBeNull();
+  });
+
+  it('shows "Jogador sem nome" for a player without a display name, and no player field for an NPC', async () => {
+    configure();
+    fake.getCharacterSheetFn = () => Promise.resolve(vm({ playerDisplayName: null }));
+    const el = await render();
+    expect(ddAfter(el, 'Jogador')?.textContent?.trim()).toBe('Jogador sem nome');
+    expect(el.textContent).not.toContain('Sem nome');
   });
 
   it('hides XP for an NPC basic sheet, which has none', async () => {
@@ -562,8 +633,9 @@ describe('CharacterSheetPage', () => {
       );
 
     const el = await render();
-    const meta = el.querySelector('.sheet-meta')?.textContent ?? '';
-    expect(meta).not.toContain('XP');
+    expect(ddAfter(el, 'Experiência')).toBeNull();
+    expect(ddAfter(el, 'Jogador')).toBeNull();
+    expect(el.textContent).not.toContain('XP');
   });
 
   it('lists the armor, shield and weapons carried, not just free-text items (integrator fix)', async () => {
@@ -603,17 +675,32 @@ describe('CharacterSheetPage', () => {
       );
 
     const el = await render();
-    const heading = Array.from(el.querySelectorAll('h2')).find(
-      (h) => h.textContent?.trim() === 'Equipamento',
-    );
-    const section = heading!.closest('section')!;
-    expect(section.textContent).toContain('Armadura: Armadura de couro');
-    expect(section.textContent).toContain('Escudo');
+    const section = sectionTitled(el, 'Equipamento');
+    const items = Array.from(section.querySelectorAll('li')).map((li) => li.textContent?.trim());
+    // The armour's own name, without the AC description's shield suffix.
+    expect(items).toContain('Armadura de couro');
+    expect(items).toContain('Escudo');
     expect(section.textContent).toContain('Espada curta');
     // A damage cantrip is not a weapon — never listed as equipment.
     expect(section.textContent).not.toContain('Raio de Fogo');
     expect(section.textContent).toContain('Corda (15m)');
     expect(section.textContent).not.toContain('Nenhum item cadastrado');
+    // No coins: said once, in words.
+    expect(section.textContent).toContain('Sem moedas');
+  });
+
+  it('lists only the coins carried', async () => {
+    configure();
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(vm({ sheet: fullSheet({ coins: { cp: 0, sp: 3, ep: 0, gp: 15, pp: 0 } }) }));
+
+    const el = await render();
+    const coins = sectionTitled(el, 'Equipamento').querySelector('[aria-label="Moedas"]')!;
+    expect(Array.from(coins.querySelectorAll('li')).map((li) => li.textContent?.trim())).toEqual([
+      '15 PO',
+      '3 PP',
+    ]);
+    expect(el.textContent).not.toContain('Sem moedas');
   });
 
   it('shows "Sem armadura" and no "Escudo" line when neither is carried', async () => {
@@ -622,11 +709,8 @@ describe('CharacterSheetPage', () => {
       Promise.resolve(vm({ sheet: fullSheet({ armorClassDescription: 'Sem armadura' }) }));
 
     const el = await render();
-    const heading = Array.from(el.querySelectorAll('h2')).find(
-      (h) => h.textContent?.trim() === 'Equipamento',
-    );
-    const section = heading!.closest('section')!;
-    expect(section.textContent).toContain('Armadura: Sem armadura');
+    const section = sectionTitled(el, 'Equipamento');
+    expect(section.textContent).toContain('Sem armadura');
     expect(section.textContent).not.toContain('Escudo');
   });
 
@@ -636,15 +720,12 @@ describe('CharacterSheetPage', () => {
       Promise.resolve(vm({ sheet: fullSheet({ armorClassDescription: 'Defesa sem Armadura', wearsArmor: false }) }));
 
     const el = await render();
-    const heading = Array.from(el.querySelectorAll('h2')).find(
-      (h) => h.textContent?.trim() === 'Equipamento',
-    );
-    const section = heading!.closest('section')!;
-    expect(section.textContent).toContain('Armadura: Sem armadura');
-    expect(section.textContent).not.toContain('Armadura: Defesa sem Armadura');
+    const section = sectionTitled(el, 'Equipamento');
+    expect(section.textContent).toContain('Sem armadura');
+    expect(section.textContent).not.toContain('Defesa sem Armadura');
   });
 
-  it('shows each feature as a compact row, its English description collapsed by default, and lists issues and hints as "Avisos"', async () => {
+  it('shows each feature as a compact row, its English description collapsed by default; issues in the notice under the header, hints as reminders', async () => {
     configure();
     fake.getCharacterSheetFn = () =>
       Promise.resolve(
@@ -675,34 +756,152 @@ describe('CharacterSheetPage', () => {
       );
 
     const el = await render();
-    expect(el.textContent).toContain('Recuperação Arcana · Mago 1');
-
     const details = el.querySelector('details');
     expect(details).toBeTruthy();
+    const summary = details!.querySelector('summary')!;
+    expect(summary.querySelector('.feature__name')?.textContent?.trim()).toBe('Recuperação Arcana');
+    expect(summary.querySelector('.feature__source')?.textContent?.trim()).toBe('Mago 1');
     expect(details!.open).toBe(false);
-    expect(details!.textContent).toContain(
-      'You have learned to regain some of your magical energy.',
-    );
+    const description = details!.querySelector('p')!;
+    expect(description.textContent).toContain('You have learned to regain some of your magical energy.');
+    // The SRD text is English: marked so, for screen readers and translators.
+    expect(description.getAttribute('lang')).toBe('en');
 
-    const avisosHeading = Array.from(el.querySelectorAll('h3')).find(
-      (h) => h.textContent?.trim() === 'Avisos',
+    // The issue: in the warning notice under the header, its title in bold.
+    const notice = el.querySelector('.mr-notice--warning')!;
+    expect(notice.querySelector('strong')?.textContent).toBe('Escolha inválida.');
+    expect(notice.textContent).toContain('A armadura escolhida não existe no conteúdo srd51@test.');
+    // The hint: a quiet reminder in "Características e traços", not a problem.
+    expect(notice.textContent).not.toContain('Vantagem em testes');
+    const features = sectionTitled(el, 'Características e traços');
+    const lembretes = Array.from(features.querySelectorAll('h3')).find(
+      (h) => h.textContent?.trim() === 'Lembretes',
     );
-    expect(avisosHeading).toBeTruthy();
-    expect(el.textContent).toContain('A armadura escolhida não existe no conteúdo srd51@test.');
-    expect(el.textContent).toContain(
-      'Vantagem em testes de resistência de INT, SAB e CAR contra magia.',
-    );
+    expect(lembretes).toBeTruthy();
+    expect(features.textContent).toContain('Vantagem em testes de resistência de INT, SAB e CAR contra magia.');
   });
 
-  it('shows no "Avisos" heading when there are no issues or hints', async () => {
+  it('shows no rules notice and no reminders when there are no issues or hints', async () => {
     configure();
     fake.getCharacterSheetFn = () => Promise.resolve(vm());
 
     const el = await render();
-    const avisosHeading = Array.from(el.querySelectorAll('h3')).find(
-      (h) => h.textContent?.trim() === 'Avisos',
+    expect(el.querySelector('.mr-notice--warning')).toBeNull();
+    const lembretes = Array.from(el.querySelectorAll('h3')).find((h) => h.textContent?.trim() === 'Lembretes');
+    expect(lembretes).toBeUndefined();
+  });
+
+  it('never shows the rules content version (nothing internal on screen)', async () => {
+    configure();
+    fake.getCharacterSheetFn = () => Promise.resolve(vm({ sheet: fullSheet({ contentVersion: 'srd51@abc123' }) }));
+
+    const el = await render();
+    expect(el.textContent).not.toContain('srd51@abc123');
+    expect(el.textContent).not.toContain('Conteúdo de regras');
+  });
+
+  it('"Marcar como morto" asks to confirm before marking the character dead', async () => {
+    configure();
+    let calls = 0;
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(vm({ state: 'locked', isMaster: true, canMarkDead: true }));
+    fake.markCharacterDeadFn = () => {
+      calls++;
+      return Promise.resolve(
+        vm({ state: 'dead', isMaster: true, canMarkDead: false, diedAt: new Date(2026, 8, 30, 21, 0) }),
+      );
+    };
+    const fixture = TestBed.createComponent(CharacterSheetPage);
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+
+    buttonWithText(el, 'Marcar como morto')!.click();
+    fixture.detectChanges();
+    expect(calls).toBe(0); // nothing yet: one more click
+    expect(el.textContent).toContain('A morte não se desfaz.');
+
+    buttonWithText(el, 'Cancelar')!.click();
+    fixture.detectChanges();
+    expect(buttonWithText(el, 'Confirmar morte')).toBeUndefined();
+
+    buttonWithText(el, 'Marcar como morto')!.click();
+    fixture.detectChanges();
+    buttonWithText(el, 'Confirmar morte')!.click();
+    await flush();
+    fixture.detectChanges();
+
+    expect(calls).toBe(1);
+    expect(el.querySelector('[aria-label="Estado do personagem"]')?.textContent).toContain('Morto');
+    expect(el.textContent).toContain('Morreu em 30/09/2026');
+    expect(buttonWithText(el, 'Marcar como morto')).toBeUndefined();
+  });
+
+  it('shows only the story fields that are filled in, and says when there is nothing yet', async () => {
+    configure();
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(
+        vm({
+          story: {
+            ...emptyStory(),
+            appearance: { ...emptyStory().appearance, height: '1,05 m' },
+            backstory: 'Cresceu entre livros.',
+          },
+        }),
+      );
+    const el = await render();
+    const story = sectionTitled(el, 'História');
+    expect(ddAfter(story, 'Altura')?.textContent?.trim()).toBe('1,05 m');
+    expect(ddAfter(story, 'Antecedentes')?.textContent?.trim()).toBe('Cresceu entre livros.');
+    expect(ddAfter(story, 'Idade')).toBeNull();
+    expect(ddAfter(story, 'Aliados')).toBeNull();
+    expect(story.textContent).not.toContain('—');
+
+    TestBed.resetTestingModule();
+    configure();
+    fake.getCharacterSheetFn = () => Promise.resolve(vm({ story: emptyStory() }));
+    const empty = await render();
+    expect(sectionTitled(empty, 'História').textContent).toContain('Nada escrito ainda.');
+  });
+
+  it('tells a player whose story is locked that the master can unlock it', async () => {
+    configure();
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(vm({ isMaster: false, state: 'locked', canEdit: false, canEditStory: false }));
+    const el = await render();
+    expect(sectionTitled(el, 'História').textContent).toContain(
+      'A história está travada. O mestre pode liberar a edição até a próxima sessão.',
     );
-    expect(avisosHeading).toBeUndefined();
+  });
+
+  it('saves the story through the panel and shows what the server sent back', async () => {
+    configure();
+    fake.getCharacterSheetFn = () => Promise.resolve(vm({ revision: 4 }));
+    let saved: { revision: number; backstory: string } | null = null;
+    fake.updateCharacterStoryFn = (_c, _id, revision, story) => {
+      saved = { revision, backstory: story.backstory };
+      return Promise.resolve(vm({ revision: 5, story: { ...emptyStory(), backstory: 'Do servidor.' } }));
+    };
+    const fixture = TestBed.createComponent(CharacterSheetPage);
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+
+    buttonWithText(el, 'Editar história')!.click();
+    fixture.detectChanges();
+    const backstory = Array.from(el.querySelectorAll('mat-form-field'))
+      .find((f) => f.textContent?.includes('Antecedentes'))!
+      .querySelector('textarea')!;
+    backstory.value = 'Cresceu entre livros.';
+    backstory.dispatchEvent(new Event('input'));
+    buttonWithText(el, 'Salvar história')!.click();
+    await flush();
+    fixture.detectChanges();
+
+    expect(saved).toEqual({ revision: 4, backstory: 'Cresceu entre livros.' });
+    expect(ddAfter(el, 'Antecedentes')?.textContent?.trim()).toBe('Do servidor.');
   });
 });
 
@@ -740,7 +939,7 @@ describe('CharacterSheetPage: approval (MR-024)', () => {
     fake.getCharacterSheetFn = () => Promise.resolve(vm({ state: 'pending', canApprove: false }));
     const el = (await render()).nativeElement as HTMLElement;
 
-    expect(el.textContent).toContain('Pendente de aprovação');
+    expect(el.querySelector('[aria-label="Estado do personagem"]')?.textContent).toContain('Pendente');
     expect(el.textContent).toContain('Esperando a aprovação do mestre');
     expect(button(el, 'Aprovar personagem')).toBeUndefined();
     expect(button(el, 'Recusar personagem')).toBeUndefined();
@@ -759,7 +958,7 @@ describe('CharacterSheetPage: approval (MR-024)', () => {
     await flush();
     fixture.detectChanges();
 
-    expect(el.textContent).toContain('Rascunho');
+    expect(el.querySelector('[aria-label="Estado do personagem"]')?.textContent).toContain('Rascunho');
     expect(button(el, 'Aprovar personagem')).toBeUndefined();
   });
 

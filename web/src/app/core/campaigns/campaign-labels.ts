@@ -35,10 +35,3 @@ export function inviteStateLabel(state: InviteState): string {
       return 'desconhecido';
   }
 }
-
-/** The member/campaign name to show, never an e-mail (docs/privacidade.md:
- * the display name is the only name anyone else in a campaign ever sees). */
-export function displayNameOrFallback(displayName: string): string {
-  const trimmed = displayName.trim();
-  return trimmed.length > 0 ? trimmed : 'Sem nome';
-}

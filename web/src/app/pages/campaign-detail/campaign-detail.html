@@ -1,71 +1,92 @@
+<a class="back-link" routerLink="/campanhas">
+  <mat-icon aria-hidden="true">chevron_left</mat-icon>Minhas campanhas
+</a>
+
 @if (state(); as s) {
   @switch (s.status) {
     @case ('loading') {
-      <h1>Campanha</h1>
-      <mat-card class="status-card" role="status" aria-live="polite">
-        <mat-card-content class="status-card__content">
-          <mat-spinner diameter="32" />
-          <p>Carregando a campanha...</p>
-        </mat-card-content>
-      </mat-card>
+      <h1 class="mr-page-title">Campanha</h1>
+      <p class="page-status" role="status">
+        <mat-spinner diameter="24" aria-label="Carregando a campanha" />
+        Carregando a campanha...
+      </p>
     }
     @case ('not-found') {
-      <h1>Campanha não encontrada</h1>
-      <mat-card class="status-card" role="alert">
-        <mat-card-content>
-          <p>Essa campanha não existe, ou você não é membro dela.</p>
-        </mat-card-content>
-        <mat-card-actions>
-          <a mat-button routerLink="/campanhas">Voltar para minhas campanhas</a>
-        </mat-card-actions>
-      </mat-card>
+      <h1 class="mr-page-title">Campanha não encontrada</h1>
+      <div class="mr-notice mr-notice--neutral page-notice" role="alert">
+        <mat-icon aria-hidden="true">search_off</mat-icon>
+        <p>
+          <strong>Essa campanha não existe, ou você não é membro dela.</strong>
+          Confira o link com o mestre, ou volte para <a routerLink="/campanhas">Minhas campanhas</a>.
+        </p>
+      </div>
     }
     @case ('error') {
-      <h1>Não foi possível abrir a campanha</h1>
-      <mat-card class="status-card status-card--error" role="alert">
-        <mat-card-content>
-          <p>{{ s.message }}</p>
-        </mat-card-content>
-      </mat-card>
+      <h1 class="mr-page-title">Não foi possível abrir a campanha</h1>
+      <div class="mr-notice mr-notice--danger page-notice" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ s.message }}</p>
+      </div>
     }
     @case ('pending') {
-      <h1>{{ s.campaign.name }}</h1>
-      <mat-card class="status-card pending-banner" role="status">
-        <mat-card-content>
-          <p><strong>Esperando a aprovação do mestre.</strong></p>
+      <header class="campaign-head">
+        <h1 class="mr-page-title">{{ s.campaign.name }}</h1>
+      </header>
+      <div class="pending">
+        <div class="mr-notice mr-notice--warning" role="status">
+          <mat-icon aria-hidden="true">hourglass_top</mat-icon>
           <p>
+            <strong>Esperando a aprovação do mestre.</strong>
             Crie o seu personagem e continue editando a ficha à vontade. Quando o mestre aprovar,
             você entra na campanha.
           </p>
-        </mat-card-content>
-      </mat-card>
-      <app-campaign-characters [campaignId]="s.campaign.id" [isMaster]="false" />
+        </div>
+        <app-campaign-characters [campaignId]="s.campaign.id" [isMaster]="false" />
+      </div>
     }
     @case ('ready') {
-      <h1>{{ s.campaign.name }}</h1>
-      <p class="campaign-meta">
-        Você é {{ roleLabel(s.campaign.myRole) }} nesta campanha. Modo de XP:
-        {{ xpModeLabel(s.campaign.xpMode) }}.
-      </p>
+      @let isMaster = s.campaign.myRole === Role.MASTER;
+      <header class="campaign-head">
+        <h1 class="mr-page-title">{{ s.campaign.name }}</h1>
+        <p class="mr-page-lead">{{ campaignLead(s.campaign) }}</p>
+      </header>
 
-      <section aria-labelledby="members-heading">
-        <h2 id="members-heading">Membros</h2>
-        <ul class="members">
-          @for (m of s.members; track m.userId) {
-            <li>
-              <span class="members__name">{{ displayNameOrFallback(m.displayName) }}</span>
-              <span class="members__role">{{ roleLabel(m.role) }}</span>
-            </li>
+      <div class="campaign-layout">
+        <div class="campaign-layout__column">
+          @if (isMaster) {
+            <app-game-session-card [campaignId]="s.campaign.id" />
           }
-        </ul>
-      </section>
+          <app-campaign-characters [campaignId]="s.campaign.id" [isMaster]="isMaster" />
+        </div>
 
-      <app-campaign-characters [campaignId]="s.campaign.id" [isMaster]="s.campaign.myRole === Role.MASTER" />
+        <div class="campaign-layout__column">
+          <section class="mr-panel" aria-labelledby="members-heading">
+            <h2 class="mr-panel__title" id="members-heading">Membros</h2>
+            <ul class="mr-list">
+              @for (m of members(); track m.userId) {
+                <li class="member">
+                  <span class="member__text">
+                    <span class="member__name">
+                      {{ m.name }}
+                      @if (m.isViewer) {
+                        <span class="mr-muted member__you">(você)</span>
+                      }
+                    </span>
+                    @if (m.isViewer && !m.hasName) {
+                      <a class="member__profile" routerLink="/perfil">Escolher o nome que a mesa vê</a>
+                    }
+                  </span>
+                  <span class="member__role">{{ m.role }}</span>
+                </li>
+              }
+            </ul>
+          </section>
 
-      @if (s.campaign.myRole === Role.MASTER) {
-        <app-game-session-card [campaignId]="s.campaign.id" />
-        <app-campaign-invites [campaignId]="s.campaign.id" />
-      }
+          @if (isMaster) {
+            <app-campaign-invites [campaignId]="s.campaign.id" />
+          }
+        </div>
+      </div>
     }
   }
 }

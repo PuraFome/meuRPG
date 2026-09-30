@@ -1,0 +1,29 @@
+<section class="picker" [attr.aria-labelledby]="titleId()">
+  <h3 class="picker__title" [id]="titleId()">{{ title() }}</h3>
+  <p class="picker__chosen">{{ chosenLine() }}</p>
+
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="picker__search">
+    <mat-label>{{ searchLabel() }}</mat-label>
+    <mat-icon matPrefix aria-hidden="true">search</mat-icon>
+    <input
+      matInput
+      type="search"
+      autocomplete="off"
+      [value]="filter()"
+      (input)="filterChange.emit($any($event.target).value)"
+    />
+  </mat-form-field>
+
+  <div class="picker__list" role="group" [attr.aria-labelledby]="titleId()">
+    @for (spell of filtered(); track spell.key) {
+      <mat-checkbox [checked]="selected().has(spell.key)" (change)="toggle.emit(spell.key)">
+        {{ spell.namePt }}
+        @if (showLevel()) {
+          <span class="picker__level">({{ spellLevelLabel(spell.level) }})</span>
+        }
+      </mat-checkbox>
+    } @empty {
+      <p class="picker__empty">{{ emptyText() }}</p>
+    }
+  </div>
+</section>

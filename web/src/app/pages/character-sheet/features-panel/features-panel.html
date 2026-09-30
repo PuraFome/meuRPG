@@ -1,0 +1,53 @@
+@let s = sheet();
+<section class="mr-panel" aria-labelledby="caracteristicas-heading">
+  <h2 id="caracteristicas-heading" class="mr-panel__title">Características e traços</h2>
+
+  @if (s.features.length > 0) {
+    <ul class="features">
+      @for (f of s.features; track $index) {
+        <li>
+          <details class="feature">
+            <summary class="feature__summary">
+              <span class="feature__name">{{ f.name }}</span>
+              <span class="feature__source">{{ f.sourcePt }}</span>
+              <mat-icon class="feature__chevron" aria-hidden="true">expand_more</mat-icon>
+            </summary>
+            <p class="feature__text" lang="en">{{ f.description }}</p>
+          </details>
+        </li>
+      }
+    </ul>
+  }
+
+  @if (s.customFeaturesText) {
+    <p class="custom">{{ s.customFeaturesText }}</p>
+  }
+
+  @if (s.hints.length > 0) {
+    <div class="block">
+      <h3 class="block__label">Lembretes</h3>
+      <ul class="hints">
+        @for (hint of s.hints; track $index) {
+          <li>{{ hint.text }}</li>
+        }
+      </ul>
+    </div>
+  }
+
+  @if (s.languages.length > 0 || s.proficiencies.length > 0) {
+    <dl class="block more">
+      @if (s.languages.length > 0) {
+        <div>
+          <dt class="block__label">Idiomas</dt>
+          <dd>{{ s.languages.join(', ') }}</dd>
+        </div>
+      }
+      @if (s.proficiencies.length > 0) {
+        <div>
+          <dt class="block__label">Proficiências</dt>
+          <dd>{{ s.proficiencies.join(', ') }}</dd>
+        </div>
+      }
+    </dl>
+  }
+</section>

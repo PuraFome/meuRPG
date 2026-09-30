@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, input, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
-import { MatChipsModule } from '@angular/material/chips';
+import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { RouterLink } from '@angular/router';
 
@@ -10,6 +10,7 @@ import {
   characterStateLabel,
 } from '../../../core/characters/character-labels';
 import { CharacterKind } from '../../../core/characters/characters.types';
+import { characterRowSub, stateTagClass } from './campaign-characters.copy';
 import {
   CampaignCharacterListItemVm,
   CampaignCharactersSource,
@@ -33,18 +34,21 @@ const NPC_KINDS: ReadonlyArray<{ kind: CharacterKind; tipo: string }> = [
 /**
  * The "Personagens" section on `/campanhas/:id` (MR-003, MR-005, MR-024).
  *
+ * Each list is a panel of its own, titled with an h3 under this section's
+ * (visually hidden) "Personagens" h2, and every row links to the sheet.
+ *
  * - **Master:** "Esperando aprovação" (characters created through an invite
- *   that requires approval, RN-15 — each links to its sheet, where the
- *   master approves or rejects it), "Personagens dos jogadores" (name,
- *   player display name, class/level summary, state chip) and "NPCs" (name,
- *   kind chip), plus a "Novo NPC" menu.
+ *   that requires approval, RN-15 — a warning dot and "Revisar"; the sheet
+ *   is where the master approves or rejects it), "Personagens dos
+ *   jogadores" (name, class and player, state tag) and "NPCs" (name, kind
+ *   tag), with the "Novo NPC" menu at the end of its panel.
  * - **Player:** their own characters (a pending one shows "Pendente de
  *   aprovação"), and a "Criar meu personagem" call to action shown only
  *   when they have no living character (RN-03; a pending one counts).
  */
 @Component({
   selector: 'app-campaign-characters',
-  imports: [MatButtonModule, MatChipsModule, MatMenuModule, RouterLink],
+  imports: [MatButtonModule, MatIconModule, MatMenuModule, RouterLink],
   templateUrl: './campaign-characters.html',
   styleUrl: './campaign-characters.scss',
 })
@@ -58,6 +62,8 @@ export class CampaignCharacters implements OnInit {
   protected readonly characterKindLabel = characterKindLabel;
   protected readonly characterStateLabel = characterStateLabel;
   protected readonly npcKinds = NPC_KINDS;
+  protected readonly characterRowSub = characterRowSub;
+  protected readonly stateTagClass = stateTagClass;
 
   /** Master only: the players' characters that wait for approval. */
   protected awaitingApproval(vm: CampaignCharactersVm): readonly CampaignCharacterListItemVm[] {

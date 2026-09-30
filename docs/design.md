@@ -1,0 +1,122 @@
+# Design: o visual do MeuRPG
+
+O MeuRPG tem o visual da **ficha de papel**: a ficha oficial de D&D 5e, com a mesma ordem e as mesmas formas (medalhões de atributo, o escudo da CA, os pontos de proficiência), limpa e legível na tela, com um tema claro e um escuro de verdade. É a direção A das três exploradas em 29/09/2026; o Vinicius escolheu esta.
+
+Este arquivo é a referência para quem mexe em qualquer tela do `web/`. O mesmo sistema existe no Claude Design, com os componentes desenhados, para desenhar tela nova antes do código:
+
+- [MeuRPG — sistema visual](https://claude.ai/artifact/3wg7GmD4uuDEXhNP57ESdu) (Claude Design System);
+- [MeuRPG — direções visuais](https://claude.ai/artifact/VDbSC4Y9H1z5vviHHL5nQm) (as três direções, com a ficha e a campanha de cada uma).
+
+Os dois links são privados até o Vinicius compartilhar.
+
+## Princípios
+
+- **O número de jogo vem primeiro.** Modificadores, CA, PV e CD são a coisa mais visível da ficha. Todo o resto é mais quieto.
+- **A ficha fica onde o jogador está acostumado** (MR-004): atributos à esquerda, depois salvaguardas e perícias, combate e magias no meio, características e história à direita. No celular, a mesma ordem numa coluna só.
+- **Uma ousadia só.** O grená aparece uma vez por tela como preenchimento (o botão principal) e, fora disso, como contorno (CA, PV) ou texto (links). Nada de gradiente, sombra decorativa ou cartão com faixa colorida na lateral.
+- **Estrutura é informação.** Borda, painel e divisória separam coisas diferentes de verdade. Numeração só onde há sequência (os passos do editor).
+- **Os dois temas valem o mesmo.** O escuro é para a sessão à noite: cada cor tem par nos dois temas, com contraste AA. O tema segue o do sistema operacional.
+
+## Como uma tela é feita
+
+Toda tela nova, ou mudança visível numa tela, passa por quatro passos:
+
+1. **Brief:** a única tarefa da tela, quem usa (mestre ou jogador), onde (celular na mesa ou notebook), os dados reais e todos os estados (vazio, carregando, erro, travado, pendente, morto, sem permissão).
+2. **Desenho no Claude Design,** com o sistema acima, a 390px e a 1280px, com dados reais. O Vinicius aprova antes do código. Correção pequena dentro do sistema não precisa de desenho.
+3. **Código com os tokens** abaixo, nunca uma cor escrita à mão.
+4. **Revisão pela tela:** prints a 390, 768 e 1280px, claro e escuro, cada estado, conferidos com o desenho e com a checklist do PR (hierarquia, sobreposição, alvos de toque, foco, contraste, texto). O PR leva os prints de antes e depois.
+
+## Tokens
+
+Os tokens são propriedades CSS em `web/src/styles.scss`, com o prefixo `--mr-`. Cada cor usa `light-dark()`, então o mesmo token vale nos dois temas.
+
+### Cor
+
+| Token | Claro | Escuro | Uso |
+| --- | --- | --- | --- |
+| `--mr-ground` | `#eef0f3` | `#11151c` | Fundo da página |
+| `--mr-surface` | `#ffffff` | `#1a1f29` | Painéis, barra do app, campos |
+| `--mr-line` | `#d5dae1` | `#2e3542` | Borda dos painéis (decorativa) |
+| `--mr-rule` | `#e3e7ec` | `#262c38` | Divisória entre linhas de um painel |
+| `--mr-ink` | `#1b2230` | `#e6e9ef` | Texto; borda dos medalhões; ponto de proficiência cheio |
+| `--mr-ink-muted` | `#525b6b` | `#a3abb9` | Rótulos e texto de apoio (6,8:1 e 7,1:1) |
+| `--mr-control-line` | `#8a93a3` | `#6b7485` | Borda de campo, ponto vazio, espaço de magia (3:1) |
+| `--mr-accent` | `#9e2b3b` | `#e88593` | Grená: botão principal, contorno da CA e dos PV, aba ativa, foco |
+| `--mr-accent-strong` | `#7a1f2d` | `#f2a9b3` | Hover e pressed do principal |
+| `--mr-on-accent` | `#ffffff` | `#2a0a10` | Texto sobre o grená |
+| `--mr-accent-text` | `#9e2b3b` | `#f0a0ab` | Links e botões de texto |
+| `--mr-accent-soft` | `#f6e3e6` | `#3a1e24` | Item selecionado |
+| `--mr-focus` | = accent | = accent | Anel de foco de 2px |
+| `--mr-warning-surface`, `-line`, `-ink` | `#fbf3e2`, `#e6cf9f`, `#6e4700` | `#2e2616`, `#6b5320`, `#f0d08a` | Pendências de regra e o estado Pendente |
+| `--mr-danger-surface`, `-ink` | `#fce8e6`, `#8c1d18` | `#3b1a1a`, `#f4b4ae` | Erro e o estado Morto |
+| `--mr-success-surface`, `-ink` | `#e3f2ea`, `#1f6b45` | `#16301f`, `#9ed8b4` | Confirmação e o estado Aprovado |
+
+Estado nunca é só cor: toda etiqueta tem a palavra, e todo aviso tem ícone e texto.
+
+### Tipografia
+
+Duas famílias com licença OFL, servidas pelo próprio app (pacotes `@fontsource/alegreya` e `@fontsource/alegreya-sans`, só o subconjunto latino, que cobre o português). Nunca Google Fonts: o CSP (`font-src 'self'`) e a [privacidade](privacidade.md) proíbem pedir fonte a terceiros.
+
+| Estilo | Família | Tamanho / altura / peso | Uso |
+| --- | --- | --- | --- |
+| `display-xl` | Alegreya (`--mr-font-display`) | 48 / 48 / 800 | Nome do personagem (38 no celular) |
+| `display-l` | Alegreya | 38 / 40 / 800 | Título da página, `.mr-page-title` (34 no celular) |
+| `title` | Alegreya | 21 / 26 / 700 | Título de painel, `.mr-panel__title` |
+| `stat-xl` | Alegreya | 40 / 40 / 800 | CA e PV máximos |
+| `stat` | Alegreya | 38 / 42 / 700 | Modificadores, iniciativa, deslocamento |
+| `body` | Alegreya Sans (`--mr-font-sans`) | 16 / 22 / 400 | Texto e linhas de lista |
+| `field-value` | Alegreya Sans | 19 / 24 / 500 | Campos do cabeçalho da ficha |
+| `small` | Alegreya Sans | 14 / 19 / 400 | Apoio |
+| `label` | Alegreya Sans | 13 / 16 / 500 | Rótulos, `.mr-label`, nunca em caixa alta |
+| `button` | Alegreya Sans | 16 / 20 / 700 | Botões |
+
+Números usam `font-variant-numeric: lining-nums tabular-nums` (já vem do `body`), para as colunas de bônus alinharem.
+
+### Espaço e forma
+
+- Espaços: `--mr-space-1` 4, `-2` 8, `-3` 12, `-4` 16, `-5` 20, `-6` 24, `-8` 48 (px). `--mr-gutter` é a margem lateral: 16 no celular, 48 a partir de 768px.
+- Raios: `--mr-radius-sm` 8 (botões, campos), `-md` 10 (avisos), `-lg` 12 (painéis), `-xl` 14 (medalhões, cabeçalho), `-pill` (etiquetas).
+- Bordas, não sombras. A única sombra é a de um diálogo aberto.
+- Layout: largura máxima de 1280px. A ficha tem quatro colunas no desktop, duas no tablet e uma no celular. Alvos de toque de pelo menos 44px (48 no botão principal do celular).
+
+## Componentes
+
+As peças comuns a várias telas são classes globais em `web/src/styles/_ui.scss`; o que é de uma tela só fica no componente dela.
+
+| Peça | Como usar |
+| --- | --- |
+| Título da página | `<h1 class="mr-page-title">` e, embaixo, `<p class="mr-page-lead">` |
+| Painel | `<section class="mr-panel">` com `<h2 class="mr-panel__title">` |
+| Lista de linhas | `<ul class="mr-list">`; cada item com `<a class="mr-list__row">`, `.mr-list__text`, `.mr-list__name`, `.mr-list__sub` |
+| Etiqueta de estado | `<span class="mr-tag">`, com `--pending`, `--success` ou `--danger`; Travada leva o ícone `lock` |
+| Aviso | `<div class="mr-notice mr-notice--warning">` (ou `--danger`, `--success`, `--neutral`), com um `mat-icon` e um `<p>` que começa com `<strong>` |
+| Botões | Material: `mat-flat-button` para o principal (um por tela), `mat-stroked-button` para os de apoio, `mat-button` para os de texto. Todos com canto de 8px |
+| Texto só para leitor de tela | `.mr-visually-hidden` |
+
+Regras que valem em toda tela:
+
+- **Etiqueta de estado é uma palavra:** Rascunho, Pendente, Travada, Aprovado, Morto; convites Ativo, Usado, Expirado, Revogado. O aviso ao lado explica o resto ("Esperando a aprovação do mestre").
+- **Pendência não é lembrete.** Na ficha, o que o motor de regras aponta como problema (armadura sem proficiência, magia fora do grimório) vira um aviso só, logo abaixo do cabeçalho, cada item começando pelo problema em negrito. O que é só lembrete (vantagem contra magia, por exemplo) fica, quieto, em "Características e traços".
+- **Ação que não se desfaz pede confirmação na própria tela:** "Marcar como morto" vira "Confirmar morte", e "Recusar personagem" vira "Confirmar recusa", com "Cancelar" ao lado e o foco no botão novo.
+- **Formulário em passos** (o editor da ficha): cada passo é uma aba, com o nome no cabeçalho, e o conteúdo começa com "Passo N de M" e o título. No celular, as abas viram números de 44px e o título do passo aparece no conteúdo. O botão de salvar fica embaixo do passo aberto, em qualquer passo; um passo com campo inválido ganha "(com erro)" na aba, e o envio leva ao primeiro deles.
+- **Um botão cheio por tela.** Quando a tela tem duas ações importantes (o mestre olhando um personagem pendente), a principal ("Aprovar personagem") é a cheia e a outra fica com contorno.
+
+Na ficha: o medalhão de atributo, o escudo da CA, as caixas de número, as linhas de proficiência e os campos do cabeçalho, desenhados no sistema visual do Claude Design.
+
+## Texto na tela
+
+- Português do Brasil, com os termos da tradução oficial de D&D ("Classe de Armadura", "Salvaguardas", "Pontos de vida").
+- Caixa normal ("Minhas campanhas"); rótulos nunca em caixa alta.
+- O botão diz o que acontece ("Iniciar sessão", "Gerar convite"), e a confirmação repete o verbo ("Convite gerado").
+- Erro diz o que houve e como resolver, sem pedir desculpas. Tela vazia convida à próxima ação.
+- Número com unidade e vírgula decimal: "7,5 m (25 pés)".
+- Nada interno na tela: sem IDs, versão de conteúdo, nome de enum ou "Sem nome".
+- Sem emoji.
+
+## Movimento
+
+Só em resposta a uma ação (abrir uma característica, trocar de passo, confirmar), e nada anima com `prefers-reduced-motion`.
+
+## Ícones
+
+Material Symbols Outlined, servidos pelo app (`@material-symbols/font-400`), de 16 a 24px, na cor do texto ao lado. Botão só com ícone tem `aria-label`.

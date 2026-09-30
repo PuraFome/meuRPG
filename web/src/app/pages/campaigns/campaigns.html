@@ -1,53 +1,10 @@
-<h1>Minhas campanhas</h1>
+<h1 class="mr-page-title" id="campaigns-heading">Minhas campanhas</h1>
 
-@if (state(); as s) {
-  @switch (s.status) {
-    @case ('loading') {
-      <mat-card class="status-card" role="status" aria-live="polite">
-        <mat-card-content class="status-card__content">
-          <mat-spinner diameter="32" />
-          <p>Carregando suas campanhas...</p>
-        </mat-card-content>
-      </mat-card>
-    }
-    @case ('error') {
-      <mat-card class="status-card status-card--error" role="alert">
-        <mat-card-content>
-          <p>{{ s.message }}</p>
-        </mat-card-content>
-      </mat-card>
-    }
-    @case ('ready') {
-      @if (s.campaigns.length === 0) {
-        <mat-card class="empty-state">
-          <mat-card-content>
-            <p>Você ainda não tem nenhuma campanha. Crie a primeira abaixo.</p>
-          </mat-card-content>
-        </mat-card>
-      } @else {
-        <mat-nav-list>
-          @for (c of s.campaigns; track c.id) {
-            <a mat-list-item [routerLink]="['/campanhas', c.id]">
-              <span matListItemTitle>{{ c.name }}</span>
-              <!-- A pending member (RN-15, MR-024) is not a player yet. -->
-              <span matListItemLine>{{
-                c.awaitingApproval ? 'esperando a aprovação do mestre' : roleLabel(c.myRole)
-              }}</span>
-            </a>
-          }
-        </mat-nav-list>
-      }
-    }
-  }
-}
-
-<mat-card class="new-campaign">
-  <mat-card-header>
-    <h2 mat-card-title>Nova campanha</h2>
-  </mat-card-header>
-  <mat-card-content>
-    <form [formGroup]="form" (ngSubmit)="submit()">
-      <mat-form-field appearance="outline" class="full-width">
+<div class="campaigns-layout">
+  <section class="mr-panel create" aria-labelledby="create-heading">
+    <h2 class="mr-panel__title" id="create-heading">Criar campanha</h2>
+    <form [formGroup]="form" (ngSubmit)="submit()" class="create__form">
+      <mat-form-field appearance="outline">
         <mat-label>Nome da campanha</mat-label>
         <input matInput formControlName="name" maxlength="80" required />
         @if (form.controls.name.invalid && form.controls.name.touched) {
@@ -55,7 +12,7 @@
         }
       </mat-form-field>
 
-      <mat-form-field appearance="outline" class="full-width">
+      <mat-form-field appearance="outline">
         <mat-label>Modo de XP</mat-label>
         <mat-select formControlName="xpMode" required>
           <mat-option [value]="XpMode.ENEMIES">Por inimigos derrotados</mat-option>
@@ -69,13 +26,79 @@
 
       @if (createState(); as c) {
         @if (c.status === 'error') {
-          <p class="form-error" role="alert">{{ c.message }}</p>
+          <div class="mr-notice mr-notice--danger create__error" role="alert">
+            <mat-icon aria-hidden="true">error</mat-icon>
+            <p>{{ c.message }}</p>
+          </div>
         }
       }
 
-      <button mat-flat-button type="submit" [disabled]="createState().status === 'saving'">
+      <button
+        mat-flat-button
+        type="submit"
+        [disabled]="createState().status === 'saving'"
+      >
         Criar campanha
       </button>
     </form>
-  </mat-card-content>
-</mat-card>
+  </section>
+
+  <div class="campaigns-list">
+    @if (state(); as s) {
+      @switch (s.status) {
+        @case ('loading') {
+          <p class="list-status" role="status">
+            <mat-spinner diameter="24" aria-label="Carregando suas campanhas" />
+            Carregando suas campanhas...
+          </p>
+        }
+        @case ('error') {
+          <div class="mr-notice mr-notice--danger" role="alert">
+            <mat-icon aria-hidden="true">error</mat-icon>
+            <p>{{ s.message }}</p>
+          </div>
+        }
+        @case ('ready') {
+          @if (s.campaigns.length === 0) {
+            <div class="mr-notice mr-notice--neutral">
+              <mat-icon aria-hidden="true">auto_stories</mat-icon>
+              <p>
+                <strong>Você ainda não tem nenhuma campanha.</strong>
+                Crie a primeira em “Criar campanha”, ou peça ao mestre o link de convite da mesa
+                dele.
+              </p>
+            </div>
+          } @else {
+            <section class="mr-panel list-panel" aria-labelledby="campaigns-heading">
+              <ul class="mr-list">
+                @for (c of s.campaigns; track c.id) {
+                  <li>
+                    <a class="mr-list__row" [routerLink]="['/campanhas', c.id]">
+                      @if (c.awaitingApproval) {
+                        <span class="pending-dot" aria-hidden="true"></span>
+                      }
+                      <span class="mr-list__text">
+                        <span class="mr-list__name">{{ c.name }}</span>
+                        <!-- A pending member (RN-15, MR-024) is not a player yet. -->
+                        @if (c.awaitingApproval) {
+                          <span class="mr-list__sub">Esperando a aprovação do mestre</span>
+                        } @else if (xpModeSentence(c.xpMode); as xp) {
+                          <span class="mr-list__sub">{{ xp }}</span>
+                        }
+                      </span>
+                      @if (c.awaitingApproval) {
+                        <span class="mr-tag mr-tag--pending">Pendente</span>
+                      } @else {
+                        <span class="mr-tag">{{ roleTag(c.myRole) }}</span>
+                      }
+                    </a>
+                  </li>
+                }
+              </ul>
+            </section>
+          }
+        }
+      }
+    }
+  </div>
+</div>

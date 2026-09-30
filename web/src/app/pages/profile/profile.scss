@@ -1,21 +1,15 @@
-.profile-card {
-  max-width: 28rem;
+// docs/design.md: the display-name form, one panel at reading width.
+.profile-panel {
+  max-width: 640px;
+
+  form {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--mr-space-3);
+  }
 }
 
-.profile-hint {
-  color: var(--mat-sys-on-surface-variant);
-}
-
-.full-width {
+.profile-panel__field {
   width: 100%;
-}
-
-.form-error {
-  color: var(--mat-sys-error);
-}
-
-form {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
 }

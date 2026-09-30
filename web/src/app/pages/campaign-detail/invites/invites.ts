@@ -3,14 +3,21 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { Code } from '@connectrpc/connect';
 
 import { Invite, InviteState } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { inviteStateLabel } from '../../../core/campaigns/campaign-labels';
 import { CampaignsService } from '../../../core/campaigns/campaigns.service';
 import { describeConnectError } from '../../../core/connect/connect-errors';
+import {
+  inviteApprovalLabel,
+  inviteDateLabel,
+  inviteStateTag,
+  inviteUsesLabel,
+} from './invite-copy';
+import { CopyStatus, InviteReveal } from './invite-reveal';
 
 type ListState =
   | { status: 'loading' }
@@ -18,8 +25,6 @@ type ListState =
   | { status: 'error'; message: string };
 
 type CreateState = { status: 'idle' } | { status: 'saving' } | { status: 'error'; message: string };
-
-type CopyStatus = 'idle' | 'copied' | 'error';
 
 const MASTER_ONLY_MESSAGES = {
   [Code.PermissionDenied]: 'Só o mestre da campanha pode gerenciar convites.',
@@ -31,6 +36,11 @@ const MASTER_ONLY_MESSAGES = {
  * invite, see its link exactly once, and list/revoke existing invites.
  * Only rendered by `CampaignDetail` when `my_role` is master.
  *
+ * One panel: the invites first (uses, a date, approval and a state tag per
+ * row, "Revogar" on an active one), then "Novo convite" at the end, where
+ * the one-time link appears (`InviteReveal`) right above the form that made
+ * it.
+ *
  * "Exigir aprovação do mestre" (RN-15, MR-024) makes whoever accepts the
  * invite a pending member: they create their character right away, and
  * join the campaign only when the master approves it.
@@ -38,9 +48,11 @@ const MASTER_ONLY_MESSAGES = {
 @Component({
   selector: 'app-campaign-invites',
   imports: [
+    InviteReveal,
     MatButtonModule,
     MatCheckboxModule,
     MatFormFieldModule,
+    MatIconModule,
     MatInputModule,
     MatSelectModule,
     ReactiveFormsModule,
@@ -54,8 +66,11 @@ export class CampaignInvites implements OnInit {
 
   readonly campaignId = input.required<string>();
 
-  protected readonly inviteStateLabel = inviteStateLabel;
   protected readonly InviteState = InviteState;
+  protected readonly inviteUsesLabel = inviteUsesLabel;
+  protected readonly inviteDateLabel = inviteDateLabel;
+  protected readonly inviteApprovalLabel = inviteApprovalLabel;
+  protected readonly inviteStateTag = inviteStateTag;
 
   protected readonly listState = signal<ListState>({ status: 'loading' });
   protected readonly createState = signal<CreateState>({ status: 'idle' });
