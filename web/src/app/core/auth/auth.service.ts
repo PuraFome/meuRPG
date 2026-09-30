@@ -8,17 +8,21 @@ import { CONNECT_TRANSPORT } from '../connect/transport';
 /**
  * The signed-in user, as far as the UI needs to know.
  *
- * `displayName` is always `null` today: `meurpg.identity.v1.User` carries
- * only an opaque account ID (see identity.proto and docs/privacidade.md —
- * no e-mail, name or photo from the sign-in provider). The campaigns module
- * is adding a display name and an `IdentityService.UpdateProfile` RPC;
- * once `GetMe` returns one, map it in `refresh()` below and every screen
- * that reads `displayName` (the user menu, in particular) picks it up with
- * no other change.
+ * `displayName` is the name the user typed in the app (`UpdateProfile`,
+ * "Meu perfil"), never anything from the sign-in provider (identity.proto,
+ * docs/privacidade.md — no e-mail, name or photo from Google). It is `null`
+ * until the user sets one, which every screen that reads it (the user menu,
+ * in particular) treats as "no name chosen yet", not as an empty string.
  */
 export interface AuthUser {
   readonly id: string;
   readonly displayName: string | null;
+}
+
+/** `User.display_name` is `""` when unset (protobuf's scalar default), never
+ * absent; this turns that into `null` everywhere `AuthService` reads one. */
+function displayNameOrNull(displayName: string | undefined): string | null {
+  return displayName ? displayName : null;
 }
 
 /**
@@ -77,7 +81,7 @@ export class AuthService {
       const res = await this.client.getMe({});
       this.stateSignal.set({
         status: 'signed-in',
-        user: { id: res.user?.id ?? '', displayName: null },
+        user: { id: res.user?.id ?? '', displayName: displayNameOrNull(res.user?.displayName) },
         sessionExpiresAt: res.sessionExpiresAt ? timestampDate(res.sessionExpiresAt) : null,
       });
     } catch (err) {
@@ -99,14 +103,39 @@ export class AuthService {
   }
 
   /**
+   * Sets the signed-in user's display name (`IdentityService.UpdateProfile`,
+   * "Meu perfil"): 1 to 40 characters after trimming; an empty value clears
+   * it. Throws the raw error on failure (e.g. `invalid_argument`), for the
+   * caller to map with `describeConnectError` — this service only updates
+   * `state` on success, so a failed save never shows a name that was not
+   * actually saved.
+   */
+  async updateProfile(displayName: string): Promise<void> {
+    const res = await this.client.updateProfile({ displayName });
+    const current = this.stateSignal();
+    if (current.status === 'signed-in') {
+      this.stateSignal.set({
+        ...current,
+        user: { ...current.user, displayName: displayNameOrNull(res.user?.displayName) },
+      });
+    }
+  }
+
+  /**
    * Sends the browser to the server's sign-in flow with a full-page
    * navigation (this is a redirect dance with the OIDC provider, not
    * something the Angular router can do). `returnTo` must be a path on
    * this site: the server's `safeReturnTo` rejects anything else — a
    * malformed value here would only turn into the server's plain-text 400.
+   *
+   * The fragment is always dropped: it can hold a secret (the invite token in
+   * `/convite#t=...`, which Angular's `router.url` still carries), and this
+   * URL is a GET that ends up in the platform's request logs.
    */
   signIn(returnTo: string): void {
-    const path = returnTo.startsWith('/') && !returnTo.startsWith('//') ? returnTo : '/';
+    const withoutFragment = returnTo.split('#', 1)[0];
+    const path =
+      withoutFragment.startsWith('/') && !withoutFragment.startsWith('//') ? withoutFragment : '/';
     window.location.assign(`/auth/login?return_to=${encodeURIComponent(path)}`);
   }
 

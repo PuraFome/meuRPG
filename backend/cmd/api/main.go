@@ -176,10 +176,22 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		logger.Warn("campaigns are disabled: they need sign-in")
 	}
 
-	if static, ok := httpserver.NewStatic(cfg.WebDir); ok {
+	// Forms on the app's pages (the invite page's POST to /auth/login) are
+	// redirected to the provider, so its origin must pass the CSP's
+	// form-action. The issuer and its authorization endpoint share an origin
+	// for Google and for the local providers.
+	var staticOpts []httpserver.StaticOption
+	if cfg.OIDC.Configured() {
+		staticOpts = append(staticOpts, httpserver.WithFormActionOrigin(cfg.OIDC.IssuerURL))
+	}
+	static, ok, err := httpserver.NewStatic(cfg.WebDir, staticOpts...)
+	switch {
+	case err != nil:
+		return err
+	case ok:
 		srv.Handle("/", static)
 		logger.Info("serving the web app", "dir", cfg.WebDir)
-	} else {
+	default:
 		logger.Info("no web build found; running API-only", "dir", cfg.WebDir)
 	}
 

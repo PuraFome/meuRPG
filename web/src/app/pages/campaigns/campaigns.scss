@@ -1,4 +1,30 @@
-.empty-state {
-  max-width: 28rem;
-  margin: 2rem auto;
+.status-card,
+.empty-state,
+.new-campaign {
+  max-width: 32rem;
+  margin: 1rem 0;
+}
+
+.status-card__content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.status-card--error {
+  color: var(--mat-sys-error);
+}
+
+.full-width {
+  width: 100%;
+}
+
+.form-error {
+  color: var(--mat-sys-error);
+  margin: 0 0 1rem;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
 }

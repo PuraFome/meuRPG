@@ -43,3 +43,23 @@ export const getMe = (page: Page) => callRPC(page, 'meurpg.identity.v1.IdentityS
 export const signOut = (page: Page) => callRPC(page, 'meurpg.identity.v1.IdentityService/SignOut');
 
 export const day = 24 * 60 * 60 * 1000;
+
+/**
+ * Creates a campaign through the "Nova campanha" form on `/campanhas`, the
+ * way MR-001 asks for, and returns its id from the `/campanhas/<id>` URL
+ * the app navigates to afterwards.
+ *
+ * Tests whose own story is not campaign creation (MR-002, MR-003) use this
+ * as setup, so their assertions stay about invites and membership, not
+ * about the form they don't need to prove again.
+ */
+export async function createCampaign(page: Page, name: string): Promise<string> {
+  await page.goto('/campanhas');
+  await page.getByLabel('Nome da campanha').fill(name);
+  await page.getByLabel('Modo de XP').click();
+  await page.getByRole('option', { name: 'Por inimigos derrotados' }).click();
+  await page.getByRole('button', { name: 'Criar campanha' }).click();
+
+  await expect(page).toHaveURL(/\/campanhas\/[^/]+$/);
+  return page.url().split('/').pop()!;
+}

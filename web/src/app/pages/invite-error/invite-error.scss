@@ -1,0 +1,8 @@
+.status-card {
+  max-width: 32rem;
+  margin: 1rem 0;
+}
+
+.status-card--error {
+  color: var(--mat-sys-error);
+}

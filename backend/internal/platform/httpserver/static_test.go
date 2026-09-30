@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -47,7 +48,7 @@ func TestNewStatic_MissingBuild(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			handler, ok := NewStatic(tt.dir)
+			handler, ok, _ := NewStatic(tt.dir)
 			if ok {
 				t.Fatalf("NewStatic(%q) ok = true, want false", tt.dir)
 			}
@@ -62,7 +63,7 @@ func TestStaticHandler_Routing(t *testing.T) {
 	t.Parallel()
 
 	dir := newTestBuild(t)
-	handler, ok := NewStatic(dir)
+	handler, ok, _ := NewStatic(dir)
 	if !ok {
 		t.Fatalf("NewStatic(%q) ok = false, want true", dir)
 	}
@@ -137,7 +138,7 @@ func TestStaticHandler_Routing(t *testing.T) {
 func TestStaticHandler_SecurityHeaders(t *testing.T) {
 	t.Parallel()
 
-	handler, ok := NewStatic(newTestBuild(t))
+	handler, ok, _ := NewStatic(newTestBuild(t))
 	if !ok {
 		t.Fatal("NewStatic ok = false, want true")
 	}
@@ -145,8 +146,8 @@ func TestStaticHandler_SecurityHeaders(t *testing.T) {
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil))
 
-	if got := rec.Header().Get("Content-Security-Policy"); got != cspHeader {
-		t.Errorf("Content-Security-Policy = %q, want %q", got, cspHeader)
+	if got := rec.Header().Get("Content-Security-Policy"); got != cspHeader(nil) {
+		t.Errorf("Content-Security-Policy = %q, want %q", got, cspHeader(nil))
 	}
 	if got := rec.Header().Get("X-Content-Type-Options"); got != "nosniff" {
 		t.Errorf("X-Content-Type-Options = %q, want nosniff", got)
@@ -159,7 +160,7 @@ func TestStaticHandler_SecurityHeaders(t *testing.T) {
 func TestStaticHandler_RejectsOtherMethods(t *testing.T) {
 	t.Parallel()
 
-	handler, ok := NewStatic(newTestBuild(t))
+	handler, ok, _ := NewStatic(newTestBuild(t))
 	if !ok {
 		t.Fatal("NewStatic ok = false, want true")
 	}
@@ -178,7 +179,7 @@ func TestStaticHandler_RejectsOtherMethods(t *testing.T) {
 func TestStaticHandler_Integration(t *testing.T) {
 	t.Parallel()
 
-	static, ok := NewStatic(newTestBuild(t))
+	static, ok, _ := NewStatic(newTestBuild(t))
 	if !ok {
 		t.Fatal("NewStatic ok = false, want true")
 	}
@@ -194,5 +195,37 @@ func TestStaticHandler_Integration(t *testing.T) {
 	}
 	if got := rec.Header().Get("Cache-Control"); got != "no-store" {
 		t.Errorf("/healthz Cache-Control = %q, want no-store (the probe's, not the static handler's)", got)
+	}
+}
+
+func TestStaticHandler_FormActionOrigin(t *testing.T) {
+	t.Parallel()
+
+	// The invite page posts to /auth/login, which redirects to the provider:
+	// browsers check form-action on every hop, so the provider's origin must
+	// be listed, reduced to scheme and host.
+	handler, ok, err := NewStatic(newTestBuild(t), WithFormActionOrigin("https://accounts.google.com/o/oauth2/v2/auth?x=1"))
+	if err != nil || !ok {
+		t.Fatalf("NewStatic() = ok %v, err %v; want ok, nil", ok, err)
+	}
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil))
+
+	csp := rec.Header().Get("Content-Security-Policy")
+	if !strings.Contains(csp, "form-action 'self' https://accounts.google.com;") {
+		t.Errorf("Content-Security-Policy = %q, want form-action 'self' https://accounts.google.com", csp)
+	}
+	if !strings.Contains(csp, "script-src 'self';") {
+		t.Errorf("Content-Security-Policy = %q, want the rest of the policy unchanged", csp)
+	}
+}
+
+func TestStaticHandler_FormActionOriginMustBeAbsolute(t *testing.T) {
+	t.Parallel()
+
+	for _, bad := range []string{"", "accounts.google.com", "/relative", "javascript:alert(1)", "ftp://example.com"} {
+		if _, ok, err := NewStatic(newTestBuild(t), WithFormActionOrigin(bad)); err == nil || ok {
+			t.Errorf("NewStatic(WithFormActionOrigin(%q)) = ok %v, err %v; want an error", bad, ok, err)
+		}
 	}
 }

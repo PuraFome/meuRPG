@@ -73,6 +73,17 @@ describe('UserMenu', () => {
     expect(auth.signOut).toHaveBeenCalled();
   });
 
+  it('links the account label to "Meu perfil" when signed in', () => {
+    auth.set({
+      status: 'signed-in',
+      user: { id: 'user-1', displayName: null },
+      sessionExpiresAt: null,
+    });
+
+    const el = render();
+    expect(el.querySelector('a[href="/perfil"]')).toBeTruthy();
+  });
+
   it('uses the display name instead of "Minha conta" once one is available', () => {
     auth.set({
       status: 'signed-in',
