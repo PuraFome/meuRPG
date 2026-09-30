@@ -28,11 +28,12 @@ test.describe('criar campanha', () => {
     await expect(page.getByRole('heading', { name, level: 1 })).toBeVisible();
     await expect(page.getByText('Você é mestre nesta campanha')).toBeVisible();
 
-    // And MR-001's other half: it shows up in "Minhas campanhas", as mestre.
+    // And MR-001's other half: it shows up in "Minhas campanhas", tagged
+    // "Mestre".
     await page.goto('/campanhas');
     const item = page.getByRole('link', { name });
     await expect(item).toBeVisible();
-    await expect(item).toContainText('mestre');
+    await expect(item).toContainText('Mestre');
   });
 });
 

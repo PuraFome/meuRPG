@@ -49,16 +49,6 @@
     border-color: var(--mr-ink);
   }
 
-  &--primary {
-    border-color: var(--mr-accent);
-    background: var(--mr-accent);
-    color: var(--mr-on-accent);
-
-    &:hover {
-      border-color: var(--mr-accent-strong);
-      background: var(--mr-accent-strong);
-    }
-  }
 
   @media (max-width: 767.98px) {
     height: 48px;

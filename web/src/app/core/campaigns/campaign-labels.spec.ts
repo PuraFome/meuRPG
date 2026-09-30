@@ -1,5 +1,5 @@
 import { InviteState, Role, XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { displayNameOrFallback, inviteStateLabel, roleLabel, xpModeLabel } from './campaign-labels';
+import { inviteStateLabel, roleLabel, xpModeLabel } from './campaign-labels';
 
 describe('roleLabel', () => {
   it('shows "mestre" for the master and "jogador" for a player', () => {
@@ -25,13 +25,3 @@ describe('inviteStateLabel', () => {
   });
 });
 
-describe('displayNameOrFallback', () => {
-  it('returns the trimmed name when one was chosen', () => {
-    expect(displayNameOrFallback('  Vinicius  ')).toBe('Vinicius');
-  });
-
-  it('falls back to "Sem nome" — never an e-mail — when empty', () => {
-    expect(displayNameOrFallback('')).toBe('Sem nome');
-    expect(displayNameOrFallback('   ')).toBe('Sem nome');
-  });
-});

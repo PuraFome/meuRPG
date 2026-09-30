@@ -1,60 +1,107 @@
-.invites {
-  margin-top: 1.5rem;
-}
-
-.invite-reveal {
-  border: 1px solid var(--mat-sys-outline);
-  border-radius: 0.5rem;
-  padding: 1rem;
-  margin-bottom: 1rem;
-  max-width: 40rem;
-}
-
-.invite-reveal__warning {
-  margin-top: 0;
-}
-
-.invite-reveal__link {
+:host {
   display: block;
-  word-break: break-all;
-  background: var(--mat-sys-surface-variant);
-  padding: 0.5rem;
-  border-radius: 0.25rem;
-  margin-bottom: 0.75rem;
 }
 
-.invite-reveal__actions {
+.invites__hint {
+  margin: 0 0 var(--mr-space-2);
+  font-size: 15px;
+  color: var(--mr-ink-muted);
+}
+
+// One invite: what it is on the left (uses, date, approval), its state
+// tag on the right, and "Revogar" under it all. Readable at 320px, no table.
+.invite {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--mr-space-2) var(--mr-space-3);
+  padding: var(--mr-space-3) 0;
+}
+
+.invite__text {
   display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+  flex-direction: column;
+}
+
+.invite__uses {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.invite__meta {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.invite__tag {
+  justify-self: end;
+  margin-top: 1px;
+}
+
+.invite__revoke {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
+// "Novo convite": the panel's action, at its end, under a rule.
+.invites__new {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  margin-top: var(--mr-space-2);
+  padding-top: var(--mr-space-4);
+  border-top: 1px solid var(--mr-rule);
+}
+
+.invites__subtitle {
+  margin: 0;
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 700;
 }
 
 .invite-form {
   display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+// Two short fields side by side, down to 320px: a count needs about
+// 8rem, not a whole row.
+.invite-form__fields {
+  display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 1rem;
+  gap: var(--mr-space-2) var(--mr-space-3);
 }
 
+.invite-form__uses {
+  flex: 0 1 8.5rem;
+  min-width: 6.5rem;
+}
+
+.invite-form__validity {
+  flex: 0 1 10.5rem;
+  min-width: 7.5rem;
+}
+
+// The checkbox's box lines up with the fields above (Material pads it
+// 11px for the touch target), and its explanation with its label.
 .invite-form__approval {
-  align-self: center;
+  margin-left: -11px;
+
+  .invites__hint {
+    margin: -4px 0 0 44px;
+  }
 }
 
-.form-error {
-  color: var(--mat-sys-error);
-  flex-basis: 100%;
-}
-
-.invites-table {
-  border-collapse: collapse;
-  margin-top: 1rem;
+.invite-form__submit {
   width: 100%;
-  max-width: 40rem;
+  margin-top: var(--mr-space-2);
 
-  th,
-  td {
-    text-align: left;
-    padding: 0.5rem;
-    border-bottom: 1px solid var(--mat-sys-outline-variant);
+  @media (min-width: 768px) {
+    width: auto;
+    align-self: flex-start;
+    min-width: 12rem;
   }
 }

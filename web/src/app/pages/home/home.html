@@ -1,41 +1,66 @@
-<h1 class="home__title">Início</h1>
-@if (state(); as s) {
-  @switch (s.status) {
-    @case ('loading') {
-      <mat-card class="status-card" role="status" aria-live="polite">
-        <mat-card-content class="status-card__content">
-          <mat-spinner diameter="32" />
-          <p>Consultando o servidor...</p>
-        </mat-card-content>
-      </mat-card>
+@let auth = authState();
+<section class="welcome">
+  @switch (auth.status) {
+    @case ('signed-in') {
+      <h1 class="mr-page-title welcome__title">{{ greeting() }}</h1>
+      <p class="mr-page-lead welcome__lead">
+        Suas campanhas guardam as fichas e as sessões da mesa.
+      </p>
+      <a mat-flat-button class="welcome__action" routerLink="/campanhas">Ver minhas campanhas</a>
+      @if (!hasDisplayName()) {
+        <p class="welcome__note">
+          Você ainda não escolheu o nome que a mesa vê.
+          <a routerLink="/perfil">Escolher meu nome</a>
+        </p>
+      }
     }
-    @case ('ready') {
-      <mat-card class="status-card">
-        <mat-card-header>
-          <h2 mat-card-title>Servidor conectado</h2>
-        </mat-card-header>
-        <mat-card-content>
-          <dl class="server-info">
-            <dt>Versão</dt>
-            <dd>{{ s.version }}</dd>
-            <dt>Commit</dt>
-            <dd><code>{{ s.commit }}</code></dd>
-          </dl>
-        </mat-card-content>
-      </mat-card>
+    @case ('unknown') {
+      <h1 class="mr-visually-hidden">Início</h1>
     }
-    @case ('error') {
-      <mat-card class="status-card status-card--error" role="alert">
-        <mat-card-header>
-          <h2 mat-card-title>Não foi possível falar com o servidor</h2>
-        </mat-card-header>
-        <mat-card-content>
-          <p>{{ s.message }}</p>
-        </mat-card-content>
-        <mat-card-actions>
-          <button mat-button (click)="retry()">Tentar de novo</button>
-        </mat-card-actions>
-      </mat-card>
+    @default {
+      <h1 class="mr-page-title welcome__title">As fichas e as campanhas da nossa mesa de D&amp;D</h1>
+      <p class="mr-page-lead welcome__lead">
+        O mestre cria a campanha e convida os jogadores. Cada jogador monta a própria ficha, no
+        formato da ficha oficial, e a consulta no celular durante a sessão.
+      </p>
+      @if (auth.status === 'signed-out') {
+        <!-- A link, not a button: signing in is a navigation to the server
+             (AuthService.signIn does the same GET), and the app bar already
+             has the "Entrar" button the e2e tests click. -->
+        <a mat-flat-button class="welcome__action" [href]="signInHref">Entrar</a>
+        <p class="welcome__note">Recebeu um convite? Abra o link que o mestre mandou.</p>
+      }
     }
   }
-}
+</section>
+
+<div class="server">
+  @if (state(); as s) {
+    @switch (s.status) {
+      @case ('loading') {
+        <p class="server__status" role="status">Consultando o servidor...</p>
+      }
+      @case ('ready') {
+        <p class="server__status">
+          <mat-icon aria-hidden="true">cloud_done</mat-icon>
+          Servidor conectado
+        </p>
+        <dl class="server__info">
+          <dt>Versão</dt>
+          <dd>{{ s.version }}</dd>
+          <dt>Commit</dt>
+          <dd><code>{{ s.commit }}</code></dd>
+        </dl>
+      }
+      @case ('error') {
+        <div class="mr-notice mr-notice--danger" role="alert">
+          <mat-icon aria-hidden="true">cloud_off</mat-icon>
+          <p><strong>Não foi possível falar com o servidor.</strong> {{ s.message }}</p>
+        </div>
+        <button mat-stroked-button type="button" (click)="retry()">
+          Tentar de novo
+        </button>
+      }
+    }
+  }
+</div>

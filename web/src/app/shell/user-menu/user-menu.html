@@ -7,9 +7,7 @@
     <button type="button" class="user-menu__button" (click)="signOut()">Sair</button>
   }
   @case ('signed-out') {
-    <button type="button" class="user-menu__button user-menu__button--primary" (click)="signIn()">
-      Entrar
-    </button>
+    <button type="button" class="user-menu__button" (click)="signIn()">Entrar</button>
   }
   @case ('unavailable') {
     <span class="user-menu__unavailable" role="status">

@@ -1,19 +1,18 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatListModule } from '@angular/material/list';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { Router, RouterLink } from '@angular/router';
 import { Code } from '@connectrpc/connect';
 
 import { Campaign, XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { roleLabel } from '../../core/campaigns/campaign-labels';
 import { CampaignsService } from '../../core/campaigns/campaigns.service';
 import { describeConnectError } from '../../core/connect/connect-errors';
+import { roleTag, xpModeSentence } from './campaign-copy';
 
 type ListState =
   | { status: 'loading' }
@@ -24,16 +23,18 @@ type CreateState = { status: 'idle' } | { status: 'saving' } | { status: 'error'
 
 /**
  * "Minhas campanhas" (guarded by authGuard — see app.routes.ts): MR-001's
- * list, with an empty state and the "Nova campanha" form.
+ * "Criar campanha" form, then the list, one row per campaign (name, XP
+ * mode, and the caller's role as a tag; "Pendente" while the master has
+ * not approved them, MR-024), with an empty state that points to both ways
+ * in: creating one, or an invite link.
  */
 @Component({
   selector: 'app-campaigns',
   imports: [
     MatButtonModule,
-    MatCardModule,
     MatFormFieldModule,
+    MatIconModule,
     MatInputModule,
-    MatListModule,
     MatProgressSpinnerModule,
     MatSelectModule,
     ReactiveFormsModule,
@@ -48,7 +49,8 @@ export class Campaigns {
   private readonly fb = inject(FormBuilder);
 
   protected readonly XpMode = XpMode;
-  protected readonly roleLabel = roleLabel;
+  protected readonly roleTag = roleTag;
+  protected readonly xpModeSentence = xpModeSentence;
 
   protected readonly state = signal<ListState>({ status: 'loading' });
   protected readonly createState = signal<CreateState>({ status: 'idle' });

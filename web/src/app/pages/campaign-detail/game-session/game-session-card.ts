@@ -1,10 +1,11 @@
 import { Component, OnInit, inject, input, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
+import { MatIconModule } from '@angular/material/icon';
 import { Code } from '@connectrpc/connect';
 
 import { lockedSheetCountLabel } from '../../../core/characters/character-labels';
 import { describeConnectError } from '../../../core/connect/connect-errors';
+import { formatDateAt } from '../campaign-detail.copy';
 import { GameSessionSource, GameSessionVm } from './game-session-card.types';
 
 type CardState =
@@ -28,7 +29,7 @@ const MASTER_ONLY_MESSAGES = {
  */
 @Component({
   selector: 'app-game-session-card',
-  imports: [MatButtonModule, MatCardModule],
+  imports: [MatButtonModule, MatIconModule],
   templateUrl: './game-session-card.html',
   styleUrl: './game-session-card.scss',
 })
@@ -46,6 +47,7 @@ export class GameSessionCard implements OnInit {
    * follow-up: "1 ficha travada." not "1 fichas travadas."). */
   protected readonly lastLockedSheetCount = signal<number | null>(null);
   protected readonly lockedSheetCountLabel = lockedSheetCountLabel;
+  protected readonly formatDateAt = formatDateAt;
 
   ngOnInit(): void {
     this.load();

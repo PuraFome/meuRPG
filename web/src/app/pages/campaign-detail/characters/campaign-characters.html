@@ -1,89 +1,131 @@
 <section aria-labelledby="characters-heading" class="characters">
-  <h2 id="characters-heading">Personagens</h2>
+  <h2 id="characters-heading" class="mr-visually-hidden">Personagens</h2>
 
   @if (state(); as s) {
     @switch (s.status) {
       @case ('loading') {
-        <p role="status" aria-live="polite">Carregando personagens...</p>
+        <div class="mr-panel">
+          <p class="mr-muted panel-hint" role="status">Carregando os personagens...</p>
+        </div>
       }
       @case ('error') {
-        <p role="alert">{{ s.message }}</p>
+        <div class="mr-notice mr-notice--danger" role="alert">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <p>{{ s.message }}</p>
+        </div>
       }
       @case ('ready') {
         @if (isMaster()) {
           @let waiting = awaitingApproval(s.vm);
           @if (waiting.length > 0) {
-            <h3 id="awaiting-approval-heading">Esperando aprovação</h3>
-            <p>Abra a ficha para aprovar ou recusar o personagem.</p>
-            <ul class="character-list" aria-labelledby="awaiting-approval-heading">
-              @for (c of waiting; track c.id) {
-                <li>
-                  <a [routerLink]="['/campanhas', campaignId(), 'personagens', c.id]">{{ c.name }}</a>
-                  @if (c.classSummary) {
-                    <span class="character-list__detail">{{ c.classSummary }}</span>
-                  }
-                  @if (c.playerDisplayName) {
-                    <span class="character-list__detail">{{ c.playerDisplayName }}</span>
-                  }
-                </li>
-              }
-            </ul>
+            <section class="mr-panel" aria-labelledby="awaiting-approval-heading">
+              <h3 class="mr-panel__title" id="awaiting-approval-heading">Esperando aprovação</h3>
+              <p class="panel-hint">Abra a ficha para aprovar ou recusar o personagem.</p>
+              <ul class="mr-list" aria-labelledby="awaiting-approval-heading">
+                @for (c of waiting; track c.id) {
+                  <li>
+                    <a class="mr-list__row" [routerLink]="['/campanhas', campaignId(), 'personagens', c.id]">
+                      <span class="pending-dot" aria-hidden="true"></span>
+                      <span class="mr-list__text">
+                        <span class="mr-list__name">{{ c.name }}</span>
+                        @if (characterRowSub(c, true); as sub) {
+                          <span class="mr-list__sub">{{ sub }}</span>
+                        }
+                      </span>
+                      <span class="row-action">Revisar</span>
+                    </a>
+                  </li>
+                }
+              </ul>
+            </section>
           }
         }
 
         @let listed = listedPlayerCharacters(s.vm);
-        <h3>{{ isMaster() ? 'Personagens dos jogadores' : 'Meus personagens' }}</h3>
-        @if (listed.length === 0) {
-          <p>Nenhum personagem ainda.</p>
-        } @else {
-          <ul class="character-list">
-            @for (c of listed; track c.id) {
-              <li>
-                <a [routerLink]="['/campanhas', campaignId(), 'personagens', c.id]">{{ c.name }}</a>
-                @if (c.classSummary) {
-                  <span class="character-list__detail">{{ c.classSummary }}</span>
-                }
-                @if (isMaster() && c.playerDisplayName) {
-                  <span class="character-list__detail">{{ c.playerDisplayName }}</span>
-                }
-                <span class="character-list__state">{{ characterStateLabel(c.state) }}</span>
-              </li>
-            }
-          </ul>
-        }
-
-        @if (!isMaster() && !s.vm.hasLivingCharacter) {
-          <a mat-flat-button [routerLink]="['/campanhas', campaignId(), 'personagens', 'novo']">
-            Criar meu personagem
-          </a>
-        }
-
-        @if (isMaster()) {
-          <h3>NPCs</h3>
-          @if (s.vm.npcs.length === 0) {
-            <p>Nenhum NPC ainda.</p>
+        <section class="mr-panel" aria-labelledby="players-heading">
+          <h3 class="mr-panel__title" id="players-heading">
+            {{ isMaster() ? 'Personagens dos jogadores' : 'Meus personagens' }}
+          </h3>
+          @if (listed.length === 0) {
+            <p class="panel-hint">
+              @if (isMaster()) {
+                Nenhum personagem ainda. Cada jogador cria o seu ao entrar pelo convite.
+              } @else {
+                Você ainda não tem personagem nesta campanha.
+              }
+            </p>
           } @else {
-            <ul class="character-list">
-              @for (c of s.vm.npcs; track c.id) {
+            <ul class="mr-list">
+              @for (c of listed; track c.id) {
                 <li>
-                  <a [routerLink]="['/campanhas', campaignId(), 'personagens', c.id]">{{ c.name }}</a>
-                  <mat-chip>{{ characterKindLabel(c.kind) }}</mat-chip>
+                  <a class="mr-list__row" [routerLink]="['/campanhas', campaignId(), 'personagens', c.id]">
+                    <span class="mr-list__text">
+                      <span class="mr-list__name">{{ c.name }}</span>
+                      @if (characterRowSub(c, isMaster()); as sub) {
+                        <span class="mr-list__sub">{{ sub }}</span>
+                      }
+                    </span>
+                    <span class="mr-tag" [class]="stateTagClass(c.state)">
+                      @if (c.state === 'locked') {
+                        <mat-icon aria-hidden="true">lock</mat-icon>
+                      }
+                      {{ characterStateLabel(c.state) }}
+                    </span>
+                  </a>
                 </li>
               }
             </ul>
           }
 
-          <button mat-button type="button" [matMenuTriggerFor]="npcMenu">Novo NPC</button>
-          <mat-menu #npcMenu="matMenu">
-            @for (option of npcKinds; track option.tipo) {
-              <a
-                mat-menu-item
-                [routerLink]="['/campanhas', campaignId(), 'npcs', 'novo', option.tipo]"
-              >
-                {{ characterKindLabel(option.kind) }}
-              </a>
+          @if (!isMaster() && !s.vm.hasLivingCharacter) {
+            <a
+              mat-flat-button
+              class="panel-action panel-action--primary"
+              [routerLink]="['/campanhas', campaignId(), 'personagens', 'novo']"
+            >
+              Criar meu personagem
+            </a>
+          }
+        </section>
+
+        @if (isMaster()) {
+          <section class="mr-panel" aria-labelledby="npcs-heading">
+            <h3 class="mr-panel__title" id="npcs-heading">NPCs</h3>
+            @if (s.vm.npcs.length === 0) {
+              <p class="panel-hint">Nenhum NPC ainda. Crie o primeiro para usar nas sessões.</p>
+            } @else {
+              <ul class="mr-list">
+                @for (c of s.vm.npcs; track c.id) {
+                  <li>
+                    <a class="mr-list__row" [routerLink]="['/campanhas', campaignId(), 'personagens', c.id]">
+                      <span class="mr-list__text">
+                        <span class="mr-list__name">{{ c.name }}</span>
+                        @if (characterRowSub(c, true); as sub) {
+                          <span class="mr-list__sub">{{ sub }}</span>
+                        }
+                      </span>
+                      @if (c.state === 'dead') {
+                        <span class="mr-tag mr-tag--danger">{{ characterStateLabel(c.state) }}</span>
+                      }
+                      <span class="mr-tag">{{ characterKindLabel(c.kind) }}</span>
+                    </a>
+                  </li>
+                }
+              </ul>
             }
-          </mat-menu>
+
+            <button mat-stroked-button class="panel-action" type="button" [matMenuTriggerFor]="npcMenu">
+              <mat-icon aria-hidden="true">add</mat-icon>
+              Novo NPC
+            </button>
+            <mat-menu #npcMenu="matMenu">
+              @for (option of npcKinds; track option.tipo) {
+                <a mat-menu-item [routerLink]="['/campanhas', campaignId(), 'npcs', 'novo', option.tipo]">
+                  {{ characterKindLabel(option.kind) }}
+                </a>
+              }
+            </mat-menu>
+          </section>
         }
       }
     }

@@ -1,41 +1,111 @@
-.status-card {
-  max-width: 32rem;
-  margin: 1rem 0;
+:host {
+  display: block;
 }
 
-.status-card__content {
+// "‹ Minhas campanhas", quiet, above the title (the artboard's back link).
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mr-space-1);
+  min-height: 44px;
+  margin-left: -6px;
+  color: var(--mr-ink-muted);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--mr-ink);
+  }
+
+  .mat-icon {
+    width: 22px;
+    height: 22px;
+    font-size: 22px;
+  }
+}
+
+.campaign-head {
+  margin-top: var(--mr-space-1);
+}
+
+.page-status {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: var(--mr-space-3);
+  margin: 0;
+  color: var(--mr-ink-muted);
 }
 
-.status-card--error {
-  color: var(--mat-sys-error);
+.page-notice {
+  max-width: 44rem;
 }
 
-.pending-banner {
-  border-left: 4px solid var(--mat-sys-primary);
-}
-
-.campaign-meta {
-  color: var(--mat-sys-on-surface-variant);
-}
-
-.members {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 1.5rem;
+.pending {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--mr-space-4);
+  max-width: 44rem;
 }
 
-.members__name {
+// One column on a phone and a tablet; from 1024px, the play on the left
+// and the table (members, invites) on the right.
+.campaign-layout {
+  display: grid;
+  gap: var(--mr-space-4);
+
+  @media (min-width: 1024px) {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    gap: var(--mr-space-6);
+    align-items: start;
+  }
+}
+
+.campaign-layout__column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+  min-width: 0;
+}
+
+// "Membros": name on the left, the role word on the right, as in the design.
+.member {
+  display: flex;
+  align-items: baseline;
+  gap: var(--mr-space-3);
+  padding: var(--mr-space-3) 0;
+  font-size: 17px;
+}
+
+// The viewer's own row ends with the 44px "Meu perfil" link: no extra
+// padding under it.
+.member:has(.member__profile) {
+  padding-bottom: 0;
+}
+
+.member__text {
+  flex-grow: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.member__name {
+  overflow-wrap: anywhere;
+}
+
+.member__you {
+  font-size: 15px;
+}
+
+.member__profile {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  min-height: 44px;
+  font-size: 15px;
   font-weight: 500;
 }
 
-.members__role {
-  margin-left: 0.5rem;
-  color: var(--mat-sys-on-surface-variant);
-  font-size: 0.875rem;
+.member__role {
+  flex-shrink: 0;
+  color: var(--mr-ink-muted);
 }

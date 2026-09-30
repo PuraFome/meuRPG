@@ -1,9 +1,10 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatIconModule } from '@angular/material/icon';
+import { RouterLink } from '@angular/router';
 import { ConnectError } from '@connectrpc/connect';
 
+import { AuthService } from '../../core/auth/auth.service';
 import { ServerInfoService } from '../../core/system/server-info.service';
 
 /** State of the one call this page makes, kept as a single signal so the
@@ -13,16 +14,44 @@ type ServerInfoState =
   | { status: 'ready'; version: string; commit: string }
   | { status: 'error'; message: string };
 
+/**
+ * "/": for a visitor, what MeuRPG is for this table and "Entrar"; for
+ * someone signed in, a greeting and the way to "Minhas campanhas" (plus a
+ * nudge to "Meu perfil" while they have no display name, which is how the
+ * rest of the table sees them).
+ *
+ * At the bottom, quietly, the server's version (`GetServerInfo`): the
+ * e2e smoke test (`e2e/tests/app.spec.ts`) reads "Servidor conectado" and
+ * the `<dl>`'s "Versão".
+ */
 @Component({
   selector: 'app-home',
-  imports: [MatButtonModule, MatCardModule, MatProgressSpinnerModule],
+  imports: [MatButtonModule, MatIconModule, RouterLink],
   templateUrl: './home.html',
   styleUrl: './home.scss',
 })
 export class Home {
   private readonly serverInfo = inject(ServerInfoService);
+  private readonly auth = inject(AuthService);
 
   protected readonly state = signal<ServerInfoState>({ status: 'loading' });
+  protected readonly authState = this.auth.state;
+
+  /** Where "Entrar" goes: the server's sign-in, back to "Minhas campanhas"
+   * afterwards (the same URL `AuthService.signIn('/campanhas')` opens). */
+  protected readonly signInHref = `/auth/login?return_to=${encodeURIComponent('/campanhas')}`;
+
+  private readonly displayName = computed(() => {
+    const auth = this.auth.state();
+    return auth.status === 'signed-in' ? auth.user.displayName : null;
+  });
+
+  protected readonly hasDisplayName = computed(() => this.displayName() !== null);
+
+  protected readonly greeting = computed(() => {
+    const name = this.displayName();
+    return name ? `Olá, ${name}` : 'Olá';
+  });
 
   constructor() {
     this.load();

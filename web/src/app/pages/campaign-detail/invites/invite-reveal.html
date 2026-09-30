@@ -1,0 +1,32 @@
+<div class="reveal" role="status">
+  <p class="reveal__title">
+    <mat-icon aria-hidden="true">check_circle</mat-icon>
+    Convite gerado
+  </p>
+  <p><strong>Guarde este link agora.</strong> Ele não será mostrado de novo.</p>
+  <code class="invite-reveal__link">{{ link() }}</code>
+  @if (requiresApproval()) {
+    <p>
+      Quem entrar por este link cria o personagem na hora e só entra na campanha depois que você
+      aprovar.
+    </p>
+  }
+  <div class="reveal__actions">
+    <button mat-stroked-button type="button" (click)="copy.emit()">
+      <mat-icon aria-hidden="true">content_copy</mat-icon>
+      Copiar link
+    </button>
+    <button mat-button type="button" (click)="dismiss.emit()">Ok, guardei o link</button>
+  </div>
+  @if (copyStatus() === 'copied') {
+    <p class="reveal__feedback" role="status">
+      <mat-icon aria-hidden="true">check</mat-icon>
+      Link copiado.
+    </p>
+  }
+  @if (copyStatus() === 'error') {
+    <p class="reveal__feedback" role="alert">
+      Não foi possível copiar automaticamente. Selecione e copie o link acima.
+    </p>
+  }
+</div>

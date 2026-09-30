@@ -53,7 +53,7 @@ describe('CampaignInvites', () => {
     return { el: fixture.nativeElement as HTMLElement, fixture };
   }
 
-  it('lists invites with their Portuguese status (ativo/usado/expirado/revogado)', async () => {
+  it('lists invites with their Portuguese status as tags (Ativo/Usado/Expirado/Revogado)', async () => {
     fake.listInvitesResult = Promise.resolve({
       invites: [
         invite('i1', InviteState.ACTIVE),
@@ -64,10 +64,12 @@ describe('CampaignInvites', () => {
     });
     const { el } = await render();
 
-    expect(el.textContent).toContain('ativo');
-    expect(el.textContent).toContain('usado');
-    expect(el.textContent).toContain('expirado');
-    expect(el.textContent).toContain('revogado');
+    const tags = Array.from(el.querySelectorAll('.mr-tag')).map((t) => t.textContent?.trim());
+    expect(tags).toEqual(['Ativo', 'Usado', 'Expirado', 'Revogado']);
+    // A list of rows, not a table, with the uses spelled out.
+    expect(el.querySelector('table')).toBeNull();
+    expect(el.querySelector('ul[aria-label="Convites gerados"]')).toBeTruthy();
+    expect(el.textContent).toContain('1 de 1 uso');
   });
 
   it('shows a message when listing invites fails (e.g. permission_denied)', async () => {
@@ -113,7 +115,7 @@ describe('CampaignInvites', () => {
     expect(fake.createInvite).toHaveBeenCalledWith('camp-1', 1, 7, true);
     const text = (fixture.nativeElement as HTMLElement).textContent;
     expect(text).toContain('só entra na campanha depois que você aprovar');
-    expect(text).toContain('exige aprovação');
+    expect(text).toContain('Exige aprovação do mestre');
     // The form goes back to the default: the next invite needs no approval.
     expect(fixture.componentInstance['form'].getRawValue().requiresApproval).toBe(false);
   });
@@ -157,6 +159,40 @@ describe('CampaignInvites', () => {
     fixture.detectChanges();
 
     expect(fake.revokeInvite).toHaveBeenCalledWith('camp-1', 'i1');
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain('revogado');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Revogado');
+    // Nothing left to revoke.
+    const buttons = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button'));
+    expect(buttons.some((b) => b.textContent?.includes('Revogar'))).toBe(false);
+  });
+
+  it('"Copiar link" copies the revealed link and says so', async () => {
+    fake.createInvite.mockResolvedValue({ invite: invite('new-invite', InviteState.ACTIVE), token: 'tok' });
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const original = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    try {
+      const { fixture } = await render();
+      await fixture.componentInstance['createInvite']();
+      fixture.detectChanges();
+
+      const el = fixture.nativeElement as HTMLElement;
+      const link = el.querySelector('.invite-reveal__link')?.textContent?.trim();
+      expect(link).toMatch(/\/convite#t=tok$/);
+      const copy = Array.from(el.querySelectorAll('button')).find((b) =>
+        b.textContent?.includes('Copiar link'),
+      ) as HTMLButtonElement;
+      copy.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(writeText).toHaveBeenCalledWith(link);
+      expect(el.textContent).toContain('Link copiado.');
+    } finally {
+      if (original) {
+        Object.defineProperty(navigator, 'clipboard', original);
+      } else {
+        delete (navigator as { clipboard?: unknown }).clipboard;
+      }
+    }
   });
 });

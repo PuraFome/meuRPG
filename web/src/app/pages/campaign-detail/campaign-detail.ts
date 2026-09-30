@@ -1,19 +1,16 @@
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
+import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import { Campaign, Member, Role } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import {
-  displayNameOrFallback,
-  roleLabel,
-  xpModeLabel,
-} from '../../core/campaigns/campaign-labels';
+import { AuthService } from '../../core/auth/auth.service';
 import { CampaignsService } from '../../core/campaigns/campaigns.service';
 import { describeConnectError } from '../../core/connect/connect-errors';
+import { campaignLead } from '../campaigns/campaign-copy';
+import { memberRows } from './campaign-detail.copy';
 import { CampaignCharacters } from './characters/campaign-characters';
 import { GameSessionCard } from './game-session/game-session-card';
 import { CampaignInvites } from './invites/invites';
@@ -32,6 +29,10 @@ type PageState =
  * (MR-001, MR-002), the "Personagens" section (MR-003, MR-005; everyone),
  * plus two master-only sections: "Convites" and "Sessão" (MR-006 / RN-01).
  *
+ * From 1024px up the page has two columns: the play on the left (Sessão,
+ * then the characters and NPCs) and the table on the right (Membros,
+ * Convites). Below that, the same order in one column.
+ *
  * A pending member (an invite with approval, RN-15 / MR-024) gets only the
  * campaign's name from GetCampaign (`awaitingApproval`): the page shows
  * "Esperando a aprovação do mestre" and their own character, and never
@@ -47,8 +48,7 @@ type PageState =
     CampaignCharacters,
     CampaignInvites,
     GameSessionCard,
-    MatButtonModule,
-    MatCardModule,
+    MatIconModule,
     MatProgressSpinnerModule,
     RouterLink,
   ],
@@ -59,12 +59,23 @@ export class CampaignDetail {
   private readonly campaigns = inject(CampaignsService);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly auth = inject(AuthService);
 
   protected readonly state = signal<PageState>({ status: 'loading' });
   protected readonly Role = Role;
-  protected readonly roleLabel = roleLabel;
-  protected readonly xpModeLabel = xpModeLabel;
-  protected readonly displayNameOrFallback = displayNameOrFallback;
+  protected readonly campaignLead = campaignLead;
+
+  /** The signed-in person's id, to mark their own row in "Membros" (and
+   * point them to "Meu perfil" when they have no display name yet). */
+  private readonly viewerId = computed(() => {
+    const auth = this.auth.state();
+    return auth.status === 'signed-in' ? auth.user.id : null;
+  });
+
+  protected readonly members = computed(() => {
+    const s = this.state();
+    return s.status === 'ready' ? memberRows(s.members, this.viewerId()) : [];
+  });
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
