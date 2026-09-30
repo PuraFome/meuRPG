@@ -98,6 +98,13 @@ func (m *memStore) lookupSession(_ context.Context, tokenHash []byte, now time.T
 	return Session{}, ErrNotFound
 }
 
+func (m *memStore) sessionActive(_ context.Context, sessionID string, now time.Time) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	s, ok := m.sessions[sessionID]
+	return ok && s.ExpiresAt.After(now), nil
+}
+
 func (m *memStore) revokeSession(_ context.Context, sessionID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

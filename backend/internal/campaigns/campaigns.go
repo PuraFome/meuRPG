@@ -34,6 +34,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1/campaignsv1connect"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/campaigns/campaignsdb"
@@ -198,6 +199,28 @@ func (s *Service) CampaignMembership(ctx context.Context, campaignID, userID str
 		return "", "", fmt.Errorf("get membership: %w", err)
 	}
 	return authz.Role(m.Role), authz.Status(m.Status), nil
+}
+
+// ActiveCampaigns returns the campaigns userID is an active member of, as
+// master or player, newest first, each with its name and the user's role
+// (Campaign.my_role). Pending memberships (RN-15) are left out: a pending
+// member is not a member.
+//
+// Package play calls it from ListOpenGameSessions, the in-app notice that a
+// session started (RN-06), with the user ID from its own authorization
+// check. It reads campaign_members through the index on user_id.
+func (s *Service) ActiveCampaigns(ctx context.Context, userID string) ([]*campaignsv1.Campaign, error) {
+	rows, err := s.queries.ListCampaignsOfUser(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list campaigns of user: %w", err)
+	}
+	var out []*campaignsv1.Campaign
+	for _, row := range rows {
+		if row.Status == string(authz.StatusActive) {
+			out = append(out, campaignToProto(row.Campaign, authz.Role(row.Role), false))
+		}
+	}
+	return out, nil
 }
 
 // ActivatePendingMember makes userID's pending membership of campaignID an

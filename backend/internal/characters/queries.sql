@@ -137,3 +137,48 @@ RETURNING notes, updated_at;
 -- Empty notes are not stored (RN-11 keeps only what is needed).
 DELETE FROM character_master_notes
 WHERE campaign_id = $1 AND character_id = $2;
+
+-- name: ListVitals :many
+-- The vitals of the campaign's living, active player characters (RN-02),
+-- oldest first: the party at the table. A character without a
+-- character_vitals row has fresh vitals, so the columns from it may be NULL.
+-- The sheet comes along because the maximums are derived from it.
+SELECT c.id, c.name, c.player_user_id, c.sheet,
+       v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
+       v.pact_slots_used, v.hit_dice_used, v.revision, v.updated_at
+FROM characters AS c
+LEFT JOIN character_vitals AS v ON v.character_id = c.id
+WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID
+  AND c.kind = 'player' AND c.status = 'active'
+ORDER BY c.created_at, c.id;
+
+-- name: GetVitals :one
+-- ListVitals for one character. No row means the character is not a
+-- living, active player character of the campaign.
+SELECT c.id, c.name, c.player_user_id, c.sheet,
+       v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
+       v.pact_slots_used, v.hit_dice_used, v.revision, v.updated_at
+FROM characters AS c
+LEFT JOIN character_vitals AS v ON v.character_id = c.id
+WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID AND c.id = sqlc.arg(id)
+  AND c.kind = 'player' AND c.status = 'active';
+
+-- name: UpsertVitals :one
+-- Saves a character's vitals: the first save creates the row with revision
+-- 1, and every later one adds 1.
+INSERT INTO character_vitals
+    (character_id, hit_points_current, hit_points_temporary, spell_slots_used,
+     pact_slots_used, hit_dice_used, revision, updated_at)
+VALUES (
+    sqlc.arg(character_id), sqlc.arg(hit_points_current), sqlc.arg(hit_points_temporary),
+    sqlc.arg(spell_slots_used)::INT4[], sqlc.arg(pact_slots_used), sqlc.arg(hit_dice_used), 1, sqlc.arg(now)
+)
+ON CONFLICT (character_id) DO UPDATE SET
+    hit_points_current = excluded.hit_points_current,
+    hit_points_temporary = excluded.hit_points_temporary,
+    spell_slots_used = excluded.spell_slots_used,
+    pact_slots_used = excluded.pact_slots_used,
+    hit_dice_used = excluded.hit_dice_used,
+    revision = character_vitals.revision + 1,
+    updated_at = excluded.updated_at
+RETURNING revision, updated_at;

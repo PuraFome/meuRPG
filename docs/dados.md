@@ -23,8 +23,9 @@ No app antigo (`server/src/db/schema.sql`), a campanha não existia, e tudo pert
 Tabelas novas para a mesa ao vivo:
 
 - `game_sessions`: começo e fim de cada sessão. Iniciar uma sessão preenche `sheet_locked_at` das fichas dos jogadores que ainda são rascunho, na mesma transação. Já existe (Etapa 4, ver [Esquema implementado](#esquema-implementado)).
+- `character_vitals`: PV atual, PV temporários, espaços de magia usados e dados de vida usados de cada personagem de jogador, que duram de uma sessão para outra (RN-02). Já existe (Etapa 5, ver [Esquema implementado](#esquema-implementado)).
 - `encounters` e `combatants`: rodada, turno, iniciativa, PV atual, espaços de magia usados e posição na grade de cada combate.
-- `session_events`: cada ação da sessão (dano, cura, magia, XP) vira uma linha que nunca é alterada. É o histórico da mesa e o que o stream manda para os celulares.
+- `session_events`: cada ação da sessão (dano, cura, magia, XP) vira uma linha que nunca é alterada. É o histórico da mesa; o stream manda a mudança que ela registra. Já existe (Etapa 5), por enquanto só com a correção do mestre nos PV, espaços de magia e dados de vida.
 - `xp_awards`: quem deu XP, quanto, quando e por quê (MR-016). O modo de XP fica em `campaigns.xp_mode`.
 - `scenes` e `scene_actions`: a cena de RP e a lista de ações dela (MR-015).
 
@@ -48,6 +49,7 @@ Toda tabela abaixo é nova — nasce numa migration do goose de algum módulo, n
 | `campaign_members` | Sem equivalente lá |
 | `campaign_characters` | Sem equivalente lá. Vem com a MR-022 (NPC em várias campanhas) |
 | `character_master_notes` | Sem equivalente lá |
+| `character_vitals` | Sem equivalente lá |
 | `gallery_items` | Sem equivalente lá |
 | `game_sessions` | Sem equivalente lá |
 | `encounters` | Sem equivalente lá |
@@ -123,6 +125,14 @@ erDiagram
         text notes
     }
 
+    character_vitals {
+        uuid character_id PK
+        integer hit_points_current
+        integer hit_points_temporary
+        integer_array spell_slots_used
+        integer hit_dice_used
+    }
+
     maps {
         uuid id PK
         uuid campaign_id FK
@@ -164,8 +174,11 @@ erDiagram
     session_events {
         uuid id PK
         uuid game_session_id FK
+        integer seq
         text kind
+        uuid actor_user_id FK
         jsonb payload
+        uuid idempotency_key
         timestamptz created_at
     }
 
@@ -206,6 +219,7 @@ erDiagram
 
     characters ||--o{ campaign_characters : "entra em"
     characters ||--o| character_master_notes : "tem"
+    characters ||--o| character_vitals : "tem"
     characters ||--o{ combatants : "atua como"
     characters |o--o| characters : "copiado de"
 
@@ -238,6 +252,7 @@ flowchart TD
         t_characters["characters"]
         t_campaign_characters["campaign_characters, com a MR-022"]
         t_character_master_notes["character_master_notes"]
+        t_character_vitals["character_vitals"]
     end
 
     subgraph play["Módulo play"]
@@ -286,8 +301,10 @@ Esta seção lista só o que já existe nas migrations de `backend/migrations/`.
 | `00020_expire_orphaned_player_characters` | `characters` | TTL por linha: o banco apaga sozinho o personagem de jogador que ficou sem jogador e sem campanha. |
 | `00021_add_campaign_invites_requires_approval` | `campaign_invites` | Coluna `requires_approval`: o convite exige a aprovação do mestre (RN-15, MR-024). |
 | `00022_add_campaign_members_status` | `campaign_members` | Coluna `status` (`active` ou `pending`): o membro pendente, que espera a aprovação do personagem (RN-15, MR-024). |
+| `00023_create_character_vitals` | `character_vitals` | PV atual, PV temporários, espaços de magia e de pacto usados e dados de vida usados de cada personagem de jogador (RN-02). |
+| `00024_create_session_events` | `session_events` | O histórico da sessão, uma linha por mudança, que nunca é alterada (ADR-0007). |
 
-As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021` e a `00022`, do módulo `campaigns`; as `00014` a `00017` e a `00020`, do módulo `characters`; as `00018` e `00019`, do módulo `play`. Mudanças em relação à proposta acima, no `identity`:
+As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021` e a `00022`, do módulo `campaigns`; as `00014` a `00017`, a `00020` e a `00023`, do módulo `characters`; as `00018`, a `00019` e a `00024`, do módulo `play`. Mudanças em relação à proposta acima, no `identity`:
 
 - `users.google_sub` e `users.email` viraram `user_identities (issuer, subject, email)`. O par `(issuer, subject)` é a chave primária, porque o `sub` só é único dentro de um provedor. Assim o código não depende do Google, e uma conta pode ter outro jeito de entrar (ADR-0009) sem mudar `users`.
 - `UNIQUE (user_id, issuer)`: uma conta tem no máximo uma identidade por provedor, então duas contas Google nunca se juntam.
@@ -323,13 +340,22 @@ No `characters`:
 - **Retenção**: não há TTL para personagens, com uma exceção: o personagem de jogador órfão, sem jogador (a conta foi excluída) e sem campanha (a campanha foi apagada). Ninguém mais o alcança, e ele ainda guarda o texto livre de quem o escreveu. A `00020` põe um TTL por linha cuja expressão só vale para esse caso (`CASE WHEN kind = 'player' AND player_user_id IS NULL AND campaign_id IS NULL THEN created_at END`); o job diário do CockroachDB apaga a linha. O teste `TestOrphanedPlayerCharactersAreDeletedByTheDatabase` lê essa configuração da tabela e confere a expressão sobre linhas de verdade.
 - **Índices**: `(campaign_id, player_user_id)` serve às listas e à trava. Não há índice por `player_user_id` nem por `master_user_id` sozinhos: só a exclusão de conta procura por eles, como em `campaigns.created_by`.
 - `copied_from_id` (a cópia da RN-03) vem com a MR-021.
+- **`character_vitals`** (`00023`) guarda o que muda no jogo e dura de uma sessão para outra (RN-02): `hit_points_current`, `hit_points_temporary`, `spell_slots_used` (um `INT4[]`: o item k é o número de espaços do círculo k usados, até 9 círculos), `pact_slots_used` (os espaços de pacto do bruxo) e `hit_dice_used` (o total de dados de vida gastos, somando os dados de todas as classes), com `revision` (sobe a cada correção) e `updated_at`. A chave primária é o próprio `character_id`, com `ON DELETE CASCADE`. O nome é "vitals", não "state", porque o estado do personagem já é o ciclo de vida (rascunho, travada, morto, pendente).
+  - **Os máximos não ficam aqui.** O `rules.Derive` calcula PV máximo, espaços por círculo, espaços de pacto e dados de vida a cada leitura, e o servidor corta o valor guardado no máximo de agora. Por isso não há `CHECK` de máximo no banco, só de mínimo: todos os números são 0 ou mais, e o array tem no máximo 9 itens.
+  - **Sem linha, o personagem está inteiro:** PV cheio, nada usado. A linha nasce na primeira correção do mestre.
+  - Só personagem de jogador tem linha. O PV de NPC em combate fica nos combatentes (Etapa 6).
 
 No `play`:
 
 - `game_sessions` guarda só IDs e horários, sem dado pessoal. `session_number` conta as sessões da campanha a partir de 1, com `UNIQUE (campaign_id, session_number)`. A sessão está aberta enquanto `ended_at` está vazio, e um índice único parcial (`00019`) deixa no máximo uma aberta por campanha. Some com a campanha.
 - Iniciar uma sessão grava a linha, trava as fichas e desliga as liberações da história, tudo na mesma transação. As duas últimas partes são do módulo `characters`, que o `play` chama por uma interface (ver [Arquitetura](arquitetura.md#módulo-play-sessões-de-jogo)).
+- **`session_events`** (`00024`, ADR-0007) é o histórico da sessão: cada mudança feita na mesa vira uma linha que nunca é alterada, gravada na mesma transação da mudança. Na Etapa 5 existe um tipo só, `character_vitals_adjusted` (a correção do mestre, RN-02); dano, cura, magia e XP entram com o combate, cada um como um tipo novo no `CHECK` (`session_events_kind_valid`).
+  - `seq` numera os eventos de cada sessão a partir de 1, na ordem em que aconteceram: o próximo é o maior mais 1, lido com a linha da sessão travada (`FOR UPDATE`), e `UNIQUE (game_session_id, seq)` é a garantia final.
+  - `idempotency_key` é o UUID que o app manda com a mudança; `UNIQUE (game_session_id, idempotency_key)` faz uma nova tentativa com a mesma chave não gravar nada. É `NULL` num evento sem chave (NULLs não colidem num `UNIQUE`).
+  - `payload` é um JSON pequeno (objeto, até 4 KiB, por `CHECK`) com os números antes e depois: sem texto livre, sem nome. `actor_user_id` é quem fez a mudança (`ON DELETE SET NULL`: a conta excluída some do histórico) e `character_id` o personagem (`SET NULL` se ele for apagado, o que mantém o histórico).
+  - Não há API de leitura ainda: a tela do histórico vem com o combate. Some com a sessão, e a sessão com a campanha.
 
-**Lacuna para a Etapa 5.** O PV atual, os espaços de magia gastos e os dados de vida de um personagem de jogador precisam durar de um encontro para outro e de uma sessão para outra. O modelo proposto só tem `combatants.current_hp`, que vale para um combate. A Etapa 5 precisa de um lugar para esse estado (por exemplo, uma tabela `character_states`) antes de desenhar a RN-02.
+**O PV que dura entre sessões (a lacuna da Etapa 4, resolvida na Etapa 5).** O PV atual, os espaços de magia gastos e os dados de vida de um personagem de jogador precisam durar de um encontro para outro e de uma sessão para outra, e `combatants.current_hp` só vale para um combate. Esse estado ficou em `character_vitals` (`00023`, no `characters`, acima). No combate (Etapa 6), o combatente de um personagem de jogador parte desses valores, e o resultado do combate volta para eles.
 
 Cada migration faz uma mudança só: um `CREATE TABLE IF NOT EXISTS` com as constraints dentro, um `CREATE INDEX IF NOT EXISTS` ou um `ALTER TABLE`. Como o CockroachDB faz commit antes de cada DDL, isso deixa cada migration atômica e segura para rodar de novo, e o teste `TestMigrationsAreSafeToRerun` roda todas duas vezes para provar. O índice fica numa migration à parte, e não dentro do `CREATE TABLE`, porque o sqlc lê as migrations com o parser do PostgreSQL, que não conhece a sintaxe de índice embutido do CockroachDB (ver [CONTRIBUTING.md](../CONTRIBUTING.md#queries-com-sqlc)). Por isso a `00004` foi reescrita antes do primeiro deploy, com o mesmo resultado no banco.
 
@@ -432,6 +458,29 @@ erDiagram
         timestamptz ended_at "vazio enquanto aberta"
     }
 
+    character_vitals {
+        uuid character_id PK "e FK para characters"
+        int4 hit_points_current "0 ou mais, cortado no máximo da ficha"
+        int4 hit_points_temporary "0 ou mais"
+        int4_array spell_slots_used "usados por círculo, até 9"
+        int4 pact_slots_used "espaços de pacto usados"
+        int4 hit_dice_used "dados de vida usados"
+        int4 revision "sobe a cada correção"
+        timestamptz updated_at
+    }
+
+    session_events {
+        uuid id PK
+        uuid game_session_id FK
+        int4 seq "UNIQUE por sessão, a partir de 1"
+        text kind "character_vitals_adjusted"
+        uuid actor_user_id FK "opcional, SET NULL"
+        uuid character_id FK "opcional, SET NULL"
+        jsonb payload "números antes e depois, até 4 KiB"
+        uuid idempotency_key "opcional, UNIQUE por sessão"
+        timestamptz created_at
+    }
+
     users ||--o{ user_identities : "entra por"
     users ||--o{ auth_sessions : "autentica"
     users ||--o{ campaigns : "cria"
@@ -444,6 +493,10 @@ erDiagram
     campaigns ||--o{ character_master_notes : "guarda"
     characters ||--o{ character_master_notes : "tem"
     campaigns ||--o{ game_sessions : "realiza"
+    characters ||--o| character_vitals : "tem"
+    game_sessions ||--o{ session_events : "registra"
+    users |o--o{ session_events : "fez"
+    characters |o--o{ session_events : "é assunto de"
 ```
 
 `oidc_login_states` não liga a nenhuma conta: o login ainda não terminou, então ninguém sabe quem é.

@@ -38,6 +38,10 @@
 // interceptor. It gives each request a small memo, so a request that checks
 // the same campaign twice reads campaign_members once. Without it, every
 // check fails closed.
+//
+// A stream lives much longer than a request, so its handler also calls
+// RecheckCampaignMember from time to time (recheck.go): the login session
+// and the membership are read again, skipping the memo.
 package authz
 
 import (
@@ -209,7 +213,7 @@ func noStore(err *connect.Error) *connect.Error {
 //
 // The memo lives as long as the request. For a long-lived stream that is
 // the whole stream, so a streaming handler that must notice a removal while
-// it runs has to check again with a fresh context (ADR-0011).
+// it runs checks again with RecheckCampaignMember (ADR-0011).
 func Interceptor(caller Caller, source MembershipSource, logger *slog.Logger) connect.Interceptor {
 	if logger == nil {
 		logger = slog.Default()

@@ -55,6 +55,28 @@ func (s *Service) UserID(ctx context.Context) (string, error) {
 	return session.UserID, nil
 }
 
+// RecheckSession reads the session that Interceptor found for this request
+// again, by its ID, and returns an `unauthenticated` Connect error, to
+// return as is, if it ended since: the user signed out, the session was
+// revoked, or it expired. Other errors mean the store could not answer. It
+// implements authz.SessionRechecker, for long-lived streams
+// (authz.RecheckCampaignMember), which would otherwise keep the session
+// they started with.
+func (s *Service) RecheckSession(ctx context.Context) error {
+	session, err := requireSession(ctx)
+	if err != nil {
+		return err
+	}
+	active, err := s.store.sessionActive(ctx, session.ID, s.now())
+	if err != nil {
+		return err
+	}
+	if !active {
+		return errUnauthenticated()
+	}
+	return nil
+}
+
 // errUnauthenticated is the error for a request without a valid session.
 func errUnauthenticated() error {
 	err := connect.NewError(connect.CodeUnauthenticated, errors.New("sign in to continue"))

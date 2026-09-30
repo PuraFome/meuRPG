@@ -179,9 +179,20 @@ func TestPostgresStoreSessions(t *testing.T) {
 		t.Error("CreateSession() with a 30-day-and-1-second session succeeded, want the CHECK to refuse it")
 	}
 
+	// A stream checks its session again by ID (RecheckSession).
+	if active, err := store.sessionActive(ctx, s1.ID, now.Add(SessionLifetime-time.Microsecond)); err != nil || !active {
+		t.Errorf("sessionActive() just before expiry = %v, %v; want true", active, err)
+	}
+	if active, err := store.sessionActive(ctx, s1.ID, now.Add(SessionLifetime)); err != nil || active {
+		t.Errorf("sessionActive() at expiry = %v, %v; want false", active, err)
+	}
+
 	// Revoke one, then all.
 	if err := store.revokeSession(ctx, s1.ID); err != nil {
 		t.Fatalf("RevokeSession() error = %v", err)
+	}
+	if active, err := store.sessionActive(ctx, s1.ID, now); err != nil || active {
+		t.Errorf("sessionActive() after revoke = %v, %v; want false", active, err)
 	}
 	if _, err := store.lookupSession(ctx, hash1, now); !errors.Is(err, ErrNotFound) {
 		t.Errorf("LookupSession() after revoke error = %v, want ErrNotFound", err)

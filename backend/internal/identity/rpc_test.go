@@ -148,6 +148,44 @@ func TestSignOut(t *testing.T) {
 	}
 }
 
+// TestRecheckSession: a long-lived stream reads its session again
+// (authz.RecheckCampaignMember), and notices a sign-out or the 30 days
+// passing.
+func TestRecheckSession(t *testing.T) {
+	t.Parallel()
+	for _, store := range testStores(t) {
+		t.Run(store.name, func(t *testing.T) {
+			t.Parallel()
+			h := newHarness(t, withStore(store.new(t)))
+			start := h.clock.Now()
+			cookie := h.signIn()
+			header := http.Header{"Cookie": {cookie.String()}}
+			ctx, err := h.svc.authenticate(t.Context(), header)
+			if err != nil {
+				t.Fatalf("authenticate() error = %v", err)
+			}
+			if err := h.svc.RecheckSession(ctx); err != nil {
+				t.Fatalf("RecheckSession() error = %v, want the session to be valid", err)
+			}
+
+			h.clock.Set(start.Add(SessionLifetime))
+			if err := h.svc.RecheckSession(ctx); !isUnauthenticated(err) {
+				t.Errorf("RecheckSession() at 30 days error = %v, want unauthenticated", err)
+			}
+			h.clock.Set(start)
+			if _, err := h.client(cookie).SignOut(t.Context(), connect.NewRequest(&identityv1.SignOutRequest{})); err != nil {
+				t.Fatalf("SignOut() error = %v", err)
+			}
+			if err := h.svc.RecheckSession(ctx); !isUnauthenticated(err) {
+				t.Errorf("RecheckSession() after SignOut error = %v, want unauthenticated", err)
+			}
+			if err := h.svc.RecheckSession(t.Context()); !isUnauthenticated(err) {
+				t.Errorf("RecheckSession() without a session error = %v, want unauthenticated", err)
+			}
+		})
+	}
+}
+
 func TestSignOutUnauthenticated(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)

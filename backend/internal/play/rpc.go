@@ -16,6 +16,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
@@ -100,23 +101,47 @@ func (s *Service) EndGameSession(
 	}
 
 	var session playdb.GameSession
+	var ended bool // this call ended an open session
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		var err error
-		session, err = s.queries.WithTx(tx).EndGameSession(ctx, playdb.EndGameSessionParams{
-			CampaignID: m.CampaignID, ID: id.String(), Now: s.now(),
-		})
+		q := s.queries.WithTx(tx)
+		ended = false
+		// Lock the row first: a vitals correction in progress finishes
+		// before the session ends, and this call learns whether the session
+		// was still open.
+		current, err := q.GetGameSessionForUpdate(ctx, playdb.GetGameSessionForUpdateParams{CampaignID: m.CampaignID, ID: id.String()})
 		if errors.Is(err, pgx.ErrNoRows) {
 			return errSessionNotFound()
 		}
 		if err != nil {
+			return fmt.Errorf("find game session: %w", err)
+		}
+		if current.EndedAt != nil {
+			session = current // ended before: nothing changes
+			return nil
+		}
+		session, err = q.EndGameSession(ctx, playdb.EndGameSessionParams{
+			CampaignID: m.CampaignID, ID: id.String(), Now: s.now(),
+		})
+		if err != nil {
 			return fmt.Errorf("end game session: %w", err)
 		}
+		ended = true
 		return nil
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "end a game session", err)
 	}
-	return connect.NewResponse(&playv1.EndGameSessionResponse{GameSession: sessionToProto(session)}), nil
+	res := sessionToProto(session)
+	if ended {
+		// Every stream of the session ends (WatchGameSession).
+		s.hub.Publish(m.CampaignID, live.Event{
+			Audience: live.Audience{Everyone: true},
+			Message: &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_SessionEnded_{
+				SessionEnded: &playv1.WatchGameSessionResponse_SessionEnded{GameSession: res},
+			}},
+		})
+	}
+	return connect.NewResponse(&playv1.EndGameSessionResponse{GameSession: res}), nil
 }
 
 // ListGameSessions implements playv1connect.PlayServiceHandler.
@@ -154,7 +179,25 @@ func sessionToProto(s playdb.GameSession) *playv1.GameSession {
 
 // errSessionOpen is StartGameSession's failed_precondition.
 func errSessionOpen() error {
-	return connect.NewError(connect.CodeFailedPrecondition, errors.New("the campaign already has an open game session; end it first"))
+	return errBlocked(playv1.GameSessionBlockedReason_GAME_SESSION_BLOCKED_REASON_SESSION_ALREADY_OPEN,
+		"the campaign already has an open game session; end it first")
+}
+
+// errNoOpenSession is the live session's failed_precondition: the campaign
+// has no open session.
+func errNoOpenSession() error {
+	return errBlocked(playv1.GameSessionBlockedReason_GAME_SESSION_BLOCKED_REASON_NO_OPEN_SESSION,
+		"the campaign has no open game session")
+}
+
+// errBlocked is PlayService's failed_precondition, with the
+// GameSessionBlocked detail that tells the app why.
+func errBlocked(reason playv1.GameSessionBlockedReason, msg string) error {
+	err := connect.NewError(connect.CodeFailedPrecondition, errors.New(msg))
+	if detail, detailErr := connect.NewErrorDetail(&playv1.GameSessionBlocked{Reason: reason}); detailErr == nil {
+		err.AddDetail(detail)
+	}
+	return err
 }
 
 // errSessionNotFound is the answer for a session that is not in the

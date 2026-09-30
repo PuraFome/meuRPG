@@ -155,7 +155,8 @@ Os dois últimos critérios foram respondida pelo Vinicius em 29/09/2026.
 - **Dado** que é a primeira sessão da campanha, **quando** o mestre inicia a sessão, **então** as fichas dos jogadores travam.
 
 #### Implementado
-- O terceiro critério já vale desde a Etapa 4: `PlayService.StartGameSession` abre a sessão e trava, na mesma transação, as fichas dos jogadores que ainda são rascunho. Teste: `TestRN01_StartingTheFirstSessionLocksPlayerSheetsOnly` (no `play`). É um começo mínimo do módulo `play` (iniciar, encerrar e listar sessões); o aviso no app e o link da sessão vêm na Etapa 5.
+- O terceiro critério já vale desde a Etapa 4: `PlayService.StartGameSession` abre a sessão e trava, na mesma transação, as fichas dos jogadores que ainda são rascunho. Teste: `TestRN01_StartingTheFirstSessionLocksPlayerSheetsOnly` (no `play`).
+- O servidor dos dois primeiros critérios veio na Etapa 5 (as telas vêm depois do desenho aprovado): `PlayService.ListOpenGameSessions` diz ao app, a cada 30 segundos com a aba visível, quais sessões estão abertas nas campanhas da pessoa, para o aviso (`TestListOpenGameSessions`); a página da sessão (`/campanhas/<id>/sessao`) lê `GetLiveSession` e abre o stream `WatchGameSession`, que respondem `not_found` a quem não é membro e ao membro pendente ("Peça um convite ao mestre") e `failed_precondition` com `NO_OPEN_SESSION` sem sessão aberta (`TestWatchGameSessionRefuses`, `TestAuthorizationMatrix`). Copiar o link é só da tela.
 
 #### Relacionadas
 - RN-06: respondida em 29/09/2026 — a notificação em tela, para quem está com o app aberto, basta no MVP; não há notificação push do navegador.
@@ -171,6 +172,10 @@ Os dois últimos critérios foram respondida pelo Vinicius em 29/09/2026.
 
 #### Critérios de aceite
 - **Dado** uma sessão ativa, **quando** o mestre move um token ou o sistema aplica dano ao personagem, **então** o celular do jogador mostra a mudança sem recarregar a página **e** as notas do mestre nunca aparecem.
+
+#### Implementado
+- O servidor da metade da ficha veio na Etapa 5 (as telas vêm depois do desenho aprovado): o mestre corrige PV, PV temporários, espaços de magia e dados de vida durante a sessão (`AdjustCharacterVitals`, RN-02), e a mudança chega na hora, pelo stream `WatchGameSession`, ao mestre e ao dono do personagem, nunca a outro jogador (`TestRN02_MasterAdjustsVitalsDuringSession`, `TestPlayersSeeOnlyTheirOwnVitals`, `TestLiveStreamIsNotBuffered`). Nada da sessão ao vivo carrega as notas do mestre (`TestRN11_LiveSessionNeverCarriesMasterNotes`).
+- Na Etapa 5, o que muda ao vivo na ficha é a correção do mestre; "o sistema aplica dano" vem com o combate (Etapa 6), e o token no mapa com os mapas (Etapa 5, no PR dos mapas).
 
 #### Relacionadas
 - RN-02: respondida em 29/09/2026 — sim, o mestre pode corrigir PV e espaços de magia na mão durante a sessão; o mestre tem a palavra final (ver [Regras de negócio](regras.md)).

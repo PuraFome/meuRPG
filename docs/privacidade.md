@@ -62,7 +62,10 @@ Copie no PR que mexe em dados, logs, telas ou fornecedores:
 | Notas do mestre | `character_master_notes` | Preparar o jogo; nunca vão para o jogador (RN-11) | Contrato | Enquanto a campanha e o personagem existirem; notas vazias apagam a linha |
 | Sessões de jogo: quando começaram e terminaram | `game_sessions` | Travar as fichas (RN-01) e, depois, a mesa ao vivo | Contrato | Enquanto a campanha existir. Só IDs e horários: nada sobre uma pessoa |
 | Imagens (retrato, mapa, galeria) | Cloud Storage | Jogar | Contrato | Até excluir, mais 7 dias de soft delete |
-| Eventos da sessão, combatentes, XP | `session_events`, `combatants`, `xp_awards` | Histórico e tempo real (MR-012, MR-016) | Contrato | Enquanto a campanha existir |
+| PV, espaços de magia e dados de vida do personagem de jogador (números: PV atual e temporários, espaços usados por círculo, espaços de pacto usados, dados de vida usados, quando o mestre corrigiu) | `character_vitals` | Jogar (RN-02): o que muda durante a sessão e dura até a próxima | Contrato | Enquanto o personagem existir (a linha some com ele, `CASCADE`). Só números: nada sobre a pessoa |
+| Eventos da sessão: quem fez a mudança (ID da conta), o personagem (ID), os números antes e depois, a chave de idempotência e a hora | `session_events` | Histórico da sessão (ADR-0007): auditoria e, depois, desfazer; hoje só a correção do mestre (RN-02) | Contrato | Enquanto a campanha existir: some com a sessão, que some com a campanha. Excluir a conta tira o ID dela dos eventos (`SET NULL`). Nunca texto livre nem nome |
+| Assinaturas do stream da sessão ao vivo: ID da conta, se é o mestre, a campanha | Memória do servidor | Entregar cada mudança só a quem pode vê-la (ADR-0005) | Contrato | Enquanto o stream está aberto (no máximo 30 minutos); nunca no banco nem no log |
+| Combatentes, XP | `combatants`, `xp_awards` | Combate e XP (MR-013, MR-016) | Contrato | Enquanto a campanha existir |
 | Backups do banco | Cockroach Labs | Recuperar desastre | Legítimo interesse | 30 dias |
 | Cookie de sessão `__Host-meurpg_session` | Aparelho do usuário | Manter o login | Estritamente necessário | Até o logout, que apaga a sessão no servidor, ou 30 dias |
 | Cookie de login `__Host-meurpg_login` (o `state`) | Aparelho do usuário | Amarrar o login ao navegador que o começou (contra login CSRF) | Estritamente necessário | 10 minutos; apagado no callback |
@@ -113,6 +116,16 @@ O módulo `characters` (`backend/internal/characters`) e o começo do `play` cum
 - **Correção da história.** O jogador edita a história enquanto o personagem é rascunho; depois da trava, quando o mestre libera (RN-01). O pedido de correção fora disso vai pelo canal do encarregado.
 - **Excluir a conta.** As chaves estrangeiras já fazem a parte dos personagens: `player_user_id` usa `ON DELETE SET NULL` e o NPC vai junto com a conta do mestre (`CASCADE`); `TestRN16_DeletingAccountsKeepsPlayerCharacters` confere. O personagem de jogador que fica sem jogador e sem campanha é apagado pelo TTL do banco (`TestOrphanedPlayerCharactersAreDeletedByTheDatabase`).
 - **Ainda falta:** o export (`ExportMyData`) e a prévia da exclusão com a escolha de apagar os próprios personagens. Vêm no PR de privacidade, com o `PrivacyService` (decidido em 29/09/2026).
+
+### O que a sessão ao vivo já faz
+
+A sessão ao vivo do `play` (Etapa 5, ver [Arquitetura](arquitetura.md#sessão-ao-vivo)) cumpre assim os itens desta página:
+
+- **O aviso não abre conexão.** `ListOpenGameSessions` tem a requisição vazia, então aceita GET sem pôr dado na URL; a resposta leva o nome das campanhas da própria pessoa e sai com `Cache-Control: no-store`.
+- **O jogador só vê os números do próprio personagem.** O filtro roda no servidor, na foto (`GetLiveSession`) e no stream: cada evento leva a audiência, e o hub só o entrega a ela (`TestPlayersSeeOnlyTheirOwnVitals`). As notas do mestre nunca saem pela sessão ao vivo (`TestRN11_LiveSessionNeverCarriesMasterNotes`).
+- **`session_events` só com IDs e números.** O payload guarda os PV, espaços e dados de vida antes e depois, sem nome nem texto; o teste da RN-11 confere que nenhum evento carrega texto do personagem.
+- **O stream não guarda nada.** As assinaturas ficam na memória do servidor só enquanto o stream está aberto, e o log registra uma linha por stream, quando ele termina, com o caminho e a duração, como toda requisição.
+- **Quem sai deixa de receber.** A cada 60 segundos o stream confere de novo a sessão de login e a participação; logout, sessão revogada ou saída da campanha terminam o stream (`TestWatchGameSessionChecksAgain`).
 
 ## Direitos do titular e como atendemos
 

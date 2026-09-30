@@ -23,11 +23,14 @@
 // server right away instead of failing on a player's sheet.
 //
 // The modules meet here and nowhere else: campaigns, characters and play
-// learn who is calling from identity (the authz.Caller interface), and each
+// learn who is calling from identity (the authz.Caller interface; the live
+// stream also reads the session again, authz.SessionRechecker), and each
 // member's role from campaigns (authz.MembershipSource); identity completes
 // the "accept this invite" sign-in intent through campaigns (an
-// identity.IntentHandler); play locks the players' sheets through
-// characters (play.SheetLocker); and characters settles a pending member's
+// identity.IntentHandler); play locks the players' sheets and keeps the
+// characters' vitals through characters (play.SheetLocker,
+// play.VitalsKeeper), and lists a user's campaigns through campaigns
+// (play.CampaignDirectory); and characters settles a pending member's
 // membership through campaigns when the master approves or rejects their
 // character (characters.PendingMembers, RN-15). No package imports
 // another's internals.
@@ -163,9 +166,11 @@ func run(logger *slog.Logger, cfg config.Config) error {
 			return err
 		}
 		playService, err = play.New(play.Config{
-			Pool:   pool,
-			Sheets: charactersService, // starting a session locks the sheets (RN-01)
-			Logger: logger,
+			Pool:      pool,
+			Sheets:    charactersService, // starting a session locks the sheets (RN-01)
+			Vitals:    charactersService, // the characters' hit points, slots and hit dice (RN-02)
+			Campaigns: campaignsService,  // the caller's campaigns, for the session notice (RN-06)
+			Logger:    logger,
 		})
 		if err != nil {
 			return err
@@ -216,6 +221,9 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		// role (authz.MembershipSource).
 		charactersService.Mount(srv.Handle, identityService, campaignsService, connectOpts...)
 		playService.Mount(srv.Handle, identityService, campaignsService, connectOpts...)
+		// Live streams never end on their own: end them when the graceful
+		// shutdown starts, instead of holding it until its deadline.
+		srv.OnShutdown(playService.Close)
 	} else {
 		identity.MountDisabled(srv.Handle, connectOpts...)
 		logger.Warn("campaigns, characters and game sessions are disabled: they need sign-in")

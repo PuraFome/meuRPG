@@ -42,6 +42,9 @@ type Store interface {
 	// lookupSession returns the session with this token hash, or
 	// ErrNotFound if there is none or it expired before now.
 	lookupSession(ctx context.Context, tokenHash []byte, now time.Time) (Session, error)
+	// sessionActive reports whether the session with this ID still exists
+	// and has not expired before now.
+	sessionActive(ctx context.Context, sessionID string, now time.Time) (bool, error)
 	// revokeSession deletes one session. Deleting a missing one is not an
 	// error.
 	revokeSession(ctx context.Context, sessionID string) error
@@ -260,6 +263,15 @@ func (s *PostgresStore) lookupSession(ctx context.Context, tokenHash []byte, now
 		return Session{}, fmt.Errorf("look up session: %w", err)
 	}
 	return Session{ID: row.ID, UserID: row.UserID, CreatedAt: row.CreatedAt, ExpiresAt: row.ExpiresAt}, nil
+}
+
+// sessionActive implements Store.
+func (s *PostgresStore) sessionActive(ctx context.Context, sessionID string, now time.Time) (bool, error) {
+	active, err := s.queries.SessionIsActive(ctx, identitydb.SessionIsActiveParams{ID: sessionID, Now: now})
+	if err != nil {
+		return false, fmt.Errorf("check session: %w", err)
+	}
+	return active, nil
 }
 
 // revokeSession implements Store.

@@ -25,8 +25,11 @@
 // PendingMembers, which package campaigns implements (approval.go).
 //
 // The sheet lock (RN-01) is set by package play when a game session starts,
-// through LockSheets, inside play's own transaction. Neither package imports
-// the other: cmd/api connects them.
+// through LockSheets, inside play's own transaction. The vitals (RN-02:
+// current hit points, spell slots and hit dice used, table
+// character_vitals) are kept here too, and package play reads and corrects
+// them during a session through ListVitals, GetVitals and AdjustVitals
+// (vitals.go). Neither package imports the other: cmd/api connects them.
 //
 // The SQL lives in queries.sql, and sqlc turns it into package charactersdb.
 // Every write runs inside db.InTx, which retries CockroachDB's serialization
@@ -98,7 +101,7 @@ type Config struct {
 }
 
 // Service implements the CharacterService and ContentService Connect APIs,
-// and LockSheets for package play.
+// and LockSheets and the vitals for package play.
 type Service struct {
 	pool     *pgxpool.Pool
 	queries  *charactersdb.Queries

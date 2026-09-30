@@ -32,6 +32,13 @@ SELECT id, user_id, created_at, expires_at
 FROM auth_sessions
 WHERE token_hash = $1 AND expires_at > sqlc.arg(now);
 
+-- name: SessionIsActive :one
+-- A long-lived stream checks its session again by ID (RecheckSession): it
+-- is still there (no sign-out, no revocation) and has not expired.
+SELECT EXISTS (
+    SELECT 1 FROM auth_sessions WHERE id = $1 AND expires_at > sqlc.arg(now)
+);
+
 -- name: DeleteSession :exec
 DELETE FROM auth_sessions WHERE id = $1;
 

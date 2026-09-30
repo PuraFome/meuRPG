@@ -12,7 +12,8 @@ O backend roda no Cloud Run, em `southamerica-east1` (São Paulo).
 | CPU | 1 vCPU |
 | Memória | 512 MiB |
 | `min-instances` | 0 (escala a zero sem uso) |
-| `max-instances` | Baixo, valor exato **a definir** |
+| `max-instances` | **1**, enquanto o fan-out do stream da sessão ao vivo for em memória (ver [Stream da sessão ao vivo](#stream-da-sessão-ao-vivo)) |
+| Timeout de requisição | Pelo menos 35 minutos (`--timeout=2100`, o máximo é 60 minutos): o stream vive até 30. O padrão do Cloud Run, 5 minutos, cortaria o stream antes |
 
 O CockroachDB fica no Google Cloud, na mesma região, no plano atual do Samuel (decidido em 29/09/2026): o plano legado Unlimited, contratado antes da mudança de licenças de 2024. Trocar de plano perde o Unlimited. Os backups ficam em São Paulo e são guardados por no máximo 30 dias, para cumprir o prazo de exclusão (ver [Privacidade](privacidade.md)). Falta conferir essa configuração no console antes do primeiro deploy.
 
@@ -26,6 +27,23 @@ Estimativas, não uma fatura. Servem para decidir arquitetura, como o stream só
 | Pesado (mais uso, mais mesas) | ~US$ 1,60–6,40/mês | Ainda assim, ordem de grandeza de poucos dólares. |
 | Acidente: stream/WebSocket aberto o mês todo | ~US$ 55–88/mês | Por isso o stream do Connect só abre durante a sessão (ver [Arquitetura](arquitetura.md)). |
 | Egress (saída de dados de São Paulo) | US$ 0,19/GiB | Sem free tier. Por isso as imagens de mapa vão para o Cloud Storage com URL, em vez de base64 na resposta (ver [Modelo de dados](dados.md)). |
+
+## Stream da sessão ao vivo
+
+O stream (`PlayService.WatchGameSession`, ADR-0005) só fica aberto enquanto alguém está com a página da sessão aberta e visível. Enquanto um stream está aberto, a instância do Cloud Run está atendendo uma requisição e é cobrada; por isso o servidor e o app limitam o tempo de cada um (ver [Arquitetura](arquitetura.md#sessão-ao-vivo)).
+
+| Regra | Valor | Onde |
+| --- | --- | --- |
+| Heartbeat do servidor | A cada 25 segundos | `play.DefaultHeartbeat` |
+| Stream morto, para o app | Nada chegou em uns 60 segundos: o app reconecta | App |
+| Nova checagem da sessão de login e da participação | A cada 60 segundos, no banco | `play.DefaultRecheck` |
+| Vida máxima de um stream | 30 minutos; depois o servidor encerra sem erro, e o app abre outro | `play.DefaultMaxLifetime` |
+| Reconexão | Espera crescente: 1 s, 2 s, 4 s, até 30 s, com variação aleatória; só com a aba visível | App |
+| Aba escondida | Depois de 2 minutos escondida, o app fecha o stream; ao voltar, reconecta e lê a foto de novo | App |
+| Aviso de sessão | Consulta leve (`ListOpenGameSessions`) a cada 30 segundos com a aba visível, sem stream | App |
+| Desligamento do servidor | Os streams terminam na hora, quando o graceful shutdown começa (`httpserver.Server.OnShutdown`), e os apps reconectam | `cmd/api` |
+
+**`max-instances = 1` enquanto o fan-out for em memória.** A mudança feita pelo mestre é entregue aos streams pelo hub do `play/live`, na memória do servidor. Com duas instâncias, o mestre numa e o jogador na outra, a mudança não chegaria ao jogador. Uma instância só (1 vCPU, 512 MiB) atende a mesa com folga. Quando não bastar, o hub dá lugar a um canal compartilhado (changefeed do CockroachDB ou Pub/Sub), e o `max-instances` pode subir.
 
 ## Segredos
 
@@ -70,12 +88,10 @@ Um budget alert no Google Cloud avisa se o custo passar do esperado. Os limiares
 ## A definir
 
 - Nome do domínio (sai do GitHub Student Developer Pack; só é necessário no primeiro deploy).
-- `max-instances` exato do Cloud Run.
 - Conferir no console do CockroachDB Cloud a região e a retenção dos backups (São Paulo, no máximo 30 dias).
 - Avaliar se vale migrar do CockroachDB para o Cloud SQL ou outro produto, já que o plano legado não pode mudar sem perder o Unlimited. Pesa na conta: o código usa o TTL por linha do CockroachDB (sessões, estados de login e convites) e repete transações no erro `40001`; num PostgreSQL, a limpeza viraria um job agendado.
 - Lista completa de segredos por ambiente e quem tem acesso.
 - Limiares dos alertas de orçamento.
-- Política de ociosidade do stream em tempo real (ADR-0005, proposta).
 
 ## Ver também
 
