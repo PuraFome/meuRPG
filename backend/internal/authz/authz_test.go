@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
@@ -243,5 +245,50 @@ func checkCode(t *testing.T, call string, err error, want connect.Code) {
 		t.Errorf("%s error = %v, want allowed", call, err)
 	case want != 0 && connect.CodeOf(err) != want:
 		t.Errorf("%s error = %v, want %v", call, err, want)
+	}
+}
+
+// TestMiddlewareForPlainHTTPRoutes: behind Middleware, a plain HTTP handler
+// (the image routes of package maps) makes the same checks as a Connect
+// handler, with one memo per request. A pending member stays out: no route
+// is in pendingMayCall.
+func TestMiddlewareForPlainHTTPRoutes(t *testing.T) {
+	t.Parallel()
+	source := newFakeSource()
+	check := func(userID string, handler func(ctx context.Context) error) error {
+		t.Helper()
+		var err error
+		mux := http.NewServeMux()
+		mux.Handle("POST /uploads/images", Middleware(fakeCaller{userID}, source, slog.New(slog.DiscardHandler))(
+			http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { err = handler(r.Context()) })))
+		mux.ServeHTTP(httptest.NewRecorder(), httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/uploads/images", nil))
+		return err
+	}
+	role := func(ctx context.Context) error {
+		_, err := RequireCampaignRole(ctx, campaignA, RoleMaster)
+		return err
+	}
+	orPending := func(ctx context.Context) error {
+		_, err := RequireCampaignMemberOrPending(ctx, campaignA)
+		return err
+	}
+
+	checkCode(t, "master", check(master, role), 0)
+	checkCode(t, "player", check(player, role), connect.CodePermissionDenied)
+	checkCode(t, "outsider", check(outsider, role), connect.CodeNotFound)
+	checkCode(t, "signed out", check("", role), connect.CodeUnauthenticated)
+	checkCode(t, "pending", check(pending, role), connect.CodeNotFound)
+	checkCode(t, "pending, asking for the allowance", check(pending, orPending), connect.CodeNotFound)
+
+	// One lookup per request, even when the handler checks twice.
+	before := source.lookupCount()
+	_ = check(master, func(ctx context.Context) error {
+		if err := role(ctx); err != nil {
+			return err
+		}
+		return role(ctx)
+	})
+	if got := source.lookupCount() - before; got != 1 {
+		t.Errorf("lookups for two checks in one request = %d, want 1", got)
 	}
 }

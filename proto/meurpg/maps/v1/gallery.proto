@@ -1,0 +1,189 @@
+syntax = "proto3";
+
+// Package meurpg.maps.v1 is about a campaign's maps and the images they are
+// made of. Today it holds the gallery (MR-019): the images the master
+// uploads, to use in maps and in the campaign document.
+package meurpg.maps.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// GalleryService lists, renames and deletes a campaign's gallery images.
+// Only the campaign's master may call it: the gallery is the master's
+// preparation, so a player could learn about a map before it is revealed
+// (RN-10).
+//
+// Uploading and downloading an image are not RPCs, because their bodies are
+// files. They are plain HTTP routes on the same server, with the same
+// session cookie:
+//
+//   - `POST /uploads/images`: a `multipart/form-data` body with two fields,
+//     in this order: `campaign_id`, then `file` (the image, whose file name
+//     becomes the image's name). Only the campaign's master may call it.
+//     The file must be a JPEG, a PNG or a WebP of up to 10 MiB, at most
+//     8192 pixels on each side and 40 megapixels in all. The server decodes
+//     it and stores it encoded again, which drops every piece of metadata
+//     (EXIF with its GPS position, and the like): PNG stays PNG, JPEG stays
+//     JPEG, and WebP becomes JPEG (or PNG, when it has transparent pixels).
+//     It answers 201 with the new GalleryImage as JSON (the JSON form of
+//     the message, as Connect's JSON), or an error as JSON: `{"code":
+//     "...", "reason": "...", "message": "..."}`, where code is a Connect
+//     error code, reason (when present) says which rule the upload broke,
+//     for the app's message, and message is English, for developers:
+//       - 400 `invalid_argument`, reason `UNSUPPORTED_TYPE`: not a JPEG, a
+//         PNG or a WebP (SVG and GIF are refused).
+//       - 413 `invalid_argument`, reason `TOO_LARGE`: over 10 MiB, as
+//         uploaded or once encoded again.
+//       - 400 `invalid_argument`, reason `DIMENSIONS`: too many pixels.
+//       - 400 `invalid_argument`, reason `CORRUPT`: the file cannot be read
+//         as the image it claims to be.
+//       - 400 `invalid_argument`, reason `MALFORMED_REQUEST`: not a
+//         multipart form, a missing or repeated field, or the fields in the
+//         wrong order.
+//       - 429 `resource_exhausted`, reason `QUOTA`: the campaign already
+//         has 300 images, or the new one would take it over 500 MiB.
+//       - 401 `unauthenticated`, 403 `permission_denied` (a player), 404
+//         `not_found` (not a member, or no such campaign), 503
+//         `unavailable` (images are off on this server, or the database or
+//         the storage did not answer).
+//     A cross-site request is refused with 403 before any of this (CSRF).
+//   - `GET /images/{id}` and `GET /images/{id}/thumb`: the image, or its
+//     thumbnail (480 pixels on the longer side). Any active member of the
+//     image's campaign may fetch them, players included: a player only
+//     learns an image's ID from a response they may see, such as a revealed
+//     map. Anyone else gets 404, exactly as for an image that does not
+//     exist, and a request without a valid session gets 401. An image's
+//     bytes never change, so the answer may be cached privately for a year,
+//     and it carries an ETag (`If-None-Match` gives 304). The URLs are in
+//     GalleryImage.url and GalleryImage.thumbnail_url.
+//
+// Every method needs a valid session cookie and fails with `unauthenticated`
+// without one. For a campaign the caller is not a member of, methods answer
+// `not_found`, exactly as for a campaign that does not exist; a player gets
+// `permission_denied`. See ADR-0011. An ID that is not a UUID is answered
+// like an ID that does not exist.
+//
+// Errors every method can return, besides those listed on each method:
+//   - `unauthenticated`: no valid session cookie.
+//   - `unavailable`: images are off on this server (no storage is
+//     configured), or the database or the storage did not answer; the app
+//     may try again.
+//   - `aborted`: the database kept reporting a conflicting transaction
+//     after the server's retries; the app may try again.
+//
+// Responses carry `Cache-Control: no-store`. Every request carries a
+// campaign ID, so reads are IDEMPOTENT and POST-only: a GET would put the
+// ID in the URL, and URLs end up in the platform's request logs
+// (docs/privacidade.md).
+service GalleryService {
+  // ListGalleryImages lists the campaign's images, newest first, and how
+  // much of the quota they use. Only the campaign's master may call it. The
+  // list is not paginated: a campaign has at most 300 images.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist, or the caller is not a
+  //     member of it.
+  //   - `permission_denied`: the caller is a player.
+  rpc ListGalleryImages(ListGalleryImagesRequest) returns (ListGalleryImagesResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // RenameGalleryImage changes an image's name. Only the campaign's master
+  // may call it.
+  //
+  // Errors:
+  //   - `invalid_argument`: the name is empty, longer than 80 characters,
+  //     or has a line break or another control character.
+  //   - `not_found`: the image is not in this campaign, the campaign does
+  //     not exist, or the caller is not a member of it.
+  //   - `permission_denied`: the caller is a player.
+  rpc RenameGalleryImage(RenameGalleryImageRequest) returns (RenameGalleryImageResponse);
+
+  // DeleteGalleryImage deletes an image and its files. Only the campaign's
+  // master may call it. It cannot be undone.
+  //
+  // Errors:
+  //   - `not_found`: the image is not in this campaign (or was already
+  //     deleted), the campaign does not exist, or the caller is not a
+  //     member of it.
+  //   - `permission_denied`: the caller is a player.
+  //   - `failed_precondition`: a map uses the image. Change the map's image
+  //     first.
+  rpc DeleteGalleryImage(DeleteGalleryImageRequest) returns (DeleteGalleryImageResponse);
+}
+
+// GalleryImage is one image in a campaign's gallery, as stored: already
+// encoded again by the server, without metadata.
+message GalleryImage {
+  // Stable image ID (a UUID).
+  string id = 1;
+  // The campaign it belongs to (a UUID).
+  string campaign_id = 2;
+  // The image's name: at first, the uploaded file's name without its
+  // extension (or "Imagem" when that is empty); then whatever the master
+  // chooses. 1 to 80 characters, one line.
+  string name = 3;
+  // The stored image's media type: "image/jpeg" or "image/png".
+  string content_type = 4;
+  // Its size in pixels, upright.
+  int32 width = 5;
+  int32 height = 6;
+  // Its size in bytes, as stored: at most 10 MiB.
+  int32 byte_size = 7;
+  // When it was uploaded.
+  google.protobuf.Timestamp created_at = 8;
+  // Where to fetch it, a path on this server: "/images/{id}".
+  string url = 9;
+  // Where to fetch its thumbnail, 480 pixels on the longer side (a small
+  // image is its own thumbnail): "/images/{id}/thumb".
+  string thumbnail_url = 10;
+}
+
+// GalleryUsage is how much of its quota a campaign's gallery uses. The byte
+// counts are int32, which holds up to 2 GiB: the quota is 500 MiB.
+message GalleryUsage {
+  // How many images the gallery has.
+  int32 image_count = 1;
+  // How many images it may have (300).
+  int32 max_images = 2;
+  // The bytes of all its images, as stored.
+  int32 byte_count = 3;
+  // How many bytes they may add up to (500 MiB).
+  int32 max_bytes = 4;
+  // The largest file one upload may send, and the largest image once
+  // encoded again (10 MiB).
+  int32 max_image_bytes = 5;
+}
+
+// ListGalleryImagesRequest names a campaign.
+message ListGalleryImagesRequest {
+  string campaign_id = 1;
+}
+
+// ListGalleryImagesResponse lists the gallery, newest first.
+message ListGalleryImagesResponse {
+  repeated GalleryImage images = 1;
+  GalleryUsage usage = 2;
+}
+
+// RenameGalleryImageRequest names an image and its new name.
+message RenameGalleryImageRequest {
+  string campaign_id = 1;
+  string image_id = 2;
+  // The new name: 1 to 80 characters, one line. Spaces at both ends are
+  // removed.
+  string name = 3;
+}
+
+// RenameGalleryImageResponse returns the renamed image.
+message RenameGalleryImageResponse {
+  GalleryImage image = 1;
+}
+
+// DeleteGalleryImageRequest names the image to delete.
+message DeleteGalleryImageRequest {
+  string campaign_id = 1;
+  string image_id = 2;
+}
+
+// DeleteGalleryImageResponse is empty: the image is gone.
+message DeleteGalleryImageResponse {}

@@ -17,8 +17,8 @@ No app antigo (`server/src/db/schema.sql`), a campanha não existia, e tudo pert
 | `master_notes` na mesma linha do personagem | Tabela própria, `character_master_notes` | A consulta que monta a ficha do jogador nem toca nessa tabela, então não tem como vazar (RN-11). |
 | `character_join_tokens.token` em texto puro, por personagem | `campaign_invites.token_hash`, por campanha, com expiração | Quem lê o banco não consegue usar o convite (RN-07). |
 | `maps.user_id` | `maps.campaign_id` | O mapa pertence à campanha. |
-| `maps.background_image` guarda a imagem em base64 | Imagem no Cloud Storage; a tabela guarda só a URL | Cada leitura do mapa mandaria a imagem inteira. Sair de São Paulo custa US$ 0,19 por GiB, e a URL deixa o navegador usar cache. |
-| Galeria só no navegador de quem usa | `gallery_items`, ligada à campanha | Fica disponível em qualquer aparelho. |
+| `maps.background_image` guarda a imagem em base64 | Imagem no Cloud Storage; o mapa aponta para uma imagem da galeria | Cada leitura do mapa mandaria a imagem inteira. Sair de São Paulo custa US$ 0,19 por GiB, e a URL deixa o navegador usar cache. |
+| Galeria só no navegador de quem usa | `gallery_images`, ligada à campanha (feito na Etapa 5) | Fica disponível em qualquer aparelho. |
 
 Tabelas novas para a mesa ao vivo:
 
@@ -43,14 +43,14 @@ Toda tabela abaixo é nova — nasce numa migration do goose de algum módulo, n
 | `auth_sessions` | Mesma ideia de `auth_sessions` de lá (hash do token) |
 | `oauth_handshakes` | Mesma ideia de `oauth_handshakes` de lá |
 | `characters` | Parecida com `characters` de lá: `type` vira `kind`, ganha `campaign_id`, `status` e `sheet_locked_at` (e `copied_from_id` com a MR-021) |
-| `maps` | Parecida com `maps` de lá: `user_id` vira `campaign_id`, imagem vira URL do Cloud Storage |
+| `maps` | Parecida com `maps` de lá: `user_id` vira `campaign_id`, a imagem vira uma imagem da galeria (`gallery_images`) |
 | `campaign_invites` | Substitui a ideia de `character_join_tokens` de lá, por campanha e com token só em hash |
 | `campaigns` | Sem equivalente lá |
 | `campaign_members` | Sem equivalente lá |
 | `campaign_characters` | Sem equivalente lá. Vem com a MR-022 (NPC em várias campanhas) |
 | `character_master_notes` | Sem equivalente lá |
 | `character_vitals` | Sem equivalente lá |
-| `gallery_items` | Sem equivalente lá |
+| `gallery_images` | Sem equivalente lá (a galeria de lá ficava no navegador) |
 | `game_sessions` | Sem equivalente lá |
 | `encounters` | Sem equivalente lá |
 | `combatants` | Sem equivalente lá |
@@ -137,13 +137,13 @@ erDiagram
         uuid id PK
         uuid campaign_id FK
         text name
-        text background_image_url
+        uuid image_id FK
     }
 
-    gallery_items {
+    gallery_images {
         uuid id PK
         uuid campaign_id FK
-        text image_url
+        text name
     }
 
     game_sessions {
@@ -212,7 +212,8 @@ erDiagram
     campaigns |o--o{ characters : "reune"
     campaigns ||--o{ campaign_characters : "reusa NPCs"
     campaigns ||--o{ maps : "possui"
-    campaigns ||--o{ gallery_items : "guarda"
+    campaigns ||--o{ gallery_images : "guarda"
+    gallery_images ||--o{ maps : "é a imagem de"
     campaigns ||--o{ game_sessions : "realiza"
     campaigns ||--o{ scenes : "abre"
     campaigns ||--o{ xp_awards : "registra"
@@ -266,7 +267,7 @@ flowchart TD
 
     subgraph maps_mod["Módulo maps"]
         t_maps["maps"]
-        t_gallery_items["gallery_items"]
+        t_gallery_images["gallery_images"]
     end
 
     subgraph progression["Módulo progression"]
@@ -303,8 +304,10 @@ Esta seção lista só o que já existe nas migrations de `backend/migrations/`.
 | `00022_add_campaign_members_status` | `campaign_members` | Coluna `status` (`active` ou `pending`): o membro pendente, que espera a aprovação do personagem (RN-15, MR-024). |
 | `00023_create_character_vitals` | `character_vitals` | PV atual, PV temporários, espaços de magia e de pacto usados e dados de vida usados de cada personagem de jogador (RN-02). |
 | `00024_create_session_events` | `session_events` | O histórico da sessão, uma linha por mudança, que nunca é alterada (ADR-0007). |
+| `00025_create_gallery_images` | `gallery_images` | As imagens da galeria de cada campanha (MR-019). Os arquivos ficam no blob store; a tabela guarda o nome, o tipo, o tamanho e quem enviou. |
+| `00026_create_gallery_images_campaign_id_index` | `gallery_images` | Índice por `(campaign_id, created_at DESC)`, com `byte_size` dentro: a galeria da mais nova para a mais antiga, e o uso da cota. |
 
-As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021` e a `00022`, do módulo `campaigns`; as `00014` a `00017`, a `00020` e a `00023`, do módulo `characters`; as `00018`, a `00019` e a `00024`, do módulo `play`. Mudanças em relação à proposta acima, no `identity`:
+As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021` e a `00022`, do módulo `campaigns`; as `00014` a `00017`, a `00020` e a `00023`, do módulo `characters`; as `00018`, a `00019` e a `00024`, do módulo `play`; as `00025` e `00026`, do módulo `maps`. Mudanças em relação à proposta acima, no `identity`:
 
 - `users.google_sub` e `users.email` viraram `user_identities (issuer, subject, email)`. O par `(issuer, subject)` é a chave primária, porque o `sub` só é único dentro de um provedor. Assim o código não depende do Google, e uma conta pode ter outro jeito de entrar (ADR-0009) sem mudar `users`.
 - `UNIQUE (user_id, issuer)`: uma conta tem no máximo uma identidade por provedor, então duas contas Google nunca se juntam.
@@ -356,6 +359,15 @@ No `play`:
   - Não há API de leitura ainda: a tela do histórico vem com o combate. Some com a sessão, e a sessão com a campanha.
 
 **O PV que dura entre sessões (a lacuna da Etapa 4, resolvida na Etapa 5).** O PV atual, os espaços de magia gastos e os dados de vida de um personagem de jogador precisam durar de um encontro para outro e de uma sessão para outra, e `combatants.current_hp` só vale para um combate. Esse estado ficou em `character_vitals` (`00023`, no `characters`, acima). No combate (Etapa 6), o combatente de um personagem de jogador parte desses valores, e o resultado do combate volta para eles.
+
+No `maps`:
+
+- **`gallery_images` guarda só a descrição da imagem; o arquivo fica no blob store** (em disco no ambiente local, no Cloud Storage em produção), sob `campaigns/<campaign_id>/images/<id>` e `…/<id>.thumb`. Por isso `id` não tem `DEFAULT`: a API cria o ID antes de gravar os arquivos, cujas chaves o levam. Os arquivos vão primeiro e a linha por último, então toda linha tem os arquivos; apagar faz o contrário (ver [Arquitetura](arquitetura.md#módulo-maps-galeria-e-imagens)).
+- **A imagem guardada não é a enviada:** o servidor a codificou de novo, sem metadados, como JPEG ou PNG. `content_type`, `width`, `height` e `byte_size` descrevem a imagem guardada, e os `CHECK`s repetem os limites da API (`image/jpeg` ou `image/png`, 1 a 8.192 px por lado, até 10 MiB). `byte_size` conta na cota da campanha: 300 imagens e 500 MiB, conferidos na mesma transação do `INSERT`.
+- **`name`** nasce do nome do arquivo e o mestre muda depois (1 a 80 caracteres, `CHECK`). É texto livre, como o nome da campanha.
+- **`uploaded_by`** é quem enviou, para quando a campanha tiver mais de um mestre (RN-13). Não sai na API. `ON DELETE SET NULL`: a imagem fica com a campanha quando a conta sai. Sem índice, como `campaigns.created_by`.
+- **`campaign_id` com `ON DELETE CASCADE`:** apagar a campanha apaga as linhas, mas não os arquivos. A exclusão da campanha (ou da conta do mestre) precisa apagar também o prefixo `campaigns/<campaign_id>/` do blob store (ver [Privacidade](privacidade.md)).
+- **O mapa vai apontar para a imagem** com uma chave estrangeira `ON DELETE RESTRICT`: uma imagem usada num mapa não pode ser apagada, e o `DeleteGalleryImage` já traduz essa recusa em `failed_precondition`.
 
 Cada migration faz uma mudança só: um `CREATE TABLE IF NOT EXISTS` com as constraints dentro, um `CREATE INDEX IF NOT EXISTS` ou um `ALTER TABLE`. Como o CockroachDB faz commit antes de cada DDL, isso deixa cada migration atômica e segura para rodar de novo, e o teste `TestMigrationsAreSafeToRerun` roda todas duas vezes para provar. O índice fica numa migration à parte, e não dentro do `CREATE TABLE`, porque o sqlc lê as migrations com o parser do PostgreSQL, que não conhece a sintaxe de índice embutido do CockroachDB (ver [CONTRIBUTING.md](../CONTRIBUTING.md#queries-com-sqlc)). Por isso a `00004` foi reescrita antes do primeiro deploy, com o mesmo resultado no banco.
 
@@ -481,6 +493,18 @@ erDiagram
         timestamptz created_at
     }
 
+    gallery_images {
+        uuid id PK "sem DEFAULT: a API cria"
+        uuid campaign_id FK "CASCADE"
+        uuid uploaded_by FK "opcional, SET NULL"
+        text name "1 a 80"
+        text content_type "image/jpeg ou image/png"
+        int4 width "1 a 8192"
+        int4 height "1 a 8192"
+        int4 byte_size "até 10 MiB, conta na cota"
+        timestamptz created_at
+    }
+
     users ||--o{ user_identities : "entra por"
     users ||--o{ auth_sessions : "autentica"
     users ||--o{ campaigns : "cria"
@@ -497,6 +521,8 @@ erDiagram
     game_sessions ||--o{ session_events : "registra"
     users |o--o{ session_events : "fez"
     characters |o--o{ session_events : "é assunto de"
+    campaigns ||--o{ gallery_images : "guarda"
+    users |o--o{ gallery_images : "enviou"
 ```
 
 `oidc_login_states` não liga a nenhuma conta: o login ainda não terminou, então ninguém sabe quem é.

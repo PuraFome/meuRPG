@@ -15,6 +15,7 @@ require (
 	github.com/go-jose/go-jose/v4 v4.1.5
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/pressly/goose/v3 v3.28.0
+	golang.org/x/image v0.46.0
 	golang.org/x/oauth2 v0.37.0
 	google.golang.org/protobuf v1.36.12
 )
@@ -26,6 +27,6 @@ require (
 	github.com/mfridman/interpolate v0.0.2 // indirect
 	github.com/sethvargo/go-retry v0.4.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/sync v0.22.0 // indirect
-	golang.org/x/text v0.41.0 // indirect
+	golang.org/x/sync v0.23.0 // indirect
+	golang.org/x/text v0.42.0 // indirect
 )

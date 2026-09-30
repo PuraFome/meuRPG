@@ -1,0 +1,276 @@
+package maps
+
+import (
+	"bytes"
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"mime/multipart"
+	"net/http"
+	"path"
+	"strings"
+	"unicode"
+	"unicode/utf8"
+	"uuid"
+
+	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
+	"google.golang.org/protobuf/encoding/protojson"
+
+	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/maps/images"
+	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
+)
+
+// maxUploadBody caps the whole request body: the image, plus room for the
+// form's boundaries, part headers and campaign_id.
+const maxUploadBody = images.MaxBytes + 64<<10
+
+// defaultImageName names an image whose file name leaves nothing usable.
+const defaultImageName = "Imagem"
+
+// handleUpload serves POST /uploads/images: a multipart form with
+// campaign_id, then file. See the GalleryService comment in
+// proto/meurpg/maps/v1/gallery.proto for the whole contract.
+//
+// CSRF: the route changes state and is not a Connect RPC, so the Connect
+// protocol header does not protect it. http.CrossOriginProtection, around
+// the whole server (package httpserver), refuses a cross-origin POST before
+// it gets here, and the session cookie is SameSite=Lax, so another site's
+// form never carries it.
+func (s *Service) handleUpload(w http.ResponseWriter, r *http.Request) {
+	img, err := s.upload(w, r)
+	if err != nil {
+		s.writeError(w, r, err)
+		return
+	}
+	body, err := protojson.Marshal(imageToProto(img))
+	if err != nil {
+		s.writeError(w, r, fmt.Errorf("encode the image: %w", err))
+		return
+	}
+	header := w.Header()
+	header.Set("Content-Type", "application/json")
+	header.Set("X-Content-Type-Options", "nosniff")
+	header.Set("Cache-Control", "no-store")
+	header.Set("Location", imageURL(img.ID))
+	w.WriteHeader(http.StatusCreated)
+	_, _ = w.Write(body) //nolint:gosec // G705: JSON from protojson, sent as application/json with nosniff, never as HTML
+}
+
+// upload reads, checks and stores an uploaded image, and returns its row.
+// The order matters: who is calling and the campaign come before the file,
+// so a caller who may not upload never gets 10 MiB read, let alone decoded.
+func (s *Service) upload(w http.ResponseWriter, r *http.Request) (mapsdb.GalleryImage, error) {
+	ctx := r.Context()
+	if _, err := authz.RequireSignedIn(ctx); err != nil {
+		return mapsdb.GalleryImage{}, err
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadBody)
+	form, err := r.MultipartReader()
+	if err != nil {
+		return mapsdb.GalleryImage{}, invalid(ReasonMalformedRequest, "send a multipart/form-data body")
+	}
+	campaignID, err := readTextField(form, "campaign_id")
+	if err != nil {
+		return mapsdb.GalleryImage{}, err
+	}
+	m, err := authz.RequireCampaignRole(ctx, campaignID, authz.RoleMaster)
+	if err != nil {
+		return mapsdb.GalleryImage{}, err
+	}
+	// A quick look at the quota, so a full gallery refuses right away. The
+	// check that counts is the one inside the insert's transaction (store).
+	usage, err := s.queries.GetGalleryUsage(ctx, m.CampaignID)
+	if err != nil {
+		return mapsdb.GalleryImage{}, s.dbError(ctx, "read the gallery usage", err)
+	}
+	if usage.ImageCount >= s.maxImages || usage.ByteCount >= int64(s.maxBytes) {
+		return mapsdb.GalleryImage{}, errQuota()
+	}
+
+	name, data, err := readFile(form)
+	if err != nil {
+		return mapsdb.GalleryImage{}, err
+	}
+	res, err := s.process(ctx, data)
+	if err != nil {
+		return mapsdb.GalleryImage{}, err
+	}
+	return s.store(ctx, m, name, res)
+}
+
+// readTextField reads the form's next part, which must be the text field
+// name, of at most 64 bytes.
+func readTextField(form *multipart.Reader, name string) (string, error) {
+	part, err := form.NextPart()
+	if err != nil {
+		return "", formError(err, "the form must start with "+name)
+	}
+	if part.FormName() != name || part.FileName() != "" {
+		return "", invalid(ReasonMalformedRequest, "the form must start with "+name)
+	}
+	const maxLength = 64
+	value, err := io.ReadAll(io.LimitReader(part, maxLength+1))
+	if err != nil {
+		return "", formError(err, "cannot read "+name)
+	}
+	if len(value) > maxLength {
+		return "", invalid(ReasonMalformedRequest, name+" is too long")
+	}
+	return string(value), nil
+}
+
+// readFile reads the form's next part, which must be the file field, and
+// checks that nothing follows it. It returns the image's first name and
+// the file's bytes.
+func readFile(form *multipart.Reader) (string, []byte, error) {
+	part, err := form.NextPart()
+	if err != nil {
+		return "", nil, formError(err, "the form must have a file field after campaign_id")
+	}
+	if part.FormName() != "file" {
+		return "", nil, invalid(ReasonMalformedRequest, "the form must have a file field after campaign_id")
+	}
+	name := imageName(part.FileName())
+	// One byte over the limit is enough to know the file is too large.
+	data, err := io.ReadAll(io.LimitReader(part, images.MaxBytes+1))
+	if err != nil {
+		return "", nil, formError(err, "cannot read the file")
+	}
+	if len(data) > images.MaxBytes {
+		return "", nil, errTooLarge()
+	}
+	if _, err := form.NextPart(); !errors.Is(err, io.EOF) {
+		return "", nil, formError(err, "the form must have only campaign_id and file")
+	}
+	return name, data, nil
+}
+
+// formError is the answer for a form that could not be read: 413 when the
+// body went over maxUploadBody, else a malformed request.
+func formError(err error, message string) error {
+	if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
+		return errTooLarge()
+	}
+	return invalid(ReasonMalformedRequest, message)
+}
+
+// process checks and re-encodes an image, one at a time (Service.processing).
+func (s *Service) process(ctx context.Context, data []byte) (*images.Result, error) {
+	select {
+	case s.processing <- struct{}{}:
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+	defer func() { <-s.processing }()
+
+	res, err := images.Process(data)
+	switch {
+	case err == nil:
+		return res, nil
+	case errors.Is(err, images.ErrUnsupportedType):
+		return nil, invalid(ReasonUnsupportedType, "only JPEG, PNG and WebP images are accepted")
+	case errors.Is(err, images.ErrTooLarge):
+		return nil, errTooLarge()
+	case errors.Is(err, images.ErrDimensions):
+		return nil, invalid(ReasonDimensions, "the image has too many pixels")
+	case errors.Is(err, images.ErrCorrupt):
+		return nil, invalid(ReasonCorrupt, "the image cannot be read")
+	default:
+		return nil, err
+	}
+}
+
+// store writes the image's files, then its row, inside a transaction that
+// checks the quota. If anything fails after a file was written, the files
+// are deleted again.
+func (s *Service) store(ctx context.Context, m authz.Membership, name string, res *images.Result) (mapsdb.GalleryImage, error) {
+	id := uuid.New().String()
+	imageKey, thumbnailKey := blobKeys(m.CampaignID, id)
+	files := []struct {
+		key     string
+		content []byte
+	}{{imageKey, res.Data}, {thumbnailKey, res.Thumbnail}}
+	for _, f := range files {
+		if err := s.blobs.Put(ctx, f.key, res.ContentType, bytes.NewReader(f.content)); err != nil {
+			s.deleteFiles(ctx, m.CampaignID, id)
+			s.logger.ErrorContext(ctx, "maps: cannot store an image file", "error", err)
+			return mapsdb.GalleryImage{}, errStorage()
+		}
+	}
+
+	size := int32(len(res.Data)) //nolint:gosec // G115: at most images.MaxBytes
+	var row mapsdb.GalleryImage
+	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := s.queries.WithTx(tx)
+		usage, err := q.GetGalleryUsage(ctx, m.CampaignID)
+		if err != nil {
+			return fmt.Errorf("read the gallery usage: %w", err)
+		}
+		if usage.ImageCount >= s.maxImages || usage.ByteCount+int64(size) > int64(s.maxBytes) {
+			return errQuota()
+		}
+		row, err = q.InsertGalleryImage(ctx, mapsdb.InsertGalleryImageParams{
+			ID:          id,
+			CampaignID:  m.CampaignID,
+			UploadedBy:  &m.UserID,
+			Name:        name,
+			ContentType: res.ContentType,
+			Width:       int32(res.Width),  //nolint:gosec // G115: at most images.MaxSide
+			Height:      int32(res.Height), //nolint:gosec // G115: at most images.MaxSide
+			ByteSize:    size,
+			CreatedAt:   s.now(),
+		})
+		if err != nil {
+			return fmt.Errorf("insert gallery image: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		s.deleteFiles(ctx, m.CampaignID, id)
+		if he, ok := errors.AsType[*httpError](err); ok {
+			return mapsdb.GalleryImage{}, he
+		}
+		return mapsdb.GalleryImage{}, s.dbError(ctx, "save an uploaded image", err)
+	}
+	return row, nil
+}
+
+// errStorage is the answer when the blob store fails.
+func errStorage() error {
+	return &httpError{
+		status: http.StatusServiceUnavailable, code: connect.CodeUnavailable,
+		message: "cannot store the image right now, please try again",
+	}
+}
+
+// imageName makes an image's first name from the uploaded file's name: the
+// name without folders or extension, without control or invisible
+// direction characters, cut to 80 characters. When nothing usable is
+// left, the image is called "Imagem"; the master can rename it.
+func imageName(fileName string) string {
+	// Browsers send only the file's own name; a few old ones sent the path.
+	if i := strings.LastIndexAny(fileName, `/\`); i >= 0 {
+		fileName = fileName[i+1:]
+	}
+	fileName = strings.TrimSuffix(fileName, path.Ext(fileName))
+	fileName = strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) || unicode.Is(unicode.Bidi_Control, r) {
+			return -1
+		}
+		return r
+	}, strings.ToValidUTF8(fileName, ""))
+	fileName = strings.TrimSpace(fileName)
+	if utf8.RuneCountInString(fileName) > maxNameLength {
+		fileName = strings.TrimSpace(string([]rune(fileName)[:maxNameLength]))
+	}
+	if name, err := names.Clean(fileName, maxNameLength); err == nil {
+		return name
+	}
+	return defaultImageName
+}

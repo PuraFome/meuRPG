@@ -52,6 +52,13 @@ type Config struct {
 	// API still starts, and the sign-in routes answer 503.
 	OIDC OIDC
 
+	// BlobDir is the directory where uploaded images are stored (package
+	// internal/platform/blob), such as a Docker volume in the local stack.
+	// Empty means "images are off": the API still starts, and the image
+	// routes answer 503. Production will store images in Cloud Storage
+	// instead (docs/operacao.md).
+	BlobDir string
+
 	// CloudRun is true when the process runs on Cloud Run, which sets
 	// K_SERVICE in every service container (see "Container runtime
 	// contract" in the Cloud Run docs). There, every request reaches the
@@ -174,6 +181,8 @@ func Load(getenv func(string) string) (Config, error) {
 	if raw := strings.TrimSpace(getenv("WEB_DIR")); raw != "" {
 		cfg.WebDir = raw
 	}
+
+	cfg.BlobDir = strings.TrimSpace(getenv("BLOB_DIR"))
 
 	if raw := strings.TrimSpace(getenv("LOG_LEVEL")); raw != "" {
 		level, err := parseLogLevel(raw)

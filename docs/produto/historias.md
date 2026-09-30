@@ -259,10 +259,21 @@ Existia no app antigo (descontinuado). Confirmada no MVP pelo Samuel em 29/09/20
 **Como** mestre, **quero** uma galeria de imagens **para** usar nos documentos e nos mapas.
 
 - Prioridade: MVP
-- Regras: —
+- Regras: RN-10
 - Módulos: maps
 
 Existia no app antigo (descontinuado). Confirmada no MVP pelo Samuel em 29/09/2026, na Etapa 5 do [roadmap](../roadmap.md), ao lado dos mapas.
+
+#### Critérios de aceite
+Propostos por nós, esperando o Samuel. Os limites também são proposta (pergunta 30 do documento de acompanhamento): JPEG, PNG ou WebP, até 10 MB por imagem, 300 imagens e 500 MB por campanha.
+
+- **Dado** o mestre na galeria, **quando** envia uma imagem JPEG, PNG ou WebP de até 10 MB, **então** ela aparece na galeria **e** o arquivo guardado não tem os metadados (EXIF) do original.
+- **Dado** um jogador, **quando** pede a galeria da campanha, **então** o servidor recusa.
+- **Dado** uma imagem usada num mapa, **quando** o mestre tenta apagá-la, **então** o app diz em qual mapa ela está.
+
+#### Implementado
+- O servidor da galeria, na Etapa 5: o envio (`POST /uploads/images`), as imagens e as miniaturas (`GET /images/{id}` e `/images/{id}/thumb`) e o `GalleryService` (listar, renomear, apagar). O servidor aceita só JPEG, PNG e WebP, recusa imagem com pixels demais e grava a imagem codificada de novo, sem nenhum metadado (ver [Arquitetura](../arquitetura.md#módulo-maps-galeria-e-imagens)). A tela da galeria vem depois do desenho aprovado, com os testes Playwright dela.
+- Testes: `TestMR019_MasterUploadsAnImageWithoutItsMetadata` (primeiro critério: envia um JPEG com EXIF e GPS e lê o arquivo guardado), `TestMR019_PlayersCannotListTheGallery` (segundo) e `TestMR019_AnImageAMapUsesCannotBeDeleted` (terceiro, a metade do servidor: `failed_precondition`). Dizer em qual mapa a imagem está chega com os mapas, que ainda não existem; o teste usa uma tabela no lugar da tabela de mapas.
 
 ### MR-024: Aprovar o personagem do convite
 
