@@ -1,27 +1,209 @@
-// Global styles. There is no third-party font or icon here on purpose (see
-// docs/privacidade.md#cookies-e-navegador): the app ships with the system
-// font stack instead of a webfont, so no request ever leaves the browser
-// for typography.
+// Global styles: the design tokens, Angular Material mapped onto them, and
+// the few base rules every page shares. The tokens are the ones in
+// docs/design.md (the "Ficha de papel" look); components use these custom
+// properties and never a raw colour.
+//
+// The fonts are self-hosted from the @fontsource packages (OFL): font-src
+// 'self' and docs/privacidade.md forbid a third-party font request.
 @use '@angular/material' as mat;
+@use 'styles/ui';
+
+// The six faces the design uses, Latin subset (Portuguese included), woff2
+// only: every browser the app supports reads it.
+@font-face {
+  font-family: 'Alegreya';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('../node_modules/@fontsource/alegreya/files/alegreya-latin-500-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Alegreya';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../node_modules/@fontsource/alegreya/files/alegreya-latin-700-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Alegreya';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('../node_modules/@fontsource/alegreya/files/alegreya-latin-800-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Alegreya Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../node_modules/@fontsource/alegreya-sans/files/alegreya-sans-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Alegreya Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('../node_modules/@fontsource/alegreya-sans/files/alegreya-sans-latin-500-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Alegreya Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../node_modules/@fontsource/alegreya-sans/files/alegreya-sans-latin-700-normal.woff2') format('woff2');
+}
 
 html {
+  // One declaration per token, light and dark together: the browser picks
+  // the side from color-scheme, which follows the operating system.
   color-scheme: light dark;
 
+  --mr-ground: light-dark(#eef0f3, #11151c);
+  --mr-surface: light-dark(#ffffff, #1a1f29);
+  --mr-line: light-dark(#d5dae1, #2e3542);
+  --mr-rule: light-dark(#e3e7ec, #262c38);
+  --mr-ink: light-dark(#1b2230, #e6e9ef);
+  --mr-ink-muted: light-dark(#525b6b, #a3abb9);
+  --mr-control-line: light-dark(#8a93a3, #6b7485);
+  --mr-accent: light-dark(#9e2b3b, #e88593);
+  --mr-accent-strong: light-dark(#7a1f2d, #f2a9b3);
+  --mr-on-accent: light-dark(#ffffff, #2a0a10);
+  --mr-accent-text: light-dark(#9e2b3b, #f0a0ab);
+  --mr-accent-soft: light-dark(#f6e3e6, #3a1e24);
+  --mr-focus: var(--mr-accent);
+  --mr-warning-surface: light-dark(#fbf3e2, #2e2616);
+  --mr-warning-line: light-dark(#e6cf9f, #6b5320);
+  --mr-warning-ink: light-dark(#6e4700, #f0d08a);
+  --mr-danger-surface: light-dark(#fce8e6, #3b1a1a);
+  --mr-danger-ink: light-dark(#8c1d18, #f4b4ae);
+  --mr-success-surface: light-dark(#e3f2ea, #16301f);
+  --mr-success-ink: light-dark(#1f6b45, #9ed8b4);
+
+  --mr-font-display: 'Alegreya', Georgia, 'Times New Roman', serif;
+  --mr-font-sans: 'Alegreya Sans', 'Segoe UI', system-ui, sans-serif;
+
+  --mr-space-1: 4px;
+  --mr-space-2: 8px;
+  --mr-space-3: 12px;
+  --mr-space-4: 16px;
+  --mr-space-5: 20px;
+  --mr-space-6: 24px;
+  --mr-space-8: 48px;
+
+  --mr-radius-sm: 8px;
+  --mr-radius-md: 10px;
+  --mr-radius-lg: 12px;
+  --mr-radius-xl: 14px;
+  --mr-radius-pill: 9999px;
+
+  // The page's side gutter: 16px on a phone, 48px from a tablet up.
+  --mr-gutter: var(--mr-space-4);
+  @media (min-width: 768px) {
+    --mr-gutter: var(--mr-space-8);
+  }
+
+  // Material's system tokens, with its colours and corners pointed at ours,
+  // so every Material component (buttons, fields, the stepper, menus,
+  // dialogs) speaks the same palette. The overrides go in the same call so
+  // each token is written once.
   @include mat.theme(
     (
-      color: mat.$violet-palette,
+      color: mat.$red-palette,
       typography: (
-        plain-family: system-ui,
-        brand-family: system-ui,
+        plain-family: var(--mr-font-sans),
+        brand-family: var(--mr-font-display),
       ),
       density: 0,
+    ),
+    (
+      primary: var(--mr-accent),
+      on-primary: var(--mr-on-accent),
+      primary-container: var(--mr-accent-soft),
+      on-primary-container: var(--mr-ink),
+      secondary: var(--mr-ink-muted),
+      on-secondary: var(--mr-surface),
+      secondary-container: var(--mr-accent-soft),
+      on-secondary-container: var(--mr-ink),
+      background: var(--mr-ground),
+      on-background: var(--mr-ink),
+      surface: var(--mr-surface),
+      on-surface: var(--mr-ink),
+      surface-variant: var(--mr-ground),
+      on-surface-variant: var(--mr-ink-muted),
+      surface-container-lowest: var(--mr-surface),
+      surface-container-low: var(--mr-surface),
+      surface-container: var(--mr-surface),
+      surface-container-high: var(--mr-surface),
+      surface-container-highest: var(--mr-ground),
+      outline: var(--mr-control-line),
+      outline-variant: var(--mr-line),
+      error: var(--mr-danger-ink),
+      on-error: var(--mr-surface),
+      error-container: var(--mr-danger-surface),
+      on-error-container: var(--mr-danger-ink),
+      corner-extra-small: var(--mr-radius-sm),
+      corner-small: var(--mr-radius-sm),
+      corner-medium: var(--mr-radius-lg),
+      corner-large: var(--mr-radius-xl),
+    )
+  );
+
+  // Buttons are 8px rectangles in this design, not Material's pills.
+  @include mat.button-overrides(
+    (
+      filled-container-shape: var(--mr-radius-sm),
+      outlined-container-shape: var(--mr-radius-sm),
+      protected-container-shape: var(--mr-radius-sm),
+      text-container-shape: var(--mr-radius-sm),
+      tonal-container-shape: var(--mr-radius-sm),
+      filled-label-text-weight: 700,
+      outlined-label-text-weight: 700,
+      text-label-text-weight: 700,
+      filled-label-text-size: 16px,
+      outlined-label-text-size: 16px,
+      text-label-text-size: 16px,
     )
   );
 }
 
 body {
   margin: 0;
-  font-family: var(--mat-sys-body-medium-font, system-ui, sans-serif);
-  background: var(--mat-sys-surface);
-  color: var(--mat-sys-on-surface);
+  background: var(--mr-ground);
+  color: var(--mr-ink);
+  font-family: var(--mr-font-sans);
+  font-size: 16px;
+  line-height: 1.4;
+  font-variant-numeric: lining-nums tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--mr-font-display);
+  text-wrap: balance;
+}
+
+a {
+  color: var(--mr-accent-text);
+}
+
+a:hover {
+  color: var(--mr-accent-strong);
+}
+
+// One focus ring for everything that takes focus (docs/design.md#cor).
+:focus-visible {
+  outline: 2px solid var(--mr-focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

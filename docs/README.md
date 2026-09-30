@@ -11,6 +11,7 @@ Este diretório é a fonte da verdade sobre o produto, as regras e a arquitetura
 | [produto/regras.md](produto/regras.md) | Samuel, dev da história | Como o jogo se comporta dentro do app |
 | [produto/historias.md](produto/historias.md) | Samuel, dev da história | O que construir e como saber que está pronto |
 | [produto/perguntas-em-aberto.md](produto/perguntas-em-aberto.md) | Samuel | O que ainda falta decidir |
+| [design.md](design.md) | Quem mexe numa tela, com revisão do Samuel e do Vinicius | O visual do app: princípios, tokens, componentes e como uma tela é desenhada e revisada |
 | [arquitetura.md](arquitetura.md) | Quem abre o PR, com revisão do Samuel | Como o sistema é montado e onde roda |
 | [dados.md](dados.md) | Quem abre o PR, com revisão do Samuel | Tabelas, relações e migrations |
 | [privacidade.md](privacidade.md) | Quem abre o PR, com revisão do Samuel e do Vinicius | Que dados pessoais guardamos, por quê e por quanto tempo, e a checklist de privacidade de todo PR |

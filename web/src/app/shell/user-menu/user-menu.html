@@ -1,13 +1,15 @@
 @switch (auth.state().status) {
   @case ('signed-in') {
-    <a mat-button routerLink="/perfil" class="user-menu__account">
+    <a routerLink="/perfil" class="user-menu__account">
       <mat-icon aria-hidden="true">account_circle</mat-icon>
       {{ accountLabel() }}
     </a>
-    <button mat-button (click)="signOut()">Sair</button>
+    <button type="button" class="user-menu__button" (click)="signOut()">Sair</button>
   }
   @case ('signed-out') {
-    <button mat-button (click)="signIn()">Entrar</button>
+    <button type="button" class="user-menu__button user-menu__button--primary" (click)="signIn()">
+      Entrar
+    </button>
   }
   @case ('unavailable') {
     <span class="user-menu__unavailable" role="status">
