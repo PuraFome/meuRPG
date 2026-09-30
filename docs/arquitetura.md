@@ -26,7 +26,7 @@ Cada módulo do backend fica em `backend/internal/<módulo>`. Um módulo só cha
 - `campaigns`: campanhas, membros (inclusive o membro pendente de um convite com aprovação, RN-15), papéis e convites.
 - `characters`: personagens, fichas, história, trava, notas do mestre e, depois, cópias. Também serve o catálogo de regras do editor (`ContentService`) enquanto não existe conteúdo da mesa (ver [Módulo characters](#módulo-characters-personagens-e-fichas)).
 - `play`: sessão de jogo, cenas, encontros, combatentes e o stream ao vivo. Hoje: iniciar, encerrar e listar sessões, o que trava as fichas (Etapa 4), e a sessão ao vivo: o aviso, o stream e a correção do mestre nos PV, espaços de magia e dados de vida, com o histórico em `session_events` (Etapa 5; ver [Módulo play](#módulo-play-sessões-de-jogo)).
-- `maps`: mapas, pontos de interesse e, depois, masmorras.
+- `maps`: mapas, pontos de interesse, a galeria de imagens e, depois, masmorras. Na Etapa 5, primeiro a galeria: enviar, guardar e servir as imagens (ver [Módulo maps](#módulo-maps-galeria-e-imagens)).
 - `progression`: modo de XP, XP dado e aviso de subir de nível.
 - `rules`: as contas do D&D 5e (modificadores, CD, bônus). Não acessa o banco, então é fácil de testar.
 - `platform`: o que é de todos: configuração, banco, servidor HTTP e logs.
@@ -132,6 +132,7 @@ Cada regra de negócio recusada devolve um código de erro do Connect, sempre o 
 | `failed_precondition` | A regra não deixa agora: ficha travada (RN-01), sessão que não começou, convite expirado. Vem com um detalhe que diz o motivo, quando há mais de um (`InviteUnusable`, `CharacterBlocked`, `GameSessionBlocked`). |
 | `not_found` | Não existe, ou o usuário não pode saber que existe: um ponto escondido, ou uma campanha da qual ele não é membro (ADR-0011). O membro pendente (RN-15) recebe o mesmo `not_found` fora das poucas chamadas que ele pode fazer. |
 | `invalid_argument` | Entrada inválida, como um atributo acima de 30. |
+| `resource_exhausted` | Um limite da campanha acabou: a galeria cheia (300 imagens ou 500 MB, MR-019). |
 | `aborted` | Conflito de transação (`40001`) que continuou depois das novas tentativas, ou uma ficha que mudou desde que o app a leu (revisão velha, AIP-154). O app recarrega e a pessoa tenta de novo. |
 
 ## Frontend (web/)
@@ -249,10 +250,10 @@ Outros módulos descobrem quem chama pela interface descrita em [Quem está cham
 
 ### Quem está chamando
 
-A sessão só entra no contexto de uma requisição por um caminho: o interceptor do `identity`, depois de conferir o cookie no banco. Nenhuma função exportada põe uma sessão, ou um usuário, no contexto (decidido por Vinicius em 29/09/2026).
+A sessão só entra no contexto de uma requisição pelo `identity`, depois de conferir o cookie no banco: o interceptor, nas chamadas Connect, e o `AuthenticateRequest`, o mesmo passo para as poucas rotas HTTP comuns (enviar e baixar imagens, ver [Módulo maps](#módulo-maps-galeria-e-imagens)). Os dois só leem o cookie da requisição. Nenhuma função exportada põe uma sessão, ou um usuário qualquer, no contexto (decidido por Vinicius em 29/09/2026).
 
 - **Os outros módulos recebem quem chama por uma interface,** `authz.Caller` (`UserID(ctx) (string, error)`). O `identity.Service` implementa lendo a chave privada que o interceptor dele preencheu, e o `cmd/api/main.go` liga as duas pontas. Sem sessão válida, a resposta é `unauthenticated`; se o banco não responde, o interceptor devolve `unavailable`, para o app não achar que o usuário saiu.
-- **Nos handlers, a pergunta passa pelo `authz`:** `authz.RequireSignedIn(ctx)` quando basta estar logado, `authz.RequireCampaignMember` ou `authz.RequireCampaignRole` quando é sobre uma campanha. O `campaigns` monta o serviço com `Mount(handle, sessions, ...)`, em que `sessions` é o interceptor mais o `Caller` (o próprio `identity.Service` em produção).
+- **Nos handlers, a pergunta passa pelo `authz`:** `authz.RequireSignedIn(ctx)` quando basta estar logado, `authz.RequireCampaignMember` ou `authz.RequireCampaignRole` quando é sobre uma campanha. O `campaigns` monta o serviço com `Mount(handle, sessions, ...)`, em que `sessions` é o interceptor mais o `Caller` (o próprio `identity.Service` em produção). Numa rota HTTP comum, o `authz.Middleware` faz o papel do `authz.Interceptor`: as mesmas checagens, com um memo por requisição. Nenhuma rota está em `pendingMayCall`, então o membro pendente fica de fora.
 - **Os testes dos outros módulos usam um `Caller` falso** (um mock), em vez de fabricar uma sessão. O mock só existe nos arquivos `_test.go` daquele módulo.
 - **O `identity.Store` também fecha essa porta:** os métodos de sessão e de estado do login são não exportados, então nenhum outro pacote cria ou consulta uma sessão, nem implementa um `Store` falso que invente uma.
 - **A intenção de login também:** o `IntentHandler.Complete` recebe o usuário como `identity.SignedIn`, que só o callback do `identity` preenche (ver [Aceitar o convite pelo login](#aceitar-o-convite-pelo-login)).
@@ -271,6 +272,8 @@ A proteção vem em camadas, como a ADR-0009 descreve:
 | `state` no cookie de login, PKCE e `nonce` | Protegem o `GET /auth/callback`, que cria a sessão mesmo sendo GET. Ninguém consegue fazer o navegador da vítima terminar um login começado por outra pessoa. |
 
 Por causa do header obrigatório, um `curl` numa chamada Connect precisa de `-H 'Connect-Protocol-Version: 1'`.
+
+O envio de imagens (`POST /uploads/images`) não é Connect, então o header do protocolo não vale para ele. Quem o protege é o `http.CrossOriginProtection`, que fica em volta de todas as rotas, e o cookie `SameSite=Lax`. O teste `TestCrossSiteUploadsAreRefused` confere que um envio de outro site recebe 403 e não grava nada.
 
 ### Limite de tentativas no login
 
@@ -722,6 +725,104 @@ Os números do personagem que mudam durante o jogo (PV atual, PV temporários, e
 - **A correção do mestre** (`AdjustCharacterVitals`) troca só os valores que vêm na requisição, cada um de 0 até o máximo (PV temporários até 999). Numa transação só, o `play` trava a linha da sessão aberta (`FOR UPDATE`), confere a chave de idempotência, pede ao `characters` para gravar e grava o evento em `session_events`; só depois do `COMMIT` publica `vitals_changed`.
 - **Idempotência.** O app manda um UUID novo a cada correção (`idempotency_key`) e o mesmo numa nova tentativa. Se a chave já está em `session_events`, nada é gravado nem publicado, e a resposta traz os PV como estão agora (`TestAdjustCharacterVitalsIsIdempotent`). A mesma chave para outro personagem é `invalid_argument`.
 - **Ordem dos eventos.** O `seq` de cada evento é o seguinte da sessão, lido com a linha da sessão travada, então duas correções ao mesmo tempo esperam uma pela outra e ganham 1, 2, 3, sem buraco e sem repetição (`TestSessionEventsAreOrderedPerSession`). `EndGameSession` trava a mesma linha, então uma correção em andamento termina antes da sessão acabar.
+
+## Módulo maps: galeria e imagens
+
+A galeria guarda as imagens que o mestre usa nos mapas e no documento da campanha (MR-019). O servidor aceita só JPEG, PNG e WebP, grava cada imagem codificada de novo, sem nenhum metadado, e só a entrega a quem é membro da campanha. O código fica em `backend/internal/maps`; mapas, pontos de interesse e tokens chegam depois, no mesmo módulo.
+
+| Rota ou chamada | Quem pode | O que faz |
+| --- | --- | --- |
+| `POST /uploads/images` | O mestre da campanha | Recebe a imagem (formulário `multipart/form-data`: `campaign_id`, depois `file`), confere, codifica de novo, guarda e responde `201` com o `GalleryImage` em JSON |
+| `GET /images/{id}` e `GET /images/{id}/thumb` | Qualquer membro ativo da campanha da imagem, jogadores inclusive | Entrega a imagem, ou a miniatura de 480 px no lado maior |
+| `GalleryService.ListGalleryImages` | O mestre | Lista a galeria, da mais nova para a mais antiga, com o uso da cota |
+| `GalleryService.RenameGalleryImage` | O mestre | Muda o nome (1 a 80 caracteres, uma linha) |
+| `GalleryService.DeleteGalleryImage` | O mestre | Apaga a linha e os arquivos. Recusa com `failed_precondition` se um mapa usa a imagem |
+
+Enviar e baixar não são chamadas Connect porque o corpo é um arquivo. As duas rotas usam o mesmo cookie de sessão e as mesmas checagens do `authz` (ver [Quem está chamando](#quem-está-chamando)). O contrato inteiro, com os erros, fica no comentário do `GalleryService` em `proto/meurpg/maps/v1/gallery.proto`.
+
+### O envio
+
+```mermaid
+sequenceDiagram
+    participant M as Mestre, no navegador
+    participant A as API, rota de envio
+    participant I as maps/images
+    participant B as Blob store
+    participant DB as CockroachDB
+    M->>A: POST /uploads/images, campaign_id e depois file
+    A->>A: CrossOriginProtection, sessão, só o mestre
+    A->>DB: A galeria já está cheia?
+    A->>A: Lê o arquivo, no máximo 10 MiB
+    A->>I: Process, uma imagem por vez
+    I->>I: Tipo pelos primeiros bytes, tamanho pelo cabeçalho
+    I->>I: Decodifica, desvira pela orientação do EXIF, codifica de novo, faz a miniatura
+    I-->>A: A imagem limpa e a miniatura
+    A->>B: Put da imagem e da miniatura
+    A->>DB: BEGIN, conta a cota, INSERT gallery_images, COMMIT
+    alt a cota estourou ou o banco falhou
+        A->>B: Delete dos dois arquivos
+        A-->>M: 429 QUOTA ou 503
+    else deu certo
+        A-->>M: 201 com o GalleryImage em JSON
+    end
+```
+
+- **A ordem economiza trabalho.** O `campaign_id` vem antes do arquivo, então quem não é o mestre recebe a recusa antes de o servidor ler 10 MiB. Uma olhada rápida na cota também vem antes; a checagem que vale é a de dentro da transação, que o `SERIALIZABLE` do CockroachDB protege de dois envios ao mesmo tempo.
+- **O tipo vem dos bytes,** nunca do nome do arquivo nem do que o navegador diz. SVG, GIF e o resto são recusados.
+- **Bomba de descompressão.** O servidor lê só o cabeçalho primeiro (`image.DecodeConfig`) e recusa acima de 8.192 px num lado ou de 40 megapixels. Também estima a memória que a decodificação vai usar (um JPEG progressivo ou um PNG de 16 bits gastam bem mais por pixel) e recusa acima de 256 MiB. Só uma imagem é processada por vez em cada instância, então alguns envios juntos não esgotam os 512 MiB do Cloud Run (ver [Operação](operacao.md)).
+- **Codificar de novo é o que limpa.** A imagem nova tem só os pixels: EXIF (com a posição do GPS), XMP, perfis ICC, os textos de um PNG e qualquer coisa escondida depois da imagem ficam para trás. PNG continua PNG, para o mapa manter as partes transparentes. JPEG continua JPEG, com qualidade 88. WebP vira JPEG, ou PNG quando tem pixels transparentes.
+- **A foto fica em pé.** O celular grava a foto como o sensor viu e anota no EXIF como estava virado. Como o EXIF sai, o servidor desvira os pixels antes, senão a foto apareceria deitada.
+- **O nome** vem do nome do arquivo, sem pastas, sem extensão e sem caracteres de controle, cortado em 80 caracteres ("Imagem" quando não sobra nada). O mestre pode mudar.
+- **Os arquivos antes da linha.** Se algo falha depois de gravar um arquivo, os dois arquivos são apagados. Uma queda do servidor bem no meio pode deixar arquivos sem linha, que ninguém alcança; uma limpeza periódica pode achá-los depois pelo prefixo da campanha.
+
+### Onde as imagens ficam
+
+O pacote `backend/internal/platform/blob` é uma interface pequena (`Put`, `Open`, `Delete`) com uma implementação em disco. As chaves são `campaigns/<campanha>/images/<id>` e `…/<id>.thumb`: tudo de uma campanha tem o mesmo prefixo.
+
+| Onde | Como |
+| --- | --- |
+| Ambiente local | `BLOB_DIR=/var/lib/meurpg/images`, num volume do Docker Compose (`images`), que sobrevive ao `make down` |
+| Testes | Uma pasta temporária por teste |
+| Produção | Um bucket privado do Cloud Storage, em São Paulo, atrás da mesma interface, a partir do primeiro deploy (ver [Operação](operacao.md)) |
+
+- **Em disco,** cada arquivo começa com uma linha com o tipo (`image/jpeg`), seguida da imagem. O `Put` escreve num arquivo temporário e renomeia por cima, então ninguém lê meio arquivo. Toda operação passa por um `os.Root`, que recusa qualquer caminho fora da pasta, mesmo por um link simbólico, e a chave só aceita letras minúsculas, dígitos, `.`, `-` e `_`. Os erros não levam o caminho, porque a chave tem IDs.
+- **Sem `BLOB_DIR`,** as imagens ficam desligadas: o envio, o download e o `GalleryService` respondem `503`/`unavailable`, e o resto do app funciona. O log de início avisa.
+- **Apagar** tira a linha primeiro e os arquivos depois: sem a linha, ninguém alcança os arquivos, então uma falha ao apagá-los não expõe nada (vai para o log).
+- **Apagar a campanha** (hoje, só pela exclusão da conta do mestre) apaga as linhas pelo `ON DELETE CASCADE`, mas não os arquivos. Quem implementar a exclusão da campanha ou da conta precisa apagar também o prefixo `campaigns/<campanha>/` (ver [Privacidade](privacidade.md)).
+
+### Servir as imagens
+
+`GET /images/{id}` confere, nesta ordem: sessão válida (senão `401`, antes de procurar a imagem), a imagem existe e quem pede é membro ativo da campanha dela (senão `404`, igual a uma imagem que não existe, nunca `403`). Só depois disso vem o `304` do `If-None-Match`, para um estranho não descobrir que a imagem existe mandando o ETag.
+
+| Header | Valor | Por quê |
+| --- | --- | --- |
+| `Cache-Control` | `private, max-age=31536000, immutable` | Os bytes de um ID nunca mudam: um envio novo ganha um ID novo. `private`, porque é só daquele membro |
+| `ETag` | `"<id>"` (miniatura: `"<id>.thumb"`) | O navegador revalida sem baixar de novo (`304`) |
+| `Content-Type`, `Content-Length` | Do arquivo guardado | — |
+| `X-Content-Type-Options: nosniff` e `Content-Disposition: inline` | — | O navegador trata o arquivo como a imagem que o `Content-Type` diz |
+| `Content-Security-Policy: default-src 'none'` | — | Mesmo aberta sozinha numa aba, a resposta não roda nada |
+| `Cross-Origin-Resource-Policy: same-origin` | — | Outro site não embute a imagem |
+
+O CSP do app já aceita as imagens (`img-src 'self'`), e o handler do Angular deixa `/images` e `/uploads` para a API (`isAPIPath`); no `ng serve`, o `proxy.conf.json` encaminha as duas.
+
+**RN-10 com imagens.** O jogador pode baixar uma imagem da campanha, porque os mapas que ele vê são imagens. Isso não revela um mapa escondido: o jogador só baixa pelo ID, o ID é um UUID aleatório, e ele só recebe o ID de uma imagem numa resposta que pode ver (um mapa revelado, o mapa atual da sessão). A galeria, que lista todas as imagens, é só do mestre (`TestMR019_PlayersCannotListTheGallery`). Quem não é membro ativo recebe `404` (`TestAuthorizationMatrix`, no `maps`).
+
+### Os erros do envio
+
+A rota não é Connect, mas os erros usam os códigos do Connect, num JSON pequeno que o app traduz pelo `reason`: `{"code": "invalid_argument", "reason": "UNSUPPORTED_TYPE", "message": "..."}`. A `message` é em inglês, para quem desenvolve; a tela mostra um texto próprio para cada `reason`.
+
+| HTTP | `code` | `reason` | Quando |
+| --- | --- | --- | --- |
+| 400 | `invalid_argument` | `UNSUPPORTED_TYPE` | Não é JPEG, PNG nem WebP |
+| 413 | `invalid_argument` | `TOO_LARGE` | Mais de 10 MiB, enviado ou depois de codificado de novo |
+| 400 | `invalid_argument` | `DIMENSIONS` | Pixels demais |
+| 400 | `invalid_argument` | `CORRUPT` | Parece uma imagem aceita, mas não abre |
+| 400 | `invalid_argument` | `MALFORMED_REQUEST` | Não é um formulário `multipart`, falta um campo, sobra um campo, ou a ordem está errada |
+| 429 | `resource_exhausted` | `QUOTA` | A campanha já tem 300 imagens, ou passaria de 500 MiB |
+| 401, 403, 404 | `unauthenticated`, `permission_denied`, `not_found` | — | Sem sessão; um jogador; quem não é membro (ou a campanha não existe) |
+| 503 | `unavailable` | — | Imagens desligadas (sem `BLOB_DIR`), ou o banco ou o armazenamento não responderam |
+
+O `403` do `CrossOriginProtection` (um envio de outro site) vem antes de tudo isso, em texto puro: o app nunca o vê.
 
 ## Ver também
 

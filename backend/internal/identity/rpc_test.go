@@ -276,6 +276,48 @@ func TestUserIDThroughTheInterceptor(t *testing.T) {
 	}
 }
 
+// TestUserIDThroughAuthenticateRequest: the same, for a plain HTTP handler
+// (the image routes of package maps). A session cookie that was never
+// issued gives no session; a database that does not answer gives
+// `unavailable`, not a signed-out caller.
+func TestUserIDThroughAuthenticateRequest(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	session := h.signIn()
+	me, err := h.getMe(session)
+	if err != nil {
+		t.Fatalf("GetMe() error = %v", err)
+	}
+	unknown, _ := secret.New()
+
+	userID := func(svc *Service, cookie *http.Cookie) (string, error) {
+		t.Helper()
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/images/x", nil)
+		if cookie != nil {
+			req.AddCookie(cookie)
+		}
+		ctx, err := svc.AuthenticateRequest(req)
+		if err != nil {
+			return "", err
+		}
+		return svc.UserID(ctx)
+	}
+
+	if id, err := userID(h.svc, session); err != nil || id != me.Msg.GetUser().GetId() {
+		t.Errorf("with the session cookie: UserID() = %q, %v; want %q", id, err, me.Msg.GetUser().GetId())
+	}
+	for name, cookie := range map[string]*http.Cookie{"no cookie": nil, "unknown token": reqCookie(SessionCookieName, unknown)} {
+		if id, err := userID(h.svc, cookie); !isUnauthenticated(err) || id != "" {
+			t.Errorf("%s: UserID() = %q, %v; want unauthenticated", name, id, err)
+		}
+	}
+
+	down := newHarness(t, withStore(failingStore{}))
+	if _, err := userID(down.svc, reqCookie(SessionCookieName, unknown)); connect.CodeOf(err) != connect.CodeUnavailable {
+		t.Errorf("with the database down: error = %v, want unavailable", err)
+	}
+}
+
 func TestMountDisabled(t *testing.T) {
 	t.Parallel()
 	mux := http.NewServeMux()

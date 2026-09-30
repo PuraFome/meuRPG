@@ -26,7 +26,8 @@ Estimativas, não uma fatura. Servem para decidir arquitetura, como o stream só
 | Base (uso normal da mesa) | ~US$ 0,15/mês | Cloud Run escala a zero fora das sessões. |
 | Pesado (mais uso, mais mesas) | ~US$ 1,60–6,40/mês | Ainda assim, ordem de grandeza de poucos dólares. |
 | Acidente: stream/WebSocket aberto o mês todo | ~US$ 55–88/mês | Por isso o stream do Connect só abre durante a sessão (ver [Arquitetura](arquitetura.md)). |
-| Egress (saída de dados de São Paulo) | US$ 0,19/GiB | Sem free tier. Por isso as imagens de mapa vão para o Cloud Storage com URL, em vez de base64 na resposta (ver [Modelo de dados](dados.md)). |
+| Egress (saída de dados de São Paulo) | US$ 0,19/GiB | Sem free tier. Por isso as imagens de mapa vão para o Cloud Storage e saem por uma URL própria, com cache de um ano no navegador (`private, immutable`), em vez de base64 dentro das respostas: cada aparelho baixa cada imagem uma vez (ver [Arquitetura](arquitetura.md#servir-as-imagens)). |
+| Imagens da galeria no Cloud Storage (Standard, São Paulo) | US$ 0,035 por GiB por mês ([preços do Cloud Storage](https://cloud.google.com/storage/pricing), consultados em 30/09/2026) | Uma campanha com a galeria cheia (500 MiB, o limite proposto) fica em ~US$ 0,02/mês. O soft delete de 7 dias cobra o mesmo preço pelo que foi apagado, durante esses dias. A API lê o bucket na mesma região, sem egress; cada leitura é uma operação classe B, cobrada por milhar (mesma página). |
 
 ## Stream da sessão ao vivo
 
@@ -81,6 +82,18 @@ Em produção, o login é só pelo Google (`OIDC_ISSUER=https://accounts.google.
 - **Se um dia houver um load balancer na frente**, ele acrescenta `<ip-do-cliente>,<ip-do-load-balancer>`, e o IP do cliente passa a ser o penúltimo item: `cloudRunTrustedHops` vira 2.
 - Com várias instâncias, cada uma tem os próprios contadores.
 
+### Imagens
+
+As imagens da galeria (MR-019) ficam num blob store (ver [Arquitetura](arquitetura.md#onde-as-imagens-ficam)).
+
+| Variável | Segredo? | Onde |
+| --- | --- | --- |
+| `BLOB_DIR` | Não | A pasta das imagens em disco. No ambiente local, `/var/lib/meurpg/images`, num volume do Docker Compose. Sem ela, as imagens ficam desligadas (`503`). Em produção, não se usa disco: vem o Cloud Storage (abaixo) |
+
+**No primeiro deploy (a implementação do Cloud Storage ainda não existe, porque não há deploy):** um bucket só para as imagens, em `southamerica-east1`, classe Standard, com acesso uniforme no nível do bucket e prevenção de acesso público; soft delete de 7 dias (o prazo da [Privacidade](privacidade.md)); e só a conta de serviço da API com acesso (`roles/storage.objectUser` no bucket), sem nenhuma URL pública nem URL assinada: quem entrega a imagem é sempre a API, depois de conferir quem pede. A implementação entra no pacote `blob`, atrás da mesma interface.
+
+**Memória.** O envio processa uma imagem por vez em cada instância, e recusa a imagem cuja decodificação passaria de 256 MiB (estimativa do pacote `maps/images`). Com 512 MiB por instância, sobra espaço para o resto, desde que o coletor de lixo do Go saiba o limite: definir `GOMEMLIMIT` (por exemplo, `400MiB`) no primeiro deploy.
+
 ## Alertas de orçamento
 
 Um budget alert no Google Cloud avisa se o custo passar do esperado. Os limiares exatos estão **a definir**.
@@ -92,6 +105,7 @@ Um budget alert no Google Cloud avisa se o custo passar do esperado. Os limiares
 - Avaliar se vale migrar do CockroachDB para o Cloud SQL ou outro produto, já que o plano legado não pode mudar sem perder o Unlimited. Pesa na conta: o código usa o TTL por linha do CockroachDB (sessões, estados de login e convites) e repete transações no erro `40001`; num PostgreSQL, a limpeza viraria um job agendado.
 - Lista completa de segredos por ambiente e quem tem acesso.
 - Limiares dos alertas de orçamento.
+- O bucket das imagens e a implementação do Cloud Storage no pacote `blob` (bucket privado em São Paulo, soft delete de 7 dias, só a conta de serviço da API), e `GOMEMLIMIT` no Cloud Run (ver [Imagens](#imagens)).
 
 ## Ver também
 

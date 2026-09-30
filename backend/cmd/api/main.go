@@ -12,11 +12,14 @@
 //	OIDC_REDIRECT_URL   https://<this server>/auth/callback
 //	OIDC_CA_FILE        extra CA certificates (PEM) to trust, for a local provider (optional)
 //	OIDC_MAX_AGE        max_age sent to the provider, e.g. 1h (optional)
+//	BLOB_DIR            directory for uploaded images (optional)
 //
 // Sign-in needs both the OIDC_* variables and DATABASE_URL. Without them
 // the API still starts, and the sign-in routes answer 503. CampaignService,
-// CharacterService, ContentService and PlayService need sign-in too; without
-// it, they are not mounted.
+// CharacterService, ContentService, PlayService and GalleryService need
+// sign-in too; without it, they are not mounted. Images also need
+// BLOB_DIR: without it, the image routes and GalleryService answer 503
+// (unavailable), and the rest works.
 //
 // The rules content (the SRD 5.1 snapshot, package rules) is embedded in
 // the binary and loaded at startup, always: a broken snapshot stops the
@@ -27,7 +30,9 @@
 // stream also reads the session again, authz.SessionRechecker), and each
 // member's role from campaigns (authz.MembershipSource); identity completes
 // the "accept this invite" sign-in intent through campaigns (an
-// identity.IntentHandler); play locks the players' sheets and keeps the
+// identity.IntentHandler); maps stores images in the blob store
+// (platform/blob) and learns who is calling on its plain HTTP routes from
+// identity too (maps.Sessions); play locks the players' sheets and keeps the
 // characters' vitals through characters (play.SheetLocker,
 // play.VitalsKeeper), and lists a user's campaigns through campaigns
 // (play.CampaignDirectory); and characters settles a pending member's
@@ -53,6 +58,8 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/campaigns"
 	"github.com/PuraFome/meuRPG/backend/internal/characters"
 	"github.com/PuraFome/meuRPG/backend/internal/identity"
+	"github.com/PuraFome/meuRPG/backend/internal/maps"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/config"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
@@ -132,6 +139,22 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		database = pool
 	}
 
+	// Images need somewhere to live. blobs stays a nil interface without
+	// BLOB_DIR (never a nil *blob.FS, for the reason given for database
+	// above), and the maps module then answers 503 for images.
+	var blobs blob.Store
+	if cfg.BlobDir == "" {
+		logger.Warn("BLOB_DIR is not set; images are off: uploads, image downloads and the gallery answer 503")
+	} else {
+		fs, err := blob.NewFS(cfg.BlobDir)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = fs.Close() }()
+		blobs = fs
+		logger.Info("images are stored on disk", "dir", cfg.BlobDir)
+	}
+
 	// Sign-in needs a provider and a database. identityService stays nil
 	// when either is missing, and the sign-in routes then answer 503.
 	// Campaigns, characters and game sessions need to know who is calling,
@@ -140,6 +163,7 @@ func run(logger *slog.Logger, cfg config.Config) error {
 	var campaignsService *campaigns.Service
 	var charactersService *characters.Service
 	var playService *play.Service
+	var mapsService *maps.Service
 	switch {
 	case !cfg.OIDC.Configured():
 		logger.Warn("OIDC_ISSUER is not set; sign-in is disabled")
@@ -171,6 +195,14 @@ func run(logger *slog.Logger, cfg config.Config) error {
 			Vitals:    charactersService, // the characters' hit points, slots and hit dice (RN-02)
 			Campaigns: campaignsService,  // the caller's campaigns, for the session notice (RN-06)
 			Logger:    logger,
+		})
+		if err != nil {
+			return err
+		}
+		mapsService, err = maps.New(maps.Config{
+			Pool:   pool,
+			Blobs:  blobs, // nil: images are off
+			Logger: logger,
 		})
 		if err != nil {
 			return err
@@ -221,12 +253,15 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		// role (authz.MembershipSource).
 		charactersService.Mount(srv.Handle, identityService, campaignsService, connectOpts...)
 		playService.Mount(srv.Handle, identityService, campaignsService, connectOpts...)
+		// GalleryService, plus the upload and download routes, which find
+		// the session with identityService.AuthenticateRequest.
+		mapsService.Mount(srv.Handle, identityService, campaignsService, connectOpts...)
 		// Live streams never end on their own: end them when the graceful
 		// shutdown starts, instead of holding it until its deadline.
 		srv.OnShutdown(playService.Close)
 	} else {
 		identity.MountDisabled(srv.Handle, connectOpts...)
-		logger.Warn("campaigns, characters and game sessions are disabled: they need sign-in")
+		logger.Warn("campaigns, characters, game sessions and images are disabled: they need sign-in")
 	}
 
 	// Forms on the app's pages (the invite page's POST to /auth/login) are

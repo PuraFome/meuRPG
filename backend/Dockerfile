@@ -57,6 +57,10 @@ RUN --mount=type=cache,target=/go/pkg/mod \
  && CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" \
       -o /out/migrate ./cmd/migrate
 
+# An empty folder for uploaded images (BLOB_DIR), made here because the
+# runtime image has no shell to run mkdir. See the COPY below.
+RUN mkdir -p /out/meurpg/images
+
 # ---- runtime stage: just the binaries and the web build ---------------------
 # distroless/static has CA certificates and timezone data but no shell or
 # package manager, which leaves very little to attack. The :nonroot variant
@@ -66,6 +70,12 @@ FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c
 COPY --from=build /out/api /out/migrate /app/
 # Matches config.DefaultWebDir; override with $WEB_DIR if it ever moves.
 COPY --from=web-build /src/dist/web/browser /app/web
+# The images folder, owned by nonroot (uid and gid 65532) so the API can
+# write to it. It stays empty and unused unless BLOB_DIR points at it: the
+# local stack mounts a volume here (deploy/local/compose.yaml), and a new
+# volume takes this folder's owner. Production will store images in Cloud
+# Storage instead (docs/operacao.md).
+COPY --from=build --chown=65532:65532 /out/meurpg/ /var/lib/meurpg/
 
 USER nonroot:nonroot
 EXPOSE 8080

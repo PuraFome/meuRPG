@@ -27,7 +27,7 @@ Copie no PR que mexe em dados, logs, telas ou fornecedores:
 - [ ] **Texto livre novo:** a tela avisa "é ficção; não escreva dados reais de pessoas". Texto livre nunca vai para `session_events`, logs ou o Jev.
 - [ ] **Resposta para jogador:** não inclui notas do mestre (RN-11) nem ponto de interesse escondido (RN-10).
 - [ ] **`session_events`:** o payload só tem IDs, números e códigos. Nunca nome, handle ou texto.
-- [ ] **Imagens:** upload para o nosso bucket, com EXIF removido. Nada de URL de imagem externa.
+- [ ] **Imagens:** só entram pelo envio da galeria (`POST /uploads/images`), que codifica a imagem de novo, sem EXIF, GPS nem outro metadado, e a guarda no nosso armazenamento. Nada de URL de imagem externa. Ver [O que o módulo maps já faz](#o-que-o-módulo-maps-já-faz).
 - [ ] **Navegador:** nenhum script, fonte, pixel ou iframe de terceiros.
 - [ ] **Sem Web Storage:** nada de `localStorage`, `sessionStorage`, IndexedDB, cookie gravado pelo JavaScript, ou Worker guardando token ou dado pessoal — o único armazenamento no aparelho é o cookie de sessão `__Host-`, `HttpOnly`. `web/src/no-web-storage.spec.ts` confere isso automaticamente.
 - [ ] **Fornecedor novo ou dado saindo do servidor:** atualizar a [tabela de operadores](#operadores-e-onde-os-dados-ficam) e abrir a pergunta de contrato e de transferência internacional.
@@ -61,7 +61,7 @@ Copie no PR que mexe em dados, logs, telas ou fornecedores:
 | História do personagem (personalidade, aparência, história, aliados) | `characters.story` | Jogar | Contrato | A mesma da ficha. Depois da trava da ficha, o jogador corrige quando o mestre libera (RN-01) |
 | Notas do mestre | `character_master_notes` | Preparar o jogo; nunca vão para o jogador (RN-11) | Contrato | Enquanto a campanha e o personagem existirem; notas vazias apagam a linha |
 | Sessões de jogo: quando começaram e terminaram | `game_sessions` | Travar as fichas (RN-01) e, depois, a mesa ao vivo | Contrato | Enquanto a campanha existir. Só IDs e horários: nada sobre uma pessoa |
-| Imagens (retrato, mapa, galeria) | Cloud Storage | Jogar | Contrato | Até excluir, mais 7 dias de soft delete |
+| Imagens da galeria (mapas, retratos, ilustrações), já sem metadados, com o nome (vindo do nome do arquivo, editável) e quem enviou | Os arquivos no blob store: um volume do Docker no ambiente local, um bucket privado do Cloud Storage em São Paulo em produção. A descrição em `gallery_images` | Jogar: mapas e documento da campanha (MR-019) | Contrato | Até o mestre apagar a imagem: a linha e os arquivos somem na hora (no Cloud Storage, o arquivo fica mais 7 dias no soft delete). Quando a campanha é apagada, as linhas somem junto; os arquivos, só quando a exclusão da campanha passar a apagá-los (ver "A definir") |
 | PV, espaços de magia e dados de vida do personagem de jogador (números: PV atual e temporários, espaços usados por círculo, espaços de pacto usados, dados de vida usados, quando o mestre corrigiu) | `character_vitals` | Jogar (RN-02): o que muda durante a sessão e dura até a próxima | Contrato | Enquanto o personagem existir (a linha some com ele, `CASCADE`). Só números: nada sobre a pessoa |
 | Eventos da sessão: quem fez a mudança (ID da conta), o personagem (ID), os números antes e depois, a chave de idempotência e a hora | `session_events` | Histórico da sessão (ADR-0007): auditoria e, depois, desfazer; hoje só a correção do mestre (RN-02) | Contrato | Enquanto a campanha existir: some com a sessão, que some com a campanha. Excluir a conta tira o ID dela dos eventos (`SET NULL`). Nunca texto livre nem nome |
 | Assinaturas do stream da sessão ao vivo: ID da conta, se é o mestre, a campanha | Memória do servidor | Entregar cada mudança só a quem pode vê-la (ADR-0005) | Contrato | Enquanto o stream está aberto (no máximo 30 minutos); nunca no banco nem no log |
@@ -126,6 +126,19 @@ A sessão ao vivo do `play` (Etapa 5, ver [Arquitetura](arquitetura.md#sessão-a
 - **`session_events` só com IDs e números.** O payload guarda os PV, espaços e dados de vida antes e depois, sem nome nem texto; o teste da RN-11 confere que nenhum evento carrega texto do personagem.
 - **O stream não guarda nada.** As assinaturas ficam na memória do servidor só enquanto o stream está aberto, e o log registra uma linha por stream, quando ele termina, com o caminho e a duração, como toda requisição.
 - **Quem sai deixa de receber.** A cada 60 segundos o stream confere de novo a sessão de login e a participação; logout, sessão revogada ou saída da campanha terminam o stream (`TestWatchGameSessionChecksAgain`).
+
+### O que o módulo maps já faz
+
+A galeria (`backend/internal/maps`, MR-019) cumpre assim os itens desta página:
+
+- **Nenhum metadado é guardado.** O servidor decodifica cada imagem enviada e a codifica de novo a partir dos pixels, então EXIF (com a posição do GPS, o modelo do celular e a data), XMP, perfis ICC, os textos de um PNG e qualquer coisa escondida depois da imagem ficam para trás. O arquivo original nunca é gravado. Os testes montam um JPEG com EXIF e GPS, um PNG com `tEXt` e `eXIf` e um WebP com um bloco EXIF, e conferem que o arquivo guardado não tem nada disso (`TestProcessRemoves*`, no `maps/images`, e `TestMR019_MasterUploadsAnImageWithoutItsMetadata`).
+- **Onde ficam.** No ambiente local, num volume do Docker; em produção, num bucket privado do Cloud Storage em São Paulo, sem URL pública: só a API lê o bucket, e entrega a imagem a quem pode vê-la.
+- **Quem vê.** A galeria (a lista) é só do mestre. Uma imagem, pelo ID, qualquer membro ativo da campanha: o jogador precisa ver o mapa revelado, e só recebe o ID de uma imagem numa resposta que pode ver (RN-10). Quem não é membro ativo recebe `404`, igual a uma imagem que não existe.
+- **Cache só no aparelho.** A imagem sai com `Cache-Control: private`: o navegador de quem pode vê-la guarda uma cópia (os bytes de um ID nunca mudam), mas nenhum proxy guarda. Quem sai da campanha ainda tem no navegador as imagens que já viu.
+- **Apagar** tira a linha e os arquivos na hora. No Cloud Storage, o soft delete guarda o arquivo por mais 7 dias, dentro do prazo de 30 dias desta página.
+- **Logs sem dado pessoal.** O nome do arquivo e o nome da imagem nunca vão para o log, e os logs do módulo não levam IDs: os erros do armazenamento saem sem o caminho do arquivo. O ID da imagem aparece no caminho `/images/<id>` do log de requisições (e nos logs da plataforma), como qualquer URL: é um UUID aleatório, que não diz nada sobre ninguém nem dá acesso à imagem, porque a sessão e a participação na campanha são conferidas a cada pedido.
+- **Uma imagem pode ser a foto de uma pessoa.** Proposta para a tela da galeria: avisar, como no texto livre, "use imagens do jogo; não envie fotos de pessoas sem autorização delas".
+- **Ainda falta:** apagar os arquivos quando a campanha é apagada (hoje só acontece pela exclusão da conta do mestre, e só as linhas somem). A exclusão da campanha ou da conta precisa apagar o prefixo `campaigns/<id>/` do armazenamento; entra com o `PrivacyService`.
 
 ## Direitos do titular e como atendemos
 
@@ -255,6 +268,8 @@ Todo PR responde. Um "sim" pede uma seção curta de riscos e medidas no PR. Doi
 - Conferir no console do CockroachDB Cloud que os backups ficam em São Paulo e são guardados por no máximo 30 dias. O plano atual, o legado Unlimited, fica (decidido pelo Samuel em 29/09/2026); trocar de plano perde o Unlimited, e está em avaliação se vale migrar para o Cloud SQL ou outro produto (ver [Operação](operacao.md)).
 - Antes de ler PDFs de regras com IA (MR-027): escolher o operador, dizer o que sai do servidor, e tratar o direito autoral de livros oficiais (o resultado só aparece para a mesa).
 - Revisão por advogado do aviso de privacidade, dos termos de uso e desse tratamento, antes do primeiro deploy público.
+- No primeiro deploy, criar o bucket das imagens em São Paulo, privado, com soft delete de 7 dias e acesso só da conta de serviço da API (ver [Operação](operacao.md)).
+- Apagar os arquivos das imagens de uma campanha quando ela é apagada (o prefixo `campaigns/<id>/`), junto com a exclusão de conta do `PrivacyService`.
 
 ## Roteiro do aviso de privacidade
 

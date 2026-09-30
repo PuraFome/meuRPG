@@ -178,13 +178,18 @@ func (h *staticHandler) setSecurityHeaders(w http.ResponseWriter) {
 
 // isAPIPath reports whether p belongs to a namespace this server reserves
 // for something other than the static app: Connect RPCs (every package in
-// proto/ starts with "meurpg."), the identity module's routes, and the
-// probes already registered on the mux in New().
+// proto/ starts with "meurpg."), the identity module's routes, the maps
+// module's image routes (/images/{id}, /uploads/images), and the probes
+// already registered on the mux in New().
 func isAPIPath(p string) bool {
 	switch {
 	case strings.HasPrefix(p, "/meurpg."):
 		return true
 	case p == "/auth" || strings.HasPrefix(p, "/auth/"):
+		return true
+	case p == "/images" || strings.HasPrefix(p, "/images/"):
+		return true
+	case p == "/uploads" || strings.HasPrefix(p, "/uploads/"):
 		return true
 	case p == "/healthz" || p == "/readyz":
 		return true

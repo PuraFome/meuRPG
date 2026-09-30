@@ -81,3 +81,12 @@ sql:
         <<: *go-options
         package: playdb
         out: internal/play/playdb
+
+  - engine: postgresql
+    schema: migrations
+    queries: internal/maps/queries.sql
+    gen:
+      go:
+        <<: *go-options
+        package: mapsdb
+        out: internal/maps/mapsdb

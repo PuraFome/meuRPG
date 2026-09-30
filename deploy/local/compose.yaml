@@ -9,6 +9,7 @@
 #               for Google: sign in at http://localhost:8080/auth/login with
 #               one click on a test user. Never deployed (see backend/cmd/devidp).
 #   api       - the backend API server, starts only after migrations succeed.
+#               Uploaded images go to the "images" volume (BLOB_DIR).
 name: meurpg-local
 
 services:
@@ -107,6 +108,13 @@ services:
       # devidp honors max_age; Google does not document it, so production
       # leaves it unset (docs/operacao.md).
       OIDC_MAX_AGE: 1h
+      # Uploaded images (the gallery, MR-019) go to the volume below.
+      BLOB_DIR: /var/lib/meurpg/images
+    volumes:
+      # A named volume, so images survive `make down` and `make up`. The
+      # image creates this folder owned by nonroot, the user the API runs
+      # as, and a new volume takes that owner (backend/Dockerfile).
+      - images:/var/lib/meurpg/images
     ports:
       - "8080:8080"
     depends_on:
@@ -121,3 +129,4 @@ services:
 
 volumes:
   cockroach-data:
+  images:

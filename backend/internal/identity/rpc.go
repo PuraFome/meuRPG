@@ -131,6 +131,20 @@ func (i *sessionInterceptor) WrapStreamingHandler(next connect.StreamingHandlerF
 	}
 }
 
+// AuthenticateRequest is Interceptor for plain HTTP routes, such as the
+// image upload and download (package maps): it returns r's context with
+// the request's session in it, when the session cookie holds a valid one,
+// so UserID works in the handler. Like Interceptor, it only ever trusts the
+// cookie, checked against the database: it cannot put anyone else's
+// session in a context.
+//
+// A missing or invalid session is not an error; each handler decides, with
+// UserID. The error, an `unavailable` Connect error, means the database did
+// not answer.
+func (s *Service) AuthenticateRequest(r *http.Request) (context.Context, error) {
+	return s.authenticate(r.Context(), r.Header)
+}
+
 // authenticate adds the request's session to ctx, when there is a valid one.
 func (s *Service) authenticate(ctx context.Context, header http.Header) (context.Context, error) {
 	token, ok := cookieValue(header, SessionCookieName)

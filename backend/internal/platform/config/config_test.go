@@ -36,18 +36,20 @@ func TestLoad(t *testing.T) {
 				"DATABASE_URL": "postgresql://root@localhost:26257/meurpg?sslmode=disable",
 				"LOG_LEVEL":    "DEBUG",
 				"WEB_DIR":      "/srv/web",
+				"BLOB_DIR":     "/var/lib/meurpg/images",
 			},
 			want: Config{
 				Port:        9090,
 				DatabaseURL: "postgresql://root@localhost:26257/meurpg?sslmode=disable",
 				LogLevel:    slog.LevelDebug,
 				WebDir:      "/srv/web",
+				BlobDir:     "/var/lib/meurpg/images",
 			},
 		},
 		{
 			name: "surrounding whitespace is ignored",
 			env: map[string]string{
-				"PORT": " 3000 ", "LOG_LEVEL": " warn ", "DATABASE_URL": "  ", "WEB_DIR": "  ",
+				"PORT": " 3000 ", "LOG_LEVEL": " warn ", "DATABASE_URL": "  ", "WEB_DIR": "  ", "BLOB_DIR": " ",
 			},
 			want: Config{Port: 3000, LogLevel: slog.LevelWarn, WebDir: DefaultWebDir},
 		},

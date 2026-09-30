@@ -48,6 +48,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"net/http"
 	"sync"
 	"uuid"
 
@@ -253,6 +254,25 @@ func (i *interceptor) WrapStreamingClient(next connect.StreamingClientFunc) conn
 func (i *interceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
 	return func(ctx context.Context, conn connect.StreamingHandlerConn) error {
 		return next(i.withMemo(ctx, conn.Spec().Procedure), conn)
+	}
+}
+
+// Middleware is Interceptor for plain HTTP routes, such as the image upload
+// and download (package maps): it gives every request its own memo, so the
+// same Require* checks work in the handler. Mount it inside the route, so
+// the memo's "procedure" is the route's pattern (such as "POST
+// /uploads/images", from http.Request.Pattern). No route is in
+// pendingMayCall, so a pending member gets `not_found` from every check, as
+// from any call outside that list.
+//
+// Who is calling still comes from caller, which must be able to find the
+// request's session: identity's AuthenticateRequest has to run first.
+func Middleware(caller Caller, source MembershipSource, logger *slog.Logger) func(http.Handler) http.Handler {
+	i := Interceptor(caller, source, logger).(*interceptor)
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r.WithContext(i.withMemo(r.Context(), r.Pattern)))
+		})
 	}
 }
 

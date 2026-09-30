@@ -45,6 +45,7 @@ Usar as mesmas palavras nas conversas, nos documentos e no código evita muita c
 | Antecedente personalizado | Um antecedente fora do SRD, como o Sábio: nome e 2 perícias, sem texto de livro. | `custom_background` |
 | Revisão de efeitos | O número que sobe a cada mudança nos efeitos escritos por nós. Uma versão de conteúdo nunca muda no lugar. | `fx.<n>` |
 | Cópia de personagem | Um personagem novo feito a partir de outro, para jogar em outra campanha. Depois de copiado, cada um segue sozinho. | `copied_from_id` |
+| Galeria | As imagens de uma campanha, que o mestre envia para usar nos mapas e no documento da campanha (MR-019). Só o mestre vê a galeria; o jogador só vê uma imagem quando ela aparece para ele, como num mapa revelado. Cada imagem é guardada sem metadados (EXIF, GPS) e tem uma miniatura. | `gallery_images`, `GalleryService` |
 | Ponto de interesse | Lugar no mapa que abre uma batalha, um submapa ou uma cena de RP. | `point_of_interest` |
 | Masmorra | Mapa desenhado com paredes (inclusive falsas), piso, água, portas, armadilhas e baús (normais ou mímicos). | `dungeon` |
 | Modo de XP | Como a campanha dá XP: por inimigos derrotados, por ouro ou por marcos. | `xp_mode` |

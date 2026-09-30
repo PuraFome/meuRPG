@@ -10,13 +10,13 @@ Ferramentas: Go 1.27, buf, sqlc 1.31.1, goose, golangci-lint, Docker e Node 22. 
 
 | Comando | O que faz |
 | --- | --- |
-| `make up` | Sobe o CockroachDB (um nó só), o devidp (provedor OIDC de desenvolvimento) e o backend com Docker Compose (`deploy/local/compose.yaml`); serve o app em `http://localhost:8080`, servidor e API na mesma origem, com o login funcionando (ver [Login local com o devidp](#login-local-com-o-devidp)). |
+| `make up` | Sobe o CockroachDB (um nó só), o devidp (provedor OIDC de desenvolvimento) e o backend com Docker Compose (`deploy/local/compose.yaml`); serve o app em `http://localhost:8080`, servidor e API na mesma origem, com o login funcionando (ver [Login local com o devidp](#login-local-com-o-devidp)) e as imagens da galeria num volume (ver [Imagens da galeria](#imagens-da-galeria)). |
 | `make run` | Roda o backend direto no terminal, apontando para o banco do `make up`. |
 | `make proto` | Gera o código Go **e** o TypeScript a partir dos `.proto` (`backend/gen` e `web/src/gen`). Instala as dependências do `web/` sozinho, se faltarem. |
 | `make sqlc` | Gera o código Go das queries SQL (`backend/internal/<módulo>/<módulo>db`) com o sqlc 1.31.1. Ver [Queries com sqlc](#queries-com-sqlc). |
 | `make lint` | Roda `buf lint` e `golangci-lint`. |
 | `make test` | Roda `go test -race` em todo o backend. |
-| `MEURPG_TEST_DATABASE_URL='postgresql://root@localhost:26257/defaultdb?sslmode=disable' make test` | Roda os testes de integração (migrations, transações, login, campanhas, convites, personagens, sessões de jogo e a sessão ao vivo, com o stream) contra o CockroachDB do `make up`. Sem a variável, eles são pulados. |
+| `MEURPG_TEST_DATABASE_URL='postgresql://root@localhost:26257/defaultdb?sslmode=disable' make test` | Roda os testes de integração (migrations, transações, login, campanhas, convites, personagens, sessões de jogo, a sessão ao vivo, com o stream, e a galeria) contra o CockroachDB do `make up`. Sem a variável, eles são pulados. |
 | `make migrate` | Aplica as migrations do goose no banco local. |
 | `make e2e` | Sobe o ambiente local (como o `make up`), roda os testes Playwright de `e2e/` contra ele e mostra onde está o relatório. O ambiente continua de pé; `make down` derruba. Ver [Testes ponta a ponta](#testes-ponta-a-ponta-playwright). |
 | `make down` | Derruba o ambiente local (`docker compose down`). |
@@ -24,7 +24,7 @@ Ferramentas: Go 1.27, buf, sqlc 1.31.1, goose, golangci-lint, Docker e Node 22. 
 | `make web-install` | Instala as dependências do `web/`: `npm ci --ignore-scripts` (nunca roda scripts de instalação de terceiros). Se for adicionar ou atualizar uma dependência, use `npm install` com o Corepack ativado (`corepack enable`, uma vez só): o `web/package.json` fixa `npm@11.20.0` porque o `npm` de série (10.x) trava ao resolver o grafo de peer dependencies do Vitest 4.1; `npm ci` não tem esse problema e funciona com qualquer um dos dois. |
 | `make web-test` | Roda os testes do Angular (`cd web && npm test`). |
 | `make web-build` | Builda o Angular para produção (`cd web && npm run build`). |
-| `cd web && npm start` | Sobe o Angular sozinho, em modo dev, com `proxy.conf.json` encaminhando as rotas da API (`/meurpg.*`, `/auth`, `/healthz`, `/readyz`) para `localhost:8080`. |
+| `cd web && npm start` | Sobe o Angular sozinho, em modo dev, com `proxy.conf.json` encaminhando as rotas da API (`/meurpg.*`, `/auth`, `/images`, `/uploads`, `/healthz`, `/readyz`) para `localhost:8080`. |
 | `WEB_DIR=../web/dist/web/browser PORT=8090 go run -C backend ./cmd/api` | Sobe só a API do jeito que ela roda em produção — servindo o build do Angular, com os headers de cache e o CSP de verdade — sem Docker nem banco. Rode `cd web && npm run build` antes. Sem `DATABASE_URL`, o login fica desligado e o `IdentityService` responde `unavailable`, mas a tela pública e o `SystemService.GetServerInfo` funcionam normalmente. Útil para conferir o CSP no navegador sem subir o Docker; a porta 8090 não conflita com o `make up`. |
 
 ## Login local com um provedor OIDC
@@ -84,6 +84,34 @@ O devidp também respeita `max_age` e `prompt=login|none`: ele guarda o próprio
 
 **Por que `idp.localhost`.** O issuer precisa ser a mesma string para o navegador e para o container da API, porque o backend confere o `iss` do ID token. O navegador resolve qualquer `*.localhost` para `127.0.0.1` sozinho (RFC 6761) e chega ao devidp pela porta publicada; o container da API resolve o mesmo nome pelo alias de rede do Docker. Detalhes em [Arquitetura](docs/arquitetura.md#testes-e-o-provedor-de-desenvolvimento).
 
+## Imagens da galeria
+
+As imagens que o mestre envia (MR-019) ficam numa pasta, a do `BLOB_DIR`. O `make up` já liga: o `compose.yaml` monta o volume `images` em `/var/lib/meurpg/images`, e ele sobrevive ao `make down` (`docker volume rm meurpg-local_images` apaga as imagens).
+
+| Variável | Obrigatória | O que é |
+| --- | --- | --- |
+| `BLOB_DIR` | Não | A pasta onde a API guarda as imagens e as miniaturas. Sem ela, as imagens ficam desligadas: `POST /uploads/images`, `GET /images/...` e o `GalleryService` respondem `503`/`unavailable`, o log de início avisa, e o resto do app funciona. Uma pasta sem permissão de escrita impede a API de subir. |
+
+Com `make run`, a API roda no terminal sem imagens; para ligar, `BLOB_DIR=/tmp/meurpg-images make run` (a pasta é criada se não existir). Os testes usam uma pasta temporária cada um.
+
+Para testar o envio com `curl`:
+
+1. Faça login no Chrome em `http://localhost:8080` como "Mestre Teste" e crie uma campanha.
+2. Copie o valor do cookie `__Host-meurpg_session` (DevTools → Application → Cookies → `http://localhost:8080`) e o ID da campanha (o que vem depois de `/campanhas/` na URL da página dela). O cookie é a sua sessão: não o cole em lugar nenhum.
+3. Envie. Os campos vão nesta ordem, `campaign_id` e depois `file`, e o `-F` do `curl` respeita a ordem:
+
+   ```bash
+   SESSION='valor do cookie'
+   curl -s -X POST http://localhost:8080/uploads/images \
+     -b "__Host-meurpg_session=$SESSION" \
+     -F campaign_id=<id da campanha> -F file=@mapa.png
+   ```
+
+   A resposta é `201` com a imagem em JSON (`id`, `url`, `thumbnailUrl`...). Um erro vem como `{"code": "...", "reason": "...", "message": "..."}`; os `reason` estão no comentário do `GalleryService` (`proto/meurpg/maps/v1/gallery.proto`) e em [Arquitetura](docs/arquitetura.md#os-erros-do-envio).
+4. Baixe: `curl -s -b "__Host-meurpg_session=$SESSION" http://localhost:8080/images/<id> -o imagem` (ou `/images/<id>/thumb`, a miniatura).
+
+O envio não é Connect, então não precisa do `Connect-Protocol-Version`. A proteção contra CSRF (`http.CrossOriginProtection`) julga só os headers que o navegador põe sozinho, `Sec-Fetch-Site` e `Origin`: o `curl` não manda nenhum dos dois, e passa. Com `-H 'Sec-Fetch-Site: cross-site'` ou `-H 'Origin: https://outro.site'`, a resposta é `403`, como seria para uma página de outro site. No app, o navegador manda `Sec-Fetch-Site: same-origin`, que passa.
+
 ## Testes ponta a ponta (Playwright)
 
 Os testes de aceite pela tela ficam em `e2e/`, um projeto Playwright em TypeScript, com `package.json` próprio e versões fixas.
@@ -112,7 +140,7 @@ Toda tela nova, ou mudança visível numa tela, segue o [design](docs/design.md)
 
 ## Queries com sqlc
 
-O SQL de cada módulo fica em `backend/internal/<módulo>/queries.sql`, e o sqlc gera os métodos Go tipados num pacote ao lado (`identitydb`, `campaignsdb`, `charactersdb`, `playdb`). O schema que o sqlc usa são as próprias migrations do goose, então não existe uma segunda cópia do schema para manter igual. A configuração está em `backend/sqlc.yaml`.
+O SQL de cada módulo fica em `backend/internal/<módulo>/queries.sql`, e o sqlc gera os métodos Go tipados num pacote ao lado (`identitydb`, `campaignsdb`, `charactersdb`, `playdb`, `mapsdb`). O schema que o sqlc usa são as próprias migrations do goose, então não existe uma segunda cópia do schema para manter igual. A configuração está em `backend/sqlc.yaml`.
 
 Para mudar uma query ou criar uma:
 
