@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { authStatePath, createCampaign } from './support';
+import { authStatePath, createCampaign, waitForCampaignList } from './support';
 
 // MR-001 (criar campanha) and MR-002 (gerar convite), by the screen, as the
 // master would use it. The underlying rules already have Go tests
@@ -17,6 +17,7 @@ test.describe('criar campanha', () => {
     const name = `Mirathel ${Date.now()}`;
 
     await expect(page.getByRole('heading', { name: 'Minhas campanhas' })).toBeVisible();
+    await waitForCampaignList(page);
     await page.getByLabel('Nome da campanha').fill(name);
     await page.getByLabel('Modo de XP').click();
     await page.getByRole('option', { name: 'Por inimigos derrotados' }).click();

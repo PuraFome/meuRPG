@@ -79,6 +79,22 @@ export const signOut = (page: Page) => callRPC(page, 'meurpg.identity.v1.Identit
 export const day = 24 * 60 * 60 * 1000;
 
 /**
+ * Waits until `/campanhas` shows the caller's campaigns (or "Você ainda não
+ * tem nenhuma campanha"), before anything touches the "Nova campanha" form.
+ *
+ * The list sits above the form and pushes it down when it arrives. A "Modo
+ * de XP" panel opened before that is left behind, outside the viewport, and
+ * the click on its option retries until the test times out. Seen locally
+ * (30/09/2026), where "Mestre Teste" has hundreds of campaigns and
+ * ListMyCampaigns answered after the panel opened.
+ */
+export async function waitForCampaignList(page: Page): Promise<void> {
+  await expect(
+    page.locator('mat-nav-list').or(page.getByText('Você ainda não tem nenhuma campanha.')),
+  ).toBeVisible();
+}
+
+/**
  * Creates a campaign through the "Nova campanha" form on `/campanhas`, the
  * way MR-001 asks for, and returns its id from the `/campanhas/<id>` URL
  * the app navigates to afterwards.
@@ -89,6 +105,7 @@ export const day = 24 * 60 * 60 * 1000;
  */
 export async function createCampaign(page: Page, name: string): Promise<string> {
   await page.goto('/campanhas');
+  await waitForCampaignList(page);
   await page.getByLabel('Nome da campanha').fill(name);
   await page.getByLabel('Modo de XP').click();
   await page.getByRole('option', { name: 'Por inimigos derrotados' }).click();
