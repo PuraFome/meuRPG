@@ -82,9 +82,9 @@ O desenho completo, com os diagramas, está em [Arquitetura](docs/arquitetura.md
 Precisa de Docker, Go 1.27, Node 22 e `make`. As ferramentas que só geram código ou rodam lint (buf, sqlc, golangci-lint) estão no [CONTRIBUTING](CONTRIBUTING.md#ambiente-local).
 
 ```bash
-make up      # CockroachDB, migrations, o provedor de login de teste e o app em http://localhost:8080
+make up      # CockroachDB, migrations, devidp e o app em http://localhost:8080
 make test    # testes do backend (go test -race)
-make e2e     # sobe o ambiente e roda os testes Playwright pela tela, com a checagem de acessibilidade
+make e2e     # testes pela tela (Playwright) e de acessibilidade (axe)
 make down    # derruba tudo
 ```
 
