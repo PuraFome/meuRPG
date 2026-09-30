@@ -1,0 +1,94 @@
+:host {
+  display: block;
+}
+
+.adjust {
+  display: flex;
+  flex-direction: column;
+  padding: var(--mr-space-5) var(--mr-space-6) var(--mr-space-4);
+
+  &--sheet {
+    padding: var(--mr-space-2) 2px var(--mr-space-2);
+  }
+}
+
+// The bottom sheet's grab bar: decoration only (the sheet closes with
+// "Cancelar", Escape or a tap outside).
+.adjust__handle {
+  align-self: center;
+  width: 36px;
+  height: 4px;
+  margin-bottom: var(--mr-space-3);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-control-line);
+}
+
+.adjust__head {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--mr-rule);
+}
+
+.adjust__title {
+  margin: 0;
+  font-weight: 800;
+  font-size: 26px;
+  line-height: 30px;
+  color: var(--mr-ink);
+  overflow-wrap: anywhere;
+}
+
+.adjust__sub {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+// One number per band, a rule between them.
+.adjust__rows {
+  display: flex;
+  flex-direction: column;
+
+  > * {
+    padding: 14px 0;
+    border-bottom: 1px solid var(--mr-rule);
+  }
+}
+
+.adjust__note {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: 14px 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.adjust__error {
+  margin-bottom: 14px;
+}
+
+.adjust__ended {
+  margin: var(--mr-space-4) 0;
+}
+
+// "Salvar ajuste" (the one fill, 48px on a phone) over "Cancelar".
+.adjust__buttons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-1);
+
+  @media (min-width: 768px) {
+    flex-direction: row-reverse;
+    justify-content: flex-start;
+    gap: var(--mr-space-2);
+  }
+}

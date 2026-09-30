@@ -55,3 +55,21 @@
   border-radius: 50%;
   background: var(--mr-warning-ink);
 }
+
+// A live campaign: "Sessão ao vivo" above the role tag on a phone (E5-01),
+// with room so the taller row doesn't touch its rules; side by side from
+// 600px, so every row keeps one height.
+.row-tags {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 10px 0;
+
+  @media (min-width: 600px) {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--mr-space-2);
+    padding: 0;
+  }
+}

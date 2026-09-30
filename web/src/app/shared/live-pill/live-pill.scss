@@ -1,0 +1,30 @@
+// The "Ao vivo" pill: accent-text border and word, an accent dot. The
+// word carries the meaning; the colour only repeats it.
+:host {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  height: 28px;
+  padding: 0 11px 0 10px;
+  border: 1px solid var(--mr-accent-text);
+  border-radius: var(--mr-radius-pill);
+  color: var(--mr-accent-text);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+:host(.live-pill--small) {
+  height: 26px;
+}
+
+.live-pill__dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--mr-accent);
+}

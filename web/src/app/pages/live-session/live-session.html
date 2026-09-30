@@ -1,0 +1,84 @@
+@switch (phase()) {
+  @case ('loading') {
+    <h1 class="mr-page-title">Sessão</h1>
+    @if (connection() === 'reconnecting') {
+      <div class="mr-notice mr-notice--neutral page-notice" role="status">
+        <mat-icon aria-hidden="true">cloud_off</mat-icon>
+        <p><strong>Reconectando…</strong> O servidor não respondeu; o app tenta de novo sozinho.</p>
+      </div>
+    } @else {
+      <p class="mr-muted" role="status">Abrindo a sessão...</p>
+    }
+  }
+  @case ('no-access') {
+    <app-session-blocked kind="no-access" />
+  }
+  @case ('no-session') {
+    <app-session-blocked
+      kind="no-session"
+      [campaignId]="campaignId()"
+      [campaignName]="campaign()?.name ?? ''"
+    />
+  }
+  @case ('ended') {
+    <app-session-blocked
+      kind="ended"
+      [campaignId]="campaignId()"
+      [campaignName]="campaign()?.name ?? ''"
+      [sessionNumber]="session()?.sessionNumber ?? 0"
+    />
+  }
+  @case ('error') {
+    <h1 class="mr-page-title">Não foi possível abrir a sessão</h1>
+    <div class="mr-notice mr-notice--danger page-notice" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>
+        <strong>O servidor não respondeu.</strong>
+        Confira a conexão e tente de novo.
+      </p>
+    </div>
+    <button mat-flat-button type="button" class="retry" (click)="retry()">Tentar de novo</button>
+  }
+  @case ('live') {
+    @if (session(); as s) {
+      <app-session-header
+        [campaignId]="campaignId()"
+        [campaignName]="campaign()?.name ?? ''"
+        [session]="s"
+        [isMaster]="isMaster()"
+        [connection]="connection()"
+        [lastUpdate]="lastUpdate()"
+        (ended)="sessionEndedHere()"
+      />
+
+      @if (isMaster()) {
+        <div class="board board--master">
+          <app-party-panel
+            class="board__side"
+            [party]="vitals()"
+            [info]="partyInfo()"
+            (adjust)="adjust($event)"
+          />
+          <app-session-map class="board__main" [isMaster]="true" />
+        </div>
+      } @else {
+        <div class="board">
+          <app-session-map class="board__main" />
+          <div class="board__side">
+            @if (ownVitals(); as v) {
+              <app-player-vitals [vitals]="v" [sheet]="playerSheet()" [campaignId]="campaignId()" />
+            } @else {
+              <div class="mr-notice mr-notice--neutral">
+                <mat-icon aria-hidden="true">person_off</mat-icon>
+                <p>
+                  <strong>Você não tem um personagem vivo nesta campanha.</strong>
+                  Crie um na página da campanha; os números dele aparecem aqui.
+                </p>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    }
+  }
+}

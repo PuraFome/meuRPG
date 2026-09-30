@@ -2,6 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Browser, type Page } from '@playwright/test';
 
 import { canvasJpeg, newCampaign, uploadThroughPicker } from './gallery-support';
+import { endSessionRPC, openSessionPage, startSessionRPC, tableWithPensantus } from './live-session-support';
 import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, pensantus } from './support';
 
 // docs/design.md#como-uma-tela-é-feita: every screen passes axe with no
@@ -159,4 +160,64 @@ test('as telas de quem não entrou passam no axe, nos dois temas', { tag: '@a11y
       await context.close();
     }
   }
+});
+
+/**
+ * The live session's screens (Etapa 5): the session page for the master and
+ * for the player, the adjust sheet open (a dialog on the desktop, a bottom
+ * sheet on the phone), and the link opened by someone who isn't in the
+ * campaign. The session page keeps a stream open, so these wait for the
+ * page's own "Ao vivo" instead of `networkidle`.
+ */
+async function scanLiveSessionScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(90_000);
+  const options = { colorScheme, viewport: { width, height: 900 } };
+  const master = await browser.newContext({ ...options, storageState: authStatePath('Mestre Teste') });
+  const player = await browser.newContext({ ...options, storageState: authStatePath('Jogador Teste') });
+  const masterPage = await master.newPage();
+  const playerPage = await player.newPage();
+  const suffix = `(${colorScheme}, ${width}px)`;
+  try {
+    await masterPage.goto('/');
+    await playerPage.goto('/');
+    const { campaignId } = await tableWithPensantus(masterPage, playerPage, `Acessibilidade ao vivo ${Date.now()}`);
+    const sessionId = await startSessionRPC(masterPage, campaignId);
+
+    await openSessionPage(masterPage, campaignId);
+    await expectNoSeriousViolations(masterPage, `Sessão, mestre ${suffix}`);
+
+    await masterPage.getByRole('button', { name: 'Ajustar Pensantus' }).click();
+    await expect(masterPage.getByRole('dialog', { name: 'Ajustar Pensantus' })).toBeVisible();
+    // Scan the sheet once it's in place: mid-animation, its text is still
+    // fading in, and axe would measure the contrast of a half-drawn frame.
+    await masterPage.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await expectNoSeriousViolations(masterPage, `Ajustar PV ${suffix}`);
+    await masterPage.getByRole('button', { name: 'Cancelar' }).click();
+
+    await openSessionPage(playerPage, campaignId);
+    await expect(playerPage.getByRole('region', { name: 'Pensantus' })).toBeVisible();
+    await expectNoSeriousViolations(playerPage, `Sessão, jogador ${suffix}`);
+
+    // A campaign Jogador Teste isn't in: the link says to ask for an invite.
+    const closed = await callRPC(masterPage, 'meurpg.campaigns.v1.CampaignService/CreateCampaign', {
+      name: `Mesa fechada ${Date.now()}`,
+      xpMode: 'XP_MODE_ENEMIES',
+    });
+    await playerPage.goto(`/campanhas/${(await closed.json()).campaign.id}/sessao`);
+    await expect(playerPage.getByRole('heading', { level: 1, name: 'Peça um convite ao mestre' })).toBeVisible();
+    await expectNoSeriousViolations(playerPage, `Sessão sem acesso ${suffix}`);
+
+    await endSessionRPC(masterPage, campaignId, sessionId);
+  } finally {
+    await master.close();
+    await player.close();
+  }
+}
+
+test('as telas da sessão ao vivo passam no axe no tema claro, no desktop', { tag: ['@a11y', '@MR-012'] }, async ({ browser }) => {
+  await scanLiveSessionScreens(browser, 'light', 1280);
+});
+
+test('as telas da sessão ao vivo passam no axe no tema escuro, no celular', { tag: ['@a11y', '@MR-012'] }, async ({ browser }) => {
+  await scanLiveSessionScreens(browser, 'dark', 390);
 });

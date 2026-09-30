@@ -1,0 +1,251 @@
+:host {
+  display: block;
+}
+
+.vitals {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.vitals__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+}
+
+.vitals__name {
+  margin: 0;
+  font-weight: 800;
+  font-size: 26px;
+  line-height: 30px;
+  overflow-wrap: anywhere;
+}
+
+.vitals__summary {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+// The PV box: the number the player came for, in the accent frame the
+// sheet gives its hit points.
+.hp {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  padding: 14px 18px var(--mr-space-4);
+  background: var(--mr-surface);
+  border: 2px solid var(--mr-accent);
+  border-radius: var(--mr-radius-lg);
+}
+
+.hp__numbers {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0;
+}
+
+.hp__current {
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 52px;
+  line-height: 46px;
+}
+
+.hp__of {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hp__max {
+  font-family: var(--mr-font-display);
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 24px;
+}
+
+.hp__label {
+  font-size: 14px;
+  line-height: 18px;
+  color: var(--mr-ink-muted);
+}
+
+.hp__bar {
+  height: 8px;
+  overflow: hidden;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-line);
+}
+
+.hp__fill {
+  height: 100%;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-ink);
+}
+
+// CA, temporary HP, hit dice: three equal columns, label under the number.
+.stats {
+  display: grid;
+  // The shield keeps its own width; the two boxes share the rest.
+  grid-template-columns: 96px minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+.shield,
+.box {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.stats__label {
+  font-size: 14px;
+  line-height: 17px;
+  color: var(--mr-ink-muted);
+}
+
+.shield {
+  position: relative;
+  height: 118px;
+
+  .stats__label {
+    position: relative;
+    z-index: 1;
+    max-width: 70px;
+    font-size: 13px;
+    line-height: 15px;
+  }
+}
+
+.shield__value {
+  display: flex;
+  justify-content: center;
+  margin: 0;
+}
+
+.shield__shape {
+  position: absolute;
+  top: 3px;
+  left: 50%;
+  margin-left: -48px;
+
+  path {
+    fill: var(--mr-surface);
+    stroke: var(--mr-accent);
+    stroke-width: 2.5;
+  }
+}
+
+.shield__number {
+  position: relative;
+  z-index: 1;
+  margin-top: -8px;
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 40px;
+  line-height: 40px;
+}
+
+.box {
+  box-sizing: border-box;
+  height: 110px;
+  gap: 4px;
+  padding: 8px 6px;
+  background: var(--mr-surface);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+}
+
+.box__value {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-weight: 700;
+  font-size: 34px;
+  line-height: 36px;
+  white-space: nowrap;
+
+  &--long {
+    font-size: 22px;
+    line-height: 26px;
+    white-space: normal;
+  }
+}
+
+.box__words {
+  display: block;
+  margin-top: 1px;
+  color: var(--mr-ink);
+}
+
+.slots {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-1);
+}
+
+.slots__title {
+  margin: 0 0 var(--mr-space-1);
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 22px;
+}
+
+.slots__row {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  min-height: 30px;
+}
+
+.slots__level {
+  flex-shrink: 0;
+  min-width: 82px;
+}
+
+.slots__words {
+  margin-left: auto;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+  white-space: nowrap;
+}
+
+.vitals__foot {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.vitals__sheet {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-weight: 700;
+  color: var(--mr-accent-text);
+  text-underline-offset: 3px;
+}
+
+.vitals__lock {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+    margin-top: 1px;
+  }
+}

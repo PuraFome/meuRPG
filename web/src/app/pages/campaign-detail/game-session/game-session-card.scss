@@ -2,8 +2,14 @@
   display: block;
 }
 
+// A player's card with no open session renders nothing: no gap either.
+:host(.is-empty) {
+  display: none;
+}
+
 // The one panel with an accent outline: the session is what the master
-// comes to this page to run (the design's campaign artboard).
+// comes to this page to run (the design's campaign artboard, E5-09). The
+// session notice uses the same frame: accent means "session".
 .session {
   display: flex;
   flex-direction: column;
@@ -14,6 +20,13 @@
   .mr-panel__title {
     margin: 0;
   }
+}
+
+.session__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
 }
 
 .session__text {
@@ -36,8 +49,82 @@
   }
 }
 
-// The screen's one primary action: full width on a phone, as wide as its
-// words from a tablet up (the theme sets its height).
+// "Entrar na sessão" (filled), "Copiar link da sessão", then "Encerrar
+// sessão" pushed to the far edge. One column on a phone.
+.session__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  padding-top: 2px;
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+}
+
+// The rare, final action: stroked with an ink label, set apart.
+.session__end {
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+
+  @media (min-width: 768px) {
+    margin-left: auto;
+  }
+}
+
+// The in-place confirmation (docs/design.md): the question, the confirm
+// button in the danger ink (stroked: the screen keeps one fill) and
+// "Cancelar".
+.session__confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-2) var(--mr-space-3);
+
+  @media (min-width: 768px) {
+    flex-basis: 100%;
+  }
+}
+
+.session__confirm-text {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 15px;
+}
+
+.session__end--confirm {
+  --mat-button-outlined-label-text-color: var(--mr-danger-ink);
+  --mat-button-outlined-outline-color: var(--mr-danger-ink);
+  margin-left: 0;
+}
+
+.session__manual {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-1);
+}
+
+.session__field {
+  box-sizing: border-box;
+  width: 100%;
+  height: 44px;
+  padding: 0 var(--mr-space-3);
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font: inherit;
+  font-size: 16px;
+}
+
+.session__hint {
+  margin: 0;
+  font-size: 14px;
+}
+
+// The primary action when no session is open: full width on a phone, as
+// wide as its words from a tablet up (the theme sets its height).
 .session__action {
   @media (min-width: 768px) {
     align-self: flex-start;

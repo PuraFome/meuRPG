@@ -180,6 +180,26 @@ html {
       )
     );
   }
+
+  // Dialogs and bottom sheets round like the rest of the system (14px, the
+  // medallions' radius), not Material's 28px.
+  @include mat.dialog-overrides(
+    (
+      container-shape: var(--mr-radius-xl),
+    )
+  );
+  @include mat.bottom-sheet-overrides(
+    (
+      container-shape: var(--mr-radius-xl),
+    )
+  );
+}
+
+// Material draws a phone-wide bottom sheet with square corners; this design
+// keeps its top corners round at every width (the adjust sheet, E5-05).
+.mat-bottom-sheet-container {
+  border-top-left-radius: var(--mat-bottom-sheet-container-shape);
+  border-top-right-radius: var(--mat-bottom-sheet-container-shape);
 }
 
 body {

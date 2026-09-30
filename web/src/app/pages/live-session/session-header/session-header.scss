@@ -1,0 +1,182 @@
+:host {
+  display: block;
+}
+
+// "← Voltar para a campanha", quiet, above the title.
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  color: var(--mr-ink-muted);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--mr-ink);
+  }
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+  margin-top: var(--mr-space-2);
+
+  // The master's link and buttons sit on the right of the title, from
+  // 1024px up (E5-04); stacked under it below that (E5-06).
+  &--master {
+    @media (min-width: 1024px) {
+      flex-direction: row;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: var(--mr-space-6);
+    }
+  }
+}
+
+.head__title {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+
+  .mr-page-lead {
+    margin: 6px 0 0;
+  }
+}
+
+.head__status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-2) 10px;
+  margin: var(--mr-space-3) 0 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.head__offline {
+  margin-top: var(--mr-space-3);
+
+  // As wide as its sentence, not a band across the page.
+  @media (min-width: 768px) {
+    align-self: flex-start;
+  }
+}
+
+.head__error {
+  margin-top: var(--mr-space-4);
+}
+
+// A column on a phone (E5-06); from a tablet, the field on its own line and
+// the two buttons side by side; from 1024px, all in one row (E5-04).
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-end;
+  }
+
+  // One row that never wraps; only the in-place confirmation takes a line
+  // of its own. The title's column gives way, not the buttons.
+  @media (min-width: 1024px) {
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+
+    &--confirming {
+      flex-wrap: wrap;
+    }
+  }
+}
+
+.actions__link {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-1);
+  min-width: 0;
+
+  @media (min-width: 768px) {
+    flex-basis: 100%;
+  }
+
+  @media (min-width: 1024px) {
+    flex: 0 0 300px;
+  }
+}
+
+.actions__button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.actions__field {
+  box-sizing: border-box;
+  width: 100%;
+  height: 44px;
+  padding: 0 var(--mr-space-3);
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font: inherit;
+  font-size: 16px;
+  text-overflow: ellipsis;
+}
+
+.actions__divider {
+  display: none;
+
+  @media (min-width: 1024px) {
+    display: block;
+    width: 1px;
+    height: 32px;
+    margin: 0 var(--mr-space-1) 6px;
+    background: var(--mr-line);
+  }
+}
+
+// Rare and final: stroked, with an ink label.
+.actions__end {
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+}
+
+// The in-place confirmation (docs/design.md), the confirm button in the
+// danger ink, stroked: the screen keeps its one fill for "Salvar ajuste".
+.confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-2) var(--mr-space-3);
+
+  @media (min-width: 1024px) {
+    justify-content: flex-end;
+    max-width: 22rem;
+  }
+}
+
+.confirm__text {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 15px;
+
+  @media (min-width: 1024px) {
+    text-align: right;
+  }
+}
+
+.confirm__button {
+  --mat-button-outlined-label-text-color: var(--mr-danger-ink);
+  --mat-button-outlined-outline-color: var(--mr-danger-ink);
+}

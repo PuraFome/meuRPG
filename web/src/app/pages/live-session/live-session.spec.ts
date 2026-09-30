@@ -1,0 +1,262 @@
+import { Injectable, signal } from '@angular/core';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { BehaviorSubject } from 'rxjs';
+
+import { AuthService } from '../../core/auth/auth.service';
+import { OpenSessions } from '../../shell/live-notice/open-sessions';
+import { LiveSession } from './live-session';
+import {
+  CampaignInfoVm,
+  LiveErrorKind,
+  LiveEventVm,
+  LiveSessionSource,
+  LiveSnapshotVm,
+  PartyMemberInfoVm,
+  PlayerSheetVm,
+} from './live-session.types';
+import { brisaVitals, pensantusVitals } from './testing';
+
+class KindError extends Error {
+  constructor(readonly kind: LiveErrorKind) {
+    super(kind);
+  }
+}
+
+/** A `LiveSessionSource` whose stream the test feeds by hand. */
+@Injectable()
+class FakeLiveSessionSource implements LiveSessionSource {
+  campaign: CampaignInfoVm | Error = { name: 'Mirathel', isMaster: false, awaitingApproval: false };
+  snapshot: LiveSnapshotVm | Error = {
+    session: { sessionId: 's4', sessionNumber: 4, startedAt: new Date(2026, 8, 30, 20, 5) },
+    vitals: [pensantusVitals()],
+  };
+  sheet: PlayerSheetVm = { armorClass: 14, summary: 'Mago 3, Gnomo das Rochas' };
+  party = new Map<string, PartyMemberInfoVm>([
+    ['pensantus', { classSummary: 'Mago 3', playerName: 'Vinicius' }],
+    ['brisa', { classSummary: 'Ladina 3', playerName: 'Ana' }],
+  ]);
+  /** What the next `watch` call does: yields these, then fails or waits. */
+  events: LiveEventVm[] = [{ kind: 'ready' }];
+  failWith: Error | null = null;
+  readonly endSession = vi.fn(() => Promise.resolve());
+  readonly adjustVitals = vi.fn();
+
+  getCampaign(): Promise<CampaignInfoVm> {
+    return this.campaign instanceof Error
+      ? Promise.reject(this.campaign)
+      : Promise.resolve(this.campaign);
+  }
+
+  private later: ((e: LiveEventVm) => void) | null = null;
+
+  /** Sends one more event on the open stream. */
+  push(event: LiveEventVm): void {
+    this.later?.(event);
+  }
+
+  async *watch(_campaignId: string, signal: AbortSignal): AsyncIterable<LiveEventVm> {
+    for (const e of this.events) {
+      yield e;
+    }
+    if (this.failWith) {
+      throw this.failWith;
+    }
+    // Then stay open, taking `push`ed events, until the page closes it.
+    for (;;) {
+      const next = await new Promise<LiveEventVm>((resolve, reject) => {
+        this.later = resolve;
+        signal.addEventListener('abort', () => reject(new Error('aborted')));
+      });
+      yield next;
+    }
+  }
+
+  getLiveSession(): Promise<LiveSnapshotVm> {
+    return this.snapshot instanceof Error
+      ? Promise.reject(this.snapshot)
+      : Promise.resolve(this.snapshot);
+  }
+
+  getPlayerSheet(): Promise<PlayerSheetVm> {
+    return Promise.resolve(this.sheet);
+  }
+
+  getPartyInfo(): Promise<ReadonlyMap<string, PartyMemberInfoVm>> {
+    return Promise.resolve(this.party);
+  }
+
+  classifyError(err: unknown): LiveErrorKind {
+    return err instanceof KindError ? err.kind : 'transient';
+  }
+}
+
+describe('LiveSession', () => {
+  let source: FakeLiveSessionSource;
+  const signIn = vi.fn();
+  const liveCampaignIds = signal<ReadonlySet<string>>(new Set());
+  const openSessions = {
+    liveCampaignIds: liveCampaignIds.asReadonly(),
+    refresh: vi.fn(() => Promise.resolve()),
+    dismiss: vi.fn(),
+  };
+
+  beforeEach(() => {
+    signIn.mockClear();
+    openSessions.dismiss.mockClear();
+    liveCampaignIds.set(new Set());
+    TestBed.configureTestingModule({
+      imports: [LiveSession],
+      providers: [
+        provideRouter([]),
+        { provide: LiveSessionSource, useClass: FakeLiveSessionSource },
+        { provide: AuthService, useValue: { signIn, state: signal({ status: 'signed-in' }) } },
+        { provide: OpenSessions, useValue: openSessions },
+        {
+          provide: ActivatedRoute,
+          useValue: { paramMap: new BehaviorSubject(convertToParamMap({ id: 'mirathel' })) },
+        },
+      ],
+    });
+    source = TestBed.inject(LiveSessionSource) as unknown as FakeLiveSessionSource;
+  });
+
+  async function settle(fixture: ComponentFixture<LiveSession>): Promise<HTMLElement> {
+    fixture.detectChanges();
+    for (let i = 0; i < 4; i++) {
+      await fixture.whenStable();
+      await new Promise((r) => setTimeout(r));
+      fixture.detectChanges();
+    }
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  function render(): Promise<HTMLElement> {
+    return settle(TestBed.createComponent(LiveSession));
+  }
+
+  function button(el: HTMLElement, name: string): HTMLButtonElement {
+    return Array.from(el.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes(name),
+    ) as HTMLButtonElement;
+  }
+
+  it("shows a player their own character's vitals, with the CA from the sheet (E5-02)", async () => {
+    const el = await render();
+    expect(el.querySelector('h1')?.textContent).toContain('Sessão 4');
+    expect(el.textContent).toContain('Mirathel');
+    expect(el.textContent).toContain('Ao vivo');
+    expect(el.textContent).toContain('atualizado agora');
+    expect(el.querySelector('.hp__current')?.textContent).toBe('17');
+    expect(el.textContent).toContain('de 23');
+    expect(el.querySelector('.shield__number')?.textContent).toBe('14');
+    expect(el.textContent).toContain('Mago 3, Gnomo das Rochas');
+    expect(el.textContent).toContain('1 de 3 usados');
+    expect(el.querySelector('[aria-label="1º círculo: 2 de 4 espaços usados"]')).not.toBeNull();
+    expect(el.textContent).toContain('O mestre ainda não escolheu um mapa.');
+    expect(el.textContent).not.toContain('Ajustar');
+    // Here already: the notice about this session is spent.
+    expect(openSessions.dismiss).toHaveBeenCalledWith('s4');
+  });
+
+  it('applies a vitals change from the stream without a reload', async () => {
+    source.events = [
+      { kind: 'ready' },
+      { kind: 'vitals', vitals: pensantusVitals({ revision: 2, hitPointsCurrent: 12 }) },
+    ];
+    const el = await render();
+    expect(el.querySelector('.hp__current')?.textContent).toBe('12');
+  });
+
+  it('shows the master the party with "Ajustar" per character, and the session link (E5-04)', async () => {
+    source.campaign = { name: 'Mirathel', isMaster: true, awaitingApproval: false };
+    source.snapshot = {
+      session: { sessionId: 's4', sessionNumber: 4, startedAt: new Date(2026, 8, 30, 20, 5) },
+      vitals: [pensantusVitals(), brisaVitals()],
+    };
+    const el = await render();
+    expect(el.textContent).toContain('Em andamento desde 30/09 às 20:05');
+    expect(el.querySelector('[aria-label="Ajustar Pensantus"]')).not.toBeNull();
+    expect(el.querySelector('[aria-label="Ajustar Brisa"]')).not.toBeNull();
+    expect(el.textContent).toContain('Ladina 3, de Ana');
+    expect(el.textContent).toContain('+5 temporários');
+    expect(el.textContent).toContain('Abaixo da metade');
+    expect(el.querySelector<HTMLInputElement>('#session-link')?.value).toBe(
+      `${location.origin}/campanhas/mirathel/sessao`,
+    );
+    expect(el.textContent).toContain('Copiar link da sessão');
+    expect(el.textContent).toContain('Encerrar sessão');
+  });
+
+  it('says "Peça um convite ao mestre", without the name, to a non-member', async () => {
+    source.campaign = new KindError('no-access');
+    const el = await render();
+    expect(el.querySelector('h1')?.textContent).toContain('Peça um convite ao mestre');
+    expect(el.textContent).not.toContain('Mirathel');
+  });
+
+  it('says the same to a pending member (RN-15)', async () => {
+    source.campaign = { name: 'Mirathel', isMaster: false, awaitingApproval: true };
+    const el = await render();
+    expect(el.querySelector('h1')?.textContent).toContain('Peça um convite ao mestre');
+    expect(el.textContent).not.toContain('Mirathel');
+  });
+
+  it('says "Nenhuma sessão em andamento", with the name, when none is open', async () => {
+    source.events = [];
+    source.failWith = new KindError('no-session');
+    const el = await render();
+    expect(el.querySelector('h1')?.textContent).toContain('Nenhuma sessão em andamento');
+    expect(el.textContent).toContain('Mirathel');
+    expect(el.textContent).toContain('Voltar para a campanha');
+  });
+
+  it('shows "Sessão 4 encerrada" when the stream says the session ended', async () => {
+    const fixture = TestBed.createComponent(LiveSession);
+    const el = await settle(fixture);
+    expect(el.querySelector('h1')?.textContent).toContain('Sessão 4');
+
+    source.push({ kind: 'ended' });
+    await settle(fixture);
+    expect(el.querySelector('h1')?.textContent).toContain('Sessão 4 encerrada');
+    expect(el.textContent).toContain('A sessão acabou.');
+    expect(openSessions.refresh).toHaveBeenCalled();
+  });
+
+  it('the master ends the session after confirming in place', async () => {
+    source.campaign = { name: 'Mirathel', isMaster: true, awaitingApproval: false };
+    const fixture = TestBed.createComponent(LiveSession);
+    const el = await settle(fixture);
+
+    button(el, 'Encerrar sessão').click();
+    await settle(fixture);
+    expect(source.endSession).not.toHaveBeenCalled();
+    button(el, 'Confirmar encerramento').click();
+    await settle(fixture);
+
+    expect(source.endSession).toHaveBeenCalledWith('mirathel', 's4');
+    expect(el.querySelector('h1')?.textContent).toContain('Sessão 4 encerrada');
+  });
+
+  it('opens the session by itself when the master starts it (the RN-06 poll sees it)', async () => {
+    source.events = [];
+    source.failWith = new KindError('no-session');
+    const fixture = TestBed.createComponent(LiveSession);
+    const el = await settle(fixture);
+    expect(el.querySelector('h1')?.textContent).toContain('Nenhuma sessão em andamento');
+
+    source.events = [{ kind: 'ready' }];
+    source.failWith = null;
+    liveCampaignIds.set(new Set(['mirathel']));
+    await settle(fixture);
+    expect(el.querySelector('h1')?.textContent).toContain('Sessão 4');
+    expect(el.querySelector('.hp__current')?.textContent).toBe('17');
+  });
+
+  it('sends a signed-out person to sign in and back', async () => {
+    source.events = [];
+    source.failWith = new KindError('signed-out');
+    await render();
+    expect(signIn).toHaveBeenCalled();
+  });
+});

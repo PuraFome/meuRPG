@@ -12,6 +12,8 @@ import { Code } from '@connectrpc/connect';
 import { Campaign, XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { CampaignsService } from '../../core/campaigns/campaigns.service';
 import { describeConnectError } from '../../core/connect/connect-errors';
+import { LivePill } from '../../shared/live-pill/live-pill';
+import { OpenSessions } from '../../shell/live-notice/open-sessions';
 import { roleTag, xpModeSentence } from './campaign-copy';
 
 type ListState =
@@ -26,11 +28,14 @@ type CreateState = { status: 'idle' } | { status: 'saving' } | { status: 'error'
  * "Criar campanha" form, then the list, one row per campaign (name, XP
  * mode, and the caller's role as a tag; "Pendente" while the master has
  * not approved them, MR-024), with an empty state that points to both ways
- * in: creating one, or an invite link.
+ * in: creating one, or an invite link. A campaign with an open session also
+ * gets the "Sessão ao vivo" tag (RN-06), from the same light poll as the
+ * app bar's "Ao vivo" link (`OpenSessions`).
  */
 @Component({
   selector: 'app-campaigns',
   imports: [
+    LivePill,
     MatButtonModule,
     MatFormFieldModule,
     MatIconModule,
@@ -47,6 +52,9 @@ export class Campaigns {
   private readonly campaigns = inject(CampaignsService);
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
+
+  /** Campaigns with an open session, for the "Sessão ao vivo" tag. */
+  protected readonly liveCampaignIds = inject(OpenSessions).liveCampaignIds;
 
   protected readonly XpMode = XpMode;
   protected readonly roleTag = roleTag;

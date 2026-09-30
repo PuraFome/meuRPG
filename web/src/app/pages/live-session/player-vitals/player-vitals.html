@@ -1,0 +1,76 @@
+@let v = vitals();
+<section class="vitals" aria-labelledby="vitals-name">
+  <div class="vitals__head">
+    <h2 class="vitals__name" id="vitals-name">{{ v.name }}</h2>
+    @if (sheet()?.summary; as summary) {
+      <span class="vitals__summary">{{ summary }}</span>
+    }
+  </div>
+
+  <div class="hp">
+    <p class="hp__numbers">
+      <span class="hp__current">{{ v.hitPointsCurrent }}</span>
+      <span class="hp__of">
+        <span class="hp__max">de {{ v.hitPointsMax }}</span>
+        <span class="hp__label">Pontos de vida</span>
+      </span>
+    </p>
+    <div class="hp__bar" aria-hidden="true">
+      <div class="hp__fill" [style.width.%]="percent()"></div>
+    </div>
+  </div>
+
+  <dl class="stats">
+    <div class="shield">
+      <dt class="stats__label">Classe de Armadura</dt>
+      <dd class="shield__value">
+        <svg class="shield__shape" width="96" height="112" viewBox="0 0 96 112" aria-hidden="true">
+          <path d="M48 3 90 17v35c0 27-18 46-42 57C24 98 6 79 6 52V17L48 3z" />
+        </svg>
+        <span class="shield__number">{{ sheet()?.armorClass ?? '–' }}</span>
+      </dd>
+    </div>
+    <div class="box">
+      <dt class="stats__label">PV temporários</dt>
+      <dd class="box__value">{{ v.hitPointsTemporary }}</dd>
+    </div>
+    <div class="box">
+      <dt class="stats__label">
+        Dados de vida
+        <span class="box__words">{{ usedWords(v.hitDiceUsed, v.hitDiceTotal) }}</span>
+      </dt>
+      <dd class="box__value" [class.box__value--long]="v.hitDice.length > 4">{{ v.hitDice }}</dd>
+    </div>
+  </dl>
+
+  @if (slotRows().length > 0) {
+    <section class="mr-panel slots" aria-labelledby="slots-heading">
+      <h3 class="slots__title" id="slots-heading">Espaços de magia</h3>
+      @for (row of slotRows(); track row.key) {
+        <div
+          class="slots__row"
+          role="img"
+          [attr.aria-label]="slotRowLabel(row.label, row.used, row.total)"
+        >
+          <span class="slots__level">{{ row.label }}</span>
+          <app-slot-dots [total]="row.total" [used]="row.used" />
+          <span class="slots__words">{{ usedWords(row.used, row.total) }}</span>
+        </div>
+      }
+    </section>
+  }
+
+  <div class="vitals__foot">
+    <a
+      class="vitals__sheet"
+      [routerLink]="['/campanhas', campaignId(), 'personagens', v.characterId]"
+      >Ver ficha completa</a
+    >
+    <p class="vitals__lock">
+      <mat-icon aria-hidden="true">lock</mat-icon>
+      Durante a sessão, só o mestre muda esses números.
+    </p>
+  </div>
+
+  <p class="mr-visually-hidden" role="status">{{ announcement() }}</p>
+</section>

@@ -1,0 +1,65 @@
+@let wide = layout() === 'wide';
+<div class="stepper" [class.stepper--wide]="wide">
+  <div class="stepper__text">
+    <label class="stepper__label" [for]="id">{{ label() }}</label>
+    @if (hint()) {
+      <span class="stepper__hint" [id]="id + '-hint'">{{ hint() }}</span>
+    }
+  </div>
+
+  <div class="stepper__controls">
+    @for (step of decrements(); track step) {
+      <button
+        type="button"
+        class="stepper__button"
+        [class.stepper__button--number]="wide"
+        [disabled]="!canStep(step)"
+        [attr.aria-label]="stepLabel()(step)"
+        (click)="stepBy(step)"
+      >
+        @if (wide) {
+          {{ signed(step) }}
+        } @else {
+          <mat-icon aria-hidden="true">remove</mat-icon>
+        }
+      </button>
+    }
+    <input
+      class="stepper__field"
+      [class.stepper__field--wide]="wide"
+      type="number"
+      inputmode="numeric"
+      [id]="id"
+      [min]="min()"
+      [max]="max()"
+      [value]="display()"
+      [attr.aria-label]="fieldLabel()"
+      [attr.aria-invalid]="!valid()"
+      [attr.aria-describedby]="(hint() ? id + '-hint ' : '') + (valid() ? '' : id + '-error')"
+      (input)="typed($any($event.target).value)"
+    />
+    @for (step of increments(); track step) {
+      <button
+        type="button"
+        class="stepper__button"
+        [class.stepper__button--number]="wide"
+        [disabled]="!canStep(step)"
+        [attr.aria-label]="stepLabel()(step)"
+        (click)="stepBy(step)"
+      >
+        @if (wide) {
+          {{ signed(step) }}
+        } @else {
+          <mat-icon aria-hidden="true">add</mat-icon>
+        }
+      </button>
+    }
+  </div>
+
+  @if (!valid()) {
+    <p class="stepper__error" [id]="id + '-error'">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      Use um número de {{ min() }} a {{ max() }}.
+    </p>
+  }
+</div>

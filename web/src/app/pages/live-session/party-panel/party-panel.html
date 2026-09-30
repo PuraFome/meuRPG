@@ -1,0 +1,84 @@
+<section class="mr-panel party" aria-labelledby="party-heading">
+  <h2 class="mr-panel__title" id="party-heading">Grupo</h2>
+  @if (party().length === 0) {
+    <p class="party__empty">
+      Nenhum personagem de jogador vivo nesta campanha. Quando um jogador criar o dele, ele aparece
+      aqui.
+    </p>
+  } @else {
+    <ul class="party__list">
+      @for (v of party(); track v.characterId) {
+        <li class="member">
+          <div class="member__head">
+            <div class="member__who">
+              <span class="member__name">{{ v.name }}</span>
+              @if (sub(info().get(v.characterId)); as line) {
+                <span class="member__sub">{{ line }}</span>
+              }
+            </div>
+            <button
+              mat-stroked-button
+              type="button"
+              class="js-adjust"
+              [attr.aria-label]="'Ajustar ' + v.name"
+              (click)="adjust.emit(v)"
+            >
+              Ajustar
+            </button>
+          </div>
+
+          <div class="member__hp">
+            <span class="member__numbers">
+              <span class="member__current">{{ v.hitPointsCurrent }}</span>
+              <span class="member__max">de {{ v.hitPointsMax }}</span>
+              <span class="member__unit">PV</span>
+            </span>
+            @if (v.hitPointsTemporary > 0) {
+              <span class="mr-tag">+{{ v.hitPointsTemporary }} temporários</span>
+            }
+            @if (hpState(v); as state) {
+              <span class="mr-tag" [class]="'mr-tag--' + state.tone">{{ state.label }}</span>
+            }
+          </div>
+          <div class="member__bar" aria-hidden="true">
+            <div class="member__fill" [style.width.%]="percent(v)"></div>
+          </div>
+
+          @if (v.spellSlots.length > 0 || v.pactSlots) {
+            <div class="member__slots">
+              <span class="member__slots-label">Espaços de magia</span>
+              @for (s of v.spellSlots; track s.level) {
+                <span
+                  class="member__slot"
+                  role="img"
+                  [attr.aria-label]="slotRowLabel(s.level + 'º círculo', s.used, s.total)"
+                >
+                  <span aria-hidden="true">{{ s.level }}º</span>
+                  <app-slot-dots [total]="s.total" [used]="s.used" size="small" />
+                  <span class="member__slot-count" aria-hidden="true"
+                    >{{ s.used }} de {{ s.total }}</span
+                  >
+                </span>
+              }
+              @if (v.pactSlots; as p) {
+                <span
+                  class="member__slot"
+                  role="img"
+                  [attr.aria-label]="
+                    slotRowLabel('Pacto, ' + p.slotLevel + 'º círculo', p.used, p.total)
+                  "
+                >
+                  <span aria-hidden="true">Pacto {{ p.slotLevel }}º</span>
+                  <app-slot-dots [total]="p.total" [used]="p.used" size="small" />
+                  <span class="member__slot-count" aria-hidden="true"
+                    >{{ p.used }} de {{ p.total }}</span
+                  >
+                </span>
+              }
+            </div>
+          }
+        </li>
+      }
+    </ul>
+  }
+</section>
