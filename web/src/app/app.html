@@ -1,7 +1,23 @@
-<header class="app-header">
-  <h1>MeuRPG</h1>
-</header>
+<mat-toolbar class="app-toolbar">
+  <mat-toolbar-row class="app-toolbar__main">
+    <a class="app-toolbar__brand" routerLink="/">MeuRPG</a>
+    <span class="app-toolbar__spacer"></span>
+    <app-user-menu />
+  </mat-toolbar-row>
+  <mat-toolbar-row class="app-toolbar__nav">
+    <a
+      mat-button
+      routerLink="/"
+      routerLinkActive="app-toolbar__nav-link--active"
+      [routerLinkActiveOptions]="{ exact: true }"
+      >Início</a
+    >
+    <a mat-button routerLink="/campanhas" routerLinkActive="app-toolbar__nav-link--active"
+      >Minhas campanhas</a
+    >
+  </mat-toolbar-row>
+</mat-toolbar>
 
-<main>
+<main class="app-content">
   <router-outlet />
 </main>

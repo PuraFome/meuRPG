@@ -1,0 +1,197 @@
+import { TestBed } from '@angular/core/testing';
+import { create } from '@bufbuild/protobuf';
+import { timestampFromDate } from '@bufbuild/protobuf/wkt';
+import { Code, ConnectError } from '@connectrpc/connect';
+import type { Transport } from '@connectrpc/connect';
+
+import { GetMeResponseSchema } from '../../../gen/meurpg/identity/v1/identity_pb';
+import { CONNECT_TRANSPORT } from '../connect/transport';
+import { AuthService } from './auth.service';
+
+// These fakes stand in for the real fetch-backed Transport: AuthService
+// only ever calls unary RPCs, so `stream` is never exercised. `unary`'s
+// return type is generic per the real method's I/O descriptors, which a
+// fixed fake response can't match exactly — hence the `as never` casts
+// below, confined to this file.
+
+/** A Transport whose every unary call resolves to `message`. */
+function transportThatResolves(message: unknown): Transport {
+  return {
+    unary: (method) =>
+      Promise.resolve({
+        stream: false,
+        service: method.parent,
+        method,
+        header: new Headers(),
+        trailer: new Headers(),
+        message,
+      }) as never,
+    stream(): never {
+      throw new Error('IdentityService has no streaming RPCs');
+    },
+  };
+}
+
+/** A Transport whose every unary call rejects with `err`. */
+function transportThatRejects(err: unknown): Transport {
+  return {
+    unary: () => Promise.reject(err) as never,
+    stream(): never {
+      throw new Error('IdentityService has no streaming RPCs');
+    },
+  };
+}
+
+/** A Transport whose unary call never settles, so `state()` can be read
+ * before GetMe has had a chance to resolve. */
+function transportThatNeverResolves(): Transport {
+  return {
+    unary: () => new Promise(() => undefined) as never,
+    stream(): never {
+      throw new Error('IdentityService has no streaming RPCs');
+    },
+  };
+}
+
+function createService(transport: Transport): AuthService {
+  TestBed.configureTestingModule({
+    providers: [{ provide: CONNECT_TRANSPORT, useValue: transport }],
+  });
+  return TestBed.inject(AuthService);
+}
+
+/** jsdom's `window.location.assign` is a non-configurable own property, so
+ * `vi.spyOn` can't replace it directly. Swapping the whole `location`
+ * object (restored afterwards, see `restoreLocation`) is the standard
+ * workaround. */
+const realLocation = window.location;
+
+function stubLocationAssign(): ReturnType<typeof vi.fn> {
+  const assign = vi.fn();
+  Object.defineProperty(window, 'location', {
+    configurable: true,
+    value: { ...realLocation, assign },
+  });
+  return assign;
+}
+
+function restoreLocation(): void {
+  Object.defineProperty(window, 'location', {
+    configurable: true,
+    writable: true,
+    value: realLocation,
+  });
+}
+
+describe('AuthService', () => {
+  it('starts as unknown, before the first GetMe resolves', () => {
+    const service = createService(transportThatNeverResolves());
+    expect(service.state()).toEqual({ status: 'unknown' });
+    expect(service.isSignedIn()).toBe(false);
+  });
+
+  it('becomes signed-in when GetMe resolves, with displayName null (no name/e-mail on User)', async () => {
+    const expiresAt = new Date('2026-10-29T00:00:00.000Z');
+    const message = create(GetMeResponseSchema, {
+      user: { id: 'user-1' },
+      sessionExpiresAt: timestampFromDate(expiresAt),
+    });
+    const service = createService(transportThatResolves(message));
+    await service.refresh();
+
+    expect(service.state()).toEqual({
+      status: 'signed-in',
+      user: { id: 'user-1', displayName: null },
+      sessionExpiresAt: expiresAt,
+    });
+    expect(service.isSignedIn()).toBe(true);
+  });
+
+  it('becomes signed-out on an unauthenticated error', async () => {
+    const service = createService(
+      transportThatRejects(new ConnectError('sign in to continue', Code.Unauthenticated)),
+    );
+    await service.refresh();
+
+    expect(service.state()).toEqual({ status: 'signed-out' });
+    expect(service.isSignedIn()).toBe(false);
+  });
+
+  it('becomes unavailable on an unavailable error, never signed-out', async () => {
+    const service = createService(
+      transportThatRejects(
+        new ConnectError('cannot check the session right now', Code.Unavailable),
+      ),
+    );
+    await service.refresh();
+
+    expect(service.state()).toEqual({ status: 'unavailable' });
+  });
+
+  it('becomes unavailable on any other Connect error code (not a sign-out look-alike)', async () => {
+    const service = createService(transportThatRejects(new ConnectError('nope', Code.Internal)));
+    await service.refresh();
+
+    expect(service.state()).toEqual({ status: 'unavailable' });
+  });
+
+  it('becomes unavailable on a plain network failure (fetch rejecting before it reaches the server)', async () => {
+    const service = createService(transportThatRejects(new TypeError('Failed to fetch')));
+    await service.refresh();
+
+    expect(service.state()).toEqual({ status: 'unavailable' });
+  });
+
+  describe('signIn', () => {
+    let assign: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      assign = stubLocationAssign();
+    });
+
+    afterEach(() => {
+      restoreLocation();
+    });
+
+    it('navigates to /auth/login with the given same-site path as return_to', () => {
+      const service = createService(transportThatNeverResolves());
+      service.signIn('/campanhas');
+      expect(assign).toHaveBeenCalledWith('/auth/login?return_to=%2Fcampanhas');
+    });
+
+    it('falls back to "/" for anything that is not a safe same-site path', () => {
+      const service = createService(transportThatNeverResolves());
+      service.signIn('https://evil.example/campanhas');
+      expect(assign).toHaveBeenCalledWith('/auth/login?return_to=%2F');
+
+      service.signIn('//evil.example');
+      expect(assign).toHaveBeenCalledWith('/auth/login?return_to=%2F');
+    });
+  });
+
+  describe('signOut', () => {
+    let assign: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      assign = stubLocationAssign();
+    });
+
+    afterEach(() => {
+      restoreLocation();
+    });
+
+    it('calls SignOut and always returns to the home page', async () => {
+      const service = createService(transportThatResolves({}));
+      await service.signOut();
+      expect(assign).toHaveBeenCalledWith('/');
+    });
+
+    it('still returns to the home page when SignOut fails (e.g. the server is unavailable)', async () => {
+      const service = createService(
+        transportThatRejects(new ConnectError('cannot sign out right now', Code.Unavailable)),
+      );
+      await service.signOut();
+      expect(assign).toHaveBeenCalledWith('/');
+    });
+  });
+});
