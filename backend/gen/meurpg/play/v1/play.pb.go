@@ -7,9 +7,11 @@
 // Package meurpg.play.v1 is about playing a campaign at the table: starting,
 // ending and listing game sessions, which locks the players' sheets
 // (RN-01), and the live session (Etapa 5): the notice that a session is
-// open (RN-06), the session's live stream (ADR-0005), and the characters'
-// vitals, which the master corrects during the session (RN-02). Turns,
-// actions and the session history screen come with combat (Etapa 6).
+// open (RN-06), the session's live stream (ADR-0005), the characters'
+// vitals, which the master corrects during the session (RN-02), the
+// session's current map (the maps themselves are meurpg.maps.v1), and the
+// gallery image the master shows the players (MR-028). Turns, actions and
+// the session history screen come with combat (Etapa 6).
 
 package playv1
 
@@ -703,7 +705,14 @@ type GetLiveSessionResponse struct {
 	// The vitals the caller may see, oldest character first: every living
 	// player character's for the master; only their own character's for a
 	// player (empty if they have no living character).
-	Vitals        []*CharacterVitals `protobuf:"bytes,2,rep,name=vitals,proto3" json:"vitals,omitempty"`
+	Vitals []*CharacterVitals `protobuf:"bytes,2,rep,name=vitals,proto3" json:"vitals,omitempty"`
+	// The session's current map (a UUID; meurpg.maps.v1.MapService.GetMap
+	// reads it), which every member may see. Empty while the master has not
+	// chosen one.
+	CurrentMapId string `protobuf:"bytes,3,opt,name=current_map_id,json=currentMapId,proto3" json:"current_map_id,omitempty"`
+	// The image the master shows the players (SetShownImage). Unset while
+	// nothing is shown.
+	ShownImage    *ShownImage `protobuf:"bytes,4,opt,name=shown_image,json=shownImage,proto3" json:"shown_image,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -752,6 +761,113 @@ func (x *GetLiveSessionResponse) GetVitals() []*CharacterVitals {
 	return nil
 }
 
+func (x *GetLiveSessionResponse) GetCurrentMapId() string {
+	if x != nil {
+		return x.CurrentMapId
+	}
+	return ""
+}
+
+func (x *GetLiveSessionResponse) GetShownImage() *ShownImage {
+	if x != nil {
+		return x.ShownImage
+	}
+	return nil
+}
+
+// ShownImage is a gallery image the master shows the players during a
+// session (MR-028), with what the app needs to show it. Any active member of
+// the campaign may fetch its files.
+type ShownImage struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The gallery image's ID (a UUID).
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// The image's name in the gallery, shown as its caption.
+	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// Its size in pixels.
+	Width  int32 `protobuf:"varint,3,opt,name=width,proto3" json:"width,omitempty"`
+	Height int32 `protobuf:"varint,4,opt,name=height,proto3" json:"height,omitempty"`
+	// Where to fetch it: "/images/{id}".
+	Url string `protobuf:"bytes,5,opt,name=url,proto3" json:"url,omitempty"`
+	// Where to fetch its thumbnail (480 pixels on the longer side):
+	// "/images/{id}/thumb".
+	ThumbnailUrl  string `protobuf:"bytes,6,opt,name=thumbnail_url,json=thumbnailUrl,proto3" json:"thumbnail_url,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ShownImage) Reset() {
+	*x = ShownImage{}
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ShownImage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ShownImage) ProtoMessage() {}
+
+func (x *ShownImage) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ShownImage.ProtoReflect.Descriptor instead.
+func (*ShownImage) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *ShownImage) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ShownImage) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ShownImage) GetWidth() int32 {
+	if x != nil {
+		return x.Width
+	}
+	return 0
+}
+
+func (x *ShownImage) GetHeight() int32 {
+	if x != nil {
+		return x.Height
+	}
+	return 0
+}
+
+func (x *ShownImage) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *ShownImage) GetThumbnailUrl() string {
+	if x != nil {
+		return x.ThumbnailUrl
+	}
+	return ""
+}
+
 // CharacterVitals are a player character's live numbers (RN-02): hit
 // points, spell slots, hit dice. The maximums come from the sheet (the same
 // numbers as DerivedSheet); the current values are the master's
@@ -797,7 +913,7 @@ type CharacterVitals struct {
 
 func (x *CharacterVitals) Reset() {
 	*x = CharacterVitals{}
-	mi := &file_meurpg_play_v1_play_proto_msgTypes[13]
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -809,7 +925,7 @@ func (x *CharacterVitals) String() string {
 func (*CharacterVitals) ProtoMessage() {}
 
 func (x *CharacterVitals) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_play_proto_msgTypes[13]
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -822,7 +938,7 @@ func (x *CharacterVitals) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CharacterVitals.ProtoReflect.Descriptor instead.
 func (*CharacterVitals) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{13}
+	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *CharacterVitals) GetCharacterId() string {
@@ -931,7 +1047,7 @@ type SpellSlotUsage struct {
 
 func (x *SpellSlotUsage) Reset() {
 	*x = SpellSlotUsage{}
-	mi := &file_meurpg_play_v1_play_proto_msgTypes[14]
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -943,7 +1059,7 @@ func (x *SpellSlotUsage) String() string {
 func (*SpellSlotUsage) ProtoMessage() {}
 
 func (x *SpellSlotUsage) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_play_proto_msgTypes[14]
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -956,7 +1072,7 @@ func (x *SpellSlotUsage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpellSlotUsage.ProtoReflect.Descriptor instead.
 func (*SpellSlotUsage) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{14}
+	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *SpellSlotUsage) GetLevel() int32 {
@@ -995,7 +1111,7 @@ type PactSlotUsage struct {
 
 func (x *PactSlotUsage) Reset() {
 	*x = PactSlotUsage{}
-	mi := &file_meurpg_play_v1_play_proto_msgTypes[15]
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1007,7 +1123,7 @@ func (x *PactSlotUsage) String() string {
 func (*PactSlotUsage) ProtoMessage() {}
 
 func (x *PactSlotUsage) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_play_proto_msgTypes[15]
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1020,7 +1136,7 @@ func (x *PactSlotUsage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PactSlotUsage.ProtoReflect.Descriptor instead.
 func (*PactSlotUsage) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{15}
+	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *PactSlotUsage) GetSlotLevel() int32 {
@@ -1054,7 +1170,7 @@ type WatchGameSessionRequest struct {
 
 func (x *WatchGameSessionRequest) Reset() {
 	*x = WatchGameSessionRequest{}
-	mi := &file_meurpg_play_v1_play_proto_msgTypes[16]
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1066,7 +1182,7 @@ func (x *WatchGameSessionRequest) String() string {
 func (*WatchGameSessionRequest) ProtoMessage() {}
 
 func (x *WatchGameSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_play_proto_msgTypes[16]
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1079,7 +1195,7 @@ func (x *WatchGameSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WatchGameSessionRequest.ProtoReflect.Descriptor instead.
 func (*WatchGameSessionRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{16}
+	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *WatchGameSessionRequest) GetCampaignId() string {
@@ -1098,6 +1214,10 @@ type WatchGameSessionResponse struct {
 	//	*WatchGameSessionResponse_Heartbeat_
 	//	*WatchGameSessionResponse_VitalsChanged_
 	//	*WatchGameSessionResponse_SessionEnded_
+	//	*WatchGameSessionResponse_CurrentMapChanged_
+	//	*WatchGameSessionResponse_MapChanged_
+	//	*WatchGameSessionResponse_TokenMoved_
+	//	*WatchGameSessionResponse_ShownImageChanged_
 	Event         isWatchGameSessionResponse_Event `protobuf_oneof:"event"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1105,7 +1225,7 @@ type WatchGameSessionResponse struct {
 
 func (x *WatchGameSessionResponse) Reset() {
 	*x = WatchGameSessionResponse{}
-	mi := &file_meurpg_play_v1_play_proto_msgTypes[17]
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1117,7 +1237,7 @@ func (x *WatchGameSessionResponse) String() string {
 func (*WatchGameSessionResponse) ProtoMessage() {}
 
 func (x *WatchGameSessionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_play_proto_msgTypes[17]
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1130,7 +1250,7 @@ func (x *WatchGameSessionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WatchGameSessionResponse.ProtoReflect.Descriptor instead.
 func (*WatchGameSessionResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{17}
+	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *WatchGameSessionResponse) GetEvent() isWatchGameSessionResponse_Event {
@@ -1176,6 +1296,42 @@ func (x *WatchGameSessionResponse) GetSessionEnded() *WatchGameSessionResponse_S
 	return nil
 }
 
+func (x *WatchGameSessionResponse) GetCurrentMapChanged() *WatchGameSessionResponse_CurrentMapChanged {
+	if x != nil {
+		if x, ok := x.Event.(*WatchGameSessionResponse_CurrentMapChanged_); ok {
+			return x.CurrentMapChanged
+		}
+	}
+	return nil
+}
+
+func (x *WatchGameSessionResponse) GetMapChanged() *WatchGameSessionResponse_MapChanged {
+	if x != nil {
+		if x, ok := x.Event.(*WatchGameSessionResponse_MapChanged_); ok {
+			return x.MapChanged
+		}
+	}
+	return nil
+}
+
+func (x *WatchGameSessionResponse) GetTokenMoved() *WatchGameSessionResponse_TokenMoved {
+	if x != nil {
+		if x, ok := x.Event.(*WatchGameSessionResponse_TokenMoved_); ok {
+			return x.TokenMoved
+		}
+	}
+	return nil
+}
+
+func (x *WatchGameSessionResponse) GetShownImageChanged() *WatchGameSessionResponse_ShownImageChanged {
+	if x != nil {
+		if x, ok := x.Event.(*WatchGameSessionResponse_ShownImageChanged_); ok {
+			return x.ShownImageChanged
+		}
+	}
+	return nil
+}
+
 type isWatchGameSessionResponse_Event interface {
 	isWatchGameSessionResponse_Event()
 }
@@ -1201,6 +1357,26 @@ type WatchGameSessionResponse_SessionEnded_ struct {
 	SessionEnded *WatchGameSessionResponse_SessionEnded `protobuf:"bytes,4,opt,name=session_ended,json=sessionEnded,proto3,oneof"`
 }
 
+type WatchGameSessionResponse_CurrentMapChanged_ struct {
+	// The session's current map changed.
+	CurrentMapChanged *WatchGameSessionResponse_CurrentMapChanged `protobuf:"bytes,5,opt,name=current_map_changed,json=currentMapChanged,proto3,oneof"`
+}
+
+type WatchGameSessionResponse_MapChanged_ struct {
+	// Something the member sees on a map changed.
+	MapChanged *WatchGameSessionResponse_MapChanged `protobuf:"bytes,6,opt,name=map_changed,json=mapChanged,proto3,oneof"`
+}
+
+type WatchGameSessionResponse_TokenMoved_ struct {
+	// The master moved a token.
+	TokenMoved *WatchGameSessionResponse_TokenMoved `protobuf:"bytes,7,opt,name=token_moved,json=tokenMoved,proto3,oneof"`
+}
+
+type WatchGameSessionResponse_ShownImageChanged_ struct {
+	// The master showed an image, or stopped showing it.
+	ShownImageChanged *WatchGameSessionResponse_ShownImageChanged `protobuf:"bytes,8,opt,name=shown_image_changed,json=shownImageChanged,proto3,oneof"`
+}
+
 func (*WatchGameSessionResponse_Ready_) isWatchGameSessionResponse_Event() {}
 
 func (*WatchGameSessionResponse_Heartbeat_) isWatchGameSessionResponse_Event() {}
@@ -1208,6 +1384,14 @@ func (*WatchGameSessionResponse_Heartbeat_) isWatchGameSessionResponse_Event() {
 func (*WatchGameSessionResponse_VitalsChanged_) isWatchGameSessionResponse_Event() {}
 
 func (*WatchGameSessionResponse_SessionEnded_) isWatchGameSessionResponse_Event() {}
+
+func (*WatchGameSessionResponse_CurrentMapChanged_) isWatchGameSessionResponse_Event() {}
+
+func (*WatchGameSessionResponse_MapChanged_) isWatchGameSessionResponse_Event() {}
+
+func (*WatchGameSessionResponse_TokenMoved_) isWatchGameSessionResponse_Event() {}
+
+func (*WatchGameSessionResponse_ShownImageChanged_) isWatchGameSessionResponse_Event() {}
 
 // AdjustCharacterVitalsRequest is the master's correction. Every value set
 // replaces the current one; unset values stay as they are.
@@ -1237,7 +1421,7 @@ type AdjustCharacterVitalsRequest struct {
 
 func (x *AdjustCharacterVitalsRequest) Reset() {
 	*x = AdjustCharacterVitalsRequest{}
-	mi := &file_meurpg_play_v1_play_proto_msgTypes[18]
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1249,7 +1433,7 @@ func (x *AdjustCharacterVitalsRequest) String() string {
 func (*AdjustCharacterVitalsRequest) ProtoMessage() {}
 
 func (x *AdjustCharacterVitalsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_play_proto_msgTypes[18]
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1262,7 +1446,7 @@ func (x *AdjustCharacterVitalsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdjustCharacterVitalsRequest.ProtoReflect.Descriptor instead.
 func (*AdjustCharacterVitalsRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{18}
+	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *AdjustCharacterVitalsRequest) GetCampaignId() string {
@@ -1334,7 +1518,7 @@ type SpellSlotsUsed struct {
 
 func (x *SpellSlotsUsed) Reset() {
 	*x = SpellSlotsUsed{}
-	mi := &file_meurpg_play_v1_play_proto_msgTypes[19]
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1346,7 +1530,7 @@ func (x *SpellSlotsUsed) String() string {
 func (*SpellSlotsUsed) ProtoMessage() {}
 
 func (x *SpellSlotsUsed) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_play_proto_msgTypes[19]
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1359,7 +1543,7 @@ func (x *SpellSlotsUsed) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpellSlotsUsed.ProtoReflect.Descriptor instead.
 func (*SpellSlotsUsed) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{19}
+	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *SpellSlotsUsed) GetLevel() int32 {
@@ -1387,7 +1571,7 @@ type AdjustCharacterVitalsResponse struct {
 
 func (x *AdjustCharacterVitalsResponse) Reset() {
 	*x = AdjustCharacterVitalsResponse{}
-	mi := &file_meurpg_play_v1_play_proto_msgTypes[20]
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1399,7 +1583,7 @@ func (x *AdjustCharacterVitalsResponse) String() string {
 func (*AdjustCharacterVitalsResponse) ProtoMessage() {}
 
 func (x *AdjustCharacterVitalsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_play_proto_msgTypes[20]
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1412,12 +1596,213 @@ func (x *AdjustCharacterVitalsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdjustCharacterVitalsResponse.ProtoReflect.Descriptor instead.
 func (*AdjustCharacterVitalsResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{20}
+	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *AdjustCharacterVitalsResponse) GetVitals() *CharacterVitals {
 	if x != nil {
 		return x.Vitals
+	}
+	return nil
+}
+
+// SetCurrentMapRequest names the map the session shows.
+type SetCurrentMapRequest struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	// A map of the campaign (a UUID), or empty to clear the current map.
+	MapId         string `protobuf:"bytes,2,opt,name=map_id,json=mapId,proto3" json:"map_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetCurrentMapRequest) Reset() {
+	*x = SetCurrentMapRequest{}
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetCurrentMapRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetCurrentMapRequest) ProtoMessage() {}
+
+func (x *SetCurrentMapRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetCurrentMapRequest.ProtoReflect.Descriptor instead.
+func (*SetCurrentMapRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *SetCurrentMapRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *SetCurrentMapRequest) GetMapId() string {
+	if x != nil {
+		return x.MapId
+	}
+	return ""
+}
+
+// SetCurrentMapResponse returns the session's current map.
+type SetCurrentMapResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The current map (a UUID), or empty when it was cleared.
+	CurrentMapId  string `protobuf:"bytes,1,opt,name=current_map_id,json=currentMapId,proto3" json:"current_map_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetCurrentMapResponse) Reset() {
+	*x = SetCurrentMapResponse{}
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetCurrentMapResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetCurrentMapResponse) ProtoMessage() {}
+
+func (x *SetCurrentMapResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetCurrentMapResponse.ProtoReflect.Descriptor instead.
+func (*SetCurrentMapResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *SetCurrentMapResponse) GetCurrentMapId() string {
+	if x != nil {
+		return x.CurrentMapId
+	}
+	return ""
+}
+
+// SetShownImageRequest names the image the session shows.
+type SetShownImageRequest struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	// An image of the campaign's gallery (a UUID), or empty to stop showing
+	// it.
+	ImageId       string `protobuf:"bytes,2,opt,name=image_id,json=imageId,proto3" json:"image_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetShownImageRequest) Reset() {
+	*x = SetShownImageRequest{}
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetShownImageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetShownImageRequest) ProtoMessage() {}
+
+func (x *SetShownImageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetShownImageRequest.ProtoReflect.Descriptor instead.
+func (*SetShownImageRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *SetShownImageRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *SetShownImageRequest) GetImageId() string {
+	if x != nil {
+		return x.ImageId
+	}
+	return ""
+}
+
+// SetShownImageResponse returns what the session shows now.
+type SetShownImageResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The image shown, or unset when the master stopped showing it.
+	ShownImage    *ShownImage `protobuf:"bytes,1,opt,name=shown_image,json=shownImage,proto3" json:"shown_image,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetShownImageResponse) Reset() {
+	*x = SetShownImageResponse{}
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetShownImageResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetShownImageResponse) ProtoMessage() {}
+
+func (x *SetShownImageResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetShownImageResponse.ProtoReflect.Descriptor instead.
+func (*SetShownImageResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *SetShownImageResponse) GetShownImage() *ShownImage {
+	if x != nil {
+		return x.ShownImage
 	}
 	return nil
 }
@@ -1433,7 +1818,7 @@ type WatchGameSessionResponse_Ready struct {
 
 func (x *WatchGameSessionResponse_Ready) Reset() {
 	*x = WatchGameSessionResponse_Ready{}
-	mi := &file_meurpg_play_v1_play_proto_msgTypes[21]
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1445,7 +1830,7 @@ func (x *WatchGameSessionResponse_Ready) String() string {
 func (*WatchGameSessionResponse_Ready) ProtoMessage() {}
 
 func (x *WatchGameSessionResponse_Ready) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_play_proto_msgTypes[21]
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1458,7 +1843,7 @@ func (x *WatchGameSessionResponse_Ready) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WatchGameSessionResponse_Ready.ProtoReflect.Descriptor instead.
 func (*WatchGameSessionResponse_Ready) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{17, 0}
+	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{18, 0}
 }
 
 func (x *WatchGameSessionResponse_Ready) GetGameSession() *GameSession {
@@ -1477,7 +1862,7 @@ type WatchGameSessionResponse_Heartbeat struct {
 
 func (x *WatchGameSessionResponse_Heartbeat) Reset() {
 	*x = WatchGameSessionResponse_Heartbeat{}
-	mi := &file_meurpg_play_v1_play_proto_msgTypes[22]
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1489,7 +1874,7 @@ func (x *WatchGameSessionResponse_Heartbeat) String() string {
 func (*WatchGameSessionResponse_Heartbeat) ProtoMessage() {}
 
 func (x *WatchGameSessionResponse_Heartbeat) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_play_proto_msgTypes[22]
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1502,7 +1887,7 @@ func (x *WatchGameSessionResponse_Heartbeat) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use WatchGameSessionResponse_Heartbeat.ProtoReflect.Descriptor instead.
 func (*WatchGameSessionResponse_Heartbeat) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{17, 1}
+	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{18, 1}
 }
 
 // VitalsChanged carries a character's new vitals. Only the master and the
@@ -1517,7 +1902,7 @@ type WatchGameSessionResponse_VitalsChanged struct {
 
 func (x *WatchGameSessionResponse_VitalsChanged) Reset() {
 	*x = WatchGameSessionResponse_VitalsChanged{}
-	mi := &file_meurpg_play_v1_play_proto_msgTypes[23]
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1529,7 +1914,7 @@ func (x *WatchGameSessionResponse_VitalsChanged) String() string {
 func (*WatchGameSessionResponse_VitalsChanged) ProtoMessage() {}
 
 func (x *WatchGameSessionResponse_VitalsChanged) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_play_proto_msgTypes[23]
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1542,7 +1927,7 @@ func (x *WatchGameSessionResponse_VitalsChanged) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use WatchGameSessionResponse_VitalsChanged.ProtoReflect.Descriptor instead.
 func (*WatchGameSessionResponse_VitalsChanged) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{17, 2}
+	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{18, 2}
 }
 
 func (x *WatchGameSessionResponse_VitalsChanged) GetVitals() *CharacterVitals {
@@ -1563,7 +1948,7 @@ type WatchGameSessionResponse_SessionEnded struct {
 
 func (x *WatchGameSessionResponse_SessionEnded) Reset() {
 	*x = WatchGameSessionResponse_SessionEnded{}
-	mi := &file_meurpg_play_v1_play_proto_msgTypes[24]
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1575,7 +1960,7 @@ func (x *WatchGameSessionResponse_SessionEnded) String() string {
 func (*WatchGameSessionResponse_SessionEnded) ProtoMessage() {}
 
 func (x *WatchGameSessionResponse_SessionEnded) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_play_proto_msgTypes[24]
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1588,7 +1973,7 @@ func (x *WatchGameSessionResponse_SessionEnded) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use WatchGameSessionResponse_SessionEnded.ProtoReflect.Descriptor instead.
 func (*WatchGameSessionResponse_SessionEnded) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{17, 3}
+	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{18, 3}
 }
 
 func (x *WatchGameSessionResponse_SessionEnded) GetGameSession() *GameSession {
@@ -1596,6 +1981,229 @@ func (x *WatchGameSessionResponse_SessionEnded) GetGameSession() *GameSession {
 		return x.GameSession
 	}
 	return nil
+}
+
+// CurrentMapChanged says the session shows another map now. Everyone
+// gets it; the app reads the map (MapService.GetMap).
+type WatchGameSessionResponse_CurrentMapChanged struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The new current map (a UUID), which every member may see. Empty when
+	// the session has no current map anymore (the master cleared it, or
+	// deleted the map).
+	MapId         string `protobuf:"bytes,1,opt,name=map_id,json=mapId,proto3" json:"map_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WatchGameSessionResponse_CurrentMapChanged) Reset() {
+	*x = WatchGameSessionResponse_CurrentMapChanged{}
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WatchGameSessionResponse_CurrentMapChanged) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WatchGameSessionResponse_CurrentMapChanged) ProtoMessage() {}
+
+func (x *WatchGameSessionResponse_CurrentMapChanged) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WatchGameSessionResponse_CurrentMapChanged.ProtoReflect.Descriptor instead.
+func (*WatchGameSessionResponse_CurrentMapChanged) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{18, 4}
+}
+
+func (x *WatchGameSessionResponse_CurrentMapChanged) GetMapId() string {
+	if x != nil {
+		return x.MapId
+	}
+	return ""
+}
+
+// MapChanged is a hint: something the member sees on this map changed,
+// so the app reads the map again (MapService.GetMap). It carries no
+// content, so a hidden point's name or description never travels on a
+// player's stream. After a change that hides the map, GetMap answers
+// `not_found` to a player: the app leaves the map. A map_changed for a
+// map the app does not list yet (just revealed, or created) means the
+// list changed too: read it again (MapService.ListMaps).
+type WatchGameSessionResponse_MapChanged struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The map (a UUID).
+	MapId         string `protobuf:"bytes,1,opt,name=map_id,json=mapId,proto3" json:"map_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WatchGameSessionResponse_MapChanged) Reset() {
+	*x = WatchGameSessionResponse_MapChanged{}
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WatchGameSessionResponse_MapChanged) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WatchGameSessionResponse_MapChanged) ProtoMessage() {}
+
+func (x *WatchGameSessionResponse_MapChanged) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WatchGameSessionResponse_MapChanged.ProtoReflect.Descriptor instead.
+func (*WatchGameSessionResponse_MapChanged) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{18, 5}
+}
+
+func (x *WatchGameSessionResponse_MapChanged) GetMapId() string {
+	if x != nil {
+		return x.MapId
+	}
+	return ""
+}
+
+// ShownImageChanged carries the image the master shows now. Everyone
+// gets it.
+type WatchGameSessionResponse_ShownImageChanged struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The image shown now. Unset when the master stopped showing it, or
+	// deleted it.
+	Image         *ShownImage `protobuf:"bytes,1,opt,name=image,proto3" json:"image,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WatchGameSessionResponse_ShownImageChanged) Reset() {
+	*x = WatchGameSessionResponse_ShownImageChanged{}
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WatchGameSessionResponse_ShownImageChanged) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WatchGameSessionResponse_ShownImageChanged) ProtoMessage() {}
+
+func (x *WatchGameSessionResponse_ShownImageChanged) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WatchGameSessionResponse_ShownImageChanged.ProtoReflect.Descriptor instead.
+func (*WatchGameSessionResponse_ShownImageChanged) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{18, 6}
+}
+
+func (x *WatchGameSessionResponse_ShownImageChanged) GetImage() *ShownImage {
+	if x != nil {
+		return x.Image
+	}
+	return nil
+}
+
+// TokenMoved is a token's new position. A token the app does not know
+// yet (it may have missed a `map_changed`) means: read the map again.
+type WatchGameSessionResponse_TokenMoved struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The map (a UUID).
+	MapId string `protobuf:"bytes,1,opt,name=map_id,json=mapId,proto3" json:"map_id,omitempty"`
+	// The character whose token moved (a UUID).
+	CharacterId string `protobuf:"bytes,2,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	// The new position, in basis points of the image's width and height
+	// (0 to 10000).
+	XBp           int32 `protobuf:"varint,3,opt,name=x_bp,json=xBp,proto3" json:"x_bp,omitempty"`
+	YBp           int32 `protobuf:"varint,4,opt,name=y_bp,json=yBp,proto3" json:"y_bp,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WatchGameSessionResponse_TokenMoved) Reset() {
+	*x = WatchGameSessionResponse_TokenMoved{}
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WatchGameSessionResponse_TokenMoved) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WatchGameSessionResponse_TokenMoved) ProtoMessage() {}
+
+func (x *WatchGameSessionResponse_TokenMoved) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_play_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WatchGameSessionResponse_TokenMoved.ProtoReflect.Descriptor instead.
+func (*WatchGameSessionResponse_TokenMoved) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{18, 7}
+}
+
+func (x *WatchGameSessionResponse_TokenMoved) GetMapId() string {
+	if x != nil {
+		return x.MapId
+	}
+	return ""
+}
+
+func (x *WatchGameSessionResponse_TokenMoved) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+func (x *WatchGameSessionResponse_TokenMoved) GetXBp() int32 {
+	if x != nil {
+		return x.XBp
+	}
+	return 0
+}
+
+func (x *WatchGameSessionResponse_TokenMoved) GetYBp() int32 {
+	if x != nil {
+		return x.YBp
+	}
+	return 0
 }
 
 var File_meurpg_play_v1_play_proto protoreflect.FileDescriptor
@@ -1639,10 +2247,21 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\amy_role\x18\x03 \x01(\x0e2\x19.meurpg.campaigns.v1.RoleR\x06myRole\"8\n" +
 	"\x15GetLiveSessionRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
-	"campaignId\"\x91\x01\n" +
+	"campaignId\"\xf4\x01\n" +
 	"\x16GetLiveSessionResponse\x12>\n" +
 	"\fgame_session\x18\x01 \x01(\v2\x1b.meurpg.play.v1.GameSessionR\vgameSession\x127\n" +
-	"\x06vitals\x18\x02 \x03(\v2\x1f.meurpg.play.v1.CharacterVitalsR\x06vitals\"\xc9\x04\n" +
+	"\x06vitals\x18\x02 \x03(\v2\x1f.meurpg.play.v1.CharacterVitalsR\x06vitals\x12$\n" +
+	"\x0ecurrent_map_id\x18\x03 \x01(\tR\fcurrentMapId\x12;\n" +
+	"\vshown_image\x18\x04 \x01(\v2\x1a.meurpg.play.v1.ShownImageR\n" +
+	"shownImage\"\x95\x01\n" +
+	"\n" +
+	"ShownImage\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
+	"\x05width\x18\x03 \x01(\x05R\x05width\x12\x16\n" +
+	"\x06height\x18\x04 \x01(\x05R\x06height\x12\x10\n" +
+	"\x03url\x18\x05 \x01(\tR\x03url\x12#\n" +
+	"\rthumbnail_url\x18\x06 \x01(\tR\fthumbnailUrl\"\xc9\x04\n" +
 	"\x0fCharacterVitals\x12!\n" +
 	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12$\n" +
@@ -1672,19 +2291,39 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\x04used\x18\x03 \x01(\x05R\x04used\":\n" +
 	"\x17WatchGameSessionRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
-	"campaignId\"\xee\x04\n" +
+	"campaignId\"\x80\n" +
+	"\n" +
 	"\x18WatchGameSessionResponse\x12F\n" +
 	"\x05ready\x18\x01 \x01(\v2..meurpg.play.v1.WatchGameSessionResponse.ReadyH\x00R\x05ready\x12R\n" +
 	"\theartbeat\x18\x02 \x01(\v22.meurpg.play.v1.WatchGameSessionResponse.HeartbeatH\x00R\theartbeat\x12_\n" +
 	"\x0evitals_changed\x18\x03 \x01(\v26.meurpg.play.v1.WatchGameSessionResponse.VitalsChangedH\x00R\rvitalsChanged\x12\\\n" +
-	"\rsession_ended\x18\x04 \x01(\v25.meurpg.play.v1.WatchGameSessionResponse.SessionEndedH\x00R\fsessionEnded\x1aG\n" +
+	"\rsession_ended\x18\x04 \x01(\v25.meurpg.play.v1.WatchGameSessionResponse.SessionEndedH\x00R\fsessionEnded\x12l\n" +
+	"\x13current_map_changed\x18\x05 \x01(\v2:.meurpg.play.v1.WatchGameSessionResponse.CurrentMapChangedH\x00R\x11currentMapChanged\x12V\n" +
+	"\vmap_changed\x18\x06 \x01(\v23.meurpg.play.v1.WatchGameSessionResponse.MapChangedH\x00R\n" +
+	"mapChanged\x12V\n" +
+	"\vtoken_moved\x18\a \x01(\v23.meurpg.play.v1.WatchGameSessionResponse.TokenMovedH\x00R\n" +
+	"tokenMoved\x12l\n" +
+	"\x13shown_image_changed\x18\b \x01(\v2:.meurpg.play.v1.WatchGameSessionResponse.ShownImageChangedH\x00R\x11shownImageChanged\x1aG\n" +
 	"\x05Ready\x12>\n" +
 	"\fgame_session\x18\x01 \x01(\v2\x1b.meurpg.play.v1.GameSessionR\vgameSession\x1a\v\n" +
 	"\tHeartbeat\x1aH\n" +
 	"\rVitalsChanged\x127\n" +
 	"\x06vitals\x18\x01 \x01(\v2\x1f.meurpg.play.v1.CharacterVitalsR\x06vitals\x1aN\n" +
 	"\fSessionEnded\x12>\n" +
-	"\fgame_session\x18\x01 \x01(\v2\x1b.meurpg.play.v1.GameSessionR\vgameSessionB\a\n" +
+	"\fgame_session\x18\x01 \x01(\v2\x1b.meurpg.play.v1.GameSessionR\vgameSession\x1a*\n" +
+	"\x11CurrentMapChanged\x12\x15\n" +
+	"\x06map_id\x18\x01 \x01(\tR\x05mapId\x1a#\n" +
+	"\n" +
+	"MapChanged\x12\x15\n" +
+	"\x06map_id\x18\x01 \x01(\tR\x05mapId\x1aE\n" +
+	"\x11ShownImageChanged\x120\n" +
+	"\x05image\x18\x01 \x01(\v2\x1a.meurpg.play.v1.ShownImageR\x05image\x1al\n" +
+	"\n" +
+	"TokenMoved\x12\x15\n" +
+	"\x06map_id\x18\x01 \x01(\tR\x05mapId\x12!\n" +
+	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\x12\x11\n" +
+	"\x04x_bp\x18\x03 \x01(\x05R\x03xBp\x12\x11\n" +
+	"\x04y_bp\x18\x04 \x01(\x05R\x03yBpB\a\n" +
 	"\x05event\"\xeb\x03\n" +
 	"\x1cAdjustCharacterVitalsRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
@@ -1704,11 +2343,24 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\x05level\x18\x01 \x01(\x05R\x05level\x12\x12\n" +
 	"\x04used\x18\x02 \x01(\x05R\x04used\"X\n" +
 	"\x1dAdjustCharacterVitalsResponse\x127\n" +
-	"\x06vitals\x18\x01 \x01(\v2\x1f.meurpg.play.v1.CharacterVitalsR\x06vitals*\xae\x01\n" +
+	"\x06vitals\x18\x01 \x01(\v2\x1f.meurpg.play.v1.CharacterVitalsR\x06vitals\"N\n" +
+	"\x14SetCurrentMapRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x12\x15\n" +
+	"\x06map_id\x18\x02 \x01(\tR\x05mapId\"=\n" +
+	"\x15SetCurrentMapResponse\x12$\n" +
+	"\x0ecurrent_map_id\x18\x01 \x01(\tR\fcurrentMapId\"R\n" +
+	"\x14SetShownImageRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x12\x19\n" +
+	"\bimage_id\x18\x02 \x01(\tR\aimageId\"T\n" +
+	"\x15SetShownImageResponse\x12;\n" +
+	"\vshown_image\x18\x01 \x01(\v2\x1a.meurpg.play.v1.ShownImageR\n" +
+	"shownImage*\xae\x01\n" +
 	"\x18GameSessionBlockedReason\x12+\n" +
 	"'GAME_SESSION_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12/\n" +
 	"+GAME_SESSION_BLOCKED_REASON_NO_OPEN_SESSION\x10\x01\x124\n" +
-	"0GAME_SESSION_BLOCKED_REASON_SESSION_ALREADY_OPEN\x10\x022\xfe\x05\n" +
+	"0GAME_SESSION_BLOCKED_REASON_SESSION_ALREADY_OPEN\x10\x022\xba\a\n" +
 	"\vPlayService\x12e\n" +
 	"\x10StartGameSession\x12'.meurpg.play.v1.StartGameSessionRequest\x1a(.meurpg.play.v1.StartGameSessionResponse\x12_\n" +
 	"\x0eEndGameSession\x12%.meurpg.play.v1.EndGameSessionRequest\x1a&.meurpg.play.v1.EndGameSessionResponse\x12j\n" +
@@ -1716,7 +2368,9 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\x14ListOpenGameSessions\x12+.meurpg.play.v1.ListOpenGameSessionsRequest\x1a,.meurpg.play.v1.ListOpenGameSessionsResponse\"\x03\x90\x02\x01\x12d\n" +
 	"\x0eGetLiveSession\x12%.meurpg.play.v1.GetLiveSessionRequest\x1a&.meurpg.play.v1.GetLiveSessionResponse\"\x03\x90\x02\x02\x12g\n" +
 	"\x10WatchGameSession\x12'.meurpg.play.v1.WatchGameSessionRequest\x1a(.meurpg.play.v1.WatchGameSessionResponse0\x01\x12t\n" +
-	"\x15AdjustCharacterVitals\x12,.meurpg.play.v1.AdjustCharacterVitalsRequest\x1a-.meurpg.play.v1.AdjustCharacterVitalsResponseB\xb7\x01\n" +
+	"\x15AdjustCharacterVitals\x12,.meurpg.play.v1.AdjustCharacterVitalsRequest\x1a-.meurpg.play.v1.AdjustCharacterVitalsResponse\x12\\\n" +
+	"\rSetCurrentMap\x12$.meurpg.play.v1.SetCurrentMapRequest\x1a%.meurpg.play.v1.SetCurrentMapResponse\x12\\\n" +
+	"\rSetShownImage\x12$.meurpg.play.v1.SetShownImageRequest\x1a%.meurpg.play.v1.SetShownImageResponseB\xb7\x01\n" +
 	"\x12com.meurpg.play.v1B\tPlayProtoP\x01Z<github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1;playv1\xa2\x02\x03MPX\xaa\x02\x0eMeurpg.Play.V1\xca\x02\x0eMeurpg\\Play\\V1\xe2\x02\x1aMeurpg\\Play\\V1\\GPBMetadata\xea\x02\x10Meurpg::Play::V1b\x06proto3"
 
 var (
@@ -1732,82 +2386,102 @@ func file_meurpg_play_v1_play_proto_rawDescGZIP() []byte {
 }
 
 var file_meurpg_play_v1_play_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_meurpg_play_v1_play_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
+var file_meurpg_play_v1_play_proto_msgTypes = make([]protoimpl.MessageInfo, 34)
 var file_meurpg_play_v1_play_proto_goTypes = []any{
-	(GameSessionBlockedReason)(0),                  // 0: meurpg.play.v1.GameSessionBlockedReason
-	(*GameSessionBlocked)(nil),                     // 1: meurpg.play.v1.GameSessionBlocked
-	(*GameSession)(nil),                            // 2: meurpg.play.v1.GameSession
-	(*StartGameSessionRequest)(nil),                // 3: meurpg.play.v1.StartGameSessionRequest
-	(*StartGameSessionResponse)(nil),               // 4: meurpg.play.v1.StartGameSessionResponse
-	(*EndGameSessionRequest)(nil),                  // 5: meurpg.play.v1.EndGameSessionRequest
-	(*EndGameSessionResponse)(nil),                 // 6: meurpg.play.v1.EndGameSessionResponse
-	(*ListGameSessionsRequest)(nil),                // 7: meurpg.play.v1.ListGameSessionsRequest
-	(*ListGameSessionsResponse)(nil),               // 8: meurpg.play.v1.ListGameSessionsResponse
-	(*ListOpenGameSessionsRequest)(nil),            // 9: meurpg.play.v1.ListOpenGameSessionsRequest
-	(*ListOpenGameSessionsResponse)(nil),           // 10: meurpg.play.v1.ListOpenGameSessionsResponse
-	(*OpenGameSession)(nil),                        // 11: meurpg.play.v1.OpenGameSession
-	(*GetLiveSessionRequest)(nil),                  // 12: meurpg.play.v1.GetLiveSessionRequest
-	(*GetLiveSessionResponse)(nil),                 // 13: meurpg.play.v1.GetLiveSessionResponse
-	(*CharacterVitals)(nil),                        // 14: meurpg.play.v1.CharacterVitals
-	(*SpellSlotUsage)(nil),                         // 15: meurpg.play.v1.SpellSlotUsage
-	(*PactSlotUsage)(nil),                          // 16: meurpg.play.v1.PactSlotUsage
-	(*WatchGameSessionRequest)(nil),                // 17: meurpg.play.v1.WatchGameSessionRequest
-	(*WatchGameSessionResponse)(nil),               // 18: meurpg.play.v1.WatchGameSessionResponse
-	(*AdjustCharacterVitalsRequest)(nil),           // 19: meurpg.play.v1.AdjustCharacterVitalsRequest
-	(*SpellSlotsUsed)(nil),                         // 20: meurpg.play.v1.SpellSlotsUsed
-	(*AdjustCharacterVitalsResponse)(nil),          // 21: meurpg.play.v1.AdjustCharacterVitalsResponse
-	(*WatchGameSessionResponse_Ready)(nil),         // 22: meurpg.play.v1.WatchGameSessionResponse.Ready
-	(*WatchGameSessionResponse_Heartbeat)(nil),     // 23: meurpg.play.v1.WatchGameSessionResponse.Heartbeat
-	(*WatchGameSessionResponse_VitalsChanged)(nil), // 24: meurpg.play.v1.WatchGameSessionResponse.VitalsChanged
-	(*WatchGameSessionResponse_SessionEnded)(nil),  // 25: meurpg.play.v1.WatchGameSessionResponse.SessionEnded
-	(*timestamppb.Timestamp)(nil),                  // 26: google.protobuf.Timestamp
-	(v1.Role)(0),                                   // 27: meurpg.campaigns.v1.Role
-	(*v11.HitDice)(nil),                            // 28: meurpg.rules.v1.HitDice
+	(GameSessionBlockedReason)(0),                      // 0: meurpg.play.v1.GameSessionBlockedReason
+	(*GameSessionBlocked)(nil),                         // 1: meurpg.play.v1.GameSessionBlocked
+	(*GameSession)(nil),                                // 2: meurpg.play.v1.GameSession
+	(*StartGameSessionRequest)(nil),                    // 3: meurpg.play.v1.StartGameSessionRequest
+	(*StartGameSessionResponse)(nil),                   // 4: meurpg.play.v1.StartGameSessionResponse
+	(*EndGameSessionRequest)(nil),                      // 5: meurpg.play.v1.EndGameSessionRequest
+	(*EndGameSessionResponse)(nil),                     // 6: meurpg.play.v1.EndGameSessionResponse
+	(*ListGameSessionsRequest)(nil),                    // 7: meurpg.play.v1.ListGameSessionsRequest
+	(*ListGameSessionsResponse)(nil),                   // 8: meurpg.play.v1.ListGameSessionsResponse
+	(*ListOpenGameSessionsRequest)(nil),                // 9: meurpg.play.v1.ListOpenGameSessionsRequest
+	(*ListOpenGameSessionsResponse)(nil),               // 10: meurpg.play.v1.ListOpenGameSessionsResponse
+	(*OpenGameSession)(nil),                            // 11: meurpg.play.v1.OpenGameSession
+	(*GetLiveSessionRequest)(nil),                      // 12: meurpg.play.v1.GetLiveSessionRequest
+	(*GetLiveSessionResponse)(nil),                     // 13: meurpg.play.v1.GetLiveSessionResponse
+	(*ShownImage)(nil),                                 // 14: meurpg.play.v1.ShownImage
+	(*CharacterVitals)(nil),                            // 15: meurpg.play.v1.CharacterVitals
+	(*SpellSlotUsage)(nil),                             // 16: meurpg.play.v1.SpellSlotUsage
+	(*PactSlotUsage)(nil),                              // 17: meurpg.play.v1.PactSlotUsage
+	(*WatchGameSessionRequest)(nil),                    // 18: meurpg.play.v1.WatchGameSessionRequest
+	(*WatchGameSessionResponse)(nil),                   // 19: meurpg.play.v1.WatchGameSessionResponse
+	(*AdjustCharacterVitalsRequest)(nil),               // 20: meurpg.play.v1.AdjustCharacterVitalsRequest
+	(*SpellSlotsUsed)(nil),                             // 21: meurpg.play.v1.SpellSlotsUsed
+	(*AdjustCharacterVitalsResponse)(nil),              // 22: meurpg.play.v1.AdjustCharacterVitalsResponse
+	(*SetCurrentMapRequest)(nil),                       // 23: meurpg.play.v1.SetCurrentMapRequest
+	(*SetCurrentMapResponse)(nil),                      // 24: meurpg.play.v1.SetCurrentMapResponse
+	(*SetShownImageRequest)(nil),                       // 25: meurpg.play.v1.SetShownImageRequest
+	(*SetShownImageResponse)(nil),                      // 26: meurpg.play.v1.SetShownImageResponse
+	(*WatchGameSessionResponse_Ready)(nil),             // 27: meurpg.play.v1.WatchGameSessionResponse.Ready
+	(*WatchGameSessionResponse_Heartbeat)(nil),         // 28: meurpg.play.v1.WatchGameSessionResponse.Heartbeat
+	(*WatchGameSessionResponse_VitalsChanged)(nil),     // 29: meurpg.play.v1.WatchGameSessionResponse.VitalsChanged
+	(*WatchGameSessionResponse_SessionEnded)(nil),      // 30: meurpg.play.v1.WatchGameSessionResponse.SessionEnded
+	(*WatchGameSessionResponse_CurrentMapChanged)(nil), // 31: meurpg.play.v1.WatchGameSessionResponse.CurrentMapChanged
+	(*WatchGameSessionResponse_MapChanged)(nil),        // 32: meurpg.play.v1.WatchGameSessionResponse.MapChanged
+	(*WatchGameSessionResponse_ShownImageChanged)(nil), // 33: meurpg.play.v1.WatchGameSessionResponse.ShownImageChanged
+	(*WatchGameSessionResponse_TokenMoved)(nil),        // 34: meurpg.play.v1.WatchGameSessionResponse.TokenMoved
+	(*timestamppb.Timestamp)(nil),                      // 35: google.protobuf.Timestamp
+	(v1.Role)(0),                                       // 36: meurpg.campaigns.v1.Role
+	(*v11.HitDice)(nil),                                // 37: meurpg.rules.v1.HitDice
 }
 var file_meurpg_play_v1_play_proto_depIdxs = []int32{
 	0,  // 0: meurpg.play.v1.GameSessionBlocked.reason:type_name -> meurpg.play.v1.GameSessionBlockedReason
-	26, // 1: meurpg.play.v1.GameSession.started_at:type_name -> google.protobuf.Timestamp
-	26, // 2: meurpg.play.v1.GameSession.ended_at:type_name -> google.protobuf.Timestamp
+	35, // 1: meurpg.play.v1.GameSession.started_at:type_name -> google.protobuf.Timestamp
+	35, // 2: meurpg.play.v1.GameSession.ended_at:type_name -> google.protobuf.Timestamp
 	2,  // 3: meurpg.play.v1.StartGameSessionResponse.game_session:type_name -> meurpg.play.v1.GameSession
 	2,  // 4: meurpg.play.v1.EndGameSessionResponse.game_session:type_name -> meurpg.play.v1.GameSession
 	2,  // 5: meurpg.play.v1.ListGameSessionsResponse.game_sessions:type_name -> meurpg.play.v1.GameSession
 	11, // 6: meurpg.play.v1.ListOpenGameSessionsResponse.open_game_sessions:type_name -> meurpg.play.v1.OpenGameSession
 	2,  // 7: meurpg.play.v1.OpenGameSession.game_session:type_name -> meurpg.play.v1.GameSession
-	27, // 8: meurpg.play.v1.OpenGameSession.my_role:type_name -> meurpg.campaigns.v1.Role
+	36, // 8: meurpg.play.v1.OpenGameSession.my_role:type_name -> meurpg.campaigns.v1.Role
 	2,  // 9: meurpg.play.v1.GetLiveSessionResponse.game_session:type_name -> meurpg.play.v1.GameSession
-	14, // 10: meurpg.play.v1.GetLiveSessionResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
-	15, // 11: meurpg.play.v1.CharacterVitals.spell_slots:type_name -> meurpg.play.v1.SpellSlotUsage
-	16, // 12: meurpg.play.v1.CharacterVitals.pact_slots:type_name -> meurpg.play.v1.PactSlotUsage
-	28, // 13: meurpg.play.v1.CharacterVitals.hit_dice:type_name -> meurpg.rules.v1.HitDice
-	26, // 14: meurpg.play.v1.CharacterVitals.updated_at:type_name -> google.protobuf.Timestamp
-	22, // 15: meurpg.play.v1.WatchGameSessionResponse.ready:type_name -> meurpg.play.v1.WatchGameSessionResponse.Ready
-	23, // 16: meurpg.play.v1.WatchGameSessionResponse.heartbeat:type_name -> meurpg.play.v1.WatchGameSessionResponse.Heartbeat
-	24, // 17: meurpg.play.v1.WatchGameSessionResponse.vitals_changed:type_name -> meurpg.play.v1.WatchGameSessionResponse.VitalsChanged
-	25, // 18: meurpg.play.v1.WatchGameSessionResponse.session_ended:type_name -> meurpg.play.v1.WatchGameSessionResponse.SessionEnded
-	20, // 19: meurpg.play.v1.AdjustCharacterVitalsRequest.spell_slots_used:type_name -> meurpg.play.v1.SpellSlotsUsed
-	14, // 20: meurpg.play.v1.AdjustCharacterVitalsResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
-	2,  // 21: meurpg.play.v1.WatchGameSessionResponse.Ready.game_session:type_name -> meurpg.play.v1.GameSession
-	14, // 22: meurpg.play.v1.WatchGameSessionResponse.VitalsChanged.vitals:type_name -> meurpg.play.v1.CharacterVitals
-	2,  // 23: meurpg.play.v1.WatchGameSessionResponse.SessionEnded.game_session:type_name -> meurpg.play.v1.GameSession
-	3,  // 24: meurpg.play.v1.PlayService.StartGameSession:input_type -> meurpg.play.v1.StartGameSessionRequest
-	5,  // 25: meurpg.play.v1.PlayService.EndGameSession:input_type -> meurpg.play.v1.EndGameSessionRequest
-	7,  // 26: meurpg.play.v1.PlayService.ListGameSessions:input_type -> meurpg.play.v1.ListGameSessionsRequest
-	9,  // 27: meurpg.play.v1.PlayService.ListOpenGameSessions:input_type -> meurpg.play.v1.ListOpenGameSessionsRequest
-	12, // 28: meurpg.play.v1.PlayService.GetLiveSession:input_type -> meurpg.play.v1.GetLiveSessionRequest
-	17, // 29: meurpg.play.v1.PlayService.WatchGameSession:input_type -> meurpg.play.v1.WatchGameSessionRequest
-	19, // 30: meurpg.play.v1.PlayService.AdjustCharacterVitals:input_type -> meurpg.play.v1.AdjustCharacterVitalsRequest
-	4,  // 31: meurpg.play.v1.PlayService.StartGameSession:output_type -> meurpg.play.v1.StartGameSessionResponse
-	6,  // 32: meurpg.play.v1.PlayService.EndGameSession:output_type -> meurpg.play.v1.EndGameSessionResponse
-	8,  // 33: meurpg.play.v1.PlayService.ListGameSessions:output_type -> meurpg.play.v1.ListGameSessionsResponse
-	10, // 34: meurpg.play.v1.PlayService.ListOpenGameSessions:output_type -> meurpg.play.v1.ListOpenGameSessionsResponse
-	13, // 35: meurpg.play.v1.PlayService.GetLiveSession:output_type -> meurpg.play.v1.GetLiveSessionResponse
-	18, // 36: meurpg.play.v1.PlayService.WatchGameSession:output_type -> meurpg.play.v1.WatchGameSessionResponse
-	21, // 37: meurpg.play.v1.PlayService.AdjustCharacterVitals:output_type -> meurpg.play.v1.AdjustCharacterVitalsResponse
-	31, // [31:38] is the sub-list for method output_type
-	24, // [24:31] is the sub-list for method input_type
-	24, // [24:24] is the sub-list for extension type_name
-	24, // [24:24] is the sub-list for extension extendee
-	0,  // [0:24] is the sub-list for field type_name
+	15, // 10: meurpg.play.v1.GetLiveSessionResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
+	14, // 11: meurpg.play.v1.GetLiveSessionResponse.shown_image:type_name -> meurpg.play.v1.ShownImage
+	16, // 12: meurpg.play.v1.CharacterVitals.spell_slots:type_name -> meurpg.play.v1.SpellSlotUsage
+	17, // 13: meurpg.play.v1.CharacterVitals.pact_slots:type_name -> meurpg.play.v1.PactSlotUsage
+	37, // 14: meurpg.play.v1.CharacterVitals.hit_dice:type_name -> meurpg.rules.v1.HitDice
+	35, // 15: meurpg.play.v1.CharacterVitals.updated_at:type_name -> google.protobuf.Timestamp
+	27, // 16: meurpg.play.v1.WatchGameSessionResponse.ready:type_name -> meurpg.play.v1.WatchGameSessionResponse.Ready
+	28, // 17: meurpg.play.v1.WatchGameSessionResponse.heartbeat:type_name -> meurpg.play.v1.WatchGameSessionResponse.Heartbeat
+	29, // 18: meurpg.play.v1.WatchGameSessionResponse.vitals_changed:type_name -> meurpg.play.v1.WatchGameSessionResponse.VitalsChanged
+	30, // 19: meurpg.play.v1.WatchGameSessionResponse.session_ended:type_name -> meurpg.play.v1.WatchGameSessionResponse.SessionEnded
+	31, // 20: meurpg.play.v1.WatchGameSessionResponse.current_map_changed:type_name -> meurpg.play.v1.WatchGameSessionResponse.CurrentMapChanged
+	32, // 21: meurpg.play.v1.WatchGameSessionResponse.map_changed:type_name -> meurpg.play.v1.WatchGameSessionResponse.MapChanged
+	34, // 22: meurpg.play.v1.WatchGameSessionResponse.token_moved:type_name -> meurpg.play.v1.WatchGameSessionResponse.TokenMoved
+	33, // 23: meurpg.play.v1.WatchGameSessionResponse.shown_image_changed:type_name -> meurpg.play.v1.WatchGameSessionResponse.ShownImageChanged
+	21, // 24: meurpg.play.v1.AdjustCharacterVitalsRequest.spell_slots_used:type_name -> meurpg.play.v1.SpellSlotsUsed
+	15, // 25: meurpg.play.v1.AdjustCharacterVitalsResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
+	14, // 26: meurpg.play.v1.SetShownImageResponse.shown_image:type_name -> meurpg.play.v1.ShownImage
+	2,  // 27: meurpg.play.v1.WatchGameSessionResponse.Ready.game_session:type_name -> meurpg.play.v1.GameSession
+	15, // 28: meurpg.play.v1.WatchGameSessionResponse.VitalsChanged.vitals:type_name -> meurpg.play.v1.CharacterVitals
+	2,  // 29: meurpg.play.v1.WatchGameSessionResponse.SessionEnded.game_session:type_name -> meurpg.play.v1.GameSession
+	14, // 30: meurpg.play.v1.WatchGameSessionResponse.ShownImageChanged.image:type_name -> meurpg.play.v1.ShownImage
+	3,  // 31: meurpg.play.v1.PlayService.StartGameSession:input_type -> meurpg.play.v1.StartGameSessionRequest
+	5,  // 32: meurpg.play.v1.PlayService.EndGameSession:input_type -> meurpg.play.v1.EndGameSessionRequest
+	7,  // 33: meurpg.play.v1.PlayService.ListGameSessions:input_type -> meurpg.play.v1.ListGameSessionsRequest
+	9,  // 34: meurpg.play.v1.PlayService.ListOpenGameSessions:input_type -> meurpg.play.v1.ListOpenGameSessionsRequest
+	12, // 35: meurpg.play.v1.PlayService.GetLiveSession:input_type -> meurpg.play.v1.GetLiveSessionRequest
+	18, // 36: meurpg.play.v1.PlayService.WatchGameSession:input_type -> meurpg.play.v1.WatchGameSessionRequest
+	20, // 37: meurpg.play.v1.PlayService.AdjustCharacterVitals:input_type -> meurpg.play.v1.AdjustCharacterVitalsRequest
+	23, // 38: meurpg.play.v1.PlayService.SetCurrentMap:input_type -> meurpg.play.v1.SetCurrentMapRequest
+	25, // 39: meurpg.play.v1.PlayService.SetShownImage:input_type -> meurpg.play.v1.SetShownImageRequest
+	4,  // 40: meurpg.play.v1.PlayService.StartGameSession:output_type -> meurpg.play.v1.StartGameSessionResponse
+	6,  // 41: meurpg.play.v1.PlayService.EndGameSession:output_type -> meurpg.play.v1.EndGameSessionResponse
+	8,  // 42: meurpg.play.v1.PlayService.ListGameSessions:output_type -> meurpg.play.v1.ListGameSessionsResponse
+	10, // 43: meurpg.play.v1.PlayService.ListOpenGameSessions:output_type -> meurpg.play.v1.ListOpenGameSessionsResponse
+	13, // 44: meurpg.play.v1.PlayService.GetLiveSession:output_type -> meurpg.play.v1.GetLiveSessionResponse
+	19, // 45: meurpg.play.v1.PlayService.WatchGameSession:output_type -> meurpg.play.v1.WatchGameSessionResponse
+	22, // 46: meurpg.play.v1.PlayService.AdjustCharacterVitals:output_type -> meurpg.play.v1.AdjustCharacterVitalsResponse
+	24, // 47: meurpg.play.v1.PlayService.SetCurrentMap:output_type -> meurpg.play.v1.SetCurrentMapResponse
+	26, // 48: meurpg.play.v1.PlayService.SetShownImage:output_type -> meurpg.play.v1.SetShownImageResponse
+	40, // [40:49] is the sub-list for method output_type
+	31, // [31:40] is the sub-list for method input_type
+	31, // [31:31] is the sub-list for extension type_name
+	31, // [31:31] is the sub-list for extension extendee
+	0,  // [0:31] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_play_proto_init() }
@@ -1815,20 +2489,24 @@ func file_meurpg_play_v1_play_proto_init() {
 	if File_meurpg_play_v1_play_proto != nil {
 		return
 	}
-	file_meurpg_play_v1_play_proto_msgTypes[17].OneofWrappers = []any{
+	file_meurpg_play_v1_play_proto_msgTypes[18].OneofWrappers = []any{
 		(*WatchGameSessionResponse_Ready_)(nil),
 		(*WatchGameSessionResponse_Heartbeat_)(nil),
 		(*WatchGameSessionResponse_VitalsChanged_)(nil),
 		(*WatchGameSessionResponse_SessionEnded_)(nil),
+		(*WatchGameSessionResponse_CurrentMapChanged_)(nil),
+		(*WatchGameSessionResponse_MapChanged_)(nil),
+		(*WatchGameSessionResponse_TokenMoved_)(nil),
+		(*WatchGameSessionResponse_ShownImageChanged_)(nil),
 	}
-	file_meurpg_play_v1_play_proto_msgTypes[18].OneofWrappers = []any{}
+	file_meurpg_play_v1_play_proto_msgTypes[19].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_play_v1_play_proto_rawDesc), len(file_meurpg_play_v1_play_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   25,
+			NumMessages:   34,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

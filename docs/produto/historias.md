@@ -1,6 +1,6 @@
 # Histórias e critérios de aceite
 
-O MVP tem 15 histórias, mais 2 pré-requisitos — 17 no total até o MVP: as 10 marcadas como MVP no plano, as duas que o Samuel acrescentou em 28/09/2026 (MR-015 e MR-016), as três que o Samuel pôs no MVP em 29/09/2026 (MR-018 e MR-019, documento de campanha e galeria de imagens, e MR-024, aprovar o personagem do convite), e duas marcadas "MVP (pré-requisito)" desde 29/09/2026: o convite (MR-002), que leva à MR-003, e os NPCs (MR-005), que são os inimigos do combate. "Já existe em parte" não é mais uma prioridade: o app antigo é descontinuado, então nenhuma história "já existe" no sistema novo — MR-002 e MR-005 entram como qualquer outra história do MVP, com os próprios testes.
+O MVP tem 16 histórias, mais 2 pré-requisitos — 18 no total até o MVP: as 10 marcadas como MVP no plano, as duas que o Samuel acrescentou em 28/09/2026 (MR-015 e MR-016), as três que o Samuel pôs no MVP em 29/09/2026 (MR-018 e MR-019, documento de campanha e galeria de imagens, e MR-024, aprovar o personagem do convite), a que o Vinicius pôs no MVP em 30/09/2026 (MR-028, mostrar uma imagem aos jogadores), e duas marcadas "MVP (pré-requisito)" desde 29/09/2026: o convite (MR-002), que leva à MR-003, e os NPCs (MR-005), que são os inimigos do combate. "Já existe em parte" não é mais uma prioridade: o app antigo é descontinuado, então nenhuma história "já existe" no sistema novo — MR-002 e MR-005 entram como qualquer outra história do MVP, com os próprios testes.
 
 Uma história está pronta quando todos os critérios dela passam. Cada critério vira um teste automático: Playwright para o que aparece na tela, teste em Go para a regra no servidor. Não há testes de caracterização do app antigo — o sistema novo só precisa provar os próprios critérios de aceite.
 
@@ -25,6 +25,7 @@ MR-021 e MR-022 são novas e saíram das respostas do Samuel de 28/09/2026. Fica
 | [MR-018](#mr-018-documento-de-campanha) | Apoio | MVP |
 | [MR-019](#mr-019-galeria-de-imagens) | Apoio | MVP |
 | [MR-024](#mr-024-aprovar-o-personagem-do-convite) | Personagem | MVP |
+| [MR-028](#mr-028-mostrar-uma-imagem-aos-jogadores) | Sessão | MVP |
 | [MR-002](#mr-002-gerar-convite) | Campanha | MVP (pré-requisito) |
 | [MR-005](#mr-005-criar-npcs) | Personagem | MVP (pré-requisito) |
 | [MR-007](#mr-007-importar-ficha-em-pdf) | Personagem | Depois |
@@ -130,6 +131,10 @@ Os dois últimos critérios foram respondida pelo Vinicius em 29/09/2026.
 #### Critérios de aceite
 - **Dado** um mapa da campanha, **quando** o mestre cria um ponto do tipo batalha, submapa ou cena de RP, **então** o ponto aparece no mapa **e** abrir o ponto leva ao encontro, ao submapa ou à cena.
 
+#### Implementado
+- Em parte, na Etapa 5 (o servidor; as telas vêm depois do desenho aprovado): o `MapService` cria, muda, move e apaga mapas e pontos dos três tipos (ver [Arquitetura](../arquitetura.md#módulo-maps-mapas-pontos-e-tokens)). O mapa nasce de uma imagem da galeria e nasce escondido; o ponto também. O ponto de submapa leva a outro mapa da mesma campanha, nunca ao próprio mapa. Teste: `TestMR008_MasterCreatesPointsOfEachKind`.
+- Abrir o ponto: o de submapa mostra o nome e a descrição, com "Abrir <mapa>" (decisão do desenho de 30/09/2026: primeiro a ficha do ponto, depois o submapa). Os de batalha e de cena, por enquanto, só mostram o nome e a descrição: passam a abrir o encontro com o combate (Etapa 6) e a cena de RP com as cenas (Etapa 7). É a proposta da pergunta 29 do documento de acompanhamento, esperando o Samuel. Até lá, esta história fica "em parte", como a MR-011 ficou na Etapa 4.
+
 ### MR-009: Mapa sem spoiler
 
 **Como** jogador, **quero** ver no mapa só os pontos que meu grupo já conhece, **para** não receber spoiler.
@@ -140,6 +145,9 @@ Os dois últimos critérios foram respondida pelo Vinicius em 29/09/2026.
 
 #### Critérios de aceite
 - **Dado** um mapa com um ponto revelado e outro escondido, **quando** o jogador abre o mapa, **então** só o revelado aparece **e** a resposta do servidor não contém o escondido.
+
+#### Implementado
+- O servidor, na Etapa 5 (a tela vem depois do desenho aprovado): o `MapService` decide no servidor o que cada um vê (RN-10). O jogador recebe só os pontos revelados, só os tokens visíveis, e só os mapas revelados ou o mapa atual da sessão; um mapa escondido é `not_found` para ele, igual a um mapa que não existe. Teste: `TestMR009_PlayersNeverReceiveHiddenPoints` lê a resposta do jogador como o JSON que o app recebe e confere que não há o ID, o nome nem a descrição do ponto escondido; e confere que uma mudança só em coisas escondidas chega pelo stream só ao mestre. `TestRN10_PlayersCannotOpenHiddenMaps` cobre os mapas e os submapas.
 
 ### MR-011: Iniciar a sessão
 
@@ -168,8 +176,8 @@ Os dois últimos critérios foram respondida pelo Vinicius em 29/09/2026.
 **Como** jogador, **quero** acompanhar minha ficha e o mapa atual durante a sessão.
 
 - Prioridade: MVP
-- Regras: RN-02, RN-11
-- Módulos: play
+- Regras: RN-02, RN-10, RN-11
+- Módulos: play, maps
 
 #### Critérios de aceite
 - **Dado** uma sessão ativa, **quando** o mestre move um token ou o sistema aplica dano ao personagem, **então** o celular do jogador mostra a mudança sem recarregar a página **e** as notas do mestre nunca aparecem.
@@ -177,7 +185,8 @@ Os dois últimos critérios foram respondida pelo Vinicius em 29/09/2026.
 #### Implementado
 - O servidor da metade da ficha veio na Etapa 5: o mestre corrige PV, PV temporários, espaços de magia e dados de vida durante a sessão (`AdjustCharacterVitals`, RN-02), e a mudança chega na hora, pelo stream `WatchGameSession`, ao mestre e ao dono do personagem, nunca a outro jogador (`TestRN02_MasterAdjustsVitalsDuringSession`, `TestPlayersSeeOnlyTheirOwnVitals`, `TestLiveStreamIsNotBuffered`). Nada da sessão ao vivo carrega as notas do mestre (`TestRN11_LiveSessionNeverCarriesMasterNotes`).
 - As telas da metade da ficha também: o jogador vê os PV, os PV temporários, a CA, os dados de vida e os espaços de magia do próprio personagem, e o número muda na tela quando o mestre corrige, sem recarregar. O mestre vê o grupo e corrige em "Ajustar" (uma folha no celular, um diálogo no desktop), que não passa do máximo da ficha e, depois do fim da sessão, diz "A sessão acabou". Sem conexão, a página diz "Reconectando…" com a hora da última atualização, e os números continuam na tela. O mapa entra no lugar do aviso "O mestre ainda não escolheu um mapa." com o PR dos mapas. Testes: `live-session.spec.ts` (`@MR-012`, `@RN-02`) e `a11y.spec.ts`.
-- Na Etapa 5, o que muda ao vivo na ficha é a correção do mestre; "o sistema aplica dano" vem com o combate (Etapa 6), e o token no mapa com os mapas (Etapa 5, no PR dos mapas).
+- O servidor da metade do mapa veio na Etapa 5, com os mapas: o mestre escolhe o mapa atual da sessão (`PlayService.SetCurrentMap`, que também o revela) e move os tokens (`MapService.PlaceMapToken`); o stream leva `current_map_changed`, `token_moved` e `map_changed`, e o jogador só ouve falar do que ele vê (RN-10). Teste: `TestMR012_TokenMovesReachPlayersLive` (o token visível chega ao jogador; o token escondido de um NPC, só ao mestre) e `TestSetCurrentMap`.
+- Na Etapa 5, o que muda ao vivo na ficha é a correção do mestre; "o sistema aplica dano" vem com o combate (Etapa 6), e as telas do mapa na sessão vêm com as telas dos mapas.
 
 #### Relacionadas
 - RN-02: respondida em 29/09/2026 — sim, o mestre pode corrigir PV e espaços de magia na mão durante a sessão; o mestre tem a palavra final (ver [Regras de negócio](regras.md)).
@@ -296,9 +305,10 @@ Propostos por nós, esperando o Samuel. Os limites também são proposta (pergun
   - O painel "Galeria" da página da campanha, só para o mestre: as 5 imagens mais novas, a cota e "Abrir galeria".
   - O seletor de imagem da galeria (`web/src/app/shared/gallery-picker/`), para o formulário "Novo mapa", o editor do documento e "Mostrar imagem": escolhe uma imagem ou envia uma nova e já a escolhe.
 - Testes:
-  - No servidor: `TestMR019_MasterUploadsAnImageWithoutItsMetadata` (primeiro critério: envia um JPEG com EXIF e GPS e lê o arquivo guardado), `TestMR019_PlayersCannotListTheGallery` (segundo) e `TestMR019_AnImageAMapUsesCannotBeDeleted` (terceiro, a metade do servidor: `failed_precondition`).
+  - No servidor: `TestMR019_MasterUploadsAnImageWithoutItsMetadata` (primeiro critério: envia um JPEG com EXIF e GPS e lê o arquivo guardado), `TestMR019_PlayersCannotListTheGallery` (segundo) e `TestMR019_AnImageAMapUsesCannotBeDeleted` (terceiro: `failed_precondition` com o detalhe `ImageInUse`, que diz em quais mapas a imagem está). `TestDeletingAnImageAMapUses` confere que os arquivos ficam e que, trocada a imagem dos mapas, ela pode sair.
   - Pela tela (`@MR-019`, `e2e/tests/gallery.spec.ts`): o mestre envia um JPEG com EXIF e GPS, a imagem aparece, e o arquivo baixado de `/images/<id>` não tem o bloco EXIF (primeiro critério); um texto com nome `.png` e um GIF mostram o erro em português e a galeria continua vazia; o jogador da campanha vê só o aviso, a página da campanha não mostra a Galeria para ele, e o servidor recusa a lista (segundo); renomear e apagar, com a confirmação no lugar; a janela da imagem, com as setas, e o foco voltando ao cartão. O `a11y.spec.ts` passa o axe na galeria vazia, com imagens, com um envio recusado, na confirmação de apagar, na janela da imagem e na página da campanha com o painel.
-  - Terceiro critério, pela tela: quando o servidor recusa apagar, o cartão diz "Essa imagem está num mapa. Troque a imagem do mapa antes de apagá-la." (teste unitário). Dizer em qual mapa chega com os mapas, que ainda não existem; o teste do servidor usa uma tabela no lugar da tabela de mapas.
+  - Terceiro critério, pela tela: quando o servidor recusa apagar, o cartão diz "Essa imagem está num mapa. Troque a imagem do mapa antes de apagá-la." (teste unitário). Nomear o mapa no cartão, com o detalhe `ImageInUse`, chega com as telas dos mapas.
+- Com os mapas, o servidor diz em cada imagem os mapas que a usam (`GalleryImage.used_in_maps`; `TestListGalleryImagesShowsWhereEachIsUsed`); o cartão mostra "Usada em Mirathel e arredores" com as telas dos mapas.
 
 ### MR-024: Aprovar o personagem do convite
 
@@ -334,6 +344,29 @@ Propostos por nós, a partir das decisões padrão do integrador (o convite esco
 #### Relacionadas
 - Estende [MR-003](#mr-003-entrar-pelo-convite): o personagem nasce pendente de aprovação (ver [Ciclo de vida da ficha](regras.md#ciclo-de-vida-da-ficha), RN-01).
 - Estende [MR-002](#mr-002-gerar-convite): o mestre escolhe, em cada convite, se ele exige aprovação.
+
+### MR-028: Mostrar uma imagem aos jogadores
+
+**Como** mestre, **quero** mostrar aos jogadores uma imagem da galeria durante a sessão, com uma ação própria, separada do mapa atual, **para** apresentar um retrato, uma carta ou uma cena.
+
+- Prioridade: MVP (pedido do Vinicius em 30/09/2026, na Etapa 5)
+- Regras: RN-10
+- Módulos: play, maps
+
+#### Critérios de aceite
+Propostos por nós, esperando o Samuel:
+
+- **Dado** uma sessão aberta, **quando** o mestre mostra uma imagem da galeria, **então** quem está na sessão a vê na hora, sem recarregar, **e** o mapa atual continua lá; **quando** o mestre para de mostrar, a imagem some da tela dos jogadores.
+- **Dado** que a sessão acabou ou o mestre parou de mostrar, **então** os jogadores não recebem mais o ID da imagem.
+
+#### Implementado
+- O servidor, na Etapa 5 (a tela vem depois do desenho aprovado): `PlayService.SetShownImage` (só o mestre, só com a sessão aberta, só uma imagem da galeria da campanha) guarda a imagem em `game_sessions.shown_image_id`; `GetLiveSession` a devolve (`shown_image`, com o nome como legenda) e o stream leva `shown_image_changed` a todos. Uma imagem por vez, independente do mapa atual. Apagar a imagem da galeria para de mostrá-la. Uma sessão nova começa sem imagem. Ver [Arquitetura](../arquitetura.md#o-que-a-sessão-mostra).
+- O jogador baixa a imagem (`GET /images/{id}`) só enquanto ela é mostrada, ou enquanto é o fundo de um mapa que ele vê; depois disso, `404`, mesmo com o ID guardado, e o navegador dele pergunta de novo a cada uso (`Cache-Control: private, no-cache`). É o "não" da pergunta 32, decidido pelo integrador em 30/09/2026 para todas as imagens (RN-10, ver [Servir as imagens](../arquitetura.md#servir-as-imagens)).
+- Testes: `TestMR028_MasterShowsAnImageToThePlayers` (mostrar, parar, apagar, e as recusas: jogador, imagem de outra campanha, sem sessão aberta), `TestRN10_PlayersOnlyFetchImagesTheyCanSee` (a imagem para de ser servida ao jogador quando para de ser mostrada) e as linhas de `SetShownImage` nas matrizes de autorização do `play`.
+
+#### Dúvidas
+- Pergunta 32 do documento de acompanhamento: o jogador continua com acesso à imagem depois que o mestre para de mostrar? Padrão, já implementado: não. O servidor para de mandar o ID, a tela tira a imagem e a rota responde `404` ao jogador. Se o Samuel quiser que o jogador guarde as imagens que viu (um "baú" de handouts), isso vira uma lista por jogador, numa história nova.
+- O nome da imagem aparece para os jogadores como legenda. O nome vem do nome do arquivo enviado, então pode trazer uma anotação do mestre ("covil-secreto-do-lich"): o mestre pode renomear antes de mostrar.
 
 ## Prioridade: MVP (pré-requisito)
 

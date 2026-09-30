@@ -5,9 +5,11 @@
 // Package meurpg.play.v1 is about playing a campaign at the table: starting,
 // ending and listing game sessions, which locks the players' sheets
 // (RN-01), and the live session (Etapa 5): the notice that a session is
-// open (RN-06), the session's live stream (ADR-0005), and the characters'
-// vitals, which the master corrects during the session (RN-02). Turns,
-// actions and the session history screen come with combat (Etapa 6).
+// open (RN-06), the session's live stream (ADR-0005), the characters'
+// vitals, which the master corrects during the session (RN-02), the
+// session's current map (the maps themselves are meurpg.maps.v1), and the
+// gallery image the master shows the players (MR-028). Turns, actions and
+// the session history screen come with combat (Etapa 6).
 package playv1connect
 
 import (
@@ -60,6 +62,12 @@ const (
 	// PlayServiceAdjustCharacterVitalsProcedure is the fully-qualified name of the PlayService's
 	// AdjustCharacterVitals RPC.
 	PlayServiceAdjustCharacterVitalsProcedure = "/meurpg.play.v1.PlayService/AdjustCharacterVitals"
+	// PlayServiceSetCurrentMapProcedure is the fully-qualified name of the PlayService's SetCurrentMap
+	// RPC.
+	PlayServiceSetCurrentMapProcedure = "/meurpg.play.v1.PlayService/SetCurrentMap"
+	// PlayServiceSetShownImageProcedure is the fully-qualified name of the PlayService's SetShownImage
+	// RPC.
+	PlayServiceSetShownImageProcedure = "/meurpg.play.v1.PlayService/SetShownImage"
 )
 
 // PlayServiceClient is a client for the meurpg.play.v1.PlayService service.
@@ -119,8 +127,10 @@ type PlayServiceClient interface {
 	// approval); a player gets only their own living character, or none. It
 	// is the live session's snapshot: the app reads it after
 	// WatchGameSession's `ready` event, and again after every reconnection,
-	// so a missed event never leaves the screen stale. Any member may call
-	// it.
+	// so a missed event never leaves the screen stale. It also names the
+	// session's current map (SetCurrentMap), which the app reads with
+	// meurpg.maps.v1.MapService.GetMap, and the image the master shows
+	// (SetShownImage). Any member may call it.
 	//
 	// Errors:
 	//   - `not_found`: the campaign does not exist, or the caller is not a
@@ -141,6 +151,18 @@ type PlayServiceClient interface {
 	//     (nothing for about 60 seconds) and proxies don't close an idle one;
 	//   - `vitals_changed` when the master corrects a character's vitals,
 	//     sent only to the master and to that character's player;
+	//   - `current_map_changed` when the master sets the session's current
+	//     map, or it is deleted; sent to everyone;
+	//   - `map_changed` when something the member sees on a map changed (a
+	//     point, a token's state, the map's name, image or revealed state);
+	//     the app reads the map again (MapService.GetMap). A player gets it
+	//     only when the change touches something they see, before or after
+	//     it (RN-10): a change to hidden things reaches only the master;
+	//   - `token_moved` when the master moves a token: to everyone when the
+	//     token is visible on a map the players see, only to the master
+	//     otherwise;
+	//   - `shown_image_changed` when the master shows an image, stops showing
+	//     it, or deletes it; sent to everyone;
 	//   - `session_ended` when the master ends the session; the stream then
 	//     ends without an error.
 	//
@@ -188,6 +210,44 @@ type PlayServiceClient interface {
 	//     outside 0 to its maximum. The message names the field, such as
 	//     `spell_slots_used[0].used`.
 	AdjustCharacterVitals(context.Context, *connect.Request[v1.AdjustCharacterVitalsRequest]) (*connect.Response[v1.AdjustCharacterVitalsResponse], error)
+	// SetCurrentMap chooses the map the session shows at the table, or clears
+	// it. Only the campaign's master may call it, and only while the campaign
+	// has an open session. The map must be one of the campaign's
+	// (meurpg.maps.v1.MapService), and setting it also reveals it to the
+	// players (RN-10): a player always sees the current map. Setting the same
+	// map again is fine.
+	//
+	// Every WatchGameSession stream of the campaign then gets
+	// `current_map_changed`, and GetLiveSession returns the new map. A new
+	// session starts without a current map.
+	//
+	// Errors:
+	//   - `not_found`: the map is not in this campaign, the campaign does not
+	//     exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION).
+	SetCurrentMap(context.Context, *connect.Request[v1.SetCurrentMapRequest]) (*connect.Response[v1.SetCurrentMapResponse], error)
+	// SetShownImage shows the players an image of the campaign's gallery, or
+	// stops showing it (MR-028): a handout, such as a portrait, a letter or a
+	// scene. Only the campaign's master may call it, and only while the
+	// campaign has an open session. One image at a time; showing another
+	// replaces it. It is apart from the current map: the players may see
+	// both.
+	//
+	// It reveals nothing else: a player learns the image's ID only while it
+	// is shown (GetLiveSession, `shown_image_changed`), never the gallery.
+	// Every WatchGameSession stream of the campaign gets
+	// `shown_image_changed`. A new session starts showing nothing; deleting
+	// the image (GalleryService.DeleteGalleryImage) stops showing it.
+	//
+	// Errors:
+	//   - `not_found`: the image is not in the campaign's gallery, the
+	//     campaign does not exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION).
+	SetShownImage(context.Context, *connect.Request[v1.SetShownImageRequest]) (*connect.Response[v1.SetShownImageResponse], error)
 }
 
 // NewPlayServiceClient constructs a client for the meurpg.play.v1.PlayService service. By default,
@@ -246,6 +306,18 @@ func NewPlayServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(playServiceMethods.ByName("AdjustCharacterVitals")),
 			connect.WithClientOptions(opts...),
 		),
+		setCurrentMap: connect.NewClient[v1.SetCurrentMapRequest, v1.SetCurrentMapResponse](
+			httpClient,
+			baseURL+PlayServiceSetCurrentMapProcedure,
+			connect.WithSchema(playServiceMethods.ByName("SetCurrentMap")),
+			connect.WithClientOptions(opts...),
+		),
+		setShownImage: connect.NewClient[v1.SetShownImageRequest, v1.SetShownImageResponse](
+			httpClient,
+			baseURL+PlayServiceSetShownImageProcedure,
+			connect.WithSchema(playServiceMethods.ByName("SetShownImage")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -258,6 +330,8 @@ type playServiceClient struct {
 	getLiveSession        *connect.Client[v1.GetLiveSessionRequest, v1.GetLiveSessionResponse]
 	watchGameSession      *connect.Client[v1.WatchGameSessionRequest, v1.WatchGameSessionResponse]
 	adjustCharacterVitals *connect.Client[v1.AdjustCharacterVitalsRequest, v1.AdjustCharacterVitalsResponse]
+	setCurrentMap         *connect.Client[v1.SetCurrentMapRequest, v1.SetCurrentMapResponse]
+	setShownImage         *connect.Client[v1.SetShownImageRequest, v1.SetShownImageResponse]
 }
 
 // StartGameSession calls meurpg.play.v1.PlayService.StartGameSession.
@@ -293,6 +367,16 @@ func (c *playServiceClient) WatchGameSession(ctx context.Context, req *connect.R
 // AdjustCharacterVitals calls meurpg.play.v1.PlayService.AdjustCharacterVitals.
 func (c *playServiceClient) AdjustCharacterVitals(ctx context.Context, req *connect.Request[v1.AdjustCharacterVitalsRequest]) (*connect.Response[v1.AdjustCharacterVitalsResponse], error) {
 	return c.adjustCharacterVitals.CallUnary(ctx, req)
+}
+
+// SetCurrentMap calls meurpg.play.v1.PlayService.SetCurrentMap.
+func (c *playServiceClient) SetCurrentMap(ctx context.Context, req *connect.Request[v1.SetCurrentMapRequest]) (*connect.Response[v1.SetCurrentMapResponse], error) {
+	return c.setCurrentMap.CallUnary(ctx, req)
+}
+
+// SetShownImage calls meurpg.play.v1.PlayService.SetShownImage.
+func (c *playServiceClient) SetShownImage(ctx context.Context, req *connect.Request[v1.SetShownImageRequest]) (*connect.Response[v1.SetShownImageResponse], error) {
+	return c.setShownImage.CallUnary(ctx, req)
 }
 
 // PlayServiceHandler is an implementation of the meurpg.play.v1.PlayService service.
@@ -352,8 +436,10 @@ type PlayServiceHandler interface {
 	// approval); a player gets only their own living character, or none. It
 	// is the live session's snapshot: the app reads it after
 	// WatchGameSession's `ready` event, and again after every reconnection,
-	// so a missed event never leaves the screen stale. Any member may call
-	// it.
+	// so a missed event never leaves the screen stale. It also names the
+	// session's current map (SetCurrentMap), which the app reads with
+	// meurpg.maps.v1.MapService.GetMap, and the image the master shows
+	// (SetShownImage). Any member may call it.
 	//
 	// Errors:
 	//   - `not_found`: the campaign does not exist, or the caller is not a
@@ -374,6 +460,18 @@ type PlayServiceHandler interface {
 	//     (nothing for about 60 seconds) and proxies don't close an idle one;
 	//   - `vitals_changed` when the master corrects a character's vitals,
 	//     sent only to the master and to that character's player;
+	//   - `current_map_changed` when the master sets the session's current
+	//     map, or it is deleted; sent to everyone;
+	//   - `map_changed` when something the member sees on a map changed (a
+	//     point, a token's state, the map's name, image or revealed state);
+	//     the app reads the map again (MapService.GetMap). A player gets it
+	//     only when the change touches something they see, before or after
+	//     it (RN-10): a change to hidden things reaches only the master;
+	//   - `token_moved` when the master moves a token: to everyone when the
+	//     token is visible on a map the players see, only to the master
+	//     otherwise;
+	//   - `shown_image_changed` when the master shows an image, stops showing
+	//     it, or deletes it; sent to everyone;
 	//   - `session_ended` when the master ends the session; the stream then
 	//     ends without an error.
 	//
@@ -421,6 +519,44 @@ type PlayServiceHandler interface {
 	//     outside 0 to its maximum. The message names the field, such as
 	//     `spell_slots_used[0].used`.
 	AdjustCharacterVitals(context.Context, *connect.Request[v1.AdjustCharacterVitalsRequest]) (*connect.Response[v1.AdjustCharacterVitalsResponse], error)
+	// SetCurrentMap chooses the map the session shows at the table, or clears
+	// it. Only the campaign's master may call it, and only while the campaign
+	// has an open session. The map must be one of the campaign's
+	// (meurpg.maps.v1.MapService), and setting it also reveals it to the
+	// players (RN-10): a player always sees the current map. Setting the same
+	// map again is fine.
+	//
+	// Every WatchGameSession stream of the campaign then gets
+	// `current_map_changed`, and GetLiveSession returns the new map. A new
+	// session starts without a current map.
+	//
+	// Errors:
+	//   - `not_found`: the map is not in this campaign, the campaign does not
+	//     exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION).
+	SetCurrentMap(context.Context, *connect.Request[v1.SetCurrentMapRequest]) (*connect.Response[v1.SetCurrentMapResponse], error)
+	// SetShownImage shows the players an image of the campaign's gallery, or
+	// stops showing it (MR-028): a handout, such as a portrait, a letter or a
+	// scene. Only the campaign's master may call it, and only while the
+	// campaign has an open session. One image at a time; showing another
+	// replaces it. It is apart from the current map: the players may see
+	// both.
+	//
+	// It reveals nothing else: a player learns the image's ID only while it
+	// is shown (GetLiveSession, `shown_image_changed`), never the gallery.
+	// Every WatchGameSession stream of the campaign gets
+	// `shown_image_changed`. A new session starts showing nothing; deleting
+	// the image (GalleryService.DeleteGalleryImage) stops showing it.
+	//
+	// Errors:
+	//   - `not_found`: the image is not in the campaign's gallery, the
+	//     campaign does not exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION).
+	SetShownImage(context.Context, *connect.Request[v1.SetShownImageRequest]) (*connect.Response[v1.SetShownImageResponse], error)
 }
 
 // NewPlayServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -475,6 +611,18 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(playServiceMethods.ByName("AdjustCharacterVitals")),
 		connect.WithHandlerOptions(opts...),
 	)
+	playServiceSetCurrentMapHandler := connect.NewUnaryHandler(
+		PlayServiceSetCurrentMapProcedure,
+		svc.SetCurrentMap,
+		connect.WithSchema(playServiceMethods.ByName("SetCurrentMap")),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceSetShownImageHandler := connect.NewUnaryHandler(
+		PlayServiceSetShownImageProcedure,
+		svc.SetShownImage,
+		connect.WithSchema(playServiceMethods.ByName("SetShownImage")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/meurpg.play.v1.PlayService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case PlayServiceStartGameSessionProcedure:
@@ -491,6 +639,10 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 			playServiceWatchGameSessionHandler.ServeHTTP(w, r)
 		case PlayServiceAdjustCharacterVitalsProcedure:
 			playServiceAdjustCharacterVitalsHandler.ServeHTTP(w, r)
+		case PlayServiceSetCurrentMapProcedure:
+			playServiceSetCurrentMapHandler.ServeHTTP(w, r)
+		case PlayServiceSetShownImageProcedure:
+			playServiceSetShownImageHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -526,4 +678,12 @@ func (UnimplementedPlayServiceHandler) WatchGameSession(context.Context, *connec
 
 func (UnimplementedPlayServiceHandler) AdjustCharacterVitals(context.Context, *connect.Request[v1.AdjustCharacterVitalsRequest]) (*connect.Response[v1.AdjustCharacterVitalsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.AdjustCharacterVitals is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) SetCurrentMap(context.Context, *connect.Request[v1.SetCurrentMapRequest]) (*connect.Response[v1.SetCurrentMapResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.SetCurrentMap is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) SetShownImage(context.Context, *connect.Request[v1.SetShownImageRequest]) (*connect.Response[v1.SetShownImageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.SetShownImage is not implemented"))
 }

@@ -3,8 +3,9 @@
 // Source: meurpg/maps/v1/gallery.proto
 
 // Package meurpg.maps.v1 is about a campaign's maps and the images they are
-// made of. Today it holds the gallery (MR-019): the images the master
-// uploads, to use in maps and in the campaign document.
+// made of: the gallery (MR-019, this file), the images the master uploads to
+// use in maps and in the campaign document; and the maps themselves, with
+// their points of interest and tokens (MR-008, MR-009, MR-012, maps.proto).
 package mapsv1connect
 
 import (
@@ -49,9 +50,10 @@ const (
 
 // GalleryServiceClient is a client for the meurpg.maps.v1.GalleryService service.
 type GalleryServiceClient interface {
-	// ListGalleryImages lists the campaign's images, newest first, and how
-	// much of the quota they use. Only the campaign's master may call it. The
-	// list is not paginated: a campaign has at most 300 images.
+	// ListGalleryImages lists the campaign's images, newest first, with the
+	// maps that use each one, and how much of the quota they use. Only the
+	// campaign's master may call it. The list is not paginated: a campaign has
+	// at most 300 images.
 	//
 	// Errors:
 	//   - `not_found`: the campaign does not exist, or the caller is not a
@@ -76,8 +78,9 @@ type GalleryServiceClient interface {
 	//     deleted), the campaign does not exist, or the caller is not a
 	//     member of it.
 	//   - `permission_denied`: the caller is a player.
-	//   - `failed_precondition`: a map uses the image. Change the map's image
-	//     first.
+	//   - `failed_precondition`: a map uses the image (MR-019: "o app diz em
+	//     qual mapa ela está"). The error carries an ImageInUse detail naming
+	//     the maps; change their image first (MapService.UpdateMap).
 	DeleteGalleryImage(context.Context, *connect.Request[v1.DeleteGalleryImageRequest]) (*connect.Response[v1.DeleteGalleryImageResponse], error)
 }
 
@@ -138,9 +141,10 @@ func (c *galleryServiceClient) DeleteGalleryImage(ctx context.Context, req *conn
 
 // GalleryServiceHandler is an implementation of the meurpg.maps.v1.GalleryService service.
 type GalleryServiceHandler interface {
-	// ListGalleryImages lists the campaign's images, newest first, and how
-	// much of the quota they use. Only the campaign's master may call it. The
-	// list is not paginated: a campaign has at most 300 images.
+	// ListGalleryImages lists the campaign's images, newest first, with the
+	// maps that use each one, and how much of the quota they use. Only the
+	// campaign's master may call it. The list is not paginated: a campaign has
+	// at most 300 images.
 	//
 	// Errors:
 	//   - `not_found`: the campaign does not exist, or the caller is not a
@@ -165,8 +169,9 @@ type GalleryServiceHandler interface {
 	//     deleted), the campaign does not exist, or the caller is not a
 	//     member of it.
 	//   - `permission_denied`: the caller is a player.
-	//   - `failed_precondition`: a map uses the image. Change the map's image
-	//     first.
+	//   - `failed_precondition`: a map uses the image (MR-019: "o app diz em
+	//     qual mapa ela está"). The error carries an ImageInUse detail naming
+	//     the maps; change their image first (MapService.UpdateMap).
 	DeleteGalleryImage(context.Context, *connect.Request[v1.DeleteGalleryImageRequest]) (*connect.Response[v1.DeleteGalleryImageResponse], error)
 }
 

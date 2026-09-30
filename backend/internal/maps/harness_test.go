@@ -28,19 +28,24 @@ import (
 
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1/campaignsv1connect"
+	"github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1/charactersv1connect"
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1/mapsv1connect"
+	"github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1/playv1connect"
 	"github.com/PuraFome/meuRPG/backend/internal/campaigns"
+	"github.com/PuraFome/meuRPG/backend/internal/characters"
 	"github.com/PuraFome/meuRPG/backend/internal/identity"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
+	"github.com/PuraFome/meuRPG/backend/internal/play"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
-// The database tests run against CockroachDB, with the real campaigns
-// service next to this one, as cmd/api wires them, and a blob store in a
-// temporary folder: set MEURPG_TEST_DATABASE_URL (see package dbtest).
-// Without it they skip.
+// The database tests run against CockroachDB, with the real campaigns,
+// characters and play services next to this one, as cmd/api wires them,
+// and a blob store in a temporary folder: set MEURPG_TEST_DATABASE_URL (see
+// package dbtest). Without it they skip.
 //
 // The services are mounted on package httpserver's server, the one
 // cmd/api runs, so http.CrossOriginProtection (CSRF) is in front of the
@@ -64,13 +69,48 @@ func withTestUser(ctx context.Context, header http.Header) context.Context {
 	return ctx
 }
 
-func (fakeSessions) Interceptor() connect.Interceptor {
-	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
-		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-			return next(withTestUser(ctx, req.Header()), req)
-		}
-	})
+// Interceptor reads the test user, for calls and streams alike.
+func (fakeSessions) Interceptor() connect.Interceptor { return fakeSessionInterceptor{} }
+
+type fakeSessionInterceptor struct{}
+
+func (fakeSessionInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
+	return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+		return next(withTestUser(ctx, req.Header()), req)
+	}
 }
+
+func (fakeSessionInterceptor) WrapStreamingClient(next connect.StreamingClientFunc) connect.StreamingClientFunc {
+	return next
+}
+
+func (fakeSessionInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
+	return func(ctx context.Context, conn connect.StreamingHandlerConn) error {
+		return next(withTestUser(ctx, conn.RequestHeader()), conn)
+	}
+}
+
+// RecheckSession is what the live stream calls from time to time; the test
+// sessions never end.
+func (f fakeSessions) RecheckSession(ctx context.Context) error {
+	_, err := f.UserID(ctx)
+	return err
+}
+
+// userTransport adds the test user header to every request, calls and
+// streams alike.
+type userTransport struct {
+	userID string
+	next   http.RoundTripper
+}
+
+func (t userTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req = req.Clone(req.Context())
+	req.Header.Set(testUserHeader, t.userID)
+	return t.next.RoundTrip(req)
+}
+
+var testRules = sync.OnceValues(rules.LoadSRD)
 
 func (fakeSessions) AuthenticateRequest(r *http.Request) (context.Context, error) {
 	return withTestUser(r.Context(), r.Header), nil
@@ -107,6 +147,11 @@ type harness struct {
 	server  *httptest.Server
 }
 
+// noHeartbeat keeps heartbeats out of the tests' streams: a test that
+// checks that nothing reached a player reads the next event, and a
+// heartbeat would only get in the way.
+const noHeartbeat = time.Hour
+
 // newHarness starts the services. configure, when given, changes the maps
 // service's Config (a small quota, no blob store...).
 func newHarness(t *testing.T, configure ...func(*Config)) *harness {
@@ -126,7 +171,24 @@ func newHarness(t *testing.T, configure ...func(*Config)) *harness {
 	if err != nil {
 		t.Fatalf("campaigns.New() error = %v", err)
 	}
-	cfg := Config{Pool: pool, Blobs: blobs, Logger: logger, Now: clock.Now}
+	content, err := testRules()
+	if err != nil {
+		t.Fatalf("rules.LoadSRD() error = %v", err)
+	}
+	chars, err := characters.New(characters.Config{Pool: pool, Profiles: h.users, Members: camps, Rules: content, Logger: logger, Now: clock.Now})
+	if err != nil {
+		t.Fatalf("characters.New() error = %v", err)
+	}
+	// Wired as in cmd/api: play reveals the current map through
+	// SessionMaps, and this service reads it and publishes through play.
+	live, err := play.New(play.Config{
+		Pool: pool, Sheets: chars, Vitals: chars, Campaigns: camps, Maps: NewSessionMaps(pool),
+		Live: play.LiveConfig{Heartbeat: noHeartbeat}, Logger: logger, Now: clock.Now,
+	})
+	if err != nil {
+		t.Fatalf("play.New() error = %v", err)
+	}
+	cfg := Config{Pool: pool, Blobs: blobs, Characters: chars, Live: live, Logger: logger, Now: clock.Now}
 	for _, c := range configure {
 		c(&cfg)
 	}
@@ -138,17 +200,23 @@ func newHarness(t *testing.T, configure ...func(*Config)) *harness {
 	srv := httpserver.New(httpserver.Config{Logger: logger})
 	opt := connect.WithRequireConnectProtocolHeader()
 	camps.Mount(srv.Handle, fakeSessions{}, opt)
+	chars.Mount(srv.Handle, fakeSessions{}, camps, opt)
+	live.Mount(srv.Handle, fakeSessions{}, camps, opt)
 	svc.Mount(srv.Handle, testSessions, camps, opt)
 	h.server = httptest.NewServer(srv.Handler())
 	t.Cleanup(h.server.Close)
+	t.Cleanup(live.Close) // end the streams first, so the server can close
 	return h
 }
 
 type user struct {
-	id        string
-	h         *harness
-	campaigns campaignsv1connect.CampaignServiceClient
-	gallery   mapsv1connect.GalleryServiceClient
+	id         string
+	h          *harness
+	campaigns  campaignsv1connect.CampaignServiceClient
+	characters charactersv1connect.CharacterServiceClient
+	play       playv1connect.PlayServiceClient
+	gallery    mapsv1connect.GalleryServiceClient
+	maps       mapsv1connect.MapServiceClient
 }
 
 func (h *harness) newUser(displayName string) *user {
@@ -166,22 +234,18 @@ func (h *harness) newUser(displayName string) *user {
 func (h *harness) anonymous() *user { return h.clients("") }
 
 func (h *harness) clients(userID string) *user {
-	var opts []connect.ClientOption
-	if userID != "" {
-		opts = append(opts, connect.WithInterceptors(connect.UnaryInterceptorFunc(
-			func(next connect.UnaryFunc) connect.UnaryFunc {
-				return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-					req.Header().Set(testUserHeader, userID)
-					return next(ctx, req)
-				}
-			})))
-	}
 	c, url := h.server.Client(), h.server.URL
+	if userID != "" {
+		c = &http.Client{Transport: userTransport{userID: userID, next: c.Transport}}
+	}
 	return &user{
-		id:        userID,
-		h:         h,
-		campaigns: campaignsv1connect.NewCampaignServiceClient(c, url, opts...),
-		gallery:   mapsv1connect.NewGalleryServiceClient(c, url, opts...),
+		id:         userID,
+		h:          h,
+		campaigns:  campaignsv1connect.NewCampaignServiceClient(c, url),
+		characters: charactersv1connect.NewCharacterServiceClient(c, url),
+		play:       playv1connect.NewPlayServiceClient(c, url),
+		gallery:    mapsv1connect.NewGalleryServiceClient(c, url),
+		maps:       mapsv1connect.NewMapServiceClient(c, url),
 	}
 }
 

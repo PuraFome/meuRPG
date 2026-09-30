@@ -72,3 +72,23 @@ INSERT INTO session_events
     (game_session_id, seq, kind, actor_user_id, character_id, payload, idempotency_key, created_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING id, seq;
+
+-- name: GetOnScreen :one
+-- What the open session shows: its current map and the image the master
+-- shows (either NULL when none). No row: no open session.
+SELECT current_map_id, shown_image_id FROM game_sessions
+WHERE campaign_id = $1 AND ended_at IS NULL;
+
+-- name: SetCurrentMap :one
+-- The caller holds the session's row lock (GetOpenGameSessionForUpdate).
+UPDATE game_sessions
+SET current_map_id = sqlc.narg(current_map_id)
+WHERE id = sqlc.arg(id)
+RETURNING *;
+
+-- name: SetShownImage :one
+-- The caller holds the session's row lock (GetOpenGameSessionForUpdate).
+UPDATE game_sessions
+SET shown_image_id = sqlc.narg(shown_image_id)
+WHERE id = sqlc.arg(id)
+RETURNING *;

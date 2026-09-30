@@ -16,10 +16,14 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
 
+	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1/mapsv1connect"
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/images"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
@@ -30,7 +34,9 @@ import (
 //
 //	master      the campaign's master: everything
 //	player      a player of the campaign: permission_denied for the
-//	            gallery, but may fetch an image by its ID
+//	            gallery, but may fetch an image they see, here the
+//	            image of a revealed map (the rest of that rule is
+//	            TestRN10_PlayersOnlyFetchImagesTheyCanSee)
 //	non-member  signed in, outside the campaign: not_found, and 404 for
 //	            images, so nothing leaks
 //	anonymous   unauthenticated (401 on the routes)
@@ -42,6 +48,8 @@ func TestAuthorizationMatrix(t *testing.T) {
 	campaign := h.newCampaign(master, player)
 	h.join(master, campaign, true, pending)
 	kept := master.mustUpload(campaign, "mapa.png", pngImage(t, 600, 300))
+	shown := master.createMap(campaign, "Mirathel", kept.GetId())
+	master.setMapRevealed(campaign, shown.GetId(), true)
 
 	// Each row returns the call's Connect code (routes: the error body's).
 	type call = func(ctx context.Context, u *user) connect.Code
@@ -131,8 +139,8 @@ func TestAuthorizationMatrix(t *testing.T) {
 func TestUploadServeRenameDelete(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	master, player := h.newUser("Mestre"), h.newUser("Jogadora")
-	campaign := h.newCampaign(master, player)
+	master := h.newUser("Mestre")
+	campaign := h.newCampaign(master)
 	ctx := t.Context()
 
 	res := master.upload(campaign, `C:\Users\Samuel\Mapas\Mirathel.png`, pngImage(t, 960, 480))
@@ -160,16 +168,18 @@ func TestUploadServeRenameDelete(t *testing.T) {
 	}
 
 	// Serving: the stored bytes, with the headers of an immutable, private
-	// image; the player may fetch it too.
+	// image for the master. (What a player may fetch, and how it is cached,
+	// is TestRN10_PlayersOnlyFetchImagesTheyCanSee.)
 	imageKey, thumbnailKey := blobKeys(campaign, img.GetId())
 	_, storedImage := h.storedFile(imageKey)
-	got := player.get(img.GetUrl())
+	got := master.get(img.GetUrl())
 	if got.status != http.StatusOK || !bytes.Equal(got.body, storedImage) {
-		t.Fatalf("GET image as the player: status %d, %d bytes; want 200 and the stored %d bytes", got.status, len(got.body), len(storedImage))
+		t.Fatalf("GET image as the master: status %d, %d bytes; want 200 and the stored %d bytes", got.status, len(got.body), len(storedImage))
 	}
 	for header, want := range map[string]string{
 		"Content-Type":                 "image/png",
 		"Cache-Control":                "private, max-age=31536000, immutable",
+		"Vary":                         "Cookie",
 		"ETag":                         `"` + img.GetId() + `"`,
 		"X-Content-Type-Options":       "nosniff",
 		"Content-Disposition":          "inline",
@@ -422,6 +432,22 @@ func TestImageNamesComeFromTheFileName(t *testing.T) {
 	}
 }
 
+// noCharacters and noLive stand in for the characters and play modules in
+// the tests that never reach them.
+type noCharacters struct{}
+
+func (noCharacters) MapCharacters(context.Context, string, []string) ([]*charactersv1.CharacterSummary, error) {
+	return nil, errors.New("not in this test")
+}
+
+type noLive struct{}
+
+func (noLive) OnScreen(context.Context, string) (string, string, error) {
+	return "", "", errors.New("not in this test")
+}
+
+func (noLive) Publish(string, bool, *playv1.WatchGameSessionResponse) {}
+
 // noMembers is a MembershipSource with no members at all.
 type noMembers struct{}
 
@@ -441,12 +467,20 @@ func lazyPool(t *testing.T) *pgxpool.Pool {
 
 func TestNewValidatesItsConfig(t *testing.T) {
 	t.Parallel()
-	if _, err := New(Config{}); err == nil {
-		t.Error("New() without a Pool succeeded")
+	pool := lazyPool(t)
+	for name, cfg := range map[string]Config{
+		"Pool":       {Characters: noCharacters{}, Live: noLive{}},
+		"Characters": {Pool: pool, Live: noLive{}},
+		"Live":       {Pool: pool, Characters: noCharacters{}},
+	} {
+		if _, err := New(cfg); err == nil {
+			t.Errorf("New() without %s succeeded", name)
+		}
 	}
-	s, err := New(Config{Pool: lazyPool(t)})
-	if err != nil || s.maxImages != DefaultMaxImages || s.maxBytes != DefaultMaxBytes {
-		t.Errorf("New() = %+v, %v; want the default quota", s, err)
+	s, err := New(Config{Pool: pool, Characters: noCharacters{}, Live: noLive{}})
+	if err != nil || s.maxImages != DefaultMaxImages || s.maxBytes != DefaultMaxBytes ||
+		s.maxMaps != DefaultMaxMaps || s.maxPoints != DefaultMaxPointsPerMap {
+		t.Errorf("New() = %+v, %v; want the default limits", s, err)
 	}
 }
 
@@ -459,7 +493,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 		t.Fatalf("blob.NewFS() error = %v", err)
 	}
 	t.Cleanup(func() { _ = blobs.Close() })
-	svc, err := New(Config{Pool: lazyPool(t), Blobs: blobs, Logger: slog.New(slog.DiscardHandler)})
+	svc, err := New(Config{Pool: lazyPool(t), Blobs: blobs, Characters: noCharacters{}, Live: noLive{}, Logger: slog.New(slog.DiscardHandler)})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -468,6 +502,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	server := httptest.NewServer(mux)
 	t.Cleanup(server.Close)
 	c := mapsv1connect.NewGalleryServiceClient(server.Client(), server.URL)
+	mc := mapsv1connect.NewMapServiceClient(server.Client(), server.URL)
 	ctx := t.Context()
 	id := "6f1c7a52-3b5e-4c55-9d0b-2a51f0c1e001"
 
@@ -477,7 +512,28 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["DeleteGalleryImage"] = c.DeleteGalleryImage(ctx, connect.NewRequest(&mapsv1.DeleteGalleryImageRequest{CampaignId: id, ImageId: id}))
 	methods := mapsv1.File_meurpg_maps_v1_gallery_proto.Services().ByName("GalleryService").Methods()
 	if len(calls) != methods.Len() {
-		t.Errorf("called %d methods, the service has %d", len(calls), methods.Len())
+		t.Errorf("called %d GalleryService methods, the service has %d", len(calls), methods.Len())
+	}
+	mapCalls := map[string]error{}
+	_, mapCalls["ListMaps"] = mc.ListMaps(ctx, connect.NewRequest(&mapsv1.ListMapsRequest{CampaignId: id}))
+	_, mapCalls["GetMap"] = mc.GetMap(ctx, connect.NewRequest(&mapsv1.GetMapRequest{CampaignId: id, MapId: id}))
+	_, mapCalls["CreateMap"] = mc.CreateMap(ctx, connect.NewRequest(&mapsv1.CreateMapRequest{CampaignId: id, Name: "X", ImageId: id}))
+	_, mapCalls["UpdateMap"] = mc.UpdateMap(ctx, connect.NewRequest(&mapsv1.UpdateMapRequest{CampaignId: id, MapId: id, Revision: 1, Name: proto.String("X")}))
+	_, mapCalls["DeleteMap"] = mc.DeleteMap(ctx, connect.NewRequest(&mapsv1.DeleteMapRequest{CampaignId: id, MapId: id}))
+	_, mapCalls["SetMapRevealed"] = mc.SetMapRevealed(ctx, connect.NewRequest(&mapsv1.SetMapRevealedRequest{CampaignId: id, MapId: id, Revealed: true}))
+	_, mapCalls["CreateMapPoint"] = mc.CreateMapPoint(ctx, connect.NewRequest(&mapsv1.CreateMapPointRequest{CampaignId: id, MapId: id, Kind: mapsv1.MapPointKind_MAP_POINT_KIND_SCENE, Name: "X"}))
+	_, mapCalls["UpdateMapPoint"] = mc.UpdateMapPoint(ctx, connect.NewRequest(&mapsv1.UpdateMapPointRequest{CampaignId: id, MapId: id, PointId: id, Name: proto.String("X")}))
+	_, mapCalls["DeleteMapPoint"] = mc.DeleteMapPoint(ctx, connect.NewRequest(&mapsv1.DeleteMapPointRequest{CampaignId: id, MapId: id, PointId: id}))
+	_, mapCalls["SetMapPointRevealed"] = mc.SetMapPointRevealed(ctx, connect.NewRequest(&mapsv1.SetMapPointRevealedRequest{CampaignId: id, MapId: id, PointId: id, Revealed: true}))
+	_, mapCalls["PlaceMapToken"] = mc.PlaceMapToken(ctx, connect.NewRequest(&mapsv1.PlaceMapTokenRequest{CampaignId: id, MapId: id, CharacterId: id}))
+	_, mapCalls["SetMapTokenHidden"] = mc.SetMapTokenHidden(ctx, connect.NewRequest(&mapsv1.SetMapTokenHiddenRequest{CampaignId: id, MapId: id, CharacterId: id, Hidden: true}))
+	_, mapCalls["RemoveMapToken"] = mc.RemoveMapToken(ctx, connect.NewRequest(&mapsv1.RemoveMapTokenRequest{CampaignId: id, MapId: id, CharacterId: id}))
+	mapMethods := mapsv1.File_meurpg_maps_v1_maps_proto.Services().ByName("MapService").Methods()
+	if len(mapCalls) != mapMethods.Len() {
+		t.Errorf("called %d MapService methods, the service has %d", len(mapCalls), mapMethods.Len())
+	}
+	for name, err := range mapCalls {
+		calls[name] = err
 	}
 	for name, err := range calls {
 		if connect.CodeOf(err) != connect.CodeUnauthenticated {
@@ -487,9 +543,15 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 			t.Errorf("%s: error Cache-Control = %q, want no-store, once", name, ce.Meta().Values("Cache-Control"))
 		}
 	}
-	opts, _ := methods.ByName("ListGalleryImages").Options().(*descriptorpb.MethodOptions)
-	if opts.GetIdempotencyLevel() != descriptorpb.MethodOptions_IDEMPOTENT {
-		t.Errorf("ListGalleryImages idempotency_level = %v, want IDEMPOTENT", opts.GetIdempotencyLevel())
+	for method, desc := range map[string]protoreflect.MethodDescriptor{
+		"ListGalleryImages": methods.ByName("ListGalleryImages"),
+		"ListMaps":          mapMethods.ByName("ListMaps"),
+		"GetMap":            mapMethods.ByName("GetMap"),
+	} {
+		opts, _ := desc.Options().(*descriptorpb.MethodOptions)
+		if opts.GetIdempotencyLevel() != descriptorpb.MethodOptions_IDEMPOTENT {
+			t.Errorf("%s idempotency_level = %v, want IDEMPOTENT", method, opts.GetIdempotencyLevel())
+		}
 	}
 
 	for _, r := range []struct{ method, path string }{

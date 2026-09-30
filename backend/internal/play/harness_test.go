@@ -24,6 +24,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/campaigns"
 	"github.com/PuraFome/meuRPG/backend/internal/characters"
 	"github.com/PuraFome/meuRPG/backend/internal/identity"
+	"github.com/PuraFome/meuRPG/backend/internal/maps"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -162,7 +163,7 @@ func newHarness(t *testing.T, live ...LiveConfig) *harness {
 	if err != nil {
 		t.Fatalf("characters.New() error = %v", err)
 	}
-	svc, err := New(Config{Pool: pool, Sheets: chars, Vitals: chars, Campaigns: camps, Live: liveConfig, Logger: logger, Now: clock.Now})
+	svc, err := New(Config{Pool: pool, Sheets: chars, Vitals: chars, Campaigns: camps, Maps: maps.NewSessionMaps(pool), Live: liveConfig, Logger: logger, Now: clock.Now})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}

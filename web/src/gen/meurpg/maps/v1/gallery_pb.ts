@@ -3,20 +3,23 @@
 /* eslint-disable */
 
 // Package meurpg.maps.v1 is about a campaign's maps and the images they are
-// made of. Today it holds the gallery (MR-019): the images the master
-// uploads, to use in maps and in the campaign document.
+// made of: the gallery (MR-019, this file), the images the master uploads to
+// use in maps and in the campaign document; and the maps themselves, with
+// their points of interest and tokens (MR-008, MR-009, MR-012, maps.proto).
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
+import type { MapRef } from "./maps_pb";
+import { file_meurpg_maps_v1_maps } from "./maps_pb";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file meurpg/maps/v1/gallery.proto.
  */
 export const file_meurpg_maps_v1_gallery: GenFile = /*@__PURE__*/
-  fileDesc("ChxtZXVycGcvbWFwcy92MS9nYWxsZXJ5LnByb3RvEg5tZXVycGcubWFwcy52MSLZAQoMR2FsbGVyeUltYWdlEgoKAmlkGAEgASgJEhMKC2NhbXBhaWduX2lkGAIgASgJEgwKBG5hbWUYAyABKAkSFAoMY29udGVudF90eXBlGAQgASgJEg0KBXdpZHRoGAUgASgFEg4KBmhlaWdodBgGIAEoBRIRCglieXRlX3NpemUYByABKAUSLgoKY3JlYXRlZF9hdBgIIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASCwoDdXJsGAkgASgJEhUKDXRodW1ibmFpbF91cmwYCiABKAkidwoMR2FsbGVyeVVzYWdlEhMKC2ltYWdlX2NvdW50GAEgASgFEhIKCm1heF9pbWFnZXMYAiABKAUSEgoKYnl0ZV9jb3VudBgDIAEoBRIRCgltYXhfYnl0ZXMYBCABKAUSFwoPbWF4X2ltYWdlX2J5dGVzGAUgASgFIi8KGExpc3RHYWxsZXJ5SW1hZ2VzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCSJ2ChlMaXN0R2FsbGVyeUltYWdlc1Jlc3BvbnNlEiwKBmltYWdlcxgBIAMoCzIcLm1ldXJwZy5tYXBzLnYxLkdhbGxlcnlJbWFnZRIrCgV1c2FnZRgCIAEoCzIcLm1ldXJwZy5tYXBzLnYxLkdhbGxlcnlVc2FnZSJQChlSZW5hbWVHYWxsZXJ5SW1hZ2VSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhAKCGltYWdlX2lkGAIgASgJEgwKBG5hbWUYAyABKAkiSQoaUmVuYW1lR2FsbGVyeUltYWdlUmVzcG9uc2USKwoFaW1hZ2UYASABKAsyHC5tZXVycGcubWFwcy52MS5HYWxsZXJ5SW1hZ2UiQgoZRGVsZXRlR2FsbGVyeUltYWdlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIQCghpbWFnZV9pZBgCIAEoCSIcChpEZWxldGVHYWxsZXJ5SW1hZ2VSZXNwb25zZTLZAgoOR2FsbGVyeVNlcnZpY2USbQoRTGlzdEdhbGxlcnlJbWFnZXMSKC5tZXVycGcubWFwcy52MS5MaXN0R2FsbGVyeUltYWdlc1JlcXVlc3QaKS5tZXVycGcubWFwcy52MS5MaXN0R2FsbGVyeUltYWdlc1Jlc3BvbnNlIgOQAgISawoSUmVuYW1lR2FsbGVyeUltYWdlEikubWV1cnBnLm1hcHMudjEuUmVuYW1lR2FsbGVyeUltYWdlUmVxdWVzdBoqLm1ldXJwZy5tYXBzLnYxLlJlbmFtZUdhbGxlcnlJbWFnZVJlc3BvbnNlEmsKEkRlbGV0ZUdhbGxlcnlJbWFnZRIpLm1ldXJwZy5tYXBzLnYxLkRlbGV0ZUdhbGxlcnlJbWFnZVJlcXVlc3QaKi5tZXVycGcubWFwcy52MS5EZWxldGVHYWxsZXJ5SW1hZ2VSZXNwb25zZUK6AQoSY29tLm1ldXJwZy5tYXBzLnYxQgxHYWxsZXJ5UHJvdG9QAVo8Z2l0aHViLmNvbS9QdXJhRm9tZS9tZXVSUEcvYmFja2VuZC9nZW4vbWV1cnBnL21hcHMvdjE7bWFwc3YxogIDTU1YqgIOTWV1cnBnLk1hcHMuVjHKAg5NZXVycGdcTWFwc1xWMeICGk1ldXJwZ1xNYXBzXFYxXEdQQk1ldGFkYXRh6gIQTWV1cnBnOjpNYXBzOjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp]);
+  fileDesc("ChxtZXVycGcvbWFwcy92MS9nYWxsZXJ5LnByb3RvEg5tZXVycGcubWFwcy52MSKHAgoMR2FsbGVyeUltYWdlEgoKAmlkGAEgASgJEhMKC2NhbXBhaWduX2lkGAIgASgJEgwKBG5hbWUYAyABKAkSFAoMY29udGVudF90eXBlGAQgASgJEg0KBXdpZHRoGAUgASgFEg4KBmhlaWdodBgGIAEoBRIRCglieXRlX3NpemUYByABKAUSLgoKY3JlYXRlZF9hdBgIIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASCwoDdXJsGAkgASgJEhUKDXRodW1ibmFpbF91cmwYCiABKAkSLAoMdXNlZF9pbl9tYXBzGAsgAygLMhYubWV1cnBnLm1hcHMudjEuTWFwUmVmIjIKCkltYWdlSW5Vc2USJAoEbWFwcxgBIAMoCzIWLm1ldXJwZy5tYXBzLnYxLk1hcFJlZiJ3CgxHYWxsZXJ5VXNhZ2USEwoLaW1hZ2VfY291bnQYASABKAUSEgoKbWF4X2ltYWdlcxgCIAEoBRISCgpieXRlX2NvdW50GAMgASgFEhEKCW1heF9ieXRlcxgEIAEoBRIXCg9tYXhfaW1hZ2VfYnl0ZXMYBSABKAUiLwoYTGlzdEdhbGxlcnlJbWFnZXNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJInYKGUxpc3RHYWxsZXJ5SW1hZ2VzUmVzcG9uc2USLAoGaW1hZ2VzGAEgAygLMhwubWV1cnBnLm1hcHMudjEuR2FsbGVyeUltYWdlEisKBXVzYWdlGAIgASgLMhwubWV1cnBnLm1hcHMudjEuR2FsbGVyeVVzYWdlIlAKGVJlbmFtZUdhbGxlcnlJbWFnZVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSEAoIaW1hZ2VfaWQYAiABKAkSDAoEbmFtZRgDIAEoCSJJChpSZW5hbWVHYWxsZXJ5SW1hZ2VSZXNwb25zZRIrCgVpbWFnZRgBIAEoCzIcLm1ldXJwZy5tYXBzLnYxLkdhbGxlcnlJbWFnZSJCChlEZWxldGVHYWxsZXJ5SW1hZ2VSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhAKCGltYWdlX2lkGAIgASgJIhwKGkRlbGV0ZUdhbGxlcnlJbWFnZVJlc3BvbnNlMtkCCg5HYWxsZXJ5U2VydmljZRJtChFMaXN0R2FsbGVyeUltYWdlcxIoLm1ldXJwZy5tYXBzLnYxLkxpc3RHYWxsZXJ5SW1hZ2VzUmVxdWVzdBopLm1ldXJwZy5tYXBzLnYxLkxpc3RHYWxsZXJ5SW1hZ2VzUmVzcG9uc2UiA5ACAhJrChJSZW5hbWVHYWxsZXJ5SW1hZ2USKS5tZXVycGcubWFwcy52MS5SZW5hbWVHYWxsZXJ5SW1hZ2VSZXF1ZXN0GioubWV1cnBnLm1hcHMudjEuUmVuYW1lR2FsbGVyeUltYWdlUmVzcG9uc2USawoSRGVsZXRlR2FsbGVyeUltYWdlEikubWV1cnBnLm1hcHMudjEuRGVsZXRlR2FsbGVyeUltYWdlUmVxdWVzdBoqLm1ldXJwZy5tYXBzLnYxLkRlbGV0ZUdhbGxlcnlJbWFnZVJlc3BvbnNlQroBChJjb20ubWV1cnBnLm1hcHMudjFCDEdhbGxlcnlQcm90b1ABWjxnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvbWFwcy92MTttYXBzdjGiAgNNTViqAg5NZXVycGcuTWFwcy5WMcoCDk1ldXJwZ1xNYXBzXFYx4gIaTWV1cnBnXE1hcHNcVjFcR1BCTWV0YWRhdGHqAhBNZXVycGc6Ok1hcHM6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp, file_meurpg_maps_v1_maps]);
 
 /**
  * GalleryImage is one image in a campaign's gallery, as stored: already
@@ -95,6 +98,15 @@ export type GalleryImage = Message<"meurpg.maps.v1.GalleryImage"> & {
    * @generated from field: string thumbnail_url = 10;
    */
   thumbnailUrl: string;
+
+  /**
+   * The maps whose image this is, oldest first ("Usada em Mirathel e
+   * arredores"). Empty when no map uses it, and always empty in the upload's
+   * answer. An image a map uses cannot be deleted.
+   *
+   * @generated from field: repeated meurpg.maps.v1.MapRef used_in_maps = 11;
+   */
+  usedInMaps: MapRef[];
 };
 
 /**
@@ -103,6 +115,29 @@ export type GalleryImage = Message<"meurpg.maps.v1.GalleryImage"> & {
  */
 export const GalleryImageSchema: GenMessage<GalleryImage> = /*@__PURE__*/
   messageDesc(file_meurpg_maps_v1_gallery, 0);
+
+/**
+ * ImageInUse is the error detail of DeleteGalleryImage's
+ * `failed_precondition`: the maps that use the image, so the app can say
+ * "Essa imagem é o fundo do mapa Mirathel e arredores".
+ *
+ * @generated from message meurpg.maps.v1.ImageInUse
+ */
+export type ImageInUse = Message<"meurpg.maps.v1.ImageInUse"> & {
+  /**
+   * The maps whose image it is, oldest first.
+   *
+   * @generated from field: repeated meurpg.maps.v1.MapRef maps = 1;
+   */
+  maps: MapRef[];
+};
+
+/**
+ * Describes the message meurpg.maps.v1.ImageInUse.
+ * Use `create(ImageInUseSchema)` to create a new message.
+ */
+export const ImageInUseSchema: GenMessage<ImageInUse> = /*@__PURE__*/
+  messageDesc(file_meurpg_maps_v1_gallery, 1);
 
 /**
  * GalleryUsage is how much of its quota a campaign's gallery uses. The byte
@@ -153,7 +188,7 @@ export type GalleryUsage = Message<"meurpg.maps.v1.GalleryUsage"> & {
  * Use `create(GalleryUsageSchema)` to create a new message.
  */
 export const GalleryUsageSchema: GenMessage<GalleryUsage> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_gallery, 1);
+  messageDesc(file_meurpg_maps_v1_gallery, 2);
 
 /**
  * ListGalleryImagesRequest names a campaign.
@@ -172,7 +207,7 @@ export type ListGalleryImagesRequest = Message<"meurpg.maps.v1.ListGalleryImages
  * Use `create(ListGalleryImagesRequestSchema)` to create a new message.
  */
 export const ListGalleryImagesRequestSchema: GenMessage<ListGalleryImagesRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_gallery, 2);
+  messageDesc(file_meurpg_maps_v1_gallery, 3);
 
 /**
  * ListGalleryImagesResponse lists the gallery, newest first.
@@ -196,7 +231,7 @@ export type ListGalleryImagesResponse = Message<"meurpg.maps.v1.ListGalleryImage
  * Use `create(ListGalleryImagesResponseSchema)` to create a new message.
  */
 export const ListGalleryImagesResponseSchema: GenMessage<ListGalleryImagesResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_gallery, 3);
+  messageDesc(file_meurpg_maps_v1_gallery, 4);
 
 /**
  * RenameGalleryImageRequest names an image and its new name.
@@ -228,7 +263,7 @@ export type RenameGalleryImageRequest = Message<"meurpg.maps.v1.RenameGalleryIma
  * Use `create(RenameGalleryImageRequestSchema)` to create a new message.
  */
 export const RenameGalleryImageRequestSchema: GenMessage<RenameGalleryImageRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_gallery, 4);
+  messageDesc(file_meurpg_maps_v1_gallery, 5);
 
 /**
  * RenameGalleryImageResponse returns the renamed image.
@@ -247,7 +282,7 @@ export type RenameGalleryImageResponse = Message<"meurpg.maps.v1.RenameGalleryIm
  * Use `create(RenameGalleryImageResponseSchema)` to create a new message.
  */
 export const RenameGalleryImageResponseSchema: GenMessage<RenameGalleryImageResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_gallery, 5);
+  messageDesc(file_meurpg_maps_v1_gallery, 6);
 
 /**
  * DeleteGalleryImageRequest names the image to delete.
@@ -271,7 +306,7 @@ export type DeleteGalleryImageRequest = Message<"meurpg.maps.v1.DeleteGalleryIma
  * Use `create(DeleteGalleryImageRequestSchema)` to create a new message.
  */
 export const DeleteGalleryImageRequestSchema: GenMessage<DeleteGalleryImageRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_gallery, 6);
+  messageDesc(file_meurpg_maps_v1_gallery, 7);
 
 /**
  * DeleteGalleryImageResponse is empty: the image is gone.
@@ -286,7 +321,7 @@ export type DeleteGalleryImageResponse = Message<"meurpg.maps.v1.DeleteGalleryIm
  * Use `create(DeleteGalleryImageResponseSchema)` to create a new message.
  */
 export const DeleteGalleryImageResponseSchema: GenMessage<DeleteGalleryImageResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_gallery, 7);
+  messageDesc(file_meurpg_maps_v1_gallery, 8);
 
 /**
  * GalleryService lists, renames and deletes a campaign's gallery images.
@@ -329,14 +364,19 @@ export const DeleteGalleryImageResponseSchema: GenMessage<DeleteGalleryImageResp
  *         the storage did not answer).
  *     A cross-site request is refused with 403 before any of this (CSRF).
  *   - `GET /images/{id}` and `GET /images/{id}/thumb`: the image, or its
- *     thumbnail (480 pixels on the longer side). Any active member of the
- *     image's campaign may fetch them, players included: a player only
- *     learns an image's ID from a response they may see, such as a revealed
- *     map. Anyone else gets 404, exactly as for an image that does not
- *     exist, and a request without a valid session gets 401. An image's
- *     bytes never change, so the answer may be cached privately for a year,
- *     and it carries an ETag (`If-None-Match` gives 304). The URLs are in
- *     GalleryImage.url and GalleryImage.thumbnail_url.
+ *     thumbnail (480 pixels on the longer side). The campaign's master may
+ *     fetch every image of the campaign. A player may fetch an image only
+ *     while they see it (RN-10): the background of a map they see (revealed,
+ *     or the open session's current map), or the image the master shows in
+ *     the open session (MR-028); knowing its ID is not enough. Anyone else,
+ *     and a player asking for an image they do not see now, gets 404,
+ *     exactly as for an image that does not exist; a request without a
+ *     valid session gets 401. The answer carries an ETag (`If-None-Match`
+ *     gives 304, after the same checks) and `Vary: Cookie`. The master's
+ *     copy may be cached privately for a year (an image's bytes never
+ *     change); a player's is `private, no-cache`, so their browser asks
+ *     again on every use and stops showing an image they no longer see.
+ *     The URLs are in GalleryImage.url and GalleryImage.thumbnail_url.
  *
  * Every method needs a valid session cookie and fails with `unauthenticated`
  * without one. For a campaign the caller is not a member of, methods answer
@@ -361,9 +401,10 @@ export const DeleteGalleryImageResponseSchema: GenMessage<DeleteGalleryImageResp
  */
 export const GalleryService: GenService<{
   /**
-   * ListGalleryImages lists the campaign's images, newest first, and how
-   * much of the quota they use. Only the campaign's master may call it. The
-   * list is not paginated: a campaign has at most 300 images.
+   * ListGalleryImages lists the campaign's images, newest first, with the
+   * maps that use each one, and how much of the quota they use. Only the
+   * campaign's master may call it. The list is not paginated: a campaign has
+   * at most 300 images.
    *
    * Errors:
    *   - `not_found`: the campaign does not exist, or the caller is not a
@@ -404,8 +445,9 @@ export const GalleryService: GenService<{
    *     deleted), the campaign does not exist, or the caller is not a
    *     member of it.
    *   - `permission_denied`: the caller is a player.
-   *   - `failed_precondition`: a map uses the image. Change the map's image
-   *     first.
+   *   - `failed_precondition`: a map uses the image (MR-019: "o app diz em
+   *     qual mapa ela está"). The error carries an ImageInUse detail naming
+   *     the maps; change their image first (MapService.UpdateMap).
    *
    * @generated from rpc meurpg.maps.v1.GalleryService.DeleteGalleryImage
    */

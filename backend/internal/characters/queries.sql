@@ -182,3 +182,14 @@ ON CONFLICT (character_id) DO UPDATE SET
     revision = character_vitals.revision + 1,
     updated_at = excluded.updated_at
 RETURNING revision, updated_at;
+
+-- name: ListMapCharacters :many
+-- Those of the given characters that may stand on a map of the campaign as
+-- tokens (package maps): its living characters, the players' (active: not
+-- dead, not waiting for approval) and the NPCs. Players' characters first,
+-- then NPCs, each group oldest first, as ListCharacters. No sheet, no story.
+SELECT id, kind, name, player_user_id FROM characters
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID
+  AND id = ANY(sqlc.arg(ids)::UUID[])
+  AND status = 'active'
+ORDER BY kind <> 'player', created_at, id;

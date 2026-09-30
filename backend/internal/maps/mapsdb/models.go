@@ -19,3 +19,37 @@ type GalleryImage struct {
 	ByteSize    int32
 	CreatedAt   time.Time
 }
+
+type Map struct {
+	ID         string
+	CampaignID string
+	Name       string
+	ImageID    string
+	RevealedAt *time.Time
+	Revision   int32
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
+type MapPoint struct {
+	ID          string
+	MapID       string
+	Kind        string
+	Name        string
+	Description string
+	XBp         int32
+	YBp         int32
+	TargetMapID *string
+	RevealedAt  *time.Time
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+type MapToken struct {
+	MapID       string
+	CharacterID string
+	XBp         int32
+	YBp         int32
+	Hidden      bool
+	UpdatedAt   time.Time
+}

@@ -10,6 +10,33 @@ import (
 	"time"
 )
 
+const countMapPoints = `-- name: CountMapPoints :one
+SELECT count(*)::INT4 AS point_count FROM map_points
+WHERE map_id = $1
+`
+
+// The map's points, for the limit, inside the transaction that inserts one.
+func (q *Queries) CountMapPoints(ctx context.Context, mapID string) (int32, error) {
+	row := q.db.QueryRow(ctx, countMapPoints, mapID)
+	var point_count int32
+	err := row.Scan(&point_count)
+	return point_count, err
+}
+
+const countMaps = `-- name: CountMaps :one
+SELECT count(*)::INT4 AS map_count FROM maps
+WHERE campaign_id = $1
+`
+
+// The campaign's maps, for the limit. Read inside the transaction that
+// inserts a map, as GetGalleryUsage.
+func (q *Queries) CountMaps(ctx context.Context, campaignID string) (int32, error) {
+	row := q.db.QueryRow(ctx, countMaps, campaignID)
+	var map_count int32
+	err := row.Scan(&map_count)
+	return map_count, err
+}
+
 const deleteGalleryImage = `-- name: DeleteGalleryImage :one
 DELETE FROM gallery_images
 WHERE campaign_id = $1 AND id = $2
@@ -39,6 +66,90 @@ func (q *Queries) DeleteGalleryImage(ctx context.Context, arg DeleteGalleryImage
 	return i, err
 }
 
+const deleteMap = `-- name: DeleteMap :one
+DELETE FROM maps
+WHERE campaign_id = $1 AND id = $2
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at
+`
+
+type DeleteMapParams struct {
+	CampaignID string
+	ID         string
+}
+
+// Points and tokens go with the map (CASCADE); submap points of other maps
+// lose their target, and a session's current map is unset (SET NULL).
+func (q *Queries) DeleteMap(ctx context.Context, arg DeleteMapParams) (Map, error) {
+	row := q.db.QueryRow(ctx, deleteMap, arg.CampaignID, arg.ID)
+	var i Map
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.Name,
+		&i.ImageID,
+		&i.RevealedAt,
+		&i.Revision,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const deleteMapPoint = `-- name: DeleteMapPoint :one
+DELETE FROM map_points
+WHERE map_id = $1 AND id = $2
+RETURNING id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at
+`
+
+type DeleteMapPointParams struct {
+	MapID string
+	ID    string
+}
+
+func (q *Queries) DeleteMapPoint(ctx context.Context, arg DeleteMapPointParams) (MapPoint, error) {
+	row := q.db.QueryRow(ctx, deleteMapPoint, arg.MapID, arg.ID)
+	var i MapPoint
+	err := row.Scan(
+		&i.ID,
+		&i.MapID,
+		&i.Kind,
+		&i.Name,
+		&i.Description,
+		&i.XBp,
+		&i.YBp,
+		&i.TargetMapID,
+		&i.RevealedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const deleteMapToken = `-- name: DeleteMapToken :one
+DELETE FROM map_tokens
+WHERE map_id = $1 AND character_id = $2
+RETURNING map_id, character_id, x_bp, y_bp, hidden, updated_at
+`
+
+type DeleteMapTokenParams struct {
+	MapID       string
+	CharacterID string
+}
+
+func (q *Queries) DeleteMapToken(ctx context.Context, arg DeleteMapTokenParams) (MapToken, error) {
+	row := q.db.QueryRow(ctx, deleteMapToken, arg.MapID, arg.CharacterID)
+	var i MapToken
+	err := row.Scan(
+		&i.MapID,
+		&i.CharacterID,
+		&i.XBp,
+		&i.YBp,
+		&i.Hidden,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getGalleryImage = `-- name: GetGalleryImage :one
 SELECT id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at FROM gallery_images
 WHERE id = $1
@@ -48,6 +159,38 @@ WHERE id = $1
 // campaign is checked right after.
 func (q *Queries) GetGalleryImage(ctx context.Context, id string) (GalleryImage, error) {
 	row := q.db.QueryRow(ctx, getGalleryImage, id)
+	var i GalleryImage
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.UploadedBy,
+		&i.Name,
+		&i.ContentType,
+		&i.Width,
+		&i.Height,
+		&i.ByteSize,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getGalleryImageInCampaign = `-- name: GetGalleryImageInCampaign :one
+
+SELECT id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at FROM gallery_images
+WHERE campaign_id = $1 AND id = $2
+`
+
+type GetGalleryImageInCampaignParams struct {
+	CampaignID string
+	ID         string
+}
+
+// Maps (MR-008, MR-009, MR-012). Every query names the campaign next to the
+// map, or runs after a query that did: a map of another campaign matches no
+// row, which the handlers answer as "not found".
+// The image a map is made of must be one of the campaign's.
+func (q *Queries) GetGalleryImageInCampaign(ctx context.Context, arg GetGalleryImageInCampaignParams) (GalleryImage, error) {
+	row := q.db.QueryRow(ctx, getGalleryImageInCampaign, arg.CampaignID, arg.ID)
 	var i GalleryImage
 	err := row.Scan(
 		&i.ID,
@@ -85,6 +228,143 @@ func (q *Queries) GetGalleryUsage(ctx context.Context, campaignID string) (GetGa
 	var i GetGalleryUsageRow
 	err := row.Scan(&i.ImageCount, &i.ByteCount)
 	return i, err
+}
+
+const getMap = `-- name: GetMap :one
+SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at FROM maps
+WHERE campaign_id = $1 AND id = $2
+`
+
+type GetMapParams struct {
+	CampaignID string
+	ID         string
+}
+
+func (q *Queries) GetMap(ctx context.Context, arg GetMapParams) (Map, error) {
+	row := q.db.QueryRow(ctx, getMap, arg.CampaignID, arg.ID)
+	var i Map
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.Name,
+		&i.ImageID,
+		&i.RevealedAt,
+		&i.Revision,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getMapForUpdate = `-- name: GetMapForUpdate :one
+SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at FROM maps
+WHERE campaign_id = $1 AND id = $2
+FOR UPDATE
+`
+
+type GetMapForUpdateParams struct {
+	CampaignID string
+	ID         string
+}
+
+// FOR UPDATE locks the map's row until the transaction ends, so two edits of
+// the same map wait for each other instead of both reading the same
+// revision.
+func (q *Queries) GetMapForUpdate(ctx context.Context, arg GetMapForUpdateParams) (Map, error) {
+	row := q.db.QueryRow(ctx, getMapForUpdate, arg.CampaignID, arg.ID)
+	var i Map
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.Name,
+		&i.ImageID,
+		&i.RevealedAt,
+		&i.Revision,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getMapPointForUpdate = `-- name: GetMapPointForUpdate :one
+SELECT id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at FROM map_points
+WHERE map_id = $1 AND id = $2
+FOR UPDATE
+`
+
+type GetMapPointForUpdateParams struct {
+	MapID string
+	ID    string
+}
+
+// The caller checked first that the map is the campaign's.
+func (q *Queries) GetMapPointForUpdate(ctx context.Context, arg GetMapPointForUpdateParams) (MapPoint, error) {
+	row := q.db.QueryRow(ctx, getMapPointForUpdate, arg.MapID, arg.ID)
+	var i MapPoint
+	err := row.Scan(
+		&i.ID,
+		&i.MapID,
+		&i.Kind,
+		&i.Name,
+		&i.Description,
+		&i.XBp,
+		&i.YBp,
+		&i.TargetMapID,
+		&i.RevealedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getMapTokenForUpdate = `-- name: GetMapTokenForUpdate :one
+SELECT map_id, character_id, x_bp, y_bp, hidden, updated_at FROM map_tokens
+WHERE map_id = $1 AND character_id = $2
+FOR UPDATE
+`
+
+type GetMapTokenForUpdateParams struct {
+	MapID       string
+	CharacterID string
+}
+
+func (q *Queries) GetMapTokenForUpdate(ctx context.Context, arg GetMapTokenForUpdateParams) (MapToken, error) {
+	row := q.db.QueryRow(ctx, getMapTokenForUpdate, arg.MapID, arg.CharacterID)
+	var i MapToken
+	err := row.Scan(
+		&i.MapID,
+		&i.CharacterID,
+		&i.XBp,
+		&i.YBp,
+		&i.Hidden,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const imageIsOnAVisibleMap = `-- name: ImageIsOnAVisibleMap :one
+SELECT EXISTS (
+    SELECT 1 FROM maps
+    WHERE campaign_id = $1 AND image_id = $2
+      AND (revealed_at IS NOT NULL OR id = $3::UUID)
+)
+`
+
+type ImageIsOnAVisibleMapParams struct {
+	CampaignID   string
+	ImageID      string
+	CurrentMapID *string
+}
+
+// Whether the image is the background of a map the players see now: a
+// revealed map, or the open session's current map (NULL when none). The
+// image route asks it for a player (RN-10); maps_image_id_idx finds the
+// maps.
+func (q *Queries) ImageIsOnAVisibleMap(ctx context.Context, arg ImageIsOnAVisibleMapParams) (bool, error) {
+	row := q.db.QueryRow(ctx, imageIsOnAVisibleMap, arg.CampaignID, arg.ImageID, arg.CurrentMapID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const insertGalleryImage = `-- name: InsertGalleryImage :one
@@ -132,6 +412,126 @@ func (q *Queries) InsertGalleryImage(ctx context.Context, arg InsertGalleryImage
 	return i, err
 }
 
+const insertMap = `-- name: InsertMap :one
+INSERT INTO maps (campaign_id, name, image_id, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $4)
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at
+`
+
+type InsertMapParams struct {
+	CampaignID string
+	Name       string
+	ImageID    string
+	Now        time.Time
+}
+
+// A new map starts hidden (revealed_at NULL).
+func (q *Queries) InsertMap(ctx context.Context, arg InsertMapParams) (Map, error) {
+	row := q.db.QueryRow(ctx, insertMap,
+		arg.CampaignID,
+		arg.Name,
+		arg.ImageID,
+		arg.Now,
+	)
+	var i Map
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.Name,
+		&i.ImageID,
+		&i.RevealedAt,
+		&i.Revision,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const insertMapPoint = `-- name: InsertMapPoint :one
+INSERT INTO map_points (map_id, kind, name, description, x_bp, y_bp, target_map_id, created_at, updated_at)
+VALUES (
+    $1, $2, $3, $4, $5, $6,
+    $7, $8, $8
+)
+RETURNING id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at
+`
+
+type InsertMapPointParams struct {
+	MapID       string
+	Kind        string
+	Name        string
+	Description string
+	XBp         int32
+	YBp         int32
+	TargetMapID *string
+	Now         time.Time
+}
+
+// A new point starts hidden (revealed_at NULL).
+func (q *Queries) InsertMapPoint(ctx context.Context, arg InsertMapPointParams) (MapPoint, error) {
+	row := q.db.QueryRow(ctx, insertMapPoint,
+		arg.MapID,
+		arg.Kind,
+		arg.Name,
+		arg.Description,
+		arg.XBp,
+		arg.YBp,
+		arg.TargetMapID,
+		arg.Now,
+	)
+	var i MapPoint
+	err := row.Scan(
+		&i.ID,
+		&i.MapID,
+		&i.Kind,
+		&i.Name,
+		&i.Description,
+		&i.XBp,
+		&i.YBp,
+		&i.TargetMapID,
+		&i.RevealedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const insertMapToken = `-- name: InsertMapToken :one
+INSERT INTO map_tokens (map_id, character_id, x_bp, y_bp, hidden, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING map_id, character_id, x_bp, y_bp, hidden, updated_at
+`
+
+type InsertMapTokenParams struct {
+	MapID       string
+	CharacterID string
+	XBp         int32
+	YBp         int32
+	Hidden      bool
+	UpdatedAt   time.Time
+}
+
+func (q *Queries) InsertMapToken(ctx context.Context, arg InsertMapTokenParams) (MapToken, error) {
+	row := q.db.QueryRow(ctx, insertMapToken,
+		arg.MapID,
+		arg.CharacterID,
+		arg.XBp,
+		arg.YBp,
+		arg.Hidden,
+		arg.UpdatedAt,
+	)
+	var i MapToken
+	err := row.Scan(
+		&i.MapID,
+		&i.CharacterID,
+		&i.XBp,
+		&i.YBp,
+		&i.Hidden,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const listGalleryImages = `-- name: ListGalleryImages :many
 SELECT id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at FROM gallery_images
 WHERE campaign_id = $1
@@ -169,6 +569,288 @@ func (q *Queries) ListGalleryImages(ctx context.Context, campaignID string) ([]G
 	return items, nil
 }
 
+const listMapDetails = `-- name: ListMapDetails :many
+SELECT m.id, m.campaign_id, m.name, m.image_id, m.revealed_at, m.revision, m.created_at, m.updated_at,
+       g.name AS image_name, g.width AS image_width, g.height AS image_height,
+       (SELECT count(*) FROM map_points AS p WHERE p.map_id = m.id)::INT4 AS point_count,
+       (SELECT count(*) FROM map_points AS p WHERE p.map_id = m.id AND p.revealed_at IS NOT NULL)::INT4 AS revealed_point_count
+FROM maps AS m
+JOIN gallery_images AS g ON g.id = m.image_id
+WHERE m.campaign_id = $1
+ORDER BY m.created_at, m.id
+`
+
+type ListMapDetailsRow struct {
+	ID                 string
+	CampaignID         string
+	Name               string
+	ImageID            string
+	RevealedAt         *time.Time
+	Revision           int32
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+	ImageName          string
+	ImageWidth         int32
+	ImageHeight        int32
+	PointCount         int32
+	RevealedPointCount int32
+}
+
+// The campaign's maps, oldest first, with what the lists show about each:
+// its image's name and size, and how many points it has, in all and
+// revealed. Campaigns have a few maps, so one query answers ListMaps and
+// gives GetMap the names and states it needs (parents, submap targets).
+func (q *Queries) ListMapDetails(ctx context.Context, campaignID string) ([]ListMapDetailsRow, error) {
+	rows, err := q.db.Query(ctx, listMapDetails, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMapDetailsRow
+	for rows.Next() {
+		var i ListMapDetailsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.Name,
+			&i.ImageID,
+			&i.RevealedAt,
+			&i.Revision,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ImageName,
+			&i.ImageWidth,
+			&i.ImageHeight,
+			&i.PointCount,
+			&i.RevealedPointCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMapImageIDs = `-- name: ListMapImageIDs :many
+SELECT id, name, image_id FROM maps
+WHERE campaign_id = $1
+ORDER BY created_at, id
+`
+
+type ListMapImageIDsRow struct {
+	ID      string
+	Name    string
+	ImageID string
+}
+
+// Every map of the campaign with its image, oldest first: the gallery
+// shows, on each image, the maps that use it.
+func (q *Queries) ListMapImageIDs(ctx context.Context, campaignID string) ([]ListMapImageIDsRow, error) {
+	rows, err := q.db.Query(ctx, listMapImageIDs, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMapImageIDsRow
+	for rows.Next() {
+		var i ListMapImageIDsRow
+		if err := rows.Scan(&i.ID, &i.Name, &i.ImageID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMapPoints = `-- name: ListMapPoints :many
+SELECT id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at FROM map_points
+WHERE map_id = $1
+ORDER BY created_at, id
+`
+
+// The map's points, oldest first. The handler filters them for a player.
+func (q *Queries) ListMapPoints(ctx context.Context, mapID string) ([]MapPoint, error) {
+	rows, err := q.db.Query(ctx, listMapPoints, mapID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []MapPoint
+	for rows.Next() {
+		var i MapPoint
+		if err := rows.Scan(
+			&i.ID,
+			&i.MapID,
+			&i.Kind,
+			&i.Name,
+			&i.Description,
+			&i.XBp,
+			&i.YBp,
+			&i.TargetMapID,
+			&i.RevealedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMapTokens = `-- name: ListMapTokens :many
+SELECT map_id, character_id, x_bp, y_bp, hidden, updated_at FROM map_tokens
+WHERE map_id = $1
+`
+
+// The map's tokens. The handler orders them by character and filters them
+// for a player.
+func (q *Queries) ListMapTokens(ctx context.Context, mapID string) ([]MapToken, error) {
+	rows, err := q.db.Query(ctx, listMapTokens, mapID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []MapToken
+	for rows.Next() {
+		var i MapToken
+		if err := rows.Scan(
+			&i.MapID,
+			&i.CharacterID,
+			&i.XBp,
+			&i.YBp,
+			&i.Hidden,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMapsUsingImage = `-- name: ListMapsUsingImage :many
+SELECT id, name FROM maps
+WHERE campaign_id = $1 AND image_id = $2
+ORDER BY created_at, id
+`
+
+type ListMapsUsingImageParams struct {
+	CampaignID string
+	ImageID    string
+}
+
+type ListMapsUsingImageRow struct {
+	ID   string
+	Name string
+}
+
+// The maps whose image this is, oldest first: DeleteGalleryImage names them
+// (MR-019), and RenameGalleryImage returns them with the image.
+func (q *Queries) ListMapsUsingImage(ctx context.Context, arg ListMapsUsingImageParams) ([]ListMapsUsingImageRow, error) {
+	rows, err := q.db.Query(ctx, listMapsUsingImage, arg.CampaignID, arg.ImageID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMapsUsingImageRow
+	for rows.Next() {
+		var i ListMapsUsingImageRow
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSubmapLinks = `-- name: ListSubmapLinks :many
+SELECT p.map_id, p.target_map_id::UUID AS target_map_id, (p.revealed_at IS NOT NULL)::BOOL AS revealed
+FROM map_points AS p
+JOIN maps AS m ON m.id = p.map_id
+WHERE m.campaign_id = $1 AND p.target_map_id IS NOT NULL
+ORDER BY p.created_at, p.id
+`
+
+type ListSubmapLinksRow struct {
+	MapID       string
+	TargetMapID string
+	Revealed    bool
+}
+
+// Every submap point of the campaign that leads to a map: the map it is on,
+// the map it leads to, and whether the point is revealed. It gives each map
+// its parents ("Submapa de ...").
+func (q *Queries) ListSubmapLinks(ctx context.Context, campaignID string) ([]ListSubmapLinksRow, error) {
+	rows, err := q.db.Query(ctx, listSubmapLinks, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSubmapLinksRow
+	for rows.Next() {
+		var i ListSubmapLinksRow
+		if err := rows.Scan(&i.MapID, &i.TargetMapID, &i.Revealed); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const moveMapToken = `-- name: MoveMapToken :one
+UPDATE map_tokens
+SET x_bp = $3, y_bp = $4, updated_at = $5
+WHERE map_id = $1 AND character_id = $2
+RETURNING map_id, character_id, x_bp, y_bp, hidden, updated_at
+`
+
+type MoveMapTokenParams struct {
+	MapID       string
+	CharacterID string
+	XBp         int32
+	YBp         int32
+	UpdatedAt   time.Time
+}
+
+func (q *Queries) MoveMapToken(ctx context.Context, arg MoveMapTokenParams) (MapToken, error) {
+	row := q.db.QueryRow(ctx, moveMapToken,
+		arg.MapID,
+		arg.CharacterID,
+		arg.XBp,
+		arg.YBp,
+		arg.UpdatedAt,
+	)
+	var i MapToken
+	err := row.Scan(
+		&i.MapID,
+		&i.CharacterID,
+		&i.XBp,
+		&i.YBp,
+		&i.Hidden,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const renameGalleryImage = `-- name: RenameGalleryImage :one
 UPDATE gallery_images
 SET name = $3
@@ -195,6 +877,173 @@ func (q *Queries) RenameGalleryImage(ctx context.Context, arg RenameGalleryImage
 		&i.Height,
 		&i.ByteSize,
 		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const setMapRevealed = `-- name: SetMapRevealed :one
+UPDATE maps
+SET revealed_at = CASE WHEN $1::BOOL THEN COALESCE(revealed_at, $2::TIMESTAMPTZ) ELSE NULL END,
+    updated_at = CASE WHEN (revealed_at IS NOT NULL) = $1::BOOL THEN updated_at ELSE $2::TIMESTAMPTZ END
+WHERE campaign_id = $3 AND id = $4
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at
+`
+
+type SetMapRevealedParams struct {
+	Revealed   bool
+	Now        time.Time
+	CampaignID string
+	ID         string
+}
+
+// Revealing keeps the first revealed_at, so revealing twice changes
+// nothing; hiding clears it. PlayService.SetCurrentMap reveals through here
+// too (SessionMaps).
+func (q *Queries) SetMapRevealed(ctx context.Context, arg SetMapRevealedParams) (Map, error) {
+	row := q.db.QueryRow(ctx, setMapRevealed,
+		arg.Revealed,
+		arg.Now,
+		arg.CampaignID,
+		arg.ID,
+	)
+	var i Map
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.Name,
+		&i.ImageID,
+		&i.RevealedAt,
+		&i.Revision,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const setMapTokenHidden = `-- name: SetMapTokenHidden :one
+UPDATE map_tokens
+SET hidden = $1, updated_at = CASE WHEN hidden = $1 THEN updated_at ELSE $2::TIMESTAMPTZ END
+WHERE map_id = $3 AND character_id = $4
+RETURNING map_id, character_id, x_bp, y_bp, hidden, updated_at
+`
+
+type SetMapTokenHiddenParams struct {
+	Hidden      bool
+	Now         time.Time
+	MapID       string
+	CharacterID string
+}
+
+func (q *Queries) SetMapTokenHidden(ctx context.Context, arg SetMapTokenHiddenParams) (MapToken, error) {
+	row := q.db.QueryRow(ctx, setMapTokenHidden,
+		arg.Hidden,
+		arg.Now,
+		arg.MapID,
+		arg.CharacterID,
+	)
+	var i MapToken
+	err := row.Scan(
+		&i.MapID,
+		&i.CharacterID,
+		&i.XBp,
+		&i.YBp,
+		&i.Hidden,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateMap = `-- name: UpdateMap :one
+UPDATE maps
+SET name = $1, image_id = $2, revision = revision + 1, updated_at = $3
+WHERE campaign_id = $4 AND id = $5 AND revision = $6
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at
+`
+
+type UpdateMapParams struct {
+	Name       string
+	ImageID    string
+	Now        time.Time
+	CampaignID string
+	ID         string
+	Revision   int32
+}
+
+// revision in the WHERE clause is a second guard: the handler already
+// compared it under FOR UPDATE, so no row here means a stale revision.
+func (q *Queries) UpdateMap(ctx context.Context, arg UpdateMapParams) (Map, error) {
+	row := q.db.QueryRow(ctx, updateMap,
+		arg.Name,
+		arg.ImageID,
+		arg.Now,
+		arg.CampaignID,
+		arg.ID,
+		arg.Revision,
+	)
+	var i Map
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.Name,
+		&i.ImageID,
+		&i.RevealedAt,
+		&i.Revision,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateMapPoint = `-- name: UpdateMapPoint :one
+UPDATE map_points
+SET kind = $1, name = $2, description = $3,
+    x_bp = $4, y_bp = $5, target_map_id = $6,
+    revealed_at = $7, updated_at = $8
+WHERE map_id = $9 AND id = $10
+RETURNING id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at
+`
+
+type UpdateMapPointParams struct {
+	Kind        string
+	Name        string
+	Description string
+	XBp         int32
+	YBp         int32
+	TargetMapID *string
+	RevealedAt  *time.Time
+	Now         time.Time
+	MapID       string
+	ID          string
+}
+
+// Every column the API may change, with the values the handler worked out
+// from the request and the current row.
+func (q *Queries) UpdateMapPoint(ctx context.Context, arg UpdateMapPointParams) (MapPoint, error) {
+	row := q.db.QueryRow(ctx, updateMapPoint,
+		arg.Kind,
+		arg.Name,
+		arg.Description,
+		arg.XBp,
+		arg.YBp,
+		arg.TargetMapID,
+		arg.RevealedAt,
+		arg.Now,
+		arg.MapID,
+		arg.ID,
+	)
+	var i MapPoint
+	err := row.Scan(
+		&i.ID,
+		&i.MapID,
+		&i.Kind,
+		&i.Name,
+		&i.Description,
+		&i.XBp,
+		&i.YBp,
+		&i.TargetMapID,
+		&i.RevealedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }

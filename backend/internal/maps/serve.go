@@ -1,6 +1,7 @@
 package maps
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"time"
@@ -10,8 +11,29 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
 )
+
+// playersSeeImage says whether the campaign's players see the image now:
+// it is the open session's shown image, or the background of a map they see
+// (revealed, or the session's current map). Two reads, one per module: what
+// the session shows comes from play (LiveSession.OnScreen), the maps from
+// this module's table.
+func (s *Service) playersSeeImage(ctx context.Context, campaignID, imageID string) (bool, error) {
+	currentMap, shownImage, err := s.live.OnScreen(ctx, campaignID)
+	if err != nil {
+		return false, err
+	}
+	if shownImage == imageID {
+		return true, nil
+	}
+	var current *string
+	if currentMap != "" {
+		current = &currentMap
+	}
+	return s.queries.ImageIsOnAVisibleMap(ctx, mapsdb.ImageIsOnAVisibleMapParams{CampaignID: campaignID, ImageID: imageID, CurrentMapID: current})
+}
 
 // handleImage serves GET /images/{id}, the image.
 func (s *Service) handleImage(w http.ResponseWriter, r *http.Request) {
@@ -27,20 +49,32 @@ func (s *Service) handleThumbnail(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// serve sends an image, or its thumbnail, to an active member of its
-// campaign.
+// serve sends an image, or its thumbnail, to a member of its campaign who
+// may see it now (RN-10):
+//   - the campaign's master, every image of the campaign;
+//   - a player, only an image they see at this moment: the background of a
+//     map they see (revealed, or the open session's current map), or the
+//     image the master shows in the open session (MR-028).
 //
-// Players may fetch images too, because the maps they see are images. That
-// does not reveal a hidden map (RN-10): a player only learns an image's ID
-// from a response they may see, and no such response carries the ID of a
-// hidden map's image or the gallery's list. Anyone else gets 404, exactly
-// as for an image that does not exist, never 403: the answer must not say
-// whether an image exists.
+// Knowing an ID is not enough for a player: they keep the IDs of maps that
+// were hidden again and of images no longer shown, so the rule is checked
+// on every request. Anyone else, and a player asking for an image they may
+// not see now, gets 404, exactly as for an image that does not exist,
+// never 403: the answer must not say whether an image exists.
 //
 // The order of the checks keeps that true. Without a session the answer
-// is 401 before the image is even looked up. The membership check comes
-// before the ETag's 304, so a stranger cannot learn that an image exists by
-// sending If-None-Match either.
+// is 401 before the image is even looked up. The membership and visibility
+// checks come before the ETag's 304, so nobody learns that an image exists,
+// or keeps an image that is no longer theirs to see, by sending
+// If-None-Match.
+//
+// Caching follows the same rule. The master's copy may be kept for a year
+// (an ID's bytes never change). A player's copy must be checked again on
+// every use (no-cache): the browser asks with If-None-Match, gets a cheap
+// 304 while the image is still visible, and 404 once it is not. Both carry
+// Vary: Cookie, so a browser shared by the master and a player (one signs
+// out, the other signs in) never answers one's request from the other's
+// cached copy: a new session cookie is a new cache entry.
 func (s *Service) serve(w http.ResponseWriter, r *http.Request, thumbnail bool) error {
 	ctx := r.Context()
 	if _, err := authz.RequireSignedIn(ctx); err != nil {
@@ -57,11 +91,22 @@ func (s *Service) serve(w http.ResponseWriter, r *http.Request, thumbnail bool) 
 	if err != nil {
 		return s.dbError(ctx, "find an image", err)
 	}
-	if _, err := authz.RequireCampaignMember(ctx, row.CampaignID); err != nil {
+	m, err := authz.RequireCampaignMember(ctx, row.CampaignID)
+	if err != nil {
 		if connect.CodeOf(err) == connect.CodeUnavailable {
 			return err
 		}
 		return errImageNotFound()
+	}
+	master := m.Role == authz.RoleMaster
+	if !master {
+		visible, err := s.playersSeeImage(ctx, row.CampaignID, row.ID)
+		if err != nil {
+			return s.dbError(ctx, "check whether the players see an image", err)
+		}
+		if !visible {
+			return errImageNotFound()
+		}
 	}
 
 	imageKey, thumbnailKey := blobKeys(row.CampaignID, row.ID)
@@ -84,10 +129,18 @@ func (s *Service) serve(w http.ResponseWriter, r *http.Request, thumbnail bool) 
 
 	header := w.Header()
 	header.Set("Content-Type", obj.ContentType)
-	// The bytes behind an ID never change: a new upload gets a new ID. So
-	// the browser may keep the image for a year without asking again;
-	// private, because it is only for this member.
-	header.Set("Cache-Control", "private, max-age=31536000, immutable")
+	if master {
+		// The bytes behind an ID never change: a new upload gets a new ID.
+		// So the master's browser may keep the image for a year without
+		// asking again; private, because it is only for this member.
+		header.Set("Cache-Control", "private, max-age=31536000, immutable")
+	} else {
+		// The player may lose sight of it any time: ask every time (the 304
+		// keeps that cheap).
+		header.Set("Cache-Control", "private, no-cache")
+	}
+	// The master's and a player's copies never stand in for each other.
+	header.Set("Vary", "Cookie")
 	header.Set("ETag", etag)
 	// The browser must take the file for what Content-Type says, show it
 	// in the page, and run nothing in it even when opened on its own.

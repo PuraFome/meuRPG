@@ -2,6 +2,7 @@ package maps
 
 import (
 	"bytes"
+	"errors"
 	"image"
 	_ "image/jpeg" // image.DecodeConfig reads the stored JPEGs
 	"net/http"
@@ -94,33 +95,37 @@ func TestMR019_PlayersCannotListTheGallery(t *testing.T) {
 	}
 }
 
-// MR-019, third criterion, the server's half: an image a map uses cannot be
-// deleted, and the answer is failed_precondition. (The maps table comes
-// with the maps; here a stand-in table points at the image the same way,
-// with a foreign key that restricts the delete. Naming the map in the
-// answer comes with the maps too.)
+// MR-019, third criterion: an image a map uses cannot be deleted, and the
+// app says which map it is in (the ImageInUse detail names it). The rest
+// of it (several maps, the files staying, deleting once no map uses it) is
+// TestDeletingAnImageAMapUses.
 func TestMR019_AnImageAMapUsesCannotBeDeleted(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
 	master := h.newUser("Mestre")
 	campaign := h.newCampaign(master)
 	img := master.mustUpload(campaign, "masmorra.png", pngImage(t, 30, 30))
+	dungeon := master.createMap(campaign, "Covil dos goblins", img.GetId())
 	ctx := t.Context()
-	for _, stmt := range []string{
-		`CREATE TABLE stand_in_maps (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), image_id UUID NOT NULL REFERENCES gallery_images (id) ON DELETE RESTRICT)`,
-		`INSERT INTO stand_in_maps (image_id) VALUES ('` + img.GetId() + `')`,
-	} {
-		if _, err := h.pool.Exec(ctx, stmt); err != nil {
-			t.Fatalf("%s: %v", stmt, err)
-		}
-	}
 
 	_, err := master.gallery.DeleteGalleryImage(ctx, connect.NewRequest(&mapsv1.DeleteGalleryImageRequest{CampaignId: campaign, ImageId: img.GetId()}))
 	wantCode(t, "DeleteGalleryImage of an image in use", err, connect.CodeFailedPrecondition)
+	var named []string
+	if ce, ok := errors.AsType[*connect.Error](err); ok {
+		for _, d := range ce.Details() {
+			if msg, derr := d.Value(); derr == nil {
+				if inUse, ok := msg.(*mapsv1.ImageInUse); ok {
+					for _, m := range inUse.GetMaps() {
+						named = append(named, m.GetId()+" "+m.GetName())
+					}
+				}
+			}
+		}
+	}
+	if want := dungeon.GetId() + " Covil dos goblins"; len(named) != 1 || named[0] != want {
+		t.Errorf("the refusal names %v, want [%s]", named, want)
+	}
 	if got := master.list(campaign).GetImages(); len(got) != 1 {
 		t.Errorf("gallery = %v, want the image still there", got)
-	}
-	if res := master.get(img.GetUrl()); res.status != http.StatusOK {
-		t.Errorf("GET the image in use: status %d, want 200: its files must stay", res.status)
 	}
 }

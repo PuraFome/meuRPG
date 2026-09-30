@@ -14,4 +14,6 @@ type GameSession struct {
 	SessionNumber int32
 	StartedAt     time.Time
 	EndedAt       *time.Time
+	CurrentMapID  *string
+	ShownImageID  *string
 }

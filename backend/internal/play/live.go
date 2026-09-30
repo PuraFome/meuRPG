@@ -90,6 +90,20 @@ func (s *Service) GetLiveSession(
 		return nil, s.dbError(ctx, "list vitals", err)
 	}
 	res := &playv1.GetLiveSessionResponse{GameSession: sessionToProto(session)}
+	if session.CurrentMapID != nil {
+		// Every member may see it: setting a map current reveals it, and a
+		// player sees the current map even if the master hides it again.
+		res.CurrentMapId = *session.CurrentMapID
+	}
+	if session.ShownImageID != nil {
+		res.ShownImage, err = s.maps.ShownImage(ctx, m.CampaignID, *session.ShownImageID)
+		if connect.CodeOf(err) == connect.CodeNotFound {
+			res.ShownImage, err = nil, nil // deleted since the read above
+		}
+		if err != nil {
+			return nil, s.dbError(ctx, "read the shown image", err)
+		}
+	}
 	for _, v := range all {
 		if maySee(m, v) {
 			res.Vitals = append(res.Vitals, v)

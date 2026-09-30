@@ -16,28 +16,34 @@
 //
 // Sign-in needs both the OIDC_* variables and DATABASE_URL. Without them
 // the API still starts, and the sign-in routes answer 503. CampaignService,
-// CampaignDocumentService, CharacterService, ContentService, PlayService
-// and GalleryService need sign-in too; without it, they are not mounted.
-// Images also need BLOB_DIR: without it, the image routes and
-// GalleryService answer 503 (unavailable), and the rest works.
+// CampaignDocumentService, CharacterService, ContentService, PlayService,
+// GalleryService and MapService need sign-in too; without it, they are not
+// mounted. Images also need BLOB_DIR: without it, the image routes and
+// GalleryService answer 503 (unavailable), and the rest works (MapService
+// too, but no image can be uploaded, so no map can be created).
 //
 // The rules content (the SRD 5.1 snapshot, package rules) is embedded in
 // the binary and loaded at startup, always: a broken snapshot stops the
 // server right away instead of failing on a player's sheet.
 //
-// The modules meet here and nowhere else: campaigns, characters and play
-// learn who is calling from identity (the authz.Caller interface; the live
-// stream also reads the session again, authz.SessionRechecker), and each
-// member's role from campaigns (authz.MembershipSource); identity completes
-// the "accept this invite" sign-in intent through campaigns (an
+// The modules meet here and nowhere else: campaigns, characters, play and
+// maps learn who is calling from identity (the authz.Caller interface; the
+// live stream also reads the session again, authz.SessionRechecker), and
+// each member's role from campaigns (authz.MembershipSource); identity
+// completes the "accept this invite" sign-in intent through campaigns (an
 // identity.IntentHandler); maps stores images in the blob store
-// (platform/blob) and learns who is calling on its plain HTTP routes from
-// identity too (maps.Sessions); play locks the players' sheets and keeps the
+// (platform/blob), learns who is calling on its plain HTTP routes from
+// identity too (maps.Sessions), finds the characters that may stand on a
+// map through characters (maps.CharacterDirectory), and reads the session's
+// current map and shown image and publishes map changes on the live stream
+// through play (maps.LiveSession); play locks the players' sheets and keeps the
 // characters' vitals through characters (play.SheetLocker,
-// play.VitalsKeeper), and lists a user's campaigns through campaigns
-// (play.CampaignDirectory); and characters settles a pending member's
-// membership through campaigns when the master approves or rejects their
-// character (characters.PendingMembers, RN-15). No package imports
+// play.VitalsKeeper), lists a user's campaigns through campaigns
+// (play.CampaignDirectory), and reveals the map it makes current and reads
+// the image it shows through maps (play.MapKeeper, maps.SessionMaps); and
+// characters settles a pending
+// member's membership through campaigns when the master approves or rejects
+// their character (characters.PendingMembers, RN-15). No package imports
 // another's internals.
 package main
 
@@ -189,20 +195,28 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		if err != nil {
 			return err
 		}
+		// play and maps need each other: play reveals the map it makes
+		// current and reads the image it shows, and maps reads what the
+		// session shows and publishes on play's live stream.
+		// maps.SessionMaps needs nothing but the database, so play gets it
+		// first, and maps then gets play.
 		playService, err = play.New(play.Config{
 			Pool:      pool,
-			Sheets:    charactersService, // starting a session locks the sheets (RN-01)
-			Vitals:    charactersService, // the characters' hit points, slots and hit dice (RN-02)
-			Campaigns: campaignsService,  // the caller's campaigns, for the session notice (RN-06)
+			Sheets:    charactersService,         // starting a session locks the sheets (RN-01)
+			Vitals:    charactersService,         // the characters' hit points, slots and hit dice (RN-02)
+			Campaigns: campaignsService,          // the caller's campaigns, for the session notice (RN-06)
+			Maps:      maps.NewSessionMaps(pool), // the current map (RN-10) and the shown image (MR-028)
 			Logger:    logger,
 		})
 		if err != nil {
 			return err
 		}
 		mapsService, err = maps.New(maps.Config{
-			Pool:   pool,
-			Blobs:  blobs, // nil: images are off
-			Logger: logger,
+			Pool:       pool,
+			Blobs:      blobs,             // nil: images are off
+			Characters: charactersService, // the characters that may stand on a map (MR-012)
+			Live:       playService,       // the current map, and where map changes go (RN-10)
+			Logger:     logger,
 		})
 		if err != nil {
 			return err
@@ -255,15 +269,16 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		// role (authz.MembershipSource).
 		charactersService.Mount(srv.Handle, identityService, campaignsService, connectOpts...)
 		playService.Mount(srv.Handle, identityService, campaignsService, connectOpts...)
-		// GalleryService, plus the upload and download routes, which find
-		// the session with identityService.AuthenticateRequest.
+		// GalleryService and MapService, plus the upload and download
+		// routes, which find the session with
+		// identityService.AuthenticateRequest.
 		mapsService.Mount(srv.Handle, identityService, campaignsService, connectOpts...)
 		// Live streams never end on their own: end them when the graceful
 		// shutdown starts, instead of holding it until its deadline.
 		srv.OnShutdown(playService.Close)
 	} else {
 		identity.MountDisabled(srv.Handle, connectOpts...)
-		logger.Warn("campaigns, characters, game sessions and images are disabled: they need sign-in")
+		logger.Warn("campaigns, characters, game sessions, images and maps are disabled: they need sign-in")
 	}
 
 	// Forms on the app's pages (the invite page's POST to /auth/login) are

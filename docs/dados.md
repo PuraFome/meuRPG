@@ -29,7 +29,7 @@ Tabelas novas para a mesa ao vivo:
 - `xp_awards`: quem deu XP, quanto, quando e por quê (MR-016). O modo de XP fica em `campaigns.xp_mode`.
 - `scenes` e `scene_actions`: a cena de RP e a lista de ações dela (MR-015).
 
-Os pontos de interesse continuam em `jsonb` dentro do mapa por enquanto, cada um com um campo `revealed`. O servidor filtra os escondidos antes de responder (RN-10). A notificação no app não precisa de tabela no MVP: uma `game_session` sem `ended_at` já é o aviso de "sessão em andamento".
+Os pontos de interesse ficam numa tabela própria, `map_points`, e os tokens em `map_tokens` (feito na Etapa 5), cada um com o próprio estado de revelado ou escondido. O servidor filtra os escondidos antes de responder (RN-10). A notificação no app não precisa de tabela no MVP: uma `game_session` sem `ended_at` já é o aviso de "sessão em andamento".
 
 **Estado do personagem.** Decidido na Etapa 4: uma coluna `status` (`active`, `dead` ou `pending`) junto de `sheet_locked_at`. O morto (RN-03) muda de estado, nunca de linha. O pendente de aprovação (RN-15, MR-024) é o personagem de quem entrou por um convite com aprovação: vira `active` quando o mestre aprova, e é apagado quando o mestre recusa, porque nunca chegou a fazer parte da campanha. Os detalhes estão em [Esquema implementado](#esquema-implementado).
 
@@ -44,6 +44,8 @@ Toda tabela abaixo é nova — nasce numa migration do goose de algum módulo, n
 | `oauth_handshakes` | Mesma ideia de `oauth_handshakes` de lá |
 | `characters` | Parecida com `characters` de lá: `type` vira `kind`, ganha `campaign_id`, `status` e `sheet_locked_at` (e `copied_from_id` com a MR-021) |
 | `maps` | Parecida com `maps` de lá: `user_id` vira `campaign_id`, a imagem vira uma imagem da galeria (`gallery_images`) |
+| `map_points` | Os pontos de interesse, que lá ficavam dentro do mapa |
+| `map_tokens` | Sem equivalente lá |
 | `campaign_invites` | Substitui a ideia de `character_join_tokens` de lá, por campanha e com token só em hash |
 | `campaigns` | Sem equivalente lá |
 | `campaign_members` | Sem equivalente lá |
@@ -276,6 +278,8 @@ flowchart TD
 
     subgraph maps_mod["Módulo maps"]
         t_maps["maps"]
+        t_map_points["map_points"]
+        t_map_tokens["map_tokens"]
         t_gallery_images["gallery_images"]
     end
 
@@ -316,8 +320,14 @@ Esta seção lista só o que já existe nas migrations de `backend/migrations/`.
 | `00025_create_gallery_images` | `gallery_images` | As imagens da galeria de cada campanha (MR-019). Os arquivos ficam no blob store; a tabela guarda o nome, o tipo, o tamanho e quem enviou. |
 | `00026_create_gallery_images_campaign_id_index` | `gallery_images` | Índice por `(campaign_id, created_at DESC)`, com `byte_size` dentro: a galeria da mais nova para a mais antiga, e o uso da cota. |
 | `00027_create_campaign_documents` | `campaign_documents` | O documento da campanha (MR-018): um texto em Markdown por campanha, com revisão. |
+| `00028_create_maps` | `maps` | Os mapas de cada campanha (MR-008): uma imagem da galeria (`ON DELETE RESTRICT`), o nome, se está revelado (RN-10) e a revisão. |
+| `00029_create_map_points` | `map_points` | Os pontos de interesse (MR-008, MR-009): batalha, submapa ou cena de RP, com nome, descrição para os jogadores, posição, o mapa ao qual o submapa leva e se está revelado. |
+| `00030_create_map_tokens` | `map_tokens` | Os tokens (MR-012): um por personagem por mapa, com a posição e se está escondido. |
+| `00031_create_maps_indexes` | `maps`, `map_points` | Os quatro índices do módulo: mapas por campanha e por imagem, pontos por mapa e por submapa de destino. |
+| `00032_add_game_sessions_current_map_id` | `game_sessions` | Coluna `current_map_id`: o mapa atual da sessão (`SET NULL` quando o mapa é apagado). |
+| `00033_add_game_sessions_shown_image_id` | `game_sessions` | Coluna `shown_image_id`: a imagem que o mestre mostra aos jogadores (MR-028; `SET NULL` quando a imagem é apagada). |
 
-As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021`, a `00022` e a `00027`, do módulo `campaigns`; as `00014` a `00017`, a `00020` e a `00023`, do módulo `characters`; as `00018`, a `00019` e a `00024`, do módulo `play`; as `00025` e `00026`, do módulo `maps`. Mudanças em relação à proposta acima, no `identity`:
+As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021`, a `00022` e a `00027`, do módulo `campaigns`; as `00014` a `00017`, a `00020` e a `00023`, do módulo `characters`; as `00018`, a `00019`, a `00024`, a `00032` e a `00033`, do módulo `play`; as `00025`, a `00026` e as `00028` a `00031`, do módulo `maps`. A `00027` é do documento de campanha, no `campaigns`, que chega num PR à parte. Mudanças em relação à proposta acima, no `identity`:
 
 - `users.google_sub` e `users.email` viraram `user_identities (issuer, subject, email)`. O par `(issuer, subject)` é a chave primária, porque o `sub` só é único dentro de um provedor. Assim o código não depende do Google, e uma conta pode ter outro jeito de entrar (ADR-0009) sem mudar `users`.
 - `UNIQUE (user_id, issuer)`: uma conta tem no máximo uma identidade por provedor, então duas contas Google nunca se juntam.
@@ -362,6 +372,7 @@ No `characters`:
 No `play`:
 
 - `game_sessions` guarda só IDs e horários, sem dado pessoal. `session_number` conta as sessões da campanha a partir de 1, com `UNIQUE (campaign_id, session_number)`. A sessão está aberta enquanto `ended_at` está vazio, e um índice único parcial (`00019`) deixa no máximo uma aberta por campanha. Some com a campanha.
+- **O que a sessão mostra** fica na linha da sessão: `current_map_id` (`00032`), o mapa atual, e `shown_image_id` (`00033`), a imagem que o mestre mostra aos jogadores (MR-028). Os dois são opcionais e independentes, e uma sessão nova começa sem nenhum. As chaves estrangeiras são `ON DELETE SET NULL`: apagar o mapa, ou a imagem, tira da tela. Não há índice nessas colunas: só apagar um mapa ou uma imagem procura por elas, e `game_sessions` é pequena (uma linha por noite de jogo). As duas tabelas de destino são do módulo `maps`; o `play` só guarda o ID, e confere e lê o mapa e a imagem pela interface `MapKeeper` (ver [Arquitetura](arquitetura.md#o-que-a-sessão-mostra)).
 - Iniciar uma sessão grava a linha, trava as fichas e desliga as liberações da história, tudo na mesma transação. As duas últimas partes são do módulo `characters`, que o `play` chama por uma interface (ver [Arquitetura](arquitetura.md#módulo-play-sessões-de-jogo)).
 - **`session_events`** (`00024`, ADR-0007) é o histórico da sessão: cada mudança feita na mesa vira uma linha que nunca é alterada, gravada na mesma transação da mudança. Na Etapa 5 existe um tipo só, `character_vitals_adjusted` (a correção do mestre, RN-02); dano, cura, magia e XP entram com o combate, cada um como um tipo novo no `CHECK` (`session_events_kind_valid`).
   - `seq` numera os eventos de cada sessão a partir de 1, na ordem em que aconteceram: o próximo é o maior mais 1, lido com a linha da sessão travada (`FOR UPDATE`), e `UNIQUE (game_session_id, seq)` é a garantia final.
@@ -378,9 +389,17 @@ No `maps`:
 - **`name`** nasce do nome do arquivo e o mestre muda depois (1 a 80 caracteres, `CHECK`). É texto livre, como o nome da campanha.
 - **`uploaded_by`** é quem enviou, para quando a campanha tiver mais de um mestre (RN-13). Não sai na API. `ON DELETE SET NULL`: a imagem fica com a campanha quando a conta sai. Sem índice, como `campaigns.created_by`.
 - **`campaign_id` com `ON DELETE CASCADE`:** apagar a campanha apaga as linhas, mas não os arquivos. A exclusão da campanha (ou da conta do mestre) precisa apagar também o prefixo `campaigns/<campaign_id>/` do blob store (ver [Privacidade](privacidade.md)).
-- **O mapa vai apontar para a imagem** com uma chave estrangeira `ON DELETE RESTRICT`: uma imagem usada num mapa não pode ser apagada, e o `DeleteGalleryImage` já traduz essa recusa em `failed_precondition`.
+- **`maps`** (`00028`) aponta para a imagem com `ON DELETE RESTRICT`: uma imagem usada num mapa não pode ser apagada, e o `DeleteGalleryImage` responde `failed_precondition` com o detalhe `ImageInUse`, que nomeia os mapas (MR-019). O servidor confere também que a imagem é da mesma campanha. Apagar a campanha apaga os mapas e as imagens na mesma instrução, e o CockroachDB confere o `RESTRICT` no fim dela, quando os dois já se foram (`TestDeletingTheCampaignDeletesItsMaps`).
+  - `revealed_at` é quando o mestre revelou o mapa aos jogadores; vazio, o mapa está escondido, e todo mapa nasce escondido. O jogador vê o mapa revelado, ou o mapa atual da sessão (`game_sessions.current_map_id`), mesmo escondido; escolher o mapa atual o revela.
+  - `revision` sobe quando o nome ou a imagem mudam (revelar não mexe); um salvamento com revisão velha recebe `aborted`, como na ficha.
+- **`map_points`** (`00029`): `kind` é `battle`, `submap` ou `scene` (`CHECK`); `name` (1 a 80) e `description` (até 2.000 caracteres, várias linhas) são texto livre do mestre para os jogadores; `x_bp` e `y_bp` são a posição em pontos-base da largura e da altura da imagem, de 0 a 10000 (`CHECK`), então não dependem do tamanho da imagem.
+  - `target_map_id` é o mapa ao qual um ponto de submapa leva: só num `submap` (`CHECK map_points_only_submaps_lead`), nunca o próprio mapa (`CHECK map_points_not_own_target`), e sempre da mesma campanha (conferido pelo servidor). Apagar o mapa de destino deixa o ponto sem destino (`SET NULL`); apagar o mapa do ponto apaga o ponto (`CASCADE`).
+  - `revealed_at` funciona como no mapa, e todo ponto nasce escondido.
+- **`map_tokens`** (`00030`): a chave primária é `(map_id, character_id)`, um token por personagem por mapa, e lista os tokens de um mapa. O personagem é um personagem vivo da campanha, de jogador ou NPC, conferido pelo módulo `characters`; um personagem que morre continua na tabela, mas o `GetMap` não o lista. `hidden` nasce `false` para personagem de jogador e `true` para NPC (pergunta 31). Some com o mapa ou com o personagem (`CASCADE`); não há índice por `character_id`, porque só apagar um personagem procura por ele, como em `campaigns.created_by`.
+- **Índices** (`00031`): mapas por `(campaign_id, created_at)` e por `image_id` (o `RESTRICT` e a resposta que nomeia os mapas), pontos por `(map_id, created_at)` e por `target_map_id` (o `SET NULL`).
+- **Limites** (proposta, como a cota da galeria): 200 mapas por campanha e 200 pontos por mapa, conferidos na transação do `INSERT` (`resource_exhausted`). As listas não são paginadas.
 
-Cada migration faz uma mudança só: um `CREATE TABLE IF NOT EXISTS` com as constraints dentro, um `CREATE INDEX IF NOT EXISTS` ou um `ALTER TABLE`. Como o CockroachDB faz commit antes de cada DDL, isso deixa cada migration atômica e segura para rodar de novo, e o teste `TestMigrationsAreSafeToRerun` roda todas duas vezes para provar. O índice fica numa migration à parte, e não dentro do `CREATE TABLE`, porque o sqlc lê as migrations com o parser do PostgreSQL, que não conhece a sintaxe de índice embutido do CockroachDB (ver [CONTRIBUTING.md](../CONTRIBUTING.md#queries-com-sqlc)). Por isso a `00004` foi reescrita antes do primeiro deploy, com o mesmo resultado no banco.
+Cada migration faz uma mudança só: um `CREATE TABLE IF NOT EXISTS` com as constraints dentro, um `CREATE INDEX IF NOT EXISTS` ou um `ALTER TABLE`. A exceção é a `00031`, com os quatro índices do módulo `maps`, cada um num `CREATE INDEX IF NOT EXISTS` à parte, então ela também é segura para rodar de novo. Como o CockroachDB faz commit antes de cada DDL, isso deixa cada migration atômica e segura para rodar de novo, e o teste `TestMigrationsAreSafeToRerun` roda todas duas vezes para provar. O índice fica numa migration à parte, e não dentro do `CREATE TABLE`, porque o sqlc lê as migrations com o parser do PostgreSQL, que não conhece a sintaxe de índice embutido do CockroachDB (ver [CONTRIBUTING.md](../CONTRIBUTING.md#queries-com-sqlc)). Por isso a `00004` foi reescrita antes do primeiro deploy, com o mesmo resultado no banco.
 
 ```mermaid
 erDiagram
@@ -487,6 +506,8 @@ erDiagram
         int4 session_number "UNIQUE por campanha"
         timestamptz started_at
         timestamptz ended_at "vazio enquanto aberta"
+        uuid current_map_id FK "opcional, SET NULL"
+        uuid shown_image_id FK "opcional, SET NULL, MR-028"
     }
 
     character_vitals {
@@ -524,6 +545,40 @@ erDiagram
         timestamptz created_at
     }
 
+    maps {
+        uuid id PK
+        uuid campaign_id FK "CASCADE"
+        text name "1 a 80"
+        uuid image_id FK "RESTRICT"
+        timestamptz revealed_at "vazio: escondido"
+        int4 revision "sobe com nome ou imagem"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    map_points {
+        uuid id PK
+        uuid map_id FK "CASCADE"
+        text kind "battle, submap ou scene"
+        text name "1 a 80"
+        text description "até 2000"
+        int4 x_bp "0 a 10000"
+        int4 y_bp "0 a 10000"
+        uuid target_map_id FK "só submap, SET NULL"
+        timestamptz revealed_at "vazio: escondido"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    map_tokens {
+        uuid map_id PK "e FK para maps"
+        uuid character_id PK "e FK para characters"
+        int4 x_bp "0 a 10000"
+        int4 y_bp "0 a 10000"
+        bool hidden "NPC nasce escondido"
+        timestamptz updated_at
+    }
+
     users ||--o{ user_identities : "entra por"
     users ||--o{ auth_sessions : "autentica"
     users ||--o{ campaigns : "cria"
@@ -544,6 +599,14 @@ erDiagram
     users |o--o{ gallery_images : "enviou"
     campaigns ||--o| campaign_documents : "tem"
     users |o--o{ campaign_documents : "salvou por último"
+    campaigns ||--o{ maps : "possui"
+    gallery_images ||--o{ maps : "é a imagem de"
+    maps ||--o{ map_points : "tem"
+    maps |o--o{ map_points : "é o submapa de"
+    maps ||--o{ map_tokens : "tem"
+    characters ||--o{ map_tokens : "está em"
+    maps |o--o{ game_sessions : "é o mapa atual de"
+    gallery_images |o--o{ game_sessions : "é mostrada em"
 ```
 
 `oidc_login_states` não liga a nenhuma conta: o login ainda não terminou, então ninguém sabe quem é.

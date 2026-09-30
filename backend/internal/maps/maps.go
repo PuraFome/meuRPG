@@ -1,7 +1,19 @@
-// Package maps is about a campaign's maps and the images they are made of.
-// Today it holds the gallery (MR-019): the images the master uploads, to
-// use in maps and in the campaign document. Maps, their points of interest
-// and tokens come next.
+// Package maps is about a campaign's maps and the images they are made of:
+// the gallery (MR-019), the images the master uploads to use in maps and in
+// the campaign document, and the maps themselves (MR-008, MR-009, MR-012),
+// with their points of interest and tokens (MapService, mapservice.go).
+//
+// Who sees what on a map (RN-10) is decided here, on the server
+// (visibility.go): a player never receives a hidden map, point or token,
+// not even its ID. Two other modules help, each through a small interface
+// that cmd/api connects, so no package imports another's code:
+//   - the characters module says which characters may stand on a map as
+//     tokens (CharacterDirectory);
+//   - the play module says which map is the open session's current one,
+//     which the players see too, and which gallery image it shows, and
+//     carries the maps' changes to the members watching the session
+//     (LiveSession). The other way round, play reveals the map it makes
+//     current, and reads the image it shows, through SessionMaps.
 //
 // An image travels like this:
 //
@@ -11,9 +23,9 @@
 //     its thumbnail go to the blob store (package platform/blob), then a
 //     gallery_images row records them, inside the transaction that checks
 //     the campaign's quota.
-//   - Any active member of the campaign fetches it with GET /images/{id}
-//     (serve.go). Players included: they only learn an image's ID from a
-//     response they may see (RN-10).
+//   - The campaign's master fetches it with GET /images/{id} (serve.go); a
+//     player too, but only while they see it: on a map they see, or shown
+//     in the session (RN-10). Knowing its ID is not enough.
 //   - The master lists, renames and deletes images with GalleryService
 //     (gallery.go), a Connect service like the others.
 //
@@ -33,7 +45,9 @@ import (
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1/mapsv1connect"
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
@@ -58,9 +72,39 @@ const (
 	ImagesPath = "/images/"
 )
 
-// maxNameLength is the longest image name, in characters. The
-// gallery_images_name_length CHECK says the same.
+// maxNameLength is the longest image, map or point name, in characters.
+// The gallery_images_name_length, maps_name_length and
+// map_points_name_length CHECKs say the same.
 const maxNameLength = 80
+
+// CharacterDirectory tells which characters may stand on a map as tokens.
+// The characters module implements it (characters.Service.MapCharacters),
+// so this package never reads the characters table.
+type CharacterDirectory interface {
+	// MapCharacters returns those of ids that are living characters of the
+	// campaign (a player's that is neither dead nor waiting for approval, or
+	// an NPC), players' characters first, then NPCs, each group oldest
+	// first. Only id, kind, name and player_user_id are set.
+	MapCharacters(ctx context.Context, campaignID string, ids []string) ([]*charactersv1.CharacterSummary, error)
+}
+
+// LiveSession is what this package needs from the live session. The play
+// module implements it (play.Service), because the sessions and their
+// stream are its own. The events are play's API messages (playv1), as the
+// vitals are for the characters module: this package builds them, and
+// never imports package play.
+type LiveSession interface {
+	// OnScreen returns what the campaign's open game session shows: the
+	// IDs of its current map, which a player sees even if it is hidden
+	// (RN-10), and of the gallery image the master shows the players
+	// (MR-028). Each is "" when there is none, both when no session is
+	// open.
+	OnScreen(ctx context.Context, campaignID string) (currentMapID, shownImageID string, err error)
+	// Publish sends ev to the streams of the campaign's master and, when
+	// players is true, of its players too. Without an open session nobody
+	// is watching, and nothing happens.
+	Publish(campaignID string, players bool, ev *playv1.WatchGameSessionResponse)
+}
 
 // Config holds what the maps service needs.
 type Config struct {
@@ -68,7 +112,14 @@ type Config struct {
 	Pool *pgxpool.Pool
 	// Blobs stores the image files. Nil means images are off on this
 	// server: uploads, downloads and GalleryService answer `unavailable`.
+	// MapService works without it, but no image can be uploaded, so no map
+	// can be created.
 	Blobs blob.Store
+	// Characters says which characters may stand on a map. Required.
+	Characters CharacterDirectory
+	// Live is the live session: the current map, and where map changes
+	// go. Required.
+	Live LiveSession
 	// Logger receives errors, without personal data. Nil means
 	// slog.Default().
 	Logger *slog.Logger
@@ -78,17 +129,25 @@ type Config struct {
 	// DefaultMaxImages and DefaultMaxBytes; tests set small ones.
 	MaxImages int32
 	MaxBytes  int32
+	// MaxMaps and MaxPointsPerMap bound a campaign's maps and a map's
+	// points. Zero means DefaultMaxMaps and DefaultMaxPointsPerMap.
+	MaxMaps         int32
+	MaxPointsPerMap int32
 }
 
-// Service implements GalleryService and the image routes.
+// Service implements GalleryService, MapService and the image routes.
 type Service struct {
-	pool      *pgxpool.Pool
-	queries   *mapsdb.Queries
-	blobs     blob.Store
-	logger    *slog.Logger
-	now       func() time.Time
-	maxImages int32
-	maxBytes  int32
+	pool       *pgxpool.Pool
+	queries    *mapsdb.Queries
+	blobs      blob.Store
+	characters CharacterDirectory
+	live       LiveSession
+	logger     *slog.Logger
+	now        func() time.Time
+	maxImages  int32
+	maxBytes   int32
+	maxMaps    int32
+	maxPoints  int32
 
 	// processing lets one image at a time be decoded, so a few uploads at
 	// once cannot take all the server's memory (package images bounds
@@ -96,22 +155,34 @@ type Service struct {
 	processing chan struct{}
 }
 
-// The compiler checks that Service implements the handler.
-var _ mapsv1connect.GalleryServiceHandler = (*Service)(nil)
+// The compiler checks that Service implements both handlers.
+var (
+	_ mapsv1connect.GalleryServiceHandler = (*Service)(nil)
+	_ mapsv1connect.MapServiceHandler     = (*Service)(nil)
+)
 
 // New returns a Service.
 func New(cfg Config) (*Service, error) {
-	if cfg.Pool == nil {
+	switch {
+	case cfg.Pool == nil:
 		return nil, errors.New("maps: a Pool is required")
+	case cfg.Characters == nil:
+		return nil, errors.New("maps: Characters is required")
+	case cfg.Live == nil:
+		return nil, errors.New("maps: Live is required")
 	}
 	s := &Service{
 		pool:       cfg.Pool,
 		queries:    mapsdb.New(cfg.Pool),
 		blobs:      cfg.Blobs,
+		characters: cfg.Characters,
+		live:       cfg.Live,
 		logger:     cfg.Logger,
 		now:        cfg.Now,
 		maxImages:  cfg.MaxImages,
 		maxBytes:   cfg.MaxBytes,
+		maxMaps:    cfg.MaxMaps,
+		maxPoints:  cfg.MaxPointsPerMap,
 		processing: make(chan struct{}, 1),
 	}
 	if s.logger == nil {
@@ -125,6 +196,12 @@ func New(cfg Config) (*Service, error) {
 	}
 	if s.maxBytes <= 0 {
 		s.maxBytes = DefaultMaxBytes
+	}
+	if s.maxMaps <= 0 {
+		s.maxMaps = DefaultMaxMaps
+	}
+	if s.maxPoints <= 0 {
+		s.maxPoints = DefaultMaxPointsPerMap
 	}
 	return s, nil
 }
@@ -143,7 +220,7 @@ type Sessions interface {
 	authz.Caller
 }
 
-// Mount registers GalleryService and the image routes on a mux. handle is
+// Mount registers GalleryService, MapService and the image routes on a mux. handle is
 // usually httpserver.Server.Handle or http.ServeMux.Handle.
 //
 // sessions tells who is calling (the identity service in production), and
@@ -160,6 +237,7 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 		authz.Interceptor(sessions, members, s.logger), // what they may do, memoized per request
 	))
 	handle(mapsv1connect.NewGalleryServiceHandler(s, opts...))
+	handle(mapsv1connect.NewMapServiceHandler(s, opts...))
 
 	withAuthz := authz.Middleware(sessions, members, s.logger)
 	route := func(h http.HandlerFunc) http.Handler {

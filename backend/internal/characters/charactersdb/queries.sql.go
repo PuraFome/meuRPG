@@ -415,6 +415,55 @@ func (q *Queries) ListCharacters(ctx context.Context, arg ListCharactersParams) 
 	return items, nil
 }
 
+const listMapCharacters = `-- name: ListMapCharacters :many
+SELECT id, kind, name, player_user_id FROM characters
+WHERE campaign_id = $1::UUID
+  AND id = ANY($2::UUID[])
+  AND status = 'active'
+ORDER BY kind <> 'player', created_at, id
+`
+
+type ListMapCharactersParams struct {
+	CampaignID string
+	Ids        []string
+}
+
+type ListMapCharactersRow struct {
+	ID           string
+	Kind         string
+	Name         string
+	PlayerUserID *string
+}
+
+// Those of the given characters that may stand on a map of the campaign as
+// tokens (package maps): its living characters, the players' (active: not
+// dead, not waiting for approval) and the NPCs. Players' characters first,
+// then NPCs, each group oldest first, as ListCharacters. No sheet, no story.
+func (q *Queries) ListMapCharacters(ctx context.Context, arg ListMapCharactersParams) ([]ListMapCharactersRow, error) {
+	rows, err := q.db.Query(ctx, listMapCharacters, arg.CampaignID, arg.Ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMapCharactersRow
+	for rows.Next() {
+		var i ListMapCharactersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Kind,
+			&i.Name,
+			&i.PlayerUserID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listVitals = `-- name: ListVitals :many
 SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
