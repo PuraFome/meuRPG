@@ -1,6 +1,6 @@
 # Contribuindo com o MeuRPG
 
-Todo código entra por PR para `PuraFome/meuRPG`, com o CI verde e a aprovação do Samuel. Nada vai direto para a `main`.
+Todo código entra por PR para `PuraFome/meuRPG`, com o CI verde e a aprovação do Samuel. Nada vai direto para a `main`. Até o MVP, a aprovação fica para depois: com o CI verde, quem abriu o PR faz o squash merge, e o PR continua sendo aberto para registrar o que mudou (decidido em 30/09/2026).
 
 Os comandos e o CI abaixo passam a existir quando a Etapa 1 (ver [roadmap](docs/roadmap.md)) for integrada.
 
@@ -169,7 +169,7 @@ feat(characters): lock sheet on first session
 2. Escreva o código, os testes e a documentação no mesmo PR.
 3. Faça os commits em Conventional Commits.
 4. Abra o PR citando a história (`MR-006`) e a regra (`RN-01`) que ele cumpre. Use o [modelo de PR](.github/pull_request_template.md).
-5. O CI precisa ficar verde. Depois o Samuel revisa e faz o squash merge.
+5. O CI precisa ficar verde. Depois o Samuel revisa e faz o squash merge. Até o MVP, quem abriu o PR faz o squash merge assim que o CI fica verde, sem esperar a revisão.
 
 Fluxo resumido: fork, se for o caso → PR para `PuraFome/meuRPG` → CI verde → revisão do Samuel → squash merge.
 
