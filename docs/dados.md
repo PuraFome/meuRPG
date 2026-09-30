@@ -47,6 +47,7 @@ Toda tabela abaixo é nova — nasce numa migration do goose de algum módulo, n
 | `campaign_invites` | Substitui a ideia de `character_join_tokens` de lá, por campanha e com token só em hash |
 | `campaigns` | Sem equivalente lá |
 | `campaign_members` | Sem equivalente lá |
+| `campaign_documents` | Sem equivalente lá: o guia da campanha do app antigo ficava no navegador, com as campanhas |
 | `campaign_characters` | Sem equivalente lá. Vem com a MR-022 (NPC em várias campanhas) |
 | `character_master_notes` | Sem equivalente lá |
 | `character_vitals` | Sem equivalente lá |
@@ -103,6 +104,12 @@ erDiagram
         text token_hash
         timestamptz expires_at
         bool requires_approval
+    }
+
+    campaign_documents {
+        uuid campaign_id PK
+        text body "Markdown"
+        integer revision
     }
 
     characters {
@@ -209,6 +216,7 @@ erDiagram
 
     campaigns ||--o{ campaign_members : "tem"
     campaigns ||--o{ campaign_invites : "gera"
+    campaigns ||--o| campaign_documents : "tem"
     campaigns |o--o{ characters : "reune"
     campaigns ||--o{ campaign_characters : "reusa NPCs"
     campaigns ||--o{ maps : "possui"
@@ -247,6 +255,7 @@ flowchart TD
         t_campaigns["campaigns"]
         t_campaign_members["campaign_members"]
         t_campaign_invites["campaign_invites"]
+        t_campaign_documents["campaign_documents"]
     end
 
     subgraph characters_mod["Módulo characters"]
@@ -306,8 +315,9 @@ Esta seção lista só o que já existe nas migrations de `backend/migrations/`.
 | `00024_create_session_events` | `session_events` | O histórico da sessão, uma linha por mudança, que nunca é alterada (ADR-0007). |
 | `00025_create_gallery_images` | `gallery_images` | As imagens da galeria de cada campanha (MR-019). Os arquivos ficam no blob store; a tabela guarda o nome, o tipo, o tamanho e quem enviou. |
 | `00026_create_gallery_images_campaign_id_index` | `gallery_images` | Índice por `(campaign_id, created_at DESC)`, com `byte_size` dentro: a galeria da mais nova para a mais antiga, e o uso da cota. |
+| `00027_create_campaign_documents` | `campaign_documents` | O documento da campanha (MR-018): um texto em Markdown por campanha, com revisão. |
 
-As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021` e a `00022`, do módulo `campaigns`; as `00014` a `00017`, a `00020` e a `00023`, do módulo `characters`; as `00018`, a `00019` e a `00024`, do módulo `play`; as `00025` e `00026`, do módulo `maps`. Mudanças em relação à proposta acima, no `identity`:
+As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021`, a `00022` e a `00027`, do módulo `campaigns`; as `00014` a `00017`, a `00020` e a `00023`, do módulo `characters`; as `00018`, a `00019` e a `00024`, do módulo `play`; as `00025` e `00026`, do módulo `maps`. Mudanças em relação à proposta acima, no `identity`:
 
 - `users.google_sub` e `users.email` viraram `user_identities (issuer, subject, email)`. O par `(issuer, subject)` é a chave primária, porque o `sub` só é único dentro de um provedor. Assim o código não depende do Google, e uma conta pode ter outro jeito de entrar (ADR-0009) sem mudar `users`.
 - `UNIQUE (user_id, issuer)`: uma conta tem no máximo uma identidade por provedor, então duas contas Google nunca se juntam.
@@ -329,6 +339,7 @@ No `campaigns`:
 - `campaign_invites` usa o TTL por linha com `expires_at + INTERVAL '30 days'`: o convite some 30 dias depois de expirar. (Depois do `ALTER TABLE` da `00021`, o CockroachDB passa a mostrar a mesma expressão como `expires_at + '30 days'::INTERVAL`; o TTL é o mesmo.)
 - **Convite com aprovação (RN-15, MR-024).** `campaign_invites.requires_approval` (`00021`, padrão `false`) diz se quem aceita o convite entra direto ou fica pendente. `campaign_members.status` (`00022`, padrão `active`, então quem já era membro continua membro) é `active` ou `pending`, com `CHECK` (`campaign_members_status_valid`); outro `CHECK` (`campaign_members_only_players_pending`) garante que só um jogador fica pendente, nunca o mestre. O membro pendente não é membro para nada, fora a criação e a edição do próprio personagem (ver [Arquitetura](arquitetura.md#membro-pendente)). Quando o mestre aprova o personagem, a linha vira `active`; quando recusa, a linha é apagada, na mesma transação que muda ou apaga o personagem.
 - Os nomes (`campaigns.name` até 80 caracteres, `display_name` até 40) têm `CHECK` de tamanho; o servidor também tira espaços das pontas e recusa quebra de linha e caracteres de controle.
+- **`campaign_documents`** (`00027`, MR-018) guarda o documento da campanha: no máximo uma linha por campanha, com `campaign_id` como chave primária. Campanha sem linha tem um documento vazio, na revisão 0; o primeiro salvamento grava a linha na revisão 1, e cada salvamento depois sobe a revisão em 1, só se ela ainda for a que o mestre leu (ver [Arquitetura](arquitetura.md#documento-da-campanha)). `body` é o Markdown como o mestre escreveu, com até 204.800 bytes (200 KiB; o `CHECK` `campaign_documents_body_size` usa `octet_length`, que conta bytes, a mesma unidade da API). `updated_by` é quem salvou por último: excluir essa conta mantém o documento, sem editor (`SET NULL`); apagar a campanha apaga o documento (`CASCADE`). Não há índice em `updated_by`: só a exclusão de conta procura por ele, como em `campaigns.created_by`. Os IDs dos links do texto (`mapa:`, `ficha:`, `imagem:`) não são chaves estrangeiras: o servidor não os lê, e um link para algo apagado só aparece como indisponível.
 
 No `characters`:
 
@@ -462,6 +473,14 @@ erDiagram
         timestamptz updated_at
     }
 
+    campaign_documents {
+        uuid campaign_id PK "e FK para campaigns"
+        text body "Markdown, até 200 KiB"
+        int4 revision "sobe a cada salvamento"
+        timestamptz updated_at
+        uuid updated_by FK "opcional, SET NULL"
+    }
+
     game_sessions {
         uuid id PK
         uuid campaign_id FK
@@ -523,6 +542,8 @@ erDiagram
     characters |o--o{ session_events : "é assunto de"
     campaigns ||--o{ gallery_images : "guarda"
     users |o--o{ gallery_images : "enviou"
+    campaigns ||--o| campaign_documents : "tem"
+    users |o--o{ campaign_documents : "salvou por último"
 ```
 
 `oidc_login_states` não liga a nenhuma conta: o login ainda não terminou, então ninguém sabe quem é.

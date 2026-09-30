@@ -70,6 +70,25 @@ func (q *Queries) GetCampaign(ctx context.Context, id string) (Campaign, error) 
 	return i, err
 }
 
+const getCampaignDocument = `-- name: GetCampaignDocument :one
+SELECT campaign_id, body, revision, updated_at, updated_by FROM campaign_documents WHERE campaign_id = $1
+`
+
+// The campaign's document (MR-018). No row means it was never saved: an
+// empty document at revision 0.
+func (q *Queries) GetCampaignDocument(ctx context.Context, campaignID string) (CampaignDocument, error) {
+	row := q.db.QueryRow(ctx, getCampaignDocument, campaignID)
+	var i CampaignDocument
+	err := row.Scan(
+		&i.CampaignID,
+		&i.Body,
+		&i.Revision,
+		&i.UpdatedAt,
+		&i.UpdatedBy,
+	)
+	return i, err
+}
+
 const getInviteByTokenHashForUpdate = `-- name: GetInviteByTokenHashForUpdate :one
 SELECT id, campaign_id, token_hash, created_by, max_uses, use_count, created_at, expires_at, revoked_at, requires_approval FROM campaign_invites WHERE token_hash = $1 FOR UPDATE
 `
@@ -161,6 +180,41 @@ func (q *Queries) InsertCampaign(ctx context.Context, arg InsertCampaignParams) 
 		&i.XpMode,
 		&i.CreatedBy,
 		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const insertCampaignDocument = `-- name: InsertCampaignDocument :one
+INSERT INTO campaign_documents (campaign_id, body, revision, updated_at, updated_by)
+VALUES ($1, $2, 1, $3, $4)
+ON CONFLICT (campaign_id) DO NOTHING
+RETURNING campaign_id, body, revision, updated_at, updated_by
+`
+
+type InsertCampaignDocumentParams struct {
+	CampaignID string
+	Body       string
+	UpdatedAt  time.Time
+	UpdatedBy  *string
+}
+
+// The first save of a campaign's document, at revision 1. When someone else
+// saved first, ON CONFLICT DO NOTHING returns no row: the caller's revision
+// (0) is stale.
+func (q *Queries) InsertCampaignDocument(ctx context.Context, arg InsertCampaignDocumentParams) (CampaignDocument, error) {
+	row := q.db.QueryRow(ctx, insertCampaignDocument,
+		arg.CampaignID,
+		arg.Body,
+		arg.UpdatedAt,
+		arg.UpdatedBy,
+	)
+	var i CampaignDocument
+	err := row.Scan(
+		&i.CampaignID,
+		&i.Body,
+		&i.Revision,
+		&i.UpdatedAt,
+		&i.UpdatedBy,
 	)
 	return i, err
 }
@@ -384,6 +438,46 @@ func (q *Queries) RevokeInvite(ctx context.Context, arg RevokeInviteParams) (Cam
 		&i.ExpiresAt,
 		&i.RevokedAt,
 		&i.RequiresApproval,
+	)
+	return i, err
+}
+
+const updateCampaignDocument = `-- name: UpdateCampaignDocument :one
+UPDATE campaign_documents
+SET body = $1,
+    revision = revision + 1,
+    updated_at = $2,
+    updated_by = $3
+WHERE campaign_id = $4 AND revision = $5
+RETURNING campaign_id, body, revision, updated_at, updated_by
+`
+
+type UpdateCampaignDocumentParams struct {
+	Body             string
+	UpdatedAt        time.Time
+	UpdatedBy        *string
+	CampaignID       string
+	ExpectedRevision int32
+}
+
+// Every later save: it replaces the body only while the stored revision is
+// the one the caller read (compare-and-swap), and raises it by one. No row
+// means the revision is stale.
+func (q *Queries) UpdateCampaignDocument(ctx context.Context, arg UpdateCampaignDocumentParams) (CampaignDocument, error) {
+	row := q.db.QueryRow(ctx, updateCampaignDocument,
+		arg.Body,
+		arg.UpdatedAt,
+		arg.UpdatedBy,
+		arg.CampaignID,
+		arg.ExpectedRevision,
+	)
+	var i CampaignDocument
+	err := row.Scan(
+		&i.CampaignID,
+		&i.Body,
+		&i.Revision,
+		&i.UpdatedAt,
+		&i.UpdatedBy,
 	)
 	return i, err
 }

@@ -1,5 +1,6 @@
-// Package campaigns manages campaigns, their members and the invites that
-// let new players in (MR-001, MR-002, MR-003, MR-024).
+// Package campaigns manages campaigns, their members, the invites that let
+// new players in (MR-001, MR-002, MR-003, MR-024) and each campaign's
+// document (MR-018, document.go).
 //
 // A campaign's master creates it and shares invite links; a player signs in
 // and accepts an invite, which makes them a player of the campaign. A
@@ -82,8 +83,8 @@ type Config struct {
 	Now func() time.Time
 }
 
-// Service implements the CampaignService Connect API and
-// authz.MembershipSource.
+// Service implements the CampaignService and CampaignDocumentService
+// Connect APIs and authz.MembershipSource.
 type Service struct {
 	pool     *pgxpool.Pool
 	queries  *campaignsdb.Queries
@@ -133,14 +134,14 @@ type Sessions interface {
 	authz.Caller
 }
 
-// Mount registers CampaignService on a mux. handle is usually
-// httpserver.Server.Handle or http.ServeMux.Handle.
+// Mount registers CampaignService and CampaignDocumentService on a mux.
+// handle is usually httpserver.Server.Handle or http.ServeMux.Handle.
 //
 // sessions tells who is calling (the identity service in production). Mount
 // adds its interceptor, then the authz interceptor, backed by sessions and
 // by this service's campaign_members, and one that marks every response
-// `Cache-Control: no-store`. opts are the Connect options shared by every
-// service.
+// `Cache-Control: no-store`, to both services. opts are the Connect options
+// shared by every service.
 func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessions Sessions, opts ...connect.HandlerOption) {
 	// Clip so append copies instead of writing into the caller's array.
 	opts = append(slices.Clip(opts), connect.WithInterceptors(
@@ -149,6 +150,7 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 		authz.Interceptor(sessions, s, s.logger), // what they may do, memoized per request
 	))
 	handle(campaignsv1connect.NewCampaignServiceHandler(s, opts...))
+	handle(campaignsv1connect.NewCampaignDocumentServiceHandler(s, opts...))
 }
 
 // noStore marks every response, errors included, `Cache-Control: no-store`:

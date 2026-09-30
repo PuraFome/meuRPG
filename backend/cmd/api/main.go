@@ -16,10 +16,10 @@
 //
 // Sign-in needs both the OIDC_* variables and DATABASE_URL. Without them
 // the API still starts, and the sign-in routes answer 503. CampaignService,
-// CharacterService, ContentService, PlayService and GalleryService need
-// sign-in too; without it, they are not mounted. Images also need
-// BLOB_DIR: without it, the image routes and GalleryService answer 503
-// (unavailable), and the rest works.
+// CampaignDocumentService, CharacterService, ContentService, PlayService
+// and GalleryService need sign-in too; without it, they are not mounted.
+// Images also need BLOB_DIR: without it, the image routes and
+// GalleryService answer 503 (unavailable), and the rest works.
 //
 // The rules content (the SRD 5.1 snapshot, package rules) is embedded in
 // the binary and loaded at startup, always: a broken snapshot stops the
@@ -247,7 +247,9 @@ func run(logger *slog.Logger, cfg config.Config) error {
 	if identityService != nil {
 		identityService.Mount(srv.Handle, connectOpts...)
 		// identityService is who is calling: its interceptor finds the
-		// session, and its UserID reads it back (authz.Caller).
+		// session, and its UserID reads it back (authz.Caller). This mounts
+		// CampaignService and the campaign document's
+		// CampaignDocumentService (MR-018), with the same interceptors.
 		campaignsService.Mount(srv.Handle, identityService, connectOpts...)
 		// campaignsService says who belongs to each campaign, and with which
 		// role (authz.MembershipSource).

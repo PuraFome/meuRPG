@@ -80,3 +80,29 @@ SELECT * FROM campaign_invites WHERE token_hash = $1 FOR UPDATE;
 UPDATE campaign_invites
 SET use_count = use_count + 1
 WHERE id = $1 AND use_count < max_uses AND revoked_at IS NULL AND expires_at > sqlc.arg(now);
+
+-- name: GetCampaignDocument :one
+-- The campaign's document (MR-018). No row means it was never saved: an
+-- empty document at revision 0.
+SELECT * FROM campaign_documents WHERE campaign_id = $1;
+
+-- name: InsertCampaignDocument :one
+-- The first save of a campaign's document, at revision 1. When someone else
+-- saved first, ON CONFLICT DO NOTHING returns no row: the caller's revision
+-- (0) is stale.
+INSERT INTO campaign_documents (campaign_id, body, revision, updated_at, updated_by)
+VALUES (sqlc.arg(campaign_id), sqlc.arg(body), 1, sqlc.arg(updated_at), sqlc.arg(updated_by))
+ON CONFLICT (campaign_id) DO NOTHING
+RETURNING *;
+
+-- name: UpdateCampaignDocument :one
+-- Every later save: it replaces the body only while the stored revision is
+-- the one the caller read (compare-and-swap), and raises it by one. No row
+-- means the revision is stale.
+UPDATE campaign_documents
+SET body = sqlc.arg(body),
+    revision = revision + 1,
+    updated_at = sqlc.arg(updated_at),
+    updated_by = sqlc.arg(updated_by)
+WHERE campaign_id = sqlc.arg(campaign_id) AND revision = sqlc.arg(expected_revision)
+RETURNING *;
