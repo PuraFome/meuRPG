@@ -2,8 +2,9 @@
 // @generated from file meurpg/campaigns/v1/campaigns.proto (package meurpg.campaigns.v1, syntax proto3)
 /* eslint-disable */
 
-// Package meurpg.campaigns.v1 is about campaigns, who belongs to them and
-// the invites that let new players in.
+// Package meurpg.campaigns.v1 is about campaigns, who belongs to them, the
+// invites that let new players in, and each campaign's document
+// (campaign_document.proto).
 
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";

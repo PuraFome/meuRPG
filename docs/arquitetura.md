@@ -23,7 +23,7 @@ Decisões difíceis de desfazer viram ADR (Architecture Decision Record) no repo
 Cada módulo do backend fica em `backend/internal/<módulo>`. Um módulo só chama outro pela interface pública dele, nunca pelas tabelas.
 
 - `identity`: login do mestre, sessões de login e usuários. O login do mestre é um *relying party* OIDC genérico: Google em produção, um provedor OIDC local nos testes ponta a ponta — o módulo fala o protocolo, não um SDK do Google. O login do jogador sem Google (RN-17, decidido pelo Samuel em 29/09/2026: handle por mesa, sem e-mail) ainda não está implementado — ver [ADR-0009](adr/0009-login-do-jogador-sem-google.md). Criar campanha continua exigindo uma conta com Google no MVP (RN-14).
-- `campaigns`: campanhas, membros (inclusive o membro pendente de um convite com aprovação, RN-15), papéis e convites.
+- `campaigns`: campanhas, membros (inclusive o membro pendente de um convite com aprovação, RN-15), papéis, convites e o documento da campanha (MR-018, ver [Documento da campanha](#documento-da-campanha)).
 - `characters`: personagens, fichas, história, trava, notas do mestre e, depois, cópias. Também serve o catálogo de regras do editor (`ContentService`) enquanto não existe conteúdo da mesa (ver [Módulo characters](#módulo-characters-personagens-e-fichas)).
 - `play`: sessão de jogo, cenas, encontros, combatentes e o stream ao vivo. Hoje: iniciar, encerrar e listar sessões, o que trava as fichas (Etapa 4), e a sessão ao vivo: o aviso, o stream e a correção do mestre nos PV, espaços de magia e dados de vida, com o histórico em `session_events` (Etapa 5; ver [Módulo play](#módulo-play-sessões-de-jogo)).
 - `maps`: mapas, pontos de interesse, a galeria de imagens e, depois, masmorras. Na Etapa 5, primeiro a galeria: enviar, guardar e servir as imagens (ver [Módulo maps](#módulo-maps-galeria-e-imagens)).
@@ -77,14 +77,14 @@ Toda chamada da API nasce num arquivo `.proto`. O `buf generate` gera o código 
 Regras:
 
 1. Um pacote por módulo e versão: `meurpg.<módulo>.v1`, em `proto/meurpg/<módulo>/v1/`.
-2. Um serviço por módulo. Cada chamada tem o seu par `XxxRequest` e `XxxResponse`, mesmo vazio, como o `buf lint` pede.
+2. Um serviço por módulo, em regra. Um assunto à parte dentro do módulo pode ter um serviço próprio, no mesmo pacote: o `campaigns` tem o `CampaignService` e o `CampaignDocumentService`, do [documento da campanha](#documento-da-campanha). Cada chamada tem o seu par `XxxRequest` e `XxxResponse`, mesmo vazio, como o `buf lint` pede.
 3. O número de um campo nunca muda nem é reaproveitado. Campo removido vira `reserved`.
 4. Mudança que quebra o contrato vira um pacote `v2`. O `buf breaking` compara cada PR com a `main`.
 5. O código gerado fica no repositório. O CI roda `buf generate` de novo e falha se aparecer diferença.
 6. Campos em `snake_case` no `.proto`; o TypeScript gerado usa `camelCase` sozinho.
 7. Chamada só de leitura leva um nível de idempotência, e qual depende da requisição (decidido por Vinicius em 29/09/2026):
    - **Requisição sem ID e sem dado pessoal** (vazia, como `GetMe`, `ListMyCampaigns`, `ListOpenGameSessions` e `GetServerInfo`): `idempotency_level = NO_SIDE_EFFECTS`. O Connect passa a aceitar GET, que o navegador pode guardar em cache.
-   - **Requisição com ID ou dado pessoal** (como `GetCampaign`, `ListMembers`, `ListInvites`, `GetCharacter`, `ListCharacters`, `GetMasterNotes`, `ListContent`, `ListGameSessions` e `GetLiveSession`): `idempotency_level = IDEMPOTENT`. Fica documentada como leitura e segura para repetir, mas só aceita POST: num GET, a mensagem inteira vai na URL, e a URL fica nos logs da plataforma (ver [Privacidade](privacidade.md)).
+   - **Requisição com ID ou dado pessoal** (como `GetCampaign`, `ListMembers`, `ListInvites`, `GetCampaignDocument`, `GetCharacter`, `ListCharacters`, `GetMasterNotes`, `ListContent`, `ListGameSessions` e `GetLiveSession`): `idempotency_level = IDEMPOTENT`. Fica documentada como leitura e segura para repetir, mas só aceita POST: num GET, a mensagem inteira vai na URL, e a URL fica nos logs da plataforma (ver [Privacidade](privacidade.md)).
    - O teste `TestConnectGETOnlyForRequestsWithoutData` (`backend/cmd/api`) falha se um método `NO_SIDE_EFFECTS` tiver requisição com campo.
 8. Os nomes seguem o Google AIP (decidido por Vinicius em 29/09/2026):
    - **Métodos padrão** começam com `Get`, `List`, `Create`, `Update` ou `Delete` mais o recurso (AIP-131 a AIP-135): `GetCampaign`, `ListMembers`, `CreateInvite`.
@@ -133,7 +133,7 @@ Cada regra de negócio recusada devolve um código de erro do Connect, sempre o 
 | `not_found` | Não existe, ou o usuário não pode saber que existe: um ponto escondido, ou uma campanha da qual ele não é membro (ADR-0011). O membro pendente (RN-15) recebe o mesmo `not_found` fora das poucas chamadas que ele pode fazer. |
 | `invalid_argument` | Entrada inválida, como um atributo acima de 30. |
 | `resource_exhausted` | Um limite da campanha acabou: a galeria cheia (300 imagens ou 500 MB, MR-019). |
-| `aborted` | Conflito de transação (`40001`) que continuou depois das novas tentativas, ou uma ficha que mudou desde que o app a leu (revisão velha, AIP-154). O app recarrega e a pessoa tenta de novo. |
+| `aborted` | Conflito de transação (`40001`) que continuou depois das novas tentativas, ou uma ficha ou um documento da campanha que mudou desde que o app o leu (revisão velha, AIP-154). O app recarrega e a pessoa tenta de novo. |
 
 ## Frontend (web/)
 
@@ -332,12 +332,13 @@ O cookie `__Host-meurpg_session` exige `Secure`, e mesmo assim funciona em `http
 
 O mestre cria a campanha e gera convites; o jogador faz login e aceita o convite, e vira jogador da campanha (MR-001, MR-002, MR-003). O código fica em `backend/internal/campaigns`, e quem decide o que cada um pode fazer é o pacote `backend/internal/authz` (ADR-0011: papéis por campanha, conferidos no banco a cada requisição).
 
-| Chamada do `CampaignService` | Quem pode |
+| Chamada | Quem pode |
 | --- | --- |
 | `CreateCampaign`, `ListMyCampaigns`, `AcceptInvite` | Qualquer pessoa logada. `ListMyCampaigns` também lista as campanhas em que a pessoa é membro pendente, só com o nome |
 | `GetCampaign` | Membros da campanha; o membro pendente (RN-15) também, e recebe só o nome e `awaiting_approval` |
 | `ListMembers` | Membros da campanha. O membro pendente não aparece na lista e recebe `not_found` |
 | `CreateInvite`, `ListInvites`, `RevokeInvite` | O mestre da campanha |
+| `CampaignDocumentService`: `GetCampaignDocument`, `UpdateCampaignDocument` | O mestre da campanha (ver [Documento da campanha](#documento-da-campanha)) |
 
 ### Autorização
 
@@ -363,7 +364,7 @@ flowchart TD
     D -->|"sim"| OK["Handler continua"]
 ```
 
-Quem não é membro recebe `not_found` tanto para uma campanha que existe quanto para uma inventada, com a mesma mensagem. Assim ninguém descobre quais campanhas existem. Um teste chama todo método do `CampaignService` como mestre, jogador, não membro, anônimo e membro pendente (`TestAuthorizationMatrix`), e falha se um método novo aparecer sem linha na tabela.
+Quem não é membro recebe `not_found` tanto para uma campanha que existe quanto para uma inventada, com a mesma mensagem. Assim ninguém descobre quais campanhas existem. Um teste chama todo método do `CampaignService` como mestre, jogador, não membro, anônimo e membro pendente (`TestAuthorizationMatrix`), e falha se um método novo aparecer sem linha na tabela; o `CampaignDocumentService` tem o dele (`TestCampaignDocumentAuthorizationMatrix`).
 
 ### Membro pendente
 
@@ -472,11 +473,57 @@ Regras que valem para qualquer intenção, não só a do convite:
 
 ### Respostas e GET
 
-Toda resposta do `CampaignService`, inclusive os erros, sai com `Cache-Control: no-store`. Só o `ListMyCampaigns` aceita GET (`NO_SIDE_EFFECTS`), porque a requisição dele é vazia. As outras leituras (`GetCampaign`, `ListMembers`, `ListInvites`) levam o ID da campanha, e num GET a mensagem inteira vai na URL, que fica nos logs da plataforma (ver [Privacidade](privacidade.md)). Por isso elas levam `IDEMPOTENT` e ficam só em POST, mesmo sem efeito colateral (regra 7 dos [Contratos de API](#contratos-de-api-protobuf)).
+Toda resposta do `CampaignService` e do `CampaignDocumentService`, inclusive os erros, sai com `Cache-Control: no-store`. Só o `ListMyCampaigns` aceita GET (`NO_SIDE_EFFECTS`), porque a requisição dele é vazia. As outras leituras (`GetCampaign`, `ListMembers`, `ListInvites`, `GetCampaignDocument`) levam o ID da campanha, e num GET a mensagem inteira vai na URL, que fica nos logs da plataforma (ver [Privacidade](privacidade.md)). Por isso elas levam `IDEMPOTENT` e ficam só em POST, mesmo sem efeito colateral (regra 7 dos [Contratos de API](#contratos-de-api-protobuf)).
 
 ### Nome de exibição
 
 Os membros aparecem pelo nome de exibição, que cada pessoa digita no app (`IdentityService.UpdateProfile`, de 1 a 40 caracteres). Ele nunca vem do provedor de login. O `campaigns` pede os nomes ao `identity` por uma interface (`Profiles`, que o `identity.PostgresStore` implementa), sem ler a tabela `users`, como a regra dos módulos manda.
+
+### Documento da campanha
+
+Cada campanha tem um documento: um texto em Markdown que só o mestre lê e escreve (MR-018), com a preparação do jogo, imagens da galeria e links para mapas e fichas. "Só o mestre" é a resposta padrão da pergunta 27 ao Samuel, porque o documento guarda spoilers; se ele responder que os jogadores leem o documento, ou partes dele, mudam a autorização e esta seção. O código fica em `backend/internal/campaigns/document.go`; o contrato, em `proto/meurpg/campaigns/v1/campaign_document.proto`; a tabela, em [Modelo de dados](dados.md#esquema-implementado).
+
+| Chamada do `CampaignDocumentService` | Mestre | Jogador | Não membro | Anônimo | Membro pendente (RN-15) |
+| --- | --- | --- | --- | --- | --- |
+| `GetCampaignDocument`, `UpdateCampaignDocument` | Sim | `permission_denied` | `not_found` | `unauthenticated` | `not_found` |
+
+- **Um documento por campanha.** A linha em `campaign_documents` nasce no primeiro salvamento. Antes disso, o documento é vazio, na revisão 0. Apagar a campanha apaga o documento; excluir a conta de quem o editou por último não apaga: o documento é da campanha.
+- **Revisão, como na ficha.** O app manda a revisão que leu (`expected_revision`), e o servidor só salva se ela ainda é a guardada, numa instrução só: `INSERT ... ON CONFLICT DO NOTHING` no primeiro salvamento, `UPDATE ... WHERE revision = <a lida>` nos outros. Se alguém salvou antes (outra aba, ou outro mestre quando a RN-13 chegar), a resposta é `aborted` e nada muda; a tela avisa e guarda o rascunho. O mesmo salvamento repetido (o mesmo texto, pela mesma pessoa, uma revisão acima) devolve o documento salvo, não `aborted`: é uma resposta que se perdeu, ou um clique duplo.
+- **O texto.** Até 200 KiB: 204.800 bytes de UTF-8, contados em bytes, como o banco guarda (um `CHECK` repete o limite). Quebra de linha e tabulação valem, e `\r\n` vira `\n`. Os outros caracteres de controle, e os invisíveis que mudam a direção do texto, são recusados com `invalid_argument`, que diz o campo e nunca repete o texto. Nada mais muda: os espaços nas pontas ficam, porque no Markdown eles contam, e o editor recebe de volta exatamente o que salvou.
+- **Quem editou.** A resposta traz `updated_at` e o nome de exibição de quem salvou por último (`updated_by_display_name`), para "Editado por Samuel ontem às 22:10". O `campaigns` pede o nome ao `identity` pela interface `Profiles`.
+
+Além do Markdown comum (títulos, parágrafos, negrito, itálico, listas), o app entende três links próprios:
+
+| No texto | Na tela |
+| --- | --- |
+| `[texto](mapa:<id do mapa>)` | Um link que abre o mapa numa janela, sem sair do documento |
+| `[texto](ficha:<id do personagem>)` | Um link que abre a ficha numa janela |
+| `![legenda](imagem:<id da imagem da galeria>)` | A imagem; o texto entre colchetes é o texto alternativo e a legenda |
+
+Os IDs são UUIDs, que os seletores do editor ("Imagem da galeria", "Link para mapa", "Link para ficha") escrevem: o mestre nunca digita um ID, e a leitura nunca mostra um. O servidor guarda os IDs como texto e não confere nada. Um link para algo apagado, ou de outra campanha, aparece como indisponível ("mapa apagado", "ficha apagada", "imagem apagada"). A imagem só vem da galeria: o app não carrega imagem de uma URL externa escrita no texto, e o CSP (`img-src 'self'`) também não deixaria (ver [Privacidade](privacidade.md)).
+
+**Por que o servidor não renderiza o documento.** O servidor guarda o texto e não o interpreta. O app transforma o Markdown numa árvore de tokens e desenha cada token com o Angular, nunca com `innerHTML`, então nenhum texto do documento vira HTML ou script na página. E cada link é resolvido pelas chamadas e rotas de sempre (o módulo `maps`, o `characters` e `/images/<id>`), com a autorização de cada uma: um ID escrito no texto não dá acesso a nada. Assim o documento não precisa repetir a autorização do que ele cita, e um link nunca mostra a alguém o que essa pessoa não pode ver, mesmo se a pergunta 27 mudar.
+
+```mermaid
+sequenceDiagram
+    participant A as Aba 1 do mestre
+    participant B as Aba 2 do mestre
+    participant C as campaigns
+    participant DB as CockroachDB
+    A->>C: GetCampaignDocument
+    C-->>A: revisão 3
+    B->>C: GetCampaignDocument
+    C-->>B: revisão 3
+    A->>C: UpdateCampaignDocument, texto A, expected_revision 3
+    C->>DB: UPDATE, só se a revisão ainda é 3
+    DB-->>C: salvo, revisão 4
+    C-->>A: o documento, revisão 4
+    B->>C: UpdateCampaignDocument, texto B, expected_revision 3
+    C->>DB: UPDATE, só se a revisão ainda é 3
+    DB-->>C: nenhuma linha
+    C-->>B: aborted, nada muda
+    Note over B: A tela avisa que o documento mudou e guarda o rascunho
+```
 
 ## Módulo rules: regras como dados
 

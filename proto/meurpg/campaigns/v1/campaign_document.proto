@@ -1,0 +1,138 @@
+syntax = "proto3";
+
+package meurpg.campaigns.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// CampaignDocumentService keeps each campaign's document (MR-018): one
+// Markdown text per campaign that the master writes to prepare the game,
+// with images from the gallery and links to maps and character sheets.
+//
+// Only the campaign's master reads or writes it (the default answer to
+// Samuel's question 27: the document holds prep notes and spoilers). As in
+// CampaignService, every method needs a valid session cookie
+// (`unauthenticated` without one); a player of the campaign gets
+// `permission_denied`; someone outside the campaign, a pending member
+// (RN-15, MR-024) and a campaign that does not exist all get the same
+// `not_found`.
+//
+// Responses carry `Cache-Control: no-store`. The read is IDEMPOTENT and
+// POST-only, because its request carries the campaign ID (see
+// CampaignService).
+//
+// # The body
+//
+// The body is Markdown, as the master typed it. The server stores it and
+// never parses or renders it: the web app renders it itself, from a parsed
+// token tree, never as HTML (`innerHTML`), so whatever the text says, it
+// cannot run in the browser. The server only checks the size and the
+// characters (see UpdateCampaignDocumentRequest.body).
+//
+// Besides ordinary Markdown (headings, paragraphs, bold, italics, lists),
+// the app understands three link targets of its own, each followed by an
+// ID (a UUID):
+//
+//   - `[texto](mapa:<map id>)`: a link to one of the campaign's maps, which
+//     the app opens in a dialog.
+//   - `[texto](ficha:<character id>)`: a link to a character's sheet, which
+//     the app opens in a dialog.
+//   - `![legenda](imagem:<gallery image id>)`: an image from the campaign's
+//     gallery. The text in brackets is both the image's alt text and its
+//     visible caption.
+//
+// The server stores these IDs as plain text and does not check them. A
+// link to something that was deleted, or that belongs to another campaign,
+// shows as unavailable in the app ("mapa apagado", "ficha apagada",
+// "imagem apagada"). The app resolves every link through the ordinary
+// authorized calls and routes (the maps and characters services, and
+// /images/<id>), so a link can never show someone a thing they may not see.
+service CampaignDocumentService {
+  // GetCampaignDocument returns the campaign's document. Only the
+  // campaign's master may call it. A campaign whose document was never
+  // saved has an empty one, at revision 0, with no updated_at.
+  //
+  // It only reads, but stays POST-only, because a GET would put the
+  // campaign ID in the URL.
+  rpc GetCampaignDocument(GetCampaignDocumentRequest) returns (GetCampaignDocumentResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // UpdateCampaignDocument replaces the campaign's document with a new
+  // body. Only the campaign's master may call it.
+  //
+  // It saves only if nobody saved since the caller read the document:
+  // expected_revision must be the revision the caller read (0 for a
+  // document that was never saved). Each save raises the revision by one.
+  // An empty body is saved like any other: the document stays, empty, with
+  // a new revision.
+  //
+  // Sending the same save twice (the same body, by the same person, after
+  // it already raised the revision by one) returns the saved document
+  // instead of `aborted`, so a retry after a lost response, or a double
+  // click, is not a conflict.
+  //
+  // Errors:
+  //   - `invalid_argument`: expected_revision is negative, or the body
+  //     breaks its rules (see UpdateCampaignDocumentRequest.body). The
+  //     message names the field and the rule, never the text.
+  //   - `aborted`: expected_revision is stale: the document was saved
+  //     meanwhile, in another tab or by another master. Nothing changed. The
+  //     app keeps the draft, says so, and offers to reload.
+  rpc UpdateCampaignDocument(UpdateCampaignDocumentRequest) returns (UpdateCampaignDocumentResponse);
+}
+
+// CampaignDocument is a campaign's document, as its master sees it.
+message CampaignDocument {
+  // The campaign's ID (a UUID). There is one document per campaign.
+  string campaign_id = 1;
+  // The Markdown text, exactly as saved (line breaks are always \n). Empty
+  // when the document was never saved, or was saved empty.
+  string body = 2;
+  // Counts the saves: 0 for a document that was never saved, then 1, 2...
+  // Send it back as UpdateCampaignDocumentRequest.expected_revision.
+  int32 revision = 3;
+  // When the document was last saved. Unset when it was never saved.
+  google.protobuf.Timestamp updated_at = 4;
+  // The display name of whoever saved it last, for "Editado por Samuel
+  // ontem às 22:10". Empty when it was never saved, when that person has
+  // not chosen a display name, or when their account was deleted (the
+  // document stays with the campaign).
+  string updated_by_display_name = 5;
+}
+
+// GetCampaignDocumentRequest names the campaign.
+message GetCampaignDocumentRequest {
+  string campaign_id = 1;
+}
+
+// GetCampaignDocumentResponse returns the document.
+message GetCampaignDocumentResponse {
+  CampaignDocument document = 1;
+}
+
+// UpdateCampaignDocumentRequest carries the new body, which replaces the
+// saved one completely.
+message UpdateCampaignDocumentRequest {
+  string campaign_id = 1;
+  // The Markdown text. Rules:
+  //   - at most 204,800 bytes (200 KiB) of UTF-8, counted after the line
+  //     breaks below are changed; an accented letter takes 2 bytes, most
+  //     emoji 4;
+  //   - line breaks and tabs are fine: Windows (\r\n) and old Mac (\r)
+  //     line breaks become \n;
+  //   - no other control characters, and none of the invisible characters
+  //     that change text direction (as in every other text of the app).
+  // Nothing else is changed: spaces at the start and end are kept, because
+  // they can mean something in Markdown.
+  string body = 2;
+  // The revision the caller read (CampaignDocument.revision): 0 for a
+  // document that was never saved.
+  int32 expected_revision = 3;
+}
+
+// UpdateCampaignDocumentResponse returns the document as saved.
+message UpdateCampaignDocumentResponse {
+  // The document, with the new revision, updated_at and the caller's
+  // display name.
+  CampaignDocument document = 1;
+}

@@ -116,10 +116,12 @@ func newHarness(t *testing.T) *harness {
 	return h
 }
 
-// user is a signed-in account with its own API client.
+// user is a signed-in account with its own API clients.
 type user struct {
 	id  string
 	api campaignsv1connect.CampaignServiceClient
+	// doc calls CampaignDocumentService (MR-018) as this user.
+	doc campaignsv1connect.CampaignDocumentServiceClient
 }
 
 // newUser creates an account, as a first sign-in would, and sets its
@@ -138,7 +140,7 @@ func (h *harness) newUser(displayName string) *user {
 			h.t.Fatalf("SetDisplayName() error = %v", err)
 		}
 	}
-	return &user{id: id, api: h.client(id)}
+	return &user{id: id, api: h.client(id), doc: h.documentClient(id)}
 }
 
 // anonymous returns a client with no session.
@@ -147,17 +149,28 @@ func (h *harness) anonymous() campaignsv1connect.CampaignServiceClient {
 }
 
 func (h *harness) client(userID string) campaignsv1connect.CampaignServiceClient {
-	var opts []connect.ClientOption
-	if userID != "" {
-		opts = append(opts, connect.WithInterceptors(connect.UnaryInterceptorFunc(
-			func(next connect.UnaryFunc) connect.UnaryFunc {
-				return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-					req.Header().Set(testUserHeader, userID)
-					return next(ctx, req)
-				}
-			})))
+	return campaignsv1connect.NewCampaignServiceClient(h.server.Client(), h.server.URL, clientOptions(userID)...)
+}
+
+// documentClient returns a CampaignDocumentService client acting as userID,
+// or with no session when userID is empty.
+func (h *harness) documentClient(userID string) campaignsv1connect.CampaignDocumentServiceClient {
+	return campaignsv1connect.NewCampaignDocumentServiceClient(h.server.Client(), h.server.URL, clientOptions(userID)...)
+}
+
+// clientOptions makes a client send userID as the signed-in user; none for
+// an empty userID.
+func clientOptions(userID string) []connect.ClientOption {
+	if userID == "" {
+		return nil
 	}
-	return campaignsv1connect.NewCampaignServiceClient(h.server.Client(), h.server.URL, opts...)
+	return []connect.ClientOption{connect.WithInterceptors(connect.UnaryInterceptorFunc(
+		func(next connect.UnaryFunc) connect.UnaryFunc {
+			return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+				req.Header().Set(testUserHeader, userID)
+				return next(ctx, req)
+			}
+		}))}
 }
 
 // createCampaign creates a campaign as u, or fails the test.

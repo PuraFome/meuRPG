@@ -250,9 +250,25 @@ Os dois últimos critérios foram respondida pelo Vinicius em 29/09/2026.
 
 - Prioridade: MVP
 - Regras: —
-- Módulos: campaigns
+- Módulos: campaigns (o documento); maps e characters (as imagens, os mapas e as fichas dos links)
 
 Existia no app antigo (descontinuado). Confirmada no MVP pelo Samuel em 29/09/2026, na Etapa 5 do [roadmap](../roadmap.md), ao lado dos mapas.
+
+#### Critérios de aceite (proposta)
+Propostos por nós, com a resposta padrão da pergunta 27 do documento de acompanhamento (só o mestre vê o documento), esperando o Samuel:
+
+- **Dado** o documento da campanha, **quando** o mestre escreve texto, põe uma imagem da galeria e um link para um mapa e para uma ficha, **então** o documento mostra a imagem **e** o link abre o mapa ou a ficha numa janela, sem sair do documento.
+- **Dado** um jogador, **quando** pede o documento, **então** o servidor recusa (enquanto valer a resposta padrão: só o mestre vê).
+
+#### Implementado
+- Backend pronto em 30/09/2026 (Etapa 5, módulo `campaigns`); as telas vêm depois, com o desenho aprovado. Ver [Arquitetura](../arquitetura.md#documento-da-campanha) e [Modelo de dados](../dados.md#esquema-implementado).
+  - Contrato: `CampaignDocumentService`, com `GetCampaignDocument` e `UpdateCampaignDocument` (`campaign_document.proto`). Um documento por campanha, em Markdown, até 200 KiB; salvar confere a revisão lida (`aborted` se alguém salvou antes).
+  - Banco: `campaign_documents` (`00027`).
+  - Os links do próprio app: `[texto](mapa:<id>)`, `[texto](ficha:<id>)` e `![legenda](imagem:<id>)`. O servidor guarda o texto como veio e não abre os links; o app os resolve pelas chamadas de sempre, com a autorização de sempre.
+- Testes, por critério:
+  - Primeiro: no servidor, `TestMR018_MasterWritesTheCampaignDocument` (o documento começa vazio, o mestre salva, lê de volta com a revisão, a hora e quem editou, e salva de novo; os links e a imagem voltam byte a byte). A imagem aparecer e o link abrir a janela são da tela: o teste Playwright (`@MR-018`) vem com ela.
+  - Segundo: `TestMR018_PlayersCannotReadTheDocument` (o jogador recebe `permission_denied`; quem não é membro e o membro pendente, `not_found`) e `TestCampaignDocumentAuthorizationMatrix`.
+  - Do salvamento: `TestUpdateCampaignDocumentRefusesAStaleRevision`, `TestSavingTheSameDocumentTwiceIsNotAConflict`, `TestUpdateCampaignDocumentFirstSavesRace`, `TestUpdateCampaignDocumentValidates` e `TestCampaignDocumentGoesWithTheCampaign`.
 
 ### MR-019: Galeria de imagens
 

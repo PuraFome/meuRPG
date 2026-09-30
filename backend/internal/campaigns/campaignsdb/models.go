@@ -16,6 +16,14 @@ type Campaign struct {
 	CreatedAt time.Time
 }
 
+type CampaignDocument struct {
+	CampaignID string
+	Body       string
+	Revision   int32
+	UpdatedAt  time.Time
+	UpdatedBy  *string
+}
+
 type CampaignInvite struct {
 	ID               string
 	CampaignID       string
