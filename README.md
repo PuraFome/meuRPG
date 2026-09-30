@@ -24,6 +24,7 @@
   <a href=".github/dependabot.yml"><img alt="Dependabot ativo" src="https://img.shields.io/badge/Dependabot-ativo-025E8C?logo=dependabot&amp;logoColor=white"></a>
   <a href="https://www.conventionalcommits.org/pt-br/v1.0.0/"><img alt="Conventional Commits" src="https://img.shields.io/badge/Conventional%20Commits-1.0.0-FE5196?logo=conventionalcommits&amp;logoColor=white"></a>
   <a href="NOTICE"><img alt="Regras: SRD 5.1, CC BY 4.0" src="https://img.shields.io/badge/regras-SRD%205.1%20%C2%B7%20CC%20BY%204.0-555555"></a>
+  <a href="LICENSE"><img alt="Licença: Apache 2.0" src="https://img.shields.io/github/license/PuraFome/meuRPG?label=licen%C3%A7a&amp;color=D22128"></a>
   <a href="https://github.com/PuraFome/meuRPG/commits/main"><img alt="Último commit" src="https://img.shields.io/github/last-commit/PuraFome/meuRPG/main?label=%C3%BAltimo%20commit"></a>
 </p>
 
@@ -147,7 +148,9 @@ As regras vêm do System Reference Document 5.1 (SRD 5.1), sob a licença Creati
 - Nenhum texto de livro fora do SRD entra no repositório: o que a mesa usar de outros livros ela cadastra com as próprias palavras.
 - Como o motor funciona: [Arquitetura → Módulo rules](docs/arquitetura.md#módulo-rules-regras-como-dados). Como atualizar o SRD: [CONTRIBUTING.md](CONTRIBUTING.md#conteúdo-de-regras-srd).
 
-As fontes (Alegreya e Alegreya Sans, OFL 1.1) e os ícones (Material Symbols, Apache 2.0) também estão no [NOTICE](NOTICE), com as licenças em [`third_party/licenses/`](third_party/licenses/). O código do MeuRPG ainda não tem uma licença escolhida.
+As fontes (Alegreya e Alegreya Sans, OFL 1.1) e os ícones (Material Symbols, Apache 2.0) também estão no [NOTICE](NOTICE), com as licenças em [`third_party/licenses/`](third_party/licenses/).
+
+O MeuRPG é distribuído sob a [Apache License 2.0](LICENSE). O conteúdo de terceiros listado no [NOTICE](NOTICE) mantém a própria licença: o SRD 5.1 (CC BY 4.0), os dados do 5e-database (MIT), as fontes (OFL 1.1) e os ícones (Apache 2.0). Quem redistribui o MeuRPG, com ou sem mudanças, leva junto o `LICENSE` e o `NOTICE`.
 
 ## App antigo (descontinuado)
 
