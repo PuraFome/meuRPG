@@ -41,12 +41,17 @@ updates:
           - "patch"
     ignore:
       # A new Angular major comes with `ng update` and its migrations, and
-      # it moves the TypeScript range Angular accepts: both by hand.
+      # it moves the TypeScript and vitest ranges Angular accepts: all by
+      # hand.
       - dependency-name: "@angular/*"
         update-types: ["version-update:semver-major"]
       - dependency-name: "@angular-devkit/*"
         update-types: ["version-update:semver-major"]
       - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      # The unit tests run through Angular's builder (@angular/build), which
+      # accepts one vitest major at a time: it moves with Angular.
+      - dependency-name: "vitest"
         update-types: ["version-update:semver-major"]
       # Node's types follow the Node major the app is built with (22, in
       # CI and in backend/Dockerfile), not the newest Node.
