@@ -17,15 +17,16 @@ type Campaign struct {
 }
 
 type CampaignInvite struct {
-	ID         string
-	CampaignID string
-	TokenHash  []byte
-	CreatedBy  string
-	MaxUses    int32
-	UseCount   int32
-	CreatedAt  time.Time
-	ExpiresAt  time.Time
-	RevokedAt  *time.Time
+	ID               string
+	CampaignID       string
+	TokenHash        []byte
+	CreatedBy        string
+	MaxUses          int32
+	UseCount         int32
+	CreatedAt        time.Time
+	ExpiresAt        time.Time
+	RevokedAt        *time.Time
+	RequiresApproval bool
 }
 
 type CampaignMember struct {
@@ -33,4 +34,5 @@ type CampaignMember struct {
 	UserID     string
 	Role       string
 	JoinedAt   time.Time
+	Status     string
 }

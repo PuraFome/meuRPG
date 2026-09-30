@@ -35,6 +35,8 @@ func errBlocked(reason charactersv1.CharacterBlockedReason, characterID string) 
 		charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_CHARACTER_DEAD:          "the character is dead, so only the master edits its sheet",
 		charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_LIVING_CHARACTER_EXISTS: "you already have a living character in this campaign",
 		charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_STORY_LOCKED:            "the story is locked: ask the master to allow editing it",
+		charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_NOT_PENDING:             "the character does not wait for approval: once approved, it stays in the campaign",
+		charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_AWAITING_APPROVAL:       "the character waits for your approval: approve or reject it instead",
 	}[reason]
 	err := connect.NewError(connect.CodeFailedPrecondition, errors.New(msg))
 	if detail, detailErr := connect.NewErrorDetail(&charactersv1.CharacterBlocked{Reason: reason, CharacterId: characterID}); detailErr == nil {

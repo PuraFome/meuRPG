@@ -297,8 +297,8 @@ func (noSheets) LockSheets(context.Context, pgx.Tx, string, time.Time) (int64, e
 
 type noMembers struct{}
 
-func (noMembers) CampaignRole(context.Context, string, string) (authz.Role, error) {
-	return "", authz.ErrNotMember
+func (noMembers) CampaignMembership(context.Context, string, string) (authz.Role, authz.Status, error) {
+	return "", "", authz.ErrNotMember
 }
 
 func lazyPool(t *testing.T) *pgxpool.Pool {

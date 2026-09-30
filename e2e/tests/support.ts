@@ -345,7 +345,10 @@ export async function createCharacterViaUI(
 
   await page.getByRole('button', { name: 'Criar personagem' }).click();
 
-  await expect(page).toHaveURL(/\/campanhas\/[^/]+\/personagens\/[^/]+$/);
+  // `(?!novo$)`: the player's own entry path, `/personagens/novo`, already
+  // matches `/personagens/<anything>`, so without it this would return
+  // "novo" whenever the check ran before the app navigated to the sheet.
+  await expect(page).toHaveURL(/\/campanhas\/[^/]+\/personagens\/(?!novo$)[^/]+$/);
   return page.url().split('/').pop()!;
 }
 

@@ -17,12 +17,13 @@ class FakeCampaignsService {
   }
 }
 
-function invite(id: string, state: InviteState, useCount = 0, maxUses = 1): Invite {
+function invite(id: string, state: InviteState, useCount = 0, maxUses = 1, requiresApproval = false): Invite {
   return {
     id,
     state,
     useCount,
     maxUses,
+    requiresApproval,
     createdAt: undefined,
     expiresAt: undefined,
     revokedAt: undefined,
@@ -86,10 +87,35 @@ describe('CampaignInvites', () => {
     await instance['createInvite']();
     fixture.detectChanges();
 
-    expect(fake.createInvite).toHaveBeenCalledWith('camp-1', 1, 7);
+    expect(fake.createInvite).toHaveBeenCalledWith('camp-1', 1, 7, false);
     const el = fixture.nativeElement as HTMLElement;
     expect(el.textContent).toContain('não será mostrado de novo');
     expect(el.textContent).toContain('/convite#t=sekret-token');
+  });
+
+  it('"Exigir aprovação do mestre" creates an invite with approval (MR-024)', async () => {
+    fake.createInvite.mockResolvedValue({
+      invite: invite('approval-invite', InviteState.ACTIVE, 0, 1, true),
+      token: 'tok',
+    });
+    const { fixture, el } = await render();
+
+    const checkbox = Array.from(el.querySelectorAll('mat-checkbox')).find((c) =>
+      c.textContent?.includes('Exigir aprovação do mestre'),
+    );
+    expect(checkbox).toBeTruthy();
+    (checkbox!.querySelector('input[type="checkbox"]') as HTMLInputElement).click();
+    fixture.detectChanges();
+
+    await fixture.componentInstance['createInvite']();
+    fixture.detectChanges();
+
+    expect(fake.createInvite).toHaveBeenCalledWith('camp-1', 1, 7, true);
+    const text = (fixture.nativeElement as HTMLElement).textContent;
+    expect(text).toContain('só entra na campanha depois que você aprovar');
+    expect(text).toContain('exige aprovação');
+    // The form goes back to the default: the next invite needs no approval.
+    expect(fixture.componentInstance['form'].getRawValue().requiresApproval).toBe(false);
   });
 
   it('dismissing the revealed link clears it', async () => {

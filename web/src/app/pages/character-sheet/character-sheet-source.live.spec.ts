@@ -165,6 +165,7 @@ function characterWithFullSheet(full: FullSheet): Character {
     canAccessMasterNotes: false,
     storyEditingAllowed: false,
     canSetStoryEditing: false,
+    canApprove: false,
   };
 }
 
@@ -191,6 +192,16 @@ describe('the sheet header shows alignment and XP, read from the stored FullShee
       characterWithFullSheet(minimalFullSheet({ experiencePoints: 2700 })),
     );
     expect(vmWithXp.experiencePoints).toBe(2700);
+  });
+
+  it('maps a pending character and the master\'s can_approve (MR-024)', () => {
+    const vm = toCharacterSheetVm({
+      ...characterWithFullSheet(minimalFullSheet()),
+      state: CharacterState.PENDING,
+      canApprove: true,
+    });
+    expect(vm.state).toBe('pending');
+    expect(vm.canApprove).toBe(true);
   });
 
   it('has no alignment or XP for a BasicSheet NPC', () => {

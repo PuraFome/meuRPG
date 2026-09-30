@@ -90,24 +90,35 @@ test('as notas do mestre nunca chegam ao jogador', { tag: '@RN-11' }, async ({ p
   const playerContext = await newSignedInContext(browser, 'Jogador Teste');
   try {
     const { page: joinedPage } = await acceptInvite(playerContext, link!);
+    await joinedPage.close();
 
-    // Every response body the player's page receives, across the campaign
-    // screen and a direct attempt at the notes RPC: the secret string must
-    // never appear in any of them.
+    // The campaign screen on a fresh page, listened to from its first
+    // request, so every response body it receives is read. Not a `goto` on
+    // the invite's page: that page is still loading the campaign when
+    // acceptInvite returns, and a navigation that cuts a response off
+    // mid-body leaves its `response.text()` pending forever (not rejected),
+    // so the test hung until its timeout (CI, 30/09/2026).
+    const playerPage = await playerContext.newPage();
     const bodyPromises: Promise<string>[] = [];
-    joinedPage.on('response', (response) => {
+    playerPage.on('response', (response) => {
       bodyPromises.push(response.text().catch(() => ''));
     });
+    await playerPage.goto(`/campanhas/${campaignId}`);
+    // The player's own (empty) list comes from ListCharacters, the last
+    // call the screen makes.
+    await expect(playerPage.getByText('Nenhum personagem ainda.')).toBeVisible();
 
-    await joinedPage.goto(`/campanhas/${campaignId}`);
-    const getNotesRes = await callRPC(joinedPage, 'meurpg.characters.v1.CharacterService/GetMasterNotes', {
+    // A direct attempt at the notes RPC. page.request is not the page's
+    // traffic, so its body is checked on its own below.
+    const getNotesRes = await callRPC(playerPage, 'meurpg.characters.v1.CharacterService/GetMasterNotes', {
       campaignId,
       characterId: npcId,
     });
     expect(getNotesRes.status()).toBe(403); // permission_denied
     expect(await getNotesRes.json()).toMatchObject({ code: 'permission_denied' });
 
-    const bodies = await Promise.all(bodyPromises);
+    // The secret string never appears in anything the player received.
+    const bodies = [...(await Promise.all(bodyPromises)), await getNotesRes.text()];
     expect(bodies.some((body) => body.includes(secretNote))).toBe(false);
   } finally {
     await playerContext.close();

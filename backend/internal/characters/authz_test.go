@@ -26,6 +26,10 @@ const allowed connect.Code = 0
 //	non-member    signed in, but not in the campaign: not_found, so the
 //	              campaign's existence does not leak
 //	anonymous     unauthenticated, always
+//	pending       a pending member (RN-15, MR-024) with their own pending
+//	              character: treated as a player in the calls package authz
+//	              lets them make (pendingMayCall), where they see only that
+//	              character; not_found everywhere else, like a non-member
 //
 // A member who may not see a character gets not_found too, so NPC IDs and
 // other players' characters do not leak; a member asking for something only
@@ -37,6 +41,14 @@ func TestAuthorizationMatrix(t *testing.T) {
 	campaign := h.newCampaign(master, "Mirathel", owner, other)
 	pc := owner.createPensantus(t, campaign)
 	npc := master.create(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_BOSS, "Strahd", enemySheet())
+	// Three pending members (RN-15): the "pending" caller, and two whose
+	// characters the ApproveCharacter and RejectCharacter rows decide on,
+	// so those rows do not change the pending caller.
+	pending, approvee, rejectee := h.newUser("Pendente"), h.newUser("Aprovada"), h.newUser("Recusado")
+	h.joinPending(master, campaign, pending, approvee, rejectee)
+	pendingPC := pending.createPensantus(t, campaign)
+	approveePC := approvee.createPensantus(t, campaign)
+	rejecteePC := rejectee.createPensantus(t, campaign)
 
 	// fresh reads a character's current revision as the master, so every
 	// caller's write is judged on its permission, not on a stale revision.
@@ -80,92 +92,131 @@ func TestAuthorizationMatrix(t *testing.T) {
 		before func() // runs once, before the row's calls
 		call   rpc
 		// The expected code for master, owner, other player, non-member,
-		// anonymous.
-		want [5]connect.Code
+		// anonymous, pending member.
+		want [6]connect.Code
 	}{
 		// The owner already has a living character (RN-03); the other
 		// player has none yet, so they may create theirs.
 		{
 			"CreateCharacter", "player character", nil, create(charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, pensantusSheet()),
-			[5]connect.Code{connect.CodePermissionDenied, connect.CodeFailedPrecondition, allowed, connect.CodeNotFound, connect.CodeUnauthenticated},
+			[6]connect.Code{connect.CodePermissionDenied, connect.CodeFailedPrecondition, allowed, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeFailedPrecondition},
 		},
 		{
 			"CreateCharacter", "enemy", nil, create(charactersv1.CharacterKind_CHARACTER_KIND_ENEMY, enemySheet()),
-			[5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated},
+			[6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodePermissionDenied},
 		},
 		{
 			"CreateCharacter", "minion", nil, create(charactersv1.CharacterKind_CHARACTER_KIND_MINION, basicSheet()),
-			[5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated},
+			[6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodePermissionDenied},
 		},
 
 		{
 			"GetCharacter", "player character", nil, get(pc.GetId()),
-			[5]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated},
+			[6]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound},
 		},
 		{
 			"GetCharacter", "NPC", nil, get(npc.GetId()),
-			[5]connect.Code{allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated},
+			[6]connect.Code{allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound},
 		},
 
 		{"ListCharacters", "", nil, func(ctx context.Context, u *user) error {
 			_, err := u.api.ListCharacters(ctx, connect.NewRequest(&charactersv1.ListCharactersRequest{CampaignId: campaign}))
 			return err
-		}, [5]connect.Code{allowed, allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		}, [6]connect.Code{allowed, allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated, allowed}},
 
 		{
 			"UpdateCharacter", "draft", nil, update(pc.GetId()),
-			[5]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated},
+			[6]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound},
 		},
 		{
 			"UpdateCharacter", "NPC", nil, update(npc.GetId()),
-			[5]connect.Code{allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated},
+			[6]connect.Code{allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound},
 		},
 
 		{
 			"UpdateCharacterStory", "draft", nil, updateStory(pc.GetId()),
-			[5]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated},
+			[6]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound},
 		},
 		{
 			"UpdateCharacterStory", "NPC", nil, updateStory(npc.GetId()),
-			[5]connect.Code{allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated},
+			[6]connect.Code{allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound},
 		},
+
+		// The pending member's own pending character (RN-15): they read and
+		// edit it; nobody but the master sees it.
+		{
+			"GetCharacter", "pending character", nil, get(pendingPC.GetId()),
+			[6]connect.Code{allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, allowed},
+		},
+		{
+			"UpdateCharacter", "pending character", nil, update(pendingPC.GetId()),
+			[6]connect.Code{allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, allowed},
+		},
+		{
+			"UpdateCharacterStory", "pending character", nil, updateStory(pendingPC.GetId()),
+			[6]connect.Code{allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, allowed},
+		},
+
+		// Only the master settles a pending character. Each row decides on
+		// another pending member's character, so the pending caller stays
+		// pending for the rows below.
+		{"ApproveCharacter", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.ApproveCharacter(ctx, connect.NewRequest(&charactersv1.ApproveCharacterRequest{CampaignId: campaign, CharacterId: approveePC.GetId()}))
+			return err
+		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"RejectCharacter", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.RejectCharacter(ctx, connect.NewRequest(&charactersv1.RejectCharacterRequest{CampaignId: campaign, CharacterId: rejecteePC.GetId()}))
+			return err
+		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 
 		{"SetStoryEditing", "", nil, func(ctx context.Context, u *user) error {
 			_, err := u.api.SetStoryEditing(ctx, connect.NewRequest(&charactersv1.SetStoryEditingRequest{CampaignId: campaign, CharacterId: pc.GetId(), Allowed: true}))
 			return err
-		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 
 		{"GetMasterNotes", "", nil, func(ctx context.Context, u *user) error {
 			_, err := u.api.GetMasterNotes(ctx, connect.NewRequest(&charactersv1.GetMasterNotesRequest{CampaignId: campaign, CharacterId: pc.GetId()}))
 			return err
-		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 
 		{"UpdateMasterNotes", "", nil, func(ctx context.Context, u *user) error {
 			_, err := u.api.UpdateMasterNotes(ctx, connect.NewRequest(&charactersv1.UpdateMasterNotesRequest{CampaignId: campaign, CharacterId: pc.GetId(), Notes: "segredo"}))
 			return err
-		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 
 		{"ListContent", "", nil, func(ctx context.Context, u *user) error {
 			_, err := u.content.ListContent(ctx, connect.NewRequest(&rulesv1.ListContentRequest{CampaignId: campaign}))
 			return err
-		}, [5]connect.Code{allowed, allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		}, [6]connect.Code{allowed, allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated, allowed}},
 
 		// A game session starts: the sheet locks, and the story permission
 		// the master gave above ends (RN-01).
 		{
 			"UpdateCharacter", "locked", func() { h.lockSheets(campaign) }, update(pc.GetId()),
-			[5]connect.Code{allowed, connect.CodeFailedPrecondition, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated},
+			[6]connect.Code{allowed, connect.CodeFailedPrecondition, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound},
 		},
 		{
 			"UpdateCharacterStory", "locked", nil, updateStory(pc.GetId()),
-			[5]connect.Code{allowed, connect.CodeFailedPrecondition, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated},
+			[6]connect.Code{allowed, connect.CodeFailedPrecondition, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound},
 		},
+
+		// A game session does not lock a pending character (RN-15): its
+		// player still edits it.
+		{
+			"UpdateCharacter", "pending character, after a session started", nil, update(pendingPC.GetId()),
+			[6]connect.Code{allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, allowed},
+		},
+		// A pending character is approved or rejected, never marked dead.
+		{"MarkCharacterDead", "pending character", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.MarkCharacterDead(ctx, connect.NewRequest(&charactersv1.MarkCharacterDeadRequest{CampaignId: campaign, CharacterId: pendingPC.GetId()}))
+			return err
+		}, [6]connect.Code{connect.CodeFailedPrecondition, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 
 		// Last, because it changes the owner's character for good.
 		{"MarkCharacterDead", "", nil, func(ctx context.Context, u *user) error {
 			_, err := u.api.MarkCharacterDead(ctx, connect.NewRequest(&charactersv1.MarkCharacterDeadRequest{CampaignId: campaign, CharacterId: pc.GetId()}))
 			return err
-		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 	}
 
 	// Every method of both services must be in the table, so a new RPC
@@ -194,6 +245,7 @@ func TestAuthorizationMatrix(t *testing.T) {
 		{"other player", other},
 		{"non-member", h.newUser("De fora")},
 		{"anonymous", h.anonymous()},
+		{"pending", pending},
 	}
 	// Sequential on purpose: some rows change the state the next ones see.
 	for _, r := range rows {

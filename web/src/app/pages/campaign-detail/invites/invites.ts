@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, input, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -29,11 +30,16 @@ const MASTER_ONLY_MESSAGES = {
  * The master's "Convites" section on `/campanhas/:id` (MR-002): create an
  * invite, see its link exactly once, and list/revoke existing invites.
  * Only rendered by `CampaignDetail` when `my_role` is master.
+ *
+ * "Exigir aprovação do mestre" (RN-15, MR-024) makes whoever accepts the
+ * invite a pending member: they create their character right away, and
+ * join the campaign only when the master approves it.
  */
 @Component({
   selector: 'app-campaign-invites',
   imports: [
     MatButtonModule,
+    MatCheckboxModule,
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
@@ -58,11 +64,15 @@ export class CampaignInvites implements OnInit {
    * comment: "this is the only time the server ever returns it"). Cleared
    * when the master dismisses the banner or creates another invite. */
   protected readonly revealedLink = signal<string | null>(null);
+  /** Whether the revealed link's invite requires approval, so the banner
+   * can tell the master what whoever uses it will see. */
+  protected readonly revealedRequiresApproval = signal(false);
   protected readonly copyStatus = signal<CopyStatus>('idle');
 
   protected readonly form = this.fb.nonNullable.group({
     maxUses: [1, [Validators.required, Validators.min(1), Validators.max(20)]],
     validityDays: [7, Validators.required],
+    requiresApproval: [false],
   });
 
   ngOnInit(): void {
@@ -92,12 +102,17 @@ export class CampaignInvites implements OnInit {
       this.form.markAllAsTouched();
       return;
     }
-    const { maxUses, validityDays } = this.form.getRawValue();
+    const { maxUses, validityDays, requiresApproval } = this.form.getRawValue();
     this.createState.set({ status: 'saving' });
     this.revealedLink.set(null);
     this.copyStatus.set('idle');
     try {
-      const res = await this.campaigns.createInvite(this.campaignId(), maxUses, validityDays);
+      const res = await this.campaigns.createInvite(
+        this.campaignId(),
+        maxUses,
+        validityDays,
+        requiresApproval,
+      );
       this.createState.set({ status: 'idle' });
       if (res.invite) {
         const current = this.listState();
@@ -105,7 +120,8 @@ export class CampaignInvites implements OnInit {
         this.listState.set({ status: 'ready', invites: [res.invite, ...invites] });
       }
       this.revealedLink.set(`${window.location.origin}/convite#t=${res.token}`);
-      this.form.reset({ maxUses: 1, validityDays: 7 });
+      this.revealedRequiresApproval.set(requiresApproval);
+      this.form.reset({ maxUses: 1, validityDays: 7, requiresApproval: false });
     } catch (err) {
       this.createState.set({
         status: 'error',

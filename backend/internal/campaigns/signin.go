@@ -28,7 +28,10 @@ import (
 //
 // The browser then lands on /campanhas/<campaign_id>, or on
 // /convite/erro?motivo=<reason> if the invite did not work. The reasons are
-// the InviteFailure* constants.
+// the InviteFailure* constants. Someone who has just become a pending member
+// (an invite with approval, RN-15) lands on
+// /campanhas/<campaign_id>/personagens/novo instead: the character they
+// create there is what the master approves.
 const InviteIntentKind = "campaign_invite"
 
 // Why accepting an invite at sign-in failed: the motivo in
@@ -106,7 +109,19 @@ func (i inviteIntent) complete(ctx context.Context, userID string, tokenHash []b
 		}
 		return failedInvitePath(reason), fmt.Errorf("campaign invite: %s", reason)
 	}
-	return "/campanhas/" + joined.campaign.ID, nil
+	return joinedPath(joined), nil
+}
+
+// joinedPath is where the app goes after an invite was accepted: the
+// campaign's page, or, for someone who has just become a pending member
+// (RN-15, MR-024), straight to creating the character the master will
+// approve. A pending member who was already pending goes to the campaign's
+// page, which shows the character they already created.
+func joinedPath(joined joinResult) string {
+	if joined.pending && !joined.alreadyMember {
+		return "/campanhas/" + joined.campaign.ID + "/personagens/novo"
+	}
+	return "/campanhas/" + joined.campaign.ID
 }
 
 // inviteFailure turns an error from acceptInvite into the reason for the

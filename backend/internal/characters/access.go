@@ -54,17 +54,33 @@ func characterState(status string, sheetLockedAt *time.Time) charactersv1.Charac
 	}
 }
 
-// isMaster says whether the caller is the campaign's master.
-func isMaster(m authz.Membership) bool { return m.Role == authz.RoleMaster }
+// isMaster says whether the caller is the campaign's master. A pending
+// member never is (authz makes them a player).
+func isMaster(m authz.Membership) bool { return m.Role == authz.RoleMaster && !m.Pending }
 
 // canSee says whether the caller may see a character of their campaign: the
-// master sees every one; a player, only their own player characters. Every
-// other character is "not found" to them.
-func canSee(m authz.Membership, kind string, playerUserID *string) bool {
+// master sees every one; a player, only their own player characters; a
+// pending member (RN-15, MR-024), only their own pending character, the one
+// the allowance in package authz is about. Every other character is "not
+// found" to them.
+func canSee(m authz.Membership, kind, status string, playerUserID *string) bool {
 	if isMaster(m) {
 		return true
 	}
+	if m.Pending && status != statusPending {
+		return false
+	}
 	return kind == kindPlayer && playerUserID != nil && *playerUserID == m.UserID
+}
+
+// newCharacterStatus is the status a character starts with: 'pending' when
+// a pending member creates it, so it waits for the master's approval
+// (RN-15); 'active' otherwise.
+func newCharacterStatus(m authz.Membership) string {
+	if m.Pending {
+		return statusPending
+	}
+	return statusActive
 }
 
 // playerEditsSheet says whether the owning player may still change the
@@ -122,10 +138,11 @@ func (s *Service) characterToProto(row charactersdb.Character, m authz.Membershi
 		UpdatedAt:            timestamppb.New(row.UpdatedAt),
 		CanEdit:              master || playerEditsSheet(state),
 		CanEditStory:         master || playerEditsStory(state, row.StoryEditingAllowed),
-		CanMarkDead:          master && player && state != charactersv1.CharacterState_CHARACTER_STATE_DEAD,
+		CanMarkDead:          master && player && state != charactersv1.CharacterState_CHARACTER_STATE_DEAD && state != charactersv1.CharacterState_CHARACTER_STATE_PENDING,
 		CanAccessMasterNotes: master,
 		StoryEditingAllowed:  row.StoryEditingAllowed,
 		CanSetStoryEditing:   master && player,
+		CanApprove:           master && state == charactersv1.CharacterState_CHARACTER_STATE_PENDING,
 	}
 	if full := sheet.GetFull(); full != nil {
 		c.Derived = derivedToProto(rules.Derive(buildOf(full), s.rules))

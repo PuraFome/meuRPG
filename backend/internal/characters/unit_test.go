@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -48,17 +49,26 @@ func (noProfiles) DisplayNames(context.Context, []string) (map[string]string, er
 	return nil, errors.New("no profiles in this test")
 }
 
-// noMembers is a MembershipSource that is never reached in these tests.
+// noMembers is a MembershipSource and a PendingMembers that is never
+// reached in these tests.
 type noMembers struct{}
 
-func (noMembers) CampaignRole(context.Context, string, string) (authz.Role, error) {
-	return "", authz.ErrNotMember
+func (noMembers) CampaignMembership(context.Context, string, string) (authz.Role, authz.Status, error) {
+	return "", "", authz.ErrNotMember
+}
+
+func (noMembers) ActivatePendingMember(context.Context, pgx.Tx, string, string) error {
+	return errors.New("not in this test")
+}
+
+func (noMembers) DeletePendingMember(context.Context, pgx.Tx, string, string) error {
+	return errors.New("not in this test")
 }
 
 // offlineService is a Service whose database cannot be reached.
 func offlineService(t *testing.T) *Service {
 	t.Helper()
-	svc, err := New(Config{Pool: lazyPool(t), Profiles: noProfiles{}, Rules: loadRules(t), Logger: slog.New(slog.DiscardHandler)})
+	svc, err := New(Config{Pool: lazyPool(t), Profiles: noProfiles{}, Members: noMembers{}, Rules: loadRules(t), Logger: slog.New(slog.DiscardHandler)})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -69,9 +79,10 @@ func TestNewValidatesItsConfig(t *testing.T) {
 	t.Parallel()
 	pool, content := lazyPool(t), loadRules(t)
 	for name, cfg := range map[string]Config{
-		"no Pool":     {Profiles: noProfiles{}, Rules: content},
-		"no Profiles": {Pool: pool, Rules: content},
-		"no Rules":    {Pool: pool, Profiles: noProfiles{}},
+		"no Pool":     {Profiles: noProfiles{}, Members: noMembers{}, Rules: content},
+		"no Profiles": {Pool: pool, Members: noMembers{}, Rules: content},
+		"no Members":  {Pool: pool, Profiles: noProfiles{}, Rules: content},
+		"no Rules":    {Pool: pool, Profiles: noProfiles{}, Members: noMembers{}},
 	} {
 		if _, err := New(cfg); err == nil {
 			t.Errorf("New() with %s succeeded", name)
@@ -103,6 +114,8 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["MarkCharacterDead"] = c.MarkCharacterDead(ctx, connect.NewRequest(&charactersv1.MarkCharacterDeadRequest{CampaignId: id, CharacterId: id}))
 	_, calls["GetMasterNotes"] = c.GetMasterNotes(ctx, connect.NewRequest(&charactersv1.GetMasterNotesRequest{CampaignId: id, CharacterId: id}))
 	_, calls["UpdateMasterNotes"] = c.UpdateMasterNotes(ctx, connect.NewRequest(&charactersv1.UpdateMasterNotesRequest{CampaignId: id, CharacterId: id}))
+	_, calls["ApproveCharacter"] = c.ApproveCharacter(ctx, connect.NewRequest(&charactersv1.ApproveCharacterRequest{CampaignId: id, CharacterId: id}))
+	_, calls["RejectCharacter"] = c.RejectCharacter(ctx, connect.NewRequest(&charactersv1.RejectCharacterRequest{CampaignId: id, CharacterId: id}))
 	_, calls["ListContent"] = content.ListContent(ctx, connect.NewRequest(&rulesv1.ListContentRequest{CampaignId: id}))
 
 	methods := charactersv1.File_meurpg_characters_v1_characters_proto.Services().ByName("CharacterService").Methods().Len() +
@@ -208,31 +221,34 @@ func TestPermissions(t *testing.T) {
 		}
 		return r
 	}
-	// want: can_edit, can_edit_story, can_mark_dead, can_access_master_notes, can_set_story_editing
+	// The owner of a pending character is a pending member (RN-15).
+	pendingOwner := authz.Membership{CampaignID: campaign, UserID: owner, Role: authz.RolePlayer, Pending: true}
+	// want: can_edit, can_edit_story, can_mark_dead, can_access_master_notes, can_set_story_editing, can_approve
 	tests := []struct {
 		name string
 		row  charactersdb.Character
 		m    authz.Membership
-		want [5]bool
+		want [6]bool
 	}{
-		{"master, draft", row(kindPlayer, statusActive, nil, false), master, [5]bool{true, true, true, true, true}},
-		{"master, dead", row(kindPlayer, statusDead, &locked, false), master, [5]bool{true, true, false, true, true}},
-		{"master, NPC", row("enemy", statusActive, nil, false), master, [5]bool{true, true, false, true, false}},
-		{"owner, draft", row(kindPlayer, statusActive, nil, false), player, [5]bool{true, true, false, false, false}},
-		{"owner, locked", row(kindPlayer, statusActive, &locked, false), player, [5]bool{false, false, false, false, false}},
-		{"owner, locked, story allowed", row(kindPlayer, statusActive, &locked, true), player, [5]bool{false, true, false, false, false}},
-		{"owner, dead", row(kindPlayer, statusDead, &locked, false), player, [5]bool{false, false, false, false, false}},
-		{"owner, dead, story allowed", row(kindPlayer, statusDead, &locked, true), player, [5]bool{false, true, false, false, false}},
-		{"owner, pending", row(kindPlayer, statusPending, nil, false), player, [5]bool{true, true, false, false, false}},
+		{"master, draft", row(kindPlayer, statusActive, nil, false), master, [6]bool{true, true, true, true, true, false}},
+		{"master, dead", row(kindPlayer, statusDead, &locked, false), master, [6]bool{true, true, false, true, true, false}},
+		{"master, NPC", row("enemy", statusActive, nil, false), master, [6]bool{true, true, false, true, false, false}},
+		{"master, pending", row(kindPlayer, statusPending, nil, false), master, [6]bool{true, true, false, true, true, true}},
+		{"owner, draft", row(kindPlayer, statusActive, nil, false), player, [6]bool{true, true, false, false, false, false}},
+		{"owner, locked", row(kindPlayer, statusActive, &locked, false), player, [6]bool{false, false, false, false, false, false}},
+		{"owner, locked, story allowed", row(kindPlayer, statusActive, &locked, true), player, [6]bool{false, true, false, false, false, false}},
+		{"owner, dead", row(kindPlayer, statusDead, &locked, false), player, [6]bool{false, false, false, false, false, false}},
+		{"owner, dead, story allowed", row(kindPlayer, statusDead, &locked, true), player, [6]bool{false, true, false, false, false, false}},
+		{"owner, pending", row(kindPlayer, statusPending, nil, false), pendingOwner, [6]bool{true, true, false, false, false, false}},
 	}
 	for _, tt := range tests {
 		c, err := svc.characterToProto(tt.row, tt.m, "")
 		if err != nil {
 			t.Fatalf("%s: characterToProto() error = %v", tt.name, err)
 		}
-		got := [5]bool{c.GetCanEdit(), c.GetCanEditStory(), c.GetCanMarkDead(), c.GetCanAccessMasterNotes(), c.GetCanSetStoryEditing()}
+		got := [6]bool{c.GetCanEdit(), c.GetCanEditStory(), c.GetCanMarkDead(), c.GetCanAccessMasterNotes(), c.GetCanSetStoryEditing(), c.GetCanApprove()}
 		if got != tt.want {
-			t.Errorf("%s: can edit, edit story, mark dead, notes, set story editing = %v, want %v", tt.name, got, tt.want)
+			t.Errorf("%s: can edit, edit story, mark dead, notes, set story editing, approve = %v, want %v", tt.name, got, tt.want)
 		}
 	}
 }
@@ -242,22 +258,31 @@ func TestCanSee(t *testing.T) {
 	owner, other := "owner", "other"
 	master := authz.Membership{UserID: "master", Role: authz.RoleMaster}
 	player := authz.Membership{UserID: owner, Role: authz.RolePlayer}
+	pending := authz.Membership{UserID: owner, Role: authz.RolePlayer, Pending: true}
 	for _, tt := range []struct {
 		name   string
 		m      authz.Membership
 		kind   string
+		status string
 		player *string
 		want   bool
 	}{
-		{"master sees a player character", master, kindPlayer, &owner, true},
-		{"master sees an NPC", master, "boss", nil, true},
-		{"master sees an orphaned character", master, kindPlayer, nil, true},
-		{"owner sees theirs", player, kindPlayer, &owner, true},
-		{"player does not see another's", player, kindPlayer, &other, false},
-		{"player does not see one without a player", player, kindPlayer, nil, false},
-		{"player does not see an NPC", player, "story", nil, false},
+		{"master sees a player character", master, kindPlayer, statusActive, &owner, true},
+		{"master sees a pending character", master, kindPlayer, statusPending, &owner, true},
+		{"master sees an NPC", master, "boss", statusActive, nil, true},
+		{"master sees an orphaned character", master, kindPlayer, statusActive, nil, true},
+		{"owner sees theirs", player, kindPlayer, statusActive, &owner, true},
+		{"player does not see another's", player, kindPlayer, statusActive, &other, false},
+		{"player does not see one without a player", player, kindPlayer, statusActive, nil, false},
+		{"player does not see an NPC", player, "story", statusActive, nil, false},
+		// RN-15: a pending member sees only their own pending character.
+		{"pending member sees their pending character", pending, kindPlayer, statusPending, &owner, true},
+		{"pending member does not see their older active one", pending, kindPlayer, statusActive, &owner, false},
+		{"pending member does not see their dead one", pending, kindPlayer, statusDead, &owner, false},
+		{"pending member does not see another's pending one", pending, kindPlayer, statusPending, &other, false},
+		{"pending member does not see an NPC", pending, "story", statusActive, nil, false},
 	} {
-		if got := canSee(tt.m, tt.kind, tt.player); got != tt.want {
+		if got := canSee(tt.m, tt.kind, tt.status, tt.player); got != tt.want {
 			t.Errorf("%s: canSee() = %v, want %v", tt.name, got, tt.want)
 		}
 	}

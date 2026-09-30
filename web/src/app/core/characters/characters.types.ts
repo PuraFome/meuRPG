@@ -14,9 +14,10 @@
 /** Mirrors `CharacterKind`. */
 export type CharacterKind = 'player' | 'enemy' | 'boss' | 'minion' | 'story';
 
-/** Mirrors `CharacterState`. `'pending'` (MR-024, plan amendment A1) is
- * reserved but unused in Etapa 4: nothing sets it yet. */
-export type CharacterState = 'draft' | 'locked' | 'dead';
+/** Mirrors `CharacterState`. `'pending'` is a character created through an
+ * invite that requires approval, waiting for the master to approve or
+ * reject it (RN-15, MR-024). */
+export type CharacterState = 'draft' | 'locked' | 'dead' | 'pending';
 
 /** `Character.kind` decides which sheet shape it carries — full for player,
  * enemy and boss; basic for minion and story (`CharacterSheet`'s `oneof`,
@@ -37,4 +38,6 @@ export type CharacterBlockedReason =
   | 'sheet_locked'
   | 'character_dead'
   | 'living_character_exists'
-  | 'story_locked';
+  | 'story_locked'
+  | 'not_pending'
+  | 'awaiting_approval';

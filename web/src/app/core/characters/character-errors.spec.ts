@@ -18,6 +18,8 @@ describe('characterBlockedMessage', () => {
     expect(characterBlockedMessage('character_dead')).toContain('morto');
     expect(characterBlockedMessage('living_character_exists')).toContain('já tem um personagem');
     expect(characterBlockedMessage('story_locked')).toContain('Permitir editar a história');
+    expect(characterBlockedMessage('not_pending')).toContain('já foi aprovado');
+    expect(characterBlockedMessage('awaiting_approval')).toContain('Aprove ou recuse');
   });
 
   it('falls back to a generic message when the reason is unknown', () => {
@@ -47,6 +49,15 @@ describe('describeCharacterError', () => {
   it('reads the CharacterBlocked detail off the error itself: STORY_LOCKED', () => {
     expect(describeCharacterError(blockedError(CharacterBlockedReason.STORY_LOCKED))).toContain(
       'Permitir editar a história',
+    );
+  });
+
+  it('reads the CharacterBlocked detail off the error itself: NOT_PENDING and AWAITING_APPROVAL (MR-024)', () => {
+    expect(describeCharacterError(blockedError(CharacterBlockedReason.NOT_PENDING))).toContain(
+      'já foi aprovado',
+    );
+    expect(describeCharacterError(blockedError(CharacterBlockedReason.AWAITING_APPROVAL))).toContain(
+      'Aprove ou recuse',
     );
   });
 

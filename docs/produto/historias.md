@@ -76,7 +76,7 @@ MR-021 e MR-022 são novas e saíram das respostas do Samuel de 28/09/2026. Fica
 #### Relacionadas
 - RN-03: respondida em 29/09/2026 — o jogador só cria um personagem novo nesta campanha quando o atual morre; o personagem morto fica no sistema (ver [Regras de negócio](regras.md)).
 - RN-17 decide o login do jogador sem Google (handle por mesa): ele entra sem senha e, quando a primeira sessão de 30 dias vence, precisa definir uma senha ou vincular o Google (ADR-0009, opção 3; ver [Perguntas em aberto](perguntas-em-aberto.md)).
-- Quando o convite exige aprovação (RN-15), o personagem criado aqui nasce pendente até o mestre aprovar ou recusar. Ver [MR-024](#mr-024-aprovar-o-personagem-do-convite).
+- Quando o convite exige aprovação (RN-15), o jogador entra como membro pendente, vai direto criar o personagem, e o personagem nasce pendente até o mestre aprovar ou recusar. Implementado em 29/09/2026; ver [MR-024](#mr-024-aprovar-o-personagem-do-convite).
 
 ### MR-004: Ficha no formato do PDF
 
@@ -267,8 +267,32 @@ Existia no app antigo (descontinuado). Confirmada no MVP pelo Samuel em 29/09/20
 - Regras: RN-15
 - Módulos: campaigns, characters
 
+#### Critérios de aceite
+Propostos por nós, a partir das decisões padrão do integrador (o convite escolhe se exige aprovação; a recusa apaga o personagem e a participação), esperando o Samuel:
+
+- **Dado** que sou mestre de "Mirathel", **quando** gero um convite, **então** posso marcar "Exigir aprovação do mestre" **e**, sem marcar, o convite funciona como antes: quem aceita entra direto.
+- **Dado** um convite que exige aprovação, **quando** o jogador o aceita (já logado, ou fazendo login pelo convite), **então** vai direto criar o personagem, que nasce "Pendente de aprovação" **e**, enquanto espera, ele só vê o nome da campanha e o próprio personagem, que continua editando.
+- **Dado** um personagem pendente, **quando** o mestre abre a campanha, **então** o vê em "Esperando aprovação", abre a ficha e, **quando** aprova, o personagem vira rascunho **e** o jogador passa a ser jogador da campanha.
+- **Dado** um personagem pendente, **quando** o mestre o recusa, **então** o personagem é apagado, o jogador não entra na campanha **e** precisa de um convite novo para tentar de novo.
+- **Dado** que sou jogador, ou jogador pendente, **quando** tento aprovar ou recusar um personagem, **então** o servidor recusa.
+
+#### Implementado
+- Pronto em 29/09/2026 (Etapa 4), backend, tela e testes. Ver [RN-15](regras.md), [Arquitetura](../arquitetura.md#membro-pendente) e [Modelo de dados](../dados.md#esquema-implementado).
+  - Contratos: `CreateInviteRequest.requires_approval` e `Invite.requires_approval`; `Campaign.awaiting_approval`; `CharacterService.ApproveCharacter` e `RejectCharacter`; `Character.can_approve`; os motivos `NOT_PENDING` e `AWAITING_APPROVAL` de `CharacterBlocked`.
+  - Banco: `campaign_invites.requires_approval` (`00021`) e `campaign_members.status` (`00022`, `active` ou `pending`).
+  - O membro pendente só passa pelas chamadas da lista `pendingMayCall` do `authz`; em todas as outras, recebe `not_found`.
+  - Telas: a caixa "Exigir aprovação do mestre" no formulário de convite; o convite leva o membro pendente direto a "Criar personagem"; o aviso "Esperando a aprovação do mestre" na campanha e na ficha; a lista "Esperando aprovação" do mestre, na seção "Personagens"; os botões "Aprovar personagem" e "Recusar personagem" (com "Confirmar recusa") na ficha.
+- Testes, por critério:
+  - Primeiro: `TestMR024_MasterChoosesWhetherAnInviteRequiresApproval` e `TestRN15_InviteWithoutApprovalMakesAPlayerAtOnce` (`campaigns`); na tela, a caixa e a coluna "Aprovação" nos dois testes de `e2e/tests/character-approval.spec.ts`.
+  - Segundo: `TestRN15_AcceptingAnInviteWithApprovalMakesAPendingMember` e `TestSignInWithAnApprovalInviteGoesToCreateTheCharacter` (`campaigns`), `TestMR024_PendingPlayerCreatesTheirCharacterAndWaits` (`characters`); na tela, `personagem criado por convite com aprovação fica pendente até o mestre aprovar` (`@MR-024`).
+  - Terceiro: `TestMR024_MasterApprovesAndThePlayerJoins` (`characters`); na tela, o mesmo teste Playwright.
+  - Quarto: `TestMR024_MasterRejectsAndThePlayerStaysOut` (`characters`); na tela, `o mestre recusa o personagem pendente e o jogador não entra` (`@MR-024`).
+  - Quinto: `TestMR024_OnlyTheMasterApprovesOrRejects` e as colunas do membro pendente em `TestAuthorizationMatrix` (`campaigns` e `characters`).
+  - Da regra: `TestRN15_PendingCharacterIsNotPartOfTheCampaignYet` (a sessão não trava o pendente, ele não morre, só o pendente é recusado), `TestRN15_ApproveAndRejectRace` (aprovar e recusar ao mesmo tempo), e no `authz`, `TestRN15_PendingMemberOnlyGetsThroughTheAllowedCalls`, `TestRN15_PendingMemberLooksLikeAStranger` e `TestPendingMayCallIsTheAgreedList`.
+
 #### Relacionadas
 - Estende [MR-003](#mr-003-entrar-pelo-convite): o personagem nasce pendente de aprovação (ver [Ciclo de vida da ficha](regras.md#ciclo-de-vida-da-ficha), RN-01).
+- Estende [MR-002](#mr-002-gerar-convite): o mestre escolhe, em cada convite, se ele exige aprovação.
 
 ## Prioridade: MVP (pré-requisito)
 
@@ -295,7 +319,7 @@ Aceitos pelo Samuel em 29/09/2026, junto com o backend: o mestre adora poder esc
 
 #### Relacionadas
 - RN-07: decidida em 29/09/2026 (ver [Regras de negócio](regras.md)).
-- RN-15 (convite com aprovação) e [MR-024](#mr-024-aprovar-o-personagem-do-convite) estendem esta história: o jogador já cria o personagem pelo convite, e o mestre aprova.
+- RN-15 (convite com aprovação) e [MR-024](#mr-024-aprovar-o-personagem-do-convite) estendem esta história: o mestre marca "Exigir aprovação do mestre" no convite, o jogador já cria o personagem pelo convite, e o mestre aprova. Implementado em 29/09/2026.
 
 ### MR-005: Criar NPCs
 

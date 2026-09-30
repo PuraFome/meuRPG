@@ -205,9 +205,14 @@ type Campaign struct {
 	XpMode    XpMode                 `protobuf:"varint,3,opt,name=xp_mode,json=xpMode,proto3,enum=meurpg.campaigns.v1.XpMode" json:"xp_mode,omitempty"`
 	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	// The caller's role in this campaign.
-	MyRole        Role `protobuf:"varint,5,opt,name=my_role,json=myRole,proto3,enum=meurpg.campaigns.v1.Role" json:"my_role,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	MyRole Role `protobuf:"varint,5,opt,name=my_role,json=myRole,proto3,enum=meurpg.campaigns.v1.Role" json:"my_role,omitempty"`
+	// True when the caller is a pending member (RN-15, MR-024): they accepted
+	// an invite that requires approval, and the master has not approved their
+	// character yet. Then only id, name and my_role (ROLE_PLAYER) are set:
+	// xp_mode is unspecified and created_at is unset.
+	AwaitingApproval bool `protobuf:"varint,6,opt,name=awaiting_approval,json=awaitingApproval,proto3" json:"awaiting_approval,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *Campaign) Reset() {
@@ -273,6 +278,13 @@ func (x *Campaign) GetMyRole() Role {
 		return x.MyRole
 	}
 	return Role_ROLE_UNSPECIFIED
+}
+
+func (x *Campaign) GetAwaitingApproval() bool {
+	if x != nil {
+		return x.AwaitingApproval
+	}
+	return false
 }
 
 // Member is one member of a campaign.
@@ -364,9 +376,13 @@ type Invite struct {
 	// Whether the invite works now. When several reasons apply, revoked wins
 	// over used up, and used up over expired: "already used" is what warns a
 	// player that someone else may have used their link (ADR-0009).
-	State         InviteState `protobuf:"varint,7,opt,name=state,proto3,enum=meurpg.campaigns.v1.InviteState" json:"state,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	State InviteState `protobuf:"varint,7,opt,name=state,proto3,enum=meurpg.campaigns.v1.InviteState" json:"state,omitempty"`
+	// Whether whoever accepts it becomes a pending member, whose character
+	// the master must approve (RN-15, MR-024). See
+	// CreateInviteRequest.requires_approval.
+	RequiresApproval bool `protobuf:"varint,8,opt,name=requires_approval,json=requiresApproval,proto3" json:"requires_approval,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *Invite) Reset() {
@@ -446,6 +462,13 @@ func (x *Invite) GetState() InviteState {
 		return x.State
 	}
 	return InviteState_INVITE_STATE_UNSPECIFIED
+}
+
+func (x *Invite) GetRequiresApproval() bool {
+	if x != nil {
+		return x.RequiresApproval
+	}
+	return false
 }
 
 // InviteUnusable is the error detail of AcceptInvite's
@@ -868,9 +891,15 @@ type CreateInviteRequest struct {
 	// How many people can join with the invite: 1 to 20. 0 means 1.
 	MaxUses int32 `protobuf:"varint,2,opt,name=max_uses,json=maxUses,proto3" json:"max_uses,omitempty"`
 	// How long the invite works: 5 minutes to 30 days. Unset means 7 days.
-	ExpiresIn     *durationpb.Duration `protobuf:"bytes,3,opt,name=expires_in,json=expiresIn,proto3" json:"expires_in,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ExpiresIn *durationpb.Duration `protobuf:"bytes,3,opt,name=expires_in,json=expiresIn,proto3" json:"expires_in,omitempty"`
+	// When true, whoever accepts the invite becomes a pending member: they
+	// create their character right away, and join the campaign as a player
+	// only when the master approves it (RN-15, MR-024; "Exigir aprovação do
+	// mestre" in the app). False, the default, lets them in at once, as
+	// before.
+	RequiresApproval bool `protobuf:"varint,4,opt,name=requires_approval,json=requiresApproval,proto3" json:"requires_approval,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *CreateInviteRequest) Reset() {
@@ -922,6 +951,13 @@ func (x *CreateInviteRequest) GetExpiresIn() *durationpb.Duration {
 		return x.ExpiresIn
 	}
 	return nil
+}
+
+func (x *CreateInviteRequest) GetRequiresApproval() bool {
+	if x != nil {
+		return x.RequiresApproval
+	}
+	return false
 }
 
 // CreateInviteResponse returns the invite and, this one time, its token.
@@ -1214,11 +1250,15 @@ func (x *AcceptInviteRequest) GetToken() string {
 	return ""
 }
 
-// AcceptInviteResponse returns the campaign the caller is now a member of.
+// AcceptInviteResponse returns the campaign the caller is now a member of,
+// or a pending member of.
 type AcceptInviteResponse struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	Campaign *Campaign              `protobuf:"bytes,1,opt,name=campaign,proto3" json:"campaign,omitempty"`
-	// True when the caller was a member before this call, so nothing changed.
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The campaign. For an invite with approval, `awaiting_approval` is set
+	// and only id, name and my_role come with it (see Campaign).
+	Campaign *Campaign `protobuf:"bytes,1,opt,name=campaign,proto3" json:"campaign,omitempty"`
+	// True when the caller was a member, or a pending member, before this
+	// call, so nothing changed.
 	AlreadyMember bool `protobuf:"varint,2,opt,name=already_member,json=alreadyMember,proto3" json:"already_member,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1272,19 +1312,20 @@ var File_meurpg_campaigns_v1_campaigns_proto protoreflect.FileDescriptor
 
 const file_meurpg_campaigns_v1_campaigns_proto_rawDesc = "" +
 	"\n" +
-	"#meurpg/campaigns/v1/campaigns.proto\x12\x13meurpg.campaigns.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd3\x01\n" +
+	"#meurpg/campaigns/v1/campaigns.proto\x12\x13meurpg.campaigns.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x80\x02\n" +
 	"\bCampaign\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x124\n" +
 	"\axp_mode\x18\x03 \x01(\x0e2\x1b.meurpg.campaigns.v1.XpModeR\x06xpMode\x129\n" +
 	"\n" +
 	"created_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x122\n" +
-	"\amy_role\x18\x05 \x01(\x0e2\x19.meurpg.campaigns.v1.RoleR\x06myRole\"\xac\x01\n" +
+	"\amy_role\x18\x05 \x01(\x0e2\x19.meurpg.campaigns.v1.RoleR\x06myRole\x12+\n" +
+	"\x11awaiting_approval\x18\x06 \x01(\bR\x10awaitingApproval\"\xac\x01\n" +
 	"\x06Member\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12-\n" +
 	"\x04role\x18\x02 \x01(\x0e2\x19.meurpg.campaigns.v1.RoleR\x04role\x12!\n" +
 	"\fdisplay_name\x18\x03 \x01(\tR\vdisplayName\x127\n" +
-	"\tjoined_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\bjoinedAt\"\xb9\x02\n" +
+	"\tjoined_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\bjoinedAt\"\xe6\x02\n" +
 	"\x06Invite\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
 	"\bmax_uses\x18\x02 \x01(\x05R\amaxUses\x12\x1b\n" +
@@ -1295,7 +1336,8 @@ const file_meurpg_campaigns_v1_campaigns_proto_rawDesc = "" +
 	"expires_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x129\n" +
 	"\n" +
 	"revoked_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\trevokedAt\x126\n" +
-	"\x05state\x18\a \x01(\x0e2 .meurpg.campaigns.v1.InviteStateR\x05state\"H\n" +
+	"\x05state\x18\a \x01(\x0e2 .meurpg.campaigns.v1.InviteStateR\x05state\x12+\n" +
+	"\x11requires_approval\x18\b \x01(\bR\x10requiresApproval\"H\n" +
 	"\x0eInviteUnusable\x126\n" +
 	"\x05state\x18\x01 \x01(\x0e2 .meurpg.campaigns.v1.InviteStateR\x05state\"a\n" +
 	"\x15CreateCampaignRequest\x12\x12\n" +
@@ -1315,13 +1357,14 @@ const file_meurpg_campaigns_v1_campaigns_proto_rawDesc = "" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\"L\n" +
 	"\x13ListMembersResponse\x125\n" +
-	"\amembers\x18\x01 \x03(\v2\x1b.meurpg.campaigns.v1.MemberR\amembers\"\x8b\x01\n" +
+	"\amembers\x18\x01 \x03(\v2\x1b.meurpg.campaigns.v1.MemberR\amembers\"\xb8\x01\n" +
 	"\x13CreateInviteRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x19\n" +
 	"\bmax_uses\x18\x02 \x01(\x05R\amaxUses\x128\n" +
 	"\n" +
-	"expires_in\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\texpiresIn\"a\n" +
+	"expires_in\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\texpiresIn\x12+\n" +
+	"\x11requires_approval\x18\x04 \x01(\bR\x10requiresApproval\"a\n" +
 	"\x14CreateInviteResponse\x123\n" +
 	"\x06invite\x18\x01 \x01(\v2\x1b.meurpg.campaigns.v1.InviteR\x06invite\x12\x14\n" +
 	"\x05token\x18\x02 \x01(\tR\x05token\"5\n" +

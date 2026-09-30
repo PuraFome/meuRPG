@@ -126,9 +126,11 @@ const (
 	// "Morto": the master marked the character dead (RN-03). It stays in the
 	// campaign; only the master edits its sheet.
 	CharacterState_CHARACTER_STATE_DEAD CharacterState = 3
-	// "Pendente de aprovação": used by MR-024 (invite with approval, RN-15),
-	// for a character that waits for the master's approval. Nothing sets it
-	// yet.
+	// "Pendente de aprovação" (RN-15, MR-024): created by a pending member,
+	// who joined through an invite that requires approval. The player edits
+	// the whole sheet and the story, but the character is not part of the
+	// campaign yet: a game session does not lock it, and it cannot die. The
+	// master's ApproveCharacter makes it a DRAFT; RejectCharacter deletes it.
 	CharacterState_CHARACTER_STATE_PENDING CharacterState = 4
 )
 
@@ -193,6 +195,12 @@ const (
 	// The character is no longer a draft, and the master has not allowed its
 	// player to edit the story (SetStoryEditing).
 	CharacterBlockedReason_CHARACTER_BLOCKED_REASON_STORY_LOCKED CharacterBlockedReason = 4
+	// RejectCharacter on a character that does not wait for approval (MR-024):
+	// once approved, a character stays in the campaign.
+	CharacterBlockedReason_CHARACTER_BLOCKED_REASON_NOT_PENDING CharacterBlockedReason = 5
+	// MarkCharacterDead on a character that still waits for the master's
+	// approval (MR-024): approve or reject it instead.
+	CharacterBlockedReason_CHARACTER_BLOCKED_REASON_AWAITING_APPROVAL CharacterBlockedReason = 6
 )
 
 // Enum value maps for CharacterBlockedReason.
@@ -203,6 +211,8 @@ var (
 		2: "CHARACTER_BLOCKED_REASON_CHARACTER_DEAD",
 		3: "CHARACTER_BLOCKED_REASON_LIVING_CHARACTER_EXISTS",
 		4: "CHARACTER_BLOCKED_REASON_STORY_LOCKED",
+		5: "CHARACTER_BLOCKED_REASON_NOT_PENDING",
+		6: "CHARACTER_BLOCKED_REASON_AWAITING_APPROVAL",
 	}
 	CharacterBlockedReason_value = map[string]int32{
 		"CHARACTER_BLOCKED_REASON_UNSPECIFIED":             0,
@@ -210,6 +220,8 @@ var (
 		"CHARACTER_BLOCKED_REASON_CHARACTER_DEAD":          2,
 		"CHARACTER_BLOCKED_REASON_LIVING_CHARACTER_EXISTS": 3,
 		"CHARACTER_BLOCKED_REASON_STORY_LOCKED":            4,
+		"CHARACTER_BLOCKED_REASON_NOT_PENDING":             5,
+		"CHARACTER_BLOCKED_REASON_AWAITING_APPROVAL":       6,
 	}
 )
 
@@ -432,8 +444,11 @@ type Character struct {
 	// Whether the caller may call SetStoryEditing: the master, for a player
 	// character.
 	CanSetStoryEditing bool `protobuf:"varint,21,opt,name=can_set_story_editing,json=canSetStoryEditing,proto3" json:"can_set_story_editing,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// Whether the caller may call ApproveCharacter and RejectCharacter now:
+	// the master, for a PENDING character (MR-024).
+	CanApprove    bool `protobuf:"varint,22,opt,name=can_approve,json=canApprove,proto3" json:"can_approve,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Character) Reset() {
@@ -609,6 +624,13 @@ func (x *Character) GetStoryEditingAllowed() bool {
 func (x *Character) GetCanSetStoryEditing() bool {
 	if x != nil {
 		return x.CanSetStoryEditing
+	}
+	return false
+}
+
+func (x *Character) GetCanApprove() bool {
+	if x != nil {
+		return x.CanApprove
 	}
 	return false
 }
@@ -2890,11 +2912,200 @@ func (x *UpdateMasterNotesResponse) GetUpdatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+// ApproveCharacterRequest names the character to approve.
+type ApproveCharacterRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId    string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	CharacterId   string                 `protobuf:"bytes,2,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ApproveCharacterRequest) Reset() {
+	*x = ApproveCharacterRequest{}
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ApproveCharacterRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ApproveCharacterRequest) ProtoMessage() {}
+
+func (x *ApproveCharacterRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ApproveCharacterRequest.ProtoReflect.Descriptor instead.
+func (*ApproveCharacterRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *ApproveCharacterRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *ApproveCharacterRequest) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+// ApproveCharacterResponse returns the approved character.
+type ApproveCharacterResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The character, now DRAFT (or as it was, if it was not PENDING).
+	Character     *Character `protobuf:"bytes,1,opt,name=character,proto3" json:"character,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ApproveCharacterResponse) Reset() {
+	*x = ApproveCharacterResponse{}
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ApproveCharacterResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ApproveCharacterResponse) ProtoMessage() {}
+
+func (x *ApproveCharacterResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ApproveCharacterResponse.ProtoReflect.Descriptor instead.
+func (*ApproveCharacterResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *ApproveCharacterResponse) GetCharacter() *Character {
+	if x != nil {
+		return x.Character
+	}
+	return nil
+}
+
+// RejectCharacterRequest names the character to reject.
+type RejectCharacterRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId    string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	CharacterId   string                 `protobuf:"bytes,2,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RejectCharacterRequest) Reset() {
+	*x = RejectCharacterRequest{}
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RejectCharacterRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RejectCharacterRequest) ProtoMessage() {}
+
+func (x *RejectCharacterRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RejectCharacterRequest.ProtoReflect.Descriptor instead.
+func (*RejectCharacterRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *RejectCharacterRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *RejectCharacterRequest) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+// RejectCharacterResponse is empty: the character is gone.
+type RejectCharacterResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RejectCharacterResponse) Reset() {
+	*x = RejectCharacterResponse{}
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RejectCharacterResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RejectCharacterResponse) ProtoMessage() {}
+
+func (x *RejectCharacterResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_characters_v1_characters_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RejectCharacterResponse.ProtoReflect.Descriptor instead.
+func (*RejectCharacterResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_characters_v1_characters_proto_rawDescGZIP(), []int{35}
+}
+
 var File_meurpg_characters_v1_characters_proto protoreflect.FileDescriptor
 
 const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\n" +
-	"%meurpg/characters/v1/characters.proto\x12\x14meurpg.characters.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bmeurpg/rules/v1/rules.proto\"\xda\a\n" +
+	"%meurpg/characters/v1/characters.proto\x12\x14meurpg.characters.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bmeurpg/rules/v1/rules.proto\"\xfb\a\n" +
 	"\tCharacter\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vcampaign_id\x18\x02 \x01(\tR\n" +
@@ -2920,7 +3131,9 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\rcan_mark_dead\x18\x12 \x01(\bR\vcanMarkDead\x125\n" +
 	"\x17can_access_master_notes\x18\x13 \x01(\bR\x14canAccessMasterNotes\x122\n" +
 	"\x15story_editing_allowed\x18\x14 \x01(\bR\x13storyEditingAllowed\x121\n" +
-	"\x15can_set_story_editing\x18\x15 \x01(\bR\x12canSetStoryEditing\"\x83\x03\n" +
+	"\x15can_set_story_editing\x18\x15 \x01(\bR\x12canSetStoryEditing\x12\x1f\n" +
+	"\vcan_approve\x18\x16 \x01(\bR\n" +
+	"canApprove\"\x83\x03\n" +
 	"\x10CharacterSummary\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x127\n" +
 	"\x04kind\x18\x02 \x01(\x0e2#.meurpg.characters.v1.CharacterKindR\x04kind\x12:\n" +
@@ -3094,7 +3307,18 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\x19UpdateMasterNotesResponse\x12\x14\n" +
 	"\x05notes\x18\x01 \x01(\tR\x05notes\x129\n" +
 	"\n" +
-	"updated_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt*\xb2\x01\n" +
+	"updated_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"]\n" +
+	"\x17ApproveCharacterRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x12!\n" +
+	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\"Y\n" +
+	"\x18ApproveCharacterResponse\x12=\n" +
+	"\tcharacter\x18\x01 \x01(\v2\x1f.meurpg.characters.v1.CharacterR\tcharacter\"\\\n" +
+	"\x16RejectCharacterRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x12!\n" +
+	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\"\x19\n" +
+	"\x17RejectCharacterResponse*\xb2\x01\n" +
 	"\rCharacterKind\x12\x1e\n" +
 	"\x1aCHARACTER_KIND_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15CHARACTER_KIND_PLAYER\x10\x01\x12\x18\n" +
@@ -3107,13 +3331,15 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\x15CHARACTER_STATE_DRAFT\x10\x01\x12\x1a\n" +
 	"\x16CHARACTER_STATE_LOCKED\x10\x02\x12\x18\n" +
 	"\x14CHARACTER_STATE_DEAD\x10\x03\x12\x1b\n" +
-	"\x17CHARACTER_STATE_PENDING\x10\x04*\xfb\x01\n" +
+	"\x17CHARACTER_STATE_PENDING\x10\x04*\xd5\x02\n" +
 	"\x16CharacterBlockedReason\x12(\n" +
 	"$CHARACTER_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12)\n" +
 	"%CHARACTER_BLOCKED_REASON_SHEET_LOCKED\x10\x01\x12+\n" +
 	"'CHARACTER_BLOCKED_REASON_CHARACTER_DEAD\x10\x02\x124\n" +
 	"0CHARACTER_BLOCKED_REASON_LIVING_CHARACTER_EXISTS\x10\x03\x12)\n" +
-	"%CHARACTER_BLOCKED_REASON_STORY_LOCKED\x10\x04*q\n" +
+	"%CHARACTER_BLOCKED_REASON_STORY_LOCKED\x10\x04\x12(\n" +
+	"$CHARACTER_BLOCKED_REASON_NOT_PENDING\x10\x05\x12.\n" +
+	"*CHARACTER_BLOCKED_REASON_AWAITING_APPROVAL\x10\x06*q\n" +
 	"\x0fHitPointsMethod\x12!\n" +
 	"\x1dHIT_POINTS_METHOD_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19HIT_POINTS_METHOD_AVERAGE\x10\x01\x12\x1c\n" +
@@ -3128,7 +3354,8 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\x19ALIGNMENT_CHAOTIC_NEUTRAL\x10\x06\x12\x19\n" +
 	"\x15ALIGNMENT_LAWFUL_EVIL\x10\a\x12\x1a\n" +
 	"\x16ALIGNMENT_NEUTRAL_EVIL\x10\b\x12\x1a\n" +
-	"\x16ALIGNMENT_CHAOTIC_EVIL\x10\t2\x9d\b\n" +
+	"\x16ALIGNMENT_CHAOTIC_EVIL\x10\t2\x80\n" +
+	"\n" +
 	"\x10CharacterService\x12n\n" +
 	"\x0fCreateCharacter\x12,.meurpg.characters.v1.CreateCharacterRequest\x1a-.meurpg.characters.v1.CreateCharacterResponse\x12j\n" +
 	"\fGetCharacter\x12).meurpg.characters.v1.GetCharacterRequest\x1a*.meurpg.characters.v1.GetCharacterResponse\"\x03\x90\x02\x02\x12p\n" +
@@ -3138,7 +3365,9 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\x0fSetStoryEditing\x12,.meurpg.characters.v1.SetStoryEditingRequest\x1a-.meurpg.characters.v1.SetStoryEditingResponse\x12t\n" +
 	"\x11MarkCharacterDead\x12..meurpg.characters.v1.MarkCharacterDeadRequest\x1a/.meurpg.characters.v1.MarkCharacterDeadResponse\x12p\n" +
 	"\x0eGetMasterNotes\x12+.meurpg.characters.v1.GetMasterNotesRequest\x1a,.meurpg.characters.v1.GetMasterNotesResponse\"\x03\x90\x02\x02\x12t\n" +
-	"\x11UpdateMasterNotes\x12..meurpg.characters.v1.UpdateMasterNotesRequest\x1a/.meurpg.characters.v1.UpdateMasterNotesResponseB\xe7\x01\n" +
+	"\x11UpdateMasterNotes\x12..meurpg.characters.v1.UpdateMasterNotesRequest\x1a/.meurpg.characters.v1.UpdateMasterNotesResponse\x12q\n" +
+	"\x10ApproveCharacter\x12-.meurpg.characters.v1.ApproveCharacterRequest\x1a..meurpg.characters.v1.ApproveCharacterResponse\x12n\n" +
+	"\x0fRejectCharacter\x12,.meurpg.characters.v1.RejectCharacterRequest\x1a-.meurpg.characters.v1.RejectCharacterResponseB\xe7\x01\n" +
 	"\x18com.meurpg.characters.v1B\x0fCharactersProtoP\x01ZHgithub.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1;charactersv1\xa2\x02\x03MCX\xaa\x02\x14Meurpg.Characters.V1\xca\x02\x14Meurpg\\Characters\\V1\xe2\x02 Meurpg\\Characters\\V1\\GPBMetadata\xea\x02\x16Meurpg::Characters::V1b\x06proto3"
 
 var (
@@ -3154,7 +3383,7 @@ func file_meurpg_characters_v1_characters_proto_rawDescGZIP() []byte {
 }
 
 var file_meurpg_characters_v1_characters_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_meurpg_characters_v1_characters_proto_msgTypes = make([]protoimpl.MessageInfo, 32)
+var file_meurpg_characters_v1_characters_proto_msgTypes = make([]protoimpl.MessageInfo, 36)
 var file_meurpg_characters_v1_characters_proto_goTypes = []any{
 	(CharacterKind)(0),                   // 0: meurpg.characters.v1.CharacterKind
 	(CharacterState)(0),                  // 1: meurpg.characters.v1.CharacterState
@@ -3193,30 +3422,34 @@ var file_meurpg_characters_v1_characters_proto_goTypes = []any{
 	(*GetMasterNotesResponse)(nil),       // 34: meurpg.characters.v1.GetMasterNotesResponse
 	(*UpdateMasterNotesRequest)(nil),     // 35: meurpg.characters.v1.UpdateMasterNotesRequest
 	(*UpdateMasterNotesResponse)(nil),    // 36: meurpg.characters.v1.UpdateMasterNotesResponse
-	(*v1.DerivedSheet)(nil),              // 37: meurpg.rules.v1.DerivedSheet
-	(*timestamppb.Timestamp)(nil),        // 38: google.protobuf.Timestamp
-	(*v1.AbilityScores)(nil),             // 39: meurpg.rules.v1.AbilityScores
+	(*ApproveCharacterRequest)(nil),      // 37: meurpg.characters.v1.ApproveCharacterRequest
+	(*ApproveCharacterResponse)(nil),     // 38: meurpg.characters.v1.ApproveCharacterResponse
+	(*RejectCharacterRequest)(nil),       // 39: meurpg.characters.v1.RejectCharacterRequest
+	(*RejectCharacterResponse)(nil),      // 40: meurpg.characters.v1.RejectCharacterResponse
+	(*v1.DerivedSheet)(nil),              // 41: meurpg.rules.v1.DerivedSheet
+	(*timestamppb.Timestamp)(nil),        // 42: google.protobuf.Timestamp
+	(*v1.AbilityScores)(nil),             // 43: meurpg.rules.v1.AbilityScores
 }
 var file_meurpg_characters_v1_characters_proto_depIdxs = []int32{
 	0,  // 0: meurpg.characters.v1.Character.kind:type_name -> meurpg.characters.v1.CharacterKind
 	1,  // 1: meurpg.characters.v1.Character.state:type_name -> meurpg.characters.v1.CharacterState
 	8,  // 2: meurpg.characters.v1.Character.sheet:type_name -> meurpg.characters.v1.CharacterSheet
 	16, // 3: meurpg.characters.v1.Character.story:type_name -> meurpg.characters.v1.CharacterStory
-	37, // 4: meurpg.characters.v1.Character.derived:type_name -> meurpg.rules.v1.DerivedSheet
-	38, // 5: meurpg.characters.v1.Character.sheet_locked_at:type_name -> google.protobuf.Timestamp
-	38, // 6: meurpg.characters.v1.Character.died_at:type_name -> google.protobuf.Timestamp
-	38, // 7: meurpg.characters.v1.Character.created_at:type_name -> google.protobuf.Timestamp
-	38, // 8: meurpg.characters.v1.Character.updated_at:type_name -> google.protobuf.Timestamp
+	41, // 4: meurpg.characters.v1.Character.derived:type_name -> meurpg.rules.v1.DerivedSheet
+	42, // 5: meurpg.characters.v1.Character.sheet_locked_at:type_name -> google.protobuf.Timestamp
+	42, // 6: meurpg.characters.v1.Character.died_at:type_name -> google.protobuf.Timestamp
+	42, // 7: meurpg.characters.v1.Character.created_at:type_name -> google.protobuf.Timestamp
+	42, // 8: meurpg.characters.v1.Character.updated_at:type_name -> google.protobuf.Timestamp
 	0,  // 9: meurpg.characters.v1.CharacterSummary.kind:type_name -> meurpg.characters.v1.CharacterKind
 	1,  // 10: meurpg.characters.v1.CharacterSummary.state:type_name -> meurpg.characters.v1.CharacterState
-	38, // 11: meurpg.characters.v1.CharacterSummary.created_at:type_name -> google.protobuf.Timestamp
+	42, // 11: meurpg.characters.v1.CharacterSummary.created_at:type_name -> google.protobuf.Timestamp
 	2,  // 12: meurpg.characters.v1.CharacterBlocked.reason:type_name -> meurpg.characters.v1.CharacterBlockedReason
 	9,  // 13: meurpg.characters.v1.CharacterSheet.full:type_name -> meurpg.characters.v1.FullSheet
 	15, // 14: meurpg.characters.v1.CharacterSheet.basic:type_name -> meurpg.characters.v1.BasicSheet
-	39, // 15: meurpg.characters.v1.FullSheet.base_scores:type_name -> meurpg.rules.v1.AbilityScores
+	43, // 15: meurpg.characters.v1.FullSheet.base_scores:type_name -> meurpg.rules.v1.AbilityScores
 	10, // 16: meurpg.characters.v1.FullSheet.classes:type_name -> meurpg.characters.v1.ClassLevel
 	11, // 17: meurpg.characters.v1.FullSheet.custom_background:type_name -> meurpg.characters.v1.CustomBackground
-	39, // 18: meurpg.characters.v1.FullSheet.extra_ability_bonuses:type_name -> meurpg.rules.v1.AbilityScores
+	43, // 18: meurpg.characters.v1.FullSheet.extra_ability_bonuses:type_name -> meurpg.rules.v1.AbilityScores
 	12, // 19: meurpg.characters.v1.FullSheet.hit_points:type_name -> meurpg.characters.v1.HitPoints
 	13, // 20: meurpg.characters.v1.FullSheet.equipment:type_name -> meurpg.characters.v1.Item
 	14, // 21: meurpg.characters.v1.FullSheet.coins:type_name -> meurpg.characters.v1.Coins
@@ -3236,31 +3469,36 @@ var file_meurpg_characters_v1_characters_proto_depIdxs = []int32{
 	5,  // 35: meurpg.characters.v1.UpdateCharacterStoryResponse.character:type_name -> meurpg.characters.v1.Character
 	5,  // 36: meurpg.characters.v1.SetStoryEditingResponse.character:type_name -> meurpg.characters.v1.Character
 	5,  // 37: meurpg.characters.v1.MarkCharacterDeadResponse.character:type_name -> meurpg.characters.v1.Character
-	38, // 38: meurpg.characters.v1.GetMasterNotesResponse.updated_at:type_name -> google.protobuf.Timestamp
-	38, // 39: meurpg.characters.v1.UpdateMasterNotesResponse.updated_at:type_name -> google.protobuf.Timestamp
-	19, // 40: meurpg.characters.v1.CharacterService.CreateCharacter:input_type -> meurpg.characters.v1.CreateCharacterRequest
-	21, // 41: meurpg.characters.v1.CharacterService.GetCharacter:input_type -> meurpg.characters.v1.GetCharacterRequest
-	23, // 42: meurpg.characters.v1.CharacterService.ListCharacters:input_type -> meurpg.characters.v1.ListCharactersRequest
-	25, // 43: meurpg.characters.v1.CharacterService.UpdateCharacter:input_type -> meurpg.characters.v1.UpdateCharacterRequest
-	27, // 44: meurpg.characters.v1.CharacterService.UpdateCharacterStory:input_type -> meurpg.characters.v1.UpdateCharacterStoryRequest
-	29, // 45: meurpg.characters.v1.CharacterService.SetStoryEditing:input_type -> meurpg.characters.v1.SetStoryEditingRequest
-	31, // 46: meurpg.characters.v1.CharacterService.MarkCharacterDead:input_type -> meurpg.characters.v1.MarkCharacterDeadRequest
-	33, // 47: meurpg.characters.v1.CharacterService.GetMasterNotes:input_type -> meurpg.characters.v1.GetMasterNotesRequest
-	35, // 48: meurpg.characters.v1.CharacterService.UpdateMasterNotes:input_type -> meurpg.characters.v1.UpdateMasterNotesRequest
-	20, // 49: meurpg.characters.v1.CharacterService.CreateCharacter:output_type -> meurpg.characters.v1.CreateCharacterResponse
-	22, // 50: meurpg.characters.v1.CharacterService.GetCharacter:output_type -> meurpg.characters.v1.GetCharacterResponse
-	24, // 51: meurpg.characters.v1.CharacterService.ListCharacters:output_type -> meurpg.characters.v1.ListCharactersResponse
-	26, // 52: meurpg.characters.v1.CharacterService.UpdateCharacter:output_type -> meurpg.characters.v1.UpdateCharacterResponse
-	28, // 53: meurpg.characters.v1.CharacterService.UpdateCharacterStory:output_type -> meurpg.characters.v1.UpdateCharacterStoryResponse
-	30, // 54: meurpg.characters.v1.CharacterService.SetStoryEditing:output_type -> meurpg.characters.v1.SetStoryEditingResponse
-	32, // 55: meurpg.characters.v1.CharacterService.MarkCharacterDead:output_type -> meurpg.characters.v1.MarkCharacterDeadResponse
-	34, // 56: meurpg.characters.v1.CharacterService.GetMasterNotes:output_type -> meurpg.characters.v1.GetMasterNotesResponse
-	36, // 57: meurpg.characters.v1.CharacterService.UpdateMasterNotes:output_type -> meurpg.characters.v1.UpdateMasterNotesResponse
-	49, // [49:58] is the sub-list for method output_type
-	40, // [40:49] is the sub-list for method input_type
-	40, // [40:40] is the sub-list for extension type_name
-	40, // [40:40] is the sub-list for extension extendee
-	0,  // [0:40] is the sub-list for field type_name
+	42, // 38: meurpg.characters.v1.GetMasterNotesResponse.updated_at:type_name -> google.protobuf.Timestamp
+	42, // 39: meurpg.characters.v1.UpdateMasterNotesResponse.updated_at:type_name -> google.protobuf.Timestamp
+	5,  // 40: meurpg.characters.v1.ApproveCharacterResponse.character:type_name -> meurpg.characters.v1.Character
+	19, // 41: meurpg.characters.v1.CharacterService.CreateCharacter:input_type -> meurpg.characters.v1.CreateCharacterRequest
+	21, // 42: meurpg.characters.v1.CharacterService.GetCharacter:input_type -> meurpg.characters.v1.GetCharacterRequest
+	23, // 43: meurpg.characters.v1.CharacterService.ListCharacters:input_type -> meurpg.characters.v1.ListCharactersRequest
+	25, // 44: meurpg.characters.v1.CharacterService.UpdateCharacter:input_type -> meurpg.characters.v1.UpdateCharacterRequest
+	27, // 45: meurpg.characters.v1.CharacterService.UpdateCharacterStory:input_type -> meurpg.characters.v1.UpdateCharacterStoryRequest
+	29, // 46: meurpg.characters.v1.CharacterService.SetStoryEditing:input_type -> meurpg.characters.v1.SetStoryEditingRequest
+	31, // 47: meurpg.characters.v1.CharacterService.MarkCharacterDead:input_type -> meurpg.characters.v1.MarkCharacterDeadRequest
+	33, // 48: meurpg.characters.v1.CharacterService.GetMasterNotes:input_type -> meurpg.characters.v1.GetMasterNotesRequest
+	35, // 49: meurpg.characters.v1.CharacterService.UpdateMasterNotes:input_type -> meurpg.characters.v1.UpdateMasterNotesRequest
+	37, // 50: meurpg.characters.v1.CharacterService.ApproveCharacter:input_type -> meurpg.characters.v1.ApproveCharacterRequest
+	39, // 51: meurpg.characters.v1.CharacterService.RejectCharacter:input_type -> meurpg.characters.v1.RejectCharacterRequest
+	20, // 52: meurpg.characters.v1.CharacterService.CreateCharacter:output_type -> meurpg.characters.v1.CreateCharacterResponse
+	22, // 53: meurpg.characters.v1.CharacterService.GetCharacter:output_type -> meurpg.characters.v1.GetCharacterResponse
+	24, // 54: meurpg.characters.v1.CharacterService.ListCharacters:output_type -> meurpg.characters.v1.ListCharactersResponse
+	26, // 55: meurpg.characters.v1.CharacterService.UpdateCharacter:output_type -> meurpg.characters.v1.UpdateCharacterResponse
+	28, // 56: meurpg.characters.v1.CharacterService.UpdateCharacterStory:output_type -> meurpg.characters.v1.UpdateCharacterStoryResponse
+	30, // 57: meurpg.characters.v1.CharacterService.SetStoryEditing:output_type -> meurpg.characters.v1.SetStoryEditingResponse
+	32, // 58: meurpg.characters.v1.CharacterService.MarkCharacterDead:output_type -> meurpg.characters.v1.MarkCharacterDeadResponse
+	34, // 59: meurpg.characters.v1.CharacterService.GetMasterNotes:output_type -> meurpg.characters.v1.GetMasterNotesResponse
+	36, // 60: meurpg.characters.v1.CharacterService.UpdateMasterNotes:output_type -> meurpg.characters.v1.UpdateMasterNotesResponse
+	38, // 61: meurpg.characters.v1.CharacterService.ApproveCharacter:output_type -> meurpg.characters.v1.ApproveCharacterResponse
+	40, // 62: meurpg.characters.v1.CharacterService.RejectCharacter:output_type -> meurpg.characters.v1.RejectCharacterResponse
+	52, // [52:63] is the sub-list for method output_type
+	41, // [41:52] is the sub-list for method input_type
+	41, // [41:41] is the sub-list for extension type_name
+	41, // [41:41] is the sub-list for extension extendee
+	0,  // [0:41] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_characters_v1_characters_proto_init() }
@@ -3286,7 +3524,7 @@ func file_meurpg_characters_v1_characters_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_characters_v1_characters_proto_rawDesc), len(file_meurpg_characters_v1_characters_proto_rawDesc)),
 			NumEnums:      5,
-			NumMessages:   32,
+			NumMessages:   36,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

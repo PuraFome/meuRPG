@@ -18,8 +18,9 @@ export interface CampaignCharacterListItemVm {
 }
 
 export interface CampaignCharactersVm {
-  /** Master: every player character in the campaign. Player: only their
-   * own (`ListCharacters`'s authz row, plan §4). */
+  /** Master: every player character in the campaign, those waiting for
+   * approval included (state `'pending'`, MR-024). Player: only their own
+   * (`ListCharacters`'s authz row, plan §4). */
   readonly playerCharacters: readonly CampaignCharacterListItemVm[];
   /** Master only — always empty for a player (they never see NPCs, MR-005). */
   readonly npcs: readonly CampaignCharacterListItemVm[];

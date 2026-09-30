@@ -23,6 +23,10 @@ export function characterBlockedMessage(reason: CharacterBlockedReason | undefin
       return 'Você já tem um personagem vivo nesta campanha.';
     case 'story_locked':
       return 'O mestre ainda não liberou a edição da história. Peça para ele liberar em "Permitir editar a história".';
+    case 'not_pending':
+      return 'Esse personagem já foi aprovado e faz parte da campanha: não dá mais para recusá-lo.';
+    case 'awaiting_approval':
+      return 'Esse personagem ainda espera a sua aprovação. Aprove ou recuse antes.';
     default:
       return 'Não foi possível concluir a ação agora.';
   }
@@ -43,6 +47,10 @@ function mapBlockedReason(reason: GenCharacterBlockedReason | undefined): Charac
       return 'living_character_exists';
     case GenCharacterBlockedReason.STORY_LOCKED:
       return 'story_locked';
+    case GenCharacterBlockedReason.NOT_PENDING:
+      return 'not_pending';
+    case GenCharacterBlockedReason.AWAITING_APPROVAL:
+      return 'awaiting_approval';
     default:
       return undefined;
   }

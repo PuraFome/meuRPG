@@ -29,7 +29,7 @@ const STATE_FROM_GEN: Record<GenCharacterState, CharacterState> = {
   [GenCharacterState.DRAFT]: 'draft',
   [GenCharacterState.LOCKED]: 'locked',
   [GenCharacterState.DEAD]: 'dead',
-  [GenCharacterState.PENDING]: 'draft',
+  [GenCharacterState.PENDING]: 'pending',
 };
 
 function toListItemVm(c: CharacterSummary): CampaignCharacterListItemVm {

@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
+import { Code, ConnectError } from '@connectrpc/connect';
 import { of } from 'rxjs';
 
 import { ABILITY_KEYS } from '../../core/characters/characters.types';
@@ -37,8 +38,21 @@ class FakeCharacterSheetSource {
     allowed: boolean,
   ) => Promise<CharacterSheetVm> = () => Promise.reject(new Error('not stubbed'));
 
+  approveCharacterFn: (campaignId: string, characterId: string) => Promise<CharacterSheetVm> = () =>
+    Promise.reject(new Error('not stubbed'));
+  rejectCharacterFn: (campaignId: string, characterId: string) => Promise<void> = () =>
+    Promise.reject(new Error('not stubbed'));
+  rejectCharacterCalls: string[] = [];
+
   getCharacterSheet(campaignId: string, characterId: string): Promise<CharacterSheetVm> {
     return this.getCharacterSheetFn(campaignId, characterId);
+  }
+  approveCharacter(campaignId: string, characterId: string): Promise<CharacterSheetVm> {
+    return this.approveCharacterFn(campaignId, characterId);
+  }
+  rejectCharacter(campaignId: string, characterId: string): Promise<void> {
+    this.rejectCharacterCalls.push(characterId);
+    return this.rejectCharacterFn(campaignId, characterId);
   }
   getMasterNotes(campaignId: string, characterId: string): Promise<string> {
     this.getMasterNotesCalls.push(characterId);
@@ -145,6 +159,7 @@ function vm(overrides: Partial<CharacterSheetVm> = {}): CharacterSheetVm {
     canToggleStoryEditing: false,
     canMarkDead: false,
     canAccessMasterNotes: false,
+    canApprove: false,
     isMaster: false,
     playerDisplayName: 'Vinicius',
     raceLabel: 'Gnomo da Rocha',
@@ -688,5 +703,98 @@ describe('CharacterSheetPage', () => {
       (h) => h.textContent?.trim() === 'Avisos',
     );
     expect(avisosHeading).toBeUndefined();
+  });
+});
+
+describe('CharacterSheetPage: approval (MR-024)', () => {
+  let fake: FakeCharacterSheetSource;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [CharacterSheetPage],
+      providers: [
+        { provide: CharacterSheetSource, useClass: FakeCharacterSheetSource },
+        { provide: ActivatedRoute, useValue: activatedRouteFor('camp-1', 'char-1') },
+      ],
+    });
+    fake = TestBed.inject(CharacterSheetSource) as unknown as FakeCharacterSheetSource;
+  });
+
+  const pendingForMaster = () =>
+    vm({ state: 'pending', canApprove: true, isMaster: true, canAccessMasterNotes: true });
+
+  async function render() {
+    const fixture = TestBed.createComponent(CharacterSheetPage);
+    fixture.detectChanges();
+    await flush();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  function button(el: HTMLElement, text: string): HTMLButtonElement | undefined {
+    return Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim() === text);
+  }
+
+  it('the pending player sees "Esperando a aprovação do mestre", and no approval buttons', async () => {
+    fake.getCharacterSheetFn = () => Promise.resolve(vm({ state: 'pending', canApprove: false }));
+    const el = (await render()).nativeElement as HTMLElement;
+
+    expect(el.textContent).toContain('Pendente de aprovação');
+    expect(el.textContent).toContain('Esperando a aprovação do mestre');
+    expect(button(el, 'Aprovar personagem')).toBeUndefined();
+    expect(button(el, 'Recusar personagem')).toBeUndefined();
+    // Still editable while waiting.
+    expect(el.textContent).toContain('Editar ficha');
+  });
+
+  it('"Aprovar personagem" approves and shows the character as a draft', async () => {
+    fake.getCharacterSheetFn = () => Promise.resolve(pendingForMaster());
+    fake.approveCharacterFn = () =>
+      Promise.resolve(vm({ state: 'draft', canApprove: false, isMaster: true, canAccessMasterNotes: true }));
+    const fixture = await render();
+    const el = fixture.nativeElement as HTMLElement;
+
+    button(el, 'Aprovar personagem')!.click();
+    await flush();
+    fixture.detectChanges();
+
+    expect(el.textContent).toContain('Rascunho');
+    expect(button(el, 'Aprovar personagem')).toBeUndefined();
+  });
+
+  it('"Recusar personagem" asks to confirm, then rejects and goes back to the campaign', async () => {
+    fake.getCharacterSheetFn = () => Promise.resolve(pendingForMaster());
+    fake.rejectCharacterFn = () => Promise.resolve();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const fixture = await render();
+    const el = fixture.nativeElement as HTMLElement;
+
+    button(el, 'Recusar personagem')!.click();
+    fixture.detectChanges();
+    expect(fake.rejectCharacterCalls).toEqual([]); // nothing yet: one more click
+    expect(button(el, 'Cancelar')).toBeTruthy();
+
+    button(el, 'Confirmar recusa')!.click();
+    await flush();
+    fixture.detectChanges();
+
+    expect(fake.rejectCharacterCalls).toEqual(['char-1']);
+    expect(navigate).toHaveBeenCalledWith(['/campanhas', 'camp-1']);
+  });
+
+  it('shows the server\'s reason when the rejection fails', async () => {
+    fake.getCharacterSheetFn = () => Promise.resolve(pendingForMaster());
+    fake.rejectCharacterFn = () => Promise.reject(new ConnectError('gone', Code.NotFound));
+    const fixture = await render();
+    const el = fixture.nativeElement as HTMLElement;
+
+    button(el, 'Recusar personagem')!.click();
+    fixture.detectChanges();
+    button(el, 'Confirmar recusa')!.click();
+    await flush();
+    fixture.detectChanges();
+
+    expect(el.querySelector('[role="alert"]')?.textContent).toContain('Personagem não encontrado');
   });
 });

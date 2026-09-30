@@ -28,6 +28,19 @@
         </mat-card-content>
       </mat-card>
     }
+    @case ('pending') {
+      <h1>{{ s.campaign.name }}</h1>
+      <mat-card class="status-card pending-banner" role="status">
+        <mat-card-content>
+          <p><strong>Esperando a aprovação do mestre.</strong></p>
+          <p>
+            Crie o seu personagem e continue editando a ficha à vontade. Quando o mestre aprovar,
+            você entra na campanha.
+          </p>
+        </mat-card-content>
+      </mat-card>
+      <app-campaign-characters [campaignId]="s.campaign.id" [isMaster]="false" />
+    }
     @case ('ready') {
       <h1>{{ s.campaign.name }}</h1>
       <p class="campaign-meta">

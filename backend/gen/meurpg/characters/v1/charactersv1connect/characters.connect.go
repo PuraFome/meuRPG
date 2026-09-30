@@ -77,6 +77,12 @@ const (
 	// CharacterServiceUpdateMasterNotesProcedure is the fully-qualified name of the CharacterService's
 	// UpdateMasterNotes RPC.
 	CharacterServiceUpdateMasterNotesProcedure = "/meurpg.characters.v1.CharacterService/UpdateMasterNotes"
+	// CharacterServiceApproveCharacterProcedure is the fully-qualified name of the CharacterService's
+	// ApproveCharacter RPC.
+	CharacterServiceApproveCharacterProcedure = "/meurpg.characters.v1.CharacterService/ApproveCharacter"
+	// CharacterServiceRejectCharacterProcedure is the fully-qualified name of the CharacterService's
+	// RejectCharacter RPC.
+	CharacterServiceRejectCharacterProcedure = "/meurpg.characters.v1.CharacterService/RejectCharacter"
 )
 
 // CharacterServiceClient is a client for the meurpg.characters.v1.CharacterService service.
@@ -88,7 +94,10 @@ type CharacterServiceClient interface {
 	//     themselves. The master gets `permission_denied`: a master is not a
 	//     player of their own campaign. The character starts as a draft the
 	//     player edits until the next game session starts (RN-01), even when
-	//     the campaign already had sessions.
+	//     the campaign already had sessions. A pending member (RN-15, MR-024)
+	//     may create theirs too: it starts PENDING, waits for the master's
+	//     ApproveCharacter or RejectCharacter, and becomes a draft when
+	//     approved.
 	//   - The NPC kinds, ENEMY, BOSS, MINION and STORY (MR-005): only the
 	//     campaign's master, who becomes the NPC's owner (RN-04). Players get
 	//     `permission_denied`. NPCs never lock.
@@ -116,8 +125,9 @@ type CharacterServiceClient interface {
 	// GetCharacter returns one character with its sheet, its story, and the
 	// numbers the server derives from the sheet (MR-004). The campaign's
 	// master may read every character of the campaign; a player, only their
-	// own, dead ones included. It never carries the master's notes (RN-11):
-	// those come only from GetMasterNotes.
+	// own, dead ones included; a pending member (MR-024), only their own
+	// PENDING character. It never carries the master's notes (RN-11): those
+	// come only from GetMasterNotes.
 	//
 	// Errors:
 	//   - `not_found`: the character is not in this campaign, the caller may
@@ -127,9 +137,12 @@ type CharacterServiceClient interface {
 	// ListCharacters lists a campaign's characters, without their sheets.
 	//
 	// The master gets every character of the campaign: the players'
-	// characters first, then the NPCs. A player gets only their own
-	// characters, dead ones included, and never an NPC. Each group is in
-	// creation order, oldest first. The list is not paginated.
+	// characters first, then the NPCs. Characters waiting for approval
+	// (PENDING, MR-024) come in the same list, so the master sees whom to
+	// approve. A player gets only their own characters, dead ones included,
+	// and never an NPC; a pending member, only their own PENDING character.
+	// Each group is in creation order, oldest first. The list is not
+	// paginated.
 	//
 	// Errors:
 	//   - `not_found`: the campaign does not exist, or the caller is not a
@@ -226,6 +239,9 @@ type CharacterServiceClient interface {
 	//   - `not_found`: the character is not in this campaign, the campaign
 	//     does not exist, or the caller is not a member of it.
 	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: the character waits for the master's approval
+	//     (PENDING, MR-024): approve or reject it instead. The error carries a
+	//     CharacterBlocked detail with reason AWAITING_APPROVAL.
 	MarkCharacterDead(context.Context, *connect.Request[v1.MarkCharacterDeadRequest]) (*connect.Response[v1.MarkCharacterDeadResponse], error)
 	// GetMasterNotes returns the master's private notes about a character
 	// (RN-11). Only the campaign's master may call it. The notes never reach
@@ -251,6 +267,48 @@ type CharacterServiceClient interface {
 	//   - `permission_denied`: the caller is a player, whatever the
 	//     character.
 	UpdateMasterNotes(context.Context, *connect.Request[v1.UpdateMasterNotesRequest]) (*connect.Response[v1.UpdateMasterNotesResponse], error)
+	// ApproveCharacter lets a character that waits for approval into the
+	// campaign (RN-15, MR-024). Only the campaign's master may call it.
+	//
+	// In one transaction, the character becomes a draft (DRAFT: its player
+	// edits it until the next game session starts, RN-01) and its player's
+	// pending membership becomes an ordinary player membership, so from then
+	// on they see the campaign like any other player. If the player deleted
+	// their account while waiting, only the character changes: it stays with
+	// the campaign, as in RN-16.
+	//
+	// It is idempotent: approving a character that is not PENDING (already
+	// approved, or created by a player who needed no approval) changes nothing
+	// and returns the character as it is.
+	//
+	// Errors:
+	//   - `invalid_argument`: the character is an NPC. Only player characters
+	//     wait for approval.
+	//   - `not_found`: the character is not in this campaign (a rejected
+	//     character is gone), the campaign does not exist, or the caller is
+	//     not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	ApproveCharacter(context.Context, *connect.Request[v1.ApproveCharacterRequest]) (*connect.Response[v1.ApproveCharacterResponse], error)
+	// RejectCharacter turns down a character that waits for approval (RN-15,
+	// MR-024). Only the campaign's master may call it.
+	//
+	// The character never became part of the campaign, so, in one
+	// transaction, it is deleted with its story (and any notes the master
+	// wrote about it), and its player's pending membership is deleted too
+	// (docs/privacidade.md). The player sees the campaign no more, like anyone
+	// who is not in it, and needs a new invite to try again. An active
+	// membership is never touched.
+	//
+	// Errors:
+	//   - `invalid_argument`: the character is an NPC.
+	//   - `not_found`: the character is not in this campaign (rejecting twice
+	//     gets this: the character is gone), the campaign does not exist, or
+	//     the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: the character is not PENDING: once approved, a
+	//     character stays in the campaign. The error carries a CharacterBlocked
+	//     detail with reason NOT_PENDING.
+	RejectCharacter(context.Context, *connect.Request[v1.RejectCharacterRequest]) (*connect.Response[v1.RejectCharacterResponse], error)
 }
 
 // NewCharacterServiceClient constructs a client for the meurpg.characters.v1.CharacterService
@@ -321,6 +379,18 @@ func NewCharacterServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(characterServiceMethods.ByName("UpdateMasterNotes")),
 			connect.WithClientOptions(opts...),
 		),
+		approveCharacter: connect.NewClient[v1.ApproveCharacterRequest, v1.ApproveCharacterResponse](
+			httpClient,
+			baseURL+CharacterServiceApproveCharacterProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("ApproveCharacter")),
+			connect.WithClientOptions(opts...),
+		),
+		rejectCharacter: connect.NewClient[v1.RejectCharacterRequest, v1.RejectCharacterResponse](
+			httpClient,
+			baseURL+CharacterServiceRejectCharacterProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("RejectCharacter")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -335,6 +405,8 @@ type characterServiceClient struct {
 	markCharacterDead    *connect.Client[v1.MarkCharacterDeadRequest, v1.MarkCharacterDeadResponse]
 	getMasterNotes       *connect.Client[v1.GetMasterNotesRequest, v1.GetMasterNotesResponse]
 	updateMasterNotes    *connect.Client[v1.UpdateMasterNotesRequest, v1.UpdateMasterNotesResponse]
+	approveCharacter     *connect.Client[v1.ApproveCharacterRequest, v1.ApproveCharacterResponse]
+	rejectCharacter      *connect.Client[v1.RejectCharacterRequest, v1.RejectCharacterResponse]
 }
 
 // CreateCharacter calls meurpg.characters.v1.CharacterService.CreateCharacter.
@@ -382,6 +454,16 @@ func (c *characterServiceClient) UpdateMasterNotes(ctx context.Context, req *con
 	return c.updateMasterNotes.CallUnary(ctx, req)
 }
 
+// ApproveCharacter calls meurpg.characters.v1.CharacterService.ApproveCharacter.
+func (c *characterServiceClient) ApproveCharacter(ctx context.Context, req *connect.Request[v1.ApproveCharacterRequest]) (*connect.Response[v1.ApproveCharacterResponse], error) {
+	return c.approveCharacter.CallUnary(ctx, req)
+}
+
+// RejectCharacter calls meurpg.characters.v1.CharacterService.RejectCharacter.
+func (c *characterServiceClient) RejectCharacter(ctx context.Context, req *connect.Request[v1.RejectCharacterRequest]) (*connect.Response[v1.RejectCharacterResponse], error) {
+	return c.rejectCharacter.CallUnary(ctx, req)
+}
+
 // CharacterServiceHandler is an implementation of the meurpg.characters.v1.CharacterService
 // service.
 type CharacterServiceHandler interface {
@@ -392,7 +474,10 @@ type CharacterServiceHandler interface {
 	//     themselves. The master gets `permission_denied`: a master is not a
 	//     player of their own campaign. The character starts as a draft the
 	//     player edits until the next game session starts (RN-01), even when
-	//     the campaign already had sessions.
+	//     the campaign already had sessions. A pending member (RN-15, MR-024)
+	//     may create theirs too: it starts PENDING, waits for the master's
+	//     ApproveCharacter or RejectCharacter, and becomes a draft when
+	//     approved.
 	//   - The NPC kinds, ENEMY, BOSS, MINION and STORY (MR-005): only the
 	//     campaign's master, who becomes the NPC's owner (RN-04). Players get
 	//     `permission_denied`. NPCs never lock.
@@ -420,8 +505,9 @@ type CharacterServiceHandler interface {
 	// GetCharacter returns one character with its sheet, its story, and the
 	// numbers the server derives from the sheet (MR-004). The campaign's
 	// master may read every character of the campaign; a player, only their
-	// own, dead ones included. It never carries the master's notes (RN-11):
-	// those come only from GetMasterNotes.
+	// own, dead ones included; a pending member (MR-024), only their own
+	// PENDING character. It never carries the master's notes (RN-11): those
+	// come only from GetMasterNotes.
 	//
 	// Errors:
 	//   - `not_found`: the character is not in this campaign, the caller may
@@ -431,9 +517,12 @@ type CharacterServiceHandler interface {
 	// ListCharacters lists a campaign's characters, without their sheets.
 	//
 	// The master gets every character of the campaign: the players'
-	// characters first, then the NPCs. A player gets only their own
-	// characters, dead ones included, and never an NPC. Each group is in
-	// creation order, oldest first. The list is not paginated.
+	// characters first, then the NPCs. Characters waiting for approval
+	// (PENDING, MR-024) come in the same list, so the master sees whom to
+	// approve. A player gets only their own characters, dead ones included,
+	// and never an NPC; a pending member, only their own PENDING character.
+	// Each group is in creation order, oldest first. The list is not
+	// paginated.
 	//
 	// Errors:
 	//   - `not_found`: the campaign does not exist, or the caller is not a
@@ -530,6 +619,9 @@ type CharacterServiceHandler interface {
 	//   - `not_found`: the character is not in this campaign, the campaign
 	//     does not exist, or the caller is not a member of it.
 	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: the character waits for the master's approval
+	//     (PENDING, MR-024): approve or reject it instead. The error carries a
+	//     CharacterBlocked detail with reason AWAITING_APPROVAL.
 	MarkCharacterDead(context.Context, *connect.Request[v1.MarkCharacterDeadRequest]) (*connect.Response[v1.MarkCharacterDeadResponse], error)
 	// GetMasterNotes returns the master's private notes about a character
 	// (RN-11). Only the campaign's master may call it. The notes never reach
@@ -555,6 +647,48 @@ type CharacterServiceHandler interface {
 	//   - `permission_denied`: the caller is a player, whatever the
 	//     character.
 	UpdateMasterNotes(context.Context, *connect.Request[v1.UpdateMasterNotesRequest]) (*connect.Response[v1.UpdateMasterNotesResponse], error)
+	// ApproveCharacter lets a character that waits for approval into the
+	// campaign (RN-15, MR-024). Only the campaign's master may call it.
+	//
+	// In one transaction, the character becomes a draft (DRAFT: its player
+	// edits it until the next game session starts, RN-01) and its player's
+	// pending membership becomes an ordinary player membership, so from then
+	// on they see the campaign like any other player. If the player deleted
+	// their account while waiting, only the character changes: it stays with
+	// the campaign, as in RN-16.
+	//
+	// It is idempotent: approving a character that is not PENDING (already
+	// approved, or created by a player who needed no approval) changes nothing
+	// and returns the character as it is.
+	//
+	// Errors:
+	//   - `invalid_argument`: the character is an NPC. Only player characters
+	//     wait for approval.
+	//   - `not_found`: the character is not in this campaign (a rejected
+	//     character is gone), the campaign does not exist, or the caller is
+	//     not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	ApproveCharacter(context.Context, *connect.Request[v1.ApproveCharacterRequest]) (*connect.Response[v1.ApproveCharacterResponse], error)
+	// RejectCharacter turns down a character that waits for approval (RN-15,
+	// MR-024). Only the campaign's master may call it.
+	//
+	// The character never became part of the campaign, so, in one
+	// transaction, it is deleted with its story (and any notes the master
+	// wrote about it), and its player's pending membership is deleted too
+	// (docs/privacidade.md). The player sees the campaign no more, like anyone
+	// who is not in it, and needs a new invite to try again. An active
+	// membership is never touched.
+	//
+	// Errors:
+	//   - `invalid_argument`: the character is an NPC.
+	//   - `not_found`: the character is not in this campaign (rejecting twice
+	//     gets this: the character is gone), the campaign does not exist, or
+	//     the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: the character is not PENDING: once approved, a
+	//     character stays in the campaign. The error carries a CharacterBlocked
+	//     detail with reason NOT_PENDING.
+	RejectCharacter(context.Context, *connect.Request[v1.RejectCharacterRequest]) (*connect.Response[v1.RejectCharacterResponse], error)
 }
 
 // NewCharacterServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -621,6 +755,18 @@ func NewCharacterServiceHandler(svc CharacterServiceHandler, opts ...connect.Han
 		connect.WithSchema(characterServiceMethods.ByName("UpdateMasterNotes")),
 		connect.WithHandlerOptions(opts...),
 	)
+	characterServiceApproveCharacterHandler := connect.NewUnaryHandler(
+		CharacterServiceApproveCharacterProcedure,
+		svc.ApproveCharacter,
+		connect.WithSchema(characterServiceMethods.ByName("ApproveCharacter")),
+		connect.WithHandlerOptions(opts...),
+	)
+	characterServiceRejectCharacterHandler := connect.NewUnaryHandler(
+		CharacterServiceRejectCharacterProcedure,
+		svc.RejectCharacter,
+		connect.WithSchema(characterServiceMethods.ByName("RejectCharacter")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/meurpg.characters.v1.CharacterService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CharacterServiceCreateCharacterProcedure:
@@ -641,6 +787,10 @@ func NewCharacterServiceHandler(svc CharacterServiceHandler, opts ...connect.Han
 			characterServiceGetMasterNotesHandler.ServeHTTP(w, r)
 		case CharacterServiceUpdateMasterNotesProcedure:
 			characterServiceUpdateMasterNotesHandler.ServeHTTP(w, r)
+		case CharacterServiceApproveCharacterProcedure:
+			characterServiceApproveCharacterHandler.ServeHTTP(w, r)
+		case CharacterServiceRejectCharacterProcedure:
+			characterServiceRejectCharacterHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -684,4 +834,12 @@ func (UnimplementedCharacterServiceHandler) GetMasterNotes(context.Context, *con
 
 func (UnimplementedCharacterServiceHandler) UpdateMasterNotes(context.Context, *connect.Request[v1.UpdateMasterNotesRequest]) (*connect.Response[v1.UpdateMasterNotesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.UpdateMasterNotes is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) ApproveCharacter(context.Context, *connect.Request[v1.ApproveCharacterRequest]) (*connect.Response[v1.ApproveCharacterResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.ApproveCharacter is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) RejectCharacter(context.Context, *connect.Request[v1.RejectCharacterRequest]) (*connect.Response[v1.RejectCharacterResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.RejectCharacter is not implemented"))
 }

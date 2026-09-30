@@ -129,7 +129,7 @@ func newHarness(t *testing.T) *harness {
 	if err != nil {
 		t.Fatalf("campaigns.New() error = %v", err)
 	}
-	h.svc, err = New(Config{Pool: pool, Profiles: h.users, Rules: loadRules(t), Logger: logger, Now: h.clock.Now})
+	h.svc, err = New(Config{Pool: pool, Profiles: h.users, Members: camps, Rules: loadRules(t), Logger: logger, Now: h.clock.Now})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -223,6 +223,61 @@ func (h *harness) join(master *user, campaignID string, players ...*user) {
 			h.t.Fatalf("AcceptInvite() error = %v", err)
 		}
 	}
+}
+
+// joinPending lets each player in as a pending member (RN-15, MR-024),
+// through an invite from the master that requires approval.
+func (h *harness) joinPending(master *user, campaignID string, players ...*user) {
+	h.t.Helper()
+	ctx := h.t.Context()
+	inv, err := master.campaigns.CreateInvite(ctx, connect.NewRequest(&campaignsv1.CreateInviteRequest{
+		CampaignId: campaignID, MaxUses: campaigns.MaxInviteUses, RequiresApproval: true,
+	}))
+	if err != nil {
+		h.t.Fatalf("CreateInvite(requires_approval) error = %v", err)
+	}
+	for _, p := range players {
+		res, err := p.campaigns.AcceptInvite(ctx, connect.NewRequest(&campaignsv1.AcceptInviteRequest{Token: inv.Msg.GetToken()}))
+		if err != nil || !res.Msg.GetCampaign().GetAwaitingApproval() {
+			h.t.Fatalf("AcceptInvite(requires_approval) = %v, %v; want a pending member", res, err)
+		}
+	}
+}
+
+// memberStatus reads a membership's status directly: "active", "pending",
+// or "" when there is none.
+func (h *harness) memberStatus(campaignID, userID string) string {
+	h.t.Helper()
+	var status string
+	err := h.pool.QueryRow(h.t.Context(), "SELECT status FROM campaign_members WHERE campaign_id = $1 AND user_id = $2", campaignID, userID).Scan(&status)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ""
+	}
+	if err != nil {
+		h.t.Fatalf("read member status: %v", err)
+	}
+	return status
+}
+
+// approve calls ApproveCharacter as u, or fails the test.
+func (u *user) approve(t *testing.T, c *charactersv1.Character) *charactersv1.Character {
+	t.Helper()
+	res, err := u.api.ApproveCharacter(t.Context(), connect.NewRequest(&charactersv1.ApproveCharacterRequest{
+		CampaignId: c.GetCampaignId(), CharacterId: c.GetId(),
+	}))
+	if err != nil {
+		t.Fatalf("ApproveCharacter() error = %v", err)
+	}
+	return res.Msg.GetCharacter()
+}
+
+// reject calls RejectCharacter as u.
+func (u *user) reject(t *testing.T, c *charactersv1.Character) error {
+	t.Helper()
+	_, err := u.api.RejectCharacter(t.Context(), connect.NewRequest(&charactersv1.RejectCharacterRequest{
+		CampaignId: c.GetCampaignId(), CharacterId: c.GetId(),
+	}))
+	return err
 }
 
 // lockSheets does what starting a game session does to the campaign's

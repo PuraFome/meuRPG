@@ -45,9 +45,8 @@ const STATE_FROM_GEN: Record<GenCharacterState, CharacterState> = {
   [GenCharacterState.DRAFT]: 'draft',
   [GenCharacterState.LOCKED]: 'locked',
   [GenCharacterState.DEAD]: 'dead',
-  // MR-024 (invite with approval) is not built yet, and nothing sets this —
-  // a pending character behaves as a draft until that lands.
-  [GenCharacterState.PENDING]: 'draft',
+  // Created through an invite that requires approval (RN-15, MR-024).
+  [GenCharacterState.PENDING]: 'pending',
 };
 
 const ABILITY_FROM_GEN: Record<GenAbility, AbilityKey> = {
@@ -294,6 +293,7 @@ export function toCharacterSheetVm(character: Character): CharacterSheetVm {
     canToggleStoryEditing: character.canSetStoryEditing,
     canMarkDead: character.canMarkDead,
     canAccessMasterNotes: character.canAccessMasterNotes,
+    canApprove: character.canApprove,
     // Character carries no separate "is this caller the master" flag — this
     // one is the unconditional-on-character-state proxy the proto actually
     // offers: true for the master on every character, of any kind or
@@ -363,5 +363,14 @@ export class CharacterSheetSourceLive implements CharacterSheetSource {
   ): Promise<CharacterSheetVm> {
     const res = await this.client.setStoryEditing({ campaignId, characterId, allowed });
     return toCharacterSheetVm(res.character!);
+  }
+
+  async approveCharacter(campaignId: string, characterId: string): Promise<CharacterSheetVm> {
+    const res = await this.client.approveCharacter({ campaignId, characterId });
+    return toCharacterSheetVm(res.character!);
+  }
+
+  async rejectCharacter(campaignId: string, characterId: string): Promise<void> {
+    await this.client.rejectCharacter({ campaignId, characterId });
   }
 }

@@ -8,32 +8,49 @@ SELECT * FROM campaigns WHERE id = $1;
 
 -- name: ListCampaignsOfUser :many
 -- Newest first. The index on campaign_members (user_id) finds the rows.
-SELECT sqlc.embed(c), m.role
+-- Pending memberships (RN-15) come too: the handler shows only the name.
+SELECT sqlc.embed(c), m.role, m.status
 FROM campaign_members AS m
 JOIN campaigns AS c ON c.id = m.campaign_id
 WHERE m.user_id = $1
 ORDER BY c.created_at DESC, c.id;
 
 -- name: InsertMember :one
-INSERT INTO campaign_members (campaign_id, user_id, role)
-VALUES ($1, $2, $3)
+INSERT INTO campaign_members (campaign_id, user_id, role, status)
+VALUES ($1, $2, $3, $4)
 RETURNING *;
 
--- name: GetMemberRole :one
+-- name: GetMembership :one
 -- The query behind every authorization check (package authz): one read of
 -- the primary key.
-SELECT role FROM campaign_members WHERE campaign_id = $1 AND user_id = $2;
+SELECT role, status FROM campaign_members WHERE campaign_id = $1 AND user_id = $2;
 
 -- name: ListMembers :many
--- The master first, then the players in the order they joined.
+-- The master first, then the players in the order they joined. Pending
+-- members (RN-15) are not members yet, so they are left out.
 SELECT * FROM campaign_members
-WHERE campaign_id = $1
+WHERE campaign_id = $1 AND status = 'active'
 ORDER BY role = 'master' DESC, joined_at, user_id;
+
+-- name: ActivatePendingMember :execrows
+-- The master approved the pending member's character (RN-15): the
+-- membership becomes an ordinary one. An active membership matches no row
+-- and stays as it is.
+UPDATE campaign_members
+SET status = 'active'
+WHERE campaign_id = $1 AND user_id = $2 AND status = 'pending';
+
+-- name: DeletePendingMember :execrows
+-- The master rejected the pending member's character (RN-15): the pending
+-- membership goes with it. status = 'pending' in the WHERE clause means an
+-- active membership is never deleted here.
+DELETE FROM campaign_members
+WHERE campaign_id = $1 AND user_id = $2 AND status = 'pending';
 
 -- name: InsertInvite :one
 INSERT INTO campaign_invites
-    (campaign_id, token_hash, created_by, max_uses, created_at, expires_at)
-VALUES ($1, $2, $3, $4, $5, $6)
+    (campaign_id, token_hash, created_by, max_uses, created_at, expires_at, requires_approval)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
 -- name: ListInvites :many

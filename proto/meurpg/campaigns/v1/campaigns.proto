@@ -17,6 +17,15 @@ import "google/protobuf/timestamp.proto";
 // that does not exist, so nobody learns which campaigns exist. A member
 // without the needed role gets `permission_denied`. See ADR-0011.
 //
+// Pending members (RN-15, MR-024). Accepting an invite that requires
+// approval makes the caller a pending member of its campaign: they wait
+// for the master to approve the character they create (see
+// meurpg.characters.v1.CharacterService.ApproveCharacter). A pending member
+// is not a member yet. They see the campaign in ListMyCampaigns and
+// through GetCampaign, both with only its name and `awaiting_approval`
+// set; every other method answers them `not_found`, exactly as for someone
+// who is not in the campaign.
+//
 // Responses carry `Cache-Control: no-store`, because they describe the
 // caller's campaigns.
 //
@@ -32,7 +41,10 @@ service CampaignService {
   rpc CreateCampaign(CreateCampaignRequest) returns (CreateCampaignResponse);
 
   // ListMyCampaigns lists the campaigns the caller is a member of, newest
-  // first, with the caller's role in each.
+  // first, with the caller's role in each. It also lists the campaigns where
+  // the caller is a pending member (RN-15, MR-024), with only the id, the
+  // name, my_role and `awaiting_approval` set, so the player can find their
+  // way back to the campaign while they wait.
   //
   // Its request is empty, so clients may call it with HTTP GET: the URL
   // never carries personal data.
@@ -43,6 +55,10 @@ service CampaignService {
   // GetCampaign returns one campaign. Any member may call it. It only
   // reads, but stays POST-only, because a GET would put the campaign ID in
   // the URL.
+  //
+  // A pending member (RN-15, MR-024) may call it too, and gets only the
+  // campaign's id, name, my_role (ROLE_PLAYER) and `awaiting_approval` set:
+  // enough to show "esperando a aprovação do mestre".
   rpc GetCampaign(GetCampaignRequest) returns (GetCampaignResponse) {
     option idempotency_level = IDEMPOTENT;
   }
@@ -50,6 +66,11 @@ service CampaignService {
   // ListMembers lists a campaign's members: the master first, then the
   // players in the order they joined. Any member may call it. It only
   // reads, and is POST-only, like GetCampaign.
+  //
+  // Pending members (RN-15, MR-024) are not listed: they are not members
+  // yet. The master sees who is waiting through their characters
+  // (CharacterService.ListCharacters, state PENDING). A pending member who
+  // calls it gets `not_found`.
   rpc ListMembers(ListMembersRequest) returns (ListMembersResponse) {
     option idempotency_level = IDEMPOTENT;
   }
@@ -62,6 +83,9 @@ service CampaignService {
   // shares it as https://<app>/convite#t=<token>. The token goes in the URL
   // fragment, which browsers never send to a server, so it stays out of
   // request logs and Referer headers (ADR-0009).
+  //
+  // With `requires_approval`, whoever accepts the invite becomes a pending
+  // member instead of a player (RN-15, MR-024): see AcceptInvite.
   rpc CreateInvite(CreateInviteRequest) returns (CreateInviteResponse);
 
   // ListInvites lists a campaign's invites, newest first, without their
@@ -84,7 +108,21 @@ service CampaignService {
   //
   // It is idempotent for members: a member of the campaign (the master
   // included) gets the campaign back with `already_member` set, whatever
-  // the state of the invite, and no use of the invite is spent.
+  // the state of the invite, and no use of the invite is spent. This holds
+  // for a pending member too: they stay pending.
+  //
+  // Invites with approval (RN-15, MR-024). When the invite has
+  // `requires_approval`, the caller becomes a pending member, not a player:
+  // the returned campaign has `awaiting_approval` set and only its id, name
+  // and my_role. The app takes them straight to creating their character
+  // (CharacterService.CreateCharacter), which starts PENDING. They become a
+  // player when the master approves that character
+  // (CharacterService.ApproveCharacter); if the master rejects it
+  // (CharacterService.RejectCharacter), the pending membership is deleted
+  // and they need a new invite. Accepting it through sign-in works the same
+  // way: a new pending member lands on
+  // /campanhas/<campaign_id>/personagens/novo, and someone who was already
+  // in the campaign on /campanhas/<campaign_id>.
   //
   // Errors:
   //   - `invalid_argument`: the token is empty.
@@ -126,6 +164,11 @@ message Campaign {
   google.protobuf.Timestamp created_at = 4;
   // The caller's role in this campaign.
   Role my_role = 5;
+  // True when the caller is a pending member (RN-15, MR-024): they accepted
+  // an invite that requires approval, and the master has not approved their
+  // character yet. Then only id, name and my_role (ROLE_PLAYER) are set:
+  // xp_mode is unspecified and created_at is unset.
+  bool awaiting_approval = 6;
 }
 
 // Member is one member of a campaign.
@@ -169,6 +212,10 @@ message Invite {
   // over used up, and used up over expired: "already used" is what warns a
   // player that someone else may have used their link (ADR-0009).
   InviteState state = 7;
+  // Whether whoever accepts it becomes a pending member, whose character
+  // the master must approve (RN-15, MR-024). See
+  // CreateInviteRequest.requires_approval.
+  bool requires_approval = 8;
 }
 
 // InviteUnusable is the error detail of AcceptInvite's
@@ -230,6 +277,12 @@ message CreateInviteRequest {
   int32 max_uses = 2;
   // How long the invite works: 5 minutes to 30 days. Unset means 7 days.
   google.protobuf.Duration expires_in = 3;
+  // When true, whoever accepts the invite becomes a pending member: they
+  // create their character right away, and join the campaign as a player
+  // only when the master approves it (RN-15, MR-024; "Exigir aprovação do
+  // mestre" in the app). False, the default, lets them in at once, as
+  // before.
+  bool requires_approval = 4;
 }
 
 // CreateInviteResponse returns the invite and, this one time, its token.
@@ -268,9 +321,13 @@ message AcceptInviteRequest {
   string token = 1;
 }
 
-// AcceptInviteResponse returns the campaign the caller is now a member of.
+// AcceptInviteResponse returns the campaign the caller is now a member of,
+// or a pending member of.
 message AcceptInviteResponse {
+  // The campaign. For an invite with approval, `awaiting_approval` is set
+  // and only id, name and my_role come with it (see Campaign).
   Campaign campaign = 1;
-  // True when the caller was a member before this call, so nothing changed.
+  // True when the caller was a member, or a pending member, before this
+  // call, so nothing changed.
   bool already_member = 2;
 }

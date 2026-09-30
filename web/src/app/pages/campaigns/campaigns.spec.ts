@@ -74,6 +74,15 @@ describe('Campaigns', () => {
     expect(links.some((a) => a.getAttribute('href') === '/campanhas/c1')).toBe(true);
   });
 
+  it('shows a campaign that awaits the master\'s approval as such, not as jogador (MR-024)', async () => {
+    fake.listMyCampaignsResult = Promise.resolve({
+      campaigns: [{ ...campaign('c1', 'Mirathel', Role.PLAYER), awaitingApproval: true }],
+    });
+    const el = await render();
+    expect(el.textContent).toContain('esperando a aprovação do mestre');
+    expect(el.textContent).not.toContain('jogador');
+  });
+
   it('shows a message when listing campaigns fails', async () => {
     fake.listMyCampaignsResult = Promise.reject(new ConnectError('down', Code.Unavailable));
     const el = await render();

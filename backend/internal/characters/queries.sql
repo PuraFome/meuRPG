@@ -4,11 +4,13 @@
 -- so the argument is cast to UUID to make it a plain string in Go.
 
 -- name: InsertCharacter :one
+-- status is 'active', or 'pending' for a character created by a pending
+-- member (RN-15, MR-024).
 INSERT INTO characters
-    (campaign_id, kind, player_user_id, master_user_id, name, sheet, story, created_at, updated_at)
+    (campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, created_at, updated_at)
 VALUES (
     sqlc.arg(campaign_id)::UUID, sqlc.arg(kind), sqlc.narg(player_user_id), sqlc.narg(master_user_id),
-    sqlc.arg(name), sqlc.arg(sheet), sqlc.arg(story), sqlc.arg(now), sqlc.arg(now)
+    sqlc.arg(status), sqlc.arg(name), sqlc.arg(sheet), sqlc.arg(story), sqlc.arg(now), sqlc.arg(now)
 )
 RETURNING *;
 
@@ -36,9 +38,10 @@ LIMIT 1;
 
 -- name: ListCharacters :many
 -- Without player_user_id, every character of the campaign (the master's
--- list); with it, only that player's characters. Players' characters come
--- first, then NPCs, each group oldest first. The story is left out: a list
--- does not show it.
+-- list); with it, only that player's characters. With status, only the
+-- characters in that status (a pending member sees only their pending
+-- character, RN-15). Players' characters come first, then NPCs, each group
+-- oldest first. The story is left out: a list does not show it.
 SELECT id, kind, status, name, player_user_id, sheet, sheet_locked_at, created_at
 FROM characters
 WHERE campaign_id = sqlc.arg(campaign_id)::UUID
@@ -46,6 +49,7 @@ WHERE campaign_id = sqlc.arg(campaign_id)::UUID
       sqlc.narg(player_user_id)::UUID IS NULL
       OR (kind = 'player' AND player_user_id = sqlc.narg(player_user_id)::UUID)
   )
+  AND (sqlc.narg(status)::TEXT IS NULL OR status = sqlc.narg(status)::TEXT)
 ORDER BY kind <> 'player', created_at, id;
 
 -- name: UpdateCharacterSheet :one
@@ -78,6 +82,24 @@ UPDATE characters
 SET status = 'dead', died_at = COALESCE(died_at, sqlc.arg(now)::TIMESTAMPTZ)
 WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id)
 RETURNING *;
+
+-- name: ApproveCharacter :one
+-- The master approved a pending character (RN-15, MR-024): it becomes an
+-- ordinary living character, a draft until the next game session starts.
+-- Like death, approval changes neither the revision nor updated_at.
+UPDATE characters
+SET status = 'active'
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id) AND status = 'pending'
+RETURNING *;
+
+-- name: DeletePendingCharacter :execrows
+-- The master rejected a pending character (RN-15, MR-024): it never became
+-- part of the campaign, so it is deleted, story and all; the master's notes
+-- about it go too (character_master_notes cascades). status = 'pending' in
+-- the WHERE clause means no other character is ever deleted here: outside
+-- account deletion, characters change status, never row (RN-03).
+DELETE FROM characters
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id) AND status = 'pending';
 
 -- name: LockSheets :execrows
 -- RN-01: when a game session starts, the sheets of the campaign's living

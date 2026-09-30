@@ -41,6 +41,14 @@ import "meurpg/rules/v1/rules.proto";
 //     characters exist.
 //   - A member asking for something only the master may do gets
 //     `permission_denied`.
+//   - A pending member (RN-15, MR-024: someone who accepted an invite that
+//     requires approval, see meurpg.campaigns.v1.AcceptInvite) is not a
+//     member yet, and gets `not_found` from every method except these, which
+//     let them work on their one character while they wait: CreateCharacter
+//     (one player character, which starts PENDING), GetCharacter,
+//     ListCharacters, UpdateCharacter and UpdateCharacterStory (only their
+//     own PENDING character), and ContentService.ListContent. Inside those
+//     methods they are treated like a player.
 //   - An ID that is not a UUID is answered like an ID that does not exist.
 //
 // Errors every method can return, besides those listed on each method:
@@ -63,7 +71,10 @@ service CharacterService {
   //     themselves. The master gets `permission_denied`: a master is not a
   //     player of their own campaign. The character starts as a draft the
   //     player edits until the next game session starts (RN-01), even when
-  //     the campaign already had sessions.
+  //     the campaign already had sessions. A pending member (RN-15, MR-024)
+  //     may create theirs too: it starts PENDING, waits for the master's
+  //     ApproveCharacter or RejectCharacter, and becomes a draft when
+  //     approved.
   //   - The NPC kinds, ENEMY, BOSS, MINION and STORY (MR-005): only the
   //     campaign's master, who becomes the NPC's owner (RN-04). Players get
   //     `permission_denied`. NPCs never lock.
@@ -92,8 +103,9 @@ service CharacterService {
   // GetCharacter returns one character with its sheet, its story, and the
   // numbers the server derives from the sheet (MR-004). The campaign's
   // master may read every character of the campaign; a player, only their
-  // own, dead ones included. It never carries the master's notes (RN-11):
-  // those come only from GetMasterNotes.
+  // own, dead ones included; a pending member (MR-024), only their own
+  // PENDING character. It never carries the master's notes (RN-11): those
+  // come only from GetMasterNotes.
   //
   // Errors:
   //   - `not_found`: the character is not in this campaign, the caller may
@@ -106,9 +118,12 @@ service CharacterService {
   // ListCharacters lists a campaign's characters, without their sheets.
   //
   // The master gets every character of the campaign: the players'
-  // characters first, then the NPCs. A player gets only their own
-  // characters, dead ones included, and never an NPC. Each group is in
-  // creation order, oldest first. The list is not paginated.
+  // characters first, then the NPCs. Characters waiting for approval
+  // (PENDING, MR-024) come in the same list, so the master sees whom to
+  // approve. A player gets only their own characters, dead ones included,
+  // and never an NPC; a pending member, only their own PENDING character.
+  // Each group is in creation order, oldest first. The list is not
+  // paginated.
   //
   // Errors:
   //   - `not_found`: the campaign does not exist, or the caller is not a
@@ -211,6 +226,9 @@ service CharacterService {
   //   - `not_found`: the character is not in this campaign, the campaign
   //     does not exist, or the caller is not a member of it.
   //   - `permission_denied`: the caller is a player.
+  //   - `failed_precondition`: the character waits for the master's approval
+  //     (PENDING, MR-024): approve or reject it instead. The error carries a
+  //     CharacterBlocked detail with reason AWAITING_APPROVAL.
   rpc MarkCharacterDead(MarkCharacterDeadRequest) returns (MarkCharacterDeadResponse);
 
   // GetMasterNotes returns the master's private notes about a character
@@ -240,6 +258,50 @@ service CharacterService {
   //   - `permission_denied`: the caller is a player, whatever the
   //     character.
   rpc UpdateMasterNotes(UpdateMasterNotesRequest) returns (UpdateMasterNotesResponse);
+
+  // ApproveCharacter lets a character that waits for approval into the
+  // campaign (RN-15, MR-024). Only the campaign's master may call it.
+  //
+  // In one transaction, the character becomes a draft (DRAFT: its player
+  // edits it until the next game session starts, RN-01) and its player's
+  // pending membership becomes an ordinary player membership, so from then
+  // on they see the campaign like any other player. If the player deleted
+  // their account while waiting, only the character changes: it stays with
+  // the campaign, as in RN-16.
+  //
+  // It is idempotent: approving a character that is not PENDING (already
+  // approved, or created by a player who needed no approval) changes nothing
+  // and returns the character as it is.
+  //
+  // Errors:
+  //   - `invalid_argument`: the character is an NPC. Only player characters
+  //     wait for approval.
+  //   - `not_found`: the character is not in this campaign (a rejected
+  //     character is gone), the campaign does not exist, or the caller is
+  //     not a member of it.
+  //   - `permission_denied`: the caller is a player.
+  rpc ApproveCharacter(ApproveCharacterRequest) returns (ApproveCharacterResponse);
+
+  // RejectCharacter turns down a character that waits for approval (RN-15,
+  // MR-024). Only the campaign's master may call it.
+  //
+  // The character never became part of the campaign, so, in one
+  // transaction, it is deleted with its story (and any notes the master
+  // wrote about it), and its player's pending membership is deleted too
+  // (docs/privacidade.md). The player sees the campaign no more, like anyone
+  // who is not in it, and needs a new invite to try again. An active
+  // membership is never touched.
+  //
+  // Errors:
+  //   - `invalid_argument`: the character is an NPC.
+  //   - `not_found`: the character is not in this campaign (rejecting twice
+  //     gets this: the character is gone), the campaign does not exist, or
+  //     the caller is not a member of it.
+  //   - `permission_denied`: the caller is a player.
+  //   - `failed_precondition`: the character is not PENDING: once approved, a
+  //     character stays in the campaign. The error carries a CharacterBlocked
+  //     detail with reason NOT_PENDING.
+  rpc RejectCharacter(RejectCharacterRequest) returns (RejectCharacterResponse);
 }
 
 // CharacterKind is what a character is for. The kind never changes after
@@ -276,9 +338,11 @@ enum CharacterState {
   // "Morto": the master marked the character dead (RN-03). It stays in the
   // campaign; only the master edits its sheet.
   CHARACTER_STATE_DEAD = 3;
-  // "Pendente de aprovação": used by MR-024 (invite with approval, RN-15),
-  // for a character that waits for the master's approval. Nothing sets it
-  // yet.
+  // "Pendente de aprovação" (RN-15, MR-024): created by a pending member,
+  // who joined through an invite that requires approval. The player edits
+  // the whole sheet and the story, but the character is not part of the
+  // campaign yet: a game session does not lock it, and it cannot die. The
+  // master's ApproveCharacter makes it a DRAFT; RejectCharacter deletes it.
   CHARACTER_STATE_PENDING = 4;
 }
 
@@ -337,6 +401,9 @@ message Character {
   // Whether the caller may call SetStoryEditing: the master, for a player
   // character.
   bool can_set_story_editing = 21;
+  // Whether the caller may call ApproveCharacter and RejectCharacter now:
+  // the master, for a PENDING character (MR-024).
+  bool can_approve = 22;
 }
 
 // CharacterSummary is a character as a list shows it: no sheet, no story.
@@ -373,6 +440,12 @@ enum CharacterBlockedReason {
   // The character is no longer a draft, and the master has not allowed its
   // player to edit the story (SetStoryEditing).
   CHARACTER_BLOCKED_REASON_STORY_LOCKED = 4;
+  // RejectCharacter on a character that does not wait for approval (MR-024):
+  // once approved, a character stays in the campaign.
+  CHARACTER_BLOCKED_REASON_NOT_PENDING = 5;
+  // MarkCharacterDead on a character that still waits for the master's
+  // approval (MR-024): approve or reject it instead.
+  CHARACTER_BLOCKED_REASON_AWAITING_APPROVAL = 6;
 }
 
 // CharacterBlocked is the error detail of CharacterService's
@@ -780,3 +853,24 @@ message UpdateMasterNotesResponse {
   // When they were saved. Unset when they were deleted.
   google.protobuf.Timestamp updated_at = 2;
 }
+
+// ApproveCharacterRequest names the character to approve.
+message ApproveCharacterRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+}
+
+// ApproveCharacterResponse returns the approved character.
+message ApproveCharacterResponse {
+  // The character, now DRAFT (or as it was, if it was not PENDING).
+  Character character = 1;
+}
+
+// RejectCharacterRequest names the character to reject.
+message RejectCharacterRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+}
+
+// RejectCharacterResponse is empty: the character is gone.
+message RejectCharacterResponse {}

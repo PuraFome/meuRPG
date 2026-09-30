@@ -32,7 +32,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/characters/v1/characters.proto.
  */
 export const file_meurpg_characters_v1_characters: GenFile = /*@__PURE__*/
-  fileDesc("CiVtZXVycGcvY2hhcmFjdGVycy92MS9jaGFyYWN0ZXJzLnByb3RvEhRtZXVycGcuY2hhcmFjdGVycy52MSLlBQoJQ2hhcmFjdGVyEgoKAmlkGAEgASgJEhMKC2NhbXBhaWduX2lkGAIgASgJEjEKBGtpbmQYAyABKA4yIy5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXJLaW5kEjMKBXN0YXRlGAQgASgOMiQubWV1cnBnLmNoYXJhY3RlcnMudjEuQ2hhcmFjdGVyU3RhdGUSDAoEbmFtZRgFIAEoCRIWCg5wbGF5ZXJfdXNlcl9pZBgGIAEoCRIbChNwbGF5ZXJfZGlzcGxheV9uYW1lGAcgASgJEjMKBXNoZWV0GAggASgLMiQubWV1cnBnLmNoYXJhY3RlcnMudjEuQ2hhcmFjdGVyU2hlZXQSMwoFc3RvcnkYCSABKAsyJC5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXJTdG9yeRIuCgdkZXJpdmVkGAogASgLMh0ubWV1cnBnLnJ1bGVzLnYxLkRlcml2ZWRTaGVldBIQCghyZXZpc2lvbhgLIAEoBRIzCg9zaGVldF9sb2NrZWRfYXQYDCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEisKB2RpZWRfYXQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCmNyZWF0ZWRfYXQYDiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhAKCGNhbl9lZGl0GBAgASgIEhYKDmNhbl9lZGl0X3N0b3J5GBEgASgIEhUKDWNhbl9tYXJrX2RlYWQYEiABKAgSHwoXY2FuX2FjY2Vzc19tYXN0ZXJfbm90ZXMYEyABKAgSHQoVc3RvcnlfZWRpdGluZ19hbGxvd2VkGBQgASgIEh0KFWNhbl9zZXRfc3RvcnlfZWRpdGluZxgVIAEoCCKmAgoQQ2hhcmFjdGVyU3VtbWFyeRIKCgJpZBgBIAEoCRIxCgRraW5kGAIgASgOMiMubWV1cnBnLmNoYXJhY3RlcnMudjEuQ2hhcmFjdGVyS2luZBIzCgVzdGF0ZRgDIAEoDjIkLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNoYXJhY3RlclN0YXRlEgwKBG5hbWUYBCABKAkSFgoOcGxheWVyX3VzZXJfaWQYBSABKAkSGwoTcGxheWVyX2Rpc3BsYXlfbmFtZRgGIAEoCRIVCg1jbGFzc19zdW1tYXJ5GAcgASgJEhQKDHJhY2VfbmFtZV9wdBgIIAEoCRIuCgpjcmVhdGVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJmChBDaGFyYWN0ZXJCbG9ja2VkEjwKBnJlYXNvbhgBIAEoDjIsLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNoYXJhY3RlckJsb2NrZWRSZWFzb24SFAoMY2hhcmFjdGVyX2lkGAIgASgJIn8KDkNoYXJhY3RlclNoZWV0Ei8KBGZ1bGwYASABKAsyHy5tZXVycGcuY2hhcmFjdGVycy52MS5GdWxsU2hlZXRIABIxCgViYXNpYxgCIAEoCzIgLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkJhc2ljU2hlZXRIAEIJCgdjb250ZW50ItIGCglGdWxsU2hlZXQSMwoLYmFzZV9zY29yZXMYASABKAsyHi5tZXVycGcucnVsZXMudjEuQWJpbGl0eVNjb3JlcxIQCghyYWNlX2tleRgCIAEoCRITCgtzdWJyYWNlX2tleRgDIAEoCRIxCgdjbGFzc2VzGAQgAygLMiAubWV1cnBnLmNoYXJhY3RlcnMudjEuQ2xhc3NMZXZlbBIYCg5iYWNrZ3JvdW5kX2tleRgFIAEoCUgAEkMKEWN1c3RvbV9iYWNrZ3JvdW5kGAYgASgLMiYubWV1cnBnLmNoYXJhY3RlcnMudjEuQ3VzdG9tQmFja2dyb3VuZEgAEh4KFnNraWxsX3Byb2ZpY2llbmN5X2tleXMYByADKAkSHAoUZXhwZXJ0aXNlX3NraWxsX2tleXMYCCADKAkSPQoVZXh0cmFfYWJpbGl0eV9ib251c2VzGAkgASgLMh4ubWV1cnBnLnJ1bGVzLnYxLkFiaWxpdHlTY29yZXMSMwoKaGl0X3BvaW50cxgKIAEoCzIfLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkhpdFBvaW50cxIRCglhcm1vcl9rZXkYCyABKAkSDgoGc2hpZWxkGAwgASgIEhMKC3dlYXBvbl9rZXlzGA0gAygJEhQKDGNhbnRyaXBfa2V5cxgOIAMoCRIYChBrbm93bl9zcGVsbF9rZXlzGA8gAygJEhsKE3ByZXBhcmVkX3NwZWxsX2tleXMYECADKAkSLQoJZXF1aXBtZW50GBEgAygLMhoubWV1cnBnLmNoYXJhY3RlcnMudjEuSXRlbRIqCgVjb2lucxgSIAEoCzIbLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNvaW5zEhEKCWxhbmd1YWdlcxgTIAMoCRIaChJ0b29sX3Byb2ZpY2llbmNpZXMYFCADKAkSGQoRZXhwZXJpZW5jZV9wb2ludHMYFSABKAUSMgoJYWxpZ25tZW50GBYgASgOMh8ubWV1cnBnLmNoYXJhY3RlcnMudjEuQWxpZ25tZW50EhwKFGN1c3RvbV9mZWF0dXJlc190ZXh0GBcgASgJEhsKE2ZlYXR1cmVfY2hvaWNlX2tleXMYGCADKAlCDAoKYmFja2dyb3VuZCJyCgpDbGFzc0xldmVsEhEKCWNsYXNzX2tleRgBIAEoCRINCgVsZXZlbBgCIAEoBRIWCgxzdWJjbGFzc19rZXkYAyABKAlIABIeChRjdXN0b21fc3ViY2xhc3NfbmFtZRgEIAEoCUgAQgoKCHN1YmNsYXNzIjQKEEN1c3RvbUJhY2tncm91bmQSDAoEbmFtZRgBIAEoCRISCgpza2lsbF9rZXlzGAIgAygJIlEKCUhpdFBvaW50cxI1CgZtZXRob2QYASABKA4yJS5tZXVycGcuY2hhcmFjdGVycy52MS5IaXRQb2ludHNNZXRob2QSDQoFcm9sbHMYAiADKAUiJgoESXRlbRIMCgRuYW1lGAEgASgJEhAKCHF1YW50aXR5GAIgASgFIlkKBUNvaW5zEg4KBmNvcHBlchgBIAEoBRIOCgZzaWx2ZXIYAiABKAUSEAoIZWxlY3RydW0YAyABKAUSDAoEZ29sZBgEIAEoBRIQCghwbGF0aW51bRgFIAEoBSKGAQoKQmFzaWNTaGVldBIWCg5oaXRfcG9pbnRzX21heBgBIAEoBRITCgthcm1vcl9jbGFzcxgCIAEoBRIQCghzcGVlZF9mdBgDIAEoBRIUCgxhdHRhY2tfYm9udXMYBCABKAUSDgoGZGFtYWdlGAUgASgJEhMKC2Rlc2NyaXB0aW9uGAYgASgJIqEBCg5DaGFyYWN0ZXJTdG9yeRI2CgtwZXJzb25hbGl0eRgBIAEoCzIhLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLlBlcnNvbmFsaXR5EjQKCmFwcGVhcmFuY2UYAiABKAsyIC5tZXVycGcuY2hhcmFjdGVycy52MS5BcHBlYXJhbmNlEhEKCWJhY2tzdG9yeRgDIAEoCRIOCgZhbGxpZXMYBCABKAkiSwoLUGVyc29uYWxpdHkSDgoGdHJhaXRzGAEgASgJEg4KBmlkZWFscxgCIAEoCRINCgVib25kcxgDIAEoCRINCgVmbGF3cxgEIAEoCSJ4CgpBcHBlYXJhbmNlEgsKA2FnZRgBIAEoCRIOCgZoZWlnaHQYAiABKAkSDgoGd2VpZ2h0GAMgASgJEgwKBGV5ZXMYBCABKAkSDAoEc2tpbhgFIAEoCRIMCgRoYWlyGAYgASgJEhMKC2Rlc2NyaXB0aW9uGAcgASgJItgBChZDcmVhdGVDaGFyYWN0ZXJSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEjEKBGtpbmQYAiABKA4yIy5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXJLaW5kEgwKBG5hbWUYAyABKAkSMwoFc2hlZXQYBCABKAsyJC5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXJTaGVldBIzCgVzdG9yeRgFIAEoCzIkLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNoYXJhY3RlclN0b3J5Ik0KF0NyZWF0ZUNoYXJhY3RlclJlc3BvbnNlEjIKCWNoYXJhY3RlchgBIAEoCzIfLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNoYXJhY3RlciJAChNHZXRDaGFyYWN0ZXJSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCSJKChRHZXRDaGFyYWN0ZXJSZXNwb25zZRIyCgljaGFyYWN0ZXIYASABKAsyHy5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXIiLAoVTGlzdENoYXJhY3RlcnNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIlQKFkxpc3RDaGFyYWN0ZXJzUmVzcG9uc2USOgoKY2hhcmFjdGVycxgBIAMoCzImLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNoYXJhY3RlclN1bW1hcnkimAEKFlVwZGF0ZUNoYXJhY3RlclJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMY2hhcmFjdGVyX2lkGAIgASgJEhAKCHJldmlzaW9uGAMgASgFEgwKBG5hbWUYBCABKAkSMwoFc2hlZXQYBSABKAsyJC5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXJTaGVldCJNChdVcGRhdGVDaGFyYWN0ZXJSZXNwb25zZRIyCgljaGFyYWN0ZXIYASABKAsyHy5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXIijwEKG1VwZGF0ZUNoYXJhY3RlclN0b3J5UmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSEAoIcmV2aXNpb24YAyABKAUSMwoFc3RvcnkYBCABKAsyJC5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXJTdG9yeSJSChxVcGRhdGVDaGFyYWN0ZXJTdG9yeVJlc3BvbnNlEjIKCWNoYXJhY3RlchgBIAEoCzIfLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNoYXJhY3RlciJUChZTZXRTdG9yeUVkaXRpbmdSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCRIPCgdhbGxvd2VkGAMgASgIIk0KF1NldFN0b3J5RWRpdGluZ1Jlc3BvbnNlEjIKCWNoYXJhY3RlchgBIAEoCzIfLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNoYXJhY3RlciJFChhNYXJrQ2hhcmFjdGVyRGVhZFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMY2hhcmFjdGVyX2lkGAIgASgJIk8KGU1hcmtDaGFyYWN0ZXJEZWFkUmVzcG9uc2USMgoJY2hhcmFjdGVyGAEgASgLMh8ubWV1cnBnLmNoYXJhY3RlcnMudjEuQ2hhcmFjdGVyIkIKFUdldE1hc3Rlck5vdGVzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkiVwoWR2V0TWFzdGVyTm90ZXNSZXNwb25zZRINCgVub3RlcxgBIAEoCRIuCgp1cGRhdGVkX2F0GAIgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJUChhVcGRhdGVNYXN0ZXJOb3Rlc1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMY2hhcmFjdGVyX2lkGAIgASgJEg0KBW5vdGVzGAMgASgJIloKGVVwZGF0ZU1hc3Rlck5vdGVzUmVzcG9uc2USDQoFbm90ZXMYASABKAkSLgoKdXBkYXRlZF9hdBgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAqsgEKDUNoYXJhY3RlcktpbmQSHgoaQ0hBUkFDVEVSX0tJTkRfVU5TUEVDSUZJRUQQABIZChVDSEFSQUNURVJfS0lORF9QTEFZRVIQARIYChRDSEFSQUNURVJfS0lORF9FTkVNWRACEhcKE0NIQVJBQ1RFUl9LSU5EX0JPU1MQAxIZChVDSEFSQUNURVJfS0lORF9NSU5JT04QBBIYChRDSEFSQUNURVJfS0lORF9TVE9SWRAFKp8BCg5DaGFyYWN0ZXJTdGF0ZRIfChtDSEFSQUNURVJfU1RBVEVfVU5TUEVDSUZJRUQQABIZChVDSEFSQUNURVJfU1RBVEVfRFJBRlQQARIaChZDSEFSQUNURVJfU1RBVEVfTE9DS0VEEAISGAoUQ0hBUkFDVEVSX1NUQVRFX0RFQUQQAxIbChdDSEFSQUNURVJfU1RBVEVfUEVORElORxAEKvsBChZDaGFyYWN0ZXJCbG9ja2VkUmVhc29uEigKJENIQVJBQ1RFUl9CTE9DS0VEX1JFQVNPTl9VTlNQRUNJRklFRBAAEikKJUNIQVJBQ1RFUl9CTE9DS0VEX1JFQVNPTl9TSEVFVF9MT0NLRUQQARIrCidDSEFSQUNURVJfQkxPQ0tFRF9SRUFTT05fQ0hBUkFDVEVSX0RFQUQQAhI0CjBDSEFSQUNURVJfQkxPQ0tFRF9SRUFTT05fTElWSU5HX0NIQVJBQ1RFUl9FWElTVFMQAxIpCiVDSEFSQUNURVJfQkxPQ0tFRF9SRUFTT05fU1RPUllfTE9DS0VEEAQqcQoPSGl0UG9pbnRzTWV0aG9kEiEKHUhJVF9QT0lOVFNfTUVUSE9EX1VOU1BFQ0lGSUVEEAASHQoZSElUX1BPSU5UU19NRVRIT0RfQVZFUkFHRRABEhwKGEhJVF9QT0lOVFNfTUVUSE9EX1JPTExFRBACKqACCglBbGlnbm1lbnQSGQoVQUxJR05NRU5UX1VOU1BFQ0lGSUVEEAASGQoVQUxJR05NRU5UX0xBV0ZVTF9HT09EEAESGgoWQUxJR05NRU5UX05FVVRSQUxfR09PRBACEhoKFkFMSUdOTUVOVF9DSEFPVElDX0dPT0QQAxIcChhBTElHTk1FTlRfTEFXRlVMX05FVVRSQUwQBBIVChFBTElHTk1FTlRfTkVVVFJBTBAFEh0KGUFMSUdOTUVOVF9DSEFPVElDX05FVVRSQUwQBhIZChVBTElHTk1FTlRfTEFXRlVMX0VWSUwQBxIaChZBTElHTk1FTlRfTkVVVFJBTF9FVklMEAgSGgoWQUxJR05NRU5UX0NIQU9USUNfRVZJTBAJMp0IChBDaGFyYWN0ZXJTZXJ2aWNlEm4KD0NyZWF0ZUNoYXJhY3RlchIsLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNyZWF0ZUNoYXJhY3RlclJlcXVlc3QaLS5tZXVycGcuY2hhcmFjdGVycy52MS5DcmVhdGVDaGFyYWN0ZXJSZXNwb25zZRJqCgxHZXRDaGFyYWN0ZXISKS5tZXVycGcuY2hhcmFjdGVycy52MS5HZXRDaGFyYWN0ZXJSZXF1ZXN0GioubWV1cnBnLmNoYXJhY3RlcnMudjEuR2V0Q2hhcmFjdGVyUmVzcG9uc2UiA5ACAhJwCg5MaXN0Q2hhcmFjdGVycxIrLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkxpc3RDaGFyYWN0ZXJzUmVxdWVzdBosLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkxpc3RDaGFyYWN0ZXJzUmVzcG9uc2UiA5ACAhJuCg9VcGRhdGVDaGFyYWN0ZXISLC5tZXVycGcuY2hhcmFjdGVycy52MS5VcGRhdGVDaGFyYWN0ZXJSZXF1ZXN0Gi0ubWV1cnBnLmNoYXJhY3RlcnMudjEuVXBkYXRlQ2hhcmFjdGVyUmVzcG9uc2USfQoUVXBkYXRlQ2hhcmFjdGVyU3RvcnkSMS5tZXVycGcuY2hhcmFjdGVycy52MS5VcGRhdGVDaGFyYWN0ZXJTdG9yeVJlcXVlc3QaMi5tZXVycGcuY2hhcmFjdGVycy52MS5VcGRhdGVDaGFyYWN0ZXJTdG9yeVJlc3BvbnNlEm4KD1NldFN0b3J5RWRpdGluZxIsLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLlNldFN0b3J5RWRpdGluZ1JlcXVlc3QaLS5tZXVycGcuY2hhcmFjdGVycy52MS5TZXRTdG9yeUVkaXRpbmdSZXNwb25zZRJ0ChFNYXJrQ2hhcmFjdGVyRGVhZBIuLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLk1hcmtDaGFyYWN0ZXJEZWFkUmVxdWVzdBovLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLk1hcmtDaGFyYWN0ZXJEZWFkUmVzcG9uc2UScAoOR2V0TWFzdGVyTm90ZXMSKy5tZXVycGcuY2hhcmFjdGVycy52MS5HZXRNYXN0ZXJOb3Rlc1JlcXVlc3QaLC5tZXVycGcuY2hhcmFjdGVycy52MS5HZXRNYXN0ZXJOb3Rlc1Jlc3BvbnNlIgOQAgISdAoRVXBkYXRlTWFzdGVyTm90ZXMSLi5tZXVycGcuY2hhcmFjdGVycy52MS5VcGRhdGVNYXN0ZXJOb3Rlc1JlcXVlc3QaLy5tZXVycGcuY2hhcmFjdGVycy52MS5VcGRhdGVNYXN0ZXJOb3Rlc1Jlc3BvbnNlQucBChhjb20ubWV1cnBnLmNoYXJhY3RlcnMudjFCD0NoYXJhY3RlcnNQcm90b1ABWkhnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvY2hhcmFjdGVycy92MTtjaGFyYWN0ZXJzdjGiAgNNQ1iqAhRNZXVycGcuQ2hhcmFjdGVycy5WMcoCFE1ldXJwZ1xDaGFyYWN0ZXJzXFYx4gIgTWV1cnBnXENoYXJhY3RlcnNcVjFcR1BCTWV0YWRhdGHqAhZNZXVycGc6OkNoYXJhY3RlcnM6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp, file_meurpg_rules_v1_rules]);
+  fileDesc("CiVtZXVycGcvY2hhcmFjdGVycy92MS9jaGFyYWN0ZXJzLnByb3RvEhRtZXVycGcuY2hhcmFjdGVycy52MSL6BQoJQ2hhcmFjdGVyEgoKAmlkGAEgASgJEhMKC2NhbXBhaWduX2lkGAIgASgJEjEKBGtpbmQYAyABKA4yIy5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXJLaW5kEjMKBXN0YXRlGAQgASgOMiQubWV1cnBnLmNoYXJhY3RlcnMudjEuQ2hhcmFjdGVyU3RhdGUSDAoEbmFtZRgFIAEoCRIWCg5wbGF5ZXJfdXNlcl9pZBgGIAEoCRIbChNwbGF5ZXJfZGlzcGxheV9uYW1lGAcgASgJEjMKBXNoZWV0GAggASgLMiQubWV1cnBnLmNoYXJhY3RlcnMudjEuQ2hhcmFjdGVyU2hlZXQSMwoFc3RvcnkYCSABKAsyJC5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXJTdG9yeRIuCgdkZXJpdmVkGAogASgLMh0ubWV1cnBnLnJ1bGVzLnYxLkRlcml2ZWRTaGVldBIQCghyZXZpc2lvbhgLIAEoBRIzCg9zaGVldF9sb2NrZWRfYXQYDCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEisKB2RpZWRfYXQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCmNyZWF0ZWRfYXQYDiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhAKCGNhbl9lZGl0GBAgASgIEhYKDmNhbl9lZGl0X3N0b3J5GBEgASgIEhUKDWNhbl9tYXJrX2RlYWQYEiABKAgSHwoXY2FuX2FjY2Vzc19tYXN0ZXJfbm90ZXMYEyABKAgSHQoVc3RvcnlfZWRpdGluZ19hbGxvd2VkGBQgASgIEh0KFWNhbl9zZXRfc3RvcnlfZWRpdGluZxgVIAEoCBITCgtjYW5fYXBwcm92ZRgWIAEoCCKmAgoQQ2hhcmFjdGVyU3VtbWFyeRIKCgJpZBgBIAEoCRIxCgRraW5kGAIgASgOMiMubWV1cnBnLmNoYXJhY3RlcnMudjEuQ2hhcmFjdGVyS2luZBIzCgVzdGF0ZRgDIAEoDjIkLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNoYXJhY3RlclN0YXRlEgwKBG5hbWUYBCABKAkSFgoOcGxheWVyX3VzZXJfaWQYBSABKAkSGwoTcGxheWVyX2Rpc3BsYXlfbmFtZRgGIAEoCRIVCg1jbGFzc19zdW1tYXJ5GAcgASgJEhQKDHJhY2VfbmFtZV9wdBgIIAEoCRIuCgpjcmVhdGVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJmChBDaGFyYWN0ZXJCbG9ja2VkEjwKBnJlYXNvbhgBIAEoDjIsLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNoYXJhY3RlckJsb2NrZWRSZWFzb24SFAoMY2hhcmFjdGVyX2lkGAIgASgJIn8KDkNoYXJhY3RlclNoZWV0Ei8KBGZ1bGwYASABKAsyHy5tZXVycGcuY2hhcmFjdGVycy52MS5GdWxsU2hlZXRIABIxCgViYXNpYxgCIAEoCzIgLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkJhc2ljU2hlZXRIAEIJCgdjb250ZW50ItIGCglGdWxsU2hlZXQSMwoLYmFzZV9zY29yZXMYASABKAsyHi5tZXVycGcucnVsZXMudjEuQWJpbGl0eVNjb3JlcxIQCghyYWNlX2tleRgCIAEoCRITCgtzdWJyYWNlX2tleRgDIAEoCRIxCgdjbGFzc2VzGAQgAygLMiAubWV1cnBnLmNoYXJhY3RlcnMudjEuQ2xhc3NMZXZlbBIYCg5iYWNrZ3JvdW5kX2tleRgFIAEoCUgAEkMKEWN1c3RvbV9iYWNrZ3JvdW5kGAYgASgLMiYubWV1cnBnLmNoYXJhY3RlcnMudjEuQ3VzdG9tQmFja2dyb3VuZEgAEh4KFnNraWxsX3Byb2ZpY2llbmN5X2tleXMYByADKAkSHAoUZXhwZXJ0aXNlX3NraWxsX2tleXMYCCADKAkSPQoVZXh0cmFfYWJpbGl0eV9ib251c2VzGAkgASgLMh4ubWV1cnBnLnJ1bGVzLnYxLkFiaWxpdHlTY29yZXMSMwoKaGl0X3BvaW50cxgKIAEoCzIfLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkhpdFBvaW50cxIRCglhcm1vcl9rZXkYCyABKAkSDgoGc2hpZWxkGAwgASgIEhMKC3dlYXBvbl9rZXlzGA0gAygJEhQKDGNhbnRyaXBfa2V5cxgOIAMoCRIYChBrbm93bl9zcGVsbF9rZXlzGA8gAygJEhsKE3ByZXBhcmVkX3NwZWxsX2tleXMYECADKAkSLQoJZXF1aXBtZW50GBEgAygLMhoubWV1cnBnLmNoYXJhY3RlcnMudjEuSXRlbRIqCgVjb2lucxgSIAEoCzIbLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNvaW5zEhEKCWxhbmd1YWdlcxgTIAMoCRIaChJ0b29sX3Byb2ZpY2llbmNpZXMYFCADKAkSGQoRZXhwZXJpZW5jZV9wb2ludHMYFSABKAUSMgoJYWxpZ25tZW50GBYgASgOMh8ubWV1cnBnLmNoYXJhY3RlcnMudjEuQWxpZ25tZW50EhwKFGN1c3RvbV9mZWF0dXJlc190ZXh0GBcgASgJEhsKE2ZlYXR1cmVfY2hvaWNlX2tleXMYGCADKAlCDAoKYmFja2dyb3VuZCJyCgpDbGFzc0xldmVsEhEKCWNsYXNzX2tleRgBIAEoCRINCgVsZXZlbBgCIAEoBRIWCgxzdWJjbGFzc19rZXkYAyABKAlIABIeChRjdXN0b21fc3ViY2xhc3NfbmFtZRgEIAEoCUgAQgoKCHN1YmNsYXNzIjQKEEN1c3RvbUJhY2tncm91bmQSDAoEbmFtZRgBIAEoCRISCgpza2lsbF9rZXlzGAIgAygJIlEKCUhpdFBvaW50cxI1CgZtZXRob2QYASABKA4yJS5tZXVycGcuY2hhcmFjdGVycy52MS5IaXRQb2ludHNNZXRob2QSDQoFcm9sbHMYAiADKAUiJgoESXRlbRIMCgRuYW1lGAEgASgJEhAKCHF1YW50aXR5GAIgASgFIlkKBUNvaW5zEg4KBmNvcHBlchgBIAEoBRIOCgZzaWx2ZXIYAiABKAUSEAoIZWxlY3RydW0YAyABKAUSDAoEZ29sZBgEIAEoBRIQCghwbGF0aW51bRgFIAEoBSKGAQoKQmFzaWNTaGVldBIWCg5oaXRfcG9pbnRzX21heBgBIAEoBRITCgthcm1vcl9jbGFzcxgCIAEoBRIQCghzcGVlZF9mdBgDIAEoBRIUCgxhdHRhY2tfYm9udXMYBCABKAUSDgoGZGFtYWdlGAUgASgJEhMKC2Rlc2NyaXB0aW9uGAYgASgJIqEBCg5DaGFyYWN0ZXJTdG9yeRI2CgtwZXJzb25hbGl0eRgBIAEoCzIhLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLlBlcnNvbmFsaXR5EjQKCmFwcGVhcmFuY2UYAiABKAsyIC5tZXVycGcuY2hhcmFjdGVycy52MS5BcHBlYXJhbmNlEhEKCWJhY2tzdG9yeRgDIAEoCRIOCgZhbGxpZXMYBCABKAkiSwoLUGVyc29uYWxpdHkSDgoGdHJhaXRzGAEgASgJEg4KBmlkZWFscxgCIAEoCRINCgVib25kcxgDIAEoCRINCgVmbGF3cxgEIAEoCSJ4CgpBcHBlYXJhbmNlEgsKA2FnZRgBIAEoCRIOCgZoZWlnaHQYAiABKAkSDgoGd2VpZ2h0GAMgASgJEgwKBGV5ZXMYBCABKAkSDAoEc2tpbhgFIAEoCRIMCgRoYWlyGAYgASgJEhMKC2Rlc2NyaXB0aW9uGAcgASgJItgBChZDcmVhdGVDaGFyYWN0ZXJSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEjEKBGtpbmQYAiABKA4yIy5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXJLaW5kEgwKBG5hbWUYAyABKAkSMwoFc2hlZXQYBCABKAsyJC5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXJTaGVldBIzCgVzdG9yeRgFIAEoCzIkLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNoYXJhY3RlclN0b3J5Ik0KF0NyZWF0ZUNoYXJhY3RlclJlc3BvbnNlEjIKCWNoYXJhY3RlchgBIAEoCzIfLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNoYXJhY3RlciJAChNHZXRDaGFyYWN0ZXJSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCSJKChRHZXRDaGFyYWN0ZXJSZXNwb25zZRIyCgljaGFyYWN0ZXIYASABKAsyHy5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXIiLAoVTGlzdENoYXJhY3RlcnNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIlQKFkxpc3RDaGFyYWN0ZXJzUmVzcG9uc2USOgoKY2hhcmFjdGVycxgBIAMoCzImLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNoYXJhY3RlclN1bW1hcnkimAEKFlVwZGF0ZUNoYXJhY3RlclJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMY2hhcmFjdGVyX2lkGAIgASgJEhAKCHJldmlzaW9uGAMgASgFEgwKBG5hbWUYBCABKAkSMwoFc2hlZXQYBSABKAsyJC5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXJTaGVldCJNChdVcGRhdGVDaGFyYWN0ZXJSZXNwb25zZRIyCgljaGFyYWN0ZXIYASABKAsyHy5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXIijwEKG1VwZGF0ZUNoYXJhY3RlclN0b3J5UmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSEAoIcmV2aXNpb24YAyABKAUSMwoFc3RvcnkYBCABKAsyJC5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXJTdG9yeSJSChxVcGRhdGVDaGFyYWN0ZXJTdG9yeVJlc3BvbnNlEjIKCWNoYXJhY3RlchgBIAEoCzIfLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNoYXJhY3RlciJUChZTZXRTdG9yeUVkaXRpbmdSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCRIPCgdhbGxvd2VkGAMgASgIIk0KF1NldFN0b3J5RWRpdGluZ1Jlc3BvbnNlEjIKCWNoYXJhY3RlchgBIAEoCzIfLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNoYXJhY3RlciJFChhNYXJrQ2hhcmFjdGVyRGVhZFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMY2hhcmFjdGVyX2lkGAIgASgJIk8KGU1hcmtDaGFyYWN0ZXJEZWFkUmVzcG9uc2USMgoJY2hhcmFjdGVyGAEgASgLMh8ubWV1cnBnLmNoYXJhY3RlcnMudjEuQ2hhcmFjdGVyIkIKFUdldE1hc3Rlck5vdGVzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkiVwoWR2V0TWFzdGVyTm90ZXNSZXNwb25zZRINCgVub3RlcxgBIAEoCRIuCgp1cGRhdGVkX2F0GAIgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJUChhVcGRhdGVNYXN0ZXJOb3Rlc1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMY2hhcmFjdGVyX2lkGAIgASgJEg0KBW5vdGVzGAMgASgJIloKGVVwZGF0ZU1hc3Rlck5vdGVzUmVzcG9uc2USDQoFbm90ZXMYASABKAkSLgoKdXBkYXRlZF9hdBgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiRAoXQXBwcm92ZUNoYXJhY3RlclJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMY2hhcmFjdGVyX2lkGAIgASgJIk4KGEFwcHJvdmVDaGFyYWN0ZXJSZXNwb25zZRIyCgljaGFyYWN0ZXIYASABKAsyHy5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXIiQwoWUmVqZWN0Q2hhcmFjdGVyUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkiGQoXUmVqZWN0Q2hhcmFjdGVyUmVzcG9uc2UqsgEKDUNoYXJhY3RlcktpbmQSHgoaQ0hBUkFDVEVSX0tJTkRfVU5TUEVDSUZJRUQQABIZChVDSEFSQUNURVJfS0lORF9QTEFZRVIQARIYChRDSEFSQUNURVJfS0lORF9FTkVNWRACEhcKE0NIQVJBQ1RFUl9LSU5EX0JPU1MQAxIZChVDSEFSQUNURVJfS0lORF9NSU5JT04QBBIYChRDSEFSQUNURVJfS0lORF9TVE9SWRAFKp8BCg5DaGFyYWN0ZXJTdGF0ZRIfChtDSEFSQUNURVJfU1RBVEVfVU5TUEVDSUZJRUQQABIZChVDSEFSQUNURVJfU1RBVEVfRFJBRlQQARIaChZDSEFSQUNURVJfU1RBVEVfTE9DS0VEEAISGAoUQ0hBUkFDVEVSX1NUQVRFX0RFQUQQAxIbChdDSEFSQUNURVJfU1RBVEVfUEVORElORxAEKtUCChZDaGFyYWN0ZXJCbG9ja2VkUmVhc29uEigKJENIQVJBQ1RFUl9CTE9DS0VEX1JFQVNPTl9VTlNQRUNJRklFRBAAEikKJUNIQVJBQ1RFUl9CTE9DS0VEX1JFQVNPTl9TSEVFVF9MT0NLRUQQARIrCidDSEFSQUNURVJfQkxPQ0tFRF9SRUFTT05fQ0hBUkFDVEVSX0RFQUQQAhI0CjBDSEFSQUNURVJfQkxPQ0tFRF9SRUFTT05fTElWSU5HX0NIQVJBQ1RFUl9FWElTVFMQAxIpCiVDSEFSQUNURVJfQkxPQ0tFRF9SRUFTT05fU1RPUllfTE9DS0VEEAQSKAokQ0hBUkFDVEVSX0JMT0NLRURfUkVBU09OX05PVF9QRU5ESU5HEAUSLgoqQ0hBUkFDVEVSX0JMT0NLRURfUkVBU09OX0FXQUlUSU5HX0FQUFJPVkFMEAYqcQoPSGl0UG9pbnRzTWV0aG9kEiEKHUhJVF9QT0lOVFNfTUVUSE9EX1VOU1BFQ0lGSUVEEAASHQoZSElUX1BPSU5UU19NRVRIT0RfQVZFUkFHRRABEhwKGEhJVF9QT0lOVFNfTUVUSE9EX1JPTExFRBACKqACCglBbGlnbm1lbnQSGQoVQUxJR05NRU5UX1VOU1BFQ0lGSUVEEAASGQoVQUxJR05NRU5UX0xBV0ZVTF9HT09EEAESGgoWQUxJR05NRU5UX05FVVRSQUxfR09PRBACEhoKFkFMSUdOTUVOVF9DSEFPVElDX0dPT0QQAxIcChhBTElHTk1FTlRfTEFXRlVMX05FVVRSQUwQBBIVChFBTElHTk1FTlRfTkVVVFJBTBAFEh0KGUFMSUdOTUVOVF9DSEFPVElDX05FVVRSQUwQBhIZChVBTElHTk1FTlRfTEFXRlVMX0VWSUwQBxIaChZBTElHTk1FTlRfTkVVVFJBTF9FVklMEAgSGgoWQUxJR05NRU5UX0NIQU9USUNfRVZJTBAJMoAKChBDaGFyYWN0ZXJTZXJ2aWNlEm4KD0NyZWF0ZUNoYXJhY3RlchIsLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNyZWF0ZUNoYXJhY3RlclJlcXVlc3QaLS5tZXVycGcuY2hhcmFjdGVycy52MS5DcmVhdGVDaGFyYWN0ZXJSZXNwb25zZRJqCgxHZXRDaGFyYWN0ZXISKS5tZXVycGcuY2hhcmFjdGVycy52MS5HZXRDaGFyYWN0ZXJSZXF1ZXN0GioubWV1cnBnLmNoYXJhY3RlcnMudjEuR2V0Q2hhcmFjdGVyUmVzcG9uc2UiA5ACAhJwCg5MaXN0Q2hhcmFjdGVycxIrLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkxpc3RDaGFyYWN0ZXJzUmVxdWVzdBosLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkxpc3RDaGFyYWN0ZXJzUmVzcG9uc2UiA5ACAhJuCg9VcGRhdGVDaGFyYWN0ZXISLC5tZXVycGcuY2hhcmFjdGVycy52MS5VcGRhdGVDaGFyYWN0ZXJSZXF1ZXN0Gi0ubWV1cnBnLmNoYXJhY3RlcnMudjEuVXBkYXRlQ2hhcmFjdGVyUmVzcG9uc2USfQoUVXBkYXRlQ2hhcmFjdGVyU3RvcnkSMS5tZXVycGcuY2hhcmFjdGVycy52MS5VcGRhdGVDaGFyYWN0ZXJTdG9yeVJlcXVlc3QaMi5tZXVycGcuY2hhcmFjdGVycy52MS5VcGRhdGVDaGFyYWN0ZXJTdG9yeVJlc3BvbnNlEm4KD1NldFN0b3J5RWRpdGluZxIsLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLlNldFN0b3J5RWRpdGluZ1JlcXVlc3QaLS5tZXVycGcuY2hhcmFjdGVycy52MS5TZXRTdG9yeUVkaXRpbmdSZXNwb25zZRJ0ChFNYXJrQ2hhcmFjdGVyRGVhZBIuLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLk1hcmtDaGFyYWN0ZXJEZWFkUmVxdWVzdBovLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLk1hcmtDaGFyYWN0ZXJEZWFkUmVzcG9uc2UScAoOR2V0TWFzdGVyTm90ZXMSKy5tZXVycGcuY2hhcmFjdGVycy52MS5HZXRNYXN0ZXJOb3Rlc1JlcXVlc3QaLC5tZXVycGcuY2hhcmFjdGVycy52MS5HZXRNYXN0ZXJOb3Rlc1Jlc3BvbnNlIgOQAgISdAoRVXBkYXRlTWFzdGVyTm90ZXMSLi5tZXVycGcuY2hhcmFjdGVycy52MS5VcGRhdGVNYXN0ZXJOb3Rlc1JlcXVlc3QaLy5tZXVycGcuY2hhcmFjdGVycy52MS5VcGRhdGVNYXN0ZXJOb3Rlc1Jlc3BvbnNlEnEKEEFwcHJvdmVDaGFyYWN0ZXISLS5tZXVycGcuY2hhcmFjdGVycy52MS5BcHByb3ZlQ2hhcmFjdGVyUmVxdWVzdBouLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkFwcHJvdmVDaGFyYWN0ZXJSZXNwb25zZRJuCg9SZWplY3RDaGFyYWN0ZXISLC5tZXVycGcuY2hhcmFjdGVycy52MS5SZWplY3RDaGFyYWN0ZXJSZXF1ZXN0Gi0ubWV1cnBnLmNoYXJhY3RlcnMudjEuUmVqZWN0Q2hhcmFjdGVyUmVzcG9uc2VC5wEKGGNvbS5tZXVycGcuY2hhcmFjdGVycy52MUIPQ2hhcmFjdGVyc1Byb3RvUAFaSGdpdGh1Yi5jb20vUHVyYUZvbWUvbWV1UlBHL2JhY2tlbmQvZ2VuL21ldXJwZy9jaGFyYWN0ZXJzL3YxO2NoYXJhY3RlcnN2MaICA01DWKoCFE1ldXJwZy5DaGFyYWN0ZXJzLlYxygIUTWV1cnBnXENoYXJhY3RlcnNcVjHiAiBNZXVycGdcQ2hhcmFjdGVyc1xWMVxHUEJNZXRhZGF0YeoCFk1ldXJwZzo6Q2hhcmFjdGVyczo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp, file_meurpg_rules_v1_rules]);
 
 /**
  * Character is a character as its reader may see it. It never carries the
@@ -193,6 +193,14 @@ export type Character = Message<"meurpg.characters.v1.Character"> & {
    * @generated from field: bool can_set_story_editing = 21;
    */
   canSetStoryEditing: boolean;
+
+  /**
+   * Whether the caller may call ApproveCharacter and RejectCharacter now:
+   * the master, for a PENDING character (MR-024).
+   *
+   * @generated from field: bool can_approve = 22;
+   */
+  canApprove: boolean;
 };
 
 /**
@@ -1446,6 +1454,90 @@ export const UpdateMasterNotesResponseSchema: GenMessage<UpdateMasterNotesRespon
   messageDesc(file_meurpg_characters_v1_characters, 31);
 
 /**
+ * ApproveCharacterRequest names the character to approve.
+ *
+ * @generated from message meurpg.characters.v1.ApproveCharacterRequest
+ */
+export type ApproveCharacterRequest = Message<"meurpg.characters.v1.ApproveCharacterRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * @generated from field: string character_id = 2;
+   */
+  characterId: string;
+};
+
+/**
+ * Describes the message meurpg.characters.v1.ApproveCharacterRequest.
+ * Use `create(ApproveCharacterRequestSchema)` to create a new message.
+ */
+export const ApproveCharacterRequestSchema: GenMessage<ApproveCharacterRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_characters_v1_characters, 32);
+
+/**
+ * ApproveCharacterResponse returns the approved character.
+ *
+ * @generated from message meurpg.characters.v1.ApproveCharacterResponse
+ */
+export type ApproveCharacterResponse = Message<"meurpg.characters.v1.ApproveCharacterResponse"> & {
+  /**
+   * The character, now DRAFT (or as it was, if it was not PENDING).
+   *
+   * @generated from field: meurpg.characters.v1.Character character = 1;
+   */
+  character?: Character | undefined;
+};
+
+/**
+ * Describes the message meurpg.characters.v1.ApproveCharacterResponse.
+ * Use `create(ApproveCharacterResponseSchema)` to create a new message.
+ */
+export const ApproveCharacterResponseSchema: GenMessage<ApproveCharacterResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_characters_v1_characters, 33);
+
+/**
+ * RejectCharacterRequest names the character to reject.
+ *
+ * @generated from message meurpg.characters.v1.RejectCharacterRequest
+ */
+export type RejectCharacterRequest = Message<"meurpg.characters.v1.RejectCharacterRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * @generated from field: string character_id = 2;
+   */
+  characterId: string;
+};
+
+/**
+ * Describes the message meurpg.characters.v1.RejectCharacterRequest.
+ * Use `create(RejectCharacterRequestSchema)` to create a new message.
+ */
+export const RejectCharacterRequestSchema: GenMessage<RejectCharacterRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_characters_v1_characters, 34);
+
+/**
+ * RejectCharacterResponse is empty: the character is gone.
+ *
+ * @generated from message meurpg.characters.v1.RejectCharacterResponse
+ */
+export type RejectCharacterResponse = Message<"meurpg.characters.v1.RejectCharacterResponse"> & {
+};
+
+/**
+ * Describes the message meurpg.characters.v1.RejectCharacterResponse.
+ * Use `create(RejectCharacterResponseSchema)` to create a new message.
+ */
+export const RejectCharacterResponseSchema: GenMessage<RejectCharacterResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_characters_v1_characters, 35);
+
+/**
  * CharacterKind is what a character is for. The kind never changes after
  * the character is created.
  *
@@ -1541,9 +1633,11 @@ export enum CharacterState {
   DEAD = 3,
 
   /**
-   * "Pendente de aprovação": used by MR-024 (invite with approval, RN-15),
-   * for a character that waits for the master's approval. Nothing sets it
-   * yet.
+   * "Pendente de aprovação" (RN-15, MR-024): created by a pending member,
+   * who joined through an invite that requires approval. The player edits
+   * the whole sheet and the story, but the character is not part of the
+   * campaign yet: a game session does not lock it, and it cannot die. The
+   * master's ApproveCharacter makes it a DRAFT; RejectCharacter deletes it.
    *
    * @generated from enum value: CHARACTER_STATE_PENDING = 4;
    */
@@ -1597,6 +1691,22 @@ export enum CharacterBlockedReason {
    * @generated from enum value: CHARACTER_BLOCKED_REASON_STORY_LOCKED = 4;
    */
   STORY_LOCKED = 4,
+
+  /**
+   * RejectCharacter on a character that does not wait for approval (MR-024):
+   * once approved, a character stays in the campaign.
+   *
+   * @generated from enum value: CHARACTER_BLOCKED_REASON_NOT_PENDING = 5;
+   */
+  NOT_PENDING = 5,
+
+  /**
+   * MarkCharacterDead on a character that still waits for the master's
+   * approval (MR-024): approve or reject it instead.
+   *
+   * @generated from enum value: CHARACTER_BLOCKED_REASON_AWAITING_APPROVAL = 6;
+   */
+  AWAITING_APPROVAL = 6,
 }
 
 /**
@@ -1744,6 +1854,14 @@ export const AlignmentSchema: GenEnum<Alignment> = /*@__PURE__*/
  *     characters exist.
  *   - A member asking for something only the master may do gets
  *     `permission_denied`.
+ *   - A pending member (RN-15, MR-024: someone who accepted an invite that
+ *     requires approval, see meurpg.campaigns.v1.AcceptInvite) is not a
+ *     member yet, and gets `not_found` from every method except these, which
+ *     let them work on their one character while they wait: CreateCharacter
+ *     (one player character, which starts PENDING), GetCharacter,
+ *     ListCharacters, UpdateCharacter and UpdateCharacterStory (only their
+ *     own PENDING character), and ContentService.ListContent. Inside those
+ *     methods they are treated like a player.
  *   - An ID that is not a UUID is answered like an ID that does not exist.
  *
  * Errors every method can return, besides those listed on each method:
@@ -1770,7 +1888,10 @@ export const CharacterService: GenService<{
    *     themselves. The master gets `permission_denied`: a master is not a
    *     player of their own campaign. The character starts as a draft the
    *     player edits until the next game session starts (RN-01), even when
-   *     the campaign already had sessions.
+   *     the campaign already had sessions. A pending member (RN-15, MR-024)
+   *     may create theirs too: it starts PENDING, waits for the master's
+   *     ApproveCharacter or RejectCharacter, and becomes a draft when
+   *     approved.
    *   - The NPC kinds, ENEMY, BOSS, MINION and STORY (MR-005): only the
    *     campaign's master, who becomes the NPC's owner (RN-04). Players get
    *     `permission_denied`. NPCs never lock.
@@ -1806,8 +1927,9 @@ export const CharacterService: GenService<{
    * GetCharacter returns one character with its sheet, its story, and the
    * numbers the server derives from the sheet (MR-004). The campaign's
    * master may read every character of the campaign; a player, only their
-   * own, dead ones included. It never carries the master's notes (RN-11):
-   * those come only from GetMasterNotes.
+   * own, dead ones included; a pending member (MR-024), only their own
+   * PENDING character. It never carries the master's notes (RN-11): those
+   * come only from GetMasterNotes.
    *
    * Errors:
    *   - `not_found`: the character is not in this campaign, the caller may
@@ -1825,9 +1947,12 @@ export const CharacterService: GenService<{
    * ListCharacters lists a campaign's characters, without their sheets.
    *
    * The master gets every character of the campaign: the players'
-   * characters first, then the NPCs. A player gets only their own
-   * characters, dead ones included, and never an NPC. Each group is in
-   * creation order, oldest first. The list is not paginated.
+   * characters first, then the NPCs. Characters waiting for approval
+   * (PENDING, MR-024) come in the same list, so the master sees whom to
+   * approve. A player gets only their own characters, dead ones included,
+   * and never an NPC; a pending member, only their own PENDING character.
+   * Each group is in creation order, oldest first. The list is not
+   * paginated.
    *
    * Errors:
    *   - `not_found`: the campaign does not exist, or the caller is not a
@@ -1956,6 +2081,9 @@ export const CharacterService: GenService<{
    *   - `not_found`: the character is not in this campaign, the campaign
    *     does not exist, or the caller is not a member of it.
    *   - `permission_denied`: the caller is a player.
+   *   - `failed_precondition`: the character waits for the master's approval
+   *     (PENDING, MR-024): approve or reject it instead. The error carries a
+   *     CharacterBlocked detail with reason AWAITING_APPROVAL.
    *
    * @generated from rpc meurpg.characters.v1.CharacterService.MarkCharacterDead
    */
@@ -2003,6 +2131,64 @@ export const CharacterService: GenService<{
     methodKind: "unary";
     input: typeof UpdateMasterNotesRequestSchema;
     output: typeof UpdateMasterNotesResponseSchema;
+  },
+  /**
+   * ApproveCharacter lets a character that waits for approval into the
+   * campaign (RN-15, MR-024). Only the campaign's master may call it.
+   *
+   * In one transaction, the character becomes a draft (DRAFT: its player
+   * edits it until the next game session starts, RN-01) and its player's
+   * pending membership becomes an ordinary player membership, so from then
+   * on they see the campaign like any other player. If the player deleted
+   * their account while waiting, only the character changes: it stays with
+   * the campaign, as in RN-16.
+   *
+   * It is idempotent: approving a character that is not PENDING (already
+   * approved, or created by a player who needed no approval) changes nothing
+   * and returns the character as it is.
+   *
+   * Errors:
+   *   - `invalid_argument`: the character is an NPC. Only player characters
+   *     wait for approval.
+   *   - `not_found`: the character is not in this campaign (a rejected
+   *     character is gone), the campaign does not exist, or the caller is
+   *     not a member of it.
+   *   - `permission_denied`: the caller is a player.
+   *
+   * @generated from rpc meurpg.characters.v1.CharacterService.ApproveCharacter
+   */
+  approveCharacter: {
+    methodKind: "unary";
+    input: typeof ApproveCharacterRequestSchema;
+    output: typeof ApproveCharacterResponseSchema;
+  },
+  /**
+   * RejectCharacter turns down a character that waits for approval (RN-15,
+   * MR-024). Only the campaign's master may call it.
+   *
+   * The character never became part of the campaign, so, in one
+   * transaction, it is deleted with its story (and any notes the master
+   * wrote about it), and its player's pending membership is deleted too
+   * (docs/privacidade.md). The player sees the campaign no more, like anyone
+   * who is not in it, and needs a new invite to try again. An active
+   * membership is never touched.
+   *
+   * Errors:
+   *   - `invalid_argument`: the character is an NPC.
+   *   - `not_found`: the character is not in this campaign (rejecting twice
+   *     gets this: the character is gone), the campaign does not exist, or
+   *     the caller is not a member of it.
+   *   - `permission_denied`: the caller is a player.
+   *   - `failed_precondition`: the character is not PENDING: once approved, a
+   *     character stays in the campaign. The error carries a CharacterBlocked
+   *     detail with reason NOT_PENDING.
+   *
+   * @generated from rpc meurpg.characters.v1.CharacterService.RejectCharacter
+   */
+  rejectCharacter: {
+    methodKind: "unary";
+    input: typeof RejectCharacterRequestSchema;
+    output: typeof RejectCharacterResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_meurpg_characters_v1_characters, 0);
