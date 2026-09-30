@@ -14,7 +14,7 @@ O backend roda no Cloud Run, em `southamerica-east1` (São Paulo).
 | `min-instances` | 0 (escala a zero sem uso) |
 | `max-instances` | Baixo, valor exato **a definir** |
 
-O CockroachDB fica no Google Cloud, na mesma região. O plano e o tamanho do cluster estão **a definir**.
+O CockroachDB fica no Google Cloud, na mesma região, no plano atual do Samuel (decidido em 29/09/2026): o plano legado Unlimited, contratado antes da mudança de licenças de 2024. Trocar de plano perde o Unlimited. Os backups ficam em São Paulo e são guardados por no máximo 30 dias, para cumprir o prazo de exclusão (ver [Privacidade](privacidade.md)). Falta conferir essa configuração no console antes do primeiro deploy.
 
 ## Custos estimados (São Paulo)
 
@@ -71,7 +71,8 @@ Um budget alert no Google Cloud avisa se o custo passar do esperado. Os limiares
 
 - Nome do domínio (sai do GitHub Student Developer Pack; só é necessário no primeiro deploy).
 - `max-instances` exato do Cloud Run.
-- Plano e tamanho do cluster do CockroachDB.
+- Conferir no console do CockroachDB Cloud a região e a retenção dos backups (São Paulo, no máximo 30 dias).
+- Avaliar se vale migrar do CockroachDB para o Cloud SQL ou outro produto, já que o plano legado não pode mudar sem perder o Unlimited. Pesa na conta: o código usa o TTL por linha do CockroachDB (sessões, estados de login e convites) e repete transações no erro `40001`; num PostgreSQL, a limpeza viraria um job agendado.
 - Lista completa de segredos por ambiente e quem tem acesso.
 - Limiares dos alertas de orçamento.
 - Política de ociosidade do stream em tempo real (ADR-0005, proposta).

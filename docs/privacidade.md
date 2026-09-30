@@ -7,11 +7,12 @@ O MeuRPG coleta só o que a mesa precisa para jogar, guarda tudo em São Paulo e
 ## Em resumo
 
 - **A lei que vale é a LGPD** (Lei 13.709/2018). O GDPR europeu hoje não se aplica, porque não oferecemos o app para a União Europeia. Mesmo assim, em cada tema, seguimos a regra mais rigorosa das duas.
-- **Somos agente de tratamento de pequeno porte** (Resolução CD/ANPD nº 2/2022). Mesmo dispensados, indicamos um encarregado e publicamos um canal de contato.
-- **O jogador não precisaria dar e-mail nem nome real.** A proposta em discussão é entrar com um handle da mesa, sem conta Google (ver [Perguntas em aberto](produto/perguntas-em-aberto.md#login-do-jogador-sem-google)).
+- **Somos agente de tratamento de pequeno porte** (Resolução CD/ANPD nº 2/2022). Mesmo dispensados, indicamos um encarregado e publicamos um canal de contato. Decidido pelo Samuel em 29/09/2026: ele é o controlador, o Vinicius é o encarregado, e o canal é um e-mail só para isso até existir o domínio.
+- **O jogador não precisa dar e-mail nem nome real.** Decidido pelo Samuel em 29/09/2026 (RN-17): o jogador entra por um login anônimo, com o apelido do mestre junto do apelido do jogador, sem conta Google (ver [Regras de negócio](produto/regras.md)).
 - **A base legal é o contrato**, não o consentimento. O app precisa desses dados para funcionar. Segurança e logs usam legítimo interesse.
 - **Sem cookies de terceiros, analytics, pixel ou fonte de CDN.** O único cookie é o de sessão, que é estritamente necessário, então não há banner.
-- **O MVP é para maiores de 18 anos.**
+- **O MVP é para maiores de 18 anos**, por autodeclaração (decidido pelo Samuel em 29/09/2026; ver [Menores de idade](#menores-de-idade)).
+- **Só a nossa mesa no MVP.** O app não abre para outras mesas nem cobra nada no MVP (decidido pelo Samuel em 29/09/2026). Abrir muda o porte do agente de tratamento e a análise do GDPR, então a decisão volta antes disso.
 
 ## Checklist de privacidade para PRs
 
@@ -35,7 +36,7 @@ Copie no PR que mexe em dados, logs, telas ou fornecedores:
 
 ## Inventário de dados pessoais
 
-"Até excluir" quer dizer: até a pessoa excluir a conta ou o item. Depois disso, o dado ainda some dos backups e logs em até 30 dias. As linhas de handle, senha, link de reentrada e log de identidade dependem do login do jogador sem Google, que ainda está em discussão.
+"Até excluir" quer dizer: até a pessoa excluir a conta ou o item. Depois disso, o dado ainda some dos backups e logs em até 30 dias. As linhas de handle, senha, link de reentrada e log de identidade são do login do jogador sem Google (RN-17, decidido pelo Samuel em 29/09/2026), ainda não implementado.
 
 | Dado | Onde fica | Para quê | Base legal | Retenção |
 |---|---|---|---|---|
@@ -43,6 +44,7 @@ Copie no PR que mexe em dados, logs, telas ou fornecedores:
 | E-mail do Google | `user_identities.email` | Só contato de segurança (incidente, pedido do titular). Nunca aparece para outros usuários. Só é gravado se o provedor diz que foi verificado, e é atualizado ou apagado a cada login | Contrato; legítimo interesse | Até excluir |
 | Nome e foto do Google | — | Não coletamos. O nome de exibição é digitado no app | — | — |
 | Nome de exibição | `users.display_name` | Mostrar a pessoa aos outros membros das campanhas dela. Digitado no app, de 1 a 40 caracteres; nunca vem do provedor de login | Contrato | Até a pessoa apagar (nome vazio no `UpdateProfile`) ou excluir a conta |
+| Preferência de inatividade (tempo sem uso até a exclusão automática) | `users` (coluna a definir) | Aplicar RN-16; a pessoa escolhe o próprio prazo | Contrato | Até a pessoa mudar a preferência ou excluir a conta. Padrão de 1 ano quando a pessoa não escolhe |
 | Handle | `table_handles` | Identificar o jogador na mesa | Contrato | Até sair da mesa ou excluir |
 | Hash de senha (argon2id), contador de falhas | `password_credentials` | Autenticar; travar tentativas | Contrato; legítimo interesse | Até remover a senha ou excluir |
 | Hash do token de sessão, datas e `auth_time` | `auth_sessions` (`token_hash`, `created_at`, `expires_at`, `auth_time`) | Manter o login; `auth_time` só para auditoria | Contrato | No máximo 30 dias; a linha vencida some pelo TTL do banco em até 1 dia |
@@ -103,7 +105,7 @@ Quase tudo é autoatendimento, dentro do app e logado. A sessão já prova quem 
 |---|---|---|---|
 | Confirmação e acesso | Art. 18, I e II | Tela "Meus dados", download em JSON | `PrivacyService.ExportMyData` |
 | Portabilidade | Art. 18, V | O mesmo JSON, com versão de schema | `PrivacyService.ExportMyData` |
-| Correção | Art. 18, III | Editar nome de exibição e handle. A trava da ficha (RN-01) vale para dado de jogo, nunca para dado pessoal | `IdentityService.UpdateProfile` |
+| Correção | Art. 18, III | Editar nome de exibição e handle. A história do personagem, depois da trava da ficha (RN-01), o jogador corrige quando o mestre libera; se o mestre não liberar, o pedido vai pelo canal do encarregado, no prazo de 15 dias | `IdentityService.UpdateProfile` |
 | Eliminação | Art. 18, VI | "Excluir minha conta", com prévia do que some | `PrivacyService.PreviewAccountDeletion`, `PrivacyService.DeleteMyAccount` |
 | Com quem compartilhamos | Art. 18, VII | Lista de operadores no aviso de privacidade | — |
 | Oposição, dúvidas, outros pedidos | Art. 18, §2º | Canal do encarregado; depois, um formulário no app | `PrivacyService.SubmitPrivacyRequest` |
@@ -113,26 +115,49 @@ Quase tudo é autoatendimento, dentro do app e logado. A sessão já prova quem 
 
 ### Excluir a conta
 
-A exclusão acontece na hora, numa transação só.
+**Decidido pelo Samuel em 29/09/2026 (RN-16).** Jogador e mestre têm tratamentos diferentes:
+
+- **Jogador:** a exclusão é imediata e definitiva. Conta, handles, senha, sessões e participação nas campanhas somem na hora. Os personagens dele **não são apagados**: ficam vinculados ao mestre da campanha, sem o dono original (ver a tensão com a identidade, abaixo).
+- **Mestre:** a conta entra em espera. As sessões são revogadas na hora — ninguém consegue mais usar a conta —, mas a linha da conta em si (o par `issuer`/`subject` do provedor de login, ver [Modelo de dados](dados.md)) só é apagada de vez depois de **30 dias**. Se o mestre entrar de novo com a **mesma conta Google** dentro desses 30 dias, a conta é restaurada por completo: nada foi perdido. Passados os 30 dias sem esse retorno, tudo é apagado: a conta e as campanhas dele (mapas, NPCs, notas, eventos, XP).
+- **Em qualquer exclusão**, o que resta (contas de mesa órfãs, backups, logs, imagens) some por completo até 30 dias depois da exclusão de fato.
+- **Inatividade:** cada pessoa escolhe no próprio perfil quanto tempo de inatividade leva à exclusão automática da conta; o padrão é 1 ano.
 
 ```mermaid
 flowchart TD
     A["Excluir minha conta"] --> B["Prévia: o que vai sumir"]
     B --> C{"Confirma?"}
     C -->|"não"| Z["Nada muda"]
-    C -->|"sim"| D["Apaga conta, handles, senha,<br/>sessões e participação nas campanhas"]
-    D --> E["Apaga os personagens da pessoa"]
-    E --> F{"É mestre de alguma campanha?"}
-    F -->|"não"| G["Eventos de sessão de outras campanhas ficam,<br/>apontando para um ID que não existe mais"]
-    F -->|"sim"| H["Apaga as campanhas dele:<br/>mapas, NPCs, notas, eventos, XP"]
-    H --> I["Personagens dos jogadores<br/>ficam com os jogadores"]
-    H --> J["Contas só com handle da mesa dele:<br/>aviso no app, apagadas em 30 dias"]
-    G --> K["Backups e logs: somem em até 30 dias<br/>imagens: em até 7 dias"]
-    I --> K
-    J --> K
+    C -->|"sim"| D{"É mestre de alguma campanha?"}
+
+    D -->|"não, só jogador"| E["Apaga na hora:<br/>conta, handles, senha, sessões,<br/>participação nas campanhas"]
+    E --> F["Personagens do jogador ficam,<br/>vinculados ao mestre, sem o dono original"]
+    F --> G["Eventos de sessão de outras campanhas ficam,<br/>apontando para um ID que não existe mais"]
+    G --> K["Backups e logs somem em até 30 dias<br/>imagens em até 7 dias"]
+
+    D -->|"sim"| H["Revoga as sessões na hora;<br/>marca a conta para apagar em 30 dias"]
+    H --> I{"Entra de novo em até 30 dias,<br/>com a mesma conta Google?"}
+    I -->|"sim"| Z2["Conta restaurada por completo;<br/>nada foi apagado"]
+    I -->|"não"| J["Depois de 30 dias, apaga de vez:<br/>a conta e as campanhas dele<br/>mapas, NPCs, notas, eventos, XP"]
+    J --> L["Personagens dos jogadores<br/>ficam com eles, sem campanha"]
+    J --> M["Contas só com handle da mesa dele:<br/>aviso no app, apagadas também"]
+    L --> K
+    M --> K
 ```
 
-Por isso os eventos da sessão guardam só IDs: quando a dona dos dados some, o evento fica anônimo sem ninguém editar o histórico.
+Por isso os eventos da sessão guardam só IDs: quando a dona dos dados some, o evento fica anônimo sem ninguém editar o histórico. A espera de 30 dias do mestre usa uma marca de "apagar em" na conta, conferida no login, em vez da exclusão imediata da linha. O Samuel aceitou esse desenho em 29/09/2026.
+
+### A tensão entre manter o personagem e apagar a identidade
+
+Manter o personagem de um jogador excluído vinculado ao mestre (RN-16) não pode virar um jeito de manter a identidade dessa pessoa depois que ela pediu para sumir. O vínculo com a conta apagada é removido — a linha de `users` e `user_identities` some, como em qualquer exclusão —, mas o personagem em si tem campos de texto livre (história, aparência, personalidade, citações, aliados) que a própria pessoa escreveu, e que podem conter dado pessoal dela ou de terceiros, mesmo com o aviso de "é ficção; não escreva dados reais de pessoas".
+
+**Tratamento, aceito pelo Samuel em 29/09/2026:**
+
+1. Na exclusão, o personagem passa a pertencer ao mestre da campanha: dono anterior desvinculado, sem nenhum identificador que aponte de volta à conta apagada.
+2. Antes de confirmar a exclusão, a tela avisa: "seus personagens continuam na(s) campanha(s), com o mestre; você pode apagá-los agora, se preferir".
+3. Se a pessoa escolher apagar em vez de deixar com o mestre, o personagem (inclusive o texto livre) some como qualquer outro dado dela.
+4. O texto livre que ficar com o mestre não é filtrado nem redigido automaticamente: é conteúdo de jogo, e o mestre passa a ser quem decide o que fazer com ele, do mesmo jeito que decide sobre um NPC. Isso é uma escolha de produto, não uma garantia jurídica de que não sobra dado pessoal — por isso fica como pergunta ao advogado, abaixo.
+
+O texto livre que fica com o mestre continua na lista de perguntas ao advogado (ver "A definir", abaixo). Ver [ADR-0010](adr/0010-privacidade-lgpd-gdpr.md), seção 4.3.
 
 ## Operadores e onde os dados ficam
 
@@ -143,10 +168,14 @@ Os dados ficam em São Paulo (`southamerica-east1`). O acesso de um fornecedor d
 | Google Cloud | Cloud Run, Cloud Logging, Cloud Storage, Secret Manager | Tudo, em São Paulo | Data Processing Addendum com as cláusulas-padrão brasileiras |
 | Cockroach Labs | Banco CockroachDB gerenciado, no Google Cloud em São Paulo | O banco e os backups | **A definir:** o contrato atual cobre o GDPR |
 | Google (login) | Sign in with Google | O Google é controlador da própria conta; nós recebemos só `sub` e e-mail | Não é nosso operador |
-| Render | App antigo (descontinuado): NestJS, mantido em `server/` só como referência | O que passava pela API do app antigo | **A definir** (sai quando `server/` for removido) |
-| GitHub Pages | App antigo (descontinuado): Angular, mantido em `src/` só como referência | IP de quem visita | **A definir** (sai quando `src/` for removido) |
+| Render | App antigo (descontinuado): NestJS. **`server/` será removido do repositório** (decidido pelo Samuel em 29/09/2026, ver [README.md](../README.md)) | O que passava pela API do app antigo | **Lacuna temporária.** Acaba quando `server/` for removido |
+| GitHub Pages | App antigo (descontinuado): Angular, mantido em `src/` só como referência até sair num PR à parte | IP de quem visita | **Lacuna temporária.** Acaba quando `src/` for removido |
 | Cloudflare Workers AI | Jev, depois do MVP | Só contexto de jogo, sem dado pessoal | **A definir** antes do Jev |
 | Have I Been Pwned | Checa se a senha nova já vazou | 5 caracteres do hash da senha, saindo do servidor. Não identifica ninguém | Não é operador |
+
+### O banco do app antigo
+
+Decidido pelo Samuel em 29/09/2026: o CockroachDB do app antigo (usado pelo NestJS) pode ser apagado. Não é o mesmo banco do sistema novo — é um cluster à parte, que só precisa ser descomissionado. Antes de apagar, uma tarefa única importa só os personagens de lá para o banco novo (ver [Modelo de dados](dados.md)); o resto (campanhas, mapas e sessões do app antigo, se existirem) não é importado. Depois de descomissionado, os backups dele somem no prazo do provedor (30 dias). Isso é uma tarefa do [roadmap](roadmap.md) (Etapa 8); falta só a data.
 
 ## Cookies e navegador
 
@@ -157,6 +186,14 @@ Os dados ficam em São Paulo (`southamerica-east1`). O acesso de um fornecedor d
 ## Menores de idade
 
 O MVP é para maiores de 18 anos, declarado ao entrar. Guardamos só a data da declaração, nunca a data de nascimento. O convite é pessoal, e o app não tem busca de mesas, perfil público nem chat com desconhecidos. Essas funcionalidades só entram depois de uma avaliação do ECA Digital (Lei 15.211/2025) feita com advogado.
+
+**Pergunta do Samuel, em 29/09/2026, para nós:** se jogadores ou mestres forem menores de 18 anos, o que precisamos fazer para cumprir a LGPD e o GDPR? Respondemos no mesmo dia, no documento de acompanhamento, com a recomendação da ADR-0010 (seção 8):
+
+- o MVP fica só para maiores de 18 anos, por autodeclaração, como descrito acima;
+- um menor que já esteja na mesa joga sem conta própria (o mestre cuida da ficha, sem dado pessoal dele), até existir um fluxo com os responsáveis revisado por advogado;
+- antes de abrir ao público: advogado, avaliação do ECA Digital (Lei 15.211/2025; Decreto 12.880/2026) e uma aferição de idade que siga as orientações finais da ANPD.
+
+A autodeclaração não é proibida para nós (a vedação do ECA Digital, art. 9º, §1º, é para conteúdo impróprio para menores), mas a ANPD a considera pouco confiável; por isso ela só serve enquanto o app for fechado, por convite. O GDPR (art. 8) só pede idade mínima quando a base é consentimento, e nós usamos contrato. O Samuel aceitou essa recomendação em 29/09/2026, e hoje não há menores na mesa (respondido pelo Vinicius no mesmo dia).
 
 ## Incidentes
 
@@ -181,12 +218,11 @@ Todo PR responde. Um "sim" pede uma seção curta de riscos e medidas no PR. Doi
 
 ## A definir
 
-- Nome do controlador e do encarregado, e o e-mail do canal (até ter domínio, um endereço só para isso).
+- Criar o e-mail do canal do encarregado (um endereço só para isso, até ter domínio) e publicá-lo no aviso de privacidade.
 - Contrato LGPD com a Cockroach Labs; contratos para Render, GitHub Pages e Cloudflare enquanto forem usados.
-- Se há menores na mesa hoje.
-- Quando alguém exclui a conta: os personagens dela podem ficar com o mestre como NPC?
-- Por quanto tempo guardar contas inativas, já que uma continuação pode vir anos depois (RN-03).
-- Revisão por advogado do aviso de privacidade e dos termos de uso antes da Etapa 3.
+- Conferir no console do CockroachDB Cloud que os backups ficam em São Paulo e são guardados por no máximo 30 dias. O plano atual, o legado Unlimited, fica (decidido pelo Samuel em 29/09/2026); trocar de plano perde o Unlimited, e está em avaliação se vale migrar para o Cloud SQL ou outro produto (ver [Operação](operacao.md)).
+- Antes de ler PDFs de regras com IA (MR-027): escolher o operador, dizer o que sai do servidor, e tratar o direito autoral de livros oficiais (o resultado só aparece para a mesa).
+- Revisão por advogado do aviso de privacidade, dos termos de uso e desse tratamento, antes do primeiro deploy público.
 
 ## Roteiro do aviso de privacidade
 
@@ -211,5 +247,6 @@ Os termos de uso vêm junto: quem pode usar (18+), o papel do mestre, conduta (�
 - [Arquitetura](arquitetura.md): módulos, login e onde cada peça roda.
 - [Modelo de dados](dados.md): as tabelas citadas aqui.
 - [Operação](operacao.md): segredos, logs e alertas.
-- [Regras de negócio](produto/regras.md): RN-10 e RN-11, que também protegem o que o jogador vê.
-- `docs/adr/` (repositório privado): ADR-0002 (sessão), ADR-0009 (login do jogador sem Google), ADR-0010 (privacidade).
+- [Regras de negócio](produto/regras.md): RN-10 e RN-11, que também protegem o que o jogador vê; RN-16, exclusão de conta e inatividade; RN-17, login do jogador sem Google.
+- [Perguntas em aberto](produto/perguntas-em-aberto.md): o que ainda falta responder, e o registro das respostas do Samuel.
+- `docs/adr/` (repositório privado): ADR-0002 (sessão), ADR-0009 (login do jogador sem Google), ADR-0010 (privacidade), ADR-0011 (papéis por campanha).
