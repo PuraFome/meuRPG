@@ -171,3 +171,53 @@ jobs:
             --build-arg COMMIT=${{ github.sha }} \
             -t meurpg-backend:ci \
             .
+
+  go-db:
+    name: go (integration tests against CockroachDB)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      # The same image, pinned by the same digest, as deploy/local/compose.yaml.
+      # Keep the two in sync.
+      COCKROACH_IMAGE: cockroachdb/cockroach:v26.2.7@sha256:9464ae30465b887295459b98d129a76d074caeaa4c86836d369c6d2fdddd1685
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: backend/go.mod
+          cache: true
+          cache-dependency-path: backend/go.sum
+
+      - name: Start CockroachDB (single node, insecure, CI only)
+        # Not a service container: those cannot pass arguments to the image,
+        # and CockroachDB needs `start-single-node`. Published on 127.0.0.1
+        # only.
+        run: |
+          docker run --detach --name cockroach --publish 127.0.0.1:26257:26257 \
+            "$COCKROACH_IMAGE" start-single-node --insecure
+          for _ in $(seq 1 60); do
+            if docker exec cockroach cockroach sql --insecure --host=localhost:26257 -e 'SELECT 1' >/dev/null 2>&1; then
+              echo "CockroachDB is ready."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::CockroachDB was not ready after 120 seconds." >&2
+          docker logs cockroach >&2
+          exit 1
+
+      - name: go test -race (with the database)
+        # With MEURPG_TEST_DATABASE_URL set, the integration tests
+        # (migrations, stores, the 40001 retry, row TTL) run instead of
+        # being skipped. Each test creates and drops its own database.
+        env:
+          MEURPG_TEST_DATABASE_URL: postgresql://root@localhost:26257/defaultdb?sslmode=disable
+        run: go test -race ./...

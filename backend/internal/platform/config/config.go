@@ -51,6 +51,14 @@ type Config struct {
 	// OIDC configures sign-in. The zero value means "not configured": the
 	// API still starts, and the sign-in routes answer 503.
 	OIDC OIDC
+
+	// CloudRun is true when the process runs on Cloud Run, which sets
+	// K_SERVICE in every service container (see "Container runtime
+	// contract" in the Cloud Run docs). There, every request reaches the
+	// container through Google's front end, so the client IP comes from
+	// X-Forwarded-For instead of the connection (see
+	// internal/platform/ratelimit.ClientKey).
+	CloudRun bool
 }
 
 // OIDC holds the settings of the OpenID Connect provider the game master
@@ -146,6 +154,7 @@ func Load(getenv func(string) string) (Config, error) {
 		DatabaseURL: strings.TrimSpace(getenv("DATABASE_URL")),
 		LogLevel:    DefaultLogLevel,
 		WebDir:      DefaultWebDir,
+		CloudRun:    strings.TrimSpace(getenv("K_SERVICE")) != "",
 	}
 
 	var errs []error
@@ -258,7 +267,7 @@ func checkIssuerURL(raw string) error {
 		return fmt.Errorf("OIDC_ISSUER must be an absolute URL, got %q", raw)
 	}
 	if !secureOrLoopback(u) {
-		return fmt.Errorf("OIDC_ISSUER must use https (http only on localhost), got %q", raw)
+		return fmt.Errorf("OIDC_ISSUER must use https (http only on localhost or *.localhost), got %q", raw)
 	}
 	if u.RawQuery != "" || u.Fragment != "" {
 		return fmt.Errorf("OIDC_ISSUER must not have a query or fragment, got %q", raw)
@@ -274,7 +283,7 @@ func checkRedirectURL(raw string) error {
 		return fmt.Errorf("OIDC_REDIRECT_URL must be an absolute URL, got %q", raw)
 	}
 	if !secureOrLoopback(u) {
-		return fmt.Errorf("OIDC_REDIRECT_URL must use https (http only on localhost), got %q", raw)
+		return fmt.Errorf("OIDC_REDIRECT_URL must use https (http only on localhost or *.localhost), got %q", raw)
 	}
 	if u.Path != CallbackPath || u.RawQuery != "" || u.Fragment != "" {
 		return fmt.Errorf("OIDC_REDIRECT_URL must end in %s with no query or fragment, got %q", CallbackPath, raw)
@@ -283,21 +292,34 @@ func checkRedirectURL(raw string) error {
 }
 
 // secureOrLoopback reports whether u uses https, or http to a loopback
-// host (localhost, 127.0.0.0/8 or ::1), where nothing crosses the network.
+// host (see IsLoopbackHost), where nothing crosses the network.
 func secureOrLoopback(u *url.URL) bool {
 	switch u.Scheme {
 	case "https":
 		return true
 	case "http":
-		host := u.Hostname()
-		if host == "localhost" {
-			return true
-		}
-		ip := net.ParseIP(host)
-		return ip != nil && ip.IsLoopback()
+		return IsLoopbackHost(u.Hostname())
 	default:
 		return false
 	}
+}
+
+// IsLoopbackHost reports whether host names this machine: a loopback IP
+// (127.0.0.0/8 or ::1), "localhost", or a name ending in ".localhost".
+//
+// RFC 6761, section 6.3, reserves the whole .localhost domain for loopback,
+// and browsers resolve *.localhost to 127.0.0.1 on their own. That is what
+// lets the local stack (deploy/local/compose.yaml) use one issuer URL,
+// http://idp.localhost:9090, for both sides: the browser reaches the
+// development provider through the published port, and the API container
+// reaches it through a Docker network alias with the same name.
+func IsLoopbackHost(host string) bool {
+	host = strings.ToLower(strings.TrimSuffix(host, "."))
+	if host == "localhost" || strings.HasSuffix(host, ".localhost") {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 // parseLogLevel accepts the four slog levels, case-insensitively.

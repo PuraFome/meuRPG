@@ -1,0 +1,16 @@
+{
+  "name": "meurpg-e2e",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Playwright acceptance tests for MeuRPG, run against the local stack with `make e2e`.",
+  "scripts": {
+    "test": "playwright test",
+    "typecheck": "tsc --noEmit",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@types/node": "22.20.4",
+    "typescript": "5.9.3"
+  }
+}

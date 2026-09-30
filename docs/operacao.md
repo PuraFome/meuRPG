@@ -42,9 +42,26 @@ O login do mestre (módulo `identity`) precisa de um segredo novo, o client secr
 | `OIDC_ISSUER` | Não | `https://accounts.google.com` |
 | `OIDC_CLIENT_ID` | Não | Variável de ambiente do serviço |
 | `OIDC_REDIRECT_URL` | Não | `https://<domínio>/auth/callback`, cadastrada igual no client OAuth do Google. Trocar de domínio pede cadastrar a URL nova antes do deploy |
-| `OIDC_MAX_AGE` | Não | Não definir com o Google, que não documenta `max_age` |
+| `OIDC_MAX_AGE` | Não | Não definir com o Google, que não documenta `max_age`. A reautenticação a cada 30 dias (NIST SP 800-63B-4) vem da sessão de 30 dias no servidor. No ambiente local, com o devidp, é `1h` |
 
 O backend nunca escreve o client secret no log: o tipo `config.Secret` sai como `[REDACTED]`.
+
+### O devidp nunca é deployado
+
+O devidp (`backend/cmd/devidp`) é o provedor OIDC de desenvolvimento do `make up` e do CI. Ele loga qualquer pessoa como qualquer usuário de teste, sem senha, então não pode existir em nenhum ambiente de verdade:
+
+- A imagem que vai para o Cloud Run é a do `backend/Dockerfile`, que só tem `api` e `migrate`. O devidp tem imagem própria (`deploy/local/devidp.Dockerfile`), que ninguém publica. O workflow `e2e` confere a cada PR que a imagem de produção não tem o binário.
+- Se alguém tentar, ele não sobe: recusa issuer fora de loopback (`localhost`, `*.localhost`, `127.0.0.1`, `::1`) e recusa rodar no Cloud Run (`K_SERVICE` definido).
+
+Em produção, o login é só pelo Google (`OIDC_ISSUER=https://accounts.google.com`).
+
+### Limite de tentativas no login e o IP do cliente
+
+`GET /auth/login` tem um limite por IP e um geral, em memória (ver [Arquitetura](arquitetura.md#limite-de-tentativas-no-login)). No Cloud Run, o IP do cliente é o último item do `X-Forwarded-For`, que o front end do Google acrescenta. Isso vale para o Cloud Run **sem load balancer na frente**, que é o plano atual.
+
+- **No primeiro deploy, confira** que o último item do `X-Forwarded-For` é mesmo o IP de quem acessa: o Google documenta o formato para os load balancers, mas não diz quantos itens o front end acrescenta sem load balancer. Se o último item for de uma máquina do Google, todos os clientes dividem um limite só (sobra só o geral); ninguém consegue burlar o limite, mas o `cloudRunTrustedHops` de `ratelimit.ClientKey` precisa mudar.
+- **Se um dia houver um load balancer na frente**, ele acrescenta `<ip-do-cliente>,<ip-do-load-balancer>`, e o IP do cliente passa a ser o penúltimo item: `cloudRunTrustedHops` vira 2.
+- Com várias instâncias, cada uma tem os próprios contadores.
 
 ## Alertas de orçamento
 

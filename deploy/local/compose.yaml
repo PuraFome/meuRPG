@@ -5,6 +5,9 @@
 # Services:
 #   cockroach - single-node CockroachDB, insecure mode, for local dev only.
 #   migrate   - runs database migrations once, then exits.
+#   idp       - devidp, a development-only OpenID Connect provider standing in
+#               for Google: sign in at http://localhost:8080/auth/login with
+#               one click on a test user. Never deployed (see backend/cmd/devidp).
 #   api       - the backend API server, starts only after migrations succeed.
 name: meurpg-local
 
@@ -53,6 +56,38 @@ services:
       cockroach:
         condition: service_healthy
 
+  # The issuer is http://idp.localhost:9090 for both sides of the sign-in:
+  # - the browser resolves any *.localhost name to 127.0.0.1 by itself
+  #   (RFC 6761), and reaches devidp through the published port below;
+  #   ports publish on 127.0.0.1 only, so nothing on the LAN can reach it;
+  # - the api container resolves idp.localhost through the network alias
+  #   below, to this container.
+  # One issuer string for both is what OIDC needs: the api checks that the
+  # ID token's iss is exactly OIDC_ISSUER.
+  idp:
+    build:
+      context: ../.. # repo root, like backend/Dockerfile
+      dockerfile: deploy/local/devidp.Dockerfile
+    environment:
+      DEVIDP_ISSUER: http://idp.localhost:9090
+      DEVIDP_LISTEN: ":9090"
+      DEVIDP_CLIENT_ID: meurpg-local
+      # Not a secret: devidp only runs on your machine and in CI.
+      DEVIDP_CLIENT_SECRET: meurpg-local-secret
+      DEVIDP_REDIRECT_URIS: http://localhost:8080/auth/callback
+    ports:
+      - "127.0.0.1:9090:9090"
+    networks:
+      default:
+        aliases:
+          - idp.localhost
+    healthcheck:
+      # The image is distroless (no shell, no curl): the binary checks itself.
+      test: ["CMD", "/app/devidp", "-healthcheck"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
   api:
     build:
       context: ../.. # repo root: the image needs both backend/ and web/
@@ -64,6 +99,14 @@ services:
       DATABASE_URL: postgresql://root@cockroach:26257/meurpg?sslmode=disable
       PORT: "8080"
       LOG_LEVEL: info
+      # Sign-in through devidp (the idp service above).
+      OIDC_ISSUER: http://idp.localhost:9090
+      OIDC_CLIENT_ID: meurpg-local
+      OIDC_CLIENT_SECRET: meurpg-local-secret
+      OIDC_REDIRECT_URL: http://localhost:8080/auth/callback
+      # devidp honors max_age; Google does not document it, so production
+      # leaves it unset (docs/operacao.md).
+      OIDC_MAX_AGE: 1h
     ports:
       - "8080:8080"
     depends_on:
@@ -71,6 +114,8 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      idp:
+        condition: service_healthy
     # No healthcheck here: the backend image is distroless (no shell/curl),
     # so there is nothing to run a CMD-based check with.
 

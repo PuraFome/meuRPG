@@ -14,7 +14,7 @@ MIGRATE_ARGS ?= up
 
 COMPOSE_FILE := deploy/local/compose.yaml
 
-.PHONY: help proto proto-lint lint test run migrate up down logs docker-build web-install web-test web-build
+.PHONY: help proto proto-lint lint test run migrate up down logs docker-build web-install web-test web-build e2e
 
 help: ## Show this help message
 	@echo "MeuRPG - available targets:"
@@ -72,3 +72,14 @@ web-test: ## Run the Angular unit tests (run `make web-install` first if needed)
 
 web-build: ## Build the Angular app for production (run `make web-install` first if needed)
 	cd web && npm run build
+
+# e2e/ dependencies (Playwright), installed like web/'s: once, then again
+# only when package.json/package-lock.json change. No install scripts.
+e2e/node_modules/.bin/playwright: e2e/package.json e2e/package-lock.json
+	cd e2e && npm ci --ignore-scripts
+
+e2e: e2e/node_modules/.bin/playwright ## Start the local stack, run the Playwright tests against it, and report
+	docker compose -f $(COMPOSE_FILE) up --build -d
+	cd e2e && npx playwright test; status=$$?; \
+		echo "Report: e2e/playwright-report/index.html (cd e2e && npx playwright show-report). The stack is still up: make down"; \
+		exit $$status

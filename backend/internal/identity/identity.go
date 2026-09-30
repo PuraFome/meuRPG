@@ -30,6 +30,7 @@ import (
 
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/identity/v1/identityv1connect"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/config"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/ratelimit"
 )
 
 // discoveryTimeout bounds the first discovery attempt at startup, so an
@@ -55,6 +56,12 @@ type Config struct {
 	// HTTPClient talks to the provider. Nil means a client that trusts the
 	// system roots plus OIDC.CAFile, with a timeout.
 	HTTPClient *http.Client
+
+	// BehindCloudRun says every request reaches the server through Cloud
+	// Run's front end, so the sign-in rate limit reads the client IP from
+	// X-Forwarded-For (see ratelimit.ClientKey). Never set it where clients
+	// connect directly: they could then claim any IP they like.
+	BehindCloudRun bool
 }
 
 // Service implements sign-in (the HTTP handlers), sessions and the
@@ -64,6 +71,11 @@ type Service struct {
 	logger    *slog.Logger
 	now       func() time.Time
 	providers *providerSource
+
+	// loginLimiter caps GET /auth/login, which writes a login state row on
+	// every hit (see loginRateLimit).
+	loginLimiter   *ratelimit.Limiter
+	behindCloudRun bool
 }
 
 // The compiler checks that Service implements the generated interface.
@@ -93,6 +105,10 @@ func New(ctx context.Context, cfg Config) (*Service, error) {
 	if s.now == nil {
 		s.now = time.Now
 	}
+	limits := loginRateLimit
+	limits.Now = s.now
+	s.loginLimiter = ratelimit.New(limits)
+	s.behindCloudRun = cfg.BehindCloudRun
 
 	client := cfg.HTTPClient
 	if client == nil {

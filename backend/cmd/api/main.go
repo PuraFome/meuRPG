@@ -115,6 +115,9 @@ func run(logger *slog.Logger, cfg config.Config) error {
 			OIDC:   cfg.OIDC,
 			Store:  identity.NewPostgresStore(pool),
 			Logger: logger,
+			// On Cloud Run the sign-in rate limit reads the client IP from
+			// X-Forwarded-For; anywhere else, from the connection.
+			BehindCloudRun: cfg.CloudRun,
 		})
 		if err != nil {
 			return err

@@ -5,13 +5,17 @@ import (
 	"crypto/subtle"
 	"errors"
 	"log/slog"
+	"math"
 	"net/http"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
 	"golang.org/x/oauth2"
+
+	"github.com/PuraFome/meuRPG/backend/internal/platform/ratelimit"
 )
 
 const (
@@ -29,6 +33,22 @@ const (
 	maxReturnToLength = 1024
 )
 
+// loginRateLimit caps GET /auth/login, because every hit writes a login
+// state row to the database. The limits are per server instance (in
+// memory, see package ratelimit):
+//
+//   - per client IP: 20 at once, then one every 3 seconds (20 a minute).
+//     That is plenty for a whole table of players behind one Wi-Fi, and
+//     stops one client from filling the table.
+//   - overall: 200 at once, then 2 a second (120 a minute), which bounds
+//     the rows a botnet can write: at most 7,200 an hour per instance,
+//     deleted by the row TTL within the next hour.
+var loginRateLimit = ratelimit.Config{
+	PerClient:  ratelimit.Rate{Burst: 20, Every: 3 * time.Second},
+	Global:     ratelimit.Rate{Burst: 200, Every: 500 * time.Millisecond},
+	MaxClients: 10_000,
+}
+
 // handleLogin starts a sign-in: GET /auth/login?return_to=/path.
 //
 // It stores a login state (PKCE verifier, nonce, return_to) under the hash
@@ -37,6 +57,16 @@ const (
 func (s *Service) handleLogin(w http.ResponseWriter, r *http.Request) {
 	setAuthHeaders(w)
 	ctx := r.Context()
+
+	// The limit comes before anything else, so a refused request costs
+	// nothing. The client IP is not logged (docs/privacidade.md); the
+	// request log line already shows the 429.
+	if ok, wait := s.loginLimiter.Allow(ratelimit.ClientKey(r, s.behindCloudRun)); !ok {
+		// Retry-After is in whole seconds (RFC 9110, section 10.2.3).
+		w.Header().Set("Retry-After", strconv.Itoa(max(1, int(math.Ceil(wait.Seconds())))))
+		http.Error(w, "too many sign-in attempts, please wait a moment and try again", http.StatusTooManyRequests)
+		return
+	}
 
 	returnTo, ok := safeReturnTo(r.URL.Query().Get("return_to"))
 	if !ok {

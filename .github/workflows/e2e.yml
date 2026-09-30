@@ -1,0 +1,120 @@
+# Acceptance tests: Playwright against the local stack (deploy/local/compose.yaml),
+# which signs in through devidp, a development-only OpenID Connect provider,
+# instead of Google. See CONTRIBUTING.md ("Testes ponta a ponta").
+#
+# Every third-party action is pinned by full commit SHA (not by tag), because
+# a moving tag can be repointed by whoever controls the action's repo. The
+# `# vX.Y.Z` comment is for humans; GitHub Actions trusts the SHA.
+name: e2e
+
+on:
+  pull_request:
+    # Everything that goes into the stack or the tests. Docs-only changes
+    # (docs/, any .md file) do not run the e2e tests.
+    paths:
+      - "backend/**"
+      - "proto/**"
+      - "web/**"
+      - "e2e/**"
+      - "deploy/local/**"
+      - ".dockerignore"
+      - "Makefile"
+      - ".github/workflows/e2e.yml"
+      - "!**/*.md"
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "proto/**"
+      - "web/**"
+      - "e2e/**"
+      - "deploy/local/**"
+      - ".dockerignore"
+      - "Makefile"
+      - ".github/workflows/e2e.yml"
+      - "!**/*.md"
+
+concurrency:
+  group: e2e-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least privilege: read the repo, nothing else. Uploading an artifact needs
+# no extra permission.
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: playwright (local stack with devidp)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: e2e/package-lock.json
+
+      - name: Install e2e dependencies (no install scripts)
+        working-directory: e2e
+        run: npm ci --ignore-scripts
+
+      - name: Type-check the tests
+        working-directory: e2e
+        run: npm run typecheck
+
+      - name: Install Chromium for Playwright
+        # The browser build is the one this exact @playwright/test version
+        # expects, so package-lock.json pins it too. --with-deps installs
+        # the system libraries Chromium needs.
+        working-directory: e2e
+        run: npx playwright install --with-deps chromium
+
+      - name: Start the local stack (CockroachDB, migrations, devidp, API)
+        run: docker compose -f deploy/local/compose.yaml up --build --detach
+
+      - name: Check that the production image has no devidp
+        # compose builds the api service from backend/Dockerfile, the
+        # production image. devidp signs anyone in without a password and
+        # must only ever exist in its own image (deploy/local/devidp.Dockerfile).
+        run: |
+          container=$(docker compose -f deploy/local/compose.yaml ps --quiet api)
+          files=$(docker cp "$container:/app" - | tar -t)
+          if ! grep -qx 'app/api' <<<"$files"; then
+            echo "::error::/app/api not found; this check no longer matches the image layout." >&2
+            exit 1
+          fi
+          if grep -q 'devidp' <<<"$files"; then
+            echo "::error::The production image contains devidp:" >&2
+            grep 'devidp' <<<"$files" >&2
+            exit 1
+          fi
+          echo "The production image has only:"
+          grep -v '^app/web/.' <<<"$files"
+
+      - name: Run the Playwright tests
+        # CI=true makes the config use Playwright's Chromium instead of an
+        # installed Google Chrome. The global setup waits for /readyz.
+        working-directory: e2e
+        run: npx playwright test
+
+      - name: Show the stack logs
+        if: failure()
+        run: docker compose -f deploy/local/compose.yaml logs --no-color
+
+      - name: Upload the Playwright report
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
