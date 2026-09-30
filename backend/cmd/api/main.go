@@ -14,17 +14,25 @@
 //	OIDC_MAX_AGE        max_age sent to the provider, e.g. 1h (optional)
 //
 // Sign-in needs both the OIDC_* variables and DATABASE_URL. Without them
-// the API still starts, and the sign-in routes answer 503. CampaignService
-// needs sign-in too; without it, it is not mounted.
+// the API still starts, and the sign-in routes answer 503. CampaignService,
+// CharacterService, ContentService and PlayService need sign-in too; without
+// it, they are not mounted.
 //
-// The modules meet here and nowhere else: campaigns learns who is calling
-// from identity (the authz.Caller interface), and identity completes the
-// "accept this invite" sign-in intent through campaigns (an
-// identity.IntentHandler). Neither package imports the other's internals.
+// The rules content (the SRD 5.1 snapshot, package rules) is embedded in
+// the binary and loaded at startup, always: a broken snapshot stops the
+// server right away instead of failing on a player's sheet.
+//
+// The modules meet here and nowhere else: campaigns, characters and play
+// learn who is calling from identity (the authz.Caller interface), and each
+// member's role from campaigns (authz.MembershipSource); identity completes
+// the "accept this invite" sign-in intent through campaigns (an
+// identity.IntentHandler); and play locks the players' sheets through
+// characters (play.SheetLocker). No package imports another's internals.
 package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -37,11 +45,14 @@ import (
 
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/system/v1/systemv1connect"
 	"github.com/PuraFome/meuRPG/backend/internal/campaigns"
+	"github.com/PuraFome/meuRPG/backend/internal/characters"
 	"github.com/PuraFome/meuRPG/backend/internal/identity"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/config"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
+	"github.com/PuraFome/meuRPG/backend/internal/play"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/system"
 )
 
@@ -85,6 +96,14 @@ func run(logger *slog.Logger, cfg config.Config) error {
 
 	logger.Info("starting api", "version", version, "commit", commit)
 
+	// Loading the rules content checks every entry and compiles every
+	// formula (ADR-0008). An error is a bug in the embedded data, so stop.
+	rulesContent, err := rules.LoadSRD()
+	if err != nil {
+		return fmt.Errorf("load the rules content: %w", err)
+	}
+	logger.Info("rules content loaded", "version", rulesContent.Version())
+
 	// database stays a nil interface when DATABASE_URL is empty. It must not
 	// hold a nil *pgxpool.Pool: an interface holding a typed nil pointer is
 	// not == nil, and /readyz would then call Ping on it.
@@ -93,7 +112,6 @@ func run(logger *slog.Logger, cfg config.Config) error {
 	if cfg.DatabaseURL == "" {
 		logger.Warn("DATABASE_URL is not set; running without a database")
 	} else {
-		var err error
 		pool, err = db.NewPool(ctx, cfg.DatabaseURL)
 		if err != nil {
 			return err
@@ -110,9 +128,12 @@ func run(logger *slog.Logger, cfg config.Config) error {
 
 	// Sign-in needs a provider and a database. identityService stays nil
 	// when either is missing, and the sign-in routes then answer 503.
-	// Campaigns need to know who is calling, so they come with sign-in.
+	// Campaigns, characters and game sessions need to know who is calling,
+	// so they come with sign-in.
 	var identityService *identity.Service
 	var campaignsService *campaigns.Service
+	var charactersService *characters.Service
+	var playService *play.Service
 	switch {
 	case !cfg.OIDC.Configured():
 		logger.Warn("OIDC_ISSUER is not set; sign-in is disabled")
@@ -120,11 +141,27 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		logger.Warn("sign-in is disabled: it needs DATABASE_URL")
 	default:
 		users := identity.NewPostgresStore(pool)
-		var err error
 		campaignsService, err = campaigns.New(campaigns.Config{
 			Pool:     pool,
 			Profiles: users, // display names come from the identity module
 			Logger:   logger,
+		})
+		if err != nil {
+			return err
+		}
+		charactersService, err = characters.New(characters.Config{
+			Pool:     pool,
+			Profiles: users,
+			Rules:    rulesContent,
+			Logger:   logger,
+		})
+		if err != nil {
+			return err
+		}
+		playService, err = play.New(play.Config{
+			Pool:   pool,
+			Sheets: charactersService, // starting a session locks the sheets (RN-01)
+			Logger: logger,
 		})
 		if err != nil {
 			return err
@@ -171,9 +208,13 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		// identityService is who is calling: its interceptor finds the
 		// session, and its UserID reads it back (authz.Caller).
 		campaignsService.Mount(srv.Handle, identityService, connectOpts...)
+		// campaignsService says who belongs to each campaign, and with which
+		// role (authz.MembershipSource).
+		charactersService.Mount(srv.Handle, identityService, campaignsService, connectOpts...)
+		playService.Mount(srv.Handle, identityService, campaignsService, connectOpts...)
 	} else {
 		identity.MountDisabled(srv.Handle, connectOpts...)
-		logger.Warn("campaigns are disabled: they need sign-in")
+		logger.Warn("campaigns, characters and game sessions are disabled: they need sign-in")
 	}
 
 	// Forms on the app's pages (the invite page's POST to /auth/login) are

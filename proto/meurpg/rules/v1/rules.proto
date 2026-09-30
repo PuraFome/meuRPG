@@ -1,0 +1,612 @@
+syntax = "proto3";
+
+// Package meurpg.rules.v1 is about the game rules: the rules content a
+// character is built from (races, classes, skills, spells...) and the
+// numbers the server derives from a character's choices (ADR-0008).
+//
+// Rules content comes from the System Reference Document 5.1 (SRD 5.1),
+// under the Creative Commons Attribution 4.0 license. Content.attribution
+// carries the attribution text the app must show.
+//
+// Conventions used in every message of this package:
+//   - Content keys. Every piece of rules content has a stable key made of
+//     its type and an ID, such as "race:gnome", "subrace:rock-gnome",
+//     "class:wizard", "subclass:evocation", "background:acolyte",
+//     "skill:arcana", "equipment:leather-armor", "spell:fire-bolt",
+//     "feature:arcane-recovery" or "trait:darkvision". Sheets store these
+//     keys, never names, so a name can be fixed without touching any sheet.
+//   - Names. `name` is the English name from the SRD, such as "Fire Bolt";
+//     `name_pt` is our own Portuguese name, such as "Raio de Fogo".
+//     `description` is the SRD's English text. Every other text the server
+//     writes for people (hints, issues, damage types) is in Portuguese.
+//   - Units. Distances are in feet (fields ending in `_ft`), as in the SRD;
+//     the app converts them for display.
+package meurpg.rules.v1;
+
+// ContentService lists the rules content that a campaign's characters can
+// be built from.
+//
+// Every method needs a valid session cookie and fails with `unauthenticated`
+// without one. For a campaign the caller is not a member of, methods answer
+// `not_found`, exactly as for a campaign that does not exist (ADR-0011). An
+// ID that is not a UUID is answered like an ID that does not exist. A
+// database that does not answer gives `unavailable`; the app may try again.
+//
+// Responses carry `Cache-Control: no-store`. Reads carry a campaign ID, so
+// they are IDEMPOTENT and POST-only: a GET would put the ID in the URL, and
+// URLs end up in the platform's request logs (docs/privacidade.md).
+service ContentService {
+  // ListContent returns the catalog the character editor offers: races,
+  // subraces, classes, subclasses, backgrounds, skills, armor, weapons and
+  // spells, each with its key and names. Any member of the campaign may call
+  // it.
+  //
+  // Today every campaign gets the same SRD 5.1 content. The request still
+  // names the campaign because the table's own content (homebrew, ADR-0008)
+  // will depend on it.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist, or the caller is not a
+  //     member of it.
+  rpc ListContent(ListContentRequest) returns (ListContentResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+}
+
+// Ability is one of the six ability scores.
+enum Ability {
+  ABILITY_UNSPECIFIED = 0;
+  // Strength ("Força", FOR).
+  ABILITY_STRENGTH = 1;
+  // Dexterity ("Destreza", DES).
+  ABILITY_DEXTERITY = 2;
+  // Constitution ("Constituição", CON).
+  ABILITY_CONSTITUTION = 3;
+  // Intelligence ("Inteligência", INT).
+  ABILITY_INTELLIGENCE = 4;
+  // Wisdom ("Sabedoria", SAB).
+  ABILITY_WISDOM = 5;
+  // Charisma ("Carisma", CAR).
+  ABILITY_CHARISMA = 6;
+}
+
+// AbilityScores holds one number per ability. The field that uses it says
+// what the numbers mean and their range: base scores, or bonuses.
+//
+// Sheets are stored as JSON with these field names, so they never change.
+message AbilityScores {
+  int32 strength = 1;
+  int32 dexterity = 2;
+  int32 constitution = 3;
+  int32 intelligence = 4;
+  int32 wisdom = 5;
+  int32 charisma = 6;
+}
+
+// ProficiencyLevel is how much of the proficiency bonus a check adds.
+enum ProficiencyLevel {
+  PROFICIENCY_LEVEL_UNSPECIFIED = 0;
+  // Not proficient: adds nothing.
+  PROFICIENCY_LEVEL_NONE = 1;
+  // Half the proficiency bonus, rounded down (the Bard's Jack of All
+  // Trades).
+  PROFICIENCY_LEVEL_HALF = 2;
+  // The proficiency bonus.
+  PROFICIENCY_LEVEL_PROFICIENT = 3;
+  // Twice the proficiency bonus (expertise).
+  PROFICIENCY_LEVEL_EXPERTISE = 4;
+}
+
+// DerivedSheet is everything the server computes from a character's full
+// sheet (MR-004): the app shows these numbers as they come and never
+// computes a rule itself.
+//
+// Derived numbers are never stored: the server computes them again on every
+// read, from the sheet and the current rules content. A newer content
+// version can therefore change a number on a locked sheet; content_version
+// says which content produced these numbers.
+//
+// Computing never fails. A choice the rules do not recognise, such as a key
+// that no longer exists or too many skills, is skipped and reported in
+// `issues`: the app is an assistant, not a judge, and the master has the
+// final word.
+message DerivedSheet {
+  // Which rules content produced these numbers, such as
+  // "srd51@0123456789ab+fx.1".
+  string content_version = 1;
+
+  // The race's Portuguese name. Empty if the sheet has no known race.
+  string race_name_pt = 2;
+  // The subrace's Portuguese name. Empty if the sheet has none.
+  string subrace_name_pt = 3;
+  // The background's Portuguese name, or the name of a custom background as
+  // the player typed it. Empty if the sheet has none.
+  string background_name_pt = 4;
+  // The character's classes, in the sheet's order.
+  repeated DerivedClass classes = 5;
+  // The sum of all class levels, 1 to 20.
+  int32 total_level = 6;
+  // The proficiency bonus for total_level, such as 2.
+  int32 proficiency_bonus = 7;
+
+  // The six abilities, in the order strength, dexterity, constitution,
+  // intelligence, wisdom, charisma.
+  repeated DerivedAbility abilities = 8;
+  // The six saving throws, in the same order as abilities.
+  repeated SavingThrow saving_throws = 9;
+  // The 18 skills, sorted by their Portuguese name.
+  repeated DerivedSkill skills = 10;
+  // 10 + the Perception bonus.
+  int32 passive_perception = 11;
+  // 10 + the Investigation bonus.
+  int32 passive_investigation = 12;
+  // 10 + the Insight bonus.
+  int32 passive_insight = 13;
+  // The initiative bonus.
+  int32 initiative = 14;
+
+  // Armor class with the armor and shield on the sheet. Spells that change
+  // it, such as Mage Armor, are not counted: they belong to the game
+  // session.
+  int32 armor_class = 15;
+  // How armor_class was computed, in Portuguese, such as "Sem armadura" or
+  // "Armadura de couro + escudo".
+  string armor_class_description = 16;
+  // Maximum hit points.
+  int32 hit_points_max = 17;
+  // Hit dice by die size, largest die first. Several entries only for a
+  // character with classes of different hit dice.
+  repeated HitDice hit_dice = 18;
+  // Walking speed, in feet.
+  int32 speed_walk_ft = 19;
+  // Special senses, such as darkvision.
+  repeated Sense senses = 20;
+
+  // One entry per class that casts spells. Empty for a character that casts
+  // no spells.
+  repeated Spellcasting spellcasting = 21;
+  // Spell slots per spell level, ascending, only levels with at least one
+  // slot. With more than one casting class, this comes from the
+  // multiclass spellcaster table. Warlock slots are in pact_magic instead.
+  repeated SpellSlots spell_slots = 22;
+  // The Warlock's pact magic slots. Unset for other characters.
+  PactMagic pact_magic = 23;
+  // The character's cantrips and spells, cantrips first, then by level and
+  // Portuguese name.
+  repeated CharacterSpell spells = 24;
+
+  // Attacks, as the official sheet lists them: the weapons carried, then
+  // the cantrips that deal damage.
+  repeated Attack attacks = 25;
+  // Class features, racial traits and background features the character
+  // has at its level.
+  repeated Feature features = 26;
+  // Languages the race and background grant, as Portuguese names. The
+  // languages the player typed on the sheet are not repeated here.
+  repeated string languages = 27;
+  // Armor, weapon and tool proficiencies the race, classes and background
+  // grant.
+  Proficiencies proficiencies = 28;
+
+  // Situational reminders the numbers above cannot express, such as
+  // advantage on some saving throws against magic.
+  repeated Hint hints = 29;
+  // Choices on the sheet that the rules do not accept, or that were
+  // skipped. Empty when everything checks out.
+  repeated Issue issues = 30;
+}
+
+// DerivedClass is one of a character's classes, with names resolved.
+message DerivedClass {
+  // Content key of the class, such as "class:wizard".
+  string class_key = 1;
+  // The class's Portuguese name, such as "Mago". Empty if the key is not
+  // known.
+  string name_pt = 2;
+  // Levels in this class, 1 to 20.
+  int32 level = 3;
+  // The subclass's Portuguese name, or the name of a custom subclass as
+  // typed. Empty if none was chosen.
+  string subclass_name_pt = 4;
+}
+
+// DerivedAbility is one ability, from the base score to the modifier.
+message DerivedAbility {
+  Ability ability = 1;
+  // The ability's Portuguese name, such as "Inteligência".
+  string name_pt = 2;
+  // The base score from the sheet.
+  int32 base = 3;
+  // Everything added to the base: race, subrace and the sheet's manual
+  // bonuses. Can be negative.
+  int32 bonus = 4;
+  // base + bonus.
+  int32 score = 5;
+  // The modifier for score, such as +4 for 18.
+  int32 modifier = 6;
+}
+
+// SavingThrow is one of the six saving throws.
+message SavingThrow {
+  Ability ability = 1;
+  // The ability's Portuguese name.
+  string name_pt = 2;
+  // Whether the character is proficient in it: from the starting class
+  // (the first on the sheet), or from a feature.
+  bool proficient = 3;
+  // The total bonus to add to the d20.
+  int32 bonus = 4;
+}
+
+// DerivedSkill is one skill with the character's bonus.
+message DerivedSkill {
+  // Content key of the skill, such as "skill:arcana".
+  string key = 1;
+  // The skill's Portuguese name, such as "Arcanismo".
+  string name_pt = 2;
+  // The ability the skill uses.
+  Ability ability = 3;
+  ProficiencyLevel proficiency = 4;
+  // The total bonus to add to the d20.
+  int32 bonus = 5;
+}
+
+// HitDice is a number of hit dice of one size, such as 3d6.
+message HitDice {
+  // Faces of the die: 6, 8, 10 or 12.
+  int32 faces = 1;
+  // How many dice.
+  int32 count = 2;
+}
+
+// Sense is a special sense, such as darkvision.
+message Sense {
+  // Content key of what grants it, such as "trait:darkvision".
+  string key = 1;
+  // The sense's Portuguese name, such as "Visão no escuro".
+  string name_pt = 2;
+  // Range in feet, such as 60.
+  int32 range_ft = 3;
+}
+
+// Spellcasting is what one casting class gives the character.
+message Spellcasting {
+  // Content key of the class, such as "class:wizard".
+  string class_key = 1;
+  // The class's Portuguese name.
+  string class_name_pt = 2;
+  // The ability the class casts with.
+  Ability ability = 3;
+  // The spell save DC: 8 + proficiency bonus + ability modifier.
+  int32 save_dc = 4;
+  // The spell attack bonus: proficiency bonus + ability modifier.
+  int32 attack_bonus = 5;
+  // How many cantrips the class knows at its level. 0 if it has none.
+  int32 cantrips_known = 6;
+  // How many spells the class knows at its level, for classes that learn a
+  // fixed number (Bard, Ranger, Sorcerer, Warlock). 0 for the others.
+  int32 spells_known = 7;
+  // How many spells the character can prepare each day, for classes that
+  // prepare spells (Cleric, Druid, Paladin, Wizard). 0 for the others.
+  int32 prepared_max = 8;
+}
+
+// SpellSlots is how many slots the character has of one spell level.
+message SpellSlots {
+  // Spell level, 1 to 9.
+  int32 level = 1;
+  // How many slots of that level.
+  int32 count = 2;
+}
+
+// PactMagic is the Warlock's pact magic: a few slots, all of one level,
+// recovered on a short rest.
+message PactMagic {
+  // The level of every pact slot, 1 to 5.
+  int32 slot_level = 1;
+  // How many pact slots.
+  int32 count = 2;
+}
+
+// CharacterSpell is a spell on the character's sheet.
+message CharacterSpell {
+  Spell spell = 1;
+  // Whether the character can cast it today: every cantrip, every spell of
+  // a class that knows its spells, and the spells on the sheet's prepared
+  // list.
+  bool prepared = 2;
+}
+
+// Attack is an attack with a weapon on the sheet.
+message Attack {
+  // Content key of the weapon or the spell, such as "equipment:quarterstaff"
+  // or "spell:fire-bolt".
+  string key = 1;
+  // The English name.
+  string name = 2;
+  // The Portuguese name, such as "Bordão".
+  string name_pt = 3;
+  // The attack bonus to add to the d20. 0 for a spell that asks for a
+  // saving throw instead: see save_dc.
+  int32 attack_bonus = 4;
+  // The damage dice with the modifier, such as "1d6+1".
+  string damage = 5;
+  // The damage type in Portuguese, such as "concussão".
+  string damage_type_pt = 6;
+  AttackKind kind = 7;
+  // For a spell that asks for a saving throw: the DC and the ability of
+  // the save. Unset otherwise.
+  int32 save_dc = 8;
+  Ability save_ability = 9;
+  // The two-handed damage of a versatile weapon, such as "1d8+1". Empty
+  // otherwise.
+  string versatile_damage = 10;
+  // The reach or normal range, and the long range of a ranged or thrown
+  // weapon or a spell, in feet. long_range_ft is 0 when there is none.
+  int32 range_ft = 11;
+  int32 long_range_ft = 12;
+}
+
+// AttackKind says whether an attack is a weapon or a spell.
+enum AttackKind {
+  ATTACK_KIND_UNSPECIFIED = 0;
+  // A weapon the character carries.
+  ATTACK_KIND_WEAPON = 1;
+  // A cantrip that deals damage, at the character's level.
+  ATTACK_KIND_SPELL = 2;
+}
+
+// Feature is a class feature, racial trait or background feature.
+message Feature {
+  // Content key, such as "feature:arcane-recovery" or "trait:darkvision".
+  string key = 1;
+  // English name from the SRD.
+  string name = 2;
+  // Portuguese name.
+  string name_pt = 3;
+  // Where it comes from, in Portuguese, such as "Mago 1" or "Gnomo".
+  string source_pt = 4;
+  // The SRD's English text.
+  string description = 5;
+}
+
+// Proficiencies lists armor, weapon and tool proficiencies, as Portuguese
+// names such as "Armaduras leves" or "Adagas".
+message Proficiencies {
+  repeated string armor = 1;
+  repeated string weapons = 2;
+  repeated string tools = 3;
+}
+
+// Hint is a reminder the numbers cannot express, because it depends on the
+// situation. The server never applies it on its own: the master decides.
+message Hint {
+  // Content key of the feature or trait that gives it, such as
+  // "trait:gnome-cunning".
+  string source_key = 1;
+  // The reminder in Portuguese, such as "Vantagem em testes de resistência
+  // de INT, SAB e CAR contra magia".
+  string text = 2;
+}
+
+// Issue is a choice on the sheet that the rules do not accept, such as a
+// skill the class cannot choose, too many cantrips, or a content key that no
+// longer exists. The numbers are computed without it.
+message Issue {
+  // A stable code for the kind of problem, in lower_snake_case, such as
+  // "unknown_key" or "too_many_cantrips".
+  string code = 1;
+  // Which field of the sheet has the problem, as a path with the proto
+  // field names, such as "full.classes[0].subclass_key". Empty when the
+  // problem is not about one field.
+  string field = 2;
+  // What is wrong, in Portuguese, for the app to show.
+  string message = 3;
+}
+
+// Content is the rules content a campaign's characters can be built from.
+// Every list is sorted by Portuguese name, except abilities.
+message Content {
+  // Which version of the content this is, such as
+  // "srd51@0123456789ab+fx.1". Versions never change in place.
+  string content_version = 1;
+  // The attribution text of the SRD 5.1 license, which the app must show
+  // on its credits page, exactly as given.
+  string attribution = 2;
+  // The six abilities, in the order strength to charisma.
+  repeated AbilityInfo abilities = 3;
+  repeated Race races = 4;
+  repeated Subrace subraces = 5;
+  repeated CharacterClass classes = 6;
+  repeated Subclass subclasses = 7;
+  repeated Background backgrounds = 8;
+  repeated Skill skills = 9;
+  // Body armor only. A shield is a yes/no on the sheet.
+  repeated Armor armor = 10;
+  repeated Weapon weapons = 11;
+  repeated Spell spells = 12;
+}
+
+// AbilityInfo names one ability.
+message AbilityInfo {
+  Ability ability = 1;
+  // English name, such as "Intelligence".
+  string name = 2;
+  // Portuguese name, such as "Inteligência".
+  string name_pt = 3;
+  // Portuguese abbreviation, such as "INT".
+  string abbreviation_pt = 4;
+}
+
+// Race is a race from the rules content.
+message Race {
+  // Content key, such as "race:gnome".
+  string key = 1;
+  string name = 2;
+  string name_pt = 3;
+  // Walking speed in feet, such as 25.
+  int32 speed_ft = 4;
+  // The race's fixed ability score increases, such as +2 intelligence.
+  // Increases the player chooses, such as the Half-Elf's two +1, are not
+  // here: the sheet records them as extra bonuses.
+  AbilityScores ability_bonuses = 5;
+}
+
+// Subrace is a subrace of one race.
+message Subrace {
+  // Content key, such as "subrace:rock-gnome".
+  string key = 1;
+  string name = 2;
+  string name_pt = 3;
+  // Content key of the race it belongs to, such as "race:gnome".
+  string race_key = 4;
+  // The subrace's ability score increases, added to the race's.
+  AbilityScores ability_bonuses = 5;
+}
+
+// CharacterClass is a class from the rules content.
+message CharacterClass {
+  // Content key, such as "class:wizard".
+  string key = 1;
+  string name = 2;
+  string name_pt = 3;
+  // Faces of the hit die: 6, 8, 10 or 12.
+  int32 hit_die = 4;
+  // The two saving throws the class is proficient in.
+  repeated Ability saving_throws = 5;
+  // The skills a character of this class chooses at level 1.
+  SkillChoice skill_choice = 6;
+  // The class level at which the character chooses a subclass, such as 2
+  // for the Wizard.
+  int32 subclass_level = 7;
+  // How the class casts spells. Unset for a class that never casts.
+  ClassSpellcasting spellcasting = 8;
+}
+
+// SkillChoice is "choose `count` skills from this list".
+message SkillChoice {
+  // How many skills to choose.
+  int32 count = 1;
+  // Content keys of the skills to choose from.
+  repeated string skill_keys = 2;
+}
+
+// SpellPreparation is how a class decides which spells it can cast.
+enum SpellPreparation {
+  SPELL_PREPARATION_UNSPECIFIED = 0;
+  // The class knows a fixed number of spells and can cast any of them
+  // (Bard, Ranger, Sorcerer, Warlock). The sheet uses known_spell_keys.
+  SPELL_PREPARATION_KNOWN = 1;
+  // The class prepares spells each day from its whole spell list (Cleric,
+  // Druid, Paladin). The sheet uses prepared_spell_keys.
+  SPELL_PREPARATION_PREPARED = 2;
+  // The class keeps spells in a spellbook and prepares some of them each
+  // day (Wizard). The sheet uses both known_spell_keys (the spellbook) and
+  // prepared_spell_keys.
+  SPELL_PREPARATION_SPELLBOOK = 3;
+}
+
+// ClassSpellcasting describes a casting class.
+message ClassSpellcasting {
+  // The ability the class casts with.
+  Ability ability = 1;
+  // The class level at which spellcasting starts: 1 for most classes, 2
+  // for the Paladin and the Ranger.
+  int32 first_level = 2;
+  SpellPreparation preparation = 3;
+}
+
+// Subclass is a subclass of one class.
+message Subclass {
+  // Content key, such as "subclass:evocation".
+  string key = 1;
+  string name = 2;
+  string name_pt = 3;
+  // Content key of the class it belongs to, such as "class:wizard".
+  string class_key = 4;
+}
+
+// Background is a background from the rules content.
+message Background {
+  // Content key, such as "background:acolyte".
+  string key = 1;
+  string name = 2;
+  string name_pt = 3;
+  // Content keys of the skills the background grants.
+  repeated string skill_keys = 4;
+}
+
+// Skill is one of the 18 skills.
+message Skill {
+  // Content key, such as "skill:arcana".
+  string key = 1;
+  string name = 2;
+  string name_pt = 3;
+  // The ability the skill uses.
+  Ability ability = 4;
+}
+
+// ArmorCategory is the weight class of body armor.
+enum ArmorCategory {
+  ARMOR_CATEGORY_UNSPECIFIED = 0;
+  ARMOR_CATEGORY_LIGHT = 1;
+  ARMOR_CATEGORY_MEDIUM = 2;
+  ARMOR_CATEGORY_HEAVY = 3;
+}
+
+// Armor is a suit of body armor.
+message Armor {
+  // Content key, such as "equipment:leather-armor".
+  string key = 1;
+  string name = 2;
+  string name_pt = 3;
+  ArmorCategory category = 4;
+}
+
+// WeaponCategory says whether a weapon is simple or martial.
+enum WeaponCategory {
+  WEAPON_CATEGORY_UNSPECIFIED = 0;
+  WEAPON_CATEGORY_SIMPLE = 1;
+  WEAPON_CATEGORY_MARTIAL = 2;
+}
+
+// Weapon is a weapon from the rules content.
+message Weapon {
+  // Content key, such as "equipment:quarterstaff".
+  string key = 1;
+  string name = 2;
+  string name_pt = 3;
+  WeaponCategory category = 4;
+  // True for a ranged weapon, false for a melee one.
+  bool ranged = 5;
+}
+
+// Spell is a spell from the rules content.
+message Spell {
+  // Content key, such as "spell:fire-bolt".
+  string key = 1;
+  string name = 2;
+  string name_pt = 3;
+  // Spell level, 0 to 9; 0 is a cantrip.
+  int32 level = 4;
+  // Content key of the school of magic, such as "school:evocation".
+  string school_key = 5;
+  // The school's Portuguese name, such as "Evocação".
+  string school_name_pt = 6;
+  // Content keys of the classes whose spell list has this spell.
+  repeated string class_keys = 7;
+  // Whether it can be cast as a ritual.
+  bool ritual = 8;
+  // Whether it needs concentration.
+  bool concentration = 9;
+}
+
+// ListContentRequest names a campaign.
+message ListContentRequest {
+  string campaign_id = 1;
+}
+
+// ListContentResponse returns the campaign's rules content.
+message ListContentResponse {
+  Content content = 1;
+}

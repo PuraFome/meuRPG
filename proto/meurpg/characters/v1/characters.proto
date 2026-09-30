@@ -1,0 +1,782 @@
+syntax = "proto3";
+
+// Package meurpg.characters.v1 is about a campaign's characters: the
+// players' characters and the master's NPCs, their sheets and stories, and
+// the master's private notes about them.
+//
+// Text fields. Lengths count characters (Unicode code points), after the
+// server trims spaces at both ends. One-line fields reject control
+// characters such as line breaks; multi-line fields accept line breaks and
+// tabs and reject other control characters. Every free-text field is
+// fiction: the app reminds people not to write real people's data there,
+// and the server never logs it (docs/privacidade.md). No field holds the
+// player's real name or e-mail.
+//
+// Stored as JSON. The server stores CharacterSheet and CharacterStory in the
+// database as their JSON form, with the proto field names and enum value
+// names below (and those of meurpg.rules.v1.AbilityScores). Renaming or
+// reusing a field or an enum value would break every stored sheet, so never
+// do it: add a new field instead. buf breaking checks this.
+package meurpg.characters.v1;
+
+import "google/protobuf/timestamp.proto";
+import "meurpg/rules/v1/rules.proto";
+
+// CharacterService creates, reads and edits a campaign's characters.
+//
+// Every method needs a valid session cookie and fails with `unauthenticated`
+// without one. Every request names the campaign, and access follows the
+// caller's role in it (RN-05, ADR-0011):
+//   - The campaign's master sees and edits every character of the campaign,
+//     in every state. Only the master creates NPCs, marks a character dead,
+//     and reads or writes the master's notes.
+//   - A player sees and edits only their own characters. The sheet locks
+//     for them when a game session starts (RN-01); after that, they edit
+//     the story only while the master allows it (SetStoryEditing).
+//   - For a campaign the caller is not a member of, every method answers
+//     `not_found`, exactly as for a campaign that does not exist.
+//   - A member asking for a character they may not see (another player's
+//     character, or any NPC for a player) also gets `not_found`, exactly as
+//     for a character that does not exist, so nobody learns which
+//     characters exist.
+//   - A member asking for something only the master may do gets
+//     `permission_denied`.
+//   - An ID that is not a UUID is answered like an ID that does not exist.
+//
+// Errors every method can return, besides those listed on each method:
+//   - `unauthenticated`: no valid session cookie.
+//   - `invalid_argument`: a field breaks its documented rules. The message
+//     names the field, never its value.
+//   - `unavailable`: the database did not answer; the app may try again.
+//   - `aborted`: the database kept reporting a conflicting transaction
+//     after the server's retries; the app may try again.
+//
+// Responses carry `Cache-Control: no-store`, because they describe the
+// caller's characters. Reads carry IDs, so they are IDEMPOTENT and
+// POST-only: a GET would put the IDs in the URL, and URLs end up in the
+// platform's request logs (docs/privacidade.md).
+service CharacterService {
+  // CreateCharacter creates a character in a campaign.
+  //
+  // Who may call it depends on the kind:
+  //   - CHARACTER_KIND_PLAYER (MR-003): any player of the campaign, for
+  //     themselves. The master gets `permission_denied`: a master is not a
+  //     player of their own campaign. The character starts as a draft the
+  //     player edits until the next game session starts (RN-01), even when
+  //     the campaign already had sessions.
+  //   - The NPC kinds, ENEMY, BOSS, MINION and STORY (MR-005): only the
+  //     campaign's master, who becomes the NPC's owner (RN-04). Players get
+  //     `permission_denied`. NPCs never lock.
+  //
+  // PLAYER, ENEMY and BOSS take a full sheet; MINION and STORY take a basic
+  // sheet.
+  //
+  // A player has at most one living character per campaign (RN-03): they
+  // create a new one only after the current one dies. Creating a second one
+  // fails with `failed_precondition`, even when two calls race.
+  //
+  // Not idempotent: calling it twice creates two NPCs.
+  //
+  // Errors:
+  //   - `invalid_argument`: kind is unspecified, the sheet's type does not
+  //     match the kind, or a field breaks its rules (including a content key
+  //     that does not exist).
+  //   - `not_found`: the campaign does not exist, or the caller is not a
+  //     member of it.
+  //   - `permission_denied`: the caller's role may not create this kind.
+  //   - `failed_precondition`: the player already has a living character in
+  //     this campaign. The error carries a CharacterBlocked detail with
+  //     reason LIVING_CHARACTER_EXISTS and that character's ID.
+  rpc CreateCharacter(CreateCharacterRequest) returns (CreateCharacterResponse);
+
+  // GetCharacter returns one character with its sheet, its story, and the
+  // numbers the server derives from the sheet (MR-004). The campaign's
+  // master may read every character of the campaign; a player, only their
+  // own, dead ones included. It never carries the master's notes (RN-11):
+  // those come only from GetMasterNotes.
+  //
+  // Errors:
+  //   - `not_found`: the character is not in this campaign, the caller may
+  //     not see it, the campaign does not exist, or the caller is not a
+  //     member of it.
+  rpc GetCharacter(GetCharacterRequest) returns (GetCharacterResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // ListCharacters lists a campaign's characters, without their sheets.
+  //
+  // The master gets every character of the campaign: the players'
+  // characters first, then the NPCs. A player gets only their own
+  // characters, dead ones included, and never an NPC. Each group is in
+  // creation order, oldest first. The list is not paginated.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist, or the caller is not a
+  //     member of it.
+  rpc ListCharacters(ListCharactersRequest) returns (ListCharactersResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // UpdateCharacter replaces a character's name and sheet (MR-006). It does
+  // not touch the story: see UpdateCharacterStory.
+  //
+  // The campaign's master may edit every character of the campaign, in
+  // every state. The player who owns a character may edit it only while it
+  // is a draft, or while it waits for the master's approval (PENDING,
+  // MR-024): once a game session starts, the sheet is locked for them
+  // (RN-01), and a dead character stays as it died.
+  //
+  // The kind never changes, and the sheet's type must still match it.
+  //
+  // revision must be the revision the client last read. If the character
+  // changed since, the call fails with `aborted` and changes nothing: the
+  // app reloads the character and the person tries again. On success, the
+  // revision goes up by one.
+  //
+  // Errors:
+  //   - `invalid_argument`: revision is less than 1, the sheet's type does
+  //     not match the kind, or a field breaks its rules.
+  //   - `not_found`: the character is not in this campaign, the caller may
+  //     not see it, the campaign does not exist, or the caller is not a
+  //     member of it.
+  //   - `failed_precondition`: the caller is the player and the sheet is
+  //     locked or the character is dead. The error carries a
+  //     CharacterBlocked detail with reason SHEET_LOCKED or CHARACTER_DEAD.
+  //     This wins over a stale revision: retrying would not help.
+  //   - `aborted`: revision is stale.
+  rpc UpdateCharacter(UpdateCharacterRequest) returns (UpdateCharacterResponse);
+
+  // UpdateCharacterStory replaces a character's story: personality,
+  // appearance, backstory and allies.
+  //
+  // The story is descriptive text, not game data, so it has its own lock,
+  // which the master controls (decided by Vinicius on 29/09/2026):
+  //   - The campaign's master may change it in every state. Only the master
+  //     edits an NPC's story.
+  //   - The player who owns the character may change it while the character
+  //     is a draft or pending, and afterwards (locked or dead) only while the master
+  //     allows it with SetStoryEditing. That permission ends when the next
+  //     game session starts.
+  // Nobody ever edits the numbers the server derives from the sheet.
+  //
+  // revision works as in UpdateCharacter: the story and the sheet share
+  // one revision, and this call also raises it by one.
+  //
+  // Errors:
+  //   - `invalid_argument`: revision is less than 1, or a field breaks its
+  //     rules.
+  //   - `not_found`: the character is not in this campaign, the caller may
+  //     not see it, the campaign does not exist, or the caller is not a
+  //     member of it.
+  //   - `failed_precondition`: the caller is the player, the character is
+  //     no longer a draft, and the master has not allowed story edits. The
+  //     error carries a CharacterBlocked detail with reason STORY_LOCKED.
+  //     This wins over a stale revision: retrying would not help.
+  //   - `aborted`: revision is stale.
+  rpc UpdateCharacterStory(UpdateCharacterStoryRequest) returns (UpdateCharacterStoryResponse);
+
+  // SetStoryEditing lets the player who owns a locked or dead character
+  // edit its story again, or takes that back (decided by Vinicius on
+  // 29/09/2026). Only the campaign's master may call it, and only for a
+  // player character: the master always edits an NPC's story.
+  //
+  // The permission lasts until the master takes it back or the next game
+  // session starts (PlayService.StartGameSession turns it off). While the
+  // character is a draft, the player edits the story anyway.
+  //
+  // Setting the value it already has changes nothing and is not an error.
+  // It does not change the revision.
+  //
+  // Errors:
+  //   - `invalid_argument`: the character is an NPC.
+  //   - `not_found`: the character is not in this campaign, the campaign
+  //     does not exist, or the caller is not a member of it.
+  //   - `permission_denied`: the caller is a player.
+  rpc SetStoryEditing(SetStoryEditingRequest) returns (SetStoryEditingResponse);
+
+  // MarkCharacterDead records that a player character died (RN-03). Only
+  // the campaign's master may call it.
+  //
+  // The character is never deleted: it stays in the lists, the player can
+  // still read it, and the player may now create a new character in the
+  // campaign. Only the master edits a dead character's sheet; the player
+  // edits its story only when the master allows it (SetStoryEditing).
+  //
+  // It is idempotent: marking a dead character again changes nothing and
+  // keeps the first died_at. It does not change the revision.
+  //
+  // Errors:
+  //   - `invalid_argument`: the character is an NPC. Only player characters
+  //     die; an NPC's hit points belong to each combat (RN-04).
+  //   - `not_found`: the character is not in this campaign, the campaign
+  //     does not exist, or the caller is not a member of it.
+  //   - `permission_denied`: the caller is a player.
+  rpc MarkCharacterDead(MarkCharacterDeadRequest) returns (MarkCharacterDeadResponse);
+
+  // GetMasterNotes returns the master's private notes about a character
+  // (RN-11). Only the campaign's master may call it. The notes never reach
+  // a player, through this or any other method.
+  //
+  // Notes belong to the pair of campaign and character: a character used in
+  // more than one campaign has separate notes in each.
+  //
+  // Errors:
+  //   - `not_found`: the character is not in this campaign, the campaign
+  //     does not exist, or the caller is not a member of it.
+  //   - `permission_denied`: the caller is a player, whatever the
+  //     character.
+  rpc GetMasterNotes(GetMasterNotesRequest) returns (GetMasterNotesResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // UpdateMasterNotes replaces the master's private notes about a character
+  // (RN-11). Only the campaign's master may call it. Empty notes delete
+  // them. The last save wins: notes have no revision.
+  //
+  // Errors:
+  //   - `invalid_argument`: notes break their rules.
+  //   - `not_found`: the character is not in this campaign, the campaign
+  //     does not exist, or the caller is not a member of it.
+  //   - `permission_denied`: the caller is a player, whatever the
+  //     character.
+  rpc UpdateMasterNotes(UpdateMasterNotesRequest) returns (UpdateMasterNotesResponse);
+}
+
+// CharacterKind is what a character is for. The kind never changes after
+// the character is created.
+enum CharacterKind {
+  CHARACTER_KIND_UNSPECIFIED = 0;
+  // A player's character ("personagem do jogador"). Full sheet.
+  CHARACTER_KIND_PLAYER = 1;
+  // An enemy NPC ("inimigo"). Full sheet.
+  CHARACTER_KIND_ENEMY = 2;
+  // A boss NPC ("boss"). Full sheet.
+  CHARACTER_KIND_BOSS = 3;
+  // A minion NPC ("minion"): a weak enemy. Basic sheet.
+  CHARACTER_KIND_MINION = 4;
+  // A story NPC ("NPC de história"): someone the group meets. Basic sheet.
+  CHARACTER_KIND_STORY = 5;
+}
+
+// CharacterState is where a character is in its life cycle
+// (docs/produto/regras.md, "Ciclo de vida da ficha"). The server computes it
+// on every read.
+//
+// NPCs are always DRAFT: they never lock and never die, so the app shows no
+// state for them.
+enum CharacterState {
+  CHARACTER_STATE_UNSPECIFIED = 0;
+  // "Rascunho": no game session has started since the character was
+  // created, so its player edits the whole sheet.
+  CHARACTER_STATE_DRAFT = 1;
+  // "Travada": a game session started after the character was created
+  // (RN-01). Only the master edits the sheet; the player edits the story
+  // only while the master allows it (SetStoryEditing).
+  CHARACTER_STATE_LOCKED = 2;
+  // "Morto": the master marked the character dead (RN-03). It stays in the
+  // campaign; only the master edits its sheet.
+  CHARACTER_STATE_DEAD = 3;
+  // "Pendente de aprovação": used by MR-024 (invite with approval, RN-15),
+  // for a character that waits for the master's approval. Nothing sets it
+  // yet.
+  CHARACTER_STATE_PENDING = 4;
+}
+
+// Character is a character as its reader may see it. It never carries the
+// master's notes (RN-11).
+message Character {
+  // Stable character ID (a UUID).
+  string id = 1;
+  // The campaign the character belongs to (a UUID).
+  string campaign_id = 2;
+  CharacterKind kind = 3;
+  CharacterState state = 4;
+  // The character's name.
+  string name = 5;
+  // The account ID (a UUID) of the player who owns the character. Empty for
+  // NPCs, and for a player character whose player deleted their account: it
+  // stays with the campaign (RN-16).
+  string player_user_id = 6;
+  // The display name of that player (IdentityService.UpdateProfile). Empty
+  // when player_user_id is empty or the player has not chosen one.
+  string player_display_name = 7;
+  // The game data: full or basic, depending on the kind.
+  CharacterSheet sheet = 8;
+  // The descriptive text. It has its own lock: see UpdateCharacterStory.
+  CharacterStory story = 9;
+  // The numbers the server derives from a full sheet (MR-004). Unset for a
+  // basic sheet.
+  meurpg.rules.v1.DerivedSheet derived = 10;
+  // Goes up by one every time the name, the sheet or the story change.
+  // Send it back in UpdateCharacter and UpdateCharacterStory. Locking and
+  // death do not change it: they have their own times below.
+  int32 revision = 11;
+  // When the sheet locked for the player (RN-01). Unset while it is a
+  // draft, and always unset for NPCs.
+  google.protobuf.Timestamp sheet_locked_at = 12;
+  // When the master marked the character dead. Unset while it lives.
+  google.protobuf.Timestamp died_at = 13;
+  google.protobuf.Timestamp created_at = 14;
+  google.protobuf.Timestamp updated_at = 15;
+  // Whether the caller may call UpdateCharacter now: always for the master;
+  // for the owning player, only while the state is DRAFT or PENDING.
+  bool can_edit = 16;
+  // Whether the caller may call UpdateCharacterStory now: always for the
+  // master; for the owning player, while the state is DRAFT or PENDING, or
+  // while story_editing_allowed is true.
+  bool can_edit_story = 17;
+  // Whether the caller may call MarkCharacterDead: the master, for a player
+  // character that is not dead yet.
+  bool can_mark_dead = 18;
+  // Whether the caller may call GetMasterNotes and UpdateMasterNotes: the
+  // master.
+  bool can_access_master_notes = 19;
+  // Whether the master currently lets the owning player edit the story of
+  // this locked or dead character (SetStoryEditing). Always false for NPCs.
+  bool story_editing_allowed = 20;
+  // Whether the caller may call SetStoryEditing: the master, for a player
+  // character.
+  bool can_set_story_editing = 21;
+}
+
+// CharacterSummary is a character as a list shows it: no sheet, no story.
+message CharacterSummary {
+  // Stable character ID (a UUID).
+  string id = 1;
+  CharacterKind kind = 2;
+  CharacterState state = 3;
+  string name = 4;
+  // As in Character.
+  string player_user_id = 5;
+  // As in Character.
+  string player_display_name = 6;
+  // Classes and levels in Portuguese, such as "Mago 3" or
+  // "Guerreiro 2 / Mago 1". Empty for a basic sheet.
+  string class_summary = 7;
+  // The subrace's Portuguese name if the sheet has one, otherwise the
+  // race's, such as "Gnomo das Rochas". Empty for a basic sheet.
+  string race_name_pt = 8;
+  google.protobuf.Timestamp created_at = 9;
+}
+
+// CharacterBlockedReason says why a character cannot be changed now.
+enum CharacterBlockedReason {
+  CHARACTER_BLOCKED_REASON_UNSPECIFIED = 0;
+  // The sheet is locked for the player: a game session has started
+  // (RN-01). Only the master edits it now.
+  CHARACTER_BLOCKED_REASON_SHEET_LOCKED = 1;
+  // The character is dead (RN-03). Only the master edits its sheet.
+  CHARACTER_BLOCKED_REASON_CHARACTER_DEAD = 2;
+  // The player already has a living character in this campaign (RN-03).
+  // They create a new one only after it dies.
+  CHARACTER_BLOCKED_REASON_LIVING_CHARACTER_EXISTS = 3;
+  // The character is no longer a draft, and the master has not allowed its
+  // player to edit the story (SetStoryEditing).
+  CHARACTER_BLOCKED_REASON_STORY_LOCKED = 4;
+}
+
+// CharacterBlocked is the error detail of CharacterService's
+// `failed_precondition`, so the app can show a clear message.
+message CharacterBlocked {
+  CharacterBlockedReason reason = 1;
+  // The character that blocks the call: the one being edited, or, for
+  // LIVING_CHARACTER_EXISTS, the player's living character, so the app can
+  // link to it.
+  string character_id = 2;
+}
+
+// CharacterSheet is a character's game data: a full sheet for PLAYER, ENEMY
+// and BOSS, a basic sheet for MINION and STORY.
+message CharacterSheet {
+  // Exactly one must be set, and it must match the kind.
+  oneof content {
+    FullSheet full = 1;
+    BasicSheet basic = 2;
+  }
+}
+
+// FullSheet holds a character's choices, in the layout of the official
+// sheet (MR-004). It holds choices, never computed numbers: the server
+// derives those (rules.v1.DerivedSheet). Rules content is referenced by
+// content key (see ContentService.ListContent), never by name.
+//
+// The server checks only what cannot make sense at all: ranges, existing
+// keys, a subrace of another race. Choices the rules would not allow, such
+// as too many skills, are saved and reported in DerivedSheet.issues: the
+// app is an assistant, not a judge.
+message FullSheet {
+  // Base ability scores, before any bonus: each 1 to 30, all six required.
+  meurpg.rules.v1.AbilityScores base_scores = 1;
+  // Content key of the race. Required.
+  string race_key = 2;
+  // Content key of a subrace of race_key, or empty.
+  string subrace_key = 3;
+  // The character's classes: 1 to 12 entries, no class twice, levels adding
+  // up to 1 to 20. The first one is the starting class, which gives the
+  // saving throws. The app offers one class; more is multiclassing.
+  repeated ClassLevel classes = 4;
+  // The background. Unset while none is chosen, which shows an issue.
+  oneof background {
+    // Content key of a background.
+    string background_key = 5;
+    // A background that is not in the rules content, described by the
+    // player.
+    CustomBackground custom_background = 6;
+  }
+  // Skills the player chose: the class's skill choices and any others the
+  // table allows. At most 18 skill keys, no repeats. The skills the race or
+  // background grant are added by the server; listing them here too is
+  // harmless.
+  repeated string skill_proficiency_keys = 7;
+  // Skills with expertise, which doubles the proficiency bonus (Bard,
+  // Rogue). At most 18 skill keys, no repeats. A skill here that is not
+  // proficient shows an issue.
+  repeated string expertise_skill_keys = 8;
+  // Bonuses added by hand on top of the race's and subrace's fixed ones,
+  // such as the increases a race lets the player choose (the Half-Elf's two
+  // +1), an ability score improvement or a magic item: each -10 to +10.
+  // Unset means no bonus.
+  meurpg.rules.v1.AbilityScores extra_ability_bonuses = 9;
+  // How the hit points grow with each level.
+  HitPoints hit_points = 10;
+  // Content key of the body armor worn, or empty for none.
+  string armor_key = 11;
+  // Whether the character carries a shield.
+  bool shield = 12;
+  // Content keys of the weapons carried, which become attacks: at most 20,
+  // no repeats.
+  repeated string weapon_keys = 13;
+  // Content keys of the cantrips (level 0 spells) known: at most 30, no
+  // repeats.
+  repeated string cantrip_keys = 14;
+  // Content keys of the spells known (levels 1 to 9): the spellbook of a
+  // Wizard, or the spells of a Bard, Ranger, Sorcerer or Warlock. At most
+  // 200, no repeats.
+  repeated string known_spell_keys = 15;
+  // Content keys of the spells prepared for the day (levels 1 to 9), for a
+  // Cleric, Druid, Paladin or Wizard. At most 100, no repeats.
+  repeated string prepared_spell_keys = 16;
+  // Equipment and treasure as free text: at most 100 items.
+  repeated Item equipment = 17;
+  Coins coins = 18;
+  // Languages the player adds, as free text; the ones from race and
+  // background come in DerivedSheet.languages. At most 20, each 1 to 40
+  // characters, one line.
+  repeated string languages = 19;
+  // Tool proficiencies the player adds, as free text. At most 20, each 1 to
+  // 40 characters, one line.
+  repeated string tool_proficiencies = 20;
+  // Experience points: 0 to 1,000,000.
+  int32 experience_points = 21;
+  Alignment alignment = 22;
+  // Features and traits the rules content does not have, in the player's
+  // own words, such as those of a subclass from another book. 0 to 5,000
+  // characters, multi-line. Part of the game data: it locks with the sheet.
+  string custom_features_text = 23;
+  // Options chosen for features and traits that offer them, as content
+  // keys: a fighting style ("feature:fighter-fighting-style-defense"), a
+  // dragon ancestry ("trait:draconic-ancestry-red"), an eldritch
+  // invocation, a metamagic. An option applies only while the character
+  // has the feature or trait it belongs to; otherwise it shows as an issue.
+  // At most 100.
+  repeated string feature_choice_keys = 24;
+}
+
+// ClassLevel is one class of a character and its level in it.
+message ClassLevel {
+  // Content key of the class. Required.
+  string class_key = 1;
+  // Levels in this class: 1 to 20.
+  int32 level = 2;
+  // The subclass. Unset while none is chosen.
+  oneof subclass {
+    // Content key of a subclass of class_key.
+    string subclass_key = 3;
+    // The name of a subclass that is not in the rules content: 1 to 40
+    // characters, one line. It shows on the sheet but has no effect on the
+    // numbers; its features go in FullSheet.custom_features_text.
+    string custom_subclass_name = 4;
+  }
+}
+
+// CustomBackground is a background the player describes, for one that is
+// not in the rules content, such as the Sage.
+message CustomBackground {
+  // The background's name: 1 to 40 characters, one line.
+  string name = 1;
+  // Content keys of the skills it grants: at most 2, no repeats. Fewer than
+  // 2 shows an issue.
+  repeated string skill_keys = 2;
+}
+
+// HitPointsMethod is how a character's maximum hit points grow after the
+// first level. The first level always takes the hit die's maximum.
+enum HitPointsMethod {
+  // Read as AVERAGE.
+  HIT_POINTS_METHOD_UNSPECIFIED = 0;
+  // The fixed value for each level: half the die plus one, such as 4 for a
+  // d6.
+  HIT_POINTS_METHOD_AVERAGE = 1;
+  // The rolls in HitPoints.rolls.
+  HIT_POINTS_METHOD_ROLLED = 2;
+}
+
+// HitPoints is how the maximum hit points were decided.
+message HitPoints {
+  HitPointsMethod method = 1;
+  // Only with ROLLED: the hit die rolled at each level after the first, in
+  // the order of FullSheet.classes (every level of the first class, then
+  // the next class). At most 19 rolls, each 1 to 12. A level without a roll
+  // uses the average, and a roll above its die shows an issue.
+  repeated int32 rolls = 2;
+}
+
+// Item is one line of equipment, as free text.
+message Item {
+  // What it is, such as "Grimório" or "Corda de cânhamo (15 m)": 1 to 100
+  // characters, one line.
+  string name = 1;
+  // How many: 1 to 9,999. 0 means 1.
+  int32 quantity = 2;
+}
+
+// Coins is the character's money, per coin. Each 0 to 1,000,000.
+message Coins {
+  // Copper pieces ("peças de cobre", PC).
+  int32 copper = 1;
+  // Silver pieces ("peças de prata", PP).
+  int32 silver = 2;
+  // Electrum pieces ("peças de electrum", PE).
+  int32 electrum = 3;
+  // Gold pieces ("peças de ouro", PO).
+  int32 gold = 4;
+  // Platinum pieces ("peças de platina", PL).
+  int32 platinum = 5;
+}
+
+// Alignment is the character's moral and ethical outlook.
+enum Alignment {
+  // Not chosen.
+  ALIGNMENT_UNSPECIFIED = 0;
+  // "Leal e bom".
+  ALIGNMENT_LAWFUL_GOOD = 1;
+  // "Neutro e bom".
+  ALIGNMENT_NEUTRAL_GOOD = 2;
+  // "Caótico e bom".
+  ALIGNMENT_CHAOTIC_GOOD = 3;
+  // "Leal e neutro".
+  ALIGNMENT_LAWFUL_NEUTRAL = 4;
+  // "Neutro".
+  ALIGNMENT_NEUTRAL = 5;
+  // "Caótico e neutro".
+  ALIGNMENT_CHAOTIC_NEUTRAL = 6;
+  // "Leal e mau".
+  ALIGNMENT_LAWFUL_EVIL = 7;
+  // "Neutro e mau".
+  ALIGNMENT_NEUTRAL_EVIL = 8;
+  // "Caótico e mau".
+  ALIGNMENT_CHAOTIC_EVIL = 9;
+}
+
+// BasicSheet is the short sheet of a minion or a story NPC: only what a
+// combat or a scene needs, typed by the master.
+message BasicSheet {
+  // Maximum hit points: 1 to 9,999.
+  int32 hit_points_max = 1;
+  // Armor class: 1 to 40.
+  int32 armor_class = 2;
+  // Walking speed in feet: 0 to 300.
+  int32 speed_ft = 3;
+  // The attack bonus of its main attack: -10 to +30.
+  int32 attack_bonus = 4;
+  // The damage of its main attack, such as "1d6+2 cortante": 0 to 40
+  // characters, one line.
+  string damage = 5;
+  // Who or what it is: 0 to 2,000 characters, multi-line.
+  string description = 6;
+}
+
+// CharacterStory is a character's descriptive text: personality,
+// appearance, backstory and allies. It has its own lock, which the master
+// controls (see UpdateCharacterStory and SetStoryEditing). Every field is
+// optional.
+message CharacterStory {
+  Personality personality = 1;
+  Appearance appearance = 2;
+  // The character's backstory ("história"): 0 to 10,000 characters,
+  // multi-line.
+  string backstory = 3;
+  // Allies and organizations ("aliados e organizações"): 0 to 2,000
+  // characters, multi-line.
+  string allies = 4;
+}
+
+// Personality is the four personality boxes of the official sheet. Each is 0
+// to 1,000 characters, multi-line.
+message Personality {
+  // Personality traits ("traços de personalidade").
+  string traits = 1;
+  // Ideals ("ideais").
+  string ideals = 2;
+  // Bonds ("vínculos").
+  string bonds = 3;
+  // Flaws ("defeitos").
+  string flaws = 4;
+}
+
+// Appearance is how the character looks. The short fields are free text,
+// such as "1,05 m": 0 to 40 characters each, one line.
+message Appearance {
+  // Age ("idade").
+  string age = 1;
+  // Height ("altura").
+  string height = 2;
+  // Weight ("peso").
+  string weight = 3;
+  // Eyes ("olhos").
+  string eyes = 4;
+  // Skin ("pele").
+  string skin = 5;
+  // Hair ("cabelo").
+  string hair = 6;
+  // Anything else about how the character looks: 0 to 2,000 characters,
+  // multi-line.
+  string description = 7;
+}
+
+// CreateCharacterRequest describes the new character.
+message CreateCharacterRequest {
+  string campaign_id = 1;
+  // Required. It decides who may create the character and which sheet it
+  // takes.
+  CharacterKind kind = 2;
+  // 1 to 80 characters, one line.
+  string name = 3;
+  // Required: full for PLAYER, ENEMY and BOSS; basic for MINION and STORY.
+  CharacterSheet sheet = 4;
+  // Optional; unset means an empty story.
+  CharacterStory story = 5;
+}
+
+// CreateCharacterResponse returns the new character.
+message CreateCharacterResponse {
+  // The new character, with revision 1.
+  Character character = 1;
+}
+
+// GetCharacterRequest names a character of a campaign.
+message GetCharacterRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+}
+
+// GetCharacterResponse returns the character.
+message GetCharacterResponse {
+  Character character = 1;
+}
+
+// ListCharactersRequest names a campaign.
+message ListCharactersRequest {
+  string campaign_id = 1;
+}
+
+// ListCharactersResponse lists the characters the caller may see.
+message ListCharactersResponse {
+  repeated CharacterSummary characters = 1;
+}
+
+// UpdateCharacterRequest carries the character's new name and sheet. Both
+// replace the saved ones completely.
+message UpdateCharacterRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+  // The revision the client last read (Character.revision).
+  int32 revision = 3;
+  // 1 to 80 characters, one line.
+  string name = 4;
+  // Required, of the type the kind takes.
+  CharacterSheet sheet = 5;
+}
+
+// UpdateCharacterResponse returns the character as saved.
+message UpdateCharacterResponse {
+  // The character, with the new revision and derived numbers.
+  Character character = 1;
+}
+
+// UpdateCharacterStoryRequest carries the character's new story, which
+// replaces the saved one completely.
+message UpdateCharacterStoryRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+  // The revision the client last read (Character.revision).
+  int32 revision = 3;
+  // Unset means an empty story.
+  CharacterStory story = 4;
+}
+
+// UpdateCharacterStoryResponse returns the character as saved.
+message UpdateCharacterStoryResponse {
+  // The character, with the new revision.
+  Character character = 1;
+}
+
+// SetStoryEditingRequest says whether the player may edit a character's
+// story.
+message SetStoryEditingRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+  // true lets the owning player edit the story until the next game session
+  // starts; false takes that back.
+  bool allowed = 3;
+}
+
+// SetStoryEditingResponse returns the character as saved.
+message SetStoryEditingResponse {
+  // The character, with story_editing_allowed as set.
+  Character character = 1;
+}
+
+// MarkCharacterDeadRequest names the character that died.
+message MarkCharacterDeadRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+}
+
+// MarkCharacterDeadResponse returns the dead character.
+message MarkCharacterDeadResponse {
+  // The character, with state DEAD and died_at set.
+  Character character = 1;
+}
+
+// GetMasterNotesRequest names a character of a campaign.
+message GetMasterNotesRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+}
+
+// GetMasterNotesResponse returns the master's notes about the character.
+message GetMasterNotesResponse {
+  // The notes. Empty when the master has written none.
+  string notes = 1;
+  // When the notes were last saved. Unset when there are none.
+  google.protobuf.Timestamp updated_at = 2;
+}
+
+// UpdateMasterNotesRequest carries the new notes, which replace the saved
+// ones completely.
+message UpdateMasterNotesRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+  // 0 to 20,000 characters, multi-line. Empty (or only spaces) deletes the
+  // notes.
+  string notes = 3;
+}
+
+// UpdateMasterNotesResponse returns the notes as saved.
+message UpdateMasterNotesResponse {
+  // The notes as saved. Empty when they were deleted.
+  string notes = 1;
+  // When they were saved. Unset when they were deleted.
+  google.protobuf.Timestamp updated_at = 2;
+}

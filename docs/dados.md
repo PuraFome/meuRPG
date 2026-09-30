@@ -12,8 +12,8 @@ No app antigo (`server/src/db/schema.sql`), a campanha não existia, e tudo pert
 | --- | --- | --- |
 | `users.role` é global (padrão `master`) | O papel vai para `campaign_members.role` | Um usuário pode ser mestre numa campanha e jogador em outra (RN-05). |
 | `characters.type` aceita `npc`, `player`, `boss`, `minion` | `characters.kind` aceita `player`, `enemy`, `boss`, `minion`, `story` | `npc` vira dois tipos: inimigo (ficha completa) e história (ficha básica). |
-| O personagem liga ao mestre por `master_user_id` | `campaign_characters` liga personagens a campanhas | Um índice único parcial deixa o personagem de jogador em uma campanha só (RN-03), e o NPC em várias (RN-04). |
-| Sem cópia de personagem | `characters.copied_from_id` e `characters.sheet_locked_at` | A cópia lembra de onde veio (RN-03), e a trava tem data (RN-01). |
+| O personagem liga ao mestre por `master_user_id` | `characters.campaign_id` diz a campanha do personagem; o dono é `player_user_id` (personagem de jogador) ou `master_user_id` (NPC) | Um índice único parcial garante um personagem vivo por jogador por campanha (RN-03). A tabela `campaign_characters`, para usar o NPC em várias campanhas (RN-04), vem com a MR-022 (ver [Esquema implementado](#esquema-implementado)). |
+| Sem cópia de personagem | `characters.sheet_locked_at` (feito) e `characters.copied_from_id` (com a MR-021) | A trava tem data (RN-01), e a cópia vai lembrar de onde veio (RN-03). |
 | `master_notes` na mesma linha do personagem | Tabela própria, `character_master_notes` | A consulta que monta a ficha do jogador nem toca nessa tabela, então não tem como vazar (RN-11). |
 | `character_join_tokens.token` em texto puro, por personagem | `campaign_invites.token_hash`, por campanha, com expiração | Quem lê o banco não consegue usar o convite (RN-07). |
 | `maps.user_id` | `maps.campaign_id` | O mapa pertence à campanha. |
@@ -22,7 +22,7 @@ No app antigo (`server/src/db/schema.sql`), a campanha não existia, e tudo pert
 
 Tabelas novas para a mesa ao vivo:
 
-- `game_sessions`: começo e fim de cada sessão. Iniciar a primeira preenche `sheet_locked_at` das fichas dos jogadores, na mesma transação.
+- `game_sessions`: começo e fim de cada sessão. Iniciar uma sessão preenche `sheet_locked_at` das fichas dos jogadores que ainda são rascunho, na mesma transação. Já existe (Etapa 4, ver [Esquema implementado](#esquema-implementado)).
 - `encounters` e `combatants`: rodada, turno, iniciativa, PV atual, espaços de magia usados e posição na grade de cada combate.
 - `session_events`: cada ação da sessão (dano, cura, magia, XP) vira uma linha que nunca é alterada. É o histórico da mesa e o que o stream manda para os celulares.
 - `xp_awards`: quem deu XP, quanto, quando e por quê (MR-016). O modo de XP fica em `campaigns.xp_mode`.
@@ -30,7 +30,7 @@ Tabelas novas para a mesa ao vivo:
 
 Os pontos de interesse continuam em `jsonb` dentro do mapa por enquanto, cada um com um campo `revealed`. O servidor filtra os escondidos antes de responder (RN-10). A notificação no app não precisa de tabela no MVP: uma `game_session` sem `ended_at` já é o aviso de "sessão em andamento".
 
-**Estado do personagem, proposta.** Além de `copied_from_id` e `sheet_locked_at`, o personagem de jogador precisa guardar dois estados novos, ainda sem coluna fechada: se está morto (RN-03, para não deixar criar um segundo personagem na mesma campanha enquanto o atual está vivo) e se está pendente de aprovação do mestre (RN-15, quando o convite exige aprovação). Nenhum dos dois estados apaga a linha do personagem. O desenho exato (uma coluna `status`, ou duas colunas booleanas) fica para quando o módulo `characters` implementar RN-03 e RN-15.
+**Estado do personagem.** Decidido na Etapa 4: uma coluna `status` (`active`, `dead` ou `pending`) junto de `sheet_locked_at`. O morto (RN-03) e o pendente de aprovação (RN-15) mudam de estado, nunca de linha. `pending` já é aceito pelo banco, mas só a MR-024 vai gravá-lo. Os detalhes estão em [Esquema implementado](#esquema-implementado).
 
 ## Tabelas do schema novo, e a equivalente no app antigo
 
@@ -41,12 +41,12 @@ Toda tabela abaixo é nova — nasce numa migration do goose de algum módulo, n
 | `users` | Parecida com `users` de lá, mas perde `role` (vai para `campaign_members`) |
 | `auth_sessions` | Mesma ideia de `auth_sessions` de lá (hash do token) |
 | `oauth_handshakes` | Mesma ideia de `oauth_handshakes` de lá |
-| `characters` | Parecida com `characters` de lá: `type` vira `kind`, ganha `copied_from_id` e `sheet_locked_at` |
+| `characters` | Parecida com `characters` de lá: `type` vira `kind`, ganha `campaign_id`, `status` e `sheet_locked_at` (e `copied_from_id` com a MR-021) |
 | `maps` | Parecida com `maps` de lá: `user_id` vira `campaign_id`, imagem vira URL do Cloud Storage |
 | `campaign_invites` | Substitui a ideia de `character_join_tokens` de lá, por campanha e com token só em hash |
 | `campaigns` | Sem equivalente lá |
 | `campaign_members` | Sem equivalente lá |
-| `campaign_characters` | Sem equivalente lá |
+| `campaign_characters` | Sem equivalente lá. Vem com a MR-022 (NPC em várias campanhas) |
 | `character_master_notes` | Sem equivalente lá |
 | `gallery_items` | Sem equivalente lá |
 | `game_sessions` | Sem equivalente lá |
@@ -103,21 +103,22 @@ erDiagram
 
     characters {
         uuid id PK
+        uuid campaign_id FK
         text kind
-        uuid copied_from_id FK
+        text status
+        uuid copied_from_id FK "com a MR-021"
         timestamptz sheet_locked_at
     }
 
     campaign_characters {
-        uuid id PK
-        uuid campaign_id FK
+        uuid campaign_id FK "com a MR-022"
         uuid character_id FK
     }
 
     character_master_notes {
-        uuid id PK
-        uuid character_id FK
-        text master_notes
+        uuid campaign_id PK
+        uuid character_id PK
+        text notes
     }
 
     maps {
@@ -193,7 +194,8 @@ erDiagram
 
     campaigns ||--o{ campaign_members : "tem"
     campaigns ||--o{ campaign_invites : "gera"
-    campaigns ||--o{ campaign_characters : "reune"
+    campaigns |o--o{ characters : "reune"
+    campaigns ||--o{ campaign_characters : "reusa NPCs"
     campaigns ||--o{ maps : "possui"
     campaigns ||--o{ gallery_items : "guarda"
     campaigns ||--o{ game_sessions : "realiza"
@@ -232,7 +234,7 @@ flowchart TD
 
     subgraph characters_mod["Módulo characters"]
         t_characters["characters"]
-        t_campaign_characters["campaign_characters"]
+        t_campaign_characters["campaign_characters, com a MR-022"]
         t_character_master_notes["character_master_notes"]
     end
 
@@ -273,8 +275,15 @@ Esta seção lista só o que já existe nas migrations de `backend/migrations/`.
 | `00011_create_campaign_invites` | `campaign_invites` | Os convites (MR-002, RN-07), só com o hash do token. |
 | `00012_create_campaign_invites_campaign_id_index` | `campaign_invites` | Índice por `campaign_id` (os convites de uma campanha). |
 | `00013_add_oidc_login_states_intent` | `oidc_login_states` | Colunas `intent_kind` e `intent_data`: a intenção de login, como aceitar um convite. |
+| `00014_create_characters` | `characters` | Os personagens: os dos jogadores e os NPCs do mestre (MR-003, MR-005), com a ficha e a história como documentos JSON. |
+| `00015_create_characters_campaign_id_index` | `characters` | Índice por `(campaign_id, player_user_id)`: a lista do mestre, a do jogador e a trava das fichas. |
+| `00016_create_characters_one_living_player_character_index` | `characters` | Índice único parcial: um personagem vivo por jogador por campanha (RN-03). |
+| `00017_create_character_master_notes` | `character_master_notes` | As notas do mestre, numa tabela à parte (RN-11). |
+| `00018_create_game_sessions` | `game_sessions` | Começo e fim de cada sessão de jogo. Iniciar uma sessão trava as fichas (RN-01). |
+| `00019_create_game_sessions_one_open_index` | `game_sessions` | Índice único parcial: no máximo uma sessão aberta por campanha. |
+| `00020_expire_orphaned_player_characters` | `characters` | TTL por linha: o banco apaga sozinho o personagem de jogador que ficou sem jogador e sem campanha. |
 
-As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, do módulo `campaigns`. Mudanças em relação à proposta acima, no `identity`:
+As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, do módulo `campaigns`; as `00014` a `00017` e a `00020`, do módulo `characters`; as `00018` e `00019`, do módulo `play`. As migrations `00021` em diante ficam reservadas para a MR-024 (convite com aprovação). Mudanças em relação à proposta acima, no `identity`:
 
 - `users.google_sub` e `users.email` viraram `user_identities (issuer, subject, email)`. O par `(issuer, subject)` é a chave primária, porque o `sub` só é único dentro de um provedor. Assim o código não depende do Google, e uma conta pode ter outro jeito de entrar (ADR-0009) sem mudar `users`.
 - `UNIQUE (user_id, issuer)`: uma conta tem no máximo uma identidade por provedor, então duas contas Google nunca se juntam.
@@ -295,6 +304,26 @@ No `campaigns`:
 - `campaign_invites` guarda `max_uses`, `use_count`, `expires_at` e `revoked_at`. Dois `CHECK` garantem que `use_count` nunca passa de `max_uses`, nem com dois jogadores aceitando ao mesmo tempo, e que nenhum convite vale mais de 30 dias. O token fica só como SHA-256 em `token_hash`, com `UNIQUE`.
 - `campaign_invites` usa o TTL por linha com `expires_at + INTERVAL '30 days'`: o convite some 30 dias depois de expirar.
 - Os nomes (`campaigns.name` até 80 caracteres, `display_name` até 40) têm `CHECK` de tamanho; o servidor também tira espaços das pontas e recusa quebra de linha e caracteres de controle.
+
+No `characters`:
+
+- **A campanha fica na própria linha do personagem.** `characters.campaign_id` substitui, por enquanto, a tabela `campaign_characters` do modelo proposto. Com a tabela de ligação, garantir a RN-03 pediria copiar o `kind` para ela e uma chave estrangeira composta, e mesmo assim não daria para garantir "um personagem vivo por jogador". Com a coluna, a RN-03 vira um índice único parcial (`00016`), com `status <> 'dead'`, então um personagem pendente (MR-024) também conta como vivo. O NPC fica na campanha em que foi criado; usar o mesmo NPC em outras campanhas (MR-022) traz a tabela de ligação de volta, só para NPCs, sem refazer nada.
+- **O dono fica em duas colunas**, cada uma com o `ON DELETE` certo: `player_user_id` (só personagem de jogador) com `SET NULL`, e `master_user_id` (só NPC) com `CASCADE`. Assim, quando o jogador exclui a conta, o personagem fica com o mestre da campanha (RN-16); quando o mestre exclui a conta, os NPCs dele vão junto. `campaign_id` usa `SET NULL`: quando a campanha é apagada, o personagem de jogador fica com o jogador. Um `CHECK` (`characters_owner`) garante que o personagem de jogador não tem mestre dono, e que o NPC tem mestre e não tem jogador.
+- **Estado**: `status` e `sheet_locked_at`. A API calcula o `CharacterState` a partir das duas (ver [Ciclo de vida da ficha](produto/regras.md#ciclo-de-vida-da-ficha)). O morto ganha `died_at` (`CHECK characters_dead_since`). Outros `CHECK` garantem que só o personagem de jogador morre, fica pendente, trava ou recebe a liberação da história.
+- **A ficha é um documento.** `sheet` é o JSON (protojson, com os nomes de campo do `.proto`) de `CharacterSheet`: as escolhas do jogador, por chave de conteúdo, como `class:wizard`. `story` é o JSON de `CharacterStory`: personalidade, aparência, história e aliados. Nenhum número calculado é gravado: o módulo `rules` calcula tudo a cada leitura (ADR-0008). Como o JSON guardado usa os nomes de campo do `.proto`, esses nomes nunca mudam, e o `buf breaking` impede. Não há índice nos documentos: nada procura dentro deles. `CHECK`s garantem que os dois são objetos JSON com até 128 KiB; os limites da API, contados em caracteres, ficam bem abaixo disso.
+- **`story_editing_allowed`** é a liberação da história que o mestre dá, personagem por personagem (RN-01). O início de cada sessão desliga todas as liberações da campanha.
+- **`revision`** sobe a cada mudança de nome, ficha ou história. Um salvamento com revisão velha recebe `aborted` na API, então duas pessoas editando ao mesmo tempo não apagam o trabalho uma da outra. Travar, morrer e liberar a história não mexem na revisão. `sheet_schema` marca a versão do documento da ficha, para uma futura v2.
+- **`character_master_notes`** tem a chave primária `(campaign_id, character_id)`: o mesmo NPC em duas campanhas (MR-022) terá notas separadas. Notas vazias apagam a linha. As notas somem com a campanha ou com o personagem.
+- **Retenção**: não há TTL para personagens, com uma exceção: o personagem de jogador órfão, sem jogador (a conta foi excluída) e sem campanha (a campanha foi apagada). Ninguém mais o alcança, e ele ainda guarda o texto livre de quem o escreveu. A `00020` põe um TTL por linha cuja expressão só vale para esse caso (`CASE WHEN kind = 'player' AND player_user_id IS NULL AND campaign_id IS NULL THEN created_at END`); o job diário do CockroachDB apaga a linha. O teste `TestOrphanedPlayerCharactersAreDeletedByTheDatabase` lê essa configuração da tabela e confere a expressão sobre linhas de verdade.
+- **Índices**: `(campaign_id, player_user_id)` serve às listas e à trava. Não há índice por `player_user_id` nem por `master_user_id` sozinhos: só a exclusão de conta procura por eles, como em `campaigns.created_by`.
+- `copied_from_id` (a cópia da RN-03) vem com a MR-021.
+
+No `play`:
+
+- `game_sessions` guarda só IDs e horários, sem dado pessoal. `session_number` conta as sessões da campanha a partir de 1, com `UNIQUE (campaign_id, session_number)`. A sessão está aberta enquanto `ended_at` está vazio, e um índice único parcial (`00019`) deixa no máximo uma aberta por campanha. Some com a campanha.
+- Iniciar uma sessão grava a linha, trava as fichas e desliga as liberações da história, tudo na mesma transação. As duas últimas partes são do módulo `characters`, que o `play` chama por uma interface (ver [Arquitetura](arquitetura.md#módulo-play-sessões-de-jogo)).
+
+**Lacuna para a Etapa 5.** O PV atual, os espaços de magia gastos e os dados de vida de um personagem de jogador precisam durar de um encontro para outro e de uma sessão para outra. O modelo proposto só tem `combatants.current_hp`, que vale para um combate. A Etapa 5 precisa de um lugar para esse estado (por exemplo, uma tabela `character_states`) antes de desenhar a RN-02.
 
 Cada migration faz uma mudança só: um `CREATE TABLE IF NOT EXISTS` com as constraints dentro, um `CREATE INDEX IF NOT EXISTS` ou um `ALTER TABLE`. Como o CockroachDB faz commit antes de cada DDL, isso deixa cada migration atômica e segura para rodar de novo, e o teste `TestMigrationsAreSafeToRerun` roda todas duas vezes para provar. O índice fica numa migration à parte, e não dentro do `CREATE TABLE`, porque o sqlc lê as migrations com o parser do PostgreSQL, que não conhece a sintaxe de índice embutido do CockroachDB (ver [CONTRIBUTING.md](../CONTRIBUTING.md#queries-com-sqlc)). Por isso a `00004` foi reescrita antes do primeiro deploy, com o mesmo resultado no banco.
 
@@ -361,6 +390,40 @@ erDiagram
         timestamptz revoked_at "opcional"
     }
 
+    characters {
+        uuid id PK
+        uuid campaign_id FK "opcional, SET NULL"
+        text kind "player, enemy, boss, minion ou story"
+        uuid player_user_id FK "só jogador, SET NULL"
+        uuid master_user_id FK "só NPC, CASCADE"
+        text status "active, dead ou pending"
+        text name "até 80"
+        jsonb sheet "CharacterSheet, até 128 KiB"
+        jsonb story "CharacterStory, até 128 KiB"
+        bool story_editing_allowed "liberação da história"
+        int4 sheet_schema
+        int4 revision "sobe a cada edição"
+        timestamptz sheet_locked_at "opcional, RN-01"
+        timestamptz died_at "opcional, RN-03"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    character_master_notes {
+        uuid campaign_id PK "e FK para campaigns"
+        uuid character_id PK "e FK para characters"
+        text notes "1 a 20000"
+        timestamptz updated_at
+    }
+
+    game_sessions {
+        uuid id PK
+        uuid campaign_id FK
+        int4 session_number "UNIQUE por campanha"
+        timestamptz started_at
+        timestamptz ended_at "vazio enquanto aberta"
+    }
+
     users ||--o{ user_identities : "entra por"
     users ||--o{ auth_sessions : "autentica"
     users ||--o{ campaigns : "cria"
@@ -368,6 +431,11 @@ erDiagram
     users ||--o{ campaign_invites : "gera"
     campaigns ||--o{ campaign_members : "tem"
     campaigns ||--o{ campaign_invites : "tem"
+    users |o--o{ characters : "joga ou é dono do NPC"
+    campaigns |o--o{ characters : "reúne"
+    campaigns ||--o{ character_master_notes : "guarda"
+    characters ||--o{ character_master_notes : "tem"
+    campaigns ||--o{ game_sessions : "realiza"
 ```
 
 `oidc_login_states` não liga a nenhuma conta: o login ainda não terminou, então ninguém sabe quem é.

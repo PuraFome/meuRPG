@@ -1,0 +1,171 @@
+// Package characters manages a campaign's characters: the players'
+// characters and the master's NPCs, their sheets and stories, and the
+// master's private notes (MR-003, MR-004, MR-005, MR-006; RN-01, RN-03,
+// RN-04, RN-11, RN-16). It also serves ContentService, the rules catalog the
+// character editor offers, until the table's own content has a home of its
+// own (ADR-0008).
+//
+// The sheet and the story are stored as JSON documents: the protojson of
+// charactersv1.CharacterSheet and charactersv1.CharacterStory. Derived
+// numbers are never stored; package rules computes them on every read
+// (rules.Derive), and checks every sheet before it is written
+// (rules.Validate).
+//
+// Who may do what is decided at the start of every handler with package
+// authz, from the caller's role in the campaign (ADR-0011). A player sees
+// only their own characters; everything else is "not found" to them, so NPC
+// IDs never leak.
+//
+// The sheet lock (RN-01) is set by package play when a game session starts,
+// through LockSheets, inside play's own transaction. Neither package imports
+// the other: cmd/api connects them.
+//
+// The SQL lives in queries.sql, and sqlc turns it into package charactersdb.
+// Every write runs inside db.InTx, which retries CockroachDB's serialization
+// errors (40001).
+package characters
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log/slog"
+	"net/http"
+	"slices"
+	"time"
+
+	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1/charactersv1connect"
+	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1/rulesv1connect"
+	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/nostore"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
+)
+
+// Profiles tells what to call users. The identity module implements it
+// (identity.PostgresStore.DisplayNames), so this package never reads the
+// users table itself.
+type Profiles interface {
+	// DisplayNames returns the display names of the given users, keyed by
+	// user ID. Users without one are left out.
+	DisplayNames(ctx context.Context, userIDs []string) (map[string]string, error)
+}
+
+// Config holds what the characters service needs.
+type Config struct {
+	// Pool is the CockroachDB connection pool. Required.
+	Pool *pgxpool.Pool
+	// Profiles gives players' display names. Required.
+	Profiles Profiles
+	// Rules is the rules content (rules.LoadSRD), loaded once at startup.
+	// Required.
+	Rules *rules.Content
+	// Logger receives errors, without personal data. Nil means
+	// slog.Default().
+	Logger *slog.Logger
+	// Now returns the current time. Nil means time.Now.
+	Now func() time.Time
+}
+
+// Service implements the CharacterService and ContentService Connect APIs,
+// and LockSheets for package play.
+type Service struct {
+	pool     *pgxpool.Pool
+	queries  *charactersdb.Queries
+	profiles Profiles
+	rules    *rules.Content
+	logger   *slog.Logger
+	now      func() time.Time
+	// catalog is ListContent's answer, built once: the content never
+	// changes while the server runs.
+	catalog *rulesv1.Content
+}
+
+// The compiler checks that Service implements both handlers.
+var (
+	_ charactersv1connect.CharacterServiceHandler = (*Service)(nil)
+	_ rulesv1connect.ContentServiceHandler        = (*Service)(nil)
+)
+
+// New returns a Service.
+func New(cfg Config) (*Service, error) {
+	switch {
+	case cfg.Pool == nil:
+		return nil, errors.New("characters: a Pool is required")
+	case cfg.Profiles == nil:
+		return nil, errors.New("characters: Profiles is required")
+	case cfg.Rules == nil:
+		return nil, errors.New("characters: Rules is required")
+	}
+	s := &Service{
+		pool:     cfg.Pool,
+		queries:  charactersdb.New(cfg.Pool),
+		profiles: cfg.Profiles,
+		rules:    cfg.Rules,
+		logger:   cfg.Logger,
+		now:      cfg.Now,
+		catalog:  catalogToProto(cfg.Rules.Catalog()),
+	}
+	if s.logger == nil {
+		s.logger = slog.Default()
+	}
+	if s.now == nil {
+		s.now = time.Now
+	}
+	return s, nil
+}
+
+// Sessions is what this package needs to know who is calling: an
+// interceptor that finds the caller's session, and the authz.Caller that
+// reads it back. *identity.Service is the real one. Tests pass a fake, so
+// nothing here, or in package authz, can set the caller itself
+// (docs/arquitetura.md, "Quem está chamando").
+type Sessions interface {
+	// Interceptor finds the caller's session (from the session cookie).
+	Interceptor() connect.Interceptor
+	authz.Caller
+}
+
+// Mount registers CharacterService and ContentService on a mux. handle is
+// usually httpserver.Server.Handle or http.ServeMux.Handle.
+//
+// sessions tells who is calling (the identity service in production), and
+// members tells each caller's role in a campaign (the campaigns service).
+// Mount adds, in this order, an interceptor that marks every response
+// `Cache-Control: no-store`, the sessions interceptor, and the authz
+// interceptor. opts are the Connect options shared by every service.
+func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessions Sessions, members authz.MembershipSource, opts ...connect.HandlerOption) {
+	// Clip so append copies instead of writing into the caller's array.
+	opts = append(slices.Clip(opts), connect.WithInterceptors(
+		nostore.Interceptor(),                          // no response is cacheable
+		sessions.Interceptor(),                         // who is calling
+		authz.Interceptor(sessions, members, s.logger), // what they may do, memoized per request
+	))
+	handle(charactersv1connect.NewCharacterServiceHandler(s, opts...))
+	handle(rulesv1connect.NewContentServiceHandler(s, opts...))
+}
+
+// LockSheets locks the sheets of the campaign's living player characters
+// that are still drafts (RN-01), and ends every permission the master gave
+// to edit a story in the campaign. It returns how many sheets it locked.
+//
+// Package play calls it from StartGameSession, inside the transaction that
+// opens the session, after checking that the caller is the campaign's
+// master. It takes no caller on purpose: it is "the system" of RN-01, not
+// someone editing a sheet. Nothing else calls it.
+func (s *Service) LockSheets(ctx context.Context, tx pgx.Tx, campaignID string, at time.Time) (int64, error) {
+	q := s.queries.WithTx(tx)
+	locked, err := q.LockSheets(ctx, charactersdb.LockSheetsParams{CampaignID: campaignID, Now: at})
+	if err != nil {
+		return 0, fmt.Errorf("lock sheets: %w", err)
+	}
+	if _, err := q.EndStoryEditing(ctx, campaignID); err != nil {
+		return 0, fmt.Errorf("end story editing: %w", err)
+	}
+	return locked, nil
+}

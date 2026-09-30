@@ -57,8 +57,10 @@ Copie no PR que mexe em dados, logs, telas ou fornecedores:
 | IP, user agent e URL nos logs do Cloud Run | Cloud Logging, São Paulo | Operar e proteger a plataforma | Legítimo interesse | 30 dias |
 | Membros e papéis (quem, em qual campanha, com qual papel, desde quando) | `campaign_members` | Controlar acesso (RN-05) | Contrato | Enquanto a campanha existir; apagado ao excluir a conta |
 | Nome da campanha e modo de XP | `campaigns` | Jogar. O nome é texto livre: a tela avisa "é ficção; não escreva dados reais de pessoas" | Contrato | Enquanto a campanha existir; apagada quando o mestre que a criou exclui a conta |
-| Ficha e texto livre do personagem | `characters` | Jogar | Contrato | Até excluir |
-| Notas do mestre | `character_master_notes` | Preparar o jogo; nunca vão para o jogador (RN-11) | Contrato | Enquanto a campanha existir |
+| Ficha do personagem: escolhas de jogo e o texto livre dela (nome do personagem, equipamento, idiomas, características) | `characters` (`name`, `sheet`) | Jogar. Sem nome real nem e-mail do jogador (PRIV-21) | Contrato | Enquanto o personagem existir: não há exclusão de personagem no fluxo normal (RN-03). Quando o jogador exclui a conta, fica com a campanha, sem vínculo com a conta (RN-16); quando a campanha é apagada, fica com o jogador. Sem jogador e sem campanha, o TTL do banco apaga a linha em até 1 dia. O NPC some com a conta do mestre |
+| História do personagem (personalidade, aparência, história, aliados) | `characters.story` | Jogar | Contrato | A mesma da ficha. Depois da trava da ficha, o jogador corrige quando o mestre libera (RN-01) |
+| Notas do mestre | `character_master_notes` | Preparar o jogo; nunca vão para o jogador (RN-11) | Contrato | Enquanto a campanha e o personagem existirem; notas vazias apagam a linha |
+| Sessões de jogo: quando começaram e terminaram | `game_sessions` | Travar as fichas (RN-01) e, depois, a mesa ao vivo | Contrato | Enquanto a campanha existir. Só IDs e horários: nada sobre uma pessoa |
 | Imagens (retrato, mapa, galeria) | Cloud Storage | Jogar | Contrato | Até excluir, mais 7 dias de soft delete |
 | Eventos da sessão, combatentes, XP | `session_events`, `combatants`, `xp_awards` | Histórico e tempo real (MR-012, MR-016) | Contrato | Enquanto a campanha existir |
 | Backups do banco | Cockroach Labs | Recuperar desastre | Legítimo interesse | 30 dias |
@@ -96,6 +98,19 @@ O módulo `campaigns` (`backend/internal/campaigns`) e o nome de exibição do `
 - **Quem não é membro não descobre a campanha.** A resposta é `not_found`, igual à de uma campanha que não existe (ADR-0011).
 - **Logs sem dado pessoal.** O módulo só registra falhas do banco, com a mensagem de erro do driver, que não traz os valores da linha. Nome, token e IDs nunca são passados ao log.
 - **Excluir a conta** apaga a participação nas campanhas; para o mestre, apaga também as campanhas que ele criou, com os membros e os convites (`ON DELETE CASCADE`). `TestDeletingAnAccount` confere.
+
+### O que o módulo characters já faz
+
+O módulo `characters` (`backend/internal/characters`) e o começo do `play` cumprem assim os itens desta página:
+
+- **Sem dado real do jogador na ficha.** Não há campo de nome do jogador nem de e-mail (PRIV-21); o nome que aparece ao lado do personagem é o nome de exibição do `identity`. Todo o texto livre (nome do personagem, equipamento, história) é ficção, e a tela vai avisar "é ficção; não escreva dados reais de pessoas" (PR das telas da Etapa 4).
+- **As notas do mestre nunca chegam ao jogador.** Ficam numa tabela à parte e só saem pelas chamadas do mestre. `TestRN11_PlayersNeverReceiveMasterNotes` confere cada resposta que o jogador pode pedir.
+- **O jogador só vê os próprios personagens.** O de outro jogador e os NPCs são `not_found` para ele, com a mesma mensagem de um personagem que não existe.
+- **Sem GET com dado na URL e sem cache.** Toda leitura leva um ID, então fica em POST (`IDEMPOTENT`), e toda resposta, inclusive erro, sai com `Cache-Control: no-store`.
+- **Logs e erros sem texto livre.** O módulo só registra falhas do banco. Um erro de validação diz o campo, nunca o que foi digitado (`TestUpdateCharacterValidation`), e uma ficha guardada que não abre gera um erro sem o conteúdo dela.
+- **Correção da história.** O jogador edita a história enquanto o personagem é rascunho; depois da trava, quando o mestre libera (RN-01). O pedido de correção fora disso vai pelo canal do encarregado.
+- **Excluir a conta.** As chaves estrangeiras já fazem a parte dos personagens: `player_user_id` usa `ON DELETE SET NULL` e o NPC vai junto com a conta do mestre (`CASCADE`); `TestRN16_DeletingAccountsKeepsPlayerCharacters` confere. O personagem de jogador que fica sem jogador e sem campanha é apagado pelo TTL do banco (`TestOrphanedPlayerCharactersAreDeletedByTheDatabase`).
+- **Ainda falta:** o export (`ExportMyData`) e a prévia da exclusão com a escolha de apagar os próprios personagens. Vêm no PR de privacidade, com o `PrivacyService` (decidido em 29/09/2026).
 
 ## Direitos do titular e como atendemos
 
@@ -143,6 +158,8 @@ flowchart TD
     L --> K
     M --> K
 ```
+
+Os personagens já seguem esse desenho no banco (Etapa 4). E um personagem de jogador que fica sem jogador e sem campanha — o jogador excluiu a conta e a campanha foi apagada, em qualquer ordem — é apagado pelo TTL do banco em até 1 dia: ninguém mais o alcança, e guardar o texto livre dele não teria finalidade (ver [Modelo de dados](dados.md#esquema-implementado)).
 
 Por isso os eventos da sessão guardam só IDs: quando a dona dos dados some, o evento fica anônimo sem ninguém editar o histórico. A espera de 30 dias do mestre usa uma marca de "apagar em" na conta, conferida no login, em vez da exclusão imediata da linha. O Samuel aceitou esse desenho em 29/09/2026.
 
