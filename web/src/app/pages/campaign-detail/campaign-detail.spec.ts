@@ -7,6 +7,34 @@ import { of } from 'rxjs';
 import { Campaign, Member, Role, XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { CampaignsService } from '../../core/campaigns/campaigns.service';
 import { CampaignDetail } from './campaign-detail';
+import {
+  CampaignCharactersSource,
+  CampaignCharactersVm,
+} from './characters/campaign-characters.types';
+import { GameSessionSource, GameSessionVm } from './game-session/game-session-card.types';
+
+/** `CampaignCharacters` (the "Personagens" section) and `GameSessionCard`
+ * (the master's "Sessão" card) are children of this page too — see
+ * `campaign-detail.html`. Both need a provider or Angular DI throws. */
+@Injectable()
+class FakeCampaignCharactersSource {
+  listCharactersResult: Promise<CampaignCharactersVm> = Promise.resolve({
+    playerCharacters: [],
+    npcs: [],
+    hasLivingCharacter: false,
+  });
+  listCharacters(): Promise<CampaignCharactersVm> {
+    return this.listCharactersResult;
+  }
+}
+
+@Injectable()
+class FakeGameSessionSource {
+  getCurrentSessionResult: Promise<GameSessionVm | null> = Promise.resolve(null);
+  getCurrentSession(): Promise<GameSessionVm | null> {
+    return this.getCurrentSessionResult;
+  }
+}
 
 /** Covers both CampaignDetail's own calls and CampaignInvites' (the master
  * section it renders as a child), so this fake needs every method both use. */
@@ -59,6 +87,8 @@ describe('CampaignDetail', () => {
       providers: [
         { provide: CampaignsService, useClass: FakeCampaignsService },
         { provide: ActivatedRoute, useValue: activatedRouteFor(id) },
+        { provide: CampaignCharactersSource, useClass: FakeCampaignCharactersSource },
+        { provide: GameSessionSource, useClass: FakeGameSessionSource },
       ],
     });
     fake = TestBed.inject(CampaignsService) as unknown as FakeCampaignsService;
@@ -121,6 +151,30 @@ describe('CampaignDetail', () => {
 
     const el = await render();
     expect(el.textContent).not.toContain('Convites');
+  });
+
+  it('shows the "Personagens" section for everyone, and the "Sessão" card only for the master', async () => {
+    configure();
+    fake.getCampaignResult = Promise.resolve({
+      campaign: campaign('camp-1', 'Mirathel', Role.MASTER),
+    });
+    fake.listMembersResult = Promise.resolve({ members: [] });
+
+    const el = await render();
+    expect(el.textContent).toContain('Personagens');
+    expect(el.textContent).toContain('Sessão');
+  });
+
+  it('hides the "Sessão" card for a player', async () => {
+    configure();
+    fake.getCampaignResult = Promise.resolve({
+      campaign: campaign('camp-1', 'Mirathel', Role.PLAYER),
+    });
+    fake.listMembersResult = Promise.resolve({ members: [] });
+
+    const el = await render();
+    expect(el.textContent).toContain('Personagens');
+    expect(el.textContent).not.toContain('Iniciar sessão');
   });
 
   it('shows a generic error message for a non-not_found failure', async () => {

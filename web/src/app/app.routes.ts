@@ -13,10 +13,58 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/campaigns/campaigns').then((m) => m.Campaigns),
   },
   {
+    // `loadChildren`, not `loadComponent`: CampaignDetail's route needs its
+    // own `providers` (CampaignCharactersSource, GameSessionSource, phase
+    // 2) without pulling their generated Connect clients into this file,
+    // which is part of the eager bundle — see campaign-detail.routes.ts's
+    // doc comment.
     path: 'campanhas/:id',
     canActivate: [authGuard],
-    loadComponent: () =>
-      import('./pages/campaign-detail/campaign-detail').then((m) => m.CampaignDetail),
+    loadChildren: () =>
+      import('./pages/campaign-detail/campaign-detail.routes').then((m) => m.CAMPAIGN_DETAIL_ROUTES),
+  },
+  {
+    // The player creates their own character (MR-003, character half).
+    // `loadChildren` for the same reason as `campanhas/:id` above — see
+    // character-editor.routes.ts.
+    path: 'campanhas/:id/personagens/novo',
+    canActivate: [authGuard],
+    loadChildren: () =>
+      import('./pages/character-editor/character-editor.routes').then(
+        (m) => m.CHARACTER_EDITOR_ROUTES,
+      ),
+  },
+  {
+    // The master creates an NPC. `tipo` is `inimigo`, `boss`, `minion` or
+    // `historia` (MR-005) — CharacterEditorMode reads it and picks the full
+    // or basic form.
+    path: 'campanhas/:id/npcs/novo/:tipo',
+    canActivate: [authGuard],
+    loadChildren: () =>
+      import('./pages/character-editor/character-editor.routes').then(
+        (m) => m.CHARACTER_EDITOR_ROUTES,
+      ),
+  },
+  {
+    // The sheet (MR-004): read-only or editable depending on `can_edit`.
+    // `loadChildren` for the same reason as `campanhas/:id` above — see
+    // character-sheet.routes.ts.
+    path: 'campanhas/:id/personagens/:characterId',
+    canActivate: [authGuard],
+    loadChildren: () =>
+      import('./pages/character-sheet/character-sheet.routes').then(
+        (m) => m.CHARACTER_SHEET_ROUTES,
+      ),
+  },
+  {
+    // The editor, in edit mode (MR-006 / RN-01: the server refuses this for
+    // a player once the sheet is locked).
+    path: 'campanhas/:id/personagens/:characterId/editar',
+    canActivate: [authGuard],
+    loadChildren: () =>
+      import('./pages/character-editor/character-editor.routes').then(
+        (m) => m.CHARACTER_EDITOR_ROUTES,
+      ),
   },
   {
     // Public: read from the invite link's fragment (never a route param —
@@ -42,6 +90,12 @@ export const routes: Routes = [
     path: 'indisponivel',
     loadComponent: () =>
       import('./pages/server-unavailable/server-unavailable').then((m) => m.ServerUnavailable),
+  },
+  {
+    // Public: the SRD 5.1 CC-BY-4.0 attribution (see creditos.ts), linked
+    // from the app footer on every page.
+    path: 'creditos',
+    loadComponent: () => import('./pages/creditos/creditos').then((m) => m.Creditos),
   },
   {
     path: '**',

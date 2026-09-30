@@ -14,6 +14,8 @@ import {
 } from '../../core/campaigns/campaign-labels';
 import { CampaignsService } from '../../core/campaigns/campaigns.service';
 import { describeConnectError } from '../../core/connect/connect-errors';
+import { CampaignCharacters } from './characters/campaign-characters';
+import { GameSessionCard } from './game-session/game-session-card';
 import { CampaignInvites } from './invites/invites';
 
 type PageState =
@@ -24,7 +26,8 @@ type PageState =
 
 /**
  * "/campanhas/:id" (guarded by authGuard): GetCampaign + ListMembers
- * (MR-001, MR-002), plus the master's "Convites" section.
+ * (MR-001, MR-002), the "Personagens" section (MR-003, MR-005; everyone),
+ * plus two master-only sections: "Convites" and "Sessão" (MR-006 / RN-01).
  *
  * A campaign the caller is not a member of, and one that does not exist,
  * both come back as `not_found` (ADR-0011) — this page shows the same
@@ -32,7 +35,15 @@ type PageState =
  */
 @Component({
   selector: 'app-campaign-detail',
-  imports: [CampaignInvites, MatButtonModule, MatCardModule, MatProgressSpinnerModule, RouterLink],
+  imports: [
+    CampaignCharacters,
+    CampaignInvites,
+    GameSessionCard,
+    MatButtonModule,
+    MatCardModule,
+    MatProgressSpinnerModule,
+    RouterLink,
+  ],
   templateUrl: './campaign-detail.html',
   styleUrl: './campaign-detail.scss',
 })

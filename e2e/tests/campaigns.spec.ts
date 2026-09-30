@@ -1,15 +1,19 @@
 import { expect, test } from '@playwright/test';
 
-import { createCampaign, signIn } from './support';
+import { authStatePath, createCampaign } from './support';
 
 // MR-001 (criar campanha) and MR-002 (gerar convite), by the screen, as the
 // master would use it. The underlying rules already have Go tests
 // (TestMR001_*, TestMR002_*, backend/internal/campaigns); these prove the
 // same criteria hold through the UI.
+//
+// Neither test's own story is signing in, so both reuse the master's saved
+// state (auth.setup.ts) instead of a fresh /auth/login.
+test.use({ storageState: authStatePath('Mestre Teste') });
 
 test.describe('criar campanha', () => {
   test('o mestre cria uma campanha pela tela e a vê como mestre na lista', { tag: '@MR-001' }, async ({ page }) => {
-    await signIn(page, 'Mestre Teste', '/campanhas');
+    await page.goto('/campanhas');
     const name = `Mirathel ${Date.now()}`;
 
     await expect(page.getByRole('heading', { name: 'Minhas campanhas' })).toBeVisible();
@@ -33,7 +37,6 @@ test.describe('criar campanha', () => {
 
 test.describe('convites', () => {
   test('o mestre gera um convite, vê o link uma vez e o revoga', { tag: '@MR-002' }, async ({ page }) => {
-    await signIn(page, 'Mestre Teste', '/');
     await createCampaign(page, `Convites ${Date.now()}`);
 
     await expect(page.getByRole('heading', { name: 'Convites', level: 2 })).toBeVisible();

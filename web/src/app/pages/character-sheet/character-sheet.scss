@@ -1,0 +1,230 @@
+.status-card {
+  max-width: 32rem;
+  margin: 1rem 0;
+}
+
+.status-card__content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.status-card--error {
+  color: var(--mat-sys-error);
+}
+
+.state-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+// Plain styled badges instead of MatChipsModule (which this page was the
+// only screen to use): one less Material/CDK module in the bundle for two
+// read-only labels.
+.state-chip {
+  padding: 0.15rem 0.75rem;
+  border-radius: 1rem;
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.sheet-meta {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.locked-banner {
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  background: var(--mat-sys-tertiary-container);
+  color: var(--mat-sys-on-tertiary-container);
+}
+
+.sheet-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+.form-error {
+  color: var(--mat-sys-error);
+}
+
+/*
+ * Mobile-first: `.sheet-column` renders as `display: contents` (see below),
+ * so it disappears from the box tree and its sections become `.sheet-grid`'s
+ * own flex children, stacking in one column. `order` (further down) then
+ * reads them out in the agreed order — Atributos, Salvaguardas, Combate,
+ * Perícias, Magias, Equipamento, Características e traços, História —
+ * regardless of which `.sheet-column` each one's markup lives in.
+ *
+ * Desktop (900px+, below) turns `.sheet-grid` into a row of three real
+ * `.sheet-column` flex containers instead: three *independent* stacks, each
+ * sized by its own content, so a long "Características e traços" never
+ * inflates a shared row and leaves empty space under the other columns
+ * (integrator fix — CSS Grid's `grid-template-areas` did exactly that,
+ * because every cell in a row shares that row's height).
+ */
+.sheet-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.sheet-column {
+  display: contents;
+}
+
+.sheet-section h2 {
+  margin-top: 0;
+}
+
+/* The reading order agreed for the sheet (see this file's top comment).
+ * Values only need to increase within each desktop column — see the
+ * `min-width: 900px` block below — which they do: column 1 gets 1/2/4,
+ * column 2 gets 3/5/6, column 3 gets 7/8. */
+.sheet-section--atributos {
+  order: 1;
+}
+.sheet-section--salvaguardas {
+  order: 2;
+}
+.sheet-section--combate {
+  order: 3;
+}
+.sheet-section--pericias {
+  order: 4;
+}
+.sheet-section--magias {
+  order: 5;
+}
+.sheet-section--equipamento {
+  order: 6;
+}
+.sheet-section--caracteristicas {
+  order: 7;
+}
+.sheet-section--historia {
+  order: 8;
+}
+
+.ability-grid,
+.combat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem 1rem;
+  margin: 0;
+}
+
+.ability-box dt,
+.combat-grid dt {
+  font-size: 0.8rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.ability-box dd,
+.combat-grid dd {
+  margin: 0;
+  font-weight: 500;
+}
+
+.skills-list,
+.saves-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.5rem;
+}
+
+.skill-proficiency {
+  margin-left: 0.5rem;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.8rem;
+}
+
+.attacks-table,
+.equipment-list {
+  width: 100%;
+}
+
+.features-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.5rem;
+}
+
+.feature-row summary {
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.feature-description {
+  margin: 0.25rem 0 0.5rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+/* Issues (real problems) and hints (reminders, never a problem) share this
+ * list — see the template — so it is not colored as an error: an issue's
+ * own message text already says what is wrong. */
+.avisos-list {
+  padding-left: 1.25rem;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.story-form,
+.story-form mat-form-field {
+  display: block;
+}
+
+.appearance-short-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 1rem;
+
+  @media (min-width: 480px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.story-form__actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.full-width {
+  width: 100%;
+}
+
+/* Desktop: the official sheet's three-column layout, as three independent
+ * flex stacks (not CSS Grid rows, which would tie every column's row
+ * heights together — see this file's top comment). `.sheet-column` stops
+ * being `display: contents` here, becoming a real flex container: each one
+ * is now its own formatting context, so its height depends only on its own
+ * sections. */
+@media (min-width: 900px) {
+  .sheet-grid {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .sheet-column {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-width: 0;
+    gap: 1.5rem;
+  }
+}

@@ -47,7 +47,10 @@
         </ul>
       </section>
 
+      <app-campaign-characters [campaignId]="s.campaign.id" [isMaster]="s.campaign.myRole === Role.MASTER" />
+
       @if (s.campaign.myRole === Role.MASTER) {
+        <app-game-session-card [campaignId]="s.campaign.id" />
         <app-campaign-invites [campaignId]="s.campaign.id" />
       }
     }

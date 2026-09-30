@@ -1,0 +1,13 @@
+:host {
+  display: block;
+  max-width: 42rem;
+}
+
+.srd-attribution {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  border-left: 3px solid var(--mat-sys-outline);
+  background: var(--mat-sys-surface-variant);
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.9rem;
+}

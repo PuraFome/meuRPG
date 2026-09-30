@@ -1,0 +1,534 @@
+@if (state(); as s) {
+  @switch (s.status) {
+    @case ('loading') {
+      <h1>Ficha</h1>
+      <mat-card class="status-card" role="status" aria-live="polite">
+        <mat-card-content class="status-card__content">
+          <mat-spinner diameter="32" />
+          <p>Carregando a ficha...</p>
+        </mat-card-content>
+      </mat-card>
+    }
+    @case ('not-found') {
+      <h1>Personagem não encontrado</h1>
+      <mat-card class="status-card" role="alert">
+        <mat-card-content>
+          <p>Esse personagem não existe, ou você não pode vê-lo.</p>
+        </mat-card-content>
+      </mat-card>
+    }
+    @case ('error') {
+      <h1>Não foi possível abrir a ficha</h1>
+      <mat-card class="status-card status-card--error" role="alert">
+        <mat-card-content>
+          <p>{{ s.message }}</p>
+        </mat-card-content>
+      </mat-card>
+    }
+    @case ('ready') {
+      @let vm = s.vm;
+      <h1>{{ vm.name }}</h1>
+
+      <ul class="state-chips" aria-label="Estado do personagem">
+        <li class="state-chip">{{ characterStateLabel(vm.state) }}</li>
+        @if (vm.characterKind !== 'player') {
+          <li class="state-chip">{{ characterKindLabel(vm.characterKind) }}</li>
+        }
+      </ul>
+
+      <p class="sheet-meta">
+        {{ vm.raceLabel }} · {{ vm.classSummary }} · {{ vm.backgroundLabel }}
+        @if (vm.alignmentLabel) {
+          · {{ vm.alignmentLabel }}
+        }
+        @if (vm.experiencePoints !== null) {
+          · XP: {{ vm.experiencePoints }}
+        }
+        @if (vm.playerDisplayName) {
+          · Jogador: {{ vm.playerDisplayName }}
+        }
+      </p>
+
+      @if (vm.sheetLockedAt) {
+        <p class="locked-banner" role="status">
+          Ficha travada desde {{ formatDateTime(vm.sheetLockedAt) }}.
+        </p>
+      }
+
+      <div class="sheet-actions">
+        @if (vm.canEdit) {
+          <a mat-flat-button [routerLink]="['/campanhas', vm.campaignId, 'personagens', vm.id, 'editar']">
+            Editar ficha
+          </a>
+        }
+        @if (vm.canMarkDead) {
+          <button
+            mat-button
+            type="button"
+            [disabled]="markDeadState().status === 'saving'"
+            (click)="markDead(vm.campaignId, vm.id)"
+          >
+            Marcar como morto
+          </button>
+        }
+      </div>
+      @if (markDeadState(); as md) {
+        @if (md.status === 'error') {
+          <p class="form-error" role="alert">{{ md.message }}</p>
+        }
+      }
+
+      <!-- Three independent flex columns, not shared grid rows (integrator
+           fix: a long "Características e traços" used to inflate a whole
+           grid row, leaving huge empty areas under the shorter cells next
+           to it) — see character-sheet.scss's `.sheet-grid` / `.sheet-column`.
+           Column 1 and 2 exist only for a `full` sheet; a `basic` (NPC)
+           sheet has no Atributos, Salvaguardas, Perícias or Magias. Column
+           3 (Características/Descrição, then História) is written once,
+           shared by both branches, since História does not depend on the
+           sheet's kind. -->
+      <div class="sheet-grid">
+        @if (vm.sheet.kind === 'full') {
+          @let full = asFullSheet(vm.sheet);
+
+          <div class="sheet-column">
+            <section class="sheet-section sheet-section--atributos" aria-labelledby="atributos-heading">
+              <h2 id="atributos-heading">Atributos</h2>
+              <dl class="ability-grid">
+                @for (a of full.abilities; track a.key) {
+                  <div class="ability-box">
+                    <dt>{{ abilityLabel(a.key) }}</dt>
+                    <dd>{{ a.score }} ({{ formatModifier(a.modifier) }})</dd>
+                  </div>
+                }
+              </dl>
+              <p>Bônus de proficiência: {{ formatModifier(full.proficiencyBonus) }}</p>
+            </section>
+
+            <section class="sheet-section sheet-section--salvaguardas" aria-labelledby="salvaguardas-heading">
+              <h2 id="salvaguardas-heading">Salvaguardas</h2>
+              <ul class="saves-list">
+                @for (save of full.savingThrows; track save.key) {
+                  <li>
+                    {{ abilityLabel(save.key) }}: {{ formatModifier(save.bonus) }}
+                    <span class="skill-proficiency">
+                      {{ save.proficient ? 'proficiente' : 'sem proficiência' }}
+                    </span>
+                  </li>
+                }
+              </ul>
+            </section>
+
+            <section class="sheet-section sheet-section--pericias" aria-labelledby="pericias-heading">
+              <h2 id="pericias-heading">Perícias</h2>
+              <ul class="skills-list">
+                @for (skill of full.skills; track skill.key) {
+                  <li>
+                    {{ skill.namePt }} ({{ abilityLabel(skill.ability) }}):
+                    {{ formatModifier(skill.bonus) }}
+                    <span class="skill-proficiency">{{ skillProficiencyLabel(skill.proficiency) }}</span>
+                  </li>
+                }
+              </ul>
+              <p class="passives">
+                Percepção passiva {{ full.passivePerception }} · Investigação passiva
+                {{ full.passiveInvestigation }} · Intuição passiva {{ full.passiveInsight }}
+              </p>
+            </section>
+          </div>
+
+          <div class="sheet-column">
+            <section class="sheet-section sheet-section--combate" aria-labelledby="combate-heading">
+              <h2 id="combate-heading">Combate</h2>
+              <dl class="combat-grid">
+                <div>
+                  <dt>Classe de Armadura</dt>
+                  <dd>{{ full.armorClass }}</dd>
+                </div>
+                <div>
+                  <dt>Iniciativa</dt>
+                  <dd>{{ formatModifier(full.initiative) }}</dd>
+                </div>
+                <div>
+                  <dt>Deslocamento</dt>
+                  <dd>{{ formatSpeedFt(full.speedWalkFt) }}</dd>
+                </div>
+                <div>
+                  <dt>Pontos de Vida (máximo)</dt>
+                  <dd>{{ full.hitPointsMax }}</dd>
+                </div>
+                <div>
+                  <dt>Dados de Vida</dt>
+                  <dd>{{ full.hitDice }}</dd>
+                </div>
+              </dl>
+              @if (full.senses.length > 0) {
+                <p>Sentidos: {{ full.senses.join(', ') }}</p>
+              }
+              @if (full.attacks.length > 0) {
+                <table class="attacks-table">
+                  <caption class="visually-hidden">Ataques</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Ataque</th>
+                      <th scope="col">Bônus ou CD</th>
+                      <th scope="col">Dano</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- The weapons carried, then the damage cantrips (kind:
+                         weapon then spell), exactly as the server orders
+                         DerivedSheet.attacks — the official sheet's own
+                         order. A save spell (saveDc > 0) shows its DC instead
+                         of an attack bonus; it has none to add. -->
+                    @for (atk of full.attacks; track atk.key) {
+                      <tr>
+                        <td>{{ atk.namePt }}</td>
+                        <td>
+                          @if (atk.saveDc > 0) {
+                            CD {{ atk.saveDc }}
+                            @if (atk.saveAbility) {
+                              ({{ abilityLabel(atk.saveAbility) }})
+                            }
+                          } @else {
+                            {{ formatModifier(atk.attackBonus) }}
+                          }
+                        </td>
+                        <td>{{ atk.damage }} {{ atk.damageTypePt }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              }
+            </section>
+
+            @if (full.spellcasting.length > 0) {
+              <section class="sheet-section sheet-section--magias" aria-labelledby="magias-heading">
+                <h2 id="magias-heading">Magias</h2>
+                @for (sc of full.spellcasting; track sc.className) {
+                  <p>
+                    {{ sc.className }} — CD de magia {{ sc.saveDc }}, ataque de magia
+                    {{ formatModifier(sc.attackBonus) }}, {{ sc.cantripsKnown }} truques,
+                    {{ sc.spellsPreparedMax }} preparadas
+                  </p>
+                }
+                @if (full.spellSlots.length > 0) {
+                  <p class="spell-slots">Espaços de magia: {{ formatSpellSlots(full.spellSlots) }}</p>
+                }
+                @if (full.cantripNames.length > 0) {
+                  <p>Truques: {{ full.cantripNames.join(', ') }}</p>
+                }
+                @if (full.spellNames.length > 0) {
+                  <p>Magias: {{ full.spellNames.join(', ') }}</p>
+                }
+              </section>
+            }
+
+            <section class="sheet-section sheet-section--equipamento" aria-labelledby="equipamento-heading">
+              <h2 id="equipamento-heading">Equipamento</h2>
+              @let armor = splitArmorDescription(full.armorClassDescription);
+              <!-- The armor and shield the character carries, then the
+                   weapons (from the attacks the server already derived),
+                   then the free-text items — never just the free-text list
+                   (integrator fix: this used to say "Nenhum item
+                   cadastrado." even with armor, a shield and weapons
+                   chosen). -->
+              <ul class="equipment-list">
+                <!-- The armor's name comes from the AC description only when
+                     the stored sheet has armor: without it, the description
+                     may name a feature (Unarmored Defense), not an item. -->
+                <li>Armadura: {{ full.wearsArmor ? armor.armorNamePt : 'Sem armadura' }}</li>
+                @if (full.hasShield) {
+                  <li>Escudo</li>
+                }
+                @for (weapon of weaponNames(full); track weapon) {
+                  <li>{{ weapon }}</li>
+                }
+                @for (item of full.equipment; track item.name) {
+                  <li>
+                    {{ item.name }}
+                    @if (item.quantity > 1) {
+                      (x{{ item.quantity }})
+                    }
+                  </li>
+                }
+              </ul>
+              <p class="coins">
+                {{ full.coins.pp }} PL · {{ full.coins.gp }} PO · {{ full.coins.ep }} PE ·
+                {{ full.coins.sp }} PP · {{ full.coins.cp }} PC
+              </p>
+            </section>
+          </div>
+        } @else {
+          @let basic = asBasicSheet(vm.sheet);
+
+          <div class="sheet-column">
+            <section class="sheet-section sheet-section--combate" aria-labelledby="combate-heading">
+              <h2 id="combate-heading">Combate</h2>
+              <dl class="combat-grid">
+                <div>
+                  <dt>Classe de Armadura</dt>
+                  <dd>{{ basic.armorClass }}</dd>
+                </div>
+                <div>
+                  <dt>Pontos de Vida (máximo)</dt>
+                  <dd>{{ basic.hitPointsMax }}</dd>
+                </div>
+                <div>
+                  <dt>Deslocamento</dt>
+                  <dd>{{ formatSpeedFt(basic.speedWalkFt) }}</dd>
+                </div>
+                <div>
+                  <dt>Ataque</dt>
+                  <dd>{{ formatModifier(basic.attackBonus) }}, {{ basic.damage }}</dd>
+                </div>
+              </dl>
+            </section>
+          </div>
+        }
+
+        <div class="sheet-column">
+          @if (vm.sheet.kind === 'full') {
+            @let full = asFullSheet(vm.sheet);
+
+            <section
+              class="sheet-section sheet-section--caracteristicas"
+              aria-labelledby="caracteristicas-heading"
+            >
+              <h2 id="caracteristicas-heading">Características e traços</h2>
+              @if (full.features.length > 0) {
+                <ul class="features-list">
+                  @for (f of full.features; track f.name) {
+                    <li class="feature-row">
+                      <details>
+                        <summary>{{ f.name }} · {{ f.sourcePt }}</summary>
+                        <p class="feature-description">{{ f.description }}</p>
+                      </details>
+                    </li>
+                  }
+                </ul>
+              }
+              @if (full.customFeaturesText) {
+                <p class="custom-features">{{ full.customFeaturesText }}</p>
+              }
+              @if (full.languages.length > 0) {
+                <p>Idiomas: {{ full.languages.join(', ') }}</p>
+              }
+              @if (full.proficiencies.length > 0) {
+                <p>Proficiências: {{ full.proficiencies.join(', ') }}</p>
+              }
+              @if (full.issues.length > 0 || full.hints.length > 0) {
+                <h3>Avisos</h3>
+                <ul class="avisos-list" role="status">
+                  @for (issue of full.issues; track issue.code + issue.field) {
+                    <li>{{ issue.message }}</li>
+                  }
+                  @for (hint of full.hints; track hint.sourceKey + hint.text) {
+                    <li>{{ hint.text }}</li>
+                  }
+                </ul>
+              }
+              <p class="content-version">Conteúdo de regras: {{ full.contentVersion }}</p>
+            </section>
+          } @else {
+            @let basic = asBasicSheet(vm.sheet);
+
+            <section
+              class="sheet-section sheet-section--caracteristicas"
+              aria-labelledby="descricao-heading"
+            >
+              <h2 id="descricao-heading">Descrição</h2>
+              <p>{{ basic.description }}</p>
+            </section>
+          }
+
+          @if (vm.story) {
+            <section class="sheet-section sheet-section--historia" aria-labelledby="historia-heading">
+              <h2 id="historia-heading">História</h2>
+
+              @if (vm.canToggleStoryEditing) {
+                <button
+                  mat-button
+                  type="button"
+                  [disabled]="storyToggleState().status === 'saving'"
+                  (click)="toggleStoryEditingAllowed(vm.campaignId, vm.id, vm.storyEditingAllowed)"
+                >
+                  {{ vm.storyEditingAllowed ? 'Travar a história' : 'Permitir editar a história' }}
+                </button>
+                @if (storyToggleState(); as ts) {
+                  @if (ts.status === 'error') {
+                    <p class="form-error" role="alert">{{ ts.message }}</p>
+                  }
+                }
+              }
+
+              @if (!storyEditing()) {
+                <dl class="story-view">
+                  <div>
+                    <dt>Traços de personalidade</dt>
+                    <dd>{{ vm.story.personality.traits || '—' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Ideais</dt>
+                    <dd>{{ vm.story.personality.ideals || '—' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Vínculos</dt>
+                    <dd>{{ vm.story.personality.bonds || '—' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Fraquezas</dt>
+                    <dd>{{ vm.story.personality.flaws || '—' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Idade</dt>
+                    <dd>{{ vm.story.appearance.age || '—' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Altura</dt>
+                    <dd>{{ vm.story.appearance.height || '—' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Peso</dt>
+                    <dd>{{ vm.story.appearance.weight || '—' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Olhos</dt>
+                    <dd>{{ vm.story.appearance.eyes || '—' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Pele</dt>
+                    <dd>{{ vm.story.appearance.skin || '—' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Cabelo</dt>
+                    <dd>{{ vm.story.appearance.hair || '—' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Aparência</dt>
+                    <dd>{{ vm.story.appearance.description || '—' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Antecedentes</dt>
+                    <dd>{{ vm.story.backstory || '—' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Aliados</dt>
+                    <dd>{{ vm.story.allies || '—' }}</dd>
+                  </div>
+                </dl>
+                @if (vm.canEditStory) {
+                  <button mat-button type="button" (click)="startEditingStory(vm.story)">
+                    Editar história
+                  </button>
+                }
+              } @else {
+                <app-fiction-notice />
+                <form [formGroup]="storyForm" (ngSubmit)="saveStory(vm.campaignId, vm.id, vm.revision)" class="story-form">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Traços de personalidade</mat-label>
+                    <textarea matInput formControlName="traits" rows="2"></textarea>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Ideais</mat-label>
+                    <textarea matInput formControlName="ideals" rows="2"></textarea>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Vínculos</mat-label>
+                    <textarea matInput formControlName="bonds" rows="2"></textarea>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Fraquezas</mat-label>
+                    <textarea matInput formControlName="flaws" rows="2"></textarea>
+                  </mat-form-field>
+                  <div class="appearance-short-fields">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Idade</mat-label>
+                      <input matInput formControlName="age" maxlength="40" />
+                    </mat-form-field>
+                    <mat-form-field appearance="outline">
+                      <mat-label>Altura</mat-label>
+                      <input matInput formControlName="height" maxlength="40" />
+                    </mat-form-field>
+                    <mat-form-field appearance="outline">
+                      <mat-label>Peso</mat-label>
+                      <input matInput formControlName="weight" maxlength="40" />
+                    </mat-form-field>
+                    <mat-form-field appearance="outline">
+                      <mat-label>Olhos</mat-label>
+                      <input matInput formControlName="eyes" maxlength="40" />
+                    </mat-form-field>
+                    <mat-form-field appearance="outline">
+                      <mat-label>Pele</mat-label>
+                      <input matInput formControlName="skin" maxlength="40" />
+                    </mat-form-field>
+                    <mat-form-field appearance="outline">
+                      <mat-label>Cabelo</mat-label>
+                      <input matInput formControlName="hair" maxlength="40" />
+                    </mat-form-field>
+                  </div>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Aparência</mat-label>
+                    <textarea matInput formControlName="appearanceDescription" rows="3"></textarea>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Antecedentes</mat-label>
+                    <textarea matInput formControlName="backstory" rows="5"></textarea>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Aliados</mat-label>
+                    <textarea matInput formControlName="allies" rows="3"></textarea>
+                  </mat-form-field>
+                  @if (storySaveState(); as ss) {
+                    @if (ss.status === 'error') {
+                      <p class="form-error" role="alert">{{ ss.message }}</p>
+                    }
+                  }
+                  <div class="story-form__actions">
+                    <button mat-flat-button type="submit" [disabled]="storySaveState().status === 'saving'">
+                      Salvar história
+                    </button>
+                    <button mat-button type="button" (click)="cancelEditingStory()">Cancelar</button>
+                  </div>
+                </form>
+              }
+            </section>
+          }
+        </div>
+      </div>
+
+      @if (vm.canAccessMasterNotes) {
+        <section class="sheet-section master-notes" aria-labelledby="notas-heading">
+          <h2 id="notas-heading">Notas do mestre</h2>
+          <app-fiction-notice />
+          @if (masterNotesState(); as mn) {
+            @switch (mn.status) {
+              @case ('loading') {
+                <p role="status" aria-live="polite">Carregando notas...</p>
+              }
+              @case ('error') {
+                <p role="alert">{{ mn.message }}</p>
+              }
+              @case ('ready') {
+                <form [formGroup]="notesForm" (ngSubmit)="saveNotes(vm.campaignId, vm.id)">
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Notas</mat-label>
+                    <textarea matInput formControlName="notes" rows="6"></textarea>
+                  </mat-form-field>
+                  @if (notesSaveState(); as ns) {
+                    @if (ns.status === 'error') {
+                      <p class="form-error" role="alert">{{ ns.message }}</p>
+                    }
+                  }
+                  <button mat-flat-button type="submit" [disabled]="notesSaveState().status === 'saving'">
+                    Salvar notas
+                  </button>
+                </form>
+              }
+            }
+          }
+        </section>
+      }
+    }
+  }
+}

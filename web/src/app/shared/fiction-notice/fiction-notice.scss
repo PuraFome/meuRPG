@@ -1,0 +1,18 @@
+.fiction-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0.5rem 0 1rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  background: var(--mat-sys-surface-variant);
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
+}
+
+.fiction-notice__icon {
+  flex: none;
+  font-size: 1.125rem;
+  height: 1.125rem;
+  width: 1.125rem;
+}

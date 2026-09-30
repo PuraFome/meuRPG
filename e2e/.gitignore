@@ -2,3 +2,6 @@ node_modules/
 playwright-report/
 test-results/
 blob-report/
+# Signed-in storageState saved by tests/auth.setup.ts (session cookies:
+# secrets, and machine/run-specific — see support.ts's `authStatePath`).
+.auth/

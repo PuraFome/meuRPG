@@ -1,0 +1,19 @@
+.character-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.character-list__detail {
+  margin-left: 0.5rem;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
+}
+
+.character-list__state {
+  margin-left: 0.5rem;
+  font-size: 0.8rem;
+}

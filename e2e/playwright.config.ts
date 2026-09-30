@@ -18,6 +18,12 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   // No retries: a flaky acceptance test is a bug to fix, not to hide.
   retries: 0,
+  // Assertions wait up to 10 s instead of Playwright's default 5 s. Right
+  // after `make e2e` rebuilds the stack and runs new migrations, the first
+  // queries take 1 to 2 s each (measured in the api log on 29/09/2026), and
+  // the parallel workers all hit that cold start at once. Warm, every
+  // request answers in milliseconds, so this only absorbs the start.
+  expect: { timeout: 10_000 },
   reporter: [['list'], ['html', { open: 'never' }], ...(process.env.CI ? [['github'] as const] : [])],
   use: {
     baseURL,
@@ -26,8 +32,19 @@ export default defineConfig({
   },
   projects: [
     {
-      name: 'chrome',
+      // Signs in once per test user and saves the state every other test
+      // reuses (see tests/auth.setup.ts and support.ts's `authStatePath` /
+      // `newSignedInContext`) — keeps the suite comfortably under
+      // `/auth/login`'s rate limit instead of signing in per test.
+      name: 'setup',
+      testMatch: /auth\.setup\.ts/,
       use: { ...devices['Desktop Chrome'], channel: channel || undefined },
+    },
+    {
+      name: 'chrome',
+      testIgnore: /auth\.setup\.ts/,
+      use: { ...devices['Desktop Chrome'], channel: channel || undefined },
+      dependencies: ['setup'],
     },
   ],
 });

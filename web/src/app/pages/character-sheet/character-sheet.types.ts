@@ -1,0 +1,286 @@
+import { AbilityKey, CharacterKind, CharacterState } from '../../core/characters/characters.types';
+import { SkillProficiency } from '../../core/characters/character-labels';
+
+/**
+ * The view-model `CharacterSheetPage` renders. Phase 2 maps `GetCharacter`'s
+ * response (a `characters.v1.Character`, carrying `sheet` and
+ * `rules.v1.DerivedSheet`, plan §4) onto this shape; nothing below imports
+ * from `../../../gen/...`, so that mapping is the only thing phase 2 adds —
+ * this file, the component and its template do not change.
+ *
+ * The browser never computes a rule (ADR-0008): every number here is
+ * exactly what the server sent, just formatted for display
+ * (`character-labels.ts`'s `formatModifier` / `formatSpeedFt`).
+ */
+
+export interface AbilityScoreVm {
+  readonly key: AbilityKey;
+  readonly score: number;
+  readonly modifier: number;
+}
+
+export interface SavingThrowVm {
+  readonly key: AbilityKey;
+  readonly bonus: number;
+  readonly proficient: boolean;
+}
+
+export interface SkillVm {
+  readonly key: string;
+  /** From the server's `name_pt` — never a hand-copied list (plan §5). */
+  readonly namePt: string;
+  readonly ability: AbilityKey;
+  readonly bonus: number;
+  readonly proficiency: SkillProficiency;
+}
+
+/** `AttackKind`: whether an attack row is a weapon carried, or a damage
+ * cantrip (integrator fix, phase 2 — `DerivedSheet.attacks` lists both, as
+ * the official sheet does). */
+export type AttackKindVm = 'weapon' | 'spell';
+
+export interface AttackVm {
+  readonly key: string;
+  readonly namePt: string;
+  readonly kind: AttackKindVm;
+  /** The bonus to add to the d20. 0 for a spell that asks for a saving
+   * throw instead (`kind === 'spell'` with `saveDc > 0`) — use `saveDc` /
+   * `saveAbility` in that case, not `attackBonus`. */
+  readonly attackBonus: number;
+  readonly damage: string;
+  readonly damageTypePt: string;
+  /** > 0 only for a spell that asks for a saving throw. */
+  readonly saveDc: number;
+  readonly saveAbility: AbilityKey | null;
+}
+
+export interface SpellcastingVm {
+  readonly className: string;
+  readonly ability: AbilityKey;
+  readonly saveDc: number;
+  readonly attackBonus: number;
+  readonly cantripsKnown: number;
+  readonly spellsPreparedMax: number;
+}
+
+export interface FeatureVm {
+  /** Portuguese name (`Feature.name_pt`). */
+  readonly name: string;
+  /** Where it comes from, in Portuguese, e.g. "Mago 1" or "Gnomo"
+   * (`Feature.source_pt`) — shown next to the name in the compact row. */
+  readonly sourcePt: string;
+  /** The SRD's English text (`Feature.description`), collapsed by default
+   * behind a native `<details>` — the sheet has no Portuguese text for
+   * this yet (plan §5, "open questions"). */
+  readonly description: string;
+}
+
+export interface IssueVm {
+  readonly code: string;
+  readonly field: string;
+  readonly message: string;
+}
+
+/** A situational reminder the numbers above cannot express, such as
+ * advantage on a saving throw against magic (`DerivedSheet.hints`,
+ * `rules.proto`'s `Hint`). Shown next to the issues in "Avisos"
+ * (integrator fix: the sheet used to drop these on the floor). */
+export interface HintVm {
+  readonly sourceKey: string;
+  readonly text: string;
+}
+
+export interface EquipmentItemVm {
+  readonly name: string;
+  readonly quantity: number;
+}
+
+export interface CoinsVm {
+  readonly cp: number;
+  readonly sp: number;
+  readonly ep: number;
+  readonly gp: number;
+  readonly pp: number;
+}
+
+/** A player, enemy or boss sheet (`FullSheet`, plan §4). */
+export interface FullSheetVm {
+  readonly kind: 'full';
+  readonly abilities: readonly AbilityScoreVm[];
+  readonly proficiencyBonus: number;
+  readonly savingThrows: readonly SavingThrowVm[];
+  readonly skills: readonly SkillVm[];
+  readonly passivePerception: number;
+  readonly passiveInvestigation: number;
+  readonly passiveInsight: number;
+  readonly initiative: number;
+  readonly armorClass: number;
+  /** How `armorClass` was computed, in Portuguese, e.g. "Armadura de
+   * couro + escudo", "Sem armadura", or the name of a feature such as
+   * Unarmored Defense when it gives the better AC
+   * (`DerivedSheet.armor_class_description`). */
+  readonly armorClassDescription: string;
+  /** Whether the stored sheet has body armor (`FullSheet.armor_key` is
+   * set). "Equipamento" names the armor only then: without armor, the
+   * description above may name a feature, not something carried. */
+  readonly wearsArmor: boolean;
+  /** Whether the stored sheet carries a shield (`FullSheet.shield`). */
+  readonly hasShield: boolean;
+  readonly hitPointsMax: number;
+  readonly hitDice: string;
+  readonly speedWalkFt: number;
+  readonly senses: readonly string[];
+  readonly attacks: readonly AttackVm[];
+  readonly spellcasting: readonly SpellcastingVm[];
+  /** Index 0 is level 1. */
+  readonly spellSlots: readonly number[];
+  readonly cantripNames: readonly string[];
+  readonly spellNames: readonly string[];
+  readonly features: readonly FeatureVm[];
+  readonly languages: readonly string[];
+  readonly proficiencies: readonly string[];
+  readonly equipment: readonly EquipmentItemVm[];
+  readonly coins: CoinsVm;
+  /** Locks with the rest of the sheet, unlike `CharacterStoryVm` (A3). */
+  readonly customFeaturesText: string;
+  readonly issues: readonly IssueVm[];
+  readonly hints: readonly HintVm[];
+  readonly contentVersion: string;
+}
+
+/** A minion or story-NPC sheet (`BasicSheet`, plan §4). */
+export interface BasicSheetVm {
+  readonly kind: 'basic';
+  readonly hitPointsMax: number;
+  readonly armorClass: number;
+  readonly speedWalkFt: number;
+  readonly attackBonus: number;
+  readonly damage: string;
+  readonly description: string;
+}
+
+export interface PersonalityVm {
+  readonly traits: string;
+  readonly ideals: string;
+  readonly bonds: string;
+  readonly flaws: string;
+}
+
+export interface AppearanceVm {
+  readonly age: string;
+  readonly height: string;
+  readonly weight: string;
+  readonly eyes: string;
+  readonly skin: string;
+  readonly hair: string;
+  readonly description: string;
+}
+
+/**
+ * `CharacterStory` (plan amendment A3): personality, appearance, backstory
+ * and allies. Never locks — editable by the owning player or the master in
+ * every `CharacterState`, through `UpdateCharacterStory`, independently of
+ * `sheet` and RN-01.
+ */
+export interface CharacterStoryVm {
+  readonly personality: PersonalityVm;
+  readonly appearance: AppearanceVm;
+  readonly backstory: string;
+  readonly allies: string;
+}
+
+export interface CharacterSheetVm {
+  readonly id: string;
+  readonly campaignId: string;
+  readonly characterKind: CharacterKind;
+  readonly name: string;
+  readonly state: CharacterState;
+  /** `Character.can_edit`: true for the master always (except a dead NPC's
+   * game data, which simply has no lock concept); true for the owning
+   * player only while `state` is `'draft'` (RN-01). */
+  readonly canEdit: boolean;
+  readonly sheetLockedAt: Date | null;
+  readonly diedAt: Date | null;
+  readonly revision: number;
+  readonly sheet: FullSheetVm | BasicSheetVm;
+  /**
+   * `Character.story` — present for every kind, including a basic-sheet
+   * NPC (`BasicSheet.description` is a separate, shorter field, for quick
+   * reference at the table). The type stays nullable for a source that has
+   * none to report; `CharacterSheetSourceLive` always maps one.
+   */
+  readonly story: CharacterStoryVm | null;
+  /**
+   * Whether the current caller may edit `story` right now
+   * (`Character.can_edit_story`, integrator amendment to A3, 29/09/2026).
+   * The master's value is always `true` — the master can always edit the
+   * story. For a player it mirrors the server's own rule ("draft/pending,
+   * or the master unlocked it") — the browser never recomputes this, it
+   * only reads the flag, so `canEditStory` alone decides whether "Editar
+   * história" shows, for either role.
+   */
+  readonly canEditStory: boolean;
+  /** The master's per-character toggle: whether the player may currently
+   * edit the story (`Character.story_editing_allowed`). Only meaningful —
+   * and only shown — when `canToggleStoryEditing` is true. */
+  readonly storyEditingAllowed: boolean;
+  /** Whether this caller may see and use the "Permitir editar a
+   * história" / "Travar a história" toggle (`Character.can_set_story_editing`)
+   * — true for the master, for a player character. */
+  readonly canToggleStoryEditing: boolean;
+  /** `Character.can_mark_dead`: the master, for a player character that
+   * is not dead yet. Gates "Marcar como morto" — never `isMaster` alone,
+   * since an NPC can't be marked dead this way (RN-04: its hit points
+   * belong to each combat). */
+  readonly canMarkDead: boolean;
+  /** `Character.can_access_master_notes`: the master. Gates both the
+   * "Notas do mestre" panel and the `getMasterNotes` call (RN-11). */
+  readonly canAccessMasterNotes: boolean;
+  readonly isMaster: boolean;
+  readonly playerDisplayName: string | null;
+  readonly raceLabel: string;
+  /** e.g. "Mago 3" (`CharacterSummary.class_summary`, plan §4). */
+  readonly classSummary: string;
+  readonly backgroundLabel: string;
+  /**
+   * `FullSheet.alignment`'s Portuguese label (the proto's own comments,
+   * word for word — same labels the editor's select uses), or `''` when
+   * unset or the sheet is a `BasicSheet` (integrator follow-up: the
+   * official sheet's top block, read from the stored sheet — `DerivedSheet`
+   * carries no alignment).
+   */
+  readonly alignmentLabel: string;
+  /** `FullSheet.experience_points`, or `null` for a `BasicSheet` (an NPC
+   * has no XP of its own). `0` is a real value (a fresh level-1 character)
+   * and still shows — only `null` hides it. */
+  readonly experiencePoints: number | null;
+}
+
+/**
+ * The port `CharacterSheetPage` depends on. Phase 2 provides a concrete
+ * implementation wrapping the generated `CharacterService` client
+ * (`meurpg.characters.v1`) — see this file's top comment.
+ */
+export abstract class CharacterSheetSource {
+  abstract getCharacterSheet(campaignId: string, characterId: string): Promise<CharacterSheetVm>;
+  /** Called only when `isMaster` — never for a player (RN-11). */
+  abstract getMasterNotes(campaignId: string, characterId: string): Promise<string>;
+  abstract updateMasterNotes(campaignId: string, characterId: string, notes: string): Promise<void>;
+  /** `MarkCharacterDeadRequest` carries no revision — it is idempotent and
+   * never changes one (characters.proto). */
+  abstract markCharacterDead(campaignId: string, characterId: string): Promise<CharacterSheetVm>;
+  abstract updateCharacterStory(
+    campaignId: string,
+    characterId: string,
+    revision: number,
+    story: CharacterStoryVm,
+  ): Promise<CharacterSheetVm>;
+  /** Master only: flips `story_editing_allowed` for this character
+   * (`SetStoryEditing`). No revision: the proto's `SetStoryEditingRequest`
+   * does not take one, and the call never changes `Character.revision`. */
+  abstract setStoryEditingAllowed(
+    campaignId: string,
+    characterId: string,
+    allowed: boolean,
+  ): Promise<CharacterSheetVm>;
+}
