@@ -1,0 +1,55 @@
+<section class="mr-panel gallery" aria-labelledby="gallery-panel-heading">
+  <h2 class="mr-panel__title" id="gallery-panel-heading">Galeria</h2>
+
+  @let s = state();
+  @switch (s.status) {
+    @case ('loading') {
+      <p class="mr-muted gallery__status" role="status">Carregando a galeria...</p>
+    }
+    @case ('error') {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ s.message }}</p>
+      </div>
+    }
+    @case ('ready') {
+      @if (preview().length > 0) {
+        <ul class="thumbs" aria-label="Imagens mais recentes">
+          @for (image of preview(); track image.id) {
+            <li class="thumbs__item">
+              <span class="thumbs__frame">
+                <img
+                  [src]="image.thumbnailUrl"
+                  [alt]="image.name"
+                  [width]="image.width"
+                  [height]="image.height"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </span>
+              <span class="thumbs__name" aria-hidden="true">{{ image.name }}</span>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="gallery__empty">
+          Nenhuma imagem ainda. Envie mapas, plantas de lugares e retratos de NPCs para usar na
+          campanha.
+        </p>
+      }
+    }
+  }
+
+  <div class="gallery__foot" [class.gallery__foot--start]="preview().length === 0">
+    @if (preview().length > 0) {
+      <span class="gallery__usage">{{ usageText() }}</span>
+    }
+    <a
+      matButton="outlined"
+      class="gallery__open"
+      [routerLink]="['/campanhas', campaignId(), 'galeria']"
+    >
+      <mat-icon aria-hidden="true">photo_library</mat-icon>Abrir galeria
+    </a>
+  </div>
+</section>

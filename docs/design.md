@@ -103,6 +103,28 @@ Regras que valem em toda tela:
 
 Na ficha: o medalhão de atributo, o escudo da CA, as caixas de número, as linhas de proficiência e os campos do cabeçalho, desenhados no sistema visual do Claude Design.
 
+### Galeria e imagens
+
+As peças da galeria (MR-019, desenhos E5-20 a E5-22 e E5-31). As que outras telas reusam ficam em `web/src/app/shared/gallery-picker/`.
+
+| Peça | Como é |
+| --- | --- |
+| Cartão da galeria (`pages/gallery/gallery-card`) | A miniatura de 480 px, cortada para preencher, o nome (17/700) e "2000 × 1400 px, 1,5 MB". Com mouse, "Ver / Renomear / Apagar" cobrem os 48 px de baixo da miniatura no hover ou no foco do teclado, sem mexer no resto (num cartão estreito, de tablet, fica "Renomear / Apagar"); no toque (`hover: none`), "Renomear / Apagar" ficam sempre embaixo do cartão, e tocar na miniatura é "Ver". Renomear troca o nome por um campo, com "Salvar nome" e "Cancelar" |
+| Envio em andamento (`shared/gallery-picker/upload-progress`) | O cartão do arquivo no começo da grade, com "Enviando ruinas.jpg… 60%" numa linha só (um nome longo termina em "…", a porcentagem fica), uma barra determinada (`role="progressbar"`, trilho `rule`, preenchimento `ink`) e "Cancelar envio". Sem prévia do arquivo: o CSP só aceita imagem da própria origem. Quando chega, vira o cartão da imagem, e um `role="status"` diz "Imagem enviada" |
+| Erro de envio | Um aviso `--danger` por arquivo, no topo: "**Não deu para enviar mapa-antigo.gif.** Esse arquivo não é uma imagem JPEG, PNG ou WebP." O texto vem do `reason` do servidor, nunca da mensagem dele |
+| Janela da imagem | Um `<dialog>` nativo: a imagem inteira (`/images/<id>`) sobre `ground`, o nome, "Renomear", "Apagar", "Fechar", e "Imagem anterior", "2 de 5", "Próxima imagem" (← e → também). É a única sombra do app (0 24px 64px), sobre um véu `ink` a 55% no claro e preto a 60% no escuro, onde uma borda `line` desenha a beirada. Enquanto a imagem inteira chega, a miniatura (já no cache) segura o lugar. No celular, ocupa a tela, os botões dizem "Anterior" e "Próxima", e o dedo passa a imagem |
+| Seletor de imagem (`shared/gallery-picker`) | Um `radiogroup` das miniaturas (as setas andam e escolhem, Tab entra na escolhida). A escolhida tem borda de 2 px `accent`, rodapé `accent-soft` e um check: nunca só a cor. O último bloco, tracejado, é "Enviar imagem", que envia e já escolhe a imagem nova. Uso: `<app-gallery-picker [campaignId] [(selectedId)] label (picked)>`; o formulário em volta dá o rótulo visível e o erro (`describedBy`) |
+| Painel "Galeria" da campanha (`pages/campaign-detail/gallery-panel`) | Só para o mestre (E5-09): as 5 imagens mais novas numa linha (3 no celular), em molduras 4:3 com o nome embaixo, "5 imagens, 5,8 MB de 500 MB" e "Abrir galeria" contornado |
+| Lembrete de privacidade (`ImagePrivacyNote`) | Ao lado de todo "Enviar imagem", sempre com as mesmas palavras: "Use imagens do jogo. Não envie fotos de pessoas sem a autorização delas." ([Privacidade](privacidade.md)). Uma linha quieta, com o ícone `info`, como o aviso de ficção dos campos de texto |
+
+Regras da galeria:
+
+- **O botão cheio é "Enviar imagem".** Por isso a confirmação de apagar é contornada em `danger-ink` ("Apagar imagem"), com o foco nela, e "Cancelar" ao lado.
+- **A cota** ("5 imagens · 5,8 MB de 500 MB") vira um aviso `--warning` a partir de 90% de qualquer um dos dois limites.
+- **Galeria vazia** é um painel que convida ao primeiro envio ("Nenhuma imagem ainda"), no lugar da área de arrastar; do tablet para cima, ele também é tracejado e diz "Ou arraste as imagens para cá".
+- **Cada cartão tem a própria altura:** renomear ou confirmar a exclusão num cartão não estica os vizinhos.
+- **Arrastar arquivos** funciona em qualquer ponto da página; a área de envio ganha a borda tracejada `accent` enquanto o arquivo está em cima.
+
 ## Texto na tela
 
 - Português do Brasil, com os termos da tradução oficial de D&D ("Classe de Armadura", "Salvaguardas", "Pontos de vida").

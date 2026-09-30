@@ -1,0 +1,117 @@
+@let img = image();
+<article
+  class="card"
+  [class.card--confirm]="mode() === 'confirm' || mode() === 'deleting'"
+  [attr.aria-labelledby]="ids.name"
+>
+  <button
+    #thumb
+    type="button"
+    class="card__thumb"
+    [attr.aria-label]="'Ver ' + img.name"
+    (click)="view.emit()"
+  >
+    <img
+      [src]="img.thumbnailUrl"
+      [alt]="img.name"
+      [width]="img.width"
+      [height]="img.height"
+      [attr.loading]="eager() ? null : 'lazy'"
+      decoding="async"
+    />
+  </button>
+
+  @if (mode() === 'idle') {
+    <div class="card__bar">
+      <button
+        matButton
+        type="button"
+        class="card__view"
+        [attr.aria-label]="'Ver ' + img.name"
+        (click)="view.emit()"
+      >
+        Ver
+      </button>
+      <button
+        #renameButton
+        matButton
+        type="button"
+        [attr.aria-label]="'Renomear ' + img.name"
+        (click)="startRename()"
+      >
+        Renomear
+      </button>
+      <button
+        matButton
+        type="button"
+        [attr.aria-label]="'Apagar ' + img.name"
+        (click)="askDelete()"
+      >
+        Apagar
+      </button>
+    </div>
+  }
+
+  <div class="card__body">
+    @if (mode() === 'rename' || mode() === 'saving') {
+      <form class="rename" (submit)="$event.preventDefault(); saveName()">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="rename__field">
+          <mat-label>Nome da imagem</mat-label>
+          <input
+            #nameInput
+            matInput
+            [formControl]="nameControl"
+            [attr.maxlength]="nameMax"
+            autocomplete="off"
+            (keydown)="onNameKeydown($event)"
+          />
+          @if (nameError(); as message) {
+            <mat-error>{{ message }}</mat-error>
+          }
+        </mat-form-field>
+        <div class="rename__actions">
+          <button matButton="outlined" type="submit" [disabled]="mode() === 'saving'">
+            Salvar nome
+          </button>
+          <button matButton type="button" [disabled]="mode() === 'saving'" (click)="cancelRename()">
+            Cancelar
+          </button>
+        </div>
+      </form>
+      <span class="mr-visually-hidden" [id]="ids.name">{{ img.name }}</span>
+    } @else {
+      <p class="card__name" [id]="ids.name">{{ img.name }}</p>
+      <p class="card__meta">{{ meta() }}</p>
+    }
+
+    @if (error(); as message) {
+      <div class="mr-notice mr-notice--danger card__error" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ message }}</p>
+      </div>
+    }
+  </div>
+
+  @if (mode() === 'confirm' || mode() === 'deleting') {
+    <div class="confirm" role="group" [attr.aria-labelledby]="ids.confirm">
+      <p class="confirm__text" [id]="ids.confirm">
+        <strong>Apagar {{ img.name }}?</strong> Não dá para desfazer.
+      </p>
+      <div class="confirm__actions">
+        <button
+          #confirmButton
+          matButton="outlined"
+          type="button"
+          class="danger"
+          [disabled]="mode() === 'deleting'"
+          (click)="confirmDelete()"
+        >
+          Apagar imagem
+        </button>
+        <button matButton type="button" [disabled]="mode() === 'deleting'" (click)="cancelDelete()">
+          Cancelar
+        </button>
+      </div>
+    </div>
+  }
+</article>

@@ -1,0 +1,148 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+p {
+  margin: 0;
+}
+
+.picker__status,
+.picker__empty {
+  color: var(--mr-ink-muted);
+}
+
+.picker__retry {
+  align-self: flex-start;
+}
+
+.picker__file {
+  display: none;
+}
+
+// One grid for the tiles, whatever wraps them: the radio group lays its
+// radios straight into it (`display: contents`), between the uploads in
+// progress and the "Enviar imagem" tile (E5-31: six across on a desktop
+// form, two on a phone).
+.picker__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+  gap: var(--mr-space-3);
+}
+
+.picker__group {
+  display: contents;
+}
+
+.tile {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 0;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  overflow: hidden;
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--mr-control-line);
+  }
+}
+
+.tile__img {
+  display: block;
+  width: 100%;
+  height: 88px;
+  object-fit: cover;
+  background: var(--mr-ground);
+  border-bottom: 1px solid var(--mr-line);
+}
+
+.tile__foot {
+  flex-grow: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-1);
+  min-height: 58px;
+  box-sizing: border-box;
+  padding: var(--mr-space-2) 10px 10px;
+}
+
+.tile__text {
+  flex-grow: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.tile__name {
+  font-size: 15px;
+  line-height: 19px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.tile__meta,
+.tile__hint {
+  font-size: 13px;
+  line-height: 17px;
+  font-weight: 400;
+  color: var(--mr-ink-muted);
+}
+
+.tile__check {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+  color: var(--mr-accent-text);
+}
+
+// Checked: a 2px accent border (the 1px border plus a 1px outline just
+// inside it, so nothing in the tile moves), the accent-soft footer and the
+// check. Never colour alone. Keyboard focus keeps the usual ring outside.
+.tile--checked,
+.tile--checked:hover {
+  border-color: var(--mr-accent);
+  outline: 1px solid var(--mr-accent);
+  outline-offset: -2px;
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  .tile__foot {
+    background: var(--mr-accent-soft);
+  }
+}
+
+.tile--upload {
+  align-items: center;
+  justify-content: center;
+  gap: var(--mr-space-2);
+  min-height: 146px;
+  padding: var(--mr-space-3);
+  border: 2px dashed var(--mr-control-line);
+  color: var(--mr-accent-text);
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+
+  .mat-icon {
+    width: 22px;
+    height: 22px;
+    font-size: 22px;
+  }
+
+  &:hover {
+    border-color: var(--mr-accent);
+  }
+}

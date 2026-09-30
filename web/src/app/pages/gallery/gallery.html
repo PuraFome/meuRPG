@@ -1,0 +1,129 @@
+@let s = state();
+@if (s.status !== 'not-found' && s.status !== 'forbidden') {
+  <a class="back" [routerLink]="['/campanhas', campaignId()]">
+    <mat-icon aria-hidden="true">arrow_back</mat-icon>
+    Voltar para a campanha
+  </a>
+}
+@switch (s.status) {
+  @case ('loading') {
+    <div>
+      <h1 class="mr-page-title">Galeria</h1>
+      <p class="page-status" role="status">
+        <mat-spinner diameter="24" aria-label="Carregando a galeria" />
+        Carregando a galeria...
+      </p>
+    </div>
+  }
+  @case ('not-found') {
+    <div>
+      <h1 class="mr-page-title">Campanha não encontrada</h1>
+      <div class="mr-notice mr-notice--neutral page-notice" role="alert">
+        <mat-icon aria-hidden="true">search_off</mat-icon>
+        <p>
+          <strong>Essa campanha não existe, ou você não é membro dela.</strong>
+          Confira o link com o mestre.
+        </p>
+      </div>
+      <a mat-flat-button class="page-action" routerLink="/campanhas">Ir para Minhas campanhas</a>
+    </div>
+  }
+  @case ('forbidden') {
+    <div>
+      <h1 class="mr-page-title">Galeria</h1>
+      <div class="mr-notice mr-notice--neutral page-notice" role="status">
+        <mat-icon aria-hidden="true">lock</mat-icon>
+        <p><strong>Só o mestre vê a galeria da campanha.</strong></p>
+      </div>
+      <a mat-flat-button class="page-action" [routerLink]="['/campanhas', campaignId()]"
+        >Voltar para a campanha</a
+      >
+    </div>
+  }
+  @case ('error') {
+    <div>
+      <h1 class="mr-page-title">Não foi possível abrir a galeria</h1>
+      <div class="mr-notice mr-notice--danger page-notice" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ s.message }}</p>
+      </div>
+      <button matButton="outlined" type="button" class="retry" (click)="load()">
+        Tentar de novo
+      </button>
+    </div>
+  }
+  @case ('ready') {
+    <header class="head">
+      <h1 class="mr-page-title">Galeria</h1>
+      <p class="mr-page-lead">
+        Imagens para os mapas e o documento da campanha. Só o mestre vê a galeria.
+      </p>
+      @if (!isEmpty() && usageText()) {
+        @if (nearlyFull()) {
+          <div class="mr-notice mr-notice--warning quota-notice">
+            <mat-icon aria-hidden="true">warning</mat-icon>
+            <p>
+              <strong>A galeria está quase cheia: {{ usageText() }}.</strong>
+              Apague as imagens que não usa para liberar espaço.
+            </p>
+          </div>
+        } @else {
+          <p class="quota">
+            <mat-icon aria-hidden="true">image</mat-icon>
+            {{ usageText() }}
+          </p>
+        }
+      }
+    </header>
+
+    @for (failure of queue.failures(); track failure.key) {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>
+          <strong>Não deu para enviar {{ failure.fileName }}.</strong>
+          {{ failure.message }}
+        </p>
+      </div>
+    }
+
+    <app-upload-zone
+      [variant]="isEmpty() ? 'empty' : 'bar'"
+      [dragging]="dragging()"
+      [maxImageBytes]="maxImageBytes()"
+      (picked)="addFiles($event)"
+    />
+
+    @if (!isEmpty()) {
+      <ul class="grid" aria-label="Imagens da galeria">
+        @for (item of queue.items(); track item.key) {
+          <li>
+            <app-upload-progress [item]="item" (cancel)="queue.cancel(item.key)" />
+          </li>
+        }
+        @for (image of images(); track image.id; let i = $index) {
+          <li>
+            <app-gallery-card
+              [image]="image"
+              [campaignId]="campaignId()"
+              [eager]="i < 8"
+              (view)="open(image)"
+              (renamed)="onRenamed($event)"
+              (deleted)="onDeleted($event)"
+            />
+          </li>
+        }
+      </ul>
+    }
+
+    <app-gallery-lightbox
+      [images]="images()"
+      [index]="viewing()"
+      (indexChange)="turn($event)"
+      (closed)="onLightboxClosed()"
+      (rename)="onLightboxRename($event)"
+      (remove)="onLightboxDelete($event)"
+    />
+  }
+}
+
+<p class="mr-visually-hidden" role="status" aria-live="polite">{{ announcement() }}</p>

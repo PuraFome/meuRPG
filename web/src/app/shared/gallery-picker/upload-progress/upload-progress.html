@@ -1,0 +1,35 @@
+<article class="card" [attr.aria-label]="'Enviando ' + item().fileName">
+  <div class="card__media">
+    <mat-icon aria-hidden="true">image</mat-icon>
+  </div>
+  <div class="card__body">
+    @let l = label();
+    <p class="card__label">
+      <span class="card__text">{{ l.text }}</span>
+      @if (l.percent) {
+        <span class="card__percent">{{ l.percent }}</span>
+      }
+    </p>
+    <div class="card__row">
+      <span
+        class="bar"
+        role="progressbar"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        [attr.aria-label]="'Enviando ' + item().fileName"
+        [attr.aria-valuenow]="item().percent"
+      >
+        <span class="bar__fill" [style.width.%]="item().percent"></span>
+      </span>
+      <button
+        matButton
+        type="button"
+        class="card__cancel"
+        [attr.aria-label]="'Cancelar envio de ' + item().fileName"
+        (click)="cancel.emit()"
+      >
+        Cancelar envio
+      </button>
+    </div>
+  </div>
+</article>

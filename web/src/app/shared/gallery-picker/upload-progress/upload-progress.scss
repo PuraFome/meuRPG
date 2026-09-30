@@ -1,0 +1,113 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
+.card {
+  box-sizing: border-box;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--mr-surface);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  overflow: hidden;
+}
+
+// Same height as a card's thumbnail, so the grid does not jump when the
+// image arrives.
+.card__media {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--thumb-height, 116px);
+  flex: none;
+  background: var(--mr-ground);
+  border-bottom: 1px solid var(--mr-line);
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 36px;
+  }
+}
+
+.card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--mr-space-3) 6px var(--mr-space-1) var(--mr-space-4);
+  min-width: 0;
+}
+
+// One line: a long file name is cut with "…", the percentage stays.
+.card__label {
+  display: flex;
+  gap: 0.3em;
+  margin: 0;
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.card__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card__percent {
+  flex: none;
+}
+
+.card__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--mr-space-2);
+}
+
+.bar {
+  flex: 1 1 6rem;
+  display: block;
+  height: 8px;
+  box-sizing: border-box;
+  border: 1px solid var(--mr-control-line);
+  border-radius: 4px;
+  background: var(--mr-rule);
+  overflow: hidden;
+}
+
+.bar__fill {
+  display: block;
+  height: 100%;
+  background: var(--mr-ink);
+  transition: width 0.2s linear;
+}
+
+.card__cancel {
+  margin-left: auto;
+  padding-inline: 10px;
+}
+
+// The picker's tile (E5-31): a shorter image area and smaller words.
+:host(.compact) {
+  .card {
+    border-radius: var(--mr-radius-md);
+  }
+
+  .card__media {
+    height: 88px;
+  }
+
+  .card__body {
+    padding: var(--mr-space-2) var(--mr-space-1) var(--mr-space-1) 10px;
+  }
+
+  .card__label {
+    font-size: 15px;
+    line-height: 19px;
+  }
+}

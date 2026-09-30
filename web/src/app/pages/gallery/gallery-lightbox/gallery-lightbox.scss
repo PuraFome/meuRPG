@@ -1,0 +1,207 @@
+:host {
+  display: contents;
+}
+
+p,
+h2 {
+  margin: 0;
+}
+
+// The one place with a shadow, over a scrim (README-B, "Lightbox"): ink at
+// 55% in the light theme, black at 60% in the dark one, where the page is
+// already near-black (a scrim of the ground colour would not dim it).
+// Black is the README's value, not a token: no token is plain black.
+.lightbox {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  max-height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  flex-direction: column;
+
+  &[open] {
+    display: flex;
+  }
+
+  &::backdrop {
+    background: light-dark(
+      color-mix(in srgb, var(--mr-ink) 55%, transparent),
+      color-mix(in srgb, black 60%, transparent)
+    );
+  }
+
+  // From a tablet up: a panel over the page, not the whole screen.
+  @media (min-width: 768px) {
+    width: min(1000px, calc(100% - 2 * var(--mr-gutter)));
+    // Not `auto`: a modal dialog is fixed to all four sides, so `auto`
+    // would stretch it to the max-height.
+    height: fit-content;
+    max-height: calc(100% - 2 * var(--mr-space-6));
+    margin: auto;
+    border-radius: var(--mr-radius-xl);
+    // In the dark theme a shadow barely shows, so a 1px edge draws it.
+    border: 1px solid light-dark(transparent, var(--mr-line));
+    box-shadow: 0 24px 64px color-mix(in srgb, black 35%, transparent);
+  }
+}
+
+.lightbox__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--mr-space-2);
+  padding: 10px var(--mr-space-1) 10px var(--mr-space-4);
+  border-bottom: 1px solid var(--mr-rule);
+
+  @media (min-width: 768px) {
+    flex-wrap: nowrap;
+    gap: var(--mr-space-4);
+    padding: 14px var(--mr-space-3) 14px var(--mr-space-6);
+  }
+}
+
+.lightbox__title {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  h2 {
+    font-size: 22px;
+    line-height: 28px;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+
+    @media (min-width: 768px) {
+      font-size: 24px;
+      line-height: 30px;
+    }
+  }
+}
+
+.lightbox__meta {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+// On a phone the actions go under the title, the close button stays on
+// the first line.
+.lightbox__actions {
+  order: 3;
+  flex-basis: 100%;
+  display: flex;
+  margin-left: -10px;
+
+  @media (min-width: 768px) {
+    order: 0;
+    flex-basis: auto;
+    margin-left: 0;
+  }
+
+  .mat-mdc-button {
+    padding-inline: 10px;
+  }
+}
+
+.lightbox__close {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--mr-radius-sm);
+  background: none;
+  color: var(--mr-ink);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--mr-ground);
+  }
+}
+
+// The image, whole ("contain"), on the ground colour.
+.lightbox__stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--mr-ground);
+  overflow: hidden;
+  touch-action: pan-y pinch-zoom;
+
+  @media (min-width: 768px) {
+    flex: none;
+    height: min(540px, calc(100dvh - 240px));
+    margin: var(--mr-space-5) var(--mr-space-5) 0;
+    border-radius: var(--mr-radius-sm);
+  }
+
+  // Both images fill the stage and show whole, so the full one lands over
+  // its thumbnail. The full one never grows past its own size
+  // ("scale-down"): a small token stays sharp.
+  position: relative;
+
+  img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .lightbox__full {
+    object-fit: scale-down;
+  }
+}
+
+.lightbox__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+  padding: var(--mr-space-3) var(--mr-space-4) var(--mr-space-4);
+
+  @media (min-width: 768px) {
+    padding: 14px var(--mr-space-5) var(--mr-space-4);
+  }
+}
+
+.lightbox__position {
+  color: var(--mr-ink-muted);
+}
+
+// On a narrow phone the page buttons say just "Anterior" and "Próxima";
+// their names stay whole for screen readers.
+.lightbox__turn-short {
+  display: none;
+}
+
+@media (max-width: 479.98px) {
+  .lightbox__turn {
+    padding-inline: 12px;
+  }
+
+  .lightbox__turn-long {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .lightbox__turn-short {
+    display: inline;
+  }
+}

@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Browser, type Page } from '@playwright/test';
 
+import { canvasJpeg, newCampaign, uploadThroughPicker } from './gallery-support';
 import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, pensantus } from './support';
 
 // docs/design.md#como-uma-tela-é-feita: every screen passes axe with no
@@ -80,6 +81,65 @@ test('as telas do mestre passam no axe no tema claro, no desktop', { tag: '@a11y
 
 test('as telas do mestre passam no axe no tema escuro, no celular', { tag: '@a11y' }, async ({ browser }) => {
   await scanMasterScreens(browser, 'dark', 390);
+});
+
+/** The gallery (MR-019): empty, with images, a refused upload's notice,
+ * a card's delete confirmation and the lightbox open. The gallery picker
+ * (shared/gallery-picker) has no screen of its own until the map form
+ * (5.3) uses it; its radio-group semantics are covered by its unit tests,
+ * and it joins this scan with that screen. */
+async function scanGallery(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const context = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport: { width, height: 900 },
+  });
+  const page = await context.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  try {
+    await page.goto('/');
+    const campaignId = await newCampaign(page, `Acessibilidade galeria ${Date.now()}`);
+    await open(page, `/campanhas/${campaignId}/galeria`);
+    await expect(page.getByRole('heading', { name: 'Nenhuma imagem ainda' })).toBeVisible();
+    await expectNoSeriousViolations(page, `Galeria vazia ${where}`);
+
+    await uploadThroughPicker(page, [
+      { name: 'Taverna do Javali.jpg', mimeType: 'image/jpeg', buffer: await canvasJpeg(page) },
+      { name: 'Covil dos goblins.jpg', mimeType: 'image/jpeg', buffer: await canvasJpeg(page, '#5b4834') },
+      { name: 'mapa-antigo.gif', mimeType: 'image/gif', buffer: Buffer.from('GIF89a') },
+    ]);
+    await expect(page.getByRole('article', { name: 'Covil dos goblins', exact: true })).toBeVisible();
+    await expect(page.getByRole('alert')).toBeVisible();
+    await expectNoSeriousViolations(page, `Galeria com imagens e um envio recusado ${where}`);
+
+    const card = page.getByRole('article', { name: 'Taverna do Javali', exact: true });
+    await card.getByRole('button', { name: 'Apagar Taverna do Javali' }).click();
+    await expect(card.getByRole('button', { name: 'Apagar imagem' })).toBeFocused();
+    await expectNoSeriousViolations(page, `Galeria, confirmar exclusão ${where}`);
+    await card.getByRole('button', { name: 'Cancelar' }).click();
+
+    await card.getByRole('button', { name: 'Ver Taverna do Javali' }).first().click();
+    await expect(page.getByRole('dialog', { name: 'Taverna do Javali' })).toBeVisible();
+    await expectNoSeriousViolations(page, `Galeria, imagem aberta ${where}`);
+    await page.keyboard.press('Escape');
+
+    await open(page, `/campanhas/${campaignId}`);
+    await expect(page.getByRole('link', { name: 'Abrir galeria' })).toBeVisible();
+    await expectNoSeriousViolations(page, `Campanha com o painel Galeria ${where}`);
+  } finally {
+    await context.close();
+  }
+}
+
+// Five scans and three uploads in one test: more room than the default.
+test('a galeria passa no axe no tema claro, no desktop', { tag: ['@a11y', '@MR-019'] }, async ({ browser }) => {
+  test.slow();
+  await scanGallery(browser, 'light', 1280);
+});
+
+test('a galeria passa no axe no tema escuro, no celular', { tag: ['@a11y', '@MR-019'] }, async ({ browser }) => {
+  test.slow();
+  await scanGallery(browser, 'dark', 390);
 });
 
 test('as telas de quem não entrou passam no axe, nos dois temas', { tag: '@a11y' }, async ({ browser }) => {

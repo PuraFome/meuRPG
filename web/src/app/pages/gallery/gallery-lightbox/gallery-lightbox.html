@@ -1,0 +1,87 @@
+<dialog
+  #dialog
+  class="lightbox"
+  aria-labelledby="gallery-lightbox-title"
+  (close)="closed.emit()"
+  (click)="onDialogClick($event)"
+  (keydown)="onKeydown($event)"
+>
+  @if (image(); as img) {
+    <div class="lightbox__head">
+      <div class="lightbox__title">
+        <h2 id="gallery-lightbox-title">{{ img.name }}</h2>
+        <p class="lightbox__meta">{{ meta() }}</p>
+      </div>
+      <div class="lightbox__actions">
+        <button
+          matButton
+          type="button"
+          [attr.aria-label]="'Renomear ' + img.name"
+          (click)="rename.emit(img)"
+        >
+          Renomear
+        </button>
+        <button
+          matButton
+          type="button"
+          [attr.aria-label]="'Apagar ' + img.name"
+          (click)="remove.emit(img)"
+        >
+          Apagar
+        </button>
+      </div>
+      <button
+        #closeButton
+        type="button"
+        class="lightbox__close"
+        aria-label="Fechar"
+        (click)="close()"
+      >
+        <mat-icon aria-hidden="true">close</mat-icon>
+      </button>
+    </div>
+
+    <div
+      class="lightbox__stage"
+      (pointerdown)="onPointerDown($event)"
+      (pointerup)="onPointerUp($event)"
+    >
+      <!-- The thumbnail, already in the browser's cache from the grid, holds
+           the place until the full image arrives. -->
+      @if (loadedId() !== img.id) {
+        <img
+          class="lightbox__preview"
+          [src]="img.thumbnailUrl"
+          alt=""
+          [width]="img.width"
+          [height]="img.height"
+        />
+      }
+      <img
+        class="lightbox__full"
+        [src]="img.url"
+        [alt]="img.name"
+        [width]="img.width"
+        [height]="img.height"
+        decoding="async"
+        (load)="loadedId.set(img.id)"
+      />
+    </div>
+
+    @if (images().length > 1) {
+      <div class="lightbox__foot">
+        <button matButton="outlined" type="button" class="lightbox__turn" (click)="previous()">
+          <mat-icon aria-hidden="true">chevron_left</mat-icon>
+          <span class="lightbox__turn-long">Imagem anterior</span>
+          <span class="lightbox__turn-short" aria-hidden="true">Anterior</span>
+        </button>
+        <span class="lightbox__position" aria-live="polite">{{ position() }}</span>
+        <button matButton="outlined" type="button" class="lightbox__turn" (click)="next()">
+          <span class="lightbox__turn-long">Próxima imagem</span>
+          <span class="lightbox__turn-short" aria-hidden="true">Próxima</span>
+          <mat-icon aria-hidden="true" iconPositionEnd>chevron_right</mat-icon>
+        </button>
+      </div>
+    }
+  }
+</dialog>
