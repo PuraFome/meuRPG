@@ -110,7 +110,7 @@ Como o Connect aceita JSON, dá para chamar com `curl`:
 
 ```bash
 curl -s -X POST http://localhost:8080/meurpg.system.v1.SystemService/GetServerInfo \
-  -H 'Content-Type: application/json' -d '{}'
+  -H 'Content-Type: application/json' -H 'Connect-Protocol-Version: 1' -d '{}'
 ```
 
 ### Códigos de erro
@@ -135,6 +135,71 @@ O `web/` é o app Angular novo (o `src/` antigo está depreciado). O Go serve o 
 - **CSP:** `default-src 'self'`, sem exceção nenhuma em `script-src` (o build de produção não usa `<script>` nem atributo de evento inline — checado no HTML gerado e ao vivo, sem violação no console). `style-src` precisa de `'unsafe-inline'`: é o Angular injetando o CSS de cada componente em `<style>` no `<head>`, em tempo de execução, independente de qualquer opção do build — confirmado também ao vivo (sem o `'unsafe-inline'`, o app carrega sem nenhum estilo). Mais detalhes e a opção de trocar isso por nonce por requisição: comentário de `cspHeader` em `static.go`.
 - **Codegen:** `proto/buf.gen.yaml` roda `protoc-gen-es` (Connect-ES v2: um plugin só gera mensagens e serviços) como plugin local, do binário em `web/node_modules/.bin`, com `target=ts`, escrevendo em `web/src/gen/` — código gerado e comitado, como o lado Go. `make proto` instala as dependências do `web/` sozinho, se faltarem.
 - **Dev:** `cd web && npm start` sobe o Angular com `proxy.conf.json` encaminhando `/meurpg.*`, `/auth` e as sondas para `localhost:8080`.
+
+## Módulo identity: login e sessão
+
+O mestre entra por um provedor OpenID Connect (OIDC) com Authorization Code + PKCE, e o servidor abre uma sessão opaca de no máximo 30 dias, guardada num cookie `__Host-` `HttpOnly` (ADR-0002). O código fica em `backend/internal/identity` e não conhece nenhum provedor: em produção é o Google, em desenvolvimento um provedor OIDC local ou um provedor falso dos testes. Tudo vem da configuração (ver [CONTRIBUTING.md](../CONTRIBUTING.md#login-local-com-um-provedor-oidc)) e da descoberta OIDC (`/.well-known/openid-configuration`).
+
+| Rota | O que faz |
+| --- | --- |
+| `GET /auth/login?return_to=/caminho` | Guarda o estado do login e manda o navegador para o provedor. `return_to` só aceita um caminho deste site. |
+| `GET /auth/callback` | Confere tudo, cria a sessão, grava o cookie e volta para `return_to`. |
+| `IdentityService.GetMe` | Quem está logado (só o ID da conta) e quando a sessão acaba. Aceita GET, porque a requisição é vazia. |
+| `IdentityService.SignOut` | Revoga a sessão atual no banco e apaga o cookie. As outras sessões do usuário continuam. |
+
+### Diagrama: o login
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant N as Navegador
+    participant S as Servidor Go
+    participant B as CockroachDB
+    participant P as Provedor OIDC
+
+    N->>S: GET /auth/login?return_to=/campanhas
+    S->>B: Grava oidc_login_states: hash do state, code_verifier, nonce, return_to (10 min)
+    S-->>N: 302 para o provedor e cookie __Host-meurpg_login com o state
+    N->>P: Autorização: code_challenge S256, state, nonce, escopo openid email
+    P-->>N: 302 para /auth/callback com code e state
+    N->>S: GET /auth/callback com o cookie de login
+    S->>S: state da URL igual ao do cookie
+    S->>B: Apaga e lê o estado do login (uso único, até 10 min)
+    S->>P: Troca o code pelo token: client secret e code_verifier
+    P-->>S: ID token assinado
+    S->>S: Confere assinatura (JWKS), iss, aud, exp, nonce, azp e sub
+    S->>B: Acha ou cria a conta por (issuer, subject) e grava o hash da sessão
+    S-->>N: 303 para return_to e cookie __Host-meurpg_session (30 dias)
+```
+
+O callback recusa com 400, sem criar sessão, quando: falta o cookie de login ou o `state` não bate com ele; o estado não existe, já foi usado ou passou de 10 minutos; o provedor devolveu erro; a troca do `code` falhou (inclusive por PKCE); ou o ID token falha em qualquer conferência. O `aud` precisa ser só o nosso client ID, e o `azp`, quando vem, também.
+
+### Sessão
+
+- **Token:** 32 bytes aleatórios (`crypto/rand`) no cookie `__Host-meurpg_session`, com `Secure`, `HttpOnly`, `SameSite=Lax` e `Path=/`. O banco guarda só o SHA-256 (`auth_sessions.token_hash`).
+- **Validade:** 30 dias corridos desde o login, sem renovar com o uso (NIST SP 800-63B-4, AAL1). Depois disso, o mestre passa pelo provedor de novo.
+- **`auth_time` e `max_age`:** o servidor manda `max_age` só se `OIDC_MAX_AGE` estiver definido (o Google não documenta o parâmetro). O `auth_time` do ID token, quando vem, é só registrado em `auth_sessions.auth_time`, nunca usado para decidir: num provedor local de teste ele manteve a hora do primeiro login mesmo depois de um login forçado.
+- **Logout:** apaga a linha da sessão, então o token para de valer na hora, em qualquer instância.
+- **Login de novo no mesmo navegador:** gera outro token (nada de reaproveitar o antigo) e revoga a sessão anterior.
+
+Outros módulos descobrem quem chama assim: montam o serviço Connect com `identity.Service.Interceptor()` e chamam `identity.RequireSession(ctx)` no handler. Sem sessão válida, a resposta é `unauthenticated`. Se o banco não responde, é `unavailable`, para o app não achar que o usuário saiu.
+
+### CSRF
+
+A proteção vem em camadas, como a ADR-0009 descreve:
+
+| Camada | O que barra |
+| --- | --- |
+| Cookie `SameSite=Lax` | O navegador não manda o cookie em POST nem em `fetch` vindos de outro site. |
+| `http.CrossOriginProtection` em volta do mux | Recusa com 403 um POST (ou PUT, DELETE) de outra origem, pelo `Sec-Fetch-Site` ou comparando `Origin` com `Host`. GET sempre passa, então nenhum GET pode mudar estado sem proteção própria. |
+| `connect.WithRequireConnectProtocolHeader()` em todo serviço | Toda chamada unária do Connect exige o header `Connect-Protocol-Version: 1` (ou `connect=v1` na URL de um GET). Outro site só mandaria esse header depois de um preflight de CORS, que o servidor não aceita. |
+| `state` no cookie de login, PKCE e `nonce` | Protegem o `GET /auth/callback`, que cria a sessão mesmo sendo GET. Ninguém consegue fazer o navegador da vítima terminar um login começado por outra pessoa. |
+
+Por causa do header obrigatório, um `curl` numa chamada Connect precisa de `-H 'Connect-Protocol-Version: 1'`.
+
+### Sem provedor ou sem banco
+
+O servidor sobe mesmo sem `OIDC_ISSUER` ou sem `DATABASE_URL`: o log de início avisa que o login está desligado, `/auth/login` e `/auth/callback` respondem 503 e o `IdentityService` responde `unavailable`. Se o provedor estiver fora do ar quando o servidor sobe, a descoberta é tentada de novo no próximo login.
 
 ## Ver também
 

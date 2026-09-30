@@ -24,6 +24,37 @@ Ferramentas: Go 1.27, buf, sqlc, goose, golangci-lint, Docker e Node 22. No Mac,
 | `make web-build` | Builda o Angular para produção (`cd web && npm run build`). |
 | `cd web && npm start` | Sobe o Angular sozinho, em modo dev, com `proxy.conf.json` encaminhando as rotas da API (`/meurpg.*`, `/auth`, `/healthz`, `/readyz`) para `localhost:8080`. |
 
+## Login local com um provedor OIDC
+
+O login do mestre funciona com qualquer provedor OpenID Connect: o Google em produção e, na sua máquina, um provedor OIDC local (ou um provedor de verdade com um client de teste). O backend só precisa destas variáveis:
+
+| Variável | Obrigatória | O que é |
+| --- | --- | --- |
+| `OIDC_ISSUER` | Sim, para ligar o login | O issuer do provedor, igual ao campo `issuer` do `/.well-known/openid-configuration` dele. Precisa ser `https`; `http` só vale em `localhost`. |
+| `OIDC_CLIENT_ID` | Sim | O client ID do MeuRPG no provedor. |
+| `OIDC_CLIENT_SECRET` | Sim | O client secret. É segredo: nunca vai para o repositório, para um issue ou para o log (o backend mostra `[REDACTED]`). |
+| `OIDC_REDIRECT_URL` | Sim | A URL pública do backend mais `/auth/callback`. Na sua máquina, `http://localhost:8080/auth/callback`. Cadastre no provedor exatamente igual. |
+| `OIDC_CA_FILE` | Não | Arquivo PEM com o certificado de um provedor local com certificado autoassinado. |
+| `OIDC_MAX_AGE` | Não | Uma duração, como `1h`. Se definida, vai como `max_age`: o provedor pede a senha de novo quando o último login nele é mais antigo que isso. Use só com provedor que documenta `max_age`. |
+
+Sem `OIDC_ISSUER` ou sem `DATABASE_URL`, o backend sobe do mesmo jeito, avisa no log que o login está desligado, e `/auth/login` responde 503.
+
+Para testar o login na sua máquina:
+
+1. No provedor, crie um client confidencial com Authorization Code, PKCE S256, os escopos `openid email` e a redirect URL `http://localhost:8080/auth/callback`.
+2. Suba só o banco e as migrations, deixando a porta 8080 livre: `docker compose -f deploy/local/compose.yaml up -d cockroach migrate`.
+3. Rode o backend com as variáveis, por exemplo `OIDC_ISSUER=... OIDC_CLIENT_ID=... OIDC_CLIENT_SECRET=... OIDC_REDIRECT_URL=http://localhost:8080/auth/callback make run`. O log de início diz `sign-in is enabled`.
+4. Abra `http://localhost:8080/auth/login?return_to=/` no Chrome ou no Firefox. O Safari não aceita cookie `Secure` em `http://localhost`.
+5. Para ver quem está logado, abra no mesmo navegador `http://localhost:8080/meurpg.identity.v1.IdentityService/GetMe?connect=v1&encoding=json&message=%7B%7D`.
+
+Chamadas Connect por `curl` agora precisam do header `-H 'Connect-Protocol-Version: 1'` (proteção contra CSRF, ver [Arquitetura](docs/arquitetura.md#csrf)).
+
+Testes do login:
+
+- `make test` roda tudo com um provedor OIDC falso, dentro do próprio teste. Não precisa de rede.
+- Com `MEURPG_TEST_DATABASE_URL` apontando para um CockroachDB (por exemplo `postgresql://root@localhost:26257/defaultdb?sslmode=disable`), os mesmos testes também rodam contra o banco.
+- Com as variáveis `MEURPG_TEST_OIDC_*` (a lista está no comentário de `TestRealProviderSignIn`, em `backend/internal/identity`), um teste faz o login de verdade num provedor OIDC local, sem navegador.
+
 ## Branches
 
 Crie uma branch a partir da `main`: `feat/`, `fix/`, `docs/` ou `chore/` e um nome curto. Quem não tem acesso de escrita trabalha num fork, como `vfraga/meuRPG`.

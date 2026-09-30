@@ -1,0 +1,343 @@
+package identity
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"net/url"
+	"os"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	_ "github.com/jackc/pgx/v5/stdlib" // the "pgx" driver for database/sql, which goose needs
+
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/migrations"
+)
+
+// These tests need CockroachDB: set MEURPG_TEST_DATABASE_URL (see
+// internal/platform/db for a one-line docker run). Without it they skip, so
+// `go test ./...` works anywhere.
+
+// namedStore builds a fresh Store for a test.
+type namedStore struct {
+	name string
+	new  func(t *testing.T) Store
+}
+
+// testStores returns the in-memory store and, when a test database is
+// configured, the CockroachDB one, so a flow test runs against both.
+func testStores(t *testing.T) []namedStore {
+	t.Helper()
+	stores := []namedStore{{"memory", func(*testing.T) Store { return newMemStore() }}}
+	if os.Getenv("MEURPG_TEST_DATABASE_URL") != "" {
+		stores = append(stores, namedStore{"cockroachdb", func(t *testing.T) Store { return testPostgresStore(t) }})
+	}
+	return stores
+}
+
+// testPostgresStore returns a PostgresStore on a brand-new, fully migrated
+// database, which is dropped when the test ends.
+func testPostgresStore(t *testing.T) *PostgresStore {
+	t.Helper()
+	return NewPostgresStore(testPool(t))
+}
+
+func testPool(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+	rawURL := os.Getenv("MEURPG_TEST_DATABASE_URL")
+	if rawURL == "" {
+		t.Skip("MEURPG_TEST_DATABASE_URL is not set; skipping database test")
+	}
+
+	admin, err := sql.Open("pgx", rawURL)
+	if err != nil {
+		t.Fatalf("open database: %v", err)
+	}
+	t.Cleanup(func() { _ = admin.Close() })
+
+	name := fmt.Sprintf("meurpg_identity_test_%d", time.Now().UnixNano())
+	mustExecSQL(t, admin, "CREATE DATABASE "+name)
+	t.Cleanup(func() { mustExecSQL(t, admin, "DROP DATABASE IF EXISTS "+name+" CASCADE") })
+
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		t.Fatalf("parse MEURPG_TEST_DATABASE_URL: %v", err)
+	}
+	u.Path = "/" + name
+
+	conn, err := sql.Open("pgx", u.String())
+	if err != nil {
+		t.Fatalf("open test database: %v", err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	provider, err := migrations.NewProvider(conn)
+	if err != nil {
+		t.Fatalf("migrations.NewProvider() error = %v", err)
+	}
+	if _, err := provider.Up(t.Context()); err != nil {
+		t.Fatalf("migrate up: %v", err)
+	}
+
+	pool, err := db.NewPool(t.Context(), u.String())
+	if err != nil {
+		t.Fatalf("NewPool() error = %v", err)
+	}
+	t.Cleanup(pool.Close)
+	return pool
+}
+
+func mustExecSQL(t *testing.T, conn *sql.DB, query string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if _, err := conn.ExecContext(ctx, query); err != nil {
+		t.Fatalf("exec %q: %v", query, err)
+	}
+}
+
+func TestPostgresStoreUpsertUser(t *testing.T) {
+	t.Parallel()
+	pool := testPool(t)
+	store := NewPostgresStore(pool)
+	ctx := t.Context()
+
+	google := ExternalIdentity{Issuer: "https://accounts.google.com", Subject: "1001", Email: "mestre@example.com"}
+	first, err := store.UpsertUser(ctx, google)
+	if err != nil {
+		t.Fatalf("UpsertUser() error = %v", err)
+	}
+
+	// Same (issuer, subject): same account, e-mail refreshed or cleared.
+	google.Email = "novo@example.com"
+	if again, err := store.UpsertUser(ctx, google); err != nil || again != first {
+		t.Fatalf("UpsertUser() again = %s, %v; want %s", again, err, first)
+	}
+	if got := storedEmail(t, pool, google); got != "novo@example.com" {
+		t.Errorf("email = %q, want the refreshed one", got)
+	}
+	google.Email = ""
+	if _, err := store.UpsertUser(ctx, google); err != nil {
+		t.Fatalf("UpsertUser() error = %v", err)
+	}
+	if got := storedEmail(t, pool, google); got != "<NULL>" {
+		t.Errorf("email = %q, want NULL once the provider stops vouching for it", got)
+	}
+
+	// Another subject, or the same subject at another issuer, is someone else.
+	for _, other := range []ExternalIdentity{
+		{Issuer: "https://accounts.google.com", Subject: "1002"},
+		{Issuer: "https://localhost:9443/oauth2/token", Subject: "1001"},
+	} {
+		id, err := store.UpsertUser(ctx, other)
+		if err != nil {
+			t.Fatalf("UpsertUser(%v) error = %v", other, err)
+		}
+		if id == first {
+			t.Errorf("UpsertUser(%v) reused account %s", other, first)
+		}
+	}
+	if n := count(t, pool, "users"); n != 3 {
+		t.Errorf("users = %d, want 3", n)
+	}
+}
+
+// TestPostgresStoreUpsertUserRace signs the same new person in from many
+// goroutines at once. They must all get the same account, and no stray
+// users row may be left behind.
+func TestPostgresStoreUpsertUserRace(t *testing.T) {
+	t.Parallel()
+	pool := testPool(t)
+	store := NewPostgresStore(pool)
+	id := ExternalIdentity{Issuer: "https://idp.example", Subject: "race"}
+
+	const n = 8
+	ids := make([]string, n)
+	errs := make([]error, n)
+	var wg sync.WaitGroup
+	for i := range n {
+		wg.Go(func() { ids[i], errs[i] = store.UpsertUser(t.Context(), id) })
+	}
+	wg.Wait()
+
+	for i := range n {
+		if errs[i] != nil {
+			t.Fatalf("UpsertUser() #%d error = %v", i, errs[i])
+		}
+		if ids[i] != ids[0] {
+			t.Errorf("UpsertUser() #%d = %s, want %s like the others", i, ids[i], ids[0])
+		}
+	}
+	if got := count(t, pool, "users"); got != 1 {
+		t.Errorf("users = %d, want 1", got)
+	}
+}
+
+func TestPostgresStoreSessions(t *testing.T) {
+	t.Parallel()
+	pool := testPool(t)
+	store := NewPostgresStore(pool)
+	ctx := t.Context()
+
+	userID, err := store.UpsertUser(ctx, ExternalIdentity{Issuer: "https://idp.example", Subject: "s1"})
+	if err != nil {
+		t.Fatalf("UpsertUser() error = %v", err)
+	}
+	now := time.Now().Truncate(time.Microsecond) // the database's precision
+	authTime := now.Add(-time.Hour).Truncate(time.Second)
+
+	newSession := func() ([]byte, Session) {
+		_, hash := newSecret()
+		s, err := store.CreateSession(ctx, NewSession{TokenHash: hash, UserID: userID, CreatedAt: now, ExpiresAt: now.Add(SessionLifetime), AuthTime: authTime})
+		if err != nil {
+			t.Fatalf("CreateSession() error = %v", err)
+		}
+		return hash, s
+	}
+	hash1, s1 := newSession()
+	hash2, s2 := newSession()
+
+	got, err := store.LookupSession(ctx, hash1, now.Add(time.Minute))
+	if err != nil {
+		t.Fatalf("LookupSession() error = %v", err)
+	}
+	if got.ID != s1.ID || got.UserID != userID || !got.CreatedAt.Equal(now) || !got.ExpiresAt.Equal(now.Add(SessionLifetime)) {
+		t.Errorf("LookupSession() = %+v, want %+v", got, s1)
+	}
+	var storedAuthTime time.Time
+	if err := pool.QueryRow(ctx, "SELECT auth_time FROM auth_sessions WHERE id = $1", s1.ID).Scan(&storedAuthTime); err != nil || !storedAuthTime.Equal(authTime) {
+		t.Errorf("auth_time = %v, %v; want %v", storedAuthTime, err, authTime)
+	}
+
+	// Only the hash is stored, never the token.
+	var storedHash []byte
+	if err := pool.QueryRow(ctx, "SELECT token_hash FROM auth_sessions WHERE id = $1", s1.ID).Scan(&storedHash); err != nil || string(storedHash) != string(hash1) {
+		t.Errorf("token_hash = %x, %v; want %x", storedHash, err, hash1)
+	}
+
+	// Expiry: valid until the last instant before expires_at, never after.
+	if _, err := store.LookupSession(ctx, hash1, now.Add(SessionLifetime-time.Microsecond)); err != nil {
+		t.Errorf("LookupSession() just before expiry error = %v", err)
+	}
+	if _, err := store.LookupSession(ctx, hash1, now.Add(SessionLifetime)); !errors.Is(err, ErrNotFound) {
+		t.Errorf("LookupSession() at expiry error = %v, want ErrNotFound", err)
+	}
+
+	// The database refuses a session longer than 30 days.
+	_, hash := newSecret()
+	if _, err := store.CreateSession(ctx, NewSession{TokenHash: hash, UserID: userID, CreatedAt: now, ExpiresAt: now.Add(SessionLifetime + time.Second)}); err == nil {
+		t.Error("CreateSession() with a 30-day-and-1-second session succeeded, want the CHECK to refuse it")
+	}
+
+	// Revoke one, then all.
+	if err := store.RevokeSession(ctx, s1.ID); err != nil {
+		t.Fatalf("RevokeSession() error = %v", err)
+	}
+	if _, err := store.LookupSession(ctx, hash1, now); !errors.Is(err, ErrNotFound) {
+		t.Errorf("LookupSession() after revoke error = %v, want ErrNotFound", err)
+	}
+	if _, err := store.LookupSession(ctx, hash2, now); err != nil {
+		t.Errorf("the other session was revoked too: %v", err)
+	}
+	if err := store.RevokeUserSessions(ctx, userID); err != nil {
+		t.Fatalf("RevokeUserSessions() error = %v", err)
+	}
+	if _, err := store.LookupSession(ctx, hash2, now); !errors.Is(err, ErrNotFound) {
+		t.Errorf("LookupSession() after revoke-all error = %v, want ErrNotFound (session %s)", err, s2.ID)
+	}
+
+	// Deleting the account deletes its sessions and identities.
+	_, s3 := newSession()
+	if _, err := pool.Exec(ctx, "DELETE FROM users WHERE id = $1", userID); err != nil {
+		t.Fatalf("delete user: %v", err)
+	}
+	if n := count(t, pool, "auth_sessions"); n != 0 {
+		t.Errorf("auth_sessions after deleting the user = %d, want 0 (session %s)", n, s3.ID)
+	}
+	if n := count(t, pool, "user_identities"); n != 0 {
+		t.Errorf("user_identities after deleting the user = %d, want 0", n)
+	}
+}
+
+func TestPostgresStoreLoginStates(t *testing.T) {
+	t.Parallel()
+	store := testPostgresStore(t)
+	ctx := t.Context()
+	now := time.Now().Truncate(time.Microsecond)
+
+	_, hash := newSecret()
+	want := LoginState{StateHash: hash, CodeVerifier: "verifier", Nonce: "nonce", ReturnTo: "/campanhas", CreatedAt: now, ExpiresAt: now.Add(loginStateLifetime)}
+	if err := store.SaveLoginState(ctx, want); err != nil {
+		t.Fatalf("SaveLoginState() error = %v", err)
+	}
+	got, err := store.TakeLoginState(ctx, hash, now.Add(time.Minute))
+	if err != nil {
+		t.Fatalf("TakeLoginState() error = %v", err)
+	}
+	if got.CodeVerifier != want.CodeVerifier || got.Nonce != want.Nonce || got.ReturnTo != want.ReturnTo ||
+		!got.CreatedAt.Equal(want.CreatedAt) || !got.ExpiresAt.Equal(want.ExpiresAt) {
+		t.Errorf("TakeLoginState() = %+v, want %+v", got, want)
+	}
+	// Single use.
+	if _, err := store.TakeLoginState(ctx, hash, now); !errors.Is(err, ErrNotFound) {
+		t.Errorf("second TakeLoginState() error = %v, want ErrNotFound", err)
+	}
+
+	// Expired: not returned, and deleted all the same.
+	_, hash = newSecret()
+	want.StateHash = hash
+	if err := store.SaveLoginState(ctx, want); err != nil {
+		t.Fatalf("SaveLoginState() error = %v", err)
+	}
+	if _, err := store.TakeLoginState(ctx, hash, now.Add(loginStateLifetime)); !errors.Is(err, ErrNotFound) {
+		t.Errorf("TakeLoginState() after 10 minutes error = %v, want ErrNotFound", err)
+	}
+	if n := count(t, store.pool, "oidc_login_states"); n != 0 {
+		t.Errorf("oidc_login_states = %d, want 0", n)
+	}
+}
+
+// TestRowLevelTTL checks that CockroachDB deletes expired rows on its own
+// (docs/privacidade.md promises it).
+func TestRowLevelTTL(t *testing.T) {
+	t.Parallel()
+	pool := testPool(t)
+
+	for table, want := range map[string]string{
+		"auth_sessions":     "ttl_expiration_expression = 'expires_at'",
+		"oidc_login_states": "ttl_job_cron = '@hourly'",
+	} {
+		var name, create string
+		if err := pool.QueryRow(t.Context(), "SHOW CREATE TABLE "+table).Scan(&name, &create); err != nil {
+			t.Fatalf("SHOW CREATE TABLE %s: %v", table, err)
+		}
+		if !strings.Contains(create, want) || !strings.Contains(create, "ttl = 'on'") {
+			t.Errorf("%s is missing row-level TTL (%s): %s", table, want, create)
+		}
+	}
+}
+
+func storedEmail(t *testing.T, pool *pgxpool.Pool, id ExternalIdentity) string {
+	t.Helper()
+	var email *string
+	if err := pool.QueryRow(t.Context(), "SELECT email FROM user_identities WHERE issuer = $1 AND subject = $2", id.Issuer, id.Subject).Scan(&email); err != nil {
+		t.Fatalf("read email: %v", err)
+	}
+	if email == nil {
+		return "<NULL>"
+	}
+	return *email
+}
+
+func count(t *testing.T, pool *pgxpool.Pool, table string) int {
+	t.Helper()
+	var n int
+	if err := pool.QueryRow(t.Context(), "SELECT count(*) FROM "+table).Scan(&n); err != nil {
+		t.Fatalf("count %s: %v", table, err)
+	}
+	return n
+}

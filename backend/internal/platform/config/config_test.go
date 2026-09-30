@@ -1,9 +1,12 @@
 package config
 
 import (
+	"bytes"
+	"fmt"
 	"log/slog"
 	"strings"
 	"testing"
+	"time"
 )
 
 // env turns a map into a getenv function, so each test case declares its
@@ -68,6 +71,83 @@ func TestLoad(t *testing.T) {
 			env:     map[string]string{"PORT": "0", "LOG_LEVEL": "loud"},
 			wantErr: []string{"PORT", "LOG_LEVEL"},
 		},
+		{
+			name: "oidc fully configured",
+			env:  withOIDC(nil),
+			want: Config{Port: 8080, LogLevel: slog.LevelInfo, WebDir: DefaultWebDir, OIDC: OIDC{
+				IssuerURL:    "https://idp.example.com",
+				ClientID:     "meurpg",
+				ClientSecret: "s3cret",
+				RedirectURL:  "https://meurpg.example.com/auth/callback",
+			}},
+		},
+		{
+			name: "oidc with a CA file, max_age and a local http provider",
+			env: withOIDC(map[string]string{
+				"OIDC_ISSUER":       "http://localhost:9443/oauth2/token",
+				"OIDC_REDIRECT_URL": "http://127.0.0.1:8080/auth/callback",
+				"OIDC_CA_FILE":      "/certs/local-idp.pem",
+				"OIDC_MAX_AGE":      "1h30m",
+			}),
+			want: Config{Port: 8080, LogLevel: slog.LevelInfo, WebDir: DefaultWebDir, OIDC: OIDC{
+				IssuerURL:    "http://localhost:9443/oauth2/token",
+				ClientID:     "meurpg",
+				ClientSecret: "s3cret",
+				RedirectURL:  "http://127.0.0.1:8080/auth/callback",
+				CAFile:       "/certs/local-idp.pem",
+				MaxAge:       90 * time.Minute,
+			}},
+		},
+		{
+			name:    "oidc max_age is not a duration",
+			env:     withOIDC(map[string]string{"OIDC_MAX_AGE": "3600"}),
+			wantErr: []string{"OIDC_MAX_AGE must be a duration"},
+		},
+		{
+			name:    "oidc max_age longer than a session",
+			env:     withOIDC(map[string]string{"OIDC_MAX_AGE": "721h"}),
+			wantErr: []string{"OIDC_MAX_AGE must be between 1s and 720h"},
+		},
+		{
+			name:    "oidc max_age alone",
+			env:     map[string]string{"OIDC_MAX_AGE": "1h"},
+			wantErr: []string{"missing OIDC_ISSUER"},
+		},
+		{
+			name:    "oidc partly configured",
+			env:     map[string]string{"OIDC_ISSUER": "https://idp.example.com", "OIDC_CLIENT_ID": "meurpg"},
+			wantErr: []string{"missing OIDC_CLIENT_SECRET, OIDC_REDIRECT_URL"},
+		},
+		{
+			name:    "oidc CA file alone",
+			env:     map[string]string{"OIDC_CA_FILE": "/certs/local-idp.pem"},
+			wantErr: []string{"missing OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, OIDC_REDIRECT_URL"},
+		},
+		{
+			name:    "oidc issuer over plain http on a real host",
+			env:     withOIDC(map[string]string{"OIDC_ISSUER": "http://idp.example.com"}),
+			wantErr: []string{"OIDC_ISSUER must use https"},
+		},
+		{
+			name:    "oidc issuer with a query",
+			env:     withOIDC(map[string]string{"OIDC_ISSUER": "https://idp.example.com?tenant=x"}),
+			wantErr: []string{"OIDC_ISSUER must not have a query"},
+		},
+		{
+			name:    "oidc issuer is not a URL",
+			env:     withOIDC(map[string]string{"OIDC_ISSUER": "idp.example.com"}),
+			wantErr: []string{"OIDC_ISSUER must be an absolute URL"},
+		},
+		{
+			name:    "oidc redirect URL on another path",
+			env:     withOIDC(map[string]string{"OIDC_REDIRECT_URL": "https://meurpg.example.com/callback"}),
+			wantErr: []string{"OIDC_REDIRECT_URL must end in /auth/callback"},
+		},
+		{
+			name:    "oidc redirect URL over plain http on a real host",
+			env:     withOIDC(map[string]string{"OIDC_REDIRECT_URL": "http://meurpg.example.com/auth/callback"}),
+			wantErr: []string{"OIDC_REDIRECT_URL must use https"},
+		},
 	}
 
 	for _, tt := range tests {
@@ -95,5 +175,45 @@ func TestLoad(t *testing.T) {
 				t.Errorf("Load() = %+v, want %+v", got, tt.want)
 			}
 		})
+	}
+}
+
+// withOIDC returns a complete, valid OIDC environment with overrides applied.
+func withOIDC(overrides map[string]string) map[string]string {
+	vars := map[string]string{
+		"OIDC_ISSUER":        "https://idp.example.com",
+		"OIDC_CLIENT_ID":     "meurpg",
+		"OIDC_CLIENT_SECRET": "s3cret",
+		"OIDC_REDIRECT_URL":  "https://meurpg.example.com/auth/callback",
+	}
+	for k, v := range overrides {
+		vars[k] = v
+	}
+	return vars
+}
+
+func TestSecretNeverPrintsItself(t *testing.T) {
+	t.Parallel()
+
+	cfg := OIDC{ClientID: "meurpg", ClientSecret: "s3cret"}
+
+	var logs bytes.Buffer
+	slog.New(slog.NewJSONHandler(&logs, nil)).Info("config", "oidc", cfg, "secret", cfg.ClientSecret)
+
+	printed := []string{
+		fmt.Sprint(cfg.ClientSecret),
+		fmt.Sprintf("%v %+v %#v %s %q", cfg, cfg, cfg, cfg.ClientSecret, cfg.ClientSecret),
+		logs.String(),
+	}
+	for _, out := range printed {
+		if strings.Contains(out, "s3cret") {
+			t.Errorf("secret leaked: %s", out)
+		}
+	}
+	if got := cfg.ClientSecret.Reveal(); got != "s3cret" {
+		t.Errorf("Reveal() = %q, want the secret", got)
+	}
+	if got := Secret("").String(); got != "" {
+		t.Errorf("empty Secret prints %q, want an empty string", got)
 	}
 }

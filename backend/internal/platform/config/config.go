@@ -11,8 +11,11 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
+	"net/url"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Defaults used when a variable is unset or empty.
@@ -44,6 +47,91 @@ type Config struct {
 	// the server logs it and runs API-only instead of failing to start:
 	// that is the normal case outside the Docker image, e.g. `make run`.
 	WebDir string
+
+	// OIDC configures sign-in. The zero value means "not configured": the
+	// API still starts, and the sign-in routes answer 503.
+	OIDC OIDC
+}
+
+// OIDC holds the settings of the OpenID Connect provider the game master
+// signs in with: Google in production, a local provider in development.
+// Nothing here is provider-specific.
+type OIDC struct {
+	// IssuerURL identifies the provider, e.g. https://accounts.google.com.
+	// The server reads <IssuerURL>/.well-known/openid-configuration to find
+	// the provider's endpoints and signing keys.
+	IssuerURL string
+
+	// ClientID and ClientSecret are this app's credentials at the provider.
+	ClientID     string
+	ClientSecret Secret
+
+	// RedirectURL is where the provider sends the browser back after
+	// sign-in: this server's public origin plus /auth/callback. It must be
+	// registered at the provider exactly as written here.
+	RedirectURL string
+
+	// CAFile is an optional PEM file with extra CA certificates to trust
+	// when talking to the provider, for a local provider with a self-signed
+	// certificate. The system roots are always trusted too.
+	CAFile string
+
+	// MaxAge, when positive, is sent as the max_age sign-in parameter: if
+	// the user authenticated at the provider longer ago than this, the
+	// provider must ask for their credentials again. Zero means max_age is
+	// not sent. Set it only for providers that document max_age (Google
+	// does not).
+	MaxAge time.Duration
+}
+
+// Configured reports whether sign-in is configured. Load guarantees that
+// either all required OIDC variables are set or none is.
+func (o OIDC) Configured() bool {
+	return o.IssuerURL != ""
+}
+
+// CallbackPath is the path the provider must redirect back to. It is fixed
+// because the server registers its callback handler there.
+const CallbackPath = "/auth/callback"
+
+// maxOIDCMaxAge caps OIDC_MAX_AGE at the session lifetime: a larger max_age
+// would let a new 30-day session rest on an even older authentication.
+const maxOIDCMaxAge = 30 * 24 * time.Hour
+
+// Secret is a string that never prints itself: fmt and slog show
+// "[REDACTED]" instead, so a secret cannot leak into a log line or an error
+// message by accident. Use Reveal to get the real value.
+type Secret string
+
+// Reveal returns the secret itself. Call it only where the value is sent
+// to its destination, never to log or format it.
+func (s Secret) Reveal() string {
+	return string(s)
+}
+
+// String implements fmt.Stringer.
+func (s Secret) String() string {
+	if s == "" {
+		return ""
+	}
+	return "[REDACTED]"
+}
+
+// GoString implements fmt.GoStringer, which %#v uses.
+func (s Secret) GoString() string {
+	return fmt.Sprintf("%q", s.String())
+}
+
+// LogValue implements slog.LogValuer.
+func (s Secret) LogValue() slog.Value {
+	return slog.StringValue(s.String())
+}
+
+// MarshalText implements encoding.TextMarshaler, which encoding/json uses.
+// It matters when a struct holding a Secret is logged as a whole: slog's
+// JSON handler encodes it with encoding/json, not with String.
+func (s Secret) MarshalText() ([]byte, error) {
+	return []byte(s.String()), nil
 }
 
 // Load builds a Config from getenv, which is usually os.Getenv. Taking the
@@ -87,10 +175,129 @@ func Load(getenv func(string) string) (Config, error) {
 		}
 	}
 
+	oidc, oidcErrs := loadOIDC(getenv)
+	cfg.OIDC = oidc
+	errs = append(errs, oidcErrs...)
+
 	if err := errors.Join(errs...); err != nil {
 		return Config{}, fmt.Errorf("invalid configuration: %w", err)
 	}
 	return cfg, nil
+}
+
+// loadOIDC reads the OIDC_* variables. They go together: either all the
+// required ones are set, or none is and sign-in stays off.
+func loadOIDC(getenv func(string) string) (OIDC, []error) {
+	o := OIDC{
+		IssuerURL:    strings.TrimSpace(getenv("OIDC_ISSUER")),
+		ClientID:     strings.TrimSpace(getenv("OIDC_CLIENT_ID")),
+		ClientSecret: Secret(strings.TrimSpace(getenv("OIDC_CLIENT_SECRET"))),
+		RedirectURL:  strings.TrimSpace(getenv("OIDC_REDIRECT_URL")),
+		CAFile:       strings.TrimSpace(getenv("OIDC_CA_FILE")),
+	}
+	rawMaxAge := strings.TrimSpace(getenv("OIDC_MAX_AGE"))
+	if o == (OIDC{}) && rawMaxAge == "" {
+		return OIDC{}, nil
+	}
+
+	var errs []error
+	if rawMaxAge != "" {
+		maxAge, err := time.ParseDuration(rawMaxAge)
+		switch {
+		case err != nil:
+			errs = append(errs, fmt.Errorf("OIDC_MAX_AGE must be a duration like 1h or 90m, got %q", rawMaxAge))
+		case maxAge < time.Second || maxAge > maxOIDCMaxAge:
+			errs = append(errs, fmt.Errorf("OIDC_MAX_AGE must be between 1s and 720h, got %q", rawMaxAge))
+		default:
+			// max_age is a whole number of seconds.
+			o.MaxAge = maxAge.Truncate(time.Second)
+		}
+	}
+
+	required := []struct {
+		name  string
+		value string
+	}{
+		{"OIDC_ISSUER", o.IssuerURL},
+		{"OIDC_CLIENT_ID", o.ClientID},
+		{"OIDC_CLIENT_SECRET", o.ClientSecret.Reveal()},
+		{"OIDC_REDIRECT_URL", o.RedirectURL},
+	}
+	var missing []string
+	for _, r := range required {
+		if r.value == "" {
+			missing = append(missing, r.name)
+		}
+	}
+	if len(missing) > 0 {
+		errs = append(errs, fmt.Errorf("sign-in needs all of OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET and OIDC_REDIRECT_URL; missing %s", strings.Join(missing, ", ")))
+	}
+
+	if o.IssuerURL != "" {
+		if err := checkIssuerURL(o.IssuerURL); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if o.RedirectURL != "" {
+		if err := checkRedirectURL(o.RedirectURL); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if len(errs) > 0 {
+		return OIDC{}, errs
+	}
+	return o, nil
+}
+
+// checkIssuerURL applies OpenID Connect Discovery's rules: an https URL with
+// no query or fragment. Plain http is accepted only on the loopback
+// interface, for a provider running on the developer's machine.
+func checkIssuerURL(raw string) error {
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" || u.User != nil {
+		return fmt.Errorf("OIDC_ISSUER must be an absolute URL, got %q", raw)
+	}
+	if !secureOrLoopback(u) {
+		return fmt.Errorf("OIDC_ISSUER must use https (http only on localhost), got %q", raw)
+	}
+	if u.RawQuery != "" || u.Fragment != "" {
+		return fmt.Errorf("OIDC_ISSUER must not have a query or fragment, got %q", raw)
+	}
+	return nil
+}
+
+// checkRedirectURL makes sure the provider will send the browser back to
+// this server's callback handler, over https (or http on localhost).
+func checkRedirectURL(raw string) error {
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" || u.User != nil {
+		return fmt.Errorf("OIDC_REDIRECT_URL must be an absolute URL, got %q", raw)
+	}
+	if !secureOrLoopback(u) {
+		return fmt.Errorf("OIDC_REDIRECT_URL must use https (http only on localhost), got %q", raw)
+	}
+	if u.Path != CallbackPath || u.RawQuery != "" || u.Fragment != "" {
+		return fmt.Errorf("OIDC_REDIRECT_URL must end in %s with no query or fragment, got %q", CallbackPath, raw)
+	}
+	return nil
+}
+
+// secureOrLoopback reports whether u uses https, or http to a loopback
+// host (localhost, 127.0.0.0/8 or ::1), where nothing crosses the network.
+func secureOrLoopback(u *url.URL) bool {
+	switch u.Scheme {
+	case "https":
+		return true
+	case "http":
+		host := u.Hostname()
+		if host == "localhost" {
+			return true
+		}
+		ip := net.ParseIP(host)
+		return ip != nil && ip.IsLoopback()
+	default:
+		return false
+	}
 }
 
 // parseLogLevel accepts the four slog levels, case-insensitively.

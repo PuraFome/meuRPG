@@ -1,5 +1,6 @@
 // Package httpserver runs the API's HTTP server: health probes, request
-// logging, HTTP/1 + h2c, and a graceful shutdown that fits Cloud Run.
+// logging, cross-origin (CSRF) protection, HTTP/1 + h2c, and a graceful
+// shutdown that fits Cloud Run.
 package httpserver
 
 import (
@@ -93,9 +94,18 @@ func New(cfg Config) *Server {
 	protocols.SetHTTP1(true)
 	protocols.SetUnencryptedHTTP2(true)
 
+	// CrossOriginProtection stops CSRF: it rejects, with 403, a browser
+	// request that changes state (POST, PUT, DELETE...) and comes from
+	// another origin, judged by the Sec-Fetch-Site header or by comparing
+	// Origin with Host. Safe methods (GET, HEAD, OPTIONS) always pass, so a
+	// GET must never change state unless it carries its own protection, as
+	// the OIDC callback does with state, PKCE and nonce. It sits inside
+	// logRequests so rejected requests are logged too.
+	csrf := http.NewCrossOriginProtection()
+
 	s.httpServer = &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           logRequests(s.logger, s.mux),
+		Handler:           logRequests(s.logger, csrf.Handler(s.mux)),
 		Protocols:         &protocols,
 		ReadHeaderTimeout: readHeaderTimeout,
 		IdleTimeout:       idleTimeout,
