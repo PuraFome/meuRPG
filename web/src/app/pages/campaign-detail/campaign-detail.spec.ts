@@ -7,6 +7,8 @@ import { of } from 'rxjs';
 import { Campaign, Member, Role, XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { AuthService, AuthState } from '../../core/auth/auth.service';
 import { CampaignsService } from '../../core/campaigns/campaigns.service';
+import { GalleryClient } from '../../core/images/gallery-client';
+import { FakeGalleryClient } from '../../core/images/gallery-testing';
 import { CampaignDetail } from './campaign-detail';
 import {
   CampaignCharactersSource,
@@ -99,6 +101,7 @@ describe('CampaignDetail', () => {
         { provide: ActivatedRoute, useValue: activatedRouteFor(id) },
         { provide: CampaignCharactersSource, useClass: FakeCampaignCharactersSource },
         { provide: GameSessionSource, useClass: FakeGameSessionSource },
+        { provide: GalleryClient, useClass: FakeGalleryClient },
         { provide: AuthService, useClass: FakeAuthService },
       ],
     });
@@ -207,6 +210,25 @@ describe('CampaignDetail', () => {
     const el = await render();
     expect(el.textContent).toContain('Personagens');
     expect(el.textContent).not.toContain('Iniciar sessão');
+  });
+
+  it('shows the "Galeria" panel only for the master (MR-019)', async () => {
+    configure();
+    fake.getCampaignResult = Promise.resolve({
+      campaign: campaign('camp-1', 'Mirathel', Role.MASTER),
+    });
+    fake.listMembersResult = Promise.resolve({ members: [] });
+    expect((await render()).textContent).toContain('Abrir galeria');
+
+    TestBed.resetTestingModule();
+    configure();
+    fake.getCampaignResult = Promise.resolve({
+      campaign: campaign('camp-1', 'Mirathel', Role.PLAYER),
+    });
+    fake.listMembersResult = Promise.resolve({ members: [] });
+    const el = await render();
+    expect(el.textContent).not.toContain('Galeria');
+    expect((TestBed.inject(GalleryClient) as unknown as FakeGalleryClient).calls).toEqual([]);
   });
 
   it('a pending member sees the wait banner and their character, never the members (MR-024)', async () => {

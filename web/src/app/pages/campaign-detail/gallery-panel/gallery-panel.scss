@@ -1,0 +1,111 @@
+:host {
+  display: block;
+}
+
+.gallery {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+
+  .mr-panel__title {
+    margin: 0;
+  }
+}
+
+.gallery__status,
+.gallery__empty {
+  margin: 0;
+}
+
+.gallery__empty {
+  font-size: 16px;
+  line-height: 22px;
+  color: var(--mr-ink-muted);
+}
+
+// The newest images in a row: 3 on a phone, 5 from a tablet up (E5-09).
+.thumbs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 6px 0 0;
+  list-style: none;
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+.thumbs__item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+
+  @media (max-width: 767.98px) {
+    &:nth-child(n + 4) {
+      display: none;
+    }
+  }
+}
+
+// Every thumbnail in the same 4:3 frame, cover-cropped, whatever its
+// shape.
+.thumbs__frame {
+  display: block;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--mr-radius-sm);
+  outline: 1px solid var(--mr-line);
+  outline-offset: -1px;
+  overflow: hidden;
+  background: var(--mr-ground);
+
+  img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.thumbs__name {
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--mr-ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gallery__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-2) var(--mr-space-3);
+  padding-top: var(--mr-space-1);
+}
+
+.gallery__usage {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.gallery__open {
+  margin-left: auto;
+}
+
+// On a phone the button takes the whole width, under the quota line, like
+// every panel button there ("Novo NPC"). From a tablet up it sits on the
+// right of the quota line, or on the left under the sentence when there
+// are no images yet.
+@media (max-width: 767.98px) {
+  .gallery__open {
+    flex: 1 1 100%;
+  }
+}
+
+.gallery__foot--start .gallery__open {
+  margin-left: 0;
+}

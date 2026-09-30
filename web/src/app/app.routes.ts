@@ -67,6 +67,16 @@ export const routes: Routes = [
       ),
   },
   {
+    // The master's gallery (MR-019). A plain `loadComponent`: its clients
+    // (GalleryClient, ImageUploader) are `providedIn: 'root'` services that
+    // only lazy code imports, so the generated gallery code stays in this
+    // route's chunk. The page itself tells a player that only the master
+    // sees the gallery (the server refuses them the list).
+    path: 'campanhas/:id/galeria',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/gallery/gallery').then((m) => m.GalleryPage),
+  },
+  {
     // Public: read from the invite link's fragment (never a route param —
     // see InviteAccept's doc comment) and works whether the visitor is
     // signed in or not (MR-003).

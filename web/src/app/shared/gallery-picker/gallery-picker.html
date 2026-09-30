@@ -1,0 +1,96 @@
+@let s = state();
+@switch (s.status) {
+  @case ('loading') {
+    <p class="picker__status" role="status">Carregando as imagens da galeria...</p>
+  }
+  @case ('error') {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ s.message }}</p>
+    </div>
+    <button matButton="outlined" type="button" class="picker__retry" (click)="load()">
+      Tentar de novo
+    </button>
+  }
+  @case ('ready') {
+    @for (failure of queue.failures(); track failure.key) {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>
+          <strong>Não deu para enviar {{ failure.fileName }}.</strong>
+          {{ failure.message }}
+        </p>
+      </div>
+    }
+
+    <div class="picker__grid">
+      @for (item of queue.items(); track item.key) {
+        <app-upload-progress [item]="item" [compact]="true" (cancel)="queue.cancel(item.key)" />
+      }
+
+      @if (images().length > 0) {
+        <div
+          class="picker__group"
+          role="radiogroup"
+          [attr.aria-label]="label()"
+          [attr.aria-describedby]="describedBy()"
+        >
+          @for (image of images(); track image.id; let i = $index) {
+            @let checked = image.id === selectedId();
+            <button
+              #tile
+              type="button"
+              role="radio"
+              class="tile"
+              [class.tile--checked]="checked"
+              [attr.aria-checked]="checked"
+              [tabIndex]="i === tabStop() ? 0 : -1"
+              (click)="choose(image)"
+              (keydown)="onKeydown($event, i)"
+            >
+              <img
+                class="tile__img"
+                [src]="image.thumbnailUrl"
+                alt=""
+                [width]="image.width"
+                [height]="image.height"
+                loading="lazy"
+                decoding="async"
+              />
+              <span class="tile__foot">
+                <span class="tile__text">
+                  <span class="tile__name">{{ image.name }}</span>
+                  <span class="mr-visually-hidden">, </span>
+                  <span class="tile__meta">{{ dimensions(image) }}</span>
+                </span>
+                @if (checked) {
+                  <mat-icon class="tile__check" aria-hidden="true">check</mat-icon>
+                }
+              </span>
+            </button>
+          }
+        </div>
+      }
+
+      <button type="button" class="tile tile--upload" (click)="fileInput.click()">
+        <mat-icon aria-hidden="true">upload</mat-icon>
+        Enviar imagem
+        <span class="tile__hint">{{ hint() }}</span>
+      </button>
+    </div>
+
+    @if (images().length === 0 && queue.items().length === 0) {
+      <p class="picker__empty">A galeria ainda não tem imagens. Envie a primeira.</p>
+    }
+    <app-image-privacy-note />
+  }
+}
+
+<input
+  #fileInput
+  class="picker__file"
+  type="file"
+  [accept]="accept"
+  (change)="onFileChange(fileInput)"
+/>
+<p class="mr-visually-hidden" role="status" aria-live="polite">{{ announcement() }}</p>

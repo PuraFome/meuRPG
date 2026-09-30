@@ -139,7 +139,7 @@ A galeria (`backend/internal/maps`, MR-019) cumpre assim os itens desta página:
 - **Cache só no aparelho.** A imagem sai com `Cache-Control: private`: o navegador de quem pode vê-la guarda uma cópia (os bytes de um ID nunca mudam), mas nenhum proxy guarda. Quem sai da campanha ainda tem no navegador as imagens que já viu.
 - **Apagar** tira a linha e os arquivos na hora. No Cloud Storage, o soft delete guarda o arquivo por mais 7 dias, dentro do prazo de 30 dias desta página.
 - **Logs sem dado pessoal.** O nome do arquivo e o nome da imagem nunca vão para o log, e os logs do módulo não levam IDs: os erros do armazenamento saem sem o caminho do arquivo. O ID da imagem aparece no caminho `/images/<id>` do log de requisições (e nos logs da plataforma), como qualquer URL: é um UUID aleatório, que não diz nada sobre ninguém nem dá acesso à imagem, porque a sessão e a participação na campanha são conferidas a cada pedido.
-- **Uma imagem pode ser a foto de uma pessoa.** Proposta para a tela da galeria: avisar, como no texto livre, "use imagens do jogo; não envie fotos de pessoas sem autorização delas".
+- **Uma imagem pode ser a foto de uma pessoa.** Por isso, ao lado de todo "Enviar imagem" (a galeria, a galeria vazia e o seletor de imagem), a tela avisa, como no texto livre: "Use imagens do jogo. Não envie fotos de pessoas sem a autorização delas." (`ImagePrivacyNote`, em `web/src/app/shared/gallery-picker/`).
 - **Ainda falta:** apagar os arquivos quando a campanha é apagada (hoje só acontece pela exclusão da conta do mestre, e só as linhas somem). A exclusão da campanha ou da conta precisa apagar o prefixo `campaigns/<id>/` do armazenamento; entra com o `PrivacyService`.
 
 ## Direitos do titular e como atendemos

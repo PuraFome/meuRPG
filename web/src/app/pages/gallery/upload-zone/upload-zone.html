@@ -1,0 +1,36 @@
+@if (variant() === 'empty') {
+  <section class="empty" [class.dragging]="dragging()" aria-labelledby="gallery-empty-title">
+    <span class="badge" aria-hidden="true"><mat-icon>image</mat-icon></span>
+    <h2 class="empty__title" id="gallery-empty-title">Nenhuma imagem ainda</h2>
+    <p class="empty__text">
+      Envie a primeira para usar nos mapas e no documento da campanha: um mapa, a planta de um
+      lugar, o retrato de um NPC.
+    </p>
+    <button #pickButton mat-flat-button type="button" class="empty__button" (click)="open()">
+      <mat-icon aria-hidden="true">upload</mat-icon>Enviar imagem
+    </button>
+    <p class="hint"><span class="empty__drag">Ou arraste as imagens para cá. </span>{{ hint() }}</p>
+    <app-image-privacy-note class="empty__privacy" />
+  </section>
+} @else {
+  <div class="zone" [class.dragging]="dragging()">
+    <span class="badge zone__badge" aria-hidden="true"><mat-icon>upload</mat-icon></span>
+    <div class="zone__copy">
+      <p class="zone__lead">Arraste imagens para cá, ou use Enviar imagem.</p>
+      <p class="hint">{{ hint() }}</p>
+      <app-image-privacy-note />
+    </div>
+    <button #pickButton mat-flat-button type="button" class="zone__button" (click)="open()">
+      <mat-icon aria-hidden="true">upload</mat-icon>Enviar imagem
+    </button>
+  </div>
+}
+
+<input
+  #fileInput
+  class="file-input"
+  type="file"
+  multiple
+  [accept]="accept"
+  (change)="onChange(fileInput)"
+/>

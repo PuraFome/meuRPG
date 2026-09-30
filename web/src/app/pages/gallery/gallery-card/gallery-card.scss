@@ -1,0 +1,206 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
+p {
+  margin: 0;
+}
+
+// A grid, so the action bar can sit either over the thumbnail's lower
+// 48px (a mouse) or under the card (touch) without changing the markup.
+.card {
+  box-sizing: border-box;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  grid-template-areas: 'media' 'body' 'confirm' 'bar';
+  background: var(--mr-surface);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  overflow: hidden;
+  container-type: inline-size;
+
+  &:hover,
+  &:focus-within {
+    border-color: var(--mr-accent);
+  }
+
+  &--confirm,
+  &--confirm:hover,
+  &--confirm:focus-within {
+    border-color: var(--mr-danger-ink);
+  }
+
+  &:has(> .card__thumb:focus-visible) {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+.card__thumb {
+  grid-area: media;
+  display: block;
+  width: 100%;
+  height: var(--thumb-height, 116px);
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--mr-line);
+  background: var(--mr-ground);
+  cursor: zoom-in;
+
+  // The ring goes around the whole card (below): inside the thumbnail, the
+  // action bar would hide its lower edge.
+  &:focus-visible {
+    outline: none;
+  }
+
+  img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+// Equal columns, labels centred: the bar never overflows a narrow card.
+.card__bar {
+  grid-area: bar;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  padding: 0 2px 2px;
+  border-top: 1px solid var(--mr-rule);
+
+  .mat-mdc-button {
+    min-width: 0;
+    padding-inline: var(--mr-space-1);
+  }
+}
+
+.card__view {
+  display: none;
+}
+
+// A mouse: the bar covers the thumbnail's lower 48px on hover or keyboard
+// focus, and "Ver" joins it (README-B, "Card actions").
+@media (hover: hover) {
+  .card__bar {
+    grid-area: media;
+    align-self: end;
+    align-items: center;
+    height: 48px;
+    box-sizing: border-box;
+    padding: 0 var(--mr-space-1);
+    background: var(--mr-surface);
+    border-top: 1px solid var(--mr-line);
+    opacity: 0;
+    transition: opacity 0.12s ease-out;
+  }
+
+  .card:hover .card__bar,
+  .card:focus-within .card__bar {
+    opacity: 1;
+  }
+
+  .card__view {
+    display: inline-flex;
+  }
+
+  // A card too narrow for three words (tablet, 3 or 4 columns) keeps
+  // "Renomear / Apagar": the thumbnail itself is "Ver".
+  @container (max-width: 250px) {
+    .card__view {
+      display: none;
+    }
+  }
+}
+
+.card__body {
+  grid-area: body;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 10px var(--mr-space-3) var(--mr-space-2);
+
+  @media (min-width: 768px) {
+    gap: 3px;
+    padding: var(--mr-space-3) var(--mr-space-4) 14px;
+  }
+}
+
+.card__name {
+  font-size: 16px;
+  line-height: 21px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+
+  @media (min-width: 768px) {
+    font-size: 17px;
+    line-height: 22px;
+  }
+}
+
+.card__meta {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.card__error {
+  gap: var(--mr-space-2);
+  margin-top: var(--mr-space-2);
+  padding: 10px var(--mr-space-3);
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.rename {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+.rename__field {
+  width: 100%;
+}
+
+.rename__actions,
+.confirm__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-1) var(--mr-space-2);
+
+  // Side by side when both fit, else one per line, full width (E5-21).
+  .mat-mdc-button-base {
+    flex: 1 1 auto;
+    white-space: nowrap;
+  }
+}
+
+// E5-21: the in-place confirmation, under the card's text.
+.confirm {
+  grid-area: confirm;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  padding: var(--mr-space-3);
+  border-top: 1px solid var(--mr-rule);
+
+  @media (min-width: 768px) {
+    padding: var(--mr-space-3) var(--mr-space-4) 14px;
+  }
+}
+
+.confirm__text {
+  font-size: 15px;
+  line-height: 20px;
+}
+
+// Outlined in the danger colours: the screen's one filled button is
+// "Enviar imagem" (README-B, "One filled accent per screen").
+.danger {
+  --mat-button-outlined-outline-color: var(--mr-danger-ink);
+  --mat-button-outlined-label-text-color: var(--mr-danger-ink);
+}

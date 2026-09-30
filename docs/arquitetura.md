@@ -871,6 +871,16 @@ A rota não é Connect, mas os erros usam os códigos do Connect, num JSON peque
 
 O `403` do `CrossOriginProtection` (um envio de outro site) vem antes de tudo isso, em texto puro: o app nunca o vê.
 
+### No app
+
+A tela da galeria (`/campanhas/:id/galeria`), o painel "Galeria" da página da campanha e o seletor de imagem usam três peças de `web/src/app/core/images/`, todas carregadas só pelas rotas lazy:
+
+- `GalleryClient`: o `GalleryService` gerado (listar, renomear, apagar).
+- `ImageUploader`: o `POST /uploads/images`, com `XMLHttpRequest` e `FormData` (`campaign_id`, depois `file`, sem escrever o `Content-Type`). É XHR, e não `fetch`, porque só o XHR informa o progresso do envio; o app não tem `HttpClient`, e colocá-lo só para isto pesaria mais. A resposta `201` vira o `GalleryImage` gerado (`fromJson`).
+- `UploadQueue`: envia os arquivos um depois do outro, cada um com o próprio progresso, cancelamento e erro. Antes de enviar, confere no próprio navegador o tipo (JPEG, PNG ou WebP), o tamanho (10 MB) e o número de imagens, com o `GalleryUsage` do `ListGalleryImages`. Os bytes da cota ficam com o servidor, porque ele conta a imagem já codificada de novo, que pode ser bem menor que o arquivo.
+
+O texto de cada erro vem do `reason` (ou do `code`, ou do status HTTP), nunca da `message` (`upload-errors.ts`). As imagens na tela vêm sempre de `/images/<id>` ou `/thumb`, da mesma origem: o CSP (`img-src 'self'`) não deixa mostrar uma prévia do arquivo antes do envio (uma URL `blob:`).
+
 ## Ver também
 
 - [Modelo de dados](dados.md)

@@ -1,0 +1,179 @@
+:host {
+  display: block;
+}
+
+.file-input {
+  display: none;
+}
+
+p {
+  margin: 0;
+}
+
+.hint {
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+// The round icon on the left of the drop zone and at the top of the empty
+// panel.
+.badge {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--mr-ground);
+  color: var(--mr-ink);
+
+  .mat-icon {
+    width: 24px;
+    height: 24px;
+    font-size: 24px;
+  }
+}
+
+// On a phone: the full-width button, then the lines under it, centred
+// (E5-21). From 768px: the dashed drop zone of E5-20.
+.zone {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: center;
+
+  .zone__badge,
+  .zone__lead {
+    display: none;
+  }
+
+  .zone__button {
+    order: -1;
+    width: 100%;
+  }
+
+  // Its own block, centred under the line above, its text left-aligned.
+  app-image-privacy-note {
+    align-self: center;
+  }
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--mr-space-5);
+    padding: var(--mr-space-5) var(--mr-space-6);
+    background: var(--mr-surface);
+    border: 2px dashed var(--mr-control-line);
+    border-radius: var(--mr-radius-lg);
+    text-align: left;
+
+    .zone__badge {
+      display: flex;
+    }
+
+    .zone__lead {
+      display: block;
+    }
+
+    .zone__button {
+      order: 0;
+      flex: none;
+      width: auto;
+      white-space: nowrap;
+    }
+
+    app-image-privacy-note {
+      align-self: flex-start;
+    }
+  }
+}
+
+.zone__copy {
+  flex-grow: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.zone__lead {
+  font-size: 17px;
+  line-height: 24px;
+  font-weight: 700;
+}
+
+// E5-22: the empty gallery, one panel that invites the first upload.
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--mr-space-3);
+  padding: 32px var(--mr-space-5) var(--mr-space-6);
+  background: var(--mr-surface);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  text-align: center;
+
+  // From a tablet up, where files can be dragged in, it reads as a drop
+  // zone too, like the bar above a full gallery.
+  @media (min-width: 768px) {
+    border: 2px dashed var(--mr-control-line);
+  }
+
+  .badge {
+    width: 72px;
+    height: 72px;
+    color: var(--mr-ink-muted);
+
+    .mat-icon {
+      width: 32px;
+      height: 32px;
+      font-size: 32px;
+    }
+  }
+}
+
+.empty__title {
+  margin: var(--mr-space-1) 0 0;
+  font-size: 21px;
+  line-height: 26px;
+  font-weight: 700;
+}
+
+.empty__text {
+  max-width: 30rem;
+  line-height: 23px;
+  color: var(--mr-ink-muted);
+}
+
+.empty__button {
+  align-self: stretch;
+  margin-top: var(--mr-space-2);
+
+  @media (min-width: 768px) {
+    align-self: center;
+    min-width: 14rem;
+  }
+}
+
+.empty__privacy {
+  max-width: 30rem;
+}
+
+.empty__drag {
+  display: none;
+
+  @media (min-width: 768px) {
+    display: inline;
+  }
+}
+
+// A file is being dragged over the page: the zone the drop lands in
+// lights up (README-B).
+.dragging {
+  border-style: dashed;
+  border-color: var(--mr-accent);
+  background: var(--mr-accent-soft);
+}

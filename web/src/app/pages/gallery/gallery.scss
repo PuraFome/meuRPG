@@ -1,0 +1,128 @@
+// E5-20 / E5-21: back link, title block, notices, the upload zone, then
+// the grid, 16px apart on a phone and 20px from a tablet up.
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+
+  @media (min-width: 768px) {
+    gap: var(--mr-space-5);
+  }
+}
+
+// "← Voltar para a campanha", quiet, as on the sheet.
+.back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  margin: -10px 0 -8px;
+  font-size: 16px;
+  color: var(--mr-ink-muted);
+  text-decoration: none;
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+
+  &:hover {
+    color: var(--mr-accent-text);
+    text-decoration: underline;
+  }
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+
+  .mr-page-lead {
+    margin-bottom: 0;
+    font-size: 16px;
+    line-height: 22px;
+
+    @media (min-width: 768px) {
+      font-size: 17px;
+      line-height: 24px;
+    }
+  }
+}
+
+// "5 imagens · 5,8 MB de 500 MB": the quota line under the lead.
+.quota {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: var(--mr-space-2) 0 0;
+  font-size: 15px;
+  line-height: 20px;
+
+  @media (min-width: 768px) {
+    font-size: 16px;
+    line-height: 22px;
+  }
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.quota-notice {
+  margin-top: var(--mr-space-3);
+}
+
+.page-status {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  margin: 0;
+  color: var(--mr-ink-muted);
+}
+
+.page-notice {
+  max-width: 44rem;
+}
+
+.page-action,
+.retry {
+  margin-top: var(--mr-space-5);
+  width: 100%;
+
+  @media (min-width: 768px) {
+    width: auto;
+  }
+}
+
+// Newest first: 2 columns on a phone, 3 on a tablet, 4 from 1024px. Each
+// card keeps its own height, so opening a rename or a delete confirmation
+// in one card never stretches its neighbours (E5-21). `--thumb-height`
+// keeps every thumbnail, and a card still uploading, the same height.
+.grid {
+  --thumb-height: 116px;
+
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--mr-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  @media (min-width: 768px) {
+    --thumb-height: 160px;
+
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--mr-space-4);
+  }
+
+  @media (min-width: 1024px) {
+    --thumb-height: 180px;
+
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}

@@ -12,6 +12,7 @@ import { describeConnectError } from '../../core/connect/connect-errors';
 import { campaignLead } from '../campaigns/campaign-copy';
 import { memberRows } from './campaign-detail.copy';
 import { CampaignCharacters } from './characters/campaign-characters';
+import { GalleryPanel } from './gallery-panel/gallery-panel';
 import { GameSessionCard } from './game-session/game-session-card';
 import { CampaignInvites } from './invites/invites';
 
@@ -47,6 +48,7 @@ type PageState =
   imports: [
     CampaignCharacters,
     CampaignInvites,
+    GalleryPanel,
     GameSessionCard,
     MatIconModule,
     MatProgressSpinnerModule,
