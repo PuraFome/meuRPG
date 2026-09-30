@@ -46,3 +46,30 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+
+Fonts: Alegreya and Alegreya Sans
+---------------------------------
+
+The web app (web/) serves the Alegreya and Alegreya Sans typefaces from its
+own origin, taken from the @fontsource/alegreya and @fontsource/alegreya-sans
+packages (5.3.0), Latin subset, woff2 only.
+
+Alegreya: Copyright 2011 The Alegreya Project Authors
+(https://github.com/huertatipografica/Alegreya).
+Alegreya Sans: Copyright 2013 The Alegreya Sans Project Authors
+(https://github.com/huertatipografica/Alegreya-Sans).
+
+Both are licensed under the SIL Open Font License, Version 1.1. The full
+license texts are in third_party/licenses/Alegreya-OFL-1.1.txt and
+third_party/licenses/Alegreya-Sans-OFL-1.1.txt.
+
+
+Icons: Material Symbols
+-----------------------
+
+The web app (web/) serves the Material Symbols Outlined icon font from its
+own origin, taken from the @material-symbols/font-400 package (0.47.5).
+Material Symbols is made by Google (https://github.com/google/material-design-icons)
+and licensed under the Apache License, Version 2.0; the full text is in
+third_party/licenses/Material-Symbols-Apache-2.0.txt.
