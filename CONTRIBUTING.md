@@ -231,6 +231,7 @@ A documentação muda no mesmo PR que o código. Um PR que muda comportamento se
 | Comando ou ferramenta nova | `README.md` ou `CONTRIBUTING.md` |
 | Termo novo | `docs/produto/glossario.md` |
 | Dado pessoal, log, cookie, imagem ou fornecedor novo | `docs/privacidade.md` (inventário e operadores) e o checklist de privacidade no PR |
+| Dependência, fonte, ícone ou conteúdo de terceiros novo | Licença compatível com a Apache 2.0; o `NOTICE`, a licença em `third_party/licenses/` e a página "Créditos" do app, quando a licença pede atribuição (ver [Licença](#licença)) |
 
 Como escrever:
 
@@ -260,6 +261,12 @@ Modelo de história novo (`docs/produto/historias.md`):
 ```
 
 Modelo de ADR (para o repositório privado de ADRs) e mais contexto sobre por que cada documento existe: ver [docs/README.md](docs/README.md).
+
+## Licença
+
+O MeuRPG é distribuído sob a [Apache License 2.0](LICENSE). Todo PR entra sob a mesma licença (seção 5 da Apache 2.0), então só envie código que você escreveu ou que tem licença compatível.
+
+Conteúdo de terceiros mantém a própria licença, e o [NOTICE](NOTICE) lista cada um: o SRD 5.1 (CC BY 4.0), os dados do 5e-database (MIT), as fontes (OFL 1.1) e os ícones (Apache 2.0). Uma dependência ou um conteúdo novo que peça atribuição entra no `NOTICE`, com a licença inteira em `third_party/licenses/` e uma linha na página "Créditos" do app.
 
 ## Guias de uso
 
