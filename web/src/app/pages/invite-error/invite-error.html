@@ -1,11 +1,15 @@
-<mat-card class="status-card status-card--error" role="alert">
-  <mat-card-header>
-    <h1 mat-card-title>Não foi possível aceitar o convite</h1>
-  </mat-card-header>
-  <mat-card-content>
-    <p>{{ message() }}</p>
-  </mat-card-content>
-  <mat-card-actions>
-    <a mat-button routerLink="/">Voltar para o início</a>
-  </mat-card-actions>
-</mat-card>
+<h1 class="mr-page-title">Não foi possível aceitar o convite</h1>
+
+<div class="invite-error-page">
+  <div class="mr-notice mr-notice--danger" role="alert">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <p>
+      <strong>{{ message() }}</strong>
+      @if (nextStep(); as step) {
+        {{ step }}
+      }
+    </p>
+  </div>
+
+  <a mat-flat-button routerLink="/">Voltar para o início</a>
+</div>

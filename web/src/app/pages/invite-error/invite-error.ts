@@ -1,11 +1,20 @@
 import { Component, computed, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
+import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
 
 import { describeInviteErrorCode } from '../../core/campaigns/invite-errors';
+
+/**
+ * `describeInviteErrorCode`'s own message already tells the visitor what to
+ * do next for these reasons (check the link, ask the mestre, try again
+ * later) — see core/campaigns/invite-errors.ts. Every other reason gets
+ * this page's generic follow-up instead, so nobody reads the same
+ * instruction twice.
+ */
+const REASONS_WITH_OWN_ADVICE = new Set(['used_up', 'not_found', 'unavailable']);
 
 /**
  * "/convite/erro?motivo=<code>" (public): where the server redirects after
@@ -15,7 +24,7 @@ import { describeInviteErrorCode } from '../../core/campaigns/invite-errors';
  */
 @Component({
   selector: 'app-invite-error',
-  imports: [MatButtonModule, MatCardModule, RouterLink],
+  imports: [MatButtonModule, MatIconModule, RouterLink],
   templateUrl: './invite-error.html',
   styleUrl: './invite-error.scss',
 })
@@ -28,4 +37,8 @@ export class InviteError {
   );
 
   protected readonly message = computed(() => describeInviteErrorCode(this.motivo()));
+
+  protected readonly nextStep = computed(() =>
+    REASONS_WITH_OWN_ADVICE.has(this.motivo() ?? '') ? null : 'Peça um novo link a quem te convidou.',
+  );
 }

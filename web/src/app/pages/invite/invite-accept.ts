@@ -1,7 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
+import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Router } from '@angular/router';
 import { filter, take } from 'rxjs';
@@ -33,7 +33,7 @@ const TOKEN_PATTERN = /^#t=(.+)$/;
  */
 @Component({
   selector: 'app-invite-accept',
-  imports: [MatButtonModule, MatCardModule, MatProgressSpinnerModule],
+  imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule],
   templateUrl: './invite-accept.html',
   styleUrl: './invite-accept.scss',
 })

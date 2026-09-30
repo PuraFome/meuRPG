@@ -1,34 +1,37 @@
-<h1>Meu perfil</h1>
+<h1 class="mr-page-title">Meu perfil</h1>
+<p class="mr-page-lead">
+  Esse é o nome que os outros membros das suas campanhas veem. Ele nunca vem da sua conta de
+  login, e nunca é seu e-mail.
+</p>
 
-<mat-card class="profile-card">
-  <mat-card-content>
-    <p class="profile-hint">
-      Esse é o nome que os outros membros das suas campanhas veem. Ele nunca vem da sua conta de
-      login, e nunca é seu e-mail.
-    </p>
-
-    <form [formGroup]="form" (ngSubmit)="submit()">
-      <mat-form-field appearance="outline" class="full-width">
-        <mat-label>Nome de exibição</mat-label>
-        <input matInput formControlName="displayName" maxlength="40" />
-        <mat-hint>Deixe em branco para remover o nome.</mat-hint>
-        @if (form.controls.displayName.invalid && form.controls.displayName.touched) {
-          <mat-error>O nome deve ter até 40 caracteres.</mat-error>
-        }
-      </mat-form-field>
-
-      @if (saveState(); as s) {
-        @if (s.status === 'saved') {
-          <p role="status">Nome de exibição atualizado.</p>
-        }
-        @if (s.status === 'error') {
-          <p class="form-error" role="alert">{{ s.message }}</p>
-        }
+<section class="mr-panel profile-panel">
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <mat-form-field appearance="outline" class="profile-panel__field">
+      <mat-label>Nome de exibição</mat-label>
+      <input matInput formControlName="displayName" maxlength="40" />
+      <mat-hint>Até 40 caracteres. Deixe em branco para remover o nome.</mat-hint>
+      @if (form.controls.displayName.invalid && form.controls.displayName.touched) {
+        <mat-error>O nome deve ter até 40 caracteres.</mat-error>
       }
+    </mat-form-field>
 
-      <button mat-flat-button type="submit" [disabled]="saveState().status === 'saving'">
-        Salvar
-      </button>
-    </form>
-  </mat-card-content>
-</mat-card>
+    @if (saveState(); as s) {
+      @if (s.status === 'saved') {
+        <div class="mr-notice mr-notice--success" role="status">
+          <mat-icon aria-hidden="true">check_circle</mat-icon>
+          <p>Nome de exibição atualizado.</p>
+        </div>
+      }
+      @if (s.status === 'error') {
+        <div class="mr-notice mr-notice--danger" role="alert">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <p>{{ s.message }}</p>
+        </div>
+      }
+    }
+
+    <button mat-flat-button type="submit" [disabled]="saveState().status === 'saving'">
+      Salvar nome
+    </button>
+  </form>
+</section>
