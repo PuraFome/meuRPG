@@ -1,0 +1,146 @@
+@let s = sheet();
+<section aria-labelledby="combate-heading">
+  <h2 id="combate-heading" class="mr-visually-hidden">Combate</h2>
+  <app-combat-stats
+    [armorClass]="s.armorClass"
+    [initiative]="s.initiative"
+    [speedFt]="s.speedWalkFt"
+    [hitPointsMax]="s.hitPointsMax"
+    [hitDice]="s.hitDice"
+  />
+</section>
+
+@if (s.attacks.length > 0) {
+  <section class="mr-panel" aria-labelledby="ataques-heading">
+    <h2 id="ataques-heading" class="mr-panel__title">Ataques</h2>
+    <table class="attacks">
+      <thead>
+        <tr>
+          <th scope="col">Nome</th>
+          <th scope="col" class="attacks__bonus">
+            {{ hasSaveAttack() ? 'Bônus ou CD' : 'Bônus' }}
+          </th>
+          <th scope="col" class="attacks__damage">Dano</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (atk of s.attacks; track atk.key) {
+          <tr>
+            <td>
+              {{ atk.namePt }}
+              @if (atk.saveDc > 0 && atk.saveAbility) {
+                <span class="attacks__save"
+                  >Salvaguarda de {{ abilityLabel(atk.saveAbility) }}</span
+                >
+              }
+            </td>
+            <td class="attacks__bonus">
+              {{ atk.saveDc > 0 ? 'CD ' + atk.saveDc : formatModifier(atk.attackBonus) }}
+            </td>
+            <td class="attacks__damage">{{ atk.damage }} {{ atk.damageTypePt }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </section>
+}
+
+@if (s.spellcasting.length > 0) {
+  <section class="mr-panel spells" aria-labelledby="magias-heading">
+    <h2 id="magias-heading" class="mr-panel__title">{{ spellsTitle() }}</h2>
+    @for (sc of s.spellcasting; track sc.className) {
+      @if (s.spellcasting.length > 1) {
+        <h3 class="spells__class">{{ sc.className }}</h3>
+      }
+      <dl class="trio">
+        <div class="trio__item">
+          <dt>Atributo</dt>
+          <dd>{{ abilityLabel(sc.ability) }}</dd>
+        </div>
+        <div class="trio__item">
+          <dt>CD de magia</dt>
+          <dd>{{ sc.saveDc }}</dd>
+        </div>
+        <div class="trio__item">
+          <dt>Ataque de magia</dt>
+          <dd>{{ formatModifier(sc.attackBonus) }}</dd>
+        </div>
+      </dl>
+      @if (spellLimitsText(sc); as limits) {
+        <p class="spells__limits">{{ limits }}</p>
+      }
+    }
+
+    @if (slotRows().length > 0) {
+      <ul class="slots" aria-label="Espaços de magia">
+        @for (row of slotRows(); track row.level) {
+          <li class="slots__row">
+            <span class="slots__level">{{ row.label }}</span>
+            <span class="slots__circles" role="img" [attr.aria-label]="row.countLabel">
+              @for (i of range(row.count); track i) {
+                <span class="slots__circle"></span>
+              }
+            </span>
+          </li>
+        }
+      </ul>
+    }
+
+    @if (s.cantripNames.length > 0 || s.spellNames.length > 0) {
+      <div class="spells__lists">
+        @if (s.cantripNames.length > 0) {
+          <div>
+            <h3 class="spells__label">Truques</h3>
+            <ul class="spells__names">
+              @for (name of s.cantripNames; track name) {
+                <li>{{ name }}</li>
+              }
+            </ul>
+          </div>
+        }
+        @if (s.spellNames.length > 0) {
+          <div>
+            <h3 class="spells__label">Magias</h3>
+            <ul class="spells__names">
+              @for (name of s.spellNames; track name) {
+                <li>{{ name }}</li>
+              }
+            </ul>
+          </div>
+        }
+      </div>
+    }
+  </section>
+}
+
+<section class="mr-panel" aria-labelledby="equipamento-heading">
+  <h2 id="equipamento-heading" class="mr-panel__title">Equipamento</h2>
+  <ul class="gear">
+    <li>{{ armorName() ?? 'Sem armadura' }}</li>
+    @if (s.hasShield) {
+      <li>Escudo</li>
+    }
+    @for (weapon of weaponNames(); track $index) {
+      <li>{{ weapon }}</li>
+    }
+    @for (item of s.equipment; track $index) {
+      <li>
+        {{ item.name }}
+        @if (item.quantity > 1) {
+          <span class="mr-muted">(x{{ item.quantity }})</span>
+        }
+      </li>
+    }
+  </ul>
+  @if (coins().length > 0) {
+    <ul class="coins" aria-label="Moedas">
+      @for (coin of coins(); track coin.abbreviation) {
+        <li>
+          {{ coin.amount }} <abbr [title]="coin.name">{{ coin.abbreviation }}</abbr>
+        </li>
+      }
+    </ul>
+  } @else {
+    <p class="coins mr-muted">Sem moedas</p>
+  }
+</section>

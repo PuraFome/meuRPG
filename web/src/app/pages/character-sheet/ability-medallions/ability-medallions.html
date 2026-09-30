@@ -1,0 +1,14 @@
+<section class="abilities" aria-labelledby="atributos-heading">
+  <h2 id="atributos-heading" class="mr-visually-hidden">Atributos</h2>
+  <dl class="abilities__list">
+    @for (a of abilities(); track a.key) {
+      <div class="medallion">
+        <dt class="medallion__name">{{ abilityLabel(a.key) }}</dt>
+        <dd class="medallion__modifier">{{ formatModifier(a.modifier) }}</dd>
+        <dd class="medallion__score">
+          <span class="mr-visually-hidden">valor </span>{{ a.score }}
+        </dd>
+      </div>
+    }
+  </dl>
+</section>

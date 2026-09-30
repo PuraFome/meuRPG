@@ -93,6 +93,13 @@ As peças comuns a várias telas são classes globais em `web/src/styles/_ui.scs
 | Botões | Material: `mat-flat-button` para o principal (um por tela), `mat-stroked-button` para os de apoio, `mat-button` para os de texto. Todos com canto de 8px |
 | Texto só para leitor de tela | `.mr-visually-hidden` |
 
+Regras que valem em toda tela:
+
+- **Etiqueta de estado é uma palavra:** Rascunho, Pendente, Travada, Aprovado, Morto; convites Ativo, Usado, Expirado, Revogado. O aviso ao lado explica o resto ("Esperando a aprovação do mestre").
+- **Pendência não é lembrete.** Na ficha, o que o motor de regras aponta como problema (armadura sem proficiência, magia fora do grimório) vira um aviso só, logo abaixo do cabeçalho, cada item começando pelo problema em negrito. O que é só lembrete (vantagem contra magia, por exemplo) fica, quieto, em "Características e traços".
+- **Ação que não se desfaz pede confirmação na própria tela:** "Marcar como morto" vira "Confirmar morte", e "Recusar personagem" vira "Confirmar recusa", com "Cancelar" ao lado e o foco no botão novo.
+- **Um botão cheio por tela.** Quando a tela tem duas ações importantes (o mestre olhando um personagem pendente), a principal ("Aprovar personagem") é a cheia e a outra fica com contorno.
+
 Na ficha: o medalhão de atributo, o escudo da CA, as caixas de número, as linhas de proficiência e os campos do cabeçalho, desenhados no sistema visual do Claude Design.
 
 ## Texto na tela

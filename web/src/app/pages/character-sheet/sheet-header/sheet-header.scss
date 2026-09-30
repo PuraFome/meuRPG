@@ -1,0 +1,156 @@
+:host {
+  display: block;
+}
+
+.head {
+  padding: var(--mr-space-4);
+  background: var(--mr-surface);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-xl);
+
+  @media (min-width: 768px) {
+    padding: 20px 28px;
+  }
+}
+
+.head__top {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-5);
+
+  @media (min-width: 1000px) {
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 32px;
+  }
+}
+
+.head__id {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+
+  @media (min-width: 1000px) {
+    flex: 0 1 auto;
+    min-width: 280px;
+    max-width: 380px;
+  }
+}
+
+.head__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-2) var(--mr-space-3);
+}
+
+.head__name {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 38px;
+  line-height: 40px;
+  letter-spacing: -0.5px;
+  color: var(--mr-ink);
+  overflow-wrap: anywhere;
+
+  @media (min-width: 768px) {
+    font-size: 48px;
+    line-height: 50px;
+  }
+}
+
+.head__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.head__line {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    margin-top: 2px;
+    font-size: 16px;
+  }
+}
+
+// The paper sheet's identity fields: the value written on a rule, the label
+// under it. Cells stack from the bottom, so the rules line up even when a
+// value wraps.
+.head__fields {
+  flex-grow: 1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mr-space-4) 20px;
+  margin: 0;
+
+  @media (min-width: 600px) {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+
+  // Beside the name: each field as wide as its value needs, the spare
+  // width shared out, so a long race name doesn't wrap while "0 XP" takes
+  // a whole column.
+  @media (min-width: 1000px) {
+    display: flex;
+  }
+}
+
+.field {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column-reverse;
+  justify-content: flex-start;
+  gap: 4px;
+  min-width: 0;
+
+  @media (min-width: 1000px) {
+    min-width: 96px;
+  }
+}
+
+.field__value {
+  margin: 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--mr-ink);
+  font-size: 19px;
+  line-height: 24px;
+  font-weight: 500;
+  color: var(--mr-ink);
+  overflow-wrap: anywhere;
+}
+
+.field__label {
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 500;
+  color: var(--mr-ink-muted);
+}
+
+.head__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-2) var(--mr-space-3);
+  margin-top: var(--mr-space-5);
+  padding-top: var(--mr-space-4);
+  border-top: 1px solid var(--mr-rule);
+
+  &:empty {
+    display: none;
+  }
+}

@@ -64,7 +64,8 @@ test(
       await expect(playerPage).toHaveURL(new RegExp(`/campanhas/${campaignId}/personagens/novo$`));
 
       const characterId = await createCharacterViaUI(playerPage, campaignId, pensantus);
-      await expect(playerPage.getByRole('list', { name: 'Estado do personagem' })).toContainText('Pendente de aprovação');
+      // The state tag is one word; the notice under the header spells it out.
+      await expect(playerPage.getByRole('list', { name: 'Estado do personagem' })).toContainText('Pendente');
       await expect(playerPage.getByText('Esperando a aprovação do mestre')).toBeVisible();
       // They keep editing while they wait.
       await expect(playerPage.getByRole('link', { name: 'Editar ficha' })).toBeVisible();

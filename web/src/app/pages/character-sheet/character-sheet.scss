@@ -1,243 +1,192 @@
-.status-card {
-  max-width: 32rem;
-  margin: 1rem 0;
-}
-
-.status-card__content {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.status-card--error {
-  color: var(--mat-sys-error);
-}
-
-.state-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin: 0.5rem 0;
-  padding: 0;
-  list-style: none;
-}
-
-// Plain styled badges instead of MatChipsModule (which this page was the
-// only screen to use): one less Material/CDK module in the bundle for two
-// read-only labels.
-.state-chip {
-  padding: 0.15rem 0.75rem;
-  border-radius: 1rem;
-  background: var(--mat-sys-secondary-container);
-  color: var(--mat-sys-on-secondary-container);
-  font-size: 0.8rem;
-  font-weight: 500;
-}
-
-.sheet-meta {
-  color: var(--mat-sys-on-surface-variant);
-}
-
-.locked-banner {
-  padding: 0.5rem 0.75rem;
-  border-radius: 4px;
-  background: var(--mat-sys-tertiary-container);
-  color: var(--mat-sys-on-tertiary-container);
-}
-
-.pending-banner,
-.approval-panel {
-  padding: 0.5rem 0.75rem;
-  border-radius: 4px;
-  background: var(--mat-sys-secondary-container);
-  color: var(--mat-sys-on-secondary-container);
-}
-
-.approval-panel__reject {
-  background: var(--mat-sys-error);
-  color: var(--mat-sys-on-error);
-}
-
-.sheet-actions {
-  display: flex;
-  gap: 0.5rem;
-  margin: 0.75rem 0;
-}
-
-.form-error {
-  color: var(--mat-sys-error);
-}
-
-/*
- * Mobile-first: `.sheet-column` renders as `display: contents` (see below),
- * so it disappears from the box tree and its sections become `.sheet-grid`'s
- * own flex children, stacking in one column. `order` (further down) then
- * reads them out in the agreed order — Atributos, Salvaguardas, Combate,
- * Perícias, Magias, Equipamento, Características e traços, História —
- * regardless of which `.sheet-column` each one's markup lives in.
- *
- * Desktop (900px+, below) turns `.sheet-grid` into a row of three real
- * `.sheet-column` flex containers instead: three *independent* stacks, each
- * sized by its own content, so a long "Características e traços" never
- * inflates a shared row and leaves empty space under the other columns
- * (integrator fix — CSS Grid's `grid-template-areas` did exactly that,
- * because every cell in a row shares that row's height).
- */
-.sheet-grid {
+:host {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-}
+  gap: var(--mr-space-4);
 
-.sheet-column {
-  display: contents;
-}
-
-.sheet-section h2 {
-  margin-top: 0;
-}
-
-/* The reading order agreed for the sheet (see this file's top comment).
- * Values only need to increase within each desktop column — see the
- * `min-width: 900px` block below — which they do: column 1 gets 1/2/4,
- * column 2 gets 3/5/6, column 3 gets 7/8. */
-.sheet-section--atributos {
-  order: 1;
-}
-.sheet-section--salvaguardas {
-  order: 2;
-}
-.sheet-section--combate {
-  order: 3;
-}
-.sheet-section--pericias {
-  order: 4;
-}
-.sheet-section--magias {
-  order: 5;
-}
-.sheet-section--equipamento {
-  order: 6;
-}
-.sheet-section--caracteristicas {
-  order: 7;
-}
-.sheet-section--historia {
-  order: 8;
-}
-
-.ability-grid,
-.combat-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.5rem 1rem;
-  margin: 0;
-}
-
-.ability-box dt,
-.combat-grid dt {
-  font-size: 0.8rem;
-  color: var(--mat-sys-on-surface-variant);
-}
-
-.ability-box dd,
-.combat-grid dd {
-  margin: 0;
-  font-weight: 500;
-}
-
-.skills-list,
-.saves-list {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 0.5rem;
-}
-
-.skill-proficiency {
-  margin-left: 0.5rem;
-  color: var(--mat-sys-on-surface-variant);
-  font-size: 0.8rem;
-}
-
-.attacks-table,
-.equipment-list {
-  width: 100%;
-}
-
-.features-list {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 0.5rem;
-}
-
-.feature-row summary {
-  cursor: pointer;
-  font-weight: 500;
-}
-
-.feature-description {
-  margin: 0.25rem 0 0.5rem;
-  color: var(--mat-sys-on-surface-variant);
-}
-
-/* Issues (real problems) and hints (reminders, never a problem) share this
- * list — see the template — so it is not colored as an error: an issue's
- * own message text already says what is wrong. */
-.avisos-list {
-  padding-left: 1.25rem;
-}
-
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-}
-
-.story-form,
-.story-form mat-form-field {
-  display: block;
-}
-
-.appearance-short-fields {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0 1rem;
-
-  @media (min-width: 480px) {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  @media (min-width: 768px) {
+    gap: var(--mr-space-5);
   }
 }
 
-.story-form__actions {
+.back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  margin: -10px 0 -8px;
+  font-size: 16px;
+  color: var(--mr-ink-muted);
+  text-decoration: none;
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+
+  &:hover {
+    color: var(--mr-accent-text);
+    text-decoration: underline;
+  }
+}
+
+.status {
+  align-items: center;
+  max-width: 40rem;
+
+  mat-spinner {
+    flex-shrink: 0;
+  }
+}
+
+// The header's actions (projected into app-sheet-header).
+.end,
+.confirm {
+  margin-left: auto;
+}
+
+.confirm {
   display: flex;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-2) var(--mr-space-3);
 }
 
-.full-width {
-  width: 100%;
+.confirm__text {
+  margin: 0;
+  font-size: 15px;
 }
 
-/* Desktop: the official sheet's three-column layout, as three independent
- * flex stacks (not CSS Grid rows, which would tie every column's row
- * heights together — see this file's top comment). `.sheet-column` stops
- * being `display: contents` here, becoming a real flex container: each one
- * is now its own formatting context, so its height depends only on its own
- * sections. */
-@media (min-width: 900px) {
-  .sheet-grid {
-    flex-direction: row;
-    align-items: flex-start;
+// The confirmation of something that can't be undone (a death, a
+// rejection): filled, in the danger colours instead of the garnet.
+.danger {
+  --mat-button-filled-container-color: var(--mr-danger-ink);
+  --mat-button-filled-label-text-color: var(--mr-surface);
+}
+
+.approval {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.approval__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2);
+}
+
+.approval__error {
+  margin: 0;
+  color: var(--mr-danger-ink);
+}
+
+// Notices span the page, but their text keeps a readable line length.
+.mr-notice p,
+.issues {
+  max-width: 80ch;
+}
+
+.issues {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// The sheet: one column in the paper sheet's order on a phone; the
+// medallions in a row over two columns on a tablet; four columns from
+// 1200px. From a tablet up, the master's notes sit under the combat column:
+// their row is `1fr`, so a longer column next to them (spanning both rows)
+// grows that row instead of pushing the notes down.
+.sheet {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'abilities' 'proficiencies' 'combat' 'traits' 'notes';
+  align-items: start;
+  gap: var(--mr-space-4);
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto auto 1fr auto;
+    grid-template-areas:
+      'abilities abilities'
+      'proficiencies combat'
+      'proficiencies notes'
+      'traits traits';
+    gap: var(--mr-space-4) 20px;
   }
 
-  .sheet-column {
-    display: flex;
-    flex-direction: column;
-    flex: 1 1 0;
-    min-width: 0;
-    gap: 1.5rem;
+  @media (min-width: 1200px) {
+    grid-template-columns: 124px 300px repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      'abilities proficiencies combat traits'
+      'abilities proficiencies notes traits';
+    gap: var(--mr-space-4) var(--mr-space-6);
   }
+}
+
+.sheet__abilities {
+  grid-area: abilities;
+}
+
+.sheet__proficiencies {
+  grid-area: proficiencies;
+}
+
+.sheet__combat {
+  grid-area: combat;
+}
+
+.sheet__notes {
+  grid-area: notes;
+}
+
+.sheet__traits {
+  grid-area: traits;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+  min-width: 0;
+
+  // On a tablet, the features and the story side by side under the
+  // two columns.
+  @media (min-width: 768px) and (max-width: 1199px) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 20px;
+  }
+}
+
+// A basic NPC sheet: the numbers, the attack and the description on the
+// left, the story and the notes on the right.
+.sheet.sheet--basic {
+  grid-template-areas: 'basic' 'story' 'notes';
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      'basic story'
+      'basic notes';
+    gap: var(--mr-space-4) 20px;
+  }
+
+  @media (min-width: 1200px) {
+    grid-template-columns: minmax(0, 440px) minmax(0, 1fr);
+    gap: var(--mr-space-4) var(--mr-space-6);
+  }
+}
+
+.sheet__basic {
+  grid-area: basic;
+}
+
+.sheet__story {
+  grid-area: story;
 }

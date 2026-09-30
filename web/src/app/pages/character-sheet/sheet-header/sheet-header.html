@@ -1,0 +1,48 @@
+<header class="head">
+  <div class="head__top">
+    <div class="head__id">
+      <div class="head__title">
+        <h1 class="head__name">{{ vm().name }}</h1>
+        <ul class="head__tags" aria-label="Estado do personagem">
+          @if (isNpc()) {
+            <li class="mr-tag">{{ kindLabel() }}</li>
+          }
+          @if (showState()) {
+            <li
+              class="mr-tag"
+              [class.mr-tag--pending]="vm().state === 'pending'"
+              [class.mr-tag--danger]="vm().state === 'dead'"
+            >
+              @if (vm().state === 'locked') {
+                <mat-icon aria-hidden="true">lock</mat-icon>
+              }
+              {{ stateLabel() }}
+            </li>
+          }
+        </ul>
+      </div>
+      @if (lockedOn(); as date) {
+        <p class="head__line">
+          <mat-icon aria-hidden="true">lock</mat-icon>
+          <span>Ficha travada desde {{ date }}, quando a sessão começou</span>
+        </p>
+      }
+      @if (diedOn(); as date) {
+        <p class="head__line">Morreu em {{ date }}. A ficha fica guardada.</p>
+      }
+    </div>
+
+    @if (fields().length > 0) {
+      <dl class="head__fields">
+        @for (field of fields(); track field.label) {
+          <div class="field">
+            <dt class="field__label">{{ field.label }}</dt>
+            <dd class="field__value">{{ field.value }}</dd>
+          </div>
+        }
+      </dl>
+    }
+  </div>
+
+  <div class="head__actions"><ng-content /></div>
+</header>

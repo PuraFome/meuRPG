@@ -1,0 +1,121 @@
+@let v = vm();
+<section class="mr-panel story" aria-labelledby="historia-heading">
+  <h2 id="historia-heading" class="mr-panel__title">História</h2>
+
+  @if (!editing()) {
+    @if (isEmpty()) {
+      <p class="story__empty">
+        Nada escrito ainda.
+        @if (v.canEditStory) {
+          Conte quem é {{ v.name }}: aparência, personalidade e passado.
+        }
+      </p>
+    }
+    @if (appearance().length > 0) {
+      <dl class="appearance">
+        @for (entry of appearance(); track entry.label) {
+          <div>
+            <dt>{{ entry.label }}</dt>
+            <dd>{{ entry.value }}</dd>
+          </div>
+        }
+      </dl>
+    }
+    @if (texts().length > 0) {
+      <dl class="texts">
+        @for (entry of texts(); track entry.label) {
+          <div>
+            <dt>{{ entry.label }}</dt>
+            <dd>{{ entry.value }}</dd>
+          </div>
+        }
+      </dl>
+    }
+
+    <div class="story__footer">
+      @if (v.canEditStory) {
+        @if (v.state === 'locked' && v.storyEditingAllowed) {
+          @if (v.canToggleStoryEditing) {
+            <p class="story__note">O jogador pode editar a história até a próxima sessão.</p>
+          } @else if (!v.isMaster) {
+            <p class="story__note">O mestre liberou a edição da história até a próxima sessão.</p>
+          }
+        }
+        <button mat-stroked-button type="button" (click)="startEditing()">Editar história</button>
+      } @else if (v.state !== 'dead') {
+        <p class="story__note">
+          A história está travada. O mestre pode liberar a edição até a próxima sessão.
+        </p>
+      }
+    </div>
+  } @else {
+    <app-fiction-notice />
+    <form [formGroup]="form" (ngSubmit)="save()" class="form">
+      <div class="form__short">
+        <mat-form-field appearance="outline">
+          <mat-label>Idade</mat-label>
+          <input matInput formControlName="age" maxlength="40" />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Altura</mat-label>
+          <input matInput formControlName="height" maxlength="40" />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Peso</mat-label>
+          <input matInput formControlName="weight" maxlength="40" />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Olhos</mat-label>
+          <input matInput formControlName="eyes" maxlength="40" />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Pele</mat-label>
+          <input matInput formControlName="skin" maxlength="40" />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Cabelo</mat-label>
+          <input matInput formControlName="hair" maxlength="40" />
+        </mat-form-field>
+      </div>
+      <mat-form-field appearance="outline">
+        <mat-label>Aparência</mat-label>
+        <textarea matInput formControlName="appearanceDescription" rows="3"></textarea>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Traços de personalidade</mat-label>
+        <textarea matInput formControlName="traits" rows="2"></textarea>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Ideais</mat-label>
+        <textarea matInput formControlName="ideals" rows="2"></textarea>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Vínculos</mat-label>
+        <textarea matInput formControlName="bonds" rows="2"></textarea>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Fraquezas</mat-label>
+        <textarea matInput formControlName="flaws" rows="2"></textarea>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Antecedentes</mat-label>
+        <textarea matInput formControlName="backstory" rows="5"></textarea>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Aliados</mat-label>
+        <textarea matInput formControlName="allies" rows="3"></textarea>
+      </mat-form-field>
+      @if (saveState(); as ss) {
+        @if (ss.status === 'error') {
+          <p class="form__error" role="alert">{{ ss.message }}</p>
+        }
+      }
+      <div class="form__actions">
+        <button mat-flat-button type="submit" [disabled]="saveState().status === 'saving'">
+          Salvar história
+        </button>
+        <button mat-button type="button" (click)="cancel()">Cancelar</button>
+      </div>
+    </form>
+  }
+</section>

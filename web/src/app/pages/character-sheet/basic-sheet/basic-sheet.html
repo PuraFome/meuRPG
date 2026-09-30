@@ -1,0 +1,28 @@
+@let s = sheet();
+<section aria-labelledby="combate-heading">
+  <h2 id="combate-heading" class="mr-visually-hidden">Combate</h2>
+  <app-combat-stats
+    [armorClass]="s.armorClass"
+    [speedFt]="s.speedWalkFt"
+    [hitPointsMax]="s.hitPointsMax"
+  />
+</section>
+
+<section class="mr-panel" aria-labelledby="ataque-heading">
+  <h2 id="ataque-heading" class="mr-panel__title">Ataque</h2>
+  <dl class="attack">
+    <div class="attack__item">
+      <dt>Bônus de ataque</dt>
+      <dd class="attack__bonus">{{ formatModifier(s.attackBonus) }}</dd>
+    </div>
+    <div class="attack__item">
+      <dt>Dano</dt>
+      <dd>{{ s.damage || '—' }}</dd>
+    </div>
+  </dl>
+</section>
+
+<section class="mr-panel" aria-labelledby="descricao-heading">
+  <h2 id="descricao-heading" class="mr-panel__title">Descrição</h2>
+  <p class="description">{{ s.description || 'Sem descrição.' }}</p>
+</section>

@@ -1,0 +1,123 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+  min-width: 0;
+}
+
+.bonus {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0;
+  padding: 10px 16px;
+  background: var(--mr-surface);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  font-size: 16px;
+}
+
+.bonus__value {
+  font-family: var(--mr-font-display);
+  font-weight: 700;
+  font-size: 28px;
+  line-height: 32px;
+}
+
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 26px;
+  font-size: 16px;
+  line-height: 20px;
+}
+
+.row__bonus {
+  flex-shrink: 0;
+  width: 28px;
+  text-align: right;
+  font-weight: 700;
+}
+
+.row__name {
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.row__ability {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+  text-decoration: none;
+}
+
+// Empty = no proficiency; full = proficient; a ring around = expertise;
+// half full = half proficiency.
+.dot {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 11px;
+  height: 11px;
+  border: 1.5px solid var(--mr-control-line);
+  border-radius: 50%;
+
+  &--proficient,
+  &--expertise {
+    background: var(--mr-ink);
+    border-color: var(--mr-ink);
+  }
+
+  &--expertise {
+    box-shadow:
+      0 0 0 2px var(--mr-surface),
+      0 0 0 3.5px var(--mr-ink);
+  }
+
+  &--half {
+    border-color: var(--mr-ink);
+    background: linear-gradient(90deg, var(--mr-ink) 50%, transparent 50%);
+  }
+}
+
+.passives {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--mr-space-2);
+  margin: 0;
+}
+
+.passive {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+  padding: 8px 10px;
+  background: var(--mr-surface);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+}
+
+.passive__value {
+  margin: 0;
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 28px;
+}
+
+.passive__label {
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--mr-ink-muted);
+}
+
+.senses {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  font-size: 16px;
+}

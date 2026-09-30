@@ -1,0 +1,63 @@
+@let s = sheet();
+<p class="bonus">
+  <span class="bonus__value">{{ formatModifier(s.proficiencyBonus) }}</span>
+  <span>Bônus de proficiência</span>
+</p>
+
+<section class="mr-panel" aria-labelledby="salvaguardas-heading">
+  <h2 id="salvaguardas-heading" class="mr-panel__title">Salvaguardas</h2>
+  <ul class="rows">
+    @for (save of s.savingThrows; track save.key) {
+      <li class="row">
+        <span class="dot" [class.dot--proficient]="save.proficient" aria-hidden="true"></span>
+        <span class="row__bonus">{{ formatModifier(save.bonus) }}</span>
+        <span class="row__name">{{ abilityLabel(save.key) }}</span>
+        <span class="mr-visually-hidden"
+          >, {{ save.proficient ? 'proficiente' : 'sem proficiência' }}</span
+        >
+      </li>
+    }
+  </ul>
+</section>
+
+<section class="mr-panel" aria-labelledby="pericias-heading">
+  <h2 id="pericias-heading" class="mr-panel__title">Perícias</h2>
+  <ul class="rows">
+    @for (skill of s.skills; track skill.key) {
+      <li class="row">
+        <span
+          class="dot"
+          [class.dot--proficient]="skill.proficiency === 'proficient'"
+          [class.dot--expertise]="skill.proficiency === 'expertise'"
+          [class.dot--half]="skill.proficiency === 'half'"
+          aria-hidden="true"
+        ></span>
+        <span class="row__bonus">{{ formatModifier(skill.bonus) }}</span>
+        <span class="row__name">{{ skill.namePt }}</span>
+        <abbr class="row__ability" [title]="abilityLabel(skill.ability)">{{
+          abbreviation[skill.ability]
+        }}</abbr>
+        <span class="mr-visually-hidden">, {{ skillProficiencyLabel(skill.proficiency) }}</span>
+      </li>
+    }
+  </ul>
+</section>
+
+<dl class="passives">
+  <div class="passive">
+    <dt class="passive__label">Percepção passiva</dt>
+    <dd class="passive__value">{{ s.passivePerception }}</dd>
+  </div>
+  <div class="passive">
+    <dt class="passive__label">Investigação passiva</dt>
+    <dd class="passive__value">{{ s.passiveInvestigation }}</dd>
+  </div>
+  <div class="passive">
+    <dt class="passive__label">Intuição passiva</dt>
+    <dd class="passive__value">{{ s.passiveInsight }}</dd>
+  </div>
+</dl>
+
+@if (s.senses.length > 0) {
+  <p class="senses"><span class="mr-label">Sentidos</span> {{ s.senses.join(', ') }}</p>
+}

@@ -1,0 +1,80 @@
+:host {
+  display: block;
+}
+
+.abilities__list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 26px var(--mr-space-3);
+  margin: 0;
+  padding-bottom: 14px;
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  // The desktop's first column: 124px medallions, 26px apart so the score
+  // pill never touches the next one.
+  @media (min-width: 1200px) {
+    grid-template-columns: 124px;
+    padding-top: 4px;
+  }
+}
+
+.medallion {
+  position: relative;
+  box-sizing: border-box;
+  justify-self: center;
+  width: 100%;
+  max-width: 124px;
+  height: 104px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 10px;
+  background: var(--mr-surface);
+  border: 1.5px solid var(--mr-ink);
+  border-radius: var(--mr-radius-xl);
+}
+
+.medallion__name {
+  max-width: 100%;
+  font-size: 14px;
+  line-height: 18px;
+  font-weight: 500;
+  color: var(--mr-ink-muted);
+  overflow-wrap: anywhere;
+  text-align: center;
+
+  @media (max-width: 359px) {
+    font-size: 13px;
+  }
+}
+
+.medallion__modifier {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-weight: 700;
+  font-size: 38px;
+  line-height: 42px;
+  color: var(--mr-ink);
+}
+
+.medallion__score {
+  position: absolute;
+  bottom: -14px;
+  left: 50%;
+  box-sizing: border-box;
+  width: 48px;
+  height: 28px;
+  margin: 0 0 0 -24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--mr-ground);
+  border: 1.5px solid var(--mr-ink);
+  border-radius: var(--mr-radius-pill);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--mr-ink);
+}

@@ -1,0 +1,40 @@
+<section class="mr-panel notes" aria-labelledby="notas-heading">
+  <h2 id="notas-heading" class="mr-panel__title">Notas do mestre</h2>
+  <p class="notes__lead">Só o mestre vê estas notas.</p>
+  <app-fiction-notice />
+  @let s = state();
+  @switch (s.status) {
+    @case ('loading') {
+      <p class="notes__lead" role="status">Carregando notas...</p>
+    }
+    @case ('error') {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ s.message }}</p>
+      </div>
+    }
+    @case ('ready') {
+      <form [formGroup]="form" (ngSubmit)="save()">
+        <mat-form-field appearance="outline" class="notes__field">
+          <mat-label>Notas</mat-label>
+          <textarea matInput formControlName="notes" rows="6"></textarea>
+        </mat-form-field>
+        @if (saveState(); as ss) {
+          @if (ss.status === 'error') {
+            <p class="notes__error" role="alert">{{ ss.message }}</p>
+          }
+        }
+        <div class="notes__actions">
+          <button mat-stroked-button type="submit" [disabled]="saveState().status === 'saving'">
+            Salvar notas
+          </button>
+          <span class="notes__saved" role="status">
+            @if (saveState().status === 'saved') {
+              Notas salvas.
+            }
+          </span>
+        </div>
+      </form>
+    }
+  }
+</section>

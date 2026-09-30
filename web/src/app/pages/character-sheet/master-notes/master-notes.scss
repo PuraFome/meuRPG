@@ -1,0 +1,30 @@
+:host {
+  display: block;
+}
+
+.notes__lead {
+  margin: 0;
+  font-size: 15px;
+  color: var(--mr-ink-muted);
+}
+
+.notes__field {
+  display: block;
+}
+
+.notes__error {
+  margin: 0 0 var(--mr-space-2);
+  color: var(--mr-danger-ink);
+}
+
+.notes__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-3);
+}
+
+.notes__saved {
+  font-size: 15px;
+  color: var(--mr-success-ink);
+}

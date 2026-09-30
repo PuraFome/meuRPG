@@ -28,7 +28,7 @@ Usar as mesmas palavras nas conversas, nos documentos e no código evita muita c
 | História do personagem | Personalidade, aparência, história e aliados: o texto que descreve o personagem, fora das regras. Depois da trava da ficha, o jogador só a edita quando o mestre libera (liberação da história), até a próxima sessão. | `CharacterStory`, `story_editing_allowed` |
 | Revisão do personagem | Número que sobe a cada mudança no nome, na ficha ou na história. Se o personagem mudou depois que o app o abriu, o salvamento é recusado, e a pessoa recarrega a ficha. | `revision` |
 | Notas do mestre | O que o mestre anota sobre um personagem, separado por campanha. Só o mestre lê e edita; nunca chegam ao jogador (RN-11). | `character_master_notes` |
-| Conteúdo de regras (SRD 5.1) | O conjunto de raças, classes, magias e regras que o app conhece. Vem do SRD 5.1 (CC-BY-4.0) e tem uma versão, como `srd51@a8abc93b235c+fx.1`, que a ficha mostra. | `content_version` |
+| Conteúdo de regras (SRD 5.1) | O conjunto de raças, classes, magias e regras que o app conhece. Vem do SRD 5.1 (CC-BY-4.0) e tem uma versão, como `srd51@a8abc93b235c+fx.1`, que cada ficha guarda (a tela não mostra: é um detalhe interno). | `content_version` |
 | Chave de conteúdo | O identificador estável de um item de regra, como `class:wizard` ou `spell:fire-bolt`. A ficha guarda chaves, nunca nomes. | `key` |
 | Escolhas da ficha (build) | O que o jogador escolheu: atributos base, raça, classes, antecedente, perícias, magias e equipamento. Os números nunca são guardados. | `Build`, `FullSheet` |
 | Valores calculados | Os números da ficha que o servidor calcula a cada leitura, a partir das escolhas e do conteúdo de regras. O navegador nunca calcula uma regra. | `DerivedSheet`, `rules.Derive` |
