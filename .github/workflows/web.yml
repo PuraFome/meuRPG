@@ -1,0 +1,64 @@
+# CI for the Angular frontend.
+#
+# Every third-party action is pinned by full commit SHA (not by tag) so a
+# moving tag can't silently change what runs in CI. The `# vX.Y.Z` comment
+# is for humans only; GitHub Actions trusts the SHA.
+name: web
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "public/**"
+      - "package.json"
+      - "package-lock.json"
+      - "angular.json"
+      - "tsconfig*.json"
+      - "vitest.config.ts"
+      - ".github/workflows/web.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "public/**"
+      - "package.json"
+      - "package-lock.json"
+      - "angular.json"
+      - "tsconfig*.json"
+      - "vitest.config.ts"
+      - ".github/workflows/web.yml"
+
+concurrency:
+  group: web-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    name: test and build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      # Verified locally on 2026-09-28: `npm ci --ignore-scripts` installs
+      # cleanly and both `npm test` and `npm run build` still work with it,
+      # so we never run install scripts from third-party packages in CI.
+      - name: Install dependencies (no install scripts)
+        run: npm ci --ignore-scripts
+
+      - name: Run unit tests (vitest)
+        run: npm test
+
+      - name: Build
+        run: npm run build

@@ -1,0 +1,10 @@
+# Keep the build context small and the layer cache stable: only what
+# `go build` needs goes into the image build.
+*
+!go.mod
+!go.sum
+!cmd/
+!gen/
+!internal/
+!migrations/
+**/*_test.go

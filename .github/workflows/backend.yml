@@ -1,0 +1,155 @@
+# CI for the Go backend and the Protobuf/Connect contracts it is generated from.
+#
+# Every third-party action is pinned by full commit SHA (not by tag), because
+# a moving tag can be repointed by whoever controls the action's repo. The
+# `# vX.Y.Z` comment next to each SHA is just for humans; only the SHA is
+# actually trusted by GitHub Actions.
+name: backend
+
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - "proto/**"
+      - "Makefile"
+      - ".github/workflows/backend.yml"
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "proto/**"
+      - "Makefile"
+      - ".github/workflows/backend.yml"
+
+# Cancel a still-running run for the same branch/PR when a new commit lands,
+# so we don't waste runners on outdated code.
+concurrency:
+  group: backend-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least privilege: this workflow only reads the repo, it never pushes,
+# comments, or touches packages/deployments.
+permissions:
+  contents: read
+
+jobs:
+  proto:
+    name: proto (lint, breaking, generate)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+          # Full history: needed so we can inspect origin/main's tree below,
+          # to decide whether the breaking check has anything to compare against.
+          fetch-depth: 0
+
+      - name: Set up Go (buf generate shells out to Go tool plugins)
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: backend/go.mod
+          cache: true
+          cache-dependency-path: backend/go.sum
+
+      - name: Install buf
+        # setup_only: install the pinned buf CLI and nothing else. The steps
+        # below run lint, format and breaking explicitly, so each one shows
+        # up as its own step in the logs.
+        uses: bufbuild/buf-action@85aebf73123b5c15fd5528aaecbf9129cddf7fa7 # v1.6.0
+        with:
+          version: "1.73.0"
+          setup_only: true
+
+      - name: buf lint
+        working-directory: proto
+        run: buf lint
+
+      - name: buf format check
+        working-directory: proto
+        run: buf format --diff --exit-code
+
+      - name: Check whether origin/main already has a proto/ directory
+        id: base_proto
+        run: |
+          # main doesn't have proto/ yet at the time this workflow was added.
+          # `buf breaking` against a ref with no proto/ directory would just
+          # fail with a confusing error, so we check explicitly and skip the
+          # step (rather than swallowing the error) when there is nothing to
+          # compare against yet.
+          if git cat-file -e origin/main:proto 2>/dev/null; then
+            echo "has_proto=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_proto=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: buf breaking (against origin/main)
+        if: steps.base_proto.outputs.has_proto == 'true'
+        working-directory: proto
+        run: buf breaking --against 'https://github.com/${{ github.repository }}.git#branch=main,subdir=proto'
+
+      - name: Skip buf breaking (main has no proto/ yet)
+        if: steps.base_proto.outputs.has_proto == 'false'
+        run: |
+          echo "Skipping buf breaking check: origin/main has no proto/ directory yet."
+
+      - name: Download backend Go module dependencies
+        working-directory: backend
+        run: go mod download
+
+      - name: buf generate
+        working-directory: proto
+        run: buf generate
+
+      - name: Verify generated code is up to date
+        run: |
+          # Catches both changes to tracked generated files and any brand
+          # new generated file that wasn't committed.
+          git diff --exit-code -- backend/gen
+          if [ -n "$(git status --porcelain -- backend/gen)" ]; then
+            echo "::error::buf generate produced files that are not committed. Run 'make proto' and commit the result." >&2
+            git status --porcelain -- backend/gen
+            exit 1
+          fi
+
+  go:
+    name: go (test, lint, vulncheck, docker build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: backend/go.mod
+          cache: true
+          cache-dependency-path: backend/go.sum
+
+      - name: go test -race
+        run: go test -race ./...
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.14.0
+          working-directory: backend
+
+      - name: govulncheck
+        # Invoked directly (rather than golang/govulncheck-action) so the
+        # govulncheck version itself is pinned: the action installs
+        # govulncheck@latest, which is a moving target.
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
+
+      - name: Docker build (no push, no registry login)
+        run: |
+          docker build \
+            --build-arg VERSION=${{ github.sha }} \
+            --build-arg COMMIT=${{ github.sha }} \
+            -t meurpg-backend:ci \
+            .

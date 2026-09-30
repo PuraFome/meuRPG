@@ -1,0 +1,7 @@
+# Local build output
+/bin/
+
+# Test artifacts
+*.test
+coverage.out
+coverage.html

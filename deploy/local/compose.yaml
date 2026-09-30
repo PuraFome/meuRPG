@@ -1,0 +1,76 @@
+# Local development stack for MeuRPG.
+#
+# Usage: `make up` from the repo root (or `docker compose -f deploy/local/compose.yaml up -d`).
+#
+# Services:
+#   cockroach - single-node CockroachDB, insecure mode, for local dev only.
+#   migrate   - runs database migrations once, then exits.
+#   api       - the backend API server, starts only after migrations succeed.
+name: meurpg-local
+
+services:
+  cockroach:
+    # Pinned by tag AND by digest (multi-arch manifest list), so the exact
+    # image content is reproducible regardless of what "v26.2.7" points to
+    # later. v26.2 is CockroachDB's latest "Regular" (production-recommended,
+    # long-support) release line as of 2026-09; v26.2.7 is its newest patch.
+    image: cockroachdb/cockroach:v26.2.7@sha256:9464ae30465b887295459b98d129a76d074caeaa4c86836d369c6d2fdddd1685
+    command: ["start-single-node", "--insecure"]
+    environment:
+      # start-single-node reads this on first boot (empty data dir only) and
+      # creates the database for us, so the app never has to run `CREATE DATABASE`.
+      COCKROACH_DATABASE: meurpg
+    ports:
+      - "26257:26257" # SQL / Postgres wire protocol
+      - "8081:8080" # DB Console (host 8081, container keeps the default 8080)
+    volumes:
+      - cockroach-data:/cockroach/cockroach-data
+    healthcheck:
+      # The image (Red Hat UBI minimal) has no curl or bash, so we can't use
+      # an HTTP healthcheck. `cockroach sql` is always on PATH and confirms
+      # the SQL layer is actually accepting connections, not just that the
+      # process is running.
+      test: ["CMD", "cockroach", "sql", "--insecure", "--host=localhost:26257", "-e", "SELECT 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  migrate:
+    build:
+      context: ../../backend
+      args:
+        VERSION: dev
+        COMMIT: local
+    # Override the image's default entrypoint (/app/api) to run migrations
+    # instead, then exit. This container is not meant to keep running.
+    entrypoint: ["/app/migrate"]
+    command: ["up"]
+    environment:
+      DATABASE_URL: postgresql://root@cockroach:26257/meurpg?sslmode=disable
+    depends_on:
+      cockroach:
+        condition: service_healthy
+
+  api:
+    build:
+      context: ../../backend
+      args:
+        VERSION: dev
+        COMMIT: local
+    environment:
+      DATABASE_URL: postgresql://root@cockroach:26257/meurpg?sslmode=disable
+      PORT: "8080"
+      LOG_LEVEL: info
+    ports:
+      - "8080:8080"
+    depends_on:
+      cockroach:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    # No healthcheck here: the backend image is distroless (no shell/curl),
+    # so there is nothing to run a CMD-based check with.
+
+volumes:
+  cockroach-data:
