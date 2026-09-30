@@ -33,6 +33,9 @@ test('a página de créditos mostra a atribuição do SRD 5.1', { tag: '@licenca
   const attribution = readAttributionParagraph();
 
   await page.goto('/creditos');
-  const bodyText = (await page.textContent('body'))?.replace(/\s+/g, ' ').trim() ?? '';
-  expect(bodyText).toContain(attribution);
+  // A web-first assertion, which waits for the page to render the text (and
+  // collapses whitespace, like readAttributionParagraph): the app renders
+  // /creditos after `goto` returns, so a one-shot read of the body could
+  // catch only the header (seen locally, 30/09/2026).
+  await expect(page.locator('body')).toContainText(attribution);
 });

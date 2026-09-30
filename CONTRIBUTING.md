@@ -1,6 +1,6 @@
 # Contribuindo com o MeuRPG
 
-Todo código entra por PR para `PuraFome/meuRPG`, com o CI verde e a aprovação do Samuel. Nada vai direto para a `main`.
+Todo código entra por PR para `PuraFome/meuRPG`, com o CI verde e a aprovação do Samuel. Nada vai direto para a `main`. Até o MVP, a aprovação fica para depois: com o CI verde, quem abriu o PR faz o squash merge, e o PR continua sendo aberto para registrar o que mudou (decidido em 30/09/2026).
 
 Os comandos e o CI abaixo passam a existir quando a Etapa 1 (ver [roadmap](docs/roadmap.md)) for integrada.
 
@@ -169,7 +169,7 @@ feat(characters): lock sheet on first session
 2. Escreva o código, os testes e a documentação no mesmo PR.
 3. Faça os commits em Conventional Commits.
 4. Abra o PR citando a história (`MR-006`) e a regra (`RN-01`) que ele cumpre. Use o [modelo de PR](.github/pull_request_template.md).
-5. O CI precisa ficar verde. Depois o Samuel revisa e faz o squash merge.
+5. O CI precisa ficar verde. Depois o Samuel revisa e faz o squash merge. Até o MVP, quem abriu o PR faz o squash merge assim que o CI fica verde, sem esperar a revisão.
 
 Fluxo resumido: fork, se for o caso → PR para `PuraFome/meuRPG` → CI verde → revisão do Samuel → squash merge.
 
@@ -186,7 +186,7 @@ Toda action do GitHub fica presa pelo SHA do commit, não pela tag. Quem control
 
 O Dependabot (`.github/dependabot.yml`) abre toda semana os PRs que mantêm essas travas em dia: as actions (o SHA e o comentário com a versão), os módulos Go, os pacotes npm do `web/` e do `e2e/` e as imagens base dos Dockerfiles. Versões menores e correções chegam juntas, num PR por grupo. Não chegam pelo Dependabot, e são feitas à mão:
 
-- uma major do Angular ou do TypeScript do `web/`, que vem com o `ng update` e as migrações dele;
+- uma major do Angular, do TypeScript ou do vitest do `web/`, que vem com o `ng update` e as migrações dele (o builder do Angular aceita uma major de cada vez);
 - uma major do `@types/node`, que acompanha a versão do Node em que o código roda (22, no CI e no `backend/Dockerfile`);
 - uma versão nova do Node ou do Go nas imagens, que muda junto com o CI e o `go.mod`;
 - a imagem do CockroachDB, que o `deploy/local/compose.yaml` e o job `go-db` prendem pelo mesmo digest.
