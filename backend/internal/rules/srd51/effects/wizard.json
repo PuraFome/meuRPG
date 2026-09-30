@@ -1,0 +1,24 @@
+{
+  "effects": {
+    "feature:spellcasting-wizard": [
+      {"type": "spellcasting", "ability": "int", "progression": "full", "prepares": true, "spellbook": true, "prepared_max": "max(1, mod(\"int\") + classLevel(\"wizard\"))", "ritual": true}
+    ],
+    "feature:arcane-recovery": [
+      {"type": "handler", "handler": "wizard.arcane_recovery"},
+      {"type": "resource", "resource": "arcane_recovery", "max": "1", "recharge": "long_rest"},
+      {"type": "note", "value": "ceil(classLevel(\"wizard\") / 2)", "text_pt": "Recuperação arcana: uma vez por dia, depois de um descanso curto, recupera espaços de magia que somem até {n} níveis (nenhum de 6º nível ou mais)."}
+    ],
+    "feature:arcane-tradition": [
+      {"type": "choice", "choice": "subclass", "count": 1}
+    ],
+    "feature:evocation-savant": [
+      {"type": "note"}
+    ],
+    "feature:sculpt-spells": [
+      {"type": "handler", "handler": "wizard.sculpt_spells"}
+    ],
+    "feature:wizard-ability-score-improvement-1": [
+      {"type": "choice", "choice": "ability_score_improvement", "count": 1}
+    ]
+  }
+}

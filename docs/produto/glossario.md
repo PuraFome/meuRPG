@@ -23,6 +23,16 @@ Usar as mesmas palavras nas conversas, nos documentos e no código evita muita c
 | Personagem | Tem um tipo: jogador, inimigo, boss, minion ou NPC de história. O personagem de jogador que morre não é apagado: fica no sistema, como base de outro personagem ou como NPC do mestre em outra campanha (RN-03, RN-04). | `character`, `kind` |
 | Ficha | Os dados de regra de um personagem. Completa para jogador, inimigo e boss; básica para minion e NPC de história. | `sheet` |
 | Trava da ficha | Momento em que o jogador deixa de editar a própria ficha: o início da primeira sessão da campanha, ou da próxima sessão para um personagem criado depois. A história do personagem tem trava própria, que o mestre libera. | `sheet_locked_at`, `story_editing_allowed` |
+| Conteúdo de regras (SRD 5.1) | O conjunto de raças, classes, magias e regras que o app conhece. Vem do SRD 5.1 (CC-BY-4.0) e tem uma versão, como `srd51@a8abc93b235c+fx.1`, que a ficha mostra. | `content_version` |
+| Chave de conteúdo | O identificador estável de um item de regra, como `class:wizard` ou `spell:fire-bolt`. A ficha guarda chaves, nunca nomes. | `key` |
+| Escolhas da ficha (build) | O que o jogador escolheu: atributos base, raça, classes, antecedente, perícias, magias e equipamento. Os números nunca são guardados. | `Build`, `FullSheet` |
+| Valores calculados | Os números da ficha que o servidor calcula a cada leitura, a partir das escolhas e do conteúdo de regras. O navegador nunca calcula uma regra. | `DerivedSheet`, `rules.Derive` |
+| Efeito | A regra de uma característica ou de um traço escrita como dado: um bônus, uma proficiência, um sentido, uma dica. | `effect` |
+| Fórmula | A conta curta de um efeito, como `8 + prof() + mod("int")` para a CD de magia. Roda na biblioteca Expr, com uma lista fechada do que é permitido. | `formula` |
+| Dica | Um bônus ou uma vantagem que depende da situação, como a Esperteza Gnômica. A ficha mostra; o mestre decide quando vale. | `hint` |
+| Pendência da ficha | Uma escolha fora da regra ou uma chave desconhecida. A ficha abre do mesmo jeito e mostra o aviso: o app ajuda, não julga. | `issue` |
+| Antecedente personalizado | Um antecedente fora do SRD, como o Sábio: nome e 2 perícias, sem texto de livro. | `custom_background` |
+| Revisão de efeitos | O número que sobe a cada mudança nos efeitos escritos por nós. Uma versão de conteúdo nunca muda no lugar. | `fx.<n>` |
 | Cópia de personagem | Um personagem novo feito a partir de outro, para jogar em outra campanha. Depois de copiado, cada um segue sozinho. | `copied_from_id` |
 | Ponto de interesse | Lugar no mapa que abre uma batalha, um submapa ou uma cena de RP. | `point_of_interest` |
 | Masmorra | Mapa desenhado com paredes (inclusive falsas), piso, água, portas, armadilhas e baús (normais ou mímicos). | `dungeon` |

@@ -1,0 +1,60 @@
+{
+  "effects": {
+    "feature:spellcasting-druid": [
+      {"type": "spellcasting", "ability": "wis", "progression": "full", "prepares": true, "prepared_max": "max(1, mod(\"wis\") + classLevel(\"druid\"))", "ritual": true}
+    ],
+    "feature:druidic": [
+      {"type": "note"}
+    ],
+    "feature:druid-circle": [
+      {"type": "choice", "choice": "subclass", "count": 1}
+    ],
+    "feature:wild-shape-cr-1-4-or-below-no-flying-or-swim-speed": [
+      {"type": "grant_action", "economy": "action"},
+      {"type": "resource", "resource": "wild_shape", "max": "2", "recharge": "short_rest"}
+    ],
+    "feature:wild-shape-cr-1-2-or-below-no-flying-speed": [
+      {"type": "note"}
+    ],
+    "feature:bonus-cantrip": [
+      {"type": "choice", "choice": "cantrip", "count": 1, "from": ["class:druid"]}
+    ],
+    "feature:circle-of-the-land": [
+      {"type": "choice", "choice": "feature", "count": 1}
+    ],
+    "feature:circle-of-the-land-arctic": [
+      {"type": "note"}
+    ],
+    "feature:circle-of-the-land-coast": [
+      {"type": "note"}
+    ],
+    "feature:circle-of-the-land-desert": [
+      {"type": "note"}
+    ],
+    "feature:circle-of-the-land-forest": [
+      {"type": "note"}
+    ],
+    "feature:circle-of-the-land-grassland": [
+      {"type": "note"}
+    ],
+    "feature:circle-of-the-land-mountain": [
+      {"type": "note"}
+    ],
+    "feature:circle-of-the-land-swamp": [
+      {"type": "note"}
+    ],
+    "feature:natural-recovery": [
+      {"type": "resource", "resource": "natural_recovery", "max": "1", "recharge": "long_rest"},
+      {"type": "note", "value": "ceil(classLevel(\"druid\") / 2)", "text_pt": "Recuperação natural: uma vez por dia, num descanso curto, recupera espaços de magia que somem até {n} níveis (nenhum de 6º nível ou mais)."}
+    ],
+    "feature:circle-spells-1": [
+      {"type": "note"}
+    ],
+    "feature:circle-spells-2": [
+      {"type": "note"}
+    ],
+    "feature:druid-ability-score-improvement-1": [
+      {"type": "choice", "choice": "ability_score_improvement", "count": 1}
+    ]
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "effects": {
+    "feature:rage": [
+      {"type": "grant_action", "economy": "bonus_action"},
+      {"type": "resource", "resource": "rage", "max": "classLevel(\"barbarian\") >= 20 ? 99 : classLevel(\"barbarian\") >= 17 ? 6 : classLevel(\"barbarian\") >= 12 ? 5 : classLevel(\"barbarian\") >= 6 ? 4 : classLevel(\"barbarian\") >= 3 ? 3 : 2", "recharge": "long_rest"},
+      {"type": "note", "value": "classLevel(\"barbarian\") >= 16 ? 4 : classLevel(\"barbarian\") >= 9 ? 3 : 2", "text_pt": "Em fúria: vantagem em testes e testes de resistência de FOR, {value} de dano nos ataques corpo a corpo com FOR e resistência a dano de concussão, cortante e perfurante."}
+    ],
+    "feature:barbarian-unarmored-defense": [
+      {"type": "modifier", "target": "ac.base", "mode": "max", "value": "10 + mod(\"dex\") + mod(\"con\")", "when": "armor() == \"none\""}
+    ],
+    "feature:danger-sense": [
+      {"type": "roll_mode", "roll": "advantage", "targets": ["save.dex"], "tags": ["against:visible-effects"], "text_pt": "Vantagem em testes de resistência de DES contra efeitos que você consegue ver, se não estiver cego, surdo nem incapacitado."}
+    ],
+    "feature:reckless-attack": [
+      {"type": "note"}
+    ],
+    "feature:primal-path": [
+      {"type": "choice", "choice": "subclass", "count": 1}
+    ],
+    "feature:frenzy": [
+      {"type": "note"}
+    ],
+    "feature:barbarian-ability-score-improvement-1": [
+      {"type": "choice", "choice": "ability_score_improvement", "count": 1}
+    ],
+    "feature:barbarian-extra-attack": [
+      {"type": "note"}
+    ],
+    "feature:fast-movement": [
+      {"type": "modifier", "target": "speed.walk", "mode": "add", "value": "10", "when": "armor() != \"heavy\""}
+    ]
+  }
+}

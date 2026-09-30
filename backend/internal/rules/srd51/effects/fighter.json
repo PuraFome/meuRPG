@@ -1,0 +1,45 @@
+{
+  "effects": {
+    "feature:fighter-fighting-style": [
+      {"type": "choice", "choice": "feature", "count": 1}
+    ],
+    "feature:fighter-fighting-style-archery": [
+      {"type": "modifier", "target": "attack.weapon.ranged", "mode": "add", "value": "2"}
+    ],
+    "feature:fighter-fighting-style-defense": [
+      {"type": "modifier", "target": "ac", "mode": "add", "value": "1", "when": "armor() != \"none\""}
+    ],
+    "feature:fighter-fighting-style-dueling": [
+      {"type": "modifier", "target": "damage.weapon.melee", "mode": "add", "value": "2", "tags": ["wielding:one-melee-weapon"], "text_pt": "+2 de dano com uma arma corpo a corpo numa mão e nenhuma outra arma."}
+    ],
+    "feature:fighter-fighting-style-great-weapon-fighting": [
+      {"type": "note"}
+    ],
+    "feature:fighter-fighting-style-protection": [
+      {"type": "grant_action", "economy": "reaction"}
+    ],
+    "feature:fighter-fighting-style-two-weapon-fighting": [
+      {"type": "note"}
+    ],
+    "feature:second-wind": [
+      {"type": "grant_action", "economy": "bonus_action"},
+      {"type": "resource", "resource": "second_wind", "max": "1", "recharge": "short_rest"},
+      {"type": "note", "value": "classLevel(\"fighter\")", "text_pt": "Retomar o fôlego: recupera 1d10{value} pontos de vida, uma vez por descanso curto ou longo."}
+    ],
+    "feature:action-surge-1-use": [
+      {"type": "resource", "resource": "action_surge", "max": "classLevel(\"fighter\") >= 17 ? 2 : 1", "recharge": "short_rest"}
+    ],
+    "feature:martial-archetype": [
+      {"type": "choice", "choice": "subclass", "count": 1}
+    ],
+    "feature:improved-critical": [
+      {"type": "note", "text_pt": "Crítico com 19 ou 20 nos ataques com arma."}
+    ],
+    "feature:fighter-ability-score-improvement-1": [
+      {"type": "choice", "choice": "ability_score_improvement", "count": 1}
+    ],
+    "feature:extra-attack-1": [
+      {"type": "note"}
+    ]
+  }
+}

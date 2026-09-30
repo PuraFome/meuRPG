@@ -1,0 +1,31 @@
+{
+  "effects": {
+    "feature:rogue-expertise-1": [
+      {"type": "note"}
+    ],
+    "feature:sneak-attack": [
+      {"type": "note", "value": "ceil(classLevel(\"rogue\") / 2)", "text_pt": "Ataque furtivo: +{n}d6 de dano, uma vez por turno, com vantagem ou com um aliado a até 1,5 m do alvo (arma de acuidade ou à distância)."}
+    ],
+    "feature:thieves-cant": [
+      {"type": "note"}
+    ],
+    "feature:cunning-action": [
+      {"type": "grant_action", "economy": "bonus_action"}
+    ],
+    "feature:roguish-archetype": [
+      {"type": "choice", "choice": "subclass", "count": 1}
+    ],
+    "feature:fast-hands": [
+      {"type": "grant_action", "economy": "bonus_action"}
+    ],
+    "feature:second-story-work": [
+      {"type": "note"}
+    ],
+    "feature:rogue-ability-score-improvement-1": [
+      {"type": "choice", "choice": "ability_score_improvement", "count": 1}
+    ],
+    "feature:uncanny-dodge": [
+      {"type": "grant_action", "economy": "reaction"}
+    ]
+  }
+}

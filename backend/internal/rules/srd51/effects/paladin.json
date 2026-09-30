@@ -1,0 +1,58 @@
+{
+  "effects": {
+    "feature:divine-sense": [
+      {"type": "grant_action", "economy": "action"},
+      {"type": "resource", "resource": "divine_sense", "max": "1 + max(0, mod(\"cha\"))", "recharge": "long_rest"}
+    ],
+    "feature:lay-on-hands": [
+      {"type": "grant_action", "economy": "action"},
+      {"type": "resource", "resource": "lay_on_hands", "max": "5 * classLevel(\"paladin\")", "recharge": "long_rest"},
+      {"type": "note", "value": "5 * classLevel(\"paladin\")", "text_pt": "Cura pelas mãos: {n} pontos de vida por descanso longo."}
+    ],
+    "feature:divine-smite": [
+      {"type": "note"}
+    ],
+    "feature:paladin-fighting-style": [
+      {"type": "choice", "choice": "feature", "count": 1}
+    ],
+    "feature:fighting-style-defense": [
+      {"type": "modifier", "target": "ac", "mode": "add", "value": "1", "when": "armor() != \"none\""}
+    ],
+    "feature:fighting-style-dueling": [
+      {"type": "modifier", "target": "damage.weapon.melee", "mode": "add", "value": "2", "tags": ["wielding:one-melee-weapon"], "text_pt": "+2 de dano com uma arma corpo a corpo numa mão e nenhuma outra arma."}
+    ],
+    "feature:fighting-style-great-weapon-fighting": [
+      {"type": "note"}
+    ],
+    "feature:fighting-style-protection": [
+      {"type": "grant_action", "economy": "reaction"}
+    ],
+    "feature:spellcasting-paladin": [
+      {"type": "spellcasting", "ability": "cha", "progression": "half", "prepares": true, "prepared_max": "max(1, mod(\"cha\") + floor(classLevel(\"paladin\") / 2))"}
+    ],
+    "feature:channel-divinity": [
+      {"type": "resource", "resource": "channel_divinity", "max": "1", "recharge": "short_rest"}
+    ],
+    "feature:divine-health": [
+      {"type": "note"}
+    ],
+    "feature:oath-spells": [
+      {"type": "note"}
+    ],
+    "feature:sacred-oath": [
+      {"type": "choice", "choice": "subclass", "count": 1}
+    ],
+    "feature:channel-divinity-sacred-weapon": [
+      {"type": "grant_action", "economy": "action"}
+    ],
+    "feature:channel-divinity-turn-the-unholy": [
+      {"type": "grant_action", "economy": "action"}
+    ],
+    "feature:paladin-ability-score-improvement-1": [
+      {"type": "choice", "choice": "ability_score_improvement", "count": 1}
+    ],
+    "feature:paladin-extra-attack": [
+      {"type": "note"}
+    ]
+  }
+}

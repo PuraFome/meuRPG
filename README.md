@@ -27,6 +27,17 @@ npm start
 
 Todos os comandos estão em `make help` e no [CONTRIBUTING.md](CONTRIBUTING.md). Os comandos do app antigo (descontinuado, só para consulta) estão na seção abaixo.
 
+## Conteúdo de regras e licença
+
+As regras vêm do System Reference Document 5.1 (SRD 5.1), sob a licença Creative Commons Attribution 4.0. O app é compatível com a quinta edição ("5E compatible") e não usa nenhuma marca da editora. A atribuição que a licença exige, com o texto exato, está no [NOTICE](NOTICE) e na página "Créditos" do app:
+
+> This work includes material taken from the System Reference Document 5.1 ("SRD 5.1") by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.
+
+- O conteúdo fica embutido no binário, em `backend/internal/rules/srd51`, gerado a partir do 5e-database (MIT) num commit fixado. Nada é buscado em runtime.
+- Os nomes em português e os efeitos estruturados são nossos. As descrições do SRD ficam em inglês por enquanto.
+- Nenhum texto de livro fora do SRD entra no repositório: o que a mesa usar de outros livros ela cadastra com as próprias palavras.
+- Como o motor funciona: [Arquitetura → Módulo rules](docs/arquitetura.md#módulo-rules-regras-como-dados). Como atualizar o SRD: [CONTRIBUTING.md](CONTRIBUTING.md#conteúdo-de-regras-srd).
+
 ## App antigo (descontinuado)
 
 O `src/` (Angular) fica só como referência até sair do repositório num PR à parte. O `server/` (NestJS) será removido do repositório (decidido pelo Samuel em 29/09/2026): o backend novo em Go passa a cobrir sozinho todas as histórias do MVP, então não faz sentido manter os dois. A subseção "Backend (NestJS)" abaixo documenta o que existe até essa remoção.

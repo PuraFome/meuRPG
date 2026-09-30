@@ -1,0 +1,6372 @@
+[
+ {
+  "class": "class:barbarian",
+  "level": 1,
+  "prof_bonus": 2,
+  "features": [
+   "feature:rage",
+   "feature:barbarian-unarmored-defense"
+  ],
+  "class_specific": {
+   "rage_count": 2,
+   "rage_damage_bonus": 2,
+   "brutal_critical_dice": 0
+  }
+ },
+ {
+  "class": "class:barbarian",
+  "level": 2,
+  "prof_bonus": 2,
+  "features": [
+   "feature:reckless-attack",
+   "feature:danger-sense"
+  ],
+  "class_specific": {
+   "rage_count": 2,
+   "rage_damage_bonus": 2,
+   "brutal_critical_dice": 0
+  }
+ },
+ {
+  "class": "class:barbarian",
+  "level": 3,
+  "prof_bonus": 2,
+  "features": [
+   "feature:primal-path"
+  ],
+  "class_specific": {
+   "rage_count": 3,
+   "rage_damage_bonus": 2,
+   "brutal_critical_dice": 0
+  }
+ },
+ {
+  "class": "class:barbarian",
+  "level": 4,
+  "prof_bonus": 2,
+  "features": [
+   "feature:barbarian-ability-score-improvement-1"
+  ],
+  "class_specific": {
+   "rage_count": 3,
+   "rage_damage_bonus": 2,
+   "brutal_critical_dice": 0
+  }
+ },
+ {
+  "class": "class:barbarian",
+  "level": 5,
+  "prof_bonus": 3,
+  "features": [
+   "feature:barbarian-extra-attack",
+   "feature:fast-movement"
+  ],
+  "class_specific": {
+   "rage_count": 3,
+   "rage_damage_bonus": 2,
+   "brutal_critical_dice": 0
+  }
+ },
+ {
+  "class": "class:barbarian",
+  "level": 6,
+  "prof_bonus": 3,
+  "features": [
+   "feature:primal-path-improvement-1"
+  ],
+  "class_specific": {
+   "rage_count": 4,
+   "rage_damage_bonus": 2,
+   "brutal_critical_dice": 0
+  }
+ },
+ {
+  "class": "class:barbarian",
+  "level": 7,
+  "prof_bonus": 3,
+  "features": [
+   "feature:feral-instinct"
+  ],
+  "class_specific": {
+   "rage_count": 4,
+   "rage_damage_bonus": 2,
+   "brutal_critical_dice": 0
+  }
+ },
+ {
+  "class": "class:barbarian",
+  "level": 8,
+  "prof_bonus": 3,
+  "features": [
+   "feature:barbarian-ability-score-improvement-2"
+  ],
+  "class_specific": {
+   "rage_count": 4,
+   "rage_damage_bonus": 2,
+   "brutal_critical_dice": 0
+  }
+ },
+ {
+  "class": "class:barbarian",
+  "level": 9,
+  "prof_bonus": 4,
+  "features": [
+   "feature:brutal-critical-1-die"
+  ],
+  "class_specific": {
+   "rage_count": 4,
+   "rage_damage_bonus": 3,
+   "brutal_critical_dice": 1
+  }
+ },
+ {
+  "class": "class:barbarian",
+  "level": 10,
+  "prof_bonus": 4,
+  "features": [
+   "feature:primal-path-improvement-2"
+  ],
+  "class_specific": {
+   "rage_count": 4,
+   "rage_damage_bonus": 3,
+   "brutal_critical_dice": 1
+  }
+ },
+ {
+  "class": "class:barbarian",
+  "level": 11,
+  "prof_bonus": 4,
+  "features": [
+   "feature:relentless-rage"
+  ],
+  "class_specific": {
+   "rage_count": 4,
+   "rage_damage_bonus": 3,
+   "brutal_critical_dice": 1
+  }
+ },
+ {
+  "class": "class:barbarian",
+  "level": 12,
+  "prof_bonus": 4,
+  "features": [
+   "feature:barbarian-ability-score-improvement-3"
+  ],
+  "class_specific": {
+   "rage_count": 5,
+   "rage_damage_bonus": 3,
+   "brutal_critical_dice": 1
+  }
+ },
+ {
+  "class": "class:barbarian",
+  "level": 13,
+  "prof_bonus": 5,
+  "features": [
+   "feature:brutal-critical-2-dice"
+  ],
+  "class_specific": {
+   "rage_count": 5,
+   "rage_damage_bonus": 3,
+   "brutal_critical_dice": 2
+  }
+ },
+ {
+  "class": "class:barbarian",
+  "level": 14,
+  "prof_bonus": 5,
+  "features": [
+   "feature:primal-path-improvement-3"
+  ],
+  "class_specific": {
+   "rage_count": 5,
+   "rage_damage_bonus": 3,
+   "brutal_critical_dice": 2
+  }
+ },
+ {
+  "class": "class:barbarian",
+  "level": 15,
+  "prof_bonus": 5,
+  "features": [
+   "feature:persistent-rage"
+  ],
+  "class_specific": {
+   "rage_count": 5,
+   "rage_damage_bonus": 3,
+   "brutal_critical_dice": 2
+  }
+ },
+ {
+  "class": "class:barbarian",
+  "level": 16,
+  "prof_bonus": 5,
+  "features": [
+   "feature:barbarian-ability-score-improvement-4"
+  ],
+  "class_specific": {
+   "rage_count": 5,
+   "rage_damage_bonus": 4,
+   "brutal_critical_dice": 2
+  }
+ },
+ {
+  "class": "class:barbarian",
+  "level": 17,
+  "prof_bonus": 6,
+  "features": [
+   "feature:brutal-critical-3-dice"
+  ],
+  "class_specific": {
+   "rage_count": 6,
+   "rage_damage_bonus": 4,
+   "brutal_critical_dice": 3
+  }
+ },
+ {
+  "class": "class:barbarian",
+  "level": 18,
+  "prof_bonus": 6,
+  "features": [
+   "feature:indomitable-might"
+  ],
+  "class_specific": {
+   "rage_count": 6,
+   "rage_damage_bonus": 4,
+   "brutal_critical_dice": 3
+  }
+ },
+ {
+  "class": "class:barbarian",
+  "level": 19,
+  "prof_bonus": 6,
+  "features": [
+   "feature:barbarian-ability-score-improvement-5"
+  ],
+  "class_specific": {
+   "rage_count": 6,
+   "rage_damage_bonus": 4,
+   "brutal_critical_dice": 3
+  }
+ },
+ {
+  "class": "class:barbarian",
+  "level": 20,
+  "prof_bonus": 6,
+  "features": [
+   "feature:primal-champion"
+  ],
+  "class_specific": {
+   "rage_count": 9999,
+   "rage_damage_bonus": 4,
+   "brutal_critical_dice": 3
+  }
+ },
+ {
+  "class": "class:barbarian",
+  "subclass": "subclass:berserker",
+  "level": 3,
+  "features": [
+   "feature:frenzy"
+  ]
+ },
+ {
+  "class": "class:barbarian",
+  "subclass": "subclass:berserker",
+  "level": 6,
+  "features": [
+   "feature:mindless-rage"
+  ]
+ },
+ {
+  "class": "class:barbarian",
+  "subclass": "subclass:berserker",
+  "level": 10,
+  "features": [
+   "feature:intimidating-presence"
+  ]
+ },
+ {
+  "class": "class:barbarian",
+  "subclass": "subclass:berserker",
+  "level": 14,
+  "features": [
+   "feature:retaliation"
+  ]
+ },
+ {
+  "class": "class:bard",
+  "level": 1,
+  "prof_bonus": 2,
+  "features": [
+   "feature:spellcasting-bard",
+   "feature:bardic-inspiration-d6"
+  ],
+  "spellcasting": {
+   "cantrips_known": 2,
+   "spells_known": 4,
+   "slots": [
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "bardic_inspiration_die": 6,
+   "song_of_rest_die": 0,
+   "magical_secrets_max_5": 0,
+   "magical_secrets_max_7": 0,
+   "magical_secrets_max_9": 0
+  }
+ },
+ {
+  "class": "class:bard",
+  "level": 2,
+  "prof_bonus": 2,
+  "features": [
+   "feature:jack-of-all-trades",
+   "feature:song-of-rest-d6"
+  ],
+  "spellcasting": {
+   "cantrips_known": 2,
+   "spells_known": 5,
+   "slots": [
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "bardic_inspiration_die": 6,
+   "song_of_rest_die": 6,
+   "magical_secrets_max_5": 0,
+   "magical_secrets_max_7": 0,
+   "magical_secrets_max_9": 0
+  }
+ },
+ {
+  "class": "class:bard",
+  "level": 3,
+  "prof_bonus": 2,
+  "features": [
+   "feature:bard-expertise-1",
+   "feature:bard-college"
+  ],
+  "spellcasting": {
+   "cantrips_known": 2,
+   "spells_known": 6,
+   "slots": [
+    4,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "bardic_inspiration_die": 6,
+   "song_of_rest_die": 6,
+   "magical_secrets_max_5": 0,
+   "magical_secrets_max_7": 0,
+   "magical_secrets_max_9": 0
+  }
+ },
+ {
+  "class": "class:bard",
+  "level": 4,
+  "prof_bonus": 2,
+  "features": [
+   "feature:bard-ability-score-improvement-1"
+  ],
+  "spellcasting": {
+   "cantrips_known": 3,
+   "spells_known": 7,
+   "slots": [
+    4,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "bardic_inspiration_die": 6,
+   "song_of_rest_die": 6,
+   "magical_secrets_max_5": 0,
+   "magical_secrets_max_7": 0,
+   "magical_secrets_max_9": 0
+  }
+ },
+ {
+  "class": "class:bard",
+  "level": 5,
+  "prof_bonus": 3,
+  "features": [
+   "feature:bardic-inspiration-d8",
+   "feature:font-of-inspiration"
+  ],
+  "spellcasting": {
+   "cantrips_known": 3,
+   "spells_known": 8,
+   "slots": [
+    4,
+    3,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "bardic_inspiration_die": 8,
+   "song_of_rest_die": 6,
+   "magical_secrets_max_5": 0,
+   "magical_secrets_max_7": 0,
+   "magical_secrets_max_9": 0
+  }
+ },
+ {
+  "class": "class:bard",
+  "level": 6,
+  "prof_bonus": 3,
+  "features": [
+   "feature:countercharm",
+   "feature:bard-college-improvement-1"
+  ],
+  "spellcasting": {
+   "cantrips_known": 3,
+   "spells_known": 9,
+   "slots": [
+    4,
+    3,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "bardic_inspiration_die": 8,
+   "song_of_rest_die": 6,
+   "magical_secrets_max_5": 0,
+   "magical_secrets_max_7": 0,
+   "magical_secrets_max_9": 0
+  }
+ },
+ {
+  "class": "class:bard",
+  "level": 7,
+  "prof_bonus": 3,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 3,
+   "spells_known": 10,
+   "slots": [
+    4,
+    3,
+    3,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "bardic_inspiration_die": 8,
+   "song_of_rest_die": 6,
+   "magical_secrets_max_5": 0,
+   "magical_secrets_max_7": 0,
+   "magical_secrets_max_9": 0
+  }
+ },
+ {
+  "class": "class:bard",
+  "level": 8,
+  "prof_bonus": 3,
+  "features": [
+   "feature:bard-ability-score-improvement-2"
+  ],
+  "spellcasting": {
+   "cantrips_known": 3,
+   "spells_known": 11,
+   "slots": [
+    4,
+    3,
+    3,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "bardic_inspiration_die": 8,
+   "song_of_rest_die": 6,
+   "magical_secrets_max_5": 0,
+   "magical_secrets_max_7": 0,
+   "magical_secrets_max_9": 0
+  }
+ },
+ {
+  "class": "class:bard",
+  "level": 9,
+  "prof_bonus": 4,
+  "features": [
+   "feature:song-of-rest-d8"
+  ],
+  "spellcasting": {
+   "cantrips_known": 3,
+   "spells_known": 12,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    1,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "bardic_inspiration_die": 8,
+   "song_of_rest_die": 8,
+   "magical_secrets_max_5": 0,
+   "magical_secrets_max_7": 0,
+   "magical_secrets_max_9": 0
+  }
+ },
+ {
+  "class": "class:bard",
+  "level": 10,
+  "prof_bonus": 4,
+  "features": [
+   "feature:bard-expertise-2",
+   "feature:bardic-inspiration-d10",
+   "feature:magical-secrets-1"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 14,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "bardic_inspiration_die": 10,
+   "song_of_rest_die": 8,
+   "magical_secrets_max_5": 2,
+   "magical_secrets_max_7": 0,
+   "magical_secrets_max_9": 0
+  }
+ },
+ {
+  "class": "class:bard",
+  "level": 11,
+  "prof_bonus": 4,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 15,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "bardic_inspiration_die": 10,
+   "song_of_rest_die": 8,
+   "magical_secrets_max_5": 2,
+   "magical_secrets_max_7": 0,
+   "magical_secrets_max_9": 0
+  }
+ },
+ {
+  "class": "class:bard",
+  "level": 12,
+  "prof_bonus": 4,
+  "features": [
+   "feature:bard-ability-score-improvement-3"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 15,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "bardic_inspiration_die": 10,
+   "song_of_rest_die": 8,
+   "magical_secrets_max_5": 2,
+   "magical_secrets_max_7": 0,
+   "magical_secrets_max_9": 0
+  }
+ },
+ {
+  "class": "class:bard",
+  "level": 13,
+  "prof_bonus": 5,
+  "features": [
+   "feature:song-of-rest-d10"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 16,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    1,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "bardic_inspiration_die": 10,
+   "song_of_rest_die": 10,
+   "magical_secrets_max_5": 2,
+   "magical_secrets_max_7": 0,
+   "magical_secrets_max_9": 0
+  }
+ },
+ {
+  "class": "class:bard",
+  "level": 14,
+  "prof_bonus": 5,
+  "features": [
+   "feature:magical-secrets-2",
+   "feature:bard-college-improvement-2"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 18,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    1,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "bardic_inspiration_die": 10,
+   "song_of_rest_die": 10,
+   "magical_secrets_max_5": 2,
+   "magical_secrets_max_7": 2,
+   "magical_secrets_max_9": 0
+  }
+ },
+ {
+  "class": "class:bard",
+  "level": 15,
+  "prof_bonus": 5,
+  "features": [
+   "feature:bardic-inspiration-d12"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 19,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    1,
+    1,
+    0
+   ]
+  },
+  "class_specific": {
+   "bardic_inspiration_die": 12,
+   "song_of_rest_die": 10,
+   "magical_secrets_max_5": 2,
+   "magical_secrets_max_7": 2,
+   "magical_secrets_max_9": 0
+  }
+ },
+ {
+  "class": "class:bard",
+  "level": 16,
+  "prof_bonus": 5,
+  "features": [
+   "feature:bard-ability-score-improvement-4"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 19,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    1,
+    1,
+    0
+   ]
+  },
+  "class_specific": {
+   "bardic_inspiration_die": 12,
+   "song_of_rest_die": 10,
+   "magical_secrets_max_5": 2,
+   "magical_secrets_max_7": 2,
+   "magical_secrets_max_9": 0
+  }
+ },
+ {
+  "class": "class:bard",
+  "level": 17,
+  "prof_bonus": 6,
+  "features": [
+   "feature:song-of-rest-d12"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 20,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    1,
+    1,
+    1
+   ]
+  },
+  "class_specific": {
+   "bardic_inspiration_die": 12,
+   "song_of_rest_die": 12,
+   "magical_secrets_max_5": 2,
+   "magical_secrets_max_7": 2,
+   "magical_secrets_max_9": 0
+  }
+ },
+ {
+  "class": "class:bard",
+  "level": 18,
+  "prof_bonus": 6,
+  "features": [
+   "feature:magical-secrets-3"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 22,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    3,
+    1,
+    1,
+    1,
+    1
+   ]
+  },
+  "class_specific": {
+   "bardic_inspiration_die": 12,
+   "song_of_rest_die": 12,
+   "magical_secrets_max_5": 2,
+   "magical_secrets_max_7": 2,
+   "magical_secrets_max_9": 2
+  }
+ },
+ {
+  "class": "class:bard",
+  "level": 19,
+  "prof_bonus": 6,
+  "features": [
+   "feature:bard-ability-score-improvement-5"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 22,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    3,
+    2,
+    1,
+    1,
+    1
+   ]
+  },
+  "class_specific": {
+   "bardic_inspiration_die": 12,
+   "song_of_rest_die": 12,
+   "magical_secrets_max_5": 2,
+   "magical_secrets_max_7": 2,
+   "magical_secrets_max_9": 2
+  }
+ },
+ {
+  "class": "class:bard",
+  "level": 20,
+  "prof_bonus": 6,
+  "features": [
+   "feature:superior-inspiration"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 22,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    3,
+    2,
+    2,
+    1,
+    1
+   ]
+  },
+  "class_specific": {
+   "bardic_inspiration_die": 12,
+   "song_of_rest_die": 12,
+   "magical_secrets_max_5": 2,
+   "magical_secrets_max_7": 2,
+   "magical_secrets_max_9": 2
+  }
+ },
+ {
+  "class": "class:bard",
+  "subclass": "subclass:lore",
+  "level": 3,
+  "features": [
+   "feature:bonus-proficiencies",
+   "feature:cutting-words"
+  ],
+  "subclass_specific": {
+   "additional_magical_secrets_max_lvl": 0
+  }
+ },
+ {
+  "class": "class:bard",
+  "subclass": "subclass:lore",
+  "level": 6,
+  "features": [
+   "feature:additional-magical-secrets"
+  ],
+  "subclass_specific": {
+   "additional_magical_secrets_max_lvl": 3
+  }
+ },
+ {
+  "class": "class:bard",
+  "subclass": "subclass:lore",
+  "level": 14,
+  "features": [
+   "feature:peerless-skill"
+  ],
+  "subclass_specific": {
+   "additional_magical_secrets_max_lvl": 3
+  }
+ },
+ {
+  "class": "class:cleric",
+  "level": 1,
+  "prof_bonus": 2,
+  "features": [
+   "feature:spellcasting-cleric",
+   "feature:divine-domain",
+   "feature:domain-spells-1"
+  ],
+  "spellcasting": {
+   "cantrips_known": 3,
+   "spells_known": 0,
+   "slots": [
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "channel_divinity_charges": 0,
+   "destroy_undead_cr": 0
+  }
+ },
+ {
+  "class": "class:cleric",
+  "level": 2,
+  "prof_bonus": 2,
+  "features": [
+   "feature:channel-divinity-1-rest",
+   "feature:channel-divinity-turn-undead",
+   "feature:divine-domain-improvement-1"
+  ],
+  "spellcasting": {
+   "cantrips_known": 3,
+   "spells_known": 0,
+   "slots": [
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "channel_divinity_charges": 1,
+   "destroy_undead_cr": 0
+  }
+ },
+ {
+  "class": "class:cleric",
+  "level": 3,
+  "prof_bonus": 2,
+  "features": [
+   "feature:domain-spells-2"
+  ],
+  "spellcasting": {
+   "cantrips_known": 3,
+   "spells_known": 0,
+   "slots": [
+    4,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "channel_divinity_charges": 1,
+   "destroy_undead_cr": 0
+  }
+ },
+ {
+  "class": "class:cleric",
+  "level": 4,
+  "prof_bonus": 2,
+  "features": [
+   "feature:cleric-ability-score-improvement-1"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "channel_divinity_charges": 1,
+   "destroy_undead_cr": 0
+  }
+ },
+ {
+  "class": "class:cleric",
+  "level": 5,
+  "prof_bonus": 3,
+  "features": [
+   "feature:domain-spells-3",
+   "feature:destroy-undead-cr-1-2-or-below"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "channel_divinity_charges": 1,
+   "destroy_undead_cr": 0.5
+  }
+ },
+ {
+  "class": "class:cleric",
+  "level": 6,
+  "prof_bonus": 3,
+  "features": [
+   "feature:channel-divinity-2-rest",
+   "feature:divine-domain-improvement-2"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "channel_divinity_charges": 2,
+   "destroy_undead_cr": 0.5
+  }
+ },
+ {
+  "class": "class:cleric",
+  "level": 7,
+  "prof_bonus": 3,
+  "features": [
+   "feature:domain-spells-4"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "channel_divinity_charges": 2,
+   "destroy_undead_cr": 0.5
+  }
+ },
+ {
+  "class": "class:cleric",
+  "level": 8,
+  "prof_bonus": 3,
+  "features": [
+   "feature:cleric-ability-score-improvement-2",
+   "feature:destroy-undead-cr-1-or-below",
+   "feature:divine-domain-improvement-3"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "channel_divinity_charges": 2,
+   "destroy_undead_cr": 1
+  }
+ },
+ {
+  "class": "class:cleric",
+  "level": 9,
+  "prof_bonus": 4,
+  "features": [
+   "feature:domain-spells-5"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    1,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "channel_divinity_charges": 2,
+   "destroy_undead_cr": 1
+  }
+ },
+ {
+  "class": "class:cleric",
+  "level": 10,
+  "prof_bonus": 4,
+  "features": [
+   "feature:divine-intervention"
+  ],
+  "spellcasting": {
+   "cantrips_known": 5,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "channel_divinity_charges": 2,
+   "destroy_undead_cr": 1
+  }
+ },
+ {
+  "class": "class:cleric",
+  "level": 11,
+  "prof_bonus": 4,
+  "features": [
+   "feature:destroy-undead-cr-2-or-below"
+  ],
+  "spellcasting": {
+   "cantrips_known": 5,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "channel_divinity_charges": 2,
+   "destroy_undead_cr": 2
+  }
+ },
+ {
+  "class": "class:cleric",
+  "level": 12,
+  "prof_bonus": 4,
+  "features": [
+   "feature:cleric-ability-score-improvement-3"
+  ],
+  "spellcasting": {
+   "cantrips_known": 5,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "channel_divinity_charges": 2,
+   "destroy_undead_cr": 2
+  }
+ },
+ {
+  "class": "class:cleric",
+  "level": 13,
+  "prof_bonus": 5,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 5,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    1,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "channel_divinity_charges": 2,
+   "destroy_undead_cr": 2
+  }
+ },
+ {
+  "class": "class:cleric",
+  "level": 14,
+  "prof_bonus": 5,
+  "features": [
+   "feature:destroy-undead-cr-3-or-below"
+  ],
+  "spellcasting": {
+   "cantrips_known": 5,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    1,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "channel_divinity_charges": 2,
+   "destroy_undead_cr": 3
+  }
+ },
+ {
+  "class": "class:cleric",
+  "level": 15,
+  "prof_bonus": 5,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 5,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    1,
+    1,
+    0
+   ]
+  },
+  "class_specific": {
+   "channel_divinity_charges": 2,
+   "destroy_undead_cr": 3
+  }
+ },
+ {
+  "class": "class:cleric",
+  "level": 16,
+  "prof_bonus": 5,
+  "features": [
+   "feature:cleric-ability-score-improvement-4"
+  ],
+  "spellcasting": {
+   "cantrips_known": 5,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    1,
+    1,
+    0
+   ]
+  },
+  "class_specific": {
+   "channel_divinity_charges": 2,
+   "destroy_undead_cr": 3
+  }
+ },
+ {
+  "class": "class:cleric",
+  "level": 17,
+  "prof_bonus": 6,
+  "features": [
+   "feature:destroy-undead-cr-4-or-below",
+   "feature:divine-domain-improvement-4"
+  ],
+  "spellcasting": {
+   "cantrips_known": 5,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    1,
+    1,
+    1
+   ]
+  },
+  "class_specific": {
+   "channel_divinity_charges": 2,
+   "destroy_undead_cr": 4
+  }
+ },
+ {
+  "class": "class:cleric",
+  "level": 18,
+  "prof_bonus": 6,
+  "features": [
+   "feature:channel-divinity-3-rest"
+  ],
+  "spellcasting": {
+   "cantrips_known": 5,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    3,
+    1,
+    1,
+    1,
+    1
+   ]
+  },
+  "class_specific": {
+   "channel_divinity_charges": 3,
+   "destroy_undead_cr": 4
+  }
+ },
+ {
+  "class": "class:cleric",
+  "level": 19,
+  "prof_bonus": 6,
+  "features": [
+   "feature:cleric-ability-score-improvement-5"
+  ],
+  "spellcasting": {
+   "cantrips_known": 5,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    3,
+    2,
+    1,
+    1,
+    1
+   ]
+  },
+  "class_specific": {
+   "channel_divinity_charges": 3,
+   "destroy_undead_cr": 4
+  }
+ },
+ {
+  "class": "class:cleric",
+  "level": 20,
+  "prof_bonus": 6,
+  "features": [
+   "feature:divine-intervention-improvement"
+  ],
+  "spellcasting": {
+   "cantrips_known": 5,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    3,
+    2,
+    2,
+    1,
+    1
+   ]
+  },
+  "class_specific": {
+   "channel_divinity_charges": 3,
+   "destroy_undead_cr": 4
+  }
+ },
+ {
+  "class": "class:cleric",
+  "subclass": "subclass:life",
+  "level": 1,
+  "features": [
+   "feature:bonus-proficiency",
+   "feature:disciple-of-life"
+  ]
+ },
+ {
+  "class": "class:cleric",
+  "subclass": "subclass:life",
+  "level": 2,
+  "features": [
+   "feature:channel-divinity-preserve-life"
+  ]
+ },
+ {
+  "class": "class:cleric",
+  "subclass": "subclass:life",
+  "level": 6,
+  "features": [
+   "feature:blessed-healer"
+  ]
+ },
+ {
+  "class": "class:cleric",
+  "subclass": "subclass:life",
+  "level": 8,
+  "features": [
+   "feature:divine-strike"
+  ]
+ },
+ {
+  "class": "class:cleric",
+  "subclass": "subclass:life",
+  "level": 17,
+  "features": [
+   "feature:supreme-healing"
+  ]
+ },
+ {
+  "class": "class:druid",
+  "level": 1,
+  "prof_bonus": 2,
+  "features": [
+   "feature:spellcasting-druid",
+   "feature:druidic"
+  ],
+  "spellcasting": {
+   "cantrips_known": 2,
+   "spells_known": 0,
+   "slots": [
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "wild_shape_max_cr": 0,
+   "wild_shape_swim": false,
+   "wild_shape_fly": false
+  }
+ },
+ {
+  "class": "class:druid",
+  "level": 2,
+  "prof_bonus": 2,
+  "features": [
+   "feature:wild-shape-cr-1-4-or-below-no-flying-or-swim-speed",
+   "feature:druid-circle"
+  ],
+  "spellcasting": {
+   "cantrips_known": 2,
+   "spells_known": 0,
+   "slots": [
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "wild_shape_max_cr": 0.25,
+   "wild_shape_swim": false,
+   "wild_shape_fly": false
+  }
+ },
+ {
+  "class": "class:druid",
+  "level": 3,
+  "prof_bonus": 2,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 2,
+   "spells_known": 0,
+   "slots": [
+    4,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "wild_shape_max_cr": 0.25,
+   "wild_shape_swim": false,
+   "wild_shape_fly": false
+  }
+ },
+ {
+  "class": "class:druid",
+  "level": 4,
+  "prof_bonus": 2,
+  "features": [
+   "feature:wild-shape-cr-1-2-or-below-no-flying-speed",
+   "feature:druid-ability-score-improvement-1"
+  ],
+  "spellcasting": {
+   "cantrips_known": 3,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "wild_shape_max_cr": 0.5,
+   "wild_shape_swim": true,
+   "wild_shape_fly": false
+  }
+ },
+ {
+  "class": "class:druid",
+  "level": 5,
+  "prof_bonus": 3,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 3,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "wild_shape_max_cr": 0.5,
+   "wild_shape_swim": true,
+   "wild_shape_fly": false
+  }
+ },
+ {
+  "class": "class:druid",
+  "level": 6,
+  "prof_bonus": 3,
+  "features": [
+   "feature:druid-circle-improvement-1"
+  ],
+  "spellcasting": {
+   "cantrips_known": 3,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "wild_shape_max_cr": 0.5,
+   "wild_shape_swim": true,
+   "wild_shape_fly": false
+  }
+ },
+ {
+  "class": "class:druid",
+  "level": 7,
+  "prof_bonus": 3,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 3,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "wild_shape_max_cr": 1,
+   "wild_shape_swim": true,
+   "wild_shape_fly": false
+  }
+ },
+ {
+  "class": "class:druid",
+  "level": 8,
+  "prof_bonus": 3,
+  "features": [
+   "feature:wild-shape-cr-1-or-below",
+   "feature:druid-ability-score-improvement-2"
+  ],
+  "spellcasting": {
+   "cantrips_known": 3,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "wild_shape_max_cr": 1,
+   "wild_shape_swim": true,
+   "wild_shape_fly": true
+  }
+ },
+ {
+  "class": "class:druid",
+  "level": 9,
+  "prof_bonus": 4,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 3,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    1,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "wild_shape_max_cr": 1,
+   "wild_shape_swim": true,
+   "wild_shape_fly": true
+  }
+ },
+ {
+  "class": "class:druid",
+  "level": 10,
+  "prof_bonus": 4,
+  "features": [
+   "feature:druid-circle-improvement-2"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "wild_shape_max_cr": 1,
+   "wild_shape_swim": true,
+   "wild_shape_fly": true
+  }
+ },
+ {
+  "class": "class:druid",
+  "level": 11,
+  "prof_bonus": 4,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "wild_shape_max_cr": 1,
+   "wild_shape_swim": true,
+   "wild_shape_fly": true
+  }
+ },
+ {
+  "class": "class:druid",
+  "level": 12,
+  "prof_bonus": 4,
+  "features": [
+   "feature:druid-ability-score-improvement-3"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "wild_shape_max_cr": 1,
+   "wild_shape_swim": true,
+   "wild_shape_fly": true
+  }
+ },
+ {
+  "class": "class:druid",
+  "level": 13,
+  "prof_bonus": 5,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    1,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "wild_shape_max_cr": 1,
+   "wild_shape_swim": true,
+   "wild_shape_fly": true
+  }
+ },
+ {
+  "class": "class:druid",
+  "level": 14,
+  "prof_bonus": 5,
+  "features": [
+   "feature:druid-circle-improvement-3"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    1,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "wild_shape_max_cr": 1,
+   "wild_shape_swim": true,
+   "wild_shape_fly": true
+  }
+ },
+ {
+  "class": "class:druid",
+  "level": 15,
+  "prof_bonus": 5,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    1,
+    1,
+    0
+   ]
+  },
+  "class_specific": {
+   "wild_shape_max_cr": 1,
+   "wild_shape_swim": true,
+   "wild_shape_fly": true
+  }
+ },
+ {
+  "class": "class:druid",
+  "level": 16,
+  "prof_bonus": 5,
+  "features": [
+   "feature:druid-ability-score-improvement-4"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    1,
+    1,
+    0
+   ]
+  },
+  "class_specific": {
+   "wild_shape_max_cr": 1,
+   "wild_shape_swim": true,
+   "wild_shape_fly": true
+  }
+ },
+ {
+  "class": "class:druid",
+  "level": 17,
+  "prof_bonus": 6,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    1,
+    1,
+    1
+   ]
+  },
+  "class_specific": {
+   "wild_shape_max_cr": 1,
+   "wild_shape_swim": true,
+   "wild_shape_fly": true
+  }
+ },
+ {
+  "class": "class:druid",
+  "level": 18,
+  "prof_bonus": 6,
+  "features": [
+   "feature:druid-timeless-body",
+   "feature:beast-spells"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    3,
+    1,
+    1,
+    1,
+    1
+   ]
+  },
+  "class_specific": {
+   "wild_shape_max_cr": 1,
+   "wild_shape_swim": true,
+   "wild_shape_fly": true
+  }
+ },
+ {
+  "class": "class:druid",
+  "level": 19,
+  "prof_bonus": 6,
+  "features": [
+   "feature:druid-ability-score-improvement-5"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    3,
+    2,
+    1,
+    1,
+    1
+   ]
+  },
+  "class_specific": {
+   "wild_shape_max_cr": 1,
+   "wild_shape_swim": true,
+   "wild_shape_fly": true
+  }
+ },
+ {
+  "class": "class:druid",
+  "level": 20,
+  "prof_bonus": 6,
+  "features": [
+   "feature:archdruid"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    3,
+    2,
+    2,
+    1,
+    1
+   ]
+  },
+  "class_specific": {
+   "wild_shape_max_cr": 1,
+   "wild_shape_swim": true,
+   "wild_shape_fly": true
+  }
+ },
+ {
+  "class": "class:druid",
+  "subclass": "subclass:land",
+  "level": 2,
+  "features": [
+   "feature:bonus-cantrip",
+   "feature:natural-recovery"
+  ]
+ },
+ {
+  "class": "class:druid",
+  "subclass": "subclass:land",
+  "level": 6,
+  "features": [
+   "feature:druid-lands-stride"
+  ]
+ },
+ {
+  "class": "class:druid",
+  "subclass": "subclass:land",
+  "level": 10,
+  "features": [
+   "feature:natures-ward"
+  ]
+ },
+ {
+  "class": "class:druid",
+  "subclass": "subclass:land",
+  "level": 14,
+  "features": [
+   "feature:natures-sanctuary"
+  ]
+ },
+ {
+  "class": "class:fighter",
+  "level": 1,
+  "prof_bonus": 2,
+  "features": [
+   "feature:fighter-fighting-style",
+   "feature:second-wind"
+  ],
+  "class_specific": {
+   "action_surges": 0,
+   "indomitable_uses": 0,
+   "extra_attacks": 0
+  }
+ },
+ {
+  "class": "class:fighter",
+  "level": 2,
+  "prof_bonus": 2,
+  "features": [
+   "feature:action-surge-1-use"
+  ],
+  "class_specific": {
+   "action_surges": 1,
+   "indomitable_uses": 0,
+   "extra_attacks": 0
+  }
+ },
+ {
+  "class": "class:fighter",
+  "level": 3,
+  "prof_bonus": 2,
+  "features": [
+   "feature:martial-archetype"
+  ],
+  "class_specific": {
+   "action_surges": 1,
+   "indomitable_uses": 0,
+   "extra_attacks": 0
+  }
+ },
+ {
+  "class": "class:fighter",
+  "level": 4,
+  "prof_bonus": 2,
+  "features": [
+   "feature:fighter-ability-score-improvement-1"
+  ],
+  "class_specific": {
+   "action_surges": 1,
+   "indomitable_uses": 0,
+   "extra_attacks": 0
+  }
+ },
+ {
+  "class": "class:fighter",
+  "level": 5,
+  "prof_bonus": 3,
+  "features": [
+   "feature:extra-attack-1"
+  ],
+  "class_specific": {
+   "action_surges": 1,
+   "indomitable_uses": 0,
+   "extra_attacks": 1
+  }
+ },
+ {
+  "class": "class:fighter",
+  "level": 6,
+  "prof_bonus": 3,
+  "features": [
+   "feature:fighter-ability-score-improvement-2"
+  ],
+  "class_specific": {
+   "action_surges": 1,
+   "indomitable_uses": 0,
+   "extra_attacks": 1
+  }
+ },
+ {
+  "class": "class:fighter",
+  "level": 7,
+  "prof_bonus": 3,
+  "features": [
+   "feature:martial-archetype-improvement-1"
+  ],
+  "class_specific": {
+   "action_surges": 1,
+   "indomitable_uses": 0,
+   "extra_attacks": 1
+  }
+ },
+ {
+  "class": "class:fighter",
+  "level": 8,
+  "prof_bonus": 3,
+  "features": [
+   "feature:fighter-ability-score-improvement-3"
+  ],
+  "class_specific": {
+   "action_surges": 1,
+   "indomitable_uses": 0,
+   "extra_attacks": 1
+  }
+ },
+ {
+  "class": "class:fighter",
+  "level": 9,
+  "prof_bonus": 4,
+  "features": [
+   "feature:indomitable-1-use"
+  ],
+  "class_specific": {
+   "action_surges": 1,
+   "indomitable_uses": 1,
+   "extra_attacks": 1
+  }
+ },
+ {
+  "class": "class:fighter",
+  "level": 10,
+  "prof_bonus": 4,
+  "features": [
+   "feature:martial-archetype-improvement-2"
+  ],
+  "class_specific": {
+   "action_surges": 1,
+   "indomitable_uses": 1,
+   "extra_attacks": 1
+  }
+ },
+ {
+  "class": "class:fighter",
+  "level": 11,
+  "prof_bonus": 4,
+  "features": [
+   "feature:extra-attack-2"
+  ],
+  "class_specific": {
+   "action_surges": 1,
+   "indomitable_uses": 1,
+   "extra_attacks": 2
+  }
+ },
+ {
+  "class": "class:fighter",
+  "level": 12,
+  "prof_bonus": 4,
+  "features": [
+   "feature:fighter-ability-score-improvement-4"
+  ],
+  "class_specific": {
+   "action_surges": 1,
+   "indomitable_uses": 1,
+   "extra_attacks": 2
+  }
+ },
+ {
+  "class": "class:fighter",
+  "level": 13,
+  "prof_bonus": 5,
+  "features": [
+   "feature:indomitable-2-uses"
+  ],
+  "class_specific": {
+   "action_surges": 1,
+   "indomitable_uses": 2,
+   "extra_attacks": 2
+  }
+ },
+ {
+  "class": "class:fighter",
+  "level": 14,
+  "prof_bonus": 5,
+  "features": [
+   "feature:fighter-ability-score-improvement-5"
+  ],
+  "class_specific": {
+   "action_surges": 1,
+   "indomitable_uses": 2,
+   "extra_attacks": 2
+  }
+ },
+ {
+  "class": "class:fighter",
+  "level": 15,
+  "prof_bonus": 5,
+  "features": [
+   "feature:martial-archetype-improvement-3"
+  ],
+  "class_specific": {
+   "action_surges": 1,
+   "indomitable_uses": 2,
+   "extra_attacks": 2
+  }
+ },
+ {
+  "class": "class:fighter",
+  "level": 16,
+  "prof_bonus": 5,
+  "features": [
+   "feature:fighter-ability-score-improvement-6"
+  ],
+  "class_specific": {
+   "action_surges": 1,
+   "indomitable_uses": 2,
+   "extra_attacks": 2
+  }
+ },
+ {
+  "class": "class:fighter",
+  "level": 17,
+  "prof_bonus": 6,
+  "features": [
+   "feature:action-surge-2-uses",
+   "feature:indomitable-3-uses"
+  ],
+  "class_specific": {
+   "action_surges": 2,
+   "indomitable_uses": 3,
+   "extra_attacks": 2
+  }
+ },
+ {
+  "class": "class:fighter",
+  "level": 18,
+  "prof_bonus": 6,
+  "features": [
+   "feature:martial-archetype-improvement-4"
+  ],
+  "class_specific": {
+   "action_surges": 2,
+   "indomitable_uses": 3,
+   "extra_attacks": 2
+  }
+ },
+ {
+  "class": "class:fighter",
+  "level": 19,
+  "prof_bonus": 6,
+  "features": [
+   "feature:fighter-ability-score-improvement-7"
+  ],
+  "class_specific": {
+   "action_surges": 2,
+   "indomitable_uses": 3,
+   "extra_attacks": 2
+  }
+ },
+ {
+  "class": "class:fighter",
+  "level": 20,
+  "prof_bonus": 6,
+  "features": [
+   "feature:extra-attack-3"
+  ],
+  "class_specific": {
+   "action_surges": 2,
+   "indomitable_uses": 3,
+   "extra_attacks": 3
+  }
+ },
+ {
+  "class": "class:fighter",
+  "subclass": "subclass:champion",
+  "level": 3,
+  "features": [
+   "feature:improved-critical"
+  ]
+ },
+ {
+  "class": "class:fighter",
+  "subclass": "subclass:champion",
+  "level": 7,
+  "features": [
+   "feature:remarkable-athlete"
+  ]
+ },
+ {
+  "class": "class:fighter",
+  "subclass": "subclass:champion",
+  "level": 10,
+  "features": [
+   "feature:additional-fighting-style"
+  ]
+ },
+ {
+  "class": "class:fighter",
+  "subclass": "subclass:champion",
+  "level": 15,
+  "features": [
+   "feature:superior-critical"
+  ]
+ },
+ {
+  "class": "class:fighter",
+  "subclass": "subclass:champion",
+  "level": 18,
+  "features": [
+   "feature:survivor"
+  ]
+ },
+ {
+  "class": "class:monk",
+  "level": 1,
+  "prof_bonus": 2,
+  "features": [
+   "feature:monk-unarmored-defense",
+   "feature:martial-arts"
+  ],
+  "class_specific": {
+   "martial_arts": {
+    "dice_count": 1,
+    "dice_value": 4
+   },
+   "ki_points": 0,
+   "unarmored_movement": 0
+  }
+ },
+ {
+  "class": "class:monk",
+  "level": 2,
+  "prof_bonus": 2,
+  "features": [
+   "feature:ki",
+   "feature:flurry-of-blows",
+   "feature:patient-defense",
+   "feature:step-of-the-wind",
+   "feature:unarmored-movement-1"
+  ],
+  "class_specific": {
+   "martial_arts": {
+    "dice_count": 1,
+    "dice_value": 4
+   },
+   "ki_points": 2,
+   "unarmored_movement": 10
+  }
+ },
+ {
+  "class": "class:monk",
+  "level": 3,
+  "prof_bonus": 2,
+  "features": [
+   "feature:monastic-tradition",
+   "feature:deflect-missiles"
+  ],
+  "class_specific": {
+   "martial_arts": {
+    "dice_count": 1,
+    "dice_value": 4
+   },
+   "ki_points": 3,
+   "unarmored_movement": 10
+  }
+ },
+ {
+  "class": "class:monk",
+  "level": 4,
+  "prof_bonus": 2,
+  "features": [
+   "feature:monk-ability-score-improvement-1",
+   "feature:slow-fall"
+  ],
+  "class_specific": {
+   "martial_arts": {
+    "dice_count": 1,
+    "dice_value": 4
+   },
+   "ki_points": 4,
+   "unarmored_movement": 10
+  }
+ },
+ {
+  "class": "class:monk",
+  "level": 5,
+  "prof_bonus": 3,
+  "features": [
+   "feature:monk-extra-attack",
+   "feature:stunning-strike"
+  ],
+  "class_specific": {
+   "martial_arts": {
+    "dice_count": 1,
+    "dice_value": 6
+   },
+   "ki_points": 5,
+   "unarmored_movement": 10
+  }
+ },
+ {
+  "class": "class:monk",
+  "level": 6,
+  "prof_bonus": 3,
+  "features": [
+   "feature:ki-empowered-strikes",
+   "feature:monastic-tradition-improvement-1"
+  ],
+  "class_specific": {
+   "martial_arts": {
+    "dice_count": 1,
+    "dice_value": 6
+   },
+   "ki_points": 6,
+   "unarmored_movement": 15
+  }
+ },
+ {
+  "class": "class:monk",
+  "level": 7,
+  "prof_bonus": 3,
+  "features": [
+   "feature:monk-evasion",
+   "feature:stillness-of-mind"
+  ],
+  "class_specific": {
+   "martial_arts": {
+    "dice_count": 1,
+    "dice_value": 6
+   },
+   "ki_points": 7,
+   "unarmored_movement": 15
+  }
+ },
+ {
+  "class": "class:monk",
+  "level": 8,
+  "prof_bonus": 3,
+  "features": [
+   "feature:monk-ability-score-improvement-2"
+  ],
+  "class_specific": {
+   "martial_arts": {
+    "dice_count": 1,
+    "dice_value": 6
+   },
+   "ki_points": 8,
+   "unarmored_movement": 15
+  }
+ },
+ {
+  "class": "class:monk",
+  "level": 9,
+  "prof_bonus": 4,
+  "features": [
+   "feature:unarmored-movement-2"
+  ],
+  "class_specific": {
+   "martial_arts": {
+    "dice_count": 1,
+    "dice_value": 6
+   },
+   "ki_points": 9,
+   "unarmored_movement": 15
+  }
+ },
+ {
+  "class": "class:monk",
+  "level": 10,
+  "prof_bonus": 4,
+  "features": [
+   "feature:purity-of-body"
+  ],
+  "class_specific": {
+   "martial_arts": {
+    "dice_count": 1,
+    "dice_value": 6
+   },
+   "ki_points": 10,
+   "unarmored_movement": 20
+  }
+ },
+ {
+  "class": "class:monk",
+  "level": 11,
+  "prof_bonus": 4,
+  "features": [
+   "feature:monastic-tradition-improvement-2"
+  ],
+  "class_specific": {
+   "martial_arts": {
+    "dice_count": 1,
+    "dice_value": 8
+   },
+   "ki_points": 11,
+   "unarmored_movement": 20
+  }
+ },
+ {
+  "class": "class:monk",
+  "level": 12,
+  "prof_bonus": 4,
+  "features": [
+   "feature:monk-ability-score-improvement-3"
+  ],
+  "class_specific": {
+   "martial_arts": {
+    "dice_count": 1,
+    "dice_value": 8
+   },
+   "ki_points": 12,
+   "unarmored_movement": 20
+  }
+ },
+ {
+  "class": "class:monk",
+  "level": 13,
+  "prof_bonus": 5,
+  "features": [
+   "feature:tongue-of-the-sun-and-moon"
+  ],
+  "class_specific": {
+   "martial_arts": {
+    "dice_count": 1,
+    "dice_value": 8
+   },
+   "ki_points": 13,
+   "unarmored_movement": 20
+  }
+ },
+ {
+  "class": "class:monk",
+  "level": 14,
+  "prof_bonus": 5,
+  "features": [
+   "feature:diamond-soul"
+  ],
+  "class_specific": {
+   "martial_arts": {
+    "dice_count": 1,
+    "dice_value": 8
+   },
+   "ki_points": 14,
+   "unarmored_movement": 25
+  }
+ },
+ {
+  "class": "class:monk",
+  "level": 15,
+  "prof_bonus": 5,
+  "features": [
+   "feature:monk-timeless-body"
+  ],
+  "class_specific": {
+   "martial_arts": {
+    "dice_count": 1,
+    "dice_value": 8
+   },
+   "ki_points": 15,
+   "unarmored_movement": 25
+  }
+ },
+ {
+  "class": "class:monk",
+  "level": 16,
+  "prof_bonus": 5,
+  "features": [
+   "feature:monk-ability-score-improvement-4"
+  ],
+  "class_specific": {
+   "martial_arts": {
+    "dice_count": 1,
+    "dice_value": 8
+   },
+   "ki_points": 16,
+   "unarmored_movement": 25
+  }
+ },
+ {
+  "class": "class:monk",
+  "level": 17,
+  "prof_bonus": 6,
+  "features": [
+   "feature:monastic-tradition-improvement-3"
+  ],
+  "class_specific": {
+   "martial_arts": {
+    "dice_count": 1,
+    "dice_value": 10
+   },
+   "ki_points": 17,
+   "unarmored_movement": 25
+  }
+ },
+ {
+  "class": "class:monk",
+  "level": 18,
+  "prof_bonus": 6,
+  "features": [
+   "feature:empty-body"
+  ],
+  "class_specific": {
+   "martial_arts": {
+    "dice_count": 1,
+    "dice_value": 10
+   },
+   "ki_points": 18,
+   "unarmored_movement": 30
+  }
+ },
+ {
+  "class": "class:monk",
+  "level": 19,
+  "prof_bonus": 6,
+  "features": [
+   "feature:monk-ability-score-improvement-5"
+  ],
+  "class_specific": {
+   "martial_arts": {
+    "dice_count": 1,
+    "dice_value": 10
+   },
+   "ki_points": 19,
+   "unarmored_movement": 30
+  }
+ },
+ {
+  "class": "class:monk",
+  "level": 20,
+  "prof_bonus": 6,
+  "features": [
+   "feature:perfect-self"
+  ],
+  "class_specific": {
+   "martial_arts": {
+    "dice_count": 1,
+    "dice_value": 10
+   },
+   "ki_points": 20,
+   "unarmored_movement": 30
+  }
+ },
+ {
+  "class": "class:monk",
+  "subclass": "subclass:open-hand",
+  "level": 3,
+  "features": [
+   "feature:open-hand-technique"
+  ]
+ },
+ {
+  "class": "class:monk",
+  "subclass": "subclass:open-hand",
+  "level": 6,
+  "features": [
+   "feature:wholeness-of-body"
+  ]
+ },
+ {
+  "class": "class:monk",
+  "subclass": "subclass:open-hand",
+  "level": 11,
+  "features": [
+   "feature:tranquility"
+  ]
+ },
+ {
+  "class": "class:monk",
+  "subclass": "subclass:open-hand",
+  "level": 17,
+  "features": [
+   "feature:quivering-palm"
+  ]
+ },
+ {
+  "class": "class:paladin",
+  "level": 1,
+  "prof_bonus": 2,
+  "features": [
+   "feature:divine-sense",
+   "feature:lay-on-hands"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 0,
+   "slots": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "aura_range": 0
+  }
+ },
+ {
+  "class": "class:paladin",
+  "level": 2,
+  "prof_bonus": 2,
+  "features": [
+   "feature:paladin-fighting-style",
+   "feature:spellcasting-paladin",
+   "feature:divine-smite"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 0,
+   "slots": [
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "aura_range": 0
+  }
+ },
+ {
+  "class": "class:paladin",
+  "level": 3,
+  "prof_bonus": 2,
+  "features": [
+   "feature:divine-health",
+   "feature:sacred-oath",
+   "feature:oath-spells",
+   "feature:channel-divinity"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 0,
+   "slots": [
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "aura_range": 0
+  }
+ },
+ {
+  "class": "class:paladin",
+  "level": 4,
+  "prof_bonus": 2,
+  "features": [
+   "feature:paladin-ability-score-improvement-1"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 0,
+   "slots": [
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "aura_range": 0
+  }
+ },
+ {
+  "class": "class:paladin",
+  "level": 5,
+  "prof_bonus": 3,
+  "features": [
+   "feature:paladin-extra-attack"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 0,
+   "slots": [
+    4,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "aura_range": 0
+  }
+ },
+ {
+  "class": "class:paladin",
+  "level": 6,
+  "prof_bonus": 3,
+  "features": [
+   "feature:aura-of-protection"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 0,
+   "slots": [
+    4,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "aura_range": 10
+  }
+ },
+ {
+  "class": "class:paladin",
+  "level": 7,
+  "prof_bonus": 3,
+  "features": [
+   "feature:sacred-oath-improvement-1"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "aura_range": 10
+  }
+ },
+ {
+  "class": "class:paladin",
+  "level": 8,
+  "prof_bonus": 3,
+  "features": [
+   "feature:paladin-ability-score-improvement-2"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "aura_range": 10
+  }
+ },
+ {
+  "class": "class:paladin",
+  "level": 9,
+  "prof_bonus": 4,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "aura_range": 10
+  }
+ },
+ {
+  "class": "class:paladin",
+  "level": 10,
+  "prof_bonus": 4,
+  "features": [
+   "feature:aura-of-courage"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "aura_range": 10
+  }
+ },
+ {
+  "class": "class:paladin",
+  "level": 11,
+  "prof_bonus": 4,
+  "features": [
+   "feature:improved-divine-smite"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "aura_range": 10
+  }
+ },
+ {
+  "class": "class:paladin",
+  "level": 12,
+  "prof_bonus": 4,
+  "features": [
+   "feature:paladin-ability-score-improvement-3"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "aura_range": 10
+  }
+ },
+ {
+  "class": "class:paladin",
+  "level": 13,
+  "prof_bonus": 5,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "aura_range": 10
+  }
+ },
+ {
+  "class": "class:paladin",
+  "level": 14,
+  "prof_bonus": 5,
+  "features": [
+   "feature:cleansing-touch"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "aura_range": 10
+  }
+ },
+ {
+  "class": "class:paladin",
+  "level": 15,
+  "prof_bonus": 5,
+  "features": [
+   "feature:sacred-oath-improvement-2"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "aura_range": 10
+  }
+ },
+ {
+  "class": "class:paladin",
+  "level": 16,
+  "prof_bonus": 5,
+  "features": [
+   "feature:paladin-ability-score-improvement-4"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "aura_range": 10
+  }
+ },
+ {
+  "class": "class:paladin",
+  "level": 17,
+  "prof_bonus": 6,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    1,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "aura_range": 10
+  }
+ },
+ {
+  "class": "class:paladin",
+  "level": 18,
+  "prof_bonus": 6,
+  "features": [
+   "feature:aura-improvements"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    1,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "aura_range": 30
+  }
+ },
+ {
+  "class": "class:paladin",
+  "level": 19,
+  "prof_bonus": 6,
+  "features": [
+   "feature:paladin-ability-score-improvement-5"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "aura_range": 30
+  }
+ },
+ {
+  "class": "class:paladin",
+  "level": 20,
+  "prof_bonus": 6,
+  "features": [
+   "feature:sacred-oath-improvement-3"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "aura_range": 30
+  }
+ },
+ {
+  "class": "class:paladin",
+  "subclass": "subclass:devotion",
+  "level": 3,
+  "features": [
+   "feature:channel-divinity-sacred-weapon",
+   "feature:channel-divinity-turn-the-unholy"
+  ]
+ },
+ {
+  "class": "class:paladin",
+  "subclass": "subclass:devotion",
+  "level": 7,
+  "features": [
+   "feature:aura-of-devotion"
+  ],
+  "subclass_specific": {
+   "aura_range": 10
+  }
+ },
+ {
+  "class": "class:paladin",
+  "subclass": "subclass:devotion",
+  "level": 15,
+  "features": [
+   "feature:purity-of-spirit"
+  ],
+  "subclass_specific": {
+   "aura_range": 10
+  }
+ },
+ {
+  "class": "class:paladin",
+  "subclass": "subclass:devotion",
+  "level": 18,
+  "features": [],
+  "subclass_specific": {
+   "aura_range": 30
+  }
+ },
+ {
+  "class": "class:paladin",
+  "subclass": "subclass:devotion",
+  "level": 20,
+  "features": [
+   "feature:holy-nimbus"
+  ],
+  "subclass_specific": {
+   "aura_range": 30
+  }
+ },
+ {
+  "class": "class:ranger",
+  "level": 1,
+  "prof_bonus": 2,
+  "features": [
+   "feature:favored-enemy-1-type",
+   "feature:natural-explorer-1-terrain-type"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 0,
+   "slots": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "favored_enemies": 1,
+   "favored_terrain": 1
+  }
+ },
+ {
+  "class": "class:ranger",
+  "level": 2,
+  "prof_bonus": 2,
+  "features": [
+   "feature:ranger-fighting-style",
+   "feature:spellcasting-ranger"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 2,
+   "slots": [
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "favored_enemies": 1,
+   "favored_terrain": 1
+  }
+ },
+ {
+  "class": "class:ranger",
+  "level": 3,
+  "prof_bonus": 2,
+  "features": [
+   "feature:ranger-archetype",
+   "feature:primeval-awareness"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 3,
+   "slots": [
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "favored_enemies": 1,
+   "favored_terrain": 1
+  }
+ },
+ {
+  "class": "class:ranger",
+  "level": 4,
+  "prof_bonus": 2,
+  "features": [
+   "feature:ranger-ability-score-improvement-1"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 3,
+   "slots": [
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "favored_enemies": 1,
+   "favored_terrain": 1
+  }
+ },
+ {
+  "class": "class:ranger",
+  "level": 5,
+  "prof_bonus": 3,
+  "features": [
+   "feature:ranger-extra-attack"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 4,
+   "slots": [
+    4,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "favored_enemies": 1,
+   "favored_terrain": 1
+  }
+ },
+ {
+  "class": "class:ranger",
+  "level": 6,
+  "prof_bonus": 3,
+  "features": [
+   "feature:favored-enemy-2-types",
+   "feature:natural-explorer-2-terrain-types"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 4,
+   "slots": [
+    4,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "favored_enemies": 2,
+   "favored_terrain": 2
+  }
+ },
+ {
+  "class": "class:ranger",
+  "level": 7,
+  "prof_bonus": 3,
+  "features": [
+   "feature:ranger-archetype-improvement-1"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 5,
+   "slots": [
+    4,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "favored_enemies": 2,
+   "favored_terrain": 2
+  }
+ },
+ {
+  "class": "class:ranger",
+  "level": 8,
+  "prof_bonus": 3,
+  "features": [
+   "feature:ranger-ability-score-improvement-2",
+   "feature:ranger-lands-stride"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 5,
+   "slots": [
+    4,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "favored_enemies": 2,
+   "favored_terrain": 2
+  }
+ },
+ {
+  "class": "class:ranger",
+  "level": 9,
+  "prof_bonus": 4,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 6,
+   "slots": [
+    4,
+    3,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "favored_enemies": 2,
+   "favored_terrain": 2
+  }
+ },
+ {
+  "class": "class:ranger",
+  "level": 10,
+  "prof_bonus": 4,
+  "features": [
+   "feature:natural-explorer-3-terrain-types",
+   "feature:hide-in-plain-sight"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 6,
+   "slots": [
+    4,
+    3,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "favored_enemies": 2,
+   "favored_terrain": 3
+  }
+ },
+ {
+  "class": "class:ranger",
+  "level": 11,
+  "prof_bonus": 4,
+  "features": [
+   "feature:ranger-archetype-improvement-2"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 7,
+   "slots": [
+    4,
+    3,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "favored_enemies": 2,
+   "favored_terrain": 3
+  }
+ },
+ {
+  "class": "class:ranger",
+  "level": 12,
+  "prof_bonus": 4,
+  "features": [
+   "feature:ranger-ability-score-improvement-3"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 7,
+   "slots": [
+    4,
+    3,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "favored_enemies": 2,
+   "favored_terrain": 3
+  }
+ },
+ {
+  "class": "class:ranger",
+  "level": 13,
+  "prof_bonus": 5,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 8,
+   "slots": [
+    4,
+    3,
+    3,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "favored_enemies": 2,
+   "favored_terrain": 3
+  }
+ },
+ {
+  "class": "class:ranger",
+  "level": 14,
+  "prof_bonus": 5,
+  "features": [
+   "feature:favored-enemy-3-enemies",
+   "feature:vanish"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 8,
+   "slots": [
+    4,
+    3,
+    3,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "favored_enemies": 3,
+   "favored_terrain": 3
+  }
+ },
+ {
+  "class": "class:ranger",
+  "level": 15,
+  "prof_bonus": 5,
+  "features": [
+   "feature:ranger-archetype-improvement-3"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 9,
+   "slots": [
+    4,
+    3,
+    3,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "favored_enemies": 3,
+   "favored_terrain": 3
+  }
+ },
+ {
+  "class": "class:ranger",
+  "level": 16,
+  "prof_bonus": 5,
+  "features": [
+   "feature:ranger-ability-score-improvement-4"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 9,
+   "slots": [
+    4,
+    3,
+    3,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "favored_enemies": 3,
+   "favored_terrain": 3
+  }
+ },
+ {
+  "class": "class:ranger",
+  "level": 17,
+  "prof_bonus": 6,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 10,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    1,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "favored_enemies": 3,
+   "favored_terrain": 3
+  }
+ },
+ {
+  "class": "class:ranger",
+  "level": 18,
+  "prof_bonus": 6,
+  "features": [
+   "feature:feral-senses"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 10,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    1,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "favored_enemies": 3,
+   "favored_terrain": 3
+  }
+ },
+ {
+  "class": "class:ranger",
+  "level": 19,
+  "prof_bonus": 6,
+  "features": [
+   "feature:ranger-ability-score-improvement-5"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 11,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "favored_enemies": 3,
+   "favored_terrain": 3
+  }
+ },
+ {
+  "class": "class:ranger",
+  "level": 20,
+  "prof_bonus": 6,
+  "features": [
+   "feature:foe-slayer"
+  ],
+  "spellcasting": {
+   "cantrips_known": 0,
+   "spells_known": 11,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "favored_enemies": 3,
+   "favored_terrain": 3
+  }
+ },
+ {
+  "class": "class:ranger",
+  "subclass": "subclass:hunter",
+  "level": 3,
+  "features": [
+   "feature:hunters-prey"
+  ]
+ },
+ {
+  "class": "class:ranger",
+  "subclass": "subclass:hunter",
+  "level": 7,
+  "features": [
+   "feature:defensive-tactics"
+  ]
+ },
+ {
+  "class": "class:ranger",
+  "subclass": "subclass:hunter",
+  "level": 11,
+  "features": [
+   "feature:multiattack"
+  ]
+ },
+ {
+  "class": "class:ranger",
+  "subclass": "subclass:hunter",
+  "level": 15,
+  "features": [
+   "feature:superior-hunters-defense"
+  ]
+ },
+ {
+  "class": "class:rogue",
+  "level": 1,
+  "prof_bonus": 2,
+  "features": [
+   "feature:rogue-expertise-1",
+   "feature:sneak-attack",
+   "feature:thieves-cant"
+  ],
+  "class_specific": {
+   "sneak_attack": {
+    "dice_count": 1,
+    "dice_value": 6
+   }
+  }
+ },
+ {
+  "class": "class:rogue",
+  "level": 2,
+  "prof_bonus": 2,
+  "features": [
+   "feature:cunning-action"
+  ],
+  "class_specific": {
+   "sneak_attack": {
+    "dice_count": 1,
+    "dice_value": 6
+   }
+  }
+ },
+ {
+  "class": "class:rogue",
+  "level": 3,
+  "prof_bonus": 2,
+  "features": [
+   "feature:roguish-archetype"
+  ],
+  "class_specific": {
+   "sneak_attack": {
+    "dice_count": 2,
+    "dice_value": 6
+   }
+  }
+ },
+ {
+  "class": "class:rogue",
+  "level": 4,
+  "prof_bonus": 2,
+  "features": [
+   "feature:rogue-ability-score-improvement-1"
+  ],
+  "class_specific": {
+   "sneak_attack": {
+    "dice_count": 2,
+    "dice_value": 6
+   }
+  }
+ },
+ {
+  "class": "class:rogue",
+  "level": 5,
+  "prof_bonus": 3,
+  "features": [
+   "feature:uncanny-dodge"
+  ],
+  "class_specific": {
+   "sneak_attack": {
+    "dice_count": 3,
+    "dice_value": 6
+   }
+  }
+ },
+ {
+  "class": "class:rogue",
+  "level": 6,
+  "prof_bonus": 3,
+  "features": [
+   "feature:rogue-expertise-2"
+  ],
+  "class_specific": {
+   "sneak_attack": {
+    "dice_count": 3,
+    "dice_value": 6
+   }
+  }
+ },
+ {
+  "class": "class:rogue",
+  "level": 7,
+  "prof_bonus": 3,
+  "features": [
+   "feature:rogue-evasion"
+  ],
+  "class_specific": {
+   "sneak_attack": {
+    "dice_count": 4,
+    "dice_value": 6
+   }
+  }
+ },
+ {
+  "class": "class:rogue",
+  "level": 8,
+  "prof_bonus": 3,
+  "features": [
+   "feature:rogue-ability-score-improvement-2"
+  ],
+  "class_specific": {
+   "sneak_attack": {
+    "dice_count": 4,
+    "dice_value": 6
+   }
+  }
+ },
+ {
+  "class": "class:rogue",
+  "level": 9,
+  "prof_bonus": 4,
+  "features": [
+   "feature:roguish-archetype-improvement-1"
+  ],
+  "class_specific": {
+   "sneak_attack": {
+    "dice_count": 5,
+    "dice_value": 6
+   }
+  }
+ },
+ {
+  "class": "class:rogue",
+  "level": 10,
+  "prof_bonus": 4,
+  "features": [
+   "feature:rogue-ability-score-improvement-3"
+  ],
+  "class_specific": {
+   "sneak_attack": {
+    "dice_count": 5,
+    "dice_value": 6
+   }
+  }
+ },
+ {
+  "class": "class:rogue",
+  "level": 11,
+  "prof_bonus": 4,
+  "features": [
+   "feature:reliable-talent"
+  ],
+  "class_specific": {
+   "sneak_attack": {
+    "dice_count": 6,
+    "dice_value": 6
+   }
+  }
+ },
+ {
+  "class": "class:rogue",
+  "level": 12,
+  "prof_bonus": 4,
+  "features": [
+   "feature:rogue-ability-score-improvement-4"
+  ],
+  "class_specific": {
+   "sneak_attack": {
+    "dice_count": 6,
+    "dice_value": 6
+   }
+  }
+ },
+ {
+  "class": "class:rogue",
+  "level": 13,
+  "prof_bonus": 5,
+  "features": [
+   "feature:roguish-archetype-improvement-2"
+  ],
+  "class_specific": {
+   "sneak_attack": {
+    "dice_count": 7,
+    "dice_value": 6
+   }
+  }
+ },
+ {
+  "class": "class:rogue",
+  "level": 14,
+  "prof_bonus": 5,
+  "features": [
+   "feature:blindsense"
+  ],
+  "class_specific": {
+   "sneak_attack": {
+    "dice_count": 7,
+    "dice_value": 6
+   }
+  }
+ },
+ {
+  "class": "class:rogue",
+  "level": 15,
+  "prof_bonus": 5,
+  "features": [
+   "feature:slippery-mind"
+  ],
+  "class_specific": {
+   "sneak_attack": {
+    "dice_count": 8,
+    "dice_value": 6
+   }
+  }
+ },
+ {
+  "class": "class:rogue",
+  "level": 16,
+  "prof_bonus": 5,
+  "features": [
+   "feature:rogue-ability-score-improvement-5"
+  ],
+  "class_specific": {
+   "sneak_attack": {
+    "dice_count": 8,
+    "dice_value": 6
+   }
+  }
+ },
+ {
+  "class": "class:rogue",
+  "level": 17,
+  "prof_bonus": 6,
+  "features": [
+   "feature:roguish-archetype-improvement-3"
+  ],
+  "class_specific": {
+   "sneak_attack": {
+    "dice_count": 9,
+    "dice_value": 6
+   }
+  }
+ },
+ {
+  "class": "class:rogue",
+  "level": 18,
+  "prof_bonus": 6,
+  "features": [
+   "feature:elusive"
+  ],
+  "class_specific": {
+   "sneak_attack": {
+    "dice_count": 9,
+    "dice_value": 6
+   }
+  }
+ },
+ {
+  "class": "class:rogue",
+  "level": 19,
+  "prof_bonus": 6,
+  "features": [
+   "feature:rogue-ability-score-improvement-6"
+  ],
+  "class_specific": {
+   "sneak_attack": {
+    "dice_count": 10,
+    "dice_value": 6
+   }
+  }
+ },
+ {
+  "class": "class:rogue",
+  "level": 20,
+  "prof_bonus": 6,
+  "features": [
+   "feature:stroke-of-luck"
+  ],
+  "class_specific": {
+   "sneak_attack": {
+    "dice_count": 10,
+    "dice_value": 6
+   }
+  }
+ },
+ {
+  "class": "class:rogue",
+  "subclass": "subclass:thief",
+  "level": 3,
+  "features": [
+   "feature:fast-hands",
+   "feature:second-story-work"
+  ]
+ },
+ {
+  "class": "class:rogue",
+  "subclass": "subclass:thief",
+  "level": 9,
+  "features": [
+   "feature:supreme-sneak"
+  ]
+ },
+ {
+  "class": "class:rogue",
+  "subclass": "subclass:thief",
+  "level": 13,
+  "features": [
+   "feature:use-magic-device"
+  ]
+ },
+ {
+  "class": "class:rogue",
+  "subclass": "subclass:thief",
+  "level": 17,
+  "features": [
+   "feature:thiefs-reflexes"
+  ]
+ },
+ {
+  "class": "class:sorcerer",
+  "level": 1,
+  "prof_bonus": 2,
+  "features": [
+   "feature:spellcasting-sorcerer",
+   "feature:sorcerous-origin"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 2,
+   "slots": [
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "sorcery_points": 0,
+   "metamagic_known": 0,
+   "creating_spell_slots": []
+  }
+ },
+ {
+  "class": "class:sorcerer",
+  "level": 2,
+  "prof_bonus": 2,
+  "features": [
+   "feature:font-of-magic",
+   "feature:flexible-casting-creating-spell-slots",
+   "feature:flexible-casting-converting-spell-slot"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 3,
+   "slots": [
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "sorcery_points": 2,
+   "metamagic_known": 0,
+   "creating_spell_slots": [
+    {
+     "spell_slot_level": 1,
+     "sorcery_point_cost": 2
+    },
+    {
+     "spell_slot_level": 2,
+     "sorcery_point_cost": 3
+    },
+    {
+     "spell_slot_level": 3,
+     "sorcery_point_cost": 5
+    },
+    {
+     "spell_slot_level": 4,
+     "sorcery_point_cost": 6
+    },
+    {
+     "spell_slot_level": 5,
+     "sorcery_point_cost": 7
+    }
+   ]
+  }
+ },
+ {
+  "class": "class:sorcerer",
+  "level": 3,
+  "prof_bonus": 2,
+  "features": [
+   "feature:metamagic-1"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 4,
+   "slots": [
+    4,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "sorcery_points": 3,
+   "metamagic_known": 2,
+   "creating_spell_slots": [
+    {
+     "spell_slot_level": 1,
+     "sorcery_point_cost": 2
+    },
+    {
+     "spell_slot_level": 2,
+     "sorcery_point_cost": 3
+    },
+    {
+     "spell_slot_level": 3,
+     "sorcery_point_cost": 5
+    },
+    {
+     "spell_slot_level": 4,
+     "sorcery_point_cost": 6
+    },
+    {
+     "spell_slot_level": 5,
+     "sorcery_point_cost": 7
+    }
+   ]
+  }
+ },
+ {
+  "class": "class:sorcerer",
+  "level": 4,
+  "prof_bonus": 2,
+  "features": [
+   "feature:sorcerer-ability-score-improvement-1"
+  ],
+  "spellcasting": {
+   "cantrips_known": 5,
+   "spells_known": 5,
+   "slots": [
+    4,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "sorcery_points": 4,
+   "metamagic_known": 2,
+   "creating_spell_slots": [
+    {
+     "spell_slot_level": 1,
+     "sorcery_point_cost": 2
+    },
+    {
+     "spell_slot_level": 2,
+     "sorcery_point_cost": 3
+    },
+    {
+     "spell_slot_level": 3,
+     "sorcery_point_cost": 5
+    },
+    {
+     "spell_slot_level": 4,
+     "sorcery_point_cost": 6
+    },
+    {
+     "spell_slot_level": 5,
+     "sorcery_point_cost": 7
+    }
+   ]
+  }
+ },
+ {
+  "class": "class:sorcerer",
+  "level": 5,
+  "prof_bonus": 3,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 5,
+   "spells_known": 6,
+   "slots": [
+    4,
+    3,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "sorcery_points": 5,
+   "metamagic_known": 2,
+   "creating_spell_slots": [
+    {
+     "spell_slot_level": 1,
+     "sorcery_point_cost": 2
+    },
+    {
+     "spell_slot_level": 2,
+     "sorcery_point_cost": 3
+    },
+    {
+     "spell_slot_level": 3,
+     "sorcery_point_cost": 5
+    },
+    {
+     "spell_slot_level": 4,
+     "sorcery_point_cost": 6
+    },
+    {
+     "spell_slot_level": 5,
+     "sorcery_point_cost": 7
+    }
+   ]
+  }
+ },
+ {
+  "class": "class:sorcerer",
+  "level": 6,
+  "prof_bonus": 3,
+  "features": [
+   "feature:sorcerous-origin-improvement-1"
+  ],
+  "spellcasting": {
+   "cantrips_known": 5,
+   "spells_known": 7,
+   "slots": [
+    4,
+    3,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "sorcery_points": 6,
+   "metamagic_known": 2,
+   "creating_spell_slots": [
+    {
+     "spell_slot_level": 1,
+     "sorcery_point_cost": 2
+    },
+    {
+     "spell_slot_level": 2,
+     "sorcery_point_cost": 3
+    },
+    {
+     "spell_slot_level": 3,
+     "sorcery_point_cost": 5
+    },
+    {
+     "spell_slot_level": 4,
+     "sorcery_point_cost": 6
+    },
+    {
+     "spell_slot_level": 5,
+     "sorcery_point_cost": 7
+    }
+   ]
+  }
+ },
+ {
+  "class": "class:sorcerer",
+  "level": 7,
+  "prof_bonus": 3,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 5,
+   "spells_known": 8,
+   "slots": [
+    4,
+    3,
+    3,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "sorcery_points": 7,
+   "metamagic_known": 2,
+   "creating_spell_slots": [
+    {
+     "spell_slot_level": 1,
+     "sorcery_point_cost": 2
+    },
+    {
+     "spell_slot_level": 2,
+     "sorcery_point_cost": 3
+    },
+    {
+     "spell_slot_level": 3,
+     "sorcery_point_cost": 5
+    },
+    {
+     "spell_slot_level": 4,
+     "sorcery_point_cost": 6
+    },
+    {
+     "spell_slot_level": 5,
+     "sorcery_point_cost": 7
+    }
+   ]
+  }
+ },
+ {
+  "class": "class:sorcerer",
+  "level": 8,
+  "prof_bonus": 3,
+  "features": [
+   "feature:sorcerer-ability-score-improvement-2"
+  ],
+  "spellcasting": {
+   "cantrips_known": 5,
+   "spells_known": 9,
+   "slots": [
+    4,
+    3,
+    3,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "sorcery_points": 8,
+   "metamagic_known": 2,
+   "creating_spell_slots": [
+    {
+     "spell_slot_level": 1,
+     "sorcery_point_cost": 2
+    },
+    {
+     "spell_slot_level": 2,
+     "sorcery_point_cost": 3
+    },
+    {
+     "spell_slot_level": 3,
+     "sorcery_point_cost": 5
+    },
+    {
+     "spell_slot_level": 4,
+     "sorcery_point_cost": 6
+    },
+    {
+     "spell_slot_level": 5,
+     "sorcery_point_cost": 7
+    }
+   ]
+  }
+ },
+ {
+  "class": "class:sorcerer",
+  "level": 9,
+  "prof_bonus": 4,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 5,
+   "spells_known": 10,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    1,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "sorcery_points": 9,
+   "metamagic_known": 2,
+   "creating_spell_slots": [
+    {
+     "spell_slot_level": 1,
+     "sorcery_point_cost": 2
+    },
+    {
+     "spell_slot_level": 2,
+     "sorcery_point_cost": 3
+    },
+    {
+     "spell_slot_level": 3,
+     "sorcery_point_cost": 5
+    },
+    {
+     "spell_slot_level": 4,
+     "sorcery_point_cost": 6
+    },
+    {
+     "spell_slot_level": 5,
+     "sorcery_point_cost": 7
+    }
+   ]
+  }
+ },
+ {
+  "class": "class:sorcerer",
+  "level": 10,
+  "prof_bonus": 4,
+  "features": [
+   "feature:metamagic-2"
+  ],
+  "spellcasting": {
+   "cantrips_known": 6,
+   "spells_known": 11,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "sorcery_points": 10,
+   "metamagic_known": 3,
+   "creating_spell_slots": [
+    {
+     "spell_slot_level": 1,
+     "sorcery_point_cost": 2
+    },
+    {
+     "spell_slot_level": 2,
+     "sorcery_point_cost": 3
+    },
+    {
+     "spell_slot_level": 3,
+     "sorcery_point_cost": 5
+    },
+    {
+     "spell_slot_level": 4,
+     "sorcery_point_cost": 6
+    },
+    {
+     "spell_slot_level": 5,
+     "sorcery_point_cost": 7
+    }
+   ]
+  }
+ },
+ {
+  "class": "class:sorcerer",
+  "level": 11,
+  "prof_bonus": 4,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 6,
+   "spells_known": 12,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "sorcery_points": 11,
+   "metamagic_known": 3,
+   "creating_spell_slots": [
+    {
+     "spell_slot_level": 1,
+     "sorcery_point_cost": 2
+    },
+    {
+     "spell_slot_level": 2,
+     "sorcery_point_cost": 3
+    },
+    {
+     "spell_slot_level": 3,
+     "sorcery_point_cost": 5
+    },
+    {
+     "spell_slot_level": 4,
+     "sorcery_point_cost": 6
+    },
+    {
+     "spell_slot_level": 5,
+     "sorcery_point_cost": 7
+    }
+   ]
+  }
+ },
+ {
+  "class": "class:sorcerer",
+  "level": 12,
+  "prof_bonus": 4,
+  "features": [
+   "feature:sorcerer-ability-score-improvement-3"
+  ],
+  "spellcasting": {
+   "cantrips_known": 6,
+   "spells_known": 12,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "sorcery_points": 12,
+   "metamagic_known": 3,
+   "creating_spell_slots": [
+    {
+     "spell_slot_level": 1,
+     "sorcery_point_cost": 2
+    },
+    {
+     "spell_slot_level": 2,
+     "sorcery_point_cost": 3
+    },
+    {
+     "spell_slot_level": 3,
+     "sorcery_point_cost": 5
+    },
+    {
+     "spell_slot_level": 4,
+     "sorcery_point_cost": 6
+    },
+    {
+     "spell_slot_level": 5,
+     "sorcery_point_cost": 7
+    }
+   ]
+  }
+ },
+ {
+  "class": "class:sorcerer",
+  "level": 13,
+  "prof_bonus": 5,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 6,
+   "spells_known": 13,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    1,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "sorcery_points": 13,
+   "metamagic_known": 3,
+   "creating_spell_slots": [
+    {
+     "spell_slot_level": 1,
+     "sorcery_point_cost": 2
+    },
+    {
+     "spell_slot_level": 2,
+     "sorcery_point_cost": 3
+    },
+    {
+     "spell_slot_level": 3,
+     "sorcery_point_cost": 5
+    },
+    {
+     "spell_slot_level": 4,
+     "sorcery_point_cost": 6
+    },
+    {
+     "spell_slot_level": 5,
+     "sorcery_point_cost": 7
+    }
+   ]
+  }
+ },
+ {
+  "class": "class:sorcerer",
+  "level": 14,
+  "prof_bonus": 5,
+  "features": [
+   "feature:sorcerous-origin-improvement-2"
+  ],
+  "spellcasting": {
+   "cantrips_known": 6,
+   "spells_known": 13,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    1,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "sorcery_points": 14,
+   "metamagic_known": 3,
+   "creating_spell_slots": [
+    {
+     "spell_slot_level": 1,
+     "sorcery_point_cost": 2
+    },
+    {
+     "spell_slot_level": 2,
+     "sorcery_point_cost": 3
+    },
+    {
+     "spell_slot_level": 3,
+     "sorcery_point_cost": 5
+    },
+    {
+     "spell_slot_level": 4,
+     "sorcery_point_cost": 6
+    },
+    {
+     "spell_slot_level": 5,
+     "sorcery_point_cost": 7
+    }
+   ]
+  }
+ },
+ {
+  "class": "class:sorcerer",
+  "level": 15,
+  "prof_bonus": 5,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 6,
+   "spells_known": 14,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    1,
+    1,
+    0
+   ]
+  },
+  "class_specific": {
+   "sorcery_points": 15,
+   "metamagic_known": 3,
+   "creating_spell_slots": [
+    {
+     "spell_slot_level": 1,
+     "sorcery_point_cost": 2
+    },
+    {
+     "spell_slot_level": 2,
+     "sorcery_point_cost": 3
+    },
+    {
+     "spell_slot_level": 3,
+     "sorcery_point_cost": 5
+    },
+    {
+     "spell_slot_level": 4,
+     "sorcery_point_cost": 6
+    },
+    {
+     "spell_slot_level": 5,
+     "sorcery_point_cost": 7
+    }
+   ]
+  }
+ },
+ {
+  "class": "class:sorcerer",
+  "level": 16,
+  "prof_bonus": 5,
+  "features": [
+   "feature:sorcerer-ability-score-improvement-4"
+  ],
+  "spellcasting": {
+   "cantrips_known": 6,
+   "spells_known": 14,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    1,
+    1,
+    0
+   ]
+  },
+  "class_specific": {
+   "sorcery_points": 16,
+   "metamagic_known": 4,
+   "creating_spell_slots": [
+    {
+     "spell_slot_level": 1,
+     "sorcery_point_cost": 2
+    },
+    {
+     "spell_slot_level": 2,
+     "sorcery_point_cost": 3
+    },
+    {
+     "spell_slot_level": 3,
+     "sorcery_point_cost": 5
+    },
+    {
+     "spell_slot_level": 4,
+     "sorcery_point_cost": 6
+    },
+    {
+     "spell_slot_level": 5,
+     "sorcery_point_cost": 7
+    }
+   ]
+  }
+ },
+ {
+  "class": "class:sorcerer",
+  "level": 17,
+  "prof_bonus": 6,
+  "features": [
+   "feature:metamagic-3"
+  ],
+  "spellcasting": {
+   "cantrips_known": 6,
+   "spells_known": 15,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    1,
+    1,
+    1
+   ]
+  },
+  "class_specific": {
+   "sorcery_points": 17,
+   "metamagic_known": 4,
+   "creating_spell_slots": [
+    {
+     "spell_slot_level": 1,
+     "sorcery_point_cost": 2
+    },
+    {
+     "spell_slot_level": 2,
+     "sorcery_point_cost": 3
+    },
+    {
+     "spell_slot_level": 3,
+     "sorcery_point_cost": 5
+    },
+    {
+     "spell_slot_level": 4,
+     "sorcery_point_cost": 6
+    },
+    {
+     "spell_slot_level": 5,
+     "sorcery_point_cost": 7
+    }
+   ]
+  }
+ },
+ {
+  "class": "class:sorcerer",
+  "level": 18,
+  "prof_bonus": 6,
+  "features": [
+   "feature:sorcerous-origin-improvement-3"
+  ],
+  "spellcasting": {
+   "cantrips_known": 6,
+   "spells_known": 15,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    3,
+    1,
+    1,
+    1,
+    1
+   ]
+  },
+  "class_specific": {
+   "sorcery_points": 18,
+   "metamagic_known": 4,
+   "creating_spell_slots": [
+    {
+     "spell_slot_level": 1,
+     "sorcery_point_cost": 2
+    },
+    {
+     "spell_slot_level": 2,
+     "sorcery_point_cost": 3
+    },
+    {
+     "spell_slot_level": 3,
+     "sorcery_point_cost": 5
+    },
+    {
+     "spell_slot_level": 4,
+     "sorcery_point_cost": 6
+    },
+    {
+     "spell_slot_level": 5,
+     "sorcery_point_cost": 7
+    }
+   ]
+  }
+ },
+ {
+  "class": "class:sorcerer",
+  "level": 19,
+  "prof_bonus": 6,
+  "features": [
+   "feature:sorcerer-ability-score-improvement-5"
+  ],
+  "spellcasting": {
+   "cantrips_known": 6,
+   "spells_known": 15,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    3,
+    2,
+    1,
+    1,
+    1
+   ]
+  },
+  "class_specific": {
+   "sorcery_points": 19,
+   "metamagic_known": 4,
+   "creating_spell_slots": [
+    {
+     "spell_slot_level": 1,
+     "sorcery_point_cost": 2
+    },
+    {
+     "spell_slot_level": 2,
+     "sorcery_point_cost": 3
+    },
+    {
+     "spell_slot_level": 3,
+     "sorcery_point_cost": 5
+    },
+    {
+     "spell_slot_level": 4,
+     "sorcery_point_cost": 6
+    },
+    {
+     "spell_slot_level": 5,
+     "sorcery_point_cost": 7
+    }
+   ]
+  }
+ },
+ {
+  "class": "class:sorcerer",
+  "level": 20,
+  "prof_bonus": 6,
+  "features": [
+   "feature:sorcerous-restoration"
+  ],
+  "spellcasting": {
+   "cantrips_known": 6,
+   "spells_known": 15,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    3,
+    2,
+    2,
+    1,
+    1
+   ]
+  },
+  "class_specific": {
+   "sorcery_points": 20,
+   "metamagic_known": 4,
+   "creating_spell_slots": [
+    {
+     "spell_slot_level": 1,
+     "sorcery_point_cost": 2
+    },
+    {
+     "spell_slot_level": 2,
+     "sorcery_point_cost": 3
+    },
+    {
+     "spell_slot_level": 3,
+     "sorcery_point_cost": 5
+    },
+    {
+     "spell_slot_level": 4,
+     "sorcery_point_cost": 6
+    },
+    {
+     "spell_slot_level": 5,
+     "sorcery_point_cost": 7
+    }
+   ]
+  }
+ },
+ {
+  "class": "class:sorcerer",
+  "subclass": "subclass:draconic",
+  "level": 1,
+  "features": [
+   "feature:dragon-ancestor",
+   "feature:draconic-resilience"
+  ]
+ },
+ {
+  "class": "class:sorcerer",
+  "subclass": "subclass:draconic",
+  "level": 6,
+  "features": [
+   "feature:elemental-affinity"
+  ]
+ },
+ {
+  "class": "class:sorcerer",
+  "subclass": "subclass:draconic",
+  "level": 14,
+  "features": [
+   "feature:dragon-wings"
+  ]
+ },
+ {
+  "class": "class:sorcerer",
+  "subclass": "subclass:draconic",
+  "level": 18,
+  "features": [
+   "feature:draconic-presence"
+  ]
+ },
+ {
+  "class": "class:warlock",
+  "level": 1,
+  "prof_bonus": 2,
+  "features": [
+   "feature:otherworldly-patron",
+   "feature:pact-magic"
+  ],
+  "spellcasting": {
+   "cantrips_known": 2,
+   "spells_known": 2,
+   "slots": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "invocations_known": 0,
+   "mystic_arcanum_level_6": 0,
+   "mystic_arcanum_level_7": 0,
+   "mystic_arcanum_level_8": 0,
+   "mystic_arcanum_level_9": 0
+  }
+ },
+ {
+  "class": "class:warlock",
+  "level": 2,
+  "prof_bonus": 2,
+  "features": [
+   "feature:eldritch-invocations"
+  ],
+  "spellcasting": {
+   "cantrips_known": 2,
+   "spells_known": 3,
+   "slots": [
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "invocations_known": 2,
+   "mystic_arcanum_level_6": 0,
+   "mystic_arcanum_level_7": 0,
+   "mystic_arcanum_level_8": 0,
+   "mystic_arcanum_level_9": 0
+  }
+ },
+ {
+  "class": "class:warlock",
+  "level": 3,
+  "prof_bonus": 2,
+  "features": [
+   "feature:pact-boon"
+  ],
+  "spellcasting": {
+   "cantrips_known": 2,
+   "spells_known": 4,
+   "slots": [
+    0,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "invocations_known": 2,
+   "mystic_arcanum_level_6": 0,
+   "mystic_arcanum_level_7": 0,
+   "mystic_arcanum_level_8": 0,
+   "mystic_arcanum_level_9": 0
+  }
+ },
+ {
+  "class": "class:warlock",
+  "level": 4,
+  "prof_bonus": 2,
+  "features": [
+   "feature:warlock-ability-score-improvement-1"
+  ],
+  "spellcasting": {
+   "cantrips_known": 3,
+   "spells_known": 5,
+   "slots": [
+    0,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "invocations_known": 3,
+   "mystic_arcanum_level_6": 0,
+   "mystic_arcanum_level_7": 0,
+   "mystic_arcanum_level_8": 0,
+   "mystic_arcanum_level_9": 0
+  }
+ },
+ {
+  "class": "class:warlock",
+  "level": 5,
+  "prof_bonus": 3,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 3,
+   "spells_known": 6,
+   "slots": [
+    0,
+    0,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "invocations_known": 3,
+   "mystic_arcanum_level_6": 0,
+   "mystic_arcanum_level_7": 0,
+   "mystic_arcanum_level_8": 0,
+   "mystic_arcanum_level_9": 0
+  }
+ },
+ {
+  "class": "class:warlock",
+  "level": 6,
+  "prof_bonus": 3,
+  "features": [
+   "feature:otherworldly-patron-improvement-1"
+  ],
+  "spellcasting": {
+   "cantrips_known": 3,
+   "spells_known": 7,
+   "slots": [
+    0,
+    0,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "invocations_known": 4,
+   "mystic_arcanum_level_6": 0,
+   "mystic_arcanum_level_7": 0,
+   "mystic_arcanum_level_8": 0,
+   "mystic_arcanum_level_9": 0
+  }
+ },
+ {
+  "class": "class:warlock",
+  "level": 7,
+  "prof_bonus": 3,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 3,
+   "spells_known": 8,
+   "slots": [
+    0,
+    0,
+    0,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "invocations_known": 4,
+   "mystic_arcanum_level_6": 0,
+   "mystic_arcanum_level_7": 0,
+   "mystic_arcanum_level_8": 0,
+   "mystic_arcanum_level_9": 0
+  }
+ },
+ {
+  "class": "class:warlock",
+  "level": 8,
+  "prof_bonus": 3,
+  "features": [
+   "feature:warlock-ability-score-improvement-2"
+  ],
+  "spellcasting": {
+   "cantrips_known": 3,
+   "spells_known": 9,
+   "slots": [
+    0,
+    0,
+    0,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "invocations_known": 4,
+   "mystic_arcanum_level_6": 0,
+   "mystic_arcanum_level_7": 0,
+   "mystic_arcanum_level_8": 0,
+   "mystic_arcanum_level_9": 0
+  }
+ },
+ {
+  "class": "class:warlock",
+  "level": 9,
+  "prof_bonus": 4,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 3,
+   "spells_known": 10,
+   "slots": [
+    0,
+    0,
+    0,
+    0,
+    2,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "invocations_known": 5,
+   "mystic_arcanum_level_6": 0,
+   "mystic_arcanum_level_7": 0,
+   "mystic_arcanum_level_8": 0,
+   "mystic_arcanum_level_9": 0
+  }
+ },
+ {
+  "class": "class:warlock",
+  "level": 10,
+  "prof_bonus": 4,
+  "features": [
+   "feature:otherworldly-patron-improvement-2"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 10,
+   "slots": [
+    0,
+    0,
+    0,
+    0,
+    2,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "invocations_known": 5,
+   "mystic_arcanum_level_6": 0,
+   "mystic_arcanum_level_7": 0,
+   "mystic_arcanum_level_8": 0,
+   "mystic_arcanum_level_9": 0
+  }
+ },
+ {
+  "class": "class:warlock",
+  "level": 11,
+  "prof_bonus": 4,
+  "features": [
+   "feature:mystic-arcanum-6th-level"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 11,
+   "slots": [
+    0,
+    0,
+    0,
+    0,
+    3,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "invocations_known": 5,
+   "mystic_arcanum_level_6": 1,
+   "mystic_arcanum_level_7": 0,
+   "mystic_arcanum_level_8": 0,
+   "mystic_arcanum_level_9": 0
+  }
+ },
+ {
+  "class": "class:warlock",
+  "level": 12,
+  "prof_bonus": 4,
+  "features": [
+   "feature:warlock-ability-score-improvement-3"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 11,
+   "slots": [
+    0,
+    0,
+    0,
+    0,
+    3,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "invocations_known": 6,
+   "mystic_arcanum_level_6": 1,
+   "mystic_arcanum_level_7": 0,
+   "mystic_arcanum_level_8": 0,
+   "mystic_arcanum_level_9": 0
+  }
+ },
+ {
+  "class": "class:warlock",
+  "level": 13,
+  "prof_bonus": 5,
+  "features": [
+   "feature:mystic-arcanum-7th-level"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 12,
+   "slots": [
+    0,
+    0,
+    0,
+    0,
+    3,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "invocations_known": 6,
+   "mystic_arcanum_level_6": 1,
+   "mystic_arcanum_level_7": 1,
+   "mystic_arcanum_level_8": 0,
+   "mystic_arcanum_level_9": 0
+  }
+ },
+ {
+  "class": "class:warlock",
+  "level": 14,
+  "prof_bonus": 5,
+  "features": [
+   "feature:otherworldly-patron-improvement-3"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 12,
+   "slots": [
+    0,
+    0,
+    0,
+    0,
+    3,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "invocations_known": 6,
+   "mystic_arcanum_level_6": 1,
+   "mystic_arcanum_level_7": 1,
+   "mystic_arcanum_level_8": 0,
+   "mystic_arcanum_level_9": 0
+  }
+ },
+ {
+  "class": "class:warlock",
+  "level": 15,
+  "prof_bonus": 5,
+  "features": [
+   "feature:mystic-arcanum-8th-level"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 13,
+   "slots": [
+    0,
+    0,
+    0,
+    0,
+    3,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "invocations_known": 7,
+   "mystic_arcanum_level_6": 1,
+   "mystic_arcanum_level_7": 1,
+   "mystic_arcanum_level_8": 1,
+   "mystic_arcanum_level_9": 0
+  }
+ },
+ {
+  "class": "class:warlock",
+  "level": 16,
+  "prof_bonus": 5,
+  "features": [
+   "feature:warlock-ability-score-improvement-4"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 13,
+   "slots": [
+    0,
+    0,
+    0,
+    0,
+    3,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "invocations_known": 7,
+   "mystic_arcanum_level_6": 1,
+   "mystic_arcanum_level_7": 1,
+   "mystic_arcanum_level_8": 1,
+   "mystic_arcanum_level_9": 0
+  }
+ },
+ {
+  "class": "class:warlock",
+  "level": 17,
+  "prof_bonus": 6,
+  "features": [
+   "feature:mystic-arcanum-9th-level"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 14,
+   "slots": [
+    0,
+    0,
+    0,
+    0,
+    4,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "invocations_known": 7,
+   "mystic_arcanum_level_6": 1,
+   "mystic_arcanum_level_7": 1,
+   "mystic_arcanum_level_8": 1,
+   "mystic_arcanum_level_9": 1
+  }
+ },
+ {
+  "class": "class:warlock",
+  "level": 18,
+  "prof_bonus": 6,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 14,
+   "slots": [
+    0,
+    0,
+    0,
+    0,
+    4,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "invocations_known": 8,
+   "mystic_arcanum_level_6": 1,
+   "mystic_arcanum_level_7": 1,
+   "mystic_arcanum_level_8": 1,
+   "mystic_arcanum_level_9": 1
+  }
+ },
+ {
+  "class": "class:warlock",
+  "level": 19,
+  "prof_bonus": 6,
+  "features": [
+   "feature:warlock-ability-score-improvement-5"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 15,
+   "slots": [
+    0,
+    0,
+    0,
+    0,
+    4,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "invocations_known": 8,
+   "mystic_arcanum_level_6": 1,
+   "mystic_arcanum_level_7": 1,
+   "mystic_arcanum_level_8": 1,
+   "mystic_arcanum_level_9": 1
+  }
+ },
+ {
+  "class": "class:warlock",
+  "level": 20,
+  "prof_bonus": 6,
+  "features": [
+   "feature:eldritch-master"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 15,
+   "slots": [
+    0,
+    0,
+    0,
+    0,
+    4,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "invocations_known": 8,
+   "mystic_arcanum_level_6": 1,
+   "mystic_arcanum_level_7": 1,
+   "mystic_arcanum_level_8": 1,
+   "mystic_arcanum_level_9": 1
+  }
+ },
+ {
+  "class": "class:warlock",
+  "subclass": "subclass:fiend",
+  "level": 1,
+  "features": [
+   "feature:dark-ones-blessing"
+  ]
+ },
+ {
+  "class": "class:warlock",
+  "subclass": "subclass:fiend",
+  "level": 6,
+  "features": [
+   "feature:dark-ones-own-luck"
+  ]
+ },
+ {
+  "class": "class:warlock",
+  "subclass": "subclass:fiend",
+  "level": 10,
+  "features": [
+   "feature:fiendish-resilience"
+  ]
+ },
+ {
+  "class": "class:warlock",
+  "subclass": "subclass:fiend",
+  "level": 14,
+  "features": [
+   "feature:hurl-through-hell"
+  ]
+ },
+ {
+  "class": "class:wizard",
+  "level": 1,
+  "prof_bonus": 2,
+  "features": [
+   "feature:spellcasting-wizard",
+   "feature:arcane-recovery"
+  ],
+  "spellcasting": {
+   "cantrips_known": 3,
+   "spells_known": 0,
+   "slots": [
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "arcane_recovery_levels": 1
+  }
+ },
+ {
+  "class": "class:wizard",
+  "level": 2,
+  "prof_bonus": 2,
+  "features": [
+   "feature:arcane-tradition"
+  ],
+  "spellcasting": {
+   "cantrips_known": 3,
+   "spells_known": 0,
+   "slots": [
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "arcane_recovery_levels": 1
+  }
+ },
+ {
+  "class": "class:wizard",
+  "level": 3,
+  "prof_bonus": 2,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 3,
+   "spells_known": 0,
+   "slots": [
+    4,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "arcane_recovery_levels": 2
+  }
+ },
+ {
+  "class": "class:wizard",
+  "level": 4,
+  "prof_bonus": 2,
+  "features": [
+   "feature:wizard-ability-score-improvement-1"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "arcane_recovery_levels": 2
+  }
+ },
+ {
+  "class": "class:wizard",
+  "level": 5,
+  "prof_bonus": 3,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "arcane_recovery_levels": 3
+  }
+ },
+ {
+  "class": "class:wizard",
+  "level": 6,
+  "prof_bonus": 3,
+  "features": [
+   "feature:arcane-tradition-improvement-1"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "arcane_recovery_levels": 3
+  }
+ },
+ {
+  "class": "class:wizard",
+  "level": 7,
+  "prof_bonus": 3,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "arcane_recovery_levels": 4
+  }
+ },
+ {
+  "class": "class:wizard",
+  "level": 8,
+  "prof_bonus": 3,
+  "features": [
+   "feature:wizard-ability-score-improvement-2"
+  ],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "arcane_recovery_levels": 4
+  }
+ },
+ {
+  "class": "class:wizard",
+  "level": 9,
+  "prof_bonus": 4,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 4,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    1,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "arcane_recovery_levels": 5
+  }
+ },
+ {
+  "class": "class:wizard",
+  "level": 10,
+  "prof_bonus": 4,
+  "features": [
+   "feature:arcane-tradition-improvement-2"
+  ],
+  "spellcasting": {
+   "cantrips_known": 5,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "arcane_recovery_levels": 5
+  }
+ },
+ {
+  "class": "class:wizard",
+  "level": 11,
+  "prof_bonus": 4,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 5,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "arcane_recovery_levels": 6
+  }
+ },
+ {
+  "class": "class:wizard",
+  "level": 12,
+  "prof_bonus": 4,
+  "features": [
+   "feature:wizard-ability-score-improvement-3"
+  ],
+  "spellcasting": {
+   "cantrips_known": 5,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    0,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "arcane_recovery_levels": 6
+  }
+ },
+ {
+  "class": "class:wizard",
+  "level": 13,
+  "prof_bonus": 5,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 5,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    1,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "arcane_recovery_levels": 7
+  }
+ },
+ {
+  "class": "class:wizard",
+  "level": 14,
+  "prof_bonus": 5,
+  "features": [
+   "feature:arcane-tradition-improvement-3"
+  ],
+  "spellcasting": {
+   "cantrips_known": 5,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    1,
+    0,
+    0
+   ]
+  },
+  "class_specific": {
+   "arcane_recovery_levels": 7
+  }
+ },
+ {
+  "class": "class:wizard",
+  "level": 15,
+  "prof_bonus": 5,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 5,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    1,
+    1,
+    0
+   ]
+  },
+  "class_specific": {
+   "arcane_recovery_levels": 8
+  }
+ },
+ {
+  "class": "class:wizard",
+  "level": 16,
+  "prof_bonus": 5,
+  "features": [
+   "feature:wizard-ability-score-improvement-4"
+  ],
+  "spellcasting": {
+   "cantrips_known": 5,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    1,
+    1,
+    0
+   ]
+  },
+  "class_specific": {
+   "arcane_recovery_levels": 8
+  }
+ },
+ {
+  "class": "class:wizard",
+  "level": 17,
+  "prof_bonus": 6,
+  "features": [],
+  "spellcasting": {
+   "cantrips_known": 5,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    2,
+    1,
+    1,
+    1,
+    1
+   ]
+  },
+  "class_specific": {
+   "arcane_recovery_levels": 9
+  }
+ },
+ {
+  "class": "class:wizard",
+  "level": 18,
+  "prof_bonus": 6,
+  "features": [
+   "feature:spell-mastery"
+  ],
+  "spellcasting": {
+   "cantrips_known": 5,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    3,
+    1,
+    1,
+    1,
+    1
+   ]
+  },
+  "class_specific": {
+   "arcane_recovery_levels": 9
+  }
+ },
+ {
+  "class": "class:wizard",
+  "level": 19,
+  "prof_bonus": 6,
+  "features": [
+   "feature:wizard-ability-score-improvement-5"
+  ],
+  "spellcasting": {
+   "cantrips_known": 5,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    3,
+    2,
+    1,
+    1,
+    1
+   ]
+  },
+  "class_specific": {
+   "arcane_recovery_levels": 10
+  }
+ },
+ {
+  "class": "class:wizard",
+  "level": 20,
+  "prof_bonus": 6,
+  "features": [
+   "feature:signature-spell"
+  ],
+  "spellcasting": {
+   "cantrips_known": 5,
+   "spells_known": 0,
+   "slots": [
+    4,
+    3,
+    3,
+    3,
+    3,
+    2,
+    2,
+    1,
+    1
+   ]
+  },
+  "class_specific": {
+   "arcane_recovery_levels": 10
+  }
+ },
+ {
+  "class": "class:wizard",
+  "subclass": "subclass:evocation",
+  "level": 2,
+  "features": [
+   "feature:evocation-savant",
+   "feature:sculpt-spells"
+  ]
+ },
+ {
+  "class": "class:wizard",
+  "subclass": "subclass:evocation",
+  "level": 6,
+  "features": [
+   "feature:potent-cantrip"
+  ]
+ },
+ {
+  "class": "class:wizard",
+  "subclass": "subclass:evocation",
+  "level": 10,
+  "features": [
+   "feature:empowered-evocation"
+  ]
+ },
+ {
+  "class": "class:wizard",
+  "subclass": "subclass:evocation",
+  "level": 14,
+  "features": [
+   "feature:overchannel"
+  ]
+ }
+]

@@ -1,0 +1,154 @@
+{
+ "source_repo": "https://github.com/5e-bits/5e-srd-api",
+ "source_commit": "a8abc93b235c158bb8cbf042e54425b9c2fd79b8",
+ "source_path": "packages/5e-database/src/2014/en",
+ "snapshot_version": "srd51@a8abc93b235c",
+ "inputs": [
+  {
+   "name": "5e-SRD-Ability-Scores.json",
+   "sha256": "23f08ea89e30f3d4e1cab80b3f57b61188b7894fbcab3b583177b66e9711e090"
+  },
+  {
+   "name": "5e-SRD-Backgrounds.json",
+   "sha256": "f98c556f1b842c2570058cd071b7c20743290358559a1f46140dbedf36f418aa"
+  },
+  {
+   "name": "5e-SRD-Classes.json",
+   "sha256": "2c2795733d45db10758f1c62cad28ffdb1e44159d49a0669bd2dcd606ab6fcfc"
+  },
+  {
+   "name": "5e-SRD-Conditions.json",
+   "sha256": "e2c8d211a4f72722c3490217aea948e78c5235c2d51d3c08a4fd3e9d3cd4468f"
+  },
+  {
+   "name": "5e-SRD-Damage-Types.json",
+   "sha256": "0de4356c453c3e54b5935de528e2867f3ec7af50a03939184675caf33b6c55de"
+  },
+  {
+   "name": "5e-SRD-Equipment.json",
+   "sha256": "6dc4dc61ac71c9ae2ffffe8deae087f2dbe8f1a7b5a8675077adb5df649901c3"
+  },
+  {
+   "name": "5e-SRD-Features.json",
+   "sha256": "fd20a2a5c27996eb66c023053b1629d93dac2d1d108e5d81dfc53ddf0d6ad93c"
+  },
+  {
+   "name": "5e-SRD-Languages.json",
+   "sha256": "44f30bf49b9692f529e8cf61f20e71fd415f1f42b5a1b80f5c8c665ddae1e8c1"
+  },
+  {
+   "name": "5e-SRD-Levels.json",
+   "sha256": "ea6a58268f26f8536d049bd8cb45630280188cd07d2be8b46e0e4cbe5a44feeb"
+  },
+  {
+   "name": "5e-SRD-Magic-Schools.json",
+   "sha256": "9901d0934c16941b871a360f1e866c7ad78679bad9126baf8a5bbd0dfee37daf"
+  },
+  {
+   "name": "5e-SRD-Proficiencies.json",
+   "sha256": "60127a2130a5dd0a0a9b4cc20adf9061be81e9ad95218273d3b434c49d229333"
+  },
+  {
+   "name": "5e-SRD-Races.json",
+   "sha256": "75e6e99c318162e229f825d79f1be0c06abe38f37d14eeea54ce32d94d051245"
+  },
+  {
+   "name": "5e-SRD-Skills.json",
+   "sha256": "09f42a2d3e3d952fc2654387bf1a56dee7f02a326a68a8bc167bd562b0f1e0d9"
+  },
+  {
+   "name": "5e-SRD-Spells.json",
+   "sha256": "abebe7d860ec32985b804e087ecd3986145b1b772fa0c2e43cce9964b382f2ae"
+  },
+  {
+   "name": "5e-SRD-Subclasses.json",
+   "sha256": "b3502390228ffd15c9043f6b5f25d365a9935e12056debccc2e2749e3d6c3ab1"
+  },
+  {
+   "name": "5e-SRD-Subraces.json",
+   "sha256": "13f6917a7f52a42ba48e7daf0464bcdf1c6ffb2efaf9a0ec8d8de523789dedb8"
+  },
+  {
+   "name": "5e-SRD-Traits.json",
+   "sha256": "76943cc30d9d08ad3720524f81f4a1ea715439c3e59191644c4a207d4ae5fcd5"
+  },
+  {
+   "name": "5e-SRD-Weapon-Properties.json",
+   "sha256": "31604f16560b217549c2b629eef1377cde7a8d91a987cbdd4ad19db790b0d765"
+  }
+ ],
+ "outputs": [
+  {
+   "name": "abilities.json",
+   "sha256": "aa06175f124342a61cc443a20b90c954919ff2657860b527923a8ce36ae5f58b"
+  },
+  {
+   "name": "backgrounds.json",
+   "sha256": "e57cfc0a12ba9a17cdf31248707e5d0a492f06918cbdc71fd0a81591d5b434e6"
+  },
+  {
+   "name": "classes.json",
+   "sha256": "0a5c3851a14ffe554cc3d8ee947ff766ab0e567f0f20e91dc3a4f989ca57b5cb"
+  },
+  {
+   "name": "conditions.json",
+   "sha256": "007a87ac1d91dfb7b93f52b349abbc645a7ec9bd10fe4ad1c8eb5cdc778577f4"
+  },
+  {
+   "name": "damage-types.json",
+   "sha256": "c225e25f183785f1218fd3f035831939b0126aa73fd7cd906daee8c89e764c1a"
+  },
+  {
+   "name": "equipment.json",
+   "sha256": "6087e9a0c4f05317dbaea976ae8645b796d9783a165d3cfec1f2337b582cf246"
+  },
+  {
+   "name": "features.json",
+   "sha256": "ffbcec6164e245e555860de5b60fff4a4377d98bdb2eb4dc65cc331505b20f38"
+  },
+  {
+   "name": "languages.json",
+   "sha256": "4917c1dbf358b8f7d235280d8fe3360c3d81897c5d58ec08a94f65be1f59885a"
+  },
+  {
+   "name": "levels.json",
+   "sha256": "0c6c987d66e74fbdcfa13a3f957a653f0c38d68e1d8e8dae47cb0c6e1fa06b45"
+  },
+  {
+   "name": "magic-schools.json",
+   "sha256": "09ffc5b9dff5841c5562985f2aa6a87e9d30bc5a66e8b87707896581420227ae"
+  },
+  {
+   "name": "proficiencies.json",
+   "sha256": "af00b844b5b8c593c3d90539113dbbf43ecef7329f07ef4b21e577cfe37af7ac"
+  },
+  {
+   "name": "races.json",
+   "sha256": "58bcd48f2d94e43eb26ebcbbfac1aba73d02a1f0c9fd4d021fe9a1459f56bac5"
+  },
+  {
+   "name": "skills.json",
+   "sha256": "6009905f72fa855069c671dfe0c6765e52d46807fa26dc3844723023f620cf1d"
+  },
+  {
+   "name": "spells.json",
+   "sha256": "8e46cf2a96146d515fb46b5ee42f4bdff323ccdac1b4c08c41431e3b47cb1cdd"
+  },
+  {
+   "name": "subclasses.json",
+   "sha256": "e5a2f9174588c04045ba23520dac18af105b622702bc5cf4832aa8ab82b40e32"
+  },
+  {
+   "name": "subraces.json",
+   "sha256": "a2cc22f2a616bac2fac72c06a8562c209d996bea80b52f85f4e2725503421c6a"
+  },
+  {
+   "name": "traits.json",
+   "sha256": "c8286c597deb3504b9730f3a86c60c800aceab7316498bb81a7ba38fd9fc9066"
+  },
+  {
+   "name": "weapon-properties.json",
+   "sha256": "6c353d9f954cde27a2e2e36edbc4881163354b9206c3878c767675a967cfe6d3"
+  }
+ ]
+}

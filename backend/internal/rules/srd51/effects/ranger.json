@@ -1,0 +1,52 @@
+{
+  "effects": {
+    "feature:favored-enemy-1-type": [
+      {"type": "note"}
+    ],
+    "feature:natural-explorer-1-terrain-type": [
+      {"type": "note"}
+    ],
+    "feature:ranger-fighting-style": [
+      {"type": "choice", "choice": "feature", "count": 1}
+    ],
+    "feature:ranger-fighting-style-archery": [
+      {"type": "modifier", "target": "attack.weapon.ranged", "mode": "add", "value": "2"}
+    ],
+    "feature:ranger-fighting-style-defense": [
+      {"type": "modifier", "target": "ac", "mode": "add", "value": "1", "when": "armor() != \"none\""}
+    ],
+    "feature:ranger-fighting-style-dueling": [
+      {"type": "modifier", "target": "damage.weapon.melee", "mode": "add", "value": "2", "tags": ["wielding:one-melee-weapon"], "text_pt": "+2 de dano com uma arma corpo a corpo numa mão e nenhuma outra arma."}
+    ],
+    "feature:ranger-fighting-style-two-weapon-fighting": [
+      {"type": "note"}
+    ],
+    "feature:spellcasting-ranger": [
+      {"type": "spellcasting", "ability": "wis", "progression": "half"}
+    ],
+    "feature:primeval-awareness": [
+      {"type": "note"}
+    ],
+    "feature:ranger-archetype": [
+      {"type": "choice", "choice": "subclass", "count": 1}
+    ],
+    "feature:hunters-prey": [
+      {"type": "choice", "choice": "feature", "count": 1}
+    ],
+    "feature:hunters-prey-colossus-slayer": [
+      {"type": "note"}
+    ],
+    "feature:hunters-prey-giant-killer": [
+      {"type": "grant_action", "economy": "reaction"}
+    ],
+    "feature:hunters-prey-horde-breaker": [
+      {"type": "note"}
+    ],
+    "feature:ranger-ability-score-improvement-1": [
+      {"type": "choice", "choice": "ability_score_improvement", "count": 1}
+    ],
+    "feature:ranger-extra-attack": [
+      {"type": "note"}
+    ]
+  }
+}

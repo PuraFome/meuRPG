@@ -1,0 +1,92 @@
+{
+  "effects": {
+    "feature:otherworldly-patron": [
+      {"type": "choice", "choice": "subclass", "count": 1}
+    ],
+    "feature:pact-magic": [
+      {"type": "spellcasting", "ability": "cha", "progression": "pact"}
+    ],
+    "feature:dark-ones-blessing": [
+      {"type": "note", "value": "max(1, mod(\"cha\") + classLevel(\"warlock\"))", "text_pt": "Ao reduzir uma criatura hostil a 0 PV, ganha {n} pontos de vida temporários."}
+    ],
+    "feature:eldritch-invocations": [
+      {"type": "choice", "choice": "feature", "count": 2}
+    ],
+    "feature:eldritch-invocation-agonizing-blast": [
+      {"type": "modifier", "target": "damage.spell.eldritch-blast", "mode": "add", "value": "mod(\"cha\")"}
+    ],
+    "feature:eldritch-invocation-armor-of-shadows": [
+      {"type": "note"}
+    ],
+    "feature:eldritch-invocation-beast-speech": [
+      {"type": "note"}
+    ],
+    "feature:eldritch-invocation-beguiling-influence": [
+      {"type": "proficiency", "proficiency": "skill:deception"},
+      {"type": "proficiency", "proficiency": "skill:persuasion"}
+    ],
+    "feature:eldritch-invocation-book-of-ancient-secrets": [
+      {"type": "note"}
+    ],
+    "feature:eldritch-invocation-devils-sight": [
+      {"type": "note", "text_pt": "Enxerga normalmente na escuridão, mágica ou não, até 36 m."}
+    ],
+    "feature:eldritch-invocation-eldritch-sight": [
+      {"type": "note"}
+    ],
+    "feature:eldritch-invocation-eldritch-spear": [
+      {"type": "note"}
+    ],
+    "feature:eldritch-invocation-eyes-of-the-rune-keeper": [
+      {"type": "note"}
+    ],
+    "feature:eldritch-invocation-fiendish-vigor": [
+      {"type": "note"}
+    ],
+    "feature:eldritch-invocation-gaze-of-two-minds": [
+      {"type": "note"}
+    ],
+    "feature:eldritch-invocation-mask-of-many-faces": [
+      {"type": "note"}
+    ],
+    "feature:eldritch-invocation-misty-visions": [
+      {"type": "note"}
+    ],
+    "feature:eldritch-invocation-repelling-blast": [
+      {"type": "note"}
+    ],
+    "feature:eldritch-invocation-thief-of-five-fates": [
+      {"type": "note"}
+    ],
+    "feature:eldritch-invocation-voice-of-the-chain-master": [
+      {"type": "note"}
+    ],
+    "feature:eldritch-invocation-mire-the-mind": [
+      {"type": "note"}
+    ],
+    "feature:eldritch-invocation-one-with-shadows": [
+      {"type": "note"}
+    ],
+    "feature:eldritch-invocation-sign-of-ill-omen": [
+      {"type": "note"}
+    ],
+    "feature:eldritch-invocation-thirsting-blade": [
+      {"type": "note"}
+    ],
+    "feature:pact-boon": [
+      {"type": "choice", "choice": "feature", "count": 1}
+    ],
+    "feature:pact-of-the-blade": [
+      {"type": "note"}
+    ],
+    "feature:pact-of-the-chain": [
+      {"type": "note"}
+    ],
+    "feature:pact-of-the-tome": [
+      {"type": "note"}
+    ],
+    "feature:warlock-ability-score-improvement-1": [
+      {"type": "choice", "choice": "ability_score_improvement", "count": 1}
+    ]
+  }
+}

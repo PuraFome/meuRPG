@@ -1,0 +1,86 @@
+{
+  "effects": {
+    "feature:spellcasting-sorcerer": [
+      {"type": "spellcasting", "ability": "cha", "progression": "full"}
+    ],
+    "feature:sorcerous-origin": [
+      {"type": "choice", "choice": "subclass", "count": 1}
+    ],
+    "feature:draconic-resilience": [
+      {"type": "modifier", "target": "hp.max", "mode": "add", "value": "classLevel(\"sorcerer\")"},
+      {"type": "modifier", "target": "ac.base", "mode": "max", "value": "13 + mod(\"dex\")", "when": "armor() == \"none\""}
+    ],
+    "feature:dragon-ancestor": [
+      {"type": "choice", "choice": "feature", "count": 1}
+    ],
+    "feature:dragon-ancestor-black---acid-damage": [
+      {"type": "note"}
+    ],
+    "feature:dragon-ancestor-blue---lightning-damage": [
+      {"type": "note"}
+    ],
+    "feature:dragon-ancestor-brass---fire-damage": [
+      {"type": "note"}
+    ],
+    "feature:dragon-ancestor-bronze---lightning-damage": [
+      {"type": "note"}
+    ],
+    "feature:dragon-ancestor-copper---acid-damage": [
+      {"type": "note"}
+    ],
+    "feature:dragon-ancestor-gold---fire-damage": [
+      {"type": "note"}
+    ],
+    "feature:dragon-ancestor-green---poison-damage": [
+      {"type": "note"}
+    ],
+    "feature:dragon-ancestor-red---fire-damage": [
+      {"type": "note"}
+    ],
+    "feature:dragon-ancestor-silver---cold-damage": [
+      {"type": "note"}
+    ],
+    "feature:dragon-ancestor-white---cold-damage": [
+      {"type": "note"}
+    ],
+    "feature:font-of-magic": [
+      {"type": "resource", "resource": "sorcery_points", "max": "classLevel(\"sorcerer\")", "recharge": "long_rest"}
+    ],
+    "feature:flexible-casting-creating-spell-slots": [
+      {"type": "grant_action", "economy": "bonus_action"}
+    ],
+    "feature:flexible-casting-converting-spell-slot": [
+      {"type": "grant_action", "economy": "bonus_action"}
+    ],
+    "feature:metamagic-1": [
+      {"type": "choice", "choice": "feature", "count": 2}
+    ],
+    "feature:metamagic-careful-spell": [
+      {"type": "note"}
+    ],
+    "feature:metamagic-distant-spell": [
+      {"type": "note"}
+    ],
+    "feature:metamagic-empowered-spell": [
+      {"type": "note"}
+    ],
+    "feature:metamagic-extended-spell": [
+      {"type": "note"}
+    ],
+    "feature:metamagic-heightened-spell": [
+      {"type": "note"}
+    ],
+    "feature:metamagic-quickened-spell": [
+      {"type": "note"}
+    ],
+    "feature:metamagic-subtle-spell": [
+      {"type": "note"}
+    ],
+    "feature:metamagic-twinned-spell": [
+      {"type": "note"}
+    ],
+    "feature:sorcerer-ability-score-improvement-1": [
+      {"type": "choice", "choice": "ability_score_improvement", "count": 1}
+    ]
+  }
+}

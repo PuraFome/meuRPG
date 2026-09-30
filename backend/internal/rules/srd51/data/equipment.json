@@ -1,0 +1,921 @@
+[
+ {
+  "key": "equipment:alchemists-supplies",
+  "name": "Alchemist's Supplies",
+  "kind": "tool"
+ },
+ {
+  "key": "equipment:bagpipes",
+  "name": "Bagpipes",
+  "kind": "tool"
+ },
+ {
+  "key": "equipment:battleaxe",
+  "name": "Battleaxe",
+  "kind": "weapon",
+  "weapon": {
+   "category": "martial",
+   "range": "melee",
+   "damage": "1d8",
+   "damage_type": "damage-type:slashing",
+   "two_handed_damage": "1d10",
+   "properties": [
+    "weapon-property:versatile"
+   ],
+   "normal_range_ft": 5
+  }
+ },
+ {
+  "key": "equipment:blowgun",
+  "name": "Blowgun",
+  "kind": "weapon",
+  "weapon": {
+   "category": "martial",
+   "range": "ranged",
+   "damage": "1",
+   "damage_type": "damage-type:piercing",
+   "properties": [
+    "weapon-property:ammunition",
+    "weapon-property:loading"
+   ],
+   "normal_range_ft": 25,
+   "long_range_ft": 100
+  }
+ },
+ {
+  "key": "equipment:breastplate",
+  "name": "Breastplate",
+  "kind": "armor",
+  "armor": {
+   "category": "medium",
+   "base_ac": 14,
+   "dex_bonus": true,
+   "max_dex_bonus": 2
+  }
+ },
+ {
+  "key": "equipment:brewers-supplies",
+  "name": "Brewer's Supplies",
+  "kind": "tool"
+ },
+ {
+  "key": "equipment:calligraphers-supplies",
+  "name": "Calligrapher's Supplies",
+  "kind": "tool"
+ },
+ {
+  "key": "equipment:carpenters-tools",
+  "name": "Carpenter's Tools",
+  "kind": "tool"
+ },
+ {
+  "key": "equipment:cartographers-tools",
+  "name": "Cartographer's Tools",
+  "kind": "tool"
+ },
+ {
+  "key": "equipment:chain-mail",
+  "name": "Chain Mail",
+  "kind": "armor",
+  "armor": {
+   "category": "heavy",
+   "base_ac": 16,
+   "dex_bonus": false,
+   "str_minimum": 13,
+   "stealth_disadvantage": true
+  }
+ },
+ {
+  "key": "equipment:chain-shirt",
+  "name": "Chain Shirt",
+  "kind": "armor",
+  "armor": {
+   "category": "medium",
+   "base_ac": 13,
+   "dex_bonus": true,
+   "max_dex_bonus": 2
+  }
+ },
+ {
+  "key": "equipment:club",
+  "name": "Club",
+  "kind": "weapon",
+  "weapon": {
+   "category": "simple",
+   "range": "melee",
+   "damage": "1d4",
+   "damage_type": "damage-type:bludgeoning",
+   "properties": [
+    "weapon-property:light",
+    "weapon-property:monk"
+   ],
+   "normal_range_ft": 5
+  }
+ },
+ {
+  "key": "equipment:cobblers-tools",
+  "name": "Cobbler's Tools",
+  "kind": "tool"
+ },
+ {
+  "key": "equipment:cooks-utensils",
+  "name": "Cook's utensils",
+  "kind": "tool"
+ },
+ {
+  "key": "equipment:crossbow-hand",
+  "name": "Crossbow, hand",
+  "kind": "weapon",
+  "weapon": {
+   "category": "martial",
+   "range": "ranged",
+   "damage": "1d6",
+   "damage_type": "damage-type:piercing",
+   "properties": [
+    "weapon-property:ammunition",
+    "weapon-property:light",
+    "weapon-property:loading"
+   ],
+   "normal_range_ft": 30,
+   "long_range_ft": 120
+  }
+ },
+ {
+  "key": "equipment:crossbow-heavy",
+  "name": "Crossbow, heavy",
+  "kind": "weapon",
+  "weapon": {
+   "category": "martial",
+   "range": "ranged",
+   "damage": "1d10",
+   "damage_type": "damage-type:piercing",
+   "properties": [
+    "weapon-property:ammunition",
+    "weapon-property:heavy",
+    "weapon-property:loading",
+    "weapon-property:two-handed"
+   ],
+   "normal_range_ft": 100,
+   "long_range_ft": 400
+  }
+ },
+ {
+  "key": "equipment:crossbow-light",
+  "name": "Crossbow, light",
+  "kind": "weapon",
+  "weapon": {
+   "category": "simple",
+   "range": "ranged",
+   "damage": "1d8",
+   "damage_type": "damage-type:piercing",
+   "properties": [
+    "weapon-property:ammunition",
+    "weapon-property:loading",
+    "weapon-property:two-handed"
+   ],
+   "normal_range_ft": 80,
+   "long_range_ft": 320
+  }
+ },
+ {
+  "key": "equipment:dagger",
+  "name": "Dagger",
+  "kind": "weapon",
+  "weapon": {
+   "category": "simple",
+   "range": "melee",
+   "damage": "1d4",
+   "damage_type": "damage-type:piercing",
+   "properties": [
+    "weapon-property:finesse",
+    "weapon-property:light",
+    "weapon-property:thrown",
+    "weapon-property:monk"
+   ],
+   "normal_range_ft": 5,
+   "throw_normal_ft": 20,
+   "throw_long_ft": 60
+  }
+ },
+ {
+  "key": "equipment:dart",
+  "name": "Dart",
+  "kind": "weapon",
+  "weapon": {
+   "category": "simple",
+   "range": "ranged",
+   "damage": "1d4",
+   "damage_type": "damage-type:piercing",
+   "properties": [
+    "weapon-property:finesse",
+    "weapon-property:thrown"
+   ],
+   "normal_range_ft": 20,
+   "long_range_ft": 60,
+   "throw_normal_ft": 20,
+   "throw_long_ft": 60
+  }
+ },
+ {
+  "key": "equipment:dice-set",
+  "name": "Dice Set",
+  "kind": "tool"
+ },
+ {
+  "key": "equipment:drum",
+  "name": "Drum",
+  "kind": "tool"
+ },
+ {
+  "key": "equipment:dulcimer",
+  "name": "Dulcimer",
+  "kind": "tool"
+ },
+ {
+  "key": "equipment:flail",
+  "name": "Flail",
+  "kind": "weapon",
+  "weapon": {
+   "category": "martial",
+   "range": "melee",
+   "damage": "1d8",
+   "damage_type": "damage-type:bludgeoning",
+   "properties": [],
+   "normal_range_ft": 5
+  }
+ },
+ {
+  "key": "equipment:flute",
+  "name": "Flute",
+  "kind": "tool"
+ },
+ {
+  "key": "equipment:glaive",
+  "name": "Glaive",
+  "kind": "weapon",
+  "weapon": {
+   "category": "martial",
+   "range": "melee",
+   "damage": "1d10",
+   "damage_type": "damage-type:slashing",
+   "properties": [
+    "weapon-property:heavy",
+    "weapon-property:reach",
+    "weapon-property:two-handed"
+   ],
+   "normal_range_ft": 5
+  }
+ },
+ {
+  "key": "equipment:glassblowers-tools",
+  "name": "Glassblower's Tools",
+  "kind": "tool"
+ },
+ {
+  "key": "equipment:greataxe",
+  "name": "Greataxe",
+  "kind": "weapon",
+  "weapon": {
+   "category": "martial",
+   "range": "melee",
+   "damage": "1d12",
+   "damage_type": "damage-type:slashing",
+   "properties": [
+    "weapon-property:heavy",
+    "weapon-property:two-handed"
+   ],
+   "normal_range_ft": 5
+  }
+ },
+ {
+  "key": "equipment:greatclub",
+  "name": "Greatclub",
+  "kind": "weapon",
+  "weapon": {
+   "category": "simple",
+   "range": "melee",
+   "damage": "1d8",
+   "damage_type": "damage-type:bludgeoning",
+   "properties": [
+    "weapon-property:two-handed"
+   ],
+   "normal_range_ft": 5
+  }
+ },
+ {
+  "key": "equipment:greatsword",
+  "name": "Greatsword",
+  "kind": "weapon",
+  "weapon": {
+   "category": "martial",
+   "range": "melee",
+   "damage": "2d6",
+   "damage_type": "damage-type:slashing",
+   "properties": [
+    "weapon-property:heavy",
+    "weapon-property:two-handed"
+   ],
+   "normal_range_ft": 5
+  }
+ },
+ {
+  "key": "equipment:halberd",
+  "name": "Halberd",
+  "kind": "weapon",
+  "weapon": {
+   "category": "martial",
+   "range": "melee",
+   "damage": "1d10",
+   "damage_type": "damage-type:slashing",
+   "properties": [
+    "weapon-property:heavy",
+    "weapon-property:reach",
+    "weapon-property:two-handed"
+   ],
+   "normal_range_ft": 5
+  }
+ },
+ {
+  "key": "equipment:half-plate-armor",
+  "name": "Half Plate Armor",
+  "kind": "armor",
+  "armor": {
+   "category": "medium",
+   "base_ac": 15,
+   "dex_bonus": true,
+   "max_dex_bonus": 2,
+   "stealth_disadvantage": true
+  }
+ },
+ {
+  "key": "equipment:handaxe",
+  "name": "Handaxe",
+  "kind": "weapon",
+  "weapon": {
+   "category": "simple",
+   "range": "melee",
+   "damage": "1d6",
+   "damage_type": "damage-type:slashing",
+   "properties": [
+    "weapon-property:light",
+    "weapon-property:thrown",
+    "weapon-property:monk"
+   ],
+   "normal_range_ft": 5,
+   "throw_normal_ft": 20,
+   "throw_long_ft": 60
+  }
+ },
+ {
+  "key": "equipment:hide-armor",
+  "name": "Hide Armor",
+  "kind": "armor",
+  "armor": {
+   "category": "medium",
+   "base_ac": 12,
+   "dex_bonus": true,
+   "max_dex_bonus": 2
+  }
+ },
+ {
+  "key": "equipment:horn",
+  "name": "Horn",
+  "kind": "tool"
+ },
+ {
+  "key": "equipment:javelin",
+  "name": "Javelin",
+  "kind": "weapon",
+  "weapon": {
+   "category": "simple",
+   "range": "melee",
+   "damage": "1d6",
+   "damage_type": "damage-type:piercing",
+   "properties": [
+    "weapon-property:thrown",
+    "weapon-property:monk"
+   ],
+   "normal_range_ft": 5,
+   "throw_normal_ft": 30,
+   "throw_long_ft": 120
+  }
+ },
+ {
+  "key": "equipment:jewelers-tools",
+  "name": "Jeweler's Tools",
+  "kind": "tool"
+ },
+ {
+  "key": "equipment:lance",
+  "name": "Lance",
+  "kind": "weapon",
+  "weapon": {
+   "category": "martial",
+   "range": "melee",
+   "damage": "1d12",
+   "damage_type": "damage-type:piercing",
+   "properties": [
+    "weapon-property:reach",
+    "weapon-property:special"
+   ],
+   "normal_range_ft": 5
+  }
+ },
+ {
+  "key": "equipment:leather-armor",
+  "name": "Leather Armor",
+  "kind": "armor",
+  "armor": {
+   "category": "light",
+   "base_ac": 11,
+   "dex_bonus": true
+  }
+ },
+ {
+  "key": "equipment:leatherworkers-tools",
+  "name": "Leatherworker's Tools",
+  "kind": "tool"
+ },
+ {
+  "key": "equipment:light-hammer",
+  "name": "Light hammer",
+  "kind": "weapon",
+  "weapon": {
+   "category": "simple",
+   "range": "melee",
+   "damage": "1d4",
+   "damage_type": "damage-type:bludgeoning",
+   "properties": [
+    "weapon-property:light",
+    "weapon-property:thrown",
+    "weapon-property:monk"
+   ],
+   "normal_range_ft": 5,
+   "throw_normal_ft": 20,
+   "throw_long_ft": 60
+  }
+ },
+ {
+  "key": "equipment:longbow",
+  "name": "Longbow",
+  "kind": "weapon",
+  "weapon": {
+   "category": "martial",
+   "range": "ranged",
+   "damage": "1d8",
+   "damage_type": "damage-type:piercing",
+   "properties": [
+    "weapon-property:ammunition",
+    "weapon-property:heavy",
+    "weapon-property:two-handed"
+   ],
+   "normal_range_ft": 150,
+   "long_range_ft": 600
+  }
+ },
+ {
+  "key": "equipment:longsword",
+  "name": "Longsword",
+  "kind": "weapon",
+  "weapon": {
+   "category": "martial",
+   "range": "melee",
+   "damage": "1d8",
+   "damage_type": "damage-type:slashing",
+   "two_handed_damage": "1d10",
+   "properties": [
+    "weapon-property:versatile"
+   ],
+   "normal_range_ft": 5
+  }
+ },
+ {
+  "key": "equipment:lute",
+  "name": "Lute",
+  "kind": "tool"
+ },
+ {
+  "key": "equipment:lyre",
+  "name": "Lyre",
+  "kind": "tool"
+ },
+ {
+  "key": "equipment:mace",
+  "name": "Mace",
+  "kind": "weapon",
+  "weapon": {
+   "category": "simple",
+   "range": "melee",
+   "damage": "1d6",
+   "damage_type": "damage-type:bludgeoning",
+   "properties": [
+    "weapon-property:monk"
+   ],
+   "normal_range_ft": 5
+  }
+ },
+ {
+  "key": "equipment:masons-tools",
+  "name": "Mason's Tools",
+  "kind": "tool"
+ },
+ {
+  "key": "equipment:maul",
+  "name": "Maul",
+  "kind": "weapon",
+  "weapon": {
+   "category": "martial",
+   "range": "melee",
+   "damage": "2d6",
+   "damage_type": "damage-type:bludgeoning",
+   "properties": [
+    "weapon-property:heavy",
+    "weapon-property:two-handed"
+   ],
+   "normal_range_ft": 5
+  }
+ },
+ {
+  "key": "equipment:morningstar",
+  "name": "Morningstar",
+  "kind": "weapon",
+  "weapon": {
+   "category": "martial",
+   "range": "melee",
+   "damage": "1d8",
+   "damage_type": "damage-type:piercing",
+   "properties": [],
+   "normal_range_ft": 5
+  }
+ },
+ {
+  "key": "equipment:navigators-tools",
+  "name": "Navigator's Tools",
+  "kind": "tool"
+ },
+ {
+  "key": "equipment:net",
+  "name": "Net",
+  "kind": "weapon",
+  "weapon": {
+   "category": "martial",
+   "range": "ranged",
+   "properties": [
+    "weapon-property:thrown",
+    "weapon-property:special"
+   ],
+   "normal_range_ft": 5,
+   "long_range_ft": 15,
+   "throw_normal_ft": 5,
+   "throw_long_ft": 15
+  }
+ },
+ {
+  "key": "equipment:padded-armor",
+  "name": "Padded Armor",
+  "kind": "armor",
+  "armor": {
+   "category": "light",
+   "base_ac": 11,
+   "dex_bonus": true,
+   "stealth_disadvantage": true
+  }
+ },
+ {
+  "key": "equipment:painters-supplies",
+  "name": "Painter's Supplies",
+  "kind": "tool"
+ },
+ {
+  "key": "equipment:pan-flute",
+  "name": "Pan flute",
+  "kind": "tool"
+ },
+ {
+  "key": "equipment:pike",
+  "name": "Pike",
+  "kind": "weapon",
+  "weapon": {
+   "category": "martial",
+   "range": "melee",
+   "damage": "1d10",
+   "damage_type": "damage-type:piercing",
+   "properties": [
+    "weapon-property:heavy",
+    "weapon-property:reach",
+    "weapon-property:two-handed"
+   ],
+   "normal_range_ft": 5
+  }
+ },
+ {
+  "key": "equipment:plate-armor",
+  "name": "Plate Armor",
+  "kind": "armor",
+  "armor": {
+   "category": "heavy",
+   "base_ac": 18,
+   "dex_bonus": false,
+   "str_minimum": 15,
+   "stealth_disadvantage": true
+  }
+ },
+ {
+  "key": "equipment:playing-card-set",
+  "name": "Playing Card Set",
+  "kind": "tool"
+ },
+ {
+  "key": "equipment:potters-tools",
+  "name": "Potter's Tools",
+  "kind": "tool"
+ },
+ {
+  "key": "equipment:quarterstaff",
+  "name": "Quarterstaff",
+  "kind": "weapon",
+  "weapon": {
+   "category": "simple",
+   "range": "melee",
+   "damage": "1d6",
+   "damage_type": "damage-type:bludgeoning",
+   "two_handed_damage": "1d8",
+   "properties": [
+    "weapon-property:versatile",
+    "weapon-property:monk"
+   ],
+   "normal_range_ft": 5
+  }
+ },
+ {
+  "key": "equipment:rapier",
+  "name": "Rapier",
+  "kind": "weapon",
+  "weapon": {
+   "category": "martial",
+   "range": "melee",
+   "damage": "1d8",
+   "damage_type": "damage-type:piercing",
+   "properties": [
+    "weapon-property:finesse"
+   ],
+   "normal_range_ft": 5
+  }
+ },
+ {
+  "key": "equipment:ring-mail",
+  "name": "Ring Mail",
+  "kind": "armor",
+  "armor": {
+   "category": "heavy",
+   "base_ac": 14,
+   "dex_bonus": false,
+   "stealth_disadvantage": true
+  }
+ },
+ {
+  "key": "equipment:scale-mail",
+  "name": "Scale Mail",
+  "kind": "armor",
+  "armor": {
+   "category": "medium",
+   "base_ac": 14,
+   "dex_bonus": true,
+   "max_dex_bonus": 2,
+   "stealth_disadvantage": true
+  }
+ },
+ {
+  "key": "equipment:scimitar",
+  "name": "Scimitar",
+  "kind": "weapon",
+  "weapon": {
+   "category": "martial",
+   "range": "melee",
+   "damage": "1d6",
+   "damage_type": "damage-type:slashing",
+   "properties": [
+    "weapon-property:finesse",
+    "weapon-property:light"
+   ],
+   "normal_range_ft": 5
+  }
+ },
+ {
+  "key": "equipment:shawm",
+  "name": "Shawm",
+  "kind": "tool"
+ },
+ {
+  "key": "equipment:shield",
+  "name": "Shield",
+  "kind": "armor",
+  "armor": {
+   "category": "shield",
+   "base_ac": 2,
+   "dex_bonus": false
+  }
+ },
+ {
+  "key": "equipment:shortbow",
+  "name": "Shortbow",
+  "kind": "weapon",
+  "weapon": {
+   "category": "simple",
+   "range": "ranged",
+   "damage": "1d6",
+   "damage_type": "damage-type:piercing",
+   "properties": [
+    "weapon-property:ammunition",
+    "weapon-property:two-handed"
+   ],
+   "normal_range_ft": 80,
+   "long_range_ft": 320
+  }
+ },
+ {
+  "key": "equipment:shortsword",
+  "name": "Shortsword",
+  "kind": "weapon",
+  "weapon": {
+   "category": "martial",
+   "range": "melee",
+   "damage": "1d6",
+   "damage_type": "damage-type:piercing",
+   "properties": [
+    "weapon-property:finesse",
+    "weapon-property:light",
+    "weapon-property:monk"
+   ],
+   "normal_range_ft": 5
+  }
+ },
+ {
+  "key": "equipment:sickle",
+  "name": "Sickle",
+  "kind": "weapon",
+  "weapon": {
+   "category": "simple",
+   "range": "melee",
+   "damage": "1d4",
+   "damage_type": "damage-type:slashing",
+   "properties": [
+    "weapon-property:light",
+    "weapon-property:monk"
+   ],
+   "normal_range_ft": 5
+  }
+ },
+ {
+  "key": "equipment:sling",
+  "name": "Sling",
+  "kind": "weapon",
+  "weapon": {
+   "category": "simple",
+   "range": "ranged",
+   "damage": "1d4",
+   "damage_type": "damage-type:bludgeoning",
+   "properties": [
+    "weapon-property:ammunition"
+   ],
+   "normal_range_ft": 30,
+   "long_range_ft": 120
+  }
+ },
+ {
+  "key": "equipment:smiths-tools",
+  "name": "Smith's Tools",
+  "kind": "tool"
+ },
+ {
+  "key": "equipment:spear",
+  "name": "Spear",
+  "kind": "weapon",
+  "weapon": {
+   "category": "simple",
+   "range": "melee",
+   "damage": "1d6",
+   "damage_type": "damage-type:piercing",
+   "two_handed_damage": "1d8",
+   "properties": [
+    "weapon-property:thrown",
+    "weapon-property:versatile",
+    "weapon-property:monk"
+   ],
+   "normal_range_ft": 5,
+   "throw_normal_ft": 20,
+   "throw_long_ft": 60
+  }
+ },
+ {
+  "key": "equipment:splint-armor",
+  "name": "Splint Armor",
+  "kind": "armor",
+  "armor": {
+   "category": "heavy",
+   "base_ac": 17,
+   "dex_bonus": false,
+   "str_minimum": 15,
+   "stealth_disadvantage": true
+  }
+ },
+ {
+  "key": "equipment:studded-leather-armor",
+  "name": "Studded Leather Armor",
+  "kind": "armor",
+  "armor": {
+   "category": "light",
+   "base_ac": 12,
+   "dex_bonus": true
+  }
+ },
+ {
+  "key": "equipment:thieves-tools",
+  "name": "Thieves' Tools",
+  "kind": "tool"
+ },
+ {
+  "key": "equipment:tinkers-tools",
+  "name": "Tinker's Tools",
+  "kind": "tool"
+ },
+ {
+  "key": "equipment:trident",
+  "name": "Trident",
+  "kind": "weapon",
+  "weapon": {
+   "category": "martial",
+   "range": "melee",
+   "damage": "1d6",
+   "damage_type": "damage-type:piercing",
+   "two_handed_damage": "1d8",
+   "properties": [
+    "weapon-property:thrown",
+    "weapon-property:versatile"
+   ],
+   "normal_range_ft": 5,
+   "throw_normal_ft": 20,
+   "throw_long_ft": 60
+  }
+ },
+ {
+  "key": "equipment:viol",
+  "name": "Viol",
+  "kind": "tool"
+ },
+ {
+  "key": "equipment:war-pick",
+  "name": "War pick",
+  "kind": "weapon",
+  "weapon": {
+   "category": "martial",
+   "range": "melee",
+   "damage": "1d8",
+   "damage_type": "damage-type:piercing",
+   "properties": [],
+   "normal_range_ft": 5
+  }
+ },
+ {
+  "key": "equipment:warhammer",
+  "name": "Warhammer",
+  "kind": "weapon",
+  "weapon": {
+   "category": "martial",
+   "range": "melee",
+   "damage": "1d8",
+   "damage_type": "damage-type:bludgeoning",
+   "two_handed_damage": "1d10",
+   "properties": [
+    "weapon-property:versatile"
+   ],
+   "normal_range_ft": 5
+  }
+ },
+ {
+  "key": "equipment:weavers-tools",
+  "name": "Weaver's Tools",
+  "kind": "tool"
+ },
+ {
+  "key": "equipment:whip",
+  "name": "Whip",
+  "kind": "weapon",
+  "weapon": {
+   "category": "martial",
+   "range": "melee",
+   "damage": "1d4",
+   "damage_type": "damage-type:slashing",
+   "properties": [
+    "weapon-property:finesse",
+    "weapon-property:reach"
+   ],
+   "normal_range_ft": 5
+  }
+ },
+ {
+  "key": "equipment:woodcarvers-tools",
+  "name": "Woodcarver's Tools",
+  "kind": "tool"
+ }
+]
