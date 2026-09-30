@@ -1,27 +1,21 @@
 package identity
 
 import (
-	"context"
-	"database/sql"
+	"bytes"
 	"errors"
-	"fmt"
-	"net/url"
-	"os"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	_ "github.com/jackc/pgx/v5/stdlib" // the "pgx" driver for database/sql, which goose needs
 
-	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
-	"github.com/PuraFome/meuRPG/backend/migrations"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/secret"
 )
 
-// These tests need CockroachDB: set MEURPG_TEST_DATABASE_URL (see
-// internal/platform/db for a one-line docker run). Without it they skip, so
-// `go test ./...` works anywhere.
+// These tests need CockroachDB: set MEURPG_TEST_DATABASE_URL (see package
+// dbtest). Without it they skip, so `go test ./...` works anywhere.
 
 // namedStore builds a fresh Store for a test.
 type namedStore struct {
@@ -34,7 +28,7 @@ type namedStore struct {
 func testStores(t *testing.T) []namedStore {
 	t.Helper()
 	stores := []namedStore{{"memory", func(*testing.T) Store { return newMemStore() }}}
-	if os.Getenv("MEURPG_TEST_DATABASE_URL") != "" {
+	if dbtest.Enabled() {
 		stores = append(stores, namedStore{"cockroachdb", func(t *testing.T) Store { return testPostgresStore(t) }})
 	}
 	return stores
@@ -49,55 +43,7 @@ func testPostgresStore(t *testing.T) *PostgresStore {
 
 func testPool(t *testing.T) *pgxpool.Pool {
 	t.Helper()
-	rawURL := os.Getenv("MEURPG_TEST_DATABASE_URL")
-	if rawURL == "" {
-		t.Skip("MEURPG_TEST_DATABASE_URL is not set; skipping database test")
-	}
-
-	admin, err := sql.Open("pgx", rawURL)
-	if err != nil {
-		t.Fatalf("open database: %v", err)
-	}
-	t.Cleanup(func() { _ = admin.Close() })
-
-	name := fmt.Sprintf("meurpg_identity_test_%d", time.Now().UnixNano())
-	mustExecSQL(t, admin, "CREATE DATABASE "+name)
-	t.Cleanup(func() { mustExecSQL(t, admin, "DROP DATABASE IF EXISTS "+name+" CASCADE") })
-
-	u, err := url.Parse(rawURL)
-	if err != nil {
-		t.Fatalf("parse MEURPG_TEST_DATABASE_URL: %v", err)
-	}
-	u.Path = "/" + name
-
-	conn, err := sql.Open("pgx", u.String())
-	if err != nil {
-		t.Fatalf("open test database: %v", err)
-	}
-	t.Cleanup(func() { _ = conn.Close() })
-	provider, err := migrations.NewProvider(conn)
-	if err != nil {
-		t.Fatalf("migrations.NewProvider() error = %v", err)
-	}
-	if _, err := provider.Up(t.Context()); err != nil {
-		t.Fatalf("migrate up: %v", err)
-	}
-
-	pool, err := db.NewPool(t.Context(), u.String())
-	if err != nil {
-		t.Fatalf("NewPool() error = %v", err)
-	}
-	t.Cleanup(pool.Close)
-	return pool
-}
-
-func mustExecSQL(t *testing.T, conn *sql.DB, query string) {
-	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	if _, err := conn.ExecContext(ctx, query); err != nil {
-		t.Fatalf("exec %q: %v", query, err)
-	}
+	return dbtest.NewPool(t, "meurpg_identity_test")
 }
 
 func TestPostgresStoreUpsertUser(t *testing.T) {
@@ -191,8 +137,8 @@ func TestPostgresStoreSessions(t *testing.T) {
 	authTime := now.Add(-time.Hour).Truncate(time.Second)
 
 	newSession := func() ([]byte, Session) {
-		_, hash := newSecret()
-		s, err := store.CreateSession(ctx, NewSession{TokenHash: hash, UserID: userID, CreatedAt: now, ExpiresAt: now.Add(SessionLifetime), AuthTime: authTime})
+		_, hash := secret.New()
+		s, err := store.createSession(ctx, NewSession{TokenHash: hash, UserID: userID, CreatedAt: now, ExpiresAt: now.Add(SessionLifetime), AuthTime: authTime})
 		if err != nil {
 			t.Fatalf("CreateSession() error = %v", err)
 		}
@@ -201,7 +147,7 @@ func TestPostgresStoreSessions(t *testing.T) {
 	hash1, s1 := newSession()
 	hash2, s2 := newSession()
 
-	got, err := store.LookupSession(ctx, hash1, now.Add(time.Minute))
+	got, err := store.lookupSession(ctx, hash1, now.Add(time.Minute))
 	if err != nil {
 		t.Fatalf("LookupSession() error = %v", err)
 	}
@@ -220,33 +166,33 @@ func TestPostgresStoreSessions(t *testing.T) {
 	}
 
 	// Expiry: valid until the last instant before expires_at, never after.
-	if _, err := store.LookupSession(ctx, hash1, now.Add(SessionLifetime-time.Microsecond)); err != nil {
+	if _, err := store.lookupSession(ctx, hash1, now.Add(SessionLifetime-time.Microsecond)); err != nil {
 		t.Errorf("LookupSession() just before expiry error = %v", err)
 	}
-	if _, err := store.LookupSession(ctx, hash1, now.Add(SessionLifetime)); !errors.Is(err, ErrNotFound) {
+	if _, err := store.lookupSession(ctx, hash1, now.Add(SessionLifetime)); !errors.Is(err, ErrNotFound) {
 		t.Errorf("LookupSession() at expiry error = %v, want ErrNotFound", err)
 	}
 
 	// The database refuses a session longer than 30 days.
-	_, hash := newSecret()
-	if _, err := store.CreateSession(ctx, NewSession{TokenHash: hash, UserID: userID, CreatedAt: now, ExpiresAt: now.Add(SessionLifetime + time.Second)}); err == nil {
+	_, hash := secret.New()
+	if _, err := store.createSession(ctx, NewSession{TokenHash: hash, UserID: userID, CreatedAt: now, ExpiresAt: now.Add(SessionLifetime + time.Second)}); err == nil {
 		t.Error("CreateSession() with a 30-day-and-1-second session succeeded, want the CHECK to refuse it")
 	}
 
 	// Revoke one, then all.
-	if err := store.RevokeSession(ctx, s1.ID); err != nil {
+	if err := store.revokeSession(ctx, s1.ID); err != nil {
 		t.Fatalf("RevokeSession() error = %v", err)
 	}
-	if _, err := store.LookupSession(ctx, hash1, now); !errors.Is(err, ErrNotFound) {
+	if _, err := store.lookupSession(ctx, hash1, now); !errors.Is(err, ErrNotFound) {
 		t.Errorf("LookupSession() after revoke error = %v, want ErrNotFound", err)
 	}
-	if _, err := store.LookupSession(ctx, hash2, now); err != nil {
+	if _, err := store.lookupSession(ctx, hash2, now); err != nil {
 		t.Errorf("the other session was revoked too: %v", err)
 	}
-	if err := store.RevokeUserSessions(ctx, userID); err != nil {
+	if err := store.revokeUserSessions(ctx, userID); err != nil {
 		t.Fatalf("RevokeUserSessions() error = %v", err)
 	}
-	if _, err := store.LookupSession(ctx, hash2, now); !errors.Is(err, ErrNotFound) {
+	if _, err := store.lookupSession(ctx, hash2, now); !errors.Is(err, ErrNotFound) {
 		t.Errorf("LookupSession() after revoke-all error = %v, want ErrNotFound (session %s)", err, s2.ID)
 	}
 
@@ -269,12 +215,12 @@ func TestPostgresStoreLoginStates(t *testing.T) {
 	ctx := t.Context()
 	now := time.Now().Truncate(time.Microsecond)
 
-	_, hash := newSecret()
+	_, hash := secret.New()
 	want := LoginState{StateHash: hash, CodeVerifier: "verifier", Nonce: "nonce", ReturnTo: "/campanhas", CreatedAt: now, ExpiresAt: now.Add(loginStateLifetime)}
-	if err := store.SaveLoginState(ctx, want); err != nil {
+	if err := store.saveLoginState(ctx, want); err != nil {
 		t.Fatalf("SaveLoginState() error = %v", err)
 	}
-	got, err := store.TakeLoginState(ctx, hash, now.Add(time.Minute))
+	got, err := store.takeLoginState(ctx, hash, now.Add(time.Minute))
 	if err != nil {
 		t.Fatalf("TakeLoginState() error = %v", err)
 	}
@@ -283,21 +229,86 @@ func TestPostgresStoreLoginStates(t *testing.T) {
 		t.Errorf("TakeLoginState() = %+v, want %+v", got, want)
 	}
 	// Single use.
-	if _, err := store.TakeLoginState(ctx, hash, now); !errors.Is(err, ErrNotFound) {
+	if _, err := store.takeLoginState(ctx, hash, now); !errors.Is(err, ErrNotFound) {
 		t.Errorf("second TakeLoginState() error = %v, want ErrNotFound", err)
 	}
 
 	// Expired: not returned, and deleted all the same.
-	_, hash = newSecret()
+	_, hash = secret.New()
 	want.StateHash = hash
-	if err := store.SaveLoginState(ctx, want); err != nil {
+	if err := store.saveLoginState(ctx, want); err != nil {
 		t.Fatalf("SaveLoginState() error = %v", err)
 	}
-	if _, err := store.TakeLoginState(ctx, hash, now.Add(loginStateLifetime)); !errors.Is(err, ErrNotFound) {
+	if _, err := store.takeLoginState(ctx, hash, now.Add(loginStateLifetime)); !errors.Is(err, ErrNotFound) {
 		t.Errorf("TakeLoginState() after 10 minutes error = %v, want ErrNotFound", err)
 	}
 	if n := count(t, store.pool, "oidc_login_states"); n != 0 {
 		t.Errorf("oidc_login_states = %d, want 0", n)
+	}
+}
+
+// TestPostgresStoreLoginStateIntents: a plain sign-in stores NULL in both
+// intent columns; an intent stores its kind and data, even when the data is
+// empty, and the CHECK refuses what the columns must never hold.
+func TestPostgresStoreLoginStateIntents(t *testing.T) {
+	t.Parallel()
+	store := testPostgresStore(t)
+	ctx := t.Context()
+	now := time.Now().Truncate(time.Microsecond)
+	state := func(kind string, data []byte) LoginState {
+		_, hash := secret.New()
+		return LoginState{
+			StateHash: hash, CodeVerifier: "verifier", Nonce: "nonce", ReturnTo: "/",
+			CreatedAt: now, ExpiresAt: now.Add(loginStateLifetime),
+			IntentKind: kind, IntentData: data,
+		}
+	}
+
+	for name, st := range map[string]LoginState{
+		"plain sign-in":      state("", nil),
+		"intent with data":   state("campaign_invite", []byte{1, 2, 3}),
+		"intent, empty data": state("campaign_invite", []byte{}),
+		"intent, nil data":   state("campaign_invite", nil),
+	} {
+		if err := store.saveLoginState(ctx, st); err != nil {
+			t.Fatalf("%s: SaveLoginState() error = %v", name, err)
+		}
+		var kindIsNull, dataIsNull bool
+		err := store.pool.QueryRow(ctx,
+			"SELECT intent_kind IS NULL, intent_data IS NULL FROM oidc_login_states WHERE state_hash = $1",
+			st.StateHash).Scan(&kindIsNull, &dataIsNull)
+		if err != nil {
+			t.Fatalf("%s: read row: %v", name, err)
+		}
+		if plain := st.IntentKind == ""; kindIsNull != plain || dataIsNull != plain {
+			t.Errorf("%s: intent_kind IS NULL = %v, intent_data IS NULL = %v; want both %v", name, kindIsNull, dataIsNull, plain)
+		}
+
+		got, err := store.takeLoginState(ctx, st.StateHash, now)
+		if err != nil {
+			t.Fatalf("%s: TakeLoginState() error = %v", name, err)
+		}
+		if got.IntentKind != st.IntentKind || !bytes.Equal(got.IntentData, st.IntentData) {
+			t.Errorf("%s: intent = %q %x, want %q %x", name, got.IntentKind, got.IntentData, st.IntentKind, st.IntentData)
+		}
+		if got.IntentKind != "" && got.IntentData == nil {
+			t.Errorf("%s: IntentData is nil for an intent", name)
+		}
+	}
+
+	// The CHECK is the last line of defense behind the Service's own checks.
+	for name, st := range map[string]LoginState{
+		"data larger than MaxIntentDataBytes": state("campaign_invite", make([]byte, MaxIntentDataBytes+1)),
+		"kind longer than 32 characters":      state(strings.Repeat("k", 33), []byte{1}),
+	} {
+		if err := store.saveLoginState(ctx, st); err == nil {
+			t.Errorf("%s: SaveLoginState() succeeded, want the CHECK to refuse it", name)
+		}
+	}
+	if _, err := store.pool.Exec(ctx,
+		"INSERT INTO oidc_login_states (state_hash, code_verifier, nonce, return_to, created_at, expires_at, intent_data) VALUES ($1, 'v', 'n', '/', $2, $3, '\\x01')",
+		make([]byte, 32), now, now.Add(time.Minute)); err == nil {
+		t.Error("intent_data without intent_kind was accepted")
 	}
 }
 
@@ -340,4 +351,43 @@ func count(t *testing.T, pool *pgxpool.Pool, table string) int {
 		t.Fatalf("count %s: %v", table, err)
 	}
 	return n
+}
+
+func TestPostgresStoreDisplayNames(t *testing.T) {
+	t.Parallel()
+	pool := testPool(t)
+	store := NewPostgresStore(pool)
+	ctx := t.Context()
+	userID, err := store.UpsertUser(ctx, ExternalIdentity{Issuer: "https://idp.example", Subject: "dn"})
+	if err != nil {
+		t.Fatalf("UpsertUser() error = %v", err)
+	}
+
+	if err := store.SetDisplayName(ctx, userID, "Pensantus"); err != nil {
+		t.Fatalf("SetDisplayName() error = %v", err)
+	}
+	if got, err := store.DisplayName(ctx, userID); err != nil || got != "Pensantus" {
+		t.Errorf("DisplayName() = %q, %v; want Pensantus", got, err)
+	}
+	// "" is stored as NULL.
+	if err := store.SetDisplayName(ctx, userID, ""); err != nil {
+		t.Fatalf("SetDisplayName(\"\") error = %v", err)
+	}
+	var stored *string
+	if err := pool.QueryRow(ctx, "SELECT display_name FROM users WHERE id = $1", userID).Scan(&stored); err != nil || stored != nil {
+		t.Errorf("display_name = %v, %v; want NULL", stored, err)
+	}
+
+	// The CHECK backs the application's 40-character limit.
+	if err := store.SetDisplayName(ctx, userID, strings.Repeat("é", MaxDisplayNameLength+1)); err == nil {
+		t.Error("SetDisplayName(41 characters) succeeded, want the CHECK to refuse it")
+	}
+
+	missing := "6f1c7a52-3b5e-4c55-9d0b-2a51f0c1e0ff"
+	if err := store.SetDisplayName(ctx, missing, "X"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("SetDisplayName(missing user) error = %v, want ErrNotFound", err)
+	}
+	if _, err := store.DisplayName(ctx, missing); !errors.Is(err, ErrNotFound) {
+		t.Errorf("DisplayName(missing user) error = %v, want ErrNotFound", err)
+	}
 }

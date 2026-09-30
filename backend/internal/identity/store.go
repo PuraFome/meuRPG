@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/PuraFome/meuRPG/backend/internal/identity/identitydb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 )
 
@@ -18,29 +19,45 @@ var ErrNotFound = errors.New("identity: not found")
 
 // Store persists what the identity module needs. PostgresStore is the real
 // one; tests use an in-memory fake.
+//
+// The methods for sessions and login states are unexported on purpose: only
+// this package can create or look up a session, and only this package can
+// implement a Store. Other modules get accounts and display names, but they
+// cannot forge a session, directly or through a fake Store
+// (docs/arquitetura.md, "Quem está chamando").
 type Store interface {
-	// SaveLoginState records a sign-in that has just started.
-	SaveLoginState(ctx context.Context, state LoginState) error
-	// TakeLoginState deletes and returns the login state with this hash, so
+	// saveLoginState records a sign-in that has just started.
+	saveLoginState(ctx context.Context, state LoginState) error
+	// takeLoginState deletes and returns the login state with this hash, so
 	// it can be used only once. It returns ErrNotFound when there is no such
 	// state or when it expired before now.
-	TakeLoginState(ctx context.Context, stateHash []byte, now time.Time) (LoginState, error)
+	takeLoginState(ctx context.Context, stateHash []byte, now time.Time) (LoginState, error)
 
 	// UpsertUser returns the account linked to the identity, creating both
 	// on the first sign-in, and refreshes the stored e-mail.
 	UpsertUser(ctx context.Context, identity ExternalIdentity) (userID string, err error)
 
-	// CreateSession stores a new session.
-	CreateSession(ctx context.Context, session NewSession) (Session, error)
-	// LookupSession returns the session with this token hash, or
+	// createSession stores a new session.
+	createSession(ctx context.Context, session NewSession) (Session, error)
+	// lookupSession returns the session with this token hash, or
 	// ErrNotFound if there is none or it expired before now.
-	LookupSession(ctx context.Context, tokenHash []byte, now time.Time) (Session, error)
-	// RevokeSession deletes one session. Deleting a missing one is not an
+	lookupSession(ctx context.Context, tokenHash []byte, now time.Time) (Session, error)
+	// revokeSession deletes one session. Deleting a missing one is not an
 	// error.
-	RevokeSession(ctx context.Context, sessionID string) error
-	// RevokeUserSessions deletes every session of a user: "sign out
+	revokeSession(ctx context.Context, sessionID string) error
+	// revokeUserSessions deletes every session of a user: "sign out
 	// everywhere", or a suspected account takeover.
-	RevokeUserSessions(ctx context.Context, userID string) error
+	revokeUserSessions(ctx context.Context, userID string) error
+
+	// DisplayName returns the user's display name, or "" if they have not
+	// set one. It returns ErrNotFound if the user does not exist.
+	DisplayName(ctx context.Context, userID string) (string, error)
+	// SetDisplayName saves the user's display name; "" removes it. It
+	// returns ErrNotFound if the user does not exist.
+	SetDisplayName(ctx context.Context, userID, displayName string) error
+	// DisplayNames returns the display names of the given users, keyed by
+	// user ID. Users without one, or that do not exist, are left out.
+	DisplayNames(ctx context.Context, userIDs []string) (map[string]string, error)
 }
 
 // LoginState is a sign-in in progress (table oidc_login_states).
@@ -51,6 +68,12 @@ type LoginState struct {
 	ReturnTo     string
 	CreatedAt    time.Time
 	ExpiresAt    time.Time
+
+	// IntentKind names the intent to complete after signing in (see
+	// IntentHandler), or is empty for a plain sign-in. IntentData is what
+	// that intent's Prepare returned; never nil when IntentKind is set.
+	IntentKind string
+	IntentData []byte
 }
 
 // ExternalIdentity is a verified identity at an OpenID Connect provider.
@@ -72,47 +95,59 @@ type NewSession struct {
 	AuthTime time.Time
 }
 
-// PostgresStore is the Store backed by CockroachDB.
+// PostgresStore is the Store backed by CockroachDB. The SQL is in
+// queries.sql; sqlc generates the Go methods in package identitydb.
 //
 // Statements that stand alone run without an explicit transaction:
 // CockroachDB retries a single-statement (implicit) transaction by itself
 // when it hits a conflict. Only UpsertUser, which needs several statements
 // to agree, goes through db.InTx.
 type PostgresStore struct {
-	pool *pgxpool.Pool
+	pool    *pgxpool.Pool
+	queries *identitydb.Queries
 }
 
 // NewPostgresStore returns a Store that uses pool.
 func NewPostgresStore(pool *pgxpool.Pool) *PostgresStore {
-	return &PostgresStore{pool: pool}
+	return &PostgresStore{pool: pool, queries: identitydb.New(pool)}
 }
 
 var _ Store = (*PostgresStore)(nil)
 
-// SaveLoginState implements Store.
-func (s *PostgresStore) SaveLoginState(ctx context.Context, st LoginState) error {
-	_, err := s.pool.Exec(ctx, `
-		INSERT INTO oidc_login_states
-			(state_hash, code_verifier, nonce, return_to, created_at, expires_at)
-		VALUES ($1, $2, $3, $4, $5, $6)`,
-		st.StateHash, st.CodeVerifier, st.Nonce, st.ReturnTo, st.CreatedAt, st.ExpiresAt)
+// saveLoginState implements Store.
+func (s *PostgresStore) saveLoginState(ctx context.Context, st LoginState) error {
+	// A plain sign-in stores NULL in both intent columns; an intent stores
+	// both, even with empty data (pgx sends a nil slice as NULL).
+	var intentKind *string
+	var intentData []byte
+	if st.IntentKind != "" {
+		intentKind = &st.IntentKind
+		intentData = st.IntentData
+		if intentData == nil {
+			intentData = []byte{}
+		}
+	}
+	err := s.queries.InsertLoginState(ctx, identitydb.InsertLoginStateParams{
+		StateHash:    st.StateHash,
+		CodeVerifier: st.CodeVerifier,
+		Nonce:        st.Nonce,
+		ReturnTo:     st.ReturnTo,
+		CreatedAt:    st.CreatedAt,
+		ExpiresAt:    st.ExpiresAt,
+		IntentKind:   intentKind,
+		IntentData:   intentData,
+	})
 	if err != nil {
 		return fmt.Errorf("insert login state: %w", err)
 	}
 	return nil
 }
 
-// TakeLoginState implements Store. DELETE ... RETURNING reads and removes
+// takeLoginState implements Store. DELETE ... RETURNING reads and removes
 // the row in one statement, so two callbacks racing with the same state
 // cannot both get it.
-func (s *PostgresStore) TakeLoginState(ctx context.Context, stateHash []byte, now time.Time) (LoginState, error) {
-	st := LoginState{StateHash: stateHash}
-	err := s.pool.QueryRow(ctx, `
-		DELETE FROM oidc_login_states
-		WHERE state_hash = $1
-		RETURNING code_verifier, nonce, return_to, created_at, expires_at`,
-		stateHash,
-	).Scan(&st.CodeVerifier, &st.Nonce, &st.ReturnTo, &st.CreatedAt, &st.ExpiresAt)
+func (s *PostgresStore) takeLoginState(ctx context.Context, stateHash []byte, now time.Time) (LoginState, error) {
+	row, err := s.queries.TakeLoginState(ctx, stateHash)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return LoginState{}, ErrNotFound
 	}
@@ -121,8 +156,23 @@ func (s *PostgresStore) TakeLoginState(ctx context.Context, stateHash []byte, no
 	}
 	// Expired rows linger until the TTL job runs; they are deleted above
 	// all the same.
-	if !now.Before(st.ExpiresAt) {
+	if !now.Before(row.ExpiresAt) {
 		return LoginState{}, ErrNotFound
+	}
+	st := LoginState{
+		StateHash:    stateHash,
+		CodeVerifier: row.CodeVerifier,
+		Nonce:        row.Nonce,
+		ReturnTo:     row.ReturnTo,
+		CreatedAt:    row.CreatedAt,
+		ExpiresAt:    row.ExpiresAt,
+	}
+	if row.IntentKind != nil {
+		st.IntentKind = *row.IntentKind
+		st.IntentData = row.IntentData
+		if st.IntentData == nil {
+			st.IntentData = []byte{}
+		}
 	}
 	return st, nil
 }
@@ -142,15 +192,17 @@ func (s *PostgresStore) UpsertUser(ctx context.Context, id ExternalIdentity) (st
 
 	var userID string
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := s.queries.WithTx(tx)
+
 		// Returning user: refresh the e-mail and we are done. This runs on
 		// every sign-in, so a changed or unverified e-mail is updated or
 		// cleared right away.
-		err := tx.QueryRow(ctx, `
-			UPDATE user_identities SET email = $3
-			WHERE issuer = $1 AND subject = $2
-			RETURNING user_id`,
-			id.Issuer, id.Subject, email,
-		).Scan(&userID)
+		var err error
+		userID, err = q.UpdateIdentityEmail(ctx, identitydb.UpdateIdentityEmailParams{
+			Issuer:  id.Issuer,
+			Subject: id.Subject,
+			Email:   email,
+		})
 		if err == nil {
 			return nil
 		}
@@ -159,14 +211,16 @@ func (s *PostgresStore) UpsertUser(ctx context.Context, id ExternalIdentity) (st
 		}
 
 		// First sign-in: create the account and link the identity to it.
-		if err := tx.QueryRow(ctx, `INSERT INTO users DEFAULT VALUES RETURNING id`).Scan(&userID); err != nil {
+		if userID, err = q.InsertUser(ctx); err != nil {
 			return fmt.Errorf("insert user: %w", err)
 		}
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO user_identities (issuer, subject, user_id, email)
-			VALUES ($1, $2, $3, $4)`,
-			id.Issuer, id.Subject, userID, email,
-		); err != nil {
+		err = q.InsertIdentity(ctx, identitydb.InsertIdentityParams{
+			Issuer:  id.Issuer,
+			Subject: id.Subject,
+			UserID:  userID,
+			Email:   email,
+		})
+		if err != nil {
 			return fmt.Errorf("insert identity: %w", err)
 		}
 		return nil
@@ -177,55 +231,95 @@ func (s *PostgresStore) UpsertUser(ctx context.Context, id ExternalIdentity) (st
 	return userID, nil
 }
 
-// CreateSession implements Store.
-func (s *PostgresStore) CreateSession(ctx context.Context, ns NewSession) (Session, error) {
+// createSession implements Store.
+func (s *PostgresStore) createSession(ctx context.Context, ns NewSession) (Session, error) {
 	var authTime *time.Time
 	if !ns.AuthTime.IsZero() {
 		authTime = &ns.AuthTime
 	}
-	session := Session{UserID: ns.UserID, CreatedAt: ns.CreatedAt, ExpiresAt: ns.ExpiresAt}
-	err := s.pool.QueryRow(ctx, `
-		INSERT INTO auth_sessions (token_hash, user_id, created_at, expires_at, auth_time)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id`,
-		ns.TokenHash, ns.UserID, ns.CreatedAt, ns.ExpiresAt, authTime,
-	).Scan(&session.ID)
+	id, err := s.queries.InsertSession(ctx, identitydb.InsertSessionParams{
+		TokenHash: ns.TokenHash,
+		UserID:    ns.UserID,
+		CreatedAt: ns.CreatedAt,
+		ExpiresAt: ns.ExpiresAt,
+		AuthTime:  authTime,
+	})
 	if err != nil {
 		return Session{}, fmt.Errorf("insert session: %w", err)
 	}
-	return session, nil
+	return Session{ID: id, UserID: ns.UserID, CreatedAt: ns.CreatedAt, ExpiresAt: ns.ExpiresAt}, nil
 }
 
-// LookupSession implements Store.
-func (s *PostgresStore) LookupSession(ctx context.Context, tokenHash []byte, now time.Time) (Session, error) {
-	var session Session
-	err := s.pool.QueryRow(ctx, `
-		SELECT id, user_id, created_at, expires_at
-		FROM auth_sessions
-		WHERE token_hash = $1 AND expires_at > $2`,
-		tokenHash, now,
-	).Scan(&session.ID, &session.UserID, &session.CreatedAt, &session.ExpiresAt)
+// lookupSession implements Store.
+func (s *PostgresStore) lookupSession(ctx context.Context, tokenHash []byte, now time.Time) (Session, error) {
+	row, err := s.queries.LookupSession(ctx, identitydb.LookupSessionParams{TokenHash: tokenHash, Now: now})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Session{}, ErrNotFound
 	}
 	if err != nil {
 		return Session{}, fmt.Errorf("look up session: %w", err)
 	}
-	return session, nil
+	return Session{ID: row.ID, UserID: row.UserID, CreatedAt: row.CreatedAt, ExpiresAt: row.ExpiresAt}, nil
 }
 
-// RevokeSession implements Store.
-func (s *PostgresStore) RevokeSession(ctx context.Context, sessionID string) error {
-	if _, err := s.pool.Exec(ctx, `DELETE FROM auth_sessions WHERE id = $1`, sessionID); err != nil {
+// revokeSession implements Store.
+func (s *PostgresStore) revokeSession(ctx context.Context, sessionID string) error {
+	if err := s.queries.DeleteSession(ctx, sessionID); err != nil {
 		return fmt.Errorf("delete session: %w", err)
 	}
 	return nil
 }
 
-// RevokeUserSessions implements Store.
-func (s *PostgresStore) RevokeUserSessions(ctx context.Context, userID string) error {
-	if _, err := s.pool.Exec(ctx, `DELETE FROM auth_sessions WHERE user_id = $1`, userID); err != nil {
+// revokeUserSessions implements Store.
+func (s *PostgresStore) revokeUserSessions(ctx context.Context, userID string) error {
+	if err := s.queries.DeleteUserSessions(ctx, userID); err != nil {
 		return fmt.Errorf("delete user sessions: %w", err)
 	}
 	return nil
+}
+
+// DisplayName implements Store.
+func (s *PostgresStore) DisplayName(ctx context.Context, userID string) (string, error) {
+	name, err := s.queries.GetDisplayName(ctx, userID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", ErrNotFound
+	}
+	if err != nil {
+		return "", fmt.Errorf("get display name: %w", err)
+	}
+	if name == nil {
+		return "", nil
+	}
+	return *name, nil
+}
+
+// SetDisplayName implements Store.
+func (s *PostgresStore) SetDisplayName(ctx context.Context, userID, displayName string) error {
+	var name *string // NULL removes the name
+	if displayName != "" {
+		name = &displayName
+	}
+	n, err := s.queries.SetDisplayName(ctx, identitydb.SetDisplayNameParams{ID: userID, DisplayName: name})
+	if err != nil {
+		return fmt.Errorf("set display name: %w", err)
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// DisplayNames implements Store. It is also the identity module's public
+// answer to "what do we call these people?" (campaigns.Profiles), so that
+// other modules never read the users table themselves.
+func (s *PostgresStore) DisplayNames(ctx context.Context, userIDs []string) (map[string]string, error) {
+	rows, err := s.queries.ListDisplayNames(ctx, userIDs)
+	if err != nil {
+		return nil, fmt.Errorf("list display names: %w", err)
+	}
+	names := make(map[string]string, len(rows))
+	for _, row := range rows {
+		names[row.ID] = row.DisplayName
+	}
+	return names, nil
 }

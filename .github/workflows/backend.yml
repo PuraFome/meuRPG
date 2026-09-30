@@ -116,13 +116,16 @@ jobs:
 
       - name: Verify generated code is up to date
         run: |
+          # sqlc regenerates the query code (backend/internal/*/*db), with
+          # the version pinned in the Makefile.
+          make sqlc
           # Catches both changes to tracked generated files and any brand
-          # new generated file that wasn't committed, on both the Go and
-          # the TypeScript side.
-          git diff --exit-code -- backend/gen web/src/gen
-          if [ -n "$(git status --porcelain -- backend/gen web/src/gen)" ]; then
-            echo "::error::buf generate produced files that are not committed. Run 'make proto' and commit the result." >&2
-            git status --porcelain -- backend/gen web/src/gen
+          # new generated file that wasn't committed: Go and TypeScript from
+          # buf, Go from sqlc. Nothing else under backend/ changes in CI.
+          git diff --exit-code -- backend web/src/gen
+          if [ -n "$(git status --porcelain -- backend web/src/gen)" ]; then
+            echo "::error::generated code is not committed. Run 'make proto sqlc' and commit the result." >&2
+            git status --porcelain -- backend web/src/gen
             exit 1
           fi
 

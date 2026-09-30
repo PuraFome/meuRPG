@@ -14,7 +14,13 @@
 //	OIDC_MAX_AGE        max_age sent to the provider, e.g. 1h (optional)
 //
 // Sign-in needs both the OIDC_* variables and DATABASE_URL. Without them
-// the API still starts, and the sign-in routes answer 503.
+// the API still starts, and the sign-in routes answer 503. CampaignService
+// needs sign-in too; without it, it is not mounted.
+//
+// The modules meet here and nowhere else: campaigns learns who is calling
+// from identity (the authz.Caller interface), and identity completes the
+// "accept this invite" sign-in intent through campaigns (an
+// identity.IntentHandler). Neither package imports the other's internals.
 package main
 
 import (
@@ -30,6 +36,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/system/v1/systemv1connect"
+	"github.com/PuraFome/meuRPG/backend/internal/campaigns"
 	"github.com/PuraFome/meuRPG/backend/internal/identity"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/config"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
@@ -103,21 +110,37 @@ func run(logger *slog.Logger, cfg config.Config) error {
 
 	// Sign-in needs a provider and a database. identityService stays nil
 	// when either is missing, and the sign-in routes then answer 503.
+	// Campaigns need to know who is calling, so they come with sign-in.
 	var identityService *identity.Service
+	var campaignsService *campaigns.Service
 	switch {
 	case !cfg.OIDC.Configured():
 		logger.Warn("OIDC_ISSUER is not set; sign-in is disabled")
 	case pool == nil:
 		logger.Warn("sign-in is disabled: it needs DATABASE_URL")
 	default:
+		users := identity.NewPostgresStore(pool)
 		var err error
+		campaignsService, err = campaigns.New(campaigns.Config{
+			Pool:     pool,
+			Profiles: users, // display names come from the identity module
+			Logger:   logger,
+		})
+		if err != nil {
+			return err
+		}
 		identityService, err = identity.New(ctx, identity.Config{
 			OIDC:   cfg.OIDC,
-			Store:  identity.NewPostgresStore(pool),
+			Store:  users,
 			Logger: logger,
 			// On Cloud Run the sign-in rate limit reads the client IP from
 			// X-Forwarded-For; anywhere else, from the connection.
 			BehindCloudRun: cfg.CloudRun,
+			// What a user may ask to finish right after signing in
+			// (POST /auth/login): today, accepting a campaign invite.
+			Intents: map[string]identity.IntentHandler{
+				campaigns.InviteIntentKind: campaignsService.InviteIntent(),
+			},
 		})
 		if err != nil {
 			return err
@@ -145,8 +168,12 @@ func run(logger *slog.Logger, cfg config.Config) error {
 	srv.Handle(systemv1connect.NewSystemServiceHandler(system.NewService(version, commit), connectOpts...))
 	if identityService != nil {
 		identityService.Mount(srv.Handle, connectOpts...)
+		// identityService is who is calling: its interceptor finds the
+		// session, and its UserID reads it back (authz.Caller).
+		campaignsService.Mount(srv.Handle, identityService, connectOpts...)
 	} else {
 		identity.MountDisabled(srv.Handle, connectOpts...)
+		logger.Warn("campaigns are disabled: they need sign-in")
 	}
 
 	if static, ok := httpserver.NewStatic(cfg.WebDir); ok {

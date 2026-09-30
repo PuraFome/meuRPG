@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -130,4 +131,47 @@ func tables(t *testing.T, db *sql.DB) []string {
 		t.Fatalf("list tables: %v", err)
 	}
 	return names
+}
+
+// TestMigrationsAreSafeToRerun runs every migration's Up a second time over
+// a migrated database, as happens when a migration fails halfway and is run
+// again (CockroachDB commits before each DDL statement, see migrations.go).
+// The second run must succeed and leave the schema exactly as it was: no
+// "already exists" error and no duplicated constraint.
+func TestMigrationsAreSafeToRerun(t *testing.T) {
+	t.Parallel()
+	db := freshDatabase(t)
+	ctx := t.Context()
+
+	provider, err := NewProvider(db)
+	if err != nil {
+		t.Fatalf("NewProvider() error = %v", err)
+	}
+	if _, err := provider.Up(ctx); err != nil {
+		t.Fatalf("Up() error = %v", err)
+	}
+	before := schema(t, db)
+
+	// Make goose forget every migration, so Up applies them all again.
+	exec(t, db, "DELETE FROM goose_db_version WHERE version_id > 0")
+	if _, err := provider.Up(ctx); err != nil {
+		t.Fatalf("second Up() error = %v", err)
+	}
+	if after := schema(t, db); after != before {
+		t.Errorf("schema changed when the migrations ran again.\nbefore:\n%s\nafter:\n%s", before, after)
+	}
+}
+
+// schema returns the CREATE statements of every table, goose's excluded.
+func schema(t *testing.T, db *sql.DB) string {
+	t.Helper()
+	var b strings.Builder
+	for _, table := range tables(t, db) {
+		var name, create string
+		if err := db.QueryRowContext(t.Context(), "SHOW CREATE TABLE "+table).Scan(&name, &create); err != nil {
+			t.Fatalf("SHOW CREATE TABLE %s: %v", table, err)
+		}
+		b.WriteString(create + "\n")
+	}
+	return b.String()
 }

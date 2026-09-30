@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"math"
+	"mime"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -16,6 +17,7 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/PuraFome/meuRPG/backend/internal/platform/ratelimit"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/secret"
 )
 
 const (
@@ -33,9 +35,9 @@ const (
 	maxReturnToLength = 1024
 )
 
-// loginRateLimit caps GET /auth/login, because every hit writes a login
-// state row to the database. The limits are per server instance (in
-// memory, see package ratelimit):
+// loginRateLimit caps /auth/login (GET and POST together), because every
+// hit writes a login state row to the database. The limits are per server
+// instance (in memory, see package ratelimit):
 //
 //   - per client IP: 20 at once, then one every 3 seconds (20 a minute).
 //     That is plenty for a whole table of players behind one Wi-Fi, and
@@ -49,30 +51,140 @@ var loginRateLimit = ratelimit.Config{
 	MaxClients: 10_000,
 }
 
-// handleLogin starts a sign-in: GET /auth/login?return_to=/path.
-//
-// It stores a login state (PKCE verifier, nonce, return_to) under the hash
-// of a random state, puts the state in a short-lived cookie, and redirects
-// the browser to the provider.
+// loginRequest is what starts a sign-in: where to go back to, and an
+// optional intent to complete after it (see IntentHandler).
+type loginRequest struct {
+	returnTo      string
+	intent        string
+	intentPayload string
+}
+
+// handleLogin starts a plain sign-in: GET /auth/login?return_to=/path.
 func (s *Service) handleLogin(w http.ResponseWriter, r *http.Request) {
 	setAuthHeaders(w)
-	ctx := r.Context()
+	if !s.allowLogin(w, r) {
+		return
+	}
+	query := r.URL.Query()
+	// An intent's payload can be a secret (an invite token), and URLs end
+	// up in logs, so intents only come in a POST form.
+	if query.Has("intent") || query.Has("intent_payload") {
+		s.rejectLogin(w, r, badLogin("intent_in_url", nil), "send intent and intent_payload in a POST form, never in the URL")
+		return
+	}
+	s.startLogin(w, r, loginRequest{returnTo: query.Get("return_to")})
+}
 
-	// The limit comes before anything else, so a refused request costs
-	// nothing. The client IP is not logged (docs/privacidade.md); the
-	// request log line already shows the 429.
-	if ok, wait := s.loginLimiter.Allow(ratelimit.ClientKey(r, s.behindCloudRun)); !ok {
+// handleLoginForm starts a sign-in from a form: POST /auth/login with an
+// application/x-www-form-urlencoded body holding return_to and, optionally,
+// intent and intent_payload. It answers like GET /auth/login.
+//
+// It is a POST that the app sends from its own page, so
+// http.CrossOriginProtection (around the whole mux) refuses it from another
+// site: nobody can make a victim's browser start a sign-in that joins a
+// campaign of the attacker's choosing.
+func (s *Service) handleLoginForm(w http.ResponseWriter, r *http.Request) {
+	setAuthHeaders(w)
+	if !s.allowLogin(w, r) {
+		return
+	}
+	req, le, message := parseLoginForm(w, r)
+	if le != nil {
+		s.rejectLogin(w, r, le, message)
+		return
+	}
+	s.startLogin(w, r, req)
+}
+
+// parseLoginForm reads POST /auth/login's form. On failure it returns the
+// error to log and the message for the browser.
+func parseLoginForm(w http.ResponseWriter, r *http.Request) (loginRequest, *loginError, string) {
+	// Everything goes in the body. A query string could carry the payload
+	// into the logs, so it is refused rather than ignored.
+	if r.URL.RawQuery != "" {
+		return loginRequest{}, badLogin("query_on_post", nil), "send the fields in the form body, not in the URL"
+	}
+	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	if err != nil || mediaType != "application/x-www-form-urlencoded" {
+		le := &loginError{status: http.StatusUnsupportedMediaType, reason: "not_a_form"}
+		return loginRequest{}, le, "send an application/x-www-form-urlencoded form"
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxLoginFormBytes)
+	if err := r.ParseForm(); err != nil {
+		if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
+			le := &loginError{status: http.StatusRequestEntityTooLarge, reason: "form_too_large"}
+			return loginRequest{}, le, "the form is too large"
+		}
+		return loginRequest{}, badLogin("malformed_form", nil), "the form could not be read"
+	}
+	form := r.PostForm
+	for _, field := range []string{"return_to", "intent", "intent_payload"} {
+		if len(form[field]) > 1 {
+			return loginRequest{}, badLogin("repeated_field", nil), "each field may appear only once"
+		}
+	}
+	req := loginRequest{
+		returnTo:      form.Get("return_to"),
+		intent:        form.Get("intent"),
+		intentPayload: form.Get("intent_payload"),
+	}
+	if req.intent == "" && req.intentPayload != "" {
+		return loginRequest{}, badLogin("payload_without_intent", nil), "intent_payload needs an intent"
+	}
+	return req, nil, ""
+}
+
+// allowLogin applies the sign-in rate limit. It comes before anything else,
+// so a refused request costs nothing. The client IP is not logged
+// (docs/privacidade.md); the request log line already shows the 429.
+func (s *Service) allowLogin(w http.ResponseWriter, r *http.Request) bool {
+	ok, wait := s.loginLimiter.Allow(ratelimit.ClientKey(r, s.behindCloudRun))
+	if !ok {
 		// Retry-After is in whole seconds (RFC 9110, section 10.2.3).
 		w.Header().Set("Retry-After", strconv.Itoa(max(1, int(math.Ceil(wait.Seconds())))))
 		http.Error(w, "too many sign-in attempts, please wait a moment and try again", http.StatusTooManyRequests)
+	}
+	return ok
+}
+
+// rejectLogin refuses to start a sign-in: it logs the reason (never a value
+// from the request) and answers with the error's status and message.
+func (s *Service) rejectLogin(w http.ResponseWriter, r *http.Request, le *loginError, message string) {
+	attrs := []any{"reason", le.reason}
+	if le.err != nil {
+		attrs = append(attrs, "error", le.err)
+	}
+	level := slog.LevelWarn
+	if le.status >= http.StatusInternalServerError {
+		level = slog.LevelError
+	}
+	s.logger.Log(r.Context(), level, "sign-in rejected", attrs...)
+	http.Error(w, message, le.status)
+}
+
+// startLogin stores a login state (PKCE verifier, nonce, return_to and the
+// prepared intent, if any) under the hash of a random state, puts the state
+// in a short-lived cookie, and redirects the browser to the provider.
+func (s *Service) startLogin(w http.ResponseWriter, r *http.Request, req loginRequest) {
+	ctx := r.Context()
+
+	returnTo, ok := safeReturnTo(req.returnTo)
+	if !ok {
+		s.rejectLogin(w, r, badLogin("unsafe_return_to", nil), "return_to must be a path on this site, like /campanhas")
 		return
 	}
 
-	returnTo, ok := safeReturnTo(r.URL.Query().Get("return_to"))
-	if !ok {
-		s.logger.WarnContext(ctx, "sign-in rejected", "reason", "unsafe_return_to")
-		http.Error(w, "return_to must be a path on this site, like /campanhas", http.StatusBadRequest)
-		return
+	var intentData []byte
+	if req.intent != "" {
+		var le *loginError
+		if intentData, le = s.prepareIntent(req.intent, req.intentPayload); le != nil {
+			message := "this sign-in request is not valid"
+			if le.status >= http.StatusInternalServerError {
+				message = "sign-in is temporarily unavailable, please try again later"
+			}
+			s.rejectLogin(w, r, le, message)
+			return
+		}
 	}
 
 	p, err := s.providers.get(ctx)
@@ -82,18 +194,20 @@ func (s *Service) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	state, stateHash := newSecret()
-	nonce, _ := newSecret()
+	state, stateHash := secret.New()
+	nonce, _ := secret.New()
 	verifier := oauth2.GenerateVerifier()
 
 	now := s.now()
-	err = s.store.SaveLoginState(ctx, LoginState{
+	err = s.store.saveLoginState(ctx, LoginState{
 		StateHash:    stateHash,
 		CodeVerifier: verifier,
 		Nonce:        nonce,
 		ReturnTo:     returnTo,
 		CreatedAt:    now,
 		ExpiresAt:    now.Add(loginStateLifetime),
+		IntentKind:   req.intent,
+		IntentData:   intentData,
 	})
 	if err != nil {
 		s.logger.ErrorContext(ctx, "sign-in unavailable: cannot save the login state", "error", err)
@@ -112,12 +226,18 @@ func (s *Service) handleLogin(w http.ResponseWriter, r *http.Request) {
 		// top-level redirect to /auth/callback. Strict would drop it.
 		SameSite: http.SameSiteLaxMode,
 	})
-	http.Redirect(w, r, p.authCodeURL(state, nonce, verifier), http.StatusFound)
+	// 302 for a link (GET); 303 for the form (POST), which tells the
+	// browser to follow with a GET, as it would for a 302 anyway.
+	status := http.StatusFound
+	if r.Method == http.MethodPost {
+		status = http.StatusSeeOther
+	}
+	http.Redirect(w, r, p.authCodeURL(state, nonce, verifier), status)
 }
 
-// loginError is a failed callback: the HTTP status for the browser, and a
-// short reason for the logs. Neither ever includes a token, code, cookie,
-// state or e-mail.
+// loginError is a sign-in that failed, at its start or in the callback: the
+// HTTP status for the browser, and a short reason for the logs. Neither
+// ever includes a token, code, cookie, state, e-mail or intent payload.
 type loginError struct {
 	status int
 	reason string
@@ -153,7 +273,7 @@ func (s *Service) handleCallback(w http.ResponseWriter, r *http.Request) {
 	// The login cookie is single use, whatever happens next.
 	http.SetCookie(w, expiredCookie(loginCookieName))
 
-	returnTo, token, session, err := s.completeLogin(r)
+	login, token, session, err := s.completeLogin(r)
 	if err != nil {
 		le, ok := errors.AsType[*loginError](err)
 		if !ok {
@@ -180,19 +300,19 @@ func (s *Service) handleCallback(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, sessionCookie(token, session.CreatedAt, session.ExpiresAt))
 	s.logger.InfoContext(r.Context(), "sign-in succeeded")
 
-	// returnTo passed safeReturnTo in handleLogin before it was stored;
-	// checking again costs nothing and keeps this redirect safe on its own.
-	safe, ok := safeReturnTo(returnTo)
-	if !ok {
-		safe = "/"
-	}
+	// The session exists now, so an intent (accepting an invite, say) can
+	// run as the signed-in user. Its outcome only changes where the browser
+	// goes next; the sign-in stands either way.
+	target := s.afterSignIn(r.Context(), session, login)
+
 	// 303: the browser follows with a GET, whatever brought it here.
-	http.Redirect(w, r, safe, http.StatusSeeOther) //nolint:gosec // G710: safe is a path on this site (safeReturnTo)
+	http.Redirect(w, r, target, http.StatusSeeOther) //nolint:gosec // G710: target is a path on this site (safeReturnTo)
 }
 
 // completeLogin runs every check of the callback, in order, and starts the
-// session. It returns where to send the browser and the new session.
-func (s *Service) completeLogin(r *http.Request) (returnTo, token string, session Session, err error) {
+// session. It returns the login state (where to go back to, and the intent)
+// and the new session.
+func (s *Service) completeLogin(r *http.Request) (login LoginState, token string, session Session, err error) {
 	ctx := r.Context()
 	query := r.URL.Query()
 
@@ -203,41 +323,41 @@ func (s *Service) completeLogin(r *http.Request) (returnTo, token string, sessio
 	state := query.Get("state")
 	cookieState, _ := cookieValue(r.Header, loginCookieName)
 	if state == "" || cookieState == "" {
-		return "", "", Session{}, badLogin("missing_state", nil)
+		return LoginState{}, "", Session{}, badLogin("missing_state", nil)
 	}
 	if subtle.ConstantTimeCompare([]byte(state), []byte(cookieState)) != 1 {
-		return "", "", Session{}, badLogin("state_mismatch", nil)
+		return LoginState{}, "", Session{}, badLogin("state_mismatch", nil)
 	}
-	stateHash, ok := hashSecret(state)
+	stateHash, ok := secret.Hash(state)
 	if !ok {
-		return "", "", Session{}, badLogin("malformed_state", nil)
+		return LoginState{}, "", Session{}, badLogin("malformed_state", nil)
 	}
 
 	// 2. The state must exist and be fresh. Taking it deletes it, so a
 	// callback URL works once.
 	now := s.now()
-	login, err := s.store.TakeLoginState(ctx, stateHash, now)
+	login, err = s.store.takeLoginState(ctx, stateHash, now)
 	if errors.Is(err, ErrNotFound) {
-		return "", "", Session{}, badLogin("unknown_or_expired_state", nil)
+		return LoginState{}, "", Session{}, badLogin("unknown_or_expired_state", nil)
 	}
 	if err != nil {
-		return "", "", Session{}, unavailable("store_error", err)
+		return LoginState{}, "", Session{}, unavailable("store_error", err)
 	}
 
 	// 3. The provider may report an error instead of a code, e.g. when the
 	// user cancels. Its error_description is not logged or shown: it is
 	// free text from the query string.
 	if providerErr := query.Get("error"); providerErr != "" {
-		return "", "", Session{}, badLogin("provider_error", errors.New(oauthErrorCode(providerErr)))
+		return LoginState{}, "", Session{}, badLogin("provider_error", errors.New(oauthErrorCode(providerErr)))
 	}
 	code := query.Get("code")
 	if code == "" {
-		return "", "", Session{}, badLogin("missing_code", nil)
+		return LoginState{}, "", Session{}, badLogin("missing_code", nil)
 	}
 
 	p, err := s.providers.get(ctx)
 	if err != nil {
-		return "", "", Session{}, unavailable("discovery_failed", err)
+		return LoginState{}, "", Session{}, unavailable("discovery_failed", err)
 	}
 
 	// 4. Trade the code for tokens, proving with the PKCE verifier that we
@@ -246,20 +366,20 @@ func (s *Service) completeLogin(r *http.Request) (returnTo, token string, sessio
 	if err != nil {
 		if re, ok := errors.AsType[*oauth2.RetrieveError](err); ok {
 			// Log only the OAuth error code, not the response body.
-			return "", "", Session{}, badLogin("token_exchange_rejected", errors.New(oauthErrorCode(re.ErrorCode)))
+			return LoginState{}, "", Session{}, badLogin("token_exchange_rejected", errors.New(oauthErrorCode(re.ErrorCode)))
 		}
-		return "", "", Session{}, &loginError{status: http.StatusBadGateway, reason: "token_exchange_failed", err: err}
+		return LoginState{}, "", Session{}, &loginError{status: http.StatusBadGateway, reason: "token_exchange_failed", err: err}
 	}
 
 	// 5. Verify the ID token: signature, iss, aud, exp, nonce, azp, sub.
 	id, err := p.verify(ctx, rawIDToken, login.Nonce)
 	if err != nil {
-		return "", "", Session{}, badLogin("invalid_id_token", err)
+		return LoginState{}, "", Session{}, badLogin("invalid_id_token", err)
 	}
 
 	userID, err := s.store.UpsertUser(ctx, ExternalIdentity{Issuer: id.Issuer, Subject: id.Subject, Email: id.Email})
 	if err != nil {
-		return "", "", Session{}, unavailable("store_error", err)
+		return LoginState{}, "", Session{}, unavailable("store_error", err)
 	}
 
 	// A browser that signs in again gets a new session (never the old
@@ -273,9 +393,9 @@ func (s *Service) completeLogin(r *http.Request) (returnTo, token string, sessio
 	// not trusted (see verifiedIdentity).
 	token, session, err = s.startSession(ctx, userID, now, id.AuthTime)
 	if err != nil {
-		return "", "", Session{}, unavailable("store_error", err)
+		return LoginState{}, "", Session{}, unavailable("store_error", err)
 	}
-	return login.ReturnTo, token, session, nil
+	return login, token, session, nil
 }
 
 // revokeQuietly revokes the session behind a cookie value, if there is one.
@@ -288,7 +408,7 @@ func (s *Service) revokeQuietly(ctx context.Context, token string) {
 		}
 		return
 	}
-	if err := s.store.RevokeSession(ctx, old.ID); err != nil {
+	if err := s.store.revokeSession(ctx, old.ID); err != nil {
 		s.logger.WarnContext(ctx, "cannot revoke the previous session", "error", err)
 	}
 }
@@ -310,11 +430,17 @@ func oauthErrorCode(code string) string {
 // Browsers are lenient with URLs, so the checks are strict: "//host" and
 // "/\host" are other sites to a browser, and tabs or newlines are dropped
 // before parsing ("/\t/host" becomes "//host").
+//
+// A fragment (#...) is dropped: this app keeps secrets there, such as an
+// invite token (/convite#t=...), and the login state must not store one.
 func safeReturnTo(raw string) (string, bool) {
 	if raw == "" {
 		return "/", true
 	}
-	if len(raw) > maxReturnToLength || raw[0] != '/' || strings.HasPrefix(raw, "//") {
+	if i := strings.IndexByte(raw, '#'); i >= 0 {
+		raw = raw[:i]
+	}
+	if raw == "" || len(raw) > maxReturnToLength || raw[0] != '/' || strings.HasPrefix(raw, "//") {
 		return "", false
 	}
 	for _, c := range raw {

@@ -15,7 +15,7 @@ type memStore struct {
 	mu          sync.Mutex
 	loginStates map[string]LoginState // key: string(state hash)
 	identities  map[[2]string]memIdentity
-	users       map[string]bool
+	users       map[string]string     // user ID -> display name
 	sessions    map[string]memSession // key: session ID
 }
 
@@ -34,21 +34,21 @@ func newMemStore() *memStore {
 	return &memStore{
 		loginStates: map[string]LoginState{},
 		identities:  map[[2]string]memIdentity{},
-		users:       map[string]bool{},
+		users:       map[string]string{},
 		sessions:    map[string]memSession{},
 	}
 }
 
 var _ Store = (*memStore)(nil)
 
-func (m *memStore) SaveLoginState(_ context.Context, st LoginState) error {
+func (m *memStore) saveLoginState(_ context.Context, st LoginState) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.loginStates[string(st.StateHash)] = st
 	return nil
 }
 
-func (m *memStore) TakeLoginState(_ context.Context, stateHash []byte, now time.Time) (LoginState, error) {
+func (m *memStore) takeLoginState(_ context.Context, stateHash []byte, now time.Time) (LoginState, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	st, ok := m.loginStates[string(stateHash)]
@@ -66,17 +66,17 @@ func (m *memStore) UpsertUser(_ context.Context, id ExternalIdentity) (string, e
 	existing, ok := m.identities[key]
 	if !ok {
 		existing.userID = rand.Text()
-		m.users[existing.userID] = true
+		m.users[existing.userID] = ""
 	}
 	existing.email = id.Email
 	m.identities[key] = existing
 	return existing.userID, nil
 }
 
-func (m *memStore) CreateSession(_ context.Context, ns NewSession) (Session, error) {
+func (m *memStore) createSession(_ context.Context, ns NewSession) (Session, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if !m.users[ns.UserID] {
+	if _, ok := m.users[ns.UserID]; !ok {
 		return Session{}, fmt.Errorf("user %s does not exist", ns.UserID)
 	}
 	if !ns.ExpiresAt.After(ns.CreatedAt) || ns.ExpiresAt.Sub(ns.CreatedAt) > SessionLifetime {
@@ -87,7 +87,7 @@ func (m *memStore) CreateSession(_ context.Context, ns NewSession) (Session, err
 	return s, nil
 }
 
-func (m *memStore) LookupSession(_ context.Context, tokenHash []byte, now time.Time) (Session, error) {
+func (m *memStore) lookupSession(_ context.Context, tokenHash []byte, now time.Time) (Session, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for _, s := range m.sessions {
@@ -98,14 +98,14 @@ func (m *memStore) LookupSession(_ context.Context, tokenHash []byte, now time.T
 	return Session{}, ErrNotFound
 }
 
-func (m *memStore) RevokeSession(_ context.Context, sessionID string) error {
+func (m *memStore) revokeSession(_ context.Context, sessionID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	delete(m.sessions, sessionID)
 	return nil
 }
 
-func (m *memStore) RevokeUserSessions(_ context.Context, userID string) error {
+func (m *memStore) revokeUserSessions(_ context.Context, userID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for id, s := range m.sessions {
@@ -114,6 +114,38 @@ func (m *memStore) RevokeUserSessions(_ context.Context, userID string) error {
 		}
 	}
 	return nil
+}
+
+func (m *memStore) DisplayName(_ context.Context, userID string) (string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	name, ok := m.users[userID]
+	if !ok {
+		return "", ErrNotFound
+	}
+	return name, nil
+}
+
+func (m *memStore) SetDisplayName(_ context.Context, userID, displayName string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, ok := m.users[userID]; !ok {
+		return ErrNotFound
+	}
+	m.users[userID] = displayName
+	return nil
+}
+
+func (m *memStore) DisplayNames(_ context.Context, userIDs []string) (map[string]string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	names := map[string]string{}
+	for _, id := range userIDs {
+		if name := m.users[id]; name != "" {
+			names[id] = name
+		}
+	}
+	return names, nil
 }
 
 // tamperLoginStates changes every stored login state, e.g. to swap the PKCE
@@ -152,7 +184,7 @@ type failingStore struct{ Store }
 
 var errStoreDown = fmt.Errorf("database is down")
 
-func (failingStore) SaveLoginState(context.Context, LoginState) error { return errStoreDown }
-func (failingStore) LookupSession(context.Context, []byte, time.Time) (Session, error) {
+func (failingStore) saveLoginState(context.Context, LoginState) error { return errStoreDown }
+func (failingStore) lookupSession(context.Context, []byte, time.Time) (Session, error) {
 	return Session{}, errStoreDown
 }

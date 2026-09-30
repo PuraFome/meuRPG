@@ -9,6 +9,7 @@ Nenhuma delas trava a Etapa 1. Todas são para o Samuel, e cada resposta vira um
 - [ ] **RN-09:** no modo por ouro, quanto XP vale cada peça de ouro? As edições antigas do D&D usavam 1 XP por 1 PO.
 - [ ] **RN-03:** o jogador tem um personagem por campanha, ou pode ter outro, por exemplo quando o primeiro morre?
 - [ ] **RN-07:** o convite serve para vários jogadores ou para um só? E vale por quanto tempo? O link de hoje pode ser reutilizado.
+  - Implementado em 29/09/2026, até a resposta: um uso e 7 dias por padrão (como a ADR-0009 propõe), e o mestre pode escolher de 1 a 20 usos e de 5 minutos a 30 dias, e revogar. O convite de vários usos com aprovação do mestre (ADR-0009) ainda não existe. Os critérios de aceite propostos para a [MR-002](historias.md#mr-002-gerar-convite) também esperam o aceite.
 - [ ] **RN-06:** a notificação para quem está com o app aberto basta no MVP, ou precisa de notificação do navegador (push) com o app fechado?
 - [ ] **RN-08:** a importação de DOCX continua? Se sim, de qual modelo? E a escolha entre D&D Beyond e ficha em português vale também para o jeito de mostrar a ficha?
 - [ ] **MR-018 e MR-019:** documento de campanha e galeria de imagens existiam no app antigo. Entram no MVP ou ficam para Depois?

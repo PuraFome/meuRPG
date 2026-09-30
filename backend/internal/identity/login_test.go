@@ -16,6 +16,7 @@ import (
 	identityv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/identity/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/identity/oidctest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/config"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/secret"
 )
 
 func TestSignInHappyPath(t *testing.T) {
@@ -204,7 +205,7 @@ func TestCallbackRejects(t *testing.T) {
 		{
 			name: "state does not match the cookie",
 			tamper: func(_ *harness, u string, c *http.Cookie) (string, []*http.Cookie) {
-				other, _ := newSecret()
+				other, _ := secret.New()
 				return withQuery(u, "state", other), []*http.Cookie{c}
 			},
 			wantReason: "state_mismatch",
@@ -223,7 +224,7 @@ func TestCallbackRejects(t *testing.T) {
 		{
 			name: "state that was never issued",
 			tamper: func(_ *harness, u string, _ *http.Cookie) (string, []*http.Cookie) {
-				forged, _ := newSecret()
+				forged, _ := secret.New()
 				return withQuery(u, "state", forged), []*http.Cookie{reqCookie(loginCookieName, forged)}
 			},
 			wantReason: "unknown_or_expired_state",
@@ -418,6 +419,8 @@ func TestLoginRejectsOpenRedirects(t *testing.T) {
 		"http:/evil.example",
 		" /campanhas",
 		"/" + strings.Repeat("a", maxReturnToLength),
+		"#t=segredo",
+		"#/campanhas",
 	}
 	for _, returnTo := range unsafe {
 		name := returnTo
@@ -446,6 +449,10 @@ func TestLoginRejectsOpenRedirects(t *testing.T) {
 		"/campanhas":             "/campanhas",
 		"/campanhas/42?aba=mapa": "/campanhas/42?aba=mapa",
 		"/%2F%2Fevil.example":    "/%2F%2Fevil.example", // a path on this site
+		// The fragment is dropped: the app keeps secrets there, and the
+		// login state must not store one.
+		"/convite#t=segredo": "/convite",
+		"/campanhas?aba=1#x": "/campanhas?aba=1",
 	}
 	for in, want := range safe {
 		if got, ok := safeReturnTo(in); !ok || got != want {

@@ -16,6 +16,7 @@ import (
 
 	identityv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/identity/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/identity/v1/identityv1connect"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/secret"
 )
 
 func discardLogger() *slog.Logger { return slog.New(slog.DiscardHandler) }
@@ -27,7 +28,7 @@ func isUnauthenticated(err error) bool {
 func TestGetMeUnauthenticated(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	unknown, _ := newSecret()
+	unknown, _ := secret.New()
 
 	tests := []struct {
 		name   string
@@ -175,7 +176,7 @@ func TestConnectRequiresTheProtocolHeader(t *testing.T) {
 func TestSessionLookupWhenTheStoreIsDown(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t, withStore(failingStore{}))
-	token, _ := newSecret()
+	token, _ := secret.New()
 
 	// Answering "unauthenticated" would make the app think the user signed
 	// out; "unavailable" says to try again.
@@ -185,11 +186,55 @@ func TestSessionLookupWhenTheStoreIsDown(t *testing.T) {
 	}
 }
 
-func TestRequireSessionFailsClosed(t *testing.T) {
+func TestUserIDFailsClosed(t *testing.T) {
 	t.Parallel()
+	h := newHarness(t)
 	// Without the interceptor there is never a session in the context.
-	if _, err := RequireSession(context.Background()); !isUnauthenticated(err) {
-		t.Errorf("RequireSession() error = %v, want unauthenticated", err)
+	if _, err := requireSession(context.Background()); !isUnauthenticated(err) {
+		t.Errorf("requireSession() error = %v, want unauthenticated", err)
+	}
+	if id, err := h.svc.UserID(context.Background()); !isUnauthenticated(err) || id != "" {
+		t.Errorf("UserID() = %q, %v; want unauthenticated", id, err)
+	}
+}
+
+// TestUserIDThroughTheInterceptor: UserID answers with the account behind
+// the session cookie, for a handler mounted behind Interceptor, and with
+// `unauthenticated` for a request without one.
+func TestUserIDThroughTheInterceptor(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	session := h.signIn()
+	me, err := h.getMe(session)
+	if err != nil {
+		t.Fatalf("GetMe() error = %v", err)
+	}
+
+	// A handler of another module, behind identity's interceptor.
+	var gotID string
+	var gotErr error
+	handler := h.svc.Interceptor().WrapUnary(func(ctx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
+		gotID, gotErr = h.svc.UserID(ctx)
+		return nil, nil
+	})
+	call := func(cookie *http.Cookie) {
+		t.Helper()
+		req := connect.NewRequest(&identityv1.GetMeRequest{})
+		if cookie != nil {
+			req.Header().Set("Cookie", cookie.Name+"="+cookie.Value)
+		}
+		if _, err := handler(t.Context(), req); err != nil {
+			t.Fatalf("interceptor error = %v", err)
+		}
+	}
+
+	call(session)
+	if gotErr != nil || gotID != me.Msg.GetUser().GetId() {
+		t.Errorf("UserID() = %q, %v; want %q", gotID, gotErr, me.Msg.GetUser().GetId())
+	}
+	call(nil)
+	if !isUnauthenticated(gotErr) || gotID != "" {
+		t.Errorf("UserID() without a cookie = %q, %v; want unauthenticated", gotID, gotErr)
 	}
 }
 
@@ -198,11 +243,15 @@ func TestMountDisabled(t *testing.T) {
 	mux := http.NewServeMux()
 	MountDisabled(mux.Handle, connect.WithRequireConnectProtocolHeader())
 
-	for _, path := range []string{"/auth/login?return_to=/", "/auth/callback?code=x&state=y"} {
+	for _, route := range []struct{ method, path string }{
+		{http.MethodGet, "/auth/login?return_to=/"},
+		{http.MethodPost, "/auth/login"},
+		{http.MethodGet, "/auth/callback?code=x&state=y"},
+	} {
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, path, nil))
+		mux.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), route.method, route.path, nil))
 		if rec.Code != http.StatusServiceUnavailable || !strings.Contains(rec.Body.String(), "not configured") {
-			t.Errorf("GET %s: status %d, body %q; want 503 saying sign-in is not configured", path, rec.Code, rec.Body)
+			t.Errorf("%s %s: status %d, body %q; want 503 saying sign-in is not configured", route.method, route.path, rec.Code, rec.Body)
 		}
 	}
 
@@ -253,4 +302,69 @@ func writeTemp(t *testing.T, content string) string {
 		t.Fatalf("write %s: %v", path, err)
 	}
 	return path
+}
+
+func TestUpdateProfile(t *testing.T) {
+	t.Parallel()
+	for _, store := range testStores(t) {
+		t.Run(store.name, func(t *testing.T) {
+			t.Parallel()
+			h := newHarness(t, withStore(store.new(t)))
+			session := h.signIn()
+			client := h.client(session)
+			update := func(name string) (*connect.Response[identityv1.UpdateProfileResponse], error) {
+				return client.UpdateProfile(t.Context(), connect.NewRequest(&identityv1.UpdateProfileRequest{DisplayName: name}))
+			}
+			displayName := func() string {
+				t.Helper()
+				me, err := h.getMe(session)
+				if err != nil {
+					t.Fatalf("GetMe() error = %v", err)
+				}
+				return me.Msg.GetUser().GetDisplayName()
+			}
+
+			// A new account has no display name: nothing comes from the
+			// provider, even though the fake one sends a name.
+			if got := displayName(); got != "" {
+				t.Errorf("display name of a new account = %q, want none", got)
+			}
+
+			res, err := update("  Pensantus  ")
+			if err != nil {
+				t.Fatalf("UpdateProfile() error = %v", err)
+			}
+			if got := res.Msg.GetUser().GetDisplayName(); got != "Pensantus" {
+				t.Errorf("UpdateProfile() display name = %q, want it trimmed", got)
+			}
+			if got := res.Header().Get("Cache-Control"); got != "no-store" {
+				t.Errorf("UpdateProfile Cache-Control = %q, want no-store", got)
+			}
+			if got := displayName(); got != "Pensantus" {
+				t.Errorf("GetMe() display name = %q, want Pensantus", got)
+			}
+
+			// Invalid names are refused, and the saved one stays.
+			for _, bad := range []string{strings.Repeat("x", MaxDisplayNameLength+1), "Pensan\ntus", "Pensan\u202etus"} {
+				if _, err := update(bad); connect.CodeOf(err) != connect.CodeInvalidArgument {
+					t.Errorf("UpdateProfile(%q) error = %v, want invalid_argument", bad, err)
+				}
+			}
+			if _, err := update(strings.Repeat("é", MaxDisplayNameLength)); err != nil {
+				t.Errorf("UpdateProfile(40 characters) error = %v", err)
+			}
+
+			// An empty name removes it.
+			if _, err := update("   "); err != nil {
+				t.Fatalf("UpdateProfile(empty) error = %v", err)
+			}
+			if got := displayName(); got != "" {
+				t.Errorf("display name after removing it = %q, want none", got)
+			}
+
+			if _, err := h.client(nil).UpdateProfile(t.Context(), connect.NewRequest(&identityv1.UpdateProfileRequest{DisplayName: "X"})); !isUnauthenticated(err) {
+				t.Errorf("UpdateProfile() signed out error = %v, want unauthenticated", err)
+			}
+		})
+	}
 }

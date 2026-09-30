@@ -1,0 +1,57 @@
+# sqlc turns the SQL queries of each module into typed Go code.
+# Run `make sqlc` from the repo root after changing a queries.sql file or a
+# migration, and commit the generated code: CI regenerates it and fails on
+# any difference. Docs: https://docs.sqlc.dev/en/v1.31.1/reference/config.html
+#
+# sqlc is pinned to v1.31.1 in the Makefile and in CI. The version is written
+# into every generated file, so another version would show up as a diff.
+#
+# The schema is the goose migrations themselves (sqlc skips the Down parts),
+# so there is no second copy of the schema to keep in sync. sqlc parses them
+# as PostgreSQL, which means migrations must use syntax that both PostgreSQL
+# and CockroachDB accept: no INDEX inside CREATE TABLE, for example (see
+# migrations/migrations.go).
+version: "2"
+
+# Go types for database types, the same for every module.
+overrides:
+  go:
+    overrides:
+      # IDs are strings in Go, as in the .proto files and the rest of the
+      # backend. Handlers check that an ID from a client is a UUID before it
+      # reaches a query.
+      - db_type: uuid
+        go_type: string
+      - db_type: timestamptz
+        go_type: time.Time
+      - db_type: timestamptz
+        nullable: true
+        go_type:
+          type: time.Time
+          pointer: true
+
+sql:
+  # One entry per module: its queries become a package next to its code.
+  - engine: postgresql
+    schema: migrations
+    queries: internal/identity/queries.sql
+    gen:
+      go: &go-options
+        package: identitydb
+        out: internal/identity/identitydb
+        sql_package: pgx/v5
+        # A nullable column becomes a pointer (*string, *time.Time) instead
+        # of a pgtype wrapper.
+        emit_pointers_for_null_types: true
+        # Only the structs that the module's queries use, so a module's
+        # package does not get a struct for every table in the database.
+        omit_unused_structs: true
+
+  - engine: postgresql
+    schema: migrations
+    queries: internal/campaigns/queries.sql
+    gen:
+      go:
+        <<: *go-options
+        package: campaignsdb
+        out: internal/campaigns/campaignsdb

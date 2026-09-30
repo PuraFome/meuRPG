@@ -10,6 +10,11 @@
 // __Host-meurpg_session cookie (HttpOnly, so JavaScript never sees it). The
 // RPCs below read and end that session; the browser sends the cookie on its
 // own.
+//
+// POST /auth/login starts the same flow from a form, and can carry a
+// sign-in intent that the server completes right after the session exists:
+// today, intent=campaign_invite with the invite token as intent_payload.
+// The server keeps only the token's hash, inside the 10-minute login state.
 package identityv1connect
 
 import (
@@ -45,6 +50,9 @@ const (
 	IdentityServiceGetMeProcedure = "/meurpg.identity.v1.IdentityService/GetMe"
 	// IdentityServiceSignOutProcedure is the fully-qualified name of the IdentityService's SignOut RPC.
 	IdentityServiceSignOutProcedure = "/meurpg.identity.v1.IdentityService/SignOut"
+	// IdentityServiceUpdateProfileProcedure is the fully-qualified name of the IdentityService's
+	// UpdateProfile RPC.
+	IdentityServiceUpdateProfileProcedure = "/meurpg.identity.v1.IdentityService/UpdateProfile"
 )
 
 // IdentityServiceClient is a client for the meurpg.identity.v1.IdentityService service.
@@ -58,6 +66,10 @@ type IdentityServiceClient interface {
 	// the browser to delete the session cookie (Set-Cookie in the response).
 	// It only ends this session; the user's other devices stay signed in.
 	SignOut(context.Context, *connect.Request[v1.SignOutRequest]) (*connect.Response[v1.SignOutResponse], error)
+	// UpdateProfile changes what the signed-in user typed about themselves:
+	// today, only the display name that other members of their campaigns see.
+	// It fails with `invalid_argument` when the name breaks the rules below.
+	UpdateProfile(context.Context, *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error)
 }
 
 // NewIdentityServiceClient constructs a client for the meurpg.identity.v1.IdentityService service.
@@ -84,13 +96,20 @@ func NewIdentityServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(identityServiceMethods.ByName("SignOut")),
 			connect.WithClientOptions(opts...),
 		),
+		updateProfile: connect.NewClient[v1.UpdateProfileRequest, v1.UpdateProfileResponse](
+			httpClient,
+			baseURL+IdentityServiceUpdateProfileProcedure,
+			connect.WithSchema(identityServiceMethods.ByName("UpdateProfile")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // identityServiceClient implements IdentityServiceClient.
 type identityServiceClient struct {
-	getMe   *connect.Client[v1.GetMeRequest, v1.GetMeResponse]
-	signOut *connect.Client[v1.SignOutRequest, v1.SignOutResponse]
+	getMe         *connect.Client[v1.GetMeRequest, v1.GetMeResponse]
+	signOut       *connect.Client[v1.SignOutRequest, v1.SignOutResponse]
+	updateProfile *connect.Client[v1.UpdateProfileRequest, v1.UpdateProfileResponse]
 }
 
 // GetMe calls meurpg.identity.v1.IdentityService.GetMe.
@@ -101,6 +120,11 @@ func (c *identityServiceClient) GetMe(ctx context.Context, req *connect.Request[
 // SignOut calls meurpg.identity.v1.IdentityService.SignOut.
 func (c *identityServiceClient) SignOut(ctx context.Context, req *connect.Request[v1.SignOutRequest]) (*connect.Response[v1.SignOutResponse], error) {
 	return c.signOut.CallUnary(ctx, req)
+}
+
+// UpdateProfile calls meurpg.identity.v1.IdentityService.UpdateProfile.
+func (c *identityServiceClient) UpdateProfile(ctx context.Context, req *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error) {
+	return c.updateProfile.CallUnary(ctx, req)
 }
 
 // IdentityServiceHandler is an implementation of the meurpg.identity.v1.IdentityService service.
@@ -114,6 +138,10 @@ type IdentityServiceHandler interface {
 	// the browser to delete the session cookie (Set-Cookie in the response).
 	// It only ends this session; the user's other devices stay signed in.
 	SignOut(context.Context, *connect.Request[v1.SignOutRequest]) (*connect.Response[v1.SignOutResponse], error)
+	// UpdateProfile changes what the signed-in user typed about themselves:
+	// today, only the display name that other members of their campaigns see.
+	// It fails with `invalid_argument` when the name breaks the rules below.
+	UpdateProfile(context.Context, *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error)
 }
 
 // NewIdentityServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -136,12 +164,20 @@ func NewIdentityServiceHandler(svc IdentityServiceHandler, opts ...connect.Handl
 		connect.WithSchema(identityServiceMethods.ByName("SignOut")),
 		connect.WithHandlerOptions(opts...),
 	)
+	identityServiceUpdateProfileHandler := connect.NewUnaryHandler(
+		IdentityServiceUpdateProfileProcedure,
+		svc.UpdateProfile,
+		connect.WithSchema(identityServiceMethods.ByName("UpdateProfile")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/meurpg.identity.v1.IdentityService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case IdentityServiceGetMeProcedure:
 			identityServiceGetMeHandler.ServeHTTP(w, r)
 		case IdentityServiceSignOutProcedure:
 			identityServiceSignOutHandler.ServeHTTP(w, r)
+		case IdentityServiceUpdateProfileProcedure:
+			identityServiceUpdateProfileHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -157,4 +193,8 @@ func (UnimplementedIdentityServiceHandler) GetMe(context.Context, *connect.Reque
 
 func (UnimplementedIdentityServiceHandler) SignOut(context.Context, *connect.Request[v1.SignOutRequest]) (*connect.Response[v1.SignOutResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.identity.v1.IdentityService.SignOut is not implemented"))
+}
+
+func (UnimplementedIdentityServiceHandler) UpdateProfile(context.Context, *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.identity.v1.IdentityService.UpdateProfile is not implemented"))
 }

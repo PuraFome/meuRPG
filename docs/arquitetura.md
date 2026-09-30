@@ -82,7 +82,15 @@ Regras:
 4. Mudança que quebra o contrato vira um pacote `v2`. O `buf breaking` compara cada PR com a `main`.
 5. O código gerado fica no repositório. O CI roda `buf generate` de novo e falha se aparecer diferença.
 6. Campos em `snake_case` no `.proto`; o TypeScript gerado usa `camelCase` sozinho.
-7. Chamada só de leitura leva `idempotency_level = NO_SIDE_EFFECTS`, e o Connect passa a aceitar GET, que o navegador pode guardar em cache.
+7. Chamada só de leitura leva um nível de idempotência, e qual depende da requisição (decidido por Vinicius em 29/09/2026):
+   - **Requisição sem ID e sem dado pessoal** (vazia, como `GetMe`, `ListMyCampaigns` e `GetServerInfo`): `idempotency_level = NO_SIDE_EFFECTS`. O Connect passa a aceitar GET, que o navegador pode guardar em cache.
+   - **Requisição com ID ou dado pessoal** (como `GetCampaign`, `ListMembers` e `ListInvites`): `idempotency_level = IDEMPOTENT`. Fica documentada como leitura e segura para repetir, mas só aceita POST: num GET, a mensagem inteira vai na URL, e a URL fica nos logs da plataforma (ver [Privacidade](privacidade.md)).
+   - O teste `TestConnectGETOnlyForRequestsWithoutData` (`backend/cmd/api`) falha se um método `NO_SIDE_EFFECTS` tiver requisição com campo.
+8. Os nomes seguem o Google AIP (decidido por Vinicius em 29/09/2026):
+   - **Métodos padrão** começam com `Get`, `List`, `Create`, `Update` ou `Delete` mais o recurso (AIP-131 a AIP-135): `GetCampaign`, `ListMembers`, `CreateInvite`.
+   - **Métodos customizados** começam com o verbo da ação (AIP-136): `AcceptInvite`, `RevokeInvite`.
+   - **Busca com filtro**, quando existir, vira `Search<Recurso>`, como `SearchCampaigns`: é o equivalente em RPC do `:search` do AIP-136. Leva `IDEMPOTENT`, porque a requisição carrega o filtro.
+   - Nome que já existe não muda: renomear uma RPC quebra o contrato (regra 4).
 
 O primeiro contrato, da Etapa 1, só prova que o caminho todo funciona:
 
@@ -120,9 +128,9 @@ Cada regra de negócio recusada devolve um código de erro do Connect, sempre o 
 | Código | Quando |
 | --- | --- |
 | `unauthenticated` | Sem sessão de login válida. |
-| `permission_denied` | O usuário não é membro da campanha, ou um jogador tenta uma ação de mestre. |
-| `failed_precondition` | A regra não deixa agora: ficha travada (RN-01), sessão que não começou. |
-| `not_found` | Não existe, ou o usuário não pode saber que existe (um ponto escondido, por exemplo). |
+| `permission_denied` | O usuário é membro da campanha, mas não tem o papel: um jogador tenta uma ação de mestre. |
+| `failed_precondition` | A regra não deixa agora: ficha travada (RN-01), sessão que não começou, convite expirado. |
+| `not_found` | Não existe, ou o usuário não pode saber que existe: um ponto escondido, ou uma campanha da qual ele não é membro (ADR-0011). |
 | `invalid_argument` | Entrada inválida, como um atributo acima de 30. |
 | `aborted` | Conflito de transação (`40001`) que continuou depois das novas tentativas. |
 
@@ -160,10 +168,12 @@ O mestre entra por um provedor OpenID Connect (OIDC) com Authorization Code + PK
 
 | Rota | O que faz |
 | --- | --- |
-| `GET /auth/login?return_to=/caminho` | Guarda o estado do login e manda o navegador para o provedor. `return_to` só aceita um caminho deste site. |
-| `GET /auth/callback` | Confere tudo, cria a sessão, grava o cookie e volta para `return_to`. |
-| `IdentityService.GetMe` | Quem está logado (só o ID da conta) e quando a sessão acaba. Aceita GET, porque a requisição é vazia. |
+| `GET /auth/login?return_to=/caminho` | Guarda o estado do login e manda o navegador para o provedor. `return_to` só aceita um caminho deste site; um fragmento (`#...`) é descartado. |
+| `POST /auth/login` | O mesmo, a partir de um formulário do app, com uma **intenção de login** opcional (`intent` e `intent_payload`): algo que o servidor conclui logo depois do login, como aceitar um convite. Ver [Aceitar o convite pelo login](#aceitar-o-convite-pelo-login). |
+| `GET /auth/callback` | Confere tudo, cria a sessão, grava o cookie, conclui a intenção, se houver, e volta para `return_to` (ou para onde a intenção mandar). |
+| `IdentityService.GetMe` | Quem está logado (o ID da conta e o nome de exibição) e quando a sessão acaba. Aceita GET, porque a requisição é vazia. |
 | `IdentityService.SignOut` | Revoga a sessão atual no banco e apaga o cookie. As outras sessões do usuário continuam. |
+| `IdentityService.UpdateProfile` | Muda o nome de exibição (vazio apaga). O `GetMe` também devolve esse nome. |
 
 ### Diagrama: o login
 
@@ -200,7 +210,19 @@ O callback recusa com 400, sem criar sessão, quando: falta o cookie de login ou
 - **Logout:** apaga a linha da sessão, então o token para de valer na hora, em qualquer instância.
 - **Login de novo no mesmo navegador:** gera outro token (nada de reaproveitar o antigo) e revoga a sessão anterior.
 
-Outros módulos descobrem quem chama assim: montam o serviço Connect com `identity.Service.Interceptor()` e chamam `identity.RequireSession(ctx)` no handler. Sem sessão válida, a resposta é `unauthenticated`. Se o banco não responde, é `unavailable`, para o app não achar que o usuário saiu.
+Outros módulos descobrem quem chama pela interface descrita em [Quem está chamando](#quem-está-chamando), logo abaixo.
+
+### Quem está chamando
+
+A sessão só entra no contexto de uma requisição por um caminho: o interceptor do `identity`, depois de conferir o cookie no banco. Nenhuma função exportada põe uma sessão, ou um usuário, no contexto (decidido por Vinicius em 29/09/2026).
+
+- **Os outros módulos recebem quem chama por uma interface,** `authz.Caller` (`UserID(ctx) (string, error)`). O `identity.Service` implementa lendo a chave privada que o interceptor dele preencheu, e o `cmd/api/main.go` liga as duas pontas. Sem sessão válida, a resposta é `unauthenticated`; se o banco não responde, o interceptor devolve `unavailable`, para o app não achar que o usuário saiu.
+- **Nos handlers, a pergunta passa pelo `authz`:** `authz.RequireSignedIn(ctx)` quando basta estar logado, `authz.RequireCampaignMember` ou `authz.RequireCampaignRole` quando é sobre uma campanha. O `campaigns` monta o serviço com `Mount(handle, sessions, ...)`, em que `sessions` é o interceptor mais o `Caller` (o próprio `identity.Service` em produção).
+- **Os testes dos outros módulos usam um `Caller` falso** (um mock), em vez de fabricar uma sessão. O mock só existe nos arquivos `_test.go` daquele módulo.
+- **O `identity.Store` também fecha essa porta:** os métodos de sessão e de estado do login são não exportados, então nenhum outro pacote cria ou consulta uma sessão, nem implementa um `Store` falso que invente uma.
+- **A intenção de login também:** o `IntentHandler.Complete` recebe o usuário como `identity.SignedIn`, que só o callback do `identity` preenche (ver [Aceitar o convite pelo login](#aceitar-o-convite-pelo-login)).
+
+Assim, um erro num módulo novo não vira um jeito de se passar por outra pessoa: para ter um usuário no contexto, a requisição precisa de um cookie de sessão válido.
 
 ### CSRF
 
@@ -217,7 +239,7 @@ Por causa do header obrigatório, um `curl` numa chamada Connect precisa de `-H 
 
 ### Limite de tentativas no login
 
-`GET /auth/login` grava uma linha em `oidc_login_states` a cada chamada, então tem um limite, em memória, antes de qualquer outra coisa. Passou do limite, a resposta é `429 Too Many Requests` com `Retry-After` (em segundos), sem gravar nada.
+`/auth/login` grava uma linha em `oidc_login_states` a cada chamada, então tem um limite, em memória, antes de qualquer outra coisa. O `GET` e o `POST` dividem o mesmo limite. Passou do limite, a resposta é `429 Too Many Requests` com `Retry-After` (em segundos), sem gravar nada.
 
 | Limite | Valor | Por quê |
 | --- | --- | --- |
@@ -267,6 +289,129 @@ flowchart LR
 ```
 
 O cookie `__Host-meurpg_session` exige `Secure`, e mesmo assim funciona em `http://localhost`: o Chrome trata `localhost` como contexto seguro. Um teste Playwright confere isso no navegador. O Safari não aceita, então o login local é no Chrome ou no Firefox.
+
+## Módulo campaigns e autorização
+
+O mestre cria a campanha e gera convites; o jogador faz login e aceita o convite, e vira jogador da campanha (MR-001, MR-002, MR-003). O código fica em `backend/internal/campaigns`, e quem decide o que cada um pode fazer é o pacote `backend/internal/authz` (ADR-0011: papéis por campanha, conferidos no banco a cada requisição).
+
+| Chamada do `CampaignService` | Quem pode |
+| --- | --- |
+| `CreateCampaign`, `ListMyCampaigns`, `AcceptInvite` | Qualquer pessoa logada |
+| `GetCampaign`, `ListMembers` | Membros da campanha |
+| `CreateInvite`, `ListInvites`, `RevokeInvite` | O mestre da campanha |
+
+### Autorização
+
+O papel é por campanha (RN-05): a linha em `campaign_members` diz se a pessoa é `master` ou `player` naquela campanha. Não existe papel global, nem papel guardado em token.
+
+- **O banco decide, a cada requisição.** Tirar alguém da campanha vale na chamada seguinte, sem esperar nada vencer.
+- **Uma checagem explícita no começo de cada handler:** `authz.RequireCampaignMember(ctx, id)` para qualquer membro, `authz.RequireCampaignRole(ctx, id, authz.RoleMaster)` só para o mestre, ou só `authz.RequireSignedIn(ctx)` quando basta estar logado. Quem está chamando vem do `identity`, pela interface `authz.Caller` (ver [Quem está chamando](#quem-está-chamando)).
+- **Uma leitura por campanha, por requisição.** O `authz.Interceptor` dá a cada requisição um memo novo, e o memo acaba com ela.
+- **Sem o interceptor, a checagem falha** (`internal`), nunca libera.
+
+```mermaid
+flowchart TD
+    A["Chamada Connect"] --> B{"Sessão válida?"}
+    B -->|"não"| U["unauthenticated"]
+    B -->|"sim"| C{"Membro da campanha?<br/>campaign_members"}
+    C -->|"não, ou a campanha não existe"| N["not_found"]
+    C -->|"sim"| D{"Tem o papel pedido?"}
+    D -->|"não"| P["permission_denied"]
+    D -->|"sim"| OK["Handler continua"]
+```
+
+Quem não é membro recebe `not_found` tanto para uma campanha que existe quanto para uma inventada, com a mesma mensagem. Assim ninguém descobre quais campanhas existem. Um teste chama todo método do `CampaignService` como mestre, jogador, não membro e anônimo (`TestAuthorizationMatrix`), e falha se um método novo aparecer sem linha na tabela.
+
+### Convites
+
+O convite é um link `https://<app>/convite#t=<token>`. O token tem 32 bytes aleatórios e só o servidor o gera; o banco guarda só o SHA-256 dele (`campaign_invites.token_hash`), e o servidor devolve o token uma vez só, na resposta do `CreateInvite`.
+
+- **O token vai no fragmento (`#t=`),** que o navegador nunca manda para o servidor, então não aparece em log nem no `Referer`. O app lê o fragmento e manda o token no corpo do `AcceptInvite`, nunca na URL (ADR-0009).
+- **Padrão, enquanto a RN-07 não fecha:** vale para uma pessoa e por 7 dias. O mestre pode escolher de 1 a 20 usos e de 5 minutos a 30 dias, e pode revogar o convite a qualquer momento. Quem já entrou continua na campanha.
+- **Aceitar exige login** (hoje, OIDC). Quando o login do jogador sem Google chegar (ADR-0009), ele cria a conta e a sessão, e a mesma regra de aceitar convite roda depois.
+- **Aceitar de novo não muda nada:** um membro recebe a campanha de volta com `already_member`, e nenhum uso do convite é gasto.
+- **Dois jogadores disputando o último uso não entram os dois.** Tudo acontece numa transação (`db.InTx`), com a linha do convite travada (`SELECT ... FOR UPDATE`); o `UPDATE` repete as regras, e um `CHECK` no banco impede `use_count` maior que `max_uses`. O teste `TestAcceptInviteRaceForTheLastUse` põe dez pessoas ao mesmo tempo no CockroachDB.
+- **Convite que não serve** responde `failed_precondition`, com o detalhe `InviteUnusable` dizendo o motivo: expirado, revogado ou já usado. O app mostra uma mensagem clara para cada um. "Já usado" é o aviso de que o link pode ter vazado.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant M as Mestre
+    participant J as Jogador
+    participant S as Servidor Go
+    participant B as CockroachDB
+
+    M->>S: CreateInvite(campaign_id)
+    S->>B: Grava o SHA-256 do token, max_uses e expires_at
+    S-->>M: Token, só desta vez
+    M-->>J: Link do convite, com o token no fragmento, por onde quiser
+    J->>S: AcceptInvite, com o token no corpo
+    S->>B: Trava o convite e confere revogado, usos e validade
+    S->>B: use_count + 1 e grava o jogador em campaign_members
+    S-->>J: A campanha, com my_role jogador
+```
+
+### Aceitar o convite pelo login
+
+Quem abre o link do convite sem estar logado entra e aceita o convite num passo só, e nada fica guardado no navegador: nem `localStorage`, nem `sessionStorage`, nem service worker (decidido por Vinicius em 29/09/2026, ADR-0009). O token vai no corpo do formulário de login, e o servidor guarda só o hash dele, dentro do estado do login, que já é de uso único e dura no máximo 10 minutos.
+
+1. A tela `/convite#t=<token>` lê o token do fragmento e envia um formulário `POST /auth/login` (`application/x-www-form-urlencoded`, da mesma origem) com `return_to`, `intent=campaign_invite` e `intent_payload=<token>`.
+2. O `identity` confere o limite de tentativas e o `return_to`, e pede ao `campaigns` para preparar a intenção. O `campaigns` confere o formato do token e devolve o SHA-256 dele. O `identity` grava o hash, com o tipo da intenção, em `oidc_login_states`, e segue o login como sempre.
+3. No callback, depois de criar a sessão, o `identity` pede ao `campaigns` para concluir a intenção. O `campaigns` aceita o convite pelo hash, na mesma transação do `AcceptInvite` (`db.InTx`, com a linha do convite travada).
+4. O navegador vai para `/campanhas/<campaign_id>`, inclusive quem já era membro. Se o convite não serve, vai para `/convite/erro?motivo=<código>`. O login vale do mesmo jeito: a sessão fica, e só o destino muda.
+
+| `motivo` | Quando |
+| --- | --- |
+| `expired` | O convite passou da validade. |
+| `revoked` | O mestre revogou o convite. |
+| `used_up` | Os usos acabaram, talvez com alguém que pegou o link. |
+| `not_found` | Nenhum convite tem esse token, ou a campanha foi apagada. |
+| `invalid` | O que ficou guardado no login não é um hash de token. Só um bug causa isso. |
+| `unavailable` | O banco não respondeu. Abrir o link de novo pode funcionar. |
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant N as Navegador
+    participant I as identity
+    participant C as campaigns
+    participant B as CockroachDB
+    participant P as Provedor OIDC
+
+    N->>N: Lê o token do fragmento, que nunca vai para o servidor
+    N->>I: POST /auth/login, formulário com intent e intent_payload
+    I->>C: Prepare(token)
+    C-->>I: SHA-256 do token
+    I->>B: Grava oidc_login_states com o hash e o tipo da intenção, 10 min
+    I-->>N: 303 para o provedor e cookie de login
+    N->>P: Login no provedor
+    P-->>N: 302 para /auth/callback
+    N->>I: GET /auth/callback
+    I->>B: Apaga e lê o estado do login, com o hash
+    I->>B: Cria a sessão
+    I->>C: Complete(SignedIn do usuário, hash)
+    C->>B: Aceita o convite pelo hash, como o AcceptInvite
+    C-->>I: /campanhas/id ou /convite/erro?motivo=código
+    I-->>N: 303 para esse caminho e cookie de sessão
+```
+
+Regras que valem para qualquer intenção, não só a do convite:
+
+- **O `identity` não conhece o `campaigns`.** Ele tem um registro de intenções por nome (`identity.Config.Intents`), preenchido no `cmd/api/main.go`. Cada intenção implementa `identity.IntentHandler`: `Prepare(payload)` no começo do login, que devolve o que guardar (no máximo 256 bytes, e nunca um segredo como veio), e `Complete(ctx, quem, dados)` depois da sessão criada, que devolve para onde ir.
+- **`Complete` só age por quem acabou de entrar.** O usuário chega como `identity.SignedIn`, uma capacidade: o campo é privado e não há construtor, então só o callback do `identity` preenche um, logo depois de criar a sessão daquela pessoa. Fora do `identity`, só dá para escrever `identity.SignedIn{}`, que não tem usuário, e o `Complete` do convite recusa esse valor antes de tocar no banco (decidido por Vinicius em 29/09/2026). Pelo mesmo motivo do `ContextWithSession` removido: nenhuma função exportada age como um usuário qualquer.
+- **Nada secreto em URL.** O `GET /auth/login` recusa `intent` e `intent_payload` com 400, e o `POST` recusa query string. O `return_to` perde o fragmento, então nem um `#t=...` colado por engano é guardado.
+- **CSRF:** o `POST /auth/login` passa pelo `http.CrossOriginProtection`, então um formulário de outro site recebe 403. Sem isso, qualquer página poderia fazer o navegador de alguém entrar numa campanha escolhida por um atacante.
+- **Entrada ruim para antes do provedor:** tipo de intenção desconhecido, `intent_payload` sem `intent`, token mal formado ou maior que 1.024 caracteres respondem 400; corpo acima de 8 KiB, 413; outro `Content-Type`, 415. Nada é gravado.
+- **O destino passa pela mesma checagem do `return_to`.** Um caminho que não é deste site é trocado pelo `return_to`.
+- **Logs:** registram só o motivo e o tipo da intenção, nunca o token, o hash ou um valor enviado pelo cliente. Os testes `TestIntentLogsHaveNoSecrets` e os de `signin_test.go` conferem.
+
+### Respostas e GET
+
+Toda resposta do `CampaignService`, inclusive os erros, sai com `Cache-Control: no-store`. Só o `ListMyCampaigns` aceita GET (`NO_SIDE_EFFECTS`), porque a requisição dele é vazia. As outras leituras (`GetCampaign`, `ListMembers`, `ListInvites`) levam o ID da campanha, e num GET a mensagem inteira vai na URL, que fica nos logs da plataforma (ver [Privacidade](privacidade.md)). Por isso elas levam `IDEMPOTENT` e ficam só em POST, mesmo sem efeito colateral (regra 7 dos [Contratos de API](#contratos-de-api-protobuf)).
+
+### Nome de exibição
+
+Os membros aparecem pelo nome de exibição, que cada pessoa digita no app (`IdentityService.UpdateProfile`, de 1 a 40 caracteres). Ele nunca vem do provedor de login. O `campaigns` pede os nomes ao `identity` por uma interface (`Profiles`, que o `identity.PostgresStore` implementa), sem ler a tabela `users`, como a regra dos módulos manda.
 
 ## Ver também
 
