@@ -53,9 +53,17 @@ test(
       await expect(playerPage.getByRole('heading', { level: 2, name: 'Pensantus' })).toBeVisible();
 
       // The master copies the session link: /campanhas/<id>/sessao, no secret.
+      // The clipboard only works in the focused page: in CI's headless
+      // Chromium, reading it from a page in the background never resolves.
+      await masterPage.bringToFront();
       await masterPage.getByRole('button', { name: 'Copiar link da sessão' }).click();
       await expect(masterPage.getByRole('button', { name: 'Link copiado' })).toBeVisible();
-      const copied = await masterPage.evaluate(() => navigator.clipboard.readText());
+      const copied = await masterPage.evaluate(() =>
+        Promise.race([
+          navigator.clipboard.readText(),
+          new Promise<string>((_, reject) => setTimeout(() => reject(new Error('reading the clipboard timed out')), 5_000)),
+        ]),
+      );
       expect(copied).toBe(new URL(`/campanhas/${campaignId}/sessao`, baseURL).toString());
     } finally {
       if (campaignId) {
