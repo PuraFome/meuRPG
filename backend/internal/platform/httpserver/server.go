@@ -16,8 +16,9 @@ import (
 
 // Timeouts. There is deliberately no ReadTimeout or WriteTimeout: they cap
 // the whole request/response, which would cut Connect streaming RPCs short.
-// Cloud Run already enforces a per-request timeout (5 minutes by default),
-// and unary RPCs can be bounded per handler.
+// Cloud Run already enforces a per-request timeout (5 minutes by default;
+// the live session's stream lasts up to 30, so the service needs 35, see
+// docs/operacao.md), and unary RPCs can be bounded per handler.
 const (
 	// Time a client has to send the request headers. Protects against
 	// Slowloris-style clients that open connections and trickle bytes.
@@ -120,6 +121,15 @@ func New(cfg Config) *Server {
 //	srv.Handle(systemv1connect.NewSystemServiceHandler(svc))
 func (s *Server) Handle(pattern string, handler http.Handler) {
 	s.mux.Handle(pattern, handler)
+}
+
+// OnShutdown registers f to run when the graceful shutdown starts, in its
+// own goroutine. It is for handlers that never finish on their own, such as
+// live streams (PlayService.WatchGameSession): the shutdown waits for every
+// request in flight, so f must make them return, or the shutdown waits for
+// its whole deadline and then cuts them off.
+func (s *Server) OnShutdown(f func()) {
+	s.httpServer.RegisterOnShutdown(f)
 }
 
 // Handler returns the server's root handler (routes plus request logging).

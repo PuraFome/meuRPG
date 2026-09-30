@@ -1,13 +1,17 @@
-// Package play is about playing a campaign at the table. Today it starts,
-// ends and lists game sessions (PlayService), which is what locks the
-// players' sheets (RN-01, MR-006, MR-011). The live table (the notification
-// to players, turns, actions and the session history, ADR-0005 and
-// ADR-0007) comes later.
+// Package play is about playing a campaign at the table: it starts, ends
+// and lists game sessions (PlayService), which is what locks the players'
+// sheets (RN-01, MR-006, MR-011), and runs the live session (Etapa 5,
+// live.go): the in-app notice that a session is open (RN-06), the
+// session's live stream (ADR-0005), and the master's correction of the
+// characters' vitals (RN-02), each one recorded in session_events
+// (ADR-0007). Turns and actions come with combat (Etapa 6).
 //
 // Starting a session locks the sheets in the same transaction that opens
-// it, through a SheetLocker: the characters module owns the characters
-// table, so this package never touches it. cmd/api connects the two;
-// neither package imports the other.
+// it, through a SheetLocker, and the vitals live in the characters module
+// too, reached through a VitalsKeeper: the characters module owns the
+// characters tables, so this package never touches them. The campaigns a
+// user belongs to come from the campaigns module (CampaignDirectory).
+// cmd/api connects them; no package imports another's code.
 //
 // The SQL lives in queries.sql, and sqlc turns it into package playdb.
 // Every write runs inside db.InTx, which retries CockroachDB's serialization
@@ -26,9 +30,12 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1/playv1connect"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/nostore"
+	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
@@ -42,12 +49,75 @@ type SheetLocker interface {
 	LockSheets(ctx context.Context, tx pgx.Tx, campaignID string, at time.Time) (int64, error)
 }
 
+// VitalsKeeper keeps the player characters' vitals: hit points, spell
+// slots, hit dice (RN-02, table character_vitals). The characters module
+// implements it (characters.Service), because the vitals belong to the
+// character and last from one session to the next; this package declares
+// the messages that go through it (playv1.CharacterVitals), and serves them
+// live. The methods take no caller: they run after this package's own
+// authorization check, and their errors are Connect errors to return as
+// they are.
+type VitalsKeeper interface {
+	// ListVitals returns the vitals of the campaign's living, active player
+	// characters, oldest first.
+	ListVitals(ctx context.Context, campaignID string) ([]*playv1.CharacterVitals, error)
+	// GetVitals returns one living, active player character's vitals, or
+	// `not_found`.
+	GetVitals(ctx context.Context, campaignID, characterID string) (*playv1.CharacterVitals, error)
+	// AdjustVitals applies the vitals fields of req inside tx, and returns
+	// the vitals before and after: `not_found` for anything but a living,
+	// active player character of the campaign; `invalid_argument` for a
+	// value outside 0 to its maximum.
+	AdjustVitals(ctx context.Context, tx pgx.Tx, campaignID, characterID string, req *playv1.AdjustCharacterVitalsRequest) (before, after *playv1.CharacterVitals, err error)
+}
+
+// CampaignDirectory tells which campaigns a user belongs to. The campaigns
+// module implements it (campaigns.Service.ActiveCampaigns), so this
+// package never reads campaign_members itself.
+type CampaignDirectory interface {
+	// ActiveCampaigns returns the campaigns userID is an active member of
+	// (never a pending one), with their name and the user's role (my_role).
+	ActiveCampaigns(ctx context.Context, userID string) ([]*campaignsv1.Campaign, error)
+}
+
+// The live stream's timing (docs/operacao.md). Tests shorten them through
+// Config.Live.
+const (
+	// DefaultHeartbeat: a stream with nothing to say sends a heartbeat this
+	// often, so the app can tell a dead stream, and proxies and Cloud Run
+	// don't take it for an idle one.
+	DefaultHeartbeat = 25 * time.Second
+	// DefaultRecheck: how often a stream reads the login session and the
+	// membership again (ADR-0005).
+	DefaultRecheck = 60 * time.Second
+	// DefaultMaxLifetime: a stream ends after this long, and the app opens
+	// a new one. It bounds what a forgotten tab can hold, and keeps each
+	// stream well inside Cloud Run's request timeout.
+	DefaultMaxLifetime = 30 * time.Minute
+)
+
+// LiveConfig sets the live stream's timing. Zero values mean the defaults.
+type LiveConfig struct {
+	Heartbeat   time.Duration
+	Recheck     time.Duration
+	MaxLifetime time.Duration
+	// Buffer is how many events a stream may fall behind before it is
+	// dropped (live.DefaultBuffer).
+	Buffer int
+}
+
 // Config holds what the play service needs.
 type Config struct {
 	// Pool is the CockroachDB connection pool. Required.
 	Pool *pgxpool.Pool
 	// Sheets locks the players' sheets when a session starts. Required.
 	Sheets SheetLocker
+	// Vitals keeps the characters' vitals. Required.
+	Vitals VitalsKeeper
+	// Campaigns lists a user's campaigns, for the session notice. Required.
+	Campaigns CampaignDirectory
+	// Live sets the live stream's timing; the zero value is the defaults.
+	Live LiveConfig
 	// Logger receives errors, without personal data. Nil means
 	// slog.Default().
 	Logger *slog.Logger
@@ -57,11 +127,18 @@ type Config struct {
 
 // Service implements the PlayService Connect API.
 type Service struct {
-	pool    *pgxpool.Pool
-	queries *playdb.Queries
-	sheets  SheetLocker
-	logger  *slog.Logger
-	now     func() time.Time
+	pool      *pgxpool.Pool
+	queries   *playdb.Queries
+	sheets    SheetLocker
+	vitals    VitalsKeeper
+	campaigns CampaignDirectory
+	logger    *slog.Logger
+	now       func() time.Time
+
+	// hub fans the live events out to the open streams, in memory: one
+	// server instance only (docs/operacao.md).
+	hub  *live.Hub
+	live LiveConfig
 }
 
 // The compiler checks that Service implements the handler.
@@ -74,13 +151,21 @@ func New(cfg Config) (*Service, error) {
 		return nil, errors.New("play: a Pool is required")
 	case cfg.Sheets == nil:
 		return nil, errors.New("play: Sheets is required")
+	case cfg.Vitals == nil:
+		return nil, errors.New("play: Vitals is required")
+	case cfg.Campaigns == nil:
+		return nil, errors.New("play: Campaigns is required")
 	}
 	s := &Service{
-		pool:    cfg.Pool,
-		queries: playdb.New(cfg.Pool),
-		sheets:  cfg.Sheets,
-		logger:  cfg.Logger,
-		now:     cfg.Now,
+		pool:      cfg.Pool,
+		queries:   playdb.New(cfg.Pool),
+		sheets:    cfg.Sheets,
+		vitals:    cfg.Vitals,
+		campaigns: cfg.Campaigns,
+		logger:    cfg.Logger,
+		now:       cfg.Now,
+		hub:       live.New(cfg.Live.Buffer),
+		live:      cfg.Live,
 	}
 	if s.logger == nil {
 		s.logger = slog.Default()
@@ -88,16 +173,33 @@ func New(cfg Config) (*Service, error) {
 	if s.now == nil {
 		s.now = time.Now
 	}
+	if s.live.Heartbeat <= 0 {
+		s.live.Heartbeat = DefaultHeartbeat
+	}
+	if s.live.Recheck <= 0 {
+		s.live.Recheck = DefaultRecheck
+	}
+	if s.live.MaxLifetime <= 0 {
+		s.live.MaxLifetime = DefaultMaxLifetime
+	}
 	return s, nil
 }
 
+// Close ends every open live stream, and refuses new ones. cmd/api calls it
+// when the server's graceful shutdown starts: a stream never finishes on
+// its own, so the shutdown would otherwise wait for its whole deadline.
+// Each app reconnects, to the next server. Closing twice is fine.
+func (s *Service) Close() { s.hub.Close() }
+
 // Sessions is what this package needs to know who is calling: an
 // interceptor that finds the caller's session, and the authz.Caller that
-// reads it back. *identity.Service is the real one; tests pass a fake.
+// reads it back and, for the live stream, reads the session again
+// (authz.SessionRechecker). *identity.Service is the real one; tests pass
+// a fake.
 type Sessions interface {
 	// Interceptor finds the caller's session (from the session cookie).
 	Interceptor() connect.Interceptor
-	authz.Caller
+	authz.SessionRechecker
 }
 
 // Mount registers PlayService on a mux. handle is usually

@@ -25,6 +25,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/characters"
 	"github.com/PuraFome/meuRPG/backend/internal/identity"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -45,22 +46,72 @@ type testUserKey struct{}
 
 var testSessions Sessions = fakeSessions{}
 
-func (fakeSessions) Interceptor() connect.Interceptor {
-	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
-		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-			if userID := req.Header().Get(testUserHeader); userID != "" {
-				ctx = context.WithValue(ctx, testUserKey{}, userID)
-			}
-			return next(ctx, req)
-		}
-	})
+// signedOut holds the users whose sessions a test ended: RecheckSession
+// answers unauthenticated for them, as identity does after SignOut. User
+// IDs are random per test, so tests running in parallel never collide.
+var signedOut sync.Map
+
+func errSignIn() error {
+	return connect.NewError(connect.CodeUnauthenticated, errors.New("sign in to continue"))
+}
+
+// Interceptor reads the test user, for calls and streams alike.
+func (fakeSessions) Interceptor() connect.Interceptor { return fakeSessionInterceptor{} }
+
+type fakeSessionInterceptor struct{}
+
+func withTestUser(ctx context.Context, header http.Header) context.Context {
+	if userID := header.Get(testUserHeader); userID != "" {
+		return context.WithValue(ctx, testUserKey{}, userID)
+	}
+	return ctx
+}
+
+func (fakeSessionInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
+	return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+		return next(withTestUser(ctx, req.Header()), req)
+	}
+}
+
+func (fakeSessionInterceptor) WrapStreamingClient(next connect.StreamingClientFunc) connect.StreamingClientFunc {
+	return next
+}
+
+func (fakeSessionInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
+	return func(ctx context.Context, conn connect.StreamingHandlerConn) error {
+		return next(withTestUser(ctx, conn.RequestHeader()), conn)
+	}
 }
 
 func (fakeSessions) UserID(ctx context.Context) (string, error) {
 	if userID, ok := ctx.Value(testUserKey{}).(string); ok {
 		return userID, nil
 	}
-	return "", connect.NewError(connect.CodeUnauthenticated, errors.New("sign in to continue"))
+	return "", errSignIn()
+}
+
+func (f fakeSessions) RecheckSession(ctx context.Context) error {
+	userID, err := f.UserID(ctx)
+	if err != nil {
+		return err
+	}
+	if _, out := signedOut.Load(userID); out {
+		return errSignIn()
+	}
+	return nil
+}
+
+// userTransport adds the test user header to every request, calls and
+// streams alike.
+type userTransport struct {
+	userID string
+	next   http.RoundTripper
+}
+
+func (t userTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req = req.Clone(req.Context())
+	req.Header.Set(testUserHeader, t.userID)
+	return t.next.RoundTrip(req)
 }
 
 // fakeClock ticks one microsecond each time it is read, so rows created one
@@ -81,15 +132,24 @@ type harness struct {
 	t      *testing.T
 	pool   *pgxpool.Pool
 	users  *identity.PostgresStore
-	server *httptest.Server
+	svc    *Service
+	http   *httpserver.Server // the API's server, for tests that Serve it
+	server *httptest.Server   // serves http's handler over HTTP/1.1
 }
 
-func newHarness(t *testing.T) *harness {
+// newHarness serves the play, campaigns and characters services through
+// the API's real HTTP stack (httpserver: request logging, cross-origin
+// protection), as cmd/api does. live, when given, sets the stream's timing.
+func newHarness(t *testing.T, live ...LiveConfig) *harness {
 	t.Helper()
 	pool := dbtest.NewPool(t, "meurpg_play_test")
 	h := &harness{t: t, pool: pool, users: identity.NewPostgresStore(pool)}
 	clock := &fakeClock{now: time.Now().Truncate(time.Microsecond)}
 	logger := slog.New(slog.DiscardHandler)
+	var liveConfig LiveConfig
+	if len(live) > 0 {
+		liveConfig = live[0]
+	}
 	content, err := testRules()
 	if err != nil {
 		t.Fatalf("rules.LoadSRD() error = %v", err)
@@ -102,17 +162,20 @@ func newHarness(t *testing.T) *harness {
 	if err != nil {
 		t.Fatalf("characters.New() error = %v", err)
 	}
-	svc, err := New(Config{Pool: pool, Sheets: chars, Logger: logger, Now: clock.Now})
+	svc, err := New(Config{Pool: pool, Sheets: chars, Vitals: chars, Campaigns: camps, Live: liveConfig, Logger: logger, Now: clock.Now})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
-	mux := http.NewServeMux()
+	h.svc = svc
+	srv := httpserver.New(httpserver.Config{Logger: logger})
+	h.http = srv
 	opt := connect.WithRequireConnectProtocolHeader()
-	camps.Mount(mux.Handle, testSessions, opt)
-	chars.Mount(mux.Handle, testSessions, camps, opt)
-	svc.Mount(mux.Handle, testSessions, camps, opt)
-	h.server = httptest.NewServer(mux)
+	camps.Mount(srv.Handle, testSessions, opt)
+	chars.Mount(srv.Handle, testSessions, camps, opt)
+	svc.Mount(srv.Handle, testSessions, camps, opt)
+	h.server = httptest.NewServer(srv.Handler())
 	t.Cleanup(h.server.Close)
+	t.Cleanup(svc.Close) // end the streams first, so the server can close
 	return h
 }
 
@@ -138,22 +201,15 @@ func (h *harness) newUser(displayName string) *user {
 func (h *harness) anonymous() *user { return h.clients("") }
 
 func (h *harness) clients(userID string) *user {
-	var opts []connect.ClientOption
-	if userID != "" {
-		opts = append(opts, connect.WithInterceptors(connect.UnaryInterceptorFunc(
-			func(next connect.UnaryFunc) connect.UnaryFunc {
-				return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-					req.Header().Set(testUserHeader, userID)
-					return next(ctx, req)
-				}
-			})))
-	}
 	c, url := h.server.Client(), h.server.URL
+	if userID != "" {
+		c = &http.Client{Transport: userTransport{userID: userID, next: c.Transport}}
+	}
 	return &user{
 		id:         userID,
-		campaigns:  campaignsv1connect.NewCampaignServiceClient(c, url, opts...),
-		characters: charactersv1connect.NewCharacterServiceClient(c, url, opts...),
-		play:       playv1connect.NewPlayServiceClient(c, url, opts...),
+		campaigns:  campaignsv1connect.NewCampaignServiceClient(c, url),
+		characters: charactersv1connect.NewCharacterServiceClient(c, url),
+		play:       playv1connect.NewPlayServiceClient(c, url),
 	}
 }
 
@@ -181,6 +237,25 @@ func (h *harness) join(master *user, campaignID string, players ...*user) {
 	for _, p := range players {
 		if _, err := p.campaigns.AcceptInvite(ctx, connect.NewRequest(&campaignsv1.AcceptInviteRequest{Token: inv.Msg.GetToken()})); err != nil {
 			h.t.Fatalf("AcceptInvite() error = %v", err)
+		}
+	}
+}
+
+// joinPending lets each player in as a pending member (RN-15, MR-024),
+// through an invite from the master that requires approval.
+func (h *harness) joinPending(master *user, campaignID string, players ...*user) {
+	h.t.Helper()
+	ctx := h.t.Context()
+	inv, err := master.campaigns.CreateInvite(ctx, connect.NewRequest(&campaignsv1.CreateInviteRequest{
+		CampaignId: campaignID, MaxUses: campaigns.MaxInviteUses, RequiresApproval: true,
+	}))
+	if err != nil {
+		h.t.Fatalf("CreateInvite(requires_approval) error = %v", err)
+	}
+	for _, p := range players {
+		res, err := p.campaigns.AcceptInvite(ctx, connect.NewRequest(&campaignsv1.AcceptInviteRequest{Token: inv.Msg.GetToken()}))
+		if err != nil || !res.Msg.GetCampaign().GetAwaitingApproval() {
+			h.t.Fatalf("AcceptInvite(requires_approval) = %v, %v; want a pending member", res, err)
 		}
 	}
 }

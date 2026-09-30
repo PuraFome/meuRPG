@@ -2,10 +2,12 @@
 //
 // Source: meurpg/play/v1/play.proto
 
-// Package meurpg.play.v1 is about playing a campaign at the table. Today it
-// starts, ends and lists game sessions, which is what locks the players'
-// sheets (RN-01). The live table (the notification to players, turns,
-// actions and the session history) comes later.
+// Package meurpg.play.v1 is about playing a campaign at the table: starting,
+// ending and listing game sessions, which locks the players' sheets
+// (RN-01), and the live session (Etapa 5): the notice that a session is
+// open (RN-06), the session's live stream (ADR-0005), and the characters'
+// vitals, which the master corrects during the session (RN-02). Turns,
+// actions and the session history screen come with combat (Etapa 6).
 package playv1connect
 
 import (
@@ -46,6 +48,18 @@ const (
 	// PlayServiceListGameSessionsProcedure is the fully-qualified name of the PlayService's
 	// ListGameSessions RPC.
 	PlayServiceListGameSessionsProcedure = "/meurpg.play.v1.PlayService/ListGameSessions"
+	// PlayServiceListOpenGameSessionsProcedure is the fully-qualified name of the PlayService's
+	// ListOpenGameSessions RPC.
+	PlayServiceListOpenGameSessionsProcedure = "/meurpg.play.v1.PlayService/ListOpenGameSessions"
+	// PlayServiceGetLiveSessionProcedure is the fully-qualified name of the PlayService's
+	// GetLiveSession RPC.
+	PlayServiceGetLiveSessionProcedure = "/meurpg.play.v1.PlayService/GetLiveSession"
+	// PlayServiceWatchGameSessionProcedure is the fully-qualified name of the PlayService's
+	// WatchGameSession RPC.
+	PlayServiceWatchGameSessionProcedure = "/meurpg.play.v1.PlayService/WatchGameSession"
+	// PlayServiceAdjustCharacterVitalsProcedure is the fully-qualified name of the PlayService's
+	// AdjustCharacterVitals RPC.
+	PlayServiceAdjustCharacterVitalsProcedure = "/meurpg.play.v1.PlayService/AdjustCharacterVitals"
 )
 
 // PlayServiceClient is a client for the meurpg.play.v1.PlayService service.
@@ -68,13 +82,16 @@ type PlayServiceClient interface {
 	//   - `not_found`: the campaign does not exist, or the caller is not a
 	//     member of it.
 	//   - `permission_denied`: the caller is a player.
-	//   - `failed_precondition`: the campaign already has an open session.
-	//     End it first.
+	//   - `failed_precondition`: the campaign already has an open session
+	//     (GameSessionBlocked, SESSION_ALREADY_OPEN). End it first.
 	StartGameSession(context.Context, *connect.Request[v1.StartGameSessionRequest]) (*connect.Response[v1.StartGameSessionResponse], error)
 	// EndGameSession ends one of the campaign's game sessions. Only the
 	// campaign's master may call it. Ending a session that already ended is
 	// not an error: it returns the session as it is, with its first
 	// ended_at. Ending a session never unlocks a sheet.
+	//
+	// Ending the open session sends `session_ended` on every
+	// WatchGameSession stream of the campaign, which then ends.
 	//
 	// Errors:
 	//   - `not_found`: the session is not in this campaign, the campaign does
@@ -88,6 +105,89 @@ type PlayServiceClient interface {
 	//   - `not_found`: the campaign does not exist, or the caller is not a
 	//     member of it.
 	ListGameSessions(context.Context, *connect.Request[v1.ListGameSessionsRequest]) (*connect.Response[v1.ListGameSessionsResponse], error)
+	// ListOpenGameSessions lists the open game sessions of every campaign the
+	// caller is an active member of, as master or player, newest first. It is
+	// the in-app notice that a session started (RN-06): the app calls it
+	// about every 30 seconds while its tab is visible and the user is signed
+	// in, and once when the tab comes back into view. A pending member
+	// (RN-15) is not a member, so their campaigns never show up here. Anyone
+	// signed in may call it; the list is not paginated.
+	ListOpenGameSessions(context.Context, *connect.Request[v1.ListOpenGameSessionsRequest]) (*connect.Response[v1.ListOpenGameSessionsResponse], error)
+	// GetLiveSession returns the campaign's open game session and the vitals
+	// the caller may see (RN-02): the master gets every living player
+	// character of the campaign (not the dead ones, nor one waiting for
+	// approval); a player gets only their own living character, or none. It
+	// is the live session's snapshot: the app reads it after
+	// WatchGameSession's `ready` event, and again after every reconnection,
+	// so a missed event never leaves the screen stale. Any member may call
+	// it.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, or the caller is not a
+	//     member of it (a pending member neither). The app shows "Peça um
+	//     convite ao mestre", without the campaign's name.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION).
+	GetLiveSession(context.Context, *connect.Request[v1.GetLiveSessionRequest]) (*connect.Response[v1.GetLiveSessionResponse], error)
+	// WatchGameSession streams the live changes of the campaign's open game
+	// session to one member (ADR-0005). Any member may call it.
+	//
+	// The first message is always `ready`, sent once the server has
+	// subscribed the caller: only then does the app read the snapshot
+	// (GetLiveSession), so no change falls between the snapshot and the
+	// stream. A change can also arrive before the snapshot answers; the
+	// vitals' `revision` tells which is newer. Then:
+	//   - `heartbeat` every 25 seconds, so the app can tell a dead stream
+	//     (nothing for about 60 seconds) and proxies don't close an idle one;
+	//   - `vitals_changed` when the master corrects a character's vitals,
+	//     sent only to the master and to that character's player;
+	//   - `session_ended` when the master ends the session; the stream then
+	//     ends without an error.
+	//
+	// About every 60 seconds the server checks again, in the database, that
+	// the caller is still signed in and still a member: if not, the stream
+	// ends with the same error a call would get (`unauthenticated` or
+	// `not_found`). A stream lasts at most 30 minutes and then ends without
+	// an error; it also ends without an error when the server restarts. A
+	// stream that cannot keep up (the app stopped reading) ends with
+	// `unavailable`.
+	//
+	// The app reconnects after any end that is not an error below, with
+	// backoff (1 s, 2 s, 4 s, up to 30 s, with jitter), and only while the
+	// tab is visible; after each reconnection it reads the snapshot again.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, or the caller is not a
+	//     member of it (a pending member neither).
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION).
+	WatchGameSession(context.Context, *connect.Request[v1.WatchGameSessionRequest]) (*connect.ServerStreamForClient[v1.WatchGameSessionResponse], error)
+	// AdjustCharacterVitals is the master's correction of a player
+	// character's vitals during the session (RN-02: the master has the final
+	// word). Only the campaign's master may call it, and only while the
+	// campaign has an open session. The character must be a living player
+	// character of the campaign.
+	//
+	// Each value set in the request replaces the current one; unset values
+	// stay as they are. At least one must be set. The change and a
+	// session_events row are written together, then `vitals_changed` goes to
+	// the master's and the character's player's streams.
+	//
+	// Calling again with the same idempotency_key (a retry) changes nothing
+	// and returns the character's current vitals.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, the caller is not a
+	//     member of it, or the character is not a living player character of
+	//     the campaign (an NPC, a dead character, one waiting for approval).
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION).
+	//   - `invalid_argument`: nothing to change, an idempotency_key that is
+	//     not a UUID or was already used for another character, or a value
+	//     outside 0 to its maximum. The message names the field, such as
+	//     `spell_slots_used[0].used`.
+	AdjustCharacterVitals(context.Context, *connect.Request[v1.AdjustCharacterVitalsRequest]) (*connect.Response[v1.AdjustCharacterVitalsResponse], error)
 }
 
 // NewPlayServiceClient constructs a client for the meurpg.play.v1.PlayService service. By default,
@@ -120,14 +220,44 @@ func NewPlayServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
+		listOpenGameSessions: connect.NewClient[v1.ListOpenGameSessionsRequest, v1.ListOpenGameSessionsResponse](
+			httpClient,
+			baseURL+PlayServiceListOpenGameSessionsProcedure,
+			connect.WithSchema(playServiceMethods.ByName("ListOpenGameSessions")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		getLiveSession: connect.NewClient[v1.GetLiveSessionRequest, v1.GetLiveSessionResponse](
+			httpClient,
+			baseURL+PlayServiceGetLiveSessionProcedure,
+			connect.WithSchema(playServiceMethods.ByName("GetLiveSession")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
+		watchGameSession: connect.NewClient[v1.WatchGameSessionRequest, v1.WatchGameSessionResponse](
+			httpClient,
+			baseURL+PlayServiceWatchGameSessionProcedure,
+			connect.WithSchema(playServiceMethods.ByName("WatchGameSession")),
+			connect.WithClientOptions(opts...),
+		),
+		adjustCharacterVitals: connect.NewClient[v1.AdjustCharacterVitalsRequest, v1.AdjustCharacterVitalsResponse](
+			httpClient,
+			baseURL+PlayServiceAdjustCharacterVitalsProcedure,
+			connect.WithSchema(playServiceMethods.ByName("AdjustCharacterVitals")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // playServiceClient implements PlayServiceClient.
 type playServiceClient struct {
-	startGameSession *connect.Client[v1.StartGameSessionRequest, v1.StartGameSessionResponse]
-	endGameSession   *connect.Client[v1.EndGameSessionRequest, v1.EndGameSessionResponse]
-	listGameSessions *connect.Client[v1.ListGameSessionsRequest, v1.ListGameSessionsResponse]
+	startGameSession      *connect.Client[v1.StartGameSessionRequest, v1.StartGameSessionResponse]
+	endGameSession        *connect.Client[v1.EndGameSessionRequest, v1.EndGameSessionResponse]
+	listGameSessions      *connect.Client[v1.ListGameSessionsRequest, v1.ListGameSessionsResponse]
+	listOpenGameSessions  *connect.Client[v1.ListOpenGameSessionsRequest, v1.ListOpenGameSessionsResponse]
+	getLiveSession        *connect.Client[v1.GetLiveSessionRequest, v1.GetLiveSessionResponse]
+	watchGameSession      *connect.Client[v1.WatchGameSessionRequest, v1.WatchGameSessionResponse]
+	adjustCharacterVitals *connect.Client[v1.AdjustCharacterVitalsRequest, v1.AdjustCharacterVitalsResponse]
 }
 
 // StartGameSession calls meurpg.play.v1.PlayService.StartGameSession.
@@ -143,6 +273,26 @@ func (c *playServiceClient) EndGameSession(ctx context.Context, req *connect.Req
 // ListGameSessions calls meurpg.play.v1.PlayService.ListGameSessions.
 func (c *playServiceClient) ListGameSessions(ctx context.Context, req *connect.Request[v1.ListGameSessionsRequest]) (*connect.Response[v1.ListGameSessionsResponse], error) {
 	return c.listGameSessions.CallUnary(ctx, req)
+}
+
+// ListOpenGameSessions calls meurpg.play.v1.PlayService.ListOpenGameSessions.
+func (c *playServiceClient) ListOpenGameSessions(ctx context.Context, req *connect.Request[v1.ListOpenGameSessionsRequest]) (*connect.Response[v1.ListOpenGameSessionsResponse], error) {
+	return c.listOpenGameSessions.CallUnary(ctx, req)
+}
+
+// GetLiveSession calls meurpg.play.v1.PlayService.GetLiveSession.
+func (c *playServiceClient) GetLiveSession(ctx context.Context, req *connect.Request[v1.GetLiveSessionRequest]) (*connect.Response[v1.GetLiveSessionResponse], error) {
+	return c.getLiveSession.CallUnary(ctx, req)
+}
+
+// WatchGameSession calls meurpg.play.v1.PlayService.WatchGameSession.
+func (c *playServiceClient) WatchGameSession(ctx context.Context, req *connect.Request[v1.WatchGameSessionRequest]) (*connect.ServerStreamForClient[v1.WatchGameSessionResponse], error) {
+	return c.watchGameSession.CallServerStream(ctx, req)
+}
+
+// AdjustCharacterVitals calls meurpg.play.v1.PlayService.AdjustCharacterVitals.
+func (c *playServiceClient) AdjustCharacterVitals(ctx context.Context, req *connect.Request[v1.AdjustCharacterVitalsRequest]) (*connect.Response[v1.AdjustCharacterVitalsResponse], error) {
+	return c.adjustCharacterVitals.CallUnary(ctx, req)
 }
 
 // PlayServiceHandler is an implementation of the meurpg.play.v1.PlayService service.
@@ -165,13 +315,16 @@ type PlayServiceHandler interface {
 	//   - `not_found`: the campaign does not exist, or the caller is not a
 	//     member of it.
 	//   - `permission_denied`: the caller is a player.
-	//   - `failed_precondition`: the campaign already has an open session.
-	//     End it first.
+	//   - `failed_precondition`: the campaign already has an open session
+	//     (GameSessionBlocked, SESSION_ALREADY_OPEN). End it first.
 	StartGameSession(context.Context, *connect.Request[v1.StartGameSessionRequest]) (*connect.Response[v1.StartGameSessionResponse], error)
 	// EndGameSession ends one of the campaign's game sessions. Only the
 	// campaign's master may call it. Ending a session that already ended is
 	// not an error: it returns the session as it is, with its first
 	// ended_at. Ending a session never unlocks a sheet.
+	//
+	// Ending the open session sends `session_ended` on every
+	// WatchGameSession stream of the campaign, which then ends.
 	//
 	// Errors:
 	//   - `not_found`: the session is not in this campaign, the campaign does
@@ -185,6 +338,89 @@ type PlayServiceHandler interface {
 	//   - `not_found`: the campaign does not exist, or the caller is not a
 	//     member of it.
 	ListGameSessions(context.Context, *connect.Request[v1.ListGameSessionsRequest]) (*connect.Response[v1.ListGameSessionsResponse], error)
+	// ListOpenGameSessions lists the open game sessions of every campaign the
+	// caller is an active member of, as master or player, newest first. It is
+	// the in-app notice that a session started (RN-06): the app calls it
+	// about every 30 seconds while its tab is visible and the user is signed
+	// in, and once when the tab comes back into view. A pending member
+	// (RN-15) is not a member, so their campaigns never show up here. Anyone
+	// signed in may call it; the list is not paginated.
+	ListOpenGameSessions(context.Context, *connect.Request[v1.ListOpenGameSessionsRequest]) (*connect.Response[v1.ListOpenGameSessionsResponse], error)
+	// GetLiveSession returns the campaign's open game session and the vitals
+	// the caller may see (RN-02): the master gets every living player
+	// character of the campaign (not the dead ones, nor one waiting for
+	// approval); a player gets only their own living character, or none. It
+	// is the live session's snapshot: the app reads it after
+	// WatchGameSession's `ready` event, and again after every reconnection,
+	// so a missed event never leaves the screen stale. Any member may call
+	// it.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, or the caller is not a
+	//     member of it (a pending member neither). The app shows "Peça um
+	//     convite ao mestre", without the campaign's name.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION).
+	GetLiveSession(context.Context, *connect.Request[v1.GetLiveSessionRequest]) (*connect.Response[v1.GetLiveSessionResponse], error)
+	// WatchGameSession streams the live changes of the campaign's open game
+	// session to one member (ADR-0005). Any member may call it.
+	//
+	// The first message is always `ready`, sent once the server has
+	// subscribed the caller: only then does the app read the snapshot
+	// (GetLiveSession), so no change falls between the snapshot and the
+	// stream. A change can also arrive before the snapshot answers; the
+	// vitals' `revision` tells which is newer. Then:
+	//   - `heartbeat` every 25 seconds, so the app can tell a dead stream
+	//     (nothing for about 60 seconds) and proxies don't close an idle one;
+	//   - `vitals_changed` when the master corrects a character's vitals,
+	//     sent only to the master and to that character's player;
+	//   - `session_ended` when the master ends the session; the stream then
+	//     ends without an error.
+	//
+	// About every 60 seconds the server checks again, in the database, that
+	// the caller is still signed in and still a member: if not, the stream
+	// ends with the same error a call would get (`unauthenticated` or
+	// `not_found`). A stream lasts at most 30 minutes and then ends without
+	// an error; it also ends without an error when the server restarts. A
+	// stream that cannot keep up (the app stopped reading) ends with
+	// `unavailable`.
+	//
+	// The app reconnects after any end that is not an error below, with
+	// backoff (1 s, 2 s, 4 s, up to 30 s, with jitter), and only while the
+	// tab is visible; after each reconnection it reads the snapshot again.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, or the caller is not a
+	//     member of it (a pending member neither).
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION).
+	WatchGameSession(context.Context, *connect.Request[v1.WatchGameSessionRequest], *connect.ServerStream[v1.WatchGameSessionResponse]) error
+	// AdjustCharacterVitals is the master's correction of a player
+	// character's vitals during the session (RN-02: the master has the final
+	// word). Only the campaign's master may call it, and only while the
+	// campaign has an open session. The character must be a living player
+	// character of the campaign.
+	//
+	// Each value set in the request replaces the current one; unset values
+	// stay as they are. At least one must be set. The change and a
+	// session_events row are written together, then `vitals_changed` goes to
+	// the master's and the character's player's streams.
+	//
+	// Calling again with the same idempotency_key (a retry) changes nothing
+	// and returns the character's current vitals.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, the caller is not a
+	//     member of it, or the character is not a living player character of
+	//     the campaign (an NPC, a dead character, one waiting for approval).
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION).
+	//   - `invalid_argument`: nothing to change, an idempotency_key that is
+	//     not a UUID or was already used for another character, or a value
+	//     outside 0 to its maximum. The message names the field, such as
+	//     `spell_slots_used[0].used`.
+	AdjustCharacterVitals(context.Context, *connect.Request[v1.AdjustCharacterVitalsRequest]) (*connect.Response[v1.AdjustCharacterVitalsResponse], error)
 }
 
 // NewPlayServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -213,6 +449,32 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
+	playServiceListOpenGameSessionsHandler := connect.NewUnaryHandler(
+		PlayServiceListOpenGameSessionsProcedure,
+		svc.ListOpenGameSessions,
+		connect.WithSchema(playServiceMethods.ByName("ListOpenGameSessions")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceGetLiveSessionHandler := connect.NewUnaryHandler(
+		PlayServiceGetLiveSessionProcedure,
+		svc.GetLiveSession,
+		connect.WithSchema(playServiceMethods.ByName("GetLiveSession")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceWatchGameSessionHandler := connect.NewServerStreamHandler(
+		PlayServiceWatchGameSessionProcedure,
+		svc.WatchGameSession,
+		connect.WithSchema(playServiceMethods.ByName("WatchGameSession")),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceAdjustCharacterVitalsHandler := connect.NewUnaryHandler(
+		PlayServiceAdjustCharacterVitalsProcedure,
+		svc.AdjustCharacterVitals,
+		connect.WithSchema(playServiceMethods.ByName("AdjustCharacterVitals")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/meurpg.play.v1.PlayService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case PlayServiceStartGameSessionProcedure:
@@ -221,6 +483,14 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 			playServiceEndGameSessionHandler.ServeHTTP(w, r)
 		case PlayServiceListGameSessionsProcedure:
 			playServiceListGameSessionsHandler.ServeHTTP(w, r)
+		case PlayServiceListOpenGameSessionsProcedure:
+			playServiceListOpenGameSessionsHandler.ServeHTTP(w, r)
+		case PlayServiceGetLiveSessionProcedure:
+			playServiceGetLiveSessionHandler.ServeHTTP(w, r)
+		case PlayServiceWatchGameSessionProcedure:
+			playServiceWatchGameSessionHandler.ServeHTTP(w, r)
+		case PlayServiceAdjustCharacterVitalsProcedure:
+			playServiceAdjustCharacterVitalsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -240,4 +510,20 @@ func (UnimplementedPlayServiceHandler) EndGameSession(context.Context, *connect.
 
 func (UnimplementedPlayServiceHandler) ListGameSessions(context.Context, *connect.Request[v1.ListGameSessionsRequest]) (*connect.Response[v1.ListGameSessionsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.ListGameSessions is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) ListOpenGameSessions(context.Context, *connect.Request[v1.ListOpenGameSessionsRequest]) (*connect.Response[v1.ListOpenGameSessionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.ListOpenGameSessions is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) GetLiveSession(context.Context, *connect.Request[v1.GetLiveSessionRequest]) (*connect.Response[v1.GetLiveSessionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.GetLiveSession is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) WatchGameSession(context.Context, *connect.Request[v1.WatchGameSessionRequest], *connect.ServerStream[v1.WatchGameSessionResponse]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.WatchGameSession is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) AdjustCharacterVitals(context.Context, *connect.Request[v1.AdjustCharacterVitalsRequest]) (*connect.Response[v1.AdjustCharacterVitalsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.AdjustCharacterVitals is not implemented"))
 }

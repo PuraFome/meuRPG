@@ -39,6 +39,31 @@ func (q *Queries) EndGameSession(ctx context.Context, arg EndGameSessionParams) 
 	return i, err
 }
 
+const getGameSessionForUpdate = `-- name: GetGameSessionForUpdate :one
+SELECT id, campaign_id, session_number, started_at, ended_at FROM game_sessions
+WHERE campaign_id = $1 AND id = $2
+FOR UPDATE
+`
+
+type GetGameSessionForUpdateParams struct {
+	CampaignID string
+	ID         string
+}
+
+// One session of the campaign, locked until the transaction ends.
+func (q *Queries) GetGameSessionForUpdate(ctx context.Context, arg GetGameSessionForUpdateParams) (GameSession, error) {
+	row := q.db.QueryRow(ctx, getGameSessionForUpdate, arg.CampaignID, arg.ID)
+	var i GameSession
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.SessionNumber,
+		&i.StartedAt,
+		&i.EndedAt,
+	)
+	return i, err
+}
+
 const getOpenGameSession = `-- name: GetOpenGameSession :one
 SELECT id, campaign_id, session_number, started_at, ended_at FROM game_sessions
 WHERE campaign_id = $1 AND ended_at IS NULL
@@ -55,6 +80,59 @@ func (q *Queries) GetOpenGameSession(ctx context.Context, campaignID string) (Ga
 		&i.SessionNumber,
 		&i.StartedAt,
 		&i.EndedAt,
+	)
+	return i, err
+}
+
+const getOpenGameSessionForUpdate = `-- name: GetOpenGameSessionForUpdate :one
+SELECT id, campaign_id, session_number, started_at, ended_at FROM game_sessions
+WHERE campaign_id = $1 AND ended_at IS NULL
+FOR UPDATE
+`
+
+// GetOpenGameSession, locking the session's row until the transaction ends.
+// Every change made during a session locks it first, so two changes at
+// once take turns: each one reads the next event number after the other
+// wrote its own, and EndGameSession waits for a change in progress.
+func (q *Queries) GetOpenGameSessionForUpdate(ctx context.Context, campaignID string) (GameSession, error) {
+	row := q.db.QueryRow(ctx, getOpenGameSessionForUpdate, campaignID)
+	var i GameSession
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.SessionNumber,
+		&i.StartedAt,
+		&i.EndedAt,
+	)
+	return i, err
+}
+
+const getSessionEventByIdempotencyKey = `-- name: GetSessionEventByIdempotencyKey :one
+SELECT id, seq, kind, character_id FROM session_events
+WHERE game_session_id = $1 AND idempotency_key = $2
+`
+
+type GetSessionEventByIdempotencyKeyParams struct {
+	GameSessionID  string
+	IdempotencyKey *string
+}
+
+type GetSessionEventByIdempotencyKeyRow struct {
+	ID          string
+	Seq         int32
+	Kind        string
+	CharacterID *string
+}
+
+// The event a change with this key already wrote, if any.
+func (q *Queries) GetSessionEventByIdempotencyKey(ctx context.Context, arg GetSessionEventByIdempotencyKeyParams) (GetSessionEventByIdempotencyKeyRow, error) {
+	row := q.db.QueryRow(ctx, getSessionEventByIdempotencyKey, arg.GameSessionID, arg.IdempotencyKey)
+	var i GetSessionEventByIdempotencyKeyRow
+	err := row.Scan(
+		&i.ID,
+		&i.Seq,
+		&i.Kind,
+		&i.CharacterID,
 	)
 	return i, err
 }
@@ -81,6 +159,45 @@ func (q *Queries) InsertGameSession(ctx context.Context, arg InsertGameSessionPa
 		&i.StartedAt,
 		&i.EndedAt,
 	)
+	return i, err
+}
+
+const insertSessionEvent = `-- name: InsertSessionEvent :one
+INSERT INTO session_events
+    (game_session_id, seq, kind, actor_user_id, character_id, payload, idempotency_key, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, seq
+`
+
+type InsertSessionEventParams struct {
+	GameSessionID  string
+	Seq            int32
+	Kind           string
+	ActorUserID    *string
+	CharacterID    *string
+	Payload        []byte
+	IdempotencyKey *string
+	CreatedAt      time.Time
+}
+
+type InsertSessionEventRow struct {
+	ID  string
+	Seq int32
+}
+
+func (q *Queries) InsertSessionEvent(ctx context.Context, arg InsertSessionEventParams) (InsertSessionEventRow, error) {
+	row := q.db.QueryRow(ctx, insertSessionEvent,
+		arg.GameSessionID,
+		arg.Seq,
+		arg.Kind,
+		arg.ActorUserID,
+		arg.CharacterID,
+		arg.Payload,
+		arg.IdempotencyKey,
+		arg.CreatedAt,
+	)
+	var i InsertSessionEventRow
+	err := row.Scan(&i.ID, &i.Seq)
 	return i, err
 }
 
@@ -115,6 +232,56 @@ func (q *Queries) ListGameSessions(ctx context.Context, campaignID string) ([]Ga
 		return nil, err
 	}
 	return items, nil
+}
+
+const listOpenGameSessions = `-- name: ListOpenGameSessions :many
+SELECT id, campaign_id, session_number, started_at, ended_at FROM game_sessions
+WHERE campaign_id = ANY($1::UUID[]) AND ended_at IS NULL
+ORDER BY started_at DESC, id
+`
+
+// The open sessions of the given campaigns, newest first (RN-06). The
+// partial unique index game_sessions_one_open_per_campaign finds each one.
+func (q *Queries) ListOpenGameSessions(ctx context.Context, campaignIds []string) ([]GameSession, error) {
+	rows, err := q.db.Query(ctx, listOpenGameSessions, campaignIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GameSession
+	for rows.Next() {
+		var i GameSession
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.SessionNumber,
+			&i.StartedAt,
+			&i.EndedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const nextSessionEventSeq = `-- name: NextSessionEventSeq :one
+SELECT (COALESCE(max(seq), 0) + 1)::INT4 AS next
+FROM session_events
+WHERE game_session_id = $1
+`
+
+// Events count from 1 in each session. The caller holds the session's row
+// lock (GetOpenGameSessionForUpdate), so no other change reads the same
+// number; UNIQUE (game_session_id, seq) is the backstop.
+func (q *Queries) NextSessionEventSeq(ctx context.Context, gameSessionID string) (int32, error) {
+	row := q.db.QueryRow(ctx, nextSessionEventSeq, gameSessionID)
+	var next int32
+	err := row.Scan(&next)
+	return next, err
 }
 
 const nextSessionNumber = `-- name: NextSessionNumber :one

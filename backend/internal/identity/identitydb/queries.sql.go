@@ -192,6 +192,26 @@ func (q *Queries) LookupSession(ctx context.Context, arg LookupSessionParams) (L
 	return i, err
 }
 
+const sessionIsActive = `-- name: SessionIsActive :one
+SELECT EXISTS (
+    SELECT 1 FROM auth_sessions WHERE id = $1 AND expires_at > $2
+)
+`
+
+type SessionIsActiveParams struct {
+	ID  string
+	Now time.Time
+}
+
+// A long-lived stream checks its session again by ID (RecheckSession): it
+// is still there (no sign-out, no revocation) and has not expired.
+func (q *Queries) SessionIsActive(ctx context.Context, arg SessionIsActiveParams) (bool, error) {
+	row := q.db.QueryRow(ctx, sessionIsActive, arg.ID, arg.Now)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const setDisplayName = `-- name: SetDisplayName :execrows
 UPDATE users SET display_name = $2 WHERE id = $1
 `

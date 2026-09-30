@@ -2,22 +2,48 @@
 // @generated from file meurpg/play/v1/play.proto (package meurpg.play.v1, syntax proto3)
 /* eslint-disable */
 
-// Package meurpg.play.v1 is about playing a campaign at the table. Today it
-// starts, ends and lists game sessions, which is what locks the players'
-// sheets (RN-01). The live table (the notification to players, turns,
-// actions and the session history) comes later.
+// Package meurpg.play.v1 is about playing a campaign at the table: starting,
+// ending and listing game sessions, which locks the players' sheets
+// (RN-01), and the live session (Etapa 5): the notice that a session is
+// open (RN-06), the session's live stream (ADR-0005), and the characters'
+// vitals, which the master corrects during the session (RN-02). Turns,
+// actions and the session history screen come with combat (Etapa 6).
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
+import type { Role } from "../../campaigns/v1/campaigns_pb";
+import { file_meurpg_campaigns_v1_campaigns } from "../../campaigns/v1/campaigns_pb";
+import type { HitDice } from "../../rules/v1/rules_pb";
+import { file_meurpg_rules_v1_rules } from "../../rules/v1/rules_pb";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file meurpg/play/v1/play.proto.
  */
 export const file_meurpg_play_v1_play: GenFile = /*@__PURE__*/
-  fileDesc("ChltZXVycGcvcGxheS92MS9wbGF5LnByb3RvEg5tZXVycGcucGxheS52MSKkAQoLR2FtZVNlc3Npb24SCgoCaWQYASABKAkSEwoLY2FtcGFpZ25faWQYAiABKAkSFgoOc2Vzc2lvbl9udW1iZXIYAyABKAUSLgoKc3RhcnRlZF9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLAoIZW5kZWRfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIi4KF1N0YXJ0R2FtZVNlc3Npb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJImkKGFN0YXJ0R2FtZVNlc3Npb25SZXNwb25zZRIxCgxnYW1lX3Nlc3Npb24YASABKAsyGy5tZXVycGcucGxheS52MS5HYW1lU2Vzc2lvbhIaChJsb2NrZWRfc2hlZXRfY291bnQYAiABKAUiRQoVRW5kR2FtZVNlc3Npb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhcKD2dhbWVfc2Vzc2lvbl9pZBgCIAEoCSJLChZFbmRHYW1lU2Vzc2lvblJlc3BvbnNlEjEKDGdhbWVfc2Vzc2lvbhgBIAEoCzIbLm1ldXJwZy5wbGF5LnYxLkdhbWVTZXNzaW9uIi4KF0xpc3RHYW1lU2Vzc2lvbnNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIk4KGExpc3RHYW1lU2Vzc2lvbnNSZXNwb25zZRIyCg1nYW1lX3Nlc3Npb25zGAEgAygLMhsubWV1cnBnLnBsYXkudjEuR2FtZVNlc3Npb24ywQIKC1BsYXlTZXJ2aWNlEmUKEFN0YXJ0R2FtZVNlc3Npb24SJy5tZXVycGcucGxheS52MS5TdGFydEdhbWVTZXNzaW9uUmVxdWVzdBooLm1ldXJwZy5wbGF5LnYxLlN0YXJ0R2FtZVNlc3Npb25SZXNwb25zZRJfCg5FbmRHYW1lU2Vzc2lvbhIlLm1ldXJwZy5wbGF5LnYxLkVuZEdhbWVTZXNzaW9uUmVxdWVzdBomLm1ldXJwZy5wbGF5LnYxLkVuZEdhbWVTZXNzaW9uUmVzcG9uc2USagoQTGlzdEdhbWVTZXNzaW9ucxInLm1ldXJwZy5wbGF5LnYxLkxpc3RHYW1lU2Vzc2lvbnNSZXF1ZXN0GigubWV1cnBnLnBsYXkudjEuTGlzdEdhbWVTZXNzaW9uc1Jlc3BvbnNlIgOQAgJCtwEKEmNvbS5tZXVycGcucGxheS52MUIJUGxheVByb3RvUAFaPGdpdGh1Yi5jb20vUHVyYUZvbWUvbWV1UlBHL2JhY2tlbmQvZ2VuL21ldXJwZy9wbGF5L3YxO3BsYXl2MaICA01QWKoCDk1ldXJwZy5QbGF5LlYxygIOTWV1cnBnXFBsYXlcVjHiAhpNZXVycGdcUGxheVxWMVxHUEJNZXRhZGF0YeoCEE1ldXJwZzo6UGxheTo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp]);
+  fileDesc("ChltZXVycGcvcGxheS92MS9wbGF5LnByb3RvEg5tZXVycGcucGxheS52MSJOChJHYW1lU2Vzc2lvbkJsb2NrZWQSOAoGcmVhc29uGAEgASgOMigubWV1cnBnLnBsYXkudjEuR2FtZVNlc3Npb25CbG9ja2VkUmVhc29uIqQBCgtHYW1lU2Vzc2lvbhIKCgJpZBgBIAEoCRITCgtjYW1wYWlnbl9pZBgCIAEoCRIWCg5zZXNzaW9uX251bWJlchgDIAEoBRIuCgpzdGFydGVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIsCghlbmRlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiLgoXU3RhcnRHYW1lU2Vzc2lvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiaQoYU3RhcnRHYW1lU2Vzc2lvblJlc3BvbnNlEjEKDGdhbWVfc2Vzc2lvbhgBIAEoCzIbLm1ldXJwZy5wbGF5LnYxLkdhbWVTZXNzaW9uEhoKEmxvY2tlZF9zaGVldF9jb3VudBgCIAEoBSJFChVFbmRHYW1lU2Vzc2lvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFwoPZ2FtZV9zZXNzaW9uX2lkGAIgASgJIksKFkVuZEdhbWVTZXNzaW9uUmVzcG9uc2USMQoMZ2FtZV9zZXNzaW9uGAEgASgLMhsubWV1cnBnLnBsYXkudjEuR2FtZVNlc3Npb24iLgoXTGlzdEdhbWVTZXNzaW9uc1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiTgoYTGlzdEdhbWVTZXNzaW9uc1Jlc3BvbnNlEjIKDWdhbWVfc2Vzc2lvbnMYASADKAsyGy5tZXVycGcucGxheS52MS5HYW1lU2Vzc2lvbiIdChtMaXN0T3BlbkdhbWVTZXNzaW9uc1JlcXVlc3QiWwocTGlzdE9wZW5HYW1lU2Vzc2lvbnNSZXNwb25zZRI7ChJvcGVuX2dhbWVfc2Vzc2lvbnMYASADKAsyHy5tZXVycGcucGxheS52MS5PcGVuR2FtZVNlc3Npb24ihwEKD09wZW5HYW1lU2Vzc2lvbhIxCgxnYW1lX3Nlc3Npb24YASABKAsyGy5tZXVycGcucGxheS52MS5HYW1lU2Vzc2lvbhIVCg1jYW1wYWlnbl9uYW1lGAIgASgJEioKB215X3JvbGUYAyABKA4yGS5tZXVycGcuY2FtcGFpZ25zLnYxLlJvbGUiLAoVR2V0TGl2ZVNlc3Npb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJInwKFkdldExpdmVTZXNzaW9uUmVzcG9uc2USMQoMZ2FtZV9zZXNzaW9uGAEgASgLMhsubWV1cnBnLnBsYXkudjEuR2FtZVNlc3Npb24SLwoGdml0YWxzGAIgAygLMh8ubWV1cnBnLnBsYXkudjEuQ2hhcmFjdGVyVml0YWxzIqQDCg9DaGFyYWN0ZXJWaXRhbHMSFAoMY2hhcmFjdGVyX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSFgoOcGxheWVyX3VzZXJfaWQYAyABKAkSGgoSaGl0X3BvaW50c19jdXJyZW50GAQgASgFEhYKDmhpdF9wb2ludHNfbWF4GAUgASgFEhwKFGhpdF9wb2ludHNfdGVtcG9yYXJ5GAYgASgFEjMKC3NwZWxsX3Nsb3RzGAcgAygLMh4ubWV1cnBnLnBsYXkudjEuU3BlbGxTbG90VXNhZ2USMQoKcGFjdF9zbG90cxgIIAEoCzIdLm1ldXJwZy5wbGF5LnYxLlBhY3RTbG90VXNhZ2USKgoIaGl0X2RpY2UYCSADKAsyGC5tZXVycGcucnVsZXMudjEuSGl0RGljZRIWCg5oaXRfZGljZV90b3RhbBgKIAEoBRIVCg1oaXRfZGljZV91c2VkGAsgASgFEhAKCHJldmlzaW9uGAwgASgFEi4KCnVwZGF0ZWRfYXQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIjwKDlNwZWxsU2xvdFVzYWdlEg0KBWxldmVsGAEgASgFEg0KBXRvdGFsGAIgASgFEgwKBHVzZWQYAyABKAUiQAoNUGFjdFNsb3RVc2FnZRISCgpzbG90X2xldmVsGAEgASgFEg0KBXRvdGFsGAIgASgFEgwKBHVzZWQYAyABKAUiLgoXV2F0Y2hHYW1lU2Vzc2lvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkinQQKGFdhdGNoR2FtZVNlc3Npb25SZXNwb25zZRI/CgVyZWFkeRgBIAEoCzIuLm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5SZWFkeUgAEkcKCWhlYXJ0YmVhdBgCIAEoCzIyLm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5IZWFydGJlYXRIABJQCg52aXRhbHNfY2hhbmdlZBgDIAEoCzI2Lm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5WaXRhbHNDaGFuZ2VkSAASTgoNc2Vzc2lvbl9lbmRlZBgEIAEoCzI1Lm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5TZXNzaW9uRW5kZWRIABo6CgVSZWFkeRIxCgxnYW1lX3Nlc3Npb24YASABKAsyGy5tZXVycGcucGxheS52MS5HYW1lU2Vzc2lvbhoLCglIZWFydGJlYXQaQAoNVml0YWxzQ2hhbmdlZBIvCgZ2aXRhbHMYASABKAsyHy5tZXVycGcucGxheS52MS5DaGFyYWN0ZXJWaXRhbHMaQQoMU2Vzc2lvbkVuZGVkEjEKDGdhbWVfc2Vzc2lvbhgBIAEoCzIbLm1ldXJwZy5wbGF5LnYxLkdhbWVTZXNzaW9uQgcKBWV2ZW50IvACChxBZGp1c3RDaGFyYWN0ZXJWaXRhbHNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkSHwoSaGl0X3BvaW50c19jdXJyZW50GAQgASgFSACIAQESIQoUaGl0X3BvaW50c190ZW1wb3JhcnkYBSABKAVIAYgBARI4ChBzcGVsbF9zbG90c191c2VkGAYgAygLMh4ubWV1cnBnLnBsYXkudjEuU3BlbGxTbG90c1VzZWQSHAoPcGFjdF9zbG90c191c2VkGAcgASgFSAKIAQESGgoNaGl0X2RpY2VfdXNlZBgIIAEoBUgDiAEBQhUKE19oaXRfcG9pbnRzX2N1cnJlbnRCFwoVX2hpdF9wb2ludHNfdGVtcG9yYXJ5QhIKEF9wYWN0X3Nsb3RzX3VzZWRCEAoOX2hpdF9kaWNlX3VzZWQiLQoOU3BlbGxTbG90c1VzZWQSDQoFbGV2ZWwYASABKAUSDAoEdXNlZBgCIAEoBSJQCh1BZGp1c3RDaGFyYWN0ZXJWaXRhbHNSZXNwb25zZRIvCgZ2aXRhbHMYASABKAsyHy5tZXVycGcucGxheS52MS5DaGFyYWN0ZXJWaXRhbHMqrgEKGEdhbWVTZXNzaW9uQmxvY2tlZFJlYXNvbhIrCidHQU1FX1NFU1NJT05fQkxPQ0tFRF9SRUFTT05fVU5TUEVDSUZJRUQQABIvCitHQU1FX1NFU1NJT05fQkxPQ0tFRF9SRUFTT05fTk9fT1BFTl9TRVNTSU9OEAESNAowR0FNRV9TRVNTSU9OX0JMT0NLRURfUkVBU09OX1NFU1NJT05fQUxSRUFEWV9PUEVOEAIy/gUKC1BsYXlTZXJ2aWNlEmUKEFN0YXJ0R2FtZVNlc3Npb24SJy5tZXVycGcucGxheS52MS5TdGFydEdhbWVTZXNzaW9uUmVxdWVzdBooLm1ldXJwZy5wbGF5LnYxLlN0YXJ0R2FtZVNlc3Npb25SZXNwb25zZRJfCg5FbmRHYW1lU2Vzc2lvbhIlLm1ldXJwZy5wbGF5LnYxLkVuZEdhbWVTZXNzaW9uUmVxdWVzdBomLm1ldXJwZy5wbGF5LnYxLkVuZEdhbWVTZXNzaW9uUmVzcG9uc2USagoQTGlzdEdhbWVTZXNzaW9ucxInLm1ldXJwZy5wbGF5LnYxLkxpc3RHYW1lU2Vzc2lvbnNSZXF1ZXN0GigubWV1cnBnLnBsYXkudjEuTGlzdEdhbWVTZXNzaW9uc1Jlc3BvbnNlIgOQAgISdgoUTGlzdE9wZW5HYW1lU2Vzc2lvbnMSKy5tZXVycGcucGxheS52MS5MaXN0T3BlbkdhbWVTZXNzaW9uc1JlcXVlc3QaLC5tZXVycGcucGxheS52MS5MaXN0T3BlbkdhbWVTZXNzaW9uc1Jlc3BvbnNlIgOQAgESZAoOR2V0TGl2ZVNlc3Npb24SJS5tZXVycGcucGxheS52MS5HZXRMaXZlU2Vzc2lvblJlcXVlc3QaJi5tZXVycGcucGxheS52MS5HZXRMaXZlU2Vzc2lvblJlc3BvbnNlIgOQAgISZwoQV2F0Y2hHYW1lU2Vzc2lvbhInLm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXF1ZXN0GigubWV1cnBnLnBsYXkudjEuV2F0Y2hHYW1lU2Vzc2lvblJlc3BvbnNlMAESdAoVQWRqdXN0Q2hhcmFjdGVyVml0YWxzEiwubWV1cnBnLnBsYXkudjEuQWRqdXN0Q2hhcmFjdGVyVml0YWxzUmVxdWVzdBotLm1ldXJwZy5wbGF5LnYxLkFkanVzdENoYXJhY3RlclZpdGFsc1Jlc3BvbnNlQrcBChJjb20ubWV1cnBnLnBsYXkudjFCCVBsYXlQcm90b1ABWjxnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvcGxheS92MTtwbGF5djGiAgNNUFiqAg5NZXVycGcuUGxheS5WMcoCDk1ldXJwZ1xQbGF5XFYx4gIaTWV1cnBnXFBsYXlcVjFcR1BCTWV0YWRhdGHqAhBNZXVycGc6OlBsYXk6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp, file_meurpg_campaigns_v1_campaigns, file_meurpg_rules_v1_rules]);
+
+/**
+ * GameSessionBlocked is the error detail of PlayService's
+ * `failed_precondition`, so the app can show a clear message.
+ *
+ * @generated from message meurpg.play.v1.GameSessionBlocked
+ */
+export type GameSessionBlocked = Message<"meurpg.play.v1.GameSessionBlocked"> & {
+  /**
+   * @generated from field: meurpg.play.v1.GameSessionBlockedReason reason = 1;
+   */
+  reason: GameSessionBlockedReason;
+};
+
+/**
+ * Describes the message meurpg.play.v1.GameSessionBlocked.
+ * Use `create(GameSessionBlockedSchema)` to create a new message.
+ */
+export const GameSessionBlockedSchema: GenMessage<GameSessionBlocked> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 0);
 
 /**
  * GameSession is one game session of a campaign: one evening at the table.
@@ -67,7 +93,7 @@ export type GameSession = Message<"meurpg.play.v1.GameSession"> & {
  * Use `create(GameSessionSchema)` to create a new message.
  */
 export const GameSessionSchema: GenMessage<GameSession> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 0);
+  messageDesc(file_meurpg_play_v1_play, 1);
 
 /**
  * StartGameSessionRequest names the campaign.
@@ -86,7 +112,7 @@ export type StartGameSessionRequest = Message<"meurpg.play.v1.StartGameSessionRe
  * Use `create(StartGameSessionRequestSchema)` to create a new message.
  */
 export const StartGameSessionRequestSchema: GenMessage<StartGameSessionRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 1);
+  messageDesc(file_meurpg_play_v1_play, 2);
 
 /**
  * StartGameSessionResponse returns the new session.
@@ -115,7 +141,7 @@ export type StartGameSessionResponse = Message<"meurpg.play.v1.StartGameSessionR
  * Use `create(StartGameSessionResponseSchema)` to create a new message.
  */
 export const StartGameSessionResponseSchema: GenMessage<StartGameSessionResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 2);
+  messageDesc(file_meurpg_play_v1_play, 3);
 
 /**
  * EndGameSessionRequest names the session to end.
@@ -139,7 +165,7 @@ export type EndGameSessionRequest = Message<"meurpg.play.v1.EndGameSessionReques
  * Use `create(EndGameSessionRequestSchema)` to create a new message.
  */
 export const EndGameSessionRequestSchema: GenMessage<EndGameSessionRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 3);
+  messageDesc(file_meurpg_play_v1_play, 4);
 
 /**
  * EndGameSessionResponse returns the ended session.
@@ -158,7 +184,7 @@ export type EndGameSessionResponse = Message<"meurpg.play.v1.EndGameSessionRespo
  * Use `create(EndGameSessionResponseSchema)` to create a new message.
  */
 export const EndGameSessionResponseSchema: GenMessage<EndGameSessionResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 4);
+  messageDesc(file_meurpg_play_v1_play, 5);
 
 /**
  * ListGameSessionsRequest names a campaign.
@@ -177,7 +203,7 @@ export type ListGameSessionsRequest = Message<"meurpg.play.v1.ListGameSessionsRe
  * Use `create(ListGameSessionsRequestSchema)` to create a new message.
  */
 export const ListGameSessionsRequestSchema: GenMessage<ListGameSessionsRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 5);
+  messageDesc(file_meurpg_play_v1_play, 6);
 
 /**
  * ListGameSessionsResponse lists the campaign's sessions.
@@ -196,10 +222,616 @@ export type ListGameSessionsResponse = Message<"meurpg.play.v1.ListGameSessionsR
  * Use `create(ListGameSessionsResponseSchema)` to create a new message.
  */
 export const ListGameSessionsResponseSchema: GenMessage<ListGameSessionsResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 6);
+  messageDesc(file_meurpg_play_v1_play, 7);
 
 /**
- * PlayService starts, ends and lists a campaign's game sessions.
+ * ListOpenGameSessionsRequest is empty: the caller is the signed-in user.
+ *
+ * @generated from message meurpg.play.v1.ListOpenGameSessionsRequest
+ */
+export type ListOpenGameSessionsRequest = Message<"meurpg.play.v1.ListOpenGameSessionsRequest"> & {
+};
+
+/**
+ * Describes the message meurpg.play.v1.ListOpenGameSessionsRequest.
+ * Use `create(ListOpenGameSessionsRequestSchema)` to create a new message.
+ */
+export const ListOpenGameSessionsRequestSchema: GenMessage<ListOpenGameSessionsRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 8);
+
+/**
+ * ListOpenGameSessionsResponse lists the open sessions of the caller's
+ * campaigns.
+ *
+ * @generated from message meurpg.play.v1.ListOpenGameSessionsResponse
+ */
+export type ListOpenGameSessionsResponse = Message<"meurpg.play.v1.ListOpenGameSessionsResponse"> & {
+  /**
+   * @generated from field: repeated meurpg.play.v1.OpenGameSession open_game_sessions = 1;
+   */
+  openGameSessions: OpenGameSession[];
+};
+
+/**
+ * Describes the message meurpg.play.v1.ListOpenGameSessionsResponse.
+ * Use `create(ListOpenGameSessionsResponseSchema)` to create a new message.
+ */
+export const ListOpenGameSessionsResponseSchema: GenMessage<ListOpenGameSessionsResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 9);
+
+/**
+ * OpenGameSession is an open session of one of the caller's campaigns.
+ *
+ * @generated from message meurpg.play.v1.OpenGameSession
+ */
+export type OpenGameSession = Message<"meurpg.play.v1.OpenGameSession"> & {
+  /**
+   * The open session.
+   *
+   * @generated from field: meurpg.play.v1.GameSession game_session = 1;
+   */
+  gameSession?: GameSession | undefined;
+
+  /**
+   * The campaign's name, as the master typed it, for the notice ("A sessão
+   * 3 de Mirathel começou").
+   *
+   * @generated from field: string campaign_name = 2;
+   */
+  campaignName: string;
+
+  /**
+   * The caller's role in the campaign.
+   *
+   * @generated from field: meurpg.campaigns.v1.Role my_role = 3;
+   */
+  myRole: Role;
+};
+
+/**
+ * Describes the message meurpg.play.v1.OpenGameSession.
+ * Use `create(OpenGameSessionSchema)` to create a new message.
+ */
+export const OpenGameSessionSchema: GenMessage<OpenGameSession> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 10);
+
+/**
+ * GetLiveSessionRequest names the campaign.
+ *
+ * @generated from message meurpg.play.v1.GetLiveSessionRequest
+ */
+export type GetLiveSessionRequest = Message<"meurpg.play.v1.GetLiveSessionRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.GetLiveSessionRequest.
+ * Use `create(GetLiveSessionRequestSchema)` to create a new message.
+ */
+export const GetLiveSessionRequestSchema: GenMessage<GetLiveSessionRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 11);
+
+/**
+ * GetLiveSessionResponse is the live session's snapshot.
+ *
+ * @generated from message meurpg.play.v1.GetLiveSessionResponse
+ */
+export type GetLiveSessionResponse = Message<"meurpg.play.v1.GetLiveSessionResponse"> & {
+  /**
+   * The campaign's open session.
+   *
+   * @generated from field: meurpg.play.v1.GameSession game_session = 1;
+   */
+  gameSession?: GameSession | undefined;
+
+  /**
+   * The vitals the caller may see, oldest character first: every living
+   * player character's for the master; only their own character's for a
+   * player (empty if they have no living character).
+   *
+   * @generated from field: repeated meurpg.play.v1.CharacterVitals vitals = 2;
+   */
+  vitals: CharacterVitals[];
+};
+
+/**
+ * Describes the message meurpg.play.v1.GetLiveSessionResponse.
+ * Use `create(GetLiveSessionResponseSchema)` to create a new message.
+ */
+export const GetLiveSessionResponseSchema: GenMessage<GetLiveSessionResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 12);
+
+/**
+ * CharacterVitals are a player character's live numbers (RN-02): hit
+ * points, spell slots, hit dice. The maximums come from the sheet (the same
+ * numbers as DerivedSheet); the current values are the master's
+ * corrections, clamped to the maximums. A character nobody has adjusted yet
+ * is fresh: full hit points, nothing used, revision 0.
+ *
+ * @generated from message meurpg.play.v1.CharacterVitals
+ */
+export type CharacterVitals = Message<"meurpg.play.v1.CharacterVitals"> & {
+  /**
+   * The character (a UUID).
+   *
+   * @generated from field: string character_id = 1;
+   */
+  characterId: string;
+
+  /**
+   * The character's name.
+   *
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * The account ID of the character's player (a UUID). Empty when the
+   * player deleted their account and the character stayed with the master
+   * (RN-16).
+   *
+   * @generated from field: string player_user_id = 3;
+   */
+  playerUserId: string;
+
+  /**
+   * Current hit points, 0 to hit_points_max. 0 means unconscious.
+   *
+   * @generated from field: int32 hit_points_current = 4;
+   */
+  hitPointsCurrent: number;
+
+  /**
+   * Maximum hit points, from the sheet (DerivedSheet.hit_points_max).
+   *
+   * @generated from field: int32 hit_points_max = 5;
+   */
+  hitPointsMax: number;
+
+  /**
+   * Temporary hit points, 0 or more. They are not part of the maximum.
+   *
+   * @generated from field: int32 hit_points_temporary = 6;
+   */
+  hitPointsTemporary: number;
+
+  /**
+   * Spell slots per spell level, only the levels where the character has
+   * slots, lowest first. Pact magic slots are apart (pact_slots).
+   *
+   * @generated from field: repeated meurpg.play.v1.SpellSlotUsage spell_slots = 7;
+   */
+  spellSlots: SpellSlotUsage[];
+
+  /**
+   * Pact magic slots (warlock). Unset when the character has none.
+   *
+   * @generated from field: meurpg.play.v1.PactSlotUsage pact_slots = 8;
+   */
+  pactSlots?: PactSlotUsage | undefined;
+
+  /**
+   * The character's hit dice, largest die first, such as 2d10 and 1d8.
+   *
+   * @generated from field: repeated meurpg.rules.v1.HitDice hit_dice = 9;
+   */
+  hitDice: HitDice[];
+
+  /**
+   * How many hit dice the character has in all: the sum of hit_dice's
+   * counts, the character's level.
+   *
+   * @generated from field: int32 hit_dice_total = 10;
+   */
+  hitDiceTotal: number;
+
+  /**
+   * How many of them are used, 0 to hit_dice_total.
+   *
+   * @generated from field: int32 hit_dice_used = 11;
+   */
+  hitDiceUsed: number;
+
+  /**
+   * Goes up by one on every correction; 0 while nobody has adjusted the
+   * character. Of two copies of the same character's vitals, the one with
+   * the larger revision is newer.
+   *
+   * @generated from field: int32 revision = 12;
+   */
+  revision: number;
+
+  /**
+   * When the master last corrected them. Unset while revision is 0.
+   *
+   * @generated from field: google.protobuf.Timestamp updated_at = 13;
+   */
+  updatedAt?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message meurpg.play.v1.CharacterVitals.
+ * Use `create(CharacterVitalsSchema)` to create a new message.
+ */
+export const CharacterVitalsSchema: GenMessage<CharacterVitals> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 13);
+
+/**
+ * SpellSlotUsage is one spell level's slots.
+ *
+ * @generated from message meurpg.play.v1.SpellSlotUsage
+ */
+export type SpellSlotUsage = Message<"meurpg.play.v1.SpellSlotUsage"> & {
+  /**
+   * The spell level, 1 to 9.
+   *
+   * @generated from field: int32 level = 1;
+   */
+  level: number;
+
+  /**
+   * How many slots of this level the character has (from the sheet).
+   *
+   * @generated from field: int32 total = 2;
+   */
+  total: number;
+
+  /**
+   * How many of them are used, 0 to total.
+   *
+   * @generated from field: int32 used = 3;
+   */
+  used: number;
+};
+
+/**
+ * Describes the message meurpg.play.v1.SpellSlotUsage.
+ * Use `create(SpellSlotUsageSchema)` to create a new message.
+ */
+export const SpellSlotUsageSchema: GenMessage<SpellSlotUsage> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 14);
+
+/**
+ * PactSlotUsage is a warlock's pact magic slots: all of one level.
+ *
+ * @generated from message meurpg.play.v1.PactSlotUsage
+ */
+export type PactSlotUsage = Message<"meurpg.play.v1.PactSlotUsage"> & {
+  /**
+   * The level of every pact slot, 1 to 5.
+   *
+   * @generated from field: int32 slot_level = 1;
+   */
+  slotLevel: number;
+
+  /**
+   * How many pact slots the character has (from the sheet).
+   *
+   * @generated from field: int32 total = 2;
+   */
+  total: number;
+
+  /**
+   * How many of them are used, 0 to total.
+   *
+   * @generated from field: int32 used = 3;
+   */
+  used: number;
+};
+
+/**
+ * Describes the message meurpg.play.v1.PactSlotUsage.
+ * Use `create(PactSlotUsageSchema)` to create a new message.
+ */
+export const PactSlotUsageSchema: GenMessage<PactSlotUsage> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 15);
+
+/**
+ * WatchGameSessionRequest names the campaign.
+ *
+ * @generated from message meurpg.play.v1.WatchGameSessionRequest
+ */
+export type WatchGameSessionRequest = Message<"meurpg.play.v1.WatchGameSessionRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.WatchGameSessionRequest.
+ * Use `create(WatchGameSessionRequestSchema)` to create a new message.
+ */
+export const WatchGameSessionRequestSchema: GenMessage<WatchGameSessionRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 16);
+
+/**
+ * WatchGameSessionResponse is one event of the live session's stream.
+ *
+ * @generated from message meurpg.play.v1.WatchGameSessionResponse
+ */
+export type WatchGameSessionResponse = Message<"meurpg.play.v1.WatchGameSessionResponse"> & {
+  /**
+   * @generated from oneof meurpg.play.v1.WatchGameSessionResponse.event
+   */
+  event: {
+    /**
+     * Always the first event: the server subscribed the caller. The app
+     * reads the snapshot (GetLiveSession) now.
+     *
+     * @generated from field: meurpg.play.v1.WatchGameSessionResponse.Ready ready = 1;
+     */
+    value: WatchGameSessionResponse_Ready;
+    case: "ready";
+  } | {
+    /**
+     * Sent every 25 seconds, to show the stream is alive.
+     *
+     * @generated from field: meurpg.play.v1.WatchGameSessionResponse.Heartbeat heartbeat = 2;
+     */
+    value: WatchGameSessionResponse_Heartbeat;
+    case: "heartbeat";
+  } | {
+    /**
+     * The master corrected a character's vitals.
+     *
+     * @generated from field: meurpg.play.v1.WatchGameSessionResponse.VitalsChanged vitals_changed = 3;
+     */
+    value: WatchGameSessionResponse_VitalsChanged;
+    case: "vitalsChanged";
+  } | {
+    /**
+     * The master ended the session. The stream ends after it.
+     *
+     * @generated from field: meurpg.play.v1.WatchGameSessionResponse.SessionEnded session_ended = 4;
+     */
+    value: WatchGameSessionResponse_SessionEnded;
+    case: "sessionEnded";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message meurpg.play.v1.WatchGameSessionResponse.
+ * Use `create(WatchGameSessionResponseSchema)` to create a new message.
+ */
+export const WatchGameSessionResponseSchema: GenMessage<WatchGameSessionResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 17);
+
+/**
+ * Ready is the stream's first event.
+ *
+ * @generated from message meurpg.play.v1.WatchGameSessionResponse.Ready
+ */
+export type WatchGameSessionResponse_Ready = Message<"meurpg.play.v1.WatchGameSessionResponse.Ready"> & {
+  /**
+   * The session being watched.
+   *
+   * @generated from field: meurpg.play.v1.GameSession game_session = 1;
+   */
+  gameSession?: GameSession | undefined;
+};
+
+/**
+ * Describes the message meurpg.play.v1.WatchGameSessionResponse.Ready.
+ * Use `create(WatchGameSessionResponse_ReadySchema)` to create a new message.
+ */
+export const WatchGameSessionResponse_ReadySchema: GenMessage<WatchGameSessionResponse_Ready> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 17, 0);
+
+/**
+ * Heartbeat carries nothing.
+ *
+ * @generated from message meurpg.play.v1.WatchGameSessionResponse.Heartbeat
+ */
+export type WatchGameSessionResponse_Heartbeat = Message<"meurpg.play.v1.WatchGameSessionResponse.Heartbeat"> & {
+};
+
+/**
+ * Describes the message meurpg.play.v1.WatchGameSessionResponse.Heartbeat.
+ * Use `create(WatchGameSessionResponse_HeartbeatSchema)` to create a new message.
+ */
+export const WatchGameSessionResponse_HeartbeatSchema: GenMessage<WatchGameSessionResponse_Heartbeat> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 17, 1);
+
+/**
+ * VitalsChanged carries a character's new vitals. Only the master and the
+ * character's player get it. Apply it only if its revision is larger
+ * than the one on screen.
+ *
+ * @generated from message meurpg.play.v1.WatchGameSessionResponse.VitalsChanged
+ */
+export type WatchGameSessionResponse_VitalsChanged = Message<"meurpg.play.v1.WatchGameSessionResponse.VitalsChanged"> & {
+  /**
+   * @generated from field: meurpg.play.v1.CharacterVitals vitals = 1;
+   */
+  vitals?: CharacterVitals | undefined;
+};
+
+/**
+ * Describes the message meurpg.play.v1.WatchGameSessionResponse.VitalsChanged.
+ * Use `create(WatchGameSessionResponse_VitalsChangedSchema)` to create a new message.
+ */
+export const WatchGameSessionResponse_VitalsChangedSchema: GenMessage<WatchGameSessionResponse_VitalsChanged> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 17, 2);
+
+/**
+ * SessionEnded says the watched session ended.
+ *
+ * @generated from message meurpg.play.v1.WatchGameSessionResponse.SessionEnded
+ */
+export type WatchGameSessionResponse_SessionEnded = Message<"meurpg.play.v1.WatchGameSessionResponse.SessionEnded"> & {
+  /**
+   * The session, with its ended_at.
+   *
+   * @generated from field: meurpg.play.v1.GameSession game_session = 1;
+   */
+  gameSession?: GameSession | undefined;
+};
+
+/**
+ * Describes the message meurpg.play.v1.WatchGameSessionResponse.SessionEnded.
+ * Use `create(WatchGameSessionResponse_SessionEndedSchema)` to create a new message.
+ */
+export const WatchGameSessionResponse_SessionEndedSchema: GenMessage<WatchGameSessionResponse_SessionEnded> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 17, 3);
+
+/**
+ * AdjustCharacterVitalsRequest is the master's correction. Every value set
+ * replaces the current one; unset values stay as they are.
+ *
+ * @generated from message meurpg.play.v1.AdjustCharacterVitalsRequest
+ */
+export type AdjustCharacterVitalsRequest = Message<"meurpg.play.v1.AdjustCharacterVitalsRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * @generated from field: string character_id = 2;
+   */
+  characterId: string;
+
+  /**
+   * A UUID the app generates once for this correction and sends again on a
+   * retry. A second call with the same key changes nothing.
+   *
+   * @generated from field: string idempotency_key = 3;
+   */
+  idempotencyKey: string;
+
+  /**
+   * New current hit points, 0 to the maximum.
+   *
+   * @generated from field: optional int32 hit_points_current = 4;
+   */
+  hitPointsCurrent?: number | undefined;
+
+  /**
+   * New temporary hit points, 0 to 999.
+   *
+   * @generated from field: optional int32 hit_points_temporary = 5;
+   */
+  hitPointsTemporary?: number | undefined;
+
+  /**
+   * New used counts of some spell levels; the other levels stay as they
+   * are. Each level at most once, and only levels where the character has
+   * slots.
+   *
+   * @generated from field: repeated meurpg.play.v1.SpellSlotsUsed spell_slots_used = 6;
+   */
+  spellSlotsUsed: SpellSlotsUsed[];
+
+  /**
+   * New used count of the pact magic slots, 0 to their total. Only for a
+   * character with pact slots.
+   *
+   * @generated from field: optional int32 pact_slots_used = 7;
+   */
+  pactSlotsUsed?: number | undefined;
+
+  /**
+   * New used count of hit dice, 0 to the character's total.
+   *
+   * @generated from field: optional int32 hit_dice_used = 8;
+   */
+  hitDiceUsed?: number | undefined;
+};
+
+/**
+ * Describes the message meurpg.play.v1.AdjustCharacterVitalsRequest.
+ * Use `create(AdjustCharacterVitalsRequestSchema)` to create a new message.
+ */
+export const AdjustCharacterVitalsRequestSchema: GenMessage<AdjustCharacterVitalsRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 18);
+
+/**
+ * SpellSlotsUsed sets how many slots of one spell level are used.
+ *
+ * @generated from message meurpg.play.v1.SpellSlotsUsed
+ */
+export type SpellSlotsUsed = Message<"meurpg.play.v1.SpellSlotsUsed"> & {
+  /**
+   * The spell level, 1 to 9.
+   *
+   * @generated from field: int32 level = 1;
+   */
+  level: number;
+
+  /**
+   * How many are used, 0 to the level's total.
+   *
+   * @generated from field: int32 used = 2;
+   */
+  used: number;
+};
+
+/**
+ * Describes the message meurpg.play.v1.SpellSlotsUsed.
+ * Use `create(SpellSlotsUsedSchema)` to create a new message.
+ */
+export const SpellSlotsUsedSchema: GenMessage<SpellSlotsUsed> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 19);
+
+/**
+ * AdjustCharacterVitalsResponse returns the character's vitals after the
+ * correction (or, for a repeated idempotency_key, as they are now).
+ *
+ * @generated from message meurpg.play.v1.AdjustCharacterVitalsResponse
+ */
+export type AdjustCharacterVitalsResponse = Message<"meurpg.play.v1.AdjustCharacterVitalsResponse"> & {
+  /**
+   * @generated from field: meurpg.play.v1.CharacterVitals vitals = 1;
+   */
+  vitals?: CharacterVitals | undefined;
+};
+
+/**
+ * Describes the message meurpg.play.v1.AdjustCharacterVitalsResponse.
+ * Use `create(AdjustCharacterVitalsResponseSchema)` to create a new message.
+ */
+export const AdjustCharacterVitalsResponseSchema: GenMessage<AdjustCharacterVitalsResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 20);
+
+/**
+ * GameSessionBlockedReason says why PlayService refused a call with
+ * `failed_precondition`.
+ *
+ * @generated from enum meurpg.play.v1.GameSessionBlockedReason
+ */
+export enum GameSessionBlockedReason {
+  /**
+   * @generated from enum value: GAME_SESSION_BLOCKED_REASON_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * The campaign has no open game session.
+   *
+   * @generated from enum value: GAME_SESSION_BLOCKED_REASON_NO_OPEN_SESSION = 1;
+   */
+  NO_OPEN_SESSION = 1,
+
+  /**
+   * StartGameSession: the campaign already has an open session.
+   *
+   * @generated from enum value: GAME_SESSION_BLOCKED_REASON_SESSION_ALREADY_OPEN = 2;
+   */
+  SESSION_ALREADY_OPEN = 2,
+}
+
+/**
+ * Describes the enum meurpg.play.v1.GameSessionBlockedReason.
+ */
+export const GameSessionBlockedReasonSchema: GenEnum<GameSessionBlockedReason> = /*@__PURE__*/
+  enumDesc(file_meurpg_play_v1_play, 0);
+
+/**
+ * PlayService runs a campaign's game sessions and the live session.
  *
  * Every method needs a valid session cookie and fails with `unauthenticated`
  * without one. For a campaign the caller is not a member of, methods answer
@@ -208,6 +840,11 @@ export const ListGameSessionsResponseSchema: GenMessage<ListGameSessionsResponse
  * ADR-0011. An ID that is not a UUID is answered like an ID that does not
  * exist.
  *
+ * When the campaign has no open game session, the live-session methods
+ * (GetLiveSession, WatchGameSession, AdjustCharacterVitals) fail with
+ * `failed_precondition` and a GameSessionBlocked detail whose reason is
+ * NO_OPEN_SESSION, so the app can show "Nenhuma sessão em andamento".
+ *
  * Errors every method can return, besides those listed on each method:
  *   - `unauthenticated`: no valid session cookie.
  *   - `unavailable`: the database did not answer; the app may try again.
@@ -215,9 +852,10 @@ export const ListGameSessionsResponseSchema: GenMessage<ListGameSessionsResponse
  *     after the server's retries; the app may try again.
  *
  * Responses carry `Cache-Control: no-store`, because they describe the
- * caller's campaigns. Reads carry a campaign ID, so they are IDEMPOTENT and
+ * caller's campaigns. Reads that carry a campaign ID are IDEMPOTENT and
  * POST-only: a GET would put the ID in the URL, and URLs end up in the
- * platform's request logs (docs/privacidade.md).
+ * platform's request logs (docs/privacidade.md). ListOpenGameSessions,
+ * whose request is empty, is NO_SIDE_EFFECTS and may use GET.
  *
  * @generated from service meurpg.play.v1.PlayService
  */
@@ -241,8 +879,8 @@ export const PlayService: GenService<{
    *   - `not_found`: the campaign does not exist, or the caller is not a
    *     member of it.
    *   - `permission_denied`: the caller is a player.
-   *   - `failed_precondition`: the campaign already has an open session.
-   *     End it first.
+   *   - `failed_precondition`: the campaign already has an open session
+   *     (GameSessionBlocked, SESSION_ALREADY_OPEN). End it first.
    *
    * @generated from rpc meurpg.play.v1.PlayService.StartGameSession
    */
@@ -256,6 +894,9 @@ export const PlayService: GenService<{
    * campaign's master may call it. Ending a session that already ended is
    * not an error: it returns the session as it is, with its first
    * ended_at. Ending a session never unlocks a sheet.
+   *
+   * Ending the open session sends `session_ended` on every
+   * WatchGameSession stream of the campaign, which then ends.
    *
    * Errors:
    *   - `not_found`: the session is not in this campaign, the campaign does
@@ -283,6 +924,121 @@ export const PlayService: GenService<{
     methodKind: "unary";
     input: typeof ListGameSessionsRequestSchema;
     output: typeof ListGameSessionsResponseSchema;
+  },
+  /**
+   * ListOpenGameSessions lists the open game sessions of every campaign the
+   * caller is an active member of, as master or player, newest first. It is
+   * the in-app notice that a session started (RN-06): the app calls it
+   * about every 30 seconds while its tab is visible and the user is signed
+   * in, and once when the tab comes back into view. A pending member
+   * (RN-15) is not a member, so their campaigns never show up here. Anyone
+   * signed in may call it; the list is not paginated.
+   *
+   * @generated from rpc meurpg.play.v1.PlayService.ListOpenGameSessions
+   */
+  listOpenGameSessions: {
+    methodKind: "unary";
+    input: typeof ListOpenGameSessionsRequestSchema;
+    output: typeof ListOpenGameSessionsResponseSchema;
+  },
+  /**
+   * GetLiveSession returns the campaign's open game session and the vitals
+   * the caller may see (RN-02): the master gets every living player
+   * character of the campaign (not the dead ones, nor one waiting for
+   * approval); a player gets only their own living character, or none. It
+   * is the live session's snapshot: the app reads it after
+   * WatchGameSession's `ready` event, and again after every reconnection,
+   * so a missed event never leaves the screen stale. Any member may call
+   * it.
+   *
+   * Errors:
+   *   - `not_found`: the campaign does not exist, or the caller is not a
+   *     member of it (a pending member neither). The app shows "Peça um
+   *     convite ao mestre", without the campaign's name.
+   *   - `failed_precondition`: no open session (GameSessionBlocked,
+   *     NO_OPEN_SESSION).
+   *
+   * @generated from rpc meurpg.play.v1.PlayService.GetLiveSession
+   */
+  getLiveSession: {
+    methodKind: "unary";
+    input: typeof GetLiveSessionRequestSchema;
+    output: typeof GetLiveSessionResponseSchema;
+  },
+  /**
+   * WatchGameSession streams the live changes of the campaign's open game
+   * session to one member (ADR-0005). Any member may call it.
+   *
+   * The first message is always `ready`, sent once the server has
+   * subscribed the caller: only then does the app read the snapshot
+   * (GetLiveSession), so no change falls between the snapshot and the
+   * stream. A change can also arrive before the snapshot answers; the
+   * vitals' `revision` tells which is newer. Then:
+   *   - `heartbeat` every 25 seconds, so the app can tell a dead stream
+   *     (nothing for about 60 seconds) and proxies don't close an idle one;
+   *   - `vitals_changed` when the master corrects a character's vitals,
+   *     sent only to the master and to that character's player;
+   *   - `session_ended` when the master ends the session; the stream then
+   *     ends without an error.
+   *
+   * About every 60 seconds the server checks again, in the database, that
+   * the caller is still signed in and still a member: if not, the stream
+   * ends with the same error a call would get (`unauthenticated` or
+   * `not_found`). A stream lasts at most 30 minutes and then ends without
+   * an error; it also ends without an error when the server restarts. A
+   * stream that cannot keep up (the app stopped reading) ends with
+   * `unavailable`.
+   *
+   * The app reconnects after any end that is not an error below, with
+   * backoff (1 s, 2 s, 4 s, up to 30 s, with jitter), and only while the
+   * tab is visible; after each reconnection it reads the snapshot again.
+   *
+   * Errors:
+   *   - `not_found`: the campaign does not exist, or the caller is not a
+   *     member of it (a pending member neither).
+   *   - `failed_precondition`: no open session (GameSessionBlocked,
+   *     NO_OPEN_SESSION).
+   *
+   * @generated from rpc meurpg.play.v1.PlayService.WatchGameSession
+   */
+  watchGameSession: {
+    methodKind: "server_streaming";
+    input: typeof WatchGameSessionRequestSchema;
+    output: typeof WatchGameSessionResponseSchema;
+  },
+  /**
+   * AdjustCharacterVitals is the master's correction of a player
+   * character's vitals during the session (RN-02: the master has the final
+   * word). Only the campaign's master may call it, and only while the
+   * campaign has an open session. The character must be a living player
+   * character of the campaign.
+   *
+   * Each value set in the request replaces the current one; unset values
+   * stay as they are. At least one must be set. The change and a
+   * session_events row are written together, then `vitals_changed` goes to
+   * the master's and the character's player's streams.
+   *
+   * Calling again with the same idempotency_key (a retry) changes nothing
+   * and returns the character's current vitals.
+   *
+   * Errors:
+   *   - `not_found`: the campaign does not exist, the caller is not a
+   *     member of it, or the character is not a living player character of
+   *     the campaign (an NPC, a dead character, one waiting for approval).
+   *   - `permission_denied`: the caller is a player.
+   *   - `failed_precondition`: no open session (GameSessionBlocked,
+   *     NO_OPEN_SESSION).
+   *   - `invalid_argument`: nothing to change, an idempotency_key that is
+   *     not a UUID or was already used for another character, or a value
+   *     outside 0 to its maximum. The message names the field, such as
+   *     `spell_slots_used[0].used`.
+   *
+   * @generated from rpc meurpg.play.v1.PlayService.AdjustCharacterVitals
+   */
+  adjustCharacterVitals: {
+    methodKind: "unary";
+    input: typeof AdjustCharacterVitalsRequestSchema;
+    output: typeof AdjustCharacterVitalsResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_meurpg_play_v1_play, 0);

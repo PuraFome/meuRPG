@@ -3,6 +3,7 @@ package httpserver
 import (
 	"context"
 	"errors"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -145,6 +146,48 @@ func TestServeGivesUpAfterShutdownTimeout(t *testing.T) {
 	stop()
 	if err := <-done; !errors.Is(err, context.DeadlineExceeded) {
 		t.Errorf("Serve() = %v, want a deadline exceeded error", err)
+	}
+}
+
+// TestOnShutdownEndsLongLivedHandlers: a live stream never finishes on its
+// own, so OnShutdown ends it when the shutdown starts, and the shutdown does
+// not wait for its deadline (8 seconds by default).
+func TestOnShutdownEndsLongLivedHandlers(t *testing.T) {
+	t.Parallel()
+
+	srv := New(Config{Logger: discardLogger(), ShutdownTimeout: 30 * time.Second})
+	entered := make(chan struct{})
+	shutdown := make(chan struct{})
+	srv.OnShutdown(func() { close(shutdown) })
+	srv.Handle("GET /stream", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_ = http.NewResponseController(w).Flush() // best effort, as in a stream
+		close(entered)
+		<-shutdown
+	}))
+	baseURL, stop, done := startServer(t, srv)
+
+	go func() {
+		req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, baseURL+"/stream", nil)
+		if resp, err := http.DefaultClient.Do(req); err == nil {
+			_, _ = io.Copy(io.Discard, resp.Body)
+			_ = resp.Body.Close()
+		}
+	}()
+	<-entered
+
+	start := time.Now()
+	stop()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Errorf("Serve() = %v, want nil", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the shutdown waited for the long-lived handler")
+	}
+	if elapsed := time.Since(start); elapsed > 2*time.Second {
+		t.Errorf("shutdown took %v, want it prompt", elapsed)
 	}
 }
 

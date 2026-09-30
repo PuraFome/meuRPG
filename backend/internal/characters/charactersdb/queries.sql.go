@@ -239,6 +239,56 @@ func (q *Queries) GetMasterNotes(ctx context.Context, arg GetMasterNotesParams) 
 	return i, err
 }
 
+const getVitals = `-- name: GetVitals :one
+SELECT c.id, c.name, c.player_user_id, c.sheet,
+       v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
+       v.pact_slots_used, v.hit_dice_used, v.revision, v.updated_at
+FROM characters AS c
+LEFT JOIN character_vitals AS v ON v.character_id = c.id
+WHERE c.campaign_id = $1::UUID AND c.id = $2
+  AND c.kind = 'player' AND c.status = 'active'
+`
+
+type GetVitalsParams struct {
+	CampaignID string
+	ID         string
+}
+
+type GetVitalsRow struct {
+	ID                 string
+	Name               string
+	PlayerUserID       *string
+	Sheet              []byte
+	HitPointsCurrent   *int32
+	HitPointsTemporary *int32
+	SpellSlotsUsed     []int32
+	PactSlotsUsed      *int32
+	HitDiceUsed        *int32
+	Revision           *int32
+	UpdatedAt          *time.Time
+}
+
+// ListVitals for one character. No row means the character is not a
+// living, active player character of the campaign.
+func (q *Queries) GetVitals(ctx context.Context, arg GetVitalsParams) (GetVitalsRow, error) {
+	row := q.db.QueryRow(ctx, getVitals, arg.CampaignID, arg.ID)
+	var i GetVitalsRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.PlayerUserID,
+		&i.Sheet,
+		&i.HitPointsCurrent,
+		&i.HitPointsTemporary,
+		&i.SpellSlotsUsed,
+		&i.PactSlotsUsed,
+		&i.HitDiceUsed,
+		&i.Revision,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const insertCharacter = `-- name: InsertCharacter :one
 
 INSERT INTO characters
@@ -354,6 +404,67 @@ func (q *Queries) ListCharacters(ctx context.Context, arg ListCharactersParams) 
 			&i.Sheet,
 			&i.SheetLockedAt,
 			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listVitals = `-- name: ListVitals :many
+SELECT c.id, c.name, c.player_user_id, c.sheet,
+       v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
+       v.pact_slots_used, v.hit_dice_used, v.revision, v.updated_at
+FROM characters AS c
+LEFT JOIN character_vitals AS v ON v.character_id = c.id
+WHERE c.campaign_id = $1::UUID
+  AND c.kind = 'player' AND c.status = 'active'
+ORDER BY c.created_at, c.id
+`
+
+type ListVitalsRow struct {
+	ID                 string
+	Name               string
+	PlayerUserID       *string
+	Sheet              []byte
+	HitPointsCurrent   *int32
+	HitPointsTemporary *int32
+	SpellSlotsUsed     []int32
+	PactSlotsUsed      *int32
+	HitDiceUsed        *int32
+	Revision           *int32
+	UpdatedAt          *time.Time
+}
+
+// The vitals of the campaign's living, active player characters (RN-02),
+// oldest first: the party at the table. A character without a
+// character_vitals row has fresh vitals, so the columns from it may be NULL.
+// The sheet comes along because the maximums are derived from it.
+func (q *Queries) ListVitals(ctx context.Context, campaignID string) ([]ListVitalsRow, error) {
+	rows, err := q.db.Query(ctx, listVitals, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListVitalsRow
+	for rows.Next() {
+		var i ListVitalsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.PlayerUserID,
+			&i.Sheet,
+			&i.HitPointsCurrent,
+			&i.HitPointsTemporary,
+			&i.SpellSlotsUsed,
+			&i.PactSlotsUsed,
+			&i.HitDiceUsed,
+			&i.Revision,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -590,5 +701,56 @@ func (q *Queries) UpsertMasterNotes(ctx context.Context, arg UpsertMasterNotesPa
 	)
 	var i UpsertMasterNotesRow
 	err := row.Scan(&i.Notes, &i.UpdatedAt)
+	return i, err
+}
+
+const upsertVitals = `-- name: UpsertVitals :one
+INSERT INTO character_vitals
+    (character_id, hit_points_current, hit_points_temporary, spell_slots_used,
+     pact_slots_used, hit_dice_used, revision, updated_at)
+VALUES (
+    $1, $2, $3,
+    $4::INT4[], $5, $6, 1, $7
+)
+ON CONFLICT (character_id) DO UPDATE SET
+    hit_points_current = excluded.hit_points_current,
+    hit_points_temporary = excluded.hit_points_temporary,
+    spell_slots_used = excluded.spell_slots_used,
+    pact_slots_used = excluded.pact_slots_used,
+    hit_dice_used = excluded.hit_dice_used,
+    revision = character_vitals.revision + 1,
+    updated_at = excluded.updated_at
+RETURNING revision, updated_at
+`
+
+type UpsertVitalsParams struct {
+	CharacterID        string
+	HitPointsCurrent   int32
+	HitPointsTemporary int32
+	SpellSlotsUsed     []int32
+	PactSlotsUsed      int32
+	HitDiceUsed        int32
+	Now                time.Time
+}
+
+type UpsertVitalsRow struct {
+	Revision  int32
+	UpdatedAt time.Time
+}
+
+// Saves a character's vitals: the first save creates the row with revision
+// 1, and every later one adds 1.
+func (q *Queries) UpsertVitals(ctx context.Context, arg UpsertVitalsParams) (UpsertVitalsRow, error) {
+	row := q.db.QueryRow(ctx, upsertVitals,
+		arg.CharacterID,
+		arg.HitPointsCurrent,
+		arg.HitPointsTemporary,
+		arg.SpellSlotsUsed,
+		arg.PactSlotsUsed,
+		arg.HitDiceUsed,
+		arg.Now,
+	)
+	var i UpsertVitalsRow
+	err := row.Scan(&i.Revision, &i.UpdatedAt)
 	return i, err
 }

@@ -15,8 +15,11 @@ import (
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
 
+	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1/playv1connect"
@@ -26,36 +29,57 @@ import (
 const allowed connect.Code = 0
 
 // TestAuthorizationMatrix calls every PlayService method as each kind of
-// caller (ADR-0011): only the master starts and ends sessions; any member
-// lists them; a non-member gets not_found; anonymous, unauthenticated.
+// caller (ADR-0011): only the master starts and ends sessions and corrects
+// vitals; any member lists sessions and watches the live one; a non-member
+// and a pending member (RN-15) get not_found; anonymous, unauthenticated.
 func TestAuthorizationMatrix(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	master, player := h.newUser("Mestre"), h.newUser("Jogadora")
+	master, player, pending := h.newUser("Mestre"), h.newUser("Jogadora"), h.newUser("Pendente")
 	campaign := h.newCampaign(master, "Mirathel", player)
+	h.joinPending(master, campaign, pending)
+	pc := player.createCharacter(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Pensantus")
 	open := master.start(t, campaign).GetGameSession()
 
 	type client = playv1connect.PlayServiceClient
 	rows := []struct {
 		name string
 		call func(ctx context.Context, c client) error
-		// master, player, non-member, anonymous
-		want [4]connect.Code
+		// master, player, non-member, pending member, anonymous
+		want [5]connect.Code
 	}{
 		{"EndGameSession", func(ctx context.Context, c client) error {
 			_, err := c.EndGameSession(ctx, connect.NewRequest(&playv1.EndGameSessionRequest{CampaignId: campaign, GameSessionId: open.GetId()}))
 			return err
-		}, [4]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
 		// After the row above, no session is open, so the master may start
-		// one.
+		// one; the rows after it run during that session.
 		{"StartGameSession", func(ctx context.Context, c client) error {
 			_, err := c.StartGameSession(ctx, connect.NewRequest(&playv1.StartGameSessionRequest{CampaignId: campaign}))
 			return err
-		}, [4]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
 		{"ListGameSessions", func(ctx context.Context, c client) error {
 			_, err := c.ListGameSessions(ctx, connect.NewRequest(&playv1.ListGameSessionsRequest{CampaignId: campaign}))
 			return err
-		}, [4]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		}, [5]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		// Anyone signed in; each sees only their own campaigns.
+		{"ListOpenGameSessions", func(ctx context.Context, c client) error {
+			_, err := c.ListOpenGameSessions(ctx, connect.NewRequest(&playv1.ListOpenGameSessionsRequest{}))
+			return err
+		}, [5]connect.Code{allowed, allowed, allowed, allowed, connect.CodeUnauthenticated}},
+		{"GetLiveSession", func(ctx context.Context, c client) error {
+			_, err := c.GetLiveSession(ctx, connect.NewRequest(&playv1.GetLiveSessionRequest{CampaignId: campaign}))
+			return err
+		}, [5]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"WatchGameSession", func(ctx context.Context, c client) error {
+			return firstEventError(ctx, c, campaign)
+		}, [5]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"AdjustCharacterVitals", func(ctx context.Context, c client) error {
+			_, err := c.AdjustCharacterVitals(ctx, connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{
+				CampaignId: campaign, CharacterId: pc.GetId(), IdempotencyKey: newKey(), HitPointsTemporary: proto.Int32(1),
+			}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
 	}
 
 	covered := map[string]bool{}
@@ -76,6 +100,7 @@ func TestAuthorizationMatrix(t *testing.T) {
 		{"master", master.play},
 		{"player", player.play},
 		{"non-member", h.newUser("De fora").play},
+		{"pending member", pending.play},
 		{"anonymous", h.anonymous().play},
 	}
 	for _, r := range rows {
@@ -295,6 +320,26 @@ func (noSheets) LockSheets(context.Context, pgx.Tx, string, time.Time) (int64, e
 	return 0, errors.New("not in this test")
 }
 
+type noVitals struct{}
+
+func (noVitals) ListVitals(context.Context, string) ([]*playv1.CharacterVitals, error) {
+	return nil, errors.New("not in this test")
+}
+
+func (noVitals) GetVitals(context.Context, string, string) (*playv1.CharacterVitals, error) {
+	return nil, errors.New("not in this test")
+}
+
+func (noVitals) AdjustVitals(context.Context, pgx.Tx, string, string, *playv1.AdjustCharacterVitalsRequest) (before, after *playv1.CharacterVitals, err error) {
+	return nil, nil, errors.New("not in this test")
+}
+
+type noCampaigns struct{}
+
+func (noCampaigns) ActiveCampaigns(context.Context, string) ([]*campaignsv1.Campaign, error) {
+	return nil, errors.New("not in this test")
+}
+
 type noMembers struct{}
 
 func (noMembers) CampaignMembership(context.Context, string, string) (authz.Role, authz.Status, error) {
@@ -313,11 +358,16 @@ func lazyPool(t *testing.T) *pgxpool.Pool {
 
 func TestNewValidatesItsConfig(t *testing.T) {
 	t.Parallel()
-	if _, err := New(Config{Sheets: noSheets{}}); err == nil {
-		t.Error("New() without a Pool succeeded")
-	}
-	if _, err := New(Config{Pool: lazyPool(t)}); err == nil {
-		t.Error("New() without Sheets succeeded")
+	pool := lazyPool(t)
+	for name, cfg := range map[string]Config{
+		"Pool":      {Sheets: noSheets{}, Vitals: noVitals{}, Campaigns: noCampaigns{}},
+		"Sheets":    {Pool: pool, Vitals: noVitals{}, Campaigns: noCampaigns{}},
+		"Vitals":    {Pool: pool, Sheets: noSheets{}, Campaigns: noCampaigns{}},
+		"Campaigns": {Pool: pool, Sheets: noSheets{}, Vitals: noVitals{}},
+	} {
+		if _, err := New(cfg); err == nil {
+			t.Errorf("New() without %s succeeded", name)
+		}
 	}
 }
 
@@ -325,7 +375,7 @@ func TestNewValidatesItsConfig(t *testing.T) {
 // that the refusal is not cacheable. Reads are POST-only.
 func TestEveryMethodNeedsASession(t *testing.T) {
 	t.Parallel()
-	svc, err := New(Config{Pool: lazyPool(t), Sheets: noSheets{}, Logger: slog.New(slog.DiscardHandler)})
+	svc, err := New(Config{Pool: lazyPool(t), Sheets: noSheets{}, Vitals: noVitals{}, Campaigns: noCampaigns{}, Logger: slog.New(slog.DiscardHandler)})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -341,6 +391,10 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["StartGameSession"] = c.StartGameSession(ctx, connect.NewRequest(&playv1.StartGameSessionRequest{CampaignId: id}))
 	_, calls["EndGameSession"] = c.EndGameSession(ctx, connect.NewRequest(&playv1.EndGameSessionRequest{CampaignId: id, GameSessionId: id}))
 	_, calls["ListGameSessions"] = c.ListGameSessions(ctx, connect.NewRequest(&playv1.ListGameSessionsRequest{CampaignId: id}))
+	_, calls["ListOpenGameSessions"] = c.ListOpenGameSessions(ctx, connect.NewRequest(&playv1.ListOpenGameSessionsRequest{}))
+	_, calls["GetLiveSession"] = c.GetLiveSession(ctx, connect.NewRequest(&playv1.GetLiveSessionRequest{CampaignId: id}))
+	_, calls["AdjustCharacterVitals"] = c.AdjustCharacterVitals(ctx, connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{CampaignId: id, CharacterId: id, IdempotencyKey: id}))
+	calls["WatchGameSession"] = firstEventError(ctx, c, id)
 	methods := playv1.File_meurpg_play_v1_play_proto.Services().ByName("PlayService").Methods()
 	if len(calls) != methods.Len() {
 		t.Errorf("called %d methods, the service has %d", len(calls), methods.Len())
@@ -354,14 +408,36 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 		}
 	}
 
-	opts, _ := methods.ByName("ListGameSessions").Options().(*descriptorpb.MethodOptions)
-	if opts.GetIdempotencyLevel() != descriptorpb.MethodOptions_IDEMPOTENT {
-		t.Errorf("ListGameSessions idempotency_level = %v, want IDEMPOTENT", opts.GetIdempotencyLevel())
+	for method, want := range map[string]descriptorpb.MethodOptions_IdempotencyLevel{
+		"ListGameSessions":     descriptorpb.MethodOptions_IDEMPOTENT,
+		"GetLiveSession":       descriptorpb.MethodOptions_IDEMPOTENT,
+		"ListOpenGameSessions": descriptorpb.MethodOptions_NO_SIDE_EFFECTS, // an empty request
+	} {
+		opts, _ := methods.ByName(protoreflect.Name(method)).Options().(*descriptorpb.MethodOptions)
+		if opts.GetIdempotencyLevel() != want {
+			t.Errorf("%s idempotency_level = %v, want %v", method, opts.GetIdempotencyLevel(), want)
+		}
 	}
-	target := playv1connect.PlayServiceListGameSessionsProcedure + "?connect=v1&encoding=json&message=" + url.QueryEscape(`{"campaignId":"`+id+`"}`)
-	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequestWithContext(ctx, http.MethodGet, target, nil))
-	if rec.Code != http.StatusMethodNotAllowed {
-		t.Errorf("GET ListGameSessions: status = %d, want 405", rec.Code)
+	for _, procedure := range []string{playv1connect.PlayServiceListGameSessionsProcedure, playv1connect.PlayServiceGetLiveSessionProcedure} {
+		target := procedure + "?connect=v1&encoding=json&message=" + url.QueryEscape(`{"campaignId":"`+id+`"}`)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequestWithContext(ctx, http.MethodGet, target, nil))
+		if rec.Code != http.StatusMethodNotAllowed {
+			t.Errorf("GET %s: status = %d, want 405", procedure, rec.Code)
+		}
 	}
+}
+
+// firstEventError opens WatchGameSession and returns the error that ends
+// it before or at its first event (nil if the first event arrived).
+func firstEventError(ctx context.Context, c playv1connect.PlayServiceClient, campaignID string) error {
+	stream, err := c.WatchGameSession(ctx, connect.NewRequest(&playv1.WatchGameSessionRequest{CampaignId: campaignID}))
+	if err != nil {
+		return err
+	}
+	defer stream.Close() //nolint:errcheck // the test only needs the first event
+	if stream.Receive() {
+		return nil
+	}
+	return stream.Err()
 }
