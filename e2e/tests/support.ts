@@ -363,7 +363,8 @@ export async function createCharacterViaUI(
     await classSkillsGroup.getByRole('checkbox', { name: skill, exact: true }).check();
   }
 
-  await page.getByRole('button', { name: 'Criar personagem' }).click();
+  // "Criar personagem" for a player, "Criar NPC" from the master's menu.
+  await page.getByRole('button', { name: /^Criar (personagem|NPC)$/ }).click();
 
   // `(?!novo$)`: the player's own entry path, `/personagens/novo`, already
   // matches `/personagens/<anything>`, so without it this would return

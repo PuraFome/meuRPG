@@ -465,7 +465,7 @@
             @if (saveState().status === 'saving') {
               {{ s.mode === 'create' ? 'Criando…' : 'Salvando…' }}
             } @else {
-              {{ s.mode === 'create' ? 'Criar personagem' : 'Salvar ficha' }}
+              {{ s.mode === 'create' ? pageTitle() : 'Salvar ficha' }}
             }
           </button>
           <a mat-button class="editor__cancel" [routerLink]="cancelLink()">Cancelar</a>

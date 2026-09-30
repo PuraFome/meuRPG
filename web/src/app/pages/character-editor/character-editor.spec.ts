@@ -716,14 +716,14 @@ describe('CharacterEditor', () => {
       expect(el.querySelector('button[mat-flat-button]')?.textContent).toContain('Salvar ficha');
     });
 
-    it('titles an NPC form "Criar NPC" and keeps the primary action\'s name', async () => {
+    it('titles an NPC form "Criar NPC", and its primary action says the same', async () => {
       configure({ id: 'camp-1', tipo: 'minion' });
       const { el } = await render();
 
       expect(el.querySelector('h1')?.textContent).toContain('Criar NPC');
       expect(el.querySelector('.mr-page-lead')?.textContent).toContain('Minion: ficha curta');
       const primary = el.querySelector('button[mat-flat-button]');
-      expect(primary?.textContent).toContain('Criar personagem');
+      expect(primary?.textContent).toContain('Criar NPC');
     });
 
     it('lists what to fix on the short NPC form too', async () => {

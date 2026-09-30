@@ -140,7 +140,7 @@ test('o mestre cria um inimigo com ficha completa e um minion com ficha básica'
   await page.getByLabel('Deslocamento (pés)').fill('30');
   await page.getByLabel('Bônus de ataque').fill('2');
   await page.getByLabel('Dano').fill('1d6+1 perfurante');
-  await page.getByRole('button', { name: 'Criar personagem' }).click();
+  await page.getByRole('button', { name: 'Criar NPC' }).click();
   await expect(page).toHaveURL(/\/campanhas\/[^/]+\/personagens\/[^/]+$/);
 
   await page.goto(`/campanhas/${campaignId}`);
