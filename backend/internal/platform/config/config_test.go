@@ -24,7 +24,7 @@ func TestLoad(t *testing.T) {
 		{
 			name: "defaults when nothing is set",
 			env:  map[string]string{},
-			want: Config{Port: 8080, LogLevel: slog.LevelInfo},
+			want: Config{Port: 8080, LogLevel: slog.LevelInfo, WebDir: DefaultWebDir},
 		},
 		{
 			name: "all variables set",
@@ -32,17 +32,21 @@ func TestLoad(t *testing.T) {
 				"PORT":         "9090",
 				"DATABASE_URL": "postgresql://root@localhost:26257/meurpg?sslmode=disable",
 				"LOG_LEVEL":    "DEBUG",
+				"WEB_DIR":      "/srv/web",
 			},
 			want: Config{
 				Port:        9090,
 				DatabaseURL: "postgresql://root@localhost:26257/meurpg?sslmode=disable",
 				LogLevel:    slog.LevelDebug,
+				WebDir:      "/srv/web",
 			},
 		},
 		{
 			name: "surrounding whitespace is ignored",
-			env:  map[string]string{"PORT": " 3000 ", "LOG_LEVEL": " warn ", "DATABASE_URL": "  "},
-			want: Config{Port: 3000, LogLevel: slog.LevelWarn},
+			env: map[string]string{
+				"PORT": " 3000 ", "LOG_LEVEL": " warn ", "DATABASE_URL": "  ", "WEB_DIR": "  ",
+			},
+			want: Config{Port: 3000, LogLevel: slog.LevelWarn, WebDir: DefaultWebDir},
 		},
 		{
 			name:    "port is not a number",

@@ -9,17 +9,23 @@ O MeuRPG novo está sendo construído do zero: um backend em Go (monólito modul
 
 ## Como começar rápido
 
-Backend novo (Go), com CockroachDB local no Docker:
+Stack nova (Go + Angular em `web/`, na mesma origem), com CockroachDB local no Docker:
 
 ```bash
-make up      # sobe CockroachDB, aplica as migrations e sobe a API em localhost:8080
+make up      # sobe CockroachDB, aplica as migrations e sobe o app (API + Angular) em localhost:8080
 make test    # testes do backend
 make down    # derruba tudo
 ```
 
-App novo (`web/`, Angular): em breve. Outro agente está adicionando os comandos.
+Só o frontend novo, em modo dev (`web/`), apontando para uma API já rodando em `localhost:8080` via `make up` ou `make run`:
 
-Todos os comandos do backend estão em `make help` e no [CONTRIBUTING.md](CONTRIBUTING.md). Os comandos do app antigo (descontinuado, só para consulta) estão na seção abaixo.
+```bash
+cd web
+npm ci --ignore-scripts   # nunca roda scripts de instalação de terceiros
+npm start
+```
+
+Todos os comandos estão em `make help` e no [CONTRIBUTING.md](CONTRIBUTING.md). Os comandos do app antigo (descontinuado, só para consulta) estão na seção abaixo.
 
 ## App antigo (descontinuado)
 

@@ -42,7 +42,7 @@ Um budget alert no Google Cloud avisa se o custo passar do esperado. Os limiares
 - Plano e tamanho do cluster do CockroachDB.
 - Lista completa de segredos por ambiente e quem tem acesso.
 - Limiares dos alertas de orçamento.
-- Política de ociosidade do stream em tempo real (ADR-0005, a escrever).
+- Política de ociosidade do stream em tempo real (ADR-0005, proposta).
 
 ## Ver também
 

@@ -1,0 +1,27 @@
+// Global styles. There is no third-party font or icon here on purpose (see
+// docs/privacidade.md#cookies-e-navegador): the app ships with the system
+// font stack instead of a webfont, so no request ever leaves the browser
+// for typography.
+@use '@angular/material' as mat;
+
+html {
+  color-scheme: light dark;
+
+  @include mat.theme(
+    (
+      color: mat.$violet-palette,
+      typography: (
+        plain-family: system-ui,
+        brand-family: system-ui,
+      ),
+      density: 0,
+    )
+  );
+}
+
+body {
+  margin: 0;
+  font-family: var(--mat-sys-body-medium-font, system-ui, sans-serif);
+  background: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+}

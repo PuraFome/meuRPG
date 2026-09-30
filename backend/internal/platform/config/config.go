@@ -19,6 +19,9 @@ import (
 const (
 	DefaultPort     = 8080
 	DefaultLogLevel = slog.LevelInfo
+	// DefaultWebDir is where backend/Dockerfile's Node build stage copies
+	// the Angular production build.
+	DefaultWebDir = "/app/web"
 )
 
 // Config is the validated configuration shared by the binaries in cmd/.
@@ -35,6 +38,12 @@ type Config struct {
 
 	// LogLevel is the minimum level written to the logs.
 	LogLevel slog.Level
+
+	// WebDir is the directory holding the Angular production build (see
+	// internal/platform/httpserver.NewStatic). When nothing exists there,
+	// the server logs it and runs API-only instead of failing to start:
+	// that is the normal case outside the Docker image, e.g. `make run`.
+	WebDir string
 }
 
 // Load builds a Config from getenv, which is usually os.Getenv. Taking the
@@ -48,6 +57,7 @@ func Load(getenv func(string) string) (Config, error) {
 		Port:        DefaultPort,
 		DatabaseURL: strings.TrimSpace(getenv("DATABASE_URL")),
 		LogLevel:    DefaultLogLevel,
+		WebDir:      DefaultWebDir,
 	}
 
 	var errs []error
@@ -62,6 +72,10 @@ func Load(getenv func(string) string) (Config, error) {
 		default:
 			cfg.Port = port
 		}
+	}
+
+	if raw := strings.TrimSpace(getenv("WEB_DIR")); raw != "" {
+		cfg.WebDir = raw
 	}
 
 	if raw := strings.TrimSpace(getenv("LOG_LEVEL")); raw != "" {

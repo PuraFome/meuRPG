@@ -38,7 +38,8 @@ services:
 
   migrate:
     build:
-      context: ../../backend
+      context: ../.. # repo root: the image needs both backend/ and web/
+      dockerfile: backend/Dockerfile
       args:
         VERSION: dev
         COMMIT: local
@@ -54,7 +55,8 @@ services:
 
   api:
     build:
-      context: ../../backend
+      context: ../.. # repo root: the image needs both backend/ and web/
+      dockerfile: backend/Dockerfile
       args:
         VERSION: dev
         COMMIT: local

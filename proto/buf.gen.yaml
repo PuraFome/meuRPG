@@ -1,4 +1,6 @@
-# Code generation for the Go backend. Run from this directory: `buf generate`.
+# Code generation for the Go backend and the Angular frontend. Run from this
+# directory: `buf generate`. The TypeScript plugin needs web/node_modules, so
+# run `npm ci --ignore-scripts` in web/ first (`make proto` does this).
 # Docs: https://buf.build/docs/configuration/v2/buf-gen-yaml/
 version: v2
 # Delete the output directory before generating, so files for removed
@@ -22,3 +24,9 @@ plugins:
   - local: ["go", "-C", "../backend", "tool", "protoc-gen-connect-go"]
     out: ../backend/gen
     opt: paths=source_relative
+  # Connect-ES v2: protoc-gen-es alone generates the message types *and* the
+  # service definitions (no separate protoc-gen-connect-es plugin needed).
+  # The binary is a local dev dependency of web/, not a global install.
+  - local: ["../web/node_modules/.bin/protoc-gen-es"]
+    out: ../web/src/gen
+    opt: target=ts

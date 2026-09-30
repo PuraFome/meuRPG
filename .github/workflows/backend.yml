@@ -11,6 +11,7 @@ on:
     paths:
       - "backend/**"
       - "proto/**"
+      - "web/**"
       - "Makefile"
       - ".github/workflows/backend.yml"
   push:
@@ -18,6 +19,7 @@ on:
     paths:
       - "backend/**"
       - "proto/**"
+      - "web/**"
       - "Makefile"
       - ".github/workflows/backend.yml"
 
@@ -97,6 +99,17 @@ jobs:
         working-directory: backend
         run: go mod download
 
+      - name: Set up Node (buf generate's TypeScript plugin runs from web/node_modules)
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install web dependencies (no install scripts)
+        working-directory: web
+        run: npm ci --ignore-scripts
+
       - name: buf generate
         working-directory: proto
         run: buf generate
@@ -104,11 +117,12 @@ jobs:
       - name: Verify generated code is up to date
         run: |
           # Catches both changes to tracked generated files and any brand
-          # new generated file that wasn't committed.
-          git diff --exit-code -- backend/gen
-          if [ -n "$(git status --porcelain -- backend/gen)" ]; then
+          # new generated file that wasn't committed, on both the Go and
+          # the TypeScript side.
+          git diff --exit-code -- backend/gen web/src/gen
+          if [ -n "$(git status --porcelain -- backend/gen web/src/gen)" ]; then
             echo "::error::buf generate produced files that are not committed. Run 'make proto' and commit the result." >&2
-            git status --porcelain -- backend/gen
+            git status --porcelain -- backend/gen web/src/gen
             exit 1
           fi
 
@@ -147,8 +161,12 @@ jobs:
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
 
       - name: Docker build (no push, no registry login)
+        # Context is the repo root (the image needs both backend/ and
+        # web/), overriding this job's `backend` default working-directory.
+        working-directory: ${{ github.workspace }}
         run: |
           docker build \
+            -f backend/Dockerfile \
             --build-arg VERSION=${{ github.sha }} \
             --build-arg COMMIT=${{ github.sha }} \
             -t meurpg-backend:ci \

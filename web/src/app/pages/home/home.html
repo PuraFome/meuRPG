@@ -1,0 +1,40 @@
+@if (state(); as s) {
+  @switch (s.status) {
+    @case ('loading') {
+      <mat-card class="status-card" role="status" aria-live="polite">
+        <mat-card-content class="status-card__content">
+          <mat-spinner diameter="32" />
+          <p>Consultando o servidor...</p>
+        </mat-card-content>
+      </mat-card>
+    }
+    @case ('ready') {
+      <mat-card class="status-card">
+        <mat-card-header>
+          <mat-card-title>Servidor conectado</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <dl class="server-info">
+            <dt>Versão</dt>
+            <dd>{{ s.version }}</dd>
+            <dt>Commit</dt>
+            <dd><code>{{ s.commit }}</code></dd>
+          </dl>
+        </mat-card-content>
+      </mat-card>
+    }
+    @case ('error') {
+      <mat-card class="status-card status-card--error" role="alert">
+        <mat-card-header>
+          <mat-card-title>Não foi possível falar com o servidor</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <p>{{ s.message }}</p>
+        </mat-card-content>
+        <mat-card-actions>
+          <button mat-button (click)="retry()">Tentar de novo</button>
+        </mat-card-actions>
+      </mat-card>
+    }
+  }
+}

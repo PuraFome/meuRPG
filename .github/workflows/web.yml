@@ -1,4 +1,5 @@
-# CI for the Angular frontend.
+# CI for the Angular frontend (web/), served by the Go backend on the same
+# origin (see docs/arquitetura.md#frontend-web).
 #
 # Every third-party action is pinned by full commit SHA (not by tag) so a
 # moving tag can't silently change what runs in CI. The `# vX.Y.Z` comment
@@ -8,24 +9,12 @@ name: web
 on:
   pull_request:
     paths:
-      - "src/**"
-      - "public/**"
-      - "package.json"
-      - "package-lock.json"
-      - "angular.json"
-      - "tsconfig*.json"
-      - "vitest.config.ts"
+      - "web/**"
       - ".github/workflows/web.yml"
   push:
     branches: [main]
     paths:
-      - "src/**"
-      - "public/**"
-      - "package.json"
-      - "package-lock.json"
-      - "angular.json"
-      - "tsconfig*.json"
-      - "vitest.config.ts"
+      - "web/**"
       - ".github/workflows/web.yml"
 
 concurrency:
@@ -39,6 +28,9 @@ jobs:
   web:
     name: test and build
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
@@ -50,14 +42,15 @@ jobs:
         with:
           node-version: "22"
           cache: "npm"
+          cache-dependency-path: web/package-lock.json
 
-      # Verified locally on 2026-09-28: `npm ci --ignore-scripts` installs
+      # Verified locally on 2026-09-29: `npm ci --ignore-scripts` installs
       # cleanly and both `npm test` and `npm run build` still work with it,
       # so we never run install scripts from third-party packages in CI.
       - name: Install dependencies (no install scripts)
         run: npm ci --ignore-scripts
 
-      - name: Run unit tests (vitest)
+      - name: Run unit tests
         run: npm test
 
       - name: Build
