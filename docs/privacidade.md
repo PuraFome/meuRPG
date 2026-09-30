@@ -187,7 +187,7 @@ Os dados ficam em São Paulo (`southamerica-east1`). O acesso de um fornecedor d
 | Google Cloud | Cloud Run, Cloud Logging, Cloud Storage, Secret Manager | Tudo, em São Paulo | Data Processing Addendum com as cláusulas-padrão brasileiras |
 | Cockroach Labs | Banco CockroachDB gerenciado, no Google Cloud em São Paulo | O banco e os backups | **A definir:** o contrato atual cobre o GDPR |
 | Google (login) | Sign in with Google | O Google é controlador da própria conta; nós recebemos só `sub` e e-mail | Não é nosso operador |
-| Render | App antigo (descontinuado): NestJS. **`server/` será removido do repositório** (decidido pelo Samuel em 29/09/2026, ver [README.md](../README.md)) | O que passava pela API do app antigo | **Lacuna temporária.** Acaba quando `server/` for removido |
+| Render | App antigo (descontinuado): NestJS. **`server/` será removido do repositório** (decidido pelo Samuel em 29/09/2026, ver [App antigo](app-antigo.md)) | O que passava pela API do app antigo | **Lacuna temporária.** Acaba quando `server/` for removido |
 | GitHub Pages | App antigo (descontinuado): Angular, mantido em `src/` só como referência até sair num PR à parte | IP de quem visita | **Lacuna temporária.** Acaba quando `src/` for removido |
 | Cloudflare Workers AI | Jev, depois do MVP | Só contexto de jogo, sem dado pessoal | **A definir** antes do Jev |
 | Have I Been Pwned | Checa se a senha nova já vazou | 5 caracteres do hash da senha, saindo do servidor. Não identifica ninguém | Não é operador |

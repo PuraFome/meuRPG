@@ -20,7 +20,7 @@ Ferramentas: Go 1.27, buf, sqlc 1.31.1, goose, golangci-lint, Docker e Node 22. 
 | `make migrate` | Aplica as migrations do goose no banco local. |
 | `make e2e` | Sobe o ambiente local (como o `make up`), roda os testes Playwright de `e2e/` contra ele e mostra onde está o relatório. O ambiente continua de pé; `make down` derruba. Ver [Testes ponta a ponta](#testes-ponta-a-ponta-playwright). |
 | `make down` | Derruba o ambiente local (`docker compose down`). |
-| `npm start` | Sobe o Angular antigo (`src/`), descontinuado — mantido só como referência. |
+| `npm start` | Sobe o Angular antigo (`src/`), descontinuado — mantido só como referência (ver [App antigo](docs/app-antigo.md)). |
 | `make web-install` | Instala as dependências do `web/`: `npm ci --ignore-scripts` (nunca roda scripts de instalação de terceiros). Se for adicionar ou atualizar uma dependência, use `npm install` com o Corepack ativado (`corepack enable`, uma vez só): o `web/package.json` fixa `npm@11.20.0` porque o `npm` de série (10.x) trava ao resolver o grafo de peer dependencies do Vitest 4.1; `npm ci` não tem esse problema e funciona com qualquer um dos dois. |
 | `make web-test` | Roda os testes do Angular (`cd web && npm test`). |
 | `make web-build` | Builda o Angular para produção (`cd web && npm run build`). |
@@ -201,7 +201,7 @@ O Dependabot (`.github/dependabot.yml`) abre toda semana os PRs que mantêm essa
 - uma versão nova do Node ou do Go nas imagens, que muda junto com o CI e o `go.mod`;
 - a imagem do CockroachDB, que o `deploy/local/compose.yaml` e o job `go-db` prendem pelo mesmo digest.
 
-O `package.json` da raiz é o do app antigo (`src/`, descontinuado) e não recebe atualização.
+O `package.json` da raiz é o do [app antigo](docs/app-antigo.md) (`src/`, descontinuado) e não recebe atualização.
 
 ## Tipos de teste
 
