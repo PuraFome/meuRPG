@@ -1,0 +1,181 @@
+// The stepper is one panel (docs/design.md#componentes): the step tabs on
+// top, a rule, then the open step and its previous/next buttons.
+:host {
+  display: block;
+}
+
+.stepper {
+  background: var(--mr-surface);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+}
+
+// The open tab's underline sits on the rule under the tabs.
+.stepper__tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  padding: 0 var(--mr-space-3);
+  border-bottom: 1px solid var(--mr-rule);
+
+  @media (min-width: 720px) {
+    padding: 0 var(--mr-space-4);
+  }
+}
+
+.stepper__tab {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--mr-space-2);
+  min-width: 44px;
+  min-height: 56px;
+  margin-bottom: -1px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--mr-radius-sm) var(--mr-radius-sm) 0 0;
+  background: none;
+  color: var(--mr-ink-muted);
+  font: inherit;
+  font-size: 16px;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--mr-ink);
+  }
+
+  // The open step: the accent as an outline and an underline, never a fill.
+  &[aria-selected='true'] {
+    color: var(--mr-ink);
+    font-weight: 700;
+
+    &::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      height: 2px;
+      background: var(--mr-accent);
+    }
+
+    .stepper__num {
+      border: 2px solid var(--mr-accent);
+      color: var(--mr-accent-text);
+    }
+  }
+
+  @media (min-width: 720px) {
+    padding: 0 var(--mr-space-2);
+  }
+}
+
+.stepper__num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 30px;
+  height: 30px;
+  border: 1.5px solid var(--mr-control-line);
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1;
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.stepper__tab--error {
+  color: var(--mr-danger-ink);
+
+  .stepper__num,
+  &[aria-selected='true'] .stepper__num {
+    border-color: var(--mr-danger-ink);
+    color: var(--mr-danger-ink);
+  }
+}
+
+// A phone shows the numbers only; the label stays the tab's name.
+.stepper__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+
+  @media (min-width: 720px) {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+  }
+}
+
+.stepper__line {
+  flex: 1 1 var(--mr-space-4);
+  align-self: center;
+  min-width: var(--mr-space-1);
+  height: 1px;
+  background: var(--mr-line);
+}
+
+.stepper__panel {
+  padding: var(--mr-space-4) var(--mr-space-4) var(--mr-space-5);
+
+  @media (min-width: 720px) {
+    padding: var(--mr-space-5) var(--mr-space-6) var(--mr-space-6);
+  }
+}
+
+.stepper__heading {
+  margin-bottom: var(--mr-space-3);
+}
+
+.stepper__count {
+  margin: 0;
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 500;
+  color: var(--mr-ink-muted);
+}
+
+.stepper__title {
+  margin: 2px 0 0;
+  font-family: var(--mr-font-display);
+  font-weight: 700;
+  font-size: 26px;
+  line-height: 32px;
+  color: var(--mr-ink);
+  // Under the sticky app bar when focused from the buttons below.
+  scroll-margin-top: 88px;
+}
+
+.stepper__nav {
+  display: flex;
+  gap: var(--mr-space-3);
+  margin-top: var(--mr-space-6);
+  padding-top: var(--mr-space-4);
+  border-top: 1px solid var(--mr-rule);
+
+  button {
+    flex: 1 1 0;
+    min-width: 0;
+
+    @media (min-width: 720px) {
+      flex: none;
+    }
+  }
+}
+
+.stepper__next {
+  margin-left: auto;
+}

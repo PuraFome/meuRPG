@@ -1,0 +1,31 @@
+<p class="skills__summary" aria-live="polite">{{ summary() }}</p>
+<div class="skills" role="group" aria-label="Perícias">
+  @for (column of columns(); track $index; let first = $first) {
+    <div class="skills__column">
+      <div class="skill skill--head" [class.skill--head-repeat]="!first" aria-hidden="true">
+        <span>Perícia</span>
+        <span class="skill__ability">Atributo</span>
+        <span class="skill__expertise">Especialização</span>
+      </div>
+      @for (skill of column; track skill.key) {
+        <div class="skill">
+          <mat-checkbox
+            class="skill__name"
+            [checked]="proficient().has(skill.key)"
+            (change)="toggleSkill.emit(skill.key)"
+          >
+            {{ skill.namePt }}
+          </mat-checkbox>
+          <span class="skill__ability">{{ abilityAbbreviation(skill.ability) }}</span>
+          <mat-checkbox
+            class="skill__expertise"
+            [checked]="expertise().has(skill.key)"
+            [disabled]="!proficient().has(skill.key)"
+            [aria-label]="'Especialização em ' + skill.namePt"
+            (change)="toggleExpertise.emit(skill.key)"
+          />
+        </div>
+      }
+    </div>
+  }
+</div>

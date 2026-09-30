@@ -1,0 +1,41 @@
+// Like the sheet's ability column: short fields with the name on top and
+// the number big and centred, 2 x 3 on a phone, 3 x 2 from 600px.
+:host {
+  display: block;
+}
+
+.abilities {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--mr-space-4) var(--mr-space-3);
+  max-width: 300px;
+
+  @media (min-width: 600px) {
+    grid-template-columns: repeat(3, 136px);
+    gap: var(--mr-space-4);
+    max-width: none;
+  }
+}
+
+.ability {
+  width: 100%;
+  // Material's own form-field tokens: the number in the `stat` family,
+  // the medallion's corner.
+  --mat-form-field-container-height: 64px;
+  --mat-form-field-container-vertical-padding: 14px;
+  --mat-form-field-container-text-font: var(--mr-font-display);
+  --mat-form-field-container-text-size: 30px;
+  --mat-form-field-container-text-line-height: 36px;
+  --mat-form-field-container-text-weight: 700;
+  --mat-form-field-outlined-container-shape: var(--mr-radius-xl);
+  // The label keeps the size of every other field's label.
+  --mat-form-field-outlined-label-text-font: var(--mr-font-sans);
+  --mat-form-field-outlined-label-text-size: 16px;
+  --mat-form-field-outlined-label-text-populated-size: 16px;
+  --mat-form-field-outlined-label-text-weight: 400;
+
+  input {
+    text-align: center;
+  }
+}

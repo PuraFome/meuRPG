@@ -1,387 +1,477 @@
-@if (state(); as s) {
-  @switch (s.status) {
-    @case ('loading') {
-      <h1>Ficha</h1>
-      <mat-card class="status-card" role="status" aria-live="polite">
-        <mat-card-content class="status-card__content">
-          <mat-spinner diameter="32" />
-          <p>Carregando...</p>
-        </mat-card-content>
-      </mat-card>
-    }
-    @case ('error') {
-      <h1>Não foi possível abrir o formulário</h1>
-      <mat-card class="status-card status-card--error" role="alert">
-        <mat-card-content>
+<div class="editor">
+  @if (state(); as s) {
+    <header>
+      <h1 class="mr-page-title">{{ pageTitle() }}</h1>
+      @if (lead()) {
+        <p class="mr-page-lead">{{ lead() }}</p>
+      }
+    </header>
+
+    @switch (s.status) {
+      @case ('loading') {
+        <div class="mr-panel editor__loading" role="status">
+          <mat-spinner diameter="28" aria-label="Carregando o formulário" />
+          <p>Carregando o formulário…</p>
+        </div>
+      }
+      @case ('error') {
+        <div class="mr-notice mr-notice--danger" role="alert">
+          <mat-icon aria-hidden="true">error</mat-icon>
           <p>{{ s.message }}</p>
-        </mat-card-content>
-      </mat-card>
-    }
-    @case ('ready') {
-      <h1>{{ s.mode === 'create' ? 'Criar personagem' : 'Editar ficha' }}</h1>
-
-      @if (isFullSheetKind(s.kind)) {
-        <form [formGroup]="fullForm">
-          <mat-stepper [linear]="false" animationDuration="0">
-            <mat-step label="Básico">
-              <mat-form-field appearance="outline" class="full-width">
-                <mat-label>Nome do personagem</mat-label>
-                <input matInput formControlName="name" maxlength="80" />
-              </mat-form-field>
-
-              <mat-form-field appearance="outline">
-                <mat-label>Raça</mat-label>
-                <mat-select formControlName="race">
-                  @for (r of s.catalog.races; track r.key) {
-                    <mat-option [value]="r.key">{{ r.namePt }}</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
-
-              @if (availableSubraces().length > 0) {
-                <mat-form-field appearance="outline">
-                  <mat-label>Sub-raça</mat-label>
-                  <mat-select formControlName="subrace">
-                    @for (sr of availableSubraces(); track sr.key) {
-                      <mat-option [value]="sr.key">{{ sr.namePt }}</mat-option>
-                    }
-                  </mat-select>
-                </mat-form-field>
-              }
-
-              <mat-form-field appearance="outline">
-                <mat-label>Classe</mat-label>
-                <mat-select formControlName="className">
-                  @for (c of s.catalog.classes; track c.key) {
-                    <mat-option [value]="c.key">{{ c.namePt }}</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
-
-              @if ((selectedClass()?.subclasses?.length ?? 0) > 0) {
-                <mat-form-field appearance="outline">
-                  <mat-label>Subclasse</mat-label>
-                  <mat-select formControlName="subclassName">
-                    @for (sc of selectedClass()?.subclasses; track sc.key) {
-                      <mat-option [value]="sc.key">{{ sc.namePt }}</mat-option>
-                    }
-                  </mat-select>
-                </mat-form-field>
-              } @else {
-                <mat-form-field appearance="outline">
-                  <mat-label>Subclasse</mat-label>
-                  <input matInput formControlName="customSubclassName" />
-                </mat-form-field>
-              }
-
-              <mat-form-field appearance="outline">
-                <mat-label>Nível</mat-label>
-                <input matInput type="number" formControlName="level" min="1" max="20" />
-              </mat-form-field>
-
-              <mat-form-field appearance="outline">
-                <mat-label>Antecedente</mat-label>
-                <mat-select formControlName="background">
-                  @for (bg of s.catalog.backgrounds; track bg.key) {
-                    <mat-option [value]="bg.key">{{ bg.namePt }}</mat-option>
-                  }
-                  <mat-option value="custom">Outro (personalizado)</mat-option>
-                </mat-select>
-              </mat-form-field>
-
-              @if (selectedBackground() === 'custom') {
-                <app-fiction-notice />
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Nome do antecedente</mat-label>
-                  <input matInput formControlName="customBackgroundName" maxlength="40" />
-                </mat-form-field>
-
-                <p id="background-skills-label">Perícias do antecedente (escolha 2)</p>
-                <div class="skills-grid" role="group" aria-labelledby="background-skills-label">
-                  @for (skill of s.catalog.skills; track skill.key) {
-                    <mat-checkbox
-                      [checked]="customBackgroundSkills().has(skill.key)"
-                      [disabled]="
-                        !customBackgroundSkills().has(skill.key) && customBackgroundSkills().size >= 2
-                      "
-                      (change)="toggleCustomBackgroundSkill(skill.key)"
-                    >
-                      {{ skill.namePt }}
-                    </mat-checkbox>
-                  }
-                </div>
-              }
-
-              <mat-form-field appearance="outline">
-                <mat-label>Pontos de Experiência</mat-label>
-                <input
-                  matInput
-                  type="number"
-                  formControlName="experiencePoints"
-                  min="0"
-                  max="1000000"
-                />
-              </mat-form-field>
-
-              <mat-form-field appearance="outline">
-                <mat-label>Alinhamento</mat-label>
-                <mat-select formControlName="alignment">
-                  @for (key of alignmentKeys; track key) {
-                    <mat-option [value]="key">{{ alignmentLabel(key) }}</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
-            </mat-step>
-
-            <mat-step label="Atributos">
-              <div class="ability-inputs" formGroupName="abilities">
-                @for (key of abilityKeys; track key) {
-                  <mat-form-field appearance="outline">
-                    <mat-label>{{ abilityLabel(key) }}</mat-label>
-                    <input matInput type="number" [formControlName]="key" min="1" max="30" />
-                    @if (fullForm.controls.abilities.get(key)?.invalid) {
-                      <mat-error>De 1 a 30.</mat-error>
-                    }
+        </div>
+        <a mat-stroked-button class="editor__back" [routerLink]="s.backLink">{{ s.backLabel }}</a>
+      }
+      @case ('ready') {
+        @if (isFullSheetKind(s.kind)) {
+          <form [formGroup]="fullForm">
+            <app-editor-stepper>
+              <cdk-step [label]="stepLabels.basico" [hasError]="stepHasError('basico')">
+                <p class="step-lead">
+                  Quem é o personagem, na ordem do cabeçalho da ficha. Os campos com * são
+                  obrigatórios.
+                </p>
+                <div class="form-grid form-grid--four">
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="span-2">
+                    <mat-label>Nome do personagem</mat-label>
+                    <input matInput formControlName="name" maxlength="80" autocomplete="off" />
+                    <mat-error>Escreva o nome do personagem.</mat-error>
                   </mat-form-field>
-                }
-              </div>
 
-              <p id="extra-bonuses-label">
-                Bônus manuais (aumento de atributo, escolhas de raça, item mágico)
-              </p>
-              <div
-                class="ability-inputs"
-                formGroupName="extraAbilityBonuses"
-                aria-labelledby="extra-bonuses-label"
-              >
-                @for (key of abilityKeys; track key) {
-                  <mat-form-field appearance="outline">
-                    <mat-label>{{ abilityLabel(key) }} (manual)</mat-label>
-                    <input matInput type="number" [formControlName]="key" min="-10" max="10" />
-                    @if (fullForm.controls.extraAbilityBonuses.get(key)?.invalid) {
-                      <mat-error>De -10 a +10.</mat-error>
-                    }
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                    <mat-label>Nível</mat-label>
+                    <input
+                      matInput
+                      type="number"
+                      inputmode="numeric"
+                      formControlName="level"
+                      min="1"
+                      max="20"
+                    />
+                    <mat-error>De 1 a 20.</mat-error>
                   </mat-form-field>
-                }
-              </div>
 
-              <mat-form-field appearance="outline">
-                <mat-label>Pontos de Vida</mat-label>
-                <mat-select formControlName="hitPointsMethod">
-                  <mat-option value="average">Média</mat-option>
-                  <mat-option value="rolled">Rolado</mat-option>
-                </mat-select>
-              </mat-form-field>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                    <mat-label>Pontos de experiência</mat-label>
+                    <input
+                      matInput
+                      type="number"
+                      inputmode="numeric"
+                      formControlName="experiencePoints"
+                      min="0"
+                      max="1000000"
+                    />
+                    <mat-error>De 0 a 1.000.000.</mat-error>
+                  </mat-form-field>
 
-              @if (selectedHitPointsMethod() === 'rolled' && rollsNeeded() > 0) {
-                <div class="hit-points-rolls" role="group" aria-label="Dados de Vida rolados">
-                  @for (i of rollIndices(); track i) {
-                    <mat-form-field appearance="outline">
-                      <mat-label>Nível {{ i + 2 }}</mat-label>
-                      <input
-                        matInput
-                        type="number"
-                        min="1"
-                        max="12"
-                        [value]="rollValueAt(i) ?? ''"
-                        (input)="setHitPointsRoll(i, $any($event.target).valueAsNumber)"
-                      />
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                    <mat-label>Classe</mat-label>
+                    <mat-select formControlName="className">
+                      @for (c of s.catalog.classes; track c.key) {
+                        <mat-option [value]="c.key">{{ c.namePt }}</mat-option>
+                      }
+                    </mat-select>
+                    <mat-error>Escolha a classe.</mat-error>
+                  </mat-form-field>
+
+                  @if (!selectedClass()) {
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                      <mat-label>Subclasse</mat-label>
+                      <mat-select disabled />
+                      <mat-hint>Escolha a classe antes.</mat-hint>
+                    </mat-form-field>
+                  } @else if ((selectedClass()?.subclasses?.length ?? 0) > 0) {
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                      <mat-label>Subclasse</mat-label>
+                      <mat-select formControlName="subclassName">
+                        @for (sc of selectedClass()?.subclasses; track sc.key) {
+                          <mat-option [value]="sc.key">{{ sc.namePt }}</mat-option>
+                        }
+                      </mat-select>
+                    </mat-form-field>
+                  } @else {
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                      <mat-label>Subclasse</mat-label>
+                      <input matInput formControlName="customSubclassName" autocomplete="off" />
+                      <mat-hint>Escreva o nome, se houver.</mat-hint>
                     </mat-form-field>
                   }
+
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                    <mat-label>Raça</mat-label>
+                    <mat-select formControlName="race">
+                      @for (r of s.catalog.races; track r.key) {
+                        <mat-option [value]="r.key">{{ r.namePt }}</mat-option>
+                      }
+                    </mat-select>
+                    <mat-error>Escolha a raça.</mat-error>
+                  </mat-form-field>
+
+                  @if (availableSubraces().length > 0) {
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                      <mat-label>Sub-raça</mat-label>
+                      <mat-select formControlName="subrace">
+                        @for (sr of availableSubraces(); track sr.key) {
+                          <mat-option [value]="sr.key">{{ sr.namePt }}</mat-option>
+                        }
+                      </mat-select>
+                    </mat-form-field>
+                  }
+
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                    <mat-label>Antecedente</mat-label>
+                    <mat-select formControlName="background">
+                      @for (bg of s.catalog.backgrounds; track bg.key) {
+                        <mat-option [value]="bg.key">{{ bg.namePt }}</mat-option>
+                      }
+                      <mat-option value="custom">Outro (personalizado)</mat-option>
+                    </mat-select>
+                    <mat-error>Escolha o antecedente.</mat-error>
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                    <mat-label>Alinhamento</mat-label>
+                    <mat-select formControlName="alignment">
+                      @for (key of alignmentKeys; track key) {
+                        <mat-option [value]="key">{{ alignmentLabel(key) }}</mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
                 </div>
-              }
-            </mat-step>
 
-            <mat-step label="Perícias">
-              <div class="skills-list" role="group" aria-label="Perícias">
-                @for (skill of s.catalog.skills; track skill.key) {
-                  <div class="skills-list__row">
-                    <mat-checkbox
-                      [checked]="selectedSkills().has(skill.key)"
-                      (change)="toggleSkill(skill.key)"
+                @if (selectedBackground() === 'custom') {
+                  <section class="subsection" aria-labelledby="custom-background-title">
+                    <h3 class="subsection__title" id="custom-background-title">
+                      Antecedente personalizado
+                    </h3>
+                    <app-fiction-notice />
+                    <mat-form-field
+                      appearance="outline"
+                      subscriptSizing="dynamic"
+                      class="field-name"
                     >
-                      {{ skill.namePt }}
-                    </mat-checkbox>
-                    <mat-checkbox
-                      [checked]="expertiseSkills().has(skill.key)"
-                      [disabled]="!selectedSkills().has(skill.key)"
-                      (change)="toggleExpertise(skill.key)"
-                    >
-                      Expertise
-                    </mat-checkbox>
-                  </div>
+                      <mat-label>Nome do antecedente</mat-label>
+                      <input
+                        matInput
+                        formControlName="customBackgroundName"
+                        maxlength="40"
+                        autocomplete="off"
+                      />
+                    </mat-form-field>
+
+                    <p class="group-label" id="background-skills-label">
+                      Perícias do antecedente (escolha 2)
+                    </p>
+                    <p class="group-hint" aria-live="polite">
+                      {{ backgroundSkillsCount() }}.
+                      @if (customBackgroundSkills().size >= 2) {
+                        Para trocar, desmarque uma.
+                      }
+                    </p>
+                    <div class="check-grid" role="group" aria-labelledby="background-skills-label">
+                      @for (skill of s.catalog.skills; track skill.key) {
+                        <mat-checkbox
+                          [checked]="customBackgroundSkills().has(skill.key)"
+                          [disabled]="
+                            !customBackgroundSkills().has(skill.key) &&
+                            customBackgroundSkills().size >= 2
+                          "
+                          (change)="toggleCustomBackgroundSkill(skill.key)"
+                        >
+                          {{ skill.namePt }}
+                        </mat-checkbox>
+                      }
+                    </div>
+                  </section>
                 }
-              </div>
-            </mat-step>
+              </cdk-step>
 
-            @if (isCaster()) {
-              <mat-step label="Magias">
-                <app-fiction-notice />
+              <cdk-step [label]="stepLabels.atributos" [hasError]="stepHasError('atributos')">
+                <p class="step-lead">
+                  Os seis valores, de 1 a 30, antes dos bônus de raça. Os modificadores aparecem na
+                  ficha, calculados quando você salvar.
+                </p>
+                <app-ability-fields
+                  [group]="fullForm.controls.abilities"
+                  [min]="1"
+                  [max]="30"
+                  rangeError="De 1 a 30."
+                />
 
-                <p id="cantrips-label">Truques</p>
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Buscar truque</mat-label>
-                  <input
-                    matInput
-                    [value]="cantripsFilter()"
-                    (input)="cantripsFilter.set($any($event.target).value)"
+                <details
+                  class="bonuses"
+                  [open]="bonusesOpen()"
+                  (toggle)="bonusesOpen.set($any($event.target).open)"
+                >
+                  <summary class="bonuses__summary">
+                    <mat-icon class="bonuses__chevron" aria-hidden="true">expand_more</mat-icon>
+                    <span class="bonuses__text">
+                      <span class="bonuses__title">Bônus manuais</span>
+                      <span class="bonuses__sub">
+                        Aumento de atributo, escolhas de raça, item mágico.
+                      </span>
+                      <span class="bonuses__sub bonuses__state">
+                        {{ bonusesInUse() ? 'Em uso: ' + bonusesInUse() + '.' : 'Nenhum em uso.' }}
+                      </span>
+                    </span>
+                  </summary>
+                  <p class="step-lead" id="extra-bonuses-label">
+                    O que a ficha não soma sozinha, como os +1 que a raça deixa escolher. De −10 a
+                    +10, somados ao valor do atributo.
+                  </p>
+                  <app-ability-fields
+                    role="group"
+                    aria-labelledby="extra-bonuses-label"
+                    [group]="fullForm.controls.extraAbilityBonuses"
+                    [min]="-10"
+                    [max]="10"
+                    rangeError="De −10 a +10."
+                    nameSuffix="(bônus manual)"
                   />
-                </mat-form-field>
-                <div class="spell-picker" role="group" aria-labelledby="cantrips-label">
-                  @for (spell of filteredCantrips(); track spell.key) {
-                    <mat-checkbox
-                      [checked]="selectedCantrips().has(spell.key)"
-                      (change)="toggleCantrip(spell.key)"
-                    >
-                      {{ spell.namePt }}
-                    </mat-checkbox>
-                  } @empty {
-                    <p>Nenhum truque encontrado para a classe escolhida.</p>
+                </details>
+
+                <section class="subsection" aria-labelledby="hit-points-title">
+                  <h3 class="subsection__title" id="hit-points-title">Pontos de vida</h3>
+                  <p class="step-lead" id="hit-points-hint">
+                    O 1º nível sempre usa o máximo do dado de vida. Nos outros níveis:
+                  </p>
+                  <mat-radio-group
+                    class="hp-methods"
+                    formControlName="hitPointsMethod"
+                    aria-labelledby="hit-points-title"
+                    aria-describedby="hit-points-hint"
+                  >
+                    <mat-radio-button value="average">
+                      Média <span class="option-note">(um valor fixo)</span>
+                    </mat-radio-button>
+                    <mat-radio-button value="rolled">
+                      Rolado <span class="option-note">(o que saiu no dado)</span>
+                    </mat-radio-button>
+                  </mat-radio-group>
+
+                  @if (selectedHitPointsMethod() === 'rolled') {
+                    @if (rollsNeeded() > 0) {
+                      <p class="group-label" id="hit-points-rolls-label">
+                        Dados de vida rolados, um por nível
+                      </p>
+                      <div class="hp-rolls" role="group" aria-labelledby="hit-points-rolls-label">
+                        @for (i of rollIndices(); track i) {
+                          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                            <mat-label>Nível {{ i + 2 }}</mat-label>
+                            <input
+                              matInput
+                              type="number"
+                              inputmode="numeric"
+                              min="1"
+                              max="12"
+                              [value]="rollValueAt(i) ?? ''"
+                              (input)="setHitPointsRoll(i, $any($event.target).valueAsNumber)"
+                            />
+                          </mat-form-field>
+                        }
+                      </div>
+                    } @else {
+                      <p class="group-hint">
+                        No 1º nível não há rolagem. Os campos aparecem quando o nível passar de 1.
+                      </p>
+                    }
                   }
+                </section>
+              </cdk-step>
+
+              <cdk-step [label]="stepLabels.pericias">
+                <p class="step-lead">
+                  Marque as perícias em que o personagem é proficiente. Especialização dobra o bônus
+                  de proficiência e só vale numa perícia marcada.
+                  @if (selectedBackground() === 'custom') {
+                    As duas do antecedente personalizado ficam no passo Básico.
+                  }
+                </p>
+                <app-skill-picker
+                  [skills]="s.catalog.skills"
+                  [proficient]="selectedSkills()"
+                  [expertise]="expertiseSkills()"
+                  (toggleSkill)="toggleSkill($event)"
+                  (toggleExpertise)="toggleExpertise($event)"
+                />
+              </cdk-step>
+
+              @if (isCaster()) {
+                <cdk-step [label]="stepLabels.magias">
+                  <p class="step-lead">
+                    Da lista de magias da classe. Se o nível ainda não alcança uma escolha, a ficha
+                    mostra um aviso.
+                  </p>
+                  <app-fiction-notice />
+                  <div class="spell-grid">
+                    <app-spell-picker
+                      titleId="cantrips-label"
+                      title="Truques"
+                      searchLabel="Buscar truque"
+                      noun="truque"
+                      [options]="availableCantrips()"
+                      [filtered]="filteredCantrips()"
+                      [selected]="selectedCantrips()"
+                      [filter]="cantripsFilter()"
+                      (toggle)="toggleCantrip($event)"
+                      (filterChange)="cantripsFilter.set($event)"
+                    />
+                    @if (spellPreparation() === 'known' || spellPreparation() === 'spellbook') {
+                      <app-spell-picker
+                        titleId="spells-known-label"
+                        title="Magias conhecidas"
+                        searchLabel="Buscar magia"
+                        noun="magia"
+                        [showLevel]="true"
+                        [options]="availableSpells()"
+                        [filtered]="filteredSpellsKnown()"
+                        [selected]="selectedSpellsKnown()"
+                        [filter]="spellsKnownFilter()"
+                        (toggle)="toggleSpellKnown($event)"
+                        (filterChange)="spellsKnownFilter.set($event)"
+                      />
+                    }
+                    @if (spellPreparation() === 'prepared' || spellPreparation() === 'spellbook') {
+                      <app-spell-picker
+                        titleId="spells-prepared-label"
+                        title="Magias preparadas"
+                        searchLabel="Buscar magia"
+                        noun="magia"
+                        [showLevel]="true"
+                        [options]="availableSpells()"
+                        [filtered]="filteredSpellsPrepared()"
+                        [selected]="selectedSpellsPrepared()"
+                        [filter]="spellsPreparedFilter()"
+                        (toggle)="toggleSpellPrepared($event)"
+                        (filterChange)="spellsPreparedFilter.set($event)"
+                      />
+                    }
+                  </div>
+                </cdk-step>
+              }
+
+              <cdk-step [label]="stepLabels.equipamento" [hasError]="stepHasError('equipamento')">
+                <p class="step-lead">
+                  Armadura, escudo e armas vêm da lista do livro. O resto é texto livre.
+                </p>
+                <div class="form-grid">
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                    <mat-label>Armadura</mat-label>
+                    <mat-select formControlName="armor">
+                      <mat-option value="">Sem armadura</mat-option>
+                      @for (a of s.catalog.armor; track a.key) {
+                        <mat-option [value]="a.key">{{ a.namePt }}</mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
+                  <div class="shield">
+                    <mat-checkbox formControlName="shield">Escudo</mat-checkbox>
+                  </div>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="span-all">
+                    <mat-label>Armas</mat-label>
+                    <mat-select formControlName="weaponKeys" multiple>
+                      @for (w of s.catalog.weapons; track w.key) {
+                        <mat-option [value]="w.key">{{ w.namePt }}</mat-option>
+                      }
+                    </mat-select>
+                    <mat-hint>Escolha quantas quiser.</mat-hint>
+                  </mat-form-field>
                 </div>
 
-                @if (spellPreparation() === 'known' || spellPreparation() === 'spellbook') {
-                  <p id="spells-known-label">Magias conhecidas</p>
-                  <mat-form-field appearance="outline" class="full-width">
-                    <mat-label>Buscar magia</mat-label>
-                    <input
-                      matInput
-                      [value]="spellsKnownFilter()"
-                      (input)="spellsKnownFilter.set($any($event.target).value)"
-                    />
-                  </mat-form-field>
-                  <div class="spell-picker" role="group" aria-labelledby="spells-known-label">
-                    @for (spell of filteredSpellsKnown(); track spell.key) {
-                      <mat-checkbox
-                        [checked]="selectedSpellsKnown().has(spell.key)"
-                        (change)="toggleSpellKnown(spell.key)"
+                <section class="subsection" aria-labelledby="free-text-title">
+                  <h3 class="subsection__title" id="free-text-title">
+                    Outros itens, idiomas e características
+                  </h3>
+                  <app-fiction-notice />
+                  <div class="form-grid form-grid--two">
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="span-all">
+                      <mat-label>Itens de equipamento</mat-label>
+                      <textarea matInput formControlName="equipmentText" rows="4"></textarea>
+                      <mat-error>Até 4.000 caracteres.</mat-error>
+                      <mat-hint>
+                        Um por linha. Para mais de um item igual, escreva "(xN)" no fim, como "Tocha
+                        (x3)".
+                      </mat-hint>
+                    </mat-form-field>
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                      <mat-label>Idiomas</mat-label>
+                      <textarea matInput formControlName="languagesText" rows="3"></textarea>
+                      <mat-error>Até 2.000 caracteres.</mat-error>
+                      <mat-hint>Um por linha.</mat-hint>
+                    </mat-form-field>
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                      <mat-label>Proficiências em ferramentas</mat-label>
+                      <textarea
+                        matInput
+                        formControlName="toolProficienciesText"
+                        rows="3"
+                      ></textarea>
+                      <mat-error>Até 2.000 caracteres.</mat-error>
+                      <mat-hint>Uma por linha.</mat-hint>
+                    </mat-form-field>
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="span-all">
+                      <mat-label>Características personalizadas</mat-label>
+                      <textarea matInput formControlName="customFeaturesText" rows="4"></textarea>
+                      <mat-error>Até 5.000 caracteres.</mat-error>
+                      <mat-hint
+                        >O que o livro não tem, como um dom combinado com o mestre.</mat-hint
                       >
-                        {{ spell.namePt }} ({{ spellLevelLabel(spell.level) }})
-                      </mat-checkbox>
-                    } @empty {
-                      <p>Nenhuma magia encontrada para a classe escolhida.</p>
-                    }
+                    </mat-form-field>
                   </div>
-                }
-                @if (spellPreparation() === 'prepared' || spellPreparation() === 'spellbook') {
-                  <p id="spells-prepared-label">Magias preparadas</p>
-                  <mat-form-field appearance="outline" class="full-width">
-                    <mat-label>Buscar magia</mat-label>
-                    <input
-                      matInput
-                      [value]="spellsPreparedFilter()"
-                      (input)="spellsPreparedFilter.set($any($event.target).value)"
-                    />
-                  </mat-form-field>
-                  <div class="spell-picker" role="group" aria-labelledby="spells-prepared-label">
-                    @for (spell of filteredSpellsPrepared(); track spell.key) {
-                      <mat-checkbox
-                        [checked]="selectedSpellsPrepared().has(spell.key)"
-                        (change)="toggleSpellPrepared(spell.key)"
-                      >
-                        {{ spell.namePt }} ({{ spellLevelLabel(spell.level) }})
-                      </mat-checkbox>
-                    } @empty {
-                      <p>Nenhuma magia encontrada para a classe escolhida.</p>
-                    }
-                  </div>
-                }
-              </mat-step>
-            }
-
-            <mat-step label="Equipamento">
-              <app-fiction-notice />
-              <mat-form-field appearance="outline">
-                <mat-label>Armadura</mat-label>
-                <mat-select formControlName="armor">
-                  <mat-option value="">Sem armadura</mat-option>
-                  @for (a of s.catalog.armor; track a.key) {
-                    <mat-option [value]="a.key">{{ a.namePt }}</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
-              <mat-checkbox formControlName="shield">Escudo</mat-checkbox>
-              <mat-form-field appearance="outline" class="full-width">
-                <mat-label>Armas</mat-label>
-                <mat-select formControlName="weaponKeys" multiple>
-                  @for (w of s.catalog.weapons; track w.key) {
-                    <mat-option [value]="w.key">{{ w.namePt }}</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
-              <mat-form-field appearance="outline" class="full-width">
-                <mat-label>Itens de equipamento (um por linha)</mat-label>
-                <textarea matInput formControlName="equipmentText" rows="4"></textarea>
-                <mat-hint>
-                  Para mais de um item igual, escreva "(xN)" no fim da linha, como "Tocha (x3)".
-                </mat-hint>
-              </mat-form-field>
-              <mat-form-field appearance="outline" class="full-width">
-                <mat-label>Idiomas (um por linha)</mat-label>
-                <textarea matInput formControlName="languagesText" rows="2"></textarea>
-              </mat-form-field>
-              <mat-form-field appearance="outline" class="full-width">
-                <mat-label>Proficiências em ferramentas (uma por linha)</mat-label>
-                <textarea matInput formControlName="toolProficienciesText" rows="2"></textarea>
-              </mat-form-field>
-              <mat-form-field appearance="outline" class="full-width">
-                <mat-label>Características personalizadas</mat-label>
-                <textarea matInput formControlName="customFeaturesText" rows="4"></textarea>
-              </mat-form-field>
-            </mat-step>
-          </mat-stepper>
-        </form>
-      } @else {
-        <form [formGroup]="basicForm">
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Nome do personagem</mat-label>
-            <input matInput formControlName="name" maxlength="80" />
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Pontos de Vida (máximo)</mat-label>
-            <input matInput type="number" formControlName="hitPointsMax" min="1" />
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Classe de Armadura</mat-label>
-            <input matInput type="number" formControlName="armorClass" min="1" />
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Deslocamento (pés)</mat-label>
-            <input matInput type="number" formControlName="speedWalkFt" min="0" />
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Bônus de ataque</mat-label>
-            <input matInput type="number" formControlName="attackBonus" />
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Dano</mat-label>
-            <input matInput formControlName="damage" placeholder="1d6+1 perfurante" />
-          </mat-form-field>
-          <app-fiction-notice />
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Descrição</mat-label>
-            <textarea matInput formControlName="description" rows="4"></textarea>
-          </mat-form-field>
-        </form>
-      }
-
-      @if (saveState(); as sv) {
-        @if (sv.status === 'error') {
-          <p class="form-error" role="alert">{{ sv.message }}</p>
+                </section>
+              </cdk-step>
+            </app-editor-stepper>
+          </form>
+        } @else {
+          <form class="mr-panel editor__short" [formGroup]="basicForm">
+            <app-npc-short-form [form]="basicForm" />
+          </form>
         }
-      }
 
-      <div class="editor-actions">
-        <button
-          mat-flat-button
-          type="button"
-          [disabled]="saveState().status === 'saving'"
-          (click)="submit()"
-        >
-          {{ s.mode === 'create' ? 'Criar personagem' : 'Salvar ficha' }}
-        </button>
-        <a mat-button [routerLink]="['/campanhas', s.campaignId]">Cancelar</a>
-      </div>
+        @if (invalidSummary(); as summary) {
+          <div class="mr-notice mr-notice--danger editor__notice" role="alert">
+            <mat-icon aria-hidden="true">error</mat-icon>
+            <p>
+              <strong>{{
+                s.mode === 'create'
+                  ? 'Corrija os campos marcados antes de criar.'
+                  : 'Corrija os campos marcados antes de salvar.'
+              }}</strong>
+              {{ summary }}
+            </p>
+          </div>
+        }
+        @if (saveState(); as sv) {
+          @if (sv.status === 'error') {
+            <div class="mr-notice mr-notice--danger editor__notice" role="alert">
+              <mat-icon aria-hidden="true">error</mat-icon>
+              <p>
+                <strong>{{
+                  s.mode === 'create' ? 'O personagem não foi criado.' : 'A ficha não foi salva.'
+                }}</strong>
+                {{ sv.message }}
+              </p>
+            </div>
+          }
+        }
+
+        <div class="editor__actions">
+          <button
+            mat-flat-button
+            type="button"
+            class="editor__primary"
+            [disabled]="saveState().status === 'saving'"
+            (click)="submit()"
+          >
+            @if (saveState().status === 'saving') {
+              {{ s.mode === 'create' ? 'Criando…' : 'Salvando…' }}
+            } @else {
+              {{ s.mode === 'create' ? 'Criar personagem' : 'Salvar ficha' }}
+            }
+          </button>
+          <a mat-button class="editor__cancel" [routerLink]="cancelLink()">Cancelar</a>
+          <p class="editor__note">{{ actionsNote() }}</p>
+        </div>
+      }
     }
   }
-}
+</div>

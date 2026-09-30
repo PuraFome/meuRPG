@@ -1,0 +1,65 @@
+<div class="stepper">
+  <div class="stepper__tabs" role="tablist" aria-label="Passos da ficha">
+    @for (step of steps; track step; let i = $index; let last = $last) {
+      <button
+        type="button"
+        cdkStepHeader
+        class="stepper__tab"
+        [class.stepper__tab--error]="step.hasError"
+        [id]="_getStepLabelId(i)"
+        [attr.aria-selected]="selectedIndex === i"
+        [attr.aria-controls]="_getStepContentId(i)"
+        [attr.tabindex]="_getFocusIndex() === i ? 0 : -1"
+        (click)="step.select()"
+        (keydown)="_onKeydown($event)"
+      >
+        <span class="stepper__num" aria-hidden="true">
+          @if (step.hasError) {
+            <mat-icon>priority_high</mat-icon>
+          } @else {
+            {{ i + 1 }}
+          }
+        </span>
+        <span class="stepper__label">{{ step.label }}</span>
+        @if (step.hasError) {
+          <span class="mr-visually-hidden"> (com erro)</span>
+        }
+      </button>
+      @if (!last) {
+        <span class="stepper__line" aria-hidden="true"></span>
+      }
+    }
+  </div>
+
+  @for (step of steps; track step; let i = $index; let last = $last; let first = $first) {
+    <div
+      class="stepper__panel"
+      role="tabpanel"
+      [id]="_getStepContentId(i)"
+      [attr.aria-labelledby]="_getStepLabelId(i)"
+      [hidden]="selectedIndex !== i"
+    >
+      <header class="stepper__heading">
+        <p class="stepper__count">Passo {{ i + 1 }} de {{ steps.length }}</p>
+        <h2 class="stepper__title" tabindex="-1">{{ step.label }}</h2>
+      </header>
+
+      <ng-container [ngTemplateOutlet]="step.content" />
+
+      <div class="stepper__nav">
+        @if (!first) {
+          <button mat-stroked-button type="button" class="stepper__prev" (click)="goTo(i - 1)">
+            <mat-icon aria-hidden="true">arrow_back</mat-icon>
+            <span class="mr-visually-hidden">Passo anterior: </span>{{ labelAt(i - 1) }}
+          </button>
+        }
+        @if (!last) {
+          <button mat-stroked-button type="button" class="stepper__next" (click)="goTo(i + 1)">
+            <span class="mr-visually-hidden">Próximo passo: </span>{{ labelAt(i + 1) }}
+            <mat-icon iconPositionEnd aria-hidden="true">arrow_forward</mat-icon>
+          </button>
+        }
+      </div>
+    </div>
+  }
+</div>

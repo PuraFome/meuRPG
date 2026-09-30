@@ -1,30 +1,45 @@
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, ViewChild, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { CdkStep } from '@angular/cdk/stepper';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatRadioModule } from '@angular/material/radio';
 import { MatSelectModule } from '@angular/material/select';
-import { MatStepperModule } from '@angular/material/stepper';
 import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 
 import { describeCharacterError } from '../../core/characters/character-errors';
-import { abilityLabel, spellLevelLabel } from '../../core/characters/character-labels';
-import { ABILITY_KEYS, CharacterKind, isFullSheetKind } from '../../core/characters/characters.types';
+import { characterKindLabel } from '../../core/characters/character-labels';
+import { CharacterKind, isFullSheetKind } from '../../core/characters/characters.types';
 import { FictionNotice } from '../../shared/fiction-notice/fiction-notice';
+import { AbilityFields } from './ability-fields/ability-fields';
 import {
   ALIGNMENT_LABELS,
   AlignmentKey,
-  BasicCharacterFormValue,
   CharacterEditorMode,
   CharacterEditorSource,
   CharacterFormValue,
   HitPointsMethod,
   RulesCatalogVm,
 } from './character-editor.types';
+import { EditorStepper } from './editor-stepper/editor-stepper';
+import {
+  BASIC_SHEET_FIELDS,
+  EDITOR_STEP_LABELS,
+  EditorStepKey,
+  FULL_SHEET_FIELDS,
+  countLabel,
+  describeBonusesInUse,
+  describeInvalidFields,
+  invalidFields,
+} from './editor-labels';
+import { NpcShortForm } from './npc-short-form/npc-short-form';
+import { SkillPicker } from './skill-picker/skill-picker';
+import { SpellPicker } from './spell-picker/spell-picker';
 
 /** The NPC route's `:tipo` segment (plan §5) to `CharacterKind`. */
 const TIPO_TO_KIND: Record<string, CharacterKind> = {
@@ -44,7 +59,24 @@ type ReadyState = {
   catalog: RulesCatalogVm;
 };
 
-type PageState = { status: 'loading' } | { status: 'error'; message: string } | ReadyState;
+type ErrorState = {
+  status: 'error';
+  message: string;
+  /** Where "Voltar" goes: the sheet when editing one, else the campaign. */
+  backLink: string[];
+  backLabel: string;
+};
+
+type PageState = { status: 'loading'; title: string } | ErrorState | ReadyState;
+
+/** The page title: known from the route alone, so the loading state shows
+ * it too. */
+function titleFor(mode: CharacterEditorMode, kind: CharacterKind): string {
+  if (mode === 'edit') {
+    return 'Editar ficha';
+  }
+  return kind === 'player' ? 'Criar personagem' : 'Criar NPC';
+}
 
 type SavingState = { status: 'idle' } | { status: 'saving' } | { status: 'error'; message: string };
 
@@ -60,19 +92,24 @@ function filterByName<T extends { readonly namePt: string }>(
 }
 
 /**
- * The character editor (MR-003, MR-005, MR-006): a `MatStepper` for a full
+ * The character editor (MR-003, MR-005, MR-006): a stepper for a full
  * sheet (player, enemy, boss) — Básico, Atributos, Perícias, Magias (only
- * for a caster class), Equipamento — or a single short form for a basic
- * sheet (minion, story), routed from three places (plan §5):
+ * for a caster class), Equipamento, `EditorStepper` over the CDK stepper —
+ * or a single short form for a basic sheet (minion, story, `NpcShortForm`),
+ * routed from three places (plan §5):
  *
  * - `/campanhas/:id/personagens/novo` — a player creates their character.
  * - `/campanhas/:id/npcs/novo/:tipo` — a master creates an NPC.
  * - `/campanhas/:id/personagens/:characterId/editar` — either edits.
  *
- * The submit action sits outside the stepper, so the whole form can be
- * saved from any step. RN-01 is enforced on the server: this page renders
- * whatever `describeCharacterError` maps a `failed_precondition` /
- * `SHEET_LOCKED` response to, exactly like `character-sheet` does.
+ * The submit action sits outside the stepper, right under the open step,
+ * so the whole form can be saved from any step. A submit with an invalid
+ * field lists what to fix (`invalidSummary`), marks the steps that have
+ * one, and opens the first of them. RN-01 is enforced on the server: this
+ * page renders whatever `describeCharacterError` maps a
+ * `failed_precondition` / `SHEET_LOCKED` response to, exactly like
+ * `character-sheet` does. No D&D rule runs here: the page never shows a
+ * modifier, CA or PV it computed itself.
  *
  * A custom background's two granted skills (`CustomBackground.skill_keys`)
  * are collected separately from the player's own skill proficiencies —
@@ -108,17 +145,23 @@ function filterByName<T extends { readonly namePt: string }>(
 @Component({
   selector: 'app-character-editor',
   imports: [
+    AbilityFields,
+    CdkStep,
+    EditorStepper,
     FictionNotice,
     MatButtonModule,
-    MatCardModule,
     MatCheckboxModule,
     MatFormFieldModule,
+    MatIconModule,
     MatInputModule,
     MatProgressSpinnerModule,
+    MatRadioModule,
     MatSelectModule,
-    MatStepperModule,
+    NpcShortForm,
     ReactiveFormsModule,
     RouterLink,
+    SkillPicker,
+    SpellPicker,
   ],
   templateUrl: './character-editor.html',
   styleUrl: './character-editor.scss',
@@ -130,7 +173,9 @@ export class CharacterEditor {
   private readonly destroyRef = inject(DestroyRef);
   private readonly fb = inject(FormBuilder);
 
-  protected readonly state = signal<PageState>({ status: 'loading' });
+  @ViewChild(EditorStepper) private stepper?: EditorStepper;
+
+  protected readonly state = signal<PageState>({ status: 'loading', title: 'Ficha' });
   protected readonly saveState = signal<SavingState>({ status: 'idle' });
   protected readonly selectedSkills = signal<ReadonlySet<string>>(new Set());
   /** The custom background's two granted skills (`CustomBackground.skills`,
@@ -154,9 +199,8 @@ export class CharacterEditor {
   protected readonly spellsKnownFilter = signal('');
   protected readonly spellsPreparedFilter = signal('');
 
-  protected readonly abilityLabel = abilityLabel;
   protected readonly isFullSheetKind = isFullSheetKind;
-  protected readonly abilityKeys = ABILITY_KEYS;
+  protected readonly stepLabels = EDITOR_STEP_LABELS;
   protected readonly alignmentKeys: readonly AlignmentKey[] = [
     '',
     'lawful_good',
@@ -299,7 +343,118 @@ export class CharacterEditor {
   protected readonly filteredSpellsPrepared = computed(() =>
     filterByName(this.availableSpells(), this.spellsPreparedFilter()),
   );
-  protected readonly spellLevelLabel = spellLevelLabel;
+
+  /** Set by a submit with an invalid field: from then on, the notice above
+   * the buttons lists what is still wrong, and the steps that have it are
+   * marked, until everything is fixed. */
+  private readonly showErrors = signal(false);
+  private readonly fullFormValue = toSignal(this.fullForm.valueChanges);
+  private readonly basicFormValue = toSignal(this.basicForm.valueChanges);
+  private readonly invalidFullFields = computed(() => {
+    this.fullFormValue();
+    return this.showErrors() ? invalidFields(this.fullForm, FULL_SHEET_FIELDS) : [];
+  });
+  private readonly invalidBasicFields = computed(() => {
+    this.basicFormValue();
+    return this.showErrors() ? invalidFields(this.basicForm, BASIC_SHEET_FIELDS) : [];
+  });
+  /** "Básico: Nome do personagem, Raça. Atributos: Força." — or `''` when
+   * nothing needs fixing (or no submit was tried yet). */
+  protected readonly invalidSummary = computed(() => {
+    const s = this.state();
+    if (s.status !== 'ready') {
+      return '';
+    }
+    return describeInvalidFields(
+      isFullSheetKind(s.kind) ? this.invalidFullFields() : this.invalidBasicFields(),
+    );
+  });
+  private readonly stepsWithErrors = computed(
+    () => new Set(this.invalidFullFields().map((field) => field.step)),
+  );
+
+  /** "Bônus manuais" starts closed; a submit with an invalid bonus opens it. */
+  protected readonly bonusesOpen = signal(false);
+  private readonly bonusesValue = toSignal(
+    this.fullForm.controls.extraAbilityBonuses.valueChanges,
+    {
+      initialValue: this.fullForm.controls.extraAbilityBonuses.getRawValue(),
+    },
+  );
+  /** "Constituição +1, Inteligência +2", so the closed section still says
+   * what it holds. */
+  protected readonly bonusesInUse = computed(() => describeBonusesInUse(this.bonusesValue()));
+
+  protected readonly backgroundSkillsCount = computed(() =>
+    countLabel(
+      this.customBackgroundSkills().size,
+      'de 2 escolhida',
+      'de 2 escolhidas',
+      'Nenhuma escolhida',
+    ),
+  );
+
+  /** The line under the title: what this form is for, and that the
+   * sheet's numbers come from the server. */
+  protected readonly lead = computed(() => {
+    const s = this.state();
+    if (s.status !== 'ready') {
+      return '';
+    }
+    const kind = characterKindLabel(s.kind);
+    if (s.mode === 'edit') {
+      return isFullSheetKind(s.kind)
+        ? 'As mudanças valem quando você salvar. Modificadores, Classe de Armadura e pontos de vida são recalculados na hora.'
+        : `Ficha curta de ${kind.toLowerCase()}.`;
+    }
+    if (s.kind === 'player') {
+      return 'Preencha os passos na ordem que quiser. Modificadores, Classe de Armadura e pontos de vida são calculados quando você criar.';
+    }
+    return isFullSheetKind(s.kind)
+      ? `${kind} com ficha completa, como a de um jogador. Só você vê os NPCs da campanha.`
+      : `${kind}: ficha curta, só com o que se usa na mesa. Só você vê os NPCs da campanha.`;
+  });
+
+  protected readonly pageTitle = computed(() => {
+    const s = this.state();
+    if (s.status === 'loading') {
+      return s.title;
+    }
+    return s.status === 'ready' ? titleFor(s.mode, s.kind) : 'Não foi possível abrir o formulário';
+  });
+
+  /** Cancel goes back where the person came from: the sheet being edited,
+   * or the campaign. */
+  protected readonly cancelLink = computed(() => {
+    const s = this.state();
+    if (s.status !== 'ready') {
+      return ['/'];
+    }
+    return s.characterId
+      ? ['/campanhas', s.campaignId, 'personagens', s.characterId]
+      : ['/campanhas', s.campaignId];
+  });
+
+  /** What the buttons do, in one line next to them. */
+  protected readonly actionsNote = computed(() => {
+    const s = this.state();
+    if (s.status !== 'ready') {
+      return '';
+    }
+    const full = isFullSheetKind(s.kind);
+    if (s.mode === 'create') {
+      return full
+        ? 'Cria com o que estiver preenchido em todos os passos. Cancelar volta para a campanha sem criar.'
+        : 'Cancelar volta para a campanha sem criar.';
+    }
+    return full
+      ? 'Salva todos os passos de uma vez. Cancelar volta para a ficha sem salvar.'
+      : 'Cancelar volta para a ficha sem salvar.';
+  });
+
+  protected stepHasError(step: EditorStepKey): boolean {
+    return this.stepsWithErrors().has(step);
+  }
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
@@ -324,7 +479,7 @@ export class CharacterEditor {
   }
 
   private loadForCreate(campaignId: string, kind: CharacterKind): void {
-    this.state.set({ status: 'loading' });
+    this.state.set({ status: 'loading', title: titleFor('create', kind) });
     this.source.loadCatalog(campaignId).then(
       (catalog) => {
         this.state.set({
@@ -337,12 +492,18 @@ export class CharacterEditor {
           catalog,
         });
       },
-      (err: unknown) => this.state.set({ status: 'error', message: describeCharacterError(err) }),
+      (err: unknown) =>
+        this.state.set({
+          status: 'error',
+          message: describeCharacterError(err),
+          backLink: ['/campanhas', campaignId],
+          backLabel: 'Voltar para a campanha',
+        }),
     );
   }
 
   private loadForEdit(campaignId: string, characterId: string): void {
-    this.state.set({ status: 'loading' });
+    this.state.set({ status: 'loading', title: titleFor('edit', 'player') });
     Promise.all([
       this.source.loadCatalog(campaignId),
       this.source.loadCharacterForEdit(campaignId, characterId),
@@ -370,6 +531,8 @@ export class CharacterEditor {
         this.state.set({
           status: 'error',
           message: describeCharacterError(err),
+          backLink: ['/campanhas', campaignId, 'personagens', characterId],
+          backLabel: 'Voltar para a ficha',
         });
       });
   }
@@ -549,6 +712,29 @@ export class CharacterEditor {
     };
   }
 
+  /** After a submit with an invalid field: opens the step of the first one
+   * (and "Bônus manuais", if that is where it is), so the field and its
+   * error message are on screen. */
+  private openFirstInvalidStep(): void {
+    const [first] = invalidFields(this.fullForm, FULL_SHEET_FIELDS);
+    if (!first?.step) {
+      return;
+    }
+    if (first.path.startsWith('extraAbilityBonuses.')) {
+      this.bonusesOpen.set(true);
+    }
+    const stepper = this.stepper;
+    if (!stepper) {
+      return;
+    }
+    const index = stepper.steps
+      .toArray()
+      .findIndex((step) => step.label === EDITOR_STEP_LABELS[first.step!]);
+    if (index >= 0 && index !== stepper.selectedIndex) {
+      stepper.goTo(index);
+    }
+  }
+
   protected async submit(): Promise<void> {
     const s = this.state();
     if (s.status !== 'ready') {
@@ -558,6 +744,11 @@ export class CharacterEditor {
     const form = isBasic ? this.basicForm : this.fullForm;
     if (form.invalid) {
       form.markAllAsTouched();
+      this.saveState.set({ status: 'idle' });
+      this.showErrors.set(true);
+      if (!isBasic) {
+        this.openFirstInvalidStep();
+      }
       return;
     }
 

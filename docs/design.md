@@ -98,6 +98,7 @@ Regras que valem em toda tela:
 - **Etiqueta de estado é uma palavra:** Rascunho, Pendente, Travada, Aprovado, Morto; convites Ativo, Usado, Expirado, Revogado. O aviso ao lado explica o resto ("Esperando a aprovação do mestre").
 - **Pendência não é lembrete.** Na ficha, o que o motor de regras aponta como problema (armadura sem proficiência, magia fora do grimório) vira um aviso só, logo abaixo do cabeçalho, cada item começando pelo problema em negrito. O que é só lembrete (vantagem contra magia, por exemplo) fica, quieto, em "Características e traços".
 - **Ação que não se desfaz pede confirmação na própria tela:** "Marcar como morto" vira "Confirmar morte", e "Recusar personagem" vira "Confirmar recusa", com "Cancelar" ao lado e o foco no botão novo.
+- **Formulário em passos** (o editor da ficha): cada passo é uma aba, com o nome no cabeçalho, e o conteúdo começa com "Passo N de M" e o título. No celular, as abas viram números de 44px e o título do passo aparece no conteúdo. O botão de salvar fica embaixo do passo aberto, em qualquer passo; um passo com campo inválido ganha "(com erro)" na aba, e o envio leva ao primeiro deles.
 - **Um botão cheio por tela.** Quando a tela tem duas ações importantes (o mestre olhando um personagem pendente), a principal ("Aprovar personagem") é a cheia e a outra fica com contorno.
 
 Na ficha: o medalhão de atributo, o escudo da CA, as caixas de número, as linhas de proficiência e os campos do cabeçalho, desenhados no sistema visual do Claude Design.

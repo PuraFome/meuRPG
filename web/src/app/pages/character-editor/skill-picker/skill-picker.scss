@@ -1,0 +1,78 @@
+// Proficiency rows, like the sheet's: the skill, its ability, and the
+// expertise box in a column of its own, with a rule between rows.
+:host {
+  display: block;
+}
+
+.skills__summary {
+  margin: 0 0 var(--mr-space-3);
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.skills {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+
+  @media (min-width: 720px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--mr-space-6);
+  }
+}
+
+.skill {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 40px 96px;
+  align-items: center;
+  gap: var(--mr-space-2);
+  min-height: 44px;
+  border-top: 1px solid var(--mr-rule);
+}
+
+.skill--head {
+  min-height: 0;
+  padding-bottom: var(--mr-space-1);
+  border-top: 0;
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 500;
+  color: var(--mr-ink-muted);
+
+  .skill__ability {
+    font-size: 13px;
+  }
+
+  > span:first-child {
+    padding-left: 10px;
+  }
+}
+
+// Stacked on a phone, the second column continues the first.
+.skill--head-repeat {
+  display: none;
+
+  @media (min-width: 720px) {
+    display: grid;
+  }
+}
+
+.skill__ability {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+// Under 360px the ability column gives its room to the skill's name.
+@media (max-width: 359px) {
+  .skill {
+    grid-template-columns: minmax(0, 1fr) 88px;
+  }
+
+  .skill__ability {
+    display: none;
+  }
+}
+
+.skill__expertise {
+  justify-self: center;
+  text-align: center;
+}

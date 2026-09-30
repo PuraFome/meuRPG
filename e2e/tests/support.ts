@@ -281,10 +281,11 @@ async function selectMatOption(page: Page, label: string, optionName: string): P
  * `pensantus`) into the real `character-editor` (`web/src/app/pages/
  * character-editor/character-editor.html`).
  *
- * The stepper is non-linear (`[linear]="false"`) with no "next step"
- * button at all: each step's header is its own tab
- * (`getByRole('tab', {name})`), and the submit button sits outside the
- * stepper, reachable from any step. This helper only visits the steps it
+ * The stepper (`editor-stepper/`, on the CDK stepper) is non-linear: each
+ * step's header is its own tab (`getByRole('tab', {name})`), and the submit
+ * button sits under whichever step is open, so it is reachable from any
+ * step (the "Passo anterior"/"Próximo passo" buttons at the end of each
+ * step are a convenience only). This helper only visits the steps it
  * needs (Básico, Atributos, Perícias) — Magias and Equipamento are both
  * fully optional and left at their defaults, and there is no separate
  * "História" step: the story is its own screen/RPC (amendment A3).
@@ -305,12 +306,11 @@ export async function createCharacterViaUI(
 ): Promise<string> {
   await page.goto(entryPath);
 
-  // `exact: true` throughout: `mat-stepper` renders every step's content in
-  // the DOM at once (only the active one is visible — confirmed live, not
-  // lazy per step), so a loose substring match can hit another step's
-  // field, e.g. "Raça" also matching "Sub-raça" or the "Atributos" step's
-  // "Bônus manuais (aumento de atributo, escolhas de raça, item mágico)"
-  // group label, and "Força" also matching "Força (manual)".
+  // `exact: true` throughout: the editor's stepper renders every step's
+  // content in the DOM at once (only the active one is visible), so a loose
+  // substring match can hit another step's field, e.g. "Raça" also matching
+  // "Sub-raça", and "Força" also matching the manual bonus field
+  // "Força (bônus manual)".
 
   // Passo "Básico" (selected by default).
   await page.getByLabel('Nome do personagem', { exact: true }).fill(build.name);
