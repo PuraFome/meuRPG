@@ -115,8 +115,13 @@ func newHarness(t *testing.T, opts ...harnessOption) *harness {
 		store: mem,
 		mem:   mem,
 		// Real time, so the fake provider's tokens (stamped with time.Now)
-		// are valid; tests then move it forward.
-		clock: &fakeClock{now: time.Now()},
+		// are valid; tests then move it forward. Truncated to the
+		// database's precision (microseconds), like the other modules'
+		// harnesses, so a time read back from CockroachDB equals the one
+		// the test computed. Without it the cockroachdb subtests fail on
+		// Linux, whose clock has nanoseconds, and pass on macOS, whose
+		// clock stops at microseconds.
+		clock: &fakeClock{now: time.Now().Truncate(time.Microsecond)},
 		logs:  &syncBuffer{},
 	}
 	cfg := Config{
