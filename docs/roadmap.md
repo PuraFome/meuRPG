@@ -1,6 +1,6 @@
 # Roadmap por etapas
 
-O MVP fica pronto no fim da Etapa 7. A ordem começa pela fundação: primeiro o esqueleto, depois a base de testes e o esqueleto do app novo, e só então cada história entra pronta no backend Go, provada pelos próprios testes. Decidido em 29/09/2026: não há migração gradual a partir do app antigo. O `src/` (Angular antigo) fica só como referência até sair do repositório num PR à parte; o `server/` (NestJS antigo) será removido do repositório — decidido pelo Samuel em 29/09/2026 —, porque o backend novo em Go passa a cobrir sozinho todas as histórias do MVP (ver [README.md](../README.md)).
+O MVP fica pronto no fim da Etapa 7. A ordem começa pela fundação: primeiro o esqueleto, depois a base de testes e o esqueleto do app novo, e só então cada história entra pronta no backend Go, provada pelos próprios testes. Decidido em 29/09/2026: não há migração gradual a partir do app antigo. O `src/` (Angular antigo) fica só como referência até sair do repositório num PR à parte; o `server/` (NestJS antigo) será removido do repositório — decidido pelo Samuel em 29/09/2026 —, porque o backend novo em Go passa a cobrir sozinho todas as histórias do MVP (ver [App antigo](app-antigo.md)).
 
 ```mermaid
 flowchart TD

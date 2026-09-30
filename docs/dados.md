@@ -6,7 +6,7 @@ A campanha é o centro do banco novo. O schema começa do zero: a migration `000
 
 ## O que muda em relação ao app antigo (referência)
 
-No app antigo (`server/src/db/schema.sql`), a campanha não existia, e tudo pertencia direto ao usuário. A tabela abaixo serve só para quem conhece o schema antigo entender as escolhas novas — nenhuma linha dele é migrada, com a única exceção dos personagens, acima. O `server/` (NestJS) será removido do repositório (decidido pelo Samuel em 29/09/2026, ver [README.md](../README.md)); esta tabela já registra por escrito o que mudou, então a remoção do arquivo não perde o contexto.
+No app antigo (`server/src/db/schema.sql`), a campanha não existia, e tudo pertencia direto ao usuário. A tabela abaixo serve só para quem conhece o schema antigo entender as escolhas novas — nenhuma linha dele é migrada, com a única exceção dos personagens, acima. O `server/` (NestJS) será removido do repositório (decidido pelo Samuel em 29/09/2026, ver [App antigo](app-antigo.md)); esta tabela já registra por escrito o que mudou, então a remoção do arquivo não perde o contexto.
 
 | App antigo | Novo (proposta) | Por quê |
 | --- | --- | --- |
@@ -453,4 +453,4 @@ erDiagram
 - [Glossário](produto/glossario.md)
 - [Regras de negócio](produto/regras.md)
 - [Arquitetura](arquitetura.md): os módulos donos de cada tabela.
-- `server/src/db/schema.sql`: o schema do app antigo, referência histórica até o `server/` (NestJS) sair do repositório (decidido pelo Samuel em 29/09/2026, ver [README.md](../README.md)); esta página já registra o que muda, então a remoção não perde contexto.
+- `server/src/db/schema.sql`: o schema do app antigo, referência histórica até o `server/` (NestJS) sair do repositório (decidido pelo Samuel em 29/09/2026, ver [App antigo](app-antigo.md)); esta página já registra o que muda, então a remoção não perde contexto.

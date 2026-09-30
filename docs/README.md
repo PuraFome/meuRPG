@@ -17,10 +17,11 @@ Este diretório é a fonte da verdade sobre o produto, as regras e a arquitetura
 | [privacidade.md](privacidade.md) | Quem abre o PR, com revisão do Samuel e do Vinicius | Que dados pessoais guardamos, por quê e por quanto tempo, e a checklist de privacidade de todo PR |
 | [roadmap.md](roadmap.md) | Todo o time | A ordem das etapas até o MVP |
 | [operacao.md](operacao.md) | Vinicius e Samuel | Deploy, segredos, custos e alertas |
+| [app-antigo.md](app-antigo.md) | Quem consulta o app antigo | O que o Angular em `src/` e o NestJS em `server/` faziam, como rodavam e quando saem do repositório (descontinuados) |
 | [code-quality.md](code-quality.md) | Quem consulta o Angular antigo | Relatório de qualidade do frontend antigo (`src/`, descontinuado) |
 | `adr/` | Samuel e Vinicius | Decisões difíceis de desfazer. Repositório privado separado; a pasta local está no `.gitignore` e não é versionada aqui. |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Todo o time | Como rodar, testar e abrir um PR |
-| [../README.md](../README.md) | Quem chega no repositório agora | Visão geral do projeto, com link para o resto |
+| [../README.md](../README.md) | Quem chega no repositório agora | Visão geral do projeto: o que já funciona, o visual, a stack, como rodar e o que o CI confere, com link para o resto |
 
 Contratos de API (`.proto`) e migrations de banco não ficam documentados aqui: o `.proto` em `proto/meurpg/**/v1/*.proto` é a própria referência, gerada pelo CI; as migrations ficam em `backend/migrations/`.
 
