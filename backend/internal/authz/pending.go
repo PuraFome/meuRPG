@@ -50,6 +50,7 @@ var pendingMayCall = map[string]string{
 	charactersv1connect.CharacterServiceUpdateCharacterProcedure:      "edit their pending character's sheet",
 	charactersv1connect.CharacterServiceUpdateCharacterStoryProcedure: "edit their pending character's story",
 	rulesv1connect.ContentServiceListContentProcedure:                 "read the rules content the character editor offers",
+	rulesv1connect.ContentServiceGetSpellDetailsProcedure:             "read one spell's details, as the editor's spell list shows",
 }
 
 // RequireCampaignMemberOrPending is RequireCampaignMember for the calls a

@@ -85,6 +85,7 @@ func derive(b Build, c *content) Derived {
 	x.languages()
 	x.spellcasting()
 	x.attacks()
+	x.resourcesAndActions()
 	x.effectHints()
 	x.checkChoices()
 	return *d

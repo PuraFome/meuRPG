@@ -107,6 +107,7 @@ func TestPendingMayCallIsTheAgreedList(t *testing.T) {
 		charactersv1connect.CharacterServiceUpdateCharacterProcedure,
 		charactersv1connect.CharacterServiceUpdateCharacterStoryProcedure,
 		rulesv1connect.ContentServiceListContentProcedure,
+		rulesv1connect.ContentServiceGetSpellDetailsProcedure,
 	}
 	slices.Sort(want)
 	if got := slices.Sorted(maps.Keys(pendingMayCall)); !slices.Equal(got, want) {

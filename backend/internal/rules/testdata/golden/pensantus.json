@@ -1,5 +1,5 @@
 {
-  "ContentVersion": "srd51@a8abc93b235c+fx.1",
+  "ContentVersion": "srd51@a8abc93b235c+fx.2",
   "RaceNamePT": "Gnomo",
   "SubraceNamePT": "Gnomo das Rochas",
   "BackgroundNamePT": "Sábio",
@@ -306,7 +306,13 @@
           "class:wizard"
         ],
         "Ritual": false,
-        "Concentration": false
+        "Concentration": false,
+        "CastingTime": {
+          "Amount": 1,
+          "Unit": "action",
+          "Trigger": "",
+          "Raw": "1 action"
+        }
       },
       "Prepared": true
     },
@@ -323,7 +329,13 @@
           "class:wizard"
         ],
         "Ritual": false,
-        "Concentration": false
+        "Concentration": false,
+        "CastingTime": {
+          "Amount": 1,
+          "Unit": "action",
+          "Trigger": "",
+          "Raw": "1 action"
+        }
       },
       "Prepared": true
     },
@@ -340,7 +352,13 @@
           "class:wizard"
         ],
         "Ritual": false,
-        "Concentration": false
+        "Concentration": false,
+        "CastingTime": {
+          "Amount": 1,
+          "Unit": "action",
+          "Trigger": "",
+          "Raw": "1 action"
+        }
       },
       "Prepared": true
     },
@@ -357,7 +375,13 @@
           "class:wizard"
         ],
         "Ritual": false,
-        "Concentration": false
+        "Concentration": false,
+        "CastingTime": {
+          "Amount": 1,
+          "Unit": "action",
+          "Trigger": "",
+          "Raw": "1 action"
+        }
       },
       "Prepared": true
     },
@@ -376,7 +400,13 @@
           "class:wizard"
         ],
         "Ritual": true,
-        "Concentration": false
+        "Concentration": false,
+        "CastingTime": {
+          "Amount": 1,
+          "Unit": "action",
+          "Trigger": "",
+          "Raw": "1 action"
+        }
       },
       "Prepared": false
     },
@@ -398,7 +428,13 @@
           "class:wizard"
         ],
         "Ritual": true,
-        "Concentration": true
+        "Concentration": true,
+        "CastingTime": {
+          "Amount": 1,
+          "Unit": "action",
+          "Trigger": "",
+          "Raw": "1 action"
+        }
       },
       "Prepared": false
     },
@@ -414,7 +450,13 @@
           "class:wizard"
         ],
         "Ritual": true,
-        "Concentration": false
+        "Concentration": false,
+        "CastingTime": {
+          "Amount": 1,
+          "Unit": "hour",
+          "Trigger": "",
+          "Raw": "1 hour"
+        }
       },
       "Prepared": false
     },
@@ -431,7 +473,13 @@
           "class:wizard"
         ],
         "Ritual": false,
-        "Concentration": false
+        "Concentration": false,
+        "CastingTime": {
+          "Amount": 1,
+          "Unit": "reaction",
+          "Trigger": "",
+          "Raw": "1 reaction"
+        }
       },
       "Prepared": true
     },
@@ -448,7 +496,13 @@
           "class:wizard"
         ],
         "Ritual": false,
-        "Concentration": false
+        "Concentration": false,
+        "CastingTime": {
+          "Amount": 1,
+          "Unit": "action",
+          "Trigger": "",
+          "Raw": "1 action"
+        }
       },
       "Prepared": true
     },
@@ -465,7 +519,13 @@
           "class:wizard"
         ],
         "Ritual": false,
-        "Concentration": false
+        "Concentration": false,
+        "CastingTime": {
+          "Amount": 1,
+          "Unit": "action",
+          "Trigger": "",
+          "Raw": "1 action"
+        }
       },
       "Prepared": true
     },
@@ -483,7 +543,13 @@
           "class:wizard"
         ],
         "Ritual": false,
-        "Concentration": false
+        "Concentration": false,
+        "CastingTime": {
+          "Amount": 1,
+          "Unit": "action",
+          "Trigger": "",
+          "Raw": "1 action"
+        }
       },
       "Prepared": true
     },
@@ -500,7 +566,13 @@
           "class:wizard"
         ],
         "Ritual": false,
-        "Concentration": false
+        "Concentration": false,
+        "CastingTime": {
+          "Amount": 1,
+          "Unit": "action",
+          "Trigger": "",
+          "Raw": "1 action"
+        }
       },
       "Prepared": true
     },
@@ -517,7 +589,13 @@
           "class:wizard"
         ],
         "Ritual": false,
-        "Concentration": true
+        "Concentration": true,
+        "CastingTime": {
+          "Amount": 1,
+          "Unit": "action",
+          "Trigger": "",
+          "Raw": "1 action"
+        }
       },
       "Prepared": true
     }
@@ -536,6 +614,18 @@
       "DamageType": "damage-type:bludgeoning",
       "DamageTypeNamePT": "concussão",
       "VersatileDamage": "1d8+1",
+      "DamageDice": {
+        "Count": 1,
+        "Sides": 6,
+        "Bonus": 1,
+        "AddsModifier": false
+      },
+      "VersatileDice": {
+        "Count": 1,
+        "Sides": 8,
+        "Bonus": 1,
+        "AddsModifier": false
+      },
       "Proficient": true,
       "RangeFt": 5,
       "LongRangeFt": 0
@@ -553,6 +643,18 @@
       "DamageType": "damage-type:fire",
       "DamageTypeNamePT": "fogo",
       "VersatileDamage": "",
+      "DamageDice": {
+        "Count": 1,
+        "Sides": 10,
+        "Bonus": 0,
+        "AddsModifier": false
+      },
+      "VersatileDice": {
+        "Count": 0,
+        "Sides": 0,
+        "Bonus": 0,
+        "AddsModifier": false
+      },
       "Proficient": true,
       "RangeFt": 120,
       "LongRangeFt": 0
@@ -570,9 +672,103 @@
       "DamageType": "damage-type:cold",
       "DamageTypeNamePT": "frio",
       "VersatileDamage": "",
+      "DamageDice": {
+        "Count": 1,
+        "Sides": 8,
+        "Bonus": 0,
+        "AddsModifier": false
+      },
+      "VersatileDice": {
+        "Count": 0,
+        "Sides": 0,
+        "Bonus": 0,
+        "AddsModifier": false
+      },
       "Proficient": true,
       "RangeFt": 60,
       "LongRangeFt": 0
+    }
+  ],
+  "Resources": [
+    {
+      "Key": "arcane_recovery",
+      "NamePT": "Recuperação Arcana",
+      "Max": 1,
+      "Recharge": "long_rest",
+      "Source": "feature:arcane-recovery"
+    }
+  ],
+  "Actions": null,
+  "StandardActions": [
+    {
+      "Key": "standard:attack",
+      "NamePT": "Atacar",
+      "Economy": "action",
+      "Resource": "",
+      "Source": ""
+    },
+    {
+      "Key": "standard:cast-a-spell",
+      "NamePT": "Conjurar uma magia",
+      "Economy": "action",
+      "Resource": "",
+      "Source": ""
+    },
+    {
+      "Key": "standard:dash",
+      "NamePT": "Disparada",
+      "Economy": "action",
+      "Resource": "",
+      "Source": ""
+    },
+    {
+      "Key": "standard:disengage",
+      "NamePT": "Desengajar",
+      "Economy": "action",
+      "Resource": "",
+      "Source": ""
+    },
+    {
+      "Key": "standard:dodge",
+      "NamePT": "Esquivar",
+      "Economy": "action",
+      "Resource": "",
+      "Source": ""
+    },
+    {
+      "Key": "standard:help",
+      "NamePT": "Ajudar",
+      "Economy": "action",
+      "Resource": "",
+      "Source": ""
+    },
+    {
+      "Key": "standard:hide",
+      "NamePT": "Esconder",
+      "Economy": "action",
+      "Resource": "",
+      "Source": ""
+    },
+    {
+      "Key": "standard:ready",
+      "NamePT": "Preparar",
+      "Economy": "action",
+      "Resource": "",
+      "Source": ""
+    },
+    {
+      "Key": "standard:search",
+      "NamePT": "Procurar",
+      "Economy": "action",
+      "Resource": "",
+      "Source": ""
+    },
+    {
+      "Key": "standard:use-an-object",
+      "NamePT": "Usar um objeto",
+      "Economy": "action",
+      "Resource": "",
+      "Source": ""
     }
   ],
   "Features": [

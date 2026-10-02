@@ -44,6 +44,8 @@ type content struct {
 
 	// effects are the hand-written effects, by the key they belong to.
 	effects map[string][]*Effect
+	// standardActions are the actions every character has.
+	standardActions []Action
 	// casting is each casting class's spellcasting effect, and the class
 	// level it starts at.
 	casting map[string]classCasting
@@ -55,6 +57,8 @@ type content struct {
 	catalog  Catalog
 	// spellEntries are the Catalog's spells by key.
 	spellEntries map[string]SpellEntry
+	// spellDetails are the structured details of each spell, by key.
+	spellDetails map[string]*SpellDetails
 	// optionParents maps an option that 5e-database lists only in its
 	// parent's options (no "parent" field) to that parent.
 	optionParents map[string]string
@@ -138,7 +142,7 @@ func load(fsys fs.FS) (*content, error) {
 		return nil, err
 	}
 	for k, v := range names.Names {
-		if !c.exists(k) && !strings.HasPrefix(k, "sense:") {
+		if !c.exists(k) && !strings.HasPrefix(k, "sense:") && !strings.HasPrefix(k, "resource:") {
 			return nil, fmt.Errorf("effects/names_pt.json: unknown key %q", k)
 		}
 		c.namesPT[k] = v
@@ -151,6 +155,9 @@ func load(fsys fs.FS) (*content, error) {
 	slices.Sort(classIndexes)
 	c.compiler = formula.NewCompiler(classIndexes)
 	if err := c.loadEffects(fsys); err != nil {
+		return nil, err
+	}
+	if err := c.loadStandardActions(fsys); err != nil {
 		return nil, err
 	}
 	if err := c.indexCasting(); err != nil {
@@ -286,7 +293,7 @@ func (c *content) loadEffects(fsys fs.FS) error {
 	}
 	for _, name := range files {
 		switch path.Base(name) {
-		case "names_pt.json", "revision.json":
+		case "names_pt.json", "revision.json", "standard_actions.json":
 			continue
 		}
 		var f struct {
@@ -475,15 +482,18 @@ func (c *content) buildCatalog() {
 		}
 	}
 	c.spellEntries = map[string]SpellEntry{}
+	c.spellDetails = map[string]*SpellDetails{}
 	for _, k := range sortedKeys(c.spells) {
 		s := c.spells[k]
 		e := SpellEntry{
 			Key: k, Name: s.Name, NamePT: c.namePT(k), Level: s.Level,
 			School: s.School, SchoolNamePT: c.namePT(s.School),
 			Classes: s.Classes, Ritual: s.Ritual, Concentration: s.Concentration,
+			CastingTime: parseCastingTime(s.CastingTime),
 		}
 		cat.Spells = append(cat.Spells, e)
 		c.spellEntries[k] = e
+		c.spellDetails[k] = c.buildSpellDetails(s, e)
 	}
 	for _, a := range AllAbilities() {
 		cat.Abilities = append(cat.Abilities, AbilityEntry{
