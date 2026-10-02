@@ -296,19 +296,21 @@
                   </p>
                   <app-fiction-notice />
                   <div class="spell-grid">
-                    <app-spell-picker
-                      titleId="cantrips-label"
-                      title="Truques"
-                      searchLabel="Buscar truque"
-                      noun="truque"
-                      [options]="availableCantrips()"
-                      [filtered]="filteredCantrips()"
-                      [selected]="selectedCantrips()"
-                      [filter]="cantripsFilter()"
-                      (toggle)="toggleCantrip($event)"
-                      (describe)="describeSpell($event)"
-                      (filterChange)="cantripsFilter.set($event)"
-                    />
+                    @if (hasCantrips()) {
+                      <app-spell-picker
+                        titleId="cantrips-label"
+                        title="Truques"
+                        searchLabel="Buscar truque"
+                        noun="truque"
+                        [options]="availableCantrips()"
+                        [filtered]="filteredCantrips()"
+                        [selected]="selectedCantrips()"
+                        [filter]="cantripsFilter()"
+                        (toggle)="toggleCantrip($event)"
+                        (describe)="describeSpell($event)"
+                        (filterChange)="cantripsFilter.set($event)"
+                      />
+                    }
                     @if (noLeveledSpellsYet()) {
                       <p class="spell-grid__note">{{ castingStartsText() }}</p>
                     } @else if (

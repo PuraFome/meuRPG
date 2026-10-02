@@ -358,7 +358,8 @@ export class CharacterEditor {
   /** Picks which spell-list fields the Magias step shows (integrator
    * amendment, 29/09/2026): "known" and "spellbook" classes show "Magias
    * conhecidas"; "prepared" and "spellbook" classes show "Magias
-   * preparadas". Truques (cantrips) show for every caster regardless. */
+   * preparadas". Truques (cantrips) show for every caster whose class list
+   * has any (`hasCantrips`). */
   protected readonly spellPreparation = computed(() => this.selectedClass()?.preparation ?? null);
 
   /** The highest spell circle the chosen class reaches at the form's level,
@@ -410,6 +411,12 @@ export class CharacterEditor {
   }
   protected readonly filteredCantrips = computed(() =>
     filterByName(this.availableCantrips(), this.cantripsFilter()),
+  );
+  /** False for a caster whose class list has no cantrips (the Paladin and
+   * the Ranger in the SRD): the "Truques" picker would only be an empty box.
+   * A cantrip already on the sheet keeps it, so it can still be unchecked. */
+  protected readonly hasCantrips = computed(
+    () => this.availableCantrips().length > 0 || this.selectedCantrips().size > 0,
   );
   protected readonly filteredSpellsKnown = computed(() =>
     filterByName(this.visibleSpells(this.selectedSpellsKnown()), this.spellsKnownFilter()),
