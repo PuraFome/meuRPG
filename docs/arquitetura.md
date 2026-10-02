@@ -338,6 +338,7 @@ O mestre cria a campanha e gera convites; o jogador faz login e aceita o convite
 | `GetCampaign` | Membros da campanha; o membro pendente (RN-15) também, e recebe só o nome e `awaiting_approval` |
 | `ListMembers` | Membros da campanha. O membro pendente não aparece na lista e recebe `not_found` |
 | `CreateInvite`, `ListInvites`, `RevokeInvite` | O mestre da campanha |
+| `ListPendingMembers`, `RemovePendingMember` | O mestre da campanha. Listam e removem os membros pendentes que ainda não criaram o personagem (RN-15, pergunta 24); não são `ListMembers` de propósito, porque essas pessoas não são membros. Quem já criou o personagem se aprova ou se recusa pelo `CharacterService` |
 | `CampaignDocumentService`: `GetCampaignDocument`, `UpdateCampaignDocument` | O mestre da campanha (ver [Documento da campanha](#documento-da-campanha)) |
 
 ### Autorização
@@ -369,6 +370,8 @@ Quem não é membro recebe `not_found` tanto para uma campanha que existe quanto
 ### Membro pendente
 
 O membro pendente é quem aceitou um convite com aprovação (RN-15, MR-024) e espera o mestre aprovar o personagem que criou. Ele não é membro: `campaign_members.status = 'pending'`, e `RequireCampaignMember` e `RequireCampaignRole` respondem a ele exatamente como a quem não está na campanha (`not_found`, a mesma mensagem). Assim, toda chamada que já existe, e toda chamada nova, o deixa de fora sem ninguém precisar lembrar dele.
+
+Um membro pendente que nunca cria o personagem é apagado sozinho 30 dias depois de entrar (TTL do banco sobre `campaign_members.pending_expires_at`, ver [Modelo de dados](dados.md#esquema-implementado)); o mestre o vê e o remove antes com `ListPendingMembers` e `RemovePendingMember`. Se ele aceita um convite comum (sem aprovação) da mesma campanha, `AcceptInvite` o promove na mesma transação: gasta um uso, ativa a participação e aprova o personagem dele, se houver, pela interface `campaigns.Characters`, que o `characters` implementa (`cmd/api` liga os dois com `SetCharacters`, porque os dois módulos se precisam e nenhum importa o outro).
 
 A exceção é uma só, e fica escrita no `authz` (`backend/internal/authz/pending.go`), não espalhada pelos handlers: enquanto espera, ele trabalha no próprio personagem. Para passar, duas travas precisam abrir:
 

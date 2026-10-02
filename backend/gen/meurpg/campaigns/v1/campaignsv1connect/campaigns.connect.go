@@ -48,6 +48,12 @@ const (
 	// CampaignServiceListMembersProcedure is the fully-qualified name of the CampaignService's
 	// ListMembers RPC.
 	CampaignServiceListMembersProcedure = "/meurpg.campaigns.v1.CampaignService/ListMembers"
+	// CampaignServiceListPendingMembersProcedure is the fully-qualified name of the CampaignService's
+	// ListPendingMembers RPC.
+	CampaignServiceListPendingMembersProcedure = "/meurpg.campaigns.v1.CampaignService/ListPendingMembers"
+	// CampaignServiceRemovePendingMemberProcedure is the fully-qualified name of the CampaignService's
+	// RemovePendingMember RPC.
+	CampaignServiceRemovePendingMemberProcedure = "/meurpg.campaigns.v1.CampaignService/RemovePendingMember"
 	// CampaignServiceCreateInviteProcedure is the fully-qualified name of the CampaignService's
 	// CreateInvite RPC.
 	CampaignServiceCreateInviteProcedure = "/meurpg.campaigns.v1.CampaignService/CreateInvite"
@@ -90,9 +96,37 @@ type CampaignServiceClient interface {
 	//
 	// Pending members (RN-15, MR-024) are not listed: they are not members
 	// yet. The master sees who is waiting through their characters
-	// (CharacterService.ListCharacters, state PENDING). A pending member who
-	// calls it gets `not_found`.
+	// (CharacterService.ListCharacters, state PENDING), and the ones who have
+	// not created a character yet through ListPendingMembers. A pending
+	// member who calls it gets `not_found`. (Those two live in their own calls
+	// so that this list keeps meaning "people who are in the campaign".)
 	ListMembers(context.Context, *connect.Request[v1.ListMembersRequest]) (*connect.Response[v1.ListMembersResponse], error)
+	// ListPendingMembers lists the campaign's pending members who have not
+	// created a character yet (RN-15, MR-024), in the order they joined, each
+	// with when they joined and when they will be removed automatically (30
+	// days after joining). Only the campaign's master may call it. It only
+	// reads, and is POST-only, like GetCampaign.
+	//
+	// It is a call of its own, not extra entries in ListMembers, because those
+	// people are not members: ListMembers keeps its meaning, and no screen
+	// that reads it can mistake them for players. A pending member who already
+	// created a character is not here: the master finds them, and approves or
+	// rejects them, through CharacterService.ListCharacters.
+	ListPendingMembers(context.Context, *connect.Request[v1.ListPendingMembersRequest]) (*connect.Response[v1.ListPendingMembersResponse], error)
+	// RemovePendingMember removes a pending member who has not created a
+	// character yet (RN-15, MR-024): their membership is deleted. The person
+	// loses nothing else (account, other campaigns), and a new invite brings
+	// them back. Only the campaign's master may call it. Removing someone who
+	// is already gone is `not_found`, so a repeated call tells the app the
+	// list is stale.
+	//
+	// Errors:
+	//   - `not_found`: the campaign is not the caller's to manage (see
+	//     authorization), or the user has no membership in it.
+	//   - `failed_precondition`: the user is an active member (members are not
+	//     removed here), or a pending member who already has a character
+	//     (the master rejects it with CharacterService.RejectCharacter).
+	RemovePendingMember(context.Context, *connect.Request[v1.RemovePendingMemberRequest]) (*connect.Response[v1.RemovePendingMemberResponse], error)
 	// CreateInvite creates an invite link for a campaign (MR-002). Only the
 	// campaign's master may call it.
 	//
@@ -122,7 +156,13 @@ type CampaignServiceClient interface {
 	// It is idempotent for members: a member of the campaign (the master
 	// included) gets the campaign back with `already_member` set, whatever
 	// the state of the invite, and no use of the invite is spent. This holds
-	// for a pending member too: they stay pending.
+	// for a pending member too, with one exception: a pending member who
+	// accepts an invite WITHOUT approval (and that works now) is promoted. It
+	// spends one use, the membership becomes active, and the character they
+	// created and that waits for approval, if any, is approved: an ordinary
+	// invite counts as the master's approval (RN-15). The response then has
+	// `already_member` false and the full campaign. If they accept an invite
+	// with approval, or one that does not work, they stay pending.
 	//
 	// Invites with approval (RN-15, MR-024). When the invite has
 	// `requires_approval`, the caller becomes a pending member, not a player:
@@ -184,6 +224,19 @@ func NewCampaignServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
+		listPendingMembers: connect.NewClient[v1.ListPendingMembersRequest, v1.ListPendingMembersResponse](
+			httpClient,
+			baseURL+CampaignServiceListPendingMembersProcedure,
+			connect.WithSchema(campaignServiceMethods.ByName("ListPendingMembers")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
+		removePendingMember: connect.NewClient[v1.RemovePendingMemberRequest, v1.RemovePendingMemberResponse](
+			httpClient,
+			baseURL+CampaignServiceRemovePendingMemberProcedure,
+			connect.WithSchema(campaignServiceMethods.ByName("RemovePendingMember")),
+			connect.WithClientOptions(opts...),
+		),
 		createInvite: connect.NewClient[v1.CreateInviteRequest, v1.CreateInviteResponse](
 			httpClient,
 			baseURL+CampaignServiceCreateInviteProcedure,
@@ -214,14 +267,16 @@ func NewCampaignServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 
 // campaignServiceClient implements CampaignServiceClient.
 type campaignServiceClient struct {
-	createCampaign  *connect.Client[v1.CreateCampaignRequest, v1.CreateCampaignResponse]
-	listMyCampaigns *connect.Client[v1.ListMyCampaignsRequest, v1.ListMyCampaignsResponse]
-	getCampaign     *connect.Client[v1.GetCampaignRequest, v1.GetCampaignResponse]
-	listMembers     *connect.Client[v1.ListMembersRequest, v1.ListMembersResponse]
-	createInvite    *connect.Client[v1.CreateInviteRequest, v1.CreateInviteResponse]
-	listInvites     *connect.Client[v1.ListInvitesRequest, v1.ListInvitesResponse]
-	revokeInvite    *connect.Client[v1.RevokeInviteRequest, v1.RevokeInviteResponse]
-	acceptInvite    *connect.Client[v1.AcceptInviteRequest, v1.AcceptInviteResponse]
+	createCampaign      *connect.Client[v1.CreateCampaignRequest, v1.CreateCampaignResponse]
+	listMyCampaigns     *connect.Client[v1.ListMyCampaignsRequest, v1.ListMyCampaignsResponse]
+	getCampaign         *connect.Client[v1.GetCampaignRequest, v1.GetCampaignResponse]
+	listMembers         *connect.Client[v1.ListMembersRequest, v1.ListMembersResponse]
+	listPendingMembers  *connect.Client[v1.ListPendingMembersRequest, v1.ListPendingMembersResponse]
+	removePendingMember *connect.Client[v1.RemovePendingMemberRequest, v1.RemovePendingMemberResponse]
+	createInvite        *connect.Client[v1.CreateInviteRequest, v1.CreateInviteResponse]
+	listInvites         *connect.Client[v1.ListInvitesRequest, v1.ListInvitesResponse]
+	revokeInvite        *connect.Client[v1.RevokeInviteRequest, v1.RevokeInviteResponse]
+	acceptInvite        *connect.Client[v1.AcceptInviteRequest, v1.AcceptInviteResponse]
 }
 
 // CreateCampaign calls meurpg.campaigns.v1.CampaignService.CreateCampaign.
@@ -242,6 +297,16 @@ func (c *campaignServiceClient) GetCampaign(ctx context.Context, req *connect.Re
 // ListMembers calls meurpg.campaigns.v1.CampaignService.ListMembers.
 func (c *campaignServiceClient) ListMembers(ctx context.Context, req *connect.Request[v1.ListMembersRequest]) (*connect.Response[v1.ListMembersResponse], error) {
 	return c.listMembers.CallUnary(ctx, req)
+}
+
+// ListPendingMembers calls meurpg.campaigns.v1.CampaignService.ListPendingMembers.
+func (c *campaignServiceClient) ListPendingMembers(ctx context.Context, req *connect.Request[v1.ListPendingMembersRequest]) (*connect.Response[v1.ListPendingMembersResponse], error) {
+	return c.listPendingMembers.CallUnary(ctx, req)
+}
+
+// RemovePendingMember calls meurpg.campaigns.v1.CampaignService.RemovePendingMember.
+func (c *campaignServiceClient) RemovePendingMember(ctx context.Context, req *connect.Request[v1.RemovePendingMemberRequest]) (*connect.Response[v1.RemovePendingMemberResponse], error) {
+	return c.removePendingMember.CallUnary(ctx, req)
 }
 
 // CreateInvite calls meurpg.campaigns.v1.CampaignService.CreateInvite.
@@ -292,9 +357,37 @@ type CampaignServiceHandler interface {
 	//
 	// Pending members (RN-15, MR-024) are not listed: they are not members
 	// yet. The master sees who is waiting through their characters
-	// (CharacterService.ListCharacters, state PENDING). A pending member who
-	// calls it gets `not_found`.
+	// (CharacterService.ListCharacters, state PENDING), and the ones who have
+	// not created a character yet through ListPendingMembers. A pending
+	// member who calls it gets `not_found`. (Those two live in their own calls
+	// so that this list keeps meaning "people who are in the campaign".)
 	ListMembers(context.Context, *connect.Request[v1.ListMembersRequest]) (*connect.Response[v1.ListMembersResponse], error)
+	// ListPendingMembers lists the campaign's pending members who have not
+	// created a character yet (RN-15, MR-024), in the order they joined, each
+	// with when they joined and when they will be removed automatically (30
+	// days after joining). Only the campaign's master may call it. It only
+	// reads, and is POST-only, like GetCampaign.
+	//
+	// It is a call of its own, not extra entries in ListMembers, because those
+	// people are not members: ListMembers keeps its meaning, and no screen
+	// that reads it can mistake them for players. A pending member who already
+	// created a character is not here: the master finds them, and approves or
+	// rejects them, through CharacterService.ListCharacters.
+	ListPendingMembers(context.Context, *connect.Request[v1.ListPendingMembersRequest]) (*connect.Response[v1.ListPendingMembersResponse], error)
+	// RemovePendingMember removes a pending member who has not created a
+	// character yet (RN-15, MR-024): their membership is deleted. The person
+	// loses nothing else (account, other campaigns), and a new invite brings
+	// them back. Only the campaign's master may call it. Removing someone who
+	// is already gone is `not_found`, so a repeated call tells the app the
+	// list is stale.
+	//
+	// Errors:
+	//   - `not_found`: the campaign is not the caller's to manage (see
+	//     authorization), or the user has no membership in it.
+	//   - `failed_precondition`: the user is an active member (members are not
+	//     removed here), or a pending member who already has a character
+	//     (the master rejects it with CharacterService.RejectCharacter).
+	RemovePendingMember(context.Context, *connect.Request[v1.RemovePendingMemberRequest]) (*connect.Response[v1.RemovePendingMemberResponse], error)
 	// CreateInvite creates an invite link for a campaign (MR-002). Only the
 	// campaign's master may call it.
 	//
@@ -324,7 +417,13 @@ type CampaignServiceHandler interface {
 	// It is idempotent for members: a member of the campaign (the master
 	// included) gets the campaign back with `already_member` set, whatever
 	// the state of the invite, and no use of the invite is spent. This holds
-	// for a pending member too: they stay pending.
+	// for a pending member too, with one exception: a pending member who
+	// accepts an invite WITHOUT approval (and that works now) is promoted. It
+	// spends one use, the membership becomes active, and the character they
+	// created and that waits for approval, if any, is approved: an ordinary
+	// invite counts as the master's approval (RN-15). The response then has
+	// `already_member` false and the full campaign. If they accept an invite
+	// with approval, or one that does not work, they stay pending.
 	//
 	// Invites with approval (RN-15, MR-024). When the invite has
 	// `requires_approval`, the caller becomes a pending member, not a player:
@@ -382,6 +481,19 @@ func NewCampaignServiceHandler(svc CampaignServiceHandler, opts ...connect.Handl
 		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
+	campaignServiceListPendingMembersHandler := connect.NewUnaryHandler(
+		CampaignServiceListPendingMembersProcedure,
+		svc.ListPendingMembers,
+		connect.WithSchema(campaignServiceMethods.ByName("ListPendingMembers")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
+	campaignServiceRemovePendingMemberHandler := connect.NewUnaryHandler(
+		CampaignServiceRemovePendingMemberProcedure,
+		svc.RemovePendingMember,
+		connect.WithSchema(campaignServiceMethods.ByName("RemovePendingMember")),
+		connect.WithHandlerOptions(opts...),
+	)
 	campaignServiceCreateInviteHandler := connect.NewUnaryHandler(
 		CampaignServiceCreateInviteProcedure,
 		svc.CreateInvite,
@@ -417,6 +529,10 @@ func NewCampaignServiceHandler(svc CampaignServiceHandler, opts ...connect.Handl
 			campaignServiceGetCampaignHandler.ServeHTTP(w, r)
 		case CampaignServiceListMembersProcedure:
 			campaignServiceListMembersHandler.ServeHTTP(w, r)
+		case CampaignServiceListPendingMembersProcedure:
+			campaignServiceListPendingMembersHandler.ServeHTTP(w, r)
+		case CampaignServiceRemovePendingMemberProcedure:
+			campaignServiceRemovePendingMemberHandler.ServeHTTP(w, r)
 		case CampaignServiceCreateInviteProcedure:
 			campaignServiceCreateInviteHandler.ServeHTTP(w, r)
 		case CampaignServiceListInvitesProcedure:
@@ -448,6 +564,14 @@ func (UnimplementedCampaignServiceHandler) GetCampaign(context.Context, *connect
 
 func (UnimplementedCampaignServiceHandler) ListMembers(context.Context, *connect.Request[v1.ListMembersRequest]) (*connect.Response[v1.ListMembersResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.campaigns.v1.CampaignService.ListMembers is not implemented"))
+}
+
+func (UnimplementedCampaignServiceHandler) ListPendingMembers(context.Context, *connect.Request[v1.ListPendingMembersRequest]) (*connect.Response[v1.ListPendingMembersResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.campaigns.v1.CampaignService.ListPendingMembers is not implemented"))
+}
+
+func (UnimplementedCampaignServiceHandler) RemovePendingMember(context.Context, *connect.Request[v1.RemovePendingMemberRequest]) (*connect.Response[v1.RemovePendingMemberResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.campaigns.v1.CampaignService.RemovePendingMember is not implemented"))
 }
 
 func (UnimplementedCampaignServiceHandler) CreateInvite(context.Context, *connect.Request[v1.CreateInviteRequest]) (*connect.Response[v1.CreateInviteResponse], error) {

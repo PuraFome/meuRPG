@@ -43,7 +43,9 @@
 // the image it shows through maps (play.MapKeeper, maps.SessionMaps); and
 // characters settles a pending
 // member's membership through campaigns when the master approves or rejects
-// their character (characters.PendingMembers, RN-15). No package imports
+// their character (characters.PendingMembers, RN-15), and campaigns approves
+// a pending member's character through characters when an invite without
+// approval promotes them (campaigns.Characters, Q25). No package imports
 // another's internals.
 package main
 
@@ -195,6 +197,10 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		if err != nil {
 			return err
 		}
+		// campaigns and characters need each other too, so campaigns gets
+		// characters now that it exists: an invite without approval accepted
+		// by a pending member approves their character (RN-15).
+		campaignsService.SetCharacters(charactersService)
 		// play and maps need each other: play reveals the map it makes
 		// current and reads the image it shows, and maps reads what the
 		// session shows and publishes on play's live stream.

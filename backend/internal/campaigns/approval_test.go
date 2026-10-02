@@ -94,19 +94,17 @@ func TestRN15_AcceptingAnInviteWithApprovalMakesAPendingMember(t *testing.T) {
 		t.Errorf("master's ListMembers() = %d members, want only the master", n)
 	}
 
-	// Accepting again, with this invite or with an ordinary one, changes
-	// nothing: she stays pending, and no use is spent.
-	_, plainToken := mestre.createInvite(t, id, 0, 0)
-	for _, tok := range []string{token, plainToken} {
-		again, err := jogadora.accept(t, tok)
-		if err != nil {
-			t.Fatalf("AcceptInvite() again error = %v", err)
-		}
-		if !again.GetAlreadyMember() {
-			t.Error("AcceptInvite() again already_member = false, want true")
-		}
-		wantPendingView(t, "AcceptInvite() again", again.GetCampaign(), id)
+	// Accepting the same invite again changes nothing: she stays pending,
+	// and no use is spent. (An ordinary invite promotes her instead, Q25:
+	// TestQ25_PlainInvitePromotesPendingMember.)
+	again, err := jogadora.accept(t, token)
+	if err != nil {
+		t.Fatalf("AcceptInvite() again error = %v", err)
 	}
+	if !again.GetAlreadyMember() {
+		t.Error("AcceptInvite() again already_member = false, want true")
+	}
+	wantPendingView(t, "AcceptInvite() again", again.GetCampaign(), id)
 	if got := h.memberStatus(id, jogadora.id); got != "pending" {
 		t.Errorf("status after accepting again = %q, want pending", got)
 	}

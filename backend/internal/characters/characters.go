@@ -24,6 +24,12 @@
 // one transaction that also touches campaign_members through
 // PendingMembers, which package campaigns implements (approval.go).
 //
+// A pending member who has not created a character is removed after 30
+// days (campaign_members.pending_expires_at, migration 00035). Creating the
+// character clears that deadline in the same transaction (CreateCharacter).
+// Package campaigns calls ApprovePendingCharacter when an ordinary invite
+// promotes a pending member (approval.go).
+//
 // The sheet lock (RN-01) is set by package play when a game session starts,
 // through LockSheets, inside play's own transaction. The vitals (RN-02:
 // current hit points, spell slots and hit dice used, table
@@ -79,6 +85,11 @@ type PendingMembers interface {
 	// DeletePendingMember deletes userID's pending membership of
 	// campaignID, inside tx. An active membership is never deleted.
 	DeletePendingMember(ctx context.Context, tx pgx.Tx, campaignID, userID string) error
+	// ClearPendingExpiry removes the 30-day deadline of userID's pending
+	// membership of campaignID, inside tx. The deadline only applies to a
+	// pending member who has no character: once there is one, the master
+	// decides on it.
+	ClearPendingExpiry(ctx context.Context, tx pgx.Tx, campaignID, userID string) error
 }
 
 // Config holds what the characters service needs.

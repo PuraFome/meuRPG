@@ -17,6 +17,13 @@
 // membership in the same transaction through ActivatePendingMember and
 // DeletePendingMember below; cmd/api connects the two packages.
 //
+// A pending member who has not created a character is removed after 30
+// days (campaign_members.pending_expires_at, deleted by CockroachDB's TTL
+// job, migration 00035). The master sees them with ListPendingMembers and
+// may remove them sooner with RemovePendingMember. An invite WITHOUT
+// approval accepted by a pending member promotes them (acceptInvite), and
+// approves their character, if any, through Characters.
+//
 // The SQL lives in queries.sql, and sqlc turns it into package campaignsdb.
 // Every write runs inside db.InTx, which retries CockroachDB's
 // serialization errors (40001).
@@ -69,6 +76,22 @@ type Profiles interface {
 	DisplayNames(ctx context.Context, userIDs []string) (map[string]string, error)
 }
 
+// PendingMemberLifetime is how long a pending membership without a
+// character lasts before the database deletes it (RN-15). Migration 00035
+// backfills the same 30 days.
+const PendingMemberLifetime = 30 * 24 * time.Hour
+
+// Characters approves a pending member's character when an invite without
+// approval promotes them (RN-15, Q25). The characters module implements it
+// (characters.Service); cmd/api connects the two with SetCharacters, and
+// neither package imports the other.
+type Characters interface {
+	// ApprovePendingCharacter approves userID's character waiting for
+	// approval in campaignID, inside tx, exactly as the master's
+	// ApproveCharacter would. Without such a character, nothing changes.
+	ApprovePendingCharacter(ctx context.Context, tx pgx.Tx, campaignID, userID string) error
+}
+
 // Config holds what the campaigns service needs.
 type Config struct {
 	// Pool is the CockroachDB connection pool. Required.
@@ -91,6 +114,9 @@ type Service struct {
 	profiles Profiles
 	logger   *slog.Logger
 	now      func() time.Time
+	// characters is set once, before the service handles any call
+	// (SetCharacters).
+	characters Characters
 }
 
 // The compiler checks that Service implements both interfaces.
@@ -122,6 +148,14 @@ func New(cfg Config) (*Service, error) {
 	}
 	return s, nil
 }
+
+// SetCharacters says which service approves a pending member's character
+// (see Characters). It is a setter, not a Config field, because the two
+// services need each other (characters.Config.Members is this service), so
+// one of them must exist before the other can be given to it. Call it once,
+// before Mount and before any call; without it, an invite that promotes a
+// pending member fails.
+func (s *Service) SetCharacters(c Characters) { s.characters = c }
 
 // Sessions is what this package needs to know who is calling: an
 // interceptor that finds the caller's session, and the authz.Caller that
@@ -236,6 +270,18 @@ func (s *Service) ActiveCampaigns(ctx context.Context, userID string) ([]*campai
 func (s *Service) ActivatePendingMember(ctx context.Context, tx pgx.Tx, campaignID, userID string) error {
 	if _, err := s.queries.WithTx(tx).ActivatePendingMember(ctx, campaignsdb.ActivatePendingMemberParams{CampaignID: campaignID, UserID: userID}); err != nil {
 		return fmt.Errorf("activate pending member: %w", err)
+	}
+	return nil
+}
+
+// ClearPendingExpiry removes the 30-day deadline of userID's pending
+// membership of campaignID, inside tx (RN-15). Package characters calls it
+// from CreateCharacter, in the transaction that creates the pending
+// member's character: the deadline only applies while they have none.
+// Nothing else calls it.
+func (s *Service) ClearPendingExpiry(ctx context.Context, tx pgx.Tx, campaignID, userID string) error {
+	if _, err := s.queries.WithTx(tx).ClearPendingExpiry(ctx, campaignsdb.ClearPendingExpiryParams{CampaignID: campaignID, UserID: userID}); err != nil {
+		return fmt.Errorf("clear pending expiry: %w", err)
 	}
 	return nil
 }

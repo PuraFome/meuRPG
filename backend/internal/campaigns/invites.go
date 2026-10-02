@@ -120,7 +120,9 @@ type joinResult struct {
 //  1. Find the invite by the token's hash and lock it (FOR UPDATE).
 //  2. Already a member, or a pending member? Return the campaign; nothing
 //     changes, and no use of the invite is spent. This makes AcceptInvite
-//     idempotent, so a double click or a retry is harmless.
+//     idempotent, so a double click or a retry is harmless. One exception
+//     (Q25): a pending member who accepts an invite that works now and does
+//     NOT require approval is promoted, see promotePending.
 //  3. Otherwise the invite must work: not revoked, not used up, not expired.
 //  4. Spend one use and add the membership: active, or pending when the
 //     invite requires approval.
@@ -154,6 +156,16 @@ func (s *Service) acceptInvite(ctx context.Context, tokenHash []byte, userID str
 
 		member, err := q.GetMembership(ctx, campaignsdb.GetMembershipParams{CampaignID: invite.CampaignID, UserID: userID})
 		switch {
+		case err == nil && member.Status == string(authz.StatusPending) && !invite.RequiresApproval &&
+			inviteState(invite, now) == campaignsv1.InviteState_INVITE_STATE_ACTIVE:
+			// An invite that does not need the master's approval was
+			// accepted by someone who is waiting for it: that is approval
+			// enough.
+			if err := s.promotePending(ctx, q, tx, invite, userID, now); err != nil {
+				return err
+			}
+			result = joinResult{campaign: campaign, role: authz.RolePlayer}
+			return nil
 		case err == nil:
 			result = joinResult{
 				campaign:      campaign,
@@ -184,11 +196,19 @@ func (s *Service) acceptInvite(ctx context.Context, tokenHash []byte, userID str
 		if invite.RequiresApproval {
 			status = authz.StatusPending
 		}
+		// A pending member has no character yet, so the 30-day deadline
+		// starts now; creating the character clears it (RN-15).
+		var expires *time.Time
+		if invite.RequiresApproval {
+			deadline := now.Add(PendingMemberLifetime)
+			expires = &deadline
+		}
 		_, err = q.InsertMember(ctx, campaignsdb.InsertMemberParams{
-			CampaignID: invite.CampaignID,
-			UserID:     userID,
-			Role:       string(authz.RolePlayer),
-			Status:     string(status),
+			CampaignID:       invite.CampaignID,
+			UserID:           userID,
+			Role:             string(authz.RolePlayer),
+			Status:           string(status),
+			PendingExpiresAt: expires,
 		})
 		if err != nil {
 			return fmt.Errorf("insert player: %w", err)
@@ -197,6 +217,32 @@ func (s *Service) acceptInvite(ctx context.Context, tokenHash []byte, userID str
 		return nil
 	})
 	return result, err
+}
+
+// promotePending turns userID's pending membership into an active one with
+// an invite that works and needs no approval (Q25), inside the transaction
+// of acceptInvite, where the invite row is already locked. It spends one use
+// like any join, activates the membership (which also drops the 30-day
+// deadline) and approves the character waiting for approval, if they
+// created one: the same effect as the master's ApproveCharacter, through
+// Characters. All of it is one transaction, so a retry after a
+// serialization error (40001) starts from the unchanged state.
+func (s *Service) promotePending(ctx context.Context, q *campaignsdb.Queries, tx pgx.Tx, invite campaignsdb.CampaignInvite, userID string, now time.Time) error {
+	if s.characters == nil {
+		return errors.New("campaigns: SetCharacters was not called")
+	}
+	spent, err := q.IncrementInviteUses(ctx, campaignsdb.IncrementInviteUsesParams{ID: invite.ID, Now: now})
+	if err != nil {
+		return fmt.Errorf("spend an invite use: %w", err)
+	}
+	if spent == 0 {
+		// Unreachable while the row is locked and checked by the caller.
+		return &unusableInviteError{state: campaignsv1.InviteState_INVITE_STATE_USED_UP}
+	}
+	if _, err := q.ActivatePendingMember(ctx, campaignsdb.ActivatePendingMemberParams{CampaignID: invite.CampaignID, UserID: userID}); err != nil {
+		return fmt.Errorf("activate pending member: %w", err)
+	}
+	return s.characters.ApprovePendingCharacter(ctx, tx, invite.CampaignID, userID)
 }
 
 func inviteToProto(invite campaignsdb.CampaignInvite, now time.Time) *campaignsv1.Invite {

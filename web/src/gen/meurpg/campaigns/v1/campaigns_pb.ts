@@ -16,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/campaigns/v1/campaigns.proto.
  */
 export const file_meurpg_campaigns_v1_campaigns: GenFile = /*@__PURE__*/
-  fileDesc("CiNtZXVycGcvY2FtcGFpZ25zL3YxL2NhbXBhaWducy5wcm90bxITbWV1cnBnLmNhbXBhaWducy52MSLJAQoIQ2FtcGFpZ24SCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRIsCgd4cF9tb2RlGAMgASgOMhsubWV1cnBnLmNhbXBhaWducy52MS5YcE1vZGUSLgoKY3JlYXRlZF9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASKgoHbXlfcm9sZRgFIAEoDjIZLm1ldXJwZy5jYW1wYWlnbnMudjEuUm9sZRIZChFhd2FpdGluZ19hcHByb3ZhbBgGIAEoCCKHAQoGTWVtYmVyEg8KB3VzZXJfaWQYASABKAkSJwoEcm9sZRgCIAEoDjIZLm1ldXJwZy5jYW1wYWlnbnMudjEuUm9sZRIUCgxkaXNwbGF5X25hbWUYAyABKAkSLQoJam9pbmVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCKVAgoGSW52aXRlEgoKAmlkGAEgASgJEhAKCG1heF91c2VzGAIgASgFEhEKCXVzZV9jb3VudBgDIAEoBRIuCgpjcmVhdGVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgpleHBpcmVzX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgpyZXZva2VkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIvCgVzdGF0ZRgHIAEoDjIgLm1ldXJwZy5jYW1wYWlnbnMudjEuSW52aXRlU3RhdGUSGQoRcmVxdWlyZXNfYXBwcm92YWwYCCABKAgiQQoOSW52aXRlVW51c2FibGUSLwoFc3RhdGUYASABKA4yIC5tZXVycGcuY2FtcGFpZ25zLnYxLkludml0ZVN0YXRlIlMKFUNyZWF0ZUNhbXBhaWduUmVxdWVzdBIMCgRuYW1lGAEgASgJEiwKB3hwX21vZGUYAiABKA4yGy5tZXVycGcuY2FtcGFpZ25zLnYxLlhwTW9kZSJJChZDcmVhdGVDYW1wYWlnblJlc3BvbnNlEi8KCGNhbXBhaWduGAEgASgLMh0ubWV1cnBnLmNhbXBhaWducy52MS5DYW1wYWlnbiIYChZMaXN0TXlDYW1wYWlnbnNSZXF1ZXN0IksKF0xpc3RNeUNhbXBhaWduc1Jlc3BvbnNlEjAKCWNhbXBhaWducxgBIAMoCzIdLm1ldXJwZy5jYW1wYWlnbnMudjEuQ2FtcGFpZ24iKQoSR2V0Q2FtcGFpZ25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIkYKE0dldENhbXBhaWduUmVzcG9uc2USLwoIY2FtcGFpZ24YASABKAsyHS5tZXVycGcuY2FtcGFpZ25zLnYxLkNhbXBhaWduIikKEkxpc3RNZW1iZXJzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCSJDChNMaXN0TWVtYmVyc1Jlc3BvbnNlEiwKB21lbWJlcnMYASADKAsyGy5tZXVycGcuY2FtcGFpZ25zLnYxLk1lbWJlciKGAQoTQ3JlYXRlSW52aXRlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIQCghtYXhfdXNlcxgCIAEoBRItCgpleHBpcmVzX2luGAMgASgLMhkuZ29vZ2xlLnByb3RvYnVmLkR1cmF0aW9uEhkKEXJlcXVpcmVzX2FwcHJvdmFsGAQgASgIIlIKFENyZWF0ZUludml0ZVJlc3BvbnNlEisKBmludml0ZRgBIAEoCzIbLm1ldXJwZy5jYW1wYWlnbnMudjEuSW52aXRlEg0KBXRva2VuGAIgASgJIikKEkxpc3RJbnZpdGVzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCSJDChNMaXN0SW52aXRlc1Jlc3BvbnNlEiwKB2ludml0ZXMYASADKAsyGy5tZXVycGcuY2FtcGFpZ25zLnYxLkludml0ZSI9ChNSZXZva2VJbnZpdGVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhEKCWludml0ZV9pZBgCIAEoCSJDChRSZXZva2VJbnZpdGVSZXNwb25zZRIrCgZpbnZpdGUYASABKAsyGy5tZXVycGcuY2FtcGFpZ25zLnYxLkludml0ZSIkChNBY2NlcHRJbnZpdGVSZXF1ZXN0Eg0KBXRva2VuGAEgASgJIl8KFEFjY2VwdEludml0ZVJlc3BvbnNlEi8KCGNhbXBhaWduGAEgASgLMh0ubWV1cnBnLmNhbXBhaWducy52MS5DYW1wYWlnbhIWCg5hbHJlYWR5X21lbWJlchgCIAEoCCo+CgRSb2xlEhQKEFJPTEVfVU5TUEVDSUZJRUQQABIPCgtST0xFX01BU1RFUhABEg8KC1JPTEVfUExBWUVSEAIqYAoGWHBNb2RlEhcKE1hQX01PREVfVU5TUEVDSUZJRUQQABITCg9YUF9NT0RFX0VORU1JRVMQARIQCgxYUF9NT0RFX0dPTEQQAhIWChJYUF9NT0RFX01JTEVTVE9ORVMQAyqSAQoLSW52aXRlU3RhdGUSHAoYSU5WSVRFX1NUQVRFX1VOU1BFQ0lGSUVEEAASFwoTSU5WSVRFX1NUQVRFX0FDVElWRRABEhgKFElOVklURV9TVEFURV9FWFBJUkVEEAISGAoUSU5WSVRFX1NUQVRFX1JFVk9LRUQQAxIYChRJTlZJVEVfU1RBVEVfVVNFRF9VUBAEMtMGCg9DYW1wYWlnblNlcnZpY2USaQoOQ3JlYXRlQ2FtcGFpZ24SKi5tZXVycGcuY2FtcGFpZ25zLnYxLkNyZWF0ZUNhbXBhaWduUmVxdWVzdBorLm1ldXJwZy5jYW1wYWlnbnMudjEuQ3JlYXRlQ2FtcGFpZ25SZXNwb25zZRJxCg9MaXN0TXlDYW1wYWlnbnMSKy5tZXVycGcuY2FtcGFpZ25zLnYxLkxpc3RNeUNhbXBhaWduc1JlcXVlc3QaLC5tZXVycGcuY2FtcGFpZ25zLnYxLkxpc3RNeUNhbXBhaWduc1Jlc3BvbnNlIgOQAgESZQoLR2V0Q2FtcGFpZ24SJy5tZXVycGcuY2FtcGFpZ25zLnYxLkdldENhbXBhaWduUmVxdWVzdBooLm1ldXJwZy5jYW1wYWlnbnMudjEuR2V0Q2FtcGFpZ25SZXNwb25zZSIDkAICEmUKC0xpc3RNZW1iZXJzEicubWV1cnBnLmNhbXBhaWducy52MS5MaXN0TWVtYmVyc1JlcXVlc3QaKC5tZXVycGcuY2FtcGFpZ25zLnYxLkxpc3RNZW1iZXJzUmVzcG9uc2UiA5ACAhJjCgxDcmVhdGVJbnZpdGUSKC5tZXVycGcuY2FtcGFpZ25zLnYxLkNyZWF0ZUludml0ZVJlcXVlc3QaKS5tZXVycGcuY2FtcGFpZ25zLnYxLkNyZWF0ZUludml0ZVJlc3BvbnNlEmUKC0xpc3RJbnZpdGVzEicubWV1cnBnLmNhbXBhaWducy52MS5MaXN0SW52aXRlc1JlcXVlc3QaKC5tZXVycGcuY2FtcGFpZ25zLnYxLkxpc3RJbnZpdGVzUmVzcG9uc2UiA5ACAhJjCgxSZXZva2VJbnZpdGUSKC5tZXVycGcuY2FtcGFpZ25zLnYxLlJldm9rZUludml0ZVJlcXVlc3QaKS5tZXVycGcuY2FtcGFpZ25zLnYxLlJldm9rZUludml0ZVJlc3BvbnNlEmMKDEFjY2VwdEludml0ZRIoLm1ldXJwZy5jYW1wYWlnbnMudjEuQWNjZXB0SW52aXRlUmVxdWVzdBopLm1ldXJwZy5jYW1wYWlnbnMudjEuQWNjZXB0SW52aXRlUmVzcG9uc2VC3wEKF2NvbS5tZXVycGcuY2FtcGFpZ25zLnYxQg5DYW1wYWlnbnNQcm90b1ABWkZnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvY2FtcGFpZ25zL3YxO2NhbXBhaWduc3YxogIDTUNYqgITTWV1cnBnLkNhbXBhaWducy5WMcoCE01ldXJwZ1xDYW1wYWlnbnNcVjHiAh9NZXVycGdcQ2FtcGFpZ25zXFYxXEdQQk1ldGFkYXRh6gIVTWV1cnBnOjpDYW1wYWlnbnM6OlYxYgZwcm90bzM", [file_google_protobuf_duration, file_google_protobuf_timestamp]);
+  fileDesc("CiNtZXVycGcvY2FtcGFpZ25zL3YxL2NhbXBhaWducy5wcm90bxITbWV1cnBnLmNhbXBhaWducy52MSLJAQoIQ2FtcGFpZ24SCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRIsCgd4cF9tb2RlGAMgASgOMhsubWV1cnBnLmNhbXBhaWducy52MS5YcE1vZGUSLgoKY3JlYXRlZF9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASKgoHbXlfcm9sZRgFIAEoDjIZLm1ldXJwZy5jYW1wYWlnbnMudjEuUm9sZRIZChFhd2FpdGluZ19hcHByb3ZhbBgGIAEoCCKVAQoNUGVuZGluZ01lbWJlchIPCgd1c2VyX2lkGAEgASgJEhQKDGRpc3BsYXlfbmFtZRgCIAEoCRItCglqb2luZWRfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCmV4cGlyZXNfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIocBCgZNZW1iZXISDwoHdXNlcl9pZBgBIAEoCRInCgRyb2xlGAIgASgOMhkubWV1cnBnLmNhbXBhaWducy52MS5Sb2xlEhQKDGRpc3BsYXlfbmFtZRgDIAEoCRItCglqb2luZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIpUCCgZJbnZpdGUSCgoCaWQYASABKAkSEAoIbWF4X3VzZXMYAiABKAUSEQoJdXNlX2NvdW50GAMgASgFEi4KCmNyZWF0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCmV4cGlyZXNfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnJldm9rZWRfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi8KBXN0YXRlGAcgASgOMiAubWV1cnBnLmNhbXBhaWducy52MS5JbnZpdGVTdGF0ZRIZChFyZXF1aXJlc19hcHByb3ZhbBgIIAEoCCJBCg5JbnZpdGVVbnVzYWJsZRIvCgVzdGF0ZRgBIAEoDjIgLm1ldXJwZy5jYW1wYWlnbnMudjEuSW52aXRlU3RhdGUiUwoVQ3JlYXRlQ2FtcGFpZ25SZXF1ZXN0EgwKBG5hbWUYASABKAkSLAoHeHBfbW9kZRgCIAEoDjIbLm1ldXJwZy5jYW1wYWlnbnMudjEuWHBNb2RlIkkKFkNyZWF0ZUNhbXBhaWduUmVzcG9uc2USLwoIY2FtcGFpZ24YASABKAsyHS5tZXVycGcuY2FtcGFpZ25zLnYxLkNhbXBhaWduIhgKFkxpc3RNeUNhbXBhaWduc1JlcXVlc3QiSwoXTGlzdE15Q2FtcGFpZ25zUmVzcG9uc2USMAoJY2FtcGFpZ25zGAEgAygLMh0ubWV1cnBnLmNhbXBhaWducy52MS5DYW1wYWlnbiIpChJHZXRDYW1wYWlnblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiRgoTR2V0Q2FtcGFpZ25SZXNwb25zZRIvCghjYW1wYWlnbhgBIAEoCzIdLm1ldXJwZy5jYW1wYWlnbnMudjEuQ2FtcGFpZ24iKQoSTGlzdE1lbWJlcnNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIkMKE0xpc3RNZW1iZXJzUmVzcG9uc2USLAoHbWVtYmVycxgBIAMoCzIbLm1ldXJwZy5jYW1wYWlnbnMudjEuTWVtYmVyIjAKGUxpc3RQZW5kaW5nTWVtYmVyc1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiUQoaTGlzdFBlbmRpbmdNZW1iZXJzUmVzcG9uc2USMwoHbWVtYmVycxgBIAMoCzIiLm1ldXJwZy5jYW1wYWlnbnMudjEuUGVuZGluZ01lbWJlciJCChpSZW1vdmVQZW5kaW5nTWVtYmVyUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIPCgd1c2VyX2lkGAIgASgJIh0KG1JlbW92ZVBlbmRpbmdNZW1iZXJSZXNwb25zZSKGAQoTQ3JlYXRlSW52aXRlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIQCghtYXhfdXNlcxgCIAEoBRItCgpleHBpcmVzX2luGAMgASgLMhkuZ29vZ2xlLnByb3RvYnVmLkR1cmF0aW9uEhkKEXJlcXVpcmVzX2FwcHJvdmFsGAQgASgIIlIKFENyZWF0ZUludml0ZVJlc3BvbnNlEisKBmludml0ZRgBIAEoCzIbLm1ldXJwZy5jYW1wYWlnbnMudjEuSW52aXRlEg0KBXRva2VuGAIgASgJIikKEkxpc3RJbnZpdGVzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCSJDChNMaXN0SW52aXRlc1Jlc3BvbnNlEiwKB2ludml0ZXMYASADKAsyGy5tZXVycGcuY2FtcGFpZ25zLnYxLkludml0ZSI9ChNSZXZva2VJbnZpdGVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhEKCWludml0ZV9pZBgCIAEoCSJDChRSZXZva2VJbnZpdGVSZXNwb25zZRIrCgZpbnZpdGUYASABKAsyGy5tZXVycGcuY2FtcGFpZ25zLnYxLkludml0ZSIkChNBY2NlcHRJbnZpdGVSZXF1ZXN0Eg0KBXRva2VuGAEgASgJIl8KFEFjY2VwdEludml0ZVJlc3BvbnNlEi8KCGNhbXBhaWduGAEgASgLMh0ubWV1cnBnLmNhbXBhaWducy52MS5DYW1wYWlnbhIWCg5hbHJlYWR5X21lbWJlchgCIAEoCCo+CgRSb2xlEhQKEFJPTEVfVU5TUEVDSUZJRUQQABIPCgtST0xFX01BU1RFUhABEg8KC1JPTEVfUExBWUVSEAIqYAoGWHBNb2RlEhcKE1hQX01PREVfVU5TUEVDSUZJRUQQABITCg9YUF9NT0RFX0VORU1JRVMQARIQCgxYUF9NT0RFX0dPTEQQAhIWChJYUF9NT0RFX01JTEVTVE9ORVMQAyqSAQoLSW52aXRlU3RhdGUSHAoYSU5WSVRFX1NUQVRFX1VOU1BFQ0lGSUVEEAASFwoTSU5WSVRFX1NUQVRFX0FDVElWRRABEhgKFElOVklURV9TVEFURV9FWFBJUkVEEAISGAoUSU5WSVRFX1NUQVRFX1JFVk9LRUQQAxIYChRJTlZJVEVfU1RBVEVfVVNFRF9VUBAEMskICg9DYW1wYWlnblNlcnZpY2USaQoOQ3JlYXRlQ2FtcGFpZ24SKi5tZXVycGcuY2FtcGFpZ25zLnYxLkNyZWF0ZUNhbXBhaWduUmVxdWVzdBorLm1ldXJwZy5jYW1wYWlnbnMudjEuQ3JlYXRlQ2FtcGFpZ25SZXNwb25zZRJxCg9MaXN0TXlDYW1wYWlnbnMSKy5tZXVycGcuY2FtcGFpZ25zLnYxLkxpc3RNeUNhbXBhaWduc1JlcXVlc3QaLC5tZXVycGcuY2FtcGFpZ25zLnYxLkxpc3RNeUNhbXBhaWduc1Jlc3BvbnNlIgOQAgESZQoLR2V0Q2FtcGFpZ24SJy5tZXVycGcuY2FtcGFpZ25zLnYxLkdldENhbXBhaWduUmVxdWVzdBooLm1ldXJwZy5jYW1wYWlnbnMudjEuR2V0Q2FtcGFpZ25SZXNwb25zZSIDkAICEmUKC0xpc3RNZW1iZXJzEicubWV1cnBnLmNhbXBhaWducy52MS5MaXN0TWVtYmVyc1JlcXVlc3QaKC5tZXVycGcuY2FtcGFpZ25zLnYxLkxpc3RNZW1iZXJzUmVzcG9uc2UiA5ACAhJ6ChJMaXN0UGVuZGluZ01lbWJlcnMSLi5tZXVycGcuY2FtcGFpZ25zLnYxLkxpc3RQZW5kaW5nTWVtYmVyc1JlcXVlc3QaLy5tZXVycGcuY2FtcGFpZ25zLnYxLkxpc3RQZW5kaW5nTWVtYmVyc1Jlc3BvbnNlIgOQAgISeAoTUmVtb3ZlUGVuZGluZ01lbWJlchIvLm1ldXJwZy5jYW1wYWlnbnMudjEuUmVtb3ZlUGVuZGluZ01lbWJlclJlcXVlc3QaMC5tZXVycGcuY2FtcGFpZ25zLnYxLlJlbW92ZVBlbmRpbmdNZW1iZXJSZXNwb25zZRJjCgxDcmVhdGVJbnZpdGUSKC5tZXVycGcuY2FtcGFpZ25zLnYxLkNyZWF0ZUludml0ZVJlcXVlc3QaKS5tZXVycGcuY2FtcGFpZ25zLnYxLkNyZWF0ZUludml0ZVJlc3BvbnNlEmUKC0xpc3RJbnZpdGVzEicubWV1cnBnLmNhbXBhaWducy52MS5MaXN0SW52aXRlc1JlcXVlc3QaKC5tZXVycGcuY2FtcGFpZ25zLnYxLkxpc3RJbnZpdGVzUmVzcG9uc2UiA5ACAhJjCgxSZXZva2VJbnZpdGUSKC5tZXVycGcuY2FtcGFpZ25zLnYxLlJldm9rZUludml0ZVJlcXVlc3QaKS5tZXVycGcuY2FtcGFpZ25zLnYxLlJldm9rZUludml0ZVJlc3BvbnNlEmMKDEFjY2VwdEludml0ZRIoLm1ldXJwZy5jYW1wYWlnbnMudjEuQWNjZXB0SW52aXRlUmVxdWVzdBopLm1ldXJwZy5jYW1wYWlnbnMudjEuQWNjZXB0SW52aXRlUmVzcG9uc2VC3wEKF2NvbS5tZXVycGcuY2FtcGFpZ25zLnYxQg5DYW1wYWlnbnNQcm90b1ABWkZnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvY2FtcGFpZ25zL3YxO2NhbXBhaWduc3YxogIDTUNYqgITTWV1cnBnLkNhbXBhaWducy5WMcoCE01ldXJwZ1xDYW1wYWlnbnNcVjHiAh9NZXVycGdcQ2FtcGFpZ25zXFYxXEdQQk1ldGFkYXRh6gIVTWV1cnBnOjpDYW1wYWlnbnM6OlYxYgZwcm90bzM", [file_google_protobuf_duration, file_google_protobuf_timestamp]);
 
 /**
  * Campaign is a campaign as seen by one of its members.
@@ -74,6 +74,54 @@ export const CampaignSchema: GenMessage<Campaign> = /*@__PURE__*/
   messageDesc(file_meurpg_campaigns_v1_campaigns, 0);
 
 /**
+ * PendingMember is a pending member (RN-15, MR-024) who has not created a
+ * character yet: someone who accepted an invite with approval and is still
+ * to start their character.
+ *
+ * @generated from message meurpg.campaigns.v1.PendingMember
+ */
+export type PendingMember = Message<"meurpg.campaigns.v1.PendingMember"> & {
+  /**
+   * The person's account ID (a UUID).
+   *
+   * @generated from field: string user_id = 1;
+   */
+  userId: string;
+
+  /**
+   * The name the person chose in the app (IdentityService.UpdateProfile).
+   * Empty if they have not chosen one yet.
+   *
+   * @generated from field: string display_name = 2;
+   */
+  displayName: string;
+
+  /**
+   * When they accepted the invite.
+   *
+   * @generated from field: google.protobuf.Timestamp joined_at = 3;
+   */
+  joinedAt?: Timestamp | undefined;
+
+  /**
+   * When the membership is deleted on its own if they still have no
+   * character: 30 days after joined_at. The database removes it in a daily
+   * job, so it may last up to a day longer. A pending member who creates a
+   * character is no longer listed, so this never moves.
+   *
+   * @generated from field: google.protobuf.Timestamp expires_at = 4;
+   */
+  expiresAt?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message meurpg.campaigns.v1.PendingMember.
+ * Use `create(PendingMemberSchema)` to create a new message.
+ */
+export const PendingMemberSchema: GenMessage<PendingMember> = /*@__PURE__*/
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 1);
+
+/**
  * Member is one member of a campaign.
  *
  * @generated from message meurpg.campaigns.v1.Member
@@ -110,7 +158,7 @@ export type Member = Message<"meurpg.campaigns.v1.Member"> & {
  * Use `create(MemberSchema)` to create a new message.
  */
 export const MemberSchema: GenMessage<Member> = /*@__PURE__*/
-  messageDesc(file_meurpg_campaigns_v1_campaigns, 1);
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 2);
 
 /**
  * Invite describes an invite without its secret token.
@@ -182,7 +230,7 @@ export type Invite = Message<"meurpg.campaigns.v1.Invite"> & {
  * Use `create(InviteSchema)` to create a new message.
  */
 export const InviteSchema: GenMessage<Invite> = /*@__PURE__*/
-  messageDesc(file_meurpg_campaigns_v1_campaigns, 2);
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 3);
 
 /**
  * InviteUnusable is the error detail of AcceptInvite's
@@ -204,7 +252,7 @@ export type InviteUnusable = Message<"meurpg.campaigns.v1.InviteUnusable"> & {
  * Use `create(InviteUnusableSchema)` to create a new message.
  */
 export const InviteUnusableSchema: GenMessage<InviteUnusable> = /*@__PURE__*/
-  messageDesc(file_meurpg_campaigns_v1_campaigns, 3);
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 4);
 
 /**
  * CreateCampaignRequest describes the new campaign.
@@ -233,7 +281,7 @@ export type CreateCampaignRequest = Message<"meurpg.campaigns.v1.CreateCampaignR
  * Use `create(CreateCampaignRequestSchema)` to create a new message.
  */
 export const CreateCampaignRequestSchema: GenMessage<CreateCampaignRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_campaigns_v1_campaigns, 4);
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 5);
 
 /**
  * CreateCampaignResponse returns the new campaign.
@@ -254,7 +302,7 @@ export type CreateCampaignResponse = Message<"meurpg.campaigns.v1.CreateCampaign
  * Use `create(CreateCampaignResponseSchema)` to create a new message.
  */
 export const CreateCampaignResponseSchema: GenMessage<CreateCampaignResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_campaigns_v1_campaigns, 5);
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 6);
 
 /**
  * ListMyCampaignsRequest is intentionally empty: the session cookie says who
@@ -270,7 +318,7 @@ export type ListMyCampaignsRequest = Message<"meurpg.campaigns.v1.ListMyCampaign
  * Use `create(ListMyCampaignsRequestSchema)` to create a new message.
  */
 export const ListMyCampaignsRequestSchema: GenMessage<ListMyCampaignsRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_campaigns_v1_campaigns, 6);
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 7);
 
 /**
  * ListMyCampaignsResponse lists the caller's campaigns.
@@ -289,7 +337,7 @@ export type ListMyCampaignsResponse = Message<"meurpg.campaigns.v1.ListMyCampaig
  * Use `create(ListMyCampaignsResponseSchema)` to create a new message.
  */
 export const ListMyCampaignsResponseSchema: GenMessage<ListMyCampaignsResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_campaigns_v1_campaigns, 7);
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 8);
 
 /**
  * GetCampaignRequest names a campaign.
@@ -308,7 +356,7 @@ export type GetCampaignRequest = Message<"meurpg.campaigns.v1.GetCampaignRequest
  * Use `create(GetCampaignRequestSchema)` to create a new message.
  */
 export const GetCampaignRequestSchema: GenMessage<GetCampaignRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_campaigns_v1_campaigns, 8);
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 9);
 
 /**
  * GetCampaignResponse returns the campaign.
@@ -327,7 +375,7 @@ export type GetCampaignResponse = Message<"meurpg.campaigns.v1.GetCampaignRespon
  * Use `create(GetCampaignResponseSchema)` to create a new message.
  */
 export const GetCampaignResponseSchema: GenMessage<GetCampaignResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_campaigns_v1_campaigns, 9);
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 10);
 
 /**
  * ListMembersRequest names a campaign.
@@ -346,7 +394,7 @@ export type ListMembersRequest = Message<"meurpg.campaigns.v1.ListMembersRequest
  * Use `create(ListMembersRequestSchema)` to create a new message.
  */
 export const ListMembersRequestSchema: GenMessage<ListMembersRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_campaigns_v1_campaigns, 10);
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 11);
 
 /**
  * ListMembersResponse lists the campaign's members.
@@ -365,7 +413,86 @@ export type ListMembersResponse = Message<"meurpg.campaigns.v1.ListMembersRespon
  * Use `create(ListMembersResponseSchema)` to create a new message.
  */
 export const ListMembersResponseSchema: GenMessage<ListMembersResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_campaigns_v1_campaigns, 11);
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 12);
+
+/**
+ * ListPendingMembersRequest names a campaign.
+ *
+ * @generated from message meurpg.campaigns.v1.ListPendingMembersRequest
+ */
+export type ListPendingMembersRequest = Message<"meurpg.campaigns.v1.ListPendingMembersRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+};
+
+/**
+ * Describes the message meurpg.campaigns.v1.ListPendingMembersRequest.
+ * Use `create(ListPendingMembersRequestSchema)` to create a new message.
+ */
+export const ListPendingMembersRequestSchema: GenMessage<ListPendingMembersRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 13);
+
+/**
+ * ListPendingMembersResponse lists the pending members without a character.
+ *
+ * @generated from message meurpg.campaigns.v1.ListPendingMembersResponse
+ */
+export type ListPendingMembersResponse = Message<"meurpg.campaigns.v1.ListPendingMembersResponse"> & {
+  /**
+   * @generated from field: repeated meurpg.campaigns.v1.PendingMember members = 1;
+   */
+  members: PendingMember[];
+};
+
+/**
+ * Describes the message meurpg.campaigns.v1.ListPendingMembersResponse.
+ * Use `create(ListPendingMembersResponseSchema)` to create a new message.
+ */
+export const ListPendingMembersResponseSchema: GenMessage<ListPendingMembersResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 14);
+
+/**
+ * RemovePendingMemberRequest names the pending member to remove.
+ *
+ * @generated from message meurpg.campaigns.v1.RemovePendingMemberRequest
+ */
+export type RemovePendingMemberRequest = Message<"meurpg.campaigns.v1.RemovePendingMemberRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * The person's account ID, from ListPendingMembers.
+   *
+   * @generated from field: string user_id = 2;
+   */
+  userId: string;
+};
+
+/**
+ * Describes the message meurpg.campaigns.v1.RemovePendingMemberRequest.
+ * Use `create(RemovePendingMemberRequestSchema)` to create a new message.
+ */
+export const RemovePendingMemberRequestSchema: GenMessage<RemovePendingMemberRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 15);
+
+/**
+ * RemovePendingMemberResponse is empty: the membership is gone.
+ *
+ * @generated from message meurpg.campaigns.v1.RemovePendingMemberResponse
+ */
+export type RemovePendingMemberResponse = Message<"meurpg.campaigns.v1.RemovePendingMemberResponse"> & {
+};
+
+/**
+ * Describes the message meurpg.campaigns.v1.RemovePendingMemberResponse.
+ * Use `create(RemovePendingMemberResponseSchema)` to create a new message.
+ */
+export const RemovePendingMemberResponseSchema: GenMessage<RemovePendingMemberResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 16);
 
 /**
  * CreateInviteRequest describes the new invite. While RN-07 is open, the
@@ -410,7 +537,7 @@ export type CreateInviteRequest = Message<"meurpg.campaigns.v1.CreateInviteReque
  * Use `create(CreateInviteRequestSchema)` to create a new message.
  */
 export const CreateInviteRequestSchema: GenMessage<CreateInviteRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_campaigns_v1_campaigns, 12);
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 17);
 
 /**
  * CreateInviteResponse returns the invite and, this one time, its token.
@@ -437,7 +564,7 @@ export type CreateInviteResponse = Message<"meurpg.campaigns.v1.CreateInviteResp
  * Use `create(CreateInviteResponseSchema)` to create a new message.
  */
 export const CreateInviteResponseSchema: GenMessage<CreateInviteResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_campaigns_v1_campaigns, 13);
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 18);
 
 /**
  * ListInvitesRequest names a campaign.
@@ -456,7 +583,7 @@ export type ListInvitesRequest = Message<"meurpg.campaigns.v1.ListInvitesRequest
  * Use `create(ListInvitesRequestSchema)` to create a new message.
  */
 export const ListInvitesRequestSchema: GenMessage<ListInvitesRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_campaigns_v1_campaigns, 14);
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 19);
 
 /**
  * ListInvitesResponse lists the campaign's invites. Invites that expired
@@ -476,7 +603,7 @@ export type ListInvitesResponse = Message<"meurpg.campaigns.v1.ListInvitesRespon
  * Use `create(ListInvitesResponseSchema)` to create a new message.
  */
 export const ListInvitesResponseSchema: GenMessage<ListInvitesResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_campaigns_v1_campaigns, 15);
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 20);
 
 /**
  * RevokeInviteRequest names the invite to revoke.
@@ -500,7 +627,7 @@ export type RevokeInviteRequest = Message<"meurpg.campaigns.v1.RevokeInviteReque
  * Use `create(RevokeInviteRequestSchema)` to create a new message.
  */
 export const RevokeInviteRequestSchema: GenMessage<RevokeInviteRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_campaigns_v1_campaigns, 16);
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 21);
 
 /**
  * RevokeInviteResponse returns the revoked invite.
@@ -519,7 +646,7 @@ export type RevokeInviteResponse = Message<"meurpg.campaigns.v1.RevokeInviteResp
  * Use `create(RevokeInviteResponseSchema)` to create a new message.
  */
 export const RevokeInviteResponseSchema: GenMessage<RevokeInviteResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_campaigns_v1_campaigns, 17);
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 22);
 
 /**
  * AcceptInviteRequest carries the invite's token.
@@ -540,7 +667,7 @@ export type AcceptInviteRequest = Message<"meurpg.campaigns.v1.AcceptInviteReque
  * Use `create(AcceptInviteRequestSchema)` to create a new message.
  */
 export const AcceptInviteRequestSchema: GenMessage<AcceptInviteRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_campaigns_v1_campaigns, 18);
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 23);
 
 /**
  * AcceptInviteResponse returns the campaign the caller is now a member of,
@@ -559,7 +686,8 @@ export type AcceptInviteResponse = Message<"meurpg.campaigns.v1.AcceptInviteResp
 
   /**
    * True when the caller was a member, or a pending member, before this
-   * call, so nothing changed.
+   * call, and nothing changed. False when they just joined, or when a
+   * pending member was just promoted by an invite without approval.
    *
    * @generated from field: bool already_member = 2;
    */
@@ -571,7 +699,7 @@ export type AcceptInviteResponse = Message<"meurpg.campaigns.v1.AcceptInviteResp
  * Use `create(AcceptInviteResponseSchema)` to create a new message.
  */
 export const AcceptInviteResponseSchema: GenMessage<AcceptInviteResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_campaigns_v1_campaigns, 19);
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 24);
 
 /**
  * Role is what a member may do in one campaign (RN-05). The app shows
@@ -775,8 +903,10 @@ export const CampaignService: GenService<{
    *
    * Pending members (RN-15, MR-024) are not listed: they are not members
    * yet. The master sees who is waiting through their characters
-   * (CharacterService.ListCharacters, state PENDING). A pending member who
-   * calls it gets `not_found`.
+   * (CharacterService.ListCharacters, state PENDING), and the ones who have
+   * not created a character yet through ListPendingMembers. A pending
+   * member who calls it gets `not_found`. (Those two live in their own calls
+   * so that this list keeps meaning "people who are in the campaign".)
    *
    * @generated from rpc meurpg.campaigns.v1.CampaignService.ListMembers
    */
@@ -784,6 +914,48 @@ export const CampaignService: GenService<{
     methodKind: "unary";
     input: typeof ListMembersRequestSchema;
     output: typeof ListMembersResponseSchema;
+  },
+  /**
+   * ListPendingMembers lists the campaign's pending members who have not
+   * created a character yet (RN-15, MR-024), in the order they joined, each
+   * with when they joined and when they will be removed automatically (30
+   * days after joining). Only the campaign's master may call it. It only
+   * reads, and is POST-only, like GetCampaign.
+   *
+   * It is a call of its own, not extra entries in ListMembers, because those
+   * people are not members: ListMembers keeps its meaning, and no screen
+   * that reads it can mistake them for players. A pending member who already
+   * created a character is not here: the master finds them, and approves or
+   * rejects them, through CharacterService.ListCharacters.
+   *
+   * @generated from rpc meurpg.campaigns.v1.CampaignService.ListPendingMembers
+   */
+  listPendingMembers: {
+    methodKind: "unary";
+    input: typeof ListPendingMembersRequestSchema;
+    output: typeof ListPendingMembersResponseSchema;
+  },
+  /**
+   * RemovePendingMember removes a pending member who has not created a
+   * character yet (RN-15, MR-024): their membership is deleted. The person
+   * loses nothing else (account, other campaigns), and a new invite brings
+   * them back. Only the campaign's master may call it. Removing someone who
+   * is already gone is `not_found`, so a repeated call tells the app the
+   * list is stale.
+   *
+   * Errors:
+   *   - `not_found`: the campaign is not the caller's to manage (see
+   *     authorization), or the user has no membership in it.
+   *   - `failed_precondition`: the user is an active member (members are not
+   *     removed here), or a pending member who already has a character
+   *     (the master rejects it with CharacterService.RejectCharacter).
+   *
+   * @generated from rpc meurpg.campaigns.v1.CampaignService.RemovePendingMember
+   */
+  removePendingMember: {
+    methodKind: "unary";
+    input: typeof RemovePendingMemberRequestSchema;
+    output: typeof RemovePendingMemberResponseSchema;
   },
   /**
    * CreateInvite creates an invite link for a campaign (MR-002). Only the
@@ -839,7 +1011,13 @@ export const CampaignService: GenService<{
    * It is idempotent for members: a member of the campaign (the master
    * included) gets the campaign back with `already_member` set, whatever
    * the state of the invite, and no use of the invite is spent. This holds
-   * for a pending member too: they stay pending.
+   * for a pending member too, with one exception: a pending member who
+   * accepts an invite WITHOUT approval (and that works now) is promoted. It
+   * spends one use, the membership becomes active, and the character they
+   * created and that waits for approval, if any, is approved: an ordinary
+   * invite counts as the master's approval (RN-15). The response then has
+   * `already_member` false and the full campaign. If they accept an invite
+   * with approval, or one that does not work, they stay pending.
    *
    * Invites with approval (RN-15, MR-024). When the invite has
    * `requires_approval`, the caller becomes a pending member, not a player:

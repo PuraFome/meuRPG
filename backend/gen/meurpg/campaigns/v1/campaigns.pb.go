@@ -288,6 +288,85 @@ func (x *Campaign) GetAwaitingApproval() bool {
 	return false
 }
 
+// PendingMember is a pending member (RN-15, MR-024) who has not created a
+// character yet: someone who accepted an invite with approval and is still
+// to start their character.
+type PendingMember struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The person's account ID (a UUID).
+	UserId string `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	// The name the person chose in the app (IdentityService.UpdateProfile).
+	// Empty if they have not chosen one yet.
+	DisplayName string `protobuf:"bytes,2,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	// When they accepted the invite.
+	JoinedAt *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=joined_at,json=joinedAt,proto3" json:"joined_at,omitempty"`
+	// When the membership is deleted on its own if they still have no
+	// character: 30 days after joined_at. The database removes it in a daily
+	// job, so it may last up to a day longer. A pending member who creates a
+	// character is no longer listed, so this never moves.
+	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PendingMember) Reset() {
+	*x = PendingMember{}
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PendingMember) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PendingMember) ProtoMessage() {}
+
+func (x *PendingMember) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PendingMember.ProtoReflect.Descriptor instead.
+func (*PendingMember) Descriptor() ([]byte, []int) {
+	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *PendingMember) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *PendingMember) GetDisplayName() string {
+	if x != nil {
+		return x.DisplayName
+	}
+	return ""
+}
+
+func (x *PendingMember) GetJoinedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.JoinedAt
+	}
+	return nil
+}
+
+func (x *PendingMember) GetExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return nil
+}
+
 // Member is one member of a campaign.
 type Member struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -304,7 +383,7 @@ type Member struct {
 
 func (x *Member) Reset() {
 	*x = Member{}
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[1]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -316,7 +395,7 @@ func (x *Member) String() string {
 func (*Member) ProtoMessage() {}
 
 func (x *Member) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[1]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -329,7 +408,7 @@ func (x *Member) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Member.ProtoReflect.Descriptor instead.
 func (*Member) Descriptor() ([]byte, []int) {
-	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{1}
+	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *Member) GetUserId() string {
@@ -388,7 +467,7 @@ type Invite struct {
 
 func (x *Invite) Reset() {
 	*x = Invite{}
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[2]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -400,7 +479,7 @@ func (x *Invite) String() string {
 func (*Invite) ProtoMessage() {}
 
 func (x *Invite) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[2]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -413,7 +492,7 @@ func (x *Invite) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Invite.ProtoReflect.Descriptor instead.
 func (*Invite) Descriptor() ([]byte, []int) {
-	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{2}
+	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *Invite) GetId() string {
@@ -484,7 +563,7 @@ type InviteUnusable struct {
 
 func (x *InviteUnusable) Reset() {
 	*x = InviteUnusable{}
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[3]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -496,7 +575,7 @@ func (x *InviteUnusable) String() string {
 func (*InviteUnusable) ProtoMessage() {}
 
 func (x *InviteUnusable) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[3]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -509,7 +588,7 @@ func (x *InviteUnusable) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InviteUnusable.ProtoReflect.Descriptor instead.
 func (*InviteUnusable) Descriptor() ([]byte, []int) {
-	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{3}
+	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *InviteUnusable) GetState() InviteState {
@@ -533,7 +612,7 @@ type CreateCampaignRequest struct {
 
 func (x *CreateCampaignRequest) Reset() {
 	*x = CreateCampaignRequest{}
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[4]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -545,7 +624,7 @@ func (x *CreateCampaignRequest) String() string {
 func (*CreateCampaignRequest) ProtoMessage() {}
 
 func (x *CreateCampaignRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[4]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -558,7 +637,7 @@ func (x *CreateCampaignRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateCampaignRequest.ProtoReflect.Descriptor instead.
 func (*CreateCampaignRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{4}
+	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *CreateCampaignRequest) GetName() string {
@@ -586,7 +665,7 @@ type CreateCampaignResponse struct {
 
 func (x *CreateCampaignResponse) Reset() {
 	*x = CreateCampaignResponse{}
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[5]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -598,7 +677,7 @@ func (x *CreateCampaignResponse) String() string {
 func (*CreateCampaignResponse) ProtoMessage() {}
 
 func (x *CreateCampaignResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[5]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -611,7 +690,7 @@ func (x *CreateCampaignResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateCampaignResponse.ProtoReflect.Descriptor instead.
 func (*CreateCampaignResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{5}
+	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *CreateCampaignResponse) GetCampaign() *Campaign {
@@ -631,7 +710,7 @@ type ListMyCampaignsRequest struct {
 
 func (x *ListMyCampaignsRequest) Reset() {
 	*x = ListMyCampaignsRequest{}
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[6]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -643,7 +722,7 @@ func (x *ListMyCampaignsRequest) String() string {
 func (*ListMyCampaignsRequest) ProtoMessage() {}
 
 func (x *ListMyCampaignsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[6]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -656,7 +735,7 @@ func (x *ListMyCampaignsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMyCampaignsRequest.ProtoReflect.Descriptor instead.
 func (*ListMyCampaignsRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{6}
+	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{7}
 }
 
 // ListMyCampaignsResponse lists the caller's campaigns.
@@ -669,7 +748,7 @@ type ListMyCampaignsResponse struct {
 
 func (x *ListMyCampaignsResponse) Reset() {
 	*x = ListMyCampaignsResponse{}
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[7]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -681,7 +760,7 @@ func (x *ListMyCampaignsResponse) String() string {
 func (*ListMyCampaignsResponse) ProtoMessage() {}
 
 func (x *ListMyCampaignsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[7]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -694,7 +773,7 @@ func (x *ListMyCampaignsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMyCampaignsResponse.ProtoReflect.Descriptor instead.
 func (*ListMyCampaignsResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{7}
+	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ListMyCampaignsResponse) GetCampaigns() []*Campaign {
@@ -714,7 +793,7 @@ type GetCampaignRequest struct {
 
 func (x *GetCampaignRequest) Reset() {
 	*x = GetCampaignRequest{}
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[8]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -726,7 +805,7 @@ func (x *GetCampaignRequest) String() string {
 func (*GetCampaignRequest) ProtoMessage() {}
 
 func (x *GetCampaignRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[8]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -739,7 +818,7 @@ func (x *GetCampaignRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCampaignRequest.ProtoReflect.Descriptor instead.
 func (*GetCampaignRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{8}
+	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GetCampaignRequest) GetCampaignId() string {
@@ -759,7 +838,7 @@ type GetCampaignResponse struct {
 
 func (x *GetCampaignResponse) Reset() {
 	*x = GetCampaignResponse{}
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[9]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -771,7 +850,7 @@ func (x *GetCampaignResponse) String() string {
 func (*GetCampaignResponse) ProtoMessage() {}
 
 func (x *GetCampaignResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[9]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -784,7 +863,7 @@ func (x *GetCampaignResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCampaignResponse.ProtoReflect.Descriptor instead.
 func (*GetCampaignResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{9}
+	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *GetCampaignResponse) GetCampaign() *Campaign {
@@ -804,7 +883,7 @@ type ListMembersRequest struct {
 
 func (x *ListMembersRequest) Reset() {
 	*x = ListMembersRequest{}
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[10]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -816,7 +895,7 @@ func (x *ListMembersRequest) String() string {
 func (*ListMembersRequest) ProtoMessage() {}
 
 func (x *ListMembersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[10]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -829,7 +908,7 @@ func (x *ListMembersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMembersRequest.ProtoReflect.Descriptor instead.
 func (*ListMembersRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{10}
+	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ListMembersRequest) GetCampaignId() string {
@@ -849,7 +928,7 @@ type ListMembersResponse struct {
 
 func (x *ListMembersResponse) Reset() {
 	*x = ListMembersResponse{}
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[11]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -861,7 +940,7 @@ func (x *ListMembersResponse) String() string {
 func (*ListMembersResponse) ProtoMessage() {}
 
 func (x *ListMembersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[11]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -874,7 +953,7 @@ func (x *ListMembersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMembersResponse.ProtoReflect.Descriptor instead.
 func (*ListMembersResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{11}
+	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ListMembersResponse) GetMembers() []*Member {
@@ -882,6 +961,187 @@ func (x *ListMembersResponse) GetMembers() []*Member {
 		return x.Members
 	}
 	return nil
+}
+
+// ListPendingMembersRequest names a campaign.
+type ListPendingMembersRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId    string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListPendingMembersRequest) Reset() {
+	*x = ListPendingMembersRequest{}
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListPendingMembersRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListPendingMembersRequest) ProtoMessage() {}
+
+func (x *ListPendingMembersRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListPendingMembersRequest.ProtoReflect.Descriptor instead.
+func (*ListPendingMembersRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *ListPendingMembersRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+// ListPendingMembersResponse lists the pending members without a character.
+type ListPendingMembersResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Members       []*PendingMember       `protobuf:"bytes,1,rep,name=members,proto3" json:"members,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListPendingMembersResponse) Reset() {
+	*x = ListPendingMembersResponse{}
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListPendingMembersResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListPendingMembersResponse) ProtoMessage() {}
+
+func (x *ListPendingMembersResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListPendingMembersResponse.ProtoReflect.Descriptor instead.
+func (*ListPendingMembersResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *ListPendingMembersResponse) GetMembers() []*PendingMember {
+	if x != nil {
+		return x.Members
+	}
+	return nil
+}
+
+// RemovePendingMemberRequest names the pending member to remove.
+type RemovePendingMemberRequest struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	// The person's account ID, from ListPendingMembers.
+	UserId        string `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemovePendingMemberRequest) Reset() {
+	*x = RemovePendingMemberRequest{}
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemovePendingMemberRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemovePendingMemberRequest) ProtoMessage() {}
+
+func (x *RemovePendingMemberRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemovePendingMemberRequest.ProtoReflect.Descriptor instead.
+func (*RemovePendingMemberRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *RemovePendingMemberRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *RemovePendingMemberRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+// RemovePendingMemberResponse is empty: the membership is gone.
+type RemovePendingMemberResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemovePendingMemberResponse) Reset() {
+	*x = RemovePendingMemberResponse{}
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemovePendingMemberResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemovePendingMemberResponse) ProtoMessage() {}
+
+func (x *RemovePendingMemberResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemovePendingMemberResponse.ProtoReflect.Descriptor instead.
+func (*RemovePendingMemberResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{16}
 }
 
 // CreateInviteRequest describes the new invite. While RN-07 is open, the
@@ -905,7 +1165,7 @@ type CreateInviteRequest struct {
 
 func (x *CreateInviteRequest) Reset() {
 	*x = CreateInviteRequest{}
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[12]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -917,7 +1177,7 @@ func (x *CreateInviteRequest) String() string {
 func (*CreateInviteRequest) ProtoMessage() {}
 
 func (x *CreateInviteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[12]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -930,7 +1190,7 @@ func (x *CreateInviteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateInviteRequest.ProtoReflect.Descriptor instead.
 func (*CreateInviteRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{12}
+	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *CreateInviteRequest) GetCampaignId() string {
@@ -974,7 +1234,7 @@ type CreateInviteResponse struct {
 
 func (x *CreateInviteResponse) Reset() {
 	*x = CreateInviteResponse{}
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[13]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -986,7 +1246,7 @@ func (x *CreateInviteResponse) String() string {
 func (*CreateInviteResponse) ProtoMessage() {}
 
 func (x *CreateInviteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[13]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -999,7 +1259,7 @@ func (x *CreateInviteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateInviteResponse.ProtoReflect.Descriptor instead.
 func (*CreateInviteResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{13}
+	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *CreateInviteResponse) GetInvite() *Invite {
@@ -1026,7 +1286,7 @@ type ListInvitesRequest struct {
 
 func (x *ListInvitesRequest) Reset() {
 	*x = ListInvitesRequest{}
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[14]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1038,7 +1298,7 @@ func (x *ListInvitesRequest) String() string {
 func (*ListInvitesRequest) ProtoMessage() {}
 
 func (x *ListInvitesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[14]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1051,7 +1311,7 @@ func (x *ListInvitesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListInvitesRequest.ProtoReflect.Descriptor instead.
 func (*ListInvitesRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{14}
+	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ListInvitesRequest) GetCampaignId() string {
@@ -1072,7 +1332,7 @@ type ListInvitesResponse struct {
 
 func (x *ListInvitesResponse) Reset() {
 	*x = ListInvitesResponse{}
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[15]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1084,7 +1344,7 @@ func (x *ListInvitesResponse) String() string {
 func (*ListInvitesResponse) ProtoMessage() {}
 
 func (x *ListInvitesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[15]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1097,7 +1357,7 @@ func (x *ListInvitesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListInvitesResponse.ProtoReflect.Descriptor instead.
 func (*ListInvitesResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{15}
+	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *ListInvitesResponse) GetInvites() []*Invite {
@@ -1118,7 +1378,7 @@ type RevokeInviteRequest struct {
 
 func (x *RevokeInviteRequest) Reset() {
 	*x = RevokeInviteRequest{}
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[16]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1130,7 +1390,7 @@ func (x *RevokeInviteRequest) String() string {
 func (*RevokeInviteRequest) ProtoMessage() {}
 
 func (x *RevokeInviteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[16]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1143,7 +1403,7 @@ func (x *RevokeInviteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeInviteRequest.ProtoReflect.Descriptor instead.
 func (*RevokeInviteRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{16}
+	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *RevokeInviteRequest) GetCampaignId() string {
@@ -1170,7 +1430,7 @@ type RevokeInviteResponse struct {
 
 func (x *RevokeInviteResponse) Reset() {
 	*x = RevokeInviteResponse{}
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[17]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1182,7 +1442,7 @@ func (x *RevokeInviteResponse) String() string {
 func (*RevokeInviteResponse) ProtoMessage() {}
 
 func (x *RevokeInviteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[17]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1195,7 +1455,7 @@ func (x *RevokeInviteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeInviteResponse.ProtoReflect.Descriptor instead.
 func (*RevokeInviteResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{17}
+	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *RevokeInviteResponse) GetInvite() *Invite {
@@ -1216,7 +1476,7 @@ type AcceptInviteRequest struct {
 
 func (x *AcceptInviteRequest) Reset() {
 	*x = AcceptInviteRequest{}
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[18]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1228,7 +1488,7 @@ func (x *AcceptInviteRequest) String() string {
 func (*AcceptInviteRequest) ProtoMessage() {}
 
 func (x *AcceptInviteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[18]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1241,7 +1501,7 @@ func (x *AcceptInviteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AcceptInviteRequest.ProtoReflect.Descriptor instead.
 func (*AcceptInviteRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{18}
+	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *AcceptInviteRequest) GetToken() string {
@@ -1259,7 +1519,8 @@ type AcceptInviteResponse struct {
 	// and only id, name and my_role come with it (see Campaign).
 	Campaign *Campaign `protobuf:"bytes,1,opt,name=campaign,proto3" json:"campaign,omitempty"`
 	// True when the caller was a member, or a pending member, before this
-	// call, so nothing changed.
+	// call, and nothing changed. False when they just joined, or when a
+	// pending member was just promoted by an invite without approval.
 	AlreadyMember bool `protobuf:"varint,2,opt,name=already_member,json=alreadyMember,proto3" json:"already_member,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1267,7 +1528,7 @@ type AcceptInviteResponse struct {
 
 func (x *AcceptInviteResponse) Reset() {
 	*x = AcceptInviteResponse{}
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[19]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1279,7 +1540,7 @@ func (x *AcceptInviteResponse) String() string {
 func (*AcceptInviteResponse) ProtoMessage() {}
 
 func (x *AcceptInviteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[19]
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1292,7 +1553,7 @@ func (x *AcceptInviteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AcceptInviteResponse.ProtoReflect.Descriptor instead.
 func (*AcceptInviteResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{19}
+	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *AcceptInviteResponse) GetCampaign() *Campaign {
@@ -1321,7 +1582,13 @@ const file_meurpg_campaigns_v1_campaigns_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x122\n" +
 	"\amy_role\x18\x05 \x01(\x0e2\x19.meurpg.campaigns.v1.RoleR\x06myRole\x12+\n" +
-	"\x11awaiting_approval\x18\x06 \x01(\bR\x10awaitingApproval\"\xac\x01\n" +
+	"\x11awaiting_approval\x18\x06 \x01(\bR\x10awaitingApproval\"\xbf\x01\n" +
+	"\rPendingMember\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12!\n" +
+	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x127\n" +
+	"\tjoined_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\bjoinedAt\x129\n" +
+	"\n" +
+	"expires_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\"\xac\x01\n" +
 	"\x06Member\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12-\n" +
 	"\x04role\x18\x02 \x01(\x0e2\x19.meurpg.campaigns.v1.RoleR\x04role\x12!\n" +
@@ -1358,7 +1625,17 @@ const file_meurpg_campaigns_v1_campaigns_proto_rawDesc = "" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\"L\n" +
 	"\x13ListMembersResponse\x125\n" +
-	"\amembers\x18\x01 \x03(\v2\x1b.meurpg.campaigns.v1.MemberR\amembers\"\xb8\x01\n" +
+	"\amembers\x18\x01 \x03(\v2\x1b.meurpg.campaigns.v1.MemberR\amembers\"<\n" +
+	"\x19ListPendingMembersRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\"Z\n" +
+	"\x1aListPendingMembersResponse\x12<\n" +
+	"\amembers\x18\x01 \x03(\v2\".meurpg.campaigns.v1.PendingMemberR\amembers\"V\n" +
+	"\x1aRemovePendingMemberRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"\x1d\n" +
+	"\x1bRemovePendingMemberResponse\"\xb8\x01\n" +
 	"\x13CreateInviteRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x19\n" +
@@ -1399,12 +1676,14 @@ const file_meurpg_campaigns_v1_campaigns_proto_rawDesc = "" +
 	"\x13INVITE_STATE_ACTIVE\x10\x01\x12\x18\n" +
 	"\x14INVITE_STATE_EXPIRED\x10\x02\x12\x18\n" +
 	"\x14INVITE_STATE_REVOKED\x10\x03\x12\x18\n" +
-	"\x14INVITE_STATE_USED_UP\x10\x042\xd3\x06\n" +
+	"\x14INVITE_STATE_USED_UP\x10\x042\xc9\b\n" +
 	"\x0fCampaignService\x12i\n" +
 	"\x0eCreateCampaign\x12*.meurpg.campaigns.v1.CreateCampaignRequest\x1a+.meurpg.campaigns.v1.CreateCampaignResponse\x12q\n" +
 	"\x0fListMyCampaigns\x12+.meurpg.campaigns.v1.ListMyCampaignsRequest\x1a,.meurpg.campaigns.v1.ListMyCampaignsResponse\"\x03\x90\x02\x01\x12e\n" +
 	"\vGetCampaign\x12'.meurpg.campaigns.v1.GetCampaignRequest\x1a(.meurpg.campaigns.v1.GetCampaignResponse\"\x03\x90\x02\x02\x12e\n" +
-	"\vListMembers\x12'.meurpg.campaigns.v1.ListMembersRequest\x1a(.meurpg.campaigns.v1.ListMembersResponse\"\x03\x90\x02\x02\x12c\n" +
+	"\vListMembers\x12'.meurpg.campaigns.v1.ListMembersRequest\x1a(.meurpg.campaigns.v1.ListMembersResponse\"\x03\x90\x02\x02\x12z\n" +
+	"\x12ListPendingMembers\x12..meurpg.campaigns.v1.ListPendingMembersRequest\x1a/.meurpg.campaigns.v1.ListPendingMembersResponse\"\x03\x90\x02\x02\x12x\n" +
+	"\x13RemovePendingMember\x12/.meurpg.campaigns.v1.RemovePendingMemberRequest\x1a0.meurpg.campaigns.v1.RemovePendingMemberResponse\x12c\n" +
 	"\fCreateInvite\x12(.meurpg.campaigns.v1.CreateInviteRequest\x1a).meurpg.campaigns.v1.CreateInviteResponse\x12e\n" +
 	"\vListInvites\x12'.meurpg.campaigns.v1.ListInvitesRequest\x1a(.meurpg.campaigns.v1.ListInvitesResponse\"\x03\x90\x02\x02\x12c\n" +
 	"\fRevokeInvite\x12(.meurpg.campaigns.v1.RevokeInviteRequest\x1a).meurpg.campaigns.v1.RevokeInviteResponse\x12c\n" +
@@ -1424,76 +1703,88 @@ func file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP() []byte {
 }
 
 var file_meurpg_campaigns_v1_campaigns_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_meurpg_campaigns_v1_campaigns_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_meurpg_campaigns_v1_campaigns_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_meurpg_campaigns_v1_campaigns_proto_goTypes = []any{
-	(Role)(0),                       // 0: meurpg.campaigns.v1.Role
-	(XpMode)(0),                     // 1: meurpg.campaigns.v1.XpMode
-	(InviteState)(0),                // 2: meurpg.campaigns.v1.InviteState
-	(*Campaign)(nil),                // 3: meurpg.campaigns.v1.Campaign
-	(*Member)(nil),                  // 4: meurpg.campaigns.v1.Member
-	(*Invite)(nil),                  // 5: meurpg.campaigns.v1.Invite
-	(*InviteUnusable)(nil),          // 6: meurpg.campaigns.v1.InviteUnusable
-	(*CreateCampaignRequest)(nil),   // 7: meurpg.campaigns.v1.CreateCampaignRequest
-	(*CreateCampaignResponse)(nil),  // 8: meurpg.campaigns.v1.CreateCampaignResponse
-	(*ListMyCampaignsRequest)(nil),  // 9: meurpg.campaigns.v1.ListMyCampaignsRequest
-	(*ListMyCampaignsResponse)(nil), // 10: meurpg.campaigns.v1.ListMyCampaignsResponse
-	(*GetCampaignRequest)(nil),      // 11: meurpg.campaigns.v1.GetCampaignRequest
-	(*GetCampaignResponse)(nil),     // 12: meurpg.campaigns.v1.GetCampaignResponse
-	(*ListMembersRequest)(nil),      // 13: meurpg.campaigns.v1.ListMembersRequest
-	(*ListMembersResponse)(nil),     // 14: meurpg.campaigns.v1.ListMembersResponse
-	(*CreateInviteRequest)(nil),     // 15: meurpg.campaigns.v1.CreateInviteRequest
-	(*CreateInviteResponse)(nil),    // 16: meurpg.campaigns.v1.CreateInviteResponse
-	(*ListInvitesRequest)(nil),      // 17: meurpg.campaigns.v1.ListInvitesRequest
-	(*ListInvitesResponse)(nil),     // 18: meurpg.campaigns.v1.ListInvitesResponse
-	(*RevokeInviteRequest)(nil),     // 19: meurpg.campaigns.v1.RevokeInviteRequest
-	(*RevokeInviteResponse)(nil),    // 20: meurpg.campaigns.v1.RevokeInviteResponse
-	(*AcceptInviteRequest)(nil),     // 21: meurpg.campaigns.v1.AcceptInviteRequest
-	(*AcceptInviteResponse)(nil),    // 22: meurpg.campaigns.v1.AcceptInviteResponse
-	(*timestamppb.Timestamp)(nil),   // 23: google.protobuf.Timestamp
-	(*durationpb.Duration)(nil),     // 24: google.protobuf.Duration
+	(Role)(0),                           // 0: meurpg.campaigns.v1.Role
+	(XpMode)(0),                         // 1: meurpg.campaigns.v1.XpMode
+	(InviteState)(0),                    // 2: meurpg.campaigns.v1.InviteState
+	(*Campaign)(nil),                    // 3: meurpg.campaigns.v1.Campaign
+	(*PendingMember)(nil),               // 4: meurpg.campaigns.v1.PendingMember
+	(*Member)(nil),                      // 5: meurpg.campaigns.v1.Member
+	(*Invite)(nil),                      // 6: meurpg.campaigns.v1.Invite
+	(*InviteUnusable)(nil),              // 7: meurpg.campaigns.v1.InviteUnusable
+	(*CreateCampaignRequest)(nil),       // 8: meurpg.campaigns.v1.CreateCampaignRequest
+	(*CreateCampaignResponse)(nil),      // 9: meurpg.campaigns.v1.CreateCampaignResponse
+	(*ListMyCampaignsRequest)(nil),      // 10: meurpg.campaigns.v1.ListMyCampaignsRequest
+	(*ListMyCampaignsResponse)(nil),     // 11: meurpg.campaigns.v1.ListMyCampaignsResponse
+	(*GetCampaignRequest)(nil),          // 12: meurpg.campaigns.v1.GetCampaignRequest
+	(*GetCampaignResponse)(nil),         // 13: meurpg.campaigns.v1.GetCampaignResponse
+	(*ListMembersRequest)(nil),          // 14: meurpg.campaigns.v1.ListMembersRequest
+	(*ListMembersResponse)(nil),         // 15: meurpg.campaigns.v1.ListMembersResponse
+	(*ListPendingMembersRequest)(nil),   // 16: meurpg.campaigns.v1.ListPendingMembersRequest
+	(*ListPendingMembersResponse)(nil),  // 17: meurpg.campaigns.v1.ListPendingMembersResponse
+	(*RemovePendingMemberRequest)(nil),  // 18: meurpg.campaigns.v1.RemovePendingMemberRequest
+	(*RemovePendingMemberResponse)(nil), // 19: meurpg.campaigns.v1.RemovePendingMemberResponse
+	(*CreateInviteRequest)(nil),         // 20: meurpg.campaigns.v1.CreateInviteRequest
+	(*CreateInviteResponse)(nil),        // 21: meurpg.campaigns.v1.CreateInviteResponse
+	(*ListInvitesRequest)(nil),          // 22: meurpg.campaigns.v1.ListInvitesRequest
+	(*ListInvitesResponse)(nil),         // 23: meurpg.campaigns.v1.ListInvitesResponse
+	(*RevokeInviteRequest)(nil),         // 24: meurpg.campaigns.v1.RevokeInviteRequest
+	(*RevokeInviteResponse)(nil),        // 25: meurpg.campaigns.v1.RevokeInviteResponse
+	(*AcceptInviteRequest)(nil),         // 26: meurpg.campaigns.v1.AcceptInviteRequest
+	(*AcceptInviteResponse)(nil),        // 27: meurpg.campaigns.v1.AcceptInviteResponse
+	(*timestamppb.Timestamp)(nil),       // 28: google.protobuf.Timestamp
+	(*durationpb.Duration)(nil),         // 29: google.protobuf.Duration
 }
 var file_meurpg_campaigns_v1_campaigns_proto_depIdxs = []int32{
 	1,  // 0: meurpg.campaigns.v1.Campaign.xp_mode:type_name -> meurpg.campaigns.v1.XpMode
-	23, // 1: meurpg.campaigns.v1.Campaign.created_at:type_name -> google.protobuf.Timestamp
+	28, // 1: meurpg.campaigns.v1.Campaign.created_at:type_name -> google.protobuf.Timestamp
 	0,  // 2: meurpg.campaigns.v1.Campaign.my_role:type_name -> meurpg.campaigns.v1.Role
-	0,  // 3: meurpg.campaigns.v1.Member.role:type_name -> meurpg.campaigns.v1.Role
-	23, // 4: meurpg.campaigns.v1.Member.joined_at:type_name -> google.protobuf.Timestamp
-	23, // 5: meurpg.campaigns.v1.Invite.created_at:type_name -> google.protobuf.Timestamp
-	23, // 6: meurpg.campaigns.v1.Invite.expires_at:type_name -> google.protobuf.Timestamp
-	23, // 7: meurpg.campaigns.v1.Invite.revoked_at:type_name -> google.protobuf.Timestamp
-	2,  // 8: meurpg.campaigns.v1.Invite.state:type_name -> meurpg.campaigns.v1.InviteState
-	2,  // 9: meurpg.campaigns.v1.InviteUnusable.state:type_name -> meurpg.campaigns.v1.InviteState
-	1,  // 10: meurpg.campaigns.v1.CreateCampaignRequest.xp_mode:type_name -> meurpg.campaigns.v1.XpMode
-	3,  // 11: meurpg.campaigns.v1.CreateCampaignResponse.campaign:type_name -> meurpg.campaigns.v1.Campaign
-	3,  // 12: meurpg.campaigns.v1.ListMyCampaignsResponse.campaigns:type_name -> meurpg.campaigns.v1.Campaign
-	3,  // 13: meurpg.campaigns.v1.GetCampaignResponse.campaign:type_name -> meurpg.campaigns.v1.Campaign
-	4,  // 14: meurpg.campaigns.v1.ListMembersResponse.members:type_name -> meurpg.campaigns.v1.Member
-	24, // 15: meurpg.campaigns.v1.CreateInviteRequest.expires_in:type_name -> google.protobuf.Duration
-	5,  // 16: meurpg.campaigns.v1.CreateInviteResponse.invite:type_name -> meurpg.campaigns.v1.Invite
-	5,  // 17: meurpg.campaigns.v1.ListInvitesResponse.invites:type_name -> meurpg.campaigns.v1.Invite
-	5,  // 18: meurpg.campaigns.v1.RevokeInviteResponse.invite:type_name -> meurpg.campaigns.v1.Invite
-	3,  // 19: meurpg.campaigns.v1.AcceptInviteResponse.campaign:type_name -> meurpg.campaigns.v1.Campaign
-	7,  // 20: meurpg.campaigns.v1.CampaignService.CreateCampaign:input_type -> meurpg.campaigns.v1.CreateCampaignRequest
-	9,  // 21: meurpg.campaigns.v1.CampaignService.ListMyCampaigns:input_type -> meurpg.campaigns.v1.ListMyCampaignsRequest
-	11, // 22: meurpg.campaigns.v1.CampaignService.GetCampaign:input_type -> meurpg.campaigns.v1.GetCampaignRequest
-	13, // 23: meurpg.campaigns.v1.CampaignService.ListMembers:input_type -> meurpg.campaigns.v1.ListMembersRequest
-	15, // 24: meurpg.campaigns.v1.CampaignService.CreateInvite:input_type -> meurpg.campaigns.v1.CreateInviteRequest
-	17, // 25: meurpg.campaigns.v1.CampaignService.ListInvites:input_type -> meurpg.campaigns.v1.ListInvitesRequest
-	19, // 26: meurpg.campaigns.v1.CampaignService.RevokeInvite:input_type -> meurpg.campaigns.v1.RevokeInviteRequest
-	21, // 27: meurpg.campaigns.v1.CampaignService.AcceptInvite:input_type -> meurpg.campaigns.v1.AcceptInviteRequest
-	8,  // 28: meurpg.campaigns.v1.CampaignService.CreateCampaign:output_type -> meurpg.campaigns.v1.CreateCampaignResponse
-	10, // 29: meurpg.campaigns.v1.CampaignService.ListMyCampaigns:output_type -> meurpg.campaigns.v1.ListMyCampaignsResponse
-	12, // 30: meurpg.campaigns.v1.CampaignService.GetCampaign:output_type -> meurpg.campaigns.v1.GetCampaignResponse
-	14, // 31: meurpg.campaigns.v1.CampaignService.ListMembers:output_type -> meurpg.campaigns.v1.ListMembersResponse
-	16, // 32: meurpg.campaigns.v1.CampaignService.CreateInvite:output_type -> meurpg.campaigns.v1.CreateInviteResponse
-	18, // 33: meurpg.campaigns.v1.CampaignService.ListInvites:output_type -> meurpg.campaigns.v1.ListInvitesResponse
-	20, // 34: meurpg.campaigns.v1.CampaignService.RevokeInvite:output_type -> meurpg.campaigns.v1.RevokeInviteResponse
-	22, // 35: meurpg.campaigns.v1.CampaignService.AcceptInvite:output_type -> meurpg.campaigns.v1.AcceptInviteResponse
-	28, // [28:36] is the sub-list for method output_type
-	20, // [20:28] is the sub-list for method input_type
-	20, // [20:20] is the sub-list for extension type_name
-	20, // [20:20] is the sub-list for extension extendee
-	0,  // [0:20] is the sub-list for field type_name
+	28, // 3: meurpg.campaigns.v1.PendingMember.joined_at:type_name -> google.protobuf.Timestamp
+	28, // 4: meurpg.campaigns.v1.PendingMember.expires_at:type_name -> google.protobuf.Timestamp
+	0,  // 5: meurpg.campaigns.v1.Member.role:type_name -> meurpg.campaigns.v1.Role
+	28, // 6: meurpg.campaigns.v1.Member.joined_at:type_name -> google.protobuf.Timestamp
+	28, // 7: meurpg.campaigns.v1.Invite.created_at:type_name -> google.protobuf.Timestamp
+	28, // 8: meurpg.campaigns.v1.Invite.expires_at:type_name -> google.protobuf.Timestamp
+	28, // 9: meurpg.campaigns.v1.Invite.revoked_at:type_name -> google.protobuf.Timestamp
+	2,  // 10: meurpg.campaigns.v1.Invite.state:type_name -> meurpg.campaigns.v1.InviteState
+	2,  // 11: meurpg.campaigns.v1.InviteUnusable.state:type_name -> meurpg.campaigns.v1.InviteState
+	1,  // 12: meurpg.campaigns.v1.CreateCampaignRequest.xp_mode:type_name -> meurpg.campaigns.v1.XpMode
+	3,  // 13: meurpg.campaigns.v1.CreateCampaignResponse.campaign:type_name -> meurpg.campaigns.v1.Campaign
+	3,  // 14: meurpg.campaigns.v1.ListMyCampaignsResponse.campaigns:type_name -> meurpg.campaigns.v1.Campaign
+	3,  // 15: meurpg.campaigns.v1.GetCampaignResponse.campaign:type_name -> meurpg.campaigns.v1.Campaign
+	5,  // 16: meurpg.campaigns.v1.ListMembersResponse.members:type_name -> meurpg.campaigns.v1.Member
+	4,  // 17: meurpg.campaigns.v1.ListPendingMembersResponse.members:type_name -> meurpg.campaigns.v1.PendingMember
+	29, // 18: meurpg.campaigns.v1.CreateInviteRequest.expires_in:type_name -> google.protobuf.Duration
+	6,  // 19: meurpg.campaigns.v1.CreateInviteResponse.invite:type_name -> meurpg.campaigns.v1.Invite
+	6,  // 20: meurpg.campaigns.v1.ListInvitesResponse.invites:type_name -> meurpg.campaigns.v1.Invite
+	6,  // 21: meurpg.campaigns.v1.RevokeInviteResponse.invite:type_name -> meurpg.campaigns.v1.Invite
+	3,  // 22: meurpg.campaigns.v1.AcceptInviteResponse.campaign:type_name -> meurpg.campaigns.v1.Campaign
+	8,  // 23: meurpg.campaigns.v1.CampaignService.CreateCampaign:input_type -> meurpg.campaigns.v1.CreateCampaignRequest
+	10, // 24: meurpg.campaigns.v1.CampaignService.ListMyCampaigns:input_type -> meurpg.campaigns.v1.ListMyCampaignsRequest
+	12, // 25: meurpg.campaigns.v1.CampaignService.GetCampaign:input_type -> meurpg.campaigns.v1.GetCampaignRequest
+	14, // 26: meurpg.campaigns.v1.CampaignService.ListMembers:input_type -> meurpg.campaigns.v1.ListMembersRequest
+	16, // 27: meurpg.campaigns.v1.CampaignService.ListPendingMembers:input_type -> meurpg.campaigns.v1.ListPendingMembersRequest
+	18, // 28: meurpg.campaigns.v1.CampaignService.RemovePendingMember:input_type -> meurpg.campaigns.v1.RemovePendingMemberRequest
+	20, // 29: meurpg.campaigns.v1.CampaignService.CreateInvite:input_type -> meurpg.campaigns.v1.CreateInviteRequest
+	22, // 30: meurpg.campaigns.v1.CampaignService.ListInvites:input_type -> meurpg.campaigns.v1.ListInvitesRequest
+	24, // 31: meurpg.campaigns.v1.CampaignService.RevokeInvite:input_type -> meurpg.campaigns.v1.RevokeInviteRequest
+	26, // 32: meurpg.campaigns.v1.CampaignService.AcceptInvite:input_type -> meurpg.campaigns.v1.AcceptInviteRequest
+	9,  // 33: meurpg.campaigns.v1.CampaignService.CreateCampaign:output_type -> meurpg.campaigns.v1.CreateCampaignResponse
+	11, // 34: meurpg.campaigns.v1.CampaignService.ListMyCampaigns:output_type -> meurpg.campaigns.v1.ListMyCampaignsResponse
+	13, // 35: meurpg.campaigns.v1.CampaignService.GetCampaign:output_type -> meurpg.campaigns.v1.GetCampaignResponse
+	15, // 36: meurpg.campaigns.v1.CampaignService.ListMembers:output_type -> meurpg.campaigns.v1.ListMembersResponse
+	17, // 37: meurpg.campaigns.v1.CampaignService.ListPendingMembers:output_type -> meurpg.campaigns.v1.ListPendingMembersResponse
+	19, // 38: meurpg.campaigns.v1.CampaignService.RemovePendingMember:output_type -> meurpg.campaigns.v1.RemovePendingMemberResponse
+	21, // 39: meurpg.campaigns.v1.CampaignService.CreateInvite:output_type -> meurpg.campaigns.v1.CreateInviteResponse
+	23, // 40: meurpg.campaigns.v1.CampaignService.ListInvites:output_type -> meurpg.campaigns.v1.ListInvitesResponse
+	25, // 41: meurpg.campaigns.v1.CampaignService.RevokeInvite:output_type -> meurpg.campaigns.v1.RevokeInviteResponse
+	27, // 42: meurpg.campaigns.v1.CampaignService.AcceptInvite:output_type -> meurpg.campaigns.v1.AcceptInviteResponse
+	33, // [33:43] is the sub-list for method output_type
+	23, // [23:33] is the sub-list for method input_type
+	23, // [23:23] is the sub-list for extension type_name
+	23, // [23:23] is the sub-list for extension extendee
+	0,  // [0:23] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_campaigns_v1_campaigns_proto_init() }
@@ -1507,7 +1798,7 @@ func file_meurpg_campaigns_v1_campaigns_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_campaigns_v1_campaigns_proto_rawDesc), len(file_meurpg_campaigns_v1_campaigns_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   20,
+			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

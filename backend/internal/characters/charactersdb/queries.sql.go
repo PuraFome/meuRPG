@@ -49,6 +49,32 @@ func (q *Queries) ApproveCharacter(ctx context.Context, arg ApproveCharacterPara
 	return i, err
 }
 
+const approvePendingCharacterOfPlayer = `-- name: ApprovePendingCharacterOfPlayer :execrows
+UPDATE characters
+SET status = 'active'
+WHERE campaign_id = $1::UUID AND player_user_id = $2
+  AND kind = 'player' AND status = 'pending'
+`
+
+type ApprovePendingCharacterOfPlayerParams struct {
+	CampaignID   string
+	PlayerUserID *string
+}
+
+// An ordinary invite promotes a pending member (RN-15, Q25): that counts as
+// the master's approval, so their character waiting for approval, if any,
+// is approved with exactly the effect of ApproveCharacter above, found by
+// player instead of by ID. A player has at most one living character
+// (RN-03), so at most one row matches; none matches when they have not
+// created it yet.
+func (q *Queries) ApprovePendingCharacterOfPlayer(ctx context.Context, arg ApprovePendingCharacterOfPlayerParams) (int64, error) {
+	result, err := q.db.Exec(ctx, approvePendingCharacterOfPlayer, arg.CampaignID, arg.PlayerUserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const characterIsInCampaign = `-- name: CharacterIsInCampaign :one
 SELECT EXISTS (
     SELECT 1 FROM characters

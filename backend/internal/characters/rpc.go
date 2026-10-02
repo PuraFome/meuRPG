@@ -101,6 +101,13 @@ func (s *Service) CreateCharacter(
 		if err != nil {
 			return wrap("insert character", err)
 		}
+		// A pending member without a character is removed after 30 days.
+		// Now that they have one, the master decides on it, so the deadline
+		// goes, in this same transaction: the character and the lack of a
+		// deadline appear together or not at all.
+		if m.Pending {
+			return s.members.ClearPendingExpiry(ctx, tx, m.CampaignID, m.UserID)
+		}
 		return nil
 	})
 	if isUniqueViolation(err, "characters_one_living_player_character") {

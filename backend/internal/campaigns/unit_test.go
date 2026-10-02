@@ -140,6 +140,8 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["ListMyCampaigns"] = c.ListMyCampaigns(ctx, connect.NewRequest(&campaignsv1.ListMyCampaignsRequest{}))
 	_, calls["GetCampaign"] = c.GetCampaign(ctx, connect.NewRequest(&campaignsv1.GetCampaignRequest{CampaignId: id}))
 	_, calls["ListMembers"] = c.ListMembers(ctx, connect.NewRequest(&campaignsv1.ListMembersRequest{CampaignId: id}))
+	_, calls["ListPendingMembers"] = c.ListPendingMembers(ctx, connect.NewRequest(&campaignsv1.ListPendingMembersRequest{CampaignId: id}))
+	_, calls["RemovePendingMember"] = c.RemovePendingMember(ctx, connect.NewRequest(&campaignsv1.RemovePendingMemberRequest{CampaignId: id, UserId: id}))
 	_, calls["CreateInvite"] = c.CreateInvite(ctx, connect.NewRequest(&campaignsv1.CreateInviteRequest{CampaignId: id}))
 	_, calls["ListInvites"] = c.ListInvites(ctx, connect.NewRequest(&campaignsv1.ListInvitesRequest{CampaignId: id}))
 	_, calls["RevokeInvite"] = c.RevokeInvite(ctx, connect.NewRequest(&campaignsv1.RevokeInviteRequest{CampaignId: id, InviteId: id}))

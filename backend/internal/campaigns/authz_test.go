@@ -83,6 +83,20 @@ func TestAuthorizationMatrix(t *testing.T) {
 			return err
 		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 
+		{"ListPendingMembers", func(ctx context.Context, c client) error {
+			_, err := c.ListPendingMembers(ctx, connect.NewRequest(&campaignsv1.ListPendingMembersRequest{CampaignId: id}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+
+		{"RemovePendingMember", func(ctx context.Context, c client) error {
+			// Nobody with this ID is a member, so the master's call gets
+			// not_found for the user: it passed the authorization check.
+			// The others are turned away before the user is looked at. The
+			// removals themselves are in TestQ24_*.
+			_, err := c.RemovePendingMember(ctx, connect.NewRequest(&campaignsv1.RemovePendingMemberRequest{CampaignId: id, UserId: "6f1c7a52-3b5e-4c55-9d0b-2a51f0c1e0ff"}))
+			return err
+		}, [5]connect.Code{connect.CodeNotFound, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+
 		// Any signed-in user may accept an invite: that is how a non-member
 		// becomes one. This row runs last, because it makes the non-member a
 		// member.
@@ -131,11 +145,11 @@ func TestAuthorizationMatrix(t *testing.T) {
 		}
 	}
 
-	if n := h.useCount(invite.GetId()); n != 2 {
-		t.Errorf("use_count = %d, want 2: the player's join and the non-member's (the pending member was already in, and stays pending)", n)
+	if n := h.useCount(invite.GetId()); n != 3 {
+		t.Errorf("use_count = %d, want 3: the player's join, the non-member's, and the pending member's promotion (Q25)", n)
 	}
-	if got := h.memberStatus(id, pending.id); got != "pending" {
-		t.Errorf("pending member's status after the matrix = %q, want pending", got)
+	if got := h.memberStatus(id, pending.id); got != "active" {
+		t.Errorf("pending member's status after the matrix = %q, want active: an invite without approval promoted them (Q25)", got)
 	}
 }
 

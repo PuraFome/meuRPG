@@ -126,3 +126,23 @@ func (s *Service) RejectCharacter(
 	}
 	return connect.NewResponse(&charactersv1.RejectCharacterResponse{}), nil
 }
+
+// ApprovePendingCharacter approves userID's character waiting for approval
+// in campaignID, if there is one, inside tx. Without one, nothing changes.
+//
+// Package campaigns calls it when an ordinary invite promotes a pending
+// member (RN-15, Q25): an invite without approval counts as the master's
+// approval. It does what ApproveCharacter does to the character (the same
+// UPDATE, by player instead of by ID); the membership is the caller's to
+// settle, because campaign_members is its table. It takes no caller on
+// purpose, like LockSheets: the check was made by whoever calls it. Nothing
+// else calls it.
+func (s *Service) ApprovePendingCharacter(ctx context.Context, tx pgx.Tx, campaignID, userID string) error {
+	_, err := s.queries.WithTx(tx).ApprovePendingCharacterOfPlayer(ctx, charactersdb.ApprovePendingCharacterOfPlayerParams{
+		CampaignID: campaignID, PlayerUserID: &userID,
+	})
+	if err != nil {
+		return wrap("approve pending character", err)
+	}
+	return nil
+}
