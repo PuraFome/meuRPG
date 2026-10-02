@@ -43,14 +43,18 @@ O MeuRPG está sendo reconstruído do zero: um servidor em Go que serve o app An
 
 ## O que já funciona
 
-As Etapas 1 a 4 do [roadmap](docs/roadmap.md) estão na `main`:
+As Etapas 1 a 5 do [roadmap](docs/roadmap.md) estão na `main`:
 
 - **Login** por OpenID Connect (o Google em produção), com sessão de até 30 dias no servidor.
 - **Campanhas e convites.** O mestre cria a campanha e gera convites com validade e número de usos. Quem recebe o link entra, logado ou fazendo login no caminho, e o convite pode pedir a aprovação do mestre.
 - **Personagens.** A ficha no formato da ficha oficial, calculada pelo motor de regras a partir do SRD 5.1: modificadores, perícias, CA, PV, magias e os avisos de regra, como armadura sem proficiência. O mestre cria NPCs numa ficha curta.
 - **Sessão.** Iniciar a sessão trava as fichas dos jogadores; a história do personagem tem uma trava própria.
+- **Sessão ao vivo.** Quando o mestre inicia a sessão, quem joga na campanha vê o aviso com o link, em qualquer página do app. Na página da sessão, os PV, os espaços de magia e os dados de vida do personagem mudam na tela do jogador quando o mestre corrige, sem recarregar.
+- **Galeria.** O mestre envia as imagens da campanha, e o servidor tira os metadados, como o GPS da foto, antes de guardar.
+- **Mapas sem spoiler.** O mestre cria mapas a partir da galeria, com pontos de interesse (batalha, submapa e cena de RP) e os tokens dos personagens, e revela cada coisa na hora certa: o que está escondido nunca sai do servidor para o jogador. Na sessão, o mestre escolhe o mapa atual e move os tokens, e a mesa vê ao vivo. Ele também pode mostrar aos jogadores uma imagem da galeria.
+- **Documento da campanha.** As anotações do mestre, em Markdown, com imagens da galeria e links para os mapas e as fichas. Só o mestre vê.
 
-A próxima é a Etapa 5, a sessão ao vivo: o aviso e o link da sessão, mapas sem spoiler, pontos de interesse, o documento da campanha e a galeria. O MVP fica pronto no fim da Etapa 7, quando a mesa joga a primeira sessão inteira pelo app.
+A próxima é a Etapa 6, o combate: a ordem dos turnos e as ações na vez de cada jogador. O MVP fica pronto no fim da Etapa 7, quando a mesa joga a primeira sessão inteira pelo app.
 
 ## O visual: a ficha de papel
 
