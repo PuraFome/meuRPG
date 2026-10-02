@@ -1,0 +1,43 @@
+@if (image(); as img) {
+  <app-map-view
+    [image]="img"
+    [mapName]="state().map()?.name ?? ''"
+    [points]="state().points()"
+    [tokens]="state().tokens()"
+    [isMaster]="true"
+    [selectablePoints]="false"
+  />
+}
+<p class="caption">
+  <mat-icon aria-hidden="true">open_in_full</mat-icon>
+  Use dois dedos para mover e ampliar. Para mudar pontos e tokens de lugar, abra o mapa no
+  computador.
+</p>
+<app-map-legend [states]="true" [tokens]="state().tokens()" />
+
+@if (reveals.error(); as message) {
+  <div class="mr-notice mr-notice--danger" role="alert">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <p>{{ message }}</p>
+  </div>
+}
+
+<section class="mr-panel" aria-labelledby="points-heading">
+  <app-map-points-list
+    [headingLevel]="2"
+    [points]="state().points()"
+    [pendingId]="reveals.pendingId()"
+    (toggle)="reveals.togglePoint($event.point, $event.revealed)"
+  />
+</section>
+
+<section class="mr-panel" aria-labelledby="tokens-heading">
+  <app-map-tokens-list
+    [tokens]="state().tokens()"
+    [info]="info()"
+    [pendingId]="reveals.pendingId()"
+    (toggle)="reveals.toggleToken($event.token, $event.hidden)"
+  />
+</section>
+
+<p class="mr-visually-hidden" role="status" aria-live="polite">{{ reveals.announcement() }}</p>

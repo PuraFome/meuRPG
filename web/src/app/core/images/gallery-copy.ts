@@ -1,6 +1,8 @@
 import { Code, ConnectError } from '@connectrpc/connect';
 
+import { ImageInUseSchema } from '../../../gen/meurpg/maps/v1/gallery_pb';
 import { describeConnectError } from '../connect/connect-errors';
+import { joinNames } from './image-format';
 
 /** The platform's name rule for an image (gallery.proto,
  * `RenameGalleryImageRequest.name`): 1 to 80 characters, one line. */
@@ -42,15 +44,25 @@ export type DeleteRefusal =
 
 /**
  * DeleteGalleryImage's errors. `failed_precondition` means a map uses the
- * image (gallery.proto). Today it carries no detail naming the maps; when
- * the maps slice adds one, this is where its names go into the sentence.
- * Until then, and whenever the detail is missing, the sentence stays
- * general, which is still true and still says how to fix it.
+ * image; its `ImageInUse` detail names the maps, so the sentence says which
+ * ("Essa imagem é o fundo de Mirathel e arredores. Troque a imagem do mapa
+ * antes de apagá-la."). Without the detail, the sentence stays general.
  */
 export function deleteRefusal(err: unknown): DeleteRefusal {
   const connectErr = ConnectError.from(err, Code.Unavailable);
   if (connectErr.code === Code.NotFound) {
     return { gone: true };
+  }
+  if (connectErr.code === Code.FailedPrecondition) {
+    const [detail] = connectErr.findDetails(ImageInUseSchema);
+    if (detail && detail.maps.length > 0) {
+      const names = joinNames(detail.maps.map((m) => m.name));
+      const plural = detail.maps.length > 1;
+      return {
+        gone: false,
+        message: `Essa imagem é o fundo ${plural ? 'dos mapas' : 'de'} ${names}. Troque a imagem ${plural ? 'deles' : 'do mapa'} antes de apagá-la.`,
+      };
+    }
   }
   return {
     gone: false,

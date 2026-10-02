@@ -1,0 +1,39 @@
+import { Injectable, inject } from '@angular/core';
+import { createClient } from '@connectrpc/connect';
+
+import { CharacterService, CharacterState } from '../../../gen/meurpg/characters/v1/characters_pb';
+import { CONNECT_TRANSPORT } from '../connect/transport';
+
+/** A character that can have a token on a map. */
+export interface RosterEntry {
+  readonly id: string;
+  readonly name: string;
+  readonly kind: number;
+  /** "Mago 3", or empty. */
+  readonly classSummary: string;
+  /** The player's display name, or `null`. */
+  readonly playerName: string | null;
+}
+
+/**
+ * The campaign's characters that may have a token (a living player
+ * character or an NPC: not dead, not waiting for approval), for the
+ * editor's "Adicionar token" menu. `providedIn: 'root'`, replaced in tests.
+ */
+@Injectable({ providedIn: 'root' })
+export class RosterClient {
+  private readonly client = createClient(CharacterService, inject(CONNECT_TRANSPORT));
+
+  async list(campaignId: string): Promise<RosterEntry[]> {
+    const res = await this.client.listCharacters({ campaignId });
+    return res.characters
+      .filter((c) => c.state === CharacterState.DRAFT || c.state === CharacterState.LOCKED)
+      .map((c) => ({
+        id: c.id,
+        name: c.name,
+        kind: c.kind,
+        classSummary: c.classSummary,
+        playerName: c.playerDisplayName.trim() || null,
+      }));
+  }
+}

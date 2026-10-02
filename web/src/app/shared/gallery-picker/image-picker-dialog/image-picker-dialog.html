@@ -1,0 +1,47 @@
+<div class="dlg">
+  <header class="dlg__head">
+    <h2 class="dlg__title" id="image-picker-title">{{ data.title }}</h2>
+    <button type="button" class="dlg__close" aria-label="Fechar" (click)="close()">
+      <mat-icon aria-hidden="true">close</mat-icon>
+    </button>
+  </header>
+
+  <div class="dlg__body">
+    <app-gallery-picker
+      variant="dialog"
+      [campaignId]="data.campaignId"
+      [(selectedId)]="selectedId"
+      [tags]="tags()"
+      label="Imagem da galeria"
+      [describedBy]="error() ? 'image-picker-error' : null"
+      (picked)="choose($event)"
+      (loaded)="onLoaded()"
+    />
+  </div>
+
+  <footer class="dlg__foot">
+    @if (error(); as message) {
+      <p class="dlg__error" id="image-picker-error" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>{{ message }}
+      </p>
+    }
+    <p class="dlg__note">
+      <mat-icon aria-hidden="true">visibility</mat-icon>{{ note() }}
+    </p>
+    <div class="dlg__actions">
+      <button
+        matButton="filled"
+        type="button"
+        class="dlg__confirm"
+        [disabled]="isCurrent() || busy()"
+        (click)="confirm()"
+      >
+        @if (data.confirmIcon) {
+          <mat-icon aria-hidden="true">{{ data.confirmIcon }}</mat-icon>
+        }
+        {{ data.confirmLabel }}
+      </button>
+      <button matButton type="button" (click)="close()">Cancelar</button>
+    </div>
+  </footer>
+</div>

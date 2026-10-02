@@ -3,7 +3,8 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
 
 import { canvasJpeg, newCampaign, uploadThroughPicker } from './gallery-support';
 import { saveDocumentRPC, tableWithDocumentParts } from './document-support';
-import { endSessionRPC, openSessionPage, startSessionRPC, tableWithPensantus } from './live-session-support';
+import { endOpenSessionRPC, endSessionRPC, openSessionPage, startSessionRPC, tableWithPensantus } from './live-session-support';
+import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
 import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, pensantus } from './support';
 
 // docs/design.md#como-uma-tela-é-feita: every screen passes axe with no
@@ -288,4 +289,94 @@ test('as telas da sessão ao vivo passam no axe no tema claro, no desktop', { ta
 
 test('as telas da sessão ao vivo passam no axe no tema escuro, no celular', { tag: ['@a11y', '@MR-012'] }, async ({ browser }) => {
   await scanLiveSessionScreens(browser, 'dark', 390);
+});
+
+/**
+ * The maps' screens (Etapa 5, MR-008, MR-009, MR-012, MR-028): "Novo mapa",
+ * the editor with a point selected, the player's map with a point's sheet
+ * open, the picker dialog, and the session page with the current map and
+ * with an image on show, for the master and for the player.
+ */
+async function scanMapScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(120_000);
+  const options = { colorScheme, viewport: { width, height: 900 } };
+  const master = await browser.newContext({ ...options, storageState: authStatePath('Mestre Teste') });
+  const player = await browser.newContext({ ...options, storageState: authStatePath('Jogador Teste') });
+  const masterPage = await master.newPage();
+  const playerPage = await player.newPage();
+  const suffix = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await masterPage.goto('/');
+    await playerPage.goto('/');
+    const table = await tableForMaps(masterPage, playerPage, `Acessibilidade mapas ${Date.now()}`, true);
+    campaignId = table.campaignId;
+    const worldImage = await uploadImageRPC(masterPage, campaignId, 'Mapa de Mirathel', await canvasPng(masterPage, 1200, 800, 'Mirathel'));
+    const towerImage = await uploadImageRPC(masterPage, campaignId, 'Planta da torre', await canvasPng(masterPage, 800, 800, 'Torre', '#5b4834'));
+    await uploadImageRPC(masterPage, campaignId, 'Capitão Goblin', await canvasPng(masterPage, 400, 500, 'Capitão Goblin', '#3a3a2a'));
+    const tower = await createMapRPC(masterPage, campaignId, 'Torre de Mirathel', towerImage);
+    const world = await createMapRPC(masterPage, campaignId, 'Mirathel e arredores', worldImage);
+    await revealMapRPC(masterPage, campaignId, tower);
+    await revealMapRPC(masterPage, campaignId, world);
+    await createPointRPC(masterPage, campaignId, world, { kind: 'BATTLE', name: 'Emboscada na estrada', xBp: 3800, yBp: 6200, revealed: true });
+    await createPointRPC(masterPage, campaignId, world, { kind: 'SUBMAP', name: 'Torre de Mirathel', description: 'Uma torre antiga na colina.', xBp: 7100, yBp: 2800, targetMapId: tower, revealed: true });
+    await createPointRPC(masterPage, campaignId, world, { kind: 'SCENE', name: 'Ruínas élficas', xBp: 8300, yBp: 7600 });
+    await placeTokenRPC(masterPage, campaignId, world, table.characterId, 5200, 5400);
+    await placeTokenRPC(masterPage, campaignId, world, table.npcId!, 3700, 6000);
+
+    await open(masterPage, `/campanhas/${campaignId}/mapas/novo`);
+    await expectNoSeriousViolations(masterPage, `Novo mapa ${suffix}`);
+    await masterPage.getByRole('button', { name: 'Criar mapa' }).click();
+    await expect(masterPage.getByText('Dê um nome ao mapa.')).toBeVisible();
+    await masterPage.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await expectNoSeriousViolations(masterPage, `Novo mapa com erros ${suffix}`);
+
+    await open(masterPage, `/campanhas/${campaignId}/mapas/${world}`);
+    await expectNoSeriousViolations(masterPage, `Mapa, mestre ${suffix}`);
+    if (width >= 768) {
+      await masterPage.getByRole('button', { name: 'Ruínas élficas, Cena de RP, escondido' }).click();
+      await expect(masterPage.getByRole('heading', { name: 'Ruínas élficas' })).toBeVisible();
+      await expectNoSeriousViolations(masterPage, `Editor com um ponto escolhido ${suffix}`);
+    }
+
+    await open(playerPage, `/campanhas/${campaignId}/mapas/${world}`);
+    await expectNoSeriousViolations(playerPage, `Mapa, jogador ${suffix}`);
+    await playerPage.getByRole('button', { name: 'Torre de Mirathel, Submapa' }).first().click();
+    await expect(playerPage.getByRole('button', { name: 'Abrir Torre de Mirathel' })).toBeVisible();
+    await expectNoSeriousViolations(playerPage, `Mapa, jogador, com a ficha de um ponto ${suffix}`);
+
+    await startSessionRPC(masterPage, campaignId);
+    await setCurrentMapRPC(masterPage, campaignId, world);
+    await openSessionPage(masterPage, campaignId);
+    await expect(masterPage.getByRole('heading', { name: 'Pontos do mapa' })).toBeVisible();
+    await expectNoSeriousViolations(masterPage, `Sessão com mapa, mestre ${suffix}`);
+    await openSessionPage(playerPage, campaignId);
+    await expect(playerPage.getByRole('img', { name: 'Prévia do mapa Mirathel e arredores' })).toBeVisible();
+    await expectNoSeriousViolations(playerPage, `Sessão com mapa, jogador ${suffix}`);
+
+    // The picker, then an image on show.
+    await masterPage.getByRole('button', { name: 'Mostrar imagem' }).click();
+    const dialog = masterPage.getByRole('dialog', { name: 'Mostrar uma imagem aos jogadores' });
+    await dialog.getByRole('radio', { name: /Capitão Goblin/ }).click();
+    await masterPage.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await expectNoSeriousViolations(masterPage, `Mostrar imagem, seletor ${suffix}`);
+    await dialog.getByRole('button', { name: 'Mostrar aos jogadores' }).click();
+    await expect(masterPage.getByRole('button', { name: 'Parar de mostrar' })).toBeVisible();
+    await expectNoSeriousViolations(masterPage, `Sessão com imagem à mostra, mestre ${suffix}`);
+    await expect(playerPage.getByRole('region', { name: 'O mestre está mostrando' })).toBeVisible();
+    await playerPage.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await expectNoSeriousViolations(playerPage, `Sessão com imagem à mostra, jogador ${suffix}`);
+  } finally {
+    await endOpenSessionRPC(masterPage, campaignId);
+    await master.close();
+    await player.close();
+  }
+}
+
+test('as telas de mapa e da imagem mostrada passam no axe no tema claro, no desktop', { tag: ['@a11y', '@MR-008', '@MR-028'] }, async ({ browser }) => {
+  await scanMapScreens(browser, 'light', 1280);
+});
+
+test('as telas de mapa e da imagem mostrada passam no axe no tema escuro, no celular', { tag: ['@a11y', '@MR-009', '@MR-028'] }, async ({ browser }) => {
+  await scanMapScreens(browser, 'dark', 390);
 });

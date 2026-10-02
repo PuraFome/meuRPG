@@ -1,0 +1,30 @@
+:host {
+  display: block;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  margin: 0;
+  color: var(--mr-ink-muted);
+}
+
+.page-notice {
+  max-width: 44rem;
+  margin-bottom: var(--mr-space-3);
+}
+
+.body {
+  margin-top: var(--mr-space-3);
+}
+
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mr-accent-text);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}

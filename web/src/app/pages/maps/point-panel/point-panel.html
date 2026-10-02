@@ -1,0 +1,121 @@
+<section class="pp mr-panel" aria-labelledby="pp-title">
+  <p class="pp__eyebrow">Ponto selecionado</p>
+  <h2 class="pp__title" id="pp-title">{{ point().name }}</h2>
+
+  <div class="pp__field">
+    <span class="mr-label" id="pp-kind">Tipo</span>
+    <div class="seg" role="radiogroup" aria-labelledby="pp-kind" (keydown)="onKindKey($event)">
+      @for (k of kinds; track k) {
+        <button
+          type="button"
+          role="radio"
+          class="seg__item"
+          [class.seg__item--on]="draft().kind === k"
+          [attr.aria-checked]="draft().kind === k"
+          [tabIndex]="draft().kind === k ? 0 : -1"
+          (click)="patch({ kind: k })"
+        >
+          @if (draft().kind === k) {
+            <mat-icon aria-hidden="true">check</mat-icon>
+          } @else {
+            <mat-icon aria-hidden="true">{{ kindIcon(k) }}</mat-icon>
+          }
+          {{ kindLabel(k) }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+    <mat-label>Nome</mat-label>
+    <input
+      #nameField
+      matInput
+      autocomplete="off"
+      [attr.maxlength]="nameMax"
+      [formControl]="nameControl"
+    />
+    @if (errors().name; as message) {
+      <mat-error>{{ message }}</mat-error>
+    }
+  </mat-form-field>
+
+  @if (draft().kind === Submap) {
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Leva para</mat-label>
+      <select
+        matNativeControl
+        [value]="draft().targetMapId"
+        (change)="patch({ targetMapId: $any($event.target).value })"
+      >
+        <option value="">Nenhum mapa</option>
+        @for (m of targets(); track m.id) {
+          <option [value]="m.id" [selected]="m.id === draft().targetMapId">{{ m.name }}</option>
+        }
+      </select>
+      <mat-hint>
+        O ponto abre este mapa. Os jogadores só entram nele se ele também estiver revelado.
+      </mat-hint>
+    </mat-form-field>
+  }
+
+  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+    <mat-label>Descrição para os jogadores</mat-label>
+    <textarea
+      matInput
+      rows="4"
+      [formControl]="descriptionControl"
+    ></textarea>
+    @if (errors().description; as message) {
+      <mat-error>{{ message }}</mat-error>
+    } @else {
+      <mat-hint>Os jogadores leem isto quando abrem o ponto. Até 2.000 caracteres.</mat-hint>
+    }
+  </mat-form-field>
+
+  <app-reveal-switch
+    label="Revelado aos jogadores"
+    hint="Os jogadores veem o ponto e a descrição."
+    [checked]="draft().revealed"
+    (checkedChange)="patch({ revealed: $event })"
+  />
+
+  @if (error(); as message) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ message }}</p>
+    </div>
+  }
+
+  @if (confirming()) {
+    <div class="pp__confirm" role="group" aria-labelledby="pp-confirm">
+      <p id="pp-confirm"><strong>Apagar {{ point().name }}?</strong> Não dá para desfazer.</p>
+      <div class="pp__actions">
+        <button
+          #confirmButton
+          matButton="outlined"
+          type="button"
+          class="pp__danger"
+          (click)="removeConfirmed.emit()"
+        >
+          Apagar ponto
+        </button>
+        <button matButton type="button" (click)="confirming.set(false)">Cancelar</button>
+      </div>
+    </div>
+  } @else {
+    <div class="pp__actions">
+      <button
+        matButton="filled"
+        type="button"
+        [disabled]="saving() || !dirty()"
+        (click)="saveRequested.emit()"
+      >
+        Salvar ponto
+      </button>
+      <button matButton type="button" class="pp__danger" (click)="askRemove()">
+        <mat-icon aria-hidden="true">delete</mat-icon>Apagar ponto
+      </button>
+    </div>
+  }
+</section>

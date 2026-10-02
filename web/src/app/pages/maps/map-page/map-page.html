@@ -1,0 +1,64 @@
+@switch (phase()) {
+  @case ('loading') {
+    <h1 class="mr-page-title">Mapa</h1>
+    <p class="status" role="status">
+      <mat-spinner diameter="24" aria-label="Carregando o mapa" />
+      Carregando o mapa...
+    </p>
+  }
+  @case ('gone') {
+    <h1 class="mr-page-title">Mapa não encontrado</h1>
+    <div class="mr-notice mr-notice--neutral page-notice" role="alert">
+      <mat-icon aria-hidden="true">search_off</mat-icon>
+      <p>
+        <strong>Esse mapa não existe, ou o mestre ainda não o revelou.</strong>
+        Volte para <a [routerLink]="['/campanhas', campaignId()]">a campanha</a>.
+      </p>
+    </div>
+  }
+  @case ('error') {
+    <h1 class="mr-page-title">Não foi possível abrir o mapa</h1>
+    <div class="mr-notice mr-notice--danger page-notice" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>
+        <strong>O servidor não respondeu.</strong>
+        Confira a conexão e
+        <button type="button" class="link" (click)="retry()">tente de novo</button>.
+      </p>
+    </div>
+  }
+  @case ('ready') {
+    @if (map(); as m) {
+      @if (isMaster()) {
+        <app-map-head
+          [campaignId]="campaignId()"
+          [map]="m"
+          [showImage]="!phone()"
+          [busy]="busy()"
+          (toggleReveal)="toggleReveal()"
+          (changeImage)="changeImage()"
+        />
+        @if (notice(); as message) {
+          <div class="mr-notice mr-notice--danger page-notice" role="alert">
+            <mat-icon aria-hidden="true">error</mat-icon>
+            <p>{{ message }}</p>
+          </div>
+        }
+        <div class="body">
+          @if (phone()) {
+            <app-map-manage [campaignId]="campaignId()" [state]="state" />
+          } @else {
+            <app-map-editor [campaignId]="campaignId()" [state]="state" [maps]="others()" />
+          }
+        </div>
+      } @else {
+        <app-player-map
+          [campaignId]="campaignId()"
+          [state]="state"
+          [maps]="playerMaps()"
+          [fromSession]="fromSession()"
+        />
+      }
+    }
+  }
+}

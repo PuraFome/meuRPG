@@ -24,7 +24,7 @@ import {
   imageNameError,
   renameErrorMessage,
 } from '../../../core/images/gallery-copy';
-import { imageMeta } from '../../../core/images/image-format';
+import { imageMeta, usedInLine } from '../../../core/images/image-format';
 
 type Mode = 'idle' | 'rename' | 'saving' | 'confirm' | 'deleting';
 
@@ -46,8 +46,8 @@ let nextId = 0;
  *
  * The card calls `GalleryClient` itself and tells the page what changed
  * (`renamed`, `deleted`); the page owns the list and the focus after a
- * delete. The line "Usada em …" of the artboards waits for the maps slice:
- * `GalleryImage` does not say where an image is used yet.
+ * delete. A third line says where the image is used ("Usada em …", from
+ * `GalleryImage.used_in_maps`, or "Ainda não usada").
  */
 @Component({
   selector: 'app-gallery-card',
@@ -77,6 +77,7 @@ export class GalleryCard {
   protected readonly mode = signal<Mode>('idle');
   protected readonly error = signal<string | null>(null);
   protected readonly meta = computed(() => imageMeta(this.image()));
+  protected readonly use = computed(() => usedInLine(this.image().usedInMaps));
   protected readonly nameMax = IMAGE_NAME_MAX;
   protected readonly nameControl = new FormControl('', { nonNullable: true });
   protected readonly nameError = signal<string | null>(null);

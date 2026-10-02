@@ -1,0 +1,105 @@
+:host {
+  display: block;
+}
+
+.map {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.map__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-2) var(--mr-space-3);
+
+  .mr-panel__title {
+    margin: 0;
+
+    &:focus {
+      outline: none;
+    }
+  }
+}
+
+.map__select {
+  flex: 1 1 14rem;
+  max-width: 20rem;
+}
+
+.map__note,
+.map__hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+// The preview and its link: the whole picture opens the full map; the
+// visible "Ver mapa" button is the keyboard's stop.
+.map__frame {
+  position: relative;
+}
+
+.map__cover {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  border-radius: var(--mr-radius-md);
+}
+
+.map__foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+}
+
+.map__legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  min-width: 0;
+}
+
+.map__open {
+  min-height: 44px;
+  flex: none;
+
+  @media (max-width: 767.98px) {
+    min-height: 48px;
+  }
+}
+
+.map__points {
+  padding-top: var(--mr-space-2);
+  border-top: 1px solid var(--mr-rule);
+}
+
+.map__retry {
+  margin-left: var(--mr-space-2);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mr-accent-text);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}

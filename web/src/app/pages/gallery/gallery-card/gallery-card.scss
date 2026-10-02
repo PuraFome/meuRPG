@@ -148,6 +148,23 @@ p {
   color: var(--mr-ink-muted);
 }
 
+.card__use {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 17px;
+    height: 17px;
+    font-size: 17px;
+    margin-top: 1px;
+  }
+}
+
 .card__error {
   gap: var(--mr-space-2);
   margin-top: var(--mr-space-2);

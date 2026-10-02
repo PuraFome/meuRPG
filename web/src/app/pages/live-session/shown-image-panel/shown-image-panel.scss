@@ -1,0 +1,101 @@
+:host {
+  display: block;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+
+  .mr-panel__title {
+    margin: 0;
+  }
+}
+
+// "On the players' screens right now": the accent frame, with the words and
+// the icon beside it (the frame is never the only sign).
+.panel--on {
+  border: 1.5px solid var(--mr-accent);
+}
+
+.off__title {
+  margin: var(--mr-space-1) 0 0;
+  font-weight: 700;
+}
+
+.off__text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.off__button {
+  align-self: flex-start;
+  min-height: 44px;
+  margin-top: var(--mr-space-1);
+}
+
+.on {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+}
+
+.on__thumb {
+  flex: none;
+  width: 112px;
+  height: 84px;
+  border-radius: var(--mr-radius-sm);
+  outline: 1px solid var(--mr-line);
+  outline-offset: -1px;
+  object-fit: cover;
+  background: var(--mr-ground);
+}
+
+.on__text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.on__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--mr-accent);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-accent-soft);
+  color: var(--mr-accent-text);
+  font-size: 14px;
+  font-weight: 700;
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.on__name {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 26px;
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  gap: var(--mr-space-2);
+
+  button {
+    flex: 1 1 0;
+    min-height: 44px;
+  }
+}

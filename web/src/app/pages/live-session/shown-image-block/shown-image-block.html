@@ -1,0 +1,57 @@
+@if (shown(); as img) {
+  <div
+    class="wrap"
+    [class.wrap--in]="entering()"
+    [class.wrap--out]="leaving()"
+  >
+    <section class="block" aria-labelledby="shown-title">
+      <h2 class="block__heading" id="shown-title">
+        <mat-icon aria-hidden="true">cast</mat-icon>O mestre está mostrando
+      </h2>
+
+      <button
+        type="button"
+        class="frame"
+        tabindex="-1"
+        [style.aspect-ratio]="aspect()"
+        (click)="openFull()"
+      >
+        @if (failed()) {
+          <span class="frame__error">Não deu para carregar a imagem.</span>
+        } @else {
+          <img
+            class="frame__img"
+            [class.frame__img--loaded]="loaded()"
+            [src]="img.url"
+            [alt]="img.name"
+            [width]="img.width"
+            [height]="img.height"
+            decoding="async"
+            (load)="loaded.set(true)"
+            (error)="failed.set(true)"
+          />
+        }
+      </button>
+
+      @if (failed()) {
+        <button matButton type="button" class="block__retry" (click)="retry()">
+          Tentar de novo
+        </button>
+      }
+
+      <div class="block__caption">
+        <p class="block__name">{{ img.name }}</p>
+        <button
+          matButton
+          type="button"
+          class="block__full"
+          [attr.aria-label]="'Ver ' + img.name + ' em tela cheia'"
+          (click)="openFull()"
+        >
+          <mat-icon aria-hidden="true">fullscreen</mat-icon>Ver em tela cheia
+        </button>
+      </div>
+      <p class="block__note">Fica aqui enquanto o mestre mostrar.</p>
+    </section>
+  </div>
+}

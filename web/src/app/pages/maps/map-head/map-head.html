@@ -1,0 +1,30 @@
+<a class="back" [routerLink]="['/campanhas', campaignId()]">
+  <mat-icon aria-hidden="true">arrow_back</mat-icon>Voltar para a campanha
+</a>
+<h1 class="mr-page-title">{{ map().name }}</h1>
+<div class="state">
+  <span class="state__item">
+    <mat-icon aria-hidden="true">{{ map().revealed ? 'visibility' : 'visibility_off' }}</mat-icon>
+    {{ map().revealed ? 'Revelado aos jogadores' : 'Escondido dos jogadores' }}
+  </span>
+  <button
+    matButton
+    type="button"
+    class="state__action"
+    [disabled]="busy()"
+    [attr.aria-label]="map().revealed ? 'Esconder o mapa dos jogadores' : 'Revelar o mapa aos jogadores'"
+    (click)="toggleReveal.emit()"
+  >
+    {{ map().revealed ? 'Esconder' : 'Revelar aos jogadores' }}
+  </button>
+  @if (showImage()) {
+    <span class="state__sep" aria-hidden="true"></span>
+    <span class="state__item">
+      <mat-icon aria-hidden="true">image</mat-icon>
+      Imagem: {{ map().image?.name }}
+    </span>
+    <button matButton type="button" class="state__action" (click)="changeImage.emit()">
+      Trocar imagem
+    </button>
+  }
+</div>

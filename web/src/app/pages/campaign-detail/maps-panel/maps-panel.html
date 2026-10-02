@@ -1,0 +1,62 @@
+@if (visible()) {
+  <section class="mr-panel maps" aria-labelledby="maps-panel-heading">
+    <h2 class="mr-panel__title" id="maps-panel-heading">Mapas</h2>
+
+    @let s = state();
+    @switch (s.status) {
+      @case ('loading') {
+        <p class="mr-muted maps__text" role="status">Carregando os mapas...</p>
+      }
+      @case ('error') {
+        <div class="mr-notice mr-notice--danger" role="alert">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <p>{{ s.message }}</p>
+        </div>
+      }
+      @case ('ready') {
+        @if (s.maps.length === 0) {
+          <p class="maps__text">Nenhum mapa ainda. Crie o primeiro a partir de uma imagem da galeria.</p>
+        } @else {
+          <ul class="mr-list">
+            @for (m of s.maps; track m.id) {
+              <li>
+                <a class="row" [routerLink]="['/campanhas', campaignId(), 'mapas', m.id]">
+                  <span class="row__text">
+                    <span class="row__name">{{ m.name }}</span>
+                    <span class="row__sub">{{ sub(m, isMaster()) }}</span>
+                  </span>
+                  <span class="row__tags">
+                    @if (m.current) {
+                      <span class="mr-tag"><mat-icon aria-hidden="true">push_pin</mat-icon>Mapa atual</span>
+                    }
+                    @if (isMaster()) {
+                      @if (m.revealed) {
+                        <span class="mr-tag">
+                          <mat-icon aria-hidden="true">visibility</mat-icon>Revelado
+                        </span>
+                      } @else {
+                        <span class="mr-tag mr-tag--hidden">
+                          <mat-icon aria-hidden="true">visibility_off</mat-icon>Escondido
+                        </span>
+                      }
+                    }
+                  </span>
+                </a>
+              </li>
+            }
+          </ul>
+        }
+      }
+    }
+
+    @if (isMaster()) {
+      <a
+        matButton="outlined"
+        class="maps__new"
+        [routerLink]="['/campanhas', campaignId(), 'mapas', 'novo']"
+      >
+        <mat-icon aria-hidden="true">add</mat-icon>Novo mapa
+      </a>
+    }
+  </section>
+}

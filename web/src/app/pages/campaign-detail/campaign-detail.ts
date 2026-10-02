@@ -14,6 +14,7 @@ import { memberRows } from './campaign-detail.copy';
 import { CampaignCharacters } from './characters/campaign-characters';
 import { DocumentPanel } from './document-panel/document-panel';
 import { GalleryPanel } from './gallery-panel/gallery-panel';
+import { MapsPanel } from './maps-panel/maps-panel';
 import { GameSessionCard } from './game-session/game-session-card';
 import { CampaignInvites } from './invites/invites';
 
@@ -53,6 +54,7 @@ type PageState =
     CampaignInvites,
     DocumentPanel,
     GalleryPanel,
+    MapsPanel,
     GameSessionCard,
     MatIconModule,
     MatProgressSpinnerModule,

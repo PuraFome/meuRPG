@@ -1,0 +1,507 @@
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
+import { MatIconModule } from '@angular/material/icon';
+
+import {
+  IDENTITY,
+  ViewPoint,
+  ViewToken,
+  ViewTransform,
+  bpToPercent,
+  centroid,
+  clampTransform,
+  distance,
+  focusTransform,
+  labelSide,
+  nudge,
+  screenToBp,
+  stepScale,
+  tokenInitial,
+  visiblePoints,
+  visibleTokens,
+  zoomAround,
+} from './map-geometry';
+import { MapMarker } from './map-marker/map-marker';
+import { MapToken } from './map-token/map-token';
+
+/** `preview`: a still picture (the session page's card); `view`: pan and
+ * zoom, points open; `tokens`: also drag the tokens (the master's session
+ * page); `edit`: also drag the points (the editor). */
+export type MapViewMode = 'preview' | 'view' | 'tokens' | 'edit';
+
+export interface MapImageRef {
+  readonly url: string;
+  readonly width: number;
+  readonly height: number;
+}
+
+/** What is selected on the map: a point by its ID, a token by its
+ * character's ID. */
+export interface MapSelection {
+  readonly kind: 'point' | 'token';
+  readonly id: string;
+}
+
+export interface MapMove extends MapSelection {
+  readonly xBp: number;
+  readonly yBp: number;
+}
+
+/** A pointer movement under this many pixels is a click, not a drag. */
+const DRAG_THRESHOLD = 4;
+/** The phone preview opens zoomed in on the party (README-A). */
+const PREVIEW_SCALE = 2;
+
+/**
+ * The map: the gallery image with the points and tokens on top, shared by
+ * the editor, the player's viewer and the session page (README-B, README-A).
+ *
+ * - **Layout.** The image is sized from `image.width/height` (an aspect-ratio
+ *   box), so nothing shifts while it loads. Items sit at their basis points
+ *   as percentages, so they stay on the same spot of the image at any size.
+ * - **Pan and zoom** without a library: the stage gets a CSS transform.
+ *   The mouse drags an empty spot to pan and the wheel zooms around the
+ *   pointer; two fingers pan and pinch (one finger still scrolls the page).
+ *   The overlay buttons (−, +, "Ajustar à tela", 44px) work for everyone;
+ *   100 % is the whole image, up to 400 %. A parent that draws its own
+ *   toolbar calls `zoomIn()`, `zoomOut()` and `fit()` and reads `scale()`.
+ * - **Dragging** (`edit`: points and tokens, `tokens`: tokens). The arrow
+ *   keys move the selected item 0,5 % (Shift: 5 %). The position is
+ *   reported on drop or on key release (`moved`); the parent saves it.
+ * - **Who sees what.** The master sees every point and token, hidden ones
+ *   drawn dashed. Anyone else gets only the revealed and the visible, even
+ *   if a hidden one is passed in (the server never sends one).
+ * - **Stacking:** image, points, tokens, labels, the selected or hovered
+ *   item, the controls. Hover and focus raise an overlapped item.
+ *
+ * Presentational and signal-based; it never calls the API.
+ */
+@Component({
+  selector: 'app-map-view',
+  imports: [MapMarker, MapToken, MatIconModule],
+  templateUrl: './map-view.html',
+  styleUrl: './map-view.scss',
+})
+export class MapView {
+  readonly image = input.required<MapImageRef>();
+  /** The map's name: the group's accessible name. */
+  readonly mapName = input('');
+  readonly points = input<readonly ViewPoint[]>([]);
+  readonly tokens = input<readonly ViewToken[]>([]);
+  readonly isMaster = input(false);
+  readonly mode = input<MapViewMode>('view');
+  /** Whether a click on a marker opens it. Off on the master's phone map,
+   * which only pans and zooms. */
+  readonly selectablePoints = input(true);
+  readonly selected = input<MapSelection | null>(null);
+  readonly controls = input<'overlay' | 'none'>('overlay');
+  /** Opens zoomed in on the party and the points (the phone's preview). */
+  readonly focusParty = input(false);
+  /** A line over the map's top-left corner ("Clique no mapa para pôr o ponto."). */
+  readonly hint = input<string | null>(null);
+  /** A kind of point is waiting for a click: the cursor says so. */
+  readonly placing = input(false);
+
+  readonly pointSelect = output<string>();
+  readonly tokenSelect = output<string>();
+  /** A click on an empty spot of the map, where it fell. */
+  readonly emptyClick = output<{ xBp: number; yBp: number }>();
+  readonly moved = output<MapMove>();
+
+  private readonly viewport = viewChild.required<ElementRef<HTMLElement>>('viewport');
+
+  protected readonly transform = signal<ViewTransform>(IDENTITY);
+  private readonly size = signal({ width: 0, height: 0 });
+  /** What the pointer or the keyboard is moving right now. */
+  private readonly override = signal<MapMove | null>(null);
+  protected readonly raisedKey = signal<string | null>(null);
+
+  /** The zoom, 1 to 4 (the editor's toolbar reads it). */
+  readonly scale = computed(() => this.transform().scale);
+
+  protected readonly shownPoints = computed(() => visiblePoints(this.points(), this.isMaster()));
+  protected readonly shownTokens = computed(() => visibleTokens(this.tokens(), this.isMaster()));
+  protected readonly interactive = computed(() => this.mode() !== 'preview');
+  protected readonly pointsOpen = computed(() => this.interactive() && this.selectablePoints());
+  protected readonly tokensMovable = computed(
+    () => this.mode() === 'tokens' || this.mode() === 'edit',
+  );
+  protected readonly ratio = computed(() => this.image().width / Math.max(1, this.image().height));
+  protected readonly aspect = computed(() => `${this.image().width} / ${this.image().height}`);
+  protected readonly selectedKey = computed(() => {
+    const s = this.selected();
+    return s ? `${s.kind}:${s.id}` : null;
+  });
+
+  private readonly pointers = new Map<number, { x: number; y: number }>();
+  private gesture: {
+    id: number;
+    item: string | null;
+    startX: number;
+    startY: number;
+    origin: ViewTransform;
+    moved: boolean;
+    touch: boolean;
+  } | null = null;
+  private pinch: { dist: number; mid: { x: number; y: number }; origin: ViewTransform } | null =
+    null;
+  private nudging = false;
+
+  constructor() {
+    afterNextRender(() => {
+      const el = this.viewport().nativeElement;
+      const measure = () => {
+        const rect = el.getBoundingClientRect();
+        this.size.set({ width: rect.width, height: rect.height });
+        this.transform.update((t) => clampTransform(t, rect.width, rect.height));
+      };
+      measure();
+      if (typeof ResizeObserver !== 'undefined') {
+        const observer = new ResizeObserver(measure);
+        observer.observe(el);
+        inject(DestroyRef).onDestroy(() => observer.disconnect());
+      }
+    });
+
+    // The phone's preview opens on the party, zoomed in.
+    effect(() => {
+      const { width, height } = this.size();
+      if (!this.focusParty() || width === 0) {
+        return;
+      }
+      const around = this.shownTokens().length > 0 ? this.shownTokens() : this.shownPoints();
+      const center = centroid(around);
+      untracked(() =>
+        this.transform.set(
+          center ? focusTransform(center, PREVIEW_SCALE, width, height) : IDENTITY,
+        ),
+      );
+    });
+  }
+
+  // ---- the toolbar's calls ----
+
+  zoomIn(): void {
+    this.zoomBy(1);
+  }
+
+  zoomOut(): void {
+    this.zoomBy(-1);
+  }
+
+  /** "Ajustar à tela": the whole image. */
+  fit(): void {
+    this.transform.set(IDENTITY);
+  }
+
+  /** Puts focus back on an item (a point's marker after its sheet closes). */
+  focusItem(kind: 'point' | 'token', id: string): void {
+    this.viewport()
+      .nativeElement.querySelector<HTMLElement>(`[data-item="${kind}:${id}"]`)
+      ?.focus();
+  }
+
+  /** The middle of what is on screen, in basis points: where a new token
+   * lands ("Adicionar token"). */
+  centerBp(): { xBp: number; yBp: number } {
+    const rect = this.viewport().nativeElement.getBoundingClientRect();
+    return screenToBp(
+      rect.left + rect.width / 2,
+      rect.top + rect.height / 2,
+      rect,
+      this.transform(),
+    );
+  }
+
+  private zoomBy(direction: 1 | -1): void {
+    const { width, height } = this.size();
+    const t = this.transform();
+    this.transform.set(
+      zoomAround(t, stepScale(t.scale, direction), width / 2, height / 2, width, height),
+    );
+  }
+
+  // ---- where things are drawn ----
+
+  protected pointAt(point: ViewPoint): { xBp: number; yBp: number } | null {
+    const o = this.override();
+    return o && o.kind === 'point' && o.id === point.id ? o : null;
+  }
+
+  protected tokenAt(token: ViewToken): { xBp: number; yBp: number } | null {
+    const o = this.override();
+    return o && o.kind === 'token' && o.id === token.characterId ? o : null;
+  }
+
+  protected labelLeft(point: ViewPoint): number {
+    return bpToPercent(this.pointAt(point)?.xBp ?? point.xBp);
+  }
+
+  protected labelTop(point: ViewPoint): number {
+    return bpToPercent(this.pointAt(point)?.yBp ?? point.yBp);
+  }
+
+  protected side(point: ViewPoint): string {
+    const at = this.pointAt(point) ?? point;
+    return labelSide(at.xBp, at.yBp);
+  }
+
+  protected initial(token: ViewToken): string {
+    return tokenInitial(token, this.shownTokens());
+  }
+
+  protected transformCss(): string {
+    const t = this.transform();
+    return `translate(${t.x}px, ${t.y}px) scale(${t.scale})`;
+  }
+
+  // ---- pointers ----
+
+  protected onPointerDown(event: PointerEvent): void {
+    if (!this.interactive() || event.button > 0) {
+      return;
+    }
+    const item = this.itemOf(event.target);
+    this.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (this.pointers.size === 2) {
+      const [a, b] = [...this.pointers.values()];
+      this.pinch = { dist: distance(a, b), mid: midpoint(a, b), origin: this.transform() };
+      this.gesture = null;
+      this.override.set(null);
+      return;
+    }
+    if (this.pointers.size > 2) {
+      return;
+    }
+    this.gesture = {
+      id: event.pointerId,
+      item,
+      startX: event.clientX,
+      startY: event.clientY,
+      origin: this.transform(),
+      moved: false,
+      touch: event.pointerType === 'touch',
+    };
+  }
+
+  protected onPointerMove(event: PointerEvent): void {
+    if (this.pointers.has(event.pointerId)) {
+      this.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    }
+    if (this.pinch && this.pointers.size === 2) {
+      this.pinchMove();
+      return;
+    }
+    const g = this.gesture;
+    if (!g || g.id !== event.pointerId) {
+      return;
+    }
+    const dx = event.clientX - g.startX;
+    const dy = event.clientY - g.startY;
+    if (!g.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) {
+      return;
+    }
+    const target = this.movable(g.item);
+    if (!g.moved) {
+      g.moved = true;
+      if (target || !g.touch) {
+        this.viewport().nativeElement.setPointerCapture?.(event.pointerId);
+      }
+    }
+    if (target) {
+      const at = screenToBp(
+        event.clientX,
+        event.clientY,
+        this.viewport().nativeElement.getBoundingClientRect(),
+        this.transform(),
+      );
+      this.override.set({ ...target, ...at });
+    } else if (!g.touch) {
+      const { width, height } = this.size();
+      this.transform.set(
+        clampTransform({ ...g.origin, x: g.origin.x + dx, y: g.origin.y + dy }, width, height),
+      );
+    }
+  }
+
+  protected onPointerUp(event: PointerEvent): void {
+    this.pointers.delete(event.pointerId);
+    if (this.pinch) {
+      if (this.pointers.size < 2) {
+        this.pinch = null;
+        this.gesture = null;
+      }
+      return;
+    }
+    const g = this.gesture;
+    if (!g || g.id !== event.pointerId) {
+      return;
+    }
+    this.gesture = null;
+    const dropped = this.override();
+    if (event.type === 'pointercancel') {
+      this.override.set(null);
+      return;
+    }
+    if (g.moved) {
+      if (dropped) {
+        this.override.set(null);
+        this.moved.emit(dropped);
+      }
+      return;
+    }
+    if (!g.item) {
+      this.emptyClick.emit(
+        screenToBp(
+          event.clientX,
+          event.clientY,
+          this.viewport().nativeElement.getBoundingClientRect(),
+          this.transform(),
+        ),
+      );
+    }
+  }
+
+  private pinchMove(): void {
+    const pinch = this.pinch;
+    if (!pinch) {
+      return;
+    }
+    const [a, b] = [...this.pointers.values()];
+    const rect = this.viewport().nativeElement.getBoundingClientRect();
+    const mid = midpoint(a, b);
+    const { width, height } = this.size();
+    const zoomed = zoomAround(
+      pinch.origin,
+      pinch.origin.scale * (distance(a, b) / Math.max(1, pinch.dist)),
+      pinch.mid.x - rect.left,
+      pinch.mid.y - rect.top,
+      width,
+      height,
+    );
+    this.transform.set(
+      clampTransform(
+        { ...zoomed, x: zoomed.x + (mid.x - pinch.mid.x), y: zoomed.y + (mid.y - pinch.mid.y) },
+        width,
+        height,
+      ),
+    );
+  }
+
+  protected onWheel(event: WheelEvent): void {
+    if (!this.interactive()) {
+      return;
+    }
+    event.preventDefault();
+    const rect = this.viewport().nativeElement.getBoundingClientRect();
+    const t = this.transform();
+    const next = t.scale * (event.deltaY < 0 ? 1.12 : 1 / 1.12);
+    this.transform.set(
+      zoomAround(
+        t,
+        next,
+        event.clientX - rect.left,
+        event.clientY - rect.top,
+        rect.width,
+        rect.height,
+      ),
+    );
+  }
+
+  // ---- clicks, keys, hover ----
+
+  protected onClick(event: MouseEvent): void {
+    const item = this.itemOf(event.target);
+    if (!item) {
+      return;
+    }
+    const [kind, id] = splitItem(item);
+    if (kind === 'point' && this.pointsOpen()) {
+      this.pointSelect.emit(id);
+    } else if (kind === 'token' && this.tokensMovable()) {
+      this.tokenSelect.emit(id);
+    }
+  }
+
+  protected onKeydown(event: KeyboardEvent): void {
+    const item = this.itemOf(event.target);
+    const target = this.movable(item);
+    if (!target) {
+      return;
+    }
+    const from = this.override() ?? target;
+    const to = nudge(event.key, event.shiftKey, from.xBp, from.yBp);
+    if (to) {
+      event.preventDefault();
+      this.nudging = true;
+      this.override.set({ ...target, ...to });
+    }
+  }
+
+  protected onKeyup(event: KeyboardEvent): void {
+    if (!this.nudging || !event.key.startsWith('Arrow')) {
+      return;
+    }
+    this.nudging = false;
+    const done = this.override();
+    this.override.set(null);
+    if (done) {
+      this.moved.emit(done);
+    }
+  }
+
+  protected raise(event: Event): void {
+    this.raisedKey.set(this.itemOf(event.target));
+  }
+
+  protected lower(): void {
+    this.raisedKey.set(null);
+  }
+
+  // ---- helpers ----
+
+  private itemOf(target: EventTarget | null): string | null {
+    return (
+      (target as HTMLElement | null)?.closest?.('[data-item]')?.getAttribute('data-item') ?? null
+    );
+  }
+
+  /** The item as something the mode lets the person move, with its
+   * current position; `null` otherwise. */
+  private movable(item: string | null): MapMove | null {
+    if (!item) {
+      return null;
+    }
+    const [kind, id] = splitItem(item);
+    if (kind === 'point' && this.mode() === 'edit') {
+      const p = this.points().find((x) => x.id === id);
+      return p ? { kind, id, xBp: p.xBp, yBp: p.yBp } : null;
+    }
+    if (kind === 'token' && this.tokensMovable()) {
+      const t = this.tokens().find((x) => x.characterId === id);
+      return t ? { kind, id, xBp: t.xBp, yBp: t.yBp } : null;
+    }
+    return null;
+  }
+}
+
+function splitItem(item: string): ['point' | 'token', string] {
+  const index = item.indexOf(':');
+  return [item.slice(0, index) as 'point' | 'token', item.slice(index + 1)];
+}
+
+function midpoint(a: { x: number; y: number }, b: { x: number; y: number }) {
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+}

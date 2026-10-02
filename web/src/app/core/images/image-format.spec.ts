@@ -3,6 +3,8 @@ import {
   formatBytes,
   formatDimensions,
   imageCountLabel,
+  joinNames,
+  usedInLine,
   imageMeta,
   quotaNearlyFull,
   usageLine,
@@ -70,5 +72,19 @@ describe('quotaNearlyFull', () => {
     expect(quotaNearlyFull(usage({ imageCount: 269 }))).toBe(false);
     expect(quotaNearlyFull(usage({ imageCount: 270 }))).toBe(true);
     expect(quotaNearlyFull(usage({ byteCount: 450 * MB }))).toBe(true);
+  });
+});
+
+describe('usedInLine and joinNames', () => {
+  it('says where an image is used, or that it is not', () => {
+    expect(usedInLine([])).toBe('Ainda não usada');
+    expect(usedInLine([{ name: 'Mirathel e arredores' }])).toBe('Usada em Mirathel e arredores');
+    expect(usedInLine([{ name: 'A' }, { name: 'B' }, { name: 'C' }])).toBe('Usada em A, B e C');
+  });
+
+  it('joins names in Portuguese', () => {
+    expect(joinNames([])).toBe('');
+    expect(joinNames(['A'])).toBe('A');
+    expect(joinNames(['A', 'B'])).toBe('A e B');
   });
 });

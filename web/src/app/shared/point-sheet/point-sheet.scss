@@ -1,0 +1,95 @@
+:host {
+  display: block;
+  padding: var(--mr-space-4);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+}
+
+// On a phone: a bottom sheet over the page (non-modal; the map stays
+// pannable above it).
+:host(.point-sheet--floating) {
+  position: fixed;
+  z-index: 20;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  max-height: 45vh;
+  overflow: auto;
+  padding-bottom: calc(var(--mr-space-4) + env(safe-area-inset-bottom));
+  border-width: 1px 0 0;
+  border-radius: var(--mr-radius-xl) var(--mr-radius-xl) 0 0;
+}
+
+.sheet__head {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+}
+
+.sheet__glyph {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 2px solid var(--mr-ink);
+  border-radius: 8px;
+}
+
+.sheet__titles {
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.sheet__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 26px;
+  overflow-wrap: anywhere;
+
+  &:focus {
+    outline: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+.sheet__kind {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.sheet__close {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--mr-radius-sm);
+  background: none;
+  color: var(--mr-ink);
+  cursor: pointer;
+}
+
+.sheet__text {
+  margin: var(--mr-space-3) 0 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.sheet__open {
+  margin-top: var(--mr-space-3);
+  min-height: 44px;
+}

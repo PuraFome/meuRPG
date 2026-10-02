@@ -1,5 +1,7 @@
+import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 
+import { ImageInUseSchema } from '../../../gen/meurpg/maps/v1/gallery_pb';
 import { deleteRefusal, imageNameError, renameErrorMessage } from './gallery-copy';
 
 describe('imageNameError', () => {
@@ -26,6 +28,32 @@ describe('renameErrorMessage', () => {
       'não está mais na galeria',
     );
     expect(renameErrorMessage(new TypeError('fetch failed'))).toContain('Tente de novo');
+  });
+});
+
+describe('deleteRefusal with the ImageInUse detail', () => {
+  function inUse(...names: string[]): ConnectError {
+    return new ConnectError('in use', Code.FailedPrecondition, undefined, [
+      {
+        desc: ImageInUseSchema,
+        value: create(ImageInUseSchema, { maps: names.map((name, i) => ({ id: `m${i}`, name })) }),
+      },
+    ]);
+  }
+
+  it('names the map that uses the image', () => {
+    expect(deleteRefusal(inUse('Mirathel e arredores'))).toEqual({
+      gone: false,
+      message:
+        'Essa imagem é o fundo de Mirathel e arredores. Troque a imagem do mapa antes de apagá-la.',
+    });
+  });
+
+  it('names every map when there are several', () => {
+    const refusal = deleteRefusal(inUse('A', 'B', 'C'));
+    expect(refusal.gone === false && refusal.message).toBe(
+      'Essa imagem é o fundo dos mapas A, B e C. Troque a imagem deles antes de apagá-la.',
+    );
   });
 });
 

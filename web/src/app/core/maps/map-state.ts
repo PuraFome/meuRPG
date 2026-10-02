@@ -1,0 +1,153 @@
+import { signal } from '@angular/core';
+import { Code, ConnectError } from '@connectrpc/connect';
+
+import type {
+  GetMapResponse,
+  Map as MapMessage,
+  MapPoint,
+  MapToken,
+} from '../../../gen/meurpg/maps/v1/maps_pb';
+
+/**
+ * - `idle`: no map to show (none chosen);
+ * - `loading`: the first read of a map;
+ * - `ready`: the map is on screen (a refetch keeps it there);
+ * - `gone`: `not_found`: the map was deleted, or hidden from this player;
+ * - `error`: the read failed for another reason.
+ */
+export type MapStatus = 'idle' | 'loading' | 'ready' | 'gone' | 'error';
+
+/**
+ * One open map's state (the session page and the map pages): the map, its
+ * points and its tokens as signals, with the small updates the screens make
+ * after their own calls and after the stream's events. Pure TypeScript, so
+ * the rules (a stale answer never overwrites a newer one; `not_found` means
+ * the player lost sight of the map) are tested without a DOM.
+ */
+export class MapState {
+  readonly map = signal<MapMessage | null>(null);
+  readonly points = signal<readonly MapPoint[]>([]);
+  readonly tokens = signal<readonly MapToken[]>([]);
+  readonly status = signal<MapStatus>('idle');
+
+  private mapId: string | null = null;
+  private generation = 0;
+
+  constructor(private readonly load: (mapId: string) => Promise<GetMapResponse>) {}
+
+  /** Shows `mapId` (reading it), or nothing for `null`. */
+  async open(mapId: string | null): Promise<void> {
+    this.mapId = mapId;
+    if (mapId === null) {
+      this.generation++;
+      this.clear('idle');
+      return;
+    }
+    if (this.map()?.id !== mapId) {
+      // A different map: don't leave the old one under the new name.
+      this.clear('loading');
+    }
+    await this.read(mapId);
+  }
+
+  /** Reads the open map again (`map_changed`): the old one stays on screen
+   * until the new answer arrives. */
+  async refresh(): Promise<void> {
+    if (this.mapId !== null) {
+      await this.read(this.mapId);
+    }
+  }
+
+  private async read(mapId: string): Promise<void> {
+    const generation = ++this.generation;
+    try {
+      const res = await this.load(mapId);
+      if (generation !== this.generation) {
+        return;
+      }
+      this.apply(res);
+    } catch (err) {
+      if (generation !== this.generation) {
+        return;
+      }
+      if (ConnectError.from(err).code === Code.NotFound) {
+        this.clear('gone');
+      } else if (this.status() !== 'ready') {
+        this.status.set('error');
+      }
+      // A failed refetch of a map already on screen keeps what is there.
+    }
+  }
+
+  apply(res: GetMapResponse): void {
+    this.map.set(res.map ?? null);
+    this.points.set(res.points);
+    this.tokens.set(res.tokens);
+    this.status.set(res.map ? 'ready' : 'gone');
+  }
+
+  private clear(status: MapStatus): void {
+    this.map.set(null);
+    this.points.set([]);
+    this.tokens.set([]);
+    this.status.set(status);
+  }
+
+  /** `token_moved`: moves a token without reading the map again. `false`
+   * when the map is open but the token is not on it: the app missed a
+   * `map_changed`, and should read the map again (maps.proto). A move on
+   * another map is not this state's business (`true`). */
+  moveToken(mapId: string, characterId: string, xBp: number, yBp: number): boolean {
+    if (mapId !== this.map()?.id) {
+      return true;
+    }
+    if (!this.tokens().some((t) => t.characterId === characterId)) {
+      return false;
+    }
+    this.tokens.update((list) =>
+      list.map((t) => (t.characterId === characterId ? { ...t, xBp, yBp } : t)),
+    );
+    return true;
+  }
+
+  upsertPoint(point: MapPoint): void {
+    this.points.update((list) =>
+      list.some((p) => p.id === point.id)
+        ? list.map((p) => (p.id === point.id ? point : p))
+        : [...list, point],
+    );
+    this.touchCount();
+  }
+
+  removePoint(pointId: string): void {
+    this.points.update((list) => list.filter((p) => p.id !== pointId));
+    this.touchCount();
+  }
+
+  upsertToken(token: MapToken): void {
+    this.tokens.update((list) =>
+      list.some((t) => t.characterId === token.characterId)
+        ? list.map((t) => (t.characterId === token.characterId ? token : t))
+        : [...list, token],
+    );
+  }
+
+  removeToken(characterId: string): void {
+    this.tokens.update((list) => list.filter((t) => t.characterId !== characterId));
+  }
+
+  setMap(map: MapMessage): void {
+    this.map.set(map);
+  }
+
+  private touchCount(): void {
+    const map = this.map();
+    if (map) {
+      this.map.set({ ...map, pointCount: this.points().length });
+    }
+  }
+}
+
+export function isGone(err: unknown): boolean {
+  return ConnectError.from(err).code === Code.NotFound;
+}

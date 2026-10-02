@@ -6,7 +6,7 @@ import {
   GameSessionBlockedReason,
   GameSessionBlockedSchema,
 } from '../../../gen/meurpg/play/v1/play_pb';
-import { classifyLiveError, toVitalsVm } from './live-session-source.live';
+import { classifyLiveError, toShownImageVm, toVitalsVm } from './live-session-source.live';
 
 function blocked(reason: GameSessionBlockedReason): ConnectError {
   return new ConnectError('blocked', Code.FailedPrecondition, undefined, [
@@ -58,5 +58,22 @@ describe('toVitalsVm', () => {
     expect(vm.spellSlots).toEqual([{ level: 1, total: 2, used: 1 }]);
     expect(vm.pactSlots).toEqual({ slotLevel: 2, total: 2, used: 0 });
     expect(vm.revision).toBe(7);
+  });
+});
+
+describe('toShownImageVm', () => {
+  it('maps the wire image, and nothing when no image is shown', () => {
+    expect(
+      toShownImageVm({
+        $typeName: 'meurpg.play.v1.ShownImage',
+        id: 'img-1',
+        name: 'Capitão Goblin',
+        width: 400,
+        height: 500,
+        url: '/images/img-1',
+        thumbnailUrl: '/images/img-1/thumb',
+      }),
+    ).toEqual({ id: 'img-1', name: 'Capitão Goblin', width: 400, height: 500, url: '/images/img-1' });
+    expect(toShownImageVm(undefined)).toBeNull();
   });
 });

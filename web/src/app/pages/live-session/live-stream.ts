@@ -1,6 +1,6 @@
 import { signal } from '@angular/core';
 
-import { LiveErrorKind, LiveEventVm, VitalsVm } from './live-session.types';
+import { LiveErrorKind, LiveEventVm, ShownImageVm, VitalsVm } from './live-session.types';
 
 /**
  * Where the stream stands:
@@ -19,6 +19,14 @@ export interface LiveStreamHandlers {
    * reconnection, so a missed event never leaves the screen stale). */
   onReady(): void;
   onVitals(vitals: VitalsVm): void;
+  /** `current_map_changed`: another map (or none) on the table. */
+  onCurrentMap?(mapId: string | null): void;
+  /** `map_changed`: something on this map changed, read it again. */
+  onMapChanged?(mapId: string): void;
+  /** `token_moved`: a token has a new position, with no reading. */
+  onTokenMoved?(move: { mapId: string; characterId: string; xBp: number; yBp: number }): void;
+  /** `shown_image_changed`: an image on the players' screens, or none. */
+  onShownImage?(image: ShownImageVm | null): void;
   /** `session_ended`, or `NO_OPEN_SESSION` when (re)connecting. */
   onEnded(): void;
   /** `not_found` or `unauthenticated`: no reconnecting. */
@@ -148,6 +156,18 @@ export class LiveStream {
             break;
           case 'vitals':
             this.options.handlers.onVitals(event.vitals);
+            break;
+          case 'currentMap':
+            this.options.handlers.onCurrentMap?.(event.mapId);
+            break;
+          case 'mapChanged':
+            this.options.handlers.onMapChanged?.(event.mapId);
+            break;
+          case 'tokenMoved':
+            this.options.handlers.onTokenMoved?.(event);
+            break;
+          case 'shownImage':
+            this.options.handlers.onShownImage?.(event.image);
             break;
           case 'ended':
             this.stop();

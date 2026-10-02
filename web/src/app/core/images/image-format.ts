@@ -58,3 +58,17 @@ export function quotaNearlyFull(usage: GalleryUsage): boolean {
   const byBytes = usage.maxBytes > 0 && usage.byteCount >= 0.9 * usage.maxBytes;
   return byCount || byBytes;
 }
+
+/** "A", "A e B", "A, B e C": names in a sentence, in Portuguese. */
+export function joinNames(names: readonly string[]): string {
+  if (names.length <= 1) {
+    return names[0] ?? '';
+  }
+  return `${names.slice(0, -1).join(', ')} e ${names[names.length - 1]}`;
+}
+
+/** The card's use line (E5-20): "Usada em Mirathel e arredores" or "Ainda
+ * não usada", from `GalleryImage.used_in_maps`. */
+export function usedInLine(maps: readonly { readonly name: string }[]): string {
+  return maps.length === 0 ? 'Ainda não usada' : `Usada em ${joinNames(maps.map((m) => m.name))}`;
+}
