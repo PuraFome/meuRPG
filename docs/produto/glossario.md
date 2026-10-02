@@ -27,6 +27,9 @@ Usar as mesmas palavras nas conversas, nos documentos e no código evita muita c
 | Ação da cena | Um item da lista simples do que o jogador pode fazer ou rolar numa cena. | `scene_action` |
 | Encontro | Um combate num mapa, com iniciativa, rodadas e turnos. | `encounter` |
 | Combatente | Um personagem dentro de um encontro. Guarda PV atual, iniciativa e posição daquele combate. | `combatant` |
+| Iniciativa | A rolagem que define a ordem dos turnos num encontro. Cada combatente rola a própria, inclusive NPCs iguais (RN-19). | `initiative` |
+| Grade | O quadriculado do mapa no combate. Cada quadrado vale 1,5 m, inclusive na diagonal (RN-21). | `grid` |
+| Teste contra a morte | O teste do personagem com 0 PV. Na terceira falha, ele só morre quando o mestre confirma (RN-03). | `death_save` |
 | Personagem | Tem um tipo: jogador, inimigo, boss, minion ou NPC de história. O personagem de jogador que morre não é apagado: fica no sistema, como base de outro personagem ou como NPC do mestre em outra campanha (RN-03, RN-04). | `character`, `kind` |
 | Ficha | Os dados de regra de um personagem. Completa para jogador, inimigo e boss; básica para minion e NPC de história. | `sheet`, `FullSheet`, `BasicSheet` |
 | Trava da ficha | Momento em que o jogador deixa de editar a própria ficha: o início da primeira sessão da campanha, ou da próxima sessão para um personagem criado depois. A história do personagem tem trava própria, que o mestre libera. | `sheet_locked_at`, `story_editing_allowed` |
