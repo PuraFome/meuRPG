@@ -96,6 +96,9 @@ MR-021 e MR-022 são novas e saíram das respostas do Samuel de 28/09/2026. Fica
 - Backend pronto em 29/09/2026 (Etapa 4): `CharacterService.GetCharacter` devolve a ficha como o jogador a preencheu e, junto, os valores calculados pelo servidor (`DerivedSheet`): atributos e modificadores, testes de resistência, perícias, passivas, CA, PV, deslocamento, sentidos, CD e ataque de magia, espaços, magias, ataques, características e as pendências da ficha. Teste: `TestMR004_SheetComesWithServerCalculatedValues`, com o Pensantus (INT 18, +4; CD 14; ataque de magia +6; CA 13; PV 23). A tela da ficha veio no PR das telas da Etapa 4, com o teste Playwright "o jogador abre a ficha no celular e vê as seções da ficha oficial com os valores calculados pelo servidor".
 - O editor da ficha (02/10/2026) oferece "Nenhuma" na subclasse, diz em que nível a classe a escolhe ("O Bárbaro escolhe a subclasse no nível 3.") e troca a subclasse ao trocar de classe. Na etapa "Magias", lista só as magias até o maior círculo do nível atual, em ordem de círculo e depois de nome; uma magia já escolhida acima do limite continua na lista, marcada "acima do nível", para poder ser desmarcada, e classes que começam a conjurar depois (Paladino, Patrulheiro) mostram "O Paladino conjura magias a partir do nível 2." no nível 1. O maior círculo por nível vem do servidor (`ClassSpellcasting.max_spell_level_by_level`, em `ContentService.ListContent`). Testes: `TestMaxSpellLevelFromSlots`, `TestCatalogMaxSpellLevelByLevel` (`rules`), `TestCatalogToProtoMaxSpellLevel` (`characters`), os de `character-editor.spec.ts` ("the subclass" e "the spell lists by level") e o Playwright `o editor da ficha mostra só as magias do nível e deixa tirar a subclasse` (`@MR-004`, `e2e/tests/character-editor.spec.ts`).
 
+#### Decidido em 02/10/2026
+- A pedido do Samuel (01/10), o editor da ficha vai rolar os atributos e os PV (ainda a fazer, na Etapa 6; perguntas 40 e 41). Para os atributos, o app oferece rolar 4d6 descartando o menor, seis vezes, com o jogador distribuindo os valores, e também o conjunto padrão (15, 14, 13, 12, 10, 8); quem preferir continua digitando. As rolagens rodam no navegador e não ficam registradas: a ficha continua editável até a primeira sessão, e o mestre revisa. Essas rolagens não entram na RN-18.
+
 #### Relacionadas
 - As regras como dados, com as fórmulas no Expr, calculam a ficha. O Samuel aceitou esse desenho em 29/09/2026. Ver [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
 
@@ -181,7 +184,7 @@ Os dois últimos critérios foram respondida pelo Vinicius em 29/09/2026.
 **Como** jogador, **quero** acompanhar minha ficha e o mapa atual durante a sessão.
 
 - Prioridade: MVP
-- Regras: RN-02, RN-10, RN-11
+- Regras: RN-02, RN-10, RN-11, RN-20
 - Módulos: play, maps
 
 #### Critérios de aceite
@@ -192,6 +195,7 @@ Os dois últimos critérios foram respondida pelo Vinicius em 29/09/2026.
 - As telas da metade da ficha também: o jogador vê os PV, os PV temporários, a CA, os dados de vida e os espaços de magia do próprio personagem, e o número muda na tela quando o mestre corrige, sem recarregar. O mestre vê o grupo e corrige em "Ajustar" (uma folha no celular, um diálogo no desktop), que não passa do máximo da ficha e, depois do fim da sessão, diz "A sessão acabou". Sem conexão, a página diz "Reconectando…" com a hora da última atualização, e os números continuam na tela. Testes: `live-session.spec.ts` (`@MR-012`, `@RN-02`) e `a11y.spec.ts`.
 - O servidor da metade do mapa veio na Etapa 5, com os mapas: o mestre escolhe o mapa atual da sessão (`PlayService.SetCurrentMap`, que também o revela) e move os tokens (`MapService.PlaceMapToken`); o stream leva `current_map_changed`, `token_moved` e `map_changed`, e o jogador só ouve falar do que ele vê (RN-10). Teste: `TestMR012_TokenMovesReachPlayersLive` (o token visível chega ao jogador; o token escondido de um NPC, só ao mestre) e `TestSetCurrentMap`.
 - As telas do mapa na sessão vieram com as telas dos mapas: o mapa atual aparece no lugar do aviso "O mestre ainda não escolheu um mapa.", para o jogador (uma prévia que abre o mapa inteiro) e para o mestre (o seletor "Mapa atual", tokens que se arrastam, "Pontos do mapa" e "Tokens no mapa" com "Revelar aos jogadores" e "Esconder"). A página lê o mapa de novo em `map_changed` (e, se o servidor responde `not_found`, o jogador perdeu a vista do mapa e volta ao aviso), troca o mapa em `current_map_changed` e move o token em `token_moved` sem ler nada. Teste: `maps.spec.ts` (`@MR-012`: o mestre escolhe o mapa e move um token pelo teclado; a página aberta do jogador mostra o mapa e a nova posição sem recarregar).
+- Decidido em 02/10/2026: no combate, o jogador vê os inimigos por uma palavra (Ileso, Ferido, Muito ferido, Derrotado), não pelo PV (RN-20).
 - Na Etapa 5, o que muda ao vivo na ficha é a correção do mestre; "o sistema aplica dano" vem com o combate (Etapa 6).
 
 #### Relacionadas
@@ -202,13 +206,14 @@ Os dois últimos critérios foram respondida pelo Vinicius em 29/09/2026.
 **Como** jogador, **quero** ver a ordem dos turnos, onde cada um está e quanto posso me mover, **para** planejar minha ação.
 
 - Prioridade: MVP
-- Regras: —
+- Regras: RN-19, RN-20, RN-21
 - Módulos: play, rules
 
 #### Critérios de aceite
 - **Dado** um combate com a iniciativa definida, **quando** o jogador abre a tela de combate, **então** vê a ordem dos turnos, onde está cada combatente visível e quanto ainda pode se mover neste turno.
 
 #### Relacionadas
+- Decidido em 02/10/2026, ainda a fazer na Etapa 6: cada NPC rola a própria iniciativa (RN-19); o jogador vê o estado dos inimigos por uma palavra, nunca o PV nem a CA (RN-20); cada quadrado da grade vale 1,5 m, inclusive na diagonal, e o app não deixa o jogador passar do movimento do turno (RN-21). Ver [Regras de negócio](regras.md).
 - O deslocamento disponível vem do motor de regras (regras como dados, aceitas pelo Samuel em 29/09/2026). Ver [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
 
 ### MR-014: Sua vez
@@ -216,7 +221,7 @@ Os dois últimos critérios foram respondida pelo Vinicius em 29/09/2026.
 **Como** jogador, na minha vez, **quero** ver minhas ações, ações bônus e ataques possíveis.
 
 - Prioridade: MVP
-- Regras: RN-02
+- Regras: RN-02, RN-03, RN-18, RN-20, RN-22
 - Módulos: play, rules
 
 #### Critérios de aceite
@@ -225,6 +230,7 @@ Os dois últimos critérios foram respondida pelo Vinicius em 29/09/2026.
 
 #### Relacionadas
 - RN-02: o mestre pode corrigir PV e espaços de magia na mão (ver [Regras de negócio](regras.md)).
+- Decidido em 02/10/2026, ainda a fazer na Etapa 6: com o dado físico, o jogador digita a soma dos dados e o app soma o modificador (RN-18); o jogador vê se acertou ou errou e o dano, não a CA nem a rolagem do NPC (RN-20); condições e concentração só são marcadas e lembradas, e o mestre decide os efeitos (RN-22); na terceira falha no teste contra a morte, o personagem só morre quando o mestre confirma (RN-03).
 - Quais ações, ações bônus, reações e recursos o sistema conhece vem do motor de regras (regras como dados, aceitas pelo Samuel em 29/09/2026). Ver [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
 
 ### MR-015: Ações da cena de RP
