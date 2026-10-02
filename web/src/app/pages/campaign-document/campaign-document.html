@@ -1,0 +1,117 @@
+@let s = state();
+@if (s.status !== 'not-found' && s.status !== 'forbidden') {
+  <a class="back" [routerLink]="['/campanhas', campaignId()]">
+    <mat-icon aria-hidden="true">arrow_back</mat-icon>
+    Voltar para a campanha
+  </a>
+}
+@switch (s.status) {
+  @case ('loading') {
+    <div>
+      <h1 class="mr-page-title">Documento da campanha</h1>
+      <p class="page-status" role="status">
+        <mat-spinner diameter="24" aria-label="Carregando o documento" />
+        Carregando o documento...
+      </p>
+    </div>
+  }
+  @case ('not-found') {
+    <div>
+      <h1 class="mr-page-title">Campanha não encontrada</h1>
+      <div class="mr-notice mr-notice--neutral page-notice" role="alert">
+        <mat-icon aria-hidden="true">search_off</mat-icon>
+        <p>
+          <strong>Essa campanha não existe, ou você não é membro dela.</strong>
+          Confira o link com o mestre.
+        </p>
+      </div>
+      <a mat-flat-button class="page-action" routerLink="/campanhas">Ir para Minhas campanhas</a>
+    </div>
+  }
+  @case ('forbidden') {
+    <div>
+      <h1 class="mr-page-title">Documento da campanha</h1>
+      <div class="mr-notice mr-notice--neutral page-notice" role="status">
+        <mat-icon aria-hidden="true">lock</mat-icon>
+        <p><strong>Só o mestre vê o documento da campanha.</strong></p>
+      </div>
+      <a mat-flat-button class="page-action" [routerLink]="['/campanhas', campaignId()]"
+        >Voltar para a campanha</a
+      >
+    </div>
+  }
+  @case ('error') {
+    <div>
+      <h1 class="mr-page-title">Não foi possível abrir o documento</h1>
+      <div class="mr-notice mr-notice--danger page-notice" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ s.message }}</p>
+      </div>
+      <button matButton="outlined" type="button" class="retry" (click)="load()">
+        Tentar de novo
+      </button>
+    </div>
+  }
+  @case ('ready') {
+    <header class="head">
+      <div class="head__text">
+        <h1 class="mr-page-title">{{ title() }}</h1>
+        <p class="meta">
+          <span class="meta__private"><mat-icon aria-hidden="true">visibility_off</mat-icon>Só o mestre vê este documento.</span>
+          @if (mode() === 'read') {
+            <span class="mr-muted">{{ edited() }}</span>
+            @if (savedAt()) {
+              <span class="meta__saved"><mat-icon aria-hidden="true">check</mat-icon>{{ savedAt() }}</span>
+            }
+          }
+        </p>
+      </div>
+      @if (mode() === 'read') {
+        <button #editButton matButton="filled" type="button" class="head__edit" (click)="edit()">
+          <mat-icon aria-hidden="true">edit</mat-icon>Editar documento
+        </button>
+      }
+    </header>
+
+    @if (mode() === 'read') {
+      <app-document-read [body]="doc()!.body" [refs]="refs()" (openRef)="openRef($event)" />
+    } @else {
+      <app-document-editor
+        [campaignId]="campaignId()"
+        [doc]="doc()!"
+        [refs]="refs()"
+        [lastSaved]="lastSaved()"
+        (saved)="onSaved($event)"
+        (discarded)="onDiscarded()"
+        (reload)="reload()"
+        (openRef)="openRef($event)"
+        (refsStale)="loadRefs()"
+      />
+    }
+
+    @if (opened(); as ref) {
+      @if (ref.kind === 'mapa') {
+        <app-document-map-dialog [campaignId]="campaignId()" [mapId]="ref.id" [text]="ref.text" (closed)="closeRef()" />
+      } @else {
+        <app-document-sheet-dialog [campaignId]="campaignId()" [characterId]="ref.id" [text]="ref.text" (closed)="closeRef()" />
+      }
+    }
+
+    @if (leaving()) {
+      <app-doc-dialog
+        icon="edit_off"
+        heading="Sair sem salvar?"
+        subtitle="O texto que você escreveu ainda não foi salvo."
+        (closed)="answerLeave(false)"
+      >
+        <p class="leave">Se sair agora, o rascunho se perde: ele fica só neste navegador, na memória.</p>
+        <button dialogFooter matButton type="button" (click)="answerLeave(false)">Continuar editando</button>
+        <button dialogFooter matButton="outlined" type="button" class="leave__discard" (click)="answerLeave(true)">
+          Sair e descartar
+        </button>
+      </app-doc-dialog>
+    }
+  }
+}
+
+<p class="mr-visually-hidden" role="status" aria-live="polite">{{ announcement() }}</p>

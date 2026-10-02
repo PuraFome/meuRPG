@@ -1,0 +1,33 @@
+@let s = state();
+<app-doc-dialog
+  icon="badge"
+  [heading]="s.status === 'ready' ? s.value.name : text()"
+  [subtitle]="summary()"
+  (closed)="closed.emit()"
+>
+  @switch (s.status) {
+    @case ('loading') {
+      <p class="mr-muted" role="status">Abrindo a ficha...</p>
+    }
+    @case ('gone') {
+      <p class="mr-muted" role="status">Esta ficha foi apagada. O link continua no texto: apague-o ou troque por outro personagem.</p>
+    }
+    @case ('error') {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ s.message }}</p>
+      </div>
+      <button matButton="outlined" type="button" class="retry" (click)="load()">Tentar de novo</button>
+    }
+    @case ('ready') {
+      <p class="mr-muted">
+        {{ summary() ? 'Os números e as magias estão na ficha.' : 'Ficha básica, sem classe nem raça.' }}
+      </p>
+    }
+  }
+  @if (s.status === 'ready') {
+    <a dialogFooter matButton [routerLink]="['/campanhas', campaignId(), 'personagens', characterId()]">
+      <mat-icon aria-hidden="true">arrow_forward</mat-icon>Abrir ficha
+    </a>
+  }
+</app-doc-dialog>

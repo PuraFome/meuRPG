@@ -1,0 +1,164 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+p {
+  margin: 0;
+}
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-2) var(--mr-space-4);
+}
+
+.status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--mr-space-3);
+  font-size: 16px;
+}
+
+.status__draft {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  color: var(--mr-warning-ink);
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-2);
+
+  @media (max-width: 599.98px) {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+.confirm {
+  font-weight: 700;
+}
+
+.danger {
+  color: var(--mr-danger-ink);
+  border-color: var(--mr-danger-ink);
+}
+
+.mr-notice button {
+  flex: none;
+  margin-left: auto;
+}
+
+// "Texto" and "Prévia" are tabs on a phone; side by side from 900px.
+.tabs {
+  display: flex;
+  gap: var(--mr-space-1);
+  padding: 3px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+
+  button {
+    flex: 1 1 0;
+    min-height: 44px;
+    border: 0;
+    border-radius: var(--mr-radius-sm);
+    background: none;
+    color: var(--mr-ink);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+
+    &[aria-selected='true'] {
+      background: var(--mr-accent-soft);
+      color: var(--mr-accent-text);
+    }
+  }
+
+  @media (min-width: 900px) {
+    display: none;
+  }
+}
+
+.panes {
+  display: grid;
+  gap: var(--mr-space-4);
+
+  @media (min-width: 900px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+
+  @media (max-width: 899.98px) {
+    &.pane--off {
+      display: none;
+    }
+  }
+}
+
+.pane__label {
+  margin: 0;
+
+  @media (max-width: 899.98px) {
+    display: none;
+  }
+}
+
+.source {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 24rem;
+  height: calc(100dvh - 360px);
+  max-height: 60rem;
+  padding: var(--mr-space-4);
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 15px;
+  line-height: 22px;
+  resize: vertical;
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 0;
+    border-color: var(--mr-accent);
+  }
+}
+
+.preview {
+  box-sizing: border-box;
+  min-height: 24rem;
+  padding: var(--mr-space-4);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+  --md-bleed: 0px;
+}
+
+.preview__empty {
+  font-size: 16px;
+}

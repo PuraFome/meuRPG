@@ -1,0 +1,33 @@
+:host {
+  display: block;
+}
+
+.doc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+
+  .mr-panel__title {
+    margin: 0;
+  }
+}
+
+.doc__status {
+  margin: 0;
+}
+
+.doc__row {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  min-height: 56px;
+  margin: 0;
+
+  .mat-icon {
+    flex: none;
+    width: 24px;
+    height: 24px;
+    font-size: 24px;
+    color: var(--mr-ink-muted);
+  }
+}

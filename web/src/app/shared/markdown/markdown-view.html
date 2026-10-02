@@ -1,0 +1,67 @@
+<ng-template #inline let-nodes>
+  @for (node of nodes; track $index) {
+    @switch (node.type) {
+      @case ('text') {<ng-container>{{ node.text }}</ng-container>}
+      @case ('bold') {<strong><ng-container *ngTemplateOutlet="inline; context: { $implicit: node.children }" /></strong>}
+      @case ('italic') {<em><ng-container *ngTemplateOutlet="inline; context: { $implicit: node.children }" /></em>}
+      @case ('link') {<a class="md-link" [href]="node.href" target="_blank" rel="noopener noreferrer">{{ node.text }}<span class="mr-visually-hidden"> (abre em outra aba)</span></a>}
+      @case ('ref') {
+        @if (isMissing(node.kind, node.id)) {
+          <span>{{ node.text }} {{ node.kind === 'mapa' ? '(mapa apagado)' : '(ficha apagada)' }}</span>
+        } @else {
+          <button type="button" class="md-link md-ref" aria-haspopup="dialog" (click)="open(node)"><mat-icon aria-hidden="true">{{ node.kind === 'mapa' ? 'map' : 'badge' }}</mat-icon>{{ node.text }}</button>
+        }
+      }
+    }
+  }
+</ng-template>
+
+@for (block of blocks(); track $index; let i = $index) {
+  @switch (block.type) {
+    @case ('heading') {
+      @if (block.level === 2) {
+        <h2 [id]="idPrefix() + i"><ng-container *ngTemplateOutlet="inline; context: { $implicit: block.children }" /></h2>
+      } @else {
+        <h3 [id]="idPrefix() + i"><ng-container *ngTemplateOutlet="inline; context: { $implicit: block.children }" /></h3>
+      }
+    }
+    @case ('paragraph') {
+      <p><ng-container *ngTemplateOutlet="inline; context: { $implicit: block.children }" /></p>
+    }
+    @case ('list') {
+      @if (block.ordered) {
+        <ol [attr.start]="block.start">
+          @for (item of block.items; track $index) {
+            <li><ng-container *ngTemplateOutlet="inline; context: { $implicit: item }" /></li>
+          }
+        </ol>
+      } @else {
+        <ul>
+          @for (item of block.items; track $index) {
+            <li><ng-container *ngTemplateOutlet="inline; context: { $implicit: item }" /></li>
+          }
+        </ul>
+      }
+    }
+    @case ('image') {
+      @if (imageGone(block.id)) {
+        <p class="md-gone"><mat-icon aria-hidden="true">image_not_supported</mat-icon>Imagem apagada</p>
+      } @else {
+        <figure>
+          <img
+            [src]="'/images/' + block.id"
+            [alt]="block.caption"
+            [attr.width]="imageSize(block.id)?.width"
+            [attr.height]="imageSize(block.id)?.height"
+            loading="lazy"
+            decoding="async"
+            (error)="markFailed(block.id)"
+          />
+          @if (block.caption) {
+            <figcaption>{{ block.caption }}</figcaption>
+          }
+        </figure>
+      }
+    }
+  }
+}

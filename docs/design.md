@@ -130,6 +130,21 @@ Regras da galeria:
 - **Cada cartão tem a própria altura:** renomear ou confirmar a exclusão num cartão não estica os vizinhos.
 - **Arrastar arquivos** funciona em qualquer ponto da página; a área de envio ganha a borda tracejada `accent` enquanto o arquivo está em cima.
 
+### Documento da campanha
+
+As peças do documento (MR-018, desenhos E5-27 a E5-30), em `web/src/app/pages/campaign-document/`. O texto é Markdown, lido e desenhado por um parser nosso (`web/src/app/shared/markdown/`), sem dependência nova e sem `innerHTML`.
+
+| Peça | Como é |
+| --- | --- |
+| Leitura (`document-read`) | O texto em 17/27 px, numa coluna de uns 70 caracteres (80 px de margem de cada lado no desktop, 16 px no celular), dentro de um painel. Títulos em Alegreya 25/31 (23/29 no celular). A imagem sai 56 px da coluna no desktop e vai de ponta a ponta no celular, com a legenda em 14 px `ink-muted` (`<figure>`/`<figcaption>`). "Editar documento" é o botão cheio da tela |
+| Sumário (`document-toc`) | Os títulos `##`/`#`. Coluna fixa à esquerda no desktop, com a seção lida em `accent-soft` e negrito (`aria-current="location"`); no celular, um painel fechado com linhas de 44 px. Escolher uma linha leva ao título e põe o foco nele |
+| Links do app | `[texto](mapa:<id>)` e `[texto](ficha:<id>)` são botões com cara de link (`accent-text`, sublinhado, ícone de mapa ou de ficha, `aria-haspopup="dialog"`) que abrem uma janela. Se o alvo foi apagado, vira texto com "(mapa apagado)" ou "(ficha apagada)"; uma imagem apagada vira a caixa neutra "Imagem apagada". Link `https://` abre em outra aba; qualquer outra coisa (HTML, `javascript:`, imagem de fora) fica como texto |
+| Janelas (`doc-dialog`) | Um `<dialog>` nativo com ícone, título (Alegreya 24), uma linha embaixo, "Fechar" e rodapé; mesma sombra e mesmo véu da janela da imagem. O mapa mostra o nome, a imagem e "Abrir mapa"; a ficha, o nome, classe e raça e "Abrir ficha". Ao fechar, o foco volta ao link |
+| Edição (`document-editor`) | Um `<textarea>` monoespaçado (a pilha do sistema) ao lado da prévia viva (uns 150 ms depois de digitar); no celular, as abas "Texto" e "Prévia". Em cima: "Rascunho não salvo" (`warning-ink`) ou "Sem mudanças", "Descartar mudanças" (confirma na própria tela) e "Salvar documento" (cheio). Um contador ("184 KB de 200 KB") aparece a partir de 90% do limite de 204.800 bytes. O rascunho só existe na memória; sair com ele pergunta antes ("Sair sem salvar?"), nunca por `beforeunload` |
+| Barra de ferramentas (`document-toolbar`) | `role="toolbar"`: Tab entra num botão só, as setas (e Home/End) andam. Título, Negrito, Itálico, Lista escrevem no cursor; "Imagem da galeria" (o seletor compartilhado), "Link para mapa" e "Link para ficha" abrem uma janela com a lista, e ninguém digita um ID |
+| Conflito | Se outra aba salvou antes, um aviso `--danger` ("Este documento mudou em outra aba ou em outro aparelho.") com "Recarregar"; o rascunho continua na tela até a pessoa escolher |
+| Painel "Documento da campanha" (`pages/campaign-detail/document-panel`) | Só para o mestre: "Mirathel — preparação", "Editado ontem às 22:10. Só você vê este documento." e "Abrir documento" contornado |
+
 ## Texto na tela
 
 - Português do Brasil, com os termos da tradução oficial de D&D ("Classe de Armadura", "Salvaguardas", "Pontos de vida").

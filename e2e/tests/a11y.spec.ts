@@ -2,6 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Browser, type Page } from '@playwright/test';
 
 import { canvasJpeg, newCampaign, uploadThroughPicker } from './gallery-support';
+import { saveDocumentRPC, tableWithDocumentParts } from './document-support';
 import { endSessionRPC, openSessionPage, startSessionRPC, tableWithPensantus } from './live-session-support';
 import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, pensantus } from './support';
 
@@ -141,6 +142,57 @@ test('a galeria passa no axe no tema claro, no desktop', { tag: ['@a11y', '@MR-0
 test('a galeria passa no axe no tema escuro, no celular', { tag: ['@a11y', '@MR-019'] }, async ({ browser }) => {
   test.slow();
   await scanGallery(browser, 'dark', 390);
+});
+
+/** The campaign document (MR-018): read mode, edit mode (with its toolbar
+ * and the preview), the map dialog and the image picker dialog. */
+async function scanDocument(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const context = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport: { width, height: 900 },
+  });
+  const page = await context.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  try {
+    await page.goto('/');
+    const t = await tableWithDocumentParts(page, `Acessibilidade documento ${Date.now()}`);
+    await saveDocumentRPC(
+      page,
+      t.campaignId,
+      `## Arco 1\n\nVeja [Mirathel e arredores](mapa:${t.mapId}) e [Capitão Goblin](ficha:${t.npcId}), com **negrito** e *itálico*.\n\n![Taverna do Javali](imagem:${t.imageId})\n\n## Segredos\n\n- um\n- dois`,
+      0,
+    );
+    await open(page, `/campanhas/${t.campaignId}/documento`);
+    await expect(page.getByRole('button', { name: 'Mirathel e arredores' })).toBeVisible();
+    await expectNoSeriousViolations(page, `Documento, leitura ${where}`);
+
+    await page.getByRole('button', { name: 'Mirathel e arredores' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Mirathel e arredores' });
+    await expect(dialog.getByRole('img')).toBeVisible();
+    await expectNoSeriousViolations(page, `Documento, janela do mapa ${where}`);
+    await page.keyboard.press('Escape');
+
+    await page.getByRole('button', { name: 'Editar documento' }).click();
+    await expect(page.getByRole('textbox', { name: 'Texto' })).toBeVisible();
+    await expectNoSeriousViolations(page, `Documento, edição ${where}`);
+
+    await page.getByRole('button', { name: 'Imagem da galeria' }).click();
+    await expect(page.getByRole('dialog', { name: 'Imagem da galeria' }).getByRole('radio').first()).toBeVisible();
+    await expectNoSeriousViolations(page, `Documento, escolher imagem ${where}`);
+  } finally {
+    await context.close();
+  }
+}
+
+test('o documento passa no axe no tema claro, no desktop', { tag: ['@a11y', '@MR-018'] }, async ({ browser }) => {
+  test.slow();
+  await scanDocument(browser, 'light', 1280);
+});
+
+test('o documento passa no axe no tema escuro, no celular', { tag: ['@a11y', '@MR-018'] }, async ({ browser }) => {
+  test.slow();
+  await scanDocument(browser, 'dark', 390);
 });
 
 test('as telas de quem não entrou passam no axe, nos dois temas', { tag: '@a11y' }, async ({ browser }) => {

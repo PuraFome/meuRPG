@@ -1,0 +1,111 @@
+:host {
+  display: contents;
+}
+
+// A modal over the page; the shadow and the scrim are the lightbox's
+// (README-B): ink at 55% in the light theme, black at 60% in the dark.
+.doc-dialog {
+  box-sizing: border-box;
+  width: min(560px, calc(100% - 2 * var(--mr-space-4)));
+  max-height: calc(100% - 2 * var(--mr-space-6));
+  margin: auto;
+  padding: 0;
+  border: 1px solid light-dark(transparent, var(--mr-line));
+  border-radius: var(--mr-radius-xl);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  box-shadow: 0 24px 64px color-mix(in srgb, black 35%, transparent);
+  flex-direction: column;
+
+  &[open] {
+    display: flex;
+  }
+
+  &::backdrop {
+    background: light-dark(
+      color-mix(in srgb, var(--mr-ink) 55%, transparent),
+      color-mix(in srgb, black 60%, transparent)
+    );
+  }
+}
+
+.doc-dialog--wide {
+  width: min(880px, calc(100% - 2 * var(--mr-space-4)));
+}
+
+.doc-dialog__head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-3);
+  padding: var(--mr-space-4) var(--mr-space-2) var(--mr-space-3) var(--mr-space-5);
+  border-bottom: 1px solid var(--mr-rule);
+
+  > .mat-icon {
+    flex: none;
+    margin-top: 6px;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.doc-dialog__title {
+  flex: 1 1 0;
+  min-width: 0;
+
+  h2,
+  p {
+    margin: 0;
+  }
+
+  h2 {
+    font-family: var(--mr-font-display);
+    font-size: 24px;
+    line-height: 30px;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+
+  p {
+    font-size: 14px;
+    line-height: 19px;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.doc-dialog__close {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--mr-radius-sm);
+  background: none;
+  color: var(--mr-ink);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--mr-ground);
+  }
+}
+
+.doc-dialog__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--mr-space-4) var(--mr-space-5);
+}
+
+.doc-dialog__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--mr-space-2) var(--mr-space-3);
+  padding: var(--mr-space-3) var(--mr-space-5) var(--mr-space-4);
+
+  &:empty {
+    display: none;
+  }
+}

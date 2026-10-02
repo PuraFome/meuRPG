@@ -1,0 +1,110 @@
+// The reading type: 17/27 in a column of about 70 characters (README-B).
+// The parent sets `--md-inset` (side margin of the text) and `--md-bleed`
+// (how far a figure breaks out of it).
+:host {
+  display: block;
+  padding-inline: var(--md-inset, 0);
+  font-size: 17px;
+  line-height: 27px;
+  color: var(--mr-ink);
+  overflow-wrap: anywhere;
+}
+
+p,
+ul,
+ol {
+  margin: 0 0 var(--mr-space-4);
+}
+
+ul,
+ol {
+  padding-left: 1.4em;
+}
+
+li + li {
+  margin-top: var(--mr-space-1);
+}
+
+h2,
+h3 {
+  margin: var(--mr-space-6) 0 var(--mr-space-2);
+  font-family: var(--mr-font-display);
+  font-weight: 700;
+  color: var(--mr-ink);
+  scroll-margin-top: 80px;
+}
+
+h2 {
+  font-size: 23px;
+  line-height: 29px;
+
+  @media (min-width: 768px) {
+    font-size: 25px;
+    line-height: 31px;
+  }
+}
+
+h3 {
+  font-size: 20px;
+  line-height: 26px;
+}
+
+:host > :first-child {
+  margin-top: 0;
+}
+
+.md-link {
+  color: var(--mr-accent-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+// A link that opens a dialog is a button that looks like the link, with the
+// kind's icon inside it.
+.md-ref {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+
+  .mat-icon {
+    width: 17px;
+    height: 17px;
+    font-size: 17px;
+    margin-right: 4px;
+    vertical-align: -3px;
+    text-decoration: none;
+  }
+}
+
+figure {
+  margin: var(--mr-space-5) calc(-1 * var(--md-bleed, 0));
+
+  img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: var(--mr-radius-md);
+    border: 1px solid var(--mr-line);
+  }
+}
+
+figcaption {
+  margin: var(--mr-space-2) var(--md-bleed, 0) 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.md-gone {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  padding: var(--mr-space-4);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-ground);
+  color: var(--mr-ink-muted);
+}

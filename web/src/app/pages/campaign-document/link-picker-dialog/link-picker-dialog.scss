@@ -1,0 +1,32 @@
+:host {
+  display: contents;
+}
+
+p {
+  margin: 0;
+}
+
+// Each row is one button across the whole width: its text is the link's.
+.row {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  .mat-icon {
+    flex: none;
+    color: var(--mr-accent-text);
+  }
+
+  &:hover .mr-list__name {
+    color: var(--mr-accent-text);
+  }
+}
+
+.retry {
+  margin-top: var(--mr-space-3);
+}

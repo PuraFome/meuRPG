@@ -1,0 +1,42 @@
+@let s = state();
+<app-doc-dialog
+  [icon]="isMap() ? 'map' : 'badge'"
+  [heading]="isMap() ? 'Link para mapa' : 'Link para ficha'"
+  [subtitle]="isMap() ? 'Escolha o mapa que o texto vai abrir.' : 'Escolha o personagem que o texto vai abrir.'"
+  (closed)="closed.emit()"
+>
+  @switch (s.status) {
+    @case ('loading') {
+      <p class="mr-muted" role="status">Carregando...</p>
+    }
+    @case ('error') {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ s.message }}</p>
+      </div>
+      <button matButton="outlined" type="button" class="retry" (click)="load()">Tentar de novo</button>
+    }
+    @case ('ready') {
+      @if (s.rows.length === 0) {
+        <p class="mr-muted">
+          {{ isMap() ? 'Nenhum mapa ainda. Crie o primeiro a partir de uma imagem da galeria.' : 'Nenhum personagem ainda.' }}
+        </p>
+      } @else {
+        <ul class="mr-list" [attr.aria-label]="isMap() ? 'Mapas da campanha' : 'Personagens da campanha'">
+          @for (row of s.rows; track row.id) {
+            <li>
+              <button type="button" class="mr-list__row row" (click)="picked.emit({ id: row.id, name: row.name })">
+                <span class="mr-list__text">
+                  <span class="mr-list__name">{{ row.name }}</span>
+                  <span class="mr-list__sub">{{ row.sub }}</span>
+                </span>
+                <mat-icon aria-hidden="true">add</mat-icon>
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    }
+  }
+  <button dialogFooter matButton type="button" (click)="closed.emit()">Cancelar</button>
+</app-doc-dialog>
