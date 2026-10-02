@@ -49,6 +49,14 @@ No Mac, todo container roda dentro de uma máquina virtual Linux (a do Docker De
 
 O banco do container e o nativo usam a mesma porta: desligue um antes de ligar o outro (`make down` derruba o do container). Os dados deles são separados. Com o banco fora do Docker, dá para diminuir a memória da máquina virtual nas configurações do Docker Desktop ou do Rancher Desktop.
 
+### Os bancos dos testes de integração
+
+Cada teste de integração ganha um banco novo, apagado no fim (`backend/internal/platform/dbtest`). Rodar as migrations do zero em cada um levava uns 25 segundos no CockroachDB, e o CI passou do limite de 10 minutos. Então as migrations rodam uma vez só, num banco-modelo, e cada teste copia as tabelas dele, em uns 3 segundos.
+
+- O banco-modelo se chama `meurpg_tpl_<hash das migrations>`. Uma migration nova ou mudada gera outro.
+- Os modelos de migrations antigas ficam no servidor de teste. Estão vazios e podem ser apagados (`DROP DATABASE meurpg_tpl_... CASCADE`).
+- As migrations em si continuam testadas do zero pelo pacote `migrations`.
+
 ## Login local com um provedor OIDC
 
 O login do mestre funciona com qualquer provedor OpenID Connect: o Google em produção e, na sua máquina, um provedor OIDC local (ou um provedor de verdade com um client de teste). O backend só precisa destas variáveis:
