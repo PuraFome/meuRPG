@@ -36,11 +36,26 @@ export class CampaignsService {
     return this.client.listMembers({ campaignId });
   }
 
+  /** Pending members who have not created a character yet (RN-15, MR-024); master only. */
+  listPendingMembers(campaignId: string) {
+    return this.client.listPendingMembers({ campaignId });
+  }
+
+  /** Removes one of them; `failed_precondition` if they created a character meanwhile. */
+  removePendingMember(campaignId: string, userId: string) {
+    return this.client.removePendingMember({ campaignId, userId });
+  }
+
   /** `validityDays` follows CreateInviteRequest.expires_in: 5 minutes to 30
    * days; the app only ever offers the 1/7/30-day presets (MR-002).
    * `requiresApproval` makes whoever accepts it a pending member, whose
    * character the master approves first (RN-15, MR-024). */
-  createInvite(campaignId: string, maxUses: number, validityDays: number, requiresApproval = false) {
+  createInvite(
+    campaignId: string,
+    maxUses: number,
+    validityDays: number,
+    requiresApproval = false,
+  ) {
     return this.client.createInvite({
       campaignId,
       maxUses,

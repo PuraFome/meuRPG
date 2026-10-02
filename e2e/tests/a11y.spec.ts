@@ -5,7 +5,7 @@ import { canvasJpeg, newCampaign, uploadThroughPicker } from './gallery-support'
 import { saveDocumentRPC, tableWithDocumentParts } from './document-support';
 import { endOpenSessionRPC, endSessionRPC, openSessionPage, startSessionRPC, tableWithPensantus } from './live-session-support';
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
-import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, pensantus } from './support';
+import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus } from './support';
 
 // docs/design.md#como-uma-tela-é-feita: every screen passes axe with no
 // serious or critical violation of WCAG 2.1 A and AA, in the light and the
@@ -417,4 +417,54 @@ test('as configurações de dados passam no axe no tema claro, no desktop', { ta
 
 test('as configurações de dados passam no axe no tema escuro, no celular', { tag: ['@a11y', '@RN-18'] }, async ({ browser }) => {
   await scanDiceScreens(browser, 'dark', 390);
+});
+
+/** The campaign page with someone waiting to create a character (MR-024):
+ * the "Membros" row with its tag, and the removal confirmation open. */
+async function scanPendingMembers(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const context = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport: { width, height: 900 },
+  });
+  const playerContext = await newSignedInContext(browser, 'Jogador Teste');
+  const page = await context.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  try {
+    await page.goto('/');
+    const created = await callRPC(page, 'meurpg.campaigns.v1.CampaignService/CreateCampaign', {
+      name: `Acessibilidade esperando ${Date.now()}`,
+      xpMode: 'XP_MODE_ENEMIES',
+    });
+    const campaignId = (await created.json()).campaign.id as string;
+    const invite = await callRPC(page, 'meurpg.campaigns.v1.CampaignService/CreateInvite', {
+      campaignId,
+      maxUses: 1,
+      expiresIn: '86400s',
+      requiresApproval: true,
+    });
+    const { token } = await invite.json();
+    const playerPage = await playerContext.newPage();
+    await playerPage.goto('/');
+    const accepted = await callRPC(playerPage, 'meurpg.campaigns.v1.CampaignService/AcceptInvite', { token });
+    expect(accepted.ok()).toBeTruthy();
+
+    await open(page, `/campanhas/${campaignId}`);
+    await expect(page.getByRole('list', { name: 'Esperando para criar o personagem' })).toBeVisible();
+    await expectNoSeriousViolations(page, `Campanha com alguém sem personagem ${where}`);
+    await page.getByRole('button', { name: /^Remover .* da campanha$/ }).click();
+    await expect(page.getByRole('alertdialog')).toBeVisible();
+    await expectNoSeriousViolations(page, `Campanha, confirmar a remoção ${where}`);
+  } finally {
+    await playerContext.close();
+    await context.close();
+  }
+}
+
+test('quem está sem personagem passa no axe no tema claro, no desktop', { tag: ['@a11y', '@MR-024'] }, async ({ browser }) => {
+  await scanPendingMembers(browser, 'light', 1280);
+});
+
+test('quem está sem personagem passa no axe no tema escuro, no celular', { tag: ['@a11y', '@MR-024'] }, async ({ browser }) => {
+  await scanPendingMembers(browser, 'dark', 390);
 });

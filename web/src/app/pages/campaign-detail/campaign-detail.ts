@@ -19,6 +19,7 @@ import { GalleryPanel } from './gallery-panel/gallery-panel';
 import { MapsPanel } from './maps-panel/maps-panel';
 import { GameSessionCard } from './game-session/game-session-card';
 import { CampaignInvites } from './invites/invites';
+import { PendingMembers } from './pending-members/pending-members';
 
 type PageState =
   | { status: 'loading' }
@@ -35,7 +36,9 @@ type PageState =
  * "Sessão" (MR-006 / RN-01 for the master; for a player, only while a
  * session is open, with "Entrar na sessão", RN-06) and the master-only
  * "Convites". The dice settings (RN-18) sit under "Sessão": "Dados" for the
- * master (E6-17), "Como você rola os dados" for a player (E6-18).
+ * master (E6-17), "Como você rola os dados" for a player (E6-18). The
+ * master's "Membros" also lists who has not created a character yet
+ * (`PendingMembers`, MR-024).
  *
  * From 1024px up the page has two columns: the play on the left (Sessão,
  * then the characters and NPCs) and the table on the right (Membros,
@@ -61,6 +64,7 @@ type PageState =
     GalleryPanel,
     MapsPanel,
     GameSessionCard,
+    PendingMembers,
     MatIconModule,
     MatProgressSpinnerModule,
     RouterLink,
