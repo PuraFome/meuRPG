@@ -62,6 +62,36 @@ describe('LiveNotice', () => {
     expect(dismissed().has('s4')).toBe(true);
   });
 
+  it('shows one notice per session, the older one first, and a new session goes below', () => {
+    const fixture = TestBed.createComponent(LiveNotice);
+    fixture.componentRef.setInput('url', '/');
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const first = el.querySelector('.live-notice');
+
+    // A session of another campaign starts (the list is newest first).
+    sessions.update((list) => [
+      {
+        sessionId: 's9',
+        campaignId: 'estrada',
+        campaignName: 'Estrada de Ossos',
+        sessionNumber: 2,
+        startedAt: new Date(),
+        isMaster: false,
+      },
+      ...list,
+    ]);
+    fixture.detectChanges();
+
+    const notices = Array.from(el.querySelectorAll('.live-notice'));
+    expect(notices.map((n) => n.textContent)).toEqual([
+      expect.stringContaining('A sessão 4 de Mirathel começou.'),
+      expect.stringContaining('A sessão 2 de Estrada de Ossos começou.'),
+    ]);
+    // The first notice is the same element: nothing changed under a finger.
+    expect(notices[0]).toBe(first);
+  });
+
   it("stays away from the campaign's own page and from session pages", () => {
     expect(render('/campanhas/mirathel').textContent).not.toContain('começou');
     expect(render('/campanhas/mirathel/sessao').textContent).not.toContain('começou');

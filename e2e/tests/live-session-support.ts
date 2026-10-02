@@ -83,27 +83,18 @@ export async function openSessionPage(page: Page, campaignId: string): Promise<v
 }
 
 /**
- * Waits for the session notice of `campaignName` (RN-06) and returns it.
- *
- * Jogador Teste is in many campaigns other tests left with an open session,
- * and the notice shows the newest one this tab hasn't closed. So while
- * waiting, this closes any other campaign's notice ("Fechar aviso"), as a
- * person would, until ours shows. The app asks for open sessions every 30
- * seconds, so give it up to 45.
+ * Waits for the notice of `campaignName`'s session 1 on the player's open
+ * page and returns its "Entrar na sessão" link. Other tests start sessions
+ * at the same time, so the page may show several notices (one per open
+ * session, oldest first): the link's accessible name carries the campaign,
+ * which tells ours apart. The poll runs every 30 s, so allow for one full
+ * wait.
  */
 export async function waitForNotice(page: Page, campaignName: string, timeoutMs = 45_000): Promise<Locator> {
-  const ours = page.getByRole('status').filter({ hasText: `A sessão 1 de ${campaignName} começou.` });
-  const close = page.getByRole('button', { name: 'Fechar aviso' });
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    if (await ours.isVisible()) {
-      return ours;
-    }
-    if (await close.isVisible()) {
-      await close.click();
-      continue;
-    }
-    await page.waitForTimeout(250);
-  }
-  throw new Error(`the notice of "${campaignName}" did not show within ${timeoutMs / 1000} s`);
+  const link = page.getByRole('link', { name: `Entrar na sessão 1 de ${campaignName}`, exact: true });
+  await expect(page.getByRole('status').getByText(`A sessão 1 de ${campaignName} começou.`)).toBeVisible({
+    timeout: timeoutMs,
+  });
+  await expect(link).toBeVisible();
+  return link;
 }

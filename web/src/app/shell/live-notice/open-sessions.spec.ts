@@ -8,7 +8,7 @@ import {
   OpenSessions,
   POLL_INTERVAL_MS,
   sessionForLiveLink,
-  sessionToAnnounce,
+  sessionsToAnnounce,
 } from './open-sessions';
 
 function open(id: string, campaignId: string, isMaster = false, number = 4): OpenSessionVm {
@@ -135,36 +135,44 @@ describe('OpenSessions (the RN-06 poll)', () => {
   });
 });
 
-describe('sessionToAnnounce', () => {
+describe('sessionsToAnnounce', () => {
+  // Newest first, as ListOpenGameSessions answers.
   const sessions = [open('s2', 'c2'), open('s1', 'c1')];
+  const ids = (list: readonly OpenSessionVm[]) => list.map((s) => s.sessionId);
 
-  it('announces the newest session the person plays in', () => {
-    expect(sessionToAnnounce(sessions, new Set(), '/campanhas')?.sessionId).toBe('s2');
+  it('announces every session the person plays in, oldest first', () => {
+    expect(ids(sessionsToAnnounce(sessions, new Set(), '/campanhas'))).toEqual(['s1', 's2']);
   });
 
-  it('skips a closed notice and shows the next one', () => {
-    expect(sessionToAnnounce(sessions, new Set(['s2']), '/')?.sessionId).toBe('s1');
-    expect(sessionToAnnounce(sessions, new Set(['s1', 's2']), '/')).toBeNull();
+  it('a session that starts later goes below, so the first notice never moves', () => {
+    const later = [open('s3', 'c3'), ...sessions];
+    expect(ids(sessionsToAnnounce(later, new Set(), '/'))).toEqual(['s1', 's2', 's3']);
+  });
+
+  it('leaves out closed notices', () => {
+    expect(ids(sessionsToAnnounce(sessions, new Set(['s2']), '/'))).toEqual(['s1']);
+    expect(sessionsToAnnounce(sessions, new Set(['s1', 's2']), '/')).toEqual([]);
   });
 
   it("doesn't announce a session on its campaign's page (its Sessão panel says it)", () => {
-    expect(sessionToAnnounce(sessions, new Set(), '/campanhas/c2')?.sessionId).toBe('s1');
-    expect(sessionToAnnounce(sessions, new Set(), '/campanhas/c2?x=1#y')?.sessionId).toBe('s1');
+    expect(ids(sessionsToAnnounce(sessions, new Set(), '/campanhas/c2'))).toEqual(['s1']);
+    expect(ids(sessionsToAnnounce(sessions, new Set(), '/campanhas/c2?x=1#y'))).toEqual(['s1']);
   });
 
   it('announces on the pages under a campaign, such as a sheet', () => {
-    expect(sessionToAnnounce(sessions, new Set(), '/campanhas/c2/personagens/p1')?.sessionId).toBe(
+    expect(ids(sessionsToAnnounce(sessions, new Set(), '/campanhas/c2/personagens/p1'))).toEqual([
+      's1',
       's2',
-    );
+    ]);
   });
 
   it('never announces on a session page', () => {
-    expect(sessionToAnnounce(sessions, new Set(), '/campanhas/c2/sessao')).toBeNull();
-    expect(sessionToAnnounce(sessions, new Set(), '/campanhas/c9/sessao')).toBeNull();
+    expect(sessionsToAnnounce(sessions, new Set(), '/campanhas/c2/sessao')).toEqual([]);
+    expect(sessionsToAnnounce(sessions, new Set(), '/campanhas/c9/sessao')).toEqual([]);
   });
 
   it("doesn't announce to the master the session they started", () => {
-    expect(sessionToAnnounce([open('s3', 'c3', true)], new Set(), '/')).toBeNull();
+    expect(sessionsToAnnounce([open('s3', 'c3', true)], new Set(), '/')).toEqual([]);
   });
 });
 

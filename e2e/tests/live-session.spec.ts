@@ -45,9 +45,9 @@ test(
       await expect(masterPage.getByText('Sessão 1 em andamento')).toBeVisible();
 
       // The player's open tab shows the notice, without a reload…
-      const notice = await waitForNotice(playerPage, name);
+      const enter = await waitForNotice(playerPage, name);
       // …and "Entrar na sessão" opens the session page.
-      await notice.getByRole('link', { name: 'Entrar na sessão' }).click();
+      await enter.click();
       await expect(playerPage).toHaveURL(`/campanhas/${campaignId}/sessao`);
       await expect(playerPage.getByRole('heading', { level: 1, name: 'Sessão 1' })).toBeVisible();
       await expect(playerPage.getByRole('heading', { level: 2, name: 'Pensantus' })).toBeVisible();

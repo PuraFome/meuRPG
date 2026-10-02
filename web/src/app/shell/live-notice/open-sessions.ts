@@ -187,27 +187,29 @@ function campaignPage(url: string): { campaignId: string; session: boolean } | n
 }
 
 /**
- * The session the notice announces on `url`, or `null`: the newest open
- * session the person plays in (a master started theirs, so it isn't news),
- * whose notice they haven't closed, unless they are already on that
- * campaign's page (its "Sessão" panel says it). Never on a session page:
+ * The sessions the notice announces on `url`, oldest first: every open
+ * session the person plays in (a master started theirs, so it isn't news)
+ * whose notice they haven't closed, except the one of the campaign whose
+ * page they are on (its "Sessão" panel says it). None on a session page:
  * the person is at a table already, and the page is theirs (the app bar's
  * "Ao vivo" link still leads to any other open session).
+ *
+ * Oldest first, one notice per session: a session that starts later adds
+ * its notice below the others, so a notice never changes or moves under
+ * the person's finger while they reach for "Entrar na sessão".
  */
-export function sessionToAnnounce(
+export function sessionsToAnnounce(
   sessions: readonly OpenSessionVm[],
   dismissed: ReadonlySet<string>,
   url: string,
-): OpenSessionVm | null {
+): OpenSessionVm[] {
   const here = campaignPage(url);
   if (here?.session) {
-    return null;
+    return [];
   }
-  return (
-    sessions.find(
-      (s) => !s.isMaster && !dismissed.has(s.sessionId) && here?.campaignId !== s.campaignId,
-    ) ?? null
-  );
+  return sessions
+    .filter((s) => !s.isMaster && !dismissed.has(s.sessionId) && here?.campaignId !== s.campaignId)
+    .reverse();
 }
 
 /**

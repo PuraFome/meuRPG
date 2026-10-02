@@ -1,7 +1,7 @@
 <!-- The live region stays in the page, so the notice is announced when it
      appears (role="status": polite, it never interrupts). -->
 <div role="status">
-  @if (session(); as s) {
+  @for (s of sessions(); track s.sessionId) {
     <div class="live-notice">
       <mat-icon class="live-notice__icon" aria-hidden="true">sensors</mat-icon>
       <div class="live-notice__body">

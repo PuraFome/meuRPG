@@ -2,16 +2,17 @@ import { Component, computed, inject, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 
-import { OpenSessions, sessionToAnnounce } from './open-sessions';
+import { OpenSessions, sessionsToAnnounce } from './open-sessions';
 
 /**
  * The session notice under the app bar (RN-06, artboard E5-01): "A sessão 4
  * de Mirathel começou." with "Entrar na sessão" and a close button.
  *
- * It shows the newest open session the person plays in, on every page
- * except that campaign's own page and its session page
- * (`sessionToAnnounce`). Closing it, or following its link, hides it for
- * this tab only (in memory, no Web Storage).
+ * One notice per open session the person plays in, oldest first, on every
+ * page except that campaign's own page and any session page
+ * (`sessionsToAnnounce`): a session that starts later adds a notice below,
+ * so none changes under the person's finger. Closing a notice, or following
+ * its link, hides it for this tab only (in memory, no Web Storage).
  *
  * The link is stroked, not filled: the notice lands on pages that already
  * have their own filled primary action, and a screen has one fill
@@ -32,8 +33,8 @@ export class LiveNotice {
   /** The router's current URL (the shell passes it in). */
   readonly url = input.required<string>();
 
-  protected readonly session = computed(() =>
-    sessionToAnnounce(this.openSessions.sessions(), this.openSessions.dismissed(), this.url()),
+  protected readonly sessions = computed(() =>
+    sessionsToAnnounce(this.openSessions.sessions(), this.openSessions.dismissed(), this.url()),
   );
 
   protected dismiss(sessionId: string): void {
