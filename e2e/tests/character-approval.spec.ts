@@ -150,3 +150,49 @@ test(
     }
   },
 );
+
+test(
+  'o mestre vê quem entrou pelo convite e ainda não criou o personagem, e o remove',
+  { tag: ['@MR-024', '@RN-15'] },
+  async ({ page, browser }) => {
+    const campaignName = `Sem personagem ${Date.now()}`;
+    const { campaignId, link } = await campaignWithApprovalInvite(page, campaignName);
+
+    const playerContext = await newSignedInContext(browser, 'Jogador Teste');
+    try {
+      const playerPage = await playerContext.newPage();
+      // Accepting takes them to "Criar personagem"; they leave without creating one.
+      await playerPage.goto(link);
+      await expect(playerPage).toHaveURL(new RegExp(`/campanhas/${campaignId}/personagens/novo$`));
+
+      // Only the master sees them, under "Membros", with the tag and the dates.
+      await page.goto(`/campanhas/${campaignId}`);
+      const members = page.getByRole('region', { name: 'Membros' });
+      const waiting = page.getByRole('list', { name: 'Esperando para criar o personagem' });
+      await expect(waiting).toContainText('Jogador sem nome');
+      await expect(waiting).toContainText('Sem personagem');
+      await expect(waiting).toContainText('Entrou pelo convite em');
+      await expect(waiting).toContainText('ainda sem personagem. Sai da campanha em');
+      await expect(members).toContainText('jogador');
+
+      // "Remover" asks first, with focus on the safe button; "Cancelar" keeps them.
+      await waiting.getByRole('button', { name: 'Remover Jogador sem nome da campanha' }).click();
+      await expect(page.getByRole('alertdialog', { name: /Remover Jogador sem nome de/ })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Cancelar' })).toBeFocused();
+      await page.getByRole('button', { name: 'Cancelar' }).click();
+      await expect(page.getByRole('alertdialog')).toHaveCount(0);
+      await expect(waiting).toBeVisible();
+
+      await waiting.getByRole('button', { name: 'Remover Jogador sem nome da campanha' }).click();
+      await page.getByRole('button', { name: 'Remover Jogador sem nome', exact: true }).click();
+      await expect(page.getByRole('status').filter({ hasText: `saiu de ${campaignName}` })).toBeVisible();
+      await expect(waiting).toHaveCount(0);
+
+      // They are no longer in the campaign: the same not_found screen as anyone else.
+      await playerPage.goto(`/campanhas/${campaignId}`);
+      await expect(playerPage.getByRole('heading', { level: 1 })).toHaveText('Campanha não encontrada');
+    } finally {
+      await playerContext.close();
+    }
+  },
+);

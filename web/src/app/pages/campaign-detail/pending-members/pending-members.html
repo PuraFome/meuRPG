@@ -1,0 +1,71 @@
+@if (rows().length > 0) {
+  <ul class="mr-list pending-list" aria-label="Esperando para criar o personagem">
+    @for (m of rows(); track m.userId) {
+      <li class="pending">
+        <div class="pending__head">
+          <span class="pending__text">
+            <span class="pending__title">
+              <span class="pending__name">{{ m.name }}</span>
+              <span class="mr-tag"
+                ><mat-icon aria-hidden="true">schedule</mat-icon>Sem personagem</span
+              >
+            </span>
+            <span class="pending__line">{{ m.line }}</span>
+          </span>
+          <span class="pending__role">jogador</span>
+        </div>
+
+        @if (confirming() === m.userId) {
+          <div
+            class="confirm"
+            role="alertdialog"
+            [attr.aria-labelledby]="'remove-title-' + m.userId"
+            [attr.aria-describedby]="'remove-body-' + m.userId"
+          >
+            <strong class="confirm__title" [id]="'remove-title-' + m.userId">
+              Remover {{ m.name }} de {{ campaignName() }}?
+            </strong>
+            <p class="confirm__body" [id]="'remove-body-' + m.userId">
+              {{ m.name }} deixa a campanha agora{{
+                m.expiresOn ? ', em vez de esperar até ' + m.expiresOn : ''
+              }}. Para voltar, precisa de um novo convite.
+            </p>
+            <div class="confirm__actions">
+              <button
+                mat-stroked-button
+                class="danger-button"
+                type="button"
+                [disabled]="removing()"
+                (click)="remove(m)"
+              >
+                Remover {{ m.name }}
+              </button>
+              <button mat-button class="cancel-button" type="button" (click)="cancel(m.userId)">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        } @else {
+          <button
+            mat-stroked-button
+            class="danger-button remove-button"
+            type="button"
+            [attr.data-user-id]="m.userId"
+            [attr.aria-label]="'Remover ' + m.name + ' da campanha'"
+            (click)="ask(m.userId)"
+          >
+            Remover
+          </button>
+        }
+      </li>
+    }
+  </ul>
+}
+
+@if (error(); as message) {
+  <div class="mr-notice mr-notice--danger" role="alert">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <p>{{ message }}</p>
+  </div>
+}
+<p class="status" role="status" tabindex="-1">{{ status() }}</p>

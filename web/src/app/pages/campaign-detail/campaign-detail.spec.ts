@@ -58,6 +58,9 @@ class FakeCampaignsService {
   listInvites(): Promise<{ invites: [] }> {
     return this.listInvitesResult;
   }
+  listPendingMembers(): Promise<{ members: [] }> {
+    return Promise.resolve({ members: [] });
+  }
 }
 
 /** Who is signed in: `u1` unless a test says otherwise. */
