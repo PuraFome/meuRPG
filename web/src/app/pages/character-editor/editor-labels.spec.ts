@@ -1,7 +1,6 @@
 import { FormControl, FormGroup, Validators } from '@angular/forms';
 
 import {
-  BASIC_SHEET_FIELDS,
   FULL_SHEET_FIELDS,
   abilityAbbreviation,
   countLabel,
@@ -61,18 +60,6 @@ describe('editor labels', () => {
     ]);
     expect(describeInvalidFields(invalid)).toBe(
       'Básico: Nome do personagem, Raça. Atributos: Força, bônus manual de Constituição.',
-    );
-  });
-
-  it('lists the invalid fields of the short form without steps', () => {
-    const form = new FormGroup({
-      name: new FormControl('', Validators.required),
-      damage: new FormControl('', Validators.required),
-      armorClass: new FormControl(12),
-    });
-
-    expect(describeInvalidFields(invalidFields(form, BASIC_SHEET_FIELDS))).toBe(
-      'Nome do personagem, Dano.',
     );
   });
 

@@ -652,21 +652,71 @@ enum Alignment {
 }
 
 // BasicSheet is the short sheet of a minion or a story NPC: only what a
-// combat or a scene needs, typed by the master.
+// combat or a scene needs, typed by the master. In combat it rolls
+// initiative with initiative_bonus and attacks with its attacks.
 message BasicSheet {
   // Maximum hit points: 1 to 9,999.
   int32 hit_points_max = 1;
   // Armor class: 1 to 40.
   int32 armor_class = 2;
-  // Walking speed in feet: 0 to 300.
+  // Walking speed in feet: 0 to 300. The app shows it in metres
+  // (5 ft = 1.5 m).
   int32 speed_ft = 3;
-  // The attack bonus of its main attack: -10 to +30.
+  // Legacy, read only for sheets saved before Etapa 6. When the server
+  // reads such a sheet and can turn damage into an attack, it moves both
+  // fields into attacks and clears them here. A write that has attacks
+  // clears them. The attack bonus of the old main attack: -10 to +30.
   int32 attack_bonus = 4;
-  // The damage of its main attack, such as "1d6+2 cortante": 0 to 40
-  // characters, one line.
+  // Legacy, read only for sheets saved before Etapa 6 (see attack_bonus).
+  // The old free text damage, such as "1d6+2 cortante": 0 to 40 characters,
+  // one line. It stays only while it could not become an attack.
   string damage = 5;
   // Who or what it is: 0 to 2,000 characters, multi-line.
   string description = 6;
+  // The number added to the d20 when it rolls initiative: -10 to +20.
+  int32 initiative_bonus = 7;
+  // Its attacks: 0 to 3.
+  repeated BasicAttack attacks = 8;
+}
+
+// BasicAttack is one attack of a basic sheet, with real dice: the d20 plus
+// attack_bonus against the target's armor class, then, on a hit,
+// damage_dice_count d damage_dice_sides plus damage_bonus.
+message BasicAttack {
+  // What the attack is called, such as "Cimitarra": 1 to 40 characters,
+  // one line.
+  string name = 1;
+  // The number added to the d20: -10 to +20.
+  int32 attack_bonus = 2;
+  // How many damage dice: 1 to 20.
+  int32 damage_dice_count = 3;
+  // The faces of each damage die: 4, 6, 8, 10 or 12.
+  int32 damage_dice_sides = 4;
+  // The number added to the damage: -20 to +40.
+  int32 damage_bonus = 5;
+  // The kind of damage. Required: not DAMAGE_TYPE_UNSPECIFIED.
+  DamageType damage_type = 6;
+  // The reach or range in feet: 0 to 600. 0 is a melee attack with the
+  // normal reach of 5 ft (1.5 m). The app does not edit it yet.
+  int32 range_ft = 7;
+}
+
+// DamageType is a kind of damage of the SRD 5.1.
+enum DamageType {
+  DAMAGE_TYPE_UNSPECIFIED = 0;
+  DAMAGE_TYPE_ACID = 1;
+  DAMAGE_TYPE_BLUDGEONING = 2;
+  DAMAGE_TYPE_COLD = 3;
+  DAMAGE_TYPE_FIRE = 4;
+  DAMAGE_TYPE_FORCE = 5;
+  DAMAGE_TYPE_LIGHTNING = 6;
+  DAMAGE_TYPE_NECROTIC = 7;
+  DAMAGE_TYPE_PIERCING = 8;
+  DAMAGE_TYPE_POISON = 9;
+  DAMAGE_TYPE_PSYCHIC = 10;
+  DAMAGE_TYPE_RADIANT = 11;
+  DAMAGE_TYPE_SLASHING = 12;
+  DAMAGE_TYPE_THUNDER = 13;
 }
 
 // CharacterStory is a character's descriptive text: personality,

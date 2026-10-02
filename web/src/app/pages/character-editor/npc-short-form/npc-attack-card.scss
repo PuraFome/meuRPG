@@ -1,0 +1,70 @@
+// E6-26: a bordered card per attack. From 900px one row: name, attack
+// bonus, dice, damage bonus, type, remove. On a phone the name takes a row,
+// then two fields per row, and the remove button closes the card.
+:host {
+  display: block;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+  padding: var(--mr-space-3) var(--mr-space-4);
+  border: 1px solid var(--mr-line);
+  border-radius: 10px;
+}
+
+.card__title {
+  font-size: 14px;
+  line-height: 18px;
+  font-weight: 700;
+  color: var(--mr-ink-muted);
+}
+
+.card__fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--mr-space-4) var(--mr-space-3);
+
+  mat-form-field {
+    width: 100%;
+  }
+
+  @media (min-width: 900px) {
+    grid-template-columns: minmax(0, 1fr) 124px 116px 116px 168px 44px;
+  }
+}
+
+.card__name {
+  grid-column: 1 / -1;
+
+  @media (min-width: 900px) {
+    grid-column: auto;
+  }
+}
+
+// The trash button lines up with the 56px fields: 44px, centred. On a phone
+// it sits at the end of its own row.
+.card__remove {
+  grid-column: 1 / -1;
+  justify-self: end;
+
+  @media (min-width: 900px) {
+    grid-column: auto;
+    justify-self: auto;
+  }
+
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  margin-top: 6px;
+  padding: 0;
+  color: var(--mr-danger-ink);
+}
+
+.card__summary {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}

@@ -537,8 +537,54 @@ func TestCheckSheet(t *testing.T) {
 		{"basic: armor class 41", func(s *charactersv1.CharacterSheet) { s.Content = basicSheet().Content; s.GetBasic().ArmorClass = 41 }, "sheet.basic.armor_class"},
 		{"basic: speed 301", func(s *charactersv1.CharacterSheet) { s.Content = basicSheet().Content; s.GetBasic().SpeedFt = 301 }, "sheet.basic.speed_ft"},
 		{"basic: attack +31", func(s *charactersv1.CharacterSheet) { s.Content = basicSheet().Content; s.GetBasic().AttackBonus = 31 }, "sheet.basic.attack_bonus"},
+		{"basic: initiative +21", func(s *charactersv1.CharacterSheet) {
+			s.Content = basicSheet().Content
+			s.GetBasic().InitiativeBonus = 21
+		}, "sheet.basic.initiative_bonus"},
+		{"basic: four attacks", func(s *charactersv1.CharacterSheet) {
+			s.Content = basicSheet().Content
+			a := s.GetBasic().Attacks[0]
+			s.GetBasic().Attacks = []*charactersv1.BasicAttack{a, a, a, a}
+		}, "sheet.basic.attacks"},
+		{"basic: empty attack name", func(s *charactersv1.CharacterSheet) {
+			s.Content = basicSheet().Content
+			s.GetBasic().Attacks[0].Name = "  "
+		}, "sheet.basic.attacks[0].name"},
+		{"basic: long attack name", func(s *charactersv1.CharacterSheet) {
+			s.Content = basicSheet().Content
+			s.GetBasic().Attacks[0].Name = strings.Repeat("x", 41)
+		}, "sheet.basic.attacks[0].name"},
+		{"basic: attack roll +21", func(s *charactersv1.CharacterSheet) {
+			s.Content = basicSheet().Content
+			s.GetBasic().Attacks[0].AttackBonus = 21
+		}, "sheet.basic.attacks[0].attack_bonus"},
+		{"basic: 21 damage dice", func(s *charactersv1.CharacterSheet) {
+			s.Content = basicSheet().Content
+			s.GetBasic().Attacks[0].DamageDiceCount = 21
+		}, "sheet.basic.attacks[0].damage_dice_count"},
+		{"basic: d7", func(s *charactersv1.CharacterSheet) {
+			s.Content = basicSheet().Content
+			s.GetBasic().Attacks[0].DamageDiceSides = 7
+		}, "sheet.basic.attacks[0].damage_dice_sides"},
+		{"basic: damage bonus 41", func(s *charactersv1.CharacterSheet) {
+			s.Content = basicSheet().Content
+			s.GetBasic().Attacks[0].DamageBonus = 41
+		}, "sheet.basic.attacks[0].damage_bonus"},
+		{"basic: no damage type", func(s *charactersv1.CharacterSheet) {
+			s.Content = basicSheet().Content
+			s.GetBasic().Attacks[0].DamageType = 0
+		}, "sheet.basic.attacks[0].damage_type"},
+		{"basic: unknown damage type", func(s *charactersv1.CharacterSheet) {
+			s.Content = basicSheet().Content
+			s.GetBasic().Attacks[0].DamageType = 99
+		}, "sheet.basic.attacks[0].damage_type"},
+		{"basic: range 601", func(s *charactersv1.CharacterSheet) {
+			s.Content = basicSheet().Content
+			s.GetBasic().Attacks[0].RangeFt = 601
+		}, "sheet.basic.attacks[0].range_ft"},
 		{"basic: long damage", func(s *charactersv1.CharacterSheet) {
 			s.Content = basicSheet().Content
+			s.GetBasic().Attacks = nil // the old text only counts without attacks
 			s.GetBasic().Damage = strings.Repeat("d", 41)
 		}, "sheet.basic.damage"},
 	}

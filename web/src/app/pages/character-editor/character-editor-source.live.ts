@@ -17,6 +17,7 @@ import {
   SpellPreparation as GenSpellPreparation,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { AbilityKey, CharacterKind } from '../../core/characters/characters.types';
+import { damageTypeFromGen, damageTypeToGen } from '../../core/characters/damage-type-gen';
 import { CONNECT_TRANSPORT } from '../../core/connect/transport';
 import {
   AlignmentKey,
@@ -223,13 +224,26 @@ export function mergeFullSheetInit(original: GenFullSheet | undefined, v: Charac
   return { ...rest, ...toFullSheetInit(v) };
 }
 
-function toBasicSheetInit(v: BasicCharacterFormValue) {
+/** Exported for `character-editor-source.live.spec.ts`. */
+export function toBasicSheetInit(v: BasicCharacterFormValue) {
   return {
     hitPointsMax: v.hitPointsMax,
     armorClass: v.armorClass,
-    speedFt: v.speedWalkFt,
-    attackBonus: v.attackBonus,
-    damage: v.damage,
+    speedFt: v.speedFt,
+    initiativeBonus: v.initiativeBonus,
+    attacks: v.attacks.map((a) => ({
+      name: a.name,
+      attackBonus: a.attackBonus,
+      damageDiceCount: a.damageDiceCount,
+      damageDiceSides: a.damageDiceSides,
+      damageBonus: a.damageBonus,
+      damageType: damageTypeToGen(a.damageType),
+      rangeFt: a.rangeFt,
+    })),
+    // The deprecated fields go back as read: the server drops them when
+    // there are attacks and keeps the old text otherwise.
+    attackBonus: v.legacyAttackBonus,
+    damage: v.legacyDamage,
     description: v.description,
   };
 }
@@ -292,14 +306,25 @@ export function toFormFullSheet(name: string, full: GenFullSheet): CharacterForm
   };
 }
 
-function toFormBasicSheet(name: string, basic: GenBasicSheet): BasicCharacterFormValue {
+/** Exported for `character-editor-source.live.spec.ts`. */
+export function toFormBasicSheet(name: string, basic: GenBasicSheet): BasicCharacterFormValue {
   return {
     name,
     hitPointsMax: basic.hitPointsMax,
     armorClass: basic.armorClass,
-    speedWalkFt: basic.speedFt,
-    attackBonus: basic.attackBonus,
-    damage: basic.damage,
+    speedFt: basic.speedFt,
+    initiativeBonus: basic.initiativeBonus,
+    attacks: basic.attacks.map((a) => ({
+      name: a.name,
+      attackBonus: a.attackBonus,
+      damageDiceCount: a.damageDiceCount,
+      damageDiceSides: a.damageDiceSides,
+      damageBonus: a.damageBonus,
+      damageType: damageTypeFromGen(a.damageType),
+      rangeFt: a.rangeFt,
+    })),
+    legacyDamage: basic.damage,
+    legacyAttackBonus: basic.attackBonus,
     description: basic.description,
   };
 }

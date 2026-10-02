@@ -1,4 +1,5 @@
 import { AbilityKey, CharacterKind } from '../../core/characters/characters.types';
+import { DamageTypeKey } from '../../core/characters/character-labels';
 
 /**
  * The view-model and port `CharacterEditor` needs. Phase 2 maps
@@ -138,15 +139,32 @@ export interface CharacterFormValue {
   customFeaturesText: string;
 }
 
+/** One attack of a minion or story NPC (`BasicAttack`). */
+export interface BasicAttackFormValue {
+  name: string;
+  attackBonus: number;
+  damageDiceCount: number;
+  damageDiceSides: number;
+  damageBonus: number;
+  damageType: DamageTypeKey;
+  /** `BasicAttack.range_ft`, kept as saved: the form has no field for it. */
+  rangeFt: number;
+}
+
 /** The form value for a minion or story NPC (`BasicSheet`) — the "single
  * short form" the plan asks for. */
 export interface BasicCharacterFormValue {
   name: string;
   hitPointsMax: number;
   armorClass: number;
-  speedWalkFt: number;
-  attackBonus: number;
-  damage: string;
+  speedFt: number;
+  initiativeBonus: number;
+  attacks: BasicAttackFormValue[];
+  /** `BasicSheet.damage` and `attack_bonus`, the deprecated fields of a
+   * sheet saved before Etapa 6 whose damage could not become an attack. The
+   * form shows the text as a note and sends both back unchanged. */
+  legacyDamage: string;
+  legacyAttackBonus: number;
   description: string;
 }
 

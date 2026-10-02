@@ -137,11 +137,26 @@ test('o mestre cria um inimigo com ficha completa e um minion com ficha básica'
   await page.getByLabel('Nome do personagem').fill('Bandido');
   await page.getByLabel('Pontos de Vida (máximo)').fill('4');
   await page.getByLabel('Classe de Armadura').fill('12');
-  await page.getByLabel('Deslocamento (pés)').fill('30');
-  await page.getByLabel('Bônus de ataque').fill('2');
-  await page.getByLabel('Dano').fill('1d6+1 perfurante');
+  // The speed is typed in metres, in steps of 1,5 m (no feet on screen).
+  await page.getByLabel('Deslocamento (m)').fill('9');
+  await page.getByLabel('Iniciativa').fill('+2');
+  await page.getByRole('button', { name: 'Adicionar ataque' }).click();
+  await page.getByLabel('Nome do ataque').fill('Cimitarra');
+  await page.getByLabel('Bônus de ataque').fill('+4');
+  await page.getByLabel('Dados do dano').fill('1d6');
+  await page.getByLabel('Bônus do dano').fill('+2');
+  // Opened from the keyboard: the empty field's floating label overlaps the click point (see support.ts).
+  const damageType = page.getByRole('combobox', { name: 'Tipo de dano' });
+  await damageType.focus();
+  await damageType.press('Enter');
+  await page.getByRole('option', { name: 'Cortante' }).click();
+  await expect(page.getByText('Na ficha: Cimitarra, +4 para acertar, 1d6 + 2 de dano cortante')).toBeVisible();
   await page.getByRole('button', { name: 'Criar NPC' }).click();
   await expect(page).toHaveURL(/\/campanhas\/[^/]+\/personagens\/[^/]+$/);
+
+  // The sheet shows initiative and the attack as the master typed them.
+  await expect(page.locator('dt:text-is("Iniciativa") + dd')).toHaveText('+2');
+  await expect(page.getByText('Cimitarra +4 · 1d6 + 2 cortante')).toBeVisible();
 
   await page.goto(`/campanhas/${campaignId}`);
   // "NPCs" is an <h3> (campaign-characters.html), not an <h2>.

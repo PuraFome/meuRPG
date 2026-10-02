@@ -31,7 +31,7 @@ Usar as mesmas palavras nas conversas, nos documentos e no código evita muita c
 | Grade | O quadriculado do mapa no combate. Cada quadrado vale 1,5 m, inclusive na diagonal (RN-21). | `grid` |
 | Teste contra a morte | O teste do personagem com 0 PV. Na terceira falha, ele só morre quando o mestre confirma (RN-03). | `death_save` |
 | Personagem | Tem um tipo: jogador, inimigo, boss, minion ou NPC de história. O personagem de jogador que morre não é apagado: fica no sistema, como base de outro personagem ou como NPC do mestre em outra campanha (RN-03, RN-04). | `character`, `kind` |
-| Ficha | Os dados de regra de um personagem. Completa para jogador, inimigo e boss; básica para minion e NPC de história. | `sheet`, `FullSheet`, `BasicSheet` |
+| Ficha | Os dados de regra de um personagem. Completa para jogador, inimigo e boss; básica (PV, CA, deslocamento, iniciativa e até três ataques com dados) para minion e NPC de história. | `sheet`, `FullSheet`, `BasicSheet` |
 | Trava da ficha | Momento em que o jogador deixa de editar a própria ficha: o início da primeira sessão da campanha, ou da próxima sessão para um personagem criado depois. A história do personagem tem trava própria, que o mestre libera. | `sheet_locked_at`, `story_editing_allowed` |
 | Estado do personagem | Onde o personagem está no ciclo de vida: rascunho, travada, morto ou pendente de aprovação. O servidor calcula a cada leitura; o NPC está sempre em rascunho. | `CharacterState` |
 | História do personagem | Personalidade, aparência, história e aliados: o texto que descreve o personagem, fora das regras. Depois da trava da ficha, o jogador só a edita quando o mestre libera (liberação da história), até a próxima sessão. | `CharacterStory`, `story_editing_allowed` |

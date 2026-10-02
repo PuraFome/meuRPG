@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { FormBuilder } from '@angular/forms';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { Code, ConnectError } from '@connectrpc/connect';
 import { of } from 'rxjs';
@@ -9,6 +10,7 @@ import {
   CharacterBlockedSchema,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { CharacterEditor } from './character-editor';
+import { createAttackGroup } from './npc-short-form/basic-form';
 import {
   CharacterEditorSource,
   CharacterForEdit,
@@ -871,9 +873,11 @@ describe('CharacterEditor', () => {
             name: 'Goblin',
             hitPointsMax: 7,
             armorClass: 13,
-            speedWalkFt: 30,
-            attackBonus: 4,
-            damage: '1d6+2 perfurante',
+            speedFt: 30,
+            initiativeBonus: 2,
+            attacks: [],
+            legacyDamage: '',
+            legacyAttackBonus: 0,
             description: '',
           },
         });
@@ -908,7 +912,51 @@ describe('CharacterEditor', () => {
 
       expect(fake.createCharacterCalls.length).toBe(0);
       expect(el.querySelector('.mr-notice--danger')?.textContent).toContain(
-        'Nome do personagem, Dano.',
+        'Nome do personagem.',
+      );
+    });
+
+    it('adds and removes attack cards on the short NPC form, at most three', async () => {
+      configure({ id: 'camp-1', tipo: 'minion' });
+      const { fixture, el } = await render();
+      const add = () =>
+        Array.from(el.querySelectorAll('button')).find((b) =>
+          b.textContent?.includes('Adicionar ataque'),
+        ) as HTMLButtonElement;
+      expect(el.querySelectorAll('app-npc-attack-card').length).toBe(0);
+
+      for (let i = 0; i < 3; i++) {
+        add().click();
+        fixture.detectChanges();
+        await fixture.whenStable();
+      }
+      expect(el.querySelectorAll('app-npc-attack-card').length).toBe(3);
+      expect(add().disabled).toBe(true);
+      expect(el.textContent).toContain('Máximo de 3 ataques');
+      expect(el.textContent).toContain('3 de 3 ataques');
+
+      (el.querySelector('[aria-label="Remover o ataque 2"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      expect(el.querySelectorAll('app-npc-attack-card').length).toBe(2);
+      expect(add().disabled).toBe(false);
+      expect(el.querySelector('[role="status"]')?.textContent).toContain('Ataque 2 removido.');
+    });
+
+    it('lists the invalid attack fields by card, and does not save', async () => {
+      configure({ id: 'camp-1', tipo: 'minion' });
+      const { fixture, el } = await render();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cmp = fixture.componentInstance as any;
+      cmp.basicForm.controls.name.setValue('Goblin');
+      cmp.basicForm.controls.attacks.push(createAttackGroup(TestBed.inject(FormBuilder)));
+
+      await cmp.submit();
+      fixture.detectChanges();
+
+      expect(fake.createCharacterCalls.length).toBe(0);
+      expect(el.querySelector('.mr-notice--danger')?.textContent).toContain(
+        'Ataque 1: Nome do ataque, Ataque 1: Tipo de dano.',
       );
     });
 

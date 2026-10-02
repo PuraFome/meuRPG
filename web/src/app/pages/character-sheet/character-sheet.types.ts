@@ -1,5 +1,5 @@
 import { AbilityKey, CharacterKind, CharacterState } from '../../core/characters/characters.types';
-import { SkillProficiency } from '../../core/characters/character-labels';
+import { DamageTypeKey, SkillProficiency } from '../../core/characters/character-labels';
 
 /**
  * The view-model `CharacterSheetPage` renders. Phase 2 maps `GetCharacter`'s
@@ -160,9 +160,24 @@ export interface BasicSheetVm {
   readonly hitPointsMax: number;
   readonly armorClass: number;
   readonly speedWalkFt: number;
-  readonly attackBonus: number;
-  readonly damage: string;
+  readonly initiativeBonus: number;
+  /** At most three, as the master typed them. */
+  readonly attacks: readonly BasicAttackVm[];
+  /** The deprecated free-text damage of a sheet saved before Etapa 6 that
+   * could not become an attack; empty otherwise. */
+  readonly legacyDamage: string;
   readonly description: string;
+}
+
+/** One attack of a basic sheet (`BasicAttack`), ready to show:
+ * "Cimitarra +4 · 1d6 + 2 cortante". */
+export interface BasicAttackVm {
+  readonly name: string;
+  readonly attackBonus: number;
+  readonly damageDiceCount: number;
+  readonly damageDiceSides: number;
+  readonly damageBonus: number;
+  readonly damageType: DamageTypeKey;
 }
 
 export interface PersonalityVm {
