@@ -4,6 +4,8 @@ O MVP tem 16 histórias, mais 2 pré-requisitos — 18 no total até o MVP: as 1
 
 Uma história está pronta quando todos os critérios dela passam. Cada critério vira um teste automático: Playwright para o que aparece na tela, teste em Go para a regra no servidor. Não há testes de caracterização do app antigo — o sistema novo só precisa provar os próprios critérios de aceite.
 
+As histórias MR-025, MR-026 e MR-027 (o conteúdo que a mesa cadastra, inclusive por PDF) ficaram como "Depois" em 02/10/2026, na Etapa 8, nesta ordem: MR-025, MR-026 e MR-027.
+
 MR-021 e MR-022 são novas e saíram das respostas do Samuel de 28/09/2026. Ficaram como "Depois", mas o modelo de dados já nasce preparado para as duas (ver [Modelo de dados](../dados.md)). MR-023 e MR-024 são novas, das respostas do Samuel de 29/09/2026 (mais de um mestre, RN-13; convite com aprovação, RN-15). No mesmo dia, ele pôs a MR-024 no MVP, na Etapa 4, e a MR-023 depois do MVP.
 
 ## Índice
@@ -35,9 +37,9 @@ MR-021 e MR-022 são novas e saíram das respostas do Samuel de 28/09/2026. Fica
 | [MR-021](#mr-021-copiar-personagem) | Personagem | Depois |
 | [MR-022](#mr-022-reutilizar-npcs) | Personagem | Depois |
 | [MR-023](#mr-023-passar-ou-dividir-a-campanha) | Campanha | Depois |
-| [MR-025](#mr-025-cadastrar-conteúdo-da-mesa) | Regras | A definir |
-| [MR-026](#mr-026-propor-uma-raça-ou-classe-nova) | Regras | A definir |
-| [MR-027](#mr-027-ler-as-regras-de-um-pdf) | Regras | A definir |
+| [MR-025](#mr-025-cadastrar-conteúdo-da-mesa) | Regras | Depois |
+| [MR-026](#mr-026-propor-uma-raça-ou-classe-nova) | Regras | Depois |
+| [MR-027](#mr-027-ler-as-regras-de-um-pdf) | Regras | Depois |
 
 ## Prioridade: MVP
 
@@ -135,7 +137,7 @@ Os dois últimos critérios foram respondida pelo Vinicius em 29/09/2026.
 #### Implementado
 - Na Etapa 5: o `MapService` cria, muda, move e apaga mapas e pontos dos três tipos (ver [Arquitetura](../arquitetura.md#módulo-maps-mapas-pontos-e-tokens)). O mapa nasce de uma imagem da galeria e nasce escondido; o ponto também. O ponto de submapa leva a outro mapa da mesma campanha, nunca ao próprio mapa. Teste: `TestMR008_MasterCreatesPointsOfEachKind`.
 - As telas vieram em seguida: "Novo mapa" (nome e uma imagem da galeria), o painel "Mapas" da campanha e o editor do mestre no computador (escolher o tipo e clicar no mapa põe o ponto, escondido; arrastar ou as setas movem; o painel do ponto salva tudo junto em "Salvar ponto"; "Adicionar token"). No celular o mestre só anda e dá zoom e revela pelas listas. Abrir o ponto de submapa é a ficha do ponto com "Abrir <mapa>". Teste: `maps.spec.ts` (`@MR-008`: o mestre cria o mapa e os três pontos pela tela, e o jogador abre o submapa pela ficha do ponto) e `a11y.spec.ts`. Ver [Design](../design.md#mapas-e-imagem-mostrada).
-- Abrir o ponto: o de submapa mostra o nome e a descrição, com "Abrir <mapa>" (decisão do desenho de 30/09/2026: primeiro a ficha do ponto, depois o submapa). Os de batalha e de cena, por enquanto, só mostram o nome e a descrição: passam a abrir o encontro com o combate (Etapa 6) e a cena de RP com as cenas (Etapa 7). É a proposta da pergunta 29 do documento de acompanhamento, esperando o Samuel. Até lá, abrir um ponto de batalha ou de cena só mostra a ficha dele.
+- Abrir o ponto: o de submapa mostra o nome e a descrição, com "Abrir <mapa>" (decisão do desenho de 30/09/2026: primeiro a ficha do ponto, depois o submapa). Os de batalha e de cena, por enquanto, só mostram o nome e a descrição: passam a abrir o encontro com o combate (Etapa 6) e a cena de RP com as cenas (Etapa 7). Decidido em 02/10/2026 (pergunta 29 do documento de acompanhamento): o ponto de batalha e o de cena já existem antes dessas etapas, só com nome e descrição. Até lá, abrir um ponto de batalha ou de cena só mostra a ficha dele.
 
 ### MR-009: Mapa sem spoiler
 
@@ -269,11 +271,11 @@ Os dois últimos critérios foram respondida pelo Vinicius em 29/09/2026.
 
 Existia no app antigo (descontinuado). Confirmada no MVP pelo Samuel em 29/09/2026, na Etapa 5 do [roadmap](../roadmap.md), ao lado dos mapas.
 
-#### Critérios de aceite (proposta)
-Propostos por nós, com a resposta padrão da pergunta 27 do documento de acompanhamento (só o mestre vê o documento), esperando o Samuel:
+#### Critérios de aceite
+Aceitos em 02/10/2026 (pergunta 27 do documento de acompanhamento): no MVP, só o mestre vê o documento.
 
 - **Dado** o documento da campanha, **quando** o mestre escreve texto, põe uma imagem da galeria e um link para um mapa e para uma ficha, **então** o documento mostra a imagem **e** o link abre o mapa ou a ficha numa janela, sem sair do documento.
-- **Dado** um jogador, **quando** pede o documento, **então** o servidor recusa (enquanto valer a resposta padrão: só o mestre vê).
+- **Dado** um jogador, **quando** pede o documento, **então** o servidor recusa (só o mestre vê o documento).
 
 #### Implementado
 - Backend pronto em 30/09/2026 (Etapa 5, módulo `campaigns`); telas prontas em 02/10/2026 (`/campanhas/:id/documento`, o painel "Documento da campanha" na página da campanha, só para o mestre; ver [Design](../design.md#documento-da-campanha)). Ver [Arquitetura](../arquitetura.md#documento-da-campanha) e [Modelo de dados](../dados.md#esquema-implementado).
@@ -296,7 +298,7 @@ Propostos por nós, com a resposta padrão da pergunta 27 do documento de acompa
 Existia no app antigo (descontinuado). Confirmada no MVP pelo Samuel em 29/09/2026, na Etapa 5 do [roadmap](../roadmap.md), ao lado dos mapas.
 
 #### Critérios de aceite
-Propostos por nós, esperando o Samuel. Os limites também são proposta (pergunta 30 do documento de acompanhamento): JPEG, PNG ou WebP, até 10 MB por imagem, 300 imagens e 500 MB por campanha.
+Aceitos em 02/10/2026, com os limites (pergunta 30 do documento de acompanhamento): JPEG, PNG ou WebP, até 10 MB por imagem, 300 imagens e 500 MB por campanha.
 
 - **Dado** o mestre na galeria, **quando** envia uma imagem JPEG, PNG ou WebP de até 10 MB, **então** ela aparece na galeria **e** o arquivo guardado não tem os metadados (EXIF) do original.
 - **Dado** um jogador, **quando** pede a galeria da campanha, **então** o servidor recusa.
@@ -323,13 +325,15 @@ Propostos por nós, esperando o Samuel. Os limites também são proposta (pergun
 - Módulos: campaigns, characters
 
 #### Critérios de aceite
-Propostos por nós, a partir das decisões padrão do integrador (o convite escolhe se exige aprovação; a recusa apaga o personagem e a participação), esperando o Samuel:
+Aceitos em 02/10/2026 (perguntas 23, 24 e 25 do documento de acompanhamento): o convite escolhe se exige aprovação, e a recusa apaga o personagem e a participação. Os dois últimos critérios abaixo (jogador pendente sem personagem e convite comum para quem está pendente) estão decididos e ainda não implementados:
 
 - **Dado** que sou mestre de "Mirathel", **quando** gero um convite, **então** posso marcar "Exigir aprovação do mestre" **e**, sem marcar, o convite funciona como antes: quem aceita entra direto.
 - **Dado** um convite que exige aprovação, **quando** o jogador o aceita (já logado, ou fazendo login pelo convite), **então** vai direto criar o personagem, que nasce "Pendente de aprovação" **e**, enquanto espera, ele só vê o nome da campanha e o próprio personagem, que continua editando.
 - **Dado** um personagem pendente, **quando** o mestre abre a campanha, **então** o vê em "Esperando aprovação", abre a ficha e, **quando** aprova, o personagem vira rascunho **e** o jogador passa a ser jogador da campanha.
 - **Dado** um personagem pendente, **quando** o mestre o recusa, **então** o personagem é apagado, o jogador não entra na campanha **e** precisa de um convite novo para tentar de novo.
 - **Dado** que sou jogador, ou jogador pendente, **quando** tento aprovar ou recusar um personagem, **então** o servidor recusa.
+- **Dado** um jogador pendente que ainda não criou o personagem, **quando** o mestre abre a campanha, **então** vê quem está pendente sem personagem, com um botão para remover; **e**, passados 30 dias sem personagem, a participação pendente é apagada sozinha. A fazer, num PR próprio (pergunta 24).
+- **Dado** um jogador pendente de "Mirathel", **quando** ele aceita um convite comum (sem aprovação) da mesma campanha, **então** vira jogador na hora, porque o convite comum conta como a aprovação do mestre. A fazer, num PR próprio; hoje ele continua pendente (pergunta 25).
 
 #### Implementado
 - Pronto em 29/09/2026 (Etapa 4), backend, tela e testes. Ver [RN-15](regras.md), [Arquitetura](../arquitetura.md#membro-pendente) e [Modelo de dados](../dados.md#esquema-implementado).
@@ -358,19 +362,20 @@ Propostos por nós, a partir das decisões padrão do integrador (o convite esco
 - Módulos: play, maps
 
 #### Critérios de aceite
-Propostos por nós, esperando o Samuel:
+Aceitos em 02/10/2026 (pergunta 32 do documento de acompanhamento), com o último critério a desenhar:
 
 - **Dado** uma sessão aberta, **quando** o mestre mostra uma imagem da galeria, **então** quem está na sessão a vê na hora, sem recarregar, **e** o mapa atual continua lá; **quando** o mestre para de mostrar, a imagem some da tela dos jogadores.
 - **Dado** que a sessão acabou ou o mestre parou de mostrar, **então** os jogadores não recebem mais o ID da imagem.
+- **Dado** uma imagem que o mestre quer que os jogadores continuem vendo, **quando** ele usa o controle de manter a imagem à mostra, **então** ela continua com os jogadores. A desenhar: o controle ainda não existe, e o desenho vem com as telas da Etapa 6.
 
 #### Implementado
 - O servidor, na Etapa 5: `PlayService.SetShownImage` (só o mestre, só com a sessão aberta, só uma imagem da galeria da campanha) guarda a imagem em `game_sessions.shown_image_id`; `GetLiveSession` a devolve (`shown_image`, com o nome como legenda) e o stream leva `shown_image_changed` a todos. Uma imagem por vez, independente do mapa atual. Apagar a imagem da galeria para de mostrá-la. Uma sessão nova começa sem imagem. Ver [Arquitetura](../arquitetura.md#o-que-a-sessão-mostra).
-- O jogador baixa a imagem (`GET /images/{id}`) só enquanto ela é mostrada, ou enquanto é o fundo de um mapa que ele vê; depois disso, `404`, mesmo com o ID guardado, e o navegador dele pergunta de novo a cada uso (`Cache-Control: private, no-cache`). É o "não" da pergunta 32, decidido pelo integrador em 30/09/2026 para todas as imagens (RN-10, ver [Servir as imagens](../arquitetura.md#servir-as-imagens)).
+- O jogador baixa a imagem (`GET /images/{id}`) só enquanto ela é mostrada, ou enquanto é o fundo de um mapa que ele vê; depois disso, `404`, mesmo com o ID guardado, e o navegador dele pergunta de novo a cada uso (`Cache-Control: private, no-cache`). É o padrão da pergunta 32, aceito em 02/10/2026 (o controle de manter a imagem à mostra, a desenhar, é a exceção; RN-10, ver [Servir as imagens](../arquitetura.md#servir-as-imagens)).
 - A tela: o painel "Imagem para os jogadores" do mestre ("Mostrar imagem", o seletor da galeria com "Mostrar aos jogadores", "Trocar imagem" e "Parar de mostrar") e o bloco "O mestre está mostrando" do jogador, com a imagem, o nome como legenda e "Ver em tela cheia", que aparece e some ao vivo e é anunciado. Teste: `shown-image.spec.ts` (`@MR-028`: o mestre mostra, troca e para; a página aberta do jogador mostra e tira o bloco sem recarregar). Ver [Design](../design.md#mapas-e-imagem-mostrada).
 - Testes do servidor: `TestMR028_MasterShowsAnImageToThePlayers` (mostrar, parar, apagar, e as recusas: jogador, imagem de outra campanha, sem sessão aberta), `TestRN10_PlayersOnlyFetchImagesTheyCanSee` (a imagem para de ser servida ao jogador quando para de ser mostrada) e as linhas de `SetShownImage` nas matrizes de autorização do `play`.
 
 #### Dúvidas
-- Pergunta 32 do documento de acompanhamento: o jogador continua com acesso à imagem depois que o mestre para de mostrar? Padrão, já implementado: não. O servidor para de mandar o ID, a tela tira a imagem e a rota responde `404` ao jogador. Se o Samuel quiser que o jogador guarde as imagens que viu (um "baú" de handouts), isso vira uma lista por jogador, numa história nova.
+- Pergunta 32 do documento de acompanhamento, respondida em 02/10/2026: o padrão fica (a imagem some da tela dos jogadores e eles perdem o acesso quando o mestre para de mostrar), e o mestre ganha um controle para manter a imagem à mostra quando precisar. O controle não está construído: o desenho vem com as telas da Etapa 6. Guardar as imagens já mostradas numa lista por jogador (um "baú" de handouts) continua fora, e seria uma história nova.
 - O nome da imagem aparece para os jogadores como legenda. O nome vem do nome do arquivo enviado, então pode trazer uma anotação do mestre ("covil-secreto-do-lich"): o mestre pode renomear antes de mostrar.
 
 ## Prioridade: MVP (pré-requisito)
@@ -490,17 +495,15 @@ Fora do MVP. Entram na Etapa 8 do [roadmap](../roadmap.md).
 #### Consequência
 Hoje, excluir a conta de quem criou a campanha apaga a campanha inteira (ver [Privacidade](../privacidade.md#excluir-a-conta)). Com mais de um mestre, ou depois de uma passagem de campanha, isso muda: a campanha só é apagada quando o último mestre sai. Ver [ADR-0011](../adr/0011-autorizacao-papeis-por-campanha.md), como proposta.
 
-## Prioridade: A definir
-
-Novas, da ideia do Samuel de 29/09/2026 para o conteúdo que não vem pronto no SRD 5.1. A prioridade está perguntada no documento de acompanhamento.
-
 ### MR-025: Cadastrar conteúdo da mesa
 
 **Como** mestre, **quero** cadastrar raças, classes, subclasses, antecedentes e regras que não vêm no SRD 5.1, **para** a campanha usar o material que a mesa joga.
 
-- Prioridade: A definir
+- Prioridade: Depois (Etapa 8, em 02/10/2026)
 - Regras: —
 - Módulos: rules, campaigns
+
+Prioridade decidida em 02/10/2026 (pergunta 20): primeiro o cadastro pelo mestre, antes da MR-026 e da MR-027.
 
 #### Critérios de aceite (proposta)
 - **Dado** que sou mestre de "Mirathel", **quando** cadastro uma classe nova com os dados, as perícias e as características dela, **então** a classe aparece no editor de personagem só em "Mirathel" **e** a ficha calcula os números com ela.
@@ -510,9 +513,11 @@ Novas, da ideia do Samuel de 29/09/2026 para o conteúdo que não vem pronto no 
 
 **Como** jogador, **quero** propor uma raça ou uma classe que não existe no app ao criar o personagem, com o PDF ou o link das regras, **para** o mestre ler e decidir.
 
-- Prioridade: A definir
+- Prioridade: Depois (Etapa 8, em 02/10/2026)
 - Regras: RN-15 (a mesma ideia de aprovação do convite)
 - Módulos: rules, characters
+
+Prioridade decidida em 02/10/2026 (pergunta 20): vem depois da MR-025, e a proposta do jogador só vale depois que o mestre aprova.
 
 #### Critérios de aceite (proposta)
 - **Dado** que quero jogar de cozinheiro, uma classe feita por fãs, **quando** crio o personagem e proponho a classe com o link do PDF, **então** o mestre vê o pedido **e** o personagem fica esperando a decisão.
@@ -525,12 +530,18 @@ O jogador quer jogar de cozinheiro, uma classe não oficial. Ele cadastra a clas
 
 **Como** mestre, **quero** mandar o PDF com as regras e ver o app cadastrar sozinho as classes, raças e regras dele, **para** não digitar tudo.
 
-- Prioridade: A definir
+- Prioridade: Depois (Etapa 8, em 02/10/2026)
 - Regras: —
 - Módulos: rules
 
+Prioridade decidida em 02/10/2026 (pergunta 21): sim, mas depois do cadastro pelo mestre (MR-025), e o mestre revisa tudo antes de valer.
+
+#### Critérios de aceite (proposta)
+- **Dado** um PDF de regras enviado pelo mestre, **quando** o app o lê, **então** mostra o que encontrou ao mestre **e** nada vale na campanha até o mestre revisar e aprovar.
+- **Dado** um PDF enviado, **quando** o processamento termina ou falha, **então** o arquivo é apagado; um prazo curto (TTL) no arquivo guardado garante o apagamento mesmo se o processamento falhar (pergunta 22, 02/10/2026).
+
 #### Dúvidas
-- Ler um PDF de regras automaticamente precisa de um serviço de IA, que custa por uso e recebe o PDF. Um livro oficial tem direito autoral: o app não pode redistribuir o texto, e o resultado só pode aparecer para a mesa. Quando não der para ler o PDF, o cadastro fica com o mestre (MR-025). Perguntado no documento de acompanhamento.
+- Ler um PDF de regras automaticamente precisa de um serviço de IA, que custa por uso e recebe o PDF. Um livro oficial tem direito autoral: o app não pode redistribuir o texto, e o resultado só pode aparecer para a mesa. Quando não der para ler o PDF, o cadastro fica com o mestre (MR-025). O app não guarda o PDF: ele fica só enquanto é processado (ver [Privacidade](../privacidade.md#a-definir)).
 
 ## Ver também
 

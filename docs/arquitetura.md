@@ -481,7 +481,7 @@ Os membros aparecem pelo nome de exibição, que cada pessoa digita no app (`Ide
 
 ### Documento da campanha
 
-Cada campanha tem um documento: um texto em Markdown que só o mestre lê e escreve (MR-018), com a preparação do jogo, imagens da galeria e links para mapas e fichas. "Só o mestre" é a resposta padrão da pergunta 27 ao Samuel, porque o documento guarda spoilers; se ele responder que os jogadores leem o documento, ou partes dele, mudam a autorização e esta seção. O código fica em `backend/internal/campaigns/document.go`; o contrato, em `proto/meurpg/campaigns/v1/campaign_document.proto`; a tabela, em [Modelo de dados](dados.md#esquema-implementado).
+Cada campanha tem um documento: um texto em Markdown que só o mestre lê e escreve (MR-018), com a preparação do jogo, imagens da galeria e links para mapas e fichas. "Só o mestre" está decidido (pergunta 27, respondida em 02/10/2026), porque o documento guarda spoilers; se um dia os jogadores puderem ler o documento, ou partes dele, mudam a autorização e esta seção. O código fica em `backend/internal/campaigns/document.go`; o contrato, em `proto/meurpg/campaigns/v1/campaign_document.proto`; a tabela, em [Modelo de dados](dados.md#esquema-implementado).
 
 | Chamada do `CampaignDocumentService` | Mestre | Jogador | Não membro | Anônimo | Membro pendente (RN-15) |
 | --- | --- | --- | --- | --- | --- |
@@ -502,7 +502,7 @@ Além do Markdown comum (títulos, parágrafos, negrito, itálico, listas), o ap
 
 Os IDs são UUIDs, que os seletores do editor ("Imagem da galeria", "Link para mapa", "Link para ficha") escrevem: o mestre nunca digita um ID, e a leitura nunca mostra um. O servidor guarda os IDs como texto e não confere nada. Um link para algo apagado, ou de outra campanha, aparece como indisponível ("mapa apagado", "ficha apagada", "imagem apagada"). A imagem só vem da galeria: o app não carrega imagem de uma URL externa escrita no texto, e o CSP (`img-src 'self'`) também não deixaria (ver [Privacidade](privacidade.md)).
 
-**Por que o servidor não renderiza o documento.** O servidor guarda o texto e não o interpreta. O app transforma o Markdown numa árvore de tokens e desenha cada token com o Angular, nunca com `innerHTML`, então nenhum texto do documento vira HTML ou script na página. E cada link é resolvido pelas chamadas e rotas de sempre (o módulo `maps`, o `characters` e `/images/<id>`), com a autorização de cada uma: um ID escrito no texto não dá acesso a nada. Assim o documento não precisa repetir a autorização do que ele cita, e um link nunca mostra a alguém o que essa pessoa não pode ver, mesmo se a pergunta 27 mudar.
+**Por que o servidor não renderiza o documento.** O servidor guarda o texto e não o interpreta. O app transforma o Markdown numa árvore de tokens e desenha cada token com o Angular, nunca com `innerHTML`, então nenhum texto do documento vira HTML ou script na página. E cada link é resolvido pelas chamadas e rotas de sempre (o módulo `maps`, o `characters` e `/images/<id>`), com a autorização de cada uma: um ID escrito no texto não dá acesso a nada. Assim o documento não precisa repetir a autorização do que ele cita, e um link nunca mostra a alguém o que essa pessoa não pode ver, mesmo se a regra da pergunta 27 (só o mestre lê) mudar.
 
 ```mermaid
 sequenceDiagram
@@ -745,7 +745,7 @@ sequenceDiagram
     P-->>J: session_ended, e o stream termina
 ```
 
-**Quem vê o quê.** O mestre vê as `CharacterVitals` de todo personagem de jogador vivo da campanha; o jogador, só as do próprio personagem, na foto e no stream (pergunta 28 para o Samuel; o padrão é "não"). O filtro roda no servidor: cada evento publicado leva a própria audiência (todos, o mestre, ou um usuário), e o hub só entrega às assinaturas dela. `TestPlayersSeeOnlyTheirOwnVitals` confere a foto e o stream, e `TestRN11_LiveSessionNeverCarriesMasterNotes` confere que nada da sessão ao vivo carrega as notas do mestre.
+**Quem vê o quê.** O mestre vê as `CharacterVitals` de todo personagem de jogador vivo da campanha; o jogador, só as do próprio personagem, na foto e no stream (decidido em 02/10/2026, pergunta 28). O filtro roda no servidor: cada evento publicado leva a própria audiência (todos, o mestre, ou um usuário), e o hub só entrega às assinaturas dela. `TestPlayersSeeOnlyTheirOwnVitals` confere a foto e o stream, e `TestRN11_LiveSessionNeverCarriesMasterNotes` confere que nada da sessão ao vivo carrega as notas do mestre.
 
 **Quando o stream termina.**
 
@@ -792,7 +792,7 @@ A sessão aberta mostra a todos duas coisas, lado a lado e independentes: o mapa
 
 - **Uma sessão nova começa sem os dois:** as colunas são da linha da sessão. A sessão encerrada guarda o último, só como registro.
 - **Escolher o mapa atual o revela** na mesma transação que trava a linha da sessão. Se o mestre esconder o mapa atual depois, o jogador continua vendo enquanto ele for o atual (`Map.revealed` falso e `Map.current` verdadeiro).
-- **A imagem mostrada não abre a galeria.** O jogador recebe o ID da imagem enquanto ela é mostrada, e mais nenhum; depois que o mestre para de mostrar, a rota `GET /images/{id}` responde `404` a ele, mesmo que tenha guardado o ID (ver [Servir as imagens](#servir-as-imagens) e a pergunta 32 da [MR-028](produto/historias.md#mr-028-mostrar-uma-imagem-aos-jogadores)).
+- **A imagem mostrada não abre a galeria.** O jogador recebe o ID da imagem enquanto ela é mostrada, e mais nenhum; depois que o mestre para de mostrar, a rota `GET /images/{id}` responde `404` a ele, mesmo que tenha guardado o ID (o controle para manter a imagem à mostra, a desenhar com as telas da Etapa 6, ainda não existe; ver [Servir as imagens](#servir-as-imagens) e a pergunta 32, respondida em 02/10/2026, da [MR-028](produto/historias.md#mr-028-mostrar-uma-imagem-aos-jogadores)).
 
 **Como o `play` e o `maps` se encontram.** Um precisa do outro, então cada um declara o que precisa, o outro implementa, e o `cmd/api` liga os dois, sem nenhum importar o outro:
 
@@ -937,9 +937,9 @@ Um mapa é uma imagem da galeria com pontos de interesse e tokens por cima (MR-0
 | `RemoveMapToken` | O mestre | Tira o token do mapa |
 
 - **Posições em pontos-base.** `x_bp` e `y_bp` vão de 0 a 10000 na largura e na altura da imagem (5000 é o meio). Não dependem do tamanho da imagem, então trocar a imagem ou dar zoom não mexe em nada. A resposta traz a largura e a altura da imagem, para a tela desenhar o mapa antes de a imagem chegar.
-- **Os pontos.** Batalha, submapa ou cena de RP, com nome (até 80 caracteres) e descrição para os jogadores (até 2.000, com quebras de linha). O ponto de submapa leva a outro mapa da mesma campanha, nunca ao próprio; o app abre primeiro a ficha do ponto, com "Abrir <mapa>". Batalha e cena, por enquanto, só mostram o nome e a descrição: abrem o encontro com o combate (Etapa 6) e a cena de RP na Etapa 7 (pergunta 29).
+- **Os pontos.** Batalha, submapa ou cena de RP, com nome (até 80 caracteres) e descrição para os jogadores (até 2.000, com quebras de linha). O ponto de submapa leva a outro mapa da mesma campanha, nunca ao próprio; o app abre primeiro a ficha do ponto, com "Abrir <mapa>". Batalha e cena, por enquanto, só mostram o nome e a descrição: abrem o encontro com o combate (Etapa 6) e a cena de RP na Etapa 7 (decidido em 02/10/2026, pergunta 29).
 - **Os tokens.** Um por personagem por mapa. O personagem precisa ser vivo e da campanha (de jogador, nem morto nem pendente, ou NPC); quem diz é o `characters`, pela interface `maps.CharacterDirectory` (`characters.Service.MapCharacters`), que devolve só ID, tipo, nome e jogador: nada da ficha, nem as notas do mestre. O personagem que morre continua na tabela, mas não aparece no mapa.
-- **Um movimento por vez.** Mover (`PlaceMapToken`, `UpdateMapPoint`) não leva revisão: vale a última escrita. Dois movimentos seguidos do mesmo token, enviados juntos, podem chegar ao banco fora de ordem (os dois escrevem a mesma linha, e a repetição no erro `40001` pode gravar o mais velho por último), e o mapa de todos ficaria na posição velha. Por isso a tela manda um movimento de cada ponto ou token por vez (`web/src/app/core/maps/move-saves.ts`): enquanto um vai, só o último espera, e os do meio ficam de fora. Se o servidor recusar, o item volta para a última posição salva.
+- **Um movimento por vez.** Mover (`PlaceMapToken`, `UpdateMapPoint`) não leva revisão: vale a última escrita. Dois movimentos seguidos do mesmo token, enviados juntos, podem chegar ao banco fora de ordem (os dois escrevem a mesma linha, e a repetição no erro `40001` pode gravar o mais velho por último), e o mapa de todos ficaria na posição velha. Por isso a tela manda um movimento de cada ponto ou token por vez (`web/src/app/core/maps/move-saves.ts`): enquanto um vai, só o último espera, e os do meio ficam de fora. Se o servidor recusar, o item volta para a última posição salva. E o mapa (`shared/map-view`) parte da última posição que ele mesmo informou até o estado novo chegar: sem isso, duas setas seguidas, mais rápidas que a tela, mandavam a mesma posição duas vezes.
 - **Limites.** 200 mapas por campanha e 200 pontos por mapa (proposta, como a cota da galeria), porque as listas não são paginadas.
 - **A imagem de um mapa não pode ser apagada** da galeria: `DeleteGalleryImage` responde `failed_precondition` com o detalhe `ImageInUse`, que nomeia os mapas; a galeria mostra em cada imagem os mapas que a usam (`GalleryImage.used_in_maps`).
 

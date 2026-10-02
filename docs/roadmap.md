@@ -12,7 +12,7 @@ flowchart TD
     E6["Etapa 6, Combate<br/>MR-013, MR-014"]
     E7["Etapa 7, RP e XP<br/>MR-015, MR-016"]
     MVP{{"MVP pronto, a mesa joga a primeira sessão inteira pelo app"}}
-    E8["Etapa 8, Depois do MVP<br/>MR-007, MR-010, MR-017, MR-020, MR-021, MR-022, MR-023<br/>e tarefas de limpeza, sem história"]
+    E8["Etapa 8, Depois do MVP<br/>MR-007, MR-010, MR-017, MR-020, MR-021, MR-022, MR-023<br/>MR-025, MR-026, MR-027<br/>e tarefas de limpeza, sem história"]
 
     E1 --> E2 --> E3 --> E4 --> E5 --> E6 --> E7 --> MVP --> E8
 ```
@@ -27,13 +27,13 @@ flowchart TD
 | 6. Combate | Ordem dos turnos, ações na vez do jogador. | MR-013, MR-014 |
 | 7. RP e XP | Ações da cena de RP, dar XP. | MR-015, MR-016 |
 | **MVP pronto** | A mesa joga a primeira sessão inteira pelo app. | — |
-| 8. Depois do MVP | Importar ficha em PDF, masmorras, subir de nível, livro de regras, copiar personagem, reutilizar NPCs, passar ou dividir a campanha. Mais duas tarefas de limpeza, sem história própria: importar só os personagens do banco antigo e descomissionar esse banco (decidido pelo Samuel em 29/09/2026, ver [Modelo de dados](dados.md) e [Privacidade](privacidade.md#o-banco-do-app-antigo)); remover `server/` (NestJS) e, depois, `src/` (Angular) do repositório. | MR-007, MR-010, MR-017, MR-020, MR-021, MR-022, MR-023 |
+| 8. Depois do MVP | Importar ficha em PDF, masmorras, subir de nível, livro de regras, copiar personagem, reutilizar NPCs, passar ou dividir a campanha, e o conteúdo da mesa (cadastro pelo mestre, proposta do jogador e leitura de PDF, nesta ordem). Mais duas tarefas de limpeza, sem história própria: importar só os personagens do banco antigo e descomissionar esse banco (decidido pelo Samuel em 29/09/2026, ver [Modelo de dados](dados.md) e [Privacidade](privacidade.md#o-banco-do-app-antigo)); remover `server/` (NestJS) e, depois, `src/` (Angular) do repositório. | MR-007, MR-010, MR-017, MR-020, MR-021, MR-022, MR-023, MR-025, MR-026, MR-027 |
 
 MR-023 (passar ou dividir a campanha) e MR-024 (aprovar o personagem do convite) vieram das respostas do Samuel de 29/09/2026. No mesmo dia ele decidiu a prioridade: a MR-024 entra no MVP, na Etapa 4, e a MR-023 fica para a Etapa 8 (ver [Histórias](produto/historias.md)).
 
 Entre a Etapa 4 e a 5, as telas ganham o visual da "ficha de papel" (decidido pelo Vinicius em 29/09/2026, ver [Design](design.md)): as telas das Etapas 1 a 4 são redesenhadas, e toda tela nova passa a ser desenhada e revisada antes do PR.
 
-MR-025, MR-026 e MR-027 (o conteúdo que a mesa cadastra, inclusive por PDF) vieram de uma ideia do Samuel de 29/09/2026 e ainda não têm prioridade nem etapa (ver [Histórias](produto/historias.md#prioridade-a-definir)).
+MR-025, MR-026 e MR-027 (o conteúdo que a mesa cadastra, inclusive por PDF) vieram de uma ideia do Samuel de 29/09/2026 e ficaram na Etapa 8, depois do MVP (decidido em 02/10/2026): primeiro o cadastro pelo mestre (MR-025), depois a proposta do jogador (MR-026, sempre com a aprovação do mestre) e a leitura de PDF (MR-027, com o mestre revisando tudo). Ver [Histórias](produto/historias.md#mr-025-cadastrar-conteúdo-da-mesa).
 
 Cada etapa entrega algo para o mestre e para o jogador. Não há datas: o ritmo depende do tempo livre de cada um.
 

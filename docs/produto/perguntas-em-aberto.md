@@ -40,11 +40,28 @@ Nenhuma delas trava a Etapa 1. Todas são para o Samuel, e cada resposta vira um
 - **Conteúdo cadastrado pela mesa.** Vale por campanha, porque campanhas diferentes usam materiais diferentes (respondida pelo Vinicius em 29/09/2026). Ver [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
 - **Banco do app antigo.** É desligado, com os backups, logo depois da importação única dos personagens, na Etapa 8 (respondida pelo Vinicius em 29/09/2026). Ver [roadmap](../roadmap.md).
 - **Dados físicos ou do app (RN-18).** Os dois: o mestre escolhe se permite; se permitir, cada jogador escolhe entre o dado do app e o físico (decidido pelo Samuel em 29/09/2026). Ver [RN-18](regras.md).
-- **Conteúdo que não vem no SRD.** Ideia do Samuel (29/09/2026): o mestre manda o PDF das regras e o app cadastra sozinho as classes, raças e regras; quando não der, o mestre cadastra, e o jogador pode propor uma raça ou classe nova (com o PDF ou o link) para o mestre aprovar. Virou as histórias [MR-025](historias.md#mr-025-cadastrar-conteúdo-da-mesa), [MR-026](historias.md#mr-026-propor-uma-raça-ou-classe-nova) e [MR-027](historias.md#mr-027-ler-as-regras-de-um-pdf), sem prioridade ainda.
+- **Conteúdo que não vem no SRD.** Ideia do Samuel (29/09/2026): o mestre manda o PDF das regras e o app cadastra sozinho as classes, raças e regras; quando não der, o mestre cadastra, e o jogador pode propor uma raça ou classe nova (com o PDF ou o link) para o mestre aprovar. Virou as histórias [MR-025](historias.md#mr-025-cadastrar-conteúdo-da-mesa), [MR-026](historias.md#mr-026-propor-uma-raça-ou-classe-nova) e [MR-027](historias.md#mr-027-ler-as-regras-de-um-pdf). A prioridade foi decidida em 02/10/2026: Etapa 8, depois do MVP.
+
+## Respondidas em 02/10/2026
+
+Trazidas pelo Vinicius. Os números são os das linhas do documento de acompanhamento.
+
+- **Pergunta 20: prioridade do conteúdo da mesa (MR-025 e MR-026).** As duas ficam para depois do MVP, na Etapa 8: primeiro o cadastro pelo mestre ([MR-025](historias.md#mr-025-cadastrar-conteúdo-da-mesa)), depois a proposta do jogador ([MR-026](historias.md#mr-026-propor-uma-raça-ou-classe-nova)), que só vale depois que o mestre aprova. Ver [roadmap](../roadmap.md).
+- **Pergunta 21: ler as regras de um PDF (MR-027).** Sim, mas depois do cadastro pelo mestre (MR-025), e o mestre revisa tudo antes de valer. Fica na Etapa 8. Ver [MR-027](historias.md#mr-027-ler-as-regras-de-um-pdf).
+- **Pergunta 22: o app guarda o PDF?** O PDF fica guardado só enquanto é processado e é apagado logo depois; um prazo curto (TTL) no arquivo garante o apagamento mesmo se o processamento falhar. Ver [MR-027](historias.md#mr-027-ler-as-regras-de-um-pdf) e [Privacidade](../privacidade.md).
+- **Pergunta 23: o jogador sai quando o mestre recusa o personagem do convite?** Sim: o personagem recusado e a participação pendente são apagados, e o mestre manda um convite novo se quiser. Já implementado. Ver [RN-15](regras.md) e [MR-024](historias.md#mr-024-aprovar-o-personagem-do-convite).
+- **Pergunta 24: o jogador pendente que nunca cria o personagem.** O mestre passa a ver quem está pendente sem personagem, com um botão para remover, e a participação pendente é apagada sozinha depois de 30 dias sem personagem. Decidido, ainda a fazer, num PR próprio. Ver [MR-024](historias.md#mr-024-aprovar-o-personagem-do-convite).
+- **Pergunta 25: convite comum para quem está pendente.** O jogador pendente vira membro na hora, porque o convite comum não pede aprovação e conta como a aprovação do mestre. Decidido, ainda a fazer (hoje ele continua pendente), num PR próprio. Ver [RN-15](regras.md).
+- **Pergunta 27: o jogador vê o documento da campanha (MR-018)?** Não: no MVP, só o mestre. Já implementado. Ver [MR-018](historias.md#mr-018-documento-de-campanha).
+- **Pergunta 28: na sessão, o jogador vê o PV dos outros personagens?** Não: cada jogador vê o próprio, e o mestre vê o de todos. Já implementado. Ver [RN-02](regras.md).
+- **Pergunta 29: um ponto de batalha ou de cena de RP pode existir antes do combate e das cenas?** Sim, e já é assim: o ponto tem nome e descrição, e os de batalha e de cena abrem o combate e a cena quando essas etapas chegarem. Ver [MR-008](historias.md#mr-008-pontos-de-interesse).
+- **Pergunta 30: limites da galeria (MR-019).** JPEG, PNG ou WebP, até 10 MB por imagem, até 300 imagens e 500 MB por campanha; os metadados da foto (EXIF, localização) saem no envio. Já implementado. Ver [MR-019](historias.md#mr-019-galeria-de-imagens).
+- **Pergunta 31: NPC no mapa sem os jogadores verem?** Sim: o token do NPC nasce escondido, e o mestre revela quando quiser. Já implementado. Ver [MR-009](historias.md#mr-009-mapa-sem-spoiler).
+- **Pergunta 32: o jogador mantém acesso à imagem depois que o mestre para de mostrar (MR-028)?** O padrão fica: a imagem some da tela dos jogadores e eles perdem o acesso quando o mestre para de mostrar. Além disso, o mestre ganha um controle para manter a imagem à mostra quando precisar. O controle ainda não existe: o desenho vem com as telas da Etapa 6. Ver [MR-028](historias.md#mr-028-mostrar-uma-imagem-aos-jogadores).
 
 ## Em aberto
 
-Nenhuma aqui. As perguntas novas ficam no documento de acompanhamento: hoje, entre outras, os limites das imagens da galeria (MR-019; implementados com a nossa proposta: JPEG, PNG ou WebP, até 10 MB por imagem, 300 imagens e 500 MB por campanha), a prioridade e a forma do conteúdo cadastrado pela mesa ([MR-025](historias.md#mr-025-cadastrar-conteúdo-da-mesa), [MR-026](historias.md#mr-026-propor-uma-raça-ou-classe-nova) e [MR-027](historias.md#mr-027-ler-as-regras-de-um-pdf)), e os critérios propostos da [MR-024](historias.md#mr-024-aprovar-o-personagem-do-convite), já implementados com as nossas escolhas padrão: o mestre escolhe em cada convite se ele exige aprovação, e a recusa apaga o personagem e a participação pendente (o jogador precisa de um convite novo).
+Nenhuma aqui. As perguntas novas ficam no documento de acompanhamento.
 
 ## Ver também
 
