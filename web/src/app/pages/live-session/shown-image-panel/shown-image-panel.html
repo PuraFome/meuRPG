@@ -13,6 +13,7 @@
         <p class="on__name">{{ image.name }}</p>
       </div>
     </div>
+    <app-keep-switch [checked]="keep()" [disabled]="keeping()" (toggle)="setKeep($event)" />
     <div class="actions">
       <button #stopButton matButton="outlined" type="button" [disabled]="stopping()" (click)="stop()">
         Parar de mostrar
@@ -34,6 +35,8 @@
       <mat-icon aria-hidden="true">cast</mat-icon>Mostrar imagem
     </button>
   }
+
+  <app-left-images-list [images]="left()" (take)="takeBack($event)" />
 
   @if (error(); as message) {
     <div class="mr-notice mr-notice--danger" role="alert">

@@ -104,6 +104,8 @@ func (s *Service) GetLiveSession(
 			return nil, s.dbError(ctx, "read the shown image", err)
 		}
 	}
+	// The switch is the master's: players get false.
+	res.ShownImageKeep = m.Role == authz.RoleMaster && session.ShownImageKeep && res.ShownImage != nil
 	for _, v := range all {
 		if maySee(m, v) {
 			res.Vitals = append(res.Vitals, v)

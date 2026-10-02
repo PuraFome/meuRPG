@@ -443,6 +443,150 @@ func TestMR028_MasterShowsAnImageToThePlayers(t *testing.T) {
 	}
 }
 
+// MR-028: the master leaves a shown image with the players ("Deixar com os
+// jogadores"). It moves to the campaign's left list when the show stops or
+// changes, and when the session ends; the players keep it until the master
+// takes it back, and the list is the campaign's, not the session's.
+func TestMR028_MasterLeavesAnImageWithThePlayers(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	master, player, stranger := h.newUser("Mestre"), h.newUser("Jogadora"), h.newUser("De fora")
+	campaign := h.newCampaign(master, player)
+	letter := master.mustUpload(campaign, "Carta.png", pngImage(t, 60, 80))
+	portrait := master.mustUpload(campaign, "Velha Odra.png", pngImage(t, 60, 80))
+	tower := master.mustUpload(campaign, "Torre.png", pngImage(t, 60, 80))
+	show := func(imageID string, keep bool) *playv1.SetShownImageResponse {
+		t.Helper()
+		res, err := master.play.SetShownImage(t.Context(), connect.NewRequest(&playv1.SetShownImageRequest{CampaignId: campaign, ImageId: imageID, Keep: keep}))
+		if err != nil {
+			t.Fatalf("SetShownImage(%q, keep=%v) error = %v", imageID, keep, err)
+		}
+		return res.Msg
+	}
+	left := func(u *user) []string {
+		t.Helper()
+		res, err := u.play.ListLeftImages(t.Context(), connect.NewRequest(&playv1.ListLeftImagesRequest{CampaignId: campaign}))
+		if err != nil {
+			t.Fatalf("ListLeftImages() error = %v", err)
+		}
+		var ids []string
+		for _, img := range res.Msg.GetImages() {
+			ids = append(ids, img.GetId())
+		}
+		return ids
+	}
+	keepNow := func(u *user) bool {
+		t.Helper()
+		res, err := u.play.GetLiveSession(t.Context(), connect.NewRequest(&playv1.GetLiveSessionRequest{CampaignId: campaign}))
+		if err != nil {
+			t.Fatalf("GetLiveSession() error = %v", err)
+		}
+		return res.Msg.GetShownImageKeep()
+	}
+	wantLeft := func(when string, want ...string) {
+		t.Helper()
+		for _, u := range []*user{master, player} {
+			if got := left(u); !slices.Equal(got, want) {
+				t.Errorf("%s: left images = %v, want %v", when, got, want)
+			}
+		}
+	}
+
+	master.start(campaign)
+	pw := player.watch(campaign)
+	wantLeft("at the start")
+
+	// The switch is off by default: stopping takes the image away.
+	if res := show(letter.GetId(), false); res.GetKeep() {
+		t.Error("keep = true, want false")
+	}
+	pw.next()
+	show("", false)
+	pw.next()
+	wantLeft("an image shown without keep")
+
+	// On: the switch is the master's, and stopping leaves the image.
+	show(letter.GetId(), false)
+	pw.next()
+	if res := show(letter.GetId(), true); !res.GetKeep() {
+		t.Error("keep = false, want true")
+	}
+	// Only the switch moved: the players hear nothing (the next event is the stop's).
+	if !keepNow(master) || keepNow(player) {
+		t.Errorf("GetLiveSession shown_image_keep: master %v, player %v; want true, false", keepNow(master), keepNow(player))
+	}
+	wantLeft("while it is still shown")
+	show("", false)
+	if ev := pw.next(); ev.GetShownImageChanged() == nil {
+		t.Errorf("event = %v, want shown_image_changed", ev)
+	}
+	if ev := pw.next(); ev.GetLeftImagesChanged() == nil {
+		t.Errorf("event = %v, want left_images_changed", ev)
+	}
+	wantLeft("after stopping with keep on", letter.GetId())
+	if res := player.get(letter.GetUrl()); res.status != 200 {
+		t.Errorf("the player fetching a left image: status %d, want 200", res.status)
+	}
+	if res := player.get(letter.GetThumbnailUrl()); res.status != 200 {
+		t.Errorf("the player fetching a left image's thumbnail: status %d, want 200", res.status)
+	}
+	if res := stranger.get(letter.GetUrl()); res.status != 404 {
+		t.Errorf("a non-member fetching a left image: status %d, want 404", res.status)
+	}
+
+	// Replacing a kept image leaves it too, and the new one starts off.
+	show(portrait.GetId(), true)
+	pw.next()
+	if res := show(tower.GetId(), false); res.GetKeep() {
+		t.Error("keep for the next image = true, want false")
+	}
+	pw.next()
+	if ev := pw.next(); ev.GetLeftImagesChanged() == nil {
+		t.Errorf("event = %v, want left_images_changed", ev)
+	}
+	wantLeft("after replacing a kept image", letter.GetId(), portrait.GetId())
+
+	// Ending the session leaves a kept image, and the list outlives it.
+	show(tower.GetId(), true)
+	live, err := master.play.GetLiveSession(t.Context(), connect.NewRequest(&playv1.GetLiveSessionRequest{CampaignId: campaign}))
+	if err != nil {
+		t.Fatalf("GetLiveSession() error = %v", err)
+	}
+	session := live.Msg.GetGameSession()
+	if _, err := master.play.EndGameSession(t.Context(), connect.NewRequest(&playv1.EndGameSessionRequest{CampaignId: campaign, GameSessionId: session.GetId()})); err != nil {
+		t.Fatalf("EndGameSession() error = %v", err)
+	}
+	wantLeft("after the session ended", letter.GetId(), portrait.GetId(), tower.GetId())
+	if res := player.get(tower.GetUrl()); res.status != 200 {
+		t.Errorf("the player fetching a left image after the session: status %d, want 200", res.status)
+	}
+
+	// Taking back: only the master, and the player loses the image.
+	take := func(u *user, imageID string) error {
+		_, err := u.play.TakeBackLeftImage(t.Context(), connect.NewRequest(&playv1.TakeBackLeftImageRequest{CampaignId: campaign, ImageId: imageID}))
+		return err
+	}
+	wantCode(t, "TakeBackLeftImage as a player", take(player, letter.GetId()), connect.CodePermissionDenied)
+	if err := take(master, letter.GetId()); err != nil {
+		t.Fatalf("TakeBackLeftImage() error = %v", err)
+	}
+	wantCode(t, "TakeBackLeftImage twice", take(master, letter.GetId()), connect.CodeNotFound)
+	wantCode(t, "TakeBackLeftImage of an image not left", take(master, "imagem"), connect.CodeNotFound)
+	wantLeft("after taking one back", portrait.GetId(), tower.GetId())
+	if res := player.get(letter.GetUrl()); res.status != 404 {
+		t.Errorf("the player fetching an image taken back: status %d, want 404", res.status)
+	}
+	if res := master.get(letter.GetUrl()); res.status != 200 {
+		t.Errorf("the master fetching an image taken back: status %d, want 200 (it is still in the gallery)", res.status)
+	}
+
+	// Deleting a left image from the gallery removes it from the list.
+	if _, err := master.gallery.DeleteGalleryImage(t.Context(), connect.NewRequest(&mapsv1.DeleteGalleryImageRequest{CampaignId: campaign, ImageId: portrait.GetId()})); err != nil {
+		t.Fatalf("DeleteGalleryImage() error = %v", err)
+	}
+	wantLeft("after deleting a left image", tower.GetId())
+}
+
 // RN-10, for the image files: the master fetches every image of the
 // campaign; a player only an image they see now, the background of a map
 // they see or the image the master shows. Knowing its ID is not enough, and
@@ -531,4 +675,15 @@ func TestRN10_PlayersOnlyFetchImagesTheyCanSee(t *testing.T) {
 	check("the image shown", fetch{player, handout, 200}, fetch{player, background, 404})
 	showImage("")
 	check("the image no longer shown", fetch{player, handout, 404}, fetch{master, handout, 200})
+
+	// A left image (MR-028) is served until the master takes it back.
+	if _, err := master.play.SetShownImage(t.Context(), connect.NewRequest(&playv1.SetShownImageRequest{CampaignId: campaign, ImageId: handout.GetId(), Keep: true})); err != nil {
+		t.Fatalf("SetShownImage(keep) error = %v", err)
+	}
+	showImage("")
+	check("the image left", fetch{player, handout, 200}, fetch{player, unused, 404})
+	if _, err := master.play.TakeBackLeftImage(t.Context(), connect.NewRequest(&playv1.TakeBackLeftImageRequest{CampaignId: campaign, ImageId: handout.GetId()})); err != nil {
+		t.Fatalf("TakeBackLeftImage() error = %v", err)
+	}
+	check("the image taken back", fetch{player, handout, 404}, fetch{master, handout, 200})
 }

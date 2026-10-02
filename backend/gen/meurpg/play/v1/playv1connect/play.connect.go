@@ -68,6 +68,12 @@ const (
 	// PlayServiceSetShownImageProcedure is the fully-qualified name of the PlayService's SetShownImage
 	// RPC.
 	PlayServiceSetShownImageProcedure = "/meurpg.play.v1.PlayService/SetShownImage"
+	// PlayServiceListLeftImagesProcedure is the fully-qualified name of the PlayService's
+	// ListLeftImages RPC.
+	PlayServiceListLeftImagesProcedure = "/meurpg.play.v1.PlayService/ListLeftImages"
+	// PlayServiceTakeBackLeftImageProcedure is the fully-qualified name of the PlayService's
+	// TakeBackLeftImage RPC.
+	PlayServiceTakeBackLeftImageProcedure = "/meurpg.play.v1.PlayService/TakeBackLeftImage"
 )
 
 // PlayServiceClient is a client for the meurpg.play.v1.PlayService service.
@@ -163,6 +169,8 @@ type PlayServiceClient interface {
 	//     otherwise;
 	//   - `shown_image_changed` when the master shows an image, stops showing
 	//     it, or deletes it; sent to everyone;
+	//   - `left_images_changed` when the list of images left with the players
+	//     changed (an image left, taken back or deleted); sent to everyone;
 	//   - `session_ended` when the master ends the session; the stream then
 	//     ends without an error.
 	//
@@ -241,6 +249,15 @@ type PlayServiceClient interface {
 	// `shown_image_changed`. A new session starts showing nothing; deleting
 	// the image (GalleryService.DeleteGalleryImage) stops showing it.
 	//
+	// `keep` is the "Deixar com os jogadores" switch of the image shown. With
+	// it on, when the master stops showing the image, shows another one or
+	// ends the session, the image is left with the players
+	// (ListLeftImages) instead of being taken away, and the streams get
+	// `left_images_changed`. The master sets it by calling again with the
+	// same image_id and the new `keep`, which sends no event: the players
+	// never learn the switch. It is off for every image newly shown unless
+	// the call says otherwise.
+	//
 	// Errors:
 	//   - `not_found`: the image is not in the campaign's gallery, the
 	//     campaign does not exist, or the caller is not a member of it.
@@ -248,6 +265,32 @@ type PlayServiceClient interface {
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
 	//     NO_OPEN_SESSION).
 	SetShownImage(context.Context, *connect.Request[v1.SetShownImageRequest]) (*connect.Response[v1.SetShownImageResponse], error)
+	// ListLeftImages returns the images the master left with the players
+	// (SetShownImage's `keep`), in the order they were left. Any active
+	// member may call it, in or out of a session: the left images belong to
+	// the campaign, not to a session. They stay until the master takes them
+	// back (TakeBackLeftImage), also after the session ends, so the list
+	// lives in the campaign (campaign_left_images) and not in the session,
+	// which would take the images away from the players when it ends. A
+	// player gets their files (GET /images/{id}) while the image is on this
+	// list (RN-10).
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, or the caller is not a
+	//     member of it (a pending member neither).
+	ListLeftImages(context.Context, *connect.Request[v1.ListLeftImagesRequest]) (*connect.Response[v1.ListLeftImagesResponse], error)
+	// TakeBackLeftImage takes an image back from the players ("Tirar"): it
+	// leaves the list, and the players can no longer fetch it. The image
+	// stays in the gallery. Only the campaign's master may call it, in or out
+	// of a session. Every WatchGameSession stream of the campaign gets
+	// `left_images_changed`. Taking back an image that is not on the list is
+	// `not_found`, so a second call (another tab) says so.
+	//
+	// Errors:
+	//   - `not_found`: the image is not on the campaign's left list, the
+	//     campaign does not exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	TakeBackLeftImage(context.Context, *connect.Request[v1.TakeBackLeftImageRequest]) (*connect.Response[v1.TakeBackLeftImageResponse], error)
 }
 
 // NewPlayServiceClient constructs a client for the meurpg.play.v1.PlayService service. By default,
@@ -318,6 +361,19 @@ func NewPlayServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(playServiceMethods.ByName("SetShownImage")),
 			connect.WithClientOptions(opts...),
 		),
+		listLeftImages: connect.NewClient[v1.ListLeftImagesRequest, v1.ListLeftImagesResponse](
+			httpClient,
+			baseURL+PlayServiceListLeftImagesProcedure,
+			connect.WithSchema(playServiceMethods.ByName("ListLeftImages")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
+		takeBackLeftImage: connect.NewClient[v1.TakeBackLeftImageRequest, v1.TakeBackLeftImageResponse](
+			httpClient,
+			baseURL+PlayServiceTakeBackLeftImageProcedure,
+			connect.WithSchema(playServiceMethods.ByName("TakeBackLeftImage")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -332,6 +388,8 @@ type playServiceClient struct {
 	adjustCharacterVitals *connect.Client[v1.AdjustCharacterVitalsRequest, v1.AdjustCharacterVitalsResponse]
 	setCurrentMap         *connect.Client[v1.SetCurrentMapRequest, v1.SetCurrentMapResponse]
 	setShownImage         *connect.Client[v1.SetShownImageRequest, v1.SetShownImageResponse]
+	listLeftImages        *connect.Client[v1.ListLeftImagesRequest, v1.ListLeftImagesResponse]
+	takeBackLeftImage     *connect.Client[v1.TakeBackLeftImageRequest, v1.TakeBackLeftImageResponse]
 }
 
 // StartGameSession calls meurpg.play.v1.PlayService.StartGameSession.
@@ -377,6 +435,16 @@ func (c *playServiceClient) SetCurrentMap(ctx context.Context, req *connect.Requ
 // SetShownImage calls meurpg.play.v1.PlayService.SetShownImage.
 func (c *playServiceClient) SetShownImage(ctx context.Context, req *connect.Request[v1.SetShownImageRequest]) (*connect.Response[v1.SetShownImageResponse], error) {
 	return c.setShownImage.CallUnary(ctx, req)
+}
+
+// ListLeftImages calls meurpg.play.v1.PlayService.ListLeftImages.
+func (c *playServiceClient) ListLeftImages(ctx context.Context, req *connect.Request[v1.ListLeftImagesRequest]) (*connect.Response[v1.ListLeftImagesResponse], error) {
+	return c.listLeftImages.CallUnary(ctx, req)
+}
+
+// TakeBackLeftImage calls meurpg.play.v1.PlayService.TakeBackLeftImage.
+func (c *playServiceClient) TakeBackLeftImage(ctx context.Context, req *connect.Request[v1.TakeBackLeftImageRequest]) (*connect.Response[v1.TakeBackLeftImageResponse], error) {
+	return c.takeBackLeftImage.CallUnary(ctx, req)
 }
 
 // PlayServiceHandler is an implementation of the meurpg.play.v1.PlayService service.
@@ -472,6 +540,8 @@ type PlayServiceHandler interface {
 	//     otherwise;
 	//   - `shown_image_changed` when the master shows an image, stops showing
 	//     it, or deletes it; sent to everyone;
+	//   - `left_images_changed` when the list of images left with the players
+	//     changed (an image left, taken back or deleted); sent to everyone;
 	//   - `session_ended` when the master ends the session; the stream then
 	//     ends without an error.
 	//
@@ -550,6 +620,15 @@ type PlayServiceHandler interface {
 	// `shown_image_changed`. A new session starts showing nothing; deleting
 	// the image (GalleryService.DeleteGalleryImage) stops showing it.
 	//
+	// `keep` is the "Deixar com os jogadores" switch of the image shown. With
+	// it on, when the master stops showing the image, shows another one or
+	// ends the session, the image is left with the players
+	// (ListLeftImages) instead of being taken away, and the streams get
+	// `left_images_changed`. The master sets it by calling again with the
+	// same image_id and the new `keep`, which sends no event: the players
+	// never learn the switch. It is off for every image newly shown unless
+	// the call says otherwise.
+	//
 	// Errors:
 	//   - `not_found`: the image is not in the campaign's gallery, the
 	//     campaign does not exist, or the caller is not a member of it.
@@ -557,6 +636,32 @@ type PlayServiceHandler interface {
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
 	//     NO_OPEN_SESSION).
 	SetShownImage(context.Context, *connect.Request[v1.SetShownImageRequest]) (*connect.Response[v1.SetShownImageResponse], error)
+	// ListLeftImages returns the images the master left with the players
+	// (SetShownImage's `keep`), in the order they were left. Any active
+	// member may call it, in or out of a session: the left images belong to
+	// the campaign, not to a session. They stay until the master takes them
+	// back (TakeBackLeftImage), also after the session ends, so the list
+	// lives in the campaign (campaign_left_images) and not in the session,
+	// which would take the images away from the players when it ends. A
+	// player gets their files (GET /images/{id}) while the image is on this
+	// list (RN-10).
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, or the caller is not a
+	//     member of it (a pending member neither).
+	ListLeftImages(context.Context, *connect.Request[v1.ListLeftImagesRequest]) (*connect.Response[v1.ListLeftImagesResponse], error)
+	// TakeBackLeftImage takes an image back from the players ("Tirar"): it
+	// leaves the list, and the players can no longer fetch it. The image
+	// stays in the gallery. Only the campaign's master may call it, in or out
+	// of a session. Every WatchGameSession stream of the campaign gets
+	// `left_images_changed`. Taking back an image that is not on the list is
+	// `not_found`, so a second call (another tab) says so.
+	//
+	// Errors:
+	//   - `not_found`: the image is not on the campaign's left list, the
+	//     campaign does not exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	TakeBackLeftImage(context.Context, *connect.Request[v1.TakeBackLeftImageRequest]) (*connect.Response[v1.TakeBackLeftImageResponse], error)
 }
 
 // NewPlayServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -623,6 +728,19 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(playServiceMethods.ByName("SetShownImage")),
 		connect.WithHandlerOptions(opts...),
 	)
+	playServiceListLeftImagesHandler := connect.NewUnaryHandler(
+		PlayServiceListLeftImagesProcedure,
+		svc.ListLeftImages,
+		connect.WithSchema(playServiceMethods.ByName("ListLeftImages")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceTakeBackLeftImageHandler := connect.NewUnaryHandler(
+		PlayServiceTakeBackLeftImageProcedure,
+		svc.TakeBackLeftImage,
+		connect.WithSchema(playServiceMethods.ByName("TakeBackLeftImage")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/meurpg.play.v1.PlayService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case PlayServiceStartGameSessionProcedure:
@@ -643,6 +761,10 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 			playServiceSetCurrentMapHandler.ServeHTTP(w, r)
 		case PlayServiceSetShownImageProcedure:
 			playServiceSetShownImageHandler.ServeHTTP(w, r)
+		case PlayServiceListLeftImagesProcedure:
+			playServiceListLeftImagesHandler.ServeHTTP(w, r)
+		case PlayServiceTakeBackLeftImageProcedure:
+			playServiceTakeBackLeftImageHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -686,4 +808,12 @@ func (UnimplementedPlayServiceHandler) SetCurrentMap(context.Context, *connect.R
 
 func (UnimplementedPlayServiceHandler) SetShownImage(context.Context, *connect.Request[v1.SetShownImageRequest]) (*connect.Response[v1.SetShownImageResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.SetShownImage is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) ListLeftImages(context.Context, *connect.Request[v1.ListLeftImagesRequest]) (*connect.Response[v1.ListLeftImagesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.ListLeftImages is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) TakeBackLeftImage(context.Context, *connect.Request[v1.TakeBackLeftImageRequest]) (*connect.Response[v1.TakeBackLeftImageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.TakeBackLeftImage is not implemented"))
 }

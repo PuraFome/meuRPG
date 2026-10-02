@@ -342,6 +342,27 @@ func (q *Queries) GetMapTokenForUpdate(ctx context.Context, arg GetMapTokenForUp
 	return i, err
 }
 
+const imageIsLeft = `-- name: ImageIsLeft :one
+SELECT EXISTS (
+    SELECT 1 FROM campaign_left_images
+    WHERE campaign_id = $1 AND image_id = $2
+)
+`
+
+type ImageIsLeftParams struct {
+	CampaignID string
+	ImageID    string
+}
+
+// Whether the image is left with the players. The image route asks it for a
+// player (RN-10).
+func (q *Queries) ImageIsLeft(ctx context.Context, arg ImageIsLeftParams) (bool, error) {
+	row := q.db.QueryRow(ctx, imageIsLeft, arg.CampaignID, arg.ImageID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const imageIsOnAVisibleMap = `-- name: ImageIsOnAVisibleMap :one
 SELECT EXISTS (
     SELECT 1 FROM maps
@@ -532,6 +553,30 @@ func (q *Queries) InsertMapToken(ctx context.Context, arg InsertMapTokenParams) 
 	return i, err
 }
 
+const leaveImage = `-- name: LeaveImage :execrows
+INSERT INTO campaign_left_images (campaign_id, image_id, left_at)
+SELECT g.campaign_id, g.id, $1::TIMESTAMPTZ FROM gallery_images g
+WHERE g.campaign_id = $2 AND g.id = $3
+ON CONFLICT (campaign_id, image_id) DO NOTHING
+`
+
+type LeaveImageParams struct {
+	Now        time.Time
+	CampaignID string
+	ImageID    string
+}
+
+// Leaves the campaign's gallery image with the players (MR-028). Selecting
+// from gallery_images makes an image deleted meanwhile, or another
+// campaign's, insert nothing; an image already left keeps its left_at.
+func (q *Queries) LeaveImage(ctx context.Context, arg LeaveImageParams) (int64, error) {
+	result, err := q.db.Exec(ctx, leaveImage, arg.Now, arg.CampaignID, arg.ImageID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const listGalleryImages = `-- name: ListGalleryImages :many
 SELECT id, campaign_id, uploaded_by, name, content_type, width, height, byte_size, created_at FROM gallery_images
 WHERE campaign_id = $1
@@ -541,6 +586,45 @@ ORDER BY created_at DESC, id DESC
 // Newest first; id breaks ties, so the order never changes between calls.
 func (q *Queries) ListGalleryImages(ctx context.Context, campaignID string) ([]GalleryImage, error) {
 	rows, err := q.db.Query(ctx, listGalleryImages, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GalleryImage
+	for rows.Next() {
+		var i GalleryImage
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.UploadedBy,
+			&i.Name,
+			&i.ContentType,
+			&i.Width,
+			&i.Height,
+			&i.ByteSize,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLeftImages = `-- name: ListLeftImages :many
+SELECT g.id, g.campaign_id, g.uploaded_by, g.name, g.content_type, g.width, g.height, g.byte_size, g.created_at FROM campaign_left_images l
+JOIN gallery_images g ON g.id = l.image_id
+WHERE l.campaign_id = $1
+ORDER BY l.left_at, g.id
+`
+
+// The images left with the players, in the order they were left (id breaks
+// ties).
+func (q *Queries) ListLeftImages(ctx context.Context, campaignID string) ([]GalleryImage, error) {
+	rows, err := q.db.Query(ctx, listLeftImages, campaignID)
 	if err != nil {
 		return nil, err
 	}
@@ -951,6 +1035,24 @@ func (q *Queries) SetMapTokenHidden(ctx context.Context, arg SetMapTokenHiddenPa
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const takeBackLeftImage = `-- name: TakeBackLeftImage :execrows
+DELETE FROM campaign_left_images
+WHERE campaign_id = $1 AND image_id = $2
+`
+
+type TakeBackLeftImageParams struct {
+	CampaignID string
+	ImageID    string
+}
+
+func (q *Queries) TakeBackLeftImage(ctx context.Context, arg TakeBackLeftImageParams) (int64, error) {
+	result, err := q.db.Exec(ctx, takeBackLeftImage, arg.CampaignID, arg.ImageID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const updateMap = `-- name: UpdateMap :one

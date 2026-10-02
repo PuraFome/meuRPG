@@ -16,8 +16,9 @@ import (
 )
 
 // playersSeeImage says whether the campaign's players see the image now:
-// it is the open session's shown image, or the background of a map they see
-// (revealed, or the session's current map). Two reads, one per module: what
+// it is the open session's shown image, an image the master left with them
+// (MR-028), or the background of a map they see (revealed, or the
+// session's current map). Reads, one per module: what
 // the session shows comes from play (LiveSession.OnScreen), the maps from
 // this module's table.
 func (s *Service) playersSeeImage(ctx context.Context, campaignID, imageID string) (bool, error) {
@@ -27,6 +28,10 @@ func (s *Service) playersSeeImage(ctx context.Context, campaignID, imageID strin
 	}
 	if shownImage == imageID {
 		return true, nil
+	}
+	left, err := s.queries.ImageIsLeft(ctx, mapsdb.ImageIsLeftParams{CampaignID: campaignID, ImageID: imageID})
+	if err != nil || left {
+		return left, err
 	}
 	var current *string
 	if currentMap != "" {
@@ -53,8 +58,9 @@ func (s *Service) handleThumbnail(w http.ResponseWriter, r *http.Request) {
 // may see it now (RN-10):
 //   - the campaign's master, every image of the campaign;
 //   - a player, only an image they see at this moment: the background of a
-//     map they see (revealed, or the open session's current map), or the
-//     image the master shows in the open session (MR-028).
+//     map they see (revealed, or the open session's current map), the
+//     image the master shows in the open session, or an image the master
+//     left with the players (MR-028).
 //
 // Knowing an ID is not enough for a player: they keep the IDs of maps that
 // were hidden again and of images no longer shown, so the rule is checked

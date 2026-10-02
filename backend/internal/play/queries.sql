@@ -89,6 +89,6 @@ RETURNING *;
 -- name: SetShownImage :one
 -- The caller holds the session's row lock (GetOpenGameSessionForUpdate).
 UPDATE game_sessions
-SET shown_image_id = sqlc.narg(shown_image_id)
+SET shown_image_id = sqlc.narg(shown_image_id), shown_image_keep = sqlc.arg(shown_image_keep)
 WHERE id = sqlc.arg(id)
 RETURNING *;

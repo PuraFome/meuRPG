@@ -1,0 +1,86 @@
+:host {
+  display: block;
+}
+
+// Not the accent frame: that is for the image shown right now.
+.block {
+  box-sizing: border-box;
+  margin-bottom: var(--mr-space-4);
+  padding: 14px 18px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+}
+
+.block__heading {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: 0 0 var(--mr-space-3);
+  font-family: var(--mr-font-sans);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 20px;
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.block__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+}
+
+.row__thumb {
+  flex: none;
+  width: 96px;
+  height: 72px;
+  border-radius: var(--mr-radius-sm);
+  outline: 1px solid var(--mr-line);
+  outline-offset: -1px;
+  object-fit: cover;
+  background: var(--mr-ground);
+}
+
+.row__text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.row__name {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 26px;
+  overflow-wrap: anywhere;
+}
+
+.row__full {
+  min-height: 44px;
+  margin-left: calc(-1 * var(--mr-space-2));
+  color: var(--mr-accent-text);
+}
+
+.block__note {
+  margin: var(--mr-space-2) 0 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}

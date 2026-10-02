@@ -119,6 +119,12 @@ func (s *Service) EndGameSession(
 			session = current // ended before: nothing changes
 			return nil
 		}
+		if current.ShownImageKeep && current.ShownImageID != nil {
+			// The image left with the players outlives the session (MR-028).
+			if err := s.maps.LeaveImage(ctx, tx, m.CampaignID, *current.ShownImageID, s.now()); err != nil {
+				return err
+			}
+		}
 		session, err = q.EndGameSession(ctx, playdb.EndGameSessionParams{
 			CampaignID: m.CampaignID, ID: id.String(), Now: s.now(),
 		})

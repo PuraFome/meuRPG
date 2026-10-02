@@ -330,6 +330,8 @@ Esta seção lista só o que já existe nas migrations de `backend/migrations/`.
 | `00035_expire_pending_members_without_character` | `campaign_members` | TTL por linha sobre `pending_expires_at`, e o preenchimento dos pendentes que já existiam. |
 | `00036_add_campaigns_dice_mode` | `campaigns` | Coluna `dice_mode` (`players_choose`, `app` ou `physical`), com `CHECK`: como a campanha rola os dados (RN-18). |
 | `00037_add_campaign_members_dice_preference` | `campaign_members` | Coluna `dice_preference` (`app` ou `physical`), com `CHECK`: como o membro prefere rolar (RN-18). |
+| `00038_add_game_sessions_shown_image_keep` | `game_sessions` | Coluna `shown_image_keep` (`BOOL`, padrão falso): o interruptor "Deixar com os jogadores" da imagem mostrada (MR-028). |
+| `00039_create_campaign_left_images` | `campaign_left_images` | As imagens que o mestre deixou com os jogadores (MR-028): campanha, imagem da galeria e quando; `CASCADE` na campanha e na imagem. |
 
 As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021`, a `00022`, a `00027`, a `00034`, a `00035`, a `00036` e a `00037`, do módulo `campaigns`; as `00014` a `00017`, a `00020` e a `00023`, do módulo `characters`; as `00018`, a `00019`, a `00024`, a `00032` e a `00033`, do módulo `play`; as `00025`, a `00026` e as `00028` a `00031`, do módulo `maps`. A `00027` é do documento de campanha, no `campaigns`, que chega num PR à parte. Mudanças em relação à proposta acima, no `identity`:
 
@@ -379,6 +381,7 @@ No `play`:
 
 - `game_sessions` guarda só IDs e horários, sem dado pessoal. `session_number` conta as sessões da campanha a partir de 1, com `UNIQUE (campaign_id, session_number)`. A sessão está aberta enquanto `ended_at` está vazio, e um índice único parcial (`00019`) deixa no máximo uma aberta por campanha. Some com a campanha.
 - **O que a sessão mostra** fica na linha da sessão: `current_map_id` (`00032`), o mapa atual, e `shown_image_id` (`00033`), a imagem que o mestre mostra aos jogadores (MR-028). Os dois são opcionais e independentes, e uma sessão nova começa sem nenhum. As chaves estrangeiras são `ON DELETE SET NULL`: apagar o mapa, ou a imagem, tira da tela. Não há índice nessas colunas: só apagar um mapa ou uma imagem procura por elas, e `game_sessions` é pequena (uma linha por noite de jogo). As duas tabelas de destino são do módulo `maps`; o `play` só guarda o ID, e confere e lê o mapa e a imagem pela interface `MapKeeper` (ver [Arquitetura](arquitetura.md#o-que-a-sessão-mostra)).
+- **As imagens deixadas com os jogadores** (`campaign_left_images`, `00039`) são da campanha, não da sessão: continuam depois que a sessão acaba, até o mestre tirar (MR-028). A chave primária é (`campaign_id`, `image_id`): lista as imagens de uma campanha e impede deixar a mesma duas vezes; `left_at` dá a ordem. Apagar a campanha ou a imagem da galeria apaga a linha (`CASCADE`). Não há índice em `image_id`: só apagar uma imagem procura por ele, e uma campanha deixa poucas imagens. O interruptor da imagem que ainda está à mostra é `game_sessions.shown_image_keep` (`00038`): ligado, parar de mostrar, trocar ou encerrar a sessão copia a imagem para esta tabela, na mesma transação.
 - Iniciar uma sessão grava a linha, trava as fichas e desliga as liberações da história, tudo na mesma transação. As duas últimas partes são do módulo `characters`, que o `play` chama por uma interface (ver [Arquitetura](arquitetura.md#módulo-play-sessões-de-jogo)).
 - **`session_events`** (`00024`, ADR-0007) é o histórico da sessão: cada mudança feita na mesa vira uma linha que nunca é alterada, gravada na mesma transação da mudança. Na Etapa 5 existe um tipo só, `character_vitals_adjusted` (a correção do mestre, RN-02); dano, cura, magia e XP entram com o combate, cada um como um tipo novo no `CHECK` (`session_events_kind_valid`).
   - `seq` numera os eventos de cada sessão a partir de 1, na ordem em que aconteceram: o próximo é o maior mais 1, lido com a linha da sessão travada (`FOR UPDATE`), e `UNIQUE (game_session_id, seq)` é a garantia final.
@@ -517,6 +520,13 @@ erDiagram
         timestamptz ended_at "vazio enquanto aberta"
         uuid current_map_id FK "opcional, SET NULL"
         uuid shown_image_id FK "opcional, SET NULL, MR-028"
+        bool shown_image_keep "interruptor Deixar com os jogadores"
+    }
+
+    campaign_left_images {
+        uuid campaign_id PK "e FK, CASCADE"
+        uuid image_id PK "e FK para gallery_images, CASCADE"
+        timestamptz left_at
     }
 
     character_vitals {
@@ -616,6 +626,8 @@ erDiagram
     characters ||--o{ map_tokens : "está em"
     maps |o--o{ game_sessions : "é o mapa atual de"
     gallery_images |o--o{ game_sessions : "é mostrada em"
+    campaigns ||--o{ campaign_left_images : "deixou com os jogadores"
+    gallery_images ||--o{ campaign_left_images : "é deixada em"
 ```
 
 `oidc_login_states` não liga a nenhuma conta: o login ainda não terminou, então ninguém sabe quem é.

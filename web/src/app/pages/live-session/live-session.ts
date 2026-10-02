@@ -39,6 +39,7 @@ import { SessionBlocked } from './session-blocked/session-blocked';
 import { SessionHeader } from './session-header/session-header';
 import { SessionMap } from './session-map/session-map';
 import { SessionTokens } from './session-tokens/session-tokens';
+import { LeftImagesBlock } from './left-images-block/left-images-block';
 import { ShownImageBlock } from './shown-image-block/shown-image-block';
 import { ShownImagePanel } from './shown-image-panel/shown-image-panel';
 import { applySnapshot, applyVitals, partyRowSub } from './vitals';
@@ -76,6 +77,7 @@ type Phase = 'loading' | 'live' | 'no-access' | 'no-session' | 'ended' | 'error'
     SessionHeader,
     SessionMap,
     SessionTokens,
+    LeftImagesBlock,
     ShownImageBlock,
     ShownImagePanel,
   ],
@@ -107,6 +109,10 @@ export class LiveSession {
   /** The session's current map, the image on show, and the map itself. */
   protected readonly currentMapId = signal<string | null>(null);
   protected readonly shownImage = signal<ShownImageVm | null>(null);
+  /** The master's "Deixar com os jogadores" switch for the image on show. */
+  protected readonly shownKeep = signal(false);
+  /** The images the master left with the players (MR-028). */
+  protected readonly leftImages = signal<readonly ShownImageVm[]>([]);
   /** What a player's screen reader hears when the master shows or stops. */
   protected readonly shownNotice = signal('');
   protected readonly campaignMaps = signal<readonly MapMessage[]>([]);
@@ -161,6 +167,8 @@ export class LiveSession {
     this.partyInfo.set(new Map());
     this.currentMapId.set(null);
     this.shownImage.set(null);
+    this.shownKeep.set(false);
+    this.leftImages.set([]);
     this.shownNotice.set('');
     this.campaignMaps.set([]);
     void this.mapState.open(null);
@@ -212,6 +220,7 @@ export class LiveSession {
           }
         },
         onShownImage: (image) => this.shownImageChanged(image),
+        onLeftImages: () => void this.reloadLeftImages(),
         onEnded: () => this.ended(),
         onFatal: (kind) => {
           if (kind === 'signed-out') {
@@ -239,6 +248,8 @@ export class LiveSession {
       this.vitals.update((list) => applySnapshot(list, snapshot.vitals));
       this.currentMapId.set(snapshot.currentMapId);
       this.shownImage.set(snapshot.shownImage);
+      this.shownKeep.set(snapshot.shownImageKeep);
+      void this.reloadLeftImages();
       // Each `ready` (a reconnection too) reads the map again: a missed event never leaves it stale.
       void this.mapState.open(snapshot.currentMapId);
       if (this.isMaster()) {
@@ -327,7 +338,27 @@ export class LiveSession {
         this.shownNotice.set('O mestre parou de mostrar a imagem.');
       }
     }
+    // The switch is per image: a new image, or none, starts with it off.
+    this.shownKeep.set(false);
     this.shownImage.set(image);
+  }
+
+  protected leftWithout(image: ShownImageVm): readonly ShownImageVm[] {
+    return this.leftImages().filter((i) => i.id !== image.id);
+  }
+
+  /** The images left with the players, read again (best effort: the list
+   * keeps what it had). */
+  protected async reloadLeftImages(): Promise<void> {
+    const generation = this.generation;
+    try {
+      const images = await this.source.listLeftImages(this.campaignId());
+      if (generation === this.generation) {
+        this.leftImages.set(images);
+      }
+    } catch {
+      // Best effort.
+    }
   }
 
   /** The master's select and the "Fundo de mapa escondido" tags read the list. */
