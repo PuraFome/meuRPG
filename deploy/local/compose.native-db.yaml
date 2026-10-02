@@ -1,0 +1,28 @@
+# Used with compose.yaml by `make up LOCAL_DB=native` (and `make e2e`,
+# `make down`, `make logs` with the same variable): the stack uses the
+# CockroachDB running on this machine (`make db-native-start`) instead of a
+# container. On a Mac, every container runs inside a Linux VM, and the
+# database is by far its heaviest part; natively it needs no VM memory.
+# See CONTRIBUTING.md, "CockroachDB nativo".
+#
+# host.docker.internal is the host machine as seen from a container (Docker
+# Desktop and Rancher Desktop both provide it). The native database listens
+# on the host's localhost:26257, like the container did.
+services:
+  cockroach:
+    # Not started: only a profile nobody enables would start it.
+    profiles: ["container-db"]
+
+  migrate:
+    environment:
+      DATABASE_URL: postgresql://root@host.docker.internal:26257/meurpg?sslmode=disable
+    depends_on: !reset {}
+
+  api:
+    environment:
+      DATABASE_URL: postgresql://root@host.docker.internal:26257/meurpg?sslmode=disable
+    depends_on: !override
+      migrate:
+        condition: service_completed_successfully
+      idp:
+        condition: service_healthy
