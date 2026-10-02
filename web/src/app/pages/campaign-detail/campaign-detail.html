@@ -55,6 +55,16 @@
         <div class="campaign-layout__column">
           <!-- For a player, only while a session is open (it's empty otherwise). -->
           <app-game-session-card [campaignId]="s.campaign.id" [isMaster]="isMaster" />
+          @if (isMaster) {
+            <app-dice-panel [campaignId]="s.campaign.id" [savedMode]="s.campaign.diceMode" [members]="members()" />
+          } @else {
+            <app-dice-preference-panel
+              [campaignId]="s.campaign.id"
+              [campaignName]="s.campaign.name"
+              [mode]="s.campaign.diceMode"
+              [savedPreference]="s.campaign.myDicePreference"
+            />
+          }
           <app-maps-panel [campaignId]="s.campaign.id" [isMaster]="isMaster" />
           @if (isMaster) { <app-gallery-panel [campaignId]="s.campaign.id" /> }
           <app-campaign-characters [campaignId]="s.campaign.id" [isMaster]="isMaster" />
@@ -82,6 +92,9 @@
                 </li>
               }
             </ul>
+            @if (isMaster) {
+              <app-pending-members [campaignId]="s.campaign.id" [campaignName]="s.campaign.name" />
+            }
           </section>
 
           @if (isMaster) {

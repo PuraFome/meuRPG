@@ -131,3 +131,18 @@ SET body = sqlc.arg(body),
     updated_by = sqlc.arg(updated_by)
 WHERE campaign_id = sqlc.arg(campaign_id) AND revision = sqlc.arg(expected_revision)
 RETURNING *;
+
+-- name: SetCampaignDiceMode :one
+-- The master changed how the campaign rolls dice (RN-18).
+UPDATE campaigns SET dice_mode = $2 WHERE id = $1 RETURNING dice_mode;
+
+-- name: SetMemberDicePreference :one
+-- An active member chose how they roll (RN-18). Pending members are not
+-- members yet, so no row matches them.
+UPDATE campaign_members SET dice_preference = $3
+WHERE campaign_id = $1 AND user_id = $2 AND status = 'active'
+RETURNING dice_preference;
+
+-- name: GetMemberDicePreference :one
+SELECT dice_preference FROM campaign_members
+WHERE campaign_id = $1 AND user_id = $2 AND status = 'active';

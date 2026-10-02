@@ -66,6 +66,12 @@ const (
 	// CampaignServiceAcceptInviteProcedure is the fully-qualified name of the CampaignService's
 	// AcceptInvite RPC.
 	CampaignServiceAcceptInviteProcedure = "/meurpg.campaigns.v1.CampaignService/AcceptInvite"
+	// CampaignServiceSetCampaignDiceModeProcedure is the fully-qualified name of the CampaignService's
+	// SetCampaignDiceMode RPC.
+	CampaignServiceSetCampaignDiceModeProcedure = "/meurpg.campaigns.v1.CampaignService/SetCampaignDiceMode"
+	// CampaignServiceSetMyDicePreferenceProcedure is the fully-qualified name of the CampaignService's
+	// SetMyDicePreference RPC.
+	CampaignServiceSetMyDicePreferenceProcedure = "/meurpg.campaigns.v1.CampaignService/SetMyDicePreference"
 )
 
 // CampaignServiceClient is a client for the meurpg.campaigns.v1.CampaignService service.
@@ -184,6 +190,21 @@ type CampaignServiceClient interface {
 	//     uses left. The error carries an InviteUnusable detail that says
 	//     which, so the app can show a clear message.
 	AcceptInvite(context.Context, *connect.Request[v1.AcceptInviteRequest]) (*connect.Response[v1.AcceptInviteResponse], error)
+	// SetCampaignDiceMode sets how the campaign's players roll dice (RN-18,
+	// MR-013): everyone in the app, everyone with their own dice, or each
+	// player's choice. Only the campaign's master may call it. It applies
+	// from the next roll, and the players' own choices are kept, whatever
+	// the mode. Setting the mode it already has is not an error.
+	//
+	// Errors: `invalid_argument` for an unspecified or unknown mode.
+	SetCampaignDiceMode(context.Context, *connect.Request[v1.SetCampaignDiceModeRequest]) (*connect.Response[v1.SetCampaignDiceModeResponse], error)
+	// SetMyDicePreference sets how the caller likes to roll in this campaign
+	// (RN-18, MR-014). Any active member may call it, the master too. It is
+	// always saved, but it only counts while the campaign's mode is
+	// DICE_MODE_PLAYERS_CHOOSE. A pending member gets `not_found`.
+	//
+	// Errors: `invalid_argument` for an unspecified or unknown preference.
+	SetMyDicePreference(context.Context, *connect.Request[v1.SetMyDicePreferenceRequest]) (*connect.Response[v1.SetMyDicePreferenceResponse], error)
 }
 
 // NewCampaignServiceClient constructs a client for the meurpg.campaigns.v1.CampaignService service.
@@ -262,6 +283,18 @@ func NewCampaignServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(campaignServiceMethods.ByName("AcceptInvite")),
 			connect.WithClientOptions(opts...),
 		),
+		setCampaignDiceMode: connect.NewClient[v1.SetCampaignDiceModeRequest, v1.SetCampaignDiceModeResponse](
+			httpClient,
+			baseURL+CampaignServiceSetCampaignDiceModeProcedure,
+			connect.WithSchema(campaignServiceMethods.ByName("SetCampaignDiceMode")),
+			connect.WithClientOptions(opts...),
+		),
+		setMyDicePreference: connect.NewClient[v1.SetMyDicePreferenceRequest, v1.SetMyDicePreferenceResponse](
+			httpClient,
+			baseURL+CampaignServiceSetMyDicePreferenceProcedure,
+			connect.WithSchema(campaignServiceMethods.ByName("SetMyDicePreference")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -277,6 +310,8 @@ type campaignServiceClient struct {
 	listInvites         *connect.Client[v1.ListInvitesRequest, v1.ListInvitesResponse]
 	revokeInvite        *connect.Client[v1.RevokeInviteRequest, v1.RevokeInviteResponse]
 	acceptInvite        *connect.Client[v1.AcceptInviteRequest, v1.AcceptInviteResponse]
+	setCampaignDiceMode *connect.Client[v1.SetCampaignDiceModeRequest, v1.SetCampaignDiceModeResponse]
+	setMyDicePreference *connect.Client[v1.SetMyDicePreferenceRequest, v1.SetMyDicePreferenceResponse]
 }
 
 // CreateCampaign calls meurpg.campaigns.v1.CampaignService.CreateCampaign.
@@ -327,6 +362,16 @@ func (c *campaignServiceClient) RevokeInvite(ctx context.Context, req *connect.R
 // AcceptInvite calls meurpg.campaigns.v1.CampaignService.AcceptInvite.
 func (c *campaignServiceClient) AcceptInvite(ctx context.Context, req *connect.Request[v1.AcceptInviteRequest]) (*connect.Response[v1.AcceptInviteResponse], error) {
 	return c.acceptInvite.CallUnary(ctx, req)
+}
+
+// SetCampaignDiceMode calls meurpg.campaigns.v1.CampaignService.SetCampaignDiceMode.
+func (c *campaignServiceClient) SetCampaignDiceMode(ctx context.Context, req *connect.Request[v1.SetCampaignDiceModeRequest]) (*connect.Response[v1.SetCampaignDiceModeResponse], error) {
+	return c.setCampaignDiceMode.CallUnary(ctx, req)
+}
+
+// SetMyDicePreference calls meurpg.campaigns.v1.CampaignService.SetMyDicePreference.
+func (c *campaignServiceClient) SetMyDicePreference(ctx context.Context, req *connect.Request[v1.SetMyDicePreferenceRequest]) (*connect.Response[v1.SetMyDicePreferenceResponse], error) {
+	return c.setMyDicePreference.CallUnary(ctx, req)
 }
 
 // CampaignServiceHandler is an implementation of the meurpg.campaigns.v1.CampaignService service.
@@ -445,6 +490,21 @@ type CampaignServiceHandler interface {
 	//     uses left. The error carries an InviteUnusable detail that says
 	//     which, so the app can show a clear message.
 	AcceptInvite(context.Context, *connect.Request[v1.AcceptInviteRequest]) (*connect.Response[v1.AcceptInviteResponse], error)
+	// SetCampaignDiceMode sets how the campaign's players roll dice (RN-18,
+	// MR-013): everyone in the app, everyone with their own dice, or each
+	// player's choice. Only the campaign's master may call it. It applies
+	// from the next roll, and the players' own choices are kept, whatever
+	// the mode. Setting the mode it already has is not an error.
+	//
+	// Errors: `invalid_argument` for an unspecified or unknown mode.
+	SetCampaignDiceMode(context.Context, *connect.Request[v1.SetCampaignDiceModeRequest]) (*connect.Response[v1.SetCampaignDiceModeResponse], error)
+	// SetMyDicePreference sets how the caller likes to roll in this campaign
+	// (RN-18, MR-014). Any active member may call it, the master too. It is
+	// always saved, but it only counts while the campaign's mode is
+	// DICE_MODE_PLAYERS_CHOOSE. A pending member gets `not_found`.
+	//
+	// Errors: `invalid_argument` for an unspecified or unknown preference.
+	SetMyDicePreference(context.Context, *connect.Request[v1.SetMyDicePreferenceRequest]) (*connect.Response[v1.SetMyDicePreferenceResponse], error)
 }
 
 // NewCampaignServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -519,6 +579,18 @@ func NewCampaignServiceHandler(svc CampaignServiceHandler, opts ...connect.Handl
 		connect.WithSchema(campaignServiceMethods.ByName("AcceptInvite")),
 		connect.WithHandlerOptions(opts...),
 	)
+	campaignServiceSetCampaignDiceModeHandler := connect.NewUnaryHandler(
+		CampaignServiceSetCampaignDiceModeProcedure,
+		svc.SetCampaignDiceMode,
+		connect.WithSchema(campaignServiceMethods.ByName("SetCampaignDiceMode")),
+		connect.WithHandlerOptions(opts...),
+	)
+	campaignServiceSetMyDicePreferenceHandler := connect.NewUnaryHandler(
+		CampaignServiceSetMyDicePreferenceProcedure,
+		svc.SetMyDicePreference,
+		connect.WithSchema(campaignServiceMethods.ByName("SetMyDicePreference")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/meurpg.campaigns.v1.CampaignService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CampaignServiceCreateCampaignProcedure:
@@ -541,6 +613,10 @@ func NewCampaignServiceHandler(svc CampaignServiceHandler, opts ...connect.Handl
 			campaignServiceRevokeInviteHandler.ServeHTTP(w, r)
 		case CampaignServiceAcceptInviteProcedure:
 			campaignServiceAcceptInviteHandler.ServeHTTP(w, r)
+		case CampaignServiceSetCampaignDiceModeProcedure:
+			campaignServiceSetCampaignDiceModeHandler.ServeHTTP(w, r)
+		case CampaignServiceSetMyDicePreferenceProcedure:
+			campaignServiceSetMyDicePreferenceHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -588,4 +664,12 @@ func (UnimplementedCampaignServiceHandler) RevokeInvite(context.Context, *connec
 
 func (UnimplementedCampaignServiceHandler) AcceptInvite(context.Context, *connect.Request[v1.AcceptInviteRequest]) (*connect.Response[v1.AcceptInviteResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.campaigns.v1.CampaignService.AcceptInvite is not implemented"))
+}
+
+func (UnimplementedCampaignServiceHandler) SetCampaignDiceMode(context.Context, *connect.Request[v1.SetCampaignDiceModeRequest]) (*connect.Response[v1.SetCampaignDiceModeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.campaigns.v1.CampaignService.SetCampaignDiceMode is not implemented"))
+}
+
+func (UnimplementedCampaignServiceHandler) SetMyDicePreference(context.Context, *connect.Request[v1.SetMyDicePreferenceRequest]) (*connect.Response[v1.SetMyDicePreferenceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.campaigns.v1.CampaignService.SetMyDicePreference is not implemented"))
 }

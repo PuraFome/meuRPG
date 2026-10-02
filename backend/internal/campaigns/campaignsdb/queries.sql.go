@@ -98,7 +98,7 @@ func (q *Queries) DeletePendingMemberWithoutCharacter(ctx context.Context, arg D
 }
 
 const getCampaign = `-- name: GetCampaign :one
-SELECT id, name, xp_mode, created_by, created_at FROM campaigns WHERE id = $1
+SELECT id, name, xp_mode, created_by, created_at, dice_mode FROM campaigns WHERE id = $1
 `
 
 func (q *Queries) GetCampaign(ctx context.Context, id string) (Campaign, error) {
@@ -110,6 +110,7 @@ func (q *Queries) GetCampaign(ctx context.Context, id string) (Campaign, error) 
 		&i.XpMode,
 		&i.CreatedBy,
 		&i.CreatedAt,
+		&i.DiceMode,
 	)
 	return i, err
 }
@@ -156,6 +157,23 @@ func (q *Queries) GetInviteByTokenHashForUpdate(ctx context.Context, tokenHash [
 		&i.RequiresApproval,
 	)
 	return i, err
+}
+
+const getMemberDicePreference = `-- name: GetMemberDicePreference :one
+SELECT dice_preference FROM campaign_members
+WHERE campaign_id = $1 AND user_id = $2 AND status = 'active'
+`
+
+type GetMemberDicePreferenceParams struct {
+	CampaignID string
+	UserID     string
+}
+
+func (q *Queries) GetMemberDicePreference(ctx context.Context, arg GetMemberDicePreferenceParams) (string, error) {
+	row := q.db.QueryRow(ctx, getMemberDicePreference, arg.CampaignID, arg.UserID)
+	var dice_preference string
+	err := row.Scan(&dice_preference)
+	return dice_preference, err
 }
 
 const getMembership = `-- name: GetMembership :one
@@ -206,7 +224,7 @@ func (q *Queries) IncrementInviteUses(ctx context.Context, arg IncrementInviteUs
 const insertCampaign = `-- name: InsertCampaign :one
 INSERT INTO campaigns (name, xp_mode, created_by)
 VALUES ($1, $2, $3)
-RETURNING id, name, xp_mode, created_by, created_at
+RETURNING id, name, xp_mode, created_by, created_at, dice_mode
 `
 
 type InsertCampaignParams struct {
@@ -224,6 +242,7 @@ func (q *Queries) InsertCampaign(ctx context.Context, arg InsertCampaignParams) 
 		&i.XpMode,
 		&i.CreatedBy,
 		&i.CreatedAt,
+		&i.DiceMode,
 	)
 	return i, err
 }
@@ -309,7 +328,7 @@ func (q *Queries) InsertInvite(ctx context.Context, arg InsertInviteParams) (Cam
 const insertMember = `-- name: InsertMember :one
 INSERT INTO campaign_members (campaign_id, user_id, role, status, pending_expires_at)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING campaign_id, user_id, role, joined_at, status, pending_expires_at
+RETURNING campaign_id, user_id, role, joined_at, status, pending_expires_at, dice_preference
 `
 
 type InsertMemberParams struct {
@@ -338,12 +357,13 @@ func (q *Queries) InsertMember(ctx context.Context, arg InsertMemberParams) (Cam
 		&i.JoinedAt,
 		&i.Status,
 		&i.PendingExpiresAt,
+		&i.DicePreference,
 	)
 	return i, err
 }
 
 const listCampaignsOfUser = `-- name: ListCampaignsOfUser :many
-SELECT c.id, c.name, c.xp_mode, c.created_by, c.created_at, m.role, m.status
+SELECT c.id, c.name, c.xp_mode, c.created_by, c.created_at, c.dice_mode, m.role, m.status
 FROM campaign_members AS m
 JOIN campaigns AS c ON c.id = m.campaign_id
 WHERE m.user_id = $1
@@ -373,6 +393,7 @@ func (q *Queries) ListCampaignsOfUser(ctx context.Context, userID string) ([]Lis
 			&i.Campaign.XpMode,
 			&i.Campaign.CreatedBy,
 			&i.Campaign.CreatedAt,
+			&i.Campaign.DiceMode,
 			&i.Role,
 			&i.Status,
 		); err != nil {
@@ -425,7 +446,7 @@ func (q *Queries) ListInvites(ctx context.Context, campaignID string) ([]Campaig
 }
 
 const listMembers = `-- name: ListMembers :many
-SELECT campaign_id, user_id, role, joined_at, status, pending_expires_at FROM campaign_members
+SELECT campaign_id, user_id, role, joined_at, status, pending_expires_at, dice_preference FROM campaign_members
 WHERE campaign_id = $1 AND status = 'active'
 ORDER BY role = 'master' DESC, joined_at, user_id
 `
@@ -448,6 +469,7 @@ func (q *Queries) ListMembers(ctx context.Context, campaignID string) ([]Campaig
 			&i.JoinedAt,
 			&i.Status,
 			&i.PendingExpiresAt,
+			&i.DicePreference,
 		); err != nil {
 			return nil, err
 		}
@@ -524,6 +546,44 @@ func (q *Queries) RevokeInvite(ctx context.Context, arg RevokeInviteParams) (Cam
 		&i.RequiresApproval,
 	)
 	return i, err
+}
+
+const setCampaignDiceMode = `-- name: SetCampaignDiceMode :one
+UPDATE campaigns SET dice_mode = $2 WHERE id = $1 RETURNING dice_mode
+`
+
+type SetCampaignDiceModeParams struct {
+	ID       string
+	DiceMode string
+}
+
+// The master changed how the campaign rolls dice (RN-18).
+func (q *Queries) SetCampaignDiceMode(ctx context.Context, arg SetCampaignDiceModeParams) (string, error) {
+	row := q.db.QueryRow(ctx, setCampaignDiceMode, arg.ID, arg.DiceMode)
+	var dice_mode string
+	err := row.Scan(&dice_mode)
+	return dice_mode, err
+}
+
+const setMemberDicePreference = `-- name: SetMemberDicePreference :one
+UPDATE campaign_members SET dice_preference = $3
+WHERE campaign_id = $1 AND user_id = $2 AND status = 'active'
+RETURNING dice_preference
+`
+
+type SetMemberDicePreferenceParams struct {
+	CampaignID     string
+	UserID         string
+	DicePreference string
+}
+
+// An active member chose how they roll (RN-18). Pending members are not
+// members yet, so no row matches them.
+func (q *Queries) SetMemberDicePreference(ctx context.Context, arg SetMemberDicePreferenceParams) (string, error) {
+	row := q.db.QueryRow(ctx, setMemberDicePreference, arg.CampaignID, arg.UserID, arg.DicePreference)
+	var dice_preference string
+	err := row.Scan(&dice_preference)
+	return dice_preference, err
 }
 
 const updateCampaignDocument = `-- name: UpdateCampaignDocument :one

@@ -328,8 +328,10 @@ Esta seção lista só o que já existe nas migrations de `backend/migrations/`.
 | `00033_add_game_sessions_shown_image_id` | `game_sessions` | Coluna `shown_image_id`: a imagem que o mestre mostra aos jogadores (MR-028; `SET NULL` quando a imagem é apagada). |
 | `00034_add_campaign_members_pending_expires_at` | `campaign_members` | Coluna `pending_expires_at`: até quando vive um membro pendente que ainda não criou o personagem (RN-15, pergunta 24). |
 | `00035_expire_pending_members_without_character` | `campaign_members` | TTL por linha sobre `pending_expires_at`, e o preenchimento dos pendentes que já existiam. |
+| `00036_add_campaigns_dice_mode` | `campaigns` | Coluna `dice_mode` (`players_choose`, `app` ou `physical`), com `CHECK`: como a campanha rola os dados (RN-18). |
+| `00037_add_campaign_members_dice_preference` | `campaign_members` | Coluna `dice_preference` (`app` ou `physical`), com `CHECK`: como o membro prefere rolar (RN-18). |
 
-As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021`, a `00022`, a `00027`, a `00034` e a `00035`, do módulo `campaigns`; as `00014` a `00017`, a `00020` e a `00023`, do módulo `characters`; as `00018`, a `00019`, a `00024`, a `00032` e a `00033`, do módulo `play`; as `00025`, a `00026` e as `00028` a `00031`, do módulo `maps`. A `00027` é do documento de campanha, no `campaigns`, que chega num PR à parte. Mudanças em relação à proposta acima, no `identity`:
+As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021`, a `00022`, a `00027`, a `00034`, a `00035`, a `00036` e a `00037`, do módulo `campaigns`; as `00014` a `00017`, a `00020` e a `00023`, do módulo `characters`; as `00018`, a `00019`, a `00024`, a `00032` e a `00033`, do módulo `play`; as `00025`, a `00026` e as `00028` a `00031`, do módulo `maps`. A `00027` é do documento de campanha, no `campaigns`, que chega num PR à parte. Mudanças em relação à proposta acima, no `identity`:
 
 - `users.google_sub` e `users.email` viraram `user_identities (issuer, subject, email)`. O par `(issuer, subject)` é a chave primária, porque o `sub` só é único dentro de um provedor. Assim o código não depende do Google, e uma conta pode ter outro jeito de entrar (ADR-0009) sem mudar `users`.
 - `UNIQUE (user_id, issuer)`: uma conta tem no máximo uma identidade por provedor, então duas contas Google nunca se juntam.
@@ -351,6 +353,7 @@ No `campaigns`:
 - `campaign_invites` usa o TTL por linha com `expires_at + INTERVAL '30 days'`: o convite some 30 dias depois de expirar. (Depois do `ALTER TABLE` da `00021`, o CockroachDB passa a mostrar a mesma expressão como `expires_at + '30 days'::INTERVAL`; o TTL é o mesmo.)
 - **Convite com aprovação (RN-15, MR-024).** `campaign_invites.requires_approval` (`00021`, padrão `false`) diz se quem aceita o convite entra direto ou fica pendente. `campaign_members.status` (`00022`, padrão `active`, então quem já era membro continua membro) é `active` ou `pending`, com `CHECK` (`campaign_members_status_valid`); outro `CHECK` (`campaign_members_only_players_pending`) garante que só um jogador fica pendente, nunca o mestre. O membro pendente não é membro para nada, fora a criação e a edição do próprio personagem (ver [Arquitetura](arquitetura.md#membro-pendente)). Quando o mestre aprova o personagem, a linha vira `active`; quando recusa, a linha é apagada, na mesma transação que muda ou apaga o personagem.
 - **Pendente sem personagem some em 30 dias (RN-15, pergunta 24).** `campaign_members.pending_expires_at` (`00034`, anulável) vale `joined_at + 30 dias` enquanto a participação é pendente e a pessoa não criou o personagem, e é `NULL` em todo o resto: um `CHECK` (`campaign_members_expiry_only_pending`) impede prazo em membro ativo. Criar o personagem e virar membro ativo (aprovação do mestre, ou um convite comum) zeram a coluna, na mesma transação. A `00035` liga o TTL por linha com `ttl_expiration_expression = 'pending_expires_at'`, no mesmo desenho da `00020`: o job do CockroachDB roda uma vez por dia e apaga a linha vencida, então ela pode passar até 1 dia do prazo. A mesma migration preenche os pendentes sem personagem que já existiam (`joined_at + 30 dias`), e roda duas vezes sem efeito. A lista do mestre ("pendentes sem personagem") é exatamente `status = 'pending' AND pending_expires_at IS NOT NULL`.
+- **Dados da campanha (RN-18).** `campaigns.dice_mode` (`00036`, padrão `players_choose`) diz quem decide como os jogadores rolam: `players_choose` (cada um escolhe), `app` (todos no app) ou `physical` (todos com os próprios dados, digitando a soma). `campaign_members.dice_preference` (`00037`, padrão `app`) é a escolha de cada membro, o mestre também; a participação é da campanha, então a preferência vale só nela. Cada coluna tem um `CHECK` (`campaigns_dice_mode_valid`, `campaign_members_dice_preference_valid`). A preferência só conta com `players_choose`; com os outros modos ela fica guardada, para voltar quando o mestre voltar a deixar escolher. Nenhuma das duas guarda rolagem: as rolagens do combate terão tabela própria.
 - Os nomes (`campaigns.name` até 80 caracteres, `display_name` até 40) têm `CHECK` de tamanho; o servidor também tira espaços das pontas e recusa quebra de linha e caracteres de controle.
 - **`campaign_documents`** (`00027`, MR-018) guarda o documento da campanha: no máximo uma linha por campanha, com `campaign_id` como chave primária. Campanha sem linha tem um documento vazio, na revisão 0; o primeiro salvamento grava a linha na revisão 1, e cada salvamento depois sobe a revisão em 1, só se ela ainda for a que o mestre leu (ver [Arquitetura](arquitetura.md#documento-da-campanha)). `body` é o Markdown como o mestre escreveu, com até 204.800 bytes (200 KiB; o `CHECK` `campaign_documents_body_size` usa `octet_length`, que conta bytes, a mesma unidade da API). `updated_by` é quem salvou por último: excluir essa conta mantém o documento, sem editor (`SET NULL`); apagar a campanha apaga o documento (`CASCADE`). Não há índice em `updated_by`: só a exclusão de conta procura por ele, como em `campaigns.created_by`. Os IDs dos links do texto (`mapa:`, `ficha:`, `imagem:`) não são chaves estrangeiras: o servidor não os lê, e um link para algo apagado só aparece como indisponível.
 
@@ -444,6 +447,7 @@ erDiagram
         uuid id PK
         text name "até 80"
         text xp_mode "enemies, gold ou milestones"
+        text dice_mode "players_choose, app ou physical, RN-18"
         uuid created_by FK
         timestamptz created_at
     }
@@ -455,6 +459,7 @@ erDiagram
         timestamptz joined_at
         text status "active ou pending, RN-15"
         timestamptz pending_expires_at "pendente sem personagem, TTL"
+        text dice_preference "app ou physical, RN-18"
     }
 
     campaign_invites {

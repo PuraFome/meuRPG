@@ -145,6 +145,8 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["CreateInvite"] = c.CreateInvite(ctx, connect.NewRequest(&campaignsv1.CreateInviteRequest{CampaignId: id}))
 	_, calls["ListInvites"] = c.ListInvites(ctx, connect.NewRequest(&campaignsv1.ListInvitesRequest{CampaignId: id}))
 	_, calls["RevokeInvite"] = c.RevokeInvite(ctx, connect.NewRequest(&campaignsv1.RevokeInviteRequest{CampaignId: id, InviteId: id}))
+	_, calls["SetCampaignDiceMode"] = c.SetCampaignDiceMode(ctx, connect.NewRequest(&campaignsv1.SetCampaignDiceModeRequest{CampaignId: id, Mode: campaignsv1.DiceMode_DICE_MODE_APP}))
+	_, calls["SetMyDicePreference"] = c.SetMyDicePreference(ctx, connect.NewRequest(&campaignsv1.SetMyDicePreferenceRequest{CampaignId: id, Preference: campaignsv1.DicePreference_DICE_PREFERENCE_APP}))
 	_, calls["AcceptInvite"] = c.AcceptInvite(ctx, connect.NewRequest(&campaignsv1.AcceptInviteRequest{Token: "x"}))
 
 	methods := campaignsv1.File_meurpg_campaigns_v1_campaigns_proto.Services().ByName("CampaignService").Methods()

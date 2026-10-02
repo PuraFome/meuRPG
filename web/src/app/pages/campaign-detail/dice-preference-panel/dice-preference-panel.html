@@ -1,0 +1,41 @@
+<section class="mr-panel pref" aria-labelledby="dice-pref-heading">
+  <h2 class="mr-panel__title" id="dice-pref-heading">Como você rola os dados</h2>
+  @if (canChoose()) {
+    <p class="pref__lead">Vale só para {{ campaignName() }}. Você pode mudar quando quiser.</p>
+  } @else {
+    <div class="mr-notice mr-notice--warning" role="status">
+      <mat-icon aria-hidden="true">lock</mat-icon>
+      <p><strong>O mestre decidiu: {{ decision() }}.</strong> Nesta campanha não dá para escolher.</p>
+    </div>
+  }
+
+  <app-dice-choice
+    name="my-dice-preference"
+    label="Como você rola os dados"
+    [options]="options"
+    [value]="selected()"
+    [disabled]="!canChoose()"
+    [notes]="notes()"
+    (valueChange)="pick($event)"
+  />
+
+  <p class="pref__note">
+    <mat-icon aria-hidden="true">info</mat-icon>
+    Os inimigos sempre rolam pelo app, com o mestre.
+  </p>
+
+  @if (canChoose()) {
+    @if (error()) {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ error() }}</p>
+      </div>
+    }
+    <div class="pref__actions">
+      <button matButton="outlined" type="button" [disabled]="!dirty() || saving()" (click)="save()">Salvar escolha</button>
+      @if (saved() && !dirty()) {
+        <span class="pref__saved" role="status"><mat-icon aria-hidden="true">check</mat-icon>Salvo.</span>
+      }
+    </div>
+  }
+</section>
