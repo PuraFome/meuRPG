@@ -12,6 +12,7 @@ import { mapErrorMessage } from '../../../core/maps/map-errors';
 import { MapReveals } from '../../../core/maps/map-reveals';
 import { MapState } from '../../../core/maps/map-state';
 import { MapsClient } from '../../../core/maps/maps-client';
+import { MoveSaves } from '../../../core/maps/move-saves';
 import { MapPointsList } from '../../../shared/map-lists/map-points-list';
 import { MapLegend } from '../../../shared/map-view/map-legend/map-legend';
 import { MapMove, MapView } from '../../../shared/map-view/map-view';
@@ -50,6 +51,8 @@ import { LiveSessionSource } from '../live-session.types';
 })
 export class SessionMap {
   private readonly api = inject(MapsClient);
+  /** Saves each token's moves one at a time (see `MoveSaves`). */
+  private readonly moves = new MoveSaves();
   private readonly source = inject(LiveSessionSource);
 
   readonly campaignId = input.required<string>();
@@ -113,12 +116,21 @@ export class SessionMap {
       return;
     }
     state.upsertToken({ ...before, xBp: move.xBp, yBp: move.yBp });
-    try {
-      await this.api.placeToken(this.campaignId(), mapId, move.id, move.xBp, move.yBp);
-    } catch (err) {
-      state.upsertToken(before);
-      this.error.set(mapErrorMessage(err, 'mover o token'));
-    }
+    await this.moves.move(
+      `${mapId}/${move.id}`,
+      before,
+      { xBp: move.xBp, yBp: move.yBp },
+      {
+        save: (to) => this.api.placeToken(this.campaignId(), mapId, move.id, to.xBp, to.yBp),
+        failed: (saved, err) => {
+          const now = state.tokens().find((t) => t.characterId === move.id);
+          if (now) {
+            state.upsertToken({ ...now, xBp: saved.xBp, yBp: saved.yBp });
+          }
+          this.error.set(mapErrorMessage(err, 'mover o token'));
+        },
+      },
+    );
   }
 
   protected retry(): void {

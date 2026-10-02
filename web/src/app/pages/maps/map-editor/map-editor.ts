@@ -16,6 +16,7 @@ import type { MapPoint } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { mapErrorMessage } from '../../../core/maps/map-errors';
 import { MapState } from '../../../core/maps/map-state';
+import { MoveSaves } from '../../../core/maps/move-saves';
 import { RosterClient, RosterEntry } from '../../../core/maps/roster-client';
 import { MapLegend } from '../../../shared/map-view/map-legend/map-legend';
 import { scaleLabel } from '../../../shared/map-view/map-geometry';
@@ -60,6 +61,8 @@ function defaultName(kind: MapPointKind): string {
 })
 export class MapEditor {
   private readonly api = inject(MapsClient);
+  /** Saves each point's and token's moves one at a time (see `MoveSaves`). */
+  private readonly moves = new MoveSaves();
   private readonly roster = inject(RosterClient);
 
   readonly campaignId = input.required<string>();
@@ -232,15 +235,22 @@ export class MapEditor {
         return;
       }
       state.upsertPoint({ ...before, xBp: move.xBp, yBp: move.yBp });
-      try {
-        await this.api.updatePoint(this.campaignId(), mapId, move.id, {
-          xBp: move.xBp,
-          yBp: move.yBp,
-        });
-      } catch (err) {
-        state.upsertPoint(before);
-        this.message.set(mapErrorMessage(err, 'mover o ponto'));
-      }
+      await this.moves.move(
+        `${mapId}/point/${move.id}`,
+        before,
+        { xBp: move.xBp, yBp: move.yBp },
+        {
+          save: (to) =>
+            this.api.updatePoint(this.campaignId(), mapId, move.id, { xBp: to.xBp, yBp: to.yBp }),
+          failed: (saved, err) => {
+            const now = state.points().find((p) => p.id === move.id);
+            if (now) {
+              state.upsertPoint({ ...now, xBp: saved.xBp, yBp: saved.yBp });
+            }
+            this.message.set(mapErrorMessage(err, 'mover o ponto'));
+          },
+        },
+      );
       return;
     }
     const before = state.tokens().find((t) => t.characterId === move.id);
@@ -248,12 +258,21 @@ export class MapEditor {
       return;
     }
     state.upsertToken({ ...before, xBp: move.xBp, yBp: move.yBp });
-    try {
-      await this.api.placeToken(this.campaignId(), mapId, move.id, move.xBp, move.yBp);
-    } catch (err) {
-      state.upsertToken(before);
-      this.message.set(mapErrorMessage(err, 'mover o token'));
-    }
+    await this.moves.move(
+      `${mapId}/token/${move.id}`,
+      before,
+      { xBp: move.xBp, yBp: move.yBp },
+      {
+        save: (to) => this.api.placeToken(this.campaignId(), mapId, move.id, to.xBp, to.yBp),
+        failed: (saved, err) => {
+          const now = state.tokens().find((t) => t.characterId === move.id);
+          if (now) {
+            state.upsertToken({ ...now, xBp: saved.xBp, yBp: saved.yBp });
+          }
+          this.message.set(mapErrorMessage(err, 'mover o token'));
+        },
+      },
+    );
   }
 
   // ---- the point panel ----
