@@ -1,9 +1,17 @@
 import {
   Alignment,
+  BasicSheet,
+  DamageType,
   FullSheet,
   HitPointsMethod,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
-import { mergeFullSheetInit, toFormFullSheet, toFullSheetInit } from './character-editor-source.live';
+import {
+  mergeFullSheetInit,
+  toBasicSheetInit,
+  toFormBasicSheet,
+  toFormFullSheet,
+  toFullSheetInit,
+} from './character-editor-source.live';
 
 /**
  * A fully populated `FullSheet` — every field set, including the two the
@@ -192,5 +200,62 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
 
     const switchedToAverage = toFullSheetInit({ ...form, hitPointsMethod: 'average' });
     expect(switchedToAverage.hitPoints.rolls).toEqual([]);
+  });
+});
+
+describe('a basic sheet through the editor', () => {
+  it('reads and writes initiative and attacks, with the damage type and the reach', () => {
+    const basic: BasicSheet = {
+      $typeName: 'meurpg.characters.v1.BasicSheet',
+      hitPointsMax: 7,
+      armorClass: 15,
+      speedFt: 30,
+      attackBonus: 0,
+      damage: '',
+      description: 'Pequeno.',
+      initiativeBonus: 2,
+      attacks: [
+        {
+          $typeName: 'meurpg.characters.v1.BasicAttack',
+          name: 'Arco curto',
+          attackBonus: 4,
+          damageDiceCount: 1,
+          damageDiceSides: 6,
+          damageBonus: 2,
+          damageType: DamageType.PIERCING,
+          rangeFt: 80,
+        },
+      ],
+    };
+
+    const form = toFormBasicSheet('Goblin', basic);
+    expect(form.attacks[0].damageType).toBe('piercing');
+    const init = toBasicSheetInit(form);
+    expect(init.attacks[0]).toEqual({
+      name: 'Arco curto',
+      attackBonus: 4,
+      damageDiceCount: 1,
+      damageDiceSides: 6,
+      damageBonus: 2,
+      damageType: DamageType.PIERCING,
+      rangeFt: 80,
+    });
+    expect(init.initiativeBonus).toBe(2);
+  });
+
+  it('sends the old damage text back unchanged while there are no attacks', () => {
+    const form = toFormBasicSheet('Goblin', {
+      $typeName: 'meurpg.characters.v1.BasicSheet',
+      hitPointsMax: 7,
+      armorClass: 15,
+      speedFt: 30,
+      attackBonus: 3,
+      damage: 'mordida venenosa',
+      description: '',
+      initiativeBonus: 0,
+      attacks: [],
+    });
+    expect(form.legacyDamage).toBe('mordida venenosa');
+    expect(toBasicSheetInit(form)).toMatchObject({ damage: 'mordida venenosa', attackBonus: 3 });
   });
 });

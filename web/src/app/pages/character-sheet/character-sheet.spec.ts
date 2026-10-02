@@ -134,8 +134,26 @@ function basicSheet(overrides: Partial<BasicSheetVm> = {}): BasicSheetVm {
     hitPointsMax: 7,
     armorClass: 12,
     speedWalkFt: 30,
-    attackBonus: 3,
-    damage: '1d6+1 perfurante',
+    initiativeBonus: 2,
+    attacks: [
+      {
+        name: 'Cimitarra',
+        attackBonus: 4,
+        damageDiceCount: 1,
+        damageDiceSides: 6,
+        damageBonus: 2,
+        damageType: 'slashing',
+      },
+      {
+        name: 'Arco curto',
+        attackBonus: 4,
+        damageDiceCount: 2,
+        damageDiceSides: 4,
+        damageBonus: -1,
+        damageType: 'piercing',
+      },
+    ],
+    legacyDamage: '',
     description: 'Um goblin arisco.',
     ...overrides,
   };
@@ -569,22 +587,45 @@ describe('CharacterSheetPage', () => {
           characterKind: 'minion',
           playerDisplayName: null,
           story: null,
-          sheet: basicSheet({ armorClass: 13, hitPointsMax: 7, attackBonus: 3, damage: '1d6+1 perfurante' }),
+          sheet: basicSheet({ armorClass: 13, hitPointsMax: 7 }),
         }),
       );
 
     const el = await render();
     expect(ddAfter(el, 'Classe de Armadura')?.textContent?.trim()).toBe('13');
     expect(ddAfter(el, 'Pontos de vida máximos')?.textContent?.trim()).toBe('7');
-    expect(ddAfter(el, 'Bônus de ataque')?.textContent?.trim()).toBe('+3');
-    expect(ddAfter(el, 'Dano')?.textContent?.trim()).toBe('1d6+1 perfurante');
+    expect(ddAfter(el, 'Iniciativa')?.textContent?.trim()).toBe('+2');
+    const attacks = Array.from(el.querySelectorAll('.attacks__item')).map((li) =>
+      li.textContent?.replace(/\s+/g, ' ').trim(),
+    );
+    expect(attacks).toEqual([
+      'Cimitarra +4 · 1d6 + 2 cortante',
+      'Arco curto +4 · 2d4 − 1 perfurante',
+    ]);
     expect(el.textContent).toContain('Um goblin arisco.');
     expect(el.querySelector('app-ability-medallions')).toBeNull();
-    expect(el.textContent).not.toContain('Iniciativa');
     // An NPC's tag is its kind: it never leaves "Rascunho", so that isn't shown.
     const tags = el.querySelector('[aria-label="Estado do personagem"]')!;
     expect(tags.textContent).toContain('Minion');
     expect(tags.textContent).not.toContain('Rascunho');
+  });
+
+  it('shows the old damage text as a note when it could not become an attack', async () => {
+    configure();
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(
+        vm({
+          characterKind: 'minion',
+          playerDisplayName: null,
+          story: null,
+          sheet: basicSheet({ attacks: [], legacyDamage: 'mordida venenosa' }),
+        }),
+      );
+
+    const el = await render();
+    expect(el.querySelector('.attacks__item')).toBeNull();
+    expect(el.textContent).toContain('Sem ataques.');
+    expect(el.textContent).toContain('Dano antigo: mordida venenosa');
   });
 
   it('shows the alignment and XP in the header, read from the stored sheet (integrator follow-up)', async () => {

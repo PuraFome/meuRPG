@@ -5,40 +5,30 @@
   min-width: 0;
 }
 
-.attack {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
-  gap: var(--mr-space-3);
-  margin: 0;
-}
-
-// Written on a rule, label under it, like the header fields.
-.attack__item {
+// One line per attack: the name and its bonus, then the damage.
+.attacks {
   display: flex;
-  flex-direction: column-reverse;
-  justify-content: flex-start;
-  gap: 4px;
-  min-width: 0;
-
-  dt {
-    font-size: 13px;
-    line-height: 16px;
-    color: var(--mr-ink-muted);
-  }
-
-  dd {
-    margin: 0;
-    padding-bottom: 4px;
-    border-bottom: 1px solid var(--mr-ink);
-    font-size: 19px;
-    line-height: 24px;
-    font-weight: 500;
-    overflow-wrap: anywhere;
-  }
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.attack .attack__bonus {
+.attacks__item {
+  padding-bottom: var(--mr-space-2);
+  border-bottom: 1px solid var(--mr-line);
+  font-size: 19px;
+  line-height: 26px;
+}
+
+.attacks__name {
   font-weight: 700;
+}
+
+.attacks__empty {
+  margin: 0;
+  color: var(--mr-ink-muted);
 }
 
 .description {

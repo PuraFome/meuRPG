@@ -79,6 +79,68 @@ export function formatSpeedFt(speedFt: number): string {
   return `${metersLabel} m (${speedFt} pés)`;
 }
 
+/** The speed typed in metres, as feet: the table's 5 ft = 1,5 m, so 9 m is
+ * 30 ft. The NPC form asks for metres (no feet on screen, RN-21) and the
+ * sheet stores feet. Rounded: the field only accepts 1,5 m steps. */
+export function metersToFeet(meters: number): number {
+  return Math.round(meters / 0.3);
+}
+
+/** The reverse of `metersToFeet`, for filling the NPC form: 30 ft is 9 m. */
+export function feetToMeters(feet: number): number {
+  return Math.round(feet * 3) / 10;
+}
+
+/** An SRD damage type, by the lower-case name of `DamageType`'s value
+ * (`'fire'` for `DamageType.FIRE`). `''` is "not chosen yet" in a form. */
+export type DamageTypeKey =
+  | ''
+  | 'acid'
+  | 'bludgeoning'
+  | 'cold'
+  | 'fire'
+  | 'force'
+  | 'lightning'
+  | 'necrotic'
+  | 'piercing'
+  | 'poison'
+  | 'psychic'
+  | 'radiant'
+  | 'slashing'
+  | 'thunder';
+
+/** The damage types in the order the select lists them (alphabetical in
+ * Portuguese), with the labels the SRD translation uses in the rules
+ * content ("concussão", "elétrico", "energia"). Capitalised for a select;
+ * `damageTypeLabel` lower-cases it for a sentence. */
+export const DAMAGE_TYPE_OPTIONS: readonly { key: Exclude<DamageTypeKey, ''>; label: string }[] = [
+  { key: 'acid', label: 'Ácido' },
+  { key: 'slashing', label: 'Cortante' },
+  { key: 'bludgeoning', label: 'Concussão' },
+  { key: 'lightning', label: 'Elétrico' },
+  { key: 'force', label: 'Energia' },
+  { key: 'fire', label: 'Fogo' },
+  { key: 'cold', label: 'Frio' },
+  { key: 'necrotic', label: 'Necrótico' },
+  { key: 'piercing', label: 'Perfurante' },
+  { key: 'psychic', label: 'Psíquico' },
+  { key: 'radiant', label: 'Radiante' },
+  { key: 'thunder', label: 'Trovejante' },
+  { key: 'poison', label: 'Veneno' },
+];
+
+/** "cortante" for `'slashing'`; empty for `''`. */
+export function damageTypeLabel(key: DamageTypeKey): string {
+  return DAMAGE_TYPE_OPTIONS.find((o) => o.key === key)?.label.toLowerCase() ?? '';
+}
+
+/** "1d6 + 2": dice, then the bonus with spaces around its sign (a real
+ * minus), left out when zero. */
+export function formatDamageDice(count: number, sides: number, bonus: number): string {
+  const dice = `${count}d${sides}`;
+  return bonus === 0 ? dice : `${dice} ${bonus > 0 ? '+' : '−'} ${Math.abs(bonus)}`;
+}
+
 /**
  * "dd/MM/yyyy HH:mm", the one date format this app shows (the "Ficha
  * travada desde ..." banner). A plain formatter instead of Angular's

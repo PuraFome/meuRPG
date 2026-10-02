@@ -1,8 +1,10 @@
-// The editor page: a form is read in one column of about 960px, not the
-// full 1280. The stepper, the ability fields, the pickers and the short
-// NPC form style themselves (their own folders).
+// The editor page fills the page's content column (Vinicius, 02/10/2026:
+// a 960px card left a dead band on the right at 1280); the leads keep a
+// readable line length on their own (.step-lead). The stepper, the
+// ability fields, the pickers and the short NPC form style themselves
+// (their own folders).
 .editor {
-  max-width: 960px;
+  max-width: none;
 }
 
 .editor__loading {
@@ -196,7 +198,6 @@
 }
 
 .editor__short {
-  max-width: 880px;
   padding: var(--mr-space-5);
 }
 

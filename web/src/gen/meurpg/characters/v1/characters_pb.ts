@@ -32,7 +32,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/characters/v1/characters.proto.
  */
 export const file_meurpg_characters_v1_characters: GenFile = /*@__PURE__*/
-  fileDesc("CiVtZXVycGcvY2hhcmFjdGVycy92MS9jaGFyYWN0ZXJzLnByb3RvEhRtZXVycGcuY2hhcmFjdGVycy52MSL6BQoJQ2hhcmFjdGVyEgoKAmlkGAEgASgJEhMKC2NhbXBhaWduX2lkGAIgASgJEjEKBGtpbmQYAyABKA4yIy5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXJLaW5kEjMKBXN0YXRlGAQgASgOMiQubWV1cnBnLmNoYXJhY3RlcnMudjEuQ2hhcmFjdGVyU3RhdGUSDAoEbmFtZRgFIAEoCRIWCg5wbGF5ZXJfdXNlcl9pZBgGIAEoCRIbChNwbGF5ZXJfZGlzcGxheV9uYW1lGAcgASgJEjMKBXNoZWV0GAggASgLMiQubWV1cnBnLmNoYXJhY3RlcnMudjEuQ2hhcmFjdGVyU2hlZXQSMwoFc3RvcnkYCSABKAsyJC5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXJTdG9yeRIuCgdkZXJpdmVkGAogASgLMh0ubWV1cnBnLnJ1bGVzLnYxLkRlcml2ZWRTaGVldBIQCghyZXZpc2lvbhgLIAEoBRIzCg9zaGVldF9sb2NrZWRfYXQYDCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEisKB2RpZWRfYXQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCmNyZWF0ZWRfYXQYDiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhAKCGNhbl9lZGl0GBAgASgIEhYKDmNhbl9lZGl0X3N0b3J5GBEgASgIEhUKDWNhbl9tYXJrX2RlYWQYEiABKAgSHwoXY2FuX2FjY2Vzc19tYXN0ZXJfbm90ZXMYEyABKAgSHQoVc3RvcnlfZWRpdGluZ19hbGxvd2VkGBQgASgIEh0KFWNhbl9zZXRfc3RvcnlfZWRpdGluZxgVIAEoCBITCgtjYW5fYXBwcm92ZRgWIAEoCCKmAgoQQ2hhcmFjdGVyU3VtbWFyeRIKCgJpZBgBIAEoCRIxCgRraW5kGAIgASgOMiMubWV1cnBnLmNoYXJhY3RlcnMudjEuQ2hhcmFjdGVyS2luZBIzCgVzdGF0ZRgDIAEoDjIkLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNoYXJhY3RlclN0YXRlEgwKBG5hbWUYBCABKAkSFgoOcGxheWVyX3VzZXJfaWQYBSABKAkSGwoTcGxheWVyX2Rpc3BsYXlfbmFtZRgGIAEoCRIVCg1jbGFzc19zdW1tYXJ5GAcgASgJEhQKDHJhY2VfbmFtZV9wdBgIIAEoCRIuCgpjcmVhdGVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJmChBDaGFyYWN0ZXJCbG9ja2VkEjwKBnJlYXNvbhgBIAEoDjIsLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNoYXJhY3RlckJsb2NrZWRSZWFzb24SFAoMY2hhcmFjdGVyX2lkGAIgASgJIn8KDkNoYXJhY3RlclNoZWV0Ei8KBGZ1bGwYASABKAsyHy5tZXVycGcuY2hhcmFjdGVycy52MS5GdWxsU2hlZXRIABIxCgViYXNpYxgCIAEoCzIgLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkJhc2ljU2hlZXRIAEIJCgdjb250ZW50ItIGCglGdWxsU2hlZXQSMwoLYmFzZV9zY29yZXMYASABKAsyHi5tZXVycGcucnVsZXMudjEuQWJpbGl0eVNjb3JlcxIQCghyYWNlX2tleRgCIAEoCRITCgtzdWJyYWNlX2tleRgDIAEoCRIxCgdjbGFzc2VzGAQgAygLMiAubWV1cnBnLmNoYXJhY3RlcnMudjEuQ2xhc3NMZXZlbBIYCg5iYWNrZ3JvdW5kX2tleRgFIAEoCUgAEkMKEWN1c3RvbV9iYWNrZ3JvdW5kGAYgASgLMiYubWV1cnBnLmNoYXJhY3RlcnMudjEuQ3VzdG9tQmFja2dyb3VuZEgAEh4KFnNraWxsX3Byb2ZpY2llbmN5X2tleXMYByADKAkSHAoUZXhwZXJ0aXNlX3NraWxsX2tleXMYCCADKAkSPQoVZXh0cmFfYWJpbGl0eV9ib251c2VzGAkgASgLMh4ubWV1cnBnLnJ1bGVzLnYxLkFiaWxpdHlTY29yZXMSMwoKaGl0X3BvaW50cxgKIAEoCzIfLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkhpdFBvaW50cxIRCglhcm1vcl9rZXkYCyABKAkSDgoGc2hpZWxkGAwgASgIEhMKC3dlYXBvbl9rZXlzGA0gAygJEhQKDGNhbnRyaXBfa2V5cxgOIAMoCRIYChBrbm93bl9zcGVsbF9rZXlzGA8gAygJEhsKE3ByZXBhcmVkX3NwZWxsX2tleXMYECADKAkSLQoJZXF1aXBtZW50GBEgAygLMhoubWV1cnBnLmNoYXJhY3RlcnMudjEuSXRlbRIqCgVjb2lucxgSIAEoCzIbLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNvaW5zEhEKCWxhbmd1YWdlcxgTIAMoCRIaChJ0b29sX3Byb2ZpY2llbmNpZXMYFCADKAkSGQoRZXhwZXJpZW5jZV9wb2ludHMYFSABKAUSMgoJYWxpZ25tZW50GBYgASgOMh8ubWV1cnBnLmNoYXJhY3RlcnMudjEuQWxpZ25tZW50EhwKFGN1c3RvbV9mZWF0dXJlc190ZXh0GBcgASgJEhsKE2ZlYXR1cmVfY2hvaWNlX2tleXMYGCADKAlCDAoKYmFja2dyb3VuZCJyCgpDbGFzc0xldmVsEhEKCWNsYXNzX2tleRgBIAEoCRINCgVsZXZlbBgCIAEoBRIWCgxzdWJjbGFzc19rZXkYAyABKAlIABIeChRjdXN0b21fc3ViY2xhc3NfbmFtZRgEIAEoCUgAQgoKCHN1YmNsYXNzIjQKEEN1c3RvbUJhY2tncm91bmQSDAoEbmFtZRgBIAEoCRISCgpza2lsbF9rZXlzGAIgAygJIlEKCUhpdFBvaW50cxI1CgZtZXRob2QYASABKA4yJS5tZXVycGcuY2hhcmFjdGVycy52MS5IaXRQb2ludHNNZXRob2QSDQoFcm9sbHMYAiADKAUiJgoESXRlbRIMCgRuYW1lGAEgASgJEhAKCHF1YW50aXR5GAIgASgFIlkKBUNvaW5zEg4KBmNvcHBlchgBIAEoBRIOCgZzaWx2ZXIYAiABKAUSEAoIZWxlY3RydW0YAyABKAUSDAoEZ29sZBgEIAEoBRIQCghwbGF0aW51bRgFIAEoBSKGAQoKQmFzaWNTaGVldBIWCg5oaXRfcG9pbnRzX21heBgBIAEoBRITCgthcm1vcl9jbGFzcxgCIAEoBRIQCghzcGVlZF9mdBgDIAEoBRIUCgxhdHRhY2tfYm9udXMYBCABKAUSDgoGZGFtYWdlGAUgASgJEhMKC2Rlc2NyaXB0aW9uGAYgASgJIqEBCg5DaGFyYWN0ZXJTdG9yeRI2CgtwZXJzb25hbGl0eRgBIAEoCzIhLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLlBlcnNvbmFsaXR5EjQKCmFwcGVhcmFuY2UYAiABKAsyIC5tZXVycGcuY2hhcmFjdGVycy52MS5BcHBlYXJhbmNlEhEKCWJhY2tzdG9yeRgDIAEoCRIOCgZhbGxpZXMYBCABKAkiSwoLUGVyc29uYWxpdHkSDgoGdHJhaXRzGAEgASgJEg4KBmlkZWFscxgCIAEoCRINCgVib25kcxgDIAEoCRINCgVmbGF3cxgEIAEoCSJ4CgpBcHBlYXJhbmNlEgsKA2FnZRgBIAEoCRIOCgZoZWlnaHQYAiABKAkSDgoGd2VpZ2h0GAMgASgJEgwKBGV5ZXMYBCABKAkSDAoEc2tpbhgFIAEoCRIMCgRoYWlyGAYgASgJEhMKC2Rlc2NyaXB0aW9uGAcgASgJItgBChZDcmVhdGVDaGFyYWN0ZXJSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEjEKBGtpbmQYAiABKA4yIy5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXJLaW5kEgwKBG5hbWUYAyABKAkSMwoFc2hlZXQYBCABKAsyJC5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXJTaGVldBIzCgVzdG9yeRgFIAEoCzIkLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNoYXJhY3RlclN0b3J5Ik0KF0NyZWF0ZUNoYXJhY3RlclJlc3BvbnNlEjIKCWNoYXJhY3RlchgBIAEoCzIfLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNoYXJhY3RlciJAChNHZXRDaGFyYWN0ZXJSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCSJKChRHZXRDaGFyYWN0ZXJSZXNwb25zZRIyCgljaGFyYWN0ZXIYASABKAsyHy5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXIiLAoVTGlzdENoYXJhY3RlcnNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIlQKFkxpc3RDaGFyYWN0ZXJzUmVzcG9uc2USOgoKY2hhcmFjdGVycxgBIAMoCzImLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNoYXJhY3RlclN1bW1hcnkimAEKFlVwZGF0ZUNoYXJhY3RlclJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMY2hhcmFjdGVyX2lkGAIgASgJEhAKCHJldmlzaW9uGAMgASgFEgwKBG5hbWUYBCABKAkSMwoFc2hlZXQYBSABKAsyJC5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXJTaGVldCJNChdVcGRhdGVDaGFyYWN0ZXJSZXNwb25zZRIyCgljaGFyYWN0ZXIYASABKAsyHy5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXIijwEKG1VwZGF0ZUNoYXJhY3RlclN0b3J5UmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSEAoIcmV2aXNpb24YAyABKAUSMwoFc3RvcnkYBCABKAsyJC5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXJTdG9yeSJSChxVcGRhdGVDaGFyYWN0ZXJTdG9yeVJlc3BvbnNlEjIKCWNoYXJhY3RlchgBIAEoCzIfLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNoYXJhY3RlciJUChZTZXRTdG9yeUVkaXRpbmdSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCRIPCgdhbGxvd2VkGAMgASgIIk0KF1NldFN0b3J5RWRpdGluZ1Jlc3BvbnNlEjIKCWNoYXJhY3RlchgBIAEoCzIfLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNoYXJhY3RlciJFChhNYXJrQ2hhcmFjdGVyRGVhZFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMY2hhcmFjdGVyX2lkGAIgASgJIk8KGU1hcmtDaGFyYWN0ZXJEZWFkUmVzcG9uc2USMgoJY2hhcmFjdGVyGAEgASgLMh8ubWV1cnBnLmNoYXJhY3RlcnMudjEuQ2hhcmFjdGVyIkIKFUdldE1hc3Rlck5vdGVzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkiVwoWR2V0TWFzdGVyTm90ZXNSZXNwb25zZRINCgVub3RlcxgBIAEoCRIuCgp1cGRhdGVkX2F0GAIgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJUChhVcGRhdGVNYXN0ZXJOb3Rlc1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMY2hhcmFjdGVyX2lkGAIgASgJEg0KBW5vdGVzGAMgASgJIloKGVVwZGF0ZU1hc3Rlck5vdGVzUmVzcG9uc2USDQoFbm90ZXMYASABKAkSLgoKdXBkYXRlZF9hdBgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiRAoXQXBwcm92ZUNoYXJhY3RlclJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMY2hhcmFjdGVyX2lkGAIgASgJIk4KGEFwcHJvdmVDaGFyYWN0ZXJSZXNwb25zZRIyCgljaGFyYWN0ZXIYASABKAsyHy5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXIiQwoWUmVqZWN0Q2hhcmFjdGVyUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkiGQoXUmVqZWN0Q2hhcmFjdGVyUmVzcG9uc2UqsgEKDUNoYXJhY3RlcktpbmQSHgoaQ0hBUkFDVEVSX0tJTkRfVU5TUEVDSUZJRUQQABIZChVDSEFSQUNURVJfS0lORF9QTEFZRVIQARIYChRDSEFSQUNURVJfS0lORF9FTkVNWRACEhcKE0NIQVJBQ1RFUl9LSU5EX0JPU1MQAxIZChVDSEFSQUNURVJfS0lORF9NSU5JT04QBBIYChRDSEFSQUNURVJfS0lORF9TVE9SWRAFKp8BCg5DaGFyYWN0ZXJTdGF0ZRIfChtDSEFSQUNURVJfU1RBVEVfVU5TUEVDSUZJRUQQABIZChVDSEFSQUNURVJfU1RBVEVfRFJBRlQQARIaChZDSEFSQUNURVJfU1RBVEVfTE9DS0VEEAISGAoUQ0hBUkFDVEVSX1NUQVRFX0RFQUQQAxIbChdDSEFSQUNURVJfU1RBVEVfUEVORElORxAEKtUCChZDaGFyYWN0ZXJCbG9ja2VkUmVhc29uEigKJENIQVJBQ1RFUl9CTE9DS0VEX1JFQVNPTl9VTlNQRUNJRklFRBAAEikKJUNIQVJBQ1RFUl9CTE9DS0VEX1JFQVNPTl9TSEVFVF9MT0NLRUQQARIrCidDSEFSQUNURVJfQkxPQ0tFRF9SRUFTT05fQ0hBUkFDVEVSX0RFQUQQAhI0CjBDSEFSQUNURVJfQkxPQ0tFRF9SRUFTT05fTElWSU5HX0NIQVJBQ1RFUl9FWElTVFMQAxIpCiVDSEFSQUNURVJfQkxPQ0tFRF9SRUFTT05fU1RPUllfTE9DS0VEEAQSKAokQ0hBUkFDVEVSX0JMT0NLRURfUkVBU09OX05PVF9QRU5ESU5HEAUSLgoqQ0hBUkFDVEVSX0JMT0NLRURfUkVBU09OX0FXQUlUSU5HX0FQUFJPVkFMEAYqcQoPSGl0UG9pbnRzTWV0aG9kEiEKHUhJVF9QT0lOVFNfTUVUSE9EX1VOU1BFQ0lGSUVEEAASHQoZSElUX1BPSU5UU19NRVRIT0RfQVZFUkFHRRABEhwKGEhJVF9QT0lOVFNfTUVUSE9EX1JPTExFRBACKqACCglBbGlnbm1lbnQSGQoVQUxJR05NRU5UX1VOU1BFQ0lGSUVEEAASGQoVQUxJR05NRU5UX0xBV0ZVTF9HT09EEAESGgoWQUxJR05NRU5UX05FVVRSQUxfR09PRBACEhoKFkFMSUdOTUVOVF9DSEFPVElDX0dPT0QQAxIcChhBTElHTk1FTlRfTEFXRlVMX05FVVRSQUwQBBIVChFBTElHTk1FTlRfTkVVVFJBTBAFEh0KGUFMSUdOTUVOVF9DSEFPVElDX05FVVRSQUwQBhIZChVBTElHTk1FTlRfTEFXRlVMX0VWSUwQBxIaChZBTElHTk1FTlRfTkVVVFJBTF9FVklMEAgSGgoWQUxJR05NRU5UX0NIQU9USUNfRVZJTBAJMoAKChBDaGFyYWN0ZXJTZXJ2aWNlEm4KD0NyZWF0ZUNoYXJhY3RlchIsLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNyZWF0ZUNoYXJhY3RlclJlcXVlc3QaLS5tZXVycGcuY2hhcmFjdGVycy52MS5DcmVhdGVDaGFyYWN0ZXJSZXNwb25zZRJqCgxHZXRDaGFyYWN0ZXISKS5tZXVycGcuY2hhcmFjdGVycy52MS5HZXRDaGFyYWN0ZXJSZXF1ZXN0GioubWV1cnBnLmNoYXJhY3RlcnMudjEuR2V0Q2hhcmFjdGVyUmVzcG9uc2UiA5ACAhJwCg5MaXN0Q2hhcmFjdGVycxIrLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkxpc3RDaGFyYWN0ZXJzUmVxdWVzdBosLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkxpc3RDaGFyYWN0ZXJzUmVzcG9uc2UiA5ACAhJuCg9VcGRhdGVDaGFyYWN0ZXISLC5tZXVycGcuY2hhcmFjdGVycy52MS5VcGRhdGVDaGFyYWN0ZXJSZXF1ZXN0Gi0ubWV1cnBnLmNoYXJhY3RlcnMudjEuVXBkYXRlQ2hhcmFjdGVyUmVzcG9uc2USfQoUVXBkYXRlQ2hhcmFjdGVyU3RvcnkSMS5tZXVycGcuY2hhcmFjdGVycy52MS5VcGRhdGVDaGFyYWN0ZXJTdG9yeVJlcXVlc3QaMi5tZXVycGcuY2hhcmFjdGVycy52MS5VcGRhdGVDaGFyYWN0ZXJTdG9yeVJlc3BvbnNlEm4KD1NldFN0b3J5RWRpdGluZxIsLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLlNldFN0b3J5RWRpdGluZ1JlcXVlc3QaLS5tZXVycGcuY2hhcmFjdGVycy52MS5TZXRTdG9yeUVkaXRpbmdSZXNwb25zZRJ0ChFNYXJrQ2hhcmFjdGVyRGVhZBIuLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLk1hcmtDaGFyYWN0ZXJEZWFkUmVxdWVzdBovLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLk1hcmtDaGFyYWN0ZXJEZWFkUmVzcG9uc2UScAoOR2V0TWFzdGVyTm90ZXMSKy5tZXVycGcuY2hhcmFjdGVycy52MS5HZXRNYXN0ZXJOb3Rlc1JlcXVlc3QaLC5tZXVycGcuY2hhcmFjdGVycy52MS5HZXRNYXN0ZXJOb3Rlc1Jlc3BvbnNlIgOQAgISdAoRVXBkYXRlTWFzdGVyTm90ZXMSLi5tZXVycGcuY2hhcmFjdGVycy52MS5VcGRhdGVNYXN0ZXJOb3Rlc1JlcXVlc3QaLy5tZXVycGcuY2hhcmFjdGVycy52MS5VcGRhdGVNYXN0ZXJOb3Rlc1Jlc3BvbnNlEnEKEEFwcHJvdmVDaGFyYWN0ZXISLS5tZXVycGcuY2hhcmFjdGVycy52MS5BcHByb3ZlQ2hhcmFjdGVyUmVxdWVzdBouLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkFwcHJvdmVDaGFyYWN0ZXJSZXNwb25zZRJuCg9SZWplY3RDaGFyYWN0ZXISLC5tZXVycGcuY2hhcmFjdGVycy52MS5SZWplY3RDaGFyYWN0ZXJSZXF1ZXN0Gi0ubWV1cnBnLmNoYXJhY3RlcnMudjEuUmVqZWN0Q2hhcmFjdGVyUmVzcG9uc2VC5wEKGGNvbS5tZXVycGcuY2hhcmFjdGVycy52MUIPQ2hhcmFjdGVyc1Byb3RvUAFaSGdpdGh1Yi5jb20vUHVyYUZvbWUvbWV1UlBHL2JhY2tlbmQvZ2VuL21ldXJwZy9jaGFyYWN0ZXJzL3YxO2NoYXJhY3RlcnN2MaICA01DWKoCFE1ldXJwZy5DaGFyYWN0ZXJzLlYxygIUTWV1cnBnXENoYXJhY3RlcnNcVjHiAiBNZXVycGdcQ2hhcmFjdGVyc1xWMVxHUEJNZXRhZGF0YeoCFk1ldXJwZzo6Q2hhcmFjdGVyczo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp, file_meurpg_rules_v1_rules]);
+  fileDesc("CiVtZXVycGcvY2hhcmFjdGVycy92MS9jaGFyYWN0ZXJzLnByb3RvEhRtZXVycGcuY2hhcmFjdGVycy52MSL6BQoJQ2hhcmFjdGVyEgoKAmlkGAEgASgJEhMKC2NhbXBhaWduX2lkGAIgASgJEjEKBGtpbmQYAyABKA4yIy5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXJLaW5kEjMKBXN0YXRlGAQgASgOMiQubWV1cnBnLmNoYXJhY3RlcnMudjEuQ2hhcmFjdGVyU3RhdGUSDAoEbmFtZRgFIAEoCRIWCg5wbGF5ZXJfdXNlcl9pZBgGIAEoCRIbChNwbGF5ZXJfZGlzcGxheV9uYW1lGAcgASgJEjMKBXNoZWV0GAggASgLMiQubWV1cnBnLmNoYXJhY3RlcnMudjEuQ2hhcmFjdGVyU2hlZXQSMwoFc3RvcnkYCSABKAsyJC5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXJTdG9yeRIuCgdkZXJpdmVkGAogASgLMh0ubWV1cnBnLnJ1bGVzLnYxLkRlcml2ZWRTaGVldBIQCghyZXZpc2lvbhgLIAEoBRIzCg9zaGVldF9sb2NrZWRfYXQYDCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEisKB2RpZWRfYXQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCmNyZWF0ZWRfYXQYDiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhAKCGNhbl9lZGl0GBAgASgIEhYKDmNhbl9lZGl0X3N0b3J5GBEgASgIEhUKDWNhbl9tYXJrX2RlYWQYEiABKAgSHwoXY2FuX2FjY2Vzc19tYXN0ZXJfbm90ZXMYEyABKAgSHQoVc3RvcnlfZWRpdGluZ19hbGxvd2VkGBQgASgIEh0KFWNhbl9zZXRfc3RvcnlfZWRpdGluZxgVIAEoCBITCgtjYW5fYXBwcm92ZRgWIAEoCCKmAgoQQ2hhcmFjdGVyU3VtbWFyeRIKCgJpZBgBIAEoCRIxCgRraW5kGAIgASgOMiMubWV1cnBnLmNoYXJhY3RlcnMudjEuQ2hhcmFjdGVyS2luZBIzCgVzdGF0ZRgDIAEoDjIkLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNoYXJhY3RlclN0YXRlEgwKBG5hbWUYBCABKAkSFgoOcGxheWVyX3VzZXJfaWQYBSABKAkSGwoTcGxheWVyX2Rpc3BsYXlfbmFtZRgGIAEoCRIVCg1jbGFzc19zdW1tYXJ5GAcgASgJEhQKDHJhY2VfbmFtZV9wdBgIIAEoCRIuCgpjcmVhdGVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJmChBDaGFyYWN0ZXJCbG9ja2VkEjwKBnJlYXNvbhgBIAEoDjIsLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNoYXJhY3RlckJsb2NrZWRSZWFzb24SFAoMY2hhcmFjdGVyX2lkGAIgASgJIn8KDkNoYXJhY3RlclNoZWV0Ei8KBGZ1bGwYASABKAsyHy5tZXVycGcuY2hhcmFjdGVycy52MS5GdWxsU2hlZXRIABIxCgViYXNpYxgCIAEoCzIgLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkJhc2ljU2hlZXRIAEIJCgdjb250ZW50ItIGCglGdWxsU2hlZXQSMwoLYmFzZV9zY29yZXMYASABKAsyHi5tZXVycGcucnVsZXMudjEuQWJpbGl0eVNjb3JlcxIQCghyYWNlX2tleRgCIAEoCRITCgtzdWJyYWNlX2tleRgDIAEoCRIxCgdjbGFzc2VzGAQgAygLMiAubWV1cnBnLmNoYXJhY3RlcnMudjEuQ2xhc3NMZXZlbBIYCg5iYWNrZ3JvdW5kX2tleRgFIAEoCUgAEkMKEWN1c3RvbV9iYWNrZ3JvdW5kGAYgASgLMiYubWV1cnBnLmNoYXJhY3RlcnMudjEuQ3VzdG9tQmFja2dyb3VuZEgAEh4KFnNraWxsX3Byb2ZpY2llbmN5X2tleXMYByADKAkSHAoUZXhwZXJ0aXNlX3NraWxsX2tleXMYCCADKAkSPQoVZXh0cmFfYWJpbGl0eV9ib251c2VzGAkgASgLMh4ubWV1cnBnLnJ1bGVzLnYxLkFiaWxpdHlTY29yZXMSMwoKaGl0X3BvaW50cxgKIAEoCzIfLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkhpdFBvaW50cxIRCglhcm1vcl9rZXkYCyABKAkSDgoGc2hpZWxkGAwgASgIEhMKC3dlYXBvbl9rZXlzGA0gAygJEhQKDGNhbnRyaXBfa2V5cxgOIAMoCRIYChBrbm93bl9zcGVsbF9rZXlzGA8gAygJEhsKE3ByZXBhcmVkX3NwZWxsX2tleXMYECADKAkSLQoJZXF1aXBtZW50GBEgAygLMhoubWV1cnBnLmNoYXJhY3RlcnMudjEuSXRlbRIqCgVjb2lucxgSIAEoCzIbLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNvaW5zEhEKCWxhbmd1YWdlcxgTIAMoCRIaChJ0b29sX3Byb2ZpY2llbmNpZXMYFCADKAkSGQoRZXhwZXJpZW5jZV9wb2ludHMYFSABKAUSMgoJYWxpZ25tZW50GBYgASgOMh8ubWV1cnBnLmNoYXJhY3RlcnMudjEuQWxpZ25tZW50EhwKFGN1c3RvbV9mZWF0dXJlc190ZXh0GBcgASgJEhsKE2ZlYXR1cmVfY2hvaWNlX2tleXMYGCADKAlCDAoKYmFja2dyb3VuZCJyCgpDbGFzc0xldmVsEhEKCWNsYXNzX2tleRgBIAEoCRINCgVsZXZlbBgCIAEoBRIWCgxzdWJjbGFzc19rZXkYAyABKAlIABIeChRjdXN0b21fc3ViY2xhc3NfbmFtZRgEIAEoCUgAQgoKCHN1YmNsYXNzIjQKEEN1c3RvbUJhY2tncm91bmQSDAoEbmFtZRgBIAEoCRISCgpza2lsbF9rZXlzGAIgAygJIlEKCUhpdFBvaW50cxI1CgZtZXRob2QYASABKA4yJS5tZXVycGcuY2hhcmFjdGVycy52MS5IaXRQb2ludHNNZXRob2QSDQoFcm9sbHMYAiADKAUiJgoESXRlbRIMCgRuYW1lGAEgASgJEhAKCHF1YW50aXR5GAIgASgFIlkKBUNvaW5zEg4KBmNvcHBlchgBIAEoBRIOCgZzaWx2ZXIYAiABKAUSEAoIZWxlY3RydW0YAyABKAUSDAoEZ29sZBgEIAEoBRIQCghwbGF0aW51bRgFIAEoBSLUAQoKQmFzaWNTaGVldBIWCg5oaXRfcG9pbnRzX21heBgBIAEoBRITCgthcm1vcl9jbGFzcxgCIAEoBRIQCghzcGVlZF9mdBgDIAEoBRIUCgxhdHRhY2tfYm9udXMYBCABKAUSDgoGZGFtYWdlGAUgASgJEhMKC2Rlc2NyaXB0aW9uGAYgASgJEhgKEGluaXRpYXRpdmVfYm9udXMYByABKAUSMgoHYXR0YWNrcxgIIAMoCzIhLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkJhc2ljQXR0YWNrIsYBCgtCYXNpY0F0dGFjaxIMCgRuYW1lGAEgASgJEhQKDGF0dGFja19ib251cxgCIAEoBRIZChFkYW1hZ2VfZGljZV9jb3VudBgDIAEoBRIZChFkYW1hZ2VfZGljZV9zaWRlcxgEIAEoBRIUCgxkYW1hZ2VfYm9udXMYBSABKAUSNQoLZGFtYWdlX3R5cGUYBiABKA4yIC5tZXVycGcuY2hhcmFjdGVycy52MS5EYW1hZ2VUeXBlEhAKCHJhbmdlX2Z0GAcgASgFIqEBCg5DaGFyYWN0ZXJTdG9yeRI2CgtwZXJzb25hbGl0eRgBIAEoCzIhLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLlBlcnNvbmFsaXR5EjQKCmFwcGVhcmFuY2UYAiABKAsyIC5tZXVycGcuY2hhcmFjdGVycy52MS5BcHBlYXJhbmNlEhEKCWJhY2tzdG9yeRgDIAEoCRIOCgZhbGxpZXMYBCABKAkiSwoLUGVyc29uYWxpdHkSDgoGdHJhaXRzGAEgASgJEg4KBmlkZWFscxgCIAEoCRINCgVib25kcxgDIAEoCRINCgVmbGF3cxgEIAEoCSJ4CgpBcHBlYXJhbmNlEgsKA2FnZRgBIAEoCRIOCgZoZWlnaHQYAiABKAkSDgoGd2VpZ2h0GAMgASgJEgwKBGV5ZXMYBCABKAkSDAoEc2tpbhgFIAEoCRIMCgRoYWlyGAYgASgJEhMKC2Rlc2NyaXB0aW9uGAcgASgJItgBChZDcmVhdGVDaGFyYWN0ZXJSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEjEKBGtpbmQYAiABKA4yIy5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXJLaW5kEgwKBG5hbWUYAyABKAkSMwoFc2hlZXQYBCABKAsyJC5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXJTaGVldBIzCgVzdG9yeRgFIAEoCzIkLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNoYXJhY3RlclN0b3J5Ik0KF0NyZWF0ZUNoYXJhY3RlclJlc3BvbnNlEjIKCWNoYXJhY3RlchgBIAEoCzIfLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNoYXJhY3RlciJAChNHZXRDaGFyYWN0ZXJSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCSJKChRHZXRDaGFyYWN0ZXJSZXNwb25zZRIyCgljaGFyYWN0ZXIYASABKAsyHy5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXIiLAoVTGlzdENoYXJhY3RlcnNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIlQKFkxpc3RDaGFyYWN0ZXJzUmVzcG9uc2USOgoKY2hhcmFjdGVycxgBIAMoCzImLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNoYXJhY3RlclN1bW1hcnkimAEKFlVwZGF0ZUNoYXJhY3RlclJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMY2hhcmFjdGVyX2lkGAIgASgJEhAKCHJldmlzaW9uGAMgASgFEgwKBG5hbWUYBCABKAkSMwoFc2hlZXQYBSABKAsyJC5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXJTaGVldCJNChdVcGRhdGVDaGFyYWN0ZXJSZXNwb25zZRIyCgljaGFyYWN0ZXIYASABKAsyHy5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXIijwEKG1VwZGF0ZUNoYXJhY3RlclN0b3J5UmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSEAoIcmV2aXNpb24YAyABKAUSMwoFc3RvcnkYBCABKAsyJC5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXJTdG9yeSJSChxVcGRhdGVDaGFyYWN0ZXJTdG9yeVJlc3BvbnNlEjIKCWNoYXJhY3RlchgBIAEoCzIfLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNoYXJhY3RlciJUChZTZXRTdG9yeUVkaXRpbmdSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCRIPCgdhbGxvd2VkGAMgASgIIk0KF1NldFN0b3J5RWRpdGluZ1Jlc3BvbnNlEjIKCWNoYXJhY3RlchgBIAEoCzIfLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNoYXJhY3RlciJFChhNYXJrQ2hhcmFjdGVyRGVhZFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMY2hhcmFjdGVyX2lkGAIgASgJIk8KGU1hcmtDaGFyYWN0ZXJEZWFkUmVzcG9uc2USMgoJY2hhcmFjdGVyGAEgASgLMh8ubWV1cnBnLmNoYXJhY3RlcnMudjEuQ2hhcmFjdGVyIkIKFUdldE1hc3Rlck5vdGVzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkiVwoWR2V0TWFzdGVyTm90ZXNSZXNwb25zZRINCgVub3RlcxgBIAEoCRIuCgp1cGRhdGVkX2F0GAIgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJUChhVcGRhdGVNYXN0ZXJOb3Rlc1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMY2hhcmFjdGVyX2lkGAIgASgJEg0KBW5vdGVzGAMgASgJIloKGVVwZGF0ZU1hc3Rlck5vdGVzUmVzcG9uc2USDQoFbm90ZXMYASABKAkSLgoKdXBkYXRlZF9hdBgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiRAoXQXBwcm92ZUNoYXJhY3RlclJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMY2hhcmFjdGVyX2lkGAIgASgJIk4KGEFwcHJvdmVDaGFyYWN0ZXJSZXNwb25zZRIyCgljaGFyYWN0ZXIYASABKAsyHy5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXIiQwoWUmVqZWN0Q2hhcmFjdGVyUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkiGQoXUmVqZWN0Q2hhcmFjdGVyUmVzcG9uc2UqsgEKDUNoYXJhY3RlcktpbmQSHgoaQ0hBUkFDVEVSX0tJTkRfVU5TUEVDSUZJRUQQABIZChVDSEFSQUNURVJfS0lORF9QTEFZRVIQARIYChRDSEFSQUNURVJfS0lORF9FTkVNWRACEhcKE0NIQVJBQ1RFUl9LSU5EX0JPU1MQAxIZChVDSEFSQUNURVJfS0lORF9NSU5JT04QBBIYChRDSEFSQUNURVJfS0lORF9TVE9SWRAFKp8BCg5DaGFyYWN0ZXJTdGF0ZRIfChtDSEFSQUNURVJfU1RBVEVfVU5TUEVDSUZJRUQQABIZChVDSEFSQUNURVJfU1RBVEVfRFJBRlQQARIaChZDSEFSQUNURVJfU1RBVEVfTE9DS0VEEAISGAoUQ0hBUkFDVEVSX1NUQVRFX0RFQUQQAxIbChdDSEFSQUNURVJfU1RBVEVfUEVORElORxAEKtUCChZDaGFyYWN0ZXJCbG9ja2VkUmVhc29uEigKJENIQVJBQ1RFUl9CTE9DS0VEX1JFQVNPTl9VTlNQRUNJRklFRBAAEikKJUNIQVJBQ1RFUl9CTE9DS0VEX1JFQVNPTl9TSEVFVF9MT0NLRUQQARIrCidDSEFSQUNURVJfQkxPQ0tFRF9SRUFTT05fQ0hBUkFDVEVSX0RFQUQQAhI0CjBDSEFSQUNURVJfQkxPQ0tFRF9SRUFTT05fTElWSU5HX0NIQVJBQ1RFUl9FWElTVFMQAxIpCiVDSEFSQUNURVJfQkxPQ0tFRF9SRUFTT05fU1RPUllfTE9DS0VEEAQSKAokQ0hBUkFDVEVSX0JMT0NLRURfUkVBU09OX05PVF9QRU5ESU5HEAUSLgoqQ0hBUkFDVEVSX0JMT0NLRURfUkVBU09OX0FXQUlUSU5HX0FQUFJPVkFMEAYqcQoPSGl0UG9pbnRzTWV0aG9kEiEKHUhJVF9QT0lOVFNfTUVUSE9EX1VOU1BFQ0lGSUVEEAASHQoZSElUX1BPSU5UU19NRVRIT0RfQVZFUkFHRRABEhwKGEhJVF9QT0lOVFNfTUVUSE9EX1JPTExFRBACKqACCglBbGlnbm1lbnQSGQoVQUxJR05NRU5UX1VOU1BFQ0lGSUVEEAASGQoVQUxJR05NRU5UX0xBV0ZVTF9HT09EEAESGgoWQUxJR05NRU5UX05FVVRSQUxfR09PRBACEhoKFkFMSUdOTUVOVF9DSEFPVElDX0dPT0QQAxIcChhBTElHTk1FTlRfTEFXRlVMX05FVVRSQUwQBBIVChFBTElHTk1FTlRfTkVVVFJBTBAFEh0KGUFMSUdOTUVOVF9DSEFPVElDX05FVVRSQUwQBhIZChVBTElHTk1FTlRfTEFXRlVMX0VWSUwQBxIaChZBTElHTk1FTlRfTkVVVFJBTF9FVklMEAgSGgoWQUxJR05NRU5UX0NIQU9USUNfRVZJTBAJKusCCgpEYW1hZ2VUeXBlEhsKF0RBTUFHRV9UWVBFX1VOU1BFQ0lGSUVEEAASFAoQREFNQUdFX1RZUEVfQUNJRBABEhsKF0RBTUFHRV9UWVBFX0JMVURHRU9OSU5HEAISFAoQREFNQUdFX1RZUEVfQ09MRBADEhQKEERBTUFHRV9UWVBFX0ZJUkUQBBIVChFEQU1BR0VfVFlQRV9GT1JDRRAFEhkKFURBTUFHRV9UWVBFX0xJR0hUTklORxAGEhgKFERBTUFHRV9UWVBFX05FQ1JPVElDEAcSGAoUREFNQUdFX1RZUEVfUElFUkNJTkcQCBIWChJEQU1BR0VfVFlQRV9QT0lTT04QCRIXChNEQU1BR0VfVFlQRV9QU1lDSElDEAoSFwoTREFNQUdFX1RZUEVfUkFESUFOVBALEhgKFERBTUFHRV9UWVBFX1NMQVNISU5HEAwSFwoTREFNQUdFX1RZUEVfVEhVTkRFUhANMoAKChBDaGFyYWN0ZXJTZXJ2aWNlEm4KD0NyZWF0ZUNoYXJhY3RlchIsLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNyZWF0ZUNoYXJhY3RlclJlcXVlc3QaLS5tZXVycGcuY2hhcmFjdGVycy52MS5DcmVhdGVDaGFyYWN0ZXJSZXNwb25zZRJqCgxHZXRDaGFyYWN0ZXISKS5tZXVycGcuY2hhcmFjdGVycy52MS5HZXRDaGFyYWN0ZXJSZXF1ZXN0GioubWV1cnBnLmNoYXJhY3RlcnMudjEuR2V0Q2hhcmFjdGVyUmVzcG9uc2UiA5ACAhJwCg5MaXN0Q2hhcmFjdGVycxIrLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkxpc3RDaGFyYWN0ZXJzUmVxdWVzdBosLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkxpc3RDaGFyYWN0ZXJzUmVzcG9uc2UiA5ACAhJuCg9VcGRhdGVDaGFyYWN0ZXISLC5tZXVycGcuY2hhcmFjdGVycy52MS5VcGRhdGVDaGFyYWN0ZXJSZXF1ZXN0Gi0ubWV1cnBnLmNoYXJhY3RlcnMudjEuVXBkYXRlQ2hhcmFjdGVyUmVzcG9uc2USfQoUVXBkYXRlQ2hhcmFjdGVyU3RvcnkSMS5tZXVycGcuY2hhcmFjdGVycy52MS5VcGRhdGVDaGFyYWN0ZXJTdG9yeVJlcXVlc3QaMi5tZXVycGcuY2hhcmFjdGVycy52MS5VcGRhdGVDaGFyYWN0ZXJTdG9yeVJlc3BvbnNlEm4KD1NldFN0b3J5RWRpdGluZxIsLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLlNldFN0b3J5RWRpdGluZ1JlcXVlc3QaLS5tZXVycGcuY2hhcmFjdGVycy52MS5TZXRTdG9yeUVkaXRpbmdSZXNwb25zZRJ0ChFNYXJrQ2hhcmFjdGVyRGVhZBIuLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLk1hcmtDaGFyYWN0ZXJEZWFkUmVxdWVzdBovLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLk1hcmtDaGFyYWN0ZXJEZWFkUmVzcG9uc2UScAoOR2V0TWFzdGVyTm90ZXMSKy5tZXVycGcuY2hhcmFjdGVycy52MS5HZXRNYXN0ZXJOb3Rlc1JlcXVlc3QaLC5tZXVycGcuY2hhcmFjdGVycy52MS5HZXRNYXN0ZXJOb3Rlc1Jlc3BvbnNlIgOQAgISdAoRVXBkYXRlTWFzdGVyTm90ZXMSLi5tZXVycGcuY2hhcmFjdGVycy52MS5VcGRhdGVNYXN0ZXJOb3Rlc1JlcXVlc3QaLy5tZXVycGcuY2hhcmFjdGVycy52MS5VcGRhdGVNYXN0ZXJOb3Rlc1Jlc3BvbnNlEnEKEEFwcHJvdmVDaGFyYWN0ZXISLS5tZXVycGcuY2hhcmFjdGVycy52MS5BcHByb3ZlQ2hhcmFjdGVyUmVxdWVzdBouLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkFwcHJvdmVDaGFyYWN0ZXJSZXNwb25zZRJuCg9SZWplY3RDaGFyYWN0ZXISLC5tZXVycGcuY2hhcmFjdGVycy52MS5SZWplY3RDaGFyYWN0ZXJSZXF1ZXN0Gi0ubWV1cnBnLmNoYXJhY3RlcnMudjEuUmVqZWN0Q2hhcmFjdGVyUmVzcG9uc2VC5wEKGGNvbS5tZXVycGcuY2hhcmFjdGVycy52MUIPQ2hhcmFjdGVyc1Byb3RvUAFaSGdpdGh1Yi5jb20vUHVyYUZvbWUvbWV1UlBHL2JhY2tlbmQvZ2VuL21ldXJwZy9jaGFyYWN0ZXJzL3YxO2NoYXJhY3RlcnN2MaICA01DWKoCFE1ldXJwZy5DaGFyYWN0ZXJzLlYxygIUTWV1cnBnXENoYXJhY3RlcnNcVjHiAiBNZXVycGdcQ2hhcmFjdGVyc1xWMVxHUEJNZXRhZGF0YeoCFk1ldXJwZzo6Q2hhcmFjdGVyczo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp, file_meurpg_rules_v1_rules]);
 
 /**
  * Character is a character as its reader may see it. It never carries the
@@ -757,7 +757,8 @@ export const CoinsSchema: GenMessage<Coins> = /*@__PURE__*/
 
 /**
  * BasicSheet is the short sheet of a minion or a story NPC: only what a
- * combat or a scene needs, typed by the master.
+ * combat or a scene needs, typed by the master. In combat it rolls
+ * initiative with initiative_bonus and attacks with its attacks.
  *
  * @generated from message meurpg.characters.v1.BasicSheet
  */
@@ -777,22 +778,27 @@ export type BasicSheet = Message<"meurpg.characters.v1.BasicSheet"> & {
   armorClass: number;
 
   /**
-   * Walking speed in feet: 0 to 300.
+   * Walking speed in feet: 0 to 300. The app shows it in metres
+   * (5 ft = 1.5 m).
    *
    * @generated from field: int32 speed_ft = 3;
    */
   speedFt: number;
 
   /**
-   * The attack bonus of its main attack: -10 to +30.
+   * Legacy, read only for sheets saved before Etapa 6. When the server
+   * reads such a sheet and can turn damage into an attack, it moves both
+   * fields into attacks and clears them here. A write that has attacks
+   * clears them. The attack bonus of the old main attack: -10 to +30.
    *
    * @generated from field: int32 attack_bonus = 4;
    */
   attackBonus: number;
 
   /**
-   * The damage of its main attack, such as "1d6+2 cortante": 0 to 40
-   * characters, one line.
+   * Legacy, read only for sheets saved before Etapa 6 (see attack_bonus).
+   * The old free text damage, such as "1d6+2 cortante": 0 to 40 characters,
+   * one line. It stays only while it could not become an attack.
    *
    * @generated from field: string damage = 5;
    */
@@ -804,6 +810,20 @@ export type BasicSheet = Message<"meurpg.characters.v1.BasicSheet"> & {
    * @generated from field: string description = 6;
    */
   description: string;
+
+  /**
+   * The number added to the d20 when it rolls initiative: -10 to +20.
+   *
+   * @generated from field: int32 initiative_bonus = 7;
+   */
+  initiativeBonus: number;
+
+  /**
+   * Its attacks: 0 to 3.
+   *
+   * @generated from field: repeated meurpg.characters.v1.BasicAttack attacks = 8;
+   */
+  attacks: BasicAttack[];
 };
 
 /**
@@ -812,6 +832,73 @@ export type BasicSheet = Message<"meurpg.characters.v1.BasicSheet"> & {
  */
 export const BasicSheetSchema: GenMessage<BasicSheet> = /*@__PURE__*/
   messageDesc(file_meurpg_characters_v1_characters, 10);
+
+/**
+ * BasicAttack is one attack of a basic sheet, with real dice: the d20 plus
+ * attack_bonus against the target's armor class, then, on a hit,
+ * damage_dice_count d damage_dice_sides plus damage_bonus.
+ *
+ * @generated from message meurpg.characters.v1.BasicAttack
+ */
+export type BasicAttack = Message<"meurpg.characters.v1.BasicAttack"> & {
+  /**
+   * What the attack is called, such as "Cimitarra": 1 to 40 characters,
+   * one line.
+   *
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * The number added to the d20: -10 to +20.
+   *
+   * @generated from field: int32 attack_bonus = 2;
+   */
+  attackBonus: number;
+
+  /**
+   * How many damage dice: 1 to 20.
+   *
+   * @generated from field: int32 damage_dice_count = 3;
+   */
+  damageDiceCount: number;
+
+  /**
+   * The faces of each damage die: 4, 6, 8, 10 or 12.
+   *
+   * @generated from field: int32 damage_dice_sides = 4;
+   */
+  damageDiceSides: number;
+
+  /**
+   * The number added to the damage: -20 to +40.
+   *
+   * @generated from field: int32 damage_bonus = 5;
+   */
+  damageBonus: number;
+
+  /**
+   * The kind of damage. Required: not DAMAGE_TYPE_UNSPECIFIED.
+   *
+   * @generated from field: meurpg.characters.v1.DamageType damage_type = 6;
+   */
+  damageType: DamageType;
+
+  /**
+   * The reach or range in feet: 0 to 600. 0 is a melee attack with the
+   * normal reach of 5 ft (1.5 m). The app does not edit it yet.
+   *
+   * @generated from field: int32 range_ft = 7;
+   */
+  rangeFt: number;
+};
+
+/**
+ * Describes the message meurpg.characters.v1.BasicAttack.
+ * Use `create(BasicAttackSchema)` to create a new message.
+ */
+export const BasicAttackSchema: GenMessage<BasicAttack> = /*@__PURE__*/
+  messageDesc(file_meurpg_characters_v1_characters, 11);
 
 /**
  * CharacterStory is a character's descriptive text: personality,
@@ -854,7 +941,7 @@ export type CharacterStory = Message<"meurpg.characters.v1.CharacterStory"> & {
  * Use `create(CharacterStorySchema)` to create a new message.
  */
 export const CharacterStorySchema: GenMessage<CharacterStory> = /*@__PURE__*/
-  messageDesc(file_meurpg_characters_v1_characters, 11);
+  messageDesc(file_meurpg_characters_v1_characters, 12);
 
 /**
  * Personality is the four personality boxes of the official sheet. Each is 0
@@ -897,7 +984,7 @@ export type Personality = Message<"meurpg.characters.v1.Personality"> & {
  * Use `create(PersonalitySchema)` to create a new message.
  */
 export const PersonalitySchema: GenMessage<Personality> = /*@__PURE__*/
-  messageDesc(file_meurpg_characters_v1_characters, 12);
+  messageDesc(file_meurpg_characters_v1_characters, 13);
 
 /**
  * Appearance is how the character looks. The short fields are free text,
@@ -962,7 +1049,7 @@ export type Appearance = Message<"meurpg.characters.v1.Appearance"> & {
  * Use `create(AppearanceSchema)` to create a new message.
  */
 export const AppearanceSchema: GenMessage<Appearance> = /*@__PURE__*/
-  messageDesc(file_meurpg_characters_v1_characters, 13);
+  messageDesc(file_meurpg_characters_v1_characters, 14);
 
 /**
  * CreateCharacterRequest describes the new character.
@@ -1010,7 +1097,7 @@ export type CreateCharacterRequest = Message<"meurpg.characters.v1.CreateCharact
  * Use `create(CreateCharacterRequestSchema)` to create a new message.
  */
 export const CreateCharacterRequestSchema: GenMessage<CreateCharacterRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_characters_v1_characters, 14);
+  messageDesc(file_meurpg_characters_v1_characters, 15);
 
 /**
  * CreateCharacterResponse returns the new character.
@@ -1031,7 +1118,7 @@ export type CreateCharacterResponse = Message<"meurpg.characters.v1.CreateCharac
  * Use `create(CreateCharacterResponseSchema)` to create a new message.
  */
 export const CreateCharacterResponseSchema: GenMessage<CreateCharacterResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_characters_v1_characters, 15);
+  messageDesc(file_meurpg_characters_v1_characters, 16);
 
 /**
  * GetCharacterRequest names a character of a campaign.
@@ -1055,7 +1142,7 @@ export type GetCharacterRequest = Message<"meurpg.characters.v1.GetCharacterRequ
  * Use `create(GetCharacterRequestSchema)` to create a new message.
  */
 export const GetCharacterRequestSchema: GenMessage<GetCharacterRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_characters_v1_characters, 16);
+  messageDesc(file_meurpg_characters_v1_characters, 17);
 
 /**
  * GetCharacterResponse returns the character.
@@ -1074,7 +1161,7 @@ export type GetCharacterResponse = Message<"meurpg.characters.v1.GetCharacterRes
  * Use `create(GetCharacterResponseSchema)` to create a new message.
  */
 export const GetCharacterResponseSchema: GenMessage<GetCharacterResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_characters_v1_characters, 17);
+  messageDesc(file_meurpg_characters_v1_characters, 18);
 
 /**
  * ListCharactersRequest names a campaign.
@@ -1093,7 +1180,7 @@ export type ListCharactersRequest = Message<"meurpg.characters.v1.ListCharacters
  * Use `create(ListCharactersRequestSchema)` to create a new message.
  */
 export const ListCharactersRequestSchema: GenMessage<ListCharactersRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_characters_v1_characters, 18);
+  messageDesc(file_meurpg_characters_v1_characters, 19);
 
 /**
  * ListCharactersResponse lists the characters the caller may see.
@@ -1112,7 +1199,7 @@ export type ListCharactersResponse = Message<"meurpg.characters.v1.ListCharacter
  * Use `create(ListCharactersResponseSchema)` to create a new message.
  */
 export const ListCharactersResponseSchema: GenMessage<ListCharactersResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_characters_v1_characters, 19);
+  messageDesc(file_meurpg_characters_v1_characters, 20);
 
 /**
  * UpdateCharacterRequest carries the character's new name and sheet. Both
@@ -1158,7 +1245,7 @@ export type UpdateCharacterRequest = Message<"meurpg.characters.v1.UpdateCharact
  * Use `create(UpdateCharacterRequestSchema)` to create a new message.
  */
 export const UpdateCharacterRequestSchema: GenMessage<UpdateCharacterRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_characters_v1_characters, 20);
+  messageDesc(file_meurpg_characters_v1_characters, 21);
 
 /**
  * UpdateCharacterResponse returns the character as saved.
@@ -1179,7 +1266,7 @@ export type UpdateCharacterResponse = Message<"meurpg.characters.v1.UpdateCharac
  * Use `create(UpdateCharacterResponseSchema)` to create a new message.
  */
 export const UpdateCharacterResponseSchema: GenMessage<UpdateCharacterResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_characters_v1_characters, 21);
+  messageDesc(file_meurpg_characters_v1_characters, 22);
 
 /**
  * UpdateCharacterStoryRequest carries the character's new story, which
@@ -1218,7 +1305,7 @@ export type UpdateCharacterStoryRequest = Message<"meurpg.characters.v1.UpdateCh
  * Use `create(UpdateCharacterStoryRequestSchema)` to create a new message.
  */
 export const UpdateCharacterStoryRequestSchema: GenMessage<UpdateCharacterStoryRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_characters_v1_characters, 22);
+  messageDesc(file_meurpg_characters_v1_characters, 23);
 
 /**
  * UpdateCharacterStoryResponse returns the character as saved.
@@ -1239,7 +1326,7 @@ export type UpdateCharacterStoryResponse = Message<"meurpg.characters.v1.UpdateC
  * Use `create(UpdateCharacterStoryResponseSchema)` to create a new message.
  */
 export const UpdateCharacterStoryResponseSchema: GenMessage<UpdateCharacterStoryResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_characters_v1_characters, 23);
+  messageDesc(file_meurpg_characters_v1_characters, 24);
 
 /**
  * SetStoryEditingRequest says whether the player may edit a character's
@@ -1272,7 +1359,7 @@ export type SetStoryEditingRequest = Message<"meurpg.characters.v1.SetStoryEditi
  * Use `create(SetStoryEditingRequestSchema)` to create a new message.
  */
 export const SetStoryEditingRequestSchema: GenMessage<SetStoryEditingRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_characters_v1_characters, 24);
+  messageDesc(file_meurpg_characters_v1_characters, 25);
 
 /**
  * SetStoryEditingResponse returns the character as saved.
@@ -1293,7 +1380,7 @@ export type SetStoryEditingResponse = Message<"meurpg.characters.v1.SetStoryEdit
  * Use `create(SetStoryEditingResponseSchema)` to create a new message.
  */
 export const SetStoryEditingResponseSchema: GenMessage<SetStoryEditingResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_characters_v1_characters, 25);
+  messageDesc(file_meurpg_characters_v1_characters, 26);
 
 /**
  * MarkCharacterDeadRequest names the character that died.
@@ -1317,7 +1404,7 @@ export type MarkCharacterDeadRequest = Message<"meurpg.characters.v1.MarkCharact
  * Use `create(MarkCharacterDeadRequestSchema)` to create a new message.
  */
 export const MarkCharacterDeadRequestSchema: GenMessage<MarkCharacterDeadRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_characters_v1_characters, 26);
+  messageDesc(file_meurpg_characters_v1_characters, 27);
 
 /**
  * MarkCharacterDeadResponse returns the dead character.
@@ -1338,7 +1425,7 @@ export type MarkCharacterDeadResponse = Message<"meurpg.characters.v1.MarkCharac
  * Use `create(MarkCharacterDeadResponseSchema)` to create a new message.
  */
 export const MarkCharacterDeadResponseSchema: GenMessage<MarkCharacterDeadResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_characters_v1_characters, 27);
+  messageDesc(file_meurpg_characters_v1_characters, 28);
 
 /**
  * GetMasterNotesRequest names a character of a campaign.
@@ -1362,7 +1449,7 @@ export type GetMasterNotesRequest = Message<"meurpg.characters.v1.GetMasterNotes
  * Use `create(GetMasterNotesRequestSchema)` to create a new message.
  */
 export const GetMasterNotesRequestSchema: GenMessage<GetMasterNotesRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_characters_v1_characters, 28);
+  messageDesc(file_meurpg_characters_v1_characters, 29);
 
 /**
  * GetMasterNotesResponse returns the master's notes about the character.
@@ -1390,7 +1477,7 @@ export type GetMasterNotesResponse = Message<"meurpg.characters.v1.GetMasterNote
  * Use `create(GetMasterNotesResponseSchema)` to create a new message.
  */
 export const GetMasterNotesResponseSchema: GenMessage<GetMasterNotesResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_characters_v1_characters, 29);
+  messageDesc(file_meurpg_characters_v1_characters, 30);
 
 /**
  * UpdateMasterNotesRequest carries the new notes, which replace the saved
@@ -1423,7 +1510,7 @@ export type UpdateMasterNotesRequest = Message<"meurpg.characters.v1.UpdateMaste
  * Use `create(UpdateMasterNotesRequestSchema)` to create a new message.
  */
 export const UpdateMasterNotesRequestSchema: GenMessage<UpdateMasterNotesRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_characters_v1_characters, 30);
+  messageDesc(file_meurpg_characters_v1_characters, 31);
 
 /**
  * UpdateMasterNotesResponse returns the notes as saved.
@@ -1451,7 +1538,7 @@ export type UpdateMasterNotesResponse = Message<"meurpg.characters.v1.UpdateMast
  * Use `create(UpdateMasterNotesResponseSchema)` to create a new message.
  */
 export const UpdateMasterNotesResponseSchema: GenMessage<UpdateMasterNotesResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_characters_v1_characters, 31);
+  messageDesc(file_meurpg_characters_v1_characters, 32);
 
 /**
  * ApproveCharacterRequest names the character to approve.
@@ -1475,7 +1562,7 @@ export type ApproveCharacterRequest = Message<"meurpg.characters.v1.ApproveChara
  * Use `create(ApproveCharacterRequestSchema)` to create a new message.
  */
 export const ApproveCharacterRequestSchema: GenMessage<ApproveCharacterRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_characters_v1_characters, 32);
+  messageDesc(file_meurpg_characters_v1_characters, 33);
 
 /**
  * ApproveCharacterResponse returns the approved character.
@@ -1496,7 +1583,7 @@ export type ApproveCharacterResponse = Message<"meurpg.characters.v1.ApproveChar
  * Use `create(ApproveCharacterResponseSchema)` to create a new message.
  */
 export const ApproveCharacterResponseSchema: GenMessage<ApproveCharacterResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_characters_v1_characters, 33);
+  messageDesc(file_meurpg_characters_v1_characters, 34);
 
 /**
  * RejectCharacterRequest names the character to reject.
@@ -1520,7 +1607,7 @@ export type RejectCharacterRequest = Message<"meurpg.characters.v1.RejectCharact
  * Use `create(RejectCharacterRequestSchema)` to create a new message.
  */
 export const RejectCharacterRequestSchema: GenMessage<RejectCharacterRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_characters_v1_characters, 34);
+  messageDesc(file_meurpg_characters_v1_characters, 35);
 
 /**
  * RejectCharacterResponse is empty: the character is gone.
@@ -1535,7 +1622,7 @@ export type RejectCharacterResponse = Message<"meurpg.characters.v1.RejectCharac
  * Use `create(RejectCharacterResponseSchema)` to create a new message.
  */
 export const RejectCharacterResponseSchema: GenMessage<RejectCharacterResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_characters_v1_characters, 35);
+  messageDesc(file_meurpg_characters_v1_characters, 36);
 
 /**
  * CharacterKind is what a character is for. The kind never changes after
@@ -1833,6 +1920,89 @@ export enum Alignment {
  */
 export const AlignmentSchema: GenEnum<Alignment> = /*@__PURE__*/
   enumDesc(file_meurpg_characters_v1_characters, 4);
+
+/**
+ * DamageType is a kind of damage of the SRD 5.1.
+ *
+ * @generated from enum meurpg.characters.v1.DamageType
+ */
+export enum DamageType {
+  /**
+   * @generated from enum value: DAMAGE_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: DAMAGE_TYPE_ACID = 1;
+   */
+  ACID = 1,
+
+  /**
+   * @generated from enum value: DAMAGE_TYPE_BLUDGEONING = 2;
+   */
+  BLUDGEONING = 2,
+
+  /**
+   * @generated from enum value: DAMAGE_TYPE_COLD = 3;
+   */
+  COLD = 3,
+
+  /**
+   * @generated from enum value: DAMAGE_TYPE_FIRE = 4;
+   */
+  FIRE = 4,
+
+  /**
+   * @generated from enum value: DAMAGE_TYPE_FORCE = 5;
+   */
+  FORCE = 5,
+
+  /**
+   * @generated from enum value: DAMAGE_TYPE_LIGHTNING = 6;
+   */
+  LIGHTNING = 6,
+
+  /**
+   * @generated from enum value: DAMAGE_TYPE_NECROTIC = 7;
+   */
+  NECROTIC = 7,
+
+  /**
+   * @generated from enum value: DAMAGE_TYPE_PIERCING = 8;
+   */
+  PIERCING = 8,
+
+  /**
+   * @generated from enum value: DAMAGE_TYPE_POISON = 9;
+   */
+  POISON = 9,
+
+  /**
+   * @generated from enum value: DAMAGE_TYPE_PSYCHIC = 10;
+   */
+  PSYCHIC = 10,
+
+  /**
+   * @generated from enum value: DAMAGE_TYPE_RADIANT = 11;
+   */
+  RADIANT = 11,
+
+  /**
+   * @generated from enum value: DAMAGE_TYPE_SLASHING = 12;
+   */
+  SLASHING = 12,
+
+  /**
+   * @generated from enum value: DAMAGE_TYPE_THUNDER = 13;
+   */
+  THUNDER = 13,
+}
+
+/**
+ * Describes the enum meurpg.characters.v1.DamageType.
+ */
+export const DamageTypeSchema: GenEnum<DamageType> = /*@__PURE__*/
+  enumDesc(file_meurpg_characters_v1_characters, 5);
 
 /**
  * CharacterService creates, reads and edits a campaign's characters.

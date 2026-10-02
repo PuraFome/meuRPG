@@ -18,26 +18,64 @@
   </mat-form-field>
 
   <mat-form-field appearance="outline" subscriptSizing="dynamic">
-    <mat-label>Deslocamento (pés)</mat-label>
-    <input matInput type="number" inputmode="numeric" formControlName="speedWalkFt" min="0" />
-    <mat-error>Zero ou mais.</mat-error>
+    <mat-label>Deslocamento (m)</mat-label>
+    <input
+      matInput
+      type="number"
+      inputmode="decimal"
+      formControlName="speedWalkM"
+      min="0"
+      max="90"
+      step="1.5"
+    />
+    <mat-error>De 0 a 90, de 1,5 em 1,5.</mat-error>
     @if (speedLabel(); as speed) {
       <mat-hint>Na ficha: {{ speed }}</mat-hint>
     }
   </mat-form-field>
 
   <mat-form-field appearance="outline" subscriptSizing="dynamic">
-    <mat-label>Bônus de ataque</mat-label>
-    <input matInput type="number" formControlName="attackBonus" />
-    <mat-error>Escreva um número, 0 se não houver.</mat-error>
+    <mat-label>Iniciativa</mat-label>
+    <input matInput formControlName="initiativeBonus" inputmode="numeric" autocomplete="off" />
+    <mat-error>Um número de −10 a +20.</mat-error>
+    <mat-hint>Somado ao d20. Aceita 2, +2 ou −1</mat-hint>
   </mat-form-field>
 
-  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="short__damage">
-    <mat-label>Dano</mat-label>
-    <input matInput formControlName="damage" maxlength="80" placeholder="1d6+1 perfurante" />
-    <mat-error>Escreva o dano, como 1d6+1 perfurante.</mat-error>
-    <mat-hint>Dados, bônus e tipo</mat-hint>
-  </mat-form-field>
+  <section class="short__attacks" aria-labelledby="ataques-heading">
+    <div class="short__attacks-head">
+      <div>
+        <h2 id="ataques-heading" class="short__attacks-title">Ataques</h2>
+        <p class="short__attacks-lead">
+          Até {{ maxAttacks }}. O app usa estes números quando o mestre rola o ataque do NPC.
+        </p>
+      </div>
+      <span class="short__count">{{ count() }} de {{ maxAttacks }} ataques</span>
+    </div>
+
+    @if (form().controls.legacyDamage.value && count() === 0) {
+      <p class="mr-notice mr-notice--neutral">
+        Dano antigo: {{ form().controls.legacyDamage.value }}. Refaça como um ataque abaixo, se
+        quiser.
+      </p>
+    }
+
+    <div class="short__cards">
+      @for (group of form().controls.attacks.controls; track group; let i = $index) {
+        <app-npc-attack-card [group]="group" [number]="i + 1" (remove)="removeAttack(i)" />
+      }
+    </div>
+
+    <div class="short__add">
+      <button mat-stroked-button type="button" #addButton [disabled]="full()" (click)="addAttack()">
+        <mat-icon aria-hidden="true">add</mat-icon>
+        Adicionar ataque
+      </button>
+      @if (full()) {
+        <span class="short__max">Máximo de {{ maxAttacks }} ataques</span>
+      }
+    </div>
+    <p class="mr-visually-hidden" role="status">{{ status() }}</p>
+  </section>
 
   <app-fiction-notice class="short__wide" />
 

@@ -21,6 +21,7 @@ import {
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { formatSpeedFt, SkillProficiency } from '../../core/characters/character-labels';
 import { AbilityKey, CharacterKind, CharacterState } from '../../core/characters/characters.types';
+import { damageTypeFromGen } from '../../core/characters/damage-type-gen';
 import { CONNECT_TRANSPORT } from '../../core/connect/transport';
 import {
   AttackVm,
@@ -195,8 +196,16 @@ function toBasicSheetVm(basic: GenBasicSheet): BasicSheetVm {
     hitPointsMax: basic.hitPointsMax,
     armorClass: basic.armorClass,
     speedWalkFt: basic.speedFt,
-    attackBonus: basic.attackBonus,
-    damage: basic.damage,
+    initiativeBonus: basic.initiativeBonus,
+    attacks: basic.attacks.map((a) => ({
+      name: a.name,
+      attackBonus: a.attackBonus,
+      damageDiceCount: a.damageDiceCount,
+      damageDiceSides: a.damageDiceSides,
+      damageBonus: a.damageBonus,
+      damageType: damageTypeFromGen(a.damageType),
+    })),
+    legacyDamage: basic.attacks.length === 0 ? basic.damage : '',
     description: basic.description,
   };
 }
@@ -254,8 +263,9 @@ const EMPTY_BASIC_SHEET_VM: BasicSheetVm = {
   hitPointsMax: 0,
   armorClass: 0,
   speedWalkFt: 0,
-  attackBonus: 0,
-  damage: '',
+  initiativeBonus: 0,
+  attacks: [],
+  legacyDamage: '',
   description: '',
 };
 

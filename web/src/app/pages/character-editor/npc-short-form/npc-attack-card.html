@@ -1,0 +1,51 @@
+<div class="card" role="group" [attr.aria-label]="'Ataque ' + number()" [formGroup]="group()">
+  <span class="card__title">Ataque {{ number() }}</span>
+  <div class="card__fields">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="card__name">
+      <mat-label>Nome do ataque</mat-label>
+      <input matInput formControlName="name" maxlength="40" autocomplete="off" />
+      <mat-error>Escreva o nome do ataque.</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="card__bonus">
+      <mat-label>Bônus de ataque</mat-label>
+      <input matInput formControlName="attackBonus" inputmode="numeric" autocomplete="off" />
+      <mat-error>Um número de −10 a +20.</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="card__dice">
+      <mat-label>Dados do dano</mat-label>
+      <input matInput formControlName="dice" autocomplete="off" placeholder="1d6" />
+      <mat-error>Como 1d6: de 1 a 20 dados de 4, 6, 8, 10 ou 12 faces.</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="card__bonus">
+      <mat-label>Bônus do dano</mat-label>
+      <input matInput formControlName="damageBonus" inputmode="numeric" autocomplete="off" />
+      <mat-error>Um número de −20 a +40.</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="card__type">
+      <mat-label>Tipo de dano</mat-label>
+      <mat-select formControlName="damageType">
+        @for (t of damageTypes; track t.key) {
+          <mat-option [value]="t.key">{{ t.label }}</mat-option>
+        }
+      </mat-select>
+      <mat-error>Escolha o tipo de dano.</mat-error>
+    </mat-form-field>
+
+    <button
+      mat-stroked-button
+      type="button"
+      class="card__remove"
+      [attr.aria-label]="'Remover o ataque ' + number()"
+      (click)="remove.emit()"
+    >
+      <mat-icon aria-hidden="true">delete</mat-icon>
+    </button>
+  </div>
+  @if (summary(); as text) {
+    <span class="card__summary">Na ficha: {{ text }}</span>
+  }
+</div>
