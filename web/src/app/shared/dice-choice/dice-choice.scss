@@ -1,0 +1,90 @@
+:host {
+  display: block;
+}
+
+.dice-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dice-choice__card {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  box-sizing: border-box;
+  min-height: 64px;
+  padding: 12px 16px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  cursor: pointer;
+
+  // The checked card: a 2px accent border, a soft accent ground and a filled
+  // dot, so the state never rides on colour alone.
+  &:has(:checked) {
+    padding: 11px 15px;
+    border: 2px solid var(--mr-accent);
+    background: var(--mr-accent-soft);
+  }
+
+  // The global focus ring, drawn on the card because the radio is hidden.
+  &:has(:focus-visible) {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  &:has(:disabled) {
+    cursor: default;
+  }
+
+  // Not in force: dashed and quiet, as the design draws an unavailable option.
+  &--off {
+    border-style: dashed;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.dice-choice__dot {
+  flex: none;
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--mr-control-line);
+  border-radius: 50%;
+  background: var(--mr-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  :checked ~ & {
+    border-color: var(--mr-ink);
+
+    &::after {
+      content: '';
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--mr-ink);
+    }
+  }
+}
+
+.dice-choice__text {
+  display: flex;
+  flex-direction: column;
+}
+
+.dice-choice__title {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 22px;
+}
+
+.dice-choice__desc {
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}

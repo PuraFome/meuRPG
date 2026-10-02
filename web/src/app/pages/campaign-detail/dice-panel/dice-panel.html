@@ -1,0 +1,58 @@
+<section class="mr-panel dice" aria-labelledby="dice-panel-heading">
+  <h2 class="mr-panel__title" id="dice-panel-heading">Dados</h2>
+  <p class="dice__lead">
+    Como os jogadores rolam os dados no combate. Os NPCs sempre rolam no app, e você pode digitar o valor.
+  </p>
+
+  <app-dice-choice
+    name="campaign-dice-mode"
+    label="Como os jogadores rolam"
+    [options]="options"
+    [value]="selected()"
+    (valueChange)="pick($event)"
+  />
+
+  @if (showChoices()) {
+    <div class="dice__choices">
+      <h3 class="dice__subtitle" id="dice-choices-heading">Escolha de cada jogador</h3>
+      @if (players().length === 0) {
+        <p class="mr-muted dice__empty">Ninguém entrou na campanha ainda. Convide os jogadores para ver a escolha de cada um.</p>
+      } @else {
+        <ul class="mr-list" aria-labelledby="dice-choices-heading">
+          @for (p of players(); track p.userId) {
+            <li class="mr-list__row">
+              <span class="mr-list__name">{{ p.name }}</span>
+              <span class="mr-tag">
+                <mat-icon aria-hidden="true">{{ p.dicePreference === DicePreference.PHYSICAL ? 'person' : 'casino' }}</mat-icon>
+                {{ preferenceLabel(p.dicePreference) }}
+              </span>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+  }
+
+  <p class="dice__note">
+    <mat-icon aria-hidden="true">info</mat-icon>
+    @if (showChoices()) {
+      Com as outras duas opções, estas escolhas ficam guardadas, mas não valem. A mudança vale a partir da próxima rolagem.
+    } @else {
+      A mudança vale a partir da próxima rolagem. As escolhas de cada jogador ficam guardadas, mas não valem.
+    }
+  </p>
+
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+
+  <div class="dice__actions">
+    <button matButton="outlined" type="button" [disabled]="!dirty() || saving()" (click)="save()">Salvar dados</button>
+    @if (saved() && !dirty()) {
+      <span class="dice__saved" role="status"><mat-icon aria-hidden="true">check</mat-icon>Salvo.</span>
+    }
+  </div>
+</section>

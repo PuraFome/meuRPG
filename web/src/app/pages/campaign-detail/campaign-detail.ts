@@ -12,6 +12,8 @@ import { describeConnectError } from '../../core/connect/connect-errors';
 import { campaignLead } from '../campaigns/campaign-copy';
 import { memberRows } from './campaign-detail.copy';
 import { CampaignCharacters } from './characters/campaign-characters';
+import { DicePanel } from './dice-panel/dice-panel';
+import { DicePreferencePanel } from './dice-preference-panel/dice-preference-panel';
 import { DocumentPanel } from './document-panel/document-panel';
 import { GalleryPanel } from './gallery-panel/gallery-panel';
 import { MapsPanel } from './maps-panel/maps-panel';
@@ -33,8 +35,10 @@ type PageState =
  * (MR-001, MR-002), the "Personagens" section (MR-003, MR-005; everyone),
  * "Sessão" (MR-006 / RN-01 for the master; for a player, only while a
  * session is open, with "Entrar na sessão", RN-06) and the master-only
- * "Convites". The master's "Membros" also lists who has not created a
- * character yet (`PendingMembers`, MR-024).
+ * "Convites". The dice settings (RN-18) sit under "Sessão": "Dados" for the
+ * master (E6-17), "Como você rola os dados" for a player (E6-18). The
+ * master's "Membros" also lists who has not created a character yet
+ * (`PendingMembers`, MR-024).
  *
  * From 1024px up the page has two columns: the play on the left (Sessão,
  * then the characters and NPCs) and the table on the right (Membros,
@@ -54,6 +58,8 @@ type PageState =
   imports: [
     CampaignCharacters,
     CampaignInvites,
+    DicePanel,
+    DicePreferencePanel,
     DocumentPanel,
     GalleryPanel,
     MapsPanel,

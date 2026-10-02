@@ -1,0 +1,108 @@
+package combat
+
+// DamageResult is a creature's hit points after damage.
+type DamageResult struct {
+	HP, TempHP int
+	// Absorbed is the part the temporary hit points took.
+	Absorbed int
+	// FellToZero says the creature was above 0 and is now at 0.
+	FellToZero bool
+	// Excess is the damage left over after reaching 0. A hit with Excess of
+	// at least the maximum hit points kills a character outright, which the
+	// master decides (RN-03).
+	Excess int
+}
+
+// ApplyDamage takes damage from the temporary hit points first, then from
+// the hit points, never below 0. A negative amount counts as 0.
+func ApplyDamage(hp, tempHP, amount int) DamageResult {
+	amount = max(amount, 0)
+	r := DamageResult{HP: hp, TempHP: tempHP}
+	r.Absorbed = min(amount, tempHP)
+	r.TempHP -= r.Absorbed
+	amount -= r.Absorbed
+	r.HP = max(hp-amount, 0)
+	r.Excess = max(amount-hp, 0)
+	r.FellToZero = hp > 0 && r.HP == 0
+	return r
+}
+
+// HealResult is a creature's hit points after healing.
+type HealResult struct {
+	HP int
+	// Healed is how many points were really restored, after the cap.
+	Healed int
+}
+
+// ApplyHeal restores hit points up to the maximum. A negative amount counts
+// as 0.
+func ApplyHeal(hp, maxHP, amount int) HealResult {
+	after := min(hp+max(amount, 0), max(maxHP, hp))
+	return HealResult{HP: after, Healed: after - hp}
+}
+
+// Death save outcomes.
+const (
+	// DeathSaveContinues: still making saves.
+	DeathSaveContinues = "continues"
+	// DeathSaveStable: three successes; the character stops rolling and
+	// stays at 0 hit points.
+	DeathSaveStable = "stable"
+	// DeathSaveDying: three failures. The master confirms the death
+	// (RN-03); the engine never kills a character by itself.
+	DeathSaveDying = "dying"
+	// DeathSaveRevived: a natural 20; the character is back with 1 hit
+	// point and both counts reset.
+	DeathSaveRevived = "revived"
+)
+
+// DeathSaveResult is the state after a death save or damage at 0.
+type DeathSaveResult struct {
+	Successes, Failures int
+	// Outcome is one of the DeathSave* constants.
+	Outcome string
+	// HP is 1 for DeathSaveRevived, otherwise 0.
+	HP int
+}
+
+// DeathSave applies one death save roll (d20Face, 1 to 20): 10 or more is a
+// success, less than 10 a failure, a natural 1 two failures, a natural 20
+// brings the character back with 1 hit point.
+func DeathSave(d20Face, successes, failures int) DeathSaveResult {
+	switch {
+	case d20Face == 20:
+		return DeathSaveResult{Outcome: DeathSaveRevived, HP: 1}
+	case d20Face == 1:
+		return tally(successes, failures+2)
+	case d20Face >= 10:
+		return tally(successes+1, failures)
+	}
+	return tally(successes, failures+1)
+}
+
+// DamageWhileDown is how many death save failures damage causes to a
+// character at 0 hit points: 1, or 2 for a critical hit. The caller adds
+// them with AddFailures.
+func DamageWhileDown(critical bool) int {
+	if critical {
+		return 2
+	}
+	return 1
+}
+
+// AddFailures adds death save failures (from DamageWhileDown).
+func AddFailures(successes, failures, n int) DeathSaveResult {
+	return tally(successes, failures+n)
+}
+
+// tally caps both counts at 3 and names the state.
+func tally(successes, failures int) DeathSaveResult {
+	r := DeathSaveResult{Successes: min(successes, 3), Failures: min(failures, 3), Outcome: DeathSaveContinues}
+	switch {
+	case r.Failures >= 3:
+		r.Outcome = DeathSaveDying
+	case r.Successes >= 3:
+		r.Outcome = DeathSaveStable
+	}
+	return r
+}

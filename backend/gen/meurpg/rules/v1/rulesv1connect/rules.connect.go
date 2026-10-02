@@ -57,6 +57,9 @@ const (
 	// ContentServiceListContentProcedure is the fully-qualified name of the ContentService's
 	// ListContent RPC.
 	ContentServiceListContentProcedure = "/meurpg.rules.v1.ContentService/ListContent"
+	// ContentServiceGetSpellDetailsProcedure is the fully-qualified name of the ContentService's
+	// GetSpellDetails RPC.
+	ContentServiceGetSpellDetailsProcedure = "/meurpg.rules.v1.ContentService/GetSpellDetails"
 )
 
 // ContentServiceClient is a client for the meurpg.rules.v1.ContentService service.
@@ -75,6 +78,17 @@ type ContentServiceClient interface {
 	//   - `not_found`: the campaign does not exist, or the caller is not a
 	//     member of it.
 	ListContent(context.Context, *connect.Request[v1.ListContentRequest]) (*connect.Response[v1.ListContentResponse], error)
+	// GetSpellDetails returns everything the SRD says about one spell,
+	// structured: casting time, range, components, duration, attack or saving
+	// throw, damage and healing by level, and the English description. It is
+	// what the spell's "?" dialog shows; ListContent keeps spells light on
+	// purpose. Same access as ListContent: any member of the campaign, a
+	// pending member included.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, the caller is not a
+	//     member of it, or no spell has that key.
+	GetSpellDetails(context.Context, *connect.Request[v1.GetSpellDetailsRequest]) (*connect.Response[v1.GetSpellDetailsResponse], error)
 }
 
 // NewContentServiceClient constructs a client for the meurpg.rules.v1.ContentService service. By
@@ -95,17 +109,30 @@ func NewContentServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
+		getSpellDetails: connect.NewClient[v1.GetSpellDetailsRequest, v1.GetSpellDetailsResponse](
+			httpClient,
+			baseURL+ContentServiceGetSpellDetailsProcedure,
+			connect.WithSchema(contentServiceMethods.ByName("GetSpellDetails")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // contentServiceClient implements ContentServiceClient.
 type contentServiceClient struct {
-	listContent *connect.Client[v1.ListContentRequest, v1.ListContentResponse]
+	listContent     *connect.Client[v1.ListContentRequest, v1.ListContentResponse]
+	getSpellDetails *connect.Client[v1.GetSpellDetailsRequest, v1.GetSpellDetailsResponse]
 }
 
 // ListContent calls meurpg.rules.v1.ContentService.ListContent.
 func (c *contentServiceClient) ListContent(ctx context.Context, req *connect.Request[v1.ListContentRequest]) (*connect.Response[v1.ListContentResponse], error) {
 	return c.listContent.CallUnary(ctx, req)
+}
+
+// GetSpellDetails calls meurpg.rules.v1.ContentService.GetSpellDetails.
+func (c *contentServiceClient) GetSpellDetails(ctx context.Context, req *connect.Request[v1.GetSpellDetailsRequest]) (*connect.Response[v1.GetSpellDetailsResponse], error) {
+	return c.getSpellDetails.CallUnary(ctx, req)
 }
 
 // ContentServiceHandler is an implementation of the meurpg.rules.v1.ContentService service.
@@ -124,6 +151,17 @@ type ContentServiceHandler interface {
 	//   - `not_found`: the campaign does not exist, or the caller is not a
 	//     member of it.
 	ListContent(context.Context, *connect.Request[v1.ListContentRequest]) (*connect.Response[v1.ListContentResponse], error)
+	// GetSpellDetails returns everything the SRD says about one spell,
+	// structured: casting time, range, components, duration, attack or saving
+	// throw, damage and healing by level, and the English description. It is
+	// what the spell's "?" dialog shows; ListContent keeps spells light on
+	// purpose. Same access as ListContent: any member of the campaign, a
+	// pending member included.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, the caller is not a
+	//     member of it, or no spell has that key.
+	GetSpellDetails(context.Context, *connect.Request[v1.GetSpellDetailsRequest]) (*connect.Response[v1.GetSpellDetailsResponse], error)
 }
 
 // NewContentServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -140,10 +178,19 @@ func NewContentServiceHandler(svc ContentServiceHandler, opts ...connect.Handler
 		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
+	contentServiceGetSpellDetailsHandler := connect.NewUnaryHandler(
+		ContentServiceGetSpellDetailsProcedure,
+		svc.GetSpellDetails,
+		connect.WithSchema(contentServiceMethods.ByName("GetSpellDetails")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/meurpg.rules.v1.ContentService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ContentServiceListContentProcedure:
 			contentServiceListContentHandler.ServeHTTP(w, r)
+		case ContentServiceGetSpellDetailsProcedure:
+			contentServiceGetSpellDetailsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -155,4 +202,8 @@ type UnimplementedContentServiceHandler struct{}
 
 func (UnimplementedContentServiceHandler) ListContent(context.Context, *connect.Request[v1.ListContentRequest]) (*connect.Response[v1.ListContentResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.rules.v1.ContentService.ListContent is not implemented"))
+}
+
+func (UnimplementedContentServiceHandler) GetSpellDetails(context.Context, *connect.Request[v1.GetSpellDetailsRequest]) (*connect.Response[v1.GetSpellDetailsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.rules.v1.ContentService.GetSpellDetails is not implemented"))
 }

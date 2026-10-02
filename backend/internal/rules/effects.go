@@ -65,8 +65,8 @@ type Effect struct {
 	Ritual      bool   `json:"ritual,omitempty"`
 
 	// resource: a use-limited resource. Max is an Int formula; Recharge is
-	// short_rest, long_rest, dawn or none. Loaded and compiled now, used by
-	// the session engine in Etapa 6 (RN-02).
+	// short_rest, long_rest, dawn or none. It becomes Derived.Resources; the
+	// session counts the uses (RN-02).
 	Resource string `json:"resource,omitempty"`
 	Max      string `json:"max,omitempty"`
 	Recharge string `json:"recharge,omitempty"`
@@ -78,7 +78,9 @@ type Effect struct {
 	From   []string `json:"from,omitempty"`
 
 	// grant_action: an action for "Sua vez" (MR-014). Economy is action,
-	// bonus_action, reaction, free or movement. Used in Etapa 6.
+	// bonus_action, reaction, free or movement. It becomes Derived.Actions
+	// (package combat reads it); the standard actions are in
+	// effects/standard_actions.json.
 	Economy string `json:"economy,omitempty"`
 
 	// handler: the name of a Go function for what data cannot say, from

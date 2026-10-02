@@ -25,6 +25,9 @@ Usar as mesmas palavras nas conversas, nos documentos e no código evita muita c
 | Intenção de login | Algo que a pessoa pediu antes de entrar e que o servidor conclui logo depois do login, como aceitar um convite. Fica só no servidor, dentro do estado do login. | `intent`, `IntentHandler` |
 | Cena de RP | Momento fora de combate, aberto por um ponto de interesse. | `scene` |
 | Ação da cena | Um item da lista simples do que o jogador pode fazer ou rolar numa cena. | `scene_action` |
+| Economia de ação | O que o personagem pode gastar num turno: uma ação, uma ação bônus, uma reação e o movimento (o deslocamento, dobrado depois da Disparada). O motor calcula o que ainda está disponível (MR-014). | `Economy`, `TurnOptions` |
+| Recurso | Uma capacidade com usos limitados, como Retomar o Fôlego (1 uso por descanso curto), Ki ou Fúria. A ficha diz o máximo e quando volta; a sessão conta os usos gastos. | `Resource`, `Derived.Resources` |
+| Código de motivo | O motivo de uma opção estar desabilitada, como `NO_SLOT` ou `ACTION_USED`. O servidor manda só o código; o app escreve a frase em português. | `DisabledReason` |
 | Encontro | Um combate num mapa, com iniciativa, rodadas e turnos. | `encounter` |
 | Combatente | Um personagem dentro de um encontro. Guarda PV atual, iniciativa e posição daquele combate. | `combatant` |
 | Iniciativa | A rolagem que define a ordem dos turnos num encontro. Cada combatente rola a própria, inclusive NPCs iguais (RN-19). | `initiative` |
@@ -61,7 +64,7 @@ Usar as mesmas palavras nas conversas, nos documentos e no código evita muita c
 | Masmorra | Mapa desenhado com paredes (inclusive falsas), piso, água, portas, armadilhas e baús (normais ou mímicos). | `dungeon` |
 | Modo de XP | Como a campanha dá XP: por inimigos derrotados, por ouro ou por marcos. | `xp_mode` |
 | Conteúdo da mesa (homebrew) | Raças, classes, subclasses, antecedentes e regras que não vêm no SRD e que a mesa cadastra. Vale por campanha; o jogador pode propor, e o mestre aprova (MR-025, MR-026). | `rules_pack` |
-| Dado físico ou do app | Como o jogador rola: no app, ou no dado de verdade, digitando o resultado. O mestre decide se a campanha deixa escolher (RN-18). | `dice_mode` |
+| Dado físico ou do app | Como o jogador rola: no app, ou no dado de verdade, digitando o resultado. O mestre decide se a campanha deixa escolher (RN-18); a escolha de cada jogador é a preferência de dados. | `dice_mode`, `dice_preference` |
 | Marco (milestone) | No modo de XP por marcos, o mestre sobe o nível do grupo quando a história chega num ponto combinado. | `milestone` |
 | Etapa | Uma fase do roadmap deste guia. Usamos "etapa" para não confundir com o marco de XP. | — |
 

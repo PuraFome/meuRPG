@@ -1,0 +1,14 @@
+{
+  "actions": [
+    {"key": "attack", "name_pt": "Atacar", "economy": "action"},
+    {"key": "cast-a-spell", "name_pt": "Conjurar uma magia", "economy": "action"},
+    {"key": "dash", "name_pt": "Disparada", "economy": "action"},
+    {"key": "disengage", "name_pt": "Desengajar", "economy": "action"},
+    {"key": "dodge", "name_pt": "Esquivar", "economy": "action"},
+    {"key": "help", "name_pt": "Ajudar", "economy": "action"},
+    {"key": "hide", "name_pt": "Esconder", "economy": "action"},
+    {"key": "ready", "name_pt": "Preparar", "economy": "action"},
+    {"key": "search", "name_pt": "Procurar", "economy": "action"},
+    {"key": "use-an-object", "name_pt": "Usar um objeto", "economy": "action"}
+  ]
+}

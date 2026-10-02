@@ -170,6 +170,23 @@ service CampaignService {
   //     uses left. The error carries an InviteUnusable detail that says
   //     which, so the app can show a clear message.
   rpc AcceptInvite(AcceptInviteRequest) returns (AcceptInviteResponse);
+
+  // SetCampaignDiceMode sets how the campaign's players roll dice (RN-18,
+  // MR-013): everyone in the app, everyone with their own dice, or each
+  // player's choice. Only the campaign's master may call it. It applies
+  // from the next roll, and the players' own choices are kept, whatever
+  // the mode. Setting the mode it already has is not an error.
+  //
+  // Errors: `invalid_argument` for an unspecified or unknown mode.
+  rpc SetCampaignDiceMode(SetCampaignDiceModeRequest) returns (SetCampaignDiceModeResponse);
+
+  // SetMyDicePreference sets how the caller likes to roll in this campaign
+  // (RN-18, MR-014). Any active member may call it, the master too. It is
+  // always saved, but it only counts while the campaign's mode is
+  // DICE_MODE_PLAYERS_CHOOSE. A pending member gets `not_found`.
+  //
+  // Errors: `invalid_argument` for an unspecified or unknown preference.
+  rpc SetMyDicePreference(SetMyDicePreferenceRequest) returns (SetMyDicePreferenceResponse);
 }
 
 // Role is what a member may do in one campaign (RN-05). The app shows
@@ -193,6 +210,28 @@ enum XpMode {
   XP_MODE_MILESTONES = 3;
 }
 
+// DiceMode is how a campaign's players roll dice (RN-18). NPCs always roll
+// in the app, whatever the mode.
+enum DiceMode {
+  DICE_MODE_UNSPECIFIED = 0;
+  // Each player chooses, with SetMyDicePreference. The default.
+  DICE_MODE_PLAYERS_CHOOSE = 1;
+  // Everyone rolls in the app; nobody types a result.
+  DICE_MODE_APP = 2;
+  // Everyone rolls real dice and types the sum.
+  DICE_MODE_PHYSICAL = 3;
+}
+
+// DicePreference is how one member likes to roll (RN-18). It only counts
+// when the campaign's mode is DICE_MODE_PLAYERS_CHOOSE.
+enum DicePreference {
+  DICE_PREFERENCE_UNSPECIFIED = 0;
+  // "No app": the app rolls. The default.
+  DICE_PREFERENCE_APP = 1;
+  // "Meus próprios dados": the player rolls real dice and types the sum.
+  DICE_PREFERENCE_PHYSICAL = 2;
+}
+
 // Campaign is a campaign as seen by one of its members.
 message Campaign {
   // Stable campaign ID (a UUID).
@@ -208,6 +247,14 @@ message Campaign {
   // character yet. Then only id, name and my_role (ROLE_PLAYER) are set:
   // xp_mode is unspecified and created_at is unset.
   bool awaiting_approval = 6;
+  // How the campaign's players roll dice (RN-18). Set for every member;
+  // unspecified for a pending member.
+  DiceMode dice_mode = 7;
+  // The caller's own dice preference in this campaign (RN-18). Only
+  // GetCampaign and SetMyDicePreference's callers read it from here; it is
+  // unspecified in the other calls that return a Campaign (the list calls
+  // do not read it), and for a pending member.
+  DicePreference my_dice_preference = 8;
 }
 
 // PendingMember is a pending member (RN-15, MR-024) who has not created a
@@ -237,6 +284,12 @@ message Member {
   // Empty if they have not chosen one yet.
   string display_name = 3;
   google.protobuf.Timestamp joined_at = 4;
+  // The member's dice preference (RN-18). Only the campaign's master gets
+  // it, so the "Dados" panel can list each player's choice: for a player
+  // who calls ListMembers it is unspecified. It is a field of Member, not a
+  // call of its own, because that panel already lists the members. A
+  // member's own preference is in Campaign.my_dice_preference.
+  DicePreference dice_preference = 5;
 }
 
 // InviteState says whether an invite still works, and why not.
@@ -408,4 +461,28 @@ message AcceptInviteResponse {
   // call, and nothing changed. False when they just joined, or when a
   // pending member was just promoted by an invite without approval.
   bool already_member = 2;
+}
+
+// SetCampaignDiceModeRequest names the campaign and the new mode.
+message SetCampaignDiceModeRequest {
+  string campaign_id = 1;
+  // Required.
+  DiceMode mode = 2;
+}
+
+// SetCampaignDiceModeResponse returns the mode now in force.
+message SetCampaignDiceModeResponse {
+  DiceMode mode = 1;
+}
+
+// SetMyDicePreferenceRequest names the campaign and the caller's choice.
+message SetMyDicePreferenceRequest {
+  string campaign_id = 1;
+  // Required.
+  DicePreference preference = 2;
+}
+
+// SetMyDicePreferenceResponse returns the preference now saved.
+message SetMyDicePreferenceResponse {
+  DicePreference preference = 1;
 }

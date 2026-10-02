@@ -136,6 +136,116 @@ func (XpMode) EnumDescriptor() ([]byte, []int) {
 	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{1}
 }
 
+// DiceMode is how a campaign's players roll dice (RN-18). NPCs always roll
+// in the app, whatever the mode.
+type DiceMode int32
+
+const (
+	DiceMode_DICE_MODE_UNSPECIFIED DiceMode = 0
+	// Each player chooses, with SetMyDicePreference. The default.
+	DiceMode_DICE_MODE_PLAYERS_CHOOSE DiceMode = 1
+	// Everyone rolls in the app; nobody types a result.
+	DiceMode_DICE_MODE_APP DiceMode = 2
+	// Everyone rolls real dice and types the sum.
+	DiceMode_DICE_MODE_PHYSICAL DiceMode = 3
+)
+
+// Enum value maps for DiceMode.
+var (
+	DiceMode_name = map[int32]string{
+		0: "DICE_MODE_UNSPECIFIED",
+		1: "DICE_MODE_PLAYERS_CHOOSE",
+		2: "DICE_MODE_APP",
+		3: "DICE_MODE_PHYSICAL",
+	}
+	DiceMode_value = map[string]int32{
+		"DICE_MODE_UNSPECIFIED":    0,
+		"DICE_MODE_PLAYERS_CHOOSE": 1,
+		"DICE_MODE_APP":            2,
+		"DICE_MODE_PHYSICAL":       3,
+	}
+)
+
+func (x DiceMode) Enum() *DiceMode {
+	p := new(DiceMode)
+	*p = x
+	return p
+}
+
+func (x DiceMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (DiceMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_meurpg_campaigns_v1_campaigns_proto_enumTypes[2].Descriptor()
+}
+
+func (DiceMode) Type() protoreflect.EnumType {
+	return &file_meurpg_campaigns_v1_campaigns_proto_enumTypes[2]
+}
+
+func (x DiceMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use DiceMode.Descriptor instead.
+func (DiceMode) EnumDescriptor() ([]byte, []int) {
+	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{2}
+}
+
+// DicePreference is how one member likes to roll (RN-18). It only counts
+// when the campaign's mode is DICE_MODE_PLAYERS_CHOOSE.
+type DicePreference int32
+
+const (
+	DicePreference_DICE_PREFERENCE_UNSPECIFIED DicePreference = 0
+	// "No app": the app rolls. The default.
+	DicePreference_DICE_PREFERENCE_APP DicePreference = 1
+	// "Meus próprios dados": the player rolls real dice and types the sum.
+	DicePreference_DICE_PREFERENCE_PHYSICAL DicePreference = 2
+)
+
+// Enum value maps for DicePreference.
+var (
+	DicePreference_name = map[int32]string{
+		0: "DICE_PREFERENCE_UNSPECIFIED",
+		1: "DICE_PREFERENCE_APP",
+		2: "DICE_PREFERENCE_PHYSICAL",
+	}
+	DicePreference_value = map[string]int32{
+		"DICE_PREFERENCE_UNSPECIFIED": 0,
+		"DICE_PREFERENCE_APP":         1,
+		"DICE_PREFERENCE_PHYSICAL":    2,
+	}
+)
+
+func (x DicePreference) Enum() *DicePreference {
+	p := new(DicePreference)
+	*p = x
+	return p
+}
+
+func (x DicePreference) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (DicePreference) Descriptor() protoreflect.EnumDescriptor {
+	return file_meurpg_campaigns_v1_campaigns_proto_enumTypes[3].Descriptor()
+}
+
+func (DicePreference) Type() protoreflect.EnumType {
+	return &file_meurpg_campaigns_v1_campaigns_proto_enumTypes[3]
+}
+
+func (x DicePreference) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use DicePreference.Descriptor instead.
+func (DicePreference) EnumDescriptor() ([]byte, []int) {
+	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{3}
+}
+
 // InviteState says whether an invite still works, and why not.
 type InviteState int32
 
@@ -180,11 +290,11 @@ func (x InviteState) String() string {
 }
 
 func (InviteState) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_campaigns_v1_campaigns_proto_enumTypes[2].Descriptor()
+	return file_meurpg_campaigns_v1_campaigns_proto_enumTypes[4].Descriptor()
 }
 
 func (InviteState) Type() protoreflect.EnumType {
-	return &file_meurpg_campaigns_v1_campaigns_proto_enumTypes[2]
+	return &file_meurpg_campaigns_v1_campaigns_proto_enumTypes[4]
 }
 
 func (x InviteState) Number() protoreflect.EnumNumber {
@@ -193,7 +303,7 @@ func (x InviteState) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use InviteState.Descriptor instead.
 func (InviteState) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{2}
+	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{4}
 }
 
 // Campaign is a campaign as seen by one of its members.
@@ -212,6 +322,14 @@ type Campaign struct {
 	// character yet. Then only id, name and my_role (ROLE_PLAYER) are set:
 	// xp_mode is unspecified and created_at is unset.
 	AwaitingApproval bool `protobuf:"varint,6,opt,name=awaiting_approval,json=awaitingApproval,proto3" json:"awaiting_approval,omitempty"`
+	// How the campaign's players roll dice (RN-18). Set for every member;
+	// unspecified for a pending member.
+	DiceMode DiceMode `protobuf:"varint,7,opt,name=dice_mode,json=diceMode,proto3,enum=meurpg.campaigns.v1.DiceMode" json:"dice_mode,omitempty"`
+	// The caller's own dice preference in this campaign (RN-18). Only
+	// GetCampaign and SetMyDicePreference's callers read it from here; it is
+	// unspecified in the other calls that return a Campaign (the list calls
+	// do not read it), and for a pending member.
+	MyDicePreference DicePreference `protobuf:"varint,8,opt,name=my_dice_preference,json=myDicePreference,proto3,enum=meurpg.campaigns.v1.DicePreference" json:"my_dice_preference,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -286,6 +404,20 @@ func (x *Campaign) GetAwaitingApproval() bool {
 		return x.AwaitingApproval
 	}
 	return false
+}
+
+func (x *Campaign) GetDiceMode() DiceMode {
+	if x != nil {
+		return x.DiceMode
+	}
+	return DiceMode_DICE_MODE_UNSPECIFIED
+}
+
+func (x *Campaign) GetMyDicePreference() DicePreference {
+	if x != nil {
+		return x.MyDicePreference
+	}
+	return DicePreference_DICE_PREFERENCE_UNSPECIFIED
 }
 
 // PendingMember is a pending member (RN-15, MR-024) who has not created a
@@ -375,10 +507,16 @@ type Member struct {
 	Role   Role   `protobuf:"varint,2,opt,name=role,proto3,enum=meurpg.campaigns.v1.Role" json:"role,omitempty"`
 	// The name the member chose in the app (IdentityService.UpdateProfile).
 	// Empty if they have not chosen one yet.
-	DisplayName   string                 `protobuf:"bytes,3,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
-	JoinedAt      *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=joined_at,json=joinedAt,proto3" json:"joined_at,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	DisplayName string                 `protobuf:"bytes,3,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	JoinedAt    *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=joined_at,json=joinedAt,proto3" json:"joined_at,omitempty"`
+	// The member's dice preference (RN-18). Only the campaign's master gets
+	// it, so the "Dados" panel can list each player's choice: for a player
+	// who calls ListMembers it is unspecified. It is a field of Member, not a
+	// call of its own, because that panel already lists the members. A
+	// member's own preference is in Campaign.my_dice_preference.
+	DicePreference DicePreference `protobuf:"varint,5,opt,name=dice_preference,json=dicePreference,proto3,enum=meurpg.campaigns.v1.DicePreference" json:"dice_preference,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *Member) Reset() {
@@ -437,6 +575,13 @@ func (x *Member) GetJoinedAt() *timestamppb.Timestamp {
 		return x.JoinedAt
 	}
 	return nil
+}
+
+func (x *Member) GetDicePreference() DicePreference {
+	if x != nil {
+		return x.DicePreference
+	}
+	return DicePreference_DICE_PREFERENCE_UNSPECIFIED
 }
 
 // Invite describes an invite without its secret token.
@@ -1570,11 +1715,209 @@ func (x *AcceptInviteResponse) GetAlreadyMember() bool {
 	return false
 }
 
+// SetCampaignDiceModeRequest names the campaign and the new mode.
+type SetCampaignDiceModeRequest struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	// Required.
+	Mode          DiceMode `protobuf:"varint,2,opt,name=mode,proto3,enum=meurpg.campaigns.v1.DiceMode" json:"mode,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetCampaignDiceModeRequest) Reset() {
+	*x = SetCampaignDiceModeRequest{}
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetCampaignDiceModeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetCampaignDiceModeRequest) ProtoMessage() {}
+
+func (x *SetCampaignDiceModeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetCampaignDiceModeRequest.ProtoReflect.Descriptor instead.
+func (*SetCampaignDiceModeRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *SetCampaignDiceModeRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *SetCampaignDiceModeRequest) GetMode() DiceMode {
+	if x != nil {
+		return x.Mode
+	}
+	return DiceMode_DICE_MODE_UNSPECIFIED
+}
+
+// SetCampaignDiceModeResponse returns the mode now in force.
+type SetCampaignDiceModeResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Mode          DiceMode               `protobuf:"varint,1,opt,name=mode,proto3,enum=meurpg.campaigns.v1.DiceMode" json:"mode,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetCampaignDiceModeResponse) Reset() {
+	*x = SetCampaignDiceModeResponse{}
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetCampaignDiceModeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetCampaignDiceModeResponse) ProtoMessage() {}
+
+func (x *SetCampaignDiceModeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetCampaignDiceModeResponse.ProtoReflect.Descriptor instead.
+func (*SetCampaignDiceModeResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *SetCampaignDiceModeResponse) GetMode() DiceMode {
+	if x != nil {
+		return x.Mode
+	}
+	return DiceMode_DICE_MODE_UNSPECIFIED
+}
+
+// SetMyDicePreferenceRequest names the campaign and the caller's choice.
+type SetMyDicePreferenceRequest struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	// Required.
+	Preference    DicePreference `protobuf:"varint,2,opt,name=preference,proto3,enum=meurpg.campaigns.v1.DicePreference" json:"preference,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetMyDicePreferenceRequest) Reset() {
+	*x = SetMyDicePreferenceRequest{}
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetMyDicePreferenceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetMyDicePreferenceRequest) ProtoMessage() {}
+
+func (x *SetMyDicePreferenceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetMyDicePreferenceRequest.ProtoReflect.Descriptor instead.
+func (*SetMyDicePreferenceRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *SetMyDicePreferenceRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *SetMyDicePreferenceRequest) GetPreference() DicePreference {
+	if x != nil {
+		return x.Preference
+	}
+	return DicePreference_DICE_PREFERENCE_UNSPECIFIED
+}
+
+// SetMyDicePreferenceResponse returns the preference now saved.
+type SetMyDicePreferenceResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Preference    DicePreference         `protobuf:"varint,1,opt,name=preference,proto3,enum=meurpg.campaigns.v1.DicePreference" json:"preference,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetMyDicePreferenceResponse) Reset() {
+	*x = SetMyDicePreferenceResponse{}
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetMyDicePreferenceResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetMyDicePreferenceResponse) ProtoMessage() {}
+
+func (x *SetMyDicePreferenceResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_campaigns_v1_campaigns_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetMyDicePreferenceResponse.ProtoReflect.Descriptor instead.
+func (*SetMyDicePreferenceResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *SetMyDicePreferenceResponse) GetPreference() DicePreference {
+	if x != nil {
+		return x.Preference
+	}
+	return DicePreference_DICE_PREFERENCE_UNSPECIFIED
+}
+
 var File_meurpg_campaigns_v1_campaigns_proto protoreflect.FileDescriptor
 
 const file_meurpg_campaigns_v1_campaigns_proto_rawDesc = "" +
 	"\n" +
-	"#meurpg/campaigns/v1/campaigns.proto\x12\x13meurpg.campaigns.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x80\x02\n" +
+	"#meurpg/campaigns/v1/campaigns.proto\x12\x13meurpg.campaigns.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x8f\x03\n" +
 	"\bCampaign\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x124\n" +
@@ -1582,18 +1925,21 @@ const file_meurpg_campaigns_v1_campaigns_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x122\n" +
 	"\amy_role\x18\x05 \x01(\x0e2\x19.meurpg.campaigns.v1.RoleR\x06myRole\x12+\n" +
-	"\x11awaiting_approval\x18\x06 \x01(\bR\x10awaitingApproval\"\xbf\x01\n" +
+	"\x11awaiting_approval\x18\x06 \x01(\bR\x10awaitingApproval\x12:\n" +
+	"\tdice_mode\x18\a \x01(\x0e2\x1d.meurpg.campaigns.v1.DiceModeR\bdiceMode\x12Q\n" +
+	"\x12my_dice_preference\x18\b \x01(\x0e2#.meurpg.campaigns.v1.DicePreferenceR\x10myDicePreference\"\xbf\x01\n" +
 	"\rPendingMember\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12!\n" +
 	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x127\n" +
 	"\tjoined_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\bjoinedAt\x129\n" +
 	"\n" +
-	"expires_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\"\xac\x01\n" +
+	"expires_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\"\xfa\x01\n" +
 	"\x06Member\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12-\n" +
 	"\x04role\x18\x02 \x01(\x0e2\x19.meurpg.campaigns.v1.RoleR\x04role\x12!\n" +
 	"\fdisplay_name\x18\x03 \x01(\tR\vdisplayName\x127\n" +
-	"\tjoined_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\bjoinedAt\"\xe6\x02\n" +
+	"\tjoined_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\bjoinedAt\x12L\n" +
+	"\x0fdice_preference\x18\x05 \x01(\x0e2#.meurpg.campaigns.v1.DicePreferenceR\x0edicePreference\"\xe6\x02\n" +
 	"\x06Invite\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
 	"\bmax_uses\x18\x02 \x01(\x05R\amaxUses\x12\x1b\n" +
@@ -1661,7 +2007,23 @@ const file_meurpg_campaigns_v1_campaigns_proto_rawDesc = "" +
 	"\x05token\x18\x01 \x01(\tR\x05token\"x\n" +
 	"\x14AcceptInviteResponse\x129\n" +
 	"\bcampaign\x18\x01 \x01(\v2\x1d.meurpg.campaigns.v1.CampaignR\bcampaign\x12%\n" +
-	"\x0ealready_member\x18\x02 \x01(\bR\ralreadyMember*>\n" +
+	"\x0ealready_member\x18\x02 \x01(\bR\ralreadyMember\"p\n" +
+	"\x1aSetCampaignDiceModeRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x121\n" +
+	"\x04mode\x18\x02 \x01(\x0e2\x1d.meurpg.campaigns.v1.DiceModeR\x04mode\"P\n" +
+	"\x1bSetCampaignDiceModeResponse\x121\n" +
+	"\x04mode\x18\x01 \x01(\x0e2\x1d.meurpg.campaigns.v1.DiceModeR\x04mode\"\x82\x01\n" +
+	"\x1aSetMyDicePreferenceRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x12C\n" +
+	"\n" +
+	"preference\x18\x02 \x01(\x0e2#.meurpg.campaigns.v1.DicePreferenceR\n" +
+	"preference\"b\n" +
+	"\x1bSetMyDicePreferenceResponse\x12C\n" +
+	"\n" +
+	"preference\x18\x01 \x01(\x0e2#.meurpg.campaigns.v1.DicePreferenceR\n" +
+	"preference*>\n" +
 	"\x04Role\x12\x14\n" +
 	"\x10ROLE_UNSPECIFIED\x10\x00\x12\x0f\n" +
 	"\vROLE_MASTER\x10\x01\x12\x0f\n" +
@@ -1670,13 +2032,23 @@ const file_meurpg_campaigns_v1_campaigns_proto_rawDesc = "" +
 	"\x13XP_MODE_UNSPECIFIED\x10\x00\x12\x13\n" +
 	"\x0fXP_MODE_ENEMIES\x10\x01\x12\x10\n" +
 	"\fXP_MODE_GOLD\x10\x02\x12\x16\n" +
-	"\x12XP_MODE_MILESTONES\x10\x03*\x92\x01\n" +
+	"\x12XP_MODE_MILESTONES\x10\x03*n\n" +
+	"\bDiceMode\x12\x19\n" +
+	"\x15DICE_MODE_UNSPECIFIED\x10\x00\x12\x1c\n" +
+	"\x18DICE_MODE_PLAYERS_CHOOSE\x10\x01\x12\x11\n" +
+	"\rDICE_MODE_APP\x10\x02\x12\x16\n" +
+	"\x12DICE_MODE_PHYSICAL\x10\x03*h\n" +
+	"\x0eDicePreference\x12\x1f\n" +
+	"\x1bDICE_PREFERENCE_UNSPECIFIED\x10\x00\x12\x17\n" +
+	"\x13DICE_PREFERENCE_APP\x10\x01\x12\x1c\n" +
+	"\x18DICE_PREFERENCE_PHYSICAL\x10\x02*\x92\x01\n" +
 	"\vInviteState\x12\x1c\n" +
 	"\x18INVITE_STATE_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13INVITE_STATE_ACTIVE\x10\x01\x12\x18\n" +
 	"\x14INVITE_STATE_EXPIRED\x10\x02\x12\x18\n" +
 	"\x14INVITE_STATE_REVOKED\x10\x03\x12\x18\n" +
-	"\x14INVITE_STATE_USED_UP\x10\x042\xc9\b\n" +
+	"\x14INVITE_STATE_USED_UP\x10\x042\xbd\n" +
+	"\n" +
 	"\x0fCampaignService\x12i\n" +
 	"\x0eCreateCampaign\x12*.meurpg.campaigns.v1.CreateCampaignRequest\x1a+.meurpg.campaigns.v1.CreateCampaignResponse\x12q\n" +
 	"\x0fListMyCampaigns\x12+.meurpg.campaigns.v1.ListMyCampaignsRequest\x1a,.meurpg.campaigns.v1.ListMyCampaignsResponse\"\x03\x90\x02\x01\x12e\n" +
@@ -1687,7 +2059,9 @@ const file_meurpg_campaigns_v1_campaigns_proto_rawDesc = "" +
 	"\fCreateInvite\x12(.meurpg.campaigns.v1.CreateInviteRequest\x1a).meurpg.campaigns.v1.CreateInviteResponse\x12e\n" +
 	"\vListInvites\x12'.meurpg.campaigns.v1.ListInvitesRequest\x1a(.meurpg.campaigns.v1.ListInvitesResponse\"\x03\x90\x02\x02\x12c\n" +
 	"\fRevokeInvite\x12(.meurpg.campaigns.v1.RevokeInviteRequest\x1a).meurpg.campaigns.v1.RevokeInviteResponse\x12c\n" +
-	"\fAcceptInvite\x12(.meurpg.campaigns.v1.AcceptInviteRequest\x1a).meurpg.campaigns.v1.AcceptInviteResponseB\xdf\x01\n" +
+	"\fAcceptInvite\x12(.meurpg.campaigns.v1.AcceptInviteRequest\x1a).meurpg.campaigns.v1.AcceptInviteResponse\x12x\n" +
+	"\x13SetCampaignDiceMode\x12/.meurpg.campaigns.v1.SetCampaignDiceModeRequest\x1a0.meurpg.campaigns.v1.SetCampaignDiceModeResponse\x12x\n" +
+	"\x13SetMyDicePreference\x12/.meurpg.campaigns.v1.SetMyDicePreferenceRequest\x1a0.meurpg.campaigns.v1.SetMyDicePreferenceResponseB\xdf\x01\n" +
 	"\x17com.meurpg.campaigns.v1B\x0eCampaignsProtoP\x01ZFgithub.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1;campaignsv1\xa2\x02\x03MCX\xaa\x02\x13Meurpg.Campaigns.V1\xca\x02\x13Meurpg\\Campaigns\\V1\xe2\x02\x1fMeurpg\\Campaigns\\V1\\GPBMetadata\xea\x02\x15Meurpg::Campaigns::V1b\x06proto3"
 
 var (
@@ -1702,89 +2076,106 @@ func file_meurpg_campaigns_v1_campaigns_proto_rawDescGZIP() []byte {
 	return file_meurpg_campaigns_v1_campaigns_proto_rawDescData
 }
 
-var file_meurpg_campaigns_v1_campaigns_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_meurpg_campaigns_v1_campaigns_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
+var file_meurpg_campaigns_v1_campaigns_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
+var file_meurpg_campaigns_v1_campaigns_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
 var file_meurpg_campaigns_v1_campaigns_proto_goTypes = []any{
 	(Role)(0),                           // 0: meurpg.campaigns.v1.Role
 	(XpMode)(0),                         // 1: meurpg.campaigns.v1.XpMode
-	(InviteState)(0),                    // 2: meurpg.campaigns.v1.InviteState
-	(*Campaign)(nil),                    // 3: meurpg.campaigns.v1.Campaign
-	(*PendingMember)(nil),               // 4: meurpg.campaigns.v1.PendingMember
-	(*Member)(nil),                      // 5: meurpg.campaigns.v1.Member
-	(*Invite)(nil),                      // 6: meurpg.campaigns.v1.Invite
-	(*InviteUnusable)(nil),              // 7: meurpg.campaigns.v1.InviteUnusable
-	(*CreateCampaignRequest)(nil),       // 8: meurpg.campaigns.v1.CreateCampaignRequest
-	(*CreateCampaignResponse)(nil),      // 9: meurpg.campaigns.v1.CreateCampaignResponse
-	(*ListMyCampaignsRequest)(nil),      // 10: meurpg.campaigns.v1.ListMyCampaignsRequest
-	(*ListMyCampaignsResponse)(nil),     // 11: meurpg.campaigns.v1.ListMyCampaignsResponse
-	(*GetCampaignRequest)(nil),          // 12: meurpg.campaigns.v1.GetCampaignRequest
-	(*GetCampaignResponse)(nil),         // 13: meurpg.campaigns.v1.GetCampaignResponse
-	(*ListMembersRequest)(nil),          // 14: meurpg.campaigns.v1.ListMembersRequest
-	(*ListMembersResponse)(nil),         // 15: meurpg.campaigns.v1.ListMembersResponse
-	(*ListPendingMembersRequest)(nil),   // 16: meurpg.campaigns.v1.ListPendingMembersRequest
-	(*ListPendingMembersResponse)(nil),  // 17: meurpg.campaigns.v1.ListPendingMembersResponse
-	(*RemovePendingMemberRequest)(nil),  // 18: meurpg.campaigns.v1.RemovePendingMemberRequest
-	(*RemovePendingMemberResponse)(nil), // 19: meurpg.campaigns.v1.RemovePendingMemberResponse
-	(*CreateInviteRequest)(nil),         // 20: meurpg.campaigns.v1.CreateInviteRequest
-	(*CreateInviteResponse)(nil),        // 21: meurpg.campaigns.v1.CreateInviteResponse
-	(*ListInvitesRequest)(nil),          // 22: meurpg.campaigns.v1.ListInvitesRequest
-	(*ListInvitesResponse)(nil),         // 23: meurpg.campaigns.v1.ListInvitesResponse
-	(*RevokeInviteRequest)(nil),         // 24: meurpg.campaigns.v1.RevokeInviteRequest
-	(*RevokeInviteResponse)(nil),        // 25: meurpg.campaigns.v1.RevokeInviteResponse
-	(*AcceptInviteRequest)(nil),         // 26: meurpg.campaigns.v1.AcceptInviteRequest
-	(*AcceptInviteResponse)(nil),        // 27: meurpg.campaigns.v1.AcceptInviteResponse
-	(*timestamppb.Timestamp)(nil),       // 28: google.protobuf.Timestamp
-	(*durationpb.Duration)(nil),         // 29: google.protobuf.Duration
+	(DiceMode)(0),                       // 2: meurpg.campaigns.v1.DiceMode
+	(DicePreference)(0),                 // 3: meurpg.campaigns.v1.DicePreference
+	(InviteState)(0),                    // 4: meurpg.campaigns.v1.InviteState
+	(*Campaign)(nil),                    // 5: meurpg.campaigns.v1.Campaign
+	(*PendingMember)(nil),               // 6: meurpg.campaigns.v1.PendingMember
+	(*Member)(nil),                      // 7: meurpg.campaigns.v1.Member
+	(*Invite)(nil),                      // 8: meurpg.campaigns.v1.Invite
+	(*InviteUnusable)(nil),              // 9: meurpg.campaigns.v1.InviteUnusable
+	(*CreateCampaignRequest)(nil),       // 10: meurpg.campaigns.v1.CreateCampaignRequest
+	(*CreateCampaignResponse)(nil),      // 11: meurpg.campaigns.v1.CreateCampaignResponse
+	(*ListMyCampaignsRequest)(nil),      // 12: meurpg.campaigns.v1.ListMyCampaignsRequest
+	(*ListMyCampaignsResponse)(nil),     // 13: meurpg.campaigns.v1.ListMyCampaignsResponse
+	(*GetCampaignRequest)(nil),          // 14: meurpg.campaigns.v1.GetCampaignRequest
+	(*GetCampaignResponse)(nil),         // 15: meurpg.campaigns.v1.GetCampaignResponse
+	(*ListMembersRequest)(nil),          // 16: meurpg.campaigns.v1.ListMembersRequest
+	(*ListMembersResponse)(nil),         // 17: meurpg.campaigns.v1.ListMembersResponse
+	(*ListPendingMembersRequest)(nil),   // 18: meurpg.campaigns.v1.ListPendingMembersRequest
+	(*ListPendingMembersResponse)(nil),  // 19: meurpg.campaigns.v1.ListPendingMembersResponse
+	(*RemovePendingMemberRequest)(nil),  // 20: meurpg.campaigns.v1.RemovePendingMemberRequest
+	(*RemovePendingMemberResponse)(nil), // 21: meurpg.campaigns.v1.RemovePendingMemberResponse
+	(*CreateInviteRequest)(nil),         // 22: meurpg.campaigns.v1.CreateInviteRequest
+	(*CreateInviteResponse)(nil),        // 23: meurpg.campaigns.v1.CreateInviteResponse
+	(*ListInvitesRequest)(nil),          // 24: meurpg.campaigns.v1.ListInvitesRequest
+	(*ListInvitesResponse)(nil),         // 25: meurpg.campaigns.v1.ListInvitesResponse
+	(*RevokeInviteRequest)(nil),         // 26: meurpg.campaigns.v1.RevokeInviteRequest
+	(*RevokeInviteResponse)(nil),        // 27: meurpg.campaigns.v1.RevokeInviteResponse
+	(*AcceptInviteRequest)(nil),         // 28: meurpg.campaigns.v1.AcceptInviteRequest
+	(*AcceptInviteResponse)(nil),        // 29: meurpg.campaigns.v1.AcceptInviteResponse
+	(*SetCampaignDiceModeRequest)(nil),  // 30: meurpg.campaigns.v1.SetCampaignDiceModeRequest
+	(*SetCampaignDiceModeResponse)(nil), // 31: meurpg.campaigns.v1.SetCampaignDiceModeResponse
+	(*SetMyDicePreferenceRequest)(nil),  // 32: meurpg.campaigns.v1.SetMyDicePreferenceRequest
+	(*SetMyDicePreferenceResponse)(nil), // 33: meurpg.campaigns.v1.SetMyDicePreferenceResponse
+	(*timestamppb.Timestamp)(nil),       // 34: google.protobuf.Timestamp
+	(*durationpb.Duration)(nil),         // 35: google.protobuf.Duration
 }
 var file_meurpg_campaigns_v1_campaigns_proto_depIdxs = []int32{
 	1,  // 0: meurpg.campaigns.v1.Campaign.xp_mode:type_name -> meurpg.campaigns.v1.XpMode
-	28, // 1: meurpg.campaigns.v1.Campaign.created_at:type_name -> google.protobuf.Timestamp
+	34, // 1: meurpg.campaigns.v1.Campaign.created_at:type_name -> google.protobuf.Timestamp
 	0,  // 2: meurpg.campaigns.v1.Campaign.my_role:type_name -> meurpg.campaigns.v1.Role
-	28, // 3: meurpg.campaigns.v1.PendingMember.joined_at:type_name -> google.protobuf.Timestamp
-	28, // 4: meurpg.campaigns.v1.PendingMember.expires_at:type_name -> google.protobuf.Timestamp
-	0,  // 5: meurpg.campaigns.v1.Member.role:type_name -> meurpg.campaigns.v1.Role
-	28, // 6: meurpg.campaigns.v1.Member.joined_at:type_name -> google.protobuf.Timestamp
-	28, // 7: meurpg.campaigns.v1.Invite.created_at:type_name -> google.protobuf.Timestamp
-	28, // 8: meurpg.campaigns.v1.Invite.expires_at:type_name -> google.protobuf.Timestamp
-	28, // 9: meurpg.campaigns.v1.Invite.revoked_at:type_name -> google.protobuf.Timestamp
-	2,  // 10: meurpg.campaigns.v1.Invite.state:type_name -> meurpg.campaigns.v1.InviteState
-	2,  // 11: meurpg.campaigns.v1.InviteUnusable.state:type_name -> meurpg.campaigns.v1.InviteState
-	1,  // 12: meurpg.campaigns.v1.CreateCampaignRequest.xp_mode:type_name -> meurpg.campaigns.v1.XpMode
-	3,  // 13: meurpg.campaigns.v1.CreateCampaignResponse.campaign:type_name -> meurpg.campaigns.v1.Campaign
-	3,  // 14: meurpg.campaigns.v1.ListMyCampaignsResponse.campaigns:type_name -> meurpg.campaigns.v1.Campaign
-	3,  // 15: meurpg.campaigns.v1.GetCampaignResponse.campaign:type_name -> meurpg.campaigns.v1.Campaign
-	5,  // 16: meurpg.campaigns.v1.ListMembersResponse.members:type_name -> meurpg.campaigns.v1.Member
-	4,  // 17: meurpg.campaigns.v1.ListPendingMembersResponse.members:type_name -> meurpg.campaigns.v1.PendingMember
-	29, // 18: meurpg.campaigns.v1.CreateInviteRequest.expires_in:type_name -> google.protobuf.Duration
-	6,  // 19: meurpg.campaigns.v1.CreateInviteResponse.invite:type_name -> meurpg.campaigns.v1.Invite
-	6,  // 20: meurpg.campaigns.v1.ListInvitesResponse.invites:type_name -> meurpg.campaigns.v1.Invite
-	6,  // 21: meurpg.campaigns.v1.RevokeInviteResponse.invite:type_name -> meurpg.campaigns.v1.Invite
-	3,  // 22: meurpg.campaigns.v1.AcceptInviteResponse.campaign:type_name -> meurpg.campaigns.v1.Campaign
-	8,  // 23: meurpg.campaigns.v1.CampaignService.CreateCampaign:input_type -> meurpg.campaigns.v1.CreateCampaignRequest
-	10, // 24: meurpg.campaigns.v1.CampaignService.ListMyCampaigns:input_type -> meurpg.campaigns.v1.ListMyCampaignsRequest
-	12, // 25: meurpg.campaigns.v1.CampaignService.GetCampaign:input_type -> meurpg.campaigns.v1.GetCampaignRequest
-	14, // 26: meurpg.campaigns.v1.CampaignService.ListMembers:input_type -> meurpg.campaigns.v1.ListMembersRequest
-	16, // 27: meurpg.campaigns.v1.CampaignService.ListPendingMembers:input_type -> meurpg.campaigns.v1.ListPendingMembersRequest
-	18, // 28: meurpg.campaigns.v1.CampaignService.RemovePendingMember:input_type -> meurpg.campaigns.v1.RemovePendingMemberRequest
-	20, // 29: meurpg.campaigns.v1.CampaignService.CreateInvite:input_type -> meurpg.campaigns.v1.CreateInviteRequest
-	22, // 30: meurpg.campaigns.v1.CampaignService.ListInvites:input_type -> meurpg.campaigns.v1.ListInvitesRequest
-	24, // 31: meurpg.campaigns.v1.CampaignService.RevokeInvite:input_type -> meurpg.campaigns.v1.RevokeInviteRequest
-	26, // 32: meurpg.campaigns.v1.CampaignService.AcceptInvite:input_type -> meurpg.campaigns.v1.AcceptInviteRequest
-	9,  // 33: meurpg.campaigns.v1.CampaignService.CreateCampaign:output_type -> meurpg.campaigns.v1.CreateCampaignResponse
-	11, // 34: meurpg.campaigns.v1.CampaignService.ListMyCampaigns:output_type -> meurpg.campaigns.v1.ListMyCampaignsResponse
-	13, // 35: meurpg.campaigns.v1.CampaignService.GetCampaign:output_type -> meurpg.campaigns.v1.GetCampaignResponse
-	15, // 36: meurpg.campaigns.v1.CampaignService.ListMembers:output_type -> meurpg.campaigns.v1.ListMembersResponse
-	17, // 37: meurpg.campaigns.v1.CampaignService.ListPendingMembers:output_type -> meurpg.campaigns.v1.ListPendingMembersResponse
-	19, // 38: meurpg.campaigns.v1.CampaignService.RemovePendingMember:output_type -> meurpg.campaigns.v1.RemovePendingMemberResponse
-	21, // 39: meurpg.campaigns.v1.CampaignService.CreateInvite:output_type -> meurpg.campaigns.v1.CreateInviteResponse
-	23, // 40: meurpg.campaigns.v1.CampaignService.ListInvites:output_type -> meurpg.campaigns.v1.ListInvitesResponse
-	25, // 41: meurpg.campaigns.v1.CampaignService.RevokeInvite:output_type -> meurpg.campaigns.v1.RevokeInviteResponse
-	27, // 42: meurpg.campaigns.v1.CampaignService.AcceptInvite:output_type -> meurpg.campaigns.v1.AcceptInviteResponse
-	33, // [33:43] is the sub-list for method output_type
-	23, // [23:33] is the sub-list for method input_type
-	23, // [23:23] is the sub-list for extension type_name
-	23, // [23:23] is the sub-list for extension extendee
-	0,  // [0:23] is the sub-list for field type_name
+	2,  // 3: meurpg.campaigns.v1.Campaign.dice_mode:type_name -> meurpg.campaigns.v1.DiceMode
+	3,  // 4: meurpg.campaigns.v1.Campaign.my_dice_preference:type_name -> meurpg.campaigns.v1.DicePreference
+	34, // 5: meurpg.campaigns.v1.PendingMember.joined_at:type_name -> google.protobuf.Timestamp
+	34, // 6: meurpg.campaigns.v1.PendingMember.expires_at:type_name -> google.protobuf.Timestamp
+	0,  // 7: meurpg.campaigns.v1.Member.role:type_name -> meurpg.campaigns.v1.Role
+	34, // 8: meurpg.campaigns.v1.Member.joined_at:type_name -> google.protobuf.Timestamp
+	3,  // 9: meurpg.campaigns.v1.Member.dice_preference:type_name -> meurpg.campaigns.v1.DicePreference
+	34, // 10: meurpg.campaigns.v1.Invite.created_at:type_name -> google.protobuf.Timestamp
+	34, // 11: meurpg.campaigns.v1.Invite.expires_at:type_name -> google.protobuf.Timestamp
+	34, // 12: meurpg.campaigns.v1.Invite.revoked_at:type_name -> google.protobuf.Timestamp
+	4,  // 13: meurpg.campaigns.v1.Invite.state:type_name -> meurpg.campaigns.v1.InviteState
+	4,  // 14: meurpg.campaigns.v1.InviteUnusable.state:type_name -> meurpg.campaigns.v1.InviteState
+	1,  // 15: meurpg.campaigns.v1.CreateCampaignRequest.xp_mode:type_name -> meurpg.campaigns.v1.XpMode
+	5,  // 16: meurpg.campaigns.v1.CreateCampaignResponse.campaign:type_name -> meurpg.campaigns.v1.Campaign
+	5,  // 17: meurpg.campaigns.v1.ListMyCampaignsResponse.campaigns:type_name -> meurpg.campaigns.v1.Campaign
+	5,  // 18: meurpg.campaigns.v1.GetCampaignResponse.campaign:type_name -> meurpg.campaigns.v1.Campaign
+	7,  // 19: meurpg.campaigns.v1.ListMembersResponse.members:type_name -> meurpg.campaigns.v1.Member
+	6,  // 20: meurpg.campaigns.v1.ListPendingMembersResponse.members:type_name -> meurpg.campaigns.v1.PendingMember
+	35, // 21: meurpg.campaigns.v1.CreateInviteRequest.expires_in:type_name -> google.protobuf.Duration
+	8,  // 22: meurpg.campaigns.v1.CreateInviteResponse.invite:type_name -> meurpg.campaigns.v1.Invite
+	8,  // 23: meurpg.campaigns.v1.ListInvitesResponse.invites:type_name -> meurpg.campaigns.v1.Invite
+	8,  // 24: meurpg.campaigns.v1.RevokeInviteResponse.invite:type_name -> meurpg.campaigns.v1.Invite
+	5,  // 25: meurpg.campaigns.v1.AcceptInviteResponse.campaign:type_name -> meurpg.campaigns.v1.Campaign
+	2,  // 26: meurpg.campaigns.v1.SetCampaignDiceModeRequest.mode:type_name -> meurpg.campaigns.v1.DiceMode
+	2,  // 27: meurpg.campaigns.v1.SetCampaignDiceModeResponse.mode:type_name -> meurpg.campaigns.v1.DiceMode
+	3,  // 28: meurpg.campaigns.v1.SetMyDicePreferenceRequest.preference:type_name -> meurpg.campaigns.v1.DicePreference
+	3,  // 29: meurpg.campaigns.v1.SetMyDicePreferenceResponse.preference:type_name -> meurpg.campaigns.v1.DicePreference
+	10, // 30: meurpg.campaigns.v1.CampaignService.CreateCampaign:input_type -> meurpg.campaigns.v1.CreateCampaignRequest
+	12, // 31: meurpg.campaigns.v1.CampaignService.ListMyCampaigns:input_type -> meurpg.campaigns.v1.ListMyCampaignsRequest
+	14, // 32: meurpg.campaigns.v1.CampaignService.GetCampaign:input_type -> meurpg.campaigns.v1.GetCampaignRequest
+	16, // 33: meurpg.campaigns.v1.CampaignService.ListMembers:input_type -> meurpg.campaigns.v1.ListMembersRequest
+	18, // 34: meurpg.campaigns.v1.CampaignService.ListPendingMembers:input_type -> meurpg.campaigns.v1.ListPendingMembersRequest
+	20, // 35: meurpg.campaigns.v1.CampaignService.RemovePendingMember:input_type -> meurpg.campaigns.v1.RemovePendingMemberRequest
+	22, // 36: meurpg.campaigns.v1.CampaignService.CreateInvite:input_type -> meurpg.campaigns.v1.CreateInviteRequest
+	24, // 37: meurpg.campaigns.v1.CampaignService.ListInvites:input_type -> meurpg.campaigns.v1.ListInvitesRequest
+	26, // 38: meurpg.campaigns.v1.CampaignService.RevokeInvite:input_type -> meurpg.campaigns.v1.RevokeInviteRequest
+	28, // 39: meurpg.campaigns.v1.CampaignService.AcceptInvite:input_type -> meurpg.campaigns.v1.AcceptInviteRequest
+	30, // 40: meurpg.campaigns.v1.CampaignService.SetCampaignDiceMode:input_type -> meurpg.campaigns.v1.SetCampaignDiceModeRequest
+	32, // 41: meurpg.campaigns.v1.CampaignService.SetMyDicePreference:input_type -> meurpg.campaigns.v1.SetMyDicePreferenceRequest
+	11, // 42: meurpg.campaigns.v1.CampaignService.CreateCampaign:output_type -> meurpg.campaigns.v1.CreateCampaignResponse
+	13, // 43: meurpg.campaigns.v1.CampaignService.ListMyCampaigns:output_type -> meurpg.campaigns.v1.ListMyCampaignsResponse
+	15, // 44: meurpg.campaigns.v1.CampaignService.GetCampaign:output_type -> meurpg.campaigns.v1.GetCampaignResponse
+	17, // 45: meurpg.campaigns.v1.CampaignService.ListMembers:output_type -> meurpg.campaigns.v1.ListMembersResponse
+	19, // 46: meurpg.campaigns.v1.CampaignService.ListPendingMembers:output_type -> meurpg.campaigns.v1.ListPendingMembersResponse
+	21, // 47: meurpg.campaigns.v1.CampaignService.RemovePendingMember:output_type -> meurpg.campaigns.v1.RemovePendingMemberResponse
+	23, // 48: meurpg.campaigns.v1.CampaignService.CreateInvite:output_type -> meurpg.campaigns.v1.CreateInviteResponse
+	25, // 49: meurpg.campaigns.v1.CampaignService.ListInvites:output_type -> meurpg.campaigns.v1.ListInvitesResponse
+	27, // 50: meurpg.campaigns.v1.CampaignService.RevokeInvite:output_type -> meurpg.campaigns.v1.RevokeInviteResponse
+	29, // 51: meurpg.campaigns.v1.CampaignService.AcceptInvite:output_type -> meurpg.campaigns.v1.AcceptInviteResponse
+	31, // 52: meurpg.campaigns.v1.CampaignService.SetCampaignDiceMode:output_type -> meurpg.campaigns.v1.SetCampaignDiceModeResponse
+	33, // 53: meurpg.campaigns.v1.CampaignService.SetMyDicePreference:output_type -> meurpg.campaigns.v1.SetMyDicePreferenceResponse
+	42, // [42:54] is the sub-list for method output_type
+	30, // [30:42] is the sub-list for method input_type
+	30, // [30:30] is the sub-list for extension type_name
+	30, // [30:30] is the sub-list for extension extendee
+	0,  // [0:30] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_campaigns_v1_campaigns_proto_init() }
@@ -1797,8 +2188,8 @@ func file_meurpg_campaigns_v1_campaigns_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_campaigns_v1_campaigns_proto_rawDesc), len(file_meurpg_campaigns_v1_campaigns_proto_rawDesc)),
-			NumEnums:      3,
-			NumMessages:   25,
+			NumEnums:      5,
+			NumMessages:   29,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

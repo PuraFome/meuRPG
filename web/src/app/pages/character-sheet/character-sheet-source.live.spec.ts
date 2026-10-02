@@ -109,6 +109,9 @@ function minimalDerivedSheet(): DerivedSheet {
     languages: [],
     hints: [],
     issues: [],
+    resources: [],
+    actions: [],
+    standardActions: [],
   };
 }
 

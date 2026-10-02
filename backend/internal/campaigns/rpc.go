@@ -114,9 +114,17 @@ func (s *Service) GetCampaign(
 	if err != nil {
 		return nil, s.dbError(ctx, "get a campaign", err)
 	}
-	return connect.NewResponse(&campaignsv1.GetCampaignResponse{
-		Campaign: campaignToProto(campaign, m.Role, m.Pending),
-	}), nil
+	res := campaignToProto(campaign, m.Role, m.Pending)
+	if !m.Pending {
+		// The caller's own dice preference (RN-18): the one list-shaped
+		// call that reads it, because the campaign page needs it.
+		pref, err := s.queries.GetMemberDicePreference(ctx, campaignsdb.GetMemberDicePreferenceParams{CampaignID: m.CampaignID, UserID: m.UserID})
+		if err != nil {
+			return nil, s.dbError(ctx, "get the dice preference", err)
+		}
+		res.MyDicePreference = dicePreferenceFromDB[pref]
+	}
+	return connect.NewResponse(&campaignsv1.GetCampaignResponse{Campaign: res}), nil
 }
 
 // ListMembers implements campaignsv1connect.CampaignServiceHandler.
@@ -144,12 +152,17 @@ func (s *Service) ListMembers(
 
 	res := &campaignsv1.ListMembersResponse{}
 	for _, member := range members {
-		res.Members = append(res.Members, &campaignsv1.Member{
+		entry := &campaignsv1.Member{
 			UserId:      member.UserID,
 			Role:        roleToProto(authz.Role(member.Role)),
 			DisplayName: displayNames[member.UserID],
 			JoinedAt:    timestamppb.New(member.JoinedAt),
-		})
+		}
+		// Only the master sees the players' dice choices (RN-18).
+		if m.Role == authz.RoleMaster {
+			entry.DicePreference = dicePreferenceFromDB[member.DicePreference]
+		}
+		res.Members = append(res.Members, entry)
 	}
 	return connect.NewResponse(res), nil
 }
@@ -454,5 +467,6 @@ func campaignToProto(c campaignsdb.Campaign, myRole authz.Role, pending bool) *c
 		XpMode:    xpModeFromDB[c.XpMode],
 		CreatedAt: timestamppb.New(c.CreatedAt),
 		MyRole:    roleToProto(myRole),
+		DiceMode:  diceModeFromDB[c.DiceMode],
 	}
 }

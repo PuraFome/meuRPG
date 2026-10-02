@@ -32,7 +32,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/rules/v1/rules.proto.
  */
 export const file_meurpg_rules_v1_rules: GenFile = /*@__PURE__*/
-  fileDesc("ChttZXVycGcvcnVsZXMvdjEvcnVsZXMucHJvdG8SD21ldXJwZy5ydWxlcy52MSKCAQoNQWJpbGl0eVNjb3JlcxIQCghzdHJlbmd0aBgBIAEoBRIRCglkZXh0ZXJpdHkYAiABKAUSFAoMY29uc3RpdHV0aW9uGAMgASgFEhQKDGludGVsbGlnZW5jZRgEIAEoBRIOCgZ3aXNkb20YBSABKAUSEAoIY2hhcmlzbWEYBiABKAUiwQgKDERlcml2ZWRTaGVldBIXCg9jb250ZW50X3ZlcnNpb24YASABKAkSFAoMcmFjZV9uYW1lX3B0GAIgASgJEhcKD3N1YnJhY2VfbmFtZV9wdBgDIAEoCRIaChJiYWNrZ3JvdW5kX25hbWVfcHQYBCABKAkSLgoHY2xhc3NlcxgFIAMoCzIdLm1ldXJwZy5ydWxlcy52MS5EZXJpdmVkQ2xhc3MSEwoLdG90YWxfbGV2ZWwYBiABKAUSGQoRcHJvZmljaWVuY3lfYm9udXMYByABKAUSMgoJYWJpbGl0aWVzGAggAygLMh8ubWV1cnBnLnJ1bGVzLnYxLkRlcml2ZWRBYmlsaXR5EjMKDXNhdmluZ190aHJvd3MYCSADKAsyHC5tZXVycGcucnVsZXMudjEuU2F2aW5nVGhyb3cSLQoGc2tpbGxzGAogAygLMh0ubWV1cnBnLnJ1bGVzLnYxLkRlcml2ZWRTa2lsbBIaChJwYXNzaXZlX3BlcmNlcHRpb24YCyABKAUSHQoVcGFzc2l2ZV9pbnZlc3RpZ2F0aW9uGAwgASgFEhcKD3Bhc3NpdmVfaW5zaWdodBgNIAEoBRISCgppbml0aWF0aXZlGA4gASgFEhMKC2FybW9yX2NsYXNzGA8gASgFEh8KF2FybW9yX2NsYXNzX2Rlc2NyaXB0aW9uGBAgASgJEhYKDmhpdF9wb2ludHNfbWF4GBEgASgFEioKCGhpdF9kaWNlGBIgAygLMhgubWV1cnBnLnJ1bGVzLnYxLkhpdERpY2USFQoNc3BlZWRfd2Fsa19mdBgTIAEoBRImCgZzZW5zZXMYFCADKAsyFi5tZXVycGcucnVsZXMudjEuU2Vuc2USMwoMc3BlbGxjYXN0aW5nGBUgAygLMh0ubWV1cnBnLnJ1bGVzLnYxLlNwZWxsY2FzdGluZxIwCgtzcGVsbF9zbG90cxgWIAMoCzIbLm1ldXJwZy5ydWxlcy52MS5TcGVsbFNsb3RzEi4KCnBhY3RfbWFnaWMYFyABKAsyGi5tZXVycGcucnVsZXMudjEuUGFjdE1hZ2ljEi8KBnNwZWxscxgYIAMoCzIfLm1ldXJwZy5ydWxlcy52MS5DaGFyYWN0ZXJTcGVsbBIoCgdhdHRhY2tzGBkgAygLMhcubWV1cnBnLnJ1bGVzLnYxLkF0dGFjaxIqCghmZWF0dXJlcxgaIAMoCzIYLm1ldXJwZy5ydWxlcy52MS5GZWF0dXJlEhEKCWxhbmd1YWdlcxgbIAMoCRI1Cg1wcm9maWNpZW5jaWVzGBwgASgLMh4ubWV1cnBnLnJ1bGVzLnYxLlByb2ZpY2llbmNpZXMSJAoFaGludHMYHSADKAsyFS5tZXVycGcucnVsZXMudjEuSGludBImCgZpc3N1ZXMYHiADKAsyFi5tZXVycGcucnVsZXMudjEuSXNzdWUiWwoMRGVyaXZlZENsYXNzEhEKCWNsYXNzX2tleRgBIAEoCRIPCgduYW1lX3B0GAIgASgJEg0KBWxldmVsGAMgASgFEhgKEHN1YmNsYXNzX25hbWVfcHQYBCABKAkiigEKDkRlcml2ZWRBYmlsaXR5EikKB2FiaWxpdHkYASABKA4yGC5tZXVycGcucnVsZXMudjEuQWJpbGl0eRIPCgduYW1lX3B0GAIgASgJEgwKBGJhc2UYAyABKAUSDQoFYm9udXMYBCABKAUSDQoFc2NvcmUYBSABKAUSEAoIbW9kaWZpZXIYBiABKAUibAoLU2F2aW5nVGhyb3cSKQoHYWJpbGl0eRgBIAEoDjIYLm1ldXJwZy5ydWxlcy52MS5BYmlsaXR5Eg8KB25hbWVfcHQYAiABKAkSEgoKcHJvZmljaWVudBgDIAEoCBINCgVib251cxgEIAEoBSKeAQoMRGVyaXZlZFNraWxsEgsKA2tleRgBIAEoCRIPCgduYW1lX3B0GAIgASgJEikKB2FiaWxpdHkYAyABKA4yGC5tZXVycGcucnVsZXMudjEuQWJpbGl0eRI2Cgtwcm9maWNpZW5jeRgEIAEoDjIhLm1ldXJwZy5ydWxlcy52MS5Qcm9maWNpZW5jeUxldmVsEg0KBWJvbnVzGAUgASgFIicKB0hpdERpY2USDQoFZmFjZXMYASABKAUSDQoFY291bnQYAiABKAUiNwoFU2Vuc2USCwoDa2V5GAEgASgJEg8KB25hbWVfcHQYAiABKAkSEAoIcmFuZ2VfZnQYAyABKAUizgEKDFNwZWxsY2FzdGluZxIRCgljbGFzc19rZXkYASABKAkSFQoNY2xhc3NfbmFtZV9wdBgCIAEoCRIpCgdhYmlsaXR5GAMgASgOMhgubWV1cnBnLnJ1bGVzLnYxLkFiaWxpdHkSDwoHc2F2ZV9kYxgEIAEoBRIUCgxhdHRhY2tfYm9udXMYBSABKAUSFgoOY2FudHJpcHNfa25vd24YBiABKAUSFAoMc3BlbGxzX2tub3duGAcgASgFEhQKDHByZXBhcmVkX21heBgIIAEoBSIqCgpTcGVsbFNsb3RzEg0KBWxldmVsGAEgASgFEg0KBWNvdW50GAIgASgFIi4KCVBhY3RNYWdpYxISCgpzbG90X2xldmVsGAEgASgFEg0KBWNvdW50GAIgASgFIkkKDkNoYXJhY3RlclNwZWxsEiUKBXNwZWxsGAEgASgLMhYubWV1cnBnLnJ1bGVzLnYxLlNwZWxsEhAKCHByZXBhcmVkGAIgASgIIqECCgZBdHRhY2sSCwoDa2V5GAEgASgJEgwKBG5hbWUYAiABKAkSDwoHbmFtZV9wdBgDIAEoCRIUCgxhdHRhY2tfYm9udXMYBCABKAUSDgoGZGFtYWdlGAUgASgJEhYKDmRhbWFnZV90eXBlX3B0GAYgASgJEikKBGtpbmQYByABKA4yGy5tZXVycGcucnVsZXMudjEuQXR0YWNrS2luZBIPCgdzYXZlX2RjGAggASgFEi4KDHNhdmVfYWJpbGl0eRgJIAEoDjIYLm1ldXJwZy5ydWxlcy52MS5BYmlsaXR5EhgKEHZlcnNhdGlsZV9kYW1hZ2UYCiABKAkSEAoIcmFuZ2VfZnQYCyABKAUSFQoNbG9uZ19yYW5nZV9mdBgMIAEoBSJdCgdGZWF0dXJlEgsKA2tleRgBIAEoCRIMCgRuYW1lGAIgASgJEg8KB25hbWVfcHQYAyABKAkSEQoJc291cmNlX3B0GAQgASgJEhMKC2Rlc2NyaXB0aW9uGAUgASgJIj4KDVByb2ZpY2llbmNpZXMSDQoFYXJtb3IYASADKAkSDwoHd2VhcG9ucxgCIAMoCRINCgV0b29scxgDIAMoCSIoCgRIaW50EhIKCnNvdXJjZV9rZXkYASABKAkSDAoEdGV4dBgCIAEoCSI1CgVJc3N1ZRIMCgRjb2RlGAEgASgJEg0KBWZpZWxkGAIgASgJEg8KB21lc3NhZ2UYAyABKAki7gMKB0NvbnRlbnQSFwoPY29udGVudF92ZXJzaW9uGAEgASgJEhMKC2F0dHJpYnV0aW9uGAIgASgJEi8KCWFiaWxpdGllcxgDIAMoCzIcLm1ldXJwZy5ydWxlcy52MS5BYmlsaXR5SW5mbxIkCgVyYWNlcxgEIAMoCzIVLm1ldXJwZy5ydWxlcy52MS5SYWNlEioKCHN1YnJhY2VzGAUgAygLMhgubWV1cnBnLnJ1bGVzLnYxLlN1YnJhY2USMAoHY2xhc3NlcxgGIAMoCzIfLm1ldXJwZy5ydWxlcy52MS5DaGFyYWN0ZXJDbGFzcxItCgpzdWJjbGFzc2VzGAcgAygLMhkubWV1cnBnLnJ1bGVzLnYxLlN1YmNsYXNzEjAKC2JhY2tncm91bmRzGAggAygLMhsubWV1cnBnLnJ1bGVzLnYxLkJhY2tncm91bmQSJgoGc2tpbGxzGAkgAygLMhYubWV1cnBnLnJ1bGVzLnYxLlNraWxsEiUKBWFybW9yGAogAygLMhYubWV1cnBnLnJ1bGVzLnYxLkFybW9yEigKB3dlYXBvbnMYCyADKAsyFy5tZXVycGcucnVsZXMudjEuV2VhcG9uEiYKBnNwZWxscxgMIAMoCzIWLm1ldXJwZy5ydWxlcy52MS5TcGVsbCJwCgtBYmlsaXR5SW5mbxIpCgdhYmlsaXR5GAEgASgOMhgubWV1cnBnLnJ1bGVzLnYxLkFiaWxpdHkSDAoEbmFtZRgCIAEoCRIPCgduYW1lX3B0GAMgASgJEhcKD2FiYnJldmlhdGlvbl9wdBgEIAEoCSJ9CgRSYWNlEgsKA2tleRgBIAEoCRIMCgRuYW1lGAIgASgJEg8KB25hbWVfcHQYAyABKAkSEAoIc3BlZWRfZnQYBCABKAUSNwoPYWJpbGl0eV9ib251c2VzGAUgASgLMh4ubWV1cnBnLnJ1bGVzLnYxLkFiaWxpdHlTY29yZXMigAEKB1N1YnJhY2USCwoDa2V5GAEgASgJEgwKBG5hbWUYAiABKAkSDwoHbmFtZV9wdBgDIAEoCRIQCghyYWNlX2tleRgEIAEoCRI3Cg9hYmlsaXR5X2JvbnVzZXMYBSABKAsyHi5tZXVycGcucnVsZXMudjEuQWJpbGl0eVNjb3JlcyKEAgoOQ2hhcmFjdGVyQ2xhc3MSCwoDa2V5GAEgASgJEgwKBG5hbWUYAiABKAkSDwoHbmFtZV9wdBgDIAEoCRIPCgdoaXRfZGllGAQgASgFEi8KDXNhdmluZ190aHJvd3MYBSADKA4yGC5tZXVycGcucnVsZXMudjEuQWJpbGl0eRIyCgxza2lsbF9jaG9pY2UYBiABKAsyHC5tZXVycGcucnVsZXMudjEuU2tpbGxDaG9pY2USFgoOc3ViY2xhc3NfbGV2ZWwYByABKAUSOAoMc3BlbGxjYXN0aW5nGAggASgLMiIubWV1cnBnLnJ1bGVzLnYxLkNsYXNzU3BlbGxjYXN0aW5nIjAKC1NraWxsQ2hvaWNlEg0KBWNvdW50GAEgASgFEhIKCnNraWxsX2tleXMYAiADKAkirQEKEUNsYXNzU3BlbGxjYXN0aW5nEikKB2FiaWxpdHkYASABKA4yGC5tZXVycGcucnVsZXMudjEuQWJpbGl0eRITCgtmaXJzdF9sZXZlbBgCIAEoBRI2CgtwcmVwYXJhdGlvbhgDIAEoDjIhLm1ldXJwZy5ydWxlcy52MS5TcGVsbFByZXBhcmF0aW9uEiAKGG1heF9zcGVsbF9sZXZlbF9ieV9sZXZlbBgEIAMoBSJJCghTdWJjbGFzcxILCgNrZXkYASABKAkSDAoEbmFtZRgCIAEoCRIPCgduYW1lX3B0GAMgASgJEhEKCWNsYXNzX2tleRgEIAEoCSJMCgpCYWNrZ3JvdW5kEgsKA2tleRgBIAEoCRIMCgRuYW1lGAIgASgJEg8KB25hbWVfcHQYAyABKAkSEgoKc2tpbGxfa2V5cxgEIAMoCSJeCgVTa2lsbBILCgNrZXkYASABKAkSDAoEbmFtZRgCIAEoCRIPCgduYW1lX3B0GAMgASgJEikKB2FiaWxpdHkYBCABKA4yGC5tZXVycGcucnVsZXMudjEuQWJpbGl0eSJlCgVBcm1vchILCgNrZXkYASABKAkSDAoEbmFtZRgCIAEoCRIPCgduYW1lX3B0GAMgASgJEjAKCGNhdGVnb3J5GAQgASgOMh4ubWV1cnBnLnJ1bGVzLnYxLkFybW9yQ2F0ZWdvcnkidwoGV2VhcG9uEgsKA2tleRgBIAEoCRIMCgRuYW1lGAIgASgJEg8KB25hbWVfcHQYAyABKAkSMQoIY2F0ZWdvcnkYBCABKA4yHy5tZXVycGcucnVsZXMudjEuV2VhcG9uQ2F0ZWdvcnkSDgoGcmFuZ2VkGAUgASgIIqkBCgVTcGVsbBILCgNrZXkYASABKAkSDAoEbmFtZRgCIAEoCRIPCgduYW1lX3B0GAMgASgJEg0KBWxldmVsGAQgASgFEhIKCnNjaG9vbF9rZXkYBSABKAkSFgoOc2Nob29sX25hbWVfcHQYBiABKAkSEgoKY2xhc3Nfa2V5cxgHIAMoCRIOCgZyaXR1YWwYCCABKAgSFQoNY29uY2VudHJhdGlvbhgJIAEoCCIpChJMaXN0Q29udGVudFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiQAoTTGlzdENvbnRlbnRSZXNwb25zZRIpCgdjb250ZW50GAEgASgLMhgubWV1cnBnLnJ1bGVzLnYxLkNvbnRlbnQqrQEKB0FiaWxpdHkSFwoTQUJJTElUWV9VTlNQRUNJRklFRBAAEhQKEEFCSUxJVFlfU1RSRU5HVEgQARIVChFBQklMSVRZX0RFWFRFUklUWRACEhgKFEFCSUxJVFlfQ09OU1RJVFVUSU9OEAMSGAoUQUJJTElUWV9JTlRFTExJR0VOQ0UQBBISCg5BQklMSVRZX1dJU0RPTRAFEhQKEEFCSUxJVFlfQ0hBUklTTUEQBiqwAQoQUHJvZmljaWVuY3lMZXZlbBIhCh1QUk9GSUNJRU5DWV9MRVZFTF9VTlNQRUNJRklFRBAAEhoKFlBST0ZJQ0lFTkNZX0xFVkVMX05PTkUQARIaChZQUk9GSUNJRU5DWV9MRVZFTF9IQUxGEAISIAocUFJPRklDSUVOQ1lfTEVWRUxfUFJPRklDSUVOVBADEh8KG1BST0ZJQ0lFTkNZX0xFVkVMX0VYUEVSVElTRRAEKlgKCkF0dGFja0tpbmQSGwoXQVRUQUNLX0tJTkRfVU5TUEVDSUZJRUQQABIWChJBVFRBQ0tfS0lORF9XRUFQT04QARIVChFBVFRBQ0tfS0lORF9TUEVMTBACKpMBChBTcGVsbFByZXBhcmF0aW9uEiEKHVNQRUxMX1BSRVBBUkFUSU9OX1VOU1BFQ0lGSUVEEAASGwoXU1BFTExfUFJFUEFSQVRJT05fS05PV04QARIeChpTUEVMTF9QUkVQQVJBVElPTl9QUkVQQVJFRBACEh8KG1NQRUxMX1BSRVBBUkFUSU9OX1NQRUxMQk9PSxADKn4KDUFybW9yQ2F0ZWdvcnkSHgoaQVJNT1JfQ0FURUdPUllfVU5TUEVDSUZJRUQQABIYChRBUk1PUl9DQVRFR09SWV9MSUdIVBABEhkKFUFSTU9SX0NBVEVHT1JZX01FRElVTRACEhgKFEFSTU9SX0NBVEVHT1JZX0hFQVZZEAMqagoOV2VhcG9uQ2F0ZWdvcnkSHwobV0VBUE9OX0NBVEVHT1JZX1VOU1BFQ0lGSUVEEAASGgoWV0VBUE9OX0NBVEVHT1JZX1NJTVBMRRABEhsKF1dFQVBPTl9DQVRFR09SWV9NQVJUSUFMEAIybwoOQ29udGVudFNlcnZpY2USXQoLTGlzdENvbnRlbnQSIy5tZXVycGcucnVsZXMudjEuTGlzdENvbnRlbnRSZXF1ZXN0GiQubWV1cnBnLnJ1bGVzLnYxLkxpc3RDb250ZW50UmVzcG9uc2UiA5ACAkK/AQoTY29tLm1ldXJwZy5ydWxlcy52MUIKUnVsZXNQcm90b1ABWj5naXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvcnVsZXMvdjE7cnVsZXN2MaICA01SWKoCD01ldXJwZy5SdWxlcy5WMcoCD01ldXJwZ1xSdWxlc1xWMeICG01ldXJwZ1xSdWxlc1xWMVxHUEJNZXRhZGF0YeoCEU1ldXJwZzo6UnVsZXM6OlYxYgZwcm90bzM");
+  fileDesc("ChttZXVycGcvcnVsZXMvdjEvcnVsZXMucHJvdG8SD21ldXJwZy5ydWxlcy52MSKCAQoNQWJpbGl0eVNjb3JlcxIQCghzdHJlbmd0aBgBIAEoBRIRCglkZXh0ZXJpdHkYAiABKAUSFAoMY29uc3RpdHV0aW9uGAMgASgFEhQKDGludGVsbGlnZW5jZRgEIAEoBRIOCgZ3aXNkb20YBSABKAUSEAoIY2hhcmlzbWEYBiABKAUizAkKDERlcml2ZWRTaGVldBIXCg9jb250ZW50X3ZlcnNpb24YASABKAkSFAoMcmFjZV9uYW1lX3B0GAIgASgJEhcKD3N1YnJhY2VfbmFtZV9wdBgDIAEoCRIaChJiYWNrZ3JvdW5kX25hbWVfcHQYBCABKAkSLgoHY2xhc3NlcxgFIAMoCzIdLm1ldXJwZy5ydWxlcy52MS5EZXJpdmVkQ2xhc3MSEwoLdG90YWxfbGV2ZWwYBiABKAUSGQoRcHJvZmljaWVuY3lfYm9udXMYByABKAUSMgoJYWJpbGl0aWVzGAggAygLMh8ubWV1cnBnLnJ1bGVzLnYxLkRlcml2ZWRBYmlsaXR5EjMKDXNhdmluZ190aHJvd3MYCSADKAsyHC5tZXVycGcucnVsZXMudjEuU2F2aW5nVGhyb3cSLQoGc2tpbGxzGAogAygLMh0ubWV1cnBnLnJ1bGVzLnYxLkRlcml2ZWRTa2lsbBIaChJwYXNzaXZlX3BlcmNlcHRpb24YCyABKAUSHQoVcGFzc2l2ZV9pbnZlc3RpZ2F0aW9uGAwgASgFEhcKD3Bhc3NpdmVfaW5zaWdodBgNIAEoBRISCgppbml0aWF0aXZlGA4gASgFEhMKC2FybW9yX2NsYXNzGA8gASgFEh8KF2FybW9yX2NsYXNzX2Rlc2NyaXB0aW9uGBAgASgJEhYKDmhpdF9wb2ludHNfbWF4GBEgASgFEioKCGhpdF9kaWNlGBIgAygLMhgubWV1cnBnLnJ1bGVzLnYxLkhpdERpY2USFQoNc3BlZWRfd2Fsa19mdBgTIAEoBRImCgZzZW5zZXMYFCADKAsyFi5tZXVycGcucnVsZXMudjEuU2Vuc2USMwoMc3BlbGxjYXN0aW5nGBUgAygLMh0ubWV1cnBnLnJ1bGVzLnYxLlNwZWxsY2FzdGluZxIwCgtzcGVsbF9zbG90cxgWIAMoCzIbLm1ldXJwZy5ydWxlcy52MS5TcGVsbFNsb3RzEi4KCnBhY3RfbWFnaWMYFyABKAsyGi5tZXVycGcucnVsZXMudjEuUGFjdE1hZ2ljEi8KBnNwZWxscxgYIAMoCzIfLm1ldXJwZy5ydWxlcy52MS5DaGFyYWN0ZXJTcGVsbBIoCgdhdHRhY2tzGBkgAygLMhcubWV1cnBnLnJ1bGVzLnYxLkF0dGFjaxIqCghmZWF0dXJlcxgaIAMoCzIYLm1ldXJwZy5ydWxlcy52MS5GZWF0dXJlEhEKCWxhbmd1YWdlcxgbIAMoCRI1Cg1wcm9maWNpZW5jaWVzGBwgASgLMh4ubWV1cnBnLnJ1bGVzLnYxLlByb2ZpY2llbmNpZXMSJAoFaGludHMYHSADKAsyFS5tZXVycGcucnVsZXMudjEuSGludBImCgZpc3N1ZXMYHiADKAsyFi5tZXVycGcucnVsZXMudjEuSXNzdWUSLAoJcmVzb3VyY2VzGB8gAygLMhkubWV1cnBnLnJ1bGVzLnYxLlJlc291cmNlEigKB2FjdGlvbnMYICADKAsyFy5tZXVycGcucnVsZXMudjEuQWN0aW9uEjEKEHN0YW5kYXJkX2FjdGlvbnMYISADKAsyFy5tZXVycGcucnVsZXMudjEuQWN0aW9uInYKCFJlc291cmNlEgsKA2tleRgBIAEoCRIPCgduYW1lX3B0GAIgASgJEgsKA21heBgDIAEoBRIrCghyZWNoYXJnZRgEIAEoDjIZLm1ldXJwZy5ydWxlcy52MS5SZWNoYXJnZRISCgpzb3VyY2Vfa2V5GAUgASgJIoEBCgZBY3Rpb24SCwoDa2V5GAEgASgJEg8KB25hbWVfcHQYAiABKAkSLwoHZWNvbm9teRgDIAEoDjIeLm1ldXJwZy5ydWxlcy52MS5BY3Rpb25FY29ub215EhQKDHJlc291cmNlX2tleRgEIAEoCRISCgpzb3VyY2Vfa2V5GAUgASgJIlEKC0RpY2VGb3JtdWxhEg0KBWNvdW50GAEgASgFEg0KBXNpZGVzGAIgASgFEg0KBWJvbnVzGAMgASgFEhUKDWFkZHNfbW9kaWZpZXIYBCABKAgiWwoMRGVyaXZlZENsYXNzEhEKCWNsYXNzX2tleRgBIAEoCRIPCgduYW1lX3B0GAIgASgJEg0KBWxldmVsGAMgASgFEhgKEHN1YmNsYXNzX25hbWVfcHQYBCABKAkiigEKDkRlcml2ZWRBYmlsaXR5EikKB2FiaWxpdHkYASABKA4yGC5tZXVycGcucnVsZXMudjEuQWJpbGl0eRIPCgduYW1lX3B0GAIgASgJEgwKBGJhc2UYAyABKAUSDQoFYm9udXMYBCABKAUSDQoFc2NvcmUYBSABKAUSEAoIbW9kaWZpZXIYBiABKAUibAoLU2F2aW5nVGhyb3cSKQoHYWJpbGl0eRgBIAEoDjIYLm1ldXJwZy5ydWxlcy52MS5BYmlsaXR5Eg8KB25hbWVfcHQYAiABKAkSEgoKcHJvZmljaWVudBgDIAEoCBINCgVib251cxgEIAEoBSKeAQoMRGVyaXZlZFNraWxsEgsKA2tleRgBIAEoCRIPCgduYW1lX3B0GAIgASgJEikKB2FiaWxpdHkYAyABKA4yGC5tZXVycGcucnVsZXMudjEuQWJpbGl0eRI2Cgtwcm9maWNpZW5jeRgEIAEoDjIhLm1ldXJwZy5ydWxlcy52MS5Qcm9maWNpZW5jeUxldmVsEg0KBWJvbnVzGAUgASgFIicKB0hpdERpY2USDQoFZmFjZXMYASABKAUSDQoFY291bnQYAiABKAUiNwoFU2Vuc2USCwoDa2V5GAEgASgJEg8KB25hbWVfcHQYAiABKAkSEAoIcmFuZ2VfZnQYAyABKAUizgEKDFNwZWxsY2FzdGluZxIRCgljbGFzc19rZXkYASABKAkSFQoNY2xhc3NfbmFtZV9wdBgCIAEoCRIpCgdhYmlsaXR5GAMgASgOMhgubWV1cnBnLnJ1bGVzLnYxLkFiaWxpdHkSDwoHc2F2ZV9kYxgEIAEoBRIUCgxhdHRhY2tfYm9udXMYBSABKAUSFgoOY2FudHJpcHNfa25vd24YBiABKAUSFAoMc3BlbGxzX2tub3duGAcgASgFEhQKDHByZXBhcmVkX21heBgIIAEoBSIqCgpTcGVsbFNsb3RzEg0KBWxldmVsGAEgASgFEg0KBWNvdW50GAIgASgFIi4KCVBhY3RNYWdpYxISCgpzbG90X2xldmVsGAEgASgFEg0KBWNvdW50GAIgASgFIkkKDkNoYXJhY3RlclNwZWxsEiUKBXNwZWxsGAEgASgLMhYubWV1cnBnLnJ1bGVzLnYxLlNwZWxsEhAKCHByZXBhcmVkGAIgASgIIqoDCgZBdHRhY2sSCwoDa2V5GAEgASgJEgwKBG5hbWUYAiABKAkSDwoHbmFtZV9wdBgDIAEoCRIUCgxhdHRhY2tfYm9udXMYBCABKAUSDgoGZGFtYWdlGAUgASgJEhYKDmRhbWFnZV90eXBlX3B0GAYgASgJEikKBGtpbmQYByABKA4yGy5tZXVycGcucnVsZXMudjEuQXR0YWNrS2luZBIPCgdzYXZlX2RjGAggASgFEi4KDHNhdmVfYWJpbGl0eRgJIAEoDjIYLm1ldXJwZy5ydWxlcy52MS5BYmlsaXR5EhgKEHZlcnNhdGlsZV9kYW1hZ2UYCiABKAkSEAoIcmFuZ2VfZnQYCyABKAUSFQoNbG9uZ19yYW5nZV9mdBgMIAEoBRIxCgtkYW1hZ2VfZGljZRgNIAEoCzIcLm1ldXJwZy5ydWxlcy52MS5EaWNlRm9ybXVsYRI7ChV2ZXJzYXRpbGVfZGFtYWdlX2RpY2UYDiABKAsyHC5tZXVycGcucnVsZXMudjEuRGljZUZvcm11bGESFwoPZGFtYWdlX3R5cGVfa2V5GA8gASgJIl0KB0ZlYXR1cmUSCwoDa2V5GAEgASgJEgwKBG5hbWUYAiABKAkSDwoHbmFtZV9wdBgDIAEoCRIRCglzb3VyY2VfcHQYBCABKAkSEwoLZGVzY3JpcHRpb24YBSABKAkiPgoNUHJvZmljaWVuY2llcxINCgVhcm1vchgBIAMoCRIPCgd3ZWFwb25zGAIgAygJEg0KBXRvb2xzGAMgAygJIigKBEhpbnQSEgoKc291cmNlX2tleRgBIAEoCRIMCgR0ZXh0GAIgASgJIjUKBUlzc3VlEgwKBGNvZGUYASABKAkSDQoFZmllbGQYAiABKAkSDwoHbWVzc2FnZRgDIAEoCSLuAwoHQ29udGVudBIXCg9jb250ZW50X3ZlcnNpb24YASABKAkSEwoLYXR0cmlidXRpb24YAiABKAkSLwoJYWJpbGl0aWVzGAMgAygLMhwubWV1cnBnLnJ1bGVzLnYxLkFiaWxpdHlJbmZvEiQKBXJhY2VzGAQgAygLMhUubWV1cnBnLnJ1bGVzLnYxLlJhY2USKgoIc3VicmFjZXMYBSADKAsyGC5tZXVycGcucnVsZXMudjEuU3VicmFjZRIwCgdjbGFzc2VzGAYgAygLMh8ubWV1cnBnLnJ1bGVzLnYxLkNoYXJhY3RlckNsYXNzEi0KCnN1YmNsYXNzZXMYByADKAsyGS5tZXVycGcucnVsZXMudjEuU3ViY2xhc3MSMAoLYmFja2dyb3VuZHMYCCADKAsyGy5tZXVycGcucnVsZXMudjEuQmFja2dyb3VuZBImCgZza2lsbHMYCSADKAsyFi5tZXVycGcucnVsZXMudjEuU2tpbGwSJQoFYXJtb3IYCiADKAsyFi5tZXVycGcucnVsZXMudjEuQXJtb3ISKAoHd2VhcG9ucxgLIAMoCzIXLm1ldXJwZy5ydWxlcy52MS5XZWFwb24SJgoGc3BlbGxzGAwgAygLMhYubWV1cnBnLnJ1bGVzLnYxLlNwZWxsInAKC0FiaWxpdHlJbmZvEikKB2FiaWxpdHkYASABKA4yGC5tZXVycGcucnVsZXMudjEuQWJpbGl0eRIMCgRuYW1lGAIgASgJEg8KB25hbWVfcHQYAyABKAkSFwoPYWJicmV2aWF0aW9uX3B0GAQgASgJIn0KBFJhY2USCwoDa2V5GAEgASgJEgwKBG5hbWUYAiABKAkSDwoHbmFtZV9wdBgDIAEoCRIQCghzcGVlZF9mdBgEIAEoBRI3Cg9hYmlsaXR5X2JvbnVzZXMYBSABKAsyHi5tZXVycGcucnVsZXMudjEuQWJpbGl0eVNjb3JlcyKAAQoHU3VicmFjZRILCgNrZXkYASABKAkSDAoEbmFtZRgCIAEoCRIPCgduYW1lX3B0GAMgASgJEhAKCHJhY2Vfa2V5GAQgASgJEjcKD2FiaWxpdHlfYm9udXNlcxgFIAEoCzIeLm1ldXJwZy5ydWxlcy52MS5BYmlsaXR5U2NvcmVzIoQCCg5DaGFyYWN0ZXJDbGFzcxILCgNrZXkYASABKAkSDAoEbmFtZRgCIAEoCRIPCgduYW1lX3B0GAMgASgJEg8KB2hpdF9kaWUYBCABKAUSLwoNc2F2aW5nX3Rocm93cxgFIAMoDjIYLm1ldXJwZy5ydWxlcy52MS5BYmlsaXR5EjIKDHNraWxsX2Nob2ljZRgGIAEoCzIcLm1ldXJwZy5ydWxlcy52MS5Ta2lsbENob2ljZRIWCg5zdWJjbGFzc19sZXZlbBgHIAEoBRI4CgxzcGVsbGNhc3RpbmcYCCABKAsyIi5tZXVycGcucnVsZXMudjEuQ2xhc3NTcGVsbGNhc3RpbmciMAoLU2tpbGxDaG9pY2USDQoFY291bnQYASABKAUSEgoKc2tpbGxfa2V5cxgCIAMoCSKtAQoRQ2xhc3NTcGVsbGNhc3RpbmcSKQoHYWJpbGl0eRgBIAEoDjIYLm1ldXJwZy5ydWxlcy52MS5BYmlsaXR5EhMKC2ZpcnN0X2xldmVsGAIgASgFEjYKC3ByZXBhcmF0aW9uGAMgASgOMiEubWV1cnBnLnJ1bGVzLnYxLlNwZWxsUHJlcGFyYXRpb24SIAoYbWF4X3NwZWxsX2xldmVsX2J5X2xldmVsGAQgAygFIkkKCFN1YmNsYXNzEgsKA2tleRgBIAEoCRIMCgRuYW1lGAIgASgJEg8KB25hbWVfcHQYAyABKAkSEQoJY2xhc3Nfa2V5GAQgASgJIkwKCkJhY2tncm91bmQSCwoDa2V5GAEgASgJEgwKBG5hbWUYAiABKAkSDwoHbmFtZV9wdBgDIAEoCRISCgpza2lsbF9rZXlzGAQgAygJIl4KBVNraWxsEgsKA2tleRgBIAEoCRIMCgRuYW1lGAIgASgJEg8KB25hbWVfcHQYAyABKAkSKQoHYWJpbGl0eRgEIAEoDjIYLm1ldXJwZy5ydWxlcy52MS5BYmlsaXR5ImUKBUFybW9yEgsKA2tleRgBIAEoCRIMCgRuYW1lGAIgASgJEg8KB25hbWVfcHQYAyABKAkSMAoIY2F0ZWdvcnkYBCABKA4yHi5tZXVycGcucnVsZXMudjEuQXJtb3JDYXRlZ29yeSJ3CgZXZWFwb24SCwoDa2V5GAEgASgJEgwKBG5hbWUYAiABKAkSDwoHbmFtZV9wdBgDIAEoCRIxCghjYXRlZ29yeRgEIAEoDjIfLm1ldXJwZy5ydWxlcy52MS5XZWFwb25DYXRlZ29yeRIOCgZyYW5nZWQYBSABKAgiqQEKBVNwZWxsEgsKA2tleRgBIAEoCRIMCgRuYW1lGAIgASgJEg8KB25hbWVfcHQYAyABKAkSDQoFbGV2ZWwYBCABKAUSEgoKc2Nob29sX2tleRgFIAEoCRIWCg5zY2hvb2xfbmFtZV9wdBgGIAEoCRISCgpjbGFzc19rZXlzGAcgAygJEg4KBnJpdHVhbBgIIAEoCBIVCg1jb25jZW50cmF0aW9uGAkgASgIIikKEkxpc3RDb250ZW50UmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCSJAChNMaXN0Q29udGVudFJlc3BvbnNlEikKB2NvbnRlbnQYASABKAsyGC5tZXVycGcucnVsZXMudjEuQ29udGVudCJAChZHZXRTcGVsbERldGFpbHNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhEKCXNwZWxsX2tleRgCIAEoCSJHChdHZXRTcGVsbERldGFpbHNSZXNwb25zZRIsCgVzcGVsbBgBIAEoCzIdLm1ldXJwZy5ydWxlcy52MS5TcGVsbERldGFpbHMixAQKDFNwZWxsRGV0YWlscxIlCgVzcGVsbBgBIAEoCzIWLm1ldXJwZy5ydWxlcy52MS5TcGVsbBI3CgxjYXN0aW5nX3RpbWUYAiABKAsyIS5tZXVycGcucnVsZXMudjEuU3BlbGxDYXN0aW5nVGltZRIqCgVyYW5nZRgDIAEoCzIbLm1ldXJwZy5ydWxlcy52MS5TcGVsbFJhbmdlEjQKCmNvbXBvbmVudHMYBCABKAsyIC5tZXVycGcucnVsZXMudjEuU3BlbGxDb21wb25lbnRzEjAKCGR1cmF0aW9uGAUgASgLMh4ubWV1cnBnLnJ1bGVzLnYxLlNwZWxsRHVyYXRpb24SNQoLYXR0YWNrX3R5cGUYBiABKA4yIC5tZXVycGcucnVsZXMudjEuU3BlbGxBdHRhY2tUeXBlEigKBHNhdmUYByABKAsyGi5tZXVycGcucnVsZXMudjEuU3BlbGxTYXZlEiwKBmRhbWFnZRgIIAMoCzIcLm1ldXJwZy5ydWxlcy52MS5TcGVsbERhbWFnZRJOChJoZWFsX2J5X3Nsb3RfbGV2ZWwYCSADKAsyMi5tZXVycGcucnVsZXMudjEuU3BlbGxEZXRhaWxzLkhlYWxCeVNsb3RMZXZlbEVudHJ5EhMKC2Rlc2NyaXB0aW9uGAogAygJEhQKDGhpZ2hlcl9sZXZlbBgLIAMoCRo2ChRIZWFsQnlTbG90TGV2ZWxFbnRyeRILCgNrZXkYASABKAUSDQoFdmFsdWUYAiABKAk6AjgBInAKEFNwZWxsQ2FzdGluZ1RpbWUSDgoGYW1vdW50GAEgASgFEi4KBHVuaXQYAiABKA4yIC5tZXVycGcucnVsZXMudjEuQ2FzdGluZ1RpbWVVbml0Eg8KB3RyaWdnZXIYAyABKAkSCwoDcmF3GAQgASgJIl0KClNwZWxsUmFuZ2USLQoEa2luZBgBIAEoDjIfLm1ldXJwZy5ydWxlcy52MS5TcGVsbFJhbmdlS2luZBITCgtkaXN0YW5jZV9mdBgCIAEoBRILCgNyYXcYAyABKAkiWwoPU3BlbGxDb21wb25lbnRzEg4KBnZlcmJhbBgBIAEoCBIPCgdzb21hdGljGAIgASgIEhAKCG1hdGVyaWFsGAMgASgIEhUKDW1hdGVyaWFsX3RleHQYBCABKAkitgEKDVNwZWxsRHVyYXRpb24SMAoEa2luZBgBIAEoDjIiLm1ldXJwZy5ydWxlcy52MS5TcGVsbER1cmF0aW9uS2luZBIOCgZhbW91bnQYAiABKAUSMAoEdW5pdBgDIAEoDjIiLm1ldXJwZy5ydWxlcy52MS5TcGVsbER1cmF0aW9uVW5pdBINCgV1cF90bxgEIAEoCBIVCg1jb25jZW50cmF0aW9uGAUgASgIEgsKA3JhdxgGIAEoCSJtCglTcGVsbFNhdmUSKQoHYWJpbGl0eRgBIAEoDjIYLm1ldXJwZy5ydWxlcy52MS5BYmlsaXR5EjUKCm9uX3N1Y2Nlc3MYAiABKA4yIS5tZXVycGcucnVsZXMudjEuU3BlbGxTYXZlU3VjY2VzcyLBAgoLU3BlbGxEYW1hZ2USFwoPZGFtYWdlX3R5cGVfa2V5GAEgASgJEhYKDmRhbWFnZV90eXBlX3B0GAIgASgJEkQKDWJ5X3Nsb3RfbGV2ZWwYAyADKAsyLS5tZXVycGcucnVsZXMudjEuU3BlbGxEYW1hZ2UuQnlTbG90TGV2ZWxFbnRyeRJOChJieV9jaGFyYWN0ZXJfbGV2ZWwYBCADKAsyMi5tZXVycGcucnVsZXMudjEuU3BlbGxEYW1hZ2UuQnlDaGFyYWN0ZXJMZXZlbEVudHJ5GjIKEEJ5U2xvdExldmVsRW50cnkSCwoDa2V5GAEgASgFEg0KBXZhbHVlGAIgASgJOgI4ARo3ChVCeUNoYXJhY3RlckxldmVsRW50cnkSCwoDa2V5GAEgASgFEg0KBXZhbHVlGAIgASgJOgI4ASKLAgoLVHVybk9wdGlvbnMSLQoHZWNvbm9teRgBIAEoCzIcLm1ldXJwZy5ydWxlcy52MS5UdXJuRWNvbm9teRIuCgdhdHRhY2tzGAIgAygLMh0ubWV1cnBnLnJ1bGVzLnYxLkF0dGFja09wdGlvbhIsCgZzcGVsbHMYAyADKAsyHC5tZXVycGcucnVsZXMudjEuU3BlbGxPcHRpb24SNwoQc3RhbmRhcmRfYWN0aW9ucxgEIAMoCzIdLm1ldXJwZy5ydWxlcy52MS5BY3Rpb25PcHRpb24SNgoPZmVhdHVyZV9hY3Rpb25zGAUgAygLMh0ubWV1cnBnLnJ1bGVzLnYxLkFjdGlvbk9wdGlvbiLTAQoLVHVybkVjb25vbXkSLQoGYWN0aW9uGAEgASgLMh0ubWV1cnBnLnJ1bGVzLnYxLkVjb25vbXlTdGF0ZRIzCgxib251c19hY3Rpb24YAiABKAsyHS5tZXVycGcucnVsZXMudjEuRWNvbm9teVN0YXRlEi8KCHJlYWN0aW9uGAMgASgLMh0ubWV1cnBnLnJ1bGVzLnYxLkVjb25vbXlTdGF0ZRIvCghtb3ZlbWVudBgEIAEoCzIdLm1ldXJwZy5ydWxlcy52MS5Nb3ZlbWVudExlZnQiLwoMRWNvbm9teVN0YXRlEgwKBHVzZWQYASABKAgSEQoJYXZhaWxhYmxlGAIgASgIIkIKDE1vdmVtZW50TGVmdBIQCghzcGVlZF9mdBgBIAEoBRIPCgd1c2VkX2Z0GAIgASgFEg8KB2xlZnRfZnQYAyABKAUigwEKDkRpc2FibGVkUmVhc29uEjEKBGNvZGUYASABKA4yIy5tZXVycGcucnVsZXMudjEuRGlzYWJsZWRSZWFzb25Db2RlEhEKCW1pbl9sZXZlbBgCIAEoBRIrCghyZWNoYXJnZRgDIAEoDjIZLm1ldXJwZy5ydWxlcy52MS5SZWNoYXJnZSJ5CgxBdHRhY2tPcHRpb24SJwoGYXR0YWNrGAEgASgLMhcubWV1cnBnLnJ1bGVzLnYxLkF0dGFjaxIPCgdlbmFibGVkGAIgASgIEi8KBnJlYXNvbhgDIAEoCzIfLm1ldXJwZy5ydWxlcy52MS5EaXNhYmxlZFJlYXNvbiLTAQoLU3BlbGxPcHRpb24SJQoFc3BlbGwYASABKAsyFi5tZXVycGcucnVsZXMudjEuU3BlbGwSLwoHZWNvbm9teRgCIAEoDjIeLm1ldXJwZy5ydWxlcy52MS5BY3Rpb25FY29ub215Eg8KB2VuYWJsZWQYAyABKAgSLwoGcmVhc29uGAQgASgLMh8ubWV1cnBnLnJ1bGVzLnYxLkRpc2FibGVkUmVhc29uEioKBXNsb3RzGAUgAygLMhsubWV1cnBnLnJ1bGVzLnYxLlNsb3RDaG9pY2UiNwoKU2xvdENob2ljZRINCgVsZXZlbBgBIAEoBRIMCgRwYWN0GAIgASgIEgwKBGZyZWUYAyABKAUijAEKDEFjdGlvbk9wdGlvbhInCgZhY3Rpb24YASABKAsyFy5tZXVycGcucnVsZXMudjEuQWN0aW9uEg8KB2VuYWJsZWQYAiABKAgSLwoGcmVhc29uGAMgASgLMh8ubWV1cnBnLnJ1bGVzLnYxLkRpc2FibGVkUmVhc29uEhEKCXVzZXNfbGVmdBgEIAEoBSqtAQoHQWJpbGl0eRIXChNBQklMSVRZX1VOU1BFQ0lGSUVEEAASFAoQQUJJTElUWV9TVFJFTkdUSBABEhUKEUFCSUxJVFlfREVYVEVSSVRZEAISGAoUQUJJTElUWV9DT05TVElUVVRJT04QAxIYChRBQklMSVRZX0lOVEVMTElHRU5DRRAEEhIKDkFCSUxJVFlfV0lTRE9NEAUSFAoQQUJJTElUWV9DSEFSSVNNQRAGKrABChBQcm9maWNpZW5jeUxldmVsEiEKHVBST0ZJQ0lFTkNZX0xFVkVMX1VOU1BFQ0lGSUVEEAASGgoWUFJPRklDSUVOQ1lfTEVWRUxfTk9ORRABEhoKFlBST0ZJQ0lFTkNZX0xFVkVMX0hBTEYQAhIgChxQUk9GSUNJRU5DWV9MRVZFTF9QUk9GSUNJRU5UEAMSHwobUFJPRklDSUVOQ1lfTEVWRUxfRVhQRVJUSVNFEAQqewoIUmVjaGFyZ2USGAoUUkVDSEFSR0VfVU5TUEVDSUZJRUQQABIXChNSRUNIQVJHRV9TSE9SVF9SRVNUEAESFgoSUkVDSEFSR0VfTE9OR19SRVNUEAISEQoNUkVDSEFSR0VfREFXThADEhEKDVJFQ0hBUkdFX05PTkUQBCq+AQoNQWN0aW9uRWNvbm9teRIeChpBQ1RJT05fRUNPTk9NWV9VTlNQRUNJRklFRBAAEhkKFUFDVElPTl9FQ09OT01ZX0FDVElPThABEh8KG0FDVElPTl9FQ09OT01ZX0JPTlVTX0FDVElPThACEhsKF0FDVElPTl9FQ09OT01ZX1JFQUNUSU9OEAMSFwoTQUNUSU9OX0VDT05PTVlfRlJFRRAEEhsKF0FDVElPTl9FQ09OT01ZX01PVkVNRU5UEAUqWAoKQXR0YWNrS2luZBIbChdBVFRBQ0tfS0lORF9VTlNQRUNJRklFRBAAEhYKEkFUVEFDS19LSU5EX1dFQVBPThABEhUKEUFUVEFDS19LSU5EX1NQRUxMEAIqkwEKEFNwZWxsUHJlcGFyYXRpb24SIQodU1BFTExfUFJFUEFSQVRJT05fVU5TUEVDSUZJRUQQABIbChdTUEVMTF9QUkVQQVJBVElPTl9LTk9XThABEh4KGlNQRUxMX1BSRVBBUkFUSU9OX1BSRVBBUkVEEAISHwobU1BFTExfUFJFUEFSQVRJT05fU1BFTExCT09LEAMqfgoNQXJtb3JDYXRlZ29yeRIeChpBUk1PUl9DQVRFR09SWV9VTlNQRUNJRklFRBAAEhgKFEFSTU9SX0NBVEVHT1JZX0xJR0hUEAESGQoVQVJNT1JfQ0FURUdPUllfTUVESVVNEAISGAoUQVJNT1JfQ0FURUdPUllfSEVBVlkQAypqCg5XZWFwb25DYXRlZ29yeRIfChtXRUFQT05fQ0FURUdPUllfVU5TUEVDSUZJRUQQABIaChZXRUFQT05fQ0FURUdPUllfU0lNUExFEAESGwoXV0VBUE9OX0NBVEVHT1JZX01BUlRJQUwQAirQAQoPQ2FzdGluZ1RpbWVVbml0EiEKHUNBU1RJTkdfVElNRV9VTklUX1VOU1BFQ0lGSUVEEAASHAoYQ0FTVElOR19USU1FX1VOSVRfQUNUSU9OEAESIgoeQ0FTVElOR19USU1FX1VOSVRfQk9OVVNfQUNUSU9OEAISHgoaQ0FTVElOR19USU1FX1VOSVRfUkVBQ1RJT04QAxIcChhDQVNUSU5HX1RJTUVfVU5JVF9NSU5VVEUQBBIaChZDQVNUSU5HX1RJTUVfVU5JVF9IT1VSEAUq4AEKDlNwZWxsUmFuZ2VLaW5kEiAKHFNQRUxMX1JBTkdFX0tJTkRfVU5TUEVDSUZJRUQQABIZChVTUEVMTF9SQU5HRV9LSU5EX1NFTEYQARIaChZTUEVMTF9SQU5HRV9LSU5EX1RPVUNIEAISGwoXU1BFTExfUkFOR0VfS0lORF9SQU5HRUQQAxIaChZTUEVMTF9SQU5HRV9LSU5EX1NJR0hUEAQSHgoaU1BFTExfUkFOR0VfS0lORF9VTkxJTUlURUQQBRIcChhTUEVMTF9SQU5HRV9LSU5EX1NQRUNJQUwQBirIAQoRU3BlbGxEdXJhdGlvbktpbmQSIwofU1BFTExfRFVSQVRJT05fS0lORF9VTlNQRUNJRklFRBAAEiUKIVNQRUxMX0RVUkFUSU9OX0tJTkRfSU5TVEFOVEFORU9VUxABEh0KGVNQRUxMX0RVUkFUSU9OX0tJTkRfVElNRUQQAhInCiNTUEVMTF9EVVJBVElPTl9LSU5EX1VOVElMX0RJU1BFTExFRBADEh8KG1NQRUxMX0RVUkFUSU9OX0tJTkRfU1BFQ0lBTBAEKrIBChFTcGVsbER1cmF0aW9uVW5pdBIjCh9TUEVMTF9EVVJBVElPTl9VTklUX1VOU1BFQ0lGSUVEEAASHQoZU1BFTExfRFVSQVRJT05fVU5JVF9ST1VORBABEh4KGlNQRUxMX0RVUkFUSU9OX1VOSVRfTUlOVVRFEAISHAoYU1BFTExfRFVSQVRJT05fVU5JVF9IT1VSEAMSGwoXU1BFTExfRFVSQVRJT05fVU5JVF9EQVkQBCqLAQoPU3BlbGxBdHRhY2tUeXBlEiEKHVNQRUxMX0FUVEFDS19UWVBFX1VOU1BFQ0lGSUVEEAASGgoWU1BFTExfQVRUQUNLX1RZUEVfTk9ORRABEhsKF1NQRUxMX0FUVEFDS19UWVBFX01FTEVFEAISHAoYU1BFTExfQVRUQUNLX1RZUEVfUkFOR0VEEAMqjgEKEFNwZWxsU2F2ZVN1Y2Nlc3MSIgoeU1BFTExfU0FWRV9TVUNDRVNTX1VOU1BFQ0lGSUVEEAASGwoXU1BFTExfU0FWRV9TVUNDRVNTX05PTkUQARIbChdTUEVMTF9TQVZFX1NVQ0NFU1NfSEFMRhACEhwKGFNQRUxMX1NBVkVfU1VDQ0VTU19PVEhFUhADKoEDChJEaXNhYmxlZFJlYXNvbkNvZGUSJAogRElTQUJMRURfUkVBU09OX0NPREVfVU5TUEVDSUZJRUQQABIkCiBESVNBQkxFRF9SRUFTT05fQ09ERV9BQ1RJT05fVVNFRBABEioKJkRJU0FCTEVEX1JFQVNPTl9DT0RFX0JPTlVTX0FDVElPTl9VU0VEEAISJgoiRElTQUJMRURfUkVBU09OX0NPREVfUkVBQ1RJT05fVVNFRBADEiAKHERJU0FCTEVEX1JFQVNPTl9DT0RFX05PX1NMT1QQBBIgChxESVNBQkxFRF9SRUFTT05fQ09ERV9OT19VU0VTEAUSLworRElTQUJMRURfUkVBU09OX0NPREVfUkVBQ1RJT05fT05MWV9XSEVOX0hJVBAGEiYKIkRJU0FCTEVEX1JFQVNPTl9DT0RFX1JFQUNUSU9OX09OTFkQBxIuCipESVNBQkxFRF9SRUFTT05fQ09ERV9DQVNUSU5HX1RJTUVfVE9PX0xPTkcQCDLaAQoOQ29udGVudFNlcnZpY2USXQoLTGlzdENvbnRlbnQSIy5tZXVycGcucnVsZXMudjEuTGlzdENvbnRlbnRSZXF1ZXN0GiQubWV1cnBnLnJ1bGVzLnYxLkxpc3RDb250ZW50UmVzcG9uc2UiA5ACAhJpCg9HZXRTcGVsbERldGFpbHMSJy5tZXVycGcucnVsZXMudjEuR2V0U3BlbGxEZXRhaWxzUmVxdWVzdBooLm1ldXJwZy5ydWxlcy52MS5HZXRTcGVsbERldGFpbHNSZXNwb25zZSIDkAICQr8BChNjb20ubWV1cnBnLnJ1bGVzLnYxQgpSdWxlc1Byb3RvUAFaPmdpdGh1Yi5jb20vUHVyYUZvbWUvbWV1UlBHL2JhY2tlbmQvZ2VuL21ldXJwZy9ydWxlcy92MTtydWxlc3YxogIDTVJYqgIPTWV1cnBnLlJ1bGVzLlYxygIPTWV1cnBnXFJ1bGVzXFYx4gIbTWV1cnBnXFJ1bGVzXFYxXEdQQk1ldGFkYXRh6gIRTWV1cnBnOjpSdWxlczo6VjFiBnByb3RvMw");
 
 /**
  * AbilityScores holds one number per ability. The field that uses it says
@@ -325,6 +325,29 @@ export type DerivedSheet = Message<"meurpg.rules.v1.DerivedSheet"> & {
    * @generated from field: repeated meurpg.rules.v1.Issue issues = 30;
    */
   issues: Issue[];
+
+  /**
+   * Use-limited features at the character's level (Second Wind, Ki, Rage).
+   * The session counts the uses (RN-02).
+   *
+   * @generated from field: repeated meurpg.rules.v1.Resource resources = 31;
+   */
+  resources: Resource[];
+
+  /**
+   * Actions the character's features grant, with their action economy.
+   *
+   * @generated from field: repeated meurpg.rules.v1.Action actions = 32;
+   */
+  actions: Action[];
+
+  /**
+   * The actions everyone has: Attack, Cast a Spell, Dash, Disengage, Dodge,
+   * Help, Hide, Ready, Search, Use an Object.
+   *
+   * @generated from field: repeated meurpg.rules.v1.Action standard_actions = 33;
+   */
+  standardActions: Action[];
 };
 
 /**
@@ -333,6 +356,149 @@ export type DerivedSheet = Message<"meurpg.rules.v1.DerivedSheet"> & {
  */
 export const DerivedSheetSchema: GenMessage<DerivedSheet> = /*@__PURE__*/
   messageDesc(file_meurpg_rules_v1_rules, 1);
+
+/**
+ * Resource is a use-limited feature, such as Second Wind or a monk's ki.
+ *
+ * @generated from message meurpg.rules.v1.Resource
+ */
+export type Resource = Message<"meurpg.rules.v1.Resource"> & {
+  /**
+   * The resource's name in the rules content, such as "second_wind".
+   *
+   * @generated from field: string key = 1;
+   */
+  key: string;
+
+  /**
+   * The Portuguese name, such as "Retomar o Fôlego".
+   *
+   * @generated from field: string name_pt = 2;
+   */
+  namePt: string;
+
+  /**
+   * How many uses, at the character's level. A barbarian's unlimited rage
+   * is 99.
+   *
+   * @generated from field: int32 max = 3;
+   */
+  max: number;
+
+  /**
+   * When the uses come back.
+   *
+   * @generated from field: meurpg.rules.v1.Recharge recharge = 4;
+   */
+  recharge: Recharge;
+
+  /**
+   * Content key of the feature or trait that grants it.
+   *
+   * @generated from field: string source_key = 5;
+   */
+  sourceKey: string;
+};
+
+/**
+ * Describes the message meurpg.rules.v1.Resource.
+ * Use `create(ResourceSchema)` to create a new message.
+ */
+export const ResourceSchema: GenMessage<Resource> = /*@__PURE__*/
+  messageDesc(file_meurpg_rules_v1_rules, 2);
+
+/**
+ * Action is something a character does on their turn.
+ *
+ * @generated from message meurpg.rules.v1.Action
+ */
+export type Action = Message<"meurpg.rules.v1.Action"> & {
+  /**
+   * The feature's content key ("feature:second-wind") for a feature action,
+   * or "standard:dash" and the like for a standard one.
+   *
+   * @generated from field: string key = 1;
+   */
+  key: string;
+
+  /**
+   * The Portuguese name, such as "Retomar o Fôlego" or "Disparada".
+   *
+   * @generated from field: string name_pt = 2;
+   */
+  namePt: string;
+
+  /**
+   * @generated from field: meurpg.rules.v1.ActionEconomy economy = 3;
+   */
+  economy: ActionEconomy;
+
+  /**
+   * The key of the Resource each use spends. Empty when it spends none.
+   *
+   * @generated from field: string resource_key = 4;
+   */
+  resourceKey: string;
+
+  /**
+   * Content key of the feature or trait that grants it. Empty for a
+   * standard action.
+   *
+   * @generated from field: string source_key = 5;
+   */
+  sourceKey: string;
+};
+
+/**
+ * Describes the message meurpg.rules.v1.Action.
+ * Use `create(ActionSchema)` to create a new message.
+ */
+export const ActionSchema: GenMessage<Action> = /*@__PURE__*/
+  messageDesc(file_meurpg_rules_v1_rules, 3);
+
+/**
+ * DiceFormula is a damage or healing roll as numbers: 1d8+3 is count 1,
+ * sides 8, bonus 3. The server never rolls; the dice come from the player
+ * or from the app (RN-18).
+ *
+ * @generated from message meurpg.rules.v1.DiceFormula
+ */
+export type DiceFormula = Message<"meurpg.rules.v1.DiceFormula"> & {
+  /**
+   * How many dice. 0 for a flat number.
+   *
+   * @generated from field: int32 count = 1;
+   */
+  count: number;
+
+  /**
+   * The die: 8 for a d8.
+   *
+   * @generated from field: int32 sides = 2;
+   */
+  sides: number;
+
+  /**
+   * Added to the dice. Negative for a penalty.
+   *
+   * @generated from field: int32 bonus = 3;
+   */
+  bonus: number;
+
+  /**
+   * The SRD adds the caster's spellcasting modifier on top ("1d8 + MOD").
+   *
+   * @generated from field: bool adds_modifier = 4;
+   */
+  addsModifier: boolean;
+};
+
+/**
+ * Describes the message meurpg.rules.v1.DiceFormula.
+ * Use `create(DiceFormulaSchema)` to create a new message.
+ */
+export const DiceFormulaSchema: GenMessage<DiceFormula> = /*@__PURE__*/
+  messageDesc(file_meurpg_rules_v1_rules, 4);
 
 /**
  * DerivedClass is one of a character's classes, with names resolved.
@@ -376,7 +542,7 @@ export type DerivedClass = Message<"meurpg.rules.v1.DerivedClass"> & {
  * Use `create(DerivedClassSchema)` to create a new message.
  */
 export const DerivedClassSchema: GenMessage<DerivedClass> = /*@__PURE__*/
-  messageDesc(file_meurpg_rules_v1_rules, 2);
+  messageDesc(file_meurpg_rules_v1_rules, 5);
 
 /**
  * DerivedAbility is one ability, from the base score to the modifier.
@@ -431,7 +597,7 @@ export type DerivedAbility = Message<"meurpg.rules.v1.DerivedAbility"> & {
  * Use `create(DerivedAbilitySchema)` to create a new message.
  */
 export const DerivedAbilitySchema: GenMessage<DerivedAbility> = /*@__PURE__*/
-  messageDesc(file_meurpg_rules_v1_rules, 3);
+  messageDesc(file_meurpg_rules_v1_rules, 6);
 
 /**
  * SavingThrow is one of the six saving throws.
@@ -472,7 +638,7 @@ export type SavingThrow = Message<"meurpg.rules.v1.SavingThrow"> & {
  * Use `create(SavingThrowSchema)` to create a new message.
  */
 export const SavingThrowSchema: GenMessage<SavingThrow> = /*@__PURE__*/
-  messageDesc(file_meurpg_rules_v1_rules, 4);
+  messageDesc(file_meurpg_rules_v1_rules, 7);
 
 /**
  * DerivedSkill is one skill with the character's bonus.
@@ -519,7 +685,7 @@ export type DerivedSkill = Message<"meurpg.rules.v1.DerivedSkill"> & {
  * Use `create(DerivedSkillSchema)` to create a new message.
  */
 export const DerivedSkillSchema: GenMessage<DerivedSkill> = /*@__PURE__*/
-  messageDesc(file_meurpg_rules_v1_rules, 5);
+  messageDesc(file_meurpg_rules_v1_rules, 8);
 
 /**
  * HitDice is a number of hit dice of one size, such as 3d6.
@@ -547,7 +713,7 @@ export type HitDice = Message<"meurpg.rules.v1.HitDice"> & {
  * Use `create(HitDiceSchema)` to create a new message.
  */
 export const HitDiceSchema: GenMessage<HitDice> = /*@__PURE__*/
-  messageDesc(file_meurpg_rules_v1_rules, 6);
+  messageDesc(file_meurpg_rules_v1_rules, 9);
 
 /**
  * Sense is a special sense, such as darkvision.
@@ -582,7 +748,7 @@ export type Sense = Message<"meurpg.rules.v1.Sense"> & {
  * Use `create(SenseSchema)` to create a new message.
  */
 export const SenseSchema: GenMessage<Sense> = /*@__PURE__*/
-  messageDesc(file_meurpg_rules_v1_rules, 7);
+  messageDesc(file_meurpg_rules_v1_rules, 10);
 
 /**
  * Spellcasting is what one casting class gives the character.
@@ -654,7 +820,7 @@ export type Spellcasting = Message<"meurpg.rules.v1.Spellcasting"> & {
  * Use `create(SpellcastingSchema)` to create a new message.
  */
 export const SpellcastingSchema: GenMessage<Spellcasting> = /*@__PURE__*/
-  messageDesc(file_meurpg_rules_v1_rules, 8);
+  messageDesc(file_meurpg_rules_v1_rules, 11);
 
 /**
  * SpellSlots is how many slots the character has of one spell level.
@@ -682,7 +848,7 @@ export type SpellSlots = Message<"meurpg.rules.v1.SpellSlots"> & {
  * Use `create(SpellSlotsSchema)` to create a new message.
  */
 export const SpellSlotsSchema: GenMessage<SpellSlots> = /*@__PURE__*/
-  messageDesc(file_meurpg_rules_v1_rules, 9);
+  messageDesc(file_meurpg_rules_v1_rules, 12);
 
 /**
  * PactMagic is the Warlock's pact magic: a few slots, all of one level,
@@ -711,7 +877,7 @@ export type PactMagic = Message<"meurpg.rules.v1.PactMagic"> & {
  * Use `create(PactMagicSchema)` to create a new message.
  */
 export const PactMagicSchema: GenMessage<PactMagic> = /*@__PURE__*/
-  messageDesc(file_meurpg_rules_v1_rules, 10);
+  messageDesc(file_meurpg_rules_v1_rules, 13);
 
 /**
  * CharacterSpell is a spell on the character's sheet.
@@ -739,7 +905,7 @@ export type CharacterSpell = Message<"meurpg.rules.v1.CharacterSpell"> & {
  * Use `create(CharacterSpellSchema)` to create a new message.
  */
 export const CharacterSpellSchema: GenMessage<CharacterSpell> = /*@__PURE__*/
-  messageDesc(file_meurpg_rules_v1_rules, 11);
+  messageDesc(file_meurpg_rules_v1_rules, 14);
 
 /**
  * Attack is an attack with a weapon on the sheet.
@@ -829,6 +995,26 @@ export type Attack = Message<"meurpg.rules.v1.Attack"> & {
    * @generated from field: int32 long_range_ft = 12;
    */
   longRangeFt: number;
+
+  /**
+   * `damage` and `versatile_damage` as numbers, for rolling and adding up.
+   * Unset when there are no damage dice.
+   *
+   * @generated from field: meurpg.rules.v1.DiceFormula damage_dice = 13;
+   */
+  damageDice?: DiceFormula | undefined;
+
+  /**
+   * @generated from field: meurpg.rules.v1.DiceFormula versatile_damage_dice = 14;
+   */
+  versatileDamageDice?: DiceFormula | undefined;
+
+  /**
+   * Content key of the damage type, such as "damage-type:slashing".
+   *
+   * @generated from field: string damage_type_key = 15;
+   */
+  damageTypeKey: string;
 };
 
 /**
@@ -836,7 +1022,7 @@ export type Attack = Message<"meurpg.rules.v1.Attack"> & {
  * Use `create(AttackSchema)` to create a new message.
  */
 export const AttackSchema: GenMessage<Attack> = /*@__PURE__*/
-  messageDesc(file_meurpg_rules_v1_rules, 12);
+  messageDesc(file_meurpg_rules_v1_rules, 15);
 
 /**
  * Feature is a class feature, racial trait or background feature.
@@ -885,7 +1071,7 @@ export type Feature = Message<"meurpg.rules.v1.Feature"> & {
  * Use `create(FeatureSchema)` to create a new message.
  */
 export const FeatureSchema: GenMessage<Feature> = /*@__PURE__*/
-  messageDesc(file_meurpg_rules_v1_rules, 13);
+  messageDesc(file_meurpg_rules_v1_rules, 16);
 
 /**
  * Proficiencies lists armor, weapon and tool proficiencies, as Portuguese
@@ -915,7 +1101,7 @@ export type Proficiencies = Message<"meurpg.rules.v1.Proficiencies"> & {
  * Use `create(ProficienciesSchema)` to create a new message.
  */
 export const ProficienciesSchema: GenMessage<Proficiencies> = /*@__PURE__*/
-  messageDesc(file_meurpg_rules_v1_rules, 14);
+  messageDesc(file_meurpg_rules_v1_rules, 17);
 
 /**
  * Hint is a reminder the numbers cannot express, because it depends on the
@@ -946,7 +1132,7 @@ export type Hint = Message<"meurpg.rules.v1.Hint"> & {
  * Use `create(HintSchema)` to create a new message.
  */
 export const HintSchema: GenMessage<Hint> = /*@__PURE__*/
-  messageDesc(file_meurpg_rules_v1_rules, 15);
+  messageDesc(file_meurpg_rules_v1_rules, 18);
 
 /**
  * Issue is a choice on the sheet that the rules do not accept, such as a
@@ -986,7 +1172,7 @@ export type Issue = Message<"meurpg.rules.v1.Issue"> & {
  * Use `create(IssueSchema)` to create a new message.
  */
 export const IssueSchema: GenMessage<Issue> = /*@__PURE__*/
-  messageDesc(file_meurpg_rules_v1_rules, 16);
+  messageDesc(file_meurpg_rules_v1_rules, 19);
 
 /**
  * Content is the rules content a campaign's characters can be built from.
@@ -1071,7 +1257,7 @@ export type Content = Message<"meurpg.rules.v1.Content"> & {
  * Use `create(ContentSchema)` to create a new message.
  */
 export const ContentSchema: GenMessage<Content> = /*@__PURE__*/
-  messageDesc(file_meurpg_rules_v1_rules, 17);
+  messageDesc(file_meurpg_rules_v1_rules, 20);
 
 /**
  * AbilityInfo names one ability.
@@ -1111,7 +1297,7 @@ export type AbilityInfo = Message<"meurpg.rules.v1.AbilityInfo"> & {
  * Use `create(AbilityInfoSchema)` to create a new message.
  */
 export const AbilityInfoSchema: GenMessage<AbilityInfo> = /*@__PURE__*/
-  messageDesc(file_meurpg_rules_v1_rules, 18);
+  messageDesc(file_meurpg_rules_v1_rules, 21);
 
 /**
  * Race is a race from the rules content.
@@ -1158,7 +1344,7 @@ export type Race = Message<"meurpg.rules.v1.Race"> & {
  * Use `create(RaceSchema)` to create a new message.
  */
 export const RaceSchema: GenMessage<Race> = /*@__PURE__*/
-  messageDesc(file_meurpg_rules_v1_rules, 19);
+  messageDesc(file_meurpg_rules_v1_rules, 22);
 
 /**
  * Subrace is a subrace of one race.
@@ -1203,7 +1389,7 @@ export type Subrace = Message<"meurpg.rules.v1.Subrace"> & {
  * Use `create(SubraceSchema)` to create a new message.
  */
 export const SubraceSchema: GenMessage<Subrace> = /*@__PURE__*/
-  messageDesc(file_meurpg_rules_v1_rules, 20);
+  messageDesc(file_meurpg_rules_v1_rules, 23);
 
 /**
  * CharacterClass is a class from the rules content.
@@ -1270,7 +1456,7 @@ export type CharacterClass = Message<"meurpg.rules.v1.CharacterClass"> & {
  * Use `create(CharacterClassSchema)` to create a new message.
  */
 export const CharacterClassSchema: GenMessage<CharacterClass> = /*@__PURE__*/
-  messageDesc(file_meurpg_rules_v1_rules, 21);
+  messageDesc(file_meurpg_rules_v1_rules, 24);
 
 /**
  * SkillChoice is "choose `count` skills from this list".
@@ -1298,7 +1484,7 @@ export type SkillChoice = Message<"meurpg.rules.v1.SkillChoice"> & {
  * Use `create(SkillChoiceSchema)` to create a new message.
  */
 export const SkillChoiceSchema: GenMessage<SkillChoice> = /*@__PURE__*/
-  messageDesc(file_meurpg_rules_v1_rules, 22);
+  messageDesc(file_meurpg_rules_v1_rules, 25);
 
 /**
  * ClassSpellcasting describes a casting class.
@@ -1344,7 +1530,7 @@ export type ClassSpellcasting = Message<"meurpg.rules.v1.ClassSpellcasting"> & {
  * Use `create(ClassSpellcastingSchema)` to create a new message.
  */
 export const ClassSpellcastingSchema: GenMessage<ClassSpellcasting> = /*@__PURE__*/
-  messageDesc(file_meurpg_rules_v1_rules, 23);
+  messageDesc(file_meurpg_rules_v1_rules, 26);
 
 /**
  * Subclass is a subclass of one class.
@@ -1382,7 +1568,7 @@ export type Subclass = Message<"meurpg.rules.v1.Subclass"> & {
  * Use `create(SubclassSchema)` to create a new message.
  */
 export const SubclassSchema: GenMessage<Subclass> = /*@__PURE__*/
-  messageDesc(file_meurpg_rules_v1_rules, 24);
+  messageDesc(file_meurpg_rules_v1_rules, 27);
 
 /**
  * Background is a background from the rules content.
@@ -1420,7 +1606,7 @@ export type Background = Message<"meurpg.rules.v1.Background"> & {
  * Use `create(BackgroundSchema)` to create a new message.
  */
 export const BackgroundSchema: GenMessage<Background> = /*@__PURE__*/
-  messageDesc(file_meurpg_rules_v1_rules, 25);
+  messageDesc(file_meurpg_rules_v1_rules, 28);
 
 /**
  * Skill is one of the 18 skills.
@@ -1458,7 +1644,7 @@ export type Skill = Message<"meurpg.rules.v1.Skill"> & {
  * Use `create(SkillSchema)` to create a new message.
  */
 export const SkillSchema: GenMessage<Skill> = /*@__PURE__*/
-  messageDesc(file_meurpg_rules_v1_rules, 26);
+  messageDesc(file_meurpg_rules_v1_rules, 29);
 
 /**
  * Armor is a suit of body armor.
@@ -1494,7 +1680,7 @@ export type Armor = Message<"meurpg.rules.v1.Armor"> & {
  * Use `create(ArmorSchema)` to create a new message.
  */
 export const ArmorSchema: GenMessage<Armor> = /*@__PURE__*/
-  messageDesc(file_meurpg_rules_v1_rules, 27);
+  messageDesc(file_meurpg_rules_v1_rules, 30);
 
 /**
  * Weapon is a weapon from the rules content.
@@ -1537,7 +1723,7 @@ export type Weapon = Message<"meurpg.rules.v1.Weapon"> & {
  * Use `create(WeaponSchema)` to create a new message.
  */
 export const WeaponSchema: GenMessage<Weapon> = /*@__PURE__*/
-  messageDesc(file_meurpg_rules_v1_rules, 28);
+  messageDesc(file_meurpg_rules_v1_rules, 31);
 
 /**
  * Spell is a spell from the rules content.
@@ -1610,7 +1796,7 @@ export type Spell = Message<"meurpg.rules.v1.Spell"> & {
  * Use `create(SpellSchema)` to create a new message.
  */
 export const SpellSchema: GenMessage<Spell> = /*@__PURE__*/
-  messageDesc(file_meurpg_rules_v1_rules, 29);
+  messageDesc(file_meurpg_rules_v1_rules, 32);
 
 /**
  * ListContentRequest names a campaign.
@@ -1629,7 +1815,7 @@ export type ListContentRequest = Message<"meurpg.rules.v1.ListContentRequest"> &
  * Use `create(ListContentRequestSchema)` to create a new message.
  */
 export const ListContentRequestSchema: GenMessage<ListContentRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_rules_v1_rules, 30);
+  messageDesc(file_meurpg_rules_v1_rules, 33);
 
 /**
  * ListContentResponse returns the campaign's rules content.
@@ -1648,7 +1834,702 @@ export type ListContentResponse = Message<"meurpg.rules.v1.ListContentResponse">
  * Use `create(ListContentResponseSchema)` to create a new message.
  */
 export const ListContentResponseSchema: GenMessage<ListContentResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_rules_v1_rules, 31);
+  messageDesc(file_meurpg_rules_v1_rules, 34);
+
+/**
+ * GetSpellDetailsRequest names a spell. The campaign is there for access
+ * (and, later, for the table's own spells).
+ *
+ * @generated from message meurpg.rules.v1.GetSpellDetailsRequest
+ */
+export type GetSpellDetailsRequest = Message<"meurpg.rules.v1.GetSpellDetailsRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * Content key of the spell, such as "spell:fire-bolt".
+   *
+   * @generated from field: string spell_key = 2;
+   */
+  spellKey: string;
+};
+
+/**
+ * Describes the message meurpg.rules.v1.GetSpellDetailsRequest.
+ * Use `create(GetSpellDetailsRequestSchema)` to create a new message.
+ */
+export const GetSpellDetailsRequestSchema: GenMessage<GetSpellDetailsRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_rules_v1_rules, 35);
+
+/**
+ * GetSpellDetailsResponse returns one spell, in full.
+ *
+ * @generated from message meurpg.rules.v1.GetSpellDetailsResponse
+ */
+export type GetSpellDetailsResponse = Message<"meurpg.rules.v1.GetSpellDetailsResponse"> & {
+  /**
+   * @generated from field: meurpg.rules.v1.SpellDetails spell = 1;
+   */
+  spell?: SpellDetails | undefined;
+};
+
+/**
+ * Describes the message meurpg.rules.v1.GetSpellDetailsResponse.
+ * Use `create(GetSpellDetailsResponseSchema)` to create a new message.
+ */
+export const GetSpellDetailsResponseSchema: GenMessage<GetSpellDetailsResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_rules_v1_rules, 36);
+
+/**
+ * SpellDetails is everything the SRD says about a spell, structured. Values
+ * are in the SRD's units (feet, rounds, English); the app writes them in
+ * Portuguese ("60 ft" is "18 m", "1 action" is "1 ação"). Whatever does not
+ * fit a structure is kept in the `raw` field exactly as the SRD wrote it.
+ *
+ * @generated from message meurpg.rules.v1.SpellDetails
+ */
+export type SpellDetails = Message<"meurpg.rules.v1.SpellDetails"> & {
+  /**
+   * The light entry ListContent returns: key, names, level, school, classes,
+   * ritual and concentration.
+   *
+   * @generated from field: meurpg.rules.v1.Spell spell = 1;
+   */
+  spell?: Spell | undefined;
+
+  /**
+   * @generated from field: meurpg.rules.v1.SpellCastingTime casting_time = 2;
+   */
+  castingTime?: SpellCastingTime | undefined;
+
+  /**
+   * @generated from field: meurpg.rules.v1.SpellRange range = 3;
+   */
+  range?: SpellRange | undefined;
+
+  /**
+   * @generated from field: meurpg.rules.v1.SpellComponents components = 4;
+   */
+  components?: SpellComponents | undefined;
+
+  /**
+   * @generated from field: meurpg.rules.v1.SpellDuration duration = 5;
+   */
+  duration?: SpellDuration | undefined;
+
+  /**
+   * Whether the spell needs an attack roll.
+   *
+   * @generated from field: meurpg.rules.v1.SpellAttackType attack_type = 6;
+   */
+  attackType: SpellAttackType;
+
+  /**
+   * The saving throw the spell asks for. Unset when it asks for none.
+   *
+   * @generated from field: meurpg.rules.v1.SpellSave save = 7;
+   */
+  save?: SpellSave | undefined;
+
+  /**
+   * The damage, one entry per damage type (Ice Storm has two).
+   *
+   * @generated from field: repeated meurpg.rules.v1.SpellDamage damage = 8;
+   */
+  damage: SpellDamage[];
+
+  /**
+   * Healing by the level of the slot, such as {1: "1d8 + MOD"}. Empty when
+   * the spell does not heal.
+   *
+   * @generated from field: map<int32, string> heal_by_slot_level = 9;
+   */
+  healBySlotLevel: { [key: number]: string };
+
+  /**
+   * The SRD's English description, one paragraph per entry.
+   *
+   * @generated from field: repeated string description = 10;
+   */
+  description: string[];
+
+  /**
+   * The SRD's "At Higher Levels" paragraphs, in English. Empty when the
+   * spell has none.
+   *
+   * @generated from field: repeated string higher_level = 11;
+   */
+  higherLevel: string[];
+};
+
+/**
+ * Describes the message meurpg.rules.v1.SpellDetails.
+ * Use `create(SpellDetailsSchema)` to create a new message.
+ */
+export const SpellDetailsSchema: GenMessage<SpellDetails> = /*@__PURE__*/
+  messageDesc(file_meurpg_rules_v1_rules, 37);
+
+/**
+ * SpellCastingTime is "1 action", "1 bonus action", "10 minutes"...
+ *
+ * @generated from message meurpg.rules.v1.SpellCastingTime
+ */
+export type SpellCastingTime = Message<"meurpg.rules.v1.SpellCastingTime"> & {
+  /**
+   * The number: 1 for "1 action", 10 for "10 minutes".
+   *
+   * @generated from field: int32 amount = 1;
+   */
+  amount: number;
+
+  /**
+   * @generated from field: meurpg.rules.v1.CastingTimeUnit unit = 2;
+   */
+  unit: CastingTimeUnit;
+
+  /**
+   * For a reaction, when it is cast, in English ("which you take when you
+   * are hit..."). Empty when the SRD data has none.
+   *
+   * @generated from field: string trigger = 3;
+   */
+  trigger: string;
+
+  /**
+   * The SRD's text, such as "1 action".
+   *
+   * @generated from field: string raw = 4;
+   */
+  raw: string;
+};
+
+/**
+ * Describes the message meurpg.rules.v1.SpellCastingTime.
+ * Use `create(SpellCastingTimeSchema)` to create a new message.
+ */
+export const SpellCastingTimeSchema: GenMessage<SpellCastingTime> = /*@__PURE__*/
+  messageDesc(file_meurpg_rules_v1_rules, 38);
+
+/**
+ * SpellRange is how far a spell reaches.
+ *
+ * @generated from message meurpg.rules.v1.SpellRange
+ */
+export type SpellRange = Message<"meurpg.rules.v1.SpellRange"> & {
+  /**
+   * @generated from field: meurpg.rules.v1.SpellRangeKind kind = 1;
+   */
+  kind: SpellRangeKind;
+
+  /**
+   * Distance in feet, for SPELL_RANGE_KIND_RANGED. 0 otherwise.
+   *
+   * @generated from field: int32 distance_ft = 2;
+   */
+  distanceFt: number;
+
+  /**
+   * The SRD's text, such as "120 feet".
+   *
+   * @generated from field: string raw = 3;
+   */
+  raw: string;
+};
+
+/**
+ * Describes the message meurpg.rules.v1.SpellRange.
+ * Use `create(SpellRangeSchema)` to create a new message.
+ */
+export const SpellRangeSchema: GenMessage<SpellRange> = /*@__PURE__*/
+  messageDesc(file_meurpg_rules_v1_rules, 39);
+
+/**
+ * SpellComponents are the verbal, somatic and material components.
+ *
+ * @generated from message meurpg.rules.v1.SpellComponents
+ */
+export type SpellComponents = Message<"meurpg.rules.v1.SpellComponents"> & {
+  /**
+   * @generated from field: bool verbal = 1;
+   */
+  verbal: boolean;
+
+  /**
+   * @generated from field: bool somatic = 2;
+   */
+  somatic: boolean;
+
+  /**
+   * @generated from field: bool material = 3;
+   */
+  material: boolean;
+
+  /**
+   * What the material component is, in English. Empty without one.
+   *
+   * @generated from field: string material_text = 4;
+   */
+  materialText: string;
+};
+
+/**
+ * Describes the message meurpg.rules.v1.SpellComponents.
+ * Use `create(SpellComponentsSchema)` to create a new message.
+ */
+export const SpellComponentsSchema: GenMessage<SpellComponents> = /*@__PURE__*/
+  messageDesc(file_meurpg_rules_v1_rules, 40);
+
+/**
+ * SpellDuration is how long a spell lasts.
+ *
+ * @generated from message meurpg.rules.v1.SpellDuration
+ */
+export type SpellDuration = Message<"meurpg.rules.v1.SpellDuration"> & {
+  /**
+   * @generated from field: meurpg.rules.v1.SpellDurationKind kind = 1;
+   */
+  kind: SpellDurationKind;
+
+  /**
+   * For SPELL_DURATION_KIND_TIMED: "8 hours" is amount 8, unit HOUR.
+   *
+   * @generated from field: int32 amount = 2;
+   */
+  amount: number;
+
+  /**
+   * @generated from field: meurpg.rules.v1.SpellDurationUnit unit = 3;
+   */
+  unit: SpellDurationUnit;
+
+  /**
+   * "Up to 1 minute": the spell may end sooner.
+   *
+   * @generated from field: bool up_to = 4;
+   */
+  upTo: boolean;
+
+  /**
+   * The caster must keep concentrating.
+   *
+   * @generated from field: bool concentration = 5;
+   */
+  concentration: boolean;
+
+  /**
+   * The SRD's text, such as "Up to 1 minute".
+   *
+   * @generated from field: string raw = 6;
+   */
+  raw: string;
+};
+
+/**
+ * Describes the message meurpg.rules.v1.SpellDuration.
+ * Use `create(SpellDurationSchema)` to create a new message.
+ */
+export const SpellDurationSchema: GenMessage<SpellDuration> = /*@__PURE__*/
+  messageDesc(file_meurpg_rules_v1_rules, 41);
+
+/**
+ * SpellSave is a saving throw a spell asks for.
+ *
+ * @generated from message meurpg.rules.v1.SpellSave
+ */
+export type SpellSave = Message<"meurpg.rules.v1.SpellSave"> & {
+  /**
+   * The ability of the saving throw.
+   *
+   * @generated from field: meurpg.rules.v1.Ability ability = 1;
+   */
+  ability: Ability;
+
+  /**
+   * @generated from field: meurpg.rules.v1.SpellSaveSuccess on_success = 2;
+   */
+  onSuccess: SpellSaveSuccess;
+};
+
+/**
+ * Describes the message meurpg.rules.v1.SpellSave.
+ * Use `create(SpellSaveSchema)` to create a new message.
+ */
+export const SpellSaveSchema: GenMessage<SpellSave> = /*@__PURE__*/
+  messageDesc(file_meurpg_rules_v1_rules, 42);
+
+/**
+ * SpellDamage is one damage type of a spell, with its dice by level. The
+ * dice are the SRD's text ("8d6"); where the SRD gives a choice or a
+ * formula that is not plain dice ("4d6 OR 5d6"), the text is kept as is.
+ *
+ * @generated from message meurpg.rules.v1.SpellDamage
+ */
+export type SpellDamage = Message<"meurpg.rules.v1.SpellDamage"> & {
+  /**
+   * Content key of the damage type, such as "damage-type:fire".
+   *
+   * @generated from field: string damage_type_key = 1;
+   */
+  damageTypeKey: string;
+
+  /**
+   * The Portuguese name, such as "fogo".
+   *
+   * @generated from field: string damage_type_pt = 2;
+   */
+  damageTypePt: string;
+
+  /**
+   * The dice by the level of the slot the spell is cast with, such as
+   * {3: "8d6", 4: "9d6"}. Empty for a cantrip.
+   *
+   * @generated from field: map<int32, string> by_slot_level = 3;
+   */
+  bySlotLevel: { [key: number]: string };
+
+  /**
+   * The dice by the character's level, for cantrips: they grow at levels 5,
+   * 11 and 17, such as {1: "1d10", 5: "2d10"}. Empty for other spells.
+   *
+   * @generated from field: map<int32, string> by_character_level = 4;
+   */
+  byCharacterLevel: { [key: number]: string };
+};
+
+/**
+ * Describes the message meurpg.rules.v1.SpellDamage.
+ * Use `create(SpellDamageSchema)` to create a new message.
+ */
+export const SpellDamageSchema: GenMessage<SpellDamage> = /*@__PURE__*/
+  messageDesc(file_meurpg_rules_v1_rules, 43);
+
+/**
+ * TurnOptions is everything a character can do now: "Sua vez" (MR-014). The
+ * server works it out on every read from the sheet, what the character used
+ * this turn and what they spent since the last rest. It is never stored.
+ * A disabled option carries a reason code, never text: the app maps each
+ * code to Portuguese.
+ *
+ * @generated from message meurpg.rules.v1.TurnOptions
+ */
+export type TurnOptions = Message<"meurpg.rules.v1.TurnOptions"> & {
+  /**
+   * @generated from field: meurpg.rules.v1.TurnEconomy economy = 1;
+   */
+  economy?: TurnEconomy | undefined;
+
+  /**
+   * Weapon attacks and damaging cantrips, each with its to-hit and damage.
+   *
+   * @generated from field: repeated meurpg.rules.v1.AttackOption attacks = 2;
+   */
+  attacks: AttackOption[];
+
+  /**
+   * The prepared spells that are not already an attack (cantrips that deal
+   * damage are in `attacks`).
+   *
+   * @generated from field: repeated meurpg.rules.v1.SpellOption spells = 3;
+   */
+  spells: SpellOption[];
+
+  /**
+   * The actions everyone has.
+   *
+   * @generated from field: repeated meurpg.rules.v1.ActionOption standard_actions = 4;
+   */
+  standardActions: ActionOption[];
+
+  /**
+   * The actions the character's features grant.
+   *
+   * @generated from field: repeated meurpg.rules.v1.ActionOption feature_actions = 5;
+   */
+  featureActions: ActionOption[];
+};
+
+/**
+ * Describes the message meurpg.rules.v1.TurnOptions.
+ * Use `create(TurnOptionsSchema)` to create a new message.
+ */
+export const TurnOptionsSchema: GenMessage<TurnOptions> = /*@__PURE__*/
+  messageDesc(file_meurpg_rules_v1_rules, 44);
+
+/**
+ * TurnEconomy is the state of the turn's action economy.
+ *
+ * @generated from message meurpg.rules.v1.TurnEconomy
+ */
+export type TurnEconomy = Message<"meurpg.rules.v1.TurnEconomy"> & {
+  /**
+   * @generated from field: meurpg.rules.v1.EconomyState action = 1;
+   */
+  action?: EconomyState | undefined;
+
+  /**
+   * @generated from field: meurpg.rules.v1.EconomyState bonus_action = 2;
+   */
+  bonusAction?: EconomyState | undefined;
+
+  /**
+   * @generated from field: meurpg.rules.v1.EconomyState reaction = 3;
+   */
+  reaction?: EconomyState | undefined;
+
+  /**
+   * @generated from field: meurpg.rules.v1.MovementLeft movement = 4;
+   */
+  movement?: MovementLeft | undefined;
+};
+
+/**
+ * Describes the message meurpg.rules.v1.TurnEconomy.
+ * Use `create(TurnEconomySchema)` to create a new message.
+ */
+export const TurnEconomySchema: GenMessage<TurnEconomy> = /*@__PURE__*/
+  messageDesc(file_meurpg_rules_v1_rules, 45);
+
+/**
+ * EconomyState says whether an action, bonus action or reaction is spent.
+ *
+ * @generated from message meurpg.rules.v1.EconomyState
+ */
+export type EconomyState = Message<"meurpg.rules.v1.EconomyState"> & {
+  /**
+   * @generated from field: bool used = 1;
+   */
+  used: boolean;
+
+  /**
+   * @generated from field: bool available = 2;
+   */
+  available: boolean;
+};
+
+/**
+ * Describes the message meurpg.rules.v1.EconomyState.
+ * Use `create(EconomyStateSchema)` to create a new message.
+ */
+export const EconomyStateSchema: GenMessage<EconomyState> = /*@__PURE__*/
+  messageDesc(file_meurpg_rules_v1_rules, 46);
+
+/**
+ * MovementLeft is the walking left in the turn, in feet.
+ *
+ * @generated from message meurpg.rules.v1.MovementLeft
+ */
+export type MovementLeft = Message<"meurpg.rules.v1.MovementLeft"> & {
+  /**
+   * The speed for this turn: doubled after the Dash action.
+   *
+   * @generated from field: int32 speed_ft = 1;
+   */
+  speedFt: number;
+
+  /**
+   * @generated from field: int32 used_ft = 2;
+   */
+  usedFt: number;
+
+  /**
+   * @generated from field: int32 left_ft = 3;
+   */
+  leftFt: number;
+};
+
+/**
+ * Describes the message meurpg.rules.v1.MovementLeft.
+ * Use `create(MovementLeftSchema)` to create a new message.
+ */
+export const MovementLeftSchema: GenMessage<MovementLeft> = /*@__PURE__*/
+  messageDesc(file_meurpg_rules_v1_rules, 47);
+
+/**
+ * DisabledReason says why an option cannot be used now.
+ *
+ * @generated from message meurpg.rules.v1.DisabledReason
+ */
+export type DisabledReason = Message<"meurpg.rules.v1.DisabledReason"> & {
+  /**
+   * @generated from field: meurpg.rules.v1.DisabledReasonCode code = 1;
+   */
+  code: DisabledReasonCode;
+
+  /**
+   * For DISABLED_REASON_CODE_NO_SLOT: the lowest slot level that would do.
+   *
+   * @generated from field: int32 min_level = 2;
+   */
+  minLevel: number;
+
+  /**
+   * For DISABLED_REASON_CODE_NO_USES: when the uses come back.
+   *
+   * @generated from field: meurpg.rules.v1.Recharge recharge = 3;
+   */
+  recharge: Recharge;
+};
+
+/**
+ * Describes the message meurpg.rules.v1.DisabledReason.
+ * Use `create(DisabledReasonSchema)` to create a new message.
+ */
+export const DisabledReasonSchema: GenMessage<DisabledReason> = /*@__PURE__*/
+  messageDesc(file_meurpg_rules_v1_rules, 48);
+
+/**
+ * AttackOption is an attack the character can make.
+ *
+ * @generated from message meurpg.rules.v1.AttackOption
+ */
+export type AttackOption = Message<"meurpg.rules.v1.AttackOption"> & {
+  /**
+   * @generated from field: meurpg.rules.v1.Attack attack = 1;
+   */
+  attack?: Attack | undefined;
+
+  /**
+   * @generated from field: bool enabled = 2;
+   */
+  enabled: boolean;
+
+  /**
+   * Set when `enabled` is false.
+   *
+   * @generated from field: meurpg.rules.v1.DisabledReason reason = 3;
+   */
+  reason?: DisabledReason | undefined;
+};
+
+/**
+ * Describes the message meurpg.rules.v1.AttackOption.
+ * Use `create(AttackOptionSchema)` to create a new message.
+ */
+export const AttackOptionSchema: GenMessage<AttackOption> = /*@__PURE__*/
+  messageDesc(file_meurpg_rules_v1_rules, 49);
+
+/**
+ * SpellOption is a spell the character can cast.
+ *
+ * @generated from message meurpg.rules.v1.SpellOption
+ */
+export type SpellOption = Message<"meurpg.rules.v1.SpellOption"> & {
+  /**
+   * @generated from field: meurpg.rules.v1.Spell spell = 1;
+   */
+  spell?: Spell | undefined;
+
+  /**
+   * What casting costs. ACTION_ECONOMY_UNSPECIFIED for a casting time too
+   * long for a fight.
+   *
+   * @generated from field: meurpg.rules.v1.ActionEconomy economy = 2;
+   */
+  economy: ActionEconomy;
+
+  /**
+   * @generated from field: bool enabled = 3;
+   */
+  enabled: boolean;
+
+  /**
+   * Set when `enabled` is false.
+   *
+   * @generated from field: meurpg.rules.v1.DisabledReason reason = 4;
+   */
+  reason?: DisabledReason | undefined;
+
+  /**
+   * The slots it can be cast with: at least the spell's level, with a free
+   * slot. Empty for a cantrip, and for a spell with no free slot.
+   *
+   * @generated from field: repeated meurpg.rules.v1.SlotChoice slots = 5;
+   */
+  slots: SlotChoice[];
+};
+
+/**
+ * Describes the message meurpg.rules.v1.SpellOption.
+ * Use `create(SpellOptionSchema)` to create a new message.
+ */
+export const SpellOptionSchema: GenMessage<SpellOption> = /*@__PURE__*/
+  messageDesc(file_meurpg_rules_v1_rules, 50);
+
+/**
+ * SlotChoice is a spell slot a spell can be cast with.
+ *
+ * @generated from message meurpg.rules.v1.SlotChoice
+ */
+export type SlotChoice = Message<"meurpg.rules.v1.SlotChoice"> & {
+  /**
+   * The slot level, 1 to 9.
+   *
+   * @generated from field: int32 level = 1;
+   */
+  level: number;
+
+  /**
+   * Whether it is a Warlock's pact magic slot.
+   *
+   * @generated from field: bool pact = 2;
+   */
+  pact: boolean;
+
+  /**
+   * How many slots of this kind are free, so the app can warn about the
+   * last one.
+   *
+   * @generated from field: int32 free = 3;
+   */
+  free: number;
+};
+
+/**
+ * Describes the message meurpg.rules.v1.SlotChoice.
+ * Use `create(SlotChoiceSchema)` to create a new message.
+ */
+export const SlotChoiceSchema: GenMessage<SlotChoice> = /*@__PURE__*/
+  messageDesc(file_meurpg_rules_v1_rules, 51);
+
+/**
+ * ActionOption is a standard or feature action the character can take.
+ *
+ * @generated from message meurpg.rules.v1.ActionOption
+ */
+export type ActionOption = Message<"meurpg.rules.v1.ActionOption"> & {
+  /**
+   * @generated from field: meurpg.rules.v1.Action action = 1;
+   */
+  action?: Action | undefined;
+
+  /**
+   * @generated from field: bool enabled = 2;
+   */
+  enabled: boolean;
+
+  /**
+   * Set when `enabled` is false.
+   *
+   * @generated from field: meurpg.rules.v1.DisabledReason reason = 3;
+   */
+  reason?: DisabledReason | undefined;
+
+  /**
+   * Uses left of the action's resource. 0 when it has none.
+   *
+   * @generated from field: int32 uses_left = 4;
+   */
+  usesLeft: number;
+};
+
+/**
+ * Describes the message meurpg.rules.v1.ActionOption.
+ * Use `create(ActionOptionSchema)` to create a new message.
+ */
+export const ActionOptionSchema: GenMessage<ActionOption> = /*@__PURE__*/
+  messageDesc(file_meurpg_rules_v1_rules, 52);
 
 /**
  * Ability is one of the six ability scores.
@@ -1758,6 +2639,95 @@ export const ProficiencyLevelSchema: GenEnum<ProficiencyLevel> = /*@__PURE__*/
   enumDesc(file_meurpg_rules_v1_rules, 1);
 
 /**
+ * Recharge says when a Resource's uses come back.
+ *
+ * @generated from enum meurpg.rules.v1.Recharge
+ */
+export enum Recharge {
+  /**
+   * @generated from enum value: RECHARGE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: RECHARGE_SHORT_REST = 1;
+   */
+  SHORT_REST = 1,
+
+  /**
+   * @generated from enum value: RECHARGE_LONG_REST = 2;
+   */
+  LONG_REST = 2,
+
+  /**
+   * At dawn, as for some magic items.
+   *
+   * @generated from enum value: RECHARGE_DAWN = 3;
+   */
+  DAWN = 3,
+
+  /**
+   * Never on its own: the master decides.
+   *
+   * @generated from enum value: RECHARGE_NONE = 4;
+   */
+  NONE = 4,
+}
+
+/**
+ * Describes the enum meurpg.rules.v1.Recharge.
+ */
+export const RechargeSchema: GenEnum<Recharge> = /*@__PURE__*/
+  enumDesc(file_meurpg_rules_v1_rules, 2);
+
+/**
+ * ActionEconomy is the part of the turn an action costs.
+ *
+ * @generated from enum meurpg.rules.v1.ActionEconomy
+ */
+export enum ActionEconomy {
+  /**
+   * @generated from enum value: ACTION_ECONOMY_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: ACTION_ECONOMY_ACTION = 1;
+   */
+  ACTION = 1,
+
+  /**
+   * @generated from enum value: ACTION_ECONOMY_BONUS_ACTION = 2;
+   */
+  BONUS_ACTION = 2,
+
+  /**
+   * @generated from enum value: ACTION_ECONOMY_REACTION = 3;
+   */
+  REACTION = 3,
+
+  /**
+   * Costs nothing, such as a free object interaction.
+   *
+   * @generated from enum value: ACTION_ECONOMY_FREE = 4;
+   */
+  FREE = 4,
+
+  /**
+   * Part of the movement.
+   *
+   * @generated from enum value: ACTION_ECONOMY_MOVEMENT = 5;
+   */
+  MOVEMENT = 5,
+}
+
+/**
+ * Describes the enum meurpg.rules.v1.ActionEconomy.
+ */
+export const ActionEconomySchema: GenEnum<ActionEconomy> = /*@__PURE__*/
+  enumDesc(file_meurpg_rules_v1_rules, 3);
+
+/**
  * AttackKind says whether an attack is a weapon or a spell.
  *
  * @generated from enum meurpg.rules.v1.AttackKind
@@ -1787,7 +2757,7 @@ export enum AttackKind {
  * Describes the enum meurpg.rules.v1.AttackKind.
  */
 export const AttackKindSchema: GenEnum<AttackKind> = /*@__PURE__*/
-  enumDesc(file_meurpg_rules_v1_rules, 2);
+  enumDesc(file_meurpg_rules_v1_rules, 4);
 
 /**
  * SpellPreparation is how a class decides which spells it can cast.
@@ -1830,7 +2800,7 @@ export enum SpellPreparation {
  * Describes the enum meurpg.rules.v1.SpellPreparation.
  */
 export const SpellPreparationSchema: GenEnum<SpellPreparation> = /*@__PURE__*/
-  enumDesc(file_meurpg_rules_v1_rules, 3);
+  enumDesc(file_meurpg_rules_v1_rules, 5);
 
 /**
  * ArmorCategory is the weight class of body armor.
@@ -1863,7 +2833,7 @@ export enum ArmorCategory {
  * Describes the enum meurpg.rules.v1.ArmorCategory.
  */
 export const ArmorCategorySchema: GenEnum<ArmorCategory> = /*@__PURE__*/
-  enumDesc(file_meurpg_rules_v1_rules, 4);
+  enumDesc(file_meurpg_rules_v1_rules, 6);
 
 /**
  * WeaponCategory says whether a weapon is simple or martial.
@@ -1891,7 +2861,314 @@ export enum WeaponCategory {
  * Describes the enum meurpg.rules.v1.WeaponCategory.
  */
 export const WeaponCategorySchema: GenEnum<WeaponCategory> = /*@__PURE__*/
-  enumDesc(file_meurpg_rules_v1_rules, 5);
+  enumDesc(file_meurpg_rules_v1_rules, 7);
+
+/**
+ * @generated from enum meurpg.rules.v1.CastingTimeUnit
+ */
+export enum CastingTimeUnit {
+  /**
+   * @generated from enum value: CASTING_TIME_UNIT_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: CASTING_TIME_UNIT_ACTION = 1;
+   */
+  ACTION = 1,
+
+  /**
+   * @generated from enum value: CASTING_TIME_UNIT_BONUS_ACTION = 2;
+   */
+  BONUS_ACTION = 2,
+
+  /**
+   * @generated from enum value: CASTING_TIME_UNIT_REACTION = 3;
+   */
+  REACTION = 3,
+
+  /**
+   * @generated from enum value: CASTING_TIME_UNIT_MINUTE = 4;
+   */
+  MINUTE = 4,
+
+  /**
+   * @generated from enum value: CASTING_TIME_UNIT_HOUR = 5;
+   */
+  HOUR = 5,
+}
+
+/**
+ * Describes the enum meurpg.rules.v1.CastingTimeUnit.
+ */
+export const CastingTimeUnitSchema: GenEnum<CastingTimeUnit> = /*@__PURE__*/
+  enumDesc(file_meurpg_rules_v1_rules, 8);
+
+/**
+ * @generated from enum meurpg.rules.v1.SpellRangeKind
+ */
+export enum SpellRangeKind {
+  /**
+   * @generated from enum value: SPELL_RANGE_KIND_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: SPELL_RANGE_KIND_SELF = 1;
+   */
+  SELF = 1,
+
+  /**
+   * @generated from enum value: SPELL_RANGE_KIND_TOUCH = 2;
+   */
+  TOUCH = 2,
+
+  /**
+   * A distance, in distance_ft.
+   *
+   * @generated from enum value: SPELL_RANGE_KIND_RANGED = 3;
+   */
+  RANGED = 3,
+
+  /**
+   * @generated from enum value: SPELL_RANGE_KIND_SIGHT = 4;
+   */
+  SIGHT = 4,
+
+  /**
+   * @generated from enum value: SPELL_RANGE_KIND_UNLIMITED = 5;
+   */
+  UNLIMITED = 5,
+
+  /**
+   * The SRD says "Special": read `raw` and the description.
+   *
+   * @generated from enum value: SPELL_RANGE_KIND_SPECIAL = 6;
+   */
+  SPECIAL = 6,
+}
+
+/**
+ * Describes the enum meurpg.rules.v1.SpellRangeKind.
+ */
+export const SpellRangeKindSchema: GenEnum<SpellRangeKind> = /*@__PURE__*/
+  enumDesc(file_meurpg_rules_v1_rules, 9);
+
+/**
+ * @generated from enum meurpg.rules.v1.SpellDurationKind
+ */
+export enum SpellDurationKind {
+  /**
+   * @generated from enum value: SPELL_DURATION_KIND_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: SPELL_DURATION_KIND_INSTANTANEOUS = 1;
+   */
+  INSTANTANEOUS = 1,
+
+  /**
+   * A length of time, in amount and unit.
+   *
+   * @generated from enum value: SPELL_DURATION_KIND_TIMED = 2;
+   */
+  TIMED = 2,
+
+  /**
+   * @generated from enum value: SPELL_DURATION_KIND_UNTIL_DISPELLED = 3;
+   */
+  UNTIL_DISPELLED = 3,
+
+  /**
+   * The SRD says "Special": read `raw` and the description.
+   *
+   * @generated from enum value: SPELL_DURATION_KIND_SPECIAL = 4;
+   */
+  SPECIAL = 4,
+}
+
+/**
+ * Describes the enum meurpg.rules.v1.SpellDurationKind.
+ */
+export const SpellDurationKindSchema: GenEnum<SpellDurationKind> = /*@__PURE__*/
+  enumDesc(file_meurpg_rules_v1_rules, 10);
+
+/**
+ * @generated from enum meurpg.rules.v1.SpellDurationUnit
+ */
+export enum SpellDurationUnit {
+  /**
+   * @generated from enum value: SPELL_DURATION_UNIT_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: SPELL_DURATION_UNIT_ROUND = 1;
+   */
+  ROUND = 1,
+
+  /**
+   * @generated from enum value: SPELL_DURATION_UNIT_MINUTE = 2;
+   */
+  MINUTE = 2,
+
+  /**
+   * @generated from enum value: SPELL_DURATION_UNIT_HOUR = 3;
+   */
+  HOUR = 3,
+
+  /**
+   * @generated from enum value: SPELL_DURATION_UNIT_DAY = 4;
+   */
+  DAY = 4,
+}
+
+/**
+ * Describes the enum meurpg.rules.v1.SpellDurationUnit.
+ */
+export const SpellDurationUnitSchema: GenEnum<SpellDurationUnit> = /*@__PURE__*/
+  enumDesc(file_meurpg_rules_v1_rules, 11);
+
+/**
+ * SpellAttackType says whether a spell needs an attack roll.
+ *
+ * @generated from enum meurpg.rules.v1.SpellAttackType
+ */
+export enum SpellAttackType {
+  /**
+   * @generated from enum value: SPELL_ATTACK_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: SPELL_ATTACK_TYPE_NONE = 1;
+   */
+  NONE = 1,
+
+  /**
+   * @generated from enum value: SPELL_ATTACK_TYPE_MELEE = 2;
+   */
+  MELEE = 2,
+
+  /**
+   * @generated from enum value: SPELL_ATTACK_TYPE_RANGED = 3;
+   */
+  RANGED = 3,
+}
+
+/**
+ * Describes the enum meurpg.rules.v1.SpellAttackType.
+ */
+export const SpellAttackTypeSchema: GenEnum<SpellAttackType> = /*@__PURE__*/
+  enumDesc(file_meurpg_rules_v1_rules, 12);
+
+/**
+ * SpellSaveSuccess says what a successful saving throw does.
+ *
+ * @generated from enum meurpg.rules.v1.SpellSaveSuccess
+ */
+export enum SpellSaveSuccess {
+  /**
+   * @generated from enum value: SPELL_SAVE_SUCCESS_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * The target takes no effect.
+   *
+   * @generated from enum value: SPELL_SAVE_SUCCESS_NONE = 1;
+   */
+  NONE = 1,
+
+  /**
+   * The target takes half the damage.
+   *
+   * @generated from enum value: SPELL_SAVE_SUCCESS_HALF = 2;
+   */
+  HALF = 2,
+
+  /**
+   * Something else: read the description.
+   *
+   * @generated from enum value: SPELL_SAVE_SUCCESS_OTHER = 3;
+   */
+  OTHER = 3,
+}
+
+/**
+ * Describes the enum meurpg.rules.v1.SpellSaveSuccess.
+ */
+export const SpellSaveSuccessSchema: GenEnum<SpellSaveSuccess> = /*@__PURE__*/
+  enumDesc(file_meurpg_rules_v1_rules, 13);
+
+/**
+ * @generated from enum meurpg.rules.v1.DisabledReasonCode
+ */
+export enum DisabledReasonCode {
+  /**
+   * @generated from enum value: DISABLED_REASON_CODE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * The action, bonus action or reaction the option needs is already spent.
+   *
+   * @generated from enum value: DISABLED_REASON_CODE_ACTION_USED = 1;
+   */
+  ACTION_USED = 1,
+
+  /**
+   * @generated from enum value: DISABLED_REASON_CODE_BONUS_ACTION_USED = 2;
+   */
+  BONUS_ACTION_USED = 2,
+
+  /**
+   * @generated from enum value: DISABLED_REASON_CODE_REACTION_USED = 3;
+   */
+  REACTION_USED = 3,
+
+  /**
+   * No free slot at the spell's level or above (see min_level).
+   *
+   * @generated from enum value: DISABLED_REASON_CODE_NO_SLOT = 4;
+   */
+  NO_SLOT = 4,
+
+  /**
+   * The feature's uses are spent (see recharge).
+   *
+   * @generated from enum value: DISABLED_REASON_CODE_NO_USES = 5;
+   */
+  NO_USES = 5,
+
+  /**
+   * Shield: cast only when an attack hits the caster.
+   *
+   * @generated from enum value: DISABLED_REASON_CODE_REACTION_ONLY_WHEN_HIT = 6;
+   */
+  REACTION_ONLY_WHEN_HIT = 6,
+
+  /**
+   * Another reaction spell: cast only when its trigger happens.
+   *
+   * @generated from enum value: DISABLED_REASON_CODE_REACTION_ONLY = 7;
+   */
+  REACTION_ONLY = 7,
+
+  /**
+   * The casting time is a minute or more, too long for a fight.
+   *
+   * @generated from enum value: DISABLED_REASON_CODE_CASTING_TIME_TOO_LONG = 8;
+   */
+  CASTING_TIME_TOO_LONG = 8,
+}
+
+/**
+ * Describes the enum meurpg.rules.v1.DisabledReasonCode.
+ */
+export const DisabledReasonCodeSchema: GenEnum<DisabledReasonCode> = /*@__PURE__*/
+  enumDesc(file_meurpg_rules_v1_rules, 14);
 
 /**
  * ContentService lists the rules content that a campaign's characters can
@@ -1931,6 +3208,25 @@ export const ContentService: GenService<{
     methodKind: "unary";
     input: typeof ListContentRequestSchema;
     output: typeof ListContentResponseSchema;
+  },
+  /**
+   * GetSpellDetails returns everything the SRD says about one spell,
+   * structured: casting time, range, components, duration, attack or saving
+   * throw, damage and healing by level, and the English description. It is
+   * what the spell's "?" dialog shows; ListContent keeps spells light on
+   * purpose. Same access as ListContent: any member of the campaign, a
+   * pending member included.
+   *
+   * Errors:
+   *   - `not_found`: the campaign does not exist, the caller is not a
+   *     member of it, or no spell has that key.
+   *
+   * @generated from rpc meurpg.rules.v1.ContentService.GetSpellDetails
+   */
+  getSpellDetails: {
+    methodKind: "unary";
+    input: typeof GetSpellDetailsRequestSchema;
+    output: typeof GetSpellDetailsResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_meurpg_rules_v1_rules, 0);
