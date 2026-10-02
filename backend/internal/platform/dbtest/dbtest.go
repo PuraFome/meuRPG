@@ -38,6 +38,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib" // the "pgx" driver for database/sql, which goose needs
@@ -299,9 +300,13 @@ func names(ctx context.Context, conn *sql.DB, query string) ([]string, error) {
 	return out, rows.Err()
 }
 
+// showCreate asks CockroachDB how to create the template's sequence or table
+// name. The name comes from the template's own catalog; it is quoted anyway.
 func showCreate(ctx context.Context, conn *sql.DB, kind, name string) (string, error) {
 	var object, stmt string
-	if err := conn.QueryRowContext(ctx, "SHOW CREATE "+kind+" "+name).Scan(&object, &stmt); err != nil {
+	query := "SHOW CREATE " + kind + " " + pgx.Identifier{"public", name}.Sanitize()
+	//nolint:gosec // a quoted identifier read from the template's own catalog, in test code
+	if err := conn.QueryRowContext(ctx, query).Scan(&object, &stmt); err != nil {
 		return "", fmt.Errorf("show create %s %s: %w", kind, name, err)
 	}
 	return stmt, nil
