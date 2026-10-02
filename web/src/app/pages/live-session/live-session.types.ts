@@ -68,6 +68,9 @@ export interface LiveSnapshotVm {
   /** The current map's ID, or `null` while the master has not chosen one. */
   readonly currentMapId: string | null;
   readonly shownImage: ShownImageVm | null;
+  /** The master's "Deixar com os jogadores" switch for the image shown;
+   * always false for a player (`shown_image_keep`). */
+  readonly shownImageKeep: boolean;
 }
 
 /** One event of `WatchGameSession`. */
@@ -88,7 +91,9 @@ export type LiveEventVm =
       readonly yBp: number;
     }
   /** `shown_image_changed`; `image` is `null` when it stopped. */
-  | { readonly kind: 'shownImage'; readonly image: ShownImageVm | null };
+  | { readonly kind: 'shownImage'; readonly image: ShownImageVm | null }
+  /** `left_images_changed`: read the left images again. */
+  | { readonly kind: 'leftImages' };
 
 /**
  * What a failed call means for the page, from its Connect code and typed
@@ -160,8 +165,17 @@ export abstract class LiveSessionSource {
   abstract endSession(campaignId: string, sessionId: string): Promise<void>;
   /** `SetCurrentMap`: the map the session shows (`null` clears it). */
   abstract setCurrentMap(campaignId: string, mapId: string | null): Promise<string | null>;
-  /** `SetShownImage`: show a gallery image to the players (`null` stops). */
-  abstract setShownImage(campaignId: string, imageId: string | null): Promise<ShownImageVm | null>;
+  /** `SetShownImage`: show a gallery image to the players (`null` stops).
+   * `keep` is the "Deixar com os jogadores" switch for that image. */
+  abstract setShownImage(
+    campaignId: string,
+    imageId: string | null,
+    keep?: boolean,
+  ): Promise<ShownImageVm | null>;
+  /** `ListLeftImages`: the images the master left with the players. */
+  abstract listLeftImages(campaignId: string): Promise<readonly ShownImageVm[]>;
+  /** `TakeBackLeftImage`: the master takes an image back ("Tirar"). */
+  abstract takeBackLeftImage(campaignId: string, imageId: string): Promise<void>;
   abstract getPlayerSheet(campaignId: string, characterId: string): Promise<PlayerSheetVm>;
   abstract getPartyInfo(campaignId: string): Promise<ReadonlyMap<string, PartyMemberInfoVm>>;
   abstract classifyError(err: unknown): LiveErrorKind;

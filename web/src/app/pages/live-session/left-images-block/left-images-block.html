@@ -1,0 +1,34 @@
+@if (images().length > 0) {
+  <section class="block" aria-labelledby="left-title">
+    <h2 class="block__heading" id="left-title">
+      <mat-icon aria-hidden="true">image</mat-icon>Imagens que o mestre deixou
+    </h2>
+    <ul class="block__list">
+      @for (image of images(); track image.id) {
+        <li class="row">
+          <img
+            class="row__thumb"
+            [src]="thumb(image)"
+            alt=""
+            width="96"
+            height="72"
+            loading="lazy"
+          />
+          <div class="row__text">
+            <p class="row__name">{{ image.name }}</p>
+            <button
+              matButton
+              type="button"
+              class="row__full"
+              [attr.aria-label]="'Ver ' + image.name + ' em tela cheia'"
+              (click)="openFull(image)"
+            >
+              <mat-icon aria-hidden="true">fullscreen</mat-icon>Ver em tela cheia
+            </button>
+          </div>
+        </li>
+      }
+    </ul>
+    <p class="block__note">Ficam aqui até o mestre tirar.</p>
+  </section>
+}

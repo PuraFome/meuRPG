@@ -25,7 +25,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/play/v1/play.proto.
  */
 export const file_meurpg_play_v1_play: GenFile = /*@__PURE__*/
-  fileDesc("ChltZXVycGcvcGxheS92MS9wbGF5LnByb3RvEg5tZXVycGcucGxheS52MSJOChJHYW1lU2Vzc2lvbkJsb2NrZWQSOAoGcmVhc29uGAEgASgOMigubWV1cnBnLnBsYXkudjEuR2FtZVNlc3Npb25CbG9ja2VkUmVhc29uIqQBCgtHYW1lU2Vzc2lvbhIKCgJpZBgBIAEoCRITCgtjYW1wYWlnbl9pZBgCIAEoCRIWCg5zZXNzaW9uX251bWJlchgDIAEoBRIuCgpzdGFydGVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIsCghlbmRlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiLgoXU3RhcnRHYW1lU2Vzc2lvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiaQoYU3RhcnRHYW1lU2Vzc2lvblJlc3BvbnNlEjEKDGdhbWVfc2Vzc2lvbhgBIAEoCzIbLm1ldXJwZy5wbGF5LnYxLkdhbWVTZXNzaW9uEhoKEmxvY2tlZF9zaGVldF9jb3VudBgCIAEoBSJFChVFbmRHYW1lU2Vzc2lvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFwoPZ2FtZV9zZXNzaW9uX2lkGAIgASgJIksKFkVuZEdhbWVTZXNzaW9uUmVzcG9uc2USMQoMZ2FtZV9zZXNzaW9uGAEgASgLMhsubWV1cnBnLnBsYXkudjEuR2FtZVNlc3Npb24iLgoXTGlzdEdhbWVTZXNzaW9uc1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiTgoYTGlzdEdhbWVTZXNzaW9uc1Jlc3BvbnNlEjIKDWdhbWVfc2Vzc2lvbnMYASADKAsyGy5tZXVycGcucGxheS52MS5HYW1lU2Vzc2lvbiIdChtMaXN0T3BlbkdhbWVTZXNzaW9uc1JlcXVlc3QiWwocTGlzdE9wZW5HYW1lU2Vzc2lvbnNSZXNwb25zZRI7ChJvcGVuX2dhbWVfc2Vzc2lvbnMYASADKAsyHy5tZXVycGcucGxheS52MS5PcGVuR2FtZVNlc3Npb24ihwEKD09wZW5HYW1lU2Vzc2lvbhIxCgxnYW1lX3Nlc3Npb24YASABKAsyGy5tZXVycGcucGxheS52MS5HYW1lU2Vzc2lvbhIVCg1jYW1wYWlnbl9uYW1lGAIgASgJEioKB215X3JvbGUYAyABKA4yGS5tZXVycGcuY2FtcGFpZ25zLnYxLlJvbGUiLAoVR2V0TGl2ZVNlc3Npb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIsUBChZHZXRMaXZlU2Vzc2lvblJlc3BvbnNlEjEKDGdhbWVfc2Vzc2lvbhgBIAEoCzIbLm1ldXJwZy5wbGF5LnYxLkdhbWVTZXNzaW9uEi8KBnZpdGFscxgCIAMoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscxIWCg5jdXJyZW50X21hcF9pZBgDIAEoCRIvCgtzaG93bl9pbWFnZRgEIAEoCzIaLm1ldXJwZy5wbGF5LnYxLlNob3duSW1hZ2UiaQoKU2hvd25JbWFnZRIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEg0KBXdpZHRoGAMgASgFEg4KBmhlaWdodBgEIAEoBRILCgN1cmwYBSABKAkSFQoNdGh1bWJuYWlsX3VybBgGIAEoCSKkAwoPQ2hhcmFjdGVyVml0YWxzEhQKDGNoYXJhY3Rlcl9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEhYKDnBsYXllcl91c2VyX2lkGAMgASgJEhoKEmhpdF9wb2ludHNfY3VycmVudBgEIAEoBRIWCg5oaXRfcG9pbnRzX21heBgFIAEoBRIcChRoaXRfcG9pbnRzX3RlbXBvcmFyeRgGIAEoBRIzCgtzcGVsbF9zbG90cxgHIAMoCzIeLm1ldXJwZy5wbGF5LnYxLlNwZWxsU2xvdFVzYWdlEjEKCnBhY3Rfc2xvdHMYCCABKAsyHS5tZXVycGcucGxheS52MS5QYWN0U2xvdFVzYWdlEioKCGhpdF9kaWNlGAkgAygLMhgubWV1cnBnLnJ1bGVzLnYxLkhpdERpY2USFgoOaGl0X2RpY2VfdG90YWwYCiABKAUSFQoNaGl0X2RpY2VfdXNlZBgLIAEoBRIQCghyZXZpc2lvbhgMIAEoBRIuCgp1cGRhdGVkX2F0GA0gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCI8Cg5TcGVsbFNsb3RVc2FnZRINCgVsZXZlbBgBIAEoBRINCgV0b3RhbBgCIAEoBRIMCgR1c2VkGAMgASgFIkAKDVBhY3RTbG90VXNhZ2USEgoKc2xvdF9sZXZlbBgBIAEoBRINCgV0b3RhbBgCIAEoBRIMCgR1c2VkGAMgASgFIi4KF1dhdGNoR2FtZVNlc3Npb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIr4IChhXYXRjaEdhbWVTZXNzaW9uUmVzcG9uc2USPwoFcmVhZHkYASABKAsyLi5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVzcG9uc2UuUmVhZHlIABJHCgloZWFydGJlYXQYAiABKAsyMi5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVzcG9uc2UuSGVhcnRiZWF0SAASUAoOdml0YWxzX2NoYW5nZWQYAyABKAsyNi5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVzcG9uc2UuVml0YWxzQ2hhbmdlZEgAEk4KDXNlc3Npb25fZW5kZWQYBCABKAsyNS5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVzcG9uc2UuU2Vzc2lvbkVuZGVkSAASWQoTY3VycmVudF9tYXBfY2hhbmdlZBgFIAEoCzI6Lm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5DdXJyZW50TWFwQ2hhbmdlZEgAEkoKC21hcF9jaGFuZ2VkGAYgASgLMjMubWV1cnBnLnBsYXkudjEuV2F0Y2hHYW1lU2Vzc2lvblJlc3BvbnNlLk1hcENoYW5nZWRIABJKCgt0b2tlbl9tb3ZlZBgHIAEoCzIzLm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5Ub2tlbk1vdmVkSAASWQoTc2hvd25faW1hZ2VfY2hhbmdlZBgIIAEoCzI6Lm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5TaG93bkltYWdlQ2hhbmdlZEgAGjoKBVJlYWR5EjEKDGdhbWVfc2Vzc2lvbhgBIAEoCzIbLm1ldXJwZy5wbGF5LnYxLkdhbWVTZXNzaW9uGgsKCUhlYXJ0YmVhdBpACg1WaXRhbHNDaGFuZ2VkEi8KBnZpdGFscxgBIAEoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscxpBCgxTZXNzaW9uRW5kZWQSMQoMZ2FtZV9zZXNzaW9uGAEgASgLMhsubWV1cnBnLnBsYXkudjEuR2FtZVNlc3Npb24aIwoRQ3VycmVudE1hcENoYW5nZWQSDgoGbWFwX2lkGAEgASgJGhwKCk1hcENoYW5nZWQSDgoGbWFwX2lkGAEgASgJGj4KEVNob3duSW1hZ2VDaGFuZ2VkEikKBWltYWdlGAEgASgLMhoubWV1cnBnLnBsYXkudjEuU2hvd25JbWFnZRpOCgpUb2tlbk1vdmVkEg4KBm1hcF9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSDAoEeF9icBgDIAEoBRIMCgR5X2JwGAQgASgFQgcKBWV2ZW50IvACChxBZGp1c3RDaGFyYWN0ZXJWaXRhbHNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkSHwoSaGl0X3BvaW50c19jdXJyZW50GAQgASgFSACIAQESIQoUaGl0X3BvaW50c190ZW1wb3JhcnkYBSABKAVIAYgBARI4ChBzcGVsbF9zbG90c191c2VkGAYgAygLMh4ubWV1cnBnLnBsYXkudjEuU3BlbGxTbG90c1VzZWQSHAoPcGFjdF9zbG90c191c2VkGAcgASgFSAKIAQESGgoNaGl0X2RpY2VfdXNlZBgIIAEoBUgDiAEBQhUKE19oaXRfcG9pbnRzX2N1cnJlbnRCFwoVX2hpdF9wb2ludHNfdGVtcG9yYXJ5QhIKEF9wYWN0X3Nsb3RzX3VzZWRCEAoOX2hpdF9kaWNlX3VzZWQiLQoOU3BlbGxTbG90c1VzZWQSDQoFbGV2ZWwYASABKAUSDAoEdXNlZBgCIAEoBSJQCh1BZGp1c3RDaGFyYWN0ZXJWaXRhbHNSZXNwb25zZRIvCgZ2aXRhbHMYASABKAsyHy5tZXVycGcucGxheS52MS5DaGFyYWN0ZXJWaXRhbHMiOwoUU2V0Q3VycmVudE1hcFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSDgoGbWFwX2lkGAIgASgJIi8KFVNldEN1cnJlbnRNYXBSZXNwb25zZRIWCg5jdXJyZW50X21hcF9pZBgBIAEoCSI9ChRTZXRTaG93bkltYWdlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIQCghpbWFnZV9pZBgCIAEoCSJIChVTZXRTaG93bkltYWdlUmVzcG9uc2USLwoLc2hvd25faW1hZ2UYASABKAsyGi5tZXVycGcucGxheS52MS5TaG93bkltYWdlKq4BChhHYW1lU2Vzc2lvbkJsb2NrZWRSZWFzb24SKwonR0FNRV9TRVNTSU9OX0JMT0NLRURfUkVBU09OX1VOU1BFQ0lGSUVEEAASLworR0FNRV9TRVNTSU9OX0JMT0NLRURfUkVBU09OX05PX09QRU5fU0VTU0lPThABEjQKMEdBTUVfU0VTU0lPTl9CTE9DS0VEX1JFQVNPTl9TRVNTSU9OX0FMUkVBRFlfT1BFThACMroHCgtQbGF5U2VydmljZRJlChBTdGFydEdhbWVTZXNzaW9uEicubWV1cnBnLnBsYXkudjEuU3RhcnRHYW1lU2Vzc2lvblJlcXVlc3QaKC5tZXVycGcucGxheS52MS5TdGFydEdhbWVTZXNzaW9uUmVzcG9uc2USXwoORW5kR2FtZVNlc3Npb24SJS5tZXVycGcucGxheS52MS5FbmRHYW1lU2Vzc2lvblJlcXVlc3QaJi5tZXVycGcucGxheS52MS5FbmRHYW1lU2Vzc2lvblJlc3BvbnNlEmoKEExpc3RHYW1lU2Vzc2lvbnMSJy5tZXVycGcucGxheS52MS5MaXN0R2FtZVNlc3Npb25zUmVxdWVzdBooLm1ldXJwZy5wbGF5LnYxLkxpc3RHYW1lU2Vzc2lvbnNSZXNwb25zZSIDkAICEnYKFExpc3RPcGVuR2FtZVNlc3Npb25zEisubWV1cnBnLnBsYXkudjEuTGlzdE9wZW5HYW1lU2Vzc2lvbnNSZXF1ZXN0GiwubWV1cnBnLnBsYXkudjEuTGlzdE9wZW5HYW1lU2Vzc2lvbnNSZXNwb25zZSIDkAIBEmQKDkdldExpdmVTZXNzaW9uEiUubWV1cnBnLnBsYXkudjEuR2V0TGl2ZVNlc3Npb25SZXF1ZXN0GiYubWV1cnBnLnBsYXkudjEuR2V0TGl2ZVNlc3Npb25SZXNwb25zZSIDkAICEmcKEFdhdGNoR2FtZVNlc3Npb24SJy5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVxdWVzdBooLm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZTABEnQKFUFkanVzdENoYXJhY3RlclZpdGFscxIsLm1ldXJwZy5wbGF5LnYxLkFkanVzdENoYXJhY3RlclZpdGFsc1JlcXVlc3QaLS5tZXVycGcucGxheS52MS5BZGp1c3RDaGFyYWN0ZXJWaXRhbHNSZXNwb25zZRJcCg1TZXRDdXJyZW50TWFwEiQubWV1cnBnLnBsYXkudjEuU2V0Q3VycmVudE1hcFJlcXVlc3QaJS5tZXVycGcucGxheS52MS5TZXRDdXJyZW50TWFwUmVzcG9uc2USXAoNU2V0U2hvd25JbWFnZRIkLm1ldXJwZy5wbGF5LnYxLlNldFNob3duSW1hZ2VSZXF1ZXN0GiUubWV1cnBnLnBsYXkudjEuU2V0U2hvd25JbWFnZVJlc3BvbnNlQrcBChJjb20ubWV1cnBnLnBsYXkudjFCCVBsYXlQcm90b1ABWjxnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvcGxheS92MTtwbGF5djGiAgNNUFiqAg5NZXVycGcuUGxheS5WMcoCDk1ldXJwZ1xQbGF5XFYx4gIaTWV1cnBnXFBsYXlcVjFcR1BCTWV0YWRhdGHqAhBNZXVycGc6OlBsYXk6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp, file_meurpg_campaigns_v1_campaigns, file_meurpg_rules_v1_rules]);
+  fileDesc("ChltZXVycGcvcGxheS92MS9wbGF5LnByb3RvEg5tZXVycGcucGxheS52MSJOChJHYW1lU2Vzc2lvbkJsb2NrZWQSOAoGcmVhc29uGAEgASgOMigubWV1cnBnLnBsYXkudjEuR2FtZVNlc3Npb25CbG9ja2VkUmVhc29uIqQBCgtHYW1lU2Vzc2lvbhIKCgJpZBgBIAEoCRITCgtjYW1wYWlnbl9pZBgCIAEoCRIWCg5zZXNzaW9uX251bWJlchgDIAEoBRIuCgpzdGFydGVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIsCghlbmRlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiLgoXU3RhcnRHYW1lU2Vzc2lvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiaQoYU3RhcnRHYW1lU2Vzc2lvblJlc3BvbnNlEjEKDGdhbWVfc2Vzc2lvbhgBIAEoCzIbLm1ldXJwZy5wbGF5LnYxLkdhbWVTZXNzaW9uEhoKEmxvY2tlZF9zaGVldF9jb3VudBgCIAEoBSJFChVFbmRHYW1lU2Vzc2lvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFwoPZ2FtZV9zZXNzaW9uX2lkGAIgASgJIksKFkVuZEdhbWVTZXNzaW9uUmVzcG9uc2USMQoMZ2FtZV9zZXNzaW9uGAEgASgLMhsubWV1cnBnLnBsYXkudjEuR2FtZVNlc3Npb24iLgoXTGlzdEdhbWVTZXNzaW9uc1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiTgoYTGlzdEdhbWVTZXNzaW9uc1Jlc3BvbnNlEjIKDWdhbWVfc2Vzc2lvbnMYASADKAsyGy5tZXVycGcucGxheS52MS5HYW1lU2Vzc2lvbiIdChtMaXN0T3BlbkdhbWVTZXNzaW9uc1JlcXVlc3QiWwocTGlzdE9wZW5HYW1lU2Vzc2lvbnNSZXNwb25zZRI7ChJvcGVuX2dhbWVfc2Vzc2lvbnMYASADKAsyHy5tZXVycGcucGxheS52MS5PcGVuR2FtZVNlc3Npb24ihwEKD09wZW5HYW1lU2Vzc2lvbhIxCgxnYW1lX3Nlc3Npb24YASABKAsyGy5tZXVycGcucGxheS52MS5HYW1lU2Vzc2lvbhIVCg1jYW1wYWlnbl9uYW1lGAIgASgJEioKB215X3JvbGUYAyABKA4yGS5tZXVycGcuY2FtcGFpZ25zLnYxLlJvbGUiLAoVR2V0TGl2ZVNlc3Npb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIt8BChZHZXRMaXZlU2Vzc2lvblJlc3BvbnNlEjEKDGdhbWVfc2Vzc2lvbhgBIAEoCzIbLm1ldXJwZy5wbGF5LnYxLkdhbWVTZXNzaW9uEi8KBnZpdGFscxgCIAMoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscxIWCg5jdXJyZW50X21hcF9pZBgDIAEoCRIvCgtzaG93bl9pbWFnZRgEIAEoCzIaLm1ldXJwZy5wbGF5LnYxLlNob3duSW1hZ2USGAoQc2hvd25faW1hZ2Vfa2VlcBgFIAEoCCJpCgpTaG93bkltYWdlEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSDQoFd2lkdGgYAyABKAUSDgoGaGVpZ2h0GAQgASgFEgsKA3VybBgFIAEoCRIVCg10aHVtYm5haWxfdXJsGAYgASgJIqQDCg9DaGFyYWN0ZXJWaXRhbHMSFAoMY2hhcmFjdGVyX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSFgoOcGxheWVyX3VzZXJfaWQYAyABKAkSGgoSaGl0X3BvaW50c19jdXJyZW50GAQgASgFEhYKDmhpdF9wb2ludHNfbWF4GAUgASgFEhwKFGhpdF9wb2ludHNfdGVtcG9yYXJ5GAYgASgFEjMKC3NwZWxsX3Nsb3RzGAcgAygLMh4ubWV1cnBnLnBsYXkudjEuU3BlbGxTbG90VXNhZ2USMQoKcGFjdF9zbG90cxgIIAEoCzIdLm1ldXJwZy5wbGF5LnYxLlBhY3RTbG90VXNhZ2USKgoIaGl0X2RpY2UYCSADKAsyGC5tZXVycGcucnVsZXMudjEuSGl0RGljZRIWCg5oaXRfZGljZV90b3RhbBgKIAEoBRIVCg1oaXRfZGljZV91c2VkGAsgASgFEhAKCHJldmlzaW9uGAwgASgFEi4KCnVwZGF0ZWRfYXQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIjwKDlNwZWxsU2xvdFVzYWdlEg0KBWxldmVsGAEgASgFEg0KBXRvdGFsGAIgASgFEgwKBHVzZWQYAyABKAUiQAoNUGFjdFNsb3RVc2FnZRISCgpzbG90X2xldmVsGAEgASgFEg0KBXRvdGFsGAIgASgFEgwKBHVzZWQYAyABKAUiLgoXV2F0Y2hHYW1lU2Vzc2lvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkirgkKGFdhdGNoR2FtZVNlc3Npb25SZXNwb25zZRI/CgVyZWFkeRgBIAEoCzIuLm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5SZWFkeUgAEkcKCWhlYXJ0YmVhdBgCIAEoCzIyLm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5IZWFydGJlYXRIABJQCg52aXRhbHNfY2hhbmdlZBgDIAEoCzI2Lm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5WaXRhbHNDaGFuZ2VkSAASTgoNc2Vzc2lvbl9lbmRlZBgEIAEoCzI1Lm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5TZXNzaW9uRW5kZWRIABJZChNjdXJyZW50X21hcF9jaGFuZ2VkGAUgASgLMjoubWV1cnBnLnBsYXkudjEuV2F0Y2hHYW1lU2Vzc2lvblJlc3BvbnNlLkN1cnJlbnRNYXBDaGFuZ2VkSAASSgoLbWFwX2NoYW5nZWQYBiABKAsyMy5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVzcG9uc2UuTWFwQ2hhbmdlZEgAEkoKC3Rva2VuX21vdmVkGAcgASgLMjMubWV1cnBnLnBsYXkudjEuV2F0Y2hHYW1lU2Vzc2lvblJlc3BvbnNlLlRva2VuTW92ZWRIABJZChNzaG93bl9pbWFnZV9jaGFuZ2VkGAggASgLMjoubWV1cnBnLnBsYXkudjEuV2F0Y2hHYW1lU2Vzc2lvblJlc3BvbnNlLlNob3duSW1hZ2VDaGFuZ2VkSAASWQoTbGVmdF9pbWFnZXNfY2hhbmdlZBgJIAEoCzI6Lm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5MZWZ0SW1hZ2VzQ2hhbmdlZEgAGjoKBVJlYWR5EjEKDGdhbWVfc2Vzc2lvbhgBIAEoCzIbLm1ldXJwZy5wbGF5LnYxLkdhbWVTZXNzaW9uGgsKCUhlYXJ0YmVhdBpACg1WaXRhbHNDaGFuZ2VkEi8KBnZpdGFscxgBIAEoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscxpBCgxTZXNzaW9uRW5kZWQSMQoMZ2FtZV9zZXNzaW9uGAEgASgLMhsubWV1cnBnLnBsYXkudjEuR2FtZVNlc3Npb24aIwoRQ3VycmVudE1hcENoYW5nZWQSDgoGbWFwX2lkGAEgASgJGhwKCk1hcENoYW5nZWQSDgoGbWFwX2lkGAEgASgJGj4KEVNob3duSW1hZ2VDaGFuZ2VkEikKBWltYWdlGAEgASgLMhoubWV1cnBnLnBsYXkudjEuU2hvd25JbWFnZRoTChFMZWZ0SW1hZ2VzQ2hhbmdlZBpOCgpUb2tlbk1vdmVkEg4KBm1hcF9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSDAoEeF9icBgDIAEoBRIMCgR5X2JwGAQgASgFQgcKBWV2ZW50IvACChxBZGp1c3RDaGFyYWN0ZXJWaXRhbHNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkSHwoSaGl0X3BvaW50c19jdXJyZW50GAQgASgFSACIAQESIQoUaGl0X3BvaW50c190ZW1wb3JhcnkYBSABKAVIAYgBARI4ChBzcGVsbF9zbG90c191c2VkGAYgAygLMh4ubWV1cnBnLnBsYXkudjEuU3BlbGxTbG90c1VzZWQSHAoPcGFjdF9zbG90c191c2VkGAcgASgFSAKIAQESGgoNaGl0X2RpY2VfdXNlZBgIIAEoBUgDiAEBQhUKE19oaXRfcG9pbnRzX2N1cnJlbnRCFwoVX2hpdF9wb2ludHNfdGVtcG9yYXJ5QhIKEF9wYWN0X3Nsb3RzX3VzZWRCEAoOX2hpdF9kaWNlX3VzZWQiLQoOU3BlbGxTbG90c1VzZWQSDQoFbGV2ZWwYASABKAUSDAoEdXNlZBgCIAEoBSJQCh1BZGp1c3RDaGFyYWN0ZXJWaXRhbHNSZXNwb25zZRIvCgZ2aXRhbHMYASABKAsyHy5tZXVycGcucGxheS52MS5DaGFyYWN0ZXJWaXRhbHMiOwoUU2V0Q3VycmVudE1hcFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSDgoGbWFwX2lkGAIgASgJIi8KFVNldEN1cnJlbnRNYXBSZXNwb25zZRIWCg5jdXJyZW50X21hcF9pZBgBIAEoCSJLChRTZXRTaG93bkltYWdlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIQCghpbWFnZV9pZBgCIAEoCRIMCgRrZWVwGAMgASgIIlYKFVNldFNob3duSW1hZ2VSZXNwb25zZRIvCgtzaG93bl9pbWFnZRgBIAEoCzIaLm1ldXJwZy5wbGF5LnYxLlNob3duSW1hZ2USDAoEa2VlcBgCIAEoCCIsChVMaXN0TGVmdEltYWdlc1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiRAoWTGlzdExlZnRJbWFnZXNSZXNwb25zZRIqCgZpbWFnZXMYASADKAsyGi5tZXVycGcucGxheS52MS5TaG93bkltYWdlIkEKGFRha2VCYWNrTGVmdEltYWdlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIQCghpbWFnZV9pZBgCIAEoCSIbChlUYWtlQmFja0xlZnRJbWFnZVJlc3BvbnNlKq4BChhHYW1lU2Vzc2lvbkJsb2NrZWRSZWFzb24SKwonR0FNRV9TRVNTSU9OX0JMT0NLRURfUkVBU09OX1VOU1BFQ0lGSUVEEAASLworR0FNRV9TRVNTSU9OX0JMT0NLRURfUkVBU09OX05PX09QRU5fU0VTU0lPThABEjQKMEdBTUVfU0VTU0lPTl9CTE9DS0VEX1JFQVNPTl9TRVNTSU9OX0FMUkVBRFlfT1BFThACMooJCgtQbGF5U2VydmljZRJlChBTdGFydEdhbWVTZXNzaW9uEicubWV1cnBnLnBsYXkudjEuU3RhcnRHYW1lU2Vzc2lvblJlcXVlc3QaKC5tZXVycGcucGxheS52MS5TdGFydEdhbWVTZXNzaW9uUmVzcG9uc2USXwoORW5kR2FtZVNlc3Npb24SJS5tZXVycGcucGxheS52MS5FbmRHYW1lU2Vzc2lvblJlcXVlc3QaJi5tZXVycGcucGxheS52MS5FbmRHYW1lU2Vzc2lvblJlc3BvbnNlEmoKEExpc3RHYW1lU2Vzc2lvbnMSJy5tZXVycGcucGxheS52MS5MaXN0R2FtZVNlc3Npb25zUmVxdWVzdBooLm1ldXJwZy5wbGF5LnYxLkxpc3RHYW1lU2Vzc2lvbnNSZXNwb25zZSIDkAICEnYKFExpc3RPcGVuR2FtZVNlc3Npb25zEisubWV1cnBnLnBsYXkudjEuTGlzdE9wZW5HYW1lU2Vzc2lvbnNSZXF1ZXN0GiwubWV1cnBnLnBsYXkudjEuTGlzdE9wZW5HYW1lU2Vzc2lvbnNSZXNwb25zZSIDkAIBEmQKDkdldExpdmVTZXNzaW9uEiUubWV1cnBnLnBsYXkudjEuR2V0TGl2ZVNlc3Npb25SZXF1ZXN0GiYubWV1cnBnLnBsYXkudjEuR2V0TGl2ZVNlc3Npb25SZXNwb25zZSIDkAICEmcKEFdhdGNoR2FtZVNlc3Npb24SJy5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVxdWVzdBooLm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZTABEnQKFUFkanVzdENoYXJhY3RlclZpdGFscxIsLm1ldXJwZy5wbGF5LnYxLkFkanVzdENoYXJhY3RlclZpdGFsc1JlcXVlc3QaLS5tZXVycGcucGxheS52MS5BZGp1c3RDaGFyYWN0ZXJWaXRhbHNSZXNwb25zZRJcCg1TZXRDdXJyZW50TWFwEiQubWV1cnBnLnBsYXkudjEuU2V0Q3VycmVudE1hcFJlcXVlc3QaJS5tZXVycGcucGxheS52MS5TZXRDdXJyZW50TWFwUmVzcG9uc2USXAoNU2V0U2hvd25JbWFnZRIkLm1ldXJwZy5wbGF5LnYxLlNldFNob3duSW1hZ2VSZXF1ZXN0GiUubWV1cnBnLnBsYXkudjEuU2V0U2hvd25JbWFnZVJlc3BvbnNlEmQKDkxpc3RMZWZ0SW1hZ2VzEiUubWV1cnBnLnBsYXkudjEuTGlzdExlZnRJbWFnZXNSZXF1ZXN0GiYubWV1cnBnLnBsYXkudjEuTGlzdExlZnRJbWFnZXNSZXNwb25zZSIDkAICEmgKEVRha2VCYWNrTGVmdEltYWdlEigubWV1cnBnLnBsYXkudjEuVGFrZUJhY2tMZWZ0SW1hZ2VSZXF1ZXN0GikubWV1cnBnLnBsYXkudjEuVGFrZUJhY2tMZWZ0SW1hZ2VSZXNwb25zZUK3AQoSY29tLm1ldXJwZy5wbGF5LnYxQglQbGF5UHJvdG9QAVo8Z2l0aHViLmNvbS9QdXJhRm9tZS9tZXVSUEcvYmFja2VuZC9nZW4vbWV1cnBnL3BsYXkvdjE7cGxheXYxogIDTVBYqgIOTWV1cnBnLlBsYXkuVjHKAg5NZXVycGdcUGxheVxWMeICGk1ldXJwZ1xQbGF5XFYxXEdQQk1ldGFkYXRh6gIQTWV1cnBnOjpQbGF5OjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp, file_meurpg_campaigns_v1_campaigns, file_meurpg_rules_v1_rules]);
 
 /**
  * GameSessionBlocked is the error detail of PlayService's
@@ -354,6 +354,15 @@ export type GetLiveSessionResponse = Message<"meurpg.play.v1.GetLiveSessionRespo
    * @generated from field: meurpg.play.v1.ShownImage shown_image = 4;
    */
   shownImage?: ShownImage | undefined;
+
+  /**
+   * Whether the "Deixar com os jogadores" switch is on for the image shown
+   * (SetShownImage's `keep`). Set only for the master: it is theirs to
+   * decide, so a player always gets false.
+   *
+   * @generated from field: bool shown_image_keep = 5;
+   */
+  shownImageKeep: boolean;
 };
 
 /**
@@ -365,8 +374,9 @@ export const GetLiveSessionResponseSchema: GenMessage<GetLiveSessionResponse> = 
 
 /**
  * ShownImage is a gallery image the master shows the players during a
- * session (MR-028), with what the app needs to show it. Any active member of
- * the campaign may fetch its files.
+ * session, or leaves with them (MR-028), with what the app needs to show
+ * it. A player may fetch its files while it is shown or left; the master
+ * always may.
  *
  * @generated from message meurpg.play.v1.ShownImage
  */
@@ -698,6 +708,14 @@ export type WatchGameSessionResponse = Message<"meurpg.play.v1.WatchGameSessionR
      */
     value: WatchGameSessionResponse_ShownImageChanged;
     case: "shownImageChanged";
+  } | {
+    /**
+     * The images left with the players changed.
+     *
+     * @generated from field: meurpg.play.v1.WatchGameSessionResponse.LeftImagesChanged left_images_changed = 9;
+     */
+    value: WatchGameSessionResponse_LeftImagesChanged;
+    case: "leftImagesChanged";
   } | { case: undefined; value?: undefined };
 };
 
@@ -861,6 +879,23 @@ export const WatchGameSessionResponse_ShownImageChangedSchema: GenMessage<WatchG
   messageDesc(file_meurpg_play_v1_play, 18, 6);
 
 /**
+ * LeftImagesChanged is a hint, with no content: the list of images left
+ * with the players changed, so the app reads it again (ListLeftImages).
+ * Everyone gets it.
+ *
+ * @generated from message meurpg.play.v1.WatchGameSessionResponse.LeftImagesChanged
+ */
+export type WatchGameSessionResponse_LeftImagesChanged = Message<"meurpg.play.v1.WatchGameSessionResponse.LeftImagesChanged"> & {
+};
+
+/**
+ * Describes the message meurpg.play.v1.WatchGameSessionResponse.LeftImagesChanged.
+ * Use `create(WatchGameSessionResponse_LeftImagesChangedSchema)` to create a new message.
+ */
+export const WatchGameSessionResponse_LeftImagesChangedSchema: GenMessage<WatchGameSessionResponse_LeftImagesChanged> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 18, 7);
+
+/**
  * TokenMoved is a token's new position. A token the app does not know
  * yet (it may have missed a `map_changed`) means: read the map again.
  *
@@ -900,7 +935,7 @@ export type WatchGameSessionResponse_TokenMoved = Message<"meurpg.play.v1.WatchG
  * Use `create(WatchGameSessionResponse_TokenMovedSchema)` to create a new message.
  */
 export const WatchGameSessionResponse_TokenMovedSchema: GenMessage<WatchGameSessionResponse_TokenMoved> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 18, 7);
+  messageDesc(file_meurpg_play_v1_play, 18, 8);
 
 /**
  * AdjustCharacterVitalsRequest is the master's correction. Every value set
@@ -1086,6 +1121,14 @@ export type SetShownImageRequest = Message<"meurpg.play.v1.SetShownImageRequest"
    * @generated from field: string image_id = 2;
    */
   imageId: string;
+
+  /**
+   * The "Deixar com os jogadores" switch for image_id: see SetShownImage.
+   * Ignored when image_id is empty.
+   *
+   * @generated from field: bool keep = 3;
+   */
+  keep: boolean;
 };
 
 /**
@@ -1107,6 +1150,14 @@ export type SetShownImageResponse = Message<"meurpg.play.v1.SetShownImageRespons
    * @generated from field: meurpg.play.v1.ShownImage shown_image = 1;
    */
   shownImage?: ShownImage | undefined;
+
+  /**
+   * Whether "Deixar com os jogadores" is on for it: false when nothing is
+   * shown.
+   *
+   * @generated from field: bool keep = 2;
+   */
+  keep: boolean;
 };
 
 /**
@@ -1115,6 +1166,87 @@ export type SetShownImageResponse = Message<"meurpg.play.v1.SetShownImageRespons
  */
 export const SetShownImageResponseSchema: GenMessage<SetShownImageResponse> = /*@__PURE__*/
   messageDesc(file_meurpg_play_v1_play, 25);
+
+/**
+ * ListLeftImagesRequest names the campaign.
+ *
+ * @generated from message meurpg.play.v1.ListLeftImagesRequest
+ */
+export type ListLeftImagesRequest = Message<"meurpg.play.v1.ListLeftImagesRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.ListLeftImagesRequest.
+ * Use `create(ListLeftImagesRequestSchema)` to create a new message.
+ */
+export const ListLeftImagesRequestSchema: GenMessage<ListLeftImagesRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 26);
+
+/**
+ * ListLeftImagesResponse is the images left with the players.
+ *
+ * @generated from message meurpg.play.v1.ListLeftImagesResponse
+ */
+export type ListLeftImagesResponse = Message<"meurpg.play.v1.ListLeftImagesResponse"> & {
+  /**
+   * In the order the master left them, oldest first.
+   *
+   * @generated from field: repeated meurpg.play.v1.ShownImage images = 1;
+   */
+  images: ShownImage[];
+};
+
+/**
+ * Describes the message meurpg.play.v1.ListLeftImagesResponse.
+ * Use `create(ListLeftImagesResponseSchema)` to create a new message.
+ */
+export const ListLeftImagesResponseSchema: GenMessage<ListLeftImagesResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 27);
+
+/**
+ * TakeBackLeftImageRequest names the image to take back.
+ *
+ * @generated from message meurpg.play.v1.TakeBackLeftImageRequest
+ */
+export type TakeBackLeftImageRequest = Message<"meurpg.play.v1.TakeBackLeftImageRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * An image on the campaign's left list (a UUID).
+   *
+   * @generated from field: string image_id = 2;
+   */
+  imageId: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.TakeBackLeftImageRequest.
+ * Use `create(TakeBackLeftImageRequestSchema)` to create a new message.
+ */
+export const TakeBackLeftImageRequestSchema: GenMessage<TakeBackLeftImageRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 28);
+
+/**
+ * TakeBackLeftImageResponse is empty: the list changed.
+ *
+ * @generated from message meurpg.play.v1.TakeBackLeftImageResponse
+ */
+export type TakeBackLeftImageResponse = Message<"meurpg.play.v1.TakeBackLeftImageResponse"> & {
+};
+
+/**
+ * Describes the message meurpg.play.v1.TakeBackLeftImageResponse.
+ * Use `create(TakeBackLeftImageResponseSchema)` to create a new message.
+ */
+export const TakeBackLeftImageResponseSchema: GenMessage<TakeBackLeftImageResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 29);
 
 /**
  * GameSessionBlockedReason says why PlayService refused a call with
@@ -1312,6 +1444,8 @@ export const PlayService: GenService<{
    *     otherwise;
    *   - `shown_image_changed` when the master shows an image, stops showing
    *     it, or deletes it; sent to everyone;
+   *   - `left_images_changed` when the list of images left with the players
+   *     changed (an image left, taken back or deleted); sent to everyone;
    *   - `session_ended` when the master ends the session; the stream then
    *     ends without an error.
    *
@@ -1414,6 +1548,15 @@ export const PlayService: GenService<{
    * `shown_image_changed`. A new session starts showing nothing; deleting
    * the image (GalleryService.DeleteGalleryImage) stops showing it.
    *
+   * `keep` is the "Deixar com os jogadores" switch of the image shown. With
+   * it on, when the master stops showing the image, shows another one or
+   * ends the session, the image is left with the players
+   * (ListLeftImages) instead of being taken away, and the streams get
+   * `left_images_changed`. The master sets it by calling again with the
+   * same image_id and the new `keep`, which sends no event: the players
+   * never learn the switch. It is off for every image newly shown unless
+   * the call says otherwise.
+   *
    * Errors:
    *   - `not_found`: the image is not in the campaign's gallery, the
    *     campaign does not exist, or the caller is not a member of it.
@@ -1427,6 +1570,48 @@ export const PlayService: GenService<{
     methodKind: "unary";
     input: typeof SetShownImageRequestSchema;
     output: typeof SetShownImageResponseSchema;
+  },
+  /**
+   * ListLeftImages returns the images the master left with the players
+   * (SetShownImage's `keep`), in the order they were left. Any active
+   * member may call it, in or out of a session: the left images belong to
+   * the campaign, not to a session. They stay until the master takes them
+   * back (TakeBackLeftImage), also after the session ends, so the list
+   * lives in the campaign (campaign_left_images) and not in the session,
+   * which would take the images away from the players when it ends. A
+   * player gets their files (GET /images/{id}) while the image is on this
+   * list (RN-10).
+   *
+   * Errors:
+   *   - `not_found`: the campaign does not exist, or the caller is not a
+   *     member of it (a pending member neither).
+   *
+   * @generated from rpc meurpg.play.v1.PlayService.ListLeftImages
+   */
+  listLeftImages: {
+    methodKind: "unary";
+    input: typeof ListLeftImagesRequestSchema;
+    output: typeof ListLeftImagesResponseSchema;
+  },
+  /**
+   * TakeBackLeftImage takes an image back from the players ("Tirar"): it
+   * leaves the list, and the players can no longer fetch it. The image
+   * stays in the gallery. Only the campaign's master may call it, in or out
+   * of a session. Every WatchGameSession stream of the campaign gets
+   * `left_images_changed`. Taking back an image that is not on the list is
+   * `not_found`, so a second call (another tab) says so.
+   *
+   * Errors:
+   *   - `not_found`: the image is not on the campaign's left list, the
+   *     campaign does not exist, or the caller is not a member of it.
+   *   - `permission_denied`: the caller is a player.
+   *
+   * @generated from rpc meurpg.play.v1.PlayService.TakeBackLeftImage
+   */
+  takeBackLeftImage: {
+    methodKind: "unary";
+    input: typeof TakeBackLeftImageRequestSchema;
+    output: typeof TakeBackLeftImageResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_meurpg_play_v1_play, 0);

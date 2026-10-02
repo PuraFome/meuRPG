@@ -218,3 +218,32 @@ SELECT EXISTS (
     WHERE campaign_id = sqlc.arg(campaign_id) AND image_id = sqlc.arg(image_id)
       AND (revealed_at IS NOT NULL OR id = sqlc.narg(current_map_id)::UUID)
 );
+
+-- name: LeaveImage :execrows
+-- Leaves the campaign's gallery image with the players (MR-028). Selecting
+-- from gallery_images makes an image deleted meanwhile, or another
+-- campaign's, insert nothing; an image already left keeps its left_at.
+INSERT INTO campaign_left_images (campaign_id, image_id, left_at)
+SELECT g.campaign_id, g.id, sqlc.arg(now)::TIMESTAMPTZ FROM gallery_images g
+WHERE g.campaign_id = sqlc.arg(campaign_id) AND g.id = sqlc.arg(image_id)
+ON CONFLICT (campaign_id, image_id) DO NOTHING;
+
+-- name: ListLeftImages :many
+-- The images left with the players, in the order they were left (id breaks
+-- ties).
+SELECT g.* FROM campaign_left_images l
+JOIN gallery_images g ON g.id = l.image_id
+WHERE l.campaign_id = $1
+ORDER BY l.left_at, g.id;
+
+-- name: TakeBackLeftImage :execrows
+DELETE FROM campaign_left_images
+WHERE campaign_id = $1 AND image_id = $2;
+
+-- name: ImageIsLeft :one
+-- Whether the image is left with the players. The image route asks it for a
+-- player (RN-10).
+SELECT EXISTS (
+    SELECT 1 FROM campaign_left_images
+    WHERE campaign_id = $1 AND image_id = $2
+);

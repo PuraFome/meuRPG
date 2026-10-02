@@ -64,7 +64,12 @@
             [campaignId]="campaignId()"
             [shown]="shownImage()"
             [maps]="campaignMaps()"
-            (changed)="shownImage.set($event)"
+            [keep]="shownKeep()"
+            [left]="leftImages()"
+            (changed)="shownImage.set($event); shownKeep.set(false)"
+            (keepChange)="shownKeep.set($event)"
+            (leftChanged)="reloadLeftImages()"
+            (taken)="leftImages.set(leftWithout($event))"
           />
           <app-session-map
             class="board__main"
@@ -86,6 +91,7 @@
         <div class="board">
           <div class="board__main">
             <app-shown-image-block [image]="shownImage()" [animate]="phase() === 'live'" />
+            <app-left-images-block [images]="leftImages()" />
             <app-session-map
               [campaignId]="campaignId()"
               [state]="mapState"

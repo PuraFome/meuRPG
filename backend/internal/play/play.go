@@ -81,7 +81,8 @@ type VitalsKeeper interface {
 // MapKeeper is what the session's screen needs from the maps module
 // (maps.SessionMaps), whose tables the maps and the gallery images are: it
 // checks and reveals the map the master makes current (SetCurrentMap), and
-// reads the gallery image the master shows (SetShownImage).
+// reads the gallery image the master shows (SetShownImage), and keeps the
+// images the master leaves with the players.
 type MapKeeper interface {
 	// RevealMap reveals the campaign's map inside tx (a revealed map stays
 	// as it is), or returns a `not_found` Connect error when mapID is not a
@@ -91,6 +92,16 @@ type MapKeeper interface {
 	// session shows it, or a `not_found` Connect error when it is not an
 	// image of the campaign's gallery.
 	ShownImage(ctx context.Context, campaignID, imageID string) (*playv1.ShownImage, error)
+	// LeaveImage adds the campaign's image to the images left with the
+	// players inside tx. An image already left stays as it is, and one that
+	// is not the campaign's anymore is skipped.
+	LeaveImage(ctx context.Context, tx pgx.Tx, campaignID, imageID string, at time.Time) error
+	// ListLeftImages returns the images left with the players, oldest
+	// first.
+	ListLeftImages(ctx context.Context, campaignID string) ([]*playv1.ShownImage, error)
+	// TakeBackImage removes the image from the left list, or returns a
+	// `not_found` Connect error when it is not on it.
+	TakeBackImage(ctx context.Context, campaignID, imageID string) error
 }
 
 // CampaignDirectory tells which campaigns a user belongs to. The campaigns

@@ -694,6 +694,8 @@ O `play` inicia, encerra e lista as sessões de jogo de uma campanha, o que trav
 | `AdjustCharacterVitals` | O mestre da campanha, durante a sessão | `failed_precondition` (`NO_OPEN_SESSION`); `not_found` se o personagem não é um personagem de jogador vivo da campanha; `invalid_argument` fora de 0 até o máximo |
 | `SetCurrentMap` | O mestre da campanha, durante a sessão | `failed_precondition` (`NO_OPEN_SESSION`); `not_found` se o mapa não é da campanha |
 | `SetShownImage` | O mestre da campanha, durante a sessão | `failed_precondition` (`NO_OPEN_SESSION`); `not_found` se a imagem não é da galeria da campanha |
+| `ListLeftImages` | Membros da campanha, com ou sem sessão aberta | — |
+| `TakeBackLeftImage` | O mestre da campanha, com ou sem sessão aberta | `not_found` se a imagem não está na lista de imagens deixadas |
 
 O membro pendente (RN-15) recebe `not_found` em tudo que pede campanha, como quem não é membro; `TestAuthorizationMatrix` tem uma coluna para ele.
 
@@ -727,7 +729,7 @@ O jogador fica sabendo da sessão por uma consulta leve, e acompanha a sessão p
 
 - **O aviso (RN-06) é uma consulta, não um stream.** Com a aba visível e a pessoa logada, o app chama `ListOpenGameSessions` a cada 30 segundos, e uma vez quando a aba volta a ficar visível. A resposta traz as sessões abertas das campanhas em que a pessoa é membro ativo, com o nome da campanha e o papel dela; uma sessão nova vira o aviso "A sessão 3 de Mirathel começou" com o link. São duas leituras por índice (as campanhas da pessoa, pelo `campaigns`, e as sessões abertas delas, pelo índice parcial de `game_sessions`), e o Cloud Run só cobra o tempo da requisição.
 - **O link da sessão** é `/campanhas/<id>/sessao`, sem segredo (RN-07). Quem decide é o servidor: sem login, `unauthenticated`, e o app manda para o login; quem não é membro, ou é membro pendente, recebe `not_found` (a tela mostra "Peça um convite ao mestre", sem o nome da campanha); sem sessão aberta, `failed_precondition` com `GameSessionBlocked` e o motivo `NO_OPEN_SESSION` (a tela mostra "Nenhuma sessão em andamento").
-- **O stream** (`WatchGameSession`) manda primeiro `ready`, depois de registrar a assinatura. Só então o app lê a foto da sessão (`GetLiveSession`), então nenhuma mudança cai no intervalo entre a foto e o stream. Uma mudança pode chegar antes da foto: a `revision` das `CharacterVitals` diz qual é a mais nova. Depois vêm `heartbeat` a cada 25 segundos, `vitals_changed`, os eventos dos mapas (`current_map_changed`, `map_changed`, `token_moved`, ver [Os mapas na sessão ao vivo](#os-mapas-na-sessão-ao-vivo)), `shown_image_changed` e `session_ended`.
+- **O stream** (`WatchGameSession`) manda primeiro `ready`, depois de registrar a assinatura. Só então o app lê a foto da sessão (`GetLiveSession`), então nenhuma mudança cai no intervalo entre a foto e o stream. Uma mudança pode chegar antes da foto: a `revision` das `CharacterVitals` diz qual é a mais nova. Depois vêm `heartbeat` a cada 25 segundos, `vitals_changed`, os eventos dos mapas (`current_map_changed`, `map_changed`, `token_moved`, ver [Os mapas na sessão ao vivo](#os-mapas-na-sessão-ao-vivo)), `shown_image_changed`, `left_images_changed` e `session_ended`.
 
 ```mermaid
 sequenceDiagram
@@ -807,11 +809,24 @@ A sessão aberta mostra a todos duas coisas, lado a lado e independentes: o mapa
 
 - **Uma sessão nova começa sem os dois:** as colunas são da linha da sessão. A sessão encerrada guarda o último, só como registro.
 - **Escolher o mapa atual o revela** na mesma transação que trava a linha da sessão. Se o mestre esconder o mapa atual depois, o jogador continua vendo enquanto ele for o atual (`Map.revealed` falso e `Map.current` verdadeiro).
-- **A imagem mostrada não abre a galeria.** O jogador recebe o ID da imagem enquanto ela é mostrada, e mais nenhum; depois que o mestre para de mostrar, a rota `GET /images/{id}` responde `404` a ele, mesmo que tenha guardado o ID (o controle para manter a imagem à mostra, a desenhar com as telas da Etapa 6, ainda não existe; ver [Servir as imagens](#servir-as-imagens) e a pergunta 32, respondida em 02/10/2026, da [MR-028](produto/historias.md#mr-028-mostrar-uma-imagem-aos-jogadores)).
+- **A imagem mostrada não abre a galeria.** O jogador recebe o ID da imagem enquanto ela é mostrada, e mais nenhum; depois que o mestre para de mostrar, a rota `GET /images/{id}` responde `404` a ele, mesmo que tenha guardado o ID, a menos que o mestre a tenha deixado com os jogadores (abaixo; ver [Servir as imagens](#servir-as-imagens) e a pergunta 32, respondida em 02/10/2026, da [MR-028](produto/historias.md#mr-028-mostrar-uma-imagem-aos-jogadores)).
+
+#### Imagens deixadas com os jogadores
+
+O mestre pode deixar a imagem mostrada com os jogadores (MR-028, "Deixar com os jogadores"): ela sai da tela, mas continua numa lista que os jogadores veem até o mestre tirá-la. A lista é da campanha, não da sessão: por isso fica na tabela `campaign_left_images` (`campaign_id`, `image_id`, `left_at`; chave primária nas duas primeiras; `CASCADE` na campanha e na imagem da galeria, então apagar a imagem a tira da lista), e não em `game_sessions`, que a perderia quando a sessão acaba. O interruptor da imagem que está à mostra, esse sim, é da sessão: `game_sessions.shown_image_keep` (começa desligado, e volta a desligado quando a imagem mostrada muda).
+
+| Chamada | O que faz |
+| --- | --- |
+| `SetShownImage(image_id, keep)` | `keep` é o interruptor da imagem mostrada. O mestre liga chamando de novo com a mesma imagem (não manda evento: os jogadores não sabem do interruptor). Com ele ligado, parar de mostrar ou trocar passa a imagem para a lista, na mesma transação que trava a linha da sessão; `EndGameSession` faz o mesmo ao encerrar |
+| `ListLeftImages(campaign_id)` | Qualquer membro ativo, com ou sem sessão: a lista, da mais antiga para a mais nova, com as mesmas URLs da imagem mostrada |
+| `TakeBackLeftImage(campaign_id, image_id)` | Só o mestre: tira a imagem da lista (ela continua na galeria); `not_found` se não está lá |
+| `left_images_changed` (stream) | Uma dica sem conteúdo, a todos: deixou, tirou ou apagou uma imagem deixada. O app lê a lista de novo |
+
+A tabela é do módulo `maps` (a rota das imagens a lê, junto das tabelas dos mapas); o `play` a escreve pela mesma interface `MapKeeper` (`LeaveImage` dentro da transação dele, `ListLeftImages`, `TakeBackImage`). `GetLiveSession.shown_image_keep` diz ao mestre se o interruptor está ligado; o jogador sempre recebe `false`.
 
 **Como o `play` e o `maps` se encontram.** Um precisa do outro, então cada um declara o que precisa, o outro implementa, e o `cmd/api` liga os dois, sem nenhum importar o outro:
 
-- o `play` declara `MapKeeper`: conferir e revelar o mapa atual, dentro da transação do `play`, e ler a imagem mostrada. O `maps` implementa com `maps.SessionMaps`, que só precisa do banco;
+- o `play` declara `MapKeeper`: conferir e revelar o mapa atual, dentro da transação do `play`, ler a imagem mostrada e guardar as imagens deixadas com os jogadores. O `maps` implementa com `maps.SessionMaps`, que só precisa do banco;
 - o `maps` declara `LiveSession`: qual é o mapa atual e a imagem mostrada, e publicar no stream. O `play.Service` implementa com `CurrentMapID`, `ShownImageID` e `Publish`. As mensagens são as do `play.proto`: o `maps` as monta, como o `characters` monta as `CharacterVitals`.
 
 Como o `SessionMaps` não precisa do `play`, o `cmd/api` o cria primeiro, cria o `play` com ele, e só então cria o `maps` com o `play`: nenhum dos dois espera o outro.
@@ -823,7 +838,7 @@ A galeria guarda as imagens que o mestre usa nos mapas e no documento da campanh
 | Rota ou chamada | Quem pode | O que faz |
 | --- | --- | --- |
 | `POST /uploads/images` | O mestre da campanha | Recebe a imagem (formulário `multipart/form-data`: `campaign_id`, depois `file`), confere, codifica de novo, guarda e responde `201` com o `GalleryImage` em JSON |
-| `GET /images/{id}` e `GET /images/{id}/thumb` | O mestre da campanha da imagem; o jogador, só enquanto vê a imagem (o fundo de um mapa que ele vê, ou a imagem mostrada na sessão) | Entrega a imagem, ou a miniatura de 480 px no lado maior |
+| `GET /images/{id}` e `GET /images/{id}/thumb` | O mestre da campanha da imagem; o jogador, só enquanto vê a imagem (o fundo de um mapa que ele vê, a imagem mostrada na sessão, ou uma imagem que o mestre deixou com os jogadores) | Entrega a imagem, ou a miniatura de 480 px no lado maior |
 | `GalleryService.ListGalleryImages` | O mestre | Lista a galeria, da mais nova para a mais antiga, com o uso da cota |
 | `GalleryService.RenameGalleryImage` | O mestre | Muda o nome (1 a 80 caracteres, uma linha) |
 | `GalleryService.DeleteGalleryImage` | O mestre | Apaga a linha e os arquivos. Recusa com `failed_precondition` se um mapa usa a imagem |
@@ -902,7 +917,7 @@ Só depois disso vem o `304` do `If-None-Match`: nem um estranho descobre que a 
 
 O CSP do app já aceita as imagens (`img-src 'self'`), e o handler do Angular deixa `/images` e `/uploads` para a API (`isAPIPath`); no `ng serve`, o `proxy.conf.json` encaminha as duas.
 
-**RN-10 com imagens.** O jogador baixa uma imagem só enquanto a vê: saber o ID não basta, porque ele guarda os IDs de mapas escondidos de novo e de imagens que pararam de ser mostradas (decidido pelo integrador em 30/09/2026, junto com a MR-028; antes, qualquer membro baixava qualquer imagem da campanha pelo ID). O ID só chega a ele numa resposta que pode ver (um mapa que ele vê, ou a imagem que o mestre mostra), e a rota confere de novo a cada pedido (`TestRN10_PlayersOnlyFetchImagesTheyCanSee`). O nome da imagem na galeria vai ao jogador só na imagem mostrada, como legenda; num mapa, só ao mestre. A galeria, que lista todas as imagens, é só do mestre (`TestMR019_PlayersCannotListTheGallery`). Quem não é membro ativo recebe `404` (`TestAuthorizationMatrix`, no `maps`). O que continua fora do alcance do servidor: a imagem que o navegador já desenhou na página, e o que alguém salvou ou fotografou da tela.
+**RN-10 com imagens.** O jogador baixa uma imagem só enquanto a vê: saber o ID não basta, porque ele guarda os IDs de mapas escondidos de novo e de imagens que pararam de ser mostradas (decidido pelo integrador em 30/09/2026, junto com a MR-028; antes, qualquer membro baixava qualquer imagem da campanha pelo ID). O ID só chega a ele numa resposta que pode ver (um mapa que ele vê, a imagem que o mestre mostra, ou a lista de imagens deixadas), e a rota confere de novo a cada pedido, também na lista `campaign_left_images`: deixada, é servida; tirada pelo mestre, volta a `404` (`TestRN10_PlayersOnlyFetchImagesTheyCanSee`). O nome da imagem na galeria vai ao jogador só na imagem mostrada e nas deixadas com ele, como legenda; num mapa, só ao mestre. A galeria, que lista todas as imagens, é só do mestre (`TestMR019_PlayersCannotListTheGallery`). Quem não é membro ativo recebe `404` (`TestAuthorizationMatrix`, no `maps`). O que continua fora do alcance do servidor: a imagem que o navegador já desenhou na página, e o que alguém salvou ou fotografou da tela.
 
 ### Os erros do envio
 
@@ -971,7 +986,7 @@ O filtro roda no servidor, em `visibility.go`, e o que o jogador não vê fica d
 | De quais mapas este é submapa | Todos | Só os que ele vê, por um ponto revelado |
 | Quantos pontos o mapa tem | Todos | Só os revelados |
 | Nome da imagem na galeria | Sim | Não |
-| O arquivo da imagem (`GET /images/{id}`) | Toda imagem da campanha | Só enquanto vê um mapa com essa imagem, ou enquanto ela é a imagem mostrada na sessão (ver [Servir as imagens](#servir-as-imagens)) |
+| O arquivo da imagem (`GET /images/{id}`) | Toda imagem da campanha | Só enquanto vê um mapa com essa imagem, enquanto ela é a imagem mostrada na sessão, ou enquanto o mestre a deixa com os jogadores (ver [Servir as imagens](#servir-as-imagens)) |
 
 Quem não é membro ativo (e o membro pendente) recebe `not_found` em tudo, como no resto do app (`TestMapServiceAuthorizationMatrix`).
 
