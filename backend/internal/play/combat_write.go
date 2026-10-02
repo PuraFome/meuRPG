@@ -57,8 +57,12 @@ type combatTx struct {
 // combatResult is what a change leaves for the handler: the session, and
 // whether the call was a retry of a change already made.
 type combatResult struct {
-	session  playdb.GameSession
-	repeated bool
+	session playdb.GameSession
+	// encounterID is the combat the change was about: the one named in the
+	// request, or the one StartEncounter created. Empty only for a retried
+	// start, whose combat the retry does not know.
+	encounterID string
+	repeated    bool
 }
 
 // write runs one change to a combat, as AdjustCharacterVitals runs a vitals
@@ -69,7 +73,7 @@ type combatResult struct {
 func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx) (payload any, err error)) (combatResult, error) {
 	var res combatResult
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		res = combatResult{}
+		res = combatResult{encounterID: w.encounterID}
 		q := s.queries.WithTx(tx)
 		session, err := q.GetOpenGameSessionForUpdate(ctx, w.m.CampaignID)
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -108,6 +112,7 @@ func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx)
 		if err != nil || payload == nil {
 			return err
 		}
+		res.encounterID = c.enc.ID
 		return insertEvent(ctx, c, w.kind, &w.m.UserID, &w.key, payload)
 	})
 	if err != nil {
@@ -135,11 +140,18 @@ func insertEvent(ctx context.Context, c *combatTx, kind string, actor, key *stri
 	return nil
 }
 
-// finish builds the handler's answer after a change: it reads the session's
-// latest combat, lets publish tell the streams (unless the call was a retry,
-// which changed nothing), and returns the combat as the caller sees it.
+// finish builds the handler's answer after a change: it reads the combat
+// the change was about (the session's latest, for a retried start), lets
+// publish tell the streams (unless the call was a retry, which changed
+// nothing), and returns the combat as the caller sees it.
 func (s *Service) finish(ctx context.Context, m authz.Membership, res combatResult, publish func(d *encounterData)) (*playv1.Encounter, error) {
-	enc, err := s.queries.GetLatestEncounter(ctx, res.session.ID)
+	var enc playdb.Encounter
+	var err error
+	if res.encounterID != "" {
+		enc, err = s.queries.GetEncounterInSession(ctx, playdb.GetEncounterInSessionParams{GameSessionID: res.session.ID, ID: res.encounterID})
+	} else {
+		enc, err = s.queries.GetLatestEncounter(ctx, res.session.ID)
+	}
 	if err != nil {
 		return nil, s.dbError(ctx, "find the encounter", err)
 	}

@@ -731,7 +731,8 @@ export type EndTurnRequest = Message<"meurpg.play.v1.EndTurnRequest"> & {
   idempotencyKey: string;
 
   /**
-   * The combatant whose turn the caller thinks it is (a UUID).
+   * The combatant whose turn the caller thinks it is (a UUID); empty only
+   * when nobody is on turn (see EndTurn).
    *
    * @generated from field: string expected_combatant_id = 4;
    */
@@ -1490,6 +1491,12 @@ export const CombatService: GenService<{
    * changes nothing and fails with `aborted`, so one tap never skips two
    * turns.
    *
+   * Nobody may be on turn: the combatant on turn left the fight (the master
+   * removed the last one who could act, or its character was deleted), and
+   * `current_combatant_id` is empty while the combat is ACTIVE. Then only the
+   * master may call it, with expected_combatant_id empty, and the turns start
+   * again from the top of the order, in the same round.
+   *
    * Every stream gets `turn_changed` (each audience its own copy: a player
    * sees a hidden combatant's turn as the master's) and `encounter_changed`.
    *
@@ -1497,8 +1504,9 @@ export const CombatService: GenService<{
    *   - `not_found`: the combat is not this campaign's, or the caller is a
    *     player and may not see the combatant.
    *   - `permission_denied`: the caller is a player and the current
-   *     combatant is not their character.
-   *   - `failed_precondition`: the combat is not ACTIVE (NOT_ACTIVE).
+   *     combatant is not their character, or nobody is on turn.
+   *   - `failed_precondition`: the combat is not ACTIVE, or nobody in it can
+   *     take a turn (NOT_ACTIVE).
    *   - `aborted`: expected_combatant_id is not the one on turn.
    *
    * @generated from rpc meurpg.play.v1.CombatService.EndTurn

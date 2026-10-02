@@ -1519,7 +1519,8 @@ type EndTurnRequest struct {
 	CampaignId     string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
 	EncounterId    string                 `protobuf:"bytes,2,opt,name=encounter_id,json=encounterId,proto3" json:"encounter_id,omitempty"`
 	IdempotencyKey string                 `protobuf:"bytes,3,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
-	// The combatant whose turn the caller thinks it is (a UUID).
+	// The combatant whose turn the caller thinks it is (a UUID); empty only
+	// when nobody is on turn (see EndTurn).
 	ExpectedCombatantId string `protobuf:"bytes,4,opt,name=expected_combatant_id,json=expectedCombatantId,proto3" json:"expected_combatant_id,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache

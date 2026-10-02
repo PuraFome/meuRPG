@@ -878,7 +878,7 @@ stateDiagram-v2
 | `SubmitInitiative` | O jogador no próprio personagem, ou o mestre em qualquer um | d20 rolado no app (`roll_in_app`) ou o d20 físico digitado (`d20_face`), seguindo a RN-18. Só em `setup` |
 | `SetInitiativeOrder` | O mestre | Ordena o empate (mesmo total e mesmo bônus) |
 | `BeginCombat` | O mestre | `active`, rodada 1, o primeiro da ordem na vez. Sem a iniciativa de alguém: `failed_precondition` (`INITIATIVE_MISSING`) com quem falta |
-| `EndTurn` | O jogador da vez, ou o mestre | Passa a vez ao próximo que não está derrotado; depois do último, a rodada sobe. `aborted` se `expected_combatant_id` não é mais o da vez |
+| `EndTurn` | O jogador da vez, ou o mestre | Passa a vez ao próximo que não está derrotado; depois do último, a rodada sobe. `aborted` se `expected_combatant_id` não é mais o da vez. Se ninguém está na vez (o combatente da vez saiu do combate, ou o personagem dele foi apagado), só o mestre chama, e a vez recomeça do primeiro da ordem, na mesma rodada |
 | `MoveCombatant` | O jogador no próprio personagem, na vez dele; o mestre em qualquer um, sempre | Põe o combatente num quadrado. O jogador é limitado pelo movimento que sobra; o mestre, não |
 | `SetCombatantHidden` | O mestre | Esconde ou mostra um NPC |
 | `AddCombatants` | O mestre | Reforços (NPCs), com a iniciativa rolada na hora e o lugar na ordem |

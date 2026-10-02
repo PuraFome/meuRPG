@@ -9,6 +9,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
@@ -116,7 +117,7 @@ func (s *Service) StartEncounter(
 		}
 		return map[string]any{"encounter_id": enc.ID, "combatants": len(added), "map_id": mapID}, nil
 	})
-	if isUniqueViolation(err) {
+	if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == "23505" && pgErr.ConstraintName == "encounters_one_open_per_session" {
 		// Another start of the same session won the race.
 		err = errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ENCOUNTER_ALREADY_OPEN,
 			"the session already has a combat; end it first")
@@ -239,7 +240,8 @@ func parseID(raw string) (string, bool) {
 // c.enc, rolls each NPC's own initiative (RN-19), puts them in the turn
 // order, and returns the whole order and the combatants it added. A
 // combatant starts on the square of its character's token, when it has one
-// (an NPC with several copies puts only the first one there). existing are
+// and nobody stands there (an NPC with several copies puts only the first
+// one there). existing are
 // the combatants already in the combat.
 func (s *Service) addParticipants(ctx context.Context, c *combatTx, grid link.Grid, existing []playdb.Combatant, parts []planned) (order, added []playdb.Combatant, err error) {
 	var tokens []link.TokenPosition
@@ -281,10 +283,16 @@ func (s *Service) addParticipants(ctx context.Context, c *combatTx, grid link.Gr
 				}
 				row.Initiative, row.InitiativeFace = ptr(clamp32(total, math.MinInt32, math.MaxInt32)), ptr(clamp32(face, 1, 20))
 			}
+			// Never on a square someone already stands on (reinforcements of
+			// an NPC already in the fight): the master places that one.
 			if i == 0 {
 				if t, ok := tokenOf(tokens, p.char.ID); ok {
 					col, r := squareOf(grid, t.XBP, t.YBP)
-					row.GridCol, row.GridRow = &col, &r
+					if !slices.ContainsFunc(all, func(o playdb.Combatant) bool {
+						return placed(o) && *o.GridCol == col && *o.GridRow == r
+					}) {
+						row.GridCol, row.GridRow = &col, &r
+					}
 				}
 			}
 			inserted, err := c.q.InsertCombatant(ctx, row)
@@ -595,24 +603,55 @@ func (s *Service) EndTurn(
 	if err != nil {
 		return nil, err
 	}
-	expected, err := parseCombatID(req.Msg.GetExpectedCombatantId(), "combatant")
-	if err != nil {
-		return nil, err
+	// Empty only when nobody is on turn (see the orphaned turn below).
+	expected := ""
+	if raw := req.Msg.GetExpectedCombatantId(); raw != "" {
+		if expected, err = parseCombatID(raw, "combatant"); err != nil {
+			return nil, err
+		}
 	}
 	v := viewerOf(m)
+	stale := connect.NewError(connect.CodeAborted, errors.New("another combatant is on turn now"))
 
 	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventTurnEnded, encounterID: encID}, func(c *combatTx) (any, error) {
 		if c.enc.Status != statusActive {
 			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE, "the combat is not running")
 		}
-		// A double tap, or a stale screen: someone else is on turn now, and
-		// nothing changes, so one tap never skips two turns.
-		if c.enc.CurrentCombatantID == nil || *c.enc.CurrentCombatantID != expected {
-			return nil, connect.NewError(connect.CodeAborted, errors.New("another combatant is on turn now"))
-		}
 		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
 		if err != nil {
 			return nil, fmt.Errorf("list the combatants: %w", err)
+		}
+		// An orphaned turn: the combatant on turn left the fight (the last one
+		// who could act was removed, or its character was deleted), so nobody
+		// is on turn. The master starts the turns again from the top of the
+		// order, in the same round; without this the combat could never move.
+		onTurn := c.enc.CurrentCombatantID != nil &&
+			slices.ContainsFunc(cs, func(o playdb.Combatant) bool { return o.ID == *c.enc.CurrentCombatantID })
+		if !onTurn {
+			if !v.master {
+				return nil, connect.NewError(connect.CodePermissionDenied, errors.New("only the master can start the turns again"))
+			}
+			if expected != "" && (c.enc.CurrentCombatantID == nil || *c.enc.CurrentCombatantID != expected) {
+				return nil, stale
+			}
+			next, _, ok := nextTurn(cs, "", "")
+			if !ok {
+				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE, "no combatant can take a turn")
+			}
+			if err := c.q.ResetCombatantTurn(ctx, next); err != nil {
+				return nil, fmt.Errorf("reset the turn: %w", err)
+			}
+			if c.enc, err = c.q.SetEncounterState(ctx, playdb.SetEncounterStateParams{
+				ID: c.enc.ID, Status: statusActive, Round: c.enc.Round, CurrentCombatantID: &next, StartedAt: c.enc.StartedAt,
+			}); err != nil {
+				return nil, fmt.Errorf("pass the turn: %w", err)
+			}
+			return map[string]any{"to": next, "round": c.enc.Round}, nil
+		}
+		// A double tap, or a stale screen: someone else is on turn now, and
+		// nothing changes, so one tap never skips two turns.
+		if *c.enc.CurrentCombatantID != expected {
+			return nil, stale
 		}
 		current, err := findCombatant(cs, expected, v)
 		if err != nil {

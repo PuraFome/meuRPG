@@ -2,6 +2,8 @@ package play
 
 import (
 	"context"
+	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -773,6 +775,54 @@ func TestMR013_RemoveAndEnd(t *testing.T) {
 	}
 }
 
+// TestMR013_TheMasterRestartsAnOrphanedTurn: when the combatant on turn
+// leaves the fight with nobody to pass the turn to, or its character is
+// deleted mid-fight, nobody is on turn; the master starts the turns again
+// from the top of the order, and a player cannot.
+func TestMR013_TheMasterRestartsAnOrphanedTurn(t *testing.T) {
+	f := newFight(t)
+	f.h.roller.queue(18, 5)
+	e := f.startFight(t, 2, false)
+	f.submitAll(t, e)
+	e, err := f.begin(t, f.get(t, f.master))
+	if err != nil {
+		t.Fatalf("BeginCombat() error = %v", err)
+	}
+	g1 := byLabel(t, e, "Goblin 1")
+	if e.GetCurrentCombatantId() != g1.GetId() {
+		t.Fatalf("on turn = %s, want Goblin 1 (18)", e.GetCurrentCombatantId())
+	}
+
+	// The goblins' character is deleted mid-fight: both combatants go with
+	// it (ON DELETE CASCADE), the one on turn included.
+	if _, err := f.h.pool.Exec(t.Context(), "DELETE FROM characters WHERE id = $1", f.goblin.GetId()); err != nil {
+		t.Fatalf("delete the goblin: %v", err)
+	}
+	e = f.get(t, f.master)
+	if e.GetCurrentCombatantId() != "" || len(e.GetCombatants()) != 2 {
+		t.Fatalf("after the delete: current %q, %v; want nobody on turn and the two players", e.GetCurrentCombatantId(), labels(e))
+	}
+
+	// A player cannot restart the turns, even with the stale ID.
+	_, err = f.endTurn(t, f.ana, e, g1.GetId(), newKey())
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("a player's EndTurn with nobody on turn: %v, want permission_denied", err)
+	}
+	// The master can, with the stale screen's ID or with none: the first in
+	// the order takes the turn, in the same round.
+	e, err = f.endTurn(t, f.master, e, g1.GetId(), newKey())
+	if err != nil {
+		t.Fatalf("the master's EndTurn with nobody on turn: %v", err)
+	}
+	if first := e.GetCombatants()[0]; e.GetCurrentCombatantId() != first.GetId() || e.GetRound() != 1 {
+		t.Fatalf("after the restart: current %s round %d, want %s in round 1", e.GetCurrentCombatantId(), e.GetRound(), first.GetLabel())
+	}
+	// Once someone is on turn, an empty expected ID is a stale screen.
+	if _, err := f.endTurn(t, f.master, e, "", newKey()); connect.CodeOf(err) != connect.CodeAborted {
+		t.Fatalf("EndTurn with an empty expected ID while someone is on turn: %v, want aborted", err)
+	}
+}
+
 func TestMR013_GetEncounterWithoutOneIsEmpty(t *testing.T) {
 	f := newFight(t)
 	if got := f.get(t, f.ana); got != nil {
@@ -974,5 +1024,35 @@ func TestMR013_CombatEventsPerAudience(t *testing.T) {
 	}
 	if !gotTurn || !gotChanged {
 		t.Errorf("player got turn_changed (master's turn) %v, encounter_changed %v; want both", gotTurn, gotChanged)
+	}
+}
+
+// TestSessionEventKindsMatchTheCheck: session_events' kind CHECK lists
+// exactly the kinds the module writes. Each slice that adds a kind rewrites
+// the whole CHECK in a migration (ADR-0007), so a migration written before
+// another one merged could drop that one's kinds without anyone noticing;
+// this test notices. Add a new kind both here and in the migration.
+func TestSessionEventKindsMatchTheCheck(t *testing.T) {
+	h := newHarness(t)
+	want := []string{
+		eventCharacterVitalsAdjusted,
+		eventEncounterStarted, eventInitiativeSubmitted, eventInitiativeOrderSet, eventCombatBegun,
+		eventTurnEnded, eventCombatantMoved, eventCombatantHiddenSet, eventCombatantsAdded,
+		eventCombatantRemoved, eventEncounterEnded,
+	}
+	var clause string
+	if err := h.pool.QueryRow(t.Context(),
+		`SELECT check_clause FROM information_schema.check_constraints WHERE constraint_name = 'session_events_kind_valid'`,
+	).Scan(&clause); err != nil {
+		t.Fatalf("read the CHECK: %v", err)
+	}
+	var got []string
+	for _, m := range regexp.MustCompile(`'([a-z_]+)'`).FindAllStringSubmatch(clause, -1) {
+		got = append(got, m[1])
+	}
+	slices.Sort(got)
+	slices.Sort(want)
+	if !slices.Equal(got, want) {
+		t.Errorf("session_events_kind_valid lists %v, the code writes %v", got, want)
 	}
 }
