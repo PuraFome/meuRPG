@@ -1,6 +1,8 @@
 // Like the sheet's ability column: short fields with the name on top and
 // the number big and centred, 2 x 3 on a phone, 3 x 2 from 600px, and one
 // row of six from 1024px, so the row spans the editor's width (E6-20).
+@use './ability-box';
+
 :host {
   display: block;
 }
@@ -24,23 +26,5 @@
 }
 
 .ability {
-  width: 100%;
-  // Material's own form-field tokens: the number in the `stat` family,
-  // the medallion's corner.
-  --mat-form-field-container-height: 64px;
-  --mat-form-field-container-vertical-padding: 14px;
-  --mat-form-field-container-text-font: var(--mr-font-display);
-  --mat-form-field-container-text-size: 30px;
-  --mat-form-field-container-text-line-height: 36px;
-  --mat-form-field-container-text-weight: 700;
-  --mat-form-field-outlined-container-shape: var(--mr-radius-xl);
-  // The label keeps the size of every other field's label.
-  --mat-form-field-outlined-label-text-font: var(--mr-font-sans);
-  --mat-form-field-outlined-label-text-size: 16px;
-  --mat-form-field-outlined-label-text-populated-size: 16px;
-  --mat-form-field-outlined-label-text-weight: 400;
-
-  input {
-    text-align: center;
-  }
+  @include ability-box.ability-box;
 }

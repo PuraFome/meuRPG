@@ -1,0 +1,91 @@
+<div class="spell" [class.spell--sheet]="inSheet">
+  @if (inSheet) {
+    <span class="spell__handle" aria-hidden="true"></span>
+  }
+  <div class="spell__head">
+    <div class="spell__titles">
+      <h2 class="spell__title" id="spell-title">{{ data.namePt }}</h2>
+      @if (details(); as d) {
+        @if (d.nameEn && d.nameEn !== d.namePt) {
+          <p class="spell__srd-name">
+            Nome no SRD: <span lang="en">{{ d.nameEn }}</span>
+          </p>
+        }
+        <p class="spell__subtitle">{{ subtitle() }}</p>
+      }
+    </div>
+    <button type="button" class="spell__close" aria-label="Fechar" (click)="close()">
+      <mat-icon aria-hidden="true">close</mat-icon>
+    </button>
+  </div>
+
+  @switch (state().status) {
+    @case ('loading') {
+      <p class="spell__loading" role="status">
+        <mat-spinner diameter="20" aria-hidden="true" /> Carregando a descrição…
+      </p>
+    }
+    @case ('error') {
+      <div class="mr-notice mr-notice--danger spell__error" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>Não deu para carregar a descrição. Confira a conexão e tente de novo.</p>
+      </div>
+      <button matButton="outlined" type="button" class="spell__action" (click)="load()">
+        Tentar de novo
+      </button>
+    }
+    @case ('ready') {
+      @if (details(); as d) {
+        @if (d.ritual || d.concentration) {
+          <p class="spell__tags">
+            @if (d.ritual) {
+              <span class="mr-tag">Ritual</span>
+            }
+            @if (d.concentration) {
+              <span class="mr-tag">Concentração</span>
+            }
+          </p>
+        }
+        <dl class="spell__facts">
+          @for (row of rows(); track row.label) {
+            <div class="spell__fact">
+              <dt>{{ row.label }}</dt>
+              <dd>
+                @if (row.value.fallback) {
+                  <span lang="en">{{ row.value.english }}</span>
+                  <span class="spell__note">(texto do SRD)</span>
+                } @else {
+                  {{ row.value.text }}
+                  @if (row.value.english) {
+                    <span lang="en" class="spell__english">{{ row.value.english }}</span>
+                  }
+                }
+              </dd>
+            </div>
+          }
+        </dl>
+
+        <section class="spell__text" aria-labelledby="spell-srd-label">
+          <h3 class="spell__label" id="spell-srd-label">Texto do SRD 5.1 (em inglês)</h3>
+          <div class="spell__prose" lang="en">
+            @for (paragraph of d.description; track $index) {
+              <p>{{ paragraph }}</p>
+            }
+          </div>
+        </section>
+        @if (d.higherLevel.length > 0) {
+          <section class="spell__text" aria-labelledby="spell-higher-label">
+            <h3 class="spell__label" id="spell-higher-label">Em círculos maiores</h3>
+            <div class="spell__prose" lang="en">
+              @for (paragraph of d.higherLevel; track $index) {
+                <p>{{ paragraph }}</p>
+              }
+            </div>
+          </section>
+        }
+      }
+    }
+  }
+
+  <button matButton="outlined" type="button" class="spell__action" (click)="close()">Fechar</button>
+</div>

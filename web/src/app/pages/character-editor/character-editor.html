@@ -194,11 +194,9 @@
                   Os seis valores, de 1 a 30, antes dos bônus de raça. Os modificadores aparecem na
                   ficha, calculados quando você salvar.
                 </p>
-                <app-ability-fields
+                <app-ability-scores
                   [group]="fullForm.controls.abilities"
-                  [min]="1"
-                  [max]="30"
-                  rangeError="De 1 a 30."
+                  [(incomplete)]="abilitiesIncomplete"
                 />
 
                 <details
@@ -253,30 +251,21 @@
                   </mat-radio-group>
 
                   @if (selectedHitPointsMethod() === 'rolled') {
-                    @if (rollsNeeded() > 0) {
-                      <p class="group-label" id="hit-points-rolls-label">
-                        Dados de vida rolados, um por nível
-                      </p>
-                      <div class="hp-rolls" role="group" aria-labelledby="hit-points-rolls-label">
-                        @for (i of rollIndices(); track i) {
-                          <mat-form-field appearance="outline" subscriptSizing="dynamic">
-                            <mat-label>Nível {{ i + 2 }}</mat-label>
-                            <input
-                              matInput
-                              type="number"
-                              inputmode="numeric"
-                              min="1"
-                              max="12"
-                              [value]="rollValueAt(i) ?? ''"
-                              (input)="setHitPointsRoll(i, $any($event.target).valueAsNumber)"
-                            />
-                          </mat-form-field>
-                        }
-                      </div>
-                    } @else {
+                    @if (rollsNeeded() === 0) {
                       <p class="group-hint">
                         No 1º nível não há rolagem. Os campos aparecem quando o nível passar de 1.
                       </p>
+                    } @else if (hitDie() === 0) {
+                      <p class="group-hint">
+                        Escolha a classe no passo Básico: ela define o dado de vida.
+                      </p>
+                    } @else {
+                      <app-hit-points-rolls
+                        [hitDie]="hitDie()"
+                        [level]="rollsNeeded() + 1"
+                        [constitution]="finalConstitution()"
+                        [(rolls)]="hitPointsRolls"
+                      />
                     }
                   }
                 </section>
@@ -317,6 +306,7 @@
                       [selected]="selectedCantrips()"
                       [filter]="cantripsFilter()"
                       (toggle)="toggleCantrip($event)"
+                      (describe)="describeSpell($event)"
                       (filterChange)="cantripsFilter.set($event)"
                     />
                     @if (noLeveledSpellsYet()) {
@@ -336,6 +326,7 @@
                         [selected]="selectedSpellsKnown()"
                         [filter]="spellsKnownFilter()"
                         (toggle)="toggleSpellKnown($event)"
+                        (describe)="describeSpell($event)"
                         (filterChange)="spellsKnownFilter.set($event)"
                       />
                     }
@@ -355,6 +346,7 @@
                         [selected]="selectedSpellsPrepared()"
                         [filter]="spellsPreparedFilter()"
                         (toggle)="toggleSpellPrepared($event)"
+                        (describe)="describeSpell($event)"
                         (filterChange)="spellsPreparedFilter.set($event)"
                       />
                     }

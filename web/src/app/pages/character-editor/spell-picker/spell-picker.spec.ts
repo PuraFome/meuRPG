@@ -49,4 +49,25 @@ describe('SpellPicker', () => {
     expect(el.textContent).toContain('Nenhum truque encontrado para a classe escolhida.');
     expect(el.textContent).toContain('Nenhum truque escolhido');
   });
+
+  it('has a "?" after each spell that asks for its description', () => {
+    const { fixture, el } = render({});
+    const asked: string[] = [];
+    fixture.componentInstance.describe.subscribe((spell) => asked.push(spell.key));
+    const buttons = Array.from(el.querySelectorAll<HTMLButtonElement>('.picker__help'));
+    expect(buttons.map((b) => b.getAttribute('aria-label'))).toEqual([
+      'Descrição de Raio de Fogo',
+      'Descrição de Luz',
+    ]);
+    buttons[1].click();
+    expect(asked).toEqual(['spell:light']);
+  });
+
+  it('does not tick the spell when its "?" is pressed', () => {
+    const { fixture, el } = render({});
+    const ticked: string[] = [];
+    fixture.componentInstance.toggle.subscribe((key) => ticked.push(key));
+    el.querySelector<HTMLButtonElement>('.picker__help')!.click();
+    expect(ticked).toEqual([]);
+  });
 });

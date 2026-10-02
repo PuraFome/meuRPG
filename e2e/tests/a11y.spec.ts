@@ -468,3 +468,59 @@ test('quem está sem personagem passa no axe no tema claro, no desktop', { tag: 
 test('quem está sem personagem passa no axe no tema escuro, no celular', { tag: ['@a11y', '@MR-024'] }, async ({ browser }) => {
   await scanPendingMembers(browser, 'dark', 390);
 });
+
+/**
+ * The character editor's rolls and the spell "?" (MR-004, E6-20 to E6-23):
+ * the "Atributos" step with "Rolar 4d6" (half placed, and on the phone with a
+ * result chosen), the rolled hit points, and the spell dialog (a bottom
+ * sheet on the phone).
+ */
+async function scanEditorRolls(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(90_000);
+  const context = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height: 900 } });
+  const page = await context.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  try {
+    await page.goto('/');
+    const created = await callRPC(page, 'meurpg.campaigns.v1.CampaignService/CreateCampaign', { name: `Acessibilidade rolagens ${Date.now()}`, xpMode: 'XP_MODE_ENEMIES' });
+    expect(created.ok()).toBeTruthy();
+    const campaignId = (await created.json()).campaign.id as string;
+    await open(page, `/campanhas/${campaignId}/personagens/novo`);
+    await page.getByLabel('Nome do personagem', { exact: true }).fill('Zézinho');
+    const classSelect = page.getByRole('combobox', { name: 'Classe', exact: true });
+    await classSelect.focus();
+    await classSelect.press('Enter');
+    await page.getByRole('option', { name: 'Mago', exact: true }).click();
+    await page.getByLabel('Nível', { exact: true }).fill('3');
+
+    await page.getByRole('tab', { name: 'Atributos' }).click();
+    await page.getByRole('radio', { name: /Rolar 4d6/ }).check();
+    if (width < 768) {
+      await page.getByRole('button', { name: /^\d+: dados .* Livre\.$/ }).first().click();
+      await page.getByRole('button', { name: /^Força: colocar o/ }).click();
+      await page.getByRole('button', { name: /^\d+: dados .* Livre\.$/ }).first().click();
+    } else {
+      await page.getByLabel('Força', { exact: true }).selectOption({ index: 1 });
+    }
+    await expectNoSeriousViolations(page, `Atributos, Rolar 4d6 ${where}`);
+
+    await page.getByRole('radio', { name: /Rolado/ }).check();
+    await page.getByRole('button', { name: 'Rolar os níveis que faltam' }).click();
+    await expectNoSeriousViolations(page, `Pontos de vida rolados ${where}`);
+
+    await page.getByRole('tab', { name: 'Magias' }).click();
+    await page.getByRole('group', { name: 'Magias conhecidas', exact: true }).getByRole('button', { name: 'Descrição de Mísseis Mágicos' }).click();
+    await expect(page.getByText('Texto do SRD 5.1 (em inglês)')).toBeVisible();
+    await expectNoSeriousViolations(page, `Descrição da magia ${where}`);
+  } finally {
+    await context.close();
+  }
+}
+
+test('as rolagens e a descrição da magia passam no axe no tema claro, no desktop', { tag: ['@a11y', '@MR-004'] }, async ({ browser }) => {
+  await scanEditorRolls(browser, 'light', 1280);
+});
+
+test('as rolagens e a descrição da magia passam no axe no tema escuro, no celular', { tag: ['@a11y', '@MR-004'] }, async ({ browser }) => {
+  await scanEditorRolls(browser, 'dark', 390);
+});

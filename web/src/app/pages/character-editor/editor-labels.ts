@@ -95,6 +95,14 @@ export const FULL_SHEET_FIELDS: readonly EditorField[] = [
   { path: 'customFeaturesText', label: 'Características personalizadas', step: 'equipamento' },
 ];
 
+/** Not a control: "Rolar 4d6" or "Conjunto padrão" with a result still to
+ * place. The page adds it to the invalid fields while that is so. */
+export const UNPLACED_RESULTS_FIELD: EditorField = {
+  path: 'abilities',
+  label: 'coloque cada resultado num atributo',
+  step: 'atributos',
+};
+
 /** The fields of `fields` whose control in `form` is invalid right now. */
 export function invalidFields(
   form: AbstractControl,
