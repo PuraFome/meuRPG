@@ -146,19 +146,20 @@ Os testes de aceite pela tela ficam em `e2e/`, um projeto Playwright em TypeScri
   - `browser.newContext()` sem `storageState` explícito herda o `storageState` que o arquivo configurou por `test.use()`, se houver — por isso um contexto que precisa começar deslogado (o "visitante" de `invite.spec.ts`) fica num arquivo sem `test.use()` nenhum, com todo contexto explícito sobre o próprio estado.
   - Nenhum teste define o nome de exibição das contas compartilhadas: `ui.spec.ts` espera "Minha conta" (o texto padrão de `user-menu.ts` sem nome definido), que só continua certo enquanto nenhum outro teste passar por `/perfil` nessas contas.
 - Cada teste que prova um critério de aceite leva a tag da história ou da regra, como `@MR-001`. `npx playwright test --grep @MR-001` roda só os dela.
-- O `a11y.spec.ts` passa o [axe](https://github.com/dequelabs/axe-core) (`@axe-core/playwright`) nas telas principais, no tema claro e no escuro, no desktop e no celular, e falha em qualquer violação séria ou crítica das regras WCAG 2.1 A e AA. `npx playwright test --grep @a11y` roda só ele.
+- O `a11y.spec.ts` passa o [axe](https://github.com/dequelabs/axe-core) (`@axe-core/playwright`) nas telas principais, no tema claro e no escuro, no desktop e no celular, e falha em qualquer violação séria ou crítica das regras WCAG 2.1 A e AA. Na mesma tela, roda as conferências de alinhamento do `layout.ts`: ícone na altura das próprias palavras, conteúdo de botão no meio dele, nada por cima de um ícone, palavras longe da borda de um cartão de rádio (ver [Design](docs/design.md#como-uma-tela-é-feita)). `npx playwright test --grep @a11y` roda só ele.
 - O `ui.spec.ts` faz o login pela tela, clicando em "Entrar" e em "Sair". Os outros testes de login começam direto em `/auth/login?return_to=/`, que é mais rápido e mantém o foco no servidor.
 
 Para adicionar ou atualizar uma dependência de `e2e/`: `cd e2e && npm install <pacote>@<versão>`. O `e2e/.npmrc` já impede scripts de instalação e grava a versão exata.
 
 ## Telas: desenho e revisão
 
-Toda tela nova, ou mudança visível numa tela, segue o [design](docs/design.md) do app, a "ficha de papel", e passa por quatro passos:
+Toda tela nova, ou mudança visível numa tela, segue o [design](docs/design.md) do app, a "ficha de papel", e passa por cinco passos:
 
 1. **Brief:** a tarefa da tela, quem usa, onde, os dados reais e todos os estados (vazio, carregando, erro, travado, pendente).
 2. **Desenho** no Claude Design, com o sistema visual do app, a 390px e a 1280px, aprovado antes do código. Correção pequena dentro do sistema não precisa de desenho.
 3. **Código com os tokens** (`--mr-*` em `web/src/styles.scss`) e as peças comuns (`web/src/styles/_ui.scss`), nunca uma cor escrita à mão.
-4. **Revisão pela tela:** prints a 390, 768 e 1280px, no tema claro e no escuro, em cada estado, conferidos com o desenho; o `a11y.spec.ts` sem violação; o PR com os prints de antes e depois e a checklist de telas preenchida.
+4. **Revisão pela tela:** prints a 390, 768 e 1280px, no tema claro e no escuro, em cada estado, conferidos com o desenho, e cada peça olhada de perto (2x): alinhamento não aparece num print reduzido. O PR leva os prints de antes e depois e a checklist de telas preenchida.
+5. **Conferência automática:** a tela entra no `a11y.spec.ts`, que passa o axe e as conferências de alinhamento do `layout.ts`, sem nenhuma falha.
 
 ## Queries com sqlc
 

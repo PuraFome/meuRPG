@@ -22,8 +22,12 @@
   color: var(--mr-ink-muted);
 }
 
-// A radio as a tile: the selected one gets the accent border and fill.
+// A radio as a tile: the selected one gets the accent border and fill. The
+// tiles share the row's height, so the radio and its words sit in the
+// middle of the tile, not at its top (E6-20).
 .method {
+  display: flex;
+  align-items: center;
   box-sizing: border-box;
   min-height: 64px;
   padding: 0 var(--mr-space-3);

@@ -79,7 +79,12 @@
         </span>
       </button>
     } @else {
-      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ability">
+      <mat-form-field
+        appearance="outline"
+        subscriptSizing="dynamic"
+        class="ability"
+        [class.ability--empty]="placement()[ability] === null"
+      >
         <mat-label>{{ abilityLabel(ability) }}</mat-label>
         <select matNativeControl (change)="selectChanged(ability, $any($event.target).value)">
           <option value="" [selected]="placement()[ability] === null" disabled>Escolher</option>

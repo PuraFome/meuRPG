@@ -19,12 +19,13 @@ Os dois links são privados até o Vinicius compartilhar.
 
 ## Como uma tela é feita
 
-Toda tela nova, ou mudança visível numa tela, passa por quatro passos:
+Toda tela nova, ou mudança visível numa tela, passa por cinco passos:
 
 1. **Brief:** a única tarefa da tela, quem usa (mestre ou jogador), onde (celular na mesa ou notebook), os dados reais e todos os estados (vazio, carregando, erro, travado, pendente, morto, sem permissão).
 2. **Desenho no Claude Design,** com o sistema acima, a 390px e a 1280px, com dados reais. O Vinicius aprova antes do código. Correção pequena dentro do sistema não precisa de desenho.
 3. **Código com os tokens** abaixo, nunca uma cor escrita à mão.
-4. **Revisão pela tela:** prints a 390, 768 e 1280px, claro e escuro, cada estado, conferidos com o desenho e com a checklist do PR (hierarquia, sobreposição, alvos de toque, foco, contraste, texto). O PR leva os prints de antes e depois.
+4. **Revisão pela tela:** prints a 390, 768 e 1280px, claro e escuro, cada estado, conferidos com o desenho e com a checklist do PR (hierarquia, alinhamento, sobreposição, alvos de toque, foco, contraste, texto). Olhe cada peça de perto, num print a 2x (botões com ícone, campos, cartões, avisos): um ícone 1px fora da linha das letras ou palavras grudadas na borda não aparecem num print inteiro reduzido. O PR leva os prints de antes e depois.
+5. **Conferência automática:** o `e2e/tests/a11y.spec.ts` passa o axe e as conferências de alinhamento do `e2e/tests/layout.ts` em cada tela e estado que visita. Toda tela nova entra nele. As conferências não pedem que tudo fique centrado (quem decide é o desenho); pegam o que nunca está certo: um ícone fora da altura das próprias palavras (mais de 1px), o conteúdo de um botão fora do meio dele, texto por cima de um ícone e palavras a menos de 6px da borda de um cartão de rádio.
 
 ## Tokens
 
@@ -72,6 +73,11 @@ Duas famílias com licença OFL, servidas pelo próprio app (pacotes `@fontsourc
 
 Números usam `font-variant-numeric: lining-nums tabular-nums` (já vem do `body`), para as colunas de bônus alinharem.
 
+As duas famílias levam `ascent-override` e `descent-override` no `@font-face` (Alegreya Sans 92% e 28%, Alegreya 100,5% e 35,6%), que põem o meio das maiúsculas no meio da linha sem mudar a altura dela. Com as medidas originais, as letras ficavam acima do meio, e todo ícone centrado ao lado de um texto ficava 1 a 1,5px baixo ("← Básico", os avisos, os links de voltar). Por isso um ícone ao lado de palavras não leva ajuste à mão:
+
+- numa linha só, centre os dois (`align-items: center`);
+- quando o texto pode quebrar, alinhe ao topo e centre o ícone na primeira linha: `margin-top` = (altura da linha − tamanho do ícone) / 2.
+
 ### Espaço e forma
 
 - Espaços: `--mr-space-1` 4, `-2` 8, `-3` 12, `-4` 16, `-5` 20, `-6` 24, `-8` 48 (px). `--mr-gutter` é a margem lateral: 16 no celular, 48 a partir de 768px.
@@ -100,7 +106,8 @@ As peças comuns a várias telas são classes globais em `web/src/styles/_ui.scs
 
 | Cartão de ataque | `app-npc-attack-card` (`character-editor/npc-short-form`): caixa com borda `line` e canto de 10px, "Ataque N" em 14px negrito, e os campos nome, bônus de ataque, dados do dano, bônus do dano e tipo de dano (select) numa linha no desktop (a partir de 900px) e dois por linha no celular, com o botão de lixeira de 44px (`aria-label` "Remover o ataque N"). Embaixo, "Na ficha: …" mostra como o jogador vai ler. Os números com sinal aceitam 2, +2 e −1. Até três por NPC; "Adicionar ataque" fica desabilitado no terceiro e diz "Máximo de 3 ataques" |
 
-| Cartões de método | `mat-radio-group` com um `mat-radio-button` por cartão (`ability-scores`): 64px de altura (52px no celular, empilhados), título em negrito e uma linha em `ink-muted`; o marcado ganha borda de 2px `accent` e fundo `accent-soft`. Serve a "Como definir os valores" (Digitar, Rolar 4d6, Conjunto padrão) |
+| Cartões de método | `mat-radio-group` com um `mat-radio-button` por cartão (`ability-scores`): 64px de altura (52px no celular, empilhados), título em negrito e uma linha em `ink-muted`, no meio do cartão (os três têm a altura da fileira, como no E6-20); o marcado ganha borda de 2px `accent` e fundo `accent-soft`. Serve a "Como definir os valores" (Digitar, Rolar 4d6, Conjunto padrão). Para colocar os resultados no desktop, cada atributo vira um seletor com o número em `stat`; sem resultado, "Escolher" fica no tamanho do texto, em `ink-muted`, porque é uma instrução, não um valor. No celular, cada atributo é um botão com a cara do campo (E6-20b): o nome na borda, como o rótulo, e o número no meio; livre, a borda fica tracejada e o meio diz "Livre" ou, com um resultado escolhido, "Colocar o 11" |
+| Busca numa lista | O campo de busca das listas de magias (`spell-picker`): contorno, a lupa e "Buscar truque" dentro do campo (`placeholder`), sem rótulo flutuante; o nome do campo vai em `aria-label`. Um rótulo flutuante ao lado de um ícone é posicionado medindo o ícone, e essa medida às vezes roda antes de o rótulo existir, deixando as palavras por cima da lupa (PR #56) |
 | Resultado de dados | `app-dice-result`: o total em Alegreya 800, os quatro dados em quadrados de 28px com o menor tracejado, em `ink-muted` e riscado, e uma linha de estado em palavras ("em Força" com um visto em `success-ink`, "Livre", "Escolhido" em `accent-text` com borda de 2px). O `aria-label` diz tudo: "17: dados 6, 6, 5 e 2; o 2 foi descartado. Em Força." No celular é um botão com `aria-pressed`. Um valor do conjunto padrão não tem dados |
 | Descrição da magia | `app-spell-details`: diálogo de 560px no desktop e folha de baixo no celular, com o nome em Alegreya 30px, "Nome no SRD: …", "2º círculo · Transmutação", as etiquetas Ritual e Concentração, os quatro campos em duas colunas (`ground` com borda `line`), e "Texto do SRD 5.1 (em inglês)" num bloco `lang="en"`. "Fechar" tem contorno, porque não há nada a confirmar. O foco vai ao título e volta ao "?" que abriu. O "?" é um botão de 44px com o anel de foco num círculo de 36px, `aria-label` "Descrição de <magia>" |
 

@@ -35,6 +35,17 @@ describe('SpellPicker', () => {
     );
   });
 
+  it('names the search box by aria-label, with the words inside it and no floating label', () => {
+    const { el } = render({});
+    const input = el.querySelector<HTMLInputElement>('input[type="search"]')!;
+
+    expect(input.getAttribute('aria-label')).toBe('Buscar truque');
+    expect(input.placeholder).toBe('Buscar truque');
+    // A floating label is placed by measuring the icon, which can run before
+    // the label exists and leave the words over the magnifier (PR #56).
+    expect(el.querySelector('mat-label, .mdc-floating-label')).toBeNull();
+  });
+
   it('tells how to get the list back when the search finds nothing', () => {
     const { el } = render({ filtered: [], filter: 'xyz' });
 

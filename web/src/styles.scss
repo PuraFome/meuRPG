@@ -10,12 +10,23 @@
 
 // The six faces the design uses, Latin subset (Portuguese included), woff2
 // only: every browser the app supports reads it.
+//
+// The ascent and descent overrides put the middle of the capitals in the
+// middle of the line, keeping the line's height: ascent − descent = the
+// height of an "H", ascent + descent = the font's own total. With the fonts'
+// own metrics (Alegreya Sans 90% / 30%, Alegreya 101.6% / 34.5%) the
+// capitals sat above the middle, so every icon centred next to words sat
+// 1 to 1.5px low: "← Básico", the notices, the back links (PR #56;
+// e2e/tests/layout.ts measures it). With these, an icon centred on a line of
+// text lines up with its capitals, within the browser's rounding.
 @font-face {
   font-family: 'Alegreya';
   font-style: normal;
   font-weight: 500;
   font-display: swap;
   src: url('../node_modules/@fontsource/alegreya/files/alegreya-latin-500-normal.woff2') format('woff2');
+  ascent-override: 100.5%;
+  descent-override: 35.6%;
 }
 @font-face {
   font-family: 'Alegreya';
@@ -23,6 +34,8 @@
   font-weight: 700;
   font-display: swap;
   src: url('../node_modules/@fontsource/alegreya/files/alegreya-latin-700-normal.woff2') format('woff2');
+  ascent-override: 100.5%;
+  descent-override: 35.6%;
 }
 @font-face {
   font-family: 'Alegreya';
@@ -30,6 +43,8 @@
   font-weight: 800;
   font-display: swap;
   src: url('../node_modules/@fontsource/alegreya/files/alegreya-latin-800-normal.woff2') format('woff2');
+  ascent-override: 100.5%;
+  descent-override: 35.6%;
 }
 @font-face {
   font-family: 'Alegreya Sans';
@@ -37,6 +52,8 @@
   font-weight: 400;
   font-display: swap;
   src: url('../node_modules/@fontsource/alegreya-sans/files/alegreya-sans-latin-400-normal.woff2') format('woff2');
+  ascent-override: 92%;
+  descent-override: 28%;
 }
 @font-face {
   font-family: 'Alegreya Sans';
@@ -44,6 +61,8 @@
   font-weight: 500;
   font-display: swap;
   src: url('../node_modules/@fontsource/alegreya-sans/files/alegreya-sans-latin-500-normal.woff2') format('woff2');
+  ascent-override: 92%;
+  descent-override: 28%;
 }
 @font-face {
   font-family: 'Alegreya Sans';
@@ -51,6 +70,8 @@
   font-weight: 700;
   font-display: swap;
   src: url('../node_modules/@fontsource/alegreya-sans/files/alegreya-sans-latin-700-normal.woff2') format('woff2');
+  ascent-override: 92%;
+  descent-override: 28%;
 }
 
 html {
@@ -241,6 +262,7 @@ a:hover {
   outline: 2px solid var(--mr-focus);
   outline-offset: 2px;
 }
+
 
 @media (prefers-reduced-motion: reduce) {
   *,
