@@ -126,6 +126,14 @@ export class MapView {
   private readonly size = signal({ width: 0, height: 0 });
   /** What the pointer or the keyboard is moving right now. */
   private readonly override = signal<MapMove | null>(null);
+  /** The last position this view reported (`moved`), until the parent's next
+   * `points`/`tokens` arrive. The parent saves the move and updates its state
+   * at once, but the new input only reaches this view on the next change
+   * detection; a second arrow key pressed before that would start again from
+   * the old position and send the same move twice (seen in CI on #44 and
+   * #47). It is also where the item is drawn meanwhile, so it doesn't jump
+   * back for a frame. */
+  private readonly settled = signal<MapMove | null>(null);
   protected readonly raisedKey = signal<string | null>(null);
 
   /** The zoom, 1 to 4 (the editor's toolbar reads it). */
@@ -173,6 +181,15 @@ export class MapView {
         observer.observe(el);
         inject(DestroyRef).onDestroy(() => observer.disconnect());
       }
+    });
+
+    // New points or tokens from the parent replace what this view last
+    // reported: either they carry the move, or the parent undid it (the
+    // server refused).
+    effect(() => {
+      this.points();
+      this.tokens();
+      untracked(() => this.settled.set(null));
     });
 
     // The phone's preview opens on the party, zoomed in.
@@ -236,13 +253,22 @@ export class MapView {
   // ---- where things are drawn ----
 
   protected pointAt(point: ViewPoint): { xBp: number; yBp: number } | null {
-    const o = this.override();
-    return o && o.kind === 'point' && o.id === point.id ? o : null;
+    return this.movedTo('point', point.id);
   }
 
   protected tokenAt(token: ViewToken): { xBp: number; yBp: number } | null {
-    const o = this.override();
-    return o && o.kind === 'token' && o.id === token.characterId ? o : null;
+    return this.movedTo('token', token.characterId);
+  }
+
+  /** Where an item is while it moves, or right after, until the parent's
+   * new input arrives; `null` to draw it where the input says. */
+  private movedTo(kind: 'point' | 'token', id: string): MapMove | null {
+    for (const m of [this.override(), this.settled()]) {
+      if (m && m.kind === kind && m.id === id) {
+        return m;
+      }
+    }
+    return null;
   }
 
   protected labelLeft(point: ViewPoint): number {
@@ -358,7 +384,7 @@ export class MapView {
     if (g.moved) {
       if (dropped) {
         this.override.set(null);
-        this.moved.emit(dropped);
+        this.report(dropped);
       }
       return;
     }
@@ -458,8 +484,15 @@ export class MapView {
     const done = this.override();
     this.override.set(null);
     if (done) {
-      this.moved.emit(done);
+      this.report(done);
     }
+  }
+
+  /** Tells the parent where an item went, and remembers it until the parent's
+   * new input arrives (see `settled`). */
+  private report(move: MapMove): void {
+    this.settled.set(move);
+    this.moved.emit(move);
   }
 
   protected raise(event: Event): void {
@@ -487,11 +520,11 @@ export class MapView {
     const [kind, id] = splitItem(item);
     if (kind === 'point' && this.mode() === 'edit') {
       const p = this.points().find((x) => x.id === id);
-      return p ? { kind, id, xBp: p.xBp, yBp: p.yBp } : null;
+      return p ? (this.movedTo(kind, id) ?? { kind, id, xBp: p.xBp, yBp: p.yBp }) : null;
     }
     if (kind === 'token' && this.tokensMovable()) {
       const t = this.tokens().find((x) => x.characterId === id);
-      return t ? { kind, id, xBp: t.xBp, yBp: t.yBp } : null;
+      return t ? (this.movedTo(kind, id) ?? { kind, id, xBp: t.xBp, yBp: t.yBp }) : null;
     }
     return null;
   }
