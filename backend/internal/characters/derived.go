@@ -247,6 +247,9 @@ func catalogToProto(c rules.Catalog) *rulesv1.Content {
 				FirstLevel:  i32(cl.SpellcastingLevel),
 				Preparation: preparationToProto[cl.SpellPreparation],
 			}
+			for _, n := range cl.MaxSpellLevelByLevel {
+				p.Spellcasting.MaxSpellLevelByLevel = append(p.Spellcasting.MaxSpellLevelByLevel, i32(n))
+			}
 		}
 		out.Classes = append(out.Classes, p)
 	}

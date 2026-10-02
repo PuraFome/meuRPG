@@ -629,7 +629,7 @@ Esses motivos vêm no detalhe `CharacterBlocked` do `failed_precondition`, e gan
 
 **Respostas e GET.** Como no `campaigns`: toda resposta, inclusive os erros, sai com `Cache-Control: no-store`, e toda leitura leva um ID, então é `IDEMPOTENT` e só aceita POST.
 
-**Por que o `ContentService` fica aqui.** A ADR-0008 põe o conteúdo da mesa no `campaigns`. Na Etapa 4 o conteúdo é só o SRD embutido no `rules`, sem nada no banco, então o catálogo é montado uma vez na partida e servido pelo `characters`. A requisição já leva o `campaign_id`, porque o conteúdo da mesa vai ser por campanha (decidido pelo Samuel em 29/09/2026).
+**Por que o `ContentService` fica aqui.** A ADR-0008 põe o conteúdo da mesa no `campaigns`. Na Etapa 4 o conteúdo é só o SRD embutido no `rules`, sem nada no banco, então o catálogo é montado uma vez na partida e servido pelo `characters`. A requisição já leva o `campaign_id`, porque o conteúdo da mesa vai ser por campanha (decidido pelo Samuel em 29/09/2026). Cada classe que conjura leva, em `ClassSpellcasting.max_spell_level_by_level`, o maior círculo de magia que ela alcança em cada nível (calculado a partir dos espaços de magia da tabela da classe, com `rules.MaxSpellLevelFromSlots`), e o editor só filtra as listas de magias por essa tabela; quem valida de verdade, ao salvar, continua sendo o servidor.
 
 ### Aprovar ou recusar o personagem
 

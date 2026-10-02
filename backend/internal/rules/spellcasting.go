@@ -53,11 +53,7 @@ func (x *deriver) spellcasting() {
 			if !e.Prepares {
 				sc.SpellsKnownMax = s.SpellsKnown
 			}
-			for i, n := range s.Slots {
-				if n > 0 {
-					sc.MaxSpellLevel = i + 1
-				}
-			}
+			sc.MaxSpellLevel = MaxSpellLevelFromSlots(s.Slots)
 		}
 		if e.Prepares {
 			n, err := e.preparedMax.Int(x.env)
@@ -317,4 +313,18 @@ func (x *deriver) characterSpells(casters []caster) {
 	slices.SortFunc(x.d.Spells, func(a, b CharacterSpell) int {
 		return cmp.Or(cmp.Compare(a.Spell.Level, b.Spell.Level), comparePT(a.Spell.NamePT, b.Spell.NamePT))
 	})
+}
+
+// MaxSpellLevelFromSlots is the highest spell level a class table row can
+// cast: the last circle with at least one slot, or 0 when the row has none
+// (Paladin and Ranger at level 1). It also works for the Warlock, whose row
+// holds all its pact slots at one circle, so that circle is the highest.
+func MaxSpellLevelFromSlots(slots [9]int) int {
+	highest := 0
+	for i, n := range slots {
+		if n > 0 {
+			highest = i + 1
+		}
+	}
+	return highest
 }

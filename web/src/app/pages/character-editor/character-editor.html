@@ -65,7 +65,7 @@
 
                   <mat-form-field appearance="outline" subscriptSizing="dynamic">
                     <mat-label>Classe</mat-label>
-                    <mat-select formControlName="className">
+                    <mat-select formControlName="className" (selectionChange)="onClassChange()">
                       @for (c of s.catalog.classes; track c.key) {
                         <mat-option [value]="c.key">{{ c.namePt }}</mat-option>
                       }
@@ -83,16 +83,20 @@
                     <mat-form-field appearance="outline" subscriptSizing="dynamic">
                       <mat-label>Subclasse</mat-label>
                       <mat-select formControlName="subclassName">
+                        <mat-option value="">Nenhuma</mat-option>
                         @for (sc of selectedClass()?.subclasses; track sc.key) {
                           <mat-option [value]="sc.key">{{ sc.namePt }}</mat-option>
                         }
                       </mat-select>
+                      @if (subclassHint()) {
+                        <mat-hint>{{ subclassHint() }}</mat-hint>
+                      }
                     </mat-form-field>
                   } @else {
                     <mat-form-field appearance="outline" subscriptSizing="dynamic">
                       <mat-label>Subclasse</mat-label>
                       <input matInput formControlName="customSubclassName" autocomplete="off" />
-                      <mat-hint>Escreva o nome, se houver.</mat-hint>
+                      <mat-hint>{{ subclassHint() || 'Escreva o nome, se houver.' }}</mat-hint>
                     </mat-form-field>
                   }
 
@@ -298,8 +302,8 @@
               @if (isCaster()) {
                 <cdk-step [label]="stepLabels.magias">
                   <p class="step-lead">
-                    Da lista de magias da classe. Se o nível ainda não alcança uma escolha, a ficha
-                    mostra um aviso.
+                    As magias da classe que o personagem já conjura neste nível, por círculo e em
+                    ordem alfabética.
                   </p>
                   <app-fiction-notice />
                   <div class="spell-grid">
@@ -315,13 +319,18 @@
                       (toggle)="toggleCantrip($event)"
                       (filterChange)="cantripsFilter.set($event)"
                     />
-                    @if (spellPreparation() === 'known' || spellPreparation() === 'spellbook') {
+                    @if (noLeveledSpellsYet()) {
+                      <p class="spell-grid__note">{{ castingStartsText() }}</p>
+                    } @else if (
+                      spellPreparation() === 'known' || spellPreparation() === 'spellbook'
+                    ) {
                       <app-spell-picker
                         titleId="spells-known-label"
                         title="Magias conhecidas"
                         searchLabel="Buscar magia"
                         noun="magia"
                         [showLevel]="true"
+                        [maxSpellLevel]="maxSpellLevel()"
                         [options]="availableSpells()"
                         [filtered]="filteredSpellsKnown()"
                         [selected]="selectedSpellsKnown()"
@@ -330,13 +339,17 @@
                         (filterChange)="spellsKnownFilter.set($event)"
                       />
                     }
-                    @if (spellPreparation() === 'prepared' || spellPreparation() === 'spellbook') {
+                    @if (
+                      !noLeveledSpellsYet() &&
+                      (spellPreparation() === 'prepared' || spellPreparation() === 'spellbook')
+                    ) {
                       <app-spell-picker
                         titleId="spells-prepared-label"
                         title="Magias preparadas"
                         searchLabel="Buscar magia"
                         noun="magia"
                         [showLevel]="true"
+                        [maxSpellLevel]="maxSpellLevel()"
                         [options]="availableSpells()"
                         [filtered]="filteredSpellsPrepared()"
                         [selected]="selectedSpellsPrepared()"

@@ -515,6 +515,13 @@ message ClassSpellcasting {
   // for the Paladin and the Ranger.
   int32 first_level = 2;
   SpellPreparation preparation = 3;
+  // The highest spell circle (1 to 9) the class can cast at each class
+  // level, from the class table's spell slots. Index 0 is class level 1 and
+  // index 19 is level 20, so there are 20 entries. 0 means no leveled spells
+  // yet (Paladin and Ranger at level 1; cantrips are never gated by level).
+  // The Warlock's entry is its pact slot circle. Clients use it to list only
+  // the spells the character can take; the server still validates on save.
+  repeated int32 max_spell_level_by_level = 4;
 }
 
 // Subclass is a subclass of one class.

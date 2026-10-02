@@ -426,6 +426,13 @@ func (c *content) buildCatalog() {
 			e.PreparesSpells = cast.effect.Prepares
 			e.SpellPreparation = preparation(cast.effect)
 			e.SpellcastingLevel = cast.level
+			for _, row := range c.classLevels[k] {
+				highest := 0
+				if row != nil && row.Spellcasting != nil {
+					highest = MaxSpellLevelFromSlots(row.Spellcasting.Slots)
+				}
+				e.MaxSpellLevelByLevel = append(e.MaxSpellLevelByLevel, highest)
+			}
 		}
 		cat.Classes = append(cat.Classes, e)
 	}

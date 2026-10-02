@@ -35,11 +35,23 @@ export class SpellPicker {
   /** "truque" / "magia", for the count and the empty states. */
   readonly noun = input.required<'truque' | 'magia'>();
   readonly showLevel = input(false);
+  /** The highest circle the character reaches, or `null` for no limit. A
+   * listed spell above it is one the player had already picked (the level
+   * was lowered): it stays so it can be unchecked, and is marked. */
+  readonly maxSpellLevel = input<number | null>(null);
 
   readonly toggle = output<string>();
   readonly filterChange = output<string>();
 
   protected readonly spellLevelLabel = spellLevelLabel;
+
+  /** "3º círculo", or "3º círculo, acima do nível" past the limit. */
+  protected levelText(level: number): string {
+    const max = this.maxSpellLevel();
+    return max !== null && level > max
+      ? `${spellLevelLabel(level)}, acima do nível`
+      : spellLevelLabel(level);
+  }
 
   protected readonly chosen = computed(() =>
     this.options()

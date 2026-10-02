@@ -187,6 +187,14 @@
   gap: var(--mr-space-6);
 }
 
+.spell-grid__note {
+  margin: 0;
+  align-self: start;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
 .editor__short {
   max-width: 880px;
   padding: var(--mr-space-5);

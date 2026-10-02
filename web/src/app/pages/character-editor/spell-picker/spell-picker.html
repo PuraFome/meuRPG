@@ -19,7 +19,7 @@
       <mat-checkbox [checked]="selected().has(spell.key)" (change)="toggle.emit(spell.key)">
         {{ spell.namePt }}
         @if (showLevel()) {
-          <span class="picker__level">({{ spellLevelLabel(spell.level) }})</span>
+          <span class="picker__level">({{ levelText(spell.level) }})</span>
         }
       </mat-checkbox>
     } @empty {

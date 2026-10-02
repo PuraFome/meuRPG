@@ -353,6 +353,9 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
         isCaster: !!c.spellcasting,
         preparation: c.spellcasting ? PREPARATION_FROM_GEN[c.spellcasting.preparation] : null,
         subclasses: subclassesByClass.get(c.key) ?? [],
+        subclassLevel: c.subclassLevel,
+        spellcastingFirstLevel: c.spellcasting?.firstLevel ?? 0,
+        maxSpellLevelByLevel: c.spellcasting?.maxSpellLevelByLevel ?? [],
       })),
       backgrounds: content.backgrounds.map((b) => ({ key: b.key, namePt: b.namePt })),
       skills: content.skills.map((s) => ({

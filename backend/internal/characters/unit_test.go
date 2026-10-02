@@ -641,3 +641,28 @@ func TestStoredDocuments(t *testing.T) {
 		t.Errorf("loadSheet(corrupt) error = %v, want errCorruptDocument without the document", err)
 	}
 }
+
+// TestCatalogToProtoMaxSpellLevel: ListContent hands the browser the
+// highest spell circle per class level, so it can filter the spell lists.
+func TestCatalogToProtoMaxSpellLevel(t *testing.T) {
+	c, err := rules.LoadSRD()
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := catalogToProto(c.Catalog())
+	want := map[string]int32{"class:bard": 1, "class:paladin": 0}
+	for _, cl := range out.Classes {
+		w, ok := want[cl.Key]
+		if !ok {
+			continue
+		}
+		got := cl.GetSpellcasting().GetMaxSpellLevelByLevel()
+		if len(got) != 20 || got[0] != w {
+			t.Errorf("%s max_spell_level_by_level = %v, want 20 entries starting with %d", cl.Key, got, w)
+		}
+		delete(want, cl.Key)
+	}
+	if len(want) > 0 {
+		t.Errorf("classes missing from the content: %v", want)
+	}
+}
