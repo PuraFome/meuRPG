@@ -165,9 +165,13 @@
   color: var(--mr-ink-muted);
 }
 
+// A radio's 40px touch area has 10px on each side of its 20px circle;
+// pulling the group back by those 10px lines the circles up with the
+// heading and the text above them (E6-21).
 .hp-methods {
   display: flex;
   flex-direction: column;
+  margin-inline-start: -10px;
 
   @media (min-width: 600px) {
     flex-direction: row;
