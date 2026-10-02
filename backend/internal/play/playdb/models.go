@@ -9,11 +9,12 @@ import (
 )
 
 type GameSession struct {
-	ID            string
-	CampaignID    string
-	SessionNumber int32
-	StartedAt     time.Time
-	EndedAt       *time.Time
-	CurrentMapID  *string
-	ShownImageID  *string
+	ID             string
+	CampaignID     string
+	SessionNumber  int32
+	StartedAt      time.Time
+	EndedAt        *time.Time
+	CurrentMapID   *string
+	ShownImageID   *string
+	ShownImageKeep bool
 }

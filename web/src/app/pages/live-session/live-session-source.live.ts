@@ -144,6 +144,9 @@ export class LiveSessionSourceLive implements LiveSessionSource {
         case 'shownImageChanged':
           yield { kind: 'shownImage', image: toShownImageVm(res.event.value.image) };
           break;
+        case 'leftImagesChanged':
+          yield { kind: 'leftImages' };
+          break;
         default:
           // A newer server's event this app doesn't know yet: still proof
           // that the stream is alive.
@@ -159,6 +162,7 @@ export class LiveSessionSourceLive implements LiveSessionSource {
       vitals: res.vitals.map(toVitalsVm),
       currentMapId: res.currentMapId || null,
       shownImage: toShownImageVm(res.shownImage),
+      shownImageKeep: res.shownImageKeep,
     };
   }
 
@@ -190,9 +194,22 @@ export class LiveSessionSourceLive implements LiveSessionSource {
     return res.currentMapId || null;
   }
 
-  async setShownImage(campaignId: string, imageId: string | null): Promise<ShownImageVm | null> {
-    const res = await this.play.setShownImage({ campaignId, imageId: imageId ?? '' });
+  async setShownImage(
+    campaignId: string,
+    imageId: string | null,
+    keep = false,
+  ): Promise<ShownImageVm | null> {
+    const res = await this.play.setShownImage({ campaignId, imageId: imageId ?? '', keep });
     return toShownImageVm(res.shownImage);
+  }
+
+  async listLeftImages(campaignId: string): Promise<readonly ShownImageVm[]> {
+    const res = await this.play.listLeftImages({ campaignId });
+    return res.images.map((image) => toShownImageVm(image)).filter((image) => image !== null);
+  }
+
+  async takeBackLeftImage(campaignId: string, imageId: string): Promise<void> {
+    await this.play.takeBackLeftImage({ campaignId, imageId });
   }
 
   async getPlayerSheet(campaignId: string, characterId: string): Promise<PlayerSheetVm> {

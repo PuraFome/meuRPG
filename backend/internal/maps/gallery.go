@@ -136,6 +136,10 @@ func (s *Service) DeleteGalleryImage(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the shown image", err)
 	}
+	wasLeft, err := s.queries.ImageIsLeft(ctx, mapsdb.ImageIsLeftParams{CampaignID: m.CampaignID, ImageID: id.String()})
+	if err != nil {
+		return nil, s.dbError(ctx, "check whether the image is left with the players", err)
+	}
 
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
@@ -174,6 +178,12 @@ func (s *Service) DeleteGalleryImage(
 		// Everyone watching the session stops seeing it.
 		s.live.Publish(m.CampaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_ShownImageChanged_{
 			ShownImageChanged: &playv1.WatchGameSessionResponse_ShownImageChanged{},
+		}})
+	}
+	if wasLeft {
+		// It left the players' list too (the foreign key deleted the row).
+		s.live.Publish(m.CampaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_LeftImagesChanged_{
+			LeftImagesChanged: &playv1.WatchGameSessionResponse_LeftImagesChanged{},
 		}})
 	}
 	return connect.NewResponse(&mapsv1.DeleteGalleryImageResponse{}), nil

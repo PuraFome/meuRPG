@@ -143,6 +143,8 @@ service PlayService {
   //     otherwise;
   //   - `shown_image_changed` when the master shows an image, stops showing
   //     it, or deletes it; sent to everyone;
+  //   - `left_images_changed` when the list of images left with the players
+  //     changed (an image left, taken back or deleted); sent to everyone;
   //   - `session_ended` when the master ends the session; the stream then
   //     ends without an error.
   //
@@ -224,6 +226,15 @@ service PlayService {
   // `shown_image_changed`. A new session starts showing nothing; deleting
   // the image (GalleryService.DeleteGalleryImage) stops showing it.
   //
+  // `keep` is the "Deixar com os jogadores" switch of the image shown. With
+  // it on, when the master stops showing the image, shows another one or
+  // ends the session, the image is left with the players
+  // (ListLeftImages) instead of being taken away, and the streams get
+  // `left_images_changed`. The master sets it by calling again with the
+  // same image_id and the new `keep`, which sends no event: the players
+  // never learn the switch. It is off for every image newly shown unless
+  // the call says otherwise.
+  //
   // Errors:
   //   - `not_found`: the image is not in the campaign's gallery, the
   //     campaign does not exist, or the caller is not a member of it.
@@ -231,6 +242,36 @@ service PlayService {
   //   - `failed_precondition`: no open session (GameSessionBlocked,
   //     NO_OPEN_SESSION).
   rpc SetShownImage(SetShownImageRequest) returns (SetShownImageResponse);
+
+  // ListLeftImages returns the images the master left with the players
+  // (SetShownImage's `keep`), in the order they were left. Any active
+  // member may call it, in or out of a session: the left images belong to
+  // the campaign, not to a session. They stay until the master takes them
+  // back (TakeBackLeftImage), also after the session ends, so the list
+  // lives in the campaign (campaign_left_images) and not in the session,
+  // which would take the images away from the players when it ends. A
+  // player gets their files (GET /images/{id}) while the image is on this
+  // list (RN-10).
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist, or the caller is not a
+  //     member of it (a pending member neither).
+  rpc ListLeftImages(ListLeftImagesRequest) returns (ListLeftImagesResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // TakeBackLeftImage takes an image back from the players ("Tirar"): it
+  // leaves the list, and the players can no longer fetch it. The image
+  // stays in the gallery. Only the campaign's master may call it, in or out
+  // of a session. Every WatchGameSession stream of the campaign gets
+  // `left_images_changed`. Taking back an image that is not on the list is
+  // `not_found`, so a second call (another tab) says so.
+  //
+  // Errors:
+  //   - `not_found`: the image is not on the campaign's left list, the
+  //     campaign does not exist, or the caller is not a member of it.
+  //   - `permission_denied`: the caller is a player.
+  rpc TakeBackLeftImage(TakeBackLeftImageRequest) returns (TakeBackLeftImageResponse);
 }
 
 // GameSessionBlockedReason says why PlayService refused a call with
@@ -339,11 +380,16 @@ message GetLiveSessionResponse {
   // The image the master shows the players (SetShownImage). Unset while
   // nothing is shown.
   ShownImage shown_image = 4;
+  // Whether the "Deixar com os jogadores" switch is on for the image shown
+  // (SetShownImage's `keep`). Set only for the master: it is theirs to
+  // decide, so a player always gets false.
+  bool shown_image_keep = 5;
 }
 
 // ShownImage is a gallery image the master shows the players during a
-// session (MR-028), with what the app needs to show it. Any active member of
-// the campaign may fetch its files.
+// session, or leaves with them (MR-028), with what the app needs to show
+// it. A player may fetch its files while it is shown or left; the master
+// always may.
 message ShownImage {
   // The gallery image's ID (a UUID).
   string id = 1;
@@ -444,6 +490,8 @@ message WatchGameSessionResponse {
     TokenMoved token_moved = 7;
     // The master showed an image, or stopped showing it.
     ShownImageChanged shown_image_changed = 8;
+    // The images left with the players changed.
+    LeftImagesChanged left_images_changed = 9;
   }
 
   // Ready is the stream's first event.
@@ -496,6 +544,11 @@ message WatchGameSessionResponse {
     // deleted it.
     ShownImage image = 1;
   }
+
+  // LeftImagesChanged is a hint, with no content: the list of images left
+  // with the players changed, so the app reads it again (ListLeftImages).
+  // Everyone gets it.
+  message LeftImagesChanged {}
 
   // TokenMoved is a token's new position. A token the app does not know
   // yet (it may have missed a `map_changed`) means: read the map again.
@@ -567,10 +620,37 @@ message SetShownImageRequest {
   // An image of the campaign's gallery (a UUID), or empty to stop showing
   // it.
   string image_id = 2;
+  // The "Deixar com os jogadores" switch for image_id: see SetShownImage.
+  // Ignored when image_id is empty.
+  bool keep = 3;
 }
 
 // SetShownImageResponse returns what the session shows now.
 message SetShownImageResponse {
   // The image shown, or unset when the master stopped showing it.
   ShownImage shown_image = 1;
+  // Whether "Deixar com os jogadores" is on for it: false when nothing is
+  // shown.
+  bool keep = 2;
 }
+
+// ListLeftImagesRequest names the campaign.
+message ListLeftImagesRequest {
+  string campaign_id = 1;
+}
+
+// ListLeftImagesResponse is the images left with the players.
+message ListLeftImagesResponse {
+  // In the order the master left them, oldest first.
+  repeated ShownImage images = 1;
+}
+
+// TakeBackLeftImageRequest names the image to take back.
+message TakeBackLeftImageRequest {
+  string campaign_id = 1;
+  // An image on the campaign's left list (a UUID).
+  string image_id = 2;
+}
+
+// TakeBackLeftImageResponse is empty: the list changed.
+message TakeBackLeftImageResponse {}

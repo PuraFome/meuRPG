@@ -366,6 +366,18 @@ async function scanMapScreens(browser: Browser, colorScheme: 'light' | 'dark', w
     await expect(playerPage.getByRole('region', { name: 'O mestre está mostrando' })).toBeVisible();
     await playerPage.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
     await expectNoSeriousViolations(playerPage, `Sessão com imagem à mostra, jogador ${suffix}`);
+
+    // "Deixar com os jogadores" on, then the image left with the players.
+    const keep = masterPage.getByRole('switch', { name: 'Deixar com os jogadores' });
+    await keep.click();
+    await expect(keep).toHaveAttribute('aria-checked', 'true');
+    await expectNoSeriousViolations(masterPage, `Sessão com "Deixar com os jogadores" ligado, mestre ${suffix}`);
+    await masterPage.getByRole('button', { name: 'Parar de mostrar' }).click();
+    await expect(masterPage.getByRole('button', { name: 'Tirar Capitão Goblin dos jogadores' })).toBeVisible();
+    await expectNoSeriousViolations(masterPage, `Sessão com uma imagem deixada, mestre ${suffix}`);
+    await expect(playerPage.getByRole('region', { name: 'Imagens que o mestre deixou' })).toBeVisible();
+    await playerPage.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await expectNoSeriousViolations(playerPage, `Sessão com uma imagem deixada, jogador ${suffix}`);
   } finally {
     await endOpenSessionRPC(masterPage, campaignId);
     await master.close();

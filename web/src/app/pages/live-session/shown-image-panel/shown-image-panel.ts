@@ -20,7 +20,9 @@ import { describeConnectError } from '../../../core/connect/connect-errors';
 import { GalleryClient } from '../../../core/images/gallery-client';
 import { openImagePicker } from '../../../shared/gallery-picker/image-picker-dialog/image-picker-dialog';
 import { PHONE_QUERY, mediaQuery } from '../../../shared/map-view/media-query';
+import { LeftImagesList } from '../left-images-list/left-images-list';
 import { LiveSessionSource, ShownImageVm } from '../live-session.types';
+import { KeepSwitch } from './keep-switch';
 
 /** What the dialog's line says under the grid (E5-10). */
 export function shownImageNote(
@@ -56,13 +58,17 @@ export function hiddenMapImages(maps: readonly MapMessage[]): Map<string, string
  *   showing it again undoes it) and "Trocar imagem".
  * - No filled button on the page: the filled "Mostrar aos jogadores" is the
  *   dialog's.
+ * - "Deixar com os jogadores" (E6-25): a switch on the image shown. On,
+ *   "Parar de mostrar" and "Trocar imagem" move the image to "Deixadas com
+ *   os jogadores", where "Tirar" takes it back at once. The server keeps the
+ *   switch and the list; this panel only asks and shows them.
  * - Each change is announced (`role="status"`) and focus follows: to
  *   "Mostrar imagem" after stopping, to "Parar de mostrar" after showing
  *   (the button that opened the dialog no longer exists).
  */
 @Component({
   selector: 'app-shown-image-panel',
-  imports: [MatButtonModule, MatIconModule],
+  imports: [MatButtonModule, MatIconModule, KeepSwitch, LeftImagesList],
   templateUrl: './shown-image-panel.html',
   styleUrl: './shown-image-panel.scss',
 })
@@ -71,18 +77,29 @@ export class ShownImagePanel {
   private readonly gallery = inject(GalleryClient);
   private readonly dialog = inject(MatDialog);
   private readonly injector = inject(Injector);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   readonly campaignId = input.required<string>();
   readonly shown = input<ShownImageVm | null>(null);
   /** The campaign's maps, to tag the images that back a hidden map. */
   readonly maps = input<readonly MapMessage[]>([]);
+  /** The switch of the image shown, and the images left with the players. */
+  readonly keep = input(false);
+  readonly left = input<readonly ShownImageVm[]>([]);
   /** The server accepted a change: the page shows it at once. */
   readonly changed = output<ShownImageVm | null>();
+  /** The server accepted a new state of the switch. */
+  readonly keepChange = output<boolean>();
+  /** An image left, or was taken back: the page reads the list again. */
+  readonly leftChanged = output<void>();
+  /** The master took this image back: it leaves the list at once. */
+  readonly taken = output<ShownImageVm>();
 
   protected readonly phone = mediaQuery(PHONE_QUERY);
   protected readonly status = signal('');
   protected readonly error = signal<string | null>(null);
   protected readonly stopping = signal(false);
+  protected readonly keeping = signal(false);
   protected readonly galleryEmpty = signal(false);
   protected readonly thumb = computed(() => {
     const s = this.shown();
@@ -117,9 +134,15 @@ export class ShownImagePanel {
         hiddenMapImages: hiddenMapImages(this.maps()),
         emptyError: 'Escolha uma imagem para mostrar.',
         submit: async (image) => {
+          const leaving = this.keep() ? shown : null;
           const result = await this.source.setShownImage(this.campaignId(), image.id);
           this.changed.emit(result);
-          this.status.set(`${image.name} está na tela dos jogadores.`);
+          if (leaving) {
+            this.leftChanged.emit();
+          }
+          this.status.set(
+            `${leaving ? `${leaving.name} continua com os jogadores. ` : ''}${image.name} está na tela dos jogadores.`,
+          );
         },
         errorMessage: showErrorMessage,
       },
@@ -143,12 +166,20 @@ export class ShownImagePanel {
   }
 
   protected async stop(): Promise<void> {
+    const leaving = this.keep() ? this.shown() : null;
     this.stopping.set(true);
     this.error.set(null);
     try {
       await this.source.setShownImage(this.campaignId(), null);
       this.changed.emit(null);
-      this.status.set('Imagem retirada da tela dos jogadores.');
+      if (leaving) {
+        this.leftChanged.emit();
+      }
+      this.status.set(
+        leaving
+          ? `${leaving.name} continua com os jogadores.`
+          : 'Imagem retirada da tela dos jogadores.',
+      );
       afterNextRender(() => this.showButton()?.nativeElement.focus(), { injector: this.injector });
     } catch (err) {
       this.error.set(showErrorMessage(err));
@@ -156,6 +187,63 @@ export class ShownImagePanel {
       this.stopping.set(false);
     }
   }
+
+  /** The switch: asks for the new state with the image already shown. */
+  protected async setKeep(next: boolean): Promise<void> {
+    const shown = this.shown();
+    if (!shown) {
+      return;
+    }
+    this.keeping.set(true);
+    this.error.set(null);
+    try {
+      await this.source.setShownImage(this.campaignId(), shown.id, next);
+      this.keepChange.emit(next);
+    } catch (err) {
+      this.error.set(showErrorMessage(err));
+    } finally {
+      this.keeping.set(false);
+    }
+  }
+
+  /** "Tirar": at once, no confirmation (showing the image again undoes it).
+   * Focus goes to the next row's "Tirar", or the one before, or the panel's
+   * main button when the list empties. */
+  protected async takeBack(image: ShownImageVm): Promise<void> {
+    const ids = this.left().map((i) => i.id);
+    const at = ids.indexOf(image.id);
+    const neighbour = ids[at + 1] ?? ids[at - 1];
+    this.error.set(null);
+    try {
+      await this.source.takeBackLeftImage(this.campaignId(), image.id);
+      this.taken.emit(image);
+      this.status.set(`${image.name} foi tirada.`);
+    } catch (err) {
+      if (ConnectError.from(err).code === Code.NotFound) {
+        // Taken back in another tab: the list is stale, read it again.
+        this.leftChanged.emit();
+      }
+      this.error.set(takeBackErrorMessage(err));
+      return;
+    }
+    afterNextRender(
+      () => {
+        const next = neighbour
+          ? this.host.nativeElement.querySelector<HTMLElement>(`[data-image-id="${neighbour}"]`)
+          : (this.showButton() ?? this.stopButton())?.nativeElement;
+        next?.focus();
+      },
+      { injector: this.injector },
+    );
+  }
+}
+
+/** TakeBackLeftImage's errors, in Portuguese (play.proto). */
+export function takeBackErrorMessage(err: unknown): string {
+  return describeConnectError(err, {
+    [Code.NotFound]: 'Essa imagem já não estava com os jogadores.',
+    [Code.PermissionDenied]: 'Só o mestre da campanha tira imagens dos jogadores.',
+  });
 }
 
 /** SetShownImage's errors, in Portuguese (play.proto). */

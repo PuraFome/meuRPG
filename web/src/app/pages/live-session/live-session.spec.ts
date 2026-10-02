@@ -16,6 +16,7 @@ import {
   LiveSnapshotVm,
   PartyMemberInfoVm,
   PlayerSheetVm,
+  ShownImageVm,
 } from './live-session.types';
 import { brisaVitals, pensantusVitals } from './testing';
 
@@ -34,6 +35,7 @@ class FakeLiveSessionSource implements LiveSessionSource {
     vitals: [pensantusVitals()],
     currentMapId: null,
     shownImage: null,
+    shownImageKeep: false,
   };
   sheet: PlayerSheetVm = { armorClass: 14, summary: 'Mago 3, Gnomo das Rochas' };
   party = new Map<string, PartyMemberInfoVm>([
@@ -47,6 +49,13 @@ class FakeLiveSessionSource implements LiveSessionSource {
   readonly adjustVitals = vi.fn();
   readonly setCurrentMap = vi.fn((_c: string, mapId: string | null) => Promise.resolve(mapId));
   readonly setShownImage = vi.fn();
+  /** The images left with the players, as the server lists them. */
+  left: ShownImageVm[] = [];
+  readonly listLeftImages = vi.fn(() => Promise.resolve(this.left));
+  readonly takeBackLeftImage = vi.fn((_c: string, id: string) => {
+    this.left = this.left.filter((i) => i.id !== id);
+    return Promise.resolve();
+  });
 
   getCampaign(): Promise<CampaignInfoVm> {
     return this.campaign instanceof Error
@@ -182,6 +191,7 @@ describe('LiveSession', () => {
       vitals: [pensantusVitals(), brisaVitals()],
       currentMapId: null,
       shownImage: null,
+      shownImageKeep: false,
     };
     const el = await render();
     expect(el.textContent).toContain('Em andamento desde 30/09 às 20:05');
@@ -356,6 +366,24 @@ describe('LiveSession', () => {
       await new Promise((r) => setTimeout(r));
       TestBed.inject(ApplicationRef).tick();
       expect(el.textContent).toContain('O mestre parou de mostrar a imagem.');
+    });
+
+    it('shows the player the images the master left, live, with no announcement (E6-25b)', async () => {
+      const tower = { id: 'img-2', name: 'Planta da torre', width: 800, height: 600, url: '/images/img-2' };
+      source.left = [tower];
+      const el = await render();
+      expect(el.querySelector('#left-title')).not.toBeNull();
+      expect(el.querySelector('.row__name')?.textContent).toContain('Planta da torre');
+      expect(el.querySelector('.row__thumb')?.getAttribute('src')).toBe('/images/img-2/thumb');
+      expect(el.querySelector('button[aria-label="Ver Planta da torre em tela cheia"]')).not.toBeNull();
+      expect(el.querySelector('.block__note')?.textContent).toContain('Ficam aqui até o mestre tirar.');
+
+      source.left = [];
+      source.push({ kind: 'leftImages' });
+      await new Promise((r) => setTimeout(r));
+      TestBed.inject(ApplicationRef).tick();
+      expect(el.querySelector('#left-title')).toBeNull();
+      expect(el.querySelector('[role="status"]:not(.status)')?.textContent?.trim() ?? '').toBe('');
     });
 
     it('draws the block without announcing it when it comes with the snapshot (a reload)', async () => {
