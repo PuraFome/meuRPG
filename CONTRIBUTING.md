@@ -12,6 +12,7 @@ Ferramentas: Go 1.27, buf, sqlc 1.31.1, goose, golangci-lint, Docker e Node 22. 
 | --- | --- |
 | `make up` | Sobe o CockroachDB (um nó só), o devidp (provedor OIDC de desenvolvimento) e o backend com Docker Compose (`deploy/local/compose.yaml`); serve o app em `http://localhost:8080`, servidor e API na mesma origem, com o login funcionando (ver [Login local com o devidp](#login-local-com-o-devidp)) e as imagens da galeria num volume (ver [Imagens da galeria](#imagens-da-galeria)). |
 | `make run` | Roda o backend direto no terminal, apontando para o banco do `make up`. |
+| `make db-native-start` / `make db-native-stop` | Liga e desliga um CockroachDB rodando direto no Mac, fora do Docker, para o `LOCAL_DB=native` e os testes de integração. Ver [CockroachDB nativo](#cockroachdb-nativo-mac-opcional). |
 | `make proto` | Gera o código Go **e** o TypeScript a partir dos `.proto` (`backend/gen` e `web/src/gen`). Instala as dependências do `web/` sozinho, se faltarem. |
 | `make sqlc` | Gera o código Go das queries SQL (`backend/internal/<módulo>/<módulo>db`) com o sqlc 1.31.1. Ver [Queries com sqlc](#queries-com-sqlc). |
 | `make lint` | Roda `buf lint` e `golangci-lint`. |
@@ -26,6 +27,27 @@ Ferramentas: Go 1.27, buf, sqlc 1.31.1, goose, golangci-lint, Docker e Node 22. 
 | `make web-build` | Builda o Angular para produção (`cd web && npm run build`). |
 | `cd web && npm start` | Sobe o Angular sozinho, em modo dev, com `proxy.conf.json` encaminhando as rotas da API (`/meurpg.*`, `/auth`, `/images`, `/uploads`, `/healthz`, `/readyz`) para `localhost:8080`. |
 | `WEB_DIR=../web/dist/web/browser PORT=8090 go run -C backend ./cmd/api` | Sobe só a API do jeito que ela roda em produção — servindo o build do Angular, com os headers de cache e o CSP de verdade — sem Docker nem banco. Rode `cd web && npm run build` antes. Sem `DATABASE_URL`, o login fica desligado e o `IdentityService` responde `unavailable`, mas a tela pública e o `SystemService.GetServerInfo` funcionam normalmente. Útil para conferir o CSP no navegador sem subir o Docker; a porta 8090 não conflita com o `make up`. |
+
+### CockroachDB nativo (Mac, opcional)
+
+No Mac, todo container roda dentro de uma máquina virtual Linux (a do Docker Desktop ou do Rancher Desktop), e o CockroachDB é de longe a parte mais pesada do ambiente: a máquina virtual chega a pedir mais de 10 GB de memória, e os testes de integração ficam lentos. Rodar o banco direto no Mac resolve isso. É opcional: o padrão, e o que o CI usa, continua sendo o banco no Docker.
+
+1. Instale a mesma versão que o CI e o `compose.yaml` usam (26.2.7), pela tap oficial da Cockroach Labs. O Homebrew pede para confiar na fórmula antes:
+
+   ```bash
+   brew tap cockroachdb/tap
+   brew trust --formula cockroachdb/tap/cockroach@26.2
+   brew trust --formula cockroachdb/tap/cockroach   # o link carrega esta também
+   brew install cockroachdb/tap/cockroach@26.2
+   brew link cockroachdb/tap/cockroach@26.2
+   ```
+
+   Não use `brew services start`: ele deixa o banco subindo junto com o Mac. O `make` liga e desliga quando você precisa.
+2. `make db-native-start` sobe o banco em `localhost:26257` (o console fica em `http://localhost:8081`), com os dados em `~/.meurpg/cockroach`, fora do repositório (todas as worktrees usam o mesmo banco), e cria o banco `meurpg`. Se já estiver de pé, não faz nada. `make db-native-stop` desliga.
+3. Com `LOCAL_DB=native`, o `make up`, o `make e2e`, o `make down` e o `make logs` usam esse banco: o `deploy/local/compose.native-db.yaml` deixa o container do CockroachDB de fora e aponta a API e as migrations para `host.docker.internal:26257`. Dá para fixar no terminal com `export LOCAL_DB=native`, ou passar a cada comando: `make up LOCAL_DB=native`.
+4. Os testes de integração usam o mesmo endereço de antes, então nada muda: `MEURPG_TEST_DATABASE_URL='postgresql://root@localhost:26257/defaultdb?sslmode=disable' make test`. Na máquina do Vinicius, os testes do `campaigns` caíram de 729 s para 99 s, e os do `play`, de 407 s para 60 s.
+
+O banco do container e o nativo usam a mesma porta: desligue um antes de ligar o outro (`make down` derruba o do container). Os dados deles são separados. Com o banco fora do Docker, dá para diminuir a memória da máquina virtual nas configurações do Docker Desktop ou do Rancher Desktop.
 
 ## Login local com um provedor OIDC
 
@@ -236,7 +258,7 @@ O `package.json` da raiz é o do [app antigo](docs/app-antigo.md) (`src/`, desco
 | Tipo | Ferramenta | Cobre |
 | --- | --- | --- |
 | Unitário | `go test`, com tabelas de casos | As contas do módulo `rules` e cada regra de negócio isolada. |
-| Integração | `go test` + CockroachDB no Docker | Queries do sqlc, migrations, a repetição no erro `40001` e quem pode fazer o quê. |
+| Integração | `go test` + CockroachDB (no Docker ou, no Mac, nativo) | Queries do sqlc, migrations, a repetição no erro `40001` e quem pode fazer o quê. |
 | Ponta a ponta | Playwright + um provedor OIDC local | Os critérios de aceite, pela tela, como o usuário faria. |
 | Acessibilidade | axe (`@axe-core/playwright`) no Playwright | Cada tela principal, no tema claro e no escuro: nenhuma violação séria ou crítica de WCAG 2.1 A e AA. |
 

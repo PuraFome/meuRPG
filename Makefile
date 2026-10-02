@@ -4,8 +4,8 @@
 # directory the underlying tool actually needs to run in.
 
 # Default DATABASE_URL for host-run commands (`make run`, `make migrate`):
-# it points at the CockroachDB container started by `make up`, reached from
-# the host via localhost. Override on the command line if needed, e.g.:
+# it points at localhost:26257, where either the CockroachDB container of
+# `make up` or the native one of `make db-native-start` listens. Override on the command line if needed, e.g.:
 #   make run DATABASE_URL=postgresql://root@localhost:26257/otherdb?sslmode=disable
 DATABASE_URL ?= postgresql://root@localhost:26257/meurpg?sslmode=disable
 
@@ -14,6 +14,26 @@ MIGRATE_ARGS ?= up
 
 COMPOSE_FILE := deploy/local/compose.yaml
 
+# Where the local stack's database runs. `container` (the default, and what
+# CI uses) runs CockroachDB in Docker with the rest of the stack.
+# `LOCAL_DB=native` points the stack at a CockroachDB running on this
+# machine instead (`make db-native-start`): on a Mac every container runs
+# inside a Linux VM, and the database is by far the heaviest part of the
+# stack. Set it once in your shell (`export LOCAL_DB=native`) or per command
+# (`make up LOCAL_DB=native`). See CONTRIBUTING.md, "CockroachDB nativo".
+LOCAL_DB ?= container
+COMPOSE_FILES := -f $(COMPOSE_FILE)
+ifeq ($(LOCAL_DB),native)
+COMPOSE_FILES += -f deploy/local/compose.native-db.yaml
+endif
+
+# The native CockroachDB: the same version as the container image in
+# deploy/local/compose.yaml and the go-db job in .github/workflows/backend.yml
+# (install it with `brew install cockroachdb/tap/cockroach@26.2`). Its data
+# lives outside the repo, so every worktree shares one database.
+COCKROACH_VERSION := v26.2.7
+COCKROACH_STORE ?= $(HOME)/.meurpg/cockroach
+
 # sqlc is pinned: its version is written into every file it generates, so
 # every machine and CI must run the same one. `go run pkg@version` builds
 # exactly that version, checked against Go's checksum database, with no
@@ -21,7 +41,7 @@ COMPOSE_FILE := deploy/local/compose.yaml
 # Go's build cache.
 SQLC := go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
 
-.PHONY: help proto sqlc proto-lint lint test run migrate up down logs docker-build web-install web-test web-build e2e
+.PHONY: help proto sqlc proto-lint lint test run migrate up down logs docker-build web-install web-test web-build e2e db-native-start db-native-stop
 
 help: ## Show this help message
 	@echo "MeuRPG - available targets:"
@@ -57,14 +77,37 @@ run: ## Run the API server on the host (needs `make up` for the DB)
 migrate: ## Run DB migrations on the host, e.g. `make migrate MIGRATE_ARGS=status`
 	cd backend && DATABASE_URL="$(DATABASE_URL)" go run ./cmd/migrate $(MIGRATE_ARGS)
 
-up: ## Start the local stack (CockroachDB, migrate, API) in the background
-	docker compose -f $(COMPOSE_FILE) up --build -d
+up: ## Start the local stack (CockroachDB, migrate, API) in the background; LOCAL_DB=native uses the native database
+	docker compose $(COMPOSE_FILES) up --build -d
 
 down: ## Stop the local stack and remove its containers
-	docker compose -f $(COMPOSE_FILE) down
+	docker compose $(COMPOSE_FILES) down
 
 logs: ## Follow logs from the local stack
-	docker compose -f $(COMPOSE_FILE) logs -f
+	docker compose $(COMPOSE_FILES) logs -f
+
+db-native-start: ## Start CockroachDB on this machine (brew cockroach@26.2) for LOCAL_DB=native and the integration tests
+	@command -v cockroach >/dev/null || { echo "cockroach not found: brew install cockroachdb/tap/cockroach@26.2 (CONTRIBUTING.md, \"CockroachDB nativo\")"; exit 1; }
+	@cockroach version | grep -q 'Build Tag: *$(COCKROACH_VERSION)$$' || echo "warning: cockroach is not $(COCKROACH_VERSION), the version CI and the container use"
+	@mkdir -p "$(COCKROACH_STORE)"
+	@if cockroach sql --insecure --host=localhost:26257 -e 'SELECT 1' >/dev/null 2>&1; then \
+		echo "CockroachDB is already running on localhost:26257"; \
+	else \
+		cockroach start-single-node --insecure --listen-addr=localhost:26257 --http-addr=localhost:8081 \
+			--store="$(COCKROACH_STORE)" --pid-file="$(COCKROACH_STORE)/cockroach.pid" --background \
+			>"$(COCKROACH_STORE)/start.log" 2>&1 || { cat "$(COCKROACH_STORE)/start.log"; exit 1; }; \
+	fi
+	cockroach sql --insecure --host=localhost:26257 -e 'CREATE DATABASE IF NOT EXISTS meurpg'
+	@echo "CockroachDB on localhost:26257 (console: http://localhost:8081). Stop it with: make db-native-stop"
+
+db-native-stop: ## Stop the native CockroachDB started by db-native-start
+	@if [ -f "$(COCKROACH_STORE)/cockroach.pid" ] && kill -0 $$(cat "$(COCKROACH_STORE)/cockroach.pid") 2>/dev/null; then \
+		kill $$(cat "$(COCKROACH_STORE)/cockroach.pid"); \
+		while kill -0 $$(cat "$(COCKROACH_STORE)/cockroach.pid") 2>/dev/null; do sleep 0.5; done; \
+		echo "CockroachDB stopped"; \
+	else \
+		echo "CockroachDB is not running (no live $(COCKROACH_STORE)/cockroach.pid)"; \
+	fi
 
 docker-build: ## Build the backend+web Docker image standalone (no compose)
 	docker build \
@@ -89,7 +132,7 @@ e2e/node_modules/.bin/playwright: e2e/package.json e2e/package-lock.json
 	cd e2e && npm ci --ignore-scripts
 
 e2e: e2e/node_modules/.bin/playwright ## Start the local stack, run the Playwright tests against it, and report
-	docker compose -f $(COMPOSE_FILE) up --build -d
+	docker compose $(COMPOSE_FILES) up --build -d
 	cd e2e && npx playwright test; status=$$?; \
 		echo "Report: e2e/playwright-report/index.html (cd e2e && npx playwright show-report). The stack is still up: make down"; \
 		exit $$status
