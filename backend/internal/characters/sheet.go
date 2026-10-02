@@ -3,6 +3,7 @@ package characters
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"google.golang.org/protobuf/encoding/protojson"
@@ -43,8 +44,19 @@ const (
 	maxSpeedFt           = 300
 	minAttackBonus       = -10
 	maxAttackBonus       = 30
-	maxDamageLength      = 40
+	maxDamageLength      = 40 // the deprecated free text damage
 	maxDescriptionLength = 2000
+	minInitiativeBonus   = -10
+	maxInitiativeBonus   = 20
+	maxBasicAttacks      = 3
+	legacyAttackName     = "Ataque"
+	maxAttackNameLength  = 40
+	minAttackRollBonus   = -10
+	maxAttackRollBonus   = 20
+	maxDamageDiceCount   = 20
+	minDamageBonus       = -20
+	maxDamageBonus       = 40
+	maxRangeFt           = 600
 
 	// Story.
 	maxPersonalityLength           = 1000
@@ -230,15 +242,54 @@ func cleanBasicSheet(b *charactersv1.BasicSheet) error {
 		return fieldErr("sheet.basic.armor_class", "must be %d to %d", minArmorClass, maxArmorClass)
 	case b.GetSpeedFt() < 0 || b.GetSpeedFt() > maxSpeedFt:
 		return fieldErr("sheet.basic.speed_ft", "must be 0 to %d", maxSpeedFt)
+	case b.GetInitiativeBonus() < minInitiativeBonus || b.GetInitiativeBonus() > maxInitiativeBonus:
+		return fieldErr("sheet.basic.initiative_bonus", "must be %d to %d", minInitiativeBonus, maxInitiativeBonus)
+	case len(b.GetAttacks()) > maxBasicAttacks:
+		return fieldErr("sheet.basic.attacks", "must have at most %d attacks", maxBasicAttacks)
 	case b.GetAttackBonus() < minAttackBonus || b.GetAttackBonus() > maxAttackBonus:
 		return fieldErr("sheet.basic.attack_bonus", "must be %d to %d", minAttackBonus, maxAttackBonus)
 	}
+	for i, a := range b.GetAttacks() {
+		if err := checkAttack(a, fmt.Sprintf("sheet.basic.attacks[%d]", i)); err != nil {
+			return err
+		}
+		name, err := names.Clean(a.GetName(), maxAttackNameLength)
+		if err != nil {
+			return &fieldError{field: fmt.Sprintf("sheet.basic.attacks[%d].name", i), err: err}
+		}
+		a.Name = name
+	}
 	var err error
-	if b.Damage, err = optionalLine(b.GetDamage(), maxDamageLength); err != nil {
+	if len(b.GetAttacks()) > 0 {
+		// The structured attacks replace the old ones: do not keep both.
+		b.AttackBonus, b.Damage = 0, ""
+	} else if b.Damage, err = optionalLine(b.GetDamage(), maxDamageLength); err != nil {
 		return &fieldError{field: "sheet.basic.damage", err: err}
 	}
 	if b.Description, err = names.CleanText(b.GetDescription(), maxDescriptionLength); err != nil {
 		return &fieldError{field: "sheet.basic.description", err: err}
+	}
+	return nil
+}
+
+// checkAttack checks the numbers and the type of one attack. path is where
+// the attack is in the request, for the error, such as
+// "sheet.basic.attacks[1]"; the name is cleaned by the caller.
+func checkAttack(a *charactersv1.BasicAttack, path string) error {
+	switch {
+	case a.GetAttackBonus() < minAttackRollBonus || a.GetAttackBonus() > maxAttackRollBonus:
+		return fieldErr(path+".attack_bonus", "must be %d to %d", minAttackRollBonus, maxAttackRollBonus)
+	case a.GetDamageDiceCount() < 1 || a.GetDamageDiceCount() > maxDamageDiceCount:
+		return fieldErr(path+".damage_dice_count", "must be 1 to %d", maxDamageDiceCount)
+	case !slices.Contains([]int32{4, 6, 8, 10, 12}, a.GetDamageDiceSides()):
+		return fieldErr(path+".damage_dice_sides", "must be 4, 6, 8, 10 or 12")
+	case a.GetDamageBonus() < minDamageBonus || a.GetDamageBonus() > maxDamageBonus:
+		return fieldErr(path+".damage_bonus", "must be %d to %d", minDamageBonus, maxDamageBonus)
+	case a.GetDamageType() == charactersv1.DamageType_DAMAGE_TYPE_UNSPECIFIED ||
+		charactersv1.DamageType_name[int32(a.GetDamageType())] == "":
+		return fieldErr(path+".damage_type", "is required")
+	case a.GetRangeFt() < 0 || a.GetRangeFt() > maxRangeFt:
+		return fieldErr(path+".range_ft", "must be 0 to %d", maxRangeFt)
 	}
 	return nil
 }
@@ -379,6 +430,9 @@ func loadSheet(characterID string, doc []byte) (*charactersv1.CharacterSheet, er
 	sheet := &charactersv1.CharacterSheet{}
 	if err := loadJSON.Unmarshal(doc, sheet); err != nil {
 		return nil, fmt.Errorf("%w: the sheet of character %s", errCorruptDocument, characterID)
+	}
+	if basic := sheet.GetBasic(); basic != nil {
+		upgradeLegacyAttack(basic)
 	}
 	return sheet, nil
 }

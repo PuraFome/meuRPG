@@ -262,3 +262,54 @@ func TestOrphanedPlayerCharactersAreDeletedByTheDatabase(t *testing.T) {
 		t.Errorf("evaluated %d rows, want %d", seen, len(kept)+1)
 	}
 }
+
+// TestGetSpellDetails: a member (and a pending member) gets one spell in
+// full, structured; an unknown key is not_found; ListContent stays light.
+func TestGetSpellDetails(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	master, player, outsider := h.newUser("Mestre"), h.newUser("Jogadora"), h.newUser("De fora")
+	campaign := h.newCampaign(master, "Mirathel", player)
+	get := func(u *user, campaign, key string) (*rulesv1.SpellDetails, error) {
+		res, err := u.content.GetSpellDetails(t.Context(), connect.NewRequest(&rulesv1.GetSpellDetailsRequest{CampaignId: campaign, SpellKey: key}))
+		if err != nil {
+			return nil, err
+		}
+		return res.Msg.GetSpell(), nil
+	}
+
+	d, err := get(player, campaign, "spell:fireball")
+	if err != nil {
+		t.Fatalf("GetSpellDetails(fireball) error = %v", err)
+	}
+	if d.GetSpell().GetNamePt() != "Bola de Fogo" || d.GetSpell().GetLevel() != 3 ||
+		d.GetCastingTime().GetUnit() != rulesv1.CastingTimeUnit_CASTING_TIME_UNIT_ACTION || d.GetCastingTime().GetAmount() != 1 ||
+		d.GetRange().GetKind() != rulesv1.SpellRangeKind_SPELL_RANGE_KIND_RANGED || d.GetRange().GetDistanceFt() != 150 ||
+		!d.GetComponents().GetVerbal() || !d.GetComponents().GetSomatic() || !d.GetComponents().GetMaterial() || d.GetComponents().GetMaterialText() == "" ||
+		d.GetDuration().GetKind() != rulesv1.SpellDurationKind_SPELL_DURATION_KIND_INSTANTANEOUS ||
+		d.GetSave().GetAbility() != rulesv1.Ability_ABILITY_DEXTERITY || d.GetSave().GetOnSuccess() != rulesv1.SpellSaveSuccess_SPELL_SAVE_SUCCESS_HALF ||
+		len(d.GetDamage()) != 1 || d.GetDamage()[0].GetBySlotLevel()[3] != "8d6" || d.GetDamage()[0].GetDamageTypePt() == "" ||
+		len(d.GetDescription()) == 0 || len(d.GetHigherLevel()) == 0 {
+		t.Errorf("GetSpellDetails(fireball) = %v", d)
+	}
+
+	// A cantrip's damage grows with the character's level; healing by slot.
+	if fb, _ := get(master, campaign, "spell:fire-bolt"); fb.GetDamage()[0].GetByCharacterLevel()[5] != "2d10" ||
+		fb.GetAttackType() != rulesv1.SpellAttackType_SPELL_ATTACK_TYPE_RANGED {
+		t.Errorf("GetSpellDetails(fire bolt) = %v", fb)
+	}
+	if cw, _ := get(master, campaign, "spell:cure-wounds"); cw.GetHealBySlotLevel()[2] != "2d8 + MOD" || cw.GetSave() != nil {
+		t.Errorf("GetSpellDetails(cure wounds) = %v", cw)
+	}
+
+	for name, call := range map[string]func() error{
+		"an unknown spell":    func() error { _, err := get(player, campaign, "spell:nope"); return err },
+		"an empty key":        func() error { _, err := get(player, campaign, ""); return err },
+		"a non-member":        func() error { _, err := get(outsider, campaign, "spell:fireball"); return err },
+		"an unknown campaign": func() error { _, err := get(player, "not-a-uuid", "spell:fireball"); return err },
+	} {
+		wantCode(t, name, call(), connect.CodeNotFound)
+	}
+	_, err = h.anonymous().content.GetSpellDetails(t.Context(), connect.NewRequest(&rulesv1.GetSpellDetailsRequest{CampaignId: campaign, SpellKey: "spell:fireball"}))
+	wantCode(t, "no session", err, connect.CodeUnauthenticated)
+}

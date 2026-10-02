@@ -1,6 +1,7 @@
 import {
   Alignment,
   BasicSheet,
+  DamageType,
   Character,
   CharacterKind,
   CharacterState,
@@ -8,7 +9,7 @@ import {
   FullSheet,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { DerivedSheet } from '../../../gen/meurpg/rules/v1/rules_pb';
-import { FullSheetVm } from './character-sheet.types';
+import { BasicSheetVm, FullSheetVm } from './character-sheet.types';
 import { toCharacterSheetVm, toCharacterStoryInit, toStoryVm } from './character-sheet-source.live';
 
 describe('story round-trips load → save unchanged (integrator fix, phase 2b)', () => {
@@ -108,6 +109,9 @@ function minimalDerivedSheet(): DerivedSheet {
     languages: [],
     hints: [],
     issues: [],
+    resources: [],
+    actions: [],
+    standardActions: [],
   };
 }
 
@@ -210,9 +214,22 @@ describe('the sheet header shows alignment and XP, read from the stored FullShee
       hitPointsMax: 7,
       armorClass: 13,
       speedFt: 30,
-      attackBonus: 3,
-      damage: '1d6+1 perfurante',
+      attackBonus: 0,
+      damage: '',
       description: 'Um goblin arisco.',
+      initiativeBonus: 2,
+      attacks: [
+        {
+          $typeName: 'meurpg.characters.v1.BasicAttack',
+          name: 'Cimitarra',
+          attackBonus: 4,
+          damageDiceCount: 1,
+          damageDiceSides: 6,
+          damageBonus: 2,
+          damageType: DamageType.SLASHING,
+          rangeFt: 0,
+        },
+      ],
     };
     const character: Character = {
       ...characterWithFullSheet(minimalFullSheet()),
@@ -227,6 +244,18 @@ describe('the sheet header shows alignment and XP, read from the stored FullShee
     const vm = toCharacterSheetVm(character);
     expect(vm.alignmentLabel).toBe('');
     expect(vm.experiencePoints).toBeNull();
+    const sheet = vm.sheet as BasicSheetVm;
+    expect(sheet.initiativeBonus).toBe(2);
+    expect(sheet.attacks).toEqual([
+      {
+        name: 'Cimitarra',
+        attackBonus: 4,
+        damageDiceCount: 1,
+        damageDiceSides: 6,
+        damageBonus: 2,
+        damageType: 'slashing',
+      },
+    ]);
   });
 });
 

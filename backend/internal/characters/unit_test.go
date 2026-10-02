@@ -121,6 +121,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["ApproveCharacter"] = c.ApproveCharacter(ctx, connect.NewRequest(&charactersv1.ApproveCharacterRequest{CampaignId: id, CharacterId: id}))
 	_, calls["RejectCharacter"] = c.RejectCharacter(ctx, connect.NewRequest(&charactersv1.RejectCharacterRequest{CampaignId: id, CharacterId: id}))
 	_, calls["ListContent"] = content.ListContent(ctx, connect.NewRequest(&rulesv1.ListContentRequest{CampaignId: id}))
+	_, calls["GetSpellDetails"] = content.GetSpellDetails(ctx, connect.NewRequest(&rulesv1.GetSpellDetailsRequest{CampaignId: id, SpellKey: "spell:fire-bolt"}))
 
 	methods := charactersv1.File_meurpg_characters_v1_characters_proto.Services().ByName("CharacterService").Methods().Len() +
 		rulesv1.File_meurpg_rules_v1_rules_proto.Services().ByName("ContentService").Methods().Len()
@@ -158,8 +159,8 @@ func TestReadsWithIDsArePostOnly(t *testing.T) {
 			}
 		}
 	}
-	if len(reads) != 4 {
-		t.Errorf("found %d reads, want 4 (GetCharacter, ListCharacters, GetMasterNotes, ListContent)", len(reads))
+	if len(reads) != 5 {
+		t.Errorf("found %d reads, want 5 (GetCharacter, ListCharacters, GetMasterNotes, ListContent, GetSpellDetails)", len(reads))
 	}
 	for procedure, method := range reads {
 		opts, _ := method.Options().(*descriptorpb.MethodOptions)
@@ -537,8 +538,54 @@ func TestCheckSheet(t *testing.T) {
 		{"basic: armor class 41", func(s *charactersv1.CharacterSheet) { s.Content = basicSheet().Content; s.GetBasic().ArmorClass = 41 }, "sheet.basic.armor_class"},
 		{"basic: speed 301", func(s *charactersv1.CharacterSheet) { s.Content = basicSheet().Content; s.GetBasic().SpeedFt = 301 }, "sheet.basic.speed_ft"},
 		{"basic: attack +31", func(s *charactersv1.CharacterSheet) { s.Content = basicSheet().Content; s.GetBasic().AttackBonus = 31 }, "sheet.basic.attack_bonus"},
+		{"basic: initiative +21", func(s *charactersv1.CharacterSheet) {
+			s.Content = basicSheet().Content
+			s.GetBasic().InitiativeBonus = 21
+		}, "sheet.basic.initiative_bonus"},
+		{"basic: four attacks", func(s *charactersv1.CharacterSheet) {
+			s.Content = basicSheet().Content
+			a := s.GetBasic().Attacks[0]
+			s.GetBasic().Attacks = []*charactersv1.BasicAttack{a, a, a, a}
+		}, "sheet.basic.attacks"},
+		{"basic: empty attack name", func(s *charactersv1.CharacterSheet) {
+			s.Content = basicSheet().Content
+			s.GetBasic().Attacks[0].Name = "  "
+		}, "sheet.basic.attacks[0].name"},
+		{"basic: long attack name", func(s *charactersv1.CharacterSheet) {
+			s.Content = basicSheet().Content
+			s.GetBasic().Attacks[0].Name = strings.Repeat("x", 41)
+		}, "sheet.basic.attacks[0].name"},
+		{"basic: attack roll +21", func(s *charactersv1.CharacterSheet) {
+			s.Content = basicSheet().Content
+			s.GetBasic().Attacks[0].AttackBonus = 21
+		}, "sheet.basic.attacks[0].attack_bonus"},
+		{"basic: 21 damage dice", func(s *charactersv1.CharacterSheet) {
+			s.Content = basicSheet().Content
+			s.GetBasic().Attacks[0].DamageDiceCount = 21
+		}, "sheet.basic.attacks[0].damage_dice_count"},
+		{"basic: d7", func(s *charactersv1.CharacterSheet) {
+			s.Content = basicSheet().Content
+			s.GetBasic().Attacks[0].DamageDiceSides = 7
+		}, "sheet.basic.attacks[0].damage_dice_sides"},
+		{"basic: damage bonus 41", func(s *charactersv1.CharacterSheet) {
+			s.Content = basicSheet().Content
+			s.GetBasic().Attacks[0].DamageBonus = 41
+		}, "sheet.basic.attacks[0].damage_bonus"},
+		{"basic: no damage type", func(s *charactersv1.CharacterSheet) {
+			s.Content = basicSheet().Content
+			s.GetBasic().Attacks[0].DamageType = 0
+		}, "sheet.basic.attacks[0].damage_type"},
+		{"basic: unknown damage type", func(s *charactersv1.CharacterSheet) {
+			s.Content = basicSheet().Content
+			s.GetBasic().Attacks[0].DamageType = 99
+		}, "sheet.basic.attacks[0].damage_type"},
+		{"basic: range 601", func(s *charactersv1.CharacterSheet) {
+			s.Content = basicSheet().Content
+			s.GetBasic().Attacks[0].RangeFt = 601
+		}, "sheet.basic.attacks[0].range_ft"},
 		{"basic: long damage", func(s *charactersv1.CharacterSheet) {
 			s.Content = basicSheet().Content
+			s.GetBasic().Attacks = nil // the old text only counts without attacks
 			s.GetBasic().Damage = strings.Repeat("d", 41)
 		}, "sheet.basic.damage"},
 	}
@@ -668,5 +715,44 @@ func TestCatalogToProtoMaxSpellLevel(t *testing.T) {
 	}
 	if len(want) > 0 {
 		t.Errorf("classes missing from the content: %v", want)
+	}
+}
+
+// TestDerivedToProtoResourcesAndDice: the combat data reaches the API.
+func TestDerivedToProtoResourcesAndDice(t *testing.T) {
+	t.Parallel()
+	c := loadRules(t)
+	d := derivedToProto(rules.Derive(buildOf(pensantusSheet().GetFull()), c))
+	if r := d.GetResources(); len(r) != 1 || r[0].GetKey() != "arcane_recovery" || r[0].GetMax() != 1 ||
+		r[0].GetRecharge() != rulesv1.Recharge_RECHARGE_LONG_REST || r[0].GetNamePt() != "Recuperação Arcana" {
+		t.Errorf("resources = %v, want Arcane Recovery once a day", r)
+	}
+	if len(d.GetStandardActions()) != 10 || d.GetStandardActions()[2].GetNamePt() != "Disparada" ||
+		d.GetStandardActions()[2].GetEconomy() != rulesv1.ActionEconomy_ACTION_ECONOMY_ACTION {
+		t.Errorf("standard actions = %v", d.GetStandardActions())
+	}
+	for _, a := range d.GetAttacks() {
+		if a.GetKey() == "spell:fire-bolt" && (a.GetDamageDice().GetCount() != 1 || a.GetDamageDice().GetSides() != 10 || a.GetVersatileDamageDice() != nil) {
+			t.Errorf("fire bolt dice = %v / %v", a.GetDamageDice(), a.GetVersatileDamageDice())
+		}
+		if a.GetKey() == "equipment:quarterstaff" && (a.GetDamageDice().GetBonus() != 1 || a.GetVersatileDamageDice().GetSides() != 8 || a.GetDamageTypeKey() != "damage-type:bludgeoning") {
+			t.Errorf("quarterstaff dice = %v / %v, %q", a.GetDamageDice(), a.GetVersatileDamageDice(), a.GetDamageTypeKey())
+		}
+	}
+
+	fighter := rules.Derive(rules.Build{
+		BaseScores: map[rules.Ability]int{rules.STR: 15, rules.DEX: 14, rules.CON: 13, rules.INT: 12, rules.WIS: 10, rules.CHA: 8},
+		Race:       "race:human", Background: "background:acolyte",
+		Classes: []rules.ClassLevel{{Class: "class:fighter", Level: 3}},
+	}, c)
+	f := derivedToProto(fighter)
+	found := false
+	for _, a := range f.GetActions() {
+		if a.GetKey() == "feature:second-wind" {
+			found = a.GetEconomy() == rulesv1.ActionEconomy_ACTION_ECONOMY_BONUS_ACTION && a.GetResourceKey() == "second_wind"
+		}
+	}
+	if !found {
+		t.Errorf("Second Wind missing from actions: %v", f.GetActions())
 	}
 }

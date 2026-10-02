@@ -5,21 +5,27 @@
     [armorClass]="s.armorClass"
     [speedFt]="s.speedWalkFt"
     [hitPointsMax]="s.hitPointsMax"
+    [initiative]="s.initiativeBonus"
   />
 </section>
 
-<section class="mr-panel" aria-labelledby="ataque-heading">
-  <h2 id="ataque-heading" class="mr-panel__title">Ataque</h2>
-  <dl class="attack">
-    <div class="attack__item">
-      <dt>Bônus de ataque</dt>
-      <dd class="attack__bonus">{{ formatModifier(s.attackBonus) }}</dd>
-    </div>
-    <div class="attack__item">
-      <dt>Dano</dt>
-      <dd>{{ s.damage || '—' }}</dd>
-    </div>
-  </dl>
+<section class="mr-panel" aria-labelledby="ataques-heading">
+  <h2 id="ataques-heading" class="mr-panel__title">Ataques</h2>
+  @if (s.attacks.length > 0) {
+    <ul class="attacks">
+      @for (a of s.attacks; track $index) {
+        <li class="attacks__item">
+          <span class="attacks__name">{{ a.name }} {{ formatModifier(a.attackBonus) }}</span>
+          · {{ damageOf(a) }}
+        </li>
+      }
+    </ul>
+  } @else {
+    <p class="attacks__empty">Sem ataques.</p>
+    @if (s.legacyDamage) {
+      <p class="attacks__empty">Dano antigo: {{ s.legacyDamage }}</p>
+    }
+  }
 </section>
 
 <section class="mr-panel" aria-labelledby="descricao-heading">

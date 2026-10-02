@@ -29,7 +29,6 @@ import {
 } from './character-editor.types';
 import { EditorStepper } from './editor-stepper/editor-stepper';
 import {
-  BASIC_SHEET_FIELDS,
   EDITOR_STEP_LABELS,
   EditorStepKey,
   FULL_SHEET_FIELDS,
@@ -38,6 +37,12 @@ import {
   describeInvalidFields,
   invalidFields,
 } from './editor-labels';
+import {
+  basicFormToValue,
+  createBasicForm,
+  invalidBasicFields,
+  patchBasicForm,
+} from './npc-short-form/basic-form';
 import { NpcShortForm } from './npc-short-form/npc-short-form';
 import { SkillPicker } from './skill-picker/skill-picker';
 import { SpellPicker } from './spell-picker/spell-picker';
@@ -263,15 +268,7 @@ export class CharacterEditor {
     }),
   });
 
-  protected readonly basicForm = this.fb.nonNullable.group({
-    name: ['', [Validators.required, Validators.maxLength(80)]],
-    hitPointsMax: [1, [Validators.required, Validators.min(1)]],
-    armorClass: [10, [Validators.required, Validators.min(1)]],
-    speedWalkFt: [30, [Validators.required, Validators.min(0)]],
-    attackBonus: [0, Validators.required],
-    damage: ['', [Validators.required, Validators.maxLength(80)]],
-    description: ['', Validators.maxLength(2000)],
-  });
+  protected readonly basicForm = createBasicForm(this.fb);
 
   private readonly selectedRaceKey = toSignal(this.fullForm.controls.race.valueChanges, {
     initialValue: '',
@@ -421,7 +418,7 @@ export class CharacterEditor {
   });
   private readonly invalidBasicFields = computed(() => {
     this.basicFormValue();
-    return this.showErrors() ? invalidFields(this.basicForm, BASIC_SHEET_FIELDS) : [];
+    return this.showErrors() ? invalidBasicFields(this.basicForm) : [];
   });
   /** "Básico: Nome do personagem, Raça. Atributos: Força." — or `''` when
    * nothing needs fixing (or no submit was tried yet). */
@@ -587,7 +584,7 @@ export class CharacterEditor {
           this.patchFullForm(existing.full);
         }
         if (existing.basic) {
-          this.basicForm.setValue(existing.basic);
+          patchBasicForm(this.fb, this.basicForm, existing.basic);
         }
       })
       .catch((err: unknown) => {
@@ -824,7 +821,7 @@ export class CharacterEditor {
           campaignId: s.campaignId,
           kind: s.kind,
           full: isBasic ? null : this.buildFullValue(),
-          basic: isBasic ? this.basicForm.getRawValue() : null,
+          basic: isBasic ? basicFormToValue(this.basicForm) : null,
         });
         await this.router.navigate(['/campanhas', s.campaignId, 'personagens', res.characterId]);
       } else if (s.characterId) {
@@ -834,7 +831,7 @@ export class CharacterEditor {
           revision: s.revision,
           name: isBasic ? this.basicForm.getRawValue().name : this.fullForm.getRawValue().name,
           full: isBasic ? null : this.buildFullValue(),
-          basic: isBasic ? this.basicForm.getRawValue() : null,
+          basic: isBasic ? basicFormToValue(this.basicForm) : null,
         });
         await this.router.navigate(['/campanhas', s.campaignId, 'personagens', s.characterId]);
       }

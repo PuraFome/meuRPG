@@ -25,13 +25,16 @@ Usar as mesmas palavras nas conversas, nos documentos e no código evita muita c
 | Intenção de login | Algo que a pessoa pediu antes de entrar e que o servidor conclui logo depois do login, como aceitar um convite. Fica só no servidor, dentro do estado do login. | `intent`, `IntentHandler` |
 | Cena de RP | Momento fora de combate, aberto por um ponto de interesse. | `scene` |
 | Ação da cena | Um item da lista simples do que o jogador pode fazer ou rolar numa cena. | `scene_action` |
+| Economia de ação | O que o personagem pode gastar num turno: uma ação, uma ação bônus, uma reação e o movimento (o deslocamento, dobrado depois da Disparada). O motor calcula o que ainda está disponível (MR-014). | `Economy`, `TurnOptions` |
+| Recurso | Uma capacidade com usos limitados, como Retomar o Fôlego (1 uso por descanso curto), Ki ou Fúria. A ficha diz o máximo e quando volta; a sessão conta os usos gastos. | `Resource`, `Derived.Resources` |
+| Código de motivo | O motivo de uma opção estar desabilitada, como `NO_SLOT` ou `ACTION_USED`. O servidor manda só o código; o app escreve a frase em português. | `DisabledReason` |
 | Encontro | Um combate num mapa, com iniciativa, rodadas e turnos. | `encounter` |
 | Combatente | Um personagem dentro de um encontro. Guarda PV atual, iniciativa e posição daquele combate. | `combatant` |
 | Iniciativa | A rolagem que define a ordem dos turnos num encontro. Cada combatente rola a própria, inclusive NPCs iguais (RN-19). | `initiative` |
 | Grade | O quadriculado do mapa no combate. Cada quadrado vale 1,5 m, inclusive na diagonal (RN-21). | `grid` |
 | Teste contra a morte | O teste do personagem com 0 PV. Na terceira falha, ele só morre quando o mestre confirma (RN-03). | `death_save` |
 | Personagem | Tem um tipo: jogador, inimigo, boss, minion ou NPC de história. O personagem de jogador que morre não é apagado: fica no sistema, como base de outro personagem ou como NPC do mestre em outra campanha (RN-03, RN-04). | `character`, `kind` |
-| Ficha | Os dados de regra de um personagem. Completa para jogador, inimigo e boss; básica para minion e NPC de história. | `sheet`, `FullSheet`, `BasicSheet` |
+| Ficha | Os dados de regra de um personagem. Completa para jogador, inimigo e boss; básica (PV, CA, deslocamento, iniciativa e até três ataques com dados) para minion e NPC de história. | `sheet`, `FullSheet`, `BasicSheet` |
 | Trava da ficha | Momento em que o jogador deixa de editar a própria ficha: o início da primeira sessão da campanha, ou da próxima sessão para um personagem criado depois. A história do personagem tem trava própria, que o mestre libera. | `sheet_locked_at`, `story_editing_allowed` |
 | Estado do personagem | Onde o personagem está no ciclo de vida: rascunho, travada, morto ou pendente de aprovação. O servidor calcula a cada leitura; o NPC está sempre em rascunho. | `CharacterState` |
 | História do personagem | Personalidade, aparência, história e aliados: o texto que descreve o personagem, fora das regras. Depois da trava da ficha, o jogador só a edita quando o mestre libera (liberação da história), até a próxima sessão. | `CharacterStory`, `story_editing_allowed` |

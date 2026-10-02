@@ -119,6 +119,18 @@ func TestMR005_MasterCreatesNpcsOfEachKind(t *testing.T) {
 		if npc.GetSheet().GetBasic().GetHitPointsMax() != 7 || npc.GetDerived() != nil {
 			t.Errorf("%v = %v, want a basic sheet without derived numbers", kind, npc)
 		}
+		if b := npc.GetSheet().GetBasic(); b.GetInitiativeBonus() != 2 || len(b.GetAttacks()) != 1 || b.GetAttacks()[0].GetName() != "Cimitarra" {
+			t.Errorf("%v basic sheet = %v, want initiative +2 and the Cimitarra attack back as saved", kind, b)
+		}
+		// A sheet stored before Etapa 6 (a bonus and the damage as text) reads as an attack.
+		if _, err := h.pool.Exec(t.Context(),
+			`UPDATE characters SET sheet = '{"basic":{"hit_points_max":7,"armor_class":15,"attack_bonus":4,"damage":"1d6+2 cortante"}}' WHERE id = $1`,
+			npc.GetId()); err != nil {
+			t.Fatal(err)
+		}
+		if old := mestre.get(t, campaign, npc.GetId()).GetSheet().GetBasic(); len(old.GetAttacks()) != 1 || old.GetAttacks()[0].GetDamageDiceSides() != 6 || old.GetDamage() != "" {
+			t.Errorf("%v old sheet = %v, want the old damage converted to one attack", kind, old)
+		}
 		_, err := mestre.api.CreateCharacter(t.Context(), connect.NewRequest(&charactersv1.CreateCharacterRequest{
 			CampaignId: campaign, Kind: kind, Name: "Errado", Sheet: enemySheet(),
 		}))

@@ -390,6 +390,9 @@ type SpellEntry struct {
 	Classes       []string
 	Ritual        bool
 	Concentration bool
+	// CastingTime is here, and not only in SpellDetails, because "Sua
+	// vez" groups a character's spells by it (package combat).
+	CastingTime CastingTime
 }
 
 // ProficiencyLevel says how much of the proficiency bonus a roll adds.
@@ -457,6 +460,13 @@ type Derived struct {
 	// Attacks are the carried weapons (Kind "weapon") and the cantrips
 	// that deal damage (Kind "spell").
 	Attacks []Attack
+	// Resources are the use-limited features the character has, and Actions
+	// the actions features grant (Second Wind is a bonus action that spends
+	// the "second_wind" resource). StandardActions are the ones everyone
+	// has (Attack, Dash...). All three feed package combat's TurnOptions.
+	Resources       []Resource
+	Actions         []Action
+	StandardActions []Action
 	// Features are the class, subclass, race and background features and
 	// traits up to the character's level.
 	Features []Feature
@@ -592,7 +602,12 @@ type Attack struct {
 	DamageType       string
 	DamageTypeNamePT string
 	VersatileDamage  string
-	Proficient       bool
+	// DamageDice and VersatileDice are Damage and VersatileDamage as
+	// numbers, for the combat functions. Both are zero when the weapon has
+	// no damage dice.
+	DamageDice    DiceFormula
+	VersatileDice DiceFormula
+	Proficient    bool
 	// RangeFt is the reach or normal range, LongRangeFt the long range.
 	RangeFt     int
 	LongRangeFt int

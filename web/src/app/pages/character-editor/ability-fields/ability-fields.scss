@@ -1,5 +1,6 @@
 // Like the sheet's ability column: short fields with the name on top and
-// the number big and centred, 2 x 3 on a phone, 3 x 2 from 600px.
+// the number big and centred, 2 x 3 on a phone, 3 x 2 from 600px, and one
+// row of six from 1024px, so the row spans the editor's width (E6-20).
 :host {
   display: block;
 }
@@ -15,6 +16,10 @@
     grid-template-columns: repeat(3, 136px);
     gap: var(--mr-space-4);
     max-width: none;
+  }
+
+  @media (min-width: 1024px) {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }
 

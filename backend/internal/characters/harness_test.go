@@ -467,7 +467,11 @@ func enemySheet() *charactersv1.CharacterSheet {
 // basicSheet is a basic sheet, for a minion or a story NPC.
 func basicSheet() *charactersv1.CharacterSheet {
 	return &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Basic{Basic: &charactersv1.BasicSheet{
-		HitPointsMax: 7, ArmorClass: 15, SpeedFt: 30, AttackBonus: 4, Damage: "1d6+2 cortante",
+		HitPointsMax: 7, ArmorClass: 15, SpeedFt: 30, InitiativeBonus: 2,
+		Attacks: []*charactersv1.BasicAttack{{
+			Name: "Cimitarra", AttackBonus: 4, DamageDiceCount: 1, DamageDiceSides: 6, DamageBonus: 2,
+			DamageType: charactersv1.DamageType_DAMAGE_TYPE_SLASHING,
+		}},
 		Description: "Um goblin nervoso.",
 	}}}
 }

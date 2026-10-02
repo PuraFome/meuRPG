@@ -1,10 +1,9 @@
 // One compact panel.
 // - Phone: two columns; the name and the maximum hit points on rows of
-//   their own (their labels are long), then CA and speed, then the attack
-//   and its damage.
-// - From 600px: three; the name, then PV, CA and speed, then the attack
-//   and its damage.
-// - From 900px: four; name, PV and CA, then speed, attack and damage.
+//   their own (their labels are long), then CA and speed, then initiative.
+// - From 600px: three; the name, then PV, CA and speed, then initiative.
+// - From 900px: four; name, PV and CA, then speed and initiative.
+// The attack cards (npc-attack-card) and the description take the full row.
 :host {
   display: block;
 }
@@ -31,7 +30,8 @@
 
 .short__name,
 .short__hp,
-.short__wide {
+.short__wide,
+.short__attacks {
   grid-column: 1 / -1;
 }
 
@@ -39,16 +39,65 @@
   .short__hp {
     grid-column: auto;
   }
-
-  .short__damage {
-    grid-column: span 2;
-  }
 }
 
 @media (min-width: 900px) {
   .short__name {
     grid-column: span 2;
   }
+}
+
+.short__attacks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  margin-top: var(--mr-space-3);
+}
+
+.short__attacks-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--mr-space-4);
+}
+
+.short__attacks-title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 700;
+}
+
+.short__attacks-lead {
+  margin: 2px 0 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.short__count {
+  flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--mr-ink-muted);
+}
+
+.short__cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.short__add {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+}
+
+.short__max {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
 }
 
 app-fiction-notice {

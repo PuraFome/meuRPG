@@ -95,17 +95,6 @@ export const FULL_SHEET_FIELDS: readonly EditorField[] = [
   { path: 'customFeaturesText', label: 'Características personalizadas', step: 'equipamento' },
 ];
 
-/** Every validated control of the short (minion, story) form. */
-export const BASIC_SHEET_FIELDS: readonly EditorField[] = [
-  { path: 'name', label: 'Nome do personagem', step: null },
-  { path: 'hitPointsMax', label: 'Pontos de vida (máximo)', step: null },
-  { path: 'armorClass', label: 'Classe de Armadura', step: null },
-  { path: 'speedWalkFt', label: 'Deslocamento', step: null },
-  { path: 'attackBonus', label: 'Bônus de ataque', step: null },
-  { path: 'damage', label: 'Dano', step: null },
-  { path: 'description', label: 'Descrição', step: null },
-];
-
 /** The fields of `fields` whose control in `form` is invalid right now. */
 export function invalidFields(
   form: AbstractControl,
