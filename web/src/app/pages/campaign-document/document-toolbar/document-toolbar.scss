@@ -1,0 +1,51 @@
+:host {
+  display: block;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-1);
+  padding: 6px var(--mr-space-2);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+}
+
+.toolbar__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 var(--mr-space-3);
+  border: 0;
+  border-radius: var(--mr-radius-sm);
+  background: none;
+  color: var(--mr-ink);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+
+  .mat-icon {
+    width: 22px;
+    height: 22px;
+    font-size: 22px;
+  }
+
+  &:hover {
+    background: var(--mr-ground);
+  }
+}
+
+.toolbar__rule {
+  align-self: stretch;
+  width: 1px;
+  margin: var(--mr-space-2) var(--mr-space-2);
+  background: var(--mr-line);
+
+  @media (max-width: 599.98px) {
+    display: none;
+  }
+}

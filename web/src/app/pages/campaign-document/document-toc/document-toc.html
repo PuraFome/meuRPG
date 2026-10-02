@@ -1,0 +1,26 @@
+<nav class="toc" aria-label="Sumário">
+  @if (narrow()) {
+    <button type="button" class="toc__toggle" [attr.aria-expanded]="expanded()" aria-controls="doc-toc-list" (click)="expanded.set(!expanded())">
+      <span class="toc__title">Sumário</span>
+      <mat-icon aria-hidden="true">{{ expanded() ? 'expand_less' : 'expand_more' }}</mat-icon>
+    </button>
+  } @else {
+    <h2 class="toc__title">Sumário</h2>
+  }
+  @if (open()) {
+    <ul id="doc-toc-list" class="toc__list">
+      @for (item of items(); track item.index) {
+        <li>
+          <button
+            type="button"
+            class="toc__item"
+            [attr.aria-current]="current() === item.index ? 'location' : null"
+            (click)="pick.emit(item.index)"
+          >
+            {{ item.text }}
+          </button>
+        </li>
+      }
+    </ul>
+  }
+</nav>

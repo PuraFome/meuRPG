@@ -88,6 +88,16 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/gallery/gallery').then((m) => m.GalleryPage),
   },
   {
+    // The campaign document (MR-018), master only; the page tells a player
+    // so. Leaving edit mode with unsaved text asks first (the guard lives
+    // with the page, the page decides, so this file imports nothing of it).
+    path: 'campanhas/:id/documento',
+    canActivate: [authGuard],
+    canDeactivate: [(page: { confirmLeave(): boolean | Promise<boolean> }) => page.confirmLeave()],
+    loadComponent: () =>
+      import('./pages/campaign-document/campaign-document').then((m) => m.CampaignDocumentPage),
+  },
+  {
     // Public: read from the invite link's fragment (never a route param —
     // see InviteAccept's doc comment) and works whether the visitor is
     // signed in or not (MR-003).

@@ -1,0 +1,83 @@
+:host {
+  display: block;
+}
+
+.toc__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 21px;
+  line-height: 26px;
+  font-weight: 700;
+  color: var(--mr-ink);
+}
+
+.toc__list {
+  margin: var(--mr-space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.toc__item {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--mr-radius-sm);
+  background: none;
+  color: var(--mr-ink-muted);
+  font: inherit;
+  font-size: 17px;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--mr-accent-text);
+  }
+
+  &[aria-current='location'] {
+    background: var(--mr-accent-soft);
+    color: var(--mr-ink);
+    font-weight: 700;
+  }
+}
+
+// The phone: a panel with the title as the button, rows below it.
+@media (max-width: 899.98px) {
+  .toc {
+    box-sizing: border-box;
+    padding: 0 var(--mr-space-4);
+    border: 1px solid var(--mr-line);
+    border-radius: var(--mr-radius-lg);
+    background: var(--mr-surface);
+  }
+
+  .toc__toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: 56px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--mr-ink);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .toc__list {
+    margin: 0;
+    padding: var(--mr-space-1) 0 var(--mr-space-3);
+    border-top: 1px solid var(--mr-rule);
+  }
+
+  .toc__item {
+    padding: 0 var(--mr-space-2);
+    color: var(--mr-accent-text);
+
+    &[aria-current='location'] {
+      color: var(--mr-ink);
+    }
+  }
+}

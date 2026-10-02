@@ -1,0 +1,143 @@
+<div class="bar">
+  <p class="status" role="status">
+    @if (dirty()) {
+      <span class="status__draft"><mat-icon aria-hidden="true">edit</mat-icon>Rascunho não salvo</span>
+    } @else {
+      <span>Sem mudanças</span>
+    }
+    @if (lastSaved()) {
+      <span class="mr-muted">{{ lastSaved() }}</span>
+    }
+  </p>
+  @if (confirmingDiscard()) {
+    <div class="actions" role="group" aria-label="Descartar as mudanças">
+      <p class="confirm">Descartar as mudanças? Não dá para desfazer.</p>
+      <button #confirmDiscard matButton="outlined" type="button" class="danger" (click)="discarded.emit()">
+        Descartar mudanças
+      </button>
+      <button matButton type="button" (click)="confirmingDiscard.set(false)">Continuar editando</button>
+    </div>
+  } @else {
+    <div class="actions">
+      <button matButton type="button" (click)="discard()">Descartar mudanças</button>
+      <button
+        matButton="filled"
+        type="button"
+        [disabled]="saving() || conflict() || overLimit() || !dirty()"
+        (click)="save()"
+      >
+        {{ saving() ? 'Salvando...' : 'Salvar documento' }}
+      </button>
+    </div>
+  }
+</div>
+
+@if (conflict()) {
+  <div #conflictNotice class="mr-notice mr-notice--danger" role="alert" tabindex="-1">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <p>
+      <strong>{{ conflictMessage }}</strong>
+      Copie o seu texto antes de recarregar: ao recarregar, ele é trocado pela versão salva.
+    </p>
+    <button matButton="outlined" type="button" (click)="reloadFromServer()">Recarregar</button>
+  </div>
+}
+@if (error()) {
+  <div class="mr-notice mr-notice--danger" role="alert">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <p>{{ error() }}</p>
+  </div>
+}
+@if (counter(); as size) {
+  <div class="mr-notice" [class.mr-notice--warning]="!overLimit()" [class.mr-notice--danger]="overLimit()" role="status">
+    <mat-icon aria-hidden="true">{{ overLimit() ? 'error' : 'warning' }}</mat-icon>
+    <p>
+      <strong>{{ size }}.</strong>
+      {{ overLimit() ? 'O texto passou do limite: apague um trecho para poder salvar.' : 'O documento está perto do limite.' }}
+    </p>
+  </div>
+}
+
+<app-document-toolbar (act)="onToolbar($event)" />
+
+<div class="tabs" role="tablist" aria-label="Texto e prévia">
+  <button
+    type="button"
+    role="tab"
+    id="doc-tab-text"
+    aria-controls="doc-pane-text"
+    [attr.aria-selected]="pane() === 'text'"
+    (click)="pane.set('text')"
+  >
+    Texto
+  </button>
+  <button
+    type="button"
+    role="tab"
+    id="doc-tab-preview"
+    aria-controls="doc-pane-preview"
+    [attr.aria-selected]="pane() === 'preview'"
+    (click)="pane.set('preview')"
+  >
+    Prévia
+  </button>
+</div>
+
+<div class="panes">
+  <section id="doc-pane-text" class="pane" [class.pane--off]="pane() !== 'text'">
+    <label class="mr-label pane__label" for="doc-text">Texto</label>
+    <textarea
+      #textarea
+      id="doc-text"
+      class="source"
+      lang="pt-BR"
+      spellcheck="true"
+      aria-label="Texto do documento"
+      aria-describedby="doc-text-hint"
+      [value]="draft()"
+      (input)="onInput(textarea.value)"
+    ></textarea>
+    <p id="doc-text-hint" class="mr-label hint">
+      Texto em Markdown: ## Título, **negrito**, *itálico*, - lista. Os botões acima escrevem o resto.
+    </p>
+  </section>
+
+  <section id="doc-pane-preview" class="pane" [class.pane--off]="pane() !== 'preview'">
+    <span class="mr-label pane__label" id="doc-preview-label">Prévia</span>
+    <div class="preview" role="region" aria-labelledby="doc-preview-label">
+      <app-markdown
+        idPrefix="doc-prev-h-"
+        [source]="previewSource()"
+        [refs]="refs()"
+        (openRef)="openRef.emit($event)"
+      />
+      @if (previewSource().trim() === '') {
+        <p class="mr-muted preview__empty">A prévia aparece aqui enquanto você escreve.</p>
+      }
+    </div>
+  </section>
+</div>
+
+<app-fiction-notice />
+
+@switch (picker()) {
+  @case ('image') {
+    <app-image-picker-dialog [campaignId]="campaignId()" (picked)="onImage($event)" (closed)="closePicker()" />
+  }
+  @case ('map') {
+    <app-link-picker-dialog
+      kind="mapa"
+      [campaignId]="campaignId()"
+      (picked)="onLink('mapa', $event)"
+      (closed)="closePicker()"
+    />
+  }
+  @case ('sheet') {
+    <app-link-picker-dialog
+      kind="ficha"
+      [campaignId]="campaignId()"
+      (picked)="onLink('ficha', $event)"
+      (closed)="closePicker()"
+    />
+  }
+}

@@ -1,0 +1,16 @@
+<div class="read" [class.read--toc]="toc().length > 0">
+  @if (toc().length > 0) {
+    <app-document-toc class="read__toc" [items]="toc()" [current]="current()" (pick)="goTo($event)" />
+  }
+  <article class="mr-panel read__panel" aria-label="Texto do documento">
+    @if (isEmpty()) {
+      <p class="empty">
+        <mat-icon aria-hidden="true">description</mat-icon>
+        O documento ainda está vazio. Use "Editar documento" para escrever o roteiro, as dicas e os segredos da campanha.
+      </p>
+    } @else {
+      <app-markdown [source]="body()" [refs]="refs()" (openRef)="openRef.emit($event)" />
+    }
+    <app-fiction-notice />
+  </article>
+</div>

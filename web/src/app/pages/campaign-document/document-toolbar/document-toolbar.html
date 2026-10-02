@@ -1,0 +1,19 @@
+<div class="toolbar" role="toolbar" aria-label="Formatar o texto" aria-orientation="horizontal">
+  @for (tool of tools; track tool.action; let i = $index) {
+    @if (tool.divider) {
+      <span class="toolbar__rule" aria-hidden="true"></span>
+    }
+    <button
+      #btn
+      type="button"
+      class="toolbar__button"
+      [attr.tabindex]="i === active() ? 0 : -1"
+      [attr.aria-haspopup]="tool.dialog ? 'dialog' : null"
+      (mousedown)="$event.preventDefault()"
+      (keydown)="onKeydown($event, i)"
+      (click)="press(tool, i, btn)"
+    >
+      <mat-icon aria-hidden="true">{{ tool.icon }}</mat-icon>{{ tool.label }}
+    </button>
+  }
+</div>

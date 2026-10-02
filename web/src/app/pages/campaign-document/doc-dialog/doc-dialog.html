@@ -1,0 +1,25 @@
+<dialog
+  #dialog
+  class="doc-dialog"
+  [class.doc-dialog--wide]="size() === 'wide'"
+  [attr.aria-labelledby]="titleId"
+  (close)="closed.emit()"
+  (click)="onClick($event)"
+>
+  <header class="doc-dialog__head">
+    @if (icon()) {
+      <mat-icon aria-hidden="true">{{ icon() }}</mat-icon>
+    }
+    <div class="doc-dialog__title">
+      <h2 [id]="titleId">{{ heading() }}</h2>
+      @if (subtitle()) {
+        <p>{{ subtitle() }}</p>
+      }
+    </div>
+    <button #closeButton type="button" class="doc-dialog__close" aria-label="Fechar" (click)="close()">
+      <mat-icon aria-hidden="true">close</mat-icon>
+    </button>
+  </header>
+  <div class="doc-dialog__body"><ng-content /></div>
+  <footer class="doc-dialog__foot"><ng-content select="[dialogFooter]" /></footer>
+</dialog>

@@ -1,0 +1,24 @@
+<app-doc-dialog
+  size="wide"
+  icon="image"
+  heading="Imagem da galeria"
+  subtitle="Escolha a imagem que o documento vai mostrar, com a legenda embaixo."
+  (closed)="closed.emit()"
+>
+  <app-gallery-picker
+    [campaignId]="campaignId()"
+    [(selectedId)]="imageId"
+    label="Imagem da galeria"
+    (picked)="choose($event)"
+  />
+  <button dialogFooter matButton type="button" (click)="closed.emit()">Cancelar</button>
+  <button
+    dialogFooter
+    matButton="outlined"
+    type="button"
+    [disabled]="imageId() === null"
+    (click)="insert()"
+  >
+    Inserir imagem
+  </button>
+</app-doc-dialog>

@@ -1,0 +1,60 @@
+:host {
+  display: block;
+}
+
+// The panel carries the reading column: the text 80px in from each side on
+// a desktop, a figure breaking out 56px of that; on a phone the text is
+// 16px in and a figure goes edge to edge (README-B).
+.read__panel {
+  --md-inset: var(--mr-space-4);
+  --md-bleed: var(--mr-space-4);
+
+  padding: var(--mr-space-5) 0 var(--mr-space-4);
+  overflow: hidden;
+
+  @media (min-width: 900px) {
+    --md-inset: 80px;
+    --md-bleed: 56px;
+
+    padding-block: 32px var(--mr-space-5);
+  }
+}
+
+.read {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+
+  @media (min-width: 900px) {
+    display: grid;
+    align-items: start;
+    gap: var(--mr-space-6);
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 660px;
+
+    &.read--toc {
+      grid-template-columns: 276px minmax(0, 660px);
+      max-width: none;
+    }
+  }
+}
+
+.read__toc {
+  @media (min-width: 900px) {
+    position: sticky;
+    top: 80px;
+  }
+}
+
+.empty {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-3);
+  margin: 0 var(--md-inset) var(--mr-space-4);
+  color: var(--mr-ink-muted);
+}
+
+app-fiction-notice {
+  display: block;
+  margin: var(--mr-space-5) var(--md-inset) 0;
+}

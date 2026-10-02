@@ -1,0 +1,22 @@
+:host {
+  display: contents;
+}
+
+p {
+  margin: 0;
+}
+
+.map-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: calc(100dvh - 260px);
+  object-fit: contain;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-ground);
+}
+
+.retry {
+  margin-top: var(--mr-space-3);
+}

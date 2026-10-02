@@ -1,0 +1,29 @@
+<section class="mr-panel doc" aria-labelledby="document-panel-heading">
+  <h2 class="mr-panel__title" id="document-panel-heading">Documento da campanha</h2>
+
+  @let s = state();
+  @switch (s.status) {
+    @case ('loading') {
+      <p class="mr-muted doc__status" role="status">Carregando o documento...</p>
+    }
+    @case ('error') {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ s.message }}</p>
+      </div>
+    }
+    @case ('ready') {
+      <p class="doc__row">
+        <mat-icon aria-hidden="true">description</mat-icon>
+        <span class="mr-list__text">
+          <span class="mr-list__name">{{ title() }}</span>
+          <span class="mr-list__sub">{{ line() }}</span>
+        </span>
+      </p>
+    }
+  }
+
+  <div>
+    <a matButton="outlined" [routerLink]="['/campanhas', campaignId(), 'documento']">Abrir documento</a>
+  </div>
+</section>
