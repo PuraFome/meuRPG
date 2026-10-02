@@ -26,8 +26,13 @@
 package migrations
 
 import (
+	"crypto/sha256"
 	"database/sql"
 	"embed"
+	"encoding/hex"
+	"fmt"
+	"io/fs"
+	"slices"
 
 	"github.com/pressly/goose/v3"
 )
@@ -42,4 +47,28 @@ var files embed.FS
 // goose_db_version table.
 func NewProvider(db *sql.DB, opts ...goose.ProviderOption) (*goose.Provider, error) {
 	return goose.NewProvider(goose.DialectPostgres, db, files, opts...)
+}
+
+// Fingerprint is a short hash of every migration file, names and contents.
+// Two databases built from the same fingerprint have the same schema;
+// internal/platform/dbtest names the template database it builds for the
+// tests after it, so a new or changed migration gets a new template.
+func Fingerprint() (string, error) {
+	names, err := fs.Glob(files, "*.sql")
+	if err != nil {
+		return "", err
+	}
+	slices.Sort(names)
+	h := sha256.New()
+	for _, name := range names {
+		body, err := files.ReadFile(name)
+		if err != nil {
+			return "", err
+		}
+		// The name and the length go in first, so moving bytes from one
+		// file to the next changes the hash.
+		fmt.Fprintf(h, "%s\x00%d\x00", name, len(body))
+		h.Write(body)
+	}
+	return hex.EncodeToString(h.Sum(nil))[:12], nil
 }
