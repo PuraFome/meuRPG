@@ -82,6 +82,9 @@
                 </li>
               }
             </ul>
+            @if (isMaster) {
+              <app-pending-members [campaignId]="s.campaign.id" [campaignName]="s.campaign.name" />
+            }
           </section>
 
           @if (isMaster) {
