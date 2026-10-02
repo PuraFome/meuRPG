@@ -8,8 +8,9 @@
 // open (RN-06), the session's live stream (ADR-0005), the characters'
 // vitals, which the master corrects during the session (RN-02), the
 // session's current map (the maps themselves are meurpg.maps.v1), and the
-// gallery image the master shows the players (MR-028). Turns, actions and
-// the session history screen come with combat (Etapa 6).
+// gallery image the master shows the players (MR-028). Combat has its own
+// service (combat.proto, CombatService: MR-013); its attacks, actions and the
+// combat log come in the next slice of Etapa 6.
 
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
@@ -25,7 +26,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/play/v1/play.proto.
  */
 export const file_meurpg_play_v1_play: GenFile = /*@__PURE__*/
-  fileDesc("ChltZXVycGcvcGxheS92MS9wbGF5LnByb3RvEg5tZXVycGcucGxheS52MSJOChJHYW1lU2Vzc2lvbkJsb2NrZWQSOAoGcmVhc29uGAEgASgOMigubWV1cnBnLnBsYXkudjEuR2FtZVNlc3Npb25CbG9ja2VkUmVhc29uIqQBCgtHYW1lU2Vzc2lvbhIKCgJpZBgBIAEoCRITCgtjYW1wYWlnbl9pZBgCIAEoCRIWCg5zZXNzaW9uX251bWJlchgDIAEoBRIuCgpzdGFydGVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIsCghlbmRlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiLgoXU3RhcnRHYW1lU2Vzc2lvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiaQoYU3RhcnRHYW1lU2Vzc2lvblJlc3BvbnNlEjEKDGdhbWVfc2Vzc2lvbhgBIAEoCzIbLm1ldXJwZy5wbGF5LnYxLkdhbWVTZXNzaW9uEhoKEmxvY2tlZF9zaGVldF9jb3VudBgCIAEoBSJFChVFbmRHYW1lU2Vzc2lvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFwoPZ2FtZV9zZXNzaW9uX2lkGAIgASgJIksKFkVuZEdhbWVTZXNzaW9uUmVzcG9uc2USMQoMZ2FtZV9zZXNzaW9uGAEgASgLMhsubWV1cnBnLnBsYXkudjEuR2FtZVNlc3Npb24iLgoXTGlzdEdhbWVTZXNzaW9uc1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiTgoYTGlzdEdhbWVTZXNzaW9uc1Jlc3BvbnNlEjIKDWdhbWVfc2Vzc2lvbnMYASADKAsyGy5tZXVycGcucGxheS52MS5HYW1lU2Vzc2lvbiIdChtMaXN0T3BlbkdhbWVTZXNzaW9uc1JlcXVlc3QiWwocTGlzdE9wZW5HYW1lU2Vzc2lvbnNSZXNwb25zZRI7ChJvcGVuX2dhbWVfc2Vzc2lvbnMYASADKAsyHy5tZXVycGcucGxheS52MS5PcGVuR2FtZVNlc3Npb24ihwEKD09wZW5HYW1lU2Vzc2lvbhIxCgxnYW1lX3Nlc3Npb24YASABKAsyGy5tZXVycGcucGxheS52MS5HYW1lU2Vzc2lvbhIVCg1jYW1wYWlnbl9uYW1lGAIgASgJEioKB215X3JvbGUYAyABKA4yGS5tZXVycGcuY2FtcGFpZ25zLnYxLlJvbGUiLAoVR2V0TGl2ZVNlc3Npb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIsUBChZHZXRMaXZlU2Vzc2lvblJlc3BvbnNlEjEKDGdhbWVfc2Vzc2lvbhgBIAEoCzIbLm1ldXJwZy5wbGF5LnYxLkdhbWVTZXNzaW9uEi8KBnZpdGFscxgCIAMoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscxIWCg5jdXJyZW50X21hcF9pZBgDIAEoCRIvCgtzaG93bl9pbWFnZRgEIAEoCzIaLm1ldXJwZy5wbGF5LnYxLlNob3duSW1hZ2UiaQoKU2hvd25JbWFnZRIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEg0KBXdpZHRoGAMgASgFEg4KBmhlaWdodBgEIAEoBRILCgN1cmwYBSABKAkSFQoNdGh1bWJuYWlsX3VybBgGIAEoCSKkAwoPQ2hhcmFjdGVyVml0YWxzEhQKDGNoYXJhY3Rlcl9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEhYKDnBsYXllcl91c2VyX2lkGAMgASgJEhoKEmhpdF9wb2ludHNfY3VycmVudBgEIAEoBRIWCg5oaXRfcG9pbnRzX21heBgFIAEoBRIcChRoaXRfcG9pbnRzX3RlbXBvcmFyeRgGIAEoBRIzCgtzcGVsbF9zbG90cxgHIAMoCzIeLm1ldXJwZy5wbGF5LnYxLlNwZWxsU2xvdFVzYWdlEjEKCnBhY3Rfc2xvdHMYCCABKAsyHS5tZXVycGcucGxheS52MS5QYWN0U2xvdFVzYWdlEioKCGhpdF9kaWNlGAkgAygLMhgubWV1cnBnLnJ1bGVzLnYxLkhpdERpY2USFgoOaGl0X2RpY2VfdG90YWwYCiABKAUSFQoNaGl0X2RpY2VfdXNlZBgLIAEoBRIQCghyZXZpc2lvbhgMIAEoBRIuCgp1cGRhdGVkX2F0GA0gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCI8Cg5TcGVsbFNsb3RVc2FnZRINCgVsZXZlbBgBIAEoBRINCgV0b3RhbBgCIAEoBRIMCgR1c2VkGAMgASgFIkAKDVBhY3RTbG90VXNhZ2USEgoKc2xvdF9sZXZlbBgBIAEoBRINCgV0b3RhbBgCIAEoBRIMCgR1c2VkGAMgASgFIi4KF1dhdGNoR2FtZVNlc3Npb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIr4IChhXYXRjaEdhbWVTZXNzaW9uUmVzcG9uc2USPwoFcmVhZHkYASABKAsyLi5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVzcG9uc2UuUmVhZHlIABJHCgloZWFydGJlYXQYAiABKAsyMi5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVzcG9uc2UuSGVhcnRiZWF0SAASUAoOdml0YWxzX2NoYW5nZWQYAyABKAsyNi5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVzcG9uc2UuVml0YWxzQ2hhbmdlZEgAEk4KDXNlc3Npb25fZW5kZWQYBCABKAsyNS5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVzcG9uc2UuU2Vzc2lvbkVuZGVkSAASWQoTY3VycmVudF9tYXBfY2hhbmdlZBgFIAEoCzI6Lm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5DdXJyZW50TWFwQ2hhbmdlZEgAEkoKC21hcF9jaGFuZ2VkGAYgASgLMjMubWV1cnBnLnBsYXkudjEuV2F0Y2hHYW1lU2Vzc2lvblJlc3BvbnNlLk1hcENoYW5nZWRIABJKCgt0b2tlbl9tb3ZlZBgHIAEoCzIzLm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5Ub2tlbk1vdmVkSAASWQoTc2hvd25faW1hZ2VfY2hhbmdlZBgIIAEoCzI6Lm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5TaG93bkltYWdlQ2hhbmdlZEgAGjoKBVJlYWR5EjEKDGdhbWVfc2Vzc2lvbhgBIAEoCzIbLm1ldXJwZy5wbGF5LnYxLkdhbWVTZXNzaW9uGgsKCUhlYXJ0YmVhdBpACg1WaXRhbHNDaGFuZ2VkEi8KBnZpdGFscxgBIAEoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscxpBCgxTZXNzaW9uRW5kZWQSMQoMZ2FtZV9zZXNzaW9uGAEgASgLMhsubWV1cnBnLnBsYXkudjEuR2FtZVNlc3Npb24aIwoRQ3VycmVudE1hcENoYW5nZWQSDgoGbWFwX2lkGAEgASgJGhwKCk1hcENoYW5nZWQSDgoGbWFwX2lkGAEgASgJGj4KEVNob3duSW1hZ2VDaGFuZ2VkEikKBWltYWdlGAEgASgLMhoubWV1cnBnLnBsYXkudjEuU2hvd25JbWFnZRpOCgpUb2tlbk1vdmVkEg4KBm1hcF9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSDAoEeF9icBgDIAEoBRIMCgR5X2JwGAQgASgFQgcKBWV2ZW50IvACChxBZGp1c3RDaGFyYWN0ZXJWaXRhbHNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkSHwoSaGl0X3BvaW50c19jdXJyZW50GAQgASgFSACIAQESIQoUaGl0X3BvaW50c190ZW1wb3JhcnkYBSABKAVIAYgBARI4ChBzcGVsbF9zbG90c191c2VkGAYgAygLMh4ubWV1cnBnLnBsYXkudjEuU3BlbGxTbG90c1VzZWQSHAoPcGFjdF9zbG90c191c2VkGAcgASgFSAKIAQESGgoNaGl0X2RpY2VfdXNlZBgIIAEoBUgDiAEBQhUKE19oaXRfcG9pbnRzX2N1cnJlbnRCFwoVX2hpdF9wb2ludHNfdGVtcG9yYXJ5QhIKEF9wYWN0X3Nsb3RzX3VzZWRCEAoOX2hpdF9kaWNlX3VzZWQiLQoOU3BlbGxTbG90c1VzZWQSDQoFbGV2ZWwYASABKAUSDAoEdXNlZBgCIAEoBSJQCh1BZGp1c3RDaGFyYWN0ZXJWaXRhbHNSZXNwb25zZRIvCgZ2aXRhbHMYASABKAsyHy5tZXVycGcucGxheS52MS5DaGFyYWN0ZXJWaXRhbHMiOwoUU2V0Q3VycmVudE1hcFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSDgoGbWFwX2lkGAIgASgJIi8KFVNldEN1cnJlbnRNYXBSZXNwb25zZRIWCg5jdXJyZW50X21hcF9pZBgBIAEoCSI9ChRTZXRTaG93bkltYWdlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIQCghpbWFnZV9pZBgCIAEoCSJIChVTZXRTaG93bkltYWdlUmVzcG9uc2USLwoLc2hvd25faW1hZ2UYASABKAsyGi5tZXVycGcucGxheS52MS5TaG93bkltYWdlKq4BChhHYW1lU2Vzc2lvbkJsb2NrZWRSZWFzb24SKwonR0FNRV9TRVNTSU9OX0JMT0NLRURfUkVBU09OX1VOU1BFQ0lGSUVEEAASLworR0FNRV9TRVNTSU9OX0JMT0NLRURfUkVBU09OX05PX09QRU5fU0VTU0lPThABEjQKMEdBTUVfU0VTU0lPTl9CTE9DS0VEX1JFQVNPTl9TRVNTSU9OX0FMUkVBRFlfT1BFThACMroHCgtQbGF5U2VydmljZRJlChBTdGFydEdhbWVTZXNzaW9uEicubWV1cnBnLnBsYXkudjEuU3RhcnRHYW1lU2Vzc2lvblJlcXVlc3QaKC5tZXVycGcucGxheS52MS5TdGFydEdhbWVTZXNzaW9uUmVzcG9uc2USXwoORW5kR2FtZVNlc3Npb24SJS5tZXVycGcucGxheS52MS5FbmRHYW1lU2Vzc2lvblJlcXVlc3QaJi5tZXVycGcucGxheS52MS5FbmRHYW1lU2Vzc2lvblJlc3BvbnNlEmoKEExpc3RHYW1lU2Vzc2lvbnMSJy5tZXVycGcucGxheS52MS5MaXN0R2FtZVNlc3Npb25zUmVxdWVzdBooLm1ldXJwZy5wbGF5LnYxLkxpc3RHYW1lU2Vzc2lvbnNSZXNwb25zZSIDkAICEnYKFExpc3RPcGVuR2FtZVNlc3Npb25zEisubWV1cnBnLnBsYXkudjEuTGlzdE9wZW5HYW1lU2Vzc2lvbnNSZXF1ZXN0GiwubWV1cnBnLnBsYXkudjEuTGlzdE9wZW5HYW1lU2Vzc2lvbnNSZXNwb25zZSIDkAIBEmQKDkdldExpdmVTZXNzaW9uEiUubWV1cnBnLnBsYXkudjEuR2V0TGl2ZVNlc3Npb25SZXF1ZXN0GiYubWV1cnBnLnBsYXkudjEuR2V0TGl2ZVNlc3Npb25SZXNwb25zZSIDkAICEmcKEFdhdGNoR2FtZVNlc3Npb24SJy5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVxdWVzdBooLm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZTABEnQKFUFkanVzdENoYXJhY3RlclZpdGFscxIsLm1ldXJwZy5wbGF5LnYxLkFkanVzdENoYXJhY3RlclZpdGFsc1JlcXVlc3QaLS5tZXVycGcucGxheS52MS5BZGp1c3RDaGFyYWN0ZXJWaXRhbHNSZXNwb25zZRJcCg1TZXRDdXJyZW50TWFwEiQubWV1cnBnLnBsYXkudjEuU2V0Q3VycmVudE1hcFJlcXVlc3QaJS5tZXVycGcucGxheS52MS5TZXRDdXJyZW50TWFwUmVzcG9uc2USXAoNU2V0U2hvd25JbWFnZRIkLm1ldXJwZy5wbGF5LnYxLlNldFNob3duSW1hZ2VSZXF1ZXN0GiUubWV1cnBnLnBsYXkudjEuU2V0U2hvd25JbWFnZVJlc3BvbnNlQrcBChJjb20ubWV1cnBnLnBsYXkudjFCCVBsYXlQcm90b1ABWjxnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvcGxheS92MTtwbGF5djGiAgNNUFiqAg5NZXVycGcuUGxheS5WMcoCDk1ldXJwZ1xQbGF5XFYx4gIaTWV1cnBnXFBsYXlcVjFcR1BCTWV0YWRhdGHqAhBNZXVycGc6OlBsYXk6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp, file_meurpg_campaigns_v1_campaigns, file_meurpg_rules_v1_rules]);
+  fileDesc("ChltZXVycGcvcGxheS92MS9wbGF5LnByb3RvEg5tZXVycGcucGxheS52MSJOChJHYW1lU2Vzc2lvbkJsb2NrZWQSOAoGcmVhc29uGAEgASgOMigubWV1cnBnLnBsYXkudjEuR2FtZVNlc3Npb25CbG9ja2VkUmVhc29uIqQBCgtHYW1lU2Vzc2lvbhIKCgJpZBgBIAEoCRITCgtjYW1wYWlnbl9pZBgCIAEoCRIWCg5zZXNzaW9uX251bWJlchgDIAEoBRIuCgpzdGFydGVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIsCghlbmRlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiLgoXU3RhcnRHYW1lU2Vzc2lvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiaQoYU3RhcnRHYW1lU2Vzc2lvblJlc3BvbnNlEjEKDGdhbWVfc2Vzc2lvbhgBIAEoCzIbLm1ldXJwZy5wbGF5LnYxLkdhbWVTZXNzaW9uEhoKEmxvY2tlZF9zaGVldF9jb3VudBgCIAEoBSJFChVFbmRHYW1lU2Vzc2lvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFwoPZ2FtZV9zZXNzaW9uX2lkGAIgASgJIksKFkVuZEdhbWVTZXNzaW9uUmVzcG9uc2USMQoMZ2FtZV9zZXNzaW9uGAEgASgLMhsubWV1cnBnLnBsYXkudjEuR2FtZVNlc3Npb24iLgoXTGlzdEdhbWVTZXNzaW9uc1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiTgoYTGlzdEdhbWVTZXNzaW9uc1Jlc3BvbnNlEjIKDWdhbWVfc2Vzc2lvbnMYASADKAsyGy5tZXVycGcucGxheS52MS5HYW1lU2Vzc2lvbiIdChtMaXN0T3BlbkdhbWVTZXNzaW9uc1JlcXVlc3QiWwocTGlzdE9wZW5HYW1lU2Vzc2lvbnNSZXNwb25zZRI7ChJvcGVuX2dhbWVfc2Vzc2lvbnMYASADKAsyHy5tZXVycGcucGxheS52MS5PcGVuR2FtZVNlc3Npb24ihwEKD09wZW5HYW1lU2Vzc2lvbhIxCgxnYW1lX3Nlc3Npb24YASABKAsyGy5tZXVycGcucGxheS52MS5HYW1lU2Vzc2lvbhIVCg1jYW1wYWlnbl9uYW1lGAIgASgJEioKB215X3JvbGUYAyABKA4yGS5tZXVycGcuY2FtcGFpZ25zLnYxLlJvbGUiLAoVR2V0TGl2ZVNlc3Npb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIsUBChZHZXRMaXZlU2Vzc2lvblJlc3BvbnNlEjEKDGdhbWVfc2Vzc2lvbhgBIAEoCzIbLm1ldXJwZy5wbGF5LnYxLkdhbWVTZXNzaW9uEi8KBnZpdGFscxgCIAMoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscxIWCg5jdXJyZW50X21hcF9pZBgDIAEoCRIvCgtzaG93bl9pbWFnZRgEIAEoCzIaLm1ldXJwZy5wbGF5LnYxLlNob3duSW1hZ2UiaQoKU2hvd25JbWFnZRIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEg0KBXdpZHRoGAMgASgFEg4KBmhlaWdodBgEIAEoBRILCgN1cmwYBSABKAkSFQoNdGh1bWJuYWlsX3VybBgGIAEoCSKkAwoPQ2hhcmFjdGVyVml0YWxzEhQKDGNoYXJhY3Rlcl9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEhYKDnBsYXllcl91c2VyX2lkGAMgASgJEhoKEmhpdF9wb2ludHNfY3VycmVudBgEIAEoBRIWCg5oaXRfcG9pbnRzX21heBgFIAEoBRIcChRoaXRfcG9pbnRzX3RlbXBvcmFyeRgGIAEoBRIzCgtzcGVsbF9zbG90cxgHIAMoCzIeLm1ldXJwZy5wbGF5LnYxLlNwZWxsU2xvdFVzYWdlEjEKCnBhY3Rfc2xvdHMYCCABKAsyHS5tZXVycGcucGxheS52MS5QYWN0U2xvdFVzYWdlEioKCGhpdF9kaWNlGAkgAygLMhgubWV1cnBnLnJ1bGVzLnYxLkhpdERpY2USFgoOaGl0X2RpY2VfdG90YWwYCiABKAUSFQoNaGl0X2RpY2VfdXNlZBgLIAEoBRIQCghyZXZpc2lvbhgMIAEoBRIuCgp1cGRhdGVkX2F0GA0gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCI8Cg5TcGVsbFNsb3RVc2FnZRINCgVsZXZlbBgBIAEoBRINCgV0b3RhbBgCIAEoBRIMCgR1c2VkGAMgASgFIkAKDVBhY3RTbG90VXNhZ2USEgoKc2xvdF9sZXZlbBgBIAEoBRINCgV0b3RhbBgCIAEoBRIMCgR1c2VkGAMgASgFIi4KF1dhdGNoR2FtZVNlc3Npb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIrMMChhXYXRjaEdhbWVTZXNzaW9uUmVzcG9uc2USPwoFcmVhZHkYASABKAsyLi5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVzcG9uc2UuUmVhZHlIABJHCgloZWFydGJlYXQYAiABKAsyMi5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVzcG9uc2UuSGVhcnRiZWF0SAASUAoOdml0YWxzX2NoYW5nZWQYAyABKAsyNi5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVzcG9uc2UuVml0YWxzQ2hhbmdlZEgAEk4KDXNlc3Npb25fZW5kZWQYBCABKAsyNS5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVzcG9uc2UuU2Vzc2lvbkVuZGVkSAASWQoTY3VycmVudF9tYXBfY2hhbmdlZBgFIAEoCzI6Lm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5DdXJyZW50TWFwQ2hhbmdlZEgAEkoKC21hcF9jaGFuZ2VkGAYgASgLMjMubWV1cnBnLnBsYXkudjEuV2F0Y2hHYW1lU2Vzc2lvblJlc3BvbnNlLk1hcENoYW5nZWRIABJKCgt0b2tlbl9tb3ZlZBgHIAEoCzIzLm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5Ub2tlbk1vdmVkSAASWQoTc2hvd25faW1hZ2VfY2hhbmdlZBgIIAEoCzI6Lm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5TaG93bkltYWdlQ2hhbmdlZEgAElYKEWVuY291bnRlcl9jaGFuZ2VkGAogASgLMjkubWV1cnBnLnBsYXkudjEuV2F0Y2hHYW1lU2Vzc2lvblJlc3BvbnNlLkVuY291bnRlckNoYW5nZWRIABJMCgx0dXJuX2NoYW5nZWQYCyABKAsyNC5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVzcG9uc2UuVHVybkNoYW5nZWRIABJSCg9jb21iYXRhbnRfbW92ZWQYDCABKAsyNy5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVzcG9uc2UuQ29tYmF0YW50TW92ZWRIABo6CgVSZWFkeRIxCgxnYW1lX3Nlc3Npb24YASABKAsyGy5tZXVycGcucGxheS52MS5HYW1lU2Vzc2lvbhoLCglIZWFydGJlYXQaQAoNVml0YWxzQ2hhbmdlZBIvCgZ2aXRhbHMYASABKAsyHy5tZXVycGcucGxheS52MS5DaGFyYWN0ZXJWaXRhbHMaQQoMU2Vzc2lvbkVuZGVkEjEKDGdhbWVfc2Vzc2lvbhgBIAEoCzIbLm1ldXJwZy5wbGF5LnYxLkdhbWVTZXNzaW9uGiMKEUN1cnJlbnRNYXBDaGFuZ2VkEg4KBm1hcF9pZBgBIAEoCRocCgpNYXBDaGFuZ2VkEg4KBm1hcF9pZBgBIAEoCRo+ChFTaG93bkltYWdlQ2hhbmdlZBIpCgVpbWFnZRgBIAEoCzIaLm1ldXJwZy5wbGF5LnYxLlNob3duSW1hZ2UaOgoQRW5jb3VudGVyQ2hhbmdlZBIUCgxlbmNvdW50ZXJfaWQYASABKAkSEAoIcmV2aXNpb24YAiABKAUaZQoLVHVybkNoYW5nZWQSFAoMZW5jb3VudGVyX2lkGAEgASgJEg0KBXJvdW5kGAIgASgFEhwKFGN1cnJlbnRfY29tYmF0YW50X2lkGAMgASgJEhMKC21hc3Rlcl90dXJuGAQgASgIGlYKDkNvbWJhdGFudE1vdmVkEhQKDGVuY291bnRlcl9pZBgBIAEoCRIUCgxjb21iYXRhbnRfaWQYAiABKAkSCwoDY29sGAMgASgFEgsKA3JvdxgEIAEoBRpOCgpUb2tlbk1vdmVkEg4KBm1hcF9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSDAoEeF9icBgDIAEoBRIMCgR5X2JwGAQgASgFQgcKBWV2ZW50IvACChxBZGp1c3RDaGFyYWN0ZXJWaXRhbHNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkSHwoSaGl0X3BvaW50c19jdXJyZW50GAQgASgFSACIAQESIQoUaGl0X3BvaW50c190ZW1wb3JhcnkYBSABKAVIAYgBARI4ChBzcGVsbF9zbG90c191c2VkGAYgAygLMh4ubWV1cnBnLnBsYXkudjEuU3BlbGxTbG90c1VzZWQSHAoPcGFjdF9zbG90c191c2VkGAcgASgFSAKIAQESGgoNaGl0X2RpY2VfdXNlZBgIIAEoBUgDiAEBQhUKE19oaXRfcG9pbnRzX2N1cnJlbnRCFwoVX2hpdF9wb2ludHNfdGVtcG9yYXJ5QhIKEF9wYWN0X3Nsb3RzX3VzZWRCEAoOX2hpdF9kaWNlX3VzZWQiLQoOU3BlbGxTbG90c1VzZWQSDQoFbGV2ZWwYASABKAUSDAoEdXNlZBgCIAEoBSJQCh1BZGp1c3RDaGFyYWN0ZXJWaXRhbHNSZXNwb25zZRIvCgZ2aXRhbHMYASABKAsyHy5tZXVycGcucGxheS52MS5DaGFyYWN0ZXJWaXRhbHMiOwoUU2V0Q3VycmVudE1hcFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSDgoGbWFwX2lkGAIgASgJIi8KFVNldEN1cnJlbnRNYXBSZXNwb25zZRIWCg5jdXJyZW50X21hcF9pZBgBIAEoCSI9ChRTZXRTaG93bkltYWdlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIQCghpbWFnZV9pZBgCIAEoCSJIChVTZXRTaG93bkltYWdlUmVzcG9uc2USLwoLc2hvd25faW1hZ2UYASABKAsyGi5tZXVycGcucGxheS52MS5TaG93bkltYWdlKq4BChhHYW1lU2Vzc2lvbkJsb2NrZWRSZWFzb24SKwonR0FNRV9TRVNTSU9OX0JMT0NLRURfUkVBU09OX1VOU1BFQ0lGSUVEEAASLworR0FNRV9TRVNTSU9OX0JMT0NLRURfUkVBU09OX05PX09QRU5fU0VTU0lPThABEjQKMEdBTUVfU0VTU0lPTl9CTE9DS0VEX1JFQVNPTl9TRVNTSU9OX0FMUkVBRFlfT1BFThACMroHCgtQbGF5U2VydmljZRJlChBTdGFydEdhbWVTZXNzaW9uEicubWV1cnBnLnBsYXkudjEuU3RhcnRHYW1lU2Vzc2lvblJlcXVlc3QaKC5tZXVycGcucGxheS52MS5TdGFydEdhbWVTZXNzaW9uUmVzcG9uc2USXwoORW5kR2FtZVNlc3Npb24SJS5tZXVycGcucGxheS52MS5FbmRHYW1lU2Vzc2lvblJlcXVlc3QaJi5tZXVycGcucGxheS52MS5FbmRHYW1lU2Vzc2lvblJlc3BvbnNlEmoKEExpc3RHYW1lU2Vzc2lvbnMSJy5tZXVycGcucGxheS52MS5MaXN0R2FtZVNlc3Npb25zUmVxdWVzdBooLm1ldXJwZy5wbGF5LnYxLkxpc3RHYW1lU2Vzc2lvbnNSZXNwb25zZSIDkAICEnYKFExpc3RPcGVuR2FtZVNlc3Npb25zEisubWV1cnBnLnBsYXkudjEuTGlzdE9wZW5HYW1lU2Vzc2lvbnNSZXF1ZXN0GiwubWV1cnBnLnBsYXkudjEuTGlzdE9wZW5HYW1lU2Vzc2lvbnNSZXNwb25zZSIDkAIBEmQKDkdldExpdmVTZXNzaW9uEiUubWV1cnBnLnBsYXkudjEuR2V0TGl2ZVNlc3Npb25SZXF1ZXN0GiYubWV1cnBnLnBsYXkudjEuR2V0TGl2ZVNlc3Npb25SZXNwb25zZSIDkAICEmcKEFdhdGNoR2FtZVNlc3Npb24SJy5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVxdWVzdBooLm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZTABEnQKFUFkanVzdENoYXJhY3RlclZpdGFscxIsLm1ldXJwZy5wbGF5LnYxLkFkanVzdENoYXJhY3RlclZpdGFsc1JlcXVlc3QaLS5tZXVycGcucGxheS52MS5BZGp1c3RDaGFyYWN0ZXJWaXRhbHNSZXNwb25zZRJcCg1TZXRDdXJyZW50TWFwEiQubWV1cnBnLnBsYXkudjEuU2V0Q3VycmVudE1hcFJlcXVlc3QaJS5tZXVycGcucGxheS52MS5TZXRDdXJyZW50TWFwUmVzcG9uc2USXAoNU2V0U2hvd25JbWFnZRIkLm1ldXJwZy5wbGF5LnYxLlNldFNob3duSW1hZ2VSZXF1ZXN0GiUubWV1cnBnLnBsYXkudjEuU2V0U2hvd25JbWFnZVJlc3BvbnNlQrcBChJjb20ubWV1cnBnLnBsYXkudjFCCVBsYXlQcm90b1ABWjxnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvcGxheS92MTtwbGF5djGiAgNNUFiqAg5NZXVycGcuUGxheS5WMcoCDk1ldXJwZ1xQbGF5XFYx4gIaTWV1cnBnXFBsYXlcVjFcR1BCTWV0YWRhdGHqAhBNZXVycGc6OlBsYXk6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp, file_meurpg_campaigns_v1_campaigns, file_meurpg_rules_v1_rules]);
 
 /**
  * GameSessionBlocked is the error detail of PlayService's
@@ -698,6 +699,30 @@ export type WatchGameSessionResponse = Message<"meurpg.play.v1.WatchGameSessionR
      */
     value: WatchGameSessionResponse_ShownImageChanged;
     case: "shownImageChanged";
+  } | {
+    /**
+     * Something changed in the combat: read it again (CombatService).
+     *
+     * @generated from field: meurpg.play.v1.WatchGameSessionResponse.EncounterChanged encounter_changed = 10;
+     */
+    value: WatchGameSessionResponse_EncounterChanged;
+    case: "encounterChanged";
+  } | {
+    /**
+     * The turn passed to another combatant.
+     *
+     * @generated from field: meurpg.play.v1.WatchGameSessionResponse.TurnChanged turn_changed = 11;
+     */
+    value: WatchGameSessionResponse_TurnChanged;
+    case: "turnChanged";
+  } | {
+    /**
+     * A combatant moved on the grid.
+     *
+     * @generated from field: meurpg.play.v1.WatchGameSessionResponse.CombatantMoved combatant_moved = 12;
+     */
+    value: WatchGameSessionResponse_CombatantMoved;
+    case: "combatantMoved";
   } | { case: undefined; value?: undefined };
 };
 
@@ -861,6 +886,125 @@ export const WatchGameSessionResponse_ShownImageChangedSchema: GenMessage<WatchG
   messageDesc(file_meurpg_play_v1_play, 18, 6);
 
 /**
+ * EncounterChanged is a hint: the combat changed, so the app reads it again
+ * (CombatService.GetEncounter). It carries no content, so a hidden
+ * combatant never travels on a player's stream (RN-10). Everyone gets it,
+ * also when the change only touched hidden things.
+ *
+ * @generated from message meurpg.play.v1.WatchGameSessionResponse.EncounterChanged
+ */
+export type WatchGameSessionResponse_EncounterChanged = Message<"meurpg.play.v1.WatchGameSessionResponse.EncounterChanged"> & {
+  /**
+   * The combat (a UUID).
+   *
+   * @generated from field: string encounter_id = 1;
+   */
+  encounterId: string;
+
+  /**
+   * Its revision after the change. Read again when it is larger than the
+   * one on screen.
+   *
+   * @generated from field: int32 revision = 2;
+   */
+  revision: number;
+};
+
+/**
+ * Describes the message meurpg.play.v1.WatchGameSessionResponse.EncounterChanged.
+ * Use `create(WatchGameSessionResponse_EncounterChangedSchema)` to create a new message.
+ */
+export const WatchGameSessionResponse_EncounterChangedSchema: GenMessage<WatchGameSessionResponse_EncounterChanged> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 18, 7);
+
+/**
+ * TurnChanged says whose turn it is now. Each member gets their own copy:
+ * a player never learns which hidden combatant is on turn.
+ *
+ * @generated from message meurpg.play.v1.WatchGameSessionResponse.TurnChanged
+ */
+export type WatchGameSessionResponse_TurnChanged = Message<"meurpg.play.v1.WatchGameSessionResponse.TurnChanged"> & {
+  /**
+   * The combat (a UUID).
+   *
+   * @generated from field: string encounter_id = 1;
+   */
+  encounterId: string;
+
+  /**
+   * The round, counting from 1.
+   *
+   * @generated from field: int32 round = 2;
+   */
+  round: number;
+
+  /**
+   * The combatant on turn (a UUID). Empty for a player when the one on
+   * turn is hidden from them: then master_turn is true.
+   *
+   * @generated from field: string current_combatant_id = 3;
+   */
+  currentCombatantId: string;
+
+  /**
+   * True when the one on turn is a combatant the member may not see: the
+   * app shows "Vez do mestre". Always false for the master.
+   *
+   * @generated from field: bool master_turn = 4;
+   */
+  masterTurn: boolean;
+};
+
+/**
+ * Describes the message meurpg.play.v1.WatchGameSessionResponse.TurnChanged.
+ * Use `create(WatchGameSessionResponse_TurnChangedSchema)` to create a new message.
+ */
+export const WatchGameSessionResponse_TurnChangedSchema: GenMessage<WatchGameSessionResponse_TurnChanged> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 18, 8);
+
+/**
+ * CombatantMoved is a combatant's new square. A player's stream only gets
+ * it for a combatant they may see. A combatant the app does not know yet
+ * means: read the combat again.
+ *
+ * @generated from message meurpg.play.v1.WatchGameSessionResponse.CombatantMoved
+ */
+export type WatchGameSessionResponse_CombatantMoved = Message<"meurpg.play.v1.WatchGameSessionResponse.CombatantMoved"> & {
+  /**
+   * The combat (a UUID).
+   *
+   * @generated from field: string encounter_id = 1;
+   */
+  encounterId: string;
+
+  /**
+   * The combatant (a UUID).
+   *
+   * @generated from field: string combatant_id = 2;
+   */
+  combatantId: string;
+
+  /**
+   * Its new square, from 0, from the top left of the grid.
+   *
+   * @generated from field: int32 col = 3;
+   */
+  col: number;
+
+  /**
+   * @generated from field: int32 row = 4;
+   */
+  row: number;
+};
+
+/**
+ * Describes the message meurpg.play.v1.WatchGameSessionResponse.CombatantMoved.
+ * Use `create(WatchGameSessionResponse_CombatantMovedSchema)` to create a new message.
+ */
+export const WatchGameSessionResponse_CombatantMovedSchema: GenMessage<WatchGameSessionResponse_CombatantMoved> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 18, 9);
+
+/**
  * TokenMoved is a token's new position. A token the app does not know
  * yet (it may have missed a `map_changed`) means: read the map again.
  *
@@ -900,7 +1044,7 @@ export type WatchGameSessionResponse_TokenMoved = Message<"meurpg.play.v1.WatchG
  * Use `create(WatchGameSessionResponse_TokenMovedSchema)` to create a new message.
  */
 export const WatchGameSessionResponse_TokenMovedSchema: GenMessage<WatchGameSessionResponse_TokenMoved> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 18, 7);
+  messageDesc(file_meurpg_play_v1_play, 18, 10);
 
 /**
  * AdjustCharacterVitalsRequest is the master's correction. Every value set
@@ -1312,6 +1456,14 @@ export const PlayService: GenService<{
    *     otherwise;
    *   - `shown_image_changed` when the master shows an image, stops showing
    *     it, or deletes it; sent to everyone;
+   *   - `encounter_changed` when anything changes in the combat; a hint,
+   *     sent to everyone, and the app reads the combat again
+   *     (CombatService.GetEncounter);
+   *   - `turn_changed` when the turn passes: the round and who is on turn,
+   *     as each member may see it (a player sees a hidden combatant's turn
+   *     as the master's);
+   *   - `combatant_moved` when a combatant moves on the grid: to the master
+   *     always, and to a player only for a combatant they may see;
    *   - `session_ended` when the master ends the session; the stream then
    *     ends without an error.
    *

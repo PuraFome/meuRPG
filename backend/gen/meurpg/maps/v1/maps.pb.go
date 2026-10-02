@@ -28,8 +28,10 @@ type MapPointKind int32
 
 const (
 	MapPointKind_MAP_POINT_KIND_UNSPECIFIED MapPointKind = 0
-	// "Batalha": an encounter. Until combat arrives (Etapa 6), opening it
-	// shows its name and description.
+	// "Batalha": an encounter. It may name the map where the fight happens
+	// (the point's target map, like a submap): starting the combat from the
+	// point (CombatService.StartEncounter) then makes that map the session's
+	// current map.
 	MapPointKind_MAP_POINT_KIND_BATTLE MapPointKind = 1
 	// "Submapa": another map, such as a building inside a region (the
 	// point's target map).
@@ -112,9 +114,15 @@ type Map struct {
 	// in UpdateMap.
 	Revision  int32                  `protobuf:"varint,9,opt,name=revision,proto3" json:"revision,omitempty"`
 	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	// The last change to the map itself: its name, image or revealed state.
-	// Points and tokens have their own times.
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	// The last change to the map itself: its name, image, revealed state or
+	// grid. Points and tokens have their own times.
+	UpdatedAt *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	// The battle grid (SetMapGrid): how many squares of 1.5 m (5 ft) fit
+	// across the image's width, 4 to 200. 0 when the map has no grid.
+	GridColumns int32 `protobuf:"varint,12,opt,name=grid_columns,json=gridColumns,proto3" json:"grid_columns,omitempty"`
+	// How many rows of squares the grid has: round(grid_columns * image
+	// height / image width), 1 to 400. 0 when the map has no grid.
+	GridRows      int32 `protobuf:"varint,13,opt,name=grid_rows,json=gridRows,proto3" json:"grid_rows,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -224,6 +232,20 @@ func (x *Map) GetUpdatedAt() *timestamppb.Timestamp {
 		return x.UpdatedAt
 	}
 	return nil
+}
+
+func (x *Map) GetGridColumns() int32 {
+	if x != nil {
+		return x.GridColumns
+	}
+	return 0
+}
+
+func (x *Map) GetGridRows() int32 {
+	if x != nil {
+		return x.GridRows
+	}
+	return 0
 }
 
 // MapImage is the image under a map: a gallery image. Any active member of
@@ -394,10 +416,11 @@ type MapPoint struct {
 	// height (0 to 10000).
 	XBp int32 `protobuf:"varint,6,opt,name=x_bp,json=xBp,proto3" json:"x_bp,omitempty"`
 	YBp int32 `protobuf:"varint,7,opt,name=y_bp,json=yBp,proto3" json:"y_bp,omitempty"`
-	// Where a SUBMAP point leads: the app offers "Abrir <name>". Unset when
-	// the point has no target (its map was deleted, or the master has not
-	// chosen one), and, for a player, when the target map is hidden from
-	// them: then the point only shows its description.
+	// Where a SUBMAP point leads: the app offers "Abrir <name>"; or, for a
+	// BATTLE point, the map where the fight happens. Unset when the point has
+	// no target (its map was deleted, or the master has not chosen one),
+	// and, for a player, when the target map is hidden from them: then the
+	// point only shows its description.
 	TargetMap *MapRef `protobuf:"bytes,8,opt,name=target_map,json=targetMap,proto3" json:"target_map,omitempty"`
 	// Whether the master revealed the point. Always true for a player, who
 	// never receives a hidden point.
@@ -1278,6 +1301,115 @@ func (x *SetMapRevealedResponse) GetMap() *Map {
 	return nil
 }
 
+// SetMapGridRequest sets a map's battle grid.
+type SetMapGridRequest struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	MapId      string                 `protobuf:"bytes,2,opt,name=map_id,json=mapId,proto3" json:"map_id,omitempty"`
+	// How many squares of 1.5 m fit across the image's width: 4 to 200, or 0
+	// to clear the grid.
+	Columns       int32 `protobuf:"varint,3,opt,name=columns,proto3" json:"columns,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetMapGridRequest) Reset() {
+	*x = SetMapGridRequest{}
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetMapGridRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetMapGridRequest) ProtoMessage() {}
+
+func (x *SetMapGridRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetMapGridRequest.ProtoReflect.Descriptor instead.
+func (*SetMapGridRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *SetMapGridRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *SetMapGridRequest) GetMapId() string {
+	if x != nil {
+		return x.MapId
+	}
+	return ""
+}
+
+func (x *SetMapGridRequest) GetColumns() int32 {
+	if x != nil {
+		return x.Columns
+	}
+	return 0
+}
+
+// SetMapGridResponse returns the map as it is now.
+type SetMapGridResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The map, with grid_columns and grid_rows.
+	Map           *Map `protobuf:"bytes,1,opt,name=map,proto3" json:"map,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetMapGridResponse) Reset() {
+	*x = SetMapGridResponse{}
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetMapGridResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetMapGridResponse) ProtoMessage() {}
+
+func (x *SetMapGridResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetMapGridResponse.ProtoReflect.Descriptor instead.
+func (*SetMapGridResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *SetMapGridResponse) GetMap() *Map {
+	if x != nil {
+		return x.Map
+	}
+	return nil
+}
+
 // CreateMapPointRequest carries the new point.
 type CreateMapPointRequest struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
@@ -1292,8 +1424,8 @@ type CreateMapPointRequest struct {
 	// The position, 0 to 10000 each.
 	XBp int32 `protobuf:"varint,6,opt,name=x_bp,json=xBp,proto3" json:"x_bp,omitempty"`
 	YBp int32 `protobuf:"varint,7,opt,name=y_bp,json=yBp,proto3" json:"y_bp,omitempty"`
-	// Only for a SUBMAP point, and optional there: another map of the
-	// campaign (a UUID). Empty for none.
+	// Only for a SUBMAP or a BATTLE point, and optional there: another map of
+	// the campaign (a UUID). Empty for none.
 	TargetMapId   string `protobuf:"bytes,8,opt,name=target_map_id,json=targetMapId,proto3" json:"target_map_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1301,7 +1433,7 @@ type CreateMapPointRequest struct {
 
 func (x *CreateMapPointRequest) Reset() {
 	*x = CreateMapPointRequest{}
-	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[17]
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1313,7 +1445,7 @@ func (x *CreateMapPointRequest) String() string {
 func (*CreateMapPointRequest) ProtoMessage() {}
 
 func (x *CreateMapPointRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[17]
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1326,7 +1458,7 @@ func (x *CreateMapPointRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateMapPointRequest.ProtoReflect.Descriptor instead.
 func (*CreateMapPointRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{17}
+	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *CreateMapPointRequest) GetCampaignId() string {
@@ -1395,7 +1527,7 @@ type CreateMapPointResponse struct {
 
 func (x *CreateMapPointResponse) Reset() {
 	*x = CreateMapPointResponse{}
-	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[18]
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1407,7 +1539,7 @@ func (x *CreateMapPointResponse) String() string {
 func (*CreateMapPointResponse) ProtoMessage() {}
 
 func (x *CreateMapPointResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[18]
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1420,7 +1552,7 @@ func (x *CreateMapPointResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateMapPointResponse.ProtoReflect.Descriptor instead.
 func (*CreateMapPointResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{18}
+	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *CreateMapPointResponse) GetPoint() *MapPoint {
@@ -1438,7 +1570,8 @@ type UpdateMapPointRequest struct {
 	CampaignId string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
 	MapId      string                 `protobuf:"bytes,2,opt,name=map_id,json=mapId,proto3" json:"map_id,omitempty"`
 	PointId    string                 `protobuf:"bytes,3,opt,name=point_id,json=pointId,proto3" json:"point_id,omitempty"`
-	// The new kind; not UNSPECIFIED. Anything but SUBMAP removes the target.
+	// The new kind; not UNSPECIFIED. Anything but SUBMAP or BATTLE removes
+	// the target.
 	Kind *MapPointKind `protobuf:"varint,4,opt,name=kind,proto3,enum=meurpg.maps.v1.MapPointKind,oneof" json:"kind,omitempty"`
 	// 1 to 80 characters, one line.
 	Name *string `protobuf:"bytes,5,opt,name=name,proto3,oneof" json:"name,omitempty"`
@@ -1447,8 +1580,8 @@ type UpdateMapPointRequest struct {
 	// The new position, 0 to 10000 each. Moving a point sets both.
 	XBp *int32 `protobuf:"varint,7,opt,name=x_bp,json=xBp,proto3,oneof" json:"x_bp,omitempty"`
 	YBp *int32 `protobuf:"varint,8,opt,name=y_bp,json=yBp,proto3,oneof" json:"y_bp,omitempty"`
-	// A SUBMAP point's new target: another map of the campaign (a UUID), or
-	// empty to remove it.
+	// A SUBMAP or BATTLE point's new target: another map of the campaign (a
+	// UUID), or empty to remove it.
 	TargetMapId *string `protobuf:"bytes,9,opt,name=target_map_id,json=targetMapId,proto3,oneof" json:"target_map_id,omitempty"`
 	// Reveals (true) or hides (false) the point, as SetMapPointRevealed
 	// does, so the editor saves everything in one call.
@@ -1459,7 +1592,7 @@ type UpdateMapPointRequest struct {
 
 func (x *UpdateMapPointRequest) Reset() {
 	*x = UpdateMapPointRequest{}
-	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[19]
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1471,7 +1604,7 @@ func (x *UpdateMapPointRequest) String() string {
 func (*UpdateMapPointRequest) ProtoMessage() {}
 
 func (x *UpdateMapPointRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[19]
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1484,7 +1617,7 @@ func (x *UpdateMapPointRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateMapPointRequest.ProtoReflect.Descriptor instead.
 func (*UpdateMapPointRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{19}
+	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *UpdateMapPointRequest) GetCampaignId() string {
@@ -1567,7 +1700,7 @@ type UpdateMapPointResponse struct {
 
 func (x *UpdateMapPointResponse) Reset() {
 	*x = UpdateMapPointResponse{}
-	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[20]
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1579,7 +1712,7 @@ func (x *UpdateMapPointResponse) String() string {
 func (*UpdateMapPointResponse) ProtoMessage() {}
 
 func (x *UpdateMapPointResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[20]
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1592,7 +1725,7 @@ func (x *UpdateMapPointResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateMapPointResponse.ProtoReflect.Descriptor instead.
 func (*UpdateMapPointResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{20}
+	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *UpdateMapPointResponse) GetPoint() *MapPoint {
@@ -1614,7 +1747,7 @@ type DeleteMapPointRequest struct {
 
 func (x *DeleteMapPointRequest) Reset() {
 	*x = DeleteMapPointRequest{}
-	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[21]
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1626,7 +1759,7 @@ func (x *DeleteMapPointRequest) String() string {
 func (*DeleteMapPointRequest) ProtoMessage() {}
 
 func (x *DeleteMapPointRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[21]
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1639,7 +1772,7 @@ func (x *DeleteMapPointRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteMapPointRequest.ProtoReflect.Descriptor instead.
 func (*DeleteMapPointRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{21}
+	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *DeleteMapPointRequest) GetCampaignId() string {
@@ -1672,7 +1805,7 @@ type DeleteMapPointResponse struct {
 
 func (x *DeleteMapPointResponse) Reset() {
 	*x = DeleteMapPointResponse{}
-	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[22]
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1684,7 +1817,7 @@ func (x *DeleteMapPointResponse) String() string {
 func (*DeleteMapPointResponse) ProtoMessage() {}
 
 func (x *DeleteMapPointResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[22]
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1697,7 +1830,7 @@ func (x *DeleteMapPointResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteMapPointResponse.ProtoReflect.Descriptor instead.
 func (*DeleteMapPointResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{22}
+	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{24}
 }
 
 // SetMapPointRevealedRequest says whether the players may see a point.
@@ -1714,7 +1847,7 @@ type SetMapPointRevealedRequest struct {
 
 func (x *SetMapPointRevealedRequest) Reset() {
 	*x = SetMapPointRevealedRequest{}
-	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[23]
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1726,7 +1859,7 @@ func (x *SetMapPointRevealedRequest) String() string {
 func (*SetMapPointRevealedRequest) ProtoMessage() {}
 
 func (x *SetMapPointRevealedRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[23]
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1739,7 +1872,7 @@ func (x *SetMapPointRevealedRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetMapPointRevealedRequest.ProtoReflect.Descriptor instead.
 func (*SetMapPointRevealedRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{23}
+	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *SetMapPointRevealedRequest) GetCampaignId() string {
@@ -1780,7 +1913,7 @@ type SetMapPointRevealedResponse struct {
 
 func (x *SetMapPointRevealedResponse) Reset() {
 	*x = SetMapPointRevealedResponse{}
-	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[24]
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1792,7 +1925,7 @@ func (x *SetMapPointRevealedResponse) String() string {
 func (*SetMapPointRevealedResponse) ProtoMessage() {}
 
 func (x *SetMapPointRevealedResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[24]
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1805,7 +1938,7 @@ func (x *SetMapPointRevealedResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetMapPointRevealedResponse.ProtoReflect.Descriptor instead.
 func (*SetMapPointRevealedResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{24}
+	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *SetMapPointRevealedResponse) GetPoint() *MapPoint {
@@ -1831,7 +1964,7 @@ type PlaceMapTokenRequest struct {
 
 func (x *PlaceMapTokenRequest) Reset() {
 	*x = PlaceMapTokenRequest{}
-	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[25]
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1843,7 +1976,7 @@ func (x *PlaceMapTokenRequest) String() string {
 func (*PlaceMapTokenRequest) ProtoMessage() {}
 
 func (x *PlaceMapTokenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[25]
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1856,7 +1989,7 @@ func (x *PlaceMapTokenRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlaceMapTokenRequest.ProtoReflect.Descriptor instead.
 func (*PlaceMapTokenRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{25}
+	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *PlaceMapTokenRequest) GetCampaignId() string {
@@ -1904,7 +2037,7 @@ type PlaceMapTokenResponse struct {
 
 func (x *PlaceMapTokenResponse) Reset() {
 	*x = PlaceMapTokenResponse{}
-	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[26]
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1916,7 +2049,7 @@ func (x *PlaceMapTokenResponse) String() string {
 func (*PlaceMapTokenResponse) ProtoMessage() {}
 
 func (x *PlaceMapTokenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[26]
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1929,7 +2062,7 @@ func (x *PlaceMapTokenResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlaceMapTokenResponse.ProtoReflect.Descriptor instead.
 func (*PlaceMapTokenResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{26}
+	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *PlaceMapTokenResponse) GetToken() *MapToken {
@@ -1953,7 +2086,7 @@ type SetMapTokenHiddenRequest struct {
 
 func (x *SetMapTokenHiddenRequest) Reset() {
 	*x = SetMapTokenHiddenRequest{}
-	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[27]
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1965,7 +2098,7 @@ func (x *SetMapTokenHiddenRequest) String() string {
 func (*SetMapTokenHiddenRequest) ProtoMessage() {}
 
 func (x *SetMapTokenHiddenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[27]
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1978,7 +2111,7 @@ func (x *SetMapTokenHiddenRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetMapTokenHiddenRequest.ProtoReflect.Descriptor instead.
 func (*SetMapTokenHiddenRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{27}
+	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *SetMapTokenHiddenRequest) GetCampaignId() string {
@@ -2019,7 +2152,7 @@ type SetMapTokenHiddenResponse struct {
 
 func (x *SetMapTokenHiddenResponse) Reset() {
 	*x = SetMapTokenHiddenResponse{}
-	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[28]
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2031,7 +2164,7 @@ func (x *SetMapTokenHiddenResponse) String() string {
 func (*SetMapTokenHiddenResponse) ProtoMessage() {}
 
 func (x *SetMapTokenHiddenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[28]
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2044,7 +2177,7 @@ func (x *SetMapTokenHiddenResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetMapTokenHiddenResponse.ProtoReflect.Descriptor instead.
 func (*SetMapTokenHiddenResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{28}
+	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *SetMapTokenHiddenResponse) GetToken() *MapToken {
@@ -2066,7 +2199,7 @@ type RemoveMapTokenRequest struct {
 
 func (x *RemoveMapTokenRequest) Reset() {
 	*x = RemoveMapTokenRequest{}
-	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[29]
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2078,7 +2211,7 @@ func (x *RemoveMapTokenRequest) String() string {
 func (*RemoveMapTokenRequest) ProtoMessage() {}
 
 func (x *RemoveMapTokenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[29]
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2091,7 +2224,7 @@ func (x *RemoveMapTokenRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveMapTokenRequest.ProtoReflect.Descriptor instead.
 func (*RemoveMapTokenRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{29}
+	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *RemoveMapTokenRequest) GetCampaignId() string {
@@ -2124,7 +2257,7 @@ type RemoveMapTokenResponse struct {
 
 func (x *RemoveMapTokenResponse) Reset() {
 	*x = RemoveMapTokenResponse{}
-	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[30]
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2136,7 +2269,7 @@ func (x *RemoveMapTokenResponse) String() string {
 func (*RemoveMapTokenResponse) ProtoMessage() {}
 
 func (x *RemoveMapTokenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[30]
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2149,14 +2282,14 @@ func (x *RemoveMapTokenResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveMapTokenResponse.ProtoReflect.Descriptor instead.
 func (*RemoveMapTokenResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{30}
+	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{32}
 }
 
 var File_meurpg_maps_v1_maps_proto protoreflect.FileDescriptor
 
 const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\n" +
-	"\x19meurpg/maps/v1/maps.proto\x12\x0emeurpg.maps.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a%meurpg/characters/v1/characters.proto\"\x9c\x03\n" +
+	"\x19meurpg/maps/v1/maps.proto\x12\x0emeurpg.maps.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a%meurpg/characters/v1/characters.proto\"\xdc\x03\n" +
 	"\x03Map\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vcampaign_id\x18\x02 \x01(\tR\n" +
@@ -2174,7 +2307,9 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"created_at\x18\n" +
 	" \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\x93\x01\n" +
+	"updated_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12!\n" +
+	"\fgrid_columns\x18\f \x01(\x05R\vgridColumns\x12\x1b\n" +
+	"\tgrid_rows\x18\r \x01(\x05R\bgridRows\"\x93\x01\n" +
 	"\bMapImage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
 	"\x03url\x18\x02 \x01(\tR\x03url\x12#\n" +
@@ -2254,6 +2389,13 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\x06map_id\x18\x02 \x01(\tR\x05mapId\x12\x1a\n" +
 	"\brevealed\x18\x03 \x01(\bR\brevealed\"?\n" +
 	"\x16SetMapRevealedResponse\x12%\n" +
+	"\x03map\x18\x01 \x01(\v2\x13.meurpg.maps.v1.MapR\x03map\"e\n" +
+	"\x11SetMapGridRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x12\x15\n" +
+	"\x06map_id\x18\x02 \x01(\tR\x05mapId\x12\x18\n" +
+	"\acolumns\x18\x03 \x01(\x05R\acolumns\";\n" +
+	"\x12SetMapGridResponse\x12%\n" +
 	"\x03map\x18\x01 \x01(\v2\x13.meurpg.maps.v1.MapR\x03map\"\x81\x02\n" +
 	"\x15CreateMapPointRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
@@ -2330,7 +2472,8 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\x1aMAP_POINT_KIND_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15MAP_POINT_KIND_BATTLE\x10\x01\x12\x19\n" +
 	"\x15MAP_POINT_KIND_SUBMAP\x10\x02\x12\x18\n" +
-	"\x14MAP_POINT_KIND_SCENE\x10\x032\xc1\t\n" +
+	"\x14MAP_POINT_KIND_SCENE\x10\x032\x96\n" +
+	"\n" +
 	"\n" +
 	"MapService\x12R\n" +
 	"\bListMaps\x12\x1f.meurpg.maps.v1.ListMapsRequest\x1a .meurpg.maps.v1.ListMapsResponse\"\x03\x90\x02\x02\x12L\n" +
@@ -2338,7 +2481,9 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\tCreateMap\x12 .meurpg.maps.v1.CreateMapRequest\x1a!.meurpg.maps.v1.CreateMapResponse\x12P\n" +
 	"\tUpdateMap\x12 .meurpg.maps.v1.UpdateMapRequest\x1a!.meurpg.maps.v1.UpdateMapResponse\x12P\n" +
 	"\tDeleteMap\x12 .meurpg.maps.v1.DeleteMapRequest\x1a!.meurpg.maps.v1.DeleteMapResponse\x12_\n" +
-	"\x0eSetMapRevealed\x12%.meurpg.maps.v1.SetMapRevealedRequest\x1a&.meurpg.maps.v1.SetMapRevealedResponse\x12_\n" +
+	"\x0eSetMapRevealed\x12%.meurpg.maps.v1.SetMapRevealedRequest\x1a&.meurpg.maps.v1.SetMapRevealedResponse\x12S\n" +
+	"\n" +
+	"SetMapGrid\x12!.meurpg.maps.v1.SetMapGridRequest\x1a\".meurpg.maps.v1.SetMapGridResponse\x12_\n" +
 	"\x0eCreateMapPoint\x12%.meurpg.maps.v1.CreateMapPointRequest\x1a&.meurpg.maps.v1.CreateMapPointResponse\x12_\n" +
 	"\x0eUpdateMapPoint\x12%.meurpg.maps.v1.UpdateMapPointRequest\x1a&.meurpg.maps.v1.UpdateMapPointResponse\x12_\n" +
 	"\x0eDeleteMapPoint\x12%.meurpg.maps.v1.DeleteMapPointRequest\x1a&.meurpg.maps.v1.DeleteMapPointResponse\x12n\n" +
@@ -2361,7 +2506,7 @@ func file_meurpg_maps_v1_maps_proto_rawDescGZIP() []byte {
 }
 
 var file_meurpg_maps_v1_maps_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_meurpg_maps_v1_maps_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
+var file_meurpg_maps_v1_maps_proto_msgTypes = make([]protoimpl.MessageInfo, 33)
 var file_meurpg_maps_v1_maps_proto_goTypes = []any{
 	(MapPointKind)(0),                   // 0: meurpg.maps.v1.MapPointKind
 	(*Map)(nil),                         // 1: meurpg.maps.v1.Map
@@ -2381,34 +2526,36 @@ var file_meurpg_maps_v1_maps_proto_goTypes = []any{
 	(*DeleteMapResponse)(nil),           // 15: meurpg.maps.v1.DeleteMapResponse
 	(*SetMapRevealedRequest)(nil),       // 16: meurpg.maps.v1.SetMapRevealedRequest
 	(*SetMapRevealedResponse)(nil),      // 17: meurpg.maps.v1.SetMapRevealedResponse
-	(*CreateMapPointRequest)(nil),       // 18: meurpg.maps.v1.CreateMapPointRequest
-	(*CreateMapPointResponse)(nil),      // 19: meurpg.maps.v1.CreateMapPointResponse
-	(*UpdateMapPointRequest)(nil),       // 20: meurpg.maps.v1.UpdateMapPointRequest
-	(*UpdateMapPointResponse)(nil),      // 21: meurpg.maps.v1.UpdateMapPointResponse
-	(*DeleteMapPointRequest)(nil),       // 22: meurpg.maps.v1.DeleteMapPointRequest
-	(*DeleteMapPointResponse)(nil),      // 23: meurpg.maps.v1.DeleteMapPointResponse
-	(*SetMapPointRevealedRequest)(nil),  // 24: meurpg.maps.v1.SetMapPointRevealedRequest
-	(*SetMapPointRevealedResponse)(nil), // 25: meurpg.maps.v1.SetMapPointRevealedResponse
-	(*PlaceMapTokenRequest)(nil),        // 26: meurpg.maps.v1.PlaceMapTokenRequest
-	(*PlaceMapTokenResponse)(nil),       // 27: meurpg.maps.v1.PlaceMapTokenResponse
-	(*SetMapTokenHiddenRequest)(nil),    // 28: meurpg.maps.v1.SetMapTokenHiddenRequest
-	(*SetMapTokenHiddenResponse)(nil),   // 29: meurpg.maps.v1.SetMapTokenHiddenResponse
-	(*RemoveMapTokenRequest)(nil),       // 30: meurpg.maps.v1.RemoveMapTokenRequest
-	(*RemoveMapTokenResponse)(nil),      // 31: meurpg.maps.v1.RemoveMapTokenResponse
-	(*timestamppb.Timestamp)(nil),       // 32: google.protobuf.Timestamp
-	(v1.CharacterKind)(0),               // 33: meurpg.characters.v1.CharacterKind
+	(*SetMapGridRequest)(nil),           // 18: meurpg.maps.v1.SetMapGridRequest
+	(*SetMapGridResponse)(nil),          // 19: meurpg.maps.v1.SetMapGridResponse
+	(*CreateMapPointRequest)(nil),       // 20: meurpg.maps.v1.CreateMapPointRequest
+	(*CreateMapPointResponse)(nil),      // 21: meurpg.maps.v1.CreateMapPointResponse
+	(*UpdateMapPointRequest)(nil),       // 22: meurpg.maps.v1.UpdateMapPointRequest
+	(*UpdateMapPointResponse)(nil),      // 23: meurpg.maps.v1.UpdateMapPointResponse
+	(*DeleteMapPointRequest)(nil),       // 24: meurpg.maps.v1.DeleteMapPointRequest
+	(*DeleteMapPointResponse)(nil),      // 25: meurpg.maps.v1.DeleteMapPointResponse
+	(*SetMapPointRevealedRequest)(nil),  // 26: meurpg.maps.v1.SetMapPointRevealedRequest
+	(*SetMapPointRevealedResponse)(nil), // 27: meurpg.maps.v1.SetMapPointRevealedResponse
+	(*PlaceMapTokenRequest)(nil),        // 28: meurpg.maps.v1.PlaceMapTokenRequest
+	(*PlaceMapTokenResponse)(nil),       // 29: meurpg.maps.v1.PlaceMapTokenResponse
+	(*SetMapTokenHiddenRequest)(nil),    // 30: meurpg.maps.v1.SetMapTokenHiddenRequest
+	(*SetMapTokenHiddenResponse)(nil),   // 31: meurpg.maps.v1.SetMapTokenHiddenResponse
+	(*RemoveMapTokenRequest)(nil),       // 32: meurpg.maps.v1.RemoveMapTokenRequest
+	(*RemoveMapTokenResponse)(nil),      // 33: meurpg.maps.v1.RemoveMapTokenResponse
+	(*timestamppb.Timestamp)(nil),       // 34: google.protobuf.Timestamp
+	(v1.CharacterKind)(0),               // 35: meurpg.characters.v1.CharacterKind
 }
 var file_meurpg_maps_v1_maps_proto_depIdxs = []int32{
 	2,  // 0: meurpg.maps.v1.Map.image:type_name -> meurpg.maps.v1.MapImage
 	3,  // 1: meurpg.maps.v1.Map.parent_maps:type_name -> meurpg.maps.v1.MapRef
-	32, // 2: meurpg.maps.v1.Map.created_at:type_name -> google.protobuf.Timestamp
-	32, // 3: meurpg.maps.v1.Map.updated_at:type_name -> google.protobuf.Timestamp
+	34, // 2: meurpg.maps.v1.Map.created_at:type_name -> google.protobuf.Timestamp
+	34, // 3: meurpg.maps.v1.Map.updated_at:type_name -> google.protobuf.Timestamp
 	0,  // 4: meurpg.maps.v1.MapPoint.kind:type_name -> meurpg.maps.v1.MapPointKind
 	3,  // 5: meurpg.maps.v1.MapPoint.target_map:type_name -> meurpg.maps.v1.MapRef
-	32, // 6: meurpg.maps.v1.MapPoint.created_at:type_name -> google.protobuf.Timestamp
-	32, // 7: meurpg.maps.v1.MapPoint.updated_at:type_name -> google.protobuf.Timestamp
-	33, // 8: meurpg.maps.v1.MapToken.kind:type_name -> meurpg.characters.v1.CharacterKind
-	32, // 9: meurpg.maps.v1.MapToken.updated_at:type_name -> google.protobuf.Timestamp
+	34, // 6: meurpg.maps.v1.MapPoint.created_at:type_name -> google.protobuf.Timestamp
+	34, // 7: meurpg.maps.v1.MapPoint.updated_at:type_name -> google.protobuf.Timestamp
+	35, // 8: meurpg.maps.v1.MapToken.kind:type_name -> meurpg.characters.v1.CharacterKind
+	34, // 9: meurpg.maps.v1.MapToken.updated_at:type_name -> google.protobuf.Timestamp
 	1,  // 10: meurpg.maps.v1.ListMapsResponse.maps:type_name -> meurpg.maps.v1.Map
 	1,  // 11: meurpg.maps.v1.GetMapResponse.map:type_name -> meurpg.maps.v1.Map
 	4,  // 12: meurpg.maps.v1.GetMapResponse.points:type_name -> meurpg.maps.v1.MapPoint
@@ -2416,44 +2563,47 @@ var file_meurpg_maps_v1_maps_proto_depIdxs = []int32{
 	1,  // 14: meurpg.maps.v1.CreateMapResponse.map:type_name -> meurpg.maps.v1.Map
 	1,  // 15: meurpg.maps.v1.UpdateMapResponse.map:type_name -> meurpg.maps.v1.Map
 	1,  // 16: meurpg.maps.v1.SetMapRevealedResponse.map:type_name -> meurpg.maps.v1.Map
-	0,  // 17: meurpg.maps.v1.CreateMapPointRequest.kind:type_name -> meurpg.maps.v1.MapPointKind
-	4,  // 18: meurpg.maps.v1.CreateMapPointResponse.point:type_name -> meurpg.maps.v1.MapPoint
-	0,  // 19: meurpg.maps.v1.UpdateMapPointRequest.kind:type_name -> meurpg.maps.v1.MapPointKind
-	4,  // 20: meurpg.maps.v1.UpdateMapPointResponse.point:type_name -> meurpg.maps.v1.MapPoint
-	4,  // 21: meurpg.maps.v1.SetMapPointRevealedResponse.point:type_name -> meurpg.maps.v1.MapPoint
-	5,  // 22: meurpg.maps.v1.PlaceMapTokenResponse.token:type_name -> meurpg.maps.v1.MapToken
-	5,  // 23: meurpg.maps.v1.SetMapTokenHiddenResponse.token:type_name -> meurpg.maps.v1.MapToken
-	6,  // 24: meurpg.maps.v1.MapService.ListMaps:input_type -> meurpg.maps.v1.ListMapsRequest
-	8,  // 25: meurpg.maps.v1.MapService.GetMap:input_type -> meurpg.maps.v1.GetMapRequest
-	10, // 26: meurpg.maps.v1.MapService.CreateMap:input_type -> meurpg.maps.v1.CreateMapRequest
-	12, // 27: meurpg.maps.v1.MapService.UpdateMap:input_type -> meurpg.maps.v1.UpdateMapRequest
-	14, // 28: meurpg.maps.v1.MapService.DeleteMap:input_type -> meurpg.maps.v1.DeleteMapRequest
-	16, // 29: meurpg.maps.v1.MapService.SetMapRevealed:input_type -> meurpg.maps.v1.SetMapRevealedRequest
-	18, // 30: meurpg.maps.v1.MapService.CreateMapPoint:input_type -> meurpg.maps.v1.CreateMapPointRequest
-	20, // 31: meurpg.maps.v1.MapService.UpdateMapPoint:input_type -> meurpg.maps.v1.UpdateMapPointRequest
-	22, // 32: meurpg.maps.v1.MapService.DeleteMapPoint:input_type -> meurpg.maps.v1.DeleteMapPointRequest
-	24, // 33: meurpg.maps.v1.MapService.SetMapPointRevealed:input_type -> meurpg.maps.v1.SetMapPointRevealedRequest
-	26, // 34: meurpg.maps.v1.MapService.PlaceMapToken:input_type -> meurpg.maps.v1.PlaceMapTokenRequest
-	28, // 35: meurpg.maps.v1.MapService.SetMapTokenHidden:input_type -> meurpg.maps.v1.SetMapTokenHiddenRequest
-	30, // 36: meurpg.maps.v1.MapService.RemoveMapToken:input_type -> meurpg.maps.v1.RemoveMapTokenRequest
-	7,  // 37: meurpg.maps.v1.MapService.ListMaps:output_type -> meurpg.maps.v1.ListMapsResponse
-	9,  // 38: meurpg.maps.v1.MapService.GetMap:output_type -> meurpg.maps.v1.GetMapResponse
-	11, // 39: meurpg.maps.v1.MapService.CreateMap:output_type -> meurpg.maps.v1.CreateMapResponse
-	13, // 40: meurpg.maps.v1.MapService.UpdateMap:output_type -> meurpg.maps.v1.UpdateMapResponse
-	15, // 41: meurpg.maps.v1.MapService.DeleteMap:output_type -> meurpg.maps.v1.DeleteMapResponse
-	17, // 42: meurpg.maps.v1.MapService.SetMapRevealed:output_type -> meurpg.maps.v1.SetMapRevealedResponse
-	19, // 43: meurpg.maps.v1.MapService.CreateMapPoint:output_type -> meurpg.maps.v1.CreateMapPointResponse
-	21, // 44: meurpg.maps.v1.MapService.UpdateMapPoint:output_type -> meurpg.maps.v1.UpdateMapPointResponse
-	23, // 45: meurpg.maps.v1.MapService.DeleteMapPoint:output_type -> meurpg.maps.v1.DeleteMapPointResponse
-	25, // 46: meurpg.maps.v1.MapService.SetMapPointRevealed:output_type -> meurpg.maps.v1.SetMapPointRevealedResponse
-	27, // 47: meurpg.maps.v1.MapService.PlaceMapToken:output_type -> meurpg.maps.v1.PlaceMapTokenResponse
-	29, // 48: meurpg.maps.v1.MapService.SetMapTokenHidden:output_type -> meurpg.maps.v1.SetMapTokenHiddenResponse
-	31, // 49: meurpg.maps.v1.MapService.RemoveMapToken:output_type -> meurpg.maps.v1.RemoveMapTokenResponse
-	37, // [37:50] is the sub-list for method output_type
-	24, // [24:37] is the sub-list for method input_type
-	24, // [24:24] is the sub-list for extension type_name
-	24, // [24:24] is the sub-list for extension extendee
-	0,  // [0:24] is the sub-list for field type_name
+	1,  // 17: meurpg.maps.v1.SetMapGridResponse.map:type_name -> meurpg.maps.v1.Map
+	0,  // 18: meurpg.maps.v1.CreateMapPointRequest.kind:type_name -> meurpg.maps.v1.MapPointKind
+	4,  // 19: meurpg.maps.v1.CreateMapPointResponse.point:type_name -> meurpg.maps.v1.MapPoint
+	0,  // 20: meurpg.maps.v1.UpdateMapPointRequest.kind:type_name -> meurpg.maps.v1.MapPointKind
+	4,  // 21: meurpg.maps.v1.UpdateMapPointResponse.point:type_name -> meurpg.maps.v1.MapPoint
+	4,  // 22: meurpg.maps.v1.SetMapPointRevealedResponse.point:type_name -> meurpg.maps.v1.MapPoint
+	5,  // 23: meurpg.maps.v1.PlaceMapTokenResponse.token:type_name -> meurpg.maps.v1.MapToken
+	5,  // 24: meurpg.maps.v1.SetMapTokenHiddenResponse.token:type_name -> meurpg.maps.v1.MapToken
+	6,  // 25: meurpg.maps.v1.MapService.ListMaps:input_type -> meurpg.maps.v1.ListMapsRequest
+	8,  // 26: meurpg.maps.v1.MapService.GetMap:input_type -> meurpg.maps.v1.GetMapRequest
+	10, // 27: meurpg.maps.v1.MapService.CreateMap:input_type -> meurpg.maps.v1.CreateMapRequest
+	12, // 28: meurpg.maps.v1.MapService.UpdateMap:input_type -> meurpg.maps.v1.UpdateMapRequest
+	14, // 29: meurpg.maps.v1.MapService.DeleteMap:input_type -> meurpg.maps.v1.DeleteMapRequest
+	16, // 30: meurpg.maps.v1.MapService.SetMapRevealed:input_type -> meurpg.maps.v1.SetMapRevealedRequest
+	18, // 31: meurpg.maps.v1.MapService.SetMapGrid:input_type -> meurpg.maps.v1.SetMapGridRequest
+	20, // 32: meurpg.maps.v1.MapService.CreateMapPoint:input_type -> meurpg.maps.v1.CreateMapPointRequest
+	22, // 33: meurpg.maps.v1.MapService.UpdateMapPoint:input_type -> meurpg.maps.v1.UpdateMapPointRequest
+	24, // 34: meurpg.maps.v1.MapService.DeleteMapPoint:input_type -> meurpg.maps.v1.DeleteMapPointRequest
+	26, // 35: meurpg.maps.v1.MapService.SetMapPointRevealed:input_type -> meurpg.maps.v1.SetMapPointRevealedRequest
+	28, // 36: meurpg.maps.v1.MapService.PlaceMapToken:input_type -> meurpg.maps.v1.PlaceMapTokenRequest
+	30, // 37: meurpg.maps.v1.MapService.SetMapTokenHidden:input_type -> meurpg.maps.v1.SetMapTokenHiddenRequest
+	32, // 38: meurpg.maps.v1.MapService.RemoveMapToken:input_type -> meurpg.maps.v1.RemoveMapTokenRequest
+	7,  // 39: meurpg.maps.v1.MapService.ListMaps:output_type -> meurpg.maps.v1.ListMapsResponse
+	9,  // 40: meurpg.maps.v1.MapService.GetMap:output_type -> meurpg.maps.v1.GetMapResponse
+	11, // 41: meurpg.maps.v1.MapService.CreateMap:output_type -> meurpg.maps.v1.CreateMapResponse
+	13, // 42: meurpg.maps.v1.MapService.UpdateMap:output_type -> meurpg.maps.v1.UpdateMapResponse
+	15, // 43: meurpg.maps.v1.MapService.DeleteMap:output_type -> meurpg.maps.v1.DeleteMapResponse
+	17, // 44: meurpg.maps.v1.MapService.SetMapRevealed:output_type -> meurpg.maps.v1.SetMapRevealedResponse
+	19, // 45: meurpg.maps.v1.MapService.SetMapGrid:output_type -> meurpg.maps.v1.SetMapGridResponse
+	21, // 46: meurpg.maps.v1.MapService.CreateMapPoint:output_type -> meurpg.maps.v1.CreateMapPointResponse
+	23, // 47: meurpg.maps.v1.MapService.UpdateMapPoint:output_type -> meurpg.maps.v1.UpdateMapPointResponse
+	25, // 48: meurpg.maps.v1.MapService.DeleteMapPoint:output_type -> meurpg.maps.v1.DeleteMapPointResponse
+	27, // 49: meurpg.maps.v1.MapService.SetMapPointRevealed:output_type -> meurpg.maps.v1.SetMapPointRevealedResponse
+	29, // 50: meurpg.maps.v1.MapService.PlaceMapToken:output_type -> meurpg.maps.v1.PlaceMapTokenResponse
+	31, // 51: meurpg.maps.v1.MapService.SetMapTokenHidden:output_type -> meurpg.maps.v1.SetMapTokenHiddenResponse
+	33, // 52: meurpg.maps.v1.MapService.RemoveMapToken:output_type -> meurpg.maps.v1.RemoveMapTokenResponse
+	39, // [39:53] is the sub-list for method output_type
+	25, // [25:39] is the sub-list for method input_type
+	25, // [25:25] is the sub-list for extension type_name
+	25, // [25:25] is the sub-list for extension extendee
+	0,  // [0:25] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_maps_v1_maps_proto_init() }
@@ -2462,14 +2612,14 @@ func file_meurpg_maps_v1_maps_proto_init() {
 		return
 	}
 	file_meurpg_maps_v1_maps_proto_msgTypes[11].OneofWrappers = []any{}
-	file_meurpg_maps_v1_maps_proto_msgTypes[19].OneofWrappers = []any{}
+	file_meurpg_maps_v1_maps_proto_msgTypes[21].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_maps_v1_maps_proto_rawDesc), len(file_meurpg_maps_v1_maps_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   31,
+			NumMessages:   33,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

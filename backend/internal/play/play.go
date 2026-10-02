@@ -41,7 +41,9 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1/playv1connect"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/nostore"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -91,6 +93,38 @@ type MapKeeper interface {
 	// session shows it, or a `not_found` Connect error when it is not an
 	// image of the campaign's gallery.
 	ShownImage(ctx context.Context, campaignID, imageID string) (*playv1.ShownImage, error)
+	// MapGrid returns the battle grid of the campaign's map, the zero Grid
+	// when it has none, or a `not_found` Connect error (MR-013).
+	MapGrid(ctx context.Context, campaignID, mapID string) (link.Grid, error)
+	// BattlePoint returns a battle point of the campaign, or a `not_found`
+	// Connect error for any other point.
+	BattlePoint(ctx context.Context, campaignID, pointID string) (link.BattlePoint, error)
+	// MapTokens returns where the map's tokens stand, hidden ones included.
+	MapTokens(ctx context.Context, mapID string) ([]link.TokenPosition, error)
+	// SetTokenPositions moves the characters' tokens on the map inside tx,
+	// creating the ones that are missing.
+	SetTokenPositions(ctx context.Context, tx pgx.Tx, mapID string, positions []link.TokenPosition, at time.Time) error
+}
+
+// CombatRoster tells who can fight and with which numbers (MR-013). The
+// characters module implements it (characters.Service), because the sheets
+// are its own. The methods take no caller: they run after this package's
+// own authorization check.
+type CombatRoster interface {
+	// CombatParty returns the campaign's living, active player characters,
+	// oldest first.
+	CombatParty(ctx context.Context, campaignID string) ([]link.Character, error)
+	// CombatCharacters returns those of ids that are living characters of
+	// the campaign, players' or NPCs; the others are left out.
+	CombatCharacters(ctx context.Context, campaignID string, ids []string) ([]link.Character, error)
+}
+
+// DiceModes tells where a player rolls their dice (RN-18). cmd/api wires it
+// to campaigns.Service.PlayerDiceMode.
+type DiceModes interface {
+	// RollsPhysical reports whether userID, an active member of the campaign,
+	// rolls real dice and types the result; false means the app rolls.
+	RollsPhysical(ctx context.Context, campaignID, userID string) (bool, error)
 }
 
 // CampaignDirectory tells which campaigns a user belongs to. The campaigns
@@ -138,9 +172,16 @@ type Config struct {
 	Vitals VitalsKeeper
 	// Campaigns lists a user's campaigns, for the session notice. Required.
 	Campaigns CampaignDirectory
-	// Maps checks and reveals the session's current map, and reads the
-	// image it shows. Required.
+	// Maps checks and reveals the session's current map, reads the image it
+	// shows, and gives a combat its grid and tokens. Required.
 	Maps MapKeeper
+	// Roster says who can fight, for a combat. Required.
+	Roster CombatRoster
+	// Dice says where a player rolls (RN-18). Required.
+	Dice DiceModes
+	// Roller rolls the NPCs' dice and the app's rolls. Nil means the
+	// operating system's random source (dice.Crypto); tests pass faces.
+	Roller dice.Roller
 	// Live sets the live stream's timing; the zero value is the defaults.
 	Live LiveConfig
 	// Logger receives errors, without personal data. Nil means
@@ -158,6 +199,9 @@ type Service struct {
 	vitals    VitalsKeeper
 	campaigns CampaignDirectory
 	maps      MapKeeper
+	roster    CombatRoster
+	dice      DiceModes
+	roller    dice.Roller
 	logger    *slog.Logger
 	now       func() time.Time
 
@@ -168,7 +212,10 @@ type Service struct {
 }
 
 // The compiler checks that Service implements the handler.
-var _ playv1connect.PlayServiceHandler = (*Service)(nil)
+var (
+	_ playv1connect.PlayServiceHandler   = (*Service)(nil)
+	_ playv1connect.CombatServiceHandler = (*Service)(nil)
+)
 
 // New returns a Service.
 func New(cfg Config) (*Service, error) {
@@ -183,6 +230,10 @@ func New(cfg Config) (*Service, error) {
 		return nil, errors.New("play: Campaigns is required")
 	case cfg.Maps == nil:
 		return nil, errors.New("play: Maps is required")
+	case cfg.Roster == nil:
+		return nil, errors.New("play: Roster is required")
+	case cfg.Dice == nil:
+		return nil, errors.New("play: Dice is required")
 	}
 	s := &Service{
 		pool:      cfg.Pool,
@@ -191,6 +242,9 @@ func New(cfg Config) (*Service, error) {
 		vitals:    cfg.Vitals,
 		campaigns: cfg.Campaigns,
 		maps:      cfg.Maps,
+		roster:    cfg.Roster,
+		dice:      cfg.Dice,
+		roller:    cfg.Roller,
 		logger:    cfg.Logger,
 		now:       cfg.Now,
 		hub:       live.New(cfg.Live.Buffer),
@@ -201,6 +255,9 @@ func New(cfg Config) (*Service, error) {
 	}
 	if s.now == nil {
 		s.now = time.Now
+	}
+	if s.roller == nil {
+		s.roller = dice.Crypto{}
 	}
 	if s.live.Heartbeat <= 0 {
 		s.live.Heartbeat = DefaultHeartbeat
@@ -231,7 +288,7 @@ type Sessions interface {
 	authz.SessionRechecker
 }
 
-// Mount registers PlayService on a mux. handle is usually
+// Mount registers PlayService and CombatService on a mux. handle is usually
 // httpserver.Server.Handle or http.ServeMux.Handle.
 //
 // sessions tells who is calling (the identity service in production), and
@@ -247,4 +304,5 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 		authz.Interceptor(sessions, members, s.logger), // what they may do, memoized per request
 	))
 	handle(playv1connect.NewPlayServiceHandler(s, opts...))
+	handle(playv1connect.NewCombatServiceHandler(s, opts...))
 }

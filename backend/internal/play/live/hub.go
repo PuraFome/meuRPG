@@ -55,6 +55,10 @@ type Audience struct {
 	Everyone bool
 	// The campaign's master.
 	Master bool
+	// Every player of the campaign, not the master: for an event the master
+	// gets in another form (a combat's turn, where a hidden combatant's name
+	// is the master's alone).
+	Players bool
 	// One more user, such as the player of the character the event is
 	// about. Empty for none.
 	UserID string
@@ -62,7 +66,7 @@ type Audience struct {
 
 // includes reports whether s may receive an event for this audience.
 func (a Audience) includes(s Subscriber) bool {
-	return a.Everyone || (a.Master && s.Master) || (a.UserID != "" && a.UserID == s.UserID)
+	return a.Everyone || (a.Master && s.Master) || (a.Players && !s.Master) || (a.UserID != "" && a.UserID == s.UserID)
 }
 
 // Event is one live change, and who may receive it.

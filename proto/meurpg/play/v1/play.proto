@@ -6,8 +6,9 @@ syntax = "proto3";
 // open (RN-06), the session's live stream (ADR-0005), the characters'
 // vitals, which the master corrects during the session (RN-02), the
 // session's current map (the maps themselves are meurpg.maps.v1), and the
-// gallery image the master shows the players (MR-028). Turns, actions and
-// the session history screen come with combat (Etapa 6).
+// gallery image the master shows the players (MR-028). Combat has its own
+// service (combat.proto, CombatService: MR-013); its attacks, actions and the
+// combat log come in the next slice of Etapa 6.
 package meurpg.play.v1;
 
 import "google/protobuf/timestamp.proto";
@@ -143,6 +144,14 @@ service PlayService {
   //     otherwise;
   //   - `shown_image_changed` when the master shows an image, stops showing
   //     it, or deletes it; sent to everyone;
+  //   - `encounter_changed` when anything changes in the combat; a hint,
+  //     sent to everyone, and the app reads the combat again
+  //     (CombatService.GetEncounter);
+  //   - `turn_changed` when the turn passes: the round and who is on turn,
+  //     as each member may see it (a player sees a hidden combatant's turn
+  //     as the master's);
+  //   - `combatant_moved` when a combatant moves on the grid: to the master
+  //     always, and to a player only for a combatant they may see;
   //   - `session_ended` when the master ends the session; the stream then
   //     ends without an error.
   //
@@ -444,6 +453,12 @@ message WatchGameSessionResponse {
     TokenMoved token_moved = 7;
     // The master showed an image, or stopped showing it.
     ShownImageChanged shown_image_changed = 8;
+    // Something changed in the combat: read it again (CombatService).
+    EncounterChanged encounter_changed = 10;
+    // The turn passed to another combatant.
+    TurnChanged turn_changed = 11;
+    // A combatant moved on the grid.
+    CombatantMoved combatant_moved = 12;
   }
 
   // Ready is the stream's first event.
@@ -495,6 +510,46 @@ message WatchGameSessionResponse {
     // The image shown now. Unset when the master stopped showing it, or
     // deleted it.
     ShownImage image = 1;
+  }
+
+  // EncounterChanged is a hint: the combat changed, so the app reads it again
+  // (CombatService.GetEncounter). It carries no content, so a hidden
+  // combatant never travels on a player's stream (RN-10). Everyone gets it,
+  // also when the change only touched hidden things.
+  message EncounterChanged {
+    // The combat (a UUID).
+    string encounter_id = 1;
+    // Its revision after the change. Read again when it is larger than the
+    // one on screen.
+    int32 revision = 2;
+  }
+
+  // TurnChanged says whose turn it is now. Each member gets their own copy:
+  // a player never learns which hidden combatant is on turn.
+  message TurnChanged {
+    // The combat (a UUID).
+    string encounter_id = 1;
+    // The round, counting from 1.
+    int32 round = 2;
+    // The combatant on turn (a UUID). Empty for a player when the one on
+    // turn is hidden from them: then master_turn is true.
+    string current_combatant_id = 3;
+    // True when the one on turn is a combatant the member may not see: the
+    // app shows "Vez do mestre". Always false for the master.
+    bool master_turn = 4;
+  }
+
+  // CombatantMoved is a combatant's new square. A player's stream only gets
+  // it for a combatant they may see. A combatant the app does not know yet
+  // means: read the combat again.
+  message CombatantMoved {
+    // The combat (a UUID).
+    string encounter_id = 1;
+    // The combatant (a UUID).
+    string combatant_id = 2;
+    // Its new square, from 0, from the top left of the grid.
+    int32 col = 3;
+    int32 row = 4;
   }
 
   // TokenMoved is a token's new position. A token the app does not know

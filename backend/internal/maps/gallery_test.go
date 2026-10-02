@@ -521,6 +521,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, mapCalls["UpdateMap"] = mc.UpdateMap(ctx, connect.NewRequest(&mapsv1.UpdateMapRequest{CampaignId: id, MapId: id, Revision: 1, Name: proto.String("X")}))
 	_, mapCalls["DeleteMap"] = mc.DeleteMap(ctx, connect.NewRequest(&mapsv1.DeleteMapRequest{CampaignId: id, MapId: id}))
 	_, mapCalls["SetMapRevealed"] = mc.SetMapRevealed(ctx, connect.NewRequest(&mapsv1.SetMapRevealedRequest{CampaignId: id, MapId: id, Revealed: true}))
+	_, mapCalls["SetMapGrid"] = mc.SetMapGrid(ctx, connect.NewRequest(&mapsv1.SetMapGridRequest{CampaignId: id, MapId: id, Columns: 20}))
 	_, mapCalls["CreateMapPoint"] = mc.CreateMapPoint(ctx, connect.NewRequest(&mapsv1.CreateMapPointRequest{CampaignId: id, MapId: id, Kind: mapsv1.MapPointKind_MAP_POINT_KIND_SCENE, Name: "X"}))
 	_, mapCalls["UpdateMapPoint"] = mc.UpdateMapPoint(ctx, connect.NewRequest(&mapsv1.UpdateMapPointRequest{CampaignId: id, MapId: id, PointId: id, Name: proto.String("X")}))
 	_, mapCalls["DeleteMapPoint"] = mc.DeleteMapPoint(ctx, connect.NewRequest(&mapsv1.DeleteMapPointRequest{CampaignId: id, MapId: id, PointId: id}))

@@ -109,6 +109,10 @@ func (cm campaignMaps) mapToProto(r mapsdb.ListMapDetailsRow, v viewer) *mapsv1.
 		CreatedAt:  timestamppb.New(r.CreatedAt),
 		UpdatedAt:  timestamppb.New(r.UpdatedAt),
 	}
+	if r.GridColumns != nil {
+		out.GridColumns = *r.GridColumns
+		out.GridRows = gridRows(*r.GridColumns, r.ImageWidth, r.ImageHeight)
+	}
 	if v.master {
 		// The gallery is the master's preparation: its names stay with them.
 		out.Image.Name = r.ImageName

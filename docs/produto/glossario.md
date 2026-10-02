@@ -28,10 +28,13 @@ Usar as mesmas palavras nas conversas, nos documentos e no código evita muita c
 | Economia de ação | O que o personagem pode gastar num turno: uma ação, uma ação bônus, uma reação e o movimento (o deslocamento, dobrado depois da Disparada). O motor calcula o que ainda está disponível (MR-014). | `Economy`, `TurnOptions` |
 | Recurso | Uma capacidade com usos limitados, como Retomar o Fôlego (1 uso por descanso curto), Ki ou Fúria. A ficha diz o máximo e quando volta; a sessão conta os usos gastos. | `Resource`, `Derived.Resources` |
 | Código de motivo | O motivo de uma opção estar desabilitada, como `NO_SLOT` ou `ACTION_USED`. O servidor manda só o código; o app escreve a frase em português. | `DisabledReason` |
-| Encontro | Um combate num mapa, com iniciativa, rodadas e turnos. | `encounter` |
-| Combatente | Um personagem dentro de um encontro. Guarda PV atual, iniciativa e posição daquele combate. | `combatant` |
+| Encontro | Um combate num mapa, com iniciativa, rodadas e turnos. Tem três estados: preparação (`setup`, escolhendo quem luta e rolando a iniciativa), em andamento (`active`) e encerrado (`ended`). Uma sessão tem no máximo um que não terminou. | `encounter` |
+| Combatente | Um personagem dentro de um encontro; um NPC entra em cópias ("Goblin 1", "Goblin 2"), cada uma com o próprio rótulo. Guarda a iniciativa, a posição, o movimento, o PV (só o NPC) e se está escondido daquele combate. | `combatant` |
 | Iniciativa | A rolagem que define a ordem dos turnos num encontro. Cada combatente rola a própria, inclusive NPCs iguais (RN-19). | `initiative` |
-| Grade | O quadriculado do mapa no combate. Cada quadrado vale 1,5 m, inclusive na diagonal (RN-21). | `grid` |
+| Grade | O quadriculado do mapa no combate. Cada quadrado vale 1,5 m, inclusive na diagonal (RN-21). O mestre define quantos quadrados cabem na largura do mapa; as linhas seguem a proporção da imagem. | `grid`, `grid_columns` |
+| Vez do mestre | O que o jogador vê quando quem joga é um combatente escondido dele: sem nome, só "Vez do mestre" (RN-10, RN-20). | `master_turn` |
+| Estado do inimigo | A palavra que o jogador vê no lugar do PV de um NPC: Ileso, Ferido, Muito ferido (metade ou menos) ou Derrotado (RN-20). | `CombatantState` |
+| Empate de iniciativa | Dois combatentes com o mesmo total e o mesmo bônus: o mestre decide quem vai primeiro (RN-19). | `tie_unresolved` |
 | Teste contra a morte | O teste do personagem com 0 PV. Na terceira falha, ele só morre quando o mestre confirma (RN-03). | `death_save` |
 | Personagem | Tem um tipo: jogador, inimigo, boss, minion ou NPC de história. O personagem de jogador que morre não é apagado: fica no sistema, como base de outro personagem ou como NPC do mestre em outra campanha (RN-03, RN-04). | `character`, `kind` |
 | Ficha | Os dados de regra de um personagem. Completa para jogador, inimigo e boss; básica (PV, CA, deslocamento, iniciativa e até três ataques com dados) para minion e NPC de história. | `sheet`, `FullSheet`, `BasicSheet` |

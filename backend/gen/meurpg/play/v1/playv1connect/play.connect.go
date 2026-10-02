@@ -8,8 +8,9 @@
 // open (RN-06), the session's live stream (ADR-0005), the characters'
 // vitals, which the master corrects during the session (RN-02), the
 // session's current map (the maps themselves are meurpg.maps.v1), and the
-// gallery image the master shows the players (MR-028). Turns, actions and
-// the session history screen come with combat (Etapa 6).
+// gallery image the master shows the players (MR-028). Combat has its own
+// service (combat.proto, CombatService: MR-013); its attacks, actions and the
+// combat log come in the next slice of Etapa 6.
 package playv1connect
 
 import (
@@ -163,6 +164,14 @@ type PlayServiceClient interface {
 	//     otherwise;
 	//   - `shown_image_changed` when the master shows an image, stops showing
 	//     it, or deletes it; sent to everyone;
+	//   - `encounter_changed` when anything changes in the combat; a hint,
+	//     sent to everyone, and the app reads the combat again
+	//     (CombatService.GetEncounter);
+	//   - `turn_changed` when the turn passes: the round and who is on turn,
+	//     as each member may see it (a player sees a hidden combatant's turn
+	//     as the master's);
+	//   - `combatant_moved` when a combatant moves on the grid: to the master
+	//     always, and to a player only for a combatant they may see;
 	//   - `session_ended` when the master ends the session; the stream then
 	//     ends without an error.
 	//
@@ -472,6 +481,14 @@ type PlayServiceHandler interface {
 	//     otherwise;
 	//   - `shown_image_changed` when the master shows an image, stops showing
 	//     it, or deletes it; sent to everyone;
+	//   - `encounter_changed` when anything changes in the combat; a hint,
+	//     sent to everyone, and the app reads the combat again
+	//     (CombatService.GetEncounter);
+	//   - `turn_changed` when the turn passes: the round and who is on turn,
+	//     as each member may see it (a player sees a hidden combatant's turn
+	//     as the master's);
+	//   - `combatant_moved` when a combatant moves on the grid: to the master
+	//     always, and to a player only for a combatant they may see;
 	//   - `session_ended` when the master ends the session; the stream then
 	//     ends without an error.
 	//

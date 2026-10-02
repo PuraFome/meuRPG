@@ -119,6 +119,11 @@ func (s *Service) EndGameSession(
 			session = current // ended before: nothing changes
 			return nil
 		}
+		// A combat ends with its session; the player characters' tokens move to
+		// where they stood (MR-013).
+		if err := s.endOpenEncounter(ctx, tx, q, current, m.UserID); err != nil {
+			return err
+		}
 		session, err = q.EndGameSession(ctx, playdb.EndGameSessionParams{
 			CampaignID: m.CampaignID, ID: id.String(), Now: s.now(),
 		})

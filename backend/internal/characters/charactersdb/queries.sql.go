@@ -441,6 +441,99 @@ func (q *Queries) ListCharacters(ctx context.Context, arg ListCharactersParams) 
 	return items, nil
 }
 
+const listCombatCharacters = `-- name: ListCombatCharacters :many
+SELECT id, kind, name, player_user_id, sheet FROM characters
+WHERE campaign_id = $1::UUID
+  AND id = ANY($2::UUID[])
+  AND status = 'active'
+ORDER BY created_at, id
+`
+
+type ListCombatCharactersParams struct {
+	CampaignID string
+	Ids        []string
+}
+
+type ListCombatCharactersRow struct {
+	ID           string
+	Kind         string
+	Name         string
+	PlayerUserID *string
+	Sheet        []byte
+}
+
+// Those of the given characters that may fight in a combat of the campaign:
+// its living characters, players' and NPCs, oldest first (package play).
+func (q *Queries) ListCombatCharacters(ctx context.Context, arg ListCombatCharactersParams) ([]ListCombatCharactersRow, error) {
+	rows, err := q.db.Query(ctx, listCombatCharacters, arg.CampaignID, arg.Ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCombatCharactersRow
+	for rows.Next() {
+		var i ListCombatCharactersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Kind,
+			&i.Name,
+			&i.PlayerUserID,
+			&i.Sheet,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCombatParty = `-- name: ListCombatParty :many
+SELECT id, kind, name, player_user_id, sheet FROM characters
+WHERE campaign_id = $1::UUID
+  AND kind = 'player' AND status = 'active'
+ORDER BY created_at, id
+`
+
+type ListCombatPartyRow struct {
+	ID           string
+	Kind         string
+	Name         string
+	PlayerUserID *string
+	Sheet        []byte
+}
+
+// The campaign's living, active player characters, oldest first: the party
+// that fights (package play). The sheet comes along for the numbers a
+// combatant starts with (initiative, speed).
+func (q *Queries) ListCombatParty(ctx context.Context, campaignID string) ([]ListCombatPartyRow, error) {
+	rows, err := q.db.Query(ctx, listCombatParty, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCombatPartyRow
+	for rows.Next() {
+		var i ListCombatPartyRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Kind,
+			&i.Name,
+			&i.PlayerUserID,
+			&i.Sheet,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listMapCharacters = `-- name: ListMapCharacters :many
 SELECT id, kind, name, player_user_id FROM characters
 WHERE campaign_id = $1::UUID

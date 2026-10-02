@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -326,6 +327,10 @@ func TestMapServiceAuthorizationMatrix(t *testing.T) {
 		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 		{"SetMapRevealed", func(ctx context.Context, u *user) error {
 			_, err := u.maps.SetMapRevealed(ctx, connect.NewRequest(&mapsv1.SetMapRevealedRequest{CampaignId: campaign, MapId: shown.GetId(), Revealed: true}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"SetMapGrid", func(ctx context.Context, u *user) error {
+			_, err := u.maps.SetMapGrid(ctx, connect.NewRequest(&mapsv1.SetMapGridRequest{CampaignId: campaign, MapId: shown.GetId(), Columns: 20}))
 			return err
 		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 		{"CreateMapPoint", func(ctx context.Context, u *user) error {
@@ -879,4 +884,75 @@ func wantBlocked(t *testing.T, call string, err error, reason playv1.GameSession
 		}
 	}
 	t.Errorf("%s error = %v, want a GameSessionBlocked detail with %v", call, err, reason)
+}
+
+// The battle grid of a map (MR-013, RN-21): squares of 1.5 m across the
+// image's width, rows from the image's proportions. Only the master sets it;
+// 0 clears it; a player who sees the map reads it and hears about a change;
+// a battle point may lead to another map, like a submap.
+func TestMR013_SetMapGrid(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	master, player := h.newUser("Mestre"), h.newUser("Jogadora")
+	campaign := h.newCampaign(master, player)
+	image := master.newImage(campaign)
+	m := master.createMap(campaign, "Mirathel", image)
+	master.setMapRevealed(campaign, m.GetId(), true)
+	ctx := t.Context()
+	if m.GetGridColumns() != 0 || m.GetGridRows() != 0 {
+		t.Fatalf("a new map has grid %dx%d, want none", m.GetGridColumns(), m.GetGridRows())
+	}
+
+	master.start(campaign)
+	stream := player.watch(campaign)
+
+	set := func(columns int32) (*mapsv1.Map, error) {
+		res, err := master.maps.SetMapGrid(ctx, connect.NewRequest(&mapsv1.SetMapGridRequest{CampaignId: campaign, MapId: m.GetId(), Columns: columns}))
+		if err != nil {
+			return nil, err
+		}
+		return res.Msg.GetMap(), nil
+	}
+	got, err := set(24)
+	if err != nil {
+		t.Fatalf("SetMapGrid(24) error = %v", err)
+	}
+	w, h2 := got.GetImage().GetWidth(), got.GetImage().GetHeight()
+	wantRows := (24*h2 + w/2) / w // round(columns * height / width)
+	if wantRows < 1 {
+		wantRows = 1
+	}
+	if got.GetGridColumns() != 24 || got.GetGridRows() != wantRows || got.GetRevision() != m.GetRevision() {
+		t.Errorf("grid = %dx%d at revision %d, want 24x%d, revision unchanged (%d)", got.GetGridColumns(), got.GetGridRows(), got.GetRevision(), wantRows, m.GetRevision())
+	}
+	stream.mapChanged(m.GetId()) // a player who sees the map hears about it
+	if seen := player.mustGetMap(campaign, m.GetId()).GetMap(); seen.GetGridColumns() != 24 {
+		t.Errorf("a player reads grid_columns = %d, want 24", seen.GetGridColumns())
+	}
+
+	for _, bad := range []int32{1, 3, 201, -4} {
+		_, err := set(bad)
+		wantCode(t, "SetMapGrid("+strconv.Itoa(int(bad))+")", err, connect.CodeInvalidArgument)
+	}
+	cleared, err := set(0)
+	if err != nil || cleared.GetGridColumns() != 0 || cleared.GetGridRows() != 0 {
+		t.Errorf("SetMapGrid(0) = %v, %v; want no grid", cleared, err)
+	}
+
+	// A battle point leads to a map of the campaign, like a submap; a scene does not.
+	other := master.createMap(campaign, "Estrada", image)
+	point := master.createPoint(&mapsv1.CreateMapPointRequest{
+		CampaignId: campaign, MapId: m.GetId(), Kind: mapsv1.MapPointKind_MAP_POINT_KIND_BATTLE, Name: "Emboscada", TargetMapId: other.GetId(),
+	})
+	if point.GetTargetMap().GetId() != other.GetId() {
+		t.Errorf("battle point target = %v, want %s", point.GetTargetMap(), other.GetId())
+	}
+	_, err = master.maps.CreateMapPoint(ctx, connect.NewRequest(&mapsv1.CreateMapPointRequest{
+		CampaignId: campaign, MapId: m.GetId(), Kind: mapsv1.MapPointKind_MAP_POINT_KIND_SCENE, Name: "Taverna", TargetMapId: other.GetId(),
+	}))
+	wantCode(t, "CreateMapPoint(scene with a target)", err, connect.CodeInvalidArgument)
+	// A battle's target is not a "parent": the other map is not a submap of this one.
+	if parents := master.mustGetMap(campaign, other.GetId()).GetMap().GetParentMaps(); len(parents) != 0 {
+		t.Errorf("parent maps of the battle's map = %v, want none", parents)
+	}
 }

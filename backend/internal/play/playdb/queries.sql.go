@@ -10,6 +10,16 @@ import (
 	"time"
 )
 
+const deleteCombatant = `-- name: DeleteCombatant :exec
+DELETE FROM combatants
+WHERE id = $1
+`
+
+func (q *Queries) DeleteCombatant(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, deleteCombatant, id)
+	return err
+}
+
 const endGameSession = `-- name: EndGameSession :one
 UPDATE game_sessions
 SET ended_at = COALESCE(ended_at, GREATEST($3::TIMESTAMPTZ, started_at))
@@ -41,6 +51,40 @@ func (q *Queries) EndGameSession(ctx context.Context, arg EndGameSessionParams) 
 	return i, err
 }
 
+const getEncounterInSession = `-- name: GetEncounterInSession :one
+SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at FROM encounters
+WHERE game_session_id = $1 AND id = $2
+`
+
+type GetEncounterInSessionParams struct {
+	GameSessionID string
+	ID            string
+}
+
+// A combat by its ID, if it is in the session (so a combat of another
+// campaign matches no row).
+func (q *Queries) GetEncounterInSession(ctx context.Context, arg GetEncounterInSessionParams) (Encounter, error) {
+	row := q.db.QueryRow(ctx, getEncounterInSession, arg.GameSessionID, arg.ID)
+	var i Encounter
+	err := row.Scan(
+		&i.ID,
+		&i.GameSessionID,
+		&i.MapID,
+		&i.MapPointID,
+		&i.Name,
+		&i.Status,
+		&i.Round,
+		&i.CurrentCombatantID,
+		&i.GridColumns,
+		&i.GridRows,
+		&i.Revision,
+		&i.CreatedAt,
+		&i.StartedAt,
+		&i.EndedAt,
+	)
+	return i, err
+}
+
 const getGameSessionForUpdate = `-- name: GetGameSessionForUpdate :one
 SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id FROM game_sessions
 WHERE campaign_id = $1 AND id = $2
@@ -68,6 +112,41 @@ func (q *Queries) GetGameSessionForUpdate(ctx context.Context, arg GetGameSessio
 	return i, err
 }
 
+const getLatestEncounter = `-- name: GetLatestEncounter :one
+
+SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at FROM encounters
+WHERE game_session_id = $1
+ORDER BY created_at DESC, id DESC
+LIMIT 1
+`
+
+// Combat (MR-013). Every write below runs after the caller locked the open
+// session's row (GetOpenGameSessionForUpdate), so two changes to a combat take
+// turns, as for the vitals.
+// The session's latest combat, ended or not: GetEncounter shows it, so the app
+// can also show the end of a combat that just ended.
+func (q *Queries) GetLatestEncounter(ctx context.Context, gameSessionID string) (Encounter, error) {
+	row := q.db.QueryRow(ctx, getLatestEncounter, gameSessionID)
+	var i Encounter
+	err := row.Scan(
+		&i.ID,
+		&i.GameSessionID,
+		&i.MapID,
+		&i.MapPointID,
+		&i.Name,
+		&i.Status,
+		&i.Round,
+		&i.CurrentCombatantID,
+		&i.GridColumns,
+		&i.GridRows,
+		&i.Revision,
+		&i.CreatedAt,
+		&i.StartedAt,
+		&i.EndedAt,
+	)
+	return i, err
+}
+
 const getOnScreen = `-- name: GetOnScreen :one
 SELECT current_map_id, shown_image_id FROM game_sessions
 WHERE campaign_id = $1 AND ended_at IS NULL
@@ -84,6 +163,35 @@ func (q *Queries) GetOnScreen(ctx context.Context, campaignID string) (GetOnScre
 	row := q.db.QueryRow(ctx, getOnScreen, campaignID)
 	var i GetOnScreenRow
 	err := row.Scan(&i.CurrentMapID, &i.ShownImageID)
+	return i, err
+}
+
+const getOpenEncounter = `-- name: GetOpenEncounter :one
+SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at FROM encounters
+WHERE game_session_id = $1 AND status <> 'ended'
+`
+
+// The session's combat that is not ended, if any. The partial unique index
+// encounters_one_open_per_session allows at most one.
+func (q *Queries) GetOpenEncounter(ctx context.Context, gameSessionID string) (Encounter, error) {
+	row := q.db.QueryRow(ctx, getOpenEncounter, gameSessionID)
+	var i Encounter
+	err := row.Scan(
+		&i.ID,
+		&i.GameSessionID,
+		&i.MapID,
+		&i.MapPointID,
+		&i.Name,
+		&i.Status,
+		&i.Round,
+		&i.CurrentCombatantID,
+		&i.GridColumns,
+		&i.GridRows,
+		&i.Revision,
+		&i.CreatedAt,
+		&i.StartedAt,
+		&i.EndedAt,
+	)
 	return i, err
 }
 
@@ -164,6 +272,139 @@ func (q *Queries) GetSessionEventByIdempotencyKey(ctx context.Context, arg GetSe
 	return i, err
 }
 
+const insertCombatant = `-- name: InsertCombatant :one
+INSERT INTO combatants (
+    encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face,
+    order_index, grid_col, grid_row, speed_ft, hp_current, hp_max, hp_temp, created_at
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8, $9,
+    $10, $11, $12, $13, $14, $15, $16, $17
+)
+RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at
+`
+
+type InsertCombatantParams struct {
+	EncounterID     string
+	CharacterID     string
+	UserID          *string
+	Label           string
+	Kind            string
+	Hidden          bool
+	Initiative      *int32
+	InitiativeBonus int32
+	InitiativeFace  *int32
+	OrderIndex      int32
+	GridCol         *int32
+	GridRow         *int32
+	SpeedFt         int32
+	HpCurrent       *int32
+	HpMax           *int32
+	HpTemp          *int32
+	CreatedAt       time.Time
+}
+
+func (q *Queries) InsertCombatant(ctx context.Context, arg InsertCombatantParams) (Combatant, error) {
+	row := q.db.QueryRow(ctx, insertCombatant,
+		arg.EncounterID,
+		arg.CharacterID,
+		arg.UserID,
+		arg.Label,
+		arg.Kind,
+		arg.Hidden,
+		arg.Initiative,
+		arg.InitiativeBonus,
+		arg.InitiativeFace,
+		arg.OrderIndex,
+		arg.GridCol,
+		arg.GridRow,
+		arg.SpeedFt,
+		arg.HpCurrent,
+		arg.HpMax,
+		arg.HpTemp,
+		arg.CreatedAt,
+	)
+	var i Combatant
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.CharacterID,
+		&i.UserID,
+		&i.Label,
+		&i.Kind,
+		&i.Hidden,
+		&i.Initiative,
+		&i.InitiativeBonus,
+		&i.InitiativeFace,
+		&i.TieOrdered,
+		&i.OrderIndex,
+		&i.GridCol,
+		&i.GridRow,
+		&i.SpeedFt,
+		&i.MovementUsedFt,
+		&i.Dashed,
+		&i.ActionUsed,
+		&i.BonusActionUsed,
+		&i.ReactionUsed,
+		&i.HpCurrent,
+		&i.HpMax,
+		&i.HpTemp,
+		&i.Defeated,
+		&i.DeathSuccesses,
+		&i.DeathFailures,
+		&i.Conditions,
+		&i.ConcentrationSpell,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const insertEncounter = `-- name: InsertEncounter :one
+INSERT INTO encounters (game_session_id, map_id, map_point_id, name, status, grid_columns, grid_rows, created_at)
+VALUES ($1, $2, $3, $4, 'setup', $5, $6, $7)
+RETURNING id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at
+`
+
+type InsertEncounterParams struct {
+	GameSessionID string
+	MapID         *string
+	MapPointID    *string
+	Name          string
+	GridColumns   int32
+	GridRows      int32
+	CreatedAt     time.Time
+}
+
+// A new combat starts in setup, in round 0.
+func (q *Queries) InsertEncounter(ctx context.Context, arg InsertEncounterParams) (Encounter, error) {
+	row := q.db.QueryRow(ctx, insertEncounter,
+		arg.GameSessionID,
+		arg.MapID,
+		arg.MapPointID,
+		arg.Name,
+		arg.GridColumns,
+		arg.GridRows,
+		arg.CreatedAt,
+	)
+	var i Encounter
+	err := row.Scan(
+		&i.ID,
+		&i.GameSessionID,
+		&i.MapID,
+		&i.MapPointID,
+		&i.Name,
+		&i.Status,
+		&i.Round,
+		&i.CurrentCombatantID,
+		&i.GridColumns,
+		&i.GridRows,
+		&i.Revision,
+		&i.CreatedAt,
+		&i.StartedAt,
+		&i.EndedAt,
+	)
+	return i, err
+}
+
 const insertGameSession = `-- name: InsertGameSession :one
 INSERT INTO game_sessions (campaign_id, session_number, started_at)
 VALUES ($1, $2, $3)
@@ -228,6 +469,63 @@ func (q *Queries) InsertSessionEvent(ctx context.Context, arg InsertSessionEvent
 	var i InsertSessionEventRow
 	err := row.Scan(&i.ID, &i.Seq)
 	return i, err
+}
+
+const listCombatants = `-- name: ListCombatants :many
+SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at FROM combatants
+WHERE encounter_id = $1
+ORDER BY order_index, created_at, id
+`
+
+// The combat's combatants in turn order.
+func (q *Queries) ListCombatants(ctx context.Context, encounterID string) ([]Combatant, error) {
+	rows, err := q.db.Query(ctx, listCombatants, encounterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Combatant
+	for rows.Next() {
+		var i Combatant
+		if err := rows.Scan(
+			&i.ID,
+			&i.EncounterID,
+			&i.CharacterID,
+			&i.UserID,
+			&i.Label,
+			&i.Kind,
+			&i.Hidden,
+			&i.Initiative,
+			&i.InitiativeBonus,
+			&i.InitiativeFace,
+			&i.TieOrdered,
+			&i.OrderIndex,
+			&i.GridCol,
+			&i.GridRow,
+			&i.SpeedFt,
+			&i.MovementUsedFt,
+			&i.Dashed,
+			&i.ActionUsed,
+			&i.BonusActionUsed,
+			&i.ReactionUsed,
+			&i.HpCurrent,
+			&i.HpMax,
+			&i.HpTemp,
+			&i.Defeated,
+			&i.DeathSuccesses,
+			&i.DeathFailures,
+			&i.Conditions,
+			&i.ConcentrationSpell,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listGameSessions = `-- name: ListGameSessions :many
@@ -301,6 +599,17 @@ func (q *Queries) ListOpenGameSessions(ctx context.Context, campaignIds []string
 	return items, nil
 }
 
+const markCombatantDashed = `-- name: MarkCombatantDashed :exec
+UPDATE combatants
+SET dashed = true
+WHERE id = $1
+`
+
+func (q *Queries) MarkCombatantDashed(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, markCombatantDashed, id)
+	return err
+}
+
 const nextSessionEventSeq = `-- name: NextSessionEventSeq :one
 SELECT (COALESCE(max(seq), 0) + 1)::INT4 AS next
 FROM session_events
@@ -333,6 +642,93 @@ func (q *Queries) NextSessionNumber(ctx context.Context, campaignID string) (int
 	return next, err
 }
 
+const resetCombatantTurn = `-- name: ResetCombatantTurn :exec
+UPDATE combatants
+SET movement_used_ft = 0, dashed = false, action_used = false, bonus_action_used = false, reaction_used = false
+WHERE id = $1
+`
+
+// The start of a combatant's own turn: movement, action, bonus action, dash and
+// reaction come back.
+func (q *Queries) ResetCombatantTurn(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, resetCombatantTurn, id)
+	return err
+}
+
+const setCombatantHidden = `-- name: SetCombatantHidden :exec
+UPDATE combatants
+SET hidden = $2
+WHERE id = $1
+`
+
+type SetCombatantHiddenParams struct {
+	ID     string
+	Hidden bool
+}
+
+func (q *Queries) SetCombatantHidden(ctx context.Context, arg SetCombatantHiddenParams) error {
+	_, err := q.db.Exec(ctx, setCombatantHidden, arg.ID, arg.Hidden)
+	return err
+}
+
+const setCombatantInitiative = `-- name: SetCombatantInitiative :exec
+UPDATE combatants
+SET initiative = $2, initiative_face = $3, tie_ordered = false
+WHERE id = $1
+`
+
+type SetCombatantInitiativeParams struct {
+	ID             string
+	Initiative     *int32
+	InitiativeFace *int32
+}
+
+// A new roll breaks any tie order decided before (tie_ordered).
+func (q *Queries) SetCombatantInitiative(ctx context.Context, arg SetCombatantInitiativeParams) error {
+	_, err := q.db.Exec(ctx, setCombatantInitiative, arg.ID, arg.Initiative, arg.InitiativeFace)
+	return err
+}
+
+const setCombatantOrder = `-- name: SetCombatantOrder :exec
+UPDATE combatants
+SET order_index = $2, tie_ordered = $3
+WHERE id = $1
+`
+
+type SetCombatantOrderParams struct {
+	ID         string
+	OrderIndex int32
+	TieOrdered bool
+}
+
+func (q *Queries) SetCombatantOrder(ctx context.Context, arg SetCombatantOrderParams) error {
+	_, err := q.db.Exec(ctx, setCombatantOrder, arg.ID, arg.OrderIndex, arg.TieOrdered)
+	return err
+}
+
+const setCombatantSquare = `-- name: SetCombatantSquare :exec
+UPDATE combatants
+SET grid_col = $2, grid_row = $3, movement_used_ft = $4
+WHERE id = $1
+`
+
+type SetCombatantSquareParams struct {
+	ID             string
+	GridCol        *int32
+	GridRow        *int32
+	MovementUsedFt int32
+}
+
+func (q *Queries) SetCombatantSquare(ctx context.Context, arg SetCombatantSquareParams) error {
+	_, err := q.db.Exec(ctx, setCombatantSquare,
+		arg.ID,
+		arg.GridCol,
+		arg.GridRow,
+		arg.MovementUsedFt,
+	)
+	return err
+}
+
 const setCurrentMap = `-- name: SetCurrentMap :one
 UPDATE game_sessions
 SET current_map_id = $1
@@ -361,6 +757,55 @@ func (q *Queries) SetCurrentMap(ctx context.Context, arg SetCurrentMapParams) (G
 	return i, err
 }
 
+const setEncounterState = `-- name: SetEncounterState :one
+UPDATE encounters
+SET status = $1, round = $2, current_combatant_id = $3,
+    started_at = $4, ended_at = $5, revision = revision + 1
+WHERE id = $6
+RETURNING id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at
+`
+
+type SetEncounterStateParams struct {
+	Status             string
+	Round              int32
+	CurrentCombatantID *string
+	StartedAt          *time.Time
+	EndedAt            *time.Time
+	ID                 string
+}
+
+// Where the combat is: its status, round and whose turn it is. Every change
+// to a combat raises its revision, so a write that changes only combatants
+// uses TouchEncounter.
+func (q *Queries) SetEncounterState(ctx context.Context, arg SetEncounterStateParams) (Encounter, error) {
+	row := q.db.QueryRow(ctx, setEncounterState,
+		arg.Status,
+		arg.Round,
+		arg.CurrentCombatantID,
+		arg.StartedAt,
+		arg.EndedAt,
+		arg.ID,
+	)
+	var i Encounter
+	err := row.Scan(
+		&i.ID,
+		&i.GameSessionID,
+		&i.MapID,
+		&i.MapPointID,
+		&i.Name,
+		&i.Status,
+		&i.Round,
+		&i.CurrentCombatantID,
+		&i.GridColumns,
+		&i.GridRows,
+		&i.Revision,
+		&i.CreatedAt,
+		&i.StartedAt,
+		&i.EndedAt,
+	)
+	return i, err
+}
+
 const setShownImage = `-- name: SetShownImage :one
 UPDATE game_sessions
 SET shown_image_id = $1
@@ -385,6 +830,35 @@ func (q *Queries) SetShownImage(ctx context.Context, arg SetShownImageParams) (G
 		&i.EndedAt,
 		&i.CurrentMapID,
 		&i.ShownImageID,
+	)
+	return i, err
+}
+
+const touchEncounter = `-- name: TouchEncounter :one
+UPDATE encounters
+SET revision = revision + 1
+WHERE id = $1
+RETURNING id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at
+`
+
+func (q *Queries) TouchEncounter(ctx context.Context, id string) (Encounter, error) {
+	row := q.db.QueryRow(ctx, touchEncounter, id)
+	var i Encounter
+	err := row.Scan(
+		&i.ID,
+		&i.GameSessionID,
+		&i.MapID,
+		&i.MapPointID,
+		&i.Name,
+		&i.Status,
+		&i.Round,
+		&i.CurrentCombatantID,
+		&i.GridColumns,
+		&i.GridRows,
+		&i.Revision,
+		&i.CreatedAt,
+		&i.StartedAt,
+		&i.EndedAt,
 	)
 	return i, err
 }

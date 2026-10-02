@@ -143,13 +143,29 @@ service MapService {
   //   - `permission_denied`: the caller is a player.
   rpc SetMapRevealed(SetMapRevealedRequest) returns (SetMapRevealedResponse);
 
+  // SetMapGrid sets the battle grid of a map, or clears it (MR-013, RN-21).
+  // Only the campaign's master may call it. The grid is made of squares of
+  // 1.5 m (5 ft): columns says how many fit across the image's width, and
+  // the rows follow the image's proportions. A combat can only start on a
+  // map with a grid (PlayService/CombatService.StartEncounter).
+  //
+  // A combat already running keeps the grid it started with. A player who
+  // sees the map gets `map_changed`.
+  //
+  // Errors:
+  //   - `invalid_argument`: columns is neither 0 nor between 4 and 200.
+  //   - `not_found`: the map is not in this campaign, the campaign does not
+  //     exist, or the caller is not a member of it.
+  //   - `permission_denied`: the caller is a player.
+  rpc SetMapGrid(SetMapGridRequest) returns (SetMapGridResponse);
+
   // CreateMapPoint puts a point of interest on a map (MR-008). Only the
   // campaign's master may call it. The point starts hidden.
   //
   // Errors:
   //   - `invalid_argument`: a field breaks its rules; kind is unspecified;
-  //     target_map_id is set on a point that is not a SUBMAP, is the
-  //     point's own map, or is not a map of the campaign.
+  //     target_map_id is set on a point that is neither a SUBMAP nor a
+  //     BATTLE, is the point's own map, or is not a map of the campaign.
   //   - `not_found`: the map is not in this campaign, the campaign does not
   //     exist, or the caller is not a member of it.
   //   - `permission_denied`: the caller is a player.
@@ -159,12 +175,13 @@ service MapService {
   // UpdateMapPoint changes a point: each field set in the request replaces
   // the current value, and unset fields stay as they are. Moving a point is
   // an update of x_bp and y_bp. Only the campaign's master may call it.
-  // Changing the kind to anything but SUBMAP removes the target.
+  // Changing the kind to anything but SUBMAP or BATTLE removes the target.
   //
   // Errors:
   //   - `invalid_argument`: nothing to change; a field breaks its rules;
-  //     target_map_id is set on a point that is not a SUBMAP (after the
-  //     change), is the point's own map, or is not a map of the campaign.
+  //     target_map_id is set on a point that is neither a SUBMAP nor a
+  //     BATTLE (after the change), is the point's own map, or is not a map
+  //     of the campaign.
   //   - `not_found`: the point is not on this map, the map is not in this
   //     campaign, the campaign does not exist, or the caller is not a
   //     member of it.
@@ -234,8 +251,10 @@ service MapService {
 // MapPointKind is what a point of interest leads to.
 enum MapPointKind {
   MAP_POINT_KIND_UNSPECIFIED = 0;
-  // "Batalha": an encounter. Until combat arrives (Etapa 6), opening it
-  // shows its name and description.
+  // "Batalha": an encounter. It may name the map where the fight happens
+  // (the point's target map, like a submap): starting the combat from the
+  // point (CombatService.StartEncounter) then makes that map the session's
+  // current map.
   MAP_POINT_KIND_BATTLE = 1;
   // "Submapa": another map, such as a building inside a region (the
   // point's target map).
@@ -274,9 +293,15 @@ message Map {
   // in UpdateMap.
   int32 revision = 9;
   google.protobuf.Timestamp created_at = 10;
-  // The last change to the map itself: its name, image or revealed state.
-  // Points and tokens have their own times.
+  // The last change to the map itself: its name, image, revealed state or
+  // grid. Points and tokens have their own times.
   google.protobuf.Timestamp updated_at = 11;
+  // The battle grid (SetMapGrid): how many squares of 1.5 m (5 ft) fit
+  // across the image's width, 4 to 200. 0 when the map has no grid.
+  int32 grid_columns = 12;
+  // How many rows of squares the grid has: round(grid_columns * image
+  // height / image width), 1 to 400. 0 when the map has no grid.
+  int32 grid_rows = 13;
 }
 
 // MapImage is the image under a map: a gallery image. Any active member of
@@ -324,10 +349,11 @@ message MapPoint {
   // height (0 to 10000).
   int32 x_bp = 6;
   int32 y_bp = 7;
-  // Where a SUBMAP point leads: the app offers "Abrir <name>". Unset when
-  // the point has no target (its map was deleted, or the master has not
-  // chosen one), and, for a player, when the target map is hidden from
-  // them: then the point only shows its description.
+  // Where a SUBMAP point leads: the app offers "Abrir <name>"; or, for a
+  // BATTLE point, the map where the fight happens. Unset when the point has
+  // no target (its map was deleted, or the master has not chosen one),
+  // and, for a player, when the target map is hidden from them: then the
+  // point only shows its description.
   MapRef target_map = 8;
   // Whether the master revealed the point. Always true for a player, who
   // never receives a hidden point.
@@ -445,6 +471,21 @@ message SetMapRevealedResponse {
   Map map = 1;
 }
 
+// SetMapGridRequest sets a map's battle grid.
+message SetMapGridRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+  // How many squares of 1.5 m fit across the image's width: 4 to 200, or 0
+  // to clear the grid.
+  int32 columns = 3;
+}
+
+// SetMapGridResponse returns the map as it is now.
+message SetMapGridResponse {
+  // The map, with grid_columns and grid_rows.
+  Map map = 1;
+}
+
 // CreateMapPointRequest carries the new point.
 message CreateMapPointRequest {
   string campaign_id = 1;
@@ -458,8 +499,8 @@ message CreateMapPointRequest {
   // The position, 0 to 10000 each.
   int32 x_bp = 6;
   int32 y_bp = 7;
-  // Only for a SUBMAP point, and optional there: another map of the
-  // campaign (a UUID). Empty for none.
+  // Only for a SUBMAP or a BATTLE point, and optional there: another map of
+  // the campaign (a UUID). Empty for none.
   string target_map_id = 8;
 }
 
@@ -475,7 +516,8 @@ message UpdateMapPointRequest {
   string campaign_id = 1;
   string map_id = 2;
   string point_id = 3;
-  // The new kind; not UNSPECIFIED. Anything but SUBMAP removes the target.
+  // The new kind; not UNSPECIFIED. Anything but SUBMAP or BATTLE removes
+  // the target.
   optional MapPointKind kind = 4;
   // 1 to 80 characters, one line.
   optional string name = 5;
@@ -484,8 +526,8 @@ message UpdateMapPointRequest {
   // The new position, 0 to 10000 each. Moving a point sets both.
   optional int32 x_bp = 7;
   optional int32 y_bp = 8;
-  // A SUBMAP point's new target: another map of the campaign (a UUID), or
-  // empty to remove it.
+  // A SUBMAP or BATTLE point's new target: another map of the campaign (a
+  // UUID), or empty to remove it.
   optional string target_map_id = 9;
   // Reveals (true) or hides (false) the point, as SetMapPointRevealed
   // does, so the editor saves everything in one call.

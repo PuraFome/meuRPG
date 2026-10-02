@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/maps/v1/maps.proto.
  */
 export const file_meurpg_maps_v1_maps: GenFile = /*@__PURE__*/
-  fileDesc("ChltZXVycGcvbWFwcy92MS9tYXBzLnByb3RvEg5tZXVycGcubWFwcy52MSK0AgoDTWFwEgoKAmlkGAEgASgJEhMKC2NhbXBhaWduX2lkGAIgASgJEgwKBG5hbWUYAyABKAkSJwoFaW1hZ2UYBCABKAsyGC5tZXVycGcubWFwcy52MS5NYXBJbWFnZRIQCghyZXZlYWxlZBgFIAEoCBIPCgdjdXJyZW50GAYgASgIEhMKC3BvaW50X2NvdW50GAcgASgFEisKC3BhcmVudF9tYXBzGAggAygLMhYubWV1cnBnLm1hcHMudjEuTWFwUmVmEhAKCHJldmlzaW9uGAkgASgFEi4KCmNyZWF0ZWRfYXQYCiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYCyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wImcKCE1hcEltYWdlEgoKAmlkGAEgASgJEgsKA3VybBgCIAEoCRIVCg10aHVtYm5haWxfdXJsGAMgASgJEg0KBXdpZHRoGAQgASgFEg4KBmhlaWdodBgFIAEoBRIMCgRuYW1lGAYgASgJIiIKBk1hcFJlZhIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJIq8CCghNYXBQb2ludBIKCgJpZBgBIAEoCRIOCgZtYXBfaWQYAiABKAkSKgoEa2luZBgDIAEoDjIcLm1ldXJwZy5tYXBzLnYxLk1hcFBvaW50S2luZBIMCgRuYW1lGAQgASgJEhMKC2Rlc2NyaXB0aW9uGAUgASgJEgwKBHhfYnAYBiABKAUSDAoEeV9icBgHIAEoBRIqCgp0YXJnZXRfbWFwGAggASgLMhYubWV1cnBnLm1hcHMudjEuTWFwUmVmEhAKCHJldmVhbGVkGAkgASgIEi4KCmNyZWF0ZWRfYXQYCiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYCyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wItsBCghNYXBUb2tlbhIOCgZtYXBfaWQYASABKAkSFAoMY2hhcmFjdGVyX2lkGAIgASgJEgwKBG5hbWUYAyABKAkSMQoEa2luZBgEIAEoDjIjLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkNoYXJhY3RlcktpbmQSDAoEbWluZRgFIAEoCBIMCgR4X2JwGAYgASgFEgwKBHlfYnAYByABKAUSDgoGaGlkZGVuGAggASgIEi4KCnVwZGF0ZWRfYXQYCSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIiYKD0xpc3RNYXBzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCSI1ChBMaXN0TWFwc1Jlc3BvbnNlEiEKBG1hcHMYASADKAsyEy5tZXVycGcubWFwcy52MS5NYXAiNAoNR2V0TWFwUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIOCgZtYXBfaWQYAiABKAkihgEKDkdldE1hcFJlc3BvbnNlEiAKA21hcBgBIAEoCzITLm1ldXJwZy5tYXBzLnYxLk1hcBIoCgZwb2ludHMYAiADKAsyGC5tZXVycGcubWFwcy52MS5NYXBQb2ludBIoCgZ0b2tlbnMYAyADKAsyGC5tZXVycGcubWFwcy52MS5NYXBUb2tlbiJHChBDcmVhdGVNYXBSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSEAoIaW1hZ2VfaWQYAyABKAkiNQoRQ3JlYXRlTWFwUmVzcG9uc2USIAoDbWFwGAEgASgLMhMubWV1cnBnLm1hcHMudjEuTWFwIokBChBVcGRhdGVNYXBSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg4KBm1hcF9pZBgCIAEoCRIQCghyZXZpc2lvbhgDIAEoBRIRCgRuYW1lGAQgASgJSACIAQESFQoIaW1hZ2VfaWQYBSABKAlIAYgBAUIHCgVfbmFtZUILCglfaW1hZ2VfaWQiNQoRVXBkYXRlTWFwUmVzcG9uc2USIAoDbWFwGAEgASgLMhMubWV1cnBnLm1hcHMudjEuTWFwIjcKEERlbGV0ZU1hcFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSDgoGbWFwX2lkGAIgASgJIhMKEURlbGV0ZU1hcFJlc3BvbnNlIk4KFVNldE1hcFJldmVhbGVkUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIOCgZtYXBfaWQYAiABKAkSEAoIcmV2ZWFsZWQYAyABKAgiOgoWU2V0TWFwUmV2ZWFsZWRSZXNwb25zZRIgCgNtYXAYASABKAsyEy5tZXVycGcubWFwcy52MS5NYXAivgEKFUNyZWF0ZU1hcFBvaW50UmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIOCgZtYXBfaWQYAiABKAkSKgoEa2luZBgDIAEoDjIcLm1ldXJwZy5tYXBzLnYxLk1hcFBvaW50S2luZBIMCgRuYW1lGAQgASgJEhMKC2Rlc2NyaXB0aW9uGAUgASgJEgwKBHhfYnAYBiABKAUSDAoEeV9icBgHIAEoBRIVCg10YXJnZXRfbWFwX2lkGAggASgJIkEKFkNyZWF0ZU1hcFBvaW50UmVzcG9uc2USJwoFcG9pbnQYASABKAsyGC5tZXVycGcubWFwcy52MS5NYXBQb2ludCLYAgoVVXBkYXRlTWFwUG9pbnRSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg4KBm1hcF9pZBgCIAEoCRIQCghwb2ludF9pZBgDIAEoCRIvCgRraW5kGAQgASgOMhwubWV1cnBnLm1hcHMudjEuTWFwUG9pbnRLaW5kSACIAQESEQoEbmFtZRgFIAEoCUgBiAEBEhgKC2Rlc2NyaXB0aW9uGAYgASgJSAKIAQESEQoEeF9icBgHIAEoBUgDiAEBEhEKBHlfYnAYCCABKAVIBIgBARIaCg10YXJnZXRfbWFwX2lkGAkgASgJSAWIAQESFQoIcmV2ZWFsZWQYCiABKAhIBogBAUIHCgVfa2luZEIHCgVfbmFtZUIOCgxfZGVzY3JpcHRpb25CBwoFX3hfYnBCBwoFX3lfYnBCEAoOX3RhcmdldF9tYXBfaWRCCwoJX3JldmVhbGVkIkEKFlVwZGF0ZU1hcFBvaW50UmVzcG9uc2USJwoFcG9pbnQYASABKAsyGC5tZXVycGcubWFwcy52MS5NYXBQb2ludCJOChVEZWxldGVNYXBQb2ludFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSDgoGbWFwX2lkGAIgASgJEhAKCHBvaW50X2lkGAMgASgJIhgKFkRlbGV0ZU1hcFBvaW50UmVzcG9uc2UiZQoaU2V0TWFwUG9pbnRSZXZlYWxlZFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSDgoGbWFwX2lkGAIgASgJEhAKCHBvaW50X2lkGAMgASgJEhAKCHJldmVhbGVkGAQgASgIIkYKG1NldE1hcFBvaW50UmV2ZWFsZWRSZXNwb25zZRInCgVwb2ludBgBIAEoCzIYLm1ldXJwZy5tYXBzLnYxLk1hcFBvaW50Im0KFFBsYWNlTWFwVG9rZW5SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg4KBm1hcF9pZBgCIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAyABKAkSDAoEeF9icBgEIAEoBRIMCgR5X2JwGAUgASgFIkAKFVBsYWNlTWFwVG9rZW5SZXNwb25zZRInCgV0b2tlbhgBIAEoCzIYLm1ldXJwZy5tYXBzLnYxLk1hcFRva2VuImUKGFNldE1hcFRva2VuSGlkZGVuUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIOCgZtYXBfaWQYAiABKAkSFAoMY2hhcmFjdGVyX2lkGAMgASgJEg4KBmhpZGRlbhgEIAEoCCJEChlTZXRNYXBUb2tlbkhpZGRlblJlc3BvbnNlEicKBXRva2VuGAEgASgLMhgubWV1cnBnLm1hcHMudjEuTWFwVG9rZW4iUgoVUmVtb3ZlTWFwVG9rZW5SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg4KBm1hcF9pZBgCIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAyABKAkiGAoWUmVtb3ZlTWFwVG9rZW5SZXNwb25zZSp+CgxNYXBQb2ludEtpbmQSHgoaTUFQX1BPSU5UX0tJTkRfVU5TUEVDSUZJRUQQABIZChVNQVBfUE9JTlRfS0lORF9CQVRUTEUQARIZChVNQVBfUE9JTlRfS0lORF9TVUJNQVAQAhIYChRNQVBfUE9JTlRfS0lORF9TQ0VORRADMsEJCgpNYXBTZXJ2aWNlElIKCExpc3RNYXBzEh8ubWV1cnBnLm1hcHMudjEuTGlzdE1hcHNSZXF1ZXN0GiAubWV1cnBnLm1hcHMudjEuTGlzdE1hcHNSZXNwb25zZSIDkAICEkwKBkdldE1hcBIdLm1ldXJwZy5tYXBzLnYxLkdldE1hcFJlcXVlc3QaHi5tZXVycGcubWFwcy52MS5HZXRNYXBSZXNwb25zZSIDkAICElAKCUNyZWF0ZU1hcBIgLm1ldXJwZy5tYXBzLnYxLkNyZWF0ZU1hcFJlcXVlc3QaIS5tZXVycGcubWFwcy52MS5DcmVhdGVNYXBSZXNwb25zZRJQCglVcGRhdGVNYXASIC5tZXVycGcubWFwcy52MS5VcGRhdGVNYXBSZXF1ZXN0GiEubWV1cnBnLm1hcHMudjEuVXBkYXRlTWFwUmVzcG9uc2USUAoJRGVsZXRlTWFwEiAubWV1cnBnLm1hcHMudjEuRGVsZXRlTWFwUmVxdWVzdBohLm1ldXJwZy5tYXBzLnYxLkRlbGV0ZU1hcFJlc3BvbnNlEl8KDlNldE1hcFJldmVhbGVkEiUubWV1cnBnLm1hcHMudjEuU2V0TWFwUmV2ZWFsZWRSZXF1ZXN0GiYubWV1cnBnLm1hcHMudjEuU2V0TWFwUmV2ZWFsZWRSZXNwb25zZRJfCg5DcmVhdGVNYXBQb2ludBIlLm1ldXJwZy5tYXBzLnYxLkNyZWF0ZU1hcFBvaW50UmVxdWVzdBomLm1ldXJwZy5tYXBzLnYxLkNyZWF0ZU1hcFBvaW50UmVzcG9uc2USXwoOVXBkYXRlTWFwUG9pbnQSJS5tZXVycGcubWFwcy52MS5VcGRhdGVNYXBQb2ludFJlcXVlc3QaJi5tZXVycGcubWFwcy52MS5VcGRhdGVNYXBQb2ludFJlc3BvbnNlEl8KDkRlbGV0ZU1hcFBvaW50EiUubWV1cnBnLm1hcHMudjEuRGVsZXRlTWFwUG9pbnRSZXF1ZXN0GiYubWV1cnBnLm1hcHMudjEuRGVsZXRlTWFwUG9pbnRSZXNwb25zZRJuChNTZXRNYXBQb2ludFJldmVhbGVkEioubWV1cnBnLm1hcHMudjEuU2V0TWFwUG9pbnRSZXZlYWxlZFJlcXVlc3QaKy5tZXVycGcubWFwcy52MS5TZXRNYXBQb2ludFJldmVhbGVkUmVzcG9uc2USXAoNUGxhY2VNYXBUb2tlbhIkLm1ldXJwZy5tYXBzLnYxLlBsYWNlTWFwVG9rZW5SZXF1ZXN0GiUubWV1cnBnLm1hcHMudjEuUGxhY2VNYXBUb2tlblJlc3BvbnNlEmgKEVNldE1hcFRva2VuSGlkZGVuEigubWV1cnBnLm1hcHMudjEuU2V0TWFwVG9rZW5IaWRkZW5SZXF1ZXN0GikubWV1cnBnLm1hcHMudjEuU2V0TWFwVG9rZW5IaWRkZW5SZXNwb25zZRJfCg5SZW1vdmVNYXBUb2tlbhIlLm1ldXJwZy5tYXBzLnYxLlJlbW92ZU1hcFRva2VuUmVxdWVzdBomLm1ldXJwZy5tYXBzLnYxLlJlbW92ZU1hcFRva2VuUmVzcG9uc2VCtwEKEmNvbS5tZXVycGcubWFwcy52MUIJTWFwc1Byb3RvUAFaPGdpdGh1Yi5jb20vUHVyYUZvbWUvbWV1UlBHL2JhY2tlbmQvZ2VuL21ldXJwZy9tYXBzL3YxO21hcHN2MaICA01NWKoCDk1ldXJwZy5NYXBzLlYxygIOTWV1cnBnXE1hcHNcVjHiAhpNZXVycGdcTWFwc1xWMVxHUEJNZXRhZGF0YeoCEE1ldXJwZzo6TWFwczo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp, file_meurpg_characters_v1_characters]);
+  fileDesc("ChltZXVycGcvbWFwcy92MS9tYXBzLnByb3RvEg5tZXVycGcubWFwcy52MSLdAgoDTWFwEgoKAmlkGAEgASgJEhMKC2NhbXBhaWduX2lkGAIgASgJEgwKBG5hbWUYAyABKAkSJwoFaW1hZ2UYBCABKAsyGC5tZXVycGcubWFwcy52MS5NYXBJbWFnZRIQCghyZXZlYWxlZBgFIAEoCBIPCgdjdXJyZW50GAYgASgIEhMKC3BvaW50X2NvdW50GAcgASgFEisKC3BhcmVudF9tYXBzGAggAygLMhYubWV1cnBnLm1hcHMudjEuTWFwUmVmEhAKCHJldmlzaW9uGAkgASgFEi4KCmNyZWF0ZWRfYXQYCiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYCyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhQKDGdyaWRfY29sdW1ucxgMIAEoBRIRCglncmlkX3Jvd3MYDSABKAUiZwoITWFwSW1hZ2USCgoCaWQYASABKAkSCwoDdXJsGAIgASgJEhUKDXRodW1ibmFpbF91cmwYAyABKAkSDQoFd2lkdGgYBCABKAUSDgoGaGVpZ2h0GAUgASgFEgwKBG5hbWUYBiABKAkiIgoGTWFwUmVmEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkirwIKCE1hcFBvaW50EgoKAmlkGAEgASgJEg4KBm1hcF9pZBgCIAEoCRIqCgRraW5kGAMgASgOMhwubWV1cnBnLm1hcHMudjEuTWFwUG9pbnRLaW5kEgwKBG5hbWUYBCABKAkSEwoLZGVzY3JpcHRpb24YBSABKAkSDAoEeF9icBgGIAEoBRIMCgR5X2JwGAcgASgFEioKCnRhcmdldF9tYXAYCCABKAsyFi5tZXVycGcubWFwcy52MS5NYXBSZWYSEAoIcmV2ZWFsZWQYCSABKAgSLgoKY3JlYXRlZF9hdBgKIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKdXBkYXRlZF9hdBgLIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAi2wEKCE1hcFRva2VuEg4KBm1hcF9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSDAoEbmFtZRgDIAEoCRIxCgRraW5kGAQgASgOMiMubWV1cnBnLmNoYXJhY3RlcnMudjEuQ2hhcmFjdGVyS2luZBIMCgRtaW5lGAUgASgIEgwKBHhfYnAYBiABKAUSDAoEeV9icBgHIAEoBRIOCgZoaWRkZW4YCCABKAgSLgoKdXBkYXRlZF9hdBgJIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiJgoPTGlzdE1hcHNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIjUKEExpc3RNYXBzUmVzcG9uc2USIQoEbWFwcxgBIAMoCzITLm1ldXJwZy5tYXBzLnYxLk1hcCI0Cg1HZXRNYXBSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg4KBm1hcF9pZBgCIAEoCSKGAQoOR2V0TWFwUmVzcG9uc2USIAoDbWFwGAEgASgLMhMubWV1cnBnLm1hcHMudjEuTWFwEigKBnBvaW50cxgCIAMoCzIYLm1ldXJwZy5tYXBzLnYxLk1hcFBvaW50EigKBnRva2VucxgDIAMoCzIYLm1ldXJwZy5tYXBzLnYxLk1hcFRva2VuIkcKEENyZWF0ZU1hcFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSDAoEbmFtZRgCIAEoCRIQCghpbWFnZV9pZBgDIAEoCSI1ChFDcmVhdGVNYXBSZXNwb25zZRIgCgNtYXAYASABKAsyEy5tZXVycGcubWFwcy52MS5NYXAiiQEKEFVwZGF0ZU1hcFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSDgoGbWFwX2lkGAIgASgJEhAKCHJldmlzaW9uGAMgASgFEhEKBG5hbWUYBCABKAlIAIgBARIVCghpbWFnZV9pZBgFIAEoCUgBiAEBQgcKBV9uYW1lQgsKCV9pbWFnZV9pZCI1ChFVcGRhdGVNYXBSZXNwb25zZRIgCgNtYXAYASABKAsyEy5tZXVycGcubWFwcy52MS5NYXAiNwoQRGVsZXRlTWFwUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIOCgZtYXBfaWQYAiABKAkiEwoRRGVsZXRlTWFwUmVzcG9uc2UiTgoVU2V0TWFwUmV2ZWFsZWRSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg4KBm1hcF9pZBgCIAEoCRIQCghyZXZlYWxlZBgDIAEoCCI6ChZTZXRNYXBSZXZlYWxlZFJlc3BvbnNlEiAKA21hcBgBIAEoCzITLm1ldXJwZy5tYXBzLnYxLk1hcCJJChFTZXRNYXBHcmlkUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIOCgZtYXBfaWQYAiABKAkSDwoHY29sdW1ucxgDIAEoBSI2ChJTZXRNYXBHcmlkUmVzcG9uc2USIAoDbWFwGAEgASgLMhMubWV1cnBnLm1hcHMudjEuTWFwIr4BChVDcmVhdGVNYXBQb2ludFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSDgoGbWFwX2lkGAIgASgJEioKBGtpbmQYAyABKA4yHC5tZXVycGcubWFwcy52MS5NYXBQb2ludEtpbmQSDAoEbmFtZRgEIAEoCRITCgtkZXNjcmlwdGlvbhgFIAEoCRIMCgR4X2JwGAYgASgFEgwKBHlfYnAYByABKAUSFQoNdGFyZ2V0X21hcF9pZBgIIAEoCSJBChZDcmVhdGVNYXBQb2ludFJlc3BvbnNlEicKBXBvaW50GAEgASgLMhgubWV1cnBnLm1hcHMudjEuTWFwUG9pbnQi2AIKFVVwZGF0ZU1hcFBvaW50UmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIOCgZtYXBfaWQYAiABKAkSEAoIcG9pbnRfaWQYAyABKAkSLwoEa2luZBgEIAEoDjIcLm1ldXJwZy5tYXBzLnYxLk1hcFBvaW50S2luZEgAiAEBEhEKBG5hbWUYBSABKAlIAYgBARIYCgtkZXNjcmlwdGlvbhgGIAEoCUgCiAEBEhEKBHhfYnAYByABKAVIA4gBARIRCgR5X2JwGAggASgFSASIAQESGgoNdGFyZ2V0X21hcF9pZBgJIAEoCUgFiAEBEhUKCHJldmVhbGVkGAogASgISAaIAQFCBwoFX2tpbmRCBwoFX25hbWVCDgoMX2Rlc2NyaXB0aW9uQgcKBV94X2JwQgcKBV95X2JwQhAKDl90YXJnZXRfbWFwX2lkQgsKCV9yZXZlYWxlZCJBChZVcGRhdGVNYXBQb2ludFJlc3BvbnNlEicKBXBvaW50GAEgASgLMhgubWV1cnBnLm1hcHMudjEuTWFwUG9pbnQiTgoVRGVsZXRlTWFwUG9pbnRSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg4KBm1hcF9pZBgCIAEoCRIQCghwb2ludF9pZBgDIAEoCSIYChZEZWxldGVNYXBQb2ludFJlc3BvbnNlImUKGlNldE1hcFBvaW50UmV2ZWFsZWRSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg4KBm1hcF9pZBgCIAEoCRIQCghwb2ludF9pZBgDIAEoCRIQCghyZXZlYWxlZBgEIAEoCCJGChtTZXRNYXBQb2ludFJldmVhbGVkUmVzcG9uc2USJwoFcG9pbnQYASABKAsyGC5tZXVycGcubWFwcy52MS5NYXBQb2ludCJtChRQbGFjZU1hcFRva2VuUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIOCgZtYXBfaWQYAiABKAkSFAoMY2hhcmFjdGVyX2lkGAMgASgJEgwKBHhfYnAYBCABKAUSDAoEeV9icBgFIAEoBSJAChVQbGFjZU1hcFRva2VuUmVzcG9uc2USJwoFdG9rZW4YASABKAsyGC5tZXVycGcubWFwcy52MS5NYXBUb2tlbiJlChhTZXRNYXBUb2tlbkhpZGRlblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSDgoGbWFwX2lkGAIgASgJEhQKDGNoYXJhY3Rlcl9pZBgDIAEoCRIOCgZoaWRkZW4YBCABKAgiRAoZU2V0TWFwVG9rZW5IaWRkZW5SZXNwb25zZRInCgV0b2tlbhgBIAEoCzIYLm1ldXJwZy5tYXBzLnYxLk1hcFRva2VuIlIKFVJlbW92ZU1hcFRva2VuUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIOCgZtYXBfaWQYAiABKAkSFAoMY2hhcmFjdGVyX2lkGAMgASgJIhgKFlJlbW92ZU1hcFRva2VuUmVzcG9uc2UqfgoMTWFwUG9pbnRLaW5kEh4KGk1BUF9QT0lOVF9LSU5EX1VOU1BFQ0lGSUVEEAASGQoVTUFQX1BPSU5UX0tJTkRfQkFUVExFEAESGQoVTUFQX1BPSU5UX0tJTkRfU1VCTUFQEAISGAoUTUFQX1BPSU5UX0tJTkRfU0NFTkUQAzKWCgoKTWFwU2VydmljZRJSCghMaXN0TWFwcxIfLm1ldXJwZy5tYXBzLnYxLkxpc3RNYXBzUmVxdWVzdBogLm1ldXJwZy5tYXBzLnYxLkxpc3RNYXBzUmVzcG9uc2UiA5ACAhJMCgZHZXRNYXASHS5tZXVycGcubWFwcy52MS5HZXRNYXBSZXF1ZXN0Gh4ubWV1cnBnLm1hcHMudjEuR2V0TWFwUmVzcG9uc2UiA5ACAhJQCglDcmVhdGVNYXASIC5tZXVycGcubWFwcy52MS5DcmVhdGVNYXBSZXF1ZXN0GiEubWV1cnBnLm1hcHMudjEuQ3JlYXRlTWFwUmVzcG9uc2USUAoJVXBkYXRlTWFwEiAubWV1cnBnLm1hcHMudjEuVXBkYXRlTWFwUmVxdWVzdBohLm1ldXJwZy5tYXBzLnYxLlVwZGF0ZU1hcFJlc3BvbnNlElAKCURlbGV0ZU1hcBIgLm1ldXJwZy5tYXBzLnYxLkRlbGV0ZU1hcFJlcXVlc3QaIS5tZXVycGcubWFwcy52MS5EZWxldGVNYXBSZXNwb25zZRJfCg5TZXRNYXBSZXZlYWxlZBIlLm1ldXJwZy5tYXBzLnYxLlNldE1hcFJldmVhbGVkUmVxdWVzdBomLm1ldXJwZy5tYXBzLnYxLlNldE1hcFJldmVhbGVkUmVzcG9uc2USUwoKU2V0TWFwR3JpZBIhLm1ldXJwZy5tYXBzLnYxLlNldE1hcEdyaWRSZXF1ZXN0GiIubWV1cnBnLm1hcHMudjEuU2V0TWFwR3JpZFJlc3BvbnNlEl8KDkNyZWF0ZU1hcFBvaW50EiUubWV1cnBnLm1hcHMudjEuQ3JlYXRlTWFwUG9pbnRSZXF1ZXN0GiYubWV1cnBnLm1hcHMudjEuQ3JlYXRlTWFwUG9pbnRSZXNwb25zZRJfCg5VcGRhdGVNYXBQb2ludBIlLm1ldXJwZy5tYXBzLnYxLlVwZGF0ZU1hcFBvaW50UmVxdWVzdBomLm1ldXJwZy5tYXBzLnYxLlVwZGF0ZU1hcFBvaW50UmVzcG9uc2USXwoORGVsZXRlTWFwUG9pbnQSJS5tZXVycGcubWFwcy52MS5EZWxldGVNYXBQb2ludFJlcXVlc3QaJi5tZXVycGcubWFwcy52MS5EZWxldGVNYXBQb2ludFJlc3BvbnNlEm4KE1NldE1hcFBvaW50UmV2ZWFsZWQSKi5tZXVycGcubWFwcy52MS5TZXRNYXBQb2ludFJldmVhbGVkUmVxdWVzdBorLm1ldXJwZy5tYXBzLnYxLlNldE1hcFBvaW50UmV2ZWFsZWRSZXNwb25zZRJcCg1QbGFjZU1hcFRva2VuEiQubWV1cnBnLm1hcHMudjEuUGxhY2VNYXBUb2tlblJlcXVlc3QaJS5tZXVycGcubWFwcy52MS5QbGFjZU1hcFRva2VuUmVzcG9uc2USaAoRU2V0TWFwVG9rZW5IaWRkZW4SKC5tZXVycGcubWFwcy52MS5TZXRNYXBUb2tlbkhpZGRlblJlcXVlc3QaKS5tZXVycGcubWFwcy52MS5TZXRNYXBUb2tlbkhpZGRlblJlc3BvbnNlEl8KDlJlbW92ZU1hcFRva2VuEiUubWV1cnBnLm1hcHMudjEuUmVtb3ZlTWFwVG9rZW5SZXF1ZXN0GiYubWV1cnBnLm1hcHMudjEuUmVtb3ZlTWFwVG9rZW5SZXNwb25zZUK3AQoSY29tLm1ldXJwZy5tYXBzLnYxQglNYXBzUHJvdG9QAVo8Z2l0aHViLmNvbS9QdXJhRm9tZS9tZXVSUEcvYmFja2VuZC9nZW4vbWV1cnBnL21hcHMvdjE7bWFwc3YxogIDTU1YqgIOTWV1cnBnLk1hcHMuVjHKAg5NZXVycGdcTWFwc1xWMeICGk1ldXJwZ1xNYXBzXFYxXEdQQk1ldGFkYXRh6gIQTWV1cnBnOjpNYXBzOjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp, file_meurpg_characters_v1_characters]);
 
 /**
  * Map is a map as the caller may see it.
@@ -99,12 +99,28 @@ export type Map = Message<"meurpg.maps.v1.Map"> & {
   createdAt?: Timestamp | undefined;
 
   /**
-   * The last change to the map itself: its name, image or revealed state.
-   * Points and tokens have their own times.
+   * The last change to the map itself: its name, image, revealed state or
+   * grid. Points and tokens have their own times.
    *
    * @generated from field: google.protobuf.Timestamp updated_at = 11;
    */
   updatedAt?: Timestamp | undefined;
+
+  /**
+   * The battle grid (SetMapGrid): how many squares of 1.5 m (5 ft) fit
+   * across the image's width, 4 to 200. 0 when the map has no grid.
+   *
+   * @generated from field: int32 grid_columns = 12;
+   */
+  gridColumns: number;
+
+  /**
+   * How many rows of squares the grid has: round(grid_columns * image
+   * height / image width), 1 to 400. 0 when the map has no grid.
+   *
+   * @generated from field: int32 grid_rows = 13;
+   */
+  gridRows: number;
 };
 
 /**
@@ -256,10 +272,11 @@ export type MapPoint = Message<"meurpg.maps.v1.MapPoint"> & {
   yBp: number;
 
   /**
-   * Where a SUBMAP point leads: the app offers "Abrir <name>". Unset when
-   * the point has no target (its map was deleted, or the master has not
-   * chosen one), and, for a player, when the target map is hidden from
-   * them: then the point only shows its description.
+   * Where a SUBMAP point leads: the app offers "Abrir <name>"; or, for a
+   * BATTLE point, the map where the fight happens. Unset when the point has
+   * no target (its map was deleted, or the master has not chosen one),
+   * and, for a player, when the target map is hidden from them: then the
+   * point only shows its description.
    *
    * @generated from field: meurpg.maps.v1.MapRef target_map = 8;
    */
@@ -678,6 +695,59 @@ export const SetMapRevealedResponseSchema: GenMessage<SetMapRevealedResponse> = 
   messageDesc(file_meurpg_maps_v1_maps, 16);
 
 /**
+ * SetMapGridRequest sets a map's battle grid.
+ *
+ * @generated from message meurpg.maps.v1.SetMapGridRequest
+ */
+export type SetMapGridRequest = Message<"meurpg.maps.v1.SetMapGridRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * @generated from field: string map_id = 2;
+   */
+  mapId: string;
+
+  /**
+   * How many squares of 1.5 m fit across the image's width: 4 to 200, or 0
+   * to clear the grid.
+   *
+   * @generated from field: int32 columns = 3;
+   */
+  columns: number;
+};
+
+/**
+ * Describes the message meurpg.maps.v1.SetMapGridRequest.
+ * Use `create(SetMapGridRequestSchema)` to create a new message.
+ */
+export const SetMapGridRequestSchema: GenMessage<SetMapGridRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_maps_v1_maps, 17);
+
+/**
+ * SetMapGridResponse returns the map as it is now.
+ *
+ * @generated from message meurpg.maps.v1.SetMapGridResponse
+ */
+export type SetMapGridResponse = Message<"meurpg.maps.v1.SetMapGridResponse"> & {
+  /**
+   * The map, with grid_columns and grid_rows.
+   *
+   * @generated from field: meurpg.maps.v1.Map map = 1;
+   */
+  map?: Map | undefined;
+};
+
+/**
+ * Describes the message meurpg.maps.v1.SetMapGridResponse.
+ * Use `create(SetMapGridResponseSchema)` to create a new message.
+ */
+export const SetMapGridResponseSchema: GenMessage<SetMapGridResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_maps_v1_maps, 18);
+
+/**
  * CreateMapPointRequest carries the new point.
  *
  * @generated from message meurpg.maps.v1.CreateMapPointRequest
@@ -727,8 +797,8 @@ export type CreateMapPointRequest = Message<"meurpg.maps.v1.CreateMapPointReques
   yBp: number;
 
   /**
-   * Only for a SUBMAP point, and optional there: another map of the
-   * campaign (a UUID). Empty for none.
+   * Only for a SUBMAP or a BATTLE point, and optional there: another map of
+   * the campaign (a UUID). Empty for none.
    *
    * @generated from field: string target_map_id = 8;
    */
@@ -740,7 +810,7 @@ export type CreateMapPointRequest = Message<"meurpg.maps.v1.CreateMapPointReques
  * Use `create(CreateMapPointRequestSchema)` to create a new message.
  */
 export const CreateMapPointRequestSchema: GenMessage<CreateMapPointRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 17);
+  messageDesc(file_meurpg_maps_v1_maps, 19);
 
 /**
  * CreateMapPointResponse returns the new, hidden point.
@@ -759,7 +829,7 @@ export type CreateMapPointResponse = Message<"meurpg.maps.v1.CreateMapPointRespo
  * Use `create(CreateMapPointResponseSchema)` to create a new message.
  */
 export const CreateMapPointResponseSchema: GenMessage<CreateMapPointResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 18);
+  messageDesc(file_meurpg_maps_v1_maps, 20);
 
 /**
  * UpdateMapPointRequest carries the fields to change. Each field set
@@ -785,7 +855,8 @@ export type UpdateMapPointRequest = Message<"meurpg.maps.v1.UpdateMapPointReques
   pointId: string;
 
   /**
-   * The new kind; not UNSPECIFIED. Anything but SUBMAP removes the target.
+   * The new kind; not UNSPECIFIED. Anything but SUBMAP or BATTLE removes
+   * the target.
    *
    * @generated from field: optional meurpg.maps.v1.MapPointKind kind = 4;
    */
@@ -818,8 +889,8 @@ export type UpdateMapPointRequest = Message<"meurpg.maps.v1.UpdateMapPointReques
   yBp?: number | undefined;
 
   /**
-   * A SUBMAP point's new target: another map of the campaign (a UUID), or
-   * empty to remove it.
+   * A SUBMAP or BATTLE point's new target: another map of the campaign (a
+   * UUID), or empty to remove it.
    *
    * @generated from field: optional string target_map_id = 9;
    */
@@ -839,7 +910,7 @@ export type UpdateMapPointRequest = Message<"meurpg.maps.v1.UpdateMapPointReques
  * Use `create(UpdateMapPointRequestSchema)` to create a new message.
  */
 export const UpdateMapPointRequestSchema: GenMessage<UpdateMapPointRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 19);
+  messageDesc(file_meurpg_maps_v1_maps, 21);
 
 /**
  * UpdateMapPointResponse returns the point as saved.
@@ -858,7 +929,7 @@ export type UpdateMapPointResponse = Message<"meurpg.maps.v1.UpdateMapPointRespo
  * Use `create(UpdateMapPointResponseSchema)` to create a new message.
  */
 export const UpdateMapPointResponseSchema: GenMessage<UpdateMapPointResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 20);
+  messageDesc(file_meurpg_maps_v1_maps, 22);
 
 /**
  * DeleteMapPointRequest names the point to delete.
@@ -887,7 +958,7 @@ export type DeleteMapPointRequest = Message<"meurpg.maps.v1.DeleteMapPointReques
  * Use `create(DeleteMapPointRequestSchema)` to create a new message.
  */
 export const DeleteMapPointRequestSchema: GenMessage<DeleteMapPointRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 21);
+  messageDesc(file_meurpg_maps_v1_maps, 23);
 
 /**
  * DeleteMapPointResponse is empty: the point is gone.
@@ -902,7 +973,7 @@ export type DeleteMapPointResponse = Message<"meurpg.maps.v1.DeleteMapPointRespo
  * Use `create(DeleteMapPointResponseSchema)` to create a new message.
  */
 export const DeleteMapPointResponseSchema: GenMessage<DeleteMapPointResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 22);
+  messageDesc(file_meurpg_maps_v1_maps, 24);
 
 /**
  * SetMapPointRevealedRequest says whether the players may see a point.
@@ -938,7 +1009,7 @@ export type SetMapPointRevealedRequest = Message<"meurpg.maps.v1.SetMapPointReve
  * Use `create(SetMapPointRevealedRequestSchema)` to create a new message.
  */
 export const SetMapPointRevealedRequestSchema: GenMessage<SetMapPointRevealedRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 23);
+  messageDesc(file_meurpg_maps_v1_maps, 25);
 
 /**
  * SetMapPointRevealedResponse returns the point as it is now.
@@ -957,7 +1028,7 @@ export type SetMapPointRevealedResponse = Message<"meurpg.maps.v1.SetMapPointRev
  * Use `create(SetMapPointRevealedResponseSchema)` to create a new message.
  */
 export const SetMapPointRevealedResponseSchema: GenMessage<SetMapPointRevealedResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 24);
+  messageDesc(file_meurpg_maps_v1_maps, 26);
 
 /**
  * PlaceMapTokenRequest puts a character's token at a position.
@@ -1000,7 +1071,7 @@ export type PlaceMapTokenRequest = Message<"meurpg.maps.v1.PlaceMapTokenRequest"
  * Use `create(PlaceMapTokenRequestSchema)` to create a new message.
  */
 export const PlaceMapTokenRequestSchema: GenMessage<PlaceMapTokenRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 25);
+  messageDesc(file_meurpg_maps_v1_maps, 27);
 
 /**
  * PlaceMapTokenResponse returns the token as it is now.
@@ -1019,7 +1090,7 @@ export type PlaceMapTokenResponse = Message<"meurpg.maps.v1.PlaceMapTokenRespons
  * Use `create(PlaceMapTokenResponseSchema)` to create a new message.
  */
 export const PlaceMapTokenResponseSchema: GenMessage<PlaceMapTokenResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 26);
+  messageDesc(file_meurpg_maps_v1_maps, 28);
 
 /**
  * SetMapTokenHiddenRequest says whether the players may see a token.
@@ -1055,7 +1126,7 @@ export type SetMapTokenHiddenRequest = Message<"meurpg.maps.v1.SetMapTokenHidden
  * Use `create(SetMapTokenHiddenRequestSchema)` to create a new message.
  */
 export const SetMapTokenHiddenRequestSchema: GenMessage<SetMapTokenHiddenRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 27);
+  messageDesc(file_meurpg_maps_v1_maps, 29);
 
 /**
  * SetMapTokenHiddenResponse returns the token as it is now.
@@ -1074,7 +1145,7 @@ export type SetMapTokenHiddenResponse = Message<"meurpg.maps.v1.SetMapTokenHidde
  * Use `create(SetMapTokenHiddenResponseSchema)` to create a new message.
  */
 export const SetMapTokenHiddenResponseSchema: GenMessage<SetMapTokenHiddenResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 28);
+  messageDesc(file_meurpg_maps_v1_maps, 30);
 
 /**
  * RemoveMapTokenRequest names the token to take off the map.
@@ -1103,7 +1174,7 @@ export type RemoveMapTokenRequest = Message<"meurpg.maps.v1.RemoveMapTokenReques
  * Use `create(RemoveMapTokenRequestSchema)` to create a new message.
  */
 export const RemoveMapTokenRequestSchema: GenMessage<RemoveMapTokenRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 29);
+  messageDesc(file_meurpg_maps_v1_maps, 31);
 
 /**
  * RemoveMapTokenResponse is empty: the token is gone.
@@ -1118,7 +1189,7 @@ export type RemoveMapTokenResponse = Message<"meurpg.maps.v1.RemoveMapTokenRespo
  * Use `create(RemoveMapTokenResponseSchema)` to create a new message.
  */
 export const RemoveMapTokenResponseSchema: GenMessage<RemoveMapTokenResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 30);
+  messageDesc(file_meurpg_maps_v1_maps, 32);
 
 /**
  * MapPointKind is what a point of interest leads to.
@@ -1132,8 +1203,10 @@ export enum MapPointKind {
   UNSPECIFIED = 0,
 
   /**
-   * "Batalha": an encounter. Until combat arrives (Etapa 6), opening it
-   * shows its name and description.
+   * "Batalha": an encounter. It may name the map where the fight happens
+   * (the point's target map, like a submap): starting the combat from the
+   * point (CombatService.StartEncounter) then makes that map the session's
+   * current map.
    *
    * @generated from enum value: MAP_POINT_KIND_BATTLE = 1;
    */
@@ -1343,13 +1416,36 @@ export const MapService: GenService<{
     output: typeof SetMapRevealedResponseSchema;
   },
   /**
+   * SetMapGrid sets the battle grid of a map, or clears it (MR-013, RN-21).
+   * Only the campaign's master may call it. The grid is made of squares of
+   * 1.5 m (5 ft): columns says how many fit across the image's width, and
+   * the rows follow the image's proportions. A combat can only start on a
+   * map with a grid (PlayService/CombatService.StartEncounter).
+   *
+   * A combat already running keeps the grid it started with. A player who
+   * sees the map gets `map_changed`.
+   *
+   * Errors:
+   *   - `invalid_argument`: columns is neither 0 nor between 4 and 200.
+   *   - `not_found`: the map is not in this campaign, the campaign does not
+   *     exist, or the caller is not a member of it.
+   *   - `permission_denied`: the caller is a player.
+   *
+   * @generated from rpc meurpg.maps.v1.MapService.SetMapGrid
+   */
+  setMapGrid: {
+    methodKind: "unary";
+    input: typeof SetMapGridRequestSchema;
+    output: typeof SetMapGridResponseSchema;
+  },
+  /**
    * CreateMapPoint puts a point of interest on a map (MR-008). Only the
    * campaign's master may call it. The point starts hidden.
    *
    * Errors:
    *   - `invalid_argument`: a field breaks its rules; kind is unspecified;
-   *     target_map_id is set on a point that is not a SUBMAP, is the
-   *     point's own map, or is not a map of the campaign.
+   *     target_map_id is set on a point that is neither a SUBMAP nor a
+   *     BATTLE, is the point's own map, or is not a map of the campaign.
    *   - `not_found`: the map is not in this campaign, the campaign does not
    *     exist, or the caller is not a member of it.
    *   - `permission_denied`: the caller is a player.
@@ -1366,12 +1462,13 @@ export const MapService: GenService<{
    * UpdateMapPoint changes a point: each field set in the request replaces
    * the current value, and unset fields stay as they are. Moving a point is
    * an update of x_bp and y_bp. Only the campaign's master may call it.
-   * Changing the kind to anything but SUBMAP removes the target.
+   * Changing the kind to anything but SUBMAP or BATTLE removes the target.
    *
    * Errors:
    *   - `invalid_argument`: nothing to change; a field breaks its rules;
-   *     target_map_id is set on a point that is not a SUBMAP (after the
-   *     change), is the point's own map, or is not a map of the campaign.
+   *     target_map_id is set on a point that is neither a SUBMAP nor a
+   *     BATTLE (after the change), is the point's own map, or is not a map
+   *     of the campaign.
    *   - `not_found`: the point is not on this map, the map is not in this
    *     campaign, the campaign does not exist, or the caller is not a
    *     member of it.

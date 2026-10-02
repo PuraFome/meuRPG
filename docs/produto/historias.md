@@ -212,8 +212,11 @@ Os dois últimos critérios foram respondida pelo Vinicius em 29/09/2026.
 #### Critérios de aceite
 - **Dado** um combate com a iniciativa definida, **quando** o jogador abre a tela de combate, **então** vê a ordem dos turnos, onde está cada combatente visível e quanto ainda pode se mover neste turno.
 
+#### Implementado
+- O servidor do combate está pronto em 02/10/2026 (fatia 6.3 da Etapa 6; as telas são a fatia 6.5, e os ataques, a 6.4): o `CombatService` cria o combate no mapa com grade (o mapa tem `grid_columns`, `MapService.SetMapGrid`), põe o grupo e as cópias dos NPCs, rola a iniciativa de cada NPC, recebe a do jogador (no app ou o d20 físico, RN-18), deixa o mestre ordenar os empates, começa o combate, passa a vez (a rodada sobe depois do último; o movimento, a ação e a reação voltam no começo da vez de cada um) e deixa andar na grade com o limite do movimento que sobra. O jogador nunca recebe um combatente escondido nem o número de um NPC (RN-20), e a vez de um escondido aparece como "Vez do mestre". O ponto de batalha do mapa pode apontar o mapa do combate. Ver [Arquitetura](../arquitetura.md#combate). Testes: `TestMR013_TurnOrderAndMovementLeft`, `TestRN19_EachNPCRollsItsOwnInitiative`, `TestRN20_PlayersNeverReceiveHiddenCombatantsOrNPCNumbers`, `TestRN21_PlayerMovementIsLimitedTheMasterIsNot`, `TestEndTurnIsIdempotent`, `TestStartEncounterNeedsAGrid`, `TestMR013_CombatAuthorizationMatrix`, `TestMR013_CombatEventsPerAudience`, `TestMR013_CombatantsStartOnTheirTokensAndEndWhereTheyStand`. Falta a tela do jogador e do mestre.
+
 #### Relacionadas
-- Decidido em 02/10/2026, ainda a fazer na Etapa 6: cada NPC rola a própria iniciativa (RN-19); o jogador vê o estado dos inimigos por uma palavra, nunca o PV nem a CA (RN-20); cada quadrado da grade vale 1,5 m, inclusive na diagonal, e o app não deixa o jogador passar do movimento do turno (RN-21). Ver [Regras de negócio](regras.md).
+- Decidido em 02/10/2026: cada NPC rola a própria iniciativa (RN-19); o jogador vê o estado dos inimigos por uma palavra, nunca o PV nem a CA (RN-20); cada quadrado da grade vale 1,5 m, inclusive na diagonal, e o app não deixa o jogador passar do movimento do turno (RN-21). Ver [Regras de negócio](regras.md).
 - O deslocamento disponível vem do motor de regras (regras como dados, aceitas pelo Samuel em 29/09/2026). Ver [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
 
 ### MR-014: Sua vez

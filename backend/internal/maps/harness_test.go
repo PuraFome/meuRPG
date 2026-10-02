@@ -182,7 +182,7 @@ func newHarness(t *testing.T, configure ...func(*Config)) *harness {
 	// Wired as in cmd/api: play reveals the current map through
 	// SessionMaps, and this service reads it and publishes through play.
 	live, err := play.New(play.Config{
-		Pool: pool, Sheets: chars, Vitals: chars, Campaigns: camps, Maps: NewSessionMaps(pool),
+		Pool: pool, Sheets: chars, Vitals: chars, Campaigns: camps, Maps: NewSessionMaps(pool), Roster: chars, Dice: testDice{camps},
 		Live: play.LiveConfig{Heartbeat: noHeartbeat}, Logger: logger, Now: clock.Now,
 	})
 	if err != nil {
@@ -518,4 +518,12 @@ func wantCode(t *testing.T, call string, err error, want connect.Code) {
 	case want != allowed && connect.CodeOf(err) != want:
 		t.Errorf("%s error = %v, want %v", call, err, want)
 	}
+}
+
+// testDice is play's DiceModes over the campaigns service, as cmd/api wires it.
+type testDice struct{ camps *campaigns.Service }
+
+func (d testDice) RollsPhysical(ctx context.Context, campaignID, userID string) (bool, error) {
+	mode, err := d.camps.PlayerDiceMode(ctx, campaignID, userID)
+	return mode == campaigns.RollsPhysical, err
 }

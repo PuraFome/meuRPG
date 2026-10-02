@@ -78,7 +78,7 @@ RETURNING *;
 -- its image's name and size, and how many points it has, in all and
 -- revealed. Campaigns have a few maps, so one query answers ListMaps and
 -- gives GetMap the names and states it needs (parents, submap targets).
-SELECT m.id, m.campaign_id, m.name, m.image_id, m.revealed_at, m.revision, m.created_at, m.updated_at,
+SELECT m.id, m.campaign_id, m.name, m.image_id, m.revealed_at, m.revision, m.created_at, m.updated_at, m.grid_columns,
        g.name AS image_name, g.width AS image_width, g.height AS image_height,
        (SELECT count(*) FROM map_points AS p WHERE p.map_id = m.id)::INT4 AS point_count,
        (SELECT count(*) FROM map_points AS p WHERE p.map_id = m.id AND p.revealed_at IS NOT NULL)::INT4 AS revealed_point_count
@@ -94,7 +94,7 @@ ORDER BY m.created_at, m.id;
 SELECT p.map_id, p.target_map_id::UUID AS target_map_id, (p.revealed_at IS NOT NULL)::BOOL AS revealed
 FROM map_points AS p
 JOIN maps AS m ON m.id = p.map_id
-WHERE m.campaign_id = $1 AND p.target_map_id IS NOT NULL
+WHERE m.campaign_id = $1 AND p.kind = 'submap' AND p.target_map_id IS NOT NULL
 ORDER BY p.created_at, p.id;
 
 -- name: GetMapForUpdate :one
@@ -126,6 +126,39 @@ SET revealed_at = CASE WHEN sqlc.arg(revealed)::BOOL THEN COALESCE(revealed_at, 
     updated_at = CASE WHEN (revealed_at IS NOT NULL) = sqlc.arg(revealed)::BOOL THEN updated_at ELSE sqlc.arg(now)::TIMESTAMPTZ END
 WHERE campaign_id = sqlc.arg(campaign_id) AND id = sqlc.arg(id)
 RETURNING *;
+
+-- name: SetMapGrid :one
+-- The master's grid (MR-013): NULL clears it. It is a change to the map
+-- itself, so updated_at moves, but the revision (the name and the image's
+-- guard) does not.
+UPDATE maps
+SET grid_columns = sqlc.narg(grid_columns), updated_at = sqlc.arg(now)
+WHERE campaign_id = sqlc.arg(campaign_id) AND id = sqlc.arg(id)
+RETURNING *;
+
+-- name: GetMapGrid :one
+-- A map's grid and its image's size, for the rows (package play, through
+-- SessionMaps).
+SELECT m.grid_columns, g.width AS image_width, g.height AS image_height
+FROM maps AS m
+JOIN gallery_images AS g ON g.id = m.image_id
+WHERE m.campaign_id = $1 AND m.id = $2;
+
+-- name: GetMapPointInCampaign :one
+-- A point by its ID alone, if it is on one of the campaign's maps: the
+-- battle point a combat starts from.
+SELECT p.* FROM map_points AS p
+JOIN maps AS m ON m.id = p.map_id
+WHERE m.campaign_id = $1 AND p.id = $2;
+
+-- name: UpsertMapTokenPosition :exec
+-- Where a combatant ended its combat (package play): the token moves, or is
+-- created visible (a player's character starts visible, like PlaceMapToken).
+-- An existing token keeps its hidden flag.
+INSERT INTO map_tokens (map_id, character_id, x_bp, y_bp, hidden, updated_at)
+VALUES ($1, $2, $3, $4, false, $5)
+ON CONFLICT (map_id, character_id) DO UPDATE
+SET x_bp = excluded.x_bp, y_bp = excluded.y_bp, updated_at = excluded.updated_at;
 
 -- name: DeleteMap :one
 -- Points and tokens go with the map (CASCADE); submap points of other maps
