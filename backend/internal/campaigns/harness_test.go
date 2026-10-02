@@ -88,6 +88,8 @@ type harness struct {
 	users  *identity.PostgresStore // creates accounts and display names
 	clock  *fakeClock
 	server *httptest.Server
+	// service is the campaigns service behind server, for calls that are not RPCs.
+	service *Service
 	// characters stands in for package characters (Characters).
 	characters fakeCharacters
 }
@@ -135,6 +137,7 @@ func newHarness(t *testing.T) *harness {
 	// The real approval is package characters' (and its tests'); here a fake
 	// that only records who was approved, and never has a character.
 	svc.SetCharacters(&h.characters)
+	h.service = svc
 	mux := http.NewServeMux()
 	svc.Mount(mux.Handle, testSessions, connect.WithRequireConnectProtocolHeader())
 	h.server = httptest.NewServer(mux)

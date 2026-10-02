@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { createClient } from '@connectrpc/connect';
 import { durationFromMs } from '@bufbuild/protobuf/wkt';
 
-import { CampaignService, XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import { CampaignService, DiceMode, DicePreference, XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
 
 const dayMs = 24 * 60 * 60 * 1000;
@@ -59,5 +59,16 @@ export class CampaignsService {
 
   acceptInvite(token: string) {
     return this.client.acceptInvite({ token });
+  }
+
+  /** Master only (RN-18): how the campaign's players roll dice. */
+  setDiceMode(campaignId: string, mode: DiceMode) {
+    return this.client.setCampaignDiceMode({ campaignId, mode });
+  }
+
+  /** Any member (RN-18): the caller's own choice, used while the campaign
+   * lets players choose. */
+  setDicePreference(campaignId: string, preference: DicePreference) {
+    return this.client.setMyDicePreference({ campaignId, preference });
   }
 }

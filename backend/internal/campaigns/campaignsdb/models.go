@@ -14,6 +14,7 @@ type Campaign struct {
 	XpMode    string
 	CreatedBy string
 	CreatedAt time.Time
+	DiceMode  string
 }
 
 type CampaignDocument struct {
@@ -44,4 +45,5 @@ type CampaignMember struct {
 	JoinedAt         time.Time
 	Status           string
 	PendingExpiresAt *time.Time
+	DicePreference   string
 }

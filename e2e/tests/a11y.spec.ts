@@ -380,3 +380,41 @@ test('as telas de mapa e da imagem mostrada passam no axe no tema claro, no desk
 test('as telas de mapa e da imagem mostrada passam no axe no tema escuro, no celular', { tag: ['@a11y', '@MR-009', '@MR-028'] }, async ({ browser }) => {
   await scanMapScreens(browser, 'dark', 390);
 });
+
+/** The dice settings (RN-18): the master's "Dados" panel and the player's
+ * "Como você rola os dados", as a choice and locked (the master decided). */
+async function scanDiceScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const masterPage = await master.newPage();
+  const playerPage = await player.newPage();
+  try {
+    await masterPage.goto('/');
+    await playerPage.goto('/');
+    const { campaignId } = await tableWithPensantus(masterPage, playerPage, `Acessibilidade dados ${Date.now()}`);
+    const suffix = `(${colorScheme}, ${width}px)`;
+    await open(masterPage, `/campanhas/${campaignId}`);
+    await expectNoSeriousViolations(masterPage, `Campanha com Dados, mestre ${suffix}`);
+    await open(playerPage, `/campanhas/${campaignId}`);
+    await expectNoSeriousViolations(playerPage, `Campanha com Como você rola os dados, jogador ${suffix}`);
+
+    const set = await callRPC(masterPage, 'meurpg.campaigns.v1.CampaignService/SetCampaignDiceMode', { campaignId, mode: 'DICE_MODE_APP' });
+    expect(set.ok()).toBeTruthy();
+    await open(masterPage, `/campanhas/${campaignId}`);
+    await expectNoSeriousViolations(masterPage, `Campanha com Dados, todos no app, mestre ${suffix}`);
+    await open(playerPage, `/campanhas/${campaignId}`);
+    await expectNoSeriousViolations(playerPage, `Como você rola os dados, decidido pelo mestre ${suffix}`);
+  } finally {
+    await master.close();
+    await player.close();
+  }
+}
+
+test('as configurações de dados passam no axe no tema claro, no desktop', { tag: ['@a11y', '@RN-18'] }, async ({ browser }) => {
+  await scanDiceScreens(browser, 'light', 1280);
+});
+
+test('as configurações de dados passam no axe no tema escuro, no celular', { tag: ['@a11y', '@RN-18'] }, async ({ browser }) => {
+  await scanDiceScreens(browser, 'dark', 390);
+});
