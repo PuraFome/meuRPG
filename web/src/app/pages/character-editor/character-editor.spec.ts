@@ -435,6 +435,8 @@ describe('CharacterEditor', () => {
       fixture.detectChanges();
       expect(el.textContent).toContain('O Paladino conjura magias a partir do nível 2.');
       expect(el.textContent).not.toContain('Magias preparadas');
+      // The Paladin's list has no cantrips: no empty "Truques" box.
+      expect(el.textContent).not.toContain('Truques');
 
       cmp.fullForm.patchValue({ level: 2 });
       fixture.detectChanges();
