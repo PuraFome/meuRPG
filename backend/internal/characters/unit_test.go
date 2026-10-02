@@ -65,6 +65,10 @@ func (noMembers) DeletePendingMember(context.Context, pgx.Tx, string, string) er
 	return errors.New("not in this test")
 }
 
+func (noMembers) ClearPendingExpiry(context.Context, pgx.Tx, string, string) error {
+	return errors.New("not in this test")
+}
+
 // offlineService is a Service whose database cannot be reached.
 func offlineService(t *testing.T) *Service {
 	t.Helper()

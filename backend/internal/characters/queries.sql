@@ -92,6 +92,18 @@ SET status = 'active'
 WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id) AND status = 'pending'
 RETURNING *;
 
+-- name: ApprovePendingCharacterOfPlayer :execrows
+-- An ordinary invite promotes a pending member (RN-15, Q25): that counts as
+-- the master's approval, so their character waiting for approval, if any,
+-- is approved with exactly the effect of ApproveCharacter above, found by
+-- player instead of by ID. A player has at most one living character
+-- (RN-03), so at most one row matches; none matches when they have not
+-- created it yet.
+UPDATE characters
+SET status = 'active'
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND player_user_id = sqlc.arg(player_user_id)
+  AND kind = 'player' AND status = 'pending';
+
 -- name: DeletePendingCharacter :execrows
 -- The master rejected a pending character (RN-15, MR-024): it never became
 -- part of the campaign, so it is deleted, story and all; the master's notes

@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -87,6 +88,28 @@ type harness struct {
 	users  *identity.PostgresStore // creates accounts and display names
 	clock  *fakeClock
 	server *httptest.Server
+	// characters stands in for package characters (Characters).
+	characters fakeCharacters
+}
+
+// fakeCharacters is a Characters that records the players whose pending
+// character it was asked to approve.
+type fakeCharacters struct {
+	mu       sync.Mutex
+	approved []string // user IDs
+}
+
+func (f *fakeCharacters) ApprovePendingCharacter(_ context.Context, _ pgx.Tx, _, userID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.approved = append(f.approved, userID)
+	return nil
+}
+
+func (f *fakeCharacters) approvedUsers() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.approved)
 }
 
 func newHarness(t *testing.T) *harness {
@@ -109,6 +132,9 @@ func newHarness(t *testing.T) *harness {
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
+	// The real approval is package characters' (and its tests'); here a fake
+	// that only records who was approved, and never has a character.
+	svc.SetCharacters(&h.characters)
 	mux := http.NewServeMux()
 	svc.Mount(mux.Handle, testSessions, connect.WithRequireConnectProtocolHeader())
 	h.server = httptest.NewServer(mux)

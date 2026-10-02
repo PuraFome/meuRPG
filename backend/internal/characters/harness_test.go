@@ -133,6 +133,7 @@ func newHarness(t *testing.T) *harness {
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
+	camps.SetCharacters(h.svc) // an ordinary invite approves a pending member's character (Q25)
 	mux := http.NewServeMux()
 	camps.Mount(mux.Handle, testSessions, connect.WithRequireConnectProtocolHeader())
 	h.svc.Mount(mux.Handle, testSessions, camps, connect.WithRequireConnectProtocolHeader())

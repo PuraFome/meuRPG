@@ -12,7 +12,7 @@ import (
 
 const activatePendingMember = `-- name: ActivatePendingMember :execrows
 UPDATE campaign_members
-SET status = 'active'
+SET status = 'active', pending_expires_at = NULL
 WHERE campaign_id = $1 AND user_id = $2 AND status = 'pending'
 `
 
@@ -26,6 +26,28 @@ type ActivatePendingMemberParams struct {
 // and stays as it is.
 func (q *Queries) ActivatePendingMember(ctx context.Context, arg ActivatePendingMemberParams) (int64, error) {
 	result, err := q.db.Exec(ctx, activatePendingMember, arg.CampaignID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const clearPendingExpiry = `-- name: ClearPendingExpiry :execrows
+UPDATE campaign_members
+SET pending_expires_at = NULL
+WHERE campaign_id = $1 AND user_id = $2 AND status = 'pending'
+`
+
+type ClearPendingExpiryParams struct {
+	CampaignID string
+	UserID     string
+}
+
+// A pending member created their character (RN-15): the master decides on
+// it now, so the 30-day deadline for a pending member without a character
+// no longer applies.
+func (q *Queries) ClearPendingExpiry(ctx context.Context, arg ClearPendingExpiryParams) (int64, error) {
+	result, err := q.db.Exec(ctx, clearPendingExpiry, arg.CampaignID, arg.UserID)
 	if err != nil {
 		return 0, err
 	}
@@ -47,6 +69,28 @@ type DeletePendingMemberParams struct {
 // active membership is never deleted here.
 func (q *Queries) DeletePendingMember(ctx context.Context, arg DeletePendingMemberParams) (int64, error) {
 	result, err := q.db.Exec(ctx, deletePendingMember, arg.CampaignID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deletePendingMemberWithoutCharacter = `-- name: DeletePendingMemberWithoutCharacter :execrows
+DELETE FROM campaign_members
+WHERE campaign_id = $1 AND user_id = $2 AND status = 'pending' AND pending_expires_at IS NOT NULL
+`
+
+type DeletePendingMemberWithoutCharacterParams struct {
+	CampaignID string
+	UserID     string
+}
+
+// The master removed a pending member who has no character. The WHERE
+// clause matches only that: an active member, or a pending member whose
+// character waits for approval (pending_expires_at is NULL), is never
+// deleted here; that one goes through RejectCharacter.
+func (q *Queries) DeletePendingMemberWithoutCharacter(ctx context.Context, arg DeletePendingMemberWithoutCharacterParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deletePendingMemberWithoutCharacter, arg.CampaignID, arg.UserID)
 	if err != nil {
 		return 0, err
 	}
@@ -263,24 +307,28 @@ func (q *Queries) InsertInvite(ctx context.Context, arg InsertInviteParams) (Cam
 }
 
 const insertMember = `-- name: InsertMember :one
-INSERT INTO campaign_members (campaign_id, user_id, role, status)
-VALUES ($1, $2, $3, $4)
-RETURNING campaign_id, user_id, role, joined_at, status
+INSERT INTO campaign_members (campaign_id, user_id, role, status, pending_expires_at)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING campaign_id, user_id, role, joined_at, status, pending_expires_at
 `
 
 type InsertMemberParams struct {
-	CampaignID string
-	UserID     string
-	Role       string
-	Status     string
+	CampaignID       string
+	UserID           string
+	Role             string
+	Status           string
+	PendingExpiresAt *time.Time
 }
 
+// pending_expires_at is NULL, except for a pending member, who has no
+// character yet: joined time + 30 days (RN-15, migration 00034).
 func (q *Queries) InsertMember(ctx context.Context, arg InsertMemberParams) (CampaignMember, error) {
 	row := q.db.QueryRow(ctx, insertMember,
 		arg.CampaignID,
 		arg.UserID,
 		arg.Role,
 		arg.Status,
+		arg.PendingExpiresAt,
 	)
 	var i CampaignMember
 	err := row.Scan(
@@ -289,6 +337,7 @@ func (q *Queries) InsertMember(ctx context.Context, arg InsertMemberParams) (Cam
 		&i.Role,
 		&i.JoinedAt,
 		&i.Status,
+		&i.PendingExpiresAt,
 	)
 	return i, err
 }
@@ -376,7 +425,7 @@ func (q *Queries) ListInvites(ctx context.Context, campaignID string) ([]Campaig
 }
 
 const listMembers = `-- name: ListMembers :many
-SELECT campaign_id, user_id, role, joined_at, status FROM campaign_members
+SELECT campaign_id, user_id, role, joined_at, status, pending_expires_at FROM campaign_members
 WHERE campaign_id = $1 AND status = 'active'
 ORDER BY role = 'master' DESC, joined_at, user_id
 `
@@ -398,7 +447,42 @@ func (q *Queries) ListMembers(ctx context.Context, campaignID string) ([]Campaig
 			&i.Role,
 			&i.JoinedAt,
 			&i.Status,
+			&i.PendingExpiresAt,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPendingMembersWithoutCharacter = `-- name: ListPendingMembersWithoutCharacter :many
+SELECT user_id, joined_at, pending_expires_at FROM campaign_members
+WHERE campaign_id = $1 AND status = 'pending' AND pending_expires_at IS NOT NULL
+ORDER BY joined_at, user_id
+`
+
+type ListPendingMembersWithoutCharacterRow struct {
+	UserID           string
+	JoinedAt         time.Time
+	PendingExpiresAt *time.Time
+}
+
+// The pending members who have not created a character, in the order they
+// joined. pending_expires_at is set exactly for them (migration 00034).
+func (q *Queries) ListPendingMembersWithoutCharacter(ctx context.Context, campaignID string) ([]ListPendingMembersWithoutCharacterRow, error) {
+	rows, err := q.db.Query(ctx, listPendingMembersWithoutCharacter, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPendingMembersWithoutCharacterRow
+	for rows.Next() {
+		var i ListPendingMembersWithoutCharacterRow
+		if err := rows.Scan(&i.UserID, &i.JoinedAt, &i.PendingExpiresAt); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

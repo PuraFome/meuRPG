@@ -16,8 +16,10 @@ WHERE m.user_id = $1
 ORDER BY c.created_at DESC, c.id;
 
 -- name: InsertMember :one
-INSERT INTO campaign_members (campaign_id, user_id, role, status)
-VALUES ($1, $2, $3, $4)
+-- pending_expires_at is NULL, except for a pending member, who has no
+-- character yet: joined time + 30 days (RN-15, migration 00034).
+INSERT INTO campaign_members (campaign_id, user_id, role, status, pending_expires_at)
+VALUES ($1, $2, $3, $4, sqlc.narg(pending_expires_at))
 RETURNING *;
 
 -- name: GetMembership :one
@@ -37,8 +39,31 @@ ORDER BY role = 'master' DESC, joined_at, user_id;
 -- membership becomes an ordinary one. An active membership matches no row
 -- and stays as it is.
 UPDATE campaign_members
-SET status = 'active'
+SET status = 'active', pending_expires_at = NULL
 WHERE campaign_id = $1 AND user_id = $2 AND status = 'pending';
+
+-- name: ClearPendingExpiry :execrows
+-- A pending member created their character (RN-15): the master decides on
+-- it now, so the 30-day deadline for a pending member without a character
+-- no longer applies.
+UPDATE campaign_members
+SET pending_expires_at = NULL
+WHERE campaign_id = $1 AND user_id = $2 AND status = 'pending';
+
+-- name: ListPendingMembersWithoutCharacter :many
+-- The pending members who have not created a character, in the order they
+-- joined. pending_expires_at is set exactly for them (migration 00034).
+SELECT user_id, joined_at, pending_expires_at FROM campaign_members
+WHERE campaign_id = $1 AND status = 'pending' AND pending_expires_at IS NOT NULL
+ORDER BY joined_at, user_id;
+
+-- name: DeletePendingMemberWithoutCharacter :execrows
+-- The master removed a pending member who has no character. The WHERE
+-- clause matches only that: an active member, or a pending member whose
+-- character waits for approval (pending_expires_at is NULL), is never
+-- deleted here; that one goes through RejectCharacter.
+DELETE FROM campaign_members
+WHERE campaign_id = $1 AND user_id = $2 AND status = 'pending' AND pending_expires_at IS NOT NULL;
 
 -- name: DeletePendingMember :execrows
 -- The master rejected the pending member's character (RN-15): the pending

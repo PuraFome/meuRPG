@@ -70,11 +70,43 @@ service CampaignService {
   //
   // Pending members (RN-15, MR-024) are not listed: they are not members
   // yet. The master sees who is waiting through their characters
-  // (CharacterService.ListCharacters, state PENDING). A pending member who
-  // calls it gets `not_found`.
+  // (CharacterService.ListCharacters, state PENDING), and the ones who have
+  // not created a character yet through ListPendingMembers. A pending
+  // member who calls it gets `not_found`. (Those two live in their own calls
+  // so that this list keeps meaning "people who are in the campaign".)
   rpc ListMembers(ListMembersRequest) returns (ListMembersResponse) {
     option idempotency_level = IDEMPOTENT;
   }
+
+  // ListPendingMembers lists the campaign's pending members who have not
+  // created a character yet (RN-15, MR-024), in the order they joined, each
+  // with when they joined and when they will be removed automatically (30
+  // days after joining). Only the campaign's master may call it. It only
+  // reads, and is POST-only, like GetCampaign.
+  //
+  // It is a call of its own, not extra entries in ListMembers, because those
+  // people are not members: ListMembers keeps its meaning, and no screen
+  // that reads it can mistake them for players. A pending member who already
+  // created a character is not here: the master finds them, and approves or
+  // rejects them, through CharacterService.ListCharacters.
+  rpc ListPendingMembers(ListPendingMembersRequest) returns (ListPendingMembersResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // RemovePendingMember removes a pending member who has not created a
+  // character yet (RN-15, MR-024): their membership is deleted. The person
+  // loses nothing else (account, other campaigns), and a new invite brings
+  // them back. Only the campaign's master may call it. Removing someone who
+  // is already gone is `not_found`, so a repeated call tells the app the
+  // list is stale.
+  //
+  // Errors:
+  //   - `not_found`: the campaign is not the caller's to manage (see
+  //     authorization), or the user has no membership in it.
+  //   - `failed_precondition`: the user is an active member (members are not
+  //     removed here), or a pending member who already has a character
+  //     (the master rejects it with CharacterService.RejectCharacter).
+  rpc RemovePendingMember(RemovePendingMemberRequest) returns (RemovePendingMemberResponse);
 
   // CreateInvite creates an invite link for a campaign (MR-002). Only the
   // campaign's master may call it.
@@ -110,7 +142,13 @@ service CampaignService {
   // It is idempotent for members: a member of the campaign (the master
   // included) gets the campaign back with `already_member` set, whatever
   // the state of the invite, and no use of the invite is spent. This holds
-  // for a pending member too: they stay pending.
+  // for a pending member too, with one exception: a pending member who
+  // accepts an invite WITHOUT approval (and that works now) is promoted. It
+  // spends one use, the membership becomes active, and the character they
+  // created and that waits for approval, if any, is approved: an ordinary
+  // invite counts as the master's approval (RN-15). The response then has
+  // `already_member` false and the full campaign. If they accept an invite
+  // with approval, or one that does not work, they stay pending.
   //
   // Invites with approval (RN-15, MR-024). When the invite has
   // `requires_approval`, the caller becomes a pending member, not a player:
@@ -170,6 +208,24 @@ message Campaign {
   // character yet. Then only id, name and my_role (ROLE_PLAYER) are set:
   // xp_mode is unspecified and created_at is unset.
   bool awaiting_approval = 6;
+}
+
+// PendingMember is a pending member (RN-15, MR-024) who has not created a
+// character yet: someone who accepted an invite with approval and is still
+// to start their character.
+message PendingMember {
+  // The person's account ID (a UUID).
+  string user_id = 1;
+  // The name the person chose in the app (IdentityService.UpdateProfile).
+  // Empty if they have not chosen one yet.
+  string display_name = 2;
+  // When they accepted the invite.
+  google.protobuf.Timestamp joined_at = 3;
+  // When the membership is deleted on its own if they still have no
+  // character: 30 days after joined_at. The database removes it in a daily
+  // job, so it may last up to a day longer. A pending member who creates a
+  // character is no longer listed, so this never moves.
+  google.protobuf.Timestamp expires_at = 4;
 }
 
 // Member is one member of a campaign.
@@ -270,6 +326,26 @@ message ListMembersResponse {
   repeated Member members = 1;
 }
 
+// ListPendingMembersRequest names a campaign.
+message ListPendingMembersRequest {
+  string campaign_id = 1;
+}
+
+// ListPendingMembersResponse lists the pending members without a character.
+message ListPendingMembersResponse {
+  repeated PendingMember members = 1;
+}
+
+// RemovePendingMemberRequest names the pending member to remove.
+message RemovePendingMemberRequest {
+  string campaign_id = 1;
+  // The person's account ID, from ListPendingMembers.
+  string user_id = 2;
+}
+
+// RemovePendingMemberResponse is empty: the membership is gone.
+message RemovePendingMemberResponse {}
+
 // CreateInviteRequest describes the new invite. While RN-07 is open, the
 // defaults follow ADR-0009: one use, valid for 7 days.
 message CreateInviteRequest {
@@ -329,6 +405,7 @@ message AcceptInviteResponse {
   // and only id, name and my_role come with it (see Campaign).
   Campaign campaign = 1;
   // True when the caller was a member, or a pending member, before this
-  // call, so nothing changed.
+  // call, and nothing changed. False when they just joined, or when a
+  // pending member was just promoted by an invite without approval.
   bool already_member = 2;
 }

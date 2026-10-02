@@ -154,6 +154,97 @@ func (s *Service) ListMembers(
 	return connect.NewResponse(res), nil
 }
 
+// ListPendingMembers implements campaignsv1connect.CampaignServiceHandler.
+func (s *Service) ListPendingMembers(
+	ctx context.Context,
+	req *connect.Request[campaignsv1.ListPendingMembersRequest],
+) (*connect.Response[campaignsv1.ListPendingMembersResponse], error) {
+	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := s.queries.ListPendingMembersWithoutCharacter(ctx, m.CampaignID)
+	if err != nil {
+		return nil, s.dbError(ctx, "list pending members", err)
+	}
+
+	userIDs := make([]string, len(rows))
+	for i, row := range rows {
+		userIDs[i] = row.UserID
+	}
+	displayNames, err := s.profiles.DisplayNames(ctx, userIDs)
+	if err != nil {
+		return nil, s.dbError(ctx, "read display names", err)
+	}
+
+	res := &campaignsv1.ListPendingMembersResponse{}
+	for _, row := range rows {
+		pending := &campaignsv1.PendingMember{
+			UserId:      row.UserID,
+			DisplayName: displayNames[row.UserID],
+			JoinedAt:    timestamppb.New(row.JoinedAt),
+		}
+		// The query only returns rows with a deadline; the nil check keeps
+		// a future change from panicking here.
+		if row.PendingExpiresAt != nil {
+			pending.ExpiresAt = timestamppb.New(*row.PendingExpiresAt)
+		}
+		res.Members = append(res.Members, pending)
+	}
+	return connect.NewResponse(res), nil
+}
+
+// RemovePendingMember implements campaignsv1connect.CampaignServiceHandler.
+func (s *Service) RemovePendingMember(
+	ctx context.Context,
+	req *connect.Request[campaignsv1.RemovePendingMemberRequest],
+) (*connect.Response[campaignsv1.RemovePendingMemberResponse], error) {
+	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	if err != nil {
+		return nil, err
+	}
+	userID, ok := parseUUID(req.Msg.GetUserId())
+	if !ok {
+		return nil, errMemberNotFound() // no membership could have this ID
+	}
+
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := s.queries.WithTx(tx)
+		// The DELETE itself says "pending and without a character", so a
+		// character created at the same moment cannot be orphaned: the two
+		// transactions conflict, and one of them retries (40001).
+		deleted, err := q.DeletePendingMemberWithoutCharacter(ctx, campaignsdb.DeletePendingMemberWithoutCharacterParams{
+			CampaignID: m.CampaignID, UserID: userID,
+		})
+		if err != nil {
+			return fmt.Errorf("delete pending member: %w", err)
+		}
+		if deleted > 0 {
+			return nil
+		}
+		// Nothing deleted: say why.
+		_, err = q.GetMembership(ctx, campaignsdb.GetMembershipParams{CampaignID: m.CampaignID, UserID: userID})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errMemberNotFound()
+		}
+		if err != nil {
+			return fmt.Errorf("get membership: %w", err)
+		}
+		return connect.NewError(connect.CodeFailedPrecondition,
+			errors.New("only a pending member without a character can be removed here; reject a pending character with RejectCharacter"))
+	})
+	if err != nil {
+		return nil, s.dbError(ctx, "remove a pending member", err)
+	}
+	return connect.NewResponse(&campaignsv1.RemovePendingMemberResponse{}), nil
+}
+
+// errMemberNotFound is the answer for a user ID with no membership in the
+// campaign.
+func errMemberNotFound() error {
+	return connect.NewError(connect.CodeNotFound, errors.New("member not found"))
+}
+
 // CreateInvite implements campaignsv1connect.CampaignServiceHandler.
 func (s *Service) CreateInvite(
 	ctx context.Context,

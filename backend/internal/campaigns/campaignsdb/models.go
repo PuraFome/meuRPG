@@ -38,9 +38,10 @@ type CampaignInvite struct {
 }
 
 type CampaignMember struct {
-	CampaignID string
-	UserID     string
-	Role       string
-	JoinedAt   time.Time
-	Status     string
+	CampaignID       string
+	UserID           string
+	Role             string
+	JoinedAt         time.Time
+	Status           string
+	PendingExpiresAt *time.Time
 }
