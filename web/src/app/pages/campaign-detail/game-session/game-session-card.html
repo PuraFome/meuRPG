@@ -1,62 +1,121 @@
-<section class="mr-panel session" aria-labelledby="session-heading">
-  <h2 class="mr-panel__title" id="session-heading">Sessão</h2>
+@if (state(); as s) {
+  @if (isMaster() || (s.status === 'ready' && s.session)) {
+    <section class="mr-panel session" aria-labelledby="session-heading">
+      <div class="session__head">
+        <h2 class="mr-panel__title" id="session-heading">Sessão</h2>
+        @if (s.status === 'ready' && s.session) {
+          <app-live-pill />
+        }
+      </div>
 
-  @if (state(); as s) {
-    @switch (s.status) {
-      @case ('loading') {
-        <p class="mr-muted" role="status">Carregando a sessão...</p>
-      }
-      @case ('error') {
-        <div class="mr-notice mr-notice--danger" role="alert">
-          <mat-icon aria-hidden="true">error</mat-icon>
-          <p>{{ s.message }}</p>
-        </div>
-      }
-      @case ('ready') {
-        @if (s.session; as session) {
-          <p class="session__text">
-            <strong>Sessão {{ session.sessionNumber }} em andamento</strong>, desde
-            {{ formatDateAt(session.startedAt) }}.
-          </p>
-          @if (lastLockedSheetCount() !== null) {
-            <p class="session__locked" role="status">
-              <mat-icon aria-hidden="true">lock</mat-icon>
-              {{ lockedSheetCountLabel(lastLockedSheetCount()!) }}
+      @switch (s.status) {
+        @case ('loading') {
+          <p class="mr-muted" role="status">Carregando a sessão...</p>
+        }
+        @case ('error') {
+          <div class="mr-notice mr-notice--danger" role="alert">
+            <mat-icon aria-hidden="true">error</mat-icon>
+            <p>{{ s.message }}</p>
+          </div>
+        }
+        @case ('ready') {
+          @if (s.session; as session) {
+            <p class="session__text">
+              <strong>Sessão {{ session.sessionNumber }} em andamento</strong>, desde
+              {{ formatDayAt(session.startedAt) }}.
             </p>
+            @if (lastLockedSheetCount() !== null) {
+              <p class="session__locked" role="status">
+                <mat-icon aria-hidden="true">lock</mat-icon>
+                {{ lockedSheetCountLabel(lastLockedSheetCount()!) }}
+              </p>
+            }
+            <div class="session__actions">
+              @if (isMaster()) {
+                <a mat-flat-button [routerLink]="['/campanhas', campaignId(), 'sessao']">
+                  Entrar na sessão
+                </a>
+                <button mat-stroked-button class="session__copy" type="button" (click)="copyLink()">
+                  <mat-icon aria-hidden="true">{{
+                    copyState() === 'copied' ? 'check' : 'content_copy'
+                  }}</mat-icon>
+                  {{ copyState() === 'copied' ? 'Link copiado' : 'Copiar link da sessão' }}
+                </button>
+                @if (confirmingEnd()) {
+                  <div class="session__confirm" role="group" aria-labelledby="confirm-end-text">
+                    <p id="confirm-end-text" class="session__confirm-text">
+                      Encerrar a sessão {{ session.sessionNumber }}? Ela não reabre depois.
+                    </p>
+                    <button
+                      mat-stroked-button
+                      class="session__end session__end--confirm js-confirm-end"
+                      type="button"
+                      [disabled]="actionState().status === 'saving'"
+                      (click)="endSession(session.id)"
+                    >
+                      Confirmar encerramento
+                    </button>
+                    <button mat-button type="button" (click)="cancelEnd()">Cancelar</button>
+                  </div>
+                } @else {
+                  <button
+                    mat-stroked-button
+                    class="session__end js-end"
+                    type="button"
+                    (click)="askToEnd()"
+                  >
+                    Encerrar sessão
+                  </button>
+                }
+              } @else {
+                <a mat-flat-button [routerLink]="['/campanhas', campaignId(), 'sessao']">
+                  Entrar na sessão
+                </a>
+              }
+            </div>
+            @if (copyState() === 'manual') {
+              <div class="session__manual">
+                <label class="mr-label" for="session-link-field">Link da sessão</label>
+                <input
+                  id="session-link-field"
+                  class="session__field js-link-field"
+                  type="text"
+                  readonly
+                  [value]="sessionLink(campaignId())"
+                />
+                <p class="mr-muted session__hint">
+                  O navegador não deixou copiar. Copie o link do campo acima.
+                </p>
+              </div>
+            }
+            <p class="mr-visually-hidden" role="status">
+              {{ copyState() === 'copied' ? 'Link copiado' : '' }}
+            </p>
+          } @else {
+            <p class="session__text">
+              Nenhuma sessão em andamento. Ao iniciar, a ficha dos jogadores trava.
+            </p>
+            <button
+              mat-flat-button
+              class="session__action"
+              type="button"
+              [disabled]="actionState().status === 'saving'"
+              (click)="startSession()"
+            >
+              Iniciar sessão
+            </button>
           }
-          <button
-            mat-flat-button
-            class="session__action"
-            type="button"
-            [disabled]="actionState().status === 'saving'"
-            (click)="endSession(session.id)"
-          >
-            Encerrar sessão
-          </button>
-        } @else {
-          <p class="session__text">
-            Nenhuma sessão em andamento. Ao iniciar, a ficha dos jogadores trava.
-          </p>
-          <button
-            mat-flat-button
-            class="session__action"
-            type="button"
-            [disabled]="actionState().status === 'saving'"
-            (click)="startSession()"
-          >
-            Iniciar sessão
-          </button>
         }
       }
-    }
-  }
 
-  @if (actionState(); as a) {
-    @if (a.status === 'error') {
-      <div class="mr-notice mr-notice--danger" role="alert">
-        <mat-icon aria-hidden="true">error</mat-icon>
-        <p>{{ a.message }}</p>
-      </div>
-    }
+      @if (actionState(); as a) {
+        @if (a.status === 'error') {
+          <div class="mr-notice mr-notice--danger" role="alert">
+            <mat-icon aria-hidden="true">error</mat-icon>
+            <p>{{ a.message }}</p>
+          </div>
+        }
+      }
+    </section>
   }
-</section>
+}

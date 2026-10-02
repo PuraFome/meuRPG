@@ -24,6 +24,17 @@ export const routes: Routes = [
       import('./pages/campaign-detail/campaign-detail.routes').then((m) => m.CAMPAIGN_DETAIL_ROUTES),
   },
   {
+    // The live session (MR-011, MR-012, RN-06, RN-07): the link the master
+    // copies. No secret in it: the server decides who gets in. Signed out,
+    // authGuard sends the person to sign in and back here. `loadChildren`
+    // for the same reason as `campanhas/:id` above — see
+    // live-session.routes.ts.
+    path: 'campanhas/:id/sessao',
+    canActivate: [authGuard],
+    loadChildren: () =>
+      import('./pages/live-session/live-session.routes').then((m) => m.LIVE_SESSION_ROUTES),
+  },
+  {
     // The player creates their own character (MR-003, character half).
     // `loadChildren` for the same reason as `campanhas/:id` above — see
     // character-editor.routes.ts.

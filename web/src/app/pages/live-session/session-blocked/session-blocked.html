@@ -1,0 +1,40 @@
+@switch (kind()) {
+  @case ('no-access') {
+    <h1 class="mr-page-title">Peça um convite ao mestre</h1>
+    <div class="blocked">
+      <div class="mr-notice mr-notice--neutral" role="note">
+        <mat-icon aria-hidden="true">lock</mat-icon>
+        <p>
+          <strong>Esse link é só para quem já está na campanha.</strong>
+          Um convite do mestre coloca você na mesa; depois, o link da sessão abre direto.
+        </p>
+      </div>
+      <a mat-flat-button routerLink="/">Ir para o início</a>
+    </div>
+  }
+  @case ('no-session') {
+    <h1 class="mr-page-title">Nenhuma sessão em andamento</h1>
+    <p class="mr-page-lead">{{ campaignName() }}</p>
+    <div class="blocked">
+      <div class="mr-notice mr-notice--neutral" role="status">
+        <mat-icon aria-hidden="true">schedule</mat-icon>
+        <p>Quando o mestre iniciar, a sessão abre aqui.</p>
+      </div>
+      <a mat-flat-button [routerLink]="['/campanhas', campaignId()]">Voltar para a campanha</a>
+    </div>
+  }
+  @case ('ended') {
+    <h1 class="mr-page-title">Sessão {{ sessionNumber() }} encerrada</h1>
+    <p class="mr-page-lead">{{ campaignName() }}</p>
+    <div class="blocked">
+      <div class="mr-notice mr-notice--neutral" role="status">
+        <mat-icon aria-hidden="true">flag</mat-icon>
+        <p>
+          <strong>A sessão acabou.</strong>
+          Os pontos de vida, os espaços de magia e os dados de vida ficam como estão até a próxima.
+        </p>
+      </div>
+      <a mat-flat-button [routerLink]="['/campanhas', campaignId()]">Voltar para a campanha</a>
+    </div>
+  }
+}

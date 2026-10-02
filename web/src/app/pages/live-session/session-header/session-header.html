@@ -1,0 +1,87 @@
+<a class="back" [routerLink]="['/campanhas', campaignId()]">
+  <mat-icon aria-hidden="true">arrow_back</mat-icon>Voltar para a campanha
+</a>
+
+<div class="head" [class.head--master]="isMaster()">
+  <div class="head__title">
+    <h1 class="mr-page-title">Sessão {{ session().sessionNumber }}</h1>
+    <p class="mr-page-lead">{{ campaignName() }}</p>
+
+    @if (reconnecting()) {
+      <div class="mr-notice mr-notice--neutral head__offline" role="status">
+        <mat-icon aria-hidden="true">cloud_off</mat-icon>
+        <p><strong>Reconectando…</strong> {{ lastUpdateLabel() }}</p>
+      </div>
+    } @else {
+      <p class="head__status">
+        <app-live-pill />
+        @if (isMaster()) {
+          <span>Em andamento desde {{ formatDayAt(session().startedAt) }}</span>
+        } @else {
+          <span>atualizado agora</span>
+        }
+      </p>
+    }
+  </div>
+
+  @if (isMaster()) {
+    <div class="actions" [class.actions--confirming]="endState() !== 'idle'">
+      <div class="actions__link">
+        <label class="mr-label" for="session-link">Link da sessão</label>
+        <input
+          #linkField
+          id="session-link"
+          class="actions__field"
+          type="text"
+          readonly
+          [value]="link()"
+        />
+      </div>
+      <button mat-stroked-button type="button" class="actions__button" (click)="copyLink()">
+        <mat-icon aria-hidden="true">{{ copied() ? 'check' : 'content_copy' }}</mat-icon>
+        {{ copied() ? 'Link copiado' : 'Copiar link da sessão' }}
+      </button>
+      @switch (endState()) {
+        @case ('idle') {
+          <span class="actions__divider" aria-hidden="true"></span>
+          <button
+            mat-stroked-button
+            type="button"
+            class="actions__button actions__end js-end"
+            (click)="askToEnd()"
+          >
+            Encerrar sessão
+          </button>
+        }
+        @default {
+          <div class="confirm" role="group" aria-labelledby="confirm-end-text">
+            <p id="confirm-end-text" class="confirm__text">
+              Encerrar a sessão {{ session().sessionNumber }}? Ela não reabre depois.
+            </p>
+            <button
+              mat-stroked-button
+              type="button"
+              class="confirm__button js-confirm-end"
+              [disabled]="endState() === 'saving'"
+              (click)="endSession()"
+            >
+              Confirmar encerramento
+            </button>
+            <button mat-button type="button" (click)="cancelEnd()">Cancelar</button>
+          </div>
+        }
+      }
+      <p class="mr-visually-hidden" role="status">{{ copied() ? 'Link copiado' : '' }}</p>
+    </div>
+  }
+</div>
+
+@if (endState() === 'error') {
+  <div class="mr-notice mr-notice--danger head__error" role="alert">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <p>
+      <strong>Não foi possível encerrar a sessão.</strong>
+      Confira a conexão e tente de novo.
+    </p>
+  </div>
+}

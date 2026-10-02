@@ -88,6 +88,11 @@
                       </span>
                       @if (c.awaitingApproval) {
                         <span class="mr-tag mr-tag--pending">Pendente</span>
+                      } @else if (liveCampaignIds().has(c.id)) {
+                        <span class="row-tags">
+                          <app-live-pill label="Sessão ao vivo" size="small" />
+                          <span class="mr-tag">{{ roleTag(c.myRole) }}</span>
+                        </span>
                       } @else {
                         <span class="mr-tag">{{ roleTag(c.myRole) }}</span>
                       }

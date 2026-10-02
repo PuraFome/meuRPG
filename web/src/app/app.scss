@@ -11,7 +11,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0 var(--mr-space-6);
+  gap: 0 var(--mr-space-1);
   min-height: 56px;
   padding: 0 var(--mr-space-2) 0 var(--mr-gutter);
   background: var(--mr-surface);
@@ -36,6 +36,30 @@
   @media (min-width: 768px) {
     font-size: 26px;
     margin-right: 0;
+  }
+}
+
+// The "Ao vivo" link: the pill in a 44px target. On a phone it sits in
+// the bar, next to the menu button; from a tablet up, before the account.
+.app-bar__live {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--mr-space-1);
+  text-decoration: none;
+
+  &--phone {
+    @media (min-width: 768px) {
+      display: none;
+    }
+  }
+
+  &--wide {
+    margin-right: var(--mr-space-3);
+
+    @media (max-width: 767.98px) {
+      display: none;
+    }
   }
 }
 

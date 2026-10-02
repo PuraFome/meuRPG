@@ -1,0 +1,133 @@
+:host {
+  display: block;
+}
+
+.party {
+  padding-bottom: var(--mr-space-1);
+
+  .mr-panel__title {
+    margin: 0;
+  }
+}
+
+.party__empty {
+  margin: var(--mr-space-2) 0 var(--mr-space-3);
+  color: var(--mr-ink-muted);
+}
+
+.party__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.member {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  padding: 14px 0;
+
+  & + & {
+    border-top: 1px solid var(--mr-rule);
+  }
+}
+
+.member__head {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+}
+
+.member__who {
+  flex-grow: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.member__name {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+
+.member__sub {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.member__hp {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-2);
+}
+
+.member__numbers {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.member__current {
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 30px;
+  line-height: 30px;
+}
+
+.member__max {
+  font-family: var(--mr-font-display);
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--mr-ink-muted);
+}
+
+.member__unit {
+  margin-left: 2px;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.member__bar {
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-line);
+}
+
+.member__fill {
+  height: 100%;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-ink);
+}
+
+.member__slots {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px var(--mr-space-4);
+  font-size: 14px;
+  line-height: 19px;
+}
+
+.member__slots-label {
+  color: var(--mr-ink-muted);
+
+  // On a phone the label takes its own line, as in the artboard.
+  @media (max-width: 767.98px) {
+    flex-basis: 100%;
+  }
+}
+
+.member__slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.member__slot-count {
+  color: var(--mr-ink-muted);
+}

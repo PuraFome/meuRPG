@@ -1,0 +1,132 @@
+:host {
+  display: block;
+}
+
+// "row": the label on the left, "− [field] +" on the right.
+.stepper {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--mr-space-2) var(--mr-space-3);
+}
+
+// "wide" (hit points): the label and its limit on one line, then the five
+// controls across the whole width.
+.stepper--wide {
+  grid-template-columns: minmax(0, 1fr);
+
+  .stepper__text {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--mr-space-3);
+  }
+
+  .stepper__controls {
+    justify-content: space-between;
+  }
+}
+
+.stepper__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.stepper__label {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.stepper__hint {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.stepper__controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stepper__button {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+
+  &--number {
+    width: 52px;
+  }
+
+  &:hover:not(:disabled) {
+    border-color: var(--mr-ink);
+  }
+
+  // At a limit: faded, and the words next to the label say why.
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+}
+
+.stepper__field {
+  box-sizing: border-box;
+  width: 60px;
+  height: 48px;
+  padding: 0 4px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-ground);
+  color: var(--mr-ink);
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 28px;
+  font-variant-numeric: lining-nums tabular-nums;
+  line-height: 1;
+  text-align: center;
+  appearance: textfield;
+  -moz-appearance: textfield;
+
+  &::-webkit-inner-spin-button,
+  &::-webkit-outer-spin-button {
+    appearance: none;
+    margin: 0;
+  }
+
+  &--wide {
+    width: 80px;
+  }
+
+  &[aria-invalid='true'] {
+    border: 2px solid var(--mr-danger-ink);
+  }
+}
+
+.stepper__error {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 14px;
+  color: var(--mr-danger-ink);
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}

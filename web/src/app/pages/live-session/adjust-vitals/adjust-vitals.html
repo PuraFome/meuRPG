@@ -1,0 +1,102 @@
+<div class="adjust" [class.adjust--sheet]="inSheet">
+  @if (inSheet) {
+    <span class="adjust__handle" aria-hidden="true"></span>
+  }
+  <div class="adjust__head">
+    <h2 class="adjust__title" id="adjust-title">Ajustar {{ v.name }}</h2>
+    @if (data.sub) {
+      <span class="adjust__sub">{{ data.sub }}</span>
+    }
+  </div>
+
+  @if (saveState().status === 'ended') {
+    <div class="mr-notice mr-notice--neutral adjust__ended" role="alert">
+      <mat-icon aria-hidden="true">flag</mat-icon>
+      <p>
+        <strong>A sessão acabou.</strong>
+        O ajuste não foi salvo: os números só mudam durante a sessão.
+      </p>
+    </div>
+    <div class="adjust__buttons">
+      <button mat-flat-button type="button" (click)="closeEnded()">Fechar</button>
+    </div>
+  } @else {
+    <div class="adjust__rows">
+      <app-vitals-stepper
+        layout="wide"
+        label="Pontos de vida"
+        [hint]="'máximo ' + v.hitPointsMax"
+        [max]="v.hitPointsMax"
+        [steps]="[5, 1]"
+        fieldLabel="Pontos de vida atuais"
+        [stepLabel]="hpLabel"
+        [(value)]="hp"
+      />
+      <app-vitals-stepper
+        label="PV temporários"
+        hint="Somem antes dos PV"
+        [max]="maxTemporary"
+        fieldLabel="PV temporários"
+        [stepLabel]="tempLabel"
+        [(value)]="temp"
+      />
+      @for (slot of slots; track slot.level) {
+        <app-vitals-stepper
+          [label]="'Espaços de ' + slotLevelLabel(slot.level)"
+          [hint]="usedWords(slot.used(), slot.total)"
+          [max]="slot.total"
+          [fieldLabel]="'Espaços de ' + slotLevelLabel(slot.level) + ' usados'"
+          [stepLabel]="slotLabel(slot.level)"
+          [(value)]="slot.used"
+        />
+      }
+      @if (v.pactSlots; as p) {
+        <app-vitals-stepper
+          label="Espaços de pacto"
+          [hint]="slotLevelLabel(p.slotLevel) + ', ' + usedWords(pact(), p.total)"
+          [max]="p.total"
+          fieldLabel="Espaços de pacto usados"
+          [stepLabel]="pactLabel"
+          [(value)]="pact"
+        />
+      }
+      <app-vitals-stepper
+        label="Dados de vida"
+        [hint]="hitDiceHint()"
+        [max]="v.hitDiceTotal"
+        fieldLabel="Dados de vida usados"
+        [stepLabel]="diceLabel"
+        [(value)]="hitDice"
+      />
+    </div>
+
+    <p class="adjust__note">
+      <mat-icon aria-hidden="true">visibility</mat-icon>
+      {{ note }}
+    </p>
+
+    @if (saveState(); as s) {
+      @if (s.status === 'error') {
+        <div class="mr-notice mr-notice--danger adjust__error" role="alert">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <p>
+            <strong>{{ s.title }}</strong>
+            {{ s.detail }}
+          </p>
+        </div>
+      }
+    }
+
+    <div class="adjust__buttons">
+      <button
+        mat-flat-button
+        type="button"
+        [disabled]="saveState().status === 'saving'"
+        (click)="save()"
+      >
+        Salvar ajuste
+      </button>
+      <button mat-button type="button" (click)="close(undefined)">Cancelar</button>
+    </div>
+  }
+</div>

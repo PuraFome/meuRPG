@@ -1,10 +1,11 @@
-import { Injectable } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import { Campaign, Role, XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { CampaignsService } from '../../core/campaigns/campaigns.service';
+import { OpenSessions } from '../../shell/live-notice/open-sessions';
 import { Campaigns } from './campaigns';
 
 /** A stand-in for CampaignsService whose calls this spec fully controls. */
@@ -25,11 +26,17 @@ function campaign(id: string, name: string, myRole: Role): Campaign {
 describe('Campaigns', () => {
   let fake: FakeCampaignsService;
   let router: Router;
+  const liveCampaignIds = signal<ReadonlySet<string>>(new Set());
 
   beforeEach(() => {
+    liveCampaignIds.set(new Set());
     TestBed.configureTestingModule({
       imports: [Campaigns],
-      providers: [provideRouter([]), { provide: CampaignsService, useClass: FakeCampaignsService }],
+      providers: [
+        provideRouter([]),
+        { provide: CampaignsService, useClass: FakeCampaignsService },
+        { provide: OpenSessions, useValue: { liveCampaignIds: liveCampaignIds.asReadonly() } },
+      ],
     });
     fake = TestBed.inject(CampaignsService) as unknown as FakeCampaignsService;
     router = TestBed.inject(Router);
@@ -81,7 +88,25 @@ describe('Campaigns', () => {
     expect(first?.textContent).toContain('XP por inimigos derrotados');
   });
 
-  it('shows a campaign that awaits the master\'s approval as such, not as jogador (MR-024)', async () => {
+  it('tags a campaign with an open session "Sessão ao vivo", next to the role (RN-06, E5-01)', async () => {
+    fake.listMyCampaignsResult = Promise.resolve({
+      campaigns: [
+        campaign('c1', 'Mirathel', Role.PLAYER),
+        campaign('c2', 'Estrada de Ossos', Role.MASTER),
+      ],
+    });
+    liveCampaignIds.set(new Set(['c1']));
+    const el = await render();
+
+    const links = Array.from(el.querySelectorAll('a[href]'));
+    const live = links.find((a) => a.getAttribute('href') === '/campanhas/c1');
+    const quiet = links.find((a) => a.getAttribute('href') === '/campanhas/c2');
+    expect(live?.textContent).toContain('Sessão ao vivo');
+    expect(live?.textContent).toContain('Jogador');
+    expect(quiet?.textContent).not.toContain('Sessão ao vivo');
+  });
+
+  it("shows a campaign that awaits the master's approval as such, not as jogador (MR-024)", async () => {
     fake.listMyCampaignsResult = Promise.resolve({
       campaigns: [{ ...campaign('c1', 'Mirathel', Role.PLAYER), awaitingApproval: true }],
     });

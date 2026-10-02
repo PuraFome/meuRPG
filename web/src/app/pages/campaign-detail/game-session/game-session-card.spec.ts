@@ -1,7 +1,9 @@
 import { Injectable } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { Code, ConnectError } from '@connectrpc/connect';
 
+import { OpenSessions } from '../../../shell/live-notice/open-sessions';
 import { GameSessionCard } from './game-session-card';
 import { GameSessionSource, GameSessionVm, StartGameSessionResultVm } from './game-session-card.types';
 
@@ -26,18 +28,28 @@ function startResult(sessionNumber: number, lockedSheetCount: number): StartGame
 
 describe('GameSessionCard', () => {
   let fake: FakeGameSessionSource;
+  const openSessions = { refresh: vi.fn(() => Promise.resolve()) };
 
   beforeEach(() => {
+    openSessions.refresh.mockClear();
     TestBed.configureTestingModule({
       imports: [GameSessionCard],
-      providers: [{ provide: GameSessionSource, useClass: FakeGameSessionSource }],
+      providers: [
+        provideRouter([]),
+        { provide: GameSessionSource, useClass: FakeGameSessionSource },
+        { provide: OpenSessions, useValue: openSessions },
+      ],
     });
     fake = TestBed.inject(GameSessionSource) as unknown as FakeGameSessionSource;
   });
 
-  async function render(): Promise<{ el: HTMLElement; fixture: ComponentFixture<GameSessionCard> }> {
+  async function render(isMaster = true): Promise<{
+    el: HTMLElement;
+    fixture: ComponentFixture<GameSessionCard>;
+  }> {
     const fixture = TestBed.createComponent(GameSessionCard);
     fixture.componentRef.setInput('campaignId', 'camp-1');
+    fixture.componentRef.setInput('isMaster', isMaster);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -122,19 +134,110 @@ describe('GameSessionCard', () => {
     expect(el.textContent).toContain('Já existe uma sessão em andamento nesta campanha.');
   });
 
-  it('ends a session (by its id) and switches back to the "nenhuma sessão" state', async () => {
+  it('ends a session (by its id) after the in-place confirmation, and switches back to the "nenhuma sessão" state', async () => {
     fake.getCurrentSessionResult = Promise.resolve(session(2, 'sess-2'));
     fake.endGameSession.mockResolvedValue({ ...session(2, 'sess-2'), endedAt: new Date() });
     const { el, fixture } = await render();
 
-    const button = Array.from(el.querySelectorAll('button')).find((b) =>
-      b.textContent?.includes('Encerrar sessão'),
-    ) as HTMLButtonElement;
-    button.click();
+    buttonNamed(el, 'Encerrar sessão').click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    // Can't be undone: it asks first, in place (docs/design.md).
+    expect(fake.endGameSession).not.toHaveBeenCalled();
+    expect(el.textContent).toContain('Encerrar a sessão 2? Ela não reabre depois.');
+
+    buttonNamed(el, 'Confirmar encerramento').click();
     await fixture.whenStable();
     fixture.detectChanges();
 
     expect(fake.endGameSession).toHaveBeenCalledWith('camp-1', 'sess-2');
     expect(el.textContent).toContain('Nenhuma sessão em andamento');
+    // The app bar's "Ao vivo" link goes away now, not at the next poll.
+    expect(openSessions.refresh).toHaveBeenCalled();
+  });
+
+  it('"Cancelar" goes back to "Encerrar sessão" without ending anything', async () => {
+    fake.getCurrentSessionResult = Promise.resolve(session(2, 'sess-2'));
+    const { el, fixture } = await render();
+
+    buttonNamed(el, 'Encerrar sessão').click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    buttonNamed(el, 'Cancelar').click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fake.endGameSession).not.toHaveBeenCalled();
+    expect(el.textContent).not.toContain('Confirmar encerramento');
+    expect(el.textContent).toContain('Encerrar sessão');
+  });
+
+  it('links "Entrar na sessão" to the session page (E5-09)', async () => {
+    fake.getCurrentSessionResult = Promise.resolve(session(4));
+    const { el } = await render();
+    const link = Array.from(el.querySelectorAll('a')).find((a) =>
+      a.textContent?.includes('Entrar na sessão'),
+    );
+    expect(link?.getAttribute('href')).toBe('/campanhas/camp-1/sessao');
+    expect(el.textContent).toContain('Ao vivo');
+  });
+
+  it('copies the session link and says "Link copiado"', async () => {
+    fake.getCurrentSessionResult = Promise.resolve(session(4));
+    const writeText = vi.fn(() => Promise.resolve());
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+    try {
+      const { el, fixture } = await render();
+      buttonNamed(el, 'Copiar link da sessão').click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(writeText).toHaveBeenCalledWith(`${location.origin}/campanhas/camp-1/sessao`);
+      expect(el.textContent).toContain('Link copiado');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('shows the link in a read-only field when the browser refuses to copy', async () => {
+    fake.getCurrentSessionResult = Promise.resolve(session(4));
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      clipboard: { writeText: () => Promise.reject(new Error('denied')) },
+    });
+    try {
+      const { el, fixture } = await render();
+      buttonNamed(el, 'Copiar link da sessão').click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const field = el.querySelector<HTMLInputElement>('input[readonly]');
+      expect(field?.value).toBe(`${location.origin}/campanhas/camp-1/sessao`);
+      expect(el.textContent).not.toContain('Link copiado');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('shows a player the open session with "Entrar na sessão", and nothing to manage', async () => {
+    fake.getCurrentSessionResult = Promise.resolve(session(3));
+    const { el } = await render(false);
+    expect(el.textContent).toContain('Sessão 3 em andamento');
+    expect(el.textContent).toContain('Entrar na sessão');
+    expect(el.textContent).not.toContain('Encerrar sessão');
+    expect(el.textContent).not.toContain('Copiar link da sessão');
+  });
+
+  it('shows a player nothing at all while no session is open', async () => {
+    fake.getCurrentSessionResult = Promise.resolve(null);
+    const { el } = await render(false);
+    expect(el.textContent?.trim()).toBe('');
+    expect(el.classList).toContain('is-empty');
   });
 });
+
+function buttonNamed(el: HTMLElement, name: string): HTMLButtonElement {
+  return Array.from(el.querySelectorAll('button')).find((b) =>
+    b.textContent?.includes(name),
+  ) as HTMLButtonElement;
+}

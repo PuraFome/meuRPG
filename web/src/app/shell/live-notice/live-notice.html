@@ -1,0 +1,29 @@
+<!-- The live region stays in the page, so the notice is announced when it
+     appears (role="status": polite, it never interrupts). -->
+<div role="status">
+  @for (s of sessions(); track s.sessionId) {
+    <div class="live-notice">
+      <mat-icon class="live-notice__icon" aria-hidden="true">sensors</mat-icon>
+      <div class="live-notice__body">
+        <p class="live-notice__text">
+          <strong>A sessão {{ s.sessionNumber }} de {{ s.campaignName }} começou.</strong>
+        </p>
+        <a
+          class="live-notice__action"
+          [routerLink]="['/campanhas', s.campaignId, 'sessao']"
+          [attr.aria-label]="'Entrar na sessão ' + s.sessionNumber + ' de ' + s.campaignName"
+          (click)="dismiss(s.sessionId)"
+          >Entrar na sessão</a
+        >
+      </div>
+      <button
+        type="button"
+        class="live-notice__close"
+        aria-label="Fechar aviso"
+        (click)="dismiss(s.sessionId)"
+      >
+        <mat-icon aria-hidden="true">close</mat-icon>
+      </button>
+    </div>
+  }
+</div>

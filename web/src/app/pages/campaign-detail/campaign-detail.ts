@@ -28,7 +28,9 @@ type PageState =
 /**
  * "/campanhas/:id" (guarded by authGuard): GetCampaign + ListMembers
  * (MR-001, MR-002), the "Personagens" section (MR-003, MR-005; everyone),
- * plus two master-only sections: "Convites" and "Sessão" (MR-006 / RN-01).
+ * "Sessão" (MR-006 / RN-01 for the master; for a player, only while a
+ * session is open, with "Entrar na sessão", RN-06) and the master-only
+ * "Convites".
  *
  * From 1024px up the page has two columns: the play on the left (Sessão,
  * then the characters and NPCs) and the table on the right (Membros,

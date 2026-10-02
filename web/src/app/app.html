@@ -1,6 +1,15 @@
 <header class="app-bar">
   <a class="app-bar__brand" routerLink="/">MeuRPG</a>
 
+  @if (liveSession(); as live) {
+    <a
+      class="app-bar__live app-bar__live--phone"
+      [routerLink]="['/campanhas', live.campaignId, 'sessao']"
+      [attr.aria-label]="liveLabel(live)"
+      ><app-live-pill
+    /></a>
+  }
+
   <button
     type="button"
     class="app-bar__toggle"
@@ -30,11 +39,20 @@
         >Minhas campanhas</a
       >
     </nav>
+    @if (liveSession(); as live) {
+      <a
+        class="app-bar__live app-bar__live--wide"
+        [routerLink]="['/campanhas', live.campaignId, 'sessao']"
+        [attr.aria-label]="liveLabel(live)"
+        ><app-live-pill
+      /></a>
+    }
     <app-user-menu class="app-bar__user" />
   </div>
 </header>
 
 <main class="app-content">
+  <app-live-notice [url]="url()" />
   <router-outlet />
 </main>
 

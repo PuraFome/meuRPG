@@ -1,0 +1,49 @@
+:host {
+  display: block;
+}
+
+.page-notice {
+  max-width: 640px;
+}
+
+.retry {
+  margin-top: var(--mr-space-4);
+}
+
+// One column on a phone and a tablet (the map, then the vitals; for the
+// master, the party first). From 1024px: the map takes the room on the
+// left and the vitals or the party a column on the right (E5-03, E5-04).
+.board {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+  margin-top: var(--mr-space-6);
+
+  @media (min-width: 1024px) {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    gap: var(--mr-space-6);
+    align-items: start;
+  }
+}
+
+.board--master {
+  @media (min-width: 1024px) {
+    grid-template-columns: minmax(0, 1fr) 400px;
+
+    .board__main {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    .board__side {
+      grid-column: 2;
+      grid-row: 1;
+    }
+  }
+}
+
+.board__main,
+.board__side {
+  min-width: 0;
+}

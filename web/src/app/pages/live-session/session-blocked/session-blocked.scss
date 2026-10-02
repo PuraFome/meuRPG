@@ -1,0 +1,19 @@
+:host {
+  display: block;
+  // No back link above the title here: a little more room under the app
+  // bar, as in the artboard (E5-07).
+  padding-top: var(--mr-space-2);
+}
+
+// A notice and its one action, at reading width; the action is full width
+// on a phone (E5-07), as wide as its words from a tablet up.
+.blocked {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-5);
+  max-width: 640px;
+
+  @media (min-width: 768px) {
+    align-items: flex-start;
+  }
+}
