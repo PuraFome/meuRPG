@@ -97,6 +97,16 @@ func TestAuthorizationMatrix(t *testing.T) {
 			return err
 		}, [5]connect.Code{connect.CodeNotFound, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 
+		{"SetCampaignDiceMode", func(ctx context.Context, c client) error {
+			_, err := c.SetCampaignDiceMode(ctx, connect.NewRequest(&campaignsv1.SetCampaignDiceModeRequest{CampaignId: id, Mode: campaignsv1.DiceMode_DICE_MODE_PLAYERS_CHOOSE}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+
+		{"SetMyDicePreference", func(ctx context.Context, c client) error {
+			_, err := c.SetMyDicePreference(ctx, connect.NewRequest(&campaignsv1.SetMyDicePreferenceRequest{CampaignId: id, Preference: campaignsv1.DicePreference_DICE_PREFERENCE_APP}))
+			return err
+		}, [5]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+
 		// Any signed-in user may accept an invite: that is how a non-member
 		// becomes one. This row runs last, because it makes the non-member a
 		// member.

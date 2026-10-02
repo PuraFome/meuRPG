@@ -23,13 +23,13 @@ Decisões difíceis de desfazer viram ADR (Architecture Decision Record) no repo
 Cada módulo do backend fica em `backend/internal/<módulo>`. Um módulo só chama outro pela interface pública dele, nunca pelas tabelas.
 
 - `identity`: login do mestre, sessões de login e usuários. O login do mestre é um *relying party* OIDC genérico: Google em produção, um provedor OIDC local nos testes ponta a ponta — o módulo fala o protocolo, não um SDK do Google. O login do jogador sem Google (RN-17, decidido pelo Samuel em 29/09/2026: handle por mesa, sem e-mail) ainda não está implementado — ver [ADR-0009](adr/0009-login-do-jogador-sem-google.md). Criar campanha continua exigindo uma conta com Google no MVP (RN-14).
-- `campaigns`: campanhas, membros (inclusive o membro pendente de um convite com aprovação, RN-15), papéis, convites e o documento da campanha (MR-018, ver [Documento da campanha](#documento-da-campanha)).
+- `campaigns`: campanhas, membros (inclusive o membro pendente de um convite com aprovação, RN-15), papéis, convites, como a campanha rola os dados (RN-18) e o documento da campanha (MR-018, ver [Documento da campanha](#documento-da-campanha)).
 - `characters`: personagens, fichas, história, trava, notas do mestre e, depois, cópias. Também serve o catálogo de regras do editor (`ContentService`) enquanto não existe conteúdo da mesa (ver [Módulo characters](#módulo-characters-personagens-e-fichas)).
 - `play`: sessão de jogo, cenas, encontros, combatentes e o stream ao vivo. Hoje: iniciar, encerrar e listar sessões, o que trava as fichas (Etapa 4), e a sessão ao vivo: o aviso, o stream, a correção do mestre nos PV, espaços de magia e dados de vida, com o histórico em `session_events`, e o que a sessão mostra, o mapa atual e uma imagem da galeria (Etapa 5; ver [Módulo play](#módulo-play-sessões-de-jogo)).
 - `maps`: mapas, pontos de interesse, tokens, a galeria de imagens e, depois, masmorras. Na Etapa 5, a galeria (enviar, guardar e servir as imagens, ver [Módulo maps: galeria](#módulo-maps-galeria-e-imagens)) e os mapas, com o que cada um vê decidido no servidor (ver [Módulo maps: mapas](#módulo-maps-mapas-pontos-e-tokens)).
 - `progression`: modo de XP, XP dado e aviso de subir de nível.
 - `rules`: as contas do D&D 5e (modificadores, CD, bônus). Não acessa o banco, então é fácil de testar.
-- `platform`: o que é de todos: configuração, banco, servidor HTTP e logs.
+- `platform`: o que é de todos: configuração, banco, servidor HTTP, logs e os dados (`platform/dice`: ler expressões, rolar e conferir o dado físico).
 
 Cada módulo é construído do zero, direto no Go: não há troca de lado nem coexistência com o NestJS antigo, que fica descontinuado e será removido do repositório (decidido pelo Samuel em 29/09/2026, ver [App antigo](app-antigo.md)) — o backend novo passa a cobrir sozinho todas as histórias do MVP. O critério de pronto é o mesmo de qualquer história: os testes do módulo passam (ver [Visão do produto](produto/visao.md)).
 
@@ -338,6 +338,8 @@ O mestre cria a campanha e gera convites; o jogador faz login e aceita o convite
 | `GetCampaign` | Membros da campanha; o membro pendente (RN-15) também, e recebe só o nome e `awaiting_approval` |
 | `ListMembers` | Membros da campanha. O membro pendente não aparece na lista e recebe `not_found` |
 | `CreateInvite`, `ListInvites`, `RevokeInvite` | O mestre da campanha |
+| `SetCampaignDiceMode` | O mestre da campanha (RN-18, ver [Dados da campanha](#dados-da-campanha)) |
+| `SetMyDicePreference` | Membros da campanha, o mestre também; o membro pendente recebe `not_found` |
 | `ListPendingMembers`, `RemovePendingMember` | O mestre da campanha. Listam e removem os membros pendentes que ainda não criaram o personagem (RN-15, pergunta 24); não são `ListMembers` de propósito, porque essas pessoas não são membros. Quem já criou o personagem se aprova ou se recusa pelo `CharacterService` |
 | `CampaignDocumentService`: `GetCampaignDocument`, `UpdateCampaignDocument` | O mestre da campanha (ver [Documento da campanha](#documento-da-campanha)) |
 
@@ -477,6 +479,16 @@ Regras que valem para qualquer intenção, não só a do convite:
 ### Respostas e GET
 
 Toda resposta do `CampaignService` e do `CampaignDocumentService`, inclusive os erros, sai com `Cache-Control: no-store`. Só o `ListMyCampaigns` aceita GET (`NO_SIDE_EFFECTS`), porque a requisição dele é vazia. As outras leituras (`GetCampaign`, `ListMembers`, `ListInvites`, `GetCampaignDocument`) levam o ID da campanha, e num GET a mensagem inteira vai na URL, que fica nos logs da plataforma (ver [Privacidade](privacidade.md)). Por isso elas levam `IDEMPOTENT` e ficam só em POST, mesmo sem efeito colateral (regra 7 dos [Contratos de API](#contratos-de-api-protobuf)).
+
+### Dados da campanha
+
+Como os jogadores rolam os dados é uma configuração da campanha mais uma preferência de cada membro (RN-18, MR-013, MR-014). O `Campaign` traz `dice_mode`; o `GetCampaign` traz também `my_dice_preference`, a do próprio chamador, que é o que a página da campanha precisa (as listas não leem a coluna, então vem vazia nelas). O `ListMembers` põe `dice_preference` em cada `Member` só quando quem chama é o mestre, porque é ele que lista a escolha de cada jogador no painel "Dados"; para um jogador o campo vem vazio. Foi um campo a mais, e não uma chamada nova, porque o painel já lista os membros. `SetCampaignDiceMode` e `SetMyDicePreference` devolvem o valor salvo; repetir o mesmo valor não é erro, e um valor não especificado é `invalid_argument`.
+
+A conta "onde este jogador rola?" é `campaigns.EffectiveDiceMode(modo, preferência)`, uma função pura: com `app` ou `physical` na campanha, vale o modo e a preferência não importa; com `players_choose`, vale a preferência. O `Service.PlayerDiceMode(ctx, campaignID, userID)` faz as duas leituras e aplica a função. O módulo `play` não importa o `campaigns`: ele vai declarar uma interface pequena (`PlayerDiceMode(ctx, campaignID, userID) (campaigns.RollsIn, error)` ou o equivalente com um tipo dele) e o `cmd/api` entrega o serviço, como já se faz com `ActiveCampaigns`. Os NPCs não passam por aqui: rolam sempre no app.
+
+#### O pacote platform/dice
+
+`backend/internal/platform/dice` é Go puro, sem dependência nova, e é onde se rola (o módulo `rules` continua sem aleatoriedade, ADR-0008). `Parse` lê `d20`, `1d20+6`, `2d6 + 2`, `1d4 - 1` e recusa o resto, com os limites de 1 a 100 dados, lados em 4, 6, 8, 10, 12, 20 ou 100, e modificador de −100 a +100. `Roll(roller, expr)` devolve um `Result` (a expressão, as faces, o modificador e o total). `Roller` é uma interface: `Crypto` usa `crypto/rand` (`rand.Int` sorteia sem viés), e `Fixed` devolve uma sequência de faces nos testes. `Physical(expr, soma)` confere a soma digitada, que tem de ficar entre `N` e `N×lados`, e soma o modificador; o resultado não tem faces, porque ninguém as digitou.
 
 ### Nome de exibição
 

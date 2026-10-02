@@ -16,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/campaigns/v1/campaigns.proto.
  */
 export const file_meurpg_campaigns_v1_campaigns: GenFile = /*@__PURE__*/
-  fileDesc("CiNtZXVycGcvY2FtcGFpZ25zL3YxL2NhbXBhaWducy5wcm90bxITbWV1cnBnLmNhbXBhaWducy52MSLJAQoIQ2FtcGFpZ24SCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRIsCgd4cF9tb2RlGAMgASgOMhsubWV1cnBnLmNhbXBhaWducy52MS5YcE1vZGUSLgoKY3JlYXRlZF9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASKgoHbXlfcm9sZRgFIAEoDjIZLm1ldXJwZy5jYW1wYWlnbnMudjEuUm9sZRIZChFhd2FpdGluZ19hcHByb3ZhbBgGIAEoCCKVAQoNUGVuZGluZ01lbWJlchIPCgd1c2VyX2lkGAEgASgJEhQKDGRpc3BsYXlfbmFtZRgCIAEoCRItCglqb2luZWRfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCmV4cGlyZXNfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIocBCgZNZW1iZXISDwoHdXNlcl9pZBgBIAEoCRInCgRyb2xlGAIgASgOMhkubWV1cnBnLmNhbXBhaWducy52MS5Sb2xlEhQKDGRpc3BsYXlfbmFtZRgDIAEoCRItCglqb2luZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIpUCCgZJbnZpdGUSCgoCaWQYASABKAkSEAoIbWF4X3VzZXMYAiABKAUSEQoJdXNlX2NvdW50GAMgASgFEi4KCmNyZWF0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCmV4cGlyZXNfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnJldm9rZWRfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi8KBXN0YXRlGAcgASgOMiAubWV1cnBnLmNhbXBhaWducy52MS5JbnZpdGVTdGF0ZRIZChFyZXF1aXJlc19hcHByb3ZhbBgIIAEoCCJBCg5JbnZpdGVVbnVzYWJsZRIvCgVzdGF0ZRgBIAEoDjIgLm1ldXJwZy5jYW1wYWlnbnMudjEuSW52aXRlU3RhdGUiUwoVQ3JlYXRlQ2FtcGFpZ25SZXF1ZXN0EgwKBG5hbWUYASABKAkSLAoHeHBfbW9kZRgCIAEoDjIbLm1ldXJwZy5jYW1wYWlnbnMudjEuWHBNb2RlIkkKFkNyZWF0ZUNhbXBhaWduUmVzcG9uc2USLwoIY2FtcGFpZ24YASABKAsyHS5tZXVycGcuY2FtcGFpZ25zLnYxLkNhbXBhaWduIhgKFkxpc3RNeUNhbXBhaWduc1JlcXVlc3QiSwoXTGlzdE15Q2FtcGFpZ25zUmVzcG9uc2USMAoJY2FtcGFpZ25zGAEgAygLMh0ubWV1cnBnLmNhbXBhaWducy52MS5DYW1wYWlnbiIpChJHZXRDYW1wYWlnblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiRgoTR2V0Q2FtcGFpZ25SZXNwb25zZRIvCghjYW1wYWlnbhgBIAEoCzIdLm1ldXJwZy5jYW1wYWlnbnMudjEuQ2FtcGFpZ24iKQoSTGlzdE1lbWJlcnNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIkMKE0xpc3RNZW1iZXJzUmVzcG9uc2USLAoHbWVtYmVycxgBIAMoCzIbLm1ldXJwZy5jYW1wYWlnbnMudjEuTWVtYmVyIjAKGUxpc3RQZW5kaW5nTWVtYmVyc1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiUQoaTGlzdFBlbmRpbmdNZW1iZXJzUmVzcG9uc2USMwoHbWVtYmVycxgBIAMoCzIiLm1ldXJwZy5jYW1wYWlnbnMudjEuUGVuZGluZ01lbWJlciJCChpSZW1vdmVQZW5kaW5nTWVtYmVyUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIPCgd1c2VyX2lkGAIgASgJIh0KG1JlbW92ZVBlbmRpbmdNZW1iZXJSZXNwb25zZSKGAQoTQ3JlYXRlSW52aXRlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIQCghtYXhfdXNlcxgCIAEoBRItCgpleHBpcmVzX2luGAMgASgLMhkuZ29vZ2xlLnByb3RvYnVmLkR1cmF0aW9uEhkKEXJlcXVpcmVzX2FwcHJvdmFsGAQgASgIIlIKFENyZWF0ZUludml0ZVJlc3BvbnNlEisKBmludml0ZRgBIAEoCzIbLm1ldXJwZy5jYW1wYWlnbnMudjEuSW52aXRlEg0KBXRva2VuGAIgASgJIikKEkxpc3RJbnZpdGVzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCSJDChNMaXN0SW52aXRlc1Jlc3BvbnNlEiwKB2ludml0ZXMYASADKAsyGy5tZXVycGcuY2FtcGFpZ25zLnYxLkludml0ZSI9ChNSZXZva2VJbnZpdGVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhEKCWludml0ZV9pZBgCIAEoCSJDChRSZXZva2VJbnZpdGVSZXNwb25zZRIrCgZpbnZpdGUYASABKAsyGy5tZXVycGcuY2FtcGFpZ25zLnYxLkludml0ZSIkChNBY2NlcHRJbnZpdGVSZXF1ZXN0Eg0KBXRva2VuGAEgASgJIl8KFEFjY2VwdEludml0ZVJlc3BvbnNlEi8KCGNhbXBhaWduGAEgASgLMh0ubWV1cnBnLmNhbXBhaWducy52MS5DYW1wYWlnbhIWCg5hbHJlYWR5X21lbWJlchgCIAEoCCo+CgRSb2xlEhQKEFJPTEVfVU5TUEVDSUZJRUQQABIPCgtST0xFX01BU1RFUhABEg8KC1JPTEVfUExBWUVSEAIqYAoGWHBNb2RlEhcKE1hQX01PREVfVU5TUEVDSUZJRUQQABITCg9YUF9NT0RFX0VORU1JRVMQARIQCgxYUF9NT0RFX0dPTEQQAhIWChJYUF9NT0RFX01JTEVTVE9ORVMQAyqSAQoLSW52aXRlU3RhdGUSHAoYSU5WSVRFX1NUQVRFX1VOU1BFQ0lGSUVEEAASFwoTSU5WSVRFX1NUQVRFX0FDVElWRRABEhgKFElOVklURV9TVEFURV9FWFBJUkVEEAISGAoUSU5WSVRFX1NUQVRFX1JFVk9LRUQQAxIYChRJTlZJVEVfU1RBVEVfVVNFRF9VUBAEMskICg9DYW1wYWlnblNlcnZpY2USaQoOQ3JlYXRlQ2FtcGFpZ24SKi5tZXVycGcuY2FtcGFpZ25zLnYxLkNyZWF0ZUNhbXBhaWduUmVxdWVzdBorLm1ldXJwZy5jYW1wYWlnbnMudjEuQ3JlYXRlQ2FtcGFpZ25SZXNwb25zZRJxCg9MaXN0TXlDYW1wYWlnbnMSKy5tZXVycGcuY2FtcGFpZ25zLnYxLkxpc3RNeUNhbXBhaWduc1JlcXVlc3QaLC5tZXVycGcuY2FtcGFpZ25zLnYxLkxpc3RNeUNhbXBhaWduc1Jlc3BvbnNlIgOQAgESZQoLR2V0Q2FtcGFpZ24SJy5tZXVycGcuY2FtcGFpZ25zLnYxLkdldENhbXBhaWduUmVxdWVzdBooLm1ldXJwZy5jYW1wYWlnbnMudjEuR2V0Q2FtcGFpZ25SZXNwb25zZSIDkAICEmUKC0xpc3RNZW1iZXJzEicubWV1cnBnLmNhbXBhaWducy52MS5MaXN0TWVtYmVyc1JlcXVlc3QaKC5tZXVycGcuY2FtcGFpZ25zLnYxLkxpc3RNZW1iZXJzUmVzcG9uc2UiA5ACAhJ6ChJMaXN0UGVuZGluZ01lbWJlcnMSLi5tZXVycGcuY2FtcGFpZ25zLnYxLkxpc3RQZW5kaW5nTWVtYmVyc1JlcXVlc3QaLy5tZXVycGcuY2FtcGFpZ25zLnYxLkxpc3RQZW5kaW5nTWVtYmVyc1Jlc3BvbnNlIgOQAgISeAoTUmVtb3ZlUGVuZGluZ01lbWJlchIvLm1ldXJwZy5jYW1wYWlnbnMudjEuUmVtb3ZlUGVuZGluZ01lbWJlclJlcXVlc3QaMC5tZXVycGcuY2FtcGFpZ25zLnYxLlJlbW92ZVBlbmRpbmdNZW1iZXJSZXNwb25zZRJjCgxDcmVhdGVJbnZpdGUSKC5tZXVycGcuY2FtcGFpZ25zLnYxLkNyZWF0ZUludml0ZVJlcXVlc3QaKS5tZXVycGcuY2FtcGFpZ25zLnYxLkNyZWF0ZUludml0ZVJlc3BvbnNlEmUKC0xpc3RJbnZpdGVzEicubWV1cnBnLmNhbXBhaWducy52MS5MaXN0SW52aXRlc1JlcXVlc3QaKC5tZXVycGcuY2FtcGFpZ25zLnYxLkxpc3RJbnZpdGVzUmVzcG9uc2UiA5ACAhJjCgxSZXZva2VJbnZpdGUSKC5tZXVycGcuY2FtcGFpZ25zLnYxLlJldm9rZUludml0ZVJlcXVlc3QaKS5tZXVycGcuY2FtcGFpZ25zLnYxLlJldm9rZUludml0ZVJlc3BvbnNlEmMKDEFjY2VwdEludml0ZRIoLm1ldXJwZy5jYW1wYWlnbnMudjEuQWNjZXB0SW52aXRlUmVxdWVzdBopLm1ldXJwZy5jYW1wYWlnbnMudjEuQWNjZXB0SW52aXRlUmVzcG9uc2VC3wEKF2NvbS5tZXVycGcuY2FtcGFpZ25zLnYxQg5DYW1wYWlnbnNQcm90b1ABWkZnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvY2FtcGFpZ25zL3YxO2NhbXBhaWduc3YxogIDTUNYqgITTWV1cnBnLkNhbXBhaWducy5WMcoCE01ldXJwZ1xDYW1wYWlnbnNcVjHiAh9NZXVycGdcQ2FtcGFpZ25zXFYxXEdQQk1ldGFkYXRh6gIVTWV1cnBnOjpDYW1wYWlnbnM6OlYxYgZwcm90bzM", [file_google_protobuf_duration, file_google_protobuf_timestamp]);
+  fileDesc("CiNtZXVycGcvY2FtcGFpZ25zL3YxL2NhbXBhaWducy5wcm90bxITbWV1cnBnLmNhbXBhaWducy52MSK8AgoIQ2FtcGFpZ24SCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRIsCgd4cF9tb2RlGAMgASgOMhsubWV1cnBnLmNhbXBhaWducy52MS5YcE1vZGUSLgoKY3JlYXRlZF9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASKgoHbXlfcm9sZRgFIAEoDjIZLm1ldXJwZy5jYW1wYWlnbnMudjEuUm9sZRIZChFhd2FpdGluZ19hcHByb3ZhbBgGIAEoCBIwCglkaWNlX21vZGUYByABKA4yHS5tZXVycGcuY2FtcGFpZ25zLnYxLkRpY2VNb2RlEj8KEm15X2RpY2VfcHJlZmVyZW5jZRgIIAEoDjIjLm1ldXJwZy5jYW1wYWlnbnMudjEuRGljZVByZWZlcmVuY2UilQEKDVBlbmRpbmdNZW1iZXISDwoHdXNlcl9pZBgBIAEoCRIUCgxkaXNwbGF5X25hbWUYAiABKAkSLQoJam9pbmVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgpleHBpcmVzX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCLFAQoGTWVtYmVyEg8KB3VzZXJfaWQYASABKAkSJwoEcm9sZRgCIAEoDjIZLm1ldXJwZy5jYW1wYWlnbnMudjEuUm9sZRIUCgxkaXNwbGF5X25hbWUYAyABKAkSLQoJam9pbmVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBI8Cg9kaWNlX3ByZWZlcmVuY2UYBSABKA4yIy5tZXVycGcuY2FtcGFpZ25zLnYxLkRpY2VQcmVmZXJlbmNlIpUCCgZJbnZpdGUSCgoCaWQYASABKAkSEAoIbWF4X3VzZXMYAiABKAUSEQoJdXNlX2NvdW50GAMgASgFEi4KCmNyZWF0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCmV4cGlyZXNfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnJldm9rZWRfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi8KBXN0YXRlGAcgASgOMiAubWV1cnBnLmNhbXBhaWducy52MS5JbnZpdGVTdGF0ZRIZChFyZXF1aXJlc19hcHByb3ZhbBgIIAEoCCJBCg5JbnZpdGVVbnVzYWJsZRIvCgVzdGF0ZRgBIAEoDjIgLm1ldXJwZy5jYW1wYWlnbnMudjEuSW52aXRlU3RhdGUiUwoVQ3JlYXRlQ2FtcGFpZ25SZXF1ZXN0EgwKBG5hbWUYASABKAkSLAoHeHBfbW9kZRgCIAEoDjIbLm1ldXJwZy5jYW1wYWlnbnMudjEuWHBNb2RlIkkKFkNyZWF0ZUNhbXBhaWduUmVzcG9uc2USLwoIY2FtcGFpZ24YASABKAsyHS5tZXVycGcuY2FtcGFpZ25zLnYxLkNhbXBhaWduIhgKFkxpc3RNeUNhbXBhaWduc1JlcXVlc3QiSwoXTGlzdE15Q2FtcGFpZ25zUmVzcG9uc2USMAoJY2FtcGFpZ25zGAEgAygLMh0ubWV1cnBnLmNhbXBhaWducy52MS5DYW1wYWlnbiIpChJHZXRDYW1wYWlnblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiRgoTR2V0Q2FtcGFpZ25SZXNwb25zZRIvCghjYW1wYWlnbhgBIAEoCzIdLm1ldXJwZy5jYW1wYWlnbnMudjEuQ2FtcGFpZ24iKQoSTGlzdE1lbWJlcnNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIkMKE0xpc3RNZW1iZXJzUmVzcG9uc2USLAoHbWVtYmVycxgBIAMoCzIbLm1ldXJwZy5jYW1wYWlnbnMudjEuTWVtYmVyIjAKGUxpc3RQZW5kaW5nTWVtYmVyc1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiUQoaTGlzdFBlbmRpbmdNZW1iZXJzUmVzcG9uc2USMwoHbWVtYmVycxgBIAMoCzIiLm1ldXJwZy5jYW1wYWlnbnMudjEuUGVuZGluZ01lbWJlciJCChpSZW1vdmVQZW5kaW5nTWVtYmVyUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIPCgd1c2VyX2lkGAIgASgJIh0KG1JlbW92ZVBlbmRpbmdNZW1iZXJSZXNwb25zZSKGAQoTQ3JlYXRlSW52aXRlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIQCghtYXhfdXNlcxgCIAEoBRItCgpleHBpcmVzX2luGAMgASgLMhkuZ29vZ2xlLnByb3RvYnVmLkR1cmF0aW9uEhkKEXJlcXVpcmVzX2FwcHJvdmFsGAQgASgIIlIKFENyZWF0ZUludml0ZVJlc3BvbnNlEisKBmludml0ZRgBIAEoCzIbLm1ldXJwZy5jYW1wYWlnbnMudjEuSW52aXRlEg0KBXRva2VuGAIgASgJIikKEkxpc3RJbnZpdGVzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCSJDChNMaXN0SW52aXRlc1Jlc3BvbnNlEiwKB2ludml0ZXMYASADKAsyGy5tZXVycGcuY2FtcGFpZ25zLnYxLkludml0ZSI9ChNSZXZva2VJbnZpdGVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhEKCWludml0ZV9pZBgCIAEoCSJDChRSZXZva2VJbnZpdGVSZXNwb25zZRIrCgZpbnZpdGUYASABKAsyGy5tZXVycGcuY2FtcGFpZ25zLnYxLkludml0ZSIkChNBY2NlcHRJbnZpdGVSZXF1ZXN0Eg0KBXRva2VuGAEgASgJIl8KFEFjY2VwdEludml0ZVJlc3BvbnNlEi8KCGNhbXBhaWduGAEgASgLMh0ubWV1cnBnLmNhbXBhaWducy52MS5DYW1wYWlnbhIWCg5hbHJlYWR5X21lbWJlchgCIAEoCCJeChpTZXRDYW1wYWlnbkRpY2VNb2RlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIrCgRtb2RlGAIgASgOMh0ubWV1cnBnLmNhbXBhaWducy52MS5EaWNlTW9kZSJKChtTZXRDYW1wYWlnbkRpY2VNb2RlUmVzcG9uc2USKwoEbW9kZRgBIAEoDjIdLm1ldXJwZy5jYW1wYWlnbnMudjEuRGljZU1vZGUiagoaU2V0TXlEaWNlUHJlZmVyZW5jZVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSNwoKcHJlZmVyZW5jZRgCIAEoDjIjLm1ldXJwZy5jYW1wYWlnbnMudjEuRGljZVByZWZlcmVuY2UiVgobU2V0TXlEaWNlUHJlZmVyZW5jZVJlc3BvbnNlEjcKCnByZWZlcmVuY2UYASABKA4yIy5tZXVycGcuY2FtcGFpZ25zLnYxLkRpY2VQcmVmZXJlbmNlKj4KBFJvbGUSFAoQUk9MRV9VTlNQRUNJRklFRBAAEg8KC1JPTEVfTUFTVEVSEAESDwoLUk9MRV9QTEFZRVIQAipgCgZYcE1vZGUSFwoTWFBfTU9ERV9VTlNQRUNJRklFRBAAEhMKD1hQX01PREVfRU5FTUlFUxABEhAKDFhQX01PREVfR09MRBACEhYKElhQX01PREVfTUlMRVNUT05FUxADKm4KCERpY2VNb2RlEhkKFURJQ0VfTU9ERV9VTlNQRUNJRklFRBAAEhwKGERJQ0VfTU9ERV9QTEFZRVJTX0NIT09TRRABEhEKDURJQ0VfTU9ERV9BUFAQAhIWChJESUNFX01PREVfUEhZU0lDQUwQAypoCg5EaWNlUHJlZmVyZW5jZRIfChtESUNFX1BSRUZFUkVOQ0VfVU5TUEVDSUZJRUQQABIXChNESUNFX1BSRUZFUkVOQ0VfQVBQEAESHAoYRElDRV9QUkVGRVJFTkNFX1BIWVNJQ0FMEAIqkgEKC0ludml0ZVN0YXRlEhwKGElOVklURV9TVEFURV9VTlNQRUNJRklFRBAAEhcKE0lOVklURV9TVEFURV9BQ1RJVkUQARIYChRJTlZJVEVfU1RBVEVfRVhQSVJFRBACEhgKFElOVklURV9TVEFURV9SRVZPS0VEEAMSGAoUSU5WSVRFX1NUQVRFX1VTRURfVVAQBDK9CgoPQ2FtcGFpZ25TZXJ2aWNlEmkKDkNyZWF0ZUNhbXBhaWduEioubWV1cnBnLmNhbXBhaWducy52MS5DcmVhdGVDYW1wYWlnblJlcXVlc3QaKy5tZXVycGcuY2FtcGFpZ25zLnYxLkNyZWF0ZUNhbXBhaWduUmVzcG9uc2UScQoPTGlzdE15Q2FtcGFpZ25zEisubWV1cnBnLmNhbXBhaWducy52MS5MaXN0TXlDYW1wYWlnbnNSZXF1ZXN0GiwubWV1cnBnLmNhbXBhaWducy52MS5MaXN0TXlDYW1wYWlnbnNSZXNwb25zZSIDkAIBEmUKC0dldENhbXBhaWduEicubWV1cnBnLmNhbXBhaWducy52MS5HZXRDYW1wYWlnblJlcXVlc3QaKC5tZXVycGcuY2FtcGFpZ25zLnYxLkdldENhbXBhaWduUmVzcG9uc2UiA5ACAhJlCgtMaXN0TWVtYmVycxInLm1ldXJwZy5jYW1wYWlnbnMudjEuTGlzdE1lbWJlcnNSZXF1ZXN0GigubWV1cnBnLmNhbXBhaWducy52MS5MaXN0TWVtYmVyc1Jlc3BvbnNlIgOQAgISegoSTGlzdFBlbmRpbmdNZW1iZXJzEi4ubWV1cnBnLmNhbXBhaWducy52MS5MaXN0UGVuZGluZ01lbWJlcnNSZXF1ZXN0Gi8ubWV1cnBnLmNhbXBhaWducy52MS5MaXN0UGVuZGluZ01lbWJlcnNSZXNwb25zZSIDkAICEngKE1JlbW92ZVBlbmRpbmdNZW1iZXISLy5tZXVycGcuY2FtcGFpZ25zLnYxLlJlbW92ZVBlbmRpbmdNZW1iZXJSZXF1ZXN0GjAubWV1cnBnLmNhbXBhaWducy52MS5SZW1vdmVQZW5kaW5nTWVtYmVyUmVzcG9uc2USYwoMQ3JlYXRlSW52aXRlEigubWV1cnBnLmNhbXBhaWducy52MS5DcmVhdGVJbnZpdGVSZXF1ZXN0GikubWV1cnBnLmNhbXBhaWducy52MS5DcmVhdGVJbnZpdGVSZXNwb25zZRJlCgtMaXN0SW52aXRlcxInLm1ldXJwZy5jYW1wYWlnbnMudjEuTGlzdEludml0ZXNSZXF1ZXN0GigubWV1cnBnLmNhbXBhaWducy52MS5MaXN0SW52aXRlc1Jlc3BvbnNlIgOQAgISYwoMUmV2b2tlSW52aXRlEigubWV1cnBnLmNhbXBhaWducy52MS5SZXZva2VJbnZpdGVSZXF1ZXN0GikubWV1cnBnLmNhbXBhaWducy52MS5SZXZva2VJbnZpdGVSZXNwb25zZRJjCgxBY2NlcHRJbnZpdGUSKC5tZXVycGcuY2FtcGFpZ25zLnYxLkFjY2VwdEludml0ZVJlcXVlc3QaKS5tZXVycGcuY2FtcGFpZ25zLnYxLkFjY2VwdEludml0ZVJlc3BvbnNlEngKE1NldENhbXBhaWduRGljZU1vZGUSLy5tZXVycGcuY2FtcGFpZ25zLnYxLlNldENhbXBhaWduRGljZU1vZGVSZXF1ZXN0GjAubWV1cnBnLmNhbXBhaWducy52MS5TZXRDYW1wYWlnbkRpY2VNb2RlUmVzcG9uc2USeAoTU2V0TXlEaWNlUHJlZmVyZW5jZRIvLm1ldXJwZy5jYW1wYWlnbnMudjEuU2V0TXlEaWNlUHJlZmVyZW5jZVJlcXVlc3QaMC5tZXVycGcuY2FtcGFpZ25zLnYxLlNldE15RGljZVByZWZlcmVuY2VSZXNwb25zZULfAQoXY29tLm1ldXJwZy5jYW1wYWlnbnMudjFCDkNhbXBhaWduc1Byb3RvUAFaRmdpdGh1Yi5jb20vUHVyYUZvbWUvbWV1UlBHL2JhY2tlbmQvZ2VuL21ldXJwZy9jYW1wYWlnbnMvdjE7Y2FtcGFpZ25zdjGiAgNNQ1iqAhNNZXVycGcuQ2FtcGFpZ25zLlYxygITTWV1cnBnXENhbXBhaWduc1xWMeICH01ldXJwZ1xDYW1wYWlnbnNcVjFcR1BCTWV0YWRhdGHqAhVNZXVycGc6OkNhbXBhaWduczo6VjFiBnByb3RvMw", [file_google_protobuf_duration, file_google_protobuf_timestamp]);
 
 /**
  * Campaign is a campaign as seen by one of its members.
@@ -64,6 +64,24 @@ export type Campaign = Message<"meurpg.campaigns.v1.Campaign"> & {
    * @generated from field: bool awaiting_approval = 6;
    */
   awaitingApproval: boolean;
+
+  /**
+   * How the campaign's players roll dice (RN-18). Set for every member;
+   * unspecified for a pending member.
+   *
+   * @generated from field: meurpg.campaigns.v1.DiceMode dice_mode = 7;
+   */
+  diceMode: DiceMode;
+
+  /**
+   * The caller's own dice preference in this campaign (RN-18). Only
+   * GetCampaign and SetMyDicePreference's callers read it from here; it is
+   * unspecified in the other calls that return a Campaign (the list calls
+   * do not read it), and for a pending member.
+   *
+   * @generated from field: meurpg.campaigns.v1.DicePreference my_dice_preference = 8;
+   */
+  myDicePreference: DicePreference;
 };
 
 /**
@@ -151,6 +169,17 @@ export type Member = Message<"meurpg.campaigns.v1.Member"> & {
    * @generated from field: google.protobuf.Timestamp joined_at = 4;
    */
   joinedAt?: Timestamp | undefined;
+
+  /**
+   * The member's dice preference (RN-18). Only the campaign's master gets
+   * it, so the "Dados" panel can list each player's choice: for a player
+   * who calls ListMembers it is unspecified. It is a field of Member, not a
+   * call of its own, because that panel already lists the members. A
+   * member's own preference is in Campaign.my_dice_preference.
+   *
+   * @generated from field: meurpg.campaigns.v1.DicePreference dice_preference = 5;
+   */
+  dicePreference: DicePreference;
 };
 
 /**
@@ -702,6 +731,96 @@ export const AcceptInviteResponseSchema: GenMessage<AcceptInviteResponse> = /*@_
   messageDesc(file_meurpg_campaigns_v1_campaigns, 24);
 
 /**
+ * SetCampaignDiceModeRequest names the campaign and the new mode.
+ *
+ * @generated from message meurpg.campaigns.v1.SetCampaignDiceModeRequest
+ */
+export type SetCampaignDiceModeRequest = Message<"meurpg.campaigns.v1.SetCampaignDiceModeRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * Required.
+   *
+   * @generated from field: meurpg.campaigns.v1.DiceMode mode = 2;
+   */
+  mode: DiceMode;
+};
+
+/**
+ * Describes the message meurpg.campaigns.v1.SetCampaignDiceModeRequest.
+ * Use `create(SetCampaignDiceModeRequestSchema)` to create a new message.
+ */
+export const SetCampaignDiceModeRequestSchema: GenMessage<SetCampaignDiceModeRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 25);
+
+/**
+ * SetCampaignDiceModeResponse returns the mode now in force.
+ *
+ * @generated from message meurpg.campaigns.v1.SetCampaignDiceModeResponse
+ */
+export type SetCampaignDiceModeResponse = Message<"meurpg.campaigns.v1.SetCampaignDiceModeResponse"> & {
+  /**
+   * @generated from field: meurpg.campaigns.v1.DiceMode mode = 1;
+   */
+  mode: DiceMode;
+};
+
+/**
+ * Describes the message meurpg.campaigns.v1.SetCampaignDiceModeResponse.
+ * Use `create(SetCampaignDiceModeResponseSchema)` to create a new message.
+ */
+export const SetCampaignDiceModeResponseSchema: GenMessage<SetCampaignDiceModeResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 26);
+
+/**
+ * SetMyDicePreferenceRequest names the campaign and the caller's choice.
+ *
+ * @generated from message meurpg.campaigns.v1.SetMyDicePreferenceRequest
+ */
+export type SetMyDicePreferenceRequest = Message<"meurpg.campaigns.v1.SetMyDicePreferenceRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * Required.
+   *
+   * @generated from field: meurpg.campaigns.v1.DicePreference preference = 2;
+   */
+  preference: DicePreference;
+};
+
+/**
+ * Describes the message meurpg.campaigns.v1.SetMyDicePreferenceRequest.
+ * Use `create(SetMyDicePreferenceRequestSchema)` to create a new message.
+ */
+export const SetMyDicePreferenceRequestSchema: GenMessage<SetMyDicePreferenceRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 27);
+
+/**
+ * SetMyDicePreferenceResponse returns the preference now saved.
+ *
+ * @generated from message meurpg.campaigns.v1.SetMyDicePreferenceResponse
+ */
+export type SetMyDicePreferenceResponse = Message<"meurpg.campaigns.v1.SetMyDicePreferenceResponse"> & {
+  /**
+   * @generated from field: meurpg.campaigns.v1.DicePreference preference = 1;
+   */
+  preference: DicePreference;
+};
+
+/**
+ * Describes the message meurpg.campaigns.v1.SetMyDicePreferenceResponse.
+ * Use `create(SetMyDicePreferenceResponseSchema)` to create a new message.
+ */
+export const SetMyDicePreferenceResponseSchema: GenMessage<SetMyDicePreferenceResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_campaigns_v1_campaigns, 28);
+
+/**
  * Role is what a member may do in one campaign (RN-05). The app shows
  * "mestre" and "jogador".
  *
@@ -774,6 +893,79 @@ export const XpModeSchema: GenEnum<XpMode> = /*@__PURE__*/
   enumDesc(file_meurpg_campaigns_v1_campaigns, 1);
 
 /**
+ * DiceMode is how a campaign's players roll dice (RN-18). NPCs always roll
+ * in the app, whatever the mode.
+ *
+ * @generated from enum meurpg.campaigns.v1.DiceMode
+ */
+export enum DiceMode {
+  /**
+   * @generated from enum value: DICE_MODE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * Each player chooses, with SetMyDicePreference. The default.
+   *
+   * @generated from enum value: DICE_MODE_PLAYERS_CHOOSE = 1;
+   */
+  PLAYERS_CHOOSE = 1,
+
+  /**
+   * Everyone rolls in the app; nobody types a result.
+   *
+   * @generated from enum value: DICE_MODE_APP = 2;
+   */
+  APP = 2,
+
+  /**
+   * Everyone rolls real dice and types the sum.
+   *
+   * @generated from enum value: DICE_MODE_PHYSICAL = 3;
+   */
+  PHYSICAL = 3,
+}
+
+/**
+ * Describes the enum meurpg.campaigns.v1.DiceMode.
+ */
+export const DiceModeSchema: GenEnum<DiceMode> = /*@__PURE__*/
+  enumDesc(file_meurpg_campaigns_v1_campaigns, 2);
+
+/**
+ * DicePreference is how one member likes to roll (RN-18). It only counts
+ * when the campaign's mode is DICE_MODE_PLAYERS_CHOOSE.
+ *
+ * @generated from enum meurpg.campaigns.v1.DicePreference
+ */
+export enum DicePreference {
+  /**
+   * @generated from enum value: DICE_PREFERENCE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * "No app": the app rolls. The default.
+   *
+   * @generated from enum value: DICE_PREFERENCE_APP = 1;
+   */
+  APP = 1,
+
+  /**
+   * "Meus próprios dados": the player rolls real dice and types the sum.
+   *
+   * @generated from enum value: DICE_PREFERENCE_PHYSICAL = 2;
+   */
+  PHYSICAL = 2,
+}
+
+/**
+ * Describes the enum meurpg.campaigns.v1.DicePreference.
+ */
+export const DicePreferenceSchema: GenEnum<DicePreference> = /*@__PURE__*/
+  enumDesc(file_meurpg_campaigns_v1_campaigns, 3);
+
+/**
  * InviteState says whether an invite still works, and why not.
  *
  * @generated from enum meurpg.campaigns.v1.InviteState
@@ -817,7 +1009,7 @@ export enum InviteState {
  * Describes the enum meurpg.campaigns.v1.InviteState.
  */
 export const InviteStateSchema: GenEnum<InviteState> = /*@__PURE__*/
-  enumDesc(file_meurpg_campaigns_v1_campaigns, 2);
+  enumDesc(file_meurpg_campaigns_v1_campaigns, 4);
 
 /**
  * CampaignService creates campaigns, lists their members and manages
@@ -1045,6 +1237,37 @@ export const CampaignService: GenService<{
     methodKind: "unary";
     input: typeof AcceptInviteRequestSchema;
     output: typeof AcceptInviteResponseSchema;
+  },
+  /**
+   * SetCampaignDiceMode sets how the campaign's players roll dice (RN-18,
+   * MR-013): everyone in the app, everyone with their own dice, or each
+   * player's choice. Only the campaign's master may call it. It applies
+   * from the next roll, and the players' own choices are kept, whatever
+   * the mode. Setting the mode it already has is not an error.
+   *
+   * Errors: `invalid_argument` for an unspecified or unknown mode.
+   *
+   * @generated from rpc meurpg.campaigns.v1.CampaignService.SetCampaignDiceMode
+   */
+  setCampaignDiceMode: {
+    methodKind: "unary";
+    input: typeof SetCampaignDiceModeRequestSchema;
+    output: typeof SetCampaignDiceModeResponseSchema;
+  },
+  /**
+   * SetMyDicePreference sets how the caller likes to roll in this campaign
+   * (RN-18, MR-014). Any active member may call it, the master too. It is
+   * always saved, but it only counts while the campaign's mode is
+   * DICE_MODE_PLAYERS_CHOOSE. A pending member gets `not_found`.
+   *
+   * Errors: `invalid_argument` for an unspecified or unknown preference.
+   *
+   * @generated from rpc meurpg.campaigns.v1.CampaignService.SetMyDicePreference
+   */
+  setMyDicePreference: {
+    methodKind: "unary";
+    input: typeof SetMyDicePreferenceRequestSchema;
+    output: typeof SetMyDicePreferenceResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_meurpg_campaigns_v1_campaigns, 0);

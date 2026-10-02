@@ -230,7 +230,8 @@ Os dois últimos critérios foram respondida pelo Vinicius em 29/09/2026.
 
 #### Relacionadas
 - RN-02: o mestre pode corrigir PV e espaços de magia na mão (ver [Regras de negócio](regras.md)).
-- Decidido em 02/10/2026, ainda a fazer na Etapa 6: com o dado físico, o jogador digita a soma dos dados e o app soma o modificador (RN-18); o jogador vê se acertou ou errou e o dano, não a CA nem a rolagem do NPC (RN-20); condições e concentração só são marcadas e lembradas, e o mestre decide os efeitos (RN-22); na terceira falha no teste contra a morte, o personagem só morre quando o mestre confirma (RN-03).
+- Dados (RN-18): o mestre escolhe como a campanha rola (cada jogador escolhe, todos no app ou todos com os próprios dados) e cada jogador guarda a sua preferência; já implementado, com as telas na página da campanha (`TestRN18_DiceSettings`, `TestEffectiveDiceMode`, `dice.spec.ts` `@RN-18`). Com o dado físico, o jogador digita a soma dos dados e o app soma o modificador (`dice.Physical`, `TestPhysical`); as rolagens do combate chegam com as próximas fatias.
+- Decidido em 02/10/2026, ainda a fazer na Etapa 6: o jogador vê se acertou ou errou e o dano, não a CA nem a rolagem do NPC (RN-20); condições e concentração só são marcadas e lembradas, e o mestre decide os efeitos (RN-22); na terceira falha no teste contra a morte, o personagem só morre quando o mestre confirma (RN-03).
 - Quais ações, ações bônus, reações e recursos o sistema conhece vem do motor de regras (regras como dados, aceitas pelo Samuel em 29/09/2026). Ver [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
 
 ### MR-015: Ações da cena de RP
