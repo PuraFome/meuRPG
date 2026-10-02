@@ -1,0 +1,103 @@
+:host {
+  display: block;
+}
+
+.group-label {
+  margin: var(--mr-space-4) 0 var(--mr-space-2);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--mr-ink-muted);
+}
+
+// The rows on the left two thirds, the total on the right third.
+.hp {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--mr-space-5);
+  align-items: start;
+
+  @media (min-width: 1024px) {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  }
+}
+
+.hp__rows {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--mr-space-3);
+}
+
+.hp__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-2) var(--mr-space-4);
+  align-self: stretch;
+}
+
+.hp__field {
+  width: 200px;
+}
+
+.hp__roll,
+.hp__all {
+  min-height: 44px;
+}
+
+.hp__hint,
+.hp__formula {
+  flex: 1 1 200px;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.hp__formula {
+  font-size: 16px;
+  color: var(--mr-ink);
+
+  strong {
+    font-family: var(--mr-font-display);
+    font-size: 19px;
+  }
+}
+
+.hp__total {
+  padding: var(--mr-space-4);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+
+  p {
+    margin: 0;
+  }
+}
+
+.hp__sum {
+  margin-bottom: var(--mr-space-3) !important;
+  color: var(--mr-ink-muted);
+
+  strong {
+    margin-right: 6px;
+    font-family: var(--mr-font-display);
+    font-size: 34px;
+    line-height: 38px;
+    color: var(--mr-ink);
+  }
+}
+
+.hp__line {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 22px;
+}
+
+.hp__note {
+  margin-top: var(--mr-space-3) !important;
+  padding-top: var(--mr-space-3);
+  border-top: 1px solid var(--mr-rule);
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}

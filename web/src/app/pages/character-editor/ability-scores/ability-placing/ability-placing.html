@@ -1,0 +1,95 @@
+<div class="head">
+  <div>
+    <h4 class="title">Seus resultados</h4>
+    <p class="hint" id="results-hint">
+      @if (canReroll()) {
+        Seis rolagens de 4d6. O dado menor, riscado, não conta.
+      } @else {
+        Os seis valores do conjunto padrão.
+      }
+    </p>
+  </div>
+  @if (canReroll()) {
+    <button matButton="outlined" type="button" class="reroll" (click)="reroll.emit()">
+      <mat-icon aria-hidden="true">casino</mat-icon>
+      Rolar de novo
+    </button>
+  }
+</div>
+
+<div class="results" role="group" aria-labelledby="results-hint">
+  @for (index of order(); track index) {
+    <app-dice-result
+      [result]="results()[index]"
+      [state]="stateOf(index)"
+      [placedOn]="holderLabel(index)"
+      [interactive]="onPhone()"
+      (pressed)="tapResult(index)"
+    />
+  }
+</div>
+<p class="mr-visually-hidden" role="status">{{ announcement() }}</p>
+
+<p class="note">
+  <mat-icon aria-hidden="true">info</mat-icon>
+  @if (free() === 0) {
+    Os seis resultados estão colocados.
+    @if (onPhone()) {
+      Toque num atributo para pegar o resultado dele e trocar de lugar.
+    } @else {
+      Escolha outro valor no seletor de um atributo para trocar.
+    }
+    @if (canReroll()) {
+      Rolar de novo troca os seis resultados e desfaz o que você colocou.
+    }
+  } @else {
+    {{ free() === 1 ? 'Falta 1 atributo' : 'Faltam ' + free() + ' atributos' }} para receber um
+    resultado.
+    @if (onPhone()) {
+      Toque num resultado e depois no atributo.
+    }
+  }
+</p>
+@if (onPhone()) {
+  <p class="status" role="status">{{ status() }}</p>
+}
+
+<h4 class="title title--place" id="place-title">Colocar nos atributos</h4>
+<p class="hint">Cada atributo recebe um dos resultados acima.</p>
+<div class="abilities" role="group" aria-labelledby="place-title">
+  @for (ability of keys; track ability) {
+    @if (onPhone()) {
+      <button
+        type="button"
+        class="slot"
+        [class.slot--free]="placement()[ability] === null"
+        [attr.aria-label]="abilityButtonLabel(ability)"
+        [disabled]="placement()[ability] === null && picked() === null"
+        (click)="tapAbility(ability)"
+      >
+        <span class="slot__name" aria-hidden="true">{{ abilityLabel(ability) }}</span>
+        <span class="slot__value" aria-hidden="true">
+          @if (placement()[ability] !== null) {
+            {{ results()[placement()[ability]!].total }}
+          } @else if (pickedTotal() !== null) {
+            Colocar o {{ pickedTotal() }}
+          } @else {
+            Livre
+          }
+        </span>
+      </button>
+    } @else {
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ability">
+        <mat-label>{{ abilityLabel(ability) }}</mat-label>
+        <select matNativeControl (change)="selectChanged(ability, $any($event.target).value)">
+          <option value="" [selected]="placement()[ability] === null" disabled>Escolher</option>
+          @for (index of order(); track index) {
+            <option [value]="index" [selected]="placement()[ability] === index">
+              {{ optionText(index, ability) }}
+            </option>
+          }
+        </select>
+      </mat-form-field>
+    }
+  }
+</div>

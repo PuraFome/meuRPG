@@ -16,12 +16,23 @@
 
   <div class="picker__list" role="group" [attr.aria-labelledby]="titleId()">
     @for (spell of filtered(); track spell.key) {
-      <mat-checkbox [checked]="selected().has(spell.key)" (change)="toggle.emit(spell.key)">
-        {{ spell.namePt }}
-        @if (showLevel()) {
-          <span class="picker__level">({{ levelText(spell.level) }})</span>
-        }
-      </mat-checkbox>
+      <div class="picker__row">
+        <mat-checkbox [checked]="selected().has(spell.key)" (change)="toggle.emit(spell.key)">
+          {{ spell.namePt }}
+          @if (showLevel()) {
+            <span class="picker__level">({{ levelText(spell.level) }})</span>
+          }
+        </mat-checkbox>
+        <!-- Reading and ticking are different actions, so "?" is its own button. -->
+        <button
+          type="button"
+          class="picker__help"
+          [attr.aria-label]="'Descrição de ' + spell.namePt"
+          (click)="describe.emit(spell)"
+        >
+          <mat-icon aria-hidden="true">help_outline</mat-icon>
+        </button>
+      </div>
     } @empty {
       <p class="picker__empty">{{ emptyText() }}</p>
     }

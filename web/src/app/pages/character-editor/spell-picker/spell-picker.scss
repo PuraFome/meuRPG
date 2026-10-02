@@ -35,6 +35,41 @@
   border-radius: var(--mr-radius-sm);
 }
 
+.picker__row {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-1);
+}
+
+// 44px to touch; the focus ring sits on the inner 36px circle, so it never
+// touches the neighbouring rows.
+.picker__help {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--mr-ink-muted);
+  cursor: pointer;
+
+  .mat-icon {
+    width: 22px;
+    height: 22px;
+    font-size: 22px;
+  }
+
+  // A 4px inset makes the 44px box's ring a 36px circle.
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: -4px;
+  }
+}
+
 .picker__level {
   color: var(--mr-ink-muted);
   font-size: 14px;

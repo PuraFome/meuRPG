@@ -13,8 +13,13 @@ import {
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import {
   Ability as GenAbility,
+  CastingTimeUnit as GenCastingTimeUnit,
   ContentService,
+  SpellDetails as GenSpellDetails,
+  SpellDurationKind as GenSpellDurationKind,
+  SpellDurationUnit as GenSpellDurationUnit,
   SpellPreparation as GenSpellPreparation,
+  SpellRangeKind as GenSpellRangeKind,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { AbilityKey, CharacterKind } from '../../core/characters/characters.types';
 import { damageTypeFromGen, damageTypeToGen } from '../../core/characters/damage-type-gen';
@@ -22,11 +27,16 @@ import { CONNECT_TRANSPORT } from '../../core/connect/transport';
 import {
   AlignmentKey,
   BasicCharacterFormValue,
+  CastingTimeUnitKey,
   CharacterEditorSource,
   CharacterFormValue,
   CreateCharacterInput,
+  DurationKindKey,
+  DurationUnitKey,
   HitPointsMethod,
+  RangeKindKey,
   RulesCatalogVm,
+  SpellDetailsVm,
   SpellPreparation,
   SubclassOptionVm,
   SubraceOptionVm,
@@ -140,10 +150,10 @@ export function toFullSheetInit(v: CharacterFormValue) {
           classKey: v.className,
           level: v.level,
           subclass: v.subclassName
-            ? ({ case: 'subclassKey' as const, value: v.subclassName })
+            ? { case: 'subclassKey' as const, value: v.subclassName }
             : v.customSubclassName
-              ? ({ case: 'customSubclassName' as const, value: v.customSubclassName })
-              : ({ case: undefined, value: undefined }),
+              ? { case: 'customSubclassName' as const, value: v.customSubclassName }
+              : { case: undefined, value: undefined },
         },
       ]
     : [];
@@ -286,7 +296,8 @@ export function toFormFullSheet(name: string, full: GenFullSheet): CharacterForm
       wis: full.extraAbilityBonuses?.wisdom ?? 0,
       cha: full.extraAbilityBonuses?.charisma ?? 0,
     },
-    hitPointsMethod: HIT_POINTS_METHOD_FROM_GEN[full.hitPoints?.method ?? GenHitPointsMethod.AVERAGE],
+    hitPointsMethod:
+      HIT_POINTS_METHOD_FROM_GEN[full.hitPoints?.method ?? GenHitPointsMethod.AVERAGE],
     hitPointsRolls: full.hitPoints?.rolls ?? [],
     // Recomputed by the component from the catalog once loaded — see
     // `CharacterEditor.isCaster`; not read back from the wire.
@@ -329,6 +340,82 @@ export function toFormBasicSheet(name: string, basic: GenBasicSheet): BasicChara
   };
 }
 
+const CASTING_UNIT_FROM_GEN: Record<GenCastingTimeUnit, CastingTimeUnitKey> = {
+  [GenCastingTimeUnit.UNSPECIFIED]: '',
+  [GenCastingTimeUnit.ACTION]: 'action',
+  [GenCastingTimeUnit.BONUS_ACTION]: 'bonus_action',
+  [GenCastingTimeUnit.REACTION]: 'reaction',
+  [GenCastingTimeUnit.MINUTE]: 'minute',
+  [GenCastingTimeUnit.HOUR]: 'hour',
+};
+
+const RANGE_KIND_FROM_GEN: Record<GenSpellRangeKind, RangeKindKey> = {
+  [GenSpellRangeKind.UNSPECIFIED]: '',
+  [GenSpellRangeKind.SELF]: 'self',
+  [GenSpellRangeKind.TOUCH]: 'touch',
+  [GenSpellRangeKind.RANGED]: 'ranged',
+  [GenSpellRangeKind.SIGHT]: 'sight',
+  [GenSpellRangeKind.UNLIMITED]: 'unlimited',
+  [GenSpellRangeKind.SPECIAL]: 'special',
+};
+
+const DURATION_KIND_FROM_GEN: Record<GenSpellDurationKind, DurationKindKey> = {
+  [GenSpellDurationKind.UNSPECIFIED]: '',
+  [GenSpellDurationKind.INSTANTANEOUS]: 'instantaneous',
+  [GenSpellDurationKind.TIMED]: 'timed',
+  [GenSpellDurationKind.UNTIL_DISPELLED]: 'until_dispelled',
+  [GenSpellDurationKind.SPECIAL]: 'special',
+};
+
+const DURATION_UNIT_FROM_GEN: Record<GenSpellDurationUnit, DurationUnitKey> = {
+  [GenSpellDurationUnit.UNSPECIFIED]: '',
+  [GenSpellDurationUnit.ROUND]: 'round',
+  [GenSpellDurationUnit.MINUTE]: 'minute',
+  [GenSpellDurationUnit.HOUR]: 'hour',
+  [GenSpellDurationUnit.DAY]: 'day',
+};
+
+/** `SpellDetails` as the gen-free view-model; exported for the spec. */
+export function spellDetailsFromGen(d: GenSpellDetails): SpellDetailsVm {
+  const spell = d.spell;
+  return {
+    key: spell?.key ?? '',
+    namePt: spell?.namePt ?? '',
+    nameEn: spell?.name ?? '',
+    level: spell?.level ?? 0,
+    schoolNamePt: spell?.schoolNamePt ?? '',
+    ritual: spell?.ritual ?? false,
+    concentration: spell?.concentration ?? false,
+    castingTime: {
+      amount: d.castingTime?.amount ?? 0,
+      unit: CASTING_UNIT_FROM_GEN[d.castingTime?.unit ?? GenCastingTimeUnit.UNSPECIFIED],
+      trigger: d.castingTime?.trigger ?? '',
+      raw: d.castingTime?.raw ?? '',
+    },
+    range: {
+      kind: RANGE_KIND_FROM_GEN[d.range?.kind ?? GenSpellRangeKind.UNSPECIFIED],
+      distanceFt: d.range?.distanceFt ?? 0,
+      raw: d.range?.raw ?? '',
+    },
+    components: {
+      verbal: d.components?.verbal ?? false,
+      somatic: d.components?.somatic ?? false,
+      material: d.components?.material ?? false,
+      materialText: d.components?.materialText ?? '',
+    },
+    duration: {
+      kind: DURATION_KIND_FROM_GEN[d.duration?.kind ?? GenSpellDurationKind.UNSPECIFIED],
+      amount: d.duration?.amount ?? 0,
+      unit: DURATION_UNIT_FROM_GEN[d.duration?.unit ?? GenSpellDurationUnit.UNSPECIFIED],
+      upTo: d.duration?.upTo ?? false,
+      concentration: d.duration?.concentration ?? false,
+      raw: d.duration?.raw ?? '',
+    },
+    description: d.description,
+    higherLevel: d.higherLevel,
+  };
+}
+
 /**
  * `CharacterEditorSource` over the generated `ContentService`
  * (`meurpg.rules.v1`, for the catalog) and `CharacterService`
@@ -356,7 +443,11 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
     const subracesByRace = new Map<string, SubraceOptionVm[]>();
     for (const sr of content.subraces) {
       const list = subracesByRace.get(sr.raceKey) ?? [];
-      list.push({ key: sr.key, namePt: sr.namePt });
+      list.push({
+        key: sr.key,
+        namePt: sr.namePt,
+        constitutionBonus: sr.abilityBonuses?.constitution ?? 0,
+      });
       subracesByRace.set(sr.raceKey, list);
     }
     const subclassesByClass = new Map<string, SubclassOptionVm[]>();
@@ -370,11 +461,13 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
       races: content.races.map((r) => ({
         key: r.key,
         namePt: r.namePt,
+        constitutionBonus: r.abilityBonuses?.constitution ?? 0,
         subraces: subracesByRace.get(r.key) ?? [],
       })),
       classes: content.classes.map((c) => ({
         key: c.key,
         namePt: c.namePt,
+        hitDie: c.hitDie,
         isCaster: !!c.spellcasting,
         preparation: c.spellcasting ? PREPARATION_FROM_GEN[c.spellcasting.preparation] : null,
         subclasses: subclassesByClass.get(c.key) ?? [],
@@ -399,6 +492,11 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
         classKeys: sp.classKeys,
       })),
     };
+  }
+
+  async loadSpellDetails(campaignId: string, spellKey: string): Promise<SpellDetailsVm> {
+    const res = await this.contentClient.getSpellDetails({ campaignId, spellKey });
+    return spellDetailsFromGen(res.spell!);
   }
 
   async loadCharacterForEdit(campaignId: string, characterId: string) {
@@ -457,7 +555,10 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
     // version.
     const savedCase = res.character?.sheet?.content.case;
     if (savedCase === 'full') {
-      this.loadedFullSheets.set(input.characterId, res.character!.sheet!.content.value as GenFullSheet);
+      this.loadedFullSheets.set(
+        input.characterId,
+        res.character!.sheet!.content.value as GenFullSheet,
+      );
     }
     return { revision: res.character!.revision };
   }

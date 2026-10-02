@@ -1,0 +1,87 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  box-sizing: border-box;
+  width: 100%;
+  padding: var(--mr-space-3);
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font: inherit;
+  text-align: left;
+
+  &--chosen {
+    border: 2px solid var(--mr-accent);
+    padding: 11px;
+    background: var(--mr-accent-soft);
+  }
+}
+
+button.chip {
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.chip__total {
+  font-family: var(--mr-font-display);
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 28px;
+}
+
+.chip__dice {
+  display: flex;
+  gap: 4px;
+}
+
+// The dice are 28px squares so the dashed, struck one stays readable.
+.chip__die {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: 6px;
+  font-family: var(--mr-font-display);
+  font-size: 19px;
+  font-weight: 700;
+
+  &--dropped {
+    border-style: dashed;
+    color: var(--mr-ink-muted);
+    text-decoration: line-through;
+  }
+}
+
+.chip__state {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.chip--placed .chip__state {
+  color: var(--mr-success-ink);
+}
+
+.chip--chosen .chip__state {
+  color: var(--mr-accent-text);
+}

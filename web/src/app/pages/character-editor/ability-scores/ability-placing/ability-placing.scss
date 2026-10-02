@@ -1,0 +1,137 @@
+@use '../../ability-fields/ability-box';
+
+:host {
+  display: block;
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 24px;
+
+  &--place {
+    margin-top: var(--mr-space-6);
+  }
+}
+
+.hint {
+  margin: 2px 0 var(--mr-space-3);
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.reroll {
+  min-height: 44px;
+
+  @media (max-width: 767.98px) {
+    flex: 1 1 100%;
+  }
+}
+
+// Three across below 1024px, six in a row above, like the abilities under them.
+.results,
+.abilities {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--mr-space-3) var(--mr-space-4);
+  align-items: start;
+
+  @media (min-width: 1024px) {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  @media (max-width: 767.98px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.note,
+.status {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: var(--mr-space-3) 0 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.status:empty {
+  display: none;
+}
+
+.ability {
+  @include ability-box.ability-box;
+}
+
+// The phone's tap targets: a filled ability looks like the field it replaces;
+// a free one is dashed and says what tapping it would do.
+.slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 64px;
+  padding: var(--mr-space-2);
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-xl);
+  background: transparent;
+  color: var(--mr-ink);
+  font: inherit;
+  cursor: pointer;
+
+  &--free {
+    border-style: dashed;
+    border-color: var(--mr-accent);
+  }
+
+  &:disabled {
+    border-color: var(--mr-control-line);
+    color: var(--mr-ink-muted);
+    cursor: default;
+  }
+}
+
+.slot__name {
+  font-size: 14px;
+  line-height: 16px;
+  color: var(--mr-ink-muted);
+}
+
+.slot__value {
+  font-family: var(--mr-font-display);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 30px;
+}
+
+.slot--free .slot__value {
+  font-family: var(--mr-font-sans);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 22px;
+  color: var(--mr-accent-text);
+}
+
+.slot--free:disabled .slot__value {
+  color: var(--mr-ink-muted);
+}

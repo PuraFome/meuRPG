@@ -16,6 +16,7 @@ import {
   CharacterForEdit,
   CreateCharacterInput,
   RulesCatalogVm,
+  SpellDetailsVm,
   UpdateCharacterInput,
 } from './character-editor.types';
 
@@ -34,6 +35,13 @@ class FakeCharacterEditorSource {
   loadCatalog(campaignId: string): Promise<RulesCatalogVm> {
     return this.loadCatalogFn(campaignId);
   }
+  loadSpellDetailsCalls: string[] = [];
+  loadSpellDetailsFn: (spellKey: string) => Promise<SpellDetailsVm> = (key) =>
+    Promise.resolve(knockDetails(key));
+  loadSpellDetails(_campaignId: string, spellKey: string): Promise<SpellDetailsVm> {
+    this.loadSpellDetailsCalls.push(spellKey);
+    return this.loadSpellDetailsFn(spellKey);
+  }
   loadCharacterForEdit(campaignId: string, characterId: string): Promise<CharacterForEdit> {
     return this.loadCharacterForEditFn(campaignId, characterId);
   }
@@ -47,19 +55,46 @@ class FakeCharacterEditorSource {
   }
 }
 
+function knockDetails(key: string): SpellDetailsVm {
+  return {
+    key,
+    namePt: 'Arrombar',
+    nameEn: 'Knock',
+    level: 2,
+    schoolNamePt: 'Transmutação',
+    ritual: false,
+    concentration: false,
+    castingTime: { amount: 1, unit: 'action', trigger: '', raw: '1 action' },
+    range: { kind: 'ranged', distanceFt: 60, raw: '60 feet' },
+    components: { verbal: true, somatic: false, material: false, materialText: '' },
+    duration: {
+      kind: 'instantaneous',
+      amount: 0,
+      unit: '',
+      upTo: false,
+      concentration: false,
+      raw: 'Instantaneous',
+    },
+    description: ['Choose an object that you can see within range.'],
+    higherLevel: [],
+  };
+}
+
 function catalog(): RulesCatalogVm {
   return {
     races: [
       {
         key: 'race:gnome',
         namePt: 'Gnomo',
-        subraces: [{ key: 'subrace:rock-gnome', namePt: 'Gnomo da Rocha' }],
+        constitutionBonus: 0,
+        subraces: [{ key: 'subrace:rock-gnome', namePt: 'Gnomo da Rocha', constitutionBonus: 1 }],
       },
     ],
     classes: [
       {
         key: 'class:wizard',
         namePt: 'Mago',
+        hitDie: 6,
         isCaster: true,
         preparation: 'spellbook',
         subclasses: [{ key: 'subclass:evocation', namePt: 'Evocação' }],
@@ -71,6 +106,7 @@ function catalog(): RulesCatalogVm {
       {
         key: 'class:paladin',
         namePt: 'Paladino',
+        hitDie: 10,
         isCaster: true,
         preparation: 'prepared',
         subclasses: [{ key: 'subclass:devotion', namePt: 'Devoção' }],
@@ -911,9 +947,7 @@ describe('CharacterEditor', () => {
       fixture.detectChanges();
 
       expect(fake.createCharacterCalls.length).toBe(0);
-      expect(el.querySelector('.mr-notice--danger')?.textContent).toContain(
-        'Nome do personagem.',
-      );
+      expect(el.querySelector('.mr-notice--danger')?.textContent).toContain('Nome do personagem.');
     });
 
     it('adds and removes attack cards on the short NPC form, at most three', async () => {
@@ -971,6 +1005,128 @@ describe('CharacterEditor', () => {
       expect(el.querySelector('mat-spinner')?.getAttribute('aria-label')).toBe(
         'Carregando o formulário',
       );
+    });
+  });
+
+  describe('rolls and the spell "?" (MR-004)', () => {
+    afterEach(() => {
+      document.querySelectorAll('.cdk-overlay-container *').forEach((n) => n.remove());
+    });
+
+    it('refuses to save while a rolled result has no ability, and says so', async () => {
+      configure({ id: 'camp-1' });
+      const { fixture, el } = await render();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cmp = fixture.componentInstance as any;
+      cmp.fullForm.patchValue({
+        name: 'Pensantus',
+        race: 'race:gnome',
+        className: 'class:wizard',
+        background: 'background:acolyte',
+      });
+      cmp.abilitiesIncomplete.set(true);
+
+      await cmp.submit();
+      fixture.detectChanges();
+
+      expect(fake.createCharacterCalls.length).toBe(0);
+      expect(el.querySelector('.mr-notice--danger')?.textContent).toContain(
+        'Atributos: coloque cada resultado num atributo.',
+      );
+
+      cmp.abilitiesIncomplete.set(false);
+      await cmp.submit();
+      expect(fake.createCharacterCalls.length).toBe(1);
+    });
+
+    it('feeds the hit-point preview the final Constitution: base, race, subrace and manual bonus', async () => {
+      configure({ id: 'camp-1' });
+      const { fixture, el } = await render();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cmp = fixture.componentInstance as any;
+      cmp.fullForm.patchValue({
+        race: 'race:gnome',
+        subrace: 'subrace:rock-gnome', // +1 CON in the fixture
+        className: 'class:wizard', // d6
+        level: 3,
+        hitPointsMethod: 'rolled',
+        abilities: { con: 14 },
+        extraAbilityBonuses: { con: 1 },
+      });
+      fixture.detectChanges();
+      expect(cmp.finalConstitution()).toBe(16);
+      expect(cmp.hitDie()).toBe(6);
+      const labels = Array.from(el.querySelectorAll('app-hit-points-rolls mat-label')).map((l) =>
+        l.textContent?.trim(),
+      );
+      expect(labels).toEqual(['Nível 2 (1d6)', 'Nível 3 (1d6)']);
+      expect(el.querySelector('app-hit-points-rolls .hp__note')?.textContent).toContain(
+        'Constituição 16 (+3 por nível)',
+      );
+    });
+
+    it('asks for a class before offering hit-point dice', async () => {
+      configure({ id: 'camp-1' });
+      const { fixture, el } = await render();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cmp = fixture.componentInstance as any;
+      cmp.fullForm.patchValue({ level: 3, hitPointsMethod: 'rolled' });
+      fixture.detectChanges();
+      expect(el.querySelector('app-hit-points-rolls')).toBeNull();
+      expect(el.textContent).toContain('Escolha a classe no passo Básico');
+    });
+
+    async function openKnock(fixture: ComponentFixture<CharacterEditor>, el: HTMLElement) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cmp = fixture.componentInstance as any;
+      cmp.fullForm.patchValue({ className: 'class:wizard', level: 3 });
+      fixture.detectChanges();
+      const help = el.querySelector<HTMLButtonElement>(
+        'button[aria-label="Descrição de Mísseis Mágicos"]',
+      )!;
+      help.focus();
+      help.click();
+      await flush();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      return help;
+    }
+
+    it('opens the spell description in a dialog, fetched once per spell, and gives focus back on close', async () => {
+      configure({ id: 'camp-1' });
+      const { fixture, el } = await render();
+      const help = await openKnock(fixture, el);
+
+      const dialog = document.querySelector('app-spell-details')!;
+      expect(dialog.textContent).toContain('Alcance');
+      expect(dialog.textContent).toContain('18 m');
+      expect(dialog.querySelector('[lang=en]')).not.toBeNull();
+      expect(fake.loadSpellDetailsCalls).toEqual(['spell:magic-missile']);
+
+      Array.from(dialog.querySelectorAll('button'))
+        .find((b) => b.textContent?.trim() === 'Fechar')!
+        .click();
+      // The dialog leaves with a short animation: wait for it.
+      for (let i = 0; i < 40 && document.querySelector('app-spell-details'); i++) {
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      fixture.detectChanges();
+      expect(document.querySelector('app-spell-details')).toBeNull();
+      expect(document.activeElement).toBe(help);
+
+      help.click();
+      await flush();
+      fixture.detectChanges();
+      expect(fake.loadSpellDetailsCalls.length).toBe(1);
+    });
+
+    it('asks again after a failed fetch', async () => {
+      configure({ id: 'camp-1' });
+      fake.loadSpellDetailsFn = () => Promise.reject(new Error('offline'));
+      const { fixture, el } = await render();
+      await openKnock(fixture, el);
+      expect(document.querySelector('app-spell-details [role=alert]')).not.toBeNull();
+      expect(fake.loadSpellDetailsCalls.length).toBe(1);
     });
   });
 });
