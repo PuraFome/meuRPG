@@ -437,6 +437,14 @@ describe('CharacterEditor', () => {
       expect(el.textContent).not.toContain('Magias preparadas');
       // The Paladin's list has no cantrips: no empty "Truques" box.
       expect(el.textContent).not.toContain('Truques');
+      // A cantrip already on the sheet (say the class changed) keeps the
+      // picker, so the player can still uncheck it.
+      cmp.toggleCantrip('spell:fire-bolt');
+      fixture.detectChanges();
+      expect(el.textContent).toContain('Truques');
+      cmp.toggleCantrip('spell:fire-bolt');
+      fixture.detectChanges();
+      expect(el.textContent).not.toContain('Truques');
 
       cmp.fullForm.patchValue({ level: 2 });
       fixture.detectChanges();
