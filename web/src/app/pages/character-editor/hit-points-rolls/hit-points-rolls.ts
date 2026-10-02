@@ -8,6 +8,9 @@ import { formatModifier } from '../../../core/characters/character-labels';
 import { ROLL_DIE } from '../../../core/dice/dice';
 import { hitPointsPreview, validRoll } from '../hit-points-preview';
 
+/** "2 e 3", "2, 3 e 4": the levels still to roll, written as a list. */
+const LEVEL_LIST = new Intl.ListFormat('pt-BR', { type: 'conjunction' });
+
 /**
  * The level-by-level rolls of "Pontos de vida" → "Rolado" (E6-21): a row per
  * level from the 2nd with its field ("Nível 2 (1d12)"), a "Rolar" button that
@@ -43,6 +46,10 @@ export class HitPointsRolls {
     const mod = this.preview().constitutionModifier;
     return mod < 0 ? `− ${-mod}` : `+ ${mod}`;
   });
+  /** The levels still to roll as Portuguese writes a list: "2 e 3", "2, 3 e 4". */
+  protected readonly missingWords = computed(() =>
+    LEVEL_LIST.format(this.preview().missing.map(String)),
+  );
 
   protected rollOf(level: number): number | null {
     return validRoll(this.rolls()[level - 2], this.hitDie());

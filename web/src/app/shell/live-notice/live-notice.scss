@@ -23,7 +23,9 @@
 
 .live-notice__icon {
   flex-shrink: 0;
-  margin-top: 11px;
+  // On the phone, centred on the first 22px line of the text, which starts
+  // 11px down: 11 + (22 - 24) / 2.
+  margin-top: 10px;
   color: var(--mr-accent-text);
 
   @media (min-width: 768px) {

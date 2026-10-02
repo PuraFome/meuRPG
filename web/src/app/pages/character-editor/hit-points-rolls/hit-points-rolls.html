@@ -3,10 +3,18 @@
   <div class="hp__rows" role="group" aria-labelledby="hit-points-rolls-label">
     @for (row of preview().levels; track row.level) {
       <div class="hp__row">
-        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="hp__field">
+        <!-- E6-21: the label always sits on the border and "—" marks a level
+             not rolled yet, so the empty field doesn't read as a filled one. -->
+        <mat-form-field
+          appearance="outline"
+          subscriptSizing="dynamic"
+          floatLabel="always"
+          class="hp__field"
+        >
           <mat-label>Nível {{ row.level }} (1d{{ hitDie() }})</mat-label>
           <input
             matInput
+            placeholder="—"
             type="number"
             inputmode="numeric"
             min="1"
@@ -65,7 +73,7 @@
     <p class="hp__note">
       @if (preview().missing.length > 0) {
         Falta rolar {{ preview().missing.length === 1 ? 'o nível' : 'os níveis' }}
-        {{ preview().missing.join(', ') }}.
+        {{ missingWords() }}.
       }
       Constituição {{ constitution() }} ({{ modifier() }} por nível).
       @if (preview().missing.length > 0) {

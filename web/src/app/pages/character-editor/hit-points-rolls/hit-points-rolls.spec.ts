@@ -58,6 +58,14 @@ describe('HitPointsRolls (E6-21)', () => {
     expect(note).toContain('Constituição 16 (+3 por nível)');
   });
 
+  it('lists the levels still to roll the Portuguese way', () => {
+    const { fixture, el } = setup([0, 0, 0]);
+    fixture.componentRef.setInput('level', 4);
+    fixture.detectChanges();
+    const note = el.querySelector('.hp__note')?.textContent?.replace(/\s+/g, ' ');
+    expect(note).toContain('Falta rolar os níveis 2, 3 e 4.');
+  });
+
   it('"Rolar os níveis que faltam" rolls only the empty rows', () => {
     const { fixture, el } = setup([7, 0]);
     click(fixture, button(el, 'Rolar os níveis que faltam'));

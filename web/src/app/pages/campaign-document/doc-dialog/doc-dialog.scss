@@ -42,7 +42,8 @@
 
   > .mat-icon {
     flex: none;
-    margin-top: 6px;
+    // Centred on the title's 30px line: (30 - 24) / 2.
+    margin-top: 3px;
     color: var(--mr-ink-muted);
   }
 }
