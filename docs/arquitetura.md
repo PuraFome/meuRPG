@@ -25,8 +25,8 @@ Cada módulo do backend fica em `backend/internal/<módulo>`. Um módulo só cha
 - `identity`: login do mestre, sessões de login e usuários. O login do mestre é um *relying party* OIDC genérico: Google em produção, um provedor OIDC local nos testes ponta a ponta — o módulo fala o protocolo, não um SDK do Google. O login do jogador sem Google (RN-17, decidido pelo Samuel em 29/09/2026: handle por mesa, sem e-mail) ainda não está implementado — ver [ADR-0009](adr/0009-login-do-jogador-sem-google.md). Criar campanha continua exigindo uma conta com Google no MVP (RN-14).
 - `campaigns`: campanhas, membros (inclusive o membro pendente de um convite com aprovação, RN-15), papéis, convites e o documento da campanha (MR-018, ver [Documento da campanha](#documento-da-campanha)).
 - `characters`: personagens, fichas, história, trava, notas do mestre e, depois, cópias. Também serve o catálogo de regras do editor (`ContentService`) enquanto não existe conteúdo da mesa (ver [Módulo characters](#módulo-characters-personagens-e-fichas)).
-- `play`: sessão de jogo, cenas, encontros, combatentes e o stream ao vivo. Hoje: iniciar, encerrar e listar sessões, o que trava as fichas (Etapa 4), e a sessão ao vivo: o aviso, o stream e a correção do mestre nos PV, espaços de magia e dados de vida, com o histórico em `session_events` (Etapa 5; ver [Módulo play](#módulo-play-sessões-de-jogo)).
-- `maps`: mapas, pontos de interesse, a galeria de imagens e, depois, masmorras. Na Etapa 5, primeiro a galeria: enviar, guardar e servir as imagens (ver [Módulo maps](#módulo-maps-galeria-e-imagens)).
+- `play`: sessão de jogo, cenas, encontros, combatentes e o stream ao vivo. Hoje: iniciar, encerrar e listar sessões, o que trava as fichas (Etapa 4), e a sessão ao vivo: o aviso, o stream, a correção do mestre nos PV, espaços de magia e dados de vida, com o histórico em `session_events`, e o que a sessão mostra, o mapa atual e uma imagem da galeria (Etapa 5; ver [Módulo play](#módulo-play-sessões-de-jogo)).
+- `maps`: mapas, pontos de interesse, tokens, a galeria de imagens e, depois, masmorras. Na Etapa 5, a galeria (enviar, guardar e servir as imagens, ver [Módulo maps: galeria](#módulo-maps-galeria-e-imagens)) e os mapas, com o que cada um vê decidido no servidor (ver [Módulo maps: mapas](#módulo-maps-mapas-pontos-e-tokens)).
 - `progression`: modo de XP, XP dado e aviso de subir de nível.
 - `rules`: as contas do D&D 5e (modificadores, CD, bônus). Não acessa o banco, então é fácil de testar.
 - `platform`: o que é de todos: configuração, banco, servidor HTTP e logs.
@@ -129,10 +129,10 @@ Cada regra de negócio recusada devolve um código de erro do Connect, sempre o 
 | --- | --- |
 | `unauthenticated` | Sem sessão de login válida. |
 | `permission_denied` | O usuário é membro da campanha, mas não tem o papel: um jogador tenta uma ação de mestre. |
-| `failed_precondition` | A regra não deixa agora: ficha travada (RN-01), sessão que não começou, convite expirado. Vem com um detalhe que diz o motivo, quando há mais de um (`InviteUnusable`, `CharacterBlocked`, `GameSessionBlocked`). |
-| `not_found` | Não existe, ou o usuário não pode saber que existe: um ponto escondido, ou uma campanha da qual ele não é membro (ADR-0011). O membro pendente (RN-15) recebe o mesmo `not_found` fora das poucas chamadas que ele pode fazer. |
+| `failed_precondition` | A regra não deixa agora: ficha travada (RN-01), sessão que não começou, convite expirado, imagem usada num mapa. Vem com um detalhe que diz o motivo, quando há mais de um (`InviteUnusable`, `CharacterBlocked`, `GameSessionBlocked`), ou o que a tela precisa mostrar (`ImageInUse`, com os mapas que usam a imagem). |
+| `not_found` | Não existe, ou o usuário não pode saber que existe: um mapa escondido para o jogador, ou uma campanha da qual ele não é membro (ADR-0011). O membro pendente (RN-15) recebe o mesmo `not_found` fora das poucas chamadas que ele pode fazer. |
 | `invalid_argument` | Entrada inválida, como um atributo acima de 30. |
-| `resource_exhausted` | Um limite da campanha acabou: a galeria cheia (300 imagens ou 500 MB, MR-019). |
+| `resource_exhausted` | Um limite da campanha acabou: a galeria cheia (300 imagens ou 500 MB, MR-019), 200 mapas na campanha ou 200 pontos num mapa. |
 | `aborted` | Conflito de transação (`40001`) que continuou depois das novas tentativas, ou uma ficha ou um documento da campanha que mudou desde que o app o leu (revisão velha, AIP-154). O app recarrega e a pessoa tenta de novo. |
 
 ## Frontend (web/)
@@ -677,6 +677,8 @@ O `play` inicia, encerra e lista as sessões de jogo de uma campanha, o que trav
 | `ListOpenGameSessions` | Qualquer pessoa logada; cada um vê só as campanhas em que é membro ativo | — |
 | `GetLiveSession`, `WatchGameSession` | Membros da campanha | `failed_precondition` (`NO_OPEN_SESSION`) sem sessão aberta |
 | `AdjustCharacterVitals` | O mestre da campanha, durante a sessão | `failed_precondition` (`NO_OPEN_SESSION`); `not_found` se o personagem não é um personagem de jogador vivo da campanha; `invalid_argument` fora de 0 até o máximo |
+| `SetCurrentMap` | O mestre da campanha, durante a sessão | `failed_precondition` (`NO_OPEN_SESSION`); `not_found` se o mapa não é da campanha |
+| `SetShownImage` | O mestre da campanha, durante a sessão | `failed_precondition` (`NO_OPEN_SESSION`); `not_found` se a imagem não é da galeria da campanha |
 
 O membro pendente (RN-15) recebe `not_found` em tudo que pede campanha, como quem não é membro; `TestAuthorizationMatrix` tem uma coluna para ele.
 
@@ -710,7 +712,7 @@ O jogador fica sabendo da sessão por uma consulta leve, e acompanha a sessão p
 
 - **O aviso (RN-06) é uma consulta, não um stream.** Com a aba visível e a pessoa logada, o app chama `ListOpenGameSessions` a cada 30 segundos, e uma vez quando a aba volta a ficar visível. A resposta traz as sessões abertas das campanhas em que a pessoa é membro ativo, com o nome da campanha e o papel dela; uma sessão nova vira o aviso "A sessão 3 de Mirathel começou" com o link. São duas leituras por índice (as campanhas da pessoa, pelo `campaigns`, e as sessões abertas delas, pelo índice parcial de `game_sessions`), e o Cloud Run só cobra o tempo da requisição.
 - **O link da sessão** é `/campanhas/<id>/sessao`, sem segredo (RN-07). Quem decide é o servidor: sem login, `unauthenticated`, e o app manda para o login; quem não é membro, ou é membro pendente, recebe `not_found` (a tela mostra "Peça um convite ao mestre", sem o nome da campanha); sem sessão aberta, `failed_precondition` com `GameSessionBlocked` e o motivo `NO_OPEN_SESSION` (a tela mostra "Nenhuma sessão em andamento").
-- **O stream** (`WatchGameSession`) manda primeiro `ready`, depois de registrar a assinatura. Só então o app lê a foto da sessão (`GetLiveSession`), então nenhuma mudança cai no intervalo entre a foto e o stream. Uma mudança pode chegar antes da foto: a `revision` das `CharacterVitals` diz qual é a mais nova. Depois vêm `heartbeat` a cada 25 segundos, `vitals_changed` e `session_ended`.
+- **O stream** (`WatchGameSession`) manda primeiro `ready`, depois de registrar a assinatura. Só então o app lê a foto da sessão (`GetLiveSession`), então nenhuma mudança cai no intervalo entre a foto e o stream. Uma mudança pode chegar antes da foto: a `revision` das `CharacterVitals` diz qual é a mais nova. Depois vêm `heartbeat` a cada 25 segundos, `vitals_changed`, os eventos dos mapas (`current_map_changed`, `map_changed`, `token_moved`, ver [Os mapas na sessão ao vivo](#os-mapas-na-sessão-ao-vivo)), `shown_image_changed` e `session_ended`.
 
 ```mermaid
 sequenceDiagram
@@ -775,14 +777,38 @@ Os números do personagem que mudam durante o jogo (PV atual, PV temporários, e
 - **Idempotência.** O app manda um UUID novo a cada correção (`idempotency_key`) e o mesmo numa nova tentativa. Se a chave já está em `session_events`, nada é gravado nem publicado, e a resposta traz os PV como estão agora (`TestAdjustCharacterVitalsIsIdempotent`). A mesma chave para outro personagem é `invalid_argument`.
 - **Ordem dos eventos.** O `seq` de cada evento é o seguinte da sessão, lido com a linha da sessão travada, então duas correções ao mesmo tempo esperam uma pela outra e ganham 1, 2, 3, sem buraco e sem repetição (`TestSessionEventsAreOrderedPerSession`). `EndGameSession` trava a mesma linha, então uma correção em andamento termina antes da sessão acabar.
 
+### O que a sessão mostra
+
+A sessão aberta mostra a todos duas coisas, lado a lado e independentes: o mapa atual e uma imagem da galeria que o mestre escolhe mostrar (MR-028), como um retrato ou uma carta. As duas ficam na linha da sessão, em `game_sessions`, e só o mestre as muda, só com a sessão aberta.
+
+| | Mapa atual | Imagem mostrada |
+| --- | --- | --- |
+| Chamada | `SetCurrentMap(map_id)`, vazio para tirar | `SetShownImage(image_id)`, vazio para parar |
+| Coluna | `current_map_id` | `shown_image_id` |
+| Revela | O mapa (RN-10): o jogador sempre vê o mapa atual | Nada além da própria imagem, e só enquanto é mostrada |
+| Na foto | `GetLiveSession.current_map_id`; o app lê o mapa com `MapService.GetMap` | `GetLiveSession.shown_image` (ID, nome como legenda, tamanho, URLs) |
+| No stream | `current_map_changed`, para todos | `shown_image_changed`, para todos |
+| Quando é apagado | `DeleteMap` tira da sessão (`SET NULL`) e manda `current_map_changed` vazio | `DeleteGalleryImage` tira da sessão (`SET NULL`) e manda `shown_image_changed` vazio |
+
+- **Uma sessão nova começa sem os dois:** as colunas são da linha da sessão. A sessão encerrada guarda o último, só como registro.
+- **Escolher o mapa atual o revela** na mesma transação que trava a linha da sessão. Se o mestre esconder o mapa atual depois, o jogador continua vendo enquanto ele for o atual (`Map.revealed` falso e `Map.current` verdadeiro).
+- **A imagem mostrada não abre a galeria.** O jogador recebe o ID da imagem enquanto ela é mostrada, e mais nenhum; depois que o mestre para de mostrar, a rota `GET /images/{id}` responde `404` a ele, mesmo que tenha guardado o ID (ver [Servir as imagens](#servir-as-imagens) e a pergunta 32 da [MR-028](produto/historias.md#mr-028-mostrar-uma-imagem-aos-jogadores)).
+
+**Como o `play` e o `maps` se encontram.** Um precisa do outro, então cada um declara o que precisa, o outro implementa, e o `cmd/api` liga os dois, sem nenhum importar o outro:
+
+- o `play` declara `MapKeeper`: conferir e revelar o mapa atual, dentro da transação do `play`, e ler a imagem mostrada. O `maps` implementa com `maps.SessionMaps`, que só precisa do banco;
+- o `maps` declara `LiveSession`: qual é o mapa atual e a imagem mostrada, e publicar no stream. O `play.Service` implementa com `CurrentMapID`, `ShownImageID` e `Publish`. As mensagens são as do `play.proto`: o `maps` as monta, como o `characters` monta as `CharacterVitals`.
+
+Como o `SessionMaps` não precisa do `play`, o `cmd/api` o cria primeiro, cria o `play` com ele, e só então cria o `maps` com o `play`: nenhum dos dois espera o outro.
+
 ## Módulo maps: galeria e imagens
 
-A galeria guarda as imagens que o mestre usa nos mapas e no documento da campanha (MR-019). O servidor aceita só JPEG, PNG e WebP, grava cada imagem codificada de novo, sem nenhum metadado, e só a entrega a quem é membro da campanha. O código fica em `backend/internal/maps`; mapas, pontos de interesse e tokens chegam depois, no mesmo módulo.
+A galeria guarda as imagens que o mestre usa nos mapas e no documento da campanha (MR-019). O servidor aceita só JPEG, PNG e WebP, grava cada imagem codificada de novo, sem nenhum metadado, e só a entrega a quem pode vê-la: o mestre da campanha, ou o jogador enquanto a imagem está visível para ele. O código fica em `backend/internal/maps`, com os mapas, os pontos de interesse e os tokens (ver [Módulo maps: mapas](#módulo-maps-mapas-pontos-e-tokens)).
 
 | Rota ou chamada | Quem pode | O que faz |
 | --- | --- | --- |
 | `POST /uploads/images` | O mestre da campanha | Recebe a imagem (formulário `multipart/form-data`: `campaign_id`, depois `file`), confere, codifica de novo, guarda e responde `201` com o `GalleryImage` em JSON |
-| `GET /images/{id}` e `GET /images/{id}/thumb` | Qualquer membro ativo da campanha da imagem, jogadores inclusive | Entrega a imagem, ou a miniatura de 480 px no lado maior |
+| `GET /images/{id}` e `GET /images/{id}/thumb` | O mestre da campanha da imagem; o jogador, só enquanto vê a imagem (o fundo de um mapa que ele vê, ou a imagem mostrada na sessão) | Entrega a imagem, ou a miniatura de 480 px no lado maior |
 | `GalleryService.ListGalleryImages` | O mestre | Lista a galeria, da mais nova para a mais antiga, com o uso da cota |
 | `GalleryService.RenameGalleryImage` | O mestre | Muda o nome (1 a 80 caracteres, uma linha) |
 | `GalleryService.DeleteGalleryImage` | O mestre | Apaga a linha e os arquivos. Recusa com `failed_precondition` se um mapa usa a imagem |
@@ -841,11 +867,18 @@ O pacote `backend/internal/platform/blob` é uma interface pequena (`Put`, `Open
 
 ### Servir as imagens
 
-`GET /images/{id}` confere, nesta ordem: sessão válida (senão `401`, antes de procurar a imagem), a imagem existe e quem pede é membro ativo da campanha dela (senão `404`, igual a uma imagem que não existe, nunca `403`). Só depois disso vem o `304` do `If-None-Match`, para um estranho não descobrir que a imagem existe mandando o ETag.
+O mestre baixa toda imagem da campanha; o jogador, só a imagem que ele vê agora (RN-10). `GET /images/{id}` (e `/thumb`) confere, nesta ordem:
+
+1. sessão válida, senão `401`, antes de procurar a imagem;
+2. a imagem existe e quem pede é membro ativo da campanha dela, senão `404`, igual a uma imagem que não existe, nunca `403`;
+3. para o jogador, a imagem está visível para ele agora: é o fundo de um mapa que ele vê (revelado, ou o mapa atual da sessão aberta) ou a imagem que o mestre mostra na sessão aberta (MR-028). Senão, `404`. São duas leituras, uma de cada módulo: o que a sessão mostra vem do `play` (`LiveSession.OnScreen`), e os mapas, de uma consulta só (`ImageIsOnAVisibleMap`, pelo índice `maps_image_id_idx`).
+
+Só depois disso vem o `304` do `If-None-Match`: nem um estranho descobre que a imagem existe mandando o ETag, nem um jogador continua com uma imagem que não vê mais.
 
 | Header | Valor | Por quê |
 | --- | --- | --- |
-| `Cache-Control` | `private, max-age=31536000, immutable` | Os bytes de um ID nunca mudam: um envio novo ganha um ID novo. `private`, porque é só daquele membro |
+| `Cache-Control` | Mestre: `private, max-age=31536000, immutable`. Jogador: `private, no-cache` | Os bytes de um ID nunca mudam (um envio novo ganha um ID novo), então o mestre guarda a imagem por um ano. O jogador pode deixar de ver a imagem a qualquer momento (o mapa escondido de novo, a imagem que parou de ser mostrada), então o navegador dele pergunta de novo a cada uso: `304` sem corpo enquanto ele vê, `404` depois. `private`, porque é só daquele membro |
+| `Vary` | `Cookie` | Num navegador usado pelo mestre e por um jogador (um sai, o outro entra), a cópia de um nunca responde pelo outro: um cookie de sessão novo é outra entrada no cache |
 | `ETag` | `"<id>"` (miniatura: `"<id>.thumb"`) | O navegador revalida sem baixar de novo (`304`) |
 | `Content-Type`, `Content-Length` | Do arquivo guardado | — |
 | `X-Content-Type-Options: nosniff` e `Content-Disposition: inline` | — | O navegador trata o arquivo como a imagem que o `Content-Type` diz |
@@ -854,7 +887,7 @@ O pacote `backend/internal/platform/blob` é uma interface pequena (`Put`, `Open
 
 O CSP do app já aceita as imagens (`img-src 'self'`), e o handler do Angular deixa `/images` e `/uploads` para a API (`isAPIPath`); no `ng serve`, o `proxy.conf.json` encaminha as duas.
 
-**RN-10 com imagens.** O jogador pode baixar uma imagem da campanha, porque os mapas que ele vê são imagens. Isso não revela um mapa escondido: o jogador só baixa pelo ID, o ID é um UUID aleatório, e ele só recebe o ID de uma imagem numa resposta que pode ver (um mapa revelado, o mapa atual da sessão). A galeria, que lista todas as imagens, é só do mestre (`TestMR019_PlayersCannotListTheGallery`). Quem não é membro ativo recebe `404` (`TestAuthorizationMatrix`, no `maps`).
+**RN-10 com imagens.** O jogador baixa uma imagem só enquanto a vê: saber o ID não basta, porque ele guarda os IDs de mapas escondidos de novo e de imagens que pararam de ser mostradas (decidido pelo integrador em 30/09/2026, junto com a MR-028; antes, qualquer membro baixava qualquer imagem da campanha pelo ID). O ID só chega a ele numa resposta que pode ver (um mapa que ele vê, ou a imagem que o mestre mostra), e a rota confere de novo a cada pedido (`TestRN10_PlayersOnlyFetchImagesTheyCanSee`). O nome da imagem na galeria vai ao jogador só na imagem mostrada, como legenda; num mapa, só ao mestre. A galeria, que lista todas as imagens, é só do mestre (`TestMR019_PlayersCannotListTheGallery`). Quem não é membro ativo recebe `404` (`TestAuthorizationMatrix`, no `maps`). O que continua fora do alcance do servidor: a imagem que o navegador já desenhou na página, e o que alguém salvou ou fotografou da tela.
 
 ### Os erros do envio
 
@@ -882,6 +915,85 @@ A tela da galeria (`/campanhas/:id/galeria`), o painel "Galeria" da página da c
 - `UploadQueue`: envia os arquivos um depois do outro, cada um com o próprio progresso, cancelamento e erro. Antes de enviar, confere no próprio navegador o tipo (JPEG, PNG ou WebP), o tamanho (10 MB) e o número de imagens, com o `GalleryUsage` do `ListGalleryImages`. Os bytes da cota ficam com o servidor, porque ele conta a imagem já codificada de novo, que pode ser bem menor que o arquivo.
 
 O texto de cada erro vem do `reason` (ou do `code`, ou do status HTTP), nunca da `message` (`upload-errors.ts`). As imagens na tela vêm sempre de `/images/<id>` ou `/thumb`, da mesma origem: o CSP (`img-src 'self'`) não deixa mostrar uma prévia do arquivo antes do envio (uma URL `blob:`).
+
+## Módulo maps: mapas, pontos e tokens
+
+Um mapa é uma imagem da galeria com pontos de interesse e tokens por cima (MR-008, MR-009, MR-012). O mestre prepara tudo escondido e revela aos poucos; o servidor decide o que cada um vê (RN-10), e o jogador nunca recebe o que está escondido. O código fica em `backend/internal/maps` (`mapservice.go` e as regras de quem vê o quê em `visibility.go`), e o contrato no `MapService` de `proto/meurpg/maps/v1/maps.proto`.
+
+| Chamada do `MapService` | Quem pode | O que faz |
+| --- | --- | --- |
+| `ListMaps` | Membros da campanha, filtrado | Os mapas, do mais antigo para o mais novo, cada um com a imagem, se está revelado, se é o mapa atual, quantos pontos tem e de quais mapas é submapa |
+| `GetMap` | Membros da campanha, filtrado | Um mapa com os pontos e os tokens. Mapa escondido: `not_found` para o jogador |
+| `CreateMap` | O mestre | Cria o mapa a partir de uma imagem da galeria da campanha. Nasce escondido. `resource_exhausted` passando de 200 mapas |
+| `UpdateMap` | O mestre | Muda o nome ou a imagem, com a revisão (`aborted` se for velha) |
+| `DeleteMap` | O mestre | Apaga o mapa com os pontos e os tokens; os pontos de submapa que levavam a ele ficam sem destino; se era o mapa atual, a sessão fica sem |
+| `SetMapRevealed` | O mestre | Revela ou esconde o mapa |
+| `CreateMapPoint` | O mestre | Põe um ponto (batalha, submapa ou cena de RP) numa posição. Nasce escondido. `resource_exhausted` passando de 200 pontos |
+| `UpdateMapPoint` | O mestre | Muda o que vier na requisição: tipo, nome, descrição, posição (mover é isto), destino do submapa, revelado |
+| `DeleteMapPoint` | O mestre | Apaga o ponto |
+| `SetMapPointRevealed` | O mestre | Revela ou esconde o ponto |
+| `PlaceMapToken` | O mestre | Põe o token de um personagem vivo da campanha, ou o move. O de jogador nasce visível; o de NPC, escondido |
+| `SetMapTokenHidden` | O mestre | Esconde ou mostra o token |
+| `RemoveMapToken` | O mestre | Tira o token do mapa |
+
+- **Posições em pontos-base.** `x_bp` e `y_bp` vão de 0 a 10000 na largura e na altura da imagem (5000 é o meio). Não dependem do tamanho da imagem, então trocar a imagem ou dar zoom não mexe em nada. A resposta traz a largura e a altura da imagem, para a tela desenhar o mapa antes de a imagem chegar.
+- **Os pontos.** Batalha, submapa ou cena de RP, com nome (até 80 caracteres) e descrição para os jogadores (até 2.000, com quebras de linha). O ponto de submapa leva a outro mapa da mesma campanha, nunca ao próprio; o app abre primeiro a ficha do ponto, com "Abrir <mapa>". Batalha e cena, por enquanto, só mostram o nome e a descrição: abrem o encontro com o combate (Etapa 6) e a cena de RP na Etapa 7 (pergunta 29).
+- **Os tokens.** Um por personagem por mapa. O personagem precisa ser vivo e da campanha (de jogador, nem morto nem pendente, ou NPC); quem diz é o `characters`, pela interface `maps.CharacterDirectory` (`characters.Service.MapCharacters`), que devolve só ID, tipo, nome e jogador: nada da ficha, nem as notas do mestre. O personagem que morre continua na tabela, mas não aparece no mapa.
+- **Limites.** 200 mapas por campanha e 200 pontos por mapa (proposta, como a cota da galeria), porque as listas não são paginadas.
+- **A imagem de um mapa não pode ser apagada** da galeria: `DeleteGalleryImage` responde `failed_precondition` com o detalhe `ImageInUse`, que nomeia os mapas; a galeria mostra em cada imagem os mapas que a usam (`GalleryImage.used_in_maps`).
+
+### Quem vê o quê no mapa
+
+O filtro roda no servidor, em `visibility.go`, e o que o jogador não vê fica de fora da resposta, nunca em branco: nem o ID, nem o nome, nem a descrição. `TestMR009_PlayersNeverReceiveHiddenPoints` lê a resposta do jogador como o JSON que o app recebe e procura o ponto escondido nela.
+
+| O quê | O mestre vê | O jogador vê |
+| --- | --- | --- |
+| Mapa | Todos, com "revelado" e "mapa atual" | O revelado, e o mapa atual da sessão mesmo escondido. Qualquer outro é `not_found`, igual a um mapa que não existe |
+| Ponto | Todos, com o estado | Só os revelados, num mapa que ele vê |
+| Token | Todos, com o estado | Só os visíveis, num mapa que ele vê; o próprio vem marcado (`mine`) para a tela desenhar "(você)" |
+| Destino do ponto de submapa | Sempre | Só se ele também vê o mapa de destino; senão o ponto não tem destino e só mostra a descrição |
+| De quais mapas este é submapa | Todos | Só os que ele vê, por um ponto revelado |
+| Quantos pontos o mapa tem | Todos | Só os revelados |
+| Nome da imagem na galeria | Sim | Não |
+| O arquivo da imagem (`GET /images/{id}`) | Toda imagem da campanha | Só enquanto vê um mapa com essa imagem, ou enquanto ela é a imagem mostrada na sessão (ver [Servir as imagens](#servir-as-imagens)) |
+
+Quem não é membro ativo (e o membro pendente) recebe `not_found` em tudo, como no resto do app (`TestMapServiceAuthorizationMatrix`).
+
+### Os mapas na sessão ao vivo
+
+Com a sessão aberta, cada mudança num mapa chega na hora a quem está na página da sessão, pelo stream do `play`. O `maps` decide a audiência de cada evento, porque só ele sabe o que a mudança tocou: o mestre recebe sempre; o jogador, só quando a mudança toca algo que ele vê, antes ou depois dela. Uma mudança só em coisas escondidas não chega ao jogador, nem como um `map_changed` num mapa que ele vê.
+
+| Evento | Quando | Quem recebe |
+| --- | --- | --- |
+| `current_map_changed{map_id}` | O mestre muda o mapa atual, ou apaga o mapa atual (vazio) | Todos |
+| `map_changed{map_id}` | Um ponto é criado, muda, é apagado, revelado ou escondido; um token é posto, escondido, mostrado ou tirado; o mapa muda de nome ou de imagem, é revelado, escondido, criado ou apagado | O mestre; os jogadores, se veem o mapa antes ou depois **e** a coisa mudada antes ou depois |
+| `token_moved{map_id, character_id, x_bp, y_bp}` | O mestre move um token que já estava no mapa | Todos, se o token está visível num mapa que os jogadores veem; senão, só o mestre |
+
+- **`map_changed` é só um aviso.** Não leva conteúdo: o app lê o mapa de novo (`GetMap`), já filtrado. Assim o nome ou a descrição de um ponto nunca viajam pelo stream. Se o jogador não vê mais o mapa, o `GetMap` responde `not_found` e o app sai dele; um `map_changed` de um mapa que o app ainda não lista (acabou de ser revelado) quer dizer que a lista mudou (`ListMaps`).
+- **`token_moved` leva a posição:** o app move o token sem ler o mapa de novo. Um token novo vem como `map_changed`, porque o app precisa do nome.
+- **Mudar a visibilidade de um mapa** também avisa os mapas com um ponto de submapa que leva a ele: o destino do ponto aparece ou some para o jogador.
+- Sem sessão aberta, ninguém está assinando, e nada é publicado: o app lê os mapas quando abre a tela.
+
+```mermaid
+sequenceDiagram
+    participant M as Mestre
+    participant MS as maps
+    participant P as play
+    participant H as hub, em memória
+    participant DB as CockroachDB
+    participant J as App do jogador
+    M->>MS: SetMapPointRevealed(ponto, revelado)
+    MS->>MS: authz, só o mestre
+    MS->>P: CurrentMapID
+    P->>DB: mapa atual da sessão aberta
+    MS->>DB: BEGIN, confere o mapa, trava o ponto, revela, COMMIT
+    MS->>MS: o jogador vê o mapa, e o ponto estava ou ficou revelado?
+    MS->>P: Publish(map_changed, jogadores: sim)
+    P->>H: para o mestre e os jogadores
+    H-->>J: map_changed(mapa)
+    J->>MS: GetMap
+    MS-->>J: o mapa, com o ponto revelado e sem os escondidos
+```
 
 ## Ver também
 

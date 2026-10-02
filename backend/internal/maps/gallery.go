@@ -14,6 +14,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/images"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
@@ -46,9 +47,20 @@ func (s *Service) ListGalleryImages(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the gallery usage", err)
 	}
+	// The maps that use each image ("Usada em Mirathel e arredores").
+	maps, err := s.queries.ListMapImageIDs(ctx, m.CampaignID)
+	if err != nil {
+		return nil, s.dbError(ctx, "list the maps' images", err)
+	}
+	usedIn := map[string][]*mapsv1.MapRef{}
+	for _, mp := range maps {
+		usedIn[mp.ImageID] = append(usedIn[mp.ImageID], &mapsv1.MapRef{Id: mp.ID, Name: mp.Name})
+	}
 	res := &mapsv1.ListGalleryImagesResponse{Usage: s.usageToProto(usage)}
 	for _, row := range rows {
-		res.Images = append(res.Images, imageToProto(row))
+		img := imageToProto(row)
+		img.UsedInMaps = usedIn[row.ID]
+		res.Images = append(res.Images, img)
 	}
 	return connect.NewResponse(res), nil
 }
@@ -92,13 +104,19 @@ func (s *Service) RenameGalleryImage(
 	if err != nil {
 		return nil, s.dbError(ctx, "rename a gallery image", err)
 	}
-	return connect.NewResponse(&mapsv1.RenameGalleryImageResponse{Image: imageToProto(row)}), nil
+	img := imageToProto(row)
+	if img.UsedInMaps, err = s.mapsUsing(ctx, s.queries, m.CampaignID, row.ID); err != nil {
+		return nil, s.dbError(ctx, "list the maps that use an image", err)
+	}
+	return connect.NewResponse(&mapsv1.RenameGalleryImageResponse{Image: img}), nil
 }
 
 // DeleteGalleryImage implements mapsv1connect.GalleryServiceHandler. It
 // deletes the row first, then the files: once the row is gone nobody can
 // fetch the files, so a failure to delete them (logged) leaves nothing
-// reachable behind.
+// reachable behind. An image a map uses stays; an image the session shows
+// (MR-028) goes, and the session stops showing it (the foreign key sets
+// game_sessions.shown_image_id to NULL).
 func (s *Service) DeleteGalleryImage(
 	ctx context.Context,
 	req *connect.Request[mapsv1.DeleteGalleryImageRequest],
@@ -114,9 +132,23 @@ func (s *Service) DeleteGalleryImage(
 	if err != nil {
 		return nil, errImageNotFound()
 	}
+	_, shown, err := s.live.OnScreen(ctx, m.CampaignID)
+	if err != nil {
+		return nil, s.dbError(ctx, "read the shown image", err)
+	}
 
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		_, err := s.queries.WithTx(tx).DeleteGalleryImage(ctx, mapsdb.DeleteGalleryImageParams{
+		q := s.queries.WithTx(tx)
+		// An image a map uses stays, and the answer names the maps (MR-019:
+		// "o app diz em qual mapa ela está").
+		usedIn, err := s.mapsUsing(ctx, q, m.CampaignID, id.String())
+		if err != nil {
+			return fmt.Errorf("list the maps that use the image: %w", err)
+		}
+		if len(usedIn) > 0 {
+			return errImageInUse(usedIn)
+		}
+		_, err = q.DeleteGalleryImage(ctx, mapsdb.DeleteGalleryImageParams{
 			CampaignID: m.CampaignID, ID: id.String(),
 		})
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -127,17 +159,23 @@ func (s *Service) DeleteGalleryImage(
 		}
 		return nil
 	})
-	// A map that uses the image keeps it: the maps' foreign key to
-	// gallery_images is ON DELETE RESTRICT, so the delete fails with a
-	// foreign key violation. (The maps table comes with the maps themselves;
-	// this answer is ready for it.)
+	// The check above runs in the transaction, so a map created at the same
+	// time makes one of the two retry (SERIALIZABLE). The foreign key
+	// (maps.image_id, ON DELETE RESTRICT) is the backstop.
 	if isForeignKeyViolation(err) {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("a map uses this image; change the map's image first"))
+		usedIn, _ := s.mapsUsing(ctx, s.queries, m.CampaignID, id.String())
+		return nil, errImageInUse(usedIn)
 	}
 	if err != nil {
 		return nil, s.dbError(ctx, "delete a gallery image", err)
 	}
 	s.deleteFiles(ctx, m.CampaignID, id.String())
+	if shown == id.String() {
+		// Everyone watching the session stops seeing it.
+		s.live.Publish(m.CampaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_ShownImageChanged_{
+			ShownImageChanged: &playv1.WatchGameSessionResponse_ShownImageChanged{},
+		}})
+	}
 	return connect.NewResponse(&mapsv1.DeleteGalleryImageResponse{}), nil
 }
 
@@ -177,6 +215,30 @@ func clampInt32(n int64) int32 {
 		return 0
 	}
 	return int32(n)
+}
+
+// mapsUsing lists the maps whose image this is, oldest first.
+func (s *Service) mapsUsing(ctx context.Context, q *mapsdb.Queries, campaignID, imageID string) ([]*mapsv1.MapRef, error) {
+	rows, err := q.ListMapsUsingImage(ctx, mapsdb.ListMapsUsingImageParams{CampaignID: campaignID, ImageID: imageID})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*mapsv1.MapRef, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, &mapsv1.MapRef{Id: r.ID, Name: r.Name})
+	}
+	return out, nil
+}
+
+// errImageInUse is DeleteGalleryImage's failed_precondition, with the
+// ImageInUse detail that names the maps for the app. The message itself
+// never names them: map names are free text.
+func errImageInUse(maps []*mapsv1.MapRef) error {
+	err := connect.NewError(connect.CodeFailedPrecondition, errors.New("a map uses this image; change the map's image first"))
+	if detail, detailErr := connect.NewErrorDetail(&mapsv1.ImageInUse{Maps: maps}); detailErr == nil {
+		err.AddDetail(detail)
+	}
+	return err
 }
 
 // errImageNotFound is the answer for an image that is not in the campaign.

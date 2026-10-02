@@ -5,8 +5,9 @@
 // source: meurpg/maps/v1/gallery.proto
 
 // Package meurpg.maps.v1 is about a campaign's maps and the images they are
-// made of. Today it holds the gallery (MR-019): the images the master
-// uploads, to use in maps and in the campaign document.
+// made of: the gallery (MR-019, this file), the images the master uploads to
+// use in maps and in the campaign document; and the maps themselves, with
+// their points of interest and tokens (MR-008, MR-009, MR-012, maps.proto).
 
 package mapsv1
 
@@ -51,7 +52,11 @@ type GalleryImage struct {
 	Url string `protobuf:"bytes,9,opt,name=url,proto3" json:"url,omitempty"`
 	// Where to fetch its thumbnail, 480 pixels on the longer side (a small
 	// image is its own thumbnail): "/images/{id}/thumb".
-	ThumbnailUrl  string `protobuf:"bytes,10,opt,name=thumbnail_url,json=thumbnailUrl,proto3" json:"thumbnail_url,omitempty"`
+	ThumbnailUrl string `protobuf:"bytes,10,opt,name=thumbnail_url,json=thumbnailUrl,proto3" json:"thumbnail_url,omitempty"`
+	// The maps whose image this is, oldest first ("Usada em Mirathel e
+	// arredores"). Empty when no map uses it, and always empty in the upload's
+	// answer. An image a map uses cannot be deleted.
+	UsedInMaps    []*MapRef `protobuf:"bytes,11,rep,name=used_in_maps,json=usedInMaps,proto3" json:"used_in_maps,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -156,6 +161,61 @@ func (x *GalleryImage) GetThumbnailUrl() string {
 	return ""
 }
 
+func (x *GalleryImage) GetUsedInMaps() []*MapRef {
+	if x != nil {
+		return x.UsedInMaps
+	}
+	return nil
+}
+
+// ImageInUse is the error detail of DeleteGalleryImage's
+// `failed_precondition`: the maps that use the image, so the app can say
+// "Essa imagem é o fundo do mapa Mirathel e arredores".
+type ImageInUse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The maps whose image it is, oldest first.
+	Maps          []*MapRef `protobuf:"bytes,1,rep,name=maps,proto3" json:"maps,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ImageInUse) Reset() {
+	*x = ImageInUse{}
+	mi := &file_meurpg_maps_v1_gallery_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ImageInUse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ImageInUse) ProtoMessage() {}
+
+func (x *ImageInUse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_maps_v1_gallery_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ImageInUse.ProtoReflect.Descriptor instead.
+func (*ImageInUse) Descriptor() ([]byte, []int) {
+	return file_meurpg_maps_v1_gallery_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *ImageInUse) GetMaps() []*MapRef {
+	if x != nil {
+		return x.Maps
+	}
+	return nil
+}
+
 // GalleryUsage is how much of its quota a campaign's gallery uses. The byte
 // counts are int32, which holds up to 2 GiB: the quota is 500 MiB.
 type GalleryUsage struct {
@@ -177,7 +237,7 @@ type GalleryUsage struct {
 
 func (x *GalleryUsage) Reset() {
 	*x = GalleryUsage{}
-	mi := &file_meurpg_maps_v1_gallery_proto_msgTypes[1]
+	mi := &file_meurpg_maps_v1_gallery_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -189,7 +249,7 @@ func (x *GalleryUsage) String() string {
 func (*GalleryUsage) ProtoMessage() {}
 
 func (x *GalleryUsage) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_maps_v1_gallery_proto_msgTypes[1]
+	mi := &file_meurpg_maps_v1_gallery_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -202,7 +262,7 @@ func (x *GalleryUsage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GalleryUsage.ProtoReflect.Descriptor instead.
 func (*GalleryUsage) Descriptor() ([]byte, []int) {
-	return file_meurpg_maps_v1_gallery_proto_rawDescGZIP(), []int{1}
+	return file_meurpg_maps_v1_gallery_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *GalleryUsage) GetImageCount() int32 {
@@ -250,7 +310,7 @@ type ListGalleryImagesRequest struct {
 
 func (x *ListGalleryImagesRequest) Reset() {
 	*x = ListGalleryImagesRequest{}
-	mi := &file_meurpg_maps_v1_gallery_proto_msgTypes[2]
+	mi := &file_meurpg_maps_v1_gallery_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -262,7 +322,7 @@ func (x *ListGalleryImagesRequest) String() string {
 func (*ListGalleryImagesRequest) ProtoMessage() {}
 
 func (x *ListGalleryImagesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_maps_v1_gallery_proto_msgTypes[2]
+	mi := &file_meurpg_maps_v1_gallery_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -275,7 +335,7 @@ func (x *ListGalleryImagesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListGalleryImagesRequest.ProtoReflect.Descriptor instead.
 func (*ListGalleryImagesRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_maps_v1_gallery_proto_rawDescGZIP(), []int{2}
+	return file_meurpg_maps_v1_gallery_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ListGalleryImagesRequest) GetCampaignId() string {
@@ -296,7 +356,7 @@ type ListGalleryImagesResponse struct {
 
 func (x *ListGalleryImagesResponse) Reset() {
 	*x = ListGalleryImagesResponse{}
-	mi := &file_meurpg_maps_v1_gallery_proto_msgTypes[3]
+	mi := &file_meurpg_maps_v1_gallery_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -308,7 +368,7 @@ func (x *ListGalleryImagesResponse) String() string {
 func (*ListGalleryImagesResponse) ProtoMessage() {}
 
 func (x *ListGalleryImagesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_maps_v1_gallery_proto_msgTypes[3]
+	mi := &file_meurpg_maps_v1_gallery_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -321,7 +381,7 @@ func (x *ListGalleryImagesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListGalleryImagesResponse.ProtoReflect.Descriptor instead.
 func (*ListGalleryImagesResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_maps_v1_gallery_proto_rawDescGZIP(), []int{3}
+	return file_meurpg_maps_v1_gallery_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ListGalleryImagesResponse) GetImages() []*GalleryImage {
@@ -352,7 +412,7 @@ type RenameGalleryImageRequest struct {
 
 func (x *RenameGalleryImageRequest) Reset() {
 	*x = RenameGalleryImageRequest{}
-	mi := &file_meurpg_maps_v1_gallery_proto_msgTypes[4]
+	mi := &file_meurpg_maps_v1_gallery_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -364,7 +424,7 @@ func (x *RenameGalleryImageRequest) String() string {
 func (*RenameGalleryImageRequest) ProtoMessage() {}
 
 func (x *RenameGalleryImageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_maps_v1_gallery_proto_msgTypes[4]
+	mi := &file_meurpg_maps_v1_gallery_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -377,7 +437,7 @@ func (x *RenameGalleryImageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenameGalleryImageRequest.ProtoReflect.Descriptor instead.
 func (*RenameGalleryImageRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_maps_v1_gallery_proto_rawDescGZIP(), []int{4}
+	return file_meurpg_maps_v1_gallery_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *RenameGalleryImageRequest) GetCampaignId() string {
@@ -411,7 +471,7 @@ type RenameGalleryImageResponse struct {
 
 func (x *RenameGalleryImageResponse) Reset() {
 	*x = RenameGalleryImageResponse{}
-	mi := &file_meurpg_maps_v1_gallery_proto_msgTypes[5]
+	mi := &file_meurpg_maps_v1_gallery_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -423,7 +483,7 @@ func (x *RenameGalleryImageResponse) String() string {
 func (*RenameGalleryImageResponse) ProtoMessage() {}
 
 func (x *RenameGalleryImageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_maps_v1_gallery_proto_msgTypes[5]
+	mi := &file_meurpg_maps_v1_gallery_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -436,7 +496,7 @@ func (x *RenameGalleryImageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenameGalleryImageResponse.ProtoReflect.Descriptor instead.
 func (*RenameGalleryImageResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_maps_v1_gallery_proto_rawDescGZIP(), []int{5}
+	return file_meurpg_maps_v1_gallery_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *RenameGalleryImageResponse) GetImage() *GalleryImage {
@@ -457,7 +517,7 @@ type DeleteGalleryImageRequest struct {
 
 func (x *DeleteGalleryImageRequest) Reset() {
 	*x = DeleteGalleryImageRequest{}
-	mi := &file_meurpg_maps_v1_gallery_proto_msgTypes[6]
+	mi := &file_meurpg_maps_v1_gallery_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -469,7 +529,7 @@ func (x *DeleteGalleryImageRequest) String() string {
 func (*DeleteGalleryImageRequest) ProtoMessage() {}
 
 func (x *DeleteGalleryImageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_maps_v1_gallery_proto_msgTypes[6]
+	mi := &file_meurpg_maps_v1_gallery_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -482,7 +542,7 @@ func (x *DeleteGalleryImageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteGalleryImageRequest.ProtoReflect.Descriptor instead.
 func (*DeleteGalleryImageRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_maps_v1_gallery_proto_rawDescGZIP(), []int{6}
+	return file_meurpg_maps_v1_gallery_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *DeleteGalleryImageRequest) GetCampaignId() string {
@@ -508,7 +568,7 @@ type DeleteGalleryImageResponse struct {
 
 func (x *DeleteGalleryImageResponse) Reset() {
 	*x = DeleteGalleryImageResponse{}
-	mi := &file_meurpg_maps_v1_gallery_proto_msgTypes[7]
+	mi := &file_meurpg_maps_v1_gallery_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -520,7 +580,7 @@ func (x *DeleteGalleryImageResponse) String() string {
 func (*DeleteGalleryImageResponse) ProtoMessage() {}
 
 func (x *DeleteGalleryImageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_maps_v1_gallery_proto_msgTypes[7]
+	mi := &file_meurpg_maps_v1_gallery_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -533,14 +593,14 @@ func (x *DeleteGalleryImageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteGalleryImageResponse.ProtoReflect.Descriptor instead.
 func (*DeleteGalleryImageResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_maps_v1_gallery_proto_rawDescGZIP(), []int{7}
+	return file_meurpg_maps_v1_gallery_proto_rawDescGZIP(), []int{8}
 }
 
 var File_meurpg_maps_v1_gallery_proto protoreflect.FileDescriptor
 
 const file_meurpg_maps_v1_gallery_proto_rawDesc = "" +
 	"\n" +
-	"\x1cmeurpg/maps/v1/gallery.proto\x12\x0emeurpg.maps.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xb3\x02\n" +
+	"\x1cmeurpg/maps/v1/gallery.proto\x12\x0emeurpg.maps.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x19meurpg/maps/v1/maps.proto\"\xed\x02\n" +
 	"\fGalleryImage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vcampaign_id\x18\x02 \x01(\tR\n" +
@@ -554,7 +614,12 @@ const file_meurpg_maps_v1_gallery_proto_rawDesc = "" +
 	"created_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x10\n" +
 	"\x03url\x18\t \x01(\tR\x03url\x12#\n" +
 	"\rthumbnail_url\x18\n" +
-	" \x01(\tR\fthumbnailUrl\"\xb2\x01\n" +
+	" \x01(\tR\fthumbnailUrl\x128\n" +
+	"\fused_in_maps\x18\v \x03(\v2\x16.meurpg.maps.v1.MapRefR\n" +
+	"usedInMaps\"8\n" +
+	"\n" +
+	"ImageInUse\x12*\n" +
+	"\x04maps\x18\x01 \x03(\v2\x16.meurpg.maps.v1.MapRefR\x04maps\"\xb2\x01\n" +
 	"\fGalleryUsage\x12\x1f\n" +
 	"\vimage_count\x18\x01 \x01(\x05R\n" +
 	"imageCount\x12\x1d\n" +
@@ -600,34 +665,38 @@ func file_meurpg_maps_v1_gallery_proto_rawDescGZIP() []byte {
 	return file_meurpg_maps_v1_gallery_proto_rawDescData
 }
 
-var file_meurpg_maps_v1_gallery_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_meurpg_maps_v1_gallery_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_meurpg_maps_v1_gallery_proto_goTypes = []any{
 	(*GalleryImage)(nil),               // 0: meurpg.maps.v1.GalleryImage
-	(*GalleryUsage)(nil),               // 1: meurpg.maps.v1.GalleryUsage
-	(*ListGalleryImagesRequest)(nil),   // 2: meurpg.maps.v1.ListGalleryImagesRequest
-	(*ListGalleryImagesResponse)(nil),  // 3: meurpg.maps.v1.ListGalleryImagesResponse
-	(*RenameGalleryImageRequest)(nil),  // 4: meurpg.maps.v1.RenameGalleryImageRequest
-	(*RenameGalleryImageResponse)(nil), // 5: meurpg.maps.v1.RenameGalleryImageResponse
-	(*DeleteGalleryImageRequest)(nil),  // 6: meurpg.maps.v1.DeleteGalleryImageRequest
-	(*DeleteGalleryImageResponse)(nil), // 7: meurpg.maps.v1.DeleteGalleryImageResponse
-	(*timestamppb.Timestamp)(nil),      // 8: google.protobuf.Timestamp
+	(*ImageInUse)(nil),                 // 1: meurpg.maps.v1.ImageInUse
+	(*GalleryUsage)(nil),               // 2: meurpg.maps.v1.GalleryUsage
+	(*ListGalleryImagesRequest)(nil),   // 3: meurpg.maps.v1.ListGalleryImagesRequest
+	(*ListGalleryImagesResponse)(nil),  // 4: meurpg.maps.v1.ListGalleryImagesResponse
+	(*RenameGalleryImageRequest)(nil),  // 5: meurpg.maps.v1.RenameGalleryImageRequest
+	(*RenameGalleryImageResponse)(nil), // 6: meurpg.maps.v1.RenameGalleryImageResponse
+	(*DeleteGalleryImageRequest)(nil),  // 7: meurpg.maps.v1.DeleteGalleryImageRequest
+	(*DeleteGalleryImageResponse)(nil), // 8: meurpg.maps.v1.DeleteGalleryImageResponse
+	(*timestamppb.Timestamp)(nil),      // 9: google.protobuf.Timestamp
+	(*MapRef)(nil),                     // 10: meurpg.maps.v1.MapRef
 }
 var file_meurpg_maps_v1_gallery_proto_depIdxs = []int32{
-	8, // 0: meurpg.maps.v1.GalleryImage.created_at:type_name -> google.protobuf.Timestamp
-	0, // 1: meurpg.maps.v1.ListGalleryImagesResponse.images:type_name -> meurpg.maps.v1.GalleryImage
-	1, // 2: meurpg.maps.v1.ListGalleryImagesResponse.usage:type_name -> meurpg.maps.v1.GalleryUsage
-	0, // 3: meurpg.maps.v1.RenameGalleryImageResponse.image:type_name -> meurpg.maps.v1.GalleryImage
-	2, // 4: meurpg.maps.v1.GalleryService.ListGalleryImages:input_type -> meurpg.maps.v1.ListGalleryImagesRequest
-	4, // 5: meurpg.maps.v1.GalleryService.RenameGalleryImage:input_type -> meurpg.maps.v1.RenameGalleryImageRequest
-	6, // 6: meurpg.maps.v1.GalleryService.DeleteGalleryImage:input_type -> meurpg.maps.v1.DeleteGalleryImageRequest
-	3, // 7: meurpg.maps.v1.GalleryService.ListGalleryImages:output_type -> meurpg.maps.v1.ListGalleryImagesResponse
-	5, // 8: meurpg.maps.v1.GalleryService.RenameGalleryImage:output_type -> meurpg.maps.v1.RenameGalleryImageResponse
-	7, // 9: meurpg.maps.v1.GalleryService.DeleteGalleryImage:output_type -> meurpg.maps.v1.DeleteGalleryImageResponse
-	7, // [7:10] is the sub-list for method output_type
-	4, // [4:7] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	9,  // 0: meurpg.maps.v1.GalleryImage.created_at:type_name -> google.protobuf.Timestamp
+	10, // 1: meurpg.maps.v1.GalleryImage.used_in_maps:type_name -> meurpg.maps.v1.MapRef
+	10, // 2: meurpg.maps.v1.ImageInUse.maps:type_name -> meurpg.maps.v1.MapRef
+	0,  // 3: meurpg.maps.v1.ListGalleryImagesResponse.images:type_name -> meurpg.maps.v1.GalleryImage
+	2,  // 4: meurpg.maps.v1.ListGalleryImagesResponse.usage:type_name -> meurpg.maps.v1.GalleryUsage
+	0,  // 5: meurpg.maps.v1.RenameGalleryImageResponse.image:type_name -> meurpg.maps.v1.GalleryImage
+	3,  // 6: meurpg.maps.v1.GalleryService.ListGalleryImages:input_type -> meurpg.maps.v1.ListGalleryImagesRequest
+	5,  // 7: meurpg.maps.v1.GalleryService.RenameGalleryImage:input_type -> meurpg.maps.v1.RenameGalleryImageRequest
+	7,  // 8: meurpg.maps.v1.GalleryService.DeleteGalleryImage:input_type -> meurpg.maps.v1.DeleteGalleryImageRequest
+	4,  // 9: meurpg.maps.v1.GalleryService.ListGalleryImages:output_type -> meurpg.maps.v1.ListGalleryImagesResponse
+	6,  // 10: meurpg.maps.v1.GalleryService.RenameGalleryImage:output_type -> meurpg.maps.v1.RenameGalleryImageResponse
+	8,  // 11: meurpg.maps.v1.GalleryService.DeleteGalleryImage:output_type -> meurpg.maps.v1.DeleteGalleryImageResponse
+	9,  // [9:12] is the sub-list for method output_type
+	6,  // [6:9] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_maps_v1_gallery_proto_init() }
@@ -635,13 +704,14 @@ func file_meurpg_maps_v1_gallery_proto_init() {
 	if File_meurpg_maps_v1_gallery_proto != nil {
 		return
 	}
+	file_meurpg_maps_v1_maps_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_maps_v1_gallery_proto_rawDesc), len(file_meurpg_maps_v1_gallery_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

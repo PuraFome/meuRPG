@@ -80,6 +80,16 @@ func TestAuthorizationMatrix(t *testing.T) {
 			}))
 			return err
 		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		// Clearing needs no map nor image; setting them is in package maps'
+		// tests, which have maps and images.
+		{"SetCurrentMap", func(ctx context.Context, c client) error {
+			_, err := c.SetCurrentMap(ctx, connect.NewRequest(&playv1.SetCurrentMapRequest{CampaignId: campaign}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"SetShownImage", func(ctx context.Context, c client) error {
+			_, err := c.SetShownImage(ctx, connect.NewRequest(&playv1.SetShownImageRequest{CampaignId: campaign}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
 	}
 
 	covered := map[string]bool{}
@@ -334,6 +344,16 @@ func (noVitals) AdjustVitals(context.Context, pgx.Tx, string, string, *playv1.Ad
 	return nil, nil, errors.New("not in this test")
 }
 
+type noMaps struct{}
+
+func (noMaps) RevealMap(context.Context, pgx.Tx, string, string, time.Time) error {
+	return errors.New("not in this test")
+}
+
+func (noMaps) ShownImage(context.Context, string, string) (*playv1.ShownImage, error) {
+	return nil, errors.New("not in this test")
+}
+
 type noCampaigns struct{}
 
 func (noCampaigns) ActiveCampaigns(context.Context, string) ([]*campaignsv1.Campaign, error) {
@@ -360,10 +380,11 @@ func TestNewValidatesItsConfig(t *testing.T) {
 	t.Parallel()
 	pool := lazyPool(t)
 	for name, cfg := range map[string]Config{
-		"Pool":      {Sheets: noSheets{}, Vitals: noVitals{}, Campaigns: noCampaigns{}},
-		"Sheets":    {Pool: pool, Vitals: noVitals{}, Campaigns: noCampaigns{}},
-		"Vitals":    {Pool: pool, Sheets: noSheets{}, Campaigns: noCampaigns{}},
-		"Campaigns": {Pool: pool, Sheets: noSheets{}, Vitals: noVitals{}},
+		"Pool":      {Sheets: noSheets{}, Vitals: noVitals{}, Campaigns: noCampaigns{}, Maps: noMaps{}},
+		"Sheets":    {Pool: pool, Vitals: noVitals{}, Campaigns: noCampaigns{}, Maps: noMaps{}},
+		"Vitals":    {Pool: pool, Sheets: noSheets{}, Campaigns: noCampaigns{}, Maps: noMaps{}},
+		"Campaigns": {Pool: pool, Sheets: noSheets{}, Vitals: noVitals{}, Maps: noMaps{}},
+		"Maps":      {Pool: pool, Sheets: noSheets{}, Vitals: noVitals{}, Campaigns: noCampaigns{}},
 	} {
 		if _, err := New(cfg); err == nil {
 			t.Errorf("New() without %s succeeded", name)
@@ -375,7 +396,7 @@ func TestNewValidatesItsConfig(t *testing.T) {
 // that the refusal is not cacheable. Reads are POST-only.
 func TestEveryMethodNeedsASession(t *testing.T) {
 	t.Parallel()
-	svc, err := New(Config{Pool: lazyPool(t), Sheets: noSheets{}, Vitals: noVitals{}, Campaigns: noCampaigns{}, Logger: slog.New(slog.DiscardHandler)})
+	svc, err := New(Config{Pool: lazyPool(t), Sheets: noSheets{}, Vitals: noVitals{}, Campaigns: noCampaigns{}, Maps: noMaps{}, Logger: slog.New(slog.DiscardHandler)})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -394,6 +415,8 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["ListOpenGameSessions"] = c.ListOpenGameSessions(ctx, connect.NewRequest(&playv1.ListOpenGameSessionsRequest{}))
 	_, calls["GetLiveSession"] = c.GetLiveSession(ctx, connect.NewRequest(&playv1.GetLiveSessionRequest{CampaignId: id}))
 	_, calls["AdjustCharacterVitals"] = c.AdjustCharacterVitals(ctx, connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{CampaignId: id, CharacterId: id, IdempotencyKey: id}))
+	_, calls["SetCurrentMap"] = c.SetCurrentMap(ctx, connect.NewRequest(&playv1.SetCurrentMapRequest{CampaignId: id, MapId: id}))
+	_, calls["SetShownImage"] = c.SetShownImage(ctx, connect.NewRequest(&playv1.SetShownImageRequest{CampaignId: id, ImageId: id}))
 	calls["WatchGameSession"] = firstEventError(ctx, c, id)
 	methods := playv1.File_meurpg_play_v1_play_proto.Services().ByName("PlayService").Methods()
 	if len(calls) != methods.Len() {

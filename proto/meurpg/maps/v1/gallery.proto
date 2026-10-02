@@ -1,11 +1,13 @@
 syntax = "proto3";
 
 // Package meurpg.maps.v1 is about a campaign's maps and the images they are
-// made of. Today it holds the gallery (MR-019): the images the master
-// uploads, to use in maps and in the campaign document.
+// made of: the gallery (MR-019, this file), the images the master uploads to
+// use in maps and in the campaign document; and the maps themselves, with
+// their points of interest and tokens (MR-008, MR-009, MR-012, maps.proto).
 package meurpg.maps.v1;
 
 import "google/protobuf/timestamp.proto";
+import "meurpg/maps/v1/maps.proto";
 
 // GalleryService lists, renames and deletes a campaign's gallery images.
 // Only the campaign's master may call it: the gallery is the master's
@@ -47,14 +49,19 @@ import "google/protobuf/timestamp.proto";
 //         the storage did not answer).
 //     A cross-site request is refused with 403 before any of this (CSRF).
 //   - `GET /images/{id}` and `GET /images/{id}/thumb`: the image, or its
-//     thumbnail (480 pixels on the longer side). Any active member of the
-//     image's campaign may fetch them, players included: a player only
-//     learns an image's ID from a response they may see, such as a revealed
-//     map. Anyone else gets 404, exactly as for an image that does not
-//     exist, and a request without a valid session gets 401. An image's
-//     bytes never change, so the answer may be cached privately for a year,
-//     and it carries an ETag (`If-None-Match` gives 304). The URLs are in
-//     GalleryImage.url and GalleryImage.thumbnail_url.
+//     thumbnail (480 pixels on the longer side). The campaign's master may
+//     fetch every image of the campaign. A player may fetch an image only
+//     while they see it (RN-10): the background of a map they see (revealed,
+//     or the open session's current map), or the image the master shows in
+//     the open session (MR-028); knowing its ID is not enough. Anyone else,
+//     and a player asking for an image they do not see now, gets 404,
+//     exactly as for an image that does not exist; a request without a
+//     valid session gets 401. The answer carries an ETag (`If-None-Match`
+//     gives 304, after the same checks) and `Vary: Cookie`. The master's
+//     copy may be cached privately for a year (an image's bytes never
+//     change); a player's is `private, no-cache`, so their browser asks
+//     again on every use and stops showing an image they no longer see.
+//     The URLs are in GalleryImage.url and GalleryImage.thumbnail_url.
 //
 // Every method needs a valid session cookie and fails with `unauthenticated`
 // without one. For a campaign the caller is not a member of, methods answer
@@ -75,9 +82,10 @@ import "google/protobuf/timestamp.proto";
 // ID in the URL, and URLs end up in the platform's request logs
 // (docs/privacidade.md).
 service GalleryService {
-  // ListGalleryImages lists the campaign's images, newest first, and how
-  // much of the quota they use. Only the campaign's master may call it. The
-  // list is not paginated: a campaign has at most 300 images.
+  // ListGalleryImages lists the campaign's images, newest first, with the
+  // maps that use each one, and how much of the quota they use. Only the
+  // campaign's master may call it. The list is not paginated: a campaign has
+  // at most 300 images.
   //
   // Errors:
   //   - `not_found`: the campaign does not exist, or the caller is not a
@@ -106,8 +114,9 @@ service GalleryService {
   //     deleted), the campaign does not exist, or the caller is not a
   //     member of it.
   //   - `permission_denied`: the caller is a player.
-  //   - `failed_precondition`: a map uses the image. Change the map's image
-  //     first.
+  //   - `failed_precondition`: a map uses the image (MR-019: "o app diz em
+  //     qual mapa ela está"). The error carries an ImageInUse detail naming
+  //     the maps; change their image first (MapService.UpdateMap).
   rpc DeleteGalleryImage(DeleteGalleryImageRequest) returns (DeleteGalleryImageResponse);
 }
 
@@ -136,6 +145,18 @@ message GalleryImage {
   // Where to fetch its thumbnail, 480 pixels on the longer side (a small
   // image is its own thumbnail): "/images/{id}/thumb".
   string thumbnail_url = 10;
+  // The maps whose image this is, oldest first ("Usada em Mirathel e
+  // arredores"). Empty when no map uses it, and always empty in the upload's
+  // answer. An image a map uses cannot be deleted.
+  repeated MapRef used_in_maps = 11;
+}
+
+// ImageInUse is the error detail of DeleteGalleryImage's
+// `failed_precondition`: the maps that use the image, so the app can say
+// "Essa imagem é o fundo do mapa Mirathel e arredores".
+message ImageInUse {
+  // The maps whose image it is, oldest first.
+  repeated MapRef maps = 1;
 }
 
 // GalleryUsage is how much of its quota a campaign's gallery uses. The byte

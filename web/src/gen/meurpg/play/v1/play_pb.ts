@@ -5,9 +5,11 @@
 // Package meurpg.play.v1 is about playing a campaign at the table: starting,
 // ending and listing game sessions, which locks the players' sheets
 // (RN-01), and the live session (Etapa 5): the notice that a session is
-// open (RN-06), the session's live stream (ADR-0005), and the characters'
-// vitals, which the master corrects during the session (RN-02). Turns,
-// actions and the session history screen come with combat (Etapa 6).
+// open (RN-06), the session's live stream (ADR-0005), the characters'
+// vitals, which the master corrects during the session (RN-02), the
+// session's current map (the maps themselves are meurpg.maps.v1), and the
+// gallery image the master shows the players (MR-028). Turns, actions and
+// the session history screen come with combat (Etapa 6).
 
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
@@ -23,7 +25,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/play/v1/play.proto.
  */
 export const file_meurpg_play_v1_play: GenFile = /*@__PURE__*/
-  fileDesc("ChltZXVycGcvcGxheS92MS9wbGF5LnByb3RvEg5tZXVycGcucGxheS52MSJOChJHYW1lU2Vzc2lvbkJsb2NrZWQSOAoGcmVhc29uGAEgASgOMigubWV1cnBnLnBsYXkudjEuR2FtZVNlc3Npb25CbG9ja2VkUmVhc29uIqQBCgtHYW1lU2Vzc2lvbhIKCgJpZBgBIAEoCRITCgtjYW1wYWlnbl9pZBgCIAEoCRIWCg5zZXNzaW9uX251bWJlchgDIAEoBRIuCgpzdGFydGVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIsCghlbmRlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiLgoXU3RhcnRHYW1lU2Vzc2lvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiaQoYU3RhcnRHYW1lU2Vzc2lvblJlc3BvbnNlEjEKDGdhbWVfc2Vzc2lvbhgBIAEoCzIbLm1ldXJwZy5wbGF5LnYxLkdhbWVTZXNzaW9uEhoKEmxvY2tlZF9zaGVldF9jb3VudBgCIAEoBSJFChVFbmRHYW1lU2Vzc2lvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFwoPZ2FtZV9zZXNzaW9uX2lkGAIgASgJIksKFkVuZEdhbWVTZXNzaW9uUmVzcG9uc2USMQoMZ2FtZV9zZXNzaW9uGAEgASgLMhsubWV1cnBnLnBsYXkudjEuR2FtZVNlc3Npb24iLgoXTGlzdEdhbWVTZXNzaW9uc1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiTgoYTGlzdEdhbWVTZXNzaW9uc1Jlc3BvbnNlEjIKDWdhbWVfc2Vzc2lvbnMYASADKAsyGy5tZXVycGcucGxheS52MS5HYW1lU2Vzc2lvbiIdChtMaXN0T3BlbkdhbWVTZXNzaW9uc1JlcXVlc3QiWwocTGlzdE9wZW5HYW1lU2Vzc2lvbnNSZXNwb25zZRI7ChJvcGVuX2dhbWVfc2Vzc2lvbnMYASADKAsyHy5tZXVycGcucGxheS52MS5PcGVuR2FtZVNlc3Npb24ihwEKD09wZW5HYW1lU2Vzc2lvbhIxCgxnYW1lX3Nlc3Npb24YASABKAsyGy5tZXVycGcucGxheS52MS5HYW1lU2Vzc2lvbhIVCg1jYW1wYWlnbl9uYW1lGAIgASgJEioKB215X3JvbGUYAyABKA4yGS5tZXVycGcuY2FtcGFpZ25zLnYxLlJvbGUiLAoVR2V0TGl2ZVNlc3Npb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJInwKFkdldExpdmVTZXNzaW9uUmVzcG9uc2USMQoMZ2FtZV9zZXNzaW9uGAEgASgLMhsubWV1cnBnLnBsYXkudjEuR2FtZVNlc3Npb24SLwoGdml0YWxzGAIgAygLMh8ubWV1cnBnLnBsYXkudjEuQ2hhcmFjdGVyVml0YWxzIqQDCg9DaGFyYWN0ZXJWaXRhbHMSFAoMY2hhcmFjdGVyX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSFgoOcGxheWVyX3VzZXJfaWQYAyABKAkSGgoSaGl0X3BvaW50c19jdXJyZW50GAQgASgFEhYKDmhpdF9wb2ludHNfbWF4GAUgASgFEhwKFGhpdF9wb2ludHNfdGVtcG9yYXJ5GAYgASgFEjMKC3NwZWxsX3Nsb3RzGAcgAygLMh4ubWV1cnBnLnBsYXkudjEuU3BlbGxTbG90VXNhZ2USMQoKcGFjdF9zbG90cxgIIAEoCzIdLm1ldXJwZy5wbGF5LnYxLlBhY3RTbG90VXNhZ2USKgoIaGl0X2RpY2UYCSADKAsyGC5tZXVycGcucnVsZXMudjEuSGl0RGljZRIWCg5oaXRfZGljZV90b3RhbBgKIAEoBRIVCg1oaXRfZGljZV91c2VkGAsgASgFEhAKCHJldmlzaW9uGAwgASgFEi4KCnVwZGF0ZWRfYXQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIjwKDlNwZWxsU2xvdFVzYWdlEg0KBWxldmVsGAEgASgFEg0KBXRvdGFsGAIgASgFEgwKBHVzZWQYAyABKAUiQAoNUGFjdFNsb3RVc2FnZRISCgpzbG90X2xldmVsGAEgASgFEg0KBXRvdGFsGAIgASgFEgwKBHVzZWQYAyABKAUiLgoXV2F0Y2hHYW1lU2Vzc2lvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkinQQKGFdhdGNoR2FtZVNlc3Npb25SZXNwb25zZRI/CgVyZWFkeRgBIAEoCzIuLm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5SZWFkeUgAEkcKCWhlYXJ0YmVhdBgCIAEoCzIyLm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5IZWFydGJlYXRIABJQCg52aXRhbHNfY2hhbmdlZBgDIAEoCzI2Lm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5WaXRhbHNDaGFuZ2VkSAASTgoNc2Vzc2lvbl9lbmRlZBgEIAEoCzI1Lm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5TZXNzaW9uRW5kZWRIABo6CgVSZWFkeRIxCgxnYW1lX3Nlc3Npb24YASABKAsyGy5tZXVycGcucGxheS52MS5HYW1lU2Vzc2lvbhoLCglIZWFydGJlYXQaQAoNVml0YWxzQ2hhbmdlZBIvCgZ2aXRhbHMYASABKAsyHy5tZXVycGcucGxheS52MS5DaGFyYWN0ZXJWaXRhbHMaQQoMU2Vzc2lvbkVuZGVkEjEKDGdhbWVfc2Vzc2lvbhgBIAEoCzIbLm1ldXJwZy5wbGF5LnYxLkdhbWVTZXNzaW9uQgcKBWV2ZW50IvACChxBZGp1c3RDaGFyYWN0ZXJWaXRhbHNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkSHwoSaGl0X3BvaW50c19jdXJyZW50GAQgASgFSACIAQESIQoUaGl0X3BvaW50c190ZW1wb3JhcnkYBSABKAVIAYgBARI4ChBzcGVsbF9zbG90c191c2VkGAYgAygLMh4ubWV1cnBnLnBsYXkudjEuU3BlbGxTbG90c1VzZWQSHAoPcGFjdF9zbG90c191c2VkGAcgASgFSAKIAQESGgoNaGl0X2RpY2VfdXNlZBgIIAEoBUgDiAEBQhUKE19oaXRfcG9pbnRzX2N1cnJlbnRCFwoVX2hpdF9wb2ludHNfdGVtcG9yYXJ5QhIKEF9wYWN0X3Nsb3RzX3VzZWRCEAoOX2hpdF9kaWNlX3VzZWQiLQoOU3BlbGxTbG90c1VzZWQSDQoFbGV2ZWwYASABKAUSDAoEdXNlZBgCIAEoBSJQCh1BZGp1c3RDaGFyYWN0ZXJWaXRhbHNSZXNwb25zZRIvCgZ2aXRhbHMYASABKAsyHy5tZXVycGcucGxheS52MS5DaGFyYWN0ZXJWaXRhbHMqrgEKGEdhbWVTZXNzaW9uQmxvY2tlZFJlYXNvbhIrCidHQU1FX1NFU1NJT05fQkxPQ0tFRF9SRUFTT05fVU5TUEVDSUZJRUQQABIvCitHQU1FX1NFU1NJT05fQkxPQ0tFRF9SRUFTT05fTk9fT1BFTl9TRVNTSU9OEAESNAowR0FNRV9TRVNTSU9OX0JMT0NLRURfUkVBU09OX1NFU1NJT05fQUxSRUFEWV9PUEVOEAIy/gUKC1BsYXlTZXJ2aWNlEmUKEFN0YXJ0R2FtZVNlc3Npb24SJy5tZXVycGcucGxheS52MS5TdGFydEdhbWVTZXNzaW9uUmVxdWVzdBooLm1ldXJwZy5wbGF5LnYxLlN0YXJ0R2FtZVNlc3Npb25SZXNwb25zZRJfCg5FbmRHYW1lU2Vzc2lvbhIlLm1ldXJwZy5wbGF5LnYxLkVuZEdhbWVTZXNzaW9uUmVxdWVzdBomLm1ldXJwZy5wbGF5LnYxLkVuZEdhbWVTZXNzaW9uUmVzcG9uc2USagoQTGlzdEdhbWVTZXNzaW9ucxInLm1ldXJwZy5wbGF5LnYxLkxpc3RHYW1lU2Vzc2lvbnNSZXF1ZXN0GigubWV1cnBnLnBsYXkudjEuTGlzdEdhbWVTZXNzaW9uc1Jlc3BvbnNlIgOQAgISdgoUTGlzdE9wZW5HYW1lU2Vzc2lvbnMSKy5tZXVycGcucGxheS52MS5MaXN0T3BlbkdhbWVTZXNzaW9uc1JlcXVlc3QaLC5tZXVycGcucGxheS52MS5MaXN0T3BlbkdhbWVTZXNzaW9uc1Jlc3BvbnNlIgOQAgESZAoOR2V0TGl2ZVNlc3Npb24SJS5tZXVycGcucGxheS52MS5HZXRMaXZlU2Vzc2lvblJlcXVlc3QaJi5tZXVycGcucGxheS52MS5HZXRMaXZlU2Vzc2lvblJlc3BvbnNlIgOQAgISZwoQV2F0Y2hHYW1lU2Vzc2lvbhInLm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXF1ZXN0GigubWV1cnBnLnBsYXkudjEuV2F0Y2hHYW1lU2Vzc2lvblJlc3BvbnNlMAESdAoVQWRqdXN0Q2hhcmFjdGVyVml0YWxzEiwubWV1cnBnLnBsYXkudjEuQWRqdXN0Q2hhcmFjdGVyVml0YWxzUmVxdWVzdBotLm1ldXJwZy5wbGF5LnYxLkFkanVzdENoYXJhY3RlclZpdGFsc1Jlc3BvbnNlQrcBChJjb20ubWV1cnBnLnBsYXkudjFCCVBsYXlQcm90b1ABWjxnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvcGxheS92MTtwbGF5djGiAgNNUFiqAg5NZXVycGcuUGxheS5WMcoCDk1ldXJwZ1xQbGF5XFYx4gIaTWV1cnBnXFBsYXlcVjFcR1BCTWV0YWRhdGHqAhBNZXVycGc6OlBsYXk6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp, file_meurpg_campaigns_v1_campaigns, file_meurpg_rules_v1_rules]);
+  fileDesc("ChltZXVycGcvcGxheS92MS9wbGF5LnByb3RvEg5tZXVycGcucGxheS52MSJOChJHYW1lU2Vzc2lvbkJsb2NrZWQSOAoGcmVhc29uGAEgASgOMigubWV1cnBnLnBsYXkudjEuR2FtZVNlc3Npb25CbG9ja2VkUmVhc29uIqQBCgtHYW1lU2Vzc2lvbhIKCgJpZBgBIAEoCRITCgtjYW1wYWlnbl9pZBgCIAEoCRIWCg5zZXNzaW9uX251bWJlchgDIAEoBRIuCgpzdGFydGVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIsCghlbmRlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiLgoXU3RhcnRHYW1lU2Vzc2lvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiaQoYU3RhcnRHYW1lU2Vzc2lvblJlc3BvbnNlEjEKDGdhbWVfc2Vzc2lvbhgBIAEoCzIbLm1ldXJwZy5wbGF5LnYxLkdhbWVTZXNzaW9uEhoKEmxvY2tlZF9zaGVldF9jb3VudBgCIAEoBSJFChVFbmRHYW1lU2Vzc2lvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFwoPZ2FtZV9zZXNzaW9uX2lkGAIgASgJIksKFkVuZEdhbWVTZXNzaW9uUmVzcG9uc2USMQoMZ2FtZV9zZXNzaW9uGAEgASgLMhsubWV1cnBnLnBsYXkudjEuR2FtZVNlc3Npb24iLgoXTGlzdEdhbWVTZXNzaW9uc1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiTgoYTGlzdEdhbWVTZXNzaW9uc1Jlc3BvbnNlEjIKDWdhbWVfc2Vzc2lvbnMYASADKAsyGy5tZXVycGcucGxheS52MS5HYW1lU2Vzc2lvbiIdChtMaXN0T3BlbkdhbWVTZXNzaW9uc1JlcXVlc3QiWwocTGlzdE9wZW5HYW1lU2Vzc2lvbnNSZXNwb25zZRI7ChJvcGVuX2dhbWVfc2Vzc2lvbnMYASADKAsyHy5tZXVycGcucGxheS52MS5PcGVuR2FtZVNlc3Npb24ihwEKD09wZW5HYW1lU2Vzc2lvbhIxCgxnYW1lX3Nlc3Npb24YASABKAsyGy5tZXVycGcucGxheS52MS5HYW1lU2Vzc2lvbhIVCg1jYW1wYWlnbl9uYW1lGAIgASgJEioKB215X3JvbGUYAyABKA4yGS5tZXVycGcuY2FtcGFpZ25zLnYxLlJvbGUiLAoVR2V0TGl2ZVNlc3Npb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIsUBChZHZXRMaXZlU2Vzc2lvblJlc3BvbnNlEjEKDGdhbWVfc2Vzc2lvbhgBIAEoCzIbLm1ldXJwZy5wbGF5LnYxLkdhbWVTZXNzaW9uEi8KBnZpdGFscxgCIAMoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscxIWCg5jdXJyZW50X21hcF9pZBgDIAEoCRIvCgtzaG93bl9pbWFnZRgEIAEoCzIaLm1ldXJwZy5wbGF5LnYxLlNob3duSW1hZ2UiaQoKU2hvd25JbWFnZRIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEg0KBXdpZHRoGAMgASgFEg4KBmhlaWdodBgEIAEoBRILCgN1cmwYBSABKAkSFQoNdGh1bWJuYWlsX3VybBgGIAEoCSKkAwoPQ2hhcmFjdGVyVml0YWxzEhQKDGNoYXJhY3Rlcl9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEhYKDnBsYXllcl91c2VyX2lkGAMgASgJEhoKEmhpdF9wb2ludHNfY3VycmVudBgEIAEoBRIWCg5oaXRfcG9pbnRzX21heBgFIAEoBRIcChRoaXRfcG9pbnRzX3RlbXBvcmFyeRgGIAEoBRIzCgtzcGVsbF9zbG90cxgHIAMoCzIeLm1ldXJwZy5wbGF5LnYxLlNwZWxsU2xvdFVzYWdlEjEKCnBhY3Rfc2xvdHMYCCABKAsyHS5tZXVycGcucGxheS52MS5QYWN0U2xvdFVzYWdlEioKCGhpdF9kaWNlGAkgAygLMhgubWV1cnBnLnJ1bGVzLnYxLkhpdERpY2USFgoOaGl0X2RpY2VfdG90YWwYCiABKAUSFQoNaGl0X2RpY2VfdXNlZBgLIAEoBRIQCghyZXZpc2lvbhgMIAEoBRIuCgp1cGRhdGVkX2F0GA0gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCI8Cg5TcGVsbFNsb3RVc2FnZRINCgVsZXZlbBgBIAEoBRINCgV0b3RhbBgCIAEoBRIMCgR1c2VkGAMgASgFIkAKDVBhY3RTbG90VXNhZ2USEgoKc2xvdF9sZXZlbBgBIAEoBRINCgV0b3RhbBgCIAEoBRIMCgR1c2VkGAMgASgFIi4KF1dhdGNoR2FtZVNlc3Npb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIr4IChhXYXRjaEdhbWVTZXNzaW9uUmVzcG9uc2USPwoFcmVhZHkYASABKAsyLi5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVzcG9uc2UuUmVhZHlIABJHCgloZWFydGJlYXQYAiABKAsyMi5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVzcG9uc2UuSGVhcnRiZWF0SAASUAoOdml0YWxzX2NoYW5nZWQYAyABKAsyNi5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVzcG9uc2UuVml0YWxzQ2hhbmdlZEgAEk4KDXNlc3Npb25fZW5kZWQYBCABKAsyNS5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVzcG9uc2UuU2Vzc2lvbkVuZGVkSAASWQoTY3VycmVudF9tYXBfY2hhbmdlZBgFIAEoCzI6Lm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5DdXJyZW50TWFwQ2hhbmdlZEgAEkoKC21hcF9jaGFuZ2VkGAYgASgLMjMubWV1cnBnLnBsYXkudjEuV2F0Y2hHYW1lU2Vzc2lvblJlc3BvbnNlLk1hcENoYW5nZWRIABJKCgt0b2tlbl9tb3ZlZBgHIAEoCzIzLm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5Ub2tlbk1vdmVkSAASWQoTc2hvd25faW1hZ2VfY2hhbmdlZBgIIAEoCzI6Lm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5TaG93bkltYWdlQ2hhbmdlZEgAGjoKBVJlYWR5EjEKDGdhbWVfc2Vzc2lvbhgBIAEoCzIbLm1ldXJwZy5wbGF5LnYxLkdhbWVTZXNzaW9uGgsKCUhlYXJ0YmVhdBpACg1WaXRhbHNDaGFuZ2VkEi8KBnZpdGFscxgBIAEoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscxpBCgxTZXNzaW9uRW5kZWQSMQoMZ2FtZV9zZXNzaW9uGAEgASgLMhsubWV1cnBnLnBsYXkudjEuR2FtZVNlc3Npb24aIwoRQ3VycmVudE1hcENoYW5nZWQSDgoGbWFwX2lkGAEgASgJGhwKCk1hcENoYW5nZWQSDgoGbWFwX2lkGAEgASgJGj4KEVNob3duSW1hZ2VDaGFuZ2VkEikKBWltYWdlGAEgASgLMhoubWV1cnBnLnBsYXkudjEuU2hvd25JbWFnZRpOCgpUb2tlbk1vdmVkEg4KBm1hcF9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSDAoEeF9icBgDIAEoBRIMCgR5X2JwGAQgASgFQgcKBWV2ZW50IvACChxBZGp1c3RDaGFyYWN0ZXJWaXRhbHNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkSHwoSaGl0X3BvaW50c19jdXJyZW50GAQgASgFSACIAQESIQoUaGl0X3BvaW50c190ZW1wb3JhcnkYBSABKAVIAYgBARI4ChBzcGVsbF9zbG90c191c2VkGAYgAygLMh4ubWV1cnBnLnBsYXkudjEuU3BlbGxTbG90c1VzZWQSHAoPcGFjdF9zbG90c191c2VkGAcgASgFSAKIAQESGgoNaGl0X2RpY2VfdXNlZBgIIAEoBUgDiAEBQhUKE19oaXRfcG9pbnRzX2N1cnJlbnRCFwoVX2hpdF9wb2ludHNfdGVtcG9yYXJ5QhIKEF9wYWN0X3Nsb3RzX3VzZWRCEAoOX2hpdF9kaWNlX3VzZWQiLQoOU3BlbGxTbG90c1VzZWQSDQoFbGV2ZWwYASABKAUSDAoEdXNlZBgCIAEoBSJQCh1BZGp1c3RDaGFyYWN0ZXJWaXRhbHNSZXNwb25zZRIvCgZ2aXRhbHMYASABKAsyHy5tZXVycGcucGxheS52MS5DaGFyYWN0ZXJWaXRhbHMiOwoUU2V0Q3VycmVudE1hcFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSDgoGbWFwX2lkGAIgASgJIi8KFVNldEN1cnJlbnRNYXBSZXNwb25zZRIWCg5jdXJyZW50X21hcF9pZBgBIAEoCSI9ChRTZXRTaG93bkltYWdlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIQCghpbWFnZV9pZBgCIAEoCSJIChVTZXRTaG93bkltYWdlUmVzcG9uc2USLwoLc2hvd25faW1hZ2UYASABKAsyGi5tZXVycGcucGxheS52MS5TaG93bkltYWdlKq4BChhHYW1lU2Vzc2lvbkJsb2NrZWRSZWFzb24SKwonR0FNRV9TRVNTSU9OX0JMT0NLRURfUkVBU09OX1VOU1BFQ0lGSUVEEAASLworR0FNRV9TRVNTSU9OX0JMT0NLRURfUkVBU09OX05PX09QRU5fU0VTU0lPThABEjQKMEdBTUVfU0VTU0lPTl9CTE9DS0VEX1JFQVNPTl9TRVNTSU9OX0FMUkVBRFlfT1BFThACMroHCgtQbGF5U2VydmljZRJlChBTdGFydEdhbWVTZXNzaW9uEicubWV1cnBnLnBsYXkudjEuU3RhcnRHYW1lU2Vzc2lvblJlcXVlc3QaKC5tZXVycGcucGxheS52MS5TdGFydEdhbWVTZXNzaW9uUmVzcG9uc2USXwoORW5kR2FtZVNlc3Npb24SJS5tZXVycGcucGxheS52MS5FbmRHYW1lU2Vzc2lvblJlcXVlc3QaJi5tZXVycGcucGxheS52MS5FbmRHYW1lU2Vzc2lvblJlc3BvbnNlEmoKEExpc3RHYW1lU2Vzc2lvbnMSJy5tZXVycGcucGxheS52MS5MaXN0R2FtZVNlc3Npb25zUmVxdWVzdBooLm1ldXJwZy5wbGF5LnYxLkxpc3RHYW1lU2Vzc2lvbnNSZXNwb25zZSIDkAICEnYKFExpc3RPcGVuR2FtZVNlc3Npb25zEisubWV1cnBnLnBsYXkudjEuTGlzdE9wZW5HYW1lU2Vzc2lvbnNSZXF1ZXN0GiwubWV1cnBnLnBsYXkudjEuTGlzdE9wZW5HYW1lU2Vzc2lvbnNSZXNwb25zZSIDkAIBEmQKDkdldExpdmVTZXNzaW9uEiUubWV1cnBnLnBsYXkudjEuR2V0TGl2ZVNlc3Npb25SZXF1ZXN0GiYubWV1cnBnLnBsYXkudjEuR2V0TGl2ZVNlc3Npb25SZXNwb25zZSIDkAICEmcKEFdhdGNoR2FtZVNlc3Npb24SJy5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVxdWVzdBooLm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZTABEnQKFUFkanVzdENoYXJhY3RlclZpdGFscxIsLm1ldXJwZy5wbGF5LnYxLkFkanVzdENoYXJhY3RlclZpdGFsc1JlcXVlc3QaLS5tZXVycGcucGxheS52MS5BZGp1c3RDaGFyYWN0ZXJWaXRhbHNSZXNwb25zZRJcCg1TZXRDdXJyZW50TWFwEiQubWV1cnBnLnBsYXkudjEuU2V0Q3VycmVudE1hcFJlcXVlc3QaJS5tZXVycGcucGxheS52MS5TZXRDdXJyZW50TWFwUmVzcG9uc2USXAoNU2V0U2hvd25JbWFnZRIkLm1ldXJwZy5wbGF5LnYxLlNldFNob3duSW1hZ2VSZXF1ZXN0GiUubWV1cnBnLnBsYXkudjEuU2V0U2hvd25JbWFnZVJlc3BvbnNlQrcBChJjb20ubWV1cnBnLnBsYXkudjFCCVBsYXlQcm90b1ABWjxnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvcGxheS92MTtwbGF5djGiAgNNUFiqAg5NZXVycGcuUGxheS5WMcoCDk1ldXJwZ1xQbGF5XFYx4gIaTWV1cnBnXFBsYXlcVjFcR1BCTWV0YWRhdGHqAhBNZXVycGc6OlBsYXk6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp, file_meurpg_campaigns_v1_campaigns, file_meurpg_rules_v1_rules]);
 
 /**
  * GameSessionBlocked is the error detail of PlayService's
@@ -335,6 +337,23 @@ export type GetLiveSessionResponse = Message<"meurpg.play.v1.GetLiveSessionRespo
    * @generated from field: repeated meurpg.play.v1.CharacterVitals vitals = 2;
    */
   vitals: CharacterVitals[];
+
+  /**
+   * The session's current map (a UUID; meurpg.maps.v1.MapService.GetMap
+   * reads it), which every member may see. Empty while the master has not
+   * chosen one.
+   *
+   * @generated from field: string current_map_id = 3;
+   */
+  currentMapId: string;
+
+  /**
+   * The image the master shows the players (SetShownImage). Unset while
+   * nothing is shown.
+   *
+   * @generated from field: meurpg.play.v1.ShownImage shown_image = 4;
+   */
+  shownImage?: ShownImage | undefined;
 };
 
 /**
@@ -343,6 +362,63 @@ export type GetLiveSessionResponse = Message<"meurpg.play.v1.GetLiveSessionRespo
  */
 export const GetLiveSessionResponseSchema: GenMessage<GetLiveSessionResponse> = /*@__PURE__*/
   messageDesc(file_meurpg_play_v1_play, 12);
+
+/**
+ * ShownImage is a gallery image the master shows the players during a
+ * session (MR-028), with what the app needs to show it. Any active member of
+ * the campaign may fetch its files.
+ *
+ * @generated from message meurpg.play.v1.ShownImage
+ */
+export type ShownImage = Message<"meurpg.play.v1.ShownImage"> & {
+  /**
+   * The gallery image's ID (a UUID).
+   *
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * The image's name in the gallery, shown as its caption.
+   *
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * Its size in pixels.
+   *
+   * @generated from field: int32 width = 3;
+   */
+  width: number;
+
+  /**
+   * @generated from field: int32 height = 4;
+   */
+  height: number;
+
+  /**
+   * Where to fetch it: "/images/{id}".
+   *
+   * @generated from field: string url = 5;
+   */
+  url: string;
+
+  /**
+   * Where to fetch its thumbnail (480 pixels on the longer side):
+   * "/images/{id}/thumb".
+   *
+   * @generated from field: string thumbnail_url = 6;
+   */
+  thumbnailUrl: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.ShownImage.
+ * Use `create(ShownImageSchema)` to create a new message.
+ */
+export const ShownImageSchema: GenMessage<ShownImage> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 13);
 
 /**
  * CharacterVitals are a player character's live numbers (RN-02): hit
@@ -457,7 +533,7 @@ export type CharacterVitals = Message<"meurpg.play.v1.CharacterVitals"> & {
  * Use `create(CharacterVitalsSchema)` to create a new message.
  */
 export const CharacterVitalsSchema: GenMessage<CharacterVitals> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 13);
+  messageDesc(file_meurpg_play_v1_play, 14);
 
 /**
  * SpellSlotUsage is one spell level's slots.
@@ -492,7 +568,7 @@ export type SpellSlotUsage = Message<"meurpg.play.v1.SpellSlotUsage"> & {
  * Use `create(SpellSlotUsageSchema)` to create a new message.
  */
 export const SpellSlotUsageSchema: GenMessage<SpellSlotUsage> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 14);
+  messageDesc(file_meurpg_play_v1_play, 15);
 
 /**
  * PactSlotUsage is a warlock's pact magic slots: all of one level.
@@ -527,7 +603,7 @@ export type PactSlotUsage = Message<"meurpg.play.v1.PactSlotUsage"> & {
  * Use `create(PactSlotUsageSchema)` to create a new message.
  */
 export const PactSlotUsageSchema: GenMessage<PactSlotUsage> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 15);
+  messageDesc(file_meurpg_play_v1_play, 16);
 
 /**
  * WatchGameSessionRequest names the campaign.
@@ -546,7 +622,7 @@ export type WatchGameSessionRequest = Message<"meurpg.play.v1.WatchGameSessionRe
  * Use `create(WatchGameSessionRequestSchema)` to create a new message.
  */
 export const WatchGameSessionRequestSchema: GenMessage<WatchGameSessionRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 16);
+  messageDesc(file_meurpg_play_v1_play, 17);
 
 /**
  * WatchGameSessionResponse is one event of the live session's stream.
@@ -590,6 +666,38 @@ export type WatchGameSessionResponse = Message<"meurpg.play.v1.WatchGameSessionR
      */
     value: WatchGameSessionResponse_SessionEnded;
     case: "sessionEnded";
+  } | {
+    /**
+     * The session's current map changed.
+     *
+     * @generated from field: meurpg.play.v1.WatchGameSessionResponse.CurrentMapChanged current_map_changed = 5;
+     */
+    value: WatchGameSessionResponse_CurrentMapChanged;
+    case: "currentMapChanged";
+  } | {
+    /**
+     * Something the member sees on a map changed.
+     *
+     * @generated from field: meurpg.play.v1.WatchGameSessionResponse.MapChanged map_changed = 6;
+     */
+    value: WatchGameSessionResponse_MapChanged;
+    case: "mapChanged";
+  } | {
+    /**
+     * The master moved a token.
+     *
+     * @generated from field: meurpg.play.v1.WatchGameSessionResponse.TokenMoved token_moved = 7;
+     */
+    value: WatchGameSessionResponse_TokenMoved;
+    case: "tokenMoved";
+  } | {
+    /**
+     * The master showed an image, or stopped showing it.
+     *
+     * @generated from field: meurpg.play.v1.WatchGameSessionResponse.ShownImageChanged shown_image_changed = 8;
+     */
+    value: WatchGameSessionResponse_ShownImageChanged;
+    case: "shownImageChanged";
   } | { case: undefined; value?: undefined };
 };
 
@@ -598,7 +706,7 @@ export type WatchGameSessionResponse = Message<"meurpg.play.v1.WatchGameSessionR
  * Use `create(WatchGameSessionResponseSchema)` to create a new message.
  */
 export const WatchGameSessionResponseSchema: GenMessage<WatchGameSessionResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 17);
+  messageDesc(file_meurpg_play_v1_play, 18);
 
 /**
  * Ready is the stream's first event.
@@ -619,7 +727,7 @@ export type WatchGameSessionResponse_Ready = Message<"meurpg.play.v1.WatchGameSe
  * Use `create(WatchGameSessionResponse_ReadySchema)` to create a new message.
  */
 export const WatchGameSessionResponse_ReadySchema: GenMessage<WatchGameSessionResponse_Ready> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 17, 0);
+  messageDesc(file_meurpg_play_v1_play, 18, 0);
 
 /**
  * Heartbeat carries nothing.
@@ -634,7 +742,7 @@ export type WatchGameSessionResponse_Heartbeat = Message<"meurpg.play.v1.WatchGa
  * Use `create(WatchGameSessionResponse_HeartbeatSchema)` to create a new message.
  */
 export const WatchGameSessionResponse_HeartbeatSchema: GenMessage<WatchGameSessionResponse_Heartbeat> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 17, 1);
+  messageDesc(file_meurpg_play_v1_play, 18, 1);
 
 /**
  * VitalsChanged carries a character's new vitals. Only the master and the
@@ -655,7 +763,7 @@ export type WatchGameSessionResponse_VitalsChanged = Message<"meurpg.play.v1.Wat
  * Use `create(WatchGameSessionResponse_VitalsChangedSchema)` to create a new message.
  */
 export const WatchGameSessionResponse_VitalsChangedSchema: GenMessage<WatchGameSessionResponse_VitalsChanged> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 17, 2);
+  messageDesc(file_meurpg_play_v1_play, 18, 2);
 
 /**
  * SessionEnded says the watched session ended.
@@ -676,7 +784,123 @@ export type WatchGameSessionResponse_SessionEnded = Message<"meurpg.play.v1.Watc
  * Use `create(WatchGameSessionResponse_SessionEndedSchema)` to create a new message.
  */
 export const WatchGameSessionResponse_SessionEndedSchema: GenMessage<WatchGameSessionResponse_SessionEnded> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 17, 3);
+  messageDesc(file_meurpg_play_v1_play, 18, 3);
+
+/**
+ * CurrentMapChanged says the session shows another map now. Everyone
+ * gets it; the app reads the map (MapService.GetMap).
+ *
+ * @generated from message meurpg.play.v1.WatchGameSessionResponse.CurrentMapChanged
+ */
+export type WatchGameSessionResponse_CurrentMapChanged = Message<"meurpg.play.v1.WatchGameSessionResponse.CurrentMapChanged"> & {
+  /**
+   * The new current map (a UUID), which every member may see. Empty when
+   * the session has no current map anymore (the master cleared it, or
+   * deleted the map).
+   *
+   * @generated from field: string map_id = 1;
+   */
+  mapId: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.WatchGameSessionResponse.CurrentMapChanged.
+ * Use `create(WatchGameSessionResponse_CurrentMapChangedSchema)` to create a new message.
+ */
+export const WatchGameSessionResponse_CurrentMapChangedSchema: GenMessage<WatchGameSessionResponse_CurrentMapChanged> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 18, 4);
+
+/**
+ * MapChanged is a hint: something the member sees on this map changed,
+ * so the app reads the map again (MapService.GetMap). It carries no
+ * content, so a hidden point's name or description never travels on a
+ * player's stream. After a change that hides the map, GetMap answers
+ * `not_found` to a player: the app leaves the map. A map_changed for a
+ * map the app does not list yet (just revealed, or created) means the
+ * list changed too: read it again (MapService.ListMaps).
+ *
+ * @generated from message meurpg.play.v1.WatchGameSessionResponse.MapChanged
+ */
+export type WatchGameSessionResponse_MapChanged = Message<"meurpg.play.v1.WatchGameSessionResponse.MapChanged"> & {
+  /**
+   * The map (a UUID).
+   *
+   * @generated from field: string map_id = 1;
+   */
+  mapId: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.WatchGameSessionResponse.MapChanged.
+ * Use `create(WatchGameSessionResponse_MapChangedSchema)` to create a new message.
+ */
+export const WatchGameSessionResponse_MapChangedSchema: GenMessage<WatchGameSessionResponse_MapChanged> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 18, 5);
+
+/**
+ * ShownImageChanged carries the image the master shows now. Everyone
+ * gets it.
+ *
+ * @generated from message meurpg.play.v1.WatchGameSessionResponse.ShownImageChanged
+ */
+export type WatchGameSessionResponse_ShownImageChanged = Message<"meurpg.play.v1.WatchGameSessionResponse.ShownImageChanged"> & {
+  /**
+   * The image shown now. Unset when the master stopped showing it, or
+   * deleted it.
+   *
+   * @generated from field: meurpg.play.v1.ShownImage image = 1;
+   */
+  image?: ShownImage | undefined;
+};
+
+/**
+ * Describes the message meurpg.play.v1.WatchGameSessionResponse.ShownImageChanged.
+ * Use `create(WatchGameSessionResponse_ShownImageChangedSchema)` to create a new message.
+ */
+export const WatchGameSessionResponse_ShownImageChangedSchema: GenMessage<WatchGameSessionResponse_ShownImageChanged> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 18, 6);
+
+/**
+ * TokenMoved is a token's new position. A token the app does not know
+ * yet (it may have missed a `map_changed`) means: read the map again.
+ *
+ * @generated from message meurpg.play.v1.WatchGameSessionResponse.TokenMoved
+ */
+export type WatchGameSessionResponse_TokenMoved = Message<"meurpg.play.v1.WatchGameSessionResponse.TokenMoved"> & {
+  /**
+   * The map (a UUID).
+   *
+   * @generated from field: string map_id = 1;
+   */
+  mapId: string;
+
+  /**
+   * The character whose token moved (a UUID).
+   *
+   * @generated from field: string character_id = 2;
+   */
+  characterId: string;
+
+  /**
+   * The new position, in basis points of the image's width and height
+   * (0 to 10000).
+   *
+   * @generated from field: int32 x_bp = 3;
+   */
+  xBp: number;
+
+  /**
+   * @generated from field: int32 y_bp = 4;
+   */
+  yBp: number;
+};
+
+/**
+ * Describes the message meurpg.play.v1.WatchGameSessionResponse.TokenMoved.
+ * Use `create(WatchGameSessionResponse_TokenMovedSchema)` to create a new message.
+ */
+export const WatchGameSessionResponse_TokenMovedSchema: GenMessage<WatchGameSessionResponse_TokenMoved> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 18, 7);
 
 /**
  * AdjustCharacterVitalsRequest is the master's correction. Every value set
@@ -747,7 +971,7 @@ export type AdjustCharacterVitalsRequest = Message<"meurpg.play.v1.AdjustCharact
  * Use `create(AdjustCharacterVitalsRequestSchema)` to create a new message.
  */
 export const AdjustCharacterVitalsRequestSchema: GenMessage<AdjustCharacterVitalsRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 18);
+  messageDesc(file_meurpg_play_v1_play, 19);
 
 /**
  * SpellSlotsUsed sets how many slots of one spell level are used.
@@ -775,7 +999,7 @@ export type SpellSlotsUsed = Message<"meurpg.play.v1.SpellSlotsUsed"> & {
  * Use `create(SpellSlotsUsedSchema)` to create a new message.
  */
 export const SpellSlotsUsedSchema: GenMessage<SpellSlotsUsed> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 19);
+  messageDesc(file_meurpg_play_v1_play, 20);
 
 /**
  * AdjustCharacterVitalsResponse returns the character's vitals after the
@@ -795,7 +1019,102 @@ export type AdjustCharacterVitalsResponse = Message<"meurpg.play.v1.AdjustCharac
  * Use `create(AdjustCharacterVitalsResponseSchema)` to create a new message.
  */
 export const AdjustCharacterVitalsResponseSchema: GenMessage<AdjustCharacterVitalsResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 20);
+  messageDesc(file_meurpg_play_v1_play, 21);
+
+/**
+ * SetCurrentMapRequest names the map the session shows.
+ *
+ * @generated from message meurpg.play.v1.SetCurrentMapRequest
+ */
+export type SetCurrentMapRequest = Message<"meurpg.play.v1.SetCurrentMapRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * A map of the campaign (a UUID), or empty to clear the current map.
+   *
+   * @generated from field: string map_id = 2;
+   */
+  mapId: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.SetCurrentMapRequest.
+ * Use `create(SetCurrentMapRequestSchema)` to create a new message.
+ */
+export const SetCurrentMapRequestSchema: GenMessage<SetCurrentMapRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 22);
+
+/**
+ * SetCurrentMapResponse returns the session's current map.
+ *
+ * @generated from message meurpg.play.v1.SetCurrentMapResponse
+ */
+export type SetCurrentMapResponse = Message<"meurpg.play.v1.SetCurrentMapResponse"> & {
+  /**
+   * The current map (a UUID), or empty when it was cleared.
+   *
+   * @generated from field: string current_map_id = 1;
+   */
+  currentMapId: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.SetCurrentMapResponse.
+ * Use `create(SetCurrentMapResponseSchema)` to create a new message.
+ */
+export const SetCurrentMapResponseSchema: GenMessage<SetCurrentMapResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 23);
+
+/**
+ * SetShownImageRequest names the image the session shows.
+ *
+ * @generated from message meurpg.play.v1.SetShownImageRequest
+ */
+export type SetShownImageRequest = Message<"meurpg.play.v1.SetShownImageRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * An image of the campaign's gallery (a UUID), or empty to stop showing
+   * it.
+   *
+   * @generated from field: string image_id = 2;
+   */
+  imageId: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.SetShownImageRequest.
+ * Use `create(SetShownImageRequestSchema)` to create a new message.
+ */
+export const SetShownImageRequestSchema: GenMessage<SetShownImageRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 24);
+
+/**
+ * SetShownImageResponse returns what the session shows now.
+ *
+ * @generated from message meurpg.play.v1.SetShownImageResponse
+ */
+export type SetShownImageResponse = Message<"meurpg.play.v1.SetShownImageResponse"> & {
+  /**
+   * The image shown, or unset when the master stopped showing it.
+   *
+   * @generated from field: meurpg.play.v1.ShownImage shown_image = 1;
+   */
+  shownImage?: ShownImage | undefined;
+};
+
+/**
+ * Describes the message meurpg.play.v1.SetShownImageResponse.
+ * Use `create(SetShownImageResponseSchema)` to create a new message.
+ */
+export const SetShownImageResponseSchema: GenMessage<SetShownImageResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 25);
 
 /**
  * GameSessionBlockedReason says why PlayService refused a call with
@@ -841,9 +1160,10 @@ export const GameSessionBlockedReasonSchema: GenEnum<GameSessionBlockedReason> =
  * exist.
  *
  * When the campaign has no open game session, the live-session methods
- * (GetLiveSession, WatchGameSession, AdjustCharacterVitals) fail with
- * `failed_precondition` and a GameSessionBlocked detail whose reason is
- * NO_OPEN_SESSION, so the app can show "Nenhuma sessão em andamento".
+ * (GetLiveSession, WatchGameSession, AdjustCharacterVitals, SetCurrentMap,
+ * SetShownImage) fail with `failed_precondition` and a GameSessionBlocked
+ * detail whose reason is NO_OPEN_SESSION, so the app can show "Nenhuma
+ * sessão em andamento".
  *
  * Errors every method can return, besides those listed on each method:
  *   - `unauthenticated`: no valid session cookie.
@@ -948,8 +1268,10 @@ export const PlayService: GenService<{
    * approval); a player gets only their own living character, or none. It
    * is the live session's snapshot: the app reads it after
    * WatchGameSession's `ready` event, and again after every reconnection,
-   * so a missed event never leaves the screen stale. Any member may call
-   * it.
+   * so a missed event never leaves the screen stale. It also names the
+   * session's current map (SetCurrentMap), which the app reads with
+   * meurpg.maps.v1.MapService.GetMap, and the image the master shows
+   * (SetShownImage). Any member may call it.
    *
    * Errors:
    *   - `not_found`: the campaign does not exist, or the caller is not a
@@ -978,6 +1300,18 @@ export const PlayService: GenService<{
    *     (nothing for about 60 seconds) and proxies don't close an idle one;
    *   - `vitals_changed` when the master corrects a character's vitals,
    *     sent only to the master and to that character's player;
+   *   - `current_map_changed` when the master sets the session's current
+   *     map, or it is deleted; sent to everyone;
+   *   - `map_changed` when something the member sees on a map changed (a
+   *     point, a token's state, the map's name, image or revealed state);
+   *     the app reads the map again (MapService.GetMap). A player gets it
+   *     only when the change touches something they see, before or after
+   *     it (RN-10): a change to hidden things reaches only the master;
+   *   - `token_moved` when the master moves a token: to everyone when the
+   *     token is visible on a map the players see, only to the master
+   *     otherwise;
+   *   - `shown_image_changed` when the master shows an image, stops showing
+   *     it, or deletes it; sent to everyone;
    *   - `session_ended` when the master ends the session; the stream then
    *     ends without an error.
    *
@@ -1039,6 +1373,60 @@ export const PlayService: GenService<{
     methodKind: "unary";
     input: typeof AdjustCharacterVitalsRequestSchema;
     output: typeof AdjustCharacterVitalsResponseSchema;
+  },
+  /**
+   * SetCurrentMap chooses the map the session shows at the table, or clears
+   * it. Only the campaign's master may call it, and only while the campaign
+   * has an open session. The map must be one of the campaign's
+   * (meurpg.maps.v1.MapService), and setting it also reveals it to the
+   * players (RN-10): a player always sees the current map. Setting the same
+   * map again is fine.
+   *
+   * Every WatchGameSession stream of the campaign then gets
+   * `current_map_changed`, and GetLiveSession returns the new map. A new
+   * session starts without a current map.
+   *
+   * Errors:
+   *   - `not_found`: the map is not in this campaign, the campaign does not
+   *     exist, or the caller is not a member of it.
+   *   - `permission_denied`: the caller is a player.
+   *   - `failed_precondition`: no open session (GameSessionBlocked,
+   *     NO_OPEN_SESSION).
+   *
+   * @generated from rpc meurpg.play.v1.PlayService.SetCurrentMap
+   */
+  setCurrentMap: {
+    methodKind: "unary";
+    input: typeof SetCurrentMapRequestSchema;
+    output: typeof SetCurrentMapResponseSchema;
+  },
+  /**
+   * SetShownImage shows the players an image of the campaign's gallery, or
+   * stops showing it (MR-028): a handout, such as a portrait, a letter or a
+   * scene. Only the campaign's master may call it, and only while the
+   * campaign has an open session. One image at a time; showing another
+   * replaces it. It is apart from the current map: the players may see
+   * both.
+   *
+   * It reveals nothing else: a player learns the image's ID only while it
+   * is shown (GetLiveSession, `shown_image_changed`), never the gallery.
+   * Every WatchGameSession stream of the campaign gets
+   * `shown_image_changed`. A new session starts showing nothing; deleting
+   * the image (GalleryService.DeleteGalleryImage) stops showing it.
+   *
+   * Errors:
+   *   - `not_found`: the image is not in the campaign's gallery, the
+   *     campaign does not exist, or the caller is not a member of it.
+   *   - `permission_denied`: the caller is a player.
+   *   - `failed_precondition`: no open session (GameSessionBlocked,
+   *     NO_OPEN_SESSION).
+   *
+   * @generated from rpc meurpg.play.v1.PlayService.SetShownImage
+   */
+  setShownImage: {
+    methodKind: "unary";
+    input: typeof SetShownImageRequestSchema;
+    output: typeof SetShownImageResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_meurpg_play_v1_play, 0);

@@ -14,7 +14,7 @@ const endGameSession = `-- name: EndGameSession :one
 UPDATE game_sessions
 SET ended_at = COALESCE(ended_at, GREATEST($3::TIMESTAMPTZ, started_at))
 WHERE campaign_id = $1 AND id = $2
-RETURNING id, campaign_id, session_number, started_at, ended_at
+RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id
 `
 
 type EndGameSessionParams struct {
@@ -35,12 +35,14 @@ func (q *Queries) EndGameSession(ctx context.Context, arg EndGameSessionParams) 
 		&i.SessionNumber,
 		&i.StartedAt,
 		&i.EndedAt,
+		&i.CurrentMapID,
+		&i.ShownImageID,
 	)
 	return i, err
 }
 
 const getGameSessionForUpdate = `-- name: GetGameSessionForUpdate :one
-SELECT id, campaign_id, session_number, started_at, ended_at FROM game_sessions
+SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id FROM game_sessions
 WHERE campaign_id = $1 AND id = $2
 FOR UPDATE
 `
@@ -60,12 +62,33 @@ func (q *Queries) GetGameSessionForUpdate(ctx context.Context, arg GetGameSessio
 		&i.SessionNumber,
 		&i.StartedAt,
 		&i.EndedAt,
+		&i.CurrentMapID,
+		&i.ShownImageID,
 	)
 	return i, err
 }
 
+const getOnScreen = `-- name: GetOnScreen :one
+SELECT current_map_id, shown_image_id FROM game_sessions
+WHERE campaign_id = $1 AND ended_at IS NULL
+`
+
+type GetOnScreenRow struct {
+	CurrentMapID *string
+	ShownImageID *string
+}
+
+// What the open session shows: its current map and the image the master
+// shows (either NULL when none). No row: no open session.
+func (q *Queries) GetOnScreen(ctx context.Context, campaignID string) (GetOnScreenRow, error) {
+	row := q.db.QueryRow(ctx, getOnScreen, campaignID)
+	var i GetOnScreenRow
+	err := row.Scan(&i.CurrentMapID, &i.ShownImageID)
+	return i, err
+}
+
 const getOpenGameSession = `-- name: GetOpenGameSession :one
-SELECT id, campaign_id, session_number, started_at, ended_at FROM game_sessions
+SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id FROM game_sessions
 WHERE campaign_id = $1 AND ended_at IS NULL
 `
 
@@ -80,12 +103,14 @@ func (q *Queries) GetOpenGameSession(ctx context.Context, campaignID string) (Ga
 		&i.SessionNumber,
 		&i.StartedAt,
 		&i.EndedAt,
+		&i.CurrentMapID,
+		&i.ShownImageID,
 	)
 	return i, err
 }
 
 const getOpenGameSessionForUpdate = `-- name: GetOpenGameSessionForUpdate :one
-SELECT id, campaign_id, session_number, started_at, ended_at FROM game_sessions
+SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id FROM game_sessions
 WHERE campaign_id = $1 AND ended_at IS NULL
 FOR UPDATE
 `
@@ -103,6 +128,8 @@ func (q *Queries) GetOpenGameSessionForUpdate(ctx context.Context, campaignID st
 		&i.SessionNumber,
 		&i.StartedAt,
 		&i.EndedAt,
+		&i.CurrentMapID,
+		&i.ShownImageID,
 	)
 	return i, err
 }
@@ -140,7 +167,7 @@ func (q *Queries) GetSessionEventByIdempotencyKey(ctx context.Context, arg GetSe
 const insertGameSession = `-- name: InsertGameSession :one
 INSERT INTO game_sessions (campaign_id, session_number, started_at)
 VALUES ($1, $2, $3)
-RETURNING id, campaign_id, session_number, started_at, ended_at
+RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id
 `
 
 type InsertGameSessionParams struct {
@@ -158,6 +185,8 @@ func (q *Queries) InsertGameSession(ctx context.Context, arg InsertGameSessionPa
 		&i.SessionNumber,
 		&i.StartedAt,
 		&i.EndedAt,
+		&i.CurrentMapID,
+		&i.ShownImageID,
 	)
 	return i, err
 }
@@ -202,7 +231,7 @@ func (q *Queries) InsertSessionEvent(ctx context.Context, arg InsertSessionEvent
 }
 
 const listGameSessions = `-- name: ListGameSessions :many
-SELECT id, campaign_id, session_number, started_at, ended_at FROM game_sessions
+SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id FROM game_sessions
 WHERE campaign_id = $1
 ORDER BY session_number DESC
 `
@@ -223,6 +252,8 @@ func (q *Queries) ListGameSessions(ctx context.Context, campaignID string) ([]Ga
 			&i.SessionNumber,
 			&i.StartedAt,
 			&i.EndedAt,
+			&i.CurrentMapID,
+			&i.ShownImageID,
 		); err != nil {
 			return nil, err
 		}
@@ -235,7 +266,7 @@ func (q *Queries) ListGameSessions(ctx context.Context, campaignID string) ([]Ga
 }
 
 const listOpenGameSessions = `-- name: ListOpenGameSessions :many
-SELECT id, campaign_id, session_number, started_at, ended_at FROM game_sessions
+SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id FROM game_sessions
 WHERE campaign_id = ANY($1::UUID[]) AND ended_at IS NULL
 ORDER BY started_at DESC, id
 `
@@ -257,6 +288,8 @@ func (q *Queries) ListOpenGameSessions(ctx context.Context, campaignIds []string
 			&i.SessionNumber,
 			&i.StartedAt,
 			&i.EndedAt,
+			&i.CurrentMapID,
+			&i.ShownImageID,
 		); err != nil {
 			return nil, err
 		}
@@ -298,4 +331,60 @@ func (q *Queries) NextSessionNumber(ctx context.Context, campaignID string) (int
 	var next int32
 	err := row.Scan(&next)
 	return next, err
+}
+
+const setCurrentMap = `-- name: SetCurrentMap :one
+UPDATE game_sessions
+SET current_map_id = $1
+WHERE id = $2
+RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id
+`
+
+type SetCurrentMapParams struct {
+	CurrentMapID *string
+	ID           string
+}
+
+// The caller holds the session's row lock (GetOpenGameSessionForUpdate).
+func (q *Queries) SetCurrentMap(ctx context.Context, arg SetCurrentMapParams) (GameSession, error) {
+	row := q.db.QueryRow(ctx, setCurrentMap, arg.CurrentMapID, arg.ID)
+	var i GameSession
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.SessionNumber,
+		&i.StartedAt,
+		&i.EndedAt,
+		&i.CurrentMapID,
+		&i.ShownImageID,
+	)
+	return i, err
+}
+
+const setShownImage = `-- name: SetShownImage :one
+UPDATE game_sessions
+SET shown_image_id = $1
+WHERE id = $2
+RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id
+`
+
+type SetShownImageParams struct {
+	ShownImageID *string
+	ID           string
+}
+
+// The caller holds the session's row lock (GetOpenGameSessionForUpdate).
+func (q *Queries) SetShownImage(ctx context.Context, arg SetShownImageParams) (GameSession, error) {
+	row := q.db.QueryRow(ctx, setShownImage, arg.ShownImageID, arg.ID)
+	var i GameSession
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.SessionNumber,
+		&i.StartedAt,
+		&i.EndedAt,
+		&i.CurrentMapID,
+		&i.ShownImageID,
+	)
+	return i, err
 }

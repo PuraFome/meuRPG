@@ -1,0 +1,562 @@
+syntax = "proto3";
+
+package meurpg.maps.v1;
+
+import "google/protobuf/timestamp.proto";
+import "meurpg/characters/v1/characters.proto";
+
+// MapService keeps a campaign's maps (MR-008, MR-009, MR-012): an image of
+// the gallery with points of interest and tokens on top of it.
+//
+// Who sees what (RN-10) is decided on the server, and a player never
+// receives a hidden thing, not even its ID:
+//   - A map is hidden until the master reveals it (SetMapRevealed), and a
+//     new map starts hidden. A player sees a map when it is revealed or
+//     when it is the current map of the campaign's open game session
+//     (PlayService.SetCurrentMap, which also reveals it). Any other map is
+//     `not_found` for them, exactly as a map that does not exist.
+//   - A point is hidden until the master reveals it, and a new point starts
+//     hidden. A player gets only the revealed points of a map they see.
+//   - A token is visible or hidden. A player's character starts visible and
+//     an NPC hidden; a player gets only the visible tokens.
+//   - A submap point leads to its target map for a player only when they
+//     may see that map too; otherwise it has no target for them.
+//   - The master sees everything, with each thing's state.
+//
+// Only the campaign's master changes maps, points and tokens; any member
+// reads them, filtered as above. While a game session is open, every change
+// also reaches the members watching it (PlayService.WatchGameSession):
+// `map_changed` and `token_moved`, under the same rules, so a player's
+// stream never mentions a hidden thing either.
+//
+// Positions (x_bp, y_bp) are basis points of the map image's width and
+// height: 0 is the left (top) edge, 10000 the right (bottom) edge, 5000 the
+// middle. They do not depend on the image's size in pixels.
+//
+// Text fields. Lengths count characters (Unicode code points), after the
+// server trims spaces at both ends. Names are one line, 1 to 80 characters,
+// with no control characters. A point's description is 0 to 2,000
+// characters and may have line breaks and tabs, but no other control
+// characters. Every text is fiction the master writes: the server never
+// logs it (docs/privacidade.md).
+//
+// Every method needs a valid session cookie and fails with `unauthenticated`
+// without one. For a campaign the caller is not a member of (a pending
+// member neither, RN-15), methods answer `not_found`, exactly as for a
+// campaign that does not exist; a player calling a method only the master
+// may call gets `permission_denied`. See ADR-0011. An ID that is not a UUID
+// is answered like an ID that does not exist.
+//
+// Errors every method can return, besides those listed on each method:
+//   - `unauthenticated`: no valid session cookie.
+//   - `invalid_argument`: a field breaks its documented rules. The message
+//     names the field, never its value.
+//   - `unavailable`: the database did not answer; the app may try again.
+//   - `aborted`: the database kept reporting a conflicting transaction
+//     after the server's retries; the app may try again.
+//
+// Responses carry `Cache-Control: no-store`. Every request carries a
+// campaign ID, so reads are IDEMPOTENT and POST-only: a GET would put the
+// IDs in the URL, and URLs end up in the platform's request logs
+// (docs/privacidade.md).
+service MapService {
+  // ListMaps lists the campaign's maps the caller may see, oldest first:
+  // every map for the master, each with its state; for a player, only the
+  // revealed maps and the session's current map. Any member may call it.
+  // The list is not paginated: a campaign has at most 200 maps.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist, or the caller is not a
+  //     member of it.
+  rpc ListMaps(ListMapsRequest) returns (ListMapsResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // GetMap returns one map with its points and tokens, as the caller may
+  // see them: the master gets every point and token, each with its state; a
+  // player gets only the revealed points and the visible tokens. Any member
+  // may call it. The app calls it again whenever the live session says the
+  // map changed (`map_changed`, `current_map_changed`).
+  //
+  // Errors:
+  //   - `not_found`: the map is not in this campaign, or the caller is a
+  //     player and the map is hidden from them; the campaign does not
+  //     exist, or the caller is not a member of it.
+  rpc GetMap(GetMapRequest) returns (GetMapResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // CreateMap creates a map from an image of the campaign's gallery. Only
+  // the campaign's master may call it. The map starts hidden, without
+  // points or tokens.
+  //
+  // Errors:
+  //   - `invalid_argument`: the name breaks its rules, or image_id is not an
+  //     image of the campaign's gallery (it may have been deleted in
+  //     another tab).
+  //   - `not_found`: the campaign does not exist, or the caller is not a
+  //     member of it.
+  //   - `permission_denied`: the caller is a player.
+  //   - `resource_exhausted`: the campaign already has 200 maps.
+  rpc CreateMap(CreateMapRequest) returns (CreateMapResponse);
+
+  // UpdateMap renames a map or changes its image. Only the campaign's
+  // master may call it. The points and tokens keep their positions, which
+  // are relative to the image's size.
+  //
+  // revision must be the revision the client last read. If the map's name
+  // or image changed since, the call fails with `aborted` and changes
+  // nothing: the app reloads the map and the master tries again. On
+  // success, the revision goes up by one.
+  //
+  // Errors:
+  //   - `invalid_argument`: nothing to change, revision less than 1, the
+  //     name breaks its rules, or image_id is not an image of the
+  //     campaign's gallery.
+  //   - `not_found`: the map is not in this campaign, the campaign does not
+  //     exist, or the caller is not a member of it.
+  //   - `permission_denied`: the caller is a player.
+  //   - `aborted`: revision is stale.
+  rpc UpdateMap(UpdateMapRequest) returns (UpdateMapResponse);
+
+  // DeleteMap deletes a map with its points and tokens. Only the campaign's
+  // master may call it. It cannot be undone. The gallery image stays.
+  // Submap points of other maps that led to it lose their target, and if
+  // it was the session's current map, the session has no current map
+  // anymore (`current_map_changed` with an empty map_id).
+  //
+  // Errors:
+  //   - `not_found`: the map is not in this campaign (or was already
+  //     deleted), the campaign does not exist, or the caller is not a member
+  //     of it.
+  //   - `permission_denied`: the caller is a player.
+  rpc DeleteMap(DeleteMapRequest) returns (DeleteMapResponse);
+
+  // SetMapRevealed shows a map to the players, or hides it again (RN-10).
+  // Only the campaign's master may call it. Revealing a revealed map, or
+  // hiding a hidden one, changes nothing. Hiding the session's current map
+  // does not take it away from the players while it stays current.
+  //
+  // Errors:
+  //   - `not_found`: the map is not in this campaign, the campaign does not
+  //     exist, or the caller is not a member of it.
+  //   - `permission_denied`: the caller is a player.
+  rpc SetMapRevealed(SetMapRevealedRequest) returns (SetMapRevealedResponse);
+
+  // CreateMapPoint puts a point of interest on a map (MR-008). Only the
+  // campaign's master may call it. The point starts hidden.
+  //
+  // Errors:
+  //   - `invalid_argument`: a field breaks its rules; kind is unspecified;
+  //     target_map_id is set on a point that is not a SUBMAP, is the
+  //     point's own map, or is not a map of the campaign.
+  //   - `not_found`: the map is not in this campaign, the campaign does not
+  //     exist, or the caller is not a member of it.
+  //   - `permission_denied`: the caller is a player.
+  //   - `resource_exhausted`: the map already has 200 points.
+  rpc CreateMapPoint(CreateMapPointRequest) returns (CreateMapPointResponse);
+
+  // UpdateMapPoint changes a point: each field set in the request replaces
+  // the current value, and unset fields stay as they are. Moving a point is
+  // an update of x_bp and y_bp. Only the campaign's master may call it.
+  // Changing the kind to anything but SUBMAP removes the target.
+  //
+  // Errors:
+  //   - `invalid_argument`: nothing to change; a field breaks its rules;
+  //     target_map_id is set on a point that is not a SUBMAP (after the
+  //     change), is the point's own map, or is not a map of the campaign.
+  //   - `not_found`: the point is not on this map, the map is not in this
+  //     campaign, the campaign does not exist, or the caller is not a
+  //     member of it.
+  //   - `permission_denied`: the caller is a player.
+  rpc UpdateMapPoint(UpdateMapPointRequest) returns (UpdateMapPointResponse);
+
+  // DeleteMapPoint deletes a point. Only the campaign's master may call it.
+  // It cannot be undone.
+  //
+  // Errors:
+  //   - `not_found`: the point is not on this map (or was already deleted),
+  //     the map is not in this campaign, the campaign does not exist, or
+  //     the caller is not a member of it.
+  //   - `permission_denied`: the caller is a player.
+  rpc DeleteMapPoint(DeleteMapPointRequest) returns (DeleteMapPointResponse);
+
+  // SetMapPointRevealed shows a point to the players, or hides it again
+  // (RN-10, MR-009). Only the campaign's master may call it. The players see
+  // it only on a map they see.
+  //
+  // Errors:
+  //   - `not_found`: the point is not on this map, the map is not in this
+  //     campaign, the campaign does not exist, or the caller is not a
+  //     member of it.
+  //   - `permission_denied`: the caller is a player.
+  rpc SetMapPointRevealed(SetMapPointRevealedRequest) returns (SetMapPointRevealedResponse);
+
+  // PlaceMapToken puts a character's token on a map, or moves it there if
+  // it is already on the map (MR-012). Only the campaign's master may call
+  // it. The character must be a living character of the campaign: a
+  // player's (not dead, not waiting for approval) or an NPC. A new token of
+  // a player's character starts visible; a new NPC token starts hidden
+  // (question 31 for Samuel). Moving keeps the token's state.
+  //
+  // During a session, a move reaches the watching members as `token_moved`:
+  // everyone when the token is visible on a map the players see, only the
+  // master otherwise. A new token reaches them as `map_changed`.
+  //
+  // Errors:
+  //   - `not_found`: the character is not a living character of the
+  //     campaign, the map is not in this campaign, the campaign does not
+  //     exist, or the caller is not a member of it.
+  //   - `permission_denied`: the caller is a player.
+  rpc PlaceMapToken(PlaceMapTokenRequest) returns (PlaceMapTokenResponse);
+
+  // SetMapTokenHidden hides a token from the players, or shows it again
+  // (RN-10). Only the campaign's master may call it.
+  //
+  // Errors:
+  //   - `not_found`: the character has no token on this map, the map is not
+  //     in this campaign, the campaign does not exist, or the caller is not
+  //     a member of it.
+  //   - `permission_denied`: the caller is a player.
+  rpc SetMapTokenHidden(SetMapTokenHiddenRequest) returns (SetMapTokenHiddenResponse);
+
+  // RemoveMapToken takes a character's token off a map. Only the
+  // campaign's master may call it.
+  //
+  // Errors:
+  //   - `not_found`: the character has no token on this map, the map is not
+  //     in this campaign, the campaign does not exist, or the caller is not
+  //     a member of it.
+  //   - `permission_denied`: the caller is a player.
+  rpc RemoveMapToken(RemoveMapTokenRequest) returns (RemoveMapTokenResponse);
+}
+
+// MapPointKind is what a point of interest leads to.
+enum MapPointKind {
+  MAP_POINT_KIND_UNSPECIFIED = 0;
+  // "Batalha": an encounter. Until combat arrives (Etapa 6), opening it
+  // shows its name and description.
+  MAP_POINT_KIND_BATTLE = 1;
+  // "Submapa": another map, such as a building inside a region (the
+  // point's target map).
+  MAP_POINT_KIND_SUBMAP = 2;
+  // "Cena de RP": a role-play scene. Until scenes arrive (Etapa 7),
+  // opening it shows its name and description.
+  MAP_POINT_KIND_SCENE = 3;
+}
+
+// Map is a map as the caller may see it.
+message Map {
+  // Stable map ID (a UUID).
+  string id = 1;
+  // The campaign it belongs to (a UUID).
+  string campaign_id = 2;
+  // The map's name, 1 to 80 characters, one line. The players read it.
+  string name = 3;
+  // The image under the map.
+  MapImage image = 4;
+  // Whether the master revealed the map (SetMapRevealed). A player also
+  // sees a hidden map while it is the session's current map; then this is
+  // false and current is true.
+  bool revealed = 5;
+  // Whether it is the current map of the campaign's open game session
+  // (PlayService.SetCurrentMap). False when no session is open.
+  bool current = 6;
+  // How many points the caller sees on the map: all of them for the
+  // master, the revealed ones for a player.
+  int32 point_count = 7;
+  // The maps with a submap point that leads here, as the caller may see
+  // them ("Submapa de Mirathel e arredores"); empty for a map no point
+  // leads to ("Mapa principal"). For a player, only the maps they see,
+  // through revealed points. Oldest map first.
+  repeated MapRef parent_maps = 8;
+  // Goes up by one every time the name or the image change. Send it back
+  // in UpdateMap.
+  int32 revision = 9;
+  google.protobuf.Timestamp created_at = 10;
+  // The last change to the map itself: its name, image or revealed state.
+  // Points and tokens have their own times.
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+// MapImage is the image under a map: a gallery image. Any active member of
+// the campaign may fetch it (see GalleryService); a player only learns its
+// ID through a map they may see.
+message MapImage {
+  // The gallery image's ID (a UUID).
+  string id = 1;
+  // Where to fetch it: "/images/{id}".
+  string url = 2;
+  // Where to fetch its thumbnail (480 pixels on the longer side):
+  // "/images/{id}/thumb".
+  string thumbnail_url = 3;
+  // Its size in pixels, so the app can lay the map out before the image
+  // arrives.
+  int32 width = 4;
+  int32 height = 5;
+  // The gallery image's name ("Imagem: Mapa de Mirathel"). Only the master
+  // gets it: the gallery is the master's preparation. Empty for a player.
+  string name = 6;
+}
+
+// MapRef names a map: enough to link to it.
+message MapRef {
+  // The map's ID (a UUID).
+  string id = 1;
+  // The map's name.
+  string name = 2;
+}
+
+// MapPoint is a point of interest on a map.
+message MapPoint {
+  // Stable point ID (a UUID).
+  string id = 1;
+  // The map it is on (a UUID).
+  string map_id = 2;
+  MapPointKind kind = 3;
+  // 1 to 80 characters, one line. The players read it once the point is
+  // revealed.
+  string name = 4;
+  // What the players read when they open the point: 0 to 2,000 characters,
+  // with line breaks.
+  string description = 5;
+  // The point's position, in basis points of the image's width and
+  // height (0 to 10000).
+  int32 x_bp = 6;
+  int32 y_bp = 7;
+  // Where a SUBMAP point leads: the app offers "Abrir <name>". Unset when
+  // the point has no target (its map was deleted, or the master has not
+  // chosen one), and, for a player, when the target map is hidden from
+  // them: then the point only shows its description.
+  MapRef target_map = 8;
+  // Whether the master revealed the point. Always true for a player, who
+  // never receives a hidden point.
+  bool revealed = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+// MapToken is a character's token on a map.
+message MapToken {
+  // The map it is on (a UUID).
+  string map_id = 1;
+  // The character (a UUID). A player sees the ID of every character whose
+  // token they see; it opens nothing else (CharacterService still answers
+  // `not_found` for a character that is not theirs).
+  string character_id = 2;
+  // The character's name, for the token's initial and its label.
+  string name = 3;
+  // What the character is: a player's character or an NPC kind.
+  meurpg.characters.v1.CharacterKind kind = 4;
+  // Whether the character is the caller's own: the app draws "(você)".
+  bool mine = 5;
+  // The token's position, in basis points of the image's width and
+  // height (0 to 10000).
+  int32 x_bp = 6;
+  int32 y_bp = 7;
+  // Whether the master hid the token. Always false for a player, who never
+  // receives a hidden token.
+  bool hidden = 8;
+  // When it was placed, moved, hidden or shown last.
+  google.protobuf.Timestamp updated_at = 9;
+}
+
+// ListMapsRequest names a campaign.
+message ListMapsRequest {
+  string campaign_id = 1;
+}
+
+// ListMapsResponse lists the maps the caller may see, oldest first.
+message ListMapsResponse {
+  repeated Map maps = 1;
+}
+
+// GetMapRequest names a map of a campaign.
+message GetMapRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+}
+
+// GetMapResponse is a map with what the caller may see on it.
+message GetMapResponse {
+  Map map = 1;
+  // The points, oldest first: every point for the master, only the
+  // revealed ones for a player.
+  repeated MapPoint points = 2;
+  // The tokens of living characters: players' characters first, then
+  // NPCs, each group oldest first. Every token for the master, only the
+  // visible ones for a player. A character who died stays on the map, but
+  // its token is not listed.
+  repeated MapToken tokens = 3;
+}
+
+// CreateMapRequest carries the new map.
+message CreateMapRequest {
+  string campaign_id = 1;
+  // 1 to 80 characters, one line.
+  string name = 2;
+  // An image of the campaign's gallery (a UUID).
+  string image_id = 3;
+}
+
+// CreateMapResponse returns the new, hidden map.
+message CreateMapResponse {
+  Map map = 1;
+}
+
+// UpdateMapRequest carries the map's new name, image, or both. At least
+// one must be set.
+message UpdateMapRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+  // The revision the client last read (Map.revision).
+  int32 revision = 3;
+  // The new name: 1 to 80 characters, one line.
+  optional string name = 4;
+  // The new image: an image of the campaign's gallery (a UUID).
+  optional string image_id = 5;
+}
+
+// UpdateMapResponse returns the map as saved.
+message UpdateMapResponse {
+  // The map, with the new revision.
+  Map map = 1;
+}
+
+// DeleteMapRequest names the map to delete.
+message DeleteMapRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+}
+
+// DeleteMapResponse is empty: the map is gone.
+message DeleteMapResponse {}
+
+// SetMapRevealedRequest says whether the players may see a map.
+message SetMapRevealedRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+  // True reveals the map; false hides it.
+  bool revealed = 3;
+}
+
+// SetMapRevealedResponse returns the map as it is now.
+message SetMapRevealedResponse {
+  Map map = 1;
+}
+
+// CreateMapPointRequest carries the new point.
+message CreateMapPointRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+  // Required.
+  MapPointKind kind = 3;
+  // 1 to 80 characters, one line.
+  string name = 4;
+  // 0 to 2,000 characters, with line breaks.
+  string description = 5;
+  // The position, 0 to 10000 each.
+  int32 x_bp = 6;
+  int32 y_bp = 7;
+  // Only for a SUBMAP point, and optional there: another map of the
+  // campaign (a UUID). Empty for none.
+  string target_map_id = 8;
+}
+
+// CreateMapPointResponse returns the new, hidden point.
+message CreateMapPointResponse {
+  MapPoint point = 1;
+}
+
+// UpdateMapPointRequest carries the fields to change. Each field set
+// replaces the current value; unset fields stay as they are. At least one
+// must be set.
+message UpdateMapPointRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+  string point_id = 3;
+  // The new kind; not UNSPECIFIED. Anything but SUBMAP removes the target.
+  optional MapPointKind kind = 4;
+  // 1 to 80 characters, one line.
+  optional string name = 5;
+  // 0 to 2,000 characters, with line breaks.
+  optional string description = 6;
+  // The new position, 0 to 10000 each. Moving a point sets both.
+  optional int32 x_bp = 7;
+  optional int32 y_bp = 8;
+  // A SUBMAP point's new target: another map of the campaign (a UUID), or
+  // empty to remove it.
+  optional string target_map_id = 9;
+  // Reveals (true) or hides (false) the point, as SetMapPointRevealed
+  // does, so the editor saves everything in one call.
+  optional bool revealed = 10;
+}
+
+// UpdateMapPointResponse returns the point as saved.
+message UpdateMapPointResponse {
+  MapPoint point = 1;
+}
+
+// DeleteMapPointRequest names the point to delete.
+message DeleteMapPointRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+  string point_id = 3;
+}
+
+// DeleteMapPointResponse is empty: the point is gone.
+message DeleteMapPointResponse {}
+
+// SetMapPointRevealedRequest says whether the players may see a point.
+message SetMapPointRevealedRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+  string point_id = 3;
+  // True reveals the point; false hides it.
+  bool revealed = 4;
+}
+
+// SetMapPointRevealedResponse returns the point as it is now.
+message SetMapPointRevealedResponse {
+  MapPoint point = 1;
+}
+
+// PlaceMapTokenRequest puts a character's token at a position.
+message PlaceMapTokenRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+  // A living character of the campaign (a UUID).
+  string character_id = 3;
+  // The position, 0 to 10000 each.
+  int32 x_bp = 4;
+  int32 y_bp = 5;
+}
+
+// PlaceMapTokenResponse returns the token as it is now.
+message PlaceMapTokenResponse {
+  MapToken token = 1;
+}
+
+// SetMapTokenHiddenRequest says whether the players may see a token.
+message SetMapTokenHiddenRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+  string character_id = 3;
+  // True hides the token; false shows it.
+  bool hidden = 4;
+}
+
+// SetMapTokenHiddenResponse returns the token as it is now.
+message SetMapTokenHiddenResponse {
+  MapToken token = 1;
+}
+
+// RemoveMapTokenRequest names the token to take off the map.
+message RemoveMapTokenRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+  string character_id = 3;
+}
+
+// RemoveMapTokenResponse is empty: the token is gone.
+message RemoveMapTokenResponse {}

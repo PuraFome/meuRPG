@@ -2,16 +2,23 @@
 // and lists game sessions (PlayService), which is what locks the players'
 // sheets (RN-01, MR-006, MR-011), and runs the live session (Etapa 5,
 // live.go): the in-app notice that a session is open (RN-06), the
-// session's live stream (ADR-0005), and the master's correction of the
+// session's live stream (ADR-0005), the master's correction of the
 // characters' vitals (RN-02), each one recorded in session_events
-// (ADR-0007). Turns and actions come with combat (Etapa 6).
+// (ADR-0007), and what the session shows at the table: the current map and
+// a gallery image (onscreen.go). Turns and actions come with combat (Etapa
+// 6).
 //
 // Starting a session locks the sheets in the same transaction that opens
 // it, through a SheetLocker, and the vitals live in the characters module
 // too, reached through a VitalsKeeper: the characters module owns the
 // characters tables, so this package never touches them. The campaigns a
-// user belongs to come from the campaigns module (CampaignDirectory).
-// cmd/api connects them; no package imports another's code.
+// user belongs to come from the campaigns module (CampaignDirectory). The
+// maps module checks and reveals the map the master makes current, and
+// reads the gallery image the master shows (MapKeeper); the other way
+// round, it reads what the session shows and publishes its changes on the
+// live stream through OnScreen and Publish (its maps.LiveSession
+// interface). cmd/api connects them; no package imports
+// another's code.
 //
 // The SQL lives in queries.sql, and sqlc turns it into package playdb.
 // Every write runs inside db.InTx, which retries CockroachDB's serialization
@@ -71,6 +78,21 @@ type VitalsKeeper interface {
 	AdjustVitals(ctx context.Context, tx pgx.Tx, campaignID, characterID string, req *playv1.AdjustCharacterVitalsRequest) (before, after *playv1.CharacterVitals, err error)
 }
 
+// MapKeeper is what the session's screen needs from the maps module
+// (maps.SessionMaps), whose tables the maps and the gallery images are: it
+// checks and reveals the map the master makes current (SetCurrentMap), and
+// reads the gallery image the master shows (SetShownImage).
+type MapKeeper interface {
+	// RevealMap reveals the campaign's map inside tx (a revealed map stays
+	// as it is), or returns a `not_found` Connect error when mapID is not a
+	// map of the campaign.
+	RevealMap(ctx context.Context, tx pgx.Tx, campaignID, mapID string, at time.Time) error
+	// ShownImage returns the campaign's gallery image imageID as the
+	// session shows it, or a `not_found` Connect error when it is not an
+	// image of the campaign's gallery.
+	ShownImage(ctx context.Context, campaignID, imageID string) (*playv1.ShownImage, error)
+}
+
 // CampaignDirectory tells which campaigns a user belongs to. The campaigns
 // module implements it (campaigns.Service.ActiveCampaigns), so this
 // package never reads campaign_members itself.
@@ -116,6 +138,9 @@ type Config struct {
 	Vitals VitalsKeeper
 	// Campaigns lists a user's campaigns, for the session notice. Required.
 	Campaigns CampaignDirectory
+	// Maps checks and reveals the session's current map, and reads the
+	// image it shows. Required.
+	Maps MapKeeper
 	// Live sets the live stream's timing; the zero value is the defaults.
 	Live LiveConfig
 	// Logger receives errors, without personal data. Nil means
@@ -132,6 +157,7 @@ type Service struct {
 	sheets    SheetLocker
 	vitals    VitalsKeeper
 	campaigns CampaignDirectory
+	maps      MapKeeper
 	logger    *slog.Logger
 	now       func() time.Time
 
@@ -155,6 +181,8 @@ func New(cfg Config) (*Service, error) {
 		return nil, errors.New("play: Vitals is required")
 	case cfg.Campaigns == nil:
 		return nil, errors.New("play: Campaigns is required")
+	case cfg.Maps == nil:
+		return nil, errors.New("play: Maps is required")
 	}
 	s := &Service{
 		pool:      cfg.Pool,
@@ -162,6 +190,7 @@ func New(cfg Config) (*Service, error) {
 		sheets:    cfg.Sheets,
 		vitals:    cfg.Vitals,
 		campaigns: cfg.Campaigns,
+		maps:      cfg.Maps,
 		logger:    cfg.Logger,
 		now:       cfg.Now,
 		hub:       live.New(cfg.Live.Buffer),
