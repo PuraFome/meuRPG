@@ -25,6 +25,7 @@ import {
   CharacterFormValue,
   HitPointsMethod,
   RulesCatalogVm,
+  SpellOptionVm,
 } from './character-editor.types';
 import { EditorStepper } from './editor-stepper/editor-stepper';
 import {
@@ -83,6 +84,12 @@ type SavingState = { status: 'idle' } | { status: 'saving' } | { status: 'error'
 /** The "search box" the catalog-backed pickers use to narrow a long list
  * (cantrips, spells) — a plain case-insensitive substring match on the
  * Portuguese name, no new dependency. */
+/** Circle first, then Portuguese name: the order the player expects to read
+ * a spell list in. Returns a new array. */
+function sortSpells(spells: readonly SpellOptionVm[]): SpellOptionVm[] {
+  return [...spells].sort((a, b) => a.level - b.level || a.namePt.localeCompare(b.namePt, 'pt-BR'));
+}
+
 function filterByName<T extends { readonly namePt: string }>(
   items: readonly T[],
   query: string,
@@ -314,17 +321,32 @@ export class CharacterEditor {
    * preparadas". Truques (cantrips) show for every caster regardless. */
   protected readonly spellPreparation = computed(() => this.selectedClass()?.preparation ?? null);
 
+  /** The highest spell circle the chosen class reaches at the form's level,
+   * read from the table the server sends (`max_spell_level_by_level`); the
+   * browser only filters by it, the server still validates on save. `null`
+   * when the table is missing (nothing is hidden then). */
+  protected readonly maxSpellLevel = computed<number | null>(() => {
+    const table = this.selectedClass()?.maxSpellLevelByLevel ?? [];
+    if (table.length === 0) {
+      return null;
+    }
+    const level = Math.min(Math.max(Math.trunc(this.selectedLevel()) || 1, 1), table.length);
+    return table[level - 1];
+  });
+
   /** `RulesCatalogVm.spells` filtered to the chosen class's list — cantrips
-   * (level 0) and leveled spells (1-9) are two different pools, never
-   * character-level-gated (the browser never computes that rule; an
-   * unavailable choice shows up as a `DerivedSheet.issue` instead). */
+   * (level 0) and leveled spells (1-9) are two different pools. This is the
+   * whole class list, used for the "chosen" line and for what a save may
+   * send; what the player sees to pick is `visibleSpells` below. */
   protected readonly availableCantrips = computed(() => {
     const s = this.state();
     if (s.status !== 'ready') {
       return [];
     }
     const classKey = this.selectedClassKey();
-    return s.catalog.spells.filter((sp) => sp.level === 0 && sp.classKeys.includes(classKey));
+    return sortSpells(
+      s.catalog.spells.filter((sp) => sp.level === 0 && sp.classKeys.includes(classKey)),
+    );
   });
   protected readonly availableSpells = computed(() => {
     const s = this.state();
@@ -332,17 +354,60 @@ export class CharacterEditor {
       return [];
     }
     const classKey = this.selectedClassKey();
-    return s.catalog.spells.filter((sp) => sp.level >= 1 && sp.classKeys.includes(classKey));
+    return sortSpells(
+      s.catalog.spells.filter((sp) => sp.level >= 1 && sp.classKeys.includes(classKey)),
+    );
   });
+  /** What a leveled picker lists: the spells up to the current maximum
+   * circle, plus any already-selected spell above it (the level was lowered)
+   * so the player can uncheck it instead of it vanishing. Already sorted by
+   * circle then name, so the above-the-limit ones come last. */
+  private visibleSpells(selected: ReadonlySet<string>): readonly SpellOptionVm[] {
+    const max = this.maxSpellLevel();
+    return max === null
+      ? this.availableSpells()
+      : this.availableSpells().filter((sp) => sp.level <= max || selected.has(sp.key));
+  }
   protected readonly filteredCantrips = computed(() =>
     filterByName(this.availableCantrips(), this.cantripsFilter()),
   );
   protected readonly filteredSpellsKnown = computed(() =>
-    filterByName(this.availableSpells(), this.spellsKnownFilter()),
+    filterByName(this.visibleSpells(this.selectedSpellsKnown()), this.spellsKnownFilter()),
   );
   protected readonly filteredSpellsPrepared = computed(() =>
-    filterByName(this.availableSpells(), this.spellsPreparedFilter()),
+    filterByName(this.visibleSpells(this.selectedSpellsPrepared()), this.spellsPreparedFilter()),
   );
+  /** True when the class has no leveled spells yet (Paladin and Ranger at
+   * level 1) and none is selected, so the leveled pickers give way to one
+   * line saying when casting starts. */
+  protected readonly noLeveledSpellsYet = computed(
+    () =>
+      this.maxSpellLevel() === 0 &&
+      this.selectedSpellsKnown().size === 0 &&
+      this.selectedSpellsPrepared().size === 0,
+  );
+  protected readonly castingStartsText = computed(() => {
+    const c = this.selectedClass();
+    return c ? `O ${c.namePt} conjura magias a partir do nível ${c.spellcastingFirstLevel}.` : '';
+  });
+
+  /** The hint under "Subclasse" while the level is below the one where the
+   * class chooses it; empty once the level reaches it. */
+  protected readonly subclassHint = computed(() => {
+    const c = this.selectedClass();
+    const level = this.selectedLevel();
+    return c && c.subclassLevel > 0 && !(level >= c.subclassLevel)
+      ? `O ${c.namePt} escolhe a subclasse no nível ${c.subclassLevel}.`
+      : '';
+  });
+
+  /** The player picked another class: a subclass belongs to one class, so the
+   * old one (SRD or custom) must not survive. Wired to the select's
+   * `selectionChange`, not `valueChanges`, because loading a saved sheet also
+   * sets the class and must keep its subclass. */
+  protected onClassChange(): void {
+    this.fullForm.patchValue({ subclassName: '', customSubclassName: '' });
+  }
 
   /** Set by a submit with an invalid field: from then on, the notice above
    * the buttons lists what is still wrong, and the steps that have it are

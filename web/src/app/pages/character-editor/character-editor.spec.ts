@@ -61,6 +61,21 @@ function catalog(): RulesCatalogVm {
         isCaster: true,
         preparation: 'spellbook',
         subclasses: [{ key: 'subclass:evocation', namePt: 'Evocação' }],
+        subclassLevel: 2,
+        spellcastingFirstLevel: 1,
+        // Levels 1-5: circles 1, 1, 2, 2, 3.
+        maxSpellLevelByLevel: [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 9, 9],
+      },
+      {
+        key: 'class:paladin',
+        namePt: 'Paladino',
+        isCaster: true,
+        preparation: 'prepared',
+        subclasses: [{ key: 'subclass:devotion', namePt: 'Devoção' }],
+        subclassLevel: 3,
+        spellcastingFirstLevel: 2,
+        // No leveled spells at level 1.
+        maxSpellLevelByLevel: [0, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5],
       },
     ],
     backgrounds: [{ key: 'background:acolyte', namePt: 'Acólito' }],
@@ -83,8 +98,15 @@ function catalog(): RulesCatalogVm {
         classKeys: ['class:wizard'],
       },
       { key: 'spell:shield', namePt: 'Escudo Arcano', level: 1, classKeys: ['class:wizard'] },
+      { key: 'spell:fireball', namePt: 'Bola de Fogo', level: 3, classKeys: ['class:wizard'] },
+      { key: 'spell:bless', namePt: 'Bênção', level: 1, classKeys: ['class:paladin'] },
       // Not on the Wizard's list — proves the picker filters by class.
-      { key: 'spell:cure-wounds', namePt: 'Curar Ferimentos', level: 1, classKeys: ['class:cleric'] },
+      {
+        key: 'spell:cure-wounds',
+        namePt: 'Curar Ferimentos',
+        level: 1,
+        classKeys: ['class:cleric'],
+      },
     ],
   };
 }
@@ -112,7 +134,10 @@ describe('CharacterEditor', () => {
     fake = TestBed.inject(CharacterEditorSource) as unknown as FakeCharacterEditorSource;
   }
 
-  async function render(): Promise<{ fixture: ComponentFixture<CharacterEditor>; el: HTMLElement }> {
+  async function render(): Promise<{
+    fixture: ComponentFixture<CharacterEditor>;
+    el: HTMLElement;
+  }> {
     const fixture = TestBed.createComponent(CharacterEditor);
     fixture.detectChanges();
     await flush();
@@ -172,7 +197,7 @@ describe('CharacterEditor', () => {
     expect(cmp.fullForm.get('abilities.str')?.invalid).toBe(false);
   });
 
-  it('shows only the spell lists that match the class\'s preparation style', async () => {
+  it("shows only the spell lists that match the class's preparation style", async () => {
     configure({ id: 'camp-1' });
     const { fixture, el } = await render();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -213,7 +238,7 @@ describe('CharacterEditor', () => {
     expect(el.querySelector('input[formcontrolname="armor"]')).toBeNull();
   });
 
-  it('filters cantrips and spells to the chosen class\'s list', async () => {
+  it("filters cantrips and spells to the chosen class's list", async () => {
     configure({ id: 'camp-1' });
     const { fixture } = await render();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -226,7 +251,7 @@ describe('CharacterEditor', () => {
 
     const spellKeys = cmp.availableSpells().map((s: { key: string }) => s.key);
     // The Cleric-only spell never shows for a Wizard.
-    expect(spellKeys.sort()).toEqual(['spell:magic-missile', 'spell:shield']);
+    expect(spellKeys.sort()).toEqual(['spell:fireball', 'spell:magic-missile', 'spell:shield']);
   });
 
   it('the search box narrows the spell picker by Portuguese name', async () => {
@@ -238,7 +263,146 @@ describe('CharacterEditor', () => {
     cmp.fullForm.patchValue({ className: 'class:wizard' });
     cmp.cantripsFilter.set('gelo');
 
-    expect(cmp.filteredCantrips().map((s: { key: string }) => s.key)).toEqual(['spell:ray-of-frost']);
+    expect(cmp.filteredCantrips().map((s: { key: string }) => s.key)).toEqual([
+      'spell:ray-of-frost',
+    ]);
+  });
+
+  describe('the subclass', () => {
+    it('offers "Nenhuma" and saves the subclass unset when it is picked', async () => {
+      configure({ id: 'camp-1' });
+      const { fixture } = await render();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cmp = fixture.componentInstance as any;
+
+      cmp.fullForm.patchValue({
+        name: 'Pensantus',
+        race: 'race:gnome',
+        className: 'class:wizard',
+        subclassName: 'subclass:evocation',
+        level: 2,
+        background: 'background:acolyte',
+      });
+      // "Nenhuma" is the option whose value is ''.
+      cmp.fullForm.patchValue({ subclassName: '' });
+      await cmp.submit();
+
+      expect(fake.createCharacterCalls[0].full?.subclassName).toBe('');
+    });
+
+    it('lists "Nenhuma" first in the select', async () => {
+      configure({ id: 'camp-1' });
+      const { fixture, el } = await render();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cmp = fixture.componentInstance as any;
+      cmp.fullForm.patchValue({ className: 'class:wizard' });
+      fixture.detectChanges();
+
+      const select = el.querySelector<HTMLElement>('mat-select[formcontrolname="subclassName"]');
+      select?.querySelector<HTMLElement>('.mat-mdc-select-trigger')?.click();
+      fixture.detectChanges();
+      const options = Array.from(document.querySelectorAll('mat-option')).map((o) =>
+        o.textContent?.trim(),
+      );
+      expect(options[0]).toBe('Nenhuma');
+      expect(options).toContain('Evocação');
+    });
+
+    it('says at which level the class chooses it, until the level gets there', async () => {
+      configure({ id: 'camp-1' });
+      const { fixture, el } = await render();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cmp = fixture.componentInstance as any;
+
+      cmp.fullForm.patchValue({ className: 'class:paladin', level: 1 });
+      fixture.detectChanges();
+      expect(el.textContent).toContain('O Paladino escolhe a subclasse no nível 3.');
+
+      cmp.fullForm.patchValue({ level: 3 });
+      fixture.detectChanges();
+      expect(el.textContent).not.toContain('escolhe a subclasse no nível');
+    });
+
+    it('clears the subclass when the class changes', async () => {
+      configure({ id: 'camp-1' });
+      const { fixture } = await render();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cmp = fixture.componentInstance as any;
+
+      cmp.fullForm.patchValue({
+        className: 'class:wizard',
+        subclassName: 'subclass:evocation',
+        customSubclassName: 'Outra',
+      });
+      cmp.fullForm.patchValue({ className: 'class:paladin' });
+      cmp.onClassChange();
+
+      expect(cmp.fullForm.value.subclassName).toBe('');
+      expect(cmp.fullForm.value.customSubclassName).toBe('');
+    });
+  });
+
+  describe('the spell lists by level', () => {
+    const keys = (list: { key: string }[]) => list.map((s) => s.key);
+
+    it('lists only the spells up to the highest circle of the level, circle then name', async () => {
+      configure({ id: 'camp-1' });
+      const { fixture } = await render();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cmp = fixture.componentInstance as any;
+
+      cmp.fullForm.patchValue({ className: 'class:wizard', level: 1 });
+      expect(keys(cmp.filteredSpellsKnown())).toEqual(['spell:shield', 'spell:magic-missile']);
+      // Cantrips are not gated by level, and sort by name.
+      expect(keys(cmp.filteredCantrips())).toEqual(['spell:fire-bolt', 'spell:ray-of-frost']);
+
+      cmp.fullForm.patchValue({ level: 5 });
+      expect(keys(cmp.filteredSpellsPrepared())).toEqual([
+        'spell:shield',
+        'spell:magic-missile',
+        'spell:fireball',
+      ]);
+    });
+
+    it('keeps a selected spell above the limit, last and marked, so it can be unchecked', async () => {
+      configure({ id: 'camp-1' });
+      const { fixture, el } = await render();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cmp = fixture.componentInstance as any;
+
+      cmp.fullForm.patchValue({ className: 'class:wizard', level: 5 });
+      cmp.selectedSpellsKnown.set(new Set(['spell:fireball']));
+      cmp.fullForm.patchValue({ level: 1 });
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(keys(cmp.filteredSpellsKnown())).toEqual([
+        'spell:shield',
+        'spell:magic-missile',
+        'spell:fireball',
+      ]);
+      // Not selected there, so the prepared list still hides it.
+      expect(keys(cmp.filteredSpellsPrepared())).not.toContain('spell:fireball');
+      expect(el.textContent).toContain('Bola de Fogo (3º círculo, acima do nível)');
+    });
+
+    it('replaces the leveled lists with one line for a class that starts casting later', async () => {
+      configure({ id: 'camp-1' });
+      const { fixture, el } = await render();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cmp = fixture.componentInstance as any;
+
+      cmp.fullForm.patchValue({ className: 'class:paladin', level: 1 });
+      fixture.detectChanges();
+      expect(el.textContent).toContain('O Paladino conjura magias a partir do nível 2.');
+      expect(el.textContent).not.toContain('Magias preparadas');
+
+      cmp.fullForm.patchValue({ level: 2 });
+      fixture.detectChanges();
+      expect(el.textContent).not.toContain('conjura magias a partir do nível');
+      expect(el.textContent).toContain('Magias preparadas');
+    });
   });
 
   it('sends chosen armor, weapons and cantrips as content keys, never typed text', async () => {
@@ -475,7 +639,14 @@ describe('CharacterEditor', () => {
 
     const req = fake.createCharacterCalls[0];
     expect(req.full?.expertiseSkillKeys).toEqual(['skill:arcana']);
-    expect(req.full?.extraAbilityBonuses).toEqual({ str: 0, dex: 0, con: 1, int: 2, wis: 0, cha: 0 });
+    expect(req.full?.extraAbilityBonuses).toEqual({
+      str: 0,
+      dex: 0,
+      con: 1,
+      int: 2,
+      wis: 0,
+      cha: 0,
+    });
     expect(req.full?.experiencePoints).toBe(2700);
     expect(req.full?.alignment).toBe('neutral_good');
     expect(req.full?.customFeaturesText).toBe('Um truque de cartas que sempre erra.');

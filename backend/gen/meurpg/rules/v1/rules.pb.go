@@ -2490,10 +2490,17 @@ type ClassSpellcasting struct {
 	Ability Ability `protobuf:"varint,1,opt,name=ability,proto3,enum=meurpg.rules.v1.Ability" json:"ability,omitempty"`
 	// The class level at which spellcasting starts: 1 for most classes, 2
 	// for the Paladin and the Ranger.
-	FirstLevel    int32            `protobuf:"varint,2,opt,name=first_level,json=firstLevel,proto3" json:"first_level,omitempty"`
-	Preparation   SpellPreparation `protobuf:"varint,3,opt,name=preparation,proto3,enum=meurpg.rules.v1.SpellPreparation" json:"preparation,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	FirstLevel  int32            `protobuf:"varint,2,opt,name=first_level,json=firstLevel,proto3" json:"first_level,omitempty"`
+	Preparation SpellPreparation `protobuf:"varint,3,opt,name=preparation,proto3,enum=meurpg.rules.v1.SpellPreparation" json:"preparation,omitempty"`
+	// The highest spell circle (1 to 9) the class can cast at each class
+	// level, from the class table's spell slots. Index 0 is class level 1 and
+	// index 19 is level 20, so there are 20 entries. 0 means no leveled spells
+	// yet (Paladin and Ranger at level 1; cantrips are never gated by level).
+	// The Warlock's entry is its pact slot circle. Clients use it to list only
+	// the spells the character can take; the server still validates on save.
+	MaxSpellLevelByLevel []int32 `protobuf:"varint,4,rep,packed,name=max_spell_level_by_level,json=maxSpellLevelByLevel,proto3" json:"max_spell_level_by_level,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *ClassSpellcasting) Reset() {
@@ -2545,6 +2552,13 @@ func (x *ClassSpellcasting) GetPreparation() SpellPreparation {
 		return x.Preparation
 	}
 	return SpellPreparation_SPELL_PREPARATION_UNSPECIFIED
+}
+
+func (x *ClassSpellcasting) GetMaxSpellLevelByLevel() []int32 {
+	if x != nil {
+		return x.MaxSpellLevelByLevel
+	}
+	return nil
 }
 
 // Subclass is a subclass of one class.
@@ -3295,12 +3309,13 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\vSkillChoice\x12\x14\n" +
 	"\x05count\x18\x01 \x01(\x05R\x05count\x12\x1d\n" +
 	"\n" +
-	"skill_keys\x18\x02 \x03(\tR\tskillKeys\"\xad\x01\n" +
+	"skill_keys\x18\x02 \x03(\tR\tskillKeys\"\xe5\x01\n" +
 	"\x11ClassSpellcasting\x122\n" +
 	"\aability\x18\x01 \x01(\x0e2\x18.meurpg.rules.v1.AbilityR\aability\x12\x1f\n" +
 	"\vfirst_level\x18\x02 \x01(\x05R\n" +
 	"firstLevel\x12C\n" +
-	"\vpreparation\x18\x03 \x01(\x0e2!.meurpg.rules.v1.SpellPreparationR\vpreparation\"f\n" +
+	"\vpreparation\x18\x03 \x01(\x0e2!.meurpg.rules.v1.SpellPreparationR\vpreparation\x126\n" +
+	"\x18max_spell_level_by_level\x18\x04 \x03(\x05R\x14maxSpellLevelByLevel\"f\n" +
 	"\bSubclass\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +

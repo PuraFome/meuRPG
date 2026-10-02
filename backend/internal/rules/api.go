@@ -317,6 +317,10 @@ type ClassEntry struct {
 	SpellPreparation string
 	// SubclassLevel is the class level at which the subclass is chosen.
 	SubclassLevel int
+	// MaxSpellLevelByLevel[n-1] is the highest spell level the class can
+	// cast at class level n (index 0 is level 1, index 19 is level 20), or 0
+	// when it has no leveled spells yet. Nil for a class that never casts.
+	MaxSpellLevelByLevel []int
 	// Subclasses are the keys of this class's SRD subclasses.
 	Subclasses []string
 }

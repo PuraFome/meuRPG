@@ -181,6 +181,14 @@ export interface ClassOptionVm {
   readonly isCaster: boolean;
   readonly preparation: SpellPreparation | null;
   readonly subclasses: readonly SubclassOptionVm[];
+  /** The class level at which the subclass is chosen (`subclass_level`). */
+  readonly subclassLevel: number;
+  /** The class level at which spellcasting starts (`first_level`), or 0 for
+   * a class that never casts. */
+  readonly spellcastingFirstLevel: number;
+  /** The highest spell circle at each class level, index 0 = level 1 (from
+   * the server, `max_spell_level_by_level`). Empty for a non-caster. */
+  readonly maxSpellLevelByLevel: readonly number[];
 }
 
 export interface BackgroundOptionVm {
@@ -207,11 +215,10 @@ export interface WeaponOptionVm {
 export interface SpellOptionVm {
   readonly key: string;
   readonly namePt: string;
-  /** 0 is a cantrip, 1-9 a leveled spell — this alone decides whether a
-   * spell belongs in "Truques" or in "Magias conhecidas"/"preparadas"
-   * (`rules.proto`'s own distinction; nothing here is about which
-   * character level can reach it — the browser never computes that rule,
-   * see `CharacterEditorSourceLive`'s `spellsForClass`). */
+  /** 0 is a cantrip, 1-9 a leveled spell — this decides whether a spell
+   * belongs in "Truques" or in "Magias conhecidas"/"preparadas". Which
+   * circles a character level reaches comes from the server
+   * (`ClassOptionVm.maxSpellLevelByLevel`); the browser only filters by it. */
   readonly level: number;
   /** Content keys of the classes whose spell list has this spell. */
   readonly classKeys: readonly string[];
