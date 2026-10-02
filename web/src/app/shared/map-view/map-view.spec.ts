@@ -123,6 +123,35 @@ describe('MapView', () => {
     expect(moves).toEqual([{ kind: 'token', id: 't1', xBp: 4000, yBp: 3950 }]);
   });
 
+  it('starts a second move from the first one before the new tokens arrive from the parent', () => {
+    setup({ isMaster: true, mode: 'tokens' });
+    const token = item('token:t1');
+    const step = () => {
+      token.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+      token.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowRight', bubbles: true }));
+    };
+    // Two quick moves, no change detection in between: the second must not
+    // repeat the first (it did, and the players' screens kept the old place).
+    step();
+    step();
+    expect(moves.map((m) => m.xBp)).toEqual([4050, 4100]);
+    fixture.detectChanges();
+    expect((token.closest('app-map-token') as HTMLElement).style.left).toBe('41%');
+  });
+
+  it('forgets its last move once the parent sends new tokens (e.g. a refused move undone)', () => {
+    setup({ isMaster: true, mode: 'tokens' });
+    const token = item('token:t1');
+    token.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    token.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowRight', bubbles: true }));
+    fixture.componentRef.setInput('tokens', [{ ...pensantus }, capitao]);
+    fixture.detectChanges();
+    expect((token.closest('app-map-token') as HTMLElement).style.left).toBe('40%');
+    token.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    token.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowRight', bubbles: true }));
+    expect(moves.map((m) => m.xBp)).toEqual([4050, 4050]);
+  });
+
   it('zooms with the buttons from 100 % to 400 % and fits again', () => {
     setup({ mode: 'view' });
     const view = fixture.componentInstance;
