@@ -84,7 +84,7 @@ Regras:
 6. Campos em `snake_case` no `.proto`; o TypeScript gerado usa `camelCase` sozinho.
 7. Chamada só de leitura leva um nível de idempotência, e qual depende da requisição (decidido por Vinicius em 29/09/2026):
    - **Requisição sem ID e sem dado pessoal** (vazia, como `GetMe`, `ListMyCampaigns`, `ListOpenGameSessions` e `GetServerInfo`): `idempotency_level = NO_SIDE_EFFECTS`. O Connect passa a aceitar GET, que o navegador pode guardar em cache.
-   - **Requisição com ID ou dado pessoal** (como `GetCampaign`, `ListMembers`, `ListInvites`, `GetCampaignDocument`, `GetCharacter`, `ListCharacters`, `GetMasterNotes`, `ListContent`, `ListGameSessions` e `GetLiveSession`): `idempotency_level = IDEMPOTENT`. Fica documentada como leitura e segura para repetir, mas só aceita POST: num GET, a mensagem inteira vai na URL, e a URL fica nos logs da plataforma (ver [Privacidade](privacidade.md)).
+   - **Requisição com ID ou dado pessoal** (como `GetCampaign`, `ListMembers`, `ListInvites`, `GetCampaignDocument`, `GetCharacter`, `ListCharacters`, `GetMasterNotes`, `ListContent`, `GetSpellDetails`, `ListGameSessions` e `GetLiveSession`): `idempotency_level = IDEMPOTENT`. Fica documentada como leitura e segura para repetir, mas só aceita POST: num GET, a mensagem inteira vai na URL, e a URL fica nos logs da plataforma (ver [Privacidade](privacidade.md)).
    - O teste `TestConnectGETOnlyForRequestsWithoutData` (`backend/cmd/api`) falha se um método `NO_SIDE_EFFECTS` tiver requisição com campo.
 8. Os nomes seguem o Google AIP (decidido por Vinicius em 29/09/2026):
    - **Métodos padrão** começam com `Get`, `List`, `Create`, `Update` ou `Delete` mais o recurso (AIP-131 a AIP-135): `GetCampaign`, `ListMembers`, `CreateInvite`.
@@ -385,6 +385,7 @@ A exceção é uma só, e fica escrita no `authz` (`backend/internal/authz/pendi
 | `CharacterService.GetCharacter`, `ListCharacters` | Ler o próprio personagem | Só o próprio personagem pendente |
 | `CharacterService.UpdateCharacter`, `UpdateCharacterStory` | Editar a ficha e a história | Só o próprio personagem pendente |
 | `ContentService.ListContent` | O catálogo que o editor de personagem oferece | — |
+| `ContentService.GetSpellDetails` | Os detalhes de uma magia, para a lista de magias do editor | — |
 
 Dentro dessas chamadas, o membro pendente é tratado como jogador (`authz` devolve `RolePlayer` e `Membership.Pending`), e o `characters` só mostra a ele os personagens `pending` dele (`canSee`, em `access.go`). `ListMyCampaigns` não precisa de exceção: só pede login, e lista as participações da própria pessoa, pendentes incluídas. Mudar a lista é mudar a RN-15: precisa da decisão, das linhas nas matrizes de autorização (`TestAuthorizationMatrix` de `campaigns` e de `characters` têm uma coluna para o membro pendente) e do teste `TestPendingMayCallIsTheAgreedList`.
 
@@ -561,7 +562,10 @@ flowchart LR
 - ataques com as armas da ficha e com os truques de dano;
 - features e traços até o nível do personagem, com o texto do SRD em inglês, as dicas (`hints`) e as `issues`.
 
-**O que não calcula (ainda):** magias ativas como Armadura Arcana e Escudo, PV atuais, espaços gastos e recursos em uso (são da sessão de jogo, Etapa 6). Os efeitos escritos à mão cobrem os níveis 1 a 5; acima disso, uma feature sem efeito aparece só como texto, e o mestre resolve.
+- recursos com usos (`Resources`: Retomar o Fôlego, Ki, Fúria, com o máximo no nível e quando voltam) e ações (`Actions`, as que uma feature dá, com a ação que gastam e o recurso que consomem; `StandardActions`, as dez de todo mundo);
+- o dano de cada ataque também como números (`DamageDice`, `VersatileDice`: quantidade, faces e bônus), além do texto "1d8+3".
+
+**O que não calcula (ainda):** magias ativas como Armadura Arcana e Escudo, PV atuais, espaços gastos e recursos em uso (são da sessão de jogo, Etapa 6; o `combat`, abaixo, só faz as contas sobre o que a sessão guarda). Os efeitos escritos à mão cobrem os níveis 1 a 5; acima disso, uma feature sem efeito aparece só como texto, e o mestre resolve.
 
 ### Efeitos e versões
 
@@ -574,10 +578,43 @@ O SRD descreve as features em prosa. O que o motor precisa saber fica em `effect
 | `roll_mode` | Esperteza Gnômica: vantagem em resistências de INT, SAB e CAR contra magia (vira dica) |
 | `sense` | Visão no escuro, 18 m (60 ft) |
 | `spellcasting` | Mago: INT, prepara do grimório, `max(1, mod("int") + classLevel("wizard"))` preparadas |
-| `resource`, `grant_action` | Fúria, Retomar o Fôlego: carregados agora, usados pela sessão de jogo |
+| `resource`, `grant_action` | Fúria, Retomar o Fôlego: viram `Derived.Resources` e `Derived.Actions`, que o `combat` lê (ver [Combate e detalhes das magias](#combate-e-detalhes-das-magias)) |
 | `choice`, `note`, `handler` | Escolhas do jogador, o que só aparece como texto, e uma função Go registrada |
 
 Um efeito com `tags` (como `against:magic`) nunca é aplicado sozinho: vira uma dica na ficha, e o mestre decide. A versão do conteúdo, `srd51@<commit>+fx.<n>`, aparece na ficha. Mudar um arquivo de `effects/` exige uma revisão nova; um teste confere. Um snapshot novo ou uma revisão nova pode mudar números de uma ficha travada, e o `content_version` mostra com qual conteúdo eles foram calculados.
+
+### Combate e detalhes das magias
+
+O pacote `rules/combat` é a parte pura da luta (MR-012 a MR-014): o que o personagem pode fazer agora e a aritmética de ataque, dano, cura, espaços e testes contra a morte. Como o `rules`, não usa banco, rede, relógio nem aleatoriedade: os dados são rolados fora (no servidor da sessão ou pelo jogador, RN-18) e entram como número, e toda função devolve um valor novo em vez de mudar o que recebeu. O módulo `play` guarda o estado e chama estas funções; o app escreve os resultados em português.
+
+| Função | O que faz |
+| --- | --- |
+| `Options(derived, TurnState, Usage)` | O `TurnOptions` da "Sua vez": a economia (ação, ação bônus, reação, cada uma com `used` e `available`; movimento em pés, dobrado depois da Disparada), os ataques, as magias, as ações padrão e as ações das features, cada opção habilitada ou desabilitada com um código de motivo. Calculado a cada leitura, nunca guardado. |
+| `ResolveAttack(bônus, CA, d20)` | Acerto ou erro: 20 natural sempre acerta e é crítico, 1 natural sempre erra. |
+| `DamageTotal(dados, faces, crítico)` | Soma as faces rolladas e o bônus. Crítico dobra os dados, nunca o bônus. `DiceToRoll` e `DiceRange` dão quantos dados rolar e a faixa válida, para conferir o total digitado com dado físico. |
+| `ApplyDamage(pv, temporários, dano)` | Os PV temporários vão primeiro; piso em 0; diz se "caiu a 0" e quanto sobrou do dano. |
+| `ApplyHeal(pv, máximo, cura)` | Cura até o máximo e diz quanto curou de fato. |
+| `SpendSlot`, `SpendPactSlot`, `SpendResource` | Gastam um espaço de magia, um de pacto ou um uso de recurso; `ErrNoSlot` e `ErrNoUses` quando não há. Devolvem um `Usage` novo. |
+| `DeathSave(d20, sucessos, falhas)` | 10 ou mais é sucesso, menos é falha, 1 natural são duas falhas, 20 natural volta com 1 PV. Três sucessos: estável. Três falhas: `dying`, que o mestre confirma (RN-03); o motor nunca mata sozinho. `DamageWhileDown(crítico)` dá 1 falha (2 no crítico) para dano em quem está a 0. |
+| `GridDistanceSquares`, `GridDistanceFt` | Distância na grade com diagonal valendo um quadrado (RN-21); um quadrado são 5 ft (1,5 m). |
+| `ConcentrationDC(dano)` | `max(10, dano/2)`, o número do lembrete de concentração (RN-22). |
+
+**Os motivos de uma opção desabilitada** são códigos, nunca texto; o app mapeia cada um para a frase em português:
+
+| Código | Quando | Parâmetros |
+| --- | --- | --- |
+| `ACTION_USED`, `BONUS_ACTION_USED`, `REACTION_USED` | A ação, a ação bônus ou a reação que a opção pede já foi usada | — |
+| `NO_SLOT` | Magia de círculo 1 ou mais sem espaço livre no círculo dela nem acima (nem de pacto) | `min_level`: o círculo da magia |
+| `NO_USES` | O recurso da feature acabou | `recharge`: quando volta (`short_rest`, `long_rest`...) |
+| `REACTION_ONLY_WHEN_HIT` | Escudo: só se conjura quando um ataque acerta o conjurador | — |
+| `REACTION_ONLY` | As outras magias de reação (Contramágica, Queda Suave, Repreensão Infernal) | — |
+| `CASTING_TIME_TOO_LONG` | Tempo de conjuração de 1 minuto ou mais | — |
+
+Vale o primeiro motivo que se aplica: o que a magia é, depois a economia, depois os espaços. Cada magia traz também os círculos com que pode ser conjurada (`slots`: do círculo dela para cima, só com espaço livre, mais o espaço de pacto do bruxo, com quantos estão livres para o aviso de "último espaço"). Truques que causam dano ficam só em `attacks`, não em `spells`. O `TurnOptions` já está definido em `rules.proto`, mas ainda não há RPC que o devolva: o `play` o devolve na Etapa 6.
+
+**Ações padrão e recursos.** As dez ações de todo mundo (Atacar, Conjurar uma magia, Disparada, Desengajar, Esquivar, Ajudar, Esconder, Preparar, Procurar, Usar um objeto) ficam em `effects/standard_actions.json`, escritas à mão, e entram na regra das revisões dos efeitos. Os nomes em português dos recursos ficam em `effects/names_pt.json` como `resource:<nome>`; sem esse nome, vale o da feature.
+
+**Detalhes das magias.** `ListContent` continua leve (nome, círculo, escola, classes, ritual, concentração, tempo de conjuração). Tudo o que o SRD diz de uma magia vem de `ContentService.GetSpellDetails(campaign_id, spell_key)`, para o diálogo "?" (mesmo acesso do `ListContent`, membro pendente incluído; chave desconhecida é `not_found`): tempo de conjuração (quantidade e unidade, e o gatilho da reação quando o SRD tem), alcance (tipo e distância em pés), componentes (V, S, M e o material em inglês), duração (instantânea, com tempo, até ser dissipada, especial; e se pede concentração), ataque, resistência (habilidade e o que acontece ao passar: nada, metade ou outra coisa), dano por círculo do espaço (e por nível do personagem, nos truques), cura por círculo e o texto em inglês, com "Em círculos superiores". O servidor devolve dado estruturado e o texto cru do SRD para o que não cabe na estrutura ("4d6 OR 5d6"); escrever "60 ft" como "18 m" e "1 action" como "1 ação" é do app. Em Go, `SpellDetails.DamageAt(círculo, nível)` e `HealAt(círculo)` dão as rolagens já em números (`ParseDice`), para as fatias de combate.
 
 ### Fórmulas no Expr, com sandbox
 
@@ -611,7 +648,7 @@ O jogador cria o próprio personagem e o mestre cria os NPCs; a ficha volta com 
 | `SetStoryEditing`, `MarkCharacterDead` (só personagem de jogador) | Sim | `permission_denied` | `permission_denied` | `not_found` | `unauthenticated` | `not_found` |
 | `ApproveCharacter`, `RejectCharacter` (só personagem de jogador) | Sim | `permission_denied` | `permission_denied` | `not_found` | `unauthenticated` | `not_found` |
 | `GetMasterNotes`, `UpdateMasterNotes` | Sim | `permission_denied` | `permission_denied` | `not_found` | `unauthenticated` | `not_found` |
-| `ContentService.ListContent` | Sim | Sim | Sim | `not_found` | `unauthenticated` | Sim |
+| `ContentService.ListContent`, `GetSpellDetails` | Sim | Sim | Sim | `not_found` | `unauthenticated` | Sim |
 
 Um membro que não pode ver um personagem (o de outro jogador, ou qualquer NPC para um jogador) recebe `not_found`, com a mesma mensagem de um personagem que não existe; assim ninguém descobre IDs de NPC. O teste `TestAuthorizationMatrix` chama cada método como cada um dos seis e falha se um método novo aparecer sem linha na tabela.
 

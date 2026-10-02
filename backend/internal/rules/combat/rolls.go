@@ -1,0 +1,79 @@
+package combat
+
+import (
+	"errors"
+	"fmt"
+
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
+)
+
+// ErrBadRoll is returned for a die face outside the die, or for the wrong
+// number of dice.
+var ErrBadRoll = errors.New("combat: the dice do not match the formula")
+
+// AttackResult is the outcome of an attack roll.
+type AttackResult struct {
+	// Total is the d20 plus the attack bonus.
+	Total int
+	Hit   bool
+	// Critical is a natural 20. A natural 1 never hits (Fumble).
+	Critical bool
+	Fumble   bool
+}
+
+// ResolveAttack compares an attack roll with the target's armor class. A
+// natural 20 always hits and is a critical hit; a natural 1 always misses;
+// anything else hits when the total reaches the armor class. d20Face is the
+// die itself (1 to 20), without the bonus; the caller checks the range.
+func ResolveAttack(attackBonus, targetAC, d20Face int) AttackResult {
+	r := AttackResult{Total: d20Face + attackBonus}
+	switch d20Face {
+	case 20:
+		r.Hit, r.Critical = true, true
+	case 1:
+		r.Fumble = true
+	default:
+		r.Hit = r.Total >= targetAC
+	}
+	return r
+}
+
+// DiceToRoll is how many dice of the formula are rolled: a critical hit
+// rolls the damage dice twice (the bonus is never doubled).
+func DiceToRoll(f rules.DiceFormula, critical bool) int {
+	if critical {
+		return f.Count * 2
+	}
+	return f.Count
+}
+
+// DiceRange is the smallest and largest total of the dice alone (without
+// the bonus), for checking a total typed from physical dice.
+func DiceRange(f rules.DiceFormula, critical bool) (lowest, highest int) {
+	n := DiceToRoll(f, critical)
+	return n, n * f.Sides
+}
+
+// DamageTotal adds up the rolled faces and the formula's bonus. A critical
+// hit needs twice the dice and does not double the bonus. Damage never goes
+// below 0. ErrBadRoll says the faces do not fit the formula.
+func DamageTotal(f rules.DiceFormula, faces []int, critical bool) (int, error) {
+	if len(faces) != DiceToRoll(f, critical) {
+		return 0, fmt.Errorf("%w: want %d dice, got %d", ErrBadRoll, DiceToRoll(f, critical), len(faces))
+	}
+	total := f.Bonus
+	for _, face := range faces {
+		if face < 1 || face > f.Sides {
+			return 0, fmt.Errorf("%w: %d on a d%d", ErrBadRoll, face, f.Sides)
+		}
+		total += face
+	}
+	return max(total, 0), nil
+}
+
+// ConcentrationDC is the Constitution save DC to keep concentrating after
+// taking damage: 10 or half the damage, whichever is higher (rounded down).
+// RN-22 only reminds the table; this is the number in the reminder.
+func ConcentrationDC(damage int) int {
+	return max(10, damage/2)
+}

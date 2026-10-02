@@ -66,6 +66,8 @@ func (x *deriver) attacks() {
 		default:
 			a.RangeFt, a.LongRangeFt = w.NormalRangeFt, w.LongRangeFt
 		}
+		a.DamageDice, _ = ParseDice(a.Damage)
+		a.VersatileDice, _ = ParseDice(a.VersatileDamage)
 		x.d.Attacks = append(x.d.Attacks, a)
 	}
 
@@ -92,6 +94,7 @@ func (x *deriver) attacks() {
 			a.SaveDC = sc.SaveDC
 			a.SaveAbility = Ability(s.SaveAbility)
 		}
+		a.DamageDice, _ = ParseDice(a.Damage)
 		x.d.Attacks = append(x.d.Attacks, a)
 	}
 }

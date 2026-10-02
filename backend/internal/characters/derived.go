@@ -124,19 +124,33 @@ func derivedToProto(d rules.Derived) *rulesv1.DerivedSheet {
 	}
 	for _, a := range d.Attacks {
 		out.Attacks = append(out.Attacks, &rulesv1.Attack{
-			Key:             a.Key,
-			Name:            a.Name,
-			NamePt:          a.NamePT,
-			AttackBonus:     i32(a.AttackBonus),
-			Damage:          a.Damage,
-			DamageTypePt:    a.DamageTypeNamePT,
-			Kind:            attackKindToProto[a.Kind],
-			SaveDc:          i32(a.SaveDC),
-			SaveAbility:     abilityToProto[a.SaveAbility],
-			VersatileDamage: a.VersatileDamage,
-			RangeFt:         i32(a.RangeFt),
-			LongRangeFt:     i32(a.LongRangeFt),
+			DamageDice:          diceToProto(a.DamageDice),
+			VersatileDamageDice: diceToProto(a.VersatileDice),
+			DamageTypeKey:       a.DamageType,
+			Key:                 a.Key,
+			Name:                a.Name,
+			NamePt:              a.NamePT,
+			AttackBonus:         i32(a.AttackBonus),
+			Damage:              a.Damage,
+			DamageTypePt:        a.DamageTypeNamePT,
+			Kind:                attackKindToProto[a.Kind],
+			SaveDc:              i32(a.SaveDC),
+			SaveAbility:         abilityToProto[a.SaveAbility],
+			VersatileDamage:     a.VersatileDamage,
+			RangeFt:             i32(a.RangeFt),
+			LongRangeFt:         i32(a.LongRangeFt),
 		})
+	}
+	for _, r := range d.Resources {
+		out.Resources = append(out.Resources, &rulesv1.Resource{
+			Key: r.Key, NamePt: r.NamePT, Max: i32(r.Max), Recharge: rechargeToProto[r.Recharge], SourceKey: r.Source,
+		})
+	}
+	for _, a := range d.Actions {
+		out.Actions = append(out.Actions, actionToProto(a))
+	}
+	for _, a := range d.StandardActions {
+		out.StandardActions = append(out.StandardActions, actionToProto(a))
 	}
 	for _, f := range d.Features {
 		out.Features = append(out.Features, &rulesv1.Feature{
@@ -167,6 +181,33 @@ func derivedToProto(d rules.Derived) *rulesv1.DerivedSheet {
 		out.Issues = append(out.Issues, &rulesv1.Issue{Code: is.Code, Field: is.Field, Message: is.Message})
 	}
 	return out
+}
+
+var rechargeToProto = map[string]rulesv1.Recharge{
+	rules.RechargeShortRest: rulesv1.Recharge_RECHARGE_SHORT_REST,
+	rules.RechargeLongRest:  rulesv1.Recharge_RECHARGE_LONG_REST,
+	rules.RechargeDawn:      rulesv1.Recharge_RECHARGE_DAWN,
+	rules.RechargeNone:      rulesv1.Recharge_RECHARGE_NONE,
+}
+
+var economyToProto = map[string]rulesv1.ActionEconomy{
+	rules.EconomyAction:      rulesv1.ActionEconomy_ACTION_ECONOMY_ACTION,
+	rules.EconomyBonusAction: rulesv1.ActionEconomy_ACTION_ECONOMY_BONUS_ACTION,
+	rules.EconomyReaction:    rulesv1.ActionEconomy_ACTION_ECONOMY_REACTION,
+	rules.EconomyFree:        rulesv1.ActionEconomy_ACTION_ECONOMY_FREE,
+	rules.EconomyMovement:    rulesv1.ActionEconomy_ACTION_ECONOMY_MOVEMENT,
+}
+
+func actionToProto(a rules.Action) *rulesv1.Action {
+	return &rulesv1.Action{Key: a.Key, NamePt: a.NamePT, Economy: economyToProto[a.Economy], ResourceKey: a.Resource, SourceKey: a.Source}
+}
+
+// diceToProto is nil for a weapon without damage dice.
+func diceToProto(f rules.DiceFormula) *rulesv1.DiceFormula {
+	if f == (rules.DiceFormula{}) {
+		return nil
+	}
+	return &rulesv1.DiceFormula{Count: i32(f.Count), Sides: i32(f.Sides), Bonus: i32(f.Bonus), AddsModifier: f.AddsModifier}
 }
 
 func spellToProto(s rules.SpellEntry) *rulesv1.Spell {

@@ -25,6 +25,9 @@ Usar as mesmas palavras nas conversas, nos documentos e no código evita muita c
 | Intenção de login | Algo que a pessoa pediu antes de entrar e que o servidor conclui logo depois do login, como aceitar um convite. Fica só no servidor, dentro do estado do login. | `intent`, `IntentHandler` |
 | Cena de RP | Momento fora de combate, aberto por um ponto de interesse. | `scene` |
 | Ação da cena | Um item da lista simples do que o jogador pode fazer ou rolar numa cena. | `scene_action` |
+| Economia de ação | O que o personagem pode gastar num turno: uma ação, uma ação bônus, uma reação e o movimento (o deslocamento, dobrado depois da Disparada). O motor calcula o que ainda está disponível (MR-014). | `Economy`, `TurnOptions` |
+| Recurso | Uma capacidade com usos limitados, como Retomar o Fôlego (1 uso por descanso curto), Ki ou Fúria. A ficha diz o máximo e quando volta; a sessão conta os usos gastos. | `Resource`, `Derived.Resources` |
+| Código de motivo | O motivo de uma opção estar desabilitada, como `NO_SLOT` ou `ACTION_USED`. O servidor manda só o código; o app escreve a frase em português. | `DisabledReason` |
 | Encontro | Um combate num mapa, com iniciativa, rodadas e turnos. | `encounter` |
 | Combatente | Um personagem dentro de um encontro. Guarda PV atual, iniciativa e posição daquele combate. | `combatant` |
 | Iniciativa | A rolagem que define a ordem dos turnos num encontro. Cada combatente rola a própria, inclusive NPCs iguais (RN-19). | `initiative` |

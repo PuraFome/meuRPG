@@ -189,6 +189,11 @@ func TestAuthorizationMatrix(t *testing.T) {
 			return err
 		}, [6]connect.Code{allowed, allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated, allowed}},
 
+		{"GetSpellDetails", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.content.GetSpellDetails(ctx, connect.NewRequest(&rulesv1.GetSpellDetailsRequest{CampaignId: campaign, SpellKey: "spell:fire-bolt"}))
+			return err
+		}, [6]connect.Code{allowed, allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated, allowed}},
+
 		// A game session starts: the sheet locks, and the story permission
 		// the master gave above ends (RN-01).
 		{

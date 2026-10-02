@@ -52,6 +52,20 @@ service ContentService {
   rpc ListContent(ListContentRequest) returns (ListContentResponse) {
     option idempotency_level = IDEMPOTENT;
   }
+
+  // GetSpellDetails returns everything the SRD says about one spell,
+  // structured: casting time, range, components, duration, attack or saving
+  // throw, damage and healing by level, and the English description. It is
+  // what the spell's "?" dialog shows; ListContent keeps spells light on
+  // purpose. Same access as ListContent: any member of the campaign, a
+  // pending member included.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist, the caller is not a
+  //     member of it, or no spell has that key.
+  rpc GetSpellDetails(GetSpellDetailsRequest) returns (GetSpellDetailsResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
 }
 
 // Ability is one of the six ability scores.
@@ -195,6 +209,82 @@ message DerivedSheet {
   // Choices on the sheet that the rules do not accept, or that were
   // skipped. Empty when everything checks out.
   repeated Issue issues = 30;
+
+  // Use-limited features at the character's level (Second Wind, Ki, Rage).
+  // The session counts the uses (RN-02).
+  repeated Resource resources = 31;
+  // Actions the character's features grant, with their action economy.
+  repeated Action actions = 32;
+  // The actions everyone has: Attack, Cast a Spell, Dash, Disengage, Dodge,
+  // Help, Hide, Ready, Search, Use an Object.
+  repeated Action standard_actions = 33;
+}
+
+// Resource is a use-limited feature, such as Second Wind or a monk's ki.
+message Resource {
+  // The resource's name in the rules content, such as "second_wind".
+  string key = 1;
+  // The Portuguese name, such as "Retomar o Fôlego".
+  string name_pt = 2;
+  // How many uses, at the character's level. A barbarian's unlimited rage
+  // is 99.
+  int32 max = 3;
+  // When the uses come back.
+  Recharge recharge = 4;
+  // Content key of the feature or trait that grants it.
+  string source_key = 5;
+}
+
+// Recharge says when a Resource's uses come back.
+enum Recharge {
+  RECHARGE_UNSPECIFIED = 0;
+  RECHARGE_SHORT_REST = 1;
+  RECHARGE_LONG_REST = 2;
+  // At dawn, as for some magic items.
+  RECHARGE_DAWN = 3;
+  // Never on its own: the master decides.
+  RECHARGE_NONE = 4;
+}
+
+// Action is something a character does on their turn.
+message Action {
+  // The feature's content key ("feature:second-wind") for a feature action,
+  // or "standard:dash" and the like for a standard one.
+  string key = 1;
+  // The Portuguese name, such as "Retomar o Fôlego" or "Disparada".
+  string name_pt = 2;
+  ActionEconomy economy = 3;
+  // The key of the Resource each use spends. Empty when it spends none.
+  string resource_key = 4;
+  // Content key of the feature or trait that grants it. Empty for a
+  // standard action.
+  string source_key = 5;
+}
+
+// ActionEconomy is the part of the turn an action costs.
+enum ActionEconomy {
+  ACTION_ECONOMY_UNSPECIFIED = 0;
+  ACTION_ECONOMY_ACTION = 1;
+  ACTION_ECONOMY_BONUS_ACTION = 2;
+  ACTION_ECONOMY_REACTION = 3;
+  // Costs nothing, such as a free object interaction.
+  ACTION_ECONOMY_FREE = 4;
+  // Part of the movement.
+  ACTION_ECONOMY_MOVEMENT = 5;
+}
+
+// DiceFormula is a damage or healing roll as numbers: 1d8+3 is count 1,
+// sides 8, bonus 3. The server never rolls; the dice come from the player
+// or from the app (RN-18).
+message DiceFormula {
+  // How many dice. 0 for a flat number.
+  int32 count = 1;
+  // The die: 8 for a d8.
+  int32 sides = 2;
+  // Added to the dice. Negative for a penalty.
+  int32 bonus = 3;
+  // The SRD adds the caster's spellcasting modifier on top ("1d8 + MOD").
+  bool adds_modifier = 4;
 }
 
 // DerivedClass is one of a character's classes, with names resolved.
@@ -346,6 +436,12 @@ message Attack {
   // weapon or a spell, in feet. long_range_ft is 0 when there is none.
   int32 range_ft = 11;
   int32 long_range_ft = 12;
+  // `damage` and `versatile_damage` as numbers, for rolling and adding up.
+  // Unset when there are no damage dice.
+  DiceFormula damage_dice = 13;
+  DiceFormula versatile_damage_dice = 14;
+  // Content key of the damage type, such as "damage-type:slashing".
+  string damage_type_key = 15;
 }
 
 // AttackKind says whether an attack is a weapon or a spell.
@@ -617,4 +713,280 @@ message ListContentRequest {
 // ListContentResponse returns the campaign's rules content.
 message ListContentResponse {
   Content content = 1;
+}
+
+// GetSpellDetailsRequest names a spell. The campaign is there for access
+// (and, later, for the table's own spells).
+message GetSpellDetailsRequest {
+  string campaign_id = 1;
+  // Content key of the spell, such as "spell:fire-bolt".
+  string spell_key = 2;
+}
+
+// GetSpellDetailsResponse returns one spell, in full.
+message GetSpellDetailsResponse {
+  SpellDetails spell = 1;
+}
+
+// SpellDetails is everything the SRD says about a spell, structured. Values
+// are in the SRD's units (feet, rounds, English); the app writes them in
+// Portuguese ("60 ft" is "18 m", "1 action" is "1 ação"). Whatever does not
+// fit a structure is kept in the `raw` field exactly as the SRD wrote it.
+message SpellDetails {
+  // The light entry ListContent returns: key, names, level, school, classes,
+  // ritual and concentration.
+  Spell spell = 1;
+  SpellCastingTime casting_time = 2;
+  SpellRange range = 3;
+  SpellComponents components = 4;
+  SpellDuration duration = 5;
+  // Whether the spell needs an attack roll.
+  SpellAttackType attack_type = 6;
+  // The saving throw the spell asks for. Unset when it asks for none.
+  SpellSave save = 7;
+  // The damage, one entry per damage type (Ice Storm has two).
+  repeated SpellDamage damage = 8;
+  // Healing by the level of the slot, such as {1: "1d8 + MOD"}. Empty when
+  // the spell does not heal.
+  map<int32, string> heal_by_slot_level = 9;
+  // The SRD's English description, one paragraph per entry.
+  repeated string description = 10;
+  // The SRD's "At Higher Levels" paragraphs, in English. Empty when the
+  // spell has none.
+  repeated string higher_level = 11;
+}
+
+// SpellCastingTime is "1 action", "1 bonus action", "10 minutes"...
+message SpellCastingTime {
+  // The number: 1 for "1 action", 10 for "10 minutes".
+  int32 amount = 1;
+  CastingTimeUnit unit = 2;
+  // For a reaction, when it is cast, in English ("which you take when you
+  // are hit..."). Empty when the SRD data has none.
+  string trigger = 3;
+  // The SRD's text, such as "1 action".
+  string raw = 4;
+}
+
+enum CastingTimeUnit {
+  CASTING_TIME_UNIT_UNSPECIFIED = 0;
+  CASTING_TIME_UNIT_ACTION = 1;
+  CASTING_TIME_UNIT_BONUS_ACTION = 2;
+  CASTING_TIME_UNIT_REACTION = 3;
+  CASTING_TIME_UNIT_MINUTE = 4;
+  CASTING_TIME_UNIT_HOUR = 5;
+}
+
+// SpellRange is how far a spell reaches.
+message SpellRange {
+  SpellRangeKind kind = 1;
+  // Distance in feet, for SPELL_RANGE_KIND_RANGED. 0 otherwise.
+  int32 distance_ft = 2;
+  // The SRD's text, such as "120 feet".
+  string raw = 3;
+}
+
+enum SpellRangeKind {
+  SPELL_RANGE_KIND_UNSPECIFIED = 0;
+  SPELL_RANGE_KIND_SELF = 1;
+  SPELL_RANGE_KIND_TOUCH = 2;
+  // A distance, in distance_ft.
+  SPELL_RANGE_KIND_RANGED = 3;
+  SPELL_RANGE_KIND_SIGHT = 4;
+  SPELL_RANGE_KIND_UNLIMITED = 5;
+  // The SRD says "Special": read `raw` and the description.
+  SPELL_RANGE_KIND_SPECIAL = 6;
+}
+
+// SpellComponents are the verbal, somatic and material components.
+message SpellComponents {
+  bool verbal = 1;
+  bool somatic = 2;
+  bool material = 3;
+  // What the material component is, in English. Empty without one.
+  string material_text = 4;
+}
+
+// SpellDuration is how long a spell lasts.
+message SpellDuration {
+  SpellDurationKind kind = 1;
+  // For SPELL_DURATION_KIND_TIMED: "8 hours" is amount 8, unit HOUR.
+  int32 amount = 2;
+  SpellDurationUnit unit = 3;
+  // "Up to 1 minute": the spell may end sooner.
+  bool up_to = 4;
+  // The caster must keep concentrating.
+  bool concentration = 5;
+  // The SRD's text, such as "Up to 1 minute".
+  string raw = 6;
+}
+
+enum SpellDurationKind {
+  SPELL_DURATION_KIND_UNSPECIFIED = 0;
+  SPELL_DURATION_KIND_INSTANTANEOUS = 1;
+  // A length of time, in amount and unit.
+  SPELL_DURATION_KIND_TIMED = 2;
+  SPELL_DURATION_KIND_UNTIL_DISPELLED = 3;
+  // The SRD says "Special": read `raw` and the description.
+  SPELL_DURATION_KIND_SPECIAL = 4;
+}
+
+enum SpellDurationUnit {
+  SPELL_DURATION_UNIT_UNSPECIFIED = 0;
+  SPELL_DURATION_UNIT_ROUND = 1;
+  SPELL_DURATION_UNIT_MINUTE = 2;
+  SPELL_DURATION_UNIT_HOUR = 3;
+  SPELL_DURATION_UNIT_DAY = 4;
+}
+
+// SpellAttackType says whether a spell needs an attack roll.
+enum SpellAttackType {
+  SPELL_ATTACK_TYPE_UNSPECIFIED = 0;
+  SPELL_ATTACK_TYPE_NONE = 1;
+  SPELL_ATTACK_TYPE_MELEE = 2;
+  SPELL_ATTACK_TYPE_RANGED = 3;
+}
+
+// SpellSave is a saving throw a spell asks for.
+message SpellSave {
+  // The ability of the saving throw.
+  Ability ability = 1;
+  SpellSaveSuccess on_success = 2;
+}
+
+// SpellSaveSuccess says what a successful saving throw does.
+enum SpellSaveSuccess {
+  SPELL_SAVE_SUCCESS_UNSPECIFIED = 0;
+  // The target takes no effect.
+  SPELL_SAVE_SUCCESS_NONE = 1;
+  // The target takes half the damage.
+  SPELL_SAVE_SUCCESS_HALF = 2;
+  // Something else: read the description.
+  SPELL_SAVE_SUCCESS_OTHER = 3;
+}
+
+// SpellDamage is one damage type of a spell, with its dice by level. The
+// dice are the SRD's text ("8d6"); where the SRD gives a choice or a
+// formula that is not plain dice ("4d6 OR 5d6"), the text is kept as is.
+message SpellDamage {
+  // Content key of the damage type, such as "damage-type:fire".
+  string damage_type_key = 1;
+  // The Portuguese name, such as "fogo".
+  string damage_type_pt = 2;
+  // The dice by the level of the slot the spell is cast with, such as
+  // {3: "8d6", 4: "9d6"}. Empty for a cantrip.
+  map<int32, string> by_slot_level = 3;
+  // The dice by the character's level, for cantrips: they grow at levels 5,
+  // 11 and 17, such as {1: "1d10", 5: "2d10"}. Empty for other spells.
+  map<int32, string> by_character_level = 4;
+}
+
+// TurnOptions is everything a character can do now: "Sua vez" (MR-014). The
+// server works it out on every read from the sheet, what the character used
+// this turn and what they spent since the last rest. It is never stored.
+// A disabled option carries a reason code, never text: the app maps each
+// code to Portuguese.
+message TurnOptions {
+  TurnEconomy economy = 1;
+  // Weapon attacks and damaging cantrips, each with its to-hit and damage.
+  repeated AttackOption attacks = 2;
+  // The prepared spells that are not already an attack (cantrips that deal
+  // damage are in `attacks`).
+  repeated SpellOption spells = 3;
+  // The actions everyone has.
+  repeated ActionOption standard_actions = 4;
+  // The actions the character's features grant.
+  repeated ActionOption feature_actions = 5;
+}
+
+// TurnEconomy is the state of the turn's action economy.
+message TurnEconomy {
+  EconomyState action = 1;
+  EconomyState bonus_action = 2;
+  EconomyState reaction = 3;
+  MovementLeft movement = 4;
+}
+
+// EconomyState says whether an action, bonus action or reaction is spent.
+message EconomyState {
+  bool used = 1;
+  bool available = 2;
+}
+
+// MovementLeft is the walking left in the turn, in feet.
+message MovementLeft {
+  // The speed for this turn: doubled after the Dash action.
+  int32 speed_ft = 1;
+  int32 used_ft = 2;
+  int32 left_ft = 3;
+}
+
+// DisabledReason says why an option cannot be used now.
+message DisabledReason {
+  DisabledReasonCode code = 1;
+  // For DISABLED_REASON_CODE_NO_SLOT: the lowest slot level that would do.
+  int32 min_level = 2;
+  // For DISABLED_REASON_CODE_NO_USES: when the uses come back.
+  Recharge recharge = 3;
+}
+
+enum DisabledReasonCode {
+  DISABLED_REASON_CODE_UNSPECIFIED = 0;
+  // The action, bonus action or reaction the option needs is already spent.
+  DISABLED_REASON_CODE_ACTION_USED = 1;
+  DISABLED_REASON_CODE_BONUS_ACTION_USED = 2;
+  DISABLED_REASON_CODE_REACTION_USED = 3;
+  // No free slot at the spell's level or above (see min_level).
+  DISABLED_REASON_CODE_NO_SLOT = 4;
+  // The feature's uses are spent (see recharge).
+  DISABLED_REASON_CODE_NO_USES = 5;
+  // Shield: cast only when an attack hits the caster.
+  DISABLED_REASON_CODE_REACTION_ONLY_WHEN_HIT = 6;
+  // Another reaction spell: cast only when its trigger happens.
+  DISABLED_REASON_CODE_REACTION_ONLY = 7;
+  // The casting time is a minute or more, too long for a fight.
+  DISABLED_REASON_CODE_CASTING_TIME_TOO_LONG = 8;
+}
+
+// AttackOption is an attack the character can make.
+message AttackOption {
+  Attack attack = 1;
+  bool enabled = 2;
+  // Set when `enabled` is false.
+  DisabledReason reason = 3;
+}
+
+// SpellOption is a spell the character can cast.
+message SpellOption {
+  Spell spell = 1;
+  // What casting costs. ACTION_ECONOMY_UNSPECIFIED for a casting time too
+  // long for a fight.
+  ActionEconomy economy = 2;
+  bool enabled = 3;
+  // Set when `enabled` is false.
+  DisabledReason reason = 4;
+  // The slots it can be cast with: at least the spell's level, with a free
+  // slot. Empty for a cantrip, and for a spell with no free slot.
+  repeated SlotChoice slots = 5;
+}
+
+// SlotChoice is a spell slot a spell can be cast with.
+message SlotChoice {
+  // The slot level, 1 to 9.
+  int32 level = 1;
+  // Whether it is a Warlock's pact magic slot.
+  bool pact = 2;
+  // How many slots of this kind are free, so the app can warn about the
+  // last one.
+  int32 free = 3;
+}
+
+// ActionOption is a standard or feature action the character can take.
+message ActionOption {
+  Action action = 1;
+  bool enabled = 2;
+  // Set when `enabled` is false.
+  DisabledReason reason = 3;
+  // Uses left of the action's resource. 0 when it has none.
+  int32 uses_left = 4;
 }
