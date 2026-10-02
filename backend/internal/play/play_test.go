@@ -91,6 +91,17 @@ func TestAuthorizationMatrix(t *testing.T) {
 			_, err := c.SetShownImage(ctx, connect.NewRequest(&playv1.SetShownImageRequest{CampaignId: campaign}))
 			return err
 		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		// Any member, in or out of a session.
+		{"ListLeftImages", func(ctx context.Context, c client) error {
+			_, err := c.ListLeftImages(ctx, connect.NewRequest(&playv1.ListLeftImagesRequest{CampaignId: campaign}))
+			return err
+		}, [5]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		// Nothing is left, so the master's call is not_found, like the
+		// non-member's; the real one is in package maps' tests.
+		{"TakeBackLeftImage", func(ctx context.Context, c client) error {
+			_, err := c.TakeBackLeftImage(ctx, connect.NewRequest(&playv1.TakeBackLeftImageRequest{CampaignId: campaign, ImageId: campaign}))
+			return err
+		}, [5]connect.Code{connect.CodeNotFound, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
 	}
 
 	covered := map[string]bool{}
@@ -355,6 +366,18 @@ func (noMaps) ShownImage(context.Context, string, string) (*playv1.ShownImage, e
 	return nil, errors.New("not in this test")
 }
 
+func (noMaps) LeaveImage(context.Context, pgx.Tx, string, string, time.Time) error {
+	return errors.New("not in this test")
+}
+
+func (noMaps) ListLeftImages(context.Context, string) ([]*playv1.ShownImage, error) {
+	return nil, errors.New("not in this test")
+}
+
+func (noMaps) TakeBackImage(context.Context, string, string) error {
+	return errors.New("not in this test")
+}
+
 func (noMaps) MapGrid(context.Context, string, string) (link.Grid, error) {
 	return link.Grid{}, errors.New("not in this test")
 }
@@ -453,6 +476,8 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["AdjustCharacterVitals"] = c.AdjustCharacterVitals(ctx, connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{CampaignId: id, CharacterId: id, IdempotencyKey: id}))
 	_, calls["SetCurrentMap"] = c.SetCurrentMap(ctx, connect.NewRequest(&playv1.SetCurrentMapRequest{CampaignId: id, MapId: id}))
 	_, calls["SetShownImage"] = c.SetShownImage(ctx, connect.NewRequest(&playv1.SetShownImageRequest{CampaignId: id, ImageId: id}))
+	_, calls["ListLeftImages"] = c.ListLeftImages(ctx, connect.NewRequest(&playv1.ListLeftImagesRequest{CampaignId: id}))
+	_, calls["TakeBackLeftImage"] = c.TakeBackLeftImage(ctx, connect.NewRequest(&playv1.TakeBackLeftImageRequest{CampaignId: id, ImageId: id}))
 	calls["WatchGameSession"] = firstEventError(ctx, c, id)
 	methods := playv1.File_meurpg_play_v1_play_proto.Services().ByName("PlayService").Methods()
 	if len(calls) != methods.Len() {
@@ -491,6 +516,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	for method, want := range map[string]descriptorpb.MethodOptions_IdempotencyLevel{
 		"ListGameSessions":     descriptorpb.MethodOptions_IDEMPOTENT,
 		"GetLiveSession":       descriptorpb.MethodOptions_IDEMPOTENT,
+		"ListLeftImages":       descriptorpb.MethodOptions_IDEMPOTENT,
 		"ListOpenGameSessions": descriptorpb.MethodOptions_NO_SIDE_EFFECTS, // an empty request
 	} {
 		opts, _ := methods.ByName(protoreflect.Name(method)).Options().(*descriptorpb.MethodOptions)

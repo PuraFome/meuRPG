@@ -1,0 +1,26 @@
+<mat-radio-group
+  class="methods"
+  aria-labelledby="ability-method-label"
+  [value]="method()"
+  (change)="choose($event.value)"
+>
+  <p class="methods__label" id="ability-method-label">Como definir os valores</p>
+  @for (m of methods; track m.value) {
+    <mat-radio-button class="method" [value]="m.value">
+      <span class="method__title">{{ m.title }}</span>
+      <span class="method__note">{{ m.note }}</span>
+    </mat-radio-button>
+  }
+</mat-radio-group>
+
+@if (stage(); as s) {
+  <app-ability-placing
+    [results]="s.results"
+    [placement]="s.placement"
+    [canReroll]="method() === 'roll'"
+    (place)="placeResult($event.index, $event.ability)"
+    (reroll)="reroll()"
+  />
+} @else {
+  <app-ability-fields [group]="group()" [min]="1" [max]="30" rangeError="De 1 a 30." />
+}

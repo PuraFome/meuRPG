@@ -22,7 +22,11 @@ import (
 //     the players see and which setting reveals (RN-10);
 //   - a gallery image the master shows (game_sessions.shown_image_id,
 //     SetShownImage, MR-028): a handout, such as a portrait or a letter. It
-//     reveals nothing else.
+//     reveals nothing else. With its "keep" switch on, it is left with the
+//     players when it stops being shown (campaign_left_images: ListLeftImages,
+//     TakeBackLeftImage), and they keep seeing it until the master takes it
+//     back. Those images belong to the campaign, not to the session, so they
+//     outlive it: ending the session would otherwise take them away.
 //
 // The maps, their points and tokens, and the gallery are the maps module's;
 // this package only keeps what is on screen, and carries the maps' changes
@@ -95,6 +99,7 @@ func (s *Service) SetShownImage(
 	if err != nil {
 		return nil, err
 	}
+	keep := req.Msg.GetKeep() && imageID != nil
 	var shown *playv1.ShownImage
 	if imageID != nil {
 		// The image must be the campaign's. The foreign key keeps it from
@@ -104,6 +109,8 @@ func (s *Service) SetShownImage(
 		}
 	}
 
+	var moved bool   // an image went to the left list
+	var changed bool // another image (or none) is shown now
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
 		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
@@ -113,7 +120,18 @@ func (s *Service) SetShownImage(
 		if err != nil {
 			return fmt.Errorf("lock the open session: %w", err)
 		}
-		if _, err := q.SetShownImage(ctx, playdb.SetShownImageParams{ID: session.ID, ShownImageID: imageID}); err != nil {
+		// An image kept leaves with the players when it stops being shown:
+		// replaced by another, or by nothing. The same image again only
+		// moves the switch.
+		moved = false
+		changed = !equal(session.ShownImageID, imageID)
+		if session.ShownImageKeep && session.ShownImageID != nil && !equal(session.ShownImageID, imageID) {
+			if err := s.maps.LeaveImage(ctx, tx, m.CampaignID, *session.ShownImageID, s.now()); err != nil {
+				return err
+			}
+			moved = true
+		}
+		if _, err := q.SetShownImage(ctx, playdb.SetShownImageParams{ID: session.ID, ShownImageID: imageID, ShownImageKeep: keep}); err != nil {
 			return fmt.Errorf("set the shown image: %w", err)
 		}
 		return nil
@@ -126,10 +144,70 @@ func (s *Service) SetShownImage(
 		return nil, s.dbError(ctx, "set the shown image", err)
 	}
 
-	s.Publish(m.CampaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_ShownImageChanged_{
-		ShownImageChanged: &playv1.WatchGameSessionResponse_ShownImageChanged{Image: shown},
+	// Only the switch moved when the image is the same: nothing for the
+	// players, who never learn the switch, and the master's page already
+	// knows.
+	if changed {
+		s.Publish(m.CampaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_ShownImageChanged_{
+			ShownImageChanged: &playv1.WatchGameSessionResponse_ShownImageChanged{Image: shown},
+		}})
+	}
+	if moved {
+		s.publishLeftImagesChanged(m.CampaignID)
+	}
+	return connect.NewResponse(&playv1.SetShownImageResponse{ShownImage: shown, Keep: keep}), nil
+}
+
+// ListLeftImages implements playv1connect.PlayServiceHandler.
+func (s *Service) ListLeftImages(
+	ctx context.Context,
+	req *connect.Request[playv1.ListLeftImagesRequest],
+) (*connect.Response[playv1.ListLeftImagesResponse], error) {
+	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
+	if err != nil {
+		return nil, err
+	}
+	images, err := s.maps.ListLeftImages(ctx, m.CampaignID)
+	if err != nil {
+		return nil, s.dbError(ctx, "list the left images", err)
+	}
+	return connect.NewResponse(&playv1.ListLeftImagesResponse{Images: images}), nil
+}
+
+// TakeBackLeftImage implements playv1connect.PlayServiceHandler.
+func (s *Service) TakeBackLeftImage(
+	ctx context.Context,
+	req *connect.Request[playv1.TakeBackLeftImageRequest],
+) (*connect.Response[playv1.TakeBackLeftImageResponse], error) {
+	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	if err != nil {
+		return nil, err
+	}
+	imageID, err := optionalID(req.Msg.GetImageId(), "image not found")
+	if err != nil {
+		return nil, err
+	}
+	if imageID == nil {
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("image not found"))
+	}
+	if err := s.maps.TakeBackImage(ctx, m.CampaignID, *imageID); err != nil {
+		return nil, s.dbError(ctx, "take a left image back", err)
+	}
+	s.publishLeftImagesChanged(m.CampaignID)
+	return connect.NewResponse(&playv1.TakeBackLeftImageResponse{}), nil
+}
+
+// publishLeftImagesChanged tells every stream of the campaign that the
+// images left with the players changed; the app reads the list again.
+func (s *Service) publishLeftImagesChanged(campaignID string) {
+	s.Publish(campaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_LeftImagesChanged_{
+		LeftImagesChanged: &playv1.WatchGameSessionResponse_LeftImagesChanged{},
 	}})
-	return connect.NewResponse(&playv1.SetShownImageResponse{ShownImage: shown}), nil
+}
+
+// equal reports whether two optional IDs are the same.
+func equal(a, b *string) bool {
+	return deref(a) == deref(b)
 }
 
 // OnScreen returns what the campaign's open game session shows: the IDs of

@@ -23,6 +23,11 @@ import (
 //   - when the master shows a gallery image (PlayService.SetShownImage,
 //     MR-028), the image must be the campaign's, and the session needs its
 //     name and size;
+//   - when the master leaves the image with the players ("Deixar com os
+//     jogadores", MR-028), the image goes to the campaign's left list, in
+//     the session's transaction, and the master takes it back later. The
+//     list is a table of this module (campaign_left_images) because the
+//     image route reads it for the players (RN-10), next to the maps.
 //   - when a combat starts (CombatService.StartEncounter, MR-013), the
 //     session needs the map's grid, the battle point's map and where the
 //     tokens stand, and when it ends it moves the player characters'
@@ -70,6 +75,10 @@ func (sm *SessionMaps) ShownImage(ctx context.Context, campaignID, imageID strin
 	if err != nil {
 		return nil, fmt.Errorf("find the shown image: %w", err)
 	}
+	return shownImage(img), nil
+}
+
+func shownImage(img mapsdb.GalleryImage) *playv1.ShownImage {
 	return &playv1.ShownImage{
 		Id:           img.ID,
 		Name:         img.Name,
@@ -77,7 +86,48 @@ func (sm *SessionMaps) ShownImage(ctx context.Context, campaignID, imageID strin
 		Height:       img.Height,
 		Url:          imageURL(img.ID),
 		ThumbnailUrl: thumbnailURL(img.ID),
-	}, nil
+	}
+}
+
+// LeaveImage leaves the campaign's gallery image with the players inside
+// tx; an image already left stays as it is, and one that is not the
+// campaign's anymore (deleted meanwhile) is skipped, since a left image
+// that is gone has nothing to leave. The caller checked that the caller is
+// the campaign's master.
+func (sm *SessionMaps) LeaveImage(ctx context.Context, tx pgx.Tx, campaignID, imageID string, at time.Time) error {
+	_, err := sm.queries.WithTx(tx).LeaveImage(ctx, mapsdb.LeaveImageParams{CampaignID: campaignID, ImageID: imageID, Now: at})
+	if err != nil {
+		return fmt.Errorf("leave the image with the players: %w", err)
+	}
+	return nil
+}
+
+// ListLeftImages returns the images left with the players, in the order
+// they were left, with their names as captions.
+func (sm *SessionMaps) ListLeftImages(ctx context.Context, campaignID string) ([]*playv1.ShownImage, error) {
+	rows, err := sm.queries.ListLeftImages(ctx, campaignID)
+	if err != nil {
+		return nil, fmt.Errorf("list the left images: %w", err)
+	}
+	out := make([]*playv1.ShownImage, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, shownImage(r))
+	}
+	return out, nil
+}
+
+// TakeBackImage takes the image off the left list, or returns a
+// `not_found` Connect error when it is not on it. The caller checked that
+// the caller is the campaign's master.
+func (sm *SessionMaps) TakeBackImage(ctx context.Context, campaignID, imageID string) error {
+	n, err := sm.queries.TakeBackLeftImage(ctx, mapsdb.TakeBackLeftImageParams{CampaignID: campaignID, ImageID: imageID})
+	if err != nil {
+		return fmt.Errorf("take the left image back: %w", err)
+	}
+	if n == 0 {
+		return errImageNotFound()
+	}
+	return nil
 }
 
 // gridRows is how many rows of squares a grid of columns across has on an

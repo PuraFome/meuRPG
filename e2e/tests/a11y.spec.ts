@@ -3,6 +3,7 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
 
 import { canvasJpeg, newCampaign, uploadThroughPicker } from './gallery-support';
 import { saveDocumentRPC, tableWithDocumentParts } from './document-support';
+import { expectAligned } from './layout';
 import { endOpenSessionRPC, endSessionRPC, openSessionPage, startSessionRPC, tableWithPensantus } from './live-session-support';
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
 import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus } from './support';
@@ -17,13 +18,28 @@ import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSigned
 const wcag = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
 
 /** Scans the page and fails with one readable line per serious or critical
- * violation: the rule, what it means and the first few elements. */
-async function expectNoSeriousViolations(page: Page, screen: string): Promise<void> {
+ * violation (the rule, what it means and the first few elements), then runs
+ * the layout checks of layout.ts on the same screen: icons in line with
+ * their words, nothing over an icon, tiles centred. */
+async function expectScreenPasses(page: Page, screen: string): Promise<void> {
+  // A dialog still fading in has colours between two states: axe would judge
+  // the contrast of a frame nobody stops on (it failed that way once, in the
+  // spell dialog). Wait for the transitions that end; a looping one never
+  // does.
+  await page.waitForFunction(
+    () =>
+      document
+        .getAnimations()
+        .every((a) => a.playState !== 'running' || a.effect?.getComputedTiming().iterations === Infinity),
+    undefined,
+    { timeout: 5_000 },
+  );
   const results = await new AxeBuilder({ page }).withTags(wcag).analyze();
   const serious = results.violations
     .filter((v) => v.impact === 'serious' || v.impact === 'critical')
     .map((v) => `${screen}: ${v.id} (${v.impact}) ${v.help}: ${v.nodes.slice(0, 3).map((n) => n.target.join(' ')).join(' | ')}`);
   expect(serious).toEqual([]);
+  await expectAligned(page, screen);
 }
 
 /** Opens a route and waits for its h1 and for its sections' calls to
@@ -71,7 +87,7 @@ async function scanMasterScreens(browser: Browser, colorScheme: 'light' | 'dark'
     ];
     for (const [screen, route] of screens) {
       await open(page, route);
-      await expectNoSeriousViolations(page, `${screen} (${colorScheme}, ${width}px)`);
+      await expectScreenPasses(page, `${screen} (${colorScheme}, ${width}px)`);
     }
   } finally {
     await context.close();
@@ -104,7 +120,7 @@ async function scanGallery(browser: Browser, colorScheme: 'light' | 'dark', widt
     const campaignId = await newCampaign(page, `Acessibilidade galeria ${Date.now()}`);
     await open(page, `/campanhas/${campaignId}/galeria`);
     await expect(page.getByRole('heading', { name: 'Nenhuma imagem ainda' })).toBeVisible();
-    await expectNoSeriousViolations(page, `Galeria vazia ${where}`);
+    await expectScreenPasses(page, `Galeria vazia ${where}`);
 
     await uploadThroughPicker(page, [
       { name: 'Taverna do Javali.jpg', mimeType: 'image/jpeg', buffer: await canvasJpeg(page) },
@@ -113,22 +129,22 @@ async function scanGallery(browser: Browser, colorScheme: 'light' | 'dark', widt
     ]);
     await expect(page.getByRole('article', { name: 'Covil dos goblins', exact: true })).toBeVisible();
     await expect(page.getByRole('alert')).toBeVisible();
-    await expectNoSeriousViolations(page, `Galeria com imagens e um envio recusado ${where}`);
+    await expectScreenPasses(page, `Galeria com imagens e um envio recusado ${where}`);
 
     const card = page.getByRole('article', { name: 'Taverna do Javali', exact: true });
     await card.getByRole('button', { name: 'Apagar Taverna do Javali' }).click();
     await expect(card.getByRole('button', { name: 'Apagar imagem' })).toBeFocused();
-    await expectNoSeriousViolations(page, `Galeria, confirmar exclusão ${where}`);
+    await expectScreenPasses(page, `Galeria, confirmar exclusão ${where}`);
     await card.getByRole('button', { name: 'Cancelar' }).click();
 
     await card.getByRole('button', { name: 'Ver Taverna do Javali' }).first().click();
     await expect(page.getByRole('dialog', { name: 'Taverna do Javali' })).toBeVisible();
-    await expectNoSeriousViolations(page, `Galeria, imagem aberta ${where}`);
+    await expectScreenPasses(page, `Galeria, imagem aberta ${where}`);
     await page.keyboard.press('Escape');
 
     await open(page, `/campanhas/${campaignId}`);
     await expect(page.getByRole('link', { name: 'Abrir galeria' })).toBeVisible();
-    await expectNoSeriousViolations(page, `Campanha com o painel Galeria ${where}`);
+    await expectScreenPasses(page, `Campanha com o painel Galeria ${where}`);
   } finally {
     await context.close();
   }
@@ -166,21 +182,21 @@ async function scanDocument(browser: Browser, colorScheme: 'light' | 'dark', wid
     );
     await open(page, `/campanhas/${t.campaignId}/documento`);
     await expect(page.getByRole('button', { name: 'Mirathel e arredores' })).toBeVisible();
-    await expectNoSeriousViolations(page, `Documento, leitura ${where}`);
+    await expectScreenPasses(page, `Documento, leitura ${where}`);
 
     await page.getByRole('button', { name: 'Mirathel e arredores' }).click();
     const dialog = page.getByRole('dialog', { name: 'Mirathel e arredores' });
     await expect(dialog.getByRole('img')).toBeVisible();
-    await expectNoSeriousViolations(page, `Documento, janela do mapa ${where}`);
+    await expectScreenPasses(page, `Documento, janela do mapa ${where}`);
     await page.keyboard.press('Escape');
 
     await page.getByRole('button', { name: 'Editar documento' }).click();
     await expect(page.getByRole('textbox', { name: 'Texto' })).toBeVisible();
-    await expectNoSeriousViolations(page, `Documento, edição ${where}`);
+    await expectScreenPasses(page, `Documento, edição ${where}`);
 
     await page.getByRole('button', { name: 'Imagem da galeria' }).click();
     await expect(page.getByRole('dialog', { name: 'Imagem da galeria' }).getByRole('radio').first()).toBeVisible();
-    await expectNoSeriousViolations(page, `Documento, escolher imagem ${where}`);
+    await expectScreenPasses(page, `Documento, escolher imagem ${where}`);
   } finally {
     await context.close();
   }
@@ -207,7 +223,7 @@ test('as telas de quem não entrou passam no axe, nos dois temas', { tag: '@a11y
         ['Página não encontrada', '/nao-existe'],
       ]) {
         await open(page, route);
-        await expectNoSeriousViolations(page, `${screen} (${colorScheme}, sem login)`);
+        await expectScreenPasses(page, `${screen} (${colorScheme}, sem login)`);
       }
     } finally {
       await context.close();
@@ -253,19 +269,19 @@ async function scanLiveSessionScreens(browser: Browser, colorScheme: 'light' | '
     const sessionId = await startSessionRPC(masterPage, campaignId);
 
     await openSessionPage(masterPage, campaignId);
-    await expectNoSeriousViolations(masterPage, `Sessão, mestre ${suffix}`);
+    await expectScreenPasses(masterPage, `Sessão, mestre ${suffix}`);
 
     await masterPage.getByRole('button', { name: 'Ajustar Pensantus' }).click();
     await expect(masterPage.getByRole('dialog', { name: 'Ajustar Pensantus' })).toBeVisible();
     // Scan the sheet once it's in place: mid-animation, its text is still
     // fading in, and axe would measure the contrast of a half-drawn frame.
     await masterPage.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
-    await expectNoSeriousViolations(masterPage, `Ajustar PV ${suffix}`);
+    await expectScreenPasses(masterPage, `Ajustar PV ${suffix}`);
     await masterPage.getByRole('button', { name: 'Cancelar' }).click();
 
     await openSessionPage(playerPage, campaignId);
     await expect(playerPage.getByRole('region', { name: 'Pensantus' })).toBeVisible();
-    await expectNoSeriousViolations(playerPage, `Sessão, jogador ${suffix}`);
+    await expectScreenPasses(playerPage, `Sessão, jogador ${suffix}`);
 
     // A campaign Jogador Teste isn't in: the link says to ask for an invite.
     const closed = await callRPC(masterPage, 'meurpg.campaigns.v1.CampaignService/CreateCampaign', {
@@ -274,7 +290,7 @@ async function scanLiveSessionScreens(browser: Browser, colorScheme: 'light' | '
     });
     await playerPage.goto(`/campanhas/${(await closed.json()).campaign.id}/sessao`);
     await expect(playerPage.getByRole('heading', { level: 1, name: 'Peça um convite ao mestre' })).toBeVisible();
-    await expectNoSeriousViolations(playerPage, `Sessão sem acesso ${suffix}`);
+    await expectScreenPasses(playerPage, `Sessão sem acesso ${suffix}`);
 
     await endSessionRPC(masterPage, campaignId, sessionId);
   } finally {
@@ -325,47 +341,59 @@ async function scanMapScreens(browser: Browser, colorScheme: 'light' | 'dark', w
     await placeTokenRPC(masterPage, campaignId, world, table.npcId!, 3700, 6000);
 
     await open(masterPage, `/campanhas/${campaignId}/mapas/novo`);
-    await expectNoSeriousViolations(masterPage, `Novo mapa ${suffix}`);
+    await expectScreenPasses(masterPage, `Novo mapa ${suffix}`);
     await masterPage.getByRole('button', { name: 'Criar mapa' }).click();
     await expect(masterPage.getByText('Dê um nome ao mapa.')).toBeVisible();
     await masterPage.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
-    await expectNoSeriousViolations(masterPage, `Novo mapa com erros ${suffix}`);
+    await expectScreenPasses(masterPage, `Novo mapa com erros ${suffix}`);
 
     await open(masterPage, `/campanhas/${campaignId}/mapas/${world}`);
-    await expectNoSeriousViolations(masterPage, `Mapa, mestre ${suffix}`);
+    await expectScreenPasses(masterPage, `Mapa, mestre ${suffix}`);
     if (width >= 768) {
       await masterPage.getByRole('button', { name: 'Ruínas élficas, Cena de RP, escondido' }).click();
       await expect(masterPage.getByRole('heading', { name: 'Ruínas élficas' })).toBeVisible();
-      await expectNoSeriousViolations(masterPage, `Editor com um ponto escolhido ${suffix}`);
+      await expectScreenPasses(masterPage, `Editor com um ponto escolhido ${suffix}`);
     }
 
     await open(playerPage, `/campanhas/${campaignId}/mapas/${world}`);
-    await expectNoSeriousViolations(playerPage, `Mapa, jogador ${suffix}`);
+    await expectScreenPasses(playerPage, `Mapa, jogador ${suffix}`);
     await playerPage.getByRole('button', { name: 'Torre de Mirathel, Submapa' }).first().click();
     await expect(playerPage.getByRole('button', { name: 'Abrir Torre de Mirathel' })).toBeVisible();
-    await expectNoSeriousViolations(playerPage, `Mapa, jogador, com a ficha de um ponto ${suffix}`);
+    await expectScreenPasses(playerPage, `Mapa, jogador, com a ficha de um ponto ${suffix}`);
 
     await startSessionRPC(masterPage, campaignId);
     await setCurrentMapRPC(masterPage, campaignId, world);
     await openSessionPage(masterPage, campaignId);
     await expect(masterPage.getByRole('heading', { name: 'Pontos do mapa' })).toBeVisible();
-    await expectNoSeriousViolations(masterPage, `Sessão com mapa, mestre ${suffix}`);
+    await expectScreenPasses(masterPage, `Sessão com mapa, mestre ${suffix}`);
     await openSessionPage(playerPage, campaignId);
     await expect(playerPage.getByRole('img', { name: 'Prévia do mapa Mirathel e arredores' })).toBeVisible();
-    await expectNoSeriousViolations(playerPage, `Sessão com mapa, jogador ${suffix}`);
+    await expectScreenPasses(playerPage, `Sessão com mapa, jogador ${suffix}`);
 
     // The picker, then an image on show.
     await masterPage.getByRole('button', { name: 'Mostrar imagem' }).click();
     const dialog = masterPage.getByRole('dialog', { name: 'Mostrar uma imagem aos jogadores' });
     await dialog.getByRole('radio', { name: /Capitão Goblin/ }).click();
     await masterPage.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
-    await expectNoSeriousViolations(masterPage, `Mostrar imagem, seletor ${suffix}`);
+    await expectScreenPasses(masterPage, `Mostrar imagem, seletor ${suffix}`);
     await dialog.getByRole('button', { name: 'Mostrar aos jogadores' }).click();
     await expect(masterPage.getByRole('button', { name: 'Parar de mostrar' })).toBeVisible();
-    await expectNoSeriousViolations(masterPage, `Sessão com imagem à mostra, mestre ${suffix}`);
+    await expectScreenPasses(masterPage, `Sessão com imagem à mostra, mestre ${suffix}`);
     await expect(playerPage.getByRole('region', { name: 'O mestre está mostrando' })).toBeVisible();
     await playerPage.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
-    await expectNoSeriousViolations(playerPage, `Sessão com imagem à mostra, jogador ${suffix}`);
+    await expectScreenPasses(playerPage, `Sessão com imagem à mostra, jogador ${suffix}`);
+
+    // "Deixar com os jogadores" on, then the image left with the players.
+    const keep = masterPage.getByRole('switch', { name: 'Deixar com os jogadores' });
+    await keep.click();
+    await expect(keep).toHaveAttribute('aria-checked', 'true');
+    await expectScreenPasses(masterPage, `Sessão com "Deixar com os jogadores" ligado, mestre ${suffix}`);
+    await masterPage.getByRole('button', { name: 'Parar de mostrar' }).click();
+    await expect(masterPage.getByRole('button', { name: 'Tirar Capitão Goblin dos jogadores' })).toBeVisible();
+    await expectScreenPasses(masterPage, `Sessão com uma imagem deixada, mestre ${suffix}`);
+    await expect(playerPage.getByRole('region', { name: 'Imagens que o mestre deixou' })).toBeVisible();
+    await playerPage.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await expectScreenPasses(playerPage, `Sessão com uma imagem deixada, jogador ${suffix}`);
   } finally {
     await endOpenSessionRPC(masterPage, campaignId);
     await master.close();
@@ -395,16 +423,16 @@ async function scanDiceScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     const { campaignId } = await tableWithPensantus(masterPage, playerPage, `Acessibilidade dados ${Date.now()}`);
     const suffix = `(${colorScheme}, ${width}px)`;
     await open(masterPage, `/campanhas/${campaignId}`);
-    await expectNoSeriousViolations(masterPage, `Campanha com Dados, mestre ${suffix}`);
+    await expectScreenPasses(masterPage, `Campanha com Dados, mestre ${suffix}`);
     await open(playerPage, `/campanhas/${campaignId}`);
-    await expectNoSeriousViolations(playerPage, `Campanha com Como você rola os dados, jogador ${suffix}`);
+    await expectScreenPasses(playerPage, `Campanha com Como você rola os dados, jogador ${suffix}`);
 
     const set = await callRPC(masterPage, 'meurpg.campaigns.v1.CampaignService/SetCampaignDiceMode', { campaignId, mode: 'DICE_MODE_APP' });
     expect(set.ok()).toBeTruthy();
     await open(masterPage, `/campanhas/${campaignId}`);
-    await expectNoSeriousViolations(masterPage, `Campanha com Dados, todos no app, mestre ${suffix}`);
+    await expectScreenPasses(masterPage, `Campanha com Dados, todos no app, mestre ${suffix}`);
     await open(playerPage, `/campanhas/${campaignId}`);
-    await expectNoSeriousViolations(playerPage, `Como você rola os dados, decidido pelo mestre ${suffix}`);
+    await expectScreenPasses(playerPage, `Como você rola os dados, decidido pelo mestre ${suffix}`);
   } finally {
     await master.close();
     await player.close();
@@ -451,10 +479,10 @@ async function scanPendingMembers(browser: Browser, colorScheme: 'light' | 'dark
 
     await open(page, `/campanhas/${campaignId}`);
     await expect(page.getByRole('list', { name: 'Esperando para criar o personagem' })).toBeVisible();
-    await expectNoSeriousViolations(page, `Campanha com alguém sem personagem ${where}`);
+    await expectScreenPasses(page, `Campanha com alguém sem personagem ${where}`);
     await page.getByRole('button', { name: /^Remover .* da campanha$/ }).click();
     await expect(page.getByRole('alertdialog')).toBeVisible();
-    await expectNoSeriousViolations(page, `Campanha, confirmar a remoção ${where}`);
+    await expectScreenPasses(page, `Campanha, confirmar a remoção ${where}`);
   } finally {
     await playerContext.close();
     await context.close();
@@ -467,4 +495,61 @@ test('quem está sem personagem passa no axe no tema claro, no desktop', { tag: 
 
 test('quem está sem personagem passa no axe no tema escuro, no celular', { tag: ['@a11y', '@MR-024'] }, async ({ browser }) => {
   await scanPendingMembers(browser, 'dark', 390);
+});
+
+/**
+ * The character editor's rolls and the spell "?" (MR-004, E6-20 to E6-23):
+ * the "Atributos" step with "Rolar 4d6" (half placed, and on the phone with a
+ * result chosen), the rolled hit points, the "Magias" step with its search
+ * fields, and the spell dialog (a bottom sheet on the phone).
+ */
+async function scanEditorRolls(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(90_000);
+  const context = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height: 900 } });
+  const page = await context.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  try {
+    await page.goto('/');
+    const created = await callRPC(page, 'meurpg.campaigns.v1.CampaignService/CreateCampaign', { name: `Acessibilidade rolagens ${Date.now()}`, xpMode: 'XP_MODE_ENEMIES' });
+    expect(created.ok()).toBeTruthy();
+    const campaignId = (await created.json()).campaign.id as string;
+    await open(page, `/campanhas/${campaignId}/personagens/novo`);
+    await page.getByLabel('Nome do personagem', { exact: true }).fill('Zézinho');
+    const classSelect = page.getByRole('combobox', { name: 'Classe', exact: true });
+    await classSelect.focus();
+    await classSelect.press('Enter');
+    await page.getByRole('option', { name: 'Mago', exact: true }).click();
+    await page.getByLabel('Nível', { exact: true }).fill('3');
+
+    await page.getByRole('tab', { name: 'Atributos' }).click();
+    await page.getByRole('radio', { name: /Rolar 4d6/ }).check();
+    if (width < 768) {
+      await page.getByRole('button', { name: /^\d+: dados .* Livre\.$/ }).first().click();
+      await page.getByRole('button', { name: /^Força: colocar o/ }).click();
+      await page.getByRole('button', { name: /^\d+: dados .* Livre\.$/ }).first().click();
+    } else {
+      await page.getByLabel('Força', { exact: true }).selectOption({ index: 1 });
+    }
+    await expectScreenPasses(page, `Atributos, Rolar 4d6 ${where}`);
+
+    await page.getByRole('radio', { name: /Rolado/ }).check();
+    await page.getByRole('button', { name: 'Rolar os níveis que faltam' }).click();
+    await expectScreenPasses(page, `Pontos de vida rolados ${where}`);
+
+    await page.getByRole('tab', { name: 'Magias' }).click();
+    await expectScreenPasses(page, `Magias ${where}`);
+    await page.getByRole('group', { name: 'Magias conhecidas', exact: true }).getByRole('button', { name: 'Descrição de Mísseis Mágicos' }).click();
+    await expect(page.getByText('Texto do SRD 5.1 (em inglês)')).toBeVisible();
+    await expectScreenPasses(page, `Descrição da magia ${where}`);
+  } finally {
+    await context.close();
+  }
+}
+
+test('as rolagens e a descrição da magia passam no axe no tema claro, no desktop', { tag: ['@a11y', '@MR-004'] }, async ({ browser }) => {
+  await scanEditorRolls(browser, 'light', 1280);
+});
+
+test('as rolagens e a descrição da magia passam no axe no tema escuro, no celular', { tag: ['@a11y', '@MR-004'] }, async ({ browser }) => {
+  await scanEditorRolls(browser, 'dark', 390);
 });

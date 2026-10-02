@@ -2,13 +2,19 @@
   <h3 class="picker__title" [id]="titleId()">{{ title() }}</h3>
   <p class="picker__chosen">{{ chosenLine() }}</p>
 
+  <!-- E6-22: the icon and the words inside the box, with no floating label.
+       An outlined field's resting label is placed by measuring the prefix
+       icon, and that measurement sometimes runs before the label exists,
+       leaving the words over the magnifier (seen in PR #56). A placeholder
+       sits after the icon by plain layout; aria-label is the field's name. -->
   <mat-form-field appearance="outline" subscriptSizing="dynamic" class="picker__search">
-    <mat-label>{{ searchLabel() }}</mat-label>
     <mat-icon matPrefix aria-hidden="true">search</mat-icon>
     <input
       matInput
       type="search"
       autocomplete="off"
+      [attr.aria-label]="searchLabel()"
+      [placeholder]="searchLabel()"
       [value]="filter()"
       (input)="filterChange.emit($any($event.target).value)"
     />
@@ -16,12 +22,23 @@
 
   <div class="picker__list" role="group" [attr.aria-labelledby]="titleId()">
     @for (spell of filtered(); track spell.key) {
-      <mat-checkbox [checked]="selected().has(spell.key)" (change)="toggle.emit(spell.key)">
-        {{ spell.namePt }}
-        @if (showLevel()) {
-          <span class="picker__level">({{ levelText(spell.level) }})</span>
-        }
-      </mat-checkbox>
+      <div class="picker__row">
+        <mat-checkbox [checked]="selected().has(spell.key)" (change)="toggle.emit(spell.key)">
+          {{ spell.namePt }}
+          @if (showLevel()) {
+            <span class="picker__level">({{ levelText(spell.level) }})</span>
+          }
+        </mat-checkbox>
+        <!-- Reading and ticking are different actions, so "?" is its own button. -->
+        <button
+          type="button"
+          class="picker__help"
+          [attr.aria-label]="'Descrição de ' + spell.namePt"
+          (click)="describe.emit(spell)"
+        >
+          <mat-icon aria-hidden="true">help_outline</mat-icon>
+        </button>
+      </div>
     } @empty {
       <p class="picker__empty">{{ emptyText() }}</p>
     }

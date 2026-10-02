@@ -27,6 +27,8 @@ export interface LiveStreamHandlers {
   onTokenMoved?(move: { mapId: string; characterId: string; xBp: number; yBp: number }): void;
   /** `shown_image_changed`: an image on the players' screens, or none. */
   onShownImage?(image: ShownImageVm | null): void;
+  /** `left_images_changed`: read the list of left images again. */
+  onLeftImages?(): void;
   /** `session_ended`, or `NO_OPEN_SESSION` when (re)connecting. */
   onEnded(): void;
   /** `not_found` or `unauthenticated`: no reconnecting. */
@@ -165,6 +167,9 @@ export class LiveStream {
             break;
           case 'tokenMoved':
             this.options.handlers.onTokenMoved?.(event);
+            break;
+          case 'leftImages':
+            this.options.handlers.onLeftImages?.();
             break;
           case 'shownImage':
             this.options.handlers.onShownImage?.(event.image);

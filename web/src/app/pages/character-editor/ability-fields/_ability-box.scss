@@ -1,0 +1,24 @@
+// The box of one ability, shared by the typed fields and the selects of the
+// "Rolar 4d6" placing (E6-20): the number in the `stat` family, the
+// medallion's corner, the label at the size of every other field's label.
+@mixin ability-box {
+  width: 100%;
+  // Material's own form-field tokens.
+  --mat-form-field-container-height: 64px;
+  --mat-form-field-container-vertical-padding: 14px;
+  --mat-form-field-container-text-font: var(--mr-font-display);
+  --mat-form-field-container-text-size: 30px;
+  --mat-form-field-container-text-line-height: 36px;
+  --mat-form-field-container-text-weight: 700;
+  --mat-form-field-outlined-container-shape: var(--mr-radius-xl);
+  --mat-form-field-outlined-label-text-font: var(--mr-font-sans);
+  --mat-form-field-outlined-label-text-size: 16px;
+  --mat-form-field-outlined-label-text-populated-size: 16px;
+  --mat-form-field-outlined-label-text-weight: 400;
+
+  input,
+  select {
+    text-align: center;
+    text-align-last: center;
+  }
+}

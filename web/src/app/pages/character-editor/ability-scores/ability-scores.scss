@@ -1,0 +1,60 @@
+:host {
+  display: block;
+}
+
+// Three tiles on a tablet or desktop, stacked on a phone.
+.methods {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--mr-space-3) var(--mr-space-4);
+  margin-bottom: var(--mr-space-6);
+
+  @media (max-width: 767.98px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.methods__label {
+  grid-column: 1 / -1;
+  margin: 0 0 -4px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--mr-ink-muted);
+}
+
+// A radio as a tile: the selected one gets the accent border and fill. The
+// tiles share the row's height, so the radio and its words sit in the
+// middle of the tile, not at its top (E6-20).
+.method {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: 64px;
+  padding: 0 var(--mr-space-3);
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-lg);
+
+  &.mat-mdc-radio-checked {
+    border: 2px solid var(--mr-accent);
+    padding: 0 11px;
+    background: var(--mr-accent-soft);
+  }
+
+  @media (max-width: 767.98px) {
+    min-height: 52px;
+  }
+}
+
+.method__title,
+.method__note {
+  display: block;
+}
+
+.method__title {
+  font-weight: 700;
+}
+
+.method__note {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}

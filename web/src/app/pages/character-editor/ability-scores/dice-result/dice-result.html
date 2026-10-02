@@ -1,0 +1,34 @@
+<ng-template #body>
+  <span class="chip__total">{{ result().total }}</span>
+  @if (result().dice.length > 0) {
+    <span class="chip__dice" aria-hidden="true">
+      @for (die of result().dice; track $index) {
+        <span class="chip__die" [class.chip__die--dropped]="$index === result().dropped">{{
+          die
+        }}</span>
+      }
+    </span>
+  }
+  <span class="chip__state" aria-hidden="true">
+    @if (state() === 'placed') {
+      <mat-icon>check</mat-icon>
+    }
+    {{ stateText() }}
+  </span>
+</ng-template>
+
+@if (interactive()) {
+  <button
+    type="button"
+    class="chip chip--{{ state() }}"
+    [attr.aria-pressed]="state() === 'chosen'"
+    [attr.aria-label]="label()"
+    (click)="pressed.emit()"
+  >
+    <ng-container [ngTemplateOutlet]="body" />
+  </button>
+} @else {
+  <div class="chip chip--{{ state() }}" role="group" [attr.aria-label]="label()">
+    <ng-container [ngTemplateOutlet]="body" />
+  </div>
+}

@@ -2,8 +2,10 @@ import { Component, DestroyRef, ViewChild, computed, inject, signal } from '@ang
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CdkStep } from '@angular/cdk/stepper';
+import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -16,7 +18,9 @@ import { describeCharacterError } from '../../core/characters/character-errors';
 import { characterKindLabel } from '../../core/characters/character-labels';
 import { CharacterKind, isFullSheetKind } from '../../core/characters/characters.types';
 import { FictionNotice } from '../../shared/fiction-notice/fiction-notice';
+import { PHONE_QUERY, mediaQuery } from '../../shared/map-view/media-query';
 import { AbilityFields } from './ability-fields/ability-fields';
+import { AbilityScores } from './ability-scores/ability-scores';
 import {
   ALIGNMENT_LABELS,
   AlignmentKey,
@@ -25,13 +29,18 @@ import {
   CharacterFormValue,
   HitPointsMethod,
   RulesCatalogVm,
+  SpellDetailsVm,
   SpellOptionVm,
 } from './character-editor.types';
+import { SpellDetails, SpellDetailsData } from './spell-details/spell-details';
 import { EditorStepper } from './editor-stepper/editor-stepper';
+import { HitPointsRolls } from './hit-points-rolls/hit-points-rolls';
 import {
   EDITOR_STEP_LABELS,
+  EditorField,
   EditorStepKey,
   FULL_SHEET_FIELDS,
+  UNPLACED_RESULTS_FIELD,
   countLabel,
   describeBonusesInUse,
   describeInvalidFields,
@@ -158,9 +167,11 @@ function filterByName<T extends { readonly namePt: string }>(
   selector: 'app-character-editor',
   imports: [
     AbilityFields,
+    AbilityScores,
     CdkStep,
     EditorStepper,
     FictionNotice,
+    HitPointsRolls,
     MatButtonModule,
     MatCheckboxModule,
     MatFormFieldModule,
@@ -184,6 +195,13 @@ export class CharacterEditor {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly fb = inject(FormBuilder);
+  private readonly dialog = inject(MatDialog);
+  private readonly bottomSheet = inject(MatBottomSheet);
+  private readonly onPhone = mediaQuery(PHONE_QUERY);
+  /** The spell descriptions already fetched, by spell key, for the life of
+   * the page (a second "?" on the same spell is instant; nothing is stored
+   * in the browser). A failed fetch is dropped so "Tentar de novo" asks again. */
+  private readonly spellDetails = new Map<string, Promise<SpellDetailsVm>>();
 
   @ViewChild(EditorStepper) private stepper?: EditorStepper;
 
@@ -270,6 +288,10 @@ export class CharacterEditor {
 
   protected readonly basicForm = createBasicForm(this.fb);
 
+  /** "Rolar 4d6" or "Conjunto padrão" with results still to place: saving
+   * waits, so a half-placed roll never turns into six default 10s. */
+  protected readonly abilitiesIncomplete = signal(false);
+
   private readonly selectedRaceKey = toSignal(this.fullForm.controls.race.valueChanges, {
     initialValue: '',
   });
@@ -288,12 +310,12 @@ export class CharacterEditor {
   );
   /** How many rolls "Dados de Vida" needs: one per level after the first. */
   protected readonly rollsNeeded = computed(() => Math.max(0, this.selectedLevel() - 1));
-  /** `[0, 1, ..., rollsNeeded() - 1]`, for the template's `@for` over the
-   * roll inputs — a real array, unlike `Array(n)`, which `@for` cannot
-   * iterate (a sparse array has no elements to track). */
-  protected readonly rollIndices = computed(() =>
-    Array.from({ length: this.rollsNeeded() }, (_, i) => i),
-  );
+  private readonly selectedSubraceKey = toSignal(this.fullForm.controls.subrace.valueChanges, {
+    initialValue: '',
+  });
+  private readonly baseScores = toSignal(this.fullForm.controls.abilities.valueChanges, {
+    initialValue: this.fullForm.controls.abilities.getRawValue(),
+  });
 
   protected readonly availableSubraces = computed(() => {
     const s = this.state();
@@ -311,11 +333,33 @@ export class CharacterEditor {
     return s.catalog.classes.find((c) => c.key === this.selectedClassKey());
   });
 
+  /** Faces of the chosen class's hit die, or 0 before a class is chosen. */
+  protected readonly hitDie = computed(() => this.selectedClass()?.hitDie ?? 0);
+
+  /** The Constitution the rolled hit points use: the typed score plus what
+   * the race and subrace give plus the manual bonus (the same sum the
+   * server makes; this one only feeds the preview). */
+  protected readonly finalConstitution = computed(() => {
+    const s = this.state();
+    const race =
+      s.status === 'ready'
+        ? s.catalog.races.find((r) => r.key === this.selectedRaceKey())
+        : undefined;
+    const subrace = race?.subraces.find((sr) => sr.key === this.selectedSubraceKey());
+    return (
+      (this.baseScores().con ?? 0) +
+      (race?.constitutionBonus ?? 0) +
+      (subrace?.constitutionBonus ?? 0) +
+      (this.bonusesValue().con ?? 0)
+    );
+  });
+
   protected readonly isCaster = computed(() => this.selectedClass()?.isCaster ?? false);
   /** Picks which spell-list fields the Magias step shows (integrator
    * amendment, 29/09/2026): "known" and "spellbook" classes show "Magias
    * conhecidas"; "prepared" and "spellbook" classes show "Magias
-   * preparadas". Truques (cantrips) show for every caster regardless. */
+   * preparadas". Truques (cantrips) show for every caster whose class list
+   * has any (`hasCantrips`). */
   protected readonly spellPreparation = computed(() => this.selectedClass()?.preparation ?? null);
 
   /** The highest spell circle the chosen class reaches at the form's level,
@@ -368,6 +412,12 @@ export class CharacterEditor {
   protected readonly filteredCantrips = computed(() =>
     filterByName(this.availableCantrips(), this.cantripsFilter()),
   );
+  /** False for a caster whose class list has no cantrips (the Paladin and
+   * the Ranger in the SRD): the "Truques" picker would only be an empty box.
+   * A cantrip already on the sheet keeps it, so it can still be unchecked. */
+  protected readonly hasCantrips = computed(
+    () => this.availableCantrips().length > 0 || this.selectedCantrips().size > 0,
+  );
   protected readonly filteredSpellsKnown = computed(() =>
     filterByName(this.visibleSpells(this.selectedSpellsKnown()), this.spellsKnownFilter()),
   );
@@ -414,7 +464,7 @@ export class CharacterEditor {
   private readonly basicFormValue = toSignal(this.basicForm.valueChanges);
   private readonly invalidFullFields = computed(() => {
     this.fullFormValue();
-    return this.showErrors() ? invalidFields(this.fullForm, FULL_SHEET_FIELDS) : [];
+    return this.showErrors() ? this.currentInvalidFullFields() : [];
   });
   private readonly invalidBasicFields = computed(() => {
     this.basicFormValue();
@@ -697,19 +747,42 @@ export class CharacterEditor {
     return Array.from(selected).filter((key) => availableKeys.has(key));
   }
 
-  /** One roll per level after the first ("Dados de Vida", hit points
-   * method "rolled") — `rollsNeeded()` inputs, indexed from 0 (level 2). */
-  protected setHitPointsRoll(index: number, value: number): void {
-    const next = [...this.hitPointsRolls()];
-    next[index] = value;
-    this.hitPointsRolls.set(next);
+  /** The "?" next to a spell: its description, as a bottom sheet on a phone
+   * and a dialog from a tablet up. Focus goes back to the "?" on close. */
+  protected describeSpell(spell: SpellOptionVm): void {
+    const s = this.state();
+    if (s.status !== 'ready') {
+      return;
+    }
+    const data: SpellDetailsData = {
+      namePt: spell.namePt,
+      load: () => this.loadSpellDetails(s.campaignId, spell.key),
+    };
+    if (this.onPhone()) {
+      this.bottomSheet.open(SpellDetails, {
+        data,
+        ariaLabel: `Descrição de ${spell.namePt}`,
+        autoFocus: 'first-heading',
+      });
+    } else {
+      this.dialog.open(SpellDetails, {
+        data,
+        width: '560px',
+        maxWidth: 'calc(100vw - 32px)',
+        ariaLabelledBy: 'spell-title',
+        autoFocus: 'first-heading',
+      });
+    }
   }
 
-  /** A roll may not be typed in yet — plain array indexing in the template
-   * would type as `number` (TypeScript does not bounds-check indexing),
-   * hiding that. */
-  protected rollValueAt(index: number): number | undefined {
-    return this.hitPointsRolls()[index];
+  private loadSpellDetails(campaignId: string, key: string): Promise<SpellDetailsVm> {
+    let pending = this.spellDetails.get(key);
+    if (!pending) {
+      pending = this.source.loadSpellDetails(campaignId, key);
+      this.spellDetails.set(key, pending);
+      pending.catch(() => this.spellDetails.delete(key));
+    }
+    return pending;
   }
 
   /** Toggles one of the custom background's two granted skills. Caps at 2
@@ -774,11 +847,18 @@ export class CharacterEditor {
     };
   }
 
+  /** The full sheet's invalid fields right now, plus the placing that is
+   * not finished (it has no control of its own: see `abilitiesIncomplete`). */
+  private currentInvalidFullFields(): EditorField[] {
+    const fields = invalidFields(this.fullForm, FULL_SHEET_FIELDS);
+    return this.abilitiesIncomplete() ? [...fields, UNPLACED_RESULTS_FIELD] : fields;
+  }
+
   /** After a submit with an invalid field: opens the step of the first one
    * (and "Bônus manuais", if that is where it is), so the field and its
    * error message are on screen. */
   private openFirstInvalidStep(): void {
-    const [first] = invalidFields(this.fullForm, FULL_SHEET_FIELDS);
+    const [first] = this.currentInvalidFullFields();
     if (!first?.step) {
       return;
     }
@@ -804,7 +884,7 @@ export class CharacterEditor {
     }
     const isBasic = !isFullSheetKind(s.kind);
     const form = isBasic ? this.basicForm : this.fullForm;
-    if (form.invalid) {
+    if (form.invalid || (!isBasic && this.abilitiesIncomplete())) {
       form.markAllAsTouched();
       this.saveState.set({ status: 'idle' });
       this.showErrors.set(true);

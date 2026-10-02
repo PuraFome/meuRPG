@@ -42,6 +42,8 @@ export class SpellPicker {
 
   readonly toggle = output<string>();
   readonly filterChange = output<string>();
+  /** The "?" next to a spell was pressed: the page opens its description. */
+  readonly describe = output<SpellOptionVm>();
 
   protected readonly spellLevelLabel = spellLevelLabel;
 
