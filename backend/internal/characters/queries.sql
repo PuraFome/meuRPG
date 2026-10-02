@@ -205,3 +205,21 @@ WHERE campaign_id = sqlc.arg(campaign_id)::UUID
   AND id = ANY(sqlc.arg(ids)::UUID[])
   AND status = 'active'
 ORDER BY kind <> 'player', created_at, id;
+
+-- name: ListCombatParty :many
+-- The campaign's living, active player characters, oldest first: the party
+-- that fights (package play). The sheet comes along for the numbers a
+-- combatant starts with (initiative, speed).
+SELECT id, kind, name, player_user_id, sheet FROM characters
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID
+  AND kind = 'player' AND status = 'active'
+ORDER BY created_at, id;
+
+-- name: ListCombatCharacters :many
+-- Those of the given characters that may fight in a combat of the campaign:
+-- its living characters, players' and NPCs, oldest first (package play).
+SELECT id, kind, name, player_user_id, sheet FROM characters
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID
+  AND id = ANY(sqlc.arg(ids)::UUID[])
+  AND status = 'active'
+ORDER BY created_at, id;

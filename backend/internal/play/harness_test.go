@@ -134,6 +134,7 @@ type harness struct {
 	pool   *pgxpool.Pool
 	users  *identity.PostgresStore
 	svc    *Service
+	roller *scriptedRoller    // the dice the service rolls
 	http   *httpserver.Server // the API's server, for tests that Serve it
 	server *httptest.Server   // serves http's handler over HTTP/1.1
 }
@@ -144,7 +145,7 @@ type harness struct {
 func newHarness(t *testing.T, live ...LiveConfig) *harness {
 	t.Helper()
 	pool := dbtest.NewPool(t, "meurpg_play_test")
-	h := &harness{t: t, pool: pool, users: identity.NewPostgresStore(pool)}
+	h := &harness{t: t, pool: pool, users: identity.NewPostgresStore(pool), roller: &scriptedRoller{}}
 	clock := &fakeClock{now: time.Now().Truncate(time.Microsecond)}
 	logger := slog.New(slog.DiscardHandler)
 	var liveConfig LiveConfig
@@ -163,7 +164,7 @@ func newHarness(t *testing.T, live ...LiveConfig) *harness {
 	if err != nil {
 		t.Fatalf("characters.New() error = %v", err)
 	}
-	svc, err := New(Config{Pool: pool, Sheets: chars, Vitals: chars, Campaigns: camps, Maps: maps.NewSessionMaps(pool), Live: liveConfig, Logger: logger, Now: clock.Now})
+	svc, err := New(Config{Pool: pool, Sheets: chars, Vitals: chars, Campaigns: camps, Maps: maps.NewSessionMaps(pool), Roster: chars, Dice: testDice{camps}, Roller: h.roller, Live: liveConfig, Logger: logger, Now: clock.Now})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -185,6 +186,7 @@ type user struct {
 	campaigns  campaignsv1connect.CampaignServiceClient
 	characters charactersv1connect.CharacterServiceClient
 	play       playv1connect.PlayServiceClient
+	combat     playv1connect.CombatServiceClient
 }
 
 func (h *harness) newUser(displayName string) *user {
@@ -211,6 +213,7 @@ func (h *harness) clients(userID string) *user {
 		campaigns:  campaignsv1connect.NewCampaignServiceClient(c, url),
 		characters: charactersv1connect.NewCharacterServiceClient(c, url),
 		play:       playv1connect.NewPlayServiceClient(c, url),
+		combat:     playv1connect.NewCombatServiceClient(c, url),
 	}
 }
 
@@ -314,4 +317,38 @@ func wantCode(t *testing.T, call string, err error, want connect.Code) {
 	if got := connect.CodeOf(err); err == nil || got != want {
 		t.Fatalf("%s error = %v, want %v", call, err, want)
 	}
+}
+
+// testDice is the service's DiceModes over the campaigns service, as cmd/api
+// wires it.
+type testDice struct{ camps *campaigns.Service }
+
+func (d testDice) RollsPhysical(ctx context.Context, campaignID, userID string) (bool, error) {
+	mode, err := d.camps.PlayerDiceMode(ctx, campaignID, userID)
+	return mode == campaigns.RollsPhysical, err
+}
+
+// scriptedRoller gives the faces a test queued, in order, and a 10 (or the
+// highest face of a smaller die) when none is left, so a test sets only the
+// rolls it cares about.
+type scriptedRoller struct {
+	mu    sync.Mutex
+	faces []int
+}
+
+func (r *scriptedRoller) queue(faces ...int) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.faces = append(r.faces, faces...)
+}
+
+func (r *scriptedRoller) Roll(sides int) (int, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if len(r.faces) == 0 {
+		return min(10, sides), nil
+	}
+	face := r.faces[0]
+	r.faces = r.faces[1:]
+	return face, nil
 }

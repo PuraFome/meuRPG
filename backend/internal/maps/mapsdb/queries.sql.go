@@ -69,7 +69,7 @@ func (q *Queries) DeleteGalleryImage(ctx context.Context, arg DeleteGalleryImage
 const deleteMap = `-- name: DeleteMap :one
 DELETE FROM maps
 WHERE campaign_id = $1 AND id = $2
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns
 `
 
 type DeleteMapParams struct {
@@ -91,6 +91,7 @@ func (q *Queries) DeleteMap(ctx context.Context, arg DeleteMapParams) (Map, erro
 		&i.Revision,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.GridColumns,
 	)
 	return i, err
 }
@@ -231,7 +232,7 @@ func (q *Queries) GetGalleryUsage(ctx context.Context, campaignID string) (GetGa
 }
 
 const getMap = `-- name: GetMap :one
-SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at FROM maps
+SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns FROM maps
 WHERE campaign_id = $1 AND id = $2
 `
 
@@ -252,12 +253,13 @@ func (q *Queries) GetMap(ctx context.Context, arg GetMapParams) (Map, error) {
 		&i.Revision,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.GridColumns,
 	)
 	return i, err
 }
 
 const getMapForUpdate = `-- name: GetMapForUpdate :one
-SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at FROM maps
+SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns FROM maps
 WHERE campaign_id = $1 AND id = $2
 FOR UPDATE
 `
@@ -282,7 +284,35 @@ func (q *Queries) GetMapForUpdate(ctx context.Context, arg GetMapForUpdateParams
 		&i.Revision,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.GridColumns,
 	)
+	return i, err
+}
+
+const getMapGrid = `-- name: GetMapGrid :one
+SELECT m.grid_columns, g.width AS image_width, g.height AS image_height
+FROM maps AS m
+JOIN gallery_images AS g ON g.id = m.image_id
+WHERE m.campaign_id = $1 AND m.id = $2
+`
+
+type GetMapGridParams struct {
+	CampaignID string
+	ID         string
+}
+
+type GetMapGridRow struct {
+	GridColumns *int32
+	ImageWidth  int32
+	ImageHeight int32
+}
+
+// A map's grid and its image's size, for the rows (package play, through
+// SessionMaps).
+func (q *Queries) GetMapGrid(ctx context.Context, arg GetMapGridParams) (GetMapGridRow, error) {
+	row := q.db.QueryRow(ctx, getMapGrid, arg.CampaignID, arg.ID)
+	var i GetMapGridRow
+	err := row.Scan(&i.GridColumns, &i.ImageWidth, &i.ImageHeight)
 	return i, err
 }
 
@@ -300,6 +330,38 @@ type GetMapPointForUpdateParams struct {
 // The caller checked first that the map is the campaign's.
 func (q *Queries) GetMapPointForUpdate(ctx context.Context, arg GetMapPointForUpdateParams) (MapPoint, error) {
 	row := q.db.QueryRow(ctx, getMapPointForUpdate, arg.MapID, arg.ID)
+	var i MapPoint
+	err := row.Scan(
+		&i.ID,
+		&i.MapID,
+		&i.Kind,
+		&i.Name,
+		&i.Description,
+		&i.XBp,
+		&i.YBp,
+		&i.TargetMapID,
+		&i.RevealedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getMapPointInCampaign = `-- name: GetMapPointInCampaign :one
+SELECT p.id, p.map_id, p.kind, p.name, p.description, p.x_bp, p.y_bp, p.target_map_id, p.revealed_at, p.created_at, p.updated_at FROM map_points AS p
+JOIN maps AS m ON m.id = p.map_id
+WHERE m.campaign_id = $1 AND p.id = $2
+`
+
+type GetMapPointInCampaignParams struct {
+	CampaignID string
+	ID         string
+}
+
+// A point by its ID alone, if it is on one of the campaign's maps: the
+// battle point a combat starts from.
+func (q *Queries) GetMapPointInCampaign(ctx context.Context, arg GetMapPointInCampaignParams) (MapPoint, error) {
+	row := q.db.QueryRow(ctx, getMapPointInCampaign, arg.CampaignID, arg.ID)
 	var i MapPoint
 	err := row.Scan(
 		&i.ID,
@@ -436,7 +498,7 @@ func (q *Queries) InsertGalleryImage(ctx context.Context, arg InsertGalleryImage
 const insertMap = `-- name: InsertMap :one
 INSERT INTO maps (campaign_id, name, image_id, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $4)
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns
 `
 
 type InsertMapParams struct {
@@ -464,6 +526,7 @@ func (q *Queries) InsertMap(ctx context.Context, arg InsertMapParams) (Map, erro
 		&i.Revision,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.GridColumns,
 	)
 	return i, err
 }
@@ -654,7 +717,7 @@ func (q *Queries) ListLeftImages(ctx context.Context, campaignID string) ([]Gall
 }
 
 const listMapDetails = `-- name: ListMapDetails :many
-SELECT m.id, m.campaign_id, m.name, m.image_id, m.revealed_at, m.revision, m.created_at, m.updated_at,
+SELECT m.id, m.campaign_id, m.name, m.image_id, m.revealed_at, m.revision, m.created_at, m.updated_at, m.grid_columns,
        g.name AS image_name, g.width AS image_width, g.height AS image_height,
        (SELECT count(*) FROM map_points AS p WHERE p.map_id = m.id)::INT4 AS point_count,
        (SELECT count(*) FROM map_points AS p WHERE p.map_id = m.id AND p.revealed_at IS NOT NULL)::INT4 AS revealed_point_count
@@ -673,6 +736,7 @@ type ListMapDetailsRow struct {
 	Revision           int32
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
+	GridColumns        *int32
 	ImageName          string
 	ImageWidth         int32
 	ImageHeight        int32
@@ -702,6 +766,7 @@ func (q *Queries) ListMapDetails(ctx context.Context, campaignID string) ([]List
 			&i.Revision,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.GridColumns,
 			&i.ImageName,
 			&i.ImageWidth,
 			&i.ImageHeight,
@@ -867,7 +932,7 @@ const listSubmapLinks = `-- name: ListSubmapLinks :many
 SELECT p.map_id, p.target_map_id::UUID AS target_map_id, (p.revealed_at IS NOT NULL)::BOOL AS revealed
 FROM map_points AS p
 JOIN maps AS m ON m.id = p.map_id
-WHERE m.campaign_id = $1 AND p.target_map_id IS NOT NULL
+WHERE m.campaign_id = $1 AND p.kind = 'submap' AND p.target_map_id IS NOT NULL
 ORDER BY p.created_at, p.id
 `
 
@@ -965,12 +1030,51 @@ func (q *Queries) RenameGalleryImage(ctx context.Context, arg RenameGalleryImage
 	return i, err
 }
 
+const setMapGrid = `-- name: SetMapGrid :one
+UPDATE maps
+SET grid_columns = $1, updated_at = $2
+WHERE campaign_id = $3 AND id = $4
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns
+`
+
+type SetMapGridParams struct {
+	GridColumns *int32
+	Now         time.Time
+	CampaignID  string
+	ID          string
+}
+
+// The master's grid (MR-013): NULL clears it. It is a change to the map
+// itself, so updated_at moves, but the revision (the name and the image's
+// guard) does not.
+func (q *Queries) SetMapGrid(ctx context.Context, arg SetMapGridParams) (Map, error) {
+	row := q.db.QueryRow(ctx, setMapGrid,
+		arg.GridColumns,
+		arg.Now,
+		arg.CampaignID,
+		arg.ID,
+	)
+	var i Map
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.Name,
+		&i.ImageID,
+		&i.RevealedAt,
+		&i.Revision,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.GridColumns,
+	)
+	return i, err
+}
+
 const setMapRevealed = `-- name: SetMapRevealed :one
 UPDATE maps
 SET revealed_at = CASE WHEN $1::BOOL THEN COALESCE(revealed_at, $2::TIMESTAMPTZ) ELSE NULL END,
     updated_at = CASE WHEN (revealed_at IS NOT NULL) = $1::BOOL THEN updated_at ELSE $2::TIMESTAMPTZ END
 WHERE campaign_id = $3 AND id = $4
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns
 `
 
 type SetMapRevealedParams struct {
@@ -1000,6 +1104,7 @@ func (q *Queries) SetMapRevealed(ctx context.Context, arg SetMapRevealedParams) 
 		&i.Revision,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.GridColumns,
 	)
 	return i, err
 }
@@ -1059,7 +1164,7 @@ const updateMap = `-- name: UpdateMap :one
 UPDATE maps
 SET name = $1, image_id = $2, revision = revision + 1, updated_at = $3
 WHERE campaign_id = $4 AND id = $5 AND revision = $6
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns
 `
 
 type UpdateMapParams struct {
@@ -1092,6 +1197,7 @@ func (q *Queries) UpdateMap(ctx context.Context, arg UpdateMapParams) (Map, erro
 		&i.Revision,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.GridColumns,
 	)
 	return i, err
 }
@@ -1148,4 +1254,33 @@ func (q *Queries) UpdateMapPoint(ctx context.Context, arg UpdateMapPointParams) 
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const upsertMapTokenPosition = `-- name: UpsertMapTokenPosition :exec
+INSERT INTO map_tokens (map_id, character_id, x_bp, y_bp, hidden, updated_at)
+VALUES ($1, $2, $3, $4, false, $5)
+ON CONFLICT (map_id, character_id) DO UPDATE
+SET x_bp = excluded.x_bp, y_bp = excluded.y_bp, updated_at = excluded.updated_at
+`
+
+type UpsertMapTokenPositionParams struct {
+	MapID       string
+	CharacterID string
+	XBp         int32
+	YBp         int32
+	UpdatedAt   time.Time
+}
+
+// Where a combatant ended its combat (package play): the token moves, or is
+// created visible (a player's character starts visible, like PlaceMapToken).
+// An existing token keeps its hidden flag.
+func (q *Queries) UpsertMapTokenPosition(ctx context.Context, arg UpsertMapTokenPositionParams) error {
+	_, err := q.db.Exec(ctx, upsertMapTokenPosition,
+		arg.MapID,
+		arg.CharacterID,
+		arg.XBp,
+		arg.YBp,
+		arg.UpdatedAt,
+	)
+	return err
 }

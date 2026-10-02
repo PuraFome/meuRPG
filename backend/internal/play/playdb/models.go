@@ -8,6 +8,55 @@ import (
 	"time"
 )
 
+type Combatant struct {
+	ID                 string
+	EncounterID        string
+	CharacterID        string
+	UserID             *string
+	Label              string
+	Kind               string
+	Hidden             bool
+	Initiative         *int32
+	InitiativeBonus    int32
+	InitiativeFace     *int32
+	TieOrdered         bool
+	OrderIndex         int32
+	GridCol            *int32
+	GridRow            *int32
+	SpeedFt            int32
+	MovementUsedFt     int32
+	Dashed             bool
+	ActionUsed         bool
+	BonusActionUsed    bool
+	ReactionUsed       bool
+	HpCurrent          *int32
+	HpMax              *int32
+	HpTemp             *int32
+	Defeated           bool
+	DeathSuccesses     int32
+	DeathFailures      int32
+	Conditions         []string
+	ConcentrationSpell *string
+	CreatedAt          time.Time
+}
+
+type Encounter struct {
+	ID                 string
+	GameSessionID      string
+	MapID              *string
+	MapPointID         *string
+	Name               string
+	Status             string
+	Round              int32
+	CurrentCombatantID *string
+	GridColumns        int32
+	GridRows           int32
+	Revision           int32
+	CreatedAt          time.Time
+	StartedAt          *time.Time
+	EndedAt            *time.Time
+}
+
 type GameSession struct {
 	ID             string
 	CampaignID     string

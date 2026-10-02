@@ -332,8 +332,15 @@ Esta seção lista só o que já existe nas migrations de `backend/migrations/`.
 | `00037_add_campaign_members_dice_preference` | `campaign_members` | Coluna `dice_preference` (`app` ou `physical`), com `CHECK`: como o membro prefere rolar (RN-18). |
 | `00038_add_game_sessions_shown_image_keep` | `game_sessions` | Coluna `shown_image_keep` (`BOOL`, padrão falso): o interruptor "Deixar com os jogadores" da imagem mostrada (MR-028). |
 | `00039_create_campaign_left_images` | `campaign_left_images` | As imagens que o mestre deixou com os jogadores (MR-028): campanha, imagem da galeria e quando; `CASCADE` na campanha e na imagem. |
+| `00040_add_maps_grid_columns` | `maps` | Coluna `grid_columns` (anulável): a grade de batalha, quantos quadrados de 1,5 m cabem na largura da imagem (MR-013, RN-21). |
+| `00041_add_maps_grid_columns_valid` | `maps` | `CHECK` da grade: `NULL` ou de 4 a 200 colunas. |
+| `00042_allow_battle_points_to_lead` | `map_points` | O `CHECK` do destino agora aceita `battle` além de `submap`: o ponto de batalha pode apontar o mapa do combate. |
+| `00043_create_encounters` | `encounters` | Os combates de cada sessão (MR-013): estado, rodada, de quem é a vez, mapa e a grade copiada do mapa. |
+| `00044_create_combatants` | `combatants` | Quem luta em cada combate: jogadores e cópias de NPC, com iniciativa, posição na grade, movimento e economia do turno, PV do NPC e escondido (RN-10, RN-19, RN-20). |
+| `00045_create_encounters_indexes` | `encounters`, `combatants` | Índice único parcial (um combate aberto por sessão), combates por sessão e combatentes na ordem dos turnos. |
+| `00046_add_encounter_session_event_kinds` | `session_events` | O `CHECK` de `kind` ganha os dez tipos do combate. |
 
-As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021`, a `00022`, a `00027`, a `00034`, a `00035`, a `00036` e a `00037`, do módulo `campaigns`; as `00014` a `00017`, a `00020` e a `00023`, do módulo `characters`; as `00018`, a `00019`, a `00024`, a `00032` e a `00033`, do módulo `play`; as `00025`, a `00026` e as `00028` a `00031`, do módulo `maps`. A `00027` é do documento de campanha, no `campaigns`, que chega num PR à parte. Mudanças em relação à proposta acima, no `identity`:
+As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021`, a `00022`, a `00027`, a `00034`, a `00035`, a `00036` e a `00037`, do módulo `campaigns`; as `00014` a `00017`, a `00020` e a `00023`, do módulo `characters`; as `00018`, a `00019`, a `00024`, a `00032`, a `00033` e as `00043` a `00046`, do módulo `play`; as `00025`, a `00026`, as `00028` a `00031` e as `00040` a `00042`, do módulo `maps`. A `00027` é do documento de campanha, no `campaigns`, que chega num PR à parte. Mudanças em relação à proposta acima, no `identity`:
 
 - `users.google_sub` e `users.email` viraram `user_identities (issuer, subject, email)`. O par `(issuer, subject)` é a chave primária, porque o `sub` só é único dentro de um provedor. Assim o código não depende do Google, e uma conta pode ter outro jeito de entrar (ADR-0009) sem mudar `users`.
 - `UNIQUE (user_id, issuer)`: uma conta tem no máximo uma identidade por provedor, então duas contas Google nunca se juntam.
@@ -375,7 +382,7 @@ No `characters`:
 - **`character_vitals`** (`00023`) guarda o que muda no jogo e dura de uma sessão para outra (RN-02): `hit_points_current`, `hit_points_temporary`, `spell_slots_used` (um `INT4[]`: o item k é o número de espaços do círculo k usados, até 9 círculos), `pact_slots_used` (os espaços de pacto do bruxo) e `hit_dice_used` (o total de dados de vida gastos, somando os dados de todas as classes), com `revision` (sobe a cada correção) e `updated_at`. A chave primária é o próprio `character_id`, com `ON DELETE CASCADE`. O nome é "vitals", não "state", porque o estado do personagem já é o ciclo de vida (rascunho, travada, morto, pendente).
   - **Os máximos não ficam aqui.** O `rules.Derive` calcula PV máximo, espaços por círculo, espaços de pacto e dados de vida a cada leitura, e o servidor corta o valor guardado no máximo de agora. Por isso não há `CHECK` de máximo no banco, só de mínimo: todos os números são 0 ou mais, e o array tem no máximo 9 itens.
   - **Sem linha, o personagem está inteiro:** PV cheio, nada usado. A linha nasce na primeira correção do mestre.
-  - Só personagem de jogador tem linha. O PV de NPC em combate fica nos combatentes (Etapa 6).
+  - Só personagem de jogador tem linha. O PV de NPC em combate fica nos combatentes (`combatants`, `00044`).
 
 No `play`:
 
@@ -383,11 +390,13 @@ No `play`:
 - **O que a sessão mostra** fica na linha da sessão: `current_map_id` (`00032`), o mapa atual, e `shown_image_id` (`00033`), a imagem que o mestre mostra aos jogadores (MR-028). Os dois são opcionais e independentes, e uma sessão nova começa sem nenhum. As chaves estrangeiras são `ON DELETE SET NULL`: apagar o mapa, ou a imagem, tira da tela. Não há índice nessas colunas: só apagar um mapa ou uma imagem procura por elas, e `game_sessions` é pequena (uma linha por noite de jogo). As duas tabelas de destino são do módulo `maps`; o `play` só guarda o ID, e confere e lê o mapa e a imagem pela interface `MapKeeper` (ver [Arquitetura](arquitetura.md#o-que-a-sessão-mostra)).
 - **As imagens deixadas com os jogadores** (`campaign_left_images`, `00039`) são da campanha, não da sessão: continuam depois que a sessão acaba, até o mestre tirar (MR-028). A chave primária é (`campaign_id`, `image_id`): lista as imagens de uma campanha e impede deixar a mesma duas vezes; `left_at` dá a ordem. Apagar a campanha ou a imagem da galeria apaga a linha (`CASCADE`). Não há índice em `image_id`: só apagar uma imagem procura por ele, e uma campanha deixa poucas imagens. O interruptor da imagem que ainda está à mostra é `game_sessions.shown_image_keep` (`00038`): ligado, parar de mostrar, trocar ou encerrar a sessão copia a imagem para esta tabela, na mesma transação.
 - Iniciar uma sessão grava a linha, trava as fichas e desliga as liberações da história, tudo na mesma transação. As duas últimas partes são do módulo `characters`, que o `play` chama por uma interface (ver [Arquitetura](arquitetura.md#módulo-play-sessões-de-jogo)).
-- **`session_events`** (`00024`, ADR-0007) é o histórico da sessão: cada mudança feita na mesa vira uma linha que nunca é alterada, gravada na mesma transação da mudança. Na Etapa 5 existe um tipo só, `character_vitals_adjusted` (a correção do mestre, RN-02); dano, cura, magia e XP entram com o combate, cada um como um tipo novo no `CHECK` (`session_events_kind_valid`).
+- **`session_events`** (`00024`, ADR-0007) é o histórico da sessão: cada mudança feita na mesa vira uma linha que nunca é alterada, gravada na mesma transação da mudança. Na Etapa 5 existe um tipo só, `character_vitals_adjusted` (a correção do mestre, RN-02); o combate (`00046`) acrescenta `encounter_started`, `initiative_submitted`, `initiative_order_set`, `combat_begun`, `turn_ended`, `combatant_moved`, `combatant_hidden_set`, `combatants_added`, `combatant_removed` e `encounter_ended`, com payloads só de IDs e números; dano, cura, magia e XP entram com a fatia seguinte, cada um como um tipo novo no `CHECK` (`session_events_kind_valid`).
   - `seq` numera os eventos de cada sessão a partir de 1, na ordem em que aconteceram: o próximo é o maior mais 1, lido com a linha da sessão travada (`FOR UPDATE`), e `UNIQUE (game_session_id, seq)` é a garantia final.
   - `idempotency_key` é o UUID que o app manda com a mudança; `UNIQUE (game_session_id, idempotency_key)` faz uma nova tentativa com a mesma chave não gravar nada. É `NULL` num evento sem chave (NULLs não colidem num `UNIQUE`).
   - `payload` é um JSON pequeno (objeto, até 4 KiB, por `CHECK`) com os números antes e depois: sem texto livre, sem nome. `actor_user_id` é quem fez a mudança (`ON DELETE SET NULL`: a conta excluída some do histórico) e `character_id` o personagem (`SET NULL` se ele for apagado, o que mantém o histórico).
   - Não há API de leitura ainda: a tela do histórico vem com o combate. Some com a sessão, e a sessão com a campanha.
+- **`encounters`** (`00043`, MR-013) são os combates da sessão: `status` é `setup` (escolhendo quem luta e rolando a iniciativa), `active` (os turnos rodam) ou `ended`, com `CHECK`. Uma sessão tem no máximo um que não terminou (índice único parcial `encounters_one_open_per_session`, `00045`); os terminados ficam, como registro. `round` é 0 em `setup` e conta de 1. `current_combatant_id` é de quem é a vez e **não tem chave estrangeira**: os combatentes apontam para o combate, e o serviço passa a vez antes de apagar o combatente da vez. `map_id` (`SET NULL`) e `map_point_id` (`SET NULL`) dizem onde e de onde o combate começou; `grid_columns` e `grid_rows` são **copiados** da grade do mapa quando o combate nasce, então mudar a grade depois não move ninguém. `revision` sobe a cada mudança. Some com a sessão, e a sessão com a campanha (`CASCADE`).
+- **`combatants`** (`00044`) são quem luta: `kind` é `player` ou `npc`. Cópias do mesmo NPC compartilham o `character_id`, cada uma com o próprio `label` ("Goblin 2", até 40 caracteres) e a própria iniciativa (RN-19). `user_id` é o jogador de um combatente de jogador (`SET NULL` se a conta é excluída, RN-16). `hidden` é o interruptor do mestre: o servidor nunca manda um combatente escondido a um jogador (RN-10, RN-20), e todo NPC novo nasce escondido (pergunta 31). Iniciativa: `initiative` é o total, `initiative_face` o d20 (os dois nulos até rolar, `CHECK`), `initiative_bonus` o bônus copiado da ficha, `order_index` o lugar na ordem dos turnos e `tie_ordered` diz que o mestre decidiu o empate (RN-19). Posição: `grid_col` e `grid_row` (os dois nulos enquanto não tem quadrado). `speed_ft` é a velocidade copiada ao entrar; `movement_used_ft`, `dashed`, `action_used`, `bonus_action_used` e `reaction_used` são o turno atual. **Só o NPC tem PV aqui** (`hp_current`, `hp_max`, `hp_temp`, conferido por `CHECK` conforme o `kind`): o do personagem de jogador continua em `character_vitals`, uma fonte só (RN-02), e o combate nunca muda a ficha do NPC (RN-04). `defeated`, `death_successes`, `death_failures`, `conditions` e `concentration_spell` (RN-22) existem desde já e são preenchidos pelas ações da fatia seguinte. Sem índice por `character_id` nem `user_id`: só apagar um personagem ou uma conta procura por eles.
 
 **O PV que dura entre sessões (a lacuna da Etapa 4, resolvida na Etapa 5).** O PV atual, os espaços de magia gastos e os dados de vida de um personagem de jogador precisam durar de um encontro para outro e de uma sessão para outra, e `combatants.current_hp` só vale para um combate. Esse estado ficou em `character_vitals` (`00023`, no `characters`, acima). No combate (Etapa 6), o combatente de um personagem de jogador parte desses valores, e o resultado do combate volta para eles.
 
@@ -401,8 +410,9 @@ No `maps`:
 - **`maps`** (`00028`) aponta para a imagem com `ON DELETE RESTRICT`: uma imagem usada num mapa não pode ser apagada, e o `DeleteGalleryImage` responde `failed_precondition` com o detalhe `ImageInUse`, que nomeia os mapas (MR-019). O servidor confere também que a imagem é da mesma campanha. Apagar a campanha apaga os mapas e as imagens na mesma instrução, e o CockroachDB confere o `RESTRICT` no fim dela, quando os dois já se foram (`TestDeletingTheCampaignDeletesItsMaps`).
   - `revealed_at` é quando o mestre revelou o mapa aos jogadores; vazio, o mapa está escondido, e todo mapa nasce escondido. O jogador vê o mapa revelado, ou o mapa atual da sessão (`game_sessions.current_map_id`), mesmo escondido; escolher o mapa atual o revela.
   - `revision` sobe quando o nome ou a imagem mudam (revelar não mexe); um salvamento com revisão velha recebe `aborted`, como na ficha.
+  - `grid_columns` (`00040`, `00041`) é a grade de batalha (MR-013, RN-21): quantos quadrados de 1,5 m cabem na largura da imagem, de 4 a 200, ou `NULL` sem grade. As linhas não são guardadas: seguem a proporção da imagem (`round(colunas × altura / largura)`). Mudar a grade mexe em `updated_at`, não em `revision`.
 - **`map_points`** (`00029`): `kind` é `battle`, `submap` ou `scene` (`CHECK`); `name` (1 a 80) e `description` (até 2.000 caracteres, várias linhas) são texto livre do mestre para os jogadores; `x_bp` e `y_bp` são a posição em pontos-base da largura e da altura da imagem, de 0 a 10000 (`CHECK`), então não dependem do tamanho da imagem.
-  - `target_map_id` é o mapa ao qual um ponto de submapa leva: só num `submap` (`CHECK map_points_only_submaps_lead`), nunca o próprio mapa (`CHECK map_points_not_own_target`), e sempre da mesma campanha (conferido pelo servidor). Apagar o mapa de destino deixa o ponto sem destino (`SET NULL`); apagar o mapa do ponto apaga o ponto (`CASCADE`).
+  - `target_map_id` é o mapa ao qual um ponto de submapa leva, ou o mapa do combate de um ponto de batalha (MR-013): só num `submap` ou `battle` (`CHECK map_points_only_submaps_and_battles_lead`, `00042`), nunca o próprio mapa (`CHECK map_points_not_own_target`), e sempre da mesma campanha (conferido pelo servidor). Apagar o mapa de destino deixa o ponto sem destino (`SET NULL`); apagar o mapa do ponto apaga o ponto (`CASCADE`).
   - `revealed_at` funciona como no mapa, e todo ponto nasce escondido.
 - **`map_tokens`** (`00030`): a chave primária é `(map_id, character_id)`, um token por personagem por mapa, e lista os tokens de um mapa. O personagem é um personagem vivo da campanha, de jogador ou NPC, conferido pelo módulo `characters`; um personagem que morre continua na tabela, mas o `GetMap` não o lista. `hidden` nasce `false` para personagem de jogador e `true` para NPC (decidido em 02/10/2026, pergunta 31: o mestre revela quando quiser). Some com o mapa ou com o personagem (`CASCADE`); não há índice por `character_id`, porque só apagar um personagem procura por ele, como em `campaigns.created_by`.
 - **Índices** (`00031`): mapas por `(campaign_id, created_at)` e por `image_id` (o `RESTRICT` e a resposta que nomeia os mapas), pontos por `(map_id, created_at)` e por `target_map_id` (o `SET NULL`).
@@ -544,11 +554,60 @@ erDiagram
         uuid id PK
         uuid game_session_id FK
         int4 seq "UNIQUE por sessão, a partir de 1"
-        text kind "character_vitals_adjusted"
+        text kind "character_vitals_adjusted ou do combate"
         uuid actor_user_id FK "opcional, SET NULL"
         uuid character_id FK "opcional, SET NULL"
         jsonb payload "números antes e depois, até 4 KiB"
         uuid idempotency_key "opcional, UNIQUE por sessão"
+        timestamptz created_at
+    }
+
+    encounters {
+        uuid id PK
+        uuid game_session_id FK "CASCADE"
+        uuid map_id FK "opcional, SET NULL"
+        uuid map_point_id FK "opcional, SET NULL"
+        text name "1 a 80"
+        text status "setup, active ou ended"
+        int4 round "0 em setup"
+        uuid current_combatant_id "de quem é a vez, sem FK"
+        int4 grid_columns "copiada do mapa, 4 a 200"
+        int4 grid_rows "1 a 400"
+        int4 revision "sobe a cada mudança"
+        timestamptz created_at
+        timestamptz started_at "opcional"
+        timestamptz ended_at "opcional"
+    }
+
+    combatants {
+        uuid id PK
+        uuid encounter_id FK "CASCADE"
+        uuid character_id FK "CASCADE"
+        uuid user_id FK "opcional, SET NULL"
+        text label "1 a 40, Goblin 2"
+        text kind "player ou npc"
+        bool hidden "RN-10, NPC nasce escondido"
+        int4 initiative "total, opcional"
+        int4 initiative_bonus
+        int4 initiative_face "o d20, opcional"
+        bool tie_ordered "RN-19"
+        int4 order_index "ordem dos turnos"
+        int4 grid_col "opcional"
+        int4 grid_row "opcional"
+        int4 speed_ft
+        int4 movement_used_ft
+        bool dashed
+        bool action_used
+        bool bonus_action_used
+        bool reaction_used
+        int4 hp_current "só NPC"
+        int4 hp_max "só NPC"
+        int4 hp_temp "só NPC"
+        bool defeated
+        int4 death_successes
+        int4 death_failures
+        text_array conditions "RN-22"
+        text concentration_spell "opcional"
         timestamptz created_at
     }
 
@@ -570,6 +629,7 @@ erDiagram
         text name "1 a 80"
         uuid image_id FK "RESTRICT"
         timestamptz revealed_at "vazio: escondido"
+        int4 grid_columns "grade de batalha, 4 a 200, opcional"
         int4 revision "sobe com nome ou imagem"
         timestamptz created_at
         timestamptz updated_at
@@ -583,7 +643,7 @@ erDiagram
         text description "até 2000"
         int4 x_bp "0 a 10000"
         int4 y_bp "0 a 10000"
-        uuid target_map_id FK "só submap, SET NULL"
+        uuid target_map_id FK "submap ou battle, SET NULL"
         timestamptz revealed_at "vazio: escondido"
         timestamptz created_at
         timestamptz updated_at
@@ -628,6 +688,12 @@ erDiagram
     gallery_images |o--o{ game_sessions : "é mostrada em"
     campaigns ||--o{ campaign_left_images : "deixou com os jogadores"
     gallery_images ||--o{ campaign_left_images : "é deixada em"
+    game_sessions ||--o{ encounters : "tem"
+    maps |o--o{ encounters : "é palco de"
+    map_points |o--o{ encounters : "começou em"
+    encounters ||--o{ combatants : "inclui"
+    characters ||--o{ combatants : "atua como"
+    users |o--o{ combatants : "joga"
 ```
 
 `oidc_login_states` não liga a nenhuma conta: o login ainda não terminou, então ninguém sabe quem é.

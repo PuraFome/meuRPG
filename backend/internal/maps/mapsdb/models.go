@@ -21,14 +21,15 @@ type GalleryImage struct {
 }
 
 type Map struct {
-	ID         string
-	CampaignID string
-	Name       string
-	ImageID    string
-	RevealedAt *time.Time
-	Revision   int32
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	ID          string
+	CampaignID  string
+	Name        string
+	ImageID     string
+	RevealedAt  *time.Time
+	Revision    int32
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	GridColumns *int32
 }
 
 type MapPoint struct {

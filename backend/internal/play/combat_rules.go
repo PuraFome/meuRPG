@@ -1,0 +1,225 @@
+package play
+
+import (
+	"cmp"
+	"slices"
+	"strconv"
+	"strings"
+	"unicode/utf8"
+
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
+)
+
+// The combat's own arithmetic: the turn order, whose turn comes next, the
+// grid squares and the state words. Pure functions, no database, so each rule
+// has a plain unit test (MR-013, RN-19, RN-20, RN-21).
+
+// The database's values for a combat's status and a combatant's kind
+// (encounters_status_valid, combatants_kind_valid).
+const (
+	statusSetup  = "setup"
+	statusActive = "active"
+	statusEnded  = "ended"
+
+	kindPlayer = "player"
+	kindNPC    = "npc"
+)
+
+// Limits of a combat. Tests cannot go beyond the CHECKs of the tables, which
+// say the same.
+const (
+	// maxCombatants is how many combatants a combat holds: a table never
+	// plays more, and the unpaginated answer stays small.
+	maxCombatants = 40
+	// maxNPCCopies is how many copies of one NPC a participant may ask for.
+	maxNPCCopies = 10
+	// maxLabelLength is the longest combatant label, in characters.
+	maxLabelLength = 40
+	// maxEncounterName is the longest combat name, in characters.
+	maxEncounterName = 80
+)
+
+// orderCombatants returns the combatants in turn order (RN-19): the highest
+// initiative total first, then the higher bonus, and, among those still tied,
+// the place they already hold (order_index), which is where the master's
+// decision lives (SetInitiativeOrder). Combatants without an initiative yet
+// come last, in the place they hold. It does not change cs.
+func orderCombatants(cs []playdb.Combatant) []playdb.Combatant {
+	out := slices.Clone(cs)
+	slices.SortStableFunc(out, func(a, b playdb.Combatant) int {
+		switch {
+		case a.Initiative == nil && b.Initiative == nil:
+			return cmp.Compare(a.OrderIndex, b.OrderIndex)
+		case a.Initiative == nil:
+			return 1
+		case b.Initiative == nil:
+			return -1
+		}
+		return cmp.Or(
+			cmp.Compare(*b.Initiative, *a.Initiative),
+			cmp.Compare(b.InitiativeBonus, a.InitiativeBonus),
+			cmp.Compare(a.OrderIndex, b.OrderIndex),
+		)
+	})
+	return out
+}
+
+// sameTie says whether two combatants are tied: the same total and the same
+// bonus, which is when the master decides who goes first.
+func sameTie(a, b playdb.Combatant) bool {
+	return a.Initiative != nil && b.Initiative != nil && *a.Initiative == *b.Initiative && a.InitiativeBonus == b.InitiativeBonus
+}
+
+// unresolvedTies returns the IDs of the combatants that are tied with another
+// and whose group the master has not ordered yet (tie_ordered).
+func unresolvedTies(cs []playdb.Combatant) map[string]bool {
+	out := map[string]bool{}
+	for i, a := range cs {
+		for _, b := range cs[i+1:] {
+			if sameTie(a, b) && (!a.TieOrdered || !b.TieOrdered) {
+				out[a.ID], out[b.ID] = true, true
+			}
+		}
+	}
+	return out
+}
+
+// withOrder puts the given IDs, which are a tie group (the same total and
+// bonus), in the new order, inside the places the group holds together in
+// cs, which is already in turn order. It returns the new list.
+func withOrder(cs []playdb.Combatant, ids []string) []playdb.Combatant {
+	out := slices.Clone(cs)
+	byID := make(map[string]playdb.Combatant, len(cs))
+	var places []int
+	for i, c := range cs {
+		byID[c.ID] = c
+		if slices.Contains(ids, c.ID) {
+			places = append(places, i)
+		}
+	}
+	for n, place := range places {
+		c := byID[ids[n]]
+		c.TieOrdered = true
+		out[place] = c
+	}
+	return out
+}
+
+// nextTurn says who plays after current: the next combatant in cs (in turn
+// order) that is not defeated and is not skip, and whether the round changed
+// to find it (it wrapped past the last combatant). ok is false when nobody
+// can play. current may be missing from cs (it was removed): then the turn
+// starts from the first combatant, in the same round.
+func nextTurn(cs []playdb.Combatant, current, skip string) (next string, newRound, ok bool) {
+	start := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == current })
+	for step := 1; step <= len(cs); step++ {
+		i := start + step
+		wrapped := false
+		if start < 0 {
+			i = step - 1
+		}
+		if i >= len(cs) {
+			i -= len(cs)
+			wrapped = true
+		}
+		if c := cs[i]; !c.Defeated && c.ID != skip {
+			return c.ID, wrapped, true
+		}
+	}
+	return "", false, false
+}
+
+// movementLeftFt is how many feet the combatant can still walk this turn
+// (RN-21): its speed, twice after the Dash action, minus what it walked.
+func movementLeftFt(c playdb.Combatant) int {
+	speed := int(c.SpeedFt)
+	if c.Dashed {
+		speed *= 2
+	}
+	return max(speed-int(c.MovementUsedFt), 0)
+}
+
+// moveCostFt is the feet a move costs: every square costs 5 ft, diagonals
+// included (RN-21, the SRD's rule), so the cost is the king's-move distance.
+func moveCostFt(c playdb.Combatant, col, row int32) int {
+	return combat.GridDistanceFt(int(*c.GridCol), int(*c.GridRow), int(col), int(row))
+}
+
+// placed says whether the combatant has a square on the grid.
+func placed(c playdb.Combatant) bool { return c.GridCol != nil && c.GridRow != nil }
+
+// stateOf is the word that says how hurt an NPC is (RN-20): "Derrotado" when
+// it is out; "Muito ferido" at half of its hit points or fewer; "Ferido" when
+// hurt; "Ileso" otherwise. A player's character has none.
+func stateOf(c playdb.Combatant) playv1.CombatantState {
+	switch {
+	case c.Kind != kindNPC || c.HpMax == nil || c.HpCurrent == nil:
+		return playv1.CombatantState_COMBATANT_STATE_UNSPECIFIED
+	case c.Defeated || *c.HpCurrent <= 0:
+		return playv1.CombatantState_COMBATANT_STATE_DEFEATED
+	case *c.HpCurrent*2 <= *c.HpMax:
+		return playv1.CombatantState_COMBATANT_STATE_BADLY_HURT
+	case *c.HpCurrent < *c.HpMax:
+		return playv1.CombatantState_COMBATANT_STATE_HURT
+	}
+	return playv1.CombatantState_COMBATANT_STATE_UNHURT
+}
+
+// squareOf is the grid square a token's position falls in. The position is in
+// basis points of the image's width and height; the grid is the squares of
+// 1.5 m across the width and the rows down the height. A position on an edge
+// belongs to the last square.
+func squareOf(g link.Grid, xBP, yBP int32) (col, row int32) {
+	col = min(xBP*g.Columns/10000, g.Columns-1)
+	row = min(yBP*g.Rows/10000, g.Rows-1)
+	return max(col, 0), max(row, 0)
+}
+
+// centerOf is the position, in basis points, of the middle of a square: where
+// a token goes when a combat ends.
+func centerOf(g link.Grid, col, row int32) (xBP, yBP int32) {
+	return (2*col + 1) * 10000 / (2 * g.Columns), (2*row + 1) * 10000 / (2 * g.Rows)
+}
+
+// inGrid says whether a square is inside the encounter's grid.
+func inGrid(e playdb.Encounter, col, row int32) bool {
+	return col >= 0 && col < e.GridColumns && row >= 0 && row < e.GridRows
+}
+
+// copyLabels gives the labels of count copies of an NPC called name: the
+// plain name for a single one that stands alone, "Goblin 1", "Goblin 2"...
+// otherwise, continuing after the labels the combat already has (taken) so
+// two never share one. It adds what it gives to taken. A long name is cut to
+// leave room for the number.
+func copyLabels(name string, count int, taken map[string]bool) []string {
+	base := name
+	if utf8.RuneCountInString(base) > maxLabelLength-4 {
+		base = string([]rune(base)[:maxLabelLength-4])
+	}
+	// A single copy keeps the plain name only when no other copy is there.
+	others := false
+	for label := range taken {
+		if label == base || strings.HasPrefix(label, base+" ") {
+			others = true
+		}
+	}
+	if count == 1 && !others {
+		taken[base] = true
+		return []string{base}
+	}
+	n := 1
+	if taken[base] {
+		n = 2 // "Goblin" is there already: the next one is "Goblin 2"
+	}
+	out := make([]string, 0, count)
+	for ; len(out) < count; n++ {
+		if label := base + " " + strconv.Itoa(n); !taken[label] {
+			out = append(out, label)
+			taken[label] = true
+		}
+	}
+	return out
+}

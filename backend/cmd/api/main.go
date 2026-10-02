@@ -208,10 +208,12 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		// first, and maps then gets play.
 		playService, err = play.New(play.Config{
 			Pool:      pool,
-			Sheets:    charactersService,         // starting a session locks the sheets (RN-01)
-			Vitals:    charactersService,         // the characters' hit points, slots and hit dice (RN-02)
-			Campaigns: campaignsService,          // the caller's campaigns, for the session notice (RN-06)
-			Maps:      maps.NewSessionMaps(pool), // the current map (RN-10) and the shown image (MR-028)
+			Sheets:    charactersService,           // starting a session locks the sheets (RN-01)
+			Vitals:    charactersService,           // the characters' hit points, slots and hit dice (RN-02)
+			Campaigns: campaignsService,            // the caller's campaigns, for the session notice (RN-06)
+			Maps:      maps.NewSessionMaps(pool),   // the current map (RN-10), the shown image (MR-028), the grid and tokens (MR-013)
+			Roster:    charactersService,           // who can fight, with which numbers (MR-013)
+			Dice:      diceModes{campaignsService}, // where a player rolls (RN-18)
 			Logger:    logger,
 		})
 		if err != nil {
@@ -307,4 +309,13 @@ func run(logger *slog.Logger, cfg config.Config) error {
 	}
 
 	return srv.Run(ctx)
+}
+
+// diceModes adapts the campaigns service to play's DiceModes: play only needs
+// to know whether a player rolls real dice, not campaigns' own types.
+type diceModes struct{ campaigns *campaigns.Service }
+
+func (d diceModes) RollsPhysical(ctx context.Context, campaignID, userID string) (bool, error) {
+	mode, err := d.campaigns.PlayerDiceMode(ctx, campaignID, userID)
+	return mode == campaigns.RollsPhysical, err
 }

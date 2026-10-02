@@ -24,6 +24,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1/playv1connect"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 )
 
 const allowed connect.Code = 0
@@ -377,6 +378,38 @@ func (noMaps) TakeBackImage(context.Context, string, string) error {
 	return errors.New("not in this test")
 }
 
+func (noMaps) MapGrid(context.Context, string, string) (link.Grid, error) {
+	return link.Grid{}, errors.New("not in this test")
+}
+
+func (noMaps) BattlePoint(context.Context, string, string) (link.BattlePoint, error) {
+	return link.BattlePoint{}, errors.New("not in this test")
+}
+
+func (noMaps) MapTokens(context.Context, string) ([]link.TokenPosition, error) {
+	return nil, errors.New("not in this test")
+}
+
+func (noMaps) SetTokenPositions(context.Context, pgx.Tx, string, []link.TokenPosition, time.Time) error {
+	return errors.New("not in this test")
+}
+
+type noRoster struct{}
+
+func (noRoster) CombatParty(context.Context, string) ([]link.Character, error) {
+	return nil, errors.New("not in this test")
+}
+
+func (noRoster) CombatCharacters(context.Context, string, []string) ([]link.Character, error) {
+	return nil, errors.New("not in this test")
+}
+
+type noDice struct{}
+
+func (noDice) RollsPhysical(context.Context, string, string) (bool, error) {
+	return false, errors.New("not in this test")
+}
+
 type noCampaigns struct{}
 
 func (noCampaigns) ActiveCampaigns(context.Context, string) ([]*campaignsv1.Campaign, error) {
@@ -403,11 +436,13 @@ func TestNewValidatesItsConfig(t *testing.T) {
 	t.Parallel()
 	pool := lazyPool(t)
 	for name, cfg := range map[string]Config{
-		"Pool":      {Sheets: noSheets{}, Vitals: noVitals{}, Campaigns: noCampaigns{}, Maps: noMaps{}},
-		"Sheets":    {Pool: pool, Vitals: noVitals{}, Campaigns: noCampaigns{}, Maps: noMaps{}},
-		"Vitals":    {Pool: pool, Sheets: noSheets{}, Campaigns: noCampaigns{}, Maps: noMaps{}},
-		"Campaigns": {Pool: pool, Sheets: noSheets{}, Vitals: noVitals{}, Maps: noMaps{}},
-		"Maps":      {Pool: pool, Sheets: noSheets{}, Vitals: noVitals{}, Campaigns: noCampaigns{}},
+		"Pool":      {Sheets: noSheets{}, Vitals: noVitals{}, Campaigns: noCampaigns{}, Maps: noMaps{}, Roster: noRoster{}, Dice: noDice{}},
+		"Sheets":    {Pool: pool, Vitals: noVitals{}, Campaigns: noCampaigns{}, Maps: noMaps{}, Roster: noRoster{}, Dice: noDice{}},
+		"Vitals":    {Pool: pool, Sheets: noSheets{}, Campaigns: noCampaigns{}, Maps: noMaps{}, Roster: noRoster{}, Dice: noDice{}},
+		"Campaigns": {Pool: pool, Sheets: noSheets{}, Vitals: noVitals{}, Maps: noMaps{}, Roster: noRoster{}, Dice: noDice{}},
+		"Maps":      {Pool: pool, Sheets: noSheets{}, Vitals: noVitals{}, Campaigns: noCampaigns{}, Roster: noRoster{}, Dice: noDice{}},
+		"Roster":    {Pool: pool, Sheets: noSheets{}, Vitals: noVitals{}, Campaigns: noCampaigns{}, Maps: noMaps{}, Dice: noDice{}},
+		"Dice":      {Pool: pool, Sheets: noSheets{}, Vitals: noVitals{}, Campaigns: noCampaigns{}, Maps: noMaps{}, Roster: noRoster{}},
 	} {
 		if _, err := New(cfg); err == nil {
 			t.Errorf("New() without %s succeeded", name)
@@ -419,7 +454,7 @@ func TestNewValidatesItsConfig(t *testing.T) {
 // that the refusal is not cacheable. Reads are POST-only.
 func TestEveryMethodNeedsASession(t *testing.T) {
 	t.Parallel()
-	svc, err := New(Config{Pool: lazyPool(t), Sheets: noSheets{}, Vitals: noVitals{}, Campaigns: noCampaigns{}, Maps: noMaps{}, Logger: slog.New(slog.DiscardHandler)})
+	svc, err := New(Config{Pool: lazyPool(t), Sheets: noSheets{}, Vitals: noVitals{}, Campaigns: noCampaigns{}, Maps: noMaps{}, Roster: noRoster{}, Dice: noDice{}, Logger: slog.New(slog.DiscardHandler)})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -428,6 +463,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	server := httptest.NewServer(mux)
 	t.Cleanup(server.Close)
 	c := playv1connect.NewPlayServiceClient(server.Client(), server.URL)
+	cc := playv1connect.NewCombatServiceClient(server.Client(), server.URL)
 	ctx := t.Context()
 	id := "6f1c7a52-3b5e-4c55-9d0b-2a51f0c1e001"
 
@@ -446,6 +482,27 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	methods := playv1.File_meurpg_play_v1_play_proto.Services().ByName("PlayService").Methods()
 	if len(calls) != methods.Len() {
 		t.Errorf("called %d methods, the service has %d", len(calls), methods.Len())
+	}
+
+	// CombatService (MR-013) is mounted with the same checks.
+	combat := map[string]error{}
+	_, combat["StartEncounter"] = cc.StartEncounter(ctx, connect.NewRequest(&playv1.StartEncounterRequest{CampaignId: id}))
+	_, combat["GetEncounter"] = cc.GetEncounter(ctx, connect.NewRequest(&playv1.GetEncounterRequest{CampaignId: id}))
+	_, combat["SubmitInitiative"] = cc.SubmitInitiative(ctx, connect.NewRequest(&playv1.SubmitInitiativeRequest{CampaignId: id}))
+	_, combat["SetInitiativeOrder"] = cc.SetInitiativeOrder(ctx, connect.NewRequest(&playv1.SetInitiativeOrderRequest{CampaignId: id}))
+	_, combat["BeginCombat"] = cc.BeginCombat(ctx, connect.NewRequest(&playv1.BeginCombatRequest{CampaignId: id}))
+	_, combat["EndTurn"] = cc.EndTurn(ctx, connect.NewRequest(&playv1.EndTurnRequest{CampaignId: id}))
+	_, combat["MoveCombatant"] = cc.MoveCombatant(ctx, connect.NewRequest(&playv1.MoveCombatantRequest{CampaignId: id}))
+	_, combat["SetCombatantHidden"] = cc.SetCombatantHidden(ctx, connect.NewRequest(&playv1.SetCombatantHiddenRequest{CampaignId: id}))
+	_, combat["AddCombatants"] = cc.AddCombatants(ctx, connect.NewRequest(&playv1.AddCombatantsRequest{CampaignId: id}))
+	_, combat["RemoveCombatant"] = cc.RemoveCombatant(ctx, connect.NewRequest(&playv1.RemoveCombatantRequest{CampaignId: id}))
+	_, combat["EndEncounter"] = cc.EndEncounter(ctx, connect.NewRequest(&playv1.EndEncounterRequest{CampaignId: id}))
+	combatMethods := playv1.File_meurpg_play_v1_combat_proto.Services().ByName("CombatService").Methods()
+	if len(combat) != combatMethods.Len() {
+		t.Errorf("called %d combat methods, the service has %d", len(combat), combatMethods.Len())
+	}
+	for name, err := range combat {
+		calls[name] = err
 	}
 	for name, err := range calls {
 		if connect.CodeOf(err) != connect.CodeUnauthenticated {

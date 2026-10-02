@@ -119,6 +119,11 @@ func (s *Service) EndGameSession(
 			session = current // ended before: nothing changes
 			return nil
 		}
+		// A combat ends with its session; the player characters' tokens move to
+		// where they stood (MR-013).
+		if err := s.endOpenEncounter(ctx, tx, q, current, m.UserID); err != nil {
+			return err
+		}
 		if current.ShownImageKeep && current.ShownImageID != nil {
 			// The image left with the players outlives the session (MR-028).
 			if err := s.maps.LeaveImage(ctx, tx, m.CampaignID, *current.ShownImageID, s.now()); err != nil {

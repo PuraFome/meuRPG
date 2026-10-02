@@ -384,6 +384,65 @@ func (s *Service) SetMapRevealed(
 	return connect.NewResponse(&mapsv1.SetMapRevealedResponse{Map: out}), nil
 }
 
+// The battle grid's limits (MR-013): how many squares of 1.5 m fit across
+// the image's width. The maps_grid_columns_valid CHECK says the same.
+const (
+	minGridColumns = 4
+	maxGridColumns = 200
+)
+
+// SetMapGrid implements mapsv1connect.MapServiceHandler.
+func (s *Service) SetMapGrid(
+	ctx context.Context,
+	req *connect.Request[mapsv1.SetMapGridRequest],
+) (*connect.Response[mapsv1.SetMapGridResponse], error) {
+	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	if err != nil {
+		return nil, err
+	}
+	mapID, ok := parseID(req.Msg.GetMapId())
+	if !ok {
+		return nil, errMapNotFound()
+	}
+	columns := req.Msg.GetColumns()
+	if columns != 0 && (columns < minGridColumns || columns > maxGridColumns) {
+		return nil, connect.NewError(connect.CodeInvalidArgument,
+			fmt.Errorf("columns must be 0 (no grid) or %d to %d", minGridColumns, maxGridColumns))
+	}
+	var gridColumns *int32 // NULL clears the grid
+	if columns != 0 {
+		gridColumns = &columns
+	}
+	current, err := s.currentMap(ctx, m.CampaignID)
+	if err != nil {
+		return nil, err
+	}
+
+	var updated mapsdb.Map
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		var err error
+		updated, err = s.queries.WithTx(tx).SetMapGrid(ctx, mapsdb.SetMapGridParams{
+			CampaignID: m.CampaignID, ID: mapID, GridColumns: gridColumns, Now: s.now(),
+		})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errMapNotFound()
+		}
+		if err != nil {
+			return fmt.Errorf("set map grid: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, s.dbError(ctx, "set a map's grid", err)
+	}
+	s.publishMapChanged(m.CampaignID, mapID, playersSee(mapID, updated.RevealedAt, current))
+	out, err := s.masterMap(ctx, m, mapID)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&mapsv1.SetMapGridResponse{Map: out}), nil
+}
+
 // pointChange is what the master asks to change in a point. Nil fields
 // stay as they are.
 type pointChange struct {
@@ -575,8 +634,8 @@ func (s *Service) applyPointChange(ctx context.Context, q *mapsdb.Queries, campa
 		}
 		params.TargetMapID = target
 	}
-	if params.Kind != kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_SUBMAP] {
-		params.TargetMapID = nil // only a submap leads somewhere
+	if !leads(params.Kind) {
+		params.TargetMapID = nil // only a submap or a battle leads somewhere
 	}
 	if err := checkTarget(ctx, q, campaignID, params.TargetMapID); err != nil {
 		return mapsdb.MapPoint{}, err
@@ -951,14 +1010,21 @@ func checkImage(ctx context.Context, q *mapsdb.Queries, campaignID, imageID stri
 	return nil
 }
 
-// parseTarget reads a submap point's target from a request: nil for none.
-// Only a submap leads somewhere, and never to its own map.
+// leads says whether a point of this kind (as the database stores it) may
+// lead to another map: a submap to the map it opens, a battle to the map
+// of its fight (MR-013).
+func leads(kind string) bool {
+	return kind == kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_SUBMAP] || kind == kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_BATTLE]
+}
+
+// parseTarget reads a point's target from a request: nil for none. Only a
+// submap or a battle leads somewhere, and never to its own map.
 func parseTarget(raw, kind, mapID string) (*string, error) {
 	if raw == "" {
 		return nil, nil
 	}
-	if kind != kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_SUBMAP] {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("target_map_id is only for a SUBMAP point"))
+	if !leads(kind) {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("target_map_id is only for a SUBMAP or a BATTLE point"))
 	}
 	id, ok := parseID(raw)
 	if !ok {
@@ -970,8 +1036,8 @@ func parseTarget(raw, kind, mapID string) (*string, error) {
 	return &id, nil
 }
 
-// checkTarget checks that a submap point's target is a map of the
-// campaign.
+// checkTarget checks that a point's target (submap or battle) is a map of
+// the campaign.
 func checkTarget(ctx context.Context, q *mapsdb.Queries, campaignID string, target *string) error {
 	if target == nil {
 		return nil

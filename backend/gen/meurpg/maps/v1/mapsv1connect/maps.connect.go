@@ -46,6 +46,8 @@ const (
 	// MapServiceSetMapRevealedProcedure is the fully-qualified name of the MapService's SetMapRevealed
 	// RPC.
 	MapServiceSetMapRevealedProcedure = "/meurpg.maps.v1.MapService/SetMapRevealed"
+	// MapServiceSetMapGridProcedure is the fully-qualified name of the MapService's SetMapGrid RPC.
+	MapServiceSetMapGridProcedure = "/meurpg.maps.v1.MapService/SetMapGrid"
 	// MapServiceCreateMapPointProcedure is the fully-qualified name of the MapService's CreateMapPoint
 	// RPC.
 	MapServiceCreateMapPointProcedure = "/meurpg.maps.v1.MapService/CreateMapPoint"
@@ -144,13 +146,28 @@ type MapServiceClient interface {
 	//     exist, or the caller is not a member of it.
 	//   - `permission_denied`: the caller is a player.
 	SetMapRevealed(context.Context, *connect.Request[v1.SetMapRevealedRequest]) (*connect.Response[v1.SetMapRevealedResponse], error)
+	// SetMapGrid sets the battle grid of a map, or clears it (MR-013, RN-21).
+	// Only the campaign's master may call it. The grid is made of squares of
+	// 1.5 m (5 ft): columns says how many fit across the image's width, and
+	// the rows follow the image's proportions. A combat can only start on a
+	// map with a grid (PlayService/CombatService.StartEncounter).
+	//
+	// A combat already running keeps the grid it started with. A player who
+	// sees the map gets `map_changed`.
+	//
+	// Errors:
+	//   - `invalid_argument`: columns is neither 0 nor between 4 and 200.
+	//   - `not_found`: the map is not in this campaign, the campaign does not
+	//     exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	SetMapGrid(context.Context, *connect.Request[v1.SetMapGridRequest]) (*connect.Response[v1.SetMapGridResponse], error)
 	// CreateMapPoint puts a point of interest on a map (MR-008). Only the
 	// campaign's master may call it. The point starts hidden.
 	//
 	// Errors:
 	//   - `invalid_argument`: a field breaks its rules; kind is unspecified;
-	//     target_map_id is set on a point that is not a SUBMAP, is the
-	//     point's own map, or is not a map of the campaign.
+	//     target_map_id is set on a point that is neither a SUBMAP nor a
+	//     BATTLE, is the point's own map, or is not a map of the campaign.
 	//   - `not_found`: the map is not in this campaign, the campaign does not
 	//     exist, or the caller is not a member of it.
 	//   - `permission_denied`: the caller is a player.
@@ -159,12 +176,13 @@ type MapServiceClient interface {
 	// UpdateMapPoint changes a point: each field set in the request replaces
 	// the current value, and unset fields stay as they are. Moving a point is
 	// an update of x_bp and y_bp. Only the campaign's master may call it.
-	// Changing the kind to anything but SUBMAP removes the target.
+	// Changing the kind to anything but SUBMAP or BATTLE removes the target.
 	//
 	// Errors:
 	//   - `invalid_argument`: nothing to change; a field breaks its rules;
-	//     target_map_id is set on a point that is not a SUBMAP (after the
-	//     change), is the point's own map, or is not a map of the campaign.
+	//     target_map_id is set on a point that is neither a SUBMAP nor a
+	//     BATTLE (after the change), is the point's own map, or is not a map
+	//     of the campaign.
 	//   - `not_found`: the point is not on this map, the map is not in this
 	//     campaign, the campaign does not exist, or the caller is not a
 	//     member of it.
@@ -275,6 +293,12 @@ func NewMapServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(mapServiceMethods.ByName("SetMapRevealed")),
 			connect.WithClientOptions(opts...),
 		),
+		setMapGrid: connect.NewClient[v1.SetMapGridRequest, v1.SetMapGridResponse](
+			httpClient,
+			baseURL+MapServiceSetMapGridProcedure,
+			connect.WithSchema(mapServiceMethods.ByName("SetMapGrid")),
+			connect.WithClientOptions(opts...),
+		),
 		createMapPoint: connect.NewClient[v1.CreateMapPointRequest, v1.CreateMapPointResponse](
 			httpClient,
 			baseURL+MapServiceCreateMapPointProcedure,
@@ -328,6 +352,7 @@ type mapServiceClient struct {
 	updateMap           *connect.Client[v1.UpdateMapRequest, v1.UpdateMapResponse]
 	deleteMap           *connect.Client[v1.DeleteMapRequest, v1.DeleteMapResponse]
 	setMapRevealed      *connect.Client[v1.SetMapRevealedRequest, v1.SetMapRevealedResponse]
+	setMapGrid          *connect.Client[v1.SetMapGridRequest, v1.SetMapGridResponse]
 	createMapPoint      *connect.Client[v1.CreateMapPointRequest, v1.CreateMapPointResponse]
 	updateMapPoint      *connect.Client[v1.UpdateMapPointRequest, v1.UpdateMapPointResponse]
 	deleteMapPoint      *connect.Client[v1.DeleteMapPointRequest, v1.DeleteMapPointResponse]
@@ -365,6 +390,11 @@ func (c *mapServiceClient) DeleteMap(ctx context.Context, req *connect.Request[v
 // SetMapRevealed calls meurpg.maps.v1.MapService.SetMapRevealed.
 func (c *mapServiceClient) SetMapRevealed(ctx context.Context, req *connect.Request[v1.SetMapRevealedRequest]) (*connect.Response[v1.SetMapRevealedResponse], error) {
 	return c.setMapRevealed.CallUnary(ctx, req)
+}
+
+// SetMapGrid calls meurpg.maps.v1.MapService.SetMapGrid.
+func (c *mapServiceClient) SetMapGrid(ctx context.Context, req *connect.Request[v1.SetMapGridRequest]) (*connect.Response[v1.SetMapGridResponse], error) {
+	return c.setMapGrid.CallUnary(ctx, req)
 }
 
 // CreateMapPoint calls meurpg.maps.v1.MapService.CreateMapPoint.
@@ -477,13 +507,28 @@ type MapServiceHandler interface {
 	//     exist, or the caller is not a member of it.
 	//   - `permission_denied`: the caller is a player.
 	SetMapRevealed(context.Context, *connect.Request[v1.SetMapRevealedRequest]) (*connect.Response[v1.SetMapRevealedResponse], error)
+	// SetMapGrid sets the battle grid of a map, or clears it (MR-013, RN-21).
+	// Only the campaign's master may call it. The grid is made of squares of
+	// 1.5 m (5 ft): columns says how many fit across the image's width, and
+	// the rows follow the image's proportions. A combat can only start on a
+	// map with a grid (PlayService/CombatService.StartEncounter).
+	//
+	// A combat already running keeps the grid it started with. A player who
+	// sees the map gets `map_changed`.
+	//
+	// Errors:
+	//   - `invalid_argument`: columns is neither 0 nor between 4 and 200.
+	//   - `not_found`: the map is not in this campaign, the campaign does not
+	//     exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	SetMapGrid(context.Context, *connect.Request[v1.SetMapGridRequest]) (*connect.Response[v1.SetMapGridResponse], error)
 	// CreateMapPoint puts a point of interest on a map (MR-008). Only the
 	// campaign's master may call it. The point starts hidden.
 	//
 	// Errors:
 	//   - `invalid_argument`: a field breaks its rules; kind is unspecified;
-	//     target_map_id is set on a point that is not a SUBMAP, is the
-	//     point's own map, or is not a map of the campaign.
+	//     target_map_id is set on a point that is neither a SUBMAP nor a
+	//     BATTLE, is the point's own map, or is not a map of the campaign.
 	//   - `not_found`: the map is not in this campaign, the campaign does not
 	//     exist, or the caller is not a member of it.
 	//   - `permission_denied`: the caller is a player.
@@ -492,12 +537,13 @@ type MapServiceHandler interface {
 	// UpdateMapPoint changes a point: each field set in the request replaces
 	// the current value, and unset fields stay as they are. Moving a point is
 	// an update of x_bp and y_bp. Only the campaign's master may call it.
-	// Changing the kind to anything but SUBMAP removes the target.
+	// Changing the kind to anything but SUBMAP or BATTLE removes the target.
 	//
 	// Errors:
 	//   - `invalid_argument`: nothing to change; a field breaks its rules;
-	//     target_map_id is set on a point that is not a SUBMAP (after the
-	//     change), is the point's own map, or is not a map of the campaign.
+	//     target_map_id is set on a point that is neither a SUBMAP nor a
+	//     BATTLE (after the change), is the point's own map, or is not a map
+	//     of the campaign.
 	//   - `not_found`: the point is not on this map, the map is not in this
 	//     campaign, the campaign does not exist, or the caller is not a
 	//     member of it.
@@ -604,6 +650,12 @@ func NewMapServiceHandler(svc MapServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(mapServiceMethods.ByName("SetMapRevealed")),
 		connect.WithHandlerOptions(opts...),
 	)
+	mapServiceSetMapGridHandler := connect.NewUnaryHandler(
+		MapServiceSetMapGridProcedure,
+		svc.SetMapGrid,
+		connect.WithSchema(mapServiceMethods.ByName("SetMapGrid")),
+		connect.WithHandlerOptions(opts...),
+	)
 	mapServiceCreateMapPointHandler := connect.NewUnaryHandler(
 		MapServiceCreateMapPointProcedure,
 		svc.CreateMapPoint,
@@ -660,6 +712,8 @@ func NewMapServiceHandler(svc MapServiceHandler, opts ...connect.HandlerOption) 
 			mapServiceDeleteMapHandler.ServeHTTP(w, r)
 		case MapServiceSetMapRevealedProcedure:
 			mapServiceSetMapRevealedHandler.ServeHTTP(w, r)
+		case MapServiceSetMapGridProcedure:
+			mapServiceSetMapGridHandler.ServeHTTP(w, r)
 		case MapServiceCreateMapPointProcedure:
 			mapServiceCreateMapPointHandler.ServeHTTP(w, r)
 		case MapServiceUpdateMapPointProcedure:
@@ -705,6 +759,10 @@ func (UnimplementedMapServiceHandler) DeleteMap(context.Context, *connect.Reques
 
 func (UnimplementedMapServiceHandler) SetMapRevealed(context.Context, *connect.Request[v1.SetMapRevealedRequest]) (*connect.Response[v1.SetMapRevealedResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.SetMapRevealed is not implemented"))
+}
+
+func (UnimplementedMapServiceHandler) SetMapGrid(context.Context, *connect.Request[v1.SetMapGridRequest]) (*connect.Response[v1.SetMapGridResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.SetMapGrid is not implemented"))
 }
 
 func (UnimplementedMapServiceHandler) CreateMapPoint(context.Context, *connect.Request[v1.CreateMapPointRequest]) (*connect.Response[v1.CreateMapPointResponse], error) {

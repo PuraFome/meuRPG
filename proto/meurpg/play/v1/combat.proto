@@ -1,0 +1,639 @@
+syntax = "proto3";
+
+// This file is the combat's API (MR-013, Etapa 6): the encounter, who fights,
+// the initiative, the order of turns, and the movement on the map's grid.
+// Attacks, spells, damage and the combat log come with the next slice. It is
+// in the same package as play.proto because the live events of a combat
+// travel on the same stream (WatchGameSession).
+package meurpg.play.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// CombatService runs a combat (an "encounter") inside the campaign's open
+// game session: the master picks who fights and starts it, everybody rolls
+// initiative, and the turns go round the table until the master ends it.
+//
+// A combat has three states: SETUP (the participants and their initiatives
+// are being decided), ACTIVE (turns run) and ENDED. A session has at most one
+// that is not ended. Ending the session ends its combat too.
+//
+// Who sees what (RN-10, RN-20) is decided on the server, and a player never
+// receives what the master keeps from them, not even its ID:
+//   - A hidden combatant (a new NPC starts hidden) is not in the player's
+//     order, not on their map, and its turn shows as "Vez do mestre":
+//     `current_combatant_id` is empty and `master_turn` is true.
+//   - A player never gets an NPC's hit points as numbers, its armor class,
+//     or the initiative the app rolled for it: only a state word
+//     (CombatantState). The order itself tells who goes first.
+//   - A player sees the other players' combatants, but not their hit
+//     points (the vitals of their own character come from
+//     PlayService.GetLiveSession).
+//   - The master sees everything.
+//
+// Every method needs a valid session cookie and fails with `unauthenticated`
+// without one. For a campaign the caller is not a member of (a pending member
+// neither, RN-15), methods answer `not_found`, exactly as for a campaign that
+// does not exist. A player calling a method only the master may call gets
+// `permission_denied`; a player acting on a combatant that is not theirs gets
+// `permission_denied` too, except for a combatant they may not see, which is
+// `not_found`. An ID that is not a UUID is answered like an ID that does not
+// exist.
+//
+// Every write takes an idempotency_key, a UUID the app generates once for the
+// action and sends again on a retry: a second call with the same key changes
+// nothing and answers with the combat as it is now. Every write is also a
+// session_events row, written in the same transaction (ADR-0007).
+//
+// Errors every method can return, besides those listed on each method:
+//   - `unauthenticated`: no valid session cookie.
+//   - `failed_precondition`: the campaign has no open session
+//     (GameSessionBlocked, NO_OPEN_SESSION) or the combat is not in the state
+//     the call needs (EncounterBlocked, with the reason).
+//   - `invalid_argument`: a field breaks its documented rules. The message
+//     names the field, never its value.
+//   - `unavailable`: the database did not answer; the app may try again.
+//   - `aborted`: the database kept reporting a conflicting transaction after
+//     the server's retries; the app may try again.
+//
+// Responses carry `Cache-Control: no-store`. Every request carries a campaign
+// ID, so reads are IDEMPOTENT and POST-only: a GET would put the ID in the URL,
+// and URLs end up in the platform's request logs (docs/privacidade.md).
+service CombatService {
+  // StartEncounter creates the campaign's combat, in the SETUP state. Only
+  // the campaign's master may call it, and only while the campaign has an
+  // open session.
+  //
+  // The fight is on the session's current map, which must have a grid
+  // (MapService.SetMapGrid). When map_point_id names a BATTLE point that
+  // leads to a map, that map becomes the session's current map (and is
+  // revealed to the players, as PlayService.SetCurrentMap does) and must
+  // have the grid instead.
+  //
+  // Who fights: the player characters listed in participants, and copies of
+  // the NPCs listed, each NPC with a count: "Goblin" x 3 makes "Goblin 1",
+  // "Goblin 2" and "Goblin 3" (a count of 1 keeps the plain name). Without
+  // any player character in participants, the whole party joins: every
+  // living player character of the campaign's active members. A new NPC
+  // starts hidden unless the request says otherwise (question 31).
+  //
+  // Each combatant starts on the square of its character's token on the
+  // map, if it has one (snapped to a square), and unplaced otherwise: the
+  // master places it (MoveCombatant). Every NPC's initiative is rolled at
+  // once by the app, one roll for each copy (RN-19). The players roll
+  // theirs (SubmitInitiative).
+  //
+  // Every WatchGameSession stream of the campaign gets `encounter_changed`.
+  //
+  // Errors:
+  //   - `not_found`: the campaign or the BATTLE point does not exist, or the
+  //     caller is not a member; a participant is not a living character of
+  //     the campaign.
+  //   - `permission_denied`: the caller is a player.
+  //   - `failed_precondition`: no open session (GameSessionBlocked,
+  //     NO_OPEN_SESSION); the session already has a combat that is not
+  //     ended (EncounterBlocked, ENCOUNTER_ALREADY_OPEN); there is no
+  //     current map (NO_CURRENT_MAP) or the map has no grid (MAP_HAS_NO_GRID,
+  //     with its map_id, so the app offers to set one).
+  //   - `invalid_argument`: no participants, more than 40 combatants, a
+  //     participant listed twice, a count outside 1 to 10 (a player
+  //     character: 1), or a name that breaks its rules.
+  rpc StartEncounter(StartEncounterRequest) returns (StartEncounterResponse);
+
+  // GetEncounter returns the combat of the campaign's open session as the
+  // caller may see it: the latest one, so the app can also show the end of
+  // a combat that just ended. It answers with no encounter when the session
+  // has none yet. Any member may call it. The app reads it after every
+  // `encounter_changed` and after every reconnection.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist, or the caller is not a
+  //     member of it.
+  rpc GetEncounter(GetEncounterRequest) returns (GetEncounterResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // SubmitInitiative sets a combatant's initiative: a d20 plus the
+  // combatant's initiative bonus (RN-19). The combatant's player may roll
+  // for their own character, and the master for anyone. Only while the combat
+  // is in SETUP.
+  //
+  // The roll is either rolled by the app (roll_in_app), or a face typed from
+  // a physical die (d20_face, 1 to 20). A player follows the campaign's dice
+  // setting (RN-18): they may type a face only when they roll their own dice,
+  // and roll in the app only when they do not. The master may do either for
+  // anyone, and may set a value again; a player sets theirs once, so nobody
+  // rolls again until the result is good.
+  //
+  // Every stream gets `encounter_changed`.
+  //
+  // Errors:
+  //   - `not_found`: the combatant is not in this combat, or the caller is a
+  //     player and may not see it.
+  //   - `permission_denied`: the caller is a player and the combatant is not
+  //     their character.
+  //   - `failed_precondition`: the combat is not in SETUP (EncounterBlocked,
+  //     NOT_IN_SETUP); the player's initiative is already set
+  //     (INITIATIVE_ALREADY_SET); the method does not match the player's
+  //     dice setting (WRONG_DICE_MODE).
+  //   - `invalid_argument`: neither roll_in_app nor d20_face is set, or the
+  //     face is not 1 to 20.
+  rpc SubmitInitiative(SubmitInitiativeRequest) returns (SubmitInitiativeResponse);
+
+  // SetInitiativeOrder decides the order of combatants tied on the same
+  // initiative total and the same bonus (RN-19): combatant_ids lists them in
+  // the order they will play, and they keep the places they hold together.
+  // Combatants with a higher bonus already go first without it. Only the
+  // master may call it, and only while the combat is in SETUP or ACTIVE.
+  //
+  // Errors:
+  //   - `not_found`: a combatant is not in this combat.
+  //   - `permission_denied`: the caller is a player.
+  //   - `invalid_argument`: fewer than two combatants, a repeated one, or
+  //     they are not all tied (different total or bonus, or no initiative).
+  //   - `failed_precondition`: the combat is ended (EncounterBlocked,
+  //     ENCOUNTER_ENDED).
+  rpc SetInitiativeOrder(SetInitiativeOrderRequest) returns (SetInitiativeOrderResponse);
+
+  // BeginCombat starts the turns: the combat becomes ACTIVE, in round 1,
+  // with the first combatant of the order on turn. Only the master may call
+  // it, and only while the combat is in SETUP. Every combatant must have an
+  // initiative: otherwise the call fails with `failed_precondition`
+  // (EncounterBlocked, INITIATIVE_MISSING) and names who is missing. Ties
+  // need not be ordered: the order stays as it is.
+  //
+  // Every stream gets `encounter_changed` and `turn_changed`.
+  //
+  // Errors:
+  //   - `not_found`: the combat is not this campaign's.
+  //   - `permission_denied`: the caller is a player.
+  //   - `failed_precondition`: not in SETUP (NOT_IN_SETUP); an initiative is
+  //     missing (INITIATIVE_MISSING, with combatant_ids).
+  rpc BeginCombat(BeginCombatRequest) returns (BeginCombatResponse);
+
+  // EndTurn ends the current combatant's turn and passes it to the next one
+  // that is not defeated; after the last, the round goes up by one. The
+  // current combatant's player may call it, and the master for anyone. At
+  // the start of its own turn, the new current combatant's movement,
+  // action, bonus action, dash and reaction are reset.
+  //
+  // expected_combatant_id is the combatant whose turn the caller thinks it
+  // is. If another one is on turn (a double tap, a stale screen), the call
+  // changes nothing and fails with `aborted`, so one tap never skips two
+  // turns.
+  //
+  // Nobody may be on turn: the combatant on turn left the fight (the master
+  // removed the last one who could act, or its character was deleted), and
+  // `current_combatant_id` is empty while the combat is ACTIVE. Then only the
+  // master may call it, with expected_combatant_id empty, and the turns start
+  // again from the top of the order, in the same round.
+  //
+  // Every stream gets `turn_changed` (each audience its own copy: a player
+  // sees a hidden combatant's turn as the master's) and `encounter_changed`.
+  //
+  // Errors:
+  //   - `not_found`: the combat is not this campaign's, or the caller is a
+  //     player and may not see the combatant.
+  //   - `permission_denied`: the caller is a player and the current
+  //     combatant is not their character, or nobody is on turn.
+  //   - `failed_precondition`: the combat is not ACTIVE, or nobody in it can
+  //     take a turn (NOT_ACTIVE).
+  //   - `aborted`: expected_combatant_id is not the one on turn.
+  rpc EndTurn(EndTurnRequest) returns (EndTurnResponse);
+
+  // MoveCombatant puts a combatant on a square of the grid (RN-21).
+  //
+  // The master moves anyone anywhere in the grid, at any time, and no
+  // movement is spent: the master has the last word. A player moves only
+  // their own character, only during its turn, and only as far as the
+  // movement it has left: the speed (doubled after the Dash action) minus
+  // what it already walked this turn, at 1.5 m (5 ft) per square, diagonals
+  // included (a king's move). A move too far changes nothing and fails with
+  // `failed_precondition` (EncounterBlocked, TOO_FAR, with missing_ft); so
+  // does a visible combatant's square (SQUARE_OCCUPIED).
+  //
+  // The master's move reaches every stream as `combatant_moved`; a player's
+  // stream only gets it for a combatant they may see.
+  //
+  // Errors:
+  //   - `not_found`: the combatant is not in this combat, or the caller is a
+  //     player and may not see it.
+  //   - `permission_denied`: the caller is a player and the combatant is not
+  //     their character.
+  //   - `invalid_argument`: the square is outside the grid.
+  //   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED), or it
+  //     is not ACTIVE and the caller is a player (NOT_ACTIVE); it is not the
+  //     combatant's
+  //     turn (NOT_YOUR_TURN); the combatant is not on the map yet (NOT_PLACED);
+  //     the square is too far (TOO_FAR) or occupied (SQUARE_OCCUPIED).
+  rpc MoveCombatant(MoveCombatantRequest) returns (MoveCombatantResponse);
+
+  // SetCombatantHidden hides an NPC combatant from the players, or shows it
+  // (RN-10): a hidden combatant is not in their order, not on their map, and
+  // its turn shows as the master's. Only the master may call it. Player
+  // combatants are never hidden.
+  //
+  // Errors:
+  //   - `not_found`: the combatant is not in this combat.
+  //   - `permission_denied`: the caller is a player.
+  //   - `invalid_argument`: the combatant is a player's.
+  //   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
+  rpc SetCombatantHidden(SetCombatantHiddenRequest) returns (SetCombatantHiddenResponse);
+
+  // AddCombatants brings reinforcements into the combat: copies of NPCs, as
+  // in StartEncounter. Only the master may call it, while the combat is in
+  // SETUP or ACTIVE. Each new NPC rolls its initiative at once and takes its
+  // place in the order; during an ACTIVE combat the turn does not change.
+  // Player characters can be added only in SETUP.
+  //
+  // Errors:
+  //   - `not_found`: a participant is not a living character of the campaign.
+  //   - `permission_denied`: the caller is a player.
+  //   - `invalid_argument`: no participants, more than 40 combatants in all,
+  //     a player character already in the combat or added during ACTIVE, or
+  //     a count outside 1 to 10.
+  //   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
+  rpc AddCombatants(AddCombatantsRequest) returns (AddCombatantsResponse);
+
+  // RemoveCombatant takes a combatant out of the combat. Only the master may
+  // call it. If it is on turn in an ACTIVE combat, the turn passes to the
+  // next combatant first. A player's combatant can be removed only in SETUP.
+  //
+  // Errors:
+  //   - `not_found`: the combatant is not in this combat.
+  //   - `permission_denied`: the caller is a player.
+  //   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED), or
+  //     the combatant is a player's and the combat is ACTIVE
+  //     (PLAYER_IN_COMBAT).
+  rpc RemoveCombatant(RemoveCombatantRequest) returns (RemoveCombatantResponse);
+
+  // EndEncounter ends the combat, from SETUP or ACTIVE. Only the master may
+  // call it. The player characters' tokens move to the squares where they
+  // ended (MapService tokens), so the map shows them where they stand.
+  // Ending the game session ends its combat the same way. Ending a combat
+  // that already ended is not an error: it returns it as it is.
+  //
+  // Every stream gets `encounter_changed`, and `map_changed` for the map.
+  //
+  // Errors:
+  //   - `not_found`: the combat is not this campaign's.
+  //   - `permission_denied`: the caller is a player.
+  rpc EndEncounter(EndEncounterRequest) returns (EndEncounterResponse);
+}
+
+// EncounterStatus is where a combat is.
+enum EncounterStatus {
+  ENCOUNTER_STATUS_UNSPECIFIED = 0;
+  // Choosing who fights and rolling initiative.
+  ENCOUNTER_STATUS_SETUP = 1;
+  // The turns are running.
+  ENCOUNTER_STATUS_ACTIVE = 2;
+  // Over.
+  ENCOUNTER_STATUS_ENDED = 3;
+}
+
+// CombatantKind is whose combatant it is.
+enum CombatantKind {
+  COMBATANT_KIND_UNSPECIFIED = 0;
+  // A player's character.
+  COMBATANT_KIND_PLAYER = 1;
+  // A copy of an NPC.
+  COMBATANT_KIND_NPC = 2;
+}
+
+// CombatantState is how hurt a combatant is, as a word (RN-20): what a
+// player sees of an NPC, instead of its hit points.
+enum CombatantState {
+  COMBATANT_STATE_UNSPECIFIED = 0;
+  // Full hit points: "Ileso".
+  COMBATANT_STATE_UNHURT = 1;
+  // Hurt, with more than half of its hit points: "Ferido".
+  COMBATANT_STATE_HURT = 2;
+  // Half of its hit points or fewer: "Muito ferido".
+  COMBATANT_STATE_BADLY_HURT = 3;
+  // Out of the fight: "Derrotado".
+  COMBATANT_STATE_DEFEATED = 4;
+}
+
+// EncounterBlockedReason says why CombatService refused a call with
+// `failed_precondition` (besides GameSessionBlocked's NO_OPEN_SESSION).
+enum EncounterBlockedReason {
+  ENCOUNTER_BLOCKED_REASON_UNSPECIFIED = 0;
+  // StartEncounter: the session already has a combat that is not ended.
+  ENCOUNTER_BLOCKED_REASON_ENCOUNTER_ALREADY_OPEN = 1;
+  // StartEncounter: the session has no current map to fight on.
+  ENCOUNTER_BLOCKED_REASON_NO_CURRENT_MAP = 2;
+  // StartEncounter: the map has no grid. map_id names it.
+  ENCOUNTER_BLOCKED_REASON_MAP_HAS_NO_GRID = 3;
+  // The call needs a combat in SETUP.
+  ENCOUNTER_BLOCKED_REASON_NOT_IN_SETUP = 4;
+  // The call needs an ACTIVE combat.
+  ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE = 5;
+  // The combat is ended and cannot change.
+  ENCOUNTER_BLOCKED_REASON_ENCOUNTER_ENDED = 6;
+  // BeginCombat: some combatants have no initiative yet. combatant_ids names
+  // them.
+  ENCOUNTER_BLOCKED_REASON_INITIATIVE_MISSING = 7;
+  // SubmitInitiative: the player's initiative is already set.
+  ENCOUNTER_BLOCKED_REASON_INITIATIVE_ALREADY_SET = 8;
+  // SubmitInitiative: the player rolls the other way (RN-18).
+  ENCOUNTER_BLOCKED_REASON_WRONG_DICE_MODE = 9;
+  // MoveCombatant: it is not the combatant's turn.
+  ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN = 10;
+  // MoveCombatant: the combatant has no square on the grid yet.
+  ENCOUNTER_BLOCKED_REASON_NOT_PLACED = 11;
+  // MoveCombatant: the square is farther than the movement left. missing_ft
+  // says by how much.
+  ENCOUNTER_BLOCKED_REASON_TOO_FAR = 12;
+  // MoveCombatant: another combatant stands on the square.
+  ENCOUNTER_BLOCKED_REASON_SQUARE_OCCUPIED = 13;
+  // RemoveCombatant: a player's combatant cannot leave an ACTIVE combat.
+  ENCOUNTER_BLOCKED_REASON_PLAYER_IN_COMBAT = 14;
+}
+
+// EncounterBlocked is the error detail of CombatService's
+// `failed_precondition`, so the app can show a clear message.
+message EncounterBlocked {
+  EncounterBlockedReason reason = 1;
+  // TOO_FAR: how many feet the square is beyond the movement left (5 ft is
+  // one square, 1.5 m).
+  int32 missing_ft = 2;
+  // MAP_HAS_NO_GRID: the map that needs a grid (a UUID).
+  string map_id = 3;
+  // INITIATIVE_MISSING: the combatants that have no initiative (UUIDs).
+  repeated string combatant_ids = 4;
+}
+
+// Encounter is a combat as the caller may see it.
+message Encounter {
+  // Stable encounter ID (a UUID).
+  string id = 1;
+  // What the master calls it, 1 to 80 characters ("Emboscada na estrada").
+  string name = 2;
+  EncounterStatus status = 3;
+  // The round, counting from 1; 0 in SETUP.
+  int32 round = 4;
+  // The map the fight is on (a UUID; MapService.GetMap reads it). Empty if
+  // the master deleted it meanwhile.
+  string map_id = 5;
+  // The BATTLE point the master started it from. Only the master gets it.
+  string map_point_id = 6;
+  // The grid the fight uses, copied from the map when it started: squares of
+  // 1.5 m (5 ft) across and down. A combatant's square is col 0 to
+  // grid_columns - 1 and row 0 to grid_rows - 1, from the top left.
+  int32 grid_columns = 7;
+  int32 grid_rows = 8;
+  // Whose turn it is (a combatant ID). Empty in SETUP, when ENDED, and for a
+  // player when the one on turn is hidden from them: then master_turn is
+  // true.
+  string current_combatant_id = 9;
+  // True when the one on turn is a combatant the caller may not see: the app
+  // shows "Vez do mestre". Always false for the master.
+  bool master_turn = 10;
+  // The combatants the caller sees, in turn order: by initiative, highest
+  // first; combatants without an initiative yet come last.
+  repeated Combatant combatants = 11;
+  // Goes up by one on every change. Of two copies of the same combat, the
+  // one with the larger revision is newer.
+  int32 revision = 12;
+  // When the combat began (BeginCombat). Unset in SETUP.
+  google.protobuf.Timestamp started_at = 13;
+  // When it ended. Unset until then.
+  google.protobuf.Timestamp ended_at = 14;
+}
+
+// Combatant is one who fights, as the caller may see it. Fields marked "only
+// the master" are left out for a player (zero or unset), and a hidden
+// combatant is not sent to a player at all.
+message Combatant {
+  // Stable combatant ID (a UUID), for this combat only.
+  string id = 1;
+  // What the table calls it: a character's name, or "Goblin 2".
+  string label = 2;
+  CombatantKind kind = 3;
+  // Whether it is the caller's own character.
+  bool mine = 4;
+  // The character it stands for (a UUID). For a player's character, everyone
+  // gets it; for an NPC, only the master (several copies share it).
+  string character_id = 5;
+  // Whether the master hides it from the players. Only the master gets it;
+  // for a player it is always false (a hidden one is not sent).
+  bool hidden = 6;
+  // The initiative total (d20 + bonus). Unset until rolled. A player gets it
+  // for player combatants only, never an NPC's roll (RN-20).
+  optional int32 initiative = 7;
+  // The bonus added to the d20, and the d20 itself. Only the master and the
+  // combatant's own player get them.
+  optional int32 initiative_bonus = 8;
+  optional int32 initiative_face = 9;
+  // Only the master: it is tied with another combatant on the same total and
+  // bonus, and the master has not ordered them yet (SetInitiativeOrder).
+  bool tie_unresolved = 10;
+  // Whether it has a square on the grid. A combatant without one is not on
+  // the map yet; the master places it (MoveCombatant).
+  bool placed = 11;
+  // Its square, from 0, from the top left. Only meaningful when placed.
+  int32 col = 12;
+  int32 row = 13;
+  // Walking speed in feet (5 ft is one square, 1.5 m); the feet walked this
+  // turn; and the feet left (twice the speed after the Dash action, minus
+  // the feet walked). Only the master and the combatant's own player.
+  int32 speed_ft = 14;
+  int32 movement_used_ft = 15;
+  int32 movement_left_ft = 16;
+  // The turn's economy. Only the master and the combatant's own player.
+  bool dashed = 17;
+  bool action_used = 18;
+  bool bonus_action_used = 19;
+  bool reaction_used = 20;
+  // How hurt an NPC is, as a word (RN-20). Unspecified for a player's
+  // character.
+  CombatantState state = 21;
+  // An NPC's hit points, as numbers. Only the master gets them; for a player's
+  // character, they come from its vitals (the master's copy is filled here
+  // too).
+  optional int32 hit_points_current = 22;
+  optional int32 hit_points_max = 23;
+  optional int32 hit_points_temporary = 24;
+  // Out of the fight (an NPC at 0 hit points). The turn skips it.
+  bool defeated = 25;
+  // A player's character's death saves (everyone sees them), 0 to 3 each.
+  int32 death_successes = 26;
+  int32 death_failures = 27;
+  // The conditions the master marked ("caído", "envenenado"; RN-22), and the
+  // spell it is concentrating on, if any.
+  repeated string conditions = 28;
+  string concentration_spell = 29;
+}
+
+// Participant is who joins a combat: a character of the campaign.
+message Participant {
+  // A living character of the campaign (a UUID): a player's or an NPC.
+  string character_id = 1;
+  // How many copies of an NPC fight, 1 to 10; unset means 1. For a player's
+  // character it must be 1 (or unset).
+  int32 count = 2;
+  // Whether the copies start hidden from the players. Unset: an NPC starts
+  // hidden (question 31), a player's character never is.
+  optional bool hidden = 3;
+}
+
+// StartEncounterRequest creates the combat.
+message StartEncounterRequest {
+  string campaign_id = 1;
+  // A UUID the app generates once for this start and sends again on a retry.
+  string idempotency_key = 2;
+  // What to call the combat: 1 to 80 characters, one line.
+  string name = 3;
+  // A BATTLE point of the campaign the master started it from (a UUID), or
+  // empty.
+  string map_point_id = 4;
+  // Who fights. Without a player's character here, the whole party joins.
+  repeated Participant participants = 5;
+}
+
+// StartEncounterResponse returns the new combat in SETUP.
+message StartEncounterResponse {
+  Encounter encounter = 1;
+}
+
+// GetEncounterRequest names the campaign.
+message GetEncounterRequest {
+  string campaign_id = 1;
+}
+
+// GetEncounterResponse is the open session's latest combat.
+message GetEncounterResponse {
+  // Unset while the session has had no combat.
+  Encounter encounter = 1;
+}
+
+// SubmitInitiativeRequest rolls a combatant's initiative.
+message SubmitInitiativeRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string combatant_id = 3;
+  string idempotency_key = 4;
+  // How the d20 comes: exactly one.
+  oneof roll {
+    // True: the app rolls the d20 on the server (RN-18).
+    bool roll_in_app = 5;
+    // The face of a physical d20, 1 to 20.
+    int32 d20_face = 6;
+  }
+}
+
+// SubmitInitiativeResponse returns the combat after the roll.
+message SubmitInitiativeResponse {
+  Encounter encounter = 1;
+}
+
+// SetInitiativeOrderRequest orders a tie.
+message SetInitiativeOrderRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string idempotency_key = 3;
+  // The combatants tied on the same total and bonus (two or more), in the
+  // order they will play.
+  repeated string combatant_ids = 4;
+}
+
+// SetInitiativeOrderResponse returns the combat after the new order.
+message SetInitiativeOrderResponse {
+  Encounter encounter = 1;
+}
+
+// BeginCombatRequest starts the turns.
+message BeginCombatRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string idempotency_key = 3;
+}
+
+// BeginCombatResponse returns the ACTIVE combat.
+message BeginCombatResponse {
+  Encounter encounter = 1;
+}
+
+// EndTurnRequest ends the turn of the current combatant.
+message EndTurnRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string idempotency_key = 3;
+  // The combatant whose turn the caller thinks it is (a UUID); empty only
+  // when nobody is on turn (see EndTurn).
+  string expected_combatant_id = 4;
+}
+
+// EndTurnResponse returns the combat after the turn passed.
+message EndTurnResponse {
+  Encounter encounter = 1;
+}
+
+// MoveCombatantRequest puts a combatant on a square.
+message MoveCombatantRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string combatant_id = 3;
+  string idempotency_key = 4;
+  // The square, from 0, from the top left of the grid.
+  int32 col = 5;
+  int32 row = 6;
+}
+
+// MoveCombatantResponse returns the combat after the move.
+message MoveCombatantResponse {
+  Encounter encounter = 1;
+}
+
+// SetCombatantHiddenRequest hides an NPC from the players, or shows it.
+message SetCombatantHiddenRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string combatant_id = 3;
+  string idempotency_key = 4;
+  // True hides the combatant; false shows it.
+  bool hidden = 5;
+}
+
+// SetCombatantHiddenResponse returns the combat after the change.
+message SetCombatantHiddenResponse {
+  Encounter encounter = 1;
+}
+
+// AddCombatantsRequest brings reinforcements.
+message AddCombatantsRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string idempotency_key = 3;
+  repeated Participant participants = 4;
+}
+
+// AddCombatantsResponse returns the combat with the new combatants.
+message AddCombatantsResponse {
+  Encounter encounter = 1;
+}
+
+// RemoveCombatantRequest takes a combatant out.
+message RemoveCombatantRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string combatant_id = 3;
+  string idempotency_key = 4;
+}
+
+// RemoveCombatantResponse returns the combat without the combatant.
+message RemoveCombatantResponse {
+  Encounter encounter = 1;
+}
+
+// EndEncounterRequest ends the combat.
+message EndEncounterRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string idempotency_key = 3;
+}
+
+// EndEncounterResponse returns the ended combat.
+message EndEncounterResponse {
+  Encounter encounter = 1;
+}
