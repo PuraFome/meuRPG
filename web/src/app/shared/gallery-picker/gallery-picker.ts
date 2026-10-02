@@ -27,6 +27,12 @@ import { UploadQueue } from '../../core/images/upload-queue';
 import { ImagePrivacyNote } from './image-privacy-note';
 import { UploadProgress } from './upload-progress/upload-progress';
 
+/** A tag under a tile's name. */
+export interface PickerTag {
+  readonly icon: string;
+  readonly text: string;
+}
+
 type PickerState =
   { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready' };
 
@@ -53,6 +59,8 @@ type PickerState =
  *   galeria"). The visible label ("Imagem") belongs to the form around it.
  * - `describedBy`: the id of the form's error or hint for this field, if
  *   any ("Escolha uma imagem para o mapa.").
+ * - `variant` and `tags`: the dialog's bigger tiles and the tags under
+ *   their names (MR-028).
  * - `picked`: the chosen `GalleryImage`, whenever the choice changes (a
  *   click, the arrow keys, or an upload that finished).
  *
@@ -77,7 +85,15 @@ export class GalleryPicker implements OnChanges {
   readonly selectedId = model<string | null>(null);
   readonly label = input('Imagem da galeria');
   readonly describedBy = input<string | null>(null);
+  /** `dialog` is the bigger grid of "Mostrar uma imagem aos jogadores"
+   * (E5-10): the name only under each tile, no dimensions. */
+  readonly variant = input<'form' | 'dialog'>('form');
+  /** A tag under a tile's name, by image ID ("Fundo de mapa escondido",
+   * "À mostra agora"): an icon and words. */
+  readonly tags = input<ReadonlyMap<string, PickerTag>>(new Map());
   readonly picked = output<GalleryImage>();
+  /** The gallery's images arrived (a dialog moves focus to the tiles then). */
+  readonly loaded = output<readonly GalleryImage[]>();
 
   protected readonly state = signal<PickerState>({ status: 'loading' });
   protected readonly images = signal<readonly GalleryImage[]>([]);
@@ -123,6 +139,7 @@ export class GalleryPicker implements OnChanges {
         this.images.set(images);
         this.usage.set(usage);
         this.state.set({ status: 'ready' });
+        this.loaded.emit(images);
       },
       (err: unknown) => this.state.set({ status: 'error', message: describeConnectError(err, {}) }),
     );

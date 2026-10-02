@@ -1,0 +1,199 @@
+// The host is the positioning context for the zoom controls, which sit
+// over the map (bottom-right on a phone, a column at the top-right from a
+// tablet up) and never move with the pan.
+:host {
+  display: block;
+}
+
+// The box is as wide as the room, but never taller than about three
+// quarters of the screen: a tall image (a tower plan) is centred, not
+// stretched down the page. The controls sit over this box, not the host.
+.mv-wrap {
+  position: relative;
+  width: 100%;
+  max-width: calc(78vh * var(--mv-ar, 1.5));
+  margin-inline: auto;
+}
+
+.mv {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-ground);
+  user-select: none;
+  // One finger still scrolls the page; two fingers are the map's (pointer
+  // events). The items opt out so a finger can drag them.
+  touch-action: pan-x pan-y;
+}
+
+.mv--zoomed.mv--interactive {
+  cursor: grab;
+}
+
+.mv--placing {
+  cursor: crosshair;
+}
+
+.mv__stage {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
+}
+
+.mv__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+// Labels sit above every marker and token (README-B, "Stacking"), at the
+// point, scaled back like the markers. The pill is placed by side.
+.lbl {
+  position: absolute;
+  z-index: 4;
+  width: 0;
+  height: 0;
+  transform: scale(calc(1 / var(--s, 1)));
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+
+.lbl--selected,
+.lbl--raised {
+  z-index: 7;
+}
+
+.lbl__pill {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  height: 24px;
+  padding: 0 9px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 22px;
+  white-space: nowrap;
+}
+
+.lbl[data-side='below'] .lbl__pill {
+  top: 21px;
+  left: 0;
+  transform: translateX(-50%);
+}
+
+.lbl[data-side='above'] .lbl__pill {
+  bottom: 21px;
+  left: 0;
+  transform: translateX(-50%);
+}
+
+.lbl[data-side='left'] .lbl__pill {
+  top: -12px;
+  right: 24px;
+}
+
+.lbl[data-side='right'] .lbl__pill {
+  top: -12px;
+  left: 24px;
+}
+
+.lbl--hidden .lbl__pill {
+  border-style: dashed;
+  border-color: var(--mr-control-line);
+}
+
+.lbl--selected .lbl__pill {
+  border: 2px solid var(--mr-accent);
+}
+
+.lbl__state {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding-left: 6px;
+  border-left: 1px solid var(--mr-line);
+  font-weight: 500;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+  }
+}
+
+.mv__hint {
+  position: absolute;
+  z-index: 8;
+  top: 10px;
+  left: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100% - 20px);
+  margin: 0;
+  padding: 5px 12px;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font-size: 14px;
+  line-height: 19px;
+  pointer-events: none;
+
+  .mat-icon {
+    flex: none;
+    width: 17px;
+    height: 17px;
+    font-size: 17px;
+  }
+}
+
+.mv__controls {
+  position: absolute;
+  z-index: 9;
+  right: 10px;
+  bottom: 10px;
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+
+  @media (min-width: 768px) {
+    top: 12px;
+    bottom: auto;
+    flex-direction: column;
+  }
+}
+
+.mv__btn--in {
+  @media (min-width: 768px) {
+    order: -1;
+  }
+}
+
+.mv__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  cursor: pointer;
+
+  &:disabled {
+    color: var(--mr-ink-muted);
+    cursor: default;
+    opacity: 0.6;
+  }
+}

@@ -27,22 +27,45 @@
   }
 }
 
+// The master's board, in the order a phone reads it (the party, the image
+// on show, the map with its points, the tokens); from 1024px the map takes
+// the left column and the three panels stack on the right (E5-04, E5-10).
 .board--master {
   @media (min-width: 1024px) {
     grid-template-columns: minmax(0, 1fr) 400px;
+    grid-template-areas:
+      'main image'
+      'main party'
+      'main tokens';
+    grid-template-rows: auto auto 1fr;
 
     .board__main {
-      grid-column: 1;
-      grid-row: 1;
+      grid-area: main;
     }
 
-    .board__side {
-      grid-column: 2;
-      grid-row: 1;
+    .board__image {
+      grid-area: image;
+    }
+
+    .board__party {
+      grid-area: party;
+    }
+
+    .board__tokens {
+      grid-area: tokens;
     }
   }
 }
 
+// The player's left column: the image on show, then the map.
+.board__main {
+  display: flex;
+  flex-direction: column;
+}
+
+.board__party,
+.board__image,
+.board__tokens,
 .board__main,
 .board__side {
   min-width: 0;

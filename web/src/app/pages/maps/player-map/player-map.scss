@@ -1,0 +1,132 @@
+:host {
+  display: block;
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-1);
+  margin-bottom: var(--mr-space-4);
+}
+
+.back,
+.crumb {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mr-space-1);
+  min-height: 44px;
+  color: var(--mr-ink-muted);
+
+  a {
+    color: var(--mr-ink-muted);
+    text-decoration: underline;
+  }
+
+  [aria-current] {
+    color: var(--mr-ink);
+  }
+
+  .mat-icon {
+    width: 22px;
+    height: 22px;
+    font-size: 22px;
+  }
+}
+
+.back {
+  gap: var(--mr-space-2);
+  text-decoration: none;
+}
+
+.head .mr-page-title {
+  margin: 0;
+}
+
+.layout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+
+  @media (min-width: 1024px) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    align-items: start;
+  }
+}
+
+.layout__map,
+.layout__side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  min-width: 0;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.list__row {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 56px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--mr-radius-sm);
+  background: none;
+  color: var(--mr-ink);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--mr-ground);
+  }
+
+  &--here {
+    background: var(--mr-accent-soft);
+  }
+}
+
+.list__glyph {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 2px solid var(--mr-ink);
+  border-radius: var(--mr-radius-pill);
+}
+
+.list__text {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.list__name {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.list__sub {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.list__go {
+  color: var(--mr-ink-muted);
+}
+
+.none {
+  margin: var(--mr-space-2) 0 0;
+  font-size: 14px;
+}

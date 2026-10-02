@@ -1,0 +1,106 @@
+@if (map(); as m) {
+  <header class="head">
+    @if (parent(); as p) {
+      <nav class="crumb" aria-label="Caminho do mapa">
+        <a [routerLink]="['/campanhas', campaignId(), 'mapas', p.id]" [queryParamsHandling]="'preserve'">{{ p.name }}</a>
+        <mat-icon aria-hidden="true">chevron_right</mat-icon>
+        <span aria-current="page">{{ m.name }}</span>
+      </nav>
+    } @else {
+      <a class="back" [routerLink]="backLink().path">
+        <mat-icon aria-hidden="true">arrow_back</mat-icon>{{ backLink().label }}
+      </a>
+    }
+    <h1 class="mr-page-title">{{ m.name }}</h1>
+    @if (phone()) {
+      <app-map-legend [shapes]="false" [tokens]="state().tokens()" />
+    }
+  </header>
+
+  <div class="layout">
+    <div class="layout__map">
+      @if (image(); as img) {
+        <app-map-view
+          [image]="img"
+          [mapName]="m.name"
+          [points]="state().points()"
+          [tokens]="state().tokens()"
+          [selected]="selection()"
+          (pointSelect)="openPoint($event)"
+          (emptyClick)="closeSheet()"
+        />
+      }
+      @if (!phone()) {
+        <app-map-legend [tokens]="state().tokens()" />
+      }
+    </div>
+
+    <div class="layout__side">
+      @if (selected(); as point) {
+        @for (p of [point]; track p.id) {
+          <app-point-sheet
+            [class.point-sheet--floating]="phone()"
+            role="region"
+            [attr.aria-label]="'Ponto ' + p.name"
+            [point]="p"
+            (closed)="closeSheet()"
+            (open)="openMap($event)"
+          />
+        }
+      }
+
+      <section class="mr-panel" aria-labelledby="maps-heading">
+        <h2 class="mr-panel__title" id="maps-heading">Mapas revelados</h2>
+        <ul class="list">
+          @for (item of maps(); track item.id) {
+            <li>
+              <a
+                class="list__row"
+                [class.list__row--here]="item.id === m.id"
+                [routerLink]="['/campanhas', campaignId(), 'mapas', item.id]"
+                [queryParamsHandling]="'preserve'"
+                [attr.aria-current]="item.id === m.id ? 'page' : null"
+              >
+                <mat-icon aria-hidden="true">map</mat-icon>
+                <span class="list__text">
+                  <span class="list__name">{{ item.name }}</span>
+                  <span class="list__sub">{{ mapSub(item) }}</span>
+                </span>
+                @if (item.id !== m.id) {
+                  <mat-icon class="list__go" aria-hidden="true">chevron_right</mat-icon>
+                }
+              </a>
+            </li>
+          }
+        </ul>
+      </section>
+
+      <section class="mr-panel" aria-labelledby="points-heading">
+        <h2 class="mr-panel__title" id="points-heading">Pontos deste mapa</h2>
+        @if (state().points().length === 0) {
+          <p class="mr-muted none">O mestre ainda não revelou nenhum ponto neste mapa.</p>
+        } @else {
+          <ul class="list">
+            @for (p of state().points(); track p.id) {
+              <li>
+                <button type="button" class="list__row" (click)="openPoint(p.id)">
+                  <span class="list__glyph" aria-hidden="true">
+                    <mat-icon>{{ icon(p.kind) }}</mat-icon>
+                  </span>
+                  <span class="list__text">
+                    <span class="list__name">{{ p.name }}</span>
+                    <span class="list__sub">{{ kind(p.kind) }}</span>
+                  </span>
+                  <mat-icon class="list__go" aria-hidden="true">chevron_right</mat-icon>
+                </button>
+              </li>
+            }
+          </ul>
+          <p class="mr-muted none">
+            Clique num ponto, aqui ou no mapa, para ler o que o mestre escreveu.
+          </p>
+        }
+      </section>
+    </div>
+  </div>
+}

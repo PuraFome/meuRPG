@@ -16,7 +16,10 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute, Router } from '@angular/router';
 
+import type { Map as MapMessage } from '../../../gen/meurpg/maps/v1/maps_pb';
 import { AuthService } from '../../core/auth/auth.service';
+import { MapState } from '../../core/maps/map-state';
+import { MapsClient } from '../../core/maps/maps-client';
 import { OpenSessions } from '../../shell/live-notice/open-sessions';
 import { AdjustVitals } from './adjust-vitals/adjust-vitals';
 import { AdjustVitalsData, AdjustVitalsResult } from './adjust-vitals/adjust-vitals.types';
@@ -26,6 +29,7 @@ import {
   LiveSessionVm,
   PartyMemberInfoVm,
   PlayerSheetVm,
+  ShownImageVm,
   VitalsVm,
 } from './live-session.types';
 import { LiveStream } from './live-stream';
@@ -34,6 +38,9 @@ import { PlayerVitals } from './player-vitals/player-vitals';
 import { SessionBlocked } from './session-blocked/session-blocked';
 import { SessionHeader } from './session-header/session-header';
 import { SessionMap } from './session-map/session-map';
+import { SessionTokens } from './session-tokens/session-tokens';
+import { ShownImageBlock } from './shown-image-block/shown-image-block';
+import { ShownImagePanel } from './shown-image-panel/shown-image-panel';
 import { applySnapshot, applyVitals, partyRowSub } from './vitals';
 
 /**
@@ -52,8 +59,11 @@ type Phase = 'loading' | 'live' | 'no-access' | 'no-session' | 'ended' | 'error'
  * applies each `vitals_changed` whose revision is newer. The player sees
  * their own character's vitals; the master sees the party, with "Ajustar".
  *
- * The map half comes with the maps slice: `SessionMap` shows its empty
- * state for now.
+ * The map half (MR-012): the snapshot carries the current map and the
+ * shown image (MR-028), and the stream's `current_map_changed`,
+ * `map_changed`, `token_moved` and `shown_image_changed` keep them current
+ * without a reload. `map_changed` reads the map again; if that answers
+ * `not_found`, a player lost sight of it and gets the empty state.
  */
 @Component({
   selector: 'app-live-session',
@@ -65,6 +75,9 @@ type Phase = 'loading' | 'live' | 'no-access' | 'no-session' | 'ended' | 'error'
     SessionBlocked,
     SessionHeader,
     SessionMap,
+    SessionTokens,
+    ShownImageBlock,
+    ShownImagePanel,
   ],
   templateUrl: './live-session.html',
   styleUrl: './live-session.scss',
@@ -76,6 +89,7 @@ export class LiveSession {
   private readonly document = inject(DOCUMENT);
   private readonly dialog = inject(MatDialog);
   private readonly bottomSheet = inject(MatBottomSheet);
+  private readonly mapsApi = inject(MapsClient);
   private readonly openSessions = inject(OpenSessions);
   private readonly destroyRef = inject(DestroyRef);
   /** The adjust sheet needs this route's `LiveSessionSource`: MatDialog
@@ -89,6 +103,16 @@ export class LiveSession {
   protected readonly vitals = signal<readonly VitalsVm[]>([]);
   protected readonly playerSheet = signal<PlayerSheetVm | null>(null);
   protected readonly partyInfo = signal<ReadonlyMap<string, PartyMemberInfoVm>>(new Map());
+
+  /** The session's current map, the image on show, and the map itself. */
+  protected readonly currentMapId = signal<string | null>(null);
+  protected readonly shownImage = signal<ShownImageVm | null>(null);
+  /** What a player's screen reader hears when the master shows or stops. */
+  protected readonly shownNotice = signal('');
+  protected readonly campaignMaps = signal<readonly MapMessage[]>([]);
+  protected readonly mapState = new MapState((mapId) =>
+    this.mapsApi.get(this.campaignId(), mapId),
+  );
 
   protected readonly stream = signal<LiveStream | null>(null);
   protected readonly connection = computed(() => this.stream()?.status() ?? 'connecting');
@@ -135,6 +159,11 @@ export class LiveSession {
     this.vitals.set([]);
     this.playerSheet.set(null);
     this.partyInfo.set(new Map());
+    this.currentMapId.set(null);
+    this.shownImage.set(null);
+    this.shownNotice.set('');
+    this.campaignMaps.set([]);
+    void this.mapState.open(null);
     this.loadedSheetFor = null;
     this.partyInfoIds = new Set();
 
@@ -174,6 +203,15 @@ export class LiveSession {
       handlers: {
         onReady: () => void this.readSnapshot(campaignId, generation),
         onVitals: (v) => this.vitals.update((list) => applyVitals(list, v)),
+        onCurrentMap: (mapId) => this.showMap(mapId),
+        onMapChanged: (mapId) => this.mapChanged(mapId),
+        onTokenMoved: (move) => {
+          // A token the page doesn't know (a missed `map_changed`): read again.
+          if (!this.mapState.moveToken(move.mapId, move.characterId, move.xBp, move.yBp)) {
+            void this.mapState.refresh();
+          }
+        },
+        onShownImage: (image) => this.shownImageChanged(image),
         onEnded: () => this.ended(),
         onFatal: (kind) => {
           if (kind === 'signed-out') {
@@ -199,6 +237,13 @@ export class LiveSession {
       }
       this.session.set(snapshot.session);
       this.vitals.update((list) => applySnapshot(list, snapshot.vitals));
+      this.currentMapId.set(snapshot.currentMapId);
+      this.shownImage.set(snapshot.shownImage);
+      // Each `ready` (a reconnection too) reads the map again: a missed event never leaves it stale.
+      void this.mapState.open(snapshot.currentMapId);
+      if (this.isMaster()) {
+        void this.reloadMaps();
+      }
       this.phase.set('live');
       this.stream()?.confirmHealthy();
       // Here already: the notice about this session has nothing to add.
@@ -252,6 +297,50 @@ export class LiveSession {
       (sheet) => generation === this.generation && this.playerSheet.set(sheet),
       () => undefined,
     );
+  }
+
+  /** `current_map_changed`, or the master's own choice. */
+  protected showMap(mapId: string | null): void {
+    this.currentMapId.set(mapId);
+    void this.mapState.open(mapId);
+    if (this.isMaster()) {
+      void this.reloadMaps();
+    }
+  }
+
+  private mapChanged(mapId: string): void {
+    if (mapId === this.currentMapId()) {
+      void this.mapState.refresh();
+    }
+    if (this.isMaster()) {
+      void this.reloadMaps();
+    }
+  }
+
+  /** `shown_image_changed`: the block appears, changes or goes away. */
+  private shownImageChanged(image: ShownImageVm | null): void {
+    if (!this.isMaster()) {
+      const previous = this.shownImage();
+      if (image) {
+        this.shownNotice.set(`O mestre está mostrando ${image.name}.`);
+      } else if (previous) {
+        this.shownNotice.set('O mestre parou de mostrar a imagem.');
+      }
+    }
+    this.shownImage.set(image);
+  }
+
+  /** The master's select and the "Fundo de mapa escondido" tags read the list. */
+  private async reloadMaps(): Promise<void> {
+    const generation = this.generation;
+    try {
+      const maps = await this.mapsApi.list(this.campaignId());
+      if (generation === this.generation) {
+        this.campaignMaps.set(maps);
+      }
+    } catch {
+      // Best effort: the select keeps what it had.
+    }
   }
 
   private ended(): void {

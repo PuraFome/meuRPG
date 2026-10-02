@@ -82,6 +82,12 @@
     } @else {
       <p class="card__name" [id]="ids.name">{{ img.name }}</p>
       <p class="card__meta">{{ meta() }}</p>
+      <p class="card__use">
+        @if (img.usedInMaps.length > 0) {
+          <mat-icon aria-hidden="true">map</mat-icon>
+        }
+        {{ use() }}
+      </p>
     }
 
     @if (error(); as message) {

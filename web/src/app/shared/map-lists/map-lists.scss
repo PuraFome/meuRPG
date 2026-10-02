@@ -1,0 +1,172 @@
+:host {
+  display: block;
+  // The rows lay out by the room they have (a 400px panel or a wide one), not by the screen.
+  container-type: inline-size;
+}
+
+.lst__title {
+  margin: 0 0 var(--mr-space-1);
+  font-family: var(--mr-font-display);
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 26px;
+}
+
+.lst__empty {
+  margin: var(--mr-space-2) 0 0;
+  color: var(--mr-ink-muted);
+}
+
+.lst {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// Phone: glyph, text, state; the button under them. From a tablet up the
+// state is a column of its own and the button sits at the end (E5-04).
+.row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 2px var(--mr-space-3);
+  align-items: start;
+  padding: 14px 0;
+
+  & + & {
+    border-top: 1px solid var(--mr-rule);
+  }
+
+  @container (min-width: 520px) {
+    grid-template-columns: 34px minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: var(--mr-space-3);
+    padding: 10px 0;
+  }
+}
+
+.row__glyph {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  grid-row: span 2;
+  width: 34px;
+  height: 34px;
+  border: 2px solid var(--mr-ink);
+  border-radius: 8px;
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+
+  &--disc {
+    border: 0;
+    border-radius: var(--mr-radius-pill);
+    background: var(--mr-ink);
+    color: var(--mr-surface);
+    font-family: var(--mr-font-display);
+    font-weight: 700;
+    font-size: 15px;
+    width: 30px;
+    height: 30px;
+    margin: 2px;
+  }
+
+  &--hidden {
+    border-style: dashed;
+    color: var(--mr-ink-muted);
+  }
+
+  &--disc.row__glyph--hidden {
+    background: var(--mr-surface);
+    color: var(--mr-ink);
+    border: 2px dashed var(--mr-ink);
+  }
+
+  @container (min-width: 520px) {
+    grid-row: auto;
+  }
+}
+
+.row__badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-ink);
+  color: var(--mr-surface);
+
+  .mat-icon {
+    width: 11px;
+    height: 11px;
+    font-size: 11px;
+  }
+}
+
+.row__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.row__name {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+
+.row__sub {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.row__state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+
+  &--hidden {
+    font-weight: 700;
+    color: var(--mr-ink);
+  }
+
+  // On a phone the state sits next to the kind, under the name.
+  grid-column: 2;
+
+  @container (min-width: 520px) {
+    grid-column: auto;
+  }
+}
+
+.row__action {
+  grid-column: 2;
+  justify-self: start;
+  margin-top: var(--mr-space-2);
+  min-height: 44px;
+
+  @container (min-width: 520px) {
+    grid-column: auto;
+    justify-self: end;
+    margin-top: 0;
+  }
+}

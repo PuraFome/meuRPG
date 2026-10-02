@@ -1,0 +1,106 @@
+// The stage scales with the zoom; the marker scales back, so it keeps its
+// size (--s is the zoom, set on the stage). 44px box, centred on the point.
+:host {
+  position: absolute;
+  z-index: 2;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  transform: scale(calc(1 / var(--s, 1)));
+}
+
+:host(.pt--raised),
+:host(.pt--selected) {
+  z-index: 6;
+}
+
+.pt__hit {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mr-ink);
+  cursor: pointer;
+  touch-action: none;
+}
+
+span.pt__hit {
+  cursor: inherit;
+}
+
+.pt__shape {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 2px solid var(--mr-ink);
+  background: var(--mr-surface);
+
+  &--battle {
+    width: 28px;
+    height: 28px;
+    transform: rotate(45deg);
+    border-radius: 3px;
+
+    .pt__icon {
+      transform: rotate(-45deg);
+      width: 16px;
+      height: 16px;
+      font-size: 16px;
+    }
+  }
+
+  &--submap {
+    border-radius: 8px;
+  }
+
+  &--scene {
+    border-radius: var(--mr-radius-pill);
+  }
+}
+
+.pt__icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+}
+
+:host(.pt--hidden) .pt__shape {
+  border-style: dashed;
+  color: var(--mr-ink-muted);
+}
+
+:host(.pt--selected) .pt__shape {
+  border: 3px solid var(--mr-accent);
+}
+
+:host(.pt--selected.pt--hidden) .pt__shape {
+  border-style: dashed;
+}
+
+.pt__badge {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-ink);
+  color: var(--mr-surface);
+
+  .mat-icon {
+    width: 11px;
+    height: 11px;
+    font-size: 11px;
+  }
+}

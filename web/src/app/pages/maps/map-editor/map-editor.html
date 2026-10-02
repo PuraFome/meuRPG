@@ -1,0 +1,128 @@
+<div class="bar" role="toolbar" aria-label="Ferramentas do mapa">
+  <span class="bar__label" id="bar-add">Adicionar ponto</span>
+  <div class="bar__group" role="group" aria-labelledby="bar-add">
+    @for (k of kinds; track k) {
+      <button
+        matButton="outlined"
+        type="button"
+        class="bar__tool"
+        [attr.aria-pressed]="placing() === k"
+        [class.bar__tool--on]="placing() === k"
+        (click)="toggleTool(k)"
+      >
+        <mat-icon aria-hidden="true">{{ kindIcon(k) }}</mat-icon>{{ kindLabel(k) }}
+      </button>
+    }
+  </div>
+  <span class="bar__sep" aria-hidden="true"></span>
+  <button matButton="outlined" type="button" class="bar__tool" [matMenuTriggerFor]="tokenMenu">
+    <mat-icon aria-hidden="true">person_add</mat-icon>Adicionar token
+    <mat-icon iconPositionEnd aria-hidden="true">expand_more</mat-icon>
+  </button>
+  <mat-menu #tokenMenu="matMenu">
+    @for (c of available(); track c.id) {
+      <button mat-menu-item type="button" (click)="addToken(c)">
+        {{ c.name }}{{ c.classSummary ? ' (' + c.classSummary + ')' : '' }}
+      </button>
+    } @empty {
+      <p class="bar__none">Todos os personagens já estão no mapa.</p>
+    }
+  </mat-menu>
+
+  <div class="bar__zoom" role="group" aria-label="Zoom do mapa">
+    <button type="button" class="bar__icon" aria-label="Reduzir" (click)="view()?.zoomOut()">
+      <mat-icon aria-hidden="true">remove</mat-icon>
+    </button>
+    <span class="bar__scale" aria-live="polite">{{ scaleLabel(view()?.scale() ?? 1) }}</span>
+    <button type="button" class="bar__icon" aria-label="Ampliar" (click)="view()?.zoomIn()">
+      <mat-icon aria-hidden="true">add</mat-icon>
+    </button>
+    <button matButton="outlined" type="button" class="bar__tool" (click)="view()?.fit()">
+      <mat-icon aria-hidden="true">fit_screen</mat-icon>Ajustar à tela
+    </button>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="layout__map">
+    @if (image(); as img) {
+      <app-map-view
+        mode="edit"
+        controls="none"
+        [image]="img"
+        [mapName]="state().map()?.name ?? ''"
+        [points]="state().points()"
+        [tokens]="state().tokens()"
+        [isMaster]="true"
+        [selected]="selection()"
+        [placing]="placing() !== null"
+        [hint]="hint()"
+        (pointSelect)="requestSelect({ kind: 'point', id: $event })"
+        (tokenSelect)="requestSelect({ kind: 'token', id: $event })"
+        (emptyClick)="onEmptyClick($event)"
+        (moved)="onMoved($event)"
+      />
+    }
+    <app-map-legend [states]="true" [tokens]="state().tokens()" />
+  </div>
+
+  <aside class="layout__side" aria-label="Item selecionado">
+    @if (pending()) {
+      <div class="mr-notice mr-notice--warning" role="alert">
+        <mat-icon aria-hidden="true">edit</mat-icon>
+        <div class="ask">
+          <p><strong>Salvar as mudanças em {{ pendingName() }}?</strong></p>
+          <div class="ask__actions">
+            <button matButton="outlined" type="button" (click)="saveAndContinue()">
+              Salvar e continuar
+            </button>
+            <button matButton type="button" (click)="discardAndContinue()">Descartar mudanças</button>
+            <button matButton type="button" (click)="pending.set(null)">Continuar editando</button>
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (selectedPoint(); as point) {
+      @for (p of [point]; track p.id) {
+        <app-point-panel
+          [point]="p"
+          [maps]="maps()"
+          [saving]="saving()"
+          [error]="panelError()"
+          [focusName]="justCreated()"
+          (saveRequested)="save()"
+          (removeConfirmed)="remove()"
+          (dirtyChange)="dirty.set($event)"
+        />
+      }
+    } @else if (selectedToken(); as token) {
+      <section class="mr-panel tk" aria-labelledby="tk-title">
+        <p class="tk__eyebrow">Token selecionado</p>
+        <h2 class="tk__title" id="tk-title">{{ token.name }}</h2>
+        <p class="tk__state">
+          <mat-icon aria-hidden="true">{{ token.hidden ? 'visibility_off' : 'visibility' }}</mat-icon>
+          {{ token.hidden ? 'Escondido dos jogadores' : 'Visível aos jogadores' }}
+        </p>
+        <div class="tk__actions">
+          <button matButton="outlined" type="button" (click)="toggleTokenHidden()">
+            {{ token.hidden ? 'Revelar aos jogadores' : 'Esconder' }}
+          </button>
+          <button matButton type="button" class="tk__remove" (click)="removeToken()">
+            Remover do mapa
+          </button>
+        </div>
+      </section>
+    } @else {
+      <section class="mr-panel tk">
+        <h2 class="tk__title">Nada selecionado</h2>
+        <p class="tk__empty">
+          Escolha um tipo na barra e clique no mapa para pôr um ponto, ou clique num ponto ou token
+          para editá-lo.
+        </p>
+      </section>
+    }
+  </aside>
+</div>
+
+<p class="msg" role="status">{{ message() }}</p>

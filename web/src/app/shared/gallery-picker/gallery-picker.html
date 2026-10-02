@@ -23,7 +23,7 @@
       </div>
     }
 
-    <div class="picker__grid">
+    <div class="picker__grid" [class.picker__grid--dialog]="variant() === 'dialog'">
       @for (item of queue.items(); track item.key) {
         <app-upload-progress [item]="item" [compact]="true" (cancel)="queue.cancel(item.key)" />
       }
@@ -60,8 +60,17 @@
               <span class="tile__foot">
                 <span class="tile__text">
                   <span class="tile__name">{{ image.name }}</span>
-                  <span class="mr-visually-hidden">, </span>
-                  <span class="tile__meta">{{ dimensions(image) }}</span>
+                  @if (variant() === 'dialog') {
+                    @if (tags().get(image.id); as tag) {
+                      <span class="mr-visually-hidden">, </span>
+                      <span class="tile__meta tile__tag">
+                        <mat-icon aria-hidden="true">{{ tag.icon }}</mat-icon>{{ tag.text }}
+                      </span>
+                    }
+                  } @else {
+                    <span class="mr-visually-hidden">, </span>
+                    <span class="tile__meta">{{ dimensions(image) }}</span>
+                  }
                 </span>
                 @if (checked) {
                   <mat-icon class="tile__check" aria-hidden="true">check</mat-icon>

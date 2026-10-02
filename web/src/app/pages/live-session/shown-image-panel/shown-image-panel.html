@@ -1,0 +1,45 @@
+<section
+  class="mr-panel panel"
+  [class.panel--on]="shown()"
+  aria-labelledby="shown-heading"
+>
+  <h2 class="mr-panel__title" id="shown-heading">Imagem para os jogadores</h2>
+
+  @if (shown(); as image) {
+    <div class="on">
+      <img class="on__thumb" [src]="thumb()" alt="" [width]="112" [height]="84" />
+      <div class="on__text">
+        <span class="on__tag"><mat-icon aria-hidden="true">cast</mat-icon>Mostrando agora</span>
+        <p class="on__name">{{ image.name }}</p>
+      </div>
+    </div>
+    <div class="actions">
+      <button #stopButton matButton="outlined" type="button" [disabled]="stopping()" (click)="stop()">
+        Parar de mostrar
+      </button>
+      <button matButton="outlined" type="button" (click)="open()">Trocar imagem</button>
+    </div>
+  } @else {
+    <p class="off__title">
+      {{ galleryEmpty() ? 'A galeria está vazia.' : 'Nenhuma imagem à mostra.' }}
+    </p>
+    <p class="off__text">
+      {{
+        galleryEmpty()
+          ? 'Envie uma imagem para mostrar aos jogadores.'
+          : 'Mostre aos jogadores uma imagem da galeria, como um retrato ou uma carta.'
+      }}
+    </p>
+    <button #showButton matButton="outlined" type="button" class="off__button" (click)="open()">
+      <mat-icon aria-hidden="true">cast</mat-icon>Mostrar imagem
+    </button>
+  }
+
+  @if (error(); as message) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ message }}</p>
+    </div>
+  }
+  <p class="mr-visually-hidden" role="status" aria-live="polite">{{ status() }}</p>
+</section>

@@ -1,0 +1,134 @@
+<section class="mr-panel map" aria-labelledby="session-map-heading">
+  <div class="map__head">
+    <h2 class="mr-panel__title" id="session-map-heading" tabindex="-1">
+      {{ isMaster() ? 'Mapa' : (map()?.name ?? 'Mapa') }}
+    </h2>
+    @if (isMaster()) {
+      <mat-form-field appearance="outline" class="map__select" subscriptSizing="dynamic">
+        <mat-label>Mapa atual</mat-label>
+        <select #select matNativeControl [disabled]="busy()" (change)="choose(select)">
+          <option value="" [selected]="mapId() === null">Nenhum mapa</option>
+          @for (m of maps(); track m.id) {
+            <option [value]="m.id" [selected]="m.id === mapId()">
+              {{ m.name }}{{ m.revealed ? '' : ' (escondido)' }}
+            </option>
+          }
+        </select>
+      </mat-form-field>
+    } @else if (map()) {
+      <span class="mr-muted">Mapa atual</span>
+    }
+  </div>
+
+  @if (isMaster() && openHiddenNote()) {
+    <p class="map__note">
+      <mat-icon aria-hidden="true">visibility</mat-icon>
+      Esse mapa estava escondido: ao ser o mapa atual, os jogadores passam a vê-lo.
+    </p>
+  }
+  @if (error(); as message) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ message }}</p>
+    </div>
+  }
+
+  @switch (status()) {
+    @case ('loading') {
+      <p class="mr-muted" role="status">Carregando o mapa...</p>
+    }
+    @case ('ready') {
+      @if (image(); as img) {
+        <div class="map__frame">
+          <app-map-view
+            [image]="img"
+            [mapName]="map()?.name ?? ''"
+            [points]="state().points()"
+            [tokens]="state().tokens()"
+            [isMaster]="isMaster()"
+            [mode]="isMaster() && !phone() ? 'tokens' : 'preview'"
+            [focusParty]="phone()"
+            (moved)="onMoved($event)"
+          />
+          @if (!isMaster() || phone()) {
+            <a
+              class="map__cover"
+              tabindex="-1"
+              aria-hidden="true"
+              [routerLink]="['/campanhas', campaignId(), 'mapas', map()?.id]"
+              [queryParams]="{ de: 'sessao' }"
+            ></a>
+          }
+        </div>
+
+        <div class="map__foot">
+          <div class="map__legend">
+            @if (isMaster() && !phone()) {
+              <p class="map__hint">
+                <mat-icon aria-hidden="true">drag_pan</mat-icon>
+                Arraste um token para movê-lo no mapa.
+              </p>
+            }
+            <app-map-legend
+              [shapes]="isMaster()"
+              [states]="isMaster()"
+              [tokens]="isMaster() && !phone() ? [] : state().tokens()"
+            />
+          </div>
+          <a
+            matButton="outlined"
+            class="map__open"
+            [routerLink]="['/campanhas', campaignId(), 'mapas', map()?.id]"
+            [queryParams]="{ de: 'sessao' }"
+          >
+            <mat-icon aria-hidden="true">open_in_full</mat-icon>{{ isMaster() ? 'Abrir mapa' : 'Ver mapa' }}
+          </a>
+        </div>
+
+        @if (isMaster()) {
+          <div class="map__points">
+            <app-map-points-list
+              [points]="state().points()"
+              [pendingId]="reveals.pendingId()"
+              (toggle)="reveals.togglePoint($event.point, $event.revealed)"
+            />
+            @if (reveals.error(); as message) {
+              <div class="mr-notice mr-notice--danger" role="alert">
+                <mat-icon aria-hidden="true">error</mat-icon>
+                <p>{{ message }}</p>
+              </div>
+            }
+            <p class="mr-visually-hidden" role="status" aria-live="polite">
+              {{ reveals.announcement() }}
+            </p>
+          </div>
+        }
+      }
+    }
+    @case ('error') {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>
+          <strong>Não deu para carregar o mapa.</strong>
+          <button type="button" class="map__retry" (click)="retry()">Tentar de novo</button>
+        </p>
+      </div>
+    }
+    @default {
+      <div class="mr-notice mr-notice--neutral">
+        <mat-icon aria-hidden="true">map</mat-icon>
+        @if (isMaster()) {
+          <p>
+            <strong>Nenhum mapa escolhido.</strong>
+            Escolha um em "Mapa atual": ele aparece aqui para você e para os jogadores.
+          </p>
+        } @else {
+          <p>
+            <strong>O mestre ainda não escolheu um mapa.</strong>
+            Quando escolher, ele aparece aqui.
+          </p>
+        }
+      </div>
+    }
+  }
+</section>

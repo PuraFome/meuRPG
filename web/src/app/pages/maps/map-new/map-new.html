@@ -1,0 +1,62 @@
+<a class="back" [routerLink]="['/campanhas', campaignId()]">
+  <mat-icon aria-hidden="true">arrow_back</mat-icon>Voltar para a campanha
+</a>
+<h1 class="mr-page-title">Novo mapa</h1>
+<p class="mr-page-lead">Um mapa é uma imagem da galeria com pontos de interesse e tokens por cima.</p>
+
+<form class="mr-panel form" novalidate (submit)="$event.preventDefault(); submit()">
+  <mat-form-field appearance="outline" class="form__name" subscriptSizing="dynamic">
+    <mat-label>Nome</mat-label>
+    <input
+      #nameField
+      matInput
+      autocomplete="off"
+      required
+      [attr.maxlength]="nameMax"
+      [formControl]="nameControl"
+      (input)="nameError.set(null)"
+    />
+    @if (nameError(); as message) {
+      <mat-error>{{ message }}</mat-error>
+    } @else {
+      <mat-hint>O nome que os jogadores veem quando o mapa for revelado. Até 80 caracteres.</mat-hint>
+    }
+  </mat-form-field>
+
+  <div class="form__image">
+    <p class="mr-label form__image-label" id="image-label">Imagem</p>
+    <p class="form__image-hint">
+      Escolha uma imagem da galeria ou envie uma nova. A imagem é o fundo do mapa.
+    </p>
+    @if (campaignId()) {
+      <app-gallery-picker
+        [campaignId]="campaignId()"
+        [(selectedId)]="imageId"
+        label="Imagem do mapa"
+        [describedBy]="imageError() ? 'image-error' : null"
+      />
+    }
+    @if (imageError(); as message) {
+      <p class="form__error" id="image-error" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>{{ message }}
+      </p>
+    }
+  </div>
+
+  <div class="mr-notice mr-notice--neutral">
+    <mat-icon aria-hidden="true">visibility_off</mat-icon>
+    <p>O mapa nasce escondido. Revele quando o grupo chegar lá.</p>
+  </div>
+
+  @if (failure(); as message) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ message }}</p>
+    </div>
+  }
+
+  <div class="form__actions">
+    <button matButton="filled" type="submit" [disabled]="saving()">Criar mapa</button>
+    <a matButton [routerLink]="['/campanhas', campaignId()]">Cancelar</a>
+  </div>
+</form>

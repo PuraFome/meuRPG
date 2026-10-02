@@ -1,0 +1,101 @@
+:host {
+  display: block;
+}
+
+.pp {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+}
+
+.pp__eyebrow {
+  margin: 0;
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--mr-ink-muted);
+}
+
+.pp__title {
+  margin: -12px 0 0;
+  font-family: var(--mr-font-display);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 30px;
+  overflow-wrap: anywhere;
+}
+
+.pp__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-1);
+}
+
+// "Tipo": three radios in one bordered strip; the chosen one is
+// accent-soft, bold and checked (never colour alone).
+.seg {
+  display: flex;
+  overflow: hidden;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+}
+
+.seg__item {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 6px;
+  border: 0;
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+
+  & + & {
+    border-left: 1px solid var(--mr-control-line);
+  }
+
+  &--on {
+    background: var(--mr-accent-soft);
+    font-weight: 700;
+  }
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.pp__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+  padding-top: var(--mr-space-3);
+  border-top: 1px solid var(--mr-rule);
+}
+
+.pp__confirm {
+  padding-top: var(--mr-space-3);
+  border-top: 1px solid var(--mr-rule);
+
+  p {
+    margin: 0 0 var(--mr-space-2);
+  }
+
+  .pp__actions {
+    justify-content: flex-start;
+    padding-top: 0;
+    border: 0;
+  }
+}
+
+.pp__danger {
+  color: var(--mr-danger-ink);
+  --mat-button-outlined-label-text-color: var(--mr-danger-ink);
+  --mat-button-text-label-text-color: var(--mr-danger-ink);
+}

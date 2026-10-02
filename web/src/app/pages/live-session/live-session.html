@@ -54,16 +54,44 @@
       @if (isMaster()) {
         <div class="board board--master">
           <app-party-panel
-            class="board__side"
+            class="board__party"
             [party]="vitals()"
             [info]="partyInfo()"
             (adjust)="adjust($event)"
           />
-          <app-session-map class="board__main" [isMaster]="true" />
+          <app-shown-image-panel
+            class="board__image"
+            [campaignId]="campaignId()"
+            [shown]="shownImage()"
+            [maps]="campaignMaps()"
+            (changed)="shownImage.set($event)"
+          />
+          <app-session-map
+            class="board__main"
+            [isMaster]="true"
+            [campaignId]="campaignId()"
+            [state]="mapState"
+            [mapId]="currentMapId()"
+            [maps]="campaignMaps()"
+            (currentChanged)="showMap($event)"
+          />
+          <app-session-tokens
+            class="board__tokens"
+            [campaignId]="campaignId()"
+            [state]="mapState"
+            [info]="partyInfo()"
+          />
         </div>
       } @else {
         <div class="board">
-          <app-session-map class="board__main" />
+          <div class="board__main">
+            <app-shown-image-block [image]="shownImage()" [animate]="phase() === 'live'" />
+            <app-session-map
+              [campaignId]="campaignId()"
+              [state]="mapState"
+              [mapId]="currentMapId()"
+            />
+          </div>
           <div class="board__side">
             @if (ownVitals(); as v) {
               <app-player-vitals [vitals]="v" [sheet]="playerSheet()" [campaignId]="campaignId()" />
@@ -78,6 +106,7 @@
             }
           </div>
         </div>
+        <p class="mr-visually-hidden" role="status" aria-live="polite">{{ shownNotice() }}</p>
       }
     }
   }

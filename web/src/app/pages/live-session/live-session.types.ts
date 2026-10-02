@@ -47,11 +47,27 @@ export interface LiveSessionVm {
   readonly startedAt: Date;
 }
 
+/** The gallery image the master shows the players (MR-028, `ShownImage`):
+ * what a player's block needs, so the frame is reserved from the size
+ * before the bytes arrive. */
+export interface ShownImageVm {
+  readonly id: string;
+  /** The image's name in the gallery: the caption. */
+  readonly name: string;
+  readonly width: number;
+  readonly height: number;
+  readonly url: string;
+}
+
 /** `GetLiveSession`: the session and the vitals the caller may see (the
- * master: every living player character; a player: only their own). */
+ * master: every living player character; a player: only their own), the
+ * session's current map and the image being shown. */
 export interface LiveSnapshotVm {
   readonly session: LiveSessionVm;
   readonly vitals: readonly VitalsVm[];
+  /** The current map's ID, or `null` while the master has not chosen one. */
+  readonly currentMapId: string | null;
+  readonly shownImage: ShownImageVm | null;
 }
 
 /** One event of `WatchGameSession`. */
@@ -59,7 +75,20 @@ export type LiveEventVm =
   | { readonly kind: 'ready' }
   | { readonly kind: 'heartbeat' }
   | { readonly kind: 'vitals'; readonly vitals: VitalsVm }
-  | { readonly kind: 'ended' };
+  | { readonly kind: 'ended' }
+  /** `current_map_changed`; `mapId` is `null` when the map was cleared. */
+  | { readonly kind: 'currentMap'; readonly mapId: string | null }
+  /** `map_changed`: read the map again. */
+  | { readonly kind: 'mapChanged'; readonly mapId: string }
+  | {
+      readonly kind: 'tokenMoved';
+      readonly mapId: string;
+      readonly characterId: string;
+      readonly xBp: number;
+      readonly yBp: number;
+    }
+  /** `shown_image_changed`; `image` is `null` when it stopped. */
+  | { readonly kind: 'shownImage'; readonly image: ShownImageVm | null };
 
 /**
  * What a failed call means for the page, from its Connect code and typed
@@ -129,6 +158,10 @@ export abstract class LiveSessionSource {
     change: VitalsChange,
   ): Promise<VitalsVm>;
   abstract endSession(campaignId: string, sessionId: string): Promise<void>;
+  /** `SetCurrentMap`: the map the session shows (`null` clears it). */
+  abstract setCurrentMap(campaignId: string, mapId: string | null): Promise<string | null>;
+  /** `SetShownImage`: show a gallery image to the players (`null` stops). */
+  abstract setShownImage(campaignId: string, imageId: string | null): Promise<ShownImageVm | null>;
   abstract getPlayerSheet(campaignId: string, characterId: string): Promise<PlayerSheetVm>;
   abstract getPartyInfo(campaignId: string): Promise<ReadonlyMap<string, PartyMemberInfoVm>>;
   abstract classifyError(err: unknown): LiveErrorKind;

@@ -98,6 +98,21 @@ export const routes: Routes = [
       import('./pages/campaign-document/campaign-document').then((m) => m.CampaignDocumentPage),
   },
   {
+    // New map (MR-008, E5-31). Before `mapas/:mapId`, so "novo" is not read
+    // as a map's ID. Plain `loadComponent`, like the gallery: the clients
+    // are root services that only lazy code imports.
+    path: 'campanhas/:id/mapas/novo',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/maps/map-new/map-new').then((m) => m.MapNew),
+  },
+  {
+    // One map (MR-008, MR-009): the master's editor, or the player's
+    // viewer; the page picks by role and screen size.
+    path: 'campanhas/:id/mapas/:mapId',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/maps/map-page/map-page').then((m) => m.MapPage),
+  },
+  {
     // Public: read from the invite link's fragment (never a route param —
     // see InviteAccept's doc comment) and works whether the visitor is
     // signed in or not (MR-003).

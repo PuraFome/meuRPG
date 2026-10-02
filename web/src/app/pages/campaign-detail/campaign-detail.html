@@ -55,6 +55,7 @@
         <div class="campaign-layout__column">
           <!-- For a player, only while a session is open (it's empty otherwise). -->
           <app-game-session-card [campaignId]="s.campaign.id" [isMaster]="isMaster" />
+          <app-maps-panel [campaignId]="s.campaign.id" [isMaster]="isMaster" />
           @if (isMaster) { <app-gallery-panel [campaignId]="s.campaign.id" /> }
           <app-campaign-characters [campaignId]="s.campaign.id" [isMaster]="isMaster" />
         </div>

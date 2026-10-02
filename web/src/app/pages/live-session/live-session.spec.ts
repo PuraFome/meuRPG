@@ -1,9 +1,11 @@
-import { Injectable, signal } from '@angular/core';
+import { ApplicationRef, Injectable, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 
 import { AuthService } from '../../core/auth/auth.service';
+import { MapsClient } from '../../core/maps/maps-client';
+import { FakeMapsClient, mapMessage, mapPoint, mapResponse, mapToken } from '../../core/maps/maps-testing';
 import { OpenSessions } from '../../shell/live-notice/open-sessions';
 import { LiveSession } from './live-session';
 import {
@@ -30,6 +32,8 @@ class FakeLiveSessionSource implements LiveSessionSource {
   snapshot: LiveSnapshotVm | Error = {
     session: { sessionId: 's4', sessionNumber: 4, startedAt: new Date(2026, 8, 30, 20, 5) },
     vitals: [pensantusVitals()],
+    currentMapId: null,
+    shownImage: null,
   };
   sheet: PlayerSheetVm = { armorClass: 14, summary: 'Mago 3, Gnomo das Rochas' };
   party = new Map<string, PartyMemberInfoVm>([
@@ -41,6 +45,8 @@ class FakeLiveSessionSource implements LiveSessionSource {
   failWith: Error | null = null;
   readonly endSession = vi.fn(() => Promise.resolve());
   readonly adjustVitals = vi.fn();
+  readonly setCurrentMap = vi.fn((_c: string, mapId: string | null) => Promise.resolve(mapId));
+  readonly setShownImage = vi.fn();
 
   getCampaign(): Promise<CampaignInfoVm> {
     return this.campaign instanceof Error
@@ -110,6 +116,7 @@ describe('LiveSession', () => {
       providers: [
         provideRouter([]),
         { provide: LiveSessionSource, useClass: FakeLiveSessionSource },
+        { provide: MapsClient, useClass: FakeMapsClient },
         { provide: AuthService, useValue: { signIn, state: signal({ status: 'signed-in' }) } },
         { provide: OpenSessions, useValue: openSessions },
         {
@@ -173,6 +180,8 @@ describe('LiveSession', () => {
     source.snapshot = {
       session: { sessionId: 's4', sessionNumber: 4, startedAt: new Date(2026, 8, 30, 20, 5) },
       vitals: [pensantusVitals(), brisaVitals()],
+      currentMapId: null,
+      shownImage: null,
     };
     const el = await render();
     expect(el.textContent).toContain('Em andamento desde 30/09 às 20:05');
@@ -258,5 +267,105 @@ describe('LiveSession', () => {
     source.failWith = new KindError('signed-out');
     await render();
     expect(signIn).toHaveBeenCalled();
+  });
+
+  describe('the map and the image on show (MR-012, MR-028)', () => {
+    let maps: FakeMapsClient;
+
+    beforeEach(() => {
+      maps = TestBed.inject(MapsClient) as unknown as FakeMapsClient;
+      const map = mapMessage('map-1', 'Mirathel e arredores', { revealed: true, current: true });
+      maps.responses.set(
+        'map-1',
+        mapResponse(
+          map,
+          [mapPoint('p1', 'Taverna do Javali', { revealed: true })],
+          [mapToken('pensantus', 'Pensantus', { mine: true, xBp: 5200, yBp: 5400 })],
+        ),
+      );
+      maps.maps = [map];
+      source.snapshot = {
+        ...(source.snapshot as LiveSnapshotVm),
+        currentMapId: 'map-1',
+      };
+    });
+
+    it('draws the current map from the snapshot, with the party and a link to the full map', async () => {
+      const el = await render();
+      expect(el.querySelector('#session-map-heading')?.textContent).toContain('Mirathel e arredores');
+      expect(maps.calls).toContain('get map-1');
+      expect(el.querySelector('[role="img"][aria-label="Prévia do mapa Mirathel e arredores"]')).not.toBeNull();
+      expect(el.textContent).toContain('Pensantus');
+      expect(el.textContent).toContain('(você)');
+      expect(el.textContent).toContain('Ver mapa');
+      expect(el.textContent).not.toContain('O mestre ainda não escolheu um mapa.');
+    });
+
+    it('moves a token from the stream without reading the map again', async () => {
+      const el = await render();
+      const gets = maps.calls.filter((c) => c.startsWith('get')).length;
+      source.push({ kind: 'tokenMoved', mapId: 'map-1', characterId: 'pensantus', xBp: 6200, yBp: 5400 });
+      await new Promise((r) => setTimeout(r));
+      TestBed.inject(ApplicationRef).tick();
+      expect(el.querySelector('app-map-token')?.getAttribute('style')).toContain('left: 62%');
+      expect(maps.calls.filter((c) => c.startsWith('get')).length).toBe(gets);
+    });
+
+    it('reads the map again on map_changed, and leaves it when the player lost sight of it', async () => {
+      const el = await render();
+      const gets = maps.calls.filter((c) => c.startsWith('get')).length;
+      source.push({ kind: 'mapChanged', mapId: 'map-1' });
+      await new Promise((r) => setTimeout(r));
+      expect(maps.calls.filter((c) => c.startsWith('get')).length).toBe(gets + 1);
+
+      maps.responses.delete('map-1'); // not_found: the map is hidden from them now
+      source.push({ kind: 'mapChanged', mapId: 'map-1' });
+      await new Promise((r) => setTimeout(r));
+      TestBed.inject(ApplicationRef).tick();
+      expect(el.textContent).toContain('O mestre ainda não escolheu um mapa.');
+    });
+
+    it('follows current_map_changed to another map, or to none', async () => {
+      const el = await render();
+      const other = mapMessage('map-2', 'Torre de Mirathel', { revealed: true, current: true });
+      maps.responses.set('map-2', mapResponse(other));
+      source.push({ kind: 'currentMap', mapId: 'map-2' });
+      await new Promise((r) => setTimeout(r));
+      TestBed.inject(ApplicationRef).tick();
+      expect(el.querySelector('#session-map-heading')?.textContent).toContain('Torre de Mirathel');
+      source.push({ kind: 'currentMap', mapId: null });
+      await new Promise((r) => setTimeout(r));
+      TestBed.inject(ApplicationRef).tick();
+      expect(el.textContent).toContain('O mestre ainda não escolheu um mapa.');
+    });
+
+    it('shows the player the image on show, announces it, and takes it away when it stops', async () => {
+      const el = await render();
+      expect(el.textContent).not.toContain('O mestre está mostrando');
+      const image = { id: 'img-1', name: 'Capitão Goblin', width: 400, height: 500, url: '/images/img-1' };
+      source.push({ kind: 'shownImage', image });
+      await new Promise((r) => setTimeout(r));
+      TestBed.inject(ApplicationRef).tick();
+      expect(el.querySelector('#shown-title')?.textContent).toContain('O mestre está mostrando');
+      expect(el.querySelector('.block__name')?.textContent).toContain('Capitão Goblin');
+      expect(el.querySelector('img[alt="Capitão Goblin"]')?.getAttribute('src')).toBe('/images/img-1');
+      expect(el.querySelector('[role="status"]:not(.status)')).not.toBeNull();
+      expect(el.textContent).toContain('O mestre está mostrando Capitão Goblin.');
+
+      source.push({ kind: 'shownImage', image: null });
+      await new Promise((r) => setTimeout(r));
+      TestBed.inject(ApplicationRef).tick();
+      expect(el.textContent).toContain('O mestre parou de mostrar a imagem.');
+    });
+
+    it('draws the block without announcing it when it comes with the snapshot (a reload)', async () => {
+      source.snapshot = {
+        ...(source.snapshot as LiveSnapshotVm),
+        shownImage: { id: 'img-1', name: 'Carta', width: 800, height: 500, url: '/images/img-1' },
+      };
+      const el = await render();
+      expect(el.querySelector('.block__name')?.textContent).toContain('Carta');
+      expect(el.textContent).not.toContain('O mestre está mostrando Carta.');
+    });
   });
 });

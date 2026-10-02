@@ -1,0 +1,165 @@
+:host {
+  display: block;
+}
+
+// Appears and goes away by growing and shrinking its row, so the map under
+// it slides instead of jumping. Reduced motion: no animation at all.
+.wrap {
+  display: grid;
+  grid-template-rows: 1fr;
+  margin-bottom: var(--mr-space-4);
+  transition:
+    grid-template-rows 200ms ease-out,
+    opacity 150ms ease-out,
+    margin 200ms ease-out;
+
+  > .block {
+    min-height: 0;
+    overflow: hidden;
+  }
+}
+
+.wrap--in {
+  animation: grow 200ms ease-out;
+}
+
+.wrap--out {
+  grid-template-rows: 0fr;
+  margin-bottom: 0;
+  opacity: 0;
+  transition-delay: 0ms, 0ms, 150ms;
+}
+
+@keyframes grow {
+  from {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wrap,
+  .wrap--in {
+    animation: none;
+    transition: none;
+  }
+}
+
+// An accent frame says "on the players' screens right now"; the heading's
+// words and icon say it too.
+.block {
+  box-sizing: border-box;
+  padding: 14px 18px;
+  border: 1.5px solid var(--mr-accent);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+}
+
+.block__heading {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: 0 0 var(--mr-space-3);
+  font-family: var(--mr-font-sans);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 20px;
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+    color: var(--mr-accent-text);
+  }
+}
+
+// The frame never changes size when the image does: 160px tall on a
+// phone, 320px on a computer, the image letterboxed inside on `ground`.
+.frame {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  height: 160px;
+  max-width: none;
+  padding: 0;
+  border: 0;
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-ground);
+  cursor: zoom-in;
+  overflow: hidden;
+
+  @media (min-width: 768px) {
+    width: auto;
+    height: 320px;
+    max-width: 440px;
+  }
+}
+
+.frame__img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0;
+
+  &--loaded {
+    opacity: 1;
+    transition: opacity 150ms;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+.frame__error {
+  padding: var(--mr-space-3);
+  color: var(--mr-ink-muted);
+  text-align: center;
+}
+
+.block__caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+  margin-top: var(--mr-space-3);
+}
+
+.block__name {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 26px;
+  overflow-wrap: anywhere;
+
+  @media (min-width: 768px) {
+    font-size: 32px;
+    font-weight: 800;
+    line-height: 36px;
+  }
+}
+
+.block__full {
+  flex: none;
+  min-height: 44px;
+  color: var(--mr-accent-text);
+
+  @media (min-width: 768px) {
+    border: 1px solid var(--mr-control-line);
+  }
+}
+
+.block__note {
+  margin: var(--mr-space-1) 0 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.block__retry {
+  min-height: 44px;
+  color: var(--mr-accent-text);
+}

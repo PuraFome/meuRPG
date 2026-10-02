@@ -10,6 +10,7 @@ import {
   GameSessionBlockedReason,
   GameSessionBlockedSchema,
   PlayService,
+  ShownImage,
 } from '../../../gen/meurpg/play/v1/play_pb';
 import { CONNECT_TRANSPORT } from '../../core/connect/transport';
 import {
@@ -21,6 +22,7 @@ import {
   LiveSnapshotVm,
   PartyMemberInfoVm,
   PlayerSheetVm,
+  ShownImageVm,
   VitalsChange,
   VitalsVm,
 } from './live-session.types';
@@ -42,6 +44,12 @@ export function toVitalsVm(v: CharacterVitals): VitalsVm {
     hitDiceUsed: v.hitDiceUsed,
     revision: v.revision,
   };
+}
+
+export function toShownImageVm(image: ShownImage | undefined): ShownImageVm | null {
+  return image && image.id
+    ? { id: image.id, name: image.name, width: image.width, height: image.height, url: image.url }
+    : null;
 }
 
 function toSessionVm(gs: GameSession | undefined): LiveSessionVm {
@@ -118,6 +126,24 @@ export class LiveSessionSourceLive implements LiveSessionSource {
         case 'sessionEnded':
           yield { kind: 'ended' };
           break;
+        case 'currentMapChanged':
+          yield { kind: 'currentMap', mapId: res.event.value.mapId || null };
+          break;
+        case 'mapChanged':
+          yield { kind: 'mapChanged', mapId: res.event.value.mapId };
+          break;
+        case 'tokenMoved':
+          yield {
+            kind: 'tokenMoved',
+            mapId: res.event.value.mapId,
+            characterId: res.event.value.characterId,
+            xBp: res.event.value.xBp,
+            yBp: res.event.value.yBp,
+          };
+          break;
+        case 'shownImageChanged':
+          yield { kind: 'shownImage', image: toShownImageVm(res.event.value.image) };
+          break;
         default:
           // A newer server's event this app doesn't know yet: still proof
           // that the stream is alive.
@@ -128,7 +154,12 @@ export class LiveSessionSourceLive implements LiveSessionSource {
 
   async getLiveSession(campaignId: string): Promise<LiveSnapshotVm> {
     const res = await this.play.getLiveSession({ campaignId });
-    return { session: toSessionVm(res.gameSession), vitals: res.vitals.map(toVitalsVm) };
+    return {
+      session: toSessionVm(res.gameSession),
+      vitals: res.vitals.map(toVitalsVm),
+      currentMapId: res.currentMapId || null,
+      shownImage: toShownImageVm(res.shownImage),
+    };
   }
 
   async adjustVitals(
@@ -152,6 +183,16 @@ export class LiveSessionSourceLive implements LiveSessionSource {
 
   async endSession(campaignId: string, sessionId: string): Promise<void> {
     await this.play.endGameSession({ campaignId, gameSessionId: sessionId });
+  }
+
+  async setCurrentMap(campaignId: string, mapId: string | null): Promise<string | null> {
+    const res = await this.play.setCurrentMap({ campaignId, mapId: mapId ?? '' });
+    return res.currentMapId || null;
+  }
+
+  async setShownImage(campaignId: string, imageId: string | null): Promise<ShownImageVm | null> {
+    const res = await this.play.setShownImage({ campaignId, imageId: imageId ?? '' });
+    return toShownImageVm(res.shownImage);
   }
 
   async getPlayerSheet(campaignId: string, characterId: string): Promise<PlayerSheetVm> {

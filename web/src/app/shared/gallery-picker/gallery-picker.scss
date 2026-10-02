@@ -146,3 +146,38 @@ p {
     border-color: var(--mr-accent);
   }
 }
+
+// The dialog's grid (E5-10, E5-11): 3 columns with 150px thumbnails, 2
+// columns with 116px on a phone.
+.picker__grid--dialog {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+
+  @media (min-width: 600px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .tile__img {
+    height: 116px;
+
+    @media (min-width: 600px) {
+      height: 150px;
+    }
+  }
+
+  .tile--upload {
+    min-height: 0;
+  }
+}
+
+.tile__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
+  .mat-icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
