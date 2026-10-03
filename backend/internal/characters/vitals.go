@@ -2,8 +2,10 @@ package characters
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/proto"
@@ -54,6 +56,8 @@ type vitalsMax struct {
 	pactSlots    int
 	hitDice      []rules.HitDice
 	hitDiceTotal int
+	// resources are the class and race resources the sheet has at its level.
+	resources []rules.Resource
 }
 
 // maxima derives the maximums from a stored sheet. A player character
@@ -68,7 +72,7 @@ func (s *Service) maxima(characterID string, doc []byte) (vitalsMax, error) {
 		return vitalsMax{}, nil
 	}
 	d := rules.Derive(buildOf(full), s.rules)
-	m := vitalsMax{hitPoints: max(d.HitPointsMax, 0), hitDice: d.HitDice}
+	m := vitalsMax{hitPoints: max(d.HitPointsMax, 0), hitDice: d.HitDice, resources: d.Resources}
 	for i, n := range d.SpellSlots {
 		if i < maxSpellLevel {
 			m.slots[i] = max(n, 0)
@@ -121,6 +125,15 @@ func vitalsToProto(row vitalsRow, m vitalsMax) *playv1.CharacterVitals {
 	}
 	for _, hd := range m.hitDice {
 		v.HitDice = append(v.HitDice, &rulesv1.HitDice{Faces: i32(hd.Die), Count: i32(hd.Count)})
+	}
+	// The stored uses are a JSON object {key: n}; a value that does not read
+	// counts as nothing spent, and each is cut to the sheet's total.
+	var used map[string]int32
+	_ = json.Unmarshal(row.ResourcesUsed, &used)
+	for _, r := range m.resources {
+		v.Resources = append(v.Resources, &playv1.ResourceUsage{
+			Key: r.Key, NamePt: r.NamePT, Total: i32(r.Max), Used: min(max(used[r.Key], 0), i32(r.Max)), Recharge: rechargeToProto[r.Recharge],
+		})
 	}
 	return v
 }
@@ -214,6 +227,16 @@ func (s *Service) AdjustVitals(ctx context.Context, tx pgx.Tx, campaignID, chara
 	for _, slot := range after.GetSpellSlots() {
 		used[slot.GetLevel()-1] = slot.GetUsed()
 	}
+	usedResources := make(map[string]int32, len(after.GetResources()))
+	for _, r := range after.GetResources() {
+		if r.GetUsed() > 0 {
+			usedResources[r.GetKey()] = r.GetUsed()
+		}
+	}
+	resourcesJSON, err := json.Marshal(usedResources)
+	if err != nil {
+		return nil, nil, wrap("encode the resources", err)
+	}
 	saved, err := q.UpsertVitals(ctx, charactersdb.UpsertVitalsParams{
 		CharacterID:        row.ID,
 		HitPointsCurrent:   after.GetHitPointsCurrent(),
@@ -221,6 +244,7 @@ func (s *Service) AdjustVitals(ctx context.Context, tx pgx.Tx, campaignID, chara
 		SpellSlotsUsed:     used,
 		PactSlotsUsed:      after.GetPactSlots().GetUsed(),
 		HitDiceUsed:        after.GetHitDiceUsed(),
+		ResourcesUsed:      resourcesJSON,
 		Now:                s.now(),
 	})
 	if err != nil {
@@ -236,7 +260,7 @@ func (s *Service) AdjustVitals(ctx context.Context, tx pgx.Tx, campaignID, chara
 // request's field names.
 func applyVitalsChange(v *playv1.CharacterVitals, req *playv1.AdjustCharacterVitalsRequest) error {
 	if req.HitPointsCurrent == nil && req.HitPointsTemporary == nil && len(req.GetSpellSlotsUsed()) == 0 &&
-		req.PactSlotsUsed == nil && req.HitDiceUsed == nil {
+		req.PactSlotsUsed == nil && req.HitDiceUsed == nil && len(req.GetResourcesUsed()) == 0 {
 		return fieldErr("request", "must set at least one value to change")
 	}
 	if req.HitPointsCurrent != nil {
@@ -282,6 +306,22 @@ func applyVitalsChange(v *playv1.CharacterVitals, req *playv1.AdjustCharacterVit
 			return err
 		}
 		v.HitDiceUsed = req.GetHitDiceUsed()
+	}
+	seenResource := map[string]bool{}
+	for i, change := range req.GetResourcesUsed() {
+		field := fmt.Sprintf("resources_used[%d]", i)
+		if seenResource[change.GetKey()] {
+			return fieldErr(field+".key", "repeats a resource")
+		}
+		seenResource[change.GetKey()] = true
+		i := slices.IndexFunc(v.GetResources(), func(r *playv1.ResourceUsage) bool { return r.GetKey() == change.GetKey() })
+		if i < 0 {
+			return fieldErr(field+".key", "must be a resource the character has")
+		}
+		if err := inRange(field+".used", change.GetUsed(), v.GetResources()[i].GetTotal()); err != nil {
+			return err
+		}
+		v.Resources[i].Used = change.GetUsed()
 	}
 	return nil
 }

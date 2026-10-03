@@ -217,6 +217,13 @@ type PlayServiceClient interface {
 	// session_events row are written together, then `vitals_changed` goes to
 	// the master's and the character's player's streams.
 	//
+	// The class and race resources' used counts (resources_used: Retomar o
+	// fôlego, Surto de ação...) are corrected here too: the app counts a use
+	// when the combat spends it and the master brings it back (rests come
+	// later). Healing a character above 0 hit points also resets the death
+	// saves of its combatant in the session's combat (RN-03), and a character
+	// set to 0 is "Caído" there.
+	//
 	// Calling again with the same idempotency_key (a retry) changes nothing
 	// and returns the character's current vitals.
 	//
@@ -599,6 +606,13 @@ type PlayServiceHandler interface {
 	// stay as they are. At least one must be set. The change and a
 	// session_events row are written together, then `vitals_changed` goes to
 	// the master's and the character's player's streams.
+	//
+	// The class and race resources' used counts (resources_used: Retomar o
+	// fôlego, Surto de ação...) are corrected here too: the app counts a use
+	// when the combat spends it and the master brings it back (rests come
+	// later). Healing a character above 0 hit points also resets the death
+	// saves of its combatant in the session's combat (RN-03), and a character
+	// set to 0 is "Caído" there.
 	//
 	// Calling again with the same idempotency_key (a retry) changes nothing
 	// and returns the character's current vitals.

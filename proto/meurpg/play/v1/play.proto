@@ -192,6 +192,13 @@ service PlayService {
   // session_events row are written together, then `vitals_changed` goes to
   // the master's and the character's player's streams.
   //
+  // The class and race resources' used counts (resources_used: Retomar o
+  // fôlego, Surto de ação...) are corrected here too: the app counts a use
+  // when the combat spends it and the master brings it back (rests come
+  // later). Healing a character above 0 hit points also resets the death
+  // saves of its combatant in the session's combat (RN-03), and a character
+  // set to 0 is "Caído" there.
+  //
   // Calling again with the same idempotency_key (a retry) changes nothing
   // and returns the character's current vitals.
   //
@@ -457,6 +464,25 @@ message CharacterVitals {
   int32 revision = 12;
   // When the master last corrected them. Unset while revision is 0.
   google.protobuf.Timestamp updated_at = 13;
+  // The uses spent of the character's class and race resources (Retomar o
+  // fôlego, Surto de ação, Fúria...), one entry for each resource the sheet
+  // has at its level, in sheet order. The totals come from the sheet; the
+  // used counts last until the master corrects them (rests come later).
+  repeated ResourceUsage resources = 14;
+}
+
+// ResourceUsage is how many uses of one resource are spent (RN-02).
+message ResourceUsage {
+  // The resource, as in rules.v1.Resource.key ("second_wind").
+  string key = 1;
+  // Its Portuguese name ("Retomar o Fôlego").
+  string name_pt = 2;
+  // How many uses the sheet gives at the character's level.
+  int32 total = 3;
+  // How many are spent, 0 to total.
+  int32 used = 4;
+  // When it comes back: a rules.v1.Recharge.
+  meurpg.rules.v1.Recharge recharge = 5;
 }
 
 // SpellSlotUsage is one spell level's slots.
@@ -656,6 +682,17 @@ message AdjustCharacterVitalsRequest {
   optional int32 pact_slots_used = 7;
   // New used count of hit dice, 0 to the character's total.
   optional int32 hit_dice_used = 8;
+  // New used counts of some resources; the others stay as they are. Each
+  // resource at most once, and only resources the sheet has.
+  repeated ResourceUsed resources_used = 9;
+}
+
+// ResourceUsed sets how many uses of one resource are spent.
+message ResourceUsed {
+  // The resource key, as in ResourceUsage.key.
+  string key = 1;
+  // How many are spent, 0 to the resource's total.
+  int32 used = 2;
 }
 
 // SpellSlotsUsed sets how many slots of one spell level are used.

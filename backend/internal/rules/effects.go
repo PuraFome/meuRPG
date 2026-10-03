@@ -72,7 +72,10 @@ type Effect struct {
 	Recharge string `json:"recharge,omitempty"`
 
 	// choice: something the player chooses. Choice is one of choiceKinds,
-	// Count how many, From the keys (or a class key, for a spell list).
+	// Count how many, From the keys (or a class key, for a spell list). The
+	// same Count is, for extra_attack, how many attacks the Attack action
+	// makes (2 at level 5); the highest of a character's effects wins, and a
+	// character without one makes 1.
 	Choice string   `json:"choice,omitempty"`
 	Count  int      `json:"count,omitempty"`
 	From   []string `json:"from,omitempty"`
@@ -106,7 +109,7 @@ type Effect struct {
 var (
 	effectTypes = []string{
 		"modifier", "proficiency", "roll_mode", "sense", "spellcasting",
-		"resource", "choice", "grant_action", "note", "handler",
+		"resource", "choice", "grant_action", "extra_attack", "note", "handler",
 	}
 	modifierTargets = []string{
 		"ac.base", "ac", "hp.max", "speed.walk", "initiative",
@@ -231,6 +234,10 @@ func (c *content) compileEffect(key string, e *Effect) error {
 	case "grant_action":
 		if !slices.Contains(economies, e.Economy) {
 			return fail("unknown economy %q", e.Economy)
+		}
+	case "extra_attack":
+		if e.Count < 2 || e.Count > 4 {
+			return fail("extra_attack needs a count of 2 to 4 attacks")
 		}
 	case "handler":
 		if !slices.Contains(handlers, e.Handler) {

@@ -1,6 +1,9 @@
 package rules
 
-import "slices"
+import (
+	"slices"
+	"strings"
+)
 
 // This file is the public surface of package rules: the types other modules
 // build and read, and the four entry points (LoadSRD, Validate, Derive and
@@ -188,6 +191,19 @@ func (c *Content) Catalog() Catalog {
 // "Mago"), falling back to the SRD's English name, or "" for an unknown key.
 func (c *Content) NamePT(key string) string {
 	return c.c.namePT(key)
+}
+
+// Conditions returns the SRD's conditions ("condition:poisoned", "Envenenado"),
+// sorted by key. The combat lets the master mark them as labels (RN-22).
+func (c *Content) Conditions() []NamedKey {
+	var out []NamedKey
+	for key := range c.c.named {
+		if strings.HasPrefix(key, "condition:") {
+			out = append(out, NamedKey{Key: key, NamePT: c.c.namePT(key)})
+		}
+	}
+	slices.SortFunc(out, func(a, b NamedKey) int { return strings.Compare(a.Key, b.Key) })
+	return out
 }
 
 // StandardActions returns the actions every creature has (Attack, Dash...),
@@ -477,6 +493,9 @@ type Derived struct {
 	Resources       []Resource
 	Actions         []Action
 	StandardActions []Action
+	// AttacksPerAction is how many attacks the Attack action makes: 1, or
+	// the extra_attack effect's count (Extra Attack: 2 at level 5).
+	AttacksPerAction int
 	// Features are the class, subclass, race and background features and
 	// traits up to the character's level.
 	Features []Feature

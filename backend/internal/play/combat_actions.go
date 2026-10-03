@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"slices"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -18,7 +19,6 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
-	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
@@ -134,7 +134,7 @@ func (s *Service) mustActNow(ctx context.Context, c *combatTx, who playdb.Combat
 
 func turnOf(c playdb.Combatant) link.Turn {
 	return link.Turn{
-		ActionUsed: c.ActionUsed, BonusActionUsed: c.BonusActionUsed, ReactionUsed: c.ReactionUsed,
+		ActionUsed: c.ActionUsed, BonusActionUsed: c.BonusActionUsed, ReactionUsed: c.ReactionUsed, AttacksMade: int(c.AttacksMade),
 		Dashed: c.Dashed, SpeedFt: int(c.SpeedFt), MovementUsedFt: int(c.MovementUsedFt),
 	}
 }
@@ -229,6 +229,9 @@ func (s *Service) GetTurnOptions(
 			AttackKey: a.GetAttack().GetKey(), Targets: targetsFor(d.cs, who, v, reachFt(a.GetAttack().GetRangeFt(), a.GetAttack().GetLongRangeFt())),
 		})
 	}
+	if res.SpellTargets, err = s.spellTargetsFor(ctx, m.CampaignID, who, d.cs, v, opts); err != nil {
+		return nil, s.dbError(ctx, "work out the spell targets", err)
+	}
 	open, err := s.queries.ListOpenPendingDamages(ctx, enc.ID)
 	if err != nil {
 		return nil, s.dbError(ctx, "list the pending damage", err)
@@ -239,6 +242,74 @@ func (s *Service) GetTurnOptions(
 		}
 	}
 	return connect.NewResponse(res), nil
+}
+
+// spellTargetsFor lists, for each spell the combatant can cast now and each save
+// cantrip, who it can target as the viewer sees them, with the distance, whether
+// the spell cannot reach it, how many targets it takes and, for Magic Missile,
+// the darts of each slot level. Spells that cannot be cast now are left out:
+// they carry their reason and need no targets.
+func (s *Service) spellTargetsFor(ctx context.Context, campaignID string, who playdb.Combatant, cs []playdb.Combatant, v combatViewer, opts *rulesv1.TurnOptions) ([]*playv1.SpellTargets, error) {
+	type entry struct {
+		key   string
+		level int
+		slots []*rulesv1.SlotChoice
+	}
+	var spells []entry
+	for _, sp := range opts.GetSpells() {
+		if sp.GetEnabled() {
+			spells = append(spells, entry{sp.GetSpell().GetKey(), int(sp.GetSpell().GetLevel()), sp.GetSlots()})
+		}
+	}
+	for _, a := range opts.GetAttacks() {
+		if a.GetEnabled() && a.GetAttack().GetKind() == rulesv1.AttackKind_ATTACK_KIND_SPELL && a.GetAttack().GetSaveDc() > 0 {
+			spells = append(spells, entry{key: a.GetAttack().GetKey()})
+		}
+	}
+	var out []*playv1.SpellTargets
+	for _, e := range spells {
+		sp, err := s.roster.CombatSpell(ctx, campaignID, who.CharacterID, e.key, e.level)
+		if err != nil {
+			return nil, err
+		}
+		st := &playv1.SpellTargets{
+			SpellKey: e.key, Targets: spellTargetList(cs, who, v, sp),
+			MaxTargets: clamp32(maxTargetsOf(sp, e.level), 0, maxCombatants), ExtraTargetPerLevel: sp.ExtraTargetPerLevel || sp.Key == magicMissile,
+		}
+		for _, slot := range e.slots {
+			if n := dartsOf(sp, int(slot.GetLevel())); n > 0 && !slices.ContainsFunc(st.Darts, func(d *playv1.DartsAtSlot) bool { return d.GetSlotLevel() == slot.GetLevel() }) {
+				st.Darts = append(st.Darts, &playv1.DartsAtSlot{SlotLevel: slot.GetLevel(), Darts: clamp32(n, 0, 100)})
+			}
+		}
+		out = append(out, st)
+	}
+	return out, nil
+}
+
+// spellTargetList lists who a spell can target as the viewer sees them: the
+// caster itself and every combatant that is not defeated (one at 0 hit points
+// can be healed), in turn order, with the distance and whether the spell's range
+// cannot reach it. A spell that stays on the caster lists only the caster.
+func spellTargetList(cs []playdb.Combatant, caster playdb.Combatant, v combatViewer, sp link.Spell) []*playv1.TargetInReach {
+	reach, limited := reachOf(sp)
+	var out []*playv1.TargetInReach
+	for _, t := range cs {
+		if t.Defeated || !v.sees(t) || (selfOnly(sp) && t.ID != caster.ID) {
+			continue
+		}
+		target := &playv1.TargetInReach{CombatantId: t.ID, Label: t.Label, State: stateOf(t)}
+		if dist, ok := distanceFt(caster, t); ok {
+			target.DistanceFt = &dist
+			target.TooFar = limited && t.ID != caster.ID && dist > reach
+		} else if t.ID == caster.ID {
+			dist := int32(0)
+			target.DistanceFt = &dist
+		} else {
+			target.TooFar = limited && !v.master // a player cannot cast at what has no square (CastSpell)
+		}
+		out = append(out, target)
+	}
+	return out
 }
 
 // disableAll disables every option with the reason: nothing can be done off
@@ -294,10 +365,15 @@ func pendingProto(p playdb.PendingDamage, cs []playdb.Combatant) *playv1.Pending
 		Status: pendingStatusToProto[p.Status], Critical: p.Critical,
 		DiceCount: p.DiceCount, DiceSides: p.DiceSides, Bonus: p.DiceBonus,
 		DamageTypeKey: p.DamageType, DamageTypePt: damageTypePT[p.DamageType],
+		CastId: deref(p.CastID), Healing: p.Healing, Half: p.Half, AppliedAmount: p.AppliedAmount,
 	}
 	if p.Amount != nil {
 		out.Amount = *p.Amount
-		out.Roll = diceRoll(p.DiceCount, p.DiceSides, p.Faces, p.DiceBonus, *p.Amount, p.Physical)
+		total := *p.Amount
+		if p.RollTotal != nil { // a half damage's roll is the whole one
+			total = *p.RollTotal
+		}
+		out.Roll = diceRoll(p.DiceCount, p.DiceSides, p.Faces, p.DiceBonus, total, p.Physical)
 	}
 	if p.Status == pendingApplied {
 		out.TargetDefeated = slices.ContainsFunc(cs, func(c playdb.Combatant) bool { return c.ID == p.TargetID && c.Kind == kindNPC && c.Defeated })
@@ -306,10 +382,11 @@ func pendingProto(p playdb.PendingDamage, cs []playdb.Combatant) *playv1.Pending
 }
 
 var pendingStatusToProto = map[string]playv1.PendingDamageStatus{
-	pendingAwaitingRoll: playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_AWAITING_ROLL,
-	pendingRolled:       playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_ROLLED,
-	pendingApplied:      playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED,
-	pendingDiscarded:    playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_DISCARDED,
+	pendingAwaitingReaction: playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_AWAITING_REACTION,
+	pendingAwaitingRoll:     playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_AWAITING_ROLL,
+	pendingRolled:           playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_ROLLED,
+	pendingApplied:          playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED,
+	pendingDiscarded:        playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_DISCARDED,
 }
 
 var outcomeToProto = map[string]playv1.AttackOutcome{
@@ -341,6 +418,31 @@ func (s *Service) mustRollThisWay(ctx context.Context, m authz.Membership, in ro
 	}
 	if force.refuses(in.inApp) {
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_WRONG_DICE_MODE, "this is not how the campaign has you roll your dice")
+	}
+	return nil
+}
+
+// mustReactNow checks, inside a write, that the combatant may spend its
+// reaction now: the combat is running, it is not out of the fight or down, and
+// it is not its own turn (then an attack spends the action).
+func (s *Service) mustReactNow(ctx context.Context, c *combatTx, who playdb.Combatant) error {
+	if err := notEnded(c.enc); err != nil {
+		return err
+	}
+	switch {
+	case c.enc.Status != statusActive:
+		return gateError(rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBAT_NOT_ACTIVE)
+	case who.Defeated:
+		return gateError(rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBATANT_DEFEATED)
+	case c.enc.CurrentCombatantID != nil && *c.enc.CurrentCombatantID == who.ID:
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("on its own turn an attack spends the action, not the reaction"))
+	}
+	down, err := s.isDown(ctx, c.tx, c.session.CampaignID, who)
+	if err != nil {
+		return err
+	}
+	if down {
+		return gateError(rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBATANT_DOWN)
 	}
 	return nil
 }
@@ -389,6 +491,7 @@ func (s *Service) RollAttack(
 	default:
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("set roll_in_app or d20_face"))
 	}
+	asReaction := req.Msg.GetAsReaction()
 	v := viewerOf(m)
 
 	var made actionEvent
@@ -411,20 +514,20 @@ func (s *Service) RollAttack(
 		if target.ID == attacker.ID {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("an attacker cannot be its own target"))
 		}
-		if err := s.mustActNow(ctx, c, attacker); err != nil {
+		if asReaction {
+			err = s.mustReactNow(ctx, c, attacker)
+		} else {
+			err = s.mustActNow(ctx, c, attacker)
+		}
+		if err != nil {
 			return nil, err
 		}
 		if target.Defeated {
 			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_DEFEATED, "the target is defeated")
 		}
-		// RN-18, then the economy: a player has one action a turn. The master
-		// has the last word, and an NPC with several attacks is his to run.
 		if !v.master {
 			if err := s.mustRollThisWay(ctx, m, in); err != nil {
 				return nil, err
-			}
-			if attacker.ActionUsed {
-				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ACTION_USED, "the action of this turn is used")
 			}
 		}
 
@@ -438,10 +541,32 @@ func (s *Service) RollAttack(
 		}
 		attack := attackerSheet.Attacks[i]
 		if attack.Save {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("this attack asks for a saving throw, not an attack roll"))
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("this attack asks for a saving throw, not an attack roll: use CastSpell"))
 		}
-		if !v.master { // RN-21: the reach is a player's limit; the master has the last word
-			if !placed(attacker) || !placed(target) {
+		// A melee weapon reaches 5 ft; one with a range of its own (a bow, a dagger
+		// the sheet lists as thrown) is a ranged attack, and no opportunity attack.
+		if asReaction && (attack.RangeFt > meleeReachFt || attack.LongRangeFt > 0) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("an opportunity attack is a melee attack"))
+		}
+		// RN-18, then the economy: a player has one action a turn (the Attack
+		// action's attacks, with Extra Attack), or the reaction for an opportunity
+		// attack. The master has the last word, and an NPC with several attacks is
+		// his to run.
+		perAction := max(attackerSheet.AttacksPerAction, 1)
+		if !v.master {
+			switch {
+			case asReaction && attacker.ReactionUsed:
+				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_USED, "the reaction is used")
+			case !asReaction && attack.Spell && attacker.ActionUsed:
+				// A cantrip takes the whole action, whatever the Attack action did.
+				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ACTION_USED, "the action of this turn is used")
+			case !asReaction && !attack.Spell && combat.AttacksLeft(perAction, combat.TurnState{ActionUsed: attacker.ActionUsed, AttacksMade: int(attacker.AttacksMade)}) == 0:
+				if attacker.AttacksMade > 0 && perAction > 1 {
+					return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ATTACKS_USED, "the Attack action made all its attacks")
+				}
+				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ACTION_USED, "the action of this turn is used")
+			}
+			if !placed(attacker) || !placed(target) { // RN-21: the reach is a player's limit
 				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_PLACED, "the attacker and the target must be on the map")
 			}
 			dist, _ := distanceFt(attacker, target)
@@ -451,50 +576,50 @@ func (s *Service) RollAttack(
 			}
 		}
 
-		// The roll, and what it did against the target's armor class. The
-		// class stays on the server (RN-20).
-		expr := dice.Expr{Count: 1, Sides: 20, Modifier: attack.ToHit}
-		var roll dice.Result
-		if in.inApp {
-			if roll, err = dice.Roll(s.roller, expr); err != nil {
-				return nil, fmt.Errorf("roll the attack: %w", err)
-			}
-		} else if roll, err = dice.Physical(expr, in.typed); err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("d20_face must be 1 to 20"))
-		}
-		face := in.typed
-		if in.inApp {
-			face = roll.Faces[0]
+		// The roll, and what it did against the target's armor class (with the
+		// +5 of an active Escudo). The class stays on the server (RN-20).
+		face, roll, err := s.d20(in, attack.ToHit)
+		if err != nil {
+			return nil, err
 		}
 		targetSheet, err := s.roster.CombatSheet(ctx, m.CampaignID, target.CharacterID)
 		if err != nil {
 			return nil, err
 		}
-		result := combat.ResolveAttack(attack.ToHit, targetSheet.ArmorClass, face)
+		result := combat.ResolveAttack(attack.ToHit, targetSheet.ArmorClass+int(target.AcBonus), face)
 
-		if err := c.q.SetCombatantEconomy(ctx, playdb.SetCombatantEconomyParams{
-			ID: attacker.ID, ActionUsed: true, BonusActionUsed: attacker.BonusActionUsed, ReactionUsed: attacker.ReactionUsed, Dashed: attacker.Dashed,
-		}); err != nil {
-			return nil, fmt.Errorf("spend the action: %w", err)
-		}
+		after := attacker
 		made = actionEvent{
 			Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: target.ID, Key: attackKey,
 			D20: clamp32(face, 1, 20), Modifier: clamp32(attack.ToHit, math.MinInt32, math.MaxInt32), Total: clamp32(result.Total, math.MinInt32, math.MaxInt32),
-			Physical: !in.inApp, Outcome: outcomeMiss, ActionBefore: attacker.ActionUsed,
+			Physical: roll.Physical, Outcome: outcomeMiss, AsReaction: asReaction,
+			ActionBefore: attacker.ActionUsed, ReactionBefore: attacker.ReactionUsed, AttacksBefore: attacker.AttacksMade,
+		}
+		if asReaction {
+			after.ReactionUsed = true
+		} else {
+			after.ActionUsed = true
+			// A cantrip is no attack of the Attack action: no Extra Attack count.
+			if !attack.Spell {
+				if err := c.q.SetCombatantAttacksMade(ctx, playdb.SetCombatantAttacksMadeParams{ID: attacker.ID, AttacksMade: attacker.AttacksMade + 1}); err != nil {
+					return nil, fmt.Errorf("count the attack: %w", err)
+				}
+			}
+		}
+		if err := c.q.SetCombatantEconomy(ctx, playdb.SetCombatantEconomyParams{
+			ID: attacker.ID, ActionUsed: after.ActionUsed, BonusActionUsed: after.BonusActionUsed, ReactionUsed: after.ReactionUsed, Dashed: after.Dashed,
+		}); err != nil {
+			return nil, fmt.Errorf("spend the action: %w", err)
 		}
 		if result.Hit {
 			made.Outcome = outcomeHit
 			if result.Critical {
 				made.Outcome = outcomeCrit
 			}
-			p, err := c.q.InsertPendingDamage(ctx, playdb.InsertPendingDamageParams{
-				EncounterID: c.enc.ID, AttackerID: attacker.ID, TargetID: target.ID, AttackKey: attackKey, Critical: result.Critical,
-				DiceCount: clamp32(combat.DiceToRoll(rules.DiceFormula{Count: attack.DiceCount}, result.Critical), 0, 100),
-				DiceSides: clamp32(attack.DiceSides, 0, 100), DiceBonus: clamp32(attack.DiceBonus, -1000, 1000),
-				DamageType: attack.DamageType, CreatedAt: c.now,
-			})
+			p, err := s.openHit(ctx, c, m.CampaignID, attacker, target, attackKey,
+				link.Dice{Count: attack.DiceCount, Sides: attack.DiceSides, Bonus: attack.DiceBonus, DamageType: attack.DamageType}, result.Critical, result.Total)
 			if err != nil {
-				return nil, fmt.Errorf("open the pending damage: %w", err)
+				return nil, err
 			}
 			made.Pending = p.ID
 		}
@@ -604,7 +729,9 @@ func (s *Service) RollDamage(
 	v := viewerOf(m)
 
 	var made actionEvent
+	var vitals []*playv1.CharacterVitals // the characters a heal or a death save touched
 	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventDamageRolled, encounterID: encID}, func(c *combatTx) (any, error) {
+		vitals = nil
 		if err := notEnded(c.enc); err != nil {
 			return nil, err
 		}
@@ -631,10 +758,23 @@ func (s *Service) RollDamage(
 			return nil, errCombatantNotFound() // a target hidden after the hit: the master resolves it
 		}
 		switch p.Status {
+		case pendingAwaitingReaction:
+			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_PENDING, "the hit waits for the target's reaction")
 		case pendingRolled:
 			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DAMAGE_ALREADY_ROLLED, "the damage was rolled already")
 		case pendingApplied, pendingDiscarded:
 			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DAMAGE_RESOLVED, "the damage was applied or discarded already")
+		}
+
+		// An area spell's damage is one roll for the whole cast: the pending damages
+		// of the cast still to be rolled are settled by this roll.
+		group := []playdb.PendingDamage{p}
+		if p.CastID != nil {
+			all, err := c.q.ListCastPendingDamages(ctx, playdb.ListCastPendingDamagesParams{EncounterID: c.enc.ID, CastID: p.CastID})
+			if err != nil {
+				return nil, fmt.Errorf("list the cast's pending damage: %w", err)
+			}
+			group = slices.DeleteFunc(all, func(o playdb.PendingDamage) bool { return o.Status != pendingAwaitingRoll })
 		}
 
 		// The damage: the dice, doubled on a critical hit when it hit, plus the
@@ -658,31 +798,46 @@ func (s *Service) RollDamage(
 					fmt.Errorf("typed_sum must be %d to %d", expr.Count, expr.Count*expr.Sides))
 			}
 		}
-		amount := clamp32(max(roll.Total, 0), 0, math.MaxInt32) // damage is never below 0
+		total := max(roll.Total, 0) // damage is never below 0
 		faces := faces32(roll.Faces)
+		rolledTotal := clamp32(total, 0, math.MaxInt32)
 
 		made = actionEvent{
 			Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: p.TargetID, Pending: p.ID, Key: p.AttackKey,
-			DiceCount: p.DiceCount, DiceSides: p.DiceSides, Modifier: p.DiceBonus, Faces: faces, Amount: amount,
-			DamageType: p.DamageType, Critical: p.Critical, Physical: roll.Physical,
+			DiceCount: p.DiceCount, DiceSides: p.DiceSides, Modifier: p.DiceBonus, Faces: faces,
+			DamageType: p.DamageType, Critical: p.Critical, Physical: roll.Physical, Heal: p.Healing, Total: rolledTotal,
 		}
-		status := pendingRolled // a player's character waits for the master (RN-02)
-		if target.Kind == kindNPC {
-			// An NPC takes it at once: temporary hit points first, then the
-			// hit points; at 0 it is defeated and the turns skip it.
-			dmg := combat.ApplyDamage(int(num(target.HpCurrent)), int(num(target.HpTemp)), int(amount))
-			after := hpState{HP: clamp32(dmg.HP, 0, math.MaxInt32), Temp: clamp32(dmg.TempHP, 0, math.MaxInt32), Defeated: dmg.HP == 0}
-			if err := c.q.SetCombatantHitPoints(ctx, playdb.SetCombatantHitPointsParams{ID: target.ID, HpCurrent: &after.HP, HpTemp: &after.Temp, Defeated: after.Defeated}); err != nil {
-				return nil, fmt.Errorf("apply the damage: %w", err)
+		for _, g := range group {
+			tgt, _ := findCombatant(cs, g.TargetID, combatViewer{master: true})
+			made.Secret = made.Secret || tgt.Hidden
+			amount := clamp32(total, 0, math.MaxInt32)
+			if g.Half {
+				amount = clamp32(combat.HalfDamage(total), 0, math.MaxInt32)
 			}
-			before := hpOf(target)
-			made.Before, made.After, made.Applied = &before, &after, true
-			status = pendingApplied
-		}
-		if _, err := c.q.SetPendingDamageRolled(ctx, playdb.SetPendingDamageRolledParams{
-			ID: p.ID, Status: status, Faces: faces, Physical: roll.Physical, Amount: &amount, ResolvedAt: resolvedAt(status, c),
-		}); err != nil {
-			return nil, fmt.Errorf("save the damage roll: %w", err)
+			hit, vit, err := s.landDamage(ctx, c, g, tgt, amount)
+			if err != nil {
+				return nil, err
+			}
+			if vit != nil {
+				vitals = append(vitals, vit)
+			}
+			status := pendingRolled // a player's character waits for the master (RN-02)
+			if hit.Applied {
+				status = pendingApplied
+			}
+			if _, err := c.q.SetPendingDamageRolled(ctx, playdb.SetPendingDamageRolledParams{
+				ID: g.ID, Status: status, Faces: faces, Physical: roll.Physical, Amount: &amount, ResolvedAt: resolvedAt(status, c),
+				RollTotal: &rolledTotal,
+			}); err != nil {
+				return nil, fmt.Errorf("save the damage roll: %w", err)
+			}
+			if g.ID == p.ID {
+				made.Amount, made.Applied, made.Before, made.After, made.ConcentrationDC = hit.Amount, hit.Applied, hit.Before, hit.After, hit.ConcentrationDC
+				made.DeathBefore = hit.DeathBefore
+			}
+			if p.CastID != nil || p.Healing {
+				made.Settled = append(made.Settled, hit)
+			}
 		}
 		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
 			return nil, fmt.Errorf("touch the encounter: %w", err)
@@ -700,15 +855,138 @@ func (s *Service) RollDamage(
 	out, err := s.finish(ctx, m, res, func(d *encounterData) {
 		s.publishEncounterChanged(m.CampaignID, d.enc)
 		s.publishLogChanged(m.CampaignID, d.enc.ID, !ev.Secret)
+		for _, vit := range vitals {
+			s.publishVitals(m.CampaignID, vit)
+		}
 	})
 	if err != nil {
 		return nil, err
 	}
-	pending, err := s.pendingFor(ctx, res, ev.Pending, v)
-	if err != nil {
+	resp := &playv1.RollDamageResponse{Encounter: out}
+	if resp.PendingDamage, err = s.pendingFor(ctx, res, ev.Pending, v); err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&playv1.RollDamageResponse{Encounter: out, PendingDamage: pending}), nil
+	decorate(resp.PendingDamage, ev, v, s.membersOf(ctx, res))
+	for _, h := range ev.Settled {
+		if h.Pending == ev.Pending {
+			continue
+		}
+		other, err := s.pendingFor(ctx, res, h.Pending, v)
+		if err != nil {
+			return nil, err
+		}
+		if other != nil {
+			decorate(other, ev, v, s.membersOf(ctx, res))
+			resp.CastPendingDamages = append(resp.CastPendingDamages, other)
+		}
+	}
+	return connect.NewResponse(resp), nil
+}
+
+// landDamage puts a rolled damage or heal on its target, as far as the target's
+// kind lets it land at once. An NPC takes a damage at once: temporary hit points
+// first, then the hit points, defeated at 0 (and a heal puts it back above 0).
+// A heal lands at once on a player's character too, up to its maximum, through
+// the vitals (a character healed from 0 gets up and its death saves reset). A
+// damage on a player's character waits for the master: nothing lands. The hit
+// says what changed, with what an undo needs.
+func (s *Service) landDamage(ctx context.Context, c *combatTx, p playdb.PendingDamage, target playdb.Combatant, amount int32) (damageHit, *playv1.CharacterVitals, error) {
+	hit := damageHit{Pending: p.ID, Target: target.ID, Amount: amount, Half: p.Half}
+	switch {
+	case p.Healing:
+		healed, vit, err := s.healCombatant(ctx, c, target, amount)
+		healed.Pending, healed.Half = p.ID, p.Half
+		return healed, vit, err
+	case target.Kind == kindNPC:
+		dmg := combat.ApplyDamage(int(num(target.HpCurrent)), int(num(target.HpTemp)), int(amount))
+		after := hpState{HP: clamp32(dmg.HP, 0, math.MaxInt32), Temp: clamp32(dmg.TempHP, 0, math.MaxInt32), Defeated: dmg.HP == 0}
+		if err := c.q.SetCombatantHitPoints(ctx, playdb.SetCombatantHitPointsParams{ID: target.ID, HpCurrent: &after.HP, HpTemp: &after.Temp, Defeated: after.Defeated}); err != nil {
+			return hit, nil, fmt.Errorf("apply the damage: %w", err)
+		}
+		before := hpOf(target)
+		hit.Before, hit.After, hit.Applied = &before, &after, true
+		hit.ConcentrationDC = concentrationDC(target, amount-clamp32(dmg.Absorbed, 0, math.MaxInt32))
+	}
+	return hit, nil, nil
+}
+
+// healCombatant heals a combatant: an NPC's hit points, up to its maximum (it
+// comes back above 0), or a player's character's through the vitals, up to its
+// maximum (healed from 0 it gets up and its death saves reset, RN-03). The hit
+// says how much it regained, with what an undo needs; the vitals are the
+// character's after.
+func (s *Service) healCombatant(ctx context.Context, c *combatTx, target playdb.Combatant, amount int32) (damageHit, *playv1.CharacterVitals, error) {
+	hit := damageHit{Target: target.ID, Applied: true}
+	if target.Kind == kindNPC {
+		before := hpOf(target)
+		r := combat.ApplyHeal(int(before.HP), int(num(target.HpMax)), int(amount))
+		after := hpState{HP: clamp32(r.HP, 0, math.MaxInt32), Temp: before.Temp, Defeated: r.HP == 0}
+		if err := c.q.SetCombatantHitPoints(ctx, playdb.SetCombatantHitPointsParams{ID: target.ID, HpCurrent: &after.HP, HpTemp: &after.Temp, Defeated: after.Defeated}); err != nil {
+			return hit, nil, fmt.Errorf("apply the heal: %w", err)
+		}
+		hit.Before, hit.After, hit.Amount = &before, &after, clamp32(r.Healed, 0, math.MaxInt32)
+		return hit, nil, nil
+	}
+	now, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, target.CharacterID)
+	if err != nil {
+		return hit, nil, err
+	}
+	r := combat.ApplyHeal(int(now.GetHitPointsCurrent()), int(now.GetHitPointsMax()), int(amount))
+	hp := clamp32(r.HP, 0, math.MaxInt32)
+	before, after, err := s.vitalsOf(ctx, c, target.CharacterID, &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: &hp})
+	if err != nil {
+		return hit, nil, err
+	}
+	hit.DeathBefore = deathOf(target)
+	hit.Before = &hpState{HP: before.GetHitPointsCurrent(), Temp: before.GetHitPointsTemporary()}
+	hit.After = &hpState{HP: after.GetHitPointsCurrent(), Temp: after.GetHitPointsTemporary()}
+	hit.Amount = clamp32(r.Healed, 0, math.MaxInt32)
+	return hit, after, nil
+}
+
+// concentrationDC is the Constitution save DC to keep concentrating after a
+// combatant took damage (RN-22): 0 when it does not concentrate or took none.
+// The damage it takes is what temporary hit points did not absorb, even when it
+// drops the combatant below 0.
+func concentrationDC(target playdb.Combatant, taken int32) int32 {
+	if target.ConcentrationSpell == nil || taken <= 0 {
+		return 0
+	}
+	return clamp32(combat.ConcentrationDC(int(taken)), 0, math.MaxInt32)
+}
+
+// decorate adds to a pending damage what its event knows and the row does not:
+// the concentration DC (for the master and the target's own player) and the
+// death save failures a damage at 0 caused.
+func decorate(p *playv1.PendingDamage, ev actionEvent, v combatViewer, owner func(targetID string) (playdb.Combatant, bool)) {
+	if p == nil {
+		return
+	}
+	var dc int32
+	if p.GetId() == ev.Pending {
+		dc = ev.ConcentrationDC
+		p.DeathFailuresAdded = ev.FailuresAdded
+	}
+	for _, h := range ev.Settled {
+		if h.Pending == p.GetId() {
+			dc = h.ConcentrationDC
+		}
+	}
+	if t, ok := owner(p.GetTargetId()); ok && dc > 0 && (v.master || v.owns(t)) {
+		p.ConcentrationDc = &dc
+	}
+}
+
+// membersOf returns a lookup of the combat's combatants, for decorate.
+func (s *Service) membersOf(ctx context.Context, res combatResult) func(string) (playdb.Combatant, bool) {
+	cs, _ := s.queries.ListCombatants(ctx, res.encounterID)
+	return func(id string) (playdb.Combatant, bool) {
+		i := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == id })
+		if i < 0 {
+			return playdb.Combatant{}, false
+		}
+		return cs[i], true
+	}
 }
 
 // resolvedAt is when a pending damage was settled: now for an applied one, not
@@ -741,6 +1019,10 @@ func (s *Service) ApplyPendingDamage(
 	if err != nil {
 		return nil, err
 	}
+	override := req.Msg.Amount // the master's last word, if he sets one
+	if override != nil && (*override < 0 || *override > maxHitPointChange) {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("amount must be 0 to %d", maxHitPointChange))
+	}
 
 	var made actionEvent
 	var vitals *playv1.CharacterVitals // the target's, after
@@ -754,6 +1036,8 @@ func (s *Service) ApplyPendingDamage(
 			return nil, err
 		}
 		switch p.Status {
+		case pendingAwaitingReaction:
+			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_PENDING, "the hit waits for the target's reaction")
 		case pendingAwaitingRoll:
 			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DAMAGE_NOT_ROLLED, "the damage was not rolled yet")
 		case pendingApplied, pendingDiscarded:
@@ -763,34 +1047,53 @@ func (s *Service) ApplyPendingDamage(
 			return nil, fmt.Errorf("pending damage %s is rolled for an NPC", p.ID) // an NPC takes it when rolled
 		}
 
-		// RN-02: the damage goes through the character's vitals, temporary hit
-		// points first, never below 0. At 0 it is down ("Caído"); the death
-		// saves and a massive damage's instant death come with the next slice.
+		rolled := num(p.Amount)
+		amount := rolled
+		var appliedAmount *int32
+		if override != nil && *override != rolled {
+			amount, appliedAmount = *override, override
+		}
+		made = actionEvent{
+			Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: target.ID, Pending: p.ID, Key: p.AttackKey,
+			Amount: amount, DamageType: p.DamageType, Overridden: appliedAmount != nil, Rolled: rolled,
+		}
 		now, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, target.CharacterID)
 		if err != nil {
 			return nil, err
 		}
-		dmg := combat.ApplyDamage(int(now.GetHitPointsCurrent()), int(now.GetHitPointsTemporary()), int(num(p.Amount)))
-		hp, temp := clamp32(dmg.HP, 0, math.MaxInt32), clamp32(dmg.TempHP, 0, math.MaxInt32)
-		before, after, err := s.vitals.AdjustVitals(ctx, c.tx, c.session.CampaignID, target.CharacterID,
-			&playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: &hp, HitPointsTemporary: &temp})
-		if err != nil {
-			return nil, err
+		if isDownIn(now) {
+			// RN-03: a damage at 0 hit points is a death save failure (two for a
+			// critical hit), and the hit points stay at 0.
+			before, after, added, err := s.failuresWhileDown(ctx, c, target, p.Critical, amount)
+			if err != nil {
+				return nil, err
+			}
+			made.DeathBefore, made.Death, made.FailuresAdded = before, after, added
+			made.Before = &hpState{HP: now.GetHitPointsCurrent(), Temp: now.GetHitPointsTemporary()}
+			made.After = made.Before
+		} else {
+			// RN-02: the damage goes through the character's vitals, temporary hit
+			// points first, never below 0. At 0 it is down ("Caído") and makes death
+			// saves.
+			dmg := combat.ApplyDamage(int(now.GetHitPointsCurrent()), int(now.GetHitPointsTemporary()), int(amount))
+			hp, temp := clamp32(dmg.HP, 0, math.MaxInt32), clamp32(dmg.TempHP, 0, math.MaxInt32)
+			before, after, err := s.vitalsOf(ctx, c, target.CharacterID, &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: &hp, HitPointsTemporary: &temp})
+			if err != nil {
+				return nil, err
+			}
+			vitals = after
+			made.Before = &hpState{HP: before.GetHitPointsCurrent(), Temp: before.GetHitPointsTemporary()}
+			made.After = &hpState{HP: after.GetHitPointsCurrent(), Temp: after.GetHitPointsTemporary()}
+			made.ConcentrationDC = concentrationDC(target, amount-clamp32(dmg.Absorbed, 0, math.MaxInt32))
+			made.DeathBefore = deathOf(target) // the undo puts the turn's save back too
 		}
-		vitals = after
-		if _, err := c.q.SetPendingDamageStatus(ctx, playdb.SetPendingDamageStatusParams{ID: p.ID, Status: pendingApplied, ResolvedAt: &c.now}); err != nil {
+		if _, err := c.q.SetPendingDamageApplied(ctx, playdb.SetPendingDamageAppliedParams{ID: p.ID, ResolvedAt: &c.now, AppliedAmount: appliedAmount}); err != nil {
 			return nil, fmt.Errorf("apply the pending damage: %w", err)
 		}
 		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
 			return nil, fmt.Errorf("touch the encounter: %w", err)
 		}
 		c.characterID = &target.CharacterID
-		made = actionEvent{
-			Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: target.ID, Pending: p.ID, Key: p.AttackKey,
-			Amount: num(p.Amount), DamageType: p.DamageType,
-			Before: &hpState{HP: before.GetHitPointsCurrent(), Temp: before.GetHitPointsTemporary()},
-			After:  &hpState{HP: after.GetHitPointsCurrent(), Temp: after.GetHitPointsTemporary()},
-		}
 		return made, nil
 	})
 	if err != nil {
@@ -812,6 +1115,7 @@ func (s *Service) ApplyPendingDamage(
 	if err != nil {
 		return nil, err
 	}
+	decorate(pending, ev, combatViewer{master: true}, s.membersOf(ctx, res))
 	return connect.NewResponse(&playv1.ApplyPendingDamageResponse{Encounter: out, PendingDamage: pending}), nil
 }
 
@@ -919,6 +1223,38 @@ func (s *Service) DiscardPendingDamage(
 	return connect.NewResponse(&playv1.DiscardPendingDamageResponse{Encounter: out, PendingDamage: pending}), nil
 }
 
+// The feature actions with their own effect on the numbers (the others only
+// spend the economy and a use and go to the log). The keys are the SRD feature
+// keys ("feature:second-wind").
+const (
+	secondWind  = "feature:second-wind"
+	actionSurge = "feature:action-surge-1-use"
+)
+
+// featureError is the failed_precondition for a reason a feature action is
+// disabled with. The master has the last word on the economy only: a spent
+// resource stops him too (he corrects the uses).
+func featureError(r *rulesv1.DisabledReason, master bool) error {
+	switch r.GetCode() {
+	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_ACTION_USED:
+		if !master {
+			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ACTION_USED, "the action of this turn is used")
+		}
+	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_BONUS_ACTION_USED:
+		if !master {
+			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_USED, "the bonus action of this turn is used")
+		}
+	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_REACTION_USED:
+		if !master {
+			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_USED, "the reaction is used")
+		}
+	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_NO_USES:
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_USES, "no uses left",
+			func(b *playv1.EncounterBlocked) { b.Recharge = r.GetRecharge() })
+	}
+	return nil
+}
+
 // TakeAction implements playv1connect.CombatServiceHandler.
 func (s *Service) TakeAction(
 	ctx context.Context,
@@ -942,12 +1278,25 @@ func (s *Service) TakeAction(
 	}
 	actionKey := req.Msg.GetActionKey()
 	if actionKey == standardAttack || actionKey == standardCast {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("an attack is rolled with RollAttack; casting comes with the next slice"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("an attack is rolled with RollAttack, and a spell is cast with CastSpell"))
+	}
+	var in rollInput
+	var rolled bool
+	switch roll := req.Msg.GetRoll().(type) {
+	case *playv1.TakeActionRequest_RollInApp:
+		if !roll.RollInApp {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("roll_in_app must be true"))
+		}
+		in.inApp, rolled = true, true
+	case *playv1.TakeActionRequest_TypedSum:
+		in.typed, rolled = int(roll.TypedSum), true
 	}
 	v := viewerOf(m)
 
 	var made actionEvent
+	var vitals *playv1.CharacterVitals // the resource spent, or the hit points healed
 	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventActionTaken, encounterID: encID}, func(c *combatTx) (any, error) {
+		vitals = nil
 		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
 		if err != nil {
 			return nil, fmt.Errorf("list the combatants: %w", err)
@@ -959,30 +1308,62 @@ func (s *Service) TakeAction(
 		if err := v.mayAct(who); err != nil {
 			return nil, err
 		}
-		if err := s.mustActNow(ctx, c, who); err != nil {
-			return nil, err
-		}
 		opts, err := s.roster.CombatTurnOptions(ctx, m.CampaignID, who.CharacterID, turnOf(who))
 		if err != nil {
 			return nil, err
 		}
-		i := slices.IndexFunc(opts.GetStandardActions(), func(a *rulesv1.ActionOption) bool { return a.GetAction().GetKey() == actionKey })
-		if i < 0 {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("action_key is not one of the standard actions"))
+		feature := strings.HasPrefix(actionKey, "feature:")
+		list := opts.GetStandardActions()
+		if feature {
+			list = opts.GetFeatureActions()
 		}
-		action := opts.GetStandardActions()[i]
+		i := slices.IndexFunc(list, func(a *rulesv1.ActionOption) bool { return a.GetAction().GetKey() == actionKey })
+		if i < 0 {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("action_key is not one of the standard or feature actions"))
+		}
+		action := list[i]
+		economy := action.GetAction().GetEconomy()
+		// A reaction is taken off turn, when its trigger happens; everything else
+		// on the combatant's turn.
+		if feature && economy == rulesv1.ActionEconomy_ACTION_ECONOMY_REACTION {
+			if err := s.mustReactNowOrOnTurn(ctx, c, who); err != nil {
+				return nil, err
+			}
+		} else if err := s.mustActNow(ctx, c, who); err != nil {
+			return nil, err
+		}
 		// The master has the last word: he may act again with the action used.
-		if !v.master && !action.GetEnabled() {
-			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ACTION_USED, "the action of this turn is used")
+		if !action.GetEnabled() {
+			if feature {
+				if err := featureError(action.GetReason(), v.master); err != nil {
+					return nil, err
+				}
+			} else if !v.master {
+				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ACTION_USED, "the action of this turn is used")
+			}
+		}
+		made = actionEvent{
+			Round: c.enc.Round, Secret: who.Hidden, Actor: who.ID, Key: actionKey,
+			ActionBefore: who.ActionUsed, BonusBefore: who.BonusActionUsed, ReactionBefore: who.ReactionUsed, DashedBefore: who.Dashed,
+			AttacksBefore: who.AttacksMade,
 		}
 		after := who
-		switch action.GetAction().GetEconomy() {
+		switch economy {
 		case rulesv1.ActionEconomy_ACTION_ECONOMY_BONUS_ACTION:
 			after.BonusActionUsed = true
 		case rulesv1.ActionEconomy_ACTION_ECONOMY_REACTION:
 			after.ReactionUsed = true
+		case rulesv1.ActionEconomy_ACTION_ECONOMY_FREE, rulesv1.ActionEconomy_ACTION_ECONOMY_MOVEMENT:
+			// costs no economy (Surto de ação)
 		default:
 			after.ActionUsed = true
+		}
+		if actionKey == actionSurge {
+			// An additional action this turn, with the attacks of the Attack action.
+			after.ActionUsed = false
+			if err := c.q.SetCombatantAttacksMade(ctx, playdb.SetCombatantAttacksMadeParams{ID: who.ID, AttacksMade: 0}); err != nil {
+				return nil, fmt.Errorf("give the action back: %w", err)
+			}
 		}
 		if err := c.q.SetCombatantEconomy(ctx, playdb.SetCombatantEconomyParams{
 			ID: who.ID, ActionUsed: after.ActionUsed, BonusActionUsed: after.BonusActionUsed, ReactionUsed: after.ReactionUsed, Dashed: after.Dashed,
@@ -994,14 +1375,39 @@ func (s *Service) TakeAction(
 				return nil, err
 			}
 		}
+
+		if feature {
+			sheet, err := s.roster.CombatSheet(ctx, m.CampaignID, who.CharacterID)
+			if err != nil {
+				return nil, err
+			}
+			fi := slices.IndexFunc(sheet.FeatureActions, func(a link.FeatureAction) bool { return a.Key == actionKey })
+			if fi < 0 {
+				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("action_key is not one of the character's feature actions"))
+			}
+			fa := sheet.FeatureActions[fi]
+			// One use of its resource: only a player's character counts them, and a
+			// pool of points (Cura pelas mãos) is the master's.
+			if fa.Resource != "" && !fa.Pool && who.Kind == kindPlayer {
+				if vitals, err = s.spendResource(ctx, c, who.CharacterID, fa.Resource, 1); err != nil {
+					return nil, err
+				}
+				made.Resource = fa.Resource
+			}
+			if actionKey == secondWind {
+				vit, err := s.secondWind(ctx, c, m, v, who, sheet.FighterLevel, in, rolled, &made)
+				if err != nil {
+					return nil, err
+				}
+				if vit != nil {
+					vitals = vit
+				}
+			}
+		}
 		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
 			return nil, fmt.Errorf("touch the encounter: %w", err)
 		}
 		c.characterID = &who.CharacterID
-		made = actionEvent{
-			Round: c.enc.Round, Secret: who.Hidden, Actor: who.ID, Key: actionKey,
-			ActionBefore: who.ActionUsed, BonusBefore: who.BonusActionUsed, ReactionBefore: who.ReactionUsed, DashedBefore: who.Dashed,
-		}
 		return made, nil
 	})
 	if err != nil {
@@ -1014,11 +1420,73 @@ func (s *Service) TakeAction(
 	out, err := s.finish(ctx, m, res, func(d *encounterData) {
 		s.publishEncounterChanged(m.CampaignID, d.enc)
 		s.publishLogChanged(m.CampaignID, d.enc.ID, !ev.Secret)
+		s.publishVitals(m.CampaignID, vitals)
 	})
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&playv1.TakeActionResponse{Encounter: out}), nil
+	resp := &playv1.TakeActionResponse{Encounter: out}
+	if ev.Heal {
+		resp.Roll = diceRoll(ev.DiceCount, ev.DiceSides, ev.Faces, ev.Modifier, ev.Total, ev.Physical)
+		resp.Healed = &ev.Amount
+	}
+	return connect.NewResponse(resp), nil
+}
+
+// mustReactNowOrOnTurn checks that a combatant may take a reaction now: the
+// combat is running and it is not out of the fight or down; whether it is its
+// own turn does not matter.
+func (s *Service) mustReactNowOrOnTurn(ctx context.Context, c *combatTx, who playdb.Combatant) error {
+	if err := notEnded(c.enc); err != nil {
+		return err
+	}
+	switch {
+	case c.enc.Status != statusActive:
+		return gateError(rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBAT_NOT_ACTIVE)
+	case who.Defeated:
+		return gateError(rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBATANT_DEFEATED)
+	}
+	down, err := s.isDown(ctx, c.tx, c.session.CampaignID, who)
+	if err != nil {
+		return err
+	}
+	if down {
+		return gateError(rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBATANT_DOWN)
+	}
+	return nil
+}
+
+// secondWind is Retomar o fôlego: 1d10 plus the fighter's level of hit points,
+// rolled like a damage (RN-18) and healed through the vitals (or the NPC's hit
+// points). It fills the event with the roll and what changed, and returns the
+// vitals of a player's character.
+func (s *Service) secondWind(ctx context.Context, c *combatTx, m authz.Membership, v combatViewer, who playdb.Combatant, fighterLevel int, in rollInput, rolled bool, ev *actionEvent) (*playv1.CharacterVitals, error) {
+	if !rolled {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("set roll_in_app or typed_sum for Retomar o fôlego"))
+	}
+	if !v.master {
+		if err := s.mustRollThisWay(ctx, m, in); err != nil {
+			return nil, err
+		}
+	}
+	expr := dice.Expr{Count: 1, Sides: 10, Modifier: fighterLevel}
+	var roll dice.Result
+	var err error
+	if in.inApp {
+		if roll, err = dice.Roll(s.roller, expr); err != nil {
+			return nil, fmt.Errorf("roll the d10: %w", err)
+		}
+	} else if roll, err = dice.Physical(expr, in.typed); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("typed_sum must be 1 to 10"))
+	}
+	hit, vit, err := s.healCombatant(ctx, c, who, clamp32(max(roll.Total, 0), 0, math.MaxInt32))
+	if err != nil {
+		return nil, err
+	}
+	ev.Heal, ev.DiceCount, ev.DiceSides, ev.Faces = true, 1, 10, faces32(roll.Faces)
+	ev.Modifier, ev.Total, ev.Physical = clamp32(fighterLevel, 0, 100), clamp32(roll.Total, 0, math.MaxInt32), roll.Physical
+	ev.Amount, ev.Before, ev.After, ev.DeathBefore = hit.Amount, hit.Before, hit.After, hit.DeathBefore
+	return vit, nil
 }
 
 // AdjustCombatantHitPoints implements playv1connect.CombatServiceHandler.

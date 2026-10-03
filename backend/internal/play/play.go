@@ -140,6 +140,22 @@ type CombatRoster interface {
 	// from its sheet, what it used this turn and the slots it spent: the rules
 	// engine's TurnOptions. `not_found` for any other character.
 	CombatTurnOptions(ctx context.Context, campaignID, characterID string, turn link.Turn) (*rulesv1.TurnOptions, error)
+	// CombatSpell returns the spell as the character casts it with a slot of
+	// slotLevel (0 for a cantrip): its range, attack or save, damage or healing
+	// at that level, with the character's attack bonus, save DC and
+	// spellcasting modifier. It does not check that the character may cast it
+	// (CombatTurnOptions does). `not_found` for any other character or spell.
+	CombatSpell(ctx context.Context, campaignID, characterID, spellKey string, slotLevel int) (link.Spell, error)
+	// CombatSave returns the character's saving throw bonus for an ability
+	// ("dex"). A basic-sheet NPC has none: Known is false.
+	CombatSave(ctx context.Context, campaignID, characterID, ability string) (link.Save, error)
+	// MarkDead marks a player's character dead inside tx, as the master's
+	// MarkCharacterDead does (RN-03): the master confirmed its death in a combat.
+	// It is idempotent.
+	MarkDead(ctx context.Context, tx pgx.Tx, campaignID, characterID string, at time.Time) error
+	// Conditions lists the SRD's conditions (RN-22), with their Portuguese
+	// names, sorted by key.
+	Conditions() []link.Named
 }
 
 // DiceForce is what the campaign's dice setting makes a player do (RN-18).
@@ -247,6 +263,9 @@ type Service struct {
 	roller    dice.Roller
 	logger    *slog.Logger
 	now       func() time.Time
+	// conditionNames are the SRD conditions' Portuguese names, by key, for the
+	// labels the master marks (RN-22).
+	conditionNames map[string]string
 
 	// hub fans the live events out to the open streams, in memory: one
 	// server instance only (docs/operacao.md).
@@ -292,6 +311,10 @@ func New(cfg Config) (*Service, error) {
 		now:       cfg.Now,
 		hub:       live.New(cfg.Live.Buffer),
 		live:      cfg.Live,
+	}
+	s.conditionNames = map[string]string{}
+	for _, c := range cfg.Roster.Conditions() {
+		s.conditionNames[c.Key] = c.NamePT
 	}
 	if s.logger == nil {
 		s.logger = slog.Default()

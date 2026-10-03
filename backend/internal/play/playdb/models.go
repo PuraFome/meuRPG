@@ -38,6 +38,9 @@ type Combatant struct {
 	Conditions         []string
 	ConcentrationSpell *string
 	CreatedAt          time.Time
+	AttacksMade        int32
+	AcBonus            int32
+	DeathSaveRolled    bool
 }
 
 type Encounter struct {
@@ -69,20 +72,26 @@ type GameSession struct {
 }
 
 type PendingDamage struct {
-	ID          string
-	EncounterID string
-	AttackerID  string
-	TargetID    string
-	AttackKey   string
-	Status      string
-	Critical    bool
-	DiceCount   int32
-	DiceSides   int32
-	DiceBonus   int32
-	DamageType  string
-	Faces       []int32
-	Physical    bool
-	Amount      *int32
-	CreatedAt   time.Time
-	ResolvedAt  *time.Time
+	ID            string
+	EncounterID   string
+	AttackerID    string
+	TargetID      string
+	AttackKey     string
+	Status        string
+	Critical      bool
+	DiceCount     int32
+	DiceSides     int32
+	DiceBonus     int32
+	DamageType    string
+	Faces         []int32
+	Physical      bool
+	Amount        *int32
+	CreatedAt     time.Time
+	ResolvedAt    *time.Time
+	CastID        *string
+	Healing       bool
+	Half          bool
+	AppliedAmount *int32
+	AttackTotal   *int32
+	RollTotal     *int32
 }

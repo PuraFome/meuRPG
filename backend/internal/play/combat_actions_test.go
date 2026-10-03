@@ -96,15 +96,24 @@ const (
 
 func newArmed(t *testing.T) *armed {
 	t.Helper()
+	return newArmedWith(t, func(a *armed) {
+		scores := func(str, dex, con, intl int32) *rulesv1.AbilityScores {
+			return &rulesv1.AbilityScores{Strength: str, Dexterity: dex, Constitution: con, Intelligence: intl, Wisdom: 10, Charisma: 8}
+		}
+		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 2, scores(16, 13, 14, 10), []string{battleaxe}, nil)
+		a.pens = a.ana.hero(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", 1, scores(10, 14, 12, 16), nil, []string{fireBolt})
+		a.bri = a.bia.hero(t, a.campaignID, "Brisa", "class:fighter", "race:human", 2, scores(10, 16, 14, 10), []string{rapier}, nil)
+	})
+}
+
+// newArmedWith is newArmed with the three heroes made by heroes: the NPCs, the
+// map and the open session are the same.
+func newArmedWith(t *testing.T, heroes func(a *armed)) *armed {
+	t.Helper()
 	h := newHarness(t)
 	a := &armed{h: h, master: h.newUser("Samuel"), caio: h.newUser("Caio"), ana: h.newUser("Ana"), bia: h.newUser("Bia")}
 	a.campaignID = h.newCampaign(a.master, "Mirathel", a.caio, a.ana, a.bia)
-	scores := func(str, dex, con, intl int32) *rulesv1.AbilityScores {
-		return &rulesv1.AbilityScores{Strength: str, Dexterity: dex, Constitution: con, Intelligence: intl, Wisdom: 10, Charisma: 8}
-	}
-	a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 2, scores(16, 13, 14, 10), []string{battleaxe}, nil)
-	a.pens = a.ana.hero(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", 1, scores(10, 14, 12, 16), nil, []string{fireBolt})
-	a.bri = a.bia.hero(t, a.campaignID, "Brisa", "class:fighter", "race:human", 2, scores(10, 16, 14, 10), []string{rapier}, nil)
+	heroes(a)
 	a.capitao = a.master.npc(t, a.campaignID, "Capitão Goblin", 27, 18)
 	a.goblin = a.master.npc(t, a.campaignID, "Goblin", 7, 12)
 	a.master.start(t, a.campaignID)

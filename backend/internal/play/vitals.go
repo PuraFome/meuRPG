@@ -73,7 +73,9 @@ func (s *Service) AdjustCharacterVitals(
 			return fmt.Errorf("find the event of this idempotency key: %w", err)
 		}
 
-		before, adjusted, err := s.vitals.AdjustVitals(ctx, tx, m.CampaignID, charText, req.Msg)
+		// Healing from 0 also resets the death saves of the character's combatant
+		// in the session's combat (RN-03).
+		before, adjusted, err := s.changeVitals(ctx, q, tx, session.ID, m.CampaignID, charText, req.Msg)
 		if err != nil {
 			return err
 		}
@@ -129,6 +131,9 @@ type vitalsNumbers struct {
 	SpellSlotsUsed     []int32 `json:"spell_slots_used,omitempty"` // index 0 is spell level 1
 	PactSlotsUsed      int32   `json:"pact_slots_used,omitempty"`
 	HitDiceUsed        int32   `json:"hit_dice_used"`
+	// ResourcesUsed are the uses spent of the class and race resources, by
+	// resource key (Etapa 6).
+	ResourcesUsed map[string]int32 `json:"resources_used,omitempty"`
 }
 
 func numbersOf(v *playv1.CharacterVitals) vitalsNumbers {
@@ -137,6 +142,14 @@ func numbersOf(v *playv1.CharacterVitals) vitalsNumbers {
 		HitPointsTemporary: v.GetHitPointsTemporary(),
 		PactSlotsUsed:      v.GetPactSlots().GetUsed(),
 		HitDiceUsed:        v.GetHitDiceUsed(),
+	}
+	for _, r := range v.GetResources() {
+		if r.GetUsed() > 0 {
+			if n.ResourcesUsed == nil {
+				n.ResourcesUsed = map[string]int32{}
+			}
+			n.ResourcesUsed[r.GetKey()] = r.GetUsed()
+		}
 	}
 	for _, slot := range v.GetSpellSlots() {
 		level := int(slot.GetLevel())

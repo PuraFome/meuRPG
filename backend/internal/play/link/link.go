@@ -69,6 +69,15 @@ type Sheet struct {
 	Attacks []Attack
 	// Actions are the standard actions every creature has.
 	Actions []Action
+	// AttacksPerAction is how many attacks the Attack action makes: 1, or more
+	// with Extra Attack.
+	AttacksPerAction int
+	// FeatureActions are the actions the sheet's class and race features grant
+	// (rules.Derived.Actions): their key, name, economy and resource.
+	FeatureActions []FeatureAction
+	// FighterLevel is what Retomar o fôlego adds to its d10: the character's
+	// fighter level, 0 for anyone who is not a fighter.
+	FighterLevel int
 }
 
 // Attack is one attack of a sheet, with real dice.
@@ -81,6 +90,9 @@ type Attack struct {
 	// Save says it asks for a saving throw instead of an attack roll, which
 	// the spells slice handles.
 	Save bool
+	// Spell says it is a cantrip, cast with the whole action: Extra Attack
+	// belongs to weapon attacks only.
+	Spell bool
 	// ToHit is added to the d20.
 	ToHit int
 	// DiceCount d DiceSides plus DiceBonus is the damage. DiceCount 0 is a flat
@@ -98,10 +110,80 @@ type Action struct {
 	Key, Name string
 }
 
+// FeatureAction is an action a feature grants ("feature:second-wind").
+type FeatureAction struct {
+	Key, Name string
+	// Economy is "action", "bonus_action", "reaction", "free" or "movement".
+	Economy string
+	// Resource is the key of the resource each use spends, or "".
+	Resource string
+	// Pool says the resource is a pool of points (Cura pelas mãos), not a count
+	// of uses: using the action spends no point.
+	Pool bool
+}
+
+// Dice is a roll: Count d Sides plus Bonus (Count 0 is a flat number), with the
+// damage type for a damage.
+type Dice struct {
+	Count, Sides, Bonus int
+	// DamageType is a key such as "damage-type:fire"; empty for a heal.
+	DamageType string
+}
+
+// Spell is what a cast needs from a spell and the caster's sheet, resolved at
+// the slot level the spell is cast with (MR-014).
+type Spell struct {
+	Key, Name string
+	// Level is the spell's own level, 0 for a cantrip.
+	Level int
+	// Economy is "action", "bonus_action" or "reaction"; "" for a casting time
+	// too long for a fight.
+	Economy       string
+	Concentration bool
+	// RangeKind is "self", "touch", "ranged", "sight", "unlimited" or "special",
+	// and RangeFt the distance of a ranged spell.
+	RangeKind string
+	RangeFt   int
+	// AttackType is "melee", "ranged" or "": a spell attack, with ToHit added to
+	// the d20.
+	AttackType string
+	ToHit      int
+	// SaveAbility is the ability of the saving throw ("dex"), "" when there is
+	// none; SaveOnSuccess is "half", "none" or "other"; SaveDC the caster's DC.
+	SaveAbility   string
+	SaveOnSuccess string
+	SaveDC        int
+	// Damage is the spell's damage at the slot level (one damage type), nil when
+	// it has none the engine can roll; Heal is its healing with the caster's
+	// spellcasting modifier already in Bonus, nil when it does not heal.
+	Damage *Dice
+	Heal   *Dice
+	// Area says the spell hits every creature in an area: any number of targets.
+	// ExtraTargetPerLevel says it takes one more target for each slot level
+	// above its own.
+	Area                bool
+	ExtraTargetPerLevel bool
+}
+
+// Save is a creature's saving throw: the bonus added to the d20, and whether
+// the sheet has one at all. A basic-sheet NPC has none: Known is false and the
+// Bonus 0.
+type Save struct {
+	Bonus int
+	Known bool
+}
+
+// Named is a content key with its Portuguese name.
+type Named struct {
+	Key, NamePT string
+}
+
 // Turn is what a combatant used in the current turn, for working out what it
 // can still do.
 type Turn struct {
 	ActionUsed, BonusActionUsed, ReactionUsed bool
+	// AttacksMade is how many attacks the Attack action made this turn.
+	AttacksMade int
 	// Dashed says the Dash action doubled the speed.
 	Dashed bool
 	// SpeedFt is the combatant's walking speed in a combat, and MovementUsedFt

@@ -472,3 +472,52 @@ func TestSpendResource(t *testing.T) {
 		t.Error("a barbarian has no ki")
 	}
 }
+
+// TestSpellArithmetic: the darts of Magic Missile, a save against the DC, half
+// damage rounded down, and the Shield bonus.
+func TestSpellArithmetic(t *testing.T) {
+	t.Parallel()
+	for slot, want := range map[int]int{1: 3, 2: 4, 3: 5, 9: 11} {
+		if got := MissileDarts(slot); got != want {
+			t.Errorf("MissileDarts(%d) = %d, want %d", slot, got, want)
+		}
+	}
+	if !SaveSucceeded(14, 14) || SaveSucceeded(13, 14) {
+		t.Error("a save succeeds when the total reaches the DC, and not below it")
+	}
+	if got := HalfDamage(7); got != 3 {
+		t.Errorf("HalfDamage(7) = %d, want 3 (rounded down)", got)
+	}
+	if ShieldACBonus != 5 {
+		t.Errorf("ShieldACBonus = %d, want 5", ShieldACBonus)
+	}
+}
+
+// TestAttacksLeft: Extra Attack leaves the second attack open after the first
+// one spent the action, and an action spent on something else leaves none.
+func TestAttacksLeft(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name      string
+		perAction int
+		turn      TurnState
+		left      int
+		reason    string
+	}{
+		{"fresh turn, one attack", 1, TurnState{}, 1, ""},
+		{"fresh turn, extra attack", 2, TurnState{}, 2, ""},
+		{"after the first of two", 2, TurnState{ActionUsed: true, AttacksMade: 1}, 1, ""},
+		{"after the second of two", 2, TurnState{ActionUsed: true, AttacksMade: 2}, 0, ReasonAttacksUsed},
+		{"single attack spent", 1, TurnState{ActionUsed: true, AttacksMade: 1}, 0, ReasonActionUsed},
+		{"action spent on a spell", 2, TurnState{ActionUsed: true}, 0, ReasonActionUsed},
+	}
+	for _, tt := range tests {
+		if got := AttacksLeft(tt.perAction, tt.turn); got != tt.left {
+			t.Errorf("%s: AttacksLeft = %d, want %d", tt.name, got, tt.left)
+		}
+		o := attackOption(tt.perAction, tt.turn)
+		if o.Enabled != (tt.reason == "") || (tt.reason != "" && o.Reason.Code != tt.reason) {
+			t.Errorf("%s: option = %+v, want reason %q", tt.name, o, tt.reason)
+		}
+	}
+}

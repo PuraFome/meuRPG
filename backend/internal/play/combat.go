@@ -663,6 +663,17 @@ func (s *Service) EndTurn(
 		if err := v.mayAct(current); err != nil {
 			return nil, err
 		}
+		// A player whose character is down rolls its death save first (RN-03); the
+		// master may pass the turn anyway.
+		if !v.master && current.Kind == kindPlayer {
+			vit, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, current.CharacterID)
+			if err != nil && connect.CodeOf(err) != connect.CodeNotFound { // not found: the character died meanwhile
+				return nil, err
+			}
+			if err == nil && deathSaveDue(current, vit) {
+				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DEATH_SAVE_DUE, "roll your death save before ending the turn")
+			}
+		}
 		// A damage still to roll or to apply holds the turn; only the master
 		// may pass it over, which drops the damage (RN-02: he has the last word).
 		if dropped, err = c.pendingOf(ctx, current.ID); err != nil {
