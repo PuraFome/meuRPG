@@ -43,18 +43,19 @@ O MeuRPG está sendo reconstruído do zero: um servidor em Go que serve o app An
 
 ## O que já funciona
 
-As Etapas 1 a 5 do [roadmap](docs/roadmap.md) estão na `main`:
+As Etapas 1 a 6 do [roadmap](docs/roadmap.md) estão na `main`:
 
 - **Login** por OpenID Connect (o Google em produção), com sessão de até 30 dias no servidor.
 - **Campanhas e convites.** O mestre cria a campanha e gera convites com validade e número de usos. Quem recebe o link entra, logado ou fazendo login no caminho, e o convite pode pedir a aprovação do mestre.
-- **Personagens.** A ficha no formato da ficha oficial, calculada pelo motor de regras a partir do SRD 5.1: modificadores, perícias, CA, PV, magias e os avisos de regra, como armadura sem proficiência. O mestre cria NPCs numa ficha curta.
+- **Personagens.** A ficha no formato da ficha oficial, calculada pelo motor de regras a partir do SRD 5.1: modificadores, perícias, CA, PV, magias e os avisos de regra, como armadura sem proficiência. O mestre cria NPCs numa ficha curta, com iniciativa e ataques. Na criação, os atributos e os PV podem ser rolados no app, e cada magia tem a descrição completa.
 - **Sessão.** Iniciar a sessão trava as fichas dos jogadores; a história do personagem tem uma trava própria.
 - **Sessão ao vivo.** Quando o mestre inicia a sessão, quem joga na campanha vê o aviso com o link, em qualquer página do app. Na página da sessão, os PV, os espaços de magia e os dados de vida do personagem mudam na tela do jogador quando o mestre corrige, sem recarregar.
 - **Galeria.** O mestre envia as imagens da campanha, e o servidor tira os metadados, como o GPS da foto, antes de guardar.
 - **Mapas sem spoiler.** O mestre cria mapas a partir da galeria, com pontos de interesse (batalha, submapa e cena de RP) e os tokens dos personagens, e revela cada coisa na hora certa: o que está escondido nunca sai do servidor para o jogador. Na sessão, o mestre escolhe o mapa atual e move os tokens, e a mesa vê ao vivo. Ele também pode mostrar aos jogadores uma imagem da galeria.
 - **Documento da campanha.** As anotações do mestre, em Markdown, com imagens da galeria e links para os mapas e as fichas. Só o mestre vê.
+- **Combate.** O mestre põe a grade de 1,5 m no mapa e inicia o combate: iniciativa, ordem dos turnos e movimento, sem o jogador ver quem está escondido nem os números dos inimigos. Na sua vez, o jogador vê o que as regras deixam fazer com a ação, a ação bônus, a reação e o movimento, e ataca, conjura, usa as habilidades de classe e as reações, com o dado do app ou o físico. O mestre aplica o dano, desfaz a última ação, marca as condições e confirma a morte de quem falha três vezes no teste contra a morte. O registro conta a luta, e cada um vê só o que pode ver.
 
-A próxima é a Etapa 6, o combate: a ordem dos turnos e as ações na vez de cada jogador. O MVP fica pronto no fim da Etapa 7, quando a mesa joga a primeira sessão inteira pelo app.
+A próxima é a Etapa 7, a última antes do MVP: as ações da cena de RP e o XP. O MVP fica pronto no fim dela, quando a mesa joga a primeira sessão inteira pelo app.
 
 ## O visual: a ficha de papel
 
