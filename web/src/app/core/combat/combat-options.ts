@@ -47,6 +47,9 @@ export function reasonText(reason: DisabledReason | undefined): string {
       return 'Ação bônus já usada';
     case DisabledReasonCode.REACTION_USED:
       return 'Reação já usada';
+    case DisabledReasonCode.ATTACKS_USED:
+      // Extra Attack: the attacks of this Attack action are all made.
+      return 'Ataques desta ação já usados';
     case DisabledReasonCode.NO_SLOT:
       return reason.minLevel > 0
         ? `Sem espaço de ${reason.minLevel}º círculo ou maior`
