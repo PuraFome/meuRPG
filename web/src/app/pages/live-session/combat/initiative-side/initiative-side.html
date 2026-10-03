@@ -1,0 +1,65 @@
+<section class="mr-panel side" aria-labelledby="side-title">
+  <h2 class="mr-panel__title" id="side-title">{{ title() }}</h2>
+
+  @if (ready()) {
+    <div class="mr-notice mr-notice--success">
+      <mat-icon aria-hidden="true">check_circle</mat-icon>
+      <p><strong>Todos rolaram.</strong> Confira a ordem e comece o combate.</p>
+    </div>
+  } @else {
+    <div class="mr-notice mr-notice--warning">
+      <mat-icon aria-hidden="true">warning</mat-icon>
+      <p>
+        <strong>
+          {{ missing().length === 1 ? names() + ' ainda não rolou.' : names() + ' ainda não rolaram.' }}
+        </strong>
+        @if (waiting(); as line) {
+          {{ line }}
+        }
+        Espere ou digite o resultado por {{ missing().length === 1 ? 'ele' : 'eles' }}.
+      </p>
+    </div>
+  }
+
+  <ul class="side__facts">
+    <li><mat-icon aria-hidden="true">check</mat-icon>{{ rolled() }} de {{ total() }} rolaram</li>
+    @for (line of tieLines(); track line) {
+      <li><mat-icon aria-hidden="true">info</mat-icon>{{ line }}</li>
+    }
+    @if (!ready()) {
+      <li><mat-icon aria-hidden="true">warning</mat-icon>{{ reason().replace('.', '') }}</li>
+    }
+  </ul>
+
+  <button
+    mat-flat-button
+    type="button"
+    class="side__begin"
+    [class.side__begin--blocked]="!ready()"
+    [disabled]="!ready()"
+        disabledInteractive
+    [attr.aria-describedby]="ready() ? null : 'begin-reason'"
+    (click)="start()"
+  >
+    Começar o combate
+  </button>
+  @if (!ready()) {
+    <p id="begin-reason" class="side__reason">{{ reason() }}</p>
+  }
+
+  @if (confirming()) {
+    <div class="side__confirm" role="alertdialog" aria-labelledby="cancel-title">
+      <p id="cancel-title">Cancelar o combate? Ele acaba sem ter começado.</p>
+      <div>
+        <button #back mat-stroked-button type="button" (click)="confirming.set(false)">Voltar</button>
+        <button mat-stroked-button type="button" class="danger" (click)="confirmCancel()">
+          Cancelar combate
+        </button>
+      </div>
+    </div>
+  } @else {
+    <button mat-button type="button" class="side__cancel" (click)="confirming.set(true)">
+      Cancelar combate
+    </button>
+  }
+</section>

@@ -1,0 +1,120 @@
+<section class="mr-panel init" aria-labelledby="init-title">
+  <div class="init__head">
+    <h2 class="mr-panel__title" id="init-title">Ordem de iniciativa</h2>
+    <span class="init__hint">Do maior para o menor total</span>
+  </div>
+
+  <ol class="init__list">
+    @for (item of items(); track item.kind === 'tie' ? item.text : item.c.id) {
+      @if (item.kind === 'tie') {
+        <li class="tie">
+          <mat-icon aria-hidden="true">warning</mat-icon>{{ item.text }}
+        </li>
+      } @else {
+        @let c = item.c;
+        <li
+          class="row"
+          [class.row--tie]="item.tie"
+          [class.row--wait]="c.initiative === undefined"
+          [class.row--edit]="editing() === c.id"
+        >
+          <span class="row__place">{{ item.place }}</span>
+          <app-combatant-token
+            [initial]="initial(c)"
+            [npc]="npc(c)"
+            [hidden]="c.hidden"
+            [size]="28"
+          />
+          <div class="row__text">
+            <span class="row__name">{{ c.label }}</span>
+            @if (c.initiative === undefined) {
+              <span class="row__wait">
+                <mat-icon aria-hidden="true">hourglass_empty</mat-icon>Esperando {{ waitingFor(c) }}
+              </span>
+            } @else {
+              <span class="row__sub">{{ sub(c) }}</span>
+            }
+          </div>
+
+          @if (editing() === c.id) {
+            <label class="row__formula row__formula--edit">
+              <span class="mr-visually-hidden">Resultado do d20 de {{ c.label }}</span>
+              1d20 (
+              <input
+                #field
+                class="row__field"
+                type="text"
+                inputmode="numeric"
+                maxlength="2"
+                autocomplete="off"
+                [value]="typed()"
+                [attr.aria-invalid]="invalid()"
+                [attr.aria-describedby]="invalid() ? 'init-err' : null"
+                (input)="onType($event)"
+                (keydown.enter)="save(c)"
+                (keydown.escape)="editing.set(null)"
+              />
+              ) {{ bonus(c) }} = {{ total(c) }}
+            </label>
+            <span class="row__actions">
+              <button mat-button type="button" class="row__cancel" (click)="editing.set(null)">
+                Cancelar
+              </button>
+              <button
+                mat-stroked-button
+                type="button"
+                [disabled]="face() === null || busy()"
+                (click)="save(c)"
+              >
+                Salvar
+              </button>
+            </span>
+            @if (invalid()) {
+              <p id="init-err" class="row__error" role="alert">Digite um número de 1 a 20.</p>
+            }
+          } @else {
+            <span class="row__formula" [class.row__formula--wait]="c.initiative === undefined">
+              {{ formula(c) }}
+            </span>
+            <span class="row__actions">
+              @if (item.tie; as group) {
+                <button
+                  mat-stroked-button
+                  type="button"
+                  class="row__arrow"
+                  [attr.aria-label]="'Subir ' + c.label + ' na ordem'"
+                  [disabled]="!canUp(group, c)"
+        disabledInteractive
+                  [class.row__arrow--off]="!canUp(group, c)"
+                  (click)="move(group, c, -1)"
+                >
+                  <mat-icon aria-hidden="true">arrow_upward</mat-icon>
+                </button>
+                <button
+                  mat-stroked-button
+                  type="button"
+                  class="row__arrow"
+                  [attr.aria-label]="'Descer ' + c.label + ' na ordem'"
+                  [disabled]="!canDown(group, c)"
+        disabledInteractive
+                  [class.row__arrow--off]="!canDown(group, c)"
+                  (click)="move(group, c, 1)"
+                >
+                  <mat-icon aria-hidden="true">arrow_downward</mat-icon>
+                </button>
+              } @else if (c.initiative === undefined) {
+                <button mat-stroked-button type="button" (click)="edit(c)">
+                  Digitar pelo jogador
+                </button>
+              } @else {
+                <button mat-button type="button" class="row__edit" (click)="edit(c)">
+                  Editar<span class="mr-visually-hidden"> a iniciativa de {{ c.label }}</span>
+                </button>
+              }
+            </span>
+          }
+        </li>
+      }
+    }
+  </ol>
+</section>

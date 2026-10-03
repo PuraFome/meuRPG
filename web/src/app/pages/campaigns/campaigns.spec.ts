@@ -108,7 +108,7 @@ describe('Campaigns', () => {
 
   it("shows a campaign that awaits the master's approval as such, not as jogador (MR-024)", async () => {
     fake.listMyCampaignsResult = Promise.resolve({
-      campaigns: [{ ...campaign('c1', 'Mirathel', Role.PLAYER), awaitingApproval: true }],
+      campaigns: [{ ...campaign('c1', 'Mirathel', Role.PLAYER), awaitingApproval: true, diceMode: 1, dicePreference: 1 }],
     });
     const el = await render();
     expect(el.textContent).toContain('Esperando a aprovação do mestre');

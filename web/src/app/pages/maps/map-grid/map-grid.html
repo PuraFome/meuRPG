@@ -1,0 +1,167 @@
+@switch (phase()) {
+  @case ('loading') {
+    <h1 class="mr-page-title">Grade do mapa</h1>
+    <p class="status" role="status">
+      <mat-spinner diameter="24" aria-label="Carregando o mapa" />
+      Carregando o mapa...
+    </p>
+  }
+  @case ('gone') {
+    <h1 class="mr-page-title">Mapa não encontrado</h1>
+    <div class="mr-notice mr-notice--neutral page-notice" role="alert">
+      <mat-icon aria-hidden="true">search_off</mat-icon>
+      <p>
+        <strong>Esse mapa não existe.</strong>
+        Volte para <a [routerLink]="['/campanhas', campaignId()]">a campanha</a>.
+      </p>
+    </div>
+  }
+  @case ('forbidden') {
+    <h1 class="mr-page-title">Grade do mapa</h1>
+    <div class="mr-notice mr-notice--neutral page-notice" role="alert">
+      <mat-icon aria-hidden="true">lock</mat-icon>
+      <p>
+        <strong>Só o mestre define a grade.</strong>
+        Volte para <a [routerLink]="['/campanhas', campaignId()]">a campanha</a>.
+      </p>
+    </div>
+  }
+  @case ('error') {
+    <h1 class="mr-page-title">Não foi possível abrir o mapa</h1>
+    <div class="mr-notice mr-notice--danger page-notice" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p><strong>O servidor não respondeu.</strong> Confira a conexão e recarregue a página.</p>
+    </div>
+  }
+  @case ('ready') {
+    @if (map(); as m) {
+      <a class="back" [routerLink]="backLink().path">
+        <mat-icon aria-hidden="true">arrow_back</mat-icon>{{ backLink().label }}
+      </a>
+      <h1 class="mr-page-title">Grade do mapa</h1>
+      <p class="mr-page-lead">{{ m.name }} · {{ campaignName() }}</p>
+
+      @if (!hadGrid()) {
+        <div class="mr-notice mr-notice--warning page-notice">
+          <mat-icon aria-hidden="true">warning</mat-icon>
+          <p>
+            <strong>Este mapa ainda não tem grade.</strong>
+            O combate precisa dela para medir o movimento. Defina o tamanho e salve.
+          </p>
+        </div>
+      }
+
+      <div class="layout">
+        <section class="mr-panel preview" aria-labelledby="preview-title">
+          <div class="preview__head">
+            <h2 class="mr-panel__title" id="preview-title">Prévia da grade</h2>
+            <span class="preview__hint">As linhas aparecem por cima do mapa</span>
+          </div>
+          @if (image(); as img) {
+            @if (columns() !== null && rows() !== null) {
+              <app-combat-map
+                [image]="img"
+                [mapName]="m.name"
+                [columns]="columns()!"
+                [rows]="rows()!"
+                [mark]="{ col: Math.min(6, columns()! - 1), row: Math.min(4, rows()! - 1) }"
+              />
+            } @else {
+              <p class="mr-muted">Digite de {{ min }} a {{ max }} quadrados para ver a grade.</p>
+            }
+          }
+          <p class="preview__foot">
+            <mat-icon aria-hidden="true">grid_on</mat-icon>
+            O quadrado marcado tem 1,5 m. Cada token ocupa um quadrado.
+          </p>
+        </section>
+
+        <section class="mr-panel size" aria-labelledby="size-title">
+          <h2 class="mr-panel__title" id="size-title">Tamanho da grade</h2>
+
+          <label class="mr-label" for="columns">Quadrados de 1,5 m na largura</label>
+          <div class="size__step">
+            <button
+              type="button"
+              class="size__btn"
+              aria-label="Menos um quadrado na largura"
+              [class.size__btn--off]="(columns() ?? max) <= min"
+              [attr.aria-disabled]="(columns() ?? max) <= min"
+              (click)="step(-1)"
+            >
+              <mat-icon aria-hidden="true">remove</mat-icon>
+            </button>
+            <input
+              id="columns"
+              class="size__field"
+              type="text"
+              inputmode="numeric"
+              maxlength="3"
+              autocomplete="off"
+              [value]="typed()"
+              [attr.aria-invalid]="invalid()"
+              aria-describedby="columns-hint"
+              (input)="onType($event)"
+              (keydown.enter)="save()"
+            />
+            <button
+              type="button"
+              class="size__btn"
+              aria-label="Mais um quadrado na largura"
+              [class.size__btn--off]="(columns() ?? 0) >= max"
+              [attr.aria-disabled]="(columns() ?? 0) >= max"
+              (click)="step(1)"
+            >
+              <mat-icon aria-hidden="true">add</mat-icon>
+            </button>
+          </div>
+          <p id="columns-hint" class="size__hint" [class.size__hint--error]="invalid()">
+            @if (invalid()) {
+              Use um número inteiro de {{ min }} a {{ max }}.
+            } @else {
+              De {{ min }} a {{ max }}. Ajuste até os quadrados ficarem do tamanho do que está
+              desenhado, como uma carroça ou uma árvore.
+            }
+          </p>
+
+          <dl class="size__facts">
+            <div class="fact">
+              <dt>Quadrados</dt>
+              <dd>{{ squares() }}</dd>
+            </div>
+            <div class="fact">
+              <dt>Tamanho do mapa</dt>
+              <dd>{{ meters() }}</dd>
+            </div>
+          </dl>
+          <p class="size__hint" role="status">
+            A altura é calculada pela proporção da imagem. Cada quadrado vale 1,5 m, inclusive na
+            diagonal.
+          </p>
+
+          @if (error()) {
+            <div class="mr-notice mr-notice--danger" role="alert">
+              <mat-icon aria-hidden="true">error</mat-icon>
+              <p>{{ error() }}</p>
+            </div>
+          }
+
+          <div class="size__actions">
+            <button
+              mat-flat-button
+              type="button"
+              class="size__save"
+              [class.size__save--off]="invalid()"
+              [disabled]="invalid() || saving()"
+              disabledInteractive
+              (click)="save()"
+            >
+              Salvar grade
+            </button>
+            <a mat-stroked-button class="size__cancel" [routerLink]="backLink().path">Cancelar</a>
+          </div>
+        </section>
+      </div>
+    }
+  }
+}

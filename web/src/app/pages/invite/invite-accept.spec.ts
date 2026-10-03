@@ -130,7 +130,7 @@ describe('InviteAccept', () => {
   it('invite with approval: a new pending member goes straight to creating the character (MR-024)', async () => {
     window.location.hash = '#t=abc123';
     campaigns.acceptInvite.mockResolvedValue({
-      campaign: { ...campaign('camp-1'), awaitingApproval: true },
+      campaign: { ...campaign('camp-1'), awaitingApproval: true, diceMode: 1, dicePreference: 1 },
       alreadyMember: false,
     });
     const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
@@ -151,7 +151,7 @@ describe('InviteAccept', () => {
   it('invite with approval, already pending: goes to the campaign page, which shows the wait', async () => {
     window.location.hash = '#t=abc123';
     campaigns.acceptInvite.mockResolvedValue({
-      campaign: { ...campaign('camp-1'), awaitingApproval: true },
+      campaign: { ...campaign('camp-1'), awaitingApproval: true, diceMode: 1, dicePreference: 1 },
       alreadyMember: true,
     });
     const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);

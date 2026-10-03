@@ -1,0 +1,54 @@
+import { TestBed } from '@angular/core/testing';
+
+import { CombatantKind, CombatantState } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { combatant, encounter } from '../../../../core/combat/combat-testing';
+import { TurnPanel } from './turn-panel';
+
+describe('TurnPanel', () => {
+  const order = [
+    combatant({ id: 'brisa', label: 'Brisa', kind: CombatantKind.PLAYER }),
+    combatant({ id: 'cap', label: 'Capitão Goblin', state: CombatantState.HURT }),
+    combatant({ id: 'pen', label: 'Pensantus', kind: CombatantKind.PLAYER, mine: true, speedFt: 25, movementLeftFt: 25 }),
+    combatant({ id: 'g1', label: 'Goblin 1', defeated: true, state: CombatantState.DEFEATED }),
+  ];
+
+  function text(over: Parameters<typeof encounter>[0]): HTMLElement {
+    const fixture = TestBed.createComponent(TurnPanel);
+    fixture.componentRef.setInput('encounter', encounter({ combatants: order, ...over }));
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  it('names another one on turn and says the player is next', () => {
+    const el = text({ currentCombatantId: 'cap' });
+    expect(el.querySelector('h2')?.textContent).toBe('Vez do Capitão Goblin');
+    expect(el.textContent).toContain('Você é o próximo: depois dele, Pensantus.');
+    expect(el.textContent).not.toContain('Mover');
+  });
+
+  it('shows state words for NPCs and never numbers', () => {
+    const el = text({ currentCombatantId: 'cap' });
+    const chips = Array.from(el.querySelectorAll('.chip'), (c) => c.textContent?.replace(/\s+/g, ' ').trim());
+    expect(chips.join('|')).toContain('Capitão GoblinFerido');
+    expect(chips.join('|')).toContain('Goblin 1Derrotado');
+    expect(el.textContent).not.toMatch(/PV|\d+ de \d+/);
+  });
+
+  it('says "Vez do mestre" when the turn is hidden, with no one highlighted', () => {
+    const el = text({ currentCombatantId: '', masterTurn: true });
+    expect(el.querySelector('h2')?.textContent).toBe('Vez do mestre');
+    expect(el.querySelector('.chip--turn')).toBeNull();
+    expect(el.textContent).not.toContain('Você é o próximo');
+  });
+
+  it('is the hero on the player\'s own turn, with the movement and the two buttons', () => {
+    const el = text({ currentCombatantId: 'pen' });
+    expect(el.querySelector('h2')?.textContent).toBe('Sua vez, Pensantus');
+    expect(el.textContent).toContain('7,5 m');
+    const buttons = Array.from(el.querySelectorAll('button'), (b) => b.textContent?.trim());
+    expect(buttons.some((b) => b?.endsWith('Mover'))).toBe(true);
+    expect(buttons.some((b) => b?.endsWith('Encerrar turno'))).toBe(true);
+    expect(el.textContent).toContain('Depois de você: Goblin 1'.replace('Goblin 1', 'Brisa'));
+    expect(Array.from(el.querySelectorAll('.tile__name'), (n) => n.textContent)).toEqual(['Ação', 'Ação bônus', 'Reação', 'Movimento']);
+  });
+});

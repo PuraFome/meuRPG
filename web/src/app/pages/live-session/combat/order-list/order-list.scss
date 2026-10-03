@@ -1,0 +1,277 @@
+:host {
+  display: block;
+}
+
+.order {
+  --cols: 30px minmax(0, 1fr) 54px 84px 108px;
+}
+
+.order__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 var(--mr-space-3);
+  padding-top: 4px;
+
+  .mr-panel__title {
+    margin: 0;
+  }
+}
+
+.order__add {
+  --mat-button-text-label-text-color: var(--mr-accent-text);
+  margin-right: -8px;
+}
+
+.order__cols {
+  display: none;
+  margin-top: var(--mr-space-1);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 16px;
+  color: var(--mr-ink-muted);
+
+  @media (min-width: 768px) {
+    display: grid;
+    grid-template-columns: var(--cols);
+    column-gap: 10px;
+    margin-bottom: var(--mr-space-1);
+  }
+}
+
+.order__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.order__col-init {
+  text-align: center;
+}
+
+// One row: token, the words, and (from 768px) the initiative and hit points
+// in columns. The reveal line and the removal question sit under the row.
+.row {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  grid-template-areas:
+    'token text actions'
+    '. extra extra';
+  column-gap: 10px;
+  align-items: center;
+  margin: 0 -18px;
+  padding: 10px 18px;
+
+  & + & {
+    border-top: 1px solid var(--mr-rule);
+  }
+
+  @media (min-width: 768px) {
+    grid-template-columns: var(--cols);
+    grid-template-areas:
+      'token text init hp actions'
+      '. extra extra extra extra';
+  }
+}
+
+.row--turn {
+  background: var(--mr-accent-soft);
+}
+
+.row__token {
+  grid-area: token;
+}
+
+.row__text {
+  display: flex;
+  grid-area: text;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.row__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 8px;
+  font-size: 16px;
+  line-height: 21px;
+  font-weight: 700;
+  color: var(--mr-ink);
+  overflow-wrap: anywhere;
+}
+
+.row__name--out {
+  color: var(--mr-ink-muted);
+  text-decoration: line-through;
+}
+
+.row__turn {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: 20px;
+  padding: 0 8px;
+  border: 1.5px solid var(--mr-accent);
+  border-radius: var(--mr-radius-pill);
+  color: var(--mr-accent-text);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.row__state {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.row__state--out {
+  color: var(--mr-danger-ink);
+  font-weight: 700;
+}
+
+.row__pv-inline {
+  @media (min-width: 768px) {
+    display: none;
+  }
+}
+
+.row__init,
+.row__hp {
+  display: none;
+  font-family: var(--mr-font-display);
+  font-weight: 700;
+  color: var(--mr-ink);
+
+  @media (min-width: 768px) {
+    display: block;
+  }
+}
+
+.row__init {
+  grid-area: init;
+  font-size: 22px;
+  text-align: center;
+}
+
+.row__hp {
+  grid-area: hp;
+}
+
+.row__hp-n {
+  font-size: 19px;
+  line-height: 1;
+}
+
+.row__hp-of {
+  font-family: var(--mr-font-sans);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--mr-ink-muted);
+}
+
+.row__bar {
+  display: block;
+  width: 76px;
+  height: 5px;
+  margin-top: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--mr-rule);
+}
+
+.row__fill {
+  display: block;
+  height: 100%;
+  background: var(--mr-ink);
+}
+
+.row__actions {
+  display: flex;
+  grid-area: actions;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.row__adjust {
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  min-width: 108px;
+}
+
+.row__more {
+  display: flex;
+  align-items: center;
+  // The icon's right edge is the action column's edge, like the border of
+  // "Dano/Cura" and the end of "Revelar aos jogadores".
+  justify-content: flex-end;
+  // The three dots sit 10px inside the icon box: pull the box out so the
+  // dots end where the neighbours' edges do.
+  margin-right: -10px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mr-ink);
+  cursor: pointer;
+}
+
+.row__extra,
+.row__confirm {
+  grid-area: extra;
+}
+
+.row__extra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 var(--mr-space-3);
+}
+
+.row__hidden-note {
+  margin: 0;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.row__reveal {
+  --mat-button-text-label-text-color: var(--mr-accent-text);
+  margin-left: auto;
+  margin-right: -12px;
+}
+
+.row__confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-2);
+  padding-top: var(--mr-space-2);
+
+  p {
+    flex: 1 1 100%;
+    margin: 0;
+    font-weight: 700;
+    color: var(--mr-ink);
+  }
+
+  .mat-mdc-outlined-button {
+    --mat-button-outlined-label-text-color: var(--mr-ink);
+  }
+
+  .danger {
+    --mat-button-outlined-label-text-color: var(--mr-danger-ink);
+    --mat-button-outlined-outline-color: var(--mr-danger-ink);
+  }
+}

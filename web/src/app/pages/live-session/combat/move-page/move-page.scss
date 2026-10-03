@@ -1,0 +1,207 @@
+:host {
+  display: block;
+}
+
+// One line, instead of the session's header: back, the session, "Ao vivo"
+// and the round (E6-10).
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: var(--mr-space-2);
+}
+
+.bar__back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-left: -10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mr-ink);
+  cursor: pointer;
+}
+
+.bar__title {
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 26px;
+  line-height: 30px;
+}
+
+.bar__round {
+  margin-left: auto;
+  font-weight: 700;
+  color: var(--mr-ink-muted);
+}
+
+.move__title {
+  margin-bottom: var(--mr-space-2);
+  font-size: 30px;
+  line-height: 34px;
+}
+
+.move__lead {
+  margin: 0 0 var(--mr-space-4);
+  font-size: 17px;
+  line-height: 22px;
+}
+
+// The map is wider than the screen and scrolls under the thumb, edge to
+// edge on a phone.
+.move {
+  display: flex;
+  flex-direction: column;
+
+  @media (min-width: 1024px) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    align-items: start;
+    gap: var(--mr-space-6);
+  }
+}
+
+.move__main,
+.move__side {
+  min-width: 0;
+}
+
+.err__title {
+  display: block;
+}
+
+.move__buttons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+
+  @media (min-width: 1024px) {
+    flex-direction: row;
+  }
+}
+
+.legend__sq {
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--mr-ink);
+  border-radius: 50%;
+}
+
+.legend__sq--mine {
+  outline: 2px solid var(--mr-accent);
+  outline-offset: 1px;
+}
+
+.move__scroll {
+  margin: 0 calc(var(--mr-gutter) * -1);
+  overflow-x: auto;
+
+  @media (min-width: 768px) {
+    margin: 0;
+  }
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2) var(--mr-space-4);
+  margin: var(--mr-space-3) 0;
+  padding: 0;
+  list-style: none;
+  font-size: 15px;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: var(--mr-space-2);
+  }
+}
+
+.legend__tint,
+.legend__frame,
+.legend__none {
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  border-radius: 2px;
+}
+
+.legend__tint {
+  border: 2px dashed var(--mr-accent);
+  background: color-mix(in srgb, var(--mr-accent) 30%, transparent);
+}
+
+.legend__frame {
+  border: 3px solid var(--mr-accent);
+}
+
+.legend__none {
+  border: 1px solid var(--mr-control-line);
+}
+
+.move__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.status {
+  padding: 12px 16px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+
+  p {
+    margin: 0;
+  }
+}
+
+.status__title {
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 24px;
+  line-height: 28px;
+}
+
+.status__text {
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.status__idle {
+  margin: 0;
+  color: var(--mr-ink-muted);
+}
+
+.move__go {
+  --mat-button-filled-container-height: 48px;
+  width: 100%;
+
+  @media (min-width: 1024px) {
+    width: auto;
+  }
+}
+
+.move__go--off {
+  --mat-button-filled-disabled-container-color: var(--mr-surface);
+  --mat-button-filled-disabled-label-text-color: var(--mr-ink-muted);
+  --mat-button-filled-container-color: var(--mr-surface);
+  --mat-button-filled-label-text-color: var(--mr-ink-muted);
+  border: 1px dashed var(--mr-control-line);
+  cursor: default;
+}
+
+.move__cancel {
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-accent-text);
+  width: 100%;
+
+  @media (min-width: 1024px) {
+    width: auto;
+  }
+}

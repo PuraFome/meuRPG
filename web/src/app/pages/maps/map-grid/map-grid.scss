@@ -1,0 +1,203 @@
+:host {
+  display: block;
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  min-height: 44px;
+  color: var(--mr-ink-muted);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--mr-ink);
+  }
+
+  .mat-icon {
+    width: 22px;
+    height: 22px;
+    font-size: 22px;
+  }
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+}
+
+.page-notice {
+  margin-bottom: var(--mr-space-5);
+}
+
+// The preview takes the room; the size sits in a column on the right from
+// 1024px (E6-02).
+.layout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-5);
+
+  @media (min-width: 1024px) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 400px;
+    align-items: start;
+    gap: var(--mr-space-6);
+  }
+}
+
+.preview,
+.size {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  min-width: 0;
+  padding: 16px 18px;
+
+  .mr-panel__title {
+    margin: 0;
+  }
+}
+
+.preview__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0 var(--mr-space-3);
+}
+
+.preview__hint {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.preview__foot {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-size: 15px;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.size__step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.size__btn,
+.size__field {
+  box-sizing: border-box;
+  height: 44px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+}
+
+.size__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  padding: 0;
+  cursor: pointer;
+}
+
+// At the limit the button is a dashed outline that does nothing.
+.size__btn--off {
+  border-style: dashed;
+  color: var(--mr-ink-muted);
+  cursor: default;
+}
+
+.size__field {
+  width: 56px;
+  padding: 0;
+  font-family: var(--mr-font-display);
+  font-size: 22px;
+  font-weight: 700;
+  text-align: center;
+
+  &[aria-invalid='true'] {
+    border: 2px solid var(--mr-danger-ink);
+    background: var(--mr-danger-surface);
+  }
+}
+
+.size__hint {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.size__hint--error {
+  color: var(--mr-danger-ink);
+  font-weight: 700;
+}
+
+.size__facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.fact {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+
+  dt {
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 16px;
+    color: var(--mr-ink-muted);
+  }
+
+  dd {
+    margin: 0;
+    font-family: var(--mr-font-display);
+    font-weight: 700;
+    font-size: 24px;
+    line-height: 30px;
+  }
+}
+
+.size__actions {
+  display: flex;
+  gap: var(--mr-space-3);
+  padding-top: var(--mr-space-4);
+  border-top: 1px solid var(--mr-rule);
+}
+
+.size__save {
+  --mat-button-filled-container-height: 48px;
+}
+
+.size__save--off {
+  --mat-button-filled-disabled-container-color: var(--mr-surface);
+  --mat-button-filled-disabled-label-text-color: var(--mr-ink-muted);
+  --mat-button-filled-container-color: var(--mr-surface);
+  --mat-button-filled-label-text-color: var(--mr-ink-muted);
+  border: 1px dashed var(--mr-control-line);
+  cursor: default;
+}
+
+.size__cancel {
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+}

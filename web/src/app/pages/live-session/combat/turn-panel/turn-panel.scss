@@ -1,0 +1,256 @@
+:host {
+  display: block;
+}
+
+.turn {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-sizing: border-box;
+  padding: 14px 12px;
+  background: var(--mr-surface);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+
+  @media (min-width: 768px) {
+    padding: 16px 18px;
+  }
+}
+
+// The player's own turn is the hero: a 2px accent frame, no fill (the one
+// filled button belongs to a decision, not to a status).
+.turn--mine {
+  border: 2px solid var(--mr-accent);
+}
+
+.turn__kicker {
+  margin: 0 0 -8px;
+  font-size: 14px;
+}
+
+.turn__banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.turn__banner app-combatant-token {
+  // Room for the ring that is drawn outside the token.
+  margin-left: 5px;
+}
+
+.turn__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 28px;
+  line-height: 32px;
+  overflow-wrap: anywhere;
+
+  &:focus-visible {
+    outline-offset: 4px;
+  }
+
+  @media (min-width: 768px) {
+    font-size: 34px;
+    line-height: 38px;
+  }
+}
+
+.turn__next,
+.turn__react {
+  margin: 0;
+}
+
+.turn__next {
+  font-size: 16px;
+  line-height: 22px;
+}
+
+.turn__react {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+// What the player has this turn (E6-06): one tile each for the action, the
+// bonus action and the reaction ("Disponível" is an open circle and the
+// word, never a check; "Usada" is a struck, dashed tile with a filled
+// circle and a cross), and the movement with a bar.
+.eco {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-sizing: border-box;
+  min-height: 88px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--mr-ink);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+}
+
+.tile--used {
+  border: 1.5px dashed var(--mr-control-line);
+  color: var(--mr-ink-muted);
+
+  .tile__name {
+    text-decoration: line-through;
+  }
+}
+
+.tile__name {
+  padding-right: 30px;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 20px;
+}
+
+.tile__word {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 18px;
+}
+
+.tile--move .tile__word {
+  font-weight: 400;
+  color: var(--mr-ink-muted);
+}
+
+.dot {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--mr-ink);
+  border-radius: 50%;
+
+  .mat-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+  }
+}
+
+.tile--used .dot {
+  border-color: var(--mr-control-line);
+  background: var(--mr-control-line);
+  color: var(--mr-surface);
+}
+
+.tile__meters {
+  font-family: var(--mr-font-display);
+  font-weight: 700;
+  font-size: 26px;
+  line-height: 28px;
+
+  small {
+    font-family: var(--mr-font-sans);
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.bar {
+  display: block;
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-line);
+}
+
+.bar__fill {
+  display: block;
+  height: 100%;
+  background: var(--mr-ink);
+}
+
+.turn__buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.turn__btn {
+  flex: 1 1 auto;
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-accent-text);
+}
+
+@media (min-width: 1024px) {
+  .turn__btn {
+    flex: none;
+  }
+}
+
+// On a phone and a tablet "Encerrar turno" lives in the pinned bar at the
+// bottom (`turn-bar`); from 1024px it sits here, next to "Mover".
+.turn__end {
+  display: none;
+
+  @media (min-width: 1024px) {
+    display: inline-flex;
+  }
+}
+
+.turn__btn--off {
+  --mat-button-outlined-label-text-color: var(--mr-ink-muted);
+  --mat-button-outlined-disabled-label-text-color: var(--mr-ink-muted);
+  --mat-button-outlined-disabled-outline-color: var(--mr-control-line);
+  border-style: dashed;
+  cursor: default;
+}
+
+.turn__why {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: -4px 0 0;
+  font-size: 14px;
+  font-weight: 500;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+// "Encerrar turno": an outline until the action and the bonus action are
+// spent, then the filled button.
+.turn__end--filled {
+  --mat-button-outlined-disabled-label-text-color: var(--mr-on-accent);
+  --mat-button-outlined-container-color: var(--mr-accent);
+  --mat-button-outlined-label-text-color: var(--mr-on-accent);
+  --mat-button-outlined-outline-color: var(--mr-accent);
+  background: var(--mr-accent);
+}

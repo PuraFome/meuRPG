@@ -66,13 +66,20 @@ export function usedWords(used: number, total: number): string {
 }
 
 /** "1º círculo". */
+/** "1 livre de 4", "0 livres de 2": the slots still free, as the combat
+ * screens count them (timeline decision 7). */
+export function freeWords(used: number, total: number): string {
+  const free = Math.max(0, total - used);
+  return `${free} ${free === 1 ? 'livre' : 'livres'} de ${total}`;
+}
+
 export function slotLevelLabel(level: number): string {
   return `${level}º círculo`;
 }
 
 /** The accessible name of a row of slot dots. */
 export function slotRowLabel(label: string, used: number, total: number): string {
-  return `${label}: ${used} de ${total} espaços usados`;
+  return `${label}: ${freeWords(used, total)}`;
 }
 
 /** "Mago 3, de Vinicius" under a name in "Grupo" (or "Mago 3, jogador sem

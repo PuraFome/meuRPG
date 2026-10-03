@@ -56,7 +56,7 @@
                   <span aria-hidden="true">{{ s.level }}º</span>
                   <app-slot-dots [total]="s.total" [used]="s.used" size="small" />
                   <span class="member__slot-count" aria-hidden="true"
-                    >{{ s.used }} de {{ s.total }}</span
+                    >{{ free(s.used, s.total) }}</span
                   >
                 </span>
               }
@@ -71,7 +71,7 @@
                   <span aria-hidden="true">Pacto {{ p.slotLevel }}º</span>
                   <app-slot-dots [total]="p.total" [used]="p.used" size="small" />
                   <span class="member__slot-count" aria-hidden="true"
-                    >{{ p.used }} de {{ p.total }}</span
+                    >{{ free(p.used, p.total) }}</span
                   >
                 </span>
               }

@@ -67,6 +67,13 @@ export class MapsClient {
     return need(res.map, 'SetMapRevealed');
   }
 
+  /** `SetMapGrid` (RN-21): squares of 1,5 m across the image's width, 4 to
+   * 200; 0 clears the grid. The server answers with the rows it worked out. */
+  async setGrid(campaignId: string, mapId: string, columns: number): Promise<MapMessage> {
+    const res = await this.client.setMapGrid({ campaignId, mapId, columns });
+    return need(res.map, 'SetMapGrid');
+  }
+
   async createPoint(
     campaignId: string,
     mapId: string,

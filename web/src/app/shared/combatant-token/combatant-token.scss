@@ -1,0 +1,131 @@
+:host {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: var(--tk);
+  height: var(--tk);
+  border: 2px solid var(--mr-surface);
+  border-radius: 50%;
+  background: var(--mr-ink);
+  color: var(--mr-surface);
+  font-family: var(--mr-font-display);
+  font-size: calc(var(--tk) * 0.46);
+  font-weight: 700;
+  line-height: 1;
+  user-select: none;
+}
+
+:host(.tk--long) {
+  font-size: calc(var(--tk) * 0.4);
+}
+
+// An NPC: a rounded square with an ink border on the surface.
+:host(.tk--npc) {
+  border-color: var(--mr-ink);
+  border-radius: 28%;
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+}
+
+:host(.tk--hidden) {
+  border-style: dashed;
+  border-color: var(--mr-ink);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+}
+
+:host(.tk--defeated) {
+  border-color: var(--mr-control-line);
+  background: var(--mr-line);
+  color: var(--mr-ink-muted);
+}
+
+// The turn: a ring outside the token, so the shape inside stays readable.
+:host(.tk--current) {
+  outline: 3px solid var(--mr-accent);
+  outline-offset: 2px;
+}
+
+// "You": the same ring thinner, so "whose turn" and "me" never look alike.
+:host(.tk--mine:not(.tk--current)) {
+  outline: 2px solid var(--mr-accent);
+  outline-offset: 1px;
+}
+
+.tk__x {
+  width: calc(var(--tk) * 0.5);
+  height: calc(var(--tk) * 0.5);
+  font-size: calc(var(--tk) * 0.5);
+}
+
+.tk__badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 13px;
+  height: 13px;
+  border: 1px solid var(--mr-surface);
+  border-radius: 50%;
+  background: var(--mr-ink);
+  color: var(--mr-surface);
+
+  .mat-icon {
+    width: 9px;
+    height: 9px;
+    font-size: 9px;
+  }
+}
+
+// On a battle map the picture is light in both themes, so the token keeps
+// the light theme's colours (styles.scss: --mr-map-token-*).
+:host(.tk--map) {
+  border-color: var(--mr-map-token-surface);
+  background: var(--mr-map-token-ink);
+  color: var(--mr-map-token-surface);
+}
+
+:host(.tk--map.tk--npc),
+:host(.tk--map.tk--hidden) {
+  border-color: var(--mr-map-token-ink);
+  background: var(--mr-map-token-surface);
+  color: var(--mr-map-token-ink);
+}
+
+:host(.tk--map.tk--defeated) {
+  border-color: var(--mr-map-token-down-line);
+  background: var(--mr-map-token-down);
+  color: var(--mr-map-token-down-ink);
+}
+
+// A smaller badge, outside the token's corner and never over its letters.
+// Where the squares are too small for the letters and the badge together
+// (a narrow map), the dashed border alone says "hidden".
+:host(.tk--map) .tk__badge {
+  top: -6px;
+  right: -6px;
+  display: none;
+  width: 12px;
+  height: 12px;
+  border-width: 1px;
+  background: var(--mr-map-token-ink);
+  color: var(--mr-map-token-surface);
+
+  .mat-icon {
+    width: 8px;
+    height: 8px;
+    font-size: 8px;
+  }
+}
+
+@container (min-width: 480px) {
+  :host(.tk--map) .tk__badge {
+    display: flex;
+  }
+}

@@ -1,0 +1,118 @@
+<div
+  class="cm"
+  [style.--cols]="columns()"
+  [style.--rows]="rows()"
+  [style.width.px]="widthPx()"
+  [class.cm--scroll]="cellPx() !== null"
+>
+  <div
+    #surface
+    class="cm__surface"
+    role="group"
+    [attr.tabindex]="canMove() ? 0 : null"
+    [attr.aria-label]="'Mapa de batalha ' + mapName() + ', com a grade de quadrados de 1,5 m'"
+    [style.aspect-ratio]="aspect()"
+    [class.cm--moves]="canMove()"
+    (pointerdown)="onPointerDown($event)"
+    (pointermove)="onPointerMove($event)"
+    (pointerup)="onPointerUp($event)"
+    (pointercancel)="onPointerUp($event)"
+    (click)="onClick($event)"
+    (keydown)="onKeydown($event)"
+    (blur)="onBlur()"
+  >
+    <img
+      class="cm__img"
+      [src]="image().url"
+      alt=""
+      [width]="image().width"
+      [height]="image().height"
+      draggable="false"
+      decoding="async"
+    />
+    <svg
+      class="cm__grid"
+      aria-hidden="true"
+      preserveAspectRatio="none"
+      [attr.viewBox]="'0 0 ' + columns() + ' ' + rows()"
+    >
+      <path [attr.d]="gridPath()" />
+    </svg>
+
+    @if (reachBox(); as box) {
+      @for (cell of reachCells(); track cell.row * 1000 + cell.col) {
+        <span
+          class="cm__cell"
+          aria-hidden="true"
+          [style.left.%]="(cell.col / columns()) * 100"
+          [style.top.%]="(cell.row / rows()) * 100"
+        ></span>
+      }
+      <span
+        class="cm__reach"
+        aria-hidden="true"
+        [style.left.%]="(box.col / columns()) * 100"
+        [style.top.%]="(box.row / rows()) * 100"
+        [style.width.%]="(box.width / columns()) * 100"
+        [style.height.%]="(box.height / rows()) * 100"
+      ></span>
+    }
+
+    @if (mark(); as m) {
+      <span
+        class="cm__mark"
+        aria-hidden="true"
+        [style.left.%]="(m.col / columns()) * 100"
+        [style.top.%]="(m.row / rows()) * 100"
+      ></span>
+    }
+
+    @if (frame(); as f) {
+      @if (path(); as line) {
+        <svg class="cm__path" aria-hidden="true" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <line [attr.x1]="line.x1" [attr.y1]="line.y1" [attr.x2]="line.x2" [attr.y2]="line.y2" />
+        </svg>
+      }
+      <span
+        class="cm__frame"
+        aria-hidden="true"
+        [class.cm__frame--refused]="f.refused"
+        [style.left.%]="(f.square.col / columns()) * 100"
+        [style.top.%]="(f.square.row / rows()) * 100"
+      >
+        <mat-icon>{{ f.refused ? 'block' : 'check' }}</mat-icon>
+      </span>
+    }
+
+    @for (c of shown(); track c.id) {
+      <span
+        class="cm__tk"
+        [attr.data-id]="c.id"
+        [class.cm__tk--movable]="movable(c)"
+        [class.cm__tk--current]="c.id === currentId()"
+        [style.left.%]="left(place(c))"
+        [style.top.%]="top(place(c))"
+      >
+        @if (c.id === currentId()) {
+          <span class="cm__turn">Vez</span>
+        }
+        <app-combatant-token
+          [initial]="initial(c)"
+          [npc]="npc(c)"
+          [hidden]="c.hidden"
+          [defeated]="c.defeated"
+          [current]="c.id === currentId()"
+          [mine]="c.mine"
+          [onMap]="true"
+          size="var(--cm-tk)"
+        />
+      </span>
+    }
+  </div>
+
+  <ul class="mr-visually-hidden">
+    @for (item of listed(); track item.id) {
+      <li>{{ item.text }}</li>
+    }
+  </ul>
+</div>

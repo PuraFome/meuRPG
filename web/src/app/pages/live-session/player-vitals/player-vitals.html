@@ -7,6 +7,7 @@
     }
   </div>
 
+  <div class="top" [class.top--compact]="compact()">
   <div class="hp">
     <p class="hp__numbers">
       <span class="hp__current">{{ v.hitPointsCurrent }}</span>
@@ -30,6 +31,7 @@
         <span class="shield__number">{{ sheet()?.armorClass ?? '–' }}</span>
       </dd>
     </div>
+    @if (!compact()) {
     <div class="box">
       <dt class="stats__label">PV temporários</dt>
       <dd class="box__value">{{ v.hitPointsTemporary }}</dd>
@@ -41,7 +43,9 @@
       </dt>
       <dd class="box__value" [class.box__value--long]="v.hitDice.length > 4">{{ v.hitDice }}</dd>
     </div>
+    }
   </dl>
+  </div>
 
   @if (slotRows().length > 0) {
     <section class="mr-panel slots" aria-labelledby="slots-heading">
@@ -54,12 +58,13 @@
         >
           <span class="slots__level">{{ row.label }}</span>
           <app-slot-dots [total]="row.total" [used]="row.used" />
-          <span class="slots__words">{{ usedWords(row.used, row.total) }}</span>
+          <span class="slots__words">{{ freeWords(row.used, row.total) }}</span>
         </div>
       }
     </section>
   }
 
+  @if (!compact()) {
   <div class="vitals__foot">
     <a
       class="vitals__sheet"
@@ -71,6 +76,7 @@
       Durante a sessão, só o mestre muda esses números.
     </p>
   </div>
+  }
 
   <p class="mr-visually-hidden" role="status">{{ announcement() }}</p>
 </section>

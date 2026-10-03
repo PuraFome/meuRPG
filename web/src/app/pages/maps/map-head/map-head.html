@@ -17,6 +17,14 @@
   >
     {{ map().revealed ? 'Esconder' : 'Revelar aos jogadores' }}
   </button>
+  <span class="state__sep" aria-hidden="true"></span>
+  <span class="state__item">
+    <mat-icon aria-hidden="true">grid_on</mat-icon>
+    {{ map().gridColumns > 0 ? 'Grade de ' + map().gridColumns + ' × ' + map().gridRows + ' quadrados' : 'Sem grade' }}
+  </span>
+  <a matButton class="state__action" [routerLink]="['/campanhas', campaignId(), 'mapas', map().id, 'grade']">
+    {{ map().gridColumns > 0 ? 'Mudar a grade' : 'Definir a grade' }}
+  </a>
   @if (showImage()) {
     <span class="state__sep" aria-hidden="true"></span>
     <span class="state__item">

@@ -1,0 +1,63 @@
+import { Component, ElementRef, Injector, afterNextRender, computed, inject, input, output, signal, viewChild } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+
+import { type Encounter, EncounterStatus } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { combatantInitial, isPlayer, roundLabel, turnBanner } from '../../../../core/combat/combat-view';
+import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
+
+/**
+ * The master's combat bar (E6-04, E6-11, E6-12, E6-16): which combat, whose
+ * turn, and the two buttons that move it. In SETUP it only says "Iniciativa"
+ * and what to do. Running, "Próximo turno" is the page's one filled button
+ * (EndTurn), and "Encerrar combate" asks in place: the confirmation takes
+ * the bar's buttons, and the focus goes to the safe "Cancelar".
+ */
+@Component({
+  selector: 'app-combat-bar',
+  imports: [CombatantToken, MatButtonModule, MatIconModule],
+  templateUrl: './combat-bar.html',
+  styleUrl: './combat-bar.scss',
+})
+export class CombatBar {
+  readonly encounter = input.required<Encounter>();
+  readonly busy = input(false);
+  /** "Próximo turno": ends the turn of whoever is on turn. */
+  readonly next = output<void>();
+  /** "Encerrar combate", confirmed. */
+  readonly end = output<void>();
+
+  protected readonly confirming = signal(false);
+  private readonly cancelButton = viewChild('safe', { read: ElementRef<HTMLButtonElement> });
+
+  protected readonly setup = computed(() => this.encounter().status === EncounterStatus.SETUP);
+  protected readonly banner = computed(() => turnBanner(this.encounter()));
+  protected readonly round = computed(() => roundLabel(this.encounter().round));
+  protected readonly initial = computed(() => combatantInitial(this.banner().who?.label ?? ''));
+  protected readonly npc = computed(() => {
+    const who = this.banner().who;
+    return !who || !isPlayer(who);
+  });
+  protected readonly nextLine = computed(() => {
+    const next = this.banner().next;
+    return next ? `Em seguida: ${next.label}` : '';
+  });
+
+  private readonly injector = inject(Injector);
+
+  protected ask(): void {
+    this.confirming.set(true);
+    // The confirmation opens on the safe button (a stray Enter must not end
+    // a combat).
+    afterNextRender(() => this.cancelButton()?.nativeElement.focus(), { injector: this.injector });
+  }
+
+  protected cancel(): void {
+    this.confirming.set(false);
+  }
+
+  protected confirmEnd(): void {
+    this.confirming.set(false);
+    this.end.emit();
+  }
+}

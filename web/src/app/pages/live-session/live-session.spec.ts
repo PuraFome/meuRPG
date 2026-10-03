@@ -29,7 +29,7 @@ class KindError extends Error {
 /** A `LiveSessionSource` whose stream the test feeds by hand. */
 @Injectable()
 class FakeLiveSessionSource implements LiveSessionSource {
-  campaign: CampaignInfoVm | Error = { name: 'Mirathel', isMaster: false, awaitingApproval: false };
+  campaign: CampaignInfoVm | Error = { name: 'Mirathel', isMaster: false, awaitingApproval: false, diceMode: 1, dicePreference: 1 };
   snapshot: LiveSnapshotVm | Error = {
     session: { sessionId: 's4', sessionNumber: 4, startedAt: new Date(2026, 8, 30, 20, 5) },
     vitals: [pensantusVitals()],
@@ -168,7 +168,7 @@ describe('LiveSession', () => {
     expect(el.querySelector('.shield__number')?.textContent).toBe('14');
     expect(el.textContent).toContain('Mago 3, Gnomo das Rochas');
     expect(el.textContent).toContain('1 de 3 usados');
-    expect(el.querySelector('[aria-label="1º círculo: 2 de 4 espaços usados"]')).not.toBeNull();
+    expect(el.querySelector('[aria-label="1º círculo: 2 livres de 4"]')).not.toBeNull();
     expect(el.textContent).toContain('O mestre ainda não escolheu um mapa.');
     expect(el.textContent).not.toContain('Ajustar');
     // Here already: the notice about this session is spent.
@@ -185,7 +185,7 @@ describe('LiveSession', () => {
   });
 
   it('shows the master the party with "Ajustar" per character, and the session link (E5-04)', async () => {
-    source.campaign = { name: 'Mirathel', isMaster: true, awaitingApproval: false };
+    source.campaign = { name: 'Mirathel', isMaster: true, awaitingApproval: false, diceMode: 1, dicePreference: 1 };
     source.snapshot = {
       session: { sessionId: 's4', sessionNumber: 4, startedAt: new Date(2026, 8, 30, 20, 5) },
       vitals: [pensantusVitals(), brisaVitals()],
@@ -215,7 +215,7 @@ describe('LiveSession', () => {
   });
 
   it('says the same to a pending member (RN-15)', async () => {
-    source.campaign = { name: 'Mirathel', isMaster: false, awaitingApproval: true };
+    source.campaign = { name: 'Mirathel', isMaster: false, awaitingApproval: true, diceMode: 1, dicePreference: 1 };
     const el = await render();
     expect(el.querySelector('h1')?.textContent).toContain('Peça um convite ao mestre');
     expect(el.textContent).not.toContain('Mirathel');
@@ -243,7 +243,7 @@ describe('LiveSession', () => {
   });
 
   it('the master ends the session after confirming in place', async () => {
-    source.campaign = { name: 'Mirathel', isMaster: true, awaitingApproval: false };
+    source.campaign = { name: 'Mirathel', isMaster: true, awaitingApproval: false, diceMode: 1, dicePreference: 1 };
     const fixture = TestBed.createComponent(LiveSession);
     const el = await settle(fixture);
 

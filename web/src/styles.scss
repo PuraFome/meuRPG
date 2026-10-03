@@ -100,6 +100,15 @@ html {
   --mr-success-surface: light-dark(#e3f2ea, #16301f);
   --mr-success-ink: light-dark(#1f6b45, #9ed8b4);
 
+  // Tokens on a battle map: the map's picture is not themed, so these do not
+  // follow the theme. They are the light theme's ink and surface in both.
+  --mr-map-token-ink: #1b2230;
+  --mr-map-token-surface: #ffffff;
+  --mr-map-token-down: #d5dae1;
+  --mr-map-token-down-line: #8a93a3;
+  --mr-map-token-down-ink: #525b6b;
+  --mr-map-accent: #9e2b3b;
+
   --mr-font-display: 'Alegreya', Georgia, 'Times New Roman', serif;
   --mr-font-sans: 'Alegreya Sans', 'Segoe UI', system-ui, sans-serif;
 
@@ -253,6 +262,14 @@ a:hover {
 :focus-visible {
   outline: 2px solid var(--mr-focus);
   outline-offset: 2px;
+}
+
+// A heading (or any element) that takes focus from the app, not from the
+// person, to start a screen reader at it ("Sua vez, Pensantus", the summary):
+// no ring, since nobody tabbed there. Tabbing still shows the ring above.
+[tabindex='-1']:focus:not(:focus-visible),
+[tabindex='-1']:focus-visible {
+  outline: none;
 }
 
 // Material's buttons set `outline: none` in their own styles, which load

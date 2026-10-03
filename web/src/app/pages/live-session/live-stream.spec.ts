@@ -104,7 +104,15 @@ describe('LiveStream (ADR-0005 client rules)', () => {
     vi.useFakeTimers();
     setVisibility('visible');
     calls = [];
-    handlers = { onReady: vi.fn(), onVitals: vi.fn(), onEnded: vi.fn(), onFatal: vi.fn() };
+    handlers = {
+      onReady: vi.fn(),
+      onVitals: vi.fn(),
+      onEncounterChanged: vi.fn(),
+      onTurnChanged: vi.fn(),
+      onCombatantMoved: vi.fn(),
+      onEnded: vi.fn(),
+      onFatal: vi.fn(),
+    };
     stream = new LiveStream({
       open: (signal) => {
         const call = new FakeCall(signal);
@@ -140,6 +148,18 @@ describe('LiveStream (ADR-0005 client rules)', () => {
     last().push({ kind: 'vitals', vitals: vitals(3) });
     await flush();
     expect(handlers.onVitals).toHaveBeenCalledWith(vitals(3));
+  });
+
+  it('hands the combat\'s events to the page (MR-013)', async () => {
+    stream.start();
+    last().push({ kind: 'ready' });
+    last().push({ kind: 'encounterChanged', encounterId: 'e1', revision: 4 });
+    last().push({ kind: 'turnChanged', encounterId: 'e1', round: 2, currentCombatantId: '', masterTurn: true });
+    last().push({ kind: 'combatantMoved', encounterId: 'e1', combatantId: 'c1', col: 3, row: 5 });
+    await flush();
+    expect(handlers.onEncounterChanged).toHaveBeenCalledWith(expect.objectContaining({ encounterId: 'e1', revision: 4 }));
+    expect(handlers.onTurnChanged).toHaveBeenCalledWith(expect.objectContaining({ round: 2, masterTurn: true }));
+    expect(handlers.onCombatantMoved).toHaveBeenCalledWith(expect.objectContaining({ combatantId: 'c1', col: 3, row: 5 }));
   });
 
   it('`session_ended` ends it for good, without reconnecting', async () => {

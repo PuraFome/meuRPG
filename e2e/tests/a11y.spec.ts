@@ -6,6 +6,7 @@ import { saveDocumentRPC, tableWithDocumentParts } from './document-support';
 import { expectAligned } from './layout';
 import { endOpenSessionRPC, endSessionRPC, openSessionPage, startSessionRPC, tableWithPensantus } from './live-session-support';
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
+import { combatRPC, getEncounterRPC, tableForCombat } from './combat-support';
 import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus } from './support';
 
 // docs/design.md#como-uma-tela-é-feita: every screen passes axe with no
@@ -552,4 +553,124 @@ test('as rolagens e a descrição da magia passam no axe no tema claro, no deskt
 
 test('as rolagens e a descrição da magia passam no axe no tema escuro, no celular', { tag: ['@a11y', '@MR-004'] }, async ({ browser }) => {
   await scanEditorRolls(browser, 'dark', 390);
+});
+
+/** The combat (MR-013, E6-01 to E6-16): the grid page, the start dialog, the
+ * initiative of the master and of the player, the running combat for each, the
+ * "Mover" page in each of its states, the end confirmation and the summary.
+ * The master and the player each have a page at `width`; the NPCs' initiative is
+ * set through the API so the screens are the same on every run. */
+async function scanCombatScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade combate ${Date.now()}`, false);
+    campaignId = table.campaignId;
+
+    await open(m, `/campanhas/${campaignId}/mapas/${table.mapId}/grade?de=sessao`);
+    await expectScreenPasses(m, `Grade do mapa sem grade ${where}`);
+    await m.getByRole('button', { name: 'Salvar grade' }).click();
+    await expect(m).toHaveURL(/\/sessao$/);
+
+    await expect(m.getByRole('button', { name: 'Iniciar combate' })).toBeVisible();
+    await expectScreenPasses(m, `Sessão com o convite ao combate ${where}`);
+    await m.getByRole('button', { name: 'Iniciar combate' }).click();
+    await expect(m.getByRole('dialog', { name: 'Iniciar combate' })).toBeVisible();
+    for (let i = 0; i < 3; i++) {
+      await m.getByRole('button', { name: 'Mais um Goblin', exact: true }).click();
+    }
+    await m.getByRole('button', { name: 'Mais um Capitão Goblin' }).click();
+    await expectScreenPasses(m, `Iniciar combate ${where}`);
+    await m.getByRole('dialog').getByRole('button', { name: 'Iniciar combate' }).click();
+    await expect(m.getByText('Os NPCs rolaram sozinhos.')).toBeVisible();
+
+    // The player before rolling, then the master's initiative with a tie and a missing roll.
+    await openSessionPage(p, campaignId);
+    await expect(p.getByRole('heading', { name: 'Role a iniciativa' })).toBeVisible();
+    await expectScreenPasses(p, `Iniciativa do jogador, antes de rolar ${where}`);
+    let enc = await getEncounterRPC(m, campaignId);
+    const id = (label: string) => enc.combatants.find((c) => c.label === label)!.id;
+    const face = async (label: string, d20Face: number) => {
+      enc = await combatRPC(m, 'SubmitInitiative', { campaignId, encounterId: enc.id, combatantId: id(label), d20Face });
+    };
+    await face('Capitão Goblin', 20);
+    await face('Goblin 1', 7);
+    await face('Goblin 2', 7);
+    await face('Goblin 3', 3);
+    await expect(m.getByText('Falta a iniciativa de Pensantus.').first()).toBeVisible();
+    await expectScreenPasses(m, `Iniciativa do mestre, com empate e rolagem faltando ${where}`);
+    await m.getByRole('button', { name: 'Digitar pelo jogador' }).click();
+    await m.getByLabel(/Resultado do d20 de Pensantus/).fill('19');
+    await expectScreenPasses(m, `Iniciativa do mestre, editando ${where}`);
+    await m.getByRole('button', { name: 'Salvar', exact: true }).click();
+    await expect(p.getByText('Esperando o mestre começar o combate')).toBeVisible();
+    await expectScreenPasses(p, `Iniciativa do jogador, depois de rolar ${where}`);
+    for (const [label, col, row] of [['Goblin 1', 9, 9], ['Goblin 2', 14, 10], ['Goblin 3', 15, 4], ['Capitão Goblin', 11, 5]] as const) {
+      enc = await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: enc.id, combatantId: id(label), col, row });
+    }
+
+    // The combat runs: the master's screen, the player out of turn (the captain is hidden: "Vez do mestre").
+    await m.getByRole('button', { name: 'Começar o combate' }).click();
+    await expect(m.getByRole('button', { name: 'Próximo turno' })).toBeVisible();
+    await expect(m.getByText('Vez do Capitão Goblin')).toBeVisible();
+    await expectScreenPasses(m, `Combate do mestre ${where}`);
+    await expect(p.getByRole('heading', { name: 'Vez do mestre' })).toBeVisible();
+    await expectScreenPasses(p, `Combate do jogador, vez do mestre ${where}`);
+    enc = await getEncounterRPC(m, campaignId);
+    await combatRPC(m, 'SetCombatantHidden', { campaignId, encounterId: enc.id, combatantId: id('Capitão Goblin'), hidden: false });
+    await expect(p.getByRole('heading', { name: 'Vez do Capitão Goblin' })).toBeVisible();
+    await expectScreenPasses(p, `Combate do jogador, fora da vez ${where}`);
+
+    // The player's turn and the "Mover" page.
+    await m.getByRole('button', { name: 'Próximo turno' }).click();
+    await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
+    await expectScreenPasses(p, `Combate do jogador, sua vez ${where}`);
+    await p.getByRole('button', { name: 'Mover' }).click();
+    await expect(p.getByRole('heading', { name: 'Mover Pensantus' })).toBeVisible();
+    await expectScreenPasses(p, `Mover, nada escolhido ${where}`);
+    const map = p.getByRole('group', { name: /Mapa de batalha/ });
+    const box = (await map.boundingBox())!;
+    const own = (await getEncounterRPC(p, campaignId)).combatants.find((c) => c.mine)!;
+    const at = (dc: number, dr: number) => ({ x: ((own.col ?? 0) + dc + 0.5) * (box.width / 20), y: ((own.row ?? 0) + dr + 0.5) * (box.height / 14) });
+    await map.click({ position: at(2, 1) });
+    await expect(p.getByText('Mover 3 m')).toBeVisible();
+    await expectScreenPasses(p, `Mover, quadrado escolhido ${where}`);
+    await map.click({ position: at(8, 1) });
+    await expect(p.getByText('Longe demais: faltam')).toBeVisible();
+    await expectScreenPasses(p, `Mover, longe demais ${where}`);
+    await p.getByRole('button', { name: 'Cancelar' }).click();
+
+    // The end: the master's confirmation in place, then the summary for both.
+    await m.getByRole('button', { name: 'Encerrar combate' }).click();
+    await expect(m.getByRole('alertdialog', { name: 'Encerrar o combate?' })).toBeVisible();
+    await expectScreenPasses(m, `Encerrar o combate, confirmação ${where}`);
+    await m.getByRole('button', { name: 'Encerrar combate' }).last().click();
+    await expect(m.getByRole('heading', { name: 'Combate encerrado' })).toBeVisible();
+    await expect(p.getByRole('heading', { name: 'Combate encerrado' })).toBeVisible();
+    await expectScreenPasses(m, `Combate encerrado, mestre ${where}`);
+    await expectScreenPasses(p, `Combate encerrado, jogador ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('o combate passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-013'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanCombatScreens(browser, 'light', 1280);
+});
+
+test('o combate passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-013'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanCombatScreens(browser, 'dark', 390);
 });
