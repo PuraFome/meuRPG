@@ -65,8 +65,8 @@ Toda tabela abaixo é nova — nasce numa migration do goose de algum módulo, n
 | `session_events` | Sem equivalente lá |
 | `pending_damages` | Sem equivalente lá |
 | `scene_actions` | Sem equivalente lá |
-| `scene_clues`, `scene_clue_reveals`, `scene_discoveries`, `player_notes` | Sem equivalente lá |
 | `stage_npcs` | Sem equivalente lá |
+| `scene_clues`, `scene_clue_reveals`, `scene_discoveries`, `player_notes` | Sem equivalente lá |
 | `xp_awards`, `xp_award_shares` | Sem equivalente lá |
 
 ## Diagrama: modelo proposto
