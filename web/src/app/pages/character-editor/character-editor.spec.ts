@@ -546,6 +546,7 @@ describe('CharacterEditor', () => {
       Promise.resolve({
         kind: 'player',
         revision: 7,
+        blocked: null,
         full: {
           name: 'Pensantus',
           race: 'race:gnome',
@@ -605,6 +606,32 @@ describe('CharacterEditor', () => {
 
     const { el } = await render();
     expect(el.textContent).toContain('travada');
+  });
+
+  it('shows the lock instead of the form when the player may no longer edit the sheet (RN-01)', async () => {
+    configure({ id: 'camp-1', characterId: 'char-1' });
+    fake.loadCharacterForEditFn = () =>
+      Promise.resolve({ kind: 'player', revision: 3, blocked: 'sheet_locked', full: null, basic: null });
+
+    const { el } = await render();
+    expect(el.querySelector('h1')?.textContent).toContain('Ficha travada');
+    expect(el.querySelector('[role="status"].mr-notice')?.textContent).toContain('A ficha está travada');
+    expect(el.querySelector('[role="alert"]')).toBeNull();
+    expect(el.querySelector('form')).toBeNull();
+    expect(el.querySelector('button[mat-flat-button]')).toBeNull();
+    const back = Array.from(el.querySelectorAll('a')).find((a) => a.textContent?.includes('Voltar para a ficha'));
+    expect(back?.getAttribute('href')).toBe('/campanhas/camp-1/personagens/char-1');
+  });
+
+  it("says a dead character's sheet can't change, without a form (RN-03)", async () => {
+    configure({ id: 'camp-1', characterId: 'char-1' });
+    fake.loadCharacterForEditFn = () =>
+      Promise.resolve({ kind: 'player', revision: 3, blocked: 'character_dead', full: null, basic: null });
+
+    const { el } = await render();
+    expect(el.querySelector('h1')?.textContent).toContain('Personagem morto');
+    expect(el.textContent).toContain('está morto');
+    expect(el.querySelector('form')).toBeNull();
   });
 
   it("wires a custom background's two chosen skills end to end", async () => {
@@ -914,6 +941,7 @@ describe('CharacterEditor', () => {
         Promise.resolve({
           kind: 'minion',
           revision: 1,
+          blocked: null,
           full: null,
           basic: {
             name: 'Goblin',

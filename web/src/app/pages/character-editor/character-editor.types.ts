@@ -1,4 +1,4 @@
-import { AbilityKey, CharacterKind } from '../../core/characters/characters.types';
+import { AbilityKey, CharacterBlockedReason, CharacterKind } from '../../core/characters/characters.types';
 import { DamageTypeKey } from '../../core/characters/character-labels';
 
 /**
@@ -339,6 +339,10 @@ export interface CharacterForEdit {
   readonly revision: number;
   readonly full: CharacterFormValue | null;
   readonly basic: BasicCharacterFormValue | null;
+  /** Why the caller may not save this sheet now (`Character.can_edit` is
+   * false), or null when they may. The editor shows the reason instead of
+   * a form whose save the server would refuse (RN-01, RN-03). */
+  readonly blocked: CharacterBlockedReason | null;
 }
 
 /**
