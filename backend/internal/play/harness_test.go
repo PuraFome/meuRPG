@@ -323,9 +323,15 @@ func wantCode(t *testing.T, call string, err error, want connect.Code) {
 // wires it.
 type testDice struct{ camps *campaigns.Service }
 
-func (d testDice) RollsPhysical(ctx context.Context, campaignID, userID string) (bool, error) {
-	mode, err := d.camps.PlayerDiceMode(ctx, campaignID, userID)
-	return mode == campaigns.RollsPhysical, err
+func (d testDice) ForcedDice(ctx context.Context, campaignID, userID string) (DiceForce, error) {
+	mode, err := d.camps.CampaignDiceMode(ctx, campaignID, userID)
+	switch mode {
+	case campaigns.DiceModeApp:
+		return DiceForcedInApp, err
+	case campaigns.DiceModePhysical:
+		return DiceForcedPhysical, err
+	}
+	return DiceChoice, err
 }
 
 // scriptedRoller gives the faces a test queued, in order, and a 10 (or the

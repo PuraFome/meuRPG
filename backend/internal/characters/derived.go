@@ -123,23 +123,7 @@ func derivedToProto(d rules.Derived) *rulesv1.DerivedSheet {
 		out.Spells = append(out.Spells, &rulesv1.CharacterSpell{Spell: spellToProto(sp.Spell), Prepared: sp.Prepared})
 	}
 	for _, a := range d.Attacks {
-		out.Attacks = append(out.Attacks, &rulesv1.Attack{
-			DamageDice:          diceToProto(a.DamageDice),
-			VersatileDamageDice: diceToProto(a.VersatileDice),
-			DamageTypeKey:       a.DamageType,
-			Key:                 a.Key,
-			Name:                a.Name,
-			NamePt:              a.NamePT,
-			AttackBonus:         i32(a.AttackBonus),
-			Damage:              a.Damage,
-			DamageTypePt:        a.DamageTypeNamePT,
-			Kind:                attackKindToProto[a.Kind],
-			SaveDc:              i32(a.SaveDC),
-			SaveAbility:         abilityToProto[a.SaveAbility],
-			VersatileDamage:     a.VersatileDamage,
-			RangeFt:             i32(a.RangeFt),
-			LongRangeFt:         i32(a.LongRangeFt),
-		})
+		out.Attacks = append(out.Attacks, attackToProto(a))
 	}
 	for _, r := range d.Resources {
 		out.Resources = append(out.Resources, &rulesv1.Resource{
@@ -196,6 +180,26 @@ var economyToProto = map[string]rulesv1.ActionEconomy{
 	rules.EconomyReaction:    rulesv1.ActionEconomy_ACTION_ECONOMY_REACTION,
 	rules.EconomyFree:        rulesv1.ActionEconomy_ACTION_ECONOMY_FREE,
 	rules.EconomyMovement:    rulesv1.ActionEconomy_ACTION_ECONOMY_MOVEMENT,
+}
+
+func attackToProto(a rules.Attack) *rulesv1.Attack {
+	return &rulesv1.Attack{
+		DamageDice:          diceToProto(a.DamageDice),
+		VersatileDamageDice: diceToProto(a.VersatileDice),
+		DamageTypeKey:       a.DamageType,
+		Key:                 a.Key,
+		Name:                a.Name,
+		NamePt:              a.NamePT,
+		AttackBonus:         i32(a.AttackBonus),
+		Damage:              a.Damage,
+		DamageTypePt:        a.DamageTypeNamePT,
+		Kind:                attackKindToProto[a.Kind],
+		SaveDc:              i32(a.SaveDC),
+		SaveAbility:         abilityToProto[a.SaveAbility],
+		VersatileDamage:     a.VersatileDamage,
+		RangeFt:             i32(a.RangeFt),
+		LongRangeFt:         i32(a.LongRangeFt),
+	}
 }
 
 func actionToProto(a rules.Action) *rulesv1.Action {

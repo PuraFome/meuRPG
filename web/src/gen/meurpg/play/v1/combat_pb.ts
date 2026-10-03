@@ -2,23 +2,27 @@
 // @generated from file meurpg/play/v1/combat.proto (package meurpg.play.v1, syntax proto3)
 /* eslint-disable */
 
-// This file is the combat's API (MR-013, Etapa 6): the encounter, who fights,
-// the initiative, the order of turns, and the movement on the map's grid.
-// Attacks, spells, damage and the combat log come with the next slice. It is
-// in the same package as play.proto because the live events of a combat
+// This file is the combat's API (MR-012, MR-013, MR-014, Etapa 6): the
+// encounter, who fights, the initiative, the order of turns, the movement on
+// the map's grid, what a turn can do, the attacks and their damage, the
+// standard actions, the NPCs' hit points, the undo and the combat log.
+// Spells, reactions, death saves and conditions come with the next slice. It
+// is in the same package as play.proto because the live events of a combat
 // travel on the same stream (WatchGameSession).
 
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
+import type { TurnOptions } from "../../rules/v1/rules_pb";
+import { file_meurpg_rules_v1_rules } from "../../rules/v1/rules_pb";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file meurpg/play/v1/combat.proto.
  */
 export const file_meurpg_play_v1_combat: GenFile = /*@__PURE__*/
-  fileDesc("ChttZXVycGcvcGxheS92MS9jb21iYXQucHJvdG8SDm1ldXJwZy5wbGF5LnYxIoUBChBFbmNvdW50ZXJCbG9ja2VkEjYKBnJlYXNvbhgBIAEoDjImLm1ldXJwZy5wbGF5LnYxLkVuY291bnRlckJsb2NrZWRSZWFzb24SEgoKbWlzc2luZ19mdBgCIAEoBRIOCgZtYXBfaWQYAyABKAkSFQoNY29tYmF0YW50X2lkcxgEIAMoCSKGAwoJRW5jb3VudGVyEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSLwoGc3RhdHVzGAMgASgOMh8ubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyU3RhdHVzEg0KBXJvdW5kGAQgASgFEg4KBm1hcF9pZBgFIAEoCRIUCgxtYXBfcG9pbnRfaWQYBiABKAkSFAoMZ3JpZF9jb2x1bW5zGAcgASgFEhEKCWdyaWRfcm93cxgIIAEoBRIcChRjdXJyZW50X2NvbWJhdGFudF9pZBgJIAEoCRITCgttYXN0ZXJfdHVybhgKIAEoCBItCgpjb21iYXRhbnRzGAsgAygLMhkubWV1cnBnLnBsYXkudjEuQ29tYmF0YW50EhAKCHJldmlzaW9uGAwgASgFEi4KCnN0YXJ0ZWRfYXQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEiwKCGVuZGVkX2F0GA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCK7BgoJQ29tYmF0YW50EgoKAmlkGAEgASgJEg0KBWxhYmVsGAIgASgJEisKBGtpbmQYAyABKA4yHS5tZXVycGcucGxheS52MS5Db21iYXRhbnRLaW5kEgwKBG1pbmUYBCABKAgSFAoMY2hhcmFjdGVyX2lkGAUgASgJEg4KBmhpZGRlbhgGIAEoCBIXCgppbml0aWF0aXZlGAcgASgFSACIAQESHQoQaW5pdGlhdGl2ZV9ib251cxgIIAEoBUgBiAEBEhwKD2luaXRpYXRpdmVfZmFjZRgJIAEoBUgCiAEBEhYKDnRpZV91bnJlc29sdmVkGAogASgIEg4KBnBsYWNlZBgLIAEoCBILCgNjb2wYDCABKAUSCwoDcm93GA0gASgFEhAKCHNwZWVkX2Z0GA4gASgFEhgKEG1vdmVtZW50X3VzZWRfZnQYDyABKAUSGAoQbW92ZW1lbnRfbGVmdF9mdBgQIAEoBRIOCgZkYXNoZWQYESABKAgSEwoLYWN0aW9uX3VzZWQYEiABKAgSGQoRYm9udXNfYWN0aW9uX3VzZWQYEyABKAgSFQoNcmVhY3Rpb25fdXNlZBgUIAEoCBItCgVzdGF0ZRgVIAEoDjIeLm1ldXJwZy5wbGF5LnYxLkNvbWJhdGFudFN0YXRlEh8KEmhpdF9wb2ludHNfY3VycmVudBgWIAEoBUgDiAEBEhsKDmhpdF9wb2ludHNfbWF4GBcgASgFSASIAQESIQoUaGl0X3BvaW50c190ZW1wb3JhcnkYGCABKAVIBYgBARIQCghkZWZlYXRlZBgZIAEoCBIXCg9kZWF0aF9zdWNjZXNzZXMYGiABKAUSFgoOZGVhdGhfZmFpbHVyZXMYGyABKAUSEgoKY29uZGl0aW9ucxgcIAMoCRIbChNjb25jZW50cmF0aW9uX3NwZWxsGB0gASgJQg0KC19pbml0aWF0aXZlQhMKEV9pbml0aWF0aXZlX2JvbnVzQhIKEF9pbml0aWF0aXZlX2ZhY2VCFQoTX2hpdF9wb2ludHNfY3VycmVudEIRCg9faGl0X3BvaW50c19tYXhCFwoVX2hpdF9wb2ludHNfdGVtcG9yYXJ5IlIKC1BhcnRpY2lwYW50EhQKDGNoYXJhY3Rlcl9pZBgBIAEoCRINCgVjb3VudBgCIAEoBRITCgZoaWRkZW4YAyABKAhIAIgBAUIJCgdfaGlkZGVuIpwBChVTdGFydEVuY291bnRlclJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAIgASgJEgwKBG5hbWUYAyABKAkSFAoMbWFwX3BvaW50X2lkGAQgASgJEjEKDHBhcnRpY2lwYW50cxgFIAMoCzIbLm1ldXJwZy5wbGF5LnYxLlBhcnRpY2lwYW50IkYKFlN0YXJ0RW5jb3VudGVyUmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyIioKE0dldEVuY291bnRlclJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiRAoUR2V0RW5jb3VudGVyUmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyIqYBChdTdWJtaXRJbml0aWF0aXZlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxlbmNvdW50ZXJfaWQYAiABKAkSFAoMY29tYmF0YW50X2lkGAMgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgEIAEoCRIVCgtyb2xsX2luX2FwcBgFIAEoCEgAEhIKCGQyMF9mYWNlGAYgASgFSABCBgoEcm9sbCJIChhTdWJtaXRJbml0aWF0aXZlUmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyInYKGVNldEluaXRpYXRpdmVPcmRlclJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMZW5jb3VudGVyX2lkGAIgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgDIAEoCRIVCg1jb21iYXRhbnRfaWRzGAQgAygJIkoKGlNldEluaXRpYXRpdmVPcmRlclJlc3BvbnNlEiwKCWVuY291bnRlchgBIAEoCzIZLm1ldXJwZy5wbGF5LnYxLkVuY291bnRlciJYChJCZWdpbkNvbWJhdFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMZW5jb3VudGVyX2lkGAIgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgDIAEoCSJDChNCZWdpbkNvbWJhdFJlc3BvbnNlEiwKCWVuY291bnRlchgBIAEoCzIZLm1ldXJwZy5wbGF5LnYxLkVuY291bnRlciJzCg5FbmRUdXJuUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxlbmNvdW50ZXJfaWQYAiABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAMgASgJEh0KFWV4cGVjdGVkX2NvbWJhdGFudF9pZBgEIAEoCSI/Cg9FbmRUdXJuUmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyIooBChRNb3ZlQ29tYmF0YW50UmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxlbmNvdW50ZXJfaWQYAiABKAkSFAoMY29tYmF0YW50X2lkGAMgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgEIAEoCRILCgNjb2wYBSABKAUSCwoDcm93GAYgASgFIkUKFU1vdmVDb21iYXRhbnRSZXNwb25zZRIsCgllbmNvdW50ZXIYASABKAsyGS5tZXVycGcucGxheS52MS5FbmNvdW50ZXIihQEKGVNldENvbWJhdGFudEhpZGRlblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMZW5jb3VudGVyX2lkGAIgASgJEhQKDGNvbWJhdGFudF9pZBgDIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYBCABKAkSDgoGaGlkZGVuGAUgASgIIkoKGlNldENvbWJhdGFudEhpZGRlblJlc3BvbnNlEiwKCWVuY291bnRlchgBIAEoCzIZLm1ldXJwZy5wbGF5LnYxLkVuY291bnRlciKNAQoUQWRkQ29tYmF0YW50c1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMZW5jb3VudGVyX2lkGAIgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgDIAEoCRIxCgxwYXJ0aWNpcGFudHMYBCADKAsyGy5tZXVycGcucGxheS52MS5QYXJ0aWNpcGFudCJFChVBZGRDb21iYXRhbnRzUmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyInIKFlJlbW92ZUNvbWJhdGFudFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMZW5jb3VudGVyX2lkGAIgASgJEhQKDGNvbWJhdGFudF9pZBgDIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYBCABKAkiRwoXUmVtb3ZlQ29tYmF0YW50UmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyIlkKE0VuZEVuY291bnRlclJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMZW5jb3VudGVyX2lkGAIgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgDIAEoCSJEChRFbmRFbmNvdW50ZXJSZXNwb25zZRIsCgllbmNvdW50ZXIYASABKAsyGS5tZXVycGcucGxheS52MS5FbmNvdW50ZXIqiAEKD0VuY291bnRlclN0YXR1cxIgChxFTkNPVU5URVJfU1RBVFVTX1VOU1BFQ0lGSUVEEAASGgoWRU5DT1VOVEVSX1NUQVRVU19TRVRVUBABEhsKF0VOQ09VTlRFUl9TVEFUVVNfQUNUSVZFEAISGgoWRU5DT1VOVEVSX1NUQVRVU19FTkRFRBADKmIKDUNvbWJhdGFudEtpbmQSHgoaQ09NQkFUQU5UX0tJTkRfVU5TUEVDSUZJRUQQABIZChVDT01CQVRBTlRfS0lORF9QTEFZRVIQARIWChJDT01CQVRBTlRfS0lORF9OUEMQAiqlAQoOQ29tYmF0YW50U3RhdGUSHwobQ09NQkFUQU5UX1NUQVRFX1VOU1BFQ0lGSUVEEAASGgoWQ09NQkFUQU5UX1NUQVRFX1VOSFVSVBABEhgKFENPTUJBVEFOVF9TVEFURV9IVVJUEAISHgoaQ09NQkFUQU5UX1NUQVRFX0JBRExZX0hVUlQQAxIcChhDT01CQVRBTlRfU1RBVEVfREVGRUFURUQQBCrABQoWRW5jb3VudGVyQmxvY2tlZFJlYXNvbhIoCiRFTkNPVU5URVJfQkxPQ0tFRF9SRUFTT05fVU5TUEVDSUZJRUQQABIzCi9FTkNPVU5URVJfQkxPQ0tFRF9SRUFTT05fRU5DT1VOVEVSX0FMUkVBRFlfT1BFThABEisKJ0VOQ09VTlRFUl9CTE9DS0VEX1JFQVNPTl9OT19DVVJSRU5UX01BUBACEiwKKEVOQ09VTlRFUl9CTE9DS0VEX1JFQVNPTl9NQVBfSEFTX05PX0dSSUQQAxIpCiVFTkNPVU5URVJfQkxPQ0tFRF9SRUFTT05fTk9UX0lOX1NFVFVQEAQSJwojRU5DT1VOVEVSX0JMT0NLRURfUkVBU09OX05PVF9BQ1RJVkUQBRIsCihFTkNPVU5URVJfQkxPQ0tFRF9SRUFTT05fRU5DT1VOVEVSX0VOREVEEAYSLworRU5DT1VOVEVSX0JMT0NLRURfUkVBU09OX0lOSVRJQVRJVkVfTUlTU0lORxAHEjMKL0VOQ09VTlRFUl9CTE9DS0VEX1JFQVNPTl9JTklUSUFUSVZFX0FMUkVBRFlfU0VUEAgSLAooRU5DT1VOVEVSX0JMT0NLRURfUkVBU09OX1dST05HX0RJQ0VfTU9ERRAJEioKJkVOQ09VTlRFUl9CTE9DS0VEX1JFQVNPTl9OT1RfWU9VUl9UVVJOEAoSJwojRU5DT1VOVEVSX0JMT0NLRURfUkVBU09OX05PVF9QTEFDRUQQCxIkCiBFTkNPVU5URVJfQkxPQ0tFRF9SRUFTT05fVE9PX0ZBUhAMEiwKKEVOQ09VTlRFUl9CTE9DS0VEX1JFQVNPTl9TUVVBUkVfT0NDVVBJRUQQDRItCilFTkNPVU5URVJfQkxPQ0tFRF9SRUFTT05fUExBWUVSX0lOX0NPTUJBVBAOMrAICg1Db21iYXRTZXJ2aWNlEl8KDlN0YXJ0RW5jb3VudGVyEiUubWV1cnBnLnBsYXkudjEuU3RhcnRFbmNvdW50ZXJSZXF1ZXN0GiYubWV1cnBnLnBsYXkudjEuU3RhcnRFbmNvdW50ZXJSZXNwb25zZRJeCgxHZXRFbmNvdW50ZXISIy5tZXVycGcucGxheS52MS5HZXRFbmNvdW50ZXJSZXF1ZXN0GiQubWV1cnBnLnBsYXkudjEuR2V0RW5jb3VudGVyUmVzcG9uc2UiA5ACAhJlChBTdWJtaXRJbml0aWF0aXZlEicubWV1cnBnLnBsYXkudjEuU3VibWl0SW5pdGlhdGl2ZVJlcXVlc3QaKC5tZXVycGcucGxheS52MS5TdWJtaXRJbml0aWF0aXZlUmVzcG9uc2USawoSU2V0SW5pdGlhdGl2ZU9yZGVyEikubWV1cnBnLnBsYXkudjEuU2V0SW5pdGlhdGl2ZU9yZGVyUmVxdWVzdBoqLm1ldXJwZy5wbGF5LnYxLlNldEluaXRpYXRpdmVPcmRlclJlc3BvbnNlElYKC0JlZ2luQ29tYmF0EiIubWV1cnBnLnBsYXkudjEuQmVnaW5Db21iYXRSZXF1ZXN0GiMubWV1cnBnLnBsYXkudjEuQmVnaW5Db21iYXRSZXNwb25zZRJKCgdFbmRUdXJuEh4ubWV1cnBnLnBsYXkudjEuRW5kVHVyblJlcXVlc3QaHy5tZXVycGcucGxheS52MS5FbmRUdXJuUmVzcG9uc2USXAoNTW92ZUNvbWJhdGFudBIkLm1ldXJwZy5wbGF5LnYxLk1vdmVDb21iYXRhbnRSZXF1ZXN0GiUubWV1cnBnLnBsYXkudjEuTW92ZUNvbWJhdGFudFJlc3BvbnNlEmsKElNldENvbWJhdGFudEhpZGRlbhIpLm1ldXJwZy5wbGF5LnYxLlNldENvbWJhdGFudEhpZGRlblJlcXVlc3QaKi5tZXVycGcucGxheS52MS5TZXRDb21iYXRhbnRIaWRkZW5SZXNwb25zZRJcCg1BZGRDb21iYXRhbnRzEiQubWV1cnBnLnBsYXkudjEuQWRkQ29tYmF0YW50c1JlcXVlc3QaJS5tZXVycGcucGxheS52MS5BZGRDb21iYXRhbnRzUmVzcG9uc2USYgoPUmVtb3ZlQ29tYmF0YW50EiYubWV1cnBnLnBsYXkudjEuUmVtb3ZlQ29tYmF0YW50UmVxdWVzdBonLm1ldXJwZy5wbGF5LnYxLlJlbW92ZUNvbWJhdGFudFJlc3BvbnNlElkKDEVuZEVuY291bnRlchIjLm1ldXJwZy5wbGF5LnYxLkVuZEVuY291bnRlclJlcXVlc3QaJC5tZXVycGcucGxheS52MS5FbmRFbmNvdW50ZXJSZXNwb25zZUK5AQoSY29tLm1ldXJwZy5wbGF5LnYxQgtDb21iYXRQcm90b1ABWjxnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvcGxheS92MTtwbGF5djGiAgNNUFiqAg5NZXVycGcuUGxheS5WMcoCDk1ldXJwZ1xQbGF5XFYx4gIaTWV1cnBnXFBsYXlcVjFcR1BCTWV0YWRhdGHqAhBNZXVycGc6OlBsYXk6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp]);
+  fileDesc("ChttZXVycGcvcGxheS92MS9jb21iYXQucHJvdG8SDm1ldXJwZy5wbGF5LnYxIoUBChBFbmNvdW50ZXJCbG9ja2VkEjYKBnJlYXNvbhgBIAEoDjImLm1ldXJwZy5wbGF5LnYxLkVuY291bnRlckJsb2NrZWRSZWFzb24SEgoKbWlzc2luZ19mdBgCIAEoBRIOCgZtYXBfaWQYAyABKAkSFQoNY29tYmF0YW50X2lkcxgEIAMoCSKGAwoJRW5jb3VudGVyEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSLwoGc3RhdHVzGAMgASgOMh8ubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyU3RhdHVzEg0KBXJvdW5kGAQgASgFEg4KBm1hcF9pZBgFIAEoCRIUCgxtYXBfcG9pbnRfaWQYBiABKAkSFAoMZ3JpZF9jb2x1bW5zGAcgASgFEhEKCWdyaWRfcm93cxgIIAEoBRIcChRjdXJyZW50X2NvbWJhdGFudF9pZBgJIAEoCRITCgttYXN0ZXJfdHVybhgKIAEoCBItCgpjb21iYXRhbnRzGAsgAygLMhkubWV1cnBnLnBsYXkudjEuQ29tYmF0YW50EhAKCHJldmlzaW9uGAwgASgFEi4KCnN0YXJ0ZWRfYXQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEiwKCGVuZGVkX2F0GA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCK7BgoJQ29tYmF0YW50EgoKAmlkGAEgASgJEg0KBWxhYmVsGAIgASgJEisKBGtpbmQYAyABKA4yHS5tZXVycGcucGxheS52MS5Db21iYXRhbnRLaW5kEgwKBG1pbmUYBCABKAgSFAoMY2hhcmFjdGVyX2lkGAUgASgJEg4KBmhpZGRlbhgGIAEoCBIXCgppbml0aWF0aXZlGAcgASgFSACIAQESHQoQaW5pdGlhdGl2ZV9ib251cxgIIAEoBUgBiAEBEhwKD2luaXRpYXRpdmVfZmFjZRgJIAEoBUgCiAEBEhYKDnRpZV91bnJlc29sdmVkGAogASgIEg4KBnBsYWNlZBgLIAEoCBILCgNjb2wYDCABKAUSCwoDcm93GA0gASgFEhAKCHNwZWVkX2Z0GA4gASgFEhgKEG1vdmVtZW50X3VzZWRfZnQYDyABKAUSGAoQbW92ZW1lbnRfbGVmdF9mdBgQIAEoBRIOCgZkYXNoZWQYESABKAgSEwoLYWN0aW9uX3VzZWQYEiABKAgSGQoRYm9udXNfYWN0aW9uX3VzZWQYEyABKAgSFQoNcmVhY3Rpb25fdXNlZBgUIAEoCBItCgVzdGF0ZRgVIAEoDjIeLm1ldXJwZy5wbGF5LnYxLkNvbWJhdGFudFN0YXRlEh8KEmhpdF9wb2ludHNfY3VycmVudBgWIAEoBUgDiAEBEhsKDmhpdF9wb2ludHNfbWF4GBcgASgFSASIAQESIQoUaGl0X3BvaW50c190ZW1wb3JhcnkYGCABKAVIBYgBARIQCghkZWZlYXRlZBgZIAEoCBIXCg9kZWF0aF9zdWNjZXNzZXMYGiABKAUSFgoOZGVhdGhfZmFpbHVyZXMYGyABKAUSEgoKY29uZGl0aW9ucxgcIAMoCRIbChNjb25jZW50cmF0aW9uX3NwZWxsGB0gASgJQg0KC19pbml0aWF0aXZlQhMKEV9pbml0aWF0aXZlX2JvbnVzQhIKEF9pbml0aWF0aXZlX2ZhY2VCFQoTX2hpdF9wb2ludHNfY3VycmVudEIRCg9faGl0X3BvaW50c19tYXhCFwoVX2hpdF9wb2ludHNfdGVtcG9yYXJ5IlIKC1BhcnRpY2lwYW50EhQKDGNoYXJhY3Rlcl9pZBgBIAEoCRINCgVjb3VudBgCIAEoBRITCgZoaWRkZW4YAyABKAhIAIgBAUIJCgdfaGlkZGVuIpwBChVTdGFydEVuY291bnRlclJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAIgASgJEgwKBG5hbWUYAyABKAkSFAoMbWFwX3BvaW50X2lkGAQgASgJEjEKDHBhcnRpY2lwYW50cxgFIAMoCzIbLm1ldXJwZy5wbGF5LnYxLlBhcnRpY2lwYW50IkYKFlN0YXJ0RW5jb3VudGVyUmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyIioKE0dldEVuY291bnRlclJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiRAoUR2V0RW5jb3VudGVyUmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyIqYBChdTdWJtaXRJbml0aWF0aXZlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxlbmNvdW50ZXJfaWQYAiABKAkSFAoMY29tYmF0YW50X2lkGAMgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgEIAEoCRIVCgtyb2xsX2luX2FwcBgFIAEoCEgAEhIKCGQyMF9mYWNlGAYgASgFSABCBgoEcm9sbCJIChhTdWJtaXRJbml0aWF0aXZlUmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyInYKGVNldEluaXRpYXRpdmVPcmRlclJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMZW5jb3VudGVyX2lkGAIgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgDIAEoCRIVCg1jb21iYXRhbnRfaWRzGAQgAygJIkoKGlNldEluaXRpYXRpdmVPcmRlclJlc3BvbnNlEiwKCWVuY291bnRlchgBIAEoCzIZLm1ldXJwZy5wbGF5LnYxLkVuY291bnRlciJYChJCZWdpbkNvbWJhdFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMZW5jb3VudGVyX2lkGAIgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgDIAEoCSJDChNCZWdpbkNvbWJhdFJlc3BvbnNlEiwKCWVuY291bnRlchgBIAEoCzIZLm1ldXJwZy5wbGF5LnYxLkVuY291bnRlciKTAQoORW5kVHVyblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMZW5jb3VudGVyX2lkGAIgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgDIAEoCRIdChVleHBlY3RlZF9jb21iYXRhbnRfaWQYBCABKAkSHgoWZGlzY2FyZF9wZW5kaW5nX2RhbWFnZRgFIAEoCCI/Cg9FbmRUdXJuUmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyIooBChRNb3ZlQ29tYmF0YW50UmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxlbmNvdW50ZXJfaWQYAiABKAkSFAoMY29tYmF0YW50X2lkGAMgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgEIAEoCRILCgNjb2wYBSABKAUSCwoDcm93GAYgASgFIkUKFU1vdmVDb21iYXRhbnRSZXNwb25zZRIsCgllbmNvdW50ZXIYASABKAsyGS5tZXVycGcucGxheS52MS5FbmNvdW50ZXIihQEKGVNldENvbWJhdGFudEhpZGRlblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMZW5jb3VudGVyX2lkGAIgASgJEhQKDGNvbWJhdGFudF9pZBgDIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYBCABKAkSDgoGaGlkZGVuGAUgASgIIkoKGlNldENvbWJhdGFudEhpZGRlblJlc3BvbnNlEiwKCWVuY291bnRlchgBIAEoCzIZLm1ldXJwZy5wbGF5LnYxLkVuY291bnRlciKNAQoUQWRkQ29tYmF0YW50c1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMZW5jb3VudGVyX2lkGAIgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgDIAEoCRIxCgxwYXJ0aWNpcGFudHMYBCADKAsyGy5tZXVycGcucGxheS52MS5QYXJ0aWNpcGFudCJFChVBZGRDb21iYXRhbnRzUmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyInIKFlJlbW92ZUNvbWJhdGFudFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMZW5jb3VudGVyX2lkGAIgASgJEhQKDGNvbWJhdGFudF9pZBgDIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYBCABKAkiRwoXUmVtb3ZlQ29tYmF0YW50UmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyIlkKE0VuZEVuY291bnRlclJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMZW5jb3VudGVyX2lkGAIgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgDIAEoCSJEChRFbmRFbmNvdW50ZXJSZXNwb25zZRIsCgllbmNvdW50ZXIYASABKAsyGS5tZXVycGcucGxheS52MS5FbmNvdW50ZXIidAoIRGljZVJvbGwSEgoKZGljZV9jb3VudBgBIAEoBRISCgpkaWNlX3NpZGVzGAIgASgFEg0KBWZhY2VzGAMgAygFEhAKCG1vZGlmaWVyGAQgASgFEg0KBXRvdGFsGAUgASgFEhAKCHBoeXNpY2FsGAYgASgIItcCCg1QZW5kaW5nRGFtYWdlEgoKAmlkGAEgASgJEhMKC2F0dGFja2VyX2lkGAIgASgJEhEKCXRhcmdldF9pZBgDIAEoCRISCgphdHRhY2tfa2V5GAQgASgJEjMKBnN0YXR1cxgFIAEoDjIjLm1ldXJwZy5wbGF5LnYxLlBlbmRpbmdEYW1hZ2VTdGF0dXMSEAoIY3JpdGljYWwYBiABKAgSEgoKZGljZV9jb3VudBgHIAEoBRISCgpkaWNlX3NpZGVzGAggASgFEg0KBWJvbnVzGAkgASgFEhcKD2RhbWFnZV90eXBlX2tleRgKIAEoCRIWCg5kYW1hZ2VfdHlwZV9wdBgLIAEoCRImCgRyb2xsGAwgASgLMhgubWV1cnBnLnBsYXkudjEuRGljZVJvbGwSDgoGYW1vdW50GA0gASgFEhcKD3RhcmdldF9kZWZlYXRlZBgOIAEoCCJYChVHZXRUdXJuT3B0aW9uc1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMZW5jb3VudGVyX2lkGAIgASgJEhQKDGNvbWJhdGFudF9pZBgDIAEoCSLJAQoWR2V0VHVybk9wdGlvbnNSZXNwb25zZRItCgdvcHRpb25zGAEgASgLMhwubWV1cnBnLnJ1bGVzLnYxLlR1cm5PcHRpb25zEhEKCXlvdXJfdHVybhgCIAEoCBI1Cg5hdHRhY2tfdGFyZ2V0cxgDIAMoCzIdLm1ldXJwZy5wbGF5LnYxLkF0dGFja1RhcmdldHMSNgoPcGVuZGluZ19kYW1hZ2VzGAQgAygLMh0ubWV1cnBnLnBsYXkudjEuUGVuZGluZ0RhbWFnZSJTCg1BdHRhY2tUYXJnZXRzEhIKCmF0dGFja19rZXkYASABKAkSLgoHdGFyZ2V0cxgCIAMoCzIdLm1ldXJwZy5wbGF5LnYxLlRhcmdldEluUmVhY2gingEKDVRhcmdldEluUmVhY2gSFAoMY29tYmF0YW50X2lkGAEgASgJEg0KBWxhYmVsGAIgASgJEi0KBXN0YXRlGAMgASgOMh4ubWV1cnBnLnBsYXkudjEuQ29tYmF0YW50U3RhdGUSGAoLZGlzdGFuY2VfZnQYBCABKAVIAIgBARIPCgd0b29fZmFyGAUgASgIQg4KDF9kaXN0YW5jZV9mdCLGAQoRUm9sbEF0dGFja1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMZW5jb3VudGVyX2lkGAIgASgJEhMKC2F0dGFja2VyX2lkGAMgASgJEhIKCmF0dGFja19rZXkYBCABKAkSEQoJdGFyZ2V0X2lkGAUgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgGIAEoCRIVCgtyb2xsX2luX2FwcBgHIAEoCEgAEhIKCGQyMF9mYWNlGAggASgFSABCBgoEcm9sbCKfAQoKQXR0YWNrUm9sbBITCgthdHRhY2tlcl9pZBgBIAEoCRIRCgl0YXJnZXRfaWQYAiABKAkSEgoKYXR0YWNrX2tleRgDIAEoCRIlCgNkMjAYBCABKAsyGC5tZXVycGcucGxheS52MS5EaWNlUm9sbBIuCgdvdXRjb21lGAUgASgOMh0ubWV1cnBnLnBsYXkudjEuQXR0YWNrT3V0Y29tZSKjAQoSUm9sbEF0dGFja1Jlc3BvbnNlEiwKCWVuY291bnRlchgBIAEoCzIZLm1ldXJwZy5wbGF5LnYxLkVuY291bnRlchIoCgRyb2xsGAIgASgLMhoubWV1cnBnLnBsYXkudjEuQXR0YWNrUm9sbBI1Cg5wZW5kaW5nX2RhbWFnZRgDIAEoCzIdLm1ldXJwZy5wbGF5LnYxLlBlbmRpbmdEYW1hZ2UipgEKEVJvbGxEYW1hZ2VSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGVuY291bnRlcl9pZBgCIAEoCRIZChFwZW5kaW5nX2RhbWFnZV9pZBgDIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYBCABKAkSFQoLcm9sbF9pbl9hcHAYBSABKAhIABITCgl0eXBlZF9zdW0YBiABKAVIAEIGCgRyb2xsInkKElJvbGxEYW1hZ2VSZXNwb25zZRIsCgllbmNvdW50ZXIYASABKAsyGS5tZXVycGcucGxheS52MS5FbmNvdW50ZXISNQoOcGVuZGluZ19kYW1hZ2UYAiABKAsyHS5tZXVycGcucGxheS52MS5QZW5kaW5nRGFtYWdlInoKGUFwcGx5UGVuZGluZ0RhbWFnZVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMZW5jb3VudGVyX2lkGAIgASgJEhkKEXBlbmRpbmdfZGFtYWdlX2lkGAMgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgEIAEoCSKBAQoaQXBwbHlQZW5kaW5nRGFtYWdlUmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyEjUKDnBlbmRpbmdfZGFtYWdlGAIgASgLMh0ubWV1cnBnLnBsYXkudjEuUGVuZGluZ0RhbWFnZSJ8ChtEaXNjYXJkUGVuZGluZ0RhbWFnZVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMZW5jb3VudGVyX2lkGAIgASgJEhkKEXBlbmRpbmdfZGFtYWdlX2lkGAMgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgEIAEoCSKDAQocRGlzY2FyZFBlbmRpbmdEYW1hZ2VSZXNwb25zZRIsCgllbmNvdW50ZXIYASABKAsyGS5tZXVycGcucGxheS52MS5FbmNvdW50ZXISNQoOcGVuZGluZ19kYW1hZ2UYAiABKAsyHS5tZXVycGcucGxheS52MS5QZW5kaW5nRGFtYWdlIoEBChFUYWtlQWN0aW9uUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxlbmNvdW50ZXJfaWQYAiABKAkSFAoMY29tYmF0YW50X2lkGAMgASgJEhIKCmFjdGlvbl9rZXkYBCABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAUgASgJIkIKElRha2VBY3Rpb25SZXNwb25zZRIsCgllbmNvdW50ZXIYASABKAsyGS5tZXVycGcucGxheS52MS5FbmNvdW50ZXIi+QEKH0FkanVzdENvbWJhdGFudEhpdFBvaW50c1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMZW5jb3VudGVyX2lkGAIgASgJEhQKDGNvbWJhdGFudF9pZBgDIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYBCABKAkSEAoGZGFtYWdlGAUgASgFSAASDgoEaGVhbBgGIAEoBUgAEhQKCmhpdF9wb2ludHMYByABKAVIABIhChRoaXRfcG9pbnRzX3RlbXBvcmFyeRgIIAEoBUgBiAEBQggKBmNoYW5nZUIXChVfaGl0X3BvaW50c190ZW1wb3JhcnkiUAogQWRqdXN0Q29tYmF0YW50SGl0UG9pbnRzUmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyInYKFVVuZG9MYXN0QWN0aW9uUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxlbmNvdW50ZXJfaWQYAiABKAkSGQoRZXhwZWN0ZWRfZXZlbnRfaWQYAyABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAQgASgJIkYKFlVuZG9MYXN0QWN0aW9uUmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyIkEKFExpc3RDb21iYXRMb2dSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGVuY291bnRlcl9pZBgCIAEoCSJiChVMaXN0Q29tYmF0TG9nUmVzcG9uc2USLgoGcm91bmRzGAEgAygLMh4ubWV1cnBnLnBsYXkudjEuQ29tYmF0TG9nUm91bmQSGQoRdW5kb2FibGVfZXZlbnRfaWQYAiABKAkiUAoOQ29tYmF0TG9nUm91bmQSDQoFcm91bmQYASABKAUSLwoHZW50cmllcxgCIAMoCzIeLm1ldXJwZy5wbGF5LnYxLkNvbWJhdExvZ0VudHJ5IpsECg5Db21iYXRMb2dFbnRyeRIKCgJpZBgBIAEoCRIrCgRraW5kGAIgASgOMh0ubWV1cnBnLnBsYXkudjEuQ29tYmF0TG9nS2luZBImCgJhdBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDQoFcm91bmQYBCABKAUSEAoIYWN0b3JfaWQYBSABKAkSEwoLYWN0b3JfbGFiZWwYBiABKAkSEQoJdGFyZ2V0X2lkGAcgASgJEhQKDHRhcmdldF9sYWJlbBgIIAEoCRILCgNrZXkYCSABKAkSEwoLa2V5X25hbWVfcHQYCiABKAkSLgoHb3V0Y29tZRgLIAEoDjIdLm1ldXJwZy5wbGF5LnYxLkF0dGFja091dGNvbWUSLQoLYXR0YWNrX3JvbGwYDCABKAsyGC5tZXVycGcucGxheS52MS5EaWNlUm9sbBIvCgZkYW1hZ2UYDSABKAsyHy5tZXVycGcucGxheS52MS5Db21iYXRMb2dEYW1hZ2USEwoLZGlzdGFuY2VfZnQYDiABKAUSEgoKbm93X2hpZGRlbhgPIAEoCBIYChBoaXRfcG9pbnRzX2RlbHRhGBAgASgFEh0KEGhpdF9wb2ludHNfYWZ0ZXIYESABKAVIAIgBARIOCgZoaWRkZW4YEiABKAgSEAoIdW5kb2FibGUYEyABKAhCEwoRX2hpdF9wb2ludHNfYWZ0ZXIi3QEKD0NvbWJhdExvZ0RhbWFnZRIzCgZzdGF0dXMYASABKA4yIy5tZXVycGcucGxheS52MS5QZW5kaW5nRGFtYWdlU3RhdHVzEiYKBHJvbGwYAiABKAsyGC5tZXVycGcucGxheS52MS5EaWNlUm9sbBIOCgZhbW91bnQYAyABKAUSFwoPZGFtYWdlX3R5cGVfa2V5GAQgASgJEhYKDmRhbWFnZV90eXBlX3B0GAUgASgJEhcKD3RhcmdldF9kZWZlYXRlZBgGIAEoCBITCgt0YXJnZXRfZG93bhgHIAEoCCqIAQoPRW5jb3VudGVyU3RhdHVzEiAKHEVOQ09VTlRFUl9TVEFUVVNfVU5TUEVDSUZJRUQQABIaChZFTkNPVU5URVJfU1RBVFVTX1NFVFVQEAESGwoXRU5DT1VOVEVSX1NUQVRVU19BQ1RJVkUQAhIaChZFTkNPVU5URVJfU1RBVFVTX0VOREVEEAMqYgoNQ29tYmF0YW50S2luZBIeChpDT01CQVRBTlRfS0lORF9VTlNQRUNJRklFRBAAEhkKFUNPTUJBVEFOVF9LSU5EX1BMQVlFUhABEhYKEkNPTUJBVEFOVF9LSU5EX05QQxACKr8BCg5Db21iYXRhbnRTdGF0ZRIfChtDT01CQVRBTlRfU1RBVEVfVU5TUEVDSUZJRUQQABIaChZDT01CQVRBTlRfU1RBVEVfVU5IVVJUEAESGAoUQ09NQkFUQU5UX1NUQVRFX0hVUlQQAhIeChpDT01CQVRBTlRfU1RBVEVfQkFETFlfSFVSVBADEhwKGENPTUJBVEFOVF9TVEFURV9ERUZFQVRFRBAEEhgKFENPTUJBVEFOVF9TVEFURV9ET1dOEAUq5AgKFkVuY291bnRlckJsb2NrZWRSZWFzb24SKAokRU5DT1VOVEVSX0JMT0NLRURfUkVBU09OX1VOU1BFQ0lGSUVEEAASMwovRU5DT1VOVEVSX0JMT0NLRURfUkVBU09OX0VOQ09VTlRFUl9BTFJFQURZX09QRU4QARIrCidFTkNPVU5URVJfQkxPQ0tFRF9SRUFTT05fTk9fQ1VSUkVOVF9NQVAQAhIsCihFTkNPVU5URVJfQkxPQ0tFRF9SRUFTT05fTUFQX0hBU19OT19HUklEEAMSKQolRU5DT1VOVEVSX0JMT0NLRURfUkVBU09OX05PVF9JTl9TRVRVUBAEEicKI0VOQ09VTlRFUl9CTE9DS0VEX1JFQVNPTl9OT1RfQUNUSVZFEAUSLAooRU5DT1VOVEVSX0JMT0NLRURfUkVBU09OX0VOQ09VTlRFUl9FTkRFRBAGEi8KK0VOQ09VTlRFUl9CTE9DS0VEX1JFQVNPTl9JTklUSUFUSVZFX01JU1NJTkcQBxIzCi9FTkNPVU5URVJfQkxPQ0tFRF9SRUFTT05fSU5JVElBVElWRV9BTFJFQURZX1NFVBAIEiwKKEVOQ09VTlRFUl9CTE9DS0VEX1JFQVNPTl9XUk9OR19ESUNFX01PREUQCRIqCiZFTkNPVU5URVJfQkxPQ0tFRF9SRUFTT05fTk9UX1lPVVJfVFVSThAKEicKI0VOQ09VTlRFUl9CTE9DS0VEX1JFQVNPTl9OT1RfUExBQ0VEEAsSJAogRU5DT1VOVEVSX0JMT0NLRURfUkVBU09OX1RPT19GQVIQDBIsCihFTkNPVU5URVJfQkxPQ0tFRF9SRUFTT05fU1FVQVJFX09DQ1VQSUVEEA0SLQopRU5DT1VOVEVSX0JMT0NLRURfUkVBU09OX1BMQVlFUl9JTl9DT01CQVQQDhIoCiRFTkNPVU5URVJfQkxPQ0tFRF9SRUFTT05fQUNUSU9OX1VTRUQQDxIwCixFTkNPVU5URVJfQkxPQ0tFRF9SRUFTT05fVEFSR0VUX09VVF9PRl9SRUFDSBAQEiwKKEVOQ09VTlRFUl9CTE9DS0VEX1JFQVNPTl9UQVJHRVRfREVGRUFURUQQERIrCidFTkNPVU5URVJfQkxPQ0tFRF9SRUFTT05fUEVORElOR19EQU1BR0UQEhIyCi5FTkNPVU5URVJfQkxPQ0tFRF9SRUFTT05fREFNQUdFX0FMUkVBRFlfUk9MTEVEEBMSLgoqRU5DT1VOVEVSX0JMT0NLRURfUkVBU09OX0RBTUFHRV9OT1RfUk9MTEVEEBQSLAooRU5DT1VOVEVSX0JMT0NLRURfUkVBU09OX0RBTUFHRV9SRVNPTFZFRBAVEiwKKEVOQ09VTlRFUl9CTE9DS0VEX1JFQVNPTl9OT1RISU5HX1RPX1VORE8QFhIrCidFTkNPVU5URVJfQkxPQ0tFRF9SRUFTT05fQ09NQkFUQU5UX0RPV04QFyqBAQoNQXR0YWNrT3V0Y29tZRIeChpBVFRBQ0tfT1VUQ09NRV9VTlNQRUNJRklFRBAAEhYKEkFUVEFDS19PVVRDT01FX0hJVBABEh8KG0FUVEFDS19PVVRDT01FX0NSSVRJQ0FMX0hJVBACEhcKE0FUVEFDS19PVVRDT01FX01JU1MQAyrPAQoTUGVuZGluZ0RhbWFnZVN0YXR1cxIlCiFQRU5ESU5HX0RBTUFHRV9TVEFUVVNfVU5TUEVDSUZJRUQQABInCiNQRU5ESU5HX0RBTUFHRV9TVEFUVVNfQVdBSVRJTkdfUk9MTBABEiAKHFBFTkRJTkdfREFNQUdFX1NUQVRVU19ST0xMRUQQAhIhCh1QRU5ESU5HX0RBTUFHRV9TVEFUVVNfQVBQTElFRBADEiMKH1BFTkRJTkdfREFNQUdFX1NUQVRVU19ESVNDQVJERUQQBCqUAgoNQ29tYmF0TG9nS2luZBIfChtDT01CQVRfTE9HX0tJTkRfVU5TUEVDSUZJRUQQABIgChxDT01CQVRfTE9HX0tJTkRfQ09NQkFUX0JFR1VOEAESGgoWQ09NQkFUX0xPR19LSU5EX0FUVEFDSxACEhoKFkNPTUJBVF9MT0dfS0lORF9BQ1RJT04QAxIZChVDT01CQVRfTE9HX0tJTkRfTU9WRUQQBBInCiNDT01CQVRfTE9HX0tJTkRfSElUX1BPSU5UU19BREpVU1RFRBAFEiIKHkNPTUJBVF9MT0dfS0lORF9SRVZFQUxfQ0hBTkdFRBAGEiAKHENPTUJBVF9MT0dfS0lORF9DT01CQVRfRU5ERUQQBzK4DwoNQ29tYmF0U2VydmljZRJfCg5TdGFydEVuY291bnRlchIlLm1ldXJwZy5wbGF5LnYxLlN0YXJ0RW5jb3VudGVyUmVxdWVzdBomLm1ldXJwZy5wbGF5LnYxLlN0YXJ0RW5jb3VudGVyUmVzcG9uc2USXgoMR2V0RW5jb3VudGVyEiMubWV1cnBnLnBsYXkudjEuR2V0RW5jb3VudGVyUmVxdWVzdBokLm1ldXJwZy5wbGF5LnYxLkdldEVuY291bnRlclJlc3BvbnNlIgOQAgISZQoQU3VibWl0SW5pdGlhdGl2ZRInLm1ldXJwZy5wbGF5LnYxLlN1Ym1pdEluaXRpYXRpdmVSZXF1ZXN0GigubWV1cnBnLnBsYXkudjEuU3VibWl0SW5pdGlhdGl2ZVJlc3BvbnNlEmsKElNldEluaXRpYXRpdmVPcmRlchIpLm1ldXJwZy5wbGF5LnYxLlNldEluaXRpYXRpdmVPcmRlclJlcXVlc3QaKi5tZXVycGcucGxheS52MS5TZXRJbml0aWF0aXZlT3JkZXJSZXNwb25zZRJWCgtCZWdpbkNvbWJhdBIiLm1ldXJwZy5wbGF5LnYxLkJlZ2luQ29tYmF0UmVxdWVzdBojLm1ldXJwZy5wbGF5LnYxLkJlZ2luQ29tYmF0UmVzcG9uc2USSgoHRW5kVHVybhIeLm1ldXJwZy5wbGF5LnYxLkVuZFR1cm5SZXF1ZXN0Gh8ubWV1cnBnLnBsYXkudjEuRW5kVHVyblJlc3BvbnNlElwKDU1vdmVDb21iYXRhbnQSJC5tZXVycGcucGxheS52MS5Nb3ZlQ29tYmF0YW50UmVxdWVzdBolLm1ldXJwZy5wbGF5LnYxLk1vdmVDb21iYXRhbnRSZXNwb25zZRJrChJTZXRDb21iYXRhbnRIaWRkZW4SKS5tZXVycGcucGxheS52MS5TZXRDb21iYXRhbnRIaWRkZW5SZXF1ZXN0GioubWV1cnBnLnBsYXkudjEuU2V0Q29tYmF0YW50SGlkZGVuUmVzcG9uc2USXAoNQWRkQ29tYmF0YW50cxIkLm1ldXJwZy5wbGF5LnYxLkFkZENvbWJhdGFudHNSZXF1ZXN0GiUubWV1cnBnLnBsYXkudjEuQWRkQ29tYmF0YW50c1Jlc3BvbnNlEmIKD1JlbW92ZUNvbWJhdGFudBImLm1ldXJwZy5wbGF5LnYxLlJlbW92ZUNvbWJhdGFudFJlcXVlc3QaJy5tZXVycGcucGxheS52MS5SZW1vdmVDb21iYXRhbnRSZXNwb25zZRJZCgxFbmRFbmNvdW50ZXISIy5tZXVycGcucGxheS52MS5FbmRFbmNvdW50ZXJSZXF1ZXN0GiQubWV1cnBnLnBsYXkudjEuRW5kRW5jb3VudGVyUmVzcG9uc2USZAoOR2V0VHVybk9wdGlvbnMSJS5tZXVycGcucGxheS52MS5HZXRUdXJuT3B0aW9uc1JlcXVlc3QaJi5tZXVycGcucGxheS52MS5HZXRUdXJuT3B0aW9uc1Jlc3BvbnNlIgOQAgISUwoKUm9sbEF0dGFjaxIhLm1ldXJwZy5wbGF5LnYxLlJvbGxBdHRhY2tSZXF1ZXN0GiIubWV1cnBnLnBsYXkudjEuUm9sbEF0dGFja1Jlc3BvbnNlElMKClJvbGxEYW1hZ2USIS5tZXVycGcucGxheS52MS5Sb2xsRGFtYWdlUmVxdWVzdBoiLm1ldXJwZy5wbGF5LnYxLlJvbGxEYW1hZ2VSZXNwb25zZRJrChJBcHBseVBlbmRpbmdEYW1hZ2USKS5tZXVycGcucGxheS52MS5BcHBseVBlbmRpbmdEYW1hZ2VSZXF1ZXN0GioubWV1cnBnLnBsYXkudjEuQXBwbHlQZW5kaW5nRGFtYWdlUmVzcG9uc2UScQoURGlzY2FyZFBlbmRpbmdEYW1hZ2USKy5tZXVycGcucGxheS52MS5EaXNjYXJkUGVuZGluZ0RhbWFnZVJlcXVlc3QaLC5tZXVycGcucGxheS52MS5EaXNjYXJkUGVuZGluZ0RhbWFnZVJlc3BvbnNlElMKClRha2VBY3Rpb24SIS5tZXVycGcucGxheS52MS5UYWtlQWN0aW9uUmVxdWVzdBoiLm1ldXJwZy5wbGF5LnYxLlRha2VBY3Rpb25SZXNwb25zZRJ9ChhBZGp1c3RDb21iYXRhbnRIaXRQb2ludHMSLy5tZXVycGcucGxheS52MS5BZGp1c3RDb21iYXRhbnRIaXRQb2ludHNSZXF1ZXN0GjAubWV1cnBnLnBsYXkudjEuQWRqdXN0Q29tYmF0YW50SGl0UG9pbnRzUmVzcG9uc2USXwoOVW5kb0xhc3RBY3Rpb24SJS5tZXVycGcucGxheS52MS5VbmRvTGFzdEFjdGlvblJlcXVlc3QaJi5tZXVycGcucGxheS52MS5VbmRvTGFzdEFjdGlvblJlc3BvbnNlEmEKDUxpc3RDb21iYXRMb2cSJC5tZXVycGcucGxheS52MS5MaXN0Q29tYmF0TG9nUmVxdWVzdBolLm1ldXJwZy5wbGF5LnYxLkxpc3RDb21iYXRMb2dSZXNwb25zZSIDkAICQrkBChJjb20ubWV1cnBnLnBsYXkudjFCC0NvbWJhdFByb3RvUAFaPGdpdGh1Yi5jb20vUHVyYUZvbWUvbWV1UlBHL2JhY2tlbmQvZ2VuL21ldXJwZy9wbGF5L3YxO3BsYXl2MaICA01QWKoCDk1ldXJwZy5QbGF5LlYxygIOTWV1cnBnXFBsYXlcVjHiAhpNZXVycGdcUGxheVxWMVxHUEJNZXRhZGF0YeoCEE1ldXJwZzo6UGxheTo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp, file_meurpg_rules_v1_rules]);
 
 /**
  * EncounterBlocked is the error detail of CombatService's
@@ -737,6 +741,15 @@ export type EndTurnRequest = Message<"meurpg.play.v1.EndTurnRequest"> & {
    * @generated from field: string expected_combatant_id = 4;
    */
   expectedCombatantId: string;
+
+  /**
+   * True: pass the turn although the combatant has a damage still waiting
+   * (to be rolled or applied), discarding it. Only the master's call counts;
+   * without it, that is `failed_precondition` (PENDING_DAMAGE).
+   *
+   * @generated from field: bool discard_pending_damage = 5;
+   */
+  discardPendingDamage: boolean;
 };
 
 /**
@@ -1045,6 +1058,1153 @@ export const EndEncounterResponseSchema: GenMessage<EndEncounterResponse> = /*@_
   messageDesc(file_meurpg_play_v1_combat, 25);
 
 /**
+ * DiceRoll is a roll as numbers: the dice, what they showed, the modifier and
+ * the total. The app writes it as `1d20 (13) + 6 = 19`; a physical roll as
+ * `16 + 5 = 21` with the note "dado físico".
+ *
+ * @generated from message meurpg.play.v1.DiceRoll
+ */
+export type DiceRoll = Message<"meurpg.play.v1.DiceRoll"> & {
+  /**
+   * How many dice, and how many faces each: 1d20 is 1 and 20. Zero dice is a
+   * flat number.
+   *
+   * @generated from field: int32 dice_count = 1;
+   */
+  diceCount: number;
+
+  /**
+   * @generated from field: int32 dice_sides = 2;
+   */
+  diceSides: number;
+
+  /**
+   * The faces the app rolled, one per die. Empty for a physical damage roll:
+   * the player typed the sum. A physical d20 carries the face that was typed.
+   *
+   * @generated from field: repeated int32 faces = 3;
+   */
+  faces: number[];
+
+  /**
+   * The number added to the dice.
+   *
+   * @generated from field: int32 modifier = 4;
+   */
+  modifier: number;
+
+  /**
+   * The dice (or the typed sum) plus the modifier. For damage never below 0.
+   *
+   * @generated from field: int32 total = 5;
+   */
+  total: number;
+
+  /**
+   * True when the player rolled real dice and typed the sum (RN-18).
+   *
+   * @generated from field: bool physical = 6;
+   */
+  physical: boolean;
+};
+
+/**
+ * Describes the message meurpg.play.v1.DiceRoll.
+ * Use `create(DiceRollSchema)` to create a new message.
+ */
+export const DiceRollSchema: GenMessage<DiceRoll> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_combat, 26);
+
+/**
+ * PendingDamage is the damage of an attack that hit: stored, so a retry or a
+ * reload finds it. Only the master and the attacker's player get it.
+ *
+ * @generated from message meurpg.play.v1.PendingDamage
+ */
+export type PendingDamage = Message<"meurpg.play.v1.PendingDamage"> & {
+  /**
+   * Stable ID (a UUID).
+   *
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * The attacker and the target (combatant IDs).
+   *
+   * @generated from field: string attacker_id = 2;
+   */
+  attackerId: string;
+
+  /**
+   * @generated from field: string target_id = 3;
+   */
+  targetId: string;
+
+  /**
+   * The attack, as in rules.v1.Attack.key.
+   *
+   * @generated from field: string attack_key = 4;
+   */
+  attackKey: string;
+
+  /**
+   * @generated from field: meurpg.play.v1.PendingDamageStatus status = 5;
+   */
+  status: PendingDamageStatus;
+
+  /**
+   * True for a critical hit: the dice are doubled.
+   *
+   * @generated from field: bool critical = 6;
+   */
+  critical: boolean;
+
+  /**
+   * The damage to roll: the dice (already doubled for a critical hit) and
+   * the modifier.
+   *
+   * @generated from field: int32 dice_count = 7;
+   */
+  diceCount: number;
+
+  /**
+   * @generated from field: int32 dice_sides = 8;
+   */
+  diceSides: number;
+
+  /**
+   * @generated from field: int32 bonus = 9;
+   */
+  bonus: number;
+
+  /**
+   * The kind of damage: a key such as "damage-type:fire" and its Portuguese
+   * name ("fogo").
+   *
+   * @generated from field: string damage_type_key = 10;
+   */
+  damageTypeKey: string;
+
+  /**
+   * @generated from field: string damage_type_pt = 11;
+   */
+  damageTypePt: string;
+
+  /**
+   * The roll and the damage it made. Set from ROLLED on.
+   *
+   * @generated from field: meurpg.play.v1.DiceRoll roll = 12;
+   */
+  roll?: DiceRoll | undefined;
+
+  /**
+   * @generated from field: int32 amount = 13;
+   */
+  amount: number;
+
+  /**
+   * APPLIED to an NPC: it reached 0 and is defeated.
+   *
+   * @generated from field: bool target_defeated = 14;
+   */
+  targetDefeated: boolean;
+};
+
+/**
+ * Describes the message meurpg.play.v1.PendingDamage.
+ * Use `create(PendingDamageSchema)` to create a new message.
+ */
+export const PendingDamageSchema: GenMessage<PendingDamage> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_combat, 27);
+
+/**
+ * GetTurnOptionsRequest names a combatant.
+ *
+ * @generated from message meurpg.play.v1.GetTurnOptionsRequest
+ */
+export type GetTurnOptionsRequest = Message<"meurpg.play.v1.GetTurnOptionsRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * @generated from field: string encounter_id = 2;
+   */
+  encounterId: string;
+
+  /**
+   * @generated from field: string combatant_id = 3;
+   */
+  combatantId: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.GetTurnOptionsRequest.
+ * Use `create(GetTurnOptionsRequestSchema)` to create a new message.
+ */
+export const GetTurnOptionsRequestSchema: GenMessage<GetTurnOptionsRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_combat, 28);
+
+/**
+ * GetTurnOptionsResponse is what the combatant can do now.
+ *
+ * @generated from message meurpg.play.v1.GetTurnOptionsResponse
+ */
+export type GetTurnOptionsResponse = Message<"meurpg.play.v1.GetTurnOptionsResponse"> & {
+  /**
+   * The economy (action, bonus action, reaction and the movement in feet:
+   * 5 ft is 1.5 m), the attacks, the spells and the actions, each enabled or
+   * disabled with a reason.
+   *
+   * @generated from field: meurpg.rules.v1.TurnOptions options = 1;
+   */
+  options?: TurnOptions | undefined;
+
+  /**
+   * True when the combatant is the one on turn.
+   *
+   * @generated from field: bool your_turn = 2;
+   */
+  yourTurn: boolean;
+
+  /**
+   * For each attack of options.attacks that rolls to hit, who it can target.
+   *
+   * @generated from field: repeated meurpg.play.v1.AttackTargets attack_targets = 3;
+   */
+  attackTargets: AttackTargets[];
+
+  /**
+   * The damage this combatant still has to roll, or that waits for the
+   * master to apply. Only the master and the combatant's player get it.
+   *
+   * @generated from field: repeated meurpg.play.v1.PendingDamage pending_damages = 4;
+   */
+  pendingDamages: PendingDamage[];
+};
+
+/**
+ * Describes the message meurpg.play.v1.GetTurnOptionsResponse.
+ * Use `create(GetTurnOptionsResponseSchema)` to create a new message.
+ */
+export const GetTurnOptionsResponseSchema: GenMessage<GetTurnOptionsResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_combat, 29);
+
+/**
+ * AttackTargets lists the targets one attack can choose.
+ *
+ * @generated from message meurpg.play.v1.AttackTargets
+ */
+export type AttackTargets = Message<"meurpg.play.v1.AttackTargets"> & {
+  /**
+   * The attack, as in rules.v1.Attack.key.
+   *
+   * @generated from field: string attack_key = 1;
+   */
+  attackKey: string;
+
+  /**
+   * The combatants the caller sees, except the attacker and the defeated, in
+   * turn order.
+   *
+   * @generated from field: repeated meurpg.play.v1.TargetInReach targets = 2;
+   */
+  targets: TargetInReach[];
+};
+
+/**
+ * Describes the message meurpg.play.v1.AttackTargets.
+ * Use `create(AttackTargetsSchema)` to create a new message.
+ */
+export const AttackTargetsSchema: GenMessage<AttackTargets> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_combat, 30);
+
+/**
+ * TargetInReach is a possible target of an attack.
+ *
+ * @generated from message meurpg.play.v1.TargetInReach
+ */
+export type TargetInReach = Message<"meurpg.play.v1.TargetInReach"> & {
+  /**
+   * @generated from field: string combatant_id = 1;
+   */
+  combatantId: string;
+
+  /**
+   * @generated from field: string label = 2;
+   */
+  label: string;
+
+  /**
+   * How hurt it is, as a word: never hit points.
+   *
+   * @generated from field: meurpg.play.v1.CombatantState state = 3;
+   */
+  state: CombatantState;
+
+  /**
+   * The distance in feet, a king's move at 5 ft a square (RN-21). Unset when
+   * either of them has no square on the grid.
+   *
+   * @generated from field: optional int32 distance_ft = 4;
+   */
+  distanceFt?: number | undefined;
+
+  /**
+   * True when the attack cannot reach it: the distance is beyond its range,
+   * or unknown for a player (RollAttack refuses it). Never true for the
+   * master when the distance is unknown: the master is not held to the reach.
+   *
+   * @generated from field: bool too_far = 5;
+   */
+  tooFar: boolean;
+};
+
+/**
+ * Describes the message meurpg.play.v1.TargetInReach.
+ * Use `create(TargetInReachSchema)` to create a new message.
+ */
+export const TargetInReachSchema: GenMessage<TargetInReach> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_combat, 31);
+
+/**
+ * RollAttackRequest rolls an attack.
+ *
+ * @generated from message meurpg.play.v1.RollAttackRequest
+ */
+export type RollAttackRequest = Message<"meurpg.play.v1.RollAttackRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * @generated from field: string encounter_id = 2;
+   */
+  encounterId: string;
+
+  /**
+   * The combatant that attacks (a UUID).
+   *
+   * @generated from field: string attacker_id = 3;
+   */
+  attackerId: string;
+
+  /**
+   * The attack, one of GetTurnOptions' options.attacks keys.
+   *
+   * @generated from field: string attack_key = 4;
+   */
+  attackKey: string;
+
+  /**
+   * The target (a UUID).
+   *
+   * @generated from field: string target_id = 5;
+   */
+  targetId: string;
+
+  /**
+   * @generated from field: string idempotency_key = 6;
+   */
+  idempotencyKey: string;
+
+  /**
+   * How the d20 comes: exactly one.
+   *
+   * @generated from oneof meurpg.play.v1.RollAttackRequest.roll
+   */
+  roll: {
+    /**
+     * True: the app rolls the d20 on the server (RN-18).
+     *
+     * @generated from field: bool roll_in_app = 7;
+     */
+    value: boolean;
+    case: "rollInApp";
+  } | {
+    /**
+     * The face of a physical d20, 1 to 20.
+     *
+     * @generated from field: int32 d20_face = 8;
+     */
+    value: number;
+    case: "d20Face";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message meurpg.play.v1.RollAttackRequest.
+ * Use `create(RollAttackRequestSchema)` to create a new message.
+ */
+export const RollAttackRequestSchema: GenMessage<RollAttackRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_combat, 32);
+
+/**
+ * AttackRoll is the attack roll and what it did.
+ *
+ * @generated from message meurpg.play.v1.AttackRoll
+ */
+export type AttackRoll = Message<"meurpg.play.v1.AttackRoll"> & {
+  /**
+   * @generated from field: string attacker_id = 1;
+   */
+  attackerId: string;
+
+  /**
+   * @generated from field: string target_id = 2;
+   */
+  targetId: string;
+
+  /**
+   * @generated from field: string attack_key = 3;
+   */
+  attackKey: string;
+
+  /**
+   * The d20 with the attack bonus as the modifier.
+   *
+   * @generated from field: meurpg.play.v1.DiceRoll d20 = 4;
+   */
+  d20?: DiceRoll | undefined;
+
+  /**
+   * @generated from field: meurpg.play.v1.AttackOutcome outcome = 5;
+   */
+  outcome: AttackOutcome;
+};
+
+/**
+ * Describes the message meurpg.play.v1.AttackRoll.
+ * Use `create(AttackRollSchema)` to create a new message.
+ */
+export const AttackRollSchema: GenMessage<AttackRoll> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_combat, 33);
+
+/**
+ * RollAttackResponse returns the roll and the combat after it.
+ *
+ * @generated from message meurpg.play.v1.RollAttackResponse
+ */
+export type RollAttackResponse = Message<"meurpg.play.v1.RollAttackResponse"> & {
+  /**
+   * The combat as the caller sees it: the action is spent.
+   *
+   * @generated from field: meurpg.play.v1.Encounter encounter = 1;
+   */
+  encounter?: Encounter | undefined;
+
+  /**
+   * @generated from field: meurpg.play.v1.AttackRoll roll = 2;
+   */
+  roll?: AttackRoll | undefined;
+
+  /**
+   * Set when the attack hit: the damage to roll. For the master and the
+   * attacker's player only.
+   *
+   * @generated from field: meurpg.play.v1.PendingDamage pending_damage = 3;
+   */
+  pendingDamage?: PendingDamage | undefined;
+};
+
+/**
+ * Describes the message meurpg.play.v1.RollAttackResponse.
+ * Use `create(RollAttackResponseSchema)` to create a new message.
+ */
+export const RollAttackResponseSchema: GenMessage<RollAttackResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_combat, 34);
+
+/**
+ * RollDamageRequest rolls the damage of a hit.
+ *
+ * @generated from message meurpg.play.v1.RollDamageRequest
+ */
+export type RollDamageRequest = Message<"meurpg.play.v1.RollDamageRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * @generated from field: string encounter_id = 2;
+   */
+  encounterId: string;
+
+  /**
+   * @generated from field: string pending_damage_id = 3;
+   */
+  pendingDamageId: string;
+
+  /**
+   * @generated from field: string idempotency_key = 4;
+   */
+  idempotencyKey: string;
+
+  /**
+   * How the damage comes: exactly one.
+   *
+   * @generated from oneof meurpg.play.v1.RollDamageRequest.roll
+   */
+  roll: {
+    /**
+     * True: the app rolls the dice on the server.
+     *
+     * @generated from field: bool roll_in_app = 5;
+     */
+    value: boolean;
+    case: "rollInApp";
+  } | {
+    /**
+     * The sum of the physical dice, without the modifier: between the number
+     * of dice and the number of dice times their faces.
+     *
+     * @generated from field: int32 typed_sum = 6;
+     */
+    value: number;
+    case: "typedSum";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message meurpg.play.v1.RollDamageRequest.
+ * Use `create(RollDamageRequestSchema)` to create a new message.
+ */
+export const RollDamageRequestSchema: GenMessage<RollDamageRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_combat, 35);
+
+/**
+ * RollDamageResponse returns the damage after the roll.
+ *
+ * @generated from message meurpg.play.v1.RollDamageResponse
+ */
+export type RollDamageResponse = Message<"meurpg.play.v1.RollDamageResponse"> & {
+  /**
+   * @generated from field: meurpg.play.v1.Encounter encounter = 1;
+   */
+  encounter?: Encounter | undefined;
+
+  /**
+   * APPLIED for an NPC target; ROLLED, waiting for the master, for a player's
+   * character.
+   *
+   * @generated from field: meurpg.play.v1.PendingDamage pending_damage = 2;
+   */
+  pendingDamage?: PendingDamage | undefined;
+};
+
+/**
+ * Describes the message meurpg.play.v1.RollDamageResponse.
+ * Use `create(RollDamageResponseSchema)` to create a new message.
+ */
+export const RollDamageResponseSchema: GenMessage<RollDamageResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_combat, 36);
+
+/**
+ * ApplyPendingDamageRequest applies a rolled damage.
+ *
+ * @generated from message meurpg.play.v1.ApplyPendingDamageRequest
+ */
+export type ApplyPendingDamageRequest = Message<"meurpg.play.v1.ApplyPendingDamageRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * @generated from field: string encounter_id = 2;
+   */
+  encounterId: string;
+
+  /**
+   * @generated from field: string pending_damage_id = 3;
+   */
+  pendingDamageId: string;
+
+  /**
+   * @generated from field: string idempotency_key = 4;
+   */
+  idempotencyKey: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.ApplyPendingDamageRequest.
+ * Use `create(ApplyPendingDamageRequestSchema)` to create a new message.
+ */
+export const ApplyPendingDamageRequestSchema: GenMessage<ApplyPendingDamageRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_combat, 37);
+
+/**
+ * ApplyPendingDamageResponse returns the damage, APPLIED.
+ *
+ * @generated from message meurpg.play.v1.ApplyPendingDamageResponse
+ */
+export type ApplyPendingDamageResponse = Message<"meurpg.play.v1.ApplyPendingDamageResponse"> & {
+  /**
+   * @generated from field: meurpg.play.v1.Encounter encounter = 1;
+   */
+  encounter?: Encounter | undefined;
+
+  /**
+   * @generated from field: meurpg.play.v1.PendingDamage pending_damage = 2;
+   */
+  pendingDamage?: PendingDamage | undefined;
+};
+
+/**
+ * Describes the message meurpg.play.v1.ApplyPendingDamageResponse.
+ * Use `create(ApplyPendingDamageResponseSchema)` to create a new message.
+ */
+export const ApplyPendingDamageResponseSchema: GenMessage<ApplyPendingDamageResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_combat, 38);
+
+/**
+ * DiscardPendingDamageRequest drops a damage.
+ *
+ * @generated from message meurpg.play.v1.DiscardPendingDamageRequest
+ */
+export type DiscardPendingDamageRequest = Message<"meurpg.play.v1.DiscardPendingDamageRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * @generated from field: string encounter_id = 2;
+   */
+  encounterId: string;
+
+  /**
+   * @generated from field: string pending_damage_id = 3;
+   */
+  pendingDamageId: string;
+
+  /**
+   * @generated from field: string idempotency_key = 4;
+   */
+  idempotencyKey: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.DiscardPendingDamageRequest.
+ * Use `create(DiscardPendingDamageRequestSchema)` to create a new message.
+ */
+export const DiscardPendingDamageRequestSchema: GenMessage<DiscardPendingDamageRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_combat, 39);
+
+/**
+ * DiscardPendingDamageResponse returns the damage, DISCARDED.
+ *
+ * @generated from message meurpg.play.v1.DiscardPendingDamageResponse
+ */
+export type DiscardPendingDamageResponse = Message<"meurpg.play.v1.DiscardPendingDamageResponse"> & {
+  /**
+   * @generated from field: meurpg.play.v1.Encounter encounter = 1;
+   */
+  encounter?: Encounter | undefined;
+
+  /**
+   * @generated from field: meurpg.play.v1.PendingDamage pending_damage = 2;
+   */
+  pendingDamage?: PendingDamage | undefined;
+};
+
+/**
+ * Describes the message meurpg.play.v1.DiscardPendingDamageResponse.
+ * Use `create(DiscardPendingDamageResponseSchema)` to create a new message.
+ */
+export const DiscardPendingDamageResponseSchema: GenMessage<DiscardPendingDamageResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_combat, 40);
+
+/**
+ * TakeActionRequest takes a standard action.
+ *
+ * @generated from message meurpg.play.v1.TakeActionRequest
+ */
+export type TakeActionRequest = Message<"meurpg.play.v1.TakeActionRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * @generated from field: string encounter_id = 2;
+   */
+  encounterId: string;
+
+  /**
+   * @generated from field: string combatant_id = 3;
+   */
+  combatantId: string;
+
+  /**
+   * The action, as in rules.v1.Action.key: "standard:dash", "standard:dodge"...
+   *
+   * @generated from field: string action_key = 4;
+   */
+  actionKey: string;
+
+  /**
+   * @generated from field: string idempotency_key = 5;
+   */
+  idempotencyKey: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.TakeActionRequest.
+ * Use `create(TakeActionRequestSchema)` to create a new message.
+ */
+export const TakeActionRequestSchema: GenMessage<TakeActionRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_combat, 41);
+
+/**
+ * TakeActionResponse returns the combat after the action.
+ *
+ * @generated from message meurpg.play.v1.TakeActionResponse
+ */
+export type TakeActionResponse = Message<"meurpg.play.v1.TakeActionResponse"> & {
+  /**
+   * @generated from field: meurpg.play.v1.Encounter encounter = 1;
+   */
+  encounter?: Encounter | undefined;
+};
+
+/**
+ * Describes the message meurpg.play.v1.TakeActionResponse.
+ * Use `create(TakeActionResponseSchema)` to create a new message.
+ */
+export const TakeActionResponseSchema: GenMessage<TakeActionResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_combat, 42);
+
+/**
+ * AdjustCombatantHitPointsRequest is the master's correction of an NPC.
+ *
+ * @generated from message meurpg.play.v1.AdjustCombatantHitPointsRequest
+ */
+export type AdjustCombatantHitPointsRequest = Message<"meurpg.play.v1.AdjustCombatantHitPointsRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * @generated from field: string encounter_id = 2;
+   */
+  encounterId: string;
+
+  /**
+   * @generated from field: string combatant_id = 3;
+   */
+  combatantId: string;
+
+  /**
+   * @generated from field: string idempotency_key = 4;
+   */
+  idempotencyKey: string;
+
+  /**
+   * At most one of these.
+   *
+   * @generated from oneof meurpg.play.v1.AdjustCombatantHitPointsRequest.change
+   */
+  change: {
+    /**
+     * Damage taken: 0 to 9,999. Temporary hit points go first.
+     *
+     * @generated from field: int32 damage = 5;
+     */
+    value: number;
+    case: "damage";
+  } | {
+    /**
+     * Hit points healed: 0 to 9,999, up to the maximum.
+     *
+     * @generated from field: int32 heal = 6;
+     */
+    value: number;
+    case: "heal";
+  } | {
+    /**
+     * The exact hit points: 0 to the maximum.
+     *
+     * @generated from field: int32 hit_points = 7;
+     */
+    value: number;
+    case: "hitPoints";
+  } | { case: undefined; value?: undefined };
+
+  /**
+   * The new temporary hit points: 0 to 999. Set after the change above, if
+   * there is one.
+   *
+   * @generated from field: optional int32 hit_points_temporary = 8;
+   */
+  hitPointsTemporary?: number | undefined;
+};
+
+/**
+ * Describes the message meurpg.play.v1.AdjustCombatantHitPointsRequest.
+ * Use `create(AdjustCombatantHitPointsRequestSchema)` to create a new message.
+ */
+export const AdjustCombatantHitPointsRequestSchema: GenMessage<AdjustCombatantHitPointsRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_combat, 43);
+
+/**
+ * AdjustCombatantHitPointsResponse returns the combat after the change.
+ *
+ * @generated from message meurpg.play.v1.AdjustCombatantHitPointsResponse
+ */
+export type AdjustCombatantHitPointsResponse = Message<"meurpg.play.v1.AdjustCombatantHitPointsResponse"> & {
+  /**
+   * @generated from field: meurpg.play.v1.Encounter encounter = 1;
+   */
+  encounter?: Encounter | undefined;
+};
+
+/**
+ * Describes the message meurpg.play.v1.AdjustCombatantHitPointsResponse.
+ * Use `create(AdjustCombatantHitPointsResponseSchema)` to create a new message.
+ */
+export const AdjustCombatantHitPointsResponseSchema: GenMessage<AdjustCombatantHitPointsResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_combat, 44);
+
+/**
+ * UndoLastActionRequest takes back the last action.
+ *
+ * @generated from message meurpg.play.v1.UndoLastActionRequest
+ */
+export type UndoLastActionRequest = Message<"meurpg.play.v1.UndoLastActionRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * @generated from field: string encounter_id = 2;
+   */
+  encounterId: string;
+
+  /**
+   * The event the caller sees as the last action (a UUID): the
+   * undoable_event_id of ListCombatLog.
+   *
+   * @generated from field: string expected_event_id = 3;
+   */
+  expectedEventId: string;
+
+  /**
+   * @generated from field: string idempotency_key = 4;
+   */
+  idempotencyKey: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.UndoLastActionRequest.
+ * Use `create(UndoLastActionRequestSchema)` to create a new message.
+ */
+export const UndoLastActionRequestSchema: GenMessage<UndoLastActionRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_combat, 45);
+
+/**
+ * UndoLastActionResponse returns the combat after the undo.
+ *
+ * @generated from message meurpg.play.v1.UndoLastActionResponse
+ */
+export type UndoLastActionResponse = Message<"meurpg.play.v1.UndoLastActionResponse"> & {
+  /**
+   * @generated from field: meurpg.play.v1.Encounter encounter = 1;
+   */
+  encounter?: Encounter | undefined;
+};
+
+/**
+ * Describes the message meurpg.play.v1.UndoLastActionResponse.
+ * Use `create(UndoLastActionResponseSchema)` to create a new message.
+ */
+export const UndoLastActionResponseSchema: GenMessage<UndoLastActionResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_combat, 46);
+
+/**
+ * ListCombatLogRequest names the combat.
+ *
+ * @generated from message meurpg.play.v1.ListCombatLogRequest
+ */
+export type ListCombatLogRequest = Message<"meurpg.play.v1.ListCombatLogRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * @generated from field: string encounter_id = 2;
+   */
+  encounterId: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.ListCombatLogRequest.
+ * Use `create(ListCombatLogRequestSchema)` to create a new message.
+ */
+export const ListCombatLogRequestSchema: GenMessage<ListCombatLogRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_combat, 47);
+
+/**
+ * ListCombatLogResponse is the combat log.
+ *
+ * @generated from message meurpg.play.v1.ListCombatLogResponse
+ */
+export type ListCombatLogResponse = Message<"meurpg.play.v1.ListCombatLogResponse"> & {
+  /**
+   * The rounds, the latest first. Round 0 never appears: the log starts when
+   * the combat begins.
+   *
+   * @generated from field: repeated meurpg.play.v1.CombatLogRound rounds = 1;
+   */
+  rounds: CombatLogRound[];
+
+  /**
+   * The event UndoLastAction would take back now (a UUID), if any. Only the
+   * master gets it; the entry it belongs to has `undoable` set.
+   *
+   * @generated from field: string undoable_event_id = 2;
+   */
+  undoableEventId: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.ListCombatLogResponse.
+ * Use `create(ListCombatLogResponseSchema)` to create a new message.
+ */
+export const ListCombatLogResponseSchema: GenMessage<ListCombatLogResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_combat, 48);
+
+/**
+ * CombatLogRound is the entries of one round, the latest first.
+ *
+ * @generated from message meurpg.play.v1.CombatLogRound
+ */
+export type CombatLogRound = Message<"meurpg.play.v1.CombatLogRound"> & {
+  /**
+   * @generated from field: int32 round = 1;
+   */
+  round: number;
+
+  /**
+   * @generated from field: repeated meurpg.play.v1.CombatLogEntry entries = 2;
+   */
+  entries: CombatLogEntry[];
+};
+
+/**
+ * Describes the message meurpg.play.v1.CombatLogRound.
+ * Use `create(CombatLogRoundSchema)` to create a new message.
+ */
+export const CombatLogRoundSchema: GenMessage<CombatLogRound> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_combat, 49);
+
+/**
+ * CombatLogEntry is one line of the combat log, as the caller may see it.
+ * Fields marked "only the master" are left out for a player.
+ *
+ * @generated from message meurpg.play.v1.CombatLogEntry
+ */
+export type CombatLogEntry = Message<"meurpg.play.v1.CombatLogEntry"> & {
+  /**
+   * The event's ID (a UUID). For an attack, the attack roll's event.
+   *
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: meurpg.play.v1.CombatLogKind kind = 2;
+   */
+  kind: CombatLogKind;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp at = 3;
+   */
+  at?: Timestamp | undefined;
+
+  /**
+   * @generated from field: int32 round = 4;
+   */
+  round: number;
+
+  /**
+   * Who did it, and to whom. The label is the combatant's, "Goblin 2". Empty
+   * when the combatant left the combat meanwhile.
+   *
+   * @generated from field: string actor_id = 5;
+   */
+  actorId: string;
+
+  /**
+   * @generated from field: string actor_label = 6;
+   */
+  actorLabel: string;
+
+  /**
+   * @generated from field: string target_id = 7;
+   */
+  targetId: string;
+
+  /**
+   * @generated from field: string target_label = 8;
+   */
+  targetLabel: string;
+
+  /**
+   * The attack or action: its key, and its Portuguese name when the actor's
+   * sheet still has it ("Cimitarra", "Disparada").
+   *
+   * @generated from field: string key = 9;
+   */
+  key: string;
+
+  /**
+   * @generated from field: string key_name_pt = 10;
+   */
+  keyNamePt: string;
+
+  /**
+   * ATTACK: what the roll did.
+   *
+   * @generated from field: meurpg.play.v1.AttackOutcome outcome = 11;
+   */
+  outcome: AttackOutcome;
+
+  /**
+   * ATTACK: the d20. Only the master and the actor's player get the dice;
+   * everyone else only the outcome (the master's rolls are not the players').
+   *
+   * @generated from field: meurpg.play.v1.DiceRoll attack_roll = 12;
+   */
+  attackRoll?: DiceRoll | undefined;
+
+  /**
+   * ATTACK: the damage, once the attack hit and it was rolled.
+   *
+   * @generated from field: meurpg.play.v1.CombatLogDamage damage = 13;
+   */
+  damage?: CombatLogDamage | undefined;
+
+  /**
+   * MOVED: how far, in feet (5 ft is one square, 1.5 m).
+   *
+   * @generated from field: int32 distance_ft = 14;
+   */
+  distanceFt: number;
+
+  /**
+   * REVEAL_CHANGED: whether the combatant is hidden now.
+   *
+   * @generated from field: bool now_hidden = 15;
+   */
+  nowHidden: boolean;
+
+  /**
+   * HIT_POINTS_ADJUSTED: the change, negative for damage. Only the master.
+   *
+   * @generated from field: int32 hit_points_delta = 16;
+   */
+  hitPointsDelta: number;
+
+  /**
+   * The target's hit points after the change. Only the master, and only for
+   * ATTACK entries whose damage is APPLIED and HIT_POINTS_ADJUSTED.
+   *
+   * @generated from field: optional int32 hit_points_after = 17;
+   */
+  hitPointsAfter?: number | undefined;
+
+  /**
+   * Only the master: the players do not get this entry ("Só o mestre vê").
+   *
+   * @generated from field: bool hidden = 18;
+   */
+  hidden: boolean;
+
+  /**
+   * Only the master: this entry holds the last action, the one
+   * UndoLastAction would take back.
+   *
+   * @generated from field: bool undoable = 19;
+   */
+  undoable: boolean;
+};
+
+/**
+ * Describes the message meurpg.play.v1.CombatLogEntry.
+ * Use `create(CombatLogEntrySchema)` to create a new message.
+ */
+export const CombatLogEntrySchema: GenMessage<CombatLogEntry> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_combat, 50);
+
+/**
+ * CombatLogDamage is the damage of an attack, in the log.
+ *
+ * @generated from message meurpg.play.v1.CombatLogDamage
+ */
+export type CombatLogDamage = Message<"meurpg.play.v1.CombatLogDamage"> & {
+  /**
+   * AWAITING_ROLL (hit, not rolled yet), ROLLED (waits for the master),
+   * APPLIED or DISCARDED.
+   *
+   * @generated from field: meurpg.play.v1.PendingDamageStatus status = 1;
+   */
+  status: PendingDamageStatus;
+
+  /**
+   * The dice. Only the master and the actor's player get them.
+   *
+   * @generated from field: meurpg.play.v1.DiceRoll roll = 2;
+   */
+  roll?: DiceRoll | undefined;
+
+  /**
+   * The damage (for the target's player, the damage they take). Zero until
+   * rolled.
+   *
+   * @generated from field: int32 amount = 3;
+   */
+  amount: number;
+
+  /**
+   * @generated from field: string damage_type_key = 4;
+   */
+  damageTypeKey: string;
+
+  /**
+   * @generated from field: string damage_type_pt = 5;
+   */
+  damageTypePt: string;
+
+  /**
+   * APPLIED to an NPC that reached 0: defeated.
+   *
+   * @generated from field: bool target_defeated = 6;
+   */
+  targetDefeated: boolean;
+
+  /**
+   * APPLIED to a player's character that reached 0: down.
+   *
+   * @generated from field: bool target_down = 7;
+   */
+  targetDown: boolean;
+};
+
+/**
+ * Describes the message meurpg.play.v1.CombatLogDamage.
+ * Use `create(CombatLogDamageSchema)` to create a new message.
+ */
+export const CombatLogDamageSchema: GenMessage<CombatLogDamage> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_combat, 51);
+
+/**
  * EncounterStatus is where a combat is.
  *
  * @generated from enum meurpg.play.v1.EncounterStatus
@@ -1117,7 +2277,8 @@ export const CombatantKindSchema: GenEnum<CombatantKind> = /*@__PURE__*/
 
 /**
  * CombatantState is how hurt a combatant is, as a word (RN-20): what a
- * player sees of an NPC, instead of its hit points.
+ * player sees of an NPC, instead of its hit points, and whether a player's
+ * character is down.
  *
  * @generated from enum meurpg.play.v1.CombatantState
  */
@@ -1154,6 +2315,14 @@ export enum CombatantState {
    * @generated from enum value: COMBATANT_STATE_DEFEATED = 4;
    */
   DEFEATED = 4,
+
+  /**
+   * A player's character at 0 hit points: "Caído". The word is for
+   * everyone who sees the combatant, never its numbers.
+   *
+   * @generated from enum value: COMBATANT_STATE_DOWN = 5;
+   */
+  DOWN = 5,
 }
 
 /**
@@ -1232,7 +2401,9 @@ export enum EncounterBlockedReason {
   INITIATIVE_ALREADY_SET = 8,
 
   /**
-   * SubmitInitiative: the player rolls the other way (RN-18).
+   * SubmitInitiative, RollAttack, RollDamage: the master forced the other way
+   * of rolling (RN-18): the app's roll when everybody rolls their own dice, a
+   * typed value when everybody rolls in the app.
    *
    * @generated from enum value: ENCOUNTER_BLOCKED_REASON_WRONG_DICE_MODE = 9;
    */
@@ -1273,6 +2444,74 @@ export enum EncounterBlockedReason {
    * @generated from enum value: ENCOUNTER_BLOCKED_REASON_PLAYER_IN_COMBAT = 14;
    */
   PLAYER_IN_COMBAT = 14,
+
+  /**
+   * RollAttack, TakeAction: the action of this turn is already used.
+   *
+   * @generated from enum value: ENCOUNTER_BLOCKED_REASON_ACTION_USED = 15;
+   */
+  ACTION_USED = 15,
+
+  /**
+   * RollAttack: the target is beyond the attack's range. missing_ft says by
+   * how much.
+   *
+   * @generated from enum value: ENCOUNTER_BLOCKED_REASON_TARGET_OUT_OF_REACH = 16;
+   */
+  TARGET_OUT_OF_REACH = 16,
+
+  /**
+   * RollAttack: the target is defeated.
+   *
+   * @generated from enum value: ENCOUNTER_BLOCKED_REASON_TARGET_DEFEATED = 17;
+   */
+  TARGET_DEFEATED = 17,
+
+  /**
+   * EndTurn: a damage still waits to be rolled or applied. Only the master
+   * may pass the turn anyway (discard_pending_damage).
+   *
+   * @generated from enum value: ENCOUNTER_BLOCKED_REASON_PENDING_DAMAGE = 18;
+   */
+  PENDING_DAMAGE = 18,
+
+  /**
+   * RollDamage: the damage was rolled already.
+   *
+   * @generated from enum value: ENCOUNTER_BLOCKED_REASON_DAMAGE_ALREADY_ROLLED = 19;
+   */
+  DAMAGE_ALREADY_ROLLED = 19,
+
+  /**
+   * ApplyPendingDamage: the damage was not rolled yet.
+   *
+   * @generated from enum value: ENCOUNTER_BLOCKED_REASON_DAMAGE_NOT_ROLLED = 20;
+   */
+  DAMAGE_NOT_ROLLED = 20,
+
+  /**
+   * RollDamage, ApplyPendingDamage, DiscardPendingDamage: the damage was
+   * applied or discarded already.
+   *
+   * @generated from enum value: ENCOUNTER_BLOCKED_REASON_DAMAGE_RESOLVED = 21;
+   */
+  DAMAGE_RESOLVED = 21,
+
+  /**
+   * UndoLastAction: the last change of the session is not an action that can
+   * be undone, or there is none.
+   *
+   * @generated from enum value: ENCOUNTER_BLOCKED_REASON_NOTHING_TO_UNDO = 22;
+   */
+  NOTHING_TO_UNDO = 22,
+
+  /**
+   * RollAttack, TakeAction: a player's character at 0 hit points does not
+   * act (the death saves come with the next slice).
+   *
+   * @generated from enum value: ENCOUNTER_BLOCKED_REASON_COMBATANT_DOWN = 23;
+   */
+  COMBATANT_DOWN = 23,
 }
 
 /**
@@ -1280,6 +2519,162 @@ export enum EncounterBlockedReason {
  */
 export const EncounterBlockedReasonSchema: GenEnum<EncounterBlockedReason> = /*@__PURE__*/
   enumDesc(file_meurpg_play_v1_combat, 3);
+
+/**
+ * AttackOutcome is what an attack roll did against the target's armor class.
+ *
+ * @generated from enum meurpg.play.v1.AttackOutcome
+ */
+export enum AttackOutcome {
+  /**
+   * @generated from enum value: ATTACK_OUTCOME_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * The total reached the armor class: "Acertou".
+   *
+   * @generated from enum value: ATTACK_OUTCOME_HIT = 1;
+   */
+  HIT = 1,
+
+  /**
+   * A natural 20: it hits and the damage dice double: "Crítico".
+   *
+   * @generated from enum value: ATTACK_OUTCOME_CRITICAL_HIT = 2;
+   */
+  CRITICAL_HIT = 2,
+
+  /**
+   * A natural 1, or a total below the armor class: "Errou".
+   *
+   * @generated from enum value: ATTACK_OUTCOME_MISS = 3;
+   */
+  MISS = 3,
+}
+
+/**
+ * Describes the enum meurpg.play.v1.AttackOutcome.
+ */
+export const AttackOutcomeSchema: GenEnum<AttackOutcome> = /*@__PURE__*/
+  enumDesc(file_meurpg_play_v1_combat, 4);
+
+/**
+ * PendingDamageStatus is where the damage of a hit is.
+ *
+ * @generated from enum meurpg.play.v1.PendingDamageStatus
+ */
+export enum PendingDamageStatus {
+  /**
+   * @generated from enum value: PENDING_DAMAGE_STATUS_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * The attack hit and the damage is not rolled yet (RollDamage).
+   *
+   * @generated from enum value: PENDING_DAMAGE_STATUS_AWAITING_ROLL = 1;
+   */
+  AWAITING_ROLL = 1,
+
+  /**
+   * Rolled, for a player's character: waits for the master
+   * (ApplyPendingDamage or DiscardPendingDamage).
+   *
+   * @generated from enum value: PENDING_DAMAGE_STATUS_ROLLED = 2;
+   */
+  ROLLED = 2,
+
+  /**
+   * Applied to the target: at once for an NPC, by the master for a player's
+   * character.
+   *
+   * @generated from enum value: PENDING_DAMAGE_STATUS_APPLIED = 3;
+   */
+  APPLIED = 3,
+
+  /**
+   * Dropped by the master without applying.
+   *
+   * @generated from enum value: PENDING_DAMAGE_STATUS_DISCARDED = 4;
+   */
+  DISCARDED = 4,
+}
+
+/**
+ * Describes the enum meurpg.play.v1.PendingDamageStatus.
+ */
+export const PendingDamageStatusSchema: GenEnum<PendingDamageStatus> = /*@__PURE__*/
+  enumDesc(file_meurpg_play_v1_combat, 5);
+
+/**
+ * CombatLogKind is what a combat log entry tells.
+ *
+ * @generated from enum meurpg.play.v1.CombatLogKind
+ */
+export enum CombatLogKind {
+  /**
+   * @generated from enum value: COMBAT_LOG_KIND_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * The combat began (round 1).
+   *
+   * @generated from enum value: COMBAT_LOG_KIND_COMBAT_BEGUN = 1;
+   */
+  COMBAT_BEGUN = 1,
+
+  /**
+   * An attack: the attacker, the target, the roll, the outcome and, once
+   * rolled, the damage (`damage`). One entry for the whole attack: the
+   * damage lands in the entry of the attack that caused it.
+   *
+   * @generated from enum value: COMBAT_LOG_KIND_ATTACK = 2;
+   */
+  ATTACK = 2,
+
+  /**
+   * A standard action: the actor and `key`.
+   *
+   * @generated from enum value: COMBAT_LOG_KIND_ACTION = 3;
+   */
+  ACTION = 3,
+
+  /**
+   * A combatant moved on its turn: the actor and `distance_ft`.
+   *
+   * @generated from enum value: COMBAT_LOG_KIND_MOVED = 4;
+   */
+  MOVED = 4,
+
+  /**
+   * The master changed an NPC's hit points by hand. Master only.
+   *
+   * @generated from enum value: COMBAT_LOG_KIND_HIT_POINTS_ADJUSTED = 5;
+   */
+  HIT_POINTS_ADJUSTED = 5,
+
+  /**
+   * The master hid or revealed a combatant (`now_hidden`). Master only.
+   *
+   * @generated from enum value: COMBAT_LOG_KIND_REVEAL_CHANGED = 6;
+   */
+  REVEAL_CHANGED = 6,
+
+  /**
+   * The combat ended.
+   *
+   * @generated from enum value: COMBAT_LOG_KIND_COMBAT_ENDED = 7;
+   */
+  COMBAT_ENDED = 7,
+}
+
+/**
+ * Describes the enum meurpg.play.v1.CombatLogKind.
+ */
+export const CombatLogKindSchema: GenEnum<CombatLogKind> = /*@__PURE__*/
+  enumDesc(file_meurpg_play_v1_combat, 6);
 
 /**
  * CombatService runs a combat (an "encounter") inside the campaign's open
@@ -1301,6 +2696,9 @@ export const EncounterBlockedReasonSchema: GenEnum<EncounterBlockedReason> = /*@
  *   - A player sees the other players' combatants, but not their hit
  *     points (the vitals of their own character come from
  *     PlayService.GetLiveSession).
+ *   - A player never gets the armor class of anyone, the d20 and the
+ *     damage dice of the master's NPCs, nor the combat log entries that
+ *     involve a hidden combatant (CombatLogEntry).
  *   - The master sees everything.
  *
  * Every method needs a valid session cookie and fails with `unauthenticated`
@@ -1407,11 +2805,14 @@ export const CombatService: GenService<{
    * is in SETUP.
    *
    * The roll is either rolled by the app (roll_in_app), or a face typed from
-   * a physical die (d20_face, 1 to 20). A player follows the campaign's dice
-   * setting (RN-18): they may type a face only when they roll their own dice,
-   * and roll in the app only when they do not. The master may do either for
-   * anyone, and may set a value again; a player sets theirs once, so nobody
-   * rolls again until the result is good.
+   * a physical die (d20_face, 1 to 20). With the campaign's dice setting
+   * "each player chooses" (RN-18) the player picks on every roll, and their
+   * saved preference is only the default the screen offers; a mode the master
+   * forced binds them: with "everybody rolls in the app" a typed face is
+   * refused, and with "everybody rolls their own dice" the app's roll is
+   * (WRONG_DICE_MODE). The master may do either for anyone, and may set a
+   * value again; a player sets theirs once, so nobody rolls again until the
+   * result is good.
    *
    * Every stream gets `encounter_changed`.
    *
@@ -1422,8 +2823,8 @@ export const CombatService: GenService<{
    *     their character.
    *   - `failed_precondition`: the combat is not in SETUP (EncounterBlocked,
    *     NOT_IN_SETUP); the player's initiative is already set
-   *     (INITIATIVE_ALREADY_SET); the method does not match the player's
-   *     dice setting (WRONG_DICE_MODE).
+   *     (INITIATIVE_ALREADY_SET); the master forced the other way of rolling
+   *     (WRONG_DICE_MODE).
    *   - `invalid_argument`: neither roll_in_app nor d20_face is set, or the
    *     face is not 1 to 20.
    *
@@ -1506,7 +2907,8 @@ export const CombatService: GenService<{
    *   - `permission_denied`: the caller is a player and the current
    *     combatant is not their character, or nobody is on turn.
    *   - `failed_precondition`: the combat is not ACTIVE, or nobody in it can
-   *     take a turn (NOT_ACTIVE).
+   *     take a turn (NOT_ACTIVE); the combatant has a damage that waits to be
+   *     rolled or applied (PENDING_DAMAGE, see discard_pending_damage).
    *   - `aborted`: expected_combatant_id is not the one on turn.
    *
    * @generated from rpc meurpg.play.v1.CombatService.EndTurn
@@ -1629,6 +3031,266 @@ export const CombatService: GenService<{
     methodKind: "unary";
     input: typeof EndEncounterRequestSchema;
     output: typeof EndEncounterResponseSchema;
+  },
+  /**
+   * GetTurnOptions says what a combatant can do now: "Sua vez" (MR-014). The
+   * combatant's player may read their own character's, and the master any
+   * combatant's (an NPC's come from its sheet: a full sheet or a basic one
+   * with its attacks).
+   *
+   * It answers also when the combatant is not on turn, or the combat is not
+   * running: then every option is disabled with the reason
+   * (NOT_YOUR_TURN, COMBAT_NOT_ACTIVE, COMBATANT_DOWN, COMBATANT_DEFEATED),
+   * so the app can show "fora da vez". Besides the options the rules engine
+   * works out (economy, attacks, spells, actions), it lists, for each attack
+   * that rolls to hit, the targets the caller sees with the distance (a
+   * king's move, 5 ft a square: RN-21) and whether each is too far, and the
+   * damage this combatant still has to roll or that waits for the master.
+   * Spells are listed; casting them comes with the next slice.
+   *
+   * A player never gets a hidden combatant among the targets, nor anyone's
+   * armor class.
+   *
+   * Errors:
+   *   - `not_found`: the combat or the combatant is not in this campaign's
+   *     open session, or the caller is a player and may not see it.
+   *   - `permission_denied`: the caller is a player and the combatant is not
+   *     their character.
+   *
+   * @generated from rpc meurpg.play.v1.CombatService.GetTurnOptions
+   */
+  getTurnOptions: {
+    methodKind: "unary";
+    input: typeof GetTurnOptionsRequestSchema;
+    output: typeof GetTurnOptionsResponseSchema;
+  },
+  /**
+   * RollAttack is the first step of an attack: the attack roll. The
+   * combatant on turn attacks one target with one of its attacks (a weapon
+   * or a damaging cantrip; GetTurnOptions lists them). The combatant's
+   * player may attack with their own character, and the master with any
+   * combatant on turn (an NPC's attack, or on a player's behalf).
+   *
+   * The roll is rolled by the app (roll_in_app) or a physical d20's face is
+   * typed (d20_face, 1 to 20). The campaign's dice setting (RN-18) is checked
+   * as in SubmitInitiative: the player chooses on each roll unless the master
+   * forced a mode (WRONG_DICE_MODE). An NPC's roll is the master's: either way.
+   *
+   * The attack spends the action (one attack per action: Extra Attack and
+   * the NPCs' multiattack come with the next slice; the master may attack
+   * again). The server compares the total with the target's armor class: a
+   * natural 20 hits and is a critical hit, a natural 1 misses, any other
+   * roll hits when the total reaches the armor class. The answer carries the
+   * roll as numbers and the outcome, never the armor class. A hit opens a
+   * pending damage (stored, so a retry or a reload finds it) for RollDamage;
+   * a miss ends the attack.
+   *
+   * A player must be in reach: the target at most the attack's range (a
+   * melee attack: its reach, 5 ft unless the weapon says more) from them.
+   * Disadvantage at long range or next to an enemy is not applied yet. The
+   * master is never held to the reach.
+   *
+   * Every stream gets `encounter_changed`; the master's, and a player's when
+   * no hidden combatant is involved, `combat_log_changed`.
+   *
+   * Errors:
+   *   - `not_found`: the combat, the attacker or the target is not in this
+   *     campaign's open session, or the caller is a player and may not see it.
+   *   - `permission_denied`: the caller is a player and the attacker is not
+   *     their character.
+   *   - `invalid_argument`: neither roll_in_app nor d20_face is set, the face
+   *     is not 1 to 20, the attack_key is not one of the attacker's attacks
+   *     or asks for a saving throw (the next slice), or the attacker is the
+   *     target.
+   *   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_YOUR_TURN
+   *     (the attacker is not on turn), ACTION_USED (a player), COMBATANT_DOWN,
+   *     TARGET_DEFEATED, NOT_PLACED (a player without a square, or a target
+   *     without one), TARGET_OUT_OF_REACH (with missing_ft) and WRONG_DICE_MODE.
+   *
+   * @generated from rpc meurpg.play.v1.CombatService.RollAttack
+   */
+  rollAttack: {
+    methodKind: "unary";
+    input: typeof RollAttackRequestSchema;
+    output: typeof RollAttackResponseSchema;
+  },
+  /**
+   * RollDamage is the second step of an attack that hit: it rolls the damage
+   * of the pending damage with the attack's dice (doubled on a critical hit;
+   * the modifier is added once) and its damage type. The attacker's player
+   * may roll for their own attack, and the master for any.
+   *
+   * The roll follows the same rules as RollAttack (the player chooses on each
+   * roll unless the master forced a mode, RN-18): roll_in_app, or typed_sum,
+   * the sum of the physical dice without the modifier (the app adds it),
+   * between the number of dice and the number of dice times their faces
+   * (Q38). A damage without dice (a flat number) needs no roll: either field
+   * works.
+   *
+   * When the target is an NPC the damage is applied at once: temporary hit
+   * points first, then the hit points; at 0 the NPC is defeated ("Derrotado")
+   * and the turns skip it. When the target is a player's character the
+   * damage waits for the master (status ROLLED) until ApplyPendingDamage or
+   * DiscardPendingDamage (RN-02).
+   *
+   * Errors:
+   *   - `not_found`: the pending damage is not in this combat, or the caller
+   *     is a player and may not see the attacker.
+   *   - `permission_denied`: the caller is a player and the attacker is not
+   *     their character.
+   *   - `invalid_argument`: neither roll_in_app nor typed_sum is set, or the
+   *     sum is out of range for the dice.
+   *   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED,
+   *     DAMAGE_ALREADY_ROLLED, DAMAGE_RESOLVED and WRONG_DICE_MODE.
+   *
+   * @generated from rpc meurpg.play.v1.CombatService.RollDamage
+   */
+  rollDamage: {
+    methodKind: "unary";
+    input: typeof RollDamageRequestSchema;
+    output: typeof RollDamageResponseSchema;
+  },
+  /**
+   * ApplyPendingDamage applies a rolled damage to a player's character: the
+   * damage goes through the character's vitals (RN-02): temporary hit points
+   * first, then hit points, never below 0. At 0 the character is down
+   * ("Caído"; the death saves come with the next slice). Only the master may
+   * call it, and only for a damage in ROLLED.
+   *
+   * Every stream gets `encounter_changed`, and the character's player and the
+   * master `vitals_changed`.
+   *
+   * Errors:
+   *   - `not_found`: the pending damage is not in this combat.
+   *   - `permission_denied`: the caller is a player.
+   *   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED,
+   *     DAMAGE_NOT_ROLLED and DAMAGE_RESOLVED.
+   *
+   * @generated from rpc meurpg.play.v1.CombatService.ApplyPendingDamage
+   */
+  applyPendingDamage: {
+    methodKind: "unary";
+    input: typeof ApplyPendingDamageRequestSchema;
+    output: typeof ApplyPendingDamageResponseSchema;
+  },
+  /**
+   * DiscardPendingDamage drops a damage without applying it ("Não aplicar"),
+   * rolled or not. Only the master may call it.
+   *
+   * Errors: as ApplyPendingDamage, except that a damage not yet rolled may
+   * be discarded (no DAMAGE_NOT_ROLLED).
+   *
+   * @generated from rpc meurpg.play.v1.CombatService.DiscardPendingDamage
+   */
+  discardPendingDamage: {
+    methodKind: "unary";
+    input: typeof DiscardPendingDamageRequestSchema;
+    output: typeof DiscardPendingDamageResponseSchema;
+  },
+  /**
+   * TakeAction takes one of the standard actions that only spend the action
+   * economy: Dash, Disengage, Dodge, Help, Hide, Ready, Search and Use an
+   * Object (the keys of rules.v1.TurnOptions.standard_actions, such as
+   * "standard:dash"). Attack and Cast a Spell are not taken here: RollAttack
+   * and, with the next slice, casting. Dash doubles the speed for the rest of
+   * the turn (RN-21). The rest only spend the action and go to the log: the
+   * app reminds the table of their effects.
+   *
+   * The combatant must be on turn. Its player may act for their own
+   * character, and the master for any (the master may act again with the
+   * action used).
+   *
+   * Errors:
+   *   - `not_found`: the combat or the combatant is not in this campaign's
+   *     open session, or the caller is a player and may not see it.
+   *   - `permission_denied`: the caller is a player and the combatant is not
+   *     their character.
+   *   - `invalid_argument`: the action_key is not one of those listed above.
+   *   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_YOUR_TURN,
+   *     ACTION_USED (a player) and COMBATANT_DOWN.
+   *
+   * @generated from rpc meurpg.play.v1.CombatService.TakeAction
+   */
+  takeAction: {
+    methodKind: "unary";
+    input: typeof TakeActionRequestSchema;
+    output: typeof TakeActionResponseSchema;
+  },
+  /**
+   * AdjustCombatantHitPoints is the master's hand on an NPC's hit points:
+   * "Dano/Cura" (MR-012). One of damage (temporary hit points first), heal
+   * (up to the maximum) or hit_points (an exact value), and, apart or
+   * together, new temporary hit points. A defeated NPC healed above 0 comes
+   * back into the turn order; one that reaches 0 is defeated. A player's
+   * character keeps AdjustCharacterVitals (RN-02).
+   *
+   * Errors:
+   *   - `not_found`: the combat or the combatant is not in this combat.
+   *   - `permission_denied`: the caller is a player.
+   *   - `invalid_argument`: nothing to change, more than one of damage, heal
+   *     and hit_points, a value out of range (damage and heal 0 to 9,999,
+   *     hit_points 0 to the maximum, temporary 0 to 999), or the combatant
+   *     is a player's character.
+   *   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
+   *
+   * @generated from rpc meurpg.play.v1.CombatService.AdjustCombatantHitPoints
+   */
+  adjustCombatantHitPoints: {
+    methodKind: "unary";
+    input: typeof AdjustCombatantHitPointsRequestSchema;
+    output: typeof AdjustCombatantHitPointsResponseSchema;
+  },
+  /**
+   * UndoLastAction takes back the last action, one step ("Desfazer"): an
+   * attack roll, a damage roll, an applied or discarded damage, a standard
+   * action or an NPC's hit point change. It restores the hit points, the
+   * vitals, the economy, the defeated flag and the pending damage exactly as
+   * they were, and writes a compensating event: the history keeps both. The
+   * undone entry leaves the combat log.
+   *
+   * Only the master may call it. expected_event_id is the event the master
+   * sees as the last action (ListCombatLog.undoable_event_id): if another is
+   * the last now, the call changes nothing and fails with `aborted`, so two
+   * masters never undo two things. Only the very last change of the session
+   * can be undone: any later event (a turn passing, a move, a correction of
+   * the vitals) leaves nothing to undo (NOTHING_TO_UNDO).
+   *
+   * Errors:
+   *   - `not_found`: the combat is not this campaign's.
+   *   - `permission_denied`: the caller is a player.
+   *   - `aborted`: expected_event_id is not the last action.
+   *   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED or
+   *     NOTHING_TO_UNDO.
+   *
+   * @generated from rpc meurpg.play.v1.CombatService.UndoLastAction
+   */
+  undoLastAction: {
+    methodKind: "unary";
+    input: typeof UndoLastActionRequestSchema;
+    output: typeof UndoLastActionResponseSchema;
+  },
+  /**
+   * ListCombatLog returns the combat log ("Registro do combate"), latest
+   * first, grouped by round. Every entry is structured: the app writes the
+   * sentence. A player only gets the entries about what they see: nothing
+   * from a hidden combatant (not even that it waits hidden), no hit points
+   * of an NPC, no armor class, and the dice only of their own character;
+   * when the master reveals a combatant, only new entries appear. The master
+   * gets everything, with `hidden` set on the entries the players do not get.
+   *
+   * Any member may call it. The app reads it after every
+   * `combat_log_changed` and after every reconnection.
+   *
+   * Errors:
+   *   - `not_found`: the combat is not in this campaign's open session, or
+   *     the caller is not a member.
+   *
+   * @generated from rpc meurpg.play.v1.CombatService.ListCombatLog
+   */
+  listCombatLog: {
+    methodKind: "unary";
+    input: typeof ListCombatLogRequestSchema;
+    output: typeof ListCombatLogResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_meurpg_play_v1_combat, 0);

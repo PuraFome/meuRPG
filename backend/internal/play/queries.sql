@@ -56,7 +56,7 @@ ORDER BY started_at DESC, id;
 
 -- name: GetSessionEventByIdempotencyKey :one
 -- The event a change with this key already wrote, if any.
-SELECT id, seq, kind, character_id FROM session_events
+SELECT id, seq, kind, character_id, payload FROM session_events
 WHERE game_session_id = $1 AND idempotency_key = $2;
 
 -- name: NextSessionEventSeq :one
@@ -69,8 +69,8 @@ WHERE game_session_id = $1;
 
 -- name: InsertSessionEvent :one
 INSERT INTO session_events
-    (game_session_id, seq, kind, actor_user_id, character_id, payload, idempotency_key, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    (game_session_id, seq, kind, actor_user_id, character_id, payload, idempotency_key, created_at, encounter_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING id, seq;
 
 -- name: GetOnScreen :one
@@ -191,3 +191,81 @@ WHERE id = $1;
 -- name: DeleteCombatant :exec
 DELETE FROM combatants
 WHERE id = $1;
+
+-- name: SetCombatantHitPoints :exec
+-- An NPC's hit points, temporary hit points and defeated flag (damage, healing,
+-- the master's hand, an undo).
+UPDATE combatants
+SET hp_current = $2, hp_temp = $3, defeated = $4
+WHERE id = $1;
+
+-- name: SetCombatantEconomy :exec
+-- The turn's economy as an action, or its undo, leaves it.
+UPDATE combatants
+SET action_used = $2, bonus_action_used = $3, reaction_used = $4, dashed = $5
+WHERE id = $1;
+
+-- Pending damage (MR-012, MR-014): the damage of an attack that hit. Every write
+-- below runs after the caller locked the open session's row.
+
+-- name: InsertPendingDamage :one
+INSERT INTO pending_damages (
+    encounter_id, attacker_id, target_id, attack_key, status, critical,
+    dice_count, dice_sides, dice_bonus, damage_type, created_at
+) VALUES ($1, $2, $3, $4, 'awaiting_roll', $5, $6, $7, $8, $9, $10)
+RETURNING *;
+
+-- name: GetPendingDamage :one
+-- A pending damage by its ID, if it is in the combat.
+SELECT * FROM pending_damages
+WHERE encounter_id = $1 AND id = $2;
+
+-- name: ListOpenPendingDamages :many
+-- What still waits to be rolled or applied in the combat, oldest first.
+SELECT * FROM pending_damages
+WHERE encounter_id = $1 AND status IN ('awaiting_roll', 'rolled')
+ORDER BY created_at, id;
+
+-- name: SetPendingDamageRolled :one
+-- The roll of a pending damage: 'rolled' for a player's character (waits for
+-- the master), 'applied' for an NPC.
+UPDATE pending_damages
+SET status = $2, faces = $3, physical = $4, amount = $5, resolved_at = $6
+WHERE id = $1
+RETURNING *;
+
+-- name: SetPendingDamageStatus :one
+-- Applied or discarded by the master, or back to where it was (an undo).
+UPDATE pending_damages
+SET status = $2, resolved_at = $3
+WHERE id = $1
+RETURNING *;
+
+-- name: ClearPendingDamageRoll :one
+-- An undo of the damage roll: it waits to be rolled again.
+UPDATE pending_damages
+SET status = 'awaiting_roll', faces = '{}', physical = false, amount = NULL, resolved_at = NULL
+WHERE id = $1
+RETURNING *;
+
+-- name: DeletePendingDamage :exec
+DELETE FROM pending_damages
+WHERE id = $1;
+
+-- The combat log and the undo read the session's events (ADR-0007).
+
+-- name: ListEncounterEvents :many
+-- A combat's latest events, newest first: when a combat is longer than the
+-- limit, it is the oldest lines that fall off the log, never the newest (or the
+-- one an undo would take back). The caller reverses them.
+SELECT id, seq, kind, actor_user_id, payload, created_at FROM session_events
+WHERE encounter_id = $1
+ORDER BY seq DESC
+LIMIT $2;
+
+-- name: ListRecentSessionEvents :many
+-- The session's latest events, newest first (the undo looks for the last action).
+SELECT id, seq, kind, encounter_id, payload FROM session_events
+WHERE game_session_id = $1
+ORDER BY seq DESC
+LIMIT $2;

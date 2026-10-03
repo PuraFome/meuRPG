@@ -312,10 +312,16 @@ func run(logger *slog.Logger, cfg config.Config) error {
 }
 
 // diceModes adapts the campaigns service to play's DiceModes: play only needs
-// to know whether a player rolls real dice, not campaigns' own types.
+// to know what the campaign's setting forces on a player, not campaigns' own types.
 type diceModes struct{ campaigns *campaigns.Service }
 
-func (d diceModes) RollsPhysical(ctx context.Context, campaignID, userID string) (bool, error) {
-	mode, err := d.campaigns.PlayerDiceMode(ctx, campaignID, userID)
-	return mode == campaigns.RollsPhysical, err
+func (d diceModes) ForcedDice(ctx context.Context, campaignID, userID string) (play.DiceForce, error) {
+	mode, err := d.campaigns.CampaignDiceMode(ctx, campaignID, userID)
+	switch mode {
+	case campaigns.DiceModeApp:
+		return play.DiceForcedInApp, err
+	case campaigns.DiceModePhysical:
+		return play.DiceForcedPhysical, err
+	}
+	return play.DiceChoice, err
 }
