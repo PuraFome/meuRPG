@@ -126,6 +126,7 @@ Os dois últimos critérios foram respondida pelo Vinicius em 29/09/2026.
   - `TestMR006_CharacterCreatedAfterTheFirstSessionLocksAtTheNextOne`, e no `play`, com a sessão de verdade, `TestCharacterCreatedLaterLocksAtTheNextSession`;
   - `TestMR006_AfterTheLockTheStoryNeedsTheMastersPermission`, e no `play`, `TestStartingASessionTurnsStoryEditingOff`.
 - A tela (ficha só para leitura, botões do mestre) veio no PR das telas da Etapa 4, com os testes Playwright de `e2e/tests/sheet-lock.spec.ts`.
+- Desde 03/10/2026, o endereço de edição de uma ficha travada (`/campanhas/:id/personagens/:characterId/editar`, digitado ou salvo) também mostra a trava antes de qualquer formulário: o editor lê `Character.can_edit` ao abrir e, sem permissão, mostra "Ficha travada" (ou "Personagem morto") com o motivo e "Voltar para a ficha", em vez de deixar o jogador preencher tudo e só descobrir ao salvar. O mesmo teste de `sheet-lock.spec.ts` confere.
 
 ### MR-008: Pontos de interesse
 
