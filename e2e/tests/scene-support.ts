@@ -1,0 +1,121 @@
+import { expect, type Page } from '@playwright/test';
+
+import { startSessionRPC } from './live-session-support';
+import {
+  canvasPng,
+  createMapRPC,
+  createPointRPC,
+  placeTokenRPC,
+  revealMapRPC,
+  setCurrentMapRPC,
+  tableForMaps,
+  uploadImageRPC,
+  type MapsTable,
+} from './maps-support';
+import { callRPC } from './support';
+
+// Setup for the RP scene specs (Etapa 7, MR-015), through the API: these
+// tests prove the scene screens, not the campaign, character and map forms
+// other specs already cover. Every test makes its own campaign. The data is
+// the artboards' table: "Estrada do Vale", the point "A carroça tombada" and
+// Pensantus, whose Investigação is +6.
+
+export interface SceneTable extends MapsTable {
+  sessionId: string;
+  mapId: string;
+  /** "A carroça tombada": a revealed scene point. */
+  cartId: string;
+  /** "Posto da guarda": a hidden scene point. */
+  guardId: string;
+  /** "Vau do riacho": a revealed scene point with no actions. */
+  fordId: string;
+}
+
+export interface ActionSpec {
+  key: string;
+  name?: string;
+  dc?: number;
+}
+
+/** The five actions of the artboards, in order. */
+export const cartActions: ActionSpec[] = [
+  { key: 'skill:investigation', name: 'Procurar pistas na carroça', dc: 12 },
+  { key: 'skill:survival', name: 'Seguir os rastros dos goblins', dc: 13 },
+  { key: 'skill:animal-handling', name: 'Acalmar os cavalos' },
+  { key: 'skill:perception' },
+  { key: 'save:con', name: 'Resistir ao cheiro de fumaça', dc: 10 },
+];
+
+export async function addActionRPC(page: Page, table: { campaignId: string; mapId: string }, pointId: string, action: ActionSpec): Promise<void> {
+  const res = await callRPC(page, 'meurpg.maps.v1.MapService/AddSceneAction', {
+    campaignId: table.campaignId,
+    mapId: table.mapId,
+    pointId,
+    key: action.key,
+    name: action.name ?? '',
+    dc: action.dc ?? 0,
+  });
+  expect(res.ok(), await res.text()).toBeTruthy();
+}
+
+/**
+ * A table ready for a scene: Pensantus (the player's, with a token), an open
+ * session and "Estrada do Vale" as its current map, with three scene points.
+ * With `seed` the cart has the five actions of the artboards and the guard post
+ * three of them; without it no point has an action (the editor test adds its own).
+ * Master and player pages must be signed in as each; neither navigates.
+ */
+export async function tableForScenes(masterPage: Page, playerPage: Page, name: string, seed = true): Promise<SceneTable> {
+  const base = await tableForMaps(masterPage, playerPage, name);
+  const sessionId = await startSessionRPC(masterPage, base.campaignId);
+  await masterPage.goto('/');
+  const image = await uploadImageRPC(masterPage, base.campaignId, 'Estrada do Vale', await canvasPng(masterPage, 2000, 1400, 'Estrada do Vale'));
+  const mapId = await createMapRPC(masterPage, base.campaignId, 'Estrada do Vale', image);
+  await revealMapRPC(masterPage, base.campaignId, mapId);
+  await setCurrentMapRPC(masterPage, base.campaignId, mapId);
+  await placeTokenRPC(masterPage, base.campaignId, mapId, base.characterId, 2500, 7000);
+  const cartId = await createPointRPC(masterPage, base.campaignId, mapId, {
+    kind: 'SCENE',
+    name: 'A carroça tombada',
+    description: 'Uma carroça de mercador tombada na estrada. Há caixas espalhadas e rastros de botas na lama.',
+    xBp: 4500,
+    yBp: 4200,
+    revealed: true,
+  });
+  const guardId = await createPointRPC(masterPage, base.campaignId, mapId, { kind: 'SCENE', name: 'Posto da guarda', description: 'Um posto abandonado.', xBp: 7200, yBp: 5600 });
+  const fordId = await createPointRPC(masterPage, base.campaignId, mapId, { kind: 'SCENE', name: 'Vau do riacho', xBp: 6500, yBp: 1500, revealed: true });
+  const table: SceneTable = { ...base, sessionId, mapId, cartId, guardId, fordId };
+  if (seed) {
+    for (const action of cartActions) {
+      await addActionRPC(masterPage, table, cartId, action);
+    }
+    for (const action of cartActions.slice(0, 3)) {
+      await addActionRPC(masterPage, table, guardId, action);
+    }
+  }
+  return table;
+}
+
+/** Opens a scene through the API (what the master's picker does). */
+export async function openSceneRPC(page: Page, campaignId: string, pointId: string): Promise<void> {
+  const res = await callRPC(page, 'meurpg.play.v1.PlayService/OpenScene', { campaignId, pointId });
+  expect(res.ok(), await res.text()).toBeTruthy();
+}
+
+/** Rolls an action as the player, through the API, with a typed face. */
+export async function rollSceneRPC(page: Page, campaignId: string, actionId: string, d20Face: number): Promise<void> {
+  const res = await callRPC(page, 'meurpg.play.v1.PlayService/RollSceneCheck', {
+    campaignId,
+    actionId,
+    d20Face,
+    idempotencyKey: crypto.randomUUID(),
+  });
+  expect(res.ok(), await res.text()).toBeTruthy();
+}
+
+/** The open scene as the caller sees it (`GetOpenScene`). */
+export async function getOpenSceneRPC(page: Page, campaignId: string): Promise<{ scene?: { actions: { id: string; name: string; checkName: string }[]; rolls: unknown[] } }> {
+  const res = await callRPC(page, 'meurpg.play.v1.PlayService/GetOpenScene', { campaignId });
+  expect(res.ok(), await res.text()).toBeTruthy();
+  return res.json();
+}

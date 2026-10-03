@@ -36,7 +36,9 @@
   gap: var(--mr-space-3);
   padding: 14px 18px var(--mr-space-4);
   background: var(--mr-surface);
-  border: 2px solid var(--mr-accent);
+  // The accent frame; while the master's scene is open the page makes it neutral (E7-03), so
+  // the scene's frame is the only one that asks for attention.
+  border: 2px solid var(--vitals-frame, var(--mr-accent));
   border-radius: var(--mr-radius-lg);
 }
 

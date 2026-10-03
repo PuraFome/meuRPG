@@ -87,12 +87,14 @@
       @for (p of [point]; track p.id) {
         <app-point-panel
           [point]="p"
+          [campaignId]="campaignId()"
           [maps]="maps()"
           [saving]="saving()"
           [error]="panelError()"
           [focusName]="justCreated()"
           (saveRequested)="save()"
           (removeConfirmed)="remove()"
+          (sceneActionsChange)="setSceneActions(p, $event)"
           (dirtyChange)="dirty.set($event)"
         />
       }

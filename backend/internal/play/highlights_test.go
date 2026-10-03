@@ -86,6 +86,7 @@ func wantCategories(t *testing.T, who string, res *playv1.GetCombatHighlightsRes
 // nobody healed and nobody rolled a critical (the goblin's is an NPC's). So
 // Mais cura and Acertos críticos are left out, and Golpe final is a tie.
 func TestMR032_HighlightsOfTheAmbush(t *testing.T) {
+	t.Parallel()
 	a := newArmedWith(t, func(a *armed) {
 		scores := func(str, dex, con, intl int32) *rulesv1.AbilityScores {
 			return &rulesv1.AbilityScores{Strength: str, Dexterity: dex, Constitution: con, Intelligence: intl, Wisdom: 10, Charisma: 8}
@@ -264,6 +265,7 @@ func TestMR032_HighlightsOfTheAmbush(t *testing.T) {
 // nobody, and damage to an NPC the master still hides is a number like any
 // other (RN-20), named nowhere.
 func TestMR032_HighlightsSkipTheUndoneAndCountWhatHappened(t *testing.T) {
+	t.Parallel()
 	a := newArmed(t)
 	e := a.start(t, plan{
 		npcs: []*playv1.Participant{
@@ -393,6 +395,7 @@ func tallyOf(f *fabric) map[string]characterTally {
 // MR-032: damage past 0 hit points does not count, temporary hit points that
 // absorbed some do, and the hit that brings an NPC to 0 is the final blow.
 func TestMR032_OverkillDoesNotCount(t *testing.T) {
+	t.Parallel()
 	f := &fabric{}
 	f.add(eventDamageRolled, land("c-toren", 7, 7)) // 27 rolled, 7 land: defeated
 	e := land("c-bri", 10, 4)
@@ -411,6 +414,7 @@ func TestMR032_OverkillDoesNotCount(t *testing.T) {
 // MR-032: what an undo took back counts for nothing, even when other events
 // came after it.
 func TestMR032_UndoneActionsAreSkipped(t *testing.T) {
+	t.Parallel()
 	f := &fabric{}
 	crit := f.add(eventAttackRolled, actionEvent{Actor: "c-toren", Outcome: outcomeCrit})
 	dmg := f.add(eventDamageRolled, land("c-toren", 7, 7))
@@ -430,6 +434,7 @@ func TestMR032_UndoneActionsAreSkipped(t *testing.T) {
 // the character that took it; a hit at 0 hit points is no hit points; an NPC's
 // own hit and a combatant that left the combat are nobody's.
 func TestMR032_DamageTakenIsWhatTheMasterApplied(t *testing.T) {
+	t.Parallel()
 	f := &fabric{}
 	// Rolled and still waiting, discarded or never applied: no damage_applied.
 	f.add(eventDamageRolled, actionEvent{Actor: "c-gob", Target: "c-toren", Amount: 9})
@@ -450,6 +455,7 @@ func TestMR032_DamageTakenIsWhatTheMasterApplied(t *testing.T) {
 // MR-032: a heal counts what it gave back, from a spell or from Retomar o
 // fôlego.
 func TestMR032_HealingIsWhatWasGivenBack(t *testing.T) {
+	t.Parallel()
 	f := &fabric{}
 	f.add(eventActionTaken, actionEvent{Actor: "c-toren", Heal: true, Amount: 4})
 	f.add(eventDamageRolled, actionEvent{Actor: "c-bri", Heal: true, Applied: true, Amount: 6, Settled: []damageHit{
@@ -464,6 +470,7 @@ func TestMR032_HealingIsWhatWasGivenBack(t *testing.T) {
 // MR-032: a tie names everyone tied, in the order of the combat, and a
 // category where everybody has 0 is left out.
 func TestMR032_TiesNameEveryoneAndZerosAreLeftOut(t *testing.T) {
+	t.Parallel()
 	tallies := []*characterTally{
 		{characterID: "a", name: "Toren", damage: 7, taken: 3, crits: 0},
 		{characterID: "b", name: "Brisa", damage: 7, taken: 0},
@@ -489,6 +496,7 @@ func TestMR032_TiesNameEveryoneAndZerosAreLeftOut(t *testing.T) {
 // GetCombatHighlights: any member, once the combat ended; a combat of another
 // campaign is not found; the rest as everywhere.
 func TestMR032_HighlightsAuthorizationMatrix(t *testing.T) {
+	t.Parallel()
 	a := newArmed(t)
 	e := a.threeAndAGoblin(t)
 	a.endEncounter(t, e)
@@ -539,6 +547,7 @@ func TestMR032_HighlightsAuthorizationMatrix(t *testing.T) {
 // ("/images/<id>"); a player's copy of the same combat never does, nor the
 // image's ID (a player may see a portrait only on the stage).
 func TestMR031_TheMastersNPCCardHasThePortrait(t *testing.T) {
+	t.Parallel()
 	a := newArmed(t)
 	imageID := newKey()
 	if _, err := a.h.pool.Exec(t.Context(),

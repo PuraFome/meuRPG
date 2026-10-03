@@ -35,6 +35,28 @@
         >
           {{ p.revealed ? 'Esconder' : 'Revelar aos jogadores' }}
         </button>
+        @if (p.kind === Scene && openScenePointId() !== undefined) {
+          <div class="row__scene">
+            @if (openScenePointId() === p.id) {
+              <span class="row__open"><mat-icon aria-hidden="true">cast</mat-icon>Cena aberta agora</span>
+            } @else if (p.sceneActions.length === 0) {
+              <span class="row__none">
+                <mat-icon aria-hidden="true">block</mat-icon>Sem ações. Adicione no editor do mapa.
+              </span>
+            } @else {
+              <button
+                matButton="outlined"
+                type="button"
+                [disabled]="pendingSceneId() === p.id"
+                disabledInteractive
+                [attr.aria-label]="(openScenePointId() === null ? 'Abrir cena ' : 'Trocar para a cena ') + p.name"
+                (click)="openScene.emit(p)"
+              >
+                <mat-icon aria-hidden="true">chat_bubble_outline</mat-icon>{{ openScenePointId() === null ? 'Abrir cena' : 'Trocar para esta cena' }}
+              </button>
+            }
+          </div>
+        }
       </li>
     }
   </ul>

@@ -1,0 +1,138 @@
+:host {
+  display: block;
+}
+
+.sa {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+.sa__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+}
+
+.sa__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 26px;
+}
+
+.sa__count {
+  flex: none;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.sa__lead,
+.sa__limit {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+// The limit is said in words, above the disabled button.
+.sa__limit {
+  font-weight: 700;
+  color: var(--mr-ink);
+}
+
+.sa__empty {
+  margin: 0;
+  padding: var(--mr-space-3) var(--mr-space-4);
+  border: 1px dashed var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  color: var(--mr-ink-muted);
+}
+
+.sa__list {
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--mr-rule);
+  list-style: none;
+}
+
+.sa__row {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  padding: var(--mr-space-2) 0;
+
+  & + & {
+    border-top: 1px solid var(--mr-rule);
+  }
+}
+
+// Name, the check under it and, only when there is one, the DC on its own
+// line: the place is the same in every row.
+.sa__text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sa__name {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+
+.sa__check {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.sa__dc {
+  margin-top: 2px;
+  font-weight: 700;
+  color: var(--mr-ink);
+}
+
+.sa__controls {
+  display: flex;
+  flex: none;
+}
+
+// ↑ ↓ and remove: 44px targets. The first ↑ and the last ↓ are quieter
+// (`aria-disabled`, still focusable).
+.sa__ib {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mr-ink);
+  cursor: pointer;
+
+  &--off {
+    color: var(--mr-ink-muted);
+    opacity: 0.55;
+    cursor: default;
+  }
+
+  &--danger {
+    color: var(--mr-danger-ink);
+  }
+}
+
+.sa__add {
+  width: 100%;
+  margin-top: var(--mr-space-1);
+}
+
+.sa__add--off {
+  border-style: dashed;
+}

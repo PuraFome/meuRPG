@@ -174,6 +174,29 @@ type Spell struct {
 	// above its own.
 	Area                bool
 	ExtraTargetPerLevel bool
+	// HP is set for a spell that reads hit points (Sono, Palavra de Poder...):
+	// Damage and Heal are nil for it, and the cast applies HP instead.
+	HP *HPEffect
+}
+
+// HPEffect is what a spell that reads hit points does at the slot level, from
+// the rules' effects/spells.json (rules.SpellEffect). Kind is the rules'
+// SpellKind: "hp_pool", "hp_threshold", "zero_hp_target" or "flat_heal".
+type HPEffect struct {
+	Kind string
+	// Pool is the dice of an hp_pool spell, with the extra dice of the slot
+	// level already in Count.
+	Pool Dice
+	// Condition is the key given to each creature affected; empty for none.
+	Condition string
+	// Threshold is the most hit points a creature may have, and Dies says the
+	// spell kills it instead (an hp_threshold spell).
+	Threshold int
+	Dies      bool
+	// Heal is a flat_heal's healing at the slot level, and Ends the conditions
+	// it ends.
+	Heal int
+	Ends []string
 }
 
 // Save is a creature's saving throw: the bonus added to the d20, and whether

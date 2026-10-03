@@ -1,0 +1,61 @@
+<app-sheet-frame
+  [title]="title()"
+  [subtitle]="subtitle()"
+  titleId="scene-roll-t"
+  [phone]="inSheet"
+  (closed)="close()"
+>
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+
+  @if (roll(); as r) {
+    <div class="res" role="status" aria-live="polite">
+      <span class="res__sum">{{ r.roll?.total }}</span>
+      <span class="res__text">
+        <span class="res__formula">{{ formula() }}</span>
+        <span class="res__cap">Seu total em {{ action.checkName }}</span>
+      </span>
+    </div>
+    <p class="note"><mat-icon aria-hidden="true">visibility</mat-icon>O mestre vê o resultado.</p>
+  } @else {
+    @if (!typing()) {
+      <div class="card">
+        <span class="card__bonus">{{ bonusText }}</span>
+        <span class="card__text">
+          <b class="card__formula">{{ diceLine }}</b>
+          <span class="card__check">{{ action.checkName }}</span>
+        </span>
+      </div>
+      <p class="how">Role no app, ou role o seu dado e digite o número que saiu.</p>
+      <p class="note"><mat-icon aria-hidden="true">visibility</mat-icon>O mestre vê o resultado e diz o que acontece.</p>
+    }
+    <app-roll-picker
+      [canApp]="canApp"
+      [canType]="canType"
+      [preferApp]="preferApp"
+      [label]="rollLabel"
+      hint="Role o seu dado e digite o número que saiu (1 a 20)."
+      [totalNote]="'Total em ' + action.checkName"
+      [modifier]="bonus"
+      [busy]="busy()"
+      [sticky]="true"
+      [inlineError]="true"
+      [compact]="short()"
+      [(typing)]="typing"
+      (app)="rollWith({ inApp: true })"
+      (typed)="rollWith({ face: $event })"
+    />
+  }
+
+  @if (roll()) {
+    <div foot>
+      <button #back matButton="filled" type="button" class="done" (click)="close()">
+        Voltar à cena
+      </button>
+    </div>
+  }
+</app-sheet-frame>

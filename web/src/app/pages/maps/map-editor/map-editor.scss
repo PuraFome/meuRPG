@@ -74,18 +74,32 @@
   color: var(--mr-ink-muted);
 }
 
+// The point panel sits beside the map from 1200px; below that it goes under
+// it, full width (E7-01: at 1024×768 the panel with its actions is too tall
+// to share the row).
 .layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--mr-space-4);
   align-items: start;
+
+  @media (min-width: 1200px) {
+    grid-template-columns: minmax(0, 1fr) 380px;
+  }
 }
 
+// The map stays on screen while the taller panel scrolls beside it, under the
+// 64px app bar.
 .layout__map {
   display: flex;
   flex-direction: column;
   gap: var(--mr-space-3);
   min-width: 0;
+
+  @media (min-width: 1200px) {
+    position: sticky;
+    top: calc(64px + var(--mr-space-4));
+  }
 }
 
 .layout__side {

@@ -6,13 +6,16 @@ import { MatInputModule } from '@angular/material/input';
 import { RouterLink } from '@angular/router';
 import { Code, ConnectError } from '@connectrpc/connect';
 
-import type { Map as MapMessage } from '../../../../gen/meurpg/maps/v1/maps_pb';
+import type { Map as MapMessage, MapPoint } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { describeConnectError } from '../../../core/connect/connect-errors';
 import { mapErrorMessage } from '../../../core/maps/map-errors';
 import { MapReveals } from '../../../core/maps/map-reveals';
 import { MapState } from '../../../core/maps/map-state';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { MoveSaves } from '../../../core/maps/move-saves';
+import { SceneClient } from '../../../core/play/scene-client';
+import { sceneErrorMessage } from '../../../core/play/scene-errors';
+import type { SceneState } from '../../../core/play/scene-state';
 import { MapPointsList } from '../../../shared/map-lists/map-points-list';
 import { MapLegend } from '../../../shared/map-view/map-legend/map-legend';
 import { MapMove, MapView } from '../../../shared/map-view/map-view';
@@ -54,6 +57,7 @@ export class SessionMap {
   /** Saves each token's moves one at a time (see `MoveSaves`). */
   private readonly moves = new MoveSaves();
   private readonly source = inject(LiveSessionSource);
+  private readonly sceneApi = inject(SceneClient);
 
   readonly campaignId = input.required<string>();
   readonly state = input.required<MapState>();
@@ -63,12 +67,15 @@ export class SessionMap {
   readonly isMaster = input(false);
   /** The campaign's maps, for the master's select. */
   readonly maps = input<readonly MapMessage[]>([]);
+  /** The session's RP scene, for "Abrir cena" on a scene point (master). */
+  readonly scene = input<SceneState | null>(null);
   /** The master chose another map (or none): the page shows it. */
   readonly currentChanged = output<string | null>();
 
   protected readonly phone = mediaQuery(PHONE_QUERY);
   protected readonly error = signal<string | null>(null);
   protected readonly busy = signal(false);
+  protected readonly sceneError = signal<string | null>(null);
   protected readonly reveals = new MapReveals(
     inject(MapsClient),
     () => this.state(),
@@ -85,6 +92,26 @@ export class SessionMap {
     const chosen = this.maps().find((m) => m.id === this.mapId());
     return chosen !== undefined && !chosen.revealed;
   });
+
+  protected readonly pendingScene = signal<string | null>(null);
+
+  /** "Abrir cena" on a scene point of the map: the same call as the picker's, so the
+   * open scene appears (and takes focus) at once. A refusal is said under the list. */
+  protected async openScene(point: MapPoint): Promise<void> {
+    const state = this.scene();
+    if (!state || this.pendingScene() !== null) {
+      return;
+    }
+    this.pendingScene.set(point.id);
+    this.sceneError.set(null);
+    try {
+      state.openedHere(await this.sceneApi.open(this.campaignId(), point.id));
+    } catch (err) {
+      this.sceneError.set(sceneErrorMessage(err, 'abrir a cena'));
+    } finally {
+      this.pendingScene.set(null);
+    }
+  }
 
   protected async choose(select: HTMLSelectElement): Promise<void> {
     const mapId = select.value === '' ? null : select.value;

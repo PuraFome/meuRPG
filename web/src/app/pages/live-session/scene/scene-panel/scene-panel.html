@@ -1,0 +1,16 @@
+<section class="mr-panel sp" aria-labelledby="sp-title">
+  <h2 class="mr-panel__title" id="sp-title">Cena de RP</h2>
+  @if (!hasMap()) {
+    <p class="sp__text">Escolha o mapa da sessão para poder abrir uma cena de RP.</p>
+  } @else if (!hasScenes()) {
+    <p class="sp__text">Este mapa não tem cena de RP. Crie uma no editor do mapa.</p>
+  } @else {
+    <p class="sp__title">Nenhuma cena aberta.</p>
+    <p class="sp__text">
+      Abra uma cena de RP do mapa atual para os jogadores rolarem testes, com o bônus de cada um.
+    </p>
+    <button #openButton matButton="outlined" type="button" class="sp__button" (click)="open()">
+      <mat-icon aria-hidden="true">chat_bubble_outline</mat-icon>Abrir cena
+    </button>
+  }
+</section>

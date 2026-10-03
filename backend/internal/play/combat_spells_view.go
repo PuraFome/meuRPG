@@ -8,6 +8,8 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
 // How a cast is shown (RN-20): the caster's player and the master get the d20 of
@@ -52,6 +54,66 @@ func attackRollView(h castHit, v combatViewer, caster playdb.Combatant) *playv1.
 	return diceRoll(1, 20, []int32{h.D20}, h.Modifier, h.Total, h.Physical)
 }
 
+var effectKindToProto = map[string]playv1.SpellEffectKind{
+	rules.SpellKindHPPool:      playv1.SpellEffectKind_SPELL_EFFECT_KIND_POOL,
+	rules.SpellKindHPThreshold: playv1.SpellEffectKind_SPELL_EFFECT_KIND_THRESHOLD,
+	rules.SpellKindZeroHP:      playv1.SpellEffectKind_SPELL_EFFECT_KIND_ZERO_HP,
+	rules.SpellKindFlatHeal:    playv1.SpellEffectKind_SPELL_EFFECT_KIND_FLAT_HEAL,
+}
+
+var effectReasonToProto = map[string]playv1.SpellEffectReason{
+	combat.PoolTooHigh: playv1.SpellEffectReason_SPELL_EFFECT_REASON_ABOVE_POOL,
+	combat.PoolSkipped: playv1.SpellEffectReason_SPELL_EFFECT_REASON_SKIPPED,
+	fxAboveLimit:       playv1.SpellEffectReason_SPELL_EFFECT_REASON_ABOVE_LIMIT,
+	fxNotAtZero:        playv1.SpellEffectReason_SPELL_EFFECT_REASON_NOT_AT_ZERO,
+}
+
+// effectView is what a spell that reads hit points did to a target, as the
+// viewer may see it (RN-20): everyone gets the outcome as a word; the master
+// alone gets why, the target's hit points and the pool's arithmetic (an enemy's
+// hit points never reach a player, and the order of the pool would tell who has
+// fewer); a heal's amount, capped at the target's maximum, goes only to the
+// master and the target's own player, as for any heal (slice 6.4b): on an NPC,
+// the amount would tell the caster how many hit points it lacked.
+func effectView(h castHit, v combatViewer, target playdb.Combatant) *playv1.SpellEffectResult {
+	if h.Fx == "" {
+		return nil
+	}
+	out := &playv1.SpellEffectResult{Outcome: playv1.SpellEffectOutcome_SPELL_EFFECT_OUTCOME_NOT_AFFECTED}
+	if h.Fx == fxAffected {
+		out.Outcome = playv1.SpellEffectOutcome_SPELL_EFFECT_OUTCOME_AFFECTED
+	}
+	if v.master {
+		out.Reason = effectReasonToProto[h.FxReason]
+		out.HitPointsBefore = &h.HPBefore
+		if h.Order > 0 {
+			out.PoolLeft, out.PoolOrder = &h.Left, &h.Order
+		}
+	}
+	if h.Healed != nil && (v.master || v.owns(target)) {
+		out.Healed = h.Healed
+	}
+	return out
+}
+
+// effectHeader fills what a spell that reads hit points says about the cast as a
+// whole: its kind and condition for everyone, the pool roll for the master and
+// the caster's player, the limit for the master. It returns them as the fields
+// SpellCast and CombatLogSpell share.
+func effectHeader(ev actionEvent, v combatViewer, caster playdb.Combatant) (kind playv1.SpellEffectKind, pool *playv1.DiceRoll, condition string, limit *int32) {
+	kind = effectKindToProto[ev.FxKind]
+	if kind == playv1.SpellEffectKind_SPELL_EFFECT_KIND_UNSPECIFIED {
+		return kind, nil, "", nil
+	}
+	if kind == playv1.SpellEffectKind_SPELL_EFFECT_KIND_POOL && (v.master || v.owns(caster)) {
+		pool = diceRoll(ev.DiceCount, ev.DiceSides, ev.Faces, 0, ev.Total, ev.Physical)
+	}
+	if v.master && ev.FxLimit > 0 {
+		limit = &ev.FxLimit
+	}
+	return kind, pool, ev.FxCondition, limit
+}
+
 // castProto builds the SpellCast a cast event tells, for the viewer, who is the
 // caster's player or the master: the pending damages of the cast, with their
 // current state.
@@ -69,11 +131,13 @@ func (s *Service) castProto(ctx context.Context, res combatResult, ev actionEven
 		CastId: ev.CastID, SpellKey: ev.Key, Slot: slotProto(ev.Slot), Concentrating: ev.Concentrate,
 		ConcentrationEndedSpellKey: ev.ConcEnded,
 	}
+	out.EffectKind, out.PoolRoll, out.EffectConditionKey, out.EffectThreshold = effectHeader(ev, v, caster)
 	for _, h := range ev.Hits {
 		target := byID[h.Target]
 		r := &playv1.SpellTargetResult{
 			CombatantId: h.Target, Darts: h.Darts, Outcome: outcomeToProto[h.Outcome],
 			AttackRoll: attackRollView(h, v, caster), Save: saveView(h.Save, v, caster, target),
+			Effect: effectView(h, v, target),
 		}
 		if h.Pending != "" && (v.master || v.owns(caster)) {
 			r.PendingDamageId = h.Pending

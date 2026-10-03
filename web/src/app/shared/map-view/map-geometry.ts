@@ -189,6 +189,20 @@ export function labelShift(left: number, right: number, minLeft: number, maxRigh
   return 0;
 }
 
+/** Where a label may sit: inside the image and inside what the viewport shows of it
+ * (a zoomed preview crops the image, and a label near the crop's edge would be cut),
+ * with a margin off each side. Screen pixels. */
+export function labelBounds(
+  image: { left: number; right: number },
+  viewport: { left: number; right: number },
+  margin = 4,
+): { minLeft: number; maxRight: number } {
+  return {
+    minLeft: Math.max(image.left, viewport.left) + margin,
+    maxRight: Math.min(image.right, viewport.right) - margin,
+  };
+}
+
 /** The master sees everything, each thing with its state; anyone else only
  * what is revealed or visible, even if a hidden thing slipped in (the
  * server never sends one: this is the second lock). */

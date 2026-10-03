@@ -44,6 +44,9 @@ type content struct {
 
 	// effects are the hand-written effects, by the key they belong to.
 	effects map[string][]*Effect
+	// spellEffects are the spells that read hit points, by spell key
+	// (effects/spells.json).
+	spellEffects map[string]spellEffectDef
 	// standardActions are the actions every character has.
 	standardActions []Action
 	// levelXP[n-1] is the XP to reach level n, and ratings the SRD's challenge
@@ -165,6 +168,9 @@ func load(fsys fs.FS) (*content, error) {
 		return nil, err
 	}
 	if err := c.loadAdvancement(fsys); err != nil {
+		return nil, err
+	}
+	if err := c.loadSpellEffects(fsys); err != nil {
 		return nil, err
 	}
 	if err := c.indexCasting(); err != nil {
@@ -292,7 +298,7 @@ func (c *content) indexLevels(fsys fs.FS) error {
 }
 
 // loadEffects reads every effects file except names_pt.json, revision.json,
-// standard_actions.json and advancement.json (tables, not effects), checks
+// standard_actions.json, advancement.json and spells.json (tables, not effects), checks
 // and compiles each effect.
 func (c *content) loadEffects(fsys fs.FS) error {
 	files, err := fs.Glob(fsys, "effects/*.json")
@@ -301,7 +307,7 @@ func (c *content) loadEffects(fsys fs.FS) error {
 	}
 	for _, name := range files {
 		switch path.Base(name) {
-		case "names_pt.json", "revision.json", "standard_actions.json", "advancement.json":
+		case "names_pt.json", "revision.json", "standard_actions.json", "advancement.json", "spells.json":
 			continue
 		}
 		var f struct {
