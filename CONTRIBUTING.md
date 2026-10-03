@@ -218,6 +218,7 @@ O conteúdo fica em `backend/internal/rules/srd51`:
 
 - Uma versão de conteúdo nunca muda no lugar (ADR-0008). Depois de editar qualquer arquivo de `effects/`, o `TestSnapshot` falha e diz o `revision` e o `sha256` novos para pôr em `effects/revision.json`; o `content_version` passa de `srd51@<commit>+fx.<n>` para `fx.<n+1>`.
 - Os tipos de efeito são fechados e o carregamento recusa o resto. As fórmulas só usam `level()`, `classLevel("wizard")`, `mod("int")`, `score("int")`, `prof()`, `armor()`, `shield()`, `floor`, `ceil`, `min` e `max` (ver [Arquitetura → Módulo rules](docs/arquitetura.md#módulo-rules-regras-como-dados)).
+- `effects/advancement.json` guarda as tabelas do SRD de experiência: o XP de cada nível (1 a 20) e o XP de cada nível de desafio (0 a 30). O carregamento recusa uma tabela fora do formato, e mudar qualquer número segue a regra da revisão acima.
 - `effects/standard_actions.json` guarda as dez ações que todo personagem tem (Atacar, Disparada...); os nomes em português dos recursos ficam em `names_pt.json` como `resource:<nome>`. Os dois entram na regra da revisão acima.
 - Nomes e textos em `effects/` são nossos, em português. Nenhum texto de livro fora do SRD entra aqui: o repositório é público.
 

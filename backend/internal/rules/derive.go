@@ -164,6 +164,7 @@ func (x *deriver) levelAndProficiency() {
 		total = MaxLevel
 	}
 	x.d.TotalLevel = total
+	x.d.NextLevelXP, _ = x.c.nextLevelXP(total) // 0 at level 20
 	// The proficiency bonus follows the total character level: +2 at levels
 	// 1-4, +3 at 5-8, and so on (the same column in every class table).
 	x.prof = 2 + (max(total, 1)-1)/4

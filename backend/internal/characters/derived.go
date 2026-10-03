@@ -46,6 +46,7 @@ func derivedToProto(d rules.Derived) *rulesv1.DerivedSheet {
 		PassiveInvestigation:  i32(d.PassiveInvestigation),
 		PassiveInsight:        i32(d.PassiveInsight),
 		Initiative:            i32(d.Initiative),
+		NextLevelXp:           i32(d.NextLevelXP),
 		ArmorClass:            i32(d.ArmorClass),
 		ArmorClassDescription: d.ArmorClassDescription,
 		HitPointsMax:          i32(d.HitPointsMax),
@@ -318,6 +319,9 @@ func catalogToProto(c rules.Catalog) *rulesv1.Content {
 	}
 	for _, s := range c.Spells {
 		out.Spells = append(out.Spells, spellToProto(s))
+	}
+	for _, r := range c.ChallengeRatings {
+		out.ChallengeRatings = append(out.ChallengeRatings, &rulesv1.ChallengeRating{Rating: r.Rating, Xp: i32(r.XP)})
 	}
 	return out
 }

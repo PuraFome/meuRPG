@@ -46,6 +46,10 @@ type content struct {
 	effects map[string][]*Effect
 	// standardActions are the actions every character has.
 	standardActions []Action
+	// levelXP[n-1] is the XP to reach level n, and ratings the SRD's challenge
+	// ratings with their XP (effects/advancement.json).
+	levelXP []int
+	ratings []ChallengeRating
 	// casting is each casting class's spellcasting effect, and the class
 	// level it starts at.
 	casting map[string]classCasting
@@ -158,6 +162,9 @@ func load(fsys fs.FS) (*content, error) {
 		return nil, err
 	}
 	if err := c.loadStandardActions(fsys); err != nil {
+		return nil, err
+	}
+	if err := c.loadAdvancement(fsys); err != nil {
 		return nil, err
 	}
 	if err := c.indexCasting(); err != nil {
@@ -284,8 +291,9 @@ func (c *content) indexLevels(fsys fs.FS) error {
 	return nil
 }
 
-// loadEffects reads every effects file except names_pt.json and
-// revision.json, checks and compiles each effect.
+// loadEffects reads every effects file except names_pt.json, revision.json,
+// standard_actions.json and advancement.json (tables, not effects), checks
+// and compiles each effect.
 func (c *content) loadEffects(fsys fs.FS) error {
 	files, err := fs.Glob(fsys, "effects/*.json")
 	if err != nil {
@@ -293,7 +301,7 @@ func (c *content) loadEffects(fsys fs.FS) error {
 	}
 	for _, name := range files {
 		switch path.Base(name) {
-		case "names_pt.json", "revision.json", "standard_actions.json":
+		case "names_pt.json", "revision.json", "standard_actions.json", "advancement.json":
 			continue
 		}
 		var f struct {
@@ -512,6 +520,7 @@ func (c *content) buildCatalog() {
 	sortPT(cat.Armor, func(e ArmorEntry) string { return e.NamePT })
 	sortPT(cat.Weapons, func(e WeaponEntry) string { return e.NamePT })
 	sortPT(cat.Spells, func(e SpellEntry) string { return e.NamePT })
+	cat.ChallengeRatings = slices.Clone(c.ratings)
 	c.catalog = cat
 }
 
