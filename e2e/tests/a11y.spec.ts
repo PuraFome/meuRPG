@@ -175,6 +175,9 @@ async function scanDocument(browser: Browser, colorScheme: 'light' | 'dark', wid
   try {
     await page.goto('/');
     const t = await tableWithDocumentParts(page, `Acessibilidade documento ${Date.now()}`);
+    // The map dialog draws the points: one revealed, one hidden (E5-29).
+    await createPointRPC(page, t.campaignId, t.mapId, { kind: 'BATTLE', name: 'Emboscada na estrada', xBp: 5000, yBp: 6500, revealed: true });
+    await createPointRPC(page, t.campaignId, t.mapId, { kind: 'SUBMAP', name: 'Covil dos goblins', xBp: 2500, yBp: 3000 });
     await saveDocumentRPC(
       page,
       t.campaignId,
@@ -187,7 +190,8 @@ async function scanDocument(browser: Browser, colorScheme: 'light' | 'dark', wid
 
     await page.getByRole('button', { name: 'Mirathel e arredores' }).click();
     const dialog = page.getByRole('dialog', { name: 'Mirathel e arredores' });
-    await expect(dialog.getByRole('img')).toBeVisible();
+    await expect(dialog.getByRole('img', { name: 'Prévia do mapa Mirathel e arredores' })).toBeVisible();
+    await expect(dialog.locator('.lbl__pill', { hasText: 'Covil dos goblins' })).toBeVisible();
     await expectScreenPasses(page, `Documento, janela do mapa ${where}`);
     await page.keyboard.press('Escape');
 

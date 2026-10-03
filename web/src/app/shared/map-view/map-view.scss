@@ -81,6 +81,8 @@
   font-weight: 700;
   line-height: 22px;
   white-space: nowrap;
+  // Set by the view when the label would leave the image.
+  translate: var(--lbl-shift, 0px) 0;
 }
 
 .lbl[data-side='below'] .lbl__pill {
