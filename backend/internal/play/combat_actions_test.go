@@ -482,6 +482,7 @@ var (
 )
 
 func TestMR014_TurnOptionsFollowTheEconomy(t *testing.T) {
+	t.Parallel()
 	a := newArmed(t)
 	// Before the turns run, everything is disabled and says why.
 	setup := a.start(t, plan{
@@ -605,6 +606,7 @@ func TestMR014_TurnOptionsFollowTheEconomy(t *testing.T) {
 }
 
 func TestMR012_DamageToAnNPCIsAppliedAndDefeatsIt(t *testing.T) {
+	t.Parallel()
 	a := newArmed(t)
 	e := a.threeAndAGoblin(t)
 	// The goblin has 7 hit points and the master gives it 3 temporary ones.
@@ -699,6 +701,7 @@ func TestMR012_DamageToAnNPCIsAppliedAndDefeatsIt(t *testing.T) {
 }
 
 func TestRN02_DamageToAPlayerWaitsForTheMaster(t *testing.T) {
+	t.Parallel()
 	a := newArmed(t)
 	// The Capitão Goblin plays first.
 	e := a.start(t, plan{
@@ -831,6 +834,7 @@ func asJSON(t *testing.T, m proto.Message) string {
 }
 
 func TestRN20_PlayersNeverReceiveCAOrHiddenLogEntries(t *testing.T) {
+	t.Parallel()
 	a := newArmed(t)
 	// Two hidden goblins and the Capitão, who is in plain sight. Goblin 1
 	// plays first, then Toren, Pensantus, the Capitão, Brisa and Goblin 2.
@@ -979,6 +983,7 @@ func TestRN20_PlayersNeverReceiveCAOrHiddenLogEntries(t *testing.T) {
 }
 
 func TestRN18_PhysicalRollsAreTypedSums(t *testing.T) {
+	t.Parallel()
 	a := newArmed(t)
 	e := a.start(t, plan{
 		npcs:     []*playv1.Participant{{CharacterId: a.capitao.GetId(), Hidden: proto.Bool(false)}},
@@ -1086,6 +1091,7 @@ func TestRN18_PhysicalRollsAreTypedSums(t *testing.T) {
 }
 
 func TestCombatUndoRestoresTheLastAction(t *testing.T) {
+	t.Parallel()
 	a := newArmed(t)
 	e := a.threeAndAGoblin(t)
 
@@ -1294,6 +1300,7 @@ func wantLines(t *testing.T, who string, got, want []string) {
 // saves come with the next slice, so Pensantus's Sono is her turn passing
 // and Goblin 1's sleep is his.
 func TestTimelineRound1And2Log(t *testing.T) {
+	t.Parallel()
 	a := newArmed(t)
 	e := a.start(t, plan{
 		npcs: []*playv1.Participant{
@@ -1495,6 +1502,7 @@ func TestTimelineRound1And2Log(t *testing.T) {
 // another player's combatant: permission_denied; on their own, never turned
 // away by authorization. The master is never turned away.
 func TestMR012_CombatActionsAuthorizationMatrix(t *testing.T) {
+	t.Parallel()
 	a := newArmed(t)
 	e := a.threeAndAGoblin(t) // Toren on turn, next to the goblin
 	outsider := a.h.newUser("Intruso")
@@ -1619,6 +1627,7 @@ func (a *armed) events(t *testing.T) int {
 // changes nothing the second time, writes no second event and answers as the
 // first one did (a roll is never rolled again until it is good, RN-18).
 func TestCombatActionsAreIdempotent(t *testing.T) {
+	t.Parallel()
 	a := newArmed(t)
 	e := a.threeAndAGoblin(t)
 	ctx := t.Context()
@@ -1768,6 +1777,7 @@ func TestCombatActionsAreIdempotent(t *testing.T) {
 // master for every change, and a player only for a line they may see: a
 // hidden goblin's attack never pings their stream (RN-10).
 func TestCombatLogChangedPerAudience(t *testing.T) {
+	t.Parallel()
 	a := newArmed(t)
 	// The hidden goblin plays first, then Toren.
 	e := a.start(t, plan{
@@ -1826,6 +1836,7 @@ func TestCombatLogChangedPerAudience(t *testing.T) {
 // open damage writes a damage_discarded event for it, so the log shows the attack
 // as dropped, not as waiting for ever, and the turn passed closes the undo.
 func TestEndTurnDiscardShowsTheDroppedAttackInTheLog(t *testing.T) {
+	t.Parallel()
 	a := newArmed(t)
 	e := a.start(t, plan{
 		npcs:     []*playv1.Participant{{CharacterId: a.capitao.GetId(), Hidden: proto.Bool(false)}},
@@ -1853,6 +1864,7 @@ func TestEndTurnDiscardShowsTheDroppedAttackInTheLog(t *testing.T) {
 // that the master then hides learns nothing more of it: not its pending damage,
 // not the damage roll, not its defeat. The master still resolves it.
 func TestRN20_PendingDamageOfAHiddenTargetIsTheMasters(t *testing.T) {
+	t.Parallel()
 	a := newArmed(t)
 	e := a.threeAndAGoblin(t)
 	a.h.roller.queue(15)
@@ -1881,6 +1893,7 @@ func TestRN20_PendingDamageOfAHiddenTargetIsTheMasters(t *testing.T) {
 // TestVitalsAreReadInsideTheTransaction: a change that computes from the vitals
 // reads what its own transaction wrote, not a stale copy from the pool.
 func TestVitalsAreReadInsideTheTransaction(t *testing.T) {
+	t.Parallel()
 	a := newArmed(t)
 	ctx := t.Context()
 	tx, err := a.h.pool.Begin(ctx)
@@ -1901,6 +1914,7 @@ func TestVitalsAreReadInsideTheTransaction(t *testing.T) {
 // TestCombatLogKeepsTheNewestEvents: a combat longer than the log's limit loses
 // its oldest lines, never the newest, nor the one an undo would take back.
 func TestCombatLogKeepsTheNewestEvents(t *testing.T) {
+	t.Parallel()
 	a := newArmed(t)
 	e := a.threeAndAGoblin(t)
 	if _, err := a.action(t, a.caio, e, "Toren", "standard:dodge"); err != nil {
@@ -1918,6 +1932,7 @@ func TestCombatLogKeepsTheNewestEvents(t *testing.T) {
 // TestCombatLogHidesEntriesOfCombatantsThatLeft: a combatant removed from the
 // combat leaves its lines anonymous, and a player does not get those.
 func TestCombatLogHidesEntriesOfCombatantsThatLeft(t *testing.T) {
+	t.Parallel()
 	a := newArmed(t)
 	e := a.threeAndAGoblin(t)
 	a.h.roller.queue(15, 2)
@@ -1952,6 +1967,7 @@ func TestCombatLogHidesEntriesOfCombatantsThatLeft(t *testing.T) {
 // since the damage was applied (a level lost), and the undo puts back what the
 // sheet allows instead of being refused for ever.
 func TestUndoOfAppliedDamageSurvivesALowerMaximum(t *testing.T) {
+	t.Parallel()
 	a := newArmed(t)
 	e := a.threeAndAGoblin(t)
 	a.mustEndTurn(t, a.caio, e)
@@ -1982,6 +1998,7 @@ func TestUndoOfAppliedDamageSurvivesALowerMaximum(t *testing.T) {
 // real dice may roll in the app, and one whose preference is the app may type a
 // face. A forced mode is refused the other way (see TestRN18_PhysicalRollsAreTypedSums).
 func TestRN18_PlayersChooseOnEachRoll(t *testing.T) {
+	t.Parallel()
 	a := newArmed(t)
 	e := a.start(t, plan{npcs: []*playv1.Participant{{CharacterId: a.goblin.GetId()}}, npcRolls: []int{3}, setup: true})
 	a.setPhysical(t, a.caio) // Toren prefers real dice; Pensantus has the default, the app

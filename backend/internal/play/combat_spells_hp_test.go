@@ -120,6 +120,7 @@ func hasCondition(e *playv1.Encounter, t *testing.T, label, key string) bool {
 }
 
 func TestMR014_SleepUsesTheRealHitPoints(t *testing.T) {
+	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFight(t, 1)
 
@@ -209,6 +210,7 @@ func TestMR014_SleepUsesTheRealHitPoints(t *testing.T) {
 }
 
 func TestMR014_SleepSkipsTheUnconsciousAndTheOneAtZero(t *testing.T) {
+	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFight(t, 1)
 	a.setConditions(t, e, "Goblin", unconsciousC)
@@ -236,6 +238,7 @@ func TestMR014_SleepSkipsTheUnconsciousAndTheOneAtZero(t *testing.T) {
 }
 
 func TestMR014_ColorSprayBlindsByThePool(t *testing.T) {
+	t.Parallel()
 	a := newHPCasters(t)
 	e := a.castersFight(t, 1)
 
@@ -268,6 +271,7 @@ func TestMR014_ColorSprayBlindsByThePool(t *testing.T) {
 }
 
 func TestMR014_PowerWordStunAndKillOnNPCs(t *testing.T) {
+	t.Parallel()
 	a := newHPCasters(t)
 	dragon := a.master.npc(t, a.campaignID, "Dragão", 160, 17)
 	e := a.start(t, plan{
@@ -331,6 +335,7 @@ func TestMR014_PowerWordStunAndKillOnNPCs(t *testing.T) {
 }
 
 func TestMR014_PowerWordKillOnAPlayerCharacterWaitsForTheMaster(t *testing.T) {
+	t.Parallel()
 	a := newHPCasters(t)
 	e := a.castersFight(t, 1)
 
@@ -361,6 +366,7 @@ func TestMR014_PowerWordKillOnAPlayerCharacterWaitsForTheMaster(t *testing.T) {
 }
 
 func TestMR014_SpareTheDyingWorksOnlyAtZero(t *testing.T) {
+	t.Parallel()
 	a := newHPCasters(t)
 	e := a.castersFight(t, 1)
 	a.correct(t, a.toren, hpIs(0))
@@ -392,6 +398,7 @@ func TestMR014_SpareTheDyingWorksOnlyAtZero(t *testing.T) {
 }
 
 func TestMR014_CompleteHealHealsAndEndsBlindnessAndDeafness(t *testing.T) {
+	t.Parallel()
 	a := newHPCasters(t)
 	e := a.castersFight(t, 1)
 	a.correct(t, a.toren, hpIs(10))
@@ -427,6 +434,7 @@ func TestMR014_CompleteHealHealsAndEndsBlindnessAndDeafness(t *testing.T) {
 }
 
 func TestRN18_PoolSpellsFollowTheDiceMode(t *testing.T) {
+	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFight(t, 1)
 
