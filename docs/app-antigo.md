@@ -12,7 +12,7 @@ Esta página guarda, só para consulta, o que o README dizia sobre o app antigo,
 | `server/` (NestJS) | Render | **Será removido do repositório**, decidido pelo Samuel em 29/09/2026: o backend novo em Go cobre sozinho todas as histórias do MVP, então não faz sentido manter os dois. Esta página já registra o que ele fazia, então a remoção não perde o contexto. |
 | O banco do app antigo | CockroachDB | Só os personagens são importados, uma vez, para o banco novo; depois o banco é descomissionado (ver [Modelo de dados](dados.md) e [Privacidade](privacidade.md#o-banco-do-app-antigo)). |
 
-As duas remoções e a importação são tarefas de limpeza da Etapa 8, sem história própria (ver [Roadmap](roadmap.md)).
+As duas remoções e a importação são tarefas de limpeza da Etapa 11, sem história própria (ver [Roadmap](roadmap.md)).
 
 Outros arquivos do app antigo, também só para consulta:
 
