@@ -1,0 +1,70 @@
+<app-sheet-frame
+  title="Abrir uma cena"
+  titleId="scene-picker-t"
+  [phone]="inSheet"
+  (closed)="close()"
+>
+  <p class="pk__lead">
+    Cenas do mapa <b>{{ data.mapName }}</b>. Os jogadores veem a cena na hora, com as ações e o
+    bônus de cada um.
+  </p>
+
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+
+  <div class="pk__list" role="radiogroup" aria-label="Cenas do mapa">
+    @for (r of rows(); track r.id) {
+      <label class="pk__row" [class.pk__row--off]="r.off" [class.pk__row--on]="choice() === r.id">
+        <input
+          type="radio"
+          class="mr-visually-hidden"
+          name="scene-point"
+          [value]="r.id"
+          [disabled]="r.off"
+          [checked]="choice() === r.id"
+          (change)="choice.set(r.id)"
+        />
+        <mat-icon class="pk__icon" aria-hidden="true">chat_bubble_outline</mat-icon>
+        <span class="pk__text">
+          <b class="pk__name">{{ r.name }}</b>
+          <span class="pk__detail">
+            <mat-icon aria-hidden="true">{{ r.revealed ? 'visibility' : 'visibility_off' }}</mat-icon>{{ r.detail }}
+          </span>
+          @if (r.off) {
+            <span class="pk__why">
+              <mat-icon aria-hidden="true">block</mat-icon>Sem ações. Adicione no editor do mapa.
+            </span>
+          }
+        </span>
+        @if (choice() === r.id) {
+          <mat-icon class="pk__check" aria-hidden="true">check</mat-icon>
+        }
+      </label>
+    } @empty {
+      <p class="pk__none">Este mapa não tem cena de RP. Crie uma no editor do mapa.</p>
+    }
+  </div>
+
+  @if (anyHidden()) {
+    <p class="pk__note">
+      <mat-icon aria-hidden="true">info</mat-icon>Abrir uma cena escondida não revela o ponto no mapa.
+    </p>
+  }
+
+  <div foot class="pk__foot">
+    <button matButton="outlined" type="button" (click)="close()">Cancelar</button>
+    <button
+      matButton="filled"
+      type="button"
+      [disabled]="choice() === null || busy()"
+      disabledInteractive
+      (click)="confirm()"
+    >
+      <mat-icon aria-hidden="true">chat_bubble_outline</mat-icon>Abrir cena
+    </button>
+  </div>
+</app-sheet-frame>

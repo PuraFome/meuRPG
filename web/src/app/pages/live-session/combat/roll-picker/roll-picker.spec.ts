@@ -98,4 +98,23 @@ describe('RollPicker', () => {
     expect(el.querySelector('input')).toBeNull();
     expect(button('Rolar no app')).toBeTruthy();
   });
+
+  it('with a sticky footer, keeps the typed error under the field when asked (the scene roll sheet)', () => {
+    const { fixture, el, type, button } = setup({ sticky: true, inlineError: true });
+    button('Digitar o resultado')!.click();
+    fixture.detectChanges();
+    type('27');
+    const alert = el.querySelector('[role="alert"]')!;
+    expect(alert.closest('.actions')).toBeNull();
+    const order = Array.from(el.querySelectorAll('.type__row, [role="alert"], .type__sum, .actions'));
+    expect(order.map((n) => n.className.split(' ')[0])).toEqual(['type__row', 'type__err', 'type__sum', 'actions']);
+  });
+
+  it('by default the sticky footer carries the error, as the combat sheets draw it', () => {
+    const { fixture, el, type, button } = setup({ sticky: true });
+    button('Digitar o resultado')!.click();
+    fixture.detectChanges();
+    type('27');
+    expect(el.querySelector('[role="alert"]')?.closest('.actions')).not.toBeNull();
+  });
 });

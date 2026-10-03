@@ -35,12 +35,17 @@
     grid-template-columns: minmax(0, 1fr) 400px;
     grid-template-areas:
       'main image'
+      'main scene'
       'main party'
       'main tokens';
-    grid-template-rows: auto auto 1fr;
+    grid-template-rows: auto auto auto 1fr;
 
-    .board__main {
+    .board__left {
       grid-area: main;
+    }
+
+    .board__scene {
+      grid-area: scene;
     }
 
     .board__image {
@@ -57,6 +62,43 @@
   }
 }
 
+// With a scene open, "Cena de RP" is gone from the right column (the open scene
+// is the first block of the map's column, E7-02), and its row with it.
+.board--scene-open {
+  @media (min-width: 1024px) {
+    grid-template-areas:
+      'main image'
+      'main party'
+      'main tokens';
+    grid-template-rows: auto auto 1fr;
+  }
+}
+
+// A scene open on the player's page: the HP card's frame goes neutral (E7-03).
+.board--scene {
+  --vitals-frame: var(--mr-control-line);
+}
+
+// The master's map column: the open scene (when there is one), then the map. On
+// a phone it dissolves into the board, and the open scene goes first (E7-05).
+.board__left {
+  display: contents;
+
+  @media (min-width: 1024px) {
+    display: flex;
+    flex-direction: column;
+    gap: var(--mr-space-4);
+  }
+}
+
+.board__open {
+  order: -1;
+}
+
+.board__scene {
+  order: -2;
+}
+
 // The player's left column: the image on show, then the map.
 .board__main {
   display: flex;
@@ -67,6 +109,9 @@
 .board__image,
 .board__tokens,
 .board__main,
+.board__left,
+.board__scene,
+.board__open,
 .board__side {
   min-width: 0;
 }

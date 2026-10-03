@@ -13,3 +13,14 @@ export function mapErrorMessage(err: unknown, what = 'salvar'): string {
     [Code.ResourceExhausted]: 'A campanha chegou ao limite de mapas ou de pontos.',
   });
 }
+
+/** The Portuguese message for a failed scene-action call (maps.proto,
+ * `AddSceneAction` and the others): `resource_exhausted` is the 20-action limit. */
+export function sceneActionErrorMessage(err: unknown, what = 'salvar a ação'): string {
+  return describeConnectError(err, {
+    [Code.InvalidArgument]: `Não deu para ${what}: o nome vai até 60 caracteres e a CD de 1 a 30.`,
+    [Code.NotFound]: 'Esse ponto não existe mais. Recarregue a página.',
+    [Code.PermissionDenied]: 'Só o mestre da campanha muda as ações da cena.',
+    [Code.ResourceExhausted]: 'Limite de 20 ações. Remova uma para adicionar outra.',
+  });
+}

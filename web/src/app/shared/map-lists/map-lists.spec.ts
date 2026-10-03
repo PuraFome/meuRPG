@@ -36,6 +36,40 @@ describe('MapPointsList', () => {
     expect(asked).toEqual([false, true]);
   });
 
+  describe('RP scene points in the live session', () => {
+    function withScenes(open: string | null | undefined) {
+      const f = TestBed.createComponent(MapPointsList);
+      f.componentRef.setInput('points', [
+        mapPoint('s1', 'A carroça tombada', { revealed: true, sceneActions: [{ id: 'a' } as never] }),
+        mapPoint('s2', 'Vau do riacho', { revealed: true }),
+        mapPoint('b', 'Emboscada', { kind: 1, revealed: true }),
+      ]);
+      f.componentRef.setInput('openScenePointId', open);
+      f.detectChanges();
+      return f;
+    }
+    const scenes = (f: ComponentFixture<MapPointsList>) => Array.from(f.nativeElement.querySelectorAll('.row__scene'), (e) => (e as HTMLElement).textContent?.replace(/\s+/g, ' ').trim());
+
+    it('offers nothing where there is no session', () => {
+      expect(withScenes(undefined).nativeElement.querySelector('.row__scene')).toBeNull();
+    });
+
+    it('offers "Abrir cena" on a scene with actions, and says why one with none cannot open', () => {
+      const f = withScenes(null);
+      expect(scenes(f)).toEqual(['chat_bubble_outlineAbrir cena', 'blockSem ações. Adicione no editor do mapa.']);
+      const asked: string[] = [];
+      f.componentInstance.openScene.subscribe((p) => asked.push(p.id));
+      f.nativeElement.querySelector('.row__scene button').click();
+      expect(asked).toEqual(['s1']);
+      expect(f.nativeElement.querySelector('.row__scene button').getAttribute('aria-label')).toBe('Abrir cena A carroça tombada');
+    });
+
+    it('offers "Trocar para esta cena" when another is open, and says when it is this one', () => {
+      expect(scenes(withScenes('s2'))[0]).toContain('Trocar para esta cena');
+      expect(scenes(withScenes('s1'))[0]).toBe('castCena aberta agora');
+    });
+  });
+
   it('waits on the button whose call is in flight', () => {
     fixture.componentRef.setInput('pendingId', 'a');
     fixture.detectChanges();

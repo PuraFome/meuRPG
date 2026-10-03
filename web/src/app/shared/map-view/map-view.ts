@@ -25,6 +25,7 @@ import {
   clampTransform,
   distance,
   focusTransform,
+  labelBounds,
   labelShift,
   labelSide,
   nudge,
@@ -203,10 +204,11 @@ export class MapView {
         return;
       }
       const pills = Array.from(el.querySelectorAll<HTMLElement>('.lbl__pill'));
+      const { minLeft, maxRight } = labelBounds(img, el.getBoundingClientRect());
       const shifts = pills.map((pill) => {
         const now = parseFloat(pill.style.getPropertyValue('--lbl-shift')) || 0;
         const r = pill.getBoundingClientRect();
-        return labelShift(r.left - now, r.right - now, img.left + 4, img.right - 4);
+        return labelShift(r.left - now, r.right - now, minLeft, maxRight);
       });
       pills.forEach((pill, i) => pill.style.setProperty('--lbl-shift', `${shifts[i]}px`));
     });

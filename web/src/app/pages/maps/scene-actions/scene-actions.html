@@ -1,0 +1,102 @@
+<section class="sa" aria-labelledby="sa-title">
+  <div class="sa__head">
+    <h3 class="sa__title" id="sa-title">Ações da cena</h3>
+    <span class="sa__count">{{ actions().length }} de {{ limit }}</span>
+  </div>
+  <p class="sa__lead">
+    O que os jogadores podem rolar nesta cena. A lista salva na hora; só você vê a CD.
+  </p>
+
+  @if (actions().length === 0) {
+    @if (!adding()) {
+      <p class="sa__empty">Nenhuma ação ainda: escolha o que os jogadores podem rolar nesta cena.</p>
+    }
+  } @else {
+    <ul class="sa__list">
+      @for (a of actions(); track a.id; let first = $first; let last = $last) {
+        <li class="sa__row">
+          <div class="sa__text">
+            <span class="sa__name">{{ title(a) }}</span>
+            <span class="sa__check">{{ subtitle(a) }}</span>
+            @if (a.dc > 0) {
+              <span class="mr-tag sa__dc">CD&nbsp;{{ a.dc }}</span>
+            }
+          </div>
+          <div class="sa__controls">
+            <button
+              type="button"
+              class="sa__ib"
+              [class.sa__ib--off]="first"
+              [attr.aria-label]="'Subir ' + title(a)"
+              [attr.aria-disabled]="first || busy()"
+              [attr.data-action]="a.id"
+              data-control="up"
+              (click)="move(a, 'up')"
+            >
+              <mat-icon aria-hidden="true">arrow_upward</mat-icon>
+            </button>
+            <button
+              type="button"
+              class="sa__ib"
+              [class.sa__ib--off]="last"
+              [attr.aria-label]="'Descer ' + title(a)"
+              [attr.aria-disabled]="last || busy()"
+              [attr.data-action]="a.id"
+              data-control="down"
+              (click)="move(a, 'down')"
+            >
+              <mat-icon aria-hidden="true">arrow_downward</mat-icon>
+            </button>
+            <button
+              type="button"
+              class="sa__ib sa__ib--danger"
+              [attr.aria-label]="'Remover ' + title(a)"
+              [attr.aria-disabled]="busy()"
+              [attr.data-action]="a.id"
+              data-control="remove"
+              (click)="remove(a)"
+            >
+              <mat-icon aria-hidden="true">delete</mat-icon>
+            </button>
+          </div>
+        </li>
+      }
+    </ul>
+  }
+
+  @if (error(); as message) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ message }}</p>
+    </div>
+  }
+
+  @if (adding()) {
+    <app-scene-action-form
+      [campaignId]="campaignId()"
+      [busy]="busy()"
+      [error]="formError()"
+      (submitted)="add($event)"
+      (cancelled)="closeForm()"
+    />
+  } @else if (full()) {
+    <p class="sa__limit" id="sa-limit">Limite de {{ limit }} ações. Remova uma para adicionar outra.</p>
+    <button
+      #addButton
+      matButton="outlined"
+      type="button"
+      class="sa__add sa__add--off"
+      disabled
+      disabledInteractive
+      aria-describedby="sa-limit"
+    >
+      <mat-icon aria-hidden="true">block</mat-icon>Adicionar ação
+    </button>
+  } @else {
+    <button #addButton matButton="outlined" type="button" class="sa__add" (click)="openForm()">
+      <mat-icon aria-hidden="true">add</mat-icon>Adicionar ação
+    </button>
+  }
+
+  <p class="mr-visually-hidden" role="status" aria-live="polite">{{ status() }}</p>
+</section>

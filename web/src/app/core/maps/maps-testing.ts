@@ -10,6 +10,8 @@ import {
   type MapToken,
   MapTokenSchema,
   type GetMapResponse,
+  type SceneAction,
+  SceneActionSchema,
 } from '../../../gen/meurpg/maps/v1/maps_pb';
 import type { PointChanges } from './maps-client';
 
@@ -157,5 +159,55 @@ export class FakeMapsClient {
   ): Promise<MapPoint> {
     this.record('updatePoint', mapId, pointId, JSON.stringify(changes));
     return mapPoint(pointId, changes.name ?? 'Ponto', { ...changes } as never);
+  }
+
+  /** The scene actions of the point the specs work on, as the server keeps them. */
+  sceneActions: SceneAction[] = [];
+
+  async addSceneAction(
+    _c: string,
+    _m: string,
+    pointId: string,
+    action: { key: string; name: string; dc: number },
+  ): Promise<readonly SceneAction[]> {
+    this.record('addSceneAction', pointId, JSON.stringify(action));
+    if (this.sceneActions.length >= 20) {
+      const { ConnectError, Code } = await import('@connectrpc/connect');
+      throw new ConnectError('limit', Code.ResourceExhausted);
+    }
+    this.sceneActions = [
+      ...this.sceneActions,
+      create(SceneActionSchema, { id: `n${this.sceneActions.length + 1}`, checkName: action.key, ...action }),
+    ];
+    return this.sceneActions;
+  }
+
+  async moveSceneAction(
+    _c: string,
+    _m: string,
+    pointId: string,
+    actionId: string,
+    direction: 'up' | 'down',
+  ): Promise<readonly SceneAction[]> {
+    this.record('moveSceneAction', pointId, actionId, direction);
+    const list = [...this.sceneActions];
+    const i = list.findIndex((a) => a.id === actionId);
+    const j = direction === 'up' ? i - 1 : i + 1;
+    if (j >= 0 && j < list.length) {
+      [list[i], list[j]] = [list[j], list[i]];
+    }
+    this.sceneActions = list;
+    return list;
+  }
+
+  async removeSceneAction(
+    _c: string,
+    _m: string,
+    pointId: string,
+    actionId: string,
+  ): Promise<readonly SceneAction[]> {
+    this.record('removeSceneAction', pointId, actionId);
+    this.sceneActions = this.sceneActions.filter((a) => a.id !== actionId);
+    return this.sceneActions;
   }
 }

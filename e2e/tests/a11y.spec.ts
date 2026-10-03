@@ -7,6 +7,7 @@ import { expectAligned } from './layout';
 import { endOpenSessionRPC, endSessionRPC, openSessionPage, startSessionRPC, tableWithPensantus } from './live-session-support';
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
 import { adjustVitalsRPC, beginAttackCombatRPC, combatRPC, getEncounterRPC, passTurnsTo, pensantusCasting, tableForCombat, toren, torenSheet } from './combat-support';
+import { addActionRPC, cartActions, getOpenSceneRPC, openSceneRPC, rollSceneRPC, tableForScenes } from './scene-support';
 import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus } from './support';
 
 // docs/design.md#como-uma-tela-é-feita: every screen passes axe with no
@@ -1056,4 +1057,149 @@ test('o guerreiro (Ataque Extra, Retomar o Fôlego, Surto de Ação) passa no ax
 test('o guerreiro (Ataque Extra, Retomar o Fôlego, Surto de Ação) passa no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanFighterScreens(browser, 'light', 390);
+});
+
+/**
+ * The RP scenes (Etapa 7, MR-015; E7-01 to E7-05): the point panel with its
+ * actions (the list, the add form, the DC error, the empty state, the full
+ * list; on a computer), the master's "Cena de RP" and the picker, the open
+ * scene with its rolls, and the player's scene block, roll sheet in each of
+ * its states (how, typed, the number out of 1 to 20, the result), the rolled
+ * row and the page without a scene. The rolls of the master's screen are made
+ * through the API so the screens are the same on every run.
+ */
+async function scanSceneScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width >= 768 ? 900 : 844 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForScenes(m, p, `Acessibilidade cenas ${Date.now()}`);
+    campaignId = table.campaignId;
+
+    // The editor is for a computer: a phone has the lists of points instead.
+    if (width >= 768) {
+      await open(m, `/campanhas/${campaignId}/mapas/${table.mapId}`);
+      await m.getByRole('button', { name: /^A carroça tombada, Cena de RP/ }).click();
+      await expect(m.getByRole('heading', { name: 'Ações da cena' })).toBeVisible();
+      await expectScreenPasses(m, `Ações da cena no ponto ${where}`);
+      await m.getByRole('button', { name: 'Adicionar ação' }).click();
+      await expect(m.getByRole('form', { name: 'Nova ação' })).toBeVisible();
+      await expectScreenPasses(m, `Nova ação ${where}`);
+      await m.getByLabel('CD (opcional)').fill('31');
+      await m.getByRole('form', { name: 'Nova ação' }).getByRole('button', { name: 'Adicionar ação' }).click();
+      await expect(m.getByText('A CD vai de 1 a 30.')).toBeVisible();
+      await expectScreenPasses(m, `Nova ação com a CD fora de 1 a 30 ${where}`);
+      await m.getByRole('button', { name: 'Cancelar' }).click();
+      await m.getByRole('button', { name: /^Vau do riacho, Cena de RP/ }).click();
+      await expect(m.getByText('Nenhuma ação ainda')).toBeVisible();
+      await expectScreenPasses(m, `Ações da cena, vazia ${where}`);
+      for (let i = 0; i < 20; i++) {
+        await addActionRPC(m, table, table.fordId, { key: 'skill:arcana' });
+      }
+      await open(m, `/campanhas/${campaignId}/mapas/${table.mapId}`);
+      await m.getByRole('button', { name: /^Vau do riacho, Cena de RP/ }).click();
+      await expect(m.getByText('Limite de 20 ações. Remova uma para adicionar outra.')).toBeVisible();
+      await expectScreenPasses(m, `Ações da cena, lista cheia ${where}`);
+    }
+
+    // The session: "Cena de RP", the picker, the open scene with its rolls.
+    await openSessionPage(m, campaignId);
+    await expect(m.getByRole('heading', { name: 'Cena de RP' })).toBeVisible();
+    await expectScreenPasses(m, `Sessão com "Cena de RP" ${where}`);
+    await m.getByRole('button', { name: 'Abrir cena', exact: true }).click();
+    await expect(m.getByRole('dialog', { name: 'Abrir uma cena' })).toBeVisible();
+    await m.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await expectScreenPasses(m, `Abrir uma cena ${where}`);
+    await m.getByRole('dialog').getByText('A carroça tombada', { exact: true }).click();
+    await m.getByRole('dialog').getByRole('button', { name: 'Abrir cena', exact: true }).click();
+    await expect(m.getByRole('heading', { name: 'Cena: A carroça tombada' })).toBeFocused();
+
+    // The player: the block, the roll sheet in each state, the rolled row.
+    await openSessionPage(p, campaignId);
+    const scene = p.getByRole('region', { name: 'Cena: A carroça tombada' });
+    await expect(scene).toBeVisible();
+    await expectScreenPasses(p, `Cena do jogador ${where}`);
+    await scene.getByRole('button', { name: 'Rolar Procurar pistas na carroça' }).click();
+    const sheet = p.getByRole('dialog', { name: 'Rolar Procurar pistas na carroça' });
+    await expect(sheet.getByRole('button', { name: 'Rolar no app' })).toBeVisible();
+    await p.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await expectScreenPasses(p, `Rolar a ação, no app ${where}`);
+    await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await expect(sheet.getByRole('heading', { name: 'Digite o resultado do dado' })).toBeVisible();
+    await expectScreenPasses(p, `Rolar a ação, digitando ${where}`);
+    await sheet.getByLabel(/Role 1d20 para Investigação/).fill('27');
+    await expect(sheet.getByRole('alert')).toBeVisible();
+    await expectScreenPasses(p, `Rolar a ação, número fora de 1 a 20 ${where}`);
+    await sheet.getByLabel(/Role 1d20 para Investigação/).fill('11');
+    await expect(sheet.getByRole('status')).toContainText('11 + 6 = 17');
+    await expectScreenPasses(p, `Rolar a ação, número valido ${where}`);
+    await sheet.getByRole('button', { name: 'Confirmar 11' }).click();
+    await expect(sheet.getByText('Seu total em Investigação')).toBeVisible();
+    await expectScreenPasses(p, `Rolar a ação, resultado ${where}`);
+    await sheet.getByRole('button', { name: 'Voltar à cena' }).click();
+    await expect(scene.getByText('Rolada')).toBeVisible();
+    await expectScreenPasses(p, `Cena do jogador, uma ação rolada ${where}`);
+
+    // The master with the roll and one more, with and without a DC.
+    const open1 = await getOpenSceneRPC(p, campaignId);
+    const ids = open1.scene!.actions.map((a) => a.id);
+    await rollSceneRPC(p, campaignId, ids[3], 14);
+    await rollSceneRPC(p, campaignId, ids[4], 3);
+    await expect(m.getByText('Não passou · CD 10')).toBeVisible();
+    await expect(m.getByText('Passou · CD 12')).toBeVisible();
+    await expectScreenPasses(m, `Cena aberta com três rolagens ${where}`);
+    if (width < 768) {
+      await m.getByRole('button', { name: 'Ações da cena' }).click();
+      await expect(m.getByRole('button', { name: 'Ações da cena' })).toHaveAttribute('aria-expanded', 'false');
+      await expectScreenPasses(m, `Cena aberta, ações recolhidas ${where}`);
+      await m.getByRole('button', { name: 'Ações da cena' }).click();
+    }
+    // With a scene open, the points of the map say what they do with it.
+    await expect(m.getByText('Cena aberta agora')).toBeVisible();
+    await expect(m.getByRole('button', { name: 'Trocar para a cena Posto da guarda' })).toBeVisible();
+    await expectScreenPasses(m, `Pontos do mapa com a cena aberta ${where}`);
+    await m.getByRole('button', { name: 'Trocar cena' }).click();
+    await expect(m.getByRole('dialog', { name: 'Abrir uma cena' })).toBeVisible();
+    await m.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await expectScreenPasses(m, `Trocar cena ${where}`);
+    await m.getByRole('button', { name: 'Cancelar' }).click();
+
+    // No scene: nothing extra for the player.
+    await m.getByRole('button', { name: 'Fechar cena' }).click();
+    await expect(p.getByRole('region', { name: 'Cena: A carroça tombada' })).toHaveCount(0);
+    await expectScreenPasses(p, `Sessão do jogador sem cena ${where}`);
+    await expectScreenPasses(m, `Sessão do mestre depois de fechar a cena ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('as cenas de RP passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-015'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanSceneScreens(browser, 'light', 1280);
+});
+
+test('as cenas de RP passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-015'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanSceneScreens(browser, 'dark', 390);
+});
+
+test('as cenas de RP passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-015'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanSceneScreens(browser, 'dark', 1024);
+});
+
+test('as cenas de RP passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-015'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanSceneScreens(browser, 'light', 320);
 });
