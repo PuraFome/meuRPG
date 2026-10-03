@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { Code, ConnectError, createClient } from '@connectrpc/connect';
 
-import { CampaignService, Role } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import { CampaignService, DiceMode, DicePreference, Role } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { CharacterService } from '../../../gen/meurpg/characters/v1/characters_pb';
 import {
   CharacterVitals,
@@ -106,6 +106,8 @@ export class LiveSessionSourceLive implements LiveSessionSource {
       name: res.campaign?.name ?? '',
       isMaster: res.campaign?.myRole === Role.MASTER,
       awaitingApproval: res.campaign?.awaitingApproval ?? false,
+      diceMode: res.campaign?.diceMode ?? DiceMode.PLAYERS_CHOOSE,
+      dicePreference: res.campaign?.myDicePreference ?? DicePreference.APP,
     };
   }
 
@@ -146,6 +148,31 @@ export class LiveSessionSourceLive implements LiveSessionSource {
           break;
         case 'leftImagesChanged':
           yield { kind: 'leftImages' };
+          break;
+        case 'encounterChanged':
+          yield {
+            kind: 'encounterChanged',
+            encounterId: res.event.value.encounterId,
+            revision: res.event.value.revision,
+          };
+          break;
+        case 'turnChanged':
+          yield {
+            kind: 'turnChanged',
+            encounterId: res.event.value.encounterId,
+            round: res.event.value.round,
+            currentCombatantId: res.event.value.currentCombatantId,
+            masterTurn: res.event.value.masterTurn,
+          };
+          break;
+        case 'combatantMoved':
+          yield {
+            kind: 'combatantMoved',
+            encounterId: res.event.value.encounterId,
+            combatantId: res.event.value.combatantId,
+            col: res.event.value.col,
+            row: res.event.value.row,
+          };
           break;
         default:
           // A newer server's event this app doesn't know yet: still proof

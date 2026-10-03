@@ -255,6 +255,14 @@ a:hover {
   outline-offset: 2px;
 }
 
+// A heading (or any element) that takes focus from the app, not from the
+// person, to start a screen reader at it ("Sua vez, Pensantus", the summary):
+// no ring, since nobody tabbed there. Tabbing still shows the ring above.
+[tabindex='-1']:focus:not(:focus-visible),
+[tabindex='-1']:focus-visible {
+  outline: none;
+}
+
 // Material's buttons set `outline: none` in their own styles, which load
 // after these and win at the same specificity, so a keyboard user saw only
 // the faint state layer. Two classes beat one: the same ring as everywhere.

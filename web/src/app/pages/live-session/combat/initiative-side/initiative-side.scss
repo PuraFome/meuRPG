@@ -1,0 +1,93 @@
+:host {
+  display: block;
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+
+  .mr-panel__title {
+    margin: 0;
+  }
+}
+
+.side__facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 15px;
+  line-height: 20px;
+
+  li {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--mr-space-2);
+  }
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+    margin-top: 1px;
+  }
+}
+
+.side__begin {
+  --mat-button-filled-container-height: 52px;
+  width: 100%;
+}
+
+// Not ready: a dashed outline and quiet words, never a greyed-out fill (the
+// reason is under it, and it stays focusable).
+.side__begin--blocked {
+  --mat-button-filled-disabled-container-color: var(--mr-surface);
+  --mat-button-filled-disabled-label-text-color: var(--mr-ink-muted);
+  --mat-button-filled-container-color: transparent;
+  --mat-button-filled-label-text-color: var(--mr-ink-muted);
+  border: 1px dashed var(--mr-control-line);
+  cursor: default;
+}
+
+.side__reason {
+  margin: 0;
+  font-size: 14px;
+  text-align: center;
+  color: var(--mr-ink-muted);
+}
+
+.side__cancel {
+  --mat-button-text-label-text-color: var(--mr-accent-text);
+  align-self: center;
+}
+
+.side__confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  align-items: center;
+  text-align: center;
+
+  p {
+    margin: 0;
+    font-weight: 700;
+  }
+
+  div {
+    display: flex;
+    gap: var(--mr-space-2);
+  }
+
+  .mat-mdc-outlined-button {
+    --mat-button-outlined-label-text-color: var(--mr-ink);
+  }
+
+  .danger {
+    --mat-button-outlined-label-text-color: var(--mr-danger-ink);
+    --mat-button-outlined-outline-color: var(--mr-danger-ink);
+  }
+}

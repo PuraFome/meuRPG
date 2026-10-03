@@ -1,0 +1,88 @@
+:host {
+  display: block;
+}
+
+.view-notice {
+  margin-bottom: var(--mr-space-4);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-5);
+}
+
+// The initiative: the list, and on the right what is missing and where
+// everyone starts (E6-04). One column below 1024px.
+.setup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-5);
+
+  @media (min-width: 1024px) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 400px;
+    align-items: start;
+    gap: var(--mr-space-6);
+  }
+}
+
+.setup__side,
+.active__map,
+.player__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-5);
+  min-width: 0;
+}
+
+// The running combat: the order first on a phone, where it is read all the
+// time (E6-12); the map on the left from 1024px (E6-11).
+.active {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-5);
+
+  @media (min-width: 1024px) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 500px;
+    align-items: start;
+    gap: var(--mr-space-6);
+  }
+}
+
+.active__order {
+  order: -1;
+
+  @media (min-width: 1024px) {
+    order: 0;
+  }
+}
+
+.player {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+
+  @media (min-width: 1024px) {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    align-items: start;
+    gap: var(--mr-space-6);
+  }
+}
+
+.player__side {
+  min-width: 0;
+}
+
+.unplaced {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2);
+
+  p {
+    flex: 1 1 100%;
+    margin: 0;
+  }
+}

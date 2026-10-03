@@ -3,7 +3,7 @@ import { MatButtonModule } from '@angular/material/button';
 
 import { PartyMemberInfoVm, VitalsVm } from '../live-session.types';
 import { SlotDots } from '../slot-dots/slot-dots';
-import { hitPointsPercent, hitPointsState, partyRowSub, slotRowLabel } from '../vitals';
+import { freeWords, hitPointsPercent, hitPointsState, partyRowSub, slotRowLabel } from '../vitals';
 
 /**
  * The master's "Grupo" panel on the session page (artboards E5-04 and
@@ -30,4 +30,5 @@ export class PartyPanel {
   protected readonly hpState = hitPointsState;
   protected readonly sub = partyRowSub;
   protected readonly slotRowLabel = slotRowLabel;
+  protected readonly free = freeWords;
 }

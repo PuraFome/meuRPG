@@ -1,0 +1,54 @@
+import { Component, computed, input } from '@angular/core';
+import { MatIconModule } from '@angular/material/icon';
+
+/**
+ * A combatant's token (README-A, "Combatant token"): a player's character
+ * is a round disc, filled `ink`; an NPC is a rounded square, with a 2px
+ * `ink` border. The two differ by shape and fill, never by colour. A
+ * defeated one is grey with a ✕; a hidden one (the master only) is dashed
+ * with the eye-off badge. `current` adds the 3px accent ring and `mine` the
+ * player's own accent halo. The "Vez" word above a token on the map belongs
+ * to the map, not here. Decorative: the lists and the map say the names, so
+ * it is hidden from assistive tech.
+ */
+@Component({
+  selector: 'app-combatant-token',
+  imports: [MatIconModule],
+  template: `
+    @if (defeated()) {
+      <mat-icon class="tk__x" aria-hidden="true">close</mat-icon>
+    } @else {
+      {{ initial() }}
+    }
+    @if (hidden()) {
+      <span class="tk__badge"><mat-icon>visibility_off</mat-icon></span>
+    }
+  `,
+  styleUrl: './combatant-token.scss',
+  host: {
+    'aria-hidden': 'true',
+    '[class.tk--npc]': 'npc()',
+    '[class.tk--hidden]': 'hidden()',
+    '[class.tk--defeated]': 'defeated()',
+    '[class.tk--current]': 'current()',
+    '[class.tk--mine]': 'mine()',
+    '[class.tk--long]': 'initial().length > 1',
+    '[style.--tk]': 'css()',
+  },
+})
+export class CombatantToken {
+  readonly initial = input.required<string>();
+  /** An NPC (a rounded square) rather than a player's character (a disc). */
+  readonly npc = input(false);
+  readonly hidden = input(false);
+  readonly defeated = input(false);
+  readonly current = input(false);
+  readonly mine = input(false);
+  /** The side: pixels as a number (28 in lists, 48 in the bar), or any CSS
+   * length (the map sizes it from its square). */
+  readonly size = input<number | string>(28);
+
+  protected readonly css = computed(() =>
+    typeof this.size() === 'number' ? `${this.size()}px` : (this.size() as string),
+  );
+}

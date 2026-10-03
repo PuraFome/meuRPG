@@ -1,0 +1,121 @@
+<section class="mr-panel order" aria-labelledby="order-title">
+  <div class="order__head">
+    <h2 class="mr-panel__title" id="order-title">Ordem de iniciativa</h2>
+    @if (live()) {
+      <button mat-button type="button" class="order__add" (click)="add.emit()">
+        <mat-icon aria-hidden="true">add</mat-icon>Adicionar combatente
+      </button>
+    }
+  </div>
+
+  <div class="order__cols" aria-hidden="true">
+    <span></span>
+    <span>Combatente</span>
+    <span class="order__col-init">Iniciativa</span>
+    <span class="order__col-hp">PV</span>
+    <span></span>
+  </div>
+
+  <ol class="order__list">
+    @for (c of rows(); track c.id) {
+      <li class="row" [class.row--turn]="current(c)">
+        <app-combatant-token
+          class="row__token"
+          [initial]="initial(c)"
+          [npc]="npc(c)"
+          [hidden]="c.hidden"
+          [defeated]="c.defeated"
+          [current]="current(c)"
+          [size]="28"
+        />
+        <div class="row__text">
+          <span class="row__name" [class.row__name--out]="c.defeated">
+            {{ c.label }}
+            @if (current(c)) {
+              <span class="row__turn">Vez</span>
+            }
+          </span>
+          <span class="row__sub">{{ sub(c) }}</span>
+          @if (c.defeated) {
+            <span class="row__state row__state--out">
+              <mat-icon aria-hidden="true">close</mat-icon>Derrotado
+            </span>
+          } @else if (c.hidden) {
+            <span class="row__state"><mat-icon aria-hidden="true">visibility_off</mat-icon>Escondido</span>
+          } @else if (npc(c)) {
+            <span class="row__state">Revelado</span>
+          }
+          @if (c.hitPointsMax !== undefined) {
+            <span class="row__pv-inline">PV {{ c.hitPointsCurrent }} de {{ c.hitPointsMax }}</span>
+          }
+        </div>
+        <span class="row__init">{{ c.initiative ?? '—' }}</span>
+        <span class="row__hp">
+          @if (c.hitPointsMax !== undefined) {
+            <span class="row__hp-n">{{ c.hitPointsCurrent }}<span class="row__hp-of"> de {{ c.hitPointsMax }}</span></span>
+            <span
+              class="row__bar"
+              role="img"
+              [attr.aria-label]="c.hitPointsCurrent + ' de ' + c.hitPointsMax + ' pontos de vida'"
+            >
+              <span class="row__fill" [style.width.%]="percent(c)"></span>
+            </span>
+          }
+        </span>
+        <span class="row__actions">
+          @if (live() && canAdjust(c)) {
+            <button
+              mat-stroked-button
+              type="button"
+              class="row__adjust"
+              [attr.aria-label]="'Dano ou cura em ' + c.label"
+              (click)="adjust.emit(c.characterId)"
+            >
+              Dano/Cura
+            </button>
+          }
+          @if (live() && npc(c)) {
+            <button
+              type="button"
+              class="row__more"
+              [attr.aria-label]="'Mais ações para ' + c.label"
+              [matMenuTriggerFor]="menu"
+            >
+              <mat-icon aria-hidden="true">more_vert</mat-icon>
+            </button>
+            <mat-menu #menu="matMenu" xPosition="before">
+              <button mat-menu-item type="button" (click)="reveal.emit({ id: c.id, hidden: !c.hidden })">
+                {{ c.hidden ? 'Revelar aos jogadores' : 'Esconder dos jogadores' }}
+              </button>
+              <button mat-menu-item type="button" (click)="ask(c.id)">Remover do combate</button>
+            </mat-menu>
+          }
+        </span>
+
+        @if (live() && c.hidden && removing() !== c.id) {
+          <div class="row__extra">
+            <p class="row__hidden-note">Só você vê este combatente.</p>
+            <button
+              mat-button
+              type="button"
+              class="row__reveal"
+              [disabled]="busy()"
+              (click)="reveal.emit({ id: c.id, hidden: false })"
+            >
+              Revelar aos jogadores
+            </button>
+          </div>
+        }
+        @if (removing() === c.id) {
+          <div class="row__confirm" role="alertdialog" [attr.aria-label]="'Remover ' + c.label">
+            <p>Remover {{ c.label }} do combate?</p>
+            <button mat-stroked-button type="button" #back (click)="removing.set(null)">Voltar</button>
+            <button mat-stroked-button type="button" class="danger" (click)="confirmRemove(c.id)">
+              Remover
+            </button>
+          </div>
+        }
+      </li>
+    }
+  </ol>
+</section>

@@ -10,7 +10,8 @@ import type { Map as MapMessage } from '../../../../gen/meurpg/maps/v1/maps_pb';
  * the name, and the map's state in words: "Revelado aos jogadores" (eye)
  * with the text button "Esconder", or "Escondido dos jogadores" (eye-off)
  * with "Revelar aos jogadores". On a computer, also "Imagem: <nome>" with
- * "Trocar imagem". The page runs the calls; this only asks.
+ * "Trocar imagem". The battle grid (RN-21) has its own page: "Definir a
+ * grade" or "Mudar a grade" opens it. The page runs the calls; this only asks.
  */
 @Component({
   selector: 'app-map-head',

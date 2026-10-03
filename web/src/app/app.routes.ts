@@ -106,6 +106,13 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/maps/map-new/map-new').then((m) => m.MapNew),
   },
   {
+    // The map's battle grid (MR-013, E6-02), master only: the squares of
+    // 1,5 m that a combat measures movement in.
+    path: 'campanhas/:id/mapas/:mapId/grade',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/maps/map-grid/map-grid').then((m) => m.MapGrid),
+  },
+  {
     // One map (MR-008, MR-009): the master's editor, or the player's
     // viewer; the page picks by role and screen size.
     path: 'campanhas/:id/mapas/:mapId',

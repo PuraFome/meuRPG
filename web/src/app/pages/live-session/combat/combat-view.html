@@ -1,0 +1,179 @@
+@if (encounter(); as e) {
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger view-notice" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+
+  @if (isMaster()) {
+    @switch (e.status) {
+      @case (Status.SETUP) {
+        <div class="stack">
+          <app-combat-bar [encounter]="e" />
+          <div class="setup">
+            <app-initiative-setup
+              class="setup__list"
+              [encounter]="e"
+              [info]="info()"
+              [busy]="busy()"
+              (submit)="submitFace($event.id, $event.face)"
+              (order)="setOrder($event)"
+            />
+            <div class="setup__side">
+              <app-initiative-side
+                [encounter]="e"
+                [info]="info()"
+                [busy]="busy()"
+                (begin)="begin()"
+                (cancel)="endCombat()"
+              />
+              @if (image(); as img) {
+                <app-combat-map-card
+                  [encounter]="e"
+                  [image]="img"
+                  [mapName]="mapName()"
+                  [isMaster]="true"
+                  title="Posições iniciais"
+                  [hint]="false"
+                  [legend]="false"
+                  note="Cada token está no quadrado marcado no mapa. Você pode mover qualquer um durante o combate."
+                  (tokenDrop)="drop($event)"
+                />
+              }
+              @if (unplaced().length > 0) {
+                <div class="mr-notice mr-notice--warning">
+                  <mat-icon aria-hidden="true">warning</mat-icon>
+                  <div class="unplaced">
+                    <p><strong>Sem quadrado no mapa.</strong> Coloque cada um onde ele começa.</p>
+                    @for (c of unplaced(); track c.id) {
+                      <button mat-stroked-button type="button" (click)="place(c.id)">
+                        Colocar {{ c.label }}
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      }
+      @case (Status.ACTIVE) {
+        <div class="stack">
+          <app-combat-bar [encounter]="e" [busy]="busy()" (next)="nextTurn()" (end)="endCombat()" />
+          <div class="active">
+            <div class="active__map">
+              @if (image(); as img) {
+                <app-combat-map-card
+                  [encounter]="e"
+                  [image]="img"
+                  [mapName]="mapName()"
+                  [isMaster]="true"
+                  (tokenDrop)="drop($event)"
+                />
+              } @else {
+                <p class="mr-muted" role="status">Carregando o mapa...</p>
+              }
+              @if (unplaced().length > 0) {
+                <div class="mr-notice mr-notice--warning">
+                  <mat-icon aria-hidden="true">warning</mat-icon>
+                  <div class="unplaced">
+                    <p><strong>Sem quadrado no mapa.</strong> Coloque cada um onde ele entra.</p>
+                    @for (c of unplaced(); track c.id) {
+                      <button mat-stroked-button type="button" (click)="place(c.id)">
+                        Colocar {{ c.label }}
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+            <app-order-list
+              class="active__order"
+              [encounter]="e"
+              [info]="info()"
+              [adjustable]="adjustable()"
+              [busy]="busy()"
+              (adjust)="adjustFor($event)"
+              (reveal)="reveal($event)"
+              (remove)="remove($event)"
+              (add)="addCombatants()"
+            />
+          </div>
+        </div>
+      }
+      @case (Status.ENDED) {
+        <app-combat-summary
+          [encounter]="e"
+          [isMaster]="true"
+          [sessionNumber]="sessionNumber()"
+          [info]="info()"
+          [vitals]="vitals()"
+          (leave)="leave()"
+        />
+      }
+    }
+  } @else {
+    @switch (e.status) {
+      @case (Status.SETUP) {
+        <app-player-initiative
+          [encounter]="e"
+          [diceMode]="diceMode()"
+          [dicePreference]="dicePreference()"
+          [busy]="busy()"
+          [error]="error()"
+          (rollInApp)="own() && rollInApp(own()!.id)"
+          (typeFace)="own() && submitFace(own()!.id, $event)"
+          (changeDice)="changeDice.emit()"
+        />
+      }
+      @case (Status.ACTIVE) {
+        @if ((state().moving() || state().mapOpen()) && image(); as img) {
+          <app-move-page
+            [encounter]="e"
+            [image]="img"
+            [mapName]="mapName()"
+            [sessionNumber]="sessionNumber()"
+            [busy]="busy()"
+            [serverError]="moveError()"
+            [readOnly]="state().mapOpen()"
+            (confirm)="confirmMove($event)"
+            (back)="closeFullPage()"
+          />
+        } @else {
+          <div class="player">
+            <div class="player__main">
+              <app-turn-panel [encounter]="e" [busy]="busy()" (move)="openMove()" (endTurn)="nextTurn()" />
+              @if (image(); as img) {
+                <app-combat-map-card
+                  [encounter]="e"
+                  [image]="img"
+                  [mapName]="mapName()"
+                  [title]="mapName()"
+                  [reach]="reach()"
+                  [ownMovable]="reach() !== null && !phone()"
+                  (tokenDrop)="drop($event)"
+                  (openMap)="state().mapOpen.set(true)"
+                />
+              } @else {
+                <p class="mr-muted" role="status">Carregando o mapa...</p>
+              }
+            </div>
+            <div class="player__side"><ng-content /></div>
+            @if (myTurn() && own(); as me) {
+              <app-turn-bar class="player__bar" [own]="me" [busy]="busy()" (endTurn)="nextTurn()" />
+            }
+          </div>
+        }
+      }
+      @case (Status.ENDED) {
+        <app-combat-summary
+          [encounter]="e"
+          [sessionNumber]="sessionNumber()"
+          [info]="info()"
+          (leave)="leave()"
+        />
+      }
+    }
+  }
+}

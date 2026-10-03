@@ -6,6 +6,9 @@
  * tests only see these.
  */
 
+import type { DiceMode, DicePreference } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import type { CombatantMove, TurnChange } from '../../core/combat/combat-state';
+
 /** One spell level's slots (`SpellSlotUsage`). */
 export interface SlotUsageVm {
   readonly level: number;
@@ -93,7 +96,14 @@ export type LiveEventVm =
   /** `shown_image_changed`; `image` is `null` when it stopped. */
   | { readonly kind: 'shownImage'; readonly image: ShownImageVm | null }
   /** `left_images_changed`: read the left images again. */
-  | { readonly kind: 'leftImages' };
+  | { readonly kind: 'leftImages' }
+  /** `encounter_changed`: the combat changed, read it again if `revision`
+   * is newer than the one on screen. */
+  | { readonly kind: 'encounterChanged'; readonly encounterId: string; readonly revision: number }
+  /** `turn_changed`, as this member may see it. */
+  | ({ readonly kind: 'turnChanged' } & TurnChange)
+  /** `combatant_moved`. */
+  | ({ readonly kind: 'combatantMoved' } & CombatantMove);
 
 /**
  * What a failed call means for the page, from its Connect code and typed
@@ -117,6 +127,10 @@ export interface CampaignInfoVm {
   readonly isMaster: boolean;
   /** A pending member (RN-15): gets the same "Peça um convite" page. */
   readonly awaitingApproval: boolean;
+  /** How the campaign's players roll dice (RN-18) and the caller's own
+   * choice: the initiative screen offers the ways they allow. */
+  readonly diceMode: DiceMode;
+  readonly dicePreference: DicePreference;
 }
 
 /** From the player's own sheet (`GetCharacter`), what the vitals block

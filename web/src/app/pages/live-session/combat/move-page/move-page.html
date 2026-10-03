@@ -1,0 +1,99 @@
+<div class="bar">
+  <button type="button" class="bar__back" aria-label="Voltar à sessão" (click)="back.emit()">
+    <mat-icon aria-hidden="true">arrow_back</mat-icon>
+  </button>
+  <span class="bar__title">Sessão {{ sessionNumber() }}</span>
+  <app-live-pill />
+  <span class="bar__round">{{ round() }}</span>
+</div>
+
+<div class="move">
+  <div class="move__main">
+    @if (readOnly()) {
+      <h1 class="mr-page-title move__title">{{ mapName() }}</h1>
+      <p class="move__lead">Quadrados de 1,5 m. Role de lado para ver o resto do mapa.</p>
+    } @else {
+      <h1 class="mr-page-title move__title">Mover {{ own()?.label }}</h1>
+      <p class="move__lead">
+        Restam <b>{{ leftMeters() }} de {{ totalMeters() }}</b> ({{ squares() }} quadrados de 1,5 m).
+        Toque num quadrado destacado.
+      </p>
+    }
+
+    <div #scroller class="move__scroll">
+      <app-combat-map
+        [image]="image()"
+        [mapName]="mapName()"
+        [columns]="encounter().gridColumns"
+        [rows]="encounter().gridRows"
+        [combatants]="encounter().combatants"
+        [currentId]="encounter().currentCombatantId"
+        [reach]="readOnly() ? null : reach()"
+        [chosen]="readOnly() ? null : frame()"
+        [pickSquares]="!readOnly()"
+        [ownMoveId]="readOnly() ? null : (own()?.id ?? null)"
+        [cellPx]="wide() ? null : cell"
+        (choose)="choose($event)"
+        (confirm)="go()"
+      />
+    </div>
+  </div>
+
+  <div class="move__side">
+    @if (readOnly()) {
+      <ul class="legend">
+        <li><span class="legend__sq legend__sq--mine" aria-hidden="true"></span>{{ own()?.label }} (você)</li>
+        <li><span class="legend__sq" aria-hidden="true"></span>Os outros</li>
+      </ul>
+      <button mat-stroked-button type="button" class="move__cancel" (click)="back.emit()">
+        Voltar à sessão
+      </button>
+    } @else {
+      <ul class="legend">
+        <li><span class="legend__tint" aria-hidden="true"></span>Quadrados que você alcança</li>
+        <li><span class="legend__frame" aria-hidden="true"></span>Quadrado escolhido</li>
+        <li><span class="legend__none" aria-hidden="true"></span>Sem cor: ocupado</li>
+      </ul>
+
+      <div class="move__body">
+        @if (serverError()) {
+          <div class="mr-notice mr-notice--danger" role="alert">
+            <mat-icon aria-hidden="true">block</mat-icon>
+            <p>{{ serverError() }}</p>
+          </div>
+        } @else if (verdict(); as v) {
+          @if (v.ok) {
+            <div class="status" role="status">
+              <p class="status__title">Mover {{ v.cost }}</p>
+              <p class="status__text">{{ v.detail }}</p>
+            </div>
+          } @else {
+            <div class="mr-notice mr-notice--danger" role="alert">
+              <mat-icon aria-hidden="true">block</mat-icon>
+              <p><strong class="err__title">{{ v.title }}</strong>{{ v.detail }}</p>
+            </div>
+          }
+        } @else {
+          <p class="status__idle" role="status">Toque num quadrado destacado para escolher onde parar.</p>
+        }
+
+        <div class="move__buttons">
+          <button
+            mat-flat-button
+            type="button"
+            class="move__go"
+            [class.move__go--off]="!canMove()"
+            [disabled]="!canMove()"
+            disabledInteractive
+            (click)="go()"
+          >
+            <mat-icon aria-hidden="true">arrow_forward</mat-icon>Mover para cá
+          </button>
+          <button mat-stroked-button type="button" class="move__cancel" (click)="back.emit()">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+</div>

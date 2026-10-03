@@ -1,0 +1,142 @@
+@if (own(); as me) {
+  @if (rolled()) {
+    <section class="mr-panel done" aria-label="Sua iniciativa">
+      <span class="mr-label done__label">Iniciativa de {{ me.label }}</span>
+      <div class="done__result" role="status" aria-live="polite">
+        <span class="done__total">{{ me.initiative }}</span>
+        <span class="done__formula">{{ formula() }}</span>
+      </div>
+      <div class="mr-notice mr-notice--warning" role="status">
+        <mat-icon aria-hidden="true">hourglass_empty</mat-icon>
+        <p><strong>Esperando o mestre começar o combate</strong></p>
+      </div>
+    </section>
+  } @else {
+    <section class="mr-panel roll" aria-labelledby="roll-title">
+      <p class="roll__kicker">
+        <mat-icon aria-hidden="true">swords</mat-icon>Combate: {{ encounter().name }}
+      </p>
+      <h2 class="roll__title" id="roll-title">Role a iniciativa</h2>
+      <p class="roll__lead">Ela decide a ordem dos turnos: um d20 mais o seu bônus.</p>
+
+      <div class="roll__box">
+        <span class="roll__dice">{{ diceText() }}</span>
+        <span class="roll__cap">Bônus de iniciativa de {{ me.label }}: {{ signed(bonus()) }}</span>
+      </div>
+
+      @if (error()) {
+        <div class="mr-notice mr-notice--danger" role="alert">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <p>{{ error() }}</p>
+        </div>
+      }
+
+      @if (!showTyping()) {
+        <div class="roll__buttons">
+          <button
+            mat-flat-button
+            type="button"
+            class="roll__main"
+            [class.roll__main--quiet]="!inApp() && canType()"
+            [disabled]="busy()"
+            disabledInteractive
+            (click)="rollInApp.emit()"
+          >
+            <mat-icon aria-hidden="true">casino</mat-icon>Rolar no app
+          </button>
+          @if (canType()) {
+            <button
+              mat-flat-button
+              type="button"
+              class="roll__main"
+              [class.roll__main--quiet]="inApp()"
+              (click)="typing.set(true)"
+            >
+              Digitar o resultado
+            </button>
+          }
+        </div>
+      } @else {
+        <div class="roll__type">
+          <label class="roll__type-label" for="face">
+            Role 1d20 para a iniciativa ({{ signed(bonus()) }})
+          </label>
+          <input
+            id="face"
+            class="roll__field"
+            type="text"
+            inputmode="numeric"
+            maxlength="2"
+            autocomplete="off"
+            [value]="typed()"
+            [attr.aria-invalid]="invalid()"
+            [attr.aria-describedby]="invalid() ? 'face-sum face-err' : 'face-sum'"
+            (input)="onType($event)"
+            (keydown.enter)="confirm()"
+          />
+          @if (invalid()) {
+            <p id="face-err" class="roll__err" role="alert">
+              <mat-icon aria-hidden="true">error</mat-icon>Digite um número de 1 a 20
+            </p>
+          }
+          <p id="face-sum" class="roll__sum" role="status">{{ sum() }}</p>
+          <button
+            mat-flat-button
+            type="button"
+            class="roll__main"
+            [class.roll__main--off]="face() === null"
+            [disabled]="face() === null || busy()"
+            disabledInteractive
+            (click)="confirm()"
+          >
+            Confirmar{{ face() === null ? '' : ' ' + face() }}
+          </button>
+          @if (canApp()) {
+            <button mat-button type="button" class="roll__text" (click)="typing.set(false)">
+              Rolar no app
+            </button>
+          }
+        </div>
+      }
+      @if (chooses()) {
+        <p class="roll__way">
+          <mat-icon aria-hidden="true">casino</mat-icon>Seus dados nesta campanha:
+          <b>{{ wayLabel() }}.</b>
+          <button type="button" class="roll__change" (click)="changeDice.emit()">Mudar</button>
+        </p>
+      }
+    </section>
+  }
+} @else {
+  <div class="mr-notice mr-notice--neutral">
+    <mat-icon aria-hidden="true">person_off</mat-icon>
+    <p>
+      <strong>Seu personagem não está neste combate.</strong>
+      O mestre escolhe quem luta. Quando o combate começar, você o vê aqui.
+    </p>
+  </div>
+}
+
+<section class="mr-panel who" aria-labelledby="who-title">
+  <h2 class="mr-panel__title" id="who-title">Quem já rolou</h2>
+  <ul class="who__list">
+    @for (c of players(); track c.id) {
+      <li class="who__row">
+        <app-combatant-token [initial]="initial(c.label)" [mine]="c.mine" [size]="28" />
+        <span class="who__text">
+          <b class="who__name">{{ c.label }}</b>
+        </span>
+        @if (c.initiative !== undefined) {
+          <span class="who__total">{{ c.initiative }}</span>
+        } @else {
+          <span class="who__pill" [class.who__pill--me]="c.mine">
+            <mat-icon aria-hidden="true">hourglass_empty</mat-icon>{{ c.mine ? 'Falta você' : 'Esperando' }}
+          </span>
+        }
+      </li>
+    }
+  </ul>
+  <p class="who__note">
+    Os inimigos rolam com o mestre. Você os verá na ordem quando o combate começar.
+  </p>
+</section>

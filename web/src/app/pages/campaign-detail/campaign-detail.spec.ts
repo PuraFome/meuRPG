@@ -237,7 +237,7 @@ describe('CampaignDetail', () => {
   it('a pending member sees the wait banner and their character, never the members (MR-024)', async () => {
     configure();
     fake.getCampaignResult = Promise.resolve({
-      campaign: { ...campaign('camp-1', 'Mirathel', Role.PLAYER), awaitingApproval: true },
+      campaign: { ...campaign('camp-1', 'Mirathel', Role.PLAYER), awaitingApproval: true, diceMode: 1, dicePreference: 1 },
     });
     const listMembers = vi.spyOn(fake, 'listMembers');
 

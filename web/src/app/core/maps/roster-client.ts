@@ -9,8 +9,12 @@ export interface RosterEntry {
   readonly id: string;
   readonly name: string;
   readonly kind: number;
+  /** The player's account ID, empty for an NPC. */
+  readonly playerUserId: string;
   /** "Mago 3", or empty. */
   readonly classSummary: string;
+  /** "Gnomo das Rochas", or empty. */
+  readonly raceName: string;
   /** The player's display name, or `null`. */
   readonly playerName: string | null;
 }
@@ -32,7 +36,9 @@ export class RosterClient {
         id: c.id,
         name: c.name,
         kind: c.kind,
+        playerUserId: c.playerUserId,
         classSummary: c.classSummary,
+        raceName: c.raceNamePt,
         playerName: c.playerDisplayName.trim() || null,
       }));
   }

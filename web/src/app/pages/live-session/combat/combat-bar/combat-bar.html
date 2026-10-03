@@ -1,0 +1,62 @@
+<section class="bar" aria-label="Combate">
+  <div class="bar__head">
+    <span class="mr-label bar__kicker" [class.bar__kicker--wide]="!setup()">
+      Combate · {{ encounter().name }}
+    </span>
+    @if (!setup()) {
+      <span class="mr-label bar__kicker bar__kicker--narrow">
+        {{ round() }} · {{ encounter().name }}
+      </span>
+    }
+    @if (setup()) {
+      <span class="bar__big">Iniciativa</span>
+    } @else {
+      <span class="bar__round">{{ round() }}</span>
+    }
+  </div>
+  <span class="bar__sep" aria-hidden="true"></span>
+
+  @if (setup()) {
+    <p class="bar__lead" role="status">
+      Os NPCs rolaram sozinhos. Confira os totais, mude o que precisar e comece o combate quando
+      todos tiverem rolado.
+    </p>
+  } @else if (confirming()) {
+    <div class="confirm" role="alertdialog" aria-labelledby="end-title" aria-describedby="end-text">
+      <mat-icon aria-hidden="true">warning</mat-icon>
+      <div class="confirm__text">
+        <h2 id="end-title" class="confirm__title">Encerrar o combate?</h2>
+        <p id="end-text">
+          Os tokens dos jogadores ficam nos quadrados em que estão agora. Não dá para voltar ao
+          combate.
+        </p>
+      </div>
+      <div class="confirm__buttons">
+        <button #safe mat-stroked-button type="button" (click)="cancel()">Cancelar</button>
+        <button mat-stroked-button type="button" class="danger" (click)="confirmEnd()">
+          Encerrar combate
+        </button>
+      </div>
+    </div>
+  } @else {
+    <div class="bar__turn" role="status" aria-live="polite">
+      @if (banner().who; as who) {
+        <app-combatant-token [initial]="initial()" [npc]="npc()" [current]="true" [size]="48" />
+      }
+      <div class="bar__who">
+        <span class="bar__title">{{ banner().title }}</span>
+        @if (nextLine()) {
+          <span class="bar__next">{{ nextLine() }}</span>
+        }
+      </div>
+    </div>
+    <div class="bar__actions">
+      <button mat-flat-button type="button" class="next" [disabled]="busy()" (click)="next.emit()">
+        <mat-icon aria-hidden="true">skip_next</mat-icon>Próximo turno
+      </button>
+      <button mat-stroked-button type="button" class="end" (click)="ask()">
+        <mat-icon aria-hidden="true">flag</mat-icon>Encerrar combate
+      </button>
+    </div>
+  }
+</section>

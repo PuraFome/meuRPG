@@ -1,0 +1,214 @@
+:host {
+  display: block;
+}
+
+.init__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 var(--mr-space-3);
+  padding-top: 4px;
+
+  .mr-panel__title {
+    margin: 0;
+  }
+}
+
+.init__hint {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.init__list {
+  margin: var(--mr-space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+// The sentence over a group of tied combatants.
+.tie {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-2);
+  margin: 0 -18px;
+  padding: 8px 18px;
+  border-top: 1px solid var(--mr-warning-line);
+  background: var(--mr-warning-surface);
+  color: var(--mr-warning-ink);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 20px;
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+// Phone: number, token, the words, then the formula and the buttons under
+// them. From 768px: one line, as the artboard draws it.
+.row {
+  display: grid;
+  grid-template-columns: 24px 28px minmax(0, 1fr);
+  grid-template-areas:
+    'place token text'
+    '. . formula'
+    '. . actions';
+  align-items: center;
+  gap: 2px 10px;
+  margin: 0 -18px;
+  padding: 10px 18px;
+
+  & + & {
+    border-top: 1px solid var(--mr-rule);
+  }
+
+  @media (min-width: 768px) {
+    grid-template-columns: 32px 28px minmax(0, 1fr) 218px 190px;
+    grid-template-areas: 'place token text formula actions';
+    column-gap: 14px;
+    min-height: 64px;
+  }
+}
+
+.row--tie,
+.row--wait {
+  background: var(--mr-warning-surface);
+}
+
+.row--edit {
+  background: var(--mr-ground);
+}
+
+.row__place {
+  grid-area: place;
+  font-family: var(--mr-font-display);
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--mr-ink-muted);
+}
+
+.row__text {
+  display: flex;
+  grid-area: text;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.row__name {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+
+.row__sub,
+.row__wait {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.row__wait {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+  color: var(--mr-warning-ink);
+
+  .mat-icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.row__formula {
+  display: flex;
+  grid-area: formula;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mr-font-display);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 28px;
+  white-space: nowrap;
+}
+
+.row__formula--wait {
+  color: var(--mr-ink-muted);
+}
+
+.row__field {
+  box-sizing: border-box;
+  width: 64px;
+  height: 44px;
+  padding: 0 8px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font: inherit;
+  text-align: center;
+
+  &[aria-invalid='true'] {
+    border: 2px solid var(--mr-danger-ink);
+    background: var(--mr-danger-surface);
+  }
+}
+
+.row__actions {
+  white-space: nowrap;
+  display: flex;
+  grid-area: actions;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--mr-space-2);
+
+  @media (min-width: 768px) {
+    justify-content: flex-end;
+  }
+
+  .mat-mdc-outlined-button {
+    --mat-button-outlined-label-text-color: var(--mr-ink);
+  }
+}
+
+.row__edit,
+.row__cancel {
+  --mat-button-text-label-text-color: var(--mr-accent-text);
+}
+
+// 44px squares with an arrow; at the end of the group the arrow is a dashed
+// outline and does nothing (it keeps its focus stop, like a disabled option
+// that says why: the group's sentence above).
+.row__arrow {
+  min-width: 44px;
+  padding: 0;
+  --mat-button-outlined-horizontal-padding: 0;
+
+  .mat-icon {
+    margin: 0;
+  }
+}
+
+.row__arrow--off {
+  --mat-button-outlined-disabled-label-text-color: var(--mr-ink-muted);
+  --mat-button-outlined-disabled-outline-color: var(--mr-control-line);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  --mat-button-outlined-label-text-color: var(--mr-ink-muted);
+  border-style: dashed;
+  cursor: default;
+}
+
+.row__error {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--mr-danger-ink);
+  font-weight: 700;
+}

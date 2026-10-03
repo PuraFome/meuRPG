@@ -1,0 +1,59 @@
+<section class="mr-panel card" aria-labelledby="map-title">
+  <div class="card__head">
+    <h2 class="mr-panel__title" id="map-title">{{ title() }}</h2>
+    <span class="card__size">{{ isMaster() ? mapName() + ' · ' + size() : 'Quadrados de 1,5 m' }}</span>
+  </div>
+
+  <app-combat-map
+    [image]="image()"
+    [mapName]="mapName()"
+    [columns]="encounter().gridColumns"
+    [rows]="encounter().gridRows"
+    [combatants]="encounter().combatants"
+    [isMaster]="isMaster()"
+    [currentId]="encounter().currentCombatantId"
+    [reach]="reach()"
+    [masterMoves]="isMaster()"
+    [ownMoveId]="ownMovable() ? (own()?.id ?? null) : null"
+    (tokenDrop)="tokenDrop.emit($event)"
+  />
+
+  @if (isMaster() && hint()) {
+    <p class="card__hint">
+      <mat-icon aria-hidden="true">drag_pan</mat-icon>
+      Arraste um token para movê-lo. O mestre anda sem limite.
+    </p>
+  }
+
+  @if (!isMaster()) {
+    <button mat-stroked-button type="button" class="card__open" (click)="openMap.emit()">
+      <mat-icon aria-hidden="true">open_in_full</mat-icon>Ver mapa
+    </button>
+  }
+
+  @if (note()) {
+    <p class="card__note">{{ note() }}</p>
+  }
+
+  @if (legend()) {
+  <ul class="legend" aria-label="Legenda do mapa">
+    @if (isMaster()) {
+      <li><app-combatant-token initial="P" [size]="22" />Jogador</li>
+      <li><app-combatant-token initial="C" [npc]="true" [size]="22" />NPC</li>
+      @if (hasHidden()) {
+        <li><app-combatant-token initial="G" [npc]="true" [hidden]="true" [size]="22" />Escondido (só você vê)</li>
+      }
+    } @else {
+      @if (own(); as me) {
+        <li><app-combatant-token [initial]="me.label.charAt(0)" [mine]="true" [size]="22" />{{ me.label }} (você)</li>
+      }
+      <li><app-combatant-token initial="B" [size]="22" />Personagens</li>
+      <li><app-combatant-token initial="C" [npc]="true" [size]="22" />Inimigos</li>
+    }
+    @if (hasDefeated()) {
+      <li><app-combatant-token initial="X" [defeated]="true" [npc]="true" [size]="22" />Derrotado</li>
+    }
+    <li><app-combatant-token initial="P" [current]="true" [size]="22" />Vez</li>
+  </ul>
+  }
+</section>

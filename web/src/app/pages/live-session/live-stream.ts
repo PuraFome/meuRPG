@@ -1,5 +1,6 @@
 import { signal } from '@angular/core';
 
+import type { CombatantMove, TurnChange } from '../../core/combat/combat-state';
 import { LiveErrorKind, LiveEventVm, ShownImageVm, VitalsVm } from './live-session.types';
 
 /**
@@ -29,6 +30,13 @@ export interface LiveStreamHandlers {
   onShownImage?(image: ShownImageVm | null): void;
   /** `left_images_changed`: read the list of left images again. */
   onLeftImages?(): void;
+  /** `encounter_changed`: the combat changed; the page reads it again when
+   * `revision` is newer than its copy. */
+  onEncounterChanged?(change: { encounterId: string; revision: number }): void;
+  /** `turn_changed`: applied in place, per audience. */
+  onTurnChanged?(turn: TurnChange): void;
+  /** `combatant_moved`: applied in place. */
+  onCombatantMoved?(move: CombatantMove): void;
   /** `session_ended`, or `NO_OPEN_SESSION` when (re)connecting. */
   onEnded(): void;
   /** `not_found` or `unauthenticated`: no reconnecting. */
@@ -173,6 +181,15 @@ export class LiveStream {
             break;
           case 'shownImage':
             this.options.handlers.onShownImage?.(event.image);
+            break;
+          case 'encounterChanged':
+            this.options.handlers.onEncounterChanged?.(event);
+            break;
+          case 'turnChanged':
+            this.options.handlers.onTurnChanged?.(event);
+            break;
+          case 'combatantMoved':
+            this.options.handlers.onCombatantMoved?.(event);
             break;
           case 'ended':
             this.stop();

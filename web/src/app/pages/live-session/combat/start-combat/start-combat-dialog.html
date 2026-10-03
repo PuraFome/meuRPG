@@ -1,0 +1,173 @@
+<div class="dlg">
+  <header class="dlg__head">
+    <div>
+      <h2 class="dlg__title" id="start-title">
+        {{ adding ? 'Adicionar combatentes' : 'Iniciar combate' }}
+      </h2>
+      <p class="dlg__lead">
+        @if (adding) {
+          Eles rolam a própria iniciativa e entram na ordem. A vez de agora não muda.
+        } @else {
+          Escolha quem entra. Depois, o app pede a iniciativa de todos.
+        }
+      </p>
+    </div>
+    <button type="button" class="dlg__close" aria-label="Fechar" (click)="close()">
+      <mat-icon aria-hidden="true">close</mat-icon>
+    </button>
+  </header>
+
+  <div class="dlg__body">
+    @if (state() === 'error') {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p><strong>Não foi possível carregar o grupo.</strong> Feche e tente de novo.</p>
+      </div>
+    } @else {
+      @if (!adding) {
+        <mat-form-field appearance="outline" class="dlg__name" subscriptSizing="dynamic">
+          <mat-label>Nome do combate</mat-label>
+          <input
+            matInput
+            type="text"
+            maxlength="80"
+            autocomplete="off"
+            [value]="name()"
+            (input)="name.set($any($event.target).value)"
+          />
+        </mat-form-field>
+
+        @if (data.map; as map) {
+          <div class="map">
+            <div class="map__thumb">
+              @if (map.columns > 0) {
+                <app-combat-map
+                  [image]="map.image"
+                  [mapName]="map.name"
+                  [columns]="map.columns"
+                  [rows]="map.rows"
+                />
+              } @else {
+                <img [src]="map.image.url" alt="" [width]="map.image.width" [height]="map.image.height" />
+              }
+            </div>
+            <div class="map__text">
+              <h3 class="map__name">{{ map.name }}</h3>
+              <span class="mr-label">Mapa do combate</span>
+              @if (size(); as s) {
+                <span class="map__line">{{ s.squares }}</span>
+                <span class="map__line map__line--muted">{{ s.meters }}</span>
+              }
+              <a
+                class="map__link"
+                [routerLink]="['/campanhas', data.campaignId, 'mapas', gridMapId() ?? map.id, 'grade']"
+                (click)="close()"
+                [queryParams]="{ de: 'sessao' }"
+              >
+                <mat-icon aria-hidden="true">grid_on</mat-icon>{{ size() && !noGridMap() ? 'Mudar a grade' : 'Definir a grade' }}
+              </a>
+            </div>
+          </div>
+        }
+        @if (!data.map) {
+          <div class="mr-notice mr-notice--warning">
+            <mat-icon aria-hidden="true">warning</mat-icon>
+            <p>
+              <strong>A sessão não tem um mapa atual.</strong>
+              Escolha o mapa em "Mapa atual" e abra este diálogo de novo.
+            </p>
+          </div>
+        } @else if (!hasGrid() || noGridMap()) {
+          <div class="mr-notice mr-notice--warning" role="status">
+            <mat-icon aria-hidden="true">warning</mat-icon>
+            <p>
+              <strong>Esse mapa ainda não tem grade.</strong>
+              O combate precisa dela para medir o movimento.
+            </p>
+          </div>
+        }
+
+        <section aria-labelledby="group-title">
+          <div class="sec__head">
+            <h3 class="sec__title" id="group-title">Grupo</h3>
+            <span class="sec__count">{{ included().size }} de {{ players().length }} no combate</span>
+          </div>
+          @if (state() === 'loading') {
+            <p class="mr-muted" role="status">Carregando...</p>
+          } @else if (players().length === 0) {
+            <p class="mr-muted">Nenhum personagem de jogador vivo nesta campanha.</p>
+          }
+          <ul class="list">
+            @for (p of players(); track p.id) {
+              <li>
+                <app-player-row
+                  [name]="p.name"
+                  [sub]="playerSub(p)"
+                  [roll]="roll(p)"
+                  [inApp]="rollsInApp(p)"
+                  [included]="included().has(p.id)"
+                  (toggle)="toggle(p.id)"
+                />
+              </li>
+            }
+          </ul>
+        </section>
+      }
+
+      <section aria-labelledby="npcs-title">
+        <div class="sec__head">
+          <h3 class="sec__title" id="npcs-title">NPCs da campanha</h3>
+          <span class="sec__count">
+            {{ npcTotal() }} {{ npcTotal() === 1 ? 'NPC' : 'NPCs' }} no combate · Escondido: ligado = só você vê
+          </span>
+        </div>
+        @if (state() === 'ready' && npcs().length === 0) {
+          <p class="mr-muted">
+            Nenhum NPC ainda. Crie um na página da campanha para ele poder entrar no combate.
+          </p>
+        }
+        <div class="list">
+          @for (n of npcs(); track n.id) {
+            <app-npc-row
+              [name]="n.name"
+              [sub]="npcSub(n)"
+              [count]="counts().get(n.id) ?? 0"
+              [hidden]="hiddenAt().get(n.id) ?? true"
+              (countChange)="setCount(n.id, $event)"
+              (hiddenChange)="setHidden(n.id, $event)"
+            />
+          }
+        </div>
+        <p class="note">
+          <mat-icon aria-hidden="true">visibility_off</mat-icon>
+          Quem está escondido só você vê, até você revelar durante o combate. Cada NPC rola a própria
+          iniciativa.
+        </p>
+      </section>
+    }
+  </div>
+
+  <footer class="dlg__foot">
+    @if (error()) {
+      <p class="dlg__error" role="alert"><mat-icon aria-hidden="true">error</mat-icon>{{ error() }}</p>
+    }
+    @if (blocked(); as why) {
+      <p id="start-why" class="dlg__why">{{ why }}</p>
+    }
+    <div class="dlg__actions">
+      <button mat-stroked-button type="button" (click)="close()">Cancelar</button>
+      <button
+        mat-flat-button
+        type="button"
+        class="dlg__go"
+        [class.dlg__go--off]="blocked() !== null"
+        [disabled]="blocked() !== null || busy()"
+        disabledInteractive
+        [attr.aria-describedby]="blocked() ? 'start-why' : null"
+        (click)="submit()"
+      >
+        {{ adding ? 'Adicionar' : 'Iniciar combate' }}
+      </button>
+    </div>
+  </footer>
+</div>

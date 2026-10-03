@@ -41,6 +41,7 @@
   }
   @case ('live') {
     @if (session(); as s) {
+      @if (!combat.fullPage()) {
       <app-session-header
         [campaignId]="campaignId()"
         [campaignName]="campaign()?.name ?? ''"
@@ -50,8 +51,34 @@
         [lastUpdate]="lastUpdate()"
         (ended)="sessionEndedHere()"
       />
+      }
 
-      @if (isMaster()) {
+      @if (combat.shown()) {
+        <app-combat-view
+          class="combat"
+          [campaignId]="campaignId()"
+          [isMaster]="isMaster()"
+          [state]="combat"
+          [mapState]="mapState"
+          [vitals]="vitals()"
+          [partyInfo]="partyInfo()"
+          [sessionNumber]="s.sessionNumber"
+          [diceMode]="campaign()?.diceMode ?? 1"
+          [dicePreference]="campaign()?.dicePreference ?? 1"
+          (adjust)="adjust($event)"
+          (changeDice)="changeDice()"
+        >
+          @if (ownVitals(); as v) {
+            <app-player-vitals [vitals]="v" [sheet]="playerSheet()" [campaignId]="campaignId()" [compact]="true" />
+          }
+        </app-combat-view>
+      } @else if (isMaster()) {
+        <app-combat-launch
+          class="launch"
+          [campaignId]="campaignId()"
+          [state]="mapState"
+          (started)="combatStarted($event)"
+        />
         <div class="board board--master">
           <app-party-panel
             class="board__party"

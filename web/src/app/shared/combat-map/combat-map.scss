@@ -1,0 +1,151 @@
+:host {
+  display: block;
+}
+
+// The map fills its container. `container-type` lets a token size itself
+// from one square's width, so it grows and shrinks with the map.
+.cm {
+  position: relative;
+  max-width: 100%;
+  container-type: inline-size;
+}
+
+// The "Mover" page zooms in: the box is wider than the screen, so its
+// parent scrolls.
+.cm--scroll {
+  max-width: none;
+}
+
+.cm__surface {
+  // Sized from the container (`.cm`), so they live on a child of it.
+  --cm-sq: calc(100cqw / var(--cols));
+  --cm-tk: clamp(20px, calc(var(--cm-sq) * 0.82), 34px);
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--mr-radius-sm);
+  outline: 1px solid var(--mr-line);
+  background: var(--mr-ground);
+  touch-action: pan-x pan-y;
+  user-select: none;
+}
+
+.cm--moves {
+  cursor: default;
+}
+
+.cm__img,
+.cm__grid,
+.cm__path {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.cm__img {
+  position: relative;
+}
+
+// One path for every line: 1px, whatever the zoom (README-A, "Grid").
+.cm__grid path {
+  fill: none;
+  stroke: light-dark(rgb(27 34 48 / 25%), rgb(230 233 239 / 30%));
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.cm__cell,
+.cm__reach,
+.cm__frame,
+.cm__mark {
+  position: absolute;
+  box-sizing: border-box;
+  width: calc(100% / var(--cols));
+  height: calc(100% / var(--rows));
+  pointer-events: none;
+}
+
+// The squares the token can walk to: a tint, not a colour alone (the legend
+// names it, and the sentence under the map says how far).
+.cm__cell {
+  background: color-mix(in srgb, var(--mr-accent) 30%, transparent);
+}
+
+.cm__mark {
+  border: 2px solid var(--mr-accent);
+  background: color-mix(in srgb, var(--mr-accent) 30%, transparent);
+}
+
+.cm__reach {
+  border: 2px dashed var(--mr-accent);
+  box-shadow: 0 0 0 1px var(--mr-surface);
+}
+
+.cm__frame {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid var(--mr-accent);
+  background: color-mix(in srgb, var(--mr-surface) 60%, transparent);
+  color: var(--mr-ink);
+
+  .mat-icon {
+    width: calc(var(--cm-sq) * 0.5);
+    height: calc(var(--cm-sq) * 0.5);
+    font-size: calc(var(--cm-sq) * 0.5);
+  }
+}
+
+.cm__frame--refused {
+  border-style: dashed;
+  border-color: var(--mr-danger-ink);
+  color: var(--mr-danger-ink);
+}
+
+.cm__path line {
+  stroke: var(--mr-accent);
+  stroke-width: 2.5;
+  stroke-dasharray: 3 4;
+  vector-effect: non-scaling-stroke;
+}
+
+// A token sits on its square's center. Only a token someone may move
+// catches the pointer.
+.cm__tk {
+  position: absolute;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translate(-50%, -50%);
+  touch-action: none;
+}
+
+.cm__tk--movable {
+  cursor: grab;
+}
+
+.cm__tk--current {
+  z-index: 4;
+}
+
+// The "Vez" word above the token whose turn it is.
+.cm__turn {
+  position: absolute;
+  bottom: calc(100% + 7px);
+  left: 50%;
+  box-sizing: border-box;
+  height: 18px;
+  padding: 0 7px;
+  border: 1.5px solid var(--mr-accent);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-surface);
+  color: var(--mr-accent-text);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 15px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}

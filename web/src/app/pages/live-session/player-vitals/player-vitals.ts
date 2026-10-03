@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 
 import { PlayerSheetVm, VitalsVm } from '../live-session.types';
 import { SlotDots } from '../slot-dots/slot-dots';
-import { hitPointsPercent, slotLevelLabel, slotRowLabel, usedWords } from '../vitals';
+import { freeWords, hitPointsPercent, slotLevelLabel, slotRowLabel, usedWords } from '../vitals';
 
 interface SlotRowVm {
   readonly key: string;
@@ -32,8 +32,12 @@ export class PlayerVitals {
   /** From the character's sheet; `null` until it loads. */
   readonly sheet = input<PlayerSheetVm | null>(null);
   readonly campaignId = input.required<string>();
+  /** The combat's version (E6-05): the PV box and the shield side by side,
+   * then the slots; no temporary HP, hit dice or footer. */
+  readonly compact = input(false);
 
   protected readonly usedWords = usedWords;
+  protected readonly freeWords = freeWords;
   protected readonly percent = computed(() => hitPointsPercent(this.vitals()));
 
   protected readonly slotRows = computed<SlotRowVm[]>(() => {

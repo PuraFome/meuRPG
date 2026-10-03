@@ -1,0 +1,90 @@
+<section class="end" aria-labelledby="end-title">
+  <div class="end__head">
+    <div>
+      <div role="status">
+        <h2 #title id="end-title" class="end__title" tabindex="-1">Combate encerrado</h2>
+      </div>
+      <p class="end__sub">{{ encounter().name }} · Sessão {{ sessionNumber() }}</p>
+    </div>
+    <button mat-flat-button type="button" class="end__leave" (click)="leave.emit()">
+      Voltar à sessão
+    </button>
+  </div>
+
+  <dl class="end__stats">
+    <div class="stat">
+      <dt>Rodadas</dt>
+      <dd>{{ rounds() }}</dd>
+    </div>
+    <div class="stat">
+      <dt>Combatentes</dt>
+      <dd>{{ encounter().combatants.length }}</dd>
+    </div>
+    <div class="stat">
+      <dt>Derrotados</dt>
+      <dd>{{ defeated().length }} de {{ npcs().length }}</dd>
+    </div>
+    @if (isMaster()) {
+      <div class="stat">
+        <dt>Jogadores em pé</dt>
+        <dd>{{ standing() }} de {{ players().length }}</dd>
+      </div>
+    }
+  </dl>
+</section>
+
+<div class="cols" [class.cols--one]="!isMaster()">
+  <section class="mr-panel" aria-labelledby="out-title">
+    <h2 class="mr-panel__title" id="out-title">Derrotados</h2>
+    @if (defeated().length === 0) {
+      <p class="mr-muted">Ninguém caiu neste combate.</p>
+    } @else {
+      <ul class="mr-list">
+        @for (c of defeated(); track c.id) {
+          <li class="mr-list__row line">
+            <app-combatant-token [initial]="initial(c)" [npc]="true" [defeated]="true" [size]="28" />
+            <span class="mr-list__text">
+              <span class="mr-list__name">{{ c.label }}</span>
+              <span class="mr-list__sub">{{ sub(c) }}</span>
+            </span>
+            <span class="line__out"><mat-icon aria-hidden="true">close</mat-icon>Derrotado</span>
+          </li>
+        }
+      </ul>
+    }
+  </section>
+
+  @if (isMaster()) {
+    <section class="mr-panel" aria-labelledby="group-title">
+      <h2 class="mr-panel__title" id="group-title">O grupo agora</h2>
+      <ul class="mr-list">
+        @for (g of group(); track g.c.id) {
+          <li class="mr-list__row line">
+            <app-combatant-token [initial]="initial(g.c)" [size]="28" />
+            <span class="mr-list__text">
+              <span class="mr-list__name">{{ g.c.label }}</span>
+              <span class="mr-list__sub">{{ g.slots || sub(g.c) }}</span>
+            </span>
+            @if (g.hp) {
+              <span class="hp">
+                <span class="hp__n">{{ g.hp.current }}<span class="hp__of"> de {{ g.hp.max }}</span></span>
+                <span class="hp__bar" aria-hidden="true">
+                  <span class="hp__fill" [style.width.%]="percent(g)"></span>
+                </span>
+              </span>
+            }
+          </li>
+        }
+      </ul>
+      @for (g of downNotice(); track g.c.id) {
+        <div class="mr-notice mr-notice--danger down">
+          <mat-icon aria-hidden="true">warning</mat-icon>
+          <p><strong>{{ g.c.label }} está caída:</strong> {{ g.down.replace('Caída: ', '') }}</p>
+        </div>
+      }
+      <p class="mr-muted note">
+        Os PV e os espaços de magia ficam como estão. Corrija o que precisar em "Ajustar".
+      </p>
+    </section>
+  }
+</div>

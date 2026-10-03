@@ -17,7 +17,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import type { Map as MapMessage } from '../../../gen/meurpg/maps/v1/maps_pb';
+import type { Encounter } from '../../../gen/meurpg/play/v1/combat_pb';
 import { AuthService } from '../../core/auth/auth.service';
+import { CombatClient } from '../../core/combat/combat-client';
+import { CombatState } from '../../core/combat/combat-state';
 import { MapState } from '../../core/maps/map-state';
 import { MapsClient } from '../../core/maps/maps-client';
 import { OpenSessions } from '../../shell/live-notice/open-sessions';
@@ -32,6 +35,9 @@ import {
   ShownImageVm,
   VitalsVm,
 } from './live-session.types';
+import { CombatLaunch } from './combat/combat-launch';
+import { DiceDialog, DiceDialogData } from './combat/dice-dialog';
+import { CombatView } from './combat/combat-view';
 import { LiveStream } from './live-stream';
 import { PartyPanel } from './party-panel/party-panel';
 import { PlayerVitals } from './player-vitals/player-vitals';
@@ -71,6 +77,8 @@ type Phase = 'loading' | 'live' | 'no-access' | 'no-session' | 'ended' | 'error'
   imports: [
     MatButtonModule,
     MatIconModule,
+    CombatLaunch,
+    CombatView,
     PartyPanel,
     PlayerVitals,
     SessionBlocked,
@@ -92,6 +100,7 @@ export class LiveSession {
   private readonly dialog = inject(MatDialog);
   private readonly bottomSheet = inject(MatBottomSheet);
   private readonly mapsApi = inject(MapsClient);
+  private readonly combatApi = inject(CombatClient);
   private readonly openSessions = inject(OpenSessions);
   private readonly destroyRef = inject(DestroyRef);
   /** The adjust sheet needs this route's `LiveSessionSource`: MatDialog
@@ -119,6 +128,10 @@ export class LiveSession {
   protected readonly mapState = new MapState((mapId) =>
     this.mapsApi.get(this.campaignId(), mapId),
   );
+
+  /** The session's combat (MR-013): read on every `ready` and after each
+   * `encounter_changed`; `turn_changed` and `combatant_moved` apply in place. */
+  protected readonly combat = new CombatState();
 
   protected readonly stream = signal<LiveStream | null>(null);
   protected readonly connection = computed(() => this.stream()?.status() ?? 'connecting');
@@ -172,6 +185,7 @@ export class LiveSession {
     this.shownNotice.set('');
     this.campaignMaps.set([]);
     void this.mapState.open(null);
+    this.combat.clear();
     this.loadedSheetFor = null;
     this.partyInfoIds = new Set();
 
@@ -219,6 +233,23 @@ export class LiveSession {
             void this.mapState.refresh();
           }
         },
+        onEncounterChanged: (change) => {
+          // Read again only when the news is newer than the copy on screen.
+          const current = this.combat.encounter();
+          if (!current || current.id !== change.encounterId || change.revision > current.revision) {
+            void this.loadCombat(generation);
+          }
+        },
+        onTurnChanged: (turn) => {
+          if (!this.combat.applyTurn(turn)) {
+            void this.loadCombat(generation);
+          }
+        },
+        onCombatantMoved: (move) => {
+          if (!this.combat.applyMove(move)) {
+            void this.loadCombat(generation);
+          }
+        },
         onShownImage: (image) => this.shownImageChanged(image),
         onLeftImages: () => void this.reloadLeftImages(),
         onEnded: () => this.ended(),
@@ -250,6 +281,7 @@ export class LiveSession {
       this.shownImage.set(snapshot.shownImage);
       this.shownKeep.set(snapshot.shownImageKeep);
       void this.reloadLeftImages();
+      void this.loadCombat(generation);
       // Each `ready` (a reconnection too) reads the map again: a missed event never leaves it stale.
       void this.mapState.open(snapshot.currentMapId);
       if (this.isMaster()) {
@@ -280,6 +312,59 @@ export class LiveSession {
           // Try the whole thing again: the next `ready` reads a new one.
           this.stream()?.restart();
       }
+    }
+  }
+
+  /** The session's combat, as this person may see it (best effort: the
+   * screen keeps the copy it has until the next event or `ready`). */
+  private async loadCombat(generation: number): Promise<void> {
+    try {
+      const encounter = await this.combatApi.get(this.campaignId());
+      if (generation === this.generation) {
+        this.combat.apply(encounter);
+      }
+    } catch {
+      // The stream's next event, or reconnection, reads it again.
+    }
+  }
+
+  /** "Iniciar combate" answered: the combat is on screen at once. */
+  protected combatStarted(encounter: Encounter): void {
+    this.combat.apply(encounter);
+  }
+
+  /** "Mudar" on the initiative screen: the player's dice choice (RN-18). */
+  protected changeDice(): void {
+    const campaign = this.campaign();
+    if (!campaign) {
+      return;
+    }
+    this.dialog
+      .open<DiceDialog, DiceDialogData, boolean>(DiceDialog, {
+        data: {
+          campaignId: this.campaignId(),
+          campaignName: campaign.name,
+          mode: campaign.diceMode,
+          preference: campaign.dicePreference,
+        },
+        width: '560px',
+        maxWidth: 'calc(100vw - 32px)',
+        autoFocus: 'first-heading',
+      })
+      .afterClosed()
+      .subscribe(() => void this.refreshCampaign());
+  }
+
+  /** The campaign again, to pick up the dice choice the player just saved. */
+  private async refreshCampaign(): Promise<void> {
+    const generation = this.generation;
+    try {
+      const campaign = await this.source.getCampaign(this.campaignId());
+      if (generation === this.generation) {
+        this.campaign.set(campaign);
+      }
+    } catch {
+      // Best effort: the screen keeps the choice it had.
     }
   }
 
