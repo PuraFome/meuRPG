@@ -209,3 +209,57 @@ test(
     }
   },
 );
+
+test(
+  'o mestre renomeia o mapa pelo cabeçalho e o apaga depois de confirmar ali mesmo',
+  { tag: '@MR-008' },
+  async ({ browser }) => {
+    const masterContext = await newSignedInContext(browser, 'Mestre Teste');
+    const playerContext = await newSignedInContext(browser, 'Jogador Teste');
+    try {
+      const master = await masterContext.newPage();
+      const player = await playerContext.newPage();
+      await master.goto('/');
+      const table = await tableForMaps(master, player, `Renomear mapa ${Date.now()}`);
+      const image = await uploadImageRPC(master, table.campaignId, 'Mapa de Mirathel', await canvasPng(master, 1200, 800, 'Mirathel'));
+      const mapId = await createMapRPC(master, table.campaignId, 'Mirathel e arredores', image);
+      await createPointRPC(master, table.campaignId, mapId, { kind: 'BATTLE', name: 'Emboscada na estrada', xBp: 4000, yBp: 6000 });
+
+      await master.goto(`/campanhas/${table.campaignId}/mapas/${mapId}`);
+      await expect(master.getByRole('heading', { name: 'Mirathel e arredores', level: 1 })).toBeVisible();
+
+      // Renomear: the title becomes the field; Esc gives it back unchanged.
+      await master.getByRole('button', { name: 'Renomear' }).click();
+      const field = master.getByLabel('Nome do mapa');
+      await expect(field).toBeFocused();
+      await expect(field).toHaveValue('Mirathel e arredores');
+      await field.press('Escape');
+      await expect(master.getByRole('heading', { name: 'Mirathel e arredores', level: 1 })).toBeVisible();
+      await expect(master.getByRole('button', { name: 'Renomear' })).toBeFocused();
+
+      await master.getByRole('button', { name: 'Renomear' }).click();
+      await master.getByLabel('Nome do mapa').fill('Arredores de Mirathel');
+      await master.getByRole('button', { name: 'Salvar nome' }).click();
+      await expect(master.getByRole('heading', { name: 'Arredores de Mirathel', level: 1 })).toBeVisible();
+      await master.reload();
+      await expect(master.getByRole('heading', { name: 'Arredores de Mirathel', level: 1 })).toBeVisible();
+
+      // Apagar mapa: asks in place, focus on "Cancelar"; "Cancelar" keeps it.
+      await master.getByRole('button', { name: 'Apagar mapa' }).click();
+      const question = master.getByRole('group', { name: /Apagar Arredores de Mirathel\?/ });
+      await expect(question).toContainText('O ponto dele vai junto; a imagem continua na galeria. Não dá para desfazer.');
+      await expect(question.getByRole('button', { name: 'Cancelar' })).toBeFocused();
+      await question.getByRole('button', { name: 'Cancelar' }).click();
+      await expect(question).toBeHidden();
+
+      await master.getByRole('button', { name: 'Apagar mapa' }).click();
+      await master.getByRole('group', { name: /Apagar Arredores de Mirathel\?/ }).getByRole('button', { name: 'Apagar mapa' }).click();
+      await expect(master).toHaveURL(new RegExp(`/campanhas/${table.campaignId}$`));
+      const res = await callRPC(master, 'meurpg.maps.v1.MapService/GetMap', { campaignId: table.campaignId, mapId });
+      expect(res.status()).toBe(404);
+    } finally {
+      await masterContext.close();
+      await playerContext.close();
+    }
+  },
+);

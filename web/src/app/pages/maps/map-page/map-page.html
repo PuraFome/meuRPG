@@ -35,6 +35,11 @@
           [map]="m"
           [showImage]="!phone()"
           [busy]="busy()"
+          [pointCount]="state.points().length"
+          [tokenCount]="state.tokens().length"
+          [currentSession]="currentSession()"
+          [saveName]="saveName"
+          [deleteMap]="deleteMap"
           (toggleReveal)="toggleReveal()"
           (changeImage)="changeImage()"
         />

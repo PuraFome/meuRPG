@@ -3,6 +3,7 @@ import {
   DestroyRef,
   ElementRef,
   afterNextRender,
+  afterRenderEffect,
   computed,
   effect,
   inject,
@@ -24,6 +25,7 @@ import {
   clampTransform,
   distance,
   focusTransform,
+  labelShift,
   labelSide,
   nudge,
   screenToBp,
@@ -176,11 +178,37 @@ export class MapView {
         this.transform.update((t) => clampTransform(t, rect.width, rect.height));
       };
       measure();
+      // The labels are measured again once the fonts are in: before, their
+      // text has the fallback font's width.
+      void document.fonts?.ready.then(() => this.size.update((sz) => ({ ...sz })));
       if (typeof ResizeObserver !== 'undefined') {
         const observer = new ResizeObserver(measure);
         observer.observe(el);
         inject(DestroyRef).onDestroy(() => observer.disconnect());
       }
+    });
+
+    // Keep every label on the image: measure them all, then slide the ones
+    // that stick out (a long name near an edge of a narrow map). The pills
+    // are read and written directly: the shift is layout, not state.
+    afterRenderEffect(() => {
+      this.size();
+      this.transform();
+      this.shownPoints();
+      this.settled();
+      this.override();
+      const el = this.viewport().nativeElement;
+      const img = el.querySelector('.mv__img')?.getBoundingClientRect();
+      if (!img || img.width === 0) {
+        return;
+      }
+      const pills = Array.from(el.querySelectorAll<HTMLElement>('.lbl__pill'));
+      const shifts = pills.map((pill) => {
+        const now = parseFloat(pill.style.getPropertyValue('--lbl-shift')) || 0;
+        const r = pill.getBoundingClientRect();
+        return labelShift(r.left - now, r.right - now, img.left + 4, img.right - 4);
+      });
+      pills.forEach((pill, i) => pill.style.setProperty('--lbl-shift', `${shifts[i]}px`));
     });
 
     // New points or tokens from the parent replace what this view last

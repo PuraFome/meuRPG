@@ -15,10 +15,17 @@
         </div>
       }
       @case ('error') {
-        <div class="mr-notice mr-notice--danger" role="alert">
-          <mat-icon aria-hidden="true">error</mat-icon>
-          <p>{{ s.message }}</p>
-        </div>
+        @if (s.blocked) {
+          <div class="mr-notice mr-notice--neutral" role="status">
+            <mat-icon aria-hidden="true">lock</mat-icon>
+            <p>{{ s.message }}</p>
+          </div>
+        } @else {
+          <div class="mr-notice mr-notice--danger" role="alert">
+            <mat-icon aria-hidden="true">error</mat-icon>
+            <p>{{ s.message }}</p>
+          </div>
+        }
         <a mat-stroked-button class="editor__back" [routerLink]="s.backLink">{{ s.backLabel }}</a>
       }
       @case ('ready') {

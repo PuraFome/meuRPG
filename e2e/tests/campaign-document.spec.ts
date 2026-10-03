@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test';
 
 import { createMapRPC, saveDocumentRPC, tableWithDocumentParts } from './document-support';
-import { authStatePath, callRPC, newSignedInContext } from './support';
+import { createPointRPC, setCurrentMapRPC } from './maps-support';
+import { authStatePath, callRPC, newSignedInContext, startGameSession } from './support';
 
 // MR-018, the campaign document (web/src/app/pages/campaign-document and the
 // "Documento da campanha" panel of the campaign page), against the real
@@ -94,14 +95,25 @@ test(
     await expect(page.getByRole('region', { name: 'Documento da campanha' }).getByText(/^Editado hoje às \d\d:\d\d\. Só você vê este documento\.$/)).toBeVisible();
     await page.goBack();
 
-    // The map link opens a dialog with the map's name and image, over the document.
+    // The map link opens a dialog over the document (E5-29): the map with
+    // every point (a hidden one marked "Escondido"), whether it is revealed
+    // and the open session's current map, the legend and the editor link.
+    await createPointRPC(page, table.campaignId, table.mapId, { kind: 'BATTLE', name: 'Emboscada na estrada', xBp: 4000, yBp: 6000, revealed: true });
+    await createPointRPC(page, table.campaignId, table.mapId, { kind: 'SUBMAP', name: 'Covil dos goblins', xBp: 2000, yBp: 3000 });
+    expect((await startGameSession(page, table.campaignId)).ok()).toBeTruthy();
+    await setCurrentMapRPC(page, table.campaignId, table.mapId);
     await page.getByRole('button', { name: 'Mirathel e arredores' }).click();
     const mapDialog = page.getByRole('dialog', { name: 'Mirathel e arredores' });
     await expect(mapDialog).toBeVisible();
-    const mapImage = mapDialog.getByRole('img', { name: 'Imagem do mapa Mirathel e arredores' });
+    await expect(mapDialog.getByText('Revelado aos jogadores. Mapa atual da Sessão 1.')).toBeVisible();
+    const mapImage = mapDialog.getByRole('img', { name: 'Prévia do mapa Mirathel e arredores' });
     await expect(mapImage).toBeVisible();
-    await expect.poll(() => mapImage.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
-    await expect(mapDialog.getByRole('link', { name: 'Abrir mapa' })).toHaveAttribute('href', `/campanhas/${table.campaignId}/mapas/${table.mapId}`);
+    await expect.poll(() => mapImage.locator('img').evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+    await expect(mapDialog.getByText('Emboscada na estrada', { exact: true })).toBeVisible();
+    await expect(mapDialog.locator('.lbl__pill', { hasText: 'Covil dos goblins' })).toContainText('Escondido');
+    await expect(mapDialog.getByRole('list', { name: 'Pontos deste mapa' })).toContainText('Covil dos goblins, Submapa, escondido');
+    await expect(mapDialog.getByRole('list', { name: 'Legenda do mapa' })).toContainText('Escondido');
+    await expect(mapDialog.getByRole('link', { name: 'Abrir no editor de mapas' })).toHaveAttribute('href', `/campanhas/${table.campaignId}/mapas/${table.mapId}`);
     await page.keyboard.press('Escape');
     await expect(mapDialog).toBeHidden();
     await expect(page.getByRole('button', { name: 'Mirathel e arredores' })).toBeFocused();
