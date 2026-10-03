@@ -83,6 +83,8 @@
         <div class="board board--master">
           <app-party-panel
             class="board__party"
+            [campaignId]="campaignId()"
+            [campaignName]="campaign()?.name ?? ''"
             [party]="vitals()"
             [info]="partyInfo()"
             (adjust)="adjust($event)"

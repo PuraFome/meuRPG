@@ -21,7 +21,8 @@ import {
   SpellSaveSuccess,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { rollFormula } from './combat-dice';
-import { feetToMeters, formatMeters, joinDots, tight } from './combat-grid';
+import { feetToMeters, formatMeters } from './combat-grid';
+import { joinDots, tight } from '../format/text';
 import { circleLabel } from './combat-options';
 import { stateWord } from './combat-view';
 

@@ -83,6 +83,7 @@ export const FULL_SHEET_FIELDS: readonly EditorField[] = [
   { path: 'name', label: 'Nome do personagem', step: 'basico' },
   { path: 'level', label: 'Nível', step: 'basico' },
   { path: 'experiencePoints', label: 'Pontos de experiência', step: 'basico' },
+  { path: 'xpValue', label: 'XP ao derrotar', step: 'basico' },
   { path: 'className', label: 'Classe', step: 'basico' },
   { path: 'race', label: 'Raça', step: 'basico' },
   { path: 'background', label: 'Antecedente', step: 'basico' },

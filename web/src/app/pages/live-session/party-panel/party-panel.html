@@ -1,5 +1,8 @@
 <section class="mr-panel party" aria-labelledby="party-heading">
-  <h2 class="mr-panel__title" id="party-heading">Grupo</h2>
+  <div class="party__head">
+    <h2 class="mr-panel__title" id="party-heading">Grupo</h2>
+    <app-session-xp [campaignId]="campaignId()" [campaignName]="campaignName()" />
+  </div>
   @if (party().length === 0) {
     <p class="party__empty">
       Nenhum personagem de jogador vivo nesta campanha. Quando um jogador criar o dele, ele aparece

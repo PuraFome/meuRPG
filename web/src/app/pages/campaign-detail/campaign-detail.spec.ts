@@ -8,6 +8,10 @@ import { Campaign, Member, Role, XpMode } from '../../../gen/meurpg/campaigns/v1
 import { AuthService, AuthState } from '../../core/auth/auth.service';
 import { CampaignsService } from '../../core/campaigns/campaigns.service';
 import { GalleryClient } from '../../core/images/gallery-client';
+import { RosterClient } from '../../core/maps/roster-client';
+import { ProgressionClient } from '../../core/progression/progression-client';
+import { create } from '@bufbuild/protobuf';
+import { CharacterExperienceSchema, GetCampaignExperienceResponseSchema, ListXPAwardsResponseSchema } from '../../../gen/meurpg/progression/v1/progression_pb';
 import { FakeGalleryClient } from '../../core/images/gallery-testing';
 import { CampaignDetail } from './campaign-detail';
 import {
@@ -95,8 +99,17 @@ function flush(): Promise<void> {
 
 describe('CampaignDetail', () => {
   let fake: FakeCampaignsService;
+  const experience = vi.fn();
+  const listAwards = vi.fn();
 
   function configure(id = 'camp-1'): void {
+    experience.mockReset().mockResolvedValue(
+      create(GetCampaignExperienceResponseSchema, {
+        xpMode: XpMode.ENEMIES,
+        characters: [create(CharacterExperienceSchema, { characterId: 'c1', name: 'Pensantus', level: 3, experiencePoints: 2716, nextLevelXp: 2700, canLevelUp: true })],
+      }),
+    );
+    listAwards.mockReset().mockResolvedValue(create(ListXPAwardsResponseSchema, {}));
     TestBed.configureTestingModule({
       imports: [CampaignDetail],
       providers: [
@@ -106,6 +119,8 @@ describe('CampaignDetail', () => {
         { provide: GameSessionSource, useClass: FakeGameSessionSource },
         { provide: GalleryClient, useClass: FakeGalleryClient },
         { provide: AuthService, useClass: FakeAuthService },
+        { provide: ProgressionClient, useValue: { experience, listAwards } },
+        { provide: RosterClient, useValue: { list: () => Promise.resolve([]) } },
       ],
     });
     fake = TestBed.inject(CampaignsService) as unknown as FakeCampaignsService;
@@ -257,5 +272,55 @@ describe('CampaignDetail', () => {
     const el = await render();
     expect(el.querySelector('h1')?.textContent).not.toContain('não encontrada');
     expect(el.textContent).toContain('Tente de novo');
+  });
+
+  describe('"Experiência" (MR-016, E7-09)', () => {
+    const asRole = (role: Role) => {
+      configure();
+      fake.getCampaignResult = Promise.resolve({ campaign: campaign('camp-1', 'Mirathel', role) });
+      fake.listMembersResult = Promise.resolve({ members: [member('u1', 'Samuel', role)] });
+    };
+
+    it('shows every member the panel, loaded once with the history', async () => {
+      asRole(Role.PLAYER);
+      const el = await render();
+      await flush();
+      expect(el.querySelector('app-experience-panel h2')?.textContent).toBe('Experiência');
+      expect(experience).toHaveBeenCalledTimes(1);
+      expect(listAwards).toHaveBeenCalledTimes(1);
+    });
+
+    it('puts it right after "Sessão", and gives only the master "Dar XP"', async () => {
+      asRole(Role.MASTER);
+      const el = await render();
+      await flush();
+      const column = el.querySelector('.campaign-layout__column')!;
+      const order = Array.from(column.children).map((c) => c.tagName.toLowerCase());
+      expect(order.indexOf('app-experience-panel')).toBe(order.indexOf('app-game-session-card') + 1);
+      expect(Array.from(el.querySelectorAll('app-experience-panel button')).some((b) => b.textContent?.trim() === 'Dar XP')).toBe(true);
+    });
+
+    it('tags who can level up in the group list too (RN-12)', async () => {
+      asRole(Role.MASTER);
+      const source = TestBed.inject(CampaignCharactersSource) as unknown as FakeCampaignCharactersSource;
+      source.listCharactersResult = Promise.resolve({
+        playerCharacters: [{ id: 'c1', name: 'Pensantus', kind: 'player', state: 'locked', classSummary: 'Mago 3', playerDisplayName: 'Vinicius' }],
+        npcs: [],
+        hasLivingCharacter: true,
+      });
+      const el = await render();
+      await flush();
+      const fixtureEl = el.querySelector('app-campaign-characters')!;
+      expect(fixtureEl.querySelector('app-level-up-tag')?.textContent).toContain('Pode subir de nível');
+    });
+
+    it('does not ask a pending member for the XP, which the server would refuse', async () => {
+      configure();
+      fake.getCampaignResult = Promise.resolve({
+        campaign: { ...campaign('camp-1', 'Mirathel', Role.PLAYER), awaitingApproval: true, diceMode: 1, dicePreference: 1 },
+      });
+      await render();
+      expect(experience).not.toHaveBeenCalled();
+    });
   });
 });

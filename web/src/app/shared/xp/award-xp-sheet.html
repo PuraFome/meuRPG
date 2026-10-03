@@ -1,0 +1,62 @@
+<app-sheet-frame
+  title="Dar XP"
+  [subtitle]="subtitle"
+  titleId="sheet-t"
+  [phone]="inSheet"
+  (closed)="cancel()"
+>
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+
+  <app-xp-reason
+    [control]="reason"
+    [placeholder]="'Por exemplo: Pelo resgate do mercador'"
+  />
+
+  <div class="amount">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="amount__field">
+      <mat-label>{{ amountLabel }}</mat-label>
+      <input
+        #amountInput
+        matInput
+        type="text"
+        inputmode="numeric"
+        autocomplete="off"
+        aria-describedby="amount-hint"
+        [formControl]="amount"
+      />
+      <mat-error>{{ amountError }}</mat-error>
+    </mat-form-field>
+    <p class="amount__hint" id="amount-hint">{{ amountHint() }}</p>
+  </div>
+
+  <section class="who" aria-labelledby="who-title">
+    <h3 class="who__title" id="who-title">Quem recebe</h3>
+    @if (data.rows.length === 0) {
+      <p class="mr-muted">Nenhum personagem de jogador vivo nesta campanha.</p>
+    } @else {
+      <app-xp-recipients [rows]="recipients()" (toggle)="toggle($event)" />
+      <!-- A short screen's footer has only the number: the sum is here (see xp-split). -->
+      <p class="sum-note">{{ sumNote() }}</p>
+    }
+  </section>
+
+  <div foot class="foot">
+    <app-xp-split variant="foot" [split]="split()" [total]="total()" [gold]="gold ? total() : 0" />
+    <app-xp-actions
+      [primaryLabel]="primaryLabel()"
+      secondaryLabel="Cancelar"
+      [secondaryStyle]="inSheet ? 'text' : 'outlined'"
+      align="end"
+      [blocked]="blocked()"
+      [busy]="busy()"
+      [reason]="reasonToWait()"
+      (primary)="give()"
+      (secondary)="cancel()"
+    />
+  </div>
+</app-sheet-frame>

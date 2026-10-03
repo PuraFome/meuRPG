@@ -17,6 +17,7 @@ import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 import { characterBlockedMessage, describeCharacterError } from '../../core/characters/character-errors';
 import { characterKindLabel } from '../../core/characters/character-labels';
 import { CharacterKind, isFullSheetKind } from '../../core/characters/characters.types';
+import { formatXp } from '../../core/format/text';
 import { FictionNotice } from '../../shared/fiction-notice/fiction-notice';
 import { PHONE_QUERY, mediaQuery } from '../../shared/map-view/media-query';
 import { AbilityFields } from './ability-fields/ability-fields';
@@ -52,6 +53,7 @@ import {
   invalidBasicFields,
   patchBasicForm,
 } from './npc-short-form/basic-form';
+import { DefeatXp } from './defeat-xp/defeat-xp';
 import { NpcShortForm } from './npc-short-form/npc-short-form';
 import { SkillPicker } from './skill-picker/skill-picker';
 import { SpellPicker } from './spell-picker/spell-picker';
@@ -72,6 +74,9 @@ type ReadyState = {
   characterId: string | null;
   revision: number;
   catalog: RulesCatalogVm;
+  /** The sheet is locked (a session started, RN-01): the XP is no longer
+   * typed here, only the master's awards change it (MR-016). */
+  xpLocked: boolean;
 };
 
 type ErrorState = {
@@ -185,6 +190,7 @@ function filterByName<T extends { readonly namePt: string }>(
     MatProgressSpinnerModule,
     MatRadioModule,
     MatSelectModule,
+    DefeatXp,
     NpcShortForm,
     ReactiveFormsModule,
     RouterLink,
@@ -270,6 +276,10 @@ export class CharacterEditor {
     languagesText: ['', Validators.maxLength(2000)],
     toolProficienciesText: ['', Validators.maxLength(2000)],
     experiencePoints: [0, [Validators.required, Validators.min(0), Validators.max(1000000)]],
+    // An enemy's or boss's ND and the XP it gives when defeated (E7-11); a
+    // player's stay empty and 0 and are never shown.
+    challengeRating: [''],
+    xpValue: [0, [Validators.required, Validators.min(0), Validators.max(1000000)]],
     alignment: ['' as AlignmentKey],
     customFeaturesText: ['', Validators.maxLength(5000)],
     hitPointsMethod: ['average' as HitPointsMethod],
@@ -292,6 +302,12 @@ export class CharacterEditor {
   });
 
   protected readonly basicForm = createBasicForm(this.fb);
+
+  /** The locked sheet's XP, to read ("2.716 XP"): only the master's awards change it. */
+  private readonly experienceXp = toSignal(this.fullForm.controls.experiencePoints.valueChanges, {
+    initialValue: 0,
+  });
+  protected readonly experienceLabel = computed(() => formatXp(this.experienceXp()));
 
   /** "Rolar 4d6" or "Conjunto padrão" with results still to place: saving
    * waits, so a half-placed roll never turns into six default 10s. */
@@ -610,7 +626,15 @@ export class CharacterEditor {
           characterId: null,
           revision: 1,
           catalog,
+          xpLocked: false,
         });
+        // A new enemy, boss or minion starts at ND 0 and 10 XP, so nobody is left without a
+        // number; a story NPC gives none (and never shows the fields).
+        if (kind === 'enemy' || kind === 'boss') {
+          this.fullForm.patchValue({ challengeRating: '0', xpValue: 10 });
+        } else if (kind === 'story') {
+          this.basicForm.patchValue({ challengeRating: '', xpValue: 0 });
+        }
       },
       (err: unknown) =>
         this.state.set({
@@ -649,6 +673,7 @@ export class CharacterEditor {
           characterId,
           revision: existing.revision,
           catalog,
+          xpLocked: existing.sheetLocked,
         });
         if (existing.full) {
           this.patchFullForm(existing.full);
@@ -685,6 +710,8 @@ export class CharacterEditor {
       languagesText: full.languagesText,
       toolProficienciesText: full.toolProficienciesText,
       experiencePoints: full.experiencePoints,
+      challengeRating: full.challengeRating,
+      xpValue: full.xpValue,
       alignment: full.alignment,
       customFeaturesText: full.customFeaturesText,
       hitPointsMethod: full.hitPointsMethod,
@@ -860,6 +887,8 @@ export class CharacterEditor {
       languagesText: v.languagesText,
       toolProficienciesText: v.toolProficienciesText,
       experiencePoints: v.experiencePoints,
+      challengeRating: v.challengeRating,
+      xpValue: v.xpValue,
       alignment: v.alignment,
       customFeaturesText: v.customFeaturesText,
     };

@@ -5,6 +5,12 @@ import { BehaviorSubject } from 'rxjs';
 
 import { AuthService } from '../../core/auth/auth.service';
 import { MapsClient } from '../../core/maps/maps-client';
+import { RosterClient } from '../../core/maps/roster-client';
+import { ProgressionClient } from '../../core/progression/progression-client';
+import { XpChanges } from '../../core/progression/xp-changes';
+import { create } from '@bufbuild/protobuf';
+import { XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import { CharacterExperienceSchema, GetCampaignExperienceResponseSchema } from '../../../gen/meurpg/progression/v1/progression_pb';
 import { FakeMapsClient, mapMessage, mapPoint, mapResponse, mapToken } from '../../core/maps/maps-testing';
 import { OpenSessions } from '../../shell/live-notice/open-sessions';
 import { LiveSession } from './live-session';
@@ -108,6 +114,8 @@ class FakeLiveSessionSource implements LiveSessionSource {
 
 describe('LiveSession', () => {
   let source: FakeLiveSessionSource;
+  /** What the master's "Dar XP" reads (MR-016): the party's XP and how the campaign levels. */
+  const xpExperience = vi.fn();
   const signIn = vi.fn();
   const liveCampaignIds = signal<ReadonlySet<string>>(new Set());
   const openSessions = {
@@ -117,6 +125,12 @@ describe('LiveSession', () => {
   };
 
   beforeEach(() => {
+    xpExperience.mockReset().mockResolvedValue(
+      create(GetCampaignExperienceResponseSchema, {
+        xpMode: XpMode.ENEMIES,
+        characters: [create(CharacterExperienceSchema, { characterId: 'pensantus', name: 'Pensantus', level: 3, experiencePoints: 2600, nextLevelXp: 2700 })],
+      }),
+    );
     signIn.mockClear();
     openSessions.dismiss.mockClear();
     liveCampaignIds.set(new Set());
@@ -126,6 +140,8 @@ describe('LiveSession', () => {
         provideRouter([]),
         { provide: LiveSessionSource, useClass: FakeLiveSessionSource },
         { provide: MapsClient, useClass: FakeMapsClient },
+        { provide: ProgressionClient, useValue: { experience: xpExperience, listAwards: vi.fn() } },
+        { provide: RosterClient, useValue: { list: () => Promise.resolve([]) } },
         { provide: AuthService, useValue: { signIn, state: signal({ status: 'signed-in' }) } },
         { provide: OpenSessions, useValue: openSessions },
         {
@@ -173,6 +189,47 @@ describe('LiveSession', () => {
     expect(el.textContent).not.toContain('Ajustar');
     // Here already: the notice about this session is spent.
     expect(openSessions.dismiss).toHaveBeenCalledWith('s4');
+  });
+
+  describe('XP (MR-016)', () => {
+    const asMaster = () => {
+      source.campaign = { name: 'Mirathel', isMaster: true, awaitingApproval: false, diceMode: 1, dicePreference: 1 };
+    };
+
+    it('gives the master "Dar XP" in the party panel', async () => {
+      asMaster();
+      const master = await render();
+      expect(master.querySelector('app-party-panel app-xp-give-button')).not.toBeNull();
+      expect(button(master, 'Dar XP')).toBeTruthy();
+    });
+
+    it('says "Registrar marco" instead in a campaign that levels by milestones', async () => {
+      asMaster();
+      xpExperience.mockResolvedValue(create(GetCampaignExperienceResponseSchema, { xpMode: XpMode.MILESTONES, characters: [] }));
+      const el = await render();
+      expect(button(el, 'Registrar marco')).toBeTruthy();
+      expect(button(el, 'Dar XP')).toBeUndefined();
+    });
+
+    it('does not read the XP for a player (only the master has "Dar XP" here)', async () => {
+      await render();
+      expect(xpExperience).not.toHaveBeenCalled();
+    });
+
+    it('lets everything that depends on XP know when the stream says it changed, and ignores what it does not know', async () => {
+      asMaster();
+      await render();
+      const changes = TestBed.inject(XpChanges);
+      const before = changes.version();
+      xpExperience.mockClear();
+
+      source.push({ kind: 'xpChanged' });
+      await new Promise((r) => setTimeout(r));
+      expect(changes.version()).toBe(before + 1);
+      // The party panel's "Dar XP" reads the characters again.
+      await new Promise((r) => setTimeout(r));
+      expect(xpExperience).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('applies a vitals change from the stream without a reload', async () => {

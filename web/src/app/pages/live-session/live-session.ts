@@ -22,6 +22,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { CombatClient } from '../../core/combat/combat-client';
 import { CombatState } from '../../core/combat/combat-state';
 import { MapState } from '../../core/maps/map-state';
+import { XpChanges } from '../../core/progression/xp-changes';
 import { MapsClient } from '../../core/maps/maps-client';
 import { OpenSessions } from '../../shell/live-notice/open-sessions';
 import { AdjustVitals } from './adjust-vitals/adjust-vitals';
@@ -95,6 +96,7 @@ type Phase = 'loading' | 'live' | 'no-access' | 'no-session' | 'ended' | 'error'
 export class LiveSession {
   private readonly source = inject(LiveSessionSource);
   private readonly auth = inject(AuthService);
+  private readonly xpChanges = inject(XpChanges);
   private readonly router = inject(Router);
   private readonly document = inject(DOCUMENT);
   private readonly dialog = inject(MatDialog);
@@ -223,7 +225,11 @@ export class LiveSession {
       classify: (err) => this.source.classifyError(err),
       document: this.document,
       handlers: {
-        onReady: () => void this.readSnapshot(campaignId, generation),
+        onReady: () => {
+          // A missed `xp_changed` while reconnecting leaves nothing stale.
+          this.xpChanges.bump();
+          void this.readSnapshot(campaignId, generation);
+        },
         onVitals: (v) => this.vitals.update((list) => applyVitals(list, v)),
         onCurrentMap: (mapId) => this.showMap(mapId),
         onMapChanged: (mapId) => this.mapChanged(mapId),
@@ -251,6 +257,7 @@ export class LiveSession {
           }
         },
         onCombatLogChanged: () => this.combat.touchLog(),
+        onXpChanged: () => this.xpChanges.bump(),
         onShownImage: (image) => this.shownImageChanged(image),
         onLeftImages: () => void this.reloadLeftImages(),
         onEnded: () => this.ended(),

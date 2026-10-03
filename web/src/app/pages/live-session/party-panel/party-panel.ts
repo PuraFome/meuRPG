@@ -2,6 +2,7 @@ import { Component, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 
 import { PartyMemberInfoVm, VitalsVm } from '../live-session.types';
+import { SessionXp } from '../session-xp/session-xp';
 import { SlotDots } from '../slot-dots/slot-dots';
 import { freeWords, hitPointsPercent, hitPointsState, partyRowSub, slotRowLabel } from '../vitals';
 
@@ -15,11 +16,13 @@ import { freeWords, hitPointsPercent, hitPointsState, partyRowSub, slotRowLabel 
  */
 @Component({
   selector: 'app-party-panel',
-  imports: [MatButtonModule, SlotDots],
+  imports: [MatButtonModule, SessionXp, SlotDots],
   templateUrl: './party-panel.html',
   styleUrl: './party-panel.scss',
 })
 export class PartyPanel {
+  readonly campaignId = input.required<string>();
+  readonly campaignName = input('');
   readonly party = input.required<readonly VitalsVm[]>();
   readonly info = input<ReadonlyMap<string, PartyMemberInfoVm>>(new Map());
 

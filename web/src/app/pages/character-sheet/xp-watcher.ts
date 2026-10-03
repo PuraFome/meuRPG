@@ -1,0 +1,65 @@
+import { DOCUMENT, Injectable, inject } from '@angular/core';
+
+import { LiveSessionSourceLive } from '../live-session/live-session-source.live';
+import { LiveStream } from '../live-session/live-stream';
+
+/**
+ * Listens to a campaign's live session for `xp_changed` and says so (E7-10), so
+ * a page that shows XP (the character sheet) reads again when the master gives
+ * some. It is the session page's own stream client (`LiveStream`, ADR-0005's
+ * rules: backoff, closed when the tab is hidden, no reconnect when there is no
+ * access) over `LiveSessionSourceLive`, not a copy of it. One stream at a time;
+ * `follow(null)` closes it, which the page does when it goes away. Provided at
+ * the sheet's route, so the generated play client stays in that lazy chunk.
+ */
+@Injectable()
+export class XpWatcher {
+  private readonly source = inject(LiveSessionSourceLive);
+  private readonly document = inject(DOCUMENT);
+
+  private stream: LiveStream | null = null;
+  private campaignId: string | null = null;
+
+  /** Follows `campaignId` (its open session), or stops with `null`. `onChange`
+   * runs on every `xp_changed`, and on a reconnection (an event may have been missed). */
+  follow(campaignId: string | null, onChange: () => void): void {
+    if (campaignId === this.campaignId) {
+      return;
+    }
+    this.stream?.stop();
+    this.stream = null;
+    this.campaignId = campaignId;
+    if (campaignId === null) {
+      return;
+    }
+    let first = true;
+    const stream = new LiveStream({
+      open: (signal) => this.source.watch(campaignId, signal),
+      classify: (err) => this.source.classifyError(err),
+      document: this.document,
+      handlers: {
+        // The page reads on load itself: only a later `ready` (a reconnection) reads again.
+        onReady: () => {
+          if (!first) {
+            onChange();
+          }
+          first = false;
+        },
+        onVitals: () => undefined,
+        onXpChanged: onChange,
+        onEnded: () => this.stop(stream),
+        onFatal: () => this.stop(stream),
+      },
+    });
+    this.stream = stream;
+    stream.start();
+  }
+
+  private stop(stream: LiveStream): void {
+    stream.stop();
+    if (this.stream === stream) {
+      this.stream = null;
+      this.campaignId = null;
+    }
+  }
+}

@@ -1,0 +1,70 @@
+:host {
+  display: block;
+}
+
+.reason {
+  margin: 0 0 var(--mr-space-2);
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+// Side by side from a tablet up; one under the other, full width, on a phone.
+.pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(2, max-content);
+    justify-content: start;
+    gap: var(--mr-space-3);
+
+    &--end {
+      justify-content: end;
+    }
+  }
+}
+
+// On a phone the filled button is always first (the thumb's reach, "Cancelar"
+// under it), whatever the DOM order, which follows the desktop's reading
+// order for the keyboard.
+.primary {
+  @media (max-width: 767.98px) {
+    order: -1;
+  }
+}
+
+.btn {
+  --mat-button-filled-container-height: 48px;
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-text-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  --mat-button-text-label-text-color: var(--mr-accent-text);
+  width: 100%;
+  white-space: nowrap;
+
+  @media (min-width: 768px) {
+    --mat-button-filled-container-height: 44px;
+    --mat-button-outlined-container-height: 44px;
+    --mat-button-text-container-height: 44px;
+    width: auto;
+  }
+}
+
+// A short screen: the way out is a 44px text button, the filled one stays 48px.
+@media (max-width: 767.98px) and (max-height: 600px) {
+  .secondary {
+    --mat-button-text-container-height: 44px;
+  }
+}
+
+// Waiting: the dashed outline of the start-combat dialog, in words too.
+.primary--off {
+  --mat-button-filled-container-color: var(--mr-surface);
+  --mat-button-filled-label-text-color: var(--mr-ink-muted);
+  --mat-button-filled-disabled-container-color: var(--mr-surface);
+  --mat-button-filled-disabled-label-text-color: var(--mr-ink-muted);
+  border: 1px dashed var(--mr-control-line);
+  cursor: default;
+}

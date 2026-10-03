@@ -9,7 +9,8 @@ import {
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { ActionEconomy } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { rechargeText } from './combat-errors';
-import { circleLabel, feetToMeters, formatMeters, joinDots, tight } from './combat-grid';
+import { circleLabel, feetToMeters, formatMeters } from './combat-grid';
+import { joinDots, tight } from '../format/text';
 
 /**
  * What "Sua vez" says about the options the server works out

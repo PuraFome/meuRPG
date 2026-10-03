@@ -1,0 +1,62 @@
+:host {
+  display: block;
+}
+
+// The first field sits a little down: the body scrolls, and an outlined field's
+// floating label would be cut by the edge of it.
+app-xp-reason {
+  margin-top: 8px;
+  scroll-margin-block: 16px;
+}
+
+// The amount is a short number: a field of its own width, not the sheet's; the
+// help under it runs the whole line.
+.amount__field {
+  width: 100%;
+  scroll-margin-block: 16px;
+
+  // From a tablet up the number is a narrower field than the text; on a phone
+  // it is as wide as "Motivo".
+  @media (min-width: 768px) {
+    width: min(100%, 260px);
+  }
+}
+
+.amount__hint {
+  margin: 4px 0 0 16px;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  // The sum under the list says the same on a short screen.
+  @media (max-height: 600px) {
+    display: none;
+  }
+}
+
+// The sum, only where the footer is compact.
+.sum-note {
+  display: none;
+  margin: var(--mr-space-2) 0 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  @media (max-height: 600px) {
+    display: block;
+  }
+}
+
+.who__title {
+  margin: 0 0 var(--mr-space-1);
+  font-size: 14px;
+  line-height: 19px;
+  font-weight: 700;
+  color: var(--mr-ink-muted);
+}
+
+.foot {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}

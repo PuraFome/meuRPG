@@ -8,6 +8,7 @@ import { endOpenSessionRPC, endSessionRPC, openSessionPage, startSessionRPC, tab
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
 import { adjustVitalsRPC, beginAttackCombatRPC, combatRPC, getEncounterRPC, passTurnsTo, pensantusCasting, tableForCombat, toren, torenSheet } from './combat-support';
 import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus } from './support';
+import { awardXpRPC, createEnemyRPC, tableForXp, tableForXpCombat, winCombatRPC } from './xp-support';
 
 // docs/design.md#como-uma-tela-é-feita: every screen passes axe with no
 // serious or critical violation of WCAG 2.1 A and AA, in the light and the
@@ -1056,4 +1057,133 @@ test('o guerreiro (Ataque Extra, Retomar o Fôlego, Surto de Ação) passa no ax
 test('o guerreiro (Ataque Extra, Retomar o Fôlego, Surto de Ação) passa no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanFighterScreens(browser, 'light', 390);
+});
+
+/** The XP screens (Etapa 7, MR-016, RN-12): the end of a combat with "Dar XP" in each of its states, the
+ * "Dar XP" dialog or sheet with its errors, the campaign's "Experiência" with its history and the question
+ * of "Desfazer", the milestone's dialog and panel, the sheet with the XP block and the tag, and the NPC's
+ * ND and XP (the list open, "Usar 50 XP"). Built in one function so the sweep is one place. */
+async function scanXpScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  const campaigns: string[] = [];
+  /** A page that keeps its stream open never goes idle: wait for its h1 instead. */
+  const openLive = async (page: Page, route: string, heading?: string) => {
+    await page.goto(route);
+    await expect(heading ? page.getByRole('heading', { name: heading }) : page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 30_000 });
+  };
+  try {
+    await m.goto('/');
+    await p.goto('/');
+
+    // The end of a combat, before the XP is given.
+    const combat = await tableForXpCombat(m, p, `Acessibilidade XP ${Date.now()}`, { experiencePoints: 2600 });
+    const campaignId = combat.table.campaignId;
+    campaigns.push(campaignId);
+    await winCombatRPC(m, combat);
+    await openLive(m, `/campanhas/${campaignId}/sessao`, 'Combate encerrado');
+    const block = m.getByRole('region', { name: 'Experiência do combate' });
+    await expect(block.getByRole('button', { name: /^Dar 350 XP/ })).toBeVisible();
+    await expectScreenPasses(m, `Fim do combate com Dar XP ${where}`);
+    await block.getByRole('checkbox', { name: 'Marcar Pensantus' }).uncheck();
+    await expect(block.getByText('Marque pelo menos um personagem')).toBeVisible();
+    await expectScreenPasses(m, `Fim do combate, ninguém marcado ${where}`);
+    await block.getByRole('checkbox', { name: 'Marcar Pensantus' }).check();
+
+    // "Agora não": the quiet line, and "Dar XP" opened from it, with an error.
+    await block.getByRole('button', { name: 'Agora não' }).click();
+    await expect(block.getByRole('button', { name: /XP do combate ainda não dado/ })).toBeFocused();
+    await expectScreenPasses(m, `Fim do combate, XP para depois ${where}`);
+    await block.getByRole('button', { name: /XP do combate ainda não dado/ }).click();
+    const dialog = m.getByRole('dialog', { name: 'Dar XP' });
+    await expect(dialog.getByLabel('Motivo')).toHaveValue('Combate: Emboscada na estrada');
+    await expectScreenPasses(m, `Dar XP, aberto pelo resumo ${where}`);
+    await dialog.getByLabel('Motivo').fill('');
+    await dialog.getByLabel('XP para o grupo').focus();
+    await dialog.getByLabel('Motivo').focus();
+    await dialog.getByLabel('XP para o grupo').focus();
+    await expect(dialog.getByText('Escreva o motivo do XP.')).toBeVisible();
+    await expectScreenPasses(m, `Dar XP, com erro ${where}`);
+    await dialog.getByLabel('Motivo').fill('Combate: Emboscada na estrada');
+    await dialog.getByRole('button', { name: /^Dar 350 XP/ }).click();
+    await expect(block).toContainText('350 XP dados');
+    await expectScreenPasses(m, `Fim do combate, XP dado ${where}`);
+
+    // The campaign page: the panel with its history, the question, the player's view and the sheet.
+    await awardXpRPC(m, campaignId, { mode: 'MANUAL', reason: 'Pela ajuda ao ferreiro', characterIds: [combat.table.characterId], amount: 40 });
+    await open(m, `/campanhas/${campaignId}`);
+    await expect(m.getByRole('region', { name: 'Experiência', exact: true })).toContainText('Pela ajuda ao ferreiro');
+    await expectScreenPasses(m, `Campanha com Experiência, mestre ${where}`);
+    await m.getByRole('button', { name: /^Desfazer/ }).click();
+    await expect(m.getByRole('alertdialog')).toBeVisible();
+    await expectScreenPasses(m, `Experiência, Desfazer a pergunta ${where}`);
+    await m.getByRole('button', { name: 'Voltar' }).click();
+    await m.getByRole('button', { name: 'Dar XP' }).click();
+    await expect(m.getByRole('dialog', { name: 'Dar XP' })).toBeVisible();
+    await m.getByRole('dialog').getByLabel('Motivo').fill('Pelo resgate do mercador');
+    await m.getByRole('dialog').getByLabel('XP para o grupo').fill('150');
+    await expectScreenPasses(m, `Dar XP, a qualquer hora ${where}`);
+    await m.getByRole('dialog').getByRole('button', { name: 'Cancelar' }).click();
+    await open(p, `/campanhas/${campaignId}`);
+    await expect(p.getByRole('region', { name: 'Experiência', exact: true })).toContainText('Todos da campanha veem este histórico.');
+    await expectScreenPasses(p, `Campanha com Experiência, jogador ${where}`);
+    await openLive(p, `/campanhas/${campaignId}/personagens/${combat.table.characterId}`);
+    await expect(p.locator('app-xp-block').getByText('Pode subir de nível')).toBeVisible();
+    await expectScreenPasses(p, `Ficha com XP e Pode subir de nível ${where}`);
+
+    // Milestones: the dialog, the panel after it and the sheet with only the tag.
+    const marks = await tableForXp(m, p, `Acessibilidade marcos ${Date.now()}`, 'XP_MODE_MILESTONES');
+    campaigns.push(marks.campaignId);
+    await startSessionRPC(m, marks.campaignId);
+    await open(m, `/campanhas/${marks.campaignId}`);
+    await expectScreenPasses(m, `Experiência por marcos, sem marcos ${where}`);
+    await m.getByRole('button', { name: 'Registrar marco' }).click();
+    const markDialog = m.getByRole('dialog', { name: 'Registrar marco' });
+    await markDialog.getByLabel('O que aconteceu').fill('Marco: a ponte do rio foi salva');
+    await expectScreenPasses(m, `Registrar marco ${where}`);
+    await markDialog.getByRole('button', { name: 'Registrar marco' }).click();
+    await expect(m.getByRole('status').filter({ hasText: 'Marco registrado' })).toBeVisible();
+    await expectScreenPasses(m, `Experiência por marcos, depois do marco ${where}`);
+    await openLive(p, `/campanhas/${marks.campaignId}/personagens/${marks.characterId}`);
+    await expect(p.locator('app-sheet-header').getByText('Pode subir de nível')).toBeVisible();
+    await expectScreenPasses(p, `Ficha por marcos, só a etiqueta ${where}`);
+
+    // The NPC: the minion's section with the list open, "Usar 50 XP", and the enemy's header fields.
+    const npc = await createEnemyRPC(m, campaignId, 'Capitão Goblin', '1', 200);
+    await open(m, `/campanhas/${campaignId}/npcs/novo/minion`);
+    await expectScreenPasses(m, `NPC curto com Ao ser derrotado ${where}`);
+    const nd = m.getByRole('combobox', { name: 'Nível de desafio (ND)' });
+    await nd.click();
+    await expect(m.getByRole('option', { name: /^ND 1\/4/ })).toBeVisible();
+    await expectScreenPasses(m, `NPC curto, lista de ND ${where}`);
+    await m.getByRole('option', { name: /^ND 1\/4/ }).click();
+    await m.getByLabel('XP ao derrotar').fill('0');
+    await expect(m.getByRole('button', { name: 'Usar 50 XP' })).toBeVisible();
+    await expectScreenPasses(m, `NPC curto, XP zero com Usar ${where}`);
+    await open(m, `/campanhas/${campaignId}/personagens/${npc}/editar`);
+    await expect(m.getByLabel('XP ao derrotar')).toHaveValue('200');
+    await expectScreenPasses(m, `Inimigo, ND e XP no passo Básico ${where}`);
+    await openLive(m, `/campanhas/${campaignId}/personagens/${npc}`);
+    await expectScreenPasses(m, `Ficha do inimigo com ND e XP ${where}`);
+  } finally {
+    for (const id of campaigns) {
+      await endOpenSessionRPC(m, id);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('as telas de XP passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-016'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanXpScreens(browser, 'light', 1280);
+});
+
+test('as telas de XP passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-016'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanXpScreens(browser, 'dark', 390);
 });

@@ -1,0 +1,53 @@
+<app-sheet-frame
+  title="Registrar marco"
+  [subtitle]="data.campaignName + (inSheet ? ' · campanha por marcos' : ' · campanha por marcos: não há XP para contar.')"
+  titleId="sheet-t"
+  [phone]="inSheet"
+  (closed)="cancel()"
+>
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+
+  <app-xp-reason
+    [control]="reason"
+    label="O que aconteceu"
+    hint="O marco aparece no histórico da campanha."
+    errorText="Escreva o que aconteceu."
+    placeholder="Por exemplo: A ponte do rio foi salva"
+  />
+
+  <section class="who" aria-labelledby="who-title">
+    <h3 class="who__title" id="who-title">Quem ganha o marco</h3>
+    @if (data.rows.length === 0) {
+      <p class="mr-muted">Nenhum personagem de jogador vivo nesta campanha.</p>
+    } @else {
+      <app-xp-recipients label="Quem ganha o marco" [rows]="recipients()" (toggle)="toggle($event)" />
+      <!-- A short screen's footer has only the effect line: the note is here. -->
+      <p class="note-short">{{ note }}</p>
+    }
+  </section>
+
+  <div foot class="foot">
+    <div class="effect" role="status" aria-live="polite">
+      @if (effect()) {
+        <p class="effect__line"><mat-icon aria-hidden="true">flag</mat-icon>{{ effect() }}</p>
+        <p class="effect__note">{{ note }}</p>
+      }
+    </div>
+    <app-xp-actions
+      primaryLabel="Registrar marco"
+      secondaryLabel="Cancelar"
+      [secondaryStyle]="inSheet ? 'text' : 'outlined'"
+      align="end"
+      [blocked]="blocked()"
+      [busy]="busy()"
+      [reason]="reasonToWait()"
+      (primary)="register()"
+      (secondary)="cancel()"
+    />
+  </div>
+</app-sheet-frame>

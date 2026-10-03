@@ -72,6 +72,8 @@ describe('the NPC short form', () => {
     legacyDamage: '',
     legacyAttackBonus: 0,
     description: 'Pequeno e esperto.',
+    challengeRating: '1/4',
+    xpValue: 50,
   };
 
   it('loads a sheet and gives the same value back (metres on screen, feet stored)', () => {

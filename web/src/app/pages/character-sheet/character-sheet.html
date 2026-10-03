@@ -38,7 +38,7 @@
   }
   @case ('ready') {
     @let vm = s.vm;
-    <app-sheet-header [vm]="vm">
+    <app-sheet-header [vm]="vm" [xpMode]="xpMode()">
       @if (vm.canEdit) {
         <a
           [matButton]="vm.canApprove ? 'outlined' : 'filled'"

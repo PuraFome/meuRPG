@@ -31,6 +31,7 @@
 .short__name,
 .short__hp,
 .short__wide,
+.short__defeat,
 .short__attacks {
   grid-column: 1 / -1;
 }
@@ -102,4 +103,29 @@
 
 app-fiction-notice {
   display: block;
+}
+
+// "Ao ser derrotado": a section of its own, with a rule above it as the
+// attacks have (E7-11).
+.short__defeat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  padding-top: var(--mr-space-4);
+  border-top: 1px solid var(--mr-rule);
+}
+
+.short__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 700;
+}
+
+.short__lead {
+  margin: 0 0 var(--mr-space-2);
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
 }

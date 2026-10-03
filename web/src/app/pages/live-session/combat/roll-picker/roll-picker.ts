@@ -4,7 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import { parseSum, typedTotal } from '../../../../core/combat/combat-dice';
-import { tight } from '../../../../core/combat/combat-grid';
+import { tight } from '../../../../core/format/text';
 
 let nextId = 0;
 

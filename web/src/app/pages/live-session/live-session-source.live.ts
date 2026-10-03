@@ -177,6 +177,9 @@ export class LiveSessionSourceLive implements LiveSessionSource {
         case 'combatLogChanged':
           yield { kind: 'combatLogChanged' };
           break;
+        case 'xpChanged':
+          yield { kind: 'xpChanged' };
+          break;
         default:
           // A newer server's event this app doesn't know yet: still proof
           // that the stream is alive.

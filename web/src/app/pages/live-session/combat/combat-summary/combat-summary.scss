@@ -50,6 +50,9 @@
 .end__leave {
   --mat-button-filled-container-height: 52px;
   --mat-button-filled-label-text-size: 18px;
+  --mat-button-outlined-container-height: 52px;
+  --mat-button-outlined-label-text-size: 18px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
   padding-inline: 24px;
 }
 
@@ -109,6 +112,50 @@
 
 .line {
   min-height: 56px;
+}
+
+// What a defeated NPC was worth (the master's), over the "Derrotado" word.
+.line__right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.line__xp {
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 19px;
+  line-height: 22px;
+  white-space: nowrap;
+}
+
+// With the XP block (E7-06): the defeated and the group stacked on the left,
+// the XP on the right; on a phone the XP is the first panel.
+.cols--xp {
+  @media (min-width: 1024px) {
+    grid-template-areas:
+      'out xp'
+      'group xp';
+    grid-template-rows: auto 1fr;
+
+    .cols__out {
+      grid-area: out;
+    }
+
+    .cols__group {
+      grid-area: group;
+    }
+
+    .cols__xp {
+      grid-area: xp;
+    }
+  }
+
+  @media (max-width: 1023.98px) {
+    .cols__xp {
+      order: -1;
+    }
+  }
 }
 
 .line__out {

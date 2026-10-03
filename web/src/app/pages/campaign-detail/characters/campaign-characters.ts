@@ -10,6 +10,8 @@ import {
   characterStateLabel,
 } from '../../../core/characters/character-labels';
 import { CharacterKind } from '../../../core/characters/characters.types';
+import { ExperienceStore } from '../../../core/progression/experience-store';
+import { LevelUpTag } from '../../../shared/xp/level-up-tag';
 import { characterRowSub, stateTagClass } from './campaign-characters.copy';
 import {
   CampaignCharacterListItemVm,
@@ -48,12 +50,15 @@ const NPC_KINDS: ReadonlyArray<{ kind: CharacterKind; tipo: string }> = [
  */
 @Component({
   selector: 'app-campaign-characters',
-  imports: [MatButtonModule, MatIconModule, MatMenuModule, RouterLink],
+  imports: [LevelUpTag, MatButtonModule, MatIconModule, MatMenuModule, RouterLink],
   templateUrl: './campaign-characters.html',
   styleUrl: './campaign-characters.scss',
 })
 export class CampaignCharacters implements OnInit {
   private readonly source = inject(CampaignCharactersSource);
+  // The page's XP store (RN-12, D4): which characters "can level up". Optional:
+  // the list also works on its own, without the tag.
+  private readonly experience = inject(ExperienceStore, { optional: true });
 
   readonly campaignId = input.required<string>();
   readonly isMaster = input.required<boolean>();
@@ -64,6 +69,11 @@ export class CampaignCharacters implements OnInit {
   protected readonly npcKinds = NPC_KINDS;
   protected readonly characterRowSub = characterRowSub;
   protected readonly stateTagClass = stateTagClass;
+
+  /** Whether the character can go up a level now (the tag beside its state). */
+  protected canLevelUp(characterId: string): boolean {
+    return this.experience?.rows().some((r) => r.id === characterId && r.canLevelUp) ?? false;
+  }
 
   /** Master only: the players' characters that wait for approval. */
   protected awaitingApproval(vm: CampaignCharactersVm): readonly CampaignCharacterListItemVm[] {

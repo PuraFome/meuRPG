@@ -105,7 +105,9 @@ export type LiveEventVm =
   /** `combatant_moved`. */
   | ({ readonly kind: 'combatantMoved' } & CombatantMove)
   /** `combat_log_changed`: read the combat log again. */
-  | { readonly kind: 'combatLogChanged' };
+  | { readonly kind: 'combatLogChanged' }
+  /** `xp_changed`: an award, an undo or a milestone; read the XP again. */
+  | { readonly kind: 'xpChanged' };
 
 /**
  * What a failed call means for the page, from its Connect code and typed

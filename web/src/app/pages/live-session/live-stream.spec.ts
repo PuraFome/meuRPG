@@ -111,6 +111,7 @@ describe('LiveStream (ADR-0005 client rules)', () => {
       onTurnChanged: vi.fn(),
       onCombatantMoved: vi.fn(),
       onCombatLogChanged: vi.fn(),
+      onXpChanged: vi.fn(),
       onEnded: vi.fn(),
       onFatal: vi.fn(),
     };
@@ -149,6 +150,16 @@ describe('LiveStream (ADR-0005 client rules)', () => {
     last().push({ kind: 'vitals', vitals: vitals(3) });
     await flush();
     expect(handlers.onVitals).toHaveBeenCalledWith(vitals(3));
+  });
+
+  it('tells the page the XP changed (MR-016), and keeps the stream alive', async () => {
+    stream.start();
+    last().push({ kind: 'ready' });
+    last().push({ kind: 'xpChanged' });
+    last().push({ kind: 'xpChanged' });
+    await flush();
+    expect(handlers.onXpChanged).toHaveBeenCalledTimes(2);
+    expect(stream.status()).toBe('live');
   });
 
   it('hands the combat\'s events to the page (MR-013)', async () => {
