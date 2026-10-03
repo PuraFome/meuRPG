@@ -1,0 +1,171 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.dmg {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-sizing: border-box;
+  padding: 14px 16px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-ground);
+}
+
+.dmg--flat {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.dmg__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
+}
+
+.dmg__formula {
+  font-family: var(--mr-font-display);
+  font-weight: 700;
+  font-size: 26px;
+  line-height: 32px;
+}
+
+.dmg__effect {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.dmg__buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  // Side by side from a tablet up, with the same size; stacked full width on a phone.
+  @media (min-width: 768px) {
+    flex-flow: row wrap;
+    gap: 12px;
+  }
+}
+
+// The two buttons read as one size: 48px and the same width on a phone, 44px
+// from a tablet up. "Aplicar" is a 2px accent outline ("Próximo turno" owns the fill).
+.dmg__apply,
+.dmg__skip {
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  font-weight: 700;
+
+  white-space: nowrap;
+
+  @media (min-width: 768px) {
+    --mat-button-outlined-container-height: 44px;
+    flex: 1 1 0;
+    min-width: max-content;
+  }
+}
+
+.dmg__apply {
+  --mat-button-outlined-label-text-color: var(--mr-accent-text);
+  --mat-button-outlined-outline-width: 2px;
+  --mat-button-outlined-outline-color: var(--mr-accent);
+}
+
+.dmg__use {
+  --mat-button-outlined-label-text-color: var(--mr-accent-text);
+}
+
+// "Rolar dano" while the hit waits for the reaction: dashed, with its reason.
+.dmg__off {
+  --mat-button-outlined-container-height: 44px;
+  --mat-button-outlined-label-text-color: var(--mr-ink-muted);
+  --mat-button-outlined-disabled-label-text-color: var(--mr-ink-muted);
+  --mat-button-outlined-disabled-outline-color: var(--mr-control-line);
+  align-self: flex-start;
+  border-style: dashed;
+  cursor: default;
+}
+
+.dmg__why {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: -4px 0 0;
+  font-size: 14px;
+  font-weight: 500;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.dmg__wait {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: 0;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.ask {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.ask__text {
+  flex: 1 1 100%;
+  margin: 0;
+  font-weight: 700;
+}
+
+.ask .mat-mdc-outlined-button {
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  flex: 1 1 0;
+  min-width: max-content;
+  white-space: nowrap;
+
+  @media (min-width: 768px) {
+    --mat-button-outlined-container-height: 44px;
+  }
+}
+
+.ask .ask__danger {
+  --mat-button-outlined-label-text-color: var(--mr-danger-ink);
+  --mat-button-outlined-outline-color: var(--mr-danger-ink);
+}
+
+.settled {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-size: 15px;
+  color: var(--mr-success-ink);
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}

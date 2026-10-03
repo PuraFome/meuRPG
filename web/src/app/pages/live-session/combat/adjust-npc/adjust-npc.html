@@ -1,0 +1,56 @@
+<div class="adj" [class.adj--sheet]="inSheet">
+  @if (inSheet) {
+    <span class="adj__handle" aria-hidden="true"></span>
+  }
+  <div class="adj__head">
+    <h2 class="adj__title" id="adjust-npc-title" tabindex="-1">Dano ou cura em {{ c.label }}</h2>
+    <span class="adj__sub">{{ preview() }}{{ temp0 > 0 ? ' · ' + temp0 + ' temporários' : '' }}</span>
+  </div>
+
+  <div class="adj__scroll">
+  <div class="adj__rows">
+    <div class="adj__row">
+      <div class="modes" role="radiogroup" aria-label="O que mudar nos PV">
+        @for (m of modes; track m.value) {
+          <label class="mode" [class.mode--on]="mode() === m.value">
+            <input type="radio" class="mr-visually-hidden" name="adjust-mode" [value]="m.value" [checked]="mode() === m.value" (change)="mode.set(m.value); amount.set(m.value === 'exact' ? hp : 0)" />
+            {{ m.label }}
+          </label>
+        }
+      </div>
+    </div>
+    <app-vitals-stepper
+      layout="wide"
+      [label]="amountLabel()"
+      [hint]="mode() === 'exact' ? 'máximo ' + max : 'até 9.999'"
+      [max]="amountMax()"
+      [steps]="[5, 1]"
+      [fieldLabel]="amountLabel()"
+      [stepLabel]="amountStep"
+      [(value)]="amount"
+    />
+    <app-vitals-stepper
+      label="PV temporários"
+      hint="Somem antes dos PV"
+      [max]="maxTemporary"
+      fieldLabel="PV temporários"
+      [stepLabel]="tempStep"
+      [(value)]="temporary"
+    />
+  </div>
+
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger adj__error" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+  </div>
+
+  <div class="adj__buttons">
+    <button mat-flat-button type="button" [disabled]="busy() || !valid()" disabledInteractive (click)="save()">
+      Salvar ajuste
+    </button>
+    <button mat-button type="button" (click)="close()">Cancelar</button>
+  </div>
+</div>

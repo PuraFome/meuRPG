@@ -41,12 +41,13 @@ describe('TurnPanel', () => {
     expect(el.textContent).not.toContain('Você é o próximo');
   });
 
-  it('is the hero on the player\'s own turn, with the movement and the two buttons', () => {
+  it('is the hero on the player\'s own turn, with the movement and "Encerrar turno"', () => {
     const el = text({ currentCombatantId: 'pen' });
     expect(el.querySelector('h2')?.textContent).toBe('Sua vez, Pensantus');
     expect(el.textContent).toContain('7,5 m');
     const buttons = Array.from(el.querySelectorAll('button'), (b) => b.textContent?.trim());
-    expect(buttons.some((b) => b?.endsWith('Mover'))).toBe(true);
+    // "Mover" lives in the Movimento group now.
+    expect(buttons.some((b) => b?.endsWith('Mover'))).toBe(false);
     expect(buttons.some((b) => b?.endsWith('Encerrar turno'))).toBe(true);
     expect(el.textContent).toContain('Depois de você: Goblin 1'.replace('Goblin 1', 'Brisa'));
     expect(Array.from(el.querySelectorAll('.tile__name'), (n) => n.textContent)).toEqual(['Ação', 'Ação bônus', 'Reação', 'Movimento']);

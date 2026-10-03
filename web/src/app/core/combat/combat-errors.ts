@@ -60,6 +60,32 @@ export function blockedMessage(blocked: EncounterBlocked): string {
       return 'Ocupado: escolha outro quadrado.';
     case EncounterBlockedReason.PLAYER_IN_COMBAT:
       return 'Um jogador só sai do combate antes de ele começar.';
+    case EncounterBlockedReason.ACTION_USED:
+      return 'Sua ação já foi usada neste turno.';
+    case EncounterBlockedReason.TARGET_OUT_OF_REACH:
+      return `Longe demais: faltam ${formatMeters(feetToMeters(blocked.missingFt))} para chegar ao alvo.`;
+    case EncounterBlockedReason.TARGET_DEFEATED:
+      return 'Esse alvo já foi derrotado. Escolha outro.';
+    case EncounterBlockedReason.PENDING_DAMAGE:
+      return 'Ainda falta rolar ou aplicar o dano do ataque antes de passar o turno.';
+    case EncounterBlockedReason.DAMAGE_ALREADY_ROLLED:
+      return 'O dano desse ataque já foi rolado.';
+    case EncounterBlockedReason.DAMAGE_NOT_ROLLED:
+      return 'O dano ainda não foi rolado.';
+    case EncounterBlockedReason.DAMAGE_RESOLVED:
+      return 'Esse dano já foi aplicado ou descartado.';
+    case EncounterBlockedReason.NOTHING_TO_UNDO:
+      return 'Não há mais nada para desfazer: só a última ação pode ser desfeita.';
+    case EncounterBlockedReason.COMBATANT_DOWN:
+      return 'Quem está caído não age.';
+    case EncounterBlockedReason.REACTION_PENDING:
+      return 'Esse acerto espera a reação do alvo (Escudo). Espere o jogador ou responda por ele.';
+    case EncounterBlockedReason.NOT_AWAITING_REACTION:
+      return 'Esse acerto não espera mais uma reação. A tela foi atualizada.';
+    case EncounterBlockedReason.REACTION_USED:
+      return 'A reação desse personagem já foi usada neste turno.';
+    case EncounterBlockedReason.NO_SLOT:
+      return 'Esse personagem não tem espaço de magia livre para o Escudo.';
     default:
       return 'O combate não está num estado que aceite isso. A tela foi atualizada.';
   }

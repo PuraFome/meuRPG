@@ -3,7 +3,7 @@
 }
 
 .order {
-  --cols: 30px minmax(0, 1fr) 54px 84px 108px;
+  --cols: 30px minmax(0, 1fr) 54px 84px 154px;
 }
 
 .order__head {
@@ -11,7 +11,7 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0 var(--mr-space-3);
+  gap: 0 12px;
   padding-top: 4px;
 
   .mr-panel__title {
@@ -22,11 +22,15 @@
 .order__add {
   --mat-button-text-label-text-color: var(--mr-accent-text);
   margin-right: -8px;
+
+  @media (max-width: 767.98px) {
+    margin-left: -12px;
+  }
 }
 
 .order__cols {
   display: none;
-  margin-top: var(--mr-space-1);
+  margin-top: 4px;
   font-size: 13px;
   font-weight: 500;
   line-height: 16px;
@@ -36,7 +40,7 @@
     display: grid;
     grid-template-columns: var(--cols);
     column-gap: 10px;
-    margin-bottom: var(--mr-space-1);
+    margin-bottom: 4px;
   }
 }
 
@@ -124,6 +128,29 @@
   line-height: 1;
 }
 
+.row__meta {
+  display: flex;
+  flex-direction: column;
+
+  @media (max-width: 767.98px) {
+    flex-flow: row wrap;
+    font-size: 13px;
+
+    > * + *::before {
+      content: '·';
+      margin: 0 4px;
+    }
+  }
+
+  @media (max-width: 359.98px) {
+    flex-direction: column;
+
+    > * + *::before {
+      content: none;
+    }
+  }
+}
+
 .row__state {
   display: flex;
   align-items: center;
@@ -175,9 +202,7 @@
 }
 
 .row__hp-of {
-  font-family: var(--mr-font-sans);
-  font-size: 14px;
-  font-weight: 400;
+  font: 400 14px var(--mr-font-sans);
   color: var(--mr-ink-muted);
 }
 
@@ -206,11 +231,19 @@
 
 .row__adjust {
   --mat-button-outlined-label-text-color: var(--mr-ink);
+  flex: none;
   min-width: 108px;
+
+  @media (max-width: 767.98px) {
+    min-width: 0;
+    padding: 0 8px;
+  }
 }
 
-.row__more {
+.row__more,
+.row__spacer {
   display: flex;
+  flex: none;
   align-items: center;
   // The icon's right edge is the action column's edge, like the border of
   // "Dano/Cura" and the end of "Revelar aos jogadores".
@@ -237,7 +270,7 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0 var(--mr-space-3);
+  gap: 0 12px;
 }
 
 .row__hidden-note {
@@ -256,8 +289,8 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--mr-space-2);
-  padding-top: var(--mr-space-2);
+  gap: 8px;
+  padding-top: 8px;
 
   p {
     flex: 1 1 100%;
@@ -266,7 +299,7 @@
     color: var(--mr-ink);
   }
 
-  .mat-mdc-outlined-button {
+  button {
     --mat-button-outlined-label-text-color: var(--mr-ink);
   }
 

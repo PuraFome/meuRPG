@@ -1,0 +1,81 @@
+@for (it of items(); track it.p.id) {
+  <div class="dmg" [class.dmg--flat]="flat()" [attr.aria-label]="'Dano de ' + it.attacker + ' em ' + it.target" role="group">
+    @if (it.rolled) {
+      <div class="dmg__line">
+        <span class="dmg__formula">{{ it.line }}</span>
+        @if (it.effect) {
+          <span class="dmg__effect">{{ it.effect }}</span>
+        }
+      </div>
+      @if (discarding() === it.p.id) {
+        <div class="ask" role="alertdialog" [attr.aria-label]="'Descartar o dano de ' + it.p.amount">
+          <p class="ask__text">Descartar o dano de {{ it.p.amount }}?</p>
+          <button #safe mat-stroked-button type="button" (click)="discarding.set(null)">Voltar</button>
+          <button mat-stroked-button type="button" class="ask__danger" [disabled]="busy()" (click)="discard(it.p)">
+            Descartar
+          </button>
+        </div>
+      } @else {
+        <div class="dmg__buttons">
+          <button mat-stroked-button type="button" class="dmg__apply" [disabled]="busy()" (click)="apply(it.p)">
+            Aplicar {{ it.p.amount }} de dano
+          </button>
+          <button mat-stroked-button type="button" class="dmg__skip" (click)="askDiscard(it.p.id)">Não aplicar</button>
+        </div>
+      }
+    } @else if (it.awaiting) {
+      <div class="mr-notice mr-notice--warning">
+        <mat-icon aria-hidden="true">shield</mat-icon>
+        <p>
+          <strong>Esperando a reação do {{ it.target }}.</strong>
+          {{ it.pronoun }} pode conjurar Escudo (+5 na CA). O jogador decide sem ver o total; você pode responder por {{ it.pronoun.toLowerCase() }}.
+        </p>
+      </div>
+      <div class="dmg__buttons">
+        <button
+          mat-stroked-button
+          type="button"
+          class="dmg__skip dmg__use"
+          [disabled]="busy() || !it.slot"
+          (click)="it.slot && useShield(it.p, it.slot)"
+        >
+          Usar Escudo por {{ it.pronoun.toLowerCase() }}
+        </button>
+        <button mat-stroked-button type="button" class="dmg__skip" [disabled]="busy()" (click)="declineShield(it.p)">
+          Seguir sem Escudo
+        </button>
+      </div>
+      <button mat-stroked-button type="button" class="dmg__off" disabled disabledInteractive [attr.aria-describedby]="'wait-' + it.p.id">
+        Rolar dano
+      </button>
+      <p class="dmg__why" [id]="'wait-' + it.p.id"><mat-icon aria-hidden="true">block</mat-icon>Espere a reação do {{ it.target }}.</p>
+    } @else if (it.waitsForPlayer) {
+      <p class="dmg__wait"><mat-icon aria-hidden="true">hourglass_empty</mat-icon>Esperando {{ it.attacker }} rolar o dano em {{ it.target }}.</p>
+    } @else {
+      <app-roll-picker
+        [canType]="true"
+        [outlined]="true"
+        [min]="it.range.min"
+        [max]="it.range.max"
+        [modifier]="it.p.bonus"
+        [label]="it.label"
+        [hint]="'Digite a soma dos dados, de ' + it.range.min + ' a ' + it.range.max + '.'"
+        totalNote="Dano total"
+        appLabel="Rolar dano"
+        [busy]="busy()"
+        (app)="rollInApp(it.p)"
+        (typed)="rollTyped(it.p, $event)"
+      />
+    }
+  </div>
+}
+<span class="mr-visually-hidden" role="status">{{ settled() }}</span>
+@if (settled()) {
+  <p class="settled" aria-hidden="true"><mat-icon>check</mat-icon>{{ settled() }}</p>
+}
+@if (error()) {
+  <div class="mr-notice mr-notice--danger" role="alert">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <p>{{ error() }}</p>
+  </div>
+}

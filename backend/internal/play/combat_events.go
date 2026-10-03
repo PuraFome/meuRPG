@@ -135,6 +135,9 @@ type actionEvent struct {
 	Total    int32  `json:"total,omitempty"`
 	Physical bool   `json:"physical,omitempty"`
 	Outcome  string `json:"outcome,omitempty"`
+	// TargetAC is the armor class the total was compared with: only the
+	// master's answer carries it (RN-20), and a retry reads it back from here.
+	TargetAC int32 `json:"target_ac,omitempty"`
 
 	// The damage roll: the dice, their faces, the total and the type. Applied
 	// says an NPC took it at once.

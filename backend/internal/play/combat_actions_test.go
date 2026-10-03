@@ -895,6 +895,22 @@ func TestRN20_PlayersNeverReceiveCAOrHiddenLogEntries(t *testing.T) {
 		}
 	}
 
+	// The master, on the other hand, reads each combatant's armor class in the
+	// order list, and the class an attack was compared with in its roll.
+	masterView := a.get(t, a.master)
+	for label, want := range map[string]int32{"Capitão Goblin": 18} {
+		if got := byLabel(t, masterView, label).GetArmorClass(); got != want {
+			t.Errorf("the master's %s armor class = %d, want %d", label, got, want)
+		}
+	}
+	pens := byLabel(t, masterView, "Pensantus")
+	if pens.ArmorClass == nil || pens.GetArmorClass() <= 0 {
+		t.Errorf("the master's Pensantus = %v, want an armor class", pens)
+	}
+	if got := capHit.GetRoll().GetTargetArmorClass(); got != pens.GetArmorClass() {
+		t.Errorf("the master's roll target armor class = %d, want Pensantus's %d", got, pens.GetArmorClass())
+	}
+
 	// The master's log has the hidden goblin's attack, marked as his alone;
 	// the players' logs do not have it at all.
 	var masterLines, torenLines, pensLines []string

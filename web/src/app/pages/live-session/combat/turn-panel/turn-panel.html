@@ -1,3 +1,23 @@
+@if (compact() && own(); as me) {
+  <section class="banner" aria-label="Vez no combate">
+    <app-combatant-token [initial]="initial(banner().who!)" [npc]="false" [current]="true" [size]="52" />
+    <div class="banner__main">
+      <div role="status" aria-live="polite">
+        <h2 #hero class="banner__title" tabindex="-1">{{ banner().title }}</h2>
+      </div>
+      <p class="banner__sub">
+        {{ round() }} · {{ encounter().name }}
+        @if (banner().next; as after) {
+          · Depois de você: <b>{{ after.label }}</b>
+        }
+      </p>
+    </div>
+    <app-end-turn class="banner__end" [own]="me" [busy]="busy()" (endTurn)="endTurn.emit()" />
+  </section>
+  @if (!wide()) {
+    <app-order-strip class="banner__strip" [encounter]="encounter()" />
+  }
+} @else {
 <section class="turn" [class.turn--mine]="banner().mine" aria-label="Vez no combate">
   <span class="mr-label turn__kicker">
     {{ banner().mine ? round() + ' · ' + encounter().name : 'Combate · ' + round() }}
@@ -53,30 +73,7 @@
         </li>
       }
     </ul>
-    <div class="turn__buttons">
-      <button
-        mat-stroked-button
-        type="button"
-        class="turn__btn"
-        [disabled]="movement()?.none ?? true"
-        disabledInteractive
-        [class.turn__btn--off]="movement()?.none"
-        (click)="move.emit()"
-      >
-        <mat-icon aria-hidden="true">open_with</mat-icon>Mover
-      </button>
-      <button
-        mat-stroked-button
-        type="button"
-        class="turn__btn turn__end"
-        [class.turn__end--filled]="spent()"
-        [disabled]="busy()"
-        disabledInteractive
-        (click)="endTurn.emit()"
-      >
-        <mat-icon aria-hidden="true">flag</mat-icon>Encerrar turno
-      </button>
-    </div>
+    <app-end-turn class="turn__end" [own]="me" [busy]="busy()" (endTurn)="endTurn.emit()" />
     @if (movement()?.none) {
       <p class="turn__why"><mat-icon aria-hidden="true">block</mat-icon>Sem movimento neste turno</p>
     }
@@ -92,5 +89,8 @@
     }
   }
 
-  <app-order-strip [encounter]="encounter()" />
+  @if (!wide()) {
+    <app-order-strip [encounter]="encounter()" />
+  }
 </section>
+}

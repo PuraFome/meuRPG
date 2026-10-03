@@ -1,0 +1,143 @@
+:host {
+  display: block;
+}
+
+// From 1024px the groups are one panel (E6-14): a garnet frame, the economy
+// first, then a rule under each group's title.
+.groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+
+  @media (min-width: 1024px) {
+    gap: 12px;
+    box-sizing: border-box;
+    padding: 14px 20px 16px;
+    border: 1px solid var(--mr-accent);
+    border-radius: var(--mr-radius-lg);
+    background: var(--mr-surface);
+  }
+}
+
+// The phone has no heading above the groups (E6-06). Hidden visually, still
+// named for screen readers.
+.groups__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 28px;
+
+  @media (max-width: 1023.98px) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+}
+
+.groups__pending {
+  flex-wrap: wrap;
+  align-items: center;
+
+  p {
+    flex: 1 1 200px;
+  }
+}
+
+.group {
+  box-sizing: border-box;
+  padding: 16px 16px 8px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+
+  @media (min-width: 1024px) {
+    padding: 0;
+    border: 0;
+    background: none;
+  }
+}
+
+.group__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 36px;
+
+  @media (min-width: 1024px) {
+    min-height: 0;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--mr-line);
+  }
+}
+
+.group__name {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 28px;
+}
+
+// Rows and sub-headings are divided by a 1px rule (both artboards).
+.group__sub {
+  margin: 10px 0 0;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+app-action-row + app-action-row,
+app-action-row + .group__sub,
+.std + .group__sub {
+  border-top: 1px solid var(--mr-rule);
+}
+
+app-action-row + .group__sub,
+.std + .group__sub {
+  padding-top: 12px;
+  margin-top: 0;
+}
+
+// The standard actions: two equal columns at every width.
+.std {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 8px 0 12px;
+}
+
+.std__btn {
+  --mat-button-outlined-container-height: 44px;
+  --mat-button-outlined-label-text-color: var(--mr-accent-text);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  font-weight: 700;
+}
+
+.std__btn--off {
+  --mat-button-outlined-label-text-color: var(--mr-ink-muted);
+  --mat-button-outlined-disabled-label-text-color: var(--mr-ink-muted);
+  --mat-button-outlined-disabled-outline-color: var(--mr-control-line);
+  border-style: dashed;
+  cursor: default;
+}
+
+// The one reason the disabled standard actions share, above them.
+.group__why {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 19px;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}

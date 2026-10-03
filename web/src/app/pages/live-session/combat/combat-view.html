@@ -71,7 +71,15 @@
           />
         } @else {
         <div class="stack">
-          <app-combat-bar [encounter]="e" [busy]="busy()" (next)="nextTurn()" (end)="endCombat()" />
+          @if (laptop()) {
+            <app-combat-bar
+              [encounter]="e"
+              [busy]="busy()"
+              [pendingNote]="owed()"
+              (next)="nextTurn($event)"
+              (end)="endCombat()"
+            />
+          }
           <div class="active">
             <div class="active__map">
               @if (image(); as img) {
@@ -101,17 +109,44 @@
                 </div>
               }
             </div>
-            <app-order-list
-              class="active__order"
+            <div class="active__side">
+              @if ((!laptop() || cardVisible()) && masterCard(); as who) {
+                <app-npc-card
+                  [campaignId]="campaignId()"
+                  [encounter]="e"
+                  [subject]="who"
+                  [options]="options()"
+                  [state]="state()"
+                  [narrow]="!laptop()"
+                  [pendingNote]="owed()"
+                  [reactionStopped]="reactionStopped()"
+                  [turnBusy]="busy()"
+                  (next)="nextTurn($event)"
+                />
+              }
+              <app-order-list
+                [encounter]="e"
+                [info]="info()"
+                [adjustable]="adjustable()"
+                [busy]="busy()"
+                (adjust)="adjustFor($event)"
+                (adjustNpc)="adjustNpc($event)"
+                (reveal)="reveal($event)"
+                (remove)="remove($event)"
+                (add)="addCombatants()"
+              />
+            </div>
+            <app-combat-log-panel
+              class="active__log"
+              [log]="log"
               [encounter]="e"
-              [info]="info()"
-              [adjustable]="adjustable()"
-              [busy]="busy()"
-              (adjust)="adjustFor($event)"
-              (reveal)="reveal($event)"
-              (remove)="remove($event)"
-              (add)="addCombatants()"
+              [campaignId]="campaignId()"
+              [state]="state()"
+              [master]="true"
             />
+            @if (!laptop()) {
+              <app-combat-bar class="active__end" [encounter]="e" [endOnly]="true" (end)="endCombat()" />
+            }
           </div>
         </div>
         }
@@ -155,24 +190,50 @@
             (back)="closeFullPage()"
           />
         } @else {
-          <div class="player">
-            <div class="player__main">
-              <app-turn-panel [encounter]="e" [busy]="busy()" (move)="openMove()" (endTurn)="nextTurn()" />
-              @if (image(); as img) {
-                <app-combat-map-card
-                  [encounter]="e"
-                  [image]="img"
-                  [mapName]="mapName()"
-                  [title]="mapName()"
-                  [reach]="reach()"
-                  [ownMovable]="reach() !== null && !phone()"
-                  (tokenDrop)="drop($event)"
-                  (openMap)="state().mapOpen.set(true)"
-                />
-              } @else {
-                <p class="mr-muted" role="status">Carregando o mapa...</p>
+          <div class="player" [class.player--mine]="myTurn() && !!options()">
+            <app-turn-panel class="player__turn" [encounter]="e" [busy]="busy()" (endTurn)="nextTurn()" />
+            @if (wideLayout()) {
+              <app-order-column class="player__order" [encounter]="e" />
+            }
+            @if (myTurn() && own(); as me) {
+              @if (options(); as opts) {
+                @if (opts.options; as turnOptions) {
+                  <app-action-groups
+                    class="player__actions"
+                    [options]="turnOptions"
+                    [own]="me"
+                    [pendingRoll]="ownPendingRoll()"
+                    [busy]="busy()"
+                    (attack)="openAttack($event)"
+                    (action)="takeAction($event)"
+                    (move)="openMove()"
+                    (rollDamage)="rollPendingDamage()"
+                  />
+                }
               }
-            </div>
+            }
+            @if (image(); as img) {
+              <app-combat-map-card
+                class="player__map"
+                [encounter]="e"
+                [image]="img"
+                [mapName]="mapName()"
+                [title]="mapName()"
+                [reach]="reach()"
+                [ownMovable]="reach() !== null && !phone()"
+                (tokenDrop)="drop($event)"
+                (openMap)="state().mapOpen.set(true)"
+              />
+            } @else {
+              <p class="mr-muted player__map" role="status">Carregando o mapa...</p>
+            }
+            <app-combat-log-panel
+              class="player__log"
+              [log]="log"
+              [encounter]="e"
+              [campaignId]="campaignId()"
+              [state]="state()"
+            />
             <div class="player__side"><ng-content /></div>
             @if (myTurn() && own(); as me) {
               <app-turn-bar class="player__bar" [own]="me" [busy]="busy()" (endTurn)="nextTurn()" />

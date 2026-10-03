@@ -1224,6 +1224,10 @@ type Combatant struct {
 	// spell it is concentrating on, if any.
 	Conditions         []string `protobuf:"bytes,28,rep,name=conditions,proto3" json:"conditions,omitempty"`
 	ConcentrationSpell string   `protobuf:"bytes,29,opt,name=concentration_spell,json=concentrationSpell,proto3" json:"concentration_spell,omitempty"`
+	// The armor class from its sheet ("CA 15"). Only the master gets it: a
+	// player never learns an armor class (RN-20). Unset for a player, and for
+	// a character whose sheet is gone.
+	ArmorClass *int32 `protobuf:"varint,30,opt,name=armor_class,json=armorClass,proto3,oneof" json:"armor_class,omitempty"`
 	// The armor class the combatant has on top of its sheet's, until the start of
 	// its next turn: 5 with Escudo, 0 otherwise. Only the master and the
 	// combatant's own player; never an armor class itself.
@@ -1470,6 +1474,13 @@ func (x *Combatant) GetConcentrationSpell() string {
 		return x.ConcentrationSpell
 	}
 	return ""
+}
+
+func (x *Combatant) GetArmorClass() int32 {
+	if x != nil && x.ArmorClass != nil {
+		return *x.ArmorClass
+	}
+	return 0
 }
 
 func (x *Combatant) GetArmorClassBonus() int32 {
@@ -3779,10 +3790,13 @@ type AttackRoll struct {
 	TargetId   string                 `protobuf:"bytes,2,opt,name=target_id,json=targetId,proto3" json:"target_id,omitempty"`
 	AttackKey  string                 `protobuf:"bytes,3,opt,name=attack_key,json=attackKey,proto3" json:"attack_key,omitempty"`
 	// The d20 with the attack bonus as the modifier.
-	D20           *DiceRoll     `protobuf:"bytes,4,opt,name=d20,proto3" json:"d20,omitempty"`
-	Outcome       AttackOutcome `protobuf:"varint,5,opt,name=outcome,proto3,enum=meurpg.play.v1.AttackOutcome" json:"outcome,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	D20     *DiceRoll     `protobuf:"bytes,4,opt,name=d20,proto3" json:"d20,omitempty"`
+	Outcome AttackOutcome `protobuf:"varint,5,opt,name=outcome,proto3,enum=meurpg.play.v1.AttackOutcome" json:"outcome,omitempty"`
+	// The target's armor class that the total was compared with ("Acertou
+	// contra CA 18"). Only the master gets it; never a player (RN-20).
+	TargetArmorClass *int32 `protobuf:"varint,6,opt,name=target_armor_class,json=targetArmorClass,proto3,oneof" json:"target_armor_class,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *AttackRoll) Reset() {
@@ -3848,6 +3862,13 @@ func (x *AttackRoll) GetOutcome() AttackOutcome {
 		return x.Outcome
 	}
 	return AttackOutcome_ATTACK_OUTCOME_UNSPECIFIED
+}
+
+func (x *AttackRoll) GetTargetArmorClass() int32 {
+	if x != nil && x.TargetArmorClass != nil {
+		return *x.TargetArmorClass
+	}
+	return 0
 }
 
 // RollAttackResponse returns the roll and the combat after it.
@@ -7121,7 +7142,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\vattacker_id\x18\x03 \x01(\tR\n" +
 	"attackerId\x12\x1b\n" +
 	"\tspell_key\x18\x04 \x01(\tR\bspellKey\x121\n" +
-	"\x05slots\x18\x05 \x03(\v2\x1b.meurpg.rules.v1.SlotChoiceR\x05slots\"\x95\n" +
+	"\x05slots\x18\x05 \x03(\v2\x1b.meurpg.rules.v1.SlotChoiceR\x05slots\"\xcb\n" +
 	"\n" +
 	"\tCombatant\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
@@ -7158,7 +7179,9 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\n" +
 	"conditions\x18\x1c \x03(\tR\n" +
 	"conditions\x12/\n" +
-	"\x13concentration_spell\x18\x1d \x01(\tR\x12concentrationSpell\x12*\n" +
+	"\x13concentration_spell\x18\x1d \x01(\tR\x12concentrationSpell\x12$\n" +
+	"\varmor_class\x18\x1e \x01(\x05H\x06R\n" +
+	"armorClass\x88\x01\x01\x12*\n" +
 	"\x11armor_class_bonus\x18\x1f \x01(\x05R\x0farmorClassBonus\x12$\n" +
 	"\x0edeath_save_due\x18  \x01(\bR\fdeathSaveDue\x12,\n" +
 	"\x12condition_names_pt\x18! \x03(\tR\x10conditionNamesPtB\r\n" +
@@ -7167,7 +7190,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x10_initiative_faceB\x15\n" +
 	"\x13_hit_points_currentB\x11\n" +
 	"\x0f_hit_points_maxB\x17\n" +
-	"\x15_hit_points_temporary\"n\n" +
+	"\x15_hit_points_temporaryB\x0e\n" +
+	"\f_armor_class\"n\n" +
 	"\vParticipant\x12!\n" +
 	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12\x14\n" +
 	"\x05count\x18\x02 \x01(\x05R\x05count\x12\x1b\n" +
@@ -7350,7 +7374,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\bd20_face\x18\b \x01(\x05H\x00R\ad20Face\x12\x1f\n" +
 	"\vas_reaction\x18\t \x01(\bR\n" +
 	"asReactionB\x06\n" +
-	"\x04roll\"\xce\x01\n" +
+	"\x04roll\"\x98\x02\n" +
 	"\n" +
 	"AttackRoll\x12\x1f\n" +
 	"\vattacker_id\x18\x01 \x01(\tR\n" +
@@ -7359,7 +7383,9 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\n" +
 	"attack_key\x18\x03 \x01(\tR\tattackKey\x12*\n" +
 	"\x03d20\x18\x04 \x01(\v2\x18.meurpg.play.v1.DiceRollR\x03d20\x127\n" +
-	"\aoutcome\x18\x05 \x01(\x0e2\x1d.meurpg.play.v1.AttackOutcomeR\aoutcome\"\xc3\x01\n" +
+	"\aoutcome\x18\x05 \x01(\x0e2\x1d.meurpg.play.v1.AttackOutcomeR\aoutcome\x121\n" +
+	"\x12target_armor_class\x18\x06 \x01(\x05H\x00R\x10targetArmorClass\x88\x01\x01B\x15\n" +
+	"\x13_target_armor_class\"\xc3\x01\n" +
 	"\x12RollAttackResponse\x127\n" +
 	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\x12.\n" +
 	"\x04roll\x18\x02 \x01(\v2\x1a.meurpg.play.v1.AttackRollR\x04roll\x12D\n" +
@@ -8030,6 +8056,7 @@ func file_meurpg_play_v1_combat_proto_init() {
 		(*RollAttackRequest_RollInApp)(nil),
 		(*RollAttackRequest_D20Face)(nil),
 	}
+	file_meurpg_play_v1_combat_proto_msgTypes[36].OneofWrappers = []any{}
 	file_meurpg_play_v1_combat_proto_msgTypes[38].OneofWrappers = []any{
 		(*RollDamageRequest_RollInApp)(nil),
 		(*RollDamageRequest_TypedSum)(nil),

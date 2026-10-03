@@ -6,7 +6,7 @@ import { saveDocumentRPC, tableWithDocumentParts } from './document-support';
 import { expectAligned } from './layout';
 import { endOpenSessionRPC, endSessionRPC, openSessionPage, startSessionRPC, tableWithPensantus } from './live-session-support';
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
-import { combatRPC, getEncounterRPC, tableForCombat } from './combat-support';
+import { beginAttackCombatRPC, combatRPC, getEncounterRPC, tableForCombat } from './combat-support';
 import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus } from './support';
 
 // docs/design.md#como-uma-tela-é-feita: every screen passes axe with no
@@ -686,4 +686,118 @@ test('o combate passa no axe e nas conferências de layout no tema claro, no des
 test('o combate passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-013'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanCombatScreens(browser, 'dark', 390);
+});
+
+/** Acting in a combat (Etapa 6, slice 6.5b; E6-06, E6-07, E6-08, E6-15, E6-11):
+ * the player's "Sua vez" groups, the end-turn question, every step of the
+ * attack sheet (typed roll empty, wrong, valid; the result), the log sheet on a
+ * phone, and the master's card with the armor class, "Aplicar" and its
+ * questions, "Desfazer última ação" and "Dano/Cura". */
+async function scanActionScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade ações ${Date.now()}`, true, true);
+    campaignId = table.campaignId;
+    await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+
+    // The player's turn: the groups, the question when the action is free, and the attack.
+    await openSessionPage(p, campaignId);
+    await expect(p.getByRole('button', { name: 'Atacar com Raio de Fogo' })).toBeVisible();
+    await expectScreenPasses(p, `Sua vez, com os grupos de ações ${where}`);
+    await p.getByRole('button', { name: 'Encerrar turno' }).last().click();
+    await expect(p.getByText('Ainda tem ação disponível. Encerrar mesmo?')).toBeVisible();
+    await expectScreenPasses(p, `Encerrar turno com a ação livre ${where}`);
+    await p.getByRole('button', { name: 'Voltar' }).click();
+
+    await p.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
+    await expect(p.getByRole('heading', { name: 'Atacar com Raio de Fogo' })).toBeVisible();
+    await expectScreenPasses(p, `Atacar, escolher o alvo ${where}`);
+    await p.locator('label', { hasText: 'Goblin 1' }).click();
+    await expect(p.getByRole('button', { name: 'Digitar o resultado' })).toBeVisible();
+    await expectScreenPasses(p, `Atacar, rolar ${where}`);
+    await p.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await expectScreenPasses(p, `Rolagem física, vazia ${where}`);
+    await p.getByLabel(/Role 1d20/).fill('27');
+    await expect(p.getByRole('alert').filter({ hasText: 'Digite um número de 1 a 20' })).toBeVisible();
+    await expectScreenPasses(p, `Rolagem física, número fora de 1 a 20 ${where}`);
+    await p.getByLabel(/Role 1d20/).fill('16');
+    await expect(p.getByText('22 · dado físico').or(p.getByText('16 + 6 = 22 · dado físico'))).toBeVisible();
+    await expectScreenPasses(p, `Rolagem física, número válido ${where}`);
+    await p.getByRole('button', { name: 'Confirmar 16' }).click();
+    await expect(p.locator('.pill', { hasText: 'Acertou' })).toBeVisible();
+    await expectScreenPasses(p, `Atacar, o d20 e o dano a rolar ${where}`);
+    await p.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await p.getByLabel(/Role 1d10/).fill('9');
+    await p.getByRole('button', { name: 'Confirmar 9' }).click();
+    await expect(p.getByRole('button', { name: 'Voltar à sua vez' })).toBeFocused();
+    await expectScreenPasses(p, `Atacar, resultado ${where}`);
+    await p.getByRole('button', { name: 'Voltar à sua vez' }).click();
+    await expectScreenPasses(p, `Sua vez, depois de atacar ${where}`);
+    if (width < 768) {
+      await p.getByRole('button', { name: 'Abrir o registro do combate' }).click();
+      await expect(p.getByRole('log', { name: 'Registro do combate' })).toBeVisible();
+      await expectScreenPasses(p, `Registro do combate, folha ${where}`);
+      await p.keyboard.press('Escape');
+    }
+
+    // The master: the captain's card, the roll with the armor class, the damage and the questions.
+    await p.getByRole('button', { name: 'Encerrar turno' }).last().click();
+    await openSessionPage(m, campaignId);
+    await expect(m.getByRole('heading', { name: /Ações do Capitão Goblin|Vez do Capitão Goblin/ })).toBeVisible();
+    await expectScreenPasses(m, `Cartão do mestre, antes de rolar ${where}`);
+    await m.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await m.getByLabel(/Role 1d20/).fill('18');
+    await m.getByRole('button', { name: 'Confirmar 18' }).click();
+    await expect(m.getByText(/contra CA \d+ da Pensantus|contra CA \d+ do Pensantus/)).toBeVisible();
+    // Pensantus can cast Escudo: a hit that is not critical waits for his reaction (E6-28b).
+    await expect(m.getByText('Esperando a reação do Pensantus.')).toBeVisible();
+    await expect(m.getByRole('button', { name: 'Rolar dano' })).toHaveAttribute('aria-disabled', 'true');
+    await expectScreenPasses(m, `Cartão do mestre, esperando a reação (Escudo) ${where}`);
+    await m.getByRole('button', { name: 'Seguir sem Escudo' }).click();
+    await m.getByRole('button', { name: 'Rolar dano' }).click();
+    await expect(m.getByRole('button', { name: /Aplicar \d+ de dano/ })).toBeVisible();
+    await expectScreenPasses(m, `Cartão do mestre, dano para aplicar ${where}`);
+    await m.getByRole('button', { name: 'Não aplicar' }).click();
+    await expect(m.getByText(/Descartar o dano de \d+\?/)).toBeVisible();
+    await expect(m.getByRole('button', { name: 'Voltar' })).toBeFocused();
+    await expectScreenPasses(m, `Cartão do mestre, descartar o dano ${where}`);
+    await m.getByRole('button', { name: 'Voltar' }).click();
+    await m.getByRole('button', { name: 'Próximo turno' }).click();
+    await expect(m.getByText('Há dano sem aplicar. Passar o turno mesmo assim?')).toBeVisible();
+    await expectScreenPasses(m, `Próximo turno com dano sem aplicar ${where}`);
+    await m.getByRole('button', { name: 'Voltar' }).click();
+    await m.getByRole('button', { name: /Aplicar \d+ de dano/ }).click();
+    await expect(m.getByText(/Dano de \d+ aplicado\./).first()).toBeVisible();
+    await m.getByRole('button', { name: 'Desfazer última ação' }).first().click();
+    await expect(m.getByText(/Desfazer o ataque do Capitão Goblin/)).toBeVisible();
+    await expectScreenPasses(m, `Desfazer a última ação ${where}`);
+    await m.getByRole('button', { name: 'Voltar' }).click();
+    await m.getByRole('button', { name: 'Dano ou cura em Goblin 1' }).click();
+    await expect(m.getByRole('heading', { name: 'Dano ou cura em Goblin 1' })).toBeVisible();
+    await expectScreenPasses(m, `Dano/Cura de um NPC ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('agir no combate passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanActionScreens(browser, 'light', 1280);
+});
+
+test('agir no combate passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanActionScreens(browser, 'dark', 390);
 });

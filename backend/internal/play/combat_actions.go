@@ -594,6 +594,9 @@ func (s *Service) RollAttack(
 			D20: clamp32(face, 1, 20), Modifier: clamp32(attack.ToHit, math.MinInt32, math.MaxInt32), Total: clamp32(result.Total, math.MinInt32, math.MaxInt32),
 			Physical: roll.Physical, Outcome: outcomeMiss, AsReaction: asReaction,
 			ActionBefore: attacker.ActionUsed, ReactionBefore: attacker.ReactionUsed, AttacksBefore: attacker.AttacksMade,
+			// The armor class the roll was compared with (an active Escudo's +5
+			// included): the master's answer shows it, a player's never does.
+			TargetAC: clamp32(targetSheet.ArmorClass+int(target.AcBonus), 0, math.MaxInt32),
 		}
 		if asReaction {
 			after.ReactionUsed = true
@@ -647,13 +650,14 @@ func (s *Service) RollAttack(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&playv1.RollAttackResponse{
-		Encounter: out, PendingDamage: pending,
-		Roll: &playv1.AttackRoll{
-			AttackerId: ev.Actor, TargetId: ev.Target, AttackKey: ev.Key,
-			D20: diceRoll(1, 20, faceList(ev), ev.Modifier, ev.Total, ev.Physical), Outcome: outcomeToProto[ev.Outcome],
-		},
-	}), nil
+	roll := &playv1.AttackRoll{
+		AttackerId: ev.Actor, TargetId: ev.Target, AttackKey: ev.Key,
+		D20: diceRoll(1, 20, faceList(ev), ev.Modifier, ev.Total, ev.Physical), Outcome: outcomeToProto[ev.Outcome],
+	}
+	if v.master {
+		roll.TargetArmorClass = ptr(ev.TargetAC) // "Acertou contra CA 18": never a player's
+	}
+	return connect.NewResponse(&playv1.RollAttackResponse{Encounter: out, PendingDamage: pending, Roll: roll}), nil
 }
 
 // faceList is the face of the d20 of an attack roll; none for a physical one,

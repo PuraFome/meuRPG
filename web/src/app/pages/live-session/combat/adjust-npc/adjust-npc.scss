@@ -1,0 +1,108 @@
+:host {
+  display: block;
+}
+
+.adj {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  max-height: calc(92dvh - 48px);
+  padding: var(--mr-space-5) var(--mr-space-6) var(--mr-space-4);
+
+  &--sheet {
+    max-height: calc(100dvh - 40px);
+    padding: var(--mr-space-2) 2px var(--mr-space-2);
+  }
+}
+
+// The numbers scroll when the screen is short; the title and the buttons stay.
+.adj__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.adj__handle {
+  align-self: center;
+  width: 36px;
+  height: 4px;
+  margin-bottom: var(--mr-space-3);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-control-line);
+}
+
+.adj__head {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--mr-rule);
+}
+
+.adj__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 26px;
+  line-height: 30px;
+  overflow-wrap: anywhere;
+}
+
+.adj__sub {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.adj__rows {
+  display: flex;
+  flex-direction: column;
+
+  > * {
+    padding: 14px 0;
+    border-bottom: 1px solid var(--mr-rule);
+  }
+}
+
+.modes {
+  display: flex;
+  gap: 8px;
+}
+
+.mode {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  font-weight: 700;
+  cursor: pointer;
+
+  &:has(:focus-visible) {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+.mode--on {
+  border: 2px solid var(--mr-accent);
+  background: var(--mr-accent-soft);
+}
+
+.adj__error {
+  margin: 14px 0 0;
+}
+
+.adj__buttons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  margin-top: 14px;
+
+  @media (min-width: 768px) {
+    flex-direction: row-reverse;
+    justify-content: flex-start;
+  }
+}

@@ -937,14 +937,14 @@ Os erros de estado são `failed_precondition` com o detalhe `EncounterBlocked` e
 | Combatente escondido (NPC novo nasce escondido) | Todos | Nenhum: nem o ID, nem o nome, nem a posição |
 | A vez de um escondido | O combatente | "Vez do mestre": `current_combatant_id` vazio e `master_turn` verdadeiro |
 | PV e PV temporários de um NPC | Os números | Uma palavra: Ileso, Ferido, Muito ferido (metade ou menos) ou Derrotado |
-| CA de qualquer combatente | Nenhuma resposta a leva: o servidor compara o d20 com ela e devolve só Acertou ou Errou | Nunca |
+| CA de qualquer combatente | Só o mestre: `Combatant.armor_class` (a lista da ordem, "CA 15") e `AttackRoll.target_armor_class` ("Acertou contra CA 18 do Toren"); o servidor lê a ficha de cada um só para a cópia do mestre | Nunca: nenhuma resposta a leva, só Acertou ou Errou |
 | Iniciativa de um NPC | O total, o d20 e o bônus | Nada: só a ordem |
 | Iniciativa de um jogador | Tudo | O total de todos os jogadores; o d20 e o bônus, só do próprio |
 | PV de um jogador | Os números, dos `character_vitals` | Os do próprio personagem vêm da sessão ao vivo; os dos outros jogadores, não (pergunta 28); só a palavra "Caído" a 0 PV, de todos |
 | Velocidade, movimento que sobra, ação, ação bônus, reação | Todos | Só do próprio personagem |
 | De qual personagem um NPC é cópia | Sim | Não |
 
-**O ataque em dois passos (MR-012, MR-014).** São duas chamadas porque, com dado físico, o jogador digita o d20 e depois o dano (RN-18). `RollAttack` confere quem pode (o jogador no próprio personagem, na vez dele, com a ação livre, o alvo à vista e ao alcance; o mestre em qualquer combatente da vez, sem limite de alcance nem de ação: o Capitão com várias armas é dele), rola o d20 (`crypto/rand` no app, ou a face digitada, 1 a 20), gasta a **ação** e compara com a CA do alvo (`rules/combat.ResolveAttack`: 20 natural é crítico, 1 natural erra). A resposta traz a rolagem em números (`1d20 (13) + 6 = 19`) e o resultado, **nunca a CA**. Acertou: abre uma linha em `pending_damages` (guardada, para um reenvio ou um recarregamento achar). `RollDamage` rola os dados do dano (dobrados no crítico, o modificador uma vez, o tipo do ataque) ou valida a soma digitada (`dice.Physical`, de N a N × faces). A Ação de Atacar faz um ataque, ou mais com o Ataque Extra (ver abaixo); a vantagem e a desvantagem ficam por conta da mesa.
+**O ataque em dois passos (MR-012, MR-014).** São duas chamadas porque, com dado físico, o jogador digita o d20 e depois o dano (RN-18). `RollAttack` confere quem pode (o jogador no próprio personagem, na vez dele, com a ação livre, o alvo à vista e ao alcance; o mestre em qualquer combatente da vez, sem limite de alcance nem de ação: o Capitão com várias armas é dele), rola o d20 (`crypto/rand` no app, ou a face digitada, 1 a 20), gasta a **ação** e compara com a CA do alvo (`rules/combat.ResolveAttack`: 20 natural é crítico, 1 natural erra). A resposta traz a rolagem em números (`1d20 (13) + 6 = 19`) e o resultado, **nunca a CA para o jogador**; a resposta do mestre leva também a CA contra a qual o total foi comparado (`target_armor_class`, com o +5 de um Escudo ativo, guardada no evento, para um reenvio achar a mesma). `TestRN20_PlayersNeverReceiveCAOrHiddenLogEntries` procura a CA no JSON do jogador e confere que a do mestre a tem. Acertou: abre uma linha em `pending_damages` (guardada, para um reenvio ou um recarregamento achar). `RollDamage` rola os dados do dano (dobrados no crítico, o modificador uma vez, o tipo do ataque) ou valida a soma digitada (`dice.Physical`, de N a N × faces). A Ação de Atacar faz um ataque, ou mais com o Ataque Extra (ver abaixo); a vantagem e a desvantagem ficam por conta da mesa.
 
 ```mermaid
 sequenceDiagram
@@ -1065,7 +1065,7 @@ stateDiagram-v2
 | Condições | Todas | As dos combatentes que veem |
 | "Morrendo" | Sim | Nunca: "Caído", com as contagens (públicas); "Estável" e "Morto" (depois da confirmação) são para todos |
 | PV depois do dano (`hit_points_after`) | Sim | Nunca (RN-20) |
-| CA de qualquer um | Nunca vai para a resposta (o mestre a conhece) | Nunca |
+| CA de qualquer um | Não faz parte do registro (o mestre a lê na ordem e na rolagem) | Nunca |
 | Ajuste de PV de um NPC, mostrar/esconder | Sim | Nenhuma |
 | `undoable_event_id`, `undoable` | A última ação | Nunca |
 

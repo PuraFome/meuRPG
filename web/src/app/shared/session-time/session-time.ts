@@ -13,3 +13,15 @@ export function formatDayAt(date: Date): string {
 export function formatClock(date: Date): string {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
+
+/** "Em andamento desde 20:05" for a session that started today, with the day
+ * ("… desde 30/09 às 20:05") when it started on another one (timeline.md,
+ * shared decision 8): the line under "Sessão 5" for the master and the
+ * players alike. */
+export function sessionSince(startedAt: Date, now: Date = new Date()): string {
+  const today =
+    startedAt.getFullYear() === now.getFullYear() &&
+    startedAt.getMonth() === now.getMonth() &&
+    startedAt.getDate() === now.getDate();
+  return `Em andamento desde ${today ? formatClock(startedAt) : formatDayAt(startedAt)}`;
+}

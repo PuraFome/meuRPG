@@ -15,7 +15,7 @@ import { CombatantToken } from '../../../../shared/combatant-token/combatant-tok
   selector: 'app-order-strip',
   imports: [CombatantToken],
   template: `
-  <ol class="strip" aria-label="Ordem de iniciativa">
+  <ol class="strip" aria-label="Ordem de iniciativa" tabindex="0">
     @for (c of encounter().combatants; track c.id) {
       <li class="chip" [class.chip--turn]="current(c)">
         <span class="chip__top">

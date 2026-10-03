@@ -36,6 +36,9 @@ export class CombatState {
   readonly mapOpen = signal(false);
   /** Either full-page view is open. */
   readonly fullPage = computed(() => this.moving() || this.mapOpen());
+  /** Goes up on every `combat_log_changed` and every (re)connection: the log
+   * panel reads the log again whenever it changes. */
+  readonly logTick = signal(0);
   /** The ended combat the person already left ("Voltar à sessão"). */
   private readonly dismissedId = signal<string | null>(null);
 
@@ -53,6 +56,11 @@ export class CombatState {
       return;
     }
     this.encounter.set(next);
+  }
+
+  /** `combat_log_changed`, or a `ready`: read the log again. */
+  touchLog(): void {
+    this.logTick.update((n) => n + 1);
   }
 
   clear(): void {

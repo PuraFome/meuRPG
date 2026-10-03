@@ -17,7 +17,7 @@ import { RouterLink } from '@angular/router';
 
 import { LivePill } from '../../../shared/live-pill/live-pill';
 import { COPIED_FOR_MS, copyText, sessionLink } from '../../../shared/session-link/session-link';
-import { formatClock, formatDayAt } from '../../../shared/session-time/session-time';
+import { formatClock, sessionSince } from '../../../shared/session-time/session-time';
 import { LiveSessionSource, LiveSessionVm } from '../live-session.types';
 import { StreamStatus } from '../live-stream';
 
@@ -26,8 +26,8 @@ type EndState = 'idle' | 'confirming' | 'saving' | 'error';
 /**
  * The session page's title block (README-A): "← Voltar para a campanha",
  * "Sessão 4", the campaign's name, and the status line: the "Ao vivo" pill
- * with "atualizado agora" (player) or "Em andamento desde 30/09 às 20:05"
- * (master). While the stream is down it turns into "Reconectando… Última
+ * with "Em andamento desde 20:05" (the day too, "30/09 às 20:05", when it
+ * started on another day), for the master and the players alike. While the stream is down it turns into "Reconectando… Última
  * atualização às 21:14." (E5-08), with no spinner, so nothing moves.
  *
  * The master also gets the session link in a read-only field, "Copiar link
@@ -54,7 +54,7 @@ export class SessionHeader implements OnDestroy {
   /** The master ended the session from here. */
   readonly ended = output<void>();
 
-  protected readonly formatDayAt = formatDayAt;
+  protected readonly since = computed(() => sessionSince(this.session().startedAt));
   protected readonly link = computed(() => sessionLink(this.campaignId()));
   protected readonly reconnecting = computed(() => {
     const status = this.connection();

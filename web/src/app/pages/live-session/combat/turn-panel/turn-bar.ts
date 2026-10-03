@@ -1,9 +1,7 @@
 import { Component, computed, input, output } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-
 import type { Combatant } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { feetToMeters, formatMeters } from '../../../../core/combat/combat-grid';
+import { EndTurn } from './end-turn';
 
 /**
  * The bar pinned to the bottom of a player's own turn on a phone and a
@@ -15,7 +13,7 @@ import { feetToMeters, formatMeters } from '../../../../core/combat/combat-grid'
  */
 @Component({
   selector: 'app-turn-bar',
-  imports: [MatButtonModule, MatIconModule],
+  imports: [EndTurn],
   template: `
     <p class="what">Ainda disponível neste turno</p>
     <ul class="left">
@@ -25,17 +23,7 @@ import { feetToMeters, formatMeters } from '../../../../core/combat/combat-grid'
         <li>Nada: só falta encerrar o turno.</li>
       }
     </ul>
-    <button
-      mat-stroked-button
-      type="button"
-      class="end"
-      [class.end--filled]="spent()"
-      [disabled]="busy()"
-      disabledInteractive
-      (click)="endTurn.emit()"
-    >
-      <mat-icon aria-hidden="true">flag</mat-icon>Encerrar turno
-    </button>
+    <app-end-turn [own]="own()" [busy]="busy()" [block]="true" (endTurn)="endTurn.emit()" />
   `,
   styles: `
     :host {
@@ -85,19 +73,6 @@ import { feetToMeters, formatMeters } from '../../../../core/combat/combat-grid'
       border: 2px solid var(--mr-ink);
       border-radius: 50%;
     }
-
-    .end {
-      --mat-button-outlined-container-height: 48px;
-      --mat-button-outlined-label-text-color: var(--mr-accent-text);
-      width: 100%;
-    }
-
-    .end--filled {
-      --mat-button-outlined-container-color: var(--mr-accent);
-      --mat-button-outlined-label-text-color: var(--mr-on-accent);
-      --mat-button-outlined-outline-color: var(--mr-accent);
-      background: var(--mr-accent);
-    }
   `,
 })
 export class TurnBar {
@@ -107,7 +82,6 @@ export class TurnBar {
 
   readonly endTurn = output<void>();
 
-  protected readonly spent = computed(() => this.own().actionUsed && this.own().bonusActionUsed);
   protected readonly left = computed(() => {
     const c = this.own();
     const items: string[] = [];

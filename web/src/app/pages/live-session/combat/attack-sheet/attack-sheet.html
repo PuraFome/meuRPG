@@ -1,0 +1,142 @@
+<div class="sheet" [class.sheet--phone]="inSheet">
+  @if (inSheet) {
+    <span class="sheet__handle" aria-hidden="true"></span>
+  }
+  <div class="sheet__head">
+    <div class="sheet__titles">
+      <h2 class="sheet__title" id="sheet-t" tabindex="-1">{{ title() }}</h2>
+      <p class="sheet__sub">{{ subtitle() }}</p>
+    </div>
+    <button type="button" class="sheet__close" aria-label="Fechar" (click)="close()">
+      <mat-icon aria-hidden="true">close</mat-icon>
+    </button>
+  </div>
+
+  @if (!typing()) {
+    <app-attack-steps [steps]="stepList()" />
+  }
+
+  <div #body class="sheet__body">
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+  @switch (stage()) {
+    @case ('target') {
+      <p class="sheet__ask" id="target-label">Escolha o alvo (só quem você vê)</p>
+      <div class="targets" role="radiogroup" aria-labelledby="target-label">
+        @for (t of rows(); track t.id) {
+          <label class="target" [class.target--off]="t.blocked">
+            <input
+              type="radio"
+              class="mr-visually-hidden"
+              name="attack-target"
+              [value]="t.id"
+              [disabled]="!!t.blocked"
+              [checked]="targetId() === t.id"
+              (change)="pick(t.id)"
+              (click)="$event.detail > 0 && pick(t.id); $event.detail > 0 && advance()"
+              (keydown.enter)="pick(t.id); advance()"
+            />
+            <app-combatant-token [initial]="initial(t.label)" [npc]="npcTarget(t.id)" [size]="30" />
+            <span class="target__text">
+              <b class="target__name">{{ t.label }}</b>
+              <span class="target__sub">{{ t.sub }}</span>
+              @if (t.blocked) {
+                <span class="target__why"><mat-icon aria-hidden="true">block</mat-icon>{{ t.blocked }}</span>
+              }
+            </span>
+          </label>
+        } @empty {
+          <p class="sheet__note">Não há ninguém ao alcance para atacar.</p>
+        }
+      </div>
+      <p class="sheet__note">
+        <mat-icon aria-hidden="true">info</mat-icon>
+        Um alvo fora do alcance de {{ rangeText }} aparece desabilitado, com "Longe demais".
+      </p>
+    }
+    @case ('roll') {
+      <div class="chosen">
+        <mat-icon aria-hidden="true">check</mat-icon>
+        <span class="chosen__text">
+          <span class="chosen__cap">Alvo</span>
+          <span><b>{{ target()?.label }}</b>{{ target()?.sub ? ' · ' + target()?.sub : '' }}</span>
+        </span>
+        <button type="button" class="link" (click)="change()">Trocar</button>
+      </div>
+      <app-roll-picker
+        [canApp]="canApp"
+        [canType]="canType"
+        [preferApp]="preferApp"
+        [label]="rollLabel()"
+        hint="Role o seu dado e digite o número que saiu (1 a 20)."
+        totalNote="Total do ataque"
+        [modifier]="attack.attackBonus"
+        [busy]="busy()"
+        [sticky]="true"
+        [(typing)]="typing"
+        (app)="rollAttack({ inApp: true })"
+        (typed)="rollAttackTyped($event)"
+      />
+    }
+    @default {
+      <app-attack-result
+        [targetLabel]="targetLabel()"
+        [roll]="roll()"
+        [d20Formula]="d20Formula()"
+        [outcome]="outcome()"
+        [showDamage]="stage() === 'done'"
+        [damage]="damage()"
+        [damageLine]="damageLine()"
+      />
+
+      @if (stage() === 'damage' && dice(); as d) {
+        <div class="dmg">
+          <p class="dmg__what">
+            {{ outcome()?.crit ? 'Acerto crítico: os dados do dano dobram (' + d.name + ').' : 'Acertou: role o dano.' }}
+          </p>
+          <app-roll-picker
+            [canApp]="canApp"
+            [canType]="canType"
+            [preferApp]="preferApp"
+            [label]="damageLabel()"
+            [hint]="damageHint()"
+            totalNote="Dano total"
+            [min]="range().min"
+            [max]="range().max"
+            [modifier]="d.bonus"
+            [busy]="busy()"
+            [appLabel]="'Rolar ' + d.name + ' no app'"
+            [sticky]="true"
+            [(typing)]="typing"
+            (app)="rollDamage({ inApp: true })"
+            (typed)="rollDamageTyped($event)"
+          />
+        </div>
+      }
+
+      @if (stage() === 'done') {
+        @if (damage() && after()) {
+          <p class="after" [class.after--out]="defeated()">
+            @if (defeated()) {
+              <mat-icon aria-hidden="true">close</mat-icon>
+            }
+            {{ after() }}
+          </p>
+        }
+        <p class="sheet__note">
+          <mat-icon aria-hidden="true">info</mat-icon>
+          Sua ação foi usada.{{ cantrip ? ' Truque: nenhum espaço de magia foi gasto.' : '' }}
+        </p>
+        <div class="sheet__foot">
+          <button #back mat-flat-button type="button" class="sheet__done" (click)="close()">Voltar à sua vez</button>
+        </div>
+      }
+    }
+  }
+
+  </div>
+</div>

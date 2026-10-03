@@ -1,4 +1,5 @@
-import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -6,18 +7,25 @@ import { Code, ConnectError } from '@connectrpc/connect';
 
 import type { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { CharacterKind } from '../../../../gen/meurpg/characters/v1/characters_pb';
-import { type Encounter, EncounterStatus } from '../../../../gen/meurpg/play/v1/combat_pb';
+import { CombatLogKind, type Encounter, EncounterStatus, type PendingDamage, PendingDamageStatus } from '../../../../gen/meurpg/play/v1/combat_pb';
 import { CombatClient } from '../../../core/combat/combat-client';
 import { combatErrorMessage } from '../../../core/combat/combat-errors';
 import { type Square, canReach, reachSquares } from '../../../core/combat/combat-grid';
+import { openDamages, pendingNote } from '../../../core/combat/attack-flow';
+import { CombatLogState } from '../../../core/combat/combat-log-state';
 import type { CombatState } from '../../../core/combat/combat-state';
-import { ownCombatant, npcKindLabel } from '../../../core/combat/combat-view';
+import { TurnOptionsState } from '../../../core/combat/turn-options-state';
+import { currentCombatant, isPlayer, ownCombatant, npcKindLabel } from '../../../core/combat/combat-view';
 import type { MapState } from '../../../core/maps/map-state';
 import { MoveSaves } from '../../../core/maps/move-saves';
 import { RosterClient } from '../../../core/maps/roster-client';
 import type { TokenDrop } from '../../../shared/combat-map/combat-map';
 import { PHONE_QUERY, mediaQuery } from '../../../shared/map-view/media-query';
 import type { PartyMemberInfoVm, VitalsVm } from '../live-session.types';
+import { ActionGroups } from './action-groups/action-groups';
+import { AdjustNpc, type AdjustNpcData } from './adjust-npc/adjust-npc';
+import { AttackSheet, type AttackSheetData } from './attack-sheet/attack-sheet';
+import { CombatLogPanel } from './combat-log/combat-log-panel';
 import type { CombatantInfo } from './combat-info';
 import { CombatBar } from './combat-bar/combat-bar';
 import { CombatMapCard } from './combat-map-card/combat-map-card';
@@ -25,9 +33,12 @@ import { CombatSummary } from './combat-summary/combat-summary';
 import { InitiativeSetup } from './initiative-setup/initiative-setup';
 import { InitiativeSide } from './initiative-side/initiative-side';
 import { MovePage } from './move-page/move-page';
+import { NpcCard } from './npc-card/npc-card';
 import { OrderList } from './order-list/order-list';
 import { PlayerInitiative } from './player-initiative/player-initiative';
+import { openSheet } from './sheet-host';
 import { type StartCombatData, StartCombatDialog } from './start-combat/start-combat-dialog';
+import { OrderColumn } from './turn-panel/order-column';
 import { TurnBar } from './turn-panel/turn-bar';
 import { TurnPanel } from './turn-panel/turn-panel';
 
@@ -49,7 +60,9 @@ import { TurnPanel } from './turn-panel/turn-panel';
 @Component({
   selector: 'app-combat-view',
   imports: [
+    ActionGroups,
     CombatBar,
+    CombatLogPanel,
     CombatMapCard,
     CombatSummary,
     InitiativeSetup,
@@ -57,6 +70,8 @@ import { TurnPanel } from './turn-panel/turn-panel';
     MatButtonModule,
     MatIconModule,
     MovePage,
+    NpcCard,
+    OrderColumn,
     OrderList,
     PlayerInitiative,
     TurnBar,
@@ -69,7 +84,12 @@ export class CombatView {
   private readonly api = inject(CombatClient);
   private readonly roster = inject(RosterClient);
   private readonly dialog = inject(MatDialog);
+  private readonly bottomSheet = inject(MatBottomSheet);
   protected readonly phone = mediaQuery(PHONE_QUERY);
+  /** From 1024px the master has the combat bar (E6-11); below it the turn card does it all (E6-12). */
+  protected readonly laptop = mediaQuery('(min-width: 1024px)');
+  /** From 1280px the player's order is a column on the left (E6-14). */
+  protected readonly wideLayout = mediaQuery('(min-width: 1280px)');
   /** One save in flight per combatant (see `MoveSaves`). */
   private readonly moves = new MoveSaves();
 
@@ -89,6 +109,10 @@ export class CombatView {
   readonly changeDice = output<void>();
 
   protected readonly Status = EncounterStatus;
+  /** What the combatant in the spotlight can do: the player's own on their
+   * turn, the master's current one (`GetTurnOptions`). */
+  protected readonly turn = new TurnOptionsState();
+  protected readonly log = new CombatLogState();
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   /** A refusal of the move on the "Mover" page (TOO_FAR, SQUARE_OCCUPIED). */
@@ -131,6 +155,46 @@ export class CombatView {
       ? { origin: { col: own.col, row: own.row }, squares: reachSquares(own.movementLeftFt) }
       : null;
   });
+  /** The one whose options the screen asks for: the player's own character
+   * on their turn, and for the master whoever is on turn. */
+  protected readonly subject = computed(() => {
+    const e = this.encounter();
+    if (!e || e.status !== EncounterStatus.ACTIVE) {
+      return null;
+    }
+    return this.isMaster() ? currentCombatant(e) : this.myTurn() ? this.own() : null;
+  });
+  protected readonly options = computed(() => this.turn.data());
+  /** The player's hit whose damage is still to roll (the sheet was closed). */
+  protected readonly ownPendingRoll = computed(() => {
+    const own = this.own();
+    return (
+      this.options()?.pendingDamages.find(
+        (p) => p.status === PendingDamageStatus.AWAITING_ROLL && p.attackerId === own?.id,
+      ) ?? null
+    );
+  });
+  /** What the master's turn still owes a hit: "Falta aplicar 5 de dano". */
+  protected readonly owed = computed(() => (this.isMaster() ? pendingNote(this.options()?.pendingDamages ?? []) : null));
+  /** The master's card shows for an NPC on turn, and for any turn that left
+   * damage to apply. */
+  protected readonly masterCard = computed(() => {
+    const c = this.subject();
+    return this.isMaster() && c ? c : null;
+  });
+  /** The newest attack of the one on turn was stopped by the target's Escudo (from the log). */
+  protected readonly reactionStopped = computed(() => {
+    const who = this.subject();
+    const entry = this.log
+      .rounds()
+      .flatMap((r) => r.entries)
+      .find((x) => x.kind === CombatLogKind.ATTACK && x.actorId === who?.id);
+    return !!entry?.stoppedByReaction;
+  });
+  protected readonly cardVisible = computed(() => {
+    const c = this.masterCard();
+    return !!c && (!isPlayer(c) || openDamages(this.options()?.pendingDamages ?? []).length > 0);
+  });
   protected readonly unplaced = computed(() =>
     (this.encounter()?.combatants ?? []).filter((c) => !c.placed),
   );
@@ -145,6 +209,32 @@ export class CombatView {
       if (this.isMaster() && this.campaignId()) {
         void this.loadRoster(this.campaignId());
       }
+    });
+    // The options are asked for again whenever the combat changes (every
+    // call and every event bumps its revision) and whoever is in the
+    // spotlight changes. A turn that ends leaves nothing to show.
+    effect(() => {
+      const e = this.encounter();
+      const who = this.subject();
+      const campaignId = this.campaignId();
+      if (!e || !who) {
+        untracked(() => this.turn.clear());
+        return;
+      }
+      void e.revision;
+      untracked(() => void this.turn.load(this.api, campaignId, e.id, who.id));
+    });
+    // The log is read again on every `combat_log_changed` and after every
+    // reconnection (the page bumps `logTick`).
+    effect(() => {
+      const e = this.encounter();
+      const campaignId = this.campaignId();
+      this.state().logTick();
+      if (!e || e.status === EncounterStatus.SETUP) {
+        untracked(() => this.log.clear());
+        return;
+      }
+      untracked(() => void this.log.load(this.api, campaignId, e.id));
     });
     // "Mover" belongs to the player's turn: when it ends, the page closes.
     effect(() => {
@@ -216,8 +306,72 @@ export class CombatView {
     return this.run((e) => this.api.begin(this.campaignId(), e.id));
   }
 
-  protected nextTurn(): Promise<boolean> {
-    return this.run((e) => this.api.endTurn(this.campaignId(), e.id, e.currentCombatantId));
+  /** `discard`: the master passes the turn although a damage waits. */
+  protected nextTurn(discard = false): Promise<boolean> {
+    return this.run((e) => this.api.endTurn(this.campaignId(), e.id, e.currentCombatantId, discard));
+  }
+
+  /** A standard action ("Disparada"): it spends the action; Dash doubles the
+   * movement. */
+  protected takeAction(key: string): Promise<boolean> {
+    const own = this.own();
+    return own ? this.run((e) => this.api.takeAction(this.campaignId(), e.id, own.id, key)) : Promise.resolve(false);
+  }
+
+  /** "Atacar": the attack sheet (Alvo, Rolar, Dano). */
+  protected openAttack(key: string): void {
+    this.attackSheet(key);
+  }
+
+  /** "Rolar o dano" of a hit whose sheet was closed before the damage. */
+  protected rollPendingDamage(): void {
+    const p = this.ownPendingRoll();
+    if (p) {
+      this.attackSheet(p.attackKey, p);
+    }
+  }
+
+  private attackSheet(key: string, resume?: PendingDamage): void {
+    const e = this.encounter();
+    const own = this.own();
+    const attack = this.options()?.options?.attacks.find((a) => a.attack?.key === key)?.attack;
+    if (!e || !own || !attack) {
+      return;
+    }
+    const data: AttackSheetData = {
+      campaignId: this.campaignId(),
+      encounterId: e.id,
+      attackerId: own.id,
+      round: e.round,
+      attack,
+      targets: this.options()?.attackTargets.find((t) => t.attackKey === key)?.targets ?? [],
+      diceMode: this.diceMode(),
+      preference: this.dicePreference(),
+      state: this.state(),
+      resume: resume
+        ? { pending: resume, targetLabel: e.combatants.find((c) => c.id === resume.targetId)?.label ?? '' }
+        : undefined,
+    };
+    openSheet<AttackSheet, AttackSheetData, boolean>(this.dialog, this.bottomSheet, AttackSheet, {
+      data,
+      ariaLabel: `Atacar com ${attack.namePt || attack.name}`,
+      labelledBy: 'sheet-t',
+    }).subscribe();
+  }
+
+  /** "Dano/Cura" on an NPC (`AdjustCombatantHitPoints`). */
+  protected adjustNpc(combatantId: string): void {
+    const e = this.encounter();
+    const combatant = e?.combatants.find((c) => c.id === combatantId);
+    if (!e || !combatant) {
+      return;
+    }
+    openSheet<AdjustNpc, AdjustNpcData, boolean>(this.dialog, this.bottomSheet, AdjustNpc, {
+      data: { campaignId: this.campaignId(), encounterId: e.id, combatant, state: this.state() },
+      ariaLabel: `Dano ou cura em ${combatant.label}`,
+      labelledBy: 'adjust-npc-title',
+      width: '440px',
+    }).subscribe();
   }
 
   protected endCombat(): Promise<boolean> {

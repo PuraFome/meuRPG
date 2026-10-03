@@ -67,7 +67,10 @@
   font-weight: 700;
   cursor: pointer;
 
+  // The wide row shrinks on a narrow phone instead of running past the edge.
   &--number {
+    flex: 0 1 52px;
+    min-width: 38px;
     width: 52px;
   }
 
@@ -107,6 +110,8 @@
   }
 
   &--wide {
+    flex: 0 1 80px;
+    min-width: 52px;
     width: 80px;
   }
 

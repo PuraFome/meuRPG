@@ -1,0 +1,89 @@
+:host {
+  display: block;
+}
+
+.result {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.part {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.part__check {
+  flex: none;
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
+  padding: 4px;
+  border-radius: 50%;
+  background: var(--mr-ink);
+  color: var(--mr-surface);
+  font-size: 16px;
+}
+
+.part__body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.part__cap {
+  font-size: 13px;
+  // As tall as the check beside it, so the two share a middle.
+  line-height: 24px;
+  color: var(--mr-ink-muted);
+}
+
+.part__line {
+  font-size: 17px;
+  line-height: 22px;
+}
+
+.part__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+
+.part__num {
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 46px;
+  line-height: 50px;
+}
+
+.part__formula {
+  font-size: 16px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  box-sizing: border-box;
+  padding: 0 12px 0 8px;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-success-surface);
+  color: var(--mr-success-ink);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.pill--miss {
+  background: var(--mr-danger-surface);
+  color: var(--mr-danger-ink);
+}

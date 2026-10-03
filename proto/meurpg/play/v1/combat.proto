@@ -1017,6 +1017,10 @@ message Combatant {
   // spell it is concentrating on, if any.
   repeated string conditions = 28;
   string concentration_spell = 29;
+  // The armor class from its sheet ("CA 15"). Only the master gets it: a
+  // player never learns an armor class (RN-20). Unset for a player, and for
+  // a character whose sheet is gone.
+  optional int32 armor_class = 30;
   // The armor class the combatant has on top of its sheet's, until the start of
   // its next turn: 5 with Escudo, 0 otherwise. Only the master and the
   // combatant's own player; never an armor class itself.
@@ -1414,6 +1418,9 @@ message AttackRoll {
   // The d20 with the attack bonus as the modifier.
   DiceRoll d20 = 4;
   AttackOutcome outcome = 5;
+  // The target's armor class that the total was compared with ("Acertou
+  // contra CA 18"). Only the master gets it; never a player (RN-20).
+  optional int32 target_armor_class = 6;
 }
 
 // RollAttackResponse returns the roll and the combat after it.

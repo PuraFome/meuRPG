@@ -1,9 +1,11 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, ElementRef, Injector, afterNextRender, computed, inject, input, output, signal, viewChild } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import { type Encounter, EncounterStatus } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { combatantInitial, isPlayer, roundLabel, turnBanner } from '../../../../core/combat/combat-view';
+import { NextTurn } from './next-turn';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 
 /**
@@ -15,15 +17,20 @@ import { CombatantToken } from '../../../../shared/combatant-token/combatant-tok
  */
 @Component({
   selector: 'app-combat-bar',
-  imports: [CombatantToken, MatButtonModule, MatIconModule],
+  imports: [CombatantToken, MatButtonModule, MatIconModule, NextTurn, NgTemplateOutlet],
   templateUrl: './combat-bar.html',
   styleUrl: './combat-bar.scss',
 })
 export class CombatBar {
   readonly encounter = input.required<Encounter>();
   readonly busy = input(false);
-  /** "Próximo turno": ends the turn of whoever is on turn. */
-  readonly next = output<void>();
+  /** Only "Encerrar combate" and its question: the phone's page end (E6-12). */
+  readonly endOnly = input(false);
+  /** What the turn still owes ("Falta aplicar 5 de dano"), or `null`. */
+  readonly pendingNote = input<string | null>(null);
+  /** "Próximo turno": ends the turn of whoever is on turn; `true` when the
+   * master passes it although a damage waits (it is discarded). */
+  readonly next = output<boolean>();
   /** "Encerrar combate", confirmed. */
   readonly end = output<void>();
 

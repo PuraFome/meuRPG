@@ -1,0 +1,150 @@
+<section class="groups" aria-labelledby="groups-title">
+  <h2 class="groups__title" id="groups-title">O que você pode fazer</h2>
+
+  @if (desktop()) {
+    <app-economy-tiles [own]="own()" />
+  }
+
+  @if (pendingRoll()) {
+    <div class="mr-notice mr-notice--warning groups__pending">
+      <mat-icon aria-hidden="true">warning</mat-icon>
+      <p><strong>Falta rolar o dano do seu ataque.</strong> Role para poder encerrar o turno.</p>
+      <button mat-stroked-button type="button" (click)="rollDamage.emit()">Rolar o dano</button>
+    </div>
+  }
+
+  <section class="group" aria-labelledby="g-action">
+    <header class="group__head">
+      <h3 class="group__name" id="g-action">Ação</h3>
+      <app-group-state [word]="state(own().actionUsed)" [used]="own().actionUsed" />
+    </header>
+    @if (options().attacks.length) {
+      <p class="group__sub">Ataques</p>
+      @for (a of options().attacks; track a.attack?.key) {
+        @if (a.attack; as atk) {
+          <app-action-row
+            [name]="attackName(atk)"
+            [pill]="isCantrip(atk) ? 'Truque' : ''"
+            [detail]="attackDetail(atk)"
+            button="Atacar"
+            [buttonLabel]="'Atacar com ' + attackName(atk)"
+            [off]="!a.enabled"
+            [reason]="reasonText(a.reason)"
+            [busy]="busy()"
+            (press)="attack.emit(atk.key)"
+          />
+        }
+      }
+    }
+    @if (action_().spells.length) {
+      <p class="group__sub">Magias</p>
+      @for (s of action_().spells; track s.spell?.key) {
+        <app-action-row
+          [name]="s.spell?.namePt || s.spell?.name || ''"
+          [pill]="pillOf(s)"
+          [detail]="spellDetail(s)"
+          [off]="spellOff(s)"
+          [reason]="reasonText(s.reason)"
+        />
+      }
+    }
+    @if (action_().features.length) {
+      <p class="group__sub">Habilidades</p>
+      @for (f of action_().features; track f.action?.key) {
+        <app-action-row
+          [name]="f.action?.namePt ?? ''"
+          [detail]="featureDetail(f)"
+          [off]="featureOff(f)"
+          [reason]="reasonText(f.reason)"
+        />
+      }
+    }
+    <p class="group__sub">Ações padrão</p>
+    @if (standardWhy()) {
+      <p class="group__why" id="std-why"><mat-icon aria-hidden="true">block</mat-icon>{{ standardWhy() }}</p>
+    }
+    <div class="std" role="group" aria-label="Ações padrão">
+      @for (a of standard(); track a.action?.key) {
+        <button
+          mat-stroked-button
+          type="button"
+          class="std__btn"
+          [class.std__btn--off]="!a.enabled"
+          [disabled]="!a.enabled || busy()"
+          disabledInteractive
+          [attr.aria-describedby]="!a.enabled ? 'std-why' : null"
+          (click)="a.enabled && action.emit(a.action?.key ?? '')"
+        >
+          {{ a.action?.namePt }}
+        </button>
+      }
+    </div>
+  </section>
+
+  @if (bonus().spells.length || bonus().features.length) {
+    <section class="group" aria-labelledby="g-bonus">
+      <header class="group__head">
+        <h3 class="group__name" id="g-bonus">Ação bônus</h3>
+        <app-group-state [word]="state(own().bonusActionUsed)" [used]="own().bonusActionUsed" />
+      </header>
+      @for (s of bonus().spells; track s.spell?.key) {
+        <app-action-row
+          [name]="s.spell?.namePt || s.spell?.name || ''"
+          [pill]="pillOf(s)"
+          [detail]="spellDetail(s)"
+          [off]="spellOff(s)"
+          [reason]="reasonText(s.reason)"
+        />
+      }
+      @for (f of bonus().features; track f.action?.key) {
+        <app-action-row
+          [name]="f.action?.namePt ?? ''"
+          [detail]="featureDetail(f)"
+          [off]="featureOff(f)"
+          [reason]="reasonText(f.reason)"
+        />
+      }
+    </section>
+  }
+
+  @if (reaction().spells.length || reaction().features.length) {
+    <section class="group" aria-labelledby="g-reaction">
+      <header class="group__head">
+        <h3 class="group__name" id="g-reaction">Reação</h3>
+        <app-group-state [word]="state(own().reactionUsed)" [used]="own().reactionUsed" />
+      </header>
+      @for (s of reaction().spells; track s.spell?.key) {
+        <app-action-row
+          [name]="s.spell?.namePt || s.spell?.name || ''"
+          [pill]="pillOf(s)"
+          [detail]="spellHint(s)"
+          [off]="spellOff(s)"
+          [reason]="reasonText(s.reason)"
+        />
+      }
+      @for (f of reaction().features; track f.action?.key) {
+        <app-action-row
+          [name]="f.action?.namePt ?? ''"
+          [detail]="featureDetail(f)"
+          [off]="featureOff(f)"
+          [reason]="reasonText(f.reason)"
+        />
+      }
+    </section>
+  }
+
+  <section class="group" aria-labelledby="g-move">
+    <header class="group__head">
+      <h3 class="group__name" id="g-move">Movimento</h3>
+      <app-group-state [word]="movement().pill" icon="arrow_forward" />
+    </header>
+    <app-action-row
+      name=""
+      [detail]="movement().text"
+      [button]="movement().left <= 0 ? '' : 'Mover'"
+      buttonLabel="Mover"
+      [busy]="busy()"
+      (press)="move.emit()"
+    />
+  </section>
+</section>

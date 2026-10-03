@@ -1,0 +1,122 @@
+:host {
+  display: block;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-sizing: border-box;
+  padding: 14px 16px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+
+  @media (min-width: 1024px) {
+    padding: 18px 20px;
+  }
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.title {
+  flex: 1;
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 28px;
+
+  @media (min-width: 1024px) {
+    font-size: 24px;
+  }
+}
+
+.head__count {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.chev {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin: -6px -10px -6px 0;
+  border: 0;
+  background: none;
+  color: var(--mr-ink);
+  cursor: pointer;
+}
+
+.latest {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  color: var(--mr-ink-muted);
+
+  b {
+    color: var(--mr-ink);
+  }
+}
+
+.body app-log-list {
+  max-height: 440px;
+}
+
+.undo {
+  --mat-button-outlined-container-height: 44px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+}
+
+.undo--wide {
+  --mat-button-outlined-container-height: 48px;
+  width: 100%;
+}
+
+.ask {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--mr-warning-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-warning-surface);
+  color: var(--mr-warning-ink);
+}
+
+.ask__text {
+  flex: 1 1 100%;
+  margin: 0;
+  font-weight: 700;
+}
+
+.ask .mat-mdc-outlined-button {
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  flex: 1 1 0;
+  min-width: max-content;
+  white-space: nowrap;
+  background: var(--mr-surface);
+
+  @media (min-width: 768px) {
+    --mat-button-outlined-container-height: 44px;
+  }
+}
+
+.all {
+  --mat-button-text-label-text-color: var(--mr-accent-text);
+  --mat-button-text-container-height: 44px;
+  align-self: center;
+  font-weight: 700;
+}

@@ -162,7 +162,7 @@ describe('LiveSession', () => {
     expect(el.querySelector('h1')?.textContent).toContain('Sessão 4');
     expect(el.textContent).toContain('Mirathel');
     expect(el.textContent).toContain('Ao vivo');
-    expect(el.textContent).toContain('atualizado agora');
+    expect(el.textContent).toContain('Em andamento desde 30/09 às 20:05');
     expect(el.querySelector('.hp__current')?.textContent).toBe('17');
     expect(el.textContent).toContain('de 23');
     expect(el.querySelector('.shield__number')?.textContent).toBe('14');

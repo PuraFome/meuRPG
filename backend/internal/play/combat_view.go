@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"slices"
 	"time"
 
@@ -93,7 +94,7 @@ func (d *encounterData) turnFor(v combatViewer) (id string, masterTurn bool) {
 // view builds the Encounter the viewer sees. vitals are the player
 // characters' vitals by character ID; a player only learns from them that a
 // character is down, and the master gets the hit points.
-func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.CharacterVitals, conditionNames map[string]string) *playv1.Encounter {
+func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.CharacterVitals, armorClass map[string]int32, conditionNames map[string]string) *playv1.Encounter {
 	e := d.enc
 	out := &playv1.Encounter{
 		Id:          e.ID,
@@ -115,16 +116,17 @@ func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.Character
 	for _, c := range d.cs {
 		if v.sees(c) {
 			onTurn := e.Status == statusActive && e.CurrentCombatantID != nil && *e.CurrentCombatantID == c.ID
-			out.Combatants = append(out.Combatants, combatantToProto(c, v, ties[c.ID], vitals[c.CharacterID], onTurn, conditionNames))
+			out.Combatants = append(out.Combatants, combatantToProto(c, v, ties[c.ID], vitals[c.CharacterID], armorClass[c.CharacterID], onTurn, conditionNames))
 		}
 	}
 	return out
 }
 
 // combatantToProto builds the Combatant the viewer sees. The caller checked
-// that the viewer sees it. onTurn says it is the one whose turn it is, in a
+// that the viewer sees it. armorClass is its sheet's, for the master's copy
+// only (0 when unknown). onTurn says it is the one whose turn it is, in a
 // running combat.
-func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vitals *playv1.CharacterVitals, onTurn bool, conditionNames map[string]string) *playv1.Combatant {
+func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vitals *playv1.CharacterVitals, armorClass int32, onTurn bool, conditionNames map[string]string) *playv1.Combatant {
 	mine := v.owns(c)
 	detail := v.master || mine // the numbers of the turn: the master's and the owner's
 	out := &playv1.Combatant{
@@ -167,6 +169,9 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 	if v.master {
 		out.Hidden = c.Hidden
 		out.TieUnresolved = tieUnresolved
+		if armorClass > 0 {
+			out.ArmorClass = ptr(armorClass)
+		}
 		out.HitPointsCurrent, out.HitPointsMax, out.HitPointsTemporary = c.HpCurrent, c.HpMax, c.HpTemp
 		if vitals != nil {
 			out.HitPointsCurrent = ptr(vitals.GetHitPointsCurrent())
@@ -246,13 +251,35 @@ func (s *Service) viewFor(ctx context.Context, m authz.Membership, d *encounterD
 			byCharacter[vit.GetCharacterId()] = vit
 		}
 	}
-	out := d.view(v, byCharacter, s.conditionNames)
+	out := d.view(v, byCharacter, s.armorClasses(ctx, m, d), s.conditionNames)
 	prompts, err := s.reactionPrompts(ctx, m, d)
 	if err != nil {
 		return nil, err
 	}
 	out.ReactionPrompts = prompts
 	return out, nil
+}
+
+// armorClasses reads the armor class of each character in the combat, for
+// the master's copy only (RN-20): a player never gets one. Copies of an NPC
+// share a character, so each sheet is read once. A sheet that can't be read
+// (the character left the campaign) simply has no armor class on screen.
+func (s *Service) armorClasses(ctx context.Context, m authz.Membership, d *encounterData) map[string]int32 {
+	if m.Role != authz.RoleMaster {
+		return nil
+	}
+	out := make(map[string]int32, len(d.cs))
+	for _, c := range d.cs {
+		if _, done := out[c.CharacterID]; done {
+			continue
+		}
+		sheet, err := s.roster.CombatSheet(ctx, m.CampaignID, c.CharacterID)
+		if err != nil {
+			continue
+		}
+		out[c.CharacterID] = clamp32(sheet.ArmorClass, 0, math.MaxInt32)
+	}
+	return out
 }
 
 // GetEncounter implements playv1connect.CombatServiceHandler.
