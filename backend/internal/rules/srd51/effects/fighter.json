@@ -27,6 +27,7 @@
       {"type": "note", "value": "classLevel(\"fighter\")", "text_pt": "Retomar o fôlego: recupera 1d10{value} pontos de vida, uma vez por descanso curto ou longo."}
     ],
     "feature:action-surge-1-use": [
+      {"type": "grant_action", "economy": "free"},
       {"type": "resource", "resource": "action_surge", "max": "classLevel(\"fighter\") >= 17 ? 2 : 1", "recharge": "short_rest"}
     ],
     "feature:martial-archetype": [
@@ -39,7 +40,7 @@
       {"type": "choice", "choice": "ability_score_improvement", "count": 1}
     ],
     "feature:extra-attack-1": [
-      {"type": "note"}
+      {"type": "extra_attack", "count": 2}
     ]
   }
 }

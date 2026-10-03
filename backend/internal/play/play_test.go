@@ -417,6 +417,20 @@ func (noRoster) CombatTurnOptions(context.Context, string, string, link.Turn) (*
 	return nil, errors.New("not in this test")
 }
 
+func (noRoster) CombatSpell(context.Context, string, string, string, int) (link.Spell, error) {
+	return link.Spell{}, errors.New("not in this test")
+}
+
+func (noRoster) CombatSave(context.Context, string, string, string) (link.Save, error) {
+	return link.Save{}, errors.New("not in this test")
+}
+
+func (noRoster) MarkDead(context.Context, pgx.Tx, string, string, time.Time) error {
+	return errors.New("not in this test")
+}
+
+func (noRoster) Conditions() []link.Named { return nil }
+
 type noDice struct{}
 
 func (noDice) ForcedDice(context.Context, string, string) (DiceForce, error) {
@@ -518,6 +532,12 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, combat["TakeAction"] = cc.TakeAction(ctx, connect.NewRequest(&playv1.TakeActionRequest{CampaignId: id}))
 	_, combat["AdjustCombatantHitPoints"] = cc.AdjustCombatantHitPoints(ctx, connect.NewRequest(&playv1.AdjustCombatantHitPointsRequest{CampaignId: id}))
 	_, combat["UndoLastAction"] = cc.UndoLastAction(ctx, connect.NewRequest(&playv1.UndoLastActionRequest{CampaignId: id}))
+	_, combat["CastSpell"] = cc.CastSpell(ctx, connect.NewRequest(&playv1.CastSpellRequest{CampaignId: id}))
+	_, combat["UseReaction"] = cc.UseReaction(ctx, connect.NewRequest(&playv1.UseReactionRequest{CampaignId: id}))
+	_, combat["DeclineReaction"] = cc.DeclineReaction(ctx, connect.NewRequest(&playv1.DeclineReactionRequest{CampaignId: id}))
+	_, combat["RollDeathSave"] = cc.RollDeathSave(ctx, connect.NewRequest(&playv1.RollDeathSaveRequest{CampaignId: id}))
+	_, combat["ConfirmDeath"] = cc.ConfirmDeath(ctx, connect.NewRequest(&playv1.ConfirmDeathRequest{CampaignId: id}))
+	_, combat["SetCombatantConditions"] = cc.SetCombatantConditions(ctx, connect.NewRequest(&playv1.SetCombatantConditionsRequest{CampaignId: id}))
 	_, combat["ListCombatLog"] = cc.ListCombatLog(ctx, connect.NewRequest(&playv1.ListCombatLogRequest{CampaignId: id}))
 	combatMethods := playv1.File_meurpg_play_v1_combat_proto.Services().ByName("CombatService").Methods()
 	if len(combat) != combatMethods.Len() {

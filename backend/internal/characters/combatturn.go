@@ -102,7 +102,7 @@ func (s *Service) CombatSheet(ctx context.Context, campaignID, characterID strin
 			name = a.Name
 		}
 		out.Attacks = append(out.Attacks, link.Attack{
-			Key: a.Key, Name: name, Save: a.SaveDC > 0, ToHit: a.AttackBonus,
+			Key: a.Key, Name: name, Save: a.SaveDC > 0, Spell: a.Kind == "spell", ToHit: a.AttackBonus,
 			DiceCount: a.DamageDice.Count, DiceSides: a.DamageDice.Sides, DiceBonus: a.DamageDice.Bonus,
 			DamageType: a.DamageType, RangeFt: a.RangeFt, LongRangeFt: a.LongRangeFt,
 		})
@@ -110,8 +110,24 @@ func (s *Service) CombatSheet(ctx context.Context, campaignID, characterID strin
 	for _, a := range d.StandardActions {
 		out.Actions = append(out.Actions, link.Action{Key: a.Key, Name: a.NamePT})
 	}
+	out.AttacksPerAction = max(d.AttacksPerAction, 1)
+	for _, a := range d.Actions {
+		out.FeatureActions = append(out.FeatureActions, link.FeatureAction{
+			Key: a.Key, Name: a.NamePT, Economy: a.Economy, Resource: a.Resource, Pool: poolResources[a.Resource],
+		})
+	}
+	for _, cl := range d.Classes {
+		if cl.ClassKey == "class:fighter" {
+			out.FighterLevel = cl.Level
+		}
+	}
 	return out, nil
 }
+
+// poolResources are the resources that count points, not uses: Cura pelas mãos
+// has 5 points for each paladin level, and one use of the action spends however
+// many the player chooses, so the combat leaves the pool to the master.
+var poolResources = map[string]bool{"lay_on_hands": true}
 
 // CombatTurnOptions implements play.CombatRoster: what the character can do
 // now, from the sheet, what it used this turn and, for a player's character,
@@ -133,7 +149,7 @@ func (s *Service) CombatTurnOptions(ctx context.Context, campaignID, characterID
 	d.SpeedWalkFt = turn.SpeedFt
 	opts := combat.Options(d, combat.TurnState{
 		ActionUsed: turn.ActionUsed, BonusActionUsed: turn.BonusActionUsed, ReactionUsed: turn.ReactionUsed,
-		MovementUsedFt: turn.MovementUsedFt, Dashed: turn.Dashed,
+		MovementUsedFt: turn.MovementUsedFt, Dashed: turn.Dashed, AttacksMade: turn.AttacksMade,
 	}, usage)
 	return turnOptionsToProto(opts), nil
 }
@@ -147,6 +163,12 @@ func usageOf(v *playv1.CharacterVitals) combat.Usage {
 		}
 	}
 	u.PactSlotsUsed = int(v.GetPactSlots().GetUsed())
+	for _, r := range v.GetResources() {
+		if u.ResourcesUsed == nil {
+			u.ResourcesUsed = map[string]int{}
+		}
+		u.ResourcesUsed[r.GetKey()] = int(r.GetUsed())
+	}
 	return u
 }
 
@@ -159,6 +181,7 @@ var reasonToProto = map[string]rulesv1.DisabledReasonCode{
 	combat.ReasonReactionOnlyWhenHit: rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_REACTION_ONLY_WHEN_HIT,
 	combat.ReasonReactionOnly:        rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_REACTION_ONLY,
 	combat.ReasonTooLong:             rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_CASTING_TIME_TOO_LONG,
+	combat.ReasonAttacksUsed:         rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_ATTACKS_USED,
 }
 
 // turnOptionsToProto copies package combat's TurnOptions into the API's.
@@ -168,7 +191,8 @@ func turnOptionsToProto(o combat.TurnOptions) *rulesv1.TurnOptions {
 	}
 	out := &rulesv1.TurnOptions{Economy: &rulesv1.TurnEconomy{
 		Action: slot(o.Economy.Action), BonusAction: slot(o.Economy.BonusAction), Reaction: slot(o.Economy.Reaction),
-		Movement: &rulesv1.MovementLeft{SpeedFt: i32(o.Economy.Movement.SpeedFt), UsedFt: i32(o.Economy.Movement.UsedFt), LeftFt: i32(o.Economy.Movement.LeftFt)},
+		Movement:         &rulesv1.MovementLeft{SpeedFt: i32(o.Economy.Movement.SpeedFt), UsedFt: i32(o.Economy.Movement.UsedFt), LeftFt: i32(o.Economy.Movement.LeftFt)},
+		AttacksPerAction: i32(o.Economy.AttacksPerAction), AttacksLeft: i32(o.Economy.AttacksLeft),
 	}}
 	for _, a := range o.Attacks {
 		out.Attacks = append(out.Attacks, &rulesv1.AttackOption{Attack: attackToProto(a.Attack), Enabled: a.Enabled, Reason: reasonProto(a.Reason)})

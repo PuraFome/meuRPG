@@ -38,7 +38,7 @@
       {"type": "grant_action", "economy": "reaction"}
     ],
     "feature:monk-extra-attack": [
-      {"type": "note"}
+      {"type": "extra_attack", "count": 2}
     ],
     "feature:stunning-strike": [
       {"type": "note"}

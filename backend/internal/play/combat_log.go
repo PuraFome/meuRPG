@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -50,11 +51,27 @@ type logEntry struct {
 	ev     actionEvent
 	status playv1.PendingDamageStatus // the damage of an attack, once it hit
 	dmg    *actionEvent               // the damage roll, once it was rolled
+	// applied is the master's apply of an attack's damage on a character.
+	applied *actionEvent
+	// pend is, for a spell, what became of each pending damage it opened, and
+	// stopped the pending damages Escudo stopped (a spell attack or an attack).
+	pend    map[string]*damageLog
+	stopped []string
 	// masterOnly is a line only the master gets, whatever the combatants.
 	masterOnly bool
 	// hosts are the events the entry shows: an attack's own and the ones of its
 	// damage, so the entry of the last action is the one to undo.
 	hosts []string
+}
+
+// damageLog is what became of one pending damage of a spell: where it is, the
+// roll that settled it (shared by the whole cast), what it did to its target,
+// and the master's apply.
+type damageLog struct {
+	status  playv1.PendingDamageStatus
+	roll    *actionEvent
+	hit     damageHit
+	applied *actionEvent
 }
 
 // ListCombatLog implements playv1connect.CombatServiceHandler.
@@ -128,7 +145,8 @@ func (s *Service) ListCombatLog(
 
 // buildLog turns a combat's events, in order, into entries. An event an undo
 // took back leaves no trace; the events of one attack (its roll, its damage,
-// the master's apply or discard) merge into one entry.
+// the master's apply or discard, a reaction) merge into one entry, and those of
+// a spell (its cast, the damage rolls and applies of its targets) into one.
 func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 	undone := map[string]bool{}
 	for _, e := range events {
@@ -169,34 +187,51 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION
 		case eventHitPointsAdjusted:
 			entry.kind, entry.masterOnly = playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_POINTS_ADJUSTED, true
+		case eventDeathSaveRolled:
+			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_DEATH_SAVE
+		case eventDeathConfirmed:
+			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_DEATH_CONFIRMED
+		case eventConditionsSet:
+			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_CONDITIONS_CHANGED
 		case eventAttackRolled:
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK
 			if ev.Pending != "" {
 				entry.status = playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_AWAITING_ROLL
 				byPending[ev.Pending] = entry
 			}
+		case eventSpellCast:
+			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_SPELL_CAST
+			entry.pend = map[string]*damageLog{}
+			for _, h := range ev.Hits {
+				if h.Pending != "" {
+					entry.pend[h.Pending] = &damageLog{status: playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_AWAITING_ROLL}
+					byPending[h.Pending] = entry
+				}
+			}
+		case eventReactionUsed:
+			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION
+			// Escudo that stopped the attack takes its damage away; the hit waits for
+			// its roll otherwise, which the roll event says.
+			if host, ok := byPending[ev.Pending]; ok {
+				host.hosts = append(host.hosts, e.ID)
+				if ev.Stopped {
+					host.setStatus(ev.Pending, playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_DISCARDED)
+					host.stopped = append(host.stopped, ev.Pending)
+				}
+			}
+		case eventReactionDeclined:
+			if host, ok := byPending[ev.Pending]; ok {
+				host.hosts = append(host.hosts, e.ID) // a decline is the entry's last action to undo
+			}
+			continue
 		case eventDamageRolled, eventDamageApplied, eventDamageDiscarded:
-			// The damage lands in the attack's entry.
-			attack, ok := byPending[ev.Pending]
+			// The damage lands in the attack's or the spell's entry.
+			host, ok := byPending[ev.Pending]
 			if !ok {
 				continue
 			}
-			attack.hosts = append(attack.hosts, e.ID)
-			switch e.Kind {
-			case eventDamageRolled:
-				attack.dmg = &ev
-				attack.status = playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_ROLLED
-				if ev.Applied {
-					attack.status = playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED
-				}
-			case eventDamageApplied:
-				attack.status = playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED
-				if attack.dmg != nil {
-					attack.dmg.After = ev.After // the character's hit points after
-				}
-			case eventDamageDiscarded:
-				attack.status = playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_DISCARDED
-			}
+			host.hosts = append(host.hosts, e.ID)
+			host.land(e.Kind, ev)
 			continue
 		default:
 			continue // initiative, turns, reinforcements: not lines of the log
@@ -206,11 +241,60 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 	return out
 }
 
+// setStatus records where a pending damage of the entry is.
+func (e *logEntry) setStatus(pending string, status playv1.PendingDamageStatus) {
+	if dl, ok := e.pend[pending]; ok {
+		dl.status = status
+		return
+	}
+	e.status = status
+}
+
+// land puts a damage event on the entry of the attack or the spell it belongs
+// to: the roll, the master's apply, or his discard.
+func (e *logEntry) land(kind string, ev actionEvent) {
+	switch kind {
+	case eventDamageRolled:
+		hits := ev.Settled
+		if len(hits) == 0 {
+			hits = []damageHit{{Pending: ev.Pending, Target: ev.Target, Amount: ev.Amount, Applied: ev.Applied, After: ev.After, ConcentrationDC: ev.ConcentrationDC}}
+		}
+		for _, h := range hits {
+			status := playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_ROLLED
+			if h.Applied {
+				status = playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED
+			}
+			if dl, ok := e.pend[h.Pending]; ok {
+				dl.roll, dl.hit, dl.status = &ev, h, status
+				continue
+			}
+			e.dmg, e.status = &ev, status
+			e.dmg.After = h.After // the target's hit points after, for an NPC that took it at once
+		}
+	case eventDamageApplied:
+		if dl, ok := e.pend[ev.Pending]; ok {
+			dl.applied, dl.status = &ev, playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED
+			return
+		}
+		e.status, e.applied = playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED, &ev
+		if e.dmg != nil {
+			e.dmg.After = ev.After // the character's hit points after
+		}
+	case eventDamageDiscarded:
+		e.setStatus(ev.Pending, playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_DISCARDED)
+	}
+}
+
 // view builds the entry the viewer gets, and false when they do not get it.
 func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]playdb.Combatant, names *keyNames, lastID string) (*playv1.CombatLogEntry, bool) {
 	actor, target := byID[e.ev.Actor], byID[e.ev.Target]
-	if e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_POINTS_ADJUSTED {
+	switch e.kind {
+	case playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_POINTS_ADJUSTED:
 		actor, target = playdb.Combatant{}, byID[e.ev.Actor] // the affected one is the target
+	case playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION:
+		target = playdb.Combatant{} // who attacked is not part of the line
+	case playv1.CombatLogKind_COMBAT_LOG_KIND_DEATH_CONFIRMED, playv1.CombatLogKind_COMBAT_LOG_KIND_CONDITIONS_CHANGED:
+		actor, target = playdb.Combatant{}, byID[e.ev.Actor]
 	}
 	// What a player may see: nothing with a hidden combatant in it, when it
 	// happened or now (a combatant the master hides again takes its lines back).
@@ -218,8 +302,12 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 	// would be anonymous: a player does not get it either.
 	_, actorKnown := byID[e.ev.Actor]
 	_, targetKnown := byID[e.ev.Target]
-	known := (e.ev.Actor == "" || actorKnown) && (e.ev.Target == "" || targetKnown)
+	known := (e.ev.Actor == "" || actorKnown) && (e.ev.Target == "" || targetKnown || e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION)
 	visible := !e.masterOnly && !e.ev.Secret && !actor.Hidden && !target.Hidden && known
+	for _, h := range e.ev.Hits { // every target of a spell
+		hit, ok := byID[h.Target]
+		visible = visible && ok && !hit.Hidden
+	}
 	if !v.master && !visible {
 		return nil, false
 	}
@@ -237,7 +325,8 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 		out.Undoable = slices.Contains(e.hosts, lastID)
 	}
 	switch e.kind {
-	case playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK, playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION:
+	case playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK, playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION,
+		playv1.CombatLogKind_COMBAT_LOG_KIND_SPELL_CAST, playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION:
 		out.KeyNamePt = names.of(ctx, actor, e.ev.Key)
 	}
 	switch e.kind {
@@ -254,19 +343,118 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 		}
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK:
 		out.Outcome = outcomeToProto[e.ev.Outcome]
+		out.AsReaction = e.ev.AsReaction
 		if dice {
 			out.AttackRoll = diceRoll(1, 20, []int32{e.ev.D20}, e.ev.Modifier, e.ev.Total, e.ev.Physical)
 		}
-		if e.ev.Pending != "" {
-			out.Damage = e.damage(dice, v.master, out)
+		if len(e.stopped) > 0 { // Escudo stopped it: a miss, with no damage
+			out.Outcome, out.StoppedByReaction = playv1.AttackOutcome_ATTACK_OUTCOME_MISS, true
+		} else if e.ev.Pending != "" {
+			out.Damage = e.damage(dice, v.master, v.master || v.owns(target), out)
 		}
+	case playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION:
+		if e.ev.Heal { // Retomar o fôlego: only the master and its own player see the numbers
+			if v.master || v.owns(actor) {
+				out.Damage = &playv1.CombatLogDamage{
+					Status: playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED, Healing: true, Amount: e.ev.Amount,
+					Roll: diceRoll(e.ev.DiceCount, e.ev.DiceSides, e.ev.Faces, e.ev.Modifier, e.ev.Total, e.ev.Physical),
+				}
+			}
+		}
+	case playv1.CombatLogKind_COMBAT_LOG_KIND_SPELL_CAST:
+		out.Spell = e.spellView(v, byID)
+	case playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION:
+		out.Spell = &playv1.CombatLogSpell{Slot: slotProto(e.ev.Slot)}
+	case playv1.CombatLogKind_COMBAT_LOG_KIND_DEATH_SAVE:
+		after := e.ev.Death
+		if after == nil {
+			after = &deathState{}
+		}
+		out.DeathSave = &playv1.CombatLogDeathSave{
+			Outcome: deathOutcomeToProto[e.ev.DeathOutcome], Successes: after.Successes, Failures: after.Failures,
+			Stable: after.Successes >= 3, Dying: v.master && after.Failures >= 3,
+		}
+		if v.master || v.owns(actor) {
+			out.DeathSave.Roll = diceRoll(1, 20, []int32{e.ev.D20}, 0, e.ev.D20, e.ev.Physical)
+		}
+	case playv1.CombatLogKind_COMBAT_LOG_KIND_CONDITIONS_CHANGED:
+		out.Conditions = e.ev.Conditions
+		out.ConcentrationEndedKey = e.ev.ConcEnded
 	}
 	return out, true
 }
 
+// spellView is the cast as the viewer gets it: what each target did, in the
+// order they were listed. A target's save dice are the master's and the
+// target's own player's; the caster's d20 the master's and the caster's.
+func (e *logEntry) spellView(v combatViewer, byID map[string]playdb.Combatant) *playv1.CombatLogSpell {
+	caster := byID[e.ev.Actor]
+	out := &playv1.CombatLogSpell{Slot: slotProto(e.ev.Slot), Concentrating: e.ev.Concentrate, ConcentrationEndedKey: e.ev.ConcEnded}
+	for _, h := range e.ev.Hits {
+		target := byID[h.Target]
+		t := &playv1.CombatLogSpellTarget{
+			TargetId: target.ID, TargetLabel: target.Label, Darts: h.Darts, Outcome: outcomeToProto[h.Outcome],
+			AttackRoll: attackRollView(h, v, caster), Save: saveView(h.Save, v, caster, target),
+		}
+		if dl, ok := e.pend[h.Pending]; ok {
+			if slices.Contains(e.stopped, h.Pending) { // Escudo stopped the spell attack
+				t.Outcome = playv1.AttackOutcome_ATTACK_OUTCOME_MISS
+			} else {
+				t.Damage = dl.view(v, caster, target)
+			}
+		}
+		out.Targets = append(out.Targets, t)
+	}
+	return out
+}
+
+// view is a spell target's damage or heal as the viewer gets it: the amount that
+// landed, the dice to the master and the caster's player, what the master
+// overruled to him alone.
+func (d *damageLog) view(v combatViewer, caster, target playdb.Combatant) *playv1.CombatLogDamage {
+	out := &playv1.CombatLogDamage{Status: d.status}
+	if d.roll == nil {
+		return out // the cast opened it and it is not rolled yet
+	}
+	r := d.roll
+	out.Amount, out.DamageTypeKey, out.DamageTypePt = d.hit.Amount, r.DamageType, damageTypePT[r.DamageType]
+	out.Half, out.Healing = d.hit.Half, r.Heal
+	if r.Heal && !v.master && !v.owns(target) {
+		// A heal capped at the maximum would tell how many hit points the target
+		// lacked: everyone but the master and the target's player gets the roll (RN-20).
+		out.Amount = r.Total
+	}
+	if v.master || v.owns(caster) { // the caster's dice, as for an attack's damage
+		out.Roll = diceRoll(r.DiceCount, r.DiceSides, r.Faces, r.Modifier, r.Total, r.Physical)
+	}
+	if d.applied != nil { // the master's apply of a character's damage
+		out.Amount, out.DeathFailuresAdded = d.applied.Amount, d.applied.FailuresAdded
+		if d.applied.Overridden && v.master {
+			rolled := d.applied.Rolled
+			out.RolledAmount = &rolled
+		}
+		if dc := d.applied.ConcentrationDC; dc > 0 && (v.master || v.owns(target)) {
+			out.ConcentrationDc = &dc
+		}
+		if after := d.applied.After; after != nil {
+			out.TargetDown = !after.Defeated && after.HP == 0
+		}
+		return out
+	}
+	if after := d.hit.After; after != nil && d.status == playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED {
+		out.TargetDefeated = after.Defeated
+		out.TargetDown = !after.Defeated && after.HP == 0
+		if dc := d.hit.ConcentrationDC; dc > 0 && (v.master || v.owns(target)) {
+			out.ConcentrationDc = &dc
+		}
+	}
+	return out
+}
+
 // damage is the damage of an attack as the viewer gets it. The target's hit
-// points after it are the master's alone, set on the entry.
-func (e *logEntry) damage(dice, master bool, out *playv1.CombatLogEntry) *playv1.CombatLogDamage {
+// points after it are the master's alone, set on the entry; the concentration
+// DC is the master's and the target's own player's (targetsOwn).
+func (e *logEntry) damage(dice, master, targetsOwn bool, out *playv1.CombatLogEntry) *playv1.CombatLogDamage {
 	d := &playv1.CombatLogDamage{Status: e.status}
 	if e.dmg == nil {
 		return d // the attack hit and its damage is not rolled yet
@@ -275,12 +463,26 @@ func (e *logEntry) damage(dice, master bool, out *playv1.CombatLogEntry) *playv1
 	if dice {
 		d.Roll = diceRoll(e.dmg.DiceCount, e.dmg.DiceSides, e.dmg.Faces, e.dmg.Modifier, e.dmg.Amount, e.dmg.Physical)
 	}
+	if ap := e.applied; ap != nil { // the master's apply of a character's damage
+		d.Amount, d.DeathFailuresAdded = ap.Amount, ap.FailuresAdded
+		if ap.Overridden && master {
+			rolled := ap.Rolled
+			d.RolledAmount = &rolled
+		}
+		if dc := ap.ConcentrationDC; dc > 0 && targetsOwn {
+			d.ConcentrationDc = &dc
+		}
+	}
 	if after := e.dmg.After; after != nil && e.status == playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED {
 		d.TargetDefeated = after.Defeated
 		d.TargetDown = !after.Defeated && after.HP == 0
 		if master {
 			out.HitPointsAfter = &after.HP
 		}
+	}
+	if e.applied == nil && e.dmg.ConcentrationDC > 0 && targetsOwn && e.status == playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED {
+		dc := e.dmg.ConcentrationDC
+		d.ConcentrationDc = &dc
 	}
 	return d
 }
@@ -315,6 +517,16 @@ func (n *keyNames) of(ctx context.Context, c playdb.Combatant, key string) strin
 	for _, a := range sheet.Actions {
 		if a.Key == key {
 			return a.Name
+		}
+	}
+	for _, a := range sheet.FeatureActions {
+		if a.Key == key {
+			return a.Name
+		}
+	}
+	if strings.HasPrefix(key, "spell:") {
+		if sp, err := n.s.roster.CombatSpell(ctx, n.campaignID, c.CharacterID, key, 0); err == nil {
+			return sp.Name
 		}
 	}
 	return ""

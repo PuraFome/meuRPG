@@ -33,8 +33,8 @@ func TestResourcesAndActions(t *testing.T) {
 		t.Errorf("Second Wind action = %+v", act)
 	}
 
-	// Action Surge comes at fighter level 2, with its own resource and no
-	// grant_action of its own.
+	// Action Surge comes at fighter level 2, with its own resource and a free
+	// action that spends it.
 	if !hasResource(d, "action_surge") {
 		t.Errorf("a level 3 fighter has no Action Surge: %+v", d.Resources)
 	}
@@ -96,5 +96,49 @@ func TestAttackDice(t *testing.T) {
 	}
 	if qs, _ := attackOf(p, "equipment:quarterstaff"); qs.DamageDice != (DiceFormula{Count: 1, Sides: 6, Bonus: 1}) {
 		t.Errorf("quarterstaff = %+v", qs)
+	}
+}
+
+// TestExtraAttackAndActionSurge: the closed extra_attack effect gives the
+// attacks of the Attack action (2 at level 5, never at level 4), and Action
+// Surge is a free action that spends its resource.
+func TestExtraAttackAndActionSurge(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	for _, tt := range []struct {
+		class string
+		level int
+		want  int
+	}{
+		{"class:fighter", 4, 1},
+		{"class:fighter", 5, 2},
+		{"class:barbarian", 5, 2},
+		{"class:monk", 5, 2},
+		{"class:paladin", 5, 2},
+		{"class:ranger", 5, 2},
+		{"class:wizard", 5, 1},
+		{"class:rogue", 5, 1},
+	} {
+		if got := Derive(standard(tt.class, tt.level), c).AttacksPerAction; got != tt.want {
+			t.Errorf("%s %d: AttacksPerAction = %d, want %d", tt.class, tt.level, got, tt.want)
+		}
+	}
+	var surge *Action
+	d := Derive(toren(), c)
+	for i := range d.Actions {
+		if d.Actions[i].Key == "feature:action-surge-1-use" {
+			surge = &d.Actions[i]
+		}
+	}
+	if surge == nil || surge.Economy != EconomyFree || surge.Resource != "action_surge" {
+		t.Errorf("Action Surge action = %+v, want a free action that spends action_surge", surge)
+	}
+}
+
+func TestConditions(t *testing.T) {
+	t.Parallel()
+	got := loadForTest(t).Conditions()
+	if len(got) != 15 || got[0].Key != "condition:blinded" || got[0].NamePT != "Cego" {
+		t.Errorf("Conditions() = %v, want the 15 SRD conditions from blinded", got)
 	}
 }
