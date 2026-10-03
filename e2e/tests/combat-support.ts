@@ -154,5 +154,6 @@ export interface Combatant {
   col?: number;
   row?: number;
   movementLeftFt?: number;
+  hitPointsCurrent?: number;
   defeated?: boolean;
 }
