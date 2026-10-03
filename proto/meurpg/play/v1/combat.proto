@@ -3,10 +3,11 @@ syntax = "proto3";
 // This file is the combat's API (MR-012, MR-013, MR-014, Etapa 6): the
 // encounter, who fights, the initiative, the order of turns, the movement on
 // the map's grid, what a turn can do, the attacks and their damage, the
-// standard actions, the NPCs' hit points, the undo and the combat log.
-// Spells, reactions, death saves and conditions come with the next slice. It
-// is in the same package as play.proto because the live events of a combat
-// travel on the same stream (WatchGameSession).
+// spells (slots, saving throws, healing, concentration), the reactions
+// (Escudo, the opportunity attack), the death saves, the conditions, the
+// class features, the standard actions, the NPCs' hit points, the undo and the
+// combat log. It is in the same package as play.proto because the live events
+// of a combat travel on the same stream (WatchGameSession).
 package meurpg.play.v1;
 
 import "google/protobuf/timestamp.proto";
@@ -206,7 +207,10 @@ service CombatService {
   //     combatant is not their character, or nobody is on turn.
   //   - `failed_precondition`: the combat is not ACTIVE, or nobody in it can
   //     take a turn (NOT_ACTIVE); the combatant has a damage that waits to be
-  //     rolled or applied (PENDING_DAMAGE, see discard_pending_damage).
+  //     rolled, applied or for a reaction (PENDING_DAMAGE, see
+  //     discard_pending_damage); the player's character is down and its death
+  //     save is due (DEATH_SAVE_DUE: roll it first; the master may pass the
+  //     turn anyway).
   //   - `aborted`: expected_combatant_id is not the one on turn.
   rpc EndTurn(EndTurnRequest) returns (EndTurnResponse);
 
@@ -301,8 +305,13 @@ service CombatService {
   // works out (economy, attacks, spells, actions), it lists, for each attack
   // that rolls to hit, the targets the caller sees with the distance (a
   // king's move, 5 ft a square: RN-21) and whether each is too far, and the
-  // damage this combatant still has to roll or that waits for the master.
-  // Spells are listed; casting them comes with the next slice.
+  // damage this combatant still has to roll or that waits for the master. For
+  // each spell that can be cast, it lists the targets the caller sees, with the
+  // distance and whether each is too far for the spell (spell_targets), and
+  // how many attacks of the Attack action are left (Extra Attack:
+  // options.economy.attacks_left). attack_targets is filled also when the
+  // combatant is off turn, so the app can offer an opportunity attack
+  // (RollAttack, as_reaction) while the reaction is unused.
   //
   // A player never gets a hidden combatant among the targets, nor anyone's
   // armor class.
@@ -327,14 +336,26 @@ service CombatService {
   // as in SubmitInitiative: the player chooses on each roll unless the master
   // forced a mode (WRONG_DICE_MODE). An NPC's roll is the master's: either way.
   //
-  // The attack spends the action (one attack per action: Extra Attack and
-  // the NPCs' multiattack come with the next slice; the master may attack
-  // again). The server compares the total with the target's armor class: a
+  // The attack spends the action. A cantrip (a spell attack of options.attacks)
+  // takes the whole action and never counts for Extra Attack, which belongs to
+  // weapon attacks: after a weapon attack a cantrip is ACTION_USED, and the other
+  // way round. With Extra Attack the first weapon attack spends
+  // it and the next ones of the same Attack action (2 at level 5) are allowed
+  // while options.economy.attacks_left is above 0 (ATTACKS_USED after; a
+  // single-attack combatant gets ACTION_USED). An NPC's multiattack is the
+  // master's, who may attack again. With as_reaction the attack is an
+  // opportunity attack: a melee attack off turn that spends the reaction
+  // instead of the action. The server compares the total with the target's armor
+  // class (plus the +5 of an active Escudo): a
   // natural 20 hits and is a critical hit, a natural 1 misses, any other
   // roll hits when the total reaches the armor class. The answer carries the
   // roll as numbers and the outcome, never the armor class. A hit opens a
   // pending damage (stored, so a retry or a reload finds it) for RollDamage;
-  // a miss ends the attack.
+  // a miss ends the attack. When the hit lands on a player's character that
+  // can still cast Escudo (prepared, a free slot, reaction unused, not a
+  // critical hit), the pending damage waits for the reaction instead
+  // (AWAITING_REACTION, see UseReaction): the attacker sees "waiting for the
+  // reaction", never why.
   //
   // A player must be in reach: the target at most the attack's range (a
   // melee attack: its reach, 5 ft unless the weapon says more) from them.
@@ -351,10 +372,14 @@ service CombatService {
   //     their character.
   //   - `invalid_argument`: neither roll_in_app nor d20_face is set, the face
   //     is not 1 to 20, the attack_key is not one of the attacker's attacks
-  //     or asks for a saving throw (the next slice), or the attacker is the
-  //     target.
+  //     or asks for a saving throw (that is CastSpell, with no slot for a
+  //     cantrip such as Chama Sagrada), the attacker is the target, or
+  //     as_reaction is set for an attack that is not melee or on the
+  //     attacker's own turn.
   //   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_YOUR_TURN
-  //     (the attacker is not on turn), ACTION_USED (a player), COMBATANT_DOWN,
+  //     (the attacker is not on turn; not for as_reaction), ACTION_USED or
+  //     ATTACKS_USED (a player), REACTION_USED (as_reaction, a player),
+  //     COMBATANT_DOWN,
   //     TARGET_DEFEATED, NOT_PLACED (a player without a square, or a target
   //     without one), TARGET_OUT_OF_REACH (with missing_ft) and WRONG_DICE_MODE.
   rpc RollAttack(RollAttackRequest) returns (RollAttackResponse);
@@ -377,6 +402,17 @@ service CombatService {
   // damage waits for the master (status ROLLED) until ApplyPendingDamage or
   // DiscardPendingDamage (RN-02).
   //
+  // A pending damage that comes from a spell has more to it. The pending
+  // damages of one cast share a cast_id, and an area spell's damage is one
+  // roll for the whole cast (SRD): rolling any of them rolls once and settles
+  // all the others of the cast, in full or, for a target that saved, in half
+  // (rounded down); the rest come back in cast_pending_damages. A healing
+  // spell's pending is a heal: the roll plus the caster's spellcasting
+  // modifier (the SRD's "+ MOD") heals the target at once, up to its maximum,
+  // for an NPC and for a player's character alike (a character healed from 0
+  // gets up and its death saves reset). Magic Missile's pending damages are
+  // one for each target, with its darts.
+  //
   // Errors:
   //   - `not_found`: the pending damage is not in this combat, or the caller
   //     is a player and may not see the attacker.
@@ -385,14 +421,25 @@ service CombatService {
   //   - `invalid_argument`: neither roll_in_app nor typed_sum is set, or the
   //     sum is out of range for the dice.
   //   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED,
-  //     DAMAGE_ALREADY_ROLLED, DAMAGE_RESOLVED and WRONG_DICE_MODE.
+  //     DAMAGE_ALREADY_ROLLED, DAMAGE_RESOLVED, REACTION_PENDING (the hit still
+  //     waits for the target's reaction) and WRONG_DICE_MODE.
   rpc RollDamage(RollDamageRequest) returns (RollDamageResponse);
 
   // ApplyPendingDamage applies a rolled damage to a player's character: the
   // damage goes through the character's vitals (RN-02): temporary hit points
   // first, then hit points, never below 0. At 0 the character is down
-  // ("Caído"; the death saves come with the next slice). Only the master may
-  // call it, and only for a damage in ROLLED.
+  // ("Caído") and makes death saves (RollDeathSave). A damage that hits a
+  // character already at 0 does not lower anything: it is a death save
+  // failure, two for a critical hit (RN-03). When the target is concentrating
+  // on a spell, the answer carries the Constitution save DC to keep it
+  // (PendingDamage.concentration_dc, RN-22): the table rolls it, the app only
+  // reminds.
+  //
+  // amount is the master's last word (RN-02): when set (0 to 9,999) he applies
+  // that number instead of the rolled one, because of a save he overrules, a
+  // resistance or a table decision. The log keeps both numbers for him; the
+  // character's player only sees what they took. Only the master may call it,
+  // and only for a damage in ROLLED.
   //
   // Every stream gets `encounter_changed`, and the character's player and the
   // master `vitals_changed`.
@@ -400,24 +447,37 @@ service CombatService {
   // Errors:
   //   - `not_found`: the pending damage is not in this combat.
   //   - `permission_denied`: the caller is a player.
+  //   - `invalid_argument`: amount is outside 0 to 9,999.
   //   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED,
-  //     DAMAGE_NOT_ROLLED and DAMAGE_RESOLVED.
+  //     DAMAGE_NOT_ROLLED, DAMAGE_RESOLVED and REACTION_PENDING.
   rpc ApplyPendingDamage(ApplyPendingDamageRequest) returns (ApplyPendingDamageResponse);
 
   // DiscardPendingDamage drops a damage without applying it ("Não aplicar"),
   // rolled or not. Only the master may call it.
   //
-  // Errors: as ApplyPendingDamage, except that a damage not yet rolled may
-  // be discarded (no DAMAGE_NOT_ROLLED).
+  // Errors: as ApplyPendingDamage, except that a damage not yet rolled, or
+  // waiting for a reaction, may be discarded (no DAMAGE_NOT_ROLLED, no
+  // REACTION_PENDING), and there is no amount.
   rpc DiscardPendingDamage(DiscardPendingDamageRequest) returns (DiscardPendingDamageResponse);
 
   // TakeAction takes one of the standard actions that only spend the action
   // economy: Dash, Disengage, Dodge, Help, Hide, Ready, Search and Use an
   // Object (the keys of rules.v1.TurnOptions.standard_actions, such as
-  // "standard:dash"). Attack and Cast a Spell are not taken here: RollAttack
-  // and, with the next slice, casting. Dash doubles the speed for the rest of
-  // the turn (RN-21). The rest only spend the action and go to the log: the
-  // app reminds the table of their effects.
+  // "standard:dash"), or a feature action of the character's class or race
+  // (rules.v1.TurnOptions.feature_actions, such as "feature:second-wind").
+  // Attack and Cast a Spell are not taken here: RollAttack and CastSpell. Dash
+  // doubles the speed for the rest of the turn (RN-21). The rest only spend
+  // the action and go to the log: the app reminds the table of their effects.
+  //
+  // A feature action also spends one use of its resource (Retomar o fôlego,
+  // Surto de ação, Fúria...; the character's vitals keep the uses, and the
+  // master corrects them: rests come later). Only two change numbers.
+  // Retomar o fôlego (feature:second-wind) heals 1d10 plus the fighter's level
+  // through the vitals path, rolled like a damage (roll_in_app, or typed_sum of
+  // the d10); the answer says how much. Surto de ação
+  // (feature:action-surge-1-use) makes the action available again, with the
+  // attacks of the Attack action. A feature that is a pool (Cura pelas mãos)
+  // spends the action and no points: the master keeps the pool.
   //
   // The combatant must be on turn. Its player may act for their own
   // character, and the master for any (the master may act again with the
@@ -428,9 +488,12 @@ service CombatService {
   //     open session, or the caller is a player and may not see it.
   //   - `permission_denied`: the caller is a player and the combatant is not
   //     their character.
-  //   - `invalid_argument`: the action_key is not one of those listed above.
+  //   - `invalid_argument`: the action_key is not one of those listed above,
+  //     or the roll is missing or out of range for an action that rolls.
   //   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_YOUR_TURN,
-  //     ACTION_USED (a player) and COMBATANT_DOWN.
+  //     ACTION_USED, BONUS_ACTION_USED or REACTION_USED (a player: the economy
+  //     the action costs), NO_USES (the resource is spent; recharge says when it
+  //     comes back), WRONG_DICE_MODE and COMBATANT_DOWN.
   rpc TakeAction(TakeActionRequest) returns (TakeActionResponse);
 
   // AdjustCombatantHitPoints is the master's hand on an NPC's hit points:
@@ -451,11 +514,17 @@ service CombatService {
   rpc AdjustCombatantHitPoints(AdjustCombatantHitPointsRequest) returns (AdjustCombatantHitPointsResponse);
 
   // UndoLastAction takes back the last action, one step ("Desfazer"): an
-  // attack roll, a damage roll, an applied or discarded damage, a standard
-  // action or an NPC's hit point change. It restores the hit points, the
-  // vitals, the economy, the defeated flag and the pending damage exactly as
-  // they were, and writes a compensating event: the history keeps both. The
-  // undone entry leaves the combat log.
+  // attack roll, a damage roll, an applied or discarded damage, a standard or
+  // feature action, a spell cast, a reaction used or declined, a death save,
+  // the conditions or the concentration marked, or an NPC's hit point change.
+  // It restores the hit points, the vitals (spell slots, class resources,
+  // hit points), the economy, the Escudo bonus, the concentration, the death
+  // save counts, the defeated flag and the pending damage exactly as they
+  // were, and writes a compensating event: the history keeps both. The undone
+  // entry leaves the combat log. ConfirmDeath is never undone: the character
+  // is dead in the characters module by then, and bringing a character back
+  // is the master's (AdjustCharacterVitals and the characters' own service),
+  // not a step back.
   //
   // Only the master may call it. expected_event_id is the event the master
   // sees as the last action (ListCombatLog.undoable_event_id): if another is
@@ -471,6 +540,186 @@ service CombatService {
   //   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED or
   //     NOTHING_TO_UNDO.
   rpc UndoLastAction(UndoLastActionRequest) returns (UndoLastActionResponse);
+
+  // CastSpell casts a spell (MR-014, RN-02): the caster's player may cast for
+  // their own character on its turn, and the master for any combatant on turn
+  // (an NPC with a full sheet casts from its sheet; an NPC's spell slots are
+  // not counted, only a player's character's are).
+  //
+  // spell_key is one of the spells GetTurnOptions lists (options.spells), or a
+  // cantrip of options.attacks that asks for a saving throw (Chama Sagrada);
+  // an attack-roll cantrip such as Raio de Fogo stays on RollAttack. slot is
+  // the slot it is cast with: unset for a cantrip, and for a spell at least the
+  // spell's level, with a free slot (a SlotChoice of the spell's options).
+  //
+  // The cast spends the slot and the action or bonus action at once, in the same
+  // transaction (MR-014): a retry with the same idempotency_key spends nothing,
+  // and a spell that does nothing the table cannot see is still spent. A
+  // reaction spell (Escudo) is not cast here: UseReaction.
+  //
+  // targets are who it touches, as the caller sees them, in range (the spell's
+  // range from the caster, a king's move at 5 ft a square; Self is the caster
+  // alone, Touch is 5 ft; the master is never held to the range, and the caster
+  // may target itself). A spell that targets one creature takes one; one with
+  // "an additional creature" per slot level takes one more for each level above
+  // the spell's; an area spell takes any number, even none. A spell with no
+  // target but the caster (Self) takes none. A cast takes at most 10 targets, the
+  // master's too (what each target did must fit the cast's session event). Magic
+  // Missile is cast with `darts`
+  // in each target: 3 darts, and one more for each slot level above the 1st, shared
+  // out as the caster wants, at least one for each target listed.
+  //
+  // What the cast does depends on the spell:
+  //   - A spell attack (Guiding Bolt): one d20 for each target (roll_in_app, or
+  //     d20_face for a single target, RN-18), against the target's armor class as
+  //     in RollAttack: a hit opens a pending damage (critical on a natural 20).
+  //   - A saving throw (Mãos Flamejantes, Onda Trovejante): the server rolls the
+  //     save of every target. An NPC with a full sheet uses its saving throw
+  //     bonus; a basic sheet has none, so it rolls d20 + 0 and the log says the
+  //     bonus is not known. A player's character's save is rolled by the app too,
+  //     with its sheet's bonus; the master has the last word through the amount
+  //     of ApplyPendingDamage. A target that saves takes half of the damage when
+  //     the spell says so (rounded down), and nothing when it says none. The
+  //     damage is one roll for the whole cast, rolled by RollDamage.
+  //   - Magic Missile: a pending damage for each target, 1d4 + 1 for each dart at
+  //     any slot level,
+  //     with no roll to hit.
+  //   - Healing (Curar Ferimentos): a pending heal for each target, rolled by
+  //     RollDamage, with the caster's spellcasting modifier.
+  //   - Anything else (Sono, Teia, Passo Nebuloso...): it spends and goes to the
+  //     log; the effect is the table's, and the master marks the conditions
+  //     (SetCombatantConditions).
+  //
+  // A concentration spell sets the caster's concentration_spell; a second one
+  // replaces the first, and the log says the first ended (RN-22).
+  //
+  // Every stream gets `encounter_changed`; the master's, and a player's when no
+  // hidden combatant is involved, `combat_log_changed`; the caster's player and
+  // the master `vitals_changed` (the slot).
+  //
+  // Errors:
+  //   - `not_found`: the combat, the caster or a target is not in this
+  //     campaign's open session, or the caller is a player and may not see it.
+  //   - `permission_denied`: the caller is a player and the caster is not their
+  //     character.
+  //   - `invalid_argument`: more than 10 targets, no roll for a spell attack, a face out of 1 to 20 or
+  //     d20_face with more than one target, a spell that is not one of the
+  //     caster's or cannot be cast now (a reaction, a casting time too long), a
+  //     slot that does not fit, a wrong number of targets or darts, or the same
+  //     target twice.
+  //   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_YOUR_TURN,
+  //     COMBATANT_DOWN, ACTION_USED or BONUS_ACTION_USED (a player),
+  //     NO_SLOT (with min_level), NOT_PLACED and TARGET_OUT_OF_REACH (with
+  //     missing_ft; a player), TARGET_DEFEATED and WRONG_DICE_MODE.
+  rpc CastSpell(CastSpellRequest) returns (CastSpellResponse);
+
+  // UseReaction casts Escudo (the spell) when a hit lands on a player's
+  // character: the hit's pending damage waits in AWAITING_REACTION, and the
+  // target's player and the master see a prompt (Encounter.reaction_prompts).
+  // The target's player may call it for their own character, and the master for
+  // any. It spends the slot (at least 1st level, with a free slot: slot is one
+  // of the prompt's) and the reaction, and gives the combatant +5 armor class
+  // until the start of its next turn: every attack meanwhile uses it. The
+  // server then compares the attack again: a total below the new armor class
+  // is a MISS (the log says Escudo stopped it) and the pending damage is
+  // discarded; a total that still reaches it goes on to AWAITING_ROLL. The
+  // answer never carries the attack's total or the armor class: the player
+  // decides without them, as at a table.
+  //
+  // Every stream gets `encounter_changed`; the master's, and a player's when no
+  // hidden combatant is involved, `combat_log_changed`; the target's player and
+  // the master `vitals_changed`.
+  //
+  // Errors:
+  //   - `not_found`: the pending damage is not in this combat, or the caller is
+  //     a player and may not see its target.
+  //   - `permission_denied`: the caller is a player and the target is not their
+  //     character.
+  //   - `invalid_argument`: the slot does not fit Escudo (below the 1st level, or
+  //     not one of the character's).
+  //   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED,
+  //     NOT_AWAITING_REACTION, NO_SLOT (with min_level) and REACTION_USED.
+  rpc UseReaction(UseReactionRequest) returns (UseReactionResponse);
+
+  // DeclineReaction lets the hit go ("Não usar"): the pending damage goes on to
+  // AWAITING_ROLL. The target's player may call it for their own character, and
+  // the master for any (when the player does not answer).
+  //
+  // Every stream gets `encounter_changed`.
+  //
+  // Errors: as UseReaction, without the slot errors.
+  rpc DeclineReaction(DeclineReactionRequest) returns (DeclineReactionResponse);
+
+  // RollDeathSave rolls a death save for a player's character at 0 hit points
+  // (RN-03): its turn starts with one due (Combatant.death_save_due). The
+  // character's player may roll for their own, and the master for any, with the
+  // d20 rolled by the app (roll_in_app) or typed from a physical die (d20_face,
+  // 1 to 20; RN-18 per roll). 10 or more is a success, less a failure, a natural
+  // 1 two failures; a natural 20 brings the character back with 1 hit point
+  // (through the vitals; it may act, and both counts reset). Three successes
+  // make it stable: it stops rolling and stays at 0 ("Estável"). Three failures
+  // make it dying: the master confirms the death (ConfirmDeath); the engine
+  // never kills a character by itself. The counts stay on the combatant until the
+  // combat ends, and a new combat starts at 0 and 0.
+  //
+  // Any healing above 0 resets both counts (a spell, Retomar o fôlego, the
+  // master's AdjustCharacterVitals). A damage that hits a character at 0 is a
+  // failure (ApplyPendingDamage).
+  //
+  // Every stream gets `encounter_changed`; the master's, and a player's when no
+  // hidden combatant is involved, `combat_log_changed`; the character's player
+  // and the master `vitals_changed` on a natural 20.
+  //
+  // Errors:
+  //   - `not_found`: the combatant is not in this combat, or the caller is a
+  //     player and may not see it.
+  //   - `permission_denied`: the caller is a player and the combatant is not
+  //     their character.
+  //   - `invalid_argument`: no roll, or a face out of 1 to 20, or the combatant is
+  //     an NPC.
+  //   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_YOUR_TURN,
+  //     DEATH_SAVE_NOT_DUE (the character is not down, already rolled this
+  //     turn, is stable or dying) and WRONG_DICE_MODE.
+  rpc RollDeathSave(RollDeathSaveRequest) returns (RollDeathSaveResponse);
+
+  // ConfirmDeath is the master's word that a player's character who failed
+  // three death saves is dead (RN-03, question 39): it marks the character dead
+  // (CharacterService.MarkCharacterDead's effect: the player may create
+  // another), takes it out of the order and logs it. Until then the character
+  // is "Morrendo" to the master and "Caído" to the players, and the app never
+  // says it died. Only the master may call it, and only for a character with
+  // three failures. It cannot be undone (UndoLastAction).
+  //
+  // Every stream gets `encounter_changed` and `turn_changed`; the master's, and
+  // a player's, `combat_log_changed`.
+  //
+  // Errors:
+  //   - `not_found`: the combatant is not in this combat.
+  //   - `permission_denied`: the caller is a player.
+  //   - `invalid_argument`: the combatant is an NPC.
+  //   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED and NOT_DYING
+  //     (fewer than three failures, or already confirmed).
+  rpc ConfirmDeath(ConfirmDeathRequest) returns (ConfirmDeathResponse);
+
+  // SetCombatantConditions sets the condition labels of a combatant and clears
+  // its concentration (RN-22): labels only, the app reminds the table and
+  // applies no effect. The master may do both for anyone; a player may only end
+  // their own character's concentration. A condition is a key of the SRD's
+  // ("condition:poisoned"); the set replaces the old one. A concentration
+  // spell is set by CastSpell, never here.
+  //
+  // Every stream gets `encounter_changed`; `combat_log_changed` for the
+  // master's, and for a player's when no hidden combatant is involved.
+  //
+  // Errors:
+  //   - `not_found`: the combatant is not in this combat, or the caller is a
+  //     player and may not see it.
+  //   - `permission_denied`: the caller is a player and the combatant is not
+  //     their character, or the caller is a player and sets conditions.
+  //   - `invalid_argument`: nothing to change, a key that is not a condition, a
+  //     condition twice, or more than 20.
+  //   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
+  rpc SetCombatantConditions(SetCombatantConditionsRequest) returns (SetCombatantConditionsResponse);
 
   // ListCombatLog returns the combat log ("Registro do combate"), latest
   // first, grouped by round. Every entry is structured: the app writes the
@@ -524,9 +773,22 @@ enum CombatantState {
   COMBATANT_STATE_BADLY_HURT = 3;
   // Out of the fight: "Derrotado".
   COMBATANT_STATE_DEFEATED = 4;
-  // A player's character at 0 hit points: "Caído". The word is for
-  // everyone who sees the combatant, never its numbers.
+  // A player's character at 0 hit points that is still making death saves:
+  // "Caído". It is not the prone condition ("condition:prone"),
+  // which the master marks as a label. The word is for everyone who sees the
+  // combatant, never its numbers.
   COMBATANT_STATE_DOWN = 5;
+  // A player's character at 0 hit points with three death save failures, waiting
+  // for the master to confirm the death: "Morrendo". Only the master gets it; a
+  // player gets DOWN (the failure counts are public, the word is not, and the app
+  // never claims a death before the master confirms it).
+  COMBATANT_STATE_DYING = 6;
+  // A player's character at 0 hit points with three death save successes:
+  // "Estável". Everyone who sees the combatant gets it.
+  COMBATANT_STATE_STABLE = 7;
+  // A player's character whose death the master confirmed (ConfirmDeath):
+  // "Morto". It stays in the list, out of the order.
+  COMBATANT_STATE_DEAD = 8;
 }
 
 // EncounterBlockedReason says why CombatService refused a call with
@@ -588,6 +850,32 @@ enum EncounterBlockedReason {
   // RollAttack, TakeAction: a player's character at 0 hit points does not
   // act (the death saves come with the next slice).
   ENCOUNTER_BLOCKED_REASON_COMBATANT_DOWN = 23;
+  // RollDamage, ApplyPendingDamage: the hit still waits for the target's reaction
+  // (UseReaction or DeclineReaction; the master may also discard it).
+  ENCOUNTER_BLOCKED_REASON_REACTION_PENDING = 24;
+  // CastSpell, UseReaction: no free slot of that level or above. min_level says
+  // the lowest level that would do.
+  ENCOUNTER_BLOCKED_REASON_NO_SLOT = 25;
+  // CastSpell, TakeAction: the bonus action of this turn is already used.
+  ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_USED = 26;
+  // UseReaction, RollAttack (as_reaction), TakeAction: the reaction is already
+  // used (it comes back at the start of the combatant's turn).
+  ENCOUNTER_BLOCKED_REASON_REACTION_USED = 27;
+  // RollAttack: the Attack action made all its attacks (Extra Attack).
+  ENCOUNTER_BLOCKED_REASON_ATTACKS_USED = 28;
+  // EndTurn: the combatant's death save is due; roll it first. The master may
+  // pass the turn anyway.
+  ENCOUNTER_BLOCKED_REASON_DEATH_SAVE_DUE = 29;
+  // RollDeathSave: the combatant has no death save to roll now.
+  ENCOUNTER_BLOCKED_REASON_DEATH_SAVE_NOT_DUE = 30;
+  // ConfirmDeath: the character has not failed three death saves, or its death
+  // was confirmed already.
+  ENCOUNTER_BLOCKED_REASON_NOT_DYING = 31;
+  // UseReaction, DeclineReaction: the pending damage does not wait for a
+  // reaction.
+  ENCOUNTER_BLOCKED_REASON_NOT_AWAITING_REACTION = 32;
+  // TakeAction: the feature's uses are spent. recharge says when they come back.
+  ENCOUNTER_BLOCKED_REASON_NO_USES = 33;
 }
 
 // EncounterBlocked is the error detail of CombatService's
@@ -601,6 +889,10 @@ message EncounterBlocked {
   string map_id = 3;
   // INITIATIVE_MISSING: the combatants that have no initiative (UUIDs).
   repeated string combatant_ids = 4;
+  // NO_SLOT: the lowest slot level that would do.
+  int32 min_level = 5;
+  // NO_USES: when the uses come back.
+  meurpg.rules.v1.Recharge recharge = 6;
 }
 
 // Encounter is a combat as the caller may see it.
@@ -639,6 +931,28 @@ message Encounter {
   google.protobuf.Timestamp started_at = 13;
   // When it ended. Unset until then.
   google.protobuf.Timestamp ended_at = 14;
+  // The hits that wait for a reaction (Escudo), for the caller: the master gets
+  // all of them, a player only the ones on their own character. Empty when
+  // nothing waits. The app opens its prompt from this after each
+  // `encounter_changed`.
+  repeated ReactionPrompt reaction_prompts = 15;
+}
+
+// ReactionPrompt is a hit that waits for its target's reaction: "Você foi
+// atingido: usar Escudo?" (UseReaction, DeclineReaction). It never carries the
+// attack's total or the armor class, and a player does not get who attacked.
+message ReactionPrompt {
+  // The pending damage of the hit (a UUID): what UseReaction and
+  // DeclineReaction name.
+  string pending_damage_id = 1;
+  // The combatant that was hit (a UUID).
+  string target_id = 2;
+  // The attacker (a UUID). Only the master.
+  string attacker_id = 3;
+  // The reaction spell, "spell:shield".
+  string spell_key = 4;
+  // The slots it can be cast with: at least the 1st level, with a free slot.
+  repeated meurpg.rules.v1.SlotChoice slots = 5;
 }
 
 // Combatant is one who fights, as the caller may see it. Fields marked "only
@@ -707,6 +1021,17 @@ message Combatant {
   // player never learns an armor class (RN-20). Unset for a player, and for
   // a character whose sheet is gone.
   optional int32 armor_class = 30;
+  // The armor class the combatant has on top of its sheet's, until the start of
+  // its next turn: 5 with Escudo, 0 otherwise. Only the master and the
+  // combatant's own player; never an armor class itself.
+  int32 armor_class_bonus = 31;
+  // A player's character at 0 hit points whose turn it is, still making death
+  // saves and not yet rolled this turn: RollDeathSave is due, and EndTurn waits
+  // for it. A character that drops to 0 during its own turn owes nothing until
+  // its next turn starts (SRD 5.1). Only the master and the character's own player.
+  bool death_save_due = 32;
+  // The conditions' Portuguese names, in the same order as `conditions`.
+  repeated string condition_names_pt = 33;
 }
 
 // Participant is who joins a combat: a character of the campaign.
@@ -924,11 +1249,15 @@ enum PendingDamageStatus {
   // Rolled, for a player's character: waits for the master
   // (ApplyPendingDamage or DiscardPendingDamage).
   PENDING_DAMAGE_STATUS_ROLLED = 2;
-  // Applied to the target: at once for an NPC, by the master for a player's
-  // character.
+  // Applied to the target: at once for an NPC (or a heal), by the master for a
+  // player's character.
   PENDING_DAMAGE_STATUS_APPLIED = 3;
-  // Dropped by the master without applying.
+  // Dropped by the master without applying, or stopped by Escudo.
   PENDING_DAMAGE_STATUS_DISCARDED = 4;
+  // The attack hit a player's character that may cast Escudo: the hit waits for
+  // the target's reaction (UseReaction or DeclineReaction) before its damage
+  // can be rolled.
+  PENDING_DAMAGE_STATUS_AWAITING_REACTION = 5;
 }
 
 // PendingDamage is the damage of an attack that hit: stored, so a retry or a
@@ -958,6 +1287,27 @@ message PendingDamage {
   int32 amount = 13;
   // APPLIED to an NPC: it reached 0 and is defeated.
   bool target_defeated = 14;
+  // The spell's cast, when the damage comes from one (a UUID): the pending
+  // damages of one cast share it, and an area spell's damage is one roll for
+  // all of them (RollDamage).
+  string cast_id = 15;
+  // A heal, not a damage: RollDamage heals the target at once. The dice already
+  // hold the caster's spellcasting modifier in `bonus`.
+  bool healing = 16;
+  // The target saved and the spell halves the damage: `amount` is half of the
+  // roll, rounded down.
+  bool half = 17;
+  // The damage the master applied when it is not the rolled one
+  // (ApplyPendingDamage.amount). Unset otherwise.
+  optional int32 applied_amount = 18;
+  // APPLIED to a target that is concentrating on a spell: the Constitution save
+  // DC to keep it, 10 or half of the damage taken, whichever is higher (RN-22).
+  // The table rolls it. Only the master and the target's own player.
+  optional int32 concentration_dc = 19;
+  // APPLIED to a player's character that was already at 0 hit points: the
+  // death save failures the damage caused (1, or 2 for a critical hit) instead
+  // of hit points.
+  int32 death_failures_added = 20;
 }
 
 // GetTurnOptionsRequest names a combatant.
@@ -980,6 +1330,35 @@ message GetTurnOptionsResponse {
   // The damage this combatant still has to roll, or that waits for the
   // master to apply. Only the master and the combatant's player get it.
   repeated PendingDamage pending_damages = 4;
+  // For each spell of options.spells, and each save cantrip of options.attacks,
+  // who it can target, as the caller sees them: the caster itself and the other
+  // combatants that are not defeated (a combatant at 0 hit points can be
+  // healed), with the distance and whether the spell cannot reach it.
+  repeated SpellTargets spell_targets = 5;
+}
+
+// SpellTargets lists the targets one spell can choose.
+message SpellTargets {
+  // The spell, as in rules.v1.Spell.key.
+  string spell_key = 1;
+  // The combatants the caller sees, in turn order. `too_far` is for the spell's
+  // range: Self reaches only the caster (or any target for a spell that comes
+  // out of the caster, such as a cone), Touch 5 ft.
+  repeated TargetInReach targets = 2;
+  // How many targets the spell takes at its own level; 0 means any number (an
+  // area), and no target at all for a spell that targets the caster only.
+  int32 max_targets = 3;
+  // True when the spell takes one more target for each slot level above its own.
+  bool extra_target_per_level = 4;
+  // Magic Missile: how many darts each slot level makes (3 at the 1st, one more
+  // for each level above). Empty for any other spell.
+  repeated DartsAtSlot darts = 5;
+}
+
+// DartsAtSlot is how many darts a slot level makes.
+message DartsAtSlot {
+  int32 slot_level = 1;
+  int32 darts = 2;
 }
 
 // AttackTargets lists the targets one attack can choose.
@@ -1024,6 +1403,11 @@ message RollAttackRequest {
     // The face of a physical d20, 1 to 20.
     int32 d20_face = 8;
   }
+  // True: an opportunity attack. A melee attack off the attacker's turn that
+  // spends its reaction instead of its action (a player: the reaction must be
+  // unused; the master may for anyone). Other reaction spells stay the
+  // table's.
+  bool as_reaction = 9;
 }
 
 // AttackRoll is the attack roll and what it did.
@@ -1068,9 +1452,12 @@ message RollDamageRequest {
 // RollDamageResponse returns the damage after the roll.
 message RollDamageResponse {
   Encounter encounter = 1;
-  // APPLIED for an NPC target; ROLLED, waiting for the master, for a player's
-  // character.
+  // APPLIED for an NPC target or a heal; ROLLED, waiting for the master, for a
+  // player's character.
   PendingDamage pending_damage = 2;
+  // The other pending damages of the same cast that this roll settled too
+  // (an area spell's damage is one roll for all), as the caller may see them.
+  repeated PendingDamage cast_pending_damages = 3;
 }
 
 // ApplyPendingDamageRequest applies a rolled damage.
@@ -1079,6 +1466,9 @@ message ApplyPendingDamageRequest {
   string encounter_id = 2;
   string pending_damage_id = 3;
   string idempotency_key = 4;
+  // The damage to apply instead of the rolled one, 0 to 9,999: the master's last
+  // word. Unset applies what was rolled.
+  optional int32 amount = 5;
 }
 
 // ApplyPendingDamageResponse returns the damage, APPLIED.
@@ -1106,14 +1496,30 @@ message TakeActionRequest {
   string campaign_id = 1;
   string encounter_id = 2;
   string combatant_id = 3;
-  // The action, as in rules.v1.Action.key: "standard:dash", "standard:dodge"...
+  // The action, as in rules.v1.Action.key: "standard:dash", "standard:dodge",
+  // "feature:second-wind"...
   string action_key = 4;
   string idempotency_key = 5;
+  // How the dice come, for an action that rolls (Retomar o fôlego: a d10);
+  // ignored by the others.
+  oneof roll {
+    // True: the app rolls the dice on the server.
+    bool roll_in_app = 6;
+    // The sum of the physical dice, without the modifier: 1 to 10 for the d10
+    // of Retomar o fôlego.
+    int32 typed_sum = 7;
+  }
 }
 
 // TakeActionResponse returns the combat after the action.
 message TakeActionResponse {
   Encounter encounter = 1;
+  // The roll of an action that rolls, for the master and the combatant's
+  // player. Unset for the others.
+  DiceRoll roll = 2;
+  // Retomar o fôlego: the hit points healed (up to the maximum). Unset for the
+  // others.
+  optional int32 healed = 3;
 }
 
 // AdjustCombatantHitPointsRequest is the master's correction of an NPC.
@@ -1153,6 +1559,241 @@ message UndoLastActionRequest {
 
 // UndoLastActionResponse returns the combat after the undo.
 message UndoLastActionResponse {
+  Encounter encounter = 1;
+}
+
+// SpellSlot is the slot a spell is cast with.
+message SpellSlot {
+  // The slot level, 1 to 9.
+  int32 level = 1;
+  // True for a Warlock's pact magic slot (level is then its level).
+  bool pact = 2;
+}
+
+// SpellTarget is one target of a spell.
+message SpellTarget {
+  // The combatant (a UUID).
+  string combatant_id = 1;
+  // Magic Missile only: the darts that go to this target, at least 1.
+  int32 darts = 2;
+}
+
+// CastSpellRequest casts a spell.
+message CastSpellRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  // The combatant that casts (a UUID).
+  string caster_id = 3;
+  // The spell, one of GetTurnOptions' options.spells keys, or a save cantrip of
+  // options.attacks.
+  string spell_key = 4;
+  // The slot. Unset for a cantrip.
+  SpellSlot slot = 5;
+  // Who it touches. Empty for a spell that stays on the caster, and for an area
+  // that meets nobody.
+  repeated SpellTarget targets = 6;
+  string idempotency_key = 7;
+  // How the d20 of a spell attack comes: exactly one for a spell with an attack
+  // roll, ignored by the others. roll_in_app rolls one d20 for each target;
+  // d20_face is the face of a physical die and fits a single target.
+  oneof roll {
+    // True: the app rolls the d20 on the server (RN-18).
+    bool roll_in_app = 8;
+    // The face of a physical d20, 1 to 20.
+    int32 d20_face = 9;
+  }
+}
+
+// SaveOutcome is what a target's saving throw did.
+enum SaveOutcome {
+  SAVE_OUTCOME_UNSPECIFIED = 0;
+  // The total reached the spell's DC.
+  SAVE_OUTCOME_SAVED = 1;
+  // The total fell short.
+  SAVE_OUTCOME_FAILED = 2;
+}
+
+// SaveResult is a target's saving throw against a spell.
+message SaveResult {
+  SaveOutcome outcome = 1;
+  // The d20 plus the target's saving throw bonus. Only the master and the
+  // target's own player; everyone else gets the outcome as a word (an NPC's dice
+  // never reach a player, RN-20).
+  DiceRoll roll = 2;
+  // False when the target is a basic-sheet NPC, which has no saving throw bonus:
+  // the roll is d20 + 0 and the master may overrule it. Only the master.
+  bool bonus_known = 3;
+  // The spell's save DC. Only the master and the caster's player.
+  int32 dc = 4;
+}
+
+// SpellTargetResult is what a cast did to one target.
+message SpellTargetResult {
+  string combatant_id = 1;
+  // Magic Missile: the darts that went to it.
+  int32 darts = 2;
+  // A spell attack: what the roll did. Unspecified for the others.
+  AttackOutcome outcome = 3;
+  // A spell attack: the d20. Only the master and the caster's player.
+  DiceRoll attack_roll = 4;
+  // A saving throw spell: the target's save.
+  SaveResult save = 5;
+  // The pending damage (or heal) the cast opened for this target, to roll with
+  // RollDamage; empty when none (a miss, a save that avoids it, a spell with no
+  // damage). Only for the master and the caster's player.
+  string pending_damage_id = 6;
+}
+
+// CastSpellResponse returns the combat and what the cast did.
+message CastSpellResponse {
+  Encounter encounter = 1;
+  SpellCast cast = 2;
+}
+
+// SpellCast is a cast, as the caller may see it.
+message SpellCast {
+  // Stable ID of the cast (a UUID): the cast_id of its pending damages.
+  string cast_id = 1;
+  string spell_key = 2;
+  // The slot spent. Unset for a cantrip.
+  SpellSlot slot = 3;
+  repeated SpellTargetResult targets = 4;
+  // True when the spell needs concentration: the caster is concentrating on it now.
+  bool concentrating = 5;
+  // The spell the caster stopped concentrating on to cast this one (RN-22).
+  string concentration_ended_spell_key = 6;
+  // The pending damages and heals the cast opened, for the master and the
+  // caster's player only.
+  repeated PendingDamage pending_damages = 7;
+}
+
+// UseReactionRequest casts Escudo against a hit.
+message UseReactionRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  // The hit (a UUID), from the ReactionPrompt.
+  string pending_damage_id = 3;
+  // The slot Escudo is cast with: one of the prompt's.
+  SpellSlot slot = 4;
+  string idempotency_key = 5;
+}
+
+// ReactionOutcome is what Escudo did to the hit.
+enum ReactionOutcome {
+  REACTION_OUTCOME_UNSPECIFIED = 0;
+  // The new armor class made the attack miss: no damage.
+  REACTION_OUTCOME_STOPPED = 1;
+  // The attack still hits: its damage goes on.
+  REACTION_OUTCOME_STILL_HIT = 2;
+}
+
+// UseReactionResponse returns the combat and what the reaction did.
+message UseReactionResponse {
+  Encounter encounter = 1;
+  ReactionOutcome outcome = 2;
+  // The hit's pending damage after it (DISCARDED when stopped, AWAITING_ROLL when
+  // it still hits). Only for the master.
+  PendingDamage pending_damage = 3;
+}
+
+// DeclineReactionRequest lets a hit go.
+message DeclineReactionRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string pending_damage_id = 3;
+  string idempotency_key = 4;
+}
+
+// DeclineReactionResponse returns the combat after the hit went on.
+message DeclineReactionResponse {
+  Encounter encounter = 1;
+}
+
+// DeathSaveOutcome is what a death save did.
+enum DeathSaveOutcome {
+  DEATH_SAVE_OUTCOME_UNSPECIFIED = 0;
+  // 10 or more: one success.
+  DEATH_SAVE_OUTCOME_SUCCESS = 1;
+  // Less than 10: one failure.
+  DEATH_SAVE_OUTCOME_FAILURE = 2;
+  // A natural 1: two failures.
+  DEATH_SAVE_OUTCOME_CRITICAL_FAILURE = 3;
+  // A natural 20: back with 1 hit point, both counts reset.
+  DEATH_SAVE_OUTCOME_REVIVED = 4;
+}
+
+// RollDeathSaveRequest rolls a death save.
+message RollDeathSaveRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string combatant_id = 3;
+  string idempotency_key = 4;
+  // How the d20 comes: exactly one.
+  oneof roll {
+    // True: the app rolls the d20 on the server (RN-18).
+    bool roll_in_app = 5;
+    // The face of a physical d20, 1 to 20.
+    int32 d20_face = 6;
+  }
+}
+
+// DeathSave is a death save and where it left the character.
+message DeathSave {
+  // The d20 (no modifier).
+  DiceRoll roll = 1;
+  DeathSaveOutcome outcome = 2;
+  // The counts after it, 0 to 3 each.
+  int32 successes = 3;
+  int32 failures = 4;
+  // Three successes: it stays at 0 hit points and stops rolling.
+  bool stable = 5;
+  // Three failures: the master confirms the death. Only the master gets it; a
+  // player only sees the counts.
+  bool dying = 6;
+}
+
+// RollDeathSaveResponse returns the combat and the save.
+message RollDeathSaveResponse {
+  Encounter encounter = 1;
+  DeathSave death_save = 2;
+}
+
+// ConfirmDeathRequest confirms a death.
+message ConfirmDeathRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string combatant_id = 3;
+  string idempotency_key = 4;
+}
+
+// ConfirmDeathResponse returns the combat after the death.
+message ConfirmDeathResponse {
+  Encounter encounter = 1;
+}
+
+// ConditionList is a set of condition labels.
+message ConditionList {
+  // Keys of the SRD's conditions, such as "condition:poisoned": at most 20, each
+  // once.
+  repeated string keys = 1;
+}
+
+// SetCombatantConditionsRequest sets labels on a combatant.
+message SetCombatantConditionsRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string combatant_id = 3;
+  string idempotency_key = 4;
+  // The new set of conditions, replacing the old one; empty clears them. Unset
+  // leaves them as they are. Only the master.
+  optional ConditionList conditions = 5;
+  // True: the combatant stops concentrating. The master for anyone; a player for
+  // their own character.
+  bool end_concentration = 6;
+}
+
+// SetCombatantConditionsResponse returns the combat after the change.
+message SetCombatantConditionsResponse {
   Encounter encounter = 1;
 }
 
@@ -1197,6 +1838,19 @@ enum CombatLogKind {
   COMBAT_LOG_KIND_REVEAL_CHANGED = 6;
   // The combat ended.
   COMBAT_LOG_KIND_COMBAT_ENDED = 7;
+  // A spell was cast: the caster, the slot and, in `spell`, what it did to each
+  // target (the roll, the save, the damage once rolled).
+  COMBAT_LOG_KIND_SPELL_CAST = 8;
+  // A reaction was used: the actor and the spell (`key`, `spell`). When it
+  // stopped an attack, that attack's entry says so (stopped_by_reaction).
+  COMBAT_LOG_KIND_REACTION = 9;
+  // A death save: the actor and `death_save`.
+  COMBAT_LOG_KIND_DEATH_SAVE = 10;
+  // The master confirmed a character's death: the target.
+  COMBAT_LOG_KIND_DEATH_CONFIRMED = 11;
+  // The conditions or the concentration of a combatant changed: the target,
+  // `conditions` and `concentration_ended_key`.
+  COMBAT_LOG_KIND_CONDITIONS_CHANGED = 12;
 }
 
 // CombatLogEntry is one line of the combat log, as the caller may see it.
@@ -1238,6 +1892,58 @@ message CombatLogEntry {
   // Only the master: this entry holds the last action, the one
   // UndoLastAction would take back.
   bool undoable = 19;
+  // SPELL_CAST and REACTION: the spell (its key is `key`, its name `key_name_pt`).
+  CombatLogSpell spell = 20;
+  // DEATH_SAVE: the save.
+  CombatLogDeathSave death_save = 21;
+  // CONDITIONS_CHANGED: the combatant's conditions now (keys of the SRD's), and
+  // the spell it stopped concentrating on, if it did.
+  repeated string conditions = 22;
+  string concentration_ended_key = 23;
+  // ATTACK: Escudo stopped the hit; `outcome` is MISS and there is no damage.
+  bool stopped_by_reaction = 24;
+  // ATTACK: an opportunity attack, with the reaction.
+  bool as_reaction = 25;
+}
+
+// CombatLogSpell is a spell in the combat log: the cast, or a reaction.
+message CombatLogSpell {
+  // The slot spent. Unset for a cantrip.
+  SpellSlot slot = 1;
+  // What it did to each target, in the order they were listed. Empty for
+  // Escudo.
+  repeated CombatLogSpellTarget targets = 2;
+  // The spell needs concentration.
+  bool concentrating = 3;
+  // The spell the caster stopped concentrating on to cast this one.
+  string concentration_ended_key = 4;
+}
+
+// CombatLogSpellTarget is what a cast did to one target, in the log. Its fields
+// follow the same visibility as SpellTargetResult and CombatLogDamage.
+message CombatLogSpellTarget {
+  string target_id = 1;
+  string target_label = 2;
+  int32 darts = 3;
+  AttackOutcome outcome = 4;
+  // The d20 of a spell attack. Only the master and the caster's player.
+  DiceRoll attack_roll = 5;
+  SaveResult save = 6;
+  // The damage or the heal, once it was rolled.
+  CombatLogDamage damage = 7;
+}
+
+// CombatLogDeathSave is a death save in the log.
+message CombatLogDeathSave {
+  // The d20. Only the master and the character's own player.
+  DiceRoll roll = 1;
+  DeathSaveOutcome outcome = 2;
+  // The counts after it.
+  int32 successes = 3;
+  int32 failures = 4;
+  bool stable = 5;
+  // Only the master.
+  bool dying = 6;
 }
 
 // CombatLogDamage is the damage of an attack, in the log.
@@ -1256,4 +1962,18 @@ message CombatLogDamage {
   bool target_defeated = 6;
   // APPLIED to a player's character that reached 0: down.
   bool target_down = 7;
+  // The target saved and the spell halves the damage: `amount` is half.
+  bool half = 8;
+  // A heal: `amount` is how much the target regained, up to its maximum, for
+  // the master and the target's own player; everyone else gets the roll, since
+  // the capped number would tell how many hit points the target lacked (RN-20).
+  bool healing = 9;
+  // The rolled damage when the master applied another number
+  // (ApplyPendingDamage.amount): `amount` is what was applied. Only the master.
+  optional int32 rolled_amount = 10;
+  // The Constitution save DC to keep a concentration the damage threatened
+  // (RN-22). Only the master and the target's own player.
+  optional int32 concentration_dc = 11;
+  // APPLIED to a character already at 0: the death save failures it caused.
+  int32 death_failures_added = 12;
 }

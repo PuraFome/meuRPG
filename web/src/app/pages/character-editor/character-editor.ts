@@ -14,7 +14,7 @@ import { MatRadioModule } from '@angular/material/radio';
 import { MatSelectModule } from '@angular/material/select';
 import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 
-import { describeCharacterError } from '../../core/characters/character-errors';
+import { characterBlockedMessage, describeCharacterError } from '../../core/characters/character-errors';
 import { characterKindLabel } from '../../core/characters/character-labels';
 import { CharacterKind, isFullSheetKind } from '../../core/characters/characters.types';
 import { FictionNotice } from '../../shared/fiction-notice/fiction-notice';
@@ -80,6 +80,9 @@ type ErrorState = {
   /** Where "Voltar" goes: the sheet when editing one, else the campaign. */
   backLink: string[];
   backLabel: string;
+  /** Set when nothing went wrong, but the sheet may not be edited now
+   * (locked or dead): the page names that state instead of an error. */
+  blocked?: { title: string };
 };
 
 type PageState = { status: 'loading'; title: string } | ErrorState | ReadyState;
@@ -127,9 +130,11 @@ function filterByName<T extends { readonly namePt: string }>(
  * so the whole form can be saved from any step. A submit with an invalid
  * field lists what to fix (`invalidSummary`), marks the steps that have
  * one, and opens the first of them. RN-01 is enforced on the server: this
- * page renders whatever `describeCharacterError` maps a
- * `failed_precondition` / `SHEET_LOCKED` response to, exactly like
- * `character-sheet` does. No D&D rule runs here: the page never shows a
+ * page opens an existing character only when `Character.can_edit` says the
+ * caller may save it (otherwise it shows why, as `character-sheet` does),
+ * and still renders whatever `describeCharacterError` maps a
+ * `failed_precondition` / `SHEET_LOCKED` response to, for a sheet locked
+ * while the form was open. No D&D rule runs here: the page never shows a
  * modifier, CA or PV it computed itself.
  *
  * A custom background's two granted skills (`CustomBackground.skill_keys`)
@@ -532,7 +537,10 @@ export class CharacterEditor {
     if (s.status === 'loading') {
       return s.title;
     }
-    return s.status === 'ready' ? titleFor(s.mode, s.kind) : 'Não foi possível abrir o formulário';
+    if (s.status === 'error') {
+      return s.blocked?.title ?? 'Não foi possível abrir o formulário';
+    }
+    return titleFor(s.mode, s.kind);
   });
 
   /** Cancel goes back where the person came from: the sheet being edited,
@@ -621,6 +629,18 @@ export class CharacterEditor {
       this.source.loadCharacterForEdit(campaignId, characterId),
     ])
       .then(([catalog, existing]) => {
+        if (existing.blocked) {
+          // Say it before the form: a player who opens the edit URL of a
+          // locked sheet would otherwise fill it in and only learn at "Salvar".
+          this.state.set({
+            status: 'error',
+            message: characterBlockedMessage(existing.blocked),
+            backLink: ['/campanhas', campaignId, 'personagens', characterId],
+            backLabel: 'Voltar para a ficha',
+            blocked: { title: existing.blocked === 'character_dead' ? 'Personagem morto' : 'Ficha travada' },
+          });
+          return;
+        }
         this.state.set({
           status: 'ready',
           mode: 'edit',
@@ -638,8 +658,6 @@ export class CharacterEditor {
         }
       })
       .catch((err: unknown) => {
-        // "sheet_locked" is the common case here: a player opened the edit
-        // URL for a sheet the server has since locked (RN-01).
         this.state.set({
           status: 'error',
           message: describeCharacterError(err),

@@ -6,15 +6,24 @@ p {
   margin: 0;
 }
 
-.map-image {
-  display: block;
-  width: 100%;
-  height: auto;
-  max-height: calc(100dvh - 260px);
-  object-fit: contain;
-  border: 1px solid var(--mr-line);
-  border-radius: var(--mr-radius-md);
-  background: var(--mr-ground);
+// The map at the image's ratio, centred when the window is too short for
+// its full width.
+.map-box {
+  margin-inline: auto;
+}
+
+// The legend at the footer's left, the link at its right; on a narrow
+// screen the link wraps under the legend and keeps to the right.
+.foot {
+  flex: 1 1 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-2) var(--mr-space-4);
+}
+
+.open {
+  margin-inline-start: auto;
 }
 
 .retry {

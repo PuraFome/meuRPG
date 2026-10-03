@@ -94,7 +94,7 @@ func (d *encounterData) turnFor(v combatViewer) (id string, masterTurn bool) {
 // view builds the Encounter the viewer sees. vitals are the player
 // characters' vitals by character ID; a player only learns from them that a
 // character is down, and the master gets the hit points.
-func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.CharacterVitals, armorClass map[string]int32) *playv1.Encounter {
+func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.CharacterVitals, armorClass map[string]int32, conditionNames map[string]string) *playv1.Encounter {
 	e := d.enc
 	out := &playv1.Encounter{
 		Id:          e.ID,
@@ -115,15 +115,18 @@ func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.Character
 	ties := unresolvedTies(d.cs)
 	for _, c := range d.cs {
 		if v.sees(c) {
-			out.Combatants = append(out.Combatants, combatantToProto(c, v, ties[c.ID], vitals[c.CharacterID], armorClass[c.CharacterID]))
+			onTurn := e.Status == statusActive && e.CurrentCombatantID != nil && *e.CurrentCombatantID == c.ID
+			out.Combatants = append(out.Combatants, combatantToProto(c, v, ties[c.ID], vitals[c.CharacterID], armorClass[c.CharacterID], onTurn, conditionNames))
 		}
 	}
 	return out
 }
 
 // combatantToProto builds the Combatant the viewer sees. The caller checked
-// that the viewer sees it.
-func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vitals *playv1.CharacterVitals, armorClass int32) *playv1.Combatant {
+// that the viewer sees it. armorClass is its sheet's, for the master's copy
+// only (0 when unknown). onTurn says it is the one whose turn it is, in a
+// running combat.
+func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vitals *playv1.CharacterVitals, armorClass int32, onTurn bool, conditionNames map[string]string) *playv1.Combatant {
 	mine := v.owns(c)
 	detail := v.master || mine // the numbers of the turn: the master's and the owner's
 	out := &playv1.Combatant{
@@ -138,6 +141,9 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 		DeathFailures:      c.DeathFailures,
 		Conditions:         c.Conditions,
 		ConcentrationSpell: deref(c.ConcentrationSpell),
+	}
+	for _, key := range c.Conditions {
+		out.ConditionNamesPt = append(out.ConditionNamesPt, conditionNames[key])
 	}
 	if placed(c) {
 		out.Col, out.Row = *c.GridCol, *c.GridRow
@@ -157,6 +163,8 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 		out.MovementUsedFt = c.MovementUsedFt
 		out.MovementLeftFt = clamp32(movementLeftFt(c), 0, 1200) // twice the largest speed
 		out.Dashed, out.ActionUsed, out.BonusActionUsed, out.ReactionUsed = c.Dashed, c.ActionUsed, c.BonusActionUsed, c.ReactionUsed
+		out.ArmorClassBonus = c.AcBonus
+		out.DeathSaveDue = onTurn && deathSaveDue(c, vitals)
 	}
 	if v.master {
 		out.Hidden = c.Hidden
@@ -173,10 +181,36 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 	}
 	// A player's character at 0 hit points is down ("Caído"): everyone who
 	// sees it gets the word, never the numbers (those are the master's, above).
-	if c.Kind == kindPlayer && vitals.GetHitPointsMax() > 0 && vitals.GetHitPointsCurrent() == 0 {
+	// With three death save successes it is "Estável"; with three failures it is
+	// "Morrendo" for the master, and still "Caído" for the players, who never
+	// hear it died before the master confirms (RN-03). A confirmed death is
+	// "Morto".
+	switch {
+	case c.Kind == kindPlayer && c.Defeated:
+		out.State = playv1.CombatantState_COMBATANT_STATE_DEAD
+	case c.Kind == kindPlayer && isDownIn(vitals):
 		out.State = playv1.CombatantState_COMBATANT_STATE_DOWN
+		switch {
+		case c.DeathSuccesses >= 3:
+			out.State = playv1.CombatantState_COMBATANT_STATE_STABLE
+		case c.DeathFailures >= 3 && v.master:
+			out.State = playv1.CombatantState_COMBATANT_STATE_DYING
+		}
 	}
 	return out
+}
+
+// isDownIn says whether the vitals are of a character at 0 hit points.
+func isDownIn(v *playv1.CharacterVitals) bool {
+	return v.GetHitPointsMax() > 0 && v.GetHitPointsCurrent() == 0
+}
+
+// deathSaveDue says whether a player's character, on turn, owes a death save:
+// it is down, still making them (not stable, not dying) and has not rolled this
+// turn.
+func deathSaveDue(c playdb.Combatant, vitals *playv1.CharacterVitals) bool {
+	return c.Kind == kindPlayer && !c.Defeated && isDownIn(vitals) &&
+		c.DeathSuccesses < 3 && c.DeathFailures < 3 && !c.DeathSaveRolled
 }
 
 // The database's statuses and kinds, and the API's.
@@ -217,7 +251,13 @@ func (s *Service) viewFor(ctx context.Context, m authz.Membership, d *encounterD
 			byCharacter[vit.GetCharacterId()] = vit
 		}
 	}
-	return d.view(v, byCharacter, s.armorClasses(ctx, m, d)), nil
+	out := d.view(v, byCharacter, s.armorClasses(ctx, m, d), s.conditionNames)
+	prompts, err := s.reactionPrompts(ctx, m, d)
+	if err != nil {
+		return nil, err
+	}
+	out.ReactionPrompts = prompts
+	return out, nil
 }
 
 // armorClasses reads the armor class of each character in the combat, for

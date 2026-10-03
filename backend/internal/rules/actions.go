@@ -87,10 +87,17 @@ func (c *content) loadStandardActions(fsys fs.FS) error {
 }
 
 // resourcesAndActions fills Derived.Resources and Derived.Actions from the
-// resource and grant_action effects of what the character has, and
-// StandardActions from the hand-written list.
+// resource and grant_action effects of what the character has,
+// StandardActions from the hand-written list, and AttacksPerAction from the
+// extra_attack effects.
 func (x *deriver) resourcesAndActions() {
 	x.d.StandardActions = slices.Clone(x.c.standardActions)
+	x.d.AttacksPerAction = 1
+	for _, a := range x.active {
+		if a.effect.Type == "extra_attack" && x.applies(a) {
+			x.d.AttacksPerAction = max(x.d.AttacksPerAction, a.effect.Count)
+		}
+	}
 	seen := map[string]bool{}
 	for _, a := range x.active {
 		e := a.effect

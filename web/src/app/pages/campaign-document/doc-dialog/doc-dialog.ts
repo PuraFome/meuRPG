@@ -23,6 +23,8 @@ let nextId = 0;
 export class DocDialog {
   readonly heading = input.required<string>();
   readonly subtitle = input('');
+  /** A Material Symbols name drawn before the subtitle (the map's "visibility"). */
+  readonly subtitleIcon = input('');
   readonly icon = input('');
   /** `wide` for the map, the default for lists and confirmations. */
   readonly size = input<'wide' | 'narrow'>('narrow');

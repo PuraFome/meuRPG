@@ -873,11 +873,15 @@ const (
 	// up, or already over).
 	DisabledReasonCode_DISABLED_REASON_CODE_COMBAT_NOT_ACTIVE DisabledReasonCode = 10
 	// CombatService.GetTurnOptions: a player's character at 0 hit points
-	// ("Caído"). The death saves come with the spells slice.
+	// ("Caído"): it makes death saves (CombatService.RollDeathSave) instead of
+	// acting.
 	DisabledReasonCode_DISABLED_REASON_CODE_COMBATANT_DOWN DisabledReasonCode = 11
 	// CombatService.GetTurnOptions: the combatant is out of the fight
 	// ("Derrotado").
 	DisabledReasonCode_DISABLED_REASON_CODE_COMBATANT_DEFEATED DisabledReasonCode = 12
+	// An attack: the Attack action made all its attacks this turn (Extra
+	// Attack). With a single attack per action the code is ACTION_USED.
+	DisabledReasonCode_DISABLED_REASON_CODE_ATTACKS_USED DisabledReasonCode = 13
 )
 
 // Enum value maps for DisabledReasonCode.
@@ -896,6 +900,7 @@ var (
 		10: "DISABLED_REASON_CODE_COMBAT_NOT_ACTIVE",
 		11: "DISABLED_REASON_CODE_COMBATANT_DOWN",
 		12: "DISABLED_REASON_CODE_COMBATANT_DEFEATED",
+		13: "DISABLED_REASON_CODE_ATTACKS_USED",
 	}
 	DisabledReasonCode_value = map[string]int32{
 		"DISABLED_REASON_CODE_UNSPECIFIED":            0,
@@ -911,6 +916,7 @@ var (
 		"DISABLED_REASON_CODE_COMBAT_NOT_ACTIVE":      10,
 		"DISABLED_REASON_CODE_COMBATANT_DOWN":         11,
 		"DISABLED_REASON_CODE_COMBATANT_DEFEATED":     12,
+		"DISABLED_REASON_CODE_ATTACKS_USED":           13,
 	}
 )
 
@@ -4732,11 +4738,18 @@ func (x *TurnOptions) GetFeatureActions() []*ActionOption {
 
 // TurnEconomy is the state of the turn's action economy.
 type TurnEconomy struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Action        *EconomyState          `protobuf:"bytes,1,opt,name=action,proto3" json:"action,omitempty"`
-	BonusAction   *EconomyState          `protobuf:"bytes,2,opt,name=bonus_action,json=bonusAction,proto3" json:"bonus_action,omitempty"`
-	Reaction      *EconomyState          `protobuf:"bytes,3,opt,name=reaction,proto3" json:"reaction,omitempty"`
-	Movement      *MovementLeft          `protobuf:"bytes,4,opt,name=movement,proto3" json:"movement,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Action      *EconomyState          `protobuf:"bytes,1,opt,name=action,proto3" json:"action,omitempty"`
+	BonusAction *EconomyState          `protobuf:"bytes,2,opt,name=bonus_action,json=bonusAction,proto3" json:"bonus_action,omitempty"`
+	Reaction    *EconomyState          `protobuf:"bytes,3,opt,name=reaction,proto3" json:"reaction,omitempty"`
+	Movement    *MovementLeft          `protobuf:"bytes,4,opt,name=movement,proto3" json:"movement,omitempty"`
+	// How many attacks the Attack action makes: 1, or 2 with Extra Attack. At
+	// least 1.
+	AttacksPerAction int32 `protobuf:"varint,5,opt,name=attacks_per_action,json=attacksPerAction,proto3" json:"attacks_per_action,omitempty"`
+	// How many of them remain this turn: all of them while the action is free,
+	// the rest after the first attack spent it, 0 when something else spent the
+	// action. The attacks stay enabled while this is above 0.
+	AttacksLeft   int32 `protobuf:"varint,6,opt,name=attacks_left,json=attacksLeft,proto3" json:"attacks_left,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4797,6 +4810,20 @@ func (x *TurnEconomy) GetMovement() *MovementLeft {
 		return x.Movement
 	}
 	return nil
+}
+
+func (x *TurnEconomy) GetAttacksPerAction() int32 {
+	if x != nil {
+		return x.AttacksPerAction
+	}
+	return 0
+}
+
+func (x *TurnEconomy) GetAttacksLeft() int32 {
+	if x != nil {
+		return x.AttacksLeft
+	}
+	return 0
 }
 
 // EconomyState says whether an action, bonus action or reaction is spent.
@@ -5583,12 +5610,14 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\aattacks\x18\x02 \x03(\v2\x1d.meurpg.rules.v1.AttackOptionR\aattacks\x124\n" +
 	"\x06spells\x18\x03 \x03(\v2\x1c.meurpg.rules.v1.SpellOptionR\x06spells\x12H\n" +
 	"\x10standard_actions\x18\x04 \x03(\v2\x1d.meurpg.rules.v1.ActionOptionR\x0fstandardActions\x12F\n" +
-	"\x0ffeature_actions\x18\x05 \x03(\v2\x1d.meurpg.rules.v1.ActionOptionR\x0efeatureActions\"\xfc\x01\n" +
+	"\x0ffeature_actions\x18\x05 \x03(\v2\x1d.meurpg.rules.v1.ActionOptionR\x0efeatureActions\"\xcd\x02\n" +
 	"\vTurnEconomy\x125\n" +
 	"\x06action\x18\x01 \x01(\v2\x1d.meurpg.rules.v1.EconomyStateR\x06action\x12@\n" +
 	"\fbonus_action\x18\x02 \x01(\v2\x1d.meurpg.rules.v1.EconomyStateR\vbonusAction\x129\n" +
 	"\breaction\x18\x03 \x01(\v2\x1d.meurpg.rules.v1.EconomyStateR\breaction\x129\n" +
-	"\bmovement\x18\x04 \x01(\v2\x1d.meurpg.rules.v1.MovementLeftR\bmovement\"@\n" +
+	"\bmovement\x18\x04 \x01(\v2\x1d.meurpg.rules.v1.MovementLeftR\bmovement\x12,\n" +
+	"\x12attacks_per_action\x18\x05 \x01(\x05R\x10attacksPerAction\x12!\n" +
+	"\fattacks_left\x18\x06 \x01(\x05R\vattacksLeft\"@\n" +
 	"\fEconomyState\x12\x12\n" +
 	"\x04used\x18\x01 \x01(\bR\x04used\x12\x1c\n" +
 	"\tavailable\x18\x02 \x01(\bR\tavailable\"[\n" +
@@ -5702,7 +5731,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x1eSPELL_SAVE_SUCCESS_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17SPELL_SAVE_SUCCESS_NONE\x10\x01\x12\x1b\n" +
 	"\x17SPELL_SAVE_SUCCESS_HALF\x10\x02\x12\x1c\n" +
-	"\x18SPELL_SAVE_SUCCESS_OTHER\x10\x03*\xab\x04\n" +
+	"\x18SPELL_SAVE_SUCCESS_OTHER\x10\x03*\xd2\x04\n" +
 	"\x12DisabledReasonCode\x12$\n" +
 	" DISABLED_REASON_CODE_UNSPECIFIED\x10\x00\x12$\n" +
 	" DISABLED_REASON_CODE_ACTION_USED\x10\x01\x12*\n" +
@@ -5717,7 +5746,8 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"&DISABLED_REASON_CODE_COMBAT_NOT_ACTIVE\x10\n" +
 	"\x12'\n" +
 	"#DISABLED_REASON_CODE_COMBATANT_DOWN\x10\v\x12+\n" +
-	"'DISABLED_REASON_CODE_COMBATANT_DEFEATED\x10\f2\xda\x01\n" +
+	"'DISABLED_REASON_CODE_COMBATANT_DEFEATED\x10\f\x12%\n" +
+	"!DISABLED_REASON_CODE_ATTACKS_USED\x10\r2\xda\x01\n" +
 	"\x0eContentService\x12]\n" +
 	"\vListContent\x12#.meurpg.rules.v1.ListContentRequest\x1a$.meurpg.rules.v1.ListContentResponse\"\x03\x90\x02\x02\x12i\n" +
 	"\x0fGetSpellDetails\x12'.meurpg.rules.v1.GetSpellDetailsRequest\x1a(.meurpg.rules.v1.GetSpellDetailsResponse\"\x03\x90\x02\x02B\xbf\x01\n" +

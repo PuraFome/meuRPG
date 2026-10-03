@@ -3,7 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import { Role } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
@@ -12,6 +12,7 @@ import { CampaignsService } from '../../../core/campaigns/campaigns.service';
 import { mapErrorMessage } from '../../../core/maps/map-errors';
 import { MapState } from '../../../core/maps/map-state';
 import { MapsClient } from '../../../core/maps/maps-client';
+import { OpenSessionLookup } from '../../../core/play/open-session';
 import { openImagePicker } from '../../../shared/gallery-picker/image-picker-dialog/image-picker-dialog';
 import { PHONE_QUERY, mediaQuery } from '../../../shared/map-view/media-query';
 import { MapEditor } from '../map-editor/map-editor';
@@ -33,7 +34,9 @@ type Phase = 'loading' | 'ready' | 'gone' | 'error';
  *   answer as a map that does not exist.
  *
  * The page loads the campaign (to know the role), the map and the campaign's
- * maps, and runs the header's calls ("Esconder", "Trocar imagem").
+ * maps, and runs the header's calls ("Esconder", "Trocar imagem",
+ * "Renomear", "Apagar mapa"). For the master it also asks whether the open
+ * session is on this map, so deleting it warns about that (E6-27).
  */
 @Component({
   selector: 'app-map-page',
@@ -55,6 +58,8 @@ export class MapPage {
   private readonly dialog = inject(MatDialog);
   private readonly injector = inject(Injector);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly sessions = inject(OpenSessionLookup);
 
   protected readonly phone = mediaQuery(PHONE_QUERY);
   protected readonly campaignId = signal('');
@@ -64,6 +69,8 @@ export class MapPage {
   protected readonly busy = signal(false);
   protected readonly notice = signal<string | null>(null);
   protected readonly fromSession = signal(false);
+  /** The open session's number when it is on this map (the master only). */
+  protected readonly currentSession = signal<number | null>(null);
 
   protected readonly state = new MapState((mapId) => this.api.get(this.campaignId(), mapId));
   protected readonly map = this.state.map;
@@ -122,6 +129,9 @@ export class MapPage {
       }
       this.phase.set('ready');
       void this.reloadMaps();
+      if (this.isMaster()) {
+        void this.loadSession(mapId, generation);
+      }
     } catch (err) {
       if (generation !== this.generation) {
         return;
@@ -144,6 +154,42 @@ export class MapPage {
       // The list is a convenience (targets, the player's other maps).
     }
   }
+
+  private async loadSession(mapId: string, generation: number): Promise<void> {
+    const session = await this.sessions.currentMap(this.campaignId());
+    if (generation === this.generation) {
+      this.currentSession.set(session?.mapId === mapId ? session.sessionNumber : null);
+    }
+  }
+
+  /** "Salvar nome" (E6-27): the header shows the message of a refusal. */
+  protected readonly saveName = async (name: string): Promise<void> => {
+    const map = this.map();
+    if (!map) {
+      return;
+    }
+    try {
+      this.state.setMap(await this.api.update(this.campaignId(), map.id, map.revision, { name }));
+    } catch (err) {
+      throw new Error(mapErrorMessage(err, 'renomear o mapa'));
+    }
+    void this.reloadMaps();
+  };
+
+  /** "Apagar mapa", confirmed: the map is gone, so the page goes back to the
+   * campaign, whose "Mapas" panel no longer lists it. */
+  protected readonly deleteMap = async (): Promise<void> => {
+    const map = this.map();
+    if (!map) {
+      return;
+    }
+    try {
+      await this.api.delete(this.campaignId(), map.id);
+    } catch (err) {
+      throw new Error(mapErrorMessage(err, 'apagar o mapa'));
+    }
+    await this.router.navigate(['/campanhas', this.campaignId()]);
+  };
 
   protected async toggleReveal(): Promise<void> {
     const map = this.map();

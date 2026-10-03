@@ -905,6 +905,13 @@ message TurnEconomy {
   EconomyState bonus_action = 2;
   EconomyState reaction = 3;
   MovementLeft movement = 4;
+  // How many attacks the Attack action makes: 1, or 2 with Extra Attack. At
+  // least 1.
+  int32 attacks_per_action = 5;
+  // How many of them remain this turn: all of them while the action is free,
+  // the rest after the first attack spent it, 0 when something else spent the
+  // action. The attacks stay enabled while this is above 0.
+  int32 attacks_left = 6;
 }
 
 // EconomyState says whether an action, bonus action or reaction is spent.
@@ -953,11 +960,15 @@ enum DisabledReasonCode {
   // up, or already over).
   DISABLED_REASON_CODE_COMBAT_NOT_ACTIVE = 10;
   // CombatService.GetTurnOptions: a player's character at 0 hit points
-  // ("Caído"). The death saves come with the spells slice.
+  // ("Caído"): it makes death saves (CombatService.RollDeathSave) instead of
+  // acting.
   DISABLED_REASON_CODE_COMBATANT_DOWN = 11;
   // CombatService.GetTurnOptions: the combatant is out of the fight
   // ("Derrotado").
   DISABLED_REASON_CODE_COMBATANT_DEFEATED = 12;
+  // An attack: the Attack action made all its attacks this turn (Extra
+  // Attack). With a single attack per action the code is ACTION_USED.
+  DISABLED_REASON_CODE_ATTACKS_USED = 13;
 }
 
 // AttackOption is an attack the character can make.

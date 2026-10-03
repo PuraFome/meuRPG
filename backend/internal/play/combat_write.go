@@ -38,6 +38,14 @@ const (
 	eventActionTaken       = "action_taken"
 	eventHitPointsAdjusted = "hit_points_adjusted"
 	eventActionUndone      = "action_undone"
+	// Spells, reactions, death saves and conditions (combat_spells.go,
+	// combat_reactions.go, combat_death.go, combat_conditions.go).
+	eventSpellCast        = "spell_cast"
+	eventReactionUsed     = "reaction_used"
+	eventReactionDeclined = "reaction_declined"
+	eventDeathSaveRolled  = "death_save_rolled"
+	eventDeathConfirmed   = "death_confirmed"
+	eventConditionsSet    = "conditions_set"
 )
 
 // combatWrite describes one change to a combat: who makes it, the idempotency
@@ -60,6 +68,8 @@ type combatTx struct {
 	enc         playdb.Encounter
 	now         time.Time
 	characterID *string
+	// castID is the id the pending damages of the spell being cast share.
+	castID string
 }
 
 // combatResult is what a change leaves for the handler: the session, and

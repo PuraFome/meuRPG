@@ -174,6 +174,21 @@ export function labelSide(xBp: number, yBp: number): LabelSide {
   return yBp > 9000 ? 'above' : 'below';
 }
 
+/** How far to slide a label sideways so it stays on the image: its natural
+ * left and right edges against the image's (screen pixels, with a margin
+ * already taken off the image's). 0 when it fits; a label wider than the
+ * image starts at its left edge. The side rule above works in percentages,
+ * so on a narrow map a long name near an edge still needs this. */
+export function labelShift(left: number, right: number, minLeft: number, maxRight: number): number {
+  if (left < minLeft || right - left > maxRight - minLeft) {
+    return minLeft - left;
+  }
+  if (right > maxRight) {
+    return maxRight - right;
+  }
+  return 0;
+}
+
 /** The master sees everything, each thing with its state; anyone else only
  * what is revealed or visible, even if a hidden thing slipped in (the
  * server never sends one: this is the second lock). */

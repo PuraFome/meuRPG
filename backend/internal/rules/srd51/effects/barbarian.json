@@ -24,7 +24,7 @@
       {"type": "choice", "choice": "ability_score_improvement", "count": 1}
     ],
     "feature:barbarian-extra-attack": [
-      {"type": "note"}
+      {"type": "extra_attack", "count": 2}
     ],
     "feature:fast-movement": [
       {"type": "modifier", "target": "speed.walk", "mode": "add", "value": "10", "when": "armor() != \"heavy\""}

@@ -5,6 +5,7 @@ import {
   clampBp,
   clampTransform,
   focusTransform,
+  labelShift,
   labelSide,
   nudge,
   scaleLabel,
@@ -141,6 +142,15 @@ describe('labels and initials', () => {
     expect(labelSide(9200, 5000)).toBe('left');
     expect(labelSide(500, 5000)).toBe('right');
     expect(labelSide(5000, 9500)).toBe('above');
+  });
+
+  it('slides a label back onto the image, and leaves one that fits alone', () => {
+    // A 170px label centred 77px from the left of a 310px map (E5-29 on a phone).
+    expect(labelShift(-8, 162, 4, 306)).toBe(12);
+    expect(labelShift(200, 330, 4, 306)).toBe(-24);
+    expect(labelShift(40, 210, 4, 306)).toBe(0);
+    // Wider than the map: it starts at the left edge.
+    expect(labelShift(-50, 350, 4, 306)).toBe(54);
   });
 });
 

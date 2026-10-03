@@ -8,6 +8,8 @@ import {
 import { CharacterService } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { MapService } from '../../../gen/meurpg/maps/v1/maps_pb';
 import { CONNECT_TRANSPORT } from '../../core/connect/transport';
+import { OpenSessionLookup, type OpenSessionMap } from '../../core/play/open-session';
+import { ViewPoint } from '../../shared/map-view/map-geometry';
 
 /** A map, as the document's dialogs show it. */
 export interface MapView {
@@ -16,7 +18,12 @@ export interface MapView {
   readonly revealed: boolean;
   /** Absent in a listing; present from `GetMap`. */
   readonly image: { readonly url: string; readonly width: number; readonly height: number } | null;
+  /** Every point, hidden ones too (only the master reads the document);
+   * empty in a listing. */
+  readonly points: readonly ViewPoint[];
 }
+
+export type { OpenSessionMap };
 
 /** A character, as the document's dialogs show it. */
 export interface SheetView {
@@ -62,6 +69,7 @@ export class DocumentClient {
 export class DocumentLinks {
   private readonly maps = createClient(MapService, inject(CONNECT_TRANSPORT));
   private readonly characters = createClient(CharacterService, inject(CONNECT_TRANSPORT));
+  private readonly sessions = inject(OpenSessionLookup);
 
   async listMaps(campaignId: string): Promise<MapView[]> {
     const res = await this.maps.listMaps({ campaignId });
@@ -72,6 +80,7 @@ export class DocumentLinks {
       image: m.image
         ? { url: m.image.url, width: m.image.width, height: m.image.height }
         : null,
+      points: [],
     }));
   }
 
@@ -86,7 +95,14 @@ export class DocumentLinks {
       name: m.name,
       revealed: m.revealed,
       image: m.image ? { url: m.image.url, width: m.image.width, height: m.image.height } : null,
+      points: res.points,
     };
+  }
+
+  /** The open session's number and current map, or null: the dialog only
+   * adds "Mapa atual da Sessão 4" when it knows. */
+  openSessionMap(campaignId: string): Promise<OpenSessionMap | null> {
+    return this.sessions.currentMap(campaignId);
   }
 
   async listCharacters(campaignId: string): Promise<SheetView[]> {

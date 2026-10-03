@@ -77,3 +77,24 @@ func DamageTotal(f rules.DiceFormula, faces []int, critical bool) (int, error) {
 func ConcentrationDC(damage int) int {
 	return max(10, damage/2)
 }
+
+// ShieldACBonus is what the Shield spell adds to the armor class until the start
+// of the caster's next turn.
+const ShieldACBonus = 5
+
+// MissileDarts is how many darts Magic Missile makes when cast with a slot of
+// the level: three, and one more for each level above the 1st.
+func MissileDarts(slotLevel int) int {
+	return 3 + max(slotLevel-1, 0)
+}
+
+// SaveSucceeded says whether a saving throw's total reaches the spell's DC.
+func SaveSucceeded(total, dc int) bool {
+	return total >= dc
+}
+
+// HalfDamage is half of a damage, rounded down: what a creature that saved
+// takes from a spell that says "half as much damage on a successful save".
+func HalfDamage(damage int) int {
+	return max(damage, 0) / 2
+}

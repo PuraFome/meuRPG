@@ -177,10 +177,12 @@ SET hidden = $2
 WHERE id = $1;
 
 -- name: ResetCombatantTurn :exec
--- The start of a combatant's own turn: movement, action, bonus action, dash and
--- reaction come back.
+-- The start of a combatant's own turn: movement, action, bonus action, dash,
+-- reaction and the attacks made come back, the Escudo bonus ends, and a death
+-- save is due again.
 UPDATE combatants
-SET movement_used_ft = 0, dashed = false, action_used = false, bonus_action_used = false, reaction_used = false
+SET movement_used_ft = 0, dashed = false, action_used = false, bonus_action_used = false, reaction_used = false,
+    attacks_made = 0, ac_bonus = 0, death_save_rolled = false
 WHERE id = $1;
 
 -- name: MarkCombatantDashed :exec
@@ -205,14 +207,72 @@ UPDATE combatants
 SET action_used = $2, bonus_action_used = $3, reaction_used = $4, dashed = $5
 WHERE id = $1;
 
+-- name: SetCombatantAttacksMade :exec
+-- The attacks the Attack action made this turn (Extra Attack), or its undo.
+UPDATE combatants
+SET attacks_made = $2
+WHERE id = $1;
+
+-- name: SetCombatantAcBonus :exec
+-- Escudo's +5 until the start of the combatant's next turn, or its undo.
+UPDATE combatants
+SET ac_bonus = $2
+WHERE id = $1;
+
+-- name: SetCombatantConcentration :exec
+-- The spell the combatant concentrates on, or NULL when it stops (RN-22).
+UPDATE combatants
+SET concentration_spell = $2
+WHERE id = $1;
+
+-- name: SetCombatantConditions :exec
+-- The condition labels the master marked (RN-22).
+UPDATE combatants
+SET conditions = $2
+WHERE id = $1;
+
+-- name: SetCombatantDeathSaves :exec
+-- The death save counts, whether the turn's save was rolled, and whether the
+-- combatant is out of the fight (a death the master confirmed), or their undo.
+UPDATE combatants
+SET death_successes = $2, death_failures = $3, death_save_rolled = $4, defeated = $5
+WHERE id = $1;
+
+-- name: ResetDeathSavesOfCharacter :exec
+-- Healing above 0 resets both counts (RN-03): the character's combatant in the
+-- session's combat that is not ended. An ended combat keeps its counts for the
+-- summary.
+UPDATE combatants
+SET death_successes = 0, death_failures = 0
+WHERE character_id = sqlc.arg(character_id)
+  AND encounter_id IN (SELECT id FROM encounters WHERE game_session_id = sqlc.arg(game_session_id) AND status <> 'ended');
+
+-- name: MarkDeathSaveRolledOnTurn :exec
+-- A character that drops to 0 hit points during its own turn owes no death save
+-- until its next turn starts (SRD 5.1: the save is rolled at the start of the
+-- turn), so this turn's save counts as done. Only the combatant on turn, in the
+-- session's active combat.
+UPDATE combatants
+SET death_save_rolled = true
+WHERE character_id = sqlc.arg(character_id)
+  AND id IN (
+      SELECT current_combatant_id FROM encounters
+      WHERE game_session_id = sqlc.arg(game_session_id) AND status = 'active' AND current_combatant_id IS NOT NULL
+  );
+
 -- Pending damage (MR-012, MR-014): the damage of an attack that hit. Every write
 -- below runs after the caller locked the open session's row.
 
 -- name: InsertPendingDamage :one
+-- A hit's damage waits for its roll, or, for a hit on a player's character that
+-- may cast Escudo, for the target's reaction (attack_total is then kept for the
+-- new comparison). A spell's damages carry their cast_id, and may be a heal or
+-- a half damage.
 INSERT INTO pending_damages (
     encounter_id, attacker_id, target_id, attack_key, status, critical,
-    dice_count, dice_sides, dice_bonus, damage_type, created_at
-) VALUES ($1, $2, $3, $4, 'awaiting_roll', $5, $6, $7, $8, $9, $10)
+    dice_count, dice_sides, dice_bonus, damage_type, created_at,
+    cast_id, healing, half, attack_total
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 RETURNING *;
 
 -- name: GetPendingDamage :one
@@ -221,30 +281,53 @@ SELECT * FROM pending_damages
 WHERE encounter_id = $1 AND id = $2;
 
 -- name: ListOpenPendingDamages :many
--- What still waits to be rolled or applied in the combat, oldest first.
+-- What still waits for a reaction, to be rolled or applied in the combat,
+-- oldest first.
 SELECT * FROM pending_damages
-WHERE encounter_id = $1 AND status IN ('awaiting_roll', 'rolled')
+WHERE encounter_id = $1 AND status IN ('awaiting_reaction', 'awaiting_roll', 'rolled')
+ORDER BY created_at, id;
+
+-- name: ListCastPendingDamages :many
+-- The pending damages of one spell cast, oldest first.
+SELECT * FROM pending_damages
+WHERE encounter_id = $1 AND cast_id = $2
 ORDER BY created_at, id;
 
 -- name: SetPendingDamageRolled :one
 -- The roll of a pending damage: 'rolled' for a player's character (waits for
--- the master), 'applied' for an NPC.
+-- the master), 'applied' for an NPC. amount is what lands, roll_total the roll
+-- before a half damage halves it.
 UPDATE pending_damages
-SET status = $2, faces = $3, physical = $4, amount = $5, resolved_at = $6
+SET status = $2, faces = $3, physical = $4, amount = $5, resolved_at = $6, roll_total = $7
 WHERE id = $1
 RETURNING *;
 
 -- name: SetPendingDamageStatus :one
--- Applied or discarded by the master, or back to where it was (an undo).
+-- Applied or discarded by the master, a reaction's answer, or back to where it
+-- was (an undo).
 UPDATE pending_damages
 SET status = $2, resolved_at = $3
+WHERE id = $1
+RETURNING *;
+
+-- name: SetPendingDamageApplied :one
+-- Applied by the master, with the amount when it is not the rolled one.
+UPDATE pending_damages
+SET status = 'applied', resolved_at = $2, applied_amount = $3
+WHERE id = $1
+RETURNING *;
+
+-- name: ClearPendingDamageApplied :one
+-- An undo of an applied damage: back to waiting for the master.
+UPDATE pending_damages
+SET status = 'rolled', resolved_at = NULL, applied_amount = NULL
 WHERE id = $1
 RETURNING *;
 
 -- name: ClearPendingDamageRoll :one
 -- An undo of the damage roll: it waits to be rolled again.
 UPDATE pending_damages
-SET status = 'awaiting_roll', faces = '{}', physical = false, amount = NULL, resolved_at = NULL
+SET status = 'awaiting_roll', faces = '{}', physical = false, amount = NULL, resolved_at = NULL, roll_total = NULL
 WHERE id = $1
 RETURNING *;
 

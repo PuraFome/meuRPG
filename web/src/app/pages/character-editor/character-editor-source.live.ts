@@ -6,6 +6,7 @@ import {
   BasicSheet as GenBasicSheet,
   CharacterKind as GenCharacterKind,
   CharacterService,
+  CharacterState as GenCharacterState,
   CustomBackground,
   FullSheet as GenFullSheet,
   HitPointsMethod as GenHitPointsMethod,
@@ -29,6 +30,7 @@ import {
   BasicCharacterFormValue,
   CastingTimeUnitKey,
   CharacterEditorSource,
+  CharacterForEdit,
   CharacterFormValue,
   CreateCharacterInput,
   DurationKindKey,
@@ -499,7 +501,7 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
     return spellDetailsFromGen(res.spell!);
   }
 
-  async loadCharacterForEdit(campaignId: string, characterId: string) {
+  async loadCharacterForEdit(campaignId: string, characterId: string): Promise<CharacterForEdit> {
     const res = await this.characterClient.getCharacter({ campaignId, characterId });
     const character = res.character!;
     const kind = KIND_FROM_GEN[character.kind];
@@ -515,6 +517,14 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
     return {
       kind,
       revision: character.revision,
+      // The server says whether this caller may save the sheet now: a
+      // player's sheet locks at the first session (RN-01), and a dead
+      // character's never changes again (RN-03).
+      blocked: character.canEdit
+        ? null
+        : character.state === GenCharacterState.DEAD
+          ? 'character_dead'
+          : 'sheet_locked',
       full,
       basic:
         sheetCase === 'basic'

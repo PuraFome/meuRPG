@@ -46,7 +46,7 @@
       {"type": "choice", "choice": "ability_score_improvement", "count": 1}
     ],
     "feature:ranger-extra-attack": [
-      {"type": "note"}
+      {"type": "extra_attack", "count": 2}
     ]
   }
 }

@@ -52,7 +52,7 @@
       {"type": "choice", "choice": "ability_score_improvement", "count": 1}
     ],
     "feature:paladin-extra-attack": [
-      {"type": "note"}
+      {"type": "extra_attack", "count": 2}
     ]
   }
 }

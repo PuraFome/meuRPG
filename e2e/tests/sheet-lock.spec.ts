@@ -98,6 +98,11 @@ test(
       await expect(joinedPage.getByText('Ficha travada desde', { exact: false })).toBeVisible();
       await expect(joinedPage.getByRole('link', { name: 'Editar ficha' })).toHaveCount(0);
 
+      // The edit URL, typed or bookmarked: the lock, before any form.
+      await joinedPage.goto(`/campanhas/${campaignId}/personagens/${character.id}/editar`);
+      await expect(joinedPage.getByText('A ficha está travada', { exact: false })).toBeVisible();
+      await expect(joinedPage.getByRole('button', { name: 'Salvar ficha' })).toHaveCount(0);
+
       // The server: refuses too, not just the screen (defense in depth),
       // with a CharacterBlocked detail (reason SHEET_LOCKED).
       await expectCharacterBlocked(

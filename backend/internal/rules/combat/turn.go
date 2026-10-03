@@ -11,12 +11,18 @@ type TurnState struct {
 	MovementUsedFt int
 	// Dashed says the Dash action was taken: the speed counts twice.
 	Dashed bool
+	// AttacksMade is how many attacks the Attack action made this turn
+	// (Extra Attack); the first one spends the action.
+	AttacksMade int
 }
 
 // Reason codes for a disabled option. They are codes, never text: the web
 // maps each to Portuguese copy ("Ação já usada", "Sem espaço de 2º círculo
 // ou maior").
 const (
+	// ReasonAttacksUsed: the Attack action made all its attacks (Extra
+	// Attack); the plain ReasonActionUsed says it for a single attack.
+	ReasonAttacksUsed = "ATTACKS_USED"
 	// ReasonActionUsed, ReasonBonusActionUsed and ReasonReactionUsed: the
 	// economy the option needs is spent.
 	ReasonActionUsed      = "ACTION_USED"
@@ -63,6 +69,10 @@ type Movement struct {
 type Economy struct {
 	Action, BonusAction, Reaction Slot
 	Movement                      Movement
+	// AttacksPerAction is how many attacks the Attack action makes, and
+	// AttacksLeft how many remain: all of them before the first attack, none
+	// once the action is spent on something else.
+	AttacksPerAction, AttacksLeft int
 }
 
 // Option is something the character may try. When Enabled is false, Reason
@@ -136,6 +146,8 @@ func Options(d rules.Derived, turn TurnState, u Usage) TurnOptions {
 		Reaction:    Slot{Used: turn.ReactionUsed, Available: !turn.ReactionUsed},
 		Movement:    Movement{SpeedFt: speed, UsedFt: turn.MovementUsedFt, LeftFt: max(speed-turn.MovementUsedFt, 0)},
 	}}
+	out.Economy.AttacksPerAction = max(d.AttacksPerAction, 1)
+	out.Economy.AttacksLeft = AttacksLeft(out.Economy.AttacksPerAction, turn)
 
 	// Attacks cost an action. The damaging cantrips are in Derived.Attacks
 	// already, so they are left out of the spells below.
@@ -144,7 +156,13 @@ func Options(d rules.Derived, turn TurnState, u Usage) TurnOptions {
 		if a.Kind == "spell" {
 			cantripAttacks[a.Key] = true
 		}
-		out.Attacks = append(out.Attacks, AttackOption{Option: economyOption(rules.EconomyAction, turn), Attack: a})
+		// Extra Attack belongs to the Attack action, that is, to weapon attacks: a
+		// cantrip is cast with the whole action (SRD 5.1).
+		opt := attackOption(out.Economy.AttacksPerAction, turn)
+		if a.Kind == "spell" {
+			opt = economyOption(rules.EconomyAction, turn)
+		}
+		out.Attacks = append(out.Attacks, AttackOption{Option: opt, Attack: a})
 	}
 
 	for _, cs := range d.Spells {
@@ -161,6 +179,33 @@ func Options(d rules.Derived, turn TurnState, u Usage) TurnOptions {
 		out.FeatureActions = append(out.FeatureActions, actionOption(d, turn, u, a))
 	}
 	return out
+}
+
+// AttacksLeft is how many attacks the Attack action can still make this turn:
+// all of them while the action is free, the rest of them after the first
+// attack spent it (Extra Attack), none when something else spent it. perAction
+// is Derived.AttacksPerAction.
+func AttacksLeft(perAction int, turn TurnState) int {
+	perAction = max(perAction, 1)
+	switch {
+	case !turn.ActionUsed:
+		return perAction
+	case turn.AttacksMade > 0:
+		return max(perAction-turn.AttacksMade, 0)
+	}
+	return 0
+}
+
+// attackOption is an attack's option: it costs the action, but a second attack
+// of the same Attack action (Extra Attack) does not cost another one.
+func attackOption(perAction int, turn TurnState) Option {
+	if AttacksLeft(perAction, turn) > 0 {
+		return Option{Enabled: true}
+	}
+	if turn.AttacksMade > 0 && perAction > 1 {
+		return Option{Reason: &Reason{Code: ReasonAttacksUsed}}
+	}
+	return Option{Reason: &Reason{Code: ReasonActionUsed}}
 }
 
 // economyOption is enabled while the economy is free. Free and movement

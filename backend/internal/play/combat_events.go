@@ -19,10 +19,11 @@ import (
 
 // The values of a pending damage's status (pending_damages_status_valid).
 const (
-	pendingAwaitingRoll = "awaiting_roll"
-	pendingRolled       = "rolled"
-	pendingApplied      = "applied"
-	pendingDiscarded    = "discarded"
+	pendingAwaitingReaction = "awaiting_reaction"
+	pendingAwaitingRoll     = "awaiting_roll"
+	pendingRolled           = "rolled"
+	pendingApplied          = "applied"
+	pendingDiscarded        = "discarded"
 )
 
 // The outcomes of an attack roll, as stored in an event.
@@ -38,6 +39,71 @@ type hpState struct {
 	HP       int32 `json:"hp"`
 	Temp     int32 `json:"temp,omitempty"`
 	Defeated bool  `json:"defeated,omitempty"`
+}
+
+// slotRef is the spell slot a spell spent: its level, and whether it was a
+// pact magic slot. The undo gives it back.
+type slotRef struct {
+	Level int32 `json:"level"`
+	Pact  bool  `json:"pact,omitempty"`
+}
+
+// deathState is a combatant's death save counts and whether its turn's save was
+// rolled, and whether it was out of the fight (a confirmed death): what an undo
+// puts back.
+type deathState struct {
+	Successes int32 `json:"successes,omitempty"`
+	Failures  int32 `json:"failures,omitempty"`
+	Rolled    bool  `json:"rolled,omitempty"`
+	Dead      bool  `json:"dead,omitempty"`
+}
+
+func deathOf(c playdb.Combatant) *deathState {
+	return &deathState{Successes: c.DeathSuccesses, Failures: c.DeathFailures, Rolled: c.DeathSaveRolled, Dead: c.Defeated}
+}
+
+// saveRoll is a target's saving throw against a spell, as the cast event keeps it.
+type saveRoll struct {
+	D20   int32 `json:"d20"`
+	Bonus int32 `json:"bonus,omitempty"`
+	Total int32 `json:"total"`
+	DC    int32 `json:"dc"`
+	Saved bool  `json:"saved,omitempty"`
+	// Unknown says the target is a basic-sheet NPC with no saving throw bonus:
+	// the roll is d20 + 0 and the master may overrule it.
+	Unknown bool `json:"bonus_unknown,omitempty"`
+}
+
+// castHit is what a cast did to one target.
+type castHit struct {
+	Target string `json:"target_id"`
+	Darts  int32  `json:"darts,omitempty"`
+	// A spell attack: the d20, the bonus, the total and the outcome.
+	Outcome  string    `json:"outcome,omitempty"`
+	D20      int32     `json:"d20,omitempty"`
+	Modifier int32     `json:"modifier,omitempty"`
+	Total    int32     `json:"total,omitempty"`
+	Physical bool      `json:"physical,omitempty"`
+	Save     *saveRoll `json:"save,omitempty"`
+	// Pending is the pending damage or heal the cast opened for the target.
+	Pending string `json:"pending_id,omitempty"`
+}
+
+// damageHit is what a damage roll did to one pending damage of a cast: the
+// amount that landed (half for a target that saved), and the numbers an undo
+// puts back.
+type damageHit struct {
+	Pending     string      `json:"pending_id"`
+	Target      string      `json:"target_id"`
+	Amount      int32       `json:"amount"`
+	Half        bool        `json:"half,omitempty"`
+	Applied     bool        `json:"applied,omitempty"`
+	Before      *hpState    `json:"before,omitempty"`
+	After       *hpState    `json:"after,omitempty"`
+	DeathBefore *deathState `json:"death_before,omitempty"`
+	// ConcentrationDC is the save DC a damage that landed threatens a
+	// concentration with (RN-22), 0 when it does not.
+	ConcentrationDC int32 `json:"concentration_dc,omitempty"`
 }
 
 // actionEvent is the payload of every event of this slice, and of the 6.3
@@ -87,6 +153,45 @@ type actionEvent struct {
 	// master's hand.
 	Before *hpState `json:"before,omitempty"`
 	After  *hpState `json:"after,omitempty"`
+
+	// A spell cast (spell_cast) and a reaction: the cast, the slot spent, what it
+	// did to each target and the concentration it set or ended; a feature action:
+	// the resource a use of which was spent. For a damage roll of a cast, Settled
+	// is every pending damage the one roll settled.
+	CastID      string      `json:"cast_id,omitempty"`
+	Slot        *slotRef    `json:"slot,omitempty"`
+	Resource    string      `json:"resource,omitempty"`
+	Hits        []castHit   `json:"hits,omitempty"`
+	Settled     []damageHit `json:"settled,omitempty"`
+	Heal        bool        `json:"heal,omitempty"`
+	Concentrate bool        `json:"concentrate,omitempty"`
+	// ConcBefore is the spell the caster concentrated on before (empty: none),
+	// and ConcEnded the one the cast stopped (the same, when it replaced it).
+	ConcBefore string `json:"conc_before,omitempty"`
+	ConcEnded  string `json:"conc_ended,omitempty"`
+	// Escudo: the +5 the target had before, the reaction and what it did.
+	ACBonusBefore int32 `json:"ac_bonus_before,omitempty"`
+	Stopped       bool  `json:"stopped,omitempty"`
+	// Extra Attack and the opportunity attack.
+	AttacksBefore int32 `json:"attacks_before,omitempty"`
+	AsReaction    bool  `json:"as_reaction,omitempty"`
+
+	// A death save, or damage at 0 hit points: the counts before and after,
+	// the outcome and the failures the damage caused.
+	Death         *deathState `json:"death,omitempty"`
+	DeathBefore   *deathState `json:"death_before,omitempty"`
+	DeathOutcome  string      `json:"death_outcome,omitempty"`
+	FailuresAdded int32       `json:"failures_added,omitempty"`
+	// The master applied another amount than the rolled one (Rolled), and the
+	// damage threatened a concentration (ConcentrationDC).
+	Overridden      bool  `json:"overridden,omitempty"`
+	Rolled          int32 `json:"rolled,omitempty"`
+	ConcentrationDC int32 `json:"concentration_dc,omitempty"`
+	// The conditions the master set (Conditions, with CondSet true even when
+	// empty) and the ones there were.
+	CondSet    bool     `json:"cond_set,omitempty"`
+	Conditions []string `json:"conditions,omitempty"`
+	CondBefore []string `json:"cond_before,omitempty"`
 
 	// What the undo of an action puts back.
 	ActionBefore   bool   `json:"action_before,omitempty"`
