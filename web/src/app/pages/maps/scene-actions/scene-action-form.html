@@ -1,0 +1,79 @@
+<form class="sf" novalidate (submit)="$event.preventDefault(); submit()" [attr.aria-labelledby]="id + '-title'">
+  <h4 class="sf__title" [id]="id + '-title'">Nova ação</h4>
+
+  <fieldset class="sf__kinds">
+    <legend class="mr-label">O que rolar</legend>
+    @for (k of kinds; track k.kind;) {
+      <label class="sf__kind">
+        <input
+          #firstRadio
+          type="radio"
+          [name]="id + '-kind'"
+          [value]="k.kind"
+          [checked]="kind() === k.kind"
+          (change)="pickKind(k.kind)"
+        />
+        <span>{{ k.label }}</span>
+      </label>
+    }
+  </fieldset>
+
+  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+    <mat-label>{{ kindLabel() }}</mat-label>
+    <select
+      matNativeControl
+      [disabled]="options().length === 0"
+      [value]="checkKey()"
+      (change)="checkKey.set($any($event.target).value)"
+    >
+      @if (options().length === 0 && !skillsFailed()) {
+        <option value="">Carregando…</option>
+      }
+      @for (o of options(); track o.key) {
+        <option [value]="o.key" [selected]="o.key === checkKey()">{{ o.label }}</option>
+      }
+    </select>
+    <mat-hint>O bônus de cada jogador vem da ficha dele.</mat-hint>
+  </mat-form-field>
+  @if (skillsFailed() && kind() === 'skill') {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>Não deu para carregar as perícias. <button type="button" class="sf__link" (click)="loadSkills()">Tentar de novo</button></p>
+    </div>
+  }
+
+  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+    <mat-label>Nome (opcional)</mat-label>
+    <input matInput autocomplete="off" [attr.maxlength]="nameMax" [formControl]="nameControl" />
+    <mat-hint>Os jogadores veem este nome.</mat-hint>
+    <mat-hint align="end">{{ nameLength() }} de {{ nameMax }}</mat-hint>
+  </mat-form-field>
+  <app-fiction-notice />
+
+  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+    <mat-label>CD (opcional)</mat-label>
+    <input
+      #dcField
+      matInput
+      inputmode="numeric"
+      autocomplete="off"
+      maxlength="3"
+      [formControl]="dcControl"
+    />
+    @if (dcError()) {
+      <mat-error><mat-icon aria-hidden="true">error</mat-icon>{{ dcError() }}</mat-error>
+    }
+  </mat-form-field>
+
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+
+  <div class="sf__actions">
+    <button matButton="outlined" type="submit" [attr.aria-disabled]="busy()">Adicionar ação</button>
+    <button matButton type="button" (click)="cancelled.emit()">Cancelar</button>
+  </div>
+</form>

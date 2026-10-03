@@ -1,0 +1,77 @@
+:host {
+  display: block;
+}
+
+// The form sits in the point panel, inside its own bordered card (E7-01).
+.sf {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  padding: var(--mr-space-4);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+}
+
+.sf__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.sf__kinds {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+// Three radios, each a 44px row; the native radio keeps the keyboard's arrows.
+.sf__kind {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  min-height: 44px;
+  cursor: pointer;
+
+  input {
+    width: 20px;
+    height: 20px;
+    margin: 0;
+    accent-color: var(--mr-accent);
+  }
+}
+
+.sf__link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+// The error under the DC: an icon and words on the line, never colour alone.
+mat-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+// The buttons are under the fields, never beside them.
+.sf__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+}

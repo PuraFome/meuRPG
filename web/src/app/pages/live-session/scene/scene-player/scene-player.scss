@@ -1,0 +1,189 @@
+:host {
+  display: block;
+}
+
+// The same accent frame as "O mestre está mostrando": on the table right now.
+.sc {
+  // The width of "Rolar", which a rolled row keeps empty so its result lines up with the bonuses.
+  --roll-w: 80px;
+  box-sizing: border-box;
+  margin-bottom: var(--mr-space-4);
+  padding: 14px 18px;
+  border: 1px solid var(--mr-accent);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+}
+
+.sc__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--mr-accent-text);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 20px;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.sc__title {
+  margin: var(--mr-space-1) 0 0;
+  font-family: var(--mr-font-display);
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 32px;
+  overflow-wrap: anywhere;
+}
+
+.sc__text {
+  margin: var(--mr-space-2) 0 0;
+  color: var(--mr-ink-muted);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.sc__sub {
+  margin: var(--mr-space-4) 0 0;
+  font-family: var(--mr-font-display);
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 26px;
+}
+
+.sc__list {
+  margin: var(--mr-space-1) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+// One action: its words on the left, the bonus (the biggest number of the
+// row) and the 48px "Rolar" on the right; the number and the button never
+// shrink, the name wraps instead.
+.sc__row {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  padding: var(--mr-space-3) 0;
+  border-top: 1px solid var(--mr-rule);
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+.sc__text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.sc__name {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+
+.sc__check,
+.sc__passive {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.sc__passive {
+  font-size: 13px;
+}
+
+.sc__done {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  color: var(--mr-success-ink);
+  font-size: 14px;
+  font-weight: 700;
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.sc__bonus,
+.sc__total {
+  flex: none;
+  min-width: 44px;
+  text-align: right;
+  font-family: var(--mr-font-display);
+  font-size: 38px;
+  font-weight: 800;
+  line-height: 42px;
+}
+
+.sc__slot {
+  flex: none;
+  width: var(--roll-w);
+}
+
+// The roll's own line, at the size of the other helper lines.
+.sc__formula {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.sc__roll {
+  flex: none;
+  width: var(--roll-w);
+  --mat-button-outlined-container-height: 48px;
+}
+
+.sc__note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: var(--mr-space-2) 0 0;
+  padding-top: var(--mr-space-3);
+  border-top: 1px solid var(--mr-rule);
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+// The narrowest phones (320px): the name gets the room, the bonus and "Rolar" keep
+// their size (48px tall) but tighter, so a name wraps to two lines at most.
+@media (max-width: 359.98px) {
+  .sc {
+    --roll-w: 72px;
+    padding: 12px;
+  }
+
+  .sc__row {
+    gap: var(--mr-space-2);
+  }
+
+  .sc__bonus,
+  .sc__total {
+    min-width: 36px;
+    font-size: 32px;
+    line-height: 36px;
+  }
+}

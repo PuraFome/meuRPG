@@ -1,4 +1,5 @@
 import {
+  labelBounds,
   IDENTITY,
   bpToPercent,
   centroid,
@@ -169,5 +170,20 @@ describe('what each person sees', () => {
   it('gives a player only the revealed points and the visible tokens', () => {
     expect(visiblePoints(points, false).map((p) => p.id)).toEqual(['a']);
     expect(visibleTokens(tokens, false).map((t) => t.characterId)).toEqual(['1']);
+  });
+});
+
+describe('labelBounds', () => {
+  it('keeps a label inside the image and inside what the viewport shows of it', () => {
+    // A zoomed preview: the image runs past both sides of the viewport.
+    expect(labelBounds({ left: -120, right: 700 }, { left: 0, right: 350 })).toEqual({ minLeft: 4, maxRight: 346 });
+    // A small map in a big viewport: the image's own edges.
+    expect(labelBounds({ left: 40, right: 300 }, { left: 0, right: 500 })).toEqual({ minLeft: 44, maxRight: 296 });
+  });
+
+  it('slides a label that sticks out of the preview back into it', () => {
+    const { minLeft, maxRight } = labelBounds({ left: -120, right: 700 }, { left: 0, right: 350 });
+    // "A carroça tombada" 110px wide, starting 300px from the left: it would be cut at 350.
+    expect(labelShift(300, 410, minLeft, maxRight)).toBe(-64);
   });
 });

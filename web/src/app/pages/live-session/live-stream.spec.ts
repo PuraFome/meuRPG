@@ -111,6 +111,7 @@ describe('LiveStream (ADR-0005 client rules)', () => {
       onTurnChanged: vi.fn(),
       onCombatantMoved: vi.fn(),
       onCombatLogChanged: vi.fn(),
+      onSceneChanged: vi.fn(),
       onEnded: vi.fn(),
       onFatal: vi.fn(),
     };
@@ -149,6 +150,15 @@ describe('LiveStream (ADR-0005 client rules)', () => {
     last().push({ kind: 'vitals', vitals: vitals(3) });
     await flush();
     expect(handlers.onVitals).toHaveBeenCalledWith(vitals(3));
+  });
+
+  it('hands both scene hints to the page as one: read the open scene again (MR-015)', async () => {
+    stream.start();
+    last().push({ kind: 'ready' });
+    last().push({ kind: 'sceneChanged' });
+    last().push({ kind: 'sceneCheckRolled' });
+    await flush();
+    expect(handlers.onSceneChanged).toHaveBeenCalledTimes(2);
   });
 
   it('hands the combat\'s events to the page (MR-013)', async () => {

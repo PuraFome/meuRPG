@@ -6,6 +6,10 @@ import { BehaviorSubject } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { MapsClient } from '../../core/maps/maps-client';
 import { FakeMapsClient, mapMessage, mapPoint, mapResponse, mapToken } from '../../core/maps/maps-testing';
+import { SceneClient } from '../../core/play/scene-client';
+import { FakeSceneClient, masterScene, playerScene, sceneRoll } from '../../core/play/scene-testing';
+import { create } from '@bufbuild/protobuf';
+import { SceneActionSchema } from '../../../gen/meurpg/maps/v1/maps_pb';
 import { OpenSessions } from '../../shell/live-notice/open-sessions';
 import { LiveSession } from './live-session';
 import {
@@ -108,6 +112,7 @@ class FakeLiveSessionSource implements LiveSessionSource {
 
 describe('LiveSession', () => {
   let source: FakeLiveSessionSource;
+  let scenes: FakeSceneClient;
   const signIn = vi.fn();
   const liveCampaignIds = signal<ReadonlySet<string>>(new Set());
   const openSessions = {
@@ -120,12 +125,14 @@ describe('LiveSession', () => {
     signIn.mockClear();
     openSessions.dismiss.mockClear();
     liveCampaignIds.set(new Set());
+    scenes = new FakeSceneClient();
     TestBed.configureTestingModule({
       imports: [LiveSession],
       providers: [
         provideRouter([]),
         { provide: LiveSessionSource, useClass: FakeLiveSessionSource },
         { provide: MapsClient, useClass: FakeMapsClient },
+        { provide: SceneClient, useValue: scenes },
         { provide: AuthService, useValue: { signIn, state: signal({ status: 'signed-in' }) } },
         { provide: OpenSessions, useValue: openSessions },
         {
@@ -394,6 +401,146 @@ describe('LiveSession', () => {
       const el = await render();
       expect(el.querySelector('.block__name')?.textContent).toContain('Carta');
       expect(el.textContent).not.toContain('O mestre está mostrando Carta.');
+    });
+  });
+
+  describe('RP scene (MR-015, E7-02, E7-03)', () => {
+    async function tick(): Promise<void> {
+      await new Promise((r) => setTimeout(r));
+      TestBed.inject(ApplicationRef).tick();
+    }
+
+    it('draws a scene that was already open with the snapshot, with no announcement and no focus move', async () => {
+      scenes.scene = playerScene();
+      const el = await render();
+      expect(el.querySelector('#sc-title')?.textContent).toBe('Cena: A carroça tombada');
+      expect(el.textContent).not.toContain('O mestre abriu uma cena: A carroça tombada.');
+      expect(document.activeElement).not.toBe(el.querySelector('#sc-title'));
+      expect(scenes.calls).toContain('get');
+    });
+
+    it('shows nothing extra while no scene is open', async () => {
+      const el = await render();
+      expect(el.querySelector('app-scene-player')?.textContent?.trim()).toBe('');
+      expect(el.textContent).not.toContain('Nenhuma cena');
+    });
+
+    it('reads the scene again on scene_changed, announces the title, and says when the master closes it', async () => {
+      const el = await render();
+      scenes.scene = playerScene();
+      source.push({ kind: 'sceneChanged' });
+      await tick();
+      await tick();
+      expect(el.querySelector('#sc-title')?.textContent).toBe('Cena: A carroça tombada');
+      expect(el.textContent).toContain('O mestre abriu uma cena: A carroça tombada.');
+      // The page does not take focus from where the player is.
+      expect(document.activeElement).not.toBe(el.querySelector('#sc-title'));
+
+      scenes.scene = null;
+      source.push({ kind: 'sceneChanged' });
+      await tick();
+      await tick();
+      expect(el.querySelector('#sc-title')).toBeNull();
+      expect(el.textContent).toContain('O mestre fechou a cena.');
+    });
+
+    it("turns the player's row into the result when scene_check_rolled arrives for their own roll", async () => {
+      scenes.scene = playerScene();
+      const el = await render();
+      expect(el.querySelectorAll('.sc__roll')).toHaveLength(5);
+      scenes.scene = playerScene([sceneRoll('r1', 'a1', 'Pensantus', 17)]);
+      source.push({ kind: 'sceneCheckRolled' });
+      await tick();
+      await tick();
+      expect(el.querySelectorAll('.sc__roll')).toHaveLength(4);
+      expect(el.querySelector('.sc__done')?.textContent).toContain('Rolada');
+    });
+
+    describe('the master', () => {
+      beforeEach(() => {
+        source.campaign = { name: 'Mirathel', isMaster: true, awaitingApproval: false, diceMode: 1, dicePreference: 1 };
+        source.snapshot = {
+          session: { sessionId: 's4', sessionNumber: 4, startedAt: new Date(2026, 8, 30, 20, 5) },
+          vitals: [pensantusVitals(), brisaVitals()],
+          currentMapId: 'map-1',
+          shownImage: null,
+          shownImageKeep: false,
+        };
+        const maps = TestBed.inject(MapsClient) as unknown as FakeMapsClient;
+        maps.responses.set(
+          'map-1',
+          mapResponse(mapMessage('map-1', 'Estrada do Vale', { revealed: true, current: true }), [mapPoint('p1', 'A carroça tombada')]),
+        );
+      });
+
+      it('has "Cena de RP" with "Abrir cena" while none is open, and no open-scene block', async () => {
+        const el = await render();
+        expect(el.querySelector('app-scene-panel h2')?.textContent).toBe('Cena de RP');
+        expect(el.textContent).toContain('Nenhuma cena aberta.');
+        expect(el.querySelector('app-scene-open')).toBeNull();
+        expect(el.querySelector('.board--scene-open')).toBeNull();
+      });
+
+      it('moves the open scene to the top of the map column and takes "Cena de RP" out of the right one', async () => {
+        scenes.scene = masterScene([sceneRoll('r1', 'a2', 'Toren', 7, { passed: false })]);
+        const el = await render();
+        expect(el.querySelector('app-scene-panel')).toBeNull();
+        expect(el.querySelector('.board--scene-open')).not.toBeNull();
+        const left = el.querySelector('.board__left')!;
+        expect(left.firstElementChild?.tagName.toLowerCase()).toBe('app-scene-open');
+        expect(left.querySelector('app-session-map')).not.toBeNull();
+        expect(el.querySelector('#so-title')?.textContent).toBe('Cena: A carroça tombada');
+        expect(el.textContent).toContain('Não passou');
+      });
+
+      it('reads the rolls again on scene_check_rolled and reads the new one aloud', async () => {
+        scenes.scene = masterScene();
+        const el = await render();
+        expect(el.textContent).toContain('Ninguém rolou ainda.');
+        scenes.scene = masterScene([sceneRoll('r1', 'a2', 'Toren', 7, { passed: false })]);
+        source.push({ kind: 'sceneCheckRolled' });
+        await tick();
+        await tick();
+        expect(el.textContent).toContain('Toren: Seguir os rastros dos goblins, 7, não passou');
+        expect(el.querySelectorAll('app-scene-roll-line')).toHaveLength(1);
+      });
+
+      it('opens a scene from its point in "Pontos do mapa", and the list says it is the open one', async () => {
+        const maps = TestBed.inject(MapsClient) as unknown as FakeMapsClient;
+        maps.responses.set(
+          'map-1',
+          mapResponse(mapMessage('map-1', 'Estrada do Vale', { revealed: true, current: true }), [
+            mapPoint('p1', 'A carroça tombada', { revealed: true, sceneActions: [create(SceneActionSchema, { id: 'a1', key: 'skill:arcana' })] }),
+          ]),
+        );
+        scenes.scene = masterScene();
+        const el = await render();
+        // A scene is already open: the point says so.
+        expect(el.querySelector('.row__open')?.textContent).toContain('Cena aberta agora');
+        scenes.scene = null;
+        source.push({ kind: 'sceneChanged' });
+        await tick();
+        await tick();
+        const open = el.querySelector<HTMLButtonElement>('button[aria-label="Abrir cena A carroça tombada"]')!;
+        scenes.scene = masterScene();
+        open.click();
+        await tick();
+        await tick();
+        expect(scenes.calls).toContain('open p1');
+        expect(el.querySelector('app-scene-open')).not.toBeNull();
+        expect(document.activeElement).toBe(el.querySelector('#so-title'));
+      });
+
+      it('brings "Cena de RP" back when the scene closes from another tab', async () => {
+        scenes.scene = masterScene();
+        const el = await render();
+        scenes.scene = null;
+        source.push({ kind: 'sceneChanged' });
+        await tick();
+        await tick();
+        expect(el.querySelector('app-scene-open')).toBeNull();
+        expect(el.querySelector('app-scene-panel')).not.toBeNull();
+      });
     });
   });
 });

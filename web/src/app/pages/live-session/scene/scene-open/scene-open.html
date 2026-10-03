@@ -1,0 +1,92 @@
+@if (scene(); as s) {
+  <section class="so mr-panel" aria-labelledby="so-title">
+    <p class="so__since"><mat-icon aria-hidden="true">cast</mat-icon>{{ since() }}</p>
+
+    <div class="so__head">
+      <div class="so__titles">
+        <h2 #heading class="so__title" id="so-title" tabindex="-1">Cena: {{ s.name }}</h2>
+        <p class="so__meta">{{ meta() }}</p>
+      </div>
+      <div class="so__buttons">
+        <button matButton="outlined" type="button" (click)="swap()">
+          <mat-icon aria-hidden="true">swap_horiz</mat-icon>Trocar cena
+        </button>
+        <button
+          matButton="outlined"
+          type="button"
+          [disabled]="busy()"
+          disabledInteractive
+          (click)="close()"
+        >
+          <mat-icon aria-hidden="true">close</mat-icon>Fechar cena
+        </button>
+      </div>
+    </div>
+
+    @if (error()) {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ error() }}</p>
+      </div>
+    }
+
+    <div class="so__cols">
+      <section class="so__rolls" aria-labelledby="so-rolls">
+        <div class="so__sub">
+          <h3 class="so__h" id="so-rolls">Rolagens</h3>
+          <span class="so__hint">{{ phone() ? rollsHint() : 'Chegam aqui na hora, a mais nova em cima' }}</span>
+        </div>
+        @if (s.rolls.length === 0) {
+          <p class="so__none">Ninguém rolou ainda.</p>
+        } @else {
+          <ul class="so__list so__list--rolls">
+            @for (r of s.rolls; track r.id) {
+              <li><app-scene-roll-line [scene]="s" [roll]="r" /></li>
+            }
+          </ul>
+        }
+      </section>
+
+      <section class="so__actions" aria-labelledby="so-actions">
+        @if (phone()) {
+          <h3 class="so__h">
+            <button
+              type="button"
+              class="so__toggle"
+              id="so-actions"
+              aria-controls="so-actions-list"
+              [attr.aria-expanded]="actionsOpen()"
+              (click)="actionsOpen.set(!actionsOpen())"
+            >
+              <span>Ações da cena</span>
+              <mat-icon aria-hidden="true">{{ actionsOpen() ? 'expand_less' : 'expand_more' }}</mat-icon>
+            </button>
+          </h3>
+        } @else {
+          <div class="so__sub">
+            <h3 class="so__h" id="so-actions">Ações</h3>
+            <span class="so__hint">Só você vê a CD</span>
+          </div>
+        }
+        @if (!phone() || actionsOpen()) {
+          @if (phone()) {
+            <p class="so__hint">Só você vê a CD</p>
+          }
+          <ul class="so__list" id="so-actions-list">
+            @for (a of s.actions; track a.id) {
+              <li class="so__action">
+                <span class="so__aname">{{ title(a) }}</span>
+                <span class="so__acheck">{{ subtitle(a) }}</span>
+                @if (a.dc > 0) {
+                  <span class="mr-tag so__dc">CD&nbsp;{{ a.dc }}</span>
+                }
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    </div>
+
+    <p class="mr-visually-hidden" role="status" aria-live="polite">{{ state().notice() }}</p>
+  </section>
+}

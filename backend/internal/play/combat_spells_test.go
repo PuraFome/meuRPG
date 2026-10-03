@@ -215,6 +215,7 @@ func (a *armed) castersFight(t *testing.T, goblins int32) *playv1.Encounter {
 }
 
 func TestMR014_CastingSpendsTheSlot(t *testing.T) {
+	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFight(t, 1)
 
@@ -313,6 +314,7 @@ func TestMR014_CastingSpendsTheSlot(t *testing.T) {
 // roll of 1d4 + 1 for each dart; it spends his last 1st-level slot
 // ("0 livres de 4").
 func TestTimelineRound3MagicMissile(t *testing.T) {
+	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFight(t, 2)
 	a.correct(t, a.pens, func(r *playv1.AdjustCharacterVitalsRequest) {
@@ -433,6 +435,7 @@ func (a *armed) castersFightNPCFirst(t *testing.T) *playv1.Encounter {
 // of it for the ones that fail, half (rounded down) for the one that saved. A
 // basic-sheet NPC has no save bonus, and the master is told.
 func TestSaveSpellRollsOnceForTheCast(t *testing.T) {
+	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFight(t, 2)
 
@@ -541,6 +544,7 @@ func TestSaveSpellRollsOnceForTheCast(t *testing.T) {
 // TestHealingSpellRevivesAndResetsDeathSaves: a heal reaches a character at 0 hit
 // points at once, through the vitals: it gets up and the death saves reset (RN-03).
 func TestHealingSpellRevivesAndResetsDeathSaves(t *testing.T) {
+	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFight(t, 1)
 	a.correct(t, a.toren, hpIs(0))
@@ -626,6 +630,7 @@ func (a *armed) declineReaction(t *testing.T, u *user, e *playv1.Encounter, pend
 // player and the master get a prompt, nobody else; Escudo gives +5 armor class
 // until the start of the caster's next turn and the attack is compared again.
 func TestShieldTurnsAHitIntoAMiss(t *testing.T) {
+	t.Parallel()
 	// Pensantus has AC 12 (10 + Dexterity 2); with Escudo, 17. The Capitão attacks
 	// with +4.
 	t.Run("the new armor class stops the attack", func(t *testing.T) {
@@ -772,6 +777,7 @@ func TestShieldTurnsAHitIntoAMiss(t *testing.T) {
 // TestOpportunityAttackSpendsTheReaction: a melee attack off turn, with
 // as_reaction, spends the reaction instead of the action.
 func TestOpportunityAttackSpendsTheReaction(t *testing.T) {
+	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFight(t, 1) // Pensantus is on turn; Toren is next to the goblin (6,5) and (7,5)
 
@@ -855,6 +861,7 @@ func (a *armed) passTo(t *testing.T, e *playv1.Encounter, label string) *playv1.
 // death, which marks the character dead and takes it out of the order. A player
 // never sees "morrendo" or "morto" before the confirmation.
 func TestRN03_DeathSavesAndTheMasterConfirms(t *testing.T) {
+	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFight(t, 1) // Pensantus, Toren, Brisa, Goblin, Capitão
 	a.correct(t, a.toren, hpIs(0))
@@ -995,6 +1002,7 @@ func TestRN03_DeathSavesAndTheMasterConfirms(t *testing.T) {
 // brings the character back with 1 hit point and resets both counts, and three
 // successes make it stable ("Estável").
 func TestRN03_NaturalOneTwentyAndStable(t *testing.T) {
+	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFight(t, 1)
 	a.correct(t, a.toren, hpIs(0))
@@ -1082,6 +1090,7 @@ func (a *armed) conditions(t *testing.T, u *user, e *playv1.Encounter, label str
 // is set by the cast and replaced by the next one; the damage that reaches a
 // concentrating combatant carries the DC to keep it.
 func TestRN22_ConditionsAndTheConcentrationReminder(t *testing.T) {
+	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFightNPCFirst(t)
 
@@ -1248,6 +1257,7 @@ func noTakeRoll(*playv1.TakeActionRequest) {}
 // Attack action: the first spends the action, the second is still allowed, the
 // third is refused; a fighter of level 2 has one.
 func TestExtraAttackAllowsTwoAttacks(t *testing.T) {
+	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFight(t, 1)
 	a.mustEndTurn(t, a.ana, e) // Toren's turn
@@ -1293,6 +1303,7 @@ func TestExtraAttackAllowsTwoAttacks(t *testing.T) {
 // action; a spent resource is NO_USES with its recharge, and the master's
 // correction brings a use back.
 func TestSecondWindAndActionSurge(t *testing.T) {
+	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFight(t, 1)
 	a.correct(t, a.toren, hpIs(20))
@@ -1371,6 +1382,7 @@ func TestSecondWindAndActionSurge(t *testing.T) {
 // rolled one (a save he overrules, a resistance); the log keeps both for him, the
 // player sees what they took, and the undo gives the hit points back.
 func TestMasterAppliesADifferentAmount(t *testing.T) {
+	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFightNPCFirst(t) // the Capitão first
 	a.h.roller.queue(4)            // 1d6 (4) + 2 = 6
@@ -1496,6 +1508,7 @@ func (a *armed) undoes(t *testing.T, name string, do func()) {
 // conditions, a feature action and an attack of the Attack action puts every
 // number back exactly.
 func TestCombatUndoTakesBackEveryNewAction(t *testing.T) {
+	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFight(t, 1)
 	both := a.at(t, "Goblin", "Capitão Goblin")
@@ -1641,6 +1654,7 @@ func (a *armed) hiddenCapitaoFight(t *testing.T) *playv1.Encounter {
 // hidden combatant: not its ID, its label, its place among the targets or the
 // attacker of an Escudo prompt.
 func TestRN20_PlayersNeverReceiveSpellAndReactionSecrets(t *testing.T) {
+	t.Parallel()
 	a := newCasters(t)
 	e := a.hiddenCapitaoFight(t)
 	hidden := a.id(t, "Capitão Goblin")
@@ -1735,6 +1749,7 @@ func asJSONAny(t *testing.T, m interface{ ProtoReflect() protoreflect.Message })
 // changes nothing the second time, writes no second event and answers as the
 // first one did (a roll is never rolled again until it is good, RN-18).
 func TestCombatSpellsAreIdempotent(t *testing.T) {
+	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFight(t, 1)
 	events := func() int { return a.events(t) }
@@ -1872,6 +1887,7 @@ func TestCombatSpellsAreIdempotent(t *testing.T) {
 // player on someone else's combatant is permission_denied, the master's methods
 // are the master's, and the owner and the master get past authorization.
 func TestMR014_SpellsAuthorizationMatrix(t *testing.T) {
+	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFightNPCFirst(t)
 	outsider := a.h.newUser("Intruso")
@@ -1969,6 +1985,7 @@ func TestMR014_SpellsAuthorizationMatrix(t *testing.T) {
 // line of the log only when no hidden combatant is in it; the vitals hint (the
 // slot) reaches the master and the caster's player.
 func TestCombatSpellEventsPerAudience(t *testing.T) {
+	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFight(t, 1)
 	// The goblin (revealed by castersFight) is hidden again; the Capitão is in view.
@@ -2022,6 +2039,7 @@ func TestCombatSpellEventsPerAudience(t *testing.T) {
 // TestMagicMissileDartIsAlways1d4Plus1: the damage at a higher slot is the whole
 // volley (6d4 + 6 at the 4th level), and a dart stays 1d4 + 1 whatever the slot.
 func TestMagicMissileDartIsAlways1d4Plus1(t *testing.T) {
+	t.Parallel()
 	a := newCastersAt(t, 9) // slots up to the 5th level
 	e := a.castersFight(t, 1)
 	// The 2nd-level slot: 4 darts.
@@ -2043,6 +2061,7 @@ func TestMagicMissileDartIsAlways1d4Plus1(t *testing.T) {
 // TestCantripsAreNotPartOfExtraAttack: Extra Attack belongs to the Attack action,
 // that is, to weapons; a cantrip takes the whole action, in every order.
 func TestCantripsAreNotPartOfExtraAttack(t *testing.T) {
+	t.Parallel()
 	a := newArmedWith(t, func(a *armed) {
 		sheet := &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: &charactersv1.FullSheet{
 			BaseScores: &rulesv1.AbilityScores{Strength: 16, Dexterity: 13, Constitution: 14, Intelligence: 14, Wisdom: 10, Charisma: 8}, RaceKey: "race:human",
@@ -2095,6 +2114,7 @@ func TestCantripsAreNotPartOfExtraAttack(t *testing.T) {
 // TestSpellCastIsLimitedToTenTargets: a cast and the damage roll that settles it
 // fit a session event (4 KiB): ten targets work, eleven are refused.
 func TestSpellCastIsLimitedToTenTargets(t *testing.T) {
+	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFight(t, 10)
 	var labels []string
@@ -2124,6 +2144,7 @@ func TestSpellCastIsLimitedToTenTargets(t *testing.T) {
 // hit points regained only to the master and the target's player; everyone else
 // gets the roll (RN-20).
 func TestHealLogDoesNotLeakTheMissingHitPoints(t *testing.T) {
+	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFight(t, 1)
 	a.correct(t, a.toren, hpIs(40)) // of 44: 4 missing
@@ -2154,6 +2175,7 @@ func TestHealLogDoesNotLeakTheMissingHitPoints(t *testing.T) {
 // TestNoDeathSaveOnTheTurnTheCharacterDrops: a character that drops to 0 on its
 // own turn owes its first death save at the start of its next turn.
 func TestNoDeathSaveOnTheTurnTheCharacterDrops(t *testing.T) {
+	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFight(t, 1)
 	a.mustEndTurn(t, a.ana, e) // Toren's turn
