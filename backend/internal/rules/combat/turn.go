@@ -1,6 +1,10 @@
 package combat
 
 import (
+	"cmp"
+	"slices"
+	"strings"
+
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -171,6 +175,7 @@ func Options(d rules.Derived, turn TurnState, u Usage) TurnOptions {
 		}
 		out.Spells = append(out.Spells, spellOption(d, turn, u, cs.Spell))
 	}
+	sortSpells(out.Spells)
 
 	for _, a := range d.StandardActions {
 		out.StandardActions = append(out.StandardActions, actionOption(d, turn, u, a))
@@ -233,6 +238,43 @@ func spellEconomy(ct rules.CastingTime) string {
 		return rules.EconomyReaction
 	}
 	return ""
+}
+
+// sortSpells puts the spells in the order "O que você pode fazer" lists them
+// (MR-014, question 57): the ones that can be cast now first, then the rest;
+// in each group the cantrips first, then by circle, then by Portuguese name.
+// Shield is never castable on the character's own turn (a reaction when hit), so
+// it sorts with the rest. The order is stable, so spells that tie keep the
+// order of the sheet.
+func sortSpells(spells []SpellOption) {
+	slices.SortStableFunc(spells, func(a, b SpellOption) int {
+		if a.Enabled != b.Enabled {
+			if a.Enabled {
+				return -1
+			}
+			return 1
+		}
+		if c := cmp.Compare(a.Spell.Level, b.Spell.Level); c != 0 {
+			return c
+		}
+		return strings.Compare(sortName(a.Spell), sortName(b.Spell))
+	})
+}
+
+// ptFold takes the accents off the letters Portuguese names use, so "Ânimo"
+// sorts with the As, not after the Zs.
+var ptFold = strings.NewReplacer(
+	"á", "a", "à", "a", "â", "a", "ã", "a", "é", "e", "ê", "e", "í", "i",
+	"ó", "o", "ô", "o", "õ", "o", "ú", "u", "ü", "u", "ç", "c",
+)
+
+// sortName is the name a spell sorts by: Portuguese, lowercase, without accents.
+func sortName(sp rules.SpellEntry) string {
+	name := sp.NamePT
+	if name == "" {
+		name = sp.Name
+	}
+	return ptFold.Replace(strings.ToLower(name))
 }
 
 func spellOption(d rules.Derived, turn TurnState, u Usage, sp rules.SpellEntry) SpellOption {
