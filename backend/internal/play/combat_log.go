@@ -390,11 +390,13 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 func (e *logEntry) spellView(v combatViewer, byID map[string]playdb.Combatant) *playv1.CombatLogSpell {
 	caster := byID[e.ev.Actor]
 	out := &playv1.CombatLogSpell{Slot: slotProto(e.ev.Slot), Concentrating: e.ev.Concentrate, ConcentrationEndedKey: e.ev.ConcEnded}
+	out.EffectKind, out.PoolRoll, out.EffectConditionKey, out.EffectThreshold = effectHeader(e.ev, v, caster)
 	for _, h := range e.ev.Hits {
 		target := byID[h.Target]
 		t := &playv1.CombatLogSpellTarget{
 			TargetId: target.ID, TargetLabel: target.Label, Darts: h.Darts, Outcome: outcomeToProto[h.Outcome],
 			AttackRoll: attackRollView(h, v, caster), Save: saveView(h.Save, v, caster, target),
+			Effect: effectView(h, v, target),
 		}
 		if dl, ok := e.pend[h.Pending]; ok {
 			if slices.Contains(e.stopped, h.Pending) { // Escudo stopped the spell attack

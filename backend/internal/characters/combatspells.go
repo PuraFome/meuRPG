@@ -81,6 +81,15 @@ func (s *Service) CombatSpell(ctx context.Context, campaignID, characterID, spel
 		}
 		out.Heal = h
 	}
+	// A spell that reads hit points rolls no damage and opens no heal: the cast
+	// applies the effect itself.
+	if fx, ok := s.rules.SpellEffect(spellKey, slotLevel); ok {
+		out.Damage, out.Heal = nil, nil
+		out.HP = &link.HPEffect{
+			Kind: fx.Kind, Pool: link.Dice{Count: fx.Dice.Count, Sides: fx.Dice.Sides}, Condition: fx.Condition,
+			Threshold: fx.Threshold, Dies: fx.Dies, Heal: fx.Heal, Ends: fx.Ends,
+		}
+	}
 	out.Area = isArea(det)
 	out.ExtraTargetPerLevel = extraTargetRE.MatchString(strings.Join(det.HigherLevel, " "))
 	return out, nil

@@ -1,0 +1,35 @@
+{
+  "spells": {
+    "spell:sleep": {
+      "kind": "hp_pool",
+      "dice": "5d8",
+      "dice_per_level": "2d8",
+      "condition": "condition:unconscious"
+    },
+    "spell:color-spray": {
+      "kind": "hp_pool",
+      "dice": "6d10",
+      "dice_per_level": "2d10",
+      "condition": "condition:blinded"
+    },
+    "spell:power-word-stun": {
+      "kind": "hp_threshold",
+      "threshold": 150,
+      "condition": "condition:stunned"
+    },
+    "spell:power-word-kill": {
+      "kind": "hp_threshold",
+      "threshold": 100,
+      "dies": true
+    },
+    "spell:spare-the-dying": {
+      "kind": "zero_hp_target"
+    },
+    "spell:heal": {
+      "kind": "flat_heal",
+      "amount": 70,
+      "amount_per_level": 10,
+      "ends": ["condition:blinded", "condition:deafened"]
+    }
+  }
+}
