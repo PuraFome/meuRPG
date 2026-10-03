@@ -103,6 +103,28 @@ func TestAuthorizationMatrix(t *testing.T) {
 			_, err := c.TakeBackLeftImage(ctx, connect.NewRequest(&playv1.TakeBackLeftImageRequest{CampaignId: campaign, ImageId: campaign}))
 			return err
 		}, [5]connect.Code{connect.CodeNotFound, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		// The scenes (MR-015). This harness has no maps, so no scene point: the
+		// master's OpenScene is not_found and the player's roll fails with
+		// NO_OPEN_SCENE; the full matrix, with a real scene, is in package maps'
+		// tests (TestSceneAuthorizationMatrix).
+		{"OpenScene", func(ctx context.Context, c client) error {
+			_, err := c.OpenScene(ctx, connect.NewRequest(&playv1.OpenSceneRequest{CampaignId: campaign, PointId: campaign}))
+			return err
+		}, [5]connect.Code{connect.CodeNotFound, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"CloseScene", func(ctx context.Context, c client) error {
+			_, err := c.CloseScene(ctx, connect.NewRequest(&playv1.CloseSceneRequest{CampaignId: campaign}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"GetOpenScene", func(ctx context.Context, c client) error {
+			_, err := c.GetOpenScene(ctx, connect.NewRequest(&playv1.GetOpenSceneRequest{CampaignId: campaign}))
+			return err
+		}, [5]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"RollSceneCheck", func(ctx context.Context, c client) error {
+			_, err := c.RollSceneCheck(ctx, connect.NewRequest(&playv1.RollSceneCheckRequest{
+				CampaignId: campaign, ActionId: campaign, IdempotencyKey: newKey(), Roll: &playv1.RollSceneCheckRequest_RollInApp{RollInApp: true},
+			}))
+			return err
+		}, [5]connect.Code{connect.CodePermissionDenied, connect.CodeFailedPrecondition, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
 	}
 
 	covered := map[string]bool{}
@@ -391,6 +413,10 @@ func (noMaps) BattlePoint(context.Context, string, string) (link.BattlePoint, er
 	return link.BattlePoint{}, errors.New("not in this test")
 }
 
+func (noMaps) ScenePoint(context.Context, string, string) (link.Scene, error) {
+	return link.Scene{}, errors.New("not in this test")
+}
+
 func (noMaps) MapTokens(context.Context, string) ([]link.TokenPosition, error) {
 	return nil, errors.New("not in this test")
 }
@@ -420,6 +446,12 @@ func (noRoster) CombatTurnOptions(context.Context, string, string, link.Turn) (*
 func (noRoster) CombatSpell(context.Context, string, string, string, int) (link.Spell, error) {
 	return link.Spell{}, errors.New("not in this test")
 }
+
+func (noRoster) SceneOptions(context.Context, string, string, []string) ([]link.SceneOption, error) {
+	return nil, errors.New("not in this test")
+}
+
+func (noRoster) SceneCheckName(string) string { return "" }
 
 func (noRoster) CombatSave(context.Context, string, string, string) (link.Save, error) {
 	return link.Save{}, errors.New("not in this test")
@@ -507,6 +539,12 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["SetShownImage"] = c.SetShownImage(ctx, connect.NewRequest(&playv1.SetShownImageRequest{CampaignId: id, ImageId: id}))
 	_, calls["ListLeftImages"] = c.ListLeftImages(ctx, connect.NewRequest(&playv1.ListLeftImagesRequest{CampaignId: id}))
 	_, calls["TakeBackLeftImage"] = c.TakeBackLeftImage(ctx, connect.NewRequest(&playv1.TakeBackLeftImageRequest{CampaignId: id, ImageId: id}))
+	_, calls["OpenScene"] = c.OpenScene(ctx, connect.NewRequest(&playv1.OpenSceneRequest{CampaignId: id, PointId: id}))
+	_, calls["CloseScene"] = c.CloseScene(ctx, connect.NewRequest(&playv1.CloseSceneRequest{CampaignId: id}))
+	_, calls["GetOpenScene"] = c.GetOpenScene(ctx, connect.NewRequest(&playv1.GetOpenSceneRequest{CampaignId: id}))
+	_, calls["RollSceneCheck"] = c.RollSceneCheck(ctx, connect.NewRequest(&playv1.RollSceneCheckRequest{
+		CampaignId: id, ActionId: id, IdempotencyKey: id, Roll: &playv1.RollSceneCheckRequest_RollInApp{RollInApp: true},
+	}))
 	calls["WatchGameSession"] = firstEventError(ctx, c, id)
 	methods := playv1.File_meurpg_play_v1_play_proto.Services().ByName("PlayService").Methods()
 	if len(calls) != methods.Len() {

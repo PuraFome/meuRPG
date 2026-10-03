@@ -17,7 +17,7 @@ Ferramentas: Go 1.27, buf, sqlc 1.31.1, goose, golangci-lint, Docker e Node 22. 
 | `make sqlc` | Gera o código Go das queries SQL (`backend/internal/<módulo>/<módulo>db`) com o sqlc 1.31.1. Ver [Queries com sqlc](#queries-com-sqlc). |
 | `make lint` | Roda `buf lint` e `golangci-lint`. |
 | `make test` | Roda `go test -race` em todo o backend. |
-| `MEURPG_TEST_DATABASE_URL='postgresql://root@localhost:26257/defaultdb?sslmode=disable' make test` | Roda os testes de integração (migrations, transações, login, campanhas, convites, personagens, sessões de jogo, a sessão ao vivo, com o stream, a galeria, os mapas, o combate e o XP) contra o CockroachDB do `make up`. Sem a variável, eles são pulados. |
+| `MEURPG_TEST_DATABASE_URL='postgresql://root@localhost:26257/defaultdb?sslmode=disable' make test` | Roda os testes de integração (migrations, transações, login, campanhas, convites, personagens, sessões de jogo, a sessão ao vivo, com o stream, a galeria, os mapas, as cenas de RP, o combate e o XP) contra o CockroachDB do `make up`. Sem a variável, eles são pulados. |
 | `make migrate` | Aplica as migrations do goose no banco local. |
 | `make e2e` | Sobe o ambiente local (como o `make up`), roda os testes Playwright de `e2e/` contra ele e mostra onde está o relatório. O ambiente continua de pé; `make down` derruba. Ver [Testes ponta a ponta](#testes-ponta-a-ponta-playwright). |
 | `make down` | Derruba o ambiente local (`docker compose down`). |
@@ -220,6 +220,7 @@ O conteúdo fica em `backend/internal/rules/srd51`:
 - Os tipos de efeito são fechados e o carregamento recusa o resto. As fórmulas só usam `level()`, `classLevel("wizard")`, `mod("int")`, `score("int")`, `prof()`, `armor()`, `shield()`, `floor`, `ceil`, `min` e `max` (ver [Arquitetura → Módulo rules](docs/arquitetura.md#módulo-rules-regras-como-dados)).
 - `effects/advancement.json` guarda as tabelas do SRD de experiência: o XP de cada nível (1 a 20) e o XP de cada nível de desafio (0 a 30). O carregamento recusa uma tabela fora do formato, e mudar qualquer número segue a regra da revisão acima.
 - `effects/standard_actions.json` guarda as dez ações que todo personagem tem (Atacar, Disparada...); os nomes em português dos recursos ficam em `names_pt.json` como `resource:<nome>`. Os dois entram na regra da revisão acima.
+- `effects/spells.json` guarda o que as magias que leem PV fazem (Sono, Borrifo de Cores, Palavra de Poder: Atordoar e Matar, Poupar os Moribundos, Cura Completa), em quatro tipos fechados: `hp_pool`, `hp_threshold`, `zero_hp_target` e `flat_heal` (ver [Arquitetura → Magias que leem PV](docs/arquitetura.md#magias-que-leem-pv)). O carregamento recusa uma magia que não é do SRD, um tipo desconhecido, um campo que o tipo não usa e uma condição que não existe, e o arquivo entra na regra da revisão acima. Uma magia nova desse tipo também precisa de uma conta em `rules/combat/hpspells.go` e do teste dela. Magia fora do SRD 5.1 (como Dobre pelos Mortos) nunca entra.
 - Nomes e textos em `effects/` são nossos, em português. Nenhum texto de livro fora do SRD entra aqui: o repositório é público.
 
 ## Branches

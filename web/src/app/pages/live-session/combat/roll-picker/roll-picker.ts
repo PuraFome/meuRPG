@@ -50,6 +50,9 @@ export class RollPicker {
   readonly busy = input(false);
   /** The buttons stick to the bottom of the sheet that scrolls (the attack sheet). */
   readonly sticky = input(false);
+  /** With `sticky`, the typed error still stands under the field instead of in the sticky
+   * footer, so nothing in the footer covers the live total (the scene's roll sheet, E7-04). */
+  readonly inlineError = input(false);
   /** The inline roll (the cast's damage, the death save): a label in the small
    * size, the field and the total tighter. The attack sheet keeps its E6-08 size. */
   readonly compact = input(false);

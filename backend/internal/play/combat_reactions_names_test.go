@@ -20,6 +20,7 @@ const (
 // to the master and to the target's player, unless the attacker is hidden from
 // the player (RN-20).
 func TestShieldPromptNamesTheAttackerOnlyWhenSeen(t *testing.T) {
+	t.Parallel()
 	t.Run("a visible attacker", func(t *testing.T) {
 		a := newCasters(t)
 		e := a.castersFightNPCFirst(t)
@@ -54,6 +55,7 @@ func TestShieldPromptNamesTheAttackerOnlyWhenSeen(t *testing.T) {
 // TestConcentrationSpellComesWithItsName: everyone who sees the combatant reads
 // the Portuguese name of the spell it concentrates on, with no second read.
 func TestConcentrationSpellComesWithItsName(t *testing.T) {
+	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFight(t, 1)
 	a.mustCast(t, a.ana, e, "Pensantus", webSpell, slotOfLevel(2), nil, noCastRoll)
@@ -68,6 +70,7 @@ func TestConcentrationSpellComesWithItsName(t *testing.T) {
 // TestOpportunityAttackWithAThrownMeleeWeapon: a dagger is a melee weapon
 // (SRD) and can make an opportunity attack, with the melee reach; a bow cannot.
 func TestOpportunityAttackWithAThrownMeleeWeapon(t *testing.T) {
+	t.Parallel()
 	a := newArmedWith(t, func(a *armed) {
 		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 5,
 			&rulesv1.AbilityScores{Strength: 16, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe, daggerKey, shortbowKey}, nil)
@@ -110,6 +113,7 @@ func TestOpportunityAttackWithAThrownMeleeWeapon(t *testing.T) {
 // player's hit points changes what the combat shows ("Caído"), so the combat's
 // revision goes up in the same transaction and every stream hears of it.
 func TestAdjustingVitalsInACombatRaisesItsRevision(t *testing.T) {
+	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFight(t, 1)
 	before := a.get(t, a.caio).GetRevision()

@@ -80,7 +80,15 @@
           [state]="mapState"
           (started)="combatStarted($event)"
         />
-        <div class="board board--master">
+        <div class="board board--master" [class.board--scene-open]="scene.scene()">
+          @if (!scene.scene()) {
+            <app-scene-panel
+              class="board__scene"
+              [campaignId]="campaignId()"
+              [state]="scene"
+              [mapState]="mapState"
+            />
+          }
           <app-party-panel
             class="board__party"
             [campaignId]="campaignId()"
@@ -101,15 +109,25 @@
             (leftChanged)="reloadLeftImages()"
             (taken)="leftImages.set(leftWithout($event))"
           />
-          <app-session-map
-            class="board__main"
-            [isMaster]="true"
-            [campaignId]="campaignId()"
-            [state]="mapState"
-            [mapId]="currentMapId()"
-            [maps]="campaignMaps()"
-            (currentChanged)="showMap($event)"
-          />
+          <div class="board__left">
+            @if (scene.scene()) {
+              <app-scene-open
+                class="board__open"
+                [campaignId]="campaignId()"
+                [state]="scene"
+                [mapState]="mapState"
+              />
+            }
+            <app-session-map
+              [isMaster]="true"
+              [scene]="scene"
+              [campaignId]="campaignId()"
+              [state]="mapState"
+              [mapId]="currentMapId()"
+              [maps]="campaignMaps()"
+              (currentChanged)="showMap($event)"
+            />
+          </div>
           <app-session-tokens
             class="board__tokens"
             [campaignId]="campaignId()"
@@ -118,8 +136,14 @@
           />
         </div>
       } @else {
-        <div class="board">
+        <div class="board" [class.board--scene]="scene.scene()">
           <div class="board__main">
+            <app-scene-player
+              [campaignId]="campaignId()"
+              [state]="scene"
+              [diceMode]="campaign()?.diceMode ?? 1"
+              [dicePreference]="campaign()?.dicePreference ?? 1"
+            />
             <app-shown-image-block [image]="shownImage()" [animate]="phase() === 'live'" />
             <app-left-images-block [images]="leftImages()" />
             <app-session-map
@@ -143,6 +167,7 @@
           </div>
         </div>
         <p class="mr-visually-hidden" role="status" aria-live="polite">{{ shownNotice() }}</p>
+        <p class="mr-visually-hidden" role="status" aria-live="polite">{{ scene.notice() }}</p>
       }
     }
   }

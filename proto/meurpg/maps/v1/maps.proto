@@ -175,7 +175,8 @@ service MapService {
   // UpdateMapPoint changes a point: each field set in the request replaces
   // the current value, and unset fields stay as they are. Moving a point is
   // an update of x_bp and y_bp. Only the campaign's master may call it.
-  // Changing the kind to anything but SUBMAP or BATTLE removes the target.
+  // Changing the kind to anything but SUBMAP or BATTLE removes the target,
+  // and changing it from SCENE removes the point's scene actions.
   //
   // Errors:
   //   - `invalid_argument`: nothing to change; a field breaks its rules;
@@ -208,6 +209,58 @@ service MapService {
   //     member of it.
   //   - `permission_denied`: the caller is a player.
   rpc SetMapPointRevealed(SetMapPointRevealedRequest) returns (SetMapPointRevealedResponse);
+
+  // AddSceneAction puts one more check on a SCENE point (MR-015): a skill
+  // check, an ability check or a saving throw, with an optional name and an
+  // optional DC. Actions save one by one, as the master edits them: there is
+  // no "save all". Only the campaign's master may call it. The action goes
+  // last. When the point is the scene open in the session, the streams get
+  // `scene_changed`.
+  //
+  // Errors:
+  //   - `invalid_argument`: the point is not a SCENE point; key is not a
+  //     skill, an ability check or a saving throw of the rules ("skill:
+  //     investigation", "ability:str", "save:wis": never an attack, a spell
+  //     or a feature); name is longer than 60 characters; dc is not 1 to
+  //     30.
+  //   - `not_found`: the point is not on this map, the map is not in this
+  //     campaign, the campaign does not exist, or the caller is not a
+  //     member of it.
+  //   - `permission_denied`: the caller is a player.
+  //   - `resource_exhausted`: the point already has 20 actions.
+  rpc AddSceneAction(AddSceneActionRequest) returns (AddSceneActionResponse);
+
+  // UpdateSceneAction changes one action of a SCENE point: each field set
+  // in the request replaces the current value. Only the campaign's master
+  // may call it.
+  //
+  // Errors:
+  //   - `invalid_argument`: nothing to change; a field breaks the rules
+  //     AddSceneAction lists.
+  //   - `not_found`: the action is not on this point, the point is not on
+  //     this map, the map is not in this campaign, the campaign does not
+  //     exist, or the caller is not a member of it.
+  //   - `permission_denied`: the caller is a player.
+  rpc UpdateSceneAction(UpdateSceneActionRequest) returns (UpdateSceneActionResponse);
+
+  // MoveSceneAction moves one action a place up or down in its point's
+  // list. Moving the first one up, or the last one down, changes nothing.
+  // Only the campaign's master may call it.
+  //
+  // Errors:
+  //   - `invalid_argument`: direction is unspecified.
+  //   - `not_found`: as UpdateSceneAction.
+  //   - `permission_denied`: the caller is a player.
+  rpc MoveSceneAction(MoveSceneActionRequest) returns (MoveSceneActionResponse);
+
+  // RemoveSceneAction takes one action off a SCENE point, with no
+  // confirmation: the rolls already made stay in the session's history.
+  // Only the campaign's master may call it.
+  //
+  // Errors:
+  //   - `not_found`: as UpdateSceneAction.
+  //   - `permission_denied`: the caller is a player.
+  rpc RemoveSceneAction(RemoveSceneActionRequest) returns (RemoveSceneActionResponse);
 
   // PlaceMapToken puts a character's token on a map, or moves it there if
   // it is already on the map (MR-012). Only the campaign's master may call
@@ -360,6 +413,30 @@ message MapPoint {
   bool revealed = 9;
   google.protobuf.Timestamp created_at = 10;
   google.protobuf.Timestamp updated_at = 11;
+  // The checks of a SCENE point (MR-015), in the order the master put them;
+  // empty for any other kind. The master gets each one with its DC; a player
+  // gets them without it (RN-20), and only for a point they see (RN-10).
+  repeated SceneAction scene_actions = 12;
+}
+
+// SceneAction is one check of an RP scene (MR-015): a skill check, an
+// ability check or a saving throw. The player's own bonus is not here: it
+// comes with the open scene (PlayService.GetOpenScene), worked out from
+// their sheet.
+message SceneAction {
+  // Stable action ID (a UUID).
+  string id = 1;
+  // What is rolled: "skill:investigation", "ability:str" or "save:wis".
+  string key = 2;
+  // What the master called it ("Convencer o guarda"), 0 to 60 characters;
+  // empty for none, and then the app shows check_name.
+  string name = 3;
+  // The check's name in Portuguese: "Investigação", "Teste de Força",
+  // "Salvaguarda de Sabedoria".
+  string check_name = 4;
+  // The difficulty class, 1 to 30; 0 means none. Only the master receives
+  // it: a player always gets 0 (RN-20).
+  int32 dc = 5;
 }
 
 // MapToken is a character's token on a map.
@@ -602,3 +679,85 @@ message RemoveMapTokenRequest {
 
 // RemoveMapTokenResponse is empty: the token is gone.
 message RemoveMapTokenResponse {}
+
+// AddSceneActionRequest carries the new action.
+message AddSceneActionRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+  string point_id = 3;
+  // Required: "skill:investigation", "ability:str" or "save:wis".
+  string key = 4;
+  // 0 to 60 characters, one line; empty for none.
+  string name = 5;
+  // 1 to 30; 0 for none.
+  int32 dc = 6;
+}
+
+// AddSceneActionResponse returns the point's actions as they are now.
+message AddSceneActionResponse {
+  // The new action.
+  SceneAction action = 1;
+  // Every action of the point, in order, with the new one last.
+  repeated SceneAction actions = 2;
+}
+
+// UpdateSceneActionRequest carries the fields to change. Each field set
+// replaces the current value; unset fields stay as they are. At least one
+// must be set.
+message UpdateSceneActionRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+  string point_id = 3;
+  string action_id = 4;
+  // The new check, as AddSceneActionRequest's key.
+  optional string key = 5;
+  // The new name, 0 to 60 characters; empty removes it.
+  optional string name = 6;
+  // The new DC, 1 to 30; 0 removes it.
+  optional int32 dc = 7;
+}
+
+// UpdateSceneActionResponse returns the point's actions as they are now.
+message UpdateSceneActionResponse {
+  // The changed action.
+  SceneAction action = 1;
+  // Every action of the point, in order.
+  repeated SceneAction actions = 2;
+}
+
+// SceneActionDirection says which way MoveSceneAction moves an action.
+enum SceneActionDirection {
+  SCENE_ACTION_DIRECTION_UNSPECIFIED = 0;
+  // Toward the start of the list.
+  SCENE_ACTION_DIRECTION_UP = 1;
+  // Toward the end of the list.
+  SCENE_ACTION_DIRECTION_DOWN = 2;
+}
+
+// MoveSceneActionRequest names the action and the direction.
+message MoveSceneActionRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+  string point_id = 3;
+  string action_id = 4;
+  // Required.
+  SceneActionDirection direction = 5;
+}
+
+// MoveSceneActionResponse returns the point's actions in their new order.
+message MoveSceneActionResponse {
+  repeated SceneAction actions = 1;
+}
+
+// RemoveSceneActionRequest names the action to remove.
+message RemoveSceneActionRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+  string point_id = 3;
+  string action_id = 4;
+}
+
+// RemoveSceneActionResponse returns the point's remaining actions.
+message RemoveSceneActionResponse {
+  repeated SceneAction actions = 1;
+}

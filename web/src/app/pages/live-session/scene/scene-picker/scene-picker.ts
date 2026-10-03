@@ -1,0 +1,113 @@
+import { Component, computed, inject, signal, viewChild } from '@angular/core';
+import { MatBottomSheet } from '@angular/material/bottom-sheet';
+import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
+import { MatIconModule } from '@angular/material/icon';
+import type { Observable } from 'rxjs';
+
+import { MapPointKind, type MapPoint } from '../../../../../gen/meurpg/maps/v1/maps_pb';
+import { joinDots } from '../../../../core/format/text';
+import { SceneClient } from '../../../../core/play/scene-client';
+import { sceneErrorMessage } from '../../../../core/play/scene-errors';
+import type { SceneState } from '../../../../core/play/scene-state';
+import { actionCount } from '../../../../core/play/scene-view';
+import { SheetFrame } from '../../combat/sheet-frame/sheet-frame';
+import { injectSheet, openSheet } from '../../combat/sheet-host';
+
+/** What the session page hands the picker. */
+export interface ScenePickerData {
+  readonly campaignId: string;
+  readonly mapName: string;
+  /** The current map's points; the picker keeps the scene ones. */
+  readonly points: readonly MapPoint[];
+  /** The scene open now, marked when the picker opens ("Trocar cena"). */
+  readonly openPointId: string | null;
+  readonly state: SceneState;
+}
+
+/** "Abrir uma cena": a dialog from a tablet up and a sheet on a phone. It
+ * answers `true` once the scene is open. */
+export function openScenePicker(
+  dialog: MatDialog,
+  bottomSheet: MatBottomSheet,
+  data: ScenePickerData,
+): Observable<boolean | undefined> {
+  return openSheet<ScenePicker, ScenePickerData, boolean>(dialog, bottomSheet, ScenePicker, {
+    data,
+    ariaLabel: 'Abrir uma cena',
+    labelledBy: 'scene-picker-t',
+    width: '560px',
+  });
+}
+
+/**
+ * "Abrir uma cena" (E7-02, E7-05): the scene points of the current map as a
+ * list of radios. A point with no actions is disabled, and its row says why
+ * once ("Sem ações. Adicione no editor do mapa."); a hidden point can be
+ * opened and stays hidden on the map. The footer is "Cancelar" (outlined) and
+ * "Abrir cena" (filled), right-aligned on a computer and two equal 48px
+ * buttons on a phone. The call is made here; a refusal is said at the top of
+ * the list, where it is seen.
+ */
+@Component({
+  selector: 'app-scene-picker',
+  imports: [MatButtonModule, MatIconModule, SheetFrame],
+  templateUrl: './scene-picker.html',
+  styleUrl: './scene-picker.scss',
+})
+export class ScenePicker {
+  private readonly api = inject(SceneClient);
+  private readonly sheet = injectSheet<ScenePickerData, boolean>();
+  protected readonly data = this.sheet.data;
+  protected readonly inSheet = this.sheet.inSheet;
+
+  protected readonly rows = computed(() =>
+    this.data.points
+      .filter((p) => p.kind === MapPointKind.SCENE)
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        revealed: p.revealed,
+        off: p.sceneActions.length === 0,
+        detail: joinDots([
+          p.revealed ? 'Revelado no mapa' : 'Escondido no mapa',
+          ...(p.sceneActions.length > 0 ? [actionCount(p.sceneActions.length)] : []),
+        ]),
+      })),
+  );
+  protected readonly anyHidden = computed(() => this.rows().some((r) => !r.revealed));
+  protected readonly choice = signal<string | null>(this.initialChoice());
+  protected readonly busy = signal(false);
+  protected readonly error = signal('');
+
+  private readonly frame = viewChild(SheetFrame);
+
+  private initialChoice(): string | null {
+    const open = this.data.points.find((p) => p.id === this.data.openPointId && p.sceneActions.length > 0);
+    const first = this.data.points.find((p) => p.kind === MapPointKind.SCENE && p.sceneActions.length > 0);
+    return (open ?? first)?.id ?? null;
+  }
+
+  protected close(): void {
+    this.sheet.close(false);
+  }
+
+  protected async confirm(): Promise<void> {
+    const pointId = this.choice();
+    if (pointId === null || this.busy()) {
+      return;
+    }
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      const scene = await this.api.open(this.data.campaignId, pointId);
+      this.data.state.openedHere(scene);
+      this.sheet.close(true);
+    } catch (err) {
+      this.error.set(sceneErrorMessage(err, 'abrir a cena'));
+      this.frame()?.scrollToTop();
+    } finally {
+      this.busy.set(false);
+    }
+  }
+}

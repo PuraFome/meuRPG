@@ -247,6 +247,7 @@ func (f *fight) setPhysical(t *testing.T, u *user) {
 }
 
 func TestMR013_TurnOrderAndMovementLeft(t *testing.T) {
+	t.Parallel()
 	f := newFight(t)
 	ctx := t.Context()
 	// The goblins roll 12 and 12 (a tie); Pensantus rolls 12 in the app.
@@ -396,6 +397,7 @@ func TestMR013_TurnOrderAndMovementLeft(t *testing.T) {
 }
 
 func TestRN19_EachNPCRollsItsOwnInitiative(t *testing.T) {
+	t.Parallel()
 	f := newFight(t)
 	f.h.roller.queue(3, 17, 9) // three goblins, three rolls
 	e := f.startFight(t, 3)
@@ -426,6 +428,7 @@ func TestRN19_EachNPCRollsItsOwnInitiative(t *testing.T) {
 }
 
 func TestRN20_PlayersNeverReceiveHiddenCombatantsOrNPCNumbers(t *testing.T) {
+	t.Parallel()
 	f := newFight(t)
 	// Goblin 1 hides, Goblin 2 is revealed; the rolls are 17 and 13.
 	f.h.roller.queue(17, 13)
@@ -516,6 +519,7 @@ func (f *fight) submitAll(t *testing.T, e *playv1.Encounter) {
 }
 
 func TestRN21_PlayerMovementIsLimitedTheMasterIsNot(t *testing.T) {
+	t.Parallel()
 	f := newFight(t)
 	f.h.roller.queue(1, 20, 12) // Goblin on top, then Pensantus 12 + 2, Toren 10 + 2
 	e := f.startFight(t, 1, false)
@@ -571,6 +575,7 @@ func TestRN21_PlayerMovementIsLimitedTheMasterIsNot(t *testing.T) {
 }
 
 func TestEndTurnIsIdempotent(t *testing.T) {
+	t.Parallel()
 	f := newFight(t)
 	f.h.roller.queue(1)
 	e := f.startFight(t, 1, false)
@@ -621,6 +626,7 @@ func TestEndTurnIsIdempotent(t *testing.T) {
 }
 
 func TestStartEncounterNeedsAGrid(t *testing.T) {
+	t.Parallel()
 	f := newFight(t)
 	start := func(point string) error {
 		_, err := f.master.combat.StartEncounter(t.Context(), connect.NewRequest(&playv1.StartEncounterRequest{
@@ -681,6 +687,7 @@ func TestStartEncounterNeedsAGrid(t *testing.T) {
 }
 
 func TestMR013_CombatantsStartOnTheirTokensAndEndWhereTheyStand(t *testing.T) {
+	t.Parallel()
 	f := newFight(t)
 	f.h.placeToken(f.mapID, f.pens.GetId(), 2600, 5100) // square 5, 5 of the 20 x 10 grid
 	f.h.roller.queue(1)
@@ -735,6 +742,7 @@ func (f *fight) latest(t *testing.T) *playv1.Encounter {
 }
 
 func TestMR013_RemoveAndEnd(t *testing.T) {
+	t.Parallel()
 	f := newFight(t)
 	f.h.roller.queue(18, 5)
 	e := f.startFight(t, 2, false)
@@ -792,6 +800,7 @@ func TestMR013_RemoveAndEnd(t *testing.T) {
 // deleted mid-fight, nobody is on turn; the master starts the turns again
 // from the top of the order, and a player cannot.
 func TestMR013_TheMasterRestartsAnOrphanedTurn(t *testing.T) {
+	t.Parallel()
 	f := newFight(t)
 	f.h.roller.queue(18, 5)
 	e := f.startFight(t, 2, false)
@@ -836,6 +845,7 @@ func TestMR013_TheMasterRestartsAnOrphanedTurn(t *testing.T) {
 }
 
 func TestMR013_GetEncounterWithoutOneIsEmpty(t *testing.T) {
+	t.Parallel()
 	f := newFight(t)
 	if got := f.get(t, f.ana); got != nil {
 		t.Errorf("GetEncounter() = %v, want none", got)
@@ -852,6 +862,7 @@ func TestMR013_GetEncounterWithoutOneIsEmpty(t *testing.T) {
 // the campaign, and a pending member, get not_found; signed out gets
 // unauthenticated.
 func TestMR013_CombatAuthorizationMatrix(t *testing.T) {
+	t.Parallel()
 	f := newFight(t)
 	h := f.h
 	f.h.roller.queue(1)
@@ -979,6 +990,7 @@ func TestMR013_CombatAuthorizationMatrix(t *testing.T) {
 // it may see (D9). A hidden goblin's move reaches the master only; its turn
 // reaches the players as the master's.
 func TestMR013_CombatEventsPerAudience(t *testing.T) {
+	t.Parallel()
 	f := newFight(t)
 	f.h.roller.queue(18) // the hidden goblin plays first
 	e := f.startFight(t, 1)
@@ -1047,6 +1059,7 @@ func TestMR013_CombatEventsPerAudience(t *testing.T) {
 // another one merged could drop that one's kinds without anyone noticing;
 // this test notices. Add a new kind both here and in the migration.
 func TestSessionEventKindsMatchTheCheck(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t)
 	want := []string{
 		eventCharacterVitalsAdjusted,

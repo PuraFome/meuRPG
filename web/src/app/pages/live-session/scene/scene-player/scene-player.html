@@ -1,0 +1,47 @@
+@if (scene(); as s) {
+  <section class="sc" aria-labelledby="sc-title">
+    <p class="sc__eyebrow"><mat-icon aria-hidden="true">chat_bubble_outline</mat-icon>O mestre abriu uma cena</p>
+    <h2 class="sc__title" id="sc-title">Cena: {{ s.name }}</h2>
+    @if (s.description) {
+      <p class="sc__text">{{ s.description }}</p>
+    }
+
+    <h3 class="sc__sub">O que você pode fazer</h3>
+    <ul class="sc__list">
+      @for (r of rows(); track r.action.id) {
+        <li class="sc__row" tabindex="-1" [attr.data-action]="r.action.id">
+          <div class="sc__text">
+            <span class="sc__name">{{ r.title }}</span>
+            <span class="sc__check">{{ r.check }}</span>
+            @if (r.passive) {
+              <span class="sc__passive">{{ r.passive }}</span>
+            }
+            @if (r.own; as own) {
+              <span class="sc__done"><mat-icon aria-hidden="true">check</mat-icon>Rolada</span>
+              <span class="sc__formula">{{ formula(own) }}</span>
+            }
+          </div>
+          @if (r.own; as own) {
+            <span class="sc__total">{{ own.roll?.total }}</span>
+            <span class="sc__slot" aria-hidden="true"></span>
+          } @else if (r.action.bonus !== undefined) {
+            <span class="sc__bonus">{{ bonusText(r.action.bonus) }}</span>
+            <button
+              matButton="outlined"
+              type="button"
+              class="sc__roll"
+              [attr.aria-label]="'Rolar ' + r.title"
+              (click)="roll(r.action)"
+            >
+              Rolar
+            </button>
+          }
+        </li>
+      }
+    </ul>
+
+    <p class="sc__note">
+      <mat-icon aria-hidden="true">visibility</mat-icon>O mestre vê cada resultado. Você vê só os seus.
+    </p>
+  </section>
+}

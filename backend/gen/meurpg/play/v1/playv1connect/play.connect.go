@@ -76,6 +76,16 @@ const (
 	// PlayServiceTakeBackLeftImageProcedure is the fully-qualified name of the PlayService's
 	// TakeBackLeftImage RPC.
 	PlayServiceTakeBackLeftImageProcedure = "/meurpg.play.v1.PlayService/TakeBackLeftImage"
+	// PlayServiceOpenSceneProcedure is the fully-qualified name of the PlayService's OpenScene RPC.
+	PlayServiceOpenSceneProcedure = "/meurpg.play.v1.PlayService/OpenScene"
+	// PlayServiceCloseSceneProcedure is the fully-qualified name of the PlayService's CloseScene RPC.
+	PlayServiceCloseSceneProcedure = "/meurpg.play.v1.PlayService/CloseScene"
+	// PlayServiceGetOpenSceneProcedure is the fully-qualified name of the PlayService's GetOpenScene
+	// RPC.
+	PlayServiceGetOpenSceneProcedure = "/meurpg.play.v1.PlayService/GetOpenScene"
+	// PlayServiceRollSceneCheckProcedure is the fully-qualified name of the PlayService's
+	// RollSceneCheck RPC.
+	PlayServiceRollSceneCheckProcedure = "/meurpg.play.v1.PlayService/RollSceneCheck"
 )
 
 // PlayServiceClient is a client for the meurpg.play.v1.PlayService service.
@@ -312,6 +322,75 @@ type PlayServiceClient interface {
 	//     campaign does not exist, or the caller is not a member of it.
 	//   - `permission_denied`: the caller is a player.
 	TakeBackLeftImage(context.Context, *connect.Request[v1.TakeBackLeftImageRequest]) (*connect.Response[v1.TakeBackLeftImageResponse], error)
+	// OpenScene opens an RP scene in the session (MR-015, D7): the master
+	// picks a SCENE point of the campaign's maps and every member sees it,
+	// live, with the point's name and description and its actions; each player
+	// with their own character's bonus (GetOpenScene). Only the campaign's
+	// master may call it, and only while the campaign has an open session. One
+	// scene at a time: opening another replaces the first. The point may be
+	// hidden: opening it reveals nothing, it stays hidden on the map (RN-10).
+	// Opening the scene that is already open changes nothing; closing it and
+	// opening it again starts the rolls afresh. Every stream gets
+	// `scene_changed`, and a `scene_opened` event goes to the history.
+	//
+	// Errors:
+	//   - `not_found`: the point is not a SCENE point of the campaign's maps,
+	//     the campaign does not exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION); or the point has no actions (SceneBlocked,
+	//     NO_ACTIONS).
+	OpenScene(context.Context, *connect.Request[v1.OpenSceneRequest]) (*connect.Response[v1.OpenSceneResponse], error)
+	// CloseScene closes the open scene, asking nothing. Only the campaign's
+	// master may call it. With no scene open it changes nothing. Every stream
+	// gets `scene_changed`, and a `scene_closed` event goes to the history.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, or the caller is not a
+	//     member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION).
+	CloseScene(context.Context, *connect.Request[v1.CloseSceneRequest]) (*connect.Response[v1.CloseSceneResponse], error)
+	// GetOpenScene returns the scene open in the session, and the rolls made
+	// in it, newest first (the scene log, MR-015). Any member may call it; the
+	// app reads it after `ready` and after every `scene_changed` and
+	// `scene_check_rolled`. What each one gets (RN-20):
+	//   - the master: the actions with their DCs, and every roll with whether
+	//     it passed;
+	//   - a player: the actions without a DC, each with their own living
+	//     character's bonus and passive value, and only their own rolls,
+	//     with no pass or fail.
+	// The scene is unset when none is open.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, or the caller is not a
+	//     member of it.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION).
+	GetOpenScene(context.Context, *connect.Request[v1.GetOpenSceneRequest]) (*connect.Response[v1.GetOpenSceneResponse], error)
+	// RollSceneCheck rolls an action of the open scene for the caller's own
+	// living character (MR-015, RN-18): the d20 plus the character's bonus
+	// from the sheet. The server rolls the d20, or takes the face of a real
+	// die (1 to 20), as the campaign's dice setting allows. A character rolls
+	// each action once while the scene is open; the master closes and opens the
+	// scene again for another roll. The answer is the roll with its total: the
+	// DC, and whether it passed, stay with the master. The master gets
+	// `scene_check_rolled` on the stream, and so does the roller; nobody else
+	// does. A `scene_check_rolled` event goes to the history (ids and numbers
+	// only). Only a player may call it.
+	//
+	// Errors:
+	//   - `invalid_argument`: neither roll_in_app nor d20_face is set;
+	//     roll_in_app is false; d20_face is not 1 to 20; the idempotency key
+	//     is not a UUID.
+	//   - `not_found`: the action is not one of the open scene's, the campaign
+	//     does not exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is the master.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION); or SceneBlocked: NO_OPEN_SCENE, ALREADY_ROLLED,
+	//     WRONG_DICE_MODE, NO_CHARACTER.
+	RollSceneCheck(context.Context, *connect.Request[v1.RollSceneCheckRequest]) (*connect.Response[v1.RollSceneCheckResponse], error)
 }
 
 // NewPlayServiceClient constructs a client for the meurpg.play.v1.PlayService service. By default,
@@ -395,6 +474,31 @@ func NewPlayServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(playServiceMethods.ByName("TakeBackLeftImage")),
 			connect.WithClientOptions(opts...),
 		),
+		openScene: connect.NewClient[v1.OpenSceneRequest, v1.OpenSceneResponse](
+			httpClient,
+			baseURL+PlayServiceOpenSceneProcedure,
+			connect.WithSchema(playServiceMethods.ByName("OpenScene")),
+			connect.WithClientOptions(opts...),
+		),
+		closeScene: connect.NewClient[v1.CloseSceneRequest, v1.CloseSceneResponse](
+			httpClient,
+			baseURL+PlayServiceCloseSceneProcedure,
+			connect.WithSchema(playServiceMethods.ByName("CloseScene")),
+			connect.WithClientOptions(opts...),
+		),
+		getOpenScene: connect.NewClient[v1.GetOpenSceneRequest, v1.GetOpenSceneResponse](
+			httpClient,
+			baseURL+PlayServiceGetOpenSceneProcedure,
+			connect.WithSchema(playServiceMethods.ByName("GetOpenScene")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
+		rollSceneCheck: connect.NewClient[v1.RollSceneCheckRequest, v1.RollSceneCheckResponse](
+			httpClient,
+			baseURL+PlayServiceRollSceneCheckProcedure,
+			connect.WithSchema(playServiceMethods.ByName("RollSceneCheck")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -411,6 +515,10 @@ type playServiceClient struct {
 	setShownImage         *connect.Client[v1.SetShownImageRequest, v1.SetShownImageResponse]
 	listLeftImages        *connect.Client[v1.ListLeftImagesRequest, v1.ListLeftImagesResponse]
 	takeBackLeftImage     *connect.Client[v1.TakeBackLeftImageRequest, v1.TakeBackLeftImageResponse]
+	openScene             *connect.Client[v1.OpenSceneRequest, v1.OpenSceneResponse]
+	closeScene            *connect.Client[v1.CloseSceneRequest, v1.CloseSceneResponse]
+	getOpenScene          *connect.Client[v1.GetOpenSceneRequest, v1.GetOpenSceneResponse]
+	rollSceneCheck        *connect.Client[v1.RollSceneCheckRequest, v1.RollSceneCheckResponse]
 }
 
 // StartGameSession calls meurpg.play.v1.PlayService.StartGameSession.
@@ -466,6 +574,26 @@ func (c *playServiceClient) ListLeftImages(ctx context.Context, req *connect.Req
 // TakeBackLeftImage calls meurpg.play.v1.PlayService.TakeBackLeftImage.
 func (c *playServiceClient) TakeBackLeftImage(ctx context.Context, req *connect.Request[v1.TakeBackLeftImageRequest]) (*connect.Response[v1.TakeBackLeftImageResponse], error) {
 	return c.takeBackLeftImage.CallUnary(ctx, req)
+}
+
+// OpenScene calls meurpg.play.v1.PlayService.OpenScene.
+func (c *playServiceClient) OpenScene(ctx context.Context, req *connect.Request[v1.OpenSceneRequest]) (*connect.Response[v1.OpenSceneResponse], error) {
+	return c.openScene.CallUnary(ctx, req)
+}
+
+// CloseScene calls meurpg.play.v1.PlayService.CloseScene.
+func (c *playServiceClient) CloseScene(ctx context.Context, req *connect.Request[v1.CloseSceneRequest]) (*connect.Response[v1.CloseSceneResponse], error) {
+	return c.closeScene.CallUnary(ctx, req)
+}
+
+// GetOpenScene calls meurpg.play.v1.PlayService.GetOpenScene.
+func (c *playServiceClient) GetOpenScene(ctx context.Context, req *connect.Request[v1.GetOpenSceneRequest]) (*connect.Response[v1.GetOpenSceneResponse], error) {
+	return c.getOpenScene.CallUnary(ctx, req)
+}
+
+// RollSceneCheck calls meurpg.play.v1.PlayService.RollSceneCheck.
+func (c *playServiceClient) RollSceneCheck(ctx context.Context, req *connect.Request[v1.RollSceneCheckRequest]) (*connect.Response[v1.RollSceneCheckResponse], error) {
+	return c.rollSceneCheck.CallUnary(ctx, req)
 }
 
 // PlayServiceHandler is an implementation of the meurpg.play.v1.PlayService service.
@@ -702,6 +830,75 @@ type PlayServiceHandler interface {
 	//     campaign does not exist, or the caller is not a member of it.
 	//   - `permission_denied`: the caller is a player.
 	TakeBackLeftImage(context.Context, *connect.Request[v1.TakeBackLeftImageRequest]) (*connect.Response[v1.TakeBackLeftImageResponse], error)
+	// OpenScene opens an RP scene in the session (MR-015, D7): the master
+	// picks a SCENE point of the campaign's maps and every member sees it,
+	// live, with the point's name and description and its actions; each player
+	// with their own character's bonus (GetOpenScene). Only the campaign's
+	// master may call it, and only while the campaign has an open session. One
+	// scene at a time: opening another replaces the first. The point may be
+	// hidden: opening it reveals nothing, it stays hidden on the map (RN-10).
+	// Opening the scene that is already open changes nothing; closing it and
+	// opening it again starts the rolls afresh. Every stream gets
+	// `scene_changed`, and a `scene_opened` event goes to the history.
+	//
+	// Errors:
+	//   - `not_found`: the point is not a SCENE point of the campaign's maps,
+	//     the campaign does not exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION); or the point has no actions (SceneBlocked,
+	//     NO_ACTIONS).
+	OpenScene(context.Context, *connect.Request[v1.OpenSceneRequest]) (*connect.Response[v1.OpenSceneResponse], error)
+	// CloseScene closes the open scene, asking nothing. Only the campaign's
+	// master may call it. With no scene open it changes nothing. Every stream
+	// gets `scene_changed`, and a `scene_closed` event goes to the history.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, or the caller is not a
+	//     member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION).
+	CloseScene(context.Context, *connect.Request[v1.CloseSceneRequest]) (*connect.Response[v1.CloseSceneResponse], error)
+	// GetOpenScene returns the scene open in the session, and the rolls made
+	// in it, newest first (the scene log, MR-015). Any member may call it; the
+	// app reads it after `ready` and after every `scene_changed` and
+	// `scene_check_rolled`. What each one gets (RN-20):
+	//   - the master: the actions with their DCs, and every roll with whether
+	//     it passed;
+	//   - a player: the actions without a DC, each with their own living
+	//     character's bonus and passive value, and only their own rolls,
+	//     with no pass or fail.
+	// The scene is unset when none is open.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, or the caller is not a
+	//     member of it.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION).
+	GetOpenScene(context.Context, *connect.Request[v1.GetOpenSceneRequest]) (*connect.Response[v1.GetOpenSceneResponse], error)
+	// RollSceneCheck rolls an action of the open scene for the caller's own
+	// living character (MR-015, RN-18): the d20 plus the character's bonus
+	// from the sheet. The server rolls the d20, or takes the face of a real
+	// die (1 to 20), as the campaign's dice setting allows. A character rolls
+	// each action once while the scene is open; the master closes and opens the
+	// scene again for another roll. The answer is the roll with its total: the
+	// DC, and whether it passed, stay with the master. The master gets
+	// `scene_check_rolled` on the stream, and so does the roller; nobody else
+	// does. A `scene_check_rolled` event goes to the history (ids and numbers
+	// only). Only a player may call it.
+	//
+	// Errors:
+	//   - `invalid_argument`: neither roll_in_app nor d20_face is set;
+	//     roll_in_app is false; d20_face is not 1 to 20; the idempotency key
+	//     is not a UUID.
+	//   - `not_found`: the action is not one of the open scene's, the campaign
+	//     does not exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is the master.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION); or SceneBlocked: NO_OPEN_SCENE, ALREADY_ROLLED,
+	//     WRONG_DICE_MODE, NO_CHARACTER.
+	RollSceneCheck(context.Context, *connect.Request[v1.RollSceneCheckRequest]) (*connect.Response[v1.RollSceneCheckResponse], error)
 }
 
 // NewPlayServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -781,6 +978,31 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(playServiceMethods.ByName("TakeBackLeftImage")),
 		connect.WithHandlerOptions(opts...),
 	)
+	playServiceOpenSceneHandler := connect.NewUnaryHandler(
+		PlayServiceOpenSceneProcedure,
+		svc.OpenScene,
+		connect.WithSchema(playServiceMethods.ByName("OpenScene")),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceCloseSceneHandler := connect.NewUnaryHandler(
+		PlayServiceCloseSceneProcedure,
+		svc.CloseScene,
+		connect.WithSchema(playServiceMethods.ByName("CloseScene")),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceGetOpenSceneHandler := connect.NewUnaryHandler(
+		PlayServiceGetOpenSceneProcedure,
+		svc.GetOpenScene,
+		connect.WithSchema(playServiceMethods.ByName("GetOpenScene")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceRollSceneCheckHandler := connect.NewUnaryHandler(
+		PlayServiceRollSceneCheckProcedure,
+		svc.RollSceneCheck,
+		connect.WithSchema(playServiceMethods.ByName("RollSceneCheck")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/meurpg.play.v1.PlayService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case PlayServiceStartGameSessionProcedure:
@@ -805,6 +1027,14 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 			playServiceListLeftImagesHandler.ServeHTTP(w, r)
 		case PlayServiceTakeBackLeftImageProcedure:
 			playServiceTakeBackLeftImageHandler.ServeHTTP(w, r)
+		case PlayServiceOpenSceneProcedure:
+			playServiceOpenSceneHandler.ServeHTTP(w, r)
+		case PlayServiceCloseSceneProcedure:
+			playServiceCloseSceneHandler.ServeHTTP(w, r)
+		case PlayServiceGetOpenSceneProcedure:
+			playServiceGetOpenSceneHandler.ServeHTTP(w, r)
+		case PlayServiceRollSceneCheckProcedure:
+			playServiceRollSceneCheckHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -856,4 +1086,20 @@ func (UnimplementedPlayServiceHandler) ListLeftImages(context.Context, *connect.
 
 func (UnimplementedPlayServiceHandler) TakeBackLeftImage(context.Context, *connect.Request[v1.TakeBackLeftImageRequest]) (*connect.Response[v1.TakeBackLeftImageResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.TakeBackLeftImage is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) OpenScene(context.Context, *connect.Request[v1.OpenSceneRequest]) (*connect.Response[v1.OpenSceneResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.OpenScene is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) CloseScene(context.Context, *connect.Request[v1.CloseSceneRequest]) (*connect.Response[v1.CloseSceneResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.CloseScene is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) GetOpenScene(context.Context, *connect.Request[v1.GetOpenSceneRequest]) (*connect.Response[v1.GetOpenSceneResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.GetOpenScene is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) RollSceneCheck(context.Context, *connect.Request[v1.RollSceneCheckRequest]) (*connect.Response[v1.RollSceneCheckResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.RollSceneCheck is not implemented"))
 }

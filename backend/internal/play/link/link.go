@@ -169,6 +169,29 @@ type Spell struct {
 	// above its own.
 	Area                bool
 	ExtraTargetPerLevel bool
+	// HP is set for a spell that reads hit points (Sono, Palavra de Poder...):
+	// Damage and Heal are nil for it, and the cast applies HP instead.
+	HP *HPEffect
+}
+
+// HPEffect is what a spell that reads hit points does at the slot level, from
+// the rules' effects/spells.json (rules.SpellEffect). Kind is the rules'
+// SpellKind: "hp_pool", "hp_threshold", "zero_hp_target" or "flat_heal".
+type HPEffect struct {
+	Kind string
+	// Pool is the dice of an hp_pool spell, with the extra dice of the slot
+	// level already in Count.
+	Pool Dice
+	// Condition is the key given to each creature affected; empty for none.
+	Condition string
+	// Threshold is the most hit points a creature may have, and Dies says the
+	// spell kills it instead (an hp_threshold spell).
+	Threshold int
+	Dies      bool
+	// Heal is a flat_heal's healing at the slot level, and Ends the conditions
+	// it ends.
+	Heal int
+	Ends []string
 }
 
 // Save is a creature's saving throw: the bonus added to the d20, and whether
@@ -195,4 +218,42 @@ type Turn struct {
 	// SpeedFt is the combatant's walking speed in a combat, and MovementUsedFt
 	// the feet walked this turn.
 	SpeedFt, MovementUsedFt int
+}
+
+// Scene is an RP scene (MR-015): a SCENE point of a map as the session opens
+// it, with the master's actions on it. The DCs are in it, so it never goes to
+// a player as it is.
+type Scene struct {
+	PointID string
+	// Name and Description are the point's: the players read both in the open
+	// scene.
+	Name, Description string
+	// Actions are in the order the master put them.
+	Actions []SceneAction
+}
+
+// SceneAction is one check of a scene.
+type SceneAction struct {
+	ID string
+	// Key is "skill:investigation", "ability:str" or "save:wis".
+	Key string
+	// Name is the master's name for it, "" for none.
+	Name string
+	// DC is the difficulty class, 0 for none.
+	DC int
+}
+
+// SceneOption is a scene check with one character's numbers on it (the rules
+// engine's SceneOption).
+type SceneOption struct {
+	// Known says the sheet has this check; a basic sheet has no skills, so its
+	// character has no numbers for a scene.
+	Known bool
+	// CheckName is the check's name in Portuguese: "Investigação".
+	CheckName string
+	// Bonus is added to the d20.
+	Bonus int
+	// Passive is the character's passive value, when HasPassive.
+	Passive    int
+	HasPassive bool
 }

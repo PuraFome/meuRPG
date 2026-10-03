@@ -41,6 +41,8 @@ export interface LiveStreamHandlers {
   onCombatLogChanged?(): void;
   /** `xp_changed`: the campaign's XP changed, read it again. */
   onXpChanged?(): void;
+  /** `scene_changed` and `scene_check_rolled`: read the open scene again. */
+  onSceneChanged?(): void;
   /** `session_ended`, or `NO_OPEN_SESSION` when (re)connecting. */
   onEnded(): void;
   /** `not_found` or `unauthenticated`: no reconnecting. */
@@ -200,6 +202,10 @@ export class LiveStream {
             break;
           case 'xpChanged':
             this.options.handlers.onXpChanged?.();
+            break;
+          case 'sceneChanged':
+          case 'sceneCheckRolled':
+            this.options.handlers.onSceneChanged?.();
             break;
           case 'ended':
             this.stop();

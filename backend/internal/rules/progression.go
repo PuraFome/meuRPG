@@ -172,6 +172,35 @@ func (e *SceneError) Error() string {
 	return fmt.Sprintf("scene action %d: unknown check %q", e.Index, e.Key)
 }
 
+// SceneCheckName is the Portuguese name of a scene check by its key
+// ("skill:investigation" is "Investigação", "ability:str" is "Teste de
+// Força", "save:wis" is "Salvaguarda de Sabedoria"), and false for any
+// other key: the server uses it to refuse an action that is not a skill,
+// an ability check or a saving throw (MR-015), and to name the actions
+// for the master, who has no character's numbers on the screen.
+func (c *Content) SceneCheckName(key string) (string, bool) {
+	kind, rest, _ := strings.Cut(key, ":")
+	cat := c.c.catalog
+	switch kind {
+	case SceneSkill:
+		for _, s := range cat.Skills {
+			if s.Key == key {
+				return s.NamePT, true
+			}
+		}
+	case SceneAbility, SceneSave:
+		for _, a := range cat.Abilities {
+			if string(a.Ability) == rest {
+				if kind == SceneAbility {
+					return "Teste de " + a.NamePT, true
+				}
+				return "Salvaguarda de " + a.NamePT, true
+			}
+		}
+	}
+	return "", false
+}
+
 // SceneOptions is what a player sees of a scene: each action with their own
 // bonus, from their derived sheet. It stops at the first unknown key with a
 // *SceneError (the server checks keys when the master saves, so that is a

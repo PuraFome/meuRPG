@@ -12,7 +12,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 
 import { MapPointKind } from '../../../../gen/meurpg/maps/v1/maps_pb';
-import type { MapPoint } from '../../../../gen/meurpg/maps/v1/maps_pb';
+import type { MapPoint, SceneAction } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { mapErrorMessage } from '../../../core/maps/map-errors';
 import { MapState } from '../../../core/maps/map-state';
@@ -304,6 +304,12 @@ export class MapEditor {
     } finally {
       this.saving.set(false);
     }
+  }
+
+  /** The scene actions saved on their own: the point carries the new list. */
+  protected setSceneActions(point: MapPoint, actions: readonly SceneAction[]): void {
+    const now = this.state().points().find((p) => p.id === point.id) ?? point;
+    this.state().upsertPoint({ ...now, sceneActions: [...actions] });
   }
 
   protected async remove(): Promise<void> {

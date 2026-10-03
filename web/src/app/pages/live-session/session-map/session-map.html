@@ -90,8 +90,17 @@
             <app-map-points-list
               [points]="state().points()"
               [pendingId]="reveals.pendingId()"
+              [openScenePointId]="scene() ? (scene()!.scene()?.pointId ?? null) : undefined"
+              [pendingSceneId]="pendingScene()"
               (toggle)="reveals.togglePoint($event.point, $event.revealed)"
+              (openScene)="openScene($event)"
             />
+            @if (sceneError(); as message) {
+              <div class="mr-notice mr-notice--danger" role="alert">
+                <mat-icon aria-hidden="true">error</mat-icon>
+                <p>{{ message }}</p>
+              </div>
+            }
             @if (reveals.error(); as message) {
               <div class="mr-notice mr-notice--danger" role="alert">
                 <mat-icon aria-hidden="true">error</mat-icon>

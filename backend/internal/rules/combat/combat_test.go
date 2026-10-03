@@ -521,3 +521,73 @@ func TestAttacksLeft(t *testing.T) {
 		}
 	}
 }
+
+// MR-014 (question 57): the spells come sorted: castable now first, then the
+// rest, each group by circle (cantrips first) and Portuguese name.
+func TestMR014_SpellsSortByAvailabilityThenCircle(t *testing.T) {
+	t.Parallel()
+	d := derive(t, pensantusBuild())
+	keys := func(o TurnOptions) []string {
+		var out []string
+		for _, s := range o.Spells {
+			out = append(out, s.Spell.Key)
+		}
+		return out
+	}
+
+	// Round 2, 1 slot of the 1st circle left (E8-02 state 1): the cantrip and
+	// Magic Missile and Sleep are castable; Shield, Web and Misty Step are not.
+	one := Options(d, TurnState{}, Usage{SlotsUsed: [9]int{3, 2}})
+	want := []string{"spell:minor-illusion", "spell:magic-missile", "spell:sleep", "spell:shield", "spell:misty-step", "spell:web"}
+	if got := keys(one); !slices.Equal(got, want) {
+		t.Errorf("1 slot: %v, want %v", got, want)
+	}
+
+	// Round 4, 0 slots of the 1st circle (E8-02 state 2): only the cantrip is
+	// castable. Then the rest, by circle and name: the 1st (Escudo Arcano,
+	// Mísseis Mágicos, Sono), the 2nd (Passo Nebuloso, Teia).
+	none := Options(d, TurnState{}, Usage{SlotsUsed: [9]int{4, 2}})
+	want = []string{"spell:minor-illusion", "spell:shield", "spell:magic-missile", "spell:sleep", "spell:misty-step", "spell:web"}
+	if got := keys(none); !slices.Equal(got, want) {
+		t.Errorf("0 slots: %v, want %v", got, want)
+	}
+	for i, s := range none.Spells {
+		if wantEnabled := i == 0; s.Enabled != wantEnabled {
+			t.Errorf("0 slots: %s enabled = %v, want %v", s.Spell.Key, s.Enabled, wantEnabled)
+		}
+	}
+	// Shield is never castable on the character's own turn: it sorts with the
+	// rest even with every slot free, and says why.
+	fresh := Options(d, TurnState{}, Usage{})
+	sh := spellOf(t, fresh, "spell:shield")
+	if sh.Enabled || sh.Reason.Code != ReasonReactionOnlyWhenHit {
+		t.Errorf("shield = %+v", sh)
+	}
+	if got := keys(fresh); got[len(got)-1] != "spell:shield" {
+		t.Errorf("with every slot free Shield should sort last, got %v", got)
+	}
+}
+
+func TestSortSpellsOrderAndTies(t *testing.T) {
+	t.Parallel()
+	mk := func(key, pt string, level int, enabled bool) SpellOption {
+		return SpellOption{Option: Option{Enabled: enabled}, Spell: rules.SpellEntry{Key: key, NamePT: pt, Level: level}}
+	}
+	got := []SpellOption{
+		mk("c", "Zumbido", 0, true),
+		mk("a", "Ânimo", 0, true), // accents do not sort after the Zs
+		mk("t1", "Igual", 1, true),
+		mk("t2", "Igual", 1, true), // a tie keeps the sheet's order
+		mk("d", "Dádiva", 1, false),
+		mk("b", "Bênção", 1, false),
+		mk("e", "Chama", 2, true),
+	}
+	sortSpells(got)
+	var keys []string
+	for _, s := range got {
+		keys = append(keys, s.Spell.Key)
+	}
+	if want := []string{"a", "c", "t1", "t2", "e", "b", "d"}; !slices.Equal(keys, want) {
+		t.Errorf("order = %v, want %v", keys, want)
+	}
+}

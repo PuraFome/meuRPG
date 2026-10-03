@@ -37,6 +37,18 @@ func (q *Queries) CountMaps(ctx context.Context, campaignID string) (int32, erro
 	return map_count, err
 }
 
+const countSceneActions = `-- name: CountSceneActions :one
+SELECT count(*)::INT4 AS action_count FROM scene_actions
+WHERE point_id = $1
+`
+
+func (q *Queries) CountSceneActions(ctx context.Context, pointID string) (int32, error) {
+	row := q.db.QueryRow(ctx, countSceneActions, pointID)
+	var action_count int32
+	err := row.Scan(&action_count)
+	return action_count, err
+}
+
 const deleteGalleryImage = `-- name: DeleteGalleryImage :one
 DELETE FROM gallery_images
 WHERE campaign_id = $1 AND id = $2
@@ -149,6 +161,35 @@ func (q *Queries) DeleteMapToken(ctx context.Context, arg DeleteMapTokenParams) 
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const deleteSceneAction = `-- name: DeleteSceneAction :execrows
+DELETE FROM scene_actions
+WHERE point_id = $1 AND id = $2
+`
+
+type DeleteSceneActionParams struct {
+	PointID string
+	ID      string
+}
+
+func (q *Queries) DeleteSceneAction(ctx context.Context, arg DeleteSceneActionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteSceneAction, arg.PointID, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteSceneActionsOfPoint = `-- name: DeleteSceneActionsOfPoint :exec
+DELETE FROM scene_actions
+WHERE point_id = $1
+`
+
+// A point that stops being a scene has no actions.
+func (q *Queries) DeleteSceneActionsOfPoint(ctx context.Context, pointID string) error {
+	_, err := q.db.Exec(ctx, deleteSceneActionsOfPoint, pointID)
+	return err
 }
 
 const getGalleryImage = `-- name: GetGalleryImage :one
@@ -404,6 +445,65 @@ func (q *Queries) GetMapTokenForUpdate(ctx context.Context, arg GetMapTokenForUp
 	return i, err
 }
 
+const getSceneActionForUpdate = `-- name: GetSceneActionForUpdate :one
+SELECT id, point_id, position, key, name, dc, created_at, updated_at FROM scene_actions
+WHERE point_id = $1 AND id = $2
+FOR UPDATE
+`
+
+type GetSceneActionForUpdateParams struct {
+	PointID string
+	ID      string
+}
+
+func (q *Queries) GetSceneActionForUpdate(ctx context.Context, arg GetSceneActionForUpdateParams) (SceneAction, error) {
+	row := q.db.QueryRow(ctx, getSceneActionForUpdate, arg.PointID, arg.ID)
+	var i SceneAction
+	err := row.Scan(
+		&i.ID,
+		&i.PointID,
+		&i.Position,
+		&i.Key,
+		&i.Name,
+		&i.Dc,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getScenePoint = `-- name: GetScenePoint :one
+SELECT p.id, p.map_id, p.kind, p.name, p.description, p.x_bp, p.y_bp, p.target_map_id, p.revealed_at, p.created_at, p.updated_at FROM map_points AS p
+JOIN maps AS m ON m.id = p.map_id
+WHERE m.campaign_id = $1 AND p.id = $2 AND p.kind = 'scene'
+`
+
+type GetScenePointParams struct {
+	CampaignID string
+	ID         string
+}
+
+// A SCENE point of the campaign's maps by its ID alone, hidden or not: the one
+// the master opens in a session (package play, through SessionMaps).
+func (q *Queries) GetScenePoint(ctx context.Context, arg GetScenePointParams) (MapPoint, error) {
+	row := q.db.QueryRow(ctx, getScenePoint, arg.CampaignID, arg.ID)
+	var i MapPoint
+	err := row.Scan(
+		&i.ID,
+		&i.MapID,
+		&i.Kind,
+		&i.Name,
+		&i.Description,
+		&i.XBp,
+		&i.YBp,
+		&i.TargetMapID,
+		&i.RevealedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const imageIsLeft = `-- name: ImageIsLeft :one
 SELECT EXISTS (
     SELECT 1 FROM campaign_left_images
@@ -611,6 +711,44 @@ func (q *Queries) InsertMapToken(ctx context.Context, arg InsertMapTokenParams) 
 		&i.XBp,
 		&i.YBp,
 		&i.Hidden,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const insertSceneAction = `-- name: InsertSceneAction :one
+INSERT INTO scene_actions (point_id, position, key, name, dc, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $6)
+RETURNING id, point_id, position, key, name, dc, created_at, updated_at
+`
+
+type InsertSceneActionParams struct {
+	PointID  string
+	Position int32
+	Key      string
+	Name     string
+	Dc       *int32
+	Now      time.Time
+}
+
+func (q *Queries) InsertSceneAction(ctx context.Context, arg InsertSceneActionParams) (SceneAction, error) {
+	row := q.db.QueryRow(ctx, insertSceneAction,
+		arg.PointID,
+		arg.Position,
+		arg.Key,
+		arg.Name,
+		arg.Dc,
+		arg.Now,
+	)
+	var i SceneAction
+	err := row.Scan(
+		&i.ID,
+		&i.PointID,
+		&i.Position,
+		&i.Key,
+		&i.Name,
+		&i.Dc,
+		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
@@ -928,6 +1066,83 @@ func (q *Queries) ListMapsUsingImage(ctx context.Context, arg ListMapsUsingImage
 	return items, nil
 }
 
+const listSceneActions = `-- name: ListSceneActions :many
+
+SELECT id, point_id, position, key, name, dc, created_at, updated_at FROM scene_actions
+WHERE point_id = $1
+ORDER BY position, created_at, id
+`
+
+// The actions of an RP scene (MR-015). A scene point has at most 20; the
+// handler counts them inside the transaction that inserts one.
+// One point's actions, in order.
+func (q *Queries) ListSceneActions(ctx context.Context, pointID string) ([]SceneAction, error) {
+	rows, err := q.db.Query(ctx, listSceneActions, pointID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SceneAction
+	for rows.Next() {
+		var i SceneAction
+		if err := rows.Scan(
+			&i.ID,
+			&i.PointID,
+			&i.Position,
+			&i.Key,
+			&i.Name,
+			&i.Dc,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSceneActionsOfMap = `-- name: ListSceneActionsOfMap :many
+SELECT a.id, a.point_id, a.position, a.key, a.name, a.dc, a.created_at, a.updated_at FROM scene_actions AS a
+JOIN map_points AS p ON p.id = a.point_id
+WHERE p.map_id = $1
+ORDER BY a.point_id, a.position, a.created_at, a.id
+`
+
+// Every action of a map's points, for a map read: grouped by the handler,
+// each point's in order.
+func (q *Queries) ListSceneActionsOfMap(ctx context.Context, mapID string) ([]SceneAction, error) {
+	rows, err := q.db.Query(ctx, listSceneActionsOfMap, mapID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SceneAction
+	for rows.Next() {
+		var i SceneAction
+		if err := rows.Scan(
+			&i.ID,
+			&i.PointID,
+			&i.Position,
+			&i.Key,
+			&i.Name,
+			&i.Dc,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSubmapLinks = `-- name: ListSubmapLinks :many
 SELECT p.map_id, p.target_map_id::UUID AS target_map_id, (p.revealed_at IS NOT NULL)::BOOL AS revealed
 FROM map_points AS p
@@ -1142,6 +1357,22 @@ func (q *Queries) SetMapTokenHidden(ctx context.Context, arg SetMapTokenHiddenPa
 	return i, err
 }
 
+const setSceneActionPosition = `-- name: SetSceneActionPosition :exec
+UPDATE scene_actions
+SET position = $2
+WHERE id = $1
+`
+
+type SetSceneActionPositionParams struct {
+	ID       string
+	Position int32
+}
+
+func (q *Queries) SetSceneActionPosition(ctx context.Context, arg SetSceneActionPositionParams) error {
+	_, err := q.db.Exec(ctx, setSceneActionPosition, arg.ID, arg.Position)
+	return err
+}
+
 const takeBackLeftImage = `-- name: TakeBackLeftImage :execrows
 DELETE FROM campaign_left_images
 WHERE campaign_id = $1 AND image_id = $2
@@ -1250,6 +1481,45 @@ func (q *Queries) UpdateMapPoint(ctx context.Context, arg UpdateMapPointParams) 
 		&i.YBp,
 		&i.TargetMapID,
 		&i.RevealedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateSceneAction = `-- name: UpdateSceneAction :one
+UPDATE scene_actions
+SET key = $1, name = $2, dc = $3, updated_at = $4
+WHERE point_id = $5 AND id = $6
+RETURNING id, point_id, position, key, name, dc, created_at, updated_at
+`
+
+type UpdateSceneActionParams struct {
+	Key     string
+	Name    string
+	Dc      *int32
+	Now     time.Time
+	PointID string
+	ID      string
+}
+
+func (q *Queries) UpdateSceneAction(ctx context.Context, arg UpdateSceneActionParams) (SceneAction, error) {
+	row := q.db.QueryRow(ctx, updateSceneAction,
+		arg.Key,
+		arg.Name,
+		arg.Dc,
+		arg.Now,
+		arg.PointID,
+		arg.ID,
+	)
+	var i SceneAction
+	err := row.Scan(
+		&i.ID,
+		&i.PointID,
+		&i.Position,
+		&i.Key,
+		&i.Name,
+		&i.Dc,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

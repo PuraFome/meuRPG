@@ -24,6 +24,8 @@ import { CombatState } from '../../core/combat/combat-state';
 import { MapState } from '../../core/maps/map-state';
 import { XpChanges } from '../../core/progression/xp-changes';
 import { MapsClient } from '../../core/maps/maps-client';
+import { SceneClient } from '../../core/play/scene-client';
+import { SceneState } from '../../core/play/scene-state';
 import { OpenSessions } from '../../shell/live-notice/open-sessions';
 import { AdjustVitals } from './adjust-vitals/adjust-vitals';
 import { AdjustVitalsData, AdjustVitalsResult } from './adjust-vitals/adjust-vitals.types';
@@ -46,6 +48,9 @@ import { SessionBlocked } from './session-blocked/session-blocked';
 import { SessionHeader } from './session-header/session-header';
 import { SessionMap } from './session-map/session-map';
 import { SessionTokens } from './session-tokens/session-tokens';
+import { SceneOpen } from './scene/scene-open/scene-open';
+import { ScenePanel } from './scene/scene-panel/scene-panel';
+import { ScenePlayer } from './scene/scene-player/scene-player';
 import { LeftImagesBlock } from './left-images-block/left-images-block';
 import { ShownImageBlock } from './shown-image-block/shown-image-block';
 import { ShownImagePanel } from './shown-image-panel/shown-image-panel';
@@ -86,6 +91,9 @@ type Phase = 'loading' | 'live' | 'no-access' | 'no-session' | 'ended' | 'error'
     SessionHeader,
     SessionMap,
     SessionTokens,
+    SceneOpen,
+    ScenePanel,
+    ScenePlayer,
     LeftImagesBlock,
     ShownImageBlock,
     ShownImagePanel,
@@ -103,6 +111,7 @@ export class LiveSession {
   private readonly bottomSheet = inject(MatBottomSheet);
   private readonly mapsApi = inject(MapsClient);
   private readonly combatApi = inject(CombatClient);
+  private readonly sceneApi = inject(SceneClient);
   private readonly openSessions = inject(OpenSessions);
   private readonly destroyRef = inject(DestroyRef);
   /** The adjust sheet needs this route's `LiveSessionSource`: MatDialog
@@ -134,6 +143,13 @@ export class LiveSession {
   /** The session's combat (MR-013): read on every `ready` and after each
    * `encounter_changed`; `turn_changed` and `combatant_moved` apply in place. */
   protected readonly combat = new CombatState();
+
+  /** The RP scene open in the session (MR-015): read on every `ready` and
+   * after each `scene_changed` or `scene_check_rolled`. */
+  protected readonly scene = new SceneState(
+    () => this.sceneApi.get(this.campaignId()),
+    () => this.isMaster(),
+  );
 
   protected readonly stream = signal<LiveStream | null>(null);
   protected readonly connection = computed(() => this.stream()?.status() ?? 'connecting');
@@ -188,6 +204,7 @@ export class LiveSession {
     this.campaignMaps.set([]);
     void this.mapState.open(null);
     this.combat.clear();
+    this.scene.clear();
     this.loadedSheetFor = null;
     this.partyInfoIds = new Set();
 
@@ -258,6 +275,7 @@ export class LiveSession {
         },
         onCombatLogChanged: () => this.combat.touchLog(),
         onXpChanged: () => this.xpChanges.bump(),
+        onSceneChanged: () => void this.scene.refresh(),
         onShownImage: (image) => this.shownImageChanged(image),
         onLeftImages: () => void this.reloadLeftImages(),
         onEnded: () => this.ended(),
@@ -290,6 +308,7 @@ export class LiveSession {
       this.shownKeep.set(snapshot.shownImageKeep);
       void this.reloadLeftImages();
       void this.loadCombat(generation);
+      void this.scene.refresh();
       this.combat.touchLog(); // the log is read again too, after a reconnection
       // Each `ready` (a reconnection too) reads the map again: a missed event never leaves it stale.
       void this.mapState.open(snapshot.currentMapId);

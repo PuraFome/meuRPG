@@ -1,0 +1,97 @@
+// The check and the bonus the player adds, before rolling.
+.card {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-4);
+  padding: 12px 14px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-ground);
+}
+
+.card__bonus {
+  flex: none;
+  font-family: var(--mr-font-display);
+  font-size: 38px;
+  font-weight: 800;
+  line-height: 42px;
+}
+
+.card__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.card__formula {
+  font-size: 17px;
+  line-height: 22px;
+}
+
+.card__check {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.how {
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+// The result: the player's own total, the formula and nothing about a DC.
+.res {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-4);
+  padding: 14px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-ground);
+}
+
+.res__sum {
+  flex: none;
+  font-family: var(--mr-font-display);
+  font-size: 56px;
+  font-weight: 800;
+  line-height: 56px;
+}
+
+.res__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.res__formula {
+  font-size: 17px;
+  line-height: 22px;
+}
+
+.res__cap {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.done {
+  --mat-button-filled-container-height: 48px;
+  width: 100%;
+}

@@ -8,6 +8,8 @@ import {
   MapService,
   type MapPoint,
   type MapToken,
+  type SceneAction,
+  SceneActionDirection,
 } from '../../../gen/meurpg/maps/v1/maps_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
 
@@ -137,6 +139,48 @@ export class MapsClient {
 
   async removeToken(campaignId: string, mapId: string, characterId: string): Promise<void> {
     await this.client.removeMapToken({ campaignId, mapId, characterId });
+  }
+
+  /** `AddSceneAction` (MR-015): one more check on a SCENE point, saved at
+   * once. `dc` 0 means none. Answers with the point's actions as they are now. */
+  async addSceneAction(
+    campaignId: string,
+    mapId: string,
+    pointId: string,
+    action: { key: string; name: string; dc: number },
+  ): Promise<readonly SceneAction[]> {
+    const res = await this.client.addSceneAction({ campaignId, mapId, pointId, ...action });
+    return res.actions;
+  }
+
+  /** `MoveSceneAction`: one place up or down. */
+  async moveSceneAction(
+    campaignId: string,
+    mapId: string,
+    pointId: string,
+    actionId: string,
+    direction: 'up' | 'down',
+  ): Promise<readonly SceneAction[]> {
+    const res = await this.client.moveSceneAction({
+      campaignId,
+      mapId,
+      pointId,
+      actionId,
+      direction:
+        direction === 'up' ? SceneActionDirection.UP : SceneActionDirection.DOWN,
+    });
+    return res.actions;
+  }
+
+  /** `RemoveSceneAction`: no confirmation (the rolls made stay in the log). */
+  async removeSceneAction(
+    campaignId: string,
+    mapId: string,
+    pointId: string,
+    actionId: string,
+  ): Promise<readonly SceneAction[]> {
+    const res = await this.client.removeSceneAction({ campaignId, mapId, pointId, actionId });
+    return res.actions;
   }
 }
 

@@ -20,10 +20,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 
 import { MapPointKind } from '../../../../gen/meurpg/maps/v1/maps_pb';
-import type { MapPoint } from '../../../../gen/meurpg/maps/v1/maps_pb';
+import type { MapPoint, SceneAction } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import type { PointChanges } from '../../../core/maps/maps-client';
 import { pointKindIcon, pointKindLabel } from '../../../shared/map-view/map-labels';
 import { RevealSwitch } from '../reveal-switch/reveal-switch';
+import { SceneActions } from '../scene-actions/scene-actions';
 import {
   POINT_DESCRIPTION_MAX,
   POINT_NAME_MAX,
@@ -42,7 +43,8 @@ const KINDS = [MapPointKind.BATTLE, MapPointKind.SUBMAP, MapPointKind.SCENE] as 
  * "Leva para" (Submapa only), "Descrição para os jogadores", the switch
  * "Revelado aos jogadores", the screen's one primary action "Salvar ponto",
  * and "Apagar ponto", which confirms in place ("Apagar Taverna do Javali?
- * Não dá para desfazer."). Everything saves together; positions don't
+ * Não dá para desfazer."). A saved SCENE point also has "Ações da cena"
+ * (E7-01), which save on their own. The rest saves together; positions don't
  * belong here (the map moves them). The page runs the calls.
  */
 @Component({
@@ -54,6 +56,7 @@ const KINDS = [MapPointKind.BATTLE, MapPointKind.SUBMAP, MapPointKind.SCENE] as 
     MatInputModule,
     ReactiveFormsModule,
     RevealSwitch,
+    SceneActions,
   ],
   templateUrl: './point-panel.html',
   styleUrl: './point-panel.scss',
@@ -62,6 +65,8 @@ export class PointPanel {
   private readonly injector = inject(Injector);
 
   readonly point = input.required<MapPoint>();
+  /** The campaign, for the scene actions the panel saves on its own. */
+  readonly campaignId = input('');
   /** The campaign's other maps, for "Leva para". */
   readonly maps = input<readonly { id: string; name: string }[]>([]);
   readonly saving = input(false);
@@ -74,11 +79,15 @@ export class PointPanel {
   readonly removeConfirmed = output<void>();
   /** Whether there are unsaved changes (the page asks before leaving). */
   readonly dirtyChange = output<boolean>();
+  /** A SCENE point's actions changed (each change is saved at once, apart
+   * from "Salvar ponto"): the page puts the new list on the point. */
+  readonly sceneActionsChange = output<readonly SceneAction[]>();
 
   protected readonly kinds = KINDS;
   protected readonly kindLabel = pointKindLabel;
   protected readonly kindIcon = pointKindIcon;
   protected readonly Submap = MapPointKind.SUBMAP;
+  protected readonly Scene = MapPointKind.SCENE;
   protected readonly nameMax = POINT_NAME_MAX;
   protected readonly descriptionMax = POINT_DESCRIPTION_MAX;
 

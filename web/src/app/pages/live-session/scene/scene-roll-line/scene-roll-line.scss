@@ -1,0 +1,60 @@
+:host {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-3);
+  min-width: 0;
+}
+
+app-combatant-token {
+  flex: none;
+  margin-top: 2px;
+}
+
+.rl__body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+
+.rl__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+  align-self: stretch;
+}
+
+.rl__who {
+  font-size: 17px;
+  line-height: 22px;
+}
+
+.rl__time {
+  flex: none;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.rl__action {
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+  overflow-wrap: anywhere;
+}
+
+.rl__formula {
+  margin: 2px 0 0;
+  font-family: var(--mr-font-display);
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 30px;
+}
+
+.mr-tag {
+  margin-top: 4px;
+  font-weight: 700;
+}

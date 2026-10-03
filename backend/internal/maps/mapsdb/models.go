@@ -54,3 +54,14 @@ type MapToken struct {
 	Hidden      bool
 	UpdatedAt   time.Time
 }
+
+type SceneAction struct {
+	ID        string
+	PointID   string
+	Position  int32
+	Key       string
+	Name      string
+	Dc        *int32
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
