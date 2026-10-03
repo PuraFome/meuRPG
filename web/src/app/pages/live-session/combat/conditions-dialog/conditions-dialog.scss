@@ -1,0 +1,135 @@
+:host {
+  display: block;
+}
+
+.note {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.cap {
+  padding: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--mr-ink-muted);
+}
+
+.conds {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 8px;
+  margin-top: 4px;
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.cond {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  cursor: pointer;
+
+  input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  &:has(:focus-visible) {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: -2px;
+  }
+}
+
+.cond__box {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--mr-ink-muted);
+  border-radius: var(--mr-radius-sm);
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.cond:has(:checked) .cond__box {
+  border-color: var(--mr-accent);
+  background: var(--mr-accent);
+  color: var(--mr-on-accent);
+}
+
+.cond__name {
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+
+.conc {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--mr-rule);
+}
+
+.conc__row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0 12px;
+  min-height: 44px;
+}
+
+.conc__end {
+  --mat-button-text-label-text-color: var(--mr-accent-text);
+  margin-right: -12px;
+}
+
+.muted {
+  color: var(--mr-ink-muted);
+}
+
+// The two buttons have the same size; on a screen too narrow for both on a
+// line, each takes its own.
+.pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.pair__btn {
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-filled-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  width: 100%;
+  white-space: nowrap;
+
+  @media (min-width: 768px) {
+    --mat-button-outlined-container-height: 44px;
+    --mat-button-filled-container-height: 44px;
+  }
+}

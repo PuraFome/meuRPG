@@ -129,7 +129,7 @@
         }
         <p class="sheet__note">
           <mat-icon aria-hidden="true">info</mat-icon>
-          Sua ação foi usada.{{ cantrip ? ' Truque: nenhum espaço de magia foi gasto.' : '' }}
+          {{ spent() }}{{ cantrip ? ' Truque: nenhum espaço de magia foi gasto.' : '' }}
         </p>
         <div class="sheet__foot">
           <button #back mat-flat-button type="button" class="sheet__done" (click)="close()">Voltar à sua vez</button>

@@ -23,7 +23,7 @@ import { EndTurn } from './end-turn';
         <li>Nada: só falta encerrar o turno.</li>
       }
     </ul>
-    <app-end-turn [own]="own()" [busy]="busy()" [block]="true" (endTurn)="endTurn.emit()" />
+    <app-end-turn [own]="own()" [attacksLeft]="attacksLeft()" [busy]="busy()" [block]="true" (endTurn)="endTurn.emit()" />
   `,
   styles: `
     :host {
@@ -79,6 +79,8 @@ export class TurnBar {
   /** The player's own combatant. */
   readonly own = input.required<Combatant>();
   readonly busy = input(false);
+  /** Extra Attack: the attacks that remain once the action is spent. */
+  readonly attacksLeft = input(0);
 
   readonly endTurn = output<void>();
 
@@ -87,6 +89,8 @@ export class TurnBar {
     const items: string[] = [];
     if (!c.actionUsed) {
       items.push('Ação');
+    } else if (this.attacksLeft() > 0) {
+      items.push(`${this.attacksLeft()} ${this.attacksLeft() === 1 ? 'ataque' : 'ataques'}`);
     }
     if (!c.bonusActionUsed) {
       items.push('Ação bônus');

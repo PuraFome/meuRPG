@@ -18,7 +18,7 @@ import { endTurnIsPrimary } from '../../../../core/combat/combat-options';
   template: `
     @if (asking()) {
       <div class="ask" role="alertdialog" aria-labelledby="end-ask">
-        <p class="ask__text" id="end-ask">Ainda tem ação disponível. Encerrar mesmo?</p>
+        <p class="ask__text" id="end-ask">{{ question() }}</p>
         <button #safe mat-stroked-button type="button" class="ask__btn" (click)="asking.set(false)">Voltar</button>
         <button mat-stroked-button type="button" class="ask__btn ask__go" [disabled]="busy()" (click)="confirm()">
           Encerrar turno
@@ -95,6 +95,8 @@ export class EndTurn {
   private readonly injector = inject(Injector);
 
   readonly own = input.required<Pick<Combatant, 'actionUsed' | 'bonusActionUsed'>>();
+  /** Extra Attack: the attacks left once the first spent the action. */
+  readonly attacksLeft = input(0);
   readonly busy = input(false);
   /** Full width (the phone's bar). */
   readonly block = input(false);
@@ -102,11 +104,17 @@ export class EndTurn {
   readonly endTurn = output<void>();
 
   protected readonly asking = signal(false);
-  protected readonly primary = computed(() => endTurnIsPrimary(this.own()));
+  protected readonly primary = computed(() => endTurnIsPrimary(this.own()) && this.attacksLeft() === 0);
+  protected readonly question = computed(() => {
+    const left = this.attacksLeft();
+    return this.own().actionUsed && left > 0
+      ? `Ainda tem ${left} ${left === 1 ? 'ataque' : 'ataques'} desta ação. Encerrar mesmo?`
+      : 'Ainda tem ação disponível. Encerrar mesmo?';
+  });
   private readonly safe = viewChild('safe', { read: ElementRef<HTMLButtonElement> });
 
   protected press(): void {
-    if (this.own().actionUsed) {
+    if (this.own().actionUsed && this.attacksLeft() === 0) {
       this.endTurn.emit();
       return;
     }

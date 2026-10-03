@@ -7,7 +7,8 @@ import {
   EncounterBlockedSchema,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { describeConnectError } from '../connect/connect-errors';
-import { formatMeters, feetToMeters } from './combat-grid';
+import { Recharge } from '../../../gen/meurpg/rules/v1/rules_pb';
+import { circleLabel, formatMeters, feetToMeters } from './combat-grid';
 
 /** The typed detail of a `failed_precondition` from `CombatService`, or
  * `null` (another code, or another detail). Never read from the message. */
@@ -27,6 +28,20 @@ export function sessionClosed(err: unknown): boolean {
     connectErr.findDetails(GameSessionBlockedSchema)[0]?.reason ===
       GameSessionBlockedReason.NO_OPEN_SESSION
   );
+}
+
+/** When a feature's uses come back, for "Sem usos: volta num descanso curto". */
+export function rechargeText(recharge: Recharge): string {
+  switch (recharge) {
+    case Recharge.SHORT_REST:
+      return 'volta num descanso curto';
+    case Recharge.LONG_REST:
+      return 'volta num descanso longo';
+    case Recharge.DAWN:
+      return 'volta ao amanhecer';
+    default:
+      return 'só o mestre devolve';
+  }
 }
 
 /** Why a move was refused, for the reach line under the map (E6-10). */
@@ -62,6 +77,10 @@ export function blockedMessage(blocked: EncounterBlocked): string {
       return 'Um jogador só sai do combate antes de ele começar.';
     case EncounterBlockedReason.ACTION_USED:
       return 'Sua ação já foi usada neste turno.';
+    case EncounterBlockedReason.BONUS_ACTION_USED:
+      return 'Sua ação bônus já foi usada neste turno.';
+    case EncounterBlockedReason.ATTACKS_USED:
+      return 'Os ataques desta ação já foram usados.';
     case EncounterBlockedReason.TARGET_OUT_OF_REACH:
       return `Longe demais: faltam ${formatMeters(feetToMeters(blocked.missingFt))} para chegar ao alvo.`;
     case EncounterBlockedReason.TARGET_DEFEATED:
@@ -83,9 +102,19 @@ export function blockedMessage(blocked: EncounterBlocked): string {
     case EncounterBlockedReason.NOT_AWAITING_REACTION:
       return 'Esse acerto não espera mais uma reação. A tela foi atualizada.';
     case EncounterBlockedReason.REACTION_USED:
-      return 'A reação desse personagem já foi usada neste turno.';
+      return 'A reação já foi usada: ela volta no começo da sua vez.';
     case EncounterBlockedReason.NO_SLOT:
-      return 'Esse personagem não tem espaço de magia livre para o Escudo.';
+      return blocked.minLevel > 0
+        ? `Não há espaço de ${circleLabel(blocked.minLevel)} ou maior livre.`
+        : 'Não há espaço de magia livre.';
+    case EncounterBlockedReason.NO_USES:
+      return `Sem usos: ${rechargeText(blocked.recharge)}.`;
+    case EncounterBlockedReason.DEATH_SAVE_DUE:
+      return 'Role o teste contra a morte antes de encerrar o turno.';
+    case EncounterBlockedReason.DEATH_SAVE_NOT_DUE:
+      return 'Não há teste contra a morte para rolar agora. A tela foi atualizada.';
+    case EncounterBlockedReason.NOT_DYING:
+      return 'Esse personagem não falhou três testes contra a morte. A tela foi atualizada.';
     default:
       return 'O combate não está num estado que aceite isso. A tela foi atualizada.';
   }

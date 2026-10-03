@@ -2,7 +2,11 @@
   <h2 class="groups__title" id="groups-title">O que você pode fazer</h2>
 
   @if (desktop()) {
-    <app-economy-tiles [own]="own()" />
+    <app-economy-tiles [own]="own()" [attacksLeft]="attacksLeft()" [attacksPerAction]="attacksPerAction()" />
+  }
+
+  @if (note()) {
+    <p class="groups__note" role="status"><mat-icon aria-hidden="true">check_circle</mat-icon>{{ note() }}</p>
   }
 
   @if (pendingRoll()) {
@@ -16,7 +20,7 @@
   <section class="group" aria-labelledby="g-action">
     <header class="group__head">
       <h3 class="group__name" id="g-action">Ação</h3>
-      <app-group-state [word]="state(own().actionUsed)" [used]="own().actionUsed" />
+      <app-group-state [word]="actionWord().word" [used]="actionWord().used" />
     </header>
     @if (options().attacks.length) {
       <p class="group__sub">Ataques</p>
@@ -26,12 +30,12 @@
             [name]="attackName(atk)"
             [pill]="isCantrip(atk) ? 'Truque' : ''"
             [detail]="attackDetail(atk)"
-            button="Atacar"
-            [buttonLabel]="'Atacar com ' + attackName(atk)"
+            [button]="asksSave(atk) ? 'Conjurar' : 'Atacar'"
+            [buttonLabel]="(asksSave(atk) ? 'Conjurar ' : 'Atacar com ') + attackName(atk)"
             [off]="!a.enabled"
             [reason]="reasonText(a.reason)"
             [busy]="busy()"
-            (press)="attack.emit(atk.key)"
+            (press)="asksSave(atk) ? cast.emit(atk.key) : attack.emit(atk.key)"
           />
         }
       }
@@ -43,8 +47,12 @@
           [name]="s.spell?.namePt || s.spell?.name || ''"
           [pill]="pillOf(s)"
           [detail]="spellDetail(s)"
+          button="Conjurar"
+          [buttonLabel]="'Conjurar ' + (s.spell?.namePt || s.spell?.name || '')"
           [off]="spellOff(s)"
           [reason]="reasonText(s.reason)"
+          [busy]="busy()"
+          (press)="cast.emit(s.spell?.key ?? '')"
         />
       }
     }
@@ -54,8 +62,12 @@
         <app-action-row
           [name]="f.action?.namePt ?? ''"
           [detail]="featureDetail(f)"
+          button="Usar"
+          [buttonLabel]="'Usar ' + (f.action?.namePt ?? '')"
           [off]="featureOff(f)"
           [reason]="reasonText(f.reason)"
+          [busy]="busy()"
+          (press)="feature.emit(f.action?.key ?? '')"
         />
       }
     }
@@ -92,16 +104,24 @@
           [name]="s.spell?.namePt || s.spell?.name || ''"
           [pill]="pillOf(s)"
           [detail]="spellDetail(s)"
+          button="Conjurar"
+          [buttonLabel]="'Conjurar ' + (s.spell?.namePt || s.spell?.name || '')"
           [off]="spellOff(s)"
           [reason]="reasonText(s.reason)"
+          [busy]="busy()"
+          (press)="cast.emit(s.spell?.key ?? '')"
         />
       }
       @for (f of bonus().features; track f.action?.key) {
         <app-action-row
           [name]="f.action?.namePt ?? ''"
           [detail]="featureDetail(f)"
+          button="Usar"
+          [buttonLabel]="'Usar ' + (f.action?.namePt ?? '')"
           [off]="featureOff(f)"
           [reason]="reasonText(f.reason)"
+          [busy]="busy()"
+          (press)="feature.emit(f.action?.key ?? '')"
         />
       }
     </section>

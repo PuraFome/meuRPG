@@ -191,3 +191,28 @@
   text-underline-offset: 3px;
   cursor: pointer;
 }
+
+// The inline roll of a sheet's body or of a page's panel: the small label size,
+// and on a short screen the total waits for "Confirmar" to say it.
+.type--compact {
+  .type__label {
+    font-family: var(--mr-font-sans);
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 22px;
+  }
+
+  .type__field {
+    height: 56px;
+    font-size: 32px;
+  }
+
+  .type__sum {
+    min-height: 56px;
+  }
+
+  .type__num {
+    font-size: 34px;
+    line-height: 34px;
+  }
+}

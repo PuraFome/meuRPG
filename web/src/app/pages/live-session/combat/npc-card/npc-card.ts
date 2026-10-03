@@ -62,6 +62,8 @@ export class NpcCard {
   readonly turnBusy = input(false);
   /** "Próximo turno"; `true` when the master passes it with a damage waiting. */
   readonly next = output<boolean>();
+  /** A damage was applied or discarded (`PendingDamages`): the page keeps the card for its note. */
+  readonly settledNote = output<void>();
 
   protected readonly attackKey = signal('');
   protected readonly targetId = signal('');
@@ -75,6 +77,8 @@ export class NpcCard {
   /** The d20 just rolled: shown with the armor class, until the turn changes. */
   protected readonly last = signal<{ roll: AttackRoll; pending: PendingDamage | null; subject: string } | null>(null);
   private key = newKey();
+  /** The reaction spell's name, remembered from the prompt that waited (it is gone once answered). */
+  protected readonly shieldName = signal('Escudo Arcano');
 
   protected readonly round = computed(() => roundLabel(this.encounter().round));
   protected readonly initial = computed(() => combatantInitial(this.subject().label));
@@ -119,7 +123,7 @@ export class NpcCard {
       total: l.roll.d20?.total ?? 0,
       formula: l.roll.d20 ? rollFormula(l.roll.d20) : '',
       physical: l.roll.d20?.physical ?? false,
-      word: stopped ? 'Errou: o Escudo segurou' : outcomeWord(l.roll.outcome),
+      word: stopped ? `Errou: o ${this.shieldName()} segurou` : outcomeWord(l.roll.outcome),
       hit: !stopped && isHit(l.roll.outcome),
       against:
         l.roll.targetArmorClass !== undefined
@@ -144,6 +148,12 @@ export class NpcCard {
           this.last.set(null);
           this.error.set('');
         });
+      }
+    });
+    effect(() => {
+      const prompt = this.encounter().reactionPrompts[0];
+      if (prompt?.spellNamePt) {
+        this.shieldName.set(prompt.spellNamePt);
       }
     });
     effect(() => {

@@ -29,7 +29,10 @@ export function combatant(over: Partial<Combatant> & { id: string; label: string
     deathSuccesses: 0,
     deathFailures: 0,
     conditions: [],
+    conditionNamesPt: [],
     concentrationSpell: '',
+    armorClassBonus: 0,
+    deathSaveDue: false,
     ...over,
   } as unknown as Combatant;
 }
@@ -47,6 +50,7 @@ export function encounter(over: Partial<Encounter> = {}): Encounter {
     currentCombatantId: '',
     masterTurn: false,
     combatants: [],
+    reactionPrompts: [],
     revision: 1,
     ...over,
   } as unknown as Encounter;

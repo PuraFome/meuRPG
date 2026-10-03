@@ -70,6 +70,7 @@ func (s *Service) basicDerived(b *charactersv1.BasicSheet) rules.Derived {
 			Key: fmt.Sprintf("basic:%d", i), Name: a.GetName(), NamePT: a.GetName(), Kind: "weapon",
 			AttackBonus: int(a.GetAttackBonus()), DamageDice: dice, Damage: diceText(dice),
 			DamageType: typeKey, DamageTypeNamePT: s.rules.NamePT(typeKey), RangeFt: int(a.GetRangeFt()),
+			Melee: a.GetRangeFt() <= 5, // a basic sheet's attack that reaches 5 ft or less is a melee one
 		})
 	}
 	return d
@@ -104,7 +105,7 @@ func (s *Service) CombatSheet(ctx context.Context, campaignID, characterID strin
 		out.Attacks = append(out.Attacks, link.Attack{
 			Key: a.Key, Name: name, Save: a.SaveDC > 0, Spell: a.Kind == "spell", ToHit: a.AttackBonus,
 			DiceCount: a.DamageDice.Count, DiceSides: a.DamageDice.Sides, DiceBonus: a.DamageDice.Bonus,
-			DamageType: a.DamageType, RangeFt: a.RangeFt, LongRangeFt: a.LongRangeFt,
+			DamageType: a.DamageType, RangeFt: a.RangeFt, LongRangeFt: a.LongRangeFt, Melee: a.Melee,
 		})
 	}
 	for _, a := range d.StandardActions {

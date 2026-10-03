@@ -1,19 +1,24 @@
 import { Component, input } from '@angular/core';
 
 import type { Combatant, Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { combatantInitial, isPlayer, stateWord } from '../../../../core/combat/combat-view';
+import { conditionTags } from '../../../../core/combat/conditions';
+import { combatantInitial, isPlayer, playerWord, stateWord } from '../../../../core/combat/combat-view';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
+import { CombatantTags } from '../combatant-tags/combatant-tags';
 
 /**
  * The order as a strip of chips (E6-05): a token, the name and one word. An
  * NPC says its state (Ileso, Ferido, Muito ferido, Derrotado), another
  * player only "Jogador" (their name is not sent to the other players), and
  * the one on turn has the 2px accent frame and the word "Vez"; the player's
- * own chip says "Você". Hidden combatants are not in the list a player gets.
+ * own chip says "Você". A character at 0 hit points reads "Caída" (never
+ * "Morrendo": that word is the master's), and a combatant with conditions has
+ * its first tag and "+N" for the rest (E6-29). Hidden combatants are not in the
+ * list a player gets.
  */
 @Component({
   selector: 'app-order-strip',
-  imports: [CombatantToken],
+  imports: [CombatantTags, CombatantToken],
   template: `
   <ol class="strip" aria-label="Ordem de iniciativa" tabindex="0">
     @for (c of encounter().combatants; track c.id) {
@@ -34,6 +39,7 @@ import { CombatantToken } from '../../../../shared/combatant-token/combatant-tok
         </span>
         <span class="chip__name" [class.chip__name--out]="c.defeated">{{ c.label }}</span>
         <span class="chip__sub">{{ word(c) }}</span>
+        <app-combatant-tags [names]="tags(c)" [label]="c.label" [compact]="true" />
       </li>
     }
   </ol>
@@ -123,7 +129,11 @@ export class OrderStrip {
   }
 
   protected word(c: Combatant): string {
-    return isPlayer(c) ? 'Jogador' : stateWord(c.state);
+    return isPlayer(c) ? playerWord(c) : stateWord(c.state);
+  }
+
+  protected tags(c: Combatant): string[] {
+    return conditionTags(c);
   }
 
   protected current(c: Combatant): boolean {

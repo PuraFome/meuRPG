@@ -63,6 +63,7 @@
           [vitals]="vitals()"
           [partyInfo]="partyInfo()"
           [sessionNumber]="s.sessionNumber"
+          [armorClass]="playerSheet()?.armorClass ?? null"
           [diceMode]="campaign()?.diceMode ?? 1"
           [dicePreference]="campaign()?.dicePreference ?? 1"
           (adjust)="adjust($event)"

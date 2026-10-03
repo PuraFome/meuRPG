@@ -2393,6 +2393,11 @@ type Attack struct {
 	VersatileDamageDice *DiceFormula `protobuf:"bytes,14,opt,name=versatile_damage_dice,json=versatileDamageDice,proto3" json:"versatile_damage_dice,omitempty"`
 	// Content key of the damage type, such as "damage-type:slashing".
 	DamageTypeKey string `protobuf:"bytes,15,opt,name=damage_type_key,json=damageTypeKey,proto3" json:"damage_type_key,omitempty"`
+	// True for a weapon the SRD lists as a melee weapon, thrown or not (a dagger,
+	// a spear, a handaxe), and for a basic sheet's attack that reaches 5 ft or
+	// less; false for a ranged weapon and for a spell. An opportunity attack is
+	// a melee attack.
+	Melee         bool `protobuf:"varint,16,opt,name=melee,proto3" json:"melee,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2530,6 +2535,13 @@ func (x *Attack) GetDamageTypeKey() string {
 		return x.DamageTypeKey
 	}
 	return ""
+}
+
+func (x *Attack) GetMelee() bool {
+	if x != nil {
+		return x.Melee
+	}
+	return false
 }
 
 // Feature is a class feature, racial trait or background feature.
@@ -5408,7 +5420,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x05count\x18\x02 \x01(\x05R\x05count\"Z\n" +
 	"\x0eCharacterSpell\x12,\n" +
 	"\x05spell\x18\x01 \x01(\v2\x16.meurpg.rules.v1.SpellR\x05spell\x12\x1a\n" +
-	"\bprepared\x18\x02 \x01(\bR\bprepared\"\xd2\x04\n" +
+	"\bprepared\x18\x02 \x01(\bR\bprepared\"\xe8\x04\n" +
 	"\x06Attack\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
@@ -5426,7 +5438,8 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\vdamage_dice\x18\r \x01(\v2\x1c.meurpg.rules.v1.DiceFormulaR\n" +
 	"damageDice\x12P\n" +
 	"\x15versatile_damage_dice\x18\x0e \x01(\v2\x1c.meurpg.rules.v1.DiceFormulaR\x13versatileDamageDice\x12&\n" +
-	"\x0fdamage_type_key\x18\x0f \x01(\tR\rdamageTypeKey\"\x87\x01\n" +
+	"\x0fdamage_type_key\x18\x0f \x01(\tR\rdamageTypeKey\x12\x14\n" +
+	"\x05melee\x18\x10 \x01(\bR\x05melee\"\x87\x01\n" +
 	"\aFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +

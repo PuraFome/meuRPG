@@ -2,7 +2,7 @@ import { expect, type Page } from '@playwright/test';
 
 import { canvasPng, createMapRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC, type MapsTable } from './maps-support';
 import { startSessionRPC } from './live-session-support';
-import { callRPC, characterRpcBody, createCharacterRPC, pensantus } from './support';
+import { callRPC, characterRpcBody, createCharacterRPC, pensantus, type CharacterBuild } from './support';
 
 // Setup for the combat specs (Etapa 6, MR-013), through the API: these tests
 // prove the combat screens, not the campaign, character and map forms other
@@ -23,8 +23,15 @@ export interface CombatTable extends MapsTable {
  * its current map, with a 20-column grid when `grid` (the default). Master
  * and player pages must be signed in as each; neither navigates.
  */
-export async function tableForCombat(masterPage: Page, playerPage: Page, name: string, grid = true, attacks = false): Promise<CombatTable> {
-  const base = await tableForMaps(masterPage, playerPage, name, true, attacks ? pensantusAttacks : {});
+export async function tableForCombat(
+  masterPage: Page,
+  playerPage: Page,
+  name: string,
+  grid = true,
+  attacks = false,
+  character: { build?: CharacterBuild; sheet?: Record<string, unknown> } = {},
+): Promise<CombatTable> {
+  const base = await tableForMaps(masterPage, playerPage, name, true, character.sheet ?? (attacks ? pensantusAttacks : {}), character.build);
   // With `attacks` the Capitão carries a scimitar and wears chain mail, so the master has something to roll.
   const captainBody = characterRpcBody('ENEMY', { ...pensantus, name: 'Capitão Goblin' }) as { sheet: { full: object } };
   if (attacks) {
@@ -141,6 +148,7 @@ export interface Encounter {
   gridRows: number;
   combatants: Combatant[];
   revision: number;
+  reactionPrompts?: { pendingDamageId: string; targetId: string }[];
 }
 
 export interface Combatant {
@@ -156,4 +164,91 @@ export interface Combatant {
   movementLeftFt?: number;
   hitPointsCurrent?: number;
   defeated?: boolean;
+  state?: string;
+  deathSuccesses?: number;
+  deathFailures?: number;
+  deathSaveDue?: boolean;
+  conditions?: string[];
+  conditionNamesPt?: string[];
+  concentrationSpell?: string;
+  armorClassBonus?: number;
 }
+
+/** What Pensantus carries in the casting specs: the attack specs' list plus
+ * Mãos Flamejantes (a saving throw spell, the area one). */
+export const pensantusCasting = {
+  ...pensantusAttacks,
+  knownSpellKeys: [...pensantusAttacks.knownSpellKeys, 'spell:burning-hands'],
+  preparedSpellKeys: [...pensantusAttacks.preparedSpellKeys, 'spell:burning-hands'],
+};
+
+/** Toren, a human Fighter 5 (Extra Attack, Retomar o Fôlego, Surto de Ação)
+ * with a longsword and chain mail, for the feature specs. */
+export const toren: CharacterBuild = {
+  name: 'Toren',
+  raceKey: 'race:human',
+  race: 'Humano',
+  classKey: 'class:fighter',
+  class: 'Guerreiro',
+  subclassKey: 'subclass:champion',
+  subclass: 'Campeão',
+  level: 5,
+  background: 'Soldado',
+  backgroundSkillKeys: ['skill:athletics', 'skill:intimidation'],
+  backgroundSkills: ['Atletismo', 'Intimidação'],
+  extraSkillKeys: ['skill:perception', 'skill:survival'],
+  extraSkills: ['Percepção', 'Sobrevivência'],
+  scores: { for: 16, des: 12, con: 15, int: 10, sab: 13, car: 8 },
+};
+export const torenSheet = { weaponKeys: ['equipment:longsword'], armorKey: 'equipment:chain-mail' };
+
+/** The master's correction of a player's vitals (hit points, slots used, resources used). */
+export async function adjustVitalsRPC(page: Page, campaignId: string, characterId: string, change: object): Promise<void> {
+  const res = await callRPC(page, 'meurpg.play.v1.PlayService/AdjustCharacterVitals', {
+    campaignId,
+    characterId,
+    idempotencyKey: crypto.randomUUID(),
+    ...change,
+  });
+  expect(res.ok(), await res.text()).toBeTruthy();
+}
+
+/** Passes the turn (as the master) until `label` is the one on turn. */
+export async function passTurnsTo(master: Page, campaignId: string, label: string): Promise<Encounter> {
+  let enc = await getEncounterRPC(master, campaignId);
+  for (let i = 0; i < 12; i++) {
+    const current = enc.combatants.find((c) => c.id === enc.currentCombatantId);
+    if (current?.label === label) {
+      return enc;
+    }
+    enc = await combatRPC(master, 'EndTurn', {
+      campaignId,
+      encounterId: enc.id,
+      expectedCombatantId: enc.currentCombatantId,
+      discardPendingDamage: true,
+    });
+  }
+  throw new Error(`the turn never reached ${label}`);
+}
+
+/** Brisa, a human Cleric 3 of the Life domain, who prepares Curar Ferimentos. */
+export const brisa: CharacterBuild = {
+  name: 'Brisa',
+  raceKey: 'race:human',
+  race: 'Humano',
+  classKey: 'class:cleric',
+  class: 'Clérigo',
+  subclassKey: 'subclass:life',
+  subclass: 'Domínio da Vida',
+  level: 3,
+  background: 'Acólita',
+  backgroundSkillKeys: ['skill:arcana', 'skill:nature'],
+  backgroundSkills: ['Arcanismo', 'Natureza'],
+  extraSkillKeys: ['skill:insight', 'skill:medicine'],
+  extraSkills: ['Intuição', 'Medicina'],
+  scores: { for: 12, des: 12, con: 14, int: 10, sab: 16, car: 12 },
+};
+export const brisaSheet = {
+  weaponKeys: ['equipment:mace'],
+  preparedSpellKeys: ['spell:cure-wounds'],
+};

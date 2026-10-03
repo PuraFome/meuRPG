@@ -1,0 +1,93 @@
+:host {
+  display: block;
+}
+
+.res {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tg {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--mr-rule);
+}
+
+.tg__head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.tg__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--mr-font-display);
+  font-size: 20px;
+  line-height: 24px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  box-sizing: border-box;
+  padding: 0 10px 0 8px;
+  border: 1px solid var(--mr-success-ink);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-success-surface);
+  color: var(--mr-success-ink);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+
+  &--bad {
+    border-color: var(--mr-danger-ink);
+    background: var(--mr-danger-surface);
+    color: var(--mr-danger-ink);
+  }
+}
+
+.state {
+  padding: 2px 10px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-pill);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.tg__line {
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.tg__sum {
+  font-family: var(--mr-font-display);
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 30px;
+}
+
+.plain {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  font-size: 16px;
+  line-height: 22px;
+
+  .mat-icon {
+    flex: none;
+  }
+}

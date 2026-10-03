@@ -52,7 +52,8 @@ export class CombatLogPanel {
   private readonly safe = viewChild('safe', { read: ElementRef<HTMLButtonElement> });
 
   protected readonly groups = computed(() =>
-    logGroups(this.log().rounds(), this.encounter().round, this.encounter().name),
+    logGroups(this.log().rounds(), this.encounter().round, this.encounter().name,
+    ),
   );
   protected readonly shown = computed(() => (this.master() ? this.groups() : truncateGroups(this.groups(), 6)));
   protected readonly more = computed(() => !this.master() && entryCount(this.groups()) > 6);

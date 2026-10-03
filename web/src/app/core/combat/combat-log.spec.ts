@@ -10,14 +10,14 @@ import {
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { entryCount, latestLine, logGroups, logLine, undoLabel, undoableEntry } from './combat-log';
 
-type Over = Omit<MessageInitShape<typeof CombatLogEntrySchema>, 'damage' | '$typeName'> & { damage?: { status: PendingDamageStatus; amount: number; defeated?: boolean } };
+type Over = Omit<MessageInitShape<typeof CombatLogEntrySchema>, 'damage' | '$typeName'> & { damage?: { status: PendingDamageStatus; amount: number; defeated?: boolean; rolledAmount?: number; concentrationDc?: number; deathFailuresAdded?: number } };
 
 function entry(over: Over): CombatLogEntry {
   const { damage, ...rest } = over;
   return create(CombatLogEntrySchema, {
     id: Math.random().toString(36).slice(2),
     ...rest,
-    damage: damage && { status: damage.status, amount: damage.amount, targetDefeated: damage.defeated ?? false },
+    damage: damage && { ...damage, targetDefeated: damage.defeated ?? false },
   });
 }
 
@@ -60,7 +60,7 @@ describe('the combat log sentences (timeline.md, Rodadas 1 and 2)', () => {
 
   it('says when Escudo stopped the hit', () => {
     expect(logLine(attack({ actorLabel: 'Capitão Goblin', targetLabel: 'Pensantus', key: 'equipment:shortbow', keyNamePt: 'Arco curto', outcome: AttackOutcome.MISS, stoppedByReaction: true }))?.text).toBe(
-      ' atira no Pensantus com o Arco curto: errou, o Escudo segurou',
+      ' atira no Pensantus com o Arco curto: errou, o Escudo Arcano segurou',
     );
   });
 
@@ -120,5 +120,90 @@ describe('the undo label', () => {
     expect(undoLabel(attack({ actorLabel: 'Goblin 3', targetLabel: 'Brisa', outcome: AttackOutcome.MISS }))).toBe('o ataque do Goblin 3 à Brisa (errou)');
     const round = create(CombatLogRoundSchema, { round: 2, entries: [e] });
     expect(undoableEntry([round])).toBe(e);
+  });
+});
+
+describe('the log of spells, reactions, the fallen and conditions (slice 6.5c)', () => {
+  const roll = (faces: number[], modifier: number) =>
+    ({ diceCount: faces.length, diceSides: 20, faces, modifier, total: faces.reduce((a, b) => a + b, 0) + modifier, physical: false }) as never;
+
+  it('writes a cast with its darts, a save and the concentration that ended', () => {
+    const darts = entry({
+      kind: CombatLogKind.SPELL_CAST, actorLabel: 'Pensantus', keyNamePt: 'Mísseis Mágicos',
+      spell: { slot: { level: 1, pact: false }, concentrating: false, concentrationEndedKey: '', targets: [
+        { targetId: 'c', targetLabel: 'Capitão Goblin', darts: 2, outcome: AttackOutcome.UNSPECIFIED, damage: { status: PendingDamageStatus.APPLIED, amount: 7 } },
+        { targetId: 'g', targetLabel: 'Goblin 2', darts: 1, outcome: AttackOutcome.UNSPECIFIED, damage: { status: PendingDamageStatus.APPLIED, amount: 5 } },
+      ] },
+    } as never);
+    expect(logLine(darts)?.text).toBe(' conjura Mísseis Mágicos (1º\u00a0círculo): 2 dardos no Capitão Goblin, 7 de dano; 1 dardo no Goblin 2, 5 de dano');
+    expect(logLine(darts)?.icon).toBe('auto_awesome');
+    const save = entry({
+      kind: CombatLogKind.SPELL_CAST, actorLabel: 'Pensantus', keyNamePt: 'Mãos Flamejantes',
+      spell: { slot: { level: 1, pact: false }, concentrationEndedKey: 'spell:web', targets: [
+        { targetId: 'g', targetLabel: 'Goblin 1', save: { outcome: 2, dc: 14 }, damage: { status: PendingDamageStatus.APPLIED, amount: 10, half: false } },
+        { targetId: 'h', targetLabel: 'Goblin 2', save: { outcome: 1, dc: 14 }, damage: { status: PendingDamageStatus.APPLIED, amount: 5, half: true } },
+      ] },
+    } as never);
+    expect(logLine(save)?.text).toBe(
+      ' conjura Mãos Flamejantes (1º\u00a0círculo): o Goblin 1 falhou (CD 14), 10 de dano; o Goblin 2 resistiu (CD 14), 5 de dano (metade). A concentração anterior acabou',
+    );
+  });
+
+  it('names who a spell with no effect the app knows touches', () => {
+    const sleep = entry({
+      kind: CombatLogKind.SPELL_CAST, actorLabel: 'Pensantus', keyNamePt: 'Sono',
+      spell: { slot: { level: 1, pact: false }, targets: [{ targetId: 'g', targetLabel: 'Goblin 1' }, { targetId: 'h', targetLabel: 'Goblin 2' }] },
+    } as never);
+    expect(logLine(sleep)?.text).toBe(' conjura Sono (1º\u00a0círculo) no Goblin 1 e no Goblin 2');
+  });
+
+  it('writes the reaction and an opportunity attack', () => {
+    expect(logLine(entry({ kind: CombatLogKind.REACTION, actorLabel: 'Pensantus', keyNamePt: 'Escudo Arcano', spell: { slot: { level: 1, pact: false } } } as never))?.text).toBe(
+      ' conjura Escudo Arcano (1º\u00a0círculo), com a reação',
+    );
+    expect(
+      logLine(attack({ actorLabel: 'Pensantus', targetLabel: 'Goblin 1', key: 'equipment:dagger', keyNamePt: 'Adaga', asReaction: true, damage: { status: PendingDamageStatus.APPLIED, amount: 4 } }))?.text,
+    ).toBe(' ataca o Goblin 1 com a Adaga (ataque de oportunidade): acertou, 4 de dano');
+  });
+
+  it('writes a damage the master changed, the death save failures and the concentration reminder', () => {
+    const hit = entry({
+      kind: CombatLogKind.ATTACK, outcome: AttackOutcome.HIT, actorLabel: 'Capitão Goblin', targetLabel: 'Toren', key: 'equipment:scimitar', keyNamePt: 'Cimitarra',
+      damage: { status: PendingDamageStatus.APPLIED, amount: 2, rolledAmount: 5, concentrationDc: 10 },
+    } as never);
+    expect(logLine(hit)?.text).toBe(
+      ' ataca o Toren com a Cimitarra: acertou, 2 de dano (o dado deu 5). Teste de Constituição, CD 10, para manter a concentração',
+    );
+    const down = entry({
+      kind: CombatLogKind.ATTACK, outcome: AttackOutcome.HIT, actorLabel: 'Goblin 3', targetLabel: 'Brisa', key: 'equipment:shortbow', keyNamePt: 'Arco curto',
+      damage: { status: PendingDamageStatus.APPLIED, amount: 0, deathFailuresAdded: 1 },
+    } as never);
+    expect(logLine(down)?.text).toContain(', uma falha no teste contra a morte');
+  });
+
+  it('writes a death save for the one who may see the dice, and for the others', () => {
+    const mine = entry({ kind: CombatLogKind.DEATH_SAVE, actorLabel: 'Brisa', deathSave: { roll: roll([14], 0), outcome: 1, successes: 1, failures: 1, stable: false, dying: false } } as never);
+    expect(logLine(mine)?.text).toBe(' rola o teste contra a morte: 1d20 (14) = 14, sucesso (1 sucesso, 1 falha)');
+    const others = entry({ kind: CombatLogKind.DEATH_SAVE, actorLabel: 'Brisa', deathSave: { outcome: 2, successes: 1, failures: 2 } } as never);
+    expect(logLine(others)?.text).toBe(' faz um teste contra a morte: falha (1 sucesso, 2 falhas)');
+    const dying = entry({ kind: CombatLogKind.DEATH_SAVE, actorLabel: 'Brisa', deathSave: { roll: roll([5], 0), outcome: 2, successes: 0, failures: 3, dying: true } } as never);
+    expect(logLine(dying)?.text).toContain('Morrendo: o mestre confirma a morte');
+    const back = entry({ kind: CombatLogKind.DEATH_SAVE, actorLabel: 'Brisa', deathSave: { roll: roll([20], 0), outcome: 4 } } as never);
+    expect(logLine(back)?.text).toBe(' rola o teste contra a morte: 1d20 (20) = 20, volta com 1 PV');
+  });
+
+  it('writes the confirmed death and the conditions', () => {
+    expect(logLine(entry({ kind: CombatLogKind.DEATH_CONFIRMED, targetLabel: 'Brisa' } as never))).toMatchObject({ actor: 'Brisa', text: ' morreu' });
+    const marked = entry({ kind: CombatLogKind.CONDITIONS_CHANGED, targetLabel: 'Goblin 1', conditions: ['condition:poisoned', 'condition:prone'] } as never);
+    expect(logLine(marked)).toMatchObject({ actor: 'Goblin 1', text: ' ficou Envenenado e Derrubado' });
+    const ended = entry({ kind: CombatLogKind.CONDITIONS_CHANGED, targetLabel: 'Toren', concentrationEndedKey: 'spell:bless' } as never);
+    expect(logLine(ended)?.text).toBe(' deixou de se concentrar');
+    const cleared = entry({ kind: CombatLogKind.CONDITIONS_CHANGED, targetLabel: 'Toren', conditions: [] } as never);
+    expect(logLine(cleared)?.text).toBe(' ficou sem condições');
+  });
+
+  it('names what an undo would take back', () => {
+    expect(undoLabel(entry({ kind: CombatLogKind.SPELL_CAST, actorLabel: 'Pensantus', keyNamePt: 'Sono' } as never))).toBe('a magia Sono do Pensantus');
+    expect(undoLabel(entry({ kind: CombatLogKind.DEATH_SAVE, actorLabel: 'Brisa' } as never))).toBe('o teste contra a morte da Brisa');
   });
 });

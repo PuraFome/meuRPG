@@ -46,6 +46,13 @@ export interface AttackSheetData {
   readonly preference: DicePreference;
   /** Where each answer's combat goes (the page's copy of the combat). */
   readonly state: CombatState;
+  /** An opportunity attack: a melee attack off turn that spends the reaction
+   * instead of the action (`RollAttack.as_reaction`). */
+  readonly asReaction?: boolean;
+  /** Extra Attack: how many attacks of the Attack action remain before this
+   * one, and how many it makes. */
+  readonly attacksLeft?: number;
+  readonly attacksPerAction?: number;
   /** A hit whose damage was never rolled (the sheet was closed): the sheet
    * opens at "Dano" with it. */
   readonly resume?: { readonly pending: PendingDamage; readonly targetLabel: string };
@@ -92,10 +99,22 @@ export class AttackSheet {
   private readonly back = viewChild('back', { read: ElementRef<HTMLButtonElement> });
 
   protected readonly name = attackName(this.attack);
-  protected readonly detail = `Ação · ${attackDetail(this.attack)}`;
+  // An opportunity attack is a melee attack: a thrown dagger reads "corpo a
+  // corpo" here, not its thrown range.
+  protected readonly detail = this.data.asReaction
+    ? `Reação · ${attackDetail({ ...this.attack, rangeFt: 5, longRangeFt: 0 })}`
+    : `Ação · ${attackDetail(this.attack)}`;
   protected readonly cantrip = isCantrip(this.attack);
-  protected readonly rangeText = formatMeters(feetToMeters(this.attack.rangeFt));
-  protected readonly rows = computed(() => targetRows(this.data.targets, this.attack.rangeFt));
+  protected readonly rangeText = formatMeters(feetToMeters(this.data.asReaction ? 5 : this.attack.rangeFt));
+  /** An opportunity attack reaches 5 ft, whatever range the weapon has when thrown. */
+  protected readonly rows = computed(() =>
+    this.data.asReaction
+      ? targetRows(
+          this.data.targets.map((t) => ({ ...t, tooFar: t.distanceFt === undefined || t.distanceFt > 5 }) as typeof t),
+          5,
+        )
+      : targetRows(this.data.targets, this.attack.rangeFt),
+  );
   protected readonly stepList = computed(() => steps(this.stage()));
   protected readonly target = computed(() => {
     const id = this.targetId();
@@ -146,6 +165,18 @@ export class AttackSheet {
     );
   });
   protected readonly defeated = computed(() => this.damage()?.targetDefeated ?? false);
+  /** What the attack spent: the reaction, one of Extra Attack's attacks (the
+   * action stays open for the rest) or the action. */
+  protected readonly spent = computed(() => {
+    if (this.data.asReaction) {
+      return 'Sua reação foi usada.';
+    }
+    const left = (this.data.attacksLeft ?? 1) - 1;
+    if (!this.cantrip && (this.data.attacksPerAction ?? 1) > 1 && left > 0) {
+      return `Você ainda tem ${left} ${left === 1 ? 'ataque' : 'ataques'} desta ação.`;
+    }
+    return 'Sua ação foi usada.';
+  });
   protected readonly title = computed(() =>
     this.typing() ? 'Digite o resultado do dado' : `Atacar com ${this.name}`,
   );
@@ -225,6 +256,7 @@ export class AttackSheet {
         id,
         die,
         this.attackKey,
+        this.data.asReaction ?? false,
       );
       this.data.state.apply(res.encounter);
       this.roll.set(res.roll);

@@ -94,7 +94,7 @@ func (d *encounterData) turnFor(v combatViewer) (id string, masterTurn bool) {
 // view builds the Encounter the viewer sees. vitals are the player
 // characters' vitals by character ID; a player only learns from them that a
 // character is down, and the master gets the hit points.
-func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.CharacterVitals, armorClass map[string]int32, conditionNames map[string]string) *playv1.Encounter {
+func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.CharacterVitals, armorClass map[string]int32, names func(key string) string) *playv1.Encounter {
 	e := d.enc
 	out := &playv1.Encounter{
 		Id:          e.ID,
@@ -116,7 +116,7 @@ func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.Character
 	for _, c := range d.cs {
 		if v.sees(c) {
 			onTurn := e.Status == statusActive && e.CurrentCombatantID != nil && *e.CurrentCombatantID == c.ID
-			out.Combatants = append(out.Combatants, combatantToProto(c, v, ties[c.ID], vitals[c.CharacterID], armorClass[c.CharacterID], onTurn, conditionNames))
+			out.Combatants = append(out.Combatants, combatantToProto(c, v, ties[c.ID], vitals[c.CharacterID], armorClass[c.CharacterID], onTurn, names))
 		}
 	}
 	return out
@@ -126,7 +126,7 @@ func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.Character
 // that the viewer sees it. armorClass is its sheet's, for the master's copy
 // only (0 when unknown). onTurn says it is the one whose turn it is, in a
 // running combat.
-func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vitals *playv1.CharacterVitals, armorClass int32, onTurn bool, conditionNames map[string]string) *playv1.Combatant {
+func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vitals *playv1.CharacterVitals, armorClass int32, onTurn bool, names func(key string) string) *playv1.Combatant {
 	mine := v.owns(c)
 	detail := v.master || mine // the numbers of the turn: the master's and the owner's
 	out := &playv1.Combatant{
@@ -143,7 +143,10 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 		ConcentrationSpell: deref(c.ConcentrationSpell),
 	}
 	for _, key := range c.Conditions {
-		out.ConditionNamesPt = append(out.ConditionNamesPt, conditionNames[key])
+		out.ConditionNamesPt = append(out.ConditionNamesPt, names(key))
+	}
+	if out.ConcentrationSpell != "" {
+		out.ConcentrationSpellNamePt = names(out.ConcentrationSpell)
 	}
 	if placed(c) {
 		out.Col, out.Row = *c.GridCol, *c.GridRow
@@ -251,7 +254,7 @@ func (s *Service) viewFor(ctx context.Context, m authz.Membership, d *encounterD
 			byCharacter[vit.GetCharacterId()] = vit
 		}
 	}
-	out := d.view(v, byCharacter, s.armorClasses(ctx, m, d), s.conditionNames)
+	out := d.view(v, byCharacter, s.armorClasses(ctx, m, d), s.nameOf)
 	prompts, err := s.reactionPrompts(ctx, m, d)
 	if err != nil {
 		return nil, err

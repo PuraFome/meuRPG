@@ -6,7 +6,9 @@ import { MatIconModule } from '@angular/material/icon';
  * is a round disc, filled `ink`; an NPC is a rounded square, with a 2px
  * `ink` border. The two differ by shape and fill, never by colour. A
  * defeated one is grey with a ✕; a hidden one (the master only) is dashed
- * with the eye-off badge. `current` adds the 3px accent ring and `mine` the
+ * with the eye-off badge. A combatant with conditions has a dot at its lower
+ * right corner (E6-29): the names are in the lists and the map's text list.
+ * `current` adds the 3px accent ring and `mine` the
  * player's own accent halo. The "Vez" word above a token on the map belongs
  * to the map, not here. Decorative: the lists and the map say the names, so
  * it is hidden from assistive tech.
@@ -22,6 +24,9 @@ import { MatIconModule } from '@angular/material/icon';
     }
     @if (hidden()) {
       <span class="tk__badge"><mat-icon>visibility_off</mat-icon></span>
+    }
+    @if (marked()) {
+      <span class="tk__dot"></span>
     }
   `,
   styleUrl: './combatant-token.scss',
@@ -44,6 +49,8 @@ export class CombatantToken {
   readonly hidden = input(false);
   readonly defeated = input(false);
   readonly current = input(false);
+  /** The combatant has conditions marked: the dot of E6-29. */
+  readonly marked = input(false);
   readonly mine = input(false);
   /** Drawn on a battle map: fixed colours, since the picture is not themed. */
   readonly onMap = input(false);

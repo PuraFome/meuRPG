@@ -83,6 +83,12 @@
   background: var(--mr-accent-soft);
 }
 
+// Three failed death saves: the master is asked to confirm (E6-30).
+.row--dying {
+  background: var(--mr-danger-surface);
+}
+
+
 .row__token {
   grid-area: token;
 }

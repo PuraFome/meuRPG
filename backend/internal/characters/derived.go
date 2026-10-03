@@ -199,6 +199,7 @@ func attackToProto(a rules.Attack) *rulesv1.Attack {
 		VersatileDamage:     a.VersatileDamage,
 		RangeFt:             i32(a.RangeFt),
 		LongRangeFt:         i32(a.LongRangeFt),
+		Melee:               a.Melee,
 	}
 }
 

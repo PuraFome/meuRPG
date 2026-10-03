@@ -127,10 +127,13 @@ func (x *deriver) resourcesAndActions() {
 			continue
 		}
 		act := Action{Key: a.owner, NamePT: x.c.namePT(a.owner), Economy: a.effect.Economy, Source: a.owner}
-		// The resource of the same feature, when it has one at this level.
+		// The resource of the same feature, when it has one at this level. The
+		// action takes the resource's name: the SRD names some features per
+		// level ("Surto de Ação (1 uso)"), and the screen shows the uses apart.
 		for _, r := range x.d.Resources {
 			if r.Source == a.owner {
 				act.Resource = r.Key
+				act.NamePT = r.NamePT
 				break
 			}
 		}

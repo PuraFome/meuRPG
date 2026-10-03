@@ -103,6 +103,9 @@ type Attack struct {
 	// RangeFt is the reach or normal range, LongRangeFt the long range, both
 	// in feet; 0 when the sheet says none (a melee attack reaches 5 ft).
 	RangeFt, LongRangeFt int
+	// Melee says it is a melee weapon, thrown or not: the only kind an
+	// opportunity attack can use, with the melee reach.
+	Melee bool
 }
 
 // Action is a standard action: its key ("standard:dash") and Portuguese name.

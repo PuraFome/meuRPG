@@ -88,7 +88,8 @@ func (s *Service) openHit(ctx context.Context, c *combatTx, campaignID string, a
 
 // reactionPrompts lists the hits that wait for a reaction as the caller may
 // see them: the master all, a player only those on their own character. A
-// player never gets who attacked, the attack's total or an armor class.
+// player never gets the attack's total or an armor class, nor who attacked
+// when the attacker is hidden from them.
 func (s *Service) reactionPrompts(ctx context.Context, m authz.Membership, d *encounterData) ([]*playv1.ReactionPrompt, error) {
 	if d.enc.Status != statusActive {
 		return nil, nil
@@ -111,9 +112,19 @@ func (s *Service) reactionPrompts(ctx context.Context, m authz.Membership, d *en
 		if err != nil {
 			return nil, s.dbError(ctx, "work out the reaction", err)
 		}
-		prompt := &playv1.ReactionPrompt{PendingDamageId: p.ID, TargetId: p.TargetID, SpellKey: shield, Slots: slots}
+		prompt := &playv1.ReactionPrompt{PendingDamageId: p.ID, TargetId: p.TargetID, SpellKey: shield, Slots: slots, SpellNamePt: s.nameOf(shield)}
 		if v.master {
 			prompt.AttackerId = p.AttackerID
+		}
+		// Who attacked, and with what, only when the viewer sees the attacker (RN-20):
+		// the screen says "Capitão Goblin · Cimitarra", and a hidden attacker stays hidden.
+		if j := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == p.AttackerID }); j >= 0 && v.sees(d.cs[j]) {
+			prompt.AttackerLabel = d.cs[j].Label
+			if sheet, err := s.roster.CombatSheet(ctx, m.CampaignID, d.cs[j].CharacterID); err == nil {
+				if k := slices.IndexFunc(sheet.Attacks, func(a link.Attack) bool { return a.Key == p.AttackKey }); k >= 0 {
+					prompt.AttackNamePt = sheet.Attacks[k].Name
+				}
+			}
 		}
 		out = append(out, prompt)
 	}

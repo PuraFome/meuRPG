@@ -29,6 +29,15 @@ export function rollFormula(roll: DiceRoll): string {
   return `${roll.diceCount}d${roll.diceSides} (${roll.faces.join(', ')})${mod} = ${roll.total}`;
 }
 
+/** A roll for a sentence: the app's `1d20 (14) = 14`, a typed one `16 + 5 = 21
+ * · dado físico` (or just `1 · dado físico` for a bare d20: `1 = 1` reads as a typo). */
+export function rollText(roll: DiceRoll): string {
+  if (!roll.physical) {
+    return rollFormula(roll);
+  }
+  return roll.modifier === 0 ? `${roll.total} · dado físico` : `${rollFormula(roll)} · dado físico`;
+}
+
 /** The typed d20 and its bonus, before it is sent: `16 + 5 = 21`. */
 export function typedTotal(face: number, bonus: number): string {
   return `${face}${modifierText(bonus)} = ${face + bonus}`;

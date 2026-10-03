@@ -1,6 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 
-import { callRPC, characterRpcBody, createCharacterRPC, pensantus } from './support';
+import { callRPC, characterRpcBody, createCharacterRPC, pensantus, type CharacterBuild } from './support';
 
 // Setup for the maps and shown-image specs (Etapa 5, MR-008, MR-009, MR-012,
 // MR-028), through the API: these tests prove the map screens and the
@@ -64,8 +64,16 @@ export interface MapsTable {
 }
 
 /** `sheet` adds to the player's full sheet (the combat specs give Pensantus a
- * dagger, Raio de Fogo and spells: `weaponKeys`, `cantripKeys`...). */
-export async function tableForMaps(masterPage: Page, playerPage: Page, name: string, npc = false, sheet: Record<string, unknown> = {}): Promise<MapsTable> {
+ * dagger, Raio de Fogo and spells: `weaponKeys`, `cantripKeys`...); `build` is
+ * another character than Pensantus (the slice 6.5c specs play a fighter and a cleric). */
+export async function tableForMaps(
+  masterPage: Page,
+  playerPage: Page,
+  name: string,
+  npc = false,
+  sheet: Record<string, unknown> = {},
+  build: CharacterBuild = pensantus,
+): Promise<MapsTable> {
   const created = await callRPC(masterPage, 'meurpg.campaigns.v1.CampaignService/CreateCampaign', {
     name,
     xpMode: 'XP_MODE_ENEMIES',
@@ -84,7 +92,7 @@ export async function tableForMaps(masterPage: Page, playerPage: Page, name: str
   });
   expect(accepted.ok()).toBeTruthy();
 
-  const body = characterRpcBody('PLAYER', pensantus) as { sheet: { full: object } };
+  const body = characterRpcBody('PLAYER', build) as { sheet: { full: object } };
   body.sheet.full = { ...body.sheet.full, ...sheet };
   const character = await createCharacterRPC(playerPage, campaignId, body);
   expect(character.ok()).toBeTruthy();

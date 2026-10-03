@@ -1,0 +1,110 @@
+<app-sheet-frame [title]="title()" [subtitle]="subtitle()" [phone]="inSheet" (closed)="close()">
+  <div class="body">
+    @if (error()) {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ error() }}</p>
+      </div>
+    }
+
+    @if (!done()) {
+      @if (rows().length) {
+        <app-slot-picker [rows]="rows()" [chosen]="slot()" (pick)="pickSlot($event)" />
+        @if (warning()) {
+          <div class="mr-notice mr-notice--warning" role="status">
+            <mat-icon aria-hidden="true">info</mat-icon>
+            <p><strong>{{ warning() }}</strong></p>
+          </div>
+        }
+      }
+      @if (rule().kind !== 'none') {
+        <app-cast-targets
+          [rows]="targetRows()"
+          [rule]="rule()"
+          [chosen]="chosen()"
+          [dealt]="dealt()"
+          [total]="dartsTotal()"
+          [npcs]="npcs()"
+          (toggle)="toggle($event)"
+          (deal)="deal($event)"
+        />
+      }
+      @if (kind() === 'attack') {
+        <app-roll-picker
+          [compact]="true"
+          [canApp]="canApp"
+          [canType]="canType()"
+          [preferApp]="preferApp"
+          [label]="'Role 1d20 para ' + data.name + (data.attackBonus < 0 ? ' (−' : ' (+') + (data.attackBonus < 0 ? -data.attackBonus : data.attackBonus) + ')'"
+          hint="Role o seu dado e digite o número que saiu (1 a 20)."
+          totalNote="Total do ataque"
+          [modifier]="data.attackBonus"
+          [busy]="busy() || !ready()"
+          [appLabel]="'Conjurar e rolar no app'"
+          [sticky]="true"
+          [(typing)]="typing"
+          (app)="castRolled({ inApp: true })"
+          (typed)="castRolled({ face: $event })"
+        />
+      }
+    } @else {
+      <app-cast-result [rows]="resultRows()" [plain]="plain()" />
+      @if (nextRoll(); as r) {
+        <div class="dmg">
+          <p class="dmg__what">
+            {{ r.what }}.{{ r.pending.critical ? ' Acerto crítico: os dados dobram.' : '' }}
+            @if (r.count > 1) {
+              Role um de cada vez ou todos no app.
+            }
+          </p>
+          <app-roll-picker
+            [compact]="true"
+            [canApp]="canApp"
+            [canType]="canTypeDamage"
+            [preferApp]="preferApp"
+            [label]="r.label"
+            [hint]="'Digite a soma dos dados, de ' + r.range.min + ' a ' + r.range.max + '. O app soma o modificador.'"
+            [totalNote]="r.pending.healing ? 'Cura total' : 'Dano total'"
+            [min]="r.range.min"
+            [max]="r.range.max"
+            [modifier]="r.pending.bonus"
+            [busy]="busy()"
+            [appLabel]="r.count > 1 ? 'Rolar o dano no app' : 'Rolar ' + r.name + ' no app'"
+            [sticky]="true"
+            [(typing)]="typing"
+            (app)="rollAll()"
+            (typed)="rollTyped($event)"
+          />
+        </div>
+      }
+      <app-cast-slots [after]="after()" [shieldLost]="shieldLost()" [notes]="notes()" />
+    }
+  </div>
+
+  @if (!done() && kind() !== 'attack') {
+    <div foot>
+      @if (missing()) {
+        <p class="missing" role="status"><mat-icon aria-hidden="true">block</mat-icon>{{ missing() }}</p>
+      } @else if (dartsLine()) {
+        <p class="missing" role="status"><mat-icon aria-hidden="true">check_circle</mat-icon>{{ dartsLine() }}</p>
+      }
+      <button
+        mat-flat-button
+        type="button"
+        class="cast"
+        [class.cast--off]="!ready()"
+        [disabled]="busy() || !ready()"
+        disabledInteractive
+        (click)="castNow()"
+      >
+        <mat-icon aria-hidden="true">auto_awesome</mat-icon>Conjurar {{ data.name }}
+      </button>
+      <button type="button" class="cancel" (click)="close()">Cancelar</button>
+    </div>
+  }
+  @if (done() && !owed()) {
+    <div foot>
+      <button #back mat-flat-button type="button" class="cast" (click)="close()">Voltar à sua vez</button>
+    </div>
+  }
+</app-sheet-frame>

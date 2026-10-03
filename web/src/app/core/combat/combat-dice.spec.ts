@@ -5,6 +5,7 @@ import {
   parseFace,
   parseSum,
   rollFormula,
+  rollText,
   sumRange,
   typedTotal,
 } from './combat-dice';
@@ -55,5 +56,13 @@ describe('a typed roll', () => {
     expect(parseSum('9', 2, 12)).toBe(9);
     expect(parseSum('13', 2, 12)).toBeNull();
     expect(parseSum('1', 2, 12)).toBeNull();
+  });
+});
+
+describe('a roll in a sentence', () => {
+  it('writes the app\'s roll with its dice and a typed d20 as the number it showed', () => {
+    expect(rollText(roll({ diceCount: 1, diceSides: 20, faces: [14], modifier: 0, total: 14 }))).toBe('1d20 (14) = 14');
+    expect(rollText(roll({ diceCount: 1, diceSides: 20, faces: [], modifier: 0, total: 1, physical: true }))).toBe('1 · dado físico');
+    expect(rollText(roll({ diceCount: 1, diceSides: 20, faces: [], modifier: 5, total: 21, physical: true }))).toBe('16 + 5 = 21 · dado físico');
   });
 });

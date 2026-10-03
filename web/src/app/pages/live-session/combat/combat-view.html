@@ -110,6 +110,13 @@
               }
             </div>
             <div class="active__side">
+              <app-death-question
+                [dying]="dying()"
+                [dismissed]="deathLater()"
+                [busy]="busy()"
+                (confirm)="confirmDeath($event)"
+                (later)="deathLaterFor($event)"
+              />
               @if ((!laptop() || cardVisible()) && masterCard(); as who) {
                 <app-npc-card
                   [campaignId]="campaignId()"
@@ -122,6 +129,7 @@
                   [reactionStopped]="reactionStopped()"
                   [turnBusy]="busy()"
                   (next)="nextTurn($event)"
+                  (settledNote)="settled()"
                 />
               }
               <app-order-list
@@ -131,6 +139,9 @@
                 [busy]="busy()"
                 (adjust)="adjustFor($event)"
                 (adjustNpc)="adjustNpc($event)"
+                (conditions)="openConditions($event)"
+                [deathDismissed]="deathLater()"
+                (askDeath)="deathAskAgain($event)"
                 (reveal)="reveal($event)"
                 (remove)="remove($event)"
                 (add)="addCombatants()"
@@ -191,20 +202,49 @@
           />
         } @else {
           <div class="player" [class.player--mine]="myTurn() && !!options()">
-            <app-turn-panel class="player__turn" [encounter]="e" [busy]="busy()" (endTurn)="nextTurn()" />
+            <app-turn-panel
+              class="player__turn"
+              [encounter]="e"
+              [busy]="busy()"
+              [attacksLeft]="attacksLeft()"
+              [attacksPerAction]="attacksPerAction()"
+              [hitPointsMax]="ownMaxHp()"
+              [opportunities]="opportunities()"
+              [concentration]="ownConcentration()"
+              (endTurn)="nextTurn()"
+              (opportunity)="openAttack($event, true)"
+              (endConcentration)="endOwnConcentration()"
+            />
             @if (wideLayout()) {
               <app-order-column class="player__order" [encounter]="e" />
             }
             @if (myTurn() && own(); as me) {
-              @if (options(); as opts) {
+              @if (ownDown()) {
+                <div class="player__actions">
+                  <app-death-saves
+                    [own]="me"
+                    [busy]="busy()"
+                    [diceMode]="diceMode()"
+                    [dicePreference]="dicePreference()"
+                    [result]="deathResult()"
+                    (roll)="rollDeathSave($event)"
+                    (endTurn)="nextTurn()"
+                  />
+                </div>
+              } @else if (options(); as opts) {
                 @if (opts.options; as turnOptions) {
                   <app-action-groups
                     class="player__actions"
                     [options]="turnOptions"
                     [own]="me"
+                    [attacksLeft]="attacksLeft()"
+                    [attacksPerAction]="attacksPerAction()"
+                    [note]="actionNote()"
                     [pendingRoll]="ownPendingRoll()"
                     [busy]="busy()"
                     (attack)="openAttack($event)"
+                    (cast)="openCast($event)"
+                    (feature)="useFeature($event)"
                     (action)="takeAction($event)"
                     (move)="openMove()"
                     (rollDamage)="rollPendingDamage()"
@@ -236,7 +276,9 @@
             />
             <div class="player__side"><ng-content /></div>
             @if (myTurn() && own(); as me) {
-              <app-turn-bar class="player__bar" [own]="me" [busy]="busy()" (endTurn)="nextTurn()" />
+              @if (!ownDown()) {
+                <app-turn-bar class="player__bar" [own]="me" [attacksLeft]="attacksLeft()" [busy]="busy()" (endTurn)="nextTurn()" />
+              }
             }
           </div>
         }

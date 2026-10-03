@@ -2,14 +2,15 @@ import { Component, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import type { Combatant, Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { combatantInitial, isPlayer, stateWord } from '../../../../core/combat/combat-view';
+import { CombatantState } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { combatantInitial, isDown, isPlayer, playerWord, stateWord } from '../../../../core/combat/combat-view';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 
 /**
  * "Ordem" (E6-14): the order of the turns as a column on the left, from
  * 1280px, numbered, with each one's token, name and one word: an NPC's state
  * ("Ileso", "Ferido"), "Jogador" for another player, "Você" for the person's
- * own, "✕ Derrotado". The one on turn has the "Vez" pill on an `accent-soft`
+ * own, "✕ Derrotado"; a character at 0 hit points reads "Caída". The one on turn has the "Vez" pill on an `accent-soft`
  * row. Below 1280px the same is the strip (`order-strip`).
  */
 @Component({
@@ -56,8 +57,13 @@ export class OrderColumn {
 
   protected word(c: Combatant): string {
     if (c.defeated) {
-      return 'Derrotado';
+      return isPlayer(c) ? stateWord(CombatantState.DEAD, c.label) : 'Derrotado';
     }
-    return c.mine ? 'Você' : isPlayer(c) ? 'Jogador' : stateWord(c.state);
+    // A character at 0 hit points says so, even the person's own ("Você, caída").
+    const down = isPlayer(c) && isDown(c) ? stateWord(c.state, c.label) : '';
+    if (c.mine) {
+      return down ? `Você, ${down.toLowerCase()}` : 'Você';
+    }
+    return isPlayer(c) ? playerWord(c) : stateWord(c.state);
   }
 }

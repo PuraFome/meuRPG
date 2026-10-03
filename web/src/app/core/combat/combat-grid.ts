@@ -155,3 +155,9 @@ export function moveDetail(from: Square, to: Square, leftFt: number): string {
 export function moveSentence(from: Square, to: Square, leftFt: number): string {
   return `Mover ${formatMeters(squaresToMeters(distance(from, to)))}. ${moveDetail(from, to, leftFt)}`;
 }
+
+/** The ordinal circle: "2º círculo", with a no-break space so a line never
+ * ends on "1º" with "círculo" alone on the next. */
+export function circleLabel(level: number): string {
+  return level === 0 ? 'Truque' : `${level}º\u00a0círculo`;
+}

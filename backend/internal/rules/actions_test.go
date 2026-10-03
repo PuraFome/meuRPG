@@ -131,7 +131,12 @@ func TestExtraAttackAndActionSurge(t *testing.T) {
 		}
 	}
 	if surge == nil || surge.Economy != EconomyFree || surge.Resource != "action_surge" {
-		t.Errorf("Action Surge action = %+v, want a free action that spends action_surge", surge)
+		t.Fatalf("Action Surge action = %+v, want a free action that spends action_surge", surge)
+	}
+	// The action takes its resource's name, not the per-level feature name
+	// "Surto de Ação (1 uso)": the screen shows the uses on their own line.
+	if surge.NamePT != "Surto de Ação" {
+		t.Errorf("Action Surge NamePT = %q, want %q", surge.NamePT, "Surto de Ação")
 	}
 }
 
