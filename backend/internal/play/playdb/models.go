@@ -67,3 +67,22 @@ type GameSession struct {
 	ShownImageID   *string
 	ShownImageKeep bool
 }
+
+type PendingDamage struct {
+	ID          string
+	EncounterID string
+	AttackerID  string
+	TargetID    string
+	AttackKey   string
+	Status      string
+	Critical    bool
+	DiceCount   int32
+	DiceSides   int32
+	DiceBonus   int32
+	DamageType  string
+	Faces       []int32
+	Physical    bool
+	Amount      *int32
+	CreatedAt   time.Time
+	ResolvedAt  *time.Time
+}

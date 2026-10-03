@@ -40,6 +40,7 @@ import (
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1/playv1connect"
+	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/nostore"
@@ -73,6 +74,8 @@ type VitalsKeeper interface {
 	// GetVitals returns one living, active player character's vitals, or
 	// `not_found`.
 	GetVitals(ctx context.Context, campaignID, characterID string) (*playv1.CharacterVitals, error)
+	// GetVitalsTx is GetVitals inside tx.
+	GetVitalsTx(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (*playv1.CharacterVitals, error)
 	// AdjustVitals applies the vitals fields of req inside tx, and returns
 	// the vitals before and after: `not_found` for anything but a living,
 	// active player character of the campaign; `invalid_argument` for a
@@ -128,14 +131,43 @@ type CombatRoster interface {
 	// CombatCharacters returns those of ids that are living characters of
 	// the campaign, players' or NPCs; the others are left out.
 	CombatCharacters(ctx context.Context, campaignID string, ids []string) ([]link.Character, error)
+	// CombatSheet returns what an attack needs from the sheet of a living
+	// character of the campaign, a player's or an NPC's: its armor class, its
+	// attacks and the standard actions. Its armor class never goes to a
+	// player (RN-20). `not_found` for any other character.
+	CombatSheet(ctx context.Context, campaignID, characterID string) (link.Sheet, error)
+	// CombatTurnOptions works out what the character can do now (MR-014),
+	// from its sheet, what it used this turn and the slots it spent: the rules
+	// engine's TurnOptions. `not_found` for any other character.
+	CombatTurnOptions(ctx context.Context, campaignID, characterID string, turn link.Turn) (*rulesv1.TurnOptions, error)
 }
 
-// DiceModes tells where a player rolls their dice (RN-18). cmd/api wires it
-// to campaigns.Service.PlayerDiceMode.
+// DiceForce is what the campaign's dice setting makes a player do (RN-18).
+type DiceForce int
+
+const (
+	// DiceChoice is the setting "each player chooses", so the player picks
+	// on every roll, the app's or a typed result. Their saved preference is only
+	// the default the screen highlights.
+	DiceChoice DiceForce = iota
+	// DiceForcedInApp makes everybody roll in the app, a typed value is refused.
+	DiceForcedInApp
+	// DiceForcedPhysical makes everybody roll real dice and types the result, the
+	// app's roll is refused.
+	DiceForcedPhysical
+)
+
+// refuses says whether the forced mode does not allow this way of rolling.
+func (f DiceForce) refuses(inApp bool) bool {
+	return (f == DiceForcedInApp && !inApp) || (f == DiceForcedPhysical && inApp)
+}
+
+// DiceModes tells what the campaign's dice setting forces on a player (RN-18).
+// cmd/api wires it to campaigns.Service.CampaignDiceMode.
 type DiceModes interface {
-	// RollsPhysical reports whether userID, an active member of the campaign,
-	// rolls real dice and types the result; false means the app rolls.
-	RollsPhysical(ctx context.Context, campaignID, userID string) (bool, error)
+	// ForcedDice returns what the campaign's setting forces on userID, an
+	// active member of the campaign.
+	ForcedDice(ctx context.Context, campaignID, userID string) (DiceForce, error)
 }
 
 // CampaignDirectory tells which campaigns a user belongs to. The campaigns

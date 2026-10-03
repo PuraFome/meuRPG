@@ -10,6 +10,38 @@ import (
 	"time"
 )
 
+const clearPendingDamageRoll = `-- name: ClearPendingDamageRoll :one
+UPDATE pending_damages
+SET status = 'awaiting_roll', faces = '{}', physical = false, amount = NULL, resolved_at = NULL
+WHERE id = $1
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at
+`
+
+// An undo of the damage roll: it waits to be rolled again.
+func (q *Queries) ClearPendingDamageRoll(ctx context.Context, id string) (PendingDamage, error) {
+	row := q.db.QueryRow(ctx, clearPendingDamageRoll, id)
+	var i PendingDamage
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.AttackerID,
+		&i.TargetID,
+		&i.AttackKey,
+		&i.Status,
+		&i.Critical,
+		&i.DiceCount,
+		&i.DiceSides,
+		&i.DiceBonus,
+		&i.DamageType,
+		&i.Faces,
+		&i.Physical,
+		&i.Amount,
+		&i.CreatedAt,
+		&i.ResolvedAt,
+	)
+	return i, err
+}
+
 const deleteCombatant = `-- name: DeleteCombatant :exec
 DELETE FROM combatants
 WHERE id = $1
@@ -17,6 +49,16 @@ WHERE id = $1
 
 func (q *Queries) DeleteCombatant(ctx context.Context, id string) error {
 	_, err := q.db.Exec(ctx, deleteCombatant, id)
+	return err
+}
+
+const deletePendingDamage = `-- name: DeletePendingDamage :exec
+DELETE FROM pending_damages
+WHERE id = $1
+`
+
+func (q *Queries) DeletePendingDamage(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, deletePendingDamage, id)
 	return err
 }
 
@@ -246,8 +288,43 @@ func (q *Queries) GetOpenGameSessionForUpdate(ctx context.Context, campaignID st
 	return i, err
 }
 
+const getPendingDamage = `-- name: GetPendingDamage :one
+SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at FROM pending_damages
+WHERE encounter_id = $1 AND id = $2
+`
+
+type GetPendingDamageParams struct {
+	EncounterID string
+	ID          string
+}
+
+// A pending damage by its ID, if it is in the combat.
+func (q *Queries) GetPendingDamage(ctx context.Context, arg GetPendingDamageParams) (PendingDamage, error) {
+	row := q.db.QueryRow(ctx, getPendingDamage, arg.EncounterID, arg.ID)
+	var i PendingDamage
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.AttackerID,
+		&i.TargetID,
+		&i.AttackKey,
+		&i.Status,
+		&i.Critical,
+		&i.DiceCount,
+		&i.DiceSides,
+		&i.DiceBonus,
+		&i.DamageType,
+		&i.Faces,
+		&i.Physical,
+		&i.Amount,
+		&i.CreatedAt,
+		&i.ResolvedAt,
+	)
+	return i, err
+}
+
 const getSessionEventByIdempotencyKey = `-- name: GetSessionEventByIdempotencyKey :one
-SELECT id, seq, kind, character_id FROM session_events
+SELECT id, seq, kind, character_id, payload FROM session_events
 WHERE game_session_id = $1 AND idempotency_key = $2
 `
 
@@ -261,6 +338,7 @@ type GetSessionEventByIdempotencyKeyRow struct {
 	Seq         int32
 	Kind        string
 	CharacterID *string
+	Payload     []byte
 }
 
 // The event a change with this key already wrote, if any.
@@ -272,6 +350,7 @@ func (q *Queries) GetSessionEventByIdempotencyKey(ctx context.Context, arg GetSe
 		&i.Seq,
 		&i.Kind,
 		&i.CharacterID,
+		&i.Payload,
 	)
 	return i, err
 }
@@ -437,10 +516,69 @@ func (q *Queries) InsertGameSession(ctx context.Context, arg InsertGameSessionPa
 	return i, err
 }
 
+const insertPendingDamage = `-- name: InsertPendingDamage :one
+
+INSERT INTO pending_damages (
+    encounter_id, attacker_id, target_id, attack_key, status, critical,
+    dice_count, dice_sides, dice_bonus, damage_type, created_at
+) VALUES ($1, $2, $3, $4, 'awaiting_roll', $5, $6, $7, $8, $9, $10)
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at
+`
+
+type InsertPendingDamageParams struct {
+	EncounterID string
+	AttackerID  string
+	TargetID    string
+	AttackKey   string
+	Critical    bool
+	DiceCount   int32
+	DiceSides   int32
+	DiceBonus   int32
+	DamageType  string
+	CreatedAt   time.Time
+}
+
+// Pending damage (MR-012, MR-014): the damage of an attack that hit. Every write
+// below runs after the caller locked the open session's row.
+func (q *Queries) InsertPendingDamage(ctx context.Context, arg InsertPendingDamageParams) (PendingDamage, error) {
+	row := q.db.QueryRow(ctx, insertPendingDamage,
+		arg.EncounterID,
+		arg.AttackerID,
+		arg.TargetID,
+		arg.AttackKey,
+		arg.Critical,
+		arg.DiceCount,
+		arg.DiceSides,
+		arg.DiceBonus,
+		arg.DamageType,
+		arg.CreatedAt,
+	)
+	var i PendingDamage
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.AttackerID,
+		&i.TargetID,
+		&i.AttackKey,
+		&i.Status,
+		&i.Critical,
+		&i.DiceCount,
+		&i.DiceSides,
+		&i.DiceBonus,
+		&i.DamageType,
+		&i.Faces,
+		&i.Physical,
+		&i.Amount,
+		&i.CreatedAt,
+		&i.ResolvedAt,
+	)
+	return i, err
+}
+
 const insertSessionEvent = `-- name: InsertSessionEvent :one
 INSERT INTO session_events
-    (game_session_id, seq, kind, actor_user_id, character_id, payload, idempotency_key, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    (game_session_id, seq, kind, actor_user_id, character_id, payload, idempotency_key, created_at, encounter_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING id, seq
 `
 
@@ -453,6 +591,7 @@ type InsertSessionEventParams struct {
 	Payload        []byte
 	IdempotencyKey *string
 	CreatedAt      time.Time
+	EncounterID    *string
 }
 
 type InsertSessionEventRow struct {
@@ -470,6 +609,7 @@ func (q *Queries) InsertSessionEvent(ctx context.Context, arg InsertSessionEvent
 		arg.Payload,
 		arg.IdempotencyKey,
 		arg.CreatedAt,
+		arg.EncounterID,
 	)
 	var i InsertSessionEventRow
 	err := row.Scan(&i.ID, &i.Seq)
@@ -521,6 +661,59 @@ func (q *Queries) ListCombatants(ctx context.Context, encounterID string) ([]Com
 			&i.DeathFailures,
 			&i.Conditions,
 			&i.ConcentrationSpell,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listEncounterEvents = `-- name: ListEncounterEvents :many
+
+SELECT id, seq, kind, actor_user_id, payload, created_at FROM session_events
+WHERE encounter_id = $1
+ORDER BY seq DESC
+LIMIT $2
+`
+
+type ListEncounterEventsParams struct {
+	EncounterID *string
+	Limit       int32
+}
+
+type ListEncounterEventsRow struct {
+	ID          string
+	Seq         int32
+	Kind        string
+	ActorUserID *string
+	Payload     []byte
+	CreatedAt   time.Time
+}
+
+// The combat log and the undo read the session's events (ADR-0007).
+// A combat's latest events, newest first: when a combat is longer than the
+// limit, it is the oldest lines that fall off the log, never the newest (or the
+// one an undo would take back). The caller reverses them.
+func (q *Queries) ListEncounterEvents(ctx context.Context, arg ListEncounterEventsParams) ([]ListEncounterEventsRow, error) {
+	rows, err := q.db.Query(ctx, listEncounterEvents, arg.EncounterID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListEncounterEventsRow
+	for rows.Next() {
+		var i ListEncounterEventsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Seq,
+			&i.Kind,
+			&i.ActorUserID,
+			&i.Payload,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -606,6 +799,97 @@ func (q *Queries) ListOpenGameSessions(ctx context.Context, campaignIds []string
 	return items, nil
 }
 
+const listOpenPendingDamages = `-- name: ListOpenPendingDamages :many
+SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at FROM pending_damages
+WHERE encounter_id = $1 AND status IN ('awaiting_roll', 'rolled')
+ORDER BY created_at, id
+`
+
+// What still waits to be rolled or applied in the combat, oldest first.
+func (q *Queries) ListOpenPendingDamages(ctx context.Context, encounterID string) ([]PendingDamage, error) {
+	rows, err := q.db.Query(ctx, listOpenPendingDamages, encounterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PendingDamage
+	for rows.Next() {
+		var i PendingDamage
+		if err := rows.Scan(
+			&i.ID,
+			&i.EncounterID,
+			&i.AttackerID,
+			&i.TargetID,
+			&i.AttackKey,
+			&i.Status,
+			&i.Critical,
+			&i.DiceCount,
+			&i.DiceSides,
+			&i.DiceBonus,
+			&i.DamageType,
+			&i.Faces,
+			&i.Physical,
+			&i.Amount,
+			&i.CreatedAt,
+			&i.ResolvedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRecentSessionEvents = `-- name: ListRecentSessionEvents :many
+SELECT id, seq, kind, encounter_id, payload FROM session_events
+WHERE game_session_id = $1
+ORDER BY seq DESC
+LIMIT $2
+`
+
+type ListRecentSessionEventsParams struct {
+	GameSessionID string
+	Limit         int32
+}
+
+type ListRecentSessionEventsRow struct {
+	ID          string
+	Seq         int32
+	Kind        string
+	EncounterID *string
+	Payload     []byte
+}
+
+// The session's latest events, newest first (the undo looks for the last action).
+func (q *Queries) ListRecentSessionEvents(ctx context.Context, arg ListRecentSessionEventsParams) ([]ListRecentSessionEventsRow, error) {
+	rows, err := q.db.Query(ctx, listRecentSessionEvents, arg.GameSessionID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRecentSessionEventsRow
+	for rows.Next() {
+		var i ListRecentSessionEventsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Seq,
+			&i.Kind,
+			&i.EncounterID,
+			&i.Payload,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const markCombatantDashed = `-- name: MarkCombatantDashed :exec
 UPDATE combatants
 SET dashed = true
@@ -662,6 +946,32 @@ func (q *Queries) ResetCombatantTurn(ctx context.Context, id string) error {
 	return err
 }
 
+const setCombatantEconomy = `-- name: SetCombatantEconomy :exec
+UPDATE combatants
+SET action_used = $2, bonus_action_used = $3, reaction_used = $4, dashed = $5
+WHERE id = $1
+`
+
+type SetCombatantEconomyParams struct {
+	ID              string
+	ActionUsed      bool
+	BonusActionUsed bool
+	ReactionUsed    bool
+	Dashed          bool
+}
+
+// The turn's economy as an action, or its undo, leaves it.
+func (q *Queries) SetCombatantEconomy(ctx context.Context, arg SetCombatantEconomyParams) error {
+	_, err := q.db.Exec(ctx, setCombatantEconomy,
+		arg.ID,
+		arg.ActionUsed,
+		arg.BonusActionUsed,
+		arg.ReactionUsed,
+		arg.Dashed,
+	)
+	return err
+}
+
 const setCombatantHidden = `-- name: SetCombatantHidden :exec
 UPDATE combatants
 SET hidden = $2
@@ -675,6 +985,31 @@ type SetCombatantHiddenParams struct {
 
 func (q *Queries) SetCombatantHidden(ctx context.Context, arg SetCombatantHiddenParams) error {
 	_, err := q.db.Exec(ctx, setCombatantHidden, arg.ID, arg.Hidden)
+	return err
+}
+
+const setCombatantHitPoints = `-- name: SetCombatantHitPoints :exec
+UPDATE combatants
+SET hp_current = $2, hp_temp = $3, defeated = $4
+WHERE id = $1
+`
+
+type SetCombatantHitPointsParams struct {
+	ID        string
+	HpCurrent *int32
+	HpTemp    *int32
+	Defeated  bool
+}
+
+// An NPC's hit points, temporary hit points and defeated flag (damage, healing,
+// the master's hand, an undo).
+func (q *Queries) SetCombatantHitPoints(ctx context.Context, arg SetCombatantHitPointsParams) error {
+	_, err := q.db.Exec(ctx, setCombatantHitPoints,
+		arg.ID,
+		arg.HpCurrent,
+		arg.HpTemp,
+		arg.Defeated,
+	)
 	return err
 }
 
@@ -810,6 +1145,93 @@ func (q *Queries) SetEncounterState(ctx context.Context, arg SetEncounterStatePa
 		&i.CreatedAt,
 		&i.StartedAt,
 		&i.EndedAt,
+	)
+	return i, err
+}
+
+const setPendingDamageRolled = `-- name: SetPendingDamageRolled :one
+UPDATE pending_damages
+SET status = $2, faces = $3, physical = $4, amount = $5, resolved_at = $6
+WHERE id = $1
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at
+`
+
+type SetPendingDamageRolledParams struct {
+	ID         string
+	Status     string
+	Faces      []int32
+	Physical   bool
+	Amount     *int32
+	ResolvedAt *time.Time
+}
+
+// The roll of a pending damage: 'rolled' for a player's character (waits for
+// the master), 'applied' for an NPC.
+func (q *Queries) SetPendingDamageRolled(ctx context.Context, arg SetPendingDamageRolledParams) (PendingDamage, error) {
+	row := q.db.QueryRow(ctx, setPendingDamageRolled,
+		arg.ID,
+		arg.Status,
+		arg.Faces,
+		arg.Physical,
+		arg.Amount,
+		arg.ResolvedAt,
+	)
+	var i PendingDamage
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.AttackerID,
+		&i.TargetID,
+		&i.AttackKey,
+		&i.Status,
+		&i.Critical,
+		&i.DiceCount,
+		&i.DiceSides,
+		&i.DiceBonus,
+		&i.DamageType,
+		&i.Faces,
+		&i.Physical,
+		&i.Amount,
+		&i.CreatedAt,
+		&i.ResolvedAt,
+	)
+	return i, err
+}
+
+const setPendingDamageStatus = `-- name: SetPendingDamageStatus :one
+UPDATE pending_damages
+SET status = $2, resolved_at = $3
+WHERE id = $1
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at
+`
+
+type SetPendingDamageStatusParams struct {
+	ID         string
+	Status     string
+	ResolvedAt *time.Time
+}
+
+// Applied or discarded by the master, or back to where it was (an undo).
+func (q *Queries) SetPendingDamageStatus(ctx context.Context, arg SetPendingDamageStatusParams) (PendingDamage, error) {
+	row := q.db.QueryRow(ctx, setPendingDamageStatus, arg.ID, arg.Status, arg.ResolvedAt)
+	var i PendingDamage
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.AttackerID,
+		&i.TargetID,
+		&i.AttackKey,
+		&i.Status,
+		&i.Critical,
+		&i.DiceCount,
+		&i.DiceSides,
+		&i.DiceBonus,
+		&i.DamageType,
+		&i.Faces,
+		&i.Physical,
+		&i.Amount,
+		&i.CreatedAt,
+		&i.ResolvedAt,
 	)
 	return i, err
 }

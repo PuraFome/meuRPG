@@ -287,11 +287,23 @@ func TestMR013_TurnOrderAndMovementLeft(t *testing.T) {
 	_, err = f.submit(t, f.ana, e, "Pensantus", inApp)
 	wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_INITIATIVE_ALREADY_SET)
 
-	// Toren's player rolls their own dice (RN-18): the app's roll is refused,
-	// and a typed face must be a d20's.
+	// With "cada jogador escolhe" the player chooses on each roll (RN-18): Toren's
+	// saved preference is real dice, and he may still type a face or roll in the
+	// app. Only a forced mode binds: with real dice for everybody the app's
+	// roll is refused, and with the app for everybody a typed face is.
 	f.setPhysical(t, f.caio)
-	_, err = f.submit(t, f.caio, e, "Toren", inApp)
-	wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_WRONG_DICE_MODE)
+	for mode, roll := range map[campaignsv1.DiceMode]func(*playv1.SubmitInitiativeRequest){
+		campaignsv1.DiceMode_DICE_MODE_PHYSICAL: inApp, campaignsv1.DiceMode_DICE_MODE_APP: typed(5),
+	} {
+		if _, err := f.master.campaigns.SetCampaignDiceMode(ctx, connect.NewRequest(&campaignsv1.SetCampaignDiceModeRequest{CampaignId: f.campaignID, Mode: mode})); err != nil {
+			t.Fatalf("SetCampaignDiceMode() error = %v", err)
+		}
+		_, err = f.submit(t, f.caio, e, "Toren", roll)
+		wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_WRONG_DICE_MODE)
+	}
+	if _, err := f.master.campaigns.SetCampaignDiceMode(ctx, connect.NewRequest(&campaignsv1.SetCampaignDiceModeRequest{CampaignId: f.campaignID, Mode: campaignsv1.DiceMode_DICE_MODE_PLAYERS_CHOOSE})); err != nil {
+		t.Fatalf("SetCampaignDiceMode() error = %v", err)
+	}
 	_, err = f.submit(t, f.caio, e, "Toren", typed(21))
 	wantCode(t, "SubmitInitiative(21)", err, connect.CodeInvalidArgument)
 	_, err = f.submit(t, f.caio, e, "Toren", typed(5))
@@ -911,8 +923,9 @@ func TestMR013_CombatAuthorizationMatrix(t *testing.T) {
 	for name := range calls {
 		covered[strings.SplitN(name, "(", 2)[0]] = true
 	}
-	if len(covered) != methods.Len() {
-		t.Errorf("the matrix covers %d methods, the service has %d", len(covered), methods.Len())
+	// The actions of a turn have their own matrix (combat_actions_test.go).
+	if want := methods.Len() - len(actionRPCs); len(covered) != want {
+		t.Errorf("the matrix covers %d methods, the service has %d besides the actions of a turn", len(covered), want)
 	}
 
 	masterOnly := map[string]bool{
@@ -1039,6 +1052,8 @@ func TestSessionEventKindsMatchTheCheck(t *testing.T) {
 		eventEncounterStarted, eventInitiativeSubmitted, eventInitiativeOrderSet, eventCombatBegun,
 		eventTurnEnded, eventCombatantMoved, eventCombatantHiddenSet, eventCombatantsAdded,
 		eventCombatantRemoved, eventEncounterEnded,
+		eventAttackRolled, eventDamageRolled, eventDamageApplied, eventDamageDiscarded,
+		eventActionTaken, eventHitPointsAdjusted, eventActionUndone,
 	}
 	var clause string
 	if err := h.pool.QueryRow(t.Context(),

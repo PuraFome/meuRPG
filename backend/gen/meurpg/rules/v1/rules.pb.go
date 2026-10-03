@@ -866,20 +866,36 @@ const (
 	DisabledReasonCode_DISABLED_REASON_CODE_REACTION_ONLY DisabledReasonCode = 7
 	// The casting time is a minute or more, too long for a fight.
 	DisabledReasonCode_DISABLED_REASON_CODE_CASTING_TIME_TOO_LONG DisabledReasonCode = 8
+	// CombatService.GetTurnOptions: the combatant is not the one on turn
+	// ("fora da vez"). Every option of a combatant off turn carries it.
+	DisabledReasonCode_DISABLED_REASON_CODE_NOT_YOUR_TURN DisabledReasonCode = 9
+	// CombatService.GetTurnOptions: the combat is not running (still being set
+	// up, or already over).
+	DisabledReasonCode_DISABLED_REASON_CODE_COMBAT_NOT_ACTIVE DisabledReasonCode = 10
+	// CombatService.GetTurnOptions: a player's character at 0 hit points
+	// ("Caído"). The death saves come with the spells slice.
+	DisabledReasonCode_DISABLED_REASON_CODE_COMBATANT_DOWN DisabledReasonCode = 11
+	// CombatService.GetTurnOptions: the combatant is out of the fight
+	// ("Derrotado").
+	DisabledReasonCode_DISABLED_REASON_CODE_COMBATANT_DEFEATED DisabledReasonCode = 12
 )
 
 // Enum value maps for DisabledReasonCode.
 var (
 	DisabledReasonCode_name = map[int32]string{
-		0: "DISABLED_REASON_CODE_UNSPECIFIED",
-		1: "DISABLED_REASON_CODE_ACTION_USED",
-		2: "DISABLED_REASON_CODE_BONUS_ACTION_USED",
-		3: "DISABLED_REASON_CODE_REACTION_USED",
-		4: "DISABLED_REASON_CODE_NO_SLOT",
-		5: "DISABLED_REASON_CODE_NO_USES",
-		6: "DISABLED_REASON_CODE_REACTION_ONLY_WHEN_HIT",
-		7: "DISABLED_REASON_CODE_REACTION_ONLY",
-		8: "DISABLED_REASON_CODE_CASTING_TIME_TOO_LONG",
+		0:  "DISABLED_REASON_CODE_UNSPECIFIED",
+		1:  "DISABLED_REASON_CODE_ACTION_USED",
+		2:  "DISABLED_REASON_CODE_BONUS_ACTION_USED",
+		3:  "DISABLED_REASON_CODE_REACTION_USED",
+		4:  "DISABLED_REASON_CODE_NO_SLOT",
+		5:  "DISABLED_REASON_CODE_NO_USES",
+		6:  "DISABLED_REASON_CODE_REACTION_ONLY_WHEN_HIT",
+		7:  "DISABLED_REASON_CODE_REACTION_ONLY",
+		8:  "DISABLED_REASON_CODE_CASTING_TIME_TOO_LONG",
+		9:  "DISABLED_REASON_CODE_NOT_YOUR_TURN",
+		10: "DISABLED_REASON_CODE_COMBAT_NOT_ACTIVE",
+		11: "DISABLED_REASON_CODE_COMBATANT_DOWN",
+		12: "DISABLED_REASON_CODE_COMBATANT_DEFEATED",
 	}
 	DisabledReasonCode_value = map[string]int32{
 		"DISABLED_REASON_CODE_UNSPECIFIED":            0,
@@ -891,6 +907,10 @@ var (
 		"DISABLED_REASON_CODE_REACTION_ONLY_WHEN_HIT": 6,
 		"DISABLED_REASON_CODE_REACTION_ONLY":          7,
 		"DISABLED_REASON_CODE_CASTING_TIME_TOO_LONG":  8,
+		"DISABLED_REASON_CODE_NOT_YOUR_TURN":          9,
+		"DISABLED_REASON_CODE_COMBAT_NOT_ACTIVE":      10,
+		"DISABLED_REASON_CODE_COMBATANT_DOWN":         11,
+		"DISABLED_REASON_CODE_COMBATANT_DEFEATED":     12,
 	}
 )
 
@@ -5682,7 +5702,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x1eSPELL_SAVE_SUCCESS_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17SPELL_SAVE_SUCCESS_NONE\x10\x01\x12\x1b\n" +
 	"\x17SPELL_SAVE_SUCCESS_HALF\x10\x02\x12\x1c\n" +
-	"\x18SPELL_SAVE_SUCCESS_OTHER\x10\x03*\x81\x03\n" +
+	"\x18SPELL_SAVE_SUCCESS_OTHER\x10\x03*\xab\x04\n" +
 	"\x12DisabledReasonCode\x12$\n" +
 	" DISABLED_REASON_CODE_UNSPECIFIED\x10\x00\x12$\n" +
 	" DISABLED_REASON_CODE_ACTION_USED\x10\x01\x12*\n" +
@@ -5692,7 +5712,12 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x1cDISABLED_REASON_CODE_NO_USES\x10\x05\x12/\n" +
 	"+DISABLED_REASON_CODE_REACTION_ONLY_WHEN_HIT\x10\x06\x12&\n" +
 	"\"DISABLED_REASON_CODE_REACTION_ONLY\x10\a\x12.\n" +
-	"*DISABLED_REASON_CODE_CASTING_TIME_TOO_LONG\x10\b2\xda\x01\n" +
+	"*DISABLED_REASON_CODE_CASTING_TIME_TOO_LONG\x10\b\x12&\n" +
+	"\"DISABLED_REASON_CODE_NOT_YOUR_TURN\x10\t\x12*\n" +
+	"&DISABLED_REASON_CODE_COMBAT_NOT_ACTIVE\x10\n" +
+	"\x12'\n" +
+	"#DISABLED_REASON_CODE_COMBATANT_DOWN\x10\v\x12+\n" +
+	"'DISABLED_REASON_CODE_COMBATANT_DEFEATED\x10\f2\xda\x01\n" +
 	"\x0eContentService\x12]\n" +
 	"\vListContent\x12#.meurpg.rules.v1.ListContentRequest\x1a$.meurpg.rules.v1.ListContentResponse\"\x03\x90\x02\x02\x12i\n" +
 	"\x0fGetSpellDetails\x12'.meurpg.rules.v1.GetSpellDetailsRequest\x1a(.meurpg.rules.v1.GetSpellDetailsResponse\"\x03\x90\x02\x02B\xbf\x01\n" +

@@ -9,8 +9,9 @@
 // vitals, which the master corrects during the session (RN-02), the
 // session's current map (the maps themselves are meurpg.maps.v1), and the
 // gallery image the master shows the players (MR-028). Combat has its own
-// service (combat.proto, CombatService: MR-013); its attacks, actions and the
-// combat log come in the next slice of Etapa 6.
+// service (combat.proto, CombatService: MR-013), with its attacks, actions
+// and log; spells, reactions and death saves come in the next slice of
+// Etapa 6.
 package playv1connect
 
 import (
@@ -180,6 +181,10 @@ type PlayServiceClient interface {
 	//     as the master's);
 	//   - `combatant_moved` when a combatant moves on the grid: to the master
 	//     always, and to a player only for a combatant they may see;
+	//   - `combat_log_changed` when a line of the combat log appeared, changed
+	//     or went away; a hint, and the app reads the log again
+	//     (CombatService.ListCombatLog). The master gets every one; a player
+	//     only those that touch a line they may see;
 	//   - `session_ended` when the master ends the session; the stream then
 	//     ends without an error.
 	//
@@ -559,6 +564,10 @@ type PlayServiceHandler interface {
 	//     as the master's);
 	//   - `combatant_moved` when a combatant moves on the grid: to the master
 	//     always, and to a player only for a combatant they may see;
+	//   - `combat_log_changed` when a line of the combat log appeared, changed
+	//     or went away; a hint, and the app reads the log again
+	//     (CombatService.ListCombatLog). The master gets every one; a player
+	//     only those that touch a line they may see;
 	//   - `session_ended` when the master ends the session; the stream then
 	//     ends without an error.
 	//

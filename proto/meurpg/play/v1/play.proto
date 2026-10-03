@@ -7,8 +7,9 @@ syntax = "proto3";
 // vitals, which the master corrects during the session (RN-02), the
 // session's current map (the maps themselves are meurpg.maps.v1), and the
 // gallery image the master shows the players (MR-028). Combat has its own
-// service (combat.proto, CombatService: MR-013); its attacks, actions and the
-// combat log come in the next slice of Etapa 6.
+// service (combat.proto, CombatService: MR-013), with its attacks, actions
+// and log; spells, reactions and death saves come in the next slice of
+// Etapa 6.
 package meurpg.play.v1;
 
 import "google/protobuf/timestamp.proto";
@@ -154,6 +155,10 @@ service PlayService {
   //     as the master's);
   //   - `combatant_moved` when a combatant moves on the grid: to the master
   //     always, and to a player only for a combatant they may see;
+  //   - `combat_log_changed` when a line of the combat log appeared, changed
+  //     or went away; a hint, and the app reads the log again
+  //     (CombatService.ListCombatLog). The master gets every one; a player
+  //     only those that touch a line they may see;
   //   - `session_ended` when the master ends the session; the stream then
   //     ends without an error.
   //
@@ -507,6 +512,8 @@ message WatchGameSessionResponse {
     TurnChanged turn_changed = 11;
     // A combatant moved on the grid.
     CombatantMoved combatant_moved = 12;
+    // The combat log changed: read it again (CombatService.ListCombatLog).
+    CombatLogChanged combat_log_changed = 13;
   }
 
   // Ready is the stream's first event.
@@ -602,6 +609,16 @@ message WatchGameSessionResponse {
     // Its new square, from 0, from the top left of the grid.
     int32 col = 3;
     int32 row = 4;
+  }
+
+  // CombatLogChanged is a hint: an entry of the combat log appeared,
+  // changed or went away, so the app reads it again
+  // (CombatService.ListCombatLog). It carries no content. The master gets
+  // every one; a player only the ones that touch an entry they may see, so a
+  // hidden combatant's action never even pings a player's stream (RN-10).
+  message CombatLogChanged {
+    // The combat (a UUID).
+    string encounter_id = 1;
   }
 
   // TokenMoved is a token's new position. A token the app does not know

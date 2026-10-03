@@ -372,11 +372,11 @@ func (s *Service) SubmitInitiative(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("set roll_in_app or d20_face"))
 	}
 	v := viewerOf(m)
-	// RN-18: a player rolls the way the campaign and their preference say.
-	// The master rolls either way, for anyone.
-	var physical bool
+	// RN-18: only a mode the master forced binds a player; with "each player
+	// chooses" they pick on every roll. The master rolls either way, for anyone.
+	var force DiceForce
 	if !v.master {
-		if physical, err = s.dice.RollsPhysical(ctx, m.CampaignID, m.UserID); err != nil {
+		if force, err = s.dice.ForcedDice(ctx, m.CampaignID, m.UserID); err != nil {
 			return nil, s.dbError(ctx, "read the dice setting", err)
 		}
 	}
@@ -403,7 +403,7 @@ func (s *Service) SubmitInitiative(
 			if target.Initiative != nil {
 				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_INITIATIVE_ALREADY_SET, "your initiative is already set")
 			}
-			if physical == inApp {
+			if force.refuses(inApp) {
 				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_WRONG_DICE_MODE, "this is not how the campaign has you roll your dice")
 			}
 		}
@@ -579,6 +579,7 @@ func (s *Service) BeginCombat(
 	out, err := s.finish(ctx, m, res, func(d *encounterData) {
 		s.publishEncounterChanged(m.CampaignID, d.enc)
 		s.publishTurnChanged(m.CampaignID, d)
+		s.publishLogChanged(m.CampaignID, d.enc.ID, true)
 	})
 	if err != nil {
 		return nil, err
@@ -613,7 +614,9 @@ func (s *Service) EndTurn(
 	v := viewerOf(m)
 	stale := connect.NewError(connect.CodeAborted, errors.New("another combatant is on turn now"))
 
+	var dropped []playdb.PendingDamage // the damage the master passed the turn over
 	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventTurnEnded, encounterID: encID}, func(c *combatTx) (any, error) {
+		dropped = nil
 		if c.enc.Status != statusActive {
 			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE, "the combat is not running")
 		}
@@ -660,6 +663,30 @@ func (s *Service) EndTurn(
 		if err := v.mayAct(current); err != nil {
 			return nil, err
 		}
+		// A damage still to roll or to apply holds the turn; only the master
+		// may pass it over, which drops the damage (RN-02: he has the last word).
+		if dropped, err = c.pendingOf(ctx, current.ID); err != nil {
+			return nil, err
+		}
+		if len(dropped) > 0 {
+			if !v.master || !req.Msg.GetDiscardPendingDamage() {
+				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_PENDING_DAMAGE, "a damage is still to roll or to apply")
+			}
+			for i, p := range dropped {
+				if dropped[i], err = c.q.SetPendingDamageStatus(ctx, playdb.SetPendingDamageStatusParams{ID: p.ID, Status: pendingDiscarded, ResolvedAt: &c.now}); err != nil {
+					return nil, fmt.Errorf("discard the pending damage: %w", err)
+				}
+				// One event for each, written before the turn's own, so the log shows
+				// the attack as dropped and an undo stays closed once the turn passes.
+				tgt, _ := findCombatant(cs, p.TargetID, combatViewer{master: true})
+				if err := insertEvent(ctx, c, eventDamageDiscarded, &m.UserID, nil, actionEvent{
+					Round: c.enc.Round, Secret: secretOf(current, tgt), Actor: current.ID, Target: p.TargetID, Pending: p.ID, Key: p.AttackKey,
+					Amount: num(p.Amount), PrevStatus: p.Status,
+				}); err != nil {
+					return nil, err
+				}
+			}
+		}
 		next, newRound, ok := nextTurn(cs, current.ID, "")
 		if !ok {
 			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE, "no combatant can take a turn")
@@ -679,7 +706,7 @@ func (s *Service) EndTurn(
 			return nil, fmt.Errorf("pass the turn: %w", err)
 		}
 		c.characterID = &current.CharacterID
-		return map[string]any{"from": current.ID, "to": next, "round": round}, nil
+		return map[string]any{"from": current.ID, "to": next, "round": round, "discarded": len(dropped)}, nil
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "end a turn", err)
@@ -687,6 +714,9 @@ func (s *Service) EndTurn(
 	out, err := s.finish(ctx, m, res, func(d *encounterData) {
 		s.publishTurnChanged(m.CampaignID, d)
 		s.publishEncounterChanged(m.CampaignID, d.enc)
+		if len(dropped) > 0 { // the attacks they belong to show them dropped
+			s.publishLogChanged(m.CampaignID, d.enc.ID, !touchesHidden(d.cs, dropped))
+		}
 	})
 	if err != nil {
 		return nil, err
@@ -719,7 +749,9 @@ func (s *Service) MoveCombatant(
 	v := viewerOf(m)
 
 	var moved playdb.Combatant
+	var logged bool // the move is a line of the combat log
 	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventCombatantMoved, encounterID: encID}, func(c *combatTx) (any, error) {
+		logged = false
 		if err := notEnded(c.enc); err != nil {
 			return nil, err
 		}
@@ -737,6 +769,13 @@ func (s *Service) MoveCombatant(
 		if !inGrid(c.enc, col, row) {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("col and row must be a square of the grid"))
 		}
+		// The log tells how far a combatant walked on its turn: the squares
+		// between where it was and where it goes, whoever moves it.
+		distance := 0
+		if placed(target) {
+			distance = moveCostFt(target, col, row)
+		}
+		onTurn := c.enc.Status == statusActive && c.enc.CurrentCombatantID != nil && *c.enc.CurrentCombatantID == target.ID
 		used, cost := target.MovementUsedFt, 0
 		if !v.master {
 			// RN-21: a player walks only on their own turn, as far as the
@@ -770,12 +809,21 @@ func (s *Service) MoveCombatant(
 		moved = target
 		moved.GridCol, moved.GridRow, moved.MovementUsedFt = &col, &row, used
 		c.characterID = &target.CharacterID
-		return map[string]any{"combatant_id": target.ID, "col": col, "row": row, "cost_ft": cost}, nil
+		logged = onTurn && distance > 0
+		return actionEvent{
+			Round: c.enc.Round, Secret: target.Hidden, Actor: target.ID, Col: col, Row: row, CostFt: clamp32(cost, 0, math.MaxInt32),
+			OnTurn: onTurn, DistanceFt: clamp32(distance, 0, math.MaxInt32),
+		}, nil
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "move a combatant", err)
 	}
-	out, err := s.finish(ctx, m, res, func(d *encounterData) { s.publishCombatantMoved(m.CampaignID, d.enc, moved) })
+	out, err := s.finish(ctx, m, res, func(d *encounterData) {
+		s.publishCombatantMoved(m.CampaignID, d.enc, moved)
+		if logged {
+			s.publishLogChanged(m.CampaignID, d.enc.ID, !moved.Hidden)
+		}
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -783,10 +831,10 @@ func (s *Service) MoveCombatant(
 }
 
 // markDashed records the Dash action: the combatant's speed counts twice for
-// the rest of the turn (RN-21). The actions of the next slice call it, inside
-// their own transaction, when the action is spent; it is here because it is
-// movement's rule.
-func markDashed(ctx context.Context, q *playdb.Queries, combatantID string) error { //nolint:unused // called by the actions of the next slice
+// the rest of the turn (RN-21). TakeAction calls it, inside its own
+// transaction, when the action is spent; it is here because it is movement's
+// rule.
+func markDashed(ctx context.Context, q *playdb.Queries, combatantID string) error {
 	if err := q.MarkCombatantDashed(ctx, combatantID); err != nil {
 		return fmt.Errorf("mark the dash: %w", err)
 	}
@@ -838,13 +886,14 @@ func (s *Service) SetCombatantHidden(
 			return nil, fmt.Errorf("touch the encounter: %w", err)
 		}
 		c.characterID = &target.CharacterID
-		return map[string]any{"combatant_id": target.ID, "hidden": hidden}, nil
+		return map[string]any{"combatant_id": target.ID, "hidden": hidden, "round": c.enc.Round}, nil
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "hide or show a combatant", err)
 	}
 	out, err := s.finish(ctx, m, res, func(d *encounterData) {
 		s.publishEncounterChanged(m.CampaignID, d.enc)
+		s.publishLogChanged(m.CampaignID, d.enc.ID, false) // the master's line only
 		// If it is on turn, the players' copy of the turn changes.
 		if d.enc.CurrentCombatantID != nil && *d.enc.CurrentCombatantID == combID {
 			s.publishTurnChanged(m.CampaignID, d)
@@ -1048,6 +1097,7 @@ func (s *Service) EndEncounter(
 			return
 		}
 		s.publishEncounterChanged(m.CampaignID, d.enc)
+		s.publishLogChanged(m.CampaignID, d.enc.ID, true)
 		if d.enc.MapID != nil {
 			// The player characters' tokens moved with the combat's end.
 			s.Publish(m.CampaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_MapChanged_{
