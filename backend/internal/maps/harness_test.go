@@ -523,7 +523,13 @@ func wantCode(t *testing.T, call string, err error, want connect.Code) {
 // testDice is play's DiceModes over the campaigns service, as cmd/api wires it.
 type testDice struct{ camps *campaigns.Service }
 
-func (d testDice) RollsPhysical(ctx context.Context, campaignID, userID string) (bool, error) {
-	mode, err := d.camps.PlayerDiceMode(ctx, campaignID, userID)
-	return mode == campaigns.RollsPhysical, err
+func (d testDice) ForcedDice(ctx context.Context, campaignID, userID string) (play.DiceForce, error) {
+	mode, err := d.camps.CampaignDiceMode(ctx, campaignID, userID)
+	switch mode {
+	case campaigns.DiceModeApp:
+		return play.DiceForcedInApp, err
+	case campaigns.DiceModePhysical:
+		return play.DiceForcedPhysical, err
+	}
+	return play.DiceChoice, err
 }

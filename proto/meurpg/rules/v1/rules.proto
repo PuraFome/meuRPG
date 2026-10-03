@@ -946,6 +946,18 @@ enum DisabledReasonCode {
   DISABLED_REASON_CODE_REACTION_ONLY = 7;
   // The casting time is a minute or more, too long for a fight.
   DISABLED_REASON_CODE_CASTING_TIME_TOO_LONG = 8;
+  // CombatService.GetTurnOptions: the combatant is not the one on turn
+  // ("fora da vez"). Every option of a combatant off turn carries it.
+  DISABLED_REASON_CODE_NOT_YOUR_TURN = 9;
+  // CombatService.GetTurnOptions: the combat is not running (still being set
+  // up, or already over).
+  DISABLED_REASON_CODE_COMBAT_NOT_ACTIVE = 10;
+  // CombatService.GetTurnOptions: a player's character at 0 hit points
+  // ("Caído"). The death saves come with the spells slice.
+  DISABLED_REASON_CODE_COMBATANT_DOWN = 11;
+  // CombatService.GetTurnOptions: the combatant is out of the fight
+  // ("Derrotado").
+  DISABLED_REASON_CODE_COMBATANT_DEFEATED = 12;
 }
 
 // AttackOption is an attack the character can make.

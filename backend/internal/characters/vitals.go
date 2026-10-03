@@ -148,11 +148,22 @@ func (s *Service) ListVitals(ctx context.Context, campaignID string) ([]*playv1.
 // GetVitals returns one living, active player character's vitals, or a
 // `not_found` Connect error when characterID is not one in the campaign.
 func (s *Service) GetVitals(ctx context.Context, campaignID, characterID string) (*playv1.CharacterVitals, error) {
+	return s.getVitals(ctx, s.queries, campaignID, characterID)
+}
+
+// GetVitalsTx is GetVitals inside tx, so a change that computes from the
+// vitals and writes them back (the master applying damage) reads what its own
+// transaction will overwrite, never a stale copy.
+func (s *Service) GetVitalsTx(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (*playv1.CharacterVitals, error) {
+	return s.getVitals(ctx, s.queries.WithTx(tx), campaignID, characterID)
+}
+
+func (s *Service) getVitals(ctx context.Context, q *charactersdb.Queries, campaignID, characterID string) (*playv1.CharacterVitals, error) {
 	id, ok := parseUUID(characterID)
 	if !ok {
 		return nil, errCharacterNotFound()
 	}
-	row, err := s.queries.GetVitals(ctx, charactersdb.GetVitalsParams{CampaignID: campaignID, ID: id})
+	row, err := q.GetVitals(ctx, charactersdb.GetVitalsParams{CampaignID: campaignID, ID: id})
 	if err != nil {
 		return nil, s.dbError(ctx, "get vitals", err) // no row: not_found
 	}

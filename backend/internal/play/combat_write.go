@@ -30,6 +30,14 @@ const (
 	eventCombatantsAdded     = "combatants_added"
 	eventCombatantRemoved    = "combatant_removed"
 	eventEncounterEnded      = "encounter_ended"
+	// The actions of a turn (combat_actions.go, combat_undo.go).
+	eventAttackRolled      = "attack_rolled"
+	eventDamageRolled      = "damage_rolled"
+	eventDamageApplied     = "damage_applied"
+	eventDamageDiscarded   = "damage_discarded"
+	eventActionTaken       = "action_taken"
+	eventHitPointsAdjusted = "hit_points_adjusted"
+	eventActionUndone      = "action_undone"
 )
 
 // combatWrite describes one change to a combat: who makes it, the idempotency
@@ -58,6 +66,9 @@ type combatTx struct {
 // whether the call was a retry of a change already made.
 type combatResult struct {
 	session playdb.GameSession
+	// payload is the payload of the event a retried change wrote the first
+	// time, so a handler can answer a retry with the same numbers.
+	payload []byte
 	// encounterID is the combat the change was about: the one named in the
 	// request, or the one StartEncounter created. Empty only for a retried
 	// start, whose combat the retry does not know.
@@ -93,6 +104,7 @@ func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx)
 				return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
 			}
 			res.repeated = true // a retry of a change already made
+			res.payload = done.Payload
 			return nil
 		case !errors.Is(err, pgx.ErrNoRows):
 			return fmt.Errorf("find the event of this idempotency key: %w", err)
@@ -131,9 +143,14 @@ func insertEvent(ctx context.Context, c *combatTx, kind string, actor, key *stri
 	if err != nil {
 		return fmt.Errorf("next event number: %w", err)
 	}
+	// The combat log and the undo find the event by its combat.
+	var encounterID *string
+	if c.enc.ID != "" {
+		encounterID = &c.enc.ID
+	}
 	if _, err := c.q.InsertSessionEvent(ctx, playdb.InsertSessionEventParams{
 		GameSessionID: c.session.ID, Seq: seq, Kind: kind, ActorUserID: actor, CharacterID: c.characterID,
-		Payload: body, IdempotencyKey: key, CreatedAt: c.now,
+		Payload: body, IdempotencyKey: key, CreatedAt: c.now, EncounterID: encounterID,
 	}); err != nil {
 		return fmt.Errorf("insert session event: %w", err)
 	}

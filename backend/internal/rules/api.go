@@ -1,5 +1,7 @@
 package rules
 
+import "slices"
+
 // This file is the public surface of package rules: the types other modules
 // build and read, and the four entry points (LoadSRD, Validate, Derive and
 // the Content methods). It changes only by adding things, so the characters
@@ -186,6 +188,14 @@ func (c *Content) Catalog() Catalog {
 // "Mago"), falling back to the SRD's English name, or "" for an unknown key.
 func (c *Content) NamePT(key string) string {
 	return c.c.namePT(key)
+}
+
+// StandardActions returns the actions every creature has (Attack, Dash...),
+// in the order of effects/standard_actions.json. A basic sheet, which is not
+// derived, takes them from here, so the combat offers the same ten to
+// everyone. The caller gets a copy.
+func (c *Content) StandardActions() []Action {
+	return slices.Clone(c.c.standardActions)
 }
 
 // Summary names a Build's race and classes for a list row, without the

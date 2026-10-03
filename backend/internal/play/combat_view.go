@@ -23,7 +23,8 @@ import (
 //	a combatant   when it is not hidden
 //	its numbers   (initiative roll, bonus, speed, economy) only for their own
 //	              character; an NPC's initiative total never
-//	hit points    an NPC's as a word (CombatantState), never as numbers
+//	hit points    an NPC's as a word (CombatantState), never as numbers; a
+//	              player's character only as the word "Caído" at 0
 //	the turn      "Vez do mestre" when a hidden combatant is on turn
 //
 // Everything a player may not see is left out of the response, never
@@ -90,7 +91,8 @@ func (d *encounterData) turnFor(v combatViewer) (id string, masterTurn bool) {
 }
 
 // view builds the Encounter the viewer sees. vitals are the player
-// characters' vitals by character ID; only the master's copy uses them.
+// characters' vitals by character ID; a player only learns from them that a
+// character is down, and the master gets the hit points.
 func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.CharacterVitals) *playv1.Encounter {
 	e := d.enc
 	out := &playv1.Encounter{
@@ -165,6 +167,11 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 			out.HitPointsTemporary = ptr(vitals.GetHitPointsTemporary())
 		}
 	}
+	// A player's character at 0 hit points is down ("Caído"): everyone who
+	// sees it gets the word, never the numbers (those are the master's, above).
+	if c.Kind == kindPlayer && vitals.GetHitPointsMax() > 0 && vitals.GetHitPointsCurrent() == 0 {
+		out.State = playv1.CombatantState_COMBATANT_STATE_DOWN
+	}
 	return out
 }
 
@@ -190,12 +197,13 @@ func timestampOrNil(t *time.Time) *timestamppb.Timestamp {
 	return timestamppb.New(*t)
 }
 
-// viewFor builds the combat for a caller. The master's copy also carries the
-// player characters' hit points, read from their vitals.
+// viewFor builds the combat for a caller. It reads the player characters'
+// vitals: the master's copy carries their hit points, and every copy says
+// which of them are down.
 func (s *Service) viewFor(ctx context.Context, m authz.Membership, d *encounterData) (*playv1.Encounter, error) {
 	v := viewerOf(m)
 	var byCharacter map[string]*playv1.CharacterVitals
-	if v.master && slices.ContainsFunc(d.cs, func(c playdb.Combatant) bool { return c.Kind == kindPlayer }) {
+	if slices.ContainsFunc(d.cs, func(c playdb.Combatant) bool { return c.Kind == kindPlayer }) {
 		all, err := s.vitals.ListVitals(ctx, m.CampaignID)
 		if err != nil {
 			return nil, s.dbError(ctx, "list vitals", err)

@@ -2,10 +2,12 @@
 //
 // Source: meurpg/play/v1/combat.proto
 
-// This file is the combat's API (MR-013, Etapa 6): the encounter, who fights,
-// the initiative, the order of turns, and the movement on the map's grid.
-// Attacks, spells, damage and the combat log come with the next slice. It is
-// in the same package as play.proto because the live events of a combat
+// This file is the combat's API (MR-012, MR-013, MR-014, Etapa 6): the
+// encounter, who fights, the initiative, the order of turns, the movement on
+// the map's grid, what a turn can do, the attacks and their damage, the
+// standard actions, the NPCs' hit points, the undo and the combat log.
+// Spells, reactions, death saves and conditions come with the next slice. It
+// is in the same package as play.proto because the live events of a combat
 // travel on the same stream (WatchGameSession).
 package playv1connect
 
@@ -70,6 +72,33 @@ const (
 	// CombatServiceEndEncounterProcedure is the fully-qualified name of the CombatService's
 	// EndEncounter RPC.
 	CombatServiceEndEncounterProcedure = "/meurpg.play.v1.CombatService/EndEncounter"
+	// CombatServiceGetTurnOptionsProcedure is the fully-qualified name of the CombatService's
+	// GetTurnOptions RPC.
+	CombatServiceGetTurnOptionsProcedure = "/meurpg.play.v1.CombatService/GetTurnOptions"
+	// CombatServiceRollAttackProcedure is the fully-qualified name of the CombatService's RollAttack
+	// RPC.
+	CombatServiceRollAttackProcedure = "/meurpg.play.v1.CombatService/RollAttack"
+	// CombatServiceRollDamageProcedure is the fully-qualified name of the CombatService's RollDamage
+	// RPC.
+	CombatServiceRollDamageProcedure = "/meurpg.play.v1.CombatService/RollDamage"
+	// CombatServiceApplyPendingDamageProcedure is the fully-qualified name of the CombatService's
+	// ApplyPendingDamage RPC.
+	CombatServiceApplyPendingDamageProcedure = "/meurpg.play.v1.CombatService/ApplyPendingDamage"
+	// CombatServiceDiscardPendingDamageProcedure is the fully-qualified name of the CombatService's
+	// DiscardPendingDamage RPC.
+	CombatServiceDiscardPendingDamageProcedure = "/meurpg.play.v1.CombatService/DiscardPendingDamage"
+	// CombatServiceTakeActionProcedure is the fully-qualified name of the CombatService's TakeAction
+	// RPC.
+	CombatServiceTakeActionProcedure = "/meurpg.play.v1.CombatService/TakeAction"
+	// CombatServiceAdjustCombatantHitPointsProcedure is the fully-qualified name of the CombatService's
+	// AdjustCombatantHitPoints RPC.
+	CombatServiceAdjustCombatantHitPointsProcedure = "/meurpg.play.v1.CombatService/AdjustCombatantHitPoints"
+	// CombatServiceUndoLastActionProcedure is the fully-qualified name of the CombatService's
+	// UndoLastAction RPC.
+	CombatServiceUndoLastActionProcedure = "/meurpg.play.v1.CombatService/UndoLastAction"
+	// CombatServiceListCombatLogProcedure is the fully-qualified name of the CombatService's
+	// ListCombatLog RPC.
+	CombatServiceListCombatLogProcedure = "/meurpg.play.v1.CombatService/ListCombatLog"
 )
 
 // CombatServiceClient is a client for the meurpg.play.v1.CombatService service.
@@ -129,11 +158,14 @@ type CombatServiceClient interface {
 	// is in SETUP.
 	//
 	// The roll is either rolled by the app (roll_in_app), or a face typed from
-	// a physical die (d20_face, 1 to 20). A player follows the campaign's dice
-	// setting (RN-18): they may type a face only when they roll their own dice,
-	// and roll in the app only when they do not. The master may do either for
-	// anyone, and may set a value again; a player sets theirs once, so nobody
-	// rolls again until the result is good.
+	// a physical die (d20_face, 1 to 20). With the campaign's dice setting
+	// "each player chooses" (RN-18) the player picks on every roll, and their
+	// saved preference is only the default the screen offers; a mode the master
+	// forced binds them: with "everybody rolls in the app" a typed face is
+	// refused, and with "everybody rolls their own dice" the app's roll is
+	// (WRONG_DICE_MODE). The master may do either for anyone, and may set a
+	// value again; a player sets theirs once, so nobody rolls again until the
+	// result is good.
 	//
 	// Every stream gets `encounter_changed`.
 	//
@@ -144,8 +176,8 @@ type CombatServiceClient interface {
 	//     their character.
 	//   - `failed_precondition`: the combat is not in SETUP (EncounterBlocked,
 	//     NOT_IN_SETUP); the player's initiative is already set
-	//     (INITIATIVE_ALREADY_SET); the method does not match the player's
-	//     dice setting (WRONG_DICE_MODE).
+	//     (INITIATIVE_ALREADY_SET); the master forced the other way of rolling
+	//     (WRONG_DICE_MODE).
 	//   - `invalid_argument`: neither roll_in_app nor d20_face is set, or the
 	//     face is not 1 to 20.
 	SubmitInitiative(context.Context, *connect.Request[v1.SubmitInitiativeRequest]) (*connect.Response[v1.SubmitInitiativeResponse], error)
@@ -204,7 +236,8 @@ type CombatServiceClient interface {
 	//   - `permission_denied`: the caller is a player and the current
 	//     combatant is not their character, or nobody is on turn.
 	//   - `failed_precondition`: the combat is not ACTIVE, or nobody in it can
-	//     take a turn (NOT_ACTIVE).
+	//     take a turn (NOT_ACTIVE); the combatant has a damage that waits to be
+	//     rolled or applied (PENDING_DAMAGE, see discard_pending_damage).
 	//   - `aborted`: expected_combatant_id is not the one on turn.
 	EndTurn(context.Context, *connect.Request[v1.EndTurnRequest]) (*connect.Response[v1.EndTurnResponse], error)
 	// MoveCombatant puts a combatant on a square of the grid (RN-21).
@@ -281,6 +314,194 @@ type CombatServiceClient interface {
 	//   - `not_found`: the combat is not this campaign's.
 	//   - `permission_denied`: the caller is a player.
 	EndEncounter(context.Context, *connect.Request[v1.EndEncounterRequest]) (*connect.Response[v1.EndEncounterResponse], error)
+	// GetTurnOptions says what a combatant can do now: "Sua vez" (MR-014). The
+	// combatant's player may read their own character's, and the master any
+	// combatant's (an NPC's come from its sheet: a full sheet or a basic one
+	// with its attacks).
+	//
+	// It answers also when the combatant is not on turn, or the combat is not
+	// running: then every option is disabled with the reason
+	// (NOT_YOUR_TURN, COMBAT_NOT_ACTIVE, COMBATANT_DOWN, COMBATANT_DEFEATED),
+	// so the app can show "fora da vez". Besides the options the rules engine
+	// works out (economy, attacks, spells, actions), it lists, for each attack
+	// that rolls to hit, the targets the caller sees with the distance (a
+	// king's move, 5 ft a square: RN-21) and whether each is too far, and the
+	// damage this combatant still has to roll or that waits for the master.
+	// Spells are listed; casting them comes with the next slice.
+	//
+	// A player never gets a hidden combatant among the targets, nor anyone's
+	// armor class.
+	//
+	// Errors:
+	//   - `not_found`: the combat or the combatant is not in this campaign's
+	//     open session, or the caller is a player and may not see it.
+	//   - `permission_denied`: the caller is a player and the combatant is not
+	//     their character.
+	GetTurnOptions(context.Context, *connect.Request[v1.GetTurnOptionsRequest]) (*connect.Response[v1.GetTurnOptionsResponse], error)
+	// RollAttack is the first step of an attack: the attack roll. The
+	// combatant on turn attacks one target with one of its attacks (a weapon
+	// or a damaging cantrip; GetTurnOptions lists them). The combatant's
+	// player may attack with their own character, and the master with any
+	// combatant on turn (an NPC's attack, or on a player's behalf).
+	//
+	// The roll is rolled by the app (roll_in_app) or a physical d20's face is
+	// typed (d20_face, 1 to 20). The campaign's dice setting (RN-18) is checked
+	// as in SubmitInitiative: the player chooses on each roll unless the master
+	// forced a mode (WRONG_DICE_MODE). An NPC's roll is the master's: either way.
+	//
+	// The attack spends the action (one attack per action: Extra Attack and
+	// the NPCs' multiattack come with the next slice; the master may attack
+	// again). The server compares the total with the target's armor class: a
+	// natural 20 hits and is a critical hit, a natural 1 misses, any other
+	// roll hits when the total reaches the armor class. The answer carries the
+	// roll as numbers and the outcome, never the armor class. A hit opens a
+	// pending damage (stored, so a retry or a reload finds it) for RollDamage;
+	// a miss ends the attack.
+	//
+	// A player must be in reach: the target at most the attack's range (a
+	// melee attack: its reach, 5 ft unless the weapon says more) from them.
+	// Disadvantage at long range or next to an enemy is not applied yet. The
+	// master is never held to the reach.
+	//
+	// Every stream gets `encounter_changed`; the master's, and a player's when
+	// no hidden combatant is involved, `combat_log_changed`.
+	//
+	// Errors:
+	//   - `not_found`: the combat, the attacker or the target is not in this
+	//     campaign's open session, or the caller is a player and may not see it.
+	//   - `permission_denied`: the caller is a player and the attacker is not
+	//     their character.
+	//   - `invalid_argument`: neither roll_in_app nor d20_face is set, the face
+	//     is not 1 to 20, the attack_key is not one of the attacker's attacks
+	//     or asks for a saving throw (the next slice), or the attacker is the
+	//     target.
+	//   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_YOUR_TURN
+	//     (the attacker is not on turn), ACTION_USED (a player), COMBATANT_DOWN,
+	//     TARGET_DEFEATED, NOT_PLACED (a player without a square, or a target
+	//     without one), TARGET_OUT_OF_REACH (with missing_ft) and WRONG_DICE_MODE.
+	RollAttack(context.Context, *connect.Request[v1.RollAttackRequest]) (*connect.Response[v1.RollAttackResponse], error)
+	// RollDamage is the second step of an attack that hit: it rolls the damage
+	// of the pending damage with the attack's dice (doubled on a critical hit;
+	// the modifier is added once) and its damage type. The attacker's player
+	// may roll for their own attack, and the master for any.
+	//
+	// The roll follows the same rules as RollAttack (the player chooses on each
+	// roll unless the master forced a mode, RN-18): roll_in_app, or typed_sum,
+	// the sum of the physical dice without the modifier (the app adds it),
+	// between the number of dice and the number of dice times their faces
+	// (Q38). A damage without dice (a flat number) needs no roll: either field
+	// works.
+	//
+	// When the target is an NPC the damage is applied at once: temporary hit
+	// points first, then the hit points; at 0 the NPC is defeated ("Derrotado")
+	// and the turns skip it. When the target is a player's character the
+	// damage waits for the master (status ROLLED) until ApplyPendingDamage or
+	// DiscardPendingDamage (RN-02).
+	//
+	// Errors:
+	//   - `not_found`: the pending damage is not in this combat, or the caller
+	//     is a player and may not see the attacker.
+	//   - `permission_denied`: the caller is a player and the attacker is not
+	//     their character.
+	//   - `invalid_argument`: neither roll_in_app nor typed_sum is set, or the
+	//     sum is out of range for the dice.
+	//   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED,
+	//     DAMAGE_ALREADY_ROLLED, DAMAGE_RESOLVED and WRONG_DICE_MODE.
+	RollDamage(context.Context, *connect.Request[v1.RollDamageRequest]) (*connect.Response[v1.RollDamageResponse], error)
+	// ApplyPendingDamage applies a rolled damage to a player's character: the
+	// damage goes through the character's vitals (RN-02): temporary hit points
+	// first, then hit points, never below 0. At 0 the character is down
+	// ("Caído"; the death saves come with the next slice). Only the master may
+	// call it, and only for a damage in ROLLED.
+	//
+	// Every stream gets `encounter_changed`, and the character's player and the
+	// master `vitals_changed`.
+	//
+	// Errors:
+	//   - `not_found`: the pending damage is not in this combat.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED,
+	//     DAMAGE_NOT_ROLLED and DAMAGE_RESOLVED.
+	ApplyPendingDamage(context.Context, *connect.Request[v1.ApplyPendingDamageRequest]) (*connect.Response[v1.ApplyPendingDamageResponse], error)
+	// DiscardPendingDamage drops a damage without applying it ("Não aplicar"),
+	// rolled or not. Only the master may call it.
+	//
+	// Errors: as ApplyPendingDamage, except that a damage not yet rolled may
+	// be discarded (no DAMAGE_NOT_ROLLED).
+	DiscardPendingDamage(context.Context, *connect.Request[v1.DiscardPendingDamageRequest]) (*connect.Response[v1.DiscardPendingDamageResponse], error)
+	// TakeAction takes one of the standard actions that only spend the action
+	// economy: Dash, Disengage, Dodge, Help, Hide, Ready, Search and Use an
+	// Object (the keys of rules.v1.TurnOptions.standard_actions, such as
+	// "standard:dash"). Attack and Cast a Spell are not taken here: RollAttack
+	// and, with the next slice, casting. Dash doubles the speed for the rest of
+	// the turn (RN-21). The rest only spend the action and go to the log: the
+	// app reminds the table of their effects.
+	//
+	// The combatant must be on turn. Its player may act for their own
+	// character, and the master for any (the master may act again with the
+	// action used).
+	//
+	// Errors:
+	//   - `not_found`: the combat or the combatant is not in this campaign's
+	//     open session, or the caller is a player and may not see it.
+	//   - `permission_denied`: the caller is a player and the combatant is not
+	//     their character.
+	//   - `invalid_argument`: the action_key is not one of those listed above.
+	//   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_YOUR_TURN,
+	//     ACTION_USED (a player) and COMBATANT_DOWN.
+	TakeAction(context.Context, *connect.Request[v1.TakeActionRequest]) (*connect.Response[v1.TakeActionResponse], error)
+	// AdjustCombatantHitPoints is the master's hand on an NPC's hit points:
+	// "Dano/Cura" (MR-012). One of damage (temporary hit points first), heal
+	// (up to the maximum) or hit_points (an exact value), and, apart or
+	// together, new temporary hit points. A defeated NPC healed above 0 comes
+	// back into the turn order; one that reaches 0 is defeated. A player's
+	// character keeps AdjustCharacterVitals (RN-02).
+	//
+	// Errors:
+	//   - `not_found`: the combat or the combatant is not in this combat.
+	//   - `permission_denied`: the caller is a player.
+	//   - `invalid_argument`: nothing to change, more than one of damage, heal
+	//     and hit_points, a value out of range (damage and heal 0 to 9,999,
+	//     hit_points 0 to the maximum, temporary 0 to 999), or the combatant
+	//     is a player's character.
+	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
+	AdjustCombatantHitPoints(context.Context, *connect.Request[v1.AdjustCombatantHitPointsRequest]) (*connect.Response[v1.AdjustCombatantHitPointsResponse], error)
+	// UndoLastAction takes back the last action, one step ("Desfazer"): an
+	// attack roll, a damage roll, an applied or discarded damage, a standard
+	// action or an NPC's hit point change. It restores the hit points, the
+	// vitals, the economy, the defeated flag and the pending damage exactly as
+	// they were, and writes a compensating event: the history keeps both. The
+	// undone entry leaves the combat log.
+	//
+	// Only the master may call it. expected_event_id is the event the master
+	// sees as the last action (ListCombatLog.undoable_event_id): if another is
+	// the last now, the call changes nothing and fails with `aborted`, so two
+	// masters never undo two things. Only the very last change of the session
+	// can be undone: any later event (a turn passing, a move, a correction of
+	// the vitals) leaves nothing to undo (NOTHING_TO_UNDO).
+	//
+	// Errors:
+	//   - `not_found`: the combat is not this campaign's.
+	//   - `permission_denied`: the caller is a player.
+	//   - `aborted`: expected_event_id is not the last action.
+	//   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED or
+	//     NOTHING_TO_UNDO.
+	UndoLastAction(context.Context, *connect.Request[v1.UndoLastActionRequest]) (*connect.Response[v1.UndoLastActionResponse], error)
+	// ListCombatLog returns the combat log ("Registro do combate"), latest
+	// first, grouped by round. Every entry is structured: the app writes the
+	// sentence. A player only gets the entries about what they see: nothing
+	// from a hidden combatant (not even that it waits hidden), no hit points
+	// of an NPC, no armor class, and the dice only of their own character;
+	// when the master reveals a combatant, only new entries appear. The master
+	// gets everything, with `hidden` set on the entries the players do not get.
+	//
+	// Any member may call it. The app reads it after every
+	// `combat_log_changed` and after every reconnection.
+	//
+	// Errors:
+	//   - `not_found`: the combat is not in this campaign's open session, or
+	//     the caller is not a member.
+	ListCombatLog(context.Context, *connect.Request[v1.ListCombatLogRequest]) (*connect.Response[v1.ListCombatLogResponse], error)
 }
 
 // NewCombatServiceClient constructs a client for the meurpg.play.v1.CombatService service. By
@@ -361,22 +582,87 @@ func NewCombatServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(combatServiceMethods.ByName("EndEncounter")),
 			connect.WithClientOptions(opts...),
 		),
+		getTurnOptions: connect.NewClient[v1.GetTurnOptionsRequest, v1.GetTurnOptionsResponse](
+			httpClient,
+			baseURL+CombatServiceGetTurnOptionsProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("GetTurnOptions")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
+		rollAttack: connect.NewClient[v1.RollAttackRequest, v1.RollAttackResponse](
+			httpClient,
+			baseURL+CombatServiceRollAttackProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("RollAttack")),
+			connect.WithClientOptions(opts...),
+		),
+		rollDamage: connect.NewClient[v1.RollDamageRequest, v1.RollDamageResponse](
+			httpClient,
+			baseURL+CombatServiceRollDamageProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("RollDamage")),
+			connect.WithClientOptions(opts...),
+		),
+		applyPendingDamage: connect.NewClient[v1.ApplyPendingDamageRequest, v1.ApplyPendingDamageResponse](
+			httpClient,
+			baseURL+CombatServiceApplyPendingDamageProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("ApplyPendingDamage")),
+			connect.WithClientOptions(opts...),
+		),
+		discardPendingDamage: connect.NewClient[v1.DiscardPendingDamageRequest, v1.DiscardPendingDamageResponse](
+			httpClient,
+			baseURL+CombatServiceDiscardPendingDamageProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("DiscardPendingDamage")),
+			connect.WithClientOptions(opts...),
+		),
+		takeAction: connect.NewClient[v1.TakeActionRequest, v1.TakeActionResponse](
+			httpClient,
+			baseURL+CombatServiceTakeActionProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("TakeAction")),
+			connect.WithClientOptions(opts...),
+		),
+		adjustCombatantHitPoints: connect.NewClient[v1.AdjustCombatantHitPointsRequest, v1.AdjustCombatantHitPointsResponse](
+			httpClient,
+			baseURL+CombatServiceAdjustCombatantHitPointsProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("AdjustCombatantHitPoints")),
+			connect.WithClientOptions(opts...),
+		),
+		undoLastAction: connect.NewClient[v1.UndoLastActionRequest, v1.UndoLastActionResponse](
+			httpClient,
+			baseURL+CombatServiceUndoLastActionProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("UndoLastAction")),
+			connect.WithClientOptions(opts...),
+		),
+		listCombatLog: connect.NewClient[v1.ListCombatLogRequest, v1.ListCombatLogResponse](
+			httpClient,
+			baseURL+CombatServiceListCombatLogProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("ListCombatLog")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // combatServiceClient implements CombatServiceClient.
 type combatServiceClient struct {
-	startEncounter     *connect.Client[v1.StartEncounterRequest, v1.StartEncounterResponse]
-	getEncounter       *connect.Client[v1.GetEncounterRequest, v1.GetEncounterResponse]
-	submitInitiative   *connect.Client[v1.SubmitInitiativeRequest, v1.SubmitInitiativeResponse]
-	setInitiativeOrder *connect.Client[v1.SetInitiativeOrderRequest, v1.SetInitiativeOrderResponse]
-	beginCombat        *connect.Client[v1.BeginCombatRequest, v1.BeginCombatResponse]
-	endTurn            *connect.Client[v1.EndTurnRequest, v1.EndTurnResponse]
-	moveCombatant      *connect.Client[v1.MoveCombatantRequest, v1.MoveCombatantResponse]
-	setCombatantHidden *connect.Client[v1.SetCombatantHiddenRequest, v1.SetCombatantHiddenResponse]
-	addCombatants      *connect.Client[v1.AddCombatantsRequest, v1.AddCombatantsResponse]
-	removeCombatant    *connect.Client[v1.RemoveCombatantRequest, v1.RemoveCombatantResponse]
-	endEncounter       *connect.Client[v1.EndEncounterRequest, v1.EndEncounterResponse]
+	startEncounter           *connect.Client[v1.StartEncounterRequest, v1.StartEncounterResponse]
+	getEncounter             *connect.Client[v1.GetEncounterRequest, v1.GetEncounterResponse]
+	submitInitiative         *connect.Client[v1.SubmitInitiativeRequest, v1.SubmitInitiativeResponse]
+	setInitiativeOrder       *connect.Client[v1.SetInitiativeOrderRequest, v1.SetInitiativeOrderResponse]
+	beginCombat              *connect.Client[v1.BeginCombatRequest, v1.BeginCombatResponse]
+	endTurn                  *connect.Client[v1.EndTurnRequest, v1.EndTurnResponse]
+	moveCombatant            *connect.Client[v1.MoveCombatantRequest, v1.MoveCombatantResponse]
+	setCombatantHidden       *connect.Client[v1.SetCombatantHiddenRequest, v1.SetCombatantHiddenResponse]
+	addCombatants            *connect.Client[v1.AddCombatantsRequest, v1.AddCombatantsResponse]
+	removeCombatant          *connect.Client[v1.RemoveCombatantRequest, v1.RemoveCombatantResponse]
+	endEncounter             *connect.Client[v1.EndEncounterRequest, v1.EndEncounterResponse]
+	getTurnOptions           *connect.Client[v1.GetTurnOptionsRequest, v1.GetTurnOptionsResponse]
+	rollAttack               *connect.Client[v1.RollAttackRequest, v1.RollAttackResponse]
+	rollDamage               *connect.Client[v1.RollDamageRequest, v1.RollDamageResponse]
+	applyPendingDamage       *connect.Client[v1.ApplyPendingDamageRequest, v1.ApplyPendingDamageResponse]
+	discardPendingDamage     *connect.Client[v1.DiscardPendingDamageRequest, v1.DiscardPendingDamageResponse]
+	takeAction               *connect.Client[v1.TakeActionRequest, v1.TakeActionResponse]
+	adjustCombatantHitPoints *connect.Client[v1.AdjustCombatantHitPointsRequest, v1.AdjustCombatantHitPointsResponse]
+	undoLastAction           *connect.Client[v1.UndoLastActionRequest, v1.UndoLastActionResponse]
+	listCombatLog            *connect.Client[v1.ListCombatLogRequest, v1.ListCombatLogResponse]
 }
 
 // StartEncounter calls meurpg.play.v1.CombatService.StartEncounter.
@@ -432,6 +718,51 @@ func (c *combatServiceClient) RemoveCombatant(ctx context.Context, req *connect.
 // EndEncounter calls meurpg.play.v1.CombatService.EndEncounter.
 func (c *combatServiceClient) EndEncounter(ctx context.Context, req *connect.Request[v1.EndEncounterRequest]) (*connect.Response[v1.EndEncounterResponse], error) {
 	return c.endEncounter.CallUnary(ctx, req)
+}
+
+// GetTurnOptions calls meurpg.play.v1.CombatService.GetTurnOptions.
+func (c *combatServiceClient) GetTurnOptions(ctx context.Context, req *connect.Request[v1.GetTurnOptionsRequest]) (*connect.Response[v1.GetTurnOptionsResponse], error) {
+	return c.getTurnOptions.CallUnary(ctx, req)
+}
+
+// RollAttack calls meurpg.play.v1.CombatService.RollAttack.
+func (c *combatServiceClient) RollAttack(ctx context.Context, req *connect.Request[v1.RollAttackRequest]) (*connect.Response[v1.RollAttackResponse], error) {
+	return c.rollAttack.CallUnary(ctx, req)
+}
+
+// RollDamage calls meurpg.play.v1.CombatService.RollDamage.
+func (c *combatServiceClient) RollDamage(ctx context.Context, req *connect.Request[v1.RollDamageRequest]) (*connect.Response[v1.RollDamageResponse], error) {
+	return c.rollDamage.CallUnary(ctx, req)
+}
+
+// ApplyPendingDamage calls meurpg.play.v1.CombatService.ApplyPendingDamage.
+func (c *combatServiceClient) ApplyPendingDamage(ctx context.Context, req *connect.Request[v1.ApplyPendingDamageRequest]) (*connect.Response[v1.ApplyPendingDamageResponse], error) {
+	return c.applyPendingDamage.CallUnary(ctx, req)
+}
+
+// DiscardPendingDamage calls meurpg.play.v1.CombatService.DiscardPendingDamage.
+func (c *combatServiceClient) DiscardPendingDamage(ctx context.Context, req *connect.Request[v1.DiscardPendingDamageRequest]) (*connect.Response[v1.DiscardPendingDamageResponse], error) {
+	return c.discardPendingDamage.CallUnary(ctx, req)
+}
+
+// TakeAction calls meurpg.play.v1.CombatService.TakeAction.
+func (c *combatServiceClient) TakeAction(ctx context.Context, req *connect.Request[v1.TakeActionRequest]) (*connect.Response[v1.TakeActionResponse], error) {
+	return c.takeAction.CallUnary(ctx, req)
+}
+
+// AdjustCombatantHitPoints calls meurpg.play.v1.CombatService.AdjustCombatantHitPoints.
+func (c *combatServiceClient) AdjustCombatantHitPoints(ctx context.Context, req *connect.Request[v1.AdjustCombatantHitPointsRequest]) (*connect.Response[v1.AdjustCombatantHitPointsResponse], error) {
+	return c.adjustCombatantHitPoints.CallUnary(ctx, req)
+}
+
+// UndoLastAction calls meurpg.play.v1.CombatService.UndoLastAction.
+func (c *combatServiceClient) UndoLastAction(ctx context.Context, req *connect.Request[v1.UndoLastActionRequest]) (*connect.Response[v1.UndoLastActionResponse], error) {
+	return c.undoLastAction.CallUnary(ctx, req)
+}
+
+// ListCombatLog calls meurpg.play.v1.CombatService.ListCombatLog.
+func (c *combatServiceClient) ListCombatLog(ctx context.Context, req *connect.Request[v1.ListCombatLogRequest]) (*connect.Response[v1.ListCombatLogResponse], error) {
+	return c.listCombatLog.CallUnary(ctx, req)
 }
 
 // CombatServiceHandler is an implementation of the meurpg.play.v1.CombatService service.
@@ -491,11 +822,14 @@ type CombatServiceHandler interface {
 	// is in SETUP.
 	//
 	// The roll is either rolled by the app (roll_in_app), or a face typed from
-	// a physical die (d20_face, 1 to 20). A player follows the campaign's dice
-	// setting (RN-18): they may type a face only when they roll their own dice,
-	// and roll in the app only when they do not. The master may do either for
-	// anyone, and may set a value again; a player sets theirs once, so nobody
-	// rolls again until the result is good.
+	// a physical die (d20_face, 1 to 20). With the campaign's dice setting
+	// "each player chooses" (RN-18) the player picks on every roll, and their
+	// saved preference is only the default the screen offers; a mode the master
+	// forced binds them: with "everybody rolls in the app" a typed face is
+	// refused, and with "everybody rolls their own dice" the app's roll is
+	// (WRONG_DICE_MODE). The master may do either for anyone, and may set a
+	// value again; a player sets theirs once, so nobody rolls again until the
+	// result is good.
 	//
 	// Every stream gets `encounter_changed`.
 	//
@@ -506,8 +840,8 @@ type CombatServiceHandler interface {
 	//     their character.
 	//   - `failed_precondition`: the combat is not in SETUP (EncounterBlocked,
 	//     NOT_IN_SETUP); the player's initiative is already set
-	//     (INITIATIVE_ALREADY_SET); the method does not match the player's
-	//     dice setting (WRONG_DICE_MODE).
+	//     (INITIATIVE_ALREADY_SET); the master forced the other way of rolling
+	//     (WRONG_DICE_MODE).
 	//   - `invalid_argument`: neither roll_in_app nor d20_face is set, or the
 	//     face is not 1 to 20.
 	SubmitInitiative(context.Context, *connect.Request[v1.SubmitInitiativeRequest]) (*connect.Response[v1.SubmitInitiativeResponse], error)
@@ -566,7 +900,8 @@ type CombatServiceHandler interface {
 	//   - `permission_denied`: the caller is a player and the current
 	//     combatant is not their character, or nobody is on turn.
 	//   - `failed_precondition`: the combat is not ACTIVE, or nobody in it can
-	//     take a turn (NOT_ACTIVE).
+	//     take a turn (NOT_ACTIVE); the combatant has a damage that waits to be
+	//     rolled or applied (PENDING_DAMAGE, see discard_pending_damage).
 	//   - `aborted`: expected_combatant_id is not the one on turn.
 	EndTurn(context.Context, *connect.Request[v1.EndTurnRequest]) (*connect.Response[v1.EndTurnResponse], error)
 	// MoveCombatant puts a combatant on a square of the grid (RN-21).
@@ -643,6 +978,194 @@ type CombatServiceHandler interface {
 	//   - `not_found`: the combat is not this campaign's.
 	//   - `permission_denied`: the caller is a player.
 	EndEncounter(context.Context, *connect.Request[v1.EndEncounterRequest]) (*connect.Response[v1.EndEncounterResponse], error)
+	// GetTurnOptions says what a combatant can do now: "Sua vez" (MR-014). The
+	// combatant's player may read their own character's, and the master any
+	// combatant's (an NPC's come from its sheet: a full sheet or a basic one
+	// with its attacks).
+	//
+	// It answers also when the combatant is not on turn, or the combat is not
+	// running: then every option is disabled with the reason
+	// (NOT_YOUR_TURN, COMBAT_NOT_ACTIVE, COMBATANT_DOWN, COMBATANT_DEFEATED),
+	// so the app can show "fora da vez". Besides the options the rules engine
+	// works out (economy, attacks, spells, actions), it lists, for each attack
+	// that rolls to hit, the targets the caller sees with the distance (a
+	// king's move, 5 ft a square: RN-21) and whether each is too far, and the
+	// damage this combatant still has to roll or that waits for the master.
+	// Spells are listed; casting them comes with the next slice.
+	//
+	// A player never gets a hidden combatant among the targets, nor anyone's
+	// armor class.
+	//
+	// Errors:
+	//   - `not_found`: the combat or the combatant is not in this campaign's
+	//     open session, or the caller is a player and may not see it.
+	//   - `permission_denied`: the caller is a player and the combatant is not
+	//     their character.
+	GetTurnOptions(context.Context, *connect.Request[v1.GetTurnOptionsRequest]) (*connect.Response[v1.GetTurnOptionsResponse], error)
+	// RollAttack is the first step of an attack: the attack roll. The
+	// combatant on turn attacks one target with one of its attacks (a weapon
+	// or a damaging cantrip; GetTurnOptions lists them). The combatant's
+	// player may attack with their own character, and the master with any
+	// combatant on turn (an NPC's attack, or on a player's behalf).
+	//
+	// The roll is rolled by the app (roll_in_app) or a physical d20's face is
+	// typed (d20_face, 1 to 20). The campaign's dice setting (RN-18) is checked
+	// as in SubmitInitiative: the player chooses on each roll unless the master
+	// forced a mode (WRONG_DICE_MODE). An NPC's roll is the master's: either way.
+	//
+	// The attack spends the action (one attack per action: Extra Attack and
+	// the NPCs' multiattack come with the next slice; the master may attack
+	// again). The server compares the total with the target's armor class: a
+	// natural 20 hits and is a critical hit, a natural 1 misses, any other
+	// roll hits when the total reaches the armor class. The answer carries the
+	// roll as numbers and the outcome, never the armor class. A hit opens a
+	// pending damage (stored, so a retry or a reload finds it) for RollDamage;
+	// a miss ends the attack.
+	//
+	// A player must be in reach: the target at most the attack's range (a
+	// melee attack: its reach, 5 ft unless the weapon says more) from them.
+	// Disadvantage at long range or next to an enemy is not applied yet. The
+	// master is never held to the reach.
+	//
+	// Every stream gets `encounter_changed`; the master's, and a player's when
+	// no hidden combatant is involved, `combat_log_changed`.
+	//
+	// Errors:
+	//   - `not_found`: the combat, the attacker or the target is not in this
+	//     campaign's open session, or the caller is a player and may not see it.
+	//   - `permission_denied`: the caller is a player and the attacker is not
+	//     their character.
+	//   - `invalid_argument`: neither roll_in_app nor d20_face is set, the face
+	//     is not 1 to 20, the attack_key is not one of the attacker's attacks
+	//     or asks for a saving throw (the next slice), or the attacker is the
+	//     target.
+	//   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_YOUR_TURN
+	//     (the attacker is not on turn), ACTION_USED (a player), COMBATANT_DOWN,
+	//     TARGET_DEFEATED, NOT_PLACED (a player without a square, or a target
+	//     without one), TARGET_OUT_OF_REACH (with missing_ft) and WRONG_DICE_MODE.
+	RollAttack(context.Context, *connect.Request[v1.RollAttackRequest]) (*connect.Response[v1.RollAttackResponse], error)
+	// RollDamage is the second step of an attack that hit: it rolls the damage
+	// of the pending damage with the attack's dice (doubled on a critical hit;
+	// the modifier is added once) and its damage type. The attacker's player
+	// may roll for their own attack, and the master for any.
+	//
+	// The roll follows the same rules as RollAttack (the player chooses on each
+	// roll unless the master forced a mode, RN-18): roll_in_app, or typed_sum,
+	// the sum of the physical dice without the modifier (the app adds it),
+	// between the number of dice and the number of dice times their faces
+	// (Q38). A damage without dice (a flat number) needs no roll: either field
+	// works.
+	//
+	// When the target is an NPC the damage is applied at once: temporary hit
+	// points first, then the hit points; at 0 the NPC is defeated ("Derrotado")
+	// and the turns skip it. When the target is a player's character the
+	// damage waits for the master (status ROLLED) until ApplyPendingDamage or
+	// DiscardPendingDamage (RN-02).
+	//
+	// Errors:
+	//   - `not_found`: the pending damage is not in this combat, or the caller
+	//     is a player and may not see the attacker.
+	//   - `permission_denied`: the caller is a player and the attacker is not
+	//     their character.
+	//   - `invalid_argument`: neither roll_in_app nor typed_sum is set, or the
+	//     sum is out of range for the dice.
+	//   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED,
+	//     DAMAGE_ALREADY_ROLLED, DAMAGE_RESOLVED and WRONG_DICE_MODE.
+	RollDamage(context.Context, *connect.Request[v1.RollDamageRequest]) (*connect.Response[v1.RollDamageResponse], error)
+	// ApplyPendingDamage applies a rolled damage to a player's character: the
+	// damage goes through the character's vitals (RN-02): temporary hit points
+	// first, then hit points, never below 0. At 0 the character is down
+	// ("Caído"; the death saves come with the next slice). Only the master may
+	// call it, and only for a damage in ROLLED.
+	//
+	// Every stream gets `encounter_changed`, and the character's player and the
+	// master `vitals_changed`.
+	//
+	// Errors:
+	//   - `not_found`: the pending damage is not in this combat.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED,
+	//     DAMAGE_NOT_ROLLED and DAMAGE_RESOLVED.
+	ApplyPendingDamage(context.Context, *connect.Request[v1.ApplyPendingDamageRequest]) (*connect.Response[v1.ApplyPendingDamageResponse], error)
+	// DiscardPendingDamage drops a damage without applying it ("Não aplicar"),
+	// rolled or not. Only the master may call it.
+	//
+	// Errors: as ApplyPendingDamage, except that a damage not yet rolled may
+	// be discarded (no DAMAGE_NOT_ROLLED).
+	DiscardPendingDamage(context.Context, *connect.Request[v1.DiscardPendingDamageRequest]) (*connect.Response[v1.DiscardPendingDamageResponse], error)
+	// TakeAction takes one of the standard actions that only spend the action
+	// economy: Dash, Disengage, Dodge, Help, Hide, Ready, Search and Use an
+	// Object (the keys of rules.v1.TurnOptions.standard_actions, such as
+	// "standard:dash"). Attack and Cast a Spell are not taken here: RollAttack
+	// and, with the next slice, casting. Dash doubles the speed for the rest of
+	// the turn (RN-21). The rest only spend the action and go to the log: the
+	// app reminds the table of their effects.
+	//
+	// The combatant must be on turn. Its player may act for their own
+	// character, and the master for any (the master may act again with the
+	// action used).
+	//
+	// Errors:
+	//   - `not_found`: the combat or the combatant is not in this campaign's
+	//     open session, or the caller is a player and may not see it.
+	//   - `permission_denied`: the caller is a player and the combatant is not
+	//     their character.
+	//   - `invalid_argument`: the action_key is not one of those listed above.
+	//   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_YOUR_TURN,
+	//     ACTION_USED (a player) and COMBATANT_DOWN.
+	TakeAction(context.Context, *connect.Request[v1.TakeActionRequest]) (*connect.Response[v1.TakeActionResponse], error)
+	// AdjustCombatantHitPoints is the master's hand on an NPC's hit points:
+	// "Dano/Cura" (MR-012). One of damage (temporary hit points first), heal
+	// (up to the maximum) or hit_points (an exact value), and, apart or
+	// together, new temporary hit points. A defeated NPC healed above 0 comes
+	// back into the turn order; one that reaches 0 is defeated. A player's
+	// character keeps AdjustCharacterVitals (RN-02).
+	//
+	// Errors:
+	//   - `not_found`: the combat or the combatant is not in this combat.
+	//   - `permission_denied`: the caller is a player.
+	//   - `invalid_argument`: nothing to change, more than one of damage, heal
+	//     and hit_points, a value out of range (damage and heal 0 to 9,999,
+	//     hit_points 0 to the maximum, temporary 0 to 999), or the combatant
+	//     is a player's character.
+	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
+	AdjustCombatantHitPoints(context.Context, *connect.Request[v1.AdjustCombatantHitPointsRequest]) (*connect.Response[v1.AdjustCombatantHitPointsResponse], error)
+	// UndoLastAction takes back the last action, one step ("Desfazer"): an
+	// attack roll, a damage roll, an applied or discarded damage, a standard
+	// action or an NPC's hit point change. It restores the hit points, the
+	// vitals, the economy, the defeated flag and the pending damage exactly as
+	// they were, and writes a compensating event: the history keeps both. The
+	// undone entry leaves the combat log.
+	//
+	// Only the master may call it. expected_event_id is the event the master
+	// sees as the last action (ListCombatLog.undoable_event_id): if another is
+	// the last now, the call changes nothing and fails with `aborted`, so two
+	// masters never undo two things. Only the very last change of the session
+	// can be undone: any later event (a turn passing, a move, a correction of
+	// the vitals) leaves nothing to undo (NOTHING_TO_UNDO).
+	//
+	// Errors:
+	//   - `not_found`: the combat is not this campaign's.
+	//   - `permission_denied`: the caller is a player.
+	//   - `aborted`: expected_event_id is not the last action.
+	//   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED or
+	//     NOTHING_TO_UNDO.
+	UndoLastAction(context.Context, *connect.Request[v1.UndoLastActionRequest]) (*connect.Response[v1.UndoLastActionResponse], error)
+	// ListCombatLog returns the combat log ("Registro do combate"), latest
+	// first, grouped by round. Every entry is structured: the app writes the
+	// sentence. A player only gets the entries about what they see: nothing
+	// from a hidden combatant (not even that it waits hidden), no hit points
+	// of an NPC, no armor class, and the dice only of their own character;
+	// when the master reveals a combatant, only new entries appear. The master
+	// gets everything, with `hidden` set on the entries the players do not get.
+	//
+	// Any member may call it. The app reads it after every
+	// `combat_log_changed` and after every reconnection.
+	//
+	// Errors:
+	//   - `not_found`: the combat is not in this campaign's open session, or
+	//     the caller is not a member.
+	ListCombatLog(context.Context, *connect.Request[v1.ListCombatLogRequest]) (*connect.Response[v1.ListCombatLogResponse], error)
 }
 
 // NewCombatServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -719,6 +1242,62 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(combatServiceMethods.ByName("EndEncounter")),
 		connect.WithHandlerOptions(opts...),
 	)
+	combatServiceGetTurnOptionsHandler := connect.NewUnaryHandler(
+		CombatServiceGetTurnOptionsProcedure,
+		svc.GetTurnOptions,
+		connect.WithSchema(combatServiceMethods.ByName("GetTurnOptions")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
+	combatServiceRollAttackHandler := connect.NewUnaryHandler(
+		CombatServiceRollAttackProcedure,
+		svc.RollAttack,
+		connect.WithSchema(combatServiceMethods.ByName("RollAttack")),
+		connect.WithHandlerOptions(opts...),
+	)
+	combatServiceRollDamageHandler := connect.NewUnaryHandler(
+		CombatServiceRollDamageProcedure,
+		svc.RollDamage,
+		connect.WithSchema(combatServiceMethods.ByName("RollDamage")),
+		connect.WithHandlerOptions(opts...),
+	)
+	combatServiceApplyPendingDamageHandler := connect.NewUnaryHandler(
+		CombatServiceApplyPendingDamageProcedure,
+		svc.ApplyPendingDamage,
+		connect.WithSchema(combatServiceMethods.ByName("ApplyPendingDamage")),
+		connect.WithHandlerOptions(opts...),
+	)
+	combatServiceDiscardPendingDamageHandler := connect.NewUnaryHandler(
+		CombatServiceDiscardPendingDamageProcedure,
+		svc.DiscardPendingDamage,
+		connect.WithSchema(combatServiceMethods.ByName("DiscardPendingDamage")),
+		connect.WithHandlerOptions(opts...),
+	)
+	combatServiceTakeActionHandler := connect.NewUnaryHandler(
+		CombatServiceTakeActionProcedure,
+		svc.TakeAction,
+		connect.WithSchema(combatServiceMethods.ByName("TakeAction")),
+		connect.WithHandlerOptions(opts...),
+	)
+	combatServiceAdjustCombatantHitPointsHandler := connect.NewUnaryHandler(
+		CombatServiceAdjustCombatantHitPointsProcedure,
+		svc.AdjustCombatantHitPoints,
+		connect.WithSchema(combatServiceMethods.ByName("AdjustCombatantHitPoints")),
+		connect.WithHandlerOptions(opts...),
+	)
+	combatServiceUndoLastActionHandler := connect.NewUnaryHandler(
+		CombatServiceUndoLastActionProcedure,
+		svc.UndoLastAction,
+		connect.WithSchema(combatServiceMethods.ByName("UndoLastAction")),
+		connect.WithHandlerOptions(opts...),
+	)
+	combatServiceListCombatLogHandler := connect.NewUnaryHandler(
+		CombatServiceListCombatLogProcedure,
+		svc.ListCombatLog,
+		connect.WithSchema(combatServiceMethods.ByName("ListCombatLog")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/meurpg.play.v1.CombatService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CombatServiceStartEncounterProcedure:
@@ -743,6 +1322,24 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 			combatServiceRemoveCombatantHandler.ServeHTTP(w, r)
 		case CombatServiceEndEncounterProcedure:
 			combatServiceEndEncounterHandler.ServeHTTP(w, r)
+		case CombatServiceGetTurnOptionsProcedure:
+			combatServiceGetTurnOptionsHandler.ServeHTTP(w, r)
+		case CombatServiceRollAttackProcedure:
+			combatServiceRollAttackHandler.ServeHTTP(w, r)
+		case CombatServiceRollDamageProcedure:
+			combatServiceRollDamageHandler.ServeHTTP(w, r)
+		case CombatServiceApplyPendingDamageProcedure:
+			combatServiceApplyPendingDamageHandler.ServeHTTP(w, r)
+		case CombatServiceDiscardPendingDamageProcedure:
+			combatServiceDiscardPendingDamageHandler.ServeHTTP(w, r)
+		case CombatServiceTakeActionProcedure:
+			combatServiceTakeActionHandler.ServeHTTP(w, r)
+		case CombatServiceAdjustCombatantHitPointsProcedure:
+			combatServiceAdjustCombatantHitPointsHandler.ServeHTTP(w, r)
+		case CombatServiceUndoLastActionProcedure:
+			combatServiceUndoLastActionHandler.ServeHTTP(w, r)
+		case CombatServiceListCombatLogProcedure:
+			combatServiceListCombatLogHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -794,4 +1391,40 @@ func (UnimplementedCombatServiceHandler) RemoveCombatant(context.Context, *conne
 
 func (UnimplementedCombatServiceHandler) EndEncounter(context.Context, *connect.Request[v1.EndEncounterRequest]) (*connect.Response[v1.EndEncounterResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.EndEncounter is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) GetTurnOptions(context.Context, *connect.Request[v1.GetTurnOptionsRequest]) (*connect.Response[v1.GetTurnOptionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.GetTurnOptions is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) RollAttack(context.Context, *connect.Request[v1.RollAttackRequest]) (*connect.Response[v1.RollAttackResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.RollAttack is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) RollDamage(context.Context, *connect.Request[v1.RollDamageRequest]) (*connect.Response[v1.RollDamageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.RollDamage is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) ApplyPendingDamage(context.Context, *connect.Request[v1.ApplyPendingDamageRequest]) (*connect.Response[v1.ApplyPendingDamageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.ApplyPendingDamage is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) DiscardPendingDamage(context.Context, *connect.Request[v1.DiscardPendingDamageRequest]) (*connect.Response[v1.DiscardPendingDamageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.DiscardPendingDamage is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) TakeAction(context.Context, *connect.Request[v1.TakeActionRequest]) (*connect.Response[v1.TakeActionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.TakeAction is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) AdjustCombatantHitPoints(context.Context, *connect.Request[v1.AdjustCombatantHitPointsRequest]) (*connect.Response[v1.AdjustCombatantHitPointsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.AdjustCombatantHitPoints is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) UndoLastAction(context.Context, *connect.Request[v1.UndoLastActionRequest]) (*connect.Response[v1.UndoLastActionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.UndoLastAction is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) ListCombatLog(context.Context, *connect.Request[v1.ListCombatLogRequest]) (*connect.Response[v1.ListCombatLogResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.ListCombatLog is not implemented"))
 }

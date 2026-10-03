@@ -23,6 +23,7 @@ import (
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1/playv1connect"
+	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 )
@@ -352,6 +353,10 @@ func (noVitals) GetVitals(context.Context, string, string) (*playv1.CharacterVit
 	return nil, errors.New("not in this test")
 }
 
+func (noVitals) GetVitalsTx(context.Context, pgx.Tx, string, string) (*playv1.CharacterVitals, error) {
+	return nil, errors.New("not in this test")
+}
+
 func (noVitals) AdjustVitals(context.Context, pgx.Tx, string, string, *playv1.AdjustCharacterVitalsRequest) (before, after *playv1.CharacterVitals, err error) {
 	return nil, nil, errors.New("not in this test")
 }
@@ -404,10 +409,18 @@ func (noRoster) CombatCharacters(context.Context, string, []string) ([]link.Char
 	return nil, errors.New("not in this test")
 }
 
+func (noRoster) CombatSheet(context.Context, string, string) (link.Sheet, error) {
+	return link.Sheet{}, errors.New("not in this test")
+}
+
+func (noRoster) CombatTurnOptions(context.Context, string, string, link.Turn) (*rulesv1.TurnOptions, error) {
+	return nil, errors.New("not in this test")
+}
+
 type noDice struct{}
 
-func (noDice) RollsPhysical(context.Context, string, string) (bool, error) {
-	return false, errors.New("not in this test")
+func (noDice) ForcedDice(context.Context, string, string) (DiceForce, error) {
+	return DiceChoice, errors.New("not in this test")
 }
 
 type noCampaigns struct{}
@@ -497,6 +510,15 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, combat["AddCombatants"] = cc.AddCombatants(ctx, connect.NewRequest(&playv1.AddCombatantsRequest{CampaignId: id}))
 	_, combat["RemoveCombatant"] = cc.RemoveCombatant(ctx, connect.NewRequest(&playv1.RemoveCombatantRequest{CampaignId: id}))
 	_, combat["EndEncounter"] = cc.EndEncounter(ctx, connect.NewRequest(&playv1.EndEncounterRequest{CampaignId: id}))
+	_, combat["GetTurnOptions"] = cc.GetTurnOptions(ctx, connect.NewRequest(&playv1.GetTurnOptionsRequest{CampaignId: id}))
+	_, combat["RollAttack"] = cc.RollAttack(ctx, connect.NewRequest(&playv1.RollAttackRequest{CampaignId: id}))
+	_, combat["RollDamage"] = cc.RollDamage(ctx, connect.NewRequest(&playv1.RollDamageRequest{CampaignId: id}))
+	_, combat["ApplyPendingDamage"] = cc.ApplyPendingDamage(ctx, connect.NewRequest(&playv1.ApplyPendingDamageRequest{CampaignId: id}))
+	_, combat["DiscardPendingDamage"] = cc.DiscardPendingDamage(ctx, connect.NewRequest(&playv1.DiscardPendingDamageRequest{CampaignId: id}))
+	_, combat["TakeAction"] = cc.TakeAction(ctx, connect.NewRequest(&playv1.TakeActionRequest{CampaignId: id}))
+	_, combat["AdjustCombatantHitPoints"] = cc.AdjustCombatantHitPoints(ctx, connect.NewRequest(&playv1.AdjustCombatantHitPointsRequest{CampaignId: id}))
+	_, combat["UndoLastAction"] = cc.UndoLastAction(ctx, connect.NewRequest(&playv1.UndoLastActionRequest{CampaignId: id}))
+	_, combat["ListCombatLog"] = cc.ListCombatLog(ctx, connect.NewRequest(&playv1.ListCombatLogRequest{CampaignId: id}))
 	combatMethods := playv1.File_meurpg_play_v1_combat_proto.Services().ByName("CombatService").Methods()
 	if len(combat) != combatMethods.Len() {
 		t.Errorf("called %d combat methods, the service has %d", len(combat), combatMethods.Len())
@@ -514,6 +536,15 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	}
 
 	for method, want := range map[string]descriptorpb.MethodOptions_IdempotencyLevel{
+		"GetTurnOptions": descriptorpb.MethodOptions_IDEMPOTENT,
+		"ListCombatLog":  descriptorpb.MethodOptions_IDEMPOTENT,
+	} {
+		opts, _ := combatMethods.ByName(protoreflect.Name(method)).Options().(*descriptorpb.MethodOptions)
+		if opts.GetIdempotencyLevel() != want {
+			t.Errorf("%s idempotency_level = %v, want %v", method, opts.GetIdempotencyLevel(), want)
+		}
+	}
+	for method, want := range map[string]descriptorpb.MethodOptions_IdempotencyLevel{
 		"ListGameSessions":     descriptorpb.MethodOptions_IDEMPOTENT,
 		"GetLiveSession":       descriptorpb.MethodOptions_IDEMPOTENT,
 		"ListLeftImages":       descriptorpb.MethodOptions_IDEMPOTENT,
@@ -524,7 +555,10 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 			t.Errorf("%s idempotency_level = %v, want %v", method, opts.GetIdempotencyLevel(), want)
 		}
 	}
-	for _, procedure := range []string{playv1connect.PlayServiceListGameSessionsProcedure, playv1connect.PlayServiceGetLiveSessionProcedure} {
+	for _, procedure := range []string{
+		playv1connect.PlayServiceListGameSessionsProcedure, playv1connect.PlayServiceGetLiveSessionProcedure,
+		playv1connect.CombatServiceGetTurnOptionsProcedure, playv1connect.CombatServiceListCombatLogProcedure,
+	} {
 		target := procedure + "?connect=v1&encoding=json&message=" + url.QueryEscape(`{"campaignId":"`+id+`"}`)
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, httptest.NewRequestWithContext(ctx, http.MethodGet, target, nil))

@@ -721,7 +721,7 @@ Na tela, a ficha pendente mostra ao jogador "Esperando a aprovação do mestre",
 
 ## Módulo play: sessões de jogo
 
-O `play` inicia, encerra e lista as sessões de jogo de uma campanha, o que trava as fichas (RN-01, Etapa 4), e cuida da sessão ao vivo (Etapa 5): o aviso de que a sessão começou (RN-06), o stream da sessão (ADR-0005) e a correção do mestre nos PV, nos espaços de magia e nos dados de vida (RN-02), cada uma registrada em `session_events` (ADR-0007). Desde a Etapa 6 ele também roda o combate: o encontro, quem luta, a iniciativa, a ordem dos turnos e o movimento na grade (MR-013, [Combate](#combate)); os ataques e as magias vêm na fatia seguinte. O código fica em `backend/internal/play`.
+O `play` inicia, encerra e lista as sessões de jogo de uma campanha, o que trava as fichas (RN-01, Etapa 4), e cuida da sessão ao vivo (Etapa 5): o aviso de que a sessão começou (RN-06), o stream da sessão (ADR-0005) e a correção do mestre nos PV, nos espaços de magia e nos dados de vida (RN-02), cada uma registrada em `session_events` (ADR-0007). Desde a Etapa 6 ele também roda o combate: o encontro, quem luta, a iniciativa, a ordem dos turnos e o movimento na grade (MR-013), e o que se faz num turno: as opções, o ataque em dois passos, o dano, as ações padrão, o desfazer e o registro (MR-012, MR-014, [Combate](#combate)); as magias, as reações, os testes contra a morte e as condições vêm na fatia seguinte. O código fica em `backend/internal/play`.
 
 | Chamada do `PlayService` | Quem pode | Erros próprios |
 | --- | --- | --- |
@@ -768,7 +768,7 @@ O jogador fica sabendo da sessão por uma consulta leve, e acompanha a sessão p
 
 - **O aviso (RN-06) é uma consulta, não um stream.** Com a aba visível e a pessoa logada, o app chama `ListOpenGameSessions` a cada 30 segundos, e uma vez quando a aba volta a ficar visível. A resposta traz as sessões abertas das campanhas em que a pessoa é membro ativo, com o nome da campanha e o papel dela; uma sessão nova vira o aviso "A sessão 3 de Mirathel começou" com o link. São duas leituras por índice (as campanhas da pessoa, pelo `campaigns`, e as sessões abertas delas, pelo índice parcial de `game_sessions`), e o Cloud Run só cobra o tempo da requisição.
 - **O link da sessão** é `/campanhas/<id>/sessao`, sem segredo (RN-07). Quem decide é o servidor: sem login, `unauthenticated`, e o app manda para o login; quem não é membro, ou é membro pendente, recebe `not_found` (a tela mostra "Peça um convite ao mestre", sem o nome da campanha); sem sessão aberta, `failed_precondition` com `GameSessionBlocked` e o motivo `NO_OPEN_SESSION` (a tela mostra "Nenhuma sessão em andamento").
-- **O stream** (`WatchGameSession`) manda primeiro `ready`, depois de registrar a assinatura. Só então o app lê a foto da sessão (`GetLiveSession`), então nenhuma mudança cai no intervalo entre a foto e o stream. Uma mudança pode chegar antes da foto: a `revision` das `CharacterVitals` diz qual é a mais nova. Depois vêm `heartbeat` a cada 25 segundos, `vitals_changed`, os eventos dos mapas (`current_map_changed`, `map_changed`, `token_moved`, ver [Os mapas na sessão ao vivo](#os-mapas-na-sessão-ao-vivo)), `shown_image_changed`, `left_images_changed`, os eventos do combate (`encounter_changed`, `turn_changed`, `combatant_moved`, ver [Combate](#combate)) e `session_ended`.
+- **O stream** (`WatchGameSession`) manda primeiro `ready`, depois de registrar a assinatura. Só então o app lê a foto da sessão (`GetLiveSession`), então nenhuma mudança cai no intervalo entre a foto e o stream. Uma mudança pode chegar antes da foto: a `revision` das `CharacterVitals` diz qual é a mais nova. Depois vêm `heartbeat` a cada 25 segundos, `vitals_changed`, os eventos dos mapas (`current_map_changed`, `map_changed`, `token_moved`, ver [Os mapas na sessão ao vivo](#os-mapas-na-sessão-ao-vivo)), `shown_image_changed`, `left_images_changed`, os eventos do combate (`encounter_changed`, `turn_changed`, `combatant_moved`, `combat_log_changed`, ver [Combate](#combate)) e `session_ended`.
 
 ```mermaid
 sequenceDiagram
@@ -872,7 +872,7 @@ Como o `SessionMaps` não precisa do `play`, o `cmd/api` o cria primeiro, cria o
 
 ### Combate
 
-Um combate (no código, um *encounter*) vive dentro da sessão aberta: o mestre escolhe quem luta, todos rolam a iniciativa, os turnos giram até o mestre encerrar (MR-013). O contrato é o `CombatService`, em `proto/meurpg/play/v1/combat.proto`, e os eventos andam no mesmo stream da sessão. Fica num serviço à parte, e não como mais métodos do `PlayService`, porque o combate cresce na fatia seguinte (ataques, magias, desfazer, registro) e o `play.proto` já é o maior arquivo do módulo; os dois serviços são implementados pelo mesmo `play.Service` e montados juntos, com os mesmos interceptors. O código fica em `combat.go` (as chamadas), `combat_write.go` (a transação que toda mudança compartilha), `combat_view.go` (quem vê o quê) e `combat_rules.go` (as contas, puras e testadas sem banco).
+Um combate (no código, um *encounter*) vive dentro da sessão aberta: o mestre escolhe quem luta, todos rolam a iniciativa, os turnos giram até o mestre encerrar (MR-013). O contrato é o `CombatService`, em `proto/meurpg/play/v1/combat.proto`, e os eventos andam no mesmo stream da sessão. Fica num serviço à parte, e não como mais métodos do `PlayService`, porque o combate cresce a cada fatia (ataques, desfazer e registro agora; magias depois) e o `play.proto` já é o maior arquivo do módulo; os dois serviços são implementados pelo mesmo `play.Service` e montados juntos, com os mesmos interceptors. O código fica em `combat.go` (as chamadas), `combat_write.go` (a transação que toda mudança compartilha), `combat_view.go` (quem vê o quê), `combat_rules.go` (as contas, puras e testadas sem banco), `combat_actions.go` (as opções, o ataque, o dano, as ações padrão e os PV do NPC), `combat_undo.go` (o desfazer), `combat_log.go` (o registro) e `combat_events.go` (o payload dos eventos).
 
 ```mermaid
 stateDiagram-v2
@@ -890,27 +890,35 @@ stateDiagram-v2
 | --- | --- | --- |
 | `StartEncounter` | O mestre, com a sessão aberta | Cria o combate em `setup`, no mapa atual (que precisa de grade) ou no mapa do ponto de batalha. Põe o grupo e as cópias dos NPCs; cada NPC rola a própria iniciativa na hora |
 | `GetEncounter` | Membros, filtrado | O último combate da sessão aberta, inclusive o que acabou de terminar, ou nenhum |
-| `SubmitInitiative` | O jogador no próprio personagem, ou o mestre em qualquer um | d20 rolado no app (`roll_in_app`) ou o d20 físico digitado (`d20_face`), seguindo a RN-18. Só em `setup` |
+| `SubmitInitiative` | O jogador no próprio personagem, ou o mestre em qualquer um | d20 rolado no app (`roll_in_app`) ou o d20 físico digitado (`d20_face`), com a RN-18: com "cada jogador escolhe" o jogador escolhe a cada rolagem, e só um modo que o mestre forçou barra (`WRONG_DICE_MODE`). Só em `setup` |
 | `SetInitiativeOrder` | O mestre | Ordena o empate (mesmo total e mesmo bônus) |
 | `BeginCombat` | O mestre | `active`, rodada 1, o primeiro da ordem na vez. Sem a iniciativa de alguém: `failed_precondition` (`INITIATIVE_MISSING`) com quem falta |
-| `EndTurn` | O jogador da vez, ou o mestre | Passa a vez ao próximo que não está derrotado; depois do último, a rodada sobe. `aborted` se `expected_combatant_id` não é mais o da vez. Se ninguém está na vez (o combatente da vez saiu do combate, ou o personagem dele foi apagado), só o mestre chama, e a vez recomeça do primeiro da ordem, na mesma rodada |
+| `EndTurn` | O jogador da vez, ou o mestre | Passa a vez ao próximo que não está derrotado; depois do último, a rodada sobe. `aborted` se `expected_combatant_id` não é mais o da vez. Com dano a rolar ou a aplicar do combatente da vez: `PENDING_DAMAGE`, e só o mestre passa assim mesmo (`discard_pending_damage`), o que descarta o dano. Se ninguém está na vez (o combatente da vez saiu do combate, ou o personagem dele foi apagado), só o mestre chama, e a vez recomeça do primeiro da ordem, na mesma rodada |
 | `MoveCombatant` | O jogador no próprio personagem, na vez dele; o mestre em qualquer um, sempre | Põe o combatente num quadrado. O jogador é limitado pelo movimento que sobra; o mestre, não |
 | `SetCombatantHidden` | O mestre | Esconde ou mostra um NPC |
 | `AddCombatants` | O mestre | Reforços (NPCs), com a iniciativa rolada na hora e o lugar na ordem |
 | `RemoveCombatant` | O mestre | Tira alguém; se era a vez dele, a vez passa |
 | `EndEncounter` | O mestre | `ended`; os tokens dos jogadores vão para onde eles pararam. Encerrar de novo não é erro |
+| `GetTurnOptions` | O jogador no próprio personagem; o mestre em qualquer um | O que o combatente pode fazer agora ("Sua vez"), com os alvos de cada ataque e o dano que falta rolar ou aplicar. Responde também fora da vez, com tudo desabilitado e o motivo |
+| `RollAttack` | O jogador no próprio personagem, na vez dele; o mestre em qualquer combatente da vez | O ataque, primeiro passo: rola o d20 (app ou face física), gasta a ação e compara com a CA do alvo |
+| `RollDamage` | O jogador no próprio ataque; o mestre em qualquer um | O dano do ataque que acertou, segundo passo. NPC alvo: aplicado na hora. Personagem de jogador: fica `ROLLED`, esperando o mestre |
+| `ApplyPendingDamage`, `DiscardPendingDamage` | O mestre | "Aplicar 5 de dano" (pelos `character_vitals`, RN-02) e "Não aplicar" |
+| `TakeAction` | O jogador no próprio personagem, na vez dele; o mestre em qualquer combatente da vez | As ações padrão que só gastam a economia (Disparada, Desengajar, Esquivar, Ajudar, Esconder, Preparar, Procurar, Usar um objeto) |
+| `AdjustCombatantHitPoints` | O mestre | "Dano/Cura" de um NPC: dano, cura ou valor exato, e PV temporários |
+| `UndoLastAction` | O mestre | Desfaz a última ação, um passo, com um evento compensatório |
+| `ListCombatLog` | Membros, filtrado | O registro do combate, da última rodada para a primeira |
 
-Os erros de estado são `failed_precondition` com o detalhe `EncounterBlocked` e um motivo (`MAP_HAS_NO_GRID` com o `map_id`, para a tela oferecer a grade; `NO_CURRENT_MAP`; `ENCOUNTER_ALREADY_OPEN`; `NOT_IN_SETUP`; `NOT_ACTIVE`; `NOT_YOUR_TURN`; `NOT_PLACED`; `TOO_FAR` com `missing_ft`; `SQUARE_OCCUPIED`...). Quem chama não depende do texto da mensagem.
+Os erros de estado são `failed_precondition` com o detalhe `EncounterBlocked` e um motivo (`MAP_HAS_NO_GRID` com o `map_id`, para a tela oferecer a grade; `NO_CURRENT_MAP`; `ENCOUNTER_ALREADY_OPEN`; `NOT_IN_SETUP`; `NOT_ACTIVE`; `NOT_YOUR_TURN`; `NOT_PLACED`; `TOO_FAR` com `missing_ft`; `SQUARE_OCCUPIED`; e, nas ações, `ACTION_USED`, `TARGET_OUT_OF_REACH` com `missing_ft`, `TARGET_DEFEATED`, `COMBATANT_DOWN`, `PENDING_DAMAGE`, `DAMAGE_ALREADY_ROLLED`, `DAMAGE_NOT_ROLLED`, `DAMAGE_RESOLVED`, `NOTHING_TO_UNDO`, `WRONG_DICE_MODE`...). Quem chama não depende do texto da mensagem.
 
 **Como o `play` lê os outros módulos.** Por interfaces pequenas, ligadas no `cmd/api`, sem importar código de ninguém. Os tipos simples que passam por elas ficam em `play/link`, um pacote que não importa nada do projeto.
 
 | Interface do `play` | Quem implementa | Para quê |
 | --- | --- | --- |
-| `CombatRoster` (`CombatParty`, `CombatCharacters`) | `characters.Service` | Quem pode lutar, com o bônus de iniciativa, a velocidade e o PV máximo (do `rules.Derive` numa ficha completa; como está numa ficha básica) |
-| `DiceModes` (`RollsPhysical`) | Um adaptador em cima de `campaigns.Service.PlayerDiceMode` | Se o jogador rola no app ou digita o dado físico (RN-18) |
+| `CombatRoster` (`CombatParty`, `CombatCharacters`, `CombatSheet`, `CombatTurnOptions`) | `characters.Service` | Quem pode lutar, com o bônus de iniciativa, a velocidade e o PV máximo (do `rules.Derive` numa ficha completa; como está numa ficha básica); a CA, os ataques e as ações padrão de um personagem (`link.Sheet`); e o `TurnOptions` do motor de regras, com os espaços de magia que o personagem já gastou. Uma ficha básica vira um `rules.Derived` mínimo (os ataques estruturados como `basic:0`, `basic:1`, e as dez ações padrão), então o motor serve ao Goblin como serve ao Toren |
+| `DiceModes` (`ForcedDice`) | Um adaptador em cima de `campaigns.Service.CampaignDiceMode` | O que o modo da campanha obriga: nada (`cada jogador escolhe`), tudo no app, ou tudo com dado físico (RN-18). A preferência do jogador não entra: ela só é o padrão que a tela destaca (`PlayerDiceMode`, `EffectiveDiceMode`) |
 | `MapKeeper` (mais `MapGrid`, `BattlePoint`, `MapTokens`, `SetTokenPositions`) | `maps.SessionMaps` | A grade do mapa, o mapa de um ponto de batalha, onde estão os tokens e, no fim, mover os tokens dos jogadores |
 
-**A grade e o movimento (RN-21).** O mapa tem `grid_columns` (4 a 200 quadrados de 1,5 m na largura da imagem); as linhas seguem a proporção da imagem (`round(colunas × altura / largura)`, de 1 a 400) e não são guardadas. O combate copia a grade ao começar (`encounters.grid_columns` e `grid_rows`), então mudar a grade do mapa depois não mexe em ninguém. Cada combatente começa no quadrado do token do personagem, se tem um (de várias cópias de um NPC, só a primeira), e senão sem posição: o mestre o põe. O jogador anda na própria vez, no máximo o movimento que sobra: a velocidade da ficha (dobrada depois da Disparada, `dashed`) menos o que já andou, a 5 ft por quadrado, diagonal inclusive (`rules/combat.GridDistanceFt`, a distância de Chebyshev). Passou: `TOO_FAR`. Um quadrado ocupado por alguém que ele vê: `SQUARE_OCCUPIED`; um combatente escondido do jogador não bloqueia, para o erro não revelar que ele está ali. O mestre move qualquer um para qualquer quadrado da grade, sem gastar movimento. A Disparada é uma ação da fatia seguinte, que chama `markDashed`.
+**A grade e o movimento (RN-21).** O mapa tem `grid_columns` (4 a 200 quadrados de 1,5 m na largura da imagem); as linhas seguem a proporção da imagem (`round(colunas × altura / largura)`, de 1 a 400) e não são guardadas. O combate copia a grade ao começar (`encounters.grid_columns` e `grid_rows`), então mudar a grade do mapa depois não mexe em ninguém. Cada combatente começa no quadrado do token do personagem, se tem um (de várias cópias de um NPC, só a primeira), e senão sem posição: o mestre o põe. O jogador anda na própria vez, no máximo o movimento que sobra: a velocidade da ficha (dobrada depois da Disparada, `dashed`) menos o que já andou, a 5 ft por quadrado, diagonal inclusive (`rules/combat.GridDistanceFt`, a distância de Chebyshev). Passou: `TOO_FAR`. Um quadrado ocupado por alguém que ele vê: `SQUARE_OCCUPIED`; um combatente escondido do jogador não bloqueia, para o erro não revelar que ele está ali. O mestre move qualquer um para qualquer quadrado da grade, sem gastar movimento. A Disparada (`TakeAction`) chama `markDashed`, e o movimento que sobra dobra até o fim da vez.
 
 **A ordem (RN-19).** Maior total primeiro; no empate, maior bônus; no empate dos dois, a ordem que o mestre decidiu (`SetInitiativeOrder`), e sem decisão, a de entrada. Quem ainda não rolou fica no fim. O servidor guarda a posição de cada um (`order_index`) e refaz a ordem a cada rolagem ou reforço. O jogador rola a própria iniciativa uma vez só, para ninguém rolar de novo até sair bom; o mestre pode corrigir qualquer valor. Cada NPC rola o seu, no servidor, com `crypto/rand` (RN-19); o dado físico é validado pela `platform/dice`.
 
@@ -920,22 +928,64 @@ Os erros de estado são `failed_precondition` com o detalhe `EncounterBlocked` e
 | --- | --- | --- |
 | Combatente escondido (NPC novo nasce escondido) | Todos | Nenhum: nem o ID, nem o nome, nem a posição |
 | A vez de um escondido | O combatente | "Vez do mestre": `current_combatant_id` vazio e `master_turn` verdadeiro |
-| PV, PV temporários e CA de um NPC | Os números | Uma palavra: Ileso, Ferido, Muito ferido (metade ou menos) ou Derrotado |
+| PV e PV temporários de um NPC | Os números | Uma palavra: Ileso, Ferido, Muito ferido (metade ou menos) ou Derrotado |
+| CA de qualquer combatente | Nenhuma resposta a leva: o servidor compara o d20 com ela e devolve só Acertou ou Errou | Nunca |
 | Iniciativa de um NPC | O total, o d20 e o bônus | Nada: só a ordem |
 | Iniciativa de um jogador | Tudo | O total de todos os jogadores; o d20 e o bônus, só do próprio |
-| PV de um jogador | Os números, dos `character_vitals` | Os do próprio personagem vêm da sessão ao vivo; os dos outros jogadores, não (pergunta 28) |
+| PV de um jogador | Os números, dos `character_vitals` | Os do próprio personagem vêm da sessão ao vivo; os dos outros jogadores, não (pergunta 28); só a palavra "Caído" a 0 PV, de todos |
 | Velocidade, movimento que sobra, ação, ação bônus, reação | Todos | Só do próprio personagem |
 | De qual personagem um NPC é cópia | Sim | Não |
 
-**Eventos.** Cada mudança vira um `session_events` (`encounter_started`, `initiative_submitted`, `initiative_order_set`, `combat_begun`, `turn_ended`, `combatant_moved`, `combatant_hidden_set`, `combatants_added`, `combatant_removed`, `encounter_ended`), na mesma transação, com o payload só de IDs e números. Só depois do `COMMIT` o `play` publica, para cada audiência o que ela pode ver (o hub ganhou a audiência "jogadores", para um evento que o mestre recebe de outra forma):
+**O ataque em dois passos (MR-012, MR-014).** São duas chamadas porque, com dado físico, o jogador digita o d20 e depois o dano (RN-18). `RollAttack` confere quem pode (o jogador no próprio personagem, na vez dele, com a ação livre, o alvo à vista e ao alcance; o mestre em qualquer combatente da vez, sem limite de alcance nem de ação: o Capitão com várias armas é dele), rola o d20 (`crypto/rand` no app, ou a face digitada, 1 a 20), gasta a **ação** e compara com a CA do alvo (`rules/combat.ResolveAttack`: 20 natural é crítico, 1 natural erra). A resposta traz a rolagem em números (`1d20 (13) + 6 = 19`) e o resultado, **nunca a CA**. Acertou: abre uma linha em `pending_damages` (guardada, para um reenvio ou um recarregamento achar). `RollDamage` rola os dados do dano (dobrados no crítico, o modificador uma vez, o tipo do ataque) ou valida a soma digitada (`dice.Physical`, de N a N × faces). Um ataque por ação: o número de ataques da Ação de Atacar (Extra Attack) e a vantagem ou desvantagem ficam para a fatia seguinte.
+
+```mermaid
+sequenceDiagram
+    actor J as Jogador
+    participant S as play (servidor)
+    participant DB as CockroachDB
+    actor M as Mestre
+    J->>S: RollAttack(atacante, ataque, alvo, d20)
+    S->>S: alcance (RN-21), RN-18, CA do alvo (só no servidor)
+    S->>DB: gasta a ação, abre o dano pendente, evento attack_rolled
+    S-->>J: o d20, Acertou ou Errou (nunca a CA)
+    J->>S: RollDamage(pending_id, dados)
+    alt O alvo é um NPC
+        S->>DB: aplica na hora (PV temporários primeiro, 0 = derrotado), evento damage_rolled
+        S-->>J: Aplicado, "Goblin 2 derrotado"
+    else O alvo é um personagem de jogador
+        S->>DB: guarda a rolagem (ROLLED), evento damage_rolled
+        S-->>J: Pendente: o mestre aplica
+        M->>S: ApplyPendingDamage(pending_id)
+        S->>DB: ajusta os character_vitals (RN-02), evento damage_applied
+    end
+```
+
+**Dano pendente.** `pending_damages` guarda o dano de um acerto, com os dados copiados da ficha no momento do acerto (uma ficha mudada depois não mexe numa rolagem aberta; o crítico já vem com os dados dobrados). O estado vai de `awaiting_roll` a `rolled` (só para personagem de jogador) e a `applied` ou `discarded`. Um NPC aplica na hora: `ApplyDamage` (PV temporários primeiro, piso em 0); a 0 PV ele fica `defeated` e `nextTurn` o pula. O dano em personagem de jogador espera o mestre (RN-02) e passa pelos `character_vitals` (o mesmo caminho da correção), com o piso em 0; a 0 PV o personagem está **caído**: o `GetEncounter` mostra a palavra `COMBATANT_STATE_DOWN` ("Caído") a todos que o veem, derivada dos `character_vitals`, sem números. Os testes contra a morte e a morte por dano massivo (RN-03) são da fatia seguinte. `EndTurn` com dano aberto do combatente da vez recusa com `PENDING_DAMAGE`; só o mestre passa assim mesmo (`discard_pending_damage`, o "Passar o turno mesmo assim?" da tela), e o dano aberto é descartado na mesma transação.
+
+**Desfazer (compensação, não apagamento).** `UndoLastAction(expected_event_id)` desfaz um passo, só do mestre. A última ação é o último `session_events` da sessão que um desfazer ainda não desfez (`lastAction`): se for um ataque, um dano, um "Aplicar" ou "Não aplicar", uma ação padrão ou o ajuste de PV de um NPC, daquele combate, pode ser desfeita; qualquer evento depois (a vez passou, um movimento, uma correção dos PV) deixa `NOTHING_TO_UNDO`, porque desfazer por cima dele deixaria de ser repor o que estava antes. Cada evento guarda o antes (PV e `defeated`, a economia, o estado do dano), e o desfazer escreve de volta e grava um evento `action_undone` com o ID do desfeito: o histórico guarda os dois. `expected_event_id` é o `undoable_event_id` do registro; se já é outro, `aborted`, e dois mestres nunca desfazem duas coisas. A linha desfeita some do registro.
+
+**O registro do combate (D10, ADR-0007).** `ListCombatLog` monta o registro a cada leitura, a partir dos `session_events` do combate (a coluna `encounter_id`), da última rodada para a primeira, sem tabela própria: o histórico e o registro não podem discordar. Cada linha é estruturada (tipo, rodada, quem fez e em quem, o ataque ou a ação e o nome em português, as rolagens, o resultado, o dano e o tipo); a frase em português é do app. Os eventos de um ataque (a rolagem, o dano, o "Aplicar") viram **uma** linha, a do ataque. Entram: o começo e o fim do combate, os ataques, as ações padrão, o movimento na vez (`distance_ft`), e, só para o mestre, o ajuste de PV de um NPC e o "mostrar/esconder". A iniciativa, a ordem dos turnos e os reforços não são linhas do registro; o que acontece antes da rodada 1 também não.
+
+| O quê | O mestre | O jogador |
+| --- | --- | --- |
+| Uma linha com um combatente escondido (hoje, ou quando aconteceu) | Sim, com `hidden` ligado ("Só o mestre vê") | Nenhuma: nem o ID, nem o nome, nem "espera escondido" |
+| Um combatente que o mestre mostra depois | — | As linhas **novas**; as antigas (feitas escondido) continuam fora (cada evento guarda `secret`) |
+| Os dados (d20 e dano) | Todos | Só os do próprio personagem; dos outros, o resultado e o dano que sofrem ou causam |
+| PV depois do dano (`hit_points_after`) | Sim | Nunca (RN-20) |
+| CA de qualquer um | Nunca vai para a resposta (o mestre a conhece) | Nunca |
+| Ajuste de PV de um NPC, mostrar/esconder | Sim | Nenhuma |
+| `undoable_event_id`, `undoable` | A última ação | Nunca |
+
+**Eventos.** Cada mudança vira um `session_events` (`encounter_started`, `initiative_submitted`, `initiative_order_set`, `combat_begun`, `turn_ended`, `combatant_moved`, `combatant_hidden_set`, `combatants_added`, `combatant_removed`, `encounter_ended`, e os das ações: `attack_rolled`, `damage_rolled`, `damage_applied`, `damage_discarded`, `action_taken`, `hit_points_adjusted`, `action_undone`), na mesma transação, com o payload só de IDs e números (`combat_events.go`; o evento leva o `encounter_id`, a rodada e se um escondido estava nele). O nome da arma ou da ação nunca vai no evento: o registro o lê da ficha, na hora. Só depois do `COMMIT` o `play` publica, para cada audiência o que ela pode ver (o hub ganhou a audiência "jogadores", para um evento que o mestre recebe de outra forma):
 
 | Evento no stream | Quando | Quem recebe |
 | --- | --- | --- |
 | `encounter_changed{encounter_id, revision}` | Qualquer mudança no combate | Todos. É só um aviso sem conteúdo: o app lê `GetEncounter` de novo, já filtrado |
 | `turn_changed{round, current_combatant_id, master_turn}` | O combate começa, a vez passa, quem está na vez some ou muda de estado | Cada um a sua cópia: o mestre vê quem é; o jogador, "Vez do mestre" se é um escondido |
 | `combatant_moved{combatant_id, col, row}` | Um combatente anda | O mestre sempre; o jogador, só se vê o combatente |
+| `combat_log_changed{encounter_id}` | Uma linha do registro surgiu, mudou ou sumiu (ataque, dano, ação, desfazer, movimento na vez, começo e fim) | O mestre sempre; o jogador, só se a linha não tem um escondido. Aviso sem conteúdo: o app lê `ListCombatLog` de novo |
 
-**Idempotência e concorrência.** Toda escrita leva `idempotency_key`. Numa transação só, o `play` trava a linha da sessão aberta (`FOR UPDATE`, como a correção dos PV), confere a chave em `session_events`, muda as linhas, grava o evento e termina; a chave repetida não muda nada, não grava nada, não publica nada, e a resposta é o combate como está. Duas mudanças ao mesmo tempo esperam uma pela outra, então o toque duplo em "Encerrar turno" nunca pula dois turnos: o segundo traz um `expected_combatant_id` que já não é o da vez e recebe `aborted` (`TestEndTurnIsIdempotent`). Um índice único parcial (`encounters_one_open_per_session`) garante um combate aberto por sessão mesmo se duas chamadas correrem juntas. Encerrar a sessão (`EndGameSession`) encerra o combate na mesma transação.
+**Idempotência e concorrência.** Toda escrita leva `idempotency_key`. Numa transação só, o `play` trava a linha da sessão aberta (`FOR UPDATE`, como a correção dos PV), confere a chave em `session_events`, muda as linhas, grava o evento e termina; a chave repetida não muda nada, não grava nada, não publica nada, e a resposta é o combate como está (a de um ataque ou de um dano refaz a rolagem do evento guardado: o reenvio nunca rola de novo, e a chave de outra mudança é `invalid_argument`). Duas mudanças ao mesmo tempo esperam uma pela outra, então o toque duplo em "Encerrar turno" nunca pula dois turnos: o segundo traz um `expected_combatant_id` que já não é o da vez e recebe `aborted` (`TestEndTurnIsIdempotent`). Um índice único parcial (`encounters_one_open_per_session`) garante um combate aberto por sessão mesmo se duas chamadas correrem juntas. Encerrar a sessão (`EndGameSession`) encerra o combate na mesma transação.
 
 ## Módulo maps: galeria e imagens
 
