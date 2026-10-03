@@ -1,10 +1,10 @@
 # Histórias e critérios de aceite
 
-O MVP tem 16 histórias, mais 2 pré-requisitos — 18 no total até o MVP: as 10 marcadas como MVP no plano, as duas que o Samuel acrescentou em 28/09/2026 (MR-015 e MR-016), as três que o Samuel pôs no MVP em 29/09/2026 (MR-018 e MR-019, documento de campanha e galeria de imagens, e MR-024, aprovar o personagem do convite), a que o Vinicius pôs no MVP em 30/09/2026 (MR-028, mostrar uma imagem aos jogadores), e duas marcadas "MVP (pré-requisito)" desde 29/09/2026: o convite (MR-002), que leva à MR-003, e os NPCs (MR-005), que são os inimigos do combate. "Já existe em parte" não é mais uma prioridade: o app antigo é descontinuado, então nenhuma história "já existe" no sistema novo — MR-002 e MR-005 entram como qualquer outra história do MVP, com os próprios testes.
+O MVP tem 29 histórias, mais 2 pré-requisitos — 31 no total até o MVP. Em 03/10/2026, o Vinicius ampliou o MVP: entraram a MR-010 e a MR-025 e as novas MR-029 a MR-039 (Etapas 8 a 10, ver [Roadmap](../roadmap.md)), além de critérios novos na MR-013 e na MR-014. Das 18 de antes: as 10 marcadas como MVP no plano, as duas que o Samuel acrescentou em 28/09/2026 (MR-015 e MR-016), as três que o Samuel pôs no MVP em 29/09/2026 (MR-018 e MR-019, documento de campanha e galeria de imagens, e MR-024, aprovar o personagem do convite), a que o Vinicius pôs no MVP em 30/09/2026 (MR-028, mostrar uma imagem aos jogadores), e duas marcadas "MVP (pré-requisito)" desde 29/09/2026: o convite (MR-002), que leva à MR-003, e os NPCs (MR-005), que são os inimigos do combate. "Já existe em parte" não é mais uma prioridade: o app antigo é descontinuado, então nenhuma história "já existe" no sistema novo — MR-002 e MR-005 entram como qualquer outra história do MVP, com os próprios testes.
 
 Uma história está pronta quando todos os critérios dela passam. Cada critério vira um teste automático: Playwright para o que aparece na tela, teste em Go para a regra no servidor. Não há testes de caracterização do app antigo — o sistema novo só precisa provar os próprios critérios de aceite.
 
-As histórias MR-025, MR-026 e MR-027 (o conteúdo que a mesa cadastra, inclusive por PDF) ficaram como "Depois" em 02/10/2026, na Etapa 8, nesta ordem: MR-025, MR-026 e MR-027.
+As histórias MR-025, MR-026 e MR-027 (o conteúdo que a mesa cadastra, inclusive por PDF) ficaram como "Depois" em 02/10/2026, nesta ordem: MR-025, MR-026 e MR-027. Em 03/10/2026, a MR-025 foi para o MVP (Etapa 10); a MR-026 e a MR-027 ficam na Etapa 11.
 
 MR-021 e MR-022 são novas e saíram das respostas do Samuel de 28/09/2026. Ficaram como "Depois", mas o modelo de dados já nasce preparado para as duas (ver [Modelo de dados](../dados.md)). MR-023 e MR-024 são novas, das respostas do Samuel de 29/09/2026 (mais de um mestre, RN-13; convite com aprovação, RN-15). No mesmo dia, ele pôs a MR-024 no MVP, na Etapa 4, e a MR-023 depois do MVP.
 
@@ -28,16 +28,27 @@ MR-021 e MR-022 são novas e saíram das respostas do Samuel de 28/09/2026. Fica
 | [MR-019](#mr-019-galeria-de-imagens) | Apoio | MVP |
 | [MR-024](#mr-024-aprovar-o-personagem-do-convite) | Personagem | MVP |
 | [MR-028](#mr-028-mostrar-uma-imagem-aos-jogadores) | Sessão | MVP |
+| [MR-025](#mr-025-cadastrar-conteúdo-da-mesa) | Regras | MVP (Etapa 10) |
+| [MR-010](#mr-010-gerar-masmorras) | Masmorra | MVP (Etapa 10) |
+| [MR-029](#mr-029-ganchos-e-pistas-da-cena) | RP | MVP (Etapa 8) |
+| [MR-030](#mr-030-anotações-do-jogador) | RP | MVP (Etapa 8) |
+| [MR-031](#mr-031-npcs-na-cena) | RP | MVP (Etapa 8) |
+| [MR-032](#mr-032-destaques-do-combate) | Combate | MVP (Etapa 8) |
+| [MR-033](#mr-033-imprimir-o-mapa-com-a-grade) | Mapa | MVP (Etapa 8) |
+| [MR-034](#mr-034-movimentos-especiais) | Combate | MVP (Etapa 9) |
+| [MR-035](#mr-035-armadilhas) | Mapa | MVP (Etapa 9) |
+| [MR-036](#mr-036-névoa-de-guerra-pela-visão) | Mapa | MVP (Etapa 9) |
+| [MR-037](#mr-037-criaturas-do-personagem) | Combate | MVP (Etapa 9) |
+| [MR-038](#mr-038-quebra-cabeças) | Sessão | MVP (Etapa 10) |
+| [MR-039](#mr-039-imagens-geradas-para-masmorras-e-cenas) | Apoio | MVP (Etapa 10) |
 | [MR-002](#mr-002-gerar-convite) | Campanha | MVP (pré-requisito) |
 | [MR-005](#mr-005-criar-npcs) | Personagem | MVP (pré-requisito) |
 | [MR-007](#mr-007-importar-ficha-em-pdf) | Personagem | Depois |
-| [MR-010](#mr-010-desenhar-masmorras) | Masmorra | Depois |
 | [MR-017](#mr-017-subir-de-nível) | Progressão | Depois |
 | [MR-020](#mr-020-consultar-o-livro-de-regras) | Apoio | Depois |
 | [MR-021](#mr-021-copiar-personagem) | Personagem | Depois |
 | [MR-022](#mr-022-reutilizar-npcs) | Personagem | Depois |
 | [MR-023](#mr-023-passar-ou-dividir-a-campanha) | Campanha | Depois |
-| [MR-025](#mr-025-cadastrar-conteúdo-da-mesa) | Regras | Depois |
 | [MR-026](#mr-026-propor-uma-raça-ou-classe-nova) | Regras | Depois |
 | [MR-027](#mr-027-ler-as-regras-de-um-pdf) | Regras | Depois |
 
@@ -215,6 +226,8 @@ Os dois últimos critérios foram respondida pelo Vinicius em 29/09/2026.
 
 #### Critérios de aceite
 - **Dado** um combate com a iniciativa definida, **quando** o jogador abre a tela de combate, **então** vê a ordem dos turnos, onde está cada combatente visível e quanto ainda pode se mover neste turno.
+- **Dado** um combate com a grade, **quando** abro a economia do turno ou o mapa, **então** o movimento aparece também em quadrados ("7,5 m · 5 quadrados"). *(Etapa 8, 03/10/2026)*
+- **Dado** que três goblins têm a mesma iniciativa, **quando** o mestre abre a ordem dos turnos, **então** eles aparecem marcados como um ataque conjunto, para jogá-los juntos. É um lembrete: o app não automatiza nada. *(Etapa 8, 03/10/2026)*
 
 #### Implementado
 - O servidor do combate está pronto em 02/10/2026 (fatia 6.3 da Etapa 6; as telas são a fatia 6.5, e os ataques, a 6.4): o `CombatService` cria o combate no mapa com grade (o mapa tem `grid_columns`, `MapService.SetMapGrid`), põe o grupo e as cópias dos NPCs, rola a iniciativa de cada NPC, recebe a do jogador (no app ou o d20 físico, RN-18), deixa o mestre ordenar os empates, começa o combate, passa a vez (a rodada sobe depois do último; o movimento, a ação e a reação voltam no começo da vez de cada um) e deixa andar na grade com o limite do movimento que sobra. O jogador nunca recebe um combatente escondido nem o número de um NPC (RN-20), e a vez de um escondido aparece como "Vez do mestre". O ponto de batalha do mapa pode apontar o mapa do combate. Ver [Arquitetura](../arquitetura.md#combate). Testes: `TestMR013_TurnOrderAndMovementLeft`, `TestRN19_EachNPCRollsItsOwnInitiative`, `TestRN20_PlayersNeverReceiveHiddenCombatantsOrNPCNumbers`, `TestRN21_PlayerMovementIsLimitedTheMasterIsNot`, `TestEndTurnIsIdempotent`, `TestStartEncounterNeedsAGrid`, `TestMR013_CombatAuthorizationMatrix`, `TestMR013_CombatEventsPerAudience`, `TestMR013_CombatantsStartOnTheirTokensAndEndWhereTheyStand`. As telas da fatia 6.5a, em 02/10/2026 (sem as ações: ataques, dano, magias e o registro vêm na 6.4 e na 6.5b): na página da sessão, o mestre vê "Combate" com "Iniciar combate" (E6-01: nome, o mapa com a grade, o grupo e como cada jogador rola, os NPCs com quantas cópias e "Escondido no início"); um mapa sem grade manda para "Grade do mapa" (E6-02, `/campanhas/:id/mapas/:mapId/grade`, de 5 a 60 quadrados na largura, as linhas pela proporção da imagem); a iniciativa do mestre (E6-04: totais com a conta `1d20 (15) + 4 = 19`, o empate uma vez só com as setas dentro do grupo, "Esperando …" com "Digitar pelo jogador", "Começar o combate" bloqueado com o motivo, "Posições iniciais") e a iniciativa do jogador (E6-03: "Rolar no app" ou "Digitar o resultado", conforme RN-18, o total em 92 px e "Esperando o mestre começar o combate"); com o combate andando, o mestre vê a barra ("Vez do …", "Rodada 2", "Próximo turno", "Encerrar combate" que pergunta na própria barra, E6-11 e E6-12), o mapa com a grade e todos os tokens, e a ordem com PV, "Dano/Cura" dos jogadores, revelar e esconder, remover e "Adicionar combatente"; o jogador vê "Vez do …" (ou "Vez do mestre" quando é um escondido), "Você é o próximo", a ordem em fichas só com os visíveis e as palavras de estado (E6-05), "Sua vez" com o movimento, "Mover" e "Encerrar turno" (E6-06, sem os grupos de ações), e a página "Mover" (E6-10: alcance, "Mover 3 m. 2 quadrados para a direita e 1 quadrado para baixo. Depois restam 4,5 m.", "Longe demais: faltam 1,5 m", "Ocupado"; no computador, arrastar o token dentro do alcance); no fim, "Combate encerrado" (E6-16) para os dois. A tela segue a sessão ao vivo: `encounter_changed` lê o combate de novo, `turn_changed` e `combatant_moved` entram no lugar. Testes: `combat.spec.ts` (`@MR-013`: a grade, o início com o grupo e três goblins escondidos, a iniciativa no app, o empate, "Próximo turno", "Vez do mestre", mover dentro do alcance e a recusa além dele, o fim) e `a11y.spec.ts` ("o combate passa no axe…"); `combat-grid.spec.ts`, `combat-view.spec.ts`, `combat-state.spec.ts`, `combat-errors.spec.ts`, `initiative-setup.spec.ts`, `turn-panel.spec.ts` e `order-list.spec.ts` no Angular. Ainda faltam, na fatia 6.5b e na 6.4, as ações da vez, o registro do combate e o "Dano/Cura" dos NPCs.
@@ -234,6 +247,9 @@ Os dois últimos critérios foram respondida pelo Vinicius em 29/09/2026.
 #### Critérios de aceite
 - **Dado** um combate, **quando** chega a vez do Pensantus, **então** o jogador vê ação, ação bônus, reação e movimento disponíveis **e** as magias sem espaço de magia aparecem desabilitadas.
 - **Dado** que o Pensantus conjura Mísseis Mágicos (Magic Missile) com um espaço de 1º círculo, **quando** a ação é confirmada, **então** o sistema marca o espaço como usado.
+- **Dado** um personagem com magias, **quando** abre a lista de magias na vez dele, **então** as que ele pode conjurar agora vêm primeiro, depois as outras, cada grupo por círculo. *(Etapa 8, 03/10/2026)*
+- **Dado** uma magia na lista durante a sessão, **quando** o jogador toca no "?", **então** vê a descrição completa, como no editor. *(Etapa 8, 03/10/2026)*
+- **Dado** uma magia que lê pontos de vida (Sono, Dobre pelos Mortos, Palavra de Poder: Matar, Cura Completa), **quando** ela é conjurada, **então** o servidor a resolve com o PV real dos alvos **e** o jogador continua vendo só "Ileso", "Ferido" ou "Muito ferido" (RN-20). *(Etapa 8, 03/10/2026)*
 
 #### Implementado
 - Motor de regras pronto em 02/10/2026 (fatia 6.1 da Etapa 6; as telas e a sessão vêm nas próximas): `rules/combat.Options` calcula a economia (ação, ação bônus, reação, movimento com a Disparada), os ataques, as magias com os círculos possíveis e as ações padrão e das features, e marca cada opção desabilitada com um código de motivo (`NO_SLOT`, `ACTION_USED`, `NO_USES`...), ver [Arquitetura](../arquitetura.md#combate-e-detalhes-das-magias). Testes: `TestOptionsPensantus` (com 1 espaço de 1º círculo livre de 4 e 0 de 2 livres de 2, Teia e Passo Nebuloso ficam `NO_SLOT` com mínimo 2 e Mísseis Mágicos só aceita o 1º; Raio de Fogo +6 1d10), `TestOptionsToren` (Machado de batalha +5 1d8+3; Retomar o Fôlego é ação bônus, 1 uso por descanso curto), `TestOptionsWarlockPactMagic`, `TestOptionsMovement`, `TestSpendSlot`, `TestSpendResource` (`rules/combat`), `TestResourcesAndActions` e `TestAttackDice` (`rules`). Cada magia tem detalhes estruturados (`ContentService.GetSpellDetails`, `TestGetSpellDetails`, `TestSpellDetailsExamples`). Ainda falta a sessão guardar o turno e as telas.
@@ -408,6 +424,234 @@ Aceitos em 02/10/2026 (pergunta 32 do documento de acompanhamento); o último cr
 - Pergunta 32 do documento de acompanhamento, respondida em 02/10/2026: o padrão fica (a imagem some da tela dos jogadores e eles perdem o acesso quando o mestre para de mostrar), e o mestre ganha um controle para deixar a imagem com os jogadores quando precisar: o "Deixar com os jogadores", construído na Etapa 6. Guardar automaticamente todas as imagens já mostradas numa lista por jogador (um "baú" de handouts) continua fora, e seria uma história nova: a lista de hoje só tem o que o mestre escolheu deixar, e é a mesma para todos os jogadores da campanha. A lista aparece só na página da sessão; na página da campanha, para o jogador, não há desenho, e ficou para uma decisão do Vinicius.
 - O nome da imagem aparece para os jogadores como legenda. O nome vem do nome do arquivo enviado, então pode trazer uma anotação do mestre ("covil-secreto-do-lich"): o mestre pode renomear antes de mostrar.
 
+### MR-025: Cadastrar conteúdo da mesa
+
+**Como** mestre, **quero** cadastrar raças, classes, subclasses, antecedentes, magias e regras que não vêm no SRD 5.1, e definir as regras da minha mesa, **para** a campanha usar o material que a mesa joga e eu ter total controle do produto.
+
+- Prioridade: MVP (Etapa 10, desde 03/10/2026; era "Depois")
+- Regras: —
+- Módulos: rules, campaigns
+
+Prioridade decidida em 02/10/2026 (pergunta 20): primeiro o cadastro pelo mestre, antes da MR-026 e da MR-027. Em 03/10/2026, o Vinicius pôs a história no MVP, na Etapa 10, e a ampliou: magias próprias, a grade da campanha (o tamanho, ou nenhuma), regras de dados além da RN-18 e regras da casa. A MR-026 (proposta do jogador) e a MR-027 (ler um PDF) ficam depois do MVP.
+
+#### Critérios de aceite (proposta)
+- **Dado** que sou mestre de "Mirathel", **quando** cadastro uma classe nova com os dados, as perícias e as características dela, **então** a classe aparece no editor de personagem só em "Mirathel" **e** a ficha calcula os números com ela.
+- **Dado** um conteúdo cadastrado em "Mirathel", **quando** abro outra campanha minha, **então** ele não aparece lá: o conteúdo vale por campanha (decidido em 29/09/2026).
+- **Dado** que sou mestre de "Mirathel", **quando** cadastro uma magia própria, **então** ela aparece para os personagens de "Mirathel" **e** não aparece em outra campanha.
+- **Dado** que sou mestre de "Mirathel", **quando** defino a grade da campanha com outro tamanho de quadrado, ou sem grade, **então** o combate e os mapas dela seguem essa escolha.
+
+#### Dúvidas
+- Quais regras da casa e quais regras de dados entram primeiro, e o que "sem grade" muda no movimento (RN-21): a definir no planejamento da Etapa 10.
+
+### MR-010: Gerar masmorras
+
+**Como** mestre, **quero** gerar uma masmorra (salas, corredores, portas e escadas, com opções de tamanho e estilo) e ter um mapa que eu possa editar, **para** não desenhar tudo na mão.
+
+- Prioridade: MVP (Etapa 10, desde 03/10/2026; era "Depois", como "Desenhar masmorras")
+- Regras: —
+- Módulos: maps
+
+#### Critérios de aceite (proposta)
+- **Dado** que sou mestre de "Mirathel", **quando** peço uma masmorra com um tamanho e um estilo, **então** o app gera um mapa com salas, corredores, portas e escadas, conectado (dá para chegar a todas as salas).
+- **Dado** uma masmorra gerada, **quando** eu a abro, **então** posso editar o mapa (mover, apagar e acrescentar paredes, portas e salas) **e** ele passa a ser um mapa da campanha, escondido dos jogadores (RN-10).
+- **Dado** o mesmo tamanho, estilo e semente, **quando** gero duas vezes, **então** o resultado é o mesmo.
+
+#### Dúvidas
+- **Sala limpa.** O gerador `dungeon.pl` do donjon (https://donjon.bin.sh/code/dungeon/dungeon.pl) é CC BY-NC 3.0, incompatível com a Apache 2.0 do MeuRPG. O código e os dados dele nunca são copiados. Um agente lê o programa e escreve uma especificação do comportamento, com as nossas palavras; outro agente, diferente, implementa o nosso gerador só a partir dessa especificação.
+- A ideia de desenhar a masmorra à mão (paredes falsas, água, baús e mímicos) segue valendo para o editor do mapa; as armadilhas são a [MR-035](#mr-035-armadilhas).
+- Quais opções de tamanho e de estilo entram primeiro: a definir no planejamento da Etapa 10.
+- A [MR-039](#mr-039-imagens-geradas-para-masmorras-e-cenas) usa a masmorra gerada para fazer a imagem.
+
+### MR-029: Ganchos e pistas da cena
+
+**Como** mestre, **quero** anotar, para cada cena de RP, os ganchos, as pistas e o que dizer, **para** conduzir a cena sem perder o fio.
+
+- Prioridade: MVP (Etapa 8)
+- Regras: RN-10
+- Módulos: play, maps
+
+#### Critérios de aceite
+- **Dado** uma cena de RP no mapa, **quando** o mestre escreve nela os ganchos, as pistas e o que dizer, **então** só o mestre vê essas notas.
+- **Dado** uma pista numa cena, **quando** o mestre a revela, **então** ela aparece para os jogadores **e** nas anotações deles ([MR-030](#mr-030-anotações-do-jogador)).
+- **Dado** uma pista não revelada, **quando** um jogador abre a cena ou a lista de anotações, **então** o servidor não manda a pista nem o nome dela (RN-10).
+
+#### Dúvidas
+- Se uma pista revelada pode ser escondida de novo: a definir.
+
+### MR-030: Anotações do jogador
+
+**Como** jogador, **quero** um bloco de notas sempre à mão, na página da sessão e na ficha, **para** anotar o que acontece sem sair do app.
+
+- Prioridade: MVP (Etapa 8)
+- Regras: RN-10
+- Módulos: play, characters
+
+#### Critérios de aceite
+- **Dado** que estou na campanha, **quando** escrevo uma nota na página da sessão ou na ficha, **então** só eu vejo a nota **e** ela fica guardada para a próxima sessão.
+- **Dado** uma cena que eu já descobri (revelada ou aberta), **quando** etiqueto a nota com ela, **então** a nota mostra a cena.
+- **Dado** uma cena que eu ainda não descobri, **quando** abro a lista de cenas para etiquetar, **então** ela não aparece, e o nome dela nunca chega ao meu celular.
+
+#### Relacionadas
+- Uma pista revelada pela [MR-029](#mr-029-ganchos-e-pistas-da-cena) aparece nas anotações do jogador.
+
+#### Dúvidas
+- O limite de tamanho das notas e se o mestre pode ler as notas de um jogador (hoje: não, são privadas): a definir.
+
+### MR-031: NPCs na cena
+
+**Como** mestre, **quero** mostrar os retratos dos NPCs entrando e saindo da imagem durante uma cena, como numa visual novel, **para** os jogadores verem quem está "ali".
+
+- Prioridade: MVP (Etapa 8)
+- Regras: RN-10
+- Módulos: play, maps
+
+#### Critérios de aceite
+- **Dado** uma cena de RP aberta, **quando** o mestre põe o retrato de um NPC (da galeria) na cena, **então** os jogadores o veem entrar, ao vivo.
+- **Dado** um NPC na cena, **quando** o mestre o tira, **então** ele sai da imagem dos jogadores ao vivo.
+- **Dado** um NPC que ainda não entrou, **quando** um jogador consulta a sessão, **então** o servidor não manda o retrato nem o nome dele.
+
+#### Relacionadas
+- Usa as imagens da [galeria](#mr-019-galeria-de-imagens), como a [MR-028](#mr-028-mostrar-uma-imagem-aos-jogadores).
+
+### MR-032: Destaques do combate
+
+**Como** mesa, **quero** uma tela de destaques no fim do combate, **para** celebrar quem fez o quê: qual jogador causou mais dano, curou mais e levou mais dano.
+
+- Prioridade: MVP (Etapa 8)
+- Regras: RN-20
+- Módulos: play
+
+#### Critérios de aceite
+- **Dado** um combate que termina, **quando** o mestre o encerra, **então** a mesa vê, por categoria, o jogador cujo personagem causou mais dano, o que curou mais e o que levou mais dano (o "tanque").
+- **Dado** que um NPC causou ou levou dano, **quando** a tela de destaques aparece para o jogador, **então** ela mostra só os números dos jogadores, sem o PV, a CA nem as rolagens dos NPCs (RN-20).
+
+#### Dúvidas
+- Pedido do Vinicius ("which player dealt the most damage, healed most, tanked more, etc."), esclarecido em 03/10/2026: os destaques são por jogador. Quais outros destaques entram além dos três (por exemplo, mais inimigos derrotados, mais críticos) fica para escolher no planejamento da Etapa 8.
+
+### MR-033: Imprimir o mapa com a grade
+
+**Como** mestre, **quero** imprimir o mapa atual, ou salvar em PDF, com a grade na escala da mesa, **para** jogar com miniaturas.
+
+- Prioridade: MVP (Etapa 8)
+- Regras: RN-21
+- Módulos: maps
+
+#### Critérios de aceite
+- **Dado** um mapa com grade, **quando** o mestre manda imprimir, **então** sai um PDF com a grade na escala da mesa (2,5 cm por quadrado de 1,5 m).
+- **Dado** um mapa maior que uma página, **quando** o mestre imprime, **então** o mapa é dividido em várias páginas, com a grade alinhada entre elas.
+- **Dado** um mapa escondido dos jogadores, **quando** o mestre imprime, **então** sai o mapa inteiro: a impressão é do mestre.
+
+#### Dúvidas
+- Leitura nossa do pedido do Vinicius ("imprimir grid"), que ele não corrigiu. O tamanho do papel (A4 ou Carta) e se pontos e tokens saem na impressão: a definir.
+
+### MR-034: Movimentos especiais
+
+**Como** jogador, **quero** que o app trate salto, terreno difícil e cobertura, **para** as regras de movimento valerem na tela como valem na mesa.
+
+- Prioridade: MVP (Etapa 9)
+- Regras: RN-21
+- Módulos: play, rules
+
+#### Critérios de aceite
+- **Dado** um personagem com Força 16, **quando** ele salta, **então** o app mostra o alcance do salto em distância e em altura, calculado a partir da Força, e desconta do movimento.
+- **Dado** um quadrado marcado como terreno difícil, **quando** o personagem entra nele, **então** cada quadrado custa o dobro do movimento.
+- **Dado** um alvo com meia cobertura ou três quartos de cobertura (o mestre marca), **quando** alguém ataca ou resiste, **então** o servidor soma +2 ou +5 à CA, conforme a cobertura.
+- **Dado** a Disparada, **quando** o jogador a usa, **então** ela continua funcionando junto com o terreno difícil.
+
+#### Dúvidas
+- Quem marca o terreno difícil e a cobertura é o mestre, no mapa ou no combate: a definir no desenho da Etapa 9.
+
+### MR-035: Armadilhas
+
+**Como** mestre, **quero** pôr armadilhas escondidas no mapa, com a CD para notar e para achar, o gatilho e o efeito, **para** surpreender a mesa com as regras do jogo.
+
+- Prioridade: MVP (Etapa 9)
+- Regras: RN-10
+- Módulos: maps, play
+
+#### Critérios de aceite
+- **Dado** um mapa, **quando** o mestre põe uma armadilha com a CD para notar (Percepção passiva), a CD para achar (Investigação), o gatilho e o efeito (dano, uma resistência), **então** só o mestre a vê.
+- **Dado** uma armadilha escondida, **quando** um personagem tem a Percepção passiva igual ou maior que a CD, ou passa no teste de Investigação, **então** o jogador passa a ver a armadilha.
+- **Dado** uma armadilha disparada, **quando** o gatilho acontece, **então** o efeito é aplicado pelo servidor (dano, resistência) **e** a armadilha passa a aparecer para os jogadores.
+- **Dado** uma armadilha que ainda não foi achada nem disparada, **quando** um jogador consulta o mapa, **então** o servidor não manda nem a posição (RN-10).
+
+#### Relacionadas
+- Vem do que o desenho de masmorras (a antiga MR-010) previa: armadilhas e baús.
+
+### MR-036: Névoa de guerra pela visão
+
+**Como** jogador, **quero** ver no mapa só o que o meu personagem enxerga, **para** a exploração ter o suspense da mesa.
+
+- Prioridade: MVP (Etapa 9)
+- Regras: RN-10
+- Módulos: maps, play, rules
+
+#### Critérios de aceite
+- **Dado** um mapa com áreas claras e escuras que o mestre marcou, **quando** o jogador o abre, **então** ele vê só o que o personagem dele enxerga.
+- **Dado** uma fonte de luz (uma tocha, uma magia), **quando** o mestre a põe no mapa, **então** a área ao redor fica visível.
+- **Dado** um personagem com Visão no escuro de 18 m na ficha, **quando** ele está numa área escura, **então** ele enxerga até 18 m, em tons de cinza.
+- **Dado** o mestre, **quando** abre o mapa, **então** vê tudo. O que o jogador não enxerga nunca sai do servidor (RN-10).
+
+#### Dúvidas
+- Se a visão de um jogador é compartilhada com o grupo e se as paredes bloqueiam a vista (o que depende de o mapa saber onde ficam as paredes, ver a [MR-010](#mr-010-gerar-masmorras)): a definir no desenho da Etapa 9.
+
+### MR-037: Criaturas do personagem
+
+**Como** jogador, **quero** controlar uma criatura minha (a forma selvagem do druida, os mortos-vivos do necromante, um familiar), **para** jogá-la no combate com a ficha dela.
+
+- Prioridade: MVP (Etapa 9)
+- Regras: RN-02, RN-20
+- Módulos: play, rules, characters
+
+#### Critérios de aceite
+- **Dado** um druida com forma selvagem, **quando** ele a usa, **então** o jogador ganha a ficha da criatura, tirada das criaturas do SRD, e age com ela no combate.
+- **Dado** uma criatura do personagem, **quando** chega a vez dela, **então** ela entra na ordem do combate, com a própria economia de ação, e o jogador a controla.
+- **Dado** uma criatura do personagem, **quando** ela sofre dano, **então** o PV dela é separado do PV do personagem, e o mestre pode corrigir (RN-02).
+
+#### Relacionadas
+- Precisa das criaturas do SRD importadas para o módulo `rules` (5e-database, como o resto do SRD).
+
+#### Dúvidas
+- Como a forma selvagem devolve o dano que sobra ao personagem, e quais criaturas e magias (Conjurar Animais, Animar Mortos, Convocar Familiar) entram primeiro: a definir no desenho da Etapa 9.
+
+### MR-038: Quebra-cabeças
+
+**Como** mestre, **quero** criar quebra-cabeças que os jogadores resolvem no app, ao vivo numa cena, **para** variar o ritmo da sessão.
+
+- Prioridade: MVP (Etapa 10)
+- Regras: —
+- Módulos: play
+
+#### Critérios de aceite
+- **Dado** que sou mestre de "Mirathel", **quando** crio um quebra-cabeça de um tipo disponível, **então** ele fica guardado na campanha e só eu o vejo.
+- **Dado** um quebra-cabeça numa cena aberta, **quando** o mestre o mostra, **então** os jogadores o veem e o resolvem ao vivo.
+- **Dado** um quebra-cabeça mostrado, **quando** os jogadores o resolvem, **então** o servidor confere a solução (o jogador nunca recebe a resposta) **e** avisa o mestre.
+
+#### Dúvidas
+- Quais tipos entram primeiro (a ideia: "lights out", fechadura de combinação, símbolos giratórios como os de Skyrim): a definir na Etapa 10.
+- Se a solução vale como um teste de perícia ou se é só o que o mestre decide: a definir.
+
+### MR-039: Imagens geradas para masmorras e cenas
+
+**Como** mestre, **quero** gerar uma imagem a partir da masmorra ou da descrição de uma cena, e pedir ajustes, **para** mostrar à mesa o lugar de que falo.
+
+- Prioridade: MVP (Etapa 10)
+- Regras: —
+- Módulos: maps, gallery
+
+#### Critérios de aceite
+- **Dado** uma masmorra gerada ([MR-010](#mr-010-gerar-masmorras)) ou a descrição de uma cena, **quando** o mestre pede uma imagem, **então** o app gera a imagem e a guarda na galeria da campanha.
+- **Dado** uma imagem gerada, **quando** o mestre escreve um novo pedido ("mais escura", "com uma ponte"), **então** o app a edita sabendo da cena, sem recomeçar do zero.
+- **Dado** que o teto de custo do mês foi atingido, **quando** o mestre pede outra imagem, **então** o app recusa e diz por quê.
+- **Dado** um pedido de imagem, **quando** o app o envia ao serviço de IA, **então** vão só o layout gerado e o texto do mestre, nunca dado pessoal.
+
+#### Relacionadas
+- Usa o Gemini (imagem, o "Nano Banana") no Vertex AI, no nosso projeto do Google Cloud, atrás de uma interface pequena. Precisa de um ADR, do operador novo em [Privacidade](../privacidade.md) (Google Vertex AI), de um segredo e de um teto de custo mensal.
+
+#### Dúvidas
+- O valor do teto de custo mensal e o que cada mestre pode gerar: a definir (pergunta nova, com o custo por imagem medido no Vertex AI).
+- Candidatos a planejar na Etapa 10, a partir das outras ferramentas do donjon, sob a mesma regra de sala limpa: lista de monstros (das criaturas do SRD da MR-037), geração de encontros e de tesouro. As tabelas de dificuldade de encontro e de tesouro aleatório são do DMG, não do SRD: seriam tabelas nossas ou só conteúdo do SRD. Ainda sem história.
+
 ## Prioridade: MVP (pré-requisito)
 
 Pré-requisitos do MVP, decidido em 29/09/2026. Não têm implementação prévia para reaproveitar — o app antigo é descontinuado —, mas outras histórias do MVP dependem delas.
@@ -455,7 +699,7 @@ Propostos por nós e aceitos (respondida pelo Vinicius em 29/09/2026):
 
 ## Prioridade: Depois
 
-Fora do MVP. Entram na Etapa 8 do [roadmap](../roadmap.md).
+Fora do MVP. Entram na Etapa 11 do [roadmap](../roadmap.md).
 
 ### MR-007: Importar ficha em PDF
 
@@ -467,14 +711,6 @@ Fora do MVP. Entram na Etapa 8 do [roadmap](../roadmap.md).
 
 #### Relacionadas
 - RN-08: respondida em 29/09/2026 — sem DOCX; só PDF editável, no formato do D&D Beyond ou da ficha em português.
-
-### MR-010: Desenhar masmorras
-
-**Como** mestre, **quero** desenhar masmorras com paredes (inclusive falsas), piso, água, portas, armadilhas e baús (normais ou mímicos), e colocar personagens da minha lista.
-
-- Prioridade: Depois
-- Regras: —
-- Módulos: maps
 
 ### MR-017: Subir de nível
 
@@ -525,25 +761,11 @@ Fora do MVP. Entram na Etapa 8 do [roadmap](../roadmap.md).
 #### Consequência
 Hoje, excluir a conta de quem criou a campanha apaga a campanha inteira (ver [Privacidade](../privacidade.md#excluir-a-conta)). Com mais de um mestre, ou depois de uma passagem de campanha, isso muda: a campanha só é apagada quando o último mestre sai. Ver [ADR-0011](../adr/0011-autorizacao-papeis-por-campanha.md), como proposta.
 
-### MR-025: Cadastrar conteúdo da mesa
-
-**Como** mestre, **quero** cadastrar raças, classes, subclasses, antecedentes e regras que não vêm no SRD 5.1, **para** a campanha usar o material que a mesa joga.
-
-- Prioridade: Depois (Etapa 8, em 02/10/2026)
-- Regras: —
-- Módulos: rules, campaigns
-
-Prioridade decidida em 02/10/2026 (pergunta 20): primeiro o cadastro pelo mestre, antes da MR-026 e da MR-027.
-
-#### Critérios de aceite (proposta)
-- **Dado** que sou mestre de "Mirathel", **quando** cadastro uma classe nova com os dados, as perícias e as características dela, **então** a classe aparece no editor de personagem só em "Mirathel" **e** a ficha calcula os números com ela.
-- **Dado** um conteúdo cadastrado em "Mirathel", **quando** abro outra campanha minha, **então** ele não aparece lá: o conteúdo vale por campanha (decidido em 29/09/2026).
-
 ### MR-026: Propor uma raça ou classe nova
 
 **Como** jogador, **quero** propor uma raça ou uma classe que não existe no app ao criar o personagem, com o PDF ou o link das regras, **para** o mestre ler e decidir.
 
-- Prioridade: Depois (Etapa 8, em 02/10/2026)
+- Prioridade: Depois (Etapa 11, em 02/10/2026)
 - Regras: RN-15 (a mesma ideia de aprovação do convite)
 - Módulos: rules, characters
 
@@ -560,7 +782,7 @@ O jogador quer jogar de cozinheiro, uma classe não oficial. Ele cadastra a clas
 
 **Como** mestre, **quero** mandar o PDF com as regras e ver o app cadastrar sozinho as classes, raças e regras dele, **para** não digitar tudo.
 
-- Prioridade: Depois (Etapa 8, em 02/10/2026)
+- Prioridade: Depois (Etapa 11, em 02/10/2026)
 - Regras: —
 - Módulos: rules
 

@@ -327,6 +327,8 @@ Modelo de ADR (para o repositório privado de ADRs) e mais contexto sobre por qu
 
 O MeuRPG é distribuído sob a [Apache License 2.0](LICENSE). Todo PR entra sob a mesma licença (seção 5 da Apache 2.0), então só envie código que você escreveu ou que tem licença compatível.
 
+Código sob licença não compatível (por exemplo, CC BY-NC) nunca é copiado: se uma ideia vale, uma pessoa (ou um agente) escreve uma especificação do comportamento, com as nossas palavras, e outra implementa só a partir dela (sala limpa).
+
 Conteúdo de terceiros mantém a própria licença, e o [NOTICE](NOTICE) lista cada um: o SRD 5.1 (CC BY 4.0), os dados do 5e-database (MIT), as fontes (OFL 1.1) e os ícones (Apache 2.0). Uma dependência ou um conteúdo novo que peça atribuição entra no `NOTICE`, com a licença inteira em `third_party/licenses/` e uma linha na página "Créditos" do app.
 
 ## Guias de uso
