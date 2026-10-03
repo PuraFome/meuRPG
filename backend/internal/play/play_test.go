@@ -431,6 +431,8 @@ func (noRoster) MarkDead(context.Context, pgx.Tx, string, string, time.Time) err
 
 func (noRoster) Conditions() []link.Named { return nil }
 
+func (noRoster) NamePT(string) string { return "" }
+
 type noDice struct{}
 
 func (noDice) ForcedDice(context.Context, string, string) (DiceForce, error) {

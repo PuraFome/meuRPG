@@ -1,6 +1,8 @@
-import { Component, ElementRef, Injector, afterNextRender, computed, inject, input, output, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, Injector, afterNextRender, computed, inject, input, output, signal, viewChild, viewChildren } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 
 import {
   type Encounter,
@@ -29,7 +31,7 @@ import { RollPicker } from '../roll-picker/roll-picker';
  */
 @Component({
   selector: 'app-pending-damages',
-  imports: [MatButtonModule, MatIconModule, RollPicker],
+  imports: [MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, RollPicker],
   templateUrl: './pending-damages.html',
   styleUrl: './pending-damages.scss',
 })
@@ -46,14 +48,23 @@ export class PendingDamages {
   /** What the master's answer for the target did: Escudo stopped the hit, the
    * hit still stands, or the master let it go. The card reads it for its result. */
   readonly reacted = output<'stopped' | 'still' | 'declined'>();
+  /** A damage was applied or discarded: the card stays on screen for its note. */
+  readonly settledNote = output<void>();
 
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly discarding = signal<string | null>(null);
   /** What was just settled, for the live region ("Dano de 5 aplicado…"). */
   protected readonly settled = signal('');
+  /** "Aplicar outro valor" (E6-31): the damage whose number the master is typing, and the text. */
+  protected readonly other = signal<string | null>(null);
+  protected readonly otherText = signal('');
+  /** The reminder after a hit on someone who concentrates (RN-22): the save DC. */
+  protected readonly reminder = signal('');
   private readonly keys = new Map<string, string>();
   private readonly safe = viewChild('safe', { read: ElementRef<HTMLButtonElement> });
+  private readonly otherInput = viewChild('otherInput', { read: ElementRef<HTMLInputElement> });
+  private readonly otherLinks = viewChildren('otherLink', { read: ElementRef<HTMLButtonElement> });
 
   protected readonly items = computed(() =>
     this.pendings()
@@ -74,6 +85,8 @@ export class PendingDamages {
       p,
       rolled,
       awaiting: p.status === PendingDamageStatus.AWAITING_REACTION,
+      /** The reaction spell's name as the server says it ("Escudo Arcano"). */
+      spell: prompt?.spellNamePt ?? '',
       slot: slot ? { level: slot.level, pact: slot.pact } : null,
       pronoun: article(target?.label ?? '') === 'a' ? 'Ela' : 'Ele',
       // A player rolls the damage of their own attack; the master waits.
@@ -141,7 +154,8 @@ export class PendingDamages {
       const res = await this.api.useReaction(this.campaignId(), this.encounter().id, p.id, slot, this.keyFor(`reaction:${p.id}`));
       this.state().apply(res.encounter);
       const stopped = res.outcome === ReactionOutcome.STOPPED;
-      this.settled.set(stopped ? 'Escudo usado: o ataque errou.' : 'Escudo usado: o ataque ainda acerta.');
+      const name = this.encounter().reactionPrompts.find((r) => r.pendingDamageId === p.id)?.spellNamePt ?? 'Escudo Arcano';
+      this.settled.set(stopped ? `${name} usado: o ataque errou.` : `${name} usado: o ataque ainda acerta.`);
       this.reacted.emit(stopped ? 'stopped' : 'still');
     });
   }
@@ -154,12 +168,71 @@ export class PendingDamages {
     });
   }
 
-  protected apply(p: PendingDamage): Promise<void> {
+  /** The number typed for "Aplicar outro valor": a whole number from 0 to 9,999, or `null`. */
+  protected readonly otherValue = computed(() => {
+    const text = this.otherText().trim();
+    if (!/^\d{1,4}$/.test(text)) {
+      return null;
+    }
+    return Number(text);
+  });
+
+  protected askOther(p: PendingDamage): void {
+    this.other.set(p.id);
+    this.otherText.set(String(p.amount));
+    // The button that opened the field is gone: the focus goes to the number,
+    // selected, so typing replaces it.
+    afterNextRender(
+      () => {
+        const field = this.otherInput()?.nativeElement;
+        field?.focus();
+        field?.select();
+      },
+      { injector: this.injector },
+    );
+  }
+
+  /** "Voltar": back to the rolled amount, with the focus on this damage's
+   * "Aplicar outro valor" again. */
+  protected closeOther(id: string): void {
+    this.other.set(null);
+    afterNextRender(
+      () => this.otherLinks().find((b) => b.nativeElement.dataset['pending'] === id)?.nativeElement.focus(),
+      { injector: this.injector },
+    );
+  }
+
+  protected onOther(event: Event): void {
+    this.otherText.set((event.target as HTMLInputElement).value);
+  }
+
+  /** "Aplicar 5 de dano", or, with `amount`, the master's own number (RN-02). */
+  protected apply(p: PendingDamage, amount?: number): Promise<void> {
     return this.run(async () => {
-      const res = await this.api.applyDamage(this.campaignId(), this.encounter().id, p.id);
+      const key = this.keyFor(`apply:${p.id}:${amount ?? 'rolled'}`);
+      const res = await this.api.applyDamage(this.campaignId(), this.encounter().id, p.id, amount, key);
       this.state().apply(res.encounter);
-      this.settled.set(`Dano de ${p.amount} aplicado.`);
+      const done = amount ?? p.amount;
+      const target = res.encounter.combatants.find((c) => c.id === p.targetId);
+      const hp = target?.hitPointsMax !== undefined ? ` ${target.label}: ${target.hitPointsCurrent ?? 0} de ${target.hitPointsMax} PV.` : '';
+      this.settled.set(
+        amount === undefined || amount === p.amount
+          ? `Dano de ${done} aplicado.${hp}`
+          : `${done} de dano ${done === 1 ? 'aplicado' : 'aplicados'} (o dado deu ${p.amount}).${hp}`,
+      );
+      this.other.set(null);
+      this.reminder.set(this.reminderFor(res.pending.concentrationDc, target));
+      this.settledNote.emit();
     });
+  }
+
+  /** "Toren está concentrado em Bênção. Teste de Constituição, CD 10. ..." */
+  private reminderFor(dc: number | undefined, target: { label: string; concentrationSpellNamePt: string } | undefined): string {
+    if (dc === undefined || !target) {
+      return '';
+    }
+    const he = article(target.label) === 'a' ? 'ela' : 'ele';
+    return `${target.label} está concentrad${article(target.label) === 'a' ? 'a' : 'o'} em ${target.concentrationSpellNamePt}. Teste de Constituição, CD ${dc}. O app só lembra: se ${he} falhar, encerre a concentração em "Condições…".`;
   }
 
   protected askDiscard(id: string): void {
@@ -173,6 +246,8 @@ export class PendingDamages {
       this.state().apply(res.encounter);
       this.discarding.set(null);
       this.settled.set(`Dano de ${p.amount} descartado.`);
+      this.reminder.set('');
+      this.settledNote.emit();
     });
   }
 }

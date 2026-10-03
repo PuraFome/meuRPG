@@ -4,12 +4,12 @@ import {
   AttackKind,
   type DisabledReason,
   DisabledReasonCode,
-  Recharge,
   type SpellOption,
   type TurnOptions,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { ActionEconomy } from '../../../gen/meurpg/rules/v1/rules_pb';
-import { feetToMeters, formatMeters, joinDots, tight } from './combat-grid';
+import { rechargeText } from './combat-errors';
+import { circleLabel, feetToMeters, formatMeters, joinDots, tight } from './combat-grid';
 
 /**
  * What "Sua vez" says about the options the server works out
@@ -17,23 +17,7 @@ import { feetToMeters, formatMeters, joinDots, tight } from './combat-grid';
  * under an attack, the groups by economy. Pure functions.
  */
 
-/** The ordinal circle: "2º círculo". */
-export function circleLabel(level: number): string {
-  return level === 0 ? 'Truque' : `${level}º círculo`;
-}
-
-function rechargeWords(recharge: Recharge): string {
-  switch (recharge) {
-    case Recharge.SHORT_REST:
-      return 'volta no descanso curto';
-    case Recharge.LONG_REST:
-      return 'volta no descanso longo';
-    case Recharge.DAWN:
-      return 'volta ao amanhecer';
-    default:
-      return 'só o mestre devolve';
-  }
-}
+export { circleLabel };
 
 /** Why an option is disabled, in words, by code. `''` when there is none. */
 export function reasonText(reason: DisabledReason | undefined): string {
@@ -52,10 +36,10 @@ export function reasonText(reason: DisabledReason | undefined): string {
       return 'Ataques desta ação já usados';
     case DisabledReasonCode.NO_SLOT:
       return reason.minLevel > 0
-        ? `Sem espaço de ${reason.minLevel}º círculo ou maior`
+        ? `Sem espaço de ${circleLabel(reason.minLevel)} ou maior`
         : 'Sem espaço de magia livre';
     case DisabledReasonCode.NO_USES:
-      return `Sem usos: ${rechargeWords(reason.recharge)}`;
+      return `Sem usos: ${rechargeText(reason.recharge)}`;
     case DisabledReasonCode.REACTION_ONLY_WHEN_HIT:
       return 'Só quando você for atingido';
     case DisabledReasonCode.REACTION_ONLY:
@@ -100,16 +84,25 @@ export function damageText(attack: Attack): string {
 /** "corpo a corpo" for a close attack, "alcance 36 m" for the rest. With
  * `reach`, a close attack says its reach too ("corpo a corpo, 1,5 m"). */
 export function rangeText(attack: Attack, reach = false): string {
-  const near = attack.rangeFt <= 5 && attack.longRangeFt === 0;
-  if (near) {
+  if (isMelee(attack)) {
     return reach ? `corpo a corpo, ${formatMeters(feetToMeters(attack.rangeFt || 5))}` : 'corpo a corpo';
   }
   return `alcance ${formatMeters(feetToMeters(attack.rangeFt))}`;
 }
 
+/** A melee attack (a weapon with no range of its own): the only kind an
+ * opportunity attack can be. */
+export function isMelee(attack: Attack): boolean {
+  return attack.rangeFt <= 5 && attack.longRangeFt === 0;
+}
+
 /** "+6 para acertar · 1d10 de fogo · alcance 36 m". */
 export function attackDetail(attack: Attack, reach = false): string {
-  const bonus = `${attack.attackBonus < 0 ? '−' : '+'}${Math.abs(attack.attackBonus)} para acertar`;
+  // A cantrip that asks for a saving throw has no roll to hit: it has a DC.
+  const bonus =
+    attack.saveDc > 0
+      ? `CD ${attack.saveDc}`
+      : `${attack.attackBonus < 0 ? '−' : '+'}${Math.abs(attack.attackBonus)} para acertar`;
   return tight(joinDots([bonus, damageText(attack), rangeText(attack, reach)]));
 }
 
@@ -140,7 +133,7 @@ export function spellDetail(o: SpellOption): string {
   const level = o.spell?.level ?? 0;
   const free = o.slots.reduce((sum, s) => sum + s.free, 0);
   if (level > 0 && o.enabled && free === 1) {
-    parts.push(`gasta o último espaço de ${o.slots[0].level}º círculo`);
+    parts.push(`gasta o último espaço de ${circleLabel(o.slots[0].level)}`);
   }
   return parts.filter(Boolean).join(' · ');
 }
@@ -170,7 +163,12 @@ export interface GroupOptions {
 export function optionsFor(options: TurnOptions, group: EconomyGroup): GroupOptions {
   return {
     spells: options.spells.filter((s) => groupOf(s.economy) === group),
-    features: options.featureActions.filter((a) => groupOf(a.action?.economy ?? 0) === group),
+    // A feature that costs nothing (Surto de Ação) is used during the turn: it
+    // stands with the Ação's abilities rather than in a group of its own.
+    features: options.featureActions.filter((a) => {
+      const economy = a.action?.economy ?? 0;
+      return groupOf(economy) === group || (group === 'action' && economy === ActionEconomy.FREE);
+    }),
   };
 }
 

@@ -6,7 +6,7 @@ import { saveDocumentRPC, tableWithDocumentParts } from './document-support';
 import { expectAligned } from './layout';
 import { endOpenSessionRPC, endSessionRPC, openSessionPage, startSessionRPC, tableWithPensantus } from './live-session-support';
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
-import { beginAttackCombatRPC, combatRPC, getEncounterRPC, tableForCombat } from './combat-support';
+import { adjustVitalsRPC, beginAttackCombatRPC, combatRPC, getEncounterRPC, passTurnsTo, pensantusCasting, tableForCombat, toren, torenSheet } from './combat-support';
 import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus } from './support';
 
 // docs/design.md#como-uma-tela-é-feita: every screen passes axe with no
@@ -800,4 +800,260 @@ test('agir no combate passa no axe e nas conferências de layout no tema claro, 
 test('agir no combate passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanActionScreens(browser, 'dark', 390);
+});
+
+/** Casting, the fallen, Escudo, conditions and the master's other amount (Etapa 6,
+ * slice 6.5c; E6-09, E6-13, E6-28 to E6-31): every step of the cast sheet, the
+ * Escudo Arcano prompt and its answer, the conditions dialog with its tags, the
+ * player's concentration line, the opportunity-attack sheet, "Aplicar outro
+ * valor" with the concentration reminder, the death saves (stable, then three
+ * failures) and the question that confirms a death. */
+async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade conjurar ${Date.now()}`, true, true, { sheet: pensantusCasting });
+    campaignId = table.campaignId;
+    await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    await adjustVitalsRPC(m, campaignId, table.characterId, { spellSlotsUsed: [{ level: 1, used: 3 }, { level: 2, used: 2 }] });
+    // Pensantus stands next to Goblin 1, so the dagger reaches it for an opportunity attack.
+    const begun = await getEncounterRPC(m, campaignId);
+    await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: begun.id, combatantId: begun.combatants.find((c) => c.label === 'Pensantus')!.id, col: 8, row: 9 });
+    await openSessionPage(m, campaignId);
+    await openSessionPage(p, campaignId);
+
+    // The cast sheet: the slot and the darts, then the result and the damage to roll.
+    await p.getByRole('button', { name: 'Conjurar Mísseis Mágicos' }).click();
+    await expect(p.getByText('É o seu último espaço de 1º círculo: depois dele, o Escudo Arcano fica sem espaço.')).toBeVisible();
+    await expectScreenPasses(p, `Conjurar, o espaço e os dardos ${where}`);
+    const more = (who: string) => p.getByRole('button', { name: `Pôr um dardo em ${who}` });
+    await more('Capitão Goblin').click();
+    await more('Capitão Goblin').click();
+    await more('Goblin 1').click();
+    await expect(p.getByText('3 de 3 dardos distribuídos.')).toBeVisible();
+    await expectScreenPasses(p, `Conjurar, os três dardos distribuídos ${where}`);
+    await p.getByRole('dialog').getByRole('button', { name: 'Conjurar Mísseis Mágicos' }).click();
+    await expect(p.getByText('Falta rolar o dano.').first()).toBeVisible();
+    await expectScreenPasses(p, `Conjurar, resultado com dano a rolar ${where}`);
+    await p.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await p.getByLabel(/Role 2d4/).fill('9');
+    await expect(p.getByRole('alert').filter({ hasText: 'Digite um número de 2 a 8' })).toBeVisible();
+    await expect(p.getByRole('button', { name: /Confirmar/ })).toBeInViewport({ ratio: 1 });
+    await expect(p.getByLabel(/Role 2d4/)).toBeInViewport({ ratio: 1 });
+    await expectScreenPasses(p, `Conjurar, rolagem do dano inválida ${where}`);
+    await p.getByLabel(/Role 2d4/).fill('4');
+    await p.getByRole('button', { name: 'Confirmar 4' }).click();
+    await p.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await p.getByLabel(/Role 1d4/).fill('2');
+    await p.getByRole('button', { name: 'Confirmar 2' }).click();
+    await expect(p.getByRole('button', { name: 'Voltar à sua vez' })).toBeFocused();
+    await expectScreenPasses(p, `Conjurar, resultado final ${where}`);
+    await p.getByRole('button', { name: 'Voltar à sua vez' }).click();
+
+    // The conditions: the dialog (the master) and the tags on both screens.
+    await m.getByRole('button', { name: 'Mais ações para Goblin 1' }).click();
+    await m.getByRole('menuitem', { name: 'Condições…' }).click();
+    await expect(m.getByRole('dialog', { name: 'Condições de Goblin 1' })).toBeVisible();
+    await expectScreenPasses(m, `Condições, a janela ${where}`);
+    await m.getByRole('checkbox', { name: 'Envenenado' }).check();
+    await m.getByRole('checkbox', { name: 'Derrubado' }).check();
+    await m.getByRole('button', { name: 'Salvar condições' }).click();
+    await expect(m.getByRole('list', { name: 'Condições de Goblin 1' })).toBeVisible();
+    await expectScreenPasses(m, `Condições, as etiquetas na ordem do mestre ${where}`);
+
+    // Escudo Arcano: the prompt, its answer, and the master's card meanwhile (the slots are given back: the cast took the last one).
+    await adjustVitalsRPC(m, campaignId, table.characterId, { spellSlotsUsed: [{ level: 1, used: 2 }, { level: 2, used: 0 }] });
+    await p.getByRole('button', { name: 'Encerrar turno' }).last().click();
+    const card = m.getByRole('region', { name: /Ações do Capitão Goblin|Vez do Capitão Goblin/ });
+    await card.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await card.getByLabel(/Role 1d20 para Cimitarra/).fill('11');
+    await card.getByRole('button', { name: 'Confirmar 11' }).click();
+    const prompt = p.getByRole('alertdialog', { name: 'Você foi atingido: usar Escudo Arcano?' });
+    await expect(prompt).toBeVisible();
+    await expect(prompt.getByText('Capitão Goblin · Cimitarra · Rodada 1')).toBeVisible();
+    await expectScreenPasses(p, `Escudo, o aviso ${where}`);
+    await expectScreenPasses(m, `Escudo, o cartão do mestre esperando ${where}`);
+    await prompt.getByRole('button', { name: 'Conjurar Escudo Arcano' }).click();
+    await expect(prompt.getByText('O Escudo Arcano segurou o ataque do Capitão Goblin.')).toBeVisible();
+    await expectScreenPasses(p, `Escudo, o resultado ${where}`);
+    await prompt.getByRole('button', { name: 'Fechar' }).click();
+    // The captain's turn goes on: a second hit (a critical one) is damage to roll and discard; then Pensantus's turn.
+    await card.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await card.getByLabel(/Role 1d20 para Cimitarra/).fill('20');
+    await card.getByRole('button', { name: 'Confirmar 20' }).click();
+    await card.getByRole('button', { name: 'Rolar dano' }).click();
+    await card.getByRole('button', { name: 'Não aplicar' }).click();
+    await card.getByRole('button', { name: 'Descartar' }).click();
+    await passTurnsTo(m, campaignId, 'Pensantus');
+
+    // Round 2: Pensantus casts Teia (through the API) and concentrates; the line and its action are his.
+    const enc2 = await getEncounterRPC(m, campaignId);
+    const cast = await callRPC(p, 'meurpg.play.v1.CombatService/CastSpell', {
+      campaignId,
+      encounterId: enc2.id,
+      casterId: enc2.combatants.find((c) => c.label === 'Pensantus')!.id,
+      spellKey: 'spell:web',
+      slot: { level: 2 },
+      targets: [],
+      idempotencyKey: crypto.randomUUID(),
+    });
+    expect(cast.ok(), await cast.text()).toBeTruthy();
+    await expect(p.getByText('Concentrado em Teia', { exact: true })).toBeVisible();
+    await expect(p.getByRole('button', { name: 'Encerrar concentração' })).toBeVisible();
+    await expectScreenPasses(p, `Concentrado, a linha da vez ${where}`);
+    await expectScreenPasses(m, `Concentrado, a ordem do mestre ${where}`);
+    // Teia used the action, so "Encerrar turno" ends the turn without asking.
+    await p.getByRole('button', { name: 'Encerrar turno' }).last().click();
+    await passTurnsTo(m, campaignId, 'Capitão Goblin');
+
+    // Off turn: "Ataque de oportunidade" opens the attack sheet with the dagger (a melee weapon).
+    await expect(p.getByRole('button', { name: /Ataque de oportunidade/ })).toBeVisible();
+    await expectScreenPasses(p, `Sua reação, com o ataque de oportunidade ${where}`);
+    await p.getByRole('button', { name: /Ataque de oportunidade/ }).click();
+    await expect(p.getByRole('dialog', { name: /Adaga/ })).toBeVisible();
+    await expectScreenPasses(p, `Ataque de oportunidade, escolher o alvo ${where}`);
+    await p.getByRole('dialog').getByRole('button', { name: 'Fechar' }).click();
+
+    // Another amount, with the concentration reminder (Pensantus concentrates on Teia).
+    const card2 = m.getByRole('region', { name: /Ações do Capitão Goblin|Vez do Capitão Goblin/ });
+    await card2.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await card2.getByLabel(/Role 1d20 para Cimitarra/).fill('20');
+    await card2.getByRole('button', { name: 'Confirmar 20' }).click();
+    await card2.getByRole('button', { name: 'Rolar dano' }).click();
+    await card2.getByRole('button', { name: 'Aplicar outro valor' }).click();
+    await expectScreenPasses(m, `Aplicar outro valor ${where}`);
+    await card2.getByLabel('Dano a aplicar').fill('1');
+    await card2.getByRole('button', { name: 'Aplicar 1 de dano' }).click();
+    await expect(card2.getByText(/1 de dano aplicado/).first()).toBeVisible();
+    await expect(card2.getByText('Pensantus está concentrado em Teia. Teste de Constituição, CD 10.')).toBeVisible();
+    await expectScreenPasses(m, `Aplicar outro valor, o lembrete da concentração ${where}`);
+
+    // The fallen, first stable: three successes.
+    await adjustVitalsRPC(m, campaignId, table.characterId, { hitPointsCurrent: 0 });
+    for (let i = 0; i < 3; i++) {
+      await passTurnsTo(m, campaignId, 'Pensantus');
+      await expect(p.getByRole('heading', { name: 'Pensantus está caído' })).toBeVisible();
+      if (i === 0) {
+        await expectScreenPasses(p, `Caído, antes de rolar ${where}`);
+      }
+      await p.getByRole('button', { name: 'Digitar o resultado' }).click();
+      await p.getByLabel(/Role 1d20 para o teste contra a morte/).fill('15');
+      if (i === 0) {
+        await expectScreenPasses(p, `Caído, rolagem física ${where}`);
+      }
+      await p.getByRole('button', { name: 'Confirmar 15' }).click();
+      await expect(p.getByRole('status').filter({ hasText: 'Teste contra a morte' })).toBeVisible();
+      if (i === 0) {
+        await expectScreenPasses(p, `Caído, depois de rolar ${where}`);
+      }
+      await p.getByRole('button', { name: 'Encerrar turno' }).click();
+    }
+    await expect(p.getByText('Pensantus está estável.')).toBeVisible();
+    await expectScreenPasses(p, `Estável, fora da vez ${where}`);
+    await passTurnsTo(m, campaignId, 'Pensantus');
+    await expect(p.getByText(/Estável: não rola mais testes contra a morte/)).toBeVisible();
+    await expectScreenPasses(p, `Estável, na vez ${where}`);
+
+    // Healed and down again: now three failures, and the master's question.
+    await adjustVitalsRPC(m, campaignId, table.characterId, { hitPointsCurrent: 5 });
+    await adjustVitalsRPC(m, campaignId, table.characterId, { hitPointsCurrent: 0 });
+    for (let i = 0; i < 2; i++) {
+      await passTurnsTo(m, campaignId, 'Capitão Goblin');
+      await passTurnsTo(m, campaignId, 'Pensantus');
+      await p.getByRole('button', { name: 'Digitar o resultado' }).click();
+      await p.getByLabel(/Role 1d20 para o teste contra a morte/).fill(i === 0 ? '1' : '2');
+      await p.getByRole('button', { name: i === 0 ? 'Confirmar 1' : 'Confirmar 2' }).click();
+      await p.getByRole('button', { name: 'Encerrar turno' }).click();
+    }
+    await expect(m.getByRole('alertdialog', { name: /Confirmar a morte/ })).toBeVisible();
+    await expect(m.getByRole('alertdialog', { name: /Confirmar a morte/ })).toBeInViewport({ ratio: 1 });
+    await expectScreenPasses(m, `Confirmar a morte ${where}`);
+    await expectScreenPasses(p, `Caído, três falhas, para o jogador ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('conjurar, cair, o Escudo e as condições passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
+  test.setTimeout(400_000);
+  await scanCastingScreens(browser, 'light', 1280);
+});
+
+test('conjurar, cair, o Escudo e as condições passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
+  test.setTimeout(400_000);
+  await scanCastingScreens(browser, 'dark', 390);
+});
+
+/** The fighter's turn (Etapa 6, slice 6.5c): Extra Attack's "1 ataque restante", Retomar o
+ * Fôlego's sheet and Surto de Ação's note. */
+async function scanFighterScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade guerreiro ${Date.now()}`, true, true, { build: toren, sheet: torenSheet });
+    campaignId = table.campaignId;
+    await beginAttackCombatRPC(m, table, { Toren: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    await adjustVitalsRPC(m, campaignId, table.characterId, { hitPointsCurrent: 20 });
+    const start = await getEncounterRPC(m, campaignId);
+    await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: start.id, combatantId: start.combatants.find((c) => c.label === 'Toren')!.id, col: 8, row: 9 });
+    await openSessionPage(p, campaignId);
+    const groups = p.getByRole('region', { name: 'O que você pode fazer' });
+    await expectScreenPasses(p, `Guerreiro, a vez com as habilidades ${where}`);
+    await groups.getByRole('button', { name: /^Atacar com Espada/ }).click();
+    const sheet = p.getByRole('dialog', { name: /Atacar com Espada/ });
+    await sheet.locator('label', { hasText: 'Goblin 1' }).click();
+    await p.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await p.getByLabel(/Role 1d20/).fill('1');
+    await p.getByRole('button', { name: 'Confirmar 1' }).click();
+    await expect(p.getByText('Você ainda tem 1 ataque desta ação.')).toBeVisible();
+    await p.getByRole('button', { name: 'Voltar à sua vez' }).click();
+    await expect(groups.getByText('1 ataque restante').first()).toBeVisible();
+    await expectScreenPasses(p, `Ataque Extra, um ataque restante ${where}`);
+    await groups.getByRole('button', { name: 'Usar Retomar o Fôlego' }).click();
+    await expectScreenPasses(p, `Retomar o Fôlego, antes de rolar ${where}`);
+    await p.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await p.getByLabel(/Role 1d10/).fill('7');
+    await expectScreenPasses(p, `Retomar o Fôlego, rolagem física ${where}`);
+    await p.getByRole('button', { name: 'Confirmar 7' }).click();
+    await expect(p.getByText(/\d+ PV recuperados/)).toBeVisible();
+    await expectScreenPasses(p, `Retomar o Fôlego, resultado ${where}`);
+    await p.getByRole('button', { name: 'Voltar à sua vez' }).click();
+    await groups.getByRole('button', { name: 'Usar Surto de Ação' }).click();
+    await expect(groups.getByText('Surto de Ação: você tem outra ação.')).toBeVisible();
+    await expectScreenPasses(p, `Surto de Ação, a nota ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('o guerreiro (Ataque Extra, Retomar o Fôlego, Surto de Ação) passa no axe e nas conferências de layout no tema escuro, no desktop', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanFighterScreens(browser, 'dark', 1280);
+});
+
+test('o guerreiro (Ataque Extra, Retomar o Fôlego, Surto de Ação) passa no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanFighterScreens(browser, 'light', 390);
 });

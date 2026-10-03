@@ -71,7 +71,9 @@ Trazidas pelo Vinicius. As perguntas 33 a 42 o Samuel aceitou como propusemos. O
 
 ## Em aberto
 
-Nenhuma aqui. As perguntas novas ficam no documento de acompanhamento.
+As perguntas novas ficam no documento de acompanhamento. Uma já está nas telas com o padrão que propusemos, até o Samuel responder:
+
+- **Pergunta 43: o nome da condição "prone".** O padrão adotado é **"Derrubado"** (`condition:prone`), para não confundir com **"Caído"**, o estado do personagem a 0 PV. O app usa "Derrubado" na lista de condições do mestre, nas etiquetas e no registro; se o Samuel preferir outro nome, muda só o `names_pt.json`, numa revisão nova do conteúdo (hoje `fx.4`). Ver [glossário](glossario.md).
 
 ## Ver também
 

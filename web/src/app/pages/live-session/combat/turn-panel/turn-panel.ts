@@ -1,12 +1,15 @@
 import { Component, ElementRef, computed, effect, input, output, viewChild } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import type { Combatant, Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { type Combatant, CombatantState, type Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { formatMeters, feetToMeters } from '../../../../core/combat/combat-grid';
+import { article } from '../../../../core/combat/combat-log';
 import {
   combatantInitial,
+  isDown,
   isPlayer,
   ownCombatant,
+  playerWord,
   roundLabel,
   stateWord,
   turnBanner,
@@ -15,6 +18,7 @@ import { mediaQuery } from '../../../../shared/map-view/media-query';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import { EndTurn } from './end-turn';
 import { OrderStrip } from './order-strip';
+import { ConcentrationLine, TurnReaction } from './turn-extras';
 
 /**
  * What a player sees at the top of a running combat (E6-05, E6-06): whose
@@ -22,22 +26,38 @@ import { OrderStrip } from './order-strip';
  * a live region, so a turn change is heard once. When the turn is a hidden
  * combatant's it says "Vez do mestre", with no name and no highlighted chip.
  * On the player's own turn ("Sua vez") the banner is the hero, with the
- * movement left and, from 1024px, "Encerrar turno" (`EndTurn`). The groups
+ * movement left and, from 1024px, "Encerrar turno" (`EndTurn`). A character at
+ * 0 hit points gets the same hero in the danger frame instead ("Brisa está
+ * caída", E6-13; the death saves are the page's `DeathSaves`). Off turn it
+ * offers the opportunity attack under "Sua reação" (E6-28). The groups
  * of actions (`ActionGroups`) come right after it, with "Mover" in the
  * Movimento group. Focus goes to the hero when the turn arrives, so the next
  * Tab reaches what the player can do.
  */
 @Component({
   selector: 'app-turn-panel',
-  imports: [CombatantToken, EndTurn, MatIconModule, OrderStrip],
+  imports: [CombatantToken, ConcentrationLine, EndTurn, MatIconModule, OrderStrip, TurnReaction],
   templateUrl: './turn-panel.html',
   styleUrl: './turn-panel.scss',
 })
 export class TurnPanel {
   readonly encounter = input.required<Encounter>();
   readonly busy = input(false);
+  /** Extra Attack: how many attacks remain after the first spent the action
+   * (`TurnEconomy`), and how many the Attack action makes. */
+  readonly attacksLeft = input(0);
+  readonly attacksPerAction = input(1);
+  /** The player's maximum hit points, for "com 0 de 24 pontos de vida". */
+  readonly hitPointsMax = input<number | null>(null);
+  /** The melee attacks an opportunity attack can use (off turn, reaction free). */
+  readonly opportunities = input<readonly { key: string; name: string }[]>([]);
+  /** The name of the spell the player is concentrating on, or `''`. */
+  readonly concentration = input('');
 
   readonly endTurn = output<void>();
+  /** "Ataque de oportunidade": the key of the melee attack. */
+  readonly opportunity = output<string>();
+  readonly endConcentration = output<void>();
 
   private readonly hero = viewChild<ElementRef<HTMLElement>>('hero');
 
@@ -45,10 +65,61 @@ export class TurnPanel {
    * 1280px the order is a column on the left, so the strip goes. */
   private readonly desktop = mediaQuery('(min-width: 1024px)');
   protected readonly wide = mediaQuery('(min-width: 1280px)');
-  protected readonly compact = computed(() => this.desktop() && this.banner().mine);
+  protected readonly compact = computed(() => this.desktop() && this.banner().mine && !this.down());
   protected readonly banner = computed(() => turnBanner(this.encounter()));
   protected readonly round = computed(() => roundLabel(this.encounter().round));
   protected readonly own = computed(() => ownCombatant(this.encounter()));
+  /** The player's character is at 0 hit points (any turn). */
+  protected readonly isDown = computed(() => {
+    const own = this.own();
+    return !!own && isDown(own);
+  });
+  /** It is their turn and they are down: the hero is the danger one. */
+  protected readonly down = computed(() => this.isDown() && this.banner().mine);
+  protected readonly downWord = computed(() => (article(this.own()?.label ?? '') === 'a' ? 'caída' : 'caído'));
+  /** The line of a fallen character off turn: what is owed, or that the master decides. */
+  protected readonly offTurnDown = computed(() => {
+    const own = this.own();
+    if (!own) {
+      return '';
+    }
+    if (own.state === CombatantState.STABLE) {
+      return `${own.label} está estável.`;
+    }
+    return own.deathFailures >= 3
+      ? `${own.label} está ${this.downWord()}, com três falhas: o mestre decide.`
+      : `${own.label} está ${this.downWord()}. Na sua vez, role o teste contra a morte.`;
+  });
+  protected readonly downTitle = computed(() => (this.down() ? `${this.own()?.label} está ${this.downWord()}` : ''));
+  protected readonly downText = computed(() => {
+    const own = this.own();
+    const max = this.hitPointsMax();
+    const pv = max === null ? '0 pontos de vida' : `0 de ${max} pontos de vida`;
+    if (own?.state === CombatantState.STABLE) {
+      return `É a sua vez, mas com ${pv} você está estável e não age.`;
+    }
+    return own?.deathSaveDue
+      ? `É a sua vez, mas com ${pv} você não age. Role o teste contra a morte.`
+      : `É a sua vez, mas com ${pv} você não age.`;
+  });
+  /** The tiles of the hero: with Extra Attack the Ação tile counts the attacks left. */
+  protected readonly tiles = computed(() => {
+    const c = this.own();
+    if (!c) {
+      return [];
+    }
+    const left = this.attacksLeft();
+    const partial = c.actionUsed && left > 0 && this.attacksPerAction() > 1;
+    return [
+      {
+        name: 'Ação',
+        used: c.actionUsed && !partial,
+        word: partial ? `${left} ${left === 1 ? 'ataque restante' : 'ataques restantes'}` : c.actionUsed ? 'Usada' : 'Disponível',
+      },
+      { name: 'Ação bônus', used: c.bonusActionUsed, word: c.bonusActionUsed ? 'Usada' : 'Disponível' },
+      { name: 'Reação', used: c.reactionUsed, word: c.reactionUsed ? 'Usada' : 'Disponível' },
+    ];
+  });
   protected readonly strip = computed(() => this.encounter().combatants);
   protected readonly movement = computed(() => {
     const own = this.own();
@@ -97,7 +168,7 @@ export class TurnPanel {
   /** The chip's second line: an NPC's state word, "Jogador" for another
    * player (their name is not sent to the other players). */
   protected word(c: Combatant): string {
-    return isPlayer(c) ? 'Jogador' : stateWord(c.state);
+    return isPlayer(c) ? playerWord(c) : stateWord(c.state);
   }
 
   protected current(c: Combatant): boolean {

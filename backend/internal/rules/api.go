@@ -640,6 +640,10 @@ type Attack struct {
 	// RangeFt is the reach or normal range, LongRangeFt the long range.
 	RangeFt     int
 	LongRangeFt int
+	// Melee is true for a weapon the SRD lists as a melee weapon, thrown or not
+	// (a dagger, a spear, a handaxe), and false for a ranged weapon and a spell:
+	// an opportunity attack needs a melee weapon.
+	Melee bool
 }
 
 // Feature is a class, subclass, race, subrace or background feature or

@@ -953,6 +953,15 @@ message ReactionPrompt {
   string spell_key = 4;
   // The slots it can be cast with: at least the 1st level, with a free slot.
   repeated meurpg.rules.v1.SlotChoice slots = 5;
+  // Who attacked ("Capitão Goblin") and with which attack ("Cimitarra", its
+  // Portuguese name): for the master, and for the target's player only when the
+  // attacker is not hidden from them (RN-20). Both are empty for a player when
+  // the attacker is hidden.
+  string attacker_label = 6;
+  string attack_name_pt = 7;
+  // The reaction spell's Portuguese name ("Escudo Arcano"), for everyone who
+  // gets the prompt.
+  string spell_name_pt = 8;
 }
 
 // Combatant is one who fights, as the caller may see it. Fields marked "only
@@ -1032,6 +1041,10 @@ message Combatant {
   bool death_save_due = 32;
   // The conditions' Portuguese names, in the same order as `conditions`.
   repeated string condition_names_pt = 33;
+  // The Portuguese name of `concentration_spell` ("Teia"); empty when the
+  // combatant is not concentrating. Filled for everyone who sees the combatant,
+  // like `condition_names_pt`.
+  string concentration_spell_name_pt = 34;
 }
 
 // Participant is who joins a combat: a character of the campaign.

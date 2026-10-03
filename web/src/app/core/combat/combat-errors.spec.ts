@@ -17,3 +17,20 @@ describe('combat errors', () => {
     expect(combatErrorMessage(new Error('network'))).toMatch(/servidor/);
   });
 });
+
+describe('the reasons slice 6.5c added', () => {
+  const said = (reason: EncounterBlockedReason, more: object = {}) => blockedMessage({ reason, ...more } as never);
+
+  it('says why a spell, an action or a death save was refused', () => {
+    expect(said(EncounterBlockedReason.NO_SLOT, { minLevel: 2 })).toBe('Não há espaço de 2º\u00a0círculo ou maior livre.');
+    expect(said(EncounterBlockedReason.NO_SLOT)).toBe('Não há espaço de magia livre.');
+    expect(said(EncounterBlockedReason.NO_USES, { recharge: 1 })).toBe('Sem usos: volta num descanso curto.');
+    expect(said(EncounterBlockedReason.BONUS_ACTION_USED)).toMatch(/ação bônus/);
+    expect(said(EncounterBlockedReason.ATTACKS_USED)).toMatch(/ataques/);
+    expect(said(EncounterBlockedReason.REACTION_USED)).toMatch(/reação/);
+    expect(said(EncounterBlockedReason.DEATH_SAVE_DUE)).toMatch(/teste contra a morte/);
+    expect(said(EncounterBlockedReason.DEATH_SAVE_NOT_DUE)).toMatch(/Não há teste/);
+    expect(said(EncounterBlockedReason.NOT_DYING)).toMatch(/três testes/);
+    expect(said(EncounterBlockedReason.NOT_AWAITING_REACTION)).toMatch(/não espera/);
+  });
+});

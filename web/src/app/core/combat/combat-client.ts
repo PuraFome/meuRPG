@@ -5,12 +5,15 @@ import { createClient } from '@connectrpc/connect';
 import {
   type AttackRoll,
   CombatService,
+  type DeathSave,
+  type DiceRoll,
   type Encounter,
   type GetTurnOptionsResponse,
   type ListCombatLogResponse,
   type ParticipantSchema,
   type PendingDamage,
   type ReactionOutcome,
+  type SpellCast,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
 
@@ -40,10 +43,52 @@ export interface AttackResult {
   readonly pending: PendingDamage | undefined;
 }
 
-/** What a damage call answers: the combat and the damage as it is now. */
+/** What a damage call answers: the combat and the damage as it is now. For an
+ * area spell's one roll, `cast` has the other damages of the same cast that
+ * the roll settled too. */
 export interface DamageResult {
   readonly encounter: Encounter;
   readonly pending: PendingDamage;
+  readonly cast: readonly PendingDamage[];
+}
+
+/** The slot a spell is cast with (`SpellSlot`); `null` for a cantrip. */
+export interface SlotRef {
+  readonly level: number;
+  readonly pact: boolean;
+}
+
+/** One target of a cast; `darts` is Magic Missile's, 0 for any other spell. */
+export interface CastTarget {
+  readonly combatantId: string;
+  readonly darts: number;
+}
+
+/** What a cast answers: the combat and what the spell did. */
+export interface CastResult {
+  readonly encounter: Encounter;
+  readonly cast: SpellCast;
+}
+
+/** What a death save answers: the combat and the save. */
+export interface DeathSaveResult {
+  readonly encounter: Encounter;
+  readonly save: DeathSave;
+}
+
+/** What a standard or feature action answers: the combat, the roll of an
+ * action that rolls (Retomar o Fôlego) and the hit points it healed. */
+export interface ActionResult {
+  readonly encounter: Encounter;
+  readonly roll: DiceRoll | undefined;
+  readonly healed: number | undefined;
+}
+
+/** What the master changes in "Condições…": the new set of conditions (unset
+ * leaves them) and whether the concentration ends. */
+export interface ConditionChange {
+  readonly keys?: readonly string[];
+  readonly endConcentration?: boolean;
 }
 
 /** What Escudo did to a hit (`UseReaction`). */
@@ -226,6 +271,7 @@ export class CombatClient {
     targetId: string,
     die: AttackDie,
     key: string,
+    asReaction = false,
   ): Promise<AttackResult> {
     const res = await this.client.rollAttack({
       campaignId,
@@ -235,6 +281,7 @@ export class CombatClient {
       targetId,
       idempotencyKey: key,
       roll: 'inApp' in die ? { case: 'rollInApp', value: true } : { case: 'd20Face', value: die.face },
+      asReaction,
     });
     return {
       encounter: need(res.encounter, 'RollAttack'),
@@ -257,21 +304,35 @@ export class CombatClient {
       idempotencyKey: key,
       roll: 'inApp' in die ? { case: 'rollInApp', value: true } : { case: 'typedSum', value: die.sum },
     });
-    return { encounter: need(res.encounter, 'RollDamage'), pending: need(res.pendingDamage, 'RollDamage') };
+    return {
+      encounter: need(res.encounter, 'RollDamage'),
+      pending: need(res.pendingDamage, 'RollDamage'),
+      cast: res.castPendingDamages,
+    };
   }
 
+  /** `amount` is the master's last word: the damage to apply instead of the
+   * rolled one (0 to 9,999). `key` is made once per apply, so a retry never
+   * applies twice. */
   async applyDamage(
     campaignId: string,
     encounterId: string,
     pendingDamageId: string,
+    amount?: number,
+    key: string = newKey(),
   ): Promise<DamageResult> {
     const res = await this.client.applyPendingDamage({
       campaignId,
       encounterId,
       pendingDamageId,
-      idempotencyKey: newKey(),
+      idempotencyKey: key,
+      amount,
     });
-    return { encounter: need(res.encounter, 'ApplyPendingDamage'), pending: need(res.pendingDamage, 'ApplyPendingDamage') };
+    return {
+      encounter: need(res.encounter, 'ApplyPendingDamage'),
+      pending: need(res.pendingDamage, 'ApplyPendingDamage'),
+      cast: [],
+    };
   }
 
   async discardDamage(
@@ -285,7 +346,11 @@ export class CombatClient {
       pendingDamageId,
       idempotencyKey: newKey(),
     });
-    return { encounter: need(res.encounter, 'DiscardPendingDamage'), pending: need(res.pendingDamage, 'DiscardPendingDamage') };
+    return {
+      encounter: need(res.encounter, 'DiscardPendingDamage'),
+      pending: need(res.pendingDamage, 'DiscardPendingDamage'),
+      cast: [],
+    };
   }
 
   /** The master answers for the target: cast Escudo with `slot`. */
@@ -306,21 +371,102 @@ export class CombatClient {
     return need(res.encounter, 'DeclineReaction');
   }
 
-  /** A standard action ("standard:dash"). */
+  /** A standard action ("standard:dash") or a feature's ("feature:second-wind").
+   * `die` is for the one that rolls (Retomar o Fôlego: the d10); `key` is made
+   * once per action, so a retry after a lost answer never spends it twice. */
   async takeAction(
     campaignId: string,
     encounterId: string,
     combatantId: string,
     actionKey: string,
-  ): Promise<Encounter> {
+    die?: DamageDie,
+    key: string = newKey(),
+  ): Promise<ActionResult> {
     const res = await this.client.takeAction({
       campaignId,
       encounterId,
       combatantId,
       actionKey,
-      idempotencyKey: newKey(),
+      idempotencyKey: key,
+      roll: !die
+        ? { case: undefined }
+        : 'inApp' in die
+          ? { case: 'rollInApp', value: true }
+          : { case: 'typedSum', value: die.sum },
     });
-    return need(res.encounter, 'TakeAction');
+    return { encounter: need(res.encounter, 'TakeAction'), roll: res.roll, healed: res.healed };
+  }
+
+  /** `CastSpell`. `slot` is `null` for a cantrip; `die` is the d20 of a spell
+   * attack (one per target in the app, or a typed face for one target). */
+  async castSpell(
+    campaignId: string,
+    encounterId: string,
+    casterId: string,
+    spellKey: string,
+    slot: SlotRef | null,
+    targets: readonly CastTarget[],
+    die: AttackDie | null,
+    key: string,
+  ): Promise<CastResult> {
+    const res = await this.client.castSpell({
+      campaignId,
+      encounterId,
+      casterId,
+      spellKey,
+      slot: slot ?? undefined,
+      targets: targets.map((t) => ({ combatantId: t.combatantId, darts: t.darts })),
+      idempotencyKey: key,
+      roll: !die
+        ? { case: undefined }
+        : 'inApp' in die
+          ? { case: 'rollInApp', value: true }
+          : { case: 'd20Face', value: die.face },
+    });
+    return { encounter: need(res.encounter, 'CastSpell'), cast: need(res.cast, 'CastSpell') };
+  }
+
+  async rollDeathSave(
+    campaignId: string,
+    encounterId: string,
+    combatantId: string,
+    die: AttackDie,
+    key: string,
+  ): Promise<DeathSaveResult> {
+    const res = await this.client.rollDeathSave({
+      campaignId,
+      encounterId,
+      combatantId,
+      idempotencyKey: key,
+      roll: 'inApp' in die ? { case: 'rollInApp', value: true } : { case: 'd20Face', value: die.face },
+    });
+    return { encounter: need(res.encounter, 'RollDeathSave'), save: need(res.deathSave, 'RollDeathSave') };
+  }
+
+  /** The master confirms a death (three failed death saves). It cannot be undone. */
+  async confirmDeath(campaignId: string, encounterId: string, combatantId: string, key: string): Promise<Encounter> {
+    const res = await this.client.confirmDeath({ campaignId, encounterId, combatantId, idempotencyKey: key });
+    return need(res.encounter, 'ConfirmDeath');
+  }
+
+  /** "Condições…": the labels (the master) and ending the concentration (the
+   * master, or a player for their own character). */
+  async setConditions(
+    campaignId: string,
+    encounterId: string,
+    combatantId: string,
+    change: ConditionChange,
+    key: string = newKey(),
+  ): Promise<Encounter> {
+    const res = await this.client.setCombatantConditions({
+      campaignId,
+      encounterId,
+      combatantId,
+      idempotencyKey: key,
+      conditions: change.keys ? { keys: [...change.keys] } : undefined,
+      endConcentration: change.endConcentration ?? false,
+    });
+    return need(res.encounter, 'SetCombatantConditions');
   }
 
   /** The master's "Dano/Cura" on an NPC. */

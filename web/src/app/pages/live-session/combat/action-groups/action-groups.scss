@@ -37,6 +37,18 @@
   }
 }
 
+.groups__note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-weight: 700;
+
+  .mat-icon {
+    flex: none;
+  }
+}
+
 .groups__pending {
   flex-wrap: wrap;
   align-items: center;

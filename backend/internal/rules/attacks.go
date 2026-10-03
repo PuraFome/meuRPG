@@ -53,6 +53,7 @@ func (x *deriver) attacks() {
 			Key: key, Name: eq.Name, NamePT: c.namePT(key), Kind: "weapon", Ability: ab,
 			AttackBonus: x.modifiers("attack.weapon."+kind, bonus), Proficient: proficient,
 			DamageType: w.DamageType, DamageTypeNamePT: c.namePT(w.DamageType),
+			Melee: kind == "melee",
 		}
 		if dice != "" {
 			a.Damage = withModifier(dice, dmg)

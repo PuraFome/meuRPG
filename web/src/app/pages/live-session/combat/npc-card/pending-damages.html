@@ -15,6 +15,43 @@
             Descartar
           </button>
         </div>
+      } @else if (other() === it.p.id) {
+        <div class="other">
+          <mat-form-field appearance="outline" class="other__field" subscriptSizing="dynamic">
+            <mat-label>Dano a aplicar</mat-label>
+            <input
+              #otherInput
+              matInput
+              type="text"
+              inputmode="numeric"
+              maxlength="4"
+              autocomplete="off"
+              [value]="otherText()"
+              [attr.aria-invalid]="otherValue() === null"
+              (input)="onOther($event)"
+              (keydown.enter)="otherValue() !== null && apply(it.p, otherValue()!)"
+            />
+            <mat-hint>
+              @if (otherValue() === null) {
+                Digite um número de 0 a 9.999.
+              } @else {
+                O dado deu {{ it.p.amount }}. Por exemplo, metade por resistência.
+              }
+            </mat-hint>
+          </mat-form-field>
+          <div class="dmg__buttons">
+            <button
+              mat-stroked-button
+              type="button"
+              class="dmg__apply"
+              [disabled]="busy() || otherValue() === null"
+              (click)="apply(it.p, otherValue()!)"
+            >
+              Aplicar {{ otherValue() ?? '' }} de dano
+            </button>
+            <button mat-stroked-button type="button" class="dmg__skip" (click)="closeOther(it.p.id)">Voltar</button>
+          </div>
+        </div>
       } @else {
         <div class="dmg__buttons">
           <button mat-stroked-button type="button" class="dmg__apply" [disabled]="busy()" (click)="apply(it.p)">
@@ -22,13 +59,14 @@
           </button>
           <button mat-stroked-button type="button" class="dmg__skip" (click)="askDiscard(it.p.id)">Não aplicar</button>
         </div>
+        <button #otherLink mat-button type="button" class="dmg__other" [attr.data-pending]="it.p.id" (click)="askOther(it.p)">Aplicar outro valor</button>
       }
     } @else if (it.awaiting) {
       <div class="mr-notice mr-notice--warning">
         <mat-icon aria-hidden="true">shield</mat-icon>
         <p>
           <strong>Esperando a reação do {{ it.target }}.</strong>
-          {{ it.pronoun }} pode conjurar Escudo (+5 na CA). O jogador decide sem ver o total; você pode responder por {{ it.pronoun.toLowerCase() }}.
+          {{ it.pronoun }} pode conjurar {{ it.spell }} (+5 na CA). O jogador decide sem ver o total; você pode responder por {{ it.pronoun.toLowerCase() }}.
         </p>
       </div>
       <div class="dmg__buttons">
@@ -39,10 +77,10 @@
           [disabled]="busy() || !it.slot"
           (click)="it.slot && useShield(it.p, it.slot)"
         >
-          Usar Escudo por {{ it.pronoun.toLowerCase() }}
+          Usar {{ it.spell }} por {{ it.pronoun.toLowerCase() }}
         </button>
         <button mat-stroked-button type="button" class="dmg__skip" [disabled]="busy()" (click)="declineShield(it.p)">
-          Seguir sem Escudo
+          Seguir sem {{ it.spell }}
         </button>
       </div>
       <button mat-stroked-button type="button" class="dmg__off" disabled disabledInteractive [attr.aria-describedby]="'wait-' + it.p.id">
@@ -72,6 +110,12 @@
 <span class="mr-visually-hidden" role="status">{{ settled() }}</span>
 @if (settled()) {
   <p class="settled" aria-hidden="true"><mat-icon>check</mat-icon>{{ settled() }}</p>
+}
+@if (reminder()) {
+  <div class="mr-notice mr-notice--warning" role="status">
+    <mat-icon aria-hidden="true">info</mat-icon>
+    <p>{{ reminder() }}</p>
+  </div>
 }
 @if (error()) {
   <div class="mr-notice mr-notice--danger" role="alert">

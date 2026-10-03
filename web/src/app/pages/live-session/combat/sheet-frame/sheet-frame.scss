@@ -1,0 +1,99 @@
+.frame {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-sizing: border-box;
+  max-height: calc(92dvh - 48px);
+  padding: var(--mr-space-5) var(--mr-space-6) var(--mr-space-4);
+
+  &--phone {
+    max-height: calc(100dvh - 40px);
+    padding: var(--mr-space-2) 2px var(--mr-space-2);
+  }
+}
+
+.frame__handle {
+  align-self: center;
+  width: 36px;
+  height: 4px;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-control-line);
+}
+
+.frame__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.frame__icon {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  margin-top: 1px;
+  font-size: 28px;
+  color: var(--mr-accent-text);
+}
+
+.frame__titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.frame__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 26px;
+  line-height: 30px;
+  overflow-wrap: anywhere;
+}
+
+.frame__sub {
+  margin: 2px 0 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.frame__close {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: -6px -8px 0 0;
+  border: 0;
+  background: none;
+  color: var(--mr-ink);
+  cursor: pointer;
+}
+
+// The body scrolls; its children keep their height instead of shrinking.
+.frame__body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  overflow-y: auto;
+
+  > * {
+    flex-shrink: 0;
+  }
+}
+
+// The footer holds the action buttons; it is empty when the sheet has none.
+.frame__foot {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--mr-rule);
+  background: var(--mr-surface);
+
+  &:empty {
+    display: none;
+  }
+}

@@ -159,6 +159,15 @@ func reachFt(rangeFt, longRangeFt int32) int32 {
 	return max(rangeFt, longRangeFt, meleeReachFt)
 }
 
+// attackReach is how far the attack reaches for a player: its range, or for an
+// opportunity attack the melee reach, whatever range the weapon has when thrown.
+func attackReach(a link.Attack, asReaction bool) int32 {
+	if asReaction {
+		return meleeReachFt
+	}
+	return reachFt(clamp32(a.RangeFt, 0, math.MaxInt32), clamp32(a.LongRangeFt, 0, math.MaxInt32))
+}
+
 // distanceFt is the distance between two combatants on the grid, a king's
 // move at 5 ft a square (RN-21); false when either has no square.
 func distanceFt(a, b playdb.Combatant) (int32, bool) {
@@ -543,9 +552,9 @@ func (s *Service) RollAttack(
 		if attack.Save {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("this attack asks for a saving throw, not an attack roll: use CastSpell"))
 		}
-		// A melee weapon reaches 5 ft; one with a range of its own (a bow, a dagger
-		// the sheet lists as thrown) is a ranged attack, and no opportunity attack.
-		if asReaction && (attack.RangeFt > meleeReachFt || attack.LongRangeFt > 0) {
+		// An opportunity attack is a melee attack (SRD): a melee weapon, thrown or
+		// not (a dagger counts), not a bow or a spell. It reaches 5 ft.
+		if asReaction && !attack.Melee {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("an opportunity attack is a melee attack"))
 		}
 		// RN-18, then the economy: a player has one action a turn (the Attack
@@ -570,7 +579,7 @@ func (s *Service) RollAttack(
 				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_PLACED, "the attacker and the target must be on the map")
 			}
 			dist, _ := distanceFt(attacker, target)
-			if reach := reachFt(clamp32(attack.RangeFt, 0, math.MaxInt32), clamp32(attack.LongRangeFt, 0, math.MaxInt32)); dist > reach {
+			if reach := attackReach(attack, asReaction); dist > reach {
 				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_OUT_OF_REACH, "the target is beyond the attack's range",
 					func(b *playv1.EncounterBlocked) { b.MissingFt = dist - reach })
 			}

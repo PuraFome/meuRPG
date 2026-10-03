@@ -18,7 +18,7 @@
 
   <ol class="order__list">
     @for (c of rows(); track c.id) {
-      <li class="row" [class.row--turn]="current(c)">
+      <li class="row" [class.row--turn]="current(c)" [class.row--dying]="dying(c)" [class.on-danger]="dying(c)">
         <app-combatant-token
           class="row__token"
           [initial]="initial(c)"
@@ -37,9 +37,17 @@
           </span>
           <span class="row__meta">
             <span class="row__sub">{{ sub(c) }}</span>
-            @if (c.defeated) {
+            @if (c.defeated && !npc(c)) {
+              <span class="row__state row__state--out">
+                <mat-icon aria-hidden="true">close</mat-icon>{{ word(c) }}
+              </span>
+            } @else if (c.defeated) {
               <span class="row__state row__state--out">
                 <mat-icon aria-hidden="true">close</mat-icon>Derrotado
+              </span>
+            } @else if (down(c)) {
+              <span class="row__state" [class.row__state--out]="c.state !== Stable">
+                <mat-icon aria-hidden="true">{{ dying(c) ? 'skull' : 'favorite_border' }}</mat-icon>{{ downText(c) }}
               </span>
             } @else if (c.hidden) {
               <span class="row__state"><mat-icon aria-hidden="true">visibility_off</mat-icon>Escondido</span>
@@ -47,6 +55,10 @@
               <span class="row__state">Revelado</span>
             }
           </span>
+          @if (down(c)) {
+            <app-death-row [successes]="c.deathSuccesses" [failures]="c.deathFailures" />
+          }
+          <app-combatant-tags [names]="tags(c)" [concentration]="concentration(c)" [label]="c.label" />
           @if (c.hitPointsMax !== undefined) {
             <span class="row__pv-inline">PV {{ c.hitPointsCurrent }} de {{ c.hitPointsMax }}</span>
           }
@@ -87,11 +99,7 @@
               Dano/Cura
             </button>
           }
-          @if (live() && !npc(c)) {
-            <!-- The place of the NPCs' "Mais ações", so every "Dano/Cura" lines up. -->
-            <span class="row__spacer" aria-hidden="true"></span>
-          }
-          @if (live() && npc(c)) {
+          @if (live() && (npc(c) || !c.defeated)) {
             <button
               type="button"
               class="row__more"
@@ -101,14 +109,28 @@
               <mat-icon aria-hidden="true">more_vert</mat-icon>
             </button>
             <mat-menu #menu="matMenu" xPosition="before">
-              <button mat-menu-item type="button" (click)="reveal.emit({ id: c.id, hidden: !c.hidden })">
-                {{ c.hidden ? 'Revelar aos jogadores' : 'Esconder dos jogadores' }}
-              </button>
-              <button mat-menu-item type="button" (click)="ask(c.id)">Remover do combate</button>
+              @if (npc(c)) {
+                <button mat-menu-item type="button" (click)="reveal.emit({ id: c.id, hidden: !c.hidden })">
+                  {{ c.hidden ? 'Revelar aos jogadores' : 'Esconder dos jogadores' }}
+                </button>
+              }
+              <button mat-menu-item type="button" (click)="conditions.emit(c.id)">Condições…</button>
+              @if (npc(c)) {
+                <button mat-menu-item type="button" (click)="ask(c.id)">Remover do combate</button>
+              }
             </mat-menu>
+          } @else if (live()) {
+            <!-- The place of the menu, so every "Dano/Cura" lines up. -->
+            <span class="row__spacer" aria-hidden="true"></span>
           }
         </span>
 
+        @if (live() && dying(c) && deathDismissed().has(c.id)) {
+          <div class="row__extra">
+            <p class="row__hidden-note">O mestre ainda não confirmou a morte.</p>
+            <button mat-button type="button" class="row__reveal" (click)="askDeath.emit(c.id)">Confirmar a morte</button>
+          </div>
+        }
         @if (live() && c.hidden && removing() !== c.id) {
           <div class="row__extra">
             <p class="row__hidden-note">Só você vê este combatente.</p>

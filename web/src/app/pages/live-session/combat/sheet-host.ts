@@ -1,6 +1,6 @@
 import { type ComponentType } from '@angular/cdk/portal';
 import { inject } from '@angular/core';
-import { MAT_BOTTOM_SHEET_DATA, MatBottomSheet, MatBottomSheetRef } from '@angular/material/bottom-sheet';
+import { MAT_BOTTOM_SHEET_DATA, MatBottomSheet, type MatBottomSheetConfig, MatBottomSheetRef } from '@angular/material/bottom-sheet';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dialog';
 import type { Observable } from 'rxjs';
 
@@ -17,7 +17,15 @@ export function openSheet<C, D, R>(
   dialog: MatDialog,
   bottomSheet: MatBottomSheet,
   component: ComponentType<C>,
-  config: { data: D; ariaLabel: string; labelledBy?: string; width?: string; tall?: boolean },
+  config: {
+    data: D;
+    ariaLabel: string;
+    labelledBy?: string;
+    width?: string;
+    tall?: boolean;
+    /** An alert that must be answered (Escudo): Esc and the backdrop do not close it. */
+    alert?: boolean;
+  },
 ): Observable<R | undefined> {
   const phone = typeof matchMedia === 'function' && matchMedia(PHONE_QUERY).matches;
   if (phone) {
@@ -26,9 +34,14 @@ export function openSheet<C, D, R>(
         data: config.data,
         ariaLabel: config.ariaLabel,
         // The title first (README-A): a stray Enter can't roll or confirm.
-        autoFocus: 'first-heading',
+        // An alert starts on its safe button (`data-initial-focus`), the others on the title.
+        autoFocus: config.alert ? '[data-initial-focus]' : 'first-heading',
         panelClass: config.tall ? 'mr-sheet-tall' : 'mr-sheet',
-      })
+        disableClose: config.alert,
+        // MatBottomSheet hands its whole config to the CDK dialog, which knows
+        // `role`; the sheet's own type does not list it.
+        ...(config.alert ? { role: 'alertdialog' } : {}),
+      } as MatBottomSheetConfig<D>)
       .afterDismissed();
   }
   return dialog
@@ -39,7 +52,9 @@ export function openSheet<C, D, R>(
       maxHeight: '92dvh',
       ariaLabelledBy: config.labelledBy,
       ariaLabel: config.labelledBy ? undefined : config.ariaLabel,
-      autoFocus: 'first-heading',
+      autoFocus: config.alert ? '[data-initial-focus]' : 'first-heading',
+      disableClose: config.alert,
+      role: config.alert ? 'alertdialog' : 'dialog',
     })
     .afterClosed();
 }

@@ -183,3 +183,9 @@ func (s *Service) Conditions() []link.Named {
 	}
 	return out
 }
+
+// NamePT implements play.CombatRoster: the Portuguese name of a content key,
+// for a spell the combat shows (the one a character concentrates on, Escudo).
+func (s *Service) NamePT(key string) string {
+	return s.rules.NamePT(key)
+}

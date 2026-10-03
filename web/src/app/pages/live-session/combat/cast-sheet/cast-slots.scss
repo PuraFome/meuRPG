@@ -1,0 +1,39 @@
+:host {
+  display: block;
+}
+
+.foot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+}
+
+.foot__slots {
+  font-size: 16px;
+  line-height: 22px;
+}
+
+.foot__note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  &--off {
+    align-items: center;
+    color: var(--mr-ink);
+    font-weight: 500;
+  }
+
+  .mat-icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}

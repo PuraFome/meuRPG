@@ -11,6 +11,7 @@ import {
   squaresToMeters,
   stepSquare,
 } from '../../core/combat/combat-grid';
+import { conditionTags } from '../../core/combat/conditions';
 import { combatantInitial, isPlayer } from '../../core/combat/combat-view';
 import { CombatantToken } from '../combatant-token/combatant-token';
 
@@ -173,7 +174,7 @@ export class CombatMap {
   protected readonly listed = computed(() =>
     this.shown().map((c) => ({
       id: c.id,
-      text: `${c.label}, coluna ${c.col + 1}, linha ${c.row + 1}`,
+      text: `${c.label}, coluna ${c.col + 1}, linha ${c.row + 1}${c.conditions.length ? `, ${conditionTags(c).join(', ')}` : ''}`,
     })),
   );
 

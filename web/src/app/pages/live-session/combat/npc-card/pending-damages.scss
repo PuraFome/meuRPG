@@ -169,3 +169,24 @@
     font-size: 20px;
   }
 }
+
+// "Aplicar outro valor" (E6-31): a text action under the pair, pulled back so
+// its text lines up with the buttons' edge; the field takes their place.
+.dmg__other {
+  --mat-button-text-label-text-color: var(--mr-accent-text);
+  align-self: flex-start;
+  margin-left: -12px;
+}
+
+.other {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.other__field {
+  // On a phone the field is as wide as the pair under it.
+  @media (min-width: 768px) {
+    max-width: 280px;
+  }
+}

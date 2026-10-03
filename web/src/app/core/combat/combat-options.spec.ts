@@ -37,10 +37,10 @@ describe('the reasons an option is disabled', () => {
 
   it('names the slot level and when the uses come back', () => {
     expect(reasonText(reason(DisabledReasonCode.NO_SLOT, { minLevel: 2 }))).toBe(
-      'Sem espaço de 2º círculo ou maior',
+      'Sem espaço de 2º\u00a0círculo ou maior',
     );
     expect(reasonText(reason(DisabledReasonCode.NO_USES, { recharge: Recharge.SHORT_REST }))).toBe(
-      'Sem usos: volta no descanso curto',
+      'Sem usos: volta num descanso curto',
     );
   });
 

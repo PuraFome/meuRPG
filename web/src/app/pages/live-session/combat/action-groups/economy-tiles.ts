@@ -19,7 +19,7 @@ import { feetToMeters, formatMeters, tight } from '../../../../core/combat/comba
         <li class="tile" [class.tile--used]="t.used">
           <span class="tile__name">{{ t.name }}</span>
           <span class="tile__word">
-            <span class="dot" aria-hidden="true">@if (t.used) {<mat-icon>close</mat-icon>}</span>{{ t.used ? 'Usada' : 'Disponível' }}
+            <span class="dot" aria-hidden="true">@if (t.used) {<mat-icon>close</mat-icon>}</span>{{ t.word }}
           </span>
         </li>
       }
@@ -34,12 +34,24 @@ import { feetToMeters, formatMeters, tight } from '../../../../core/combat/comba
 })
 export class EconomyTiles {
   readonly own = input.required<Combatant>();
+  /** Extra Attack: the attacks that remain once the first spent the action. */
+  readonly attacksLeft = input(0);
+  readonly attacksPerAction = input(1);
 
-  protected readonly tiles = computed(() => [
-    { name: 'Ação', used: this.own().actionUsed },
-    { name: 'Ação bônus', used: this.own().bonusActionUsed },
-    { name: 'Reação', used: this.own().reactionUsed },
-  ]);
+  protected readonly tiles = computed(() => {
+    const c = this.own();
+    const left = this.attacksLeft();
+    const partial = c.actionUsed && left > 0 && this.attacksPerAction() > 1;
+    return [
+      {
+        name: 'Ação',
+        used: c.actionUsed && !partial,
+        word: partial ? `${left} ${left === 1 ? 'ataque restante' : 'ataques restantes'}` : c.actionUsed ? 'Usada' : 'Disponível',
+      },
+      { name: 'Ação bônus', used: c.bonusActionUsed, word: c.bonusActionUsed ? 'Usada' : 'Disponível' },
+      { name: 'Reação', used: c.reactionUsed, word: c.reactionUsed ? 'Usada' : 'Disponível' },
+    ];
+  });
   protected readonly move = computed(() => {
     const c = this.own();
     const total = Math.max(1, c.speedFt * (c.dashed ? 2 : 1));

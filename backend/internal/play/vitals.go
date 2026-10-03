@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"uuid"
 
 	"connectrpc.com/connect"
@@ -48,8 +49,9 @@ func (s *Service) AdjustCharacterVitals(
 
 	var after *playv1.CharacterVitals
 	var repeated bool
+	var touched *playdb.Encounter
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		after, repeated = nil, false // a retry starts over
+		after, repeated, touched = nil, false, nil // a retry starts over
 		q := s.queries.WithTx(tx)
 		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -99,6 +101,24 @@ func (s *Service) AdjustCharacterVitals(
 		}); err != nil {
 			return fmt.Errorf("insert session event: %w", err)
 		}
+		// A combat in progress with this character shows its state ("Caído", the
+		// healing) from the vitals: its revision goes up in the same transaction, so
+		// every screen reads it again.
+		if enc, err := q.GetOpenEncounter(ctx, session.ID); err == nil {
+			cs, err := q.ListCombatants(ctx, enc.ID)
+			if err != nil {
+				return fmt.Errorf("list the combatants: %w", err)
+			}
+			if slices.ContainsFunc(cs, func(c playdb.Combatant) bool { return c.CharacterID == charText }) {
+				t, err := q.TouchEncounter(ctx, enc.ID)
+				if err != nil {
+					return fmt.Errorf("touch the encounter: %w", err)
+				}
+				touched = &t
+			}
+		} else if !errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("find the open encounter: %w", err)
+		}
 		after = adjusted
 		return nil
 	})
@@ -120,6 +140,9 @@ func (s *Service) AdjustCharacterVitals(
 			VitalsChanged: &playv1.WatchGameSessionResponse_VitalsChanged{Vitals: after},
 		}},
 	})
+	if touched != nil {
+		s.publishEncounterChanged(m.CampaignID, *touched)
+	}
 	return connect.NewResponse(&playv1.AdjustCharacterVitalsResponse{Vitals: after}), nil
 }
 

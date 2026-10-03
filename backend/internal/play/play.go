@@ -156,6 +156,9 @@ type CombatRoster interface {
 	// Conditions lists the SRD's conditions (RN-22), with their Portuguese
 	// names, sorted by key.
 	Conditions() []link.Named
+	// NamePT is the Portuguese name of a content key ("spell:shield" is "Escudo
+	// Arcano"), or "" for an unknown key.
+	NamePT(key string) string
 }
 
 // DiceForce is what the campaign's dice setting makes a player do (RN-18).
@@ -271,6 +274,15 @@ type Service struct {
 	// server instance only (docs/operacao.md).
 	hub  *live.Hub
 	live LiveConfig
+}
+
+// nameOf is the Portuguese name of a content key the combat shows: an SRD
+// condition's, or any other key's (a spell's) from the rules content.
+func (s *Service) nameOf(key string) string {
+	if n, ok := s.conditionNames[key]; ok {
+		return n
+	}
+	return s.roster.NamePT(key)
 }
 
 // The compiler checks that Service implements the handler.

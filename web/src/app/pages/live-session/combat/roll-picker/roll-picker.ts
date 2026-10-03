@@ -1,5 +1,5 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, computed, input, model, output, signal } from '@angular/core';
+import { Component, ElementRef, Injector, afterNextRender, computed, inject, input, model, output, signal, viewChild } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -50,12 +50,18 @@ export class RollPicker {
   readonly busy = input(false);
   /** The buttons stick to the bottom of the sheet that scrolls (the attack sheet). */
   readonly sticky = input(false);
+  /** The inline roll (the cast's damage, the death save): a label in the small
+   * size, the field and the total tighter. The attack sheet keeps its E6-08 size. */
+  readonly compact = input(false);
   /** Typing mode, two-way: the sheet reads it to change its title. */
   readonly typing = model(false);
 
   readonly app = output<void>();
   readonly typed = output<number>();
 
+  private readonly injector = inject(Injector);
+  private readonly field = viewChild<ElementRef<HTMLInputElement>>('field');
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   protected readonly id = `roll-picker-${nextId++}`;
   protected readonly text = signal('');
   protected readonly value = computed(() => parseSum(this.text(), this.min(), this.max()));
@@ -78,6 +84,21 @@ export class RollPicker {
   reset(): void {
     this.typing.set(false);
     this.text.set('');
+  }
+
+  /** "Digitar o resultado": the field opens focused and in view, above the
+   * buttons that stick to the bottom of a sheet on a short screen. */
+  protected startTyping(): void {
+    this.typing.set(true);
+    afterNextRender(
+      () => {
+        // The whole typed form (label, field, error, "Confirmar") comes into view: at
+        // the top of a sheet that scrolls, in the middle of the page otherwise.
+        this.host.nativeElement.scrollIntoView({ block: this.sticky() ? 'start' : 'center' });
+        this.field()?.nativeElement.focus({ preventScroll: true });
+      },
+      { injector: this.injector },
+    );
   }
 
   protected onType(event: Event): void {

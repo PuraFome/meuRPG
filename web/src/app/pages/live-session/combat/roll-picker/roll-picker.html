@@ -20,20 +20,21 @@
         class="pick__main"
         [class.pick__main--quiet]="preferApp() && canApp()"
         [class.pick__link]="preferApp() && canApp()"
-        (click)="typing.set(true)"
+        (click)="startTyping()"
       >
         Digitar o resultado
       </button>
     }
   </div>
 } @else {
-  <div class="type">
+  <div class="type" [class.type--compact]="compact()">
     <label class="type__label" [for]="id">{{ label() }}</label>
     @if (hint()) {
       <p class="type__hint">{{ hintText() }}</p>
     }
     <div class="type__row">
       <input
+        #field
         [id]="id"
         class="type__field"
         type="text"

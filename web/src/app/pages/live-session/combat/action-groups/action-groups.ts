@@ -3,7 +3,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import type { Combatant, PendingDamage } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import type { ActionOption, SpellOption, TurnOptions } from '../../../../../gen/meurpg/rules/v1/rules_pb';
+import type { ActionOption, Attack, SpellOption, TurnOptions } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { feetToMeters, formatMeters, tight } from '../../../../core/combat/combat-grid';
 import {
   attackDetail,
@@ -26,10 +26,13 @@ import { GroupState } from './group-state';
  * `GetTurnOptions` works out, grouped by economy. Each group header carries
  * its state word (the open circle and "Disponível", or "Usada"). Ação has
  * the attacks, the spells and the standard actions; Ação bônus and Reação
- * the spells and features of their economy; Movimento, "Mover". Casting a
- * spell and the features' buttons come with the spells slice: those rows
- * are listed without a button, ready to get one (`cast`, `feature`).
- * Disabled options keep their place with the reason, by code (`reasonText`).
+ * the spells and features of their economy; Movimento, "Mover". A spell
+ * row has "Conjurar" (the cast sheet, `cast`; a cantrip that asks for a saving
+ * throw is cast too, not attacked), a feature row "Usar" (`feature`, a
+ * TakeAction); Escudo, a reaction, has none: it asks when a hit lands.
+ * With Extra Attack the Ação header says how many attacks are left and the
+ * attacks stay enabled. Disabled options keep their place with the reason, by
+ * code (`reasonText`).
  */
 @Component({
   selector: 'app-action-groups',
@@ -41,6 +44,12 @@ export class ActionGroups {
   readonly options = input.required<TurnOptions>();
   /** The player's own combatant: its economy and movement. */
   readonly own = input.required<Combatant>();
+  /** Extra Attack: the attacks of this Attack action that remain, and how many
+   * it makes (`TurnEconomy`). */
+  readonly attacksLeft = input(0);
+  readonly attacksPerAction = input(1);
+  /** What the last feature said ("Você tem outra ação"), in a live region. */
+  readonly note = input('');
   /** A hit of this turn whose damage is still to roll. */
   readonly pendingRoll = input<PendingDamage | null>(null);
   readonly busy = input(false);
@@ -49,6 +58,10 @@ export class ActionGroups {
   readonly attack = output<string>();
   /** A standard action, by key ("standard:dash"). */
   readonly action = output<string>();
+  /** "Conjurar": the key of the spell, or of a cantrip that asks for a save. */
+  readonly cast = output<string>();
+  /** "Usar": the key of a feature action ("feature:second-wind"). */
+  readonly feature = output<string>();
   readonly move = output<void>();
   /** "Rolar o dano" of a hit that waits for its roll. */
   readonly rollDamage = output<void>();
@@ -85,6 +98,17 @@ export class ActionGroups {
     };
   });
 
+  /** The word on the Ação header: with Extra Attack, once the first attack
+   * spent the action, "1 ataque restante" (an open circle: it is not over). */
+  protected readonly actionWord = computed(() => {
+    const used = this.own().actionUsed;
+    const left = this.attacksLeft();
+    if (used && left > 0 && this.attacksPerAction() > 1) {
+      return { word: `${left} ${left === 1 ? 'ataque restante' : 'ataques restantes'}`, used: false };
+    }
+    return { word: groupState(used), used };
+  });
+
   protected readonly attackName = attackName;
   protected readonly attackDetail = (a: Parameters<typeof attackDetail>[0]) => attackDetail(a);
   protected readonly reasonText = reasonText;
@@ -114,7 +138,13 @@ export class ActionGroups {
     return !a.enabled && !isReactionHint(a.reason);
   }
 
+  /** "1 uso", "2 usos": what is left of the feature's resource. */
   protected featureDetail(a: ActionOption): string {
-    return a.usesLeft > 0 ? `${a.usesLeft} ${a.usesLeft === 1 ? 'uso' : 'usos'} restantes` : '';
+    return a.usesLeft > 0 ? `${a.usesLeft} ${a.usesLeft === 1 ? 'uso' : 'usos'}` : '';
+  }
+
+  /** A save cantrip (Chama Sagrada) is in the attacks, but it is cast. */
+  protected asksSave(a: Attack): boolean {
+    return a.saveDc > 0;
   }
 }

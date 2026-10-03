@@ -442,6 +442,11 @@ message Attack {
   DiceFormula versatile_damage_dice = 14;
   // Content key of the damage type, such as "damage-type:slashing".
   string damage_type_key = 15;
+  // True for a weapon the SRD lists as a melee weapon, thrown or not (a dagger,
+  // a spear, a handaxe), and for a basic sheet's attack that reaches 5 ft or
+  // less; false for a ranged weapon and for a spell. An opportunity attack is
+  // a melee attack.
+  bool melee = 16;
 }
 
 // AttackKind says whether an attack is a weapon or a spell.

@@ -1091,7 +1091,16 @@ type ReactionPrompt struct {
 	// The reaction spell, "spell:shield".
 	SpellKey string `protobuf:"bytes,4,opt,name=spell_key,json=spellKey,proto3" json:"spell_key,omitempty"`
 	// The slots it can be cast with: at least the 1st level, with a free slot.
-	Slots         []*v1.SlotChoice `protobuf:"bytes,5,rep,name=slots,proto3" json:"slots,omitempty"`
+	Slots []*v1.SlotChoice `protobuf:"bytes,5,rep,name=slots,proto3" json:"slots,omitempty"`
+	// Who attacked ("Capitão Goblin") and with which attack ("Cimitarra", its
+	// Portuguese name): for the master, and for the target's player only when the
+	// attacker is not hidden from them (RN-20). Both are empty for a player when
+	// the attacker is hidden.
+	AttackerLabel string `protobuf:"bytes,6,opt,name=attacker_label,json=attackerLabel,proto3" json:"attacker_label,omitempty"`
+	AttackNamePt  string `protobuf:"bytes,7,opt,name=attack_name_pt,json=attackNamePt,proto3" json:"attack_name_pt,omitempty"`
+	// The reaction spell's Portuguese name ("Escudo Arcano"), for everyone who
+	// gets the prompt.
+	SpellNamePt   string `protobuf:"bytes,8,opt,name=spell_name_pt,json=spellNamePt,proto3" json:"spell_name_pt,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1159,6 +1168,27 @@ func (x *ReactionPrompt) GetSlots() []*v1.SlotChoice {
 		return x.Slots
 	}
 	return nil
+}
+
+func (x *ReactionPrompt) GetAttackerLabel() string {
+	if x != nil {
+		return x.AttackerLabel
+	}
+	return ""
+}
+
+func (x *ReactionPrompt) GetAttackNamePt() string {
+	if x != nil {
+		return x.AttackNamePt
+	}
+	return ""
+}
+
+func (x *ReactionPrompt) GetSpellNamePt() string {
+	if x != nil {
+		return x.SpellNamePt
+	}
+	return ""
 }
 
 // Combatant is one who fights, as the caller may see it. Fields marked "only
@@ -1239,8 +1269,12 @@ type Combatant struct {
 	DeathSaveDue bool `protobuf:"varint,32,opt,name=death_save_due,json=deathSaveDue,proto3" json:"death_save_due,omitempty"`
 	// The conditions' Portuguese names, in the same order as `conditions`.
 	ConditionNamesPt []string `protobuf:"bytes,33,rep,name=condition_names_pt,json=conditionNamesPt,proto3" json:"condition_names_pt,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// The Portuguese name of `concentration_spell` ("Teia"); empty when the
+	// combatant is not concentrating. Filled for everyone who sees the combatant,
+	// like `condition_names_pt`.
+	ConcentrationSpellNamePt string `protobuf:"bytes,34,opt,name=concentration_spell_name_pt,json=concentrationSpellNamePt,proto3" json:"concentration_spell_name_pt,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *Combatant) Reset() {
@@ -1502,6 +1536,13 @@ func (x *Combatant) GetConditionNamesPt() []string {
 		return x.ConditionNamesPt
 	}
 	return nil
+}
+
+func (x *Combatant) GetConcentrationSpellNamePt() string {
+	if x != nil {
+		return x.ConcentrationSpellNamePt
+	}
+	return ""
 }
 
 // Participant is who joins a combat: a character of the campaign.
@@ -7135,15 +7176,17 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\n" +
 	"started_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x125\n" +
 	"\bended_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\aendedAt\x12I\n" +
-	"\x10reaction_prompts\x18\x0f \x03(\v2\x1e.meurpg.play.v1.ReactionPromptR\x0freactionPrompts\"\xca\x01\n" +
+	"\x10reaction_prompts\x18\x0f \x03(\v2\x1e.meurpg.play.v1.ReactionPromptR\x0freactionPrompts\"\xbb\x02\n" +
 	"\x0eReactionPrompt\x12*\n" +
 	"\x11pending_damage_id\x18\x01 \x01(\tR\x0fpendingDamageId\x12\x1b\n" +
 	"\ttarget_id\x18\x02 \x01(\tR\btargetId\x12\x1f\n" +
 	"\vattacker_id\x18\x03 \x01(\tR\n" +
 	"attackerId\x12\x1b\n" +
 	"\tspell_key\x18\x04 \x01(\tR\bspellKey\x121\n" +
-	"\x05slots\x18\x05 \x03(\v2\x1b.meurpg.rules.v1.SlotChoiceR\x05slots\"\xcb\n" +
-	"\n" +
+	"\x05slots\x18\x05 \x03(\v2\x1b.meurpg.rules.v1.SlotChoiceR\x05slots\x12%\n" +
+	"\x0eattacker_label\x18\x06 \x01(\tR\rattackerLabel\x12$\n" +
+	"\x0eattack_name_pt\x18\a \x01(\tR\fattackNamePt\x12\"\n" +
+	"\rspell_name_pt\x18\b \x01(\tR\vspellNamePt\"\x8a\v\n" +
 	"\tCombatant\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x121\n" +
@@ -7184,7 +7227,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"armorClass\x88\x01\x01\x12*\n" +
 	"\x11armor_class_bonus\x18\x1f \x01(\x05R\x0farmorClassBonus\x12$\n" +
 	"\x0edeath_save_due\x18  \x01(\bR\fdeathSaveDue\x12,\n" +
-	"\x12condition_names_pt\x18! \x03(\tR\x10conditionNamesPtB\r\n" +
+	"\x12condition_names_pt\x18! \x03(\tR\x10conditionNamesPt\x12=\n" +
+	"\x1bconcentration_spell_name_pt\x18\" \x01(\tR\x18concentrationSpellNamePtB\r\n" +
 	"\v_initiativeB\x13\n" +
 	"\x11_initiative_bonusB\x12\n" +
 	"\x10_initiative_faceB\x15\n" +

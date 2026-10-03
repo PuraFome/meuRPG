@@ -83,6 +83,20 @@
   }
 }
 
+// The dot of a combatant with conditions: the accent, ringed in the surface so it
+// reads on the token and on the map.
+.tk__dot {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  box-sizing: border-box;
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--mr-surface);
+  border-radius: 50%;
+  background: var(--mr-accent);
+}
+
 // On a battle map the picture is light in both themes, so the token keeps
 // the light theme's colours (styles.scss: --mr-map-token-*).
 :host(.tk--map) {

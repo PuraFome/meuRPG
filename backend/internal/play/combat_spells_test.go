@@ -1090,7 +1090,7 @@ func TestRN22_ConditionsAndTheConcentrationReminder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SetCombatantConditions() error = %v", err)
 	}
-	if g := byLabel(t, a.get(t, a.caio), "Goblin"); !slices.Equal(g.GetConditions(), []string{"condition:poisoned", "condition:prone"}) || !slices.Equal(g.GetConditionNamesPt(), []string{"Envenenado", "Caído"}) {
+	if g := byLabel(t, a.get(t, a.caio), "Goblin"); !slices.Equal(g.GetConditions(), []string{"condition:poisoned", "condition:prone"}) || !slices.Equal(g.GetConditionNamesPt(), []string{"Envenenado", "Derrubado"}) {
 		t.Errorf("a player sees the goblin's conditions as %v / %v, want the keys and the Portuguese names", g.GetConditions(), g.GetConditionNamesPt())
 	}
 	for name, call := range map[string]func() error{
