@@ -2,7 +2,7 @@ import { timestampDate } from '@bufbuild/protobuf/wkt';
 
 import type { OpenSceneInfo, SceneActionView, SceneRoll } from '../../../gen/meurpg/play/v1/scene_pb';
 import { rollFormula } from '../combat/combat-dice';
-import { joinDots } from '../combat/combat-grid';
+import { joinDots } from '../format/text';
 import { formatClock } from '../../shared/session-time/session-time';
 import { actionTitle } from '../maps/scene-actions';
 

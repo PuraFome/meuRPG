@@ -254,6 +254,32 @@ describe('a basic sheet through the editor', () => {
     expect(init.initiativeBonus).toBe(2);
   });
 
+  it('carries the ND and the XP the minion gives through the form, so a save never wipes them (E7-11)', () => {
+    const basic = {
+      $typeName: 'meurpg.characters.v1.BasicSheet' as const,
+      hitPointsMax: 7,
+      armorClass: 15,
+      speedFt: 30,
+      attackBonus: 0,
+      damage: '',
+      description: '',
+      initiativeBonus: 0,
+      attacks: [],
+      challengeRating: '1/4',
+      xpValue: 50,
+      portraitImageId: '6f1c2d3e-0000-4000-8000-000000000001',
+    };
+    const form = toFormBasicSheet('Goblin', basic);
+    expect(form).toMatchObject({ challengeRating: '1/4', xpValue: 50 });
+    expect(toBasicSheetInit(form)).toMatchObject({ challengeRating: '1/4', xpValue: 50 });
+    // The portrait (MR-031) survives the save too.
+    expect(toBasicSheetInit(form).portraitImageId).toBe('6f1c2d3e-0000-4000-8000-000000000001');
+
+    // What the master typed beyond the table survives too.
+    expect(toBasicSheetInit({ ...form, challengeRating: '1/2', xpValue: 70 })).toMatchObject({ challengeRating: '1/2', xpValue: 70 });
+    expect(toBasicSheetInit({ ...form, challengeRating: '', xpValue: 0 })).toMatchObject({ challengeRating: '', xpValue: 0 });
+  });
+
   it('sends the old damage text back unchanged while there are no attacks', () => {
     const form = toFormBasicSheet('Goblin', {
       $typeName: 'meurpg.characters.v1.BasicSheet',

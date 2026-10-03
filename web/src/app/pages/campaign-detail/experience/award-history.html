@@ -1,0 +1,83 @@
+@if (notice()) {
+  <p class="notice mr-notice mr-notice--neutral" role="status">
+    <mat-icon aria-hidden="true">info</mat-icon>{{ notice() }}
+  </p>
+}
+
+<ul class="list">
+  @for (a of awards(); track a.id) {
+    <li class="item" [class.item--undone]="a.undone">
+      @if (asking() === a.id) {
+        <div
+          #box
+          class="ask mr-notice mr-notice--warning"
+          role="alertdialog"
+          [attr.aria-label]="title(a)"
+          (keydown.escape)="back(a.id)"
+        >
+          <mat-icon aria-hidden="true">warning</mat-icon>
+          <div class="ask__body">
+            <p class="ask__title">{{ title(a) }}</p>
+            <p class="ask__text">{{ consequence(a) }}</p>
+            @if (error()) {
+              <p class="ask__error" role="alert">{{ error() }}</p>
+            }
+            <div class="ask__btns">
+              <button #voltar mat-stroked-button type="button" class="ask__btn" (click)="back(a.id)">
+                Voltar
+              </button>
+              <button
+                mat-stroked-button
+                type="button"
+                class="ask__btn ask__go"
+                [disabled]="busy()"
+                (click)="undo(a)"
+              >
+                {{ a.mode === Mode.XP_AWARD_MODE_MILESTONE ? 'Desfazer marco' : 'Desfazer XP' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      } @else {
+        <div class="when">
+          <span class="when__day">{{ when(a) }}</span>
+          <span class="mr-tag">{{ tag(a.mode) }}</span>
+          @if (a.undone) {
+            <span class="mr-tag mr-tag--danger">Desfeito</span>
+          }
+        </div>
+        <div class="what">
+          <span class="what__title">{{ a.reason }}</span>
+          <span class="what__sub">{{ given(a) }}</span>
+          @if (a.undone) {
+            <span class="what__sub">{{ undone(a) }}</span>
+          }
+        </div>
+        @if (!milestones() && a.mode !== Mode.XP_AWARD_MODE_MILESTONE) {
+          <div class="amount">
+            <span class="amount__each">{{ each(a) }}</span>
+            <span class="amount__total">{{ total(a) }}</span>
+          </div>
+        }
+        @if (a.canUndo) {
+          <button
+            mat-button
+            type="button"
+            class="undo"
+            [attr.data-undo]="a.id"
+            [attr.aria-label]="'Desfazer ' + a.reason"
+            (click)="ask(a)"
+          >
+            <mat-icon aria-hidden="true">undo</mat-icon>Desfazer
+          </button>
+        }
+      }
+    </li>
+  }
+</ul>
+
+@if (hasMore()) {
+  <button mat-button type="button" class="more" [disabled]="loadingMore()" (click)="more()">
+    Mostrar mais
+  </button>
+}

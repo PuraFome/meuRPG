@@ -1,0 +1,103 @@
+:host {
+  display: block;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// A phone: the name, then the number, then the bar. From a tablet up, one
+// line: the name, the bar in the middle, the numbers on the right.
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  padding: 12px 0;
+  border-top: 1px solid var(--mr-rule);
+
+  @media (min-width: 768px) {
+    grid-template-columns: minmax(120px, 190px) minmax(0, 1fr) minmax(150px, auto);
+    align-items: center;
+    gap: var(--mr-space-4);
+  }
+}
+
+.row--marks {
+  @media (min-width: 768px) {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+
+.who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.who__name {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+
+.who__sub {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+// The bar is the ink on the line colour; the words beside it say the same.
+.bar {
+  display: block;
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-line);
+
+  @media (max-width: 767.98px) {
+    order: 3;
+  }
+}
+
+.bar__fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-ink);
+}
+
+.num {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  @media (min-width: 768px) {
+    align-items: flex-end;
+    text-align: right;
+  }
+}
+
+.num__of {
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 20px;
+  line-height: 24px;
+  white-space: nowrap;
+}
+
+.num__missing {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.tag {
+  align-self: flex-start;
+
+  @media (min-width: 768px) {
+    align-self: flex-end;
+  }
+}

@@ -1,0 +1,33 @@
+/**
+ * How the screens write numbers and detail lines, shared by the combat and
+ * the XP screens (it used to live in `combat-grid.ts`). Plain functions, no
+ * Angular: the text is tested without a DOM.
+ */
+
+/** Joins the segments of a detail line with " · ": a no-break space before the
+ * dot and a normal one after it, so a wrapped line ends with the dot and the
+ * next starts with a word. */
+export function joinDots(parts: readonly string[]): string {
+  return parts.join(' · ');
+}
+
+/** Keeps a number, its unit and the words that lead to it on one line
+ * ("alcance 36 m", "mais 4,5 m", "de 1 a 20", "2.716 XP", "120 PO") with
+ * no-break spaces, so a line never ends on "alcance" or begins with "m". */
+export function tight(text: string): string {
+  return text
+    .replace(/(\d) a (\d)/g, '$1 a $2')
+    .replace(/(\d) (m|XP|PO)\b/g, '$1 $2')
+    .replace(/\b(alcance|de|até|mais|restam|Restam|faltam|Faltam|a) (?=\d)/g, '$1 ');
+}
+
+/** "2.716": pt-BR thousands separator, done by hand so the result never
+ * depends on the runtime's locale data. Whole numbers only. */
+export function formatInt(n: number): string {
+  return String(Math.trunc(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+/** "2.700 XP", the number and its unit tied with a no-break space. */
+export function formatXp(xp: number): string {
+  return `${formatInt(xp)} XP`;
+}

@@ -17,7 +17,7 @@ import type { SceneActionView } from '../../../../../gen/meurpg/play/v1/scene_pb
 import { actionSubtitle, actionTitle } from '../../../../core/maps/scene-actions';
 import type { SceneState } from '../../../../core/play/scene-state';
 import { ownRollOf, sceneRollFormula, signedBonus } from '../../../../core/play/scene-view';
-import { tight } from '../../../../core/combat/combat-grid';
+import { tight } from '../../../../core/format/text';
 import { openSceneRollSheet } from '../scene-roll-sheet/scene-roll-sheet';
 
 /**

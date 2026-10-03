@@ -7,6 +7,9 @@
           @if (isNpc()) {
             <li class="mr-tag">{{ kindLabel() }}</li>
           }
+          @if (milestoneTag()) {
+            <li><app-level-up-tag /></li>
+          }
           @if (showState()) {
             <li
               class="mr-tag"
@@ -41,6 +44,17 @@
           </div>
         }
       </dl>
+    }
+
+    @if (xp(); as x) {
+      <app-xp-block
+        class="head__xp"
+        [xp]="x.xp"
+        [nextLevelXp]="x.nextLevelXp"
+        [level]="x.level"
+        [canLevelUp]="x.canLevelUp"
+        [isMaster]="vm().isMaster"
+      />
     }
   </div>
 

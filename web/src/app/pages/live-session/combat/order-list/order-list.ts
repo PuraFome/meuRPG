@@ -4,7 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 
 import { type Combatant, CombatantState, type Encounter, EncounterStatus } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { joinDots } from '../../../../core/combat/combat-grid';
+import { joinDots } from '../../../../core/format/text';
 import { conditionTags } from '../../../../core/combat/conditions';
 import { combatantInitial, isPlayer, stateWord } from '../../../../core/combat/combat-view';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';

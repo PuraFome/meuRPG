@@ -15,7 +15,11 @@ import {
   type ReactionOutcome,
   type SpellCast,
 } from '../../../gen/meurpg/play/v1/combat_pb';
+import { newKey } from '../connect/idempotency';
 import { CONNECT_TRANSPORT } from '../connect/transport';
+
+// The key maker moved to `core/connect`; the combat screens still import it from here.
+export { newKey };
 
 /** Who joins a combat: a character, how many copies (NPCs) and whether the
  * copies start hidden (unset: the server's default, hidden for an NPC). */
@@ -519,12 +523,6 @@ export class CombatClient {
     });
     return need(res.encounter, 'EndEncounter');
   }
-}
-
-/** A fresh idempotency key. The start dialog makes its own, once per open
- * dialog, so a second tap on "Iniciar combate" can't start two combats. */
-export function newKey(): string {
-  return crypto.randomUUID();
 }
 
 function toParticipant(spec: JoinSpec): MessageInitShape<typeof ParticipantSchema> {

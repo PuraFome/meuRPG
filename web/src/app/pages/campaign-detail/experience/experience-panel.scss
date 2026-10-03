@@ -1,0 +1,54 @@
+:host {
+  display: block;
+}
+
+.exp__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+  margin-bottom: var(--mr-space-2);
+
+  .mr-panel__title {
+    margin: 0;
+  }
+}
+
+.exp__lead {
+  margin: 0 0 var(--mr-space-2);
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+// What was just given: its own polite region, empty until there is news.
+.exp__status:empty {
+  display: none;
+}
+
+.exp__status .mr-notice {
+  margin: 0 0 var(--mr-space-3);
+}
+
+.exp__sub {
+  margin: var(--mr-space-4) 0 var(--mr-space-1);
+  font-family: var(--mr-font-display);
+  font-weight: 700;
+  font-size: 19px;
+  line-height: 24px;
+}
+
+.exp__foot {
+  margin: var(--mr-space-2) 0 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.exp__retry {
+  margin-top: var(--mr-space-3);
+}
+
+.exp__inline {
+  --mat-button-text-label-text-color: var(--mr-accent-text);
+}

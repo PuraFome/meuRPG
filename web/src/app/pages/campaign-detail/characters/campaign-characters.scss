@@ -44,3 +44,12 @@
     width: auto;
   }
 }
+
+// The state tag, with "Pode subir de nível" above it (RN-12): one under the
+// other and right-aligned, so the rows keep their height.
+.tags {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--mr-space-1);
+}

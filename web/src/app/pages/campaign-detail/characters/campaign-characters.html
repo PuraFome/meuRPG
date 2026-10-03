@@ -65,11 +65,16 @@
                         <span class="mr-list__sub">{{ sub }}</span>
                       }
                     </span>
-                    <span class="mr-tag" [class]="stateTagClass(c.state)">
-                      @if (c.state === 'locked') {
-                        <mat-icon aria-hidden="true">lock</mat-icon>
+                    <span class="tags">
+                      @if (canLevelUp(c.id)) {
+                        <app-level-up-tag />
                       }
-                      {{ characterStateLabel(c.state) }}
+                      <span class="mr-tag" [class]="stateTagClass(c.state)">
+                        @if (c.state === 'locked') {
+                          <mat-icon aria-hidden="true">lock</mat-icon>
+                        }
+                        {{ characterStateLabel(c.state) }}
+                      </span>
                     </span>
                   </a>
                 </li>

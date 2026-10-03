@@ -57,18 +57,29 @@
                     <mat-error>De 1 a 20.</mat-error>
                   </mat-form-field>
 
-                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
-                    <mat-label>Pontos de experiência</mat-label>
-                    <input
-                      matInput
-                      type="number"
-                      inputmode="numeric"
-                      formControlName="experiencePoints"
-                      min="0"
-                      max="1000000"
-                    />
-                    <mat-error>De 0 a 1.000.000.</mat-error>
-                  </mat-form-field>
+                  @if (s.kind === 'player') {
+                    @if (s.xpLocked) {
+                      <!-- RN-01 locked the sheet: the XP is a number to read; only the master's awards change it. -->
+                      <div class="xp-read">
+                        <span class="group-label">Pontos de experiência</span>
+                        <span class="xp-read__value">{{ experienceLabel() }}</span>
+                        <span class="group-hint">Só os prêmios do mestre mudam o XP.</span>
+                      </div>
+                    } @else {
+                      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                        <mat-label>Pontos de experiência</mat-label>
+                        <input
+                          matInput
+                          type="number"
+                          inputmode="numeric"
+                          formControlName="experiencePoints"
+                          min="0"
+                          max="1000000"
+                        />
+                        <mat-error>De 0 a 1.000.000.</mat-error>
+                      </mat-form-field>
+                    }
+                  }
 
                   <mat-form-field appearance="outline" subscriptSizing="dynamic">
                     <mat-label>Classe</mat-label>
@@ -148,6 +159,21 @@
                     </mat-select>
                   </mat-form-field>
                 </div>
+
+                @if (s.kind === 'enemy' || s.kind === 'boss') {
+                  <section class="subsection" aria-labelledby="defeat-title">
+                    <h3 class="subsection__title" id="defeat-title">Ao ser derrotado</h3>
+                    <p class="group-hint defeat-lead">O XP que o grupo ganha quando este NPC é derrotado.</p>
+                    <app-defeat-xp
+                      [rating]="fullForm.controls.challengeRating"
+                      [xp]="fullForm.controls.xpValue"
+                      [table]="s.catalog.challengeRatings"
+                    />
+                    <p class="group-hint defeat-note">
+                      Só você vê o ND e o XP. Os jogadores só ganham o XP quando o combate acaba e você dá.
+                    </p>
+                  </section>
+                }
 
                 @if (selectedBackground() === 'custom') {
                   <section class="subsection" aria-labelledby="custom-background-title">
@@ -437,7 +463,11 @@
           </form>
         } @else {
           <form class="mr-panel editor__short" [formGroup]="basicForm">
-            <app-npc-short-form [form]="basicForm" />
+            <app-npc-short-form
+              [form]="basicForm"
+              [ratings]="s.catalog.challengeRatings"
+              [showDefeat]="s.kind === 'minion'"
+            />
           </form>
         }
 

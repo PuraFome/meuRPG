@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { createClient } from '@connectrpc/connect';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 
+import { CampaignService, XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import {
   Alignment as GenAlignment,
   BasicSheet as GenBasicSheet,
@@ -26,6 +27,7 @@ import { CONNECT_TRANSPORT } from '../../core/connect/transport';
 import {
   AttackVm,
   BasicSheetVm,
+  CampaignXpMode,
   CharacterSheetSource,
   CharacterSheetVm,
   CharacterStoryVm,
@@ -269,6 +271,14 @@ const EMPTY_BASIC_SHEET_VM: BasicSheetVm = {
   description: '',
 };
 
+function basicRating(character: Character): string {
+  return character.sheet?.content.case === 'basic' ? character.sheet.content.value.challengeRating : '';
+}
+
+function basicXp(character: Character): number {
+  return character.sheet?.content.case === 'basic' ? character.sheet.content.value.xpValue : 0;
+}
+
 /** Exported so `character-sheet-source.live.spec.ts` can test the identity
  * fields (alignment, XP) directly, without going through the whole
  * `getCharacterSheet` RPC round trip. */
@@ -320,6 +330,11 @@ export function toCharacterSheetVm(character: Character): CharacterSheetVm {
     backgroundLabel: character.derived?.backgroundNamePt ?? '',
     alignmentLabel: full ? ALIGNMENT_LABEL_FROM_GEN[full.alignment] : '',
     experiencePoints: full ? full.experiencePoints : null,
+    totalLevel: character.derived?.totalLevel ?? 0,
+    nextLevelXp: character.derived?.nextLevelXp ?? 0,
+    canLevelUp: character.canLevelUp,
+    challengeRating: full ? full.challengeRating : basicRating(character),
+    xpValue: full ? full.xpValue : basicXp(character),
   };
 }
 
@@ -333,6 +348,19 @@ export function toCharacterSheetVm(character: Character): CharacterSheetVm {
 @Injectable()
 export class CharacterSheetSourceLive implements CharacterSheetSource {
   private readonly client = createClient(CharacterService, inject(CONNECT_TRANSPORT));
+  private readonly campaigns = createClient(CampaignService, inject(CONNECT_TRANSPORT));
+
+  async getXpMode(campaignId: string): Promise<CampaignXpMode> {
+    const res = await this.campaigns.getCampaign({ campaignId });
+    switch (res.campaign?.xpMode) {
+      case XpMode.MILESTONES:
+        return 'milestones';
+      case XpMode.GOLD:
+        return 'gold';
+      default:
+        return 'enemies';
+    }
+  }
 
   async getCharacterSheet(campaignId: string, characterId: string): Promise<CharacterSheetVm> {
     const res = await this.client.getCharacter({ campaignId, characterId });

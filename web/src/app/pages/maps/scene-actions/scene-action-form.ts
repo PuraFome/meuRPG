@@ -29,7 +29,7 @@ import {
   checkOptions,
   parseDc,
 } from '../../../core/maps/scene-actions';
-import { tight } from '../../../core/combat/combat-grid';
+import { tight } from '../../../core/format/text';
 import { FictionNotice } from '../../../shared/fiction-notice/fiction-notice';
 
 let nextId = 0;

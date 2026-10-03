@@ -58,6 +58,6 @@ export class SheetFrame {
 
   /** An error opens at the top of the scrolling body, where it is seen. */
   scrollToTop(): void {
-    this.body().nativeElement.scrollTo({ top: 0 });
+    this.body().nativeElement.scrollTop = 0;
   }
 }

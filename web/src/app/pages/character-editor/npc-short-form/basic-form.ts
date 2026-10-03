@@ -50,6 +50,13 @@ export type BasicSheetFormGroup = FormGroup<{
   legacyDamage: FormControl<string>;
   legacyAttackBonus: FormControl<number>;
   description: FormControl<string>;
+  /** "Nível de desafio (ND)" and "XP ao derrotar" (E7-11): a new minion starts
+   * at ND 0, 10 XP, so nobody is left without a number. */
+  challengeRating: FormControl<string>;
+  xpValue: FormControl<number>;
+  /** The portrait's image ID (MR-031), carried as read: saving the short
+   * form must never clear it. */
+  portraitImageId: FormControl<string>;
 }>;
 
 /** "+2", "2", "-1" and "−1" (a real minus) as a number; `null` for
@@ -117,6 +124,9 @@ export function createBasicForm(fb: FormBuilder): BasicSheetFormGroup {
     legacyDamage: [''],
     legacyAttackBonus: [0],
     description: ['', Validators.maxLength(2000)],
+    challengeRating: ['0'],
+    xpValue: [10, [Validators.required, Validators.min(0), Validators.max(1_000_000)]],
+    portraitImageId: [''],
   });
 }
 
@@ -139,6 +149,9 @@ export function patchBasicForm(
     legacyDamage: value.legacyDamage,
     legacyAttackBonus: value.legacyAttackBonus,
     description: value.description,
+    challengeRating: value.challengeRating,
+    xpValue: value.xpValue,
+    portraitImageId: value.portraitImageId,
   });
 }
 
@@ -166,6 +179,9 @@ export function basicFormToValue(form: BasicSheetFormGroup): BasicCharacterFormV
     legacyDamage: raw.legacyDamage,
     legacyAttackBonus: raw.legacyAttackBonus,
     description: raw.description,
+    challengeRating: raw.challengeRating,
+    xpValue: raw.xpValue,
+    portraitImageId: raw.portraitImageId,
   };
 }
 
@@ -175,6 +191,7 @@ const BASIC_FIELD_LABELS: readonly [string, string][] = [
   ['armorClass', 'Classe de Armadura'],
   ['speedWalkM', 'Deslocamento'],
   ['initiativeBonus', 'Iniciativa'],
+  ['xpValue', 'XP ao derrotar'],
   ['description', 'Descrição'],
 ];
 

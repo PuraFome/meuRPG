@@ -4,7 +4,8 @@ import { MatIconModule } from '@angular/material/icon';
 
 import type { Combatant, PendingDamage } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import type { ActionOption, Attack, SpellOption, TurnOptions } from '../../../../../gen/meurpg/rules/v1/rules_pb';
-import { feetToMeters, formatMeters, tight } from '../../../../core/combat/combat-grid';
+import { feetToMeters, formatMeters } from '../../../../core/combat/combat-grid';
+import { tight } from '../../../../core/format/text';
 import {
   attackDetail,
   attackName,

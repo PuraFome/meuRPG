@@ -106,6 +106,8 @@ export type LiveEventVm =
   | ({ readonly kind: 'combatantMoved' } & CombatantMove)
   /** `combat_log_changed`: read the combat log again. */
   | { readonly kind: 'combatLogChanged' }
+  /** `xp_changed`: an award, an undo or a milestone; read the XP again. */
+  | { readonly kind: 'xpChanged' }
   /** `scene_changed`: the open scene changed, read it again. */
   | { readonly kind: 'sceneChanged' }
   /** `scene_check_rolled`: a check was rolled in it, read it again. */

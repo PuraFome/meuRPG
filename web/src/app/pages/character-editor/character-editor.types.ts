@@ -134,6 +134,11 @@ export interface CharacterFormValue {
   languagesText: string;
   toolProficienciesText: string;
   experiencePoints: number;
+  /** An enemy's or boss's challenge rating ("ND"): "0", "1/8", "1/4", "1/2",
+   * "1" to "30", or `''` for none. A player's is always `''` and 0. */
+  challengeRating: string;
+  /** The XP an enemy or boss gives when defeated ("XP ao derrotar"). */
+  xpValue: number;
   alignment: AlignmentKey;
   /** Locks with the rest of the sheet, unlike the story fields (A3). */
   customFeaturesText: string;
@@ -166,6 +171,20 @@ export interface BasicCharacterFormValue {
   legacyDamage: string;
   legacyAttackBonus: number;
   description: string;
+  /** The challenge rating ("ND") and the XP the minion gives when defeated,
+   * as `FullSheet` has them (E7-11). */
+  challengeRating: string;
+  xpValue: number;
+  /** The NPC's portrait, a gallery image's ID or empty (MR-031). Carried
+   * through unchanged, so saving the short form never clears it. */
+  portraitImageId: string;
+}
+
+/** One row of the SRD's "Experience Points by Challenge Rating" table
+ * (`rules.v1.ChallengeRating`): "1/4" gives 50 XP. */
+export interface ChallengeRatingVm {
+  readonly rating: string;
+  readonly xp: number;
 }
 
 export interface SubraceOptionVm {
@@ -316,6 +335,9 @@ export interface RulesCatalogVm {
   readonly armor: readonly ArmorOptionVm[];
   readonly weapons: readonly WeaponOptionVm[];
   readonly spells: readonly SpellOptionVm[];
+  /** The ND to XP table, in order (0, 1/8, 1/4, 1/2, 1 to 30), for the NPC's
+   * "Nível de desafio (ND)" picker. */
+  readonly challengeRatings: readonly ChallengeRatingVm[];
 }
 
 export interface CreateCharacterInput {
@@ -343,6 +365,10 @@ export interface CharacterForEdit {
    * false), or null when they may. The editor shows the reason instead of
    * a form whose save the server would refuse (RN-01, RN-03). */
   readonly blocked: CharacterBlockedReason | null;
+  /** The player's sheet is locked (a session started, RN-01) or the
+   * character is dead. The master may still edit it; the XP is then read-only
+   * here, because only awards change it (MR-016). */
+  readonly sheetLocked: boolean;
 }
 
 /**

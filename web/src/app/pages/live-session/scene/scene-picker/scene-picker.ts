@@ -6,7 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import type { Observable } from 'rxjs';
 
 import { MapPointKind, type MapPoint } from '../../../../../gen/meurpg/maps/v1/maps_pb';
-import { joinDots } from '../../../../core/combat/combat-grid';
+import { joinDots } from '../../../../core/format/text';
 import { SceneClient } from '../../../../core/play/scene-client';
 import { sceneErrorMessage } from '../../../../core/play/scene-errors';
 import type { SceneState } from '../../../../core/play/scene-state';

@@ -25,6 +25,8 @@ export function openSheet<C, D, R>(
     tall?: boolean;
     /** An alert that must be answered (Escudo): Esc and the backdrop do not close it. */
     alert?: boolean;
+    /** A form's first field (a CSS selector inside the sheet), instead of the title. */
+    focus?: string;
   },
 ): Observable<R | undefined> {
   const phone = typeof matchMedia === 'function' && matchMedia(PHONE_QUERY).matches;
@@ -35,7 +37,7 @@ export function openSheet<C, D, R>(
         ariaLabel: config.ariaLabel,
         // The title first (README-A): a stray Enter can't roll or confirm.
         // An alert starts on its safe button (`data-initial-focus`), the others on the title.
-        autoFocus: config.alert ? '[data-initial-focus]' : 'first-heading',
+        autoFocus: config.alert ? '[data-initial-focus]' : (config.focus ?? 'first-heading'),
         panelClass: config.tall ? 'mr-sheet-tall' : 'mr-sheet',
         disableClose: config.alert,
         // MatBottomSheet hands its whole config to the CDK dialog, which knows
@@ -52,7 +54,7 @@ export function openSheet<C, D, R>(
       maxHeight: '92dvh',
       ariaLabelledBy: config.labelledBy,
       ariaLabel: config.labelledBy ? undefined : config.ariaLabel,
-      autoFocus: config.alert ? '[data-initial-focus]' : 'first-heading',
+      autoFocus: config.alert ? '[data-initial-focus]' : (config.focus ?? 'first-heading'),
       disableClose: config.alert,
       role: config.alert ? 'alertdialog' : 'dialog',
     })

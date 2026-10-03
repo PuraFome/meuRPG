@@ -208,6 +208,8 @@ export function toFullSheetInit(v: CharacterFormValue) {
     languages: linesOf(v.languagesText),
     toolProficiencies: linesOf(v.toolProficienciesText),
     experiencePoints: v.experiencePoints,
+    challengeRating: v.challengeRating,
+    xpValue: v.xpValue,
     alignment: ALIGNMENT_TO_GEN[v.alignment],
     customFeaturesText: v.customFeaturesText,
   };
@@ -257,6 +259,11 @@ export function toBasicSheetInit(v: BasicCharacterFormValue) {
     attackBonus: v.legacyAttackBonus,
     damage: v.legacyDamage,
     description: v.description,
+    // What the minion gives when defeated (E7-11) and its portrait (MR-031):
+    // without these the save would wipe what the server holds.
+    challengeRating: v.challengeRating,
+    xpValue: v.xpValue,
+    portraitImageId: v.portraitImageId,
   };
 }
 
@@ -314,6 +321,8 @@ export function toFormFullSheet(name: string, full: GenFullSheet): CharacterForm
     languagesText: full.languages.join('\n'),
     toolProficienciesText: full.toolProficiencies.join('\n'),
     experiencePoints: full.experiencePoints,
+    challengeRating: full.challengeRating,
+    xpValue: full.xpValue,
     alignment: ALIGNMENT_FROM_GEN[full.alignment],
     customFeaturesText: full.customFeaturesText,
   };
@@ -339,6 +348,9 @@ export function toFormBasicSheet(name: string, basic: GenBasicSheet): BasicChara
     legacyDamage: basic.damage,
     legacyAttackBonus: basic.attackBonus,
     description: basic.description,
+    challengeRating: basic.challengeRating,
+    xpValue: basic.xpValue,
+    portraitImageId: basic.portraitImageId,
   };
 }
 
@@ -493,6 +505,7 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
         level: sp.level,
         classKeys: sp.classKeys,
       })),
+      challengeRatings: content.challengeRatings.map((c) => ({ rating: c.rating, xp: c.xp })),
     };
   }
 
@@ -525,6 +538,8 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
         : character.state === GenCharacterState.DEAD
           ? 'character_dead'
           : 'sheet_locked',
+      sheetLocked:
+        character.state === GenCharacterState.LOCKED || character.state === GenCharacterState.DEAD,
       full,
       basic:
         sheetCase === 'basic'

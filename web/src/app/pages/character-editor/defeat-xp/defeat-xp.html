@@ -1,0 +1,54 @@
+<div class="defeat">
+  <div class="defeat__col">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="defeat__field">
+      <mat-label>Nível de desafio (ND)</mat-label>
+      <mat-select
+        [formControl]="rating()"
+        panelClass="mr-nd-panel"
+        aria-describedby="nd-hint"
+        (selectionChange)="pick()"
+        (openedChange)="opened($event)"
+      >
+        <mat-select-trigger>{{ hasRating() ? 'ND ' + ratingValue() : 'Sem ND' }}</mat-select-trigger>
+        @if (!hasRating()) {
+          <mat-option value="" class="nd-option">Sem ND</mat-option>
+        }
+        @for (row of table(); track row.rating) {
+          <mat-option [value]="row.rating" class="nd-option">
+            <span class="nd-row">
+              <span class="nd-row__name">{{ ratingText(row) }}</span>
+              <span class="nd-row__xp">{{ xpText(row) }}</span>
+            </span>
+          </mat-option>
+        }
+        <mat-option disabled class="nd-more" [class.nd-more--gone]="remaining() === 0" aria-hidden="true">
+          {{ moreText() }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+    <p class="defeat__hint" id="nd-hint">Escolher o ND preenche o XP. Você pode digitar outro valor.</p>
+  </div>
+
+  <div class="defeat__col">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="defeat__field">
+      <mat-label>XP ao derrotar</mat-label>
+      <input
+        #xpInput
+        matInput
+        type="number"
+        inputmode="numeric"
+        aria-describedby="xp-hint"
+        [formControl]="xp()"
+        min="0"
+        max="1000000"
+      />
+      <mat-error>De 0 a 1.000.000.</mat-error>
+    </mat-form-field>
+    <p class="defeat__hint" id="xp-hint">{{ xpHint() }}</p>
+    @if (tableXp() !== null && !isTable()) {
+      <button mat-button type="button" class="defeat__use" (click)="useTable()">
+        Usar {{ tableText() }}
+      </button>
+    }
+  </div>
+</div>

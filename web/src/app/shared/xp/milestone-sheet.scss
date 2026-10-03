@@ -1,0 +1,70 @@
+:host {
+  display: block;
+}
+
+// See the award sheet: the first field's floating label needs room above it.
+app-xp-reason {
+  margin-top: 8px;
+  scroll-margin-block: 16px;
+}
+
+.who__title {
+  margin: 0 0 var(--mr-space-1);
+  font-size: 14px;
+  line-height: 19px;
+  font-weight: 700;
+  color: var(--mr-ink-muted);
+}
+
+.foot {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+// What the mark does, live: the flag and the words in the success ink.
+.effect:empty {
+  display: none;
+}
+
+.effect__line {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-weight: 700;
+  color: var(--mr-success-ink);
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.effect__note {
+  margin: 2px 0 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+// On a short screen the footer keeps one line; the note moves under the list.
+.note-short {
+  display: none;
+  margin: var(--mr-space-2) 0 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+@media (max-height: 600px) {
+  .note-short {
+    display: block;
+  }
+
+  .effect__note {
+    display: none;
+  }
+}

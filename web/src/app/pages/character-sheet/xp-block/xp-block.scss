@@ -1,0 +1,60 @@
+:host {
+  display: block;
+}
+
+// A bordered block inside the header, as wide as the header (E7-10).
+.xp {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+}
+
+.xp__label {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 16px;
+  color: var(--mr-ink-muted);
+}
+
+// The number and the tag: side by side while they fit, the tag under the
+// number when they do not ("2.716 XP" is never split).
+.xp__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-2) var(--mr-space-3);
+}
+
+.xp__n {
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 34px;
+  line-height: 38px;
+  white-space: nowrap;
+}
+
+.xp__bar {
+  display: block;
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-line);
+}
+
+.xp__fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-ink);
+}
+
+.xp__line {
+  margin: 0;
+  font-size: 16px;
+  line-height: 21px;
+}

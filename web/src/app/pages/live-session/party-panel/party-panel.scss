@@ -10,6 +10,18 @@
   }
 }
 
+// "Grupo" and the master's "Dar XP" on one line; what was just given, under it.
+.party__head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--mr-space-2) var(--mr-space-3);
+
+  app-session-xp {
+    display: contents;
+  }
+}
+
 .party__empty {
   margin: var(--mr-space-2) 0 var(--mr-space-3);
   color: var(--mr-ink-muted);
