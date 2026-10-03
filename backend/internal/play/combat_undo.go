@@ -340,6 +340,33 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 					return nil, fmt.Errorf("delete the pending damage: %w", err)
 				}
 			}
+			// A spell that read hit points changed the targets at once: their hit
+			// points, death saves and conditions come back.
+			target, ok := find(h.Target)
+			if !ok || h.Fx == "" {
+				continue
+			}
+			if h.Restore != nil {
+				if target.Kind == kindNPC {
+					err = setHP(target, *h.Restore)
+				} else {
+					var after *playv1.CharacterVitals
+					if after, err = putVitals(target, *h.Restore); err == nil {
+						keep(after)
+					}
+				}
+				if err != nil {
+					return nil, err
+				}
+			}
+			if err := setDeath(target, h.DeathBefore); err != nil {
+				return nil, err
+			}
+			if h.CondSet {
+				if err := c.q.SetCombatantConditions(ctx, playdb.SetCombatantConditionsParams{ID: target.ID, Conditions: nonNil(h.CondBefore)}); err != nil {
+					return nil, fmt.Errorf("put back the conditions: %w", err)
+				}
+			}
 		}
 	case eventReactionUsed:
 		// The slot, the reaction and the armor class bonus come back, and the hit

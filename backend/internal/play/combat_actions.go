@@ -409,6 +409,9 @@ var outcomeToProto = map[string]playv1.AttackOutcome{
 type rollInput struct {
 	inApp bool
 	typed int
+	// pool says typed is the sum of the physical dice of a spell's pool (not a
+	// d20 face): CastSpell's pool_sum.
+	pool bool
 }
 
 // mustRollThisWay checks a player's way of rolling against the campaign's dice

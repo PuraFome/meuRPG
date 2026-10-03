@@ -233,7 +233,7 @@ func TestMR014_CastingSpendsTheSlot(t *testing.T) {
 
 	// The cast spends the slot and the action at once, and not again on a retry.
 	key, before := newKey(), a.events(t)
-	first, err := a.castKey(t, a.ana, e, "Pensantus", sleepSpell, slotOfLevel(1), a.at(t, "Goblin"), noCastRoll, key)
+	first, err := a.castKey(t, a.ana, e, "Pensantus", sleepSpell, slotOfLevel(1), a.at(t, "Goblin"), poolInApp, key)
 	if err != nil {
 		t.Fatalf("CastSpell(Sono) error = %v", err)
 	}
@@ -246,7 +246,7 @@ func TestMR014_CastingSpendsTheSlot(t *testing.T) {
 	if a.events(t) != before+1 {
 		t.Fatalf("the cast wrote %d events, want 1", a.events(t)-before)
 	}
-	again, err := a.castKey(t, a.ana, e, "Pensantus", sleepSpell, slotOfLevel(1), a.at(t, "Goblin"), noCastRoll, key)
+	again, err := a.castKey(t, a.ana, e, "Pensantus", sleepSpell, slotOfLevel(1), a.at(t, "Goblin"), poolInApp, key)
 	if err != nil {
 		t.Fatalf("CastSpell(Sono) retry error = %v", err)
 	}
@@ -1502,7 +1502,7 @@ func TestCombatUndoTakesBackEveryNewAction(t *testing.T) {
 
 	// Pensantus's turn.
 	a.undoes(t, "Sono", func() {
-		a.mustCast(t, a.ana, e, "Pensantus", sleepSpell, slotOfLevel(1), a.at(t, "Goblin"), noCastRoll)
+		a.mustCast(t, a.ana, e, "Pensantus", sleepSpell, slotOfLevel(1), a.at(t, "Goblin"), poolInApp)
 	})
 	a.undoes(t, "a concentration spell", func() {
 		a.mustCast(t, a.ana, e, "Pensantus", holdPerson, slotOfLevel(2), a.at(t, "Goblin"), noCastRoll)

@@ -586,7 +586,25 @@ service CombatService {
   //     with no roll to hit.
   //   - Healing (Curar Ferimentos): a pending heal for each target, rolled by
   //     RollDamage, with the caster's spellcasting modifier.
-  //   - Anything else (Sono, Teia, Passo Nebuloso...): it spends and goes to the
+  //   - A spell that reads hit points (Sono, Borrifo de Cores, Palavra de Poder:
+  //     Atordoar and Matar, Poupar os Moribundos, Cura Completa; effect_kind of
+  //     the answer): the server reads each target's current hit points (an NPC's
+  //     from the combat, a player's character's from its vitals) and applies the
+  //     effect at once, in the same transaction. A pool (Sono, Borrifo de Cores)
+  //     is rolled by the server (roll_in_app) or typed from physical dice
+  //     (pool_sum), RN-18; it goes through the targets in ascending order of
+  //     current hit points, skips the unconscious and those at 0, and gives the
+  //     condition to each one whose hit points fit in what is left. A threshold
+  //     (Palavra de Poder) affects a target at or below the limit: a condition,
+  //     or death (an NPC is defeated; a player's character drops to 0 hit points
+  //     with three death save failures, and the master confirms the death with
+  //     ConfirmDeath). Poupar os Moribundos makes a player's character at 0 hit
+  //     points stable. Cura Completa heals and ends blindness and deafness. The
+  //     caster's player gets their own pool roll and who was affected, never a
+  //     target's hit points; the master gets the pool, each target's hit points
+  //     and the order; the other players only see who was affected (RN-20).
+  //     UndoLastAction puts everything the cast changed back.
+  //   - Anything else (Teia, Passo Nebuloso...): it spends and goes to the
   //     log; the effect is the table's, and the master marks the conditions
   //     (SetCombatantConditions).
   //
@@ -603,7 +621,8 @@ service CombatService {
   //   - `permission_denied`: the caller is a player and the caster is not their
   //     character.
   //   - `invalid_argument`: more than 10 targets, no roll for a spell attack, a face out of 1 to 20 or
-  //     d20_face with more than one target, a spell that is not one of the
+  //     d20_face with more than one target, neither roll_in_app nor pool_sum for a
+  //     pool spell (or a pool_sum out of range, or a d20_face), a spell that is not one of the
   //     caster's or cannot be cast now (a reaction, a casting time too long), a
   //     slot that does not fit, a wrong number of targets or darts, or the same
   //     target twice.
@@ -1619,6 +1638,13 @@ message CastSpellRequest {
     bool roll_in_app = 8;
     // The face of a physical d20, 1 to 20.
     int32 d20_face = 9;
+    // A spell that rolls a pool of dice (Sono, Borrifo de Cores: effect_kind
+    // SPELL_EFFECT_KIND_POOL): the sum of the physical dice, from the number of
+    // dice to the most they can show, without a modifier (the spell's dice are
+    // in the answer). The pool is rolled by the server with roll_in_app, and one
+    // of the two is required for such a spell. The campaign's dice setting binds
+    // a player here as on every roll (RN-18).
+    int32 pool_sum = 10;
   }
 }
 
@@ -1660,6 +1686,72 @@ message SpellTargetResult {
   // RollDamage; empty when none (a miss, a save that avoids it, a spell with no
   // damage). Only for the master and the caster's player.
   string pending_damage_id = 6;
+  // A spell that reads hit points (Sono, Palavra de Poder...): what it did to
+  // this target. Unset for any other spell.
+  SpellEffectResult effect = 7;
+}
+
+// SpellEffectKind is how a spell that reads hit points works. The same four kinds
+// as effects/spells.json.
+enum SpellEffectKind {
+  SPELL_EFFECT_KIND_UNSPECIFIED = 0;
+  // A pool of dice is rolled and the creatures are affected in ascending order of
+  // current hit points, each one that fits in what is left (Sono, Borrifo de
+  // Cores).
+  SPELL_EFFECT_KIND_POOL = 1;
+  // A creature at or below a number of hit points is affected (Palavra de Poder:
+  // Atordoar, Matar).
+  SPELL_EFFECT_KIND_THRESHOLD = 2;
+  // Works only on a creature at 0 hit points (Poupar os Moribundos).
+  SPELL_EFFECT_KIND_ZERO_HP = 3;
+  // A fixed heal that also ends conditions (Cura Completa).
+  SPELL_EFFECT_KIND_FLAT_HEAL = 4;
+}
+
+// SpellEffectOutcome is whether a spell that reads hit points reached a target.
+// Everyone who sees the entry gets it, as a word: it never says how many hit
+// points the target had (RN-20).
+enum SpellEffectOutcome {
+  SPELL_EFFECT_OUTCOME_UNSPECIFIED = 0;
+  // The condition was given, the creature died or dropped to 0 (Matar), became
+  // stable, or was healed.
+  SPELL_EFFECT_OUTCOME_AFFECTED = 1;
+  // "Não foi afetado": whatever the reason.
+  SPELL_EFFECT_OUTCOME_NOT_AFFECTED = 2;
+}
+
+// SpellEffectReason is why a target was not affected. Only the master gets it.
+enum SpellEffectReason {
+  SPELL_EFFECT_REASON_UNSPECIFIED = 0;
+  // A pool: its hit points were more than what was left of the pool.
+  SPELL_EFFECT_REASON_ABOVE_POOL = 1;
+  // A threshold: its hit points were above the limit.
+  SPELL_EFFECT_REASON_ABOVE_LIMIT = 2;
+  // A pool: it was unconscious already, or at 0 hit points, and the pool went
+  // past it.
+  SPELL_EFFECT_REASON_SKIPPED = 3;
+  // A zero-hit-point spell: the target was not at 0.
+  SPELL_EFFECT_REASON_NOT_AT_ZERO = 4;
+}
+
+// SpellEffectResult is what a spell that reads hit points did to one target.
+message SpellEffectResult {
+  SpellEffectOutcome outcome = 1;
+  // Why it was not affected. Only the master.
+  SpellEffectReason reason = 2;
+  // The target's hit points when the spell reached it. Only the master: a
+  // player never gets an enemy's hit points. (A player's character's hit points
+  // are on the table anyway, but the cast does not repeat them.)
+  optional int32 hit_points_before = 3;
+  // A pool: what was left of it after this target, and the target's place in the
+  // order the pool went through the creatures (1 is the lowest hit points). Only
+  // the master: the order of the targets in the list is the caster's, and the
+  // order here would tell the others who has fewer hit points.
+  optional int32 pool_left = 4;
+  optional int32 pool_order = 5;
+  // A heal: how many hit points the target regained, up to its maximum. Only the
+  // master, the caster's player and the target's own player.
+  optional int32 healed = 6;
 }
 
 // CastSpellResponse returns the combat and what the cast did.
@@ -1683,6 +1775,19 @@ message SpellCast {
   // The pending damages and heals the cast opened, for the master and the
   // caster's player only.
   repeated PendingDamage pending_damages = 7;
+  // A spell that reads hit points: how it works. Unspecified for any other spell.
+  SpellEffectKind effect_kind = 8;
+  // A pool: the caster's roll of it, `5d8 (2, 4, 1, 5, 3) = 15`, with the faces
+  // empty for a physical die (pool_sum). Only the master and the caster's player;
+  // nobody else sees the pool (RN-20).
+  DiceRoll pool_roll = 9;
+  // The condition the spell gives the creatures it affects ("condition:
+  // unconscious"), a public tag. Empty when it gives none: a threshold spell that
+  // kills (Palavra de Poder: Matar), a zero-hit-point spell, a heal.
+  string effect_condition_key = 10;
+  // A threshold: the most hit points a creature may have to be affected (150,
+  // 100). Only the master.
+  optional int32 effect_threshold = 11;
 }
 
 // UseReactionRequest casts Escudo against a hit.
@@ -1935,6 +2040,13 @@ message CombatLogSpell {
   bool concentrating = 3;
   // The spell the caster stopped concentrating on to cast this one.
   string concentration_ended_key = 4;
+  // The same four as SpellCast, with the same visibility: effect_kind and the
+  // condition for everyone who gets the entry, the pool roll for the master and
+  // the caster's player, the threshold for the master.
+  SpellEffectKind effect_kind = 5;
+  DiceRoll pool_roll = 6;
+  string effect_condition_key = 7;
+  optional int32 effect_threshold = 8;
 }
 
 // CombatLogSpellTarget is what a cast did to one target, in the log. Its fields
@@ -1949,6 +2061,9 @@ message CombatLogSpellTarget {
   SaveResult save = 6;
   // The damage or the heal, once it was rolled.
   CombatLogDamage damage = 7;
+  // A spell that reads hit points: what it did to this target, as in
+  // SpellTargetResult.effect.
+  SpellEffectResult effect = 8;
 }
 
 // CombatLogDeathSave is a death save in the log.

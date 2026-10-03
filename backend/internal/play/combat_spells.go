@@ -229,11 +229,13 @@ func (s *Service) CastSpell(
 		if in.typed < 1 || in.typed > 20 {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("d20_face must be 1 to 20"))
 		}
+	case *playv1.CastSpellRequest_PoolSum:
+		in.typed, in.pool, rolled = int(roll.PoolSum), true, true
 	}
 	v := viewerOf(m)
 
 	var made actionEvent
-	var vitals *playv1.CharacterVitals // the slot spent, if it was a player's
+	var vitals []*playv1.CharacterVitals // the slot spent, if it was a player's, and the characters a hit point spell changed
 	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventSpellCast, encounterID: encID}, func(c *combatTx) (any, error) {
 		vitals = nil
 		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
@@ -300,7 +302,15 @@ func (s *Service) CastSpell(
 		if len(targs) == 0 && selfOnly(sp) {
 			targs, targets = []playdb.Combatant{caster}, []target{{id: caster.ID}}
 		}
+		if sp.HP != nil && sp.HP.Kind == rules.SpellKindHPPool {
+			if err := s.mustRollPool(ctx, m, in, rolled); err != nil {
+				return nil, err
+			}
+		}
 		if sp.AttackType != "" {
+			if in.pool {
+				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("pool_sum is for a spell that rolls a pool of dice"))
+			}
 			if !rolled {
 				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("set roll_in_app or d20_face for a spell attack"))
 			}
@@ -320,9 +330,11 @@ func (s *Service) CastSpell(
 			ActionBefore: caster.ActionUsed, BonusBefore: caster.BonusActionUsed, ReactionBefore: caster.ReactionUsed, DashedBefore: caster.Dashed,
 		}
 		if slot != nil && caster.Kind == kindPlayer {
-			if vitals, err = s.spendSlot(ctx, c, caster.CharacterID, *slot, 1); err != nil {
+			slotVitals, err := s.spendSlot(ctx, c, caster.CharacterID, *slot, 1)
+			if err != nil {
 				return nil, err
 			}
+			vitals = append(vitals, slotVitals)
 		}
 		after := caster
 		switch sp.Economy {
@@ -347,13 +359,25 @@ func (s *Service) CastSpell(
 		// What it does to each target.
 		c.castID = made.CastID
 		hidden := caster.Hidden
-		for i, t := range targs {
-			hit := castHit{Target: t.ID, Darts: clamp32(targets[i].darts, 0, 100)}
-			if err := s.resolveOnTarget(ctx, c, m, sp, caster, t, slotLevel, in, &hit); err != nil {
+		if sp.HP != nil {
+			hits, changed, err := s.castHPSpell(ctx, c, sp, targs, in, &made)
+			if err != nil {
 				return nil, err
 			}
-			made.Hits = append(made.Hits, hit)
-			hidden = hidden || t.Hidden
+			made.Hits = hits
+			vitals = append(vitals, changed...)
+			for _, t := range targs {
+				hidden = hidden || t.Hidden
+			}
+		} else {
+			for i, t := range targs {
+				hit := castHit{Target: t.ID, Darts: clamp32(targets[i].darts, 0, 100)}
+				if err := s.resolveOnTarget(ctx, c, m, sp, caster, t, slotLevel, in, &hit); err != nil {
+					return nil, err
+				}
+				made.Hits = append(made.Hits, hit)
+				hidden = hidden || t.Hidden
+			}
 		}
 		made.Secret = hidden
 		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
@@ -372,7 +396,9 @@ func (s *Service) CastSpell(
 	out, err := s.finish(ctx, m, res, func(d *encounterData) {
 		s.publishEncounterChanged(m.CampaignID, d.enc)
 		s.publishLogChanged(m.CampaignID, d.enc.ID, !ev.Secret)
-		s.publishVitals(m.CampaignID, vitals)
+		for _, vit := range vitals {
+			s.publishVitals(m.CampaignID, vit)
+		}
 	})
 	if err != nil {
 		return nil, err
