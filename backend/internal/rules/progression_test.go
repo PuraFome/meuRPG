@@ -236,3 +236,29 @@ func TestLoadAdvancementRefusesBrokenTables(t *testing.T) {
 		}
 	}
 }
+
+func TestSceneCheckName(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	for key, want := range map[string]string{
+		"skill:investigation": "Investigação", "ability:str": "Teste de Força", "save:wis": "Salvaguarda de Sabedoria",
+	} {
+		if got, ok := c.SceneCheckName(key); !ok || got != want {
+			t.Errorf("SceneCheckName(%q) = %q, %v; want %q", key, got, ok, want)
+		}
+	}
+	// The same names SceneOptions gives, and the same refusals.
+	d := Derive(pensantus(), c)
+	for _, key := range []string{"skill:arcana", "ability:dex", "save:con"} {
+		opts, err := SceneOptions(d, []SceneAction{{Key: key}})
+		got, ok := c.SceneCheckName(key)
+		if err != nil || !ok || got != opts[0].NamePT {
+			t.Errorf("SceneCheckName(%q) = %q, %v; SceneOptions says %q", key, got, ok, opts[0].NamePT)
+		}
+	}
+	for _, key := range []string{"", "skill:flying", "skill:", "ability:luck", "save:xyz", "attack:longsword", "spell:fire-bolt", "feature:action-surge", "investigation", "skill:Investigation"} {
+		if got, ok := c.SceneCheckName(key); ok {
+			t.Errorf("SceneCheckName(%q) = %q, true; want false", key, got)
+		}
+	}
+}

@@ -61,14 +61,15 @@ type Encounter struct {
 }
 
 type GameSession struct {
-	ID             string
-	CampaignID     string
-	SessionNumber  int32
-	StartedAt      time.Time
-	EndedAt        *time.Time
-	CurrentMapID   *string
-	ShownImageID   *string
-	ShownImageKeep bool
+	ID               string
+	CampaignID       string
+	SessionNumber    int32
+	StartedAt        time.Time
+	EndedAt          *time.Time
+	CurrentMapID     *string
+	ShownImageID     *string
+	ShownImageKeep   bool
+	OpenScenePointID *string
 }
 
 type PendingDamage struct {

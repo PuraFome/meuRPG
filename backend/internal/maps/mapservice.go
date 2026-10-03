@@ -123,6 +123,9 @@ func (s *Service) GetMap(
 			res.Points = append(res.Points, cm.pointToProto(p, v))
 		}
 	}
+	if err := s.attachActions(ctx, mapID, res.Points, v.master); err != nil {
+		return nil, s.dbError(ctx, "list a map's scene actions", err)
+	}
 
 	tokens, err := s.queries.ListMapTokens(ctx, mapID)
 	if err != nil {
@@ -304,6 +307,10 @@ func (s *Service) DeleteMap(
 	if err != nil {
 		return nil, s.dbError(ctx, "delete a map", err)
 	}
+	openScene, err := s.live.OpenScenePoint(ctx, m.CampaignID) // a point of this map may be the open scene
+	if err != nil {
+		return nil, s.dbError(ctx, "read the open scene", err)
+	}
 
 	var deleted mapsdb.Map
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
@@ -326,6 +333,13 @@ func (s *Service) DeleteMap(
 	if mapID == current {
 		// The foreign key unset the session's current map.
 		s.publishCurrentMapCleared(m.CampaignID)
+	}
+	if openScene != "" {
+		// The map's points went with it: if the scene was one of them, the
+		// foreign key closed it.
+		if still, err := s.live.OpenScenePoint(ctx, m.CampaignID); err == nil && still == "" {
+			s.publishSceneChanged(m.CampaignID)
+		}
 	}
 	return connect.NewResponse(&mapsv1.DeleteMapResponse{}), nil
 }
@@ -598,6 +612,9 @@ func (s *Service) UpdateMapPoint(
 	}
 	s.publishMapChanged(m.CampaignID, mapID,
 		playersSee(mapID, mapRow.RevealedAt, current) && (before.RevealedAt != nil || after.RevealedAt != nil))
+	// The open scene shows the point's name and description, and stops being
+	// one when the point changes kind.
+	s.publishSceneChangedIf(ctx, m.CampaignID, pointID)
 	out, err := s.masterPoint(ctx, m, after)
 	if err != nil {
 		return nil, err
@@ -643,6 +660,13 @@ func (s *Service) applyPointChange(ctx context.Context, q *mapsdb.Queries, campa
 	if c.revealed != nil {
 		params.RevealedAt = revealedAt(p.RevealedAt, *c.revealed, params.Now)
 	}
+	if p.Kind == kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_SCENE] && params.Kind != p.Kind {
+		// Only a scene has actions (MR-015). A scene still open in a session
+		// then reads as closed: it is not a scene point anymore.
+		if err := q.DeleteSceneActionsOfPoint(ctx, p.ID); err != nil {
+			return mapsdb.MapPoint{}, fmt.Errorf("delete the scene's actions: %w", err)
+		}
+	}
 	out, err := q.UpdateMapPoint(ctx, params)
 	if err != nil {
 		return mapsdb.MapPoint{}, fmt.Errorf("update point: %w", err)
@@ -671,6 +695,10 @@ func (s *Service) DeleteMapPoint(
 	if err != nil {
 		return nil, err
 	}
+	openScene, err := s.live.OpenScenePoint(ctx, m.CampaignID) // the foreign key closes it with the point
+	if err != nil {
+		return nil, s.dbError(ctx, "read the open scene", err)
+	}
 
 	var mapRow mapsdb.Map
 	var deleted mapsdb.MapPoint
@@ -693,6 +721,9 @@ func (s *Service) DeleteMapPoint(
 		return nil, s.dbError(ctx, "delete a point", err)
 	}
 	s.publishMapChanged(m.CampaignID, mapID, playersSee(mapID, mapRow.RevealedAt, current) && deleted.RevealedAt != nil)
+	if openScene == pointID {
+		s.publishSceneChanged(m.CampaignID)
+	}
 	return connect.NewResponse(&mapsv1.DeleteMapPointResponse{}), nil
 }
 
@@ -965,7 +996,11 @@ func (s *Service) masterPoint(ctx context.Context, m authz.Membership, p mapsdb.
 	if err != nil {
 		return nil, s.dbError(ctx, "read the maps", err)
 	}
-	return cm.pointToProto(p, viewer{master: true, userID: m.UserID}), nil
+	out := cm.pointToProto(p, viewer{master: true, userID: m.UserID})
+	if err := s.attachActions(ctx, p.MapID, []*mapsv1.MapPoint{out}, true); err != nil {
+		return nil, s.dbError(ctx, "list a point's scene actions", err)
+	}
+	return out, nil
 }
 
 // campaignMap returns the map, or `not_found` when it is not the

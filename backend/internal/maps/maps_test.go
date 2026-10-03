@@ -350,6 +350,27 @@ func TestMapServiceAuthorizationMatrix(t *testing.T) {
 			_, err := u.maps.SetMapPointRevealed(ctx, connect.NewRequest(&mapsv1.SetMapPointRevealedRequest{CampaignId: campaign, MapId: shown.GetId(), PointId: point.GetId(), Revealed: true}))
 			return err
 		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		// The scene actions of the point above (a SCENE point). Each caller adds,
+		// changes, moves and removes one of its own.
+		{"AddSceneAction", func(ctx context.Context, u *user) error {
+			_, err := u.maps.AddSceneAction(ctx, connect.NewRequest(&mapsv1.AddSceneActionRequest{CampaignId: campaign, MapId: shown.GetId(), PointId: point.GetId(), Key: "skill:insight"}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"UpdateSceneAction", func(ctx context.Context, u *user) error {
+			a := master.addAction(campaign, shown.GetId(), point.GetId(), "skill:arcana", "", 0)
+			_, err := u.maps.UpdateSceneAction(ctx, connect.NewRequest(&mapsv1.UpdateSceneActionRequest{CampaignId: campaign, MapId: shown.GetId(), PointId: point.GetId(), ActionId: a.GetId(), Dc: proto.Int32(12)}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"MoveSceneAction", func(ctx context.Context, u *user) error {
+			a := master.addAction(campaign, shown.GetId(), point.GetId(), "ability:str", "", 0)
+			_, err := u.maps.MoveSceneAction(ctx, connect.NewRequest(&mapsv1.MoveSceneActionRequest{CampaignId: campaign, MapId: shown.GetId(), PointId: point.GetId(), ActionId: a.GetId(), Direction: mapsv1.SceneActionDirection_SCENE_ACTION_DIRECTION_UP}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"RemoveSceneAction", func(ctx context.Context, u *user) error {
+			a := master.addAction(campaign, shown.GetId(), point.GetId(), "save:wis", "", 0)
+			_, err := u.maps.RemoveSceneAction(ctx, connect.NewRequest(&mapsv1.RemoveSceneActionRequest{CampaignId: campaign, MapId: shown.GetId(), PointId: point.GetId(), ActionId: a.GetId()}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 		{"PlaceMapToken", func(ctx context.Context, u *user) error {
 			_, err := u.maps.PlaceMapToken(ctx, connect.NewRequest(&mapsv1.PlaceMapTokenRequest{CampaignId: campaign, MapId: shown.GetId(), CharacterId: pc.GetId(), XBp: 5100, YBp: 5100}))
 			return err

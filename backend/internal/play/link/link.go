@@ -193,3 +193,41 @@ type Turn struct {
 	// the feet walked this turn.
 	SpeedFt, MovementUsedFt int
 }
+
+// Scene is an RP scene (MR-015): a SCENE point of a map as the session opens
+// it, with the master's actions on it. The DCs are in it, so it never goes to
+// a player as it is.
+type Scene struct {
+	PointID string
+	// Name and Description are the point's: the players read both in the open
+	// scene.
+	Name, Description string
+	// Actions are in the order the master put them.
+	Actions []SceneAction
+}
+
+// SceneAction is one check of a scene.
+type SceneAction struct {
+	ID string
+	// Key is "skill:investigation", "ability:str" or "save:wis".
+	Key string
+	// Name is the master's name for it, "" for none.
+	Name string
+	// DC is the difficulty class, 0 for none.
+	DC int
+}
+
+// SceneOption is a scene check with one character's numbers on it (the rules
+// engine's SceneOption).
+type SceneOption struct {
+	// Known says the sheet has this check; a basic sheet has no skills, so its
+	// character has no numbers for a scene.
+	Known bool
+	// CheckName is the check's name in Portuguese: "Investigação".
+	CheckName string
+	// Bonus is added to the d20.
+	Bonus int
+	// Passive is the character's passive value, when HasPassive.
+	Passive    int
+	HasPassive bool
+}

@@ -56,7 +56,7 @@ ORDER BY started_at DESC, id;
 
 -- name: GetSessionEventByIdempotencyKey :one
 -- The event a change with this key already wrote, if any.
-SELECT id, seq, kind, character_id, payload FROM session_events
+SELECT id, seq, kind, character_id, payload, created_at FROM session_events
 WHERE game_session_id = $1 AND idempotency_key = $2;
 
 -- name: NextSessionEventSeq :one
@@ -352,3 +352,33 @@ SELECT id, seq, kind, encounter_id, payload FROM session_events
 WHERE game_session_id = $1
 ORDER BY seq DESC
 LIMIT $2;
+
+-- The RP scene open in the session (MR-015, D7). The caller holds the
+-- session's row lock (GetOpenGameSessionForUpdate) for the writes.
+
+-- name: SetOpenScene :one
+UPDATE game_sessions
+SET open_scene_point_id = sqlc.narg(open_scene_point_id)
+WHERE id = sqlc.arg(id)
+RETURNING *;
+
+-- name: GetOpenSceneEvent :one
+-- The event that opened the scene now open: the session's latest scene_opened.
+-- Rolls after it belong to this opening; closing and opening again starts a new
+-- one, so the players may roll again (question 55).
+SELECT id, seq, created_at FROM session_events
+WHERE game_session_id = $1 AND kind = 'scene_opened'
+ORDER BY seq DESC
+LIMIT 1;
+
+-- name: ListSceneRollEvents :many
+-- The scene checks rolled since the opening (seq), newest first.
+SELECT id, seq, character_id, payload, created_at FROM session_events
+WHERE game_session_id = $1 AND kind = 'scene_check_rolled' AND seq > $2
+ORDER BY seq DESC;
+
+-- name: GetOpenScenePoint :one
+-- The map point of the scene open in the campaign's open session (NULL when
+-- none). No row: no open session.
+SELECT open_scene_point_id FROM game_sessions
+WHERE campaign_id = $1 AND ended_at IS NULL;

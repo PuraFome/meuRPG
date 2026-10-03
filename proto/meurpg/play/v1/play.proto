@@ -14,6 +14,7 @@ package meurpg.play.v1;
 
 import "google/protobuf/timestamp.proto";
 import "meurpg/campaigns/v1/campaigns.proto";
+import "meurpg/play/v1/scene.proto";
 import "meurpg/rules/v1/rules.proto";
 
 // PlayService runs a campaign's game sessions and the live session.
@@ -27,7 +28,7 @@ import "meurpg/rules/v1/rules.proto";
 //
 // When the campaign has no open game session, the live-session methods
 // (GetLiveSession, WatchGameSession, AdjustCharacterVitals, SetCurrentMap,
-// SetShownImage) fail with `failed_precondition` and a GameSessionBlocked
+// SetShownImage, OpenScene, CloseScene, GetOpenScene, RollSceneCheck) fail with `failed_precondition` and a GameSessionBlocked
 // detail whose reason is NO_OPEN_SESSION, so the app can show "Nenhuma
 // sessão em andamento".
 //
@@ -293,6 +294,81 @@ service PlayService {
   //     campaign does not exist, or the caller is not a member of it.
   //   - `permission_denied`: the caller is a player.
   rpc TakeBackLeftImage(TakeBackLeftImageRequest) returns (TakeBackLeftImageResponse);
+
+  // OpenScene opens an RP scene in the session (MR-015, D7): the master
+  // picks a SCENE point of the campaign's maps and every member sees it,
+  // live, with the point's name and description and its actions; each player
+  // with their own character's bonus (GetOpenScene). Only the campaign's
+  // master may call it, and only while the campaign has an open session. One
+  // scene at a time: opening another replaces the first. The point may be
+  // hidden: opening it reveals nothing, it stays hidden on the map (RN-10).
+  // Opening the scene that is already open changes nothing; closing it and
+  // opening it again starts the rolls afresh. Every stream gets
+  // `scene_changed`, and a `scene_opened` event goes to the history.
+  //
+  // Errors:
+  //   - `not_found`: the point is not a SCENE point of the campaign's maps,
+  //     the campaign does not exist, or the caller is not a member of it.
+  //   - `permission_denied`: the caller is a player.
+  //   - `failed_precondition`: no open session (GameSessionBlocked,
+  //     NO_OPEN_SESSION); or the point has no actions (SceneBlocked,
+  //     NO_ACTIONS).
+  rpc OpenScene(OpenSceneRequest) returns (OpenSceneResponse);
+
+  // CloseScene closes the open scene, asking nothing. Only the campaign's
+  // master may call it. With no scene open it changes nothing. Every stream
+  // gets `scene_changed`, and a `scene_closed` event goes to the history.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist, or the caller is not a
+  //     member of it.
+  //   - `permission_denied`: the caller is a player.
+  //   - `failed_precondition`: no open session (GameSessionBlocked,
+  //     NO_OPEN_SESSION).
+  rpc CloseScene(CloseSceneRequest) returns (CloseSceneResponse);
+
+  // GetOpenScene returns the scene open in the session, and the rolls made
+  // in it, newest first (the scene log, MR-015). Any member may call it; the
+  // app reads it after `ready` and after every `scene_changed` and
+  // `scene_check_rolled`. What each one gets (RN-20):
+  //   - the master: the actions with their DCs, and every roll with whether
+  //     it passed;
+  //   - a player: the actions without a DC, each with their own living
+  //     character's bonus and passive value, and only their own rolls,
+  //     with no pass or fail.
+  // The scene is unset when none is open.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist, or the caller is not a
+  //     member of it.
+  //   - `failed_precondition`: no open session (GameSessionBlocked,
+  //     NO_OPEN_SESSION).
+  rpc GetOpenScene(GetOpenSceneRequest) returns (GetOpenSceneResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // RollSceneCheck rolls an action of the open scene for the caller's own
+  // living character (MR-015, RN-18): the d20 plus the character's bonus
+  // from the sheet. The server rolls the d20, or takes the face of a real
+  // die (1 to 20), as the campaign's dice setting allows. A character rolls
+  // each action once while the scene is open; the master closes and opens the
+  // scene again for another roll. The answer is the roll with its total: the
+  // DC, and whether it passed, stay with the master. The master gets
+  // `scene_check_rolled` on the stream, and so does the roller; nobody else
+  // does. A `scene_check_rolled` event goes to the history (ids and numbers
+  // only). Only a player may call it.
+  //
+  // Errors:
+  //   - `invalid_argument`: neither roll_in_app nor d20_face is set;
+  //     roll_in_app is false; d20_face is not 1 to 20; the idempotency key
+  //     is not a UUID.
+  //   - `not_found`: the action is not one of the open scene's, the campaign
+  //     does not exist, or the caller is not a member of it.
+  //   - `permission_denied`: the caller is the master.
+  //   - `failed_precondition`: no open session (GameSessionBlocked,
+  //     NO_OPEN_SESSION); or SceneBlocked: NO_OPEN_SCENE, ALREADY_ROLLED,
+  //     WRONG_DICE_MODE, NO_CHARACTER.
+  rpc RollSceneCheck(RollSceneCheckRequest) returns (RollSceneCheckResponse);
 }
 
 // GameSessionBlockedReason says why PlayService refused a call with
@@ -540,6 +616,28 @@ message WatchGameSessionResponse {
     CombatantMoved combatant_moved = 12;
     // The combat log changed: read it again (CombatService.ListCombatLog).
     CombatLogChanged combat_log_changed = 13;
+    // (14 is XP's: reserved for the XP slice.)
+    // The open scene changed: opened, closed, or one of its actions or its
+    // point changed. Read it again (GetOpenScene). Everyone gets it.
+    SceneChanged scene_changed = 15;
+    // A check was rolled in the open scene. Only the master and the roller
+    // get it.
+    SceneCheckRolled scene_check_rolled = 16;
+  }
+
+  // SceneChanged carries nothing: it says the open scene changed, and the
+  // app reads it again (GetOpenScene), which filters it for the caller. It
+  // names no scene, so a player's stream never learns of one they were not
+  // shown.
+  message SceneChanged {}
+
+  // SceneCheckRolled says a character rolled an action of the open scene;
+  // the app reads the scene again (GetOpenScene). It carries no number: the
+  // total reaches the master through the read, and the DC never leaves the
+  // server.
+  message SceneCheckRolled {
+    // The action rolled (a UUID).
+    string action_id = 1;
   }
 
   // Ready is the stream's first event.

@@ -19,6 +19,8 @@ import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { Role } from "../../campaigns/v1/campaigns_pb";
 import { file_meurpg_campaigns_v1_campaigns } from "../../campaigns/v1/campaigns_pb";
+import type { CloseSceneRequestSchema, CloseSceneResponseSchema, GetOpenSceneRequestSchema, GetOpenSceneResponseSchema, OpenSceneRequestSchema, OpenSceneResponseSchema, RollSceneCheckRequestSchema, RollSceneCheckResponseSchema } from "./scene_pb";
+import { file_meurpg_play_v1_scene } from "./scene_pb";
 import type { HitDice, Recharge } from "../../rules/v1/rules_pb";
 import { file_meurpg_rules_v1_rules } from "../../rules/v1/rules_pb";
 import type { Message } from "@bufbuild/protobuf";
@@ -27,7 +29,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/play/v1/play.proto.
  */
 export const file_meurpg_play_v1_play: GenFile = /*@__PURE__*/
-  fileDesc("ChltZXVycGcvcGxheS92MS9wbGF5LnByb3RvEg5tZXVycGcucGxheS52MSJOChJHYW1lU2Vzc2lvbkJsb2NrZWQSOAoGcmVhc29uGAEgASgOMigubWV1cnBnLnBsYXkudjEuR2FtZVNlc3Npb25CbG9ja2VkUmVhc29uIqQBCgtHYW1lU2Vzc2lvbhIKCgJpZBgBIAEoCRITCgtjYW1wYWlnbl9pZBgCIAEoCRIWCg5zZXNzaW9uX251bWJlchgDIAEoBRIuCgpzdGFydGVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIsCghlbmRlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiLgoXU3RhcnRHYW1lU2Vzc2lvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiaQoYU3RhcnRHYW1lU2Vzc2lvblJlc3BvbnNlEjEKDGdhbWVfc2Vzc2lvbhgBIAEoCzIbLm1ldXJwZy5wbGF5LnYxLkdhbWVTZXNzaW9uEhoKEmxvY2tlZF9zaGVldF9jb3VudBgCIAEoBSJFChVFbmRHYW1lU2Vzc2lvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFwoPZ2FtZV9zZXNzaW9uX2lkGAIgASgJIksKFkVuZEdhbWVTZXNzaW9uUmVzcG9uc2USMQoMZ2FtZV9zZXNzaW9uGAEgASgLMhsubWV1cnBnLnBsYXkudjEuR2FtZVNlc3Npb24iLgoXTGlzdEdhbWVTZXNzaW9uc1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiTgoYTGlzdEdhbWVTZXNzaW9uc1Jlc3BvbnNlEjIKDWdhbWVfc2Vzc2lvbnMYASADKAsyGy5tZXVycGcucGxheS52MS5HYW1lU2Vzc2lvbiIdChtMaXN0T3BlbkdhbWVTZXNzaW9uc1JlcXVlc3QiWwocTGlzdE9wZW5HYW1lU2Vzc2lvbnNSZXNwb25zZRI7ChJvcGVuX2dhbWVfc2Vzc2lvbnMYASADKAsyHy5tZXVycGcucGxheS52MS5PcGVuR2FtZVNlc3Npb24ihwEKD09wZW5HYW1lU2Vzc2lvbhIxCgxnYW1lX3Nlc3Npb24YASABKAsyGy5tZXVycGcucGxheS52MS5HYW1lU2Vzc2lvbhIVCg1jYW1wYWlnbl9uYW1lGAIgASgJEioKB215X3JvbGUYAyABKA4yGS5tZXVycGcuY2FtcGFpZ25zLnYxLlJvbGUiLAoVR2V0TGl2ZVNlc3Npb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIt8BChZHZXRMaXZlU2Vzc2lvblJlc3BvbnNlEjEKDGdhbWVfc2Vzc2lvbhgBIAEoCzIbLm1ldXJwZy5wbGF5LnYxLkdhbWVTZXNzaW9uEi8KBnZpdGFscxgCIAMoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscxIWCg5jdXJyZW50X21hcF9pZBgDIAEoCRIvCgtzaG93bl9pbWFnZRgEIAEoCzIaLm1ldXJwZy5wbGF5LnYxLlNob3duSW1hZ2USGAoQc2hvd25faW1hZ2Vfa2VlcBgFIAEoCCJpCgpTaG93bkltYWdlEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSDQoFd2lkdGgYAyABKAUSDgoGaGVpZ2h0GAQgASgFEgsKA3VybBgFIAEoCRIVCg10aHVtYm5haWxfdXJsGAYgASgJItYDCg9DaGFyYWN0ZXJWaXRhbHMSFAoMY2hhcmFjdGVyX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSFgoOcGxheWVyX3VzZXJfaWQYAyABKAkSGgoSaGl0X3BvaW50c19jdXJyZW50GAQgASgFEhYKDmhpdF9wb2ludHNfbWF4GAUgASgFEhwKFGhpdF9wb2ludHNfdGVtcG9yYXJ5GAYgASgFEjMKC3NwZWxsX3Nsb3RzGAcgAygLMh4ubWV1cnBnLnBsYXkudjEuU3BlbGxTbG90VXNhZ2USMQoKcGFjdF9zbG90cxgIIAEoCzIdLm1ldXJwZy5wbGF5LnYxLlBhY3RTbG90VXNhZ2USKgoIaGl0X2RpY2UYCSADKAsyGC5tZXVycGcucnVsZXMudjEuSGl0RGljZRIWCg5oaXRfZGljZV90b3RhbBgKIAEoBRIVCg1oaXRfZGljZV91c2VkGAsgASgFEhAKCHJldmlzaW9uGAwgASgFEi4KCnVwZGF0ZWRfYXQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjAKCXJlc291cmNlcxgOIAMoCzIdLm1ldXJwZy5wbGF5LnYxLlJlc291cmNlVXNhZ2UidwoNUmVzb3VyY2VVc2FnZRILCgNrZXkYASABKAkSDwoHbmFtZV9wdBgCIAEoCRINCgV0b3RhbBgDIAEoBRIMCgR1c2VkGAQgASgFEisKCHJlY2hhcmdlGAUgASgOMhkubWV1cnBnLnJ1bGVzLnYxLlJlY2hhcmdlIjwKDlNwZWxsU2xvdFVzYWdlEg0KBWxldmVsGAEgASgFEg0KBXRvdGFsGAIgASgFEgwKBHVzZWQYAyABKAUiQAoNUGFjdFNsb3RVc2FnZRISCgpzbG90X2xldmVsGAEgASgFEg0KBXRvdGFsGAIgASgFEgwKBHVzZWQYAyABKAUiLgoXV2F0Y2hHYW1lU2Vzc2lvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkipg4KGFdhdGNoR2FtZVNlc3Npb25SZXNwb25zZRI/CgVyZWFkeRgBIAEoCzIuLm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5SZWFkeUgAEkcKCWhlYXJ0YmVhdBgCIAEoCzIyLm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5IZWFydGJlYXRIABJQCg52aXRhbHNfY2hhbmdlZBgDIAEoCzI2Lm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5WaXRhbHNDaGFuZ2VkSAASTgoNc2Vzc2lvbl9lbmRlZBgEIAEoCzI1Lm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5TZXNzaW9uRW5kZWRIABJZChNjdXJyZW50X21hcF9jaGFuZ2VkGAUgASgLMjoubWV1cnBnLnBsYXkudjEuV2F0Y2hHYW1lU2Vzc2lvblJlc3BvbnNlLkN1cnJlbnRNYXBDaGFuZ2VkSAASSgoLbWFwX2NoYW5nZWQYBiABKAsyMy5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVzcG9uc2UuTWFwQ2hhbmdlZEgAEkoKC3Rva2VuX21vdmVkGAcgASgLMjMubWV1cnBnLnBsYXkudjEuV2F0Y2hHYW1lU2Vzc2lvblJlc3BvbnNlLlRva2VuTW92ZWRIABJZChNzaG93bl9pbWFnZV9jaGFuZ2VkGAggASgLMjoubWV1cnBnLnBsYXkudjEuV2F0Y2hHYW1lU2Vzc2lvblJlc3BvbnNlLlNob3duSW1hZ2VDaGFuZ2VkSAASWQoTbGVmdF9pbWFnZXNfY2hhbmdlZBgJIAEoCzI6Lm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5MZWZ0SW1hZ2VzQ2hhbmdlZEgAElYKEWVuY291bnRlcl9jaGFuZ2VkGAogASgLMjkubWV1cnBnLnBsYXkudjEuV2F0Y2hHYW1lU2Vzc2lvblJlc3BvbnNlLkVuY291bnRlckNoYW5nZWRIABJMCgx0dXJuX2NoYW5nZWQYCyABKAsyNC5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVzcG9uc2UuVHVybkNoYW5nZWRIABJSCg9jb21iYXRhbnRfbW92ZWQYDCABKAsyNy5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVzcG9uc2UuQ29tYmF0YW50TW92ZWRIABJXChJjb21iYXRfbG9nX2NoYW5nZWQYDSABKAsyOS5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVzcG9uc2UuQ29tYmF0TG9nQ2hhbmdlZEgAGjoKBVJlYWR5EjEKDGdhbWVfc2Vzc2lvbhgBIAEoCzIbLm1ldXJwZy5wbGF5LnYxLkdhbWVTZXNzaW9uGgsKCUhlYXJ0YmVhdBpACg1WaXRhbHNDaGFuZ2VkEi8KBnZpdGFscxgBIAEoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscxpBCgxTZXNzaW9uRW5kZWQSMQoMZ2FtZV9zZXNzaW9uGAEgASgLMhsubWV1cnBnLnBsYXkudjEuR2FtZVNlc3Npb24aIwoRQ3VycmVudE1hcENoYW5nZWQSDgoGbWFwX2lkGAEgASgJGhwKCk1hcENoYW5nZWQSDgoGbWFwX2lkGAEgASgJGj4KEVNob3duSW1hZ2VDaGFuZ2VkEikKBWltYWdlGAEgASgLMhoubWV1cnBnLnBsYXkudjEuU2hvd25JbWFnZRoTChFMZWZ0SW1hZ2VzQ2hhbmdlZBo6ChBFbmNvdW50ZXJDaGFuZ2VkEhQKDGVuY291bnRlcl9pZBgBIAEoCRIQCghyZXZpc2lvbhgCIAEoBRplCgtUdXJuQ2hhbmdlZBIUCgxlbmNvdW50ZXJfaWQYASABKAkSDQoFcm91bmQYAiABKAUSHAoUY3VycmVudF9jb21iYXRhbnRfaWQYAyABKAkSEwoLbWFzdGVyX3R1cm4YBCABKAgaVgoOQ29tYmF0YW50TW92ZWQSFAoMZW5jb3VudGVyX2lkGAEgASgJEhQKDGNvbWJhdGFudF9pZBgCIAEoCRILCgNjb2wYAyABKAUSCwoDcm93GAQgASgFGigKEENvbWJhdExvZ0NoYW5nZWQSFAoMZW5jb3VudGVyX2lkGAEgASgJGk4KClRva2VuTW92ZWQSDgoGbWFwX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCRIMCgR4X2JwGAMgASgFEgwKBHlfYnAYBCABKAVCBwoFZXZlbnQipgMKHEFkanVzdENoYXJhY3RlclZpdGFsc1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMY2hhcmFjdGVyX2lkGAIgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgDIAEoCRIfChJoaXRfcG9pbnRzX2N1cnJlbnQYBCABKAVIAIgBARIhChRoaXRfcG9pbnRzX3RlbXBvcmFyeRgFIAEoBUgBiAEBEjgKEHNwZWxsX3Nsb3RzX3VzZWQYBiADKAsyHi5tZXVycGcucGxheS52MS5TcGVsbFNsb3RzVXNlZBIcCg9wYWN0X3Nsb3RzX3VzZWQYByABKAVIAogBARIaCg1oaXRfZGljZV91c2VkGAggASgFSAOIAQESNAoOcmVzb3VyY2VzX3VzZWQYCSADKAsyHC5tZXVycGcucGxheS52MS5SZXNvdXJjZVVzZWRCFQoTX2hpdF9wb2ludHNfY3VycmVudEIXChVfaGl0X3BvaW50c190ZW1wb3JhcnlCEgoQX3BhY3Rfc2xvdHNfdXNlZEIQCg5faGl0X2RpY2VfdXNlZCIpCgxSZXNvdXJjZVVzZWQSCwoDa2V5GAEgASgJEgwKBHVzZWQYAiABKAUiLQoOU3BlbGxTbG90c1VzZWQSDQoFbGV2ZWwYASABKAUSDAoEdXNlZBgCIAEoBSJQCh1BZGp1c3RDaGFyYWN0ZXJWaXRhbHNSZXNwb25zZRIvCgZ2aXRhbHMYASABKAsyHy5tZXVycGcucGxheS52MS5DaGFyYWN0ZXJWaXRhbHMiOwoUU2V0Q3VycmVudE1hcFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSDgoGbWFwX2lkGAIgASgJIi8KFVNldEN1cnJlbnRNYXBSZXNwb25zZRIWCg5jdXJyZW50X21hcF9pZBgBIAEoCSJLChRTZXRTaG93bkltYWdlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIQCghpbWFnZV9pZBgCIAEoCRIMCgRrZWVwGAMgASgIIlYKFVNldFNob3duSW1hZ2VSZXNwb25zZRIvCgtzaG93bl9pbWFnZRgBIAEoCzIaLm1ldXJwZy5wbGF5LnYxLlNob3duSW1hZ2USDAoEa2VlcBgCIAEoCCIsChVMaXN0TGVmdEltYWdlc1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiRAoWTGlzdExlZnRJbWFnZXNSZXNwb25zZRIqCgZpbWFnZXMYASADKAsyGi5tZXVycGcucGxheS52MS5TaG93bkltYWdlIkEKGFRha2VCYWNrTGVmdEltYWdlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIQCghpbWFnZV9pZBgCIAEoCSIbChlUYWtlQmFja0xlZnRJbWFnZVJlc3BvbnNlKq4BChhHYW1lU2Vzc2lvbkJsb2NrZWRSZWFzb24SKwonR0FNRV9TRVNTSU9OX0JMT0NLRURfUkVBU09OX1VOU1BFQ0lGSUVEEAASLworR0FNRV9TRVNTSU9OX0JMT0NLRURfUkVBU09OX05PX09QRU5fU0VTU0lPThABEjQKMEdBTUVfU0VTU0lPTl9CTE9DS0VEX1JFQVNPTl9TRVNTSU9OX0FMUkVBRFlfT1BFThACMooJCgtQbGF5U2VydmljZRJlChBTdGFydEdhbWVTZXNzaW9uEicubWV1cnBnLnBsYXkudjEuU3RhcnRHYW1lU2Vzc2lvblJlcXVlc3QaKC5tZXVycGcucGxheS52MS5TdGFydEdhbWVTZXNzaW9uUmVzcG9uc2USXwoORW5kR2FtZVNlc3Npb24SJS5tZXVycGcucGxheS52MS5FbmRHYW1lU2Vzc2lvblJlcXVlc3QaJi5tZXVycGcucGxheS52MS5FbmRHYW1lU2Vzc2lvblJlc3BvbnNlEmoKEExpc3RHYW1lU2Vzc2lvbnMSJy5tZXVycGcucGxheS52MS5MaXN0R2FtZVNlc3Npb25zUmVxdWVzdBooLm1ldXJwZy5wbGF5LnYxLkxpc3RHYW1lU2Vzc2lvbnNSZXNwb25zZSIDkAICEnYKFExpc3RPcGVuR2FtZVNlc3Npb25zEisubWV1cnBnLnBsYXkudjEuTGlzdE9wZW5HYW1lU2Vzc2lvbnNSZXF1ZXN0GiwubWV1cnBnLnBsYXkudjEuTGlzdE9wZW5HYW1lU2Vzc2lvbnNSZXNwb25zZSIDkAIBEmQKDkdldExpdmVTZXNzaW9uEiUubWV1cnBnLnBsYXkudjEuR2V0TGl2ZVNlc3Npb25SZXF1ZXN0GiYubWV1cnBnLnBsYXkudjEuR2V0TGl2ZVNlc3Npb25SZXNwb25zZSIDkAICEmcKEFdhdGNoR2FtZVNlc3Npb24SJy5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVxdWVzdBooLm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZTABEnQKFUFkanVzdENoYXJhY3RlclZpdGFscxIsLm1ldXJwZy5wbGF5LnYxLkFkanVzdENoYXJhY3RlclZpdGFsc1JlcXVlc3QaLS5tZXVycGcucGxheS52MS5BZGp1c3RDaGFyYWN0ZXJWaXRhbHNSZXNwb25zZRJcCg1TZXRDdXJyZW50TWFwEiQubWV1cnBnLnBsYXkudjEuU2V0Q3VycmVudE1hcFJlcXVlc3QaJS5tZXVycGcucGxheS52MS5TZXRDdXJyZW50TWFwUmVzcG9uc2USXAoNU2V0U2hvd25JbWFnZRIkLm1ldXJwZy5wbGF5LnYxLlNldFNob3duSW1hZ2VSZXF1ZXN0GiUubWV1cnBnLnBsYXkudjEuU2V0U2hvd25JbWFnZVJlc3BvbnNlEmQKDkxpc3RMZWZ0SW1hZ2VzEiUubWV1cnBnLnBsYXkudjEuTGlzdExlZnRJbWFnZXNSZXF1ZXN0GiYubWV1cnBnLnBsYXkudjEuTGlzdExlZnRJbWFnZXNSZXNwb25zZSIDkAICEmgKEVRha2VCYWNrTGVmdEltYWdlEigubWV1cnBnLnBsYXkudjEuVGFrZUJhY2tMZWZ0SW1hZ2VSZXF1ZXN0GikubWV1cnBnLnBsYXkudjEuVGFrZUJhY2tMZWZ0SW1hZ2VSZXNwb25zZUK3AQoSY29tLm1ldXJwZy5wbGF5LnYxQglQbGF5UHJvdG9QAVo8Z2l0aHViLmNvbS9QdXJhRm9tZS9tZXVSUEcvYmFja2VuZC9nZW4vbWV1cnBnL3BsYXkvdjE7cGxheXYxogIDTVBYqgIOTWV1cnBnLlBsYXkuVjHKAg5NZXVycGdcUGxheVxWMeICGk1ldXJwZ1xQbGF5XFYxXEdQQk1ldGFkYXRh6gIQTWV1cnBnOjpQbGF5OjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp, file_meurpg_campaigns_v1_campaigns, file_meurpg_rules_v1_rules]);
+  fileDesc("ChltZXVycGcvcGxheS92MS9wbGF5LnByb3RvEg5tZXVycGcucGxheS52MSJOChJHYW1lU2Vzc2lvbkJsb2NrZWQSOAoGcmVhc29uGAEgASgOMigubWV1cnBnLnBsYXkudjEuR2FtZVNlc3Npb25CbG9ja2VkUmVhc29uIqQBCgtHYW1lU2Vzc2lvbhIKCgJpZBgBIAEoCRITCgtjYW1wYWlnbl9pZBgCIAEoCRIWCg5zZXNzaW9uX251bWJlchgDIAEoBRIuCgpzdGFydGVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIsCghlbmRlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiLgoXU3RhcnRHYW1lU2Vzc2lvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiaQoYU3RhcnRHYW1lU2Vzc2lvblJlc3BvbnNlEjEKDGdhbWVfc2Vzc2lvbhgBIAEoCzIbLm1ldXJwZy5wbGF5LnYxLkdhbWVTZXNzaW9uEhoKEmxvY2tlZF9zaGVldF9jb3VudBgCIAEoBSJFChVFbmRHYW1lU2Vzc2lvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFwoPZ2FtZV9zZXNzaW9uX2lkGAIgASgJIksKFkVuZEdhbWVTZXNzaW9uUmVzcG9uc2USMQoMZ2FtZV9zZXNzaW9uGAEgASgLMhsubWV1cnBnLnBsYXkudjEuR2FtZVNlc3Npb24iLgoXTGlzdEdhbWVTZXNzaW9uc1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiTgoYTGlzdEdhbWVTZXNzaW9uc1Jlc3BvbnNlEjIKDWdhbWVfc2Vzc2lvbnMYASADKAsyGy5tZXVycGcucGxheS52MS5HYW1lU2Vzc2lvbiIdChtMaXN0T3BlbkdhbWVTZXNzaW9uc1JlcXVlc3QiWwocTGlzdE9wZW5HYW1lU2Vzc2lvbnNSZXNwb25zZRI7ChJvcGVuX2dhbWVfc2Vzc2lvbnMYASADKAsyHy5tZXVycGcucGxheS52MS5PcGVuR2FtZVNlc3Npb24ihwEKD09wZW5HYW1lU2Vzc2lvbhIxCgxnYW1lX3Nlc3Npb24YASABKAsyGy5tZXVycGcucGxheS52MS5HYW1lU2Vzc2lvbhIVCg1jYW1wYWlnbl9uYW1lGAIgASgJEioKB215X3JvbGUYAyABKA4yGS5tZXVycGcuY2FtcGFpZ25zLnYxLlJvbGUiLAoVR2V0TGl2ZVNlc3Npb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIt8BChZHZXRMaXZlU2Vzc2lvblJlc3BvbnNlEjEKDGdhbWVfc2Vzc2lvbhgBIAEoCzIbLm1ldXJwZy5wbGF5LnYxLkdhbWVTZXNzaW9uEi8KBnZpdGFscxgCIAMoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscxIWCg5jdXJyZW50X21hcF9pZBgDIAEoCRIvCgtzaG93bl9pbWFnZRgEIAEoCzIaLm1ldXJwZy5wbGF5LnYxLlNob3duSW1hZ2USGAoQc2hvd25faW1hZ2Vfa2VlcBgFIAEoCCJpCgpTaG93bkltYWdlEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSDQoFd2lkdGgYAyABKAUSDgoGaGVpZ2h0GAQgASgFEgsKA3VybBgFIAEoCRIVCg10aHVtYm5haWxfdXJsGAYgASgJItYDCg9DaGFyYWN0ZXJWaXRhbHMSFAoMY2hhcmFjdGVyX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSFgoOcGxheWVyX3VzZXJfaWQYAyABKAkSGgoSaGl0X3BvaW50c19jdXJyZW50GAQgASgFEhYKDmhpdF9wb2ludHNfbWF4GAUgASgFEhwKFGhpdF9wb2ludHNfdGVtcG9yYXJ5GAYgASgFEjMKC3NwZWxsX3Nsb3RzGAcgAygLMh4ubWV1cnBnLnBsYXkudjEuU3BlbGxTbG90VXNhZ2USMQoKcGFjdF9zbG90cxgIIAEoCzIdLm1ldXJwZy5wbGF5LnYxLlBhY3RTbG90VXNhZ2USKgoIaGl0X2RpY2UYCSADKAsyGC5tZXVycGcucnVsZXMudjEuSGl0RGljZRIWCg5oaXRfZGljZV90b3RhbBgKIAEoBRIVCg1oaXRfZGljZV91c2VkGAsgASgFEhAKCHJldmlzaW9uGAwgASgFEi4KCnVwZGF0ZWRfYXQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjAKCXJlc291cmNlcxgOIAMoCzIdLm1ldXJwZy5wbGF5LnYxLlJlc291cmNlVXNhZ2UidwoNUmVzb3VyY2VVc2FnZRILCgNrZXkYASABKAkSDwoHbmFtZV9wdBgCIAEoCRINCgV0b3RhbBgDIAEoBRIMCgR1c2VkGAQgASgFEisKCHJlY2hhcmdlGAUgASgOMhkubWV1cnBnLnJ1bGVzLnYxLlJlY2hhcmdlIjwKDlNwZWxsU2xvdFVzYWdlEg0KBWxldmVsGAEgASgFEg0KBXRvdGFsGAIgASgFEgwKBHVzZWQYAyABKAUiQAoNUGFjdFNsb3RVc2FnZRISCgpzbG90X2xldmVsGAEgASgFEg0KBXRvdGFsGAIgASgFEgwKBHVzZWQYAyABKAUiLgoXV2F0Y2hHYW1lU2Vzc2lvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkihhAKGFdhdGNoR2FtZVNlc3Npb25SZXNwb25zZRI/CgVyZWFkeRgBIAEoCzIuLm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5SZWFkeUgAEkcKCWhlYXJ0YmVhdBgCIAEoCzIyLm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5IZWFydGJlYXRIABJQCg52aXRhbHNfY2hhbmdlZBgDIAEoCzI2Lm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5WaXRhbHNDaGFuZ2VkSAASTgoNc2Vzc2lvbl9lbmRlZBgEIAEoCzI1Lm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5TZXNzaW9uRW5kZWRIABJZChNjdXJyZW50X21hcF9jaGFuZ2VkGAUgASgLMjoubWV1cnBnLnBsYXkudjEuV2F0Y2hHYW1lU2Vzc2lvblJlc3BvbnNlLkN1cnJlbnRNYXBDaGFuZ2VkSAASSgoLbWFwX2NoYW5nZWQYBiABKAsyMy5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVzcG9uc2UuTWFwQ2hhbmdlZEgAEkoKC3Rva2VuX21vdmVkGAcgASgLMjMubWV1cnBnLnBsYXkudjEuV2F0Y2hHYW1lU2Vzc2lvblJlc3BvbnNlLlRva2VuTW92ZWRIABJZChNzaG93bl9pbWFnZV9jaGFuZ2VkGAggASgLMjoubWV1cnBnLnBsYXkudjEuV2F0Y2hHYW1lU2Vzc2lvblJlc3BvbnNlLlNob3duSW1hZ2VDaGFuZ2VkSAASWQoTbGVmdF9pbWFnZXNfY2hhbmdlZBgJIAEoCzI6Lm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXNwb25zZS5MZWZ0SW1hZ2VzQ2hhbmdlZEgAElYKEWVuY291bnRlcl9jaGFuZ2VkGAogASgLMjkubWV1cnBnLnBsYXkudjEuV2F0Y2hHYW1lU2Vzc2lvblJlc3BvbnNlLkVuY291bnRlckNoYW5nZWRIABJMCgx0dXJuX2NoYW5nZWQYCyABKAsyNC5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVzcG9uc2UuVHVybkNoYW5nZWRIABJSCg9jb21iYXRhbnRfbW92ZWQYDCABKAsyNy5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVzcG9uc2UuQ29tYmF0YW50TW92ZWRIABJXChJjb21iYXRfbG9nX2NoYW5nZWQYDSABKAsyOS5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVzcG9uc2UuQ29tYmF0TG9nQ2hhbmdlZEgAEk4KDXNjZW5lX2NoYW5nZWQYDyABKAsyNS5tZXVycGcucGxheS52MS5XYXRjaEdhbWVTZXNzaW9uUmVzcG9uc2UuU2NlbmVDaGFuZ2VkSAASVwoSc2NlbmVfY2hlY2tfcm9sbGVkGBAgASgLMjkubWV1cnBnLnBsYXkudjEuV2F0Y2hHYW1lU2Vzc2lvblJlc3BvbnNlLlNjZW5lQ2hlY2tSb2xsZWRIABoOCgxTY2VuZUNoYW5nZWQaJQoQU2NlbmVDaGVja1JvbGxlZBIRCglhY3Rpb25faWQYASABKAkaOgoFUmVhZHkSMQoMZ2FtZV9zZXNzaW9uGAEgASgLMhsubWV1cnBnLnBsYXkudjEuR2FtZVNlc3Npb24aCwoJSGVhcnRiZWF0GkAKDVZpdGFsc0NoYW5nZWQSLwoGdml0YWxzGAEgASgLMh8ubWV1cnBnLnBsYXkudjEuQ2hhcmFjdGVyVml0YWxzGkEKDFNlc3Npb25FbmRlZBIxCgxnYW1lX3Nlc3Npb24YASABKAsyGy5tZXVycGcucGxheS52MS5HYW1lU2Vzc2lvbhojChFDdXJyZW50TWFwQ2hhbmdlZBIOCgZtYXBfaWQYASABKAkaHAoKTWFwQ2hhbmdlZBIOCgZtYXBfaWQYASABKAkaPgoRU2hvd25JbWFnZUNoYW5nZWQSKQoFaW1hZ2UYASABKAsyGi5tZXVycGcucGxheS52MS5TaG93bkltYWdlGhMKEUxlZnRJbWFnZXNDaGFuZ2VkGjoKEEVuY291bnRlckNoYW5nZWQSFAoMZW5jb3VudGVyX2lkGAEgASgJEhAKCHJldmlzaW9uGAIgASgFGmUKC1R1cm5DaGFuZ2VkEhQKDGVuY291bnRlcl9pZBgBIAEoCRINCgVyb3VuZBgCIAEoBRIcChRjdXJyZW50X2NvbWJhdGFudF9pZBgDIAEoCRITCgttYXN0ZXJfdHVybhgEIAEoCBpWCg5Db21iYXRhbnRNb3ZlZBIUCgxlbmNvdW50ZXJfaWQYASABKAkSFAoMY29tYmF0YW50X2lkGAIgASgJEgsKA2NvbBgDIAEoBRILCgNyb3cYBCABKAUaKAoQQ29tYmF0TG9nQ2hhbmdlZBIUCgxlbmNvdW50ZXJfaWQYASABKAkaTgoKVG9rZW5Nb3ZlZBIOCgZtYXBfaWQYASABKAkSFAoMY2hhcmFjdGVyX2lkGAIgASgJEgwKBHhfYnAYAyABKAUSDAoEeV9icBgEIAEoBUIHCgVldmVudCKmAwocQWRqdXN0Q2hhcmFjdGVyVml0YWxzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAMgASgJEh8KEmhpdF9wb2ludHNfY3VycmVudBgEIAEoBUgAiAEBEiEKFGhpdF9wb2ludHNfdGVtcG9yYXJ5GAUgASgFSAGIAQESOAoQc3BlbGxfc2xvdHNfdXNlZBgGIAMoCzIeLm1ldXJwZy5wbGF5LnYxLlNwZWxsU2xvdHNVc2VkEhwKD3BhY3Rfc2xvdHNfdXNlZBgHIAEoBUgCiAEBEhoKDWhpdF9kaWNlX3VzZWQYCCABKAVIA4gBARI0Cg5yZXNvdXJjZXNfdXNlZBgJIAMoCzIcLm1ldXJwZy5wbGF5LnYxLlJlc291cmNlVXNlZEIVChNfaGl0X3BvaW50c19jdXJyZW50QhcKFV9oaXRfcG9pbnRzX3RlbXBvcmFyeUISChBfcGFjdF9zbG90c191c2VkQhAKDl9oaXRfZGljZV91c2VkIikKDFJlc291cmNlVXNlZBILCgNrZXkYASABKAkSDAoEdXNlZBgCIAEoBSItCg5TcGVsbFNsb3RzVXNlZBINCgVsZXZlbBgBIAEoBRIMCgR1c2VkGAIgASgFIlAKHUFkanVzdENoYXJhY3RlclZpdGFsc1Jlc3BvbnNlEi8KBnZpdGFscxgBIAEoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscyI7ChRTZXRDdXJyZW50TWFwUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIOCgZtYXBfaWQYAiABKAkiLwoVU2V0Q3VycmVudE1hcFJlc3BvbnNlEhYKDmN1cnJlbnRfbWFwX2lkGAEgASgJIksKFFNldFNob3duSW1hZ2VSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhAKCGltYWdlX2lkGAIgASgJEgwKBGtlZXAYAyABKAgiVgoVU2V0U2hvd25JbWFnZVJlc3BvbnNlEi8KC3Nob3duX2ltYWdlGAEgASgLMhoubWV1cnBnLnBsYXkudjEuU2hvd25JbWFnZRIMCgRrZWVwGAIgASgIIiwKFUxpc3RMZWZ0SW1hZ2VzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCSJEChZMaXN0TGVmdEltYWdlc1Jlc3BvbnNlEioKBmltYWdlcxgBIAMoCzIaLm1ldXJwZy5wbGF5LnYxLlNob3duSW1hZ2UiQQoYVGFrZUJhY2tMZWZ0SW1hZ2VSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhAKCGltYWdlX2lkGAIgASgJIhsKGVRha2VCYWNrTGVmdEltYWdlUmVzcG9uc2UqrgEKGEdhbWVTZXNzaW9uQmxvY2tlZFJlYXNvbhIrCidHQU1FX1NFU1NJT05fQkxPQ0tFRF9SRUFTT05fVU5TUEVDSUZJRUQQABIvCitHQU1FX1NFU1NJT05fQkxPQ0tFRF9SRUFTT05fTk9fT1BFTl9TRVNTSU9OEAESNAowR0FNRV9TRVNTSU9OX0JMT0NLRURfUkVBU09OX1NFU1NJT05fQUxSRUFEWV9PUEVOEAIy8gsKC1BsYXlTZXJ2aWNlEmUKEFN0YXJ0R2FtZVNlc3Npb24SJy5tZXVycGcucGxheS52MS5TdGFydEdhbWVTZXNzaW9uUmVxdWVzdBooLm1ldXJwZy5wbGF5LnYxLlN0YXJ0R2FtZVNlc3Npb25SZXNwb25zZRJfCg5FbmRHYW1lU2Vzc2lvbhIlLm1ldXJwZy5wbGF5LnYxLkVuZEdhbWVTZXNzaW9uUmVxdWVzdBomLm1ldXJwZy5wbGF5LnYxLkVuZEdhbWVTZXNzaW9uUmVzcG9uc2USagoQTGlzdEdhbWVTZXNzaW9ucxInLm1ldXJwZy5wbGF5LnYxLkxpc3RHYW1lU2Vzc2lvbnNSZXF1ZXN0GigubWV1cnBnLnBsYXkudjEuTGlzdEdhbWVTZXNzaW9uc1Jlc3BvbnNlIgOQAgISdgoUTGlzdE9wZW5HYW1lU2Vzc2lvbnMSKy5tZXVycGcucGxheS52MS5MaXN0T3BlbkdhbWVTZXNzaW9uc1JlcXVlc3QaLC5tZXVycGcucGxheS52MS5MaXN0T3BlbkdhbWVTZXNzaW9uc1Jlc3BvbnNlIgOQAgESZAoOR2V0TGl2ZVNlc3Npb24SJS5tZXVycGcucGxheS52MS5HZXRMaXZlU2Vzc2lvblJlcXVlc3QaJi5tZXVycGcucGxheS52MS5HZXRMaXZlU2Vzc2lvblJlc3BvbnNlIgOQAgISZwoQV2F0Y2hHYW1lU2Vzc2lvbhInLm1ldXJwZy5wbGF5LnYxLldhdGNoR2FtZVNlc3Npb25SZXF1ZXN0GigubWV1cnBnLnBsYXkudjEuV2F0Y2hHYW1lU2Vzc2lvblJlc3BvbnNlMAESdAoVQWRqdXN0Q2hhcmFjdGVyVml0YWxzEiwubWV1cnBnLnBsYXkudjEuQWRqdXN0Q2hhcmFjdGVyVml0YWxzUmVxdWVzdBotLm1ldXJwZy5wbGF5LnYxLkFkanVzdENoYXJhY3RlclZpdGFsc1Jlc3BvbnNlElwKDVNldEN1cnJlbnRNYXASJC5tZXVycGcucGxheS52MS5TZXRDdXJyZW50TWFwUmVxdWVzdBolLm1ldXJwZy5wbGF5LnYxLlNldEN1cnJlbnRNYXBSZXNwb25zZRJcCg1TZXRTaG93bkltYWdlEiQubWV1cnBnLnBsYXkudjEuU2V0U2hvd25JbWFnZVJlcXVlc3QaJS5tZXVycGcucGxheS52MS5TZXRTaG93bkltYWdlUmVzcG9uc2USZAoOTGlzdExlZnRJbWFnZXMSJS5tZXVycGcucGxheS52MS5MaXN0TGVmdEltYWdlc1JlcXVlc3QaJi5tZXVycGcucGxheS52MS5MaXN0TGVmdEltYWdlc1Jlc3BvbnNlIgOQAgISaAoRVGFrZUJhY2tMZWZ0SW1hZ2USKC5tZXVycGcucGxheS52MS5UYWtlQmFja0xlZnRJbWFnZVJlcXVlc3QaKS5tZXVycGcucGxheS52MS5UYWtlQmFja0xlZnRJbWFnZVJlc3BvbnNlElAKCU9wZW5TY2VuZRIgLm1ldXJwZy5wbGF5LnYxLk9wZW5TY2VuZVJlcXVlc3QaIS5tZXVycGcucGxheS52MS5PcGVuU2NlbmVSZXNwb25zZRJTCgpDbG9zZVNjZW5lEiEubWV1cnBnLnBsYXkudjEuQ2xvc2VTY2VuZVJlcXVlc3QaIi5tZXVycGcucGxheS52MS5DbG9zZVNjZW5lUmVzcG9uc2USXgoMR2V0T3BlblNjZW5lEiMubWV1cnBnLnBsYXkudjEuR2V0T3BlblNjZW5lUmVxdWVzdBokLm1ldXJwZy5wbGF5LnYxLkdldE9wZW5TY2VuZVJlc3BvbnNlIgOQAgISXwoOUm9sbFNjZW5lQ2hlY2sSJS5tZXVycGcucGxheS52MS5Sb2xsU2NlbmVDaGVja1JlcXVlc3QaJi5tZXVycGcucGxheS52MS5Sb2xsU2NlbmVDaGVja1Jlc3BvbnNlQrcBChJjb20ubWV1cnBnLnBsYXkudjFCCVBsYXlQcm90b1ABWjxnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvcGxheS92MTtwbGF5djGiAgNNUFiqAg5NZXVycGcuUGxheS5WMcoCDk1ldXJwZ1xQbGF5XFYx4gIaTWV1cnBnXFBsYXlcVjFcR1BCTWV0YWRhdGHqAhBNZXVycGc6OlBsYXk6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp, file_meurpg_campaigns_v1_campaigns, file_meurpg_play_v1_scene, file_meurpg_rules_v1_rules]);
 
 /**
  * GameSessionBlocked is the error detail of PlayService's
@@ -809,6 +811,25 @@ export type WatchGameSessionResponse = Message<"meurpg.play.v1.WatchGameSessionR
      */
     value: WatchGameSessionResponse_CombatLogChanged;
     case: "combatLogChanged";
+  } | {
+    /**
+     * (14 is XP's: reserved for the XP slice.)
+     * The open scene changed: opened, closed, or one of its actions or its
+     * point changed. Read it again (GetOpenScene). Everyone gets it.
+     *
+     * @generated from field: meurpg.play.v1.WatchGameSessionResponse.SceneChanged scene_changed = 15;
+     */
+    value: WatchGameSessionResponse_SceneChanged;
+    case: "sceneChanged";
+  } | {
+    /**
+     * A check was rolled in the open scene. Only the master and the roller
+     * get it.
+     *
+     * @generated from field: meurpg.play.v1.WatchGameSessionResponse.SceneCheckRolled scene_check_rolled = 16;
+     */
+    value: WatchGameSessionResponse_SceneCheckRolled;
+    case: "sceneCheckRolled";
   } | { case: undefined; value?: undefined };
 };
 
@@ -818,6 +839,48 @@ export type WatchGameSessionResponse = Message<"meurpg.play.v1.WatchGameSessionR
  */
 export const WatchGameSessionResponseSchema: GenMessage<WatchGameSessionResponse> = /*@__PURE__*/
   messageDesc(file_meurpg_play_v1_play, 19);
+
+/**
+ * SceneChanged carries nothing: it says the open scene changed, and the
+ * app reads it again (GetOpenScene), which filters it for the caller. It
+ * names no scene, so a player's stream never learns of one they were not
+ * shown.
+ *
+ * @generated from message meurpg.play.v1.WatchGameSessionResponse.SceneChanged
+ */
+export type WatchGameSessionResponse_SceneChanged = Message<"meurpg.play.v1.WatchGameSessionResponse.SceneChanged"> & {
+};
+
+/**
+ * Describes the message meurpg.play.v1.WatchGameSessionResponse.SceneChanged.
+ * Use `create(WatchGameSessionResponse_SceneChangedSchema)` to create a new message.
+ */
+export const WatchGameSessionResponse_SceneChangedSchema: GenMessage<WatchGameSessionResponse_SceneChanged> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 19, 0);
+
+/**
+ * SceneCheckRolled says a character rolled an action of the open scene;
+ * the app reads the scene again (GetOpenScene). It carries no number: the
+ * total reaches the master through the read, and the DC never leaves the
+ * server.
+ *
+ * @generated from message meurpg.play.v1.WatchGameSessionResponse.SceneCheckRolled
+ */
+export type WatchGameSessionResponse_SceneCheckRolled = Message<"meurpg.play.v1.WatchGameSessionResponse.SceneCheckRolled"> & {
+  /**
+   * The action rolled (a UUID).
+   *
+   * @generated from field: string action_id = 1;
+   */
+  actionId: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.WatchGameSessionResponse.SceneCheckRolled.
+ * Use `create(WatchGameSessionResponse_SceneCheckRolledSchema)` to create a new message.
+ */
+export const WatchGameSessionResponse_SceneCheckRolledSchema: GenMessage<WatchGameSessionResponse_SceneCheckRolled> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_play, 19, 1);
 
 /**
  * Ready is the stream's first event.
@@ -838,7 +901,7 @@ export type WatchGameSessionResponse_Ready = Message<"meurpg.play.v1.WatchGameSe
  * Use `create(WatchGameSessionResponse_ReadySchema)` to create a new message.
  */
 export const WatchGameSessionResponse_ReadySchema: GenMessage<WatchGameSessionResponse_Ready> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 19, 0);
+  messageDesc(file_meurpg_play_v1_play, 19, 2);
 
 /**
  * Heartbeat carries nothing.
@@ -853,7 +916,7 @@ export type WatchGameSessionResponse_Heartbeat = Message<"meurpg.play.v1.WatchGa
  * Use `create(WatchGameSessionResponse_HeartbeatSchema)` to create a new message.
  */
 export const WatchGameSessionResponse_HeartbeatSchema: GenMessage<WatchGameSessionResponse_Heartbeat> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 19, 1);
+  messageDesc(file_meurpg_play_v1_play, 19, 3);
 
 /**
  * VitalsChanged carries a character's new vitals. Only the master and the
@@ -874,7 +937,7 @@ export type WatchGameSessionResponse_VitalsChanged = Message<"meurpg.play.v1.Wat
  * Use `create(WatchGameSessionResponse_VitalsChangedSchema)` to create a new message.
  */
 export const WatchGameSessionResponse_VitalsChangedSchema: GenMessage<WatchGameSessionResponse_VitalsChanged> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 19, 2);
+  messageDesc(file_meurpg_play_v1_play, 19, 4);
 
 /**
  * SessionEnded says the watched session ended.
@@ -895,7 +958,7 @@ export type WatchGameSessionResponse_SessionEnded = Message<"meurpg.play.v1.Watc
  * Use `create(WatchGameSessionResponse_SessionEndedSchema)` to create a new message.
  */
 export const WatchGameSessionResponse_SessionEndedSchema: GenMessage<WatchGameSessionResponse_SessionEnded> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 19, 3);
+  messageDesc(file_meurpg_play_v1_play, 19, 5);
 
 /**
  * CurrentMapChanged says the session shows another map now. Everyone
@@ -919,7 +982,7 @@ export type WatchGameSessionResponse_CurrentMapChanged = Message<"meurpg.play.v1
  * Use `create(WatchGameSessionResponse_CurrentMapChangedSchema)` to create a new message.
  */
 export const WatchGameSessionResponse_CurrentMapChangedSchema: GenMessage<WatchGameSessionResponse_CurrentMapChanged> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 19, 4);
+  messageDesc(file_meurpg_play_v1_play, 19, 6);
 
 /**
  * MapChanged is a hint: something the member sees on this map changed,
@@ -946,7 +1009,7 @@ export type WatchGameSessionResponse_MapChanged = Message<"meurpg.play.v1.WatchG
  * Use `create(WatchGameSessionResponse_MapChangedSchema)` to create a new message.
  */
 export const WatchGameSessionResponse_MapChangedSchema: GenMessage<WatchGameSessionResponse_MapChanged> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 19, 5);
+  messageDesc(file_meurpg_play_v1_play, 19, 7);
 
 /**
  * ShownImageChanged carries the image the master shows now. Everyone
@@ -969,7 +1032,7 @@ export type WatchGameSessionResponse_ShownImageChanged = Message<"meurpg.play.v1
  * Use `create(WatchGameSessionResponse_ShownImageChangedSchema)` to create a new message.
  */
 export const WatchGameSessionResponse_ShownImageChangedSchema: GenMessage<WatchGameSessionResponse_ShownImageChanged> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 19, 6);
+  messageDesc(file_meurpg_play_v1_play, 19, 8);
 
 /**
  * LeftImagesChanged is a hint, with no content: the list of images left
@@ -986,7 +1049,7 @@ export type WatchGameSessionResponse_LeftImagesChanged = Message<"meurpg.play.v1
  * Use `create(WatchGameSessionResponse_LeftImagesChangedSchema)` to create a new message.
  */
 export const WatchGameSessionResponse_LeftImagesChangedSchema: GenMessage<WatchGameSessionResponse_LeftImagesChanged> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 19, 7);
+  messageDesc(file_meurpg_play_v1_play, 19, 9);
 
 /**
  * EncounterChanged is a hint: the combat changed, so the app reads it again
@@ -1018,7 +1081,7 @@ export type WatchGameSessionResponse_EncounterChanged = Message<"meurpg.play.v1.
  * Use `create(WatchGameSessionResponse_EncounterChangedSchema)` to create a new message.
  */
 export const WatchGameSessionResponse_EncounterChangedSchema: GenMessage<WatchGameSessionResponse_EncounterChanged> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 19, 8);
+  messageDesc(file_meurpg_play_v1_play, 19, 10);
 
 /**
  * TurnChanged says whose turn it is now. Each member gets their own copy:
@@ -1063,7 +1126,7 @@ export type WatchGameSessionResponse_TurnChanged = Message<"meurpg.play.v1.Watch
  * Use `create(WatchGameSessionResponse_TurnChangedSchema)` to create a new message.
  */
 export const WatchGameSessionResponse_TurnChangedSchema: GenMessage<WatchGameSessionResponse_TurnChanged> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 19, 9);
+  messageDesc(file_meurpg_play_v1_play, 19, 11);
 
 /**
  * CombatantMoved is a combatant's new square. A player's stream only gets
@@ -1105,7 +1168,7 @@ export type WatchGameSessionResponse_CombatantMoved = Message<"meurpg.play.v1.Wa
  * Use `create(WatchGameSessionResponse_CombatantMovedSchema)` to create a new message.
  */
 export const WatchGameSessionResponse_CombatantMovedSchema: GenMessage<WatchGameSessionResponse_CombatantMoved> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 19, 10);
+  messageDesc(file_meurpg_play_v1_play, 19, 12);
 
 /**
  * CombatLogChanged is a hint: an entry of the combat log appeared,
@@ -1130,7 +1193,7 @@ export type WatchGameSessionResponse_CombatLogChanged = Message<"meurpg.play.v1.
  * Use `create(WatchGameSessionResponse_CombatLogChangedSchema)` to create a new message.
  */
 export const WatchGameSessionResponse_CombatLogChangedSchema: GenMessage<WatchGameSessionResponse_CombatLogChanged> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 19, 11);
+  messageDesc(file_meurpg_play_v1_play, 19, 13);
 
 /**
  * TokenMoved is a token's new position. A token the app does not know
@@ -1172,7 +1235,7 @@ export type WatchGameSessionResponse_TokenMoved = Message<"meurpg.play.v1.WatchG
  * Use `create(WatchGameSessionResponse_TokenMovedSchema)` to create a new message.
  */
 export const WatchGameSessionResponse_TokenMovedSchema: GenMessage<WatchGameSessionResponse_TokenMoved> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_play, 19, 12);
+  messageDesc(file_meurpg_play_v1_play, 19, 14);
 
 /**
  * AdjustCharacterVitalsRequest is the master's correction. Every value set
@@ -1566,7 +1629,7 @@ export const GameSessionBlockedReasonSchema: GenEnum<GameSessionBlockedReason> =
  *
  * When the campaign has no open game session, the live-session methods
  * (GetLiveSession, WatchGameSession, AdjustCharacterVitals, SetCurrentMap,
- * SetShownImage) fail with `failed_precondition` and a GameSessionBlocked
+ * SetShownImage, OpenScene, CloseScene, GetOpenScene, RollSceneCheck) fail with `failed_precondition` and a GameSessionBlocked
  * detail whose reason is NO_OPEN_SESSION, so the app can show "Nenhuma
  * sessão em andamento".
  *
@@ -1904,6 +1967,107 @@ export const PlayService: GenService<{
     methodKind: "unary";
     input: typeof TakeBackLeftImageRequestSchema;
     output: typeof TakeBackLeftImageResponseSchema;
+  },
+  /**
+   * OpenScene opens an RP scene in the session (MR-015, D7): the master
+   * picks a SCENE point of the campaign's maps and every member sees it,
+   * live, with the point's name and description and its actions; each player
+   * with their own character's bonus (GetOpenScene). Only the campaign's
+   * master may call it, and only while the campaign has an open session. One
+   * scene at a time: opening another replaces the first. The point may be
+   * hidden: opening it reveals nothing, it stays hidden on the map (RN-10).
+   * Opening the scene that is already open changes nothing; closing it and
+   * opening it again starts the rolls afresh. Every stream gets
+   * `scene_changed`, and a `scene_opened` event goes to the history.
+   *
+   * Errors:
+   *   - `not_found`: the point is not a SCENE point of the campaign's maps,
+   *     the campaign does not exist, or the caller is not a member of it.
+   *   - `permission_denied`: the caller is a player.
+   *   - `failed_precondition`: no open session (GameSessionBlocked,
+   *     NO_OPEN_SESSION); or the point has no actions (SceneBlocked,
+   *     NO_ACTIONS).
+   *
+   * @generated from rpc meurpg.play.v1.PlayService.OpenScene
+   */
+  openScene: {
+    methodKind: "unary";
+    input: typeof OpenSceneRequestSchema;
+    output: typeof OpenSceneResponseSchema;
+  },
+  /**
+   * CloseScene closes the open scene, asking nothing. Only the campaign's
+   * master may call it. With no scene open it changes nothing. Every stream
+   * gets `scene_changed`, and a `scene_closed` event goes to the history.
+   *
+   * Errors:
+   *   - `not_found`: the campaign does not exist, or the caller is not a
+   *     member of it.
+   *   - `permission_denied`: the caller is a player.
+   *   - `failed_precondition`: no open session (GameSessionBlocked,
+   *     NO_OPEN_SESSION).
+   *
+   * @generated from rpc meurpg.play.v1.PlayService.CloseScene
+   */
+  closeScene: {
+    methodKind: "unary";
+    input: typeof CloseSceneRequestSchema;
+    output: typeof CloseSceneResponseSchema;
+  },
+  /**
+   * GetOpenScene returns the scene open in the session, and the rolls made
+   * in it, newest first (the scene log, MR-015). Any member may call it; the
+   * app reads it after `ready` and after every `scene_changed` and
+   * `scene_check_rolled`. What each one gets (RN-20):
+   *   - the master: the actions with their DCs, and every roll with whether
+   *     it passed;
+   *   - a player: the actions without a DC, each with their own living
+   *     character's bonus and passive value, and only their own rolls,
+   *     with no pass or fail.
+   * The scene is unset when none is open.
+   *
+   * Errors:
+   *   - `not_found`: the campaign does not exist, or the caller is not a
+   *     member of it.
+   *   - `failed_precondition`: no open session (GameSessionBlocked,
+   *     NO_OPEN_SESSION).
+   *
+   * @generated from rpc meurpg.play.v1.PlayService.GetOpenScene
+   */
+  getOpenScene: {
+    methodKind: "unary";
+    input: typeof GetOpenSceneRequestSchema;
+    output: typeof GetOpenSceneResponseSchema;
+  },
+  /**
+   * RollSceneCheck rolls an action of the open scene for the caller's own
+   * living character (MR-015, RN-18): the d20 plus the character's bonus
+   * from the sheet. The server rolls the d20, or takes the face of a real
+   * die (1 to 20), as the campaign's dice setting allows. A character rolls
+   * each action once while the scene is open; the master closes and opens the
+   * scene again for another roll. The answer is the roll with its total: the
+   * DC, and whether it passed, stay with the master. The master gets
+   * `scene_check_rolled` on the stream, and so does the roller; nobody else
+   * does. A `scene_check_rolled` event goes to the history (ids and numbers
+   * only). Only a player may call it.
+   *
+   * Errors:
+   *   - `invalid_argument`: neither roll_in_app nor d20_face is set;
+   *     roll_in_app is false; d20_face is not 1 to 20; the idempotency key
+   *     is not a UUID.
+   *   - `not_found`: the action is not one of the open scene's, the campaign
+   *     does not exist, or the caller is not a member of it.
+   *   - `permission_denied`: the caller is the master.
+   *   - `failed_precondition`: no open session (GameSessionBlocked,
+   *     NO_OPEN_SESSION); or SceneBlocked: NO_OPEN_SCENE, ALREADY_ROLLED,
+   *     WRONG_DICE_MODE, NO_CHARACTER.
+   *
+   * @generated from rpc meurpg.play.v1.PlayService.RollSceneCheck
+   */
+  rollSceneCheck: {
+    methodKind: "unary";
+    input: typeof RollSceneCheckRequestSchema;
+    output: typeof RollSceneCheckResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_meurpg_play_v1_play, 0);

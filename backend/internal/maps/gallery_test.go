@@ -448,6 +448,15 @@ func (noLive) OnScreen(context.Context, string) (string, string, error) {
 
 func (noLive) Publish(string, bool, *playv1.WatchGameSessionResponse) {}
 
+func (noLive) OpenScenePoint(context.Context, string) (string, error) {
+	return "", errors.New("not in this test")
+}
+
+// noRules stands in for the rules module.
+type noRules struct{}
+
+func (noRules) SceneCheckName(string) (string, bool) { return "", false }
+
 // noMembers is a MembershipSource with no members at all.
 type noMembers struct{}
 
@@ -469,15 +478,16 @@ func TestNewValidatesItsConfig(t *testing.T) {
 	t.Parallel()
 	pool := lazyPool(t)
 	for name, cfg := range map[string]Config{
-		"Pool":       {Characters: noCharacters{}, Live: noLive{}},
-		"Characters": {Pool: pool, Live: noLive{}},
-		"Live":       {Pool: pool, Characters: noCharacters{}},
+		"Pool":       {Characters: noCharacters{}, Live: noLive{}, Rules: noRules{}},
+		"Characters": {Pool: pool, Live: noLive{}, Rules: noRules{}},
+		"Live":       {Pool: pool, Characters: noCharacters{}, Rules: noRules{}},
+		"Rules":      {Pool: pool, Characters: noCharacters{}, Live: noLive{}},
 	} {
 		if _, err := New(cfg); err == nil {
 			t.Errorf("New() without %s succeeded", name)
 		}
 	}
-	s, err := New(Config{Pool: pool, Characters: noCharacters{}, Live: noLive{}})
+	s, err := New(Config{Pool: pool, Characters: noCharacters{}, Live: noLive{}, Rules: noRules{}})
 	if err != nil || s.maxImages != DefaultMaxImages || s.maxBytes != DefaultMaxBytes ||
 		s.maxMaps != DefaultMaxMaps || s.maxPoints != DefaultMaxPointsPerMap {
 		t.Errorf("New() = %+v, %v; want the default limits", s, err)
@@ -493,7 +503,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 		t.Fatalf("blob.NewFS() error = %v", err)
 	}
 	t.Cleanup(func() { _ = blobs.Close() })
-	svc, err := New(Config{Pool: lazyPool(t), Blobs: blobs, Characters: noCharacters{}, Live: noLive{}, Logger: slog.New(slog.DiscardHandler)})
+	svc, err := New(Config{Pool: lazyPool(t), Blobs: blobs, Characters: noCharacters{}, Live: noLive{}, Rules: noRules{}, Logger: slog.New(slog.DiscardHandler)})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -526,6 +536,10 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, mapCalls["UpdateMapPoint"] = mc.UpdateMapPoint(ctx, connect.NewRequest(&mapsv1.UpdateMapPointRequest{CampaignId: id, MapId: id, PointId: id, Name: proto.String("X")}))
 	_, mapCalls["DeleteMapPoint"] = mc.DeleteMapPoint(ctx, connect.NewRequest(&mapsv1.DeleteMapPointRequest{CampaignId: id, MapId: id, PointId: id}))
 	_, mapCalls["SetMapPointRevealed"] = mc.SetMapPointRevealed(ctx, connect.NewRequest(&mapsv1.SetMapPointRevealedRequest{CampaignId: id, MapId: id, PointId: id, Revealed: true}))
+	_, mapCalls["AddSceneAction"] = mc.AddSceneAction(ctx, connect.NewRequest(&mapsv1.AddSceneActionRequest{CampaignId: id, MapId: id, PointId: id, Key: "skill:arcana"}))
+	_, mapCalls["UpdateSceneAction"] = mc.UpdateSceneAction(ctx, connect.NewRequest(&mapsv1.UpdateSceneActionRequest{CampaignId: id, MapId: id, PointId: id, ActionId: id, Dc: proto.Int32(10)}))
+	_, mapCalls["MoveSceneAction"] = mc.MoveSceneAction(ctx, connect.NewRequest(&mapsv1.MoveSceneActionRequest{CampaignId: id, MapId: id, PointId: id, ActionId: id, Direction: mapsv1.SceneActionDirection_SCENE_ACTION_DIRECTION_UP}))
+	_, mapCalls["RemoveSceneAction"] = mc.RemoveSceneAction(ctx, connect.NewRequest(&mapsv1.RemoveSceneActionRequest{CampaignId: id, MapId: id, PointId: id, ActionId: id}))
 	_, mapCalls["PlaceMapToken"] = mc.PlaceMapToken(ctx, connect.NewRequest(&mapsv1.PlaceMapTokenRequest{CampaignId: id, MapId: id, CharacterId: id}))
 	_, mapCalls["SetMapTokenHidden"] = mc.SetMapTokenHidden(ctx, connect.NewRequest(&mapsv1.SetMapTokenHiddenRequest{CampaignId: id, MapId: id, CharacterId: id, Hidden: true}))
 	_, mapCalls["RemoveMapToken"] = mc.RemoveMapToken(ctx, connect.NewRequest(&mapsv1.RemoveMapTokenRequest{CampaignId: id, MapId: id, CharacterId: id}))

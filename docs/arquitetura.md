@@ -738,6 +738,10 @@ O `play` inicia, encerra e lista as sessões de jogo de uma campanha, o que trav
 | `AdjustCharacterVitals` | O mestre da campanha, durante a sessão | `failed_precondition` (`NO_OPEN_SESSION`); `not_found` se o personagem não é um personagem de jogador vivo da campanha; `invalid_argument` fora de 0 até o máximo |
 | `SetCurrentMap` | O mestre da campanha, durante a sessão | `failed_precondition` (`NO_OPEN_SESSION`); `not_found` se o mapa não é da campanha |
 | `SetShownImage` | O mestre da campanha, durante a sessão | `failed_precondition` (`NO_OPEN_SESSION`); `not_found` se a imagem não é da galeria da campanha |
+| `OpenScene` | O mestre da campanha, durante a sessão | `failed_precondition` (`NO_OPEN_SESSION`; `SceneBlocked` `NO_ACTIONS` se o ponto não tem ações); `not_found` se o ponto não é um ponto de cena da campanha |
+| `CloseScene` | O mestre da campanha, durante a sessão | `failed_precondition` (`NO_OPEN_SESSION`). Sem cena aberta, não muda nada |
+| `GetOpenScene` | Membros da campanha | `failed_precondition` (`NO_OPEN_SESSION`) |
+| `RollSceneCheck` | Um jogador, com personagem vivo, durante a sessão | `permission_denied` para o mestre; `failed_precondition` (`NO_OPEN_SESSION`, ou `SceneBlocked`: `NO_OPEN_SCENE`, `ALREADY_ROLLED`, `WRONG_DICE_MODE`, `NO_CHARACTER`); `not_found` se a ação não é da cena aberta; `invalid_argument` para um d20 fora de 1 a 20 |
 | `ListLeftImages` | Membros da campanha, com ou sem sessão aberta | — |
 | `TakeBackLeftImage` | O mestre da campanha, com ou sem sessão aberta | `not_found` se a imagem não está na lista de imagens deixadas |
 
@@ -871,9 +875,41 @@ A tabela é do módulo `maps` (a rota das imagens a lê, junto das tabelas dos m
 **Como o `play` e o `maps` se encontram.** Um precisa do outro, então cada um declara o que precisa, o outro implementa, e o `cmd/api` liga os dois, sem nenhum importar o outro:
 
 - o `play` declara `MapKeeper`: conferir e revelar o mapa atual, dentro da transação do `play`, ler a imagem mostrada e guardar as imagens deixadas com os jogadores. O `maps` implementa com `maps.SessionMaps`, que só precisa do banco;
-- o `maps` declara `LiveSession`: qual é o mapa atual e a imagem mostrada, e publicar no stream. O `play.Service` implementa com `CurrentMapID`, `ShownImageID` e `Publish`. As mensagens são as do `play.proto`: o `maps` as monta, como o `characters` monta as `CharacterVitals`.
+- o `maps` declara `LiveSession`: qual é o mapa atual e a imagem mostrada, qual é o ponto da cena aberta, e publicar no stream. O `play.Service` implementa com `OnScreen`, `OpenScenePoint` e `Publish`. As mensagens são as do `play.proto`: o `maps` as monta, como o `characters` monta as `CharacterVitals`.
 
 Como o `SessionMaps` não precisa do `play`, o `cmd/api` o cria primeiro, cria o `play` com ele, e só então cria o `maps` com o `play`: nenhum dos dois espera o outro.
+
+### Cenas de RP
+
+Uma cena de RP é um ponto do mapa do tipo `scene` com as ações que o mestre escolheu (MR-015, Etapa 7). As ações moram no `maps` (`scene_actions`, `MapService`); abrir a cena na sessão, rolar e o registro são do `play` (`backend/internal/play/scene.go`). Os padrões das perguntas 51 a 55 do documento de acompanhamento valem até o Samuel responder.
+
+- **As ações** (pergunta 51): um teste de perícia, um teste de atributo ou uma salvaguarda, cada um com nome opcional (até 60 caracteres) e CD opcional (1 a 30), no máximo 20 por ponto. O mestre muda uma de cada vez (`AddSceneAction`, `UpdateSceneAction`, `MoveSceneAction`, `RemoveSceneAction`: não há "salvar tudo"), e cada resposta traz a lista como ficou. A chave é conferida no catálogo das regras (`rules.Content.SceneCheckName`, que o `cmd/api` entrega ao `maps` em `Config.Rules`): só perícias, os seis atributos e as seis salvaguardas, então um ataque, uma magia ou uma habilidade de combate dá `invalid_argument`. O `MapPoint` ganha `scene_actions`: o mestre recebe tudo; o jogador, só nos pontos que vê (RN-10) e sem a CD (RN-20, pergunta 52).
+- **Abrir e fechar** (pergunta 53): `OpenScene(point_id)` escolhe um ponto de cena da campanha **com pelo menos uma ação**, escondido ou não: abrir um ponto escondido não o revela no mapa. Uma cena por vez: abrir outra troca a primeira; abrir a que já está aberta não muda nada. `CloseScene` não pergunta nada. A cena aberta é `game_sessions.open_scene_point_id`; um ponto apagado, ou que deixa de ser de cena, fecha a cena. Cada abertura e cada fechamento vira um `session_events` (`scene_opened`, `scene_closed`).
+- **Ler a cena** (`GetOpenScene`, uma chamada própria, não o `GetLiveSession`: ela calcula bônus a partir da ficha, e o app a lê depois do `ready` e de cada `scene_changed`). O nome e a descrição do ponto vão para todos. O **mestre** recebe as ações com a CD e todas as rolagens, cada uma com quem rolou, o dado e o total, e `passed` quando a ação tinha CD. O **jogador** recebe as ações **sem CD**, cada uma com o bônus e a passiva do próprio personagem vivo (`rules.SceneOptions`, pelo `CombatRoster.SceneOptions`), e só as próprias rolagens, sem `passed`. A passiva só vem em Percepção, Investigação e Intuição. Um jogador sem personagem vivo (ou com ficha básica) recebe as ações sem bônus.
+- **Rolar** (`RollSceneCheck`, RN-18, pergunta 55): o jogador rola, com o próprio personagem vivo, uma ação da cena aberta. O servidor rola o d20, ou recebe o d20 digitado (1 a 20) conforme a regra por rolagem do RN-18: um modo forçado pela campanha recusa a outra forma com `WRONG_DICE_MODE`. Total = d20 + o bônus de `SceneOptions`. Cada personagem rola cada ação **uma vez** enquanto a cena está aberta: a segunda é recusada com `ALREADY_ROLLED`; fechar e abrir a cena de novo zera (conta só a rolagem depois do último `scene_opened`). Repetir a chamada com a mesma `idempotency_key` devolve a primeira rolagem e não grava nada. A resposta ao jogador é a rolagem com o total: a CD e se passou ficam com o mestre. O registro do mestre (pergunta 54) é a lista de rolagens do `GetOpenScene`, lida de `session_events`, da mais nova para a mais antiga.
+- **O stream.** `scene_changed` (campo 15 do `WatchGameSessionResponse`) vai a todos quando a cena abre, fecha ou muda (uma ação ou o texto do ponto): é só um aviso sem conteúdo, e o app lê a cena de novo, já filtrada. `scene_check_rolled{action_id}` (campo 16) vai só ao mestre e a quem rolou: ninguém ouve a rolagem de outro jogador, e nenhum dos dois leva número nenhum.
+
+```mermaid
+sequenceDiagram
+    participant M as Mestre
+    participant P as play
+    participant K as maps
+    participant J as App do jogador
+    M->>K: AddSceneAction (uma por vez)
+    M->>P: OpenScene(ponto)
+    P->>K: ScenePoint(ponto): nome, descrição, ações com CD
+    P->>P: trava a sessão, grava open_scene_point_id e scene_opened
+    P-->>J: scene_changed (a todos)
+    J->>P: GetOpenScene
+    P-->>J: ações sem CD, com o bônus do personagem dele
+    J->>P: RollSceneCheck(ação, d20 ou app, chave)
+    P->>P: confere a forma de rolar, a rolagem única, soma o bônus
+    P-->>J: a rolagem com o total, sem CD nem passou
+    P-->>M: scene_check_rolled (só ao mestre e a quem rolou)
+```
+
+- **Como o `play`, o `maps` e o `characters` se encontram.** O `play` lê a cena pelo `MapKeeper.ScenePoint` (`maps.SessionMaps`), pede os bônus ao `CombatRoster.SceneOptions` e o nome do teste ao `CombatRoster.SceneCheckName` (`characters.Service`), e o `maps` pergunta qual ponto é a cena aberta pelo `LiveSession.OpenScenePoint` (`play.Service`), para avisar o stream quando muda uma ação ou o ponto da cena aberta.
+- **O histórico** (`session_events`): o payload de `scene_check_rolled` leva só IDs e números (o ponto, a ação, a chave do teste, o d20, o bônus, o total, `physical` e, se a ação tinha CD, `passed`), nunca um nome de pessoa, de ação ou de cena, nem a CD (ver [Privacidade](privacidade.md)).
 
 ### Combate
 
@@ -1218,13 +1254,14 @@ Um mapa é uma imagem da galeria com pontos de interesse e tokens por cima (MR-0
 | `UpdateMapPoint` | O mestre | Muda o que vier na requisição: tipo, nome, descrição, posição (mover é isto), destino do submapa, revelado |
 | `DeleteMapPoint` | O mestre | Apaga o ponto |
 | `SetMapPointRevealed` | O mestre | Revela ou esconde o ponto |
+| `AddSceneAction`, `UpdateSceneAction`, `MoveSceneAction`, `RemoveSceneAction` | O mestre | As ações de uma cena de RP, uma mudança por chamada, cada uma devolvendo a lista do ponto (MR-015; ver [Cenas de RP](#cenas-de-rp)). `invalid_argument` para uma chave que não é perícia, atributo ou salvaguarda, um nome com mais de 60 caracteres, uma CD fora de 1 a 30 ou um ponto que não é de cena; `resource_exhausted` passando de 20 ações |
 | `PlaceMapToken` | O mestre | Põe o token de um personagem vivo da campanha, ou o move. O de jogador nasce visível; o de NPC, escondido |
 | `SetMapTokenHidden` | O mestre | Esconde ou mostra o token |
 | `RemoveMapToken` | O mestre | Tira o token do mapa |
 
 - **A grade de batalha (MR-013, RN-21).** `maps.grid_columns` guarda quantos quadrados de 1,5 m cabem na largura da imagem; as linhas são calculadas pela proporção da imagem. Sem grade (`NULL`), o combate não começa no mapa. A conta de linhas e a leitura da grade pelo `play` estão em `maps.SessionMaps`.
 - **Posições em pontos-base.** `x_bp` e `y_bp` vão de 0 a 10000 na largura e na altura da imagem (5000 é o meio). Não dependem do tamanho da imagem, então trocar a imagem ou dar zoom não mexe em nada. A resposta traz a largura e a altura da imagem, para a tela desenhar o mapa antes de a imagem chegar.
-- **Os pontos.** Batalha, submapa ou cena de RP, com nome (até 80 caracteres) e descrição para os jogadores (até 2.000, com quebras de linha). O ponto de submapa leva a outro mapa da mesma campanha, nunca ao próprio; o app abre primeiro a ficha do ponto, com "Abrir <mapa>". O ponto de batalha também pode ter um mapa de destino, o do combate: iniciar o combate pelo ponto (`CombatService.StartEncounter`) faz esse mapa virar o mapa atual da sessão, e o revela (ver [Combate](#combate)); ele não conta como "submapa de". A cena de RP abre na Etapa 7 (decidido em 02/10/2026, pergunta 29).
+- **Os pontos.** Batalha, submapa ou cena de RP, com nome (até 80 caracteres) e descrição para os jogadores (até 2.000, com quebras de linha). O ponto de submapa leva a outro mapa da mesma campanha, nunca ao próprio; o app abre primeiro a ficha do ponto, com "Abrir <mapa>". O ponto de batalha também pode ter um mapa de destino, o do combate: iniciar o combate pelo ponto (`CombatService.StartEncounter`) faz esse mapa virar o mapa atual da sessão, e o revela (ver [Combate](#combate)); ele não conta como "submapa de". A cena de RP, com as ações que o mestre escolhe e a abertura na sessão, veio na Etapa 7 (decidido em 02/10/2026, pergunta 29; ver [Cenas de RP](#cenas-de-rp)). Mudar um ponto de cena para outro tipo apaga as ações dele.
 - **Os tokens.** Um por personagem por mapa. O personagem precisa ser vivo e da campanha (de jogador, nem morto nem pendente, ou NPC); quem diz é o `characters`, pela interface `maps.CharacterDirectory` (`characters.Service.MapCharacters`), que devolve só ID, tipo, nome e jogador: nada da ficha, nem as notas do mestre. O personagem que morre continua na tabela, mas não aparece no mapa.
 - **Um movimento por vez.** Mover (`PlaceMapToken`, `UpdateMapPoint`) não leva revisão: vale a última escrita. Dois movimentos seguidos do mesmo token, enviados juntos, podem chegar ao banco fora de ordem (os dois escrevem a mesma linha, e a repetição no erro `40001` pode gravar o mais velho por último), e o mapa de todos ficaria na posição velha. Por isso a tela manda um movimento de cada ponto ou token por vez (`web/src/app/core/maps/move-saves.ts`): enquanto um vai, só o último espera, e os do meio ficam de fora. Se o servidor recusar, o item volta para a última posição salva. E o mapa (`shared/map-view`) parte da última posição que ele mesmo informou até o estado novo chegar: sem isso, duas setas seguidas, mais rápidas que a tela, mandavam a mesma posição duas vezes.
 - **Limites.** 200 mapas por campanha e 200 pontos por mapa (proposta, como a cota da galeria), porque as listas não são paginadas.
@@ -1254,7 +1291,7 @@ Com a sessão aberta, cada mudança num mapa chega na hora a quem está na pági
 | Evento | Quando | Quem recebe |
 | --- | --- | --- |
 | `current_map_changed{map_id}` | O mestre muda o mapa atual, ou apaga o mapa atual (vazio) | Todos |
-| `map_changed{map_id}` | Um ponto é criado, muda, é apagado, revelado ou escondido; um token é posto, escondido, mostrado ou tirado; o mapa muda de nome ou de imagem, é revelado, escondido, criado ou apagado | O mestre; os jogadores, se veem o mapa antes ou depois **e** a coisa mudada antes ou depois |
+| `map_changed{map_id}` | Um ponto é criado, muda, é apagado, revelado ou escondido, ou muda uma ação da cena dele; um token é posto, escondido, mostrado ou tirado; o mapa muda de nome ou de imagem, é revelado, escondido, criado ou apagado | O mestre; os jogadores, se veem o mapa antes ou depois **e** a coisa mudada antes ou depois |
 | `token_moved{map_id, character_id, x_bp, y_bp}` | O mestre move um token que já estava no mapa | Todos, se o token está visível num mapa que os jogadores veem; senão, só o mestre |
 
 - **`map_changed` é só um aviso.** Não leva conteúdo: o app lê o mapa de novo (`GetMap`), já filtrado. Assim o nome ou a descrição de um ponto nunca viajam pelo stream. Se o jogador não vê mais o mapa, o `GetMap` responde `not_found` e o app sai dele; um `map_changed` de um mapa que o app ainda não lista (acabou de ser revelado) quer dizer que a lista mudou (`ListMaps`).
