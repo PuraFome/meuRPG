@@ -7,8 +7,8 @@ import {
 } from '../../../gen/meurpg/campaigns/v1/campaign_document_pb';
 import { CharacterService } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { MapService } from '../../../gen/meurpg/maps/v1/maps_pb';
-import { PlayService } from '../../../gen/meurpg/play/v1/play_pb';
 import { CONNECT_TRANSPORT } from '../../core/connect/transport';
+import { OpenSessionLookup, type OpenSessionMap } from '../../core/play/open-session';
 import { ViewPoint } from '../../shared/map-view/map-geometry';
 
 /** A map, as the document's dialogs show it. */
@@ -23,12 +23,7 @@ export interface MapView {
   readonly points: readonly ViewPoint[];
 }
 
-/** The campaign's open session and the map it is on. */
-export interface OpenSessionMap {
-  readonly sessionNumber: number;
-  /** Empty while the master has not chosen a map. */
-  readonly mapId: string;
-}
+export type { OpenSessionMap };
 
 /** A character, as the document's dialogs show it. */
 export interface SheetView {
@@ -74,7 +69,7 @@ export class DocumentClient {
 export class DocumentLinks {
   private readonly maps = createClient(MapService, inject(CONNECT_TRANSPORT));
   private readonly characters = createClient(CharacterService, inject(CONNECT_TRANSPORT));
-  private readonly play = createClient(PlayService, inject(CONNECT_TRANSPORT));
+  private readonly sessions = inject(OpenSessionLookup);
 
   async listMaps(campaignId: string): Promise<MapView[]> {
     const res = await this.maps.listMaps({ campaignId });
@@ -104,16 +99,10 @@ export class DocumentLinks {
     };
   }
 
-  /** The open session's number and current map, or null when the campaign
-   * has no open session (`failed_precondition`) or the call fails: the
-   * dialog only adds "Mapa atual da Sessão 4" when it knows. */
-  async openSessionMap(campaignId: string): Promise<OpenSessionMap | null> {
-    try {
-      const res = await this.play.getLiveSession({ campaignId });
-      return res.gameSession ? { sessionNumber: res.gameSession.sessionNumber, mapId: res.currentMapId } : null;
-    } catch {
-      return null;
-    }
+  /** The open session's number and current map, or null: the dialog only
+   * adds "Mapa atual da Sessão 4" when it knows. */
+  openSessionMap(campaignId: string): Promise<OpenSessionMap | null> {
+    return this.sessions.currentMap(campaignId);
   }
 
   async listCharacters(campaignId: string): Promise<SheetView[]> {

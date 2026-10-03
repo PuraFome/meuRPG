@@ -354,6 +354,15 @@ async function scanMapScreens(browser: Browser, colorScheme: 'light' | 'dark', w
 
     await open(masterPage, `/campanhas/${campaignId}/mapas/${world}`);
     await expectScreenPasses(masterPage, `Mapa, mestre ${suffix}`);
+    // E6-27: the header renaming, and asking before deleting.
+    await masterPage.getByRole('button', { name: 'Renomear' }).click();
+    await expect(masterPage.getByLabel('Nome do mapa')).toBeFocused();
+    await expectScreenPasses(masterPage, `Mapa, renomear ${suffix}`);
+    await masterPage.getByRole('button', { name: 'Cancelar' }).click();
+    await masterPage.getByRole('button', { name: 'Apagar mapa' }).click();
+    await expect(masterPage.getByRole('group', { name: /^Apagar / }).getByRole('button', { name: 'Cancelar' })).toBeFocused();
+    await expectScreenPasses(masterPage, `Mapa, apagar ${suffix}`);
+    await masterPage.getByRole('group', { name: /^Apagar / }).getByRole('button', { name: 'Cancelar' }).click();
     if (width >= 768) {
       await masterPage.getByRole('button', { name: 'Ruínas élficas, Cena de RP, escondido' }).click();
       await expect(masterPage.getByRole('heading', { name: 'Ruínas élficas' })).toBeVisible();

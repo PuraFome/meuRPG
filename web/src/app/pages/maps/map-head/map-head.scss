@@ -21,28 +21,149 @@
   }
 }
 
-.mr-page-title {
+// The name, "Renomear" after it and "Apagar mapa" at the far right. When the
+// line is short they move under the name; "Renomear" then starts at the
+// name's left edge (its padding pulled back, the gap made up for).
+.title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 24px;
+  margin: var(--mr-space-1) 0 var(--mr-space-2);
+
+  .mr-page-title {
+    margin: 0;
+  }
+}
+
+.title__rename {
+  margin-inline-start: -12px;
+}
+
+.title__delete {
+  margin-inline-start: auto;
+}
+
+// "Renomear": the field, then its buttons under it, as in every form.
+.rename {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--mr-space-3);
+  margin: var(--mr-space-2) 0 var(--mr-space-3);
+}
+
+.rename__field {
+  width: min(480px, 100%);
+}
+
+// Two buttons that answer one question: both outlined, the same height
+// (44px; on a phone 48px, side by side with the same width).
+.pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2);
+
+  @media (max-width: 767.98px) {
+    align-self: stretch;
+    flex-wrap: nowrap;
+
+    > button {
+      flex: 1 1 0;
+      min-width: 0;
+      --mat-button-outlined-container-height: 48px;
+    }
+  }
+}
+
+.neutral {
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+}
+
+.danger {
+  color: var(--mr-danger-ink);
+  --mat-button-text-label-text-color: var(--mr-danger-ink);
+  --mat-button-outlined-label-text-color: var(--mr-danger-ink);
+  --mat-button-outlined-outline-color: var(--mr-danger-ink);
+}
+
+// "Apagar mapa" asks here, in place of the state line.
+.confirm {
+  display: flex;
+  gap: var(--mr-space-3);
+  max-width: 760px;
   margin-top: var(--mr-space-1);
-  margin-bottom: var(--mr-space-2);
+  padding: 14px 18px 16px;
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-danger-surface);
+  color: var(--mr-danger-ink);
+
+  > .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+    // On the first 22px line: (22 - 20) / 2.
+    margin-top: 1px;
+  }
+
+  p {
+    margin: 0;
+    font-size: 16px;
+    line-height: 22px;
+  }
+
+  .pair > button {
+    background: var(--mr-surface);
+  }
+}
+
+.confirm__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.confirm__error {
+  font-weight: 700;
 }
 
 .state {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0 var(--mr-space-2);
+  column-gap: 25px;
+  // A line never starts with a separator: each one sits in the gap before
+  // its group, so the first group of a line puts it outside the box.
+  overflow-x: clip;
 }
 
-.state__item {
+// A state and its action never split across lines.
+.state__group {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: var(--mr-space-2);
   font-size: 17px;
 
-  .mat-icon {
+  > .mat-icon {
+    flex: none;
     width: 20px;
     height: 20px;
     font-size: 20px;
+  }
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: -13px;
+    top: 50%;
+    width: 1px;
+    height: 22px;
+    translate: 0 -50%;
+    background: var(--mr-line);
   }
 }
 
@@ -50,11 +171,36 @@
   min-height: 44px;
   font-weight: 700;
   color: var(--mr-accent-text);
+
+  &.danger {
+    color: var(--mr-danger-ink);
+  }
 }
 
-.state__sep {
-  width: 1px;
-  height: 22px;
-  margin: 0 var(--mr-space-3);
-  background: var(--mr-line);
+// On a phone each state takes a line: the icon and its words, the action
+// under the words.
+@media (max-width: 767.98px) {
+  .state {
+    flex-direction: column;
+    align-items: stretch;
+    row-gap: var(--mr-space-3);
+  }
+
+  // No gap between the words and their action: the button's own space
+  // keeps them apart, and the gap between states keeps each pair together.
+  .state__group {
+    display: grid;
+    grid-template-columns: 20px 1fr;
+    row-gap: 0;
+
+    &::before {
+      display: none;
+    }
+
+    > .state__action {
+      grid-column: 2;
+      justify-self: start;
+      margin-inline-start: -12px;
+    }
+  }
 }

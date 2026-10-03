@@ -1,38 +1,134 @@
 <a class="back" [routerLink]="['/campanhas', campaignId()]">
   <mat-icon aria-hidden="true">arrow_back</mat-icon>Voltar para a campanha
 </a>
-<h1 class="mr-page-title">{{ map().name }}</h1>
-<div class="state">
-  <span class="state__item">
-    <mat-icon aria-hidden="true">{{ map().revealed ? 'visibility' : 'visibility_off' }}</mat-icon>
-    {{ map().revealed ? 'Revelado aos jogadores' : 'Escondido dos jogadores' }}
-  </span>
-  <button
-    matButton
-    type="button"
-    class="state__action"
-    [disabled]="busy()"
-    [attr.aria-label]="map().revealed ? 'Esconder o mapa dos jogadores' : 'Revelar o mapa aos jogadores'"
-    (click)="toggleReveal.emit()"
+@if (mode() === 'rename') {
+  <form
+    class="rename"
+    [formGroup]="form"
+    (ngSubmit)="submitName()"
+    (keydown.escape)="cancelRename()"
   >
-    {{ map().revealed ? 'Esconder' : 'Revelar aos jogadores' }}
-  </button>
-  <span class="state__sep" aria-hidden="true"></span>
-  <span class="state__item">
-    <mat-icon aria-hidden="true">grid_on</mat-icon>
-    {{ map().gridColumns > 0 ? 'Grade de ' + map().gridColumns + ' × ' + map().gridRows + ' quadrados' : 'Sem grade' }}
-  </span>
-  <a matButton class="state__action" [routerLink]="['/campanhas', campaignId(), 'mapas', map().id, 'grade']">
-    {{ map().gridColumns > 0 ? 'Mudar a grade' : 'Definir a grade' }}
-  </a>
-  @if (showImage()) {
-    <span class="state__sep" aria-hidden="true"></span>
-    <span class="state__item">
-      <mat-icon aria-hidden="true">image</mat-icon>
-      Imagem: {{ map().image?.name }}
-    </span>
-    <button matButton type="button" class="state__action" (click)="changeImage.emit()">
-      Trocar imagem
+    <mat-form-field appearance="outline" class="rename__field">
+      <mat-label>Nome do mapa</mat-label>
+      <input #nameInput matInput formControlName="name" maxlength="80" autocomplete="off" />
+      <mat-hint>Até 80 caracteres. Os jogadores veem o nome novo na hora.</mat-hint>
+      <mat-error>Escreva o nome do mapa.</mat-error>
+    </mat-form-field>
+    @if (error(); as message) {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ message }}</p>
+      </div>
+    }
+    <div class="pair">
+      <button matButton="outlined" type="submit" [disabled]="working()">Salvar nome</button>
+      <button matButton="outlined" type="button" class="neutral" (click)="cancelRename()">
+        Cancelar
+      </button>
+    </div>
+  </form>
+} @else {
+  <div class="title">
+    <h1 class="mr-page-title">{{ map().name }}</h1>
+    <button
+      #renameButton
+      matButton
+      type="button"
+      class="state__action title__rename"
+      (click)="startRename()"
+    >
+      <mat-icon aria-hidden="true">edit</mat-icon>Renomear
     </button>
-  }
-</div>
+    @if (mode() !== 'delete') {
+      <button
+        #deleteButton
+        matButton
+        type="button"
+        class="state__action title__delete danger"
+        (click)="askDelete()"
+      >
+        <mat-icon aria-hidden="true">delete</mat-icon>Apagar mapa
+      </button>
+    }
+  </div>
+}
+@if (mode() === 'delete') {
+  <div class="confirm" role="group" aria-labelledby="map-delete-question">
+    <mat-icon aria-hidden="true">warning</mat-icon>
+    <div class="confirm__body">
+      <p id="map-delete-question">
+        <strong>Apagar {{ map().name }}?</strong> {{ consequences() }}
+      </p>
+      @if (error(); as message) {
+        <p class="confirm__error" role="alert">{{ message }}</p>
+      }
+      <div class="pair">
+        <button
+          matButton="outlined"
+          type="button"
+          class="danger"
+          [disabled]="working()"
+          (click)="confirmDelete()"
+        >
+          Apagar mapa
+        </button>
+        <button
+          #cancelDelete
+          matButton="outlined"
+          type="button"
+          class="neutral"
+          (click)="keepMap()"
+        >
+          Cancelar
+        </button>
+      </div>
+    </div>
+  </div>
+} @else {
+  <div class="state">
+    <span class="state__group">
+      <mat-icon aria-hidden="true">{{ map().revealed ? 'visibility' : 'visibility_off' }}</mat-icon>
+      <span class="state__text">{{
+        map().revealed ? 'Revelado aos jogadores' : 'Escondido dos jogadores'
+      }}</span>
+      <button
+        matButton
+        type="button"
+        class="state__action"
+        [disabled]="busy()"
+        [attr.aria-label]="
+          map().revealed ? 'Esconder o mapa dos jogadores' : 'Revelar o mapa aos jogadores'
+        "
+        (click)="toggleReveal.emit()"
+      >
+        {{ map().revealed ? 'Esconder' : 'Revelar aos jogadores' }}
+      </button>
+    </span>
+    <span class="state__group">
+      <mat-icon aria-hidden="true">grid_on</mat-icon>
+      <span class="state__text">
+        {{
+          map().gridColumns > 0
+            ? 'Grade de ' + map().gridColumns + ' × ' + map().gridRows + ' quadrados'
+            : 'Sem grade'
+        }}
+      </span>
+      <a
+        matButton
+        class="state__action"
+        [routerLink]="['/campanhas', campaignId(), 'mapas', map().id, 'grade']"
+      >
+        {{ map().gridColumns > 0 ? 'Mudar a grade' : 'Definir a grade' }}
+      </a>
+    </span>
+    @if (showImage()) {
+      <span class="state__group">
+        <mat-icon aria-hidden="true">image</mat-icon>
+        <span class="state__text">Imagem: {{ map().image?.name }}</span>
+        <button matButton type="button" class="state__action" (click)="changeImage.emit()">
+          Trocar imagem
+        </button>
+      </span>
+    }
+  </div>
+}
