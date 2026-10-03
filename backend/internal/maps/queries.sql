@@ -280,3 +280,61 @@ SELECT EXISTS (
     SELECT 1 FROM campaign_left_images
     WHERE campaign_id = $1 AND image_id = $2
 );
+
+-- The actions of an RP scene (MR-015). A scene point has at most 20; the
+-- handler counts them inside the transaction that inserts one.
+
+-- name: ListSceneActions :many
+-- One point's actions, in order.
+SELECT * FROM scene_actions
+WHERE point_id = $1
+ORDER BY position, created_at, id;
+
+-- name: ListSceneActionsOfMap :many
+-- Every action of a map's points, for a map read: grouped by the handler,
+-- each point's in order.
+SELECT a.* FROM scene_actions AS a
+JOIN map_points AS p ON p.id = a.point_id
+WHERE p.map_id = $1
+ORDER BY a.point_id, a.position, a.created_at, a.id;
+
+-- name: CountSceneActions :one
+SELECT count(*)::INT4 AS action_count FROM scene_actions
+WHERE point_id = $1;
+
+-- name: InsertSceneAction :one
+INSERT INTO scene_actions (point_id, position, key, name, dc, created_at, updated_at)
+VALUES (sqlc.arg(point_id), sqlc.arg(position), sqlc.arg(key), sqlc.arg(name), sqlc.narg(dc), sqlc.arg(now), sqlc.arg(now))
+RETURNING *;
+
+-- name: GetSceneActionForUpdate :one
+SELECT * FROM scene_actions
+WHERE point_id = $1 AND id = $2
+FOR UPDATE;
+
+-- name: UpdateSceneAction :one
+UPDATE scene_actions
+SET key = sqlc.arg(key), name = sqlc.arg(name), dc = sqlc.narg(dc), updated_at = sqlc.arg(now)
+WHERE point_id = sqlc.arg(point_id) AND id = sqlc.arg(id)
+RETURNING *;
+
+-- name: SetSceneActionPosition :exec
+UPDATE scene_actions
+SET position = $2
+WHERE id = $1;
+
+-- name: DeleteSceneAction :execrows
+DELETE FROM scene_actions
+WHERE point_id = $1 AND id = $2;
+
+-- name: DeleteSceneActionsOfPoint :exec
+-- A point that stops being a scene has no actions.
+DELETE FROM scene_actions
+WHERE point_id = $1;
+
+-- name: GetScenePoint :one
+-- A SCENE point of the campaign's maps by its ID alone, hidden or not: the one
+-- the master opens in a session (package play, through SessionMaps).
+SELECT p.* FROM map_points AS p
+JOIN maps AS m ON m.id = p.map_id
+WHERE m.campaign_id = $1 AND p.id = $2 AND p.kind = 'scene';

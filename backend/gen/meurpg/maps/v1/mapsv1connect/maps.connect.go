@@ -60,6 +60,18 @@ const (
 	// MapServiceSetMapPointRevealedProcedure is the fully-qualified name of the MapService's
 	// SetMapPointRevealed RPC.
 	MapServiceSetMapPointRevealedProcedure = "/meurpg.maps.v1.MapService/SetMapPointRevealed"
+	// MapServiceAddSceneActionProcedure is the fully-qualified name of the MapService's AddSceneAction
+	// RPC.
+	MapServiceAddSceneActionProcedure = "/meurpg.maps.v1.MapService/AddSceneAction"
+	// MapServiceUpdateSceneActionProcedure is the fully-qualified name of the MapService's
+	// UpdateSceneAction RPC.
+	MapServiceUpdateSceneActionProcedure = "/meurpg.maps.v1.MapService/UpdateSceneAction"
+	// MapServiceMoveSceneActionProcedure is the fully-qualified name of the MapService's
+	// MoveSceneAction RPC.
+	MapServiceMoveSceneActionProcedure = "/meurpg.maps.v1.MapService/MoveSceneAction"
+	// MapServiceRemoveSceneActionProcedure is the fully-qualified name of the MapService's
+	// RemoveSceneAction RPC.
+	MapServiceRemoveSceneActionProcedure = "/meurpg.maps.v1.MapService/RemoveSceneAction"
 	// MapServicePlaceMapTokenProcedure is the fully-qualified name of the MapService's PlaceMapToken
 	// RPC.
 	MapServicePlaceMapTokenProcedure = "/meurpg.maps.v1.MapService/PlaceMapToken"
@@ -176,7 +188,8 @@ type MapServiceClient interface {
 	// UpdateMapPoint changes a point: each field set in the request replaces
 	// the current value, and unset fields stay as they are. Moving a point is
 	// an update of x_bp and y_bp. Only the campaign's master may call it.
-	// Changing the kind to anything but SUBMAP or BATTLE removes the target.
+	// Changing the kind to anything but SUBMAP or BATTLE removes the target,
+	// and changing it from SCENE removes the point's scene actions.
 	//
 	// Errors:
 	//   - `invalid_argument`: nothing to change; a field breaks its rules;
@@ -207,6 +220,54 @@ type MapServiceClient interface {
 	//     member of it.
 	//   - `permission_denied`: the caller is a player.
 	SetMapPointRevealed(context.Context, *connect.Request[v1.SetMapPointRevealedRequest]) (*connect.Response[v1.SetMapPointRevealedResponse], error)
+	// AddSceneAction puts one more check on a SCENE point (MR-015): a skill
+	// check, an ability check or a saving throw, with an optional name and an
+	// optional DC. Actions save one by one, as the master edits them: there is
+	// no "save all". Only the campaign's master may call it. The action goes
+	// last. When the point is the scene open in the session, the streams get
+	// `scene_changed`.
+	//
+	// Errors:
+	//   - `invalid_argument`: the point is not a SCENE point; key is not a
+	//     skill, an ability check or a saving throw of the rules ("skill:
+	//     investigation", "ability:str", "save:wis": never an attack, a spell
+	//     or a feature); name is longer than 60 characters; dc is not 1 to
+	//     30.
+	//   - `not_found`: the point is not on this map, the map is not in this
+	//     campaign, the campaign does not exist, or the caller is not a
+	//     member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `resource_exhausted`: the point already has 20 actions.
+	AddSceneAction(context.Context, *connect.Request[v1.AddSceneActionRequest]) (*connect.Response[v1.AddSceneActionResponse], error)
+	// UpdateSceneAction changes one action of a SCENE point: each field set
+	// in the request replaces the current value. Only the campaign's master
+	// may call it.
+	//
+	// Errors:
+	//   - `invalid_argument`: nothing to change; a field breaks the rules
+	//     AddSceneAction lists.
+	//   - `not_found`: the action is not on this point, the point is not on
+	//     this map, the map is not in this campaign, the campaign does not
+	//     exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	UpdateSceneAction(context.Context, *connect.Request[v1.UpdateSceneActionRequest]) (*connect.Response[v1.UpdateSceneActionResponse], error)
+	// MoveSceneAction moves one action a place up or down in its point's
+	// list. Moving the first one up, or the last one down, changes nothing.
+	// Only the campaign's master may call it.
+	//
+	// Errors:
+	//   - `invalid_argument`: direction is unspecified.
+	//   - `not_found`: as UpdateSceneAction.
+	//   - `permission_denied`: the caller is a player.
+	MoveSceneAction(context.Context, *connect.Request[v1.MoveSceneActionRequest]) (*connect.Response[v1.MoveSceneActionResponse], error)
+	// RemoveSceneAction takes one action off a SCENE point, with no
+	// confirmation: the rolls already made stay in the session's history.
+	// Only the campaign's master may call it.
+	//
+	// Errors:
+	//   - `not_found`: as UpdateSceneAction.
+	//   - `permission_denied`: the caller is a player.
+	RemoveSceneAction(context.Context, *connect.Request[v1.RemoveSceneActionRequest]) (*connect.Response[v1.RemoveSceneActionResponse], error)
 	// PlaceMapToken puts a character's token on a map, or moves it there if
 	// it is already on the map (MR-012). Only the campaign's master may call
 	// it. The character must be a living character of the campaign: a
@@ -323,6 +384,30 @@ func NewMapServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(mapServiceMethods.ByName("SetMapPointRevealed")),
 			connect.WithClientOptions(opts...),
 		),
+		addSceneAction: connect.NewClient[v1.AddSceneActionRequest, v1.AddSceneActionResponse](
+			httpClient,
+			baseURL+MapServiceAddSceneActionProcedure,
+			connect.WithSchema(mapServiceMethods.ByName("AddSceneAction")),
+			connect.WithClientOptions(opts...),
+		),
+		updateSceneAction: connect.NewClient[v1.UpdateSceneActionRequest, v1.UpdateSceneActionResponse](
+			httpClient,
+			baseURL+MapServiceUpdateSceneActionProcedure,
+			connect.WithSchema(mapServiceMethods.ByName("UpdateSceneAction")),
+			connect.WithClientOptions(opts...),
+		),
+		moveSceneAction: connect.NewClient[v1.MoveSceneActionRequest, v1.MoveSceneActionResponse](
+			httpClient,
+			baseURL+MapServiceMoveSceneActionProcedure,
+			connect.WithSchema(mapServiceMethods.ByName("MoveSceneAction")),
+			connect.WithClientOptions(opts...),
+		),
+		removeSceneAction: connect.NewClient[v1.RemoveSceneActionRequest, v1.RemoveSceneActionResponse](
+			httpClient,
+			baseURL+MapServiceRemoveSceneActionProcedure,
+			connect.WithSchema(mapServiceMethods.ByName("RemoveSceneAction")),
+			connect.WithClientOptions(opts...),
+		),
 		placeMapToken: connect.NewClient[v1.PlaceMapTokenRequest, v1.PlaceMapTokenResponse](
 			httpClient,
 			baseURL+MapServicePlaceMapTokenProcedure,
@@ -357,6 +442,10 @@ type mapServiceClient struct {
 	updateMapPoint      *connect.Client[v1.UpdateMapPointRequest, v1.UpdateMapPointResponse]
 	deleteMapPoint      *connect.Client[v1.DeleteMapPointRequest, v1.DeleteMapPointResponse]
 	setMapPointRevealed *connect.Client[v1.SetMapPointRevealedRequest, v1.SetMapPointRevealedResponse]
+	addSceneAction      *connect.Client[v1.AddSceneActionRequest, v1.AddSceneActionResponse]
+	updateSceneAction   *connect.Client[v1.UpdateSceneActionRequest, v1.UpdateSceneActionResponse]
+	moveSceneAction     *connect.Client[v1.MoveSceneActionRequest, v1.MoveSceneActionResponse]
+	removeSceneAction   *connect.Client[v1.RemoveSceneActionRequest, v1.RemoveSceneActionResponse]
 	placeMapToken       *connect.Client[v1.PlaceMapTokenRequest, v1.PlaceMapTokenResponse]
 	setMapTokenHidden   *connect.Client[v1.SetMapTokenHiddenRequest, v1.SetMapTokenHiddenResponse]
 	removeMapToken      *connect.Client[v1.RemoveMapTokenRequest, v1.RemoveMapTokenResponse]
@@ -415,6 +504,26 @@ func (c *mapServiceClient) DeleteMapPoint(ctx context.Context, req *connect.Requ
 // SetMapPointRevealed calls meurpg.maps.v1.MapService.SetMapPointRevealed.
 func (c *mapServiceClient) SetMapPointRevealed(ctx context.Context, req *connect.Request[v1.SetMapPointRevealedRequest]) (*connect.Response[v1.SetMapPointRevealedResponse], error) {
 	return c.setMapPointRevealed.CallUnary(ctx, req)
+}
+
+// AddSceneAction calls meurpg.maps.v1.MapService.AddSceneAction.
+func (c *mapServiceClient) AddSceneAction(ctx context.Context, req *connect.Request[v1.AddSceneActionRequest]) (*connect.Response[v1.AddSceneActionResponse], error) {
+	return c.addSceneAction.CallUnary(ctx, req)
+}
+
+// UpdateSceneAction calls meurpg.maps.v1.MapService.UpdateSceneAction.
+func (c *mapServiceClient) UpdateSceneAction(ctx context.Context, req *connect.Request[v1.UpdateSceneActionRequest]) (*connect.Response[v1.UpdateSceneActionResponse], error) {
+	return c.updateSceneAction.CallUnary(ctx, req)
+}
+
+// MoveSceneAction calls meurpg.maps.v1.MapService.MoveSceneAction.
+func (c *mapServiceClient) MoveSceneAction(ctx context.Context, req *connect.Request[v1.MoveSceneActionRequest]) (*connect.Response[v1.MoveSceneActionResponse], error) {
+	return c.moveSceneAction.CallUnary(ctx, req)
+}
+
+// RemoveSceneAction calls meurpg.maps.v1.MapService.RemoveSceneAction.
+func (c *mapServiceClient) RemoveSceneAction(ctx context.Context, req *connect.Request[v1.RemoveSceneActionRequest]) (*connect.Response[v1.RemoveSceneActionResponse], error) {
+	return c.removeSceneAction.CallUnary(ctx, req)
 }
 
 // PlaceMapToken calls meurpg.maps.v1.MapService.PlaceMapToken.
@@ -537,7 +646,8 @@ type MapServiceHandler interface {
 	// UpdateMapPoint changes a point: each field set in the request replaces
 	// the current value, and unset fields stay as they are. Moving a point is
 	// an update of x_bp and y_bp. Only the campaign's master may call it.
-	// Changing the kind to anything but SUBMAP or BATTLE removes the target.
+	// Changing the kind to anything but SUBMAP or BATTLE removes the target,
+	// and changing it from SCENE removes the point's scene actions.
 	//
 	// Errors:
 	//   - `invalid_argument`: nothing to change; a field breaks its rules;
@@ -568,6 +678,54 @@ type MapServiceHandler interface {
 	//     member of it.
 	//   - `permission_denied`: the caller is a player.
 	SetMapPointRevealed(context.Context, *connect.Request[v1.SetMapPointRevealedRequest]) (*connect.Response[v1.SetMapPointRevealedResponse], error)
+	// AddSceneAction puts one more check on a SCENE point (MR-015): a skill
+	// check, an ability check or a saving throw, with an optional name and an
+	// optional DC. Actions save one by one, as the master edits them: there is
+	// no "save all". Only the campaign's master may call it. The action goes
+	// last. When the point is the scene open in the session, the streams get
+	// `scene_changed`.
+	//
+	// Errors:
+	//   - `invalid_argument`: the point is not a SCENE point; key is not a
+	//     skill, an ability check or a saving throw of the rules ("skill:
+	//     investigation", "ability:str", "save:wis": never an attack, a spell
+	//     or a feature); name is longer than 60 characters; dc is not 1 to
+	//     30.
+	//   - `not_found`: the point is not on this map, the map is not in this
+	//     campaign, the campaign does not exist, or the caller is not a
+	//     member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `resource_exhausted`: the point already has 20 actions.
+	AddSceneAction(context.Context, *connect.Request[v1.AddSceneActionRequest]) (*connect.Response[v1.AddSceneActionResponse], error)
+	// UpdateSceneAction changes one action of a SCENE point: each field set
+	// in the request replaces the current value. Only the campaign's master
+	// may call it.
+	//
+	// Errors:
+	//   - `invalid_argument`: nothing to change; a field breaks the rules
+	//     AddSceneAction lists.
+	//   - `not_found`: the action is not on this point, the point is not on
+	//     this map, the map is not in this campaign, the campaign does not
+	//     exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	UpdateSceneAction(context.Context, *connect.Request[v1.UpdateSceneActionRequest]) (*connect.Response[v1.UpdateSceneActionResponse], error)
+	// MoveSceneAction moves one action a place up or down in its point's
+	// list. Moving the first one up, or the last one down, changes nothing.
+	// Only the campaign's master may call it.
+	//
+	// Errors:
+	//   - `invalid_argument`: direction is unspecified.
+	//   - `not_found`: as UpdateSceneAction.
+	//   - `permission_denied`: the caller is a player.
+	MoveSceneAction(context.Context, *connect.Request[v1.MoveSceneActionRequest]) (*connect.Response[v1.MoveSceneActionResponse], error)
+	// RemoveSceneAction takes one action off a SCENE point, with no
+	// confirmation: the rolls already made stay in the session's history.
+	// Only the campaign's master may call it.
+	//
+	// Errors:
+	//   - `not_found`: as UpdateSceneAction.
+	//   - `permission_denied`: the caller is a player.
+	RemoveSceneAction(context.Context, *connect.Request[v1.RemoveSceneActionRequest]) (*connect.Response[v1.RemoveSceneActionResponse], error)
 	// PlaceMapToken puts a character's token on a map, or moves it there if
 	// it is already on the map (MR-012). Only the campaign's master may call
 	// it. The character must be a living character of the campaign: a
@@ -680,6 +838,30 @@ func NewMapServiceHandler(svc MapServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(mapServiceMethods.ByName("SetMapPointRevealed")),
 		connect.WithHandlerOptions(opts...),
 	)
+	mapServiceAddSceneActionHandler := connect.NewUnaryHandler(
+		MapServiceAddSceneActionProcedure,
+		svc.AddSceneAction,
+		connect.WithSchema(mapServiceMethods.ByName("AddSceneAction")),
+		connect.WithHandlerOptions(opts...),
+	)
+	mapServiceUpdateSceneActionHandler := connect.NewUnaryHandler(
+		MapServiceUpdateSceneActionProcedure,
+		svc.UpdateSceneAction,
+		connect.WithSchema(mapServiceMethods.ByName("UpdateSceneAction")),
+		connect.WithHandlerOptions(opts...),
+	)
+	mapServiceMoveSceneActionHandler := connect.NewUnaryHandler(
+		MapServiceMoveSceneActionProcedure,
+		svc.MoveSceneAction,
+		connect.WithSchema(mapServiceMethods.ByName("MoveSceneAction")),
+		connect.WithHandlerOptions(opts...),
+	)
+	mapServiceRemoveSceneActionHandler := connect.NewUnaryHandler(
+		MapServiceRemoveSceneActionProcedure,
+		svc.RemoveSceneAction,
+		connect.WithSchema(mapServiceMethods.ByName("RemoveSceneAction")),
+		connect.WithHandlerOptions(opts...),
+	)
 	mapServicePlaceMapTokenHandler := connect.NewUnaryHandler(
 		MapServicePlaceMapTokenProcedure,
 		svc.PlaceMapToken,
@@ -722,6 +904,14 @@ func NewMapServiceHandler(svc MapServiceHandler, opts ...connect.HandlerOption) 
 			mapServiceDeleteMapPointHandler.ServeHTTP(w, r)
 		case MapServiceSetMapPointRevealedProcedure:
 			mapServiceSetMapPointRevealedHandler.ServeHTTP(w, r)
+		case MapServiceAddSceneActionProcedure:
+			mapServiceAddSceneActionHandler.ServeHTTP(w, r)
+		case MapServiceUpdateSceneActionProcedure:
+			mapServiceUpdateSceneActionHandler.ServeHTTP(w, r)
+		case MapServiceMoveSceneActionProcedure:
+			mapServiceMoveSceneActionHandler.ServeHTTP(w, r)
+		case MapServiceRemoveSceneActionProcedure:
+			mapServiceRemoveSceneActionHandler.ServeHTTP(w, r)
 		case MapServicePlaceMapTokenProcedure:
 			mapServicePlaceMapTokenHandler.ServeHTTP(w, r)
 		case MapServiceSetMapTokenHiddenProcedure:
@@ -779,6 +969,22 @@ func (UnimplementedMapServiceHandler) DeleteMapPoint(context.Context, *connect.R
 
 func (UnimplementedMapServiceHandler) SetMapPointRevealed(context.Context, *connect.Request[v1.SetMapPointRevealedRequest]) (*connect.Response[v1.SetMapPointRevealedResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.SetMapPointRevealed is not implemented"))
+}
+
+func (UnimplementedMapServiceHandler) AddSceneAction(context.Context, *connect.Request[v1.AddSceneActionRequest]) (*connect.Response[v1.AddSceneActionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.AddSceneAction is not implemented"))
+}
+
+func (UnimplementedMapServiceHandler) UpdateSceneAction(context.Context, *connect.Request[v1.UpdateSceneActionRequest]) (*connect.Response[v1.UpdateSceneActionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.UpdateSceneAction is not implemented"))
+}
+
+func (UnimplementedMapServiceHandler) MoveSceneAction(context.Context, *connect.Request[v1.MoveSceneActionRequest]) (*connect.Response[v1.MoveSceneActionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.MoveSceneAction is not implemented"))
+}
+
+func (UnimplementedMapServiceHandler) RemoveSceneAction(context.Context, *connect.Request[v1.RemoveSceneActionRequest]) (*connect.Response[v1.RemoveSceneActionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.RemoveSceneAction is not implemented"))
 }
 
 func (UnimplementedMapServiceHandler) PlaceMapToken(context.Context, *connect.Request[v1.PlaceMapTokenRequest]) (*connect.Response[v1.PlaceMapTokenResponse], error) {

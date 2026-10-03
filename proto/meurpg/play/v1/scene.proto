@@ -1,0 +1,160 @@
+syntax = "proto3";
+
+// The RP scene during a game session (MR-015, Etapa 7): the scene the master
+// opens, what each member sees of it, and the checks the players roll. The
+// RPCs are PlayService's (play.proto); the messages are here. The scene's
+// actions are kept on the map point (meurpg.maps.v1.MapService,
+// AddSceneAction and the others).
+package meurpg.play.v1;
+
+import "google/protobuf/timestamp.proto";
+import "meurpg/play/v1/combat.proto";
+
+// SceneBlockedReason says why PlayService refused a scene call with
+// `failed_precondition`.
+enum SceneBlockedReason {
+  SCENE_BLOCKED_REASON_UNSPECIFIED = 0;
+  // OpenScene: the point has no actions. A scene without a check cannot be
+  // opened.
+  SCENE_BLOCKED_REASON_NO_ACTIONS = 1;
+  // RollSceneCheck: no scene is open in the session, or it is not the one
+  // the action belongs to.
+  SCENE_BLOCKED_REASON_NO_OPEN_SCENE = 2;
+  // RollSceneCheck: the character already rolled this action while the
+  // scene has been open. The master closes and opens the scene again to
+  // allow another roll.
+  SCENE_BLOCKED_REASON_ALREADY_ROLLED = 3;
+  // RollSceneCheck: the campaign's dice setting does not allow this way of
+  // rolling (RN-18): the app's roll when everybody rolls real dice, a typed
+  // result when everybody rolls in the app.
+  SCENE_BLOCKED_REASON_WRONG_DICE_MODE = 4;
+  // RollSceneCheck: the caller has no living character in the campaign to
+  // roll for.
+  SCENE_BLOCKED_REASON_NO_CHARACTER = 5;
+}
+
+// SceneBlocked is the error detail of a scene call's `failed_precondition`
+// that the app reacts to. (A call with no open session fails with
+// GameSessionBlocked, NO_OPEN_SESSION, as every live-session call does.)
+message SceneBlocked {
+  SceneBlockedReason reason = 1;
+}
+
+// OpenSceneInfo is the RP scene open in the session, as the caller sees it.
+message OpenSceneInfo {
+  // The scene's map point (a UUID). A hidden point can be open: it stays
+  // hidden on the map, and a player learns of it only through this scene.
+  string point_id = 1;
+  // The point's name.
+  string name = 2;
+  // The point's description, which every member reads in the open scene
+  // (up to 2,000 characters, with line breaks).
+  string description = 3;
+  // The scene's actions, in the order the master put them.
+  repeated SceneActionView actions = 4;
+  // The rolls made since the scene was opened, newest first. The master
+  // gets everyone's; a player only their own character's.
+  repeated SceneRoll rolls = 5;
+  // When the master opened the scene.
+  google.protobuf.Timestamp opened_at = 6;
+}
+
+// SceneActionView is one action of the open scene, with the caller's numbers.
+message SceneActionView {
+  // The action's ID (a UUID), which RollSceneCheck takes.
+  string id = 1;
+  // What is rolled: "skill:investigation", "ability:str" or "save:wis".
+  string key = 2;
+  // The master's name for it ("Convencer o guarda"); empty for none, and
+  // then the app shows check_name.
+  string name = 3;
+  // The check's name in Portuguese: "Investigação", "Teste de Força".
+  string check_name = 4;
+  // The difficulty class, 1 to 30; 0 for none. Only the master gets it: a
+  // player always gets 0 (RN-20), and never learns whether there is one.
+  int32 dc = 5;
+  // What the caller's own character adds to the d20: from their sheet, for
+  // a player. Unset for the master, who has no character, and for a player
+  // with no living character.
+  optional int32 bonus = 6;
+  // The character's passive value, set only for Percepção, Investigação and
+  // Intuição, and only for a player's own character.
+  optional int32 passive = 7;
+}
+
+// SceneRoll is one check rolled in the scene.
+message SceneRoll {
+  // The roll's ID (a UUID, the session event's).
+  string id = 1;
+  // The action rolled (a UUID). It may no longer be among the scene's
+  // actions if the master removed it afterwards.
+  string action_id = 2;
+  // The character that rolled (a UUID) and its name.
+  string character_id = 3;
+  string character_name = 4;
+  // The d20 and the total: `1d20 (11) + 6 = 17`. For a physical roll, the
+  // typed face is in faces.
+  DiceRoll roll = 5;
+  // Whether the total reached the action's DC, as it was when the roll was
+  // made. Set only for the master, and only when the action had a DC: a
+  // player never gets it (RN-20).
+  optional bool passed = 6;
+  // When it was rolled.
+  google.protobuf.Timestamp rolled_at = 7;
+}
+
+// OpenSceneRequest names the campaign and the point.
+message OpenSceneRequest {
+  string campaign_id = 1;
+  // A SCENE point of the campaign's maps, hidden or not (a UUID).
+  string point_id = 2;
+}
+
+// OpenSceneResponse returns the scene as the master sees it.
+message OpenSceneResponse {
+  OpenSceneInfo scene = 1;
+}
+
+// CloseSceneRequest names the campaign.
+message CloseSceneRequest {
+  string campaign_id = 1;
+}
+
+// CloseSceneResponse is empty: no scene is open.
+message CloseSceneResponse {}
+
+// GetOpenSceneRequest names the campaign.
+message GetOpenSceneRequest {
+  string campaign_id = 1;
+}
+
+// GetOpenSceneResponse returns the open scene.
+message GetOpenSceneResponse {
+  // The scene open in the session, as the caller sees it. Unset when none is
+  // open.
+  OpenSceneInfo scene = 1;
+}
+
+// RollSceneCheckRequest rolls one action of the open scene.
+message RollSceneCheckRequest {
+  string campaign_id = 1;
+  // The action to roll (a UUID), one of the open scene's.
+  string action_id = 2;
+  // How the d20 comes (RN-18): the app rolls it, or the player typed the
+  // face of a real die. Required: one of them.
+  oneof roll {
+    // True: the server rolls the d20.
+    bool roll_in_app = 3;
+    // The face of the real d20, 1 to 20. The server adds the bonus.
+    int32 d20_face = 4;
+  }
+  // A UUID the app makes for each roll. Repeating a roll with the same key
+  // returns the first roll's answer and changes nothing.
+  string idempotency_key = 5;
+}
+
+// RollSceneCheckResponse is the roll that was made.
+message RollSceneCheckResponse {
+  // The caller's roll, with its total. A player never gets `passed` here.
+  SceneRoll roll = 1;
+}

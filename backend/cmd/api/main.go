@@ -227,6 +227,7 @@ func run(logger *slog.Logger, cfg config.Config) error {
 			Blobs:      blobs,             // nil: images are off
 			Characters: charactersService, // the characters that may stand on a map (MR-012)
 			Live:       playService,       // the current map, and where map changes go (RN-10)
+			Rules:      rulesContent,      // which checks an RP scene may ask for (MR-015)
 			Logger:     logger,
 		})
 		if err != nil {

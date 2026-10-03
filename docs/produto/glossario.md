@@ -23,8 +23,8 @@ Usar as mesmas palavras nas conversas, nos documentos e no código evita muita c
 | Chave de idempotência | O UUID que o app gera para uma mudança e manda de novo se precisar repetir o pedido. O servidor reconhece a chave e não aplica a mudança duas vezes. | `idempotency_key` |
 | Sessão de login | O login de um usuário no app. Não confundir com a sessão de jogo. | `auth_session` |
 | Intenção de login | Algo que a pessoa pediu antes de entrar e que o servidor conclui logo depois do login, como aceitar um convite. Fica só no servidor, dentro do estado do login. | `intent`, `IntentHandler` |
-| Cena de RP | Momento fora de combate, aberto por um ponto de interesse. | `scene` |
-| Ação da cena | Um item da lista simples do que o jogador pode fazer ou rolar numa cena. | `scene_action` |
+| Cena de RP | Momento fora de combate: um ponto de interesse do tipo cena, com as ações que o mestre escolheu. O mestre a abre na sessão e todos a veem. | `map_points` (`kind = scene`), `game_sessions.open_scene_point_id`, `OpenScene` |
+| Ação da cena | Um teste que o mestre põe numa cena: uma perícia, um teste de atributo ou uma salvaguarda, com nome e CD opcionais. O jogador vê o próprio bônus, nunca a CD. | `scene_actions`, `SceneAction` |
 | Economia de ação | O que o personagem pode gastar num turno: uma ação, uma ação bônus, uma reação e o movimento (o deslocamento, dobrado depois da Disparada). O motor calcula o que ainda está disponível (MR-014). | `Economy`, `TurnOptions` |
 | Recurso | Uma capacidade com usos limitados, como Retomar o Fôlego (1 uso por descanso curto), Ki ou Fúria. A ficha diz o máximo e quando volta; a sessão conta os usos gastos. | `Resource`, `Derived.Resources` |
 | Código de motivo | O motivo de uma opção estar desabilitada, como `NO_SLOT` ou `ACTION_USED`. O servidor manda só o código; o app escreve a frase em português. | `DisabledReason` |

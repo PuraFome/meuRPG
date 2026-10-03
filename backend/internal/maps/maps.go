@@ -104,6 +104,10 @@ type LiveSession interface {
 	// players is true, of its players too. Without an open session nobody
 	// is watching, and nothing happens.
 	Publish(campaignID string, players bool, ev *playv1.WatchGameSessionResponse)
+	// OpenScenePoint returns the map point of the RP scene open in the
+	// campaign's open game session (MR-015), "" when none is open or no
+	// session is.
+	OpenScenePoint(ctx context.Context, campaignID string) (pointID string, err error)
 }
 
 // Config holds what the maps service needs.
@@ -120,6 +124,9 @@ type Config struct {
 	// Live is the live session: the current map, and where map changes
 	// go. Required.
 	Live LiveSession
+	// Rules says which checks a scene may ask for (MR-015): *rules.Content.
+	// Required.
+	Rules SceneChecks
 	// Logger receives errors, without personal data. Nil means
 	// slog.Default().
 	Logger *slog.Logger
@@ -142,6 +149,7 @@ type Service struct {
 	blobs      blob.Store
 	characters CharacterDirectory
 	live       LiveSession
+	checks     SceneChecks
 	logger     *slog.Logger
 	now        func() time.Time
 	maxImages  int32
@@ -170,6 +178,8 @@ func New(cfg Config) (*Service, error) {
 		return nil, errors.New("maps: Characters is required")
 	case cfg.Live == nil:
 		return nil, errors.New("maps: Live is required")
+	case cfg.Rules == nil:
+		return nil, errors.New("maps: Rules is required")
 	}
 	s := &Service{
 		pool:       cfg.Pool,
@@ -177,6 +187,7 @@ func New(cfg Config) (*Service, error) {
 		blobs:      cfg.Blobs,
 		characters: cfg.Characters,
 		live:       cfg.Live,
+		checks:     cfg.Rules,
 		logger:     cfg.Logger,
 		now:        cfg.Now,
 		maxImages:  cfg.MaxImages,

@@ -272,12 +272,15 @@ Os dois últimos critérios foram respondida pelo Vinicius em 29/09/2026.
 **para** saber o que posso rolar e usar fora de combate.
 
 - Prioridade: MVP
-- Regras: —
-- Módulos: play, rules
+- Regras: RN-10, RN-18, RN-20
+- Módulos: maps, play, rules
 
 #### Critérios de aceite
 - **Dado** uma cena de RP com as ações que o mestre escolheu para ela, **quando** o jogador abre a cena, **então** vê a lista de ações escolhidas pelo mestre, cada rolagem com o bônus do próprio personagem já calculado (ex.: Investigação) **e** as habilidades que só valem em combate não aparecem.
 - **Dado** um combate (MR-013, MR-014), **quando** o jogador vê as ações possíveis, **então** quem decide essa lista é o sistema, pelas regras de D&D — nunca o mestre. A cena de RP é o único lugar em que o mestre escolhe a lista.
+
+#### Implementado
+- O servidor (fatia 7.3; as telas vêm na 7.5). O mestre escolhe as ações no ponto de cena do mapa, uma por vez (`AddSceneAction`, `UpdateSceneAction`, `MoveSceneAction`, `RemoveSceneAction`): perícia, teste de atributo ou salvaguarda, com nome opcional (até 60 caracteres) e CD opcional (1 a 30), no máximo 20, e nada de combate (a chave é conferida no catálogo das regras). Ele abre a cena na sessão (`OpenScene`: o ponto precisa ter ao menos uma ação, e pode estar escondido, e então continua escondido no mapa) e fecha sem perguntar (`CloseScene`); todos recebem `scene_changed`. O jogador lê a cena (`GetOpenScene`) com o nome e a descrição do ponto e as ações com o bônus do próprio personagem (a ficha, `rules.SceneOptions`) e a passiva de Percepção, Investigação e Intuição, **sem a CD**. Rolar (`RollSceneCheck`): o d20 do app ou o digitado (RN-18) mais o bônus; uma rolagem por personagem por ação enquanto a cena está aberta (fechar e abrir de novo zera); o mestre recebe `scene_check_rolled` e vê todas as rolagens, com o total e o "passou" quando há CD (o registro da cena, pergunta 54), e o jogador só as próprias, sem "passou". Os padrões das perguntas 51 a 55 valem até o Samuel responder (ver [RN-20](regras.md)). Testes: `TestMR015_PlayerSeesTheMastersActionsWithTheirBonus`, `TestMR015_NothingCombatOnlyInAScene`, `TestRN20_APlayerNeverGetsADCOrAnotherPlayersRoll`, `TestMR015_OneRollPerActionWhileTheSceneIsOpen`, `TestRN18_SceneRollsFollowTheDiceMode`, `TestMR015_AHiddenPointCanBeOpenedAndStaysHidden`, `TestMR015_OpeningAndClosingAScene`, `TestMR015_SceneActionRules`, `TestMR015_RollingNeedsALivingCharacter`, `TestSceneAuthorizationMatrix`. Ver [Arquitetura](../arquitetura.md#cenas-de-rp).
 
 #### Relacionadas
 - Respondida em 29/09/2026: na cena de RP, o mestre escolhe as ações possíveis da cena, e o jogador vê o que pode fazer com o próprio bônus; no combate, quem decide e mostra as ações é o sistema, pelas regras de D&D. Ver [Regras de negócio](regras.md) e [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).

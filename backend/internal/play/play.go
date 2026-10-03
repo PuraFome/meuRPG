@@ -113,6 +113,10 @@ type MapKeeper interface {
 	// BattlePoint returns a battle point of the campaign, or a `not_found`
 	// Connect error for any other point.
 	BattlePoint(ctx context.Context, campaignID, pointID string) (link.BattlePoint, error)
+	// ScenePoint returns a SCENE point of the campaign, hidden or not, with its
+	// actions and their DCs (MR-015), or a `not_found` Connect error for any
+	// other point.
+	ScenePoint(ctx context.Context, campaignID, pointID string) (link.Scene, error)
 	// MapTokens returns where the map's tokens stand, hidden ones included.
 	MapTokens(ctx context.Context, mapID string) ([]link.TokenPosition, error)
 	// SetTokenPositions moves the characters' tokens on the map inside tx,
@@ -153,6 +157,13 @@ type CombatRoster interface {
 	// MarkCharacterDead does (RN-03): the master confirmed its death in a combat.
 	// It is idempotent.
 	MarkDead(ctx context.Context, tx pgx.Tx, campaignID, characterID string, at time.Time) error
+	// SceneOptions returns, for each key of a scene's checks, the character's
+	// bonus and passive value (the rules engine's SceneOptions), in the order of
+	// keys. `not_found` for any other character.
+	SceneOptions(ctx context.Context, campaignID, characterID string, keys []string) ([]link.SceneOption, error)
+	// SceneCheckName is the Portuguese name of a scene check by its key, "" for
+	// an unknown one.
+	SceneCheckName(key string) string
 	// Conditions lists the SRD's conditions (RN-22), with their Portuguese
 	// names, sorted by key.
 	Conditions() []link.Named
