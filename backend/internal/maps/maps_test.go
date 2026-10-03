@@ -371,6 +371,32 @@ func TestMapServiceAuthorizationMatrix(t *testing.T) {
 			_, err := u.maps.RemoveSceneAction(ctx, connect.NewRequest(&mapsv1.RemoveSceneActionRequest{CampaignId: campaign, MapId: shown.GetId(), PointId: point.GetId(), ActionId: a.GetId()}))
 			return err
 		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		// The clues of the same point (MR-029); each caller works on a clue of
+		// its own, and the reveal goes to the player's character.
+		{"AddSceneClue", func(ctx context.Context, u *user) error {
+			_, err := u.maps.AddSceneClue(ctx, connect.NewRequest(&mapsv1.AddSceneClueRequest{CampaignId: campaign, MapId: shown.GetId(), PointId: point.GetId(), Text: "Uma pista"}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"UpdateSceneClue", func(ctx context.Context, u *user) error {
+			c := master.addClue(campaign, shown.GetId(), point.GetId(), "Outra pista")
+			_, err := u.maps.UpdateSceneClue(ctx, connect.NewRequest(&mapsv1.UpdateSceneClueRequest{CampaignId: campaign, MapId: shown.GetId(), PointId: point.GetId(), ClueId: c.GetId(), Text: "Mudada"}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"MoveSceneClue", func(ctx context.Context, u *user) error {
+			c := master.addClue(campaign, shown.GetId(), point.GetId(), "Movida")
+			_, err := u.maps.MoveSceneClue(ctx, connect.NewRequest(&mapsv1.MoveSceneClueRequest{CampaignId: campaign, MapId: shown.GetId(), PointId: point.GetId(), ClueId: c.GetId(), Direction: mapsv1.SceneActionDirection_SCENE_ACTION_DIRECTION_UP}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"RemoveSceneClue", func(ctx context.Context, u *user) error {
+			c := master.addClue(campaign, shown.GetId(), point.GetId(), "Apagada")
+			_, err := u.maps.RemoveSceneClue(ctx, connect.NewRequest(&mapsv1.RemoveSceneClueRequest{CampaignId: campaign, MapId: shown.GetId(), PointId: point.GetId(), ClueId: c.GetId()}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"RevealSceneClue", func(_ context.Context, u *user) error {
+			c := master.addClue(campaign, shown.GetId(), point.GetId(), "Revelada")
+			_, err := u.revealClue(campaign, c.GetId(), pc.GetId())
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 		{"PlaceMapToken", func(ctx context.Context, u *user) error {
 			_, err := u.maps.PlaceMapToken(ctx, connect.NewRequest(&mapsv1.PlaceMapTokenRequest{CampaignId: campaign, MapId: shown.GetId(), CharacterId: pc.GetId(), XBp: 5100, YBp: 5100}))
 			return err

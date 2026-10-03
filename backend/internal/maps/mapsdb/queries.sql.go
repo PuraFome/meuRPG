@@ -111,7 +111,7 @@ func (q *Queries) DeleteMap(ctx context.Context, arg DeleteMapParams) (Map, erro
 const deleteMapPoint = `-- name: DeleteMapPoint :one
 DELETE FROM map_points
 WHERE map_id = $1 AND id = $2
-RETURNING id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at
+RETURNING id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at, hooks
 `
 
 type DeleteMapPointParams struct {
@@ -134,6 +134,7 @@ func (q *Queries) DeleteMapPoint(ctx context.Context, arg DeleteMapPointParams) 
 		&i.RevealedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Hooks,
 	)
 	return i, err
 }
@@ -189,6 +190,36 @@ WHERE point_id = $1
 // A point that stops being a scene has no actions.
 func (q *Queries) DeleteSceneActionsOfPoint(ctx context.Context, pointID string) error {
 	_, err := q.db.Exec(ctx, deleteSceneActionsOfPoint, pointID)
+	return err
+}
+
+const deleteSceneClue = `-- name: DeleteSceneClue :execrows
+DELETE FROM scene_clues
+WHERE point_id = $1 AND id = $2
+`
+
+type DeleteSceneClueParams struct {
+	PointID string
+	ID      string
+}
+
+func (q *Queries) DeleteSceneClue(ctx context.Context, arg DeleteSceneClueParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteSceneClue, arg.PointID, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteSceneCluesOfPoint = `-- name: DeleteSceneCluesOfPoint :exec
+DELETE FROM scene_clues
+WHERE point_id = $1
+`
+
+// A point that stops being a scene has no clues. What players already
+// received stays (scene_clue_reveals keeps its own copy of the text).
+func (q *Queries) DeleteSceneCluesOfPoint(ctx context.Context, pointID string) error {
+	_, err := q.db.Exec(ctx, deleteSceneCluesOfPoint, pointID)
 	return err
 }
 
@@ -358,7 +389,7 @@ func (q *Queries) GetMapGrid(ctx context.Context, arg GetMapGridParams) (GetMapG
 }
 
 const getMapPointForUpdate = `-- name: GetMapPointForUpdate :one
-SELECT id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at FROM map_points
+SELECT id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at, hooks FROM map_points
 WHERE map_id = $1 AND id = $2
 FOR UPDATE
 `
@@ -384,12 +415,13 @@ func (q *Queries) GetMapPointForUpdate(ctx context.Context, arg GetMapPointForUp
 		&i.RevealedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Hooks,
 	)
 	return i, err
 }
 
 const getMapPointInCampaign = `-- name: GetMapPointInCampaign :one
-SELECT p.id, p.map_id, p.kind, p.name, p.description, p.x_bp, p.y_bp, p.target_map_id, p.revealed_at, p.created_at, p.updated_at FROM map_points AS p
+SELECT p.id, p.map_id, p.kind, p.name, p.description, p.x_bp, p.y_bp, p.target_map_id, p.revealed_at, p.created_at, p.updated_at, p.hooks FROM map_points AS p
 JOIN maps AS m ON m.id = p.map_id
 WHERE m.campaign_id = $1 AND p.id = $2
 `
@@ -416,6 +448,7 @@ func (q *Queries) GetMapPointInCampaign(ctx context.Context, arg GetMapPointInCa
 		&i.RevealedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Hooks,
 	)
 	return i, err
 }
@@ -472,8 +505,61 @@ func (q *Queries) GetSceneActionForUpdate(ctx context.Context, arg GetSceneActio
 	return i, err
 }
 
+const getSceneClueForUpdate = `-- name: GetSceneClueForUpdate :one
+SELECT id, point_id, position, text, created_at, updated_at FROM scene_clues
+WHERE point_id = $1 AND id = $2
+FOR UPDATE
+`
+
+type GetSceneClueForUpdateParams struct {
+	PointID string
+	ID      string
+}
+
+func (q *Queries) GetSceneClueForUpdate(ctx context.Context, arg GetSceneClueForUpdateParams) (SceneClue, error) {
+	row := q.db.QueryRow(ctx, getSceneClueForUpdate, arg.PointID, arg.ID)
+	var i SceneClue
+	err := row.Scan(
+		&i.ID,
+		&i.PointID,
+		&i.Position,
+		&i.Text,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getSceneClueInCampaign = `-- name: GetSceneClueInCampaign :one
+SELECT c.id, c.point_id, c.position, c.text, c.created_at, c.updated_at FROM scene_clues AS c
+JOIN map_points AS p ON p.id = c.point_id
+JOIN maps AS m ON m.id = p.map_id
+WHERE m.campaign_id = $1 AND c.id = $2
+`
+
+type GetSceneClueInCampaignParams struct {
+	CampaignID string
+	ID         string
+}
+
+// A clue by its ID alone, if it is on a point of the campaign's maps: the one
+// the master reveals.
+func (q *Queries) GetSceneClueInCampaign(ctx context.Context, arg GetSceneClueInCampaignParams) (SceneClue, error) {
+	row := q.db.QueryRow(ctx, getSceneClueInCampaign, arg.CampaignID, arg.ID)
+	var i SceneClue
+	err := row.Scan(
+		&i.ID,
+		&i.PointID,
+		&i.Position,
+		&i.Text,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getScenePoint = `-- name: GetScenePoint :one
-SELECT p.id, p.map_id, p.kind, p.name, p.description, p.x_bp, p.y_bp, p.target_map_id, p.revealed_at, p.created_at, p.updated_at FROM map_points AS p
+SELECT p.id, p.map_id, p.kind, p.name, p.description, p.x_bp, p.y_bp, p.target_map_id, p.revealed_at, p.created_at, p.updated_at, p.hooks FROM map_points AS p
 JOIN maps AS m ON m.id = p.map_id
 WHERE m.campaign_id = $1 AND p.id = $2 AND p.kind = 'scene'
 `
@@ -500,6 +586,7 @@ func (q *Queries) GetScenePoint(ctx context.Context, arg GetScenePointParams) (M
 		&i.RevealedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Hooks,
 	)
 	return i, err
 }
@@ -548,6 +635,41 @@ func (q *Queries) ImageIsOnAVisibleMap(ctx context.Context, arg ImageIsOnAVisibl
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
+}
+
+const insertClueReveal = `-- name: InsertClueReveal :execrows
+INSERT INTO scene_clue_reveals (campaign_id, clue_id, point_id, user_id, character_id, text, revealed_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+ON CONFLICT (clue_id, user_id) DO NOTHING
+`
+
+type InsertClueRevealParams struct {
+	CampaignID  string
+	ClueID      *string
+	PointID     *string
+	UserID      string
+	CharacterID *string
+	Text        string
+	Now         time.Time
+}
+
+// Gives a clue to a player, once: the unique index on (clue_id, user_id) turns
+// a second reveal into no row at all. It copies the clue's text, so what the
+// player received stays as it was said.
+func (q *Queries) InsertClueReveal(ctx context.Context, arg InsertClueRevealParams) (int64, error) {
+	result, err := q.db.Exec(ctx, insertClueReveal,
+		arg.CampaignID,
+		arg.ClueID,
+		arg.PointID,
+		arg.UserID,
+		arg.CharacterID,
+		arg.Text,
+		arg.Now,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const insertGalleryImage = `-- name: InsertGalleryImage :one
@@ -632,12 +754,12 @@ func (q *Queries) InsertMap(ctx context.Context, arg InsertMapParams) (Map, erro
 }
 
 const insertMapPoint = `-- name: InsertMapPoint :one
-INSERT INTO map_points (map_id, kind, name, description, x_bp, y_bp, target_map_id, created_at, updated_at)
+INSERT INTO map_points (map_id, kind, name, description, hooks, x_bp, y_bp, target_map_id, created_at, updated_at)
 VALUES (
-    $1, $2, $3, $4, $5, $6,
-    $7, $8, $8
+    $1, $2, $3, $4, $5, $6, $7,
+    $8, $9, $9
 )
-RETURNING id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at
+RETURNING id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at, hooks
 `
 
 type InsertMapPointParams struct {
@@ -645,6 +767,7 @@ type InsertMapPointParams struct {
 	Kind        string
 	Name        string
 	Description string
+	Hooks       string
 	XBp         int32
 	YBp         int32
 	TargetMapID *string
@@ -658,6 +781,7 @@ func (q *Queries) InsertMapPoint(ctx context.Context, arg InsertMapPointParams) 
 		arg.Kind,
 		arg.Name,
 		arg.Description,
+		arg.Hooks,
 		arg.XBp,
 		arg.YBp,
 		arg.TargetMapID,
@@ -676,6 +800,7 @@ func (q *Queries) InsertMapPoint(ctx context.Context, arg InsertMapPointParams) 
 		&i.RevealedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Hooks,
 	)
 	return i, err
 }
@@ -754,6 +879,38 @@ func (q *Queries) InsertSceneAction(ctx context.Context, arg InsertSceneActionPa
 	return i, err
 }
 
+const insertSceneClue = `-- name: InsertSceneClue :one
+INSERT INTO scene_clues (point_id, position, text, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $4)
+RETURNING id, point_id, position, text, created_at, updated_at
+`
+
+type InsertSceneClueParams struct {
+	PointID  string
+	Position int32
+	Text     string
+	Now      time.Time
+}
+
+func (q *Queries) InsertSceneClue(ctx context.Context, arg InsertSceneClueParams) (SceneClue, error) {
+	row := q.db.QueryRow(ctx, insertSceneClue,
+		arg.PointID,
+		arg.Position,
+		arg.Text,
+		arg.Now,
+	)
+	var i SceneClue
+	err := row.Scan(
+		&i.ID,
+		&i.PointID,
+		&i.Position,
+		&i.Text,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const leaveImage = `-- name: LeaveImage :execrows
 INSERT INTO campaign_left_images (campaign_id, image_id, left_at)
 SELECT g.campaign_id, g.id, $1::TIMESTAMPTZ FROM gallery_images g
@@ -776,6 +933,113 @@ func (q *Queries) LeaveImage(ctx context.Context, arg LeaveImageParams) (int64, 
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const listClueRevealsOfMap = `-- name: ListClueRevealsOfMap :many
+SELECT r.point_id, r.clue_id, r.character_id, r.revealed_at FROM scene_clue_reveals AS r
+JOIN map_points AS p ON p.id = r.point_id
+WHERE p.map_id = $1 AND r.clue_id IS NOT NULL
+ORDER BY r.revealed_at, r.id
+`
+
+type ListClueRevealsOfMapRow struct {
+	PointID     *string
+	ClueID      *string
+	CharacterID *string
+	RevealedAt  time.Time
+}
+
+// Who has each clue of a map's points.
+func (q *Queries) ListClueRevealsOfMap(ctx context.Context, mapID string) ([]ListClueRevealsOfMapRow, error) {
+	rows, err := q.db.Query(ctx, listClueRevealsOfMap, mapID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListClueRevealsOfMapRow
+	for rows.Next() {
+		var i ListClueRevealsOfMapRow
+		if err := rows.Scan(
+			&i.PointID,
+			&i.ClueID,
+			&i.CharacterID,
+			&i.RevealedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listClueRevealsOfPoint = `-- name: ListClueRevealsOfPoint :many
+SELECT clue_id, character_id, revealed_at FROM scene_clue_reveals
+WHERE point_id = $1 AND clue_id IS NOT NULL
+ORDER BY revealed_at, id
+`
+
+type ListClueRevealsOfPointRow struct {
+	ClueID      *string
+	CharacterID *string
+	RevealedAt  time.Time
+}
+
+// Who has each clue of a point, oldest reveal first.
+func (q *Queries) ListClueRevealsOfPoint(ctx context.Context, pointID *string) ([]ListClueRevealsOfPointRow, error) {
+	rows, err := q.db.Query(ctx, listClueRevealsOfPoint, pointID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListClueRevealsOfPointRow
+	for rows.Next() {
+		var i ListClueRevealsOfPointRow
+		if err := rows.Scan(&i.ClueID, &i.CharacterID, &i.RevealedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listDiscoveredScenes = `-- name: ListDiscoveredScenes :many
+SELECT p.id, p.name FROM scene_discoveries AS d
+JOIN map_points AS p ON p.id = d.point_id
+WHERE d.campaign_id = $1 AND p.kind = 'scene'
+ORDER BY d.discovered_at, p.id
+`
+
+type ListDiscoveredScenesRow struct {
+	ID   string
+	Name string
+}
+
+// The scenes the group discovered, with their current names, oldest discovery
+// first. A point that stopped being a scene is not listed.
+func (q *Queries) ListDiscoveredScenes(ctx context.Context, campaignID string) ([]ListDiscoveredScenesRow, error) {
+	rows, err := q.db.Query(ctx, listDiscoveredScenes, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListDiscoveredScenesRow
+	for rows.Next() {
+		var i ListDiscoveredScenesRow
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listGalleryImages = `-- name: ListGalleryImages :many
@@ -956,7 +1220,7 @@ func (q *Queries) ListMapImageIDs(ctx context.Context, campaignID string) ([]Lis
 }
 
 const listMapPoints = `-- name: ListMapPoints :many
-SELECT id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at FROM map_points
+SELECT id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at, hooks FROM map_points
 WHERE map_id = $1
 ORDER BY created_at, id
 `
@@ -983,6 +1247,7 @@ func (q *Queries) ListMapPoints(ctx context.Context, mapID string) ([]MapPoint, 
 			&i.RevealedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Hooks,
 		); err != nil {
 			return nil, err
 		}
@@ -1066,6 +1331,50 @@ func (q *Queries) ListMapsUsingImage(ctx context.Context, arg ListMapsUsingImage
 	return items, nil
 }
 
+const listReceivedClues = `-- name: ListReceivedClues :many
+SELECT id, point_id, text, revealed_at FROM scene_clue_reveals
+WHERE campaign_id = $1 AND user_id = $2
+ORDER BY revealed_at DESC, id
+`
+
+type ListReceivedCluesParams struct {
+	CampaignID string
+	UserID     string
+}
+
+type ListReceivedCluesRow struct {
+	ID         string
+	PointID    *string
+	Text       string
+	RevealedAt time.Time
+}
+
+// The clues revealed to a player in a campaign, newest first.
+func (q *Queries) ListReceivedClues(ctx context.Context, arg ListReceivedCluesParams) ([]ListReceivedCluesRow, error) {
+	rows, err := q.db.Query(ctx, listReceivedClues, arg.CampaignID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListReceivedCluesRow
+	for rows.Next() {
+		var i ListReceivedCluesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PointID,
+			&i.Text,
+			&i.RevealedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSceneActions = `-- name: ListSceneActions :many
 
 SELECT id, point_id, position, key, name, dc, created_at, updated_at FROM scene_actions
@@ -1130,6 +1439,76 @@ func (q *Queries) ListSceneActionsOfMap(ctx context.Context, mapID string) ([]Sc
 			&i.Key,
 			&i.Name,
 			&i.Dc,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSceneClues = `-- name: ListSceneClues :many
+SELECT id, point_id, position, text, created_at, updated_at FROM scene_clues
+WHERE point_id = $1
+ORDER BY position, created_at, id
+`
+
+// A SCENE point's clues, in the master's order.
+func (q *Queries) ListSceneClues(ctx context.Context, pointID string) ([]SceneClue, error) {
+	rows, err := q.db.Query(ctx, listSceneClues, pointID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SceneClue
+	for rows.Next() {
+		var i SceneClue
+		if err := rows.Scan(
+			&i.ID,
+			&i.PointID,
+			&i.Position,
+			&i.Text,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSceneCluesOfMap = `-- name: ListSceneCluesOfMap :many
+SELECT c.id, c.point_id, c.position, c.text, c.created_at, c.updated_at FROM scene_clues AS c
+JOIN map_points AS p ON p.id = c.point_id
+WHERE p.map_id = $1
+ORDER BY c.point_id, c.position, c.created_at, c.id
+`
+
+// Every clue of a map's points, for the master's map read: grouped by the
+// handler, each point's in order.
+func (q *Queries) ListSceneCluesOfMap(ctx context.Context, mapID string) ([]SceneClue, error) {
+	rows, err := q.db.Query(ctx, listSceneCluesOfMap, mapID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SceneClue
+	for rows.Next() {
+		var i SceneClue
+		if err := rows.Scan(
+			&i.ID,
+			&i.PointID,
+			&i.Position,
+			&i.Text,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -1373,6 +1752,20 @@ func (q *Queries) SetSceneActionPosition(ctx context.Context, arg SetSceneAction
 	return err
 }
 
+const setSceneCluePosition = `-- name: SetSceneCluePosition :exec
+UPDATE scene_clues SET position = $2 WHERE id = $1
+`
+
+type SetSceneCluePositionParams struct {
+	ID       string
+	Position int32
+}
+
+func (q *Queries) SetSceneCluePosition(ctx context.Context, arg SetSceneCluePositionParams) error {
+	_, err := q.db.Exec(ctx, setSceneCluePosition, arg.ID, arg.Position)
+	return err
+}
+
 const takeBackLeftImage = `-- name: TakeBackLeftImage :execrows
 DELETE FROM campaign_left_images
 WHERE campaign_id = $1 AND image_id = $2
@@ -1435,17 +1828,18 @@ func (q *Queries) UpdateMap(ctx context.Context, arg UpdateMapParams) (Map, erro
 
 const updateMapPoint = `-- name: UpdateMapPoint :one
 UPDATE map_points
-SET kind = $1, name = $2, description = $3,
-    x_bp = $4, y_bp = $5, target_map_id = $6,
-    revealed_at = $7, updated_at = $8
-WHERE map_id = $9 AND id = $10
-RETURNING id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at
+SET kind = $1, name = $2, description = $3, hooks = $4,
+    x_bp = $5, y_bp = $6, target_map_id = $7,
+    revealed_at = $8, updated_at = $9
+WHERE map_id = $10 AND id = $11
+RETURNING id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at, hooks
 `
 
 type UpdateMapPointParams struct {
 	Kind        string
 	Name        string
 	Description string
+	Hooks       string
 	XBp         int32
 	YBp         int32
 	TargetMapID *string
@@ -1462,6 +1856,7 @@ func (q *Queries) UpdateMapPoint(ctx context.Context, arg UpdateMapPointParams) 
 		arg.Kind,
 		arg.Name,
 		arg.Description,
+		arg.Hooks,
 		arg.XBp,
 		arg.YBp,
 		arg.TargetMapID,
@@ -1483,6 +1878,7 @@ func (q *Queries) UpdateMapPoint(ctx context.Context, arg UpdateMapPointParams) 
 		&i.RevealedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Hooks,
 	)
 	return i, err
 }
@@ -1526,6 +1922,39 @@ func (q *Queries) UpdateSceneAction(ctx context.Context, arg UpdateSceneActionPa
 	return i, err
 }
 
+const updateSceneClue = `-- name: UpdateSceneClue :one
+UPDATE scene_clues
+SET text = $1, updated_at = $2
+WHERE point_id = $3 AND id = $4
+RETURNING id, point_id, position, text, created_at, updated_at
+`
+
+type UpdateSceneClueParams struct {
+	Text    string
+	Now     time.Time
+	PointID string
+	ID      string
+}
+
+func (q *Queries) UpdateSceneClue(ctx context.Context, arg UpdateSceneClueParams) (SceneClue, error) {
+	row := q.db.QueryRow(ctx, updateSceneClue,
+		arg.Text,
+		arg.Now,
+		arg.PointID,
+		arg.ID,
+	)
+	var i SceneClue
+	err := row.Scan(
+		&i.ID,
+		&i.PointID,
+		&i.Position,
+		&i.Text,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const upsertMapTokenPosition = `-- name: UpsertMapTokenPosition :exec
 INSERT INTO map_tokens (map_id, character_id, x_bp, y_bp, hidden, updated_at)
 VALUES ($1, $2, $3, $4, false, $5)
@@ -1552,5 +1981,23 @@ func (q *Queries) UpsertMapTokenPosition(ctx context.Context, arg UpsertMapToken
 		arg.YBp,
 		arg.UpdatedAt,
 	)
+	return err
+}
+
+const upsertSceneDiscovery = `-- name: UpsertSceneDiscovery :exec
+INSERT INTO scene_discoveries (campaign_id, point_id, discovered_at)
+VALUES ($1, $2, $3)
+ON CONFLICT (campaign_id, point_id) DO NOTHING
+`
+
+type UpsertSceneDiscoveryParams struct {
+	CampaignID   string
+	PointID      string
+	DiscoveredAt time.Time
+}
+
+// The group discovered a scene (MR-030): the first time wins.
+func (q *Queries) UpsertSceneDiscovery(ctx context.Context, arg UpsertSceneDiscoveryParams) error {
+	_, err := q.db.Exec(ctx, upsertSceneDiscovery, arg.CampaignID, arg.PointID, arg.DiscoveredAt)
 	return err
 }

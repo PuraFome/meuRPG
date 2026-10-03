@@ -324,22 +324,24 @@ type PlayServiceClient interface {
 	TakeBackLeftImage(context.Context, *connect.Request[v1.TakeBackLeftImageRequest]) (*connect.Response[v1.TakeBackLeftImageResponse], error)
 	// OpenScene opens an RP scene in the session (MR-015, D7): the master
 	// picks a SCENE point of the campaign's maps and every member sees it,
-	// live, with the point's name and description and its actions; each player
-	// with their own character's bonus (GetOpenScene). Only the campaign's
-	// master may call it, and only while the campaign has an open session. One
-	// scene at a time: opening another replaces the first. The point may be
-	// hidden: opening it reveals nothing, it stays hidden on the map (RN-10).
-	// Opening the scene that is already open changes nothing; closing it and
-	// opening it again starts the rolls afresh. Every stream gets
-	// `scene_changed`, and a `scene_opened` event goes to the history.
+	// live, with the point's name and description and its actions, if it has
+	// any (a scene with no actions opens too, question 63); each player with
+	// their own character's bonus (GetOpenScene). The master also gets the
+	// point's hooks and clues. Only the campaign's master may call it, and
+	// only while the campaign has an open session. One scene at a time:
+	// opening another replaces the first. The point may be hidden: opening it
+	// reveals nothing, it stays hidden on the map (RN-10), but the group has
+	// now "discovered" the scene (MR-030). Opening the scene that is already
+	// open changes nothing; closing it and opening it again starts the rolls
+	// afresh. Every stream gets `scene_changed`, and a `scene_opened` event
+	// goes to the history.
 	//
 	// Errors:
 	//   - `not_found`: the point is not a SCENE point of the campaign's maps,
 	//     the campaign does not exist, or the caller is not a member of it.
 	//   - `permission_denied`: the caller is a player.
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
-	//     NO_OPEN_SESSION); or the point has no actions (SceneBlocked,
-	//     NO_ACTIONS).
+	//     NO_OPEN_SESSION).
 	OpenScene(context.Context, *connect.Request[v1.OpenSceneRequest]) (*connect.Response[v1.OpenSceneResponse], error)
 	// CloseScene closes the open scene, asking nothing. Only the campaign's
 	// master may call it. With no scene open it changes nothing. Every stream
@@ -832,22 +834,24 @@ type PlayServiceHandler interface {
 	TakeBackLeftImage(context.Context, *connect.Request[v1.TakeBackLeftImageRequest]) (*connect.Response[v1.TakeBackLeftImageResponse], error)
 	// OpenScene opens an RP scene in the session (MR-015, D7): the master
 	// picks a SCENE point of the campaign's maps and every member sees it,
-	// live, with the point's name and description and its actions; each player
-	// with their own character's bonus (GetOpenScene). Only the campaign's
-	// master may call it, and only while the campaign has an open session. One
-	// scene at a time: opening another replaces the first. The point may be
-	// hidden: opening it reveals nothing, it stays hidden on the map (RN-10).
-	// Opening the scene that is already open changes nothing; closing it and
-	// opening it again starts the rolls afresh. Every stream gets
-	// `scene_changed`, and a `scene_opened` event goes to the history.
+	// live, with the point's name and description and its actions, if it has
+	// any (a scene with no actions opens too, question 63); each player with
+	// their own character's bonus (GetOpenScene). The master also gets the
+	// point's hooks and clues. Only the campaign's master may call it, and
+	// only while the campaign has an open session. One scene at a time:
+	// opening another replaces the first. The point may be hidden: opening it
+	// reveals nothing, it stays hidden on the map (RN-10), but the group has
+	// now "discovered" the scene (MR-030). Opening the scene that is already
+	// open changes nothing; closing it and opening it again starts the rolls
+	// afresh. Every stream gets `scene_changed`, and a `scene_opened` event
+	// goes to the history.
 	//
 	// Errors:
 	//   - `not_found`: the point is not a SCENE point of the campaign's maps,
 	//     the campaign does not exist, or the caller is not a member of it.
 	//   - `permission_denied`: the caller is a player.
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
-	//     NO_OPEN_SESSION); or the point has no actions (SceneBlocked,
-	//     NO_ACTIONS).
+	//     NO_OPEN_SESSION).
 	OpenScene(context.Context, *connect.Request[v1.OpenSceneRequest]) (*connect.Response[v1.OpenSceneResponse], error)
 	// CloseScene closes the open scene, asking nothing. Only the campaign's
 	// master may call it. With no scene open it changes nothing. Every stream

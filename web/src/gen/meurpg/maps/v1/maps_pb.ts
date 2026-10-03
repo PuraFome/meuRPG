@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/maps/v1/maps.proto.
  */
 export const file_meurpg_maps_v1_maps: GenFile = /*@__PURE__*/
-  fileDesc("ChltZXVycGcvbWFwcy92MS9tYXBzLnByb3RvEg5tZXVycGcubWFwcy52MSLdAgoDTWFwEgoKAmlkGAEgASgJEhMKC2NhbXBhaWduX2lkGAIgASgJEgwKBG5hbWUYAyABKAkSJwoFaW1hZ2UYBCABKAsyGC5tZXVycGcubWFwcy52MS5NYXBJbWFnZRIQCghyZXZlYWxlZBgFIAEoCBIPCgdjdXJyZW50GAYgASgIEhMKC3BvaW50X2NvdW50GAcgASgFEisKC3BhcmVudF9tYXBzGAggAygLMhYubWV1cnBnLm1hcHMudjEuTWFwUmVmEhAKCHJldmlzaW9uGAkgASgFEi4KCmNyZWF0ZWRfYXQYCiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYCyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhQKDGdyaWRfY29sdW1ucxgMIAEoBRIRCglncmlkX3Jvd3MYDSABKAUiZwoITWFwSW1hZ2USCgoCaWQYASABKAkSCwoDdXJsGAIgASgJEhUKDXRodW1ibmFpbF91cmwYAyABKAkSDQoFd2lkdGgYBCABKAUSDgoGaGVpZ2h0GAUgASgFEgwKBG5hbWUYBiABKAkiIgoGTWFwUmVmEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAki4wIKCE1hcFBvaW50EgoKAmlkGAEgASgJEg4KBm1hcF9pZBgCIAEoCRIqCgRraW5kGAMgASgOMhwubWV1cnBnLm1hcHMudjEuTWFwUG9pbnRLaW5kEgwKBG5hbWUYBCABKAkSEwoLZGVzY3JpcHRpb24YBSABKAkSDAoEeF9icBgGIAEoBRIMCgR5X2JwGAcgASgFEioKCnRhcmdldF9tYXAYCCABKAsyFi5tZXVycGcubWFwcy52MS5NYXBSZWYSEAoIcmV2ZWFsZWQYCSABKAgSLgoKY3JlYXRlZF9hdBgKIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKdXBkYXRlZF9hdBgLIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMgoNc2NlbmVfYWN0aW9ucxgMIAMoCzIbLm1ldXJwZy5tYXBzLnYxLlNjZW5lQWN0aW9uIlQKC1NjZW5lQWN0aW9uEgoKAmlkGAEgASgJEgsKA2tleRgCIAEoCRIMCgRuYW1lGAMgASgJEhIKCmNoZWNrX25hbWUYBCABKAkSCgoCZGMYBSABKAUi2wEKCE1hcFRva2VuEg4KBm1hcF9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSDAoEbmFtZRgDIAEoCRIxCgRraW5kGAQgASgOMiMubWV1cnBnLmNoYXJhY3RlcnMudjEuQ2hhcmFjdGVyS2luZBIMCgRtaW5lGAUgASgIEgwKBHhfYnAYBiABKAUSDAoEeV9icBgHIAEoBRIOCgZoaWRkZW4YCCABKAgSLgoKdXBkYXRlZF9hdBgJIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiJgoPTGlzdE1hcHNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIjUKEExpc3RNYXBzUmVzcG9uc2USIQoEbWFwcxgBIAMoCzITLm1ldXJwZy5tYXBzLnYxLk1hcCI0Cg1HZXRNYXBSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg4KBm1hcF9pZBgCIAEoCSKGAQoOR2V0TWFwUmVzcG9uc2USIAoDbWFwGAEgASgLMhMubWV1cnBnLm1hcHMudjEuTWFwEigKBnBvaW50cxgCIAMoCzIYLm1ldXJwZy5tYXBzLnYxLk1hcFBvaW50EigKBnRva2VucxgDIAMoCzIYLm1ldXJwZy5tYXBzLnYxLk1hcFRva2VuIkcKEENyZWF0ZU1hcFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSDAoEbmFtZRgCIAEoCRIQCghpbWFnZV9pZBgDIAEoCSI1ChFDcmVhdGVNYXBSZXNwb25zZRIgCgNtYXAYASABKAsyEy5tZXVycGcubWFwcy52MS5NYXAiiQEKEFVwZGF0ZU1hcFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSDgoGbWFwX2lkGAIgASgJEhAKCHJldmlzaW9uGAMgASgFEhEKBG5hbWUYBCABKAlIAIgBARIVCghpbWFnZV9pZBgFIAEoCUgBiAEBQgcKBV9uYW1lQgsKCV9pbWFnZV9pZCI1ChFVcGRhdGVNYXBSZXNwb25zZRIgCgNtYXAYASABKAsyEy5tZXVycGcubWFwcy52MS5NYXAiNwoQRGVsZXRlTWFwUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIOCgZtYXBfaWQYAiABKAkiEwoRRGVsZXRlTWFwUmVzcG9uc2UiTgoVU2V0TWFwUmV2ZWFsZWRSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg4KBm1hcF9pZBgCIAEoCRIQCghyZXZlYWxlZBgDIAEoCCI6ChZTZXRNYXBSZXZlYWxlZFJlc3BvbnNlEiAKA21hcBgBIAEoCzITLm1ldXJwZy5tYXBzLnYxLk1hcCJJChFTZXRNYXBHcmlkUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIOCgZtYXBfaWQYAiABKAkSDwoHY29sdW1ucxgDIAEoBSI2ChJTZXRNYXBHcmlkUmVzcG9uc2USIAoDbWFwGAEgASgLMhMubWV1cnBnLm1hcHMudjEuTWFwIr4BChVDcmVhdGVNYXBQb2ludFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSDgoGbWFwX2lkGAIgASgJEioKBGtpbmQYAyABKA4yHC5tZXVycGcubWFwcy52MS5NYXBQb2ludEtpbmQSDAoEbmFtZRgEIAEoCRITCgtkZXNjcmlwdGlvbhgFIAEoCRIMCgR4X2JwGAYgASgFEgwKBHlfYnAYByABKAUSFQoNdGFyZ2V0X21hcF9pZBgIIAEoCSJBChZDcmVhdGVNYXBQb2ludFJlc3BvbnNlEicKBXBvaW50GAEgASgLMhgubWV1cnBnLm1hcHMudjEuTWFwUG9pbnQi2AIKFVVwZGF0ZU1hcFBvaW50UmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIOCgZtYXBfaWQYAiABKAkSEAoIcG9pbnRfaWQYAyABKAkSLwoEa2luZBgEIAEoDjIcLm1ldXJwZy5tYXBzLnYxLk1hcFBvaW50S2luZEgAiAEBEhEKBG5hbWUYBSABKAlIAYgBARIYCgtkZXNjcmlwdGlvbhgGIAEoCUgCiAEBEhEKBHhfYnAYByABKAVIA4gBARIRCgR5X2JwGAggASgFSASIAQESGgoNdGFyZ2V0X21hcF9pZBgJIAEoCUgFiAEBEhUKCHJldmVhbGVkGAogASgISAaIAQFCBwoFX2tpbmRCBwoFX25hbWVCDgoMX2Rlc2NyaXB0aW9uQgcKBV94X2JwQgcKBV95X2JwQhAKDl90YXJnZXRfbWFwX2lkQgsKCV9yZXZlYWxlZCJBChZVcGRhdGVNYXBQb2ludFJlc3BvbnNlEicKBXBvaW50GAEgASgLMhgubWV1cnBnLm1hcHMudjEuTWFwUG9pbnQiTgoVRGVsZXRlTWFwUG9pbnRSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg4KBm1hcF9pZBgCIAEoCRIQCghwb2ludF9pZBgDIAEoCSIYChZEZWxldGVNYXBQb2ludFJlc3BvbnNlImUKGlNldE1hcFBvaW50UmV2ZWFsZWRSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg4KBm1hcF9pZBgCIAEoCRIQCghwb2ludF9pZBgDIAEoCRIQCghyZXZlYWxlZBgEIAEoCCJGChtTZXRNYXBQb2ludFJldmVhbGVkUmVzcG9uc2USJwoFcG9pbnQYASABKAsyGC5tZXVycGcubWFwcy52MS5NYXBQb2ludCJtChRQbGFjZU1hcFRva2VuUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIOCgZtYXBfaWQYAiABKAkSFAoMY2hhcmFjdGVyX2lkGAMgASgJEgwKBHhfYnAYBCABKAUSDAoEeV9icBgFIAEoBSJAChVQbGFjZU1hcFRva2VuUmVzcG9uc2USJwoFdG9rZW4YASABKAsyGC5tZXVycGcubWFwcy52MS5NYXBUb2tlbiJlChhTZXRNYXBUb2tlbkhpZGRlblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSDgoGbWFwX2lkGAIgASgJEhQKDGNoYXJhY3Rlcl9pZBgDIAEoCRIOCgZoaWRkZW4YBCABKAgiRAoZU2V0TWFwVG9rZW5IaWRkZW5SZXNwb25zZRInCgV0b2tlbhgBIAEoCzIYLm1ldXJwZy5tYXBzLnYxLk1hcFRva2VuIlIKFVJlbW92ZU1hcFRva2VuUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIOCgZtYXBfaWQYAiABKAkSFAoMY2hhcmFjdGVyX2lkGAMgASgJIhgKFlJlbW92ZU1hcFRva2VuUmVzcG9uc2UidQoVQWRkU2NlbmVBY3Rpb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg4KBm1hcF9pZBgCIAEoCRIQCghwb2ludF9pZBgDIAEoCRILCgNrZXkYBCABKAkSDAoEbmFtZRgFIAEoCRIKCgJkYxgGIAEoBSJzChZBZGRTY2VuZUFjdGlvblJlc3BvbnNlEisKBmFjdGlvbhgBIAEoCzIbLm1ldXJwZy5tYXBzLnYxLlNjZW5lQWN0aW9uEiwKB2FjdGlvbnMYAiADKAsyGy5tZXVycGcubWFwcy52MS5TY2VuZUFjdGlvbiKyAQoYVXBkYXRlU2NlbmVBY3Rpb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg4KBm1hcF9pZBgCIAEoCRIQCghwb2ludF9pZBgDIAEoCRIRCglhY3Rpb25faWQYBCABKAkSEAoDa2V5GAUgASgJSACIAQESEQoEbmFtZRgGIAEoCUgBiAEBEg8KAmRjGAcgASgFSAKIAQFCBgoEX2tleUIHCgVfbmFtZUIFCgNfZGMidgoZVXBkYXRlU2NlbmVBY3Rpb25SZXNwb25zZRIrCgZhY3Rpb24YASABKAsyGy5tZXVycGcubWFwcy52MS5TY2VuZUFjdGlvbhIsCgdhY3Rpb25zGAIgAygLMhsubWV1cnBnLm1hcHMudjEuU2NlbmVBY3Rpb24imwEKFk1vdmVTY2VuZUFjdGlvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSDgoGbWFwX2lkGAIgASgJEhAKCHBvaW50X2lkGAMgASgJEhEKCWFjdGlvbl9pZBgEIAEoCRI3CglkaXJlY3Rpb24YBSABKA4yJC5tZXVycGcubWFwcy52MS5TY2VuZUFjdGlvbkRpcmVjdGlvbiJHChdNb3ZlU2NlbmVBY3Rpb25SZXNwb25zZRIsCgdhY3Rpb25zGAEgAygLMhsubWV1cnBnLm1hcHMudjEuU2NlbmVBY3Rpb24iZAoYUmVtb3ZlU2NlbmVBY3Rpb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg4KBm1hcF9pZBgCIAEoCRIQCghwb2ludF9pZBgDIAEoCRIRCglhY3Rpb25faWQYBCABKAkiSQoZUmVtb3ZlU2NlbmVBY3Rpb25SZXNwb25zZRIsCgdhY3Rpb25zGAEgAygLMhsubWV1cnBnLm1hcHMudjEuU2NlbmVBY3Rpb24qfgoMTWFwUG9pbnRLaW5kEh4KGk1BUF9QT0lOVF9LSU5EX1VOU1BFQ0lGSUVEEAASGQoVTUFQX1BPSU5UX0tJTkRfQkFUVExFEAESGQoVTUFQX1BPSU5UX0tJTkRfU1VCTUFQEAISGAoUTUFQX1BPSU5UX0tJTkRfU0NFTkUQAyp+ChRTY2VuZUFjdGlvbkRpcmVjdGlvbhImCiJTQ0VORV9BQ1RJT05fRElSRUNUSU9OX1VOU1BFQ0lGSUVEEAASHQoZU0NFTkVfQUNUSU9OX0RJUkVDVElPTl9VUBABEh8KG1NDRU5FX0FDVElPTl9ESVJFQ1RJT05fRE9XThACMq8NCgpNYXBTZXJ2aWNlElIKCExpc3RNYXBzEh8ubWV1cnBnLm1hcHMudjEuTGlzdE1hcHNSZXF1ZXN0GiAubWV1cnBnLm1hcHMudjEuTGlzdE1hcHNSZXNwb25zZSIDkAICEkwKBkdldE1hcBIdLm1ldXJwZy5tYXBzLnYxLkdldE1hcFJlcXVlc3QaHi5tZXVycGcubWFwcy52MS5HZXRNYXBSZXNwb25zZSIDkAICElAKCUNyZWF0ZU1hcBIgLm1ldXJwZy5tYXBzLnYxLkNyZWF0ZU1hcFJlcXVlc3QaIS5tZXVycGcubWFwcy52MS5DcmVhdGVNYXBSZXNwb25zZRJQCglVcGRhdGVNYXASIC5tZXVycGcubWFwcy52MS5VcGRhdGVNYXBSZXF1ZXN0GiEubWV1cnBnLm1hcHMudjEuVXBkYXRlTWFwUmVzcG9uc2USUAoJRGVsZXRlTWFwEiAubWV1cnBnLm1hcHMudjEuRGVsZXRlTWFwUmVxdWVzdBohLm1ldXJwZy5tYXBzLnYxLkRlbGV0ZU1hcFJlc3BvbnNlEl8KDlNldE1hcFJldmVhbGVkEiUubWV1cnBnLm1hcHMudjEuU2V0TWFwUmV2ZWFsZWRSZXF1ZXN0GiYubWV1cnBnLm1hcHMudjEuU2V0TWFwUmV2ZWFsZWRSZXNwb25zZRJTCgpTZXRNYXBHcmlkEiEubWV1cnBnLm1hcHMudjEuU2V0TWFwR3JpZFJlcXVlc3QaIi5tZXVycGcubWFwcy52MS5TZXRNYXBHcmlkUmVzcG9uc2USXwoOQ3JlYXRlTWFwUG9pbnQSJS5tZXVycGcubWFwcy52MS5DcmVhdGVNYXBQb2ludFJlcXVlc3QaJi5tZXVycGcubWFwcy52MS5DcmVhdGVNYXBQb2ludFJlc3BvbnNlEl8KDlVwZGF0ZU1hcFBvaW50EiUubWV1cnBnLm1hcHMudjEuVXBkYXRlTWFwUG9pbnRSZXF1ZXN0GiYubWV1cnBnLm1hcHMudjEuVXBkYXRlTWFwUG9pbnRSZXNwb25zZRJfCg5EZWxldGVNYXBQb2ludBIlLm1ldXJwZy5tYXBzLnYxLkRlbGV0ZU1hcFBvaW50UmVxdWVzdBomLm1ldXJwZy5tYXBzLnYxLkRlbGV0ZU1hcFBvaW50UmVzcG9uc2USbgoTU2V0TWFwUG9pbnRSZXZlYWxlZBIqLm1ldXJwZy5tYXBzLnYxLlNldE1hcFBvaW50UmV2ZWFsZWRSZXF1ZXN0GisubWV1cnBnLm1hcHMudjEuU2V0TWFwUG9pbnRSZXZlYWxlZFJlc3BvbnNlEl8KDkFkZFNjZW5lQWN0aW9uEiUubWV1cnBnLm1hcHMudjEuQWRkU2NlbmVBY3Rpb25SZXF1ZXN0GiYubWV1cnBnLm1hcHMudjEuQWRkU2NlbmVBY3Rpb25SZXNwb25zZRJoChFVcGRhdGVTY2VuZUFjdGlvbhIoLm1ldXJwZy5tYXBzLnYxLlVwZGF0ZVNjZW5lQWN0aW9uUmVxdWVzdBopLm1ldXJwZy5tYXBzLnYxLlVwZGF0ZVNjZW5lQWN0aW9uUmVzcG9uc2USYgoPTW92ZVNjZW5lQWN0aW9uEiYubWV1cnBnLm1hcHMudjEuTW92ZVNjZW5lQWN0aW9uUmVxdWVzdBonLm1ldXJwZy5tYXBzLnYxLk1vdmVTY2VuZUFjdGlvblJlc3BvbnNlEmgKEVJlbW92ZVNjZW5lQWN0aW9uEigubWV1cnBnLm1hcHMudjEuUmVtb3ZlU2NlbmVBY3Rpb25SZXF1ZXN0GikubWV1cnBnLm1hcHMudjEuUmVtb3ZlU2NlbmVBY3Rpb25SZXNwb25zZRJcCg1QbGFjZU1hcFRva2VuEiQubWV1cnBnLm1hcHMudjEuUGxhY2VNYXBUb2tlblJlcXVlc3QaJS5tZXVycGcubWFwcy52MS5QbGFjZU1hcFRva2VuUmVzcG9uc2USaAoRU2V0TWFwVG9rZW5IaWRkZW4SKC5tZXVycGcubWFwcy52MS5TZXRNYXBUb2tlbkhpZGRlblJlcXVlc3QaKS5tZXVycGcubWFwcy52MS5TZXRNYXBUb2tlbkhpZGRlblJlc3BvbnNlEl8KDlJlbW92ZU1hcFRva2VuEiUubWV1cnBnLm1hcHMudjEuUmVtb3ZlTWFwVG9rZW5SZXF1ZXN0GiYubWV1cnBnLm1hcHMudjEuUmVtb3ZlTWFwVG9rZW5SZXNwb25zZUK3AQoSY29tLm1ldXJwZy5tYXBzLnYxQglNYXBzUHJvdG9QAVo8Z2l0aHViLmNvbS9QdXJhRm9tZS9tZXVSUEcvYmFja2VuZC9nZW4vbWV1cnBnL21hcHMvdjE7bWFwc3YxogIDTU1YqgIOTWV1cnBnLk1hcHMuVjHKAg5NZXVycGdcTWFwc1xWMeICGk1ldXJwZ1xNYXBzXFYxXEdQQk1ldGFkYXRh6gIQTWV1cnBnOjpNYXBzOjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp, file_meurpg_characters_v1_characters]);
+  fileDesc("ChltZXVycGcvbWFwcy92MS9tYXBzLnByb3RvEg5tZXVycGcubWFwcy52MSLdAgoDTWFwEgoKAmlkGAEgASgJEhMKC2NhbXBhaWduX2lkGAIgASgJEgwKBG5hbWUYAyABKAkSJwoFaW1hZ2UYBCABKAsyGC5tZXVycGcubWFwcy52MS5NYXBJbWFnZRIQCghyZXZlYWxlZBgFIAEoCBIPCgdjdXJyZW50GAYgASgIEhMKC3BvaW50X2NvdW50GAcgASgFEisKC3BhcmVudF9tYXBzGAggAygLMhYubWV1cnBnLm1hcHMudjEuTWFwUmVmEhAKCHJldmlzaW9uGAkgASgFEi4KCmNyZWF0ZWRfYXQYCiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYCyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhQKDGdyaWRfY29sdW1ucxgMIAEoBRIRCglncmlkX3Jvd3MYDSABKAUiZwoITWFwSW1hZ2USCgoCaWQYASABKAkSCwoDdXJsGAIgASgJEhUKDXRodW1ibmFpbF91cmwYAyABKAkSDQoFd2lkdGgYBCABKAUSDgoGaGVpZ2h0GAUgASgFEgwKBG5hbWUYBiABKAkiIgoGTWFwUmVmEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkinAMKCE1hcFBvaW50EgoKAmlkGAEgASgJEg4KBm1hcF9pZBgCIAEoCRIqCgRraW5kGAMgASgOMhwubWV1cnBnLm1hcHMudjEuTWFwUG9pbnRLaW5kEgwKBG5hbWUYBCABKAkSEwoLZGVzY3JpcHRpb24YBSABKAkSDAoEeF9icBgGIAEoBRIMCgR5X2JwGAcgASgFEioKCnRhcmdldF9tYXAYCCABKAsyFi5tZXVycGcubWFwcy52MS5NYXBSZWYSEAoIcmV2ZWFsZWQYCSABKAgSLgoKY3JlYXRlZF9hdBgKIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKdXBkYXRlZF9hdBgLIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMgoNc2NlbmVfYWN0aW9ucxgMIAMoCzIbLm1ldXJwZy5tYXBzLnYxLlNjZW5lQWN0aW9uEg0KBWhvb2tzGA0gASgJEigKBWNsdWVzGA4gAygLMhkubWV1cnBnLm1hcHMudjEuU2NlbmVDbHVlIlkKCVNjZW5lQ2x1ZRIKCgJpZBgBIAEoCRIMCgR0ZXh0GAIgASgJEjIKC3JldmVhbGVkX3RvGAMgAygLMh0ubWV1cnBnLm1hcHMudjEuQ2x1ZVJlY2lwaWVudCJuCg1DbHVlUmVjaXBpZW50EhQKDGNoYXJhY3Rlcl9pZBgBIAEoCRIWCg5jaGFyYWN0ZXJfbmFtZRgCIAEoCRIvCgtyZXZlYWxlZF9hdBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiVAoLU2NlbmVBY3Rpb24SCgoCaWQYASABKAkSCwoDa2V5GAIgASgJEgwKBG5hbWUYAyABKAkSEgoKY2hlY2tfbmFtZRgEIAEoCRIKCgJkYxgFIAEoBSLbAQoITWFwVG9rZW4SDgoGbWFwX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCRIMCgRuYW1lGAMgASgJEjEKBGtpbmQYBCABKA4yIy5tZXVycGcuY2hhcmFjdGVycy52MS5DaGFyYWN0ZXJLaW5kEgwKBG1pbmUYBSABKAgSDAoEeF9icBgGIAEoBRIMCgR5X2JwGAcgASgFEg4KBmhpZGRlbhgIIAEoCBIuCgp1cGRhdGVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCImCg9MaXN0TWFwc1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiNQoQTGlzdE1hcHNSZXNwb25zZRIhCgRtYXBzGAEgAygLMhMubWV1cnBnLm1hcHMudjEuTWFwIjQKDUdldE1hcFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSDgoGbWFwX2lkGAIgASgJIoYBCg5HZXRNYXBSZXNwb25zZRIgCgNtYXAYASABKAsyEy5tZXVycGcubWFwcy52MS5NYXASKAoGcG9pbnRzGAIgAygLMhgubWV1cnBnLm1hcHMudjEuTWFwUG9pbnQSKAoGdG9rZW5zGAMgAygLMhgubWV1cnBnLm1hcHMudjEuTWFwVG9rZW4iRwoQQ3JlYXRlTWFwUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEhAKCGltYWdlX2lkGAMgASgJIjUKEUNyZWF0ZU1hcFJlc3BvbnNlEiAKA21hcBgBIAEoCzITLm1ldXJwZy5tYXBzLnYxLk1hcCKJAQoQVXBkYXRlTWFwUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIOCgZtYXBfaWQYAiABKAkSEAoIcmV2aXNpb24YAyABKAUSEQoEbmFtZRgEIAEoCUgAiAEBEhUKCGltYWdlX2lkGAUgASgJSAGIAQFCBwoFX25hbWVCCwoJX2ltYWdlX2lkIjUKEVVwZGF0ZU1hcFJlc3BvbnNlEiAKA21hcBgBIAEoCzITLm1ldXJwZy5tYXBzLnYxLk1hcCI3ChBEZWxldGVNYXBSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg4KBm1hcF9pZBgCIAEoCSITChFEZWxldGVNYXBSZXNwb25zZSJOChVTZXRNYXBSZXZlYWxlZFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSDgoGbWFwX2lkGAIgASgJEhAKCHJldmVhbGVkGAMgASgIIjoKFlNldE1hcFJldmVhbGVkUmVzcG9uc2USIAoDbWFwGAEgASgLMhMubWV1cnBnLm1hcHMudjEuTWFwIkkKEVNldE1hcEdyaWRSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg4KBm1hcF9pZBgCIAEoCRIPCgdjb2x1bW5zGAMgASgFIjYKElNldE1hcEdyaWRSZXNwb25zZRIgCgNtYXAYASABKAsyEy5tZXVycGcubWFwcy52MS5NYXAizQEKFUNyZWF0ZU1hcFBvaW50UmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIOCgZtYXBfaWQYAiABKAkSKgoEa2luZBgDIAEoDjIcLm1ldXJwZy5tYXBzLnYxLk1hcFBvaW50S2luZBIMCgRuYW1lGAQgASgJEhMKC2Rlc2NyaXB0aW9uGAUgASgJEgwKBHhfYnAYBiABKAUSDAoEeV9icBgHIAEoBRIVCg10YXJnZXRfbWFwX2lkGAggASgJEg0KBWhvb2tzGAkgASgJIkEKFkNyZWF0ZU1hcFBvaW50UmVzcG9uc2USJwoFcG9pbnQYASABKAsyGC5tZXVycGcubWFwcy52MS5NYXBQb2ludCL2AgoVVXBkYXRlTWFwUG9pbnRSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg4KBm1hcF9pZBgCIAEoCRIQCghwb2ludF9pZBgDIAEoCRIvCgRraW5kGAQgASgOMhwubWV1cnBnLm1hcHMudjEuTWFwUG9pbnRLaW5kSACIAQESEQoEbmFtZRgFIAEoCUgBiAEBEhgKC2Rlc2NyaXB0aW9uGAYgASgJSAKIAQESEQoEeF9icBgHIAEoBUgDiAEBEhEKBHlfYnAYCCABKAVIBIgBARIaCg10YXJnZXRfbWFwX2lkGAkgASgJSAWIAQESFQoIcmV2ZWFsZWQYCiABKAhIBogBARISCgVob29rcxgLIAEoCUgHiAEBQgcKBV9raW5kQgcKBV9uYW1lQg4KDF9kZXNjcmlwdGlvbkIHCgVfeF9icEIHCgVfeV9icEIQCg5fdGFyZ2V0X21hcF9pZEILCglfcmV2ZWFsZWRCCAoGX2hvb2tzIkEKFlVwZGF0ZU1hcFBvaW50UmVzcG9uc2USJwoFcG9pbnQYASABKAsyGC5tZXVycGcubWFwcy52MS5NYXBQb2ludCJOChVEZWxldGVNYXBQb2ludFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSDgoGbWFwX2lkGAIgASgJEhAKCHBvaW50X2lkGAMgASgJIhgKFkRlbGV0ZU1hcFBvaW50UmVzcG9uc2UiZQoaU2V0TWFwUG9pbnRSZXZlYWxlZFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSDgoGbWFwX2lkGAIgASgJEhAKCHBvaW50X2lkGAMgASgJEhAKCHJldmVhbGVkGAQgASgIIkYKG1NldE1hcFBvaW50UmV2ZWFsZWRSZXNwb25zZRInCgVwb2ludBgBIAEoCzIYLm1ldXJwZy5tYXBzLnYxLk1hcFBvaW50Im0KFFBsYWNlTWFwVG9rZW5SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg4KBm1hcF9pZBgCIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAyABKAkSDAoEeF9icBgEIAEoBRIMCgR5X2JwGAUgASgFIkAKFVBsYWNlTWFwVG9rZW5SZXNwb25zZRInCgV0b2tlbhgBIAEoCzIYLm1ldXJwZy5tYXBzLnYxLk1hcFRva2VuImUKGFNldE1hcFRva2VuSGlkZGVuUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIOCgZtYXBfaWQYAiABKAkSFAoMY2hhcmFjdGVyX2lkGAMgASgJEg4KBmhpZGRlbhgEIAEoCCJEChlTZXRNYXBUb2tlbkhpZGRlblJlc3BvbnNlEicKBXRva2VuGAEgASgLMhgubWV1cnBnLm1hcHMudjEuTWFwVG9rZW4iUgoVUmVtb3ZlTWFwVG9rZW5SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg4KBm1hcF9pZBgCIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAyABKAkiGAoWUmVtb3ZlTWFwVG9rZW5SZXNwb25zZSJ1ChVBZGRTY2VuZUFjdGlvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSDgoGbWFwX2lkGAIgASgJEhAKCHBvaW50X2lkGAMgASgJEgsKA2tleRgEIAEoCRIMCgRuYW1lGAUgASgJEgoKAmRjGAYgASgFInMKFkFkZFNjZW5lQWN0aW9uUmVzcG9uc2USKwoGYWN0aW9uGAEgASgLMhsubWV1cnBnLm1hcHMudjEuU2NlbmVBY3Rpb24SLAoHYWN0aW9ucxgCIAMoCzIbLm1ldXJwZy5tYXBzLnYxLlNjZW5lQWN0aW9uIrIBChhVcGRhdGVTY2VuZUFjdGlvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSDgoGbWFwX2lkGAIgASgJEhAKCHBvaW50X2lkGAMgASgJEhEKCWFjdGlvbl9pZBgEIAEoCRIQCgNrZXkYBSABKAlIAIgBARIRCgRuYW1lGAYgASgJSAGIAQESDwoCZGMYByABKAVIAogBAUIGCgRfa2V5QgcKBV9uYW1lQgUKA19kYyJ2ChlVcGRhdGVTY2VuZUFjdGlvblJlc3BvbnNlEisKBmFjdGlvbhgBIAEoCzIbLm1ldXJwZy5tYXBzLnYxLlNjZW5lQWN0aW9uEiwKB2FjdGlvbnMYAiADKAsyGy5tZXVycGcubWFwcy52MS5TY2VuZUFjdGlvbiKbAQoWTW92ZVNjZW5lQWN0aW9uUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIOCgZtYXBfaWQYAiABKAkSEAoIcG9pbnRfaWQYAyABKAkSEQoJYWN0aW9uX2lkGAQgASgJEjcKCWRpcmVjdGlvbhgFIAEoDjIkLm1ldXJwZy5tYXBzLnYxLlNjZW5lQWN0aW9uRGlyZWN0aW9uIkcKF01vdmVTY2VuZUFjdGlvblJlc3BvbnNlEiwKB2FjdGlvbnMYASADKAsyGy5tZXVycGcubWFwcy52MS5TY2VuZUFjdGlvbiJkChhSZW1vdmVTY2VuZUFjdGlvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSDgoGbWFwX2lkGAIgASgJEhAKCHBvaW50X2lkGAMgASgJEhEKCWFjdGlvbl9pZBgEIAEoCSJJChlSZW1vdmVTY2VuZUFjdGlvblJlc3BvbnNlEiwKB2FjdGlvbnMYASADKAsyGy5tZXVycGcubWFwcy52MS5TY2VuZUFjdGlvbiJaChNBZGRTY2VuZUNsdWVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg4KBm1hcF9pZBgCIAEoCRIQCghwb2ludF9pZBgDIAEoCRIMCgR0ZXh0GAQgASgJImkKFEFkZFNjZW5lQ2x1ZVJlc3BvbnNlEicKBGNsdWUYASABKAsyGS5tZXVycGcubWFwcy52MS5TY2VuZUNsdWUSKAoFY2x1ZXMYAiADKAsyGS5tZXVycGcubWFwcy52MS5TY2VuZUNsdWUibgoWVXBkYXRlU2NlbmVDbHVlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIOCgZtYXBfaWQYAiABKAkSEAoIcG9pbnRfaWQYAyABKAkSDwoHY2x1ZV9pZBgEIAEoCRIMCgR0ZXh0GAUgASgJImwKF1VwZGF0ZVNjZW5lQ2x1ZVJlc3BvbnNlEicKBGNsdWUYASABKAsyGS5tZXVycGcubWFwcy52MS5TY2VuZUNsdWUSKAoFY2x1ZXMYAiADKAsyGS5tZXVycGcubWFwcy52MS5TY2VuZUNsdWUilwEKFE1vdmVTY2VuZUNsdWVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg4KBm1hcF9pZBgCIAEoCRIQCghwb2ludF9pZBgDIAEoCRIPCgdjbHVlX2lkGAQgASgJEjcKCWRpcmVjdGlvbhgFIAEoDjIkLm1ldXJwZy5tYXBzLnYxLlNjZW5lQWN0aW9uRGlyZWN0aW9uIkEKFU1vdmVTY2VuZUNsdWVSZXNwb25zZRIoCgVjbHVlcxgBIAMoCzIZLm1ldXJwZy5tYXBzLnYxLlNjZW5lQ2x1ZSJgChZSZW1vdmVTY2VuZUNsdWVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg4KBm1hcF9pZBgCIAEoCRIQCghwb2ludF9pZBgDIAEoCRIPCgdjbHVlX2lkGAQgASgJIkMKF1JlbW92ZVNjZW5lQ2x1ZVJlc3BvbnNlEigKBWNsdWVzGAEgAygLMhkubWV1cnBnLm1hcHMudjEuU2NlbmVDbHVlIlUKFlJldmVhbFNjZW5lQ2x1ZVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSDwoHY2x1ZV9pZBgCIAEoCRIVCg1jaGFyYWN0ZXJfaWRzGAMgAygJIkIKF1JldmVhbFNjZW5lQ2x1ZVJlc3BvbnNlEicKBGNsdWUYASABKAsyGS5tZXVycGcubWFwcy52MS5TY2VuZUNsdWUqfgoMTWFwUG9pbnRLaW5kEh4KGk1BUF9QT0lOVF9LSU5EX1VOU1BFQ0lGSUVEEAASGQoVTUFQX1BPSU5UX0tJTkRfQkFUVExFEAESGQoVTUFQX1BPSU5UX0tJTkRfU1VCTUFQEAISGAoUTUFQX1BPSU5UX0tJTkRfU0NFTkUQAyp+ChRTY2VuZUFjdGlvbkRpcmVjdGlvbhImCiJTQ0VORV9BQ1RJT05fRElSRUNUSU9OX1VOU1BFQ0lGSUVEEAASHQoZU0NFTkVfQUNUSU9OX0RJUkVDVElPTl9VUBABEh8KG1NDRU5FX0FDVElPTl9ESVJFQ1RJT05fRE9XThACMpQRCgpNYXBTZXJ2aWNlElIKCExpc3RNYXBzEh8ubWV1cnBnLm1hcHMudjEuTGlzdE1hcHNSZXF1ZXN0GiAubWV1cnBnLm1hcHMudjEuTGlzdE1hcHNSZXNwb25zZSIDkAICEkwKBkdldE1hcBIdLm1ldXJwZy5tYXBzLnYxLkdldE1hcFJlcXVlc3QaHi5tZXVycGcubWFwcy52MS5HZXRNYXBSZXNwb25zZSIDkAICElAKCUNyZWF0ZU1hcBIgLm1ldXJwZy5tYXBzLnYxLkNyZWF0ZU1hcFJlcXVlc3QaIS5tZXVycGcubWFwcy52MS5DcmVhdGVNYXBSZXNwb25zZRJQCglVcGRhdGVNYXASIC5tZXVycGcubWFwcy52MS5VcGRhdGVNYXBSZXF1ZXN0GiEubWV1cnBnLm1hcHMudjEuVXBkYXRlTWFwUmVzcG9uc2USUAoJRGVsZXRlTWFwEiAubWV1cnBnLm1hcHMudjEuRGVsZXRlTWFwUmVxdWVzdBohLm1ldXJwZy5tYXBzLnYxLkRlbGV0ZU1hcFJlc3BvbnNlEl8KDlNldE1hcFJldmVhbGVkEiUubWV1cnBnLm1hcHMudjEuU2V0TWFwUmV2ZWFsZWRSZXF1ZXN0GiYubWV1cnBnLm1hcHMudjEuU2V0TWFwUmV2ZWFsZWRSZXNwb25zZRJTCgpTZXRNYXBHcmlkEiEubWV1cnBnLm1hcHMudjEuU2V0TWFwR3JpZFJlcXVlc3QaIi5tZXVycGcubWFwcy52MS5TZXRNYXBHcmlkUmVzcG9uc2USXwoOQ3JlYXRlTWFwUG9pbnQSJS5tZXVycGcubWFwcy52MS5DcmVhdGVNYXBQb2ludFJlcXVlc3QaJi5tZXVycGcubWFwcy52MS5DcmVhdGVNYXBQb2ludFJlc3BvbnNlEl8KDlVwZGF0ZU1hcFBvaW50EiUubWV1cnBnLm1hcHMudjEuVXBkYXRlTWFwUG9pbnRSZXF1ZXN0GiYubWV1cnBnLm1hcHMudjEuVXBkYXRlTWFwUG9pbnRSZXNwb25zZRJfCg5EZWxldGVNYXBQb2ludBIlLm1ldXJwZy5tYXBzLnYxLkRlbGV0ZU1hcFBvaW50UmVxdWVzdBomLm1ldXJwZy5tYXBzLnYxLkRlbGV0ZU1hcFBvaW50UmVzcG9uc2USbgoTU2V0TWFwUG9pbnRSZXZlYWxlZBIqLm1ldXJwZy5tYXBzLnYxLlNldE1hcFBvaW50UmV2ZWFsZWRSZXF1ZXN0GisubWV1cnBnLm1hcHMudjEuU2V0TWFwUG9pbnRSZXZlYWxlZFJlc3BvbnNlEl8KDkFkZFNjZW5lQWN0aW9uEiUubWV1cnBnLm1hcHMudjEuQWRkU2NlbmVBY3Rpb25SZXF1ZXN0GiYubWV1cnBnLm1hcHMudjEuQWRkU2NlbmVBY3Rpb25SZXNwb25zZRJoChFVcGRhdGVTY2VuZUFjdGlvbhIoLm1ldXJwZy5tYXBzLnYxLlVwZGF0ZVNjZW5lQWN0aW9uUmVxdWVzdBopLm1ldXJwZy5tYXBzLnYxLlVwZGF0ZVNjZW5lQWN0aW9uUmVzcG9uc2USYgoPTW92ZVNjZW5lQWN0aW9uEiYubWV1cnBnLm1hcHMudjEuTW92ZVNjZW5lQWN0aW9uUmVxdWVzdBonLm1ldXJwZy5tYXBzLnYxLk1vdmVTY2VuZUFjdGlvblJlc3BvbnNlEmgKEVJlbW92ZVNjZW5lQWN0aW9uEigubWV1cnBnLm1hcHMudjEuUmVtb3ZlU2NlbmVBY3Rpb25SZXF1ZXN0GikubWV1cnBnLm1hcHMudjEuUmVtb3ZlU2NlbmVBY3Rpb25SZXNwb25zZRJZCgxBZGRTY2VuZUNsdWUSIy5tZXVycGcubWFwcy52MS5BZGRTY2VuZUNsdWVSZXF1ZXN0GiQubWV1cnBnLm1hcHMudjEuQWRkU2NlbmVDbHVlUmVzcG9uc2USYgoPVXBkYXRlU2NlbmVDbHVlEiYubWV1cnBnLm1hcHMudjEuVXBkYXRlU2NlbmVDbHVlUmVxdWVzdBonLm1ldXJwZy5tYXBzLnYxLlVwZGF0ZVNjZW5lQ2x1ZVJlc3BvbnNlElwKDU1vdmVTY2VuZUNsdWUSJC5tZXVycGcubWFwcy52MS5Nb3ZlU2NlbmVDbHVlUmVxdWVzdBolLm1ldXJwZy5tYXBzLnYxLk1vdmVTY2VuZUNsdWVSZXNwb25zZRJiCg9SZW1vdmVTY2VuZUNsdWUSJi5tZXVycGcubWFwcy52MS5SZW1vdmVTY2VuZUNsdWVSZXF1ZXN0GicubWV1cnBnLm1hcHMudjEuUmVtb3ZlU2NlbmVDbHVlUmVzcG9uc2USYgoPUmV2ZWFsU2NlbmVDbHVlEiYubWV1cnBnLm1hcHMudjEuUmV2ZWFsU2NlbmVDbHVlUmVxdWVzdBonLm1ldXJwZy5tYXBzLnYxLlJldmVhbFNjZW5lQ2x1ZVJlc3BvbnNlElwKDVBsYWNlTWFwVG9rZW4SJC5tZXVycGcubWFwcy52MS5QbGFjZU1hcFRva2VuUmVxdWVzdBolLm1ldXJwZy5tYXBzLnYxLlBsYWNlTWFwVG9rZW5SZXNwb25zZRJoChFTZXRNYXBUb2tlbkhpZGRlbhIoLm1ldXJwZy5tYXBzLnYxLlNldE1hcFRva2VuSGlkZGVuUmVxdWVzdBopLm1ldXJwZy5tYXBzLnYxLlNldE1hcFRva2VuSGlkZGVuUmVzcG9uc2USXwoOUmVtb3ZlTWFwVG9rZW4SJS5tZXVycGcubWFwcy52MS5SZW1vdmVNYXBUb2tlblJlcXVlc3QaJi5tZXVycGcubWFwcy52MS5SZW1vdmVNYXBUb2tlblJlc3BvbnNlQrcBChJjb20ubWV1cnBnLm1hcHMudjFCCU1hcHNQcm90b1ABWjxnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvbWFwcy92MTttYXBzdjGiAgNNTViqAg5NZXVycGcuTWFwcy5WMcoCDk1ldXJwZ1xNYXBzXFYx4gIaTWV1cnBnXE1hcHNcVjFcR1BCTWV0YWRhdGHqAhBNZXVycGc6Ok1hcHM6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp, file_meurpg_characters_v1_characters]);
 
 /**
  * Map is a map as the caller may see it.
@@ -308,6 +308,24 @@ export type MapPoint = Message<"meurpg.maps.v1.MapPoint"> & {
    * @generated from field: repeated meurpg.maps.v1.SceneAction scene_actions = 12;
    */
   sceneActions: SceneAction[];
+
+  /**
+   * "Ganchos e anotações" (MR-029): the master's private Markdown text on a
+   * SCENE point, 0 to 4,000 characters. Only the master gets it: a player
+   * always gets it empty (RN-20).
+   *
+   * @generated from field: string hooks = 13;
+   */
+  hooks: string;
+
+  /**
+   * The clues of a SCENE point (MR-029), in the order the master put them,
+   * each with who has it. Only the master gets them: a player always gets
+   * none, not even the revealed ones (those are in their notes).
+   *
+   * @generated from field: repeated meurpg.maps.v1.SceneClue clues = 14;
+   */
+  clues: SceneClue[];
 };
 
 /**
@@ -316,6 +334,78 @@ export type MapPoint = Message<"meurpg.maps.v1.MapPoint"> & {
  */
 export const MapPointSchema: GenMessage<MapPoint> = /*@__PURE__*/
   messageDesc(file_meurpg_maps_v1_maps, 3);
+
+/**
+ * SceneClue is a clue the master prepared on an RP scene (MR-029), as the
+ * master sees it. A player never receives this message.
+ *
+ * @generated from message meurpg.maps.v1.SceneClue
+ */
+export type SceneClue = Message<"meurpg.maps.v1.SceneClue"> & {
+  /**
+   * Stable clue ID (a UUID).
+   *
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * The clue's text, 1 to 500 characters, with no line breaks.
+   *
+   * @generated from field: string text = 2;
+   */
+  text: string;
+
+  /**
+   * The players it was revealed to, oldest first; empty for "Ninguém ainda".
+   * Compare with the campaign's player characters for "Todos".
+   *
+   * @generated from field: repeated meurpg.maps.v1.ClueRecipient revealed_to = 3;
+   */
+  revealedTo: ClueRecipient[];
+};
+
+/**
+ * Describes the message meurpg.maps.v1.SceneClue.
+ * Use `create(SceneClueSchema)` to create a new message.
+ */
+export const SceneClueSchema: GenMessage<SceneClue> = /*@__PURE__*/
+  messageDesc(file_meurpg_maps_v1_maps, 4);
+
+/**
+ * ClueRecipient is a player the master revealed a clue to.
+ *
+ * @generated from message meurpg.maps.v1.ClueRecipient
+ */
+export type ClueRecipient = Message<"meurpg.maps.v1.ClueRecipient"> & {
+  /**
+   * The character the master picked (a UUID).
+   *
+   * @generated from field: string character_id = 1;
+   */
+  characterId: string;
+
+  /**
+   * The character's name; empty when the character no longer lives.
+   *
+   * @generated from field: string character_name = 2;
+   */
+  characterName: string;
+
+  /**
+   * When the clue was revealed to them.
+   *
+   * @generated from field: google.protobuf.Timestamp revealed_at = 3;
+   */
+  revealedAt?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message meurpg.maps.v1.ClueRecipient.
+ * Use `create(ClueRecipientSchema)` to create a new message.
+ */
+export const ClueRecipientSchema: GenMessage<ClueRecipient> = /*@__PURE__*/
+  messageDesc(file_meurpg_maps_v1_maps, 5);
 
 /**
  * SceneAction is one check of an RP scene (MR-015): a skill check, an
@@ -370,7 +460,7 @@ export type SceneAction = Message<"meurpg.maps.v1.SceneAction"> & {
  * Use `create(SceneActionSchema)` to create a new message.
  */
 export const SceneActionSchema: GenMessage<SceneAction> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 4);
+  messageDesc(file_meurpg_maps_v1_maps, 6);
 
 /**
  * MapToken is a character's token on a map.
@@ -449,7 +539,7 @@ export type MapToken = Message<"meurpg.maps.v1.MapToken"> & {
  * Use `create(MapTokenSchema)` to create a new message.
  */
 export const MapTokenSchema: GenMessage<MapToken> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 5);
+  messageDesc(file_meurpg_maps_v1_maps, 7);
 
 /**
  * ListMapsRequest names a campaign.
@@ -468,7 +558,7 @@ export type ListMapsRequest = Message<"meurpg.maps.v1.ListMapsRequest"> & {
  * Use `create(ListMapsRequestSchema)` to create a new message.
  */
 export const ListMapsRequestSchema: GenMessage<ListMapsRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 6);
+  messageDesc(file_meurpg_maps_v1_maps, 8);
 
 /**
  * ListMapsResponse lists the maps the caller may see, oldest first.
@@ -487,7 +577,7 @@ export type ListMapsResponse = Message<"meurpg.maps.v1.ListMapsResponse"> & {
  * Use `create(ListMapsResponseSchema)` to create a new message.
  */
 export const ListMapsResponseSchema: GenMessage<ListMapsResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 7);
+  messageDesc(file_meurpg_maps_v1_maps, 9);
 
 /**
  * GetMapRequest names a map of a campaign.
@@ -511,7 +601,7 @@ export type GetMapRequest = Message<"meurpg.maps.v1.GetMapRequest"> & {
  * Use `create(GetMapRequestSchema)` to create a new message.
  */
 export const GetMapRequestSchema: GenMessage<GetMapRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 8);
+  messageDesc(file_meurpg_maps_v1_maps, 10);
 
 /**
  * GetMapResponse is a map with what the caller may see on it.
@@ -548,7 +638,7 @@ export type GetMapResponse = Message<"meurpg.maps.v1.GetMapResponse"> & {
  * Use `create(GetMapResponseSchema)` to create a new message.
  */
 export const GetMapResponseSchema: GenMessage<GetMapResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 9);
+  messageDesc(file_meurpg_maps_v1_maps, 11);
 
 /**
  * CreateMapRequest carries the new map.
@@ -581,7 +671,7 @@ export type CreateMapRequest = Message<"meurpg.maps.v1.CreateMapRequest"> & {
  * Use `create(CreateMapRequestSchema)` to create a new message.
  */
 export const CreateMapRequestSchema: GenMessage<CreateMapRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 10);
+  messageDesc(file_meurpg_maps_v1_maps, 12);
 
 /**
  * CreateMapResponse returns the new, hidden map.
@@ -600,7 +690,7 @@ export type CreateMapResponse = Message<"meurpg.maps.v1.CreateMapResponse"> & {
  * Use `create(CreateMapResponseSchema)` to create a new message.
  */
 export const CreateMapResponseSchema: GenMessage<CreateMapResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 11);
+  messageDesc(file_meurpg_maps_v1_maps, 13);
 
 /**
  * UpdateMapRequest carries the map's new name, image, or both. At least
@@ -646,7 +736,7 @@ export type UpdateMapRequest = Message<"meurpg.maps.v1.UpdateMapRequest"> & {
  * Use `create(UpdateMapRequestSchema)` to create a new message.
  */
 export const UpdateMapRequestSchema: GenMessage<UpdateMapRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 12);
+  messageDesc(file_meurpg_maps_v1_maps, 14);
 
 /**
  * UpdateMapResponse returns the map as saved.
@@ -667,7 +757,7 @@ export type UpdateMapResponse = Message<"meurpg.maps.v1.UpdateMapResponse"> & {
  * Use `create(UpdateMapResponseSchema)` to create a new message.
  */
 export const UpdateMapResponseSchema: GenMessage<UpdateMapResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 13);
+  messageDesc(file_meurpg_maps_v1_maps, 15);
 
 /**
  * DeleteMapRequest names the map to delete.
@@ -691,7 +781,7 @@ export type DeleteMapRequest = Message<"meurpg.maps.v1.DeleteMapRequest"> & {
  * Use `create(DeleteMapRequestSchema)` to create a new message.
  */
 export const DeleteMapRequestSchema: GenMessage<DeleteMapRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 14);
+  messageDesc(file_meurpg_maps_v1_maps, 16);
 
 /**
  * DeleteMapResponse is empty: the map is gone.
@@ -706,7 +796,7 @@ export type DeleteMapResponse = Message<"meurpg.maps.v1.DeleteMapResponse"> & {
  * Use `create(DeleteMapResponseSchema)` to create a new message.
  */
 export const DeleteMapResponseSchema: GenMessage<DeleteMapResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 15);
+  messageDesc(file_meurpg_maps_v1_maps, 17);
 
 /**
  * SetMapRevealedRequest says whether the players may see a map.
@@ -737,7 +827,7 @@ export type SetMapRevealedRequest = Message<"meurpg.maps.v1.SetMapRevealedReques
  * Use `create(SetMapRevealedRequestSchema)` to create a new message.
  */
 export const SetMapRevealedRequestSchema: GenMessage<SetMapRevealedRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 16);
+  messageDesc(file_meurpg_maps_v1_maps, 18);
 
 /**
  * SetMapRevealedResponse returns the map as it is now.
@@ -756,7 +846,7 @@ export type SetMapRevealedResponse = Message<"meurpg.maps.v1.SetMapRevealedRespo
  * Use `create(SetMapRevealedResponseSchema)` to create a new message.
  */
 export const SetMapRevealedResponseSchema: GenMessage<SetMapRevealedResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 17);
+  messageDesc(file_meurpg_maps_v1_maps, 19);
 
 /**
  * SetMapGridRequest sets a map's battle grid.
@@ -788,7 +878,7 @@ export type SetMapGridRequest = Message<"meurpg.maps.v1.SetMapGridRequest"> & {
  * Use `create(SetMapGridRequestSchema)` to create a new message.
  */
 export const SetMapGridRequestSchema: GenMessage<SetMapGridRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 18);
+  messageDesc(file_meurpg_maps_v1_maps, 20);
 
 /**
  * SetMapGridResponse returns the map as it is now.
@@ -809,7 +899,7 @@ export type SetMapGridResponse = Message<"meurpg.maps.v1.SetMapGridResponse"> & 
  * Use `create(SetMapGridResponseSchema)` to create a new message.
  */
 export const SetMapGridResponseSchema: GenMessage<SetMapGridResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 19);
+  messageDesc(file_meurpg_maps_v1_maps, 21);
 
 /**
  * CreateMapPointRequest carries the new point.
@@ -867,6 +957,14 @@ export type CreateMapPointRequest = Message<"meurpg.maps.v1.CreateMapPointReques
    * @generated from field: string target_map_id = 8;
    */
   targetMapId: string;
+
+  /**
+   * Only for a SCENE point: the master's hooks, 0 to 4,000 characters, with
+   * line breaks. Any other kind with hooks is `invalid_argument`.
+   *
+   * @generated from field: string hooks = 9;
+   */
+  hooks: string;
 };
 
 /**
@@ -874,7 +972,7 @@ export type CreateMapPointRequest = Message<"meurpg.maps.v1.CreateMapPointReques
  * Use `create(CreateMapPointRequestSchema)` to create a new message.
  */
 export const CreateMapPointRequestSchema: GenMessage<CreateMapPointRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 20);
+  messageDesc(file_meurpg_maps_v1_maps, 22);
 
 /**
  * CreateMapPointResponse returns the new, hidden point.
@@ -893,7 +991,7 @@ export type CreateMapPointResponse = Message<"meurpg.maps.v1.CreateMapPointRespo
  * Use `create(CreateMapPointResponseSchema)` to create a new message.
  */
 export const CreateMapPointResponseSchema: GenMessage<CreateMapPointResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 21);
+  messageDesc(file_meurpg_maps_v1_maps, 23);
 
 /**
  * UpdateMapPointRequest carries the fields to change. Each field set
@@ -967,6 +1065,14 @@ export type UpdateMapPointRequest = Message<"meurpg.maps.v1.UpdateMapPointReques
    * @generated from field: optional bool revealed = 10;
    */
   revealed?: boolean | undefined;
+
+  /**
+   * The new hooks of a SCENE point (MR-029), 0 to 4,000 characters; empty
+   * clears them. The point must be a SCENE point after the change.
+   *
+   * @generated from field: optional string hooks = 11;
+   */
+  hooks?: string | undefined;
 };
 
 /**
@@ -974,7 +1080,7 @@ export type UpdateMapPointRequest = Message<"meurpg.maps.v1.UpdateMapPointReques
  * Use `create(UpdateMapPointRequestSchema)` to create a new message.
  */
 export const UpdateMapPointRequestSchema: GenMessage<UpdateMapPointRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 22);
+  messageDesc(file_meurpg_maps_v1_maps, 24);
 
 /**
  * UpdateMapPointResponse returns the point as saved.
@@ -993,7 +1099,7 @@ export type UpdateMapPointResponse = Message<"meurpg.maps.v1.UpdateMapPointRespo
  * Use `create(UpdateMapPointResponseSchema)` to create a new message.
  */
 export const UpdateMapPointResponseSchema: GenMessage<UpdateMapPointResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 23);
+  messageDesc(file_meurpg_maps_v1_maps, 25);
 
 /**
  * DeleteMapPointRequest names the point to delete.
@@ -1022,7 +1128,7 @@ export type DeleteMapPointRequest = Message<"meurpg.maps.v1.DeleteMapPointReques
  * Use `create(DeleteMapPointRequestSchema)` to create a new message.
  */
 export const DeleteMapPointRequestSchema: GenMessage<DeleteMapPointRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 24);
+  messageDesc(file_meurpg_maps_v1_maps, 26);
 
 /**
  * DeleteMapPointResponse is empty: the point is gone.
@@ -1037,7 +1143,7 @@ export type DeleteMapPointResponse = Message<"meurpg.maps.v1.DeleteMapPointRespo
  * Use `create(DeleteMapPointResponseSchema)` to create a new message.
  */
 export const DeleteMapPointResponseSchema: GenMessage<DeleteMapPointResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 25);
+  messageDesc(file_meurpg_maps_v1_maps, 27);
 
 /**
  * SetMapPointRevealedRequest says whether the players may see a point.
@@ -1073,7 +1179,7 @@ export type SetMapPointRevealedRequest = Message<"meurpg.maps.v1.SetMapPointReve
  * Use `create(SetMapPointRevealedRequestSchema)` to create a new message.
  */
 export const SetMapPointRevealedRequestSchema: GenMessage<SetMapPointRevealedRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 26);
+  messageDesc(file_meurpg_maps_v1_maps, 28);
 
 /**
  * SetMapPointRevealedResponse returns the point as it is now.
@@ -1092,7 +1198,7 @@ export type SetMapPointRevealedResponse = Message<"meurpg.maps.v1.SetMapPointRev
  * Use `create(SetMapPointRevealedResponseSchema)` to create a new message.
  */
 export const SetMapPointRevealedResponseSchema: GenMessage<SetMapPointRevealedResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 27);
+  messageDesc(file_meurpg_maps_v1_maps, 29);
 
 /**
  * PlaceMapTokenRequest puts a character's token at a position.
@@ -1135,7 +1241,7 @@ export type PlaceMapTokenRequest = Message<"meurpg.maps.v1.PlaceMapTokenRequest"
  * Use `create(PlaceMapTokenRequestSchema)` to create a new message.
  */
 export const PlaceMapTokenRequestSchema: GenMessage<PlaceMapTokenRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 28);
+  messageDesc(file_meurpg_maps_v1_maps, 30);
 
 /**
  * PlaceMapTokenResponse returns the token as it is now.
@@ -1154,7 +1260,7 @@ export type PlaceMapTokenResponse = Message<"meurpg.maps.v1.PlaceMapTokenRespons
  * Use `create(PlaceMapTokenResponseSchema)` to create a new message.
  */
 export const PlaceMapTokenResponseSchema: GenMessage<PlaceMapTokenResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 29);
+  messageDesc(file_meurpg_maps_v1_maps, 31);
 
 /**
  * SetMapTokenHiddenRequest says whether the players may see a token.
@@ -1190,7 +1296,7 @@ export type SetMapTokenHiddenRequest = Message<"meurpg.maps.v1.SetMapTokenHidden
  * Use `create(SetMapTokenHiddenRequestSchema)` to create a new message.
  */
 export const SetMapTokenHiddenRequestSchema: GenMessage<SetMapTokenHiddenRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 30);
+  messageDesc(file_meurpg_maps_v1_maps, 32);
 
 /**
  * SetMapTokenHiddenResponse returns the token as it is now.
@@ -1209,7 +1315,7 @@ export type SetMapTokenHiddenResponse = Message<"meurpg.maps.v1.SetMapTokenHidde
  * Use `create(SetMapTokenHiddenResponseSchema)` to create a new message.
  */
 export const SetMapTokenHiddenResponseSchema: GenMessage<SetMapTokenHiddenResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 31);
+  messageDesc(file_meurpg_maps_v1_maps, 33);
 
 /**
  * RemoveMapTokenRequest names the token to take off the map.
@@ -1238,7 +1344,7 @@ export type RemoveMapTokenRequest = Message<"meurpg.maps.v1.RemoveMapTokenReques
  * Use `create(RemoveMapTokenRequestSchema)` to create a new message.
  */
 export const RemoveMapTokenRequestSchema: GenMessage<RemoveMapTokenRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 32);
+  messageDesc(file_meurpg_maps_v1_maps, 34);
 
 /**
  * RemoveMapTokenResponse is empty: the token is gone.
@@ -1253,7 +1359,7 @@ export type RemoveMapTokenResponse = Message<"meurpg.maps.v1.RemoveMapTokenRespo
  * Use `create(RemoveMapTokenResponseSchema)` to create a new message.
  */
 export const RemoveMapTokenResponseSchema: GenMessage<RemoveMapTokenResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 33);
+  messageDesc(file_meurpg_maps_v1_maps, 35);
 
 /**
  * AddSceneActionRequest carries the new action.
@@ -1303,7 +1409,7 @@ export type AddSceneActionRequest = Message<"meurpg.maps.v1.AddSceneActionReques
  * Use `create(AddSceneActionRequestSchema)` to create a new message.
  */
 export const AddSceneActionRequestSchema: GenMessage<AddSceneActionRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 34);
+  messageDesc(file_meurpg_maps_v1_maps, 36);
 
 /**
  * AddSceneActionResponse returns the point's actions as they are now.
@@ -1331,7 +1437,7 @@ export type AddSceneActionResponse = Message<"meurpg.maps.v1.AddSceneActionRespo
  * Use `create(AddSceneActionResponseSchema)` to create a new message.
  */
 export const AddSceneActionResponseSchema: GenMessage<AddSceneActionResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 35);
+  messageDesc(file_meurpg_maps_v1_maps, 37);
 
 /**
  * UpdateSceneActionRequest carries the fields to change. Each field set
@@ -1388,7 +1494,7 @@ export type UpdateSceneActionRequest = Message<"meurpg.maps.v1.UpdateSceneAction
  * Use `create(UpdateSceneActionRequestSchema)` to create a new message.
  */
 export const UpdateSceneActionRequestSchema: GenMessage<UpdateSceneActionRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 36);
+  messageDesc(file_meurpg_maps_v1_maps, 38);
 
 /**
  * UpdateSceneActionResponse returns the point's actions as they are now.
@@ -1416,7 +1522,7 @@ export type UpdateSceneActionResponse = Message<"meurpg.maps.v1.UpdateSceneActio
  * Use `create(UpdateSceneActionResponseSchema)` to create a new message.
  */
 export const UpdateSceneActionResponseSchema: GenMessage<UpdateSceneActionResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 37);
+  messageDesc(file_meurpg_maps_v1_maps, 39);
 
 /**
  * MoveSceneActionRequest names the action and the direction.
@@ -1457,7 +1563,7 @@ export type MoveSceneActionRequest = Message<"meurpg.maps.v1.MoveSceneActionRequ
  * Use `create(MoveSceneActionRequestSchema)` to create a new message.
  */
 export const MoveSceneActionRequestSchema: GenMessage<MoveSceneActionRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 38);
+  messageDesc(file_meurpg_maps_v1_maps, 40);
 
 /**
  * MoveSceneActionResponse returns the point's actions in their new order.
@@ -1476,7 +1582,7 @@ export type MoveSceneActionResponse = Message<"meurpg.maps.v1.MoveSceneActionRes
  * Use `create(MoveSceneActionResponseSchema)` to create a new message.
  */
 export const MoveSceneActionResponseSchema: GenMessage<MoveSceneActionResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 39);
+  messageDesc(file_meurpg_maps_v1_maps, 41);
 
 /**
  * RemoveSceneActionRequest names the action to remove.
@@ -1510,7 +1616,7 @@ export type RemoveSceneActionRequest = Message<"meurpg.maps.v1.RemoveSceneAction
  * Use `create(RemoveSceneActionRequestSchema)` to create a new message.
  */
 export const RemoveSceneActionRequestSchema: GenMessage<RemoveSceneActionRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 40);
+  messageDesc(file_meurpg_maps_v1_maps, 42);
 
 /**
  * RemoveSceneActionResponse returns the point's remaining actions.
@@ -1529,7 +1635,308 @@ export type RemoveSceneActionResponse = Message<"meurpg.maps.v1.RemoveSceneActio
  * Use `create(RemoveSceneActionResponseSchema)` to create a new message.
  */
 export const RemoveSceneActionResponseSchema: GenMessage<RemoveSceneActionResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_maps_v1_maps, 41);
+  messageDesc(file_meurpg_maps_v1_maps, 43);
+
+/**
+ * AddSceneClueRequest carries the new clue.
+ *
+ * @generated from message meurpg.maps.v1.AddSceneClueRequest
+ */
+export type AddSceneClueRequest = Message<"meurpg.maps.v1.AddSceneClueRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * @generated from field: string map_id = 2;
+   */
+  mapId: string;
+
+  /**
+   * @generated from field: string point_id = 3;
+   */
+  pointId: string;
+
+  /**
+   * Required: 1 to 500 characters, one line.
+   *
+   * @generated from field: string text = 4;
+   */
+  text: string;
+};
+
+/**
+ * Describes the message meurpg.maps.v1.AddSceneClueRequest.
+ * Use `create(AddSceneClueRequestSchema)` to create a new message.
+ */
+export const AddSceneClueRequestSchema: GenMessage<AddSceneClueRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_maps_v1_maps, 44);
+
+/**
+ * AddSceneClueResponse returns the point's clues as they are now.
+ *
+ * @generated from message meurpg.maps.v1.AddSceneClueResponse
+ */
+export type AddSceneClueResponse = Message<"meurpg.maps.v1.AddSceneClueResponse"> & {
+  /**
+   * The new clue.
+   *
+   * @generated from field: meurpg.maps.v1.SceneClue clue = 1;
+   */
+  clue?: SceneClue | undefined;
+
+  /**
+   * Every clue of the point, in order, with the new one last.
+   *
+   * @generated from field: repeated meurpg.maps.v1.SceneClue clues = 2;
+   */
+  clues: SceneClue[];
+};
+
+/**
+ * Describes the message meurpg.maps.v1.AddSceneClueResponse.
+ * Use `create(AddSceneClueResponseSchema)` to create a new message.
+ */
+export const AddSceneClueResponseSchema: GenMessage<AddSceneClueResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_maps_v1_maps, 45);
+
+/**
+ * UpdateSceneClueRequest carries the new text.
+ *
+ * @generated from message meurpg.maps.v1.UpdateSceneClueRequest
+ */
+export type UpdateSceneClueRequest = Message<"meurpg.maps.v1.UpdateSceneClueRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * @generated from field: string map_id = 2;
+   */
+  mapId: string;
+
+  /**
+   * @generated from field: string point_id = 3;
+   */
+  pointId: string;
+
+  /**
+   * @generated from field: string clue_id = 4;
+   */
+  clueId: string;
+
+  /**
+   * Required: 1 to 500 characters, one line.
+   *
+   * @generated from field: string text = 5;
+   */
+  text: string;
+};
+
+/**
+ * Describes the message meurpg.maps.v1.UpdateSceneClueRequest.
+ * Use `create(UpdateSceneClueRequestSchema)` to create a new message.
+ */
+export const UpdateSceneClueRequestSchema: GenMessage<UpdateSceneClueRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_maps_v1_maps, 46);
+
+/**
+ * UpdateSceneClueResponse returns the point's clues as they are now.
+ *
+ * @generated from message meurpg.maps.v1.UpdateSceneClueResponse
+ */
+export type UpdateSceneClueResponse = Message<"meurpg.maps.v1.UpdateSceneClueResponse"> & {
+  /**
+   * The changed clue.
+   *
+   * @generated from field: meurpg.maps.v1.SceneClue clue = 1;
+   */
+  clue?: SceneClue | undefined;
+
+  /**
+   * Every clue of the point, in order.
+   *
+   * @generated from field: repeated meurpg.maps.v1.SceneClue clues = 2;
+   */
+  clues: SceneClue[];
+};
+
+/**
+ * Describes the message meurpg.maps.v1.UpdateSceneClueResponse.
+ * Use `create(UpdateSceneClueResponseSchema)` to create a new message.
+ */
+export const UpdateSceneClueResponseSchema: GenMessage<UpdateSceneClueResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_maps_v1_maps, 47);
+
+/**
+ * MoveSceneClueRequest names the clue and the direction.
+ *
+ * @generated from message meurpg.maps.v1.MoveSceneClueRequest
+ */
+export type MoveSceneClueRequest = Message<"meurpg.maps.v1.MoveSceneClueRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * @generated from field: string map_id = 2;
+   */
+  mapId: string;
+
+  /**
+   * @generated from field: string point_id = 3;
+   */
+  pointId: string;
+
+  /**
+   * @generated from field: string clue_id = 4;
+   */
+  clueId: string;
+
+  /**
+   * Required: the same enum as MoveSceneAction.
+   *
+   * @generated from field: meurpg.maps.v1.SceneActionDirection direction = 5;
+   */
+  direction: SceneActionDirection;
+};
+
+/**
+ * Describes the message meurpg.maps.v1.MoveSceneClueRequest.
+ * Use `create(MoveSceneClueRequestSchema)` to create a new message.
+ */
+export const MoveSceneClueRequestSchema: GenMessage<MoveSceneClueRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_maps_v1_maps, 48);
+
+/**
+ * MoveSceneClueResponse returns the point's clues in their new order.
+ *
+ * @generated from message meurpg.maps.v1.MoveSceneClueResponse
+ */
+export type MoveSceneClueResponse = Message<"meurpg.maps.v1.MoveSceneClueResponse"> & {
+  /**
+   * @generated from field: repeated meurpg.maps.v1.SceneClue clues = 1;
+   */
+  clues: SceneClue[];
+};
+
+/**
+ * Describes the message meurpg.maps.v1.MoveSceneClueResponse.
+ * Use `create(MoveSceneClueResponseSchema)` to create a new message.
+ */
+export const MoveSceneClueResponseSchema: GenMessage<MoveSceneClueResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_maps_v1_maps, 49);
+
+/**
+ * RemoveSceneClueRequest names the clue to remove.
+ *
+ * @generated from message meurpg.maps.v1.RemoveSceneClueRequest
+ */
+export type RemoveSceneClueRequest = Message<"meurpg.maps.v1.RemoveSceneClueRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * @generated from field: string map_id = 2;
+   */
+  mapId: string;
+
+  /**
+   * @generated from field: string point_id = 3;
+   */
+  pointId: string;
+
+  /**
+   * @generated from field: string clue_id = 4;
+   */
+  clueId: string;
+};
+
+/**
+ * Describes the message meurpg.maps.v1.RemoveSceneClueRequest.
+ * Use `create(RemoveSceneClueRequestSchema)` to create a new message.
+ */
+export const RemoveSceneClueRequestSchema: GenMessage<RemoveSceneClueRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_maps_v1_maps, 50);
+
+/**
+ * RemoveSceneClueResponse returns the point's remaining clues.
+ *
+ * @generated from message meurpg.maps.v1.RemoveSceneClueResponse
+ */
+export type RemoveSceneClueResponse = Message<"meurpg.maps.v1.RemoveSceneClueResponse"> & {
+  /**
+   * @generated from field: repeated meurpg.maps.v1.SceneClue clues = 1;
+   */
+  clues: SceneClue[];
+};
+
+/**
+ * Describes the message meurpg.maps.v1.RemoveSceneClueResponse.
+ * Use `create(RemoveSceneClueResponseSchema)` to create a new message.
+ */
+export const RemoveSceneClueResponseSchema: GenMessage<RemoveSceneClueResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_maps_v1_maps, 51);
+
+/**
+ * RevealSceneClueRequest names the clue and who gets it.
+ *
+ * @generated from message meurpg.maps.v1.RevealSceneClueRequest
+ */
+export type RevealSceneClueRequest = Message<"meurpg.maps.v1.RevealSceneClueRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * The clue to reveal (a UUID), of any SCENE point of the campaign.
+   *
+   * @generated from field: string clue_id = 2;
+   */
+  clueId: string;
+
+  /**
+   * The player characters (UUIDs) whose players get the clue: 1 to 50. One
+   * that already has it is skipped.
+   *
+   * @generated from field: repeated string character_ids = 3;
+   */
+  characterIds: string[];
+};
+
+/**
+ * Describes the message meurpg.maps.v1.RevealSceneClueRequest.
+ * Use `create(RevealSceneClueRequestSchema)` to create a new message.
+ */
+export const RevealSceneClueRequestSchema: GenMessage<RevealSceneClueRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_maps_v1_maps, 52);
+
+/**
+ * RevealSceneClueResponse returns the clue as it is now.
+ *
+ * @generated from message meurpg.maps.v1.RevealSceneClueResponse
+ */
+export type RevealSceneClueResponse = Message<"meurpg.maps.v1.RevealSceneClueResponse"> & {
+  /**
+   * The clue, with everyone who has it.
+   *
+   * @generated from field: meurpg.maps.v1.SceneClue clue = 1;
+   */
+  clue?: SceneClue | undefined;
+};
+
+/**
+ * Describes the message meurpg.maps.v1.RevealSceneClueResponse.
+ * Use `create(RevealSceneClueResponseSchema)` to create a new message.
+ */
+export const RevealSceneClueResponseSchema: GenMessage<RevealSceneClueResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_maps_v1_maps, 53);
 
 /**
  * MapPointKind is what a point of interest leads to.
@@ -1561,8 +1968,8 @@ export enum MapPointKind {
   SUBMAP = 2,
 
   /**
-   * "Cena de RP": a role-play scene. Until scenes arrive (Etapa 7),
-   * opening it shows its name and description.
+   * "Cena de RP": a role-play scene. The master opens it in the session
+   * (PlayService.OpenScene); it may have actions, clues and hooks.
    *
    * @generated from enum value: MAP_POINT_KIND_SCENE = 3;
    */
@@ -1835,7 +2242,7 @@ export const MapService: GenService<{
    * the current value, and unset fields stay as they are. Moving a point is
    * an update of x_bp and y_bp. Only the campaign's master may call it.
    * Changing the kind to anything but SUBMAP or BATTLE removes the target,
-   * and changing it from SCENE removes the point's scene actions.
+   * and changing it from SCENE removes the point's scene actions, clues and hooks.
    *
    * Errors:
    *   - `invalid_argument`: nothing to change; a field breaks its rules;
@@ -1874,7 +2281,9 @@ export const MapService: GenService<{
   /**
    * SetMapPointRevealed shows a point to the players, or hides it again
    * (RN-10, MR-009). Only the campaign's master may call it. The players see
-   * it only on a map they see.
+   * it only on a map they see. Revealing a SCENE point also makes the scene
+   * "discovered" (MR-030): the group may tag notes with it from then on, even
+   * if the point is hidden again later.
    *
    * Errors:
    *   - `not_found`: the point is not on this map, the map is not in this
@@ -1968,6 +2377,113 @@ export const MapService: GenService<{
     methodKind: "unary";
     input: typeof RemoveSceneActionRequestSchema;
     output: typeof RemoveSceneActionResponseSchema;
+  },
+  /**
+   * AddSceneClue puts one more clue on a SCENE point (MR-029): a short text
+   * the master prepared, to reveal to players during the session
+   * (RevealSceneClue). Clues save one by one, like the actions. Only the
+   * campaign's master may call it. The clue goes last. A player never
+   * receives a clue that was not revealed to them (RN-20). The streams of the
+   * master get `map_changed` and, when the point is the open scene,
+   * `scene_changed`; the players' streams get nothing.
+   *
+   * Errors:
+   *   - `invalid_argument`: the point is not a SCENE point; text is empty or
+   *     longer than 500 characters.
+   *   - `not_found`: the point is not on this map, the map is not in this
+   *     campaign, the campaign does not exist, or the caller is not a
+   *     member of it.
+   *   - `permission_denied`: the caller is a player.
+   *   - `resource_exhausted`: the point already has 30 clues.
+   *
+   * @generated from rpc meurpg.maps.v1.MapService.AddSceneClue
+   */
+  addSceneClue: {
+    methodKind: "unary";
+    input: typeof AddSceneClueRequestSchema;
+    output: typeof AddSceneClueResponseSchema;
+  },
+  /**
+   * UpdateSceneClue changes the text of one clue of a SCENE point. What
+   * players already received keeps the text they were given. Only the
+   * campaign's master may call it.
+   *
+   * Errors:
+   *   - `invalid_argument`: text is empty or longer than 500 characters.
+   *   - `not_found`: the clue is not on this point, the point is not on this
+   *     map, the map is not in this campaign, the campaign does not exist,
+   *     or the caller is not a member of it.
+   *   - `permission_denied`: the caller is a player.
+   *
+   * @generated from rpc meurpg.maps.v1.MapService.UpdateSceneClue
+   */
+  updateSceneClue: {
+    methodKind: "unary";
+    input: typeof UpdateSceneClueRequestSchema;
+    output: typeof UpdateSceneClueResponseSchema;
+  },
+  /**
+   * MoveSceneClue moves one clue a place up or down in its point's list.
+   * Moving the first one up, or the last one down, changes nothing. Only the
+   * campaign's master may call it.
+   *
+   * Errors:
+   *   - `invalid_argument`: direction is unspecified.
+   *   - `not_found`: as UpdateSceneClue.
+   *   - `permission_denied`: the caller is a player.
+   *
+   * @generated from rpc meurpg.maps.v1.MapService.MoveSceneClue
+   */
+  moveSceneClue: {
+    methodKind: "unary";
+    input: typeof MoveSceneClueRequestSchema;
+    output: typeof MoveSceneClueResponseSchema;
+  },
+  /**
+   * RemoveSceneClue takes one clue off a SCENE point, with no confirmation:
+   * the players who already received it keep it in their notes, with the
+   * text they were given. Only the campaign's master may call it.
+   *
+   * Errors:
+   *   - `not_found`: as UpdateSceneClue.
+   *   - `permission_denied`: the caller is a player.
+   *
+   * @generated from rpc meurpg.maps.v1.MapService.RemoveSceneClue
+   */
+  removeSceneClue: {
+    methodKind: "unary";
+    input: typeof RemoveSceneClueRequestSchema;
+    output: typeof RemoveSceneClueResponseSchema;
+  },
+  /**
+   * RevealSceneClue gives a clue to the players the master chose (MR-029,
+   * question 59: the app sends every player character checked by default).
+   * Each one gets it once: revealing again to a player who has it changes
+   * nothing, and there is no way to take it back. The clue lands in the
+   * player's notes (meurpg.notes.v1.NotesService.ListNotes) as "Pista do
+   * mestre", tagged with the scene once the group has discovered it, whether
+   * or not they are online. Only the campaign's master may call it, with or
+   * without an open session.
+   *
+   * While a session is open, a `clue_revealed` event goes into its history
+   * (IDs only, never the text), the streams of the players who got it now
+   * receive `notes_changed`, and the master's, `scene_changed` when the
+   * point is the open scene. No other player's stream hears of it.
+   *
+   * Errors:
+   *   - `invalid_argument`: character_ids is empty or has more than 50.
+   *   - `not_found`: the clue is not in this campaign, or one of the
+   *     characters is not a living player character of it, or has no
+   *     player, or the campaign does not exist, or the caller is not a
+   *     member of it.
+   *   - `permission_denied`: the caller is a player.
+   *
+   * @generated from rpc meurpg.maps.v1.MapService.RevealSceneClue
+   */
+  revealSceneClue: {
+    methodKind: "unary";
+    input: typeof RevealSceneClueRequestSchema;
+    output: typeof RevealSceneClueResponseSchema;
   },
   /**
    * PlaceMapToken puts a character's token on a map, or moves it there if
