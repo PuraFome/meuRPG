@@ -97,3 +97,12 @@ type PendingDamage struct {
 	AttackTotal   *int32
 	RollTotal     *int32
 }
+
+type StageNpc struct {
+	ID            string
+	GameSessionID string
+	CharacterID   string
+	Position      int32
+	Speaking      bool
+	CreatedAt     time.Time
+}

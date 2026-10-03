@@ -586,6 +586,13 @@ message FullSheet {
   // `invalid_argument`. It never reaches a player (RN-20); the end-of-combat
   // XP adds the defeated NPCs' values (ProgressionService.AwardXP).
   int32 xp_value = 26;
+  // The NPC's portrait: an image of the campaign's gallery (a UUID, MR-031),
+  // shown on its card and, while the master has it on the stage, to the whole
+  // table. Empty for none (the app draws the initials). An image of another
+  // campaign, or one that does not exist, is `invalid_argument`, and so is a
+  // value on a player's character. The server keeps it as sent; deleting the
+  // gallery image clears it.
+  string portrait_image_id = 27;
 }
 
 // ClassLevel is one class of a character and its level in it.
@@ -716,6 +723,8 @@ message BasicSheet {
   // The XP the NPC gives when it is defeated: 0 to 1,000,000. As
   // FullSheet.xp_value.
   int32 xp_value = 10;
+  // The NPC's portrait, as FullSheet.portrait_image_id.
+  string portrait_image_id = 11;
 }
 
 // BasicAttack is one attack of a basic sheet, with real dice: the d20 plus

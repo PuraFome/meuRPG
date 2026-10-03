@@ -94,6 +94,32 @@ func (q *Queries) CharacterIsInCampaign(ctx context.Context, arg CharacterIsInCa
 	return exists, err
 }
 
+const clearPortraits = `-- name: ClearPortraits :execrows
+UPDATE characters
+SET sheet = (sheet #- '{full,portrait_image_id}') #- '{basic,portrait_image_id}',
+    revision = revision + 1, updated_at = $1
+WHERE campaign_id = $2::UUID
+  AND (sheet -> 'full' ->> 'portrait_image_id' = $3::TEXT
+       OR sheet -> 'basic' ->> 'portrait_image_id' = $3::TEXT)
+`
+
+type ClearPortraitsParams struct {
+	Now        time.Time
+	CampaignID string
+	ImageID    string
+}
+
+// The master deleted a gallery image: the NPCs that had it as their portrait
+// lose it (MR-031). The revision goes up, so a stale editor is told. Only the
+// sheets that have it are touched.
+func (q *Queries) ClearPortraits(ctx context.Context, arg ClearPortraitsParams) (int64, error) {
+	result, err := q.db.Exec(ctx, clearPortraits, arg.Now, arg.CampaignID, arg.ImageID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteMasterNotes = `-- name: DeleteMasterNotes :exec
 DELETE FROM character_master_notes
 WHERE campaign_id = $1 AND character_id = $2

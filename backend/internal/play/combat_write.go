@@ -60,6 +60,13 @@ const (
 	eventSceneCheckRolled = "scene_check_rolled"
 )
 
+// The kinds of Etapa 8: the stage (stage.go) and the clues (the clues slice
+// writes clue_revealed). The same CHECK lists them.
+const (
+	eventStageChanged = "stage_changed"
+	eventClueRevealed = "clue_revealed"
+)
+
 // combatWrite describes one change to a combat: who makes it, the idempotency
 // key, the kind of event it becomes, and the combat it is about (empty when
 // the change creates it).

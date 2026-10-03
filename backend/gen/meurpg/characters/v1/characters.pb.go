@@ -1151,9 +1151,16 @@ type FullSheet struct {
 	// challenge rating. A player character's sheet with a value above 0 is
 	// `invalid_argument`. It never reaches a player (RN-20); the end-of-combat
 	// XP adds the defeated NPCs' values (ProgressionService.AwardXP).
-	XpValue       int32 `protobuf:"varint,26,opt,name=xp_value,json=xpValue,proto3" json:"xp_value,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	XpValue int32 `protobuf:"varint,26,opt,name=xp_value,json=xpValue,proto3" json:"xp_value,omitempty"`
+	// The NPC's portrait: an image of the campaign's gallery (a UUID, MR-031),
+	// shown on its card and, while the master has it on the stage, to the whole
+	// table. Empty for none (the app draws the initials). An image of another
+	// campaign, or one that does not exist, is `invalid_argument`, and so is a
+	// value on a player's character. The server keeps it as sent; deleting the
+	// gallery image clears it.
+	PortraitImageId string `protobuf:"bytes,27,opt,name=portrait_image_id,json=portraitImageId,proto3" json:"portrait_image_id,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *FullSheet) Reset() {
@@ -1377,6 +1384,13 @@ func (x *FullSheet) GetXpValue() int32 {
 		return x.XpValue
 	}
 	return 0
+}
+
+func (x *FullSheet) GetPortraitImageId() string {
+	if x != nil {
+		return x.PortraitImageId
+	}
+	return ""
 }
 
 type isFullSheet_Background interface {
@@ -1789,9 +1803,11 @@ type BasicSheet struct {
 	ChallengeRating string `protobuf:"bytes,9,opt,name=challenge_rating,json=challengeRating,proto3" json:"challenge_rating,omitempty"`
 	// The XP the NPC gives when it is defeated: 0 to 1,000,000. As
 	// FullSheet.xp_value.
-	XpValue       int32 `protobuf:"varint,10,opt,name=xp_value,json=xpValue,proto3" json:"xp_value,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	XpValue int32 `protobuf:"varint,10,opt,name=xp_value,json=xpValue,proto3" json:"xp_value,omitempty"`
+	// The NPC's portrait, as FullSheet.portrait_image_id.
+	PortraitImageId string `protobuf:"bytes,11,opt,name=portrait_image_id,json=portraitImageId,proto3" json:"portrait_image_id,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *BasicSheet) Reset() {
@@ -1892,6 +1908,13 @@ func (x *BasicSheet) GetXpValue() int32 {
 		return x.XpValue
 	}
 	return 0
+}
+
+func (x *BasicSheet) GetPortraitImageId() string {
+	if x != nil {
+		return x.PortraitImageId
+	}
+	return ""
 }
 
 // BasicAttack is one attack of a basic sheet, with real dice: the d20 plus
@@ -3490,7 +3513,8 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\x0eCharacterSheet\x125\n" +
 	"\x04full\x18\x01 \x01(\v2\x1f.meurpg.characters.v1.FullSheetH\x00R\x04full\x128\n" +
 	"\x05basic\x18\x02 \x01(\v2 .meurpg.characters.v1.BasicSheetH\x00R\x05basicB\t\n" +
-	"\acontent\"\xef\t\n" +
+	"\acontent\"\x9b\n" +
+	"\n" +
 	"\tFullSheet\x12?\n" +
 	"\vbase_scores\x18\x01 \x01(\v2\x1e.meurpg.rules.v1.AbilityScoresR\n" +
 	"baseScores\x12\x19\n" +
@@ -3522,7 +3546,8 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\x14custom_features_text\x18\x17 \x01(\tR\x12customFeaturesText\x12.\n" +
 	"\x13feature_choice_keys\x18\x18 \x03(\tR\x11featureChoiceKeys\x12)\n" +
 	"\x10challenge_rating\x18\x19 \x01(\tR\x0fchallengeRating\x12\x19\n" +
-	"\bxp_value\x18\x1a \x01(\x05R\axpValueB\f\n" +
+	"\bxp_value\x18\x1a \x01(\x05R\axpValue\x12*\n" +
+	"\x11portrait_image_id\x18\x1b \x01(\tR\x0fportraitImageIdB\f\n" +
 	"\n" +
 	"background\"\xa4\x01\n" +
 	"\n" +
@@ -3548,7 +3573,7 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\x06silver\x18\x02 \x01(\x05R\x06silver\x12\x1a\n" +
 	"\belectrum\x18\x03 \x01(\x05R\belectrum\x12\x12\n" +
 	"\x04gold\x18\x04 \x01(\x05R\x04gold\x12\x1a\n" +
-	"\bplatinum\x18\x05 \x01(\x05R\bplatinum\"\xf9\x02\n" +
+	"\bplatinum\x18\x05 \x01(\x05R\bplatinum\"\xa5\x03\n" +
 	"\n" +
 	"BasicSheet\x12$\n" +
 	"\x0ehit_points_max\x18\x01 \x01(\x05R\fhitPointsMax\x12\x1f\n" +
@@ -3562,7 +3587,8 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\aattacks\x18\b \x03(\v2!.meurpg.characters.v1.BasicAttackR\aattacks\x12)\n" +
 	"\x10challenge_rating\x18\t \x01(\tR\x0fchallengeRating\x12\x19\n" +
 	"\bxp_value\x18\n" +
-	" \x01(\x05R\axpValue\"\x9d\x02\n" +
+	" \x01(\x05R\axpValue\x12*\n" +
+	"\x11portrait_image_id\x18\v \x01(\tR\x0fportraitImageId\"\x9d\x02\n" +
 	"\vBasicAttack\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12!\n" +
 	"\fattack_bonus\x18\x02 \x01(\x05R\vattackBonus\x12*\n" +

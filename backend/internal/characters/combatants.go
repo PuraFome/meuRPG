@@ -80,11 +80,13 @@ func (s *Service) combatCharacter(id, kind, name string, playerUserID *string, d
 		c.InitiativeBonus, c.SpeedFt, c.HitPointsMax = d.Initiative, d.SpeedWalkFt, max(d.HitPointsMax, 0)
 		if !c.Player {
 			c.XPValue = int(sheet.GetFull().GetXpValue())
+			c.PortraitImageID = sheet.GetFull().GetPortraitImageId()
 		}
 	case sheet.GetBasic() != nil:
 		b := sheet.GetBasic()
 		c.InitiativeBonus, c.SpeedFt, c.HitPointsMax = int(b.GetInitiativeBonus()), int(b.GetSpeedFt()), int(b.GetHitPointsMax())
 		c.XPValue = int(b.GetXpValue())
+		c.PortraitImageID = b.GetPortraitImageId()
 	default:
 		return link.Character{}, fmt.Errorf("%w: the sheet of character %s has no content", errCorruptDocument, id)
 	}

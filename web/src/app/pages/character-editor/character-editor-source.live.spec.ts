@@ -100,6 +100,7 @@ function fullyPopulatedFullSheet(): FullSheet {
     // editor must not drop them when it saves.
     challengeRating: '2',
     xpValue: 450,
+    portraitImageId: '',
   };
 }
 
@@ -161,6 +162,7 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
       featureChoiceKeys: loaded.featureChoiceKeys,
       challengeRating: loaded.challengeRating,
       xpValue: loaded.xpValue,
+      portraitImageId: loaded.portraitImageId,
     });
   });
 
@@ -222,6 +224,7 @@ describe('a basic sheet through the editor', () => {
       initiativeBonus: 2,
       challengeRating: '1/4',
       xpValue: 50,
+      portraitImageId: '',
       attacks: [
         {
           $typeName: 'meurpg.characters.v1.BasicAttack',
@@ -264,6 +267,7 @@ describe('a basic sheet through the editor', () => {
       attacks: [],
       challengeRating: '',
       xpValue: 0,
+      portraitImageId: '',
     });
     expect(form.legacyDamage).toBe('mordida venenosa');
     expect(toBasicSheetInit(form)).toMatchObject({ damage: 'mordida venenosa', attackBonus: 3 });

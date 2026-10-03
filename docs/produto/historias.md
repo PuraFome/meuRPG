@@ -512,6 +512,12 @@ Prioridade decidida em 02/10/2026 (pergunta 20): primeiro o cadastro pelo mestre
 - **Dado** uma cena de RP aberta, **quando** o mestre põe o retrato de um NPC (da galeria) na cena, **então** os jogadores o veem entrar, ao vivo.
 - **Dado** um NPC na cena, **quando** o mestre o tira, **então** ele sai da imagem dos jogadores ao vivo.
 - **Dado** um NPC que ainda não entrou, **quando** um jogador consulta a sessão, **então** o servidor não manda o retrato nem o nome dele.
+- **Dado** um NPC em cena, **quando** um jogador consulta a cena, **então** recebe só o nome, o retrato e se ele fala: nunca o tipo, o PV, a CA, o XP, a ficha nem o ID do personagem (RN-20).
+- **Dado** um retrato de NPC, **quando** um jogador tenta baixá-lo, **então** só consegue enquanto o NPC está em cena; fora de cena, com a cena fechada ou trocada, é `404`.
+- **Dado** um mestre que quer o retrato de um NPC, **quando** o escolhe na ficha, **então** só vale uma imagem da galeria da campanha, e só num NPC.
+
+#### Implementado
+Servidor da Etapa 8 (fatia 8.3); a tela vem na fatia 8.6. O retrato é o `portrait_image_id` da ficha do NPC (padrão da pergunta 62); o palco guarda até 4 NPCs por sessão, em ordem, com quem fala, e fechar ou trocar a cena o esvazia. Os padrões da pergunta 62 e do desenho (E8-08 a E8-10) valem até o Samuel responder: o NPC escondido no combate pode entrar em cena (isso não o revela na ordem do combate). Testes: `TestMR031_TheMasterPutsNPCsOnStage`, `TestMR031_APlayerSeesOnlyNameAndPortrait`, `TestMR031_PortraitsAreVisibleOnlyOnStage`, `TestMR031_DeletingAPortraitClearsIt`, `TestMR031_AnNPCKeepsAPortraitFromTheCampaignsGallery`, `TestMR031_APortraitMustBeAnImageOfTheCampaign`, `TestMR031_TheMastersNPCCardHasThePortrait`, `TestStageAuthorizationMatrix`. Ver [Arquitetura](../arquitetura.md#npcs-em-cena-o-palco).
 
 #### Relacionadas
 - Usa as imagens da [galeria](#mr-019-galeria-de-imagens), como a [MR-028](#mr-028-mostrar-uma-imagem-aos-jogadores).
@@ -527,9 +533,16 @@ Prioridade decidida em 02/10/2026 (pergunta 20): primeiro o cadastro pelo mestre
 #### Critérios de aceite
 - **Dado** um combate que termina, **quando** o mestre o encerra, **então** a mesa vê, por categoria, o jogador cujo personagem causou mais dano, o que curou mais e o que levou mais dano (o "tanque").
 - **Dado** que um NPC causou ou levou dano, **quando** a tela de destaques aparece para o jogador, **então** ela mostra só os números dos jogadores, sem o PV, a CA nem as rolagens dos NPCs (RN-20).
+- **Dado** um combate encerrado, **quando** a mesa abre os destaques, **então** vê cinco categorias, Mais dano causado, Mais cura, Tanque, Golpe final e Acertos críticos, cada uma com o número e todos os empatados; uma categoria em que todos têm 0 fica de fora.
+- **Dado** um golpe de 28 de dano num goblin de 7 PV, **quando** os destaques são calculados, **então** contam 7: só os PV que realmente saíram.
+- **Dado** uma ação que o mestre desfez, ou um dano que ninguém aplicou, **quando** os destaques são calculados, **então** ela não conta.
+- **Dado** um jogador, **quando** pede os destaques, **então** não recebe a tabela com os números de cada personagem, só o mestre a recebe; um combate que não terminou é recusado.
+
+#### Implementado
+Servidor da Etapa 8 (fatia 8.3); a tela vem na fatia 8.6. `CombatService.GetCombatHighlights` calcula tudo dos `session_events` do combate encerrado. Os cinco destaques são o padrão da pergunta 64, que vale até o Samuel responder; "Mais dano causado" e "Tanque" contam também os PV temporários que absorveram dano. Testes: `TestMR032_HighlightsOfTheAmbush` (o combate de referência: Toren 23 de dano, Brisa 24 levados, Pensantus e Toren com 2 golpes finais), `TestMR032_HighlightsSkipTheUndoneAndCountWhatHappened`, `TestMR032_OverkillDoesNotCount`, `TestMR032_UndoneActionsAreSkipped`, `TestMR032_DamageTakenIsWhatTheMasterApplied`, `TestMR032_HealingIsWhatWasGivenBack`, `TestMR032_TiesNameEveryoneAndZerosAreLeftOut`, `TestMR032_HighlightsAuthorizationMatrix`. Ver [Arquitetura](../arquitetura.md#destaques-do-combate).
 
 #### Dúvidas
-- Pedido do Vinicius ("which player dealt the most damage, healed most, tanked more, etc."), esclarecido em 03/10/2026: os destaques são por jogador. Quais outros destaques entram além dos três (por exemplo, mais inimigos derrotados, mais críticos) fica para escolher no planejamento da Etapa 8.
+- Pedido do Vinicius ("which player dealt the most damage, healed most, tanked more, etc."), esclarecido em 03/10/2026: os destaques são por jogador, e as categorias são as cinco acima (pergunta 64).
 
 ### MR-033: Imprimir o mapa com a grade
 

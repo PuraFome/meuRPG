@@ -86,6 +86,30 @@ func (q *Queries) ClearPendingDamageRoll(ctx context.Context, id string) (Pendin
 	return i, err
 }
 
+const clearStage = `-- name: ClearStage :execrows
+DELETE FROM stage_npcs
+WHERE game_session_id = $1
+`
+
+// The scene closed or changed: nobody is on the stage.
+func (q *Queries) ClearStage(ctx context.Context, gameSessionID string) (int64, error) {
+	result, err := q.db.Exec(ctx, clearStage, gameSessionID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const clearStageSpeakers = `-- name: ClearStageSpeakers :exec
+UPDATE stage_npcs SET speaking = false
+WHERE game_session_id = $1 AND speaking
+`
+
+func (q *Queries) ClearStageSpeakers(ctx context.Context, gameSessionID string) error {
+	_, err := q.db.Exec(ctx, clearStageSpeakers, gameSessionID)
+	return err
+}
+
 const deleteCombatant = `-- name: DeleteCombatant :exec
 DELETE FROM combatants
 WHERE id = $1
@@ -104,6 +128,24 @@ WHERE id = $1
 func (q *Queries) DeletePendingDamage(ctx context.Context, id string) error {
 	_, err := q.db.Exec(ctx, deletePendingDamage, id)
 	return err
+}
+
+const deleteStageNPC = `-- name: DeleteStageNPC :execrows
+DELETE FROM stage_npcs
+WHERE game_session_id = $1 AND character_id = $2
+`
+
+type DeleteStageNPCParams struct {
+	GameSessionID string
+	CharacterID   string
+}
+
+func (q *Queries) DeleteStageNPC(ctx context.Context, arg DeleteStageNPCParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteStageNPC, arg.GameSessionID, arg.CharacterID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const endGameSession = `-- name: EndGameSession :one
@@ -769,6 +811,37 @@ func (q *Queries) InsertSessionEvent(ctx context.Context, arg InsertSessionEvent
 	return i, err
 }
 
+const insertStageNPC = `-- name: InsertStageNPC :one
+INSERT INTO stage_npcs (game_session_id, character_id, position, created_at)
+VALUES (
+    $1, $2,
+    (SELECT COALESCE(max(position) + 1, 0)::INT4 FROM stage_npcs WHERE game_session_id = $1),
+    $3
+)
+RETURNING id, game_session_id, character_id, position, speaking, created_at
+`
+
+type InsertStageNPCParams struct {
+	GameSessionID string
+	CharacterID   string
+	CreatedAt     time.Time
+}
+
+// An NPC comes in after the ones already there: the highest position plus one.
+func (q *Queries) InsertStageNPC(ctx context.Context, arg InsertStageNPCParams) (StageNpc, error) {
+	row := q.db.QueryRow(ctx, insertStageNPC, arg.GameSessionID, arg.CharacterID, arg.CreatedAt)
+	var i StageNpc
+	err := row.Scan(
+		&i.ID,
+		&i.GameSessionID,
+		&i.CharacterID,
+		&i.Position,
+		&i.Speaking,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const listCampaignEncounterNames = `-- name: ListCampaignEncounterNames :many
 SELECT e.id, e.name FROM encounters AS e
 JOIN game_sessions AS gs ON gs.id = e.game_session_id
@@ -912,6 +985,42 @@ func (q *Queries) ListCombatants(ctx context.Context, encounterID string) ([]Com
 			&i.DeathSaveRolled,
 			&i.XpValue,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listEncounterCombatEvents = `-- name: ListEncounterCombatEvents :many
+SELECT id, kind, payload FROM session_events
+WHERE encounter_id = $1
+  AND kind IN ('attack_rolled', 'damage_rolled', 'damage_applied', 'spell_cast', 'action_taken', 'action_undone')
+ORDER BY seq
+LIMIT 20000
+`
+
+type ListEncounterCombatEventsRow struct {
+	ID      string
+	Kind    string
+	Payload []byte
+}
+
+// The events that count in the combat highlights (MR-032), oldest first, with
+// the undos that may take them back.
+func (q *Queries) ListEncounterCombatEvents(ctx context.Context, encounterID *string) ([]ListEncounterCombatEventsRow, error) {
+	rows, err := q.db.Query(ctx, listEncounterCombatEvents, encounterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListEncounterCombatEventsRow
+	for rows.Next() {
+		var i ListEncounterCombatEventsRow
+		if err := rows.Scan(&i.ID, &i.Kind, &i.Payload); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -1182,6 +1291,43 @@ func (q *Queries) ListSceneRollEvents(ctx context.Context, arg ListSceneRollEven
 			&i.Seq,
 			&i.CharacterID,
 			&i.Payload,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listStage = `-- name: ListStage :many
+
+SELECT id, game_session_id, character_id, position, speaking, created_at FROM stage_npcs
+WHERE game_session_id = $1
+ORDER BY position, id
+`
+
+// The stage (MR-031): the NPCs "em cena" in the open scene. Every write below
+// runs after the caller locked the open session's row.
+// The session's stage, in the order the NPCs came in.
+func (q *Queries) ListStage(ctx context.Context, gameSessionID string) ([]StageNpc, error) {
+	rows, err := q.db.Query(ctx, listStage, gameSessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []StageNpc
+	for rows.Next() {
+		var i StageNpc
+		if err := rows.Scan(
+			&i.ID,
+			&i.GameSessionID,
+			&i.CharacterID,
+			&i.Position,
+			&i.Speaking,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -1803,6 +1949,24 @@ func (q *Queries) SetShownImage(ctx context.Context, arg SetShownImageParams) (G
 		&i.OpenScenePointID,
 	)
 	return i, err
+}
+
+const setStageSpeaker = `-- name: SetStageSpeaker :execrows
+UPDATE stage_npcs SET speaking = true
+WHERE game_session_id = $1 AND character_id = $2
+`
+
+type SetStageSpeakerParams struct {
+	GameSessionID string
+	CharacterID   string
+}
+
+func (q *Queries) SetStageSpeaker(ctx context.Context, arg SetStageSpeakerParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setStageSpeaker, arg.GameSessionID, arg.CharacterID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const touchEncounter = `-- name: TouchEncounter :one

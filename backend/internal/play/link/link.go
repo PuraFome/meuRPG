@@ -32,6 +32,9 @@ type Character struct {
 	// XPValue is the XP an NPC gives when defeated (its sheet's xp_value), 0
 	// for a player's character (MR-016).
 	XPValue int
+	// PortraitImageID is the gallery image of an NPC's portrait (MR-031), ""
+	// for none and for a player's character.
+	PortraitImageID string
 }
 
 // Grid is a map's battle grid: squares of 1.5 m (5 ft) across the image's

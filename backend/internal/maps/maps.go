@@ -43,6 +43,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
@@ -86,6 +87,10 @@ type CharacterDirectory interface {
 	// an NPC), players' characters first, then NPCs, each group oldest
 	// first. Only id, kind, name and player_user_id are set.
 	MapCharacters(ctx context.Context, campaignID string, ids []string) ([]*charactersv1.CharacterSummary, error)
+	// ClearPortraits takes the image off the portrait of every NPC of the
+	// campaign that has it, inside tx, and returns how many it cleared
+	// (MR-031): the master deleted the image from the gallery.
+	ClearPortraits(ctx context.Context, tx pgx.Tx, campaignID, imageID string) (int64, error)
 }
 
 // LiveSession is what this package needs from the live session. The play
@@ -108,6 +113,10 @@ type LiveSession interface {
 	// campaign's open game session (MR-015), "" when none is open or no
 	// session is.
 	OpenScenePoint(ctx context.Context, campaignID string) (pointID string, err error)
+	// ImageOnStage reports whether the image is the portrait of an NPC on the
+	// stage of the open scene of the campaign's open game session (MR-031).
+	// False when no session or no scene is open.
+	ImageOnStage(ctx context.Context, campaignID, imageID string) (bool, error)
 }
 
 // Config holds what the maps service needs.

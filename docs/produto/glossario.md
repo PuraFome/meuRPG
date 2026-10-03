@@ -24,6 +24,8 @@ Usar as mesmas palavras nas conversas, nos documentos e no código evita muita c
 | Sessão de login | O login de um usuário no app. Não confundir com a sessão de jogo. | `auth_session` |
 | Intenção de login | Algo que a pessoa pediu antes de entrar e que o servidor conclui logo depois do login, como aceitar um convite. Fica só no servidor, dentro do estado do login. | `intent`, `IntentHandler` |
 | Cena de RP | Momento fora de combate: um ponto de interesse do tipo cena, com as ações que o mestre escolheu. O mestre a abre na sessão e todos a veem. | `map_points` (`kind = scene`), `game_sessions.open_scene_point_id`, `OpenScene` |
+| Em cena (o palco) | Os NPCs que o mestre põe na cena aberta para os jogadores verem entrar e sair, como numa visual novel: até 4 por vez, na ordem em que entraram, com um que fala. O jogador vê só o nome e o retrato (MR-031). Fechar ou trocar a cena esvazia o palco. | `stage_npcs`, `PutOnStage`, `TakeOffStage`, `SetSpeaker` |
+| Retrato do NPC | Uma imagem da galeria da campanha na ficha de um NPC. Aparece no cartão do NPC no combate (só para o mestre) e na cena, enquanto o NPC está em cena; sem retrato, o app desenha as iniciais (MR-031). | `portrait_image_id` na ficha |
 | Ação da cena | Um teste que o mestre põe numa cena: uma perícia, um teste de atributo ou uma salvaguarda, com nome e CD opcionais. O jogador vê o próprio bônus, nunca a CD. | `scene_actions`, `SceneAction` |
 | Economia de ação | O que o personagem pode gastar num turno: uma ação, uma ação bônus, uma reação e o movimento (o deslocamento, dobrado depois da Disparada). O motor calcula o que ainda está disponível (MR-014). | `Economy`, `TurnOptions` |
 | Recurso | Uma capacidade com usos limitados, como Retomar o Fôlego (1 uso por descanso curto), Ki ou Fúria. A ficha diz o máximo e quando volta; a sessão conta os usos gastos. | `Resource`, `Derived.Resources` |
@@ -82,7 +84,7 @@ Usar as mesmas palavras nas conversas, nos documentos e no código evita muita c
 | Gerador de masmorras | A ferramenta do mestre que gera uma masmorra (salas, corredores, portas, escadas, com opções de tamanho e estilo) como um mapa que ele pode editar (MR-010). Feito por design de sala limpa. | — |
 | Ganchos e pistas | As anotações privadas do mestre para cada cena de RP: ganchos, pistas e o que dizer. Uma pista pode ser revelada aos jogadores (MR-029). | — |
 | Anotações do jogador | O bloco de notas privado de cada jogador, sempre à mão; uma nota pode levar a etiqueta de uma cena que o jogador já descobriu (MR-030). | — |
-| Destaques do combate | A tela do fim do combate para a mesa: quem curou mais, quem causou mais dano e quem levou mais ("tanque") (MR-032). | — |
+| Destaques do combate | A tela do fim do combate para a mesa: quem causou mais dano, curou mais, levou mais dano ("tanque"), deu mais golpes finais e acertou mais críticos, só os PV que realmente mudaram (MR-032). Empates nomeiam todos; categoria zerada fica de fora. | `GetCombatHighlights` |
 | Ataque conjunto | Combatentes com a mesma iniciativa, como um grupo de goblins, marcados na ordem dos turnos para o mestre jogá-los juntos. É um lembrete, não uma automação (MR-013). | — |
 | Armadilha | Um ponto escondido no mapa, com a CD para notar (Percepção passiva) e para achar (Investigação), um gatilho e um efeito. O mestre vê todas; o jogador só vê a que achou ou disparou (MR-035). | — |
 | Névoa de guerra | O mapa mostra a cada jogador só o que o personagem dele enxerga: luz, escuro e visão no escuro. O mestre vê tudo (MR-036). | — |

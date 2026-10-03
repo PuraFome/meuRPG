@@ -86,6 +86,13 @@ const (
 	// PlayServiceRollSceneCheckProcedure is the fully-qualified name of the PlayService's
 	// RollSceneCheck RPC.
 	PlayServiceRollSceneCheckProcedure = "/meurpg.play.v1.PlayService/RollSceneCheck"
+	// PlayServicePutOnStageProcedure is the fully-qualified name of the PlayService's PutOnStage RPC.
+	PlayServicePutOnStageProcedure = "/meurpg.play.v1.PlayService/PutOnStage"
+	// PlayServiceTakeOffStageProcedure is the fully-qualified name of the PlayService's TakeOffStage
+	// RPC.
+	PlayServiceTakeOffStageProcedure = "/meurpg.play.v1.PlayService/TakeOffStage"
+	// PlayServiceSetSpeakerProcedure is the fully-qualified name of the PlayService's SetSpeaker RPC.
+	PlayServiceSetSpeakerProcedure = "/meurpg.play.v1.PlayService/SetSpeaker"
 )
 
 // PlayServiceClient is a client for the meurpg.play.v1.PlayService service.
@@ -391,6 +398,48 @@ type PlayServiceClient interface {
 	//     NO_OPEN_SESSION); or SceneBlocked: NO_OPEN_SCENE, ALREADY_ROLLED,
 	//     WRONG_DICE_MODE, NO_CHARACTER.
 	RollSceneCheck(context.Context, *connect.Request[v1.RollSceneCheckRequest]) (*connect.Response[v1.RollSceneCheckResponse], error)
+	// PutOnStage puts an NPC "em cena" (MR-031, D7): its name and portrait
+	// appear to every member under the open scene, after the NPCs already
+	// there. Only the campaign's master may call it, and only while a scene is
+	// open. Any living NPC of the campaign will do, hidden in a combat or not
+	// (putting it on stage reveals nothing in the combat). At most 4 NPCs are
+	// on the stage at once. An NPC that is on the stage already changes
+	// nothing. Every stream gets `stage_changed`, and a `stage_changed` event
+	// goes to the history (ids only).
+	//
+	// Errors:
+	//   - `not_found`: the character is not a living NPC of the campaign (or
+	//     character_id is not a UUID), the campaign does not exist, or the
+	//     caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION); or SceneBlocked: NO_OPEN_SCENE, STAGE_FULL.
+	PutOnStage(context.Context, *connect.Request[v1.PutOnStageRequest]) (*connect.Response[v1.PutOnStageResponse], error)
+	// TakeOffStage takes an NPC off the stage at once. An NPC that is not on
+	// it changes nothing. Only the campaign's master may call it, and only
+	// while the session is open (the stage is empty without a scene). Every
+	// stream gets `stage_changed`.
+	//
+	// Errors:
+	//   - `not_found`: character_id is not a UUID, the campaign does not exist,
+	//     or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION).
+	TakeOffStage(context.Context, *connect.Request[v1.TakeOffStageRequest]) (*connect.Response[v1.TakeOffStageResponse], error)
+	// SetSpeaker marks which NPC on the stage is speaking, or none (an empty
+	// character_id). One at most: marking another takes the mark off the
+	// first. Marking the one that already speaks changes nothing. Only the
+	// campaign's master may call it. Every stream gets `stage_changed`.
+	//
+	// Errors:
+	//   - `not_found`: the NPC is not on the stage (or character_id is set and
+	//     is not a UUID), the campaign does not exist, or the caller is not a
+	//     member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION).
+	SetSpeaker(context.Context, *connect.Request[v1.SetSpeakerRequest]) (*connect.Response[v1.SetSpeakerResponse], error)
 }
 
 // NewPlayServiceClient constructs a client for the meurpg.play.v1.PlayService service. By default,
@@ -499,6 +548,24 @@ func NewPlayServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(playServiceMethods.ByName("RollSceneCheck")),
 			connect.WithClientOptions(opts...),
 		),
+		putOnStage: connect.NewClient[v1.PutOnStageRequest, v1.PutOnStageResponse](
+			httpClient,
+			baseURL+PlayServicePutOnStageProcedure,
+			connect.WithSchema(playServiceMethods.ByName("PutOnStage")),
+			connect.WithClientOptions(opts...),
+		),
+		takeOffStage: connect.NewClient[v1.TakeOffStageRequest, v1.TakeOffStageResponse](
+			httpClient,
+			baseURL+PlayServiceTakeOffStageProcedure,
+			connect.WithSchema(playServiceMethods.ByName("TakeOffStage")),
+			connect.WithClientOptions(opts...),
+		),
+		setSpeaker: connect.NewClient[v1.SetSpeakerRequest, v1.SetSpeakerResponse](
+			httpClient,
+			baseURL+PlayServiceSetSpeakerProcedure,
+			connect.WithSchema(playServiceMethods.ByName("SetSpeaker")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -519,6 +586,9 @@ type playServiceClient struct {
 	closeScene            *connect.Client[v1.CloseSceneRequest, v1.CloseSceneResponse]
 	getOpenScene          *connect.Client[v1.GetOpenSceneRequest, v1.GetOpenSceneResponse]
 	rollSceneCheck        *connect.Client[v1.RollSceneCheckRequest, v1.RollSceneCheckResponse]
+	putOnStage            *connect.Client[v1.PutOnStageRequest, v1.PutOnStageResponse]
+	takeOffStage          *connect.Client[v1.TakeOffStageRequest, v1.TakeOffStageResponse]
+	setSpeaker            *connect.Client[v1.SetSpeakerRequest, v1.SetSpeakerResponse]
 }
 
 // StartGameSession calls meurpg.play.v1.PlayService.StartGameSession.
@@ -594,6 +664,21 @@ func (c *playServiceClient) GetOpenScene(ctx context.Context, req *connect.Reque
 // RollSceneCheck calls meurpg.play.v1.PlayService.RollSceneCheck.
 func (c *playServiceClient) RollSceneCheck(ctx context.Context, req *connect.Request[v1.RollSceneCheckRequest]) (*connect.Response[v1.RollSceneCheckResponse], error) {
 	return c.rollSceneCheck.CallUnary(ctx, req)
+}
+
+// PutOnStage calls meurpg.play.v1.PlayService.PutOnStage.
+func (c *playServiceClient) PutOnStage(ctx context.Context, req *connect.Request[v1.PutOnStageRequest]) (*connect.Response[v1.PutOnStageResponse], error) {
+	return c.putOnStage.CallUnary(ctx, req)
+}
+
+// TakeOffStage calls meurpg.play.v1.PlayService.TakeOffStage.
+func (c *playServiceClient) TakeOffStage(ctx context.Context, req *connect.Request[v1.TakeOffStageRequest]) (*connect.Response[v1.TakeOffStageResponse], error) {
+	return c.takeOffStage.CallUnary(ctx, req)
+}
+
+// SetSpeaker calls meurpg.play.v1.PlayService.SetSpeaker.
+func (c *playServiceClient) SetSpeaker(ctx context.Context, req *connect.Request[v1.SetSpeakerRequest]) (*connect.Response[v1.SetSpeakerResponse], error) {
+	return c.setSpeaker.CallUnary(ctx, req)
 }
 
 // PlayServiceHandler is an implementation of the meurpg.play.v1.PlayService service.
@@ -899,6 +984,48 @@ type PlayServiceHandler interface {
 	//     NO_OPEN_SESSION); or SceneBlocked: NO_OPEN_SCENE, ALREADY_ROLLED,
 	//     WRONG_DICE_MODE, NO_CHARACTER.
 	RollSceneCheck(context.Context, *connect.Request[v1.RollSceneCheckRequest]) (*connect.Response[v1.RollSceneCheckResponse], error)
+	// PutOnStage puts an NPC "em cena" (MR-031, D7): its name and portrait
+	// appear to every member under the open scene, after the NPCs already
+	// there. Only the campaign's master may call it, and only while a scene is
+	// open. Any living NPC of the campaign will do, hidden in a combat or not
+	// (putting it on stage reveals nothing in the combat). At most 4 NPCs are
+	// on the stage at once. An NPC that is on the stage already changes
+	// nothing. Every stream gets `stage_changed`, and a `stage_changed` event
+	// goes to the history (ids only).
+	//
+	// Errors:
+	//   - `not_found`: the character is not a living NPC of the campaign (or
+	//     character_id is not a UUID), the campaign does not exist, or the
+	//     caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION); or SceneBlocked: NO_OPEN_SCENE, STAGE_FULL.
+	PutOnStage(context.Context, *connect.Request[v1.PutOnStageRequest]) (*connect.Response[v1.PutOnStageResponse], error)
+	// TakeOffStage takes an NPC off the stage at once. An NPC that is not on
+	// it changes nothing. Only the campaign's master may call it, and only
+	// while the session is open (the stage is empty without a scene). Every
+	// stream gets `stage_changed`.
+	//
+	// Errors:
+	//   - `not_found`: character_id is not a UUID, the campaign does not exist,
+	//     or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION).
+	TakeOffStage(context.Context, *connect.Request[v1.TakeOffStageRequest]) (*connect.Response[v1.TakeOffStageResponse], error)
+	// SetSpeaker marks which NPC on the stage is speaking, or none (an empty
+	// character_id). One at most: marking another takes the mark off the
+	// first. Marking the one that already speaks changes nothing. Only the
+	// campaign's master may call it. Every stream gets `stage_changed`.
+	//
+	// Errors:
+	//   - `not_found`: the NPC is not on the stage (or character_id is set and
+	//     is not a UUID), the campaign does not exist, or the caller is not a
+	//     member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION).
+	SetSpeaker(context.Context, *connect.Request[v1.SetSpeakerRequest]) (*connect.Response[v1.SetSpeakerResponse], error)
 }
 
 // NewPlayServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -1003,6 +1130,24 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(playServiceMethods.ByName("RollSceneCheck")),
 		connect.WithHandlerOptions(opts...),
 	)
+	playServicePutOnStageHandler := connect.NewUnaryHandler(
+		PlayServicePutOnStageProcedure,
+		svc.PutOnStage,
+		connect.WithSchema(playServiceMethods.ByName("PutOnStage")),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceTakeOffStageHandler := connect.NewUnaryHandler(
+		PlayServiceTakeOffStageProcedure,
+		svc.TakeOffStage,
+		connect.WithSchema(playServiceMethods.ByName("TakeOffStage")),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceSetSpeakerHandler := connect.NewUnaryHandler(
+		PlayServiceSetSpeakerProcedure,
+		svc.SetSpeaker,
+		connect.WithSchema(playServiceMethods.ByName("SetSpeaker")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/meurpg.play.v1.PlayService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case PlayServiceStartGameSessionProcedure:
@@ -1035,6 +1180,12 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 			playServiceGetOpenSceneHandler.ServeHTTP(w, r)
 		case PlayServiceRollSceneCheckProcedure:
 			playServiceRollSceneCheckHandler.ServeHTTP(w, r)
+		case PlayServicePutOnStageProcedure:
+			playServicePutOnStageHandler.ServeHTTP(w, r)
+		case PlayServiceTakeOffStageProcedure:
+			playServiceTakeOffStageHandler.ServeHTTP(w, r)
+		case PlayServiceSetSpeakerProcedure:
+			playServiceSetSpeakerHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1102,4 +1253,16 @@ func (UnimplementedPlayServiceHandler) GetOpenScene(context.Context, *connect.Re
 
 func (UnimplementedPlayServiceHandler) RollSceneCheck(context.Context, *connect.Request[v1.RollSceneCheckRequest]) (*connect.Response[v1.RollSceneCheckResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.RollSceneCheck is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) PutOnStage(context.Context, *connect.Request[v1.PutOnStageRequest]) (*connect.Response[v1.PutOnStageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.PutOnStage is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) TakeOffStage(context.Context, *connect.Request[v1.TakeOffStageRequest]) (*connect.Response[v1.TakeOffStageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.TakeOffStage is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) SetSpeaker(context.Context, *connect.Request[v1.SetSpeakerRequest]) (*connect.Response[v1.SetSpeakerResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.SetSpeaker is not implemented"))
 }

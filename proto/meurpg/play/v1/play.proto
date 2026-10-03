@@ -369,6 +369,51 @@ service PlayService {
   //     NO_OPEN_SESSION); or SceneBlocked: NO_OPEN_SCENE, ALREADY_ROLLED,
   //     WRONG_DICE_MODE, NO_CHARACTER.
   rpc RollSceneCheck(RollSceneCheckRequest) returns (RollSceneCheckResponse);
+
+  // PutOnStage puts an NPC "em cena" (MR-031, D7): its name and portrait
+  // appear to every member under the open scene, after the NPCs already
+  // there. Only the campaign's master may call it, and only while a scene is
+  // open. Any living NPC of the campaign will do, hidden in a combat or not
+  // (putting it on stage reveals nothing in the combat). At most 4 NPCs are
+  // on the stage at once. An NPC that is on the stage already changes
+  // nothing. Every stream gets `stage_changed`, and a `stage_changed` event
+  // goes to the history (ids only).
+  //
+  // Errors:
+  //   - `not_found`: the character is not a living NPC of the campaign (or
+  //     character_id is not a UUID), the campaign does not exist, or the
+  //     caller is not a member of it.
+  //   - `permission_denied`: the caller is a player.
+  //   - `failed_precondition`: no open session (GameSessionBlocked,
+  //     NO_OPEN_SESSION); or SceneBlocked: NO_OPEN_SCENE, STAGE_FULL.
+  rpc PutOnStage(PutOnStageRequest) returns (PutOnStageResponse);
+
+  // TakeOffStage takes an NPC off the stage at once. An NPC that is not on
+  // it changes nothing. Only the campaign's master may call it, and only
+  // while the session is open (the stage is empty without a scene). Every
+  // stream gets `stage_changed`.
+  //
+  // Errors:
+  //   - `not_found`: character_id is not a UUID, the campaign does not exist,
+  //     or the caller is not a member of it.
+  //   - `permission_denied`: the caller is a player.
+  //   - `failed_precondition`: no open session (GameSessionBlocked,
+  //     NO_OPEN_SESSION).
+  rpc TakeOffStage(TakeOffStageRequest) returns (TakeOffStageResponse);
+
+  // SetSpeaker marks which NPC on the stage is speaking, or none (an empty
+  // character_id). One at most: marking another takes the mark off the
+  // first. Marking the one that already speaks changes nothing. Only the
+  // campaign's master may call it. Every stream gets `stage_changed`.
+  //
+  // Errors:
+  //   - `not_found`: the NPC is not on the stage (or character_id is set and
+  //     is not a UUID), the campaign does not exist, or the caller is not a
+  //     member of it.
+  //   - `permission_denied`: the caller is a player.
+  //   - `failed_precondition`: no open session (GameSessionBlocked,
+  //     NO_OPEN_SESSION).
+  rpc SetSpeaker(SetSpeakerRequest) returns (SetSpeakerResponse);
 }
 
 // GameSessionBlockedReason says why PlayService refused a call with
@@ -625,7 +670,16 @@ message WatchGameSessionResponse {
     // A check was rolled in the open scene. Only the master and the roller
     // get it.
     SceneCheckRolled scene_check_rolled = 16;
+    // The stage changed: an NPC came in or went out, or the speaker changed,
+    // or the scene closed and emptied it. Read the open scene again
+    // (GetOpenScene). Everyone gets it.
+    StageChanged stage_changed = 17;
   }
+
+  // StageChanged carries nothing: it names no NPC, so a player's stream
+  // learns nothing but that the stage moved. The app reads the scene again
+  // (GetOpenScene), which gives each member only what they may see (RN-20).
+  message StageChanged {}
 
   // SceneChanged carries nothing: it says the open scene changed, and the
   // app reads it again (GetOpenScene), which filters it for the caller. It

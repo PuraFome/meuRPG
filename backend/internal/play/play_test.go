@@ -125,6 +125,21 @@ func TestAuthorizationMatrix(t *testing.T) {
 			}))
 			return err
 		}, [5]connect.Code{connect.CodePermissionDenied, connect.CodeFailedPrecondition, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		// The stage (MR-031). No scene is open here, so the master's PutOnStage
+		// is refused by the state (NO_OPEN_SCENE); the full matrix, with a scene
+		// and NPCs, is in package maps' tests (TestStageAuthorizationMatrix).
+		{"PutOnStage", func(ctx context.Context, c client) error {
+			_, err := c.PutOnStage(ctx, connect.NewRequest(&playv1.PutOnStageRequest{CampaignId: campaign, CharacterId: pc.GetId()}))
+			return err
+		}, [5]connect.Code{connect.CodeFailedPrecondition, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"TakeOffStage", func(ctx context.Context, c client) error {
+			_, err := c.TakeOffStage(ctx, connect.NewRequest(&playv1.TakeOffStageRequest{CampaignId: campaign, CharacterId: pc.GetId()}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"SetSpeaker", func(ctx context.Context, c client) error {
+			_, err := c.SetSpeaker(ctx, connect.NewRequest(&playv1.SetSpeakerRequest{CampaignId: campaign}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
 	}
 
 	covered := map[string]bool{}
@@ -545,6 +560,9 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["RollSceneCheck"] = c.RollSceneCheck(ctx, connect.NewRequest(&playv1.RollSceneCheckRequest{
 		CampaignId: id, ActionId: id, IdempotencyKey: id, Roll: &playv1.RollSceneCheckRequest_RollInApp{RollInApp: true},
 	}))
+	_, calls["PutOnStage"] = c.PutOnStage(ctx, connect.NewRequest(&playv1.PutOnStageRequest{CampaignId: id, CharacterId: id}))
+	_, calls["TakeOffStage"] = c.TakeOffStage(ctx, connect.NewRequest(&playv1.TakeOffStageRequest{CampaignId: id, CharacterId: id}))
+	_, calls["SetSpeaker"] = c.SetSpeaker(ctx, connect.NewRequest(&playv1.SetSpeakerRequest{CampaignId: id}))
 	calls["WatchGameSession"] = firstEventError(ctx, c, id)
 	methods := playv1.File_meurpg_play_v1_play_proto.Services().ByName("PlayService").Methods()
 	if len(calls) != methods.Len() {
@@ -579,6 +597,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, combat["ConfirmDeath"] = cc.ConfirmDeath(ctx, connect.NewRequest(&playv1.ConfirmDeathRequest{CampaignId: id}))
 	_, combat["SetCombatantConditions"] = cc.SetCombatantConditions(ctx, connect.NewRequest(&playv1.SetCombatantConditionsRequest{CampaignId: id}))
 	_, combat["ListCombatLog"] = cc.ListCombatLog(ctx, connect.NewRequest(&playv1.ListCombatLogRequest{CampaignId: id}))
+	_, combat["GetCombatHighlights"] = cc.GetCombatHighlights(ctx, connect.NewRequest(&playv1.GetCombatHighlightsRequest{CampaignId: id}))
 	combatMethods := playv1.File_meurpg_play_v1_combat_proto.Services().ByName("CombatService").Methods()
 	if len(combat) != combatMethods.Len() {
 		t.Errorf("called %d combat methods, the service has %d", len(combat), combatMethods.Len())

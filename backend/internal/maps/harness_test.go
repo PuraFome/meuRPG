@@ -179,6 +179,7 @@ func newHarness(t *testing.T, configure ...func(*Config)) *harness {
 	if err != nil {
 		t.Fatalf("characters.New() error = %v", err)
 	}
+	chars.SetGallery(NewSessionMaps(pool)) // an NPC's portrait is an image of the gallery (MR-031)
 	// Wired as in cmd/api: play reveals the current map through
 	// SessionMaps, and this service reads it and publishes through play.
 	live, err := play.New(play.Config{

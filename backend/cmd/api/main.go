@@ -204,6 +204,11 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		// characters now that it exists: an invite without approval accepted
 		// by a pending member approves their character (RN-15).
 		campaignsService.SetCharacters(charactersService)
+		// maps.SessionMaps needs nothing but the database, so characters gets
+		// it now too: an NPC's portrait must be an image of the campaign's
+		// gallery (MR-031).
+		sessionMaps := maps.NewSessionMaps(pool)
+		charactersService.SetGallery(sessionMaps)
 		// play and maps need each other: play reveals the map it makes
 		// current and reads the image it shows, and maps reads what the
 		// session shows and publishes on play's live stream.
@@ -214,7 +219,7 @@ func run(logger *slog.Logger, cfg config.Config) error {
 			Sheets:    charactersService,           // starting a session locks the sheets (RN-01)
 			Vitals:    charactersService,           // the characters' hit points, slots and hit dice (RN-02)
 			Campaigns: campaignsService,            // the caller's campaigns, for the session notice (RN-06)
-			Maps:      maps.NewSessionMaps(pool),   // the current map (RN-10), the shown image (MR-028), the grid and tokens (MR-013)
+			Maps:      sessionMaps,                 // the current map (RN-10), the shown image (MR-028), the grid and tokens (MR-013)
 			Roster:    charactersService,           // who can fight, with which numbers (MR-013)
 			Dice:      diceModes{campaignsService}, // where a player rolls (RN-18)
 			Logger:    logger,

@@ -211,3 +211,18 @@ func (sm *SessionMaps) SetTokenPositions(ctx context.Context, tx pgx.Tx, mapID s
 	}
 	return nil
 }
+
+// ImageInCampaign reports whether imageID is an image of the campaign's
+// gallery. The characters module asks it before it keeps an NPC's portrait
+// (MR-031): an image of another campaign, or one that does not exist, is not
+// accepted. It implements characters.Gallery.
+func (sm *SessionMaps) ImageInCampaign(ctx context.Context, campaignID, imageID string) (bool, error) {
+	_, err := sm.queries.GetGalleryImageInCampaign(ctx, mapsdb.GetGalleryImageInCampaignParams{CampaignID: campaignID, ID: imageID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("find the portrait's image: %w", err)
+	}
+	return true, nil
+}

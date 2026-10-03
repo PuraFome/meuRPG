@@ -39,6 +39,9 @@ import (
 //     is the session's latest `scene_opened` event.
 //   - Opening, closing and rolling are session events (ADR-0007): ids and
 //     numbers only, never a name or the master's words.
+//   - The NPCs "em cena" (the stage, stage.go) go with the scene: every member
+//     reads them in GetOpenScene, and closing or changing the scene empties
+//     the stage.
 
 // sceneEvent is the payload of scene_opened and scene_closed.
 type sceneEvent struct {
@@ -147,10 +150,11 @@ func (s *Service) OpenScene(
 
 	var session playdb.GameSession
 	var changed bool // another scene (or none) is open now
+	var stageCleared bool
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
 		var err error
-		changed = false
+		changed, stageCleared = false, false
 		if session, err = q.GetOpenGameSessionForUpdate(ctx, m.CampaignID); errors.Is(err, pgx.ErrNoRows) {
 			return errNoOpenSession()
 		} else if err != nil {
@@ -167,6 +171,10 @@ func (s *Service) OpenScene(
 		if _, err := insertSceneEvent(ctx, c, eventSceneOpened, &m.UserID, nil, sceneEvent{PointID: point, Actions: len(scene.Actions)}); err != nil {
 			return err
 		}
+		// Another scene is another stage (MR-031).
+		if stageCleared, err = clearStage(ctx, c, m.UserID); err != nil {
+			return err
+		}
 		changed = true
 		return nil
 	})
@@ -175,6 +183,9 @@ func (s *Service) OpenScene(
 	}
 	if changed {
 		s.publishSceneChanged(m.CampaignID)
+	}
+	if stageCleared {
+		s.publishStageChanged(m.CampaignID)
 	}
 	info, err := s.sceneInfo(ctx, m, session, scene)
 	if err != nil {
@@ -192,10 +203,10 @@ func (s *Service) CloseScene(
 	if err != nil {
 		return nil, err
 	}
-	var changed bool
+	var changed, stageCleared bool
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
-		changed = false
+		changed, stageCleared = false, false
 		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return errNoOpenSession()
@@ -213,6 +224,10 @@ func (s *Service) CloseScene(
 		if _, err := insertSceneEvent(ctx, c, eventSceneClosed, &m.UserID, nil, sceneEvent{PointID: *session.OpenScenePointID}); err != nil {
 			return err
 		}
+		// No scene, no stage (MR-031).
+		if stageCleared, err = clearStage(ctx, c, m.UserID); err != nil {
+			return err
+		}
 		changed = true
 		return nil
 	})
@@ -221,6 +236,9 @@ func (s *Service) CloseScene(
 	}
 	if changed {
 		s.publishSceneChanged(m.CampaignID)
+	}
+	if stageCleared {
+		s.publishStageChanged(m.CampaignID)
 	}
 	return connect.NewResponse(&playv1.CloseSceneResponse{}), nil
 }
@@ -323,6 +341,9 @@ func (s *Service) sceneInfo(ctx context.Context, m authz.Membership, session pla
 		return nil, err
 	}
 	info.Rolls = rolls
+	if info.Stage, err = s.stageOf(ctx, m, session.ID); err != nil {
+		return nil, err
+	}
 	return info, nil
 }
 

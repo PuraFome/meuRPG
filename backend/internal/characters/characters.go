@@ -127,6 +127,9 @@ type Service struct {
 	// levelUps says whether a character can go up a level (RN-12): package
 	// progression, connected by SetLevelUps. Nil until then.
 	levelUps LevelUps
+	// gallery says which images are in a campaign's gallery, for the NPCs'
+	// portraits (MR-031): package maps, connected by SetGallery. Nil until then.
+	gallery Gallery
 }
 
 // The compiler checks that Service implements both handlers.

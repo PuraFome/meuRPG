@@ -164,6 +164,7 @@ func newHarness(t *testing.T, live ...LiveConfig) *harness {
 	if err != nil {
 		t.Fatalf("characters.New() error = %v", err)
 	}
+	chars.SetGallery(maps.NewSessionMaps(pool)) // an NPC's portrait is an image of the gallery (MR-031)
 	svc, err := New(Config{Pool: pool, Sheets: chars, Vitals: chars, Campaigns: camps, Maps: maps.NewSessionMaps(pool), Roster: chars, Dice: testDice{camps}, Roller: h.roller, Live: liveConfig, Logger: logger, Now: clock.Now})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)

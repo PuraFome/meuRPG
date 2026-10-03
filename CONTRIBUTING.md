@@ -17,7 +17,7 @@ Ferramentas: Go 1.27, buf, sqlc 1.31.1, goose, golangci-lint, Docker e Node 22. 
 | `make sqlc` | Gera o código Go das queries SQL (`backend/internal/<módulo>/<módulo>db`) com o sqlc 1.31.1. Ver [Queries com sqlc](#queries-com-sqlc). |
 | `make lint` | Roda `buf lint` e `golangci-lint`. |
 | `make test` | Roda `go test -race` em todo o backend. |
-| `MEURPG_TEST_DATABASE_URL='postgresql://root@localhost:26257/defaultdb?sslmode=disable' make test` | Roda os testes de integração (migrations, transações, login, campanhas, convites, personagens, sessões de jogo, a sessão ao vivo, com o stream, a galeria, os mapas, as cenas de RP, o combate e o XP) contra o CockroachDB do `make up`. Sem a variável, eles são pulados. |
+| `MEURPG_TEST_DATABASE_URL='postgresql://root@localhost:26257/defaultdb?sslmode=disable' make test` | Roda os testes de integração (migrations, transações, login, campanhas, convites, personagens, sessões de jogo, a sessão ao vivo, com o stream, a galeria, os mapas, as cenas de RP, o palco e os retratos dos NPCs, o combate, os destaques do combate e o XP) contra o CockroachDB do `make up`. Sem a variável, eles são pulados. |
 | `make migrate` | Aplica as migrations do goose no banco local. |
 | `make e2e` | Sobe o ambiente local (como o `make up`), roda os testes Playwright de `e2e/` contra ele e mostra onde está o relatório. O ambiente continua de pé; `make down` derruba. Ver [Testes ponta a ponta](#testes-ponta-a-ponta-playwright). |
 | `make down` | Derruba o ambiente local (`docker compose down`). |
