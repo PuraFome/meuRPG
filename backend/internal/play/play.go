@@ -114,9 +114,12 @@ type MapKeeper interface {
 	// Connect error for any other point.
 	BattlePoint(ctx context.Context, campaignID, pointID string) (link.BattlePoint, error)
 	// ScenePoint returns a SCENE point of the campaign, hidden or not, with its
-	// actions and their DCs (MR-015), or a `not_found` Connect error for any
-	// other point.
+	// actions and their DCs (MR-015), and the master's hooks and clues (MR-029,
+	// never for a player), or a `not_found` Connect error for any other point.
 	ScenePoint(ctx context.Context, campaignID, pointID string) (link.Scene, error)
+	// DiscoverScene records inside tx that the group discovered the scene (the
+	// master opened it, MR-030); one already discovered stays as it is.
+	DiscoverScene(ctx context.Context, tx pgx.Tx, campaignID, pointID string, at time.Time) error
 	// MapTokens returns where the map's tokens stand, hidden ones included.
 	MapTokens(ctx context.Context, mapID string) ([]link.TokenPosition, error)
 	// SetTokenPositions moves the characters' tokens on the map inside tx,

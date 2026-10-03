@@ -41,6 +41,10 @@ const (
 // (map_points_description_length).
 const maxDescriptionLength = 2000
 
+// maxHooksLength is the longest "Ganchos e anotações" of a scene point, in
+// characters (map_points_hooks_length).
+const maxHooksLength = 4000
+
 // maxPosition is the largest position, in basis points of the image's width
 // or height (map_points_position_valid, map_tokens_position_valid).
 const maxPosition = 10000
@@ -125,6 +129,9 @@ func (s *Service) GetMap(
 	}
 	if err := s.attachActions(ctx, mapID, res.Points, v.master); err != nil {
 		return nil, s.dbError(ctx, "list a map's scene actions", err)
+	}
+	if err := s.attachClues(ctx, m.CampaignID, mapID, res.Points, v.master); err != nil {
+		return nil, s.dbError(ctx, "list a map's scene clues", err)
 	}
 
 	tokens, err := s.queries.ListMapTokens(ctx, mapID)
@@ -463,6 +470,7 @@ type pointChange struct {
 	kind        *string
 	name        *string
 	description *string
+	hooks       *string // a SCENE point's private text; "" clears it
 	x, y        *int32
 	target      *string // "" removes the target
 	revealed    *bool
@@ -493,6 +501,13 @@ func (s *Service) CreateMapPoint(
 	if err != nil {
 		return nil, err
 	}
+	hooks, err := cleanHooks(req.Msg.GetHooks())
+	if err != nil {
+		return nil, err
+	}
+	if hooks != "" && kind != kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_SCENE] {
+		return nil, errOnlyScenesHaveHooks()
+	}
 	if err := checkPosition(req.Msg.GetXBp(), req.Msg.GetYBp()); err != nil {
 		return nil, err
 	}
@@ -518,7 +533,7 @@ func (s *Service) CreateMapPoint(
 			return err
 		}
 		created, err = q.InsertMapPoint(ctx, mapsdb.InsertMapPointParams{
-			MapID: mapID, Kind: kind, Name: name, Description: description,
+			MapID: mapID, Kind: kind, Name: name, Description: description, Hooks: hooks,
 			XBp: req.Msg.GetXBp(), YBp: req.Msg.GetYBp(), TargetMapID: target, Now: s.now(),
 		})
 		if err != nil {
@@ -556,7 +571,7 @@ func (s *Service) UpdateMapPoint(
 		return nil, errPointNotFound()
 	}
 	msg := req.Msg
-	if msg.Kind == nil && msg.Name == nil && msg.Description == nil && msg.XBp == nil && msg.YBp == nil && msg.TargetMapId == nil && msg.Revealed == nil {
+	if msg.Kind == nil && msg.Name == nil && msg.Description == nil && msg.Hooks == nil && msg.XBp == nil && msg.YBp == nil && msg.TargetMapId == nil && msg.Revealed == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("nothing to change"))
 	}
 	change := pointChange{x: msg.XBp, y: msg.YBp, target: msg.TargetMapId, revealed: msg.Revealed}
@@ -580,6 +595,13 @@ func (s *Service) UpdateMapPoint(
 			return nil, err
 		}
 		change.description = &description
+	}
+	if msg.Hooks != nil {
+		hooks, err := cleanHooks(msg.GetHooks())
+		if err != nil {
+			return nil, err
+		}
+		change.hooks = &hooks
 	}
 	if err := checkPosition(msg.GetXBp(), msg.GetYBp()); err != nil {
 		return nil, err // unset positions read as 0, which is valid
@@ -627,7 +649,7 @@ func (s *Service) UpdateMapPoint(
 func (s *Service) applyPointChange(ctx context.Context, q *mapsdb.Queries, campaignID string, p mapsdb.MapPoint, c pointChange) (mapsdb.MapPoint, error) {
 	params := mapsdb.UpdateMapPointParams{
 		MapID: p.MapID, ID: p.ID, Kind: p.Kind, Name: p.Name, Description: p.Description,
-		XBp: p.XBp, YBp: p.YBp, TargetMapID: p.TargetMapID, RevealedAt: p.RevealedAt, Now: s.now(),
+		Hooks: p.Hooks, XBp: p.XBp, YBp: p.YBp, TargetMapID: p.TargetMapID, RevealedAt: p.RevealedAt, Now: s.now(),
 	}
 	if c.kind != nil {
 		params.Kind = *c.kind
@@ -637,6 +659,9 @@ func (s *Service) applyPointChange(ctx context.Context, q *mapsdb.Queries, campa
 	}
 	if c.description != nil {
 		params.Description = *c.description
+	}
+	if c.hooks != nil {
+		params.Hooks = *c.hooks
 	}
 	if c.x != nil {
 		params.XBp = *c.x
@@ -660,11 +685,27 @@ func (s *Service) applyPointChange(ctx context.Context, q *mapsdb.Queries, campa
 	if c.revealed != nil {
 		params.RevealedAt = revealedAt(p.RevealedAt, *c.revealed, params.Now)
 	}
-	if p.Kind == kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_SCENE] && params.Kind != p.Kind {
-		// Only a scene has actions (MR-015). A scene still open in a session
-		// then reads as closed: it is not a scene point anymore.
+	scene := kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_SCENE]
+	if params.Kind != scene && c.hooks != nil && *c.hooks != "" {
+		return mapsdb.MapPoint{}, errOnlyScenesHaveHooks()
+	}
+	if p.Kind == scene && params.Kind != p.Kind {
+		// Only a scene has actions, clues and hooks (MR-015, MR-029). A scene
+		// still open in a session then reads as closed: it is not a scene
+		// point anymore. What players already received stays in their notes.
 		if err := q.DeleteSceneActionsOfPoint(ctx, p.ID); err != nil {
 			return mapsdb.MapPoint{}, fmt.Errorf("delete the scene's actions: %w", err)
+		}
+		if err := q.DeleteSceneCluesOfPoint(ctx, p.ID); err != nil {
+			return mapsdb.MapPoint{}, fmt.Errorf("delete the scene's clues: %w", err)
+		}
+		params.Hooks = ""
+	}
+	if params.Kind == scene && params.RevealedAt != nil && (p.RevealedAt == nil || p.Kind != scene) {
+		// Revealing a scene makes it "discovered" (MR-030, question 61): the
+		// group may tag notes with it from now on, even if it is hidden again.
+		if err := q.UpsertSceneDiscovery(ctx, mapsdb.UpsertSceneDiscoveryParams{CampaignID: campaignID, PointID: p.ID, DiscoveredAt: params.Now}); err != nil {
+			return mapsdb.MapPoint{}, fmt.Errorf("record the scene's discovery: %w", err)
 		}
 	}
 	out, err := q.UpdateMapPoint(ctx, params)
@@ -1000,6 +1041,9 @@ func (s *Service) masterPoint(ctx context.Context, m authz.Membership, p mapsdb.
 	if err := s.attachActions(ctx, p.MapID, []*mapsv1.MapPoint{out}, true); err != nil {
 		return nil, s.dbError(ctx, "list a point's scene actions", err)
 	}
+	if err := s.attachClues(ctx, m.CampaignID, p.MapID, []*mapsv1.MapPoint{out}, true); err != nil {
+		return nil, s.dbError(ctx, "list a point's scene clues", err)
+	}
 	return out, nil
 }
 
@@ -1117,6 +1161,20 @@ func cleanDescription(raw string) (string, error) {
 		return "", connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("description %w", err))
 	}
 	return description, nil
+}
+
+// cleanHooks checks a point's hooks (MR-029): the master's private Markdown,
+// several lines allowed, empty for none.
+func cleanHooks(raw string) (string, error) {
+	hooks, err := names.CleanText(raw, maxHooksLength)
+	if err != nil {
+		return "", connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("hooks %w", err))
+	}
+	return hooks, nil
+}
+
+func errOnlyScenesHaveHooks() error {
+	return connect.NewError(connect.CodeInvalidArgument, errors.New("only a SCENE point has hooks"))
 }
 
 // checkPosition checks a position in basis points.

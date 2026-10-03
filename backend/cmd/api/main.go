@@ -68,6 +68,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/characters"
 	"github.com/PuraFome/meuRPG/backend/internal/identity"
 	"github.com/PuraFome/meuRPG/backend/internal/maps"
+	"github.com/PuraFome/meuRPG/backend/internal/notes"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/config"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
@@ -175,6 +176,7 @@ func run(logger *slog.Logger, cfg config.Config) error {
 	var playService *play.Service
 	var mapsService *maps.Service
 	var progressionService *progression.Service
+	var notesService *notes.Service
 	switch {
 	case !cfg.OIDC.Configured():
 		logger.Warn("OIDC_ISSUER is not set; sign-in is disabled")
@@ -209,12 +211,13 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		// session shows and publishes on play's live stream.
 		// maps.SessionMaps needs nothing but the database, so play gets it
 		// first, and maps then gets play.
+		sessionMaps := maps.NewSessionMaps(pool)
 		playService, err = play.New(play.Config{
 			Pool:      pool,
 			Sheets:    charactersService,           // starting a session locks the sheets (RN-01)
 			Vitals:    charactersService,           // the characters' hit points, slots and hit dice (RN-02)
 			Campaigns: campaignsService,            // the caller's campaigns, for the session notice (RN-06)
-			Maps:      maps.NewSessionMaps(pool),   // the current map (RN-10), the shown image (MR-028), the grid and tokens (MR-013)
+			Maps:      sessionMaps,                 // the current map (RN-10), the shown image (MR-028), the grid and tokens (MR-013)
 			Roster:    charactersService,           // who can fight, with which numbers (MR-013)
 			Dice:      diceModes{campaignsService}, // where a player rolls (RN-18)
 			Logger:    logger,
@@ -249,6 +252,17 @@ func run(logger *slog.Logger, cfg config.Config) error {
 			return err
 		}
 		charactersService.SetLevelUps(progressionService)
+		// The players' private notes (MR-030) read the scenes the group
+		// discovered and the clues revealed to each player from the maps
+		// module's tables, through SessionMaps.
+		notesService, err = notes.New(notes.Config{
+			Pool:   pool,
+			Scenes: sessionMaps, // the discovered scenes and the received clues (MR-029, MR-030)
+			Logger: logger,
+		})
+		if err != nil {
+			return err
+		}
 		identityService, err = identity.New(ctx, identity.Config{
 			OIDC:   cfg.OIDC,
 			Store:  users,
@@ -298,6 +312,7 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		charactersService.Mount(srv.Handle, identityService, campaignsService, connectOpts...)
 		playService.Mount(srv.Handle, identityService, campaignsService, connectOpts...)
 		progressionService.Mount(srv.Handle, identityService, campaignsService, connectOpts...)
+		notesService.Mount(srv.Handle, identityService, campaignsService, connectOpts...)
 		// GalleryService and MapService, plus the upload and download
 		// routes, which find the session with
 		// identityService.AuthenticateRequest.

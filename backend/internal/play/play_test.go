@@ -417,6 +417,10 @@ func (noMaps) ScenePoint(context.Context, string, string) (link.Scene, error) {
 	return link.Scene{}, errors.New("not in this test")
 }
 
+func (noMaps) DiscoverScene(context.Context, pgx.Tx, string, string, time.Time) error {
+	return errors.New("not in this test")
+}
+
 func (noMaps) MapTokens(context.Context, string) ([]link.TokenPosition, error) {
 	return nil, errors.New("not in this test")
 }

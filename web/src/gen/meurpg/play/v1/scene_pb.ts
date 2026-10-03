@@ -12,6 +12,8 @@ import type { GenEnum, GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2"
 import { enumDesc, fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
+import type { SceneClue } from "../../maps/v1/maps_pb";
+import { file_meurpg_maps_v1_maps } from "../../maps/v1/maps_pb";
 import type { DiceRoll } from "./combat_pb";
 import { file_meurpg_play_v1_combat } from "./combat_pb";
 import type { Message } from "@bufbuild/protobuf";
@@ -20,7 +22,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/play/v1/scene.proto.
  */
 export const file_meurpg_play_v1_scene: GenFile = /*@__PURE__*/
-  fileDesc("ChptZXVycGcvcGxheS92MS9zY2VuZS5wcm90bxIObWV1cnBnLnBsYXkudjEiQgoMU2NlbmVCbG9ja2VkEjIKBnJlYXNvbhgBIAEoDjIiLm1ldXJwZy5wbGF5LnYxLlNjZW5lQmxvY2tlZFJlYXNvbiLPAQoNT3BlblNjZW5lSW5mbxIQCghwb2ludF9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEjAKB2FjdGlvbnMYBCADKAsyHy5tZXVycGcucGxheS52MS5TY2VuZUFjdGlvblZpZXcSKAoFcm9sbHMYBSADKAsyGS5tZXVycGcucGxheS52MS5TY2VuZVJvbGwSLQoJb3BlbmVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCKYAQoPU2NlbmVBY3Rpb25WaWV3EgoKAmlkGAEgASgJEgsKA2tleRgCIAEoCRIMCgRuYW1lGAMgASgJEhIKCmNoZWNrX25hbWUYBCABKAkSCgoCZGMYBSABKAUSEgoFYm9udXMYBiABKAVIAIgBARIUCgdwYXNzaXZlGAcgASgFSAGIAQFCCAoGX2JvbnVzQgoKCF9wYXNzaXZlIs8BCglTY2VuZVJvbGwSCgoCaWQYASABKAkSEQoJYWN0aW9uX2lkGAIgASgJEhQKDGNoYXJhY3Rlcl9pZBgDIAEoCRIWCg5jaGFyYWN0ZXJfbmFtZRgEIAEoCRImCgRyb2xsGAUgASgLMhgubWV1cnBnLnBsYXkudjEuRGljZVJvbGwSEwoGcGFzc2VkGAYgASgISACIAQESLQoJcm9sbGVkX2F0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIJCgdfcGFzc2VkIjkKEE9wZW5TY2VuZVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSEAoIcG9pbnRfaWQYAiABKAkiQQoRT3BlblNjZW5lUmVzcG9uc2USLAoFc2NlbmUYASABKAsyHS5tZXVycGcucGxheS52MS5PcGVuU2NlbmVJbmZvIigKEUNsb3NlU2NlbmVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIhQKEkNsb3NlU2NlbmVSZXNwb25zZSIqChNHZXRPcGVuU2NlbmVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIkQKFEdldE9wZW5TY2VuZVJlc3BvbnNlEiwKBXNjZW5lGAEgASgLMh0ubWV1cnBnLnBsYXkudjEuT3BlblNjZW5lSW5mbyKLAQoVUm9sbFNjZW5lQ2hlY2tSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhEKCWFjdGlvbl9pZBgCIAEoCRIVCgtyb2xsX2luX2FwcBgDIAEoCEgAEhIKCGQyMF9mYWNlGAQgASgFSAASFwoPaWRlbXBvdGVuY3lfa2V5GAUgASgJQgYKBHJvbGwiQQoWUm9sbFNjZW5lQ2hlY2tSZXNwb25zZRInCgRyb2xsGAEgASgLMhkubWV1cnBnLnBsYXkudjEuU2NlbmVSb2xsKoECChJTY2VuZUJsb2NrZWRSZWFzb24SJAogU0NFTkVfQkxPQ0tFRF9SRUFTT05fVU5TUEVDSUZJRUQQABIjCh9TQ0VORV9CTE9DS0VEX1JFQVNPTl9OT19BQ1RJT05TEAESJgoiU0NFTkVfQkxPQ0tFRF9SRUFTT05fTk9fT1BFTl9TQ0VORRACEicKI1NDRU5FX0JMT0NLRURfUkVBU09OX0FMUkVBRFlfUk9MTEVEEAMSKAokU0NFTkVfQkxPQ0tFRF9SRUFTT05fV1JPTkdfRElDRV9NT0RFEAQSJQohU0NFTkVfQkxPQ0tFRF9SRUFTT05fTk9fQ0hBUkFDVEVSEAVCuAEKEmNvbS5tZXVycGcucGxheS52MUIKU2NlbmVQcm90b1ABWjxnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvcGxheS92MTtwbGF5djGiAgNNUFiqAg5NZXVycGcuUGxheS5WMcoCDk1ldXJwZ1xQbGF5XFYx4gIaTWV1cnBnXFBsYXlcVjFcR1BCTWV0YWRhdGHqAhBNZXVycGc6OlBsYXk6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp, file_meurpg_play_v1_combat]);
+  fileDesc("ChptZXVycGcvcGxheS92MS9zY2VuZS5wcm90bxIObWV1cnBnLnBsYXkudjEiQgoMU2NlbmVCbG9ja2VkEjIKBnJlYXNvbhgBIAEoDjIiLm1ldXJwZy5wbGF5LnYxLlNjZW5lQmxvY2tlZFJlYXNvbiKIAgoNT3BlblNjZW5lSW5mbxIQCghwb2ludF9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEjAKB2FjdGlvbnMYBCADKAsyHy5tZXVycGcucGxheS52MS5TY2VuZUFjdGlvblZpZXcSKAoFcm9sbHMYBSADKAsyGS5tZXVycGcucGxheS52MS5TY2VuZVJvbGwSLQoJb3BlbmVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBINCgVob29rcxgHIAEoCRIoCgVjbHVlcxgIIAMoCzIZLm1ldXJwZy5tYXBzLnYxLlNjZW5lQ2x1ZSKYAQoPU2NlbmVBY3Rpb25WaWV3EgoKAmlkGAEgASgJEgsKA2tleRgCIAEoCRIMCgRuYW1lGAMgASgJEhIKCmNoZWNrX25hbWUYBCABKAkSCgoCZGMYBSABKAUSEgoFYm9udXMYBiABKAVIAIgBARIUCgdwYXNzaXZlGAcgASgFSAGIAQFCCAoGX2JvbnVzQgoKCF9wYXNzaXZlIs8BCglTY2VuZVJvbGwSCgoCaWQYASABKAkSEQoJYWN0aW9uX2lkGAIgASgJEhQKDGNoYXJhY3Rlcl9pZBgDIAEoCRIWCg5jaGFyYWN0ZXJfbmFtZRgEIAEoCRImCgRyb2xsGAUgASgLMhgubWV1cnBnLnBsYXkudjEuRGljZVJvbGwSEwoGcGFzc2VkGAYgASgISACIAQESLQoJcm9sbGVkX2F0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIJCgdfcGFzc2VkIjkKEE9wZW5TY2VuZVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSEAoIcG9pbnRfaWQYAiABKAkiQQoRT3BlblNjZW5lUmVzcG9uc2USLAoFc2NlbmUYASABKAsyHS5tZXVycGcucGxheS52MS5PcGVuU2NlbmVJbmZvIigKEUNsb3NlU2NlbmVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIhQKEkNsb3NlU2NlbmVSZXNwb25zZSIqChNHZXRPcGVuU2NlbmVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIkQKFEdldE9wZW5TY2VuZVJlc3BvbnNlEiwKBXNjZW5lGAEgASgLMh0ubWV1cnBnLnBsYXkudjEuT3BlblNjZW5lSW5mbyKLAQoVUm9sbFNjZW5lQ2hlY2tSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhEKCWFjdGlvbl9pZBgCIAEoCRIVCgtyb2xsX2luX2FwcBgDIAEoCEgAEhIKCGQyMF9mYWNlGAQgASgFSAASFwoPaWRlbXBvdGVuY3lfa2V5GAUgASgJQgYKBHJvbGwiQQoWUm9sbFNjZW5lQ2hlY2tSZXNwb25zZRInCgRyb2xsGAEgASgLMhkubWV1cnBnLnBsYXkudjEuU2NlbmVSb2xsKoECChJTY2VuZUJsb2NrZWRSZWFzb24SJAogU0NFTkVfQkxPQ0tFRF9SRUFTT05fVU5TUEVDSUZJRUQQABIjCh9TQ0VORV9CTE9DS0VEX1JFQVNPTl9OT19BQ1RJT05TEAESJgoiU0NFTkVfQkxPQ0tFRF9SRUFTT05fTk9fT1BFTl9TQ0VORRACEicKI1NDRU5FX0JMT0NLRURfUkVBU09OX0FMUkVBRFlfUk9MTEVEEAMSKAokU0NFTkVfQkxPQ0tFRF9SRUFTT05fV1JPTkdfRElDRV9NT0RFEAQSJQohU0NFTkVfQkxPQ0tFRF9SRUFTT05fTk9fQ0hBUkFDVEVSEAVCuAEKEmNvbS5tZXVycGcucGxheS52MUIKU2NlbmVQcm90b1ABWjxnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvcGxheS92MTtwbGF5djGiAgNNUFiqAg5NZXVycGcuUGxheS5WMcoCDk1ldXJwZ1xQbGF5XFYx4gIaTWV1cnBnXFBsYXlcVjFcR1BCTWV0YWRhdGHqAhBNZXVycGc6OlBsYXk6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp, file_meurpg_maps_v1_maps, file_meurpg_play_v1_combat]);
 
 /**
  * SceneBlocked is the error detail of a scene call's `failed_precondition`
@@ -93,6 +95,24 @@ export type OpenSceneInfo = Message<"meurpg.play.v1.OpenSceneInfo"> & {
    * @generated from field: google.protobuf.Timestamp opened_at = 6;
    */
   openedAt?: Timestamp | undefined;
+
+  /**
+   * The point's "Ganchos e anotações" (MR-029): the master's private
+   * Markdown text. Only the master gets it: a player always gets it empty
+   * (RN-20).
+   *
+   * @generated from field: string hooks = 7;
+   */
+  hooks: string;
+
+  /**
+   * The point's clues, in the master's order, each with who has it (MR-029).
+   * Only the master gets them: a player never gets a clue here, revealed or
+   * not (the revealed ones are in their notes, NotesService.ListNotes).
+   *
+   * @generated from field: repeated meurpg.maps.v1.SceneClue clues = 8;
+   */
+  clues: SceneClue[];
 };
 
 /**
@@ -247,7 +267,10 @@ export type OpenSceneRequest = Message<"meurpg.play.v1.OpenSceneRequest"> & {
   campaignId: string;
 
   /**
-   * A SCENE point of the campaign's maps, hidden or not (a UUID).
+   * A SCENE point of the campaign's maps, hidden or not (a UUID). It may
+   * have no actions. Opening a scene makes it "discovered" for the group
+   * (MR-030), so players may tag notes with it, even while the point is
+   * hidden on the map.
    *
    * @generated from field: string point_id = 2;
    */
@@ -447,8 +470,10 @@ export enum SceneBlockedReason {
   UNSPECIFIED = 0,
 
   /**
-   * OpenScene: the point has no actions. A scene without a check cannot be
-   * opened.
+   * Unused: it was OpenScene's refusal of a point with no actions in Etapa
+   * 7. Since Etapa 8 (question 63) any SCENE point opens, even with no
+   * actions, so the server never sends it. The value stays so the numbers
+   * do not change.
    *
    * @generated from enum value: SCENE_BLOCKED_REASON_NO_ACTIONS = 1;
    */

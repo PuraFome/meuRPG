@@ -43,6 +43,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
@@ -108,6 +109,14 @@ type LiveSession interface {
 	// campaign's open game session (MR-015), "" when none is open or no
 	// session is.
 	OpenScenePoint(ctx context.Context, campaignID string) (pointID string, err error)
+	// PublishToUsers sends ev to the streams of those of userIDs who watch
+	// the campaign's session, and to nobody else: not the master, not the
+	// other players. Without an open session nothing happens.
+	PublishToUsers(campaignID string, userIDs []string, ev *playv1.WatchGameSessionResponse)
+	// AppendEvent appends an event to the history of the campaign's open
+	// session inside tx, and says whether there was one. The payload holds
+	// IDs only (docs/privacidade.md).
+	AppendEvent(ctx context.Context, tx pgx.Tx, campaignID, kind, actorUserID string, payload []byte, at time.Time) (bool, error)
 }
 
 // Config holds what the maps service needs.

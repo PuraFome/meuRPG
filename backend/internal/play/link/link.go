@@ -10,6 +10,8 @@
 // them; cmd/api connects the real services.
 package link
 
+import "time"
+
 // Character is what a combat needs to know about a character that fights:
 // who it is and the numbers that start a combatant (MR-013). Numbers come
 // from the sheet, derived by the rules module for a full sheet, and read
@@ -207,6 +209,23 @@ type Scene struct {
 	Name, Description string
 	// Actions are in the order the master put them.
 	Actions []SceneAction
+	// Hooks is the master's private "Ganchos e anotações" (MR-029), and Clues
+	// the clues the master prepared. They never go to a player (RN-20).
+	Hooks string
+	Clues []SceneClue
+}
+
+// SceneClue is a clue of a scene, with who has it.
+type SceneClue struct {
+	ID, Text string
+	// RevealedTo are the players it was revealed to, oldest first.
+	RevealedTo []ClueRecipient
+}
+
+// ClueRecipient is a player's character a clue was revealed to.
+type ClueRecipient struct {
+	CharacterID string
+	RevealedAt  time.Time
 }
 
 // SceneAction is one check of a scene.

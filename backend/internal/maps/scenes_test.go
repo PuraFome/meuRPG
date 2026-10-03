@@ -614,7 +614,7 @@ func TestMR015_AHiddenPointCanBeOpenedAndStaysHidden(t *testing.T) {
 }
 
 // Opening a scene: master only; the point must be a SCENE point of the
-// campaign with at least one action; during a session; one at a time;
+// campaign; during a session; one at a time;
 // closing asks nothing; a point that stops being a scene, or is deleted,
 // closes it; everyone hears.
 func TestMR015_OpeningAndClosingAScene(t *testing.T) {
@@ -627,11 +627,8 @@ func TestMR015_OpeningAndClosingAScene(t *testing.T) {
 	wantBlocked(t, "OpenScene without a session", err, playv1.GameSessionBlockedReason_GAME_SESSION_BLOCKED_REASON_NO_OPEN_SESSION)
 	s.master.start(s.campaign)
 
-	// A point without actions cannot be opened; neither can a point of another
-	// kind, another campaign's point, or one that does not exist.
-	bare := s.master.createPoint(&mapsv1.CreateMapPointRequest{CampaignId: s.campaign, MapId: s.mapID, Kind: mapsv1.MapPointKind_MAP_POINT_KIND_SCENE, Name: "Sem ações"})
-	_, err = s.master.openScene(s.campaign, bare.GetId())
-	wantSceneBlocked(t, "opening a point without actions", err, playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_NO_ACTIONS)
+	// A point of another kind, another campaign's point, or one that does not
+	// exist cannot be opened (a scene with no actions can: TestScenesWithNoActionsOpen).
 	battle := s.master.createPoint(&mapsv1.CreateMapPointRequest{CampaignId: s.campaign, MapId: s.mapID, Kind: mapsv1.MapPointKind_MAP_POINT_KIND_BATTLE, Name: "Emboscada"})
 	_, err = s.master.openScene(s.campaign, battle.GetId())
 	wantCode(t, "opening a battle point", err, connect.CodeNotFound)
