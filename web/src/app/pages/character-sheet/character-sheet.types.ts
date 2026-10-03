@@ -279,7 +279,23 @@ export interface CharacterSheetVm {
    * has no XP of its own). `0` is a real value (a fresh level-1 character)
    * and still shows — only `null` hides it. */
   readonly experiencePoints: number | null;
+  /** `DerivedSheet.total_level` (0 when the sheet has no class yet): the XP block
+   * says which level the next one is. */
+  readonly totalLevel: number;
+  /** `DerivedSheet.next_level_xp`: the XP that reaches the next level; 0 at level 20 or without a class. */
+  readonly nextLevelXp: number;
+  /** `Character.can_level_up` (RN-12): its XP reached the next level's, or the
+   * master marked a milestone and its level has not gone up since. Only the
+   * master and the owning player ever get it as true. */
+  readonly canLevelUp: boolean;
+  /** An enemy's, boss's or minion's challenge rating ("ND") and the XP it gives
+   * when defeated: the master's, `''` and 0 for everyone else (RN-20). */
+  readonly challengeRating: string;
+  readonly xpValue: number;
 }
+
+/** How the campaign levels (RN-09), as the sheet needs it: whether it counts XP. */
+export type CampaignXpMode = 'enemies' | 'gold' | 'milestones';
 
 /**
  * The port `CharacterSheetPage` depends on. Phase 2 provides a concrete
@@ -287,6 +303,9 @@ export interface CharacterSheetVm {
  * (`meurpg.characters.v1`) — see this file's top comment.
  */
 export abstract class CharacterSheetSource {
+  /** How the campaign levels, to know whether the sheet has an XP block (a
+   * milestones campaign has none) or only the "Pode subir de nível" tag. */
+  abstract getXpMode(campaignId: string): Promise<CampaignXpMode>;
   abstract getCharacterSheet(campaignId: string, characterId: string): Promise<CharacterSheetVm>;
   /** Called only when `isMaster` — never for a player (RN-11). */
   abstract getMasterNotes(campaignId: string, characterId: string): Promise<string>;

@@ -2,7 +2,7 @@ import { Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import type { OpenSceneInfo, SceneRoll } from '../../../../../gen/meurpg/play/v1/scene_pb';
-import { joinDots } from '../../../../core/combat/combat-grid';
+import { joinDots } from '../../../../core/format/text';
 import {
   initialOf,
   passLabel,

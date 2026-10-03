@@ -9,12 +9,14 @@ import { Campaign, Member, Role } from '../../../gen/meurpg/campaigns/v1/campaig
 import { AuthService } from '../../core/auth/auth.service';
 import { CampaignsService } from '../../core/campaigns/campaigns.service';
 import { describeConnectError } from '../../core/connect/connect-errors';
+import { ExperienceStore } from '../../core/progression/experience-store';
 import { campaignLead } from '../campaigns/campaign-copy';
 import { memberRows } from './campaign-detail.copy';
 import { CampaignCharacters } from './characters/campaign-characters';
 import { DicePanel } from './dice-panel/dice-panel';
 import { DicePreferencePanel } from './dice-preference-panel/dice-preference-panel';
 import { DocumentPanel } from './document-panel/document-panel';
+import { ExperiencePanel } from './experience/experience-panel';
 import { GalleryPanel } from './gallery-panel/gallery-panel';
 import { MapsPanel } from './maps-panel/maps-panel';
 import { GameSessionCard } from './game-session/game-session-card';
@@ -61,6 +63,7 @@ type PageState =
     DicePanel,
     DicePreferencePanel,
     DocumentPanel,
+    ExperiencePanel,
     GalleryPanel,
     MapsPanel,
     GameSessionCard,
@@ -69,6 +72,8 @@ type PageState =
     MatProgressSpinnerModule,
     RouterLink,
   ],
+  // One XP store for the page: the "Experiência" panel and the characters' "Pode subir de nível" tag read it.
+  providers: [ExperienceStore],
   templateUrl: './campaign-detail.html',
   styleUrl: './campaign-detail.scss',
 })
@@ -77,6 +82,7 @@ export class CampaignDetail {
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(AuthService);
+  protected readonly experience = inject(ExperienceStore);
 
   protected readonly state = signal<PageState>({ status: 'loading' });
   protected readonly Role = Role;
@@ -119,7 +125,13 @@ export class CampaignDetail {
       return { status: 'ready', campaign, members: membersRes.members } as const;
     });
     loaded.then(
-      (state: PageState) => this.state.set(state),
+      (state: PageState) => {
+        this.state.set(state);
+        if (state.status === 'ready') {
+          // Every member reads the XP; the history comes with it.
+          void this.experience.load(campaignId, true);
+        }
+      },
       (err: unknown) => {
         const connectErr = ConnectError.from(err, Code.Unavailable);
         if (connectErr.code === Code.NotFound) {

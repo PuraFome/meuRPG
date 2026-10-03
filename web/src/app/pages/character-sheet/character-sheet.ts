@@ -4,8 +4,10 @@ import {
   ElementRef,
   Injector,
   afterNextRender,
+  effect,
   inject,
   signal,
+  untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
@@ -17,8 +19,10 @@ import { formatModifier } from '../../core/characters/character-labels';
 import { describeCharacterError } from '../../core/characters/character-errors';
 import { AbilityMedallions } from './ability-medallions/ability-medallions';
 import { BasicSheet } from './basic-sheet/basic-sheet';
+import { OpenSessions } from '../../shell/live-notice/open-sessions';
 import {
   BasicSheetVm,
+  CampaignXpMode,
   CharacterSheetSource,
   CharacterSheetVm,
   FullSheetVm,
@@ -30,6 +34,7 @@ import { ProficiencyColumn } from './proficiency-column/proficiency-column';
 import { SheetHeader } from './sheet-header/sheet-header';
 import { issueTitle } from './sheet-format';
 import { StoryPanel } from './story-panel/story-panel';
+import { XpWatcher } from './xp-watcher';
 
 type PageState =
   | { status: 'loading' }
@@ -91,6 +96,8 @@ export class CharacterSheetPage {
   private readonly destroyRef = inject(DestroyRef);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly injector = inject(Injector);
+  private readonly openSessions = inject(OpenSessions);
+  private readonly xpWatcher = inject(XpWatcher);
 
   protected readonly state = signal<PageState>({ status: 'loading' });
   /** The campaign from the route, for "Voltar para a campanha" in every
@@ -107,6 +114,9 @@ export class CharacterSheetPage {
    * ("Confirmar recusa") after "Recusar personagem". */
   protected readonly confirmingReject = signal(false);
 
+  /** How the campaign levels: decides whether the header has an XP block or only the tag. */
+  protected readonly xpMode = signal<CampaignXpMode | null>(null);
+
   protected readonly formatModifier = formatModifier;
   protected readonly issueTitle = issueTitle;
 
@@ -116,9 +126,41 @@ export class CharacterSheetPage {
       const characterId = params.get('characterId');
       if (campaignId && characterId) {
         this.campaignId.set(campaignId);
+        this.characterId = characterId;
         this.load(campaignId, characterId);
       }
     });
+
+    // While the campaign has an open session, the master's awards arrive on its
+    // stream (`xp_changed`): the character is read again, so the XP block is
+    // never stale (E7-10). Without a session, it is read on load only.
+    effect(() => {
+      const id = this.campaignId();
+      // Only a player character has XP, or a level-up tag, to keep fresh.
+      const s = this.state();
+      const player = s.status === 'ready' && s.vm.characterKind === 'player';
+      const live = player && id !== '' && this.openSessions.sessions().some((o) => o.campaignId === id);
+      untracked(() => this.xpWatcher.follow(live ? id : null, () => void this.reloadQuietly()));
+    });
+    this.destroyRef.onDestroy(() => this.xpWatcher.follow(null, () => undefined));
+  }
+
+  private characterId = '';
+
+  /** Reads the character again without the loading state, so the page does not blink. */
+  private async reloadQuietly(): Promise<void> {
+    const campaignId = this.campaignId();
+    if (!campaignId || !this.characterId) {
+      return;
+    }
+    try {
+      const vm = await this.source.getCharacterSheet(campaignId, this.characterId);
+      if (this.state().status === 'ready') {
+        this.state.set({ status: 'ready', vm });
+      }
+    } catch {
+      // Keep what is on screen: the next change reads again.
+    }
   }
 
   private load(campaignId: string, characterId: string): void {
@@ -126,6 +168,11 @@ export class CharacterSheetPage {
     this.source.getCharacterSheet(campaignId, characterId).then(
       (vm) => this.state.set({ status: 'ready', vm }),
       (err: unknown) => this.state.set({ status: 'error', message: describeCharacterError(err) }),
+    );
+    // Only a detail of the header: without it the sheet shows as for an XP campaign.
+    this.source.getXpMode(campaignId).then(
+      (mode) => this.xpMode.set(mode),
+      () => this.xpMode.set('enemies'),
     );
   }
 

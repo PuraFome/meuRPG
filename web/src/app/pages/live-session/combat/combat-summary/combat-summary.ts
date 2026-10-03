@@ -1,12 +1,14 @@
-import { Component, ElementRef, computed, input, output, viewChild, afterNextRender } from '@angular/core';
+import { Component, ElementRef, computed, input, output, signal, viewChild, afterNextRender } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import type { Combatant, Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { combatantInitial, isPlayer } from '../../../../core/combat/combat-view';
+import { formatXp } from '../../../../core/format/text';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import type { VitalsVm } from '../../live-session.types';
 import type { CombatantInfo } from '../combat-info';
+import { CombatXp, type CombatXpState } from '../combat-xp/combat-xp';
 
 /** One player of "O grupo agora": the numbers as the master sees them. */
 interface GroupRow {
@@ -25,19 +27,28 @@ interface GroupRow {
  */
 @Component({
   selector: 'app-combat-summary',
-  imports: [CombatantToken, MatButtonModule, MatIconModule],
+  imports: [CombatantToken, CombatXp, MatButtonModule, MatIconModule],
   templateUrl: './combat-summary.html',
   styleUrl: './combat-summary.scss',
 })
 export class CombatSummary {
   readonly encounter = input.required<Encounter>();
   readonly isMaster = input(false);
+  /** The campaign, for the master's "Experiência do combate". */
+  readonly campaignId = input('');
   readonly sessionNumber = input(0);
   readonly info = input<ReadonlyMap<string, CombatantInfo>>(new Map());
   /** The party's live numbers (the master's `vitals`). */
   readonly vitals = input<readonly VitalsVm[]>([]);
 
   readonly leave = output<void>();
+
+  /** Where the combat's XP stands (master only). While it is still to give, "Voltar à
+   * sessão" is outlined and the block's button is the screen's one filled one; it
+   * turns filled when the XP is given or left for later, or when there is no XP block. */
+  protected readonly xpState = signal<CombatXpState>('loading');
+  protected readonly xpBlock = computed(() => this.isMaster() && this.xpState() !== 'none');
+  protected readonly leaveFilled = computed(() => !this.isMaster() || !['loading', 'open'].includes(this.xpState()));
 
   private readonly title = viewChild.required<ElementRef<HTMLElement>>('title');
 
@@ -71,6 +82,10 @@ export class CombatSummary {
   constructor() {
     // The summary replaces the combat, so the screen reader starts at it.
     afterNextRender(() => this.title().nativeElement.focus());
+  }
+
+  protected xp(c: Combatant): string {
+    return formatXp(c.xpValue);
   }
 
   protected initial(c: Combatant): string {

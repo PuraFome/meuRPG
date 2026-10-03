@@ -6,7 +6,7 @@
       </div>
       <p class="end__sub">{{ encounter().name }} · Sessão {{ sessionNumber() }}</p>
     </div>
-    <button mat-flat-button type="button" class="end__leave" (click)="leave.emit()">
+    <button [matButton]="leaveFilled() ? 'filled' : 'outlined'" type="button" class="end__leave" (click)="leave.emit()">
       Voltar à sessão
     </button>
   </div>
@@ -33,8 +33,8 @@
   </dl>
 </section>
 
-<div class="cols" [class.cols--one]="!isMaster()">
-  <section class="mr-panel" aria-labelledby="out-title">
+<div class="cols" [class.cols--one]="!isMaster()" [class.cols--xp]="xpBlock()">
+  <section class="mr-panel cols__out" aria-labelledby="out-title">
     <h2 class="mr-panel__title" id="out-title">Derrotados</h2>
     @if (defeated().length === 0) {
       <p class="mr-muted">Ninguém caiu neste combate.</p>
@@ -47,7 +47,12 @@
               <span class="mr-list__name">{{ c.label }}</span>
               <span class="mr-list__sub">{{ sub(c) }}</span>
             </span>
-            <span class="line__out"><mat-icon aria-hidden="true">close</mat-icon>Derrotado</span>
+            <span class="line__right">
+              @if (isMaster() && xpState() !== 'none') {
+                <span class="line__xp">{{ xp(c) }}</span>
+              }
+              <span class="line__out"><mat-icon aria-hidden="true">close</mat-icon>Derrotado</span>
+            </span>
           </li>
         }
       </ul>
@@ -55,7 +60,7 @@
   </section>
 
   @if (isMaster()) {
-    <section class="mr-panel" aria-labelledby="group-title">
+    <section class="mr-panel cols__group" aria-labelledby="group-title">
       <h2 class="mr-panel__title" id="group-title">O grupo agora</h2>
       <ul class="mr-list">
         @for (g of group(); track g.c.id) {
@@ -86,5 +91,14 @@
         Os PV e os espaços de magia ficam como estão. Corrija o que precisar em "Ajustar".
       </p>
     </section>
+  }
+  @if (isMaster() && campaignId()) {
+    <app-combat-xp
+      class="cols__xp"
+      [campaignId]="campaignId()"
+      [encounter]="encounter()"
+      [info]="info()"
+      (stateChange)="xpState.set($event)"
+    />
   }
 </div>

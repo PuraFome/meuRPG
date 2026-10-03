@@ -2,7 +2,8 @@ import { Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import type { Combatant } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { feetToMeters, formatMeters, tight } from '../../../../core/combat/combat-grid';
+import { feetToMeters, formatMeters } from '../../../../core/combat/combat-grid';
+import { tight } from '../../../../core/format/text';
 
 /**
  * What the player has this turn, at the top of "O que você pode fazer" from

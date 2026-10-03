@@ -1,0 +1,87 @@
+@switch (view()) {
+  @case ('loading') {
+    <section class="mr-panel" aria-labelledby="xp-title">
+      <h2 class="mr-panel__title" id="xp-title">Experiência do combate</h2>
+      <p class="mr-muted" role="status">Carregando a experiência...</p>
+    </section>
+  }
+  @case ('open') {
+    <section class="mr-panel" aria-labelledby="xp-title">
+      <h2 class="mr-panel__title" id="xp-title">Experiência do combate</h2>
+      <p class="lead">
+        Por inimigos derrotados. Marque quem recebe: por padrão, quem lutou e está vivo.
+      </p>
+
+      <div class="total">
+        <span class="total__label">{{ totalLabel() }}</span>
+        <span class="total__sum">{{ sum() }}</span>
+        <span class="total__n">{{ totalText() }}</span>
+      </div>
+
+      <h3 class="sub" id="who-title">Quem recebe</h3>
+      <app-xp-recipients [rows]="recipients()" (toggle)="toggle($event)" />
+
+      <app-xp-split class="split" [split]="split()" [total]="total()" />
+
+      @if (error()) {
+        <div class="mr-notice mr-notice--danger" role="alert">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <p>{{ error() }}</p>
+        </div>
+      }
+      <app-xp-actions
+        [primaryLabel]="primaryLabel()"
+        secondaryLabel="Agora não"
+        [primaryFirst]="true"
+        [blocked]="reasonToWait() !== ''"
+        [busy]="busy()"
+        [reason]="reasonToWait()"
+        (primary)="give()"
+        (secondary)="notNow()"
+      />
+    </section>
+  }
+  @case ('later') {
+    <section class="mr-panel" aria-labelledby="xp-title">
+      <h2 class="mr-panel__title" id="xp-title">Experiência do combate</h2>
+      <button #later mat-button type="button" class="later" (click)="openLater()">
+        XP do combate ainda não dado<mat-icon iconPositionEnd aria-hidden="true">chevron_right</mat-icon>
+      </button>
+    </section>
+  }
+  @case ('given') {
+    @if (confirmed(); as c) {
+      <section class="mr-panel" aria-labelledby="xp-title">
+        <h2 class="mr-panel__title" id="xp-title">Experiência do combate</h2>
+        <div #confirmation class="done" tabindex="-1" role="status">
+          <p class="mr-notice mr-notice--success">
+            <mat-icon aria-hidden="true">check_circle</mat-icon><strong>{{ c.text }}</strong>
+          </p>
+          <ul class="lines">
+            @for (l of c.lines; track l.id) {
+              <li class="line">
+                <span class="line__who">
+                  <span class="line__name">{{ l.name }}</span>
+                  <span class="line__math">{{ l.math }}</span>
+                </span>
+                <span class="line__now">
+                  @if (l.levelUp) {
+                    <app-level-up-tag />
+                  }
+                  <span class="line__of">{{ l.of }}</span>
+                </span>
+              </li>
+            }
+          </ul>
+        </div>
+        @if (c.up) {
+          <p class="lead">{{ c.up }}</p>
+        }
+        <p class="lead">
+          Para desfazer este XP, use "Experiência" na página da campanha.
+        </p>
+        <a mat-button class="see" [routerLink]="['/campanhas', campaignId()]">Ver Experiência da campanha</a>
+      </section>
+    }
+  }
+}

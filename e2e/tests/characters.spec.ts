@@ -50,7 +50,8 @@ test('o jogador entra pelo convite, cria o personagem e o mestre o vê na campan
   // Back on the master's page: reload to see the new character.
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Personagens dos jogadores' })).toBeVisible();
-  await expect(page.getByText(pensantus.name)).toBeVisible();
+  // "Experiência" lists him too (Etapa 7): the group list is the one this proves.
+  await expect(page.getByRole('region', { name: 'Personagens' }).getByText(pensantus.name)).toBeVisible();
 });
 
 test(

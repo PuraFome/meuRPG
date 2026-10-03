@@ -4,7 +4,8 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { ReactionOutcome, type ReactionPrompt } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { type SlotRow, defaultSlot, freeText, lastSlotWarning, slotRows } from '../../../../core/combat/cast-flow';
-import { circleLabel, joinDots } from '../../../../core/combat/combat-grid';
+import { circleLabel } from '../../../../core/combat/combat-grid';
+import { joinDots } from '../../../../core/format/text';
 import { article } from '../../../../core/combat/combat-log';
 import { CombatClient, newKey } from '../../../../core/combat/combat-client';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';

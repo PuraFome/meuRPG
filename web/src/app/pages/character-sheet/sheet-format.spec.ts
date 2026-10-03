@@ -2,7 +2,6 @@ import {
   coinEntries,
   formatDate,
   formatMeters,
-  formatXp,
   issueTitle,
   spellLimitsText,
   spellSlotRows,
@@ -19,13 +18,6 @@ describe('sheet-format', () => {
     expect(formatMeters(25)).toBe('7,5 m');
     expect(formatMeters(30)).toBe('9 m');
     expect(formatMeters(60)).toBe('18 m');
-  });
-
-  it('groups the XP thousands with a dot', () => {
-    expect(formatXp(0)).toBe('0 XP');
-    expect(formatXp(900)).toBe('900 XP');
-    expect(formatXp(2700)).toBe('2.700 XP');
-    expect(formatXp(355000)).toBe('355.000 XP');
   });
 
   it('names each state with one word', () => {

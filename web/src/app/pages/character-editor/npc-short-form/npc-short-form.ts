@@ -8,6 +8,8 @@ import { MatInputModule } from '@angular/material/input';
 import { map, startWith, switchMap } from 'rxjs';
 
 import { FictionNotice } from '../../../shared/fiction-notice/fiction-notice';
+import type { ChallengeRatingVm } from '../character-editor.types';
+import { DefeatXp } from '../defeat-xp/defeat-xp';
 import { BasicSheetFormGroup, MAX_ATTACKS, createAttackGroup } from './basic-form';
 import { NpcAttackCard } from './npc-attack-card';
 
@@ -22,6 +24,7 @@ export type { BasicSheetFormGroup } from './basic-form';
 @Component({
   selector: 'app-npc-short-form',
   imports: [
+    DefeatXp,
     FictionNotice,
     MatButtonModule,
     MatFormFieldModule,
@@ -35,6 +38,10 @@ export type { BasicSheetFormGroup } from './basic-form';
 })
 export class NpcShortForm {
   readonly form = input.required<BasicSheetFormGroup>();
+  /** The ND to XP table, for the picker. */
+  readonly ratings = input<readonly ChallengeRatingVm[]>([]);
+  /** "Ao ser derrotado" is for a minion, which fights; a story NPC keeps no XP. */
+  readonly showDefeat = input(false);
 
   private readonly fb = inject(FormBuilder);
   private readonly addButton = viewChild<MatButton, ElementRef<HTMLElement>>('addButton', {

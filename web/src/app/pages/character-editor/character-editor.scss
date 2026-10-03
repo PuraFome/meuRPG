@@ -225,3 +225,24 @@
   font-size: 14px;
   color: var(--mr-ink-muted);
 }
+
+// The XP of a locked sheet: a number to read, in the display face.
+.xp-read {
+  display: flex;
+  flex-direction: column;
+}
+
+.xp-read__value {
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 24px;
+  line-height: 28px;
+}
+
+.defeat-lead {
+  margin-bottom: var(--mr-space-3);
+}
+
+.defeat-note {
+  margin-top: var(--mr-space-3);
+}

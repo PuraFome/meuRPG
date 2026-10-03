@@ -1,0 +1,83 @@
+:host {
+  display: block;
+}
+
+// The end-of-combat card: the big number, then the sum in words.
+.split {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px;
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-ground);
+}
+
+.split__big {
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 28px;
+  line-height: 32px;
+}
+
+.split__sum {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+// The footer of the sheet: no box, the number and the short sum on one line;
+// when the sum is too long for the line it drops under the number.
+.split--foot {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--mr-space-3);
+  padding: 0;
+  background: none;
+
+  .split__big {
+    font-size: 24px;
+    line-height: 28px;
+  }
+}
+
+.split--none .split__big {
+  font-size: 20px;
+  line-height: 28px;
+  color: var(--mr-ink-muted);
+}
+
+// The compact footer (a short screen, or the keyboard open): the number and what
+// is lost on one line; the sum moves to the body, under the recipients.
+.split__lost {
+  display: none;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+@media (max-height: 600px) {
+  .split--foot {
+    flex-wrap: nowrap;
+    align-items: baseline;
+    column-gap: var(--mr-space-2);
+
+    .split__big {
+      font-size: 20px;
+      line-height: 24px;
+      white-space: nowrap;
+    }
+
+    .split__lost {
+      white-space: nowrap;
+    }
+
+    .split__sum {
+      display: none;
+    }
+
+    .split__lost {
+      display: inline;
+    }
+  }
+}

@@ -4,7 +4,8 @@ import {
   PendingDamageStatus,
   type TargetInReach,
 } from '../../../gen/meurpg/play/v1/combat_pb';
-import { feetToMeters, formatMeters, joinDots, tight } from './combat-grid';
+import { feetToMeters, formatMeters } from './combat-grid';
+import { joinDots, tight } from '../format/text';
 import { stateWord } from './combat-view';
 
 /**

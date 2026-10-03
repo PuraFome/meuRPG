@@ -146,6 +146,15 @@ function catalog(): RulesCatalogVm {
         classKeys: ['class:cleric'],
       },
     ],
+    // The SRD's ND to XP table, in the server's order (first rows are enough).
+    challengeRatings: [
+      { rating: '0', xp: 10 },
+      { rating: '1/8', xp: 25 },
+      { rating: '1/4', xp: 50 },
+      { rating: '1/2', xp: 100 },
+      { rating: '1', xp: 200 },
+      { rating: '2', xp: 450 },
+    ],
   };
 }
 
@@ -547,6 +556,7 @@ describe('CharacterEditor', () => {
         kind: 'player',
         revision: 7,
         blocked: null,
+        sheetLocked: false,
         full: {
           name: 'Pensantus',
           race: 'race:gnome',
@@ -575,6 +585,8 @@ describe('CharacterEditor', () => {
           languagesText: '',
           toolProficienciesText: '',
           experiencePoints: 0,
+          challengeRating: '',
+          xpValue: 0,
           alignment: '',
           customFeaturesText: '',
         },
@@ -611,7 +623,7 @@ describe('CharacterEditor', () => {
   it('shows the lock instead of the form when the player may no longer edit the sheet (RN-01)', async () => {
     configure({ id: 'camp-1', characterId: 'char-1' });
     fake.loadCharacterForEditFn = () =>
-      Promise.resolve({ kind: 'player', revision: 3, blocked: 'sheet_locked', full: null, basic: null });
+      Promise.resolve({ kind: 'player', revision: 3, blocked: 'sheet_locked', sheetLocked: true, full: null, basic: null });
 
     const { el } = await render();
     expect(el.querySelector('h1')?.textContent).toContain('Ficha travada');
@@ -626,7 +638,7 @@ describe('CharacterEditor', () => {
   it("says a dead character's sheet can't change, without a form (RN-03)", async () => {
     configure({ id: 'camp-1', characterId: 'char-1' });
     fake.loadCharacterForEditFn = () =>
-      Promise.resolve({ kind: 'player', revision: 3, blocked: 'character_dead', full: null, basic: null });
+      Promise.resolve({ kind: 'player', revision: 3, blocked: 'character_dead', sheetLocked: true, full: null, basic: null });
 
     const { el } = await render();
     expect(el.querySelector('h1')?.textContent).toContain('Personagem morto');
@@ -942,6 +954,7 @@ describe('CharacterEditor', () => {
           kind: 'minion',
           revision: 1,
           blocked: null,
+          sheetLocked: false,
           full: null,
           basic: {
             name: 'Goblin',
@@ -953,6 +966,8 @@ describe('CharacterEditor', () => {
             legacyDamage: '',
             legacyAttackBonus: 0,
             description: '',
+            challengeRating: '1/4',
+            xpValue: 50,
           },
         });
       const { el } = await render();
@@ -1168,3 +1183,214 @@ describe('CharacterEditor', () => {
     });
   });
 });
+
+describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () => {
+  let fake: FakeCharacterEditorSource;
+  const nbsp = '\u00a0';
+
+  function configure(params: Record<string, string>): void {
+    TestBed.configureTestingModule({
+      imports: [CharacterEditor],
+      providers: [
+        provideRouter([]),
+        { provide: CharacterEditorSource, useClass: FakeCharacterEditorSource },
+        { provide: ActivatedRoute, useValue: routeParams(params) },
+      ],
+    });
+    fake = TestBed.inject(CharacterEditorSource) as unknown as FakeCharacterEditorSource;
+  }
+
+  async function render() {
+    const fixture = TestBed.createComponent(CharacterEditor);
+    fixture.detectChanges();
+    await flush();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return { fixture, el: fixture.nativeElement as HTMLElement };
+  }
+
+  const defeat = (el: HTMLElement) => el.querySelector('app-defeat-xp');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const cmp = (fixture: ComponentFixture<CharacterEditor>) => fixture.componentInstance as any;
+
+  const fullNpc = (over: object = {}): CharacterForEdit => ({
+    kind: 'enemy',
+    revision: 4,
+    blocked: null,
+    sheetLocked: false,
+    basic: null,
+    full: {
+      name: 'Capitão Goblin',
+      race: 'race:gnome',
+      subrace: '',
+      className: 'class:wizard',
+      subclassName: '',
+      customSubclassName: '',
+      level: 3,
+      background: 'background:acolyte',
+      customBackgroundName: '',
+      customBackgroundSkills: null,
+      skillProficiencies: [],
+      expertiseSkillKeys: [],
+      abilities: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
+      extraAbilityBonuses: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+      hitPointsMethod: 'average',
+      hitPointsRolls: [],
+      isCaster: false,
+      cantrips: [],
+      spellsKnown: [],
+      spellsPrepared: [],
+      armor: '',
+      shield: false,
+      weapons: [],
+      equipmentText: '',
+      languagesText: '',
+      toolProficienciesText: '',
+      experiencePoints: 0,
+      challengeRating: '1',
+      xpValue: 200,
+      alignment: '',
+      customFeaturesText: '',
+      ...over,
+    },
+  });
+
+  describe('an enemy or a boss (full sheet)', () => {
+    it('starts at ND 0 and 10 XP, so nobody is left without a number', async () => {
+      configure({ id: 'camp-1', tipo: 'inimigo' });
+      const { fixture, el } = await render();
+      expect(defeat(el)).not.toBeNull();
+      expect(cmp(fixture).fullForm.controls.challengeRating.value).toBe('0');
+      expect(cmp(fixture).fullForm.controls.xpValue.value).toBe(10);
+      expect(el.textContent).toContain('Só você vê o ND e o XP. Os jogadores só ganham o XP quando o combate acaba e você dá.');
+    });
+
+    it('has no "Pontos de experiência" of its own: an NPC has no XP to level with', async () => {
+      configure({ id: 'camp-1', tipo: 'boss' });
+      const { el } = await render();
+      expect(el.textContent).toContain('XP ao derrotar');
+      expect(el.textContent).not.toContain('Pontos de experiência');
+    });
+
+    it('sends the ND and the XP it was given, with the table at hand', async () => {
+      configure({ id: 'camp-1', tipo: 'inimigo' });
+      const { fixture } = await render();
+      cmp(fixture).fullForm.patchValue({ name: 'Capitão', race: 'race:gnome', className: 'class:wizard', background: 'background:acolyte', challengeRating: '1', xpValue: 200 });
+      await cmp(fixture).submit();
+
+      const req = fake.createCharacterCalls[0];
+      expect(req.kind).toBe('enemy');
+      expect(req.full?.challengeRating).toBe('1');
+      expect(req.full?.xpValue).toBe(200);
+    });
+
+    it('reads the saved ND and XP, and sends them back on an edit', async () => {
+      configure({ id: 'camp-1', characterId: 'char-1' });
+      fake.loadCharacterForEditFn = () => Promise.resolve(fullNpc());
+      const { fixture, el } = await render();
+      expect(cmp(fixture).fullForm.controls.challengeRating.value).toBe('1');
+      expect(el.querySelector<HTMLInputElement>('app-defeat-xp input')?.value).toBe('200');
+
+      await cmp(fixture).submit();
+      const req = fake.updateCharacterCalls[0];
+      expect(req.full?.challengeRating).toBe('1');
+      expect(req.full?.xpValue).toBe(200);
+    });
+
+    it('refuses an XP outside 0 to 1.000.000 and lists it among what to fix', async () => {
+      configure({ id: 'camp-1', characterId: 'char-1' });
+      fake.loadCharacterForEditFn = () => Promise.resolve(fullNpc({ xpValue: 1_000_001 }));
+      const { fixture } = await render();
+      await cmp(fixture).submit();
+      expect(fake.updateCharacterCalls).toHaveLength(0);
+      expect(cmp(fixture).invalidSummary()).toContain('XP ao derrotar');
+    });
+  });
+
+  describe('a minion (short sheet)', () => {
+    it('has the "Ao ser derrotado" section, at ND 0 and 10 XP', async () => {
+      configure({ id: 'camp-1', tipo: 'minion' });
+      const { fixture, el } = await render();
+      expect(el.querySelector('#defeat-heading')?.textContent).toBe('Ao ser derrotado');
+      expect(el.textContent).toContain('O XP que o grupo ganha quando este NPC é derrotado. Só você vê o ND e o XP.');
+      expect(cmp(fixture).basicForm.controls.challengeRating.value).toBe('0');
+      expect(cmp(fixture).basicForm.controls.xpValue.value).toBe(10);
+    });
+
+    it('sends the ND and the XP when it is created', async () => {
+      configure({ id: 'camp-1', tipo: 'minion' });
+      const { fixture } = await render();
+      cmp(fixture).basicForm.patchValue({ name: 'Goblin', challengeRating: '1/4', xpValue: 50 });
+      await cmp(fixture).submit();
+      expect(fake.createCharacterCalls[0].basic).toMatchObject({ challengeRating: '1/4', xpValue: 50 });
+    });
+
+    it('does not wipe the ND and the XP when an edit is saved', async () => {
+      configure({ id: 'camp-1', characterId: 'char-9' });
+      fake.loadCharacterForEditFn = () =>
+        Promise.resolve({
+          kind: 'minion',
+          revision: 2,
+          blocked: null,
+          sheetLocked: false,
+          full: null,
+          basic: { name: 'Goblin', hitPointsMax: 7, armorClass: 15, speedFt: 30, initiativeBonus: 2, attacks: [], legacyDamage: '', legacyAttackBonus: 0, description: '', challengeRating: '1/4', xpValue: 50 },
+        });
+      const { fixture } = await render();
+      await cmp(fixture).submit();
+      expect(fake.updateCharacterCalls[0].basic).toMatchObject({ challengeRating: '1/4', xpValue: 50 });
+    });
+
+    it('asks for the XP when it is left empty', async () => {
+      configure({ id: 'camp-1', tipo: 'minion' });
+      const { fixture } = await render();
+      cmp(fixture).basicForm.patchValue({ name: 'Goblin', xpValue: null });
+      await cmp(fixture).submit();
+      expect(fake.createCharacterCalls).toHaveLength(0);
+      expect(cmp(fixture).invalidSummary()).toContain('XP ao derrotar');
+    });
+  });
+
+  it('shows a story NPC no ND and no XP, and keeps none', async () => {
+    configure({ id: 'camp-1', tipo: 'historia' });
+    const { fixture, el } = await render();
+    expect(defeat(el)).toBeNull();
+    cmp(fixture).basicForm.patchValue({ name: 'Velha Odra' });
+    await cmp(fixture).submit();
+    expect(fake.createCharacterCalls[0].basic).toMatchObject({ challengeRating: '', xpValue: 0 });
+  });
+
+  describe('a player character', () => {
+    it('never shows the ND or the XP it gives', async () => {
+      configure({ id: 'camp-1' });
+      const { el } = await render();
+      expect(defeat(el)).toBeNull();
+      expect(el.textContent).not.toContain('XP ao derrotar');
+      // Typed by the player while the sheet is a draft.
+      expect(el.textContent).toContain('Pontos de experiência');
+    });
+
+    it('sends no ND and no defeat XP', async () => {
+      configure({ id: 'camp-1' });
+      const { fixture } = await render();
+      cmp(fixture).fullForm.patchValue({ name: 'Pensantus', race: 'race:gnome', className: 'class:wizard', background: 'background:acolyte' });
+      await cmp(fixture).submit();
+      expect(fake.createCharacterCalls[0].full).toMatchObject({ challengeRating: '', xpValue: 0 });
+    });
+
+    it('shows the XP as a number to read once the sheet is locked, and keeps it on save (MR-016: only awards change it)', async () => {
+      configure({ id: 'camp-1', characterId: 'char-1' });
+      fake.loadCharacterForEditFn = () =>
+        Promise.resolve(fullNpc({ experiencePoints: 2716, challengeRating: '', xpValue: 0 })).then((v) => ({ ...v, kind: 'player' as const, sheetLocked: true }));
+      const { fixture, el } = await render();
+
+      expect(el.querySelector('.xp-read__value')?.textContent).toBe(`2.716${nbsp}XP`);
+      expect(el.textContent).toContain('Só os prêmios do mestre mudam o XP.');
+      expect(el.querySelector('input[formcontrolname="experiencePoints"]')).toBeNull();
+
+      await cmp(fixture).submit();
+      expect(fake.updateCharacterCalls[0].full?.experiencePoints).toBe(2716);
+    });
+  });
+});
+

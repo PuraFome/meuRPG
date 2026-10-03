@@ -34,18 +34,17 @@
       </mat-select>
       <mat-error>Escolha o tipo de dano.</mat-error>
     </mat-form-field>
-
+  </div>
+  <div class="card__foot">
+    <span class="card__summary">@if (summary(); as text) {Na ficha: {{ text }}}</span>
     <button
-      mat-stroked-button
+      mat-button
       type="button"
       class="card__remove"
       [attr.aria-label]="'Remover o ataque ' + number()"
       (click)="remove.emit()"
     >
-      <mat-icon aria-hidden="true">delete</mat-icon>
+      Remover ataque
     </button>
   </div>
-  @if (summary(); as text) {
-    <span class="card__summary">Na ficha: {{ text }}</span>
-  }
 </div>

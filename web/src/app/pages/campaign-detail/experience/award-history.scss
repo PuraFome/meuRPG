@@ -1,0 +1,187 @@
+:host {
+  display: block;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// A line of the history. A phone stacks it (when, why, how much); from a
+// tablet up it is a row: when and tag, why, how much, "Desfazer".
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  padding: 14px 0;
+  border-top: 1px solid var(--mr-rule);
+
+  @media (min-width: 768px) {
+    display: grid;
+    grid-template-columns: 132px minmax(0, 1fr) auto auto;
+    align-items: start;
+    gap: var(--mr-space-4);
+  }
+}
+
+// "Desfeito": the line stays, quiet. The tag says it, not the colour alone.
+.item--undone .what__title,
+.item--undone .amount__each {
+  color: var(--mr-ink-muted);
+}
+
+.when {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+
+  @media (min-width: 768px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+}
+
+.when__day {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.what {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.what__title {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+
+.what__sub {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.amount {
+  display: flex;
+  flex-direction: column;
+
+  @media (min-width: 768px) {
+    align-items: flex-end;
+    text-align: right;
+  }
+}
+
+.amount__each {
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 22px;
+  line-height: 26px;
+  white-space: nowrap;
+}
+
+.amount__total {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+  white-space: nowrap;
+}
+
+.undo {
+  --mat-button-text-label-text-color: var(--mr-accent-text);
+  // On a phone it starts a line: its words line up with the text above.
+  align-self: flex-start;
+  margin-inline-start: -12px;
+
+  @media (min-width: 768px) {
+    align-self: start;
+    justify-self: end;
+    margin-inline-start: 0;
+  }
+}
+
+.more {
+  --mat-button-text-label-text-color: var(--mr-accent-text);
+  // Starts a line: its words line up with the text above, not its padding.
+  margin-inline-start: -12px;
+}
+
+.notice {
+  margin: 0 0 var(--mr-space-3);
+}
+
+// The question that takes the place of the line: a warm notice, the whole
+// width of the list (it sits under the sticky app bar when scrolled to).
+.ask {
+  grid-column: 1 / -1;
+  align-items: flex-start;
+  scroll-margin-top: 80px;
+}
+
+// The icon sits on the middle of the title's first line (20px words on a 26px line).
+.ask > .mat-icon {
+  margin-top: 3px;
+}
+
+.ask__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  min-width: 0;
+}
+
+.ask__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 20px;
+  line-height: 26px;
+}
+
+.ask__text {
+  margin: 0;
+}
+
+.ask__error {
+  margin: 0;
+  font-weight: 700;
+  color: var(--mr-danger-ink);
+}
+
+// The two answers are outlined and the same size: stacked and full width on a
+// phone (neither label fits half of it), two equal columns from a tablet up.
+.ask__btns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  margin-top: var(--mr-space-1);
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(2, 180px);
+  }
+}
+
+.ask__btn {
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  width: 100%;
+  white-space: nowrap;
+
+  @media (min-width: 768px) {
+    --mat-button-outlined-container-height: 44px;
+  }
+}
+
+.ask__go {
+  --mat-button-outlined-label-text-color: var(--mr-danger-ink);
+  --mat-button-outlined-outline-color: var(--mr-danger-ink);
+}

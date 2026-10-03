@@ -1,0 +1,75 @@
+:host {
+  display: block;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// A rule above every row, as in the artboards; the row is at least a 56px target.
+.row {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--mr-space-3);
+  min-height: 56px;
+  padding: 8px 0;
+  border-top: 1px solid var(--mr-rule);
+}
+
+.who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--mr-space-2);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 21px;
+  overflow-wrap: anywhere;
+}
+
+// "Caída": an icon and a word, never only a colour.
+.state {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--mr-danger-ink);
+  font-size: 14px;
+  font-weight: 700;
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.sub {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.amount {
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 20px;
+  line-height: 24px;
+  white-space: nowrap;
+
+  // "Não recebe" is a plain word, not a number: quiet, in the body face.
+  &--off {
+    font-family: var(--mr-font-sans);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--mr-ink-muted);
+  }
+}

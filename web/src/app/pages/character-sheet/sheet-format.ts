@@ -35,12 +35,6 @@ export function formatMeters(feet: number): string {
   return `${label} m`;
 }
 
-/** "2.700 XP": pt-BR thousands separator, done by hand so the result never
- * depends on the runtime's locale data. */
-export function formatXp(xp: number): string {
-  return `${String(xp).replace(/\B(?=(\d{3})+(?!\d))/g, '.')} XP`;
-}
-
 /** The one-word state tag (docs/design.md, StatusTag): "Pendente", not the
  * lifecycle's full "Pendente de aprovação", which the notice under the
  * header spells out. */

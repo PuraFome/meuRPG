@@ -23,6 +23,13 @@
     align-items: flex-end;
     gap: 32px;
   }
+
+  // The XP block takes its own line below 1280px: only then does the row wrap.
+  @media (min-width: 1000px) and (max-width: 1279.98px) {
+    &:has(.head__xp) {
+      flex-wrap: wrap;
+    }
+  }
 }
 
 .head__id {
@@ -152,5 +159,20 @@
 
   &:empty {
     display: none;
+  }
+}
+
+// The XP block (E7-10) is one more cell of the header's row, like the identity fields: the
+// header's width on a phone, a tablet and a small laptop (the row has no room for it there:
+// it wraps under the fields), 320px at the end of the row from 1280px.
+.head__xp {
+  @media (min-width: 1000px) {
+    flex: 1 0 100%;
+    max-width: 560px;
+  }
+
+  @media (min-width: 1280px) {
+    flex: 0 0 320px;
+    max-width: none;
   }
 }

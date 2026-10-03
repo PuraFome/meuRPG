@@ -41,6 +41,20 @@
     <mat-hint>Somado ao d20. Aceita 2, +2 ou −1</mat-hint>
   </mat-form-field>
 
+  @if (showDefeat()) {
+    <section class="short__defeat" aria-labelledby="defeat-heading">
+      <h2 id="defeat-heading" class="short__title">Ao ser derrotado</h2>
+      <p class="short__lead">
+        O XP que o grupo ganha quando este NPC é derrotado. Só você vê o ND e o XP.
+      </p>
+      <app-defeat-xp
+        [rating]="form().controls.challengeRating"
+        [xp]="form().controls.xpValue"
+        [table]="ratings()"
+      />
+    </section>
+  }
+
   <section class="short__attacks" aria-labelledby="ataques-heading">
     <div class="short__attacks-head">
       <div>

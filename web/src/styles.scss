@@ -244,6 +244,36 @@ html {
   max-height: calc(100dvh - 24px);
 }
 
+// The ND list of the NPC editor (E7-11): six rows of 44px, then it scrolls,
+// with a quiet "mais 28 opções" stuck under the last visible row.
+.mr-nd-panel.mat-mdc-select-panel {
+  max-height: 272px;
+
+  .nd-option {
+    min-height: 44px;
+  }
+
+  .mdc-list-item__primary-text {
+    flex: 1;
+  }
+
+  .nd-more {
+    position: sticky;
+    bottom: 0;
+    min-height: 32px;
+    background: var(--mr-surface);
+    border-top: 1px solid var(--mr-rule);
+    font-size: 14px;
+    color: var(--mr-ink-muted);
+    opacity: 1;
+    pointer-events: none;
+  }
+
+  .nd-more--gone {
+    display: none;
+  }
+}
+
 body {
   margin: 0;
   background: var(--mr-ground);

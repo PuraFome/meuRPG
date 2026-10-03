@@ -1,0 +1,25 @@
+<ul class="list">
+  @for (l of lines(); track l.row.id) {
+    <li class="row" [class.row--marks]="milestones()">
+      <span class="who">
+        <span class="who__name">{{ l.row.name }}</span>
+        <span class="who__sub">{{ l.row.sub }}</span>
+      </span>
+      @if (!milestones()) {
+        <span class="bar" aria-hidden="true">
+          <span class="bar__fill" [style.width.%]="l.progress.percent"></span>
+        </span>
+        <span class="num">
+          <span class="num__of">{{ l.progress.of }}</span>
+          @if (l.row.canLevelUp) {
+            <app-level-up-tag class="tag" />
+          } @else if (l.progress.missing) {
+            <span class="num__missing">{{ l.progress.missing }}</span>
+          }
+        </span>
+      } @else if (l.row.canLevelUp) {
+        <app-level-up-tag class="tag" />
+      }
+    </li>
+  }
+</ul>

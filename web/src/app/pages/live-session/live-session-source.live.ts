@@ -177,6 +177,9 @@ export class LiveSessionSourceLive implements LiveSessionSource {
         case 'combatLogChanged':
           yield { kind: 'combatLogChanged' };
           break;
+        case 'xpChanged':
+          yield { kind: 'xpChanged' };
+          break;
         case 'sceneChanged':
           yield { kind: 'sceneChanged' };
           break;

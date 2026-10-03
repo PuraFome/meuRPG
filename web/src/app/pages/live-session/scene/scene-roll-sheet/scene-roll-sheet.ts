@@ -14,7 +14,7 @@ import { sceneErrorMessage } from '../../../../core/play/scene-errors';
 import type { SceneState } from '../../../../core/play/scene-state';
 import { sceneRollFormula, signedBonus } from '../../../../core/play/scene-view';
 import { actionSubtitle, actionTitle } from '../../../../core/maps/scene-actions';
-import { joinDots } from '../../../../core/combat/combat-grid';
+import { joinDots } from '../../../../core/format/text';
 import { mediaQuery } from '../../../../shared/map-view/media-query';
 import { RollPicker } from '../../combat/roll-picker/roll-picker';
 import { SheetFrame } from '../../combat/sheet-frame/sheet-frame';

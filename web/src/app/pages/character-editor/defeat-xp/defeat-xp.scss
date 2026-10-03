@@ -1,0 +1,62 @@
+:host {
+  display: block;
+}
+
+// Two columns from a tablet up, one under the other on a phone. Each column is
+// its field, the help under it and, for the XP, the text button: the button
+// goes under the field, never beside it.
+.defeat {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: var(--mr-space-4);
+
+  @media (min-width: 600px) {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+}
+
+.defeat__col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.defeat__field {
+  width: 100%;
+
+  // Narrower than the text fields from a tablet up; as wide as they on a phone.
+  @media (min-width: 600px) {
+    max-width: 240px;
+  }
+}
+
+// The help under a field runs the whole column, not the field's width.
+.defeat__hint {
+  margin: 4px 0 0 16px;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+// "Usar 50 XP" starts a line under the hint: its words line up with the
+// hint's text, which sits 16px inside the field, so the button's own 12px
+// padding is pulled back by 4px less.
+.defeat__use {
+  --mat-button-text-label-text-color: var(--mr-accent-text);
+  margin-inline-start: 4px;
+}
+
+.nd-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+  width: 100%;
+  white-space: nowrap;
+}
+
+.nd-row__xp {
+  color: var(--mr-ink-muted);
+}

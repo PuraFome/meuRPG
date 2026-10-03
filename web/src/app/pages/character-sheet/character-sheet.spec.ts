@@ -1,13 +1,16 @@
-import { Injectable } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { Code, ConnectError } from '@connectrpc/connect';
 import { of } from 'rxjs';
 
 import { ABILITY_KEYS } from '../../core/characters/characters.types';
+import { OpenSessions, type OpenSessionVm } from '../../shell/live-notice/open-sessions';
 import { CharacterSheetPage } from './character-sheet';
+import { XpWatcher } from './xp-watcher';
 import {
   BasicSheetVm,
+  CampaignXpMode,
   CharacterSheetSource,
   CharacterSheetVm,
   CharacterStoryVm,
@@ -18,6 +21,7 @@ import {
 class FakeCharacterSheetSource {
   getCharacterSheetFn: (campaignId: string, characterId: string) => Promise<CharacterSheetVm> = () =>
     Promise.reject(new Error('not stubbed'));
+  xpMode: CampaignXpMode = 'enemies';
   getMasterNotesCalls: string[] = [];
   getMasterNotesFn: (campaignId: string, characterId: string) => Promise<string> = () =>
     Promise.resolve('');
@@ -44,6 +48,9 @@ class FakeCharacterSheetSource {
     Promise.reject(new Error('not stubbed'));
   rejectCharacterCalls: string[] = [];
 
+  getXpMode(): Promise<CampaignXpMode> {
+    return Promise.resolve(this.xpMode);
+  }
   getCharacterSheet(campaignId: string, characterId: string): Promise<CharacterSheetVm> {
     return this.getCharacterSheetFn(campaignId, characterId);
   }
@@ -185,8 +192,23 @@ function vm(overrides: Partial<CharacterSheetVm> = {}): CharacterSheetVm {
     backgroundLabel: 'Sábio',
     alignmentLabel: 'Neutro e bom',
     experiencePoints: 2700,
+    totalLevel: 3,
+    nextLevelXp: 2700,
+    canLevelUp: false,
+    challengeRating: '',
+    xpValue: 0,
     ...overrides,
   };
+}
+
+/** What the XP block listens with: no open session, so no stream. */
+const openSessions = signal<readonly OpenSessionVm[]>([]);
+const xpWatcher = { follow: vi.fn<(campaignId: string | null, onChange: () => void) => void>() };
+function xpProviders() {
+  return [
+    { provide: OpenSessions, useValue: { sessions: openSessions } },
+    { provide: XpWatcher, useValue: xpWatcher },
+  ];
 }
 
 function activatedRouteFor(campaignId: string, characterId: string) {
@@ -222,6 +244,7 @@ describe('CharacterSheetPage', () => {
       providers: [
         { provide: CharacterSheetSource, useClass: FakeCharacterSheetSource },
         { provide: ActivatedRoute, useValue: activatedRouteFor(campaignId, characterId) },
+        ...xpProviders(),
       ],
     });
     fake = TestBed.inject(CharacterSheetSource) as unknown as FakeCharacterSheetSource;
@@ -635,7 +658,9 @@ describe('CharacterSheetPage', () => {
 
     const el = await render();
     expect(ddAfter(el, 'Tendência')?.textContent?.trim()).toBe('Caótico e bom');
-    expect(ddAfter(el, 'Experiência')?.textContent?.trim()).toBe('900 XP');
+    // The XP is a block to read (E7-10), not a field of the identity row.
+    expect(ddAfter(el, 'Experiência')).toBeNull();
+    expect(el.querySelector('app-xp-block .xp__n')?.textContent?.trim()).toBe('900\u00a0XP');
     expect(ddAfter(el, 'Classe e nível')?.textContent?.trim()).toBe('Mago 3');
     expect(ddAfter(el, 'Raça')?.textContent?.trim()).toBe('Gnomo da Rocha');
     expect(ddAfter(el, 'Antecedente')?.textContent?.trim()).toBe('Sábio');
@@ -648,7 +673,7 @@ describe('CharacterSheetPage', () => {
       Promise.resolve(vm({ alignmentLabel: '', experiencePoints: 0 }));
 
     const el = await render();
-    expect(ddAfter(el, 'Experiência')?.textContent?.trim()).toBe('0 XP');
+    expect(el.querySelector('app-xp-block .xp__n')?.textContent?.trim()).toBe('0\u00a0XP');
     expect(ddAfter(el, 'Tendência')).toBeNull();
   });
 
@@ -955,6 +980,7 @@ describe('CharacterSheetPage: approval (MR-024)', () => {
       providers: [
         { provide: CharacterSheetSource, useClass: FakeCharacterSheetSource },
         { provide: ActivatedRoute, useValue: activatedRouteFor('camp-1', 'char-1') },
+        ...xpProviders(),
       ],
     });
     fake = TestBed.inject(CharacterSheetSource) as unknown as FakeCharacterSheetSource;
@@ -1036,5 +1062,183 @@ describe('CharacterSheetPage: approval (MR-024)', () => {
     fixture.detectChanges();
 
     expect(el.querySelector('[role="alert"]')?.textContent).toContain('Personagem não encontrado');
+  });
+});
+
+describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
+  let fake: FakeCharacterSheetSource;
+  const nbsp = ' ';
+
+  beforeEach(() => {
+    openSessions.set([]);
+    xpWatcher.follow.mockClear();
+    TestBed.configureTestingModule({
+      imports: [CharacterSheetPage],
+      providers: [
+        { provide: CharacterSheetSource, useClass: FakeCharacterSheetSource },
+        { provide: ActivatedRoute, useValue: activatedRouteFor('camp-1', 'char-1') },
+        ...xpProviders(),
+      ],
+    });
+    fake = TestBed.inject(CharacterSheetSource) as unknown as FakeCharacterSheetSource;
+  });
+
+  async function render() {
+    const fixture = TestBed.createComponent(CharacterSheetPage);
+    fixture.detectChanges();
+    await flush();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  const block = (el: HTMLElement) => el.querySelector<HTMLElement>('app-xp-block');
+
+  it('shows the XP as a block to read, with the bar and what is missing', async () => {
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(vm({ experiencePoints: 2366, totalLevel: 3, nextLevelXp: 2700 }));
+    const el = (await render()).nativeElement as HTMLElement;
+
+    const xp = block(el)!;
+    expect(xp.querySelector('.xp__n')?.textContent?.trim()).toBe(`2.366${nbsp}XP`);
+    expect(xp.querySelector('.xp__line')?.textContent?.trim()).toBe(
+      `2.366 de${nbsp}2.700${nbsp}XP para o nível 4. Faltam${nbsp}334${nbsp}XP.`,
+    );
+    expect(xp.querySelector('app-level-up-tag')).toBeNull();
+    // Read only: nothing to type in, and the bar is decoration.
+    expect(xp.querySelector('input')).toBeNull();
+    expect(xp.querySelector('.xp__bar')?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('is a polite live region, so an award given meanwhile is announced', async () => {
+    fake.getCharacterSheetFn = () => Promise.resolve(vm());
+    const el = (await render()).nativeElement as HTMLElement;
+
+    const region = block(el)!.querySelector('[role="status"]');
+    expect(region?.getAttribute('aria-live')).toBe('polite');
+  });
+
+  it('says "Pode subir de nível" and what to do when the XP reached the next level', async () => {
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(vm({ experiencePoints: 2716, totalLevel: 3, nextLevelXp: 2700, canLevelUp: true }));
+    const el = (await render()).nativeElement as HTMLElement;
+
+    expect(block(el)!.querySelector('app-level-up-tag')?.textContent).toContain('Pode subir de nível');
+    expect(block(el)!.querySelector('.xp__line')?.textContent).toContain('O mestre sobe o seu nível na ficha.');
+  });
+
+  it("tells the master the same, in the master's words", async () => {
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(
+        vm({ experiencePoints: 2716, nextLevelXp: 2700, canLevelUp: true, isMaster: true, canAccessMasterNotes: true }),
+      );
+    const el = (await render()).nativeElement as HTMLElement;
+
+    expect(block(el)!.querySelector('.xp__line')?.textContent).toContain('Suba o nível na ficha.');
+  });
+
+  it('says "Nível máximo." at level 20, where there is no next level', async () => {
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(vm({ experiencePoints: 400000, totalLevel: 20, nextLevelXp: 0 }));
+    const el = (await render()).nativeElement as HTMLElement;
+
+    expect(block(el)!.querySelector('.xp__line')?.textContent?.trim()).toBe('Nível máximo.');
+    expect(block(el)!.querySelector('app-level-up-tag')).toBeNull();
+  });
+
+  it('has no XP block in a milestones campaign, only the tag when it can level up', async () => {
+    fake.xpMode = 'milestones';
+    fake.getCharacterSheetFn = () => Promise.resolve(vm({ canLevelUp: true, state: 'locked' }));
+    const el = (await render()).nativeElement as HTMLElement;
+
+    expect(block(el)).toBeNull();
+    expect(el.textContent).not.toContain('XP');
+    expect(el.querySelector('.head__tags app-level-up-tag')?.textContent).toContain('Pode subir de nível');
+  });
+
+  it('has no tag in a milestones campaign when the character cannot level up', async () => {
+    fake.xpMode = 'milestones';
+    fake.getCharacterSheetFn = () => Promise.resolve(vm({ canLevelUp: false }));
+    const el = (await render()).nativeElement as HTMLElement;
+
+    expect(el.querySelector('app-level-up-tag')).toBeNull();
+  });
+
+  it('has no XP block on an NPC sheet, but shows the master the ND and the XP it gives', async () => {
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(
+        vm({
+          characterKind: 'enemy',
+          playerDisplayName: null,
+          experiencePoints: 0,
+          challengeRating: '1',
+          xpValue: 200,
+          isMaster: true,
+          canAccessMasterNotes: true,
+        }),
+      );
+    const el = (await render()).nativeElement as HTMLElement;
+
+    expect(block(el)).toBeNull();
+    expect(ddAfter(el, 'Nível de desafio')?.textContent?.trim()).toBe('ND 1');
+    expect(ddAfter(el, 'XP ao derrotar')?.textContent?.trim()).toBe(`200${nbsp}XP`);
+  });
+
+  it("never shows a player the NPC's ND or XP (RN-20)", async () => {
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(vm({ characterKind: 'enemy', experiencePoints: 0, challengeRating: '1', xpValue: 200, isMaster: false }));
+    const el = (await render()).nativeElement as HTMLElement;
+
+    expect(ddAfter(el, 'XP ao derrotar')).toBeNull();
+    expect(ddAfter(el, 'Nível de desafio')).toBeNull();
+  });
+
+  it('listens for XP only while the campaign has an open session, and stops when the page goes away', async () => {
+    fake.getCharacterSheetFn = () => Promise.resolve(vm());
+    openSessions.set([]);
+    const fixture = await render();
+    // No open session: it follows nothing.
+    expect(xpWatcher.follow).toHaveBeenLastCalledWith(null, expect.any(Function));
+
+    openSessions.set([
+      { sessionId: 's1', campaignId: 'camp-1', campaignName: 'Mirathel', sessionNumber: 5, startedAt: new Date(), isMaster: false },
+    ]);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(xpWatcher.follow).toHaveBeenLastCalledWith('camp-1', expect.any(Function));
+
+    fixture.destroy();
+    expect(xpWatcher.follow).toHaveBeenLastCalledWith(null, expect.any(Function));
+  });
+
+  it('does not listen for an NPC\'s sheet: it has no XP to keep fresh', async () => {
+    fake.getCharacterSheetFn = () => Promise.resolve(vm({ characterKind: 'enemy', experiencePoints: 0 }));
+    openSessions.set([
+      { sessionId: 's1', campaignId: 'camp-1', campaignName: 'Mirathel', sessionNumber: 5, startedAt: new Date(), isMaster: true },
+    ]);
+    await render();
+    expect(xpWatcher.follow).not.toHaveBeenCalledWith('camp-1', expect.any(Function));
+  });
+
+  it('reads the character again, without the loading state, when the master gives XP', async () => {
+    let xp = 2366;
+    fake.getCharacterSheetFn = () => Promise.resolve(vm({ experiencePoints: xp, nextLevelXp: 2700 }));
+    openSessions.set([
+      { sessionId: 's1', campaignId: 'camp-1', campaignName: 'Mirathel', sessionNumber: 5, startedAt: new Date(), isMaster: false },
+    ]);
+    const fixture = await render();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(block(el)!.querySelector('.xp__n')?.textContent?.trim()).toBe(`2.366${nbsp}XP`);
+
+    // `xp_changed` arrives: the follower's callback is what the page handed it.
+    xp = 2716;
+    const onChange = xpWatcher.follow.mock.calls.at(-1)![1];
+    onChange();
+    await flush();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(block(el)!.querySelector('.xp__n')?.textContent?.trim()).toBe(`2.716${nbsp}XP`);
+    expect(el.textContent).not.toContain('Carregando a ficha');
   });
 });

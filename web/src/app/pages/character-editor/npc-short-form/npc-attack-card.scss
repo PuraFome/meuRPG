@@ -1,6 +1,6 @@
 // E6-26: a bordered card per attack. From 900px one row: name, attack
-// bonus, dice, damage bonus, type, remove. On a phone the name takes a row,
-// then two fields per row, and the remove button closes the card.
+// bonus, dice, damage bonus, type. On a phone the name takes a row, then two
+// fields per row. "Remover ataque" closes the card (E7-11).
 :host {
   display: block;
 }
@@ -32,7 +32,7 @@
   }
 
   @media (min-width: 900px) {
-    grid-template-columns: minmax(0, 1fr) 124px 116px 116px 168px 44px;
+    grid-template-columns: minmax(0, 1fr) 124px 116px 116px 168px;
   }
 }
 
@@ -44,23 +44,22 @@
   }
 }
 
-// The trash button lines up with the 56px fields: 44px, centred. On a phone
-// it sits at the end of its own row.
+// "Remover ataque" is a text button under the fields, at the end of the line
+// that says what the attack will read (the 44px bin that sat beside 56px
+// fields is gone, E7-11).
+.card__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-2) var(--mr-space-3);
+}
+
 .card__remove {
-  grid-column: 1 / -1;
-  justify-self: end;
-
-  @media (min-width: 900px) {
-    grid-column: auto;
-    justify-self: auto;
-  }
-
-  width: 44px;
-  min-width: 44px;
-  height: 44px;
-  margin-top: 6px;
-  padding: 0;
-  color: var(--mr-danger-ink);
+  --mat-button-text-label-text-color: var(--mr-danger-ink);
+  // At the end of the line; on a line of its own it stays at the right edge, its
+  // words in line with the fields' edge above.
+  margin-inline: auto -12px;
 }
 
 .card__summary {
