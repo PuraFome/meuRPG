@@ -72,6 +72,22 @@
   }
 }
 
+// The line under the title, with an optional 16px icon on its first line.
+.doc-dialog__sub {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+
+  > .mat-icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+    // Centred on the 19px line: (19 - 16) / 2, rounded down.
+    margin-top: 1px;
+  }
+}
+
 .doc-dialog__close {
   flex: none;
   display: inline-flex;

@@ -3,7 +3,8 @@
   size="wide"
   icon="map"
   [heading]="s.status === 'ready' ? s.value.name : text()"
-  [subtitle]="s.status === 'ready' ? (s.value.revealed ? 'Revelado aos jogadores.' : 'Escondido dos jogadores.') : ''"
+  [subtitle]="subtitle()"
+  [subtitleIcon]="s.status === 'ready' ? (s.value.revealed ? 'visibility' : 'visibility_off') : ''"
   (closed)="closed.emit()"
 >
   @switch (s.status) {
@@ -22,21 +23,37 @@
     }
     @case ('ready') {
       @if (s.value.image; as image) {
-        <img
-          class="map-image"
-          [src]="image.url"
-          [alt]="'Imagem do mapa ' + s.value.name"
-          [attr.width]="image.width"
-          [attr.height]="image.height"
-        />
+        <div class="map-box" [style.max-width]="maxWidth(image)">
+          <app-map-view
+            [image]="image"
+            [mapName]="s.value.name"
+            [points]="s.value.points"
+            [isMaster]="true"
+            mode="preview"
+            controls="none"
+            [selectablePoints]="false"
+          />
+        </div>
+        @if (s.value.points.length > 0) {
+          <ul class="mr-visually-hidden" aria-label="Pontos deste mapa">
+            @for (p of s.value.points; track p.id) {
+              <li>{{ pointLabel(p) }}</li>
+            }
+          </ul>
+        }
       } @else {
         <p class="mr-muted">Este mapa não tem imagem.</p>
       }
     }
   }
   @if (s.status === 'ready') {
-    <a dialogFooter matButton [routerLink]="['/campanhas', campaignId(), 'mapas', mapId()]">
-      <mat-icon aria-hidden="true">arrow_forward</mat-icon>Abrir mapa
-    </a>
+    <div dialogFooter class="foot">
+      @if (s.value.image && s.value.points.length > 0) {
+        <app-map-legend class="legend" [states]="true" />
+      }
+      <a matButton class="open" [routerLink]="['/campanhas', campaignId(), 'mapas', mapId()]">
+        <mat-icon aria-hidden="true">edit</mat-icon>Abrir no editor de mapas
+      </a>
+    </div>
   }
 </app-doc-dialog>

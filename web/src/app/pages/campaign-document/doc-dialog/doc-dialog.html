@@ -13,7 +13,12 @@
     <div class="doc-dialog__title">
       <h2 [id]="titleId">{{ heading() }}</h2>
       @if (subtitle()) {
-        <p>{{ subtitle() }}</p>
+        <p class="doc-dialog__sub">
+          @if (subtitleIcon()) {
+            <mat-icon aria-hidden="true">{{ subtitleIcon() }}</mat-icon>
+          }
+          <span>{{ subtitle() }}</span>
+        </p>
       }
     </div>
     <button #closeButton type="button" class="doc-dialog__close" aria-label="Fechar" (click)="close()">
