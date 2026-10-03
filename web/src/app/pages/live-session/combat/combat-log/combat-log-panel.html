@@ -1,0 +1,65 @@
+<section class="panel" aria-labelledby="log-title">
+  <div class="head">
+    <h2 class="title" id="log-title">Registro do combate</h2>
+    @if (phone()) {
+      @if (master()) {
+        <span class="head__count">{{ count() }}</span>
+        <button
+          type="button"
+          class="chev"
+          [attr.aria-expanded]="open()"
+          aria-controls="log-body"
+          [attr.aria-label]="open() ? 'Fechar o registro' : 'Abrir o registro'"
+          (click)="toggle()"
+        >
+          <mat-icon aria-hidden="true">{{ open() ? 'expand_less' : 'expand_more' }}</mat-icon>
+        </button>
+      } @else {
+        <button type="button" class="chev" aria-haspopup="dialog" aria-label="Abrir o registro do combate" (click)="openSheet()">
+          <mat-icon aria-hidden="true">expand_less</mat-icon>
+        </button>
+      }
+    } @else if (undoable() && !confirming()) {
+      <button mat-stroked-button type="button" class="undo" [disabled]="busy()" (click)="askUndo()">
+        <mat-icon aria-hidden="true">undo</mat-icon>Desfazer última ação
+      </button>
+    }
+  </div>
+
+  @if (phone() && !master() && latest(); as l) {
+    <p class="latest">@if (l.actor) {<b>{{ l.actor }}</b>}{{ l.text }}</p>
+  }
+
+  @if (confirming()) {
+    <div class="ask" role="alertdialog" aria-label="Desfazer a última ação">
+      <p class="ask__text">{{ undoText() }}</p>
+      <button #safe mat-stroked-button type="button" (click)="confirming.set(false)">Voltar</button>
+      <button mat-stroked-button type="button" class="ask__go" [disabled]="busy()" (click)="undo()">Desfazer</button>
+    </div>
+  }
+
+  @if (error()) {
+    <div class="mr-notice mr-notice--warning" role="alert">
+      <mat-icon aria-hidden="true">warning</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+
+  @if (showList()) {
+    <div id="log-body" class="body">
+      <app-log-list [groups]="shown()" />
+    </div>
+  }
+
+  @if (more() && !phone()) {
+    <button mat-button type="button" class="all" (click)="openSheet()">
+      <mat-icon aria-hidden="true">open_in_full</mat-icon>Ver o registro todo
+    </button>
+  }
+
+  @if (phone() && undoable() && !confirming()) {
+    <button mat-stroked-button type="button" class="undo undo--wide" [disabled]="busy()" (click)="askUndo()">
+      <mat-icon aria-hidden="true">undo</mat-icon>Desfazer última ação
+    </button>
+  }
+</section>

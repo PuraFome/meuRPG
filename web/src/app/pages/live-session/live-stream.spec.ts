@@ -110,6 +110,7 @@ describe('LiveStream (ADR-0005 client rules)', () => {
       onEncounterChanged: vi.fn(),
       onTurnChanged: vi.fn(),
       onCombatantMoved: vi.fn(),
+      onCombatLogChanged: vi.fn(),
       onEnded: vi.fn(),
       onFatal: vi.fn(),
     };
@@ -156,7 +157,9 @@ describe('LiveStream (ADR-0005 client rules)', () => {
     last().push({ kind: 'encounterChanged', encounterId: 'e1', revision: 4 });
     last().push({ kind: 'turnChanged', encounterId: 'e1', round: 2, currentCombatantId: '', masterTurn: true });
     last().push({ kind: 'combatantMoved', encounterId: 'e1', combatantId: 'c1', col: 3, row: 5 });
+    last().push({ kind: 'combatLogChanged' });
     await flush();
+    expect(handlers.onCombatLogChanged).toHaveBeenCalledTimes(1);
     expect(handlers.onEncounterChanged).toHaveBeenCalledWith(expect.objectContaining({ encounterId: 'e1', revision: 4 }));
     expect(handlers.onTurnChanged).toHaveBeenCalledWith(expect.objectContaining({ round: 2, masterTurn: true }));
     expect(handlers.onCombatantMoved).toHaveBeenCalledWith(expect.objectContaining({ combatantId: 'c1', col: 3, row: 5 }));

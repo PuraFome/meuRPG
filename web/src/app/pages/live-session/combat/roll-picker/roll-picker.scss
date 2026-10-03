@@ -1,0 +1,192 @@
+:host {
+  display: block;
+}
+
+.pick,
+.type {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+// The player's own way is the filled button; the other is a quiet text link
+// (one filled button per screen).
+// Inside a sheet that scrolls, the buttons stay at its bottom.
+.foot {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  padding: 10px 0 4px;
+  background: var(--mr-surface);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pick__main {
+  --mat-button-filled-container-height: 48px;
+  width: 100%;
+}
+
+.pick__main--quiet {
+  --mat-button-filled-container-color: var(--mr-surface);
+  --mat-button-filled-label-text-color: var(--mr-accent-text);
+  border: 1px solid var(--mr-control-line);
+}
+
+:host-context(.aim) .pick {
+  align-items: flex-start;
+}
+
+// A phone's button is full width; from a tablet up it keeps its own size, left.
+:host-context(.aim) .pick__main {
+  width: 100%;
+
+  @media (min-width: 768px) {
+    width: auto;
+    min-width: 220px;
+  }
+}
+
+.pick__link {
+  --mat-button-filled-container-color: transparent;
+  --mat-button-filled-container-height: 44px;
+  border: 0;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.pick__main--off {
+  --mat-button-filled-disabled-container-color: var(--mr-surface);
+  --mat-button-filled-disabled-label-text-color: var(--mr-ink-muted);
+  border: 1px dashed var(--mr-control-line);
+  cursor: default;
+}
+
+.type__label {
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 24px;
+  line-height: 28px;
+}
+
+.type__hint {
+  margin: -4px 0 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.type__row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.type__field {
+  box-sizing: border-box;
+  width: 112px;
+  height: 64px;
+  padding: 0 12px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font-family: var(--mr-font-display);
+  font-size: 38px;
+  font-weight: 700;
+  text-align: center;
+
+  // The border is the focus ring: 2px accent, no outline outside it, so
+  // nothing runs past the gutter (like the app's outlined fields).
+  &:focus,
+  &:focus-visible {
+    outline: none;
+    border: 2px solid var(--mr-accent);
+  }
+
+  &[aria-invalid='true'],
+  &[aria-invalid='true']:focus {
+    border: 2px solid var(--mr-danger-ink);
+    background: var(--mr-danger-surface);
+  }
+}
+
+.type__bonus {
+  font-size: 16px;
+  color: var(--mr-ink-muted);
+}
+
+.type__err {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-danger-surface);
+  color: var(--mr-danger-ink);
+  font-weight: 700;
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.type__sum {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-sizing: border-box;
+  min-height: 72px;
+  padding: 12px 14px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-ground);
+  font-size: 16px;
+}
+
+.type__sum--wait {
+  border-style: dashed;
+  border-color: var(--mr-control-line);
+  color: var(--mr-ink-muted);
+  font-family: var(--mr-font-display);
+  font-size: 32px;
+}
+
+.type__num {
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 46px;
+  line-height: 46px;
+}
+
+.type__formula {
+  display: flex;
+  flex-direction: column;
+}
+
+.type__cap {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.type__back {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mr-accent-text);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}

@@ -481,6 +481,7 @@ func (s *Service) RollAttack(
 			Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: target.ID, Key: attackKey,
 			D20: clamp32(face, 1, 20), Modifier: clamp32(attack.ToHit, math.MinInt32, math.MaxInt32), Total: clamp32(result.Total, math.MinInt32, math.MaxInt32),
 			Physical: !in.inApp, Outcome: outcomeMiss, ActionBefore: attacker.ActionUsed,
+			TargetAC: clamp32(targetSheet.ArmorClass, 0, math.MaxInt32),
 		}
 		if result.Hit {
 			made.Outcome = outcomeHit
@@ -522,13 +523,14 @@ func (s *Service) RollAttack(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&playv1.RollAttackResponse{
-		Encounter: out, PendingDamage: pending,
-		Roll: &playv1.AttackRoll{
-			AttackerId: ev.Actor, TargetId: ev.Target, AttackKey: ev.Key,
-			D20: diceRoll(1, 20, faceList(ev), ev.Modifier, ev.Total, ev.Physical), Outcome: outcomeToProto[ev.Outcome],
-		},
-	}), nil
+	roll := &playv1.AttackRoll{
+		AttackerId: ev.Actor, TargetId: ev.Target, AttackKey: ev.Key,
+		D20: diceRoll(1, 20, faceList(ev), ev.Modifier, ev.Total, ev.Physical), Outcome: outcomeToProto[ev.Outcome],
+	}
+	if v.master {
+		roll.TargetArmorClass = ptr(ev.TargetAC) // "Acertou contra CA 18": never a player's
+	}
+	return connect.NewResponse(&playv1.RollAttackResponse{Encounter: out, PendingDamage: pending, Roll: roll}), nil
 }
 
 // faceList is the face of the d20 of an attack roll; none for a physical one,

@@ -63,7 +63,9 @@ export interface MapsTable {
   npcId?: string;
 }
 
-export async function tableForMaps(masterPage: Page, playerPage: Page, name: string, npc = false): Promise<MapsTable> {
+/** `sheet` adds to the player's full sheet (the combat specs give Pensantus a
+ * dagger, Raio de Fogo and spells: `weaponKeys`, `cantripKeys`...). */
+export async function tableForMaps(masterPage: Page, playerPage: Page, name: string, npc = false, sheet: Record<string, unknown> = {}): Promise<MapsTable> {
   const created = await callRPC(masterPage, 'meurpg.campaigns.v1.CampaignService/CreateCampaign', {
     name,
     xpMode: 'XP_MODE_ENEMIES',
@@ -82,7 +84,9 @@ export async function tableForMaps(masterPage: Page, playerPage: Page, name: str
   });
   expect(accepted.ok()).toBeTruthy();
 
-  const character = await createCharacterRPC(playerPage, campaignId, characterRpcBody('PLAYER', pensantus));
+  const body = characterRpcBody('PLAYER', pensantus) as { sheet: { full: object } };
+  body.sheet.full = { ...body.sheet.full, ...sheet };
+  const character = await createCharacterRPC(playerPage, campaignId, body);
   expect(character.ok()).toBeTruthy();
   const table: MapsTable = {
     campaignId,
@@ -94,7 +98,18 @@ export async function tableForMaps(masterPage: Page, playerPage: Page, name: str
     const goblin = await createCharacterRPC(masterPage, campaignId, {
       kind: 'CHARACTER_KIND_MINION',
       name: 'Goblin',
-      sheet: { basic: { hitPointsMax: 7, armorClass: 15, speedFt: 30, attackBonus: 4, damage: '1d6+2', description: '' } },
+      sheet: {
+        basic: {
+          hitPointsMax: 7,
+          armorClass: 15,
+          speedFt: 30,
+          attackBonus: 4,
+          damage: '1d6+2',
+          description: '',
+          // The combat specs need an attack to roll: "basic:0".
+          attacks: [{ name: 'Cimitarra', attackBonus: 4, damageDiceCount: 1, damageDiceSides: 6, damageBonus: 2, damageType: 'DAMAGE_TYPE_SLASHING', rangeFt: 5 }],
+        },
+      },
     });
     expect(goblin.ok()).toBeTruthy();
     table.npcId = (await goblin.json()).character.id;

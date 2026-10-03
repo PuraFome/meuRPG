@@ -103,7 +103,9 @@ export type LiveEventVm =
   /** `turn_changed`, as this member may see it. */
   | ({ readonly kind: 'turnChanged' } & TurnChange)
   /** `combatant_moved`. */
-  | ({ readonly kind: 'combatantMoved' } & CombatantMove);
+  | ({ readonly kind: 'combatantMoved' } & CombatantMove)
+  /** `combat_log_changed`: read the combat log again. */
+  | { readonly kind: 'combatLogChanged' };
 
 /**
  * What a failed call means for the page, from its Connect code and typed

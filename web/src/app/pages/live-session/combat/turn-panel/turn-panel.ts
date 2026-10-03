@@ -1,5 +1,4 @@
 import { Component, ElementRef, computed, effect, input, output, viewChild } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import type { Combatant, Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
@@ -12,7 +11,9 @@ import {
   stateWord,
   turnBanner,
 } from '../../../../core/combat/combat-view';
+import { mediaQuery } from '../../../../shared/map-view/media-query';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
+import { EndTurn } from './end-turn';
 import { OrderStrip } from './order-strip';
 
 /**
@@ -21,15 +22,14 @@ import { OrderStrip } from './order-strip';
  * a live region, so a turn change is heard once. When the turn is a hidden
  * combatant's it says "Vez do mestre", with no name and no highlighted chip.
  * On the player's own turn ("Sua vez") the banner is the hero, with the
- * movement left and the two buttons of this slice: "Mover" and "Encerrar
- * turno" (the filled one only once the action and the bonus action are
- * spent; until then an outline). The groups of actions come next to it later.
- * Focus goes to the hero when the turn arrives, so the next Tab reaches
- * what the player can do.
+ * movement left and, from 1024px, "Encerrar turno" (`EndTurn`). The groups
+ * of actions (`ActionGroups`) come right after it, with "Mover" in the
+ * Movimento group. Focus goes to the hero when the turn arrives, so the next
+ * Tab reaches what the player can do.
  */
 @Component({
   selector: 'app-turn-panel',
-  imports: [CombatantToken, MatButtonModule, MatIconModule, OrderStrip],
+  imports: [CombatantToken, EndTurn, MatIconModule, OrderStrip],
   templateUrl: './turn-panel.html',
   styleUrl: './turn-panel.scss',
 })
@@ -37,11 +37,15 @@ export class TurnPanel {
   readonly encounter = input.required<Encounter>();
   readonly busy = input(false);
 
-  readonly move = output<void>();
   readonly endTurn = output<void>();
 
   private readonly hero = viewChild<ElementRef<HTMLElement>>('hero');
 
+  /** From 1024px the player's own turn is a compact banner (E6-14); from
+   * 1280px the order is a column on the left, so the strip goes. */
+  private readonly desktop = mediaQuery('(min-width: 1024px)');
+  protected readonly wide = mediaQuery('(min-width: 1280px)');
+  protected readonly compact = computed(() => this.desktop() && this.banner().mine);
   protected readonly banner = computed(() => turnBanner(this.encounter()));
   protected readonly round = computed(() => roundLabel(this.encounter().round));
   protected readonly own = computed(() => ownCombatant(this.encounter()));
@@ -60,11 +64,6 @@ export class TurnPanel {
           ),
         }
       : null;
-  });
-  /** "Encerrar turno" is the filled button once nothing usable is left. */
-  protected readonly spent = computed(() => {
-    const own = this.own();
-    return !!own && own.actionUsed && own.bonusActionUsed;
   });
   protected readonly nextLine = computed(() => {
     const banner = this.banner();

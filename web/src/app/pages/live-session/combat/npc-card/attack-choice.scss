@@ -1,0 +1,73 @@
+:host {
+  display: block;
+}
+
+.atks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.atk {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-sizing: border-box;
+  min-height: 56px;
+  padding: 10px 14px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  cursor: pointer;
+
+  &:has(:checked) {
+    padding: 9px 13px;
+    border: 2px solid var(--mr-accent);
+    background: var(--mr-accent-soft);
+  }
+
+  &:has(:focus-visible) {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+.atk__dot {
+  flex: none;
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--mr-control-line);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  :checked ~ & {
+    border-color: var(--mr-ink);
+
+    &::after {
+      content: '';
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--mr-ink);
+    }
+  }
+}
+
+.atk__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.atk__name {
+  font-size: 17px;
+  line-height: 22px;
+}
+
+.atk__detail {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}

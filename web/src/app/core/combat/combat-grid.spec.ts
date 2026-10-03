@@ -11,6 +11,7 @@ import {
   squareAt,
   squareCenter,
   stepSquare,
+  tight,
 } from './combat-grid';
 
 describe('combat grid maths', () => {
@@ -76,5 +77,14 @@ describe('combat grid maths', () => {
     expect(moveSentence({ col: 4, row: 8 }, { col: 1, row: 8 }, 10)).toBe(
       'Mover 4,5 m. 3 quadrados para a esquerda. Depois restam 0 m.',
     );
+  });
+});
+
+describe('tight', () => {
+  it('keeps a number, its unit and the word before it together', () => {
+    expect(tight('+5 para acertar · alcance 6 m')).toBe('+5 para acertar · alcance\u00a06\u00a0m');
+    expect(tight('Dá para andar mais 4,5 m (3 quadrados)')).toBe('Dá para andar mais\u00a04,5\u00a0m (3 quadrados)');
+    expect(tight('Digite um número de 1 a 20')).toBe('Digite um número de\u00a01\u00a0a\u00a020');
+    expect(tight('Restam 7,5 m de 15 m')).toBe('Restam\u00a07,5\u00a0m de\u00a015\u00a0m');
   });
 });

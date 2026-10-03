@@ -1,0 +1,127 @@
+<section class="card" aria-labelledby="npc-title">
+  @if (narrow()) {
+    <!-- The phone's one turn card (E6-12): whose turn, then what to do, then "Próximo turno". -->
+    <span class="mr-label card__kicker">{{ round() }} · {{ encounter().name }}</span>
+    <div class="card__who">
+      <app-combatant-token [initial]="initial()" [npc]="isNpc()" [current]="true" [size]="40" />
+      <h2 class="card__title card__title--turn" id="npc-title">Vez do {{ subject().label }}</h2>
+    </div>
+  } @else {
+    <h2 class="card__title" id="npc-title">
+      {{ isNpc() ? 'Ações do ' + subject().label : 'Dano de ' + subject().label }}
+    </h2>
+  }
+
+  @if (isNpc()) {
+    <div class="stats">
+      @if (stats().hp; as hp) {
+        <div class="stat">
+          <span class="stat__cap">Pontos de vida</span>
+          <span class="stat__val">{{ hp.now }} <small>de {{ hp.max }}</small></span>
+        </div>
+      }
+      @if (stats().ac !== undefined) {
+        <div class="stat">
+          <span class="stat__cap">CA</span>
+          <span class="stat__val">{{ stats().ac }}</span>
+        </div>
+      }
+      <div class="stat">
+        <span class="stat__cap">Deslocamento</span>
+        <span class="stat__val">{{ stats().speed }}</span>
+      </div>
+    </div>
+
+    <ul class="chips" aria-label="O que ele já usou neste turno">
+      <li class="chip" [class.chip--used]="subject().actionUsed">
+        Ação <span class="chip__word">{{ subject().actionUsed ? 'Usada' : 'Disponível' }}</span>
+      </li>
+      <li class="chip" [class.chip--used]="subject().bonusActionUsed">
+        Ação bônus <span class="chip__word">{{ subject().bonusActionUsed ? 'Usada' : 'Disponível' }}</span>
+      </li>
+      <li class="chip" [class.chip--used]="subject().reactionUsed">
+        Reação <span class="chip__word">{{ subject().reactionUsed ? 'Usada' : 'Disponível' }}</span>
+      </li>
+    </ul>
+
+    @if (attacks().length) {
+      <p class="card__cap">Ataque</p>
+      <app-attack-choice [attacks]="attacks()" [selected]="attackKey()" (pick)="pickAttack($event)" />
+
+      <div class="aim">
+        <mat-form-field appearance="outline" class="aim__field" subscriptSizing="dynamic">
+          <mat-label>Alvo</mat-label>
+          <mat-select [value]="targetId()" (valueChange)="pickTarget($event)" [disabled]="!targets().length">
+            @for (t of targets(); track t.combatantId) {
+              <mat-option [value]="t.combatantId">
+                {{ t.label }}{{ distance(t.distanceFt, t.tooFar) ? ' · ' + distance(t.distanceFt, t.tooFar) : '' }}
+              </mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <app-roll-picker
+          class="aim__roll"
+          [outlined]="true"
+          [canType]="true"
+          [label]="rollLabel()"
+          hint="Digite o número do d20 (1 a 20)."
+          totalNote="Total do ataque"
+          [modifier]="attack()?.attackBonus ?? 0"
+          appLabel="Rolar ataque"
+          [busy]="busy() || !targetId()"
+          (app)="rollApp()"
+          (typed)="rollTyped($event)"
+        />
+      </div>
+    } @else {
+      <p class="card__cap">Este combatente não tem ataques na ficha. Use "Dano/Cura" na ordem para ajustar os PV.</p>
+    }
+
+    @if (result(); as r) {
+      <div class="res" role="status" aria-live="polite">
+        <div class="res__d20">
+          <span class="res__formula">{{ r.formula }}{{ r.physical ? ' · dado físico' : '' }}</span>
+          <span class="pill" [class.pill--miss]="!r.hit">
+            <mat-icon aria-hidden="true">{{ r.hit ? 'check' : 'close' }}</mat-icon>{{ r.word }}
+          </span>
+          @if (r.against) {
+            <span class="res__against">{{ r.against }}</span>
+          }
+        </div>
+        @if (last()?.pending) {
+          <app-pending-damages
+            [flat]="true"
+            [pendings]="inBox()"
+            [encounter]="encounter()"
+            [campaignId]="campaignId()"
+            [state]="state()"
+          />
+        }
+      </div>
+    }
+  }
+
+  <app-pending-damages
+    [pendings]="isNpc() ? others() : pendings()"
+    [encounter]="encounter()"
+    [campaignId]="campaignId()"
+    [state]="state()"
+  />
+
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+
+  @if (narrow()) {
+    @if (pendingNote()) {
+      <div class="mr-notice mr-notice--warning">
+        <mat-icon aria-hidden="true">warning</mat-icon>
+        <p><strong>{{ pendingNote() }}</strong> antes de passar o turno.</p>
+      </div>
+    }
+    <app-next-turn [pendingNote]="pendingNote()" [busy]="busy() || turnBusy()" (next)="next.emit($event)" />
+  }
+</section>

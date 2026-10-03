@@ -29,6 +29,8 @@ export class OrderList {
   readonly busy = input(false);
 
   readonly adjust = output<string>();
+  /** "Dano/Cura" on an NPC: its combatant ID (`AdjustCombatantHitPoints`). */
+  readonly adjustNpc = output<string>();
   readonly reveal = output<{ id: string; hidden: boolean }>();
   readonly remove = output<string>();
   readonly add = output<void>();
@@ -54,10 +56,9 @@ export class OrderList {
 
   protected sub(c: Combatant): string {
     const info = this.info().get(c.characterId);
-    if (isPlayer(c)) {
-      return info?.classSummary ?? '';
-    }
-    return info?.kindLabel ?? 'NPC';
+    const ac = c.armorClass === undefined ? '' : `CA ${c.armorClass}`;
+    const first = isPlayer(c) ? (info?.classSummary ?? '') : (info?.kindLabel ?? 'NPC');
+    return [first, ac].filter(Boolean).join(' · ');
   }
 
   protected percent(c: Combatant): number {
@@ -71,6 +72,12 @@ export class OrderList {
 
   protected canAdjust(c: Combatant): boolean {
     return isPlayer(c) && this.adjustable().has(c.characterId);
+  }
+
+  /** An NPC's hit points are the master's to change, always (a defeated one
+   * healed above 0 comes back). */
+  protected canAdjustNpc(c: Combatant): boolean {
+    return !isPlayer(c) && c.hitPointsMax !== undefined;
   }
 
   protected ask(id: string): void {

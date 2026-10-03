@@ -232,6 +232,18 @@ html {
   border-top-right-radius: var(--mat-bottom-sheet-container-shape);
 }
 
+// The combat log's sheet is tall: its top sits 84px from the screen's (E6-15).
+// `panelClass` lands on the overlay pane, so the rules reach the container from it.
+.mr-sheet-tall .mat-bottom-sheet-container {
+  max-height: calc(100dvh - 84px);
+}
+
+// The combat's sheets scroll inside themselves (their title and buttons stay),
+// so the container may use almost the whole phone screen.
+.mr-sheet .mat-bottom-sheet-container {
+  max-height: calc(100dvh - 24px);
+}
+
 body {
   margin: 0;
   background: var(--mr-ground);

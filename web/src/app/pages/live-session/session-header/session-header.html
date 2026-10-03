@@ -15,11 +15,7 @@
     } @else {
       <p class="head__status">
         <app-live-pill />
-        @if (isMaster()) {
-          <span>Em andamento desde {{ formatDayAt(session().startedAt) }}</span>
-        } @else {
-          <span>atualizado agora</span>
-        }
+        <span>{{ since() }}</span>
       </p>
     }
   </div>

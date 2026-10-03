@@ -35,16 +35,18 @@
               <span class="row__turn">Vez</span>
             }
           </span>
-          <span class="row__sub">{{ sub(c) }}</span>
-          @if (c.defeated) {
-            <span class="row__state row__state--out">
-              <mat-icon aria-hidden="true">close</mat-icon>Derrotado
-            </span>
-          } @else if (c.hidden) {
-            <span class="row__state"><mat-icon aria-hidden="true">visibility_off</mat-icon>Escondido</span>
-          } @else if (npc(c)) {
-            <span class="row__state">Revelado</span>
-          }
+          <span class="row__meta">
+            <span class="row__sub">{{ sub(c) }}</span>
+            @if (c.defeated) {
+              <span class="row__state row__state--out">
+                <mat-icon aria-hidden="true">close</mat-icon>Derrotado
+              </span>
+            } @else if (c.hidden) {
+              <span class="row__state"><mat-icon aria-hidden="true">visibility_off</mat-icon>Escondido</span>
+            } @else if (npc(c)) {
+              <span class="row__state">Revelado</span>
+            }
+          </span>
           @if (c.hitPointsMax !== undefined) {
             <span class="row__pv-inline">PV {{ c.hitPointsCurrent }} de {{ c.hitPointsMax }}</span>
           }
@@ -73,6 +75,21 @@
             >
               Dano/Cura
             </button>
+          }
+          @if (live() && canAdjustNpc(c)) {
+            <button
+              mat-stroked-button
+              type="button"
+              class="row__adjust"
+              [attr.aria-label]="'Dano ou cura em ' + c.label"
+              (click)="adjustNpc.emit(c.id)"
+            >
+              Dano/Cura
+            </button>
+          }
+          @if (live() && !npc(c)) {
+            <!-- The place of the NPCs' "Mais ações", so every "Dano/Cura" lines up. -->
+            <span class="row__spacer" aria-hidden="true"></span>
           }
           @if (live() && npc(c)) {
             <button

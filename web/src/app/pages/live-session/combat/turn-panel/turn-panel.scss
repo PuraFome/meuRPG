@@ -194,39 +194,15 @@
   background: var(--mr-ink);
 }
 
-.turn__buttons {
-  display: flex;
-  gap: 10px;
-}
-
-.turn__btn {
-  flex: 1 1 auto;
-  --mat-button-outlined-container-height: 48px;
-  --mat-button-outlined-label-text-color: var(--mr-accent-text);
-}
-
-@media (min-width: 1024px) {
-  .turn__btn {
-    flex: none;
-  }
-}
-
 // On a phone and a tablet "Encerrar turno" lives in the pinned bar at the
-// bottom (`turn-bar`); from 1024px it sits here, next to "Mover".
+// bottom (`turn-bar`); from 1024px it sits here (E6-14).
 .turn__end {
   display: none;
+  align-self: flex-start;
 
   @media (min-width: 1024px) {
-    display: inline-flex;
+    display: block;
   }
-}
-
-.turn__btn--off {
-  --mat-button-outlined-label-text-color: var(--mr-ink-muted);
-  --mat-button-outlined-disabled-label-text-color: var(--mr-ink-muted);
-  --mat-button-outlined-disabled-outline-color: var(--mr-control-line);
-  border-style: dashed;
-  cursor: default;
 }
 
 .turn__why {
@@ -245,12 +221,52 @@
   }
 }
 
-// "Encerrar turno": an outline until the action and the bonus action are
-// spent, then the filled button.
-.turn__end--filled {
-  --mat-button-outlined-disabled-label-text-color: var(--mr-on-accent);
-  --mat-button-outlined-container-color: var(--mr-accent);
-  --mat-button-outlined-label-text-color: var(--mr-on-accent);
-  --mat-button-outlined-outline-color: var(--mr-accent);
-  background: var(--mr-accent);
+// From 1024px the player's own turn is a banner (E6-14): the token, "Sua vez,
+// Pensantus", the round and who is next, and "Encerrar turno" at the right.
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-sizing: border-box;
+  padding: 10px 20px;
+  border: 2px solid var(--mr-accent);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+}
+
+.banner__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.banner__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 38px;
+  line-height: 42px;
+
+  &:focus-visible {
+    outline-offset: 4px;
+  }
+}
+
+.banner__sub {
+  margin: 0;
+  font-size: 16px;
+  line-height: 22px;
+  color: var(--mr-ink-muted);
+
+  b {
+    color: var(--mr-ink);
+  }
+}
+
+.banner__end {
+  flex: none;
+  max-width: 360px;
+}
+
+.banner__strip {
+  margin-top: var(--mr-space-3);
 }

@@ -1,0 +1,119 @@
+import { Component, ElementRef, Injector, afterNextRender, computed, inject, input, output, signal, viewChild } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+
+import type { Combatant } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { endTurnIsPrimary } from '../../../../core/combat/combat-options';
+
+/**
+ * "Encerrar turno" of the player (E6-06, E6-14, timeline.md decision 2): an
+ * outline while the Ação or the Ação bônus is still available, the filled
+ * button once both are used. With the Ação unused it asks in place, "Ainda
+ * tem ação disponível. Encerrar mesmo?", the focus on the safe "Voltar". It
+ * stands in the pinned bar on a phone and in the turn card on a laptop.
+ */
+@Component({
+  selector: 'app-end-turn',
+  imports: [MatButtonModule, MatIconModule],
+  template: `
+    @if (asking()) {
+      <div class="ask" role="alertdialog" aria-labelledby="end-ask">
+        <p class="ask__text" id="end-ask">Ainda tem ação disponível. Encerrar mesmo?</p>
+        <button #safe mat-stroked-button type="button" class="ask__btn" (click)="asking.set(false)">Voltar</button>
+        <button mat-stroked-button type="button" class="ask__btn ask__go" [disabled]="busy()" (click)="confirm()">
+          Encerrar turno
+        </button>
+      </div>
+    } @else {
+      <button
+        mat-stroked-button
+        type="button"
+        class="end"
+        [class.end--filled]="primary()"
+        [class.end--block]="block()"
+        [disabled]="busy()"
+        disabledInteractive
+        (click)="press()"
+      >
+        <mat-icon aria-hidden="true">flag</mat-icon>Encerrar turno
+      </button>
+    }
+  `,
+  styles: `
+    :host {
+      display: block;
+    }
+
+    .end {
+      --mat-button-outlined-container-height: 48px;
+      --mat-button-outlined-label-text-color: var(--mr-accent-text);
+    }
+
+    .end--block {
+      width: 100%;
+    }
+
+    .end--filled {
+      --mat-button-outlined-disabled-label-text-color: var(--mr-on-accent);
+      --mat-button-outlined-container-color: var(--mr-accent);
+      --mat-button-outlined-label-text-color: var(--mr-on-accent);
+      --mat-button-outlined-outline-color: var(--mr-accent);
+      background: var(--mr-accent);
+    }
+
+    .ask {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .ask__text {
+      flex: 1 1 100%;
+      margin: 0;
+      font-weight: 700;
+    }
+
+    .ask__btn {
+      --mat-button-outlined-container-height: 48px;
+      @media (min-width: 768px) {
+        --mat-button-outlined-container-height: 44px;
+      }
+      --mat-button-outlined-label-text-color: var(--mr-ink);
+      --mat-button-outlined-outline-color: var(--mr-control-line);
+      flex: 1 1 0;
+    }
+
+    .ask__go {
+      --mat-button-outlined-label-text-color: var(--mr-accent-text);
+    }
+  `,
+})
+export class EndTurn {
+  private readonly injector = inject(Injector);
+
+  readonly own = input.required<Pick<Combatant, 'actionUsed' | 'bonusActionUsed'>>();
+  readonly busy = input(false);
+  /** Full width (the phone's bar). */
+  readonly block = input(false);
+
+  readonly endTurn = output<void>();
+
+  protected readonly asking = signal(false);
+  protected readonly primary = computed(() => endTurnIsPrimary(this.own()));
+  private readonly safe = viewChild('safe', { read: ElementRef<HTMLButtonElement> });
+
+  protected press(): void {
+    if (this.own().actionUsed) {
+      this.endTurn.emit();
+      return;
+    }
+    this.asking.set(true);
+    afterNextRender(() => this.safe()?.nativeElement.focus(), { injector: this.injector });
+  }
+
+  protected confirm(): void {
+    this.asking.set(false);
+    this.endTurn.emit();
+  }
+}

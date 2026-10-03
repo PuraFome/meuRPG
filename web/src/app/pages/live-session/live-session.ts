@@ -250,6 +250,7 @@ export class LiveSession {
             void this.loadCombat(generation);
           }
         },
+        onCombatLogChanged: () => this.combat.touchLog(),
         onShownImage: (image) => this.shownImageChanged(image),
         onLeftImages: () => void this.reloadLeftImages(),
         onEnded: () => this.ended(),
@@ -282,6 +283,7 @@ export class LiveSession {
       this.shownKeep.set(snapshot.shownImageKeep);
       void this.reloadLeftImages();
       void this.loadCombat(generation);
+      this.combat.touchLog(); // the log is read again too, after a reconnection
       // Each `ready` (a reconnection too) reads the map again: a missed event never leaves it stale.
       void this.mapState.open(snapshot.currentMapId);
       if (this.isMaster()) {

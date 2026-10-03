@@ -28,16 +28,16 @@
 }
 
 .setup__side,
-.active__map,
-.player__main {
+.active__map {
   display: flex;
   flex-direction: column;
   gap: var(--mr-space-5);
   min-width: 0;
 }
 
-// The running combat: the order first on a phone, where it is read all the
-// time (E6-12); the map on the left from 1024px (E6-11).
+// The running combat: the master's card and the order first on a phone, where
+// they are read all the time (E6-12); on the left from 1024px the map and the
+// log, on the right the card and the order (E6-11).
 .active {
   display: flex;
   flex-direction: column;
@@ -46,12 +46,25 @@
   @media (min-width: 1024px) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 500px;
+    grid-template-areas:
+      'map side'
+      'log side';
+    grid-template-rows: auto 1fr;
     align-items: start;
     gap: var(--mr-space-6);
   }
 }
 
-.active__order {
+.active__map {
+  grid-area: map;
+}
+
+.active__side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-5);
+  grid-area: side;
+  min-width: 0;
   order: -1;
 
   @media (min-width: 1024px) {
@@ -59,6 +72,18 @@
   }
 }
 
+.active__end {
+  display: block;
+}
+
+.active__log {
+  grid-area: log;
+  min-width: 0;
+}
+
+// The player's turn: the card first, then what they can do (E6-06), the map
+// and the log, the vitals last. From 1024px "O que você pode fazer" is the
+// right column (E6-14); without it (off turn) the vitals take that column.
 .player {
   display: flex;
   flex-direction: column;
@@ -67,12 +92,74 @@
   @media (min-width: 1024px) {
     display: grid;
     grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    grid-template-areas:
+      'turn turn'
+      'map side'
+      'log side';
+    grid-template-rows: auto auto 1fr;
     align-items: start;
     gap: var(--mr-space-6);
   }
 }
 
+.player--mine {
+  @media (min-width: 1024px) {
+    grid-template-areas:
+      'turn turn'
+      'map actions'
+      'log actions'
+      'side actions';
+    grid-template-rows: auto auto auto 1fr;
+  }
+}
+
+.player__turn {
+  grid-area: turn;
+}
+
+// From 1280px the order is a column on the left (E6-14): order | map and log |
+// what the player can do (or the vitals, off turn).
+@media (min-width: 1280px) {
+  .player {
+    grid-template-columns: 232px minmax(0, 1fr) 400px;
+    grid-template-areas:
+      'turn turn turn'
+      'order map side'
+      'order log side';
+    grid-template-rows: auto auto 1fr;
+  }
+
+  .player--mine {
+    grid-template-areas:
+      'turn turn turn'
+      'order map actions'
+      'order log actions'
+      'order side actions';
+    grid-template-rows: auto auto auto 1fr;
+  }
+
+  .player__order {
+    grid-area: order;
+  }
+}
+
+.player__actions {
+  grid-area: actions;
+  min-width: 0;
+}
+
+.player__map {
+  grid-area: map;
+  min-width: 0;
+}
+
+.player__log {
+  grid-area: log;
+  min-width: 0;
+}
+
 .player__side {
+  grid-area: side;
   min-width: 0;
 }
 

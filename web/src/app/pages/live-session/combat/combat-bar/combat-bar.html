@@ -1,3 +1,14 @@
+@if (endOnly()) {
+  <section class="end-only" aria-label="Encerrar o combate">
+    @if (confirming()) {
+      <ng-container *ngTemplateOutlet="endConfirm" />
+    } @else {
+      <button mat-stroked-button type="button" class="end end--block" (click)="ask()">
+        <mat-icon aria-hidden="true">flag</mat-icon>Encerrar combate
+      </button>
+    }
+  </section>
+} @else {
 <section class="bar" aria-label="Combate">
   <div class="bar__head">
     <span class="mr-label bar__kicker" [class.bar__kicker--wide]="!setup()">
@@ -22,6 +33,37 @@
       todos tiverem rolado.
     </p>
   } @else if (confirming()) {
+    <ng-container *ngTemplateOutlet="endConfirm" />
+  } @else {
+    <div class="bar__turn" role="status" aria-live="polite">
+      @if (banner().who; as who) {
+        <app-combatant-token [initial]="initial()" [npc]="npc()" [current]="true" [size]="48" />
+      }
+      <div class="bar__who">
+        <span class="bar__title">{{ banner().title }}</span>
+        <span class="bar__sub">
+          @if (nextLine()) {
+            <span class="bar__next">{{ nextLine() }}</span>
+          }
+          @if (pendingNote(); as note) {
+            <span class="mr-tag mr-tag--pending bar__pending">
+              <mat-icon aria-hidden="true">warning</mat-icon>{{ note }}
+            </span>
+          }
+        </span>
+      </div>
+    </div>
+    <div class="bar__actions">
+      <app-next-turn class="next" [pendingNote]="pendingNote()" [busy]="busy()" (next)="next.emit($event)" />
+      <button mat-stroked-button type="button" class="end" (click)="ask()">
+        <mat-icon aria-hidden="true">flag</mat-icon>Encerrar combate
+      </button>
+    </div>
+  }
+</section>
+}
+
+<ng-template #endConfirm>
     <div class="confirm" role="alertdialog" aria-labelledby="end-title" aria-describedby="end-text">
       <mat-icon aria-hidden="true">warning</mat-icon>
       <div class="confirm__text">
@@ -38,25 +80,4 @@
         </button>
       </div>
     </div>
-  } @else {
-    <div class="bar__turn" role="status" aria-live="polite">
-      @if (banner().who; as who) {
-        <app-combatant-token [initial]="initial()" [npc]="npc()" [current]="true" [size]="48" />
-      }
-      <div class="bar__who">
-        <span class="bar__title">{{ banner().title }}</span>
-        @if (nextLine()) {
-          <span class="bar__next">{{ nextLine() }}</span>
-        }
-      </div>
-    </div>
-    <div class="bar__actions">
-      <button mat-flat-button type="button" class="next" [disabled]="busy()" (click)="next.emit()">
-        <mat-icon aria-hidden="true">skip_next</mat-icon>Próximo turno
-      </button>
-      <button mat-stroked-button type="button" class="end" (click)="ask()">
-        <mat-icon aria-hidden="true">flag</mat-icon>Encerrar combate
-      </button>
-    </div>
-  }
-</section>
+</ng-template>

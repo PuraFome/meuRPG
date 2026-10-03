@@ -115,6 +115,18 @@
   }
 }
 
+.bar__sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+
+.bar__pending {
+  height: 28px;
+  font-weight: 700;
+}
+
 .bar__next {
   font-size: 15px;
   line-height: 20px;
@@ -189,10 +201,17 @@
   display: flex;
   flex: none;
   gap: 10px;
+
+  @media (min-width: 768px) {
+    .mat-mdc-outlined-button {
+      --mat-button-outlined-container-height: 44px;
+    }
+  }
 }
 
 .confirm .mat-mdc-outlined-button {
   --mat-button-outlined-container-height: 48px;
+  flex: 1 1 0;
   --mat-button-outlined-label-text-color: var(--mr-ink);
   --mat-button-outlined-outline-color: var(--mr-control-line);
   background: var(--mr-surface);
@@ -201,4 +220,8 @@
 .confirm .danger {
   --mat-button-outlined-label-text-color: var(--mr-danger-ink);
   --mat-button-outlined-outline-color: var(--mr-danger-ink);
+}
+
+.end--block {
+  width: 100%;
 }
