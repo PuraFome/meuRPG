@@ -117,6 +117,14 @@ type LiveSession interface {
 	// stage of the open scene of the campaign's open game session (MR-031).
 	// False when no session or no scene is open.
 	ImageOnStage(ctx context.Context, campaignID, imageID string) (bool, error)
+	// PublishToUsers sends ev to the streams of those of userIDs who watch
+	// the campaign's session, and to nobody else: not the master, not the
+	// other players. Without an open session nothing happens.
+	PublishToUsers(campaignID string, userIDs []string, ev *playv1.WatchGameSessionResponse)
+	// AppendEvent appends an event to the history of the campaign's open
+	// session inside tx, and says whether there was one. The payload holds
+	// IDs only (docs/privacidade.md).
+	AppendEvent(ctx context.Context, tx pgx.Tx, campaignID, kind, actorUserID string, payload []byte, at time.Time) (bool, error)
 }
 
 // Config holds what the maps service needs.

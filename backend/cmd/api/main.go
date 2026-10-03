@@ -68,6 +68,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/characters"
 	"github.com/PuraFome/meuRPG/backend/internal/identity"
 	"github.com/PuraFome/meuRPG/backend/internal/maps"
+	"github.com/PuraFome/meuRPG/backend/internal/notes"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/config"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
@@ -175,6 +176,7 @@ func run(logger *slog.Logger, cfg config.Config) error {
 	var playService *play.Service
 	var mapsService *maps.Service
 	var progressionService *progression.Service
+	var notesService *notes.Service
 	switch {
 	case !cfg.OIDC.Configured():
 		logger.Warn("OIDC_ISSUER is not set; sign-in is disabled")
@@ -211,9 +213,8 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		charactersService.SetGallery(sessionMaps)
 		// play and maps need each other: play reveals the map it makes
 		// current and reads the image it shows, and maps reads what the
-		// session shows and publishes on play's live stream.
-		// maps.SessionMaps needs nothing but the database, so play gets it
-		// first, and maps then gets play.
+		// session shows and publishes on play's live stream. play gets the
+		// SessionMaps made above first, and maps then gets play.
 		playService, err = play.New(play.Config{
 			Pool:      pool,
 			Sheets:    charactersService,           // starting a session locks the sheets (RN-01)
@@ -254,6 +255,17 @@ func run(logger *slog.Logger, cfg config.Config) error {
 			return err
 		}
 		charactersService.SetLevelUps(progressionService)
+		// The players' private notes (MR-030) read the scenes the group
+		// discovered and the clues revealed to each player from the maps
+		// module's tables, through SessionMaps.
+		notesService, err = notes.New(notes.Config{
+			Pool:   pool,
+			Scenes: sessionMaps, // the discovered scenes and the received clues (MR-029, MR-030)
+			Logger: logger,
+		})
+		if err != nil {
+			return err
+		}
 		identityService, err = identity.New(ctx, identity.Config{
 			OIDC:   cfg.OIDC,
 			Store:  users,
@@ -303,6 +315,7 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		charactersService.Mount(srv.Handle, identityService, campaignsService, connectOpts...)
 		playService.Mount(srv.Handle, identityService, campaignsService, connectOpts...)
 		progressionService.Mount(srv.Handle, identityService, campaignsService, connectOpts...)
+		notesService.Mount(srv.Handle, identityService, campaignsService, connectOpts...)
 		// GalleryService and MapService, plus the upload and download
 		// routes, which find the session with
 		// identityService.AuthenticateRequest.

@@ -236,6 +236,16 @@ func (s *Service) Publish(campaignID string, players bool, ev *playv1.WatchGameS
 	s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Master: true, Everyone: players}, Message: ev})
 }
 
+// PublishToUsers sends ev to the streams of those of userIDs who watch the
+// campaign's session, and to nobody else: not the master, not the other
+// players (a clue reaches only the players who got it, MR-029). It implements
+// maps.LiveSession.
+func (s *Service) PublishToUsers(campaignID string, userIDs []string, ev *playv1.WatchGameSessionResponse) {
+	for _, id := range userIDs {
+		s.hub.Publish(campaignID, live.Event{Audience: live.Audience{UserID: id}, Message: ev})
+	}
+}
+
 // optionalID reads an optional ID from a request: nil when empty, a
 // `not_found` with notFound when it is not a UUID (it names nothing).
 func optionalID(raw, notFound string) (*string, error) {

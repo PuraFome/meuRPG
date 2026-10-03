@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
@@ -461,6 +462,12 @@ func (noLive) OpenScenePoint(context.Context, string) (string, error) {
 	return "", errors.New("not in this test")
 }
 
+func (noLive) PublishToUsers(string, []string, *playv1.WatchGameSessionResponse) {}
+
+func (noLive) AppendEvent(context.Context, pgx.Tx, string, string, string, []byte, time.Time) (bool, error) {
+	return false, errors.New("not in this test")
+}
+
 // noRules stands in for the rules module.
 type noRules struct{}
 
@@ -549,6 +556,11 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, mapCalls["UpdateSceneAction"] = mc.UpdateSceneAction(ctx, connect.NewRequest(&mapsv1.UpdateSceneActionRequest{CampaignId: id, MapId: id, PointId: id, ActionId: id, Dc: proto.Int32(10)}))
 	_, mapCalls["MoveSceneAction"] = mc.MoveSceneAction(ctx, connect.NewRequest(&mapsv1.MoveSceneActionRequest{CampaignId: id, MapId: id, PointId: id, ActionId: id, Direction: mapsv1.SceneActionDirection_SCENE_ACTION_DIRECTION_UP}))
 	_, mapCalls["RemoveSceneAction"] = mc.RemoveSceneAction(ctx, connect.NewRequest(&mapsv1.RemoveSceneActionRequest{CampaignId: id, MapId: id, PointId: id, ActionId: id}))
+	_, mapCalls["AddSceneClue"] = mc.AddSceneClue(ctx, connect.NewRequest(&mapsv1.AddSceneClueRequest{CampaignId: id, MapId: id, PointId: id, Text: "X"}))
+	_, mapCalls["UpdateSceneClue"] = mc.UpdateSceneClue(ctx, connect.NewRequest(&mapsv1.UpdateSceneClueRequest{CampaignId: id, MapId: id, PointId: id, ClueId: id, Text: "X"}))
+	_, mapCalls["MoveSceneClue"] = mc.MoveSceneClue(ctx, connect.NewRequest(&mapsv1.MoveSceneClueRequest{CampaignId: id, MapId: id, PointId: id, ClueId: id, Direction: mapsv1.SceneActionDirection_SCENE_ACTION_DIRECTION_UP}))
+	_, mapCalls["RemoveSceneClue"] = mc.RemoveSceneClue(ctx, connect.NewRequest(&mapsv1.RemoveSceneClueRequest{CampaignId: id, MapId: id, PointId: id, ClueId: id}))
+	_, mapCalls["RevealSceneClue"] = mc.RevealSceneClue(ctx, connect.NewRequest(&mapsv1.RevealSceneClueRequest{CampaignId: id, ClueId: id, CharacterIds: []string{id}}))
 	_, mapCalls["PlaceMapToken"] = mc.PlaceMapToken(ctx, connect.NewRequest(&mapsv1.PlaceMapTokenRequest{CampaignId: id, MapId: id, CharacterId: id}))
 	_, mapCalls["SetMapTokenHidden"] = mc.SetMapTokenHidden(ctx, connect.NewRequest(&mapsv1.SetMapTokenHiddenRequest{CampaignId: id, MapId: id, CharacterId: id, Hidden: true}))
 	_, mapCalls["RemoveMapToken"] = mc.RemoveMapToken(ctx, connect.NewRequest(&mapsv1.RemoveMapTokenRequest{CampaignId: id, MapId: id, CharacterId: id}))

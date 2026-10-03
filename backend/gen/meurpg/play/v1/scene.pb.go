@@ -13,6 +13,7 @@
 package playv1
 
 import (
+	v1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -34,8 +35,10 @@ type SceneBlockedReason int32
 
 const (
 	SceneBlockedReason_SCENE_BLOCKED_REASON_UNSPECIFIED SceneBlockedReason = 0
-	// OpenScene: the point has no actions. A scene without a check cannot be
-	// opened.
+	// Unused: it was OpenScene's refusal of a point with no actions in Etapa
+	// 7. Since Etapa 8 (question 63) any SCENE point opens, even with no
+	// actions, so the server never sends it. The value stays so the numbers
+	// do not change.
 	SceneBlockedReason_SCENE_BLOCKED_REASON_NO_ACTIONS SceneBlockedReason = 1
 	// RollSceneCheck: no scene is open in the session, or it is not the one
 	// the action belongs to. PutOnStage: no scene is open, so there is no
@@ -170,6 +173,14 @@ type OpenSceneInfo struct {
 	Rolls []*SceneRoll `protobuf:"bytes,5,rep,name=rolls,proto3" json:"rolls,omitempty"`
 	// When the master opened the scene.
 	OpenedAt *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=opened_at,json=openedAt,proto3" json:"opened_at,omitempty"`
+	// The point's "Ganchos e anotações" (MR-029): the master's private
+	// Markdown text. Only the master gets it: a player always gets it empty
+	// (RN-20).
+	Hooks string `protobuf:"bytes,7,opt,name=hooks,proto3" json:"hooks,omitempty"`
+	// The point's clues, in the master's order, each with who has it (MR-029).
+	// Only the master gets them: a player never gets a clue here, revealed or
+	// not (the revealed ones are in their notes, NotesService.ListNotes).
+	Clues []*v1.SceneClue `protobuf:"bytes,8,rep,name=clues,proto3" json:"clues,omitempty"`
 	// The NPCs "em cena", in the order they came in, at most 4 (MR-031). Every
 	// member gets the same list, each entry with only what a player may see
 	// (StageNpc). Empty when nobody is on the stage.
@@ -246,6 +257,20 @@ func (x *OpenSceneInfo) GetRolls() []*SceneRoll {
 func (x *OpenSceneInfo) GetOpenedAt() *timestamppb.Timestamp {
 	if x != nil {
 		return x.OpenedAt
+	}
+	return nil
+}
+
+func (x *OpenSceneInfo) GetHooks() string {
+	if x != nil {
+		return x.Hooks
+	}
+	return ""
+}
+
+func (x *OpenSceneInfo) GetClues() []*v1.SceneClue {
+	if x != nil {
+		return x.Clues
 	}
 	return nil
 }
@@ -856,7 +881,10 @@ func (x *SceneRoll) GetRolledAt() *timestamppb.Timestamp {
 type OpenSceneRequest struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
 	CampaignId string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
-	// A SCENE point of the campaign's maps, hidden or not (a UUID).
+	// A SCENE point of the campaign's maps, hidden or not (a UUID). It may
+	// have no actions. Opening a scene makes it "discovered" for the group
+	// (MR-030), so players may tag notes with it, even while the point is
+	// hidden on the map.
 	PointId       string `protobuf:"bytes,2,opt,name=point_id,json=pointId,proto3" json:"point_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1290,16 +1318,18 @@ var File_meurpg_play_v1_scene_proto protoreflect.FileDescriptor
 
 const file_meurpg_play_v1_scene_proto_rawDesc = "" +
 	"\n" +
-	"\x1ameurpg/play/v1/scene.proto\x12\x0emeurpg.play.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bmeurpg/play/v1/combat.proto\"J\n" +
+	"\x1ameurpg/play/v1/scene.proto\x12\x0emeurpg.play.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x19meurpg/maps/v1/maps.proto\x1a\x1bmeurpg/play/v1/combat.proto\"J\n" +
 	"\fSceneBlocked\x12:\n" +
-	"\x06reason\x18\x01 \x01(\x0e2\".meurpg.play.v1.SceneBlockedReasonR\x06reason\"\xb5\x02\n" +
+	"\x06reason\x18\x01 \x01(\x0e2\".meurpg.play.v1.SceneBlockedReasonR\x06reason\"\xfc\x02\n" +
 	"\rOpenSceneInfo\x12\x19\n" +
 	"\bpoint_id\x18\x01 \x01(\tR\apointId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x129\n" +
 	"\aactions\x18\x04 \x03(\v2\x1f.meurpg.play.v1.SceneActionViewR\aactions\x12/\n" +
 	"\x05rolls\x18\x05 \x03(\v2\x19.meurpg.play.v1.SceneRollR\x05rolls\x127\n" +
-	"\topened_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\bopenedAt\x12.\n" +
+	"\topened_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\bopenedAt\x12\x14\n" +
+	"\x05hooks\x18\a \x01(\tR\x05hooks\x12/\n" +
+	"\x05clues\x18\b \x03(\v2\x19.meurpg.maps.v1.SceneClueR\x05clues\x12.\n" +
 	"\x05stage\x18\n" +
 	" \x03(\v2\x18.meurpg.play.v1.StageNpcR\x05stage\"\x90\x01\n" +
 	"\bStageNpc\x12\x0e\n" +
@@ -1419,27 +1449,29 @@ var file_meurpg_play_v1_scene_proto_goTypes = []any{
 	(*RollSceneCheckRequest)(nil),  // 18: meurpg.play.v1.RollSceneCheckRequest
 	(*RollSceneCheckResponse)(nil), // 19: meurpg.play.v1.RollSceneCheckResponse
 	(*timestamppb.Timestamp)(nil),  // 20: google.protobuf.Timestamp
-	(*DiceRoll)(nil),               // 21: meurpg.play.v1.DiceRoll
+	(*v1.SceneClue)(nil),           // 21: meurpg.maps.v1.SceneClue
+	(*DiceRoll)(nil),               // 22: meurpg.play.v1.DiceRoll
 }
 var file_meurpg_play_v1_scene_proto_depIdxs = []int32{
 	0,  // 0: meurpg.play.v1.SceneBlocked.reason:type_name -> meurpg.play.v1.SceneBlockedReason
 	10, // 1: meurpg.play.v1.OpenSceneInfo.actions:type_name -> meurpg.play.v1.SceneActionView
 	11, // 2: meurpg.play.v1.OpenSceneInfo.rolls:type_name -> meurpg.play.v1.SceneRoll
 	20, // 3: meurpg.play.v1.OpenSceneInfo.opened_at:type_name -> google.protobuf.Timestamp
-	3,  // 4: meurpg.play.v1.OpenSceneInfo.stage:type_name -> meurpg.play.v1.StageNpc
-	3,  // 5: meurpg.play.v1.PutOnStageResponse.stage:type_name -> meurpg.play.v1.StageNpc
-	3,  // 6: meurpg.play.v1.TakeOffStageResponse.stage:type_name -> meurpg.play.v1.StageNpc
-	3,  // 7: meurpg.play.v1.SetSpeakerResponse.stage:type_name -> meurpg.play.v1.StageNpc
-	21, // 8: meurpg.play.v1.SceneRoll.roll:type_name -> meurpg.play.v1.DiceRoll
-	20, // 9: meurpg.play.v1.SceneRoll.rolled_at:type_name -> google.protobuf.Timestamp
-	2,  // 10: meurpg.play.v1.OpenSceneResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
-	2,  // 11: meurpg.play.v1.GetOpenSceneResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
-	11, // 12: meurpg.play.v1.RollSceneCheckResponse.roll:type_name -> meurpg.play.v1.SceneRoll
-	13, // [13:13] is the sub-list for method output_type
-	13, // [13:13] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	21, // 4: meurpg.play.v1.OpenSceneInfo.clues:type_name -> meurpg.maps.v1.SceneClue
+	3,  // 5: meurpg.play.v1.OpenSceneInfo.stage:type_name -> meurpg.play.v1.StageNpc
+	3,  // 6: meurpg.play.v1.PutOnStageResponse.stage:type_name -> meurpg.play.v1.StageNpc
+	3,  // 7: meurpg.play.v1.TakeOffStageResponse.stage:type_name -> meurpg.play.v1.StageNpc
+	3,  // 8: meurpg.play.v1.SetSpeakerResponse.stage:type_name -> meurpg.play.v1.StageNpc
+	22, // 9: meurpg.play.v1.SceneRoll.roll:type_name -> meurpg.play.v1.DiceRoll
+	20, // 10: meurpg.play.v1.SceneRoll.rolled_at:type_name -> google.protobuf.Timestamp
+	2,  // 11: meurpg.play.v1.OpenSceneResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
+	2,  // 12: meurpg.play.v1.GetOpenSceneResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
+	11, // 13: meurpg.play.v1.RollSceneCheckResponse.roll:type_name -> meurpg.play.v1.SceneRoll
+	14, // [14:14] is the sub-list for method output_type
+	14, // [14:14] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_scene_proto_init() }

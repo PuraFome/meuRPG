@@ -8,14 +8,17 @@ syntax = "proto3";
 package meurpg.play.v1;
 
 import "google/protobuf/timestamp.proto";
+import "meurpg/maps/v1/maps.proto";
 import "meurpg/play/v1/combat.proto";
 
 // SceneBlockedReason says why PlayService refused a scene call with
 // `failed_precondition`.
 enum SceneBlockedReason {
   SCENE_BLOCKED_REASON_UNSPECIFIED = 0;
-  // OpenScene: the point has no actions. A scene without a check cannot be
-  // opened.
+  // Unused: it was OpenScene's refusal of a point with no actions in Etapa
+  // 7. Since Etapa 8 (question 63) any SCENE point opens, even with no
+  // actions, so the server never sends it. The value stays so the numbers
+  // do not change.
   SCENE_BLOCKED_REASON_NO_ACTIONS = 1;
   // RollSceneCheck: no scene is open in the session, or it is not the one
   // the action belongs to. PutOnStage: no scene is open, so there is no
@@ -60,6 +63,14 @@ message OpenSceneInfo {
   repeated SceneRoll rolls = 5;
   // When the master opened the scene.
   google.protobuf.Timestamp opened_at = 6;
+  // The point's "Ganchos e anotações" (MR-029): the master's private
+  // Markdown text. Only the master gets it: a player always gets it empty
+  // (RN-20).
+  string hooks = 7;
+  // The point's clues, in the master's order, each with who has it (MR-029).
+  // Only the master gets them: a player never gets a clue here, revealed or
+  // not (the revealed ones are in their notes, NotesService.ListNotes).
+  repeated meurpg.maps.v1.SceneClue clues = 8;
   // The NPCs "em cena", in the order they came in, at most 4 (MR-031). Every
   // member gets the same list, each entry with only what a player may see
   // (StageNpc). Empty when nobody is on the stage.
@@ -171,7 +182,10 @@ message SceneRoll {
 // OpenSceneRequest names the campaign and the point.
 message OpenSceneRequest {
   string campaign_id = 1;
-  // A SCENE point of the campaign's maps, hidden or not (a UUID).
+  // A SCENE point of the campaign's maps, hidden or not (a UUID). It may
+  // have no actions. Opening a scene makes it "discovered" for the group
+  // (MR-030), so players may tag notes with it, even while the point is
+  // hidden on the map.
   string point_id = 2;
 }
 

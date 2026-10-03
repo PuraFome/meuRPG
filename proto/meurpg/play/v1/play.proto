@@ -297,22 +297,24 @@ service PlayService {
 
   // OpenScene opens an RP scene in the session (MR-015, D7): the master
   // picks a SCENE point of the campaign's maps and every member sees it,
-  // live, with the point's name and description and its actions; each player
-  // with their own character's bonus (GetOpenScene). Only the campaign's
-  // master may call it, and only while the campaign has an open session. One
-  // scene at a time: opening another replaces the first. The point may be
-  // hidden: opening it reveals nothing, it stays hidden on the map (RN-10).
-  // Opening the scene that is already open changes nothing; closing it and
-  // opening it again starts the rolls afresh. Every stream gets
-  // `scene_changed`, and a `scene_opened` event goes to the history.
+  // live, with the point's name and description and its actions, if it has
+  // any (a scene with no actions opens too, question 63); each player with
+  // their own character's bonus (GetOpenScene). The master also gets the
+  // point's hooks and clues. Only the campaign's master may call it, and
+  // only while the campaign has an open session. One scene at a time:
+  // opening another replaces the first. The point may be hidden: opening it
+  // reveals nothing, it stays hidden on the map (RN-10), but the group has
+  // now "discovered" the scene (MR-030). Opening the scene that is already
+  // open changes nothing; closing it and opening it again starts the rolls
+  // afresh. Every stream gets `scene_changed`, and a `scene_opened` event
+  // goes to the history.
   //
   // Errors:
   //   - `not_found`: the point is not a SCENE point of the campaign's maps,
   //     the campaign does not exist, or the caller is not a member of it.
   //   - `permission_denied`: the caller is a player.
   //   - `failed_precondition`: no open session (GameSessionBlocked,
-  //     NO_OPEN_SESSION); or the point has no actions (SceneBlocked,
-  //     NO_ACTIONS).
+  //     NO_OPEN_SESSION).
   rpc OpenScene(OpenSceneRequest) returns (OpenSceneResponse);
 
   // CloseScene closes the open scene, asking nothing. Only the campaign's
@@ -665,7 +667,9 @@ message WatchGameSessionResponse {
     // ProgressionService again. Everyone in the session gets it.
     XpChanged xp_changed = 14;
     // The open scene changed: opened, closed, or one of its actions or its
-    // point changed. Read it again (GetOpenScene). Everyone gets it.
+    // point changed. Read it again (GetOpenScene). Everyone gets it, except
+    // a change only the master reads (the clues and the hooks, MR-029),
+    // which reaches the master alone.
     SceneChanged scene_changed = 15;
     // A check was rolled in the open scene. Only the master and the roller
     // get it.
@@ -674,12 +678,22 @@ message WatchGameSessionResponse {
     // or the scene closed and emptied it. Read the open scene again
     // (GetOpenScene). Everyone gets it.
     StageChanged stage_changed = 17;
+    // The master revealed a clue to this player: read their notes again
+    // (NotesService.ListNotes). Only the players who got it get it.
+    NotesChanged notes_changed = 18;
   }
 
   // StageChanged carries nothing: it names no NPC, so a player's stream
   // learns nothing but that the stage moved. The app reads the scene again
   // (GetOpenScene), which gives each member only what they may see (RN-20).
   message StageChanged {}
+
+  // NotesChanged carries nothing: it says a clue arrived in the player's
+  // notes, and the app reads them again (meurpg.notes.v1.NotesService). It
+  // names no clue and no scene. Only the player who received it gets it,
+  // never the master or another player. A player who is offline reads the
+  // clue on the next ListNotes.
+  message NotesChanged {}
 
   // SceneChanged carries nothing: it says the open scene changed, and the
   // app reads it again (GetOpenScene), which filters it for the caller. It

@@ -31,10 +31,12 @@ import (
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1/charactersv1connect"
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1/mapsv1connect"
+	"github.com/PuraFome/meuRPG/backend/gen/meurpg/notes/v1/notesv1connect"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1/playv1connect"
 	"github.com/PuraFome/meuRPG/backend/internal/campaigns"
 	"github.com/PuraFome/meuRPG/backend/internal/characters"
 	"github.com/PuraFome/meuRPG/backend/internal/identity"
+	"github.com/PuraFome/meuRPG/backend/internal/notes"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
@@ -182,8 +184,9 @@ func newHarness(t *testing.T, configure ...func(*Config)) *harness {
 	chars.SetGallery(NewSessionMaps(pool)) // an NPC's portrait is an image of the gallery (MR-031)
 	// Wired as in cmd/api: play reveals the current map through
 	// SessionMaps, and this service reads it and publishes through play.
+	sessionMaps := NewSessionMaps(pool)
 	live, err := play.New(play.Config{
-		Pool: pool, Sheets: chars, Vitals: chars, Campaigns: camps, Maps: NewSessionMaps(pool), Roster: chars, Dice: testDice{camps},
+		Pool: pool, Sheets: chars, Vitals: chars, Campaigns: camps, Maps: sessionMaps, Roster: chars, Dice: testDice{camps},
 		Live: play.LiveConfig{Heartbeat: noHeartbeat}, Logger: logger, Now: clock.Now,
 	})
 	if err != nil {
@@ -198,12 +201,18 @@ func newHarness(t *testing.T, configure ...func(*Config)) *harness {
 		t.Fatalf("New() error = %v", err)
 	}
 
+	notesSvc, err := notes.New(notes.Config{Pool: pool, Scenes: sessionMaps, Logger: logger, Now: clock.Now})
+	if err != nil {
+		t.Fatalf("notes.New() error = %v", err)
+	}
+
 	srv := httpserver.New(httpserver.Config{Logger: logger})
 	opt := connect.WithRequireConnectProtocolHeader()
 	camps.Mount(srv.Handle, fakeSessions{}, opt)
 	chars.Mount(srv.Handle, fakeSessions{}, camps, opt)
 	live.Mount(srv.Handle, fakeSessions{}, camps, opt)
 	svc.Mount(srv.Handle, testSessions, camps, opt)
+	notesSvc.Mount(srv.Handle, fakeSessions{}, camps, opt)
 	h.server = httptest.NewServer(srv.Handler())
 	t.Cleanup(h.server.Close)
 	t.Cleanup(live.Close) // end the streams first, so the server can close
@@ -218,6 +227,7 @@ type user struct {
 	play       playv1connect.PlayServiceClient
 	gallery    mapsv1connect.GalleryServiceClient
 	maps       mapsv1connect.MapServiceClient
+	notes      notesv1connect.NotesServiceClient
 }
 
 func (h *harness) newUser(displayName string) *user {
@@ -247,6 +257,7 @@ func (h *harness) clients(userID string) *user {
 		play:       playv1connect.NewPlayServiceClient(c, url),
 		gallery:    mapsv1connect.NewGalleryServiceClient(c, url),
 		maps:       mapsv1connect.NewMapServiceClient(c, url),
+		notes:      notesv1connect.NewNotesServiceClient(c, url),
 	}
 }
 

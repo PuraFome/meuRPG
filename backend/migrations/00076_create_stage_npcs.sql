@@ -3,7 +3,7 @@
 -- put "em cena" in the open RP scene, in the order they came in. A session
 -- has at most 4 at once (the API checks, inside the transaction that inserts
 -- one, with the session's row locked), and at most one of them speaks
--- (stage_npcs_one_speaker, 00069, backs the API's check). Closing or switching
+-- (stage_npcs_one_speaker, 00077, backs the API's check). Closing or switching
 -- the scene empties the stage: its rows are deleted.
 --
 -- id is the place on the stage, made when the NPC comes in: it is what a
