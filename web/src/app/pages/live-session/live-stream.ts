@@ -39,6 +39,8 @@ export interface LiveStreamHandlers {
   onCombatantMoved?(move: CombatantMove): void;
   /** `combat_log_changed`: the log has a new entry, read it again. */
   onCombatLogChanged?(): void;
+  /** `scene_changed` and `scene_check_rolled`: read the open scene again. */
+  onSceneChanged?(): void;
   /** `session_ended`, or `NO_OPEN_SESSION` when (re)connecting. */
   onEnded(): void;
   /** `not_found` or `unauthenticated`: no reconnecting. */
@@ -195,6 +197,10 @@ export class LiveStream {
             break;
           case 'combatLogChanged':
             this.options.handlers.onCombatLogChanged?.();
+            break;
+          case 'sceneChanged':
+          case 'sceneCheckRolled':
+            this.options.handlers.onSceneChanged?.();
             break;
           case 'ended':
             this.stop();

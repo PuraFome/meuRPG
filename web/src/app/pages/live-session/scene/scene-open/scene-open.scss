@@ -1,0 +1,195 @@
+:host {
+  display: block;
+  container-type: inline-size;
+}
+
+// "On the players' screens right now": the 1px accent frame, with the words
+// and the icon beside it (the frame is never the only sign).
+.so {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  border-color: var(--mr-accent);
+}
+
+.so__since {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--mr-accent-text);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 20px;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.so__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+}
+
+.so__titles {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.so__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 32px;
+  overflow-wrap: anywhere;
+}
+
+.so__meta {
+  margin: 2px 0 0;
+  font-size: 15px;
+  color: var(--mr-ink-muted);
+}
+
+// Both outlined and the same size. On a phone: two equal 48px buttons side by
+// side, and when the two do not fit in one line they stack, each full width.
+.so__buttons {
+  display: grid;
+  grid-auto-flow: column;
+  gap: var(--mr-space-2);
+
+  button {
+    white-space: nowrap;
+  }
+
+  @media (max-width: 767.98px) {
+    flex: 1 1 100%;
+    grid-auto-flow: row;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+
+    button {
+      --mat-button-outlined-container-height: 48px;
+    }
+  }
+}
+
+// Rolls first (the live part), then the actions; from a wide enough block
+// (the map's column at 1280) the actions go left and the rolls right.
+.so__cols {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+
+  @container (min-width: 640px) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+    gap: var(--mr-space-6);
+    align-items: start;
+
+    .so__rolls {
+      grid-column: 2;
+      grid-row: 1;
+    }
+
+    .so__actions {
+      grid-column: 1;
+      grid-row: 1;
+    }
+  }
+}
+
+.so__sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px var(--mr-space-3);
+  padding-bottom: var(--mr-space-2);
+  border-bottom: 1px solid var(--mr-rule);
+}
+
+.so__h {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 26px;
+}
+
+.so__hint {
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.so__none {
+  margin: var(--mr-space-3) 0 0;
+  color: var(--mr-ink-muted);
+}
+
+.so__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  > li {
+    padding: var(--mr-space-3) 0;
+  }
+
+  > li + li {
+    border-top: 1px solid var(--mr-rule);
+  }
+}
+
+// The disclosure's header: a 48px button, the words left, the chevron right.
+.so__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+
+  .mat-icon {
+    flex: none;
+  }
+}
+
+.so__action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.so__aname {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+
+.so__acheck {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.so__dc {
+  margin-top: 2px;
+  font-weight: 700;
+  color: var(--mr-ink);
+}

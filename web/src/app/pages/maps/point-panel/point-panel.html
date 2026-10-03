@@ -73,6 +73,16 @@
     }
   </mat-form-field>
 
+  @if (point().kind === Scene && campaignId()) {
+    <app-scene-actions
+      [campaignId]="campaignId()"
+      [mapId]="point().mapId"
+      [pointId]="point().id"
+      [actions]="point().sceneActions"
+      (actionsChange)="sceneActionsChange.emit($event)"
+    />
+  }
+
   <app-reveal-switch
     label="Revelado aos jogadores"
     hint="Os jogadores veem o ponto e a descrição."

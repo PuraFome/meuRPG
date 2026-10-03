@@ -1,0 +1,321 @@
+import { expect, test, type Page } from '@playwright/test';
+
+import { endOpenSessionRPC, openSessionPage } from './live-session-support';
+import { tableForScenes } from './scene-support';
+import { newSignedInContext } from './support';
+
+// MR-015 (the actions of an RP scene), through the screens: the master picks
+// the actions on the map point, opens the scene in the session, each player
+// sees their own bonuses and rolls (RN-18: in the app or with a physical die),
+// and the master sees every roll with whether it passed (RN-20: the DC and the
+// result stay with the master). Setup (campaigns, maps, points, the session)
+// goes through the API; every test makes its own campaign.
+
+/** Picks a check in the add form: the kind, then the check's name in the list. */
+async function addAction(
+  master: Page,
+  action: { kind: 'Perícia' | 'Teste de atributo' | 'Salvaguarda'; check: string; name?: string; dc?: string },
+): Promise<void> {
+  await master.getByRole('button', { name: 'Adicionar ação' }).click();
+  const form = master.getByRole('form', { name: 'Nova ação' });
+  await expect(form.getByRole('radio', { name: 'Perícia' })).toBeFocused();
+  await form.getByRole('radio', { name: action.kind }).check();
+  await form.getByRole('combobox').selectOption({ label: action.check });
+  if (action.name) {
+    await form.getByLabel('Nome (opcional)').fill(action.name);
+  }
+  if (action.dc) {
+    await form.getByLabel('CD (opcional)').fill(action.dc);
+  }
+  await form.getByRole('button', { name: 'Adicionar ação' }).click();
+  await expect(form).toBeHidden();
+  await expect(master.getByRole('button', { name: 'Adicionar ação' })).toBeFocused();
+}
+
+/** The master's "Abrir cena" picker: picks the point and confirms. */
+async function openScene(master: Page, point: string): Promise<void> {
+  await master.getByRole('button', { name: 'Abrir cena', exact: true }).click();
+  const picker = master.getByRole('dialog', { name: 'Abrir uma cena' });
+  await expect(picker.getByRole('heading', { name: 'Abrir uma cena' })).toBeFocused();
+  // A person clicks the scene's words (the radio itself is drawn as the whole row).
+  await picker.getByText(point, { exact: true }).click();
+  await expect(picker.getByRole('radio', { name: new RegExp(point) })).toBeChecked();
+  await picker.getByRole('button', { name: 'Abrir cena', exact: true }).click();
+  await expect(picker).toBeHidden();
+}
+
+test(
+  'o mestre escolhe as ações no ponto de cena, abre a cena na sessão, o jogador rola uma no app e uma com o dado físico e o mestre vê as duas com Passou e Não passou',
+  { tag: ['@MR-015', '@RN-18', '@RN-20'] },
+  async ({ browser }) => {
+    test.setTimeout(120_000);
+    const masterContext = await newSignedInContext(browser, 'Mestre Teste');
+    const playerContext = await newSignedInContext(browser, 'Jogador Teste');
+    const master = await masterContext.newPage();
+    const player = await playerContext.newPage();
+    let campaignId = '';
+    try {
+      await master.goto('/');
+      const table = await tableForScenes(master, player, `Cena ${Date.now()}`, false);
+      campaignId = table.campaignId;
+
+      // The editor: three actions on the point, each saved at once.
+      await master.goto(`/campanhas/${table.campaignId}/mapas/${table.mapId}`);
+      await master.getByRole('button', { name: /^A carroça tombada, Cena de RP/ }).click();
+      await expect(master.getByRole('heading', { name: 'Ações da cena' })).toBeVisible();
+      await expect(master.getByText('Nenhuma ação ainda')).toBeVisible();
+
+      await addAction(master, { kind: 'Perícia', check: 'Investigação', name: 'Procurar pistas na carroça', dc: '12' });
+      await addAction(master, { kind: 'Perícia', check: 'Percepção' });
+      // A DC outside 1 to 30 is said under its field, and the field takes focus.
+      await master.getByRole('button', { name: 'Adicionar ação' }).click();
+      const form = master.getByRole('form', { name: 'Nova ação' });
+      await form.getByRole('radio', { name: 'Salvaguarda' }).check();
+      await form.getByRole('combobox').selectOption({ label: 'Constituição' });
+      await form.getByLabel('Nome (opcional)').fill('Resistir ao cheiro de fumaça');
+      await form.getByLabel('CD (opcional)').fill('31');
+      await form.getByRole('button', { name: 'Adicionar ação' }).click();
+      await expect(form.getByText('A CD vai de 1 a 30. Digite outro número ou deixe em branco.')).toBeVisible();
+      await expect(form.getByLabel('CD (opcional)')).toBeFocused();
+      await form.getByLabel('CD (opcional)').fill('10');
+      await form.getByRole('button', { name: 'Adicionar ação' }).click();
+      await expect(form).toBeHidden();
+
+      await expect(master.getByText('3 de 20', { exact: true })).toBeVisible();
+      const list = master.getByRole('list').filter({ has: master.getByRole('button', { name: 'Subir Percepção' }) });
+      await expect(list.getByRole('listitem')).toHaveCount(3);
+      // The first ↑ and the last ↓ are quiet; a move saves at once and keeps focus on the same button.
+      await expect(master.getByRole('button', { name: 'Subir Procurar pistas na carroça' })).toHaveAttribute('aria-disabled', 'true');
+      await master.getByRole('button', { name: 'Subir Percepção' }).click();
+      await expect(list.getByRole('listitem').first()).toContainText('Percepção');
+      await expect(master.getByRole('button', { name: 'Subir Percepção' })).toBeFocused();
+      await master.getByRole('button', { name: 'Descer Percepção' }).click();
+      await expect(list.getByRole('listitem').nth(1)).toContainText('Percepção');
+      // It survives a reload (the server has it).
+      await master.reload();
+      await master.getByRole('button', { name: /^A carroça tombada, Cena de RP/ }).click();
+      await expect(list.getByRole('listitem').nth(1)).toContainText('Percepção');
+      await expect(list.getByRole('listitem').nth(0)).toContainText('CD 12');
+
+      // The session: "Abrir cena".
+      await openSessionPage(master, table.campaignId);
+      await expect(master.getByRole('heading', { name: 'Cena de RP' })).toBeVisible();
+      await openScene(master, 'A carroça tombada');
+      await expect(master.getByRole('heading', { name: 'Cena: A carroça tombada' })).toBeFocused();
+      await expect(master.getByRole('heading', { name: 'Cena de RP' })).toBeHidden();
+
+      // The player: own bonuses, passive values, no DC anywhere.
+      await openSessionPage(player, table.campaignId);
+      const scene = player.getByRole('region', { name: 'Cena: A carroça tombada' });
+      await expect(scene).toBeVisible();
+      await expect(scene.getByText('Uma carroça de mercador tombada na estrada.')).toBeVisible();
+      const rows = scene.getByRole('listitem');
+      await expect(rows).toHaveCount(3);
+      await expect(rows.nth(0)).toContainText('+6');
+      await expect(rows.nth(0)).toContainText('Investigação passiva 16');
+      await expect(rows.nth(1)).toContainText('Percepção passiva 11');
+      await expect(rows.nth(2)).toContainText('+3');
+      await expect(scene).not.toContainText(/\bCD\b|passou/i);
+
+      // One roll in the app (Investigação, CD 12: the d20 is random, so the pill reads either way).
+      await scene.getByRole('button', { name: 'Rolar Procurar pistas na carroça' }).click();
+      const sheet = player.getByRole('dialog', { name: 'Rolar Procurar pistas na carroça' });
+      await expect(sheet.getByRole('heading', { name: 'Procurar pistas na carroça' })).toBeFocused();
+      await expect(sheet.getByText('bônus +6')).toBeVisible();
+      await sheet.getByRole('button', { name: 'Rolar no app' }).click();
+      await expect(sheet.getByText('Seu total em Investigação')).toBeVisible();
+      await expect(sheet.getByText('O mestre vê o resultado.')).toBeVisible();
+      await expect(sheet).not.toContainText(/\bCD\b|passou/i);
+      await expect(sheet.getByRole('button', { name: 'Voltar à cena' })).toBeFocused();
+      await sheet.getByRole('button', { name: 'Voltar à cena' }).click();
+      await expect(rows.nth(0)).toContainText('Rolada');
+      await expect(rows.nth(0)).toBeFocused();
+      await expect(rows.nth(0).getByRole('button')).toHaveCount(0);
+
+      // One with a physical die: Constituição typed 3 is 6, under the DC of 10. A typed number out of 1 to 20 is refused.
+      await scene.getByRole('button', { name: 'Rolar Resistir ao cheiro de fumaça' }).click();
+      const typed = player.getByRole('dialog', { name: 'Rolar Resistir ao cheiro de fumaça' });
+      await typed.getByRole('button', { name: 'Digitar o resultado' }).click();
+      await expect(typed.getByRole('heading', { name: 'Digite o resultado do dado' })).toBeVisible();
+      await typed.getByLabel(/Role 1d20 para Salvaguarda de Constituição/).fill('27');
+      await expect(typed.getByRole('alert')).toContainText('Digite um número de 1 a 20');
+      await expect(typed.getByRole('button', { name: 'Confirmar' })).toHaveAttribute('aria-disabled', 'true');
+      await typed.getByLabel(/Role 1d20 para Salvaguarda de Constituição/).fill('3');
+      await expect(typed.getByRole('status')).toContainText('3 + 3 = 6 · dado físico');
+      await typed.getByRole('button', { name: 'Confirmar 3' }).click();
+      await expect(typed.getByText('Seu total em Salvaguarda de Constituição')).toBeVisible();
+      await typed.getByRole('button', { name: 'Voltar à cena' }).click();
+      await expect(rows.nth(2)).toContainText('Rolada');
+      // A second roll of the same action is not offered.
+      await expect(scene.getByRole('button', { name: /^Rolar / })).toHaveCount(1);
+      await expect(scene.getByRole('button', { name: 'Rolar Percepção' })).toBeVisible();
+
+      // The master sees both, newest first, with the formula and Passou / Não passou.
+      const rolls = master.getByRole('heading', { name: 'Rolagens' }).locator('xpath=ancestor::section[1]');
+      await expect(rolls.getByRole('listitem')).toHaveCount(2);
+      const newest = rolls.getByRole('listitem').nth(0);
+      await expect(newest).toContainText('Pensantus');
+      await expect(newest).toContainText('Resistir ao cheiro de fumaça · dado físico');
+      await expect(newest).toContainText('3 + 3 = 6');
+      await expect(newest).toContainText('Não passou · CD 10');
+      const oldest = rolls.getByRole('listitem').nth(1);
+      await expect(oldest).toContainText('Procurar pistas na carroça');
+      await expect(oldest).toContainText(/1d20 \(\d+\) \+ 6 = \d+/);
+      await expect(oldest).toContainText(/(Passou|Não passou)\s·\sCD\s12/);
+      // The master hears the new roll in a polite live region.
+      await expect(master.getByRole('status').filter({ hasText: 'Pensantus: Resistir ao cheiro de fumaça, 6, não passou' })).toHaveCount(1);
+    } finally {
+      if (campaignId) {
+        await endOpenSessionRPC(master, campaignId);
+      }
+      await masterContext.close();
+      await playerContext.close();
+    }
+  },
+);
+
+test(
+  'o jogador rola cada ação uma vez; o mestre fecha a cena sem pergunta e, ao abrir de novo, as ações voltam a poder ser roladas',
+  { tag: ['@MR-015', '@RN-18'] },
+  async ({ browser }) => {
+    test.setTimeout(120_000);
+    const masterContext = await newSignedInContext(browser, 'Mestre Teste');
+    const playerContext = await newSignedInContext(browser, 'Jogador Teste');
+    const master = await masterContext.newPage();
+    const player = await playerContext.newPage();
+    let campaignId = '';
+    try {
+      await master.goto('/');
+      const table = await tableForScenes(master, player, `Cena de novo ${Date.now()}`);
+      campaignId = table.campaignId;
+      await openSessionPage(master, campaignId);
+      await openScene(master, 'A carroça tombada');
+      await openSessionPage(player, campaignId);
+      const scene = player.getByRole('region', { name: 'Cena: A carroça tombada' });
+      await expect(scene.getByRole('button', { name: /^Rolar / })).toHaveCount(5);
+
+      await scene.getByRole('button', { name: 'Rolar Percepção' }).click();
+      const sheet = player.getByRole('dialog', { name: 'Rolar Percepção' });
+      await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+      await sheet.getByLabel(/Role 1d20 para Percepção/).fill('14');
+      await sheet.getByRole('button', { name: 'Confirmar 14' }).click();
+      await expect(sheet.getByText('Seu total em Percepção')).toBeVisible();
+      await sheet.getByRole('button', { name: 'Voltar à cena' }).click();
+      // That action is a result now; the other four still roll.
+      await expect(scene.getByRole('button', { name: /^Rolar / })).toHaveCount(4);
+      await expect(scene.getByRole('button', { name: 'Rolar Percepção' })).toHaveCount(0);
+      await expect(scene.getByText('Rolada')).toHaveCount(1);
+
+      // The master closes: no question, "Cena de RP" is back with focus on "Abrir cena".
+      await master.getByRole('button', { name: 'Fechar cena' }).click();
+      await expect(master.getByRole('dialog')).toHaveCount(0);
+      await expect(master.getByRole('heading', { name: 'Cena de RP' })).toBeVisible();
+      await expect(master.getByRole('button', { name: 'Abrir cena', exact: true })).toBeFocused();
+      // The player's block goes away and the live region says so.
+      await expect(player.getByRole('region', { name: 'Cena: A carroça tombada' })).toHaveCount(0);
+      await expect(player.getByText('O mestre fechou a cena.')).toBeAttached();
+
+      // Opened again, the rolls start afresh.
+      await openScene(master, 'A carroça tombada');
+      await expect(player.getByText('O mestre abriu uma cena: A carroça tombada.')).toBeAttached();
+      await expect(scene.getByRole('button', { name: /^Rolar / })).toHaveCount(5);
+      await expect(scene.getByText('Rolada')).toHaveCount(0);
+      await expect(master.getByText('Ninguém rolou ainda.')).toBeVisible();
+    } finally {
+      if (campaignId) {
+        await endOpenSessionRPC(master, campaignId);
+      }
+      await masterContext.close();
+      await playerContext.close();
+    }
+  },
+);
+
+test(
+  'o mestre abre uma cena escondida: os jogadores veem a cena e o ponto continua escondido no mapa deles',
+  { tag: ['@MR-015', '@RN-10'] },
+  async ({ browser }) => {
+    test.setTimeout(120_000);
+    const masterContext = await newSignedInContext(browser, 'Mestre Teste');
+    const playerContext = await newSignedInContext(browser, 'Jogador Teste');
+    const master = await masterContext.newPage();
+    const player = await playerContext.newPage();
+    let campaignId = '';
+    try {
+      await master.goto('/');
+      const table = await tableForScenes(master, player, `Cena escondida ${Date.now()}`);
+      campaignId = table.campaignId;
+      await openSessionPage(master, campaignId);
+
+      // The picker lists the three scene points; the one with no actions is disabled, with the reason said once.
+      await master.getByRole('button', { name: 'Abrir cena', exact: true }).click();
+      const picker = master.getByRole('dialog', { name: 'Abrir uma cena' });
+      await expect(picker.getByRole('radio', { name: /Vau do riacho/ })).toBeDisabled();
+      await expect(picker.getByText('Sem ações. Adicione no editor do mapa.')).toHaveCount(1);
+      await expect(picker.getByText('Escondido no mapa · 3 ações')).toBeVisible();
+      await picker.getByRole('button', { name: 'Cancelar' }).click();
+      await expect(picker).toBeHidden();
+      await expect(master.getByRole('button', { name: 'Abrir cena', exact: true })).toBeFocused();
+
+      await openScene(master, 'Posto da guarda');
+      await openSessionPage(player, campaignId);
+      const scene = player.getByRole('region', { name: 'Cena: Posto da guarda' });
+      await expect(scene).toBeVisible();
+      await expect(scene.getByRole('listitem')).toHaveCount(3);
+      // The point stays hidden on the player's map; the revealed one is there.
+      await player.getByRole('link', { name: /Ver mapa/ }).first().click();
+      await expect(player.getByRole('button', { name: /^A carroça tombada, Cena de RP/ })).toBeVisible();
+      await expect(player.getByRole('button', { name: /Posto da guarda/ })).toHaveCount(0);
+      // And still hidden for the master too (nothing was revealed).
+      await master.goto(`/campanhas/${campaignId}/mapas/${table.mapId}`);
+      await expect(master.getByRole('button', { name: /^Posto da guarda, Cena de RP, escondido/ })).toBeVisible();
+    } finally {
+      if (campaignId) {
+        await endOpenSessionRPC(master, campaignId);
+      }
+      await masterContext.close();
+      await playerContext.close();
+    }
+  },
+);
+
+test(
+  'o mestre abre a cena pelo ponto na lista da sessão, e troca para outra pelo ponto dela',
+  { tag: ['@MR-015'] },
+  async ({ browser }) => {
+    const masterContext = await newSignedInContext(browser, 'Mestre Teste');
+    const playerContext = await newSignedInContext(browser, 'Jogador Teste');
+    const master = await masterContext.newPage();
+    const player = await playerContext.newPage();
+    let campaignId = '';
+    try {
+      await master.goto('/');
+      const table = await tableForScenes(master, player, `Cena pelo ponto ${Date.now()}`);
+      campaignId = table.campaignId;
+      await openSessionPage(master, campaignId);
+      await openSessionPage(player, campaignId);
+
+      // The list of points: a scene with actions opens, one with none says why.
+      const points = master.getByRole('list', { name: 'Pontos do mapa' });
+      await expect(points.getByText('Sem ações. Adicione no editor do mapa.')).toHaveCount(1);
+      await points.getByRole('button', { name: 'Abrir cena A carroça tombada' }).click();
+      await expect(master.getByRole('heading', { name: 'Cena: A carroça tombada' })).toBeFocused();
+      await expect(player.getByRole('region', { name: 'Cena: A carroça tombada' })).toBeVisible();
+
+      // The point that is open says so; the other offers to swap.
+      await expect(points.getByText('Cena aberta agora')).toHaveCount(1);
+      await points.getByRole('button', { name: 'Trocar para a cena Posto da guarda' }).click();
+      await expect(master.getByRole('heading', { name: 'Cena: Posto da guarda' })).toBeFocused();
+      await expect(player.getByRole('region', { name: 'Cena: Posto da guarda' })).toBeVisible();
+      await expect(player.getByRole('region', { name: 'Cena: A carroça tombada' })).toHaveCount(0);
+      // The hidden point opened this way is still hidden on the player's map.
+      await expect(points.getByText('Escondido').first()).toBeVisible();
+    } finally {
+      if (campaignId) {
+        await endOpenSessionRPC(master, campaignId);
+      }
+      await masterContext.close();
+      await playerContext.close();
+    }
+  },
+);

@@ -1,0 +1,132 @@
+.pk__lead {
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+
+  b {
+    color: var(--mr-ink);
+  }
+}
+
+.pk__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+// One scene: a bordered row. The chosen one is accent-soft with a check and
+// a thicker border; a point with no actions is dashed, with the reason.
+.pk__row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  box-sizing: border-box;
+  min-height: 64px;
+  padding: 10px 14px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  cursor: pointer;
+
+  &:has(input:focus-visible) {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  &--on {
+    border: 2px solid var(--mr-accent);
+    padding: 9px 13px;
+    background: var(--mr-accent-soft);
+  }
+
+  &--off {
+    border-style: dashed;
+    color: var(--mr-ink-muted);
+    cursor: default;
+  }
+}
+
+.pk__icon,
+.pk__check {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  font-size: 24px;
+}
+
+.pk__check {
+  color: var(--mr-accent-text);
+}
+
+.pk__text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pk__name {
+  font-size: 17px;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+
+.pk__detail,
+.pk__why {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.pk__why,
+.pk__detail {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  .mat-icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.pk__none,
+.pk__note {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.pk__note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+// Right-aligned on a computer, both 44px; on a phone two equal 48px buttons.
+.pk__foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--mr-space-3);
+
+  @media (max-width: 767.98px) {
+    button {
+      flex: 1 1 0;
+      --mat-button-filled-container-height: 48px;
+      --mat-button-outlined-container-height: 48px;
+    }
+  }
+}

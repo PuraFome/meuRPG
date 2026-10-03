@@ -170,3 +170,37 @@
     margin-top: 0;
   }
 }
+
+// A scene point's own line in the session: its button (or the words that say it
+// is the open one, or why it cannot open), under the name, aligned with it.
+.row__scene {
+  grid-column: 2;
+  justify-self: start;
+  margin-top: var(--mr-space-1);
+
+  @container (min-width: 520px) {
+    grid-column: 2 / -1;
+  }
+}
+
+.row__open,
+.row__none {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.row__open {
+  font-weight: 700;
+  color: var(--mr-accent-text);
+}

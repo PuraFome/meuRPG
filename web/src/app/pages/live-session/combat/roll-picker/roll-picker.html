@@ -51,7 +51,7 @@
         <span class="type__bonus">{{ bonusText() }}</span>
       }
     </div>
-    @if (!sticky()) {
+    @if (!sticky() || inlineError()) {
       <ng-container *ngTemplateOutlet="alertTpl" />
     }
     <div [id]="id + '-sum'" class="type__sum" [class.type__sum--wait]="!total()" role="status">
@@ -67,7 +67,7 @@
       }
     </div>
     <div class="actions" [class.foot]="sticky()">
-    @if (sticky()) {
+    @if (sticky() && !inlineError()) {
       <ng-container *ngTemplateOutlet="alertTpl" />
     }
     <button
