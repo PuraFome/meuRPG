@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, input, model, output, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -20,7 +21,7 @@ let nextId = 0;
  */
 @Component({
   selector: 'app-roll-picker',
-  imports: [MatButtonModule, MatIconModule],
+  imports: [MatButtonModule, MatIconModule, NgTemplateOutlet],
   templateUrl: './roll-picker.html',
   styleUrl: './roll-picker.scss',
 })

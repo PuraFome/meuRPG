@@ -1,4 +1,4 @@
-import { Component, ElementRef, Injector, afterNextRender, computed, inject, input, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, Injector, afterNextRender, computed, inject, input, output, signal, viewChild } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -6,12 +6,14 @@ import {
   type Encounter,
   type PendingDamage,
   PendingDamageStatus,
+  ReactionOutcome,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { CombatClient, newKey } from '../../../../core/combat/combat-client';
 import { damageFormula, diceName, sumRange } from '../../../../core/combat/combat-dice';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { hitPointsAfter, hitPointsLine } from '../../../../core/combat/attack-flow';
+import { article } from '../../../../core/combat/combat-log';
 import { isPlayer } from '../../../../core/combat/combat-view';
 import { RollPicker } from '../roll-picker/roll-picker';
 
@@ -41,6 +43,9 @@ export class PendingDamages {
   readonly state = input.required<CombatState>();
   /** Inside the attack's own result box: no box of its own. */
   readonly flat = input(false);
+  /** What the master's answer for the target did: Escudo stopped the hit, the
+   * hit still stands, or the master let it go. The card reads it for its result. */
+  readonly reacted = output<'stopped' | 'still' | 'declined'>();
 
   protected readonly busy = signal(false);
   protected readonly error = signal('');
@@ -52,7 +57,7 @@ export class PendingDamages {
 
   protected readonly items = computed(() =>
     this.pendings()
-      .filter((p) => p.status === PendingDamageStatus.ROLLED || p.status === PendingDamageStatus.AWAITING_ROLL)
+      .filter((p) => p.status === PendingDamageStatus.ROLLED || p.status === PendingDamageStatus.AWAITING_ROLL || p.status === PendingDamageStatus.AWAITING_REACTION)
       .map((p) => this.describe(p)),
   );
 
@@ -62,9 +67,15 @@ export class PendingDamages {
     const target = e.combatants.find((c) => c.id === p.targetId);
     const rolled = p.status === PendingDamageStatus.ROLLED;
     const range = sumRange(p.diceCount, p.diceSides);
+    // The reaction prompt of this hit: Escudo is cast with the lowest free slot.
+    const prompt = e.reactionPrompts.find((r) => r.pendingDamageId === p.id);
+    const slot = [...(prompt?.slots ?? [])].filter((x) => x.free > 0).sort((a, b) => a.level - b.level)[0];
     return {
       p,
       rolled,
+      awaiting: p.status === PendingDamageStatus.AWAITING_REACTION,
+      slot: slot ? { level: slot.level, pact: slot.pact } : null,
+      pronoun: article(target?.label ?? '') === 'a' ? 'Ela' : 'Ele',
       // A player rolls the damage of their own attack; the master waits.
       waitsForPlayer: !rolled && !!attacker && isPlayer(attacker),
       attacker: attacker?.label ?? '',
@@ -121,6 +132,25 @@ export class PendingDamages {
     return this.run(async () => {
       const res = await this.api.rollDamage(this.campaignId(), this.encounter().id, p.id, die, this.keyFor(p.id));
       this.state().apply(res.encounter);
+    });
+  }
+
+  /** "Usar Escudo por ele": the master answers for the player. */
+  protected useShield(p: PendingDamage, slot: { level: number; pact: boolean }): Promise<void> {
+    return this.run(async () => {
+      const res = await this.api.useReaction(this.campaignId(), this.encounter().id, p.id, slot, this.keyFor(`reaction:${p.id}`));
+      this.state().apply(res.encounter);
+      const stopped = res.outcome === ReactionOutcome.STOPPED;
+      this.settled.set(stopped ? 'Escudo usado: o ataque errou.' : 'Escudo usado: o ataque ainda acerta.');
+      this.reacted.emit(stopped ? 'stopped' : 'still');
+    });
+  }
+
+  /** "Seguir sem Escudo": the hit goes on to its damage roll. */
+  protected declineShield(p: PendingDamage): Promise<void> {
+    return this.run(async () => {
+      this.state().apply(await this.api.declineReaction(this.campaignId(), this.encounter().id, p.id, this.keyFor(`reaction:${p.id}`)));
+      this.reacted.emit('declined');
     });
   }
 

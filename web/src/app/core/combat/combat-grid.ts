@@ -29,6 +29,13 @@ export function formatMeters(meters: number): string {
   return `${String(rounded).replace('.', ',')} m`;
 }
 
+/** Joins the segments of a detail line with " · ": a no-break space before the
+ * dot and a normal one after it, so a wrapped line ends with the dot and the
+ * next starts with a word. */
+export function joinDots(parts: readonly string[]): string {
+  return parts.join('\u00a0· ');
+}
+
 /** Keeps a number, its unit and the words that lead to it on one line
  * ("alcance 36 m", "mais 4,5 m", "de 1 a 20") with no-break spaces, so a
  * line never ends on "alcance" or begins with "m". */

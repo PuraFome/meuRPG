@@ -757,7 +757,11 @@ async function scanActionScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await m.getByLabel(/Role 1d20/).fill('18');
     await m.getByRole('button', { name: 'Confirmar 18' }).click();
     await expect(m.getByText(/contra CA \d+ da Pensantus|contra CA \d+ do Pensantus/)).toBeVisible();
-    await expectScreenPasses(m, `Cartão do mestre, o d20 com a CA ${where}`);
+    // Pensantus can cast Escudo: a hit that is not critical waits for his reaction (E6-28b).
+    await expect(m.getByText('Esperando a reação do Pensantus.')).toBeVisible();
+    await expect(m.getByRole('button', { name: 'Rolar dano' })).toHaveAttribute('aria-disabled', 'true');
+    await expectScreenPasses(m, `Cartão do mestre, esperando a reação (Escudo) ${where}`);
+    await m.getByRole('button', { name: 'Seguir sem Escudo' }).click();
     await m.getByRole('button', { name: 'Rolar dano' }).click();
     await expect(m.getByRole('button', { name: /Aplicar \d+ de dano/ })).toBeVisible();
     await expectScreenPasses(m, `Cartão do mestre, dano para aplicar ${where}`);

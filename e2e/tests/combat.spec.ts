@@ -214,9 +214,9 @@ interface ActingTable {
 }
 
 /** A combat with Pensantus, the Capitão and two Goblins, begun with the given d20 faces. */
-async function actingTable(browser: Browser, name: string, faces: Record<string, number>, hidden: string[] = []): Promise<ActingTable> {
+async function actingTable(browser: Browser, name: string, faces: Record<string, number>, hidden: string[] = [], phone = { width: 390, height: 844 }): Promise<ActingTable> {
   const master: BrowserContext = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: 1280, height: 900 } });
-  const player: BrowserContext = await newSignedInContext(browser, 'Jogador Teste', { viewport: { width: 390, height: 844 } });
+  const player: BrowserContext = await newSignedInContext(browser, 'Jogador Teste', { viewport: phone });
   const m = await master.newPage();
   const p = await player.newPage();
   await m.goto('/');
@@ -457,6 +457,92 @@ test('o mestre ajusta os PV de um NPC em "Dano/Cura", e o jogador não vê um go
     await m.getByRole('button', { name: 'Salvar ajuste' }).click();
     await expect.poll(async () => (await getEncounterRPC(m, campaignId)).combatants.find((c) => c.id === goblin2.id)?.hitPointsCurrent).toBe(7);
     expect(table.campaignId).toBe(campaignId);
+  } finally {
+    await done();
+  }
+});
+
+test('o jogador pode conjurar Escudo: o mestre responde por ele, o acerto vira erro, ou segue sem Escudo', { tag: ['@MR-012', '@MR-014', '@RN-22'] }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  const { m, p, campaignId, done } = await actingTable(browser, 'Escudo', captainFirst);
+  try {
+    await openSessionPage(m, campaignId);
+    await openSessionPage(p, campaignId);
+    const card = m.getByRole('region', { name: 'Ações do Capitão Goblin' });
+    const roll = async (face: string) => {
+      await card.getByRole('button', { name: 'Digitar o resultado' }).click();
+      await card.getByLabel(/Role 1d20 para Cimitarra/).fill(face);
+      await card.getByRole('button', { name: `Confirmar ${face}` }).click();
+    };
+
+    // A hit that is not critical on a character who can cast Escudo waits for the reaction.
+    await roll('15');
+    await expect(card.getByText('Esperando a reação do Pensantus.')).toBeVisible();
+    await expect(card.getByText('Ele pode conjurar Escudo (+5 na CA). O jogador decide sem ver o total; você pode responder por ele.')).toBeVisible();
+    await expect(card.getByRole('button', { name: 'Rolar dano' })).toHaveAttribute('aria-disabled', 'true');
+    await expect(card.getByText('Espere a reação do Pensantus.')).toBeVisible();
+    // Passing the turn asks, as with a damage to apply.
+    await m.getByRole('button', { name: 'Próximo turno' }).click();
+    await expect(m.getByRole('alertdialog', { name: /Há dano sem aplicar/ })).toBeVisible();
+    await m.getByRole('button', { name: 'Voltar' }).click();
+    // The answers have the same size.
+    const use = await card.getByRole('button', { name: 'Usar Escudo por ele' }).boundingBox();
+    const skip = await card.getByRole('button', { name: 'Seguir sem Escudo' }).boundingBox();
+    expect(use?.height).toBe(skip?.height);
+
+    // Without Escudo the hit goes on to "Rolar dano" and its apply or discard.
+    await card.getByRole('button', { name: 'Seguir sem Escudo' }).click();
+    await card.getByRole('button', { name: 'Rolar dano' }).click();
+    await expect(card.getByRole('button', { name: /Aplicar \d+ de dano/ })).toBeVisible();
+    await card.getByRole('button', { name: 'Não aplicar' }).click();
+    await card.getByRole('button', { name: 'Descartar' }).click();
+
+    // Another attack: 11 + 3 = 14 reaches 13, but not 18: Escudo (+5 na CA) stops it.
+    await roll('11');
+    await expect(card.getByText('Esperando a reação do Pensantus.')).toBeVisible();
+    await card.getByRole('button', { name: 'Usar Escudo por ele' }).click();
+    await expect(card.locator('.pill', { hasText: 'Errou: o Escudo segurou' })).toBeVisible();
+    await expect(card.getByRole('button', { name: /Rolar dano|Aplicar/ })).toHaveCount(0);
+    await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('o Escudo segurou');
+    const pens = (await getEncounterRPC(m, campaignId)).combatants.find((c) => c.label === 'Pensantus');
+    expect(pens?.hitPointsCurrent).toBe(23);
+  } finally {
+    await done();
+  }
+});
+
+test('numa tela de 320 × 568: a pergunta de encerrar cabe numa linha por botão, o erro do dado físico fica à vista e o rodapé tem fundo', { tag: ['@MR-014', '@a11y'] }, async ({ browser }) => {
+  test.setTimeout(120_000);
+  const { p, campaignId, done } = await actingTable(browser, 'Tela pequena', playerFirst, [], { width: 320, height: 568 });
+  try {
+    await openSessionPage(p, campaignId);
+    // The two answers keep one line each: the same height, or two full rows of the same height.
+    await p.getByRole('button', { name: 'Encerrar turno' }).last().click();
+    const back = await p.getByRole('button', { name: 'Voltar' }).boundingBox();
+    const end = await p.getByRole('button', { name: 'Encerrar turno' }).last().boundingBox();
+    expect(back!.height).toBe(end!.height);
+    expect(end!.height).toBeLessThanOrEqual(48);
+    expect(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await p.getByRole('button', { name: 'Voltar' }).click();
+
+    // The physical roll's error is in view, above the sticky footer, not under it.
+    await p.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
+    await p.locator('label', { hasText: 'Goblin 1' }).click();
+    await p.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await p.getByLabel(/Role 1d20/).fill('27');
+    const alert = p.getByRole('alert').filter({ hasText: 'Digite um número de 1 a 20' });
+    await expect(alert).toBeInViewport({ ratio: 1 });
+    const confirm = await p.getByRole('button', { name: 'Confirmar' }).boundingBox();
+    const err = await alert.boundingBox();
+    expect(err!.y + err!.height).toBeLessThanOrEqual(confirm!.y);
+
+    // The result's footer has its own band: "Voltar à sua vez" is whole and in view.
+    await p.getByLabel(/Role 1d20/).fill('20');
+    await p.getByRole('button', { name: 'Confirmar 20' }).click();
+    await p.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await p.getByLabel(/Role 2d10/).fill('12');
+    await p.getByRole('button', { name: 'Confirmar 12' }).click();
+    await expect(p.getByRole('button', { name: 'Voltar à sua vez' })).toBeInViewport({ ratio: 1 });
   } finally {
     await done();
   }

@@ -9,7 +9,7 @@ import {
   type TurnOptions,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { ActionEconomy } from '../../../gen/meurpg/rules/v1/rules_pb';
-import { feetToMeters, formatMeters, tight } from './combat-grid';
+import { feetToMeters, formatMeters, joinDots, tight } from './combat-grid';
 
 /**
  * What "Sua vez" says about the options the server works out
@@ -110,7 +110,7 @@ export function rangeText(attack: Attack, reach = false): string {
 /** "+6 para acertar · 1d10 de fogo · alcance 36 m". */
 export function attackDetail(attack: Attack, reach = false): string {
   const bonus = `${attack.attackBonus < 0 ? '−' : '+'}${Math.abs(attack.attackBonus)} para acertar`;
-  return tight([bonus, damageText(attack), rangeText(attack, reach)].join(' · '));
+  return tight(joinDots([bonus, damageText(attack), rangeText(attack, reach)]));
 }
 
 /** "Cimitarra +5": the master's radio rows. */

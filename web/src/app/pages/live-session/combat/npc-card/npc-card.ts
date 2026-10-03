@@ -56,6 +56,8 @@ export class NpcCard {
   readonly narrow = input(false);
   /** What the turn still owes ("Falta aplicar 5 de dano"), or `null`. */
   readonly pendingNote = input<string | null>(null);
+  /** The newest attack of this one was stopped by the target's Escudo (from the log). */
+  readonly reactionStopped = input(false);
   /** The page's own call (the turn passing) is in flight. */
   readonly turnBusy = input(false);
   /** "Próximo turno"; `true` when the master passes it with a damage waiting. */
@@ -68,6 +70,8 @@ export class NpcCard {
   /** The master is typing the d20: the roll takes the whole row. */
   protected readonly typing = signal(false);
   private readonly picker = viewChild(RollPicker);
+  /** The master's own "Usar Escudo por ele" stopped the hit. */
+  private readonly stoppedHere = signal(false);
   /** The d20 just rolled: shown with the armor class, until the turn changes. */
   protected readonly last = signal<{ roll: AttackRoll; pending: PendingDamage | null; subject: string } | null>(null);
   private key = newKey();
@@ -109,12 +113,14 @@ export class NpcCard {
       return null;
     }
     const target = this.encounter().combatants.find((c) => c.id === l.roll.targetId);
+    // Escudo can turn a hit into a miss after the roll (the master's answer, or the player's).
+    const stopped = this.stoppedHere() || this.reactionStopped();
     return {
       total: l.roll.d20?.total ?? 0,
       formula: l.roll.d20 ? rollFormula(l.roll.d20) : '',
       physical: l.roll.d20?.physical ?? false,
-      word: outcomeWord(l.roll.outcome),
-      hit: isHit(l.roll.outcome),
+      word: stopped ? 'Errou: o Escudo segurou' : outcomeWord(l.roll.outcome),
+      hit: !stopped && isHit(l.roll.outcome),
       against:
         l.roll.targetArmorClass !== undefined
           ? `contra CA ${l.roll.targetArmorClass} ${article(target?.label ?? '') === 'a' ? 'da' : 'do'} ${target?.label ?? ''}`
@@ -152,6 +158,10 @@ export class NpcCard {
         this.targetId.set(ids[0] ?? '');
       }
     });
+  }
+
+  protected onReacted(what: 'stopped' | 'still' | 'declined'): void {
+    this.stoppedHere.set(what === 'stopped');
   }
 
   protected pickAttack(key: string): void {
@@ -205,6 +215,7 @@ export class NpcCard {
       this.state().apply(res.encounter);
       this.last.set({ roll: res.roll, pending: res.pending ?? null, subject: this.subject().id });
       this.picker()?.reset();
+      this.stoppedHere.set(false);
     } catch (err) {
       this.error.set(combatErrorMessage(err, 'rolar o ataque'));
     } finally {

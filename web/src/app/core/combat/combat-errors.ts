@@ -78,6 +78,14 @@ export function blockedMessage(blocked: EncounterBlocked): string {
       return 'Não há mais nada para desfazer: só a última ação pode ser desfeita.';
     case EncounterBlockedReason.COMBATANT_DOWN:
       return 'Quem está caído não age.';
+    case EncounterBlockedReason.REACTION_PENDING:
+      return 'Esse acerto espera a reação do alvo (Escudo). Espere o jogador ou responda por ele.';
+    case EncounterBlockedReason.NOT_AWAITING_REACTION:
+      return 'Esse acerto não espera mais uma reação. A tela foi atualizada.';
+    case EncounterBlockedReason.REACTION_USED:
+      return 'A reação desse personagem já foi usada neste turno.';
+    case EncounterBlockedReason.NO_SLOT:
+      return 'Esse personagem não tem espaço de magia livre para o Escudo.';
     default:
       return 'O combate não está num estado que aceite isso. A tela foi atualizada.';
   }

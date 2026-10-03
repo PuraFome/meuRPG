@@ -64,21 +64,20 @@ import { MatIconModule } from '@angular/material/icon';
       line-height: 20px;
     }
 
+    // Side by side while they fit, else two full rows of the same height.
     .ask__buttons {
       display: flex;
+      flex-wrap: wrap;
       gap: 10px;
       margin-top: 4px;
-
-      // On the narrowest phones the two buttons stack, the same size.
-      @media (max-width: 359.98px) {
-        flex-direction: column;
-      }
 
       button {
         --mat-button-outlined-container-height: 48px;
         --mat-button-outlined-label-text-color: var(--mr-ink);
         --mat-button-outlined-outline-color: var(--mr-control-line);
         flex: 1 1 0;
+        min-width: max-content;
+        white-space: nowrap;
         background: var(--mr-surface);
 
         @media (min-width: 768px) {

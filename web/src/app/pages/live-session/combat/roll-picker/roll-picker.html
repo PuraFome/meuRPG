@@ -50,10 +50,8 @@
         <span class="type__bonus">{{ bonusText() }}</span>
       }
     </div>
-    @if (invalid()) {
-      <p [id]="id + '-err'" class="type__err" role="alert">
-        <mat-icon aria-hidden="true">error</mat-icon>{{ errorText() }}
-      </p>
+    @if (!sticky()) {
+      <ng-container *ngTemplateOutlet="alertTpl" />
     }
     <div [id]="id + '-sum'" class="type__sum" [class.type__sum--wait]="!total()" role="status">
       @if (total(); as t) {
@@ -68,6 +66,9 @@
       }
     </div>
     <div class="actions" [class.foot]="sticky()">
+    @if (sticky()) {
+      <ng-container *ngTemplateOutlet="alertTpl" />
+    }
     <button
       mat-flat-button
       type="button"
@@ -88,3 +89,12 @@
     </div>
   </div>
 }
+
+<!-- In a sheet that scrolls the error stands in the sticky footer, so it is never hidden. -->
+<ng-template #alertTpl>
+    @if (invalid()) {
+      <p [id]="id + '-err'" class="type__err" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>{{ errorText() }}
+      </p>
+    }
+</ng-template>

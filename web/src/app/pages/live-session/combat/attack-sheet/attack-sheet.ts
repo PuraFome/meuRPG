@@ -88,6 +88,7 @@ export class AttackSheet {
   /** Made again when the target changes: a new attack, not a retry. */
   private attackKey = newKey();
   private readonly damageKey = newKey();
+  private readonly body = viewChild<ElementRef<HTMLElement>>('body');
   private readonly back = viewChild('back', { read: ElementRef<HTMLButtonElement> });
 
   protected readonly name = attackName(this.attack);
@@ -166,6 +167,12 @@ export class AttackSheet {
   constructor() {
     // After a result the focus goes to the one next action, as soon as it is drawn.
     effect(() => this.back()?.nativeElement.focus());
+    // An error opens at the top of the scrolling body, where it is seen.
+    effect(() => {
+      if (this.error()) {
+        this.body()?.nativeElement.scrollTo({ top: 0 });
+      }
+    });
   }
 
   private signedBonus(): string {

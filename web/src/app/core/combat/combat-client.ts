@@ -10,6 +10,7 @@ import {
   type ListCombatLogResponse,
   type ParticipantSchema,
   type PendingDamage,
+  type ReactionOutcome,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
 
@@ -43,6 +44,12 @@ export interface AttackResult {
 export interface DamageResult {
   readonly encounter: Encounter;
   readonly pending: PendingDamage;
+}
+
+/** What Escudo did to a hit (`UseReaction`). */
+export interface ReactionResult {
+  readonly encounter: Encounter;
+  readonly outcome: ReactionOutcome;
 }
 
 /** One adjustment of an NPC's hit points ("Dano/Cura"): at most one of the
@@ -279,6 +286,24 @@ export class CombatClient {
       idempotencyKey: newKey(),
     });
     return { encounter: need(res.encounter, 'DiscardPendingDamage'), pending: need(res.pendingDamage, 'DiscardPendingDamage') };
+  }
+
+  /** The master answers for the target: cast Escudo with `slot`. */
+  async useReaction(
+    campaignId: string,
+    encounterId: string,
+    pendingDamageId: string,
+    slot: { level: number; pact: boolean },
+    key: string,
+  ): Promise<ReactionResult> {
+    const res = await this.client.useReaction({ campaignId, encounterId, pendingDamageId, slot, idempotencyKey: key });
+    return { encounter: need(res.encounter, 'UseReaction'), outcome: res.outcome };
+  }
+
+  /** The master lets the hit go ("Seguir sem Escudo"). */
+  async declineReaction(campaignId: string, encounterId: string, pendingDamageId: string, key: string): Promise<Encounter> {
+    const res = await this.client.declineReaction({ campaignId, encounterId, pendingDamageId, idempotencyKey: key });
+    return need(res.encounter, 'DeclineReaction');
   }
 
   /** A standard action ("standard:dash"). */

@@ -58,6 +58,12 @@ describe('the combat log sentences (timeline.md, Rodadas 1 and 2)', () => {
     expect(logLine(attack({ actorLabel: 'Toren', targetLabel: 'Goblin 1', key: 'equipment:battleaxe' }))?.icon).toBe('swords');
   });
 
+  it('says when Escudo stopped the hit', () => {
+    expect(logLine(attack({ actorLabel: 'Capitão Goblin', targetLabel: 'Pensantus', key: 'equipment:shortbow', keyNamePt: 'Arco curto', outcome: AttackOutcome.MISS, stoppedByReaction: true }))?.text).toBe(
+      ' atira no Pensantus com o Arco curto: errou, o Escudo segurou',
+    );
+  });
+
   it('says a miss, a critical, a pending and a discarded damage', () => {
     expect(logLine(attack({ actorLabel: 'Brisa', targetLabel: 'Capitão Goblin', keyNamePt: 'Rapieira', outcome: AttackOutcome.MISS }))?.text).toBe(
       ' ataca o Capitão Goblin com a Rapieira: errou',

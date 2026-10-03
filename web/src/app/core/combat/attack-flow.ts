@@ -4,7 +4,7 @@ import {
   PendingDamageStatus,
   type TargetInReach,
 } from '../../../gen/meurpg/play/v1/combat_pb';
-import { feetToMeters, formatMeters, tight } from './combat-grid';
+import { feetToMeters, formatMeters, joinDots, tight } from './combat-grid';
 import { stateWord } from './combat-view';
 
 /**
@@ -82,7 +82,7 @@ export function targetRows(targets: readonly TargetInReach[], rangeFt: number): 
     return {
       id: t.combatantId,
       label: t.label,
-      sub: tight(parts.join(' · ')),
+      sub: tight(joinDots(parts)),
       blocked: t.tooFar ? tight(`Longe demais: alcance de ${formatMeters(feetToMeters(rangeFt))}`) : '',
     };
   });
@@ -125,12 +125,18 @@ export function pendingNote(pendings: readonly PendingDamage[]): string | null {
     const sum = rolled.reduce((n, p) => n + p.amount, 0);
     return `Falta aplicar ${sum} de dano`;
   }
+  if (pendings.some((p) => p.status === PendingDamageStatus.AWAITING_REACTION)) {
+    return 'Falta a reação do alvo (Escudo)';
+  }
   return pendings.some((p) => p.status === PendingDamageStatus.AWAITING_ROLL) ? 'Falta rolar o dano' : null;
 }
 
 /** The damages that still stand in the way of passing the turn. */
 export function openDamages(pendings: readonly PendingDamage[]): PendingDamage[] {
   return pendings.filter(
-    (p) => p.status === PendingDamageStatus.ROLLED || p.status === PendingDamageStatus.AWAITING_ROLL,
+    (p) =>
+      p.status === PendingDamageStatus.ROLLED ||
+      p.status === PendingDamageStatus.AWAITING_ROLL ||
+      p.status === PendingDamageStatus.AWAITING_REACTION,
   );
 }

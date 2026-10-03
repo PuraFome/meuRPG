@@ -82,6 +82,8 @@ import { endTurnIsPrimary } from '../../../../core/combat/combat-options';
       --mat-button-outlined-label-text-color: var(--mr-ink);
       --mat-button-outlined-outline-color: var(--mr-control-line);
       flex: 1 1 0;
+      min-width: max-content;
+      white-space: nowrap;
     }
 
     .ask__go {

@@ -64,6 +64,9 @@ function attackText(e: CombatLogEntry): string {
   const weapon = e.keyNamePt ? ` com ${the(e.keyNamePt)}` : '';
   const verb = isShot(e.key) ? `atira ${inThe(target)}` : `ataca ${the(target)}`;
   let out = ` ${verb}${weapon}: ${e.outcome === AttackOutcome.CRITICAL_HIT ? 'crítico' : e.outcome === AttackOutcome.MISS ? 'errou' : 'acertou'}`;
+  if (e.stoppedByReaction) {
+    return `${out}, o Escudo segurou`; // the outcome is already "errou"
+  }
   const d = e.damage;
   if (d && e.outcome !== AttackOutcome.MISS) {
     switch (d.status) {

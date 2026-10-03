@@ -7,7 +7,7 @@ import { Code, ConnectError } from '@connectrpc/connect';
 
 import type { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { CharacterKind } from '../../../../gen/meurpg/characters/v1/characters_pb';
-import { type Encounter, EncounterStatus, type PendingDamage, PendingDamageStatus } from '../../../../gen/meurpg/play/v1/combat_pb';
+import { CombatLogKind, type Encounter, EncounterStatus, type PendingDamage, PendingDamageStatus } from '../../../../gen/meurpg/play/v1/combat_pb';
 import { CombatClient } from '../../../core/combat/combat-client';
 import { combatErrorMessage } from '../../../core/combat/combat-errors';
 import { type Square, canReach, reachSquares } from '../../../core/combat/combat-grid';
@@ -181,6 +181,15 @@ export class CombatView {
   protected readonly masterCard = computed(() => {
     const c = this.subject();
     return this.isMaster() && c ? c : null;
+  });
+  /** The newest attack of the one on turn was stopped by the target's Escudo (from the log). */
+  protected readonly reactionStopped = computed(() => {
+    const who = this.subject();
+    const entry = this.log
+      .rounds()
+      .flatMap((r) => r.entries)
+      .find((x) => x.kind === CombatLogKind.ATTACK && x.actorId === who?.id);
+    return !!entry?.stoppedByReaction;
   });
   protected readonly cardVisible = computed(() => {
     const c = this.masterCard();

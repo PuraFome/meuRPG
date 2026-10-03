@@ -91,6 +91,7 @@
         @if (last()?.pending) {
           <app-pending-damages
             [flat]="true"
+            (reacted)="onReacted($event)"
             [pendings]="inBox()"
             [encounter]="encounter()"
             [campaignId]="campaignId()"
@@ -102,6 +103,7 @@
   }
 
   <app-pending-damages
+    (reacted)="onReacted($event)"
     [pendings]="isNpc() ? others() : pendings()"
     [encounter]="encounter()"
     [campaignId]="campaignId()"

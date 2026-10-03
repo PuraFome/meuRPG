@@ -252,10 +252,15 @@
   }
 }
 
-// The button sticks to the bottom of the scrolling body (the Material button
-// sets its own `position`, so the selector is more specific).
-.sheet__body > .sheet__done {
+// The footer sticks to the bottom of the scrolling body, on a solid band.
+.sheet__foot {
   position: sticky;
   bottom: 0;
+  padding: 10px 0 4px;
+  border-top: 1px solid var(--mr-rule);
+  background: var(--mr-surface);
+}
+
+.sheet__done {
   width: 100%;
 }

@@ -23,6 +23,32 @@
           <button mat-stroked-button type="button" class="dmg__skip" (click)="askDiscard(it.p.id)">Não aplicar</button>
         </div>
       }
+    } @else if (it.awaiting) {
+      <div class="mr-notice mr-notice--warning">
+        <mat-icon aria-hidden="true">shield</mat-icon>
+        <p>
+          <strong>Esperando a reação do {{ it.target }}.</strong>
+          {{ it.pronoun }} pode conjurar Escudo (+5 na CA). O jogador decide sem ver o total; você pode responder por {{ it.pronoun.toLowerCase() }}.
+        </p>
+      </div>
+      <div class="dmg__buttons">
+        <button
+          mat-stroked-button
+          type="button"
+          class="dmg__skip dmg__use"
+          [disabled]="busy() || !it.slot"
+          (click)="it.slot && useShield(it.p, it.slot)"
+        >
+          Usar Escudo por {{ it.pronoun.toLowerCase() }}
+        </button>
+        <button mat-stroked-button type="button" class="dmg__skip" [disabled]="busy()" (click)="declineShield(it.p)">
+          Seguir sem Escudo
+        </button>
+      </div>
+      <button mat-stroked-button type="button" class="dmg__off" disabled disabledInteractive [attr.aria-describedby]="'wait-' + it.p.id">
+        Rolar dano
+      </button>
+      <p class="dmg__why" [id]="'wait-' + it.p.id"><mat-icon aria-hidden="true">block</mat-icon>Espere a reação do {{ it.target }}.</p>
     } @else if (it.waitsForPlayer) {
       <p class="dmg__wait"><mat-icon aria-hidden="true">hourglass_empty</mat-icon>Esperando {{ it.attacker }} rolar o dano em {{ it.target }}.</p>
     } @else {

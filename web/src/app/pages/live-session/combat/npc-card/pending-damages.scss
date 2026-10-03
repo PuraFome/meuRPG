@@ -49,7 +49,7 @@
 
   // Side by side from a tablet up, with the same size; stacked full width on a phone.
   @media (min-width: 768px) {
-    flex-direction: row;
+    flex-flow: row wrap;
     gap: 12px;
   }
 }
@@ -62,9 +62,12 @@
   --mat-button-outlined-label-text-color: var(--mr-ink);
   font-weight: 700;
 
+  white-space: nowrap;
+
   @media (min-width: 768px) {
     --mat-button-outlined-container-height: 44px;
     flex: 1 1 0;
+    min-width: max-content;
   }
 }
 
@@ -72,6 +75,37 @@
   --mat-button-outlined-label-text-color: var(--mr-accent-text);
   --mat-button-outlined-outline-width: 2px;
   --mat-button-outlined-outline-color: var(--mr-accent);
+}
+
+.dmg__use {
+  --mat-button-outlined-label-text-color: var(--mr-accent-text);
+}
+
+// "Rolar dano" while the hit waits for the reaction: dashed, with its reason.
+.dmg__off {
+  --mat-button-outlined-container-height: 44px;
+  --mat-button-outlined-label-text-color: var(--mr-ink-muted);
+  --mat-button-outlined-disabled-label-text-color: var(--mr-ink-muted);
+  --mat-button-outlined-disabled-outline-color: var(--mr-control-line);
+  align-self: flex-start;
+  border-style: dashed;
+  cursor: default;
+}
+
+.dmg__why {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: -4px 0 0;
+  font-size: 14px;
+  font-weight: 500;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
 }
 
 .dmg__wait {
@@ -107,6 +141,8 @@
   --mat-button-outlined-label-text-color: var(--mr-ink);
   --mat-button-outlined-outline-color: var(--mr-control-line);
   flex: 1 1 0;
+  min-width: max-content;
+  white-space: nowrap;
 
   @media (min-width: 768px) {
     --mat-button-outlined-container-height: 44px;

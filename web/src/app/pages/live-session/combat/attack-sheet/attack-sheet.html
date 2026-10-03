@@ -16,7 +16,13 @@
     <app-attack-steps [steps]="stepList()" />
   }
 
-  <div class="sheet__body">
+  <div #body class="sheet__body">
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
   @switch (stage()) {
     @case ('target') {
       <p class="sheet__ask" id="target-label">Escolha o alvo (só quem você vê)</p>
@@ -125,16 +131,12 @@
           <mat-icon aria-hidden="true">info</mat-icon>
           Sua ação foi usada.{{ cantrip ? ' Truque: nenhum espaço de magia foi gasto.' : '' }}
         </p>
-        <button #back mat-flat-button type="button" class="sheet__done" (click)="close()">Voltar à sua vez</button>
+        <div class="sheet__foot">
+          <button #back mat-flat-button type="button" class="sheet__done" (click)="close()">Voltar à sua vez</button>
+        </div>
       }
     }
   }
 
-  @if (error()) {
-    <div class="mr-notice mr-notice--danger" role="alert">
-      <mat-icon aria-hidden="true">error</mat-icon>
-      <p>{{ error() }}</p>
-    </div>
-  }
   </div>
 </div>
