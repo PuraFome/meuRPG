@@ -152,6 +152,9 @@ func (cm campaignMaps) pointToProto(p mapsdb.MapPoint, v viewer) *mapsv1.MapPoin
 		CreatedAt:   timestamppb.New(p.CreatedAt),
 		UpdatedAt:   timestamppb.New(p.UpdatedAt),
 	}
+	if v.master {
+		out.Hooks = p.Hooks // the master's private text (RN-20): never a player's
+	}
 	if p.TargetMapID != nil {
 		if target, ok := cm.byID[*p.TargetMapID]; ok && v.seesMap(target.ID, target.RevealedAt) {
 			out.TargetMap = &mapsv1.MapRef{Id: target.ID, Name: target.Name}

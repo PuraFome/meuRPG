@@ -72,6 +72,20 @@ const (
 	// MapServiceRemoveSceneActionProcedure is the fully-qualified name of the MapService's
 	// RemoveSceneAction RPC.
 	MapServiceRemoveSceneActionProcedure = "/meurpg.maps.v1.MapService/RemoveSceneAction"
+	// MapServiceAddSceneClueProcedure is the fully-qualified name of the MapService's AddSceneClue RPC.
+	MapServiceAddSceneClueProcedure = "/meurpg.maps.v1.MapService/AddSceneClue"
+	// MapServiceUpdateSceneClueProcedure is the fully-qualified name of the MapService's
+	// UpdateSceneClue RPC.
+	MapServiceUpdateSceneClueProcedure = "/meurpg.maps.v1.MapService/UpdateSceneClue"
+	// MapServiceMoveSceneClueProcedure is the fully-qualified name of the MapService's MoveSceneClue
+	// RPC.
+	MapServiceMoveSceneClueProcedure = "/meurpg.maps.v1.MapService/MoveSceneClue"
+	// MapServiceRemoveSceneClueProcedure is the fully-qualified name of the MapService's
+	// RemoveSceneClue RPC.
+	MapServiceRemoveSceneClueProcedure = "/meurpg.maps.v1.MapService/RemoveSceneClue"
+	// MapServiceRevealSceneClueProcedure is the fully-qualified name of the MapService's
+	// RevealSceneClue RPC.
+	MapServiceRevealSceneClueProcedure = "/meurpg.maps.v1.MapService/RevealSceneClue"
 	// MapServicePlaceMapTokenProcedure is the fully-qualified name of the MapService's PlaceMapToken
 	// RPC.
 	MapServicePlaceMapTokenProcedure = "/meurpg.maps.v1.MapService/PlaceMapToken"
@@ -189,7 +203,7 @@ type MapServiceClient interface {
 	// the current value, and unset fields stay as they are. Moving a point is
 	// an update of x_bp and y_bp. Only the campaign's master may call it.
 	// Changing the kind to anything but SUBMAP or BATTLE removes the target,
-	// and changing it from SCENE removes the point's scene actions.
+	// and changing it from SCENE removes the point's scene actions, clues and hooks.
 	//
 	// Errors:
 	//   - `invalid_argument`: nothing to change; a field breaks its rules;
@@ -212,7 +226,9 @@ type MapServiceClient interface {
 	DeleteMapPoint(context.Context, *connect.Request[v1.DeleteMapPointRequest]) (*connect.Response[v1.DeleteMapPointResponse], error)
 	// SetMapPointRevealed shows a point to the players, or hides it again
 	// (RN-10, MR-009). Only the campaign's master may call it. The players see
-	// it only on a map they see.
+	// it only on a map they see. Revealing a SCENE point also makes the scene
+	// "discovered" (MR-030): the group may tag notes with it from then on, even
+	// if the point is hidden again later.
 	//
 	// Errors:
 	//   - `not_found`: the point is not on this map, the map is not in this
@@ -268,6 +284,73 @@ type MapServiceClient interface {
 	//   - `not_found`: as UpdateSceneAction.
 	//   - `permission_denied`: the caller is a player.
 	RemoveSceneAction(context.Context, *connect.Request[v1.RemoveSceneActionRequest]) (*connect.Response[v1.RemoveSceneActionResponse], error)
+	// AddSceneClue puts one more clue on a SCENE point (MR-029): a short text
+	// the master prepared, to reveal to players during the session
+	// (RevealSceneClue). Clues save one by one, like the actions. Only the
+	// campaign's master may call it. The clue goes last. A player never
+	// receives a clue that was not revealed to them (RN-20). The streams of the
+	// master get `map_changed` and, when the point is the open scene,
+	// `scene_changed`; the players' streams get nothing.
+	//
+	// Errors:
+	//   - `invalid_argument`: the point is not a SCENE point; text is empty or
+	//     longer than 500 characters.
+	//   - `not_found`: the point is not on this map, the map is not in this
+	//     campaign, the campaign does not exist, or the caller is not a
+	//     member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `resource_exhausted`: the point already has 30 clues.
+	AddSceneClue(context.Context, *connect.Request[v1.AddSceneClueRequest]) (*connect.Response[v1.AddSceneClueResponse], error)
+	// UpdateSceneClue changes the text of one clue of a SCENE point. What
+	// players already received keeps the text they were given. Only the
+	// campaign's master may call it.
+	//
+	// Errors:
+	//   - `invalid_argument`: text is empty or longer than 500 characters.
+	//   - `not_found`: the clue is not on this point, the point is not on this
+	//     map, the map is not in this campaign, the campaign does not exist,
+	//     or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	UpdateSceneClue(context.Context, *connect.Request[v1.UpdateSceneClueRequest]) (*connect.Response[v1.UpdateSceneClueResponse], error)
+	// MoveSceneClue moves one clue a place up or down in its point's list.
+	// Moving the first one up, or the last one down, changes nothing. Only the
+	// campaign's master may call it.
+	//
+	// Errors:
+	//   - `invalid_argument`: direction is unspecified.
+	//   - `not_found`: as UpdateSceneClue.
+	//   - `permission_denied`: the caller is a player.
+	MoveSceneClue(context.Context, *connect.Request[v1.MoveSceneClueRequest]) (*connect.Response[v1.MoveSceneClueResponse], error)
+	// RemoveSceneClue takes one clue off a SCENE point, with no confirmation:
+	// the players who already received it keep it in their notes, with the
+	// text they were given. Only the campaign's master may call it.
+	//
+	// Errors:
+	//   - `not_found`: as UpdateSceneClue.
+	//   - `permission_denied`: the caller is a player.
+	RemoveSceneClue(context.Context, *connect.Request[v1.RemoveSceneClueRequest]) (*connect.Response[v1.RemoveSceneClueResponse], error)
+	// RevealSceneClue gives a clue to the players the master chose (MR-029,
+	// question 59: the app sends every player character checked by default).
+	// Each one gets it once: revealing again to a player who has it changes
+	// nothing, and there is no way to take it back. The clue lands in the
+	// player's notes (meurpg.notes.v1.NotesService.ListNotes) as "Pista do
+	// mestre", tagged with the scene once the group has discovered it, whether
+	// or not they are online. Only the campaign's master may call it, with or
+	// without an open session.
+	//
+	// While a session is open, a `clue_revealed` event goes into its history
+	// (IDs only, never the text), the streams of the players who got it now
+	// receive `notes_changed`, and the master's, `scene_changed` when the
+	// point is the open scene. No other player's stream hears of it.
+	//
+	// Errors:
+	//   - `invalid_argument`: character_ids is empty or has more than 50.
+	//   - `not_found`: the clue is not in this campaign, or one of the
+	//     characters is not a living player character of it, or has no
+	//     player, or the campaign does not exist, or the caller is not a
+	//     member of it.
+	//   - `permission_denied`: the caller is a player.
+	RevealSceneClue(context.Context, *connect.Request[v1.RevealSceneClueRequest]) (*connect.Response[v1.RevealSceneClueResponse], error)
 	// PlaceMapToken puts a character's token on a map, or moves it there if
 	// it is already on the map (MR-012). Only the campaign's master may call
 	// it. The character must be a living character of the campaign: a
@@ -408,6 +491,36 @@ func NewMapServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(mapServiceMethods.ByName("RemoveSceneAction")),
 			connect.WithClientOptions(opts...),
 		),
+		addSceneClue: connect.NewClient[v1.AddSceneClueRequest, v1.AddSceneClueResponse](
+			httpClient,
+			baseURL+MapServiceAddSceneClueProcedure,
+			connect.WithSchema(mapServiceMethods.ByName("AddSceneClue")),
+			connect.WithClientOptions(opts...),
+		),
+		updateSceneClue: connect.NewClient[v1.UpdateSceneClueRequest, v1.UpdateSceneClueResponse](
+			httpClient,
+			baseURL+MapServiceUpdateSceneClueProcedure,
+			connect.WithSchema(mapServiceMethods.ByName("UpdateSceneClue")),
+			connect.WithClientOptions(opts...),
+		),
+		moveSceneClue: connect.NewClient[v1.MoveSceneClueRequest, v1.MoveSceneClueResponse](
+			httpClient,
+			baseURL+MapServiceMoveSceneClueProcedure,
+			connect.WithSchema(mapServiceMethods.ByName("MoveSceneClue")),
+			connect.WithClientOptions(opts...),
+		),
+		removeSceneClue: connect.NewClient[v1.RemoveSceneClueRequest, v1.RemoveSceneClueResponse](
+			httpClient,
+			baseURL+MapServiceRemoveSceneClueProcedure,
+			connect.WithSchema(mapServiceMethods.ByName("RemoveSceneClue")),
+			connect.WithClientOptions(opts...),
+		),
+		revealSceneClue: connect.NewClient[v1.RevealSceneClueRequest, v1.RevealSceneClueResponse](
+			httpClient,
+			baseURL+MapServiceRevealSceneClueProcedure,
+			connect.WithSchema(mapServiceMethods.ByName("RevealSceneClue")),
+			connect.WithClientOptions(opts...),
+		),
 		placeMapToken: connect.NewClient[v1.PlaceMapTokenRequest, v1.PlaceMapTokenResponse](
 			httpClient,
 			baseURL+MapServicePlaceMapTokenProcedure,
@@ -446,6 +559,11 @@ type mapServiceClient struct {
 	updateSceneAction   *connect.Client[v1.UpdateSceneActionRequest, v1.UpdateSceneActionResponse]
 	moveSceneAction     *connect.Client[v1.MoveSceneActionRequest, v1.MoveSceneActionResponse]
 	removeSceneAction   *connect.Client[v1.RemoveSceneActionRequest, v1.RemoveSceneActionResponse]
+	addSceneClue        *connect.Client[v1.AddSceneClueRequest, v1.AddSceneClueResponse]
+	updateSceneClue     *connect.Client[v1.UpdateSceneClueRequest, v1.UpdateSceneClueResponse]
+	moveSceneClue       *connect.Client[v1.MoveSceneClueRequest, v1.MoveSceneClueResponse]
+	removeSceneClue     *connect.Client[v1.RemoveSceneClueRequest, v1.RemoveSceneClueResponse]
+	revealSceneClue     *connect.Client[v1.RevealSceneClueRequest, v1.RevealSceneClueResponse]
 	placeMapToken       *connect.Client[v1.PlaceMapTokenRequest, v1.PlaceMapTokenResponse]
 	setMapTokenHidden   *connect.Client[v1.SetMapTokenHiddenRequest, v1.SetMapTokenHiddenResponse]
 	removeMapToken      *connect.Client[v1.RemoveMapTokenRequest, v1.RemoveMapTokenResponse]
@@ -524,6 +642,31 @@ func (c *mapServiceClient) MoveSceneAction(ctx context.Context, req *connect.Req
 // RemoveSceneAction calls meurpg.maps.v1.MapService.RemoveSceneAction.
 func (c *mapServiceClient) RemoveSceneAction(ctx context.Context, req *connect.Request[v1.RemoveSceneActionRequest]) (*connect.Response[v1.RemoveSceneActionResponse], error) {
 	return c.removeSceneAction.CallUnary(ctx, req)
+}
+
+// AddSceneClue calls meurpg.maps.v1.MapService.AddSceneClue.
+func (c *mapServiceClient) AddSceneClue(ctx context.Context, req *connect.Request[v1.AddSceneClueRequest]) (*connect.Response[v1.AddSceneClueResponse], error) {
+	return c.addSceneClue.CallUnary(ctx, req)
+}
+
+// UpdateSceneClue calls meurpg.maps.v1.MapService.UpdateSceneClue.
+func (c *mapServiceClient) UpdateSceneClue(ctx context.Context, req *connect.Request[v1.UpdateSceneClueRequest]) (*connect.Response[v1.UpdateSceneClueResponse], error) {
+	return c.updateSceneClue.CallUnary(ctx, req)
+}
+
+// MoveSceneClue calls meurpg.maps.v1.MapService.MoveSceneClue.
+func (c *mapServiceClient) MoveSceneClue(ctx context.Context, req *connect.Request[v1.MoveSceneClueRequest]) (*connect.Response[v1.MoveSceneClueResponse], error) {
+	return c.moveSceneClue.CallUnary(ctx, req)
+}
+
+// RemoveSceneClue calls meurpg.maps.v1.MapService.RemoveSceneClue.
+func (c *mapServiceClient) RemoveSceneClue(ctx context.Context, req *connect.Request[v1.RemoveSceneClueRequest]) (*connect.Response[v1.RemoveSceneClueResponse], error) {
+	return c.removeSceneClue.CallUnary(ctx, req)
+}
+
+// RevealSceneClue calls meurpg.maps.v1.MapService.RevealSceneClue.
+func (c *mapServiceClient) RevealSceneClue(ctx context.Context, req *connect.Request[v1.RevealSceneClueRequest]) (*connect.Response[v1.RevealSceneClueResponse], error) {
+	return c.revealSceneClue.CallUnary(ctx, req)
 }
 
 // PlaceMapToken calls meurpg.maps.v1.MapService.PlaceMapToken.
@@ -647,7 +790,7 @@ type MapServiceHandler interface {
 	// the current value, and unset fields stay as they are. Moving a point is
 	// an update of x_bp and y_bp. Only the campaign's master may call it.
 	// Changing the kind to anything but SUBMAP or BATTLE removes the target,
-	// and changing it from SCENE removes the point's scene actions.
+	// and changing it from SCENE removes the point's scene actions, clues and hooks.
 	//
 	// Errors:
 	//   - `invalid_argument`: nothing to change; a field breaks its rules;
@@ -670,7 +813,9 @@ type MapServiceHandler interface {
 	DeleteMapPoint(context.Context, *connect.Request[v1.DeleteMapPointRequest]) (*connect.Response[v1.DeleteMapPointResponse], error)
 	// SetMapPointRevealed shows a point to the players, or hides it again
 	// (RN-10, MR-009). Only the campaign's master may call it. The players see
-	// it only on a map they see.
+	// it only on a map they see. Revealing a SCENE point also makes the scene
+	// "discovered" (MR-030): the group may tag notes with it from then on, even
+	// if the point is hidden again later.
 	//
 	// Errors:
 	//   - `not_found`: the point is not on this map, the map is not in this
@@ -726,6 +871,73 @@ type MapServiceHandler interface {
 	//   - `not_found`: as UpdateSceneAction.
 	//   - `permission_denied`: the caller is a player.
 	RemoveSceneAction(context.Context, *connect.Request[v1.RemoveSceneActionRequest]) (*connect.Response[v1.RemoveSceneActionResponse], error)
+	// AddSceneClue puts one more clue on a SCENE point (MR-029): a short text
+	// the master prepared, to reveal to players during the session
+	// (RevealSceneClue). Clues save one by one, like the actions. Only the
+	// campaign's master may call it. The clue goes last. A player never
+	// receives a clue that was not revealed to them (RN-20). The streams of the
+	// master get `map_changed` and, when the point is the open scene,
+	// `scene_changed`; the players' streams get nothing.
+	//
+	// Errors:
+	//   - `invalid_argument`: the point is not a SCENE point; text is empty or
+	//     longer than 500 characters.
+	//   - `not_found`: the point is not on this map, the map is not in this
+	//     campaign, the campaign does not exist, or the caller is not a
+	//     member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `resource_exhausted`: the point already has 30 clues.
+	AddSceneClue(context.Context, *connect.Request[v1.AddSceneClueRequest]) (*connect.Response[v1.AddSceneClueResponse], error)
+	// UpdateSceneClue changes the text of one clue of a SCENE point. What
+	// players already received keeps the text they were given. Only the
+	// campaign's master may call it.
+	//
+	// Errors:
+	//   - `invalid_argument`: text is empty or longer than 500 characters.
+	//   - `not_found`: the clue is not on this point, the point is not on this
+	//     map, the map is not in this campaign, the campaign does not exist,
+	//     or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	UpdateSceneClue(context.Context, *connect.Request[v1.UpdateSceneClueRequest]) (*connect.Response[v1.UpdateSceneClueResponse], error)
+	// MoveSceneClue moves one clue a place up or down in its point's list.
+	// Moving the first one up, or the last one down, changes nothing. Only the
+	// campaign's master may call it.
+	//
+	// Errors:
+	//   - `invalid_argument`: direction is unspecified.
+	//   - `not_found`: as UpdateSceneClue.
+	//   - `permission_denied`: the caller is a player.
+	MoveSceneClue(context.Context, *connect.Request[v1.MoveSceneClueRequest]) (*connect.Response[v1.MoveSceneClueResponse], error)
+	// RemoveSceneClue takes one clue off a SCENE point, with no confirmation:
+	// the players who already received it keep it in their notes, with the
+	// text they were given. Only the campaign's master may call it.
+	//
+	// Errors:
+	//   - `not_found`: as UpdateSceneClue.
+	//   - `permission_denied`: the caller is a player.
+	RemoveSceneClue(context.Context, *connect.Request[v1.RemoveSceneClueRequest]) (*connect.Response[v1.RemoveSceneClueResponse], error)
+	// RevealSceneClue gives a clue to the players the master chose (MR-029,
+	// question 59: the app sends every player character checked by default).
+	// Each one gets it once: revealing again to a player who has it changes
+	// nothing, and there is no way to take it back. The clue lands in the
+	// player's notes (meurpg.notes.v1.NotesService.ListNotes) as "Pista do
+	// mestre", tagged with the scene once the group has discovered it, whether
+	// or not they are online. Only the campaign's master may call it, with or
+	// without an open session.
+	//
+	// While a session is open, a `clue_revealed` event goes into its history
+	// (IDs only, never the text), the streams of the players who got it now
+	// receive `notes_changed`, and the master's, `scene_changed` when the
+	// point is the open scene. No other player's stream hears of it.
+	//
+	// Errors:
+	//   - `invalid_argument`: character_ids is empty or has more than 50.
+	//   - `not_found`: the clue is not in this campaign, or one of the
+	//     characters is not a living player character of it, or has no
+	//     player, or the campaign does not exist, or the caller is not a
+	//     member of it.
+	//   - `permission_denied`: the caller is a player.
+	RevealSceneClue(context.Context, *connect.Request[v1.RevealSceneClueRequest]) (*connect.Response[v1.RevealSceneClueResponse], error)
 	// PlaceMapToken puts a character's token on a map, or moves it there if
 	// it is already on the map (MR-012). Only the campaign's master may call
 	// it. The character must be a living character of the campaign: a
@@ -862,6 +1074,36 @@ func NewMapServiceHandler(svc MapServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(mapServiceMethods.ByName("RemoveSceneAction")),
 		connect.WithHandlerOptions(opts...),
 	)
+	mapServiceAddSceneClueHandler := connect.NewUnaryHandler(
+		MapServiceAddSceneClueProcedure,
+		svc.AddSceneClue,
+		connect.WithSchema(mapServiceMethods.ByName("AddSceneClue")),
+		connect.WithHandlerOptions(opts...),
+	)
+	mapServiceUpdateSceneClueHandler := connect.NewUnaryHandler(
+		MapServiceUpdateSceneClueProcedure,
+		svc.UpdateSceneClue,
+		connect.WithSchema(mapServiceMethods.ByName("UpdateSceneClue")),
+		connect.WithHandlerOptions(opts...),
+	)
+	mapServiceMoveSceneClueHandler := connect.NewUnaryHandler(
+		MapServiceMoveSceneClueProcedure,
+		svc.MoveSceneClue,
+		connect.WithSchema(mapServiceMethods.ByName("MoveSceneClue")),
+		connect.WithHandlerOptions(opts...),
+	)
+	mapServiceRemoveSceneClueHandler := connect.NewUnaryHandler(
+		MapServiceRemoveSceneClueProcedure,
+		svc.RemoveSceneClue,
+		connect.WithSchema(mapServiceMethods.ByName("RemoveSceneClue")),
+		connect.WithHandlerOptions(opts...),
+	)
+	mapServiceRevealSceneClueHandler := connect.NewUnaryHandler(
+		MapServiceRevealSceneClueProcedure,
+		svc.RevealSceneClue,
+		connect.WithSchema(mapServiceMethods.ByName("RevealSceneClue")),
+		connect.WithHandlerOptions(opts...),
+	)
 	mapServicePlaceMapTokenHandler := connect.NewUnaryHandler(
 		MapServicePlaceMapTokenProcedure,
 		svc.PlaceMapToken,
@@ -912,6 +1154,16 @@ func NewMapServiceHandler(svc MapServiceHandler, opts ...connect.HandlerOption) 
 			mapServiceMoveSceneActionHandler.ServeHTTP(w, r)
 		case MapServiceRemoveSceneActionProcedure:
 			mapServiceRemoveSceneActionHandler.ServeHTTP(w, r)
+		case MapServiceAddSceneClueProcedure:
+			mapServiceAddSceneClueHandler.ServeHTTP(w, r)
+		case MapServiceUpdateSceneClueProcedure:
+			mapServiceUpdateSceneClueHandler.ServeHTTP(w, r)
+		case MapServiceMoveSceneClueProcedure:
+			mapServiceMoveSceneClueHandler.ServeHTTP(w, r)
+		case MapServiceRemoveSceneClueProcedure:
+			mapServiceRemoveSceneClueHandler.ServeHTTP(w, r)
+		case MapServiceRevealSceneClueProcedure:
+			mapServiceRevealSceneClueHandler.ServeHTTP(w, r)
 		case MapServicePlaceMapTokenProcedure:
 			mapServicePlaceMapTokenHandler.ServeHTTP(w, r)
 		case MapServiceSetMapTokenHiddenProcedure:
@@ -985,6 +1237,26 @@ func (UnimplementedMapServiceHandler) MoveSceneAction(context.Context, *connect.
 
 func (UnimplementedMapServiceHandler) RemoveSceneAction(context.Context, *connect.Request[v1.RemoveSceneActionRequest]) (*connect.Response[v1.RemoveSceneActionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.RemoveSceneAction is not implemented"))
+}
+
+func (UnimplementedMapServiceHandler) AddSceneClue(context.Context, *connect.Request[v1.AddSceneClueRequest]) (*connect.Response[v1.AddSceneClueResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.AddSceneClue is not implemented"))
+}
+
+func (UnimplementedMapServiceHandler) UpdateSceneClue(context.Context, *connect.Request[v1.UpdateSceneClueRequest]) (*connect.Response[v1.UpdateSceneClueResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.UpdateSceneClue is not implemented"))
+}
+
+func (UnimplementedMapServiceHandler) MoveSceneClue(context.Context, *connect.Request[v1.MoveSceneClueRequest]) (*connect.Response[v1.MoveSceneClueResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.MoveSceneClue is not implemented"))
+}
+
+func (UnimplementedMapServiceHandler) RemoveSceneClue(context.Context, *connect.Request[v1.RemoveSceneClueRequest]) (*connect.Response[v1.RemoveSceneClueResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.RemoveSceneClue is not implemented"))
+}
+
+func (UnimplementedMapServiceHandler) RevealSceneClue(context.Context, *connect.Request[v1.RevealSceneClueRequest]) (*connect.Response[v1.RevealSceneClueResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.RevealSceneClue is not implemented"))
 }
 
 func (UnimplementedMapServiceHandler) PlaceMapToken(context.Context, *connect.Request[v1.PlaceMapTokenRequest]) (*connect.Response[v1.PlaceMapTokenResponse], error) {

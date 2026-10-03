@@ -333,7 +333,7 @@ func (s *Service) changeActions(ctx context.Context, m authz.Membership, mapID, 
 			return fmt.Errorf("find point: %w", err)
 		}
 		if out.point.Kind != kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_SCENE] {
-			return connect.NewError(connect.CodeInvalidArgument, errors.New("only a SCENE point has actions"))
+			return connect.NewError(connect.CodeInvalidArgument, errors.New("only a SCENE point has actions and clues"))
 		}
 		return change(q)
 	})
@@ -449,7 +449,7 @@ func (s *Service) attachActions(ctx context.Context, mapID string, points []*map
 }
 
 // ScenePoint implements play.MapKeeper (through SessionMaps): the scene of a
-// SCENE point of the campaign, hidden or not, with its actions and their DCs,
+// SCENE point of the campaign, hidden or not, with its actions and their DCs, its hooks and its clues (the master's: package play gives them to the master only),
 // or a `not_found` Connect error for any other point. Package play decides
 // what each member sees of it.
 func (sm *SessionMaps) ScenePoint(ctx context.Context, campaignID, pointID string) (link.Scene, error) {
@@ -464,7 +464,10 @@ func (sm *SessionMaps) ScenePoint(ctx context.Context, campaignID, pointID strin
 	if err != nil {
 		return link.Scene{}, fmt.Errorf("list the scene's actions: %w", err)
 	}
-	out := link.Scene{PointID: p.ID, Name: p.Name, Description: p.Description}
+	out := link.Scene{PointID: p.ID, Name: p.Name, Description: p.Description, Hooks: p.Hooks}
+	if out.Clues, err = sm.sceneClues(ctx, p.ID); err != nil {
+		return link.Scene{}, err
+	}
 	for _, a := range rows {
 		act := link.SceneAction{ID: a.ID, Key: a.Key, Name: a.Name}
 		if a.Dc != nil {

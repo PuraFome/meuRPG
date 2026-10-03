@@ -174,9 +174,9 @@ WHERE map_id = $1;
 
 -- name: InsertMapPoint :one
 -- A new point starts hidden (revealed_at NULL).
-INSERT INTO map_points (map_id, kind, name, description, x_bp, y_bp, target_map_id, created_at, updated_at)
+INSERT INTO map_points (map_id, kind, name, description, hooks, x_bp, y_bp, target_map_id, created_at, updated_at)
 VALUES (
-    sqlc.arg(map_id), sqlc.arg(kind), sqlc.arg(name), sqlc.arg(description), sqlc.arg(x_bp), sqlc.arg(y_bp),
+    sqlc.arg(map_id), sqlc.arg(kind), sqlc.arg(name), sqlc.arg(description), sqlc.arg(hooks), sqlc.arg(x_bp), sqlc.arg(y_bp),
     sqlc.narg(target_map_id), sqlc.arg(now), sqlc.arg(now)
 )
 RETURNING *;
@@ -197,7 +197,7 @@ FOR UPDATE;
 -- Every column the API may change, with the values the handler worked out
 -- from the request and the current row.
 UPDATE map_points
-SET kind = sqlc.arg(kind), name = sqlc.arg(name), description = sqlc.arg(description),
+SET kind = sqlc.arg(kind), name = sqlc.arg(name), description = sqlc.arg(description), hooks = sqlc.arg(hooks),
     x_bp = sqlc.arg(x_bp), y_bp = sqlc.arg(y_bp), target_map_id = sqlc.narg(target_map_id),
     revealed_at = sqlc.narg(revealed_at), updated_at = sqlc.arg(now)
 WHERE map_id = sqlc.arg(map_id) AND id = sqlc.arg(id)
@@ -338,3 +338,95 @@ WHERE point_id = $1;
 SELECT p.* FROM map_points AS p
 JOIN maps AS m ON m.id = p.map_id
 WHERE m.campaign_id = $1 AND p.id = $2 AND p.kind = 'scene';
+
+-- name: ListSceneClues :many
+-- A SCENE point's clues, in the master's order.
+SELECT * FROM scene_clues
+WHERE point_id = $1
+ORDER BY position, created_at, id;
+
+-- name: ListSceneCluesOfMap :many
+-- Every clue of a map's points, for the master's map read: grouped by the
+-- handler, each point's in order.
+SELECT c.* FROM scene_clues AS c
+JOIN map_points AS p ON p.id = c.point_id
+WHERE p.map_id = $1
+ORDER BY c.point_id, c.position, c.created_at, c.id;
+
+-- name: InsertSceneClue :one
+INSERT INTO scene_clues (point_id, position, text, created_at, updated_at)
+VALUES (sqlc.arg(point_id), sqlc.arg(position), sqlc.arg(text), sqlc.arg(now), sqlc.arg(now))
+RETURNING *;
+
+-- name: GetSceneClueForUpdate :one
+SELECT * FROM scene_clues
+WHERE point_id = $1 AND id = $2
+FOR UPDATE;
+
+-- name: UpdateSceneClue :one
+UPDATE scene_clues
+SET text = sqlc.arg(text), updated_at = sqlc.arg(now)
+WHERE point_id = sqlc.arg(point_id) AND id = sqlc.arg(id)
+RETURNING *;
+
+-- name: SetSceneCluePosition :exec
+UPDATE scene_clues SET position = $2 WHERE id = $1;
+
+-- name: DeleteSceneClue :execrows
+DELETE FROM scene_clues
+WHERE point_id = $1 AND id = $2;
+
+-- name: DeleteSceneCluesOfPoint :exec
+-- A point that stops being a scene has no clues. What players already
+-- received stays (scene_clue_reveals keeps its own copy of the text).
+DELETE FROM scene_clues
+WHERE point_id = $1;
+
+-- name: GetSceneClueInCampaign :one
+-- A clue by its ID alone, if it is on a point of the campaign's maps: the one
+-- the master reveals.
+SELECT c.* FROM scene_clues AS c
+JOIN map_points AS p ON p.id = c.point_id
+JOIN maps AS m ON m.id = p.map_id
+WHERE m.campaign_id = $1 AND c.id = $2;
+
+-- name: InsertClueReveal :execrows
+-- Gives a clue to a player, once: the unique index on (clue_id, user_id) turns
+-- a second reveal into no row at all. It copies the clue's text, so what the
+-- player received stays as it was said.
+INSERT INTO scene_clue_reveals (campaign_id, clue_id, point_id, user_id, character_id, text, revealed_at)
+VALUES (sqlc.arg(campaign_id), sqlc.arg(clue_id), sqlc.arg(point_id), sqlc.arg(user_id), sqlc.narg(character_id), sqlc.arg(text), sqlc.arg(now))
+ON CONFLICT (clue_id, user_id) DO NOTHING;
+
+-- name: ListClueRevealsOfPoint :many
+-- Who has each clue of a point, oldest reveal first.
+SELECT clue_id, character_id, revealed_at FROM scene_clue_reveals
+WHERE point_id = $1 AND clue_id IS NOT NULL
+ORDER BY revealed_at, id;
+
+-- name: ListClueRevealsOfMap :many
+-- Who has each clue of a map's points.
+SELECT r.point_id, r.clue_id, r.character_id, r.revealed_at FROM scene_clue_reveals AS r
+JOIN map_points AS p ON p.id = r.point_id
+WHERE p.map_id = $1 AND r.clue_id IS NOT NULL
+ORDER BY r.revealed_at, r.id;
+
+-- name: UpsertSceneDiscovery :exec
+-- The group discovered a scene (MR-030): the first time wins.
+INSERT INTO scene_discoveries (campaign_id, point_id, discovered_at)
+VALUES ($1, $2, $3)
+ON CONFLICT (campaign_id, point_id) DO NOTHING;
+
+-- name: ListDiscoveredScenes :many
+-- The scenes the group discovered, with their current names, oldest discovery
+-- first. A point that stopped being a scene is not listed.
+SELECT p.id, p.name FROM scene_discoveries AS d
+JOIN map_points AS p ON p.id = d.point_id
+WHERE d.campaign_id = $1 AND p.kind = 'scene'
+ORDER BY d.discovered_at, p.id;
+
+-- name: ListReceivedClues :many
+-- The clues revealed to a player in a campaign, newest first.
+SELECT id, point_id, text, revealed_at FROM scene_clue_reveals
+WHERE campaign_id = $1 AND user_id = $2
+ORDER BY revealed_at DESC, id;

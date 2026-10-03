@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
@@ -37,6 +38,10 @@ import (
 //     the app rolls the d20, or takes a typed one (RN-18). Closing the scene
 //     and opening it again starts afresh: a roll counts for the opening that
 //     is the session's latest `scene_opened` event.
+//   - A scene may have no actions (question 63): any SCENE point opens. The
+//     master also reads the point's hooks and clues in the open scene (MR-029);
+//     a player never does (RN-20).
+//   - Opening a scene makes it "discovered" for the group (MR-030).
 //   - Opening, closing and rolling are session events (ADR-0007): ids and
 //     numbers only, never a name or the master's words.
 
@@ -141,9 +146,8 @@ func (s *Service) OpenScene(
 	if err != nil {
 		return nil, s.dbError(ctx, "find the scene point", err)
 	}
-	if len(scene.Actions) == 0 {
-		return nil, errScene(playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_NO_ACTIONS, "a scene needs at least one action")
-	}
+	// Any SCENE point opens, even one with no actions (question 63): the
+	// description, the clues and the stage are enough to run a scene.
 
 	var session playdb.GameSession
 	var changed bool // another scene (or none) is open now
@@ -164,6 +168,12 @@ func (s *Service) OpenScene(
 			return fmt.Errorf("open the scene: %w", err)
 		}
 		c := &combatTx{tx: tx, q: q, session: session, now: s.now()}
+		// Opening a scene, even a hidden point's, makes it "discovered": the
+		// players see its name in the open scene, so they may tag notes with
+		// it (MR-030, question 61).
+		if err := s.maps.DiscoverScene(ctx, tx, m.CampaignID, point, c.now); err != nil {
+			return err
+		}
 		if _, err := insertSceneEvent(ctx, c, eventSceneOpened, &m.UserID, nil, sceneEvent{PointID: point, Actions: len(scene.Actions)}); err != nil {
 			return err
 		}
@@ -309,6 +319,13 @@ func (s *Service) sceneInfo(ctx context.Context, m authz.Membership, session pla
 		info.Actions = append(info.Actions, v)
 	}
 
+	if master {
+		// Only the master reads the hooks and the clues (MR-029, RN-20).
+		if info.Hooks, info.Clues, err = s.masterSceneNotes(ctx, m.CampaignID, scene); err != nil {
+			return nil, err
+		}
+	}
+
 	opened, err := s.queries.GetOpenSceneEvent(ctx, session.ID)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
@@ -324,6 +341,40 @@ func (s *Service) sceneInfo(ctx context.Context, m authz.Membership, session pla
 	}
 	info.Rolls = rolls
 	return info, nil
+}
+
+// masterSceneNotes builds the master's view of a scene's hooks and clues, with
+// each clue's recipients named.
+func (s *Service) masterSceneNotes(ctx context.Context, campaignID string, scene link.Scene) (string, []*mapsv1.SceneClue, error) {
+	var ids []string
+	for _, c := range scene.Clues {
+		for _, r := range c.RevealedTo {
+			if !slices.Contains(ids, r.CharacterID) {
+				ids = append(ids, r.CharacterID)
+			}
+		}
+	}
+	nameOf := map[string]string{}
+	if len(ids) > 0 {
+		chars, err := s.roster.CombatCharacters(ctx, campaignID, ids)
+		if err != nil {
+			return "", nil, s.dbError(ctx, "read the recipients' names", err)
+		}
+		for _, c := range chars {
+			nameOf[c.ID] = c.Name
+		}
+	}
+	clues := make([]*mapsv1.SceneClue, 0, len(scene.Clues))
+	for _, c := range scene.Clues {
+		clue := &mapsv1.SceneClue{Id: c.ID, Text: c.Text}
+		for _, r := range c.RevealedTo {
+			clue.RevealedTo = append(clue.RevealedTo, &mapsv1.ClueRecipient{
+				CharacterId: r.CharacterID, CharacterName: nameOf[r.CharacterID], RevealedAt: timestamppb.New(r.RevealedAt),
+			})
+		}
+		clues = append(clues, clue)
+	}
+	return scene.Hooks, clues, nil
 }
 
 // sceneRolls reads the rolls of the opening that began at event number

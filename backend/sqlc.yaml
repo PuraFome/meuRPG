@@ -99,3 +99,12 @@ sql:
         <<: *go-options
         package: progressiondb
         out: internal/progression/progressiondb
+
+  - engine: postgresql
+    schema: migrations
+    queries: internal/notes/queries.sql
+    gen:
+      go:
+        <<: *go-options
+        package: notesdb
+        out: internal/notes/notesdb

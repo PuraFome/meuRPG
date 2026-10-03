@@ -24,9 +24,11 @@ import (
 // methods take no caller: they run after progression's own authorization
 // check.
 
-// progressionKinds are the session event kinds progression may append. A kind
-// that is not one of them is a bug in the caller, never a write.
-var progressionKinds = []string{eventXPAwarded, eventXPAwardUndone, eventMilestoneMarked}
+// appendableKinds are the session event kinds another module may append
+// through AppendEvent: progression's XP awards and milestones, and the maps
+// module's clue reveals. A kind that is not one of them is a bug in the caller,
+// never a write.
+var appendableKinds = []string{eventXPAwarded, eventXPAwardUndone, eventMilestoneMarked, eventClueRevealed}
 
 // CampaignEncounter returns what an enemies award needs from the campaign's
 // combat: its name, whether it ended and the XP its defeated NPCs give.
@@ -65,12 +67,12 @@ func (s *Service) EncounterNames(ctx context.Context, campaignID string, ids []s
 
 // AppendEvent appends an event to the history of the campaign's open session
 // inside tx, and says whether there was one: with no open session the XP is
-// still given and nothing is written here. It locks the session's row first,
+// still given (or the clue revealed) and nothing is written here. It locks the session's row first,
 // like every other writer, so the events get their numbers in order. The
 // payload carries IDs and numbers only (docs/privacidade.md).
 func (s *Service) AppendEvent(ctx context.Context, tx pgx.Tx, campaignID, kind, actorUserID string, payload []byte, at time.Time) (bool, error) {
-	if !slices.Contains(progressionKinds, kind) {
-		return false, fmt.Errorf("play: %q is not a kind the progression module may write", kind)
+	if !slices.Contains(appendableKinds, kind) {
+		return false, fmt.Errorf("play: %q is not a kind another module may write", kind)
 	}
 	q := s.queries.WithTx(tx)
 	session, err := q.GetOpenGameSessionForUpdate(ctx, campaignID)

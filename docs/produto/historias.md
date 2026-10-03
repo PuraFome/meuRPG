@@ -282,7 +282,7 @@ Os dois últimos critérios foram respondida pelo Vinicius em 29/09/2026.
 - **Dado** um combate (MR-013, MR-014), **quando** o jogador vê as ações possíveis, **então** quem decide essa lista é o sistema, pelas regras de D&D — nunca o mestre. A cena de RP é o único lugar em que o mestre escolhe a lista.
 
 #### Implementado
-- O servidor (fatia 7.3) e as telas (fatia 7.5). O mestre escolhe as ações no ponto de cena do mapa, uma por vez (`AddSceneAction`, `UpdateSceneAction`, `MoveSceneAction`, `RemoveSceneAction`): perícia, teste de atributo ou salvaguarda, com nome opcional (até 60 caracteres) e CD opcional (1 a 30), no máximo 20, e nada de combate (a chave é conferida no catálogo das regras). Ele abre a cena na sessão (`OpenScene`: o ponto precisa ter ao menos uma ação, e pode estar escondido, e então continua escondido no mapa) e fecha sem perguntar (`CloseScene`); todos recebem `scene_changed`. O jogador lê a cena (`GetOpenScene`) com o nome e a descrição do ponto e as ações com o bônus do próprio personagem (a ficha, `rules.SceneOptions`) e a passiva de Percepção, Investigação e Intuição, **sem a CD**. Rolar (`RollSceneCheck`): o d20 do app ou o digitado (RN-18) mais o bônus; uma rolagem por personagem por ação enquanto a cena está aberta (fechar e abrir de novo zera); o mestre recebe `scene_check_rolled` e vê todas as rolagens, com o total e o "passou" quando há CD (o registro da cena, pergunta 54), e o jogador só as próprias, sem "passou". Os padrões das perguntas 51 a 55 valem até o Samuel responder (ver [RN-20](regras.md)). Testes: `TestMR015_PlayerSeesTheMastersActionsWithTheirBonus`, `TestMR015_NothingCombatOnlyInAScene`, `TestRN20_APlayerNeverGetsADCOrAnotherPlayersRoll`, `TestMR015_OneRollPerActionWhileTheSceneIsOpen`, `TestRN18_SceneRollsFollowTheDiceMode`, `TestMR015_AHiddenPointCanBeOpenedAndStaysHidden`, `TestMR015_OpeningAndClosingAScene`, `TestMR015_SceneActionRules`, `TestMR015_RollingNeedsALivingCharacter`, `TestSceneAuthorizationMatrix`. Ver [Arquitetura](../arquitetura.md#cenas-de-rp). **Nas telas (fatia 7.5):** no editor do mapa, o painel de um ponto de cena ganha "Ações da cena" (a lista com ↑ ↓ e remover, o formulário no lugar com o erro da CD, o estado vazio e o limite de 20 ações); na sessão, o mestre tem "Cena de RP" com "Abrir cena" (o seletor, com a cena escondida e a sem ações), a cena aberta no topo da coluna do mapa com as ações, as rolagens ao vivo com Passou / Não passou e "Trocar cena" / "Fechar cena"; o jogador tem o bloco "Cena" com o próprio bônus e "Rolar", a folha de rolar (no app ou digitando o dado físico) e a linha "Rolada". Testes (`e2e/tests/scenes.spec.ts`, `@MR-015`): "o mestre escolhe as ações no ponto de cena, abre a cena na sessão, o jogador rola uma no app e uma com o dado físico e o mestre vê as duas com Passou e Não passou", "o jogador rola cada ação uma vez; o mestre fecha a cena sem pergunta e, ao abrir de novo, as ações voltam a poder ser roladas", "o mestre abre uma cena escondida: os jogadores veem a cena e o ponto continua escondido no mapa deles"; as telas passam no axe e nas conferências de layout em `a11y.spec.ts` ("as cenas de RP passam no axe…"). Também dá para abrir a cena pelo ponto, em "Pontos do mapa" da sessão ("Abrir cena" ou "Trocar para esta cena"; teste `scenes.spec.ts`, "o mestre abre a cena pelo ponto na lista da sessão"). **Com um combate na tela, os blocos da cena não são desenhados** (nem para o mestre, nem para o jogador): a cena continua aberta no servidor, e volta à tela quando o combate termina. Os testes de unidade (Vitest) cobrem o editor das ações, o seletor, as linhas do jogador, a folha de rolar, a linha da rolagem do mestre, o texto de cada motivo de `SceneBlocked` e as mensagens da região viva.
+- O servidor (fatia 7.3) e as telas (fatia 7.5). O mestre escolhe as ações no ponto de cena do mapa, uma por vez (`AddSceneAction`, `UpdateSceneAction`, `MoveSceneAction`, `RemoveSceneAction`): perícia, teste de atributo ou salvaguarda, com nome opcional (até 60 caracteres) e CD opcional (1 a 30), no máximo 20, e nada de combate (a chave é conferida no catálogo das regras). Ele abre a cena na sessão (`OpenScene`: qualquer ponto de cena abre, mesmo sem ações desde a Etapa 8 (pergunta 63, mudada), e pode estar escondido, e então continua escondido no mapa) e fecha sem perguntar (`CloseScene`); todos recebem `scene_changed`. O jogador lê a cena (`GetOpenScene`) com o nome e a descrição do ponto e as ações com o bônus do próprio personagem (a ficha, `rules.SceneOptions`) e a passiva de Percepção, Investigação e Intuição, **sem a CD**. Rolar (`RollSceneCheck`): o d20 do app ou o digitado (RN-18) mais o bônus; uma rolagem por personagem por ação enquanto a cena está aberta (fechar e abrir de novo zera); o mestre recebe `scene_check_rolled` e vê todas as rolagens, com o total e o "passou" quando há CD (o registro da cena, pergunta 54), e o jogador só as próprias, sem "passou". Os padrões das perguntas 51 a 55 valem até o Samuel responder (ver [RN-20](regras.md)). Testes: `TestMR015_PlayerSeesTheMastersActionsWithTheirBonus`, `TestMR015_NothingCombatOnlyInAScene`, `TestRN20_APlayerNeverGetsADCOrAnotherPlayersRoll`, `TestMR015_OneRollPerActionWhileTheSceneIsOpen`, `TestRN18_SceneRollsFollowTheDiceMode`, `TestMR015_AHiddenPointCanBeOpenedAndStaysHidden`, `TestMR015_OpeningAndClosingAScene`, `TestMR015_SceneActionRules`, `TestMR015_RollingNeedsALivingCharacter`, `TestSceneAuthorizationMatrix`. Ver [Arquitetura](../arquitetura.md#cenas-de-rp). **Nas telas (fatia 7.5):** no editor do mapa, o painel de um ponto de cena ganha "Ações da cena" (a lista com ↑ ↓ e remover, o formulário no lugar com o erro da CD, o estado vazio e o limite de 20 ações); na sessão, o mestre tem "Cena de RP" com "Abrir cena" (o seletor, com a cena escondida e a sem ações), a cena aberta no topo da coluna do mapa com as ações, as rolagens ao vivo com Passou / Não passou e "Trocar cena" / "Fechar cena"; o jogador tem o bloco "Cena" com o próprio bônus e "Rolar", a folha de rolar (no app ou digitando o dado físico) e a linha "Rolada". Testes (`e2e/tests/scenes.spec.ts`, `@MR-015`): "o mestre escolhe as ações no ponto de cena, abre a cena na sessão, o jogador rola uma no app e uma com o dado físico e o mestre vê as duas com Passou e Não passou", "o jogador rola cada ação uma vez; o mestre fecha a cena sem pergunta e, ao abrir de novo, as ações voltam a poder ser roladas", "o mestre abre uma cena escondida: os jogadores veem a cena e o ponto continua escondido no mapa deles"; as telas passam no axe e nas conferências de layout em `a11y.spec.ts` ("as cenas de RP passam no axe…"). Também dá para abrir a cena pelo ponto, em "Pontos do mapa" da sessão ("Abrir cena" ou "Trocar para esta cena"; teste `scenes.spec.ts`, "o mestre abre a cena pelo ponto na lista da sessão"). **Com um combate na tela, os blocos da cena não são desenhados** (nem para o mestre, nem para o jogador): a cena continua aberta no servidor, e volta à tela quando o combate termina. Os testes de unidade (Vitest) cobrem o editor das ações, o seletor, as linhas do jogador, a folha de rolar, a linha da rolagem do mestre, o texto de cada motivo de `SceneBlocked` e as mensagens da região viva.
 
 #### Relacionadas
 - Respondida em 29/09/2026: na cena de RP, o mestre escolhe as ações possíveis da cena, e o jogador vê o que pode fazer com o próprio bônus; no combate, quem decide e mostra as ações é o sistema, pelas regras de D&D. Ver [Regras de negócio](regras.md) e [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
@@ -473,35 +473,50 @@ Prioridade decidida em 02/10/2026 (pergunta 20): primeiro o cadastro pelo mestre
 **Como** mestre, **quero** anotar, para cada cena de RP, os ganchos, as pistas e o que dizer, **para** conduzir a cena sem perder o fio.
 
 - Prioridade: MVP (Etapa 8)
-- Regras: RN-10
-- Módulos: play, maps
+- Regras: RN-10, RN-20
+- Módulos: play, maps, notes
 
 #### Critérios de aceite
 - **Dado** uma cena de RP no mapa, **quando** o mestre escreve nela os ganchos, as pistas e o que dizer, **então** só o mestre vê essas notas.
 - **Dado** uma pista numa cena, **quando** o mestre a revela, **então** ela aparece para os jogadores **e** nas anotações deles ([MR-030](#mr-030-anotações-do-jogador)).
 - **Dado** uma pista não revelada, **quando** um jogador abre a cena ou a lista de anotações, **então** o servidor não manda a pista nem o nome dela (RN-10).
 
+#### Implementado
+- O servidor (fatia 8.2; as telas vêm na 8.5), com as respostas-padrão das perguntas 59 e 63 até o Samuel responder.
+  - **Ganchos:** a coluna `map_points.hooks` ("Ganchos e anotações"), Markdown de até 4.000 caracteres, só num ponto de cena, salva com o ponto (`UpdateMapPoint`) e só o mestre a recebe (no mapa e na cena aberta).
+  - **Pistas:** `AddSceneClue`, `UpdateSceneClue`, `MoveSceneClue` e `RemoveSceneClue`, uma mudança por chamada, de 1 a 500 caracteres, no máximo 30 por cena; o mestre recebe cada uma com quem a tem ("Todos", "Só a Brisa", "Ninguém ainda" a tela calcula).
+  - **Revelar:** `RevealSceneClue(pista, character_ids)`, só o mestre; cada jogador a recebe uma vez e não há como desfazer; o servidor guarda uma cópia do texto, então editar ou apagar a pista depois não muda o que o jogador recebeu; com sessão aberta vira o evento `clue_revealed` (só IDs) e só quem a recebeu ouve `notes_changed`; quem está offline a lê na próxima vez.
+  - **Cena sem ações** (pergunta 63, mudada): `OpenScene` abre qualquer ponto de cena. O `SceneBlocked` `NO_ACTIONS` continua no enum, mas não é mais enviado.
+- Testes: `TestMR029_TheMastersHooksAndClues`, `TestMR029_ClueLimits`, `TestMR029_ARevealedClueReachesOnlyTheChosenPlayers`, `TestMR029_RevealRules`, `TestClueAuthorizationMatrix`, `TestScenesWithNoActionsOpen` e `TestRN20_PlayersNeverGetHooksOrUnrevealedClues` (lê o que o jogador recebe como JSON).
+
 #### Dúvidas
-- Se uma pista revelada pode ser escondida de novo: a definir.
+- Respondida por padrão (pergunta 59, aguardando o Samuel): uma pista revelada não pode ser escondida de novo, e o mestre escolhe a quem revelar (todos vêm marcados).
 
 ### MR-030: Anotações do jogador
 
 **Como** jogador, **quero** um bloco de notas sempre à mão, na página da sessão e na ficha, **para** anotar o que acontece sem sair do app.
 
 - Prioridade: MVP (Etapa 8)
-- Regras: RN-10
-- Módulos: play, characters
+- Regras: RN-10, RN-20
+- Módulos: notes, maps, play
 
 #### Critérios de aceite
 - **Dado** que estou na campanha, **quando** escrevo uma nota na página da sessão ou na ficha, **então** só eu vejo a nota **e** ela fica guardada para a próxima sessão.
 - **Dado** uma cena que eu já descobri (revelada ou aberta), **quando** etiqueto a nota com ela, **então** a nota mostra a cena.
 - **Dado** uma cena que eu ainda não descobri, **quando** abro a lista de cenas para etiquetar, **então** ela não aparece, e o nome dela nunca chega ao meu celular.
 
+#### Implementado
+- O servidor (fatia 8.2; as telas vêm na 8.5), com as respostas-padrão das perguntas 60 e 61 até o Samuel responder.
+  - O módulo `notes` e o `NotesService` (`ListNotes`, `CreateNote`, `UpdateNote`, `DeleteNote`, `ListNoteScenes`), só para o jogador ativo e só nas próprias anotações: de 1 a 2.000 caracteres, no máximo 300 por jogador por campanha. A lista traz também as pistas reveladas ("Pista do mestre", só leitura, fora das 300), da mais nova à mais antiga, com filtro por cena.
+  - O mestre e os outros jogadores nunca leem uma anotação (`not_found`). Excluir a conta apaga as anotações.
+  - Uma cena é descoberta quando o ponto é revelado no mapa ou a cena é aberta numa sessão (mesmo escondida), para o grupo todo, e continua descoberta se o ponto for escondido. Só uma cena descoberta serve de etiqueta, e o seletor (`ListNoteScenes`) só lista essas; uma cena não descoberta é recusada igual a uma que não existe.
+- Testes: `TestMR030_PlayerNotesArePrivate`, `TestMR030_TagsOnlyDiscoveredScenes`, `TestMR030_NoteLimits`, `TestMR030_DeletingTheAccountDeletesTheNotes`, `TestNotesAuthorizationMatrix` e `TestRN20_PlayersNeverGetHooksOrUnrevealedClues`.
+
 #### Relacionadas
 - Uma pista revelada pela [MR-029](#mr-029-ganchos-e-pistas-da-cena) aparece nas anotações do jogador.
 
 #### Dúvidas
-- O limite de tamanho das notas e se o mestre pode ler as notas de um jogador (hoje: não, são privadas): a definir.
+- Respondidas por padrão (perguntas 60 e 61, aguardando o Samuel): o mestre não lê as anotações dos jogadores; o limite é de 2.000 caracteres por nota e 300 por jogador (proposta do plano); "cena descoberta" é a cena revelada ou aberta, para o grupo todo.
 
 ### MR-031: NPCs na cena
 
