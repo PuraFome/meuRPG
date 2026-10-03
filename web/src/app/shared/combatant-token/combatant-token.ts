@@ -32,6 +32,7 @@ import { MatIconModule } from '@angular/material/icon';
     '[class.tk--defeated]': 'defeated()',
     '[class.tk--current]': 'current()',
     '[class.tk--mine]': 'mine()',
+    '[class.tk--map]': 'onMap()',
     '[class.tk--long]': 'initial().length > 1',
     '[style.--tk]': 'css()',
   },
@@ -44,6 +45,8 @@ export class CombatantToken {
   readonly defeated = input(false);
   readonly current = input(false);
   readonly mine = input(false);
+  /** Drawn on a battle map: fixed colours, since the picture is not themed. */
+  readonly onMap = input(false);
   /** The side: pixels as a number (28 in lists, 48 in the bar), or any CSS
    * length (the map sizes it from its square). */
   readonly size = input<number | string>(28);

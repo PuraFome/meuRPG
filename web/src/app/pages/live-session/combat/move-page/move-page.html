@@ -28,6 +28,7 @@
         [rows]="encounter().gridRows"
         [combatants]="encounter().combatants"
         [currentId]="encounter().currentCombatantId"
+        [isMaster]="isMaster()"
         [reach]="readOnly() ? null : reach()"
         [chosen]="readOnly() ? null : frame()"
         [pickSquares]="!readOnly()"
@@ -42,8 +43,12 @@
   <div class="move__side">
     @if (readOnly()) {
       <ul class="legend">
-        <li><span class="legend__sq legend__sq--mine" aria-hidden="true"></span>{{ own()?.label }} (você)</li>
-        <li><span class="legend__sq" aria-hidden="true"></span>Os outros</li>
+        @if (own(); as me) {
+          <li><span class="legend__sq legend__sq--mine" aria-hidden="true"></span>{{ me.label }} (você)</li>
+          <li><span class="legend__sq" aria-hidden="true"></span>Os outros</li>
+        } @else {
+          <li><span class="legend__sq" aria-hidden="true"></span>Jogadores e NPCs</li>
+        }
       </ul>
       <button mat-stroked-button type="button" class="move__cancel" (click)="back.emit()">
         Voltar à sessão

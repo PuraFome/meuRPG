@@ -45,6 +45,8 @@ export class MovePage {
   readonly sessionNumber = input(0);
   /** "Ver mapa": the same page without the reach and the buttons. */
   readonly readOnly = input(false);
+  /** The master's "Abrir mapa": hidden combatants are drawn too. */
+  readonly isMaster = input(false);
   readonly busy = input(false);
   /** A refusal from the server ("Longe demais…"), shown like a local one. */
   readonly serverError = input('');

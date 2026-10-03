@@ -72,3 +72,18 @@
     align-self: flex-start;
   }
 }
+
+// The master's phone preview: a frame with the map at 2x inside it, moved so
+// the one on turn is in the middle. It is only a picture (no dragging).
+.card__preview {
+  position: relative;
+  aspect-ratio: 326 / 224;
+  overflow: hidden;
+  border-radius: var(--mr-radius-sm);
+  outline: 1px solid var(--mr-line);
+  pointer-events: none;
+}
+
+.card__zoom {
+  width: 200%;
+}

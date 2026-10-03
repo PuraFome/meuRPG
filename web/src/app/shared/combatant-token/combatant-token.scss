@@ -63,22 +63,69 @@
 
 .tk__badge {
   position: absolute;
-  top: calc(var(--tk) * -0.3);
-  right: calc(var(--tk) * -0.3);
+  top: -6px;
+  right: -6px;
   display: flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  width: 16px;
-  height: 16px;
-  border: 1.5px solid var(--mr-surface);
+  width: 13px;
+  height: 13px;
+  border: 1px solid var(--mr-surface);
   border-radius: 50%;
   background: var(--mr-ink);
   color: var(--mr-surface);
 
   .mat-icon {
-    width: 10px;
-    height: 10px;
-    font-size: 10px;
+    width: 9px;
+    height: 9px;
+    font-size: 9px;
+  }
+}
+
+// On a battle map the picture is light in both themes, so the token keeps
+// the light theme's colours (styles.scss: --mr-map-token-*).
+:host(.tk--map) {
+  border-color: var(--mr-map-token-surface);
+  background: var(--mr-map-token-ink);
+  color: var(--mr-map-token-surface);
+}
+
+:host(.tk--map.tk--npc),
+:host(.tk--map.tk--hidden) {
+  border-color: var(--mr-map-token-ink);
+  background: var(--mr-map-token-surface);
+  color: var(--mr-map-token-ink);
+}
+
+:host(.tk--map.tk--defeated) {
+  border-color: var(--mr-map-token-down-line);
+  background: var(--mr-map-token-down);
+  color: var(--mr-map-token-down-ink);
+}
+
+// A smaller badge, outside the token's corner and never over its letters.
+// Where the squares are too small for the letters and the badge together
+// (a narrow map), the dashed border alone says "hidden".
+:host(.tk--map) .tk__badge {
+  top: -6px;
+  right: -6px;
+  display: none;
+  width: 12px;
+  height: 12px;
+  border-width: 1px;
+  background: var(--mr-map-token-ink);
+  color: var(--mr-map-token-surface);
+
+  .mat-icon {
+    width: 8px;
+    height: 8px;
+    font-size: 8px;
+  }
+}
+
+@container (min-width: 480px) {
+  :host(.tk--map) .tk__badge {
+    display: flex;
   }
 }

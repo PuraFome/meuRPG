@@ -59,6 +59,17 @@
         </div>
       }
       @case (Status.ACTIVE) {
+        @if (state().mapOpen() && image(); as fullMap) {
+          <app-move-page
+            [encounter]="e"
+            [image]="fullMap"
+            [mapName]="mapName()"
+            [sessionNumber]="sessionNumber()"
+            [readOnly]="true"
+            [isMaster]="true"
+            (back)="closeFullPage()"
+          />
+        } @else {
         <div class="stack">
           <app-combat-bar [encounter]="e" [busy]="busy()" (next)="nextTurn()" (end)="endCombat()" />
           <div class="active">
@@ -69,7 +80,9 @@
                   [image]="img"
                   [mapName]="mapName()"
                   [isMaster]="true"
+                  [cropOnPhone]="true"
                   (tokenDrop)="drop($event)"
+                  (openMap)="state().mapOpen.set(true)"
                 />
               } @else {
                 <p class="mr-muted" role="status">Carregando o mapa...</p>
@@ -101,6 +114,7 @@
             />
           </div>
         </div>
+        }
       }
       @case (Status.ENDED) {
         <app-combat-summary

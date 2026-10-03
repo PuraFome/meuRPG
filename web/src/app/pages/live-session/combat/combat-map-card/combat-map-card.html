@@ -4,6 +4,24 @@
     <span class="card__size">{{ isMaster() ? mapName() + ' · ' + size() : 'Quadrados de 1,5 m' }}</span>
   </div>
 
+  @if (preview()) {
+    <div class="card__preview">
+      <div class="card__zoom" [style.transform]="shift()">
+        <app-combat-map
+          [image]="image()"
+          [mapName]="mapName()"
+          [columns]="encounter().gridColumns"
+          [rows]="encounter().gridRows"
+          [combatants]="encounter().combatants"
+          [isMaster]="true"
+          [currentId]="encounter().currentCombatantId"
+        />
+      </div>
+    </div>
+    <button mat-stroked-button type="button" class="card__open" (click)="openMap.emit()">
+      <mat-icon aria-hidden="true">open_in_full</mat-icon>Abrir mapa
+    </button>
+  } @else {
   <app-combat-map
     [image]="image()"
     [mapName]="mapName()"
@@ -17,8 +35,9 @@
     [ownMoveId]="ownMovable() ? (own()?.id ?? null) : null"
     (tokenDrop)="tokenDrop.emit($event)"
   />
+  }
 
-  @if (isMaster() && hint()) {
+  @if (isMaster() && hint() && !preview()) {
     <p class="card__hint">
       <mat-icon aria-hidden="true">drag_pan</mat-icon>
       Arraste um token para movê-lo. O mestre anda sem limite.
