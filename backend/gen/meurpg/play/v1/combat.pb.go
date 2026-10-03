@@ -1273,8 +1273,13 @@ type Combatant struct {
 	// combatant is not concentrating. Filled for everyone who sees the combatant,
 	// like `condition_names_pt`.
 	ConcentrationSpellNamePt string `protobuf:"bytes,34,opt,name=concentration_spell_name_pt,json=concentrationSpellNamePt,proto3" json:"concentration_spell_name_pt,omitempty"`
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	// The XP the NPC gives when defeated (the sheet's xp_value, copied when it
+	// joined the fight): the end-of-combat summary adds up the defeated ones.
+	// Only the master gets it, and only for an NPC; for a player (RN-20) and for
+	// a player's character it is 0.
+	XpValue       int32 `protobuf:"varint,35,opt,name=xp_value,json=xpValue,proto3" json:"xp_value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Combatant) Reset() {
@@ -1543,6 +1548,13 @@ func (x *Combatant) GetConcentrationSpellNamePt() string {
 		return x.ConcentrationSpellNamePt
 	}
 	return ""
+}
+
+func (x *Combatant) GetXpValue() int32 {
+	if x != nil {
+		return x.XpValue
+	}
+	return 0
 }
 
 // Participant is who joins a combat: a character of the campaign.
@@ -7186,7 +7198,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x05slots\x18\x05 \x03(\v2\x1b.meurpg.rules.v1.SlotChoiceR\x05slots\x12%\n" +
 	"\x0eattacker_label\x18\x06 \x01(\tR\rattackerLabel\x12$\n" +
 	"\x0eattack_name_pt\x18\a \x01(\tR\fattackNamePt\x12\"\n" +
-	"\rspell_name_pt\x18\b \x01(\tR\vspellNamePt\"\x8a\v\n" +
+	"\rspell_name_pt\x18\b \x01(\tR\vspellNamePt\"\xa5\v\n" +
 	"\tCombatant\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x121\n" +
@@ -7228,7 +7240,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x11armor_class_bonus\x18\x1f \x01(\x05R\x0farmorClassBonus\x12$\n" +
 	"\x0edeath_save_due\x18  \x01(\bR\fdeathSaveDue\x12,\n" +
 	"\x12condition_names_pt\x18! \x03(\tR\x10conditionNamesPt\x12=\n" +
-	"\x1bconcentration_spell_name_pt\x18\" \x01(\tR\x18concentrationSpellNamePtB\r\n" +
+	"\x1bconcentration_spell_name_pt\x18\" \x01(\tR\x18concentrationSpellNamePt\x12\x19\n" +
+	"\bxp_value\x18# \x01(\x05R\axpValueB\r\n" +
 	"\v_initiativeB\x13\n" +
 	"\x11_initiative_bonusB\x12\n" +
 	"\x10_initiative_faceB\x15\n" +

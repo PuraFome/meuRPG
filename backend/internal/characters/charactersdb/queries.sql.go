@@ -380,6 +380,45 @@ func (q *Queries) InsertCharacter(ctx context.Context, arg InsertCharacterParams
 	return i, err
 }
 
+const listCharacterNames = `-- name: ListCharacterNames :many
+SELECT id, name FROM characters
+WHERE campaign_id = $1::UUID
+  AND id = ANY($2::UUID[])
+`
+
+type ListCharacterNamesParams struct {
+	CampaignID string
+	Ids        []string
+}
+
+type ListCharacterNamesRow struct {
+	ID   string
+	Name string
+}
+
+// The names of the given characters of the campaign, whatever their kind or
+// status (package progression names the characters of an award, even one that
+// died since).
+func (q *Queries) ListCharacterNames(ctx context.Context, arg ListCharacterNamesParams) ([]ListCharacterNamesRow, error) {
+	rows, err := q.db.Query(ctx, listCharacterNames, arg.CampaignID, arg.Ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCharacterNamesRow
+	for rows.Next() {
+		var i ListCharacterNamesRow
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCharacters = `-- name: ListCharacters :many
 SELECT id, kind, status, name, player_user_id, sheet, sheet_locked_at, created_at
 FROM characters

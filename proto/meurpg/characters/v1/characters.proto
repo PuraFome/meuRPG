@@ -404,6 +404,25 @@ message Character {
   // Whether the caller may call ApproveCharacter and RejectCharacter now:
   // the master, for a PENDING character (MR-024).
   bool can_approve = 22;
+  // Whether the character can go up a level now (RN-12, MR-016): its XP
+  // reached the next level's, or the master marked a milestone and its level
+  // on the sheet has not gone up since. Only the master and the owning player
+  // get it; always false for anyone else, for NPCs, for a dead character and
+  // at level 20. The master raises the level on the sheet; the tag goes away
+  // when the level goes up.
+  bool can_level_up = 23;
+  // Why can_level_up is true: XP, or a MILESTONE. Unspecified when it is
+  // false.
+  LevelUpReason level_up_reason = 24;
+}
+
+// LevelUpReason is why a character can go up a level.
+enum LevelUpReason {
+  LEVEL_UP_REASON_UNSPECIFIED = 0;
+  // The sheet's XP reached the next level's XP (Character.derived.next_level_xp).
+  LEVEL_UP_REASON_XP = 1;
+  // The master marked a milestone (ProgressionService.MarkMilestone).
+  LEVEL_UP_REASON_MILESTONE = 2;
 }
 
 // CharacterSummary is a character as a list shows it: no sheet, no story.
@@ -539,7 +558,9 @@ message FullSheet {
   // Tool proficiencies the player adds, as free text. At most 20, each 1 to
   // 40 characters, one line.
   repeated string tool_proficiencies = 20;
-  // Experience points: 0 to 1,000,000.
+  // Experience points: 0 to 1,000,000. The master's XP awards add to it, even
+  // after the sheet locked (ProgressionService.AwardXP; RN-01 stops the
+  // player, not the master's gift).
   int32 experience_points = 21;
   Alignment alignment = 22;
   // Features and traits the rules content does not have, in the player's
@@ -553,6 +574,18 @@ message FullSheet {
   // has the feature or trait it belongs to; otherwise it shows as an issue.
   // At most 100.
   repeated string feature_choice_keys = 24;
+  // The challenge rating ("ND") of an enemy or a boss: "0", "1/8", "1/4",
+  // "1/2" or "1" to "30" (the SRD's list, in ContentService.ListContent), or
+  // empty for none. Only the master's NPCs have one: a player character's
+  // sheet with a rating is `invalid_argument`. The server stores it as sent;
+  // the editor fills xp_value from it (MR-016).
+  string challenge_rating = 25;
+  // The XP the NPC gives when it is defeated ("XP ao derrotar"): 0 to
+  // 1,000,000. The master's own number, usually the one that goes with the
+  // challenge rating. A player character's sheet with a value above 0 is
+  // `invalid_argument`. It never reaches a player (RN-20); the end-of-combat
+  // XP adds the defeated NPCs' values (ProgressionService.AwardXP).
+  int32 xp_value = 26;
 }
 
 // ClassLevel is one class of a character and its level in it.
@@ -677,6 +710,12 @@ message BasicSheet {
   int32 initiative_bonus = 7;
   // Its attacks: 0 to 3.
   repeated BasicAttack attacks = 8;
+  // The challenge rating ("ND"): "0", "1/8", "1/4", "1/2" or "1" to "30", or
+  // empty for none. As FullSheet.challenge_rating.
+  string challenge_rating = 9;
+  // The XP the NPC gives when it is defeated: 0 to 1,000,000. As
+  // FullSheet.xp_value.
+  int32 xp_value = 10;
 }
 
 // BasicAttack is one attack of a basic sheet, with real dice: the d20 plus

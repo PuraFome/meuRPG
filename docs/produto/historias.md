@@ -296,7 +296,11 @@ Os dois últimos critérios foram respondida pelo Vinicius em 29/09/2026.
 - **Dado** uma campanha no modo por marcos, **quando** o mestre registra um marco, **então** todos os personagens do grupo ficam marcados para subir de nível **e** nenhum XP é contado.
 - **Dado** os modos por inimigos ou por ouro, **quando** o mestre dá XP ao grupo por conta própria, **então** o XP entra nas fichas **e** o histórico da campanha mostra quem deu, quando e por quê.
 
+#### Implementado
+- Servidor pronto em 03/10/2026 (Etapa 7, fatia 7.2; módulo `progression`, ver [Arquitetura](../arquitetura.md#módulo-progression-xp-e-marcos)): `AwardXP` (por inimigos, por ouro ou avulso), `MarkMilestone`, `UndoLastXPAward`, `ListXPAwards` e `GetCampaignExperience`; o XP de cada NPC na ficha (`challenge_rating`, `xp_value`) e no combatente (só o mestre vê); "Pode subir de nível" (`can_level_up`) em `GetCharacter` para o mestre e o dono (RN-12). As telas (o "Dar XP" no fim do combate, o marco, "Experiência" na campanha, a ficha) vêm na fatia 7.4. Testes: `TestMR016_EnemiesAwardSplitsTheDefeated` (dois goblins de 50 XP, quatro personagens, 25 para cada), `TestMR016_MilestoneMarksWithoutXP` (marca todos, nenhum XP, a marca some quando o nível sobe), `TestMR016_ManualAwardIsInTheHistory` (quem, quando, por quê, quanto), `TestGoldAwardGivesOneXPPerGoldPiece`, `TestRemainderIsLostAndReported`, `TestUndoTakesBackOnlyTheLastAward`, `TestSecondEnemiesAwardForTheSameEncounterIsRefused`, `TestModeMustFitTheCampaign`, `TestOnlyLivingPlayerCharactersGetXP`, `TestPlayersNeverWrite`, `TestAuthorizationMatrix` e `TestRN20_PlayersNeverGetAnNPCsXP`.
+
 #### Relacionadas
+- Perguntas 44 a 50 (o ND do NPC, quem divide, o arredondamento, o ouro, o marco, o aviso de subir de nível, quem vê o histórico): construído sobre a nossa resposta-padrão de cada uma, ainda sem resposta do Samuel; ver [RN-09](regras.md) e [RN-12](regras.md).
 - RN-09: respondida em 29/09/2026 — no modo por ouro, 1 XP por 1 peça de ouro (PO), como nas edições antigas.
 - O que cada personagem ganha ao subir de nível vem do motor de regras (regras como dados, aceitas pelo Samuel em 29/09/2026). Ver [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
 

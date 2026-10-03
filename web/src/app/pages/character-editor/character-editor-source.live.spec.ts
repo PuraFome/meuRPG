@@ -96,6 +96,10 @@ function fullyPopulatedFullSheet(): FullSheet {
     customFeaturesText: 'Sabe um truque de cartas que sempre erra.',
     // No UI collects this either — the plan §4 gap this test also protects.
     featureChoiceKeys: ['feature:fighter-fighting-style-defense'],
+    // Nor this: the NPC's challenge rating and the XP it gives (Etapa 7); the
+    // editor must not drop them when it saves.
+    challengeRating: '2',
+    xpValue: 450,
   };
 }
 
@@ -155,6 +159,8 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
       // as loaded, not wiped to a zero/empty default.
       coins: loaded.coins,
       featureChoiceKeys: loaded.featureChoiceKeys,
+      challengeRating: loaded.challengeRating,
+      xpValue: loaded.xpValue,
     });
   });
 
@@ -214,6 +220,8 @@ describe('a basic sheet through the editor', () => {
       damage: '',
       description: 'Pequeno.',
       initiativeBonus: 2,
+      challengeRating: '1/4',
+      xpValue: 50,
       attacks: [
         {
           $typeName: 'meurpg.characters.v1.BasicAttack',
@@ -254,6 +262,8 @@ describe('a basic sheet through the editor', () => {
       description: '',
       initiativeBonus: 0,
       attacks: [],
+      challengeRating: '',
+      xpValue: 0,
     });
     expect(form.legacyDamage).toBe('mordida venenosa');
     expect(toBasicSheetInit(form)).toMatchObject({ damage: 'mordida venenosa', attackBonus: 3 });

@@ -176,6 +176,7 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 			out.ArmorClass = ptr(armorClass)
 		}
 		out.HitPointsCurrent, out.HitPointsMax, out.HitPointsTemporary = c.HpCurrent, c.HpMax, c.HpTemp
+		out.XpValue = c.XpValue // an NPC's, the master's alone (RN-20); 0 for a player's character
 		if vitals != nil {
 			out.HitPointsCurrent = ptr(vitals.GetHitPointsCurrent())
 			out.HitPointsMax = ptr(vitals.GetHitPointsMax())
