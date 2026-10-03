@@ -618,7 +618,25 @@ type CombatServiceClient interface {
 	//     with no roll to hit.
 	//   - Healing (Curar Ferimentos): a pending heal for each target, rolled by
 	//     RollDamage, with the caster's spellcasting modifier.
-	//   - Anything else (Sono, Teia, Passo Nebuloso...): it spends and goes to the
+	//   - A spell that reads hit points (Sono, Borrifo de Cores, Palavra de Poder:
+	//     Atordoar and Matar, Poupar os Moribundos, Cura Completa; effect_kind of
+	//     the answer): the server reads each target's current hit points (an NPC's
+	//     from the combat, a player's character's from its vitals) and applies the
+	//     effect at once, in the same transaction. A pool (Sono, Borrifo de Cores)
+	//     is rolled by the server (roll_in_app) or typed from physical dice
+	//     (pool_sum), RN-18; it goes through the targets in ascending order of
+	//     current hit points, skips the unconscious and those at 0, and gives the
+	//     condition to each one whose hit points fit in what is left. A threshold
+	//     (Palavra de Poder) affects a target at or below the limit: a condition,
+	//     or death (an NPC is defeated; a player's character drops to 0 hit points
+	//     with three death save failures, and the master confirms the death with
+	//     ConfirmDeath). Poupar os Moribundos makes a player's character at 0 hit
+	//     points stable. Cura Completa heals and ends blindness and deafness. The
+	//     caster's player gets their own pool roll and who was affected, never a
+	//     target's hit points; the master gets the pool, each target's hit points
+	//     and the order; the other players only see who was affected (RN-20).
+	//     UndoLastAction puts everything the cast changed back.
+	//   - Anything else (Teia, Passo Nebuloso...): it spends and goes to the
 	//     log; the effect is the table's, and the master marks the conditions
 	//     (SetCombatantConditions).
 	//
@@ -635,7 +653,8 @@ type CombatServiceClient interface {
 	//   - `permission_denied`: the caller is a player and the caster is not their
 	//     character.
 	//   - `invalid_argument`: more than 10 targets, no roll for a spell attack, a face out of 1 to 20 or
-	//     d20_face with more than one target, a spell that is not one of the
+	//     d20_face with more than one target, neither roll_in_app nor pool_sum for a
+	//     pool spell (or a pool_sum out of range, or a d20_face), a spell that is not one of the
 	//     caster's or cannot be cast now (a reaction, a casting time too long), a
 	//     slot that does not fit, a wrong number of targets or darts, or the same
 	//     target twice.
@@ -1596,7 +1615,25 @@ type CombatServiceHandler interface {
 	//     with no roll to hit.
 	//   - Healing (Curar Ferimentos): a pending heal for each target, rolled by
 	//     RollDamage, with the caster's spellcasting modifier.
-	//   - Anything else (Sono, Teia, Passo Nebuloso...): it spends and goes to the
+	//   - A spell that reads hit points (Sono, Borrifo de Cores, Palavra de Poder:
+	//     Atordoar and Matar, Poupar os Moribundos, Cura Completa; effect_kind of
+	//     the answer): the server reads each target's current hit points (an NPC's
+	//     from the combat, a player's character's from its vitals) and applies the
+	//     effect at once, in the same transaction. A pool (Sono, Borrifo de Cores)
+	//     is rolled by the server (roll_in_app) or typed from physical dice
+	//     (pool_sum), RN-18; it goes through the targets in ascending order of
+	//     current hit points, skips the unconscious and those at 0, and gives the
+	//     condition to each one whose hit points fit in what is left. A threshold
+	//     (Palavra de Poder) affects a target at or below the limit: a condition,
+	//     or death (an NPC is defeated; a player's character drops to 0 hit points
+	//     with three death save failures, and the master confirms the death with
+	//     ConfirmDeath). Poupar os Moribundos makes a player's character at 0 hit
+	//     points stable. Cura Completa heals and ends blindness and deafness. The
+	//     caster's player gets their own pool roll and who was affected, never a
+	//     target's hit points; the master gets the pool, each target's hit points
+	//     and the order; the other players only see who was affected (RN-20).
+	//     UndoLastAction puts everything the cast changed back.
+	//   - Anything else (Teia, Passo Nebuloso...): it spends and goes to the
 	//     log; the effect is the table's, and the master marks the conditions
 	//     (SetCombatantConditions).
 	//
@@ -1613,7 +1650,8 @@ type CombatServiceHandler interface {
 	//   - `permission_denied`: the caller is a player and the caster is not their
 	//     character.
 	//   - `invalid_argument`: more than 10 targets, no roll for a spell attack, a face out of 1 to 20 or
-	//     d20_face with more than one target, a spell that is not one of the
+	//     d20_face with more than one target, neither roll_in_app nor pool_sum for a
+	//     pool spell (or a pool_sum out of range, or a d20_face), a spell that is not one of the
 	//     caster's or cannot be cast now (a reaction, a casting time too long), a
 	//     slot that does not fit, a wrong number of targets or darts, or the same
 	//     target twice.

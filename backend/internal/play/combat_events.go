@@ -87,7 +87,31 @@ type castHit struct {
 	Save     *saveRoll `json:"save,omitempty"`
 	// Pending is the pending damage or heal the cast opened for the target.
 	Pending string `json:"pending_id,omitempty"`
+
+	// A spell that reads hit points (combat_spells_hp.go): whether it reached the
+	// target (the fx* values below), why not, the target's hit points when it did,
+	// its place in the pool's order and what was left of the pool after it, and the
+	// hit points regained by a heal.
+	Fx       string `json:"fx,omitempty"`
+	FxReason string `json:"fx_reason,omitempty"`
+	HPBefore int32  `json:"hp_before,omitempty"`
+	Order    int32  `json:"order,omitempty"`
+	Left     int32  `json:"left,omitempty"`
+	Healed   *int32 `json:"healed,omitempty"`
+	// What an undo puts back: the hit points and death saves when the spell
+	// changed them (a heal, a death, Poupar os Moribundos), the conditions when it
+	// changed them.
+	Restore     *hpState    `json:"restore,omitempty"`
+	DeathBefore *deathState `json:"death_before,omitempty"`
+	CondSet     bool        `json:"cond_set,omitempty"`
+	CondBefore  []string    `json:"cond_before,omitempty"`
 }
+
+// What a spell that reads hit points did to a target, as a cast event stores it.
+const (
+	fxAffected   = "affected"
+	fxUnaffected = "unaffected"
+)
 
 // damageHit is what a damage roll did to one pending damage of a cast: the
 // amount that landed (half for a target that saved), and the numbers an undo
@@ -169,6 +193,12 @@ type actionEvent struct {
 	// and ConcEnded the one the cast stopped (the same, when it replaced it).
 	ConcBefore string `json:"conc_before,omitempty"`
 	ConcEnded  string `json:"conc_ended,omitempty"`
+	// A spell that reads hit points: its kind (rules.SpellKind*), the condition it
+	// gives, the limit of a threshold and the pool roll, which uses DiceCount,
+	// DiceSides, Faces, Total and Physical above.
+	FxKind      string `json:"fx_kind,omitempty"`
+	FxCondition string `json:"fx_condition,omitempty"`
+	FxLimit     int32  `json:"fx_limit,omitempty"`
 	// Escudo: the +5 the target had before, the reaction and what it did.
 	ACBonusBefore int32 `json:"ac_bonus_before,omitempty"`
 	Stopped       bool  `json:"stopped,omitempty"`
