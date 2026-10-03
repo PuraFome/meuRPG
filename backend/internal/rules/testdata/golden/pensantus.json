@@ -1,5 +1,5 @@
 {
-  "ContentVersion": "srd51@a8abc93b235c+fx.4",
+  "ContentVersion": "srd51@a8abc93b235c+fx.5",
   "RaceNamePT": "Gnomo",
   "SubraceNamePT": "Gnomo das Rochas",
   "BackgroundNamePT": "Sábio",
@@ -263,6 +263,7 @@
       "Source": "trait:darkvision"
     }
   ],
+  "NextLevelXP": 2700,
   "Spellcasting": [
     {
       "Class": "class:wizard",

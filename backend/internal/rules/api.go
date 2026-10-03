@@ -278,6 +278,8 @@ type Catalog struct {
 	Armor       []ArmorEntry
 	Weapons     []WeaponEntry
 	Spells      []SpellEntry
+	// ChallengeRatings are the SRD's 34 ratings with their XP, in order.
+	ChallengeRatings []ChallengeRating
 }
 
 // AbilityEntry names an ability.
@@ -472,6 +474,10 @@ type Derived struct {
 	HitDice     []HitDice
 	SpeedWalkFt int
 	Senses      []Sense
+	// NextLevelXP is the XP that reaches TotalLevel+1, or 0 at level 20.
+	// The sheet compares it with the XP the player has to show "Pode subir
+	// de nível" (RN-12).
+	NextLevelXP int
 	// Spellcasting has one entry per casting class, in Build order.
 	Spellcasting []Spellcasting
 	// SpellSlots are the slots per spell level, index 0 is the 1st level;

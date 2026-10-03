@@ -218,6 +218,13 @@ message DerivedSheet {
   // The actions everyone has: Attack, Cast a Spell, Dash, Disengage, Dodge,
   // Help, Hide, Ready, Search, Use an Object.
   repeated Action standard_actions = 33;
+
+  // The XP that reaches the next level (SRD "Character Advancement": 300
+  // for level 2, 900 for level 3, 2,700 for level 4...), 0 at level 20 or
+  // when the sheet has no class yet. The sheet and the campaign's group list
+  // compare it with FullSheet.experience_points to show "Pode subir de
+  // nível" (RN-12).
+  int32 next_level_xp = 34;
 }
 
 // Resource is a use-limited feature, such as Second Wind or a monk's ki.
@@ -527,6 +534,21 @@ message Content {
   repeated Armor armor = 10;
   repeated Weapon weapons = 11;
   repeated Spell spells = 12;
+  // The SRD's 34 challenge ratings ("ND") with their XP, in order from 0
+  // to 30. The NPC editor offers them as a picker that fills in the XP the
+  // creature gives when defeated (MR-016); the master may type another
+  // value.
+  repeated ChallengeRating challenge_ratings = 13;
+}
+
+// ChallengeRating is one row of the SRD's "Experience Points by Challenge
+// Rating" table.
+message ChallengeRating {
+  // "0", "1/8", "1/4", "1/2", "1" ... "30". The app writes it "ND 1/4".
+  string rating = 1;
+  // The XP a creature of this rating gives when defeated. Rating "0" is 10
+  // here; a creature with no attack gives 0, which the master types.
+  int32 xp = 2;
 }
 
 // AbilityInfo names one ability.

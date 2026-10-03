@@ -112,6 +112,7 @@ function minimalDerivedSheet(): DerivedSheet {
     resources: [],
     actions: [],
     standardActions: [],
+    nextLevelXp: 2700,
   };
 }
 
