@@ -124,6 +124,9 @@ type Service struct {
 	// catalog is ListContent's answer, built once: the content never
 	// changes while the server runs.
 	catalog *rulesv1.Content
+	// levelUps says whether a character can go up a level (RN-12): package
+	// progression, connected by SetLevelUps. Nil until then.
+	levelUps LevelUps
 }
 
 // The compiler checks that Service implements both handlers.

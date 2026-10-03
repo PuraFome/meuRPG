@@ -35,6 +35,7 @@ const (
 	maxFreeTextEntries      = 20 // languages, tool proficiencies
 	maxFreeTextEntryLength  = 40
 	maxExperiencePoints     = 1_000_000
+	maxXPValue              = 1_000_000 // an NPC's xp_value
 	maxCustomFeaturesLength = 5000
 
 	// Basic sheet.
@@ -107,6 +108,9 @@ func (s *Service) checkSheet(sheet *charactersv1.CharacterSheet) (*charactersv1.
 			}
 			return nil, err
 		}
+		if err := s.checkChallenge("sheet.full", full.GetChallengeRating(), full.GetXpValue()); err != nil {
+			return nil, err
+		}
 		return &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: full}}, nil
 	case *charactersv1.CharacterSheet_Basic:
 		basic := proto.CloneOf(content.Basic)
@@ -116,13 +120,34 @@ func (s *Service) checkSheet(sheet *charactersv1.CharacterSheet) (*charactersv1.
 		if err := cleanBasicSheet(basic); err != nil {
 			return nil, err
 		}
+		if err := s.checkChallenge("sheet.basic", basic.GetChallengeRating(), basic.GetXpValue()); err != nil {
+			return nil, err
+		}
 		return &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Basic{Basic: basic}}, nil
 	default:
 		return nil, fieldErr("sheet", "is required: a full or a basic sheet")
 	}
 }
 
-// checkSheetKind checks that a checked sheet is of the type the kind takes.
+// checkChallenge checks an NPC's challenge rating and the XP it gives (MR-016,
+// D1): the rating is empty or one of the rules' ("1/8", "5"), the XP 0 to
+// maxXPValue. field is where the sheet is in the request, for the error.
+func (s *Service) checkChallenge(field, rating string, xp int32) error {
+	if rating != "" {
+		if _, ok := s.rules.XPForChallenge(rating); !ok {
+			return fieldErr(field+".challenge_rating", "is not a challenge rating of the rules (0, 1/8, 1/4, 1/2, 1 to 30)")
+		}
+	}
+	if xp < 0 || xp > maxXPValue {
+		return fieldErr(field+".xp_value", "must be 0 to %d", maxXPValue)
+	}
+	return nil
+}
+
+// checkSheetKind checks that a checked sheet is of the type the kind takes,
+// and that a player's character does not carry what only an NPC has: a
+// challenge rating or the XP it gives when defeated (an error, never a silent
+// drop).
 func checkSheetKind(kind string, sheet *charactersv1.CharacterSheet) error {
 	_, full := sheet.GetContent().(*charactersv1.CharacterSheet_Full)
 	switch {
@@ -130,6 +155,10 @@ func checkSheetKind(kind string, sheet *charactersv1.CharacterSheet) error {
 		return fieldErr("sheet", "must be a full sheet for this kind of character")
 	case !takesFullSheet(kind) && full:
 		return fieldErr("sheet", "must be a basic sheet for this kind of character")
+	case kind == kindPlayer && sheet.GetFull().GetChallengeRating() != "":
+		return fieldErr("sheet.full.challenge_rating", "must be empty for a player's character")
+	case kind == kindPlayer && sheet.GetFull().GetXpValue() != 0:
+		return fieldErr("sheet.full.xp_value", "must be 0 for a player's character")
 	}
 	return nil
 }

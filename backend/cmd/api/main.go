@@ -17,6 +17,7 @@
 // Sign-in needs both the OIDC_* variables and DATABASE_URL. Without them
 // the API still starts, and the sign-in routes answer 503. CampaignService,
 // CampaignDocumentService, CharacterService, ContentService, PlayService,
+// ProgressionService,
 // GalleryService and MapService need sign-in too; without it, they are not
 // mounted. Images also need BLOB_DIR: without it, the image routes and
 // GalleryService answer 503 (unavailable), and the rest works (MapService
@@ -73,6 +74,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/play"
+	"github.com/PuraFome/meuRPG/backend/internal/progression"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/system"
 )
@@ -172,6 +174,7 @@ func run(logger *slog.Logger, cfg config.Config) error {
 	var charactersService *characters.Service
 	var playService *play.Service
 	var mapsService *maps.Service
+	var progressionService *progression.Service
 	switch {
 	case !cfg.OIDC.Configured():
 		logger.Warn("OIDC_ISSUER is not set; sign-in is disabled")
@@ -230,6 +233,22 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		if err != nil {
 			return err
 		}
+		// progression and characters need each other too (the XP lives on the
+		// sheets, and a sheet shows "pode subir de nível"): characters gets
+		// progression once it exists.
+		progressionService, err = progression.New(progression.Config{
+			Pool:      pool,
+			Party:     charactersService, // the party, and the XP on the sheets (MR-016)
+			Combats:   playService,       // a combat's defeated NPCs and their XP
+			Log:       playService,       // the session's history and the xp_changed hint
+			Campaigns: campaignsService,  // how the campaign levels (RN-09)
+			Profiles:  users,             // who gave each award
+			Logger:    logger,
+		})
+		if err != nil {
+			return err
+		}
+		charactersService.SetLevelUps(progressionService)
 		identityService, err = identity.New(ctx, identity.Config{
 			OIDC:   cfg.OIDC,
 			Store:  users,
@@ -278,6 +297,7 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		// role (authz.MembershipSource).
 		charactersService.Mount(srv.Handle, identityService, campaignsService, connectOpts...)
 		playService.Mount(srv.Handle, identityService, campaignsService, connectOpts...)
+		progressionService.Mount(srv.Handle, identityService, campaignsService, connectOpts...)
 		// GalleryService and MapService, plus the upload and download
 		// routes, which find the session with
 		// identityService.AuthenticateRequest.

@@ -276,6 +276,7 @@ func (s *Service) addParticipants(ctx context.Context, c *combatTx, grid link.Gr
 			} else {
 				hp := clamp32(p.char.HitPointsMax, 1, math.MaxInt32)
 				row.HpCurrent, row.HpMax, row.HpTemp = &hp, &hp, ptr(int32(0))
+				row.XpValue = clamp32(p.char.XPValue, 0, 1_000_000) // MR-016: what it gives when defeated
 				// Each copy rolls for itself, in the app (RN-19).
 				face, total, err := s.rollInitiative(int(row.InitiativeBonus))
 				if err != nil {

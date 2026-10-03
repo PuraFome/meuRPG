@@ -28,9 +28,9 @@ import "meurpg/rules/v1/rules.proto";
 //
 // When the campaign has no open game session, the live-session methods
 // (GetLiveSession, WatchGameSession, AdjustCharacterVitals, SetCurrentMap,
-// SetShownImage, OpenScene, CloseScene, GetOpenScene, RollSceneCheck) fail with `failed_precondition` and a GameSessionBlocked
-// detail whose reason is NO_OPEN_SESSION, so the app can show "Nenhuma
-// sessão em andamento".
+// SetShownImage, OpenScene, CloseScene, GetOpenScene, RollSceneCheck) fail
+// with `failed_precondition` and a GameSessionBlocked detail whose reason is
+// NO_OPEN_SESSION, so the app can show "Nenhuma sessão em andamento".
 //
 // Errors every method can return, besides those listed on each method:
 //   - `unauthenticated`: no valid session cookie.
@@ -616,7 +616,9 @@ message WatchGameSessionResponse {
     CombatantMoved combatant_moved = 12;
     // The combat log changed: read it again (CombatService.ListCombatLog).
     CombatLogChanged combat_log_changed = 13;
-    // (14 is XP's: reserved for the XP slice.)
+    // The campaign's XP changed (an award, an undo or a milestone): read
+    // ProgressionService again. Everyone in the session gets it.
+    XpChanged xp_changed = 14;
     // The open scene changed: opened, closed, or one of its actions or its
     // point changed. Read it again (GetOpenScene). Everyone gets it.
     SceneChanged scene_changed = 15;
@@ -744,6 +746,15 @@ message WatchGameSessionResponse {
     // The combat (a UUID).
     string encounter_id = 1;
   }
+
+  // XpChanged says the campaign's XP changed: an award was given, the last one
+  // undone, or a milestone marked (ProgressionService). It carries no content
+  // (the XP of the other characters is not the player's business until they
+  // read it, where it is allowed): the app reads GetCampaignExperience and
+  // ListXPAwards again. Everyone in the session gets it, the master and every
+  // player; the character's own sheet comes with `can_level_up` on its next
+  // read.
+  message XpChanged {}
 
   // TokenMoved is a token's new position. A token the app does not know
   // yet (it may have missed a `map_changed`) means: read the map again.

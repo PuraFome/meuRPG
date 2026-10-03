@@ -78,9 +78,13 @@ func (s *Service) combatCharacter(id, kind, name string, playerUserID *string, d
 	case sheet.GetFull() != nil:
 		d := rules.Derive(buildOf(sheet.GetFull()), s.rules)
 		c.InitiativeBonus, c.SpeedFt, c.HitPointsMax = d.Initiative, d.SpeedWalkFt, max(d.HitPointsMax, 0)
+		if !c.Player {
+			c.XPValue = int(sheet.GetFull().GetXpValue())
+		}
 	case sheet.GetBasic() != nil:
 		b := sheet.GetBasic()
 		c.InitiativeBonus, c.SpeedFt, c.HitPointsMax = int(b.GetInitiativeBonus()), int(b.GetSpeedFt()), int(b.GetHitPointsMax())
+		c.XPValue = int(b.GetXpValue())
 	default:
 		return link.Character{}, fmt.Errorf("%w: the sheet of character %s has no content", errCorruptDocument, id)
 	}

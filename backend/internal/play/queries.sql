@@ -148,10 +148,10 @@ ORDER BY order_index, created_at, id;
 -- name: InsertCombatant :one
 INSERT INTO combatants (
     encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face,
-    order_index, grid_col, grid_row, speed_ft, hp_current, hp_max, hp_temp, created_at
+    order_index, grid_col, grid_row, speed_ft, hp_current, hp_max, hp_temp, created_at, xp_value
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9,
-    $10, $11, $12, $13, $14, $15, $16, $17
+    $10, $11, $12, $13, $14, $15, $16, $17, $18
 )
 RETURNING *;
 
@@ -382,3 +382,22 @@ ORDER BY seq DESC;
 -- none). No row: no open session.
 SELECT open_scene_point_id FROM game_sessions
 WHERE campaign_id = $1 AND ended_at IS NULL;
+
+-- Progression (MR-016): what the XP awards read from the combats and the log.
+
+-- name: GetCampaignEncounterXP :one
+-- A combat of the campaign (never another campaign's) with the XP its defeated
+-- NPC combatants give. No row: no such combat in the campaign.
+SELECT e.name, e.status,
+       COALESCE(SUM(c.xp_value) FILTER (WHERE c.kind = 'npc' AND c.defeated), 0)::INT8 AS xp
+FROM encounters AS e
+JOIN game_sessions AS gs ON gs.id = e.game_session_id
+LEFT JOIN combatants AS c ON c.encounter_id = e.id
+WHERE gs.campaign_id = sqlc.arg(campaign_id)::UUID AND e.id = sqlc.arg(id)
+GROUP BY e.id, e.name, e.status;
+
+-- name: ListCampaignEncounterNames :many
+-- The names of the given combats of the campaign.
+SELECT e.id, e.name FROM encounters AS e
+JOIN game_sessions AS gs ON gs.id = e.game_session_id
+WHERE gs.campaign_id = sqlc.arg(campaign_id)::UUID AND e.id = ANY(sqlc.arg(ids)::UUID[]);

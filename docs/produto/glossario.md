@@ -79,10 +79,22 @@ Usar as mesmas palavras nas conversas, nos documentos e no código evita muita c
 | Imagem deixada | Uma imagem mostrada que o mestre deixou com os jogadores ("Deixar com os jogadores", MR-028): continua na página da sessão deles, em "Imagens que o mestre deixou", até o mestre tirar ("Tirar"), mesmo depois da sessão acabar. É da campanha, não da sessão. | `campaign_left_images`, `ListLeftImages`, `TakeBackLeftImage` |
 | Posição em pontos-base | Onde fica um ponto ou um token na imagem: de 0 a 10000 na largura e na altura (5000 é o meio). Não depende do tamanho da imagem em pixels. | `x_bp`, `y_bp` |
 | Masmorra | Mapa desenhado com paredes (inclusive falsas), piso, água, portas, armadilhas e baús (normais ou mímicos). | `dungeon` |
+| Gerador de masmorras | A ferramenta do mestre que gera uma masmorra (salas, corredores, portas, escadas, com opções de tamanho e estilo) como um mapa que ele pode editar (MR-010). Feito por design de sala limpa. | — |
+| Ganchos e pistas | As anotações privadas do mestre para cada cena de RP: ganchos, pistas e o que dizer. Uma pista pode ser revelada aos jogadores (MR-029). | — |
+| Anotações do jogador | O bloco de notas privado de cada jogador, sempre à mão; uma nota pode levar a etiqueta de uma cena que o jogador já descobriu (MR-030). | — |
+| Destaques do combate | A tela do fim do combate para a mesa: quem curou mais, quem causou mais dano e quem levou mais ("tanque") (MR-032). | — |
+| Ataque conjunto | Combatentes com a mesma iniciativa, como um grupo de goblins, marcados na ordem dos turnos para o mestre jogá-los juntos. É um lembrete, não uma automação (MR-013). | — |
+| Armadilha | Um ponto escondido no mapa, com a CD para notar (Percepção passiva) e para achar (Investigação), um gatilho e um efeito. O mestre vê todas; o jogador só vê a que achou ou disparou (MR-035). | — |
+| Névoa de guerra | O mapa mostra a cada jogador só o que o personagem dele enxerga: luz, escuro e visão no escuro. O mestre vê tudo (MR-036). | — |
+| Criatura do personagem | Uma criatura que o jogador controla, como a forma selvagem do druida, os mortos-vivos do necromante ou um familiar. Tem ficha própria, tirada das criaturas do SRD, e age no combate (MR-037). | — |
+| Quebra-cabeça | Um desafio que o mestre cria e os jogadores resolvem no app, ao vivo numa cena, como o "lights out" ou uma fechadura de combinação (MR-038). | — |
 | Modo de XP | Como a campanha dá XP: por inimigos derrotados, por ouro ou por marcos. | `xp_mode` |
 | Conteúdo da mesa (homebrew) | Raças, classes, subclasses, antecedentes e regras que não vêm no SRD e que a mesa cadastra. Vale por campanha; o jogador pode propor, e o mestre aprova (MR-025, MR-026). | `rules_pack` |
 | Dado físico ou do app | Como o jogador rola: no app, ou no dado de verdade, digitando o resultado. O mestre decide se a campanha deixa escolher (RN-18); a escolha de cada jogador é a preferência de dados. | `dice_mode`, `dice_preference` |
-| Marco (milestone) | No modo de XP por marcos, o mestre sobe o nível do grupo quando a história chega num ponto combinado. | `milestone` |
+| Marco (milestone) | No modo de XP por marcos, o mestre sobe o nível do grupo quando a história chega num ponto combinado. Ao "Registrar marco", os personagens que ele escolhe ficam marcados "Pode subir de nível", sem contar XP; a marca dura até o nível da ficha subir (RN-12). | `milestone`, `MarkMilestone` |
+| Nível de desafio (ND) | A força de uma criatura, de 0 a 30 ("1/8", "1/4", "1/2", "1"...). A tabela do SRD diz quanto XP ela dá ao ser derrotada (ND 1/4 = 50 XP); o mestre preenche o ND na ficha do NPC e pode digitar outro valor de XP. | `challenge_rating`, `xp_value` |
+| Pode subir de nível | O aviso, na ficha e na lista do grupo, de que o personagem já pode subir de nível: o XP da ficha chegou ao do próximo nível (300, 900, 2.700...), ou o mestre registrou um marco. O mestre aplica o novo nível na ficha; a tela de subir de nível fica para depois do MVP (RN-12). | `can_level_up`, `LevelUpReason` |
+| Prêmio de XP | Cada "Dar XP" do mestre (por inimigos, por ouro ou avulso) ou marco registrado, com quem deu, quando, por quê e a parte de cada personagem. O histórico é lido por toda a campanha; só o último pode ser desfeito, e o prêmio desfeito continua lá, com a etiqueta "Desfeito". | `xp_awards`, `XPAward` |
 | Etapa | Uma fase do roadmap deste guia. Usamos "etapa" para não confundir com o marco de XP. | — |
 
 ## Ver também

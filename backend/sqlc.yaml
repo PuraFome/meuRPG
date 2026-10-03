@@ -90,3 +90,12 @@ sql:
         <<: *go-options
         package: mapsdb
         out: internal/maps/mapsdb
+
+  - engine: postgresql
+    schema: migrations
+    queries: internal/progression/queries.sql
+    gen:
+      go:
+        <<: *go-options
+        package: progressiondb
+        out: internal/progression/progressiondb

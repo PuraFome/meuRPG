@@ -1,0 +1,320 @@
+syntax = "proto3";
+
+// Package meurpg.progression.v1 is about how the characters grow (MR-016,
+// RN-09, RN-12): the XP the master gives the party, the milestones the master
+// marks, the history of both, and who can go up a level.
+package meurpg.progression.v1;
+
+import "google/protobuf/timestamp.proto";
+import "meurpg/campaigns/v1/campaigns.proto";
+import "meurpg/characters/v1/characters.proto";
+
+// ProgressionService gives experience to the party and keeps its history.
+//
+// How the campaign levels (RN-09) is set when it is created
+// (campaigns.v1.XpMode), and the service follows it:
+//   - ENEMIES: the master gives the XP of a combat's defeated NPCs
+//     (XP_AWARD_MODE_ENEMIES) or any amount the master wants (MANUAL).
+//   - GOLD: the master gives 1 XP per gold piece the group found (GOLD), or
+//     any amount (MANUAL).
+//   - MILESTONES: there is no XP to count. The master marks a milestone
+//     (MarkMilestone) and every character the master picks "can level up".
+// A call that does not fit the campaign's mode is `failed_precondition`
+// (XPBlocked, MODE_NOT_ALLOWED).
+//
+// An award adds each character's share to the XP on its sheet
+// (characters.v1.FullSheet.experience_points) in the same transaction, even
+// when the sheet is locked (RN-01): the master's gift is not the player's
+// edit. When the campaign has an open session, the award is also a
+// session_events row and every WatchGameSession stream gets `xp_changed`
+// (ADR-0007). The XP of a character is never typed by the player after the
+// sheet locked: only awards change it.
+//
+// Who may call what: the master gives, marks and undoes; every member of the
+// campaign reads the history and everyone's XP (question 50). The XP an NPC
+// gives never reaches a player (RN-20).
+//
+// Every method needs a valid session cookie and fails with `unauthenticated`
+// without one. For a campaign the caller is not a member of (a pending member
+// neither, RN-15), methods answer `not_found`, exactly as for a campaign that
+// does not exist; a player calling a method only the master may call gets
+// `permission_denied`. An ID that is not a UUID is answered like an ID that
+// does not exist, except in a list of characters, where it is
+// `invalid_argument`.
+//
+// Every write takes an idempotency_key, a UUID the app generates once for the
+// action and sends again on a retry: a second call with the same key changes
+// nothing and answers with what the first one did.
+//
+// Errors every method can return, besides those listed on each method:
+//   - `unauthenticated`: no valid session cookie.
+//   - `invalid_argument`: a field breaks its documented rules. The message
+//     names the field, never its value.
+//   - `unavailable`: the database did not answer; the app may try again.
+//   - `aborted`: the database kept reporting a conflicting transaction after
+//     the server's retries; the app may try again.
+//
+// Responses carry `Cache-Control: no-store`. Every request carries a campaign
+// ID, so reads are IDEMPOTENT and POST-only: a GET would put the ID in the URL,
+// and URLs end up in the platform's request logs (docs/privacidade.md).
+service ProgressionService {
+  // AwardXP gives experience to some characters of the campaign. Only the
+  // master may call it.
+  //
+  // The total is the sum of the defeated NPCs' XP (ENEMIES: the encounter must
+  // be ENDED, and it can be given once, unless the award is undone), the gold
+  // (GOLD: 1 XP per gold piece), or the amount (MANUAL). Each character gets
+  // total / number of characters, rounded down (question 46): the XP that
+  // does not split is lost, and the response says how much (`lost_xp`).
+  // Their sheets' XP goes up, to at most 1,000,000.
+  //
+  // character_ids are living player characters of the campaign, with no
+  // repeat. A sheet's XP is a number the master may also set by hand on the
+  // sheet; the award only adds to it.
+  //
+  // Errors:
+  //   - `not_found`: the campaign, or the encounter, does not exist, or the
+  //     caller is not a member.
+  //   - `permission_denied`: the caller is a player.
+  //   - `invalid_argument`: no characters, a repeat, an ID that is not a UUID,
+  //     a reason outside 1 to 120 characters, a field that does not go with
+  //     the mode (a gold amount for ENEMIES), or an amount or gold outside 1
+  //     to 1,000,000.
+  //   - `failed_precondition` (XPBlocked): MODE_NOT_ALLOWED, ENCOUNTER_NOT_ENDED,
+  //     ALREADY_AWARDED, NOTHING_TO_GIVE (the total is 0, or too small to give
+  //     each one 1 XP), CHARACTER_NOT_ELIGIBLE (a dead or pending character,
+  //     an NPC, or another campaign's).
+  rpc AwardXP(AwardXPRequest) returns (AwardXPResponse);
+
+  // MarkMilestone marks a milestone: the characters it names "can level up"
+  // (RN-12, question 48), and no XP is counted. Only the master may call it,
+  // and only in a MILESTONES campaign. The mark lasts until the character's
+  // level on the sheet goes up (GetCharacter's `can_level_up`).
+  //
+  // Errors: as AwardXP, with MODE_NOT_ALLOWED for a campaign that counts XP.
+  rpc MarkMilestone(MarkMilestoneRequest) returns (MarkMilestoneResponse);
+
+  // UndoLastXPAward takes back the latest award that is not undone: every
+  // share is subtracted from its character's sheet (never below 0), or the
+  // milestone's marks are cleared. Only the master may call it. The award stays
+  // in the history, marked as undone, with who undid it and when: the history
+  // is never rewritten (ADR-0007). Only the last one can be undone: to take
+  // back an earlier one, undo the later ones first.
+  //
+  // expected_award_id, when set, is the award the app shows as the last one: if
+  // another is the last now, the call changes nothing and fails with `aborted`.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist, or the caller is not a member.
+  //   - `permission_denied`: the caller is a player.
+  //   - `failed_precondition` (XPBlocked): NOTHING_TO_UNDO.
+  //   - `aborted`: expected_award_id is not the last award.
+  rpc UndoLastXPAward(UndoLastXPAwardRequest) returns (UndoLastXPAwardResponse);
+
+  // ListXPAwards lists the campaign's awards, newest first, undone ones
+  // included. Any member may call it (question 50).
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist, or the caller is not a member.
+  rpc ListXPAwards(ListXPAwardsRequest) returns (ListXPAwardsResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // GetCampaignExperience returns each living player character with its XP,
+  // level, the XP of the next level and whether it can level up (RN-12). Any
+  // member may call it.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist, or the caller is not a member.
+  rpc GetCampaignExperience(GetCampaignExperienceRequest) returns (GetCampaignExperienceResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+}
+
+// XPAwardMode is where an award's XP came from.
+enum XPAwardMode {
+  XP_AWARD_MODE_UNSPECIFIED = 0;
+  // The XP of the defeated NPCs of an ended combat.
+  XP_AWARD_MODE_ENEMIES = 1;
+  // 1 XP per gold piece the group found.
+  XP_AWARD_MODE_GOLD = 2;
+  // An amount the master typed, at any time.
+  XP_AWARD_MODE_MANUAL = 3;
+  // A milestone: no XP, the characters can level up.
+  XP_AWARD_MODE_MILESTONE = 4;
+}
+
+// XPBlockedReason says why an XP call cannot be done now.
+enum XPBlockedReason {
+  XP_BLOCKED_REASON_UNSPECIFIED = 0;
+  // The campaign's XP mode does not take this: ENEMIES campaigns take
+  // ENEMIES and MANUAL awards, GOLD campaigns GOLD and MANUAL, and
+  // MILESTONES campaigns only MarkMilestone.
+  XP_BLOCKED_REASON_MODE_NOT_ALLOWED = 1;
+  // An ENEMIES award for a combat that has not ended.
+  XP_BLOCKED_REASON_ENCOUNTER_NOT_ENDED = 2;
+  // The combat's XP was already given (and not undone).
+  XP_BLOCKED_REASON_ALREADY_AWARDED = 3;
+  // There is no XP to give: the total is 0, or each one would get 0.
+  XP_BLOCKED_REASON_NOTHING_TO_GIVE = 4;
+  // UndoLastXPAward with no award to undo.
+  XP_BLOCKED_REASON_NOTHING_TO_UNDO = 5;
+  // A character that is not a living player character of the campaign.
+  XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE = 6;
+}
+
+// XPBlocked is the error detail of ProgressionService's
+// `failed_precondition`, so the app can show a clear message.
+message XPBlocked {
+  XPBlockedReason reason = 1;
+  // For CHARACTER_NOT_ELIGIBLE, the character (a UUID).
+  string character_id = 2;
+  // For MODE_NOT_ALLOWED, the campaign's XP mode.
+  meurpg.campaigns.v1.XpMode xp_mode = 3;
+}
+
+// XPShare is what one character got from an award.
+message XPShare {
+  // The character (a UUID).
+  string character_id = 1;
+  // Its name now.
+  string character_name = 2;
+  // The XP it got; 0 for a milestone.
+  int32 xp = 3;
+}
+
+// XPAward is one entry of the XP history.
+message XPAward {
+  // Stable award ID (a UUID).
+  string id = 1;
+  XPAwardMode mode = 2;
+  // What the master wrote: 1 to 120 characters. Every member reads it.
+  string reason = 3;
+  // The master who gave it (a UUID), empty if that account was deleted, and
+  // that master's display name.
+  string given_by_user_id = 4;
+  string given_by_display_name = 5;
+  google.protobuf.Timestamp created_at = 6;
+  // The combat of an ENEMIES award (a UUID) and its name; empty for the rest,
+  // and for a combat that was deleted.
+  string encounter_id = 7;
+  string encounter_name = 8;
+  // The gold of a GOLD award; 0 for the rest.
+  int32 gold = 9;
+  // The XP that was split: 0 for a milestone.
+  int32 total_xp = 10;
+  // Who got what, in the order of the characters' creation. For a milestone,
+  // the characters marked, with 0 XP each.
+  repeated XPShare shares = 11;
+  // Whether the master undid it, when and who (that master's display name).
+  bool undone = 12;
+  google.protobuf.Timestamp undone_at = 13;
+  string undone_by_display_name = 14;
+  // Whether the caller may undo it now: the master, for the latest award that
+  // is not undone.
+  bool can_undo = 15;
+}
+
+message AwardXPRequest {
+  string campaign_id = 1;
+  // ENEMIES, GOLD or MANUAL (not MILESTONE: see MarkMilestone).
+  XPAwardMode mode = 2;
+  // What happened, 1 to 120 characters, one line.
+  string reason = 3;
+  // ENEMIES only: the ended combat (a UUID).
+  string encounter_id = 4;
+  // MANUAL only: the XP to split, 1 to 1,000,000.
+  int32 amount = 5;
+  // GOLD only: the gold pieces the group found, 1 to 1,000,000.
+  int32 gold = 6;
+  // Who gets it: 1 to 40 living player characters of the campaign (UUIDs), no
+  // repeat.
+  repeated string character_ids = 7;
+  // A UUID the app generates once for this award and sends again on a retry.
+  string idempotency_key = 8;
+}
+
+message AwardXPResponse {
+  // The award, as the history shows it.
+  XPAward award = 1;
+  // What each character got.
+  int32 xp_each = 2;
+  // The XP that did not split among the characters (total modulo their number).
+  int32 lost_xp = 3;
+}
+
+message MarkMilestoneRequest {
+  string campaign_id = 1;
+  // What happened, 1 to 120 characters, one line.
+  string reason = 2;
+  // Who is marked: 1 to 40 living player characters of the campaign (UUIDs),
+  // no repeat.
+  repeated string character_ids = 3;
+  // A UUID the app generates once and sends again on a retry.
+  string idempotency_key = 4;
+}
+
+message MarkMilestoneResponse {
+  XPAward award = 1;
+}
+
+message UndoLastXPAwardRequest {
+  string campaign_id = 1;
+  // A UUID the app generates once and sends again on a retry.
+  string idempotency_key = 2;
+  // The award the app shows as the last one (a UUID), or empty.
+  string expected_award_id = 3;
+}
+
+message UndoLastXPAwardResponse {
+  // The award that was undone, as the history shows it now.
+  XPAward award = 1;
+}
+
+message ListXPAwardsRequest {
+  string campaign_id = 1;
+  // How many awards to return: 1 to 50; unset or 0 means 20.
+  int32 page_size = 2;
+  // The next_page_token of the previous page; empty for the first. It is
+  // opaque.
+  string page_token = 3;
+}
+
+message ListXPAwardsResponse {
+  // The awards, newest first.
+  repeated XPAward awards = 1;
+  // Empty on the last page.
+  string next_page_token = 2;
+}
+
+message GetCampaignExperienceRequest {
+  string campaign_id = 1;
+}
+
+message GetCampaignExperienceResponse {
+  // How the campaign levels (RN-09). With MILESTONES, the XP numbers below are
+  // not used: only can_level_up is.
+  meurpg.campaigns.v1.XpMode xp_mode = 1;
+  // The living player characters, oldest first.
+  repeated CharacterExperience characters = 2;
+}
+
+// CharacterExperience is one character's progress.
+message CharacterExperience {
+  // The character (a UUID) and its name.
+  string character_id = 1;
+  string name = 2;
+  // Its player (a UUID) and display name; empty for a character whose player
+  // deleted the account (RN-16).
+  string player_user_id = 3;
+  string player_display_name = 4;
+  // The total level (1 to 20).
+  int32 level = 5;
+  // The XP on the sheet: 0 to 1,000,000.
+  int32 experience_points = 6;
+  // The XP that reaches the next level; 0 at level 20.
+  int32 next_level_xp = 7;
+  // Whether it can level up now (RN-12), and why.
+  bool can_level_up = 8;
+  meurpg.characters.v1.LevelUpReason level_up_reason = 9;
+}

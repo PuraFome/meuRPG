@@ -1,10 +1,11 @@
 -- +goose Up
--- The XP awards and the RP scenes are session events too (ADR-0007, Etapa 7):
--- an XP award and its undo, a milestone, a scene opened or closed and a scene
--- check rolled. Their payloads hold IDs and numbers only, never a name or the
--- master's words. The CHECK lists every kind of the history (see 00058), the
--- six new ones of the whole Etapa 7 together: dropped, if present, and added
--- again, so re-running this migration is safe.
+-- The XP awards and the scenes are session events too (ADR-0007, MR-016,
+-- MR-015, Etapa 7): an award given (xp_awarded), the last one undone
+-- (xp_award_undone), a milestone marked (milestone_marked), a scene opened or
+-- closed (scene_opened, scene_closed) and a scene check rolled
+-- (scene_check_rolled). Their payloads hold IDs and numbers only, never a name
+-- nor a reason. The CHECK lists every kind of the history (see 00051): dropped,
+-- if present, and added again, so re-running this migration is safe.
 ALTER TABLE session_events
     DROP CONSTRAINT IF EXISTS session_events_kind_valid,
     ADD CONSTRAINT session_events_kind_valid CHECK (kind IN (

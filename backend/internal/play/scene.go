@@ -40,18 +40,6 @@ import (
 //   - Opening, closing and rolling are session events (ADR-0007): ids and
 //     numbers only, never a name or the master's words.
 
-// The kinds of session_events rows the scenes write (session_events_kind_valid),
-// and the XP slice's, which the same migration adds to the CHECK.
-const (
-	eventSceneOpened      = "scene_opened"
-	eventSceneClosed      = "scene_closed"
-	eventSceneCheckRolled = "scene_check_rolled"
-
-	eventXPAwarded       = "xp_awarded"
-	eventXPAwardUndone   = "xp_award_undone"
-	eventMilestoneMarked = "milestone_marked"
-)
-
 // sceneEvent is the payload of scene_opened and scene_closed.
 type sceneEvent struct {
 	PointID string `json:"point_id"`

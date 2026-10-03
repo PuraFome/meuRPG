@@ -55,7 +55,7 @@ As Etapas 1 a 6 do [roadmap](docs/roadmap.md) estão na `main`:
 - **Documento da campanha.** As anotações do mestre, em Markdown, com imagens da galeria e links para os mapas e as fichas. Só o mestre vê.
 - **Combate.** O mestre põe a grade de 1,5 m no mapa e inicia o combate: iniciativa, ordem dos turnos e movimento, sem o jogador ver quem está escondido nem os números dos inimigos. Na sua vez, o jogador vê o que as regras deixam fazer com a ação, a ação bônus, a reação e o movimento, e ataca, conjura, usa as habilidades de classe e as reações, com o dado do app ou o físico. O mestre aplica o dano, desfaz a última ação, marca as condições e confirma a morte de quem falha três vezes no teste contra a morte. O registro conta a luta, e cada um vê só o que pode ver.
 
-A próxima é a Etapa 7, a última antes do MVP: as ações da cena de RP e o XP. O MVP fica pronto no fim dela, quando a mesa joga a primeira sessão inteira pelo app.
+A próxima é a Etapa 7, as ações da cena de RP e o XP. O MVP ficou maior em 03/10/2026 e agora termina na Etapa 10, quando a mesa joga a primeira sessão inteira pelo app. A Etapa 8 traz a mesa (ganhos de tela, ganchos e pistas, anotações do jogador, NPCs na cena, destaques do combate e imprimir o mapa), a 9 aprofunda o combate e o mapa (movimento em círculo, armadilhas, névoa de guerra, criaturas do personagem) e a 10 traz o conteúdo e a geração (regras da mesa, quebra-cabeças, gerador de masmorras e imagens geradas por IA). Ver [Roadmap](docs/roadmap.md).
 
 ## O visual: a ficha de papel
 
@@ -159,4 +159,4 @@ O MeuRPG é distribuído sob a [Apache License 2.0](LICENSE). O conteúdo de ter
 
 ## App antigo (descontinuado)
 
-O Angular em `src/` e o NestJS em `server/` são o app antigo. Não recebem mudanças, e os dois saem do repositório na Etapa 8. O que eles faziam e como rodavam está em [App antigo](docs/app-antigo.md).
+O Angular em `src/` e o NestJS em `server/` são o app antigo. Não recebem mudanças, e os dois saem do repositório na Etapa 11. O que eles faziam e como rodavam está em [App antigo](docs/app-antigo.md).
