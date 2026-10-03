@@ -82,7 +82,10 @@ Usar as mesmas palavras nas conversas, nos documentos e no código evita muita c
 | Modo de XP | Como a campanha dá XP: por inimigos derrotados, por ouro ou por marcos. | `xp_mode` |
 | Conteúdo da mesa (homebrew) | Raças, classes, subclasses, antecedentes e regras que não vêm no SRD e que a mesa cadastra. Vale por campanha; o jogador pode propor, e o mestre aprova (MR-025, MR-026). | `rules_pack` |
 | Dado físico ou do app | Como o jogador rola: no app, ou no dado de verdade, digitando o resultado. O mestre decide se a campanha deixa escolher (RN-18); a escolha de cada jogador é a preferência de dados. | `dice_mode`, `dice_preference` |
-| Marco (milestone) | No modo de XP por marcos, o mestre sobe o nível do grupo quando a história chega num ponto combinado. | `milestone` |
+| Marco (milestone) | No modo de XP por marcos, o mestre sobe o nível do grupo quando a história chega num ponto combinado. Ao "Registrar marco", os personagens que ele escolhe ficam marcados "Pode subir de nível", sem contar XP; a marca dura até o nível da ficha subir (RN-12). | `milestone`, `MarkMilestone` |
+| Nível de desafio (ND) | A força de uma criatura, de 0 a 30 ("1/8", "1/4", "1/2", "1"...). A tabela do SRD diz quanto XP ela dá ao ser derrotada (ND 1/4 = 50 XP); o mestre preenche o ND na ficha do NPC e pode digitar outro valor de XP. | `challenge_rating`, `xp_value` |
+| Pode subir de nível | O aviso, na ficha e na lista do grupo, de que o personagem já pode subir de nível: o XP da ficha chegou ao do próximo nível (300, 900, 2.700...), ou o mestre registrou um marco. O mestre aplica o novo nível na ficha; a tela de subir de nível fica para depois do MVP (RN-12). | `can_level_up`, `LevelUpReason` |
+| Prêmio de XP | Cada "Dar XP" do mestre (por inimigos, por ouro ou avulso) ou marco registrado, com quem deu, quando, por quê e a parte de cada personagem. O histórico é lido por toda a campanha; só o último pode ser desfeito, e o prêmio desfeito continua lá, com a etiqueta "Desfeito". | `xp_awards`, `XPAward` |
 | Etapa | Uma fase do roadmap deste guia. Usamos "etapa" para não confundir com o marco de XP. | — |
 
 ## Ver também

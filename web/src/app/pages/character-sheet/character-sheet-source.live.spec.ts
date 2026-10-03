@@ -7,6 +7,7 @@ import {
   CharacterState,
   CharacterStory,
   FullSheet,
+  LevelUpReason,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { DerivedSheet } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { BasicSheetVm, FullSheetVm } from './character-sheet.types';
@@ -142,6 +143,8 @@ function minimalFullSheet(overrides: Partial<FullSheet> = {}): FullSheet {
     alignment: Alignment.UNSPECIFIED,
     customFeaturesText: '',
     featureChoiceKeys: [],
+    challengeRating: '',
+    xpValue: 0,
     ...overrides,
   };
 }
@@ -171,6 +174,8 @@ function characterWithFullSheet(full: FullSheet): Character {
     storyEditingAllowed: false,
     canSetStoryEditing: false,
     canApprove: false,
+    canLevelUp: false,
+    levelUpReason: LevelUpReason.UNSPECIFIED,
   };
 }
 
@@ -231,6 +236,8 @@ describe('the sheet header shows alignment and XP, read from the stored FullShee
           rangeFt: 0,
         },
       ],
+      challengeRating: '',
+      xpValue: 0,
     };
     const character: Character = {
       ...characterWithFullSheet(minimalFullSheet()),

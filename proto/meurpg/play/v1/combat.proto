@@ -1045,6 +1045,11 @@ message Combatant {
   // combatant is not concentrating. Filled for everyone who sees the combatant,
   // like `condition_names_pt`.
   string concentration_spell_name_pt = 34;
+  // The XP the NPC gives when defeated (the sheet's xp_value, copied when it
+  // joined the fight): the end-of-combat summary adds up the defeated ones.
+  // Only the master gets it, and only for an NPC; for a player (RN-20) and for
+  // a player's character it is 0.
+  int32 xp_value = 35;
 }
 
 // Participant is who joins a combat: a character of the campaign.

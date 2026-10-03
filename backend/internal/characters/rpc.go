@@ -553,7 +553,14 @@ func (s *Service) character(ctx context.Context, row charactersdb.Character, m a
 		}
 		displayName = displayNames[*row.PlayerUserID]
 	}
-	return s.characterToProto(row, m, displayName)
+	c, err := s.characterToProto(row, m, displayName)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.fillLevelUp(ctx, c, row, m); err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
 // displayNames asks the identity module for players' display names.

@@ -29,6 +29,9 @@ type Character struct {
 	// HitPointsMax is the maximum hit points. A combatant takes it only for
 	// an NPC: a player character's hit points are in its vitals.
 	HitPointsMax int
+	// XPValue is the XP an NPC gives when defeated (its sheet's xp_value), 0
+	// for a player's character (MR-016).
+	XPValue int
 }
 
 // Grid is a map's battle grid: squares of 1.5 m (5 ft) across the image's

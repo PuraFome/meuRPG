@@ -48,6 +48,18 @@ const (
 	eventConditionsSet    = "conditions_set"
 )
 
+// The kinds of Etapa 7: the XP awards (package progression writes them
+// through AppendEvent) and the scenes. session_events_kind_valid lists them
+// all, and TestSessionEventKindsMatchTheCheck keeps the two in step.
+const (
+	eventXPAwarded        = "xp_awarded"
+	eventXPAwardUndone    = "xp_award_undone"
+	eventMilestoneMarked  = "milestone_marked"
+	eventSceneOpened      = "scene_opened"
+	eventSceneClosed      = "scene_closed"
+	eventSceneCheckRolled = "scene_check_rolled"
+)
+
 // combatWrite describes one change to a combat: who makes it, the idempotency
 // key, the kind of event it becomes, and the combat it is about (empty when
 // the change creates it).

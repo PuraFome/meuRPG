@@ -138,6 +138,38 @@ func (q *Queries) EndGameSession(ctx context.Context, arg EndGameSessionParams) 
 	return i, err
 }
 
+const getCampaignEncounterXP = `-- name: GetCampaignEncounterXP :one
+
+SELECT e.name, e.status,
+       COALESCE(SUM(c.xp_value) FILTER (WHERE c.kind = 'npc' AND c.defeated), 0)::INT8 AS xp
+FROM encounters AS e
+JOIN game_sessions AS gs ON gs.id = e.game_session_id
+LEFT JOIN combatants AS c ON c.encounter_id = e.id
+WHERE gs.campaign_id = $1::UUID AND e.id = $2
+GROUP BY e.id, e.name, e.status
+`
+
+type GetCampaignEncounterXPParams struct {
+	CampaignID string
+	ID         string
+}
+
+type GetCampaignEncounterXPRow struct {
+	Name   string
+	Status string
+	Xp     int64
+}
+
+// Progression (MR-016): what the XP awards read from the combats and the log.
+// A combat of the campaign (never another campaign's) with the XP its defeated
+// NPC combatants give. No row: no such combat in the campaign.
+func (q *Queries) GetCampaignEncounterXP(ctx context.Context, arg GetCampaignEncounterXPParams) (GetCampaignEncounterXPRow, error) {
+	row := q.db.QueryRow(ctx, getCampaignEncounterXP, arg.CampaignID, arg.ID)
+	var i GetCampaignEncounterXPRow
+	err := row.Scan(&i.Name, &i.Status, &i.Xp)
+	return i, err
+}
+
 const getEncounterInSession = `-- name: GetEncounterInSession :one
 SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at FROM encounters
 WHERE game_session_id = $1 AND id = $2
@@ -408,12 +440,12 @@ func (q *Queries) GetSessionEventByIdempotencyKey(ctx context.Context, arg GetSe
 const insertCombatant = `-- name: InsertCombatant :one
 INSERT INTO combatants (
     encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face,
-    order_index, grid_col, grid_row, speed_ft, hp_current, hp_max, hp_temp, created_at
+    order_index, grid_col, grid_row, speed_ft, hp_current, hp_max, hp_temp, created_at, xp_value
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9,
-    $10, $11, $12, $13, $14, $15, $16, $17
+    $10, $11, $12, $13, $14, $15, $16, $17, $18
 )
-RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled
+RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value
 `
 
 type InsertCombatantParams struct {
@@ -434,6 +466,7 @@ type InsertCombatantParams struct {
 	HpMax           *int32
 	HpTemp          *int32
 	CreatedAt       time.Time
+	XpValue         int32
 }
 
 func (q *Queries) InsertCombatant(ctx context.Context, arg InsertCombatantParams) (Combatant, error) {
@@ -455,6 +488,7 @@ func (q *Queries) InsertCombatant(ctx context.Context, arg InsertCombatantParams
 		arg.HpMax,
 		arg.HpTemp,
 		arg.CreatedAt,
+		arg.XpValue,
 	)
 	var i Combatant
 	err := row.Scan(
@@ -490,6 +524,7 @@ func (q *Queries) InsertCombatant(ctx context.Context, arg InsertCombatantParams
 		&i.AttacksMade,
 		&i.AcBonus,
 		&i.DeathSaveRolled,
+		&i.XpValue,
 	)
 	return i, err
 }
@@ -690,6 +725,43 @@ func (q *Queries) InsertSessionEvent(ctx context.Context, arg InsertSessionEvent
 	return i, err
 }
 
+const listCampaignEncounterNames = `-- name: ListCampaignEncounterNames :many
+SELECT e.id, e.name FROM encounters AS e
+JOIN game_sessions AS gs ON gs.id = e.game_session_id
+WHERE gs.campaign_id = $1::UUID AND e.id = ANY($2::UUID[])
+`
+
+type ListCampaignEncounterNamesParams struct {
+	CampaignID string
+	Ids        []string
+}
+
+type ListCampaignEncounterNamesRow struct {
+	ID   string
+	Name string
+}
+
+// The names of the given combats of the campaign.
+func (q *Queries) ListCampaignEncounterNames(ctx context.Context, arg ListCampaignEncounterNamesParams) ([]ListCampaignEncounterNamesRow, error) {
+	rows, err := q.db.Query(ctx, listCampaignEncounterNames, arg.CampaignID, arg.Ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCampaignEncounterNamesRow
+	for rows.Next() {
+		var i ListCampaignEncounterNamesRow
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCastPendingDamages = `-- name: ListCastPendingDamages :many
 SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total FROM pending_damages
 WHERE encounter_id = $1 AND cast_id = $2
@@ -746,7 +818,7 @@ func (q *Queries) ListCastPendingDamages(ctx context.Context, arg ListCastPendin
 }
 
 const listCombatants = `-- name: ListCombatants :many
-SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled FROM combatants
+SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value FROM combatants
 WHERE encounter_id = $1
 ORDER BY order_index, created_at, id
 `
@@ -794,6 +866,7 @@ func (q *Queries) ListCombatants(ctx context.Context, encounterID string) ([]Com
 			&i.AttacksMade,
 			&i.AcBonus,
 			&i.DeathSaveRolled,
+			&i.XpValue,
 		); err != nil {
 			return nil, err
 		}

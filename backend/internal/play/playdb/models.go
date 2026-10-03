@@ -41,6 +41,7 @@ type Combatant struct {
 	AttacksMade        int32
 	AcBonus            int32
 	DeathSaveRolled    bool
+	XpValue            int32
 }
 
 type Encounter struct {
