@@ -630,6 +630,9 @@ Fatia 8.7 da Etapa 8, só no navegador (a grade e a imagem já vinham do mapa; n
 - **Dado** um alvo com meia cobertura ou três quartos de cobertura (o mestre marca), **quando** alguém ataca ou resiste, **então** o servidor soma +2 ou +5 à CA, conforme a cobertura.
 - **Dado** a Disparada, **quando** o jogador a usa, **então** ela continua funcionando junto com o terreno difícil.
 
+#### Implementado
+Fatia 9.2 da Etapa 9, só as contas em Go (a ligação com o servidor vem nas fatias 9.3 e 9.6): o movimento em círculo, o custo por quadrado de terreno difícil, as paredes, as colunas, as criaturas no caminho, o salto, a cobertura e o ataque de oportunidade em `rules/grid` e `rules/combat.JumpLimits`. As regras estão em [RN-21](regras.md) e em [Arquitetura](../arquitetura.md#grade-visão-e-predefinições-etapa-9). Testes: `rules/grid` (`TestReachAgainstTheCave`, `TestMoveCostAgainstTheCave`, `TestCreaturesOnTheWay`, `TestCoverBetweenAgainstTheCave`, `TestLeavesReach`, `TestRange`, as camadas e a linha) e `rules/combat` (`TestJumpLimits`): os números da caverna dos desenhos e os do salto de Toren (Força 16: 16 pés de distância e 6 de altura com corrida) e de Brisa (Força 10).
+
 #### Dúvidas
 - Quem marca o terreno difícil e a cobertura é o mestre, no mapa ou no combate: a definir no desenho da Etapa 9.
 
@@ -650,6 +653,9 @@ Fatia 8.7 da Etapa 8, só no navegador (a grade e a imagem já vinham do mapa; n
 #### Relacionadas
 - Vem do que o desenho de masmorras (a antiga MR-010) previa: armadilhas e baús.
 
+#### Implementado
+Fatia 9.2 da Etapa 9, só o conteúdo: as oito armadilhas de exemplo do SRD como predefinições (`effects/traps.json`, `Content.TrapPresets()`) com a tabela de gravidade do SRD. O mapa, o gatilho e o disparo vêm nas fatias 9.3 e 9.8. Testes: `TestTrapPresetsOfTheSRD`, `TestTrapSeverityTables`, `TestLoadTrapsRefuses`.
+
 ### MR-036: Névoa de guerra pela visão
 
 **Como** jogador, **quero** ver no mapa só o que o meu personagem enxerga, **para** a exploração ter o suspense da mesa.
@@ -663,6 +669,9 @@ Fatia 8.7 da Etapa 8, só no navegador (a grade e a imagem já vinham do mapa; n
 - **Dado** uma fonte de luz (uma tocha, uma magia), **quando** o mestre a põe no mapa, **então** a área ao redor fica visível.
 - **Dado** um personagem com Visão no escuro de 18 m na ficha, **quando** ele está numa área escura, **então** ele enxerga até 18 m, em tons de cinza.
 - **Dado** o mestre, **quando** abre o mapa, **então** vê tudo. O que o jogador não enxerga nunca sai do servidor (RN-10).
+
+#### Implementado
+Fatia 9.2 da Etapa 9, só as contas em Go (a ligação com o servidor vem nas fatias 9.3, 9.4 e 9.5): `rules/vision` calcula, de um mapa com paredes, luz base e pintada e fontes de luz, o que cada observador enxerga (claro, penumbra, cinza na visão no escuro, parede vista), a união de vários e a penalidade de −5 na penumbra, e `effects/lights.json` guarda as luzes do SRD. Testes: `TestVisionAgainstTheCave` (os desenhos da caverna: Pensantus, Toren, Brisa e Sálvia no escuro, Toren e Brisa com a tocha), `TestSensesBeyondDarkvision`, `TestLightIsBlockedByWalls`, `TestUnionOfViewers`, `TestPassivePenalty` e os benchmarks do orçamento de tempo.
 
 #### Dúvidas
 - Se a visão de um jogador é compartilhada com o grupo e se as paredes bloqueiam a vista (o que depende de o mapa saber onde ficam as paredes, ver a [MR-010](#mr-010-gerar-masmorras)): a definir no desenho da Etapa 9.
