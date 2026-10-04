@@ -90,6 +90,7 @@ func (s *Service) CombatSpell(ctx context.Context, campaignID, characterID, spel
 			Threshold: fx.Threshold, Dies: fx.Dies, Heal: fx.Heal, Ends: fx.Ends,
 		}
 	}
+	out.IgnoresCover = s.rules.IgnoresCover(spellKey)
 	out.Area = isArea(det)
 	out.ExtraTargetPerLevel = extraTargetRE.MatchString(strings.Join(det.HigherLevel, " "))
 	return out, nil

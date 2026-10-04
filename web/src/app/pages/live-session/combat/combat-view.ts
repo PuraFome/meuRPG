@@ -21,7 +21,6 @@ import { ActionEconomy, type Attack, AttackKind, type SpellDetails } from '../..
 import { type AttackDie, CombatClient, newKey } from '../../../core/combat/combat-client';
 import { combatErrorMessage } from '../../../core/combat/combat-errors';
 import { type Square, canReach } from '../../../core/combat/combat-grid';
-import { reachSquares } from '../../../core/units';
 import { openDamages, pendingNote } from '../../../core/combat/attack-flow';
 import { CombatLogState } from '../../../core/combat/combat-log-state';
 import type { CombatState } from '../../../core/combat/combat-state';
@@ -215,7 +214,7 @@ export class CombatView {
   protected readonly reach = computed(() => {
     const own = this.own();
     return this.myTurn() && own && own.placed
-      ? { origin: { col: own.col, row: own.row }, squares: reachSquares(own.movementLeftFt) }
+      ? { origin: { col: own.col, row: own.row }, leftDft: own.movementLeftDft }
       : null;
   });
   /** The one whose options the screen asks for: the player's own character
@@ -864,7 +863,7 @@ export class CombatView {
       return false;
     }
     const others = e.combatants.filter((x) => x.placed && x.id !== id).map((x) => ({ col: x.col, row: x.row }));
-    return canReach({ col: c.col, row: c.row }, to, reachSquares(c.movementLeftFt), e.gridColumns, e.gridRows, others);
+    return canReach({ col: c.col, row: c.row }, to, c.movementLeftDft, e.gridColumns, e.gridRows, others);
   }
 
   /** "Mover para cá" on the "Mover" page. */

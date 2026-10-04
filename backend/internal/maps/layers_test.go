@@ -589,3 +589,39 @@ func TestHintGateMergesTheHintsOfAnInterval(t *testing.T) {
 		t.Error("a hint after a quiet interval was held")
 	}
 }
+
+// MR-034, RN-21: Terrain is what a combat walks over: the painted walls,
+// difficult terrain and cover as grid.Terrain, open floor with no layers, and
+// not_found for a map that is not the campaign's.
+func TestMR034_TerrainForACombat(t *testing.T) {
+	t.Parallel()
+	s := newScenes(t, false)
+	m := s.master
+	ctx := t.Context()
+	m.mustSetGrid(s.campaign, s.mapID, 20)
+
+	open, err := s.h.svc.Terrain(ctx, s.campaign, s.mapID)
+	if err != nil || open.Grid != testGrid || open.Walls.Count() != 0 || open.Difficult.Count() != 0 || open.Validate() != nil {
+		t.Fatalf("Terrain of an unpainted map = %+v, %v; want open floor on the 20 x 15 grid", open, err)
+	}
+	m.mustPaint(s.campaign, s.mapID, mapsv1.MapLayer_MAP_LAYER_WALL, 1, [2]int32{3, 2})
+	m.mustPaint(s.campaign, s.mapID, mapsv1.MapLayer_MAP_LAYER_DIFFICULT_TERRAIN, 1, [2]int32{0, 0})
+	m.mustPaint(s.campaign, s.mapID, mapsv1.MapLayer_MAP_LAYER_COVER, 2, [2]int32{6, 5})
+	m.mustPaint(s.campaign, s.mapID, mapsv1.MapLayer_MAP_LAYER_LIGHT, 3, [2]int32{1, 1})
+	got, err := s.h.svc.Terrain(ctx, s.campaign, s.mapID)
+	if err != nil {
+		t.Fatalf("Terrain() error = %v", err)
+	}
+	if !got.Walls.Get(3, 2) || got.Walls.Count() != 1 || !got.Difficult.Get(0, 0) || got.Cover.Get(6, 5) != grid.CoverThreeQuarters {
+		t.Errorf("Terrain = walls %d, difficult (0,0) %v, cover %v; want the painted squares", got.Walls.Count(), got.Difficult.Get(0, 0), got.Cover.Get(6, 5))
+	}
+
+	other := s.h.newUser("Outra")
+	otherCampaign := s.h.newCampaign(other)
+	if _, err := s.h.svc.Terrain(ctx, otherCampaign, s.mapID); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Errorf("Terrain of another campaign's map = %v, want not_found", err)
+	}
+	if _, err := s.h.svc.Terrain(ctx, s.campaign, "not-a-uuid"); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Errorf("Terrain of a bad id = %v, want not_found", err)
+	}
+}

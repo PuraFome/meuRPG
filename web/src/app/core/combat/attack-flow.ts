@@ -84,7 +84,7 @@ export function targetRows(targets: readonly TargetInReach[], rangeFt: number): 
       id: t.combatantId,
       label: t.label,
       sub: tight(joinDots(parts)),
-      blocked: t.tooFar ? tight(`Longe demais: alcance de ${metersText(rangeFt)}`) : '',
+      blocked: t.untargetable ? 'Atrás de cobertura total' : t.tooFar ? tight(`Longe demais: alcance de ${metersText(rangeFt)}`) : '',
     };
   });
 }

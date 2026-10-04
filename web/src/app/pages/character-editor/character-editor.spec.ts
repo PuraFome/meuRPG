@@ -590,6 +590,7 @@ describe('CharacterEditor', () => {
           challengeRating: '',
           xpValue: 0,
           portraitImageId: '',
+          size: 0,
           alignment: '',
           customFeaturesText: '',
         },
@@ -972,6 +973,7 @@ describe('CharacterEditor', () => {
             challengeRating: '1/4',
             xpValue: 50,
             portraitImageId: '',
+            size: 0,
           },
         });
       const { el } = await render();
@@ -1339,7 +1341,7 @@ describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () 
           blocked: null,
           sheetLocked: false,
           full: null,
-          basic: { name: 'Goblin', hitPointsMax: 7, armorClass: 15, speedFt: 30, initiativeBonus: 2, attacks: [], legacyDamage: '', legacyAttackBonus: 0, description: '', challengeRating: '1/4', xpValue: 50, portraitImageId: '' },
+          basic: { name: 'Goblin', hitPointsMax: 7, armorClass: 15, speedFt: 30, initiativeBonus: 2, attacks: [], legacyDamage: '', legacyAttackBonus: 0, description: '', challengeRating: '1/4', xpValue: 50, portraitImageId: '', size: 0 },
         });
       const { fixture } = await render();
       await cmp(fixture).submit();
@@ -1436,7 +1438,7 @@ describe('CharacterEditor, the NPC portrait', () => {
     blocked: null,
     sheetLocked: false,
     full: null,
-    basic: { name: 'Mira', hitPointsMax: 9, armorClass: 11, speedFt: 30, initiativeBonus: 2, attacks: [], legacyDamage: '', legacyAttackBonus: 0, description: '', challengeRating: '', xpValue: 0, portraitImageId },
+    basic: { name: 'Mira', hitPointsMax: 9, armorClass: 11, speedFt: 30, initiativeBonus: 2, attacks: [], legacyDamage: '', legacyAttackBonus: 0, description: '', challengeRating: '', xpValue: 0, portraitImageId, size: 0 },
   });
 
   it('shows "Retrato" on the short form of a new NPC, with the initials and "Escolher retrato"', async () => {

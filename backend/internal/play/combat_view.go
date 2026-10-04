@@ -220,6 +220,9 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 		DeathFailures:      c.DeathFailures,
 		Conditions:         c.Conditions,
 		ConcentrationSpell: deref(c.ConcentrationSpell),
+		Side:               sideProto(c.Side),
+		Size:               sizeProto(c.Size),
+		CoverMark:          coverDegreeProto(markKeyOf(c)),
 	}
 	for _, key := range c.Conditions {
 		out.ConditionNamesPt = append(out.ConditionNamesPt, names(key))
@@ -241,10 +244,7 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 	if detail {
 		out.InitiativeBonus = ptr(c.InitiativeBonus)
 		out.InitiativeFace = c.InitiativeFace
-		out.SpeedFt = c.SpeedFt
-		out.MovementUsedFt = c.MovementUsedFt
-		out.MovementLeftFt = clamp32(movementLeftFt(c), 0, 1200) // twice the largest speed
-		out.Dashed, out.ActionUsed, out.BonusActionUsed, out.ReactionUsed = c.Dashed, c.ActionUsed, c.BonusActionUsed, c.ReactionUsed
+		shareEconomy(out, c)
 		out.ArmorClassBonus = c.AcBonus
 		out.DeathSaveDue = onTurn && deathSaveDue(c, vitals)
 	}
@@ -287,11 +287,21 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 // shareEconomy gives a player's combatant's turn economy to another player who
 // is in the same joint turn (the rest of the detail stays the owner's).
 func shareEconomy(out *playv1.Combatant, c playdb.Combatant) {
+	// The movement is kept in tenths of a foot; the `_ft` fields are those rounded
+	// down, for the web that is already shipped (RN-21).
 	out.SpeedFt = c.SpeedFt
-	out.MovementUsedFt = c.MovementUsedFt
-	out.MovementLeftFt = clamp32(movementLeftFt(c), 0, 1200)
+	out.SpeedFlyFt = c.SpeedFlyFt
+	out.SpeedDft = clamp32(speedDFt(c), 0, math.MaxInt32)
+	out.MovementUsedFt = c.MovementUsedDft / 10
+	out.MovementUsedDft = c.MovementUsedDft
+	out.MovementLeftFt = clamp32(movementLeftFt(c), 0, 1200) // twice the largest speed
+	out.MovementLeftDft = clamp32(movementLeftDFt(c), 0, math.MaxInt32)
 	out.Dashed, out.ActionUsed, out.BonusActionUsed, out.ReactionUsed = c.Dashed, c.ActionUsed, c.BonusActionUsed, c.ReactionUsed
+	out.Disengaged = c.Disengaged
 }
+
+// markKeyOf is the cover the master marked, as an event keeps it ("" for none).
+func markKeyOf(c playdb.Combatant) string { return coverKeys[coverToGrid[c.CoverMark]] }
 
 // isDownIn says whether the vitals are of a character at 0 hit points.
 func isDownIn(v *playv1.CharacterVitals) bool {

@@ -867,6 +867,10 @@ message BasicSheet {
   int32 xp_value = 10;
   // The NPC's portrait, as FullSheet.portrait_image_id.
   string portrait_image_id = 11;
+  // The NPC's size (MR-034, RN-21): decides whether it may pass a creature it
+  // is hostile to and share a square with another. Unset (or UNSPECIFIED) means
+  // Medium. Shown nowhere new yet: the combat reads it.
+  meurpg.rules.v1.CreatureSize size = 12;
 }
 
 // BasicAttack is one attack of a basic sheet, with real dice: the d20 plus

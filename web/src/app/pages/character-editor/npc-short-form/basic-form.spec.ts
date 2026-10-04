@@ -75,6 +75,7 @@ describe('the NPC short form', () => {
     challengeRating: '1/4',
     xpValue: 50,
     portraitImageId: '',
+    size: 0,
   };
 
   it('loads a sheet and gives the same value back (metres on screen, feet stored)', () => {

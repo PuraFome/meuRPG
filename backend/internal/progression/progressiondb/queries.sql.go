@@ -369,7 +369,7 @@ type InsertXPAwardTreasureParams struct {
 	ValuePo int32
 }
 
-// The treasures a "Voltar à cidade" award converted (00120).
+// The treasures a "Voltar à cidade" award converted (00101).
 func (q *Queries) InsertXPAwardTreasure(ctx context.Context, arg InsertXPAwardTreasureParams) error {
 	_, err := q.db.Exec(ctx, insertXPAwardTreasure, arg.AwardID, arg.PointID, arg.ValuePo)
 	return err
