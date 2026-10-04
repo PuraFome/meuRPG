@@ -471,6 +471,7 @@ type pointChange struct {
 	name        *string
 	description *string
 	hooks       *string // a SCENE point's private text; "" clears it
+	showDC      *bool   // a SCENE point's "Mostrar a CD aos jogadores"
 	x, y        *int32
 	target      *string // "" removes the target
 	revealed    *bool
@@ -508,6 +509,9 @@ func (s *Service) CreateMapPoint(
 	if hooks != "" && kind != kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_SCENE] {
 		return nil, errOnlyScenesHaveHooks()
 	}
+	if req.Msg.GetShowDc() && kind != kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_SCENE] {
+		return nil, errOnlyScenesShowDC()
+	}
 	if err := checkPosition(req.Msg.GetXBp(), req.Msg.GetYBp()); err != nil {
 		return nil, err
 	}
@@ -533,7 +537,7 @@ func (s *Service) CreateMapPoint(
 			return err
 		}
 		created, err = q.InsertMapPoint(ctx, mapsdb.InsertMapPointParams{
-			MapID: mapID, Kind: kind, Name: name, Description: description, Hooks: hooks,
+			MapID: mapID, Kind: kind, Name: name, Description: description, Hooks: hooks, ShowDc: req.Msg.GetShowDc(),
 			XBp: req.Msg.GetXBp(), YBp: req.Msg.GetYBp(), TargetMapID: target, Now: s.now(),
 		})
 		if err != nil {
@@ -571,10 +575,10 @@ func (s *Service) UpdateMapPoint(
 		return nil, errPointNotFound()
 	}
 	msg := req.Msg
-	if msg.Kind == nil && msg.Name == nil && msg.Description == nil && msg.Hooks == nil && msg.XBp == nil && msg.YBp == nil && msg.TargetMapId == nil && msg.Revealed == nil {
+	if msg.Kind == nil && msg.Name == nil && msg.Description == nil && msg.Hooks == nil && msg.ShowDc == nil && msg.XBp == nil && msg.YBp == nil && msg.TargetMapId == nil && msg.Revealed == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("nothing to change"))
 	}
-	change := pointChange{x: msg.XBp, y: msg.YBp, target: msg.TargetMapId, revealed: msg.Revealed}
+	change := pointChange{x: msg.XBp, y: msg.YBp, target: msg.TargetMapId, revealed: msg.Revealed, showDC: msg.ShowDc}
 	if msg.Kind != nil {
 		kind, ok := kindToDB[msg.GetKind()]
 		if !ok {
@@ -649,7 +653,7 @@ func (s *Service) UpdateMapPoint(
 func (s *Service) applyPointChange(ctx context.Context, q *mapsdb.Queries, campaignID string, p mapsdb.MapPoint, c pointChange) (mapsdb.MapPoint, error) {
 	params := mapsdb.UpdateMapPointParams{
 		MapID: p.MapID, ID: p.ID, Kind: p.Kind, Name: p.Name, Description: p.Description,
-		Hooks: p.Hooks, XBp: p.XBp, YBp: p.YBp, TargetMapID: p.TargetMapID, RevealedAt: p.RevealedAt, Now: s.now(),
+		Hooks: p.Hooks, ShowDc: p.ShowDc, XBp: p.XBp, YBp: p.YBp, TargetMapID: p.TargetMapID, RevealedAt: p.RevealedAt, Now: s.now(),
 	}
 	if c.kind != nil {
 		params.Kind = *c.kind
@@ -662,6 +666,9 @@ func (s *Service) applyPointChange(ctx context.Context, q *mapsdb.Queries, campa
 	}
 	if c.hooks != nil {
 		params.Hooks = *c.hooks
+	}
+	if c.showDC != nil {
+		params.ShowDc = *c.showDC
 	}
 	if c.x != nil {
 		params.XBp = *c.x
@@ -689,8 +696,12 @@ func (s *Service) applyPointChange(ctx context.Context, q *mapsdb.Queries, campa
 	if params.Kind != scene && c.hooks != nil && *c.hooks != "" {
 		return mapsdb.MapPoint{}, errOnlyScenesHaveHooks()
 	}
+	if params.Kind != scene && c.showDC != nil && *c.showDC {
+		return mapsdb.MapPoint{}, errOnlyScenesShowDC()
+	}
 	if p.Kind == scene && params.Kind != p.Kind {
-		// Only a scene has actions, clues and hooks (MR-015, MR-029). A scene
+		// Only a scene has actions, clues, hooks and the DC switch (MR-015,
+		// MR-029). A scene
 		// still open in a session then reads as closed: it is not a scene
 		// point anymore. What players already received stays in their notes.
 		if err := q.DeleteSceneActionsOfPoint(ctx, p.ID); err != nil {
@@ -700,6 +711,7 @@ func (s *Service) applyPointChange(ctx context.Context, q *mapsdb.Queries, campa
 			return mapsdb.MapPoint{}, fmt.Errorf("delete the scene's clues: %w", err)
 		}
 		params.Hooks = ""
+		params.ShowDc = false
 	}
 	if params.Kind == scene && params.RevealedAt != nil && (p.RevealedAt == nil || p.Kind != scene) {
 		// Revealing a scene makes it "discovered" (MR-030, question 61): the
@@ -1171,6 +1183,10 @@ func cleanHooks(raw string) (string, error) {
 		return "", connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("hooks %w", err))
 	}
 	return hooks, nil
+}
+
+func errOnlyScenesShowDC() error {
+	return connect.NewError(connect.CodeInvalidArgument, errors.New("only a SCENE point shows a DC to the players"))
 }
 
 func errOnlyScenesHaveHooks() error {

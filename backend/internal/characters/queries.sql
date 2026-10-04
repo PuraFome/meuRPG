@@ -237,6 +237,14 @@ WHERE campaign_id = sqlc.arg(campaign_id)::UUID
   AND status = 'active'
 ORDER BY created_at, id;
 
+-- name: ListSessionCharacters :many
+-- Those of the given characters of the campaign, whatever their status: the
+-- session summary names a character that died or left during the session
+-- (package play).
+SELECT id, kind, name, player_user_id FROM characters
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID
+  AND id = ANY(sqlc.arg(ids)::UUID[]);
+
 -- name: ListCharacterNames :many
 -- The names of the given characters of the campaign, whatever their kind or
 -- status (package progression names the characters of an award, even one that

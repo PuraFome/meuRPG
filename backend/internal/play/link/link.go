@@ -239,6 +239,9 @@ type Scene struct {
 	// the clues the master prepared. They never go to a player (RN-20).
 	Hooks string
 	Clues []SceneClue
+	// ShowDC is the master's "Mostrar a CD aos jogadores" switch: when it is
+	// on, a player gets each DC and the pass or fail of their own rolls.
+	ShowDC bool
 }
 
 // SceneClue is a clue of a scene, with who has it.
@@ -263,6 +266,9 @@ type SceneAction struct {
 	Name string
 	// DC is the difficulty class, 0 for none.
 	DC int
+	// MaxAttempts is how many times each player's character may roll it while
+	// the scene is open: 1 to 5, and 0 means unlimited.
+	MaxAttempts int
 }
 
 // SceneOption is a scene check with one character's numbers on it (the rules
