@@ -1,0 +1,131 @@
+// Nothing here shows on screen. On paper, every sheet is one page: the
+// colours are fixed (white paper, black ink), not the app's theme tokens, and
+// the browser is told to print them as drawn.
+:host {
+  display: none;
+
+  @media print {
+    display: block;
+  }
+}
+
+.sheets {
+  color-scheme: light;
+  color: #000;
+  font-family: var(--mr-font-sans, sans-serif);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.sheet {
+  position: relative;
+  overflow: hidden;
+  background: #fff;
+  break-inside: avoid;
+  break-after: page;
+
+  &:last-child {
+    break-after: auto;
+  }
+}
+
+.sheet__image {
+  position: absolute;
+  max-width: none;
+}
+
+.sheet__lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.grid {
+  fill: none;
+  stroke: #000;
+  stroke-opacity: 0.55;
+  stroke-width: 0.025px;
+}
+
+.band {
+  fill: #000;
+  fill-opacity: 0.22;
+}
+
+.mark {
+  fill: none;
+  stroke: #000;
+  stroke-width: 0.04px;
+  stroke-dasharray: 0.3 0.15;
+}
+
+.cross {
+  fill: none;
+  stroke: #000;
+  stroke-width: 0.05px;
+}
+
+// The chips: white, with a hairline, 4 mm tall (about 11 pt).
+.chip {
+  position: absolute;
+  padding: 0 1.5mm;
+  border: 0.2mm solid #000;
+  border-radius: 1mm;
+  background: #fff;
+  font-size: 8pt;
+  font-weight: 700;
+  line-height: 4mm;
+  white-space: nowrap;
+}
+
+.label {
+  top: 3mm;
+  left: 3mm;
+  font-size: 11pt;
+  line-height: 4.6mm;
+}
+
+.edge--above {
+  top: 3mm;
+  right: 3mm;
+}
+
+.edge--below {
+  right: 3mm;
+  bottom: 3mm;
+}
+
+.edge--left,
+.edge--right {
+  top: 50%;
+  writing-mode: vertical-rl;
+  translate: 0 -50%;
+}
+
+.edge--left {
+  left: 3mm;
+  rotate: 180deg;
+}
+
+.edge--right {
+  right: 3mm;
+}
+
+.ruler {
+  bottom: 3mm;
+  left: 10mm;
+  display: flex;
+  align-items: center;
+  gap: 2mm;
+}
+
+// 5 cm exactly, with a tick at each end.
+.ruler__bar {
+  display: inline-block;
+  box-sizing: border-box;
+  width: 5cm;
+  height: 2.5mm;
+  border: 0.3mm solid #000;
+  border-top: 0;
+}

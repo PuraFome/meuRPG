@@ -1,0 +1,103 @@
+@switch (phase()) {
+  @case ('loading') {
+    <h1 class="mr-page-title">Imprimir o mapa</h1>
+    <p class="status" role="status">
+      <mat-spinner diameter="24" aria-label="Carregando o mapa" />
+      Carregando o mapa...
+    </p>
+  }
+  @case ('gone') {
+    <h1 class="mr-page-title">Mapa não encontrado</h1>
+    <div class="mr-notice mr-notice--neutral page-notice" role="alert">
+      <mat-icon aria-hidden="true">search_off</mat-icon>
+      <p>
+        <strong>Esse mapa não existe.</strong>
+        Volte para <a [routerLink]="['/campanhas', campaignId()]">a campanha</a>.
+      </p>
+    </div>
+  }
+  @case ('forbidden') {
+    <h1 class="mr-page-title">Imprimir o mapa</h1>
+    <div class="mr-notice mr-notice--neutral page-notice" role="alert">
+      <mat-icon aria-hidden="true">lock</mat-icon>
+      <p>
+        <strong>Só o mestre imprime o mapa.</strong>
+        Volte para <a [routerLink]="['/campanhas', campaignId()]">a campanha</a>.
+      </p>
+    </div>
+  }
+  @case ('error') {
+    <h1 class="mr-page-title">Não foi possível abrir o mapa</h1>
+    <div class="mr-notice mr-notice--danger page-notice" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p><strong>O servidor não respondeu.</strong> Confira a conexão e recarregue a página.</p>
+    </div>
+  }
+  @case ('ready') {
+    @if (map(); as m) {
+      <div class="screen">
+        <h1 class="mr-page-title">Imprimir o mapa</h1>
+        <p class="mr-page-lead">{{ m.name }} · {{ campaignName() }}</p>
+
+        <div class="mr-notice mr-notice--neutral phone-note">
+          <mat-icon aria-hidden="true">computer</mat-icon>
+          <p>
+            <strong>A impressão serve melhor num computador.</strong>
+            No celular a página funciona, mas é no computador que se escolhe o papel e se confere a
+            escala.
+          </p>
+        </div>
+
+        @if (!hasGrid()) {
+          <div class="mr-notice mr-notice--warning page-notice" role="status">
+            <mat-icon aria-hidden="true">warning</mat-icon>
+            <p>
+              <strong>Este mapa ainda não tem grade.</strong>
+              Sem a grade não há tamanho de quadrado para imprimir em escala.
+              <a class="nowrap" [routerLink]="[...backLink(), 'grade']">Definir a grade</a>.
+            </p>
+          </div>
+          <a mat-stroked-button class="back-button" [routerLink]="backLink()">Voltar ao mapa</a>
+        } @else {
+          <div class="layout">
+            <app-print-setup
+              [(typed)]="typed"
+              [(paperId)]="paperId"
+              [squareCm]="squareCm()"
+              [mapSize]="mapSize()"
+              [chosen]="chosen()"
+              [leanest]="leanest()"
+              [gridColumns]="m.gridColumns"
+              [gridRows]="m.gridRows"
+              [backLink]="backLink()"
+              (printMap)="print()"
+            />
+            <div class="right">
+              <app-print-preview
+                [image]="image()"
+                [mapName]="m.name"
+                [mapSize]="mapSize()"
+                [squareCm]="squareCm()"
+                [chosen]="chosen()"
+              />
+              @if (allPlans(); as all) {
+                <app-print-table [plans]="all" [paperId]="paperId()" [mapSize]="mapSize()!" />
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      @if (printing() && chosen(); as c) {
+        @if (image(); as img) {
+          <app-print-sheets
+            [plan]="c.best"
+            [image]="img"
+            [mapSize]="mapSize()!"
+            [squareCm]="squareCm()!"
+          />
+        }
+      }
+    }
+  }
+}

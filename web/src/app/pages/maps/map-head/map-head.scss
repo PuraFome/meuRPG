@@ -27,12 +27,16 @@
 .title {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  // Top-aligned: the print group is taller than the rest when it gives the
+  // reason under a disabled button; the title's own 2px make it 44px, the
+  // height of its buttons, so nothing moves in the usual case.
+  align-items: flex-start;
   gap: 0 24px;
   margin: var(--mr-space-1) 0 var(--mr-space-2);
 
   .mr-page-title {
     margin: 0;
+    padding: 2px 0;
   }
 }
 
@@ -42,6 +46,78 @@
 
 .title__delete {
   margin-inline-start: auto;
+}
+
+// "Imprimir com a grade" (MR-033, E8-12) sits at the right of the title, the
+// reason under it when there is no grid; on a phone it takes a line of its own.
+.print {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--mr-space-2);
+  margin-inline-start: auto;
+
+  + .title__delete {
+    margin-inline-start: 0;
+  }
+
+  @media (max-width: 767.98px) {
+    flex-basis: 100%;
+    align-items: stretch;
+    // After "Apagar mapa", which wraps under the name: the line to itself.
+    order: 1;
+    margin: var(--mr-space-2) 0;
+  }
+}
+
+.print__button {
+  --mat-button-outlined-container-height: 44px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  font-weight: 700;
+
+  @media (max-width: 767.98px) {
+    --mat-button-outlined-container-height: 48px;
+  }
+}
+
+// No grid: the button is dashed and does nothing, and says why beside it.
+.print__button--off {
+  --mat-button-outlined-label-text-color: var(--mr-ink-muted);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  border-style: dashed;
+  cursor: default;
+}
+
+.print__reason {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  font-size: 14px;
+  font-weight: 700;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+// On a phone: the name on its own line, "Renomear" and "Apagar mapa" together
+// under it ("Renomear" pulled back to the name's left edge), then the print
+// entry, full width.
+@media (max-width: 767.98px) {
+  .title {
+    gap: 0 var(--mr-space-2);
+
+    .mr-page-title {
+      flex-basis: 100%;
+    }
+  }
+
+  .title__delete {
+    margin-inline-start: 0;
+  }
 }
 
 // "Renomear": the field, then its buttons under it, as in every form.
