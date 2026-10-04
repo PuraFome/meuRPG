@@ -193,6 +193,8 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_DEATH_CONFIRMED
 		case eventConditionsSet:
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_CONDITIONS_CHANGED
+		case eventTurnPartEnded:
+			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_TURN_PART_ENDED
 		case eventAttackRolled:
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK
 			if ev.Pending != "" {

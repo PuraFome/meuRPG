@@ -1,6 +1,8 @@
-import { Component, computed, input, output } from '@angular/core';
+import { Component, computed, input, output, signal } from '@angular/core';
 import type { Combatant } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { distanceText } from '../../../../core/units';
+import { leftSentence, passNote } from '../../../../core/combat/joint-turn';
+import { EndPart } from '../joint-turn/end-part';
 import { EndTurn } from './end-turn';
 
 /**
@@ -13,9 +15,10 @@ import { EndTurn } from './end-turn';
  */
 @Component({
   selector: 'app-turn-bar',
-  imports: [EndTurn],
+  imports: [EndPart, EndTurn],
   template: `
-    <p class="what">Ainda disponível neste turno</p>
+    @if (!asking()) {
+    <p class="what">{{ joint() ? 'Ainda disponível na sua parte' : 'Ainda disponível neste turno' }}</p>
     <ul class="left">
       @for (item of left(); track item.name) {
         <li>
@@ -26,7 +29,15 @@ import { EndTurn } from './end-turn';
         <li>Nada: só falta encerrar o turno.</li>
       }
     </ul>
-    <app-end-turn [own]="own()" [attacksLeft]="attacksLeft()" [busy]="busy()" [block]="true" (endTurn)="endTurn.emit()" />
+    }
+    @if (joint(); as who) {
+      @if (!asking()) {
+        <p class="what">{{ note(who) }}</p>
+      }
+      <app-end-part [left]="partLeft()" [busy]="busy()" (endPart)="endTurn.emit()" (asked)="asking.set($event)" />
+    } @else {
+      <app-end-turn [own]="own()" [attacksLeft]="attacksLeft()" [busy]="busy()" [block]="true" (endTurn)="endTurn.emit()" />
+    }
   `,
   styles: `
     :host {
@@ -88,7 +99,18 @@ export class TurnBar {
   /** Extra Attack: the attacks that remain once the action is spent. */
   readonly attacksLeft = input(0);
 
+  /** In a joint turn, who else must end their part (labels; "o mestre" is the hidden one's). */
+  readonly joint = input<readonly string[] | null>(null);
+
   readonly endTurn = output<void>();
+
+  protected readonly asking = signal(false);
+  protected readonly partLeft = computed(() => leftSentence(this.own()));
+
+  /** "O turno passa quando você e a Brisa encerrarem." */
+  protected note(others: readonly string[]): string {
+    return passNote(others.filter((o) => o !== 'o mestre'), others.includes('o mestre'));
+  }
 
   protected readonly left = computed(() => {
     const c = this.own();

@@ -54,8 +54,7 @@
   text-align: center;
 }
 
-// One row: token, the words, and (from 768px) the initiative and hit points
-// in columns. The reveal line and the removal question sit under the row.
+// One row: token, words, and from 768px the initiative and hit points.
 .row {
   display: grid;
   grid-template-columns: 30px minmax(0, 1fr) auto;
@@ -139,20 +138,14 @@
   flex-direction: column;
 
   @media (max-width: 767.98px) {
-    flex-flow: row wrap;
     font-size: 13px;
-
-    > * + *::before {
-      content: '·';
-      margin: 0 4px;
-    }
   }
 
-  @media (max-width: 359.98px) {
-    flex-direction: column;
+  @media (min-width: 360px) and (max-width: 767.98px) {
+    flex-flow: row wrap;
 
-    > * + *::before {
-      content: none;
+    > *:not(:last-child)::after {
+      content: '\a0·\a0';
     }
   }
 }
@@ -251,11 +244,8 @@
   display: flex;
   flex: none;
   align-items: center;
-  // The icon's right edge is the action column's edge, like the border of
-  // "Dano/Cura" and the end of "Revelar aos jogadores".
   justify-content: flex-end;
-  // The three dots sit 10px inside the icon box: pull the box out so the
-  // dots end where the neighbours' edges do.
+  // The dots sit 10px inside the icon box.
   margin-right: -10px;
   width: 44px;
   height: 44px;

@@ -1250,6 +1250,8 @@ func line(e *playv1.CombatLogEntry) string {
 		s = "o combate começa"
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION:
 		s = who + ": " + e.GetKeyNamePt()
+	case playv1.CombatLogKind_COMBAT_LOG_KIND_TURN_PART_ENDED:
+		s = who + " encerrou a parte"
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED:
 		s = fmt.Sprintf("%s anda %d ft", who, e.GetDistanceFt())
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_REVEAL_CHANGED:
@@ -1347,7 +1349,7 @@ func TestTimelineRound1And2Log(t *testing.T) {
 	attackAndApply(a.master, "Capitão Goblin", sword, "Toren", 15, 3) // 2. Capitão acerta o Toren: 5 de dano
 	end(a.master)
 	end(a.ana)                                                     // 3. Pensantus (Sono: a próxima fatia)
-	end(a.master)                                                  // 4. Goblin 1 dorme
+	end(a.master)                                                  // 4. Goblin 1 dorme; Goblin 2 tem o mesmo 12 e joga no mesmo turno conjunto
 	attackAndApply(a.master, "Goblin 2", shortBow, "Brisa", 15, 3) // 5. Goblin 2 atira na Brisa: 5 de dano
 	end(a.master)
 	if _, err := a.action(t, a.master, e, "Goblin 3", "standard:hide"); err != nil { // 6. Goblin 3 espera escondido
@@ -1475,6 +1477,7 @@ func TestTimelineRound1And2Log(t *testing.T) {
 		"R1 Toren -> Goblin 1 (Machado de batalha): acertou, 9 cortante, aplicado, derrotado",
 		"R1 Goblin 3: Esconder [só o mestre vê]",
 		"R1 Goblin 2 -> Brisa (Arco curto): acertou, 5 perfurante, aplicado",
+		"R1 Goblin 1 encerrou a parte [só o mestre vê]", // the goblins tie at 12: a group of NPCs alone, the master's
 		"R1 Capitão Goblin -> Toren (Cimitarra): acertou, 5 cortante, aplicado",
 		"R1 Brisa: Esconder",
 		"R1 o combate começa",

@@ -36,6 +36,35 @@ describe('MapView', () => {
 
   beforeEach(() => TestBed.configureTestingModule({ imports: [MapView] }));
 
+  it('watches its size after the first render and stops watching when it goes away', async () => {
+    const observers: { observed: Element[]; disconnected: boolean }[] = [];
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        private readonly state = { observed: [] as Element[], disconnected: false };
+        constructor() {
+          observers.push(this.state);
+        }
+        observe(target: Element): void {
+          this.state.observed.push(target);
+        }
+        disconnect(): void {
+          this.state.disconnected = true;
+        }
+      },
+    );
+    try {
+      setup({});
+      await fixture.whenStable();
+      expect(observers).toHaveLength(1);
+      expect(observers[0].observed).toHaveLength(1);
+      fixture.destroy();
+      expect(observers[0].disconnected).toBe(true);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('reserves the image size before it loads', () => {
     setup({});
     expect((el.querySelector('.mv') as HTMLElement).style.aspectRatio).toBe('2400 / 1600');

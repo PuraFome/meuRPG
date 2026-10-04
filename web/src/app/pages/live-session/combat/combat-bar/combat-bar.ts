@@ -46,8 +46,8 @@ export class CombatBar {
     return !who || !isPlayer(who);
   });
   protected readonly nextLine = computed(() => {
-    const next = this.banner().next;
-    return next ? `Em seguida: ${next.label}` : '';
+    const after = this.banner().after;
+    return after ? `Em seguida: ${after.name}` : '';
   });
 
   private readonly injector = inject(Injector);

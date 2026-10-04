@@ -42,6 +42,7 @@ type Combatant struct {
 	AcBonus            int32
 	DeathSaveRolled    bool
 	XpValue            int32
+	TurnState          string
 }
 
 type Encounter struct {
