@@ -76,7 +76,7 @@ describe('the combat log sentences (timeline.md, Rodadas 1 and 2)', () => {
   });
 
   it('writes moves, standard actions, hit point changes, reveals, start and end', () => {
-    expect(logLine(entry({ kind: CombatLogKind.MOVED, actorLabel: 'Pensantus', distanceFt: 10 }))?.text).toBe(' anda 3 m');
+    expect(logLine(entry({ kind: CombatLogKind.MOVED, actorLabel: 'Pensantus', distanceFt: 10 }))?.text).toBe(' anda 3\u00a0m');
     expect(logLine(entry({ kind: CombatLogKind.ACTION, actorLabel: 'Brisa', key: 'standard:hide', keyNamePt: 'Esconder' }))?.text).toBe(' se esconde');
     expect(logLine(entry({ kind: CombatLogKind.ACTION, actorLabel: 'Toren', key: 'standard:dash', keyNamePt: 'Disparada' }))?.text).toBe(' usa Disparada');
     const adjusted = logLine(entry({ kind: CombatLogKind.HIT_POINTS_ADJUSTED, targetLabel: 'Goblin 2', hitPointsDelta: -3, hitPointsAfter: 4 }));

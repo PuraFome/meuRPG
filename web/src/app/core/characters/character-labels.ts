@@ -65,32 +65,6 @@ export function formatModifier(modifier: number): string {
   return modifier >= 0 ? `+${modifier}` : `${modifier}`;
 }
 
-/**
- * Walking speed, shown in both units the way the official sheet's "Speed"
- * box does not, but the plan's example does: "7,5 m (25 pés)" for 25 ft.
- * The ratio used (5 ft ≈ 1,5 m) is the mesa's own rounding, not the precise
- * 0.3048 m/ft conversion — matching the plan's worked example exactly.
- */
-export function formatSpeedFt(speedFt: number): string {
-  const meters = speedFt * 0.3;
-  const metersLabel = Number.isInteger(meters)
-    ? String(meters)
-    : meters.toFixed(1).replace('.', ',');
-  return `${metersLabel} m (${speedFt} pés)`;
-}
-
-/** The speed typed in metres, as feet: the table's 5 ft = 1,5 m, so 9 m is
- * 30 ft. The NPC form asks for metres (no feet on screen, RN-21) and the
- * sheet stores feet. Rounded: the field only accepts 1,5 m steps. */
-export function metersToFeet(meters: number): number {
-  return Math.round(meters / 0.3);
-}
-
-/** The reverse of `metersToFeet`, for filling the NPC form: 30 ft is 9 m. */
-export function feetToMeters(feet: number): number {
-  return Math.round(feet * 3) / 10;
-}
-
 /** An SRD damage type, by the lower-case name of `DamageType`'s value
  * (`'fire'` for `DamageType.FIRE`). `''` is "not chosen yet" in a form. */
 export type DamageTypeKey =

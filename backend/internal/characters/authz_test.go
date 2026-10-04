@@ -5,8 +5,10 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"uuid"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
@@ -204,6 +206,42 @@ func TestAuthorizationMatrix(t *testing.T) {
 			"UpdateCharacterStory", "locked", nil, updateStory(pc.GetId()),
 			[6]connect.Code{allowed, connect.CodeFailedPrecondition, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound},
 		},
+
+		// The guided level-up (MR-040): the sheet is locked now, the character
+		// has the XP for level 4, and the XP rule is wired. The master and the
+		// owner read the options; only the owner rolls and levels up (the
+		// master keeps the editor); only the master reads the record.
+		{"GetLevelUpOptions", "", func() {
+			h.svc.SetLevelUps(xpLevelUps{})
+			c := fresh(pc.GetId())
+			sheet := proto.CloneOf(c.GetSheet())
+			sheet.GetFull().ExperiencePoints = 2700
+			if _, err := master.update(t, c, c.GetName(), sheet); err != nil {
+				t.Fatalf("give the XP: %v", err)
+			}
+		}, func(ctx context.Context, u *user) error {
+			_, err := u.api.GetLevelUpOptions(ctx, connect.NewRequest(&charactersv1.GetLevelUpOptionsRequest{CampaignId: campaign, CharacterId: pc.GetId()}))
+			return err
+		}, [6]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"PreviewLevelUp", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.PreviewLevelUp(ctx, connect.NewRequest(&charactersv1.PreviewLevelUpRequest{CampaignId: campaign, CharacterId: pc.GetId(), Choices: pensantusLevelUp()}))
+			return err
+		}, [6]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"RollLevelUpHitPoints", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.RollLevelUpHitPoints(ctx, connect.NewRequest(&charactersv1.RollLevelUpHitPointsRequest{CampaignId: campaign, CharacterId: pc.GetId(), IdempotencyKey: uuid.New().String()}))
+			return err
+		}, [6]connect.Code{connect.CodePermissionDenied, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"ListLevelUps", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.ListLevelUps(ctx, connect.NewRequest(&charactersv1.ListLevelUpsRequest{CampaignId: campaign}))
+			return err
+		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		// The owner's call goes through, so it comes after the reads above.
+		{"LevelUpCharacter", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.LevelUpCharacter(ctx, connect.NewRequest(&charactersv1.LevelUpCharacterRequest{
+				CampaignId: campaign, CharacterId: pc.GetId(), Revision: fresh(pc.GetId()).GetRevision(), Choices: pensantusLevelUp(),
+			}))
+			return err
+		}, [6]connect.Code{connect.CodePermissionDenied, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 
 		// A game session does not lock a pending character (RN-15): its
 		// player still edits it.

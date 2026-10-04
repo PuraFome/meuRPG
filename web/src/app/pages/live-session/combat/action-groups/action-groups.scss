@@ -153,3 +153,39 @@ app-action-row + .group__sub,
     font-size: 18px;
   }
 }
+
+// The muted aside after "Magias" (E8-02): how the list is ordered.
+.group__note {
+  font-weight: 400;
+}
+
+// The slots above the spells: the one explanation of every "Sem espaço" below.
+.slots {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0 4px;
+  padding: 0;
+  list-style: none;
+}
+
+.slots__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.slots__title {
+  min-width: 92px;
+}
+
+.slots__text {
+  color: var(--mr-ink-muted);
+}
+
+.slots + app-action-row {
+  border-top: 1px solid var(--mr-rule);
+}

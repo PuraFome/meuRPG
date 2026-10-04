@@ -113,6 +113,14 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/maps/map-grid/map-grid').then((m) => m.MapGrid),
   },
   {
+    // Print the map with its grid to scale (MR-033, E8-12), master only: the
+    // page says so to a player. Before `mapas/:mapId` is not needed (more
+    // segments), but it stays next to `grade`, its sibling.
+    path: 'campanhas/:id/mapas/:mapId/imprimir',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/maps/map-print/map-print').then((m) => m.MapPrint),
+  },
+  {
     // One map (MR-008, MR-009): the master's editor, or the player's
     // viewer; the page picks by role and screen size.
     path: 'campanhas/:id/mapas/:mapId',

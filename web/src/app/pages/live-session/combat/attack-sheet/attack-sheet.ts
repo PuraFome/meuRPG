@@ -22,7 +22,7 @@ import {
 } from '../../../../core/combat/attack-flow';
 import { type AttackDie, type DamageDie, CombatClient, newKey } from '../../../../core/combat/combat-client';
 import { damageFormula, diceName, rollFormula, sumRange } from '../../../../core/combat/combat-dice';
-import { feetToMeters, formatMeters } from '../../../../core/combat/combat-grid';
+import { metersText } from '../../../../core/units';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { attackDetail, attackName, isCantrip } from '../../../../core/combat/combat-options';
@@ -105,7 +105,7 @@ export class AttackSheet {
     ? `Reação · ${attackDetail({ ...this.attack, rangeFt: 5, longRangeFt: 0 })}`
     : `Ação · ${attackDetail(this.attack)}`;
   protected readonly cantrip = isCantrip(this.attack);
-  protected readonly rangeText = formatMeters(feetToMeters(this.data.asReaction ? 5 : this.attack.rangeFt));
+  protected readonly rangeText = metersText(this.data.asReaction ? 5 : this.attack.rangeFt);
   /** An opportunity attack reaches 5 ft, whatever range the weapon has when thrown. */
   protected readonly rows = computed(() =>
     this.data.asReaction

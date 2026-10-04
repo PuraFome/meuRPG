@@ -24,7 +24,7 @@ describe('the reasons an option is disabled', () => {
       [DisabledReasonCode.ACTION_USED, 'Ação já usada'],
       [DisabledReasonCode.BONUS_ACTION_USED, 'Ação bônus já usada'],
       [DisabledReasonCode.REACTION_USED, 'Reação já usada'],
-      [DisabledReasonCode.REACTION_ONLY_WHEN_HIT, 'Só quando você for atingido'],
+      [DisabledReasonCode.REACTION_ONLY_WHEN_HIT, 'Só fora da sua vez'],
       [DisabledReasonCode.NOT_YOUR_TURN, 'Não é a sua vez'],
       [DisabledReasonCode.COMBAT_NOT_ACTIVE, 'O combate não está em andamento'],
       [DisabledReasonCode.COMBATANT_DOWN, 'Caído: não pode agir'],
@@ -35,10 +35,10 @@ describe('the reasons an option is disabled', () => {
     }
   });
 
-  it('names the slot level and when the uses come back', () => {
-    expect(reasonText(reason(DisabledReasonCode.NO_SLOT, { minLevel: 2 }))).toBe(
-      'Sem espaço de 2º\u00a0círculo ou maior',
-    );
+  it('says "Sem espaço" and when the uses come back', () => {
+    // The slot rows above the list say which circles are out, so the reason stays short.
+    expect(reasonText(reason(DisabledReasonCode.NO_SLOT, { minLevel: 2 }))).toBe('Sem espaço');
+    expect(reasonText(reason(DisabledReasonCode.NO_SLOT))).toBe('Sem espaço');
     expect(reasonText(reason(DisabledReasonCode.NO_USES, { recharge: Recharge.SHORT_REST }))).toBe(
       'Sem usos: volta num descanso curto',
     );

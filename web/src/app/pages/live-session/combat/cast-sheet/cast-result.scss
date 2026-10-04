@@ -59,6 +59,42 @@
   }
 }
 
+// A spell that reads hit points: the word and the icon, in the page's own ink (no
+// green or red: "Adormeceu" and "Não foi afetado" are not good or bad news).
+.pill--neutral {
+  border-color: var(--mr-control-line);
+  background: none;
+  color: var(--mr-ink);
+}
+
+.sentence {
+  margin: 0;
+  font-size: 16px;
+  line-height: 22px;
+}
+
+.pool {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--mr-rule);
+}
+
+.pool__cap {
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--mr-ink-muted);
+}
+
+.pool__roll {
+  font-family: var(--mr-font-display);
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 28px;
+}
+
 .state {
   padding: 2px 10px;
   border: 1px solid var(--mr-control-line);

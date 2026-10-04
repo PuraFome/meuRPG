@@ -51,8 +51,13 @@
 
 .stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+// Deslocamento reads as a sentence ("9 m · 6 quadrados"): a row of its own.
+.stat--wide {
+  grid-column: 1 / -1;
 }
 
 .stat {

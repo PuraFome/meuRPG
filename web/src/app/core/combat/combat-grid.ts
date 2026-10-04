@@ -2,12 +2,11 @@
  * The combat grid's arithmetic, kept apart from the components so it is
  * tested without a DOM (RN-21): squares of 1,5 m (5 ft) across and down,
  * counted from 0 at the top left, and a king's move (a diagonal costs one
- * square too).
+ * square too). The distances in words are `core/units.ts`'s.
  */
 
-/** One square is 5 ft, which is 1,5 m. */
-export const SQUARE_FT = 5;
-export const SQUARE_M = 1.5;
+import { SQUARE_FT, distanceText } from '../units';
+
 /** The screen takes 5 to 60 columns; the server takes 4 to 200. */
 export const MIN_COLUMNS = 5;
 export const MAX_COLUMNS = 60;
@@ -21,20 +20,6 @@ export interface Square {
  * (maps.proto: round(columns * height / width)), at least 1. */
 export function gridRows(columns: number, imageWidth: number, imageHeight: number): number {
   return Math.max(1, Math.round((columns * imageHeight) / Math.max(1, imageWidth)));
-}
-
-/** Meters as the table says them: "1,5 m", "30 m". */
-export function formatMeters(meters: number): string {
-  const rounded = Math.round(meters * 10) / 10;
-  return `${String(rounded).replace('.', ',')} m`;
-}
-
-export function feetToMeters(feet: number): number {
-  return (feet / SQUARE_FT) * SQUARE_M;
-}
-
-export function squaresToMeters(squares: number): number {
-  return squares * SQUARE_M;
 }
 
 /** How many squares apart: Chebyshev, so a diagonal counts as one. */
@@ -90,11 +75,6 @@ export function stepSquare(from: Square, key: string, columns: number, rows: num
   };
 }
 
-/** How many squares the movement left reaches (feet to whole squares). */
-export function reachSquares(movementLeftFt: number): number {
-  return Math.max(0, Math.floor(movementLeftFt / SQUARE_FT));
-}
-
 /** Whether `to` is within `reach` squares of `from`, a different square,
  * inside the grid and not one of the `occupied` ones. */
 export function canReach(
@@ -130,13 +110,13 @@ export function moveDetail(from: Square, to: Square, leftFt: number): string {
     parts.push(`${squares(Math.abs(dr))} para ${dr > 0 ? 'baixo' : 'cima'}`);
   }
   const after = Math.max(0, leftFt - distance(from, to) * SQUARE_FT);
-  return `${parts.join(' e ')}. Depois restam ${formatMeters(feetToMeters(after))}.`;
+  return `${parts.join(' e ')}. Depois restam ${distanceText(after)}.`;
 }
 
 /** What the live line under the map says once a square is chosen (E6-10):
  * "Mover 3 m. 2 quadrados para a direita e 1 para baixo. Depois restam 4,5 m." */
 export function moveSentence(from: Square, to: Square, leftFt: number): string {
-  return `Mover ${formatMeters(squaresToMeters(distance(from, to)))}. ${moveDetail(from, to, leftFt)}`;
+  return `Mover ${distanceText(distance(from, to) * SQUARE_FT)}. ${moveDetail(from, to, leftFt)}`;
 }
 
 /** The ordinal circle: "2º círculo", with a no-break space so a line never

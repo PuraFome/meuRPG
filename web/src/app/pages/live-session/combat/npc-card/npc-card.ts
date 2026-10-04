@@ -16,7 +16,7 @@ import { CombatClient, newKey } from '../../../../core/combat/combat-client';
 import { rollFormula } from '../../../../core/combat/combat-dice';
 import { article } from '../../../../core/combat/combat-log';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
-import { feetToMeters, formatMeters } from '../../../../core/combat/combat-grid';
+import { distanceText, metersText, reachSquares, squaresText } from '../../../../core/units';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { attackName } from '../../../../core/combat/combat-options';
 import { combatantInitial, isPlayer, roundLabel } from '../../../../core/combat/combat-view';
@@ -111,7 +111,8 @@ export class NpcCard {
     return {
       hp: c.hitPointsMax !== undefined ? { now: c.hitPointsCurrent ?? 0, max: c.hitPointsMax } : null,
       ac: c.armorClass,
-      speed: formatMeters(feetToMeters(c.speedFt)),
+      speed: { meters: metersText(c.speedFt), squares: squaresText(reachSquares(c.speedFt)) },
+      movement: distanceText(c.movementLeftFt),
     };
   });
   protected readonly result = computed(() => {
@@ -190,7 +191,7 @@ export class NpcCard {
   protected distance(ft: number | undefined, tooFar: boolean): string {
     const parts: string[] = [];
     if (ft !== undefined) {
-      parts.push(`a ${formatMeters(feetToMeters(ft))}`);
+      parts.push(`a ${metersText(ft)}`);
     }
     if (tooFar) {
       parts.push('fora do alcance');

@@ -160,3 +160,32 @@ describe('MapHead: renomear e apagar (E6-27)', () => {
     expect(el.querySelector('[role="group"] [role="alert"]')?.textContent).toContain('Só o mestre');
   });
 });
+
+describe('MapHead: "Imprimir com a grade" (MR-033, E8-12)', () => {
+  function render(gridColumns: number): HTMLElement {
+    TestBed.configureTestingModule({ providers: [provideRouter([])] });
+    const fixture = TestBed.createComponent(MapHead);
+    fixture.componentRef.setInput('campaignId', 'camp-1');
+    fixture.componentRef.setInput('map', mapMessage('map-1', 'Estrada do Vale', { gridColumns, gridRows: gridColumns > 0 ? 20 : 0 }));
+    fixture.componentRef.setInput('saveName', () => Promise.resolve());
+    fixture.componentRef.setInput('deleteMap', () => Promise.resolve());
+    fixture.detectChanges();
+    return fixture.nativeElement;
+  }
+
+  it('com grade é um link para a tela de impressão', () => {
+    const link = render(30).querySelector('a.print__button')!;
+    expect(link.textContent).toContain('Imprimir com a grade');
+    expect(link.getAttribute('href')).toBe('/campanhas/camp-1/mapas/map-1/imprimir');
+  });
+
+  it('sem grade é um botão desabilitado, com o motivo escrito ao lado e ligado a ele', () => {
+    const el = render(0);
+    expect(el.querySelector('a.print__button')).toBeNull();
+    const button = el.querySelector('button.print__button')!;
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    const reason = el.querySelector('#print-reason')!;
+    expect(button.getAttribute('aria-describedby')).toBe('print-reason');
+    expect(reason.textContent).toContain('Defina a grade do mapa para imprimir em escala');
+  });
+});

@@ -45,14 +45,21 @@ type characterTally struct {
 	damage, healing   int32
 	taken             int32
 	finalBlows, crits int32
+	// checksPassed and checksTried are the checks rolled outside combat, only
+	// in scenes that showed their DC (the session summary, summary.go); a
+	// combat's tally leaves them at 0.
+	checksPassed, checksTried int32
 }
 
-// highlightKinds is the categories, in the order the app shows them, with the
-// number each one ranks.
-var highlightKinds = []struct {
+// highlightKind is a category with the number it ranks.
+type highlightKind struct {
 	kind  playv1.HighlightKind
 	value func(t *characterTally) int32
-}{
+}
+
+// highlightKinds is the categories of a combat, in the order the app shows
+// them. The session summary adds one (sessionHighlightKinds).
+var highlightKinds = []highlightKind{
 	{playv1.HighlightKind_HIGHLIGHT_KIND_MOST_DAMAGE, func(t *characterTally) int32 { return t.damage }},
 	{playv1.HighlightKind_HIGHLIGHT_KIND_MOST_HEALING, func(t *characterTally) int32 { return t.healing }},
 	{playv1.HighlightKind_HIGHLIGHT_KIND_TANK, func(t *characterTally) int32 { return t.taken }},
@@ -152,11 +159,16 @@ func tallyHighlights(events []playdb.ListEncounterCombatEventsRow, combatants []
 	return out
 }
 
-// highlightCategories names the winner of each category: the most of it, with
-// everyone tied. A category where nobody has anything is left out.
+// highlightCategories names the winner of each category of a combat: the most
+// of it, with everyone tied. A category where nobody has anything is left out.
 func highlightCategories(tallies []*characterTally) []*playv1.HighlightCategory {
+	return categoriesOf(highlightKinds, tallies)
+}
+
+// categoriesOf does it for the given categories.
+func categoriesOf(kinds []highlightKind, tallies []*characterTally) []*playv1.HighlightCategory {
 	var out []*playv1.HighlightCategory
-	for _, k := range highlightKinds {
+	for _, k := range kinds {
 		var best int32
 		for _, t := range tallies {
 			best = max(best, k.value(t))

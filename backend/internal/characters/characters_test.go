@@ -302,6 +302,23 @@ func TestGetSpellDetails(t *testing.T) {
 		t.Errorf("GetSpellDetails(cure wounds) = %v", cw)
 	}
 
+	// The spells that read hit points carry their rule (Etapa 8): Sono's pool at its own circle and
+	// what each circle adds, Palavra de Poder's limit, Cura Completa's amount; any other spell has none.
+	sleep, _ := get(player, campaign, "spell:sleep")
+	if e := sleep.GetHitPointEffect(); e.GetKind() != rulesv1.SpellHitPointEffectKind_SPELL_HIT_POINT_EFFECT_KIND_POOL ||
+		e.GetPoolDiceCount() != 5 || e.GetPoolDiceSides() != 8 || e.GetPoolDicePerLevel() != 2 || e.GetConditionKey() != "condition:unconscious" {
+		t.Errorf("GetSpellDetails(sleep).hit_point_effect = %v", e)
+	}
+	if e := mustGet(t, get, player, campaign, "spell:power-word-kill").GetHitPointEffect(); e.GetThreshold() != 100 || !e.GetDies() {
+		t.Errorf("GetSpellDetails(power word kill).hit_point_effect = %v", e)
+	}
+	if e := mustGet(t, get, player, campaign, "spell:heal").GetHitPointEffect(); e.GetHealAmount() != 70 || e.GetHealPerLevel() != 10 {
+		t.Errorf("GetSpellDetails(heal).hit_point_effect = %v", e)
+	}
+	if fb, _ := get(master, campaign, "spell:fire-bolt"); fb.GetHitPointEffect() != nil {
+		t.Errorf("fire bolt has a hit point effect: %v", fb.GetHitPointEffect())
+	}
+
 	for name, call := range map[string]func() error{
 		"an unknown spell":    func() error { _, err := get(player, campaign, "spell:nope"); return err },
 		"an empty key":        func() error { _, err := get(player, campaign, ""); return err },
@@ -312,4 +329,13 @@ func TestGetSpellDetails(t *testing.T) {
 	}
 	_, err = h.anonymous().content.GetSpellDetails(t.Context(), connect.NewRequest(&rulesv1.GetSpellDetailsRequest{CampaignId: campaign, SpellKey: "spell:fireball"}))
 	wantCode(t, "no session", err, connect.CodeUnauthenticated)
+}
+
+func mustGet(t *testing.T, get func(*user, string, string) (*rulesv1.SpellDetails, error), u *user, campaign, key string) *rulesv1.SpellDetails {
+	t.Helper()
+	d, err := get(u, campaign, key)
+	if err != nil {
+		t.Fatalf("GetSpellDetails(%s) error = %v", key, err)
+	}
+	return d
 }

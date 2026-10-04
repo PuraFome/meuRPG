@@ -2,16 +2,46 @@
   display: block;
 }
 
+// The title and "Fechar" stay in view and only the text scrolls (the frame of
+// the combat's sheets): on a 320×568 phone the description is long, and a
+// "Fechar" at the end of it would be a scroll away.
 .spell {
   display: flex;
   flex-direction: column;
   gap: var(--mr-space-3);
-  padding: var(--mr-space-5) var(--mr-space-6);
+  box-sizing: border-box;
+  max-height: calc(92dvh - 48px);
+  padding: var(--mr-space-5) var(--mr-space-6) var(--mr-space-4);
 
   // The bottom sheet is narrower on the sides, like "Ajustar".
   &--sheet {
+    max-height: calc(100dvh - 40px);
     padding: var(--mr-space-2) 2px;
   }
+
+  // The dialog drawn like a sheet has no container padding of its own.
+  &--over {
+    padding: var(--mr-space-2) 16px var(--mr-space-3);
+  }
+}
+
+.spell__body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  min-height: 0;
+  overflow-y: auto;
+
+  > * {
+    flex-shrink: 0;
+  }
+}
+
+.spell__foot {
+  padding-top: 10px;
+  border-top: 1px solid var(--mr-rule);
+  background: var(--mr-surface);
 }
 
 // The grab bar: decoration only (Esc, the X and "Fechar" close it).
@@ -149,12 +179,22 @@
 }
 
 .spell__action {
+  width: 100%;
   min-height: 44px;
-  margin-top: var(--mr-space-2);
+}
+
+// The error's "Tentar de novo" sits under its notice, not in the footer.
+.spell__body .spell__action {
+  width: auto;
+  align-self: flex-start;
 }
 
 @media (max-width: 599.98px) {
   .spell__action {
     min-height: 48px;
+  }
+
+  .spell__body .spell__action {
+    width: 100%;
   }
 }

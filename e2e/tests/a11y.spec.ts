@@ -9,6 +9,7 @@ import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, s
 import { adjustVitalsRPC, beginAttackCombatRPC, combatRPC, getEncounterRPC, passTurnsTo, pensantusCasting, tableForCombat, toren, torenSheet } from './combat-support';
 import { addActionRPC, cartActions, getOpenSceneRPC, openSceneRPC, rollSceneRPC, tableForScenes } from './scene-support';
 import { createCapitaoRPC, createMiraRPC, playedCombatRPC, putOnStageRPC, uploadPortrait } from './stage-support';
+import { printRoute, tableForPrinting } from './print-support';
 import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus } from './support';
 import { awardXpRPC, createEnemyRPC, tableForXp, tableForXpCombat, winCombatRPC } from './xp-support';
 
@@ -424,6 +425,80 @@ test('as telas de mapa e da imagem mostrada passam no axe no tema claro, no desk
 
 test('as telas de mapa e da imagem mostrada passam no axe no tema escuro, no celular', { tag: ['@a11y', '@MR-009', '@MR-028'] }, async ({ browser }) => {
   await scanMapScreens(browser, 'dark', 390);
+});
+
+/** Printing a map to scale (MR-033, E8-12): the map page's entry with and
+ * without a grid, and the print view in its states: the defaults, a size and
+ * a paper that need 3 sheets, one that needs 36 (the amber notice, the labels
+ * shrunk), 136 (the labels gone), an invalid size, and a map without a grid.
+ * On a phone the setup stacks above the preview. */
+async function scanPrintScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(180_000);
+  const options = { colorScheme, viewport: { width, height: 900 } };
+  const master = await browser.newContext({ ...options, storageState: authStatePath('Mestre Teste') });
+  const player = await browser.newContext({ ...options, storageState: authStatePath('Jogador Teste') });
+  const masterPage = await master.newPage();
+  const playerPage = await player.newPage();
+  const suffix = `(${colorScheme}, ${width}px)`;
+  try {
+    await masterPage.goto('/');
+    const table = await tableForPrinting(masterPage, playerPage, `Acessibilidade impressão ${Date.now()}`);
+
+    await open(masterPage, `/campanhas/${table.campaignId}/mapas/${table.gridMapId}`);
+    await expectScreenPasses(masterPage, `Mapa com grade, entrada de impressão ${suffix}`);
+    await open(masterPage, `/campanhas/${table.campaignId}/mapas/${table.plainMapId}`);
+    await expect(masterPage.getByText('Defina a grade do mapa para imprimir em escala')).toBeVisible();
+    await expectScreenPasses(masterPage, `Mapa sem grade, entrada de impressão ${suffix}`);
+
+    await open(masterPage, printRoute(table.campaignId, table.gridMapId));
+    await expect(masterPage.getByLabel('Tamanho do quadrado')).toHaveValue('2,54');
+    await expectScreenPasses(masterPage, `Imprimir o mapa, A4 e 2,54 cm ${suffix}`);
+
+    const square = masterPage.getByLabel('Tamanho do quadrado');
+    await square.fill('2');
+    await masterPage.getByRole('radio', { name: /A3/ }).check();
+    await expect(masterPage.getByRole('button', { name: 'Voltar a 2,54 cm' })).toBeVisible();
+    await expectScreenPasses(masterPage, `Imprimir o mapa, 2 cm em A3 ${suffix}`);
+
+    await masterPage.getByRole('radio', { name: /A4/ }).check();
+    await square.fill('5');
+    await expect(masterPage.getByText('São 36 folhas.')).toBeVisible();
+    await expectScreenPasses(masterPage, `Imprimir o mapa, 36 folhas e o aviso ${suffix}`);
+
+    await square.fill('10');
+    await expect(masterPage.getByText('São 136 folhas.')).toBeVisible();
+    await expectScreenPasses(masterPage, `Imprimir o mapa, 136 folhas sem rótulos ${suffix}`);
+
+    await square.fill('0,5');
+    await expect(masterPage.getByRole('alert').filter({ hasText: 'Use um tamanho de 1 a 10 cm.' })).toBeVisible();
+    await expectScreenPasses(masterPage, `Imprimir o mapa, tamanho inválido ${suffix}`);
+
+    await open(masterPage, printRoute(table.campaignId, table.plainMapId));
+    await expect(masterPage.getByText('Este mapa ainda não tem grade.')).toBeVisible();
+    await expectScreenPasses(masterPage, `Imprimir o mapa, sem grade ${suffix}`);
+
+    await open(playerPage, printRoute(table.campaignId, table.gridMapId));
+    await expectScreenPasses(playerPage, `Imprimir o mapa, jogador ${suffix}`);
+  } finally {
+    await master.close();
+    await player.close();
+  }
+}
+
+test('a impressão do mapa passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-033'] }, async ({ browser }) => {
+  await scanPrintScreens(browser, 'light', 1280);
+});
+
+test('a impressão do mapa passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-033'] }, async ({ browser }) => {
+  await scanPrintScreens(browser, 'dark', 390);
+});
+
+test('a impressão do mapa passa no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-033'] }, async ({ browser }) => {
+  await scanPrintScreens(browser, 'dark', 1024);
+});
+
+test('a impressão do mapa passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-033'] }, async ({ browser }) => {
+  await scanPrintScreens(browser, 'light', 320);
 });
 
 /** The dice settings (RN-18): the master's "Dados" panel and the player's
@@ -1476,4 +1551,75 @@ test('o retrato, o palco e os destaques passam no axe e nas conferências de lay
 test('o retrato, o palco e os destaques passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-031', '@MR-032'] }, async ({ browser }) => {
   test.setTimeout(480_000);
   await scanStageScreens(browser, 'light', 320);
+});
+
+/** The spells in the session (Etapa 8, slice 8.4; E8-02, E8-03): the list with its "?" and slot
+ * rows, the details sheet, the cast sheet with its "?", the details over it, the result a player
+ * reads, and the master's card under Sono in the log. */
+async function scanCombatDetailsScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  const phone = width < 768;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade magias ${Date.now()}`, true, true);
+    campaignId = table.campaignId;
+    await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    await openSessionPage(m, campaignId);
+    await openSessionPage(p, campaignId);
+
+    await expect(p.getByRole('button', { name: 'Detalhes de Sono' })).toBeVisible();
+    await expectScreenPasses(p, `Magias com o "?" e os espaços ${where}`);
+    await p.getByRole('button', { name: 'Detalhes de Sono' }).click();
+    const details = p.getByRole('dialog', { name: phone ? 'Descrição de Sono' : 'Sono', exact: true });
+    await expect(details.getByText('This spell sends creatures into a magical slumber.')).toBeVisible();
+    await expectScreenPasses(p, `Detalhes de Sono na sessão ${where}`);
+    await details.getByRole('button', { name: 'Fechar' }).last().click();
+
+    await p.getByRole('button', { name: 'Conjurar Sono' }).click();
+    const sheet = p.getByRole('dialog', { name: 'Conjurar Sono' });
+    await sheet.locator('label', { hasText: 'Goblin 1' }).click();
+    await sheet.locator('label', { hasText: 'Capitão Goblin' }).click();
+    await expectScreenPasses(p, `Conjurar Sono, quem está na área ${where}`);
+    await sheet.getByRole('button', { name: 'Detalhes de Sono' }).click();
+    await expect(p.getByRole('dialog', { name: phone ? 'Descrição de Sono' : 'Sono', exact: true })).toBeVisible();
+    await expectScreenPasses(p, `Detalhes de Sono por cima de Conjurar ${where}`);
+    await p.getByRole('dialog', { name: phone ? 'Descrição de Sono' : 'Sono', exact: true }).getByRole('button', { name: 'Fechar' }).last().click();
+    // A dialog on a desktop is named by its title, which changes with the step: ask the page.
+    await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await p.getByLabel(/Role 5d8/).fill('20');
+    await p.getByRole('button', { name: 'Confirmar 20' }).click();
+    await expect(p.getByRole('heading', { name: 'Sono conjurado' })).toBeVisible();
+    await expectScreenPasses(p, `Sono conjurado, o resultado do jogador ${where}`);
+    await p.getByRole('button', { name: 'Voltar à sua vez' }).click();
+
+    if (phone) {
+      // The master's log is folded on a phone.
+      await m.getByRole('button', { name: 'Abrir o registro' }).click();
+    }
+    await expect(m.locator('app-pool-card')).toBeVisible({ timeout: 20_000 });
+    await expectScreenPasses(m, `O cartão do Sono no registro do mestre ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('as magias na sessão passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanCombatDetailsScreens(browser, 'light', 1280);
+});
+
+test('as magias na sessão passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanCombatDetailsScreens(browser, 'dark', 390);
 });

@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/PuraFome/meuRPG/backend/internal/rules/srd51"
 )
@@ -348,5 +349,31 @@ func TestCatalog(t *testing.T) {
 	}
 	if cat.Abilities[3].AbbreviationPT != "INT" || cat.Abilities[4].AbbreviationPT != "SAB" || cat.Abilities[0].NamePT != "Força" {
 		t.Errorf("abilities = %+v", cat.Abilities)
+	}
+}
+
+// TestCorrectionsAreClosed: effects/corrections.json is applied over the
+// snapshot, and the loader refuses a correction it does not know.
+func TestCorrectionsAreClosed(t *testing.T) {
+	t.Parallel()
+	c := &content{classLevels: map[string][]*srd51.Level{}}
+	rows := make([]*srd51.Level, MaxLevel)
+	for i := range rows {
+		rows[i] = &srd51.Level{ClassSpecific: []byte(`{"invocations_known":9}`)}
+	}
+	c.classLevels["class:warlock"] = rows
+	for name, doc := range map[string]string{
+		"unknown class": `{"corrections":[{"class":"class:nope","field":"invocations_known","by_level":{"1":1}}]}`,
+		"unknown field": `{"corrections":[{"class":"class:warlock","field":"rage_damage","by_level":{"1":1}}]}`,
+		"unknown level": `{"corrections":[{"class":"class:warlock","field":"invocations_known","by_level":{"21":1}}]}`,
+	} {
+		fsys := fstest.MapFS{"effects/corrections.json": {Data: []byte(doc)}}
+		if err := c.applyCorrections(fsys); err == nil {
+			t.Errorf("%s: the loader accepted it", name)
+		}
+	}
+	ok := fstest.MapFS{"effects/corrections.json": {Data: []byte(`{"corrections":[{"class":"class:warlock","field":"invocations_known","by_level":{"4":2}}]}`)}}
+	if err := c.applyCorrections(ok); err != nil || invocationsKnown(rows[3]) != 2 || invocationsKnown(rows[4]) != 9 {
+		t.Errorf("applyCorrections = %v, level 4 %d, level 5 %d; want only level 4 changed to 2", err, invocationsKnown(rows[3]), invocationsKnown(rows[4]))
 	}
 }

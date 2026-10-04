@@ -43,7 +43,7 @@ O MeuRPG está sendo reconstruído do zero: um servidor em Go que serve o app An
 
 ## O que já funciona
 
-As Etapas 1 a 6 do [roadmap](docs/roadmap.md) estão na `main`:
+As Etapas 1 a 7 do [roadmap](docs/roadmap.md) estão na `main`, e a 8 está chegando:
 
 - **Login** por OpenID Connect (o Google em produção), com sessão de até 30 dias no servidor.
 - **Campanhas e convites.** O mestre cria a campanha e gera convites com validade e número de usos. Quem recebe o link entra, logado ou fazendo login no caminho, e o convite pode pedir a aprovação do mestre.
@@ -54,8 +54,11 @@ As Etapas 1 a 6 do [roadmap](docs/roadmap.md) estão na `main`:
 - **Mapas sem spoiler.** O mestre cria mapas a partir da galeria, com pontos de interesse (batalha, submapa e cena de RP) e os tokens dos personagens, e revela cada coisa na hora certa: o que está escondido nunca sai do servidor para o jogador. Na sessão, o mestre escolhe o mapa atual e move os tokens, e a mesa vê ao vivo. Ele também pode mostrar aos jogadores uma imagem da galeria.
 - **Documento da campanha.** As anotações do mestre, em Markdown, com imagens da galeria e links para os mapas e as fichas. Só o mestre vê.
 - **Combate.** O mestre põe a grade de 1,5 m no mapa e inicia o combate: iniciativa, ordem dos turnos e movimento, sem o jogador ver quem está escondido nem os números dos inimigos. Na sua vez, o jogador vê o que as regras deixam fazer com a ação, a ação bônus, a reação e o movimento, e ataca, conjura, usa as habilidades de classe e as reações, com o dado do app ou o físico. O mestre aplica o dano, desfaz a última ação, marca as condições e confirma a morte de quem falha três vezes no teste contra a morte. O registro conta a luta, e cada um vê só o que pode ver.
+- **Cenas de RP.** O mestre põe as ações num ponto de cena do mapa (uma perícia, um teste de atributo ou uma salvaguarda, com CD se quiser) e abre a cena na sessão. Cada jogador vê as ações com o próprio bônus, nunca a CD, e rola no app ou digita o dado físico.
+- **XP.** O mestre dá XP no fim do combate, por ouro ou avulso, ou registra um marco, conforme o modo da campanha, e desfaz o último. Toda a campanha vê o histórico, e a ficha mostra "Pode subir de nível". Quando pode, o jogador sobe o nível pela própria ficha, acrescentando só o que o nível dá (o servidor está pronto; a tela vem a seguir).
+- **Imprimir o mapa.** O mestre imprime um mapa com a grade na escala da mesa, escolhendo o tamanho do quadrado e o papel.
 
-A próxima é a Etapa 7, as ações da cena de RP e o XP. O MVP ficou maior em 03/10/2026 e agora termina na Etapa 10, quando a mesa joga a primeira sessão inteira pelo app. A Etapa 8 traz a mesa (ganhos de tela, ganchos e pistas, anotações do jogador, NPCs na cena, destaques do combate e imprimir o mapa), a 9 aprofunda o combate e o mapa (movimento em círculo, armadilhas, névoa de guerra, criaturas do personagem) e a 10 traz o conteúdo e a geração (regras da mesa, quebra-cabeças, gerador de masmorras e imagens geradas por IA). Ver [Roadmap](docs/roadmap.md).
+Agora vem o resto da Etapa 8, a mesa (o turno conjunto, ganchos e pistas, anotações do jogador, NPCs na cena, destaques do combate e da sessão, as opções das cenas e os marcos planejados). O MVP ficou maior em 03/10/2026 e agora termina na Etapa 10, quando a mesa joga a primeira sessão inteira pelo app. A 9 aprofunda o combate e o mapa (movimento em círculo, armadilhas, névoa de guerra, criaturas do personagem) e a 10 traz o conteúdo e a geração (regras da mesa, quebra-cabeças, gerador de masmorras e imagens geradas por IA). Ver [Roadmap](docs/roadmap.md).
 
 ## O visual: a ficha de papel
 

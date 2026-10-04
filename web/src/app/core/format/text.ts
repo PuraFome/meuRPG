@@ -17,7 +17,7 @@ export function joinDots(parts: readonly string[]): string {
 export function tight(text: string): string {
   return text
     .replace(/(\d) a (\d)/g, '$1 a $2')
-    .replace(/(\d) (m|XP|PO)\b/g, '$1 $2')
+    .replace(/(\d) (m|XP|PO|quadrados?|pés)\b/g, '$1 $2')
     .replace(/\b(alcance|de|até|mais|restam|Restam|faltam|Faltam|a) (?=\d)/g, '$1 ');
 }
 

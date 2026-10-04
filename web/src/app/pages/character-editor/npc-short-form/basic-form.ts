@@ -9,12 +9,8 @@ import {
   Validators,
 } from '@angular/forms';
 
-import {
-  DamageTypeKey,
-  feetToMeters,
-  formatModifier,
-  metersToFeet,
-} from '../../../core/characters/character-labels';
+import { DamageTypeKey, formatModifier } from '../../../core/characters/character-labels';
+import { feetToMeters, metersToFeet } from '../../../core/units';
 import { BasicAttackFormValue, BasicCharacterFormValue } from '../character-editor.types';
 import { EditorField } from '../editor-labels';
 

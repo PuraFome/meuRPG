@@ -174,9 +174,9 @@ WHERE map_id = $1;
 
 -- name: InsertMapPoint :one
 -- A new point starts hidden (revealed_at NULL).
-INSERT INTO map_points (map_id, kind, name, description, hooks, x_bp, y_bp, target_map_id, created_at, updated_at)
+INSERT INTO map_points (map_id, kind, name, description, hooks, show_dc, x_bp, y_bp, target_map_id, created_at, updated_at)
 VALUES (
-    sqlc.arg(map_id), sqlc.arg(kind), sqlc.arg(name), sqlc.arg(description), sqlc.arg(hooks), sqlc.arg(x_bp), sqlc.arg(y_bp),
+    sqlc.arg(map_id), sqlc.arg(kind), sqlc.arg(name), sqlc.arg(description), sqlc.arg(hooks), sqlc.arg(show_dc), sqlc.arg(x_bp), sqlc.arg(y_bp),
     sqlc.narg(target_map_id), sqlc.arg(now), sqlc.arg(now)
 )
 RETURNING *;
@@ -198,7 +198,7 @@ FOR UPDATE;
 -- from the request and the current row.
 UPDATE map_points
 SET kind = sqlc.arg(kind), name = sqlc.arg(name), description = sqlc.arg(description), hooks = sqlc.arg(hooks),
-    x_bp = sqlc.arg(x_bp), y_bp = sqlc.arg(y_bp), target_map_id = sqlc.narg(target_map_id),
+    show_dc = sqlc.arg(show_dc), x_bp = sqlc.arg(x_bp), y_bp = sqlc.arg(y_bp), target_map_id = sqlc.narg(target_map_id),
     revealed_at = sqlc.narg(revealed_at), updated_at = sqlc.arg(now)
 WHERE map_id = sqlc.arg(map_id) AND id = sqlc.arg(id)
 RETURNING *;
@@ -303,8 +303,8 @@ SELECT count(*)::INT4 AS action_count FROM scene_actions
 WHERE point_id = $1;
 
 -- name: InsertSceneAction :one
-INSERT INTO scene_actions (point_id, position, key, name, dc, created_at, updated_at)
-VALUES (sqlc.arg(point_id), sqlc.arg(position), sqlc.arg(key), sqlc.arg(name), sqlc.narg(dc), sqlc.arg(now), sqlc.arg(now))
+INSERT INTO scene_actions (point_id, position, key, name, dc, max_attempts, created_at, updated_at)
+VALUES (sqlc.arg(point_id), sqlc.arg(position), sqlc.arg(key), sqlc.arg(name), sqlc.narg(dc), sqlc.arg(max_attempts), sqlc.arg(now), sqlc.arg(now))
 RETURNING *;
 
 -- name: GetSceneActionForUpdate :one
@@ -314,7 +314,7 @@ FOR UPDATE;
 
 -- name: UpdateSceneAction :one
 UPDATE scene_actions
-SET key = sqlc.arg(key), name = sqlc.arg(name), dc = sqlc.narg(dc), updated_at = sqlc.arg(now)
+SET key = sqlc.arg(key), name = sqlc.arg(name), dc = sqlc.narg(dc), max_attempts = sqlc.arg(max_attempts), updated_at = sqlc.arg(now)
 WHERE point_id = sqlc.arg(point_id) AND id = sqlc.arg(id)
 RETURNING *;
 

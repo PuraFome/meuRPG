@@ -19,7 +19,6 @@ import { characterKindLabel } from '../../core/characters/character-labels';
 import { CharacterKind, isFullSheetKind } from '../../core/characters/characters.types';
 import { formatXp } from '../../core/format/text';
 import { FictionNotice } from '../../shared/fiction-notice/fiction-notice';
-import { PHONE_QUERY, mediaQuery } from '../../shared/map-view/media-query';
 import { AbilityFields } from './ability-fields/ability-fields';
 import { AbilityScores } from './ability-scores/ability-scores';
 import {
@@ -30,10 +29,11 @@ import {
   CharacterFormValue,
   HitPointsMethod,
   RulesCatalogVm,
-  SpellDetailsVm,
   SpellOptionVm,
 } from './character-editor.types';
-import { SpellDetails, SpellDetailsData } from './spell-details/spell-details';
+import type { SpellDetailsData } from '../../shared/spell-details/spell-details';
+import { openSpellDetails } from '../../shared/spell-details/open-spell-details';
+import type { SpellDetailsVm } from '../../shared/spell-details/spell-details.types';
 import { EditorStepper } from './editor-stepper/editor-stepper';
 import { HitPointsRolls } from './hit-points-rolls/hit-points-rolls';
 import {
@@ -210,7 +210,6 @@ export class CharacterEditor {
   private readonly fb = inject(FormBuilder);
   private readonly dialog = inject(MatDialog);
   private readonly bottomSheet = inject(MatBottomSheet);
-  private readonly onPhone = mediaQuery(PHONE_QUERY);
   /** The spell descriptions already fetched, by spell key, for the life of
    * the page (a second "?" on the same spell is instant; nothing is stored
    * in the browser). A failed fetch is dropped so "Tentar de novo" asks again. */
@@ -808,21 +807,7 @@ export class CharacterEditor {
       namePt: spell.namePt,
       load: () => this.loadSpellDetails(s.campaignId, spell.key),
     };
-    if (this.onPhone()) {
-      this.bottomSheet.open(SpellDetails, {
-        data,
-        ariaLabel: `Descrição de ${spell.namePt}`,
-        autoFocus: 'first-heading',
-      });
-    } else {
-      this.dialog.open(SpellDetails, {
-        data,
-        width: '560px',
-        maxWidth: 'calc(100vw - 32px)',
-        ariaLabelledBy: 'spell-title',
-        autoFocus: 'first-heading',
-      });
-    }
+    openSpellDetails(this.dialog, this.bottomSheet, data);
   }
 
   private loadSpellDetails(campaignId: string, key: string): Promise<SpellDetailsVm> {
