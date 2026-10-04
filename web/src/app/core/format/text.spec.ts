@@ -35,3 +35,4 @@ describe('formatInt and formatXp', () => {
     expect(formatXp(0)).toBe('0\u00a0XP');
   });
 });
+

@@ -1,0 +1,43 @@
+:host {
+  display: block;
+}
+
+.cn {
+  align-items: flex-start;
+  max-width: 640px;
+  margin-bottom: var(--mr-space-4);
+}
+
+.cn__body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+// "Abrir anotações": a text button whose words line up with the text above.
+.cn__open {
+  margin: 4px 0 -8px -12px;
+  color: var(--mr-accent-text);
+  --mat-button-text-label-text-color: var(--mr-accent-text);
+}
+
+// The ✕: a 44px target at the corner, so it is easy to hit and never in the way.
+.cn__close {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: -10px -12px -10px 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mr-ink);
+  cursor: pointer;
+
+  .mat-icon {
+    width: 24px;
+    height: 24px;
+    font-size: 24px;
+  }
+}

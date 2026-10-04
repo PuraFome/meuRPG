@@ -123,3 +123,54 @@
   display: block;
   margin-top: var(--mr-space-6);
 }
+
+// "Anotações" in the app bar (E8-06): a bordered 44px button with the icon and
+// the word; with a new clue the count shows in words, and under 360px "nova"
+// goes (the aria-label says it all). The bar draws this template, beside the
+// menu button on a phone and after the brand from a tablet up.
+.notes-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  height: 44px;
+  padding: 0 12px 0 10px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font: inherit;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+
+  @media (max-width: 359.98px) {
+    padding: 0 8px;
+
+    .notes-bar__more {
+      display: none;
+    }
+  }
+}
+
+// Drawn twice, like the "Ao vivo" pill: beside the menu button on a phone, and
+// before the account (after the pill) from a tablet up.
+.notes-bar--phone {
+  @media (min-width: 768px) {
+    display: none;
+  }
+}
+
+.notes-bar--wide {
+  margin-right: var(--mr-space-3);
+
+  @media (max-width: 767.98px) {
+    display: none;
+  }
+}

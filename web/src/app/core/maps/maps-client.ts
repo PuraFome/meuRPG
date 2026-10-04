@@ -10,6 +10,7 @@ import {
   type MapToken,
   type SceneAction,
   SceneActionDirection,
+  type SceneClue,
 } from '../../../gen/meurpg/maps/v1/maps_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
 
@@ -23,6 +24,8 @@ export interface PointChanges {
   /** A SUBMAP point's target; `''` removes it. */
   readonly targetMapId?: string;
   readonly revealed?: boolean;
+  /** "Ganchos e anotações" of a SCENE point (MR-029); `''` clears them. */
+  readonly hooks?: string;
 }
 
 /**
@@ -181,6 +184,73 @@ export class MapsClient {
   ): Promise<readonly SceneAction[]> {
     const res = await this.client.removeSceneAction({ campaignId, mapId, pointId, actionId });
     return res.actions;
+  }
+  /** `AddSceneClue` (MR-029): one more clue on a SCENE point, saved at once.
+   * Answers with the point's clues as they are now, the new one last. */
+  async addSceneClue(
+    campaignId: string,
+    mapId: string,
+    pointId: string,
+    text: string,
+  ): Promise<readonly SceneClue[]> {
+    const res = await this.client.addSceneClue({ campaignId, mapId, pointId, text });
+    return res.clues;
+  }
+
+  /** `UpdateSceneClue`: the new text of one clue (what players already got keeps the old). */
+  async updateSceneClue(
+    campaignId: string,
+    mapId: string,
+    pointId: string,
+    clueId: string,
+    text: string,
+  ): Promise<readonly SceneClue[]> {
+    const res = await this.client.updateSceneClue({ campaignId, mapId, pointId, clueId, text });
+    return res.clues;
+  }
+
+  /** `MoveSceneClue`: one place up or down. */
+  async moveSceneClue(
+    campaignId: string,
+    mapId: string,
+    pointId: string,
+    clueId: string,
+    direction: 'up' | 'down',
+  ): Promise<readonly SceneClue[]> {
+    const res = await this.client.moveSceneClue({
+      campaignId,
+      mapId,
+      pointId,
+      clueId,
+      direction: direction === 'up' ? SceneActionDirection.UP : SceneActionDirection.DOWN,
+    });
+    return res.clues;
+  }
+
+  /** `RemoveSceneClue`: the page asks first; players who got the clue keep it. */
+  async removeSceneClue(
+    campaignId: string,
+    mapId: string,
+    pointId: string,
+    clueId: string,
+  ): Promise<readonly SceneClue[]> {
+    const res = await this.client.removeSceneClue({ campaignId, mapId, pointId, clueId });
+    return res.clues;
+  }
+
+  /** `RevealSceneClue` (MR-029): gives the clue to the players of these
+   * characters. Answers with the clue and everyone who has it now. */
+  async revealSceneClue(
+    campaignId: string,
+    clueId: string,
+    characterIds: readonly string[],
+  ): Promise<SceneClue> {
+    const res = await this.client.revealSceneClue({
+      campaignId,
+      clueId,
+      characterIds: [...characterIds],
+    });
+    return need(res.clue, 'RevealSceneClue');
   }
 }
 

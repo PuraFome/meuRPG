@@ -1,0 +1,67 @@
+:host {
+  display: block;
+}
+
+.nf {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  // The outlined field's floating label would be cut by the body's top edge.
+  padding: 8px 0;
+}
+
+// On a short screen (the keyboard is up) the text shrinks before anything else,
+// so "É ficção" and what follows are never cut by the scroll edge.
+textarea {
+  max-height: max(88px, 18dvh);
+}
+
+// At the limit the counter says so in colour and in numbers.
+.nf__over {
+  color: var(--mr-danger-ink);
+  font-weight: 700;
+}
+
+// "Apagar anotação": a text button, its words lined up with the field above.
+.nf__delete {
+  align-self: flex-start;
+  margin-inline-start: -12px;
+  color: var(--mr-danger-ink);
+  --mat-button-text-label-text-color: var(--mr-danger-ink);
+}
+
+.nf__ask {
+  padding: var(--mr-space-3);
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  scroll-margin-block: 72px 16px;
+}
+
+.nf__ask-t {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 21px;
+}
+
+.nf__ask-d {
+  margin: var(--mr-space-1) 0 var(--mr-space-3);
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.nf__ask-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--mr-space-2);
+
+  button {
+    white-space: nowrap;
+  }
+}
+
+.nf__danger {
+  color: var(--mr-danger-ink);
+  --mat-button-outlined-label-text-color: var(--mr-danger-ink);
+}

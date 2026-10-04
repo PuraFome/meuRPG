@@ -113,6 +113,7 @@ describe('LiveStream (ADR-0005 client rules)', () => {
       onCombatLogChanged: vi.fn(),
       onXpChanged: vi.fn(),
       onSceneChanged: vi.fn(),
+      onNotesChanged: vi.fn(),
       onStageChanged: vi.fn(),
       onEnded: vi.fn(),
       onFatal: vi.fn(),
@@ -171,6 +172,15 @@ describe('LiveStream (ADR-0005 client rules)', () => {
     last().push({ kind: 'sceneCheckRolled' });
     await flush();
     expect(handlers.onSceneChanged).toHaveBeenCalledTimes(2);
+  });
+
+  it('tells the page a clue arrived in the player\'s notes (MR-030), and keeps the stream alive', async () => {
+    stream.start();
+    last().push({ kind: 'ready' });
+    last().push({ kind: 'notesChanged' });
+    await flush();
+    expect(handlers.onNotesChanged).toHaveBeenCalledTimes(1);
+    expect(stream.status()).toBe('live');
   });
 
   it('hands `stage_changed` to the page on its own, so the stage is read again (MR-031)', async () => {

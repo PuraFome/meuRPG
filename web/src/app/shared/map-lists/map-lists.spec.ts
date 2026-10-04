@@ -54,9 +54,9 @@ describe('MapPointsList', () => {
       expect(withScenes(undefined).nativeElement.querySelector('.row__scene')).toBeNull();
     });
 
-    it('offers "Abrir cena" on a scene with actions, and says why one with none cannot open', () => {
+    it('offers "Abrir cena" on every scene, even one with no actions (question 63)', () => {
       const f = withScenes(null);
-      expect(scenes(f)).toEqual(['chat_bubble_outlineAbrir cena', 'blockSem ações. Adicione no editor do mapa.']);
+      expect(scenes(f)).toEqual(['chat_bubble_outlineAbrir cena', 'chat_bubble_outlineAbrir cena']);
       const asked: string[] = [];
       f.componentInstance.openScene.subscribe((p) => asked.push(p.id));
       f.nativeElement.querySelector('.row__scene button').click();

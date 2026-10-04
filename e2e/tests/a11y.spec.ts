@@ -8,6 +8,7 @@ import { endOpenSessionRPC, endSessionRPC, openSessionPage, startSessionRPC, tab
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
 import { adjustVitalsRPC, beginAttackCombatRPC, combatRPC, getEncounterRPC, passTurnsTo, pensantusCasting, tableForCombat, toren, torenSheet } from './combat-support';
 import { addActionRPC, cartActions, getOpenSceneRPC, openSceneRPC, rollSceneRPC, tableForScenes } from './scene-support';
+import { addClueRPC, cartClues, cartHooks, createNoteRPC } from './notes-support';
 import { createCapitaoRPC, createMiraRPC, playedCombatRPC, putOnStageRPC, uploadPortrait } from './stage-support';
 import { printRoute, tableForPrinting } from './print-support';
 import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus } from './support';
@@ -1502,6 +1503,193 @@ test('os marcos planejados passam no axe e nas conferências de layout no tema e
 test('os marcos planejados passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-016'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanMilestoneScreens(browser, 'light', 320);
+});
+
+/**
+ * Clues, hooks and the players' notes (Etapa 8, MR-029, MR-030, E8-04 to
+ * E8-07): the point panel's "Pistas" (empty, the list with who has each, the
+ * add form with its error, the remove question, the full list) and "Ganchos e
+ * anotações"; the open scene's clues and hooks (open and, on a phone, folded);
+ * "Revelar pista" with nobody checked, one checked and after revealing; the
+ * player's notice and the bar's button with a new clue; the notes sheet (empty,
+ * the list with a clue, the filter open, a scene with nothing, a new note, the
+ * limit of 2.000, editing with its two questions); and the panel on the
+ * character sheet (list, form, empty).
+ */
+async function scanNotesScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width >= 768 ? 900 : 844 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForScenes(m, p, `Acessibilidade pistas ${Date.now()}`, false);
+    campaignId = table.campaignId;
+
+    // The editor is for a computer: "Pistas" and "Ganchos e anotações" in the point panel.
+    if (width >= 768) {
+      await open(m, `/campanhas/${campaignId}/mapas/${table.mapId}`);
+      await m.getByRole('button', { name: /^A carroça tombada, Cena de RP/ }).click();
+      await expect(m.getByText('Nenhuma pista ainda')).toBeVisible();
+      await expectScreenPasses(m, `Pistas e ganchos, vazios ${where}`);
+      for (const text of cartClues) {
+        await addClueRPC(m, table, table.cartId, text);
+      }
+      await open(m, `/campanhas/${campaignId}/mapas/${table.mapId}`);
+      await m.getByRole('button', { name: /^A carroça tombada, Cena de RP/ }).click();
+      await expect(m.getByText('3 de 30', { exact: true })).toBeVisible();
+      await m.getByRole('textbox', { name: 'Ganchos e anotações' }).fill(cartHooks);
+      await expectScreenPasses(m, `Pistas e ganchos, com três pistas ${where}`);
+      await m.getByRole('button', { name: 'Adicionar pista' }).click();
+      await expect(m.getByRole('form', { name: 'Nova pista' })).toBeVisible();
+      await expectScreenPasses(m, `Nova pista ${where}`);
+      await m.getByRole('form', { name: 'Nova pista' }).getByRole('button', { name: 'Adicionar pista' }).click();
+      await expect(m.getByText('Escreva a pista antes de salvar.')).toBeVisible();
+      await expectScreenPasses(m, `Nova pista, com o erro ${where}`);
+      await m.getByRole('form', { name: 'Nova pista' }).getByLabel('Texto da pista').fill('x'.repeat(512));
+      await expect(m.getByText('512 de 500')).toBeVisible();
+      await expectScreenPasses(m, `Nova pista, passou de 500 caracteres ${where}`);
+      await m.getByRole('button', { name: 'Cancelar' }).click();
+      await m.getByRole('button', { name: 'Remover a pista 2' }).click();
+      await expect(m.getByRole('alertdialog', { name: 'Remover a pista 2?' })).toBeVisible();
+      await expectScreenPasses(m, `Remover a pista, a pergunta ${where}`);
+      await m.getByRole('button', { name: 'Voltar' }).click();
+      await m.getByRole('button', { name: /^Vau do riacho, Cena de RP/ }).click();
+      for (let i = 1; i <= 30; i++) {
+        await addClueRPC(m, table, table.fordId, `Pista número ${i}`);
+      }
+      await open(m, `/campanhas/${campaignId}/mapas/${table.mapId}`);
+      await m.getByRole('button', { name: /^Vau do riacho, Cena de RP/ }).click();
+      await expect(m.getByText('Limite de 30 pistas. Remova uma para adicionar outra.')).toBeVisible();
+      await expectScreenPasses(m, `Pistas, lista cheia ${where}`);
+    } else {
+      for (const text of cartClues) {
+        await addClueRPC(m, table, table.cartId, text);
+      }
+      const hooks = await callRPC(m, 'meurpg.maps.v1.MapService/UpdateMapPoint', { campaignId, mapId: table.mapId, pointId: table.cartId, hooks: cartHooks });
+      expect(hooks.ok()).toBeTruthy();
+    }
+    await callRPC(m, 'meurpg.maps.v1.MapService/UpdateMapPoint', { campaignId, mapId: table.mapId, pointId: table.cartId, hooks: cartHooks });
+
+    // The player's notes before anything arrived: the empty sheet.
+    await openSessionPage(m, campaignId);
+    await openSessionPage(p, campaignId);
+    await p.getByRole('button', { name: 'Anotações', exact: true }).click();
+    await expect(p.getByText('Nenhuma anotação ainda')).toBeVisible();
+    await p.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await expectScreenPasses(p, `Anotações, vazias ${where}`);
+    await p.getByRole('button', { name: 'Fechar' }).click();
+
+    // The open scene with its clues and hooks, and "Revelar pista".
+    await m.getByRole('button', { name: 'Abrir cena', exact: true }).click();
+    await m.getByRole('dialog').getByText('A carroça tombada', { exact: true }).click();
+    await m.getByRole('dialog').getByRole('button', { name: 'Abrir cena', exact: true }).click();
+    await expect(m.getByRole('heading', { name: 'Cena: A carroça tombada' })).toBeFocused();
+    await expectScreenPasses(m, `Cena aberta com pistas e ganchos ${where}`);
+    if (width < 768) {
+      await m.getByRole('button', { name: 'Abrir os ganchos e anotações' }).click();
+      await expect(m.getByText(cartHooks)).toBeVisible();
+      await expectScreenPasses(m, `Cena aberta, ganchos abertos ${where}`);
+    }
+    await m.getByRole('button', { name: 'Revelar a pista 2' }).click();
+    await expect(m.getByRole('dialog', { name: 'Revelar pista' })).toBeVisible();
+    await m.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await expectScreenPasses(m, `Revelar pista, ninguém marcado ${where}`);
+    await m.getByRole('button', { name: 'Marcar todos' }).click();
+    await expect(m.getByRole('button', { name: 'Revelar para Pensantus' })).toBeVisible();
+    await expectScreenPasses(m, `Revelar pista, uma pessoa marcada ${where}`);
+    await m.getByRole('button', { name: 'Revelar para Pensantus' }).click();
+    await expect(m.getByText(/Pista revelada para todos às/)).toBeVisible();
+    await expectScreenPasses(m, `Cena aberta, depois de revelar ${where}`);
+
+    // The player: the notice, the bar's button with a new clue, the sheet.
+    await expect(p.getByText('O mestre revelou uma pista para você.')).toBeVisible();
+    await expect(p.getByRole('button', { name: 'Anotações, 1 nova' })).toBeVisible();
+    await expectScreenPasses(p, `Sessão do jogador com a pista nova ${where}`);
+    await p.getByRole('button', { name: 'Abrir anotações' }).click();
+    const sheet = p.getByRole('dialog');
+    await expect(sheet.getByText('Pista do mestre')).toBeVisible();
+    await p.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await expectScreenPasses(p, `Anotações, só a pista ${where}`);
+    await sheet.getByRole('button', { name: 'Nova anotação' }).click();
+    await expect(sheet.getByRole('heading', { name: 'Nova anotação' })).toBeVisible();
+    await expectScreenPasses(p, `Nova anotação ${where}`);
+    await sheet.getByLabel('Anotação', { exact: true }).fill('x'.repeat(2000));
+    await expect(sheet.getByText('Chegou ao limite de 2.000 caracteres.')).toBeVisible();
+    await expectScreenPasses(p, `Nova anotação, no limite de 2.000 ${where}`);
+    await sheet.getByLabel('Anotação', { exact: true }).fill('Perguntar ao ferreiro sobre o brasão de lobo');
+    await sheet.getByRole('combobox', { name: /Cena \(opcional\)/ }).click();
+    await expect(p.getByRole('option', { name: 'A carroça tombada' })).toBeVisible();
+    await expectScreenPasses(p, `Nova anotação, escolhendo a cena ${where}`);
+    await p.getByRole('option', { name: 'A carroça tombada' }).click();
+    await sheet.getByRole('button', { name: 'Cancelar' }).click();
+    await expect(sheet.getByRole('alertdialog', { name: 'Descartar o que você escreveu?' })).toBeVisible();
+    await expectScreenPasses(p, `Nova anotação, descartar ${where}`);
+    await sheet.getByRole('button', { name: 'Continuar' }).click();
+    await sheet.getByRole('button', { name: 'Salvar anotação' }).click();
+    await expect(sheet.getByRole('heading', { name: 'Anotações' })).toBeVisible();
+    await expectScreenPasses(p, `Anotações, uma nota e uma pista ${where}`);
+    await sheet.getByRole('combobox', { name: /^Cena/ }).click();
+    await expect(p.getByRole('option', { name: /Todas as anotações/ })).toBeVisible();
+    await expectScreenPasses(p, `Anotações, o filtro por cena aberto ${where}`);
+    await p.getByRole('option', { name: /Sem cena/ }).click();
+    await expect(sheet.getByText('Nada sem cena')).toBeVisible();
+    await expectScreenPasses(p, `Anotações, filtro sem resultado ${where}`);
+    await sheet.getByRole('combobox', { name: /^Cena/ }).click();
+    await p.getByRole('option', { name: /Todas as anotações/ }).click();
+    await sheet.getByRole('button', { name: /^Editar a anotação/ }).click();
+    await sheet.getByRole('button', { name: 'Apagar anotação' }).click();
+    await expect(sheet.getByRole('alertdialog', { name: 'Apagar esta anotação?' })).toBeVisible();
+    await expectScreenPasses(p, `Editar anotação, apagar ${where}`);
+    await sheet.getByRole('button', { name: 'Voltar' }).click();
+    await sheet.getByRole('button', { name: 'Cancelar' }).click();
+    await sheet.getByRole('button', { name: 'Fechar' }).click();
+
+    // The panel on the player's sheet; the master's own sheet page has none.
+    await createNoteRPC(p, campaignId, 'Brisa me deve 5 PO');
+    // Not `open()`: with a session open the sheet follows its stream, so the network is never idle.
+    await p.goto(`/campanhas/${campaignId}/personagens/${table.characterId}`);
+    const panel = p.getByRole('region', { name: 'Anotações' });
+    await expect(panel.getByText('Brisa me deve 5 PO')).toBeVisible();
+    await expectScreenPasses(p, `Ficha com as anotações ${where}`);
+    await panel.getByRole('button', { name: 'Nova anotação' }).click();
+    await expect(panel.getByRole('heading', { name: 'Nova anotação' })).toBeVisible();
+    await expectScreenPasses(p, `Ficha, nova anotação ${where}`);
+    await panel.getByRole('button', { name: 'Cancelar' }).click();
+    await m.goto(`/campanhas/${campaignId}/personagens/${table.characterId}`);
+    await expect(m.getByRole('heading', { name: 'Pensantus' }).first()).toBeVisible();
+    await expect(m.getByRole('heading', { name: 'Anotações' })).toHaveCount(0);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('pistas, ganchos e anotações passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-029', '@MR-030'] }, async ({ browser }) => {
+  test.setTimeout(600_000);
+  await scanNotesScreens(browser, 'light', 1280);
+});
+
+test('pistas, ganchos e anotações passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-029', '@MR-030'] }, async ({ browser }) => {
+  test.setTimeout(600_000);
+  await scanNotesScreens(browser, 'dark', 390);
+});
+
+test('pistas, ganchos e anotações passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-029', '@MR-030'] }, async ({ browser }) => {
+  test.setTimeout(600_000);
+  await scanNotesScreens(browser, 'dark', 1024);
+});
+
+test('pistas, ganchos e anotações passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-029', '@MR-030'] }, async ({ browser }) => {
+  test.setTimeout(600_000);
+  await scanNotesScreens(browser, 'light', 320);
 });
 
 /** The joint turn (MR-013, E8-01): the master's card and boxes, the player's

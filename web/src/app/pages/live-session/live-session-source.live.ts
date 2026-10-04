@@ -186,6 +186,9 @@ export class LiveSessionSourceLive implements LiveSessionSource {
         case 'sceneCheckRolled':
           yield { kind: 'sceneCheckRolled' };
           break;
+        case 'notesChanged':
+          yield { kind: 'notesChanged' };
+          break;
         case 'stageChanged':
           yield { kind: 'stageChanged' };
           break;

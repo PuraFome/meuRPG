@@ -1,0 +1,88 @@
+:host {
+  display: block;
+  container-type: inline-size;
+}
+
+// A bordered card of its own, inside the open scene's column. The lock and
+// the words stay when it is folded.
+.sh {
+  box-sizing: border-box;
+  padding: 0 var(--mr-space-4);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+}
+
+// Title, lock and the fold button on one line; when the card is narrow (a
+// phone) the lock goes under the title.
+.sh__head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 48px;
+  grid-template-areas: 'title toggle' 'lock toggle';
+  align-items: center;
+  column-gap: var(--mr-space-3);
+  min-height: 56px;
+  padding: var(--mr-space-1) 0;
+
+  @container (min-width: 360px) {
+    grid-template-columns: minmax(0, 1fr) auto 48px;
+    grid-template-areas: 'title lock toggle';
+  }
+}
+
+.sh__title {
+  grid-area: title;
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 26px;
+}
+
+.sh__lock {
+  display: inline-flex;
+  grid-area: lock;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 19px;
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.sh__toggle {
+  display: inline-flex;
+  grid-area: toggle;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin-inline-end: -12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mr-ink);
+  cursor: pointer;
+}
+
+.sh__body {
+  padding-bottom: var(--mr-space-4);
+}
+
+// The text sits in a soft block with a border, under the title.
+.sh__text {
+  padding: var(--mr-space-3) var(--mr-space-3) 0;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-ground);
+}
+
+.sh__none {
+  margin: 0;
+  color: var(--mr-ink-muted);
+}

@@ -18,6 +18,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 
 import { actionSubtitle, actionTitle } from '../../../../core/maps/scene-actions';
+import { type CluePlayer, clueCount } from '../../../../core/maps/scene-clues';
 import type { MapState } from '../../../../core/maps/map-state';
 import { joinDots, tieShortWords } from '../../../../core/format/text';
 import { SceneClient } from '../../../../core/play/scene-client';
@@ -26,6 +27,8 @@ import type { SceneState } from '../../../../core/play/scene-state';
 import { actionCount, rollCount } from '../../../../core/play/scene-view';
 import { formatClock } from '../../../../shared/session-time/session-time';
 import { PHONE_QUERY, mediaQuery } from '../../../../shared/map-view/media-query';
+import { SceneClues } from '../scene-clues/scene-clues';
+import { SceneHooks } from '../scene-hooks/scene-hooks';
 import { SceneRollLine } from '../scene-roll-line/scene-roll-line';
 import { StageMaster } from '../stage-master/stage-master';
 import { openScenePicker } from '../scene-picker/scene-picker';
@@ -40,13 +43,17 @@ import { openScenePicker } from '../scene-picker/scene-picker';
  * `aria-expanded`, open at the start); the two buttons are equal, 48px, and
  * stack when the width is short. Closing asks nothing.
  *
+ * The clues and the hooks (E8-05, MR-029) are the left column on a computer
+ * (the actions and the rolls go right); on a phone they are two panels under
+ * this card. "Revelar" lives in the clues.
+ *
  * Focus: when the scene opens or is swapped here, the title takes it (the
  * state's `focusNext`); the page never moves focus for a scene that was
  * already open.
  */
 @Component({
   selector: 'app-scene-open',
-  imports: [MatButtonModule, MatIconModule, SceneRollLine, StageMaster],
+  imports: [MatButtonModule, MatIconModule, SceneClues, SceneHooks, SceneRollLine, StageMaster],
   templateUrl: './scene-open.html',
   styleUrl: './scene-open.scss',
 })
@@ -59,6 +66,8 @@ export class SceneOpen {
   readonly campaignId = input.required<string>();
   readonly state = input.required<SceneState>();
   readonly mapState = input.required<MapState>();
+  /** The campaign's player characters, for who has each clue and for revealing. */
+  readonly players = input<readonly CluePlayer[]>([]);
 
   protected readonly phone = mediaQuery(PHONE_QUERY);
   protected readonly actionsOpen = signal(true);
@@ -90,7 +99,8 @@ export class SceneOpen {
     const mapName = this.mapState().map()?.name;
     return joinDots([
       ...(onMap && mapName ? [`Mapa ${mapName}`] : []),
-      actionCount(scene.actions.length),
+      scene.actions.length === 0 ? 'sem ações' : actionCount(scene.actions.length),
+      ...(scene.clues.length > 0 ? [clueCount(scene.clues.length)] : []),
       rollCount(scene.rolls.length),
     ]);
   });
