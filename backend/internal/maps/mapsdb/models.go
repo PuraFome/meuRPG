@@ -21,40 +21,77 @@ type GalleryImage struct {
 }
 
 type Map struct {
-	ID          string
-	CampaignID  string
-	Name        string
-	ImageID     string
-	RevealedAt  *time.Time
-	Revision    int32
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	GridColumns *int32
+	ID             string
+	CampaignID     string
+	Name           string
+	ImageID        string
+	RevealedAt     *time.Time
+	Revision       int32
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	GridColumns    *int32
+	FogEnabled     bool
+	BaseLight      string
+	GroupVision    bool
+	LayersRevision int32
+	LightRevision  int32
+}
+
+type MapLayer struct {
+	MapID            string
+	DifficultTerrain []byte
+	Walls            []byte
+	Cover            []byte
+	Light            []byte
+	UpdatedAt        time.Time
 }
 
 type MapPoint struct {
-	ID          string
-	MapID       string
-	Kind        string
-	Name        string
-	Description string
-	XBp         int32
-	YBp         int32
-	TargetMapID *string
-	RevealedAt  *time.Time
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	Hooks       string
-	ShowDc      bool
+	ID                       string
+	MapID                    string
+	Kind                     string
+	Name                     string
+	Description              string
+	XBp                      int32
+	YBp                      int32
+	TargetMapID              *string
+	RevealedAt               *time.Time
+	CreatedAt                time.Time
+	UpdatedAt                time.Time
+	Hooks                    string
+	ShowDc                   bool
+	Trap                     []byte
+	TrapState                *string
+	TrapTriggeredAt          *time.Time
+	TreasureValuePo          *int32
+	TreasureFoundAt          *time.Time
+	TreasureSessionID        *string
+	TreasureConvertedAwardID *string
+	LightPreset              *string
+	LightBrightFt            *int32
+	LightDimFt               *int32
+}
+
+type MapPointReveal struct {
+	PointID     string
+	CharacterID string
+	How         string
+	At          time.Time
 }
 
 type MapToken struct {
-	MapID       string
+	MapID        string
+	CharacterID  string
+	XBp          int32
+	YBp          int32
+	Hidden       bool
+	UpdatedAt    time.Time
+	CarriedLight *string
+}
+
+type MapTreasureFinder struct {
+	PointID     string
 	CharacterID string
-	XBp         int32
-	YBp         int32
-	Hidden      bool
-	UpdatedAt   time.Time
 }
 
 type SceneAction struct {

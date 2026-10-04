@@ -53,6 +53,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/nostore"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // A campaign's gallery limits (a proposal, question 30 of the progress
@@ -125,6 +126,32 @@ type LiveSession interface {
 	// session inside tx, and says whether there was one. The payload holds
 	// IDs only (docs/privacidade.md).
 	AppendEvent(ctx context.Context, tx pgx.Tx, campaignID, kind, actorUserID string, payload []byte, at time.Time) (bool, error)
+	// OpenSessionID returns the ID of the campaign's open game session, locking
+	// its row inside tx, or "" when none is open: a treasure found remembers it
+	// (MR-041), so the session's summary counts the treasure.
+	OpenSessionID(ctx context.Context, tx pgx.Tx, campaignID string) (string, error)
+}
+
+// CombatMaps says whether a combat is running on a map. The play module
+// implements it (play.Service.CombatRunsOnMap): a map's grid and image cannot
+// change while a fight stands on its painted layers (MR-034, D2).
+type CombatMaps interface {
+	// CombatRunsOnMap reports, inside tx, whether a combat of the campaign that
+	// is not ended (in setup or active) runs on the map.
+	CombatRunsOnMap(ctx context.Context, tx pgx.Tx, campaignID, mapID string) (bool, error)
+}
+
+// Rules is what this package needs from the rules content: the scene checks
+// (MR-015), and the names and presets that keep a trap's or a light's keys honest
+// (MR-035, MR-036). *rules.Content implements it, so nothing here repeats the
+// catalog.
+type Rules interface {
+	SceneChecks
+	// NamePT is the Portuguese name of a content key, "" for an unknown one.
+	NamePT(key string) string
+	// TrapPreset and LightPreset find a preset by its key.
+	TrapPreset(key string) (rules.TrapPreset, bool)
+	LightPreset(key string) (rules.LightPreset, bool)
 }
 
 // Config holds what the maps service needs.
@@ -141,9 +168,11 @@ type Config struct {
 	// Live is the live session: the current map, and where map changes
 	// go. Required.
 	Live LiveSession
-	// Rules says which checks a scene may ask for (MR-015): *rules.Content.
-	// Required.
-	Rules SceneChecks
+	// Rules says which checks a scene may ask for (MR-015) and which traps,
+	// lights, damage types and conditions exist: *rules.Content. Required.
+	Rules Rules
+	// Combats says whether a combat runs on a map: the play service. Required.
+	Combats CombatMaps
 	// Logger receives errors, without personal data. Nil means
 	// slog.Default().
 	Logger *slog.Logger
@@ -167,6 +196,9 @@ type Service struct {
 	characters CharacterDirectory
 	live       LiveSession
 	checks     SceneChecks
+	rules      Rules
+	combats    CombatMaps
+	layerHints hintGate
 	logger     *slog.Logger
 	now        func() time.Time
 	maxImages  int32
@@ -197,6 +229,8 @@ func New(cfg Config) (*Service, error) {
 		return nil, errors.New("maps: Live is required")
 	case cfg.Rules == nil:
 		return nil, errors.New("maps: Rules is required")
+	case cfg.Combats == nil:
+		return nil, errors.New("maps: Combats is required")
 	}
 	s := &Service{
 		pool:       cfg.Pool,
@@ -205,6 +239,8 @@ func New(cfg Config) (*Service, error) {
 		characters: cfg.Characters,
 		live:       cfg.Live,
 		checks:     cfg.Rules,
+		rules:      cfg.Rules,
+		combats:    cfg.Combats,
 		logger:     cfg.Logger,
 		now:        cfg.Now,
 		maxImages:  cfg.MaxImages,

@@ -101,6 +101,245 @@ service ContentService {
   rpc GetCreature(GetCreatureRequest) returns (GetCreatureResponse) {
     option idempotency_level = IDEMPOTENT;
   }
+
+  // ListTrapPresets returns the SRD's eight sample traps (MR-035), in our
+  // words and with the SRD's numbers, to fill the master's trap form, and the
+  // SRD's tables of how severe a trap is (the form's hint: "Revés: CD 10 a 11,
+  // bônus de ataque +3 a +5"). A preset only fills the form: the master edits
+  // anything, and the trap on the map keeps its own copy of the numbers. The
+  // content is the same for every campaign. Any active member may call it; a
+  // pending member (RN-15) gets `not_found`, as for ListCreatures.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist, or the caller is not an
+  //     active member of it.
+  rpc ListTrapPresets(ListTrapPresetsRequest) returns (ListTrapPresetsResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // ListLightPresets returns the SRD's sources of light with their radii
+  // (MR-036): Vela, Tocha, Lâmpada, Lanterna coberta, the spell Luz, Chama
+  // Contínua and Luz do Dia. They fill the master's light form and the light a
+  // character carries (MapService.SetCarriedLight takes a preset's key). Same
+  // access as ListTrapPresets.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist, or the caller is not an
+  //     active member of it.
+  rpc ListLightPresets(ListLightPresetsRequest) returns (ListLightPresetsResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+}
+
+// ListTrapPresetsRequest names a campaign.
+message ListTrapPresetsRequest {
+  string campaign_id = 1;
+}
+
+// ListTrapPresetsResponse carries the presets and the severity tables.
+message ListTrapPresetsResponse {
+  // The eight sample traps, in the SRD's order.
+  repeated TrapPreset presets = 1;
+  // Revés, Perigosa and Mortal, with the save DCs and attack bonuses that suit
+  // each ("Trap Save DCs and Attack Bonuses").
+  repeated TrapSeverity severities = 2;
+  // The damage that suits each severity at four ranges of character levels
+  // ("Damage Severity by Level").
+  repeated TrapDamageRow damage_by_level = 3;
+}
+
+// ListLightPresetsRequest names a campaign.
+message ListLightPresetsRequest {
+  string campaign_id = 1;
+}
+
+// ListLightPresetsResponse carries the light presets.
+message ListLightPresetsResponse {
+  repeated LightPreset presets = 1;
+}
+
+// LightPreset is a source of light the SRD describes.
+message LightPreset {
+  // The preset's key, "light:torch".
+  string key = 1;
+  // Its Portuguese name ("Tocha").
+  string name_pt = 2;
+  // The radius of its bright light, in feet (multiples of 5).
+  int32 bright_ft = 3;
+  // How much further its dim light goes past the bright light, in feet
+  // (multiples of 5): "bright light in a 20-foot radius and dim light for an
+  // additional 20 feet" is 20 and 20.
+  int32 dim_ft = 4;
+  // How long it lasts, as text for the master ("1 hora", "8 horas").
+  string duration_pt = 5;
+}
+
+// TrapTrigger says what fires a trap.
+enum TrapTrigger {
+  TRAP_TRIGGER_UNSPECIFIED = 0;
+  // "Ao entrar na área": a player character or its creature entering the
+  // area fires it (a pressure plate, a trip wire, a false floor). NPCs never
+  // fire it by themselves.
+  TRAP_TRIGGER_ENTER = 1;
+  // "Manual": the master fires it (a chest opened, a door).
+  TRAP_TRIGGER_MANUAL = 2;
+}
+
+// TrapTargets says whom a trap's effect reaches.
+enum TrapTargets {
+  TRAP_TARGETS_UNSPECIFIED = 0;
+  // Every creature in the trap's area.
+  TRAP_TARGETS_AREA = 1;
+  // The master picks who is caught, because the effect comes from somewhere
+  // else (a statue's cone, a rolling sphere) or hits at random (darts).
+  TRAP_TARGETS_MANUAL = 2;
+}
+
+// TrapSaveApplies says whom a trap's saving throw is asked of.
+enum TrapSaveApplies {
+  TRAP_SAVE_APPLIES_UNSPECIFIED = 0;
+  // Each creature the trap caught.
+  TRAP_SAVE_APPLIES_CAUGHT = 1;
+  // Each creature one of the trap's attacks hit; the effect needs an attack.
+  TRAP_SAVE_APPLIES_HIT = 2;
+}
+
+// TrapPassOutcome says what a creature that passes the saving throw takes.
+enum TrapPassOutcome {
+  TRAP_PASS_OUTCOME_UNSPECIFIED = 0;
+  // Half the damage the failure would have done.
+  TRAP_PASS_OUTCOME_HALF = 1;
+  // Nothing.
+  TRAP_PASS_OUTCOME_NONE = 2;
+}
+
+// TrapDamage is damage of one type.
+message TrapDamage {
+  // The dice, such as "2d6" (1 to 20 dice of d4, d6, d8, d10 or d12), or a flat
+  // number ("1", 1 to 100) such as the poison needle's.
+  string dice = 1;
+  // The damage type's key, "damage-type:poison".
+  string damage_type_key = 2;
+  // The damage type's Portuguese name ("veneno"). Output only: ignored on input.
+  string damage_type_pt = 3;
+}
+
+// TrapCondition is a condition a trap gives, with how long it lasts.
+message TrapCondition {
+  // The condition's key, "condition:restrained".
+  string condition_key = 1;
+  // Its Portuguese name ("Contido"). Output only: ignored on input.
+  string condition_pt = 2;
+  // How long it lasts, as text for the master ("1 hora"), 0 to 60 characters;
+  // empty for none.
+  string duration_pt = 3;
+}
+
+// TrapAttack is a trap that attacks: `count` attacks with a bonus, each
+// against one target. A hit does the damage.
+message TrapAttack {
+  // The attack bonus, 0 to 20.
+  int32 bonus = 1;
+  // How many attacks, 1 to 10.
+  int32 count = 2;
+  // The damage of one hit.
+  TrapDamage damage = 3;
+}
+
+// TrapOnFail is what a creature that fails the saving throw takes: damage
+// and/or a condition.
+message TrapOnFail {
+  // Up to 4 damage parts.
+  repeated TrapDamage damage = 1;
+  // A condition, or unset for none.
+  TrapCondition condition = 2;
+}
+
+// TrapSaveEffect is the saving throw of a trap.
+message TrapSaveEffect {
+  // The ability of the save. Required.
+  Ability ability = 1;
+  // The difficulty class, 1 to 30.
+  int32 dc = 2;
+  // Whom it is asked of. Required.
+  TrapSaveApplies applies_to = 3;
+  // What a failure does: damage and/or a condition (at least one).
+  TrapOnFail on_fail = 4;
+  // What a pass does. Required. HALF needs damage on a failure.
+  TrapPassOutcome on_pass = 5;
+}
+
+// TrapEffect is what a trap does, in parts, any of them (the empty effect is
+// "só descrição"). The same shape is the preset's and the trap on the map's:
+// creating a trap from a preset copies it, and everything stays editable.
+message TrapEffect {
+  // An attack roll, or unset for none.
+  TrapAttack attack = 1;
+  // Damage that always lands on every creature caught, with no roll to avoid it
+  // (a pit's fall); up to 4 parts.
+  repeated TrapDamage damage = 2;
+  // Conditions given to every creature caught; up to 4.
+  repeated TrapCondition conditions = 3;
+  // A saving throw, or unset for none.
+  TrapSaveEffect save = 4;
+  // Whom the effect reaches. Unspecified on input means AREA.
+  TrapTargets targets = 5;
+}
+
+// TrapPreset is a sample trap the master can start from.
+message TrapPreset {
+  // The preset's key, "trap:simple-pit".
+  string key = 1;
+  // Its Portuguese name ("Fosso simples").
+  string name_pt = 2;
+  // "mechanical" or "magic".
+  string kind = 3;
+  // The preset's text, in our own words, for the point's description.
+  string description_pt = 4;
+  // The DC to notice it (Wisdom (Perception), passive or active); 0 when the
+  // SRD gives none (the poison needle).
+  int32 notice_dc = 5;
+  // The DC to find it by searching (Intelligence (Investigation)).
+  int32 find_dc = 6;
+  // True when the SRD gives no DC to find this trap, only to spot it, so
+  // find_dc is ours (the DC to spot, reused).
+  bool find_dc_is_ours = 7;
+  // What fires it.
+  TrapTrigger trigger = 8;
+  // The side, in squares, of the block around the trap's square that fires it:
+  // 1 (the square alone) to 4.
+  int32 area_size = 9;
+  // The depth of a pit in feet, 0 for a trap that is not a pit. The fall damage
+  // is already in effect.damage.
+  int32 fall_ft = 10;
+  // What it does, in parts: the copy a new trap starts from.
+  TrapEffect effect = 11;
+}
+
+// TrapSeverity is one row of the SRD's "Trap Save DCs and Attack Bonuses".
+message TrapSeverity {
+  // "setback", "dangerous" or "deadly".
+  string key = 1;
+  // "Revés", "Perigosa" or "Mortal".
+  string name_pt = 2;
+  // The saving throw DCs that suit this severity, lowest and highest.
+  int32 save_dc_min = 3;
+  int32 save_dc_max = 4;
+  // The attack bonuses that suit this severity, lowest and highest.
+  int32 attack_bonus_min = 5;
+  int32 attack_bonus_max = 6;
+}
+
+// TrapDamageRow is one row of the SRD's "Damage Severity by Level": the damage
+// that suits characters of levels from_level to to_level.
+message TrapDamageRow {
+  // The character levels the row covers, lowest and highest.
+  int32 from_level = 1;
+  int32 to_level = 2;
+  // The damage dice that suit each severity, such as "2d10".
+  string setback = 3;
+  string dangerous = 4;
+  string deadly = 5;
 }
 
 // Ability is one of the six ability scores.

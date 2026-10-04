@@ -4,6 +4,7 @@ package meurpg.maps.v1;
 
 import "google/protobuf/timestamp.proto";
 import "meurpg/characters/v1/characters.proto";
+import "meurpg/rules/v1/rules.proto";
 
 // MapService keeps a campaign's maps (MR-008, MR-009, MR-012): an image of
 // the gallery with points of interest and tokens on top of it.
@@ -28,6 +29,22 @@ import "meurpg/characters/v1/characters.proto";
 // also reaches the members watching it (PlayService.WatchGameSession):
 // `map_changed` and `token_moved`, under the same rules, so a player's
 // stream never mentions a hidden thing either.
+//
+// Etapa 9 adds, on the same rules (RN-10):
+//   - Four painted layers on a map with a grid (PaintMapCells, GetMapLayers):
+//     difficult terrain, walls, cover and light. The master gets all four. A
+//     player gets walls, difficult terrain and cover (visible things) of a
+//     map they see, never the light, and nothing at all while the map has the
+//     fog of war on: the per-player reads come with the fog's own slice.
+//   - The fog of war's settings (SetMapFog): off by default, per map.
+//   - Three more kinds of point. A TRAP is sent to a player only once it was
+//     revealed to their character (RevealTrap, or found by them in play), was
+//     triggered, or the master revealed it to everyone; and then without its
+//     DCs, effect or preset, which only the master ever receives. A TREASURE
+//     follows the reveal rule and becomes visible to everyone, with its
+//     description and value, once found (MarkTreasureFound). A LIGHT is never
+//     sent to a player: they see its light, not the point.
+//   - The light a character carries (SetCarriedLight).
 //
 // Positions (x_bp, y_bp) are basis points of the map image's width and
 // height: 0 is the left (top) edge, 10000 the right (bottom) edge, 5000 the
@@ -109,10 +126,16 @@ service MapService {
   // nothing: the app reloads the map and the master tries again. On
   // success, the revision goes up by one.
   //
+  // A different image clears the map's painted layers (PaintMapCells), like
+  // other grid columns do, and is refused while a combat that is not ended runs
+  // on the map; the same image again changes nothing.
+  //
   // Errors:
   //   - `invalid_argument`: nothing to change, revision less than 1, the
   //     name breaks its rules, or image_id is not an image of the
   //     campaign's gallery.
+  //   - `failed_precondition` (MapBlocked COMBAT_RUNNING): image_id is another
+  //     image and a combat runs on the map.
   //   - `not_found`: the map is not in this campaign, the campaign does not
   //     exist, or the caller is not a member of it.
   //   - `permission_denied`: the caller is a player.
@@ -123,9 +146,12 @@ service MapService {
   // master may call it. It cannot be undone. The gallery image stays.
   // Submap points of other maps that led to it lose their target, and if
   // it was the session's current map, the session has no current map
-  // anymore (`current_map_changed` with an empty map_id).
+  // anymore (`current_map_changed` with an empty map_id). A map that holds a
+  // treasure that was found or turned into XP cannot be deleted.
   //
   // Errors:
+  //   - `failed_precondition` (MapBlocked TREASURE_FOUND or
+  //     TREASURE_CONVERTED): the map holds such a treasure; unmark it first.
   //   - `not_found`: the map is not in this campaign (or was already
   //     deleted), the campaign does not exist, or the caller is not a member
   //     of it.
@@ -149,18 +175,27 @@ service MapService {
   // the rows follow the image's proportions. A combat can only start on a
   // map with a grid (PlayService/CombatService.StartEncounter).
   //
-  // A combat already running keeps the grid it started with. A player who
+  // Other columns clear the map's painted layers (PaintMapCells), because a
+  // layer is sized by the grid; the same columns again change nothing. Removing
+  // the grid (0) also turns the fog of war off. A change that clears the layers
+  // is refused while a combat that is not ended runs on the map. A player who
   // sees the map gets `map_changed`.
   //
   // Errors:
   //   - `invalid_argument`: columns is neither 0 nor between 4 and 200.
+  //   - `failed_precondition` (MapBlocked COMBAT_RUNNING): the columns would
+  //     change while a combat runs on the map.
   //   - `not_found`: the map is not in this campaign, the campaign does not
   //     exist, or the caller is not a member of it.
   //   - `permission_denied`: the caller is a player.
   rpc SetMapGrid(SetMapGridRequest) returns (SetMapGridResponse);
 
   // CreateMapPoint puts a point of interest on a map (MR-008). Only the
-  // campaign's master may call it. The point starts hidden.
+  // campaign's master may call it. The point starts hidden. A TRAP needs its
+  // `trap`, a LIGHT its `light` and a TREASURE may carry `treasure_value_po`
+  // (0 when unset); each field is refused on any other kind. A trap's numbers
+  // are checked against the rules content (DCs 1 to 30, an area of 1 to 4
+  // squares, dice of d4 to d12, damage types and conditions that exist).
   //
   // Errors:
   //   - `invalid_argument`: a field breaks its rules; kind is unspecified;
@@ -192,9 +227,12 @@ service MapService {
   rpc UpdateMapPoint(UpdateMapPointRequest) returns (UpdateMapPointResponse);
 
   // DeleteMapPoint deletes a point. Only the campaign's master may call it.
-  // It cannot be undone.
+  // It cannot be undone. A TREASURE that was found, or turned into XP, cannot
+  // be deleted: unmark it first, so a session's summary never loses it silently.
   //
   // Errors:
+  //   - `failed_precondition` (MapBlocked TREASURE_FOUND or
+  //     TREASURE_CONVERTED): the point is such a treasure.
   //   - `not_found`: the point is not on this map (or was already deleted),
   //     the map is not in this campaign, the campaign does not exist, or
   //     the caller is not a member of it.
@@ -376,6 +414,134 @@ service MapService {
   //     a member of it.
   //   - `permission_denied`: the caller is a player.
   rpc RemoveMapToken(RemoveMapTokenRequest) returns (RemoveMapTokenResponse);
+
+  // PaintMapCells paints squares of one layer of a map's grid (MR-034,
+  // MR-036): difficult terrain, walls, cover or light, one value for a batch of
+  // squares. Only the campaign's master may call it. The last write wins, with
+  // no revision to send: painting is dragged, and a batch that repeats what is
+  // there changes nothing (and bumps nothing). Send at most 400 squares a call.
+  //
+  // A change bumps Map.layers_revision, sends `map_changed` to the master and,
+  // when players may read the layers (a map they see, with no fog), to them,
+  // at most once a second for a map; the app then reads GetMapLayers again.
+  //
+  // Errors:
+  //   - `invalid_argument`: layer is unspecified, value is not valid for the
+  //     layer (terrain and wall: 0 or 1; cover: 0 to 2; light: 0 to 3), squares
+  //     is empty or has more than 400, or a square is outside the map's grid.
+  //   - `failed_precondition` (MapBlocked NO_GRID): the map has no grid.
+  //   - `not_found`: the map is not in this campaign, the campaign does not
+  //     exist, or the caller is not a member of it.
+  //   - `permission_denied`: the caller is a player.
+  rpc PaintMapCells(PaintMapCellsRequest) returns (PaintMapCellsResponse);
+
+  // GetMapLayers returns the painted layers of a map as packed bytes, in the
+  // byte layout described on GetMapLayersResponse. Any member may call it. The
+  // master gets all four layers. A player of a map they see gets the difficult
+  // terrain, walls and cover, never the light; and, while the map has the fog
+  // of war on, none of them (fog_withheld): slice 9.4 sends each player only
+  // what their character sees.
+  //
+  // Errors:
+  //   - `not_found`: the map is not in this campaign, or is hidden from the
+  //     caller (a player), the campaign does not exist, or the caller is not a
+  //     member of it.
+  rpc GetMapLayers(GetMapLayersRequest) returns (GetMapLayersResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // SetMapFog changes the fog of war's settings of a map (MR-036, D6): whether
+  // it is on, the base light of a square nobody lit, and "Visão do grupo". Each
+  // field set replaces the current value. Only the campaign's master may call
+  // it. Turning the fog off keeps the painted layers. The fog needs a grid, and
+  // removing the grid (SetMapGrid with 0 columns) turns it off. A player who
+  // sees the map gets `map_changed`.
+  //
+  // Errors:
+  //   - `invalid_argument`: nothing to change.
+  //   - `failed_precondition` (MapBlocked NO_GRID): fog_enabled is true and the
+  //     map has no grid.
+  //   - `not_found`: the map is not in this campaign, the campaign does not
+  //     exist, or the caller is not a member of it.
+  //   - `permission_denied`: the caller is a player.
+  rpc SetMapFog(SetMapFogRequest) returns (SetMapFogResponse);
+
+  // RevealTrap shows a TRAP point to the players the master chose: some
+  // characters (their players get the trap, and nobody else does) or everyone
+  // (the same as revealing the point, SetMapPointRevealed). Only the campaign's
+  // master may call it, with or without an open session. Revealing again to a
+  // character who already knows changes nothing; there is no way to take it
+  // back.
+  //
+  // With an open session a `trap_revealed` event goes into its history (IDs
+  // only), and the streams of the players who now see the trap, and the
+  // master's, get `map_changed`.
+  //
+  // Errors:
+  //   - `invalid_argument`: the point is not a TRAP; character_ids is empty
+  //     and all is false, or both are set, or it has more than 50.
+  //   - `not_found`: the point is not on this map, the map is not in this
+  //     campaign, one of the characters is not a living player character of the
+  //     campaign with a player, the campaign does not exist, or the caller is
+  //     not a member of it.
+  //   - `permission_denied`: the caller is a player.
+  rpc RevealTrap(RevealTrapRequest) returns (RevealTrapResponse);
+
+  // MarkTreasureFound marks a TREASURE point found, by one or more characters
+  // (MR-041, D8). Only the campaign's master may call it, with or without an
+  // open session. A found treasure is visible to everyone who sees the map,
+  // with its description, its value and who found it, even if the master never
+  // revealed the point. Marking a treasure that is already found replaces who
+  // found it and keeps when. During an open session the treasure remembers the
+  // session (the session's summary counts it) and a `treasure_found` event
+  // (IDs and the PO only) goes into its history; outside one, it counts in no
+  // session's summary.
+  //
+  // Errors:
+  //   - `invalid_argument`: the point is not a TREASURE; character_ids is empty
+  //     or has more than 50.
+  //   - `failed_precondition` (MapBlocked TREASURE_CONVERTED): the treasure
+  //     was already turned into XP (slice 9.11).
+  //   - `not_found`: the point is not on this map, the map is not in this
+  //     campaign, one of the characters is not a living player character of the
+  //     campaign, the campaign does not exist, or the caller is not a member of
+  //     it.
+  //   - `permission_denied`: the caller is a player.
+  rpc MarkTreasureFound(MarkTreasureFoundRequest) returns (MarkTreasureFoundResponse);
+
+  // UnmarkTreasureFound takes the "found" mark off a TREASURE point: it goes back
+  // to the reveal rule. Only the campaign's master may call it. Unmarking a
+  // treasure that is not found changes nothing. With an open session a
+  // `treasure_unfound` event goes into its history.
+  //
+  // Errors:
+  //   - `invalid_argument`: the point is not a TREASURE.
+  //   - `failed_precondition` (MapBlocked TREASURE_CONVERTED): the treasure
+  //     was already turned into XP.
+  //   - `not_found`: the point is not on this map, the map is not in this
+  //     campaign, the campaign does not exist, or the caller is not a member of
+  //     it.
+  //   - `permission_denied`: the caller is a player.
+  rpc UnmarkTreasureFound(UnmarkTreasureFoundRequest) returns (UnmarkTreasureFoundResponse);
+
+  // SetCarriedLight sets the light a character carries on a map (MR-036, D6): a
+  // light preset's key (ContentService.ListLightPresets), or empty for none. A
+  // player may set it for their own character, the master for anyone; any other
+  // call is refused. It rides on the character's token, so the character needs
+  // one on the map. The token (MapToken.carried_light) tells it to the master
+  // and the character's own player only; what the other players see of it
+  // comes with slice 9.4.
+  //
+  // Errors:
+  //   - `invalid_argument`: light_key is not empty and is not a light preset's
+  //     key.
+  //   - `not_found`: the character has no token on this map, is not a living
+  //     character of the campaign, or is an NPC and the caller is a player; the
+  //     map is not in this campaign; the campaign does not exist, or the caller
+  //     is not a member of it.
+  //   - `permission_denied`: the caller is a player and the character is
+  //     another player's.
+  rpc SetCarriedLight(SetCarriedLightRequest) returns (SetCarriedLightResponse);
 }
 
 // MapPointKind is what a point of interest leads to.
@@ -392,6 +558,88 @@ enum MapPointKind {
   // "Cena de RP": a role-play scene. The master opens it in the session
   // (PlayService.OpenScene); it may have actions, clues and hooks.
   MAP_POINT_KIND_SCENE = 3;
+  // "Armadilha" (MR-035): a trap, master only until found. It carries a
+  // TrapSpec.
+  MAP_POINT_KIND_TRAP = 4;
+  // "Tesouro" (MR-041): treasure with a value in gold pieces. Its description is
+  // what is inside; players read it once the treasure is found.
+  MAP_POINT_KIND_TREASURE = 5;
+  // "Luz": a light source (MR-036). A player never receives it: they see its
+  // light. It carries a LightSpec.
+  MAP_POINT_KIND_LIGHT = 6;
+}
+
+// MapLayer is one of the four layers painted on a map's grid.
+enum MapLayer {
+  MAP_LAYER_UNSPECIFIED = 0;
+  // "Terreno difícil": one bit a square (0 clear, 1 difficult).
+  MAP_LAYER_DIFFICULT_TERRAIN = 1;
+  // "Parede": one bit a square. Walls block movement, sight and light.
+  MAP_LAYER_WALL = 2;
+  // "Cobertura": two bits a square (0 none, 1 half, 2 three-quarters).
+  MAP_LAYER_COVER = 3;
+  // "Luz": two bits a square, a LightLevel (0 not painted, 1 to 3).
+  MAP_LAYER_LIGHT = 4;
+}
+
+// LightLevel is how lit a square is.
+enum LightLevel {
+  // As a map's base light: never returned. As a painted value: not painted
+  // (clears the square, which then takes the map's base light).
+  LIGHT_LEVEL_UNSPECIFIED = 0;
+  // "Escuro".
+  LIGHT_LEVEL_DARK = 1;
+  // "Penumbra".
+  LIGHT_LEVEL_DIM = 2;
+  // "Claro".
+  LIGHT_LEVEL_BRIGHT = 3;
+}
+
+// TrapState is where a trap is in play.
+enum TrapState {
+  TRAP_STATE_UNSPECIFIED = 0;
+  // "Armada".
+  TRAP_STATE_ARMED = 1;
+  // "Disparada": everyone who sees the map sees a trap that was triggered, and
+  // keeps seeing it after the master disarms it or arms it again.
+  TRAP_STATE_TRIGGERED = 2;
+  // "Desarmada": reads as such to whoever sees the trap.
+  TRAP_STATE_DISARMED = 3;
+}
+
+// TrapRevealHow says how a character came to know a trap.
+enum TrapRevealHow {
+  TRAP_REVEAL_HOW_UNSPECIFIED = 0;
+  // Their passive Perception caught it (slice 9.8).
+  TRAP_REVEAL_HOW_NOTICED = 1;
+  // They searched and found it (slice 9.8).
+  TRAP_REVEAL_HOW_SEARCHED = 2;
+  // The master revealed it to them (RevealTrap).
+  TRAP_REVEAL_HOW_MASTER = 3;
+}
+
+// MapBlockedReason says why a map call was refused with `failed_precondition`.
+enum MapBlockedReason {
+  MAP_BLOCKED_REASON_UNSPECIFIED = 0;
+  // The map has no grid: painting and the fog need one.
+  MAP_BLOCKED_REASON_NO_GRID = 1;
+  // A combat is running on the map: its grid and its image cannot change, since
+  // that clears the painted layers the fight stands on.
+  MAP_BLOCKED_REASON_COMBAT_RUNNING = 2;
+  // The treasure was already turned into XP (slice 9.11): its value and its
+  // found mark cannot change.
+  MAP_BLOCKED_REASON_TREASURE_CONVERTED = 3;
+  // The treasure was found: it cannot be deleted, nor its map, until the master
+  // unmarks it (UnmarkTreasureFound), so a session's summary never loses it
+  // silently.
+  MAP_BLOCKED_REASON_TREASURE_FOUND = 4;
+}
+
+// MapBlocked is the error detail of MapService's `failed_precondition`, so the
+// app can say why.
+message MapBlocked {
+  // Why the call was refused.
+  MapBlockedReason reason = 1;
 }
 
 // Map is a map as the caller may see it.
@@ -432,6 +680,22 @@ message Map {
   // How many rows of squares the grid has: round(grid_columns * image
   // height / image width), 1 to 400. 0 when the map has no grid.
   int32 grid_rows = 13;
+  // Whether the fog of war is on (SetMapFog). Every viewer gets it: a player
+  // needs to know the map has fog. False for a map without a grid.
+  bool fog_enabled = 14;
+  // The light of a square nobody lit and the master did not paint: DARK, DIM or
+  // BRIGHT, DARK by default. Only the master gets it; UNSPECIFIED for a player.
+  LightLevel base_light = 15;
+  // "Visão do grupo": everyone sees what any player character sees. Every
+  // viewer gets it. Off by default.
+  bool group_vision = 16;
+  // Goes up by one every time a painted layer changes or is cleared (a grid or
+  // image change clears them). Compare it with the copy of the layers the app
+  // holds. Apart from `revision` on purpose: painting never makes UpdateMap's
+  // revision stale. The master's number also counts the painted light, which no
+  // player reads; a player's counts the other layers only, and is 0 on a map
+  // with the fog of war on (the layers are withheld from them).
+  int32 layers_revision = 17;
 }
 
 // MapImage is the image under a map: a gallery image. Any active member of
@@ -511,6 +775,87 @@ message MapPoint {
   // flag: a player's copy is true exactly when their `scene_actions` carry
   // DCs.
   bool show_dc = 15;
+  // The trap's data (a TRAP point). The master gets it whole. A player gets only
+  // area_size and state: never the preset, the DCs, the trigger or the effect
+  // (RN-10).
+  TrapSpec trap = 16;
+  // A TREASURE's value in gold pieces, 0 to 1,000,000. The master always gets
+  // it; a player only once the treasure is found.
+  int32 treasure_value_po = 17;
+  // A LIGHT's source (a LIGHT point). Only the master gets it: a player never
+  // receives a light point.
+  LightSpec light = 18;
+  // When a TREASURE was marked found; unset while it is not. Everyone who sees
+  // the treasure gets it.
+  google.protobuf.Timestamp treasure_found_at = 19;
+  // Who found a found TREASURE, in the order the characters are listed
+  // elsewhere: players' characters first, oldest first (not the order the master
+  // picked them). A found treasure's finders go to everyone who sees it
+  // ("Encontrado por Brisa").
+  repeated TreasureFinder treasure_found_by = 20;
+  // Whether an XP award turned a found TREASURE into XP (slice 9.11). Only the
+  // master gets it.
+  bool treasure_converted = 21;
+  // Who knows a TRAP, besides the master, as the master sees it: the characters
+  // it was revealed to, oldest first. Empty for a player, and for any other kind.
+  repeated TrapReveal trap_revealed_to = 22;
+}
+
+// TrapSpec is what a TRAP point is: how to notice and find it, where and how it
+// fires, what it does, and where it is in play.
+message TrapSpec {
+  // The key of the preset it was made from ("trap:simple-pit"), or empty for a
+  // custom trap. Informational: the numbers below are the trap's own copy.
+  string preset_key = 1;
+  // The DC to notice it (passive or active Perception), 1 to 30, or 0 when only
+  // a search finds it (the SRD's poison needle).
+  int32 notice_dc = 2;
+  // The DC to find it by searching (Investigation), 1 to 30. Required.
+  int32 find_dc = 3;
+  // The side, in squares, of the block around the point's square that fires the
+  // trap: 1 (the square alone) to 4. Required.
+  int32 area_size = 4;
+  // What fires it. Required.
+  meurpg.rules.v1.TrapTrigger trigger = 5;
+  // What it does, in parts. Required; an empty effect is "só descrição".
+  meurpg.rules.v1.TrapEffect effect = 6;
+  // Where it is in play. Unspecified means ARMED on a new trap and "keep the
+  // current state" on an update, so an edit that does not mention it never
+  // re-arms a trap. The master may change it (UpdateMapPoint); the live game
+  // changes it too (slice 9.8).
+  TrapState state = 7;
+}
+
+// LightSpec is what a LIGHT point is.
+message LightSpec {
+  // The key of the preset it was made from ("light:torch"), or empty for a
+  // custom light. Informational.
+  string preset_key = 1;
+  // The radius of its bright light, in feet: 0 to 120, a multiple of 5.
+  int32 bright_ft = 2;
+  // How much further its dim light goes, in feet: 0 to 120, a multiple of 5.
+  // Both radii may not be 0.
+  int32 dim_ft = 3;
+}
+
+// TreasureFinder is a character who found a treasure.
+message TreasureFinder {
+  // The character (a UUID).
+  string character_id = 1;
+  // The character's name; empty when the character no longer lives.
+  string character_name = 2;
+}
+
+// TrapReveal is a character the master revealed a trap to, or who found it.
+message TrapReveal {
+  // The character (a UUID).
+  string character_id = 1;
+  // The character's name; empty when the character no longer lives.
+  string character_name = 2;
+  // How they came to know it.
+  TrapRevealHow how = 3;
+  // When they came to know it.
+  google.protobuf.Timestamp at = 4;
 }
 
 // SceneClue is a clue the master prepared on an RP scene (MR-029), as the
@@ -585,6 +930,10 @@ message MapToken {
   bool hidden = 8;
   // When it was placed, moved, hidden or shown last.
   google.protobuf.Timestamp updated_at = 9;
+  // The light the character carries: a light preset's key ("light:torch"), or
+  // empty for none. Only the master and the character's own player get it
+  // (SetCarriedLight); the other players learn of it from what they see.
+  string carried_light = 10;
 }
 
 // ListMapsRequest names a campaign.
@@ -708,6 +1057,15 @@ message CreateMapPointRequest {
   // Only for a SCENE point: true shows the scene's DCs to the players
   // (MapPoint.show_dc). Any other kind with it true is `invalid_argument`.
   bool show_dc = 10;
+  // Required for a TRAP point, and `invalid_argument` on any other kind. Set
+  // the preset's key to start from a preset: the numbers still come from here.
+  TrapSpec trap = 11;
+  // A TREASURE's value in gold pieces: 0 to 1,000,000. Any other kind with it
+  // set is `invalid_argument`.
+  optional int32 treasure_value_po = 12;
+  // Required for a LIGHT point, and `invalid_argument` on any other kind. When
+  // preset_key is set and both radii are 0, the radii are the preset's.
+  LightSpec light = 13;
 }
 
 // CreateMapPointResponse returns the new, hidden point.
@@ -747,6 +1105,18 @@ message UpdateMapPointRequest {
   // gets `scene_changed`: the players read the scene again with or without the
   // DCs.
   optional bool show_dc = 12;
+  // Replaces the whole trap (every field; an unspecified state keeps the
+  // current one). The point must be a
+  // TRAP after the change; a point that becomes a TRAP needs it.
+  optional TrapSpec trap = 13;
+  // A TREASURE's new value, 0 to 1,000,000. Refused with MapBlocked
+  // TREASURE_CONVERTED once the treasure was turned into XP. The point must be
+  // a TREASURE after the change; one that becomes a TREASURE starts with 0 when
+  // this is unset.
+  optional int32 treasure_value_po = 14;
+  // Replaces the whole light. The point must be a LIGHT after the change; a
+  // point that becomes a LIGHT needs it.
+  optional LightSpec light = 15;
 }
 
 // UpdateMapPointResponse returns the point as saved.
@@ -984,4 +1354,147 @@ message RevealSceneClueRequest {
 message RevealSceneClueResponse {
   // The clue, with everyone who has it.
   SceneClue clue = 1;
+}
+
+// MapSquare is a square of a map's grid: col counts from the left edge and row
+// from the top, both from 0.
+message MapSquare {
+  // The column, 0 to grid_columns - 1.
+  int32 col = 1;
+  // The row, 0 to grid_rows - 1.
+  int32 row = 2;
+}
+
+// PaintMapCellsRequest paints a batch of squares of one layer.
+message PaintMapCellsRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+  // Required: which layer.
+  MapLayer layer = 3;
+  // The value to paint: for DIFFICULT_TERRAIN and WALL, 0 clears and 1 sets; for
+  // COVER, 0 none, 1 half, 2 three-quarters; for LIGHT, a LightLevel (0 clears,
+  // 1 dark, 2 dim, 3 bright).
+  int32 value = 4;
+  // The squares, 1 to 400, each inside the map's grid. A repeated square is
+  // painted once.
+  repeated MapSquare squares = 5;
+}
+
+// PaintMapCellsResponse says what the painting did.
+message PaintMapCellsResponse {
+  // The map's layers_revision after the call; unchanged when no square changed.
+  int32 layers_revision = 1;
+  // How many squares changed value. 0 for a batch that repeated what was there.
+  int32 changed = 2;
+}
+
+// GetMapLayersRequest names a map of a campaign.
+message GetMapLayersRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+}
+
+// GetMapLayersResponse is the layers the caller may read, packed as package
+// rules/grid describes (the web decodes the same layout). Squares are numbered
+// row-major, n = row * grid_columns + col, from the top-left corner.
+// A one-bit layer (walls, terrain) is ceil(n / 8) bytes, square n being bit n % 8
+// (least significant first) of byte n / 8. A two-bit layer (cover, light) is
+// ceil(n / 4) bytes, square n being bits 2 * (n % 4) and 2 * (n % 4) + 1 of byte
+// n / 4. A layer with nothing painted is empty (zero bytes), not a run of zeros.
+message GetMapLayersResponse {
+  // The map's grid, as in Map; 0 and 0 for a map without a grid (every layer is
+  // then empty).
+  int32 grid_columns = 1;
+  int32 grid_rows = 2;
+  // Map.layers_revision at the time of the read.
+  int32 layers_revision = 3;
+  // The difficult terrain, one bit a square.
+  bytes difficult_terrain = 4;
+  // The walls, one bit a square.
+  bytes wall = 5;
+  // The cover (0 none, 1 half, 2 three-quarters), two bits a square.
+  bytes cover = 6;
+  // The painted light (a LightLevel), two bits a square. Only the master gets
+  // it: always empty for a player.
+  bytes light = 7;
+  // True when a player's layers were left out because the map has the fog of war
+  // on: the empty layers then mean "not sent", not "nothing painted".
+  bool fog_withheld = 8;
+}
+
+// SetMapFogRequest carries the fog settings to change. Each field set replaces
+// the current value; at least one must be set.
+message SetMapFogRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+  // Turns the fog of war on or off. On needs a grid.
+  optional bool fog_enabled = 3;
+  // The base light: DARK, DIM or BRIGHT (UNSPECIFIED is `invalid_argument`).
+  optional LightLevel base_light = 4;
+  // Turns "Visão do grupo" on or off.
+  optional bool group_vision = 5;
+}
+
+// SetMapFogResponse returns the map as it is now.
+message SetMapFogResponse {
+  Map map = 1;
+}
+
+// RevealTrapRequest says who learns of a trap.
+message RevealTrapRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+  string point_id = 3;
+  // The player characters (UUIDs) whose players get the trap: 1 to 50. Empty
+  // when all is true.
+  repeated string character_ids = 4;
+  // Reveal it to everyone (it sets the point's revealed state). Not together
+  // with character_ids.
+  bool all = 5;
+}
+
+// RevealTrapResponse returns the point as the master sees it.
+message RevealTrapResponse {
+  MapPoint point = 1;
+}
+
+// MarkTreasureFoundRequest names the treasure and who found it.
+message MarkTreasureFoundRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+  string point_id = 3;
+  // The player characters (UUIDs) who found it: 1 to 50.
+  repeated string character_ids = 4;
+}
+
+// MarkTreasureFoundResponse returns the point as the master sees it.
+message MarkTreasureFoundResponse {
+  MapPoint point = 1;
+}
+
+// UnmarkTreasureFoundRequest names the treasure.
+message UnmarkTreasureFoundRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+  string point_id = 3;
+}
+
+// UnmarkTreasureFoundResponse returns the point as the master sees it.
+message UnmarkTreasureFoundResponse {
+  MapPoint point = 1;
+}
+
+// SetCarriedLightRequest names the character and the light.
+message SetCarriedLightRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+  // The character (a UUID) whose token carries the light.
+  string character_id = 3;
+  // A light preset's key ("light:torch"), or empty for none.
+  string light_key = 4;
+}
+
+// SetCarriedLightResponse returns the token as the caller sees it.
+message SetCarriedLightResponse {
+  MapToken token = 1;
 }
