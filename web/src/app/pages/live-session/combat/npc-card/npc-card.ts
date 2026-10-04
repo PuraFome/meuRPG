@@ -21,6 +21,7 @@ import type { CombatState } from '../../../../core/combat/combat-state';
 import { attackName } from '../../../../core/combat/combat-options';
 import { combatantInitial, isPlayer, roundLabel } from '../../../../core/combat/combat-view';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
+import { Portrait } from '../../../../shared/portrait/portrait';
 import { NextTurn } from '../combat-bar/next-turn';
 import { RollPicker } from '../roll-picker/roll-picker';
 import { AttackChoice } from './attack-choice';
@@ -34,11 +35,13 @@ import { PendingDamages } from './pending-damages';
  * was compared with ("Acertou contra CA 18 do Toren"), then the damage to
  * roll and apply (`PendingDamages`). The one filled button of the screen
  * stays "Próximo turno". When a player is on turn the card has no attack
- * form, only the damage their hits left for the master to apply.
+ * form, only the damage their hits left for the master to apply. An NPC's
+ * portrait (MR-031) stands at the left of the title, or its initials when it
+ * has none; the order list and the map keep their tokens.
  */
 @Component({
   selector: 'app-npc-card',
-  imports: [AttackChoice, CombatantToken, MatFormFieldModule, MatIconModule, MatSelectModule, NextTurn, PendingDamages, RollPicker],
+  imports: [AttackChoice, CombatantToken, MatFormFieldModule, MatIconModule, MatSelectModule, NextTurn, PendingDamages, Portrait, RollPicker],
   templateUrl: './npc-card.html',
   styleUrl: './npc-card.scss',
 })

@@ -254,6 +254,16 @@ As telas da cena (MR-015, desenhos E7-01 a E7-05; Etapa 7, fatia 7.5). A moldura
 | "Abrir cena" no ponto (`shared/map-lists/map-points-list`) | Na sessão, a lista "Pontos do mapa" do mestre dá a cada ponto de cena o botão contornado "Abrir cena" (ou "Trocar para esta cena" quando há outra aberta); no ponto que já é a cena aberta a linha diz "Cena aberta agora", e uma cena sem ações diz "Sem ações. Adicione no editor do mapa." em vez do botão. É a mesma chamada do seletor, e o foco vai ao título da cena aberta |
 | Folha de rolar a ação (`scene-roll-sheet`) | E7-04. O `sheet-frame` do combate com o `roll-picker` (RN-18, a cada rolagem): o teste e o bônus, "Rolar no app" (o botão cheio) e "Digitar o resultado" (o link), na ordem da preferência "Como você rola os dados". Digitando: o campo de 112 × 64 px sozinho com "+ 6 de bônus", o total ao vivo ("11 + 6 = 17 · dado físico") e "Confirmar 11" só de 1 a 20. O resultado é só o total do jogador com a conta e "O mestre vê o resultado.", e "Voltar à cena" |
 
+**Retrato do NPC, palco e destaques (Etapa 8, fatia 8.6).**
+
+| Peça | O que é |
+| --- | --- |
+| `app-portrait` (`shared/portrait`) | O quadro do retrato, 5 por 6, com cantos de 12 px e linha de 1 px. Sem imagem, ou quando ela falha (404 fora do palco), mostra as iniciais ("AL"; "CG" para duas palavras), nunca o ícone de imagem quebrada. |
+| Campo "Retrato" (`portrait-field`) | Quadro de 200 px, legenda, "Escolher/Trocar retrato" (abre o seletor da galeria; o botão cheio fica tracejado até escolher uma imagem) e "Remover retrato", que pergunta no lugar com "Voltar" primeiro. |
+| Palco do mestre ("Em cena") | Um cartão por NPC (retrato de 64 px, nome, tipo, "Dar a fala"/"Fala agora" com `aria-pressed`, "Tirar de cena"); "Pôr em cena" abre a lista no lugar (desktop) ou numa folha só com "Fechar" (celular). Cheio, diz "4 de 4" e o motivo, e o botão fica tracejado. |
+| Palco do jogador | Os retratos são recortes transparentes: sem caixa, sem borda, sem raio, sem corte; cada figura apoia-se numa linha de base de 1 px, e quem fala tem 4 px em destaque, figura maior, nome em negrito e "Fala agora". As iniciais mantêm o quadro de propósito. Fundo `ground` no claro e `line` no escuro. Três ou quatro NPCs no celular formam uma grade de duas colunas, sem sobreposição. Movimento só com `prefers-reduced-motion: no-preference`. Vazio, o palco some. Tocar numa figura abre o NPC maior (folha no celular, diálogo de 480 px no desktop), só com nome e retrato. |
+| Destaques do combate | Um quadro por categoria, com o número como o maior texto; empate nomeia todos ("cada um"). O mestre vê também a tabela "Números de cada jogador" (no celular, um bloco por jogador). O jogador vê o cartão "O combate acabou", com "Você" em palavra. |
+
 **Cena aberta quando um combate começa.** Enquanto o combate está na tela, os blocos da cena (o painel "Cena de RP" e a cena aberta do mestre, o bloco "Cena" do jogador) não são desenhados: a sessão mostra só o combate, como mostra só ele para a imagem da galeria. A cena continua aberta no servidor, com as rolagens, e os jogadores não conseguem rolar até o combate acabar. Quando o combate termina e a sessão volta à página de sempre, a cena volta como estava (a leitura de `GetOpenScene` é feita de novo). O mestre que quiser outra cena no meio do combate espera o fim dele.
 
 ## Texto na tela

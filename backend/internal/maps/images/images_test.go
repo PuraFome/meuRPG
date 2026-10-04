@@ -360,6 +360,56 @@ func TestProcessKeepsAWebPWithTransparencyAsPNG(t *testing.T) {
 	}
 }
 
+// TestTransparentPNGKeepsAlpha is Q62: an NPC's portrait is a cut-out PNG
+// with a transparent background, and the stage draws it with nothing behind
+// it. The stored image and its thumbnail must keep a transparent pixel
+// transparent and an opaque one opaque, for a big image (the thumbnail is
+// scaled) and a small one (it is its own thumbnail).
+func TestTransparentPNGKeepsAlpha(t *testing.T) {
+	t.Parallel()
+	// The left half is transparent, the right half is solid red.
+	cutout := func(w, h int) *image.NRGBA {
+		img := image.NewNRGBA(image.Rect(0, 0, w, h))
+		for y := range h {
+			for x := w / 2; x < w; x++ {
+				img.SetNRGBA(x, y, red)
+			}
+		}
+		return img
+	}
+	for _, size := range []struct {
+		name string
+		w, h int
+	}{
+		{"big, so the thumbnail is scaled", 960, 1200},
+		{"small, so the thumbnail is the image", 100, 120},
+	} {
+		t.Run(size.name, func(t *testing.T) {
+			t.Parallel()
+			res, err := Process(encodePNG(t, cutout(size.w, size.h)))
+			if err != nil {
+				t.Fatalf("Process() error = %v", err)
+			}
+			if res.ContentType != PNG {
+				t.Fatalf("stored %s, want PNG", res.ContentType)
+			}
+			for name, data := range map[string][]byte{"image": res.Data, "thumbnail": res.Thumbnail} {
+				img, format := decodeSize(t, data)
+				if format != "png" {
+					t.Fatalf("%s is a %s, want PNG", name, format)
+				}
+				b := img.Bounds()
+				if _, _, _, a := img.At(b.Dx()/4, b.Dy()/2).RGBA(); a != 0 {
+					t.Errorf("%s: the transparent pixel has alpha %#x, want 0", name, a)
+				}
+				if _, _, _, a := img.At(b.Dx()*3/4, b.Dy()/2).RGBA(); a != 0xffff {
+					t.Errorf("%s: the opaque pixel has alpha %#x, want 0xffff", name, a)
+				}
+			}
+		})
+	}
+}
+
 func TestProcessRefuses(t *testing.T) {
 	t.Parallel()
 	var gifData bytes.Buffer

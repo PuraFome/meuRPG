@@ -1,0 +1,64 @@
+<section class="hl" aria-labelledby="hl-title">
+  <div class="hl__head">
+    <h2 class="hl__title" id="hl-title">Destaques do combate</h2>
+    <span class="hl__lead">Contam o dano e a cura aplicados. O que foi desfeito não entra. Os jogadores veem o mesmo cartão.</span>
+  </div>
+
+  @switch (state().status) {
+    @case ('loading') {
+      <p class="hl__note" role="status">Carregando os destaques...</p>
+    }
+    @case ('error') {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ error() }}</p>
+      </div>
+      <button matButton="outlined" type="button" class="hl__retry" (click)="load()">Tentar de novo</button>
+    }
+    @default {
+      @if (empty()) {
+        <p class="hl__note">Ninguém causou, curou ou sofreu dano neste combate.</p>
+      } @else {
+        <ul class="hl__tiles">
+          @for (t of tiles(); track t.kind) {
+            <li class="tile">
+              <span class="tile__label"><mat-icon aria-hidden="true">{{ t.icon }}</mat-icon>{{ t.label }}</span>
+              <span class="tile__sub">{{ t.sub }}</span>
+              <span class="tile__value">{{ t.value }}</span>
+              <span class="tile__names">{{ t.names }}</span>
+              @if (playersLine(t); as line) {
+                <span class="tile__who">{{ line }}</span>
+              }
+            </li>
+          }
+        </ul>
+      }
+
+      @if (rows().length > 0) {
+        <div class="tbl">
+          <h3 class="tbl__title" id="tbl-title">Números de cada jogador</h3>
+          <div role="table" aria-labelledby="tbl-title">
+          <div class="tbl__row tbl__row--head" role="row">
+            <span role="columnheader">Personagem</span>
+            <span role="columnheader">Dano causado</span>
+            <span role="columnheader">Cura</span>
+            <span role="columnheader">Dano recebido</span>
+            <span role="columnheader">Golpes finais</span>
+            <span role="columnheader">Acertos críticos</span>
+          </div>
+          @for (r of rows(); track r.characterId) {
+            <div class="tbl__row" role="row">
+              <b role="rowheader">{{ r.name }}</b>
+              <span role="cell"><span class="tbl__lbl" aria-hidden="true">Dano causado</span><span class="tbl__num">{{ r.damageDealt }}</span></span>
+              <span role="cell"><span class="tbl__lbl" aria-hidden="true">Cura</span><span class="tbl__num">{{ r.healingDone }}</span></span>
+              <span role="cell"><span class="tbl__lbl" aria-hidden="true">Dano recebido</span><span class="tbl__num">{{ r.damageTaken }}</span></span>
+              <span role="cell"><span class="tbl__lbl" aria-hidden="true">Golpes finais</span><span class="tbl__num">{{ r.finalBlows }}</span></span>
+              <span role="cell"><span class="tbl__lbl" aria-hidden="true">Acertos críticos</span><span class="tbl__num">{{ r.criticalHits }}</span></span>
+            </div>
+          }
+          </div>
+        </div>
+      }
+    }
+  }
+</section>

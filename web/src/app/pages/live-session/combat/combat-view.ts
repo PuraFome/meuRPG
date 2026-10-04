@@ -119,6 +119,8 @@ export class CombatView {
   readonly vitals = input<readonly VitalsVm[]>([]);
   readonly partyInfo = input<ReadonlyMap<string, PartyMemberInfoVm>>(new Map());
   readonly sessionNumber = input(0);
+  /** The players' "O combate acabou" card is above: the summary does not repeat its heading on screen. */
+  readonly cardAbove = input(false);
   /** The player's own armor class from their sheet (without Escudo's +5), for the Escudo result. */
   readonly armorClass = input<number | null>(null);
   readonly diceMode = input.required<DiceMode>();

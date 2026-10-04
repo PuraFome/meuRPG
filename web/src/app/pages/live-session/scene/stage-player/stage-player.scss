@@ -1,0 +1,230 @@
+// The stage of the players' scene (E8-10). The host is the size container:
+// every width below is a share of it, so 390, 375 and 320 phones all fit
+// with no sideways scroll.
+:host {
+  display: block;
+  container-type: inline-size;
+}
+
+// A paper box: the page's ground in the light theme, the lighter `line` in
+// the dark one, so a cut-out of either colour still reads. No gradient, no
+// shadow.
+.stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  box-sizing: border-box;
+  padding: 20px 12px 14px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  background: light-dark(var(--mr-ground), var(--mr-line));
+}
+
+.stage__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  // Sizes per count, as shares of the stage (a phone): one or two figures, the
+  // speaker larger; three or four, one size on a grid of two columns.
+  --w: 38.5cqw;
+  --ws: 46.6cqw;
+}
+
+.stage[data-count='3'] .stage__row,
+.stage[data-count='4'] .stage__row {
+  align-items: flex-start;
+  gap: 14px 12px;
+  --w: min(112px, 34.8cqw);
+  --ws: var(--w);
+}
+
+.stage__item {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  // The speaker is above its neighbour and overlaps it by 14px.
+  &--speaking {
+    z-index: 3;
+  }
+}
+
+.stage[data-count='1'] .stage__item,
+.stage[data-count='2'] .stage__item {
+  --fig-w: var(--w);
+}
+
+.stage[data-count='1'] .stage__item--speaking,
+.stage[data-count='2'] .stage__item--speaking {
+  --fig-w: var(--ws);
+}
+
+.stage[data-count='2'] .stage__item--speaking + .stage__item,
+.stage[data-count='2'] .stage__item + .stage__item--speaking {
+  margin-left: -14px;
+}
+
+.stage[data-count='3'] .stage__item,
+.stage[data-count='4'] .stage__item {
+  --fig-w: var(--w);
+  // The grid cell is the figure plus 8px each side, so names can be as wide as the cell.
+  width: calc(var(--w) + 16px);
+}
+
+.stage__btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+// Names are whole and on one line; the block is 50px high for everyone so
+// the base lines of a row share a level whoever speaks.
+.stage__who {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-height: 50px;
+  text-align: center;
+}
+
+.stage__name {
+  font-family: var(--mr-font-display);
+  font-size: 17px;
+  // One line height for every name, the speaker's too, so the names share a baseline.
+  line-height: 23px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.stage__item--speaking .stage__name {
+  font-size: 20px;
+  font-weight: 800;
+}
+
+// "Fala agora": the speaker is said in words, not by size or colour alone.
+.stage__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  box-sizing: border-box;
+  padding: 0 9px 0 7px;
+  border: 1px solid var(--mr-accent);
+  border-radius: var(--mr-radius-pill);
+  color: var(--mr-accent-text);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+  white-space: nowrap;
+
+  .mat-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+  }
+}
+
+.stage__hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  line-height: 18px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+// A desktop: one row, no overlap (there is room), the speaker larger. The
+// widths shrink with the stage, so a narrow tablet still fits.
+@container (min-width: 560px) {
+  .stage__row {
+    flex-wrap: nowrap;
+    align-items: flex-end;
+    gap: min(24px, 2cqw);
+    --w: min(164px, 29cqw);
+    --ws: min(200px, 35cqw);
+  }
+
+  .stage[data-count='3'] .stage__row {
+    --w: min(156px, 24cqw);
+    --ws: min(190px, 29cqw);
+  }
+
+  .stage[data-count='4'] .stage__row {
+    align-items: flex-end;
+    --w: min(140px, 20cqw);
+    --ws: min(170px, 24cqw);
+  }
+
+  .stage[data-count] .stage__item,
+  .stage[data-count] .stage__item + .stage__item--speaking,
+  .stage[data-count] .stage__item--speaking + .stage__item {
+    --fig-w: var(--w);
+    width: auto;
+    margin-left: 0;
+  }
+
+  .stage[data-count] .stage__item--speaking {
+    --fig-w: var(--ws);
+  }
+}
+
+// Motion: only with the preference allowing it, and only after the first draw,
+// so a reload or a late joiner sees the stage already standing.
+@media (prefers-reduced-motion: no-preference) {
+  .stage--motion {
+    .stage__item {
+      transition: width 220ms ease;
+    }
+
+    .stage__item--in[data-side='left'] {
+      animation: stage-in-left 250ms ease-out;
+    }
+
+    .stage__item--in[data-side='right'] {
+      animation: stage-in-right 250ms ease-out;
+    }
+
+    .stage__item--out {
+      animation: stage-out 200ms ease-in forwards;
+    }
+  }
+}
+
+@keyframes stage-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+}
+
+@keyframes stage-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+
+@keyframes stage-out {
+  to {
+    opacity: 0;
+  }
+}
