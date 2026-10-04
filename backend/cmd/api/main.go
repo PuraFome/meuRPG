@@ -63,6 +63,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/system/v1/systemv1connect"
 	"github.com/PuraFome/meuRPG/backend/internal/campaigns"
 	"github.com/PuraFome/meuRPG/backend/internal/characters"
@@ -197,6 +198,7 @@ func run(logger *slog.Logger, cfg config.Config) error {
 			Profiles: users,
 			Members:  campaignsService, // approving or rejecting a character settles the membership (RN-15)
 			Rules:    rulesContent,
+			Dice:     levelUpDice{campaignsService}, // how a player rolls the hit die of a level-up (RN-18)
 			Logger:   logger,
 		})
 		if err != nil {
@@ -228,6 +230,9 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		if err != nil {
 			return err
 		}
+		// A level-up changes the sheet everyone in the session watches, so
+		// characters publishes the same hint as an XP award.
+		charactersService.SetLive(playService)
 		mapsService, err = maps.New(maps.Config{
 			Pool:       pool,
 			Blobs:      blobs,             // nil: images are off
@@ -363,4 +368,20 @@ func (d diceModes) ForcedDice(ctx context.Context, campaignID, userID string) (p
 		return play.DiceForcedPhysical, err
 	}
 	return play.DiceChoice, err
+}
+
+// levelUpDice adapts the campaigns service to the characters module's
+// DiceRules: the guided level-up only needs to know what the campaign's
+// setting forces on a player, not campaigns' own types.
+type levelUpDice struct{ campaigns *campaigns.Service }
+
+func (d levelUpDice) LevelUpDice(ctx context.Context, campaignID, userID string) (charactersv1.LevelUpDiceRule, error) {
+	mode, err := d.campaigns.CampaignDiceMode(ctx, campaignID, userID)
+	switch mode {
+	case campaigns.DiceModeApp:
+		return charactersv1.LevelUpDiceRule_LEVEL_UP_DICE_RULE_FORCED_IN_APP, err
+	case campaigns.DiceModePhysical:
+		return charactersv1.LevelUpDiceRule_LEVEL_UP_DICE_RULE_FORCED_PHYSICAL, err
+	}
+	return charactersv1.LevelUpDiceRule_LEVEL_UP_DICE_RULE_PLAYER_CHOOSES, err
 }

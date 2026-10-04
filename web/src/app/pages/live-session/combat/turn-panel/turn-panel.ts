@@ -2,7 +2,7 @@ import { Component, ElementRef, computed, effect, input, output, viewChild } fro
 import { MatIconModule } from '@angular/material/icon';
 
 import { type Combatant, CombatantState, type Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { formatMeters, feetToMeters } from '../../../../core/combat/combat-grid';
+import { metersText, squaresFree } from '../../../../core/units';
 import { article } from '../../../../core/combat/combat-log';
 import {
   combatantInitial,
@@ -129,9 +129,10 @@ export class TurnPanel {
     const own = this.own();
     return own
       ? {
-          left: formatMeters(feetToMeters(own.movementLeftFt)),
-          total: formatMeters(feetToMeters(own.speedFt * (own.dashed ? 2 : 1))),
-          used: own.movementUsedFt > 0 ? formatMeters(feetToMeters(own.movementUsedFt)) : '',
+          left: metersText(own.movementLeftFt),
+          total: metersText(own.speedFt * (own.dashed ? 2 : 1)),
+          free: squaresFree(own.movementLeftFt),
+          used: own.movementUsedFt > 0 ? metersText(own.movementUsedFt) : '',
           none: own.movementLeftFt <= 0,
           percent: Math.max(
             0,

@@ -17,13 +17,15 @@ import {
   PendingDamageStatus,
   type ReactionPrompt,
 } from '../../../../gen/meurpg/play/v1/combat_pb';
-import { ActionEconomy, type Attack, AttackKind } from '../../../../gen/meurpg/rules/v1/rules_pb';
+import { ActionEconomy, type Attack, AttackKind, type SpellDetails } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { type AttackDie, CombatClient, newKey } from '../../../core/combat/combat-client';
 import { combatErrorMessage } from '../../../core/combat/combat-errors';
-import { type Square, canReach, reachSquares } from '../../../core/combat/combat-grid';
+import { type Square, canReach } from '../../../core/combat/combat-grid';
+import { reachSquares } from '../../../core/units';
 import { openDamages, pendingNote } from '../../../core/combat/attack-flow';
 import { CombatLogState } from '../../../core/combat/combat-log-state';
 import type { CombatState } from '../../../core/combat/combat-state';
+import { SpellCatalog } from '../../../core/combat/spell-catalog';
 import { TurnOptionsState } from '../../../core/combat/turn-options-state';
 import { saveAnnouncement } from '../../../core/combat/death-saves';
 import { currentCombatant, isDown, isPlayer, ownCombatant, npcKindLabel } from '../../../core/combat/combat-view';
@@ -33,6 +35,9 @@ import { MoveSaves } from '../../../core/maps/move-saves';
 import { RosterClient } from '../../../core/maps/roster-client';
 import type { TokenDrop } from '../../../shared/combat-map/combat-map';
 import { PHONE_QUERY, mediaQuery } from '../../../shared/map-view/media-query';
+import type { SpellDetailsData } from '../../../shared/spell-details/spell-details';
+import { openSpellDetails } from '../../../shared/spell-details/open-spell-details';
+import { spellDetailsFromGen } from '../../../shared/spell-details/spell-details-map';
 import type { PartyMemberInfoVm, VitalsVm } from '../live-session.types';
 import { ActionGroups } from './action-groups/action-groups';
 import { AdjustNpc, type AdjustNpcData } from './adjust-npc/adjust-npc';
@@ -105,6 +110,7 @@ import { TurnPanel } from './turn-panel/turn-panel';
 export class CombatView {
   private readonly api = inject(CombatClient);
   private readonly roster = inject(RosterClient);
+  private readonly catalog = inject(SpellCatalog);
   private readonly dialog = inject(MatDialog);
   private readonly bottomSheet = inject(MatBottomSheet);
   protected readonly phone = mediaQuery(PHONE_QUERY);
@@ -122,6 +128,8 @@ export class CombatView {
   readonly vitals = input<readonly VitalsVm[]>([]);
   readonly partyInfo = input<ReadonlyMap<string, PartyMemberInfoVm>>(new Map());
   readonly sessionNumber = input(0);
+  /** The players' "O combate acabou" card is above: the summary does not repeat its heading on screen. */
+  readonly cardAbove = input(false);
   /** The player's own armor class from their sheet (without Escudo's +5), for the Escudo result. */
   readonly armorClass = input<number | null>(null);
   readonly diceMode = input.required<DiceMode>();
@@ -196,6 +204,12 @@ export class CombatView {
       return null;
     }
     return [...joint.acting.filter((m) => !m.mine).map((m) => m.label), ...(joint.waitsForMaster ? ['o mestre'] : [])];
+  });
+  /** The player's own slots, for the rows above the spell list. */
+  protected readonly ownSlots = computed(() => {
+    const own = this.own();
+    const v = own ? this.vitals().find((x) => x.characterId === own.characterId) : undefined;
+    return { usage: v?.spellSlots ?? [], pact: v?.pactSlots ?? null };
   });
   /** The squares a player's own token may be dragged to, on their turn. */
   protected readonly reach = computed(() => {
@@ -295,7 +309,25 @@ export class CombatView {
   protected readonly active = computed(() => this.encounter()?.status === EncounterStatus.ACTIVE);
   protected readonly ended = computed(() => this.encounter()?.status === EncounterStatus.ENDED);
 
+  /** The SRD's details of each spell in the list (read once, cached by the catalog): the line under a spell's name. */
+  protected readonly spellDetails = signal<ReadonlyMap<string, SpellDetails>>(new Map());
+
   constructor() {
+    effect(() => {
+      const spells = this.options()?.options?.spells ?? [];
+      const campaignId = this.campaignId();
+      for (const s of spells) {
+        const key = s.spell?.key ?? '';
+        if (!key || untracked(() => this.spellDetails().has(key))) {
+          continue;
+        }
+        void this.catalog.details(campaignId, key).then((d) => {
+          if (d) {
+            this.spellDetails.update((m) => new Map(m).set(key, d));
+          }
+        });
+      }
+    });
     // The master's lists need the roster (the kind of each NPC, the class
     // line, the player's name).
     effect(() => {
@@ -540,6 +572,26 @@ export class CombatView {
       ariaLabel: asReaction ? `Ataque de oportunidade com ${attack.namePt || attack.name}` : `Atacar com ${attack.namePt || attack.name}`,
       labelledBy: 'sheet-t',
     }).subscribe();
+  }
+
+  /** The "?" of a spell: its description (the SRD's, read once through the catalog), a sheet on a phone. */
+  protected describeSpell(key: string, name: string): void {
+    openSpellDetails(this.dialog, this.bottomSheet, this.spellDetailsData(key, name));
+  }
+
+  /** What the details sheet needs: the name now, and the text when it loads. */
+  private spellDetailsData(key: string, name: string): SpellDetailsData {
+    const campaignId = this.campaignId();
+    return {
+      namePt: name,
+      load: async () => {
+        const details = await this.catalog.details(campaignId, key);
+        if (!details) {
+          throw new Error('spell details unavailable');
+        }
+        return spellDetailsFromGen(details);
+      },
+    };
   }
 
   /** "Conjurar": the cast sheet (the slot, the targets, the roll, the damage). */

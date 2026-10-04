@@ -469,7 +469,7 @@ describe('LiveSession', () => {
     it('draws a scene that was already open with the snapshot, with no announcement and no focus move', async () => {
       scenes.scene = playerScene();
       const el = await render();
-      expect(el.querySelector('#sc-title')?.textContent).toBe('Cena: A carroça tombada');
+      expect(el.querySelector('#sc-title')?.textContent).toBe('Cena: A\u00a0carroça tombada');
       expect(el.textContent).not.toContain('O mestre abriu uma cena: A carroça tombada.');
       expect(document.activeElement).not.toBe(el.querySelector('#sc-title'));
       expect(scenes.calls).toContain('get');
@@ -487,7 +487,7 @@ describe('LiveSession', () => {
       source.push({ kind: 'sceneChanged' });
       await tick();
       await tick();
-      expect(el.querySelector('#sc-title')?.textContent).toBe('Cena: A carroça tombada');
+      expect(el.querySelector('#sc-title')?.textContent).toBe('Cena: A\u00a0carroça tombada');
       expect(el.textContent).toContain('O mestre abriu uma cena: A carroça tombada.');
       // The page does not take focus from where the player is.
       expect(document.activeElement).not.toBe(el.querySelector('#sc-title'));
@@ -545,7 +545,7 @@ describe('LiveSession', () => {
         const left = el.querySelector('.board__left')!;
         expect(left.firstElementChild?.tagName.toLowerCase()).toBe('app-scene-open');
         expect(left.querySelector('app-session-map')).not.toBeNull();
-        expect(el.querySelector('#so-title')?.textContent).toBe('Cena: A carroça tombada');
+        expect(el.querySelector('#so-title')?.textContent).toBe('Cena: A\u00a0carroça tombada');
         expect(el.textContent).toContain('Não passou');
       });
 

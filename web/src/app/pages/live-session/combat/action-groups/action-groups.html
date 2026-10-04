@@ -28,7 +28,8 @@
         @if (a.attack; as atk) {
           <app-action-row
             [name]="attackName(atk)"
-            [pill]="isCantrip(atk) ? 'Truque' : ''"
+            [tags]="isCantrip(atk) ? ['Truque'] : []"
+            [helpName]="isCantrip(atk) ? attackName(atk) : ''"
             [detail]="attackDetail(atk)"
             [button]="asksSave(atk) ? 'Conjurar' : 'Atacar'"
             [buttonLabel]="(asksSave(atk) ? 'Conjurar ' : 'Atacar com ') + attackName(atk)"
@@ -36,23 +37,39 @@
             [reason]="reasonText(a.reason)"
             [busy]="busy()"
             (press)="asksSave(atk) ? cast.emit(atk.key) : attack.emit(atk.key)"
+            (help)="describe.emit({ key: atk.key, name: attackName(atk) })"
           />
         }
       }
     }
-    @if (action_().spells.length) {
-      <p class="group__sub">Magias</p>
-      @for (s of action_().spells; track s.spell?.key) {
+    @if (spells().length) {
+      <p class="group__sub">
+        Magias <span class="group__note">(as que dá para conjurar agora vêm primeiro)</span>
+      </p>
+      @if (slotRows().length) {
+        <ul class="slots" aria-label="Seus espaços de magia">
+          @for (r of slotRows(); track r.title) {
+            <li class="slots__row">
+              <b class="slots__title">{{ r.title }}</b>
+              <app-slot-dots [total]="r.total" [used]="r.used" />
+              <span class="slots__text">{{ r.text }}</span>
+            </li>
+          }
+        </ul>
+      }
+      @for (s of spells(); track s.spell?.key) {
         <app-action-row
-          [name]="s.spell?.namePt || s.spell?.name || ''"
-          [pill]="pillOf(s)"
-          [detail]="spellDetail(s)"
-          button="Conjurar"
-          [buttonLabel]="'Conjurar ' + (s.spell?.namePt || s.spell?.name || '')"
-          [off]="spellOff(s)"
+          [name]="spellName(s)"
+          [tags]="spellTags(s)"
+          [helpName]="spellName(s)"
+          [detail]="spellLine(s)"
+          [button]="spellButton()"
+          [buttonLabel]="'Conjurar ' + spellName(s)"
+          [off]="!s.enabled"
           [reason]="reasonText(s.reason)"
           [busy]="busy()"
           (press)="cast.emit(s.spell?.key ?? '')"
+          (help)="describe.emit({ key: s.spell?.key ?? '', name: spellName(s) })"
         />
       }
     }
@@ -93,25 +110,12 @@
     </div>
   </section>
 
-  @if (bonus().spells.length || bonus().features.length) {
+  @if (bonus().features.length) {
     <section class="group" aria-labelledby="g-bonus">
       <header class="group__head">
         <h3 class="group__name" id="g-bonus">Ação bônus</h3>
         <app-group-state [word]="state(own().bonusActionUsed)" [used]="own().bonusActionUsed" />
       </header>
-      @for (s of bonus().spells; track s.spell?.key) {
-        <app-action-row
-          [name]="s.spell?.namePt || s.spell?.name || ''"
-          [pill]="pillOf(s)"
-          [detail]="spellDetail(s)"
-          button="Conjurar"
-          [buttonLabel]="'Conjurar ' + (s.spell?.namePt || s.spell?.name || '')"
-          [off]="spellOff(s)"
-          [reason]="reasonText(s.reason)"
-          [busy]="busy()"
-          (press)="cast.emit(s.spell?.key ?? '')"
-        />
-      }
       @for (f of bonus().features; track f.action?.key) {
         <app-action-row
           [name]="f.action?.namePt ?? ''"
@@ -127,21 +131,12 @@
     </section>
   }
 
-  @if (reaction().spells.length || reaction().features.length) {
+  @if (reaction().features.length) {
     <section class="group" aria-labelledby="g-reaction">
       <header class="group__head">
         <h3 class="group__name" id="g-reaction">Reação</h3>
         <app-group-state [word]="state(own().reactionUsed)" [used]="own().reactionUsed" />
       </header>
-      @for (s of reaction().spells; track s.spell?.key) {
-        <app-action-row
-          [name]="s.spell?.namePt || s.spell?.name || ''"
-          [pill]="pillOf(s)"
-          [detail]="spellHint(s)"
-          [off]="spellOff(s)"
-          [reason]="reasonText(s.reason)"
-        />
-      }
       @for (f of reaction().features; track f.action?.key) {
         <app-action-row
           [name]="f.action?.namePt ?? ''"

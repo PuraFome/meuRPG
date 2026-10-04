@@ -1,7 +1,8 @@
 import { CombatantKind } from '../../../gen/meurpg/play/v1/combat_pb';
 import { combatant, encounter } from './combat-testing';
 import { turnBanner } from './combat-view';
-import { afterTurn, distanceText, jointTurn, leftSentence, missingLine, npcPlural, orderItems, passNote, playsBefore } from './joint-turn';
+import { distanceText } from '../units';
+import { afterTurn, jointTurn, leftSentence, missingLine, npcPlural, orderItems, passNote, playsBefore } from './joint-turn';
 
 const P = CombatantKind.PLAYER;
 

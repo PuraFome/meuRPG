@@ -5,7 +5,7 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
-import { SpellDetailsVm } from '../character-editor.types';
+import { SpellDetailsVm } from './spell-details.types';
 import { SpellFieldValue, spellFields, spellSubtitle } from './spell-details-format';
 
 export interface SpellDetailsData {
@@ -13,6 +13,8 @@ export interface SpellDetailsData {
   readonly namePt: string;
   /** Fetches the details (the page caches them per spell, so a second open is instant). */
   readonly load: () => Promise<SpellDetailsVm>;
+  /** A dialog drawn like a phone's bottom sheet (the "?" inside the cast sheet). */
+  readonly sheet?: boolean;
 }
 
 type DetailsState =
@@ -23,7 +25,7 @@ type DetailsState =
  * circle and school, the four things a player looks up at the table (casting
  * time, range, components, duration) in Portuguese, and the SRD's own text in
  * English, marked as such. One component in two containers: a bottom sheet
- * on a phone, a 560px dialog from a tablet up (the page picks). Esc, the X
+ * on a phone, a 560px dialog from a tablet up (`openSpellDetails` picks). Esc, the X
  * and "Fechar" close it, and focus goes back to the "?" that opened it
  * (Material does that for both containers).
  */
@@ -44,7 +46,7 @@ export class SpellDetails {
     optional: true,
   });
 
-  protected readonly inSheet = this.sheetRef !== null;
+  protected readonly inSheet = this.sheetRef !== null || !!this.data.sheet;
   protected readonly state = signal<DetailsState>({ status: 'loading' });
 
   protected readonly details = computed(() => {

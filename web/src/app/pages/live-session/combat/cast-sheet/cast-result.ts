@@ -27,16 +27,25 @@ export interface SlotAfter {
   imports: [MatIconModule],
   template: `
     <div class="res" role="status" aria-live="polite">
+      @if (sentence()) {
+        <p class="sentence">{{ sentence() }}</p>
+      }
+      @if (pool()) {
+        <p class="pool">
+          <span class="pool__cap">Sua rolagem</span>
+          <span class="pool__roll">{{ pool() }}</span>
+        </p>
+      }
       @for (r of rows(); track r.id) {
         <section class="tg" [attr.aria-label]="r.label">
           <div class="tg__head">
             <b class="tg__name">{{ r.label }}</b>
             @if (r.word) {
-              <span class="pill" [class.pill--bad]="r.tone === 'bad'">
-                <mat-icon aria-hidden="true">{{ r.tone === 'bad' ? 'close' : 'check' }}</mat-icon>{{ r.word }}
+              <span class="pill" [class.pill--bad]="r.tone === 'bad'" [class.pill--neutral]="!!r.icon">
+                <mat-icon aria-hidden="true">{{ r.icon ?? (r.tone === 'bad' ? 'close' : 'check') }}</mat-icon>{{ r.word }}
               </span>
             }
-            @if (r.state) {
+            @if (r.state && !r.icon) {
               <span class="state">{{ r.state }}</span>
             }
           </div>
@@ -61,6 +70,10 @@ export class CastResult {
   readonly rows = input.required<readonly CastRow[]>();
   /** A spell with no effect the app works out. */
   readonly plain = input(false);
+  /** A spell that reads hit points, in one sentence: "O Goblin 1 adormeceu. O Capitão Goblin não foi afetado." */
+  readonly sentence = input('');
+  /** The caster's own roll of the pool, `5d8 (2, 4, 1, 5, 3) = 15`: never an enemy's hit points. */
+  readonly pool = input('');
 }
 
 /**

@@ -3,8 +3,14 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import type { Combatant, PendingDamage } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import type { ActionOption, Attack, SpellOption, TurnOptions } from '../../../../../gen/meurpg/rules/v1/rules_pb';
-import { feetToMeters, formatMeters } from '../../../../core/combat/combat-grid';
+import {
+  type ActionOption,
+  type Attack,
+  type SpellDetails,
+  type SpellOption,
+  type TurnOptions,
+} from '../../../../../gen/meurpg/rules/v1/rules_pb';
+import { distanceInSentence, metersText } from '../../../../core/units';
 import { tight } from '../../../../core/format/text';
 import {
   attackDetail,
@@ -15,9 +21,14 @@ import {
   isReactionHint,
   optionsFor,
   reasonText,
-  spellDetail,
+  spellLine,
+  spellTags,
 } from '../../../../core/combat/combat-options';
+import { spellSummary } from '../../../../core/combat/spell-summary';
+import { freeText } from '../../../../core/combat/cast-flow';
 import { mediaQuery } from '../../../../shared/map-view/media-query';
+import type { PactSlotsVm, SlotUsageVm } from '../../live-session.types';
+import { SlotDots } from '../../slot-dots/slot-dots';
 import { ActionRow } from './action-row';
 import { EconomyTiles } from './economy-tiles';
 import { GroupState } from './group-state';
@@ -27,17 +38,22 @@ import { GroupState } from './group-state';
  * `GetTurnOptions` works out, grouped by economy. Each group header carries
  * its state word (the open circle and "Disponível", or "Usada"). Ação has
  * the attacks, the spells and the standard actions; Ação bônus and Reação
- * the spells and features of their economy; Movimento, "Mover". A spell
- * row has "Conjurar" (the cast sheet, `cast`; a cantrip that asks for a saving
- * throw is cast too, not attacked), a feature row "Usar" (`feature`, a
- * TakeAction); Escudo, a reaction, has none: it asks when a hit lands.
+ * the features of their economy; Movimento, "Mover". The spells of every
+ * economy are one list in Ação, in the order the server sends (the ones that can
+ * be cast now first, then by circle and name: it is not sorted again here), each
+ * with the "?" that opens its description (`describe`) and a tag for the economy
+ * when it is not an action; the slot rows above them are the one explanation of
+ * every "Sem espaço". A spell row has "Conjurar" (the cast sheet, `cast`; a
+ * cantrip that asks for a saving throw is cast too, not attacked), a feature row
+ * "Usar" (`feature`, a TakeAction); Escudo, a reaction, has none: it asks when a
+ * hit lands, and on the character's own turn it says "Só fora da sua vez".
  * With Extra Attack the Ação header says how many attacks are left and the
  * attacks stay enabled. Disabled options keep their place with the reason, by
  * code (`reasonText`).
  */
 @Component({
   selector: 'app-action-groups',
-  imports: [ActionRow, EconomyTiles, GroupState, MatButtonModule, MatIconModule],
+  imports: [ActionRow, EconomyTiles, GroupState, MatButtonModule, MatIconModule, SlotDots],
   templateUrl: './action-groups.html',
   styleUrl: './action-groups.scss',
 })
@@ -54,6 +70,14 @@ export class ActionGroups {
   /** A hit of this turn whose damage is still to roll. */
   readonly pendingRoll = input<PendingDamage | null>(null);
   readonly busy = input(false);
+  /** The character's slots, for the rows above the spells ("1º círculo ○ ✕ ✕ ✕ 1 livre de 4"). */
+  readonly slots = input<{ readonly usage: readonly SlotUsageVm[]; readonly pact: PactSlotsVm | null }>({
+    usage: [],
+    pact: null,
+  });
+
+  /** What `GetSpellDetails` said about each spell of the list, for the line under its name. */
+  readonly details = input<ReadonlyMap<string, SpellDetails>>(new Map());
 
   /** "Atacar": the key of the attack, as in `Attack.key`. */
   readonly attack = output<string>();
@@ -66,12 +90,32 @@ export class ActionGroups {
   readonly move = output<void>();
   /** "Rolar o dano" of a hit that waits for its roll. */
   readonly rollDamage = output<void>();
+  /** The "?" of a spell: the key and the Portuguese name. */
+  readonly describe = output<{ key: string; name: string }>();
 
 
   /** From 1024px the economy tiles are the panel's first thing (E6-14). */
   protected readonly desktop = mediaQuery('(min-width: 1024px)');
 
   protected readonly action_ = computed(() => optionsFor(this.options(), 'action'));
+  /** Every spell, whatever its economy, as the server ordered them. */
+  protected readonly spells = computed(() => this.options().spells);
+  /** One row for each circle the character has slots in, then the pact slots. */
+  protected readonly slotRows = computed(() => {
+    const { usage, pact } = this.slots();
+    const rows = usage
+      .filter((u) => u.total > 0)
+      .map((u) => ({ title: circleLabel(u.level), total: u.total, used: u.used, text: freeText(u.total - u.used, u.total) }));
+    if (pact && pact.total > 0) {
+      rows.push({
+        title: `${circleLabel(pact.slotLevel)} (pacto)`,
+        total: pact.total,
+        used: pact.used,
+        text: freeText(pact.total - pact.used, pact.total),
+      });
+    }
+    return rows;
+  });
   protected readonly bonus = computed(() => optionsFor(this.options(), 'bonus'));
   protected readonly reaction = computed(() => optionsFor(this.options(), 'reaction'));
   /** Atacar and Conjurar are not repeated here: they are the rows above. */
@@ -86,14 +130,15 @@ export class ActionGroups {
     const own = this.own();
     const left = own.movementLeftFt;
     const used = own.movementUsedFt;
-    const squares = Math.floor(left / 5);
     return {
       left,
-      pill: left > 0 ? tight(`Restam ${formatMeters(feetToMeters(left))}`) : 'Sem movimento',
+      pill: left > 0 ? tight(`Restam ${metersText(left)}`) : 'Sem movimento',
       text:
         left > 0
           ? tight(
-              `${used > 0 ? `Você já andou ${formatMeters(feetToMeters(used))}. ` : ''}Dá para andar ${used > 0 ? 'mais ' : ''}${formatMeters(feetToMeters(left))} (${squares} ${squares === 1 ? 'quadrado' : 'quadrados'}).`,
+              used > 0
+                ? `Você já andou ${metersText(used)}. Dá para andar mais ${distanceInSentence(left)}.`
+                : `Você ainda não andou. Dá para andar até ${distanceInSentence(left)}.`,
             )
           : 'Você já usou todo o movimento deste turno.',
     };
@@ -116,23 +161,21 @@ export class ActionGroups {
   protected readonly state = groupState;
   protected readonly isCantrip = isCantrip;
 
-  protected pillOf(s: SpellOption): string {
-    return circleLabel(s.spell?.level ?? 0);
+  protected spellTags = spellTags;
+
+  /** The line under a spell's name. */
+  protected spellLine(s: SpellOption): string {
+    return spellLine(s, spellSummary(this.details().get(s.spell?.key ?? '')));
   }
 
-  protected spellDetail(s: SpellOption): string {
-    return spellDetail(s);
+  /** The name a spell goes by on screen and in an accessible name. */
+  protected spellName(s: SpellOption): string {
+    return s.spell?.namePt || s.spell?.name || '';
   }
 
-  /** A reaction that waits for its trigger says so instead of a reason. */
-  protected spellHint(s: SpellOption): string {
-    return isReactionHint(s.reason)
-      ? 'Quando você for atingido, o app pergunta se quer usar.'
-      : this.spellDetail(s);
-  }
-
-  protected spellOff(s: SpellOption): boolean {
-    return !s.enabled && !isReactionHint(s.reason);
+  /** A reaction (Escudo) keeps a dashed, disabled "Conjurar": it asks when its trigger happens. */
+  protected spellButton(): string {
+    return 'Conjurar';
   }
 
   protected featureOff(a: ActionOption): boolean {

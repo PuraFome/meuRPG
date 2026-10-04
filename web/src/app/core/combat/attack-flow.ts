@@ -4,7 +4,7 @@ import {
   PendingDamageStatus,
   type TargetInReach,
 } from '../../../gen/meurpg/play/v1/combat_pb';
-import { feetToMeters, formatMeters } from './combat-grid';
+import { metersText } from '../units';
 import { joinDots, tight } from '../format/text';
 import { stateWord } from './combat-view';
 
@@ -78,13 +78,13 @@ export function targetRows(targets: readonly TargetInReach[], rangeFt: number): 
       parts.push(word);
     }
     if (t.distanceFt !== undefined) {
-      parts.push(`a ${formatMeters(feetToMeters(t.distanceFt))}`);
+      parts.push(`a ${metersText(t.distanceFt)}`);
     }
     return {
       id: t.combatantId,
       label: t.label,
       sub: tight(joinDots(parts)),
-      blocked: t.tooFar ? tight(`Longe demais: alcance de ${formatMeters(feetToMeters(rangeFt))}`) : '',
+      blocked: t.tooFar ? tight(`Longe demais: alcance de ${metersText(rangeFt)}`) : '',
     };
   });
 }

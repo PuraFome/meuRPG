@@ -14,7 +14,7 @@ import (
 // the proto's header ("Joint turns") is the API reference for the rules.
 //
 // A group is never stored. When its turn starts, its living members get
-// turn_state 'acting' (migration 00078) and that answer stays until the turn
+// turn_state 'acting' (migration 00089) and that answer stays until the turn
 // passes, so a reorder, a reinforcement or a hidden member cannot change a
 // turn already running. A member who ended its part is 'ended'.
 

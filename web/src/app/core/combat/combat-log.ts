@@ -8,12 +8,15 @@ import {
   DeathSaveOutcome,
   PendingDamageStatus,
   SaveOutcome,
+  SpellEffectKind,
+  SpellEffectOutcome,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { rollText } from './combat-dice';
 import { conditionName, listNames } from './conditions';
-import { feetToMeters, formatMeters } from './combat-grid';
+import { metersText } from '../units';
 import { circleLabel } from './combat-options';
 import { countsSentence } from './death-saves';
+import { effectWords, poolRollText, reasonWords } from './hp-effects';
 
 /**
  * The combat log as the screens read it (E6-11, E6-14, E6-15): the server
@@ -34,7 +37,51 @@ export interface LogLine {
   /** The master's alone ("Só o mestre vê"). */
   readonly hidden: boolean;
   readonly undoable: boolean;
+  /** The master's account of a pool spell (Sono): the dice, each creature and what is left of the total. */
+  readonly card?: PoolCard;
 }
+
+/** One creature of the pool card, in the order the pool went through them. */
+export interface PoolCardRow {
+  readonly id: string;
+  readonly label: string;
+  /** "7 PV". */
+  readonly hitPoints: string;
+  /** "15 − 7 = 8 restam", "27 é mais que 8 restantes". */
+  readonly math: string;
+  /** "Adormeceu · Inconsciente", "Não afetado". */
+  readonly word: string;
+  readonly icon: string;
+  readonly affected: boolean;
+}
+
+/** What only the master reads under a Sono or a Borrifo de Cores (E8-03). */
+export interface PoolCard {
+  /** "5d8 (2, 4, 1, 5, 3) = 15": the total is the pool of hit points. */
+  readonly roll: string;
+  /** The caster typed the sum of physical dice: there are no faces, and the card says so. */
+  readonly physical: boolean;
+  readonly rows: readonly PoolCardRow[];
+  /** What the spell does, once, for the one who has not seen it before. */
+  readonly note: string;
+  /** "Pensantus gastou um espaço de 1º círculo.". */
+  readonly slot: string;
+  /** The creatures that got a condition, to change it ("Mudar as condições do Goblin 1"). */
+  readonly changeFor: readonly { readonly id: string; readonly label: string }[];
+  /** The same in one sentence, for a screen reader. */
+  readonly summary: string;
+}
+
+/** Who is reading, for the spells that read hit points: the master's sentence has the hit
+ * points and the limit, the player's only who was affected; and a player's character is named
+ * without an article ("Brisa"), a creature with one ("o Goblin 1"). */
+export interface LogContext {
+  readonly master: boolean;
+  /** The labels of the player characters in this combat. */
+  readonly players: ReadonlySet<string>;
+}
+
+const NO_CONTEXT: LogContext = { master: false, players: new Set() };
 
 export interface LogGroup {
   readonly round: number;
@@ -145,7 +192,10 @@ function castTargetText(t: CombatLogSpellTarget): string {
 /** "conjura Mísseis Mágicos (1º círculo): 2 dardos no Capitão Goblin, 7 de
  * dano; 1 dardo no Goblin 2, 5 de dano". A spell with no effect the app
  * knows only names who it touches ("conjura Sono no Goblin 1"). */
-function castText(e: CombatLogEntry): string {
+function castText(e: CombatLogEntry, ctx: LogContext): { text: string; card?: PoolCard } {
+  if (e.spell && e.spell.effectKind !== SpellEffectKind.UNSPECIFIED) {
+    return hpCastText(e, ctx);
+  }
   const slot = e.spell?.slot;
   const circle = slot ? ` (${circleLabel(slot.level)})` : '';
   const targets = e.spell?.targets ?? [];
@@ -157,7 +207,121 @@ function castText(e: CombatLogEntry): string {
   if (e.spell?.concentrationEndedKey) {
     out += '. A concentração anterior acabou';
   }
-  return out;
+  return { text: out };
+}
+
+// ---- the spells that read hit points (E8-03) ----
+
+/** "o Goblin 1", "Brisa": a creature has an article, a player's character does not. */
+function subject(label: string, ctx: LogContext): string {
+  return ctx.players.has(label) ? label : the(label);
+}
+
+function upFirst(text: string): string {
+  return `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
+}
+
+/** "o Goblin 1 adormece. O Capitão Goblin não foi afetado.": one clause for each creature, the
+ * first lower case because it follows a colon. */
+function clauses(e: CombatLogEntry, ctx: LogContext): string {
+  const spell = e.spell!;
+  return (spell.targets ?? [])
+    .map((t, i) => {
+      const label = t.targetLabel || 'alguém';
+      const w = effectWords(spell.effectKind, spell.effectConditionKey, t.effect?.outcome ?? SpellEffectOutcome.UNSPECIFIED, label);
+      const verb = w.affected ? w.present : notAffectedPast(label);
+      const text = `${subject(label, ctx)} ${verb}.`;
+      return i === 0 ? text : upFirst(text);
+    })
+    .join(' ');
+}
+
+function notAffectedPast(label: string): string {
+  return effectWords(SpellEffectKind.UNSPECIFIED, '', SpellEffectOutcome.NOT_AFFECTED, label).past.toLowerCase();
+}
+
+function hpCastText(e: CombatLogEntry, ctx: LogContext): { text: string; card?: PoolCard } {
+  const spell = e.spell!;
+  const name = e.keyNamePt || 'uma magia';
+  if (!ctx.master) {
+    // A player reads who was affected, never why, and never a number of an enemy's (RN-20).
+    return { text: ` conjura ${name}: ${clauses(e, ctx)}` };
+  }
+  if (spell.effectKind === SpellEffectKind.POOL) {
+    const card = poolCard(e, ctx);
+    const slot = spell.slot ? ` (${circleLabel(spell.slot.level)})` : '';
+    return { text: ` conjura ${name}${slot}`, card };
+  }
+  // One creature and its hit points: "no Capitão Goblin (27 PV, limite de 150): fica atordoado."
+  const out = (spell.targets ?? []).map((t) => {
+    const label = t.targetLabel || 'alguém';
+    const fx = t.effect;
+    const w = effectWords(spell.effectKind, spell.effectConditionKey, fx?.outcome ?? SpellEffectOutcome.UNSPECIFIED, label);
+    const prep = ctx.players.has(label) ? `em ${label}` : inThe(label);
+    const facts: string[] = [];
+    if (fx?.hitPointsBefore !== undefined) {
+      facts.push(`${fx.hitPointsBefore} PV`);
+    }
+    if (spell.effectThreshold !== undefined) {
+      facts.push(`limite de ${spell.effectThreshold}`);
+    }
+    const detail = facts.length > 0 ? ` (${facts.join(', ')})` : '';
+    const healed = fx?.healed !== undefined && w.affected ? `recupera ${fx.healed} PV` : '';
+    const reason = !w.affected && fx ? reasonWords(fx.reason, fx.hitPointsBefore, fx.poolLeft, spell.effectThreshold) : '';
+    const result = healed || (w.affected ? w.present : `${w.present}${reason ? `: ${reason}` : ''}`);
+    return `${prep}${detail}: ${result}`;
+  });
+  return { text: ` conjura ${name} ${out.join('; ')}` };
+}
+
+/** The master's table for a pool spell: the dice, then each creature from the lowest hit
+ * points up with the total that is left, and the word with the condition it got. */
+function poolCard(e: CombatLogEntry, ctx: LogContext): PoolCard | undefined {
+  const spell = e.spell!;
+  if (!spell.poolRoll) {
+    return undefined;
+  }
+  const targets = [...(spell.targets ?? [])].sort((a, b) => {
+    const oa = a.effect?.poolOrder ?? Number.MAX_SAFE_INTEGER;
+    const ob = b.effect?.poolOrder ?? Number.MAX_SAFE_INTEGER;
+    return oa - ob;
+  });
+  const condition = conditionName(spell.effectConditionKey);
+  const rows: PoolCardRow[] = targets.map((t) => {
+    const label = t.targetLabel || 'alguém';
+    const fx = t.effect;
+    const w = effectWords(spell.effectKind, spell.effectConditionKey, fx?.outcome ?? SpellEffectOutcome.UNSPECIFIED, label);
+    const hp = fx?.hitPointsBefore;
+    const left = fx?.poolLeft;
+    let math = '';
+    if (w.affected && hp !== undefined && left !== undefined) {
+      math = `${left + hp} − ${hp} = ${left} restam`;
+    } else if (fx && !w.affected) {
+      math = reasonWords(fx.reason, hp, left, undefined);
+    }
+    return {
+      id: t.targetId,
+      label,
+      hitPoints: hp === undefined ? '' : `${hp} PV`,
+      math,
+      word: w.affected ? `${w.past}${condition ? ` · ${condition}` : ''}` : 'Não afetado',
+      icon: w.icon,
+      affected: w.affected,
+    };
+  });
+  const roll = poolRollText(spell.poolRoll).replace(' · dado físico', '');
+  const summary = `${roll} PV${spell.poolRoll.physical ? ', dado físico' : ''}. ${rows
+    .map((r) => `${r.label}${r.hitPoints ? ` (${r.hitPoints})` : ''} ${r.affected ? `${r.word.toLowerCase()}${r.math ? `, ${r.math}` : ''}` : 'não é afetado'}.`)
+    .join(' ')}`;
+  return {
+    roll,
+    physical: spell.poolRoll.physical || spell.poolRoll.faces.length === 0,
+    rows,
+    note: 'A magia começa por quem tem menos PV e vai descontando do total; só afeta quem tem PV igual ou menor que o que sobra. Os PV de quem ficou assim não mudam: a condição não é ferimento.',
+    slot: spell.slot ? `${e.actorLabel} gastou um espaço de ${circleLabel(spell.slot.level)}.` : '',
+    changeFor: rows.filter((r) => r.affected && !!condition).map((r) => ({ id: r.id, label: r.label })),
+    summary,
+  };
 }
 
 function deathSaveText(e: CombatLogEntry): string {
@@ -234,6 +398,7 @@ function hitPointsText(e: CombatLogEntry): string {
 export function logLine(
   e: CombatLogEntry,
   encounterName = '',
+  ctx: LogContext = NO_CONTEXT,
 ): LogLine | null {
   const base = { id: e.id, actor: e.actorLabel, hidden: e.hidden, undoable: e.undoable };
   switch (e.kind) {
@@ -245,7 +410,7 @@ export function logLine(
     case CombatLogKind.ACTION:
       return { ...base, icon: e.key === 'standard:hide' ? 'visibility_off' : 'bolt', text: actionText(e) };
     case CombatLogKind.MOVED:
-      return { ...base, icon: 'arrow_forward', text: ` anda ${formatMeters(feetToMeters(e.distanceFt))}` };
+      return { ...base, icon: 'arrow_forward', text: ` anda ${metersText(e.distanceFt)}` };
     case CombatLogKind.HIT_POINTS_ADJUSTED:
       // The server puts the NPC whose hit points changed in the target.
       return { ...base, actor: e.actorLabel || e.targetLabel, icon: 'healing', text: hitPointsText(e) };
@@ -258,8 +423,10 @@ export function logLine(
       };
     case CombatLogKind.COMBAT_ENDED:
       return { ...base, icon: 'flag', actor: '', text: 'Combate encerrado' };
-    case CombatLogKind.SPELL_CAST:
-      return { ...base, icon: 'auto_awesome', text: castText(e) };
+    case CombatLogKind.SPELL_CAST: {
+      const cast = castText(e, ctx);
+      return { ...base, icon: 'auto_awesome', text: cast.text, card: cast.card };
+    }
     case CombatLogKind.REACTION: {
       const slot = e.spell?.slot;
       return { ...base, icon: 'shield', text: ` conjura ${e.keyNamePt || 'uma magia'}${slot ? ` (${circleLabel(slot.level)})` : ''}, com a reação` };
@@ -286,9 +453,10 @@ export function logGroups(
   rounds: readonly CombatLogRound[],
   currentRound: number,
   encounterName = '',
+  ctx: LogContext = NO_CONTEXT,
 ): LogGroup[] {
   return rounds.map((r) => {
-    const lines = r.entries.map((e) => logLine(e, encounterName)).filter((l): l is LogLine => l !== null);
+    const lines = r.entries.map((e) => logLine(e, encounterName, ctx)).filter((l): l is LogLine => l !== null);
     if (r.round > 1) {
       lines.push({
         id: `round-${r.round}`,

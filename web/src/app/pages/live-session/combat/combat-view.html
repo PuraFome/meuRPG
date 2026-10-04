@@ -156,6 +156,7 @@
               [campaignId]="campaignId()"
               [state]="state()"
               [master]="true"
+              (conditions)="openConditions($event)"
             />
             @if (!laptop()) {
               <app-combat-bar class="active__end" [encounter]="e" [endOnly]="true" (end)="endCombat()" />
@@ -242,11 +243,14 @@
                     [own]="me"
                     [attacksLeft]="attacksLeft()"
                     [attacksPerAction]="attacksPerAction()"
+                    [slots]="ownSlots()"
+                    [details]="spellDetails()"
                     [note]="actionNote()"
                     [pendingRoll]="ownPendingRoll()"
                     [busy]="busy()"
                     (attack)="openAttack($event)"
                     (cast)="openCast($event)"
+                    (describe)="describeSpell($event.key, $event.name)"
                     (feature)="useFeature($event)"
                     (action)="takeAction($event)"
                     (move)="openMove()"
@@ -291,6 +295,7 @@
           [encounter]="e"
           [sessionNumber]="sessionNumber()"
           [info]="info()"
+          [quietTitle]="cardAbove()"
           (leave)="leave()"
         />
       }

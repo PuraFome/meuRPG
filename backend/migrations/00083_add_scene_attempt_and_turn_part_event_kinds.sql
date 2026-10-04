@@ -1,7 +1,9 @@
 -- +goose Up
--- A member of a joint turn ended their part (turn_part_ended, MR-013). Its
--- payload holds IDs and numbers only, never a name (ADR-0007). The CHECK lists
--- every kind of the history (see 00063): dropped, if present, and added again,
+-- The session events of the second Etapa 8 wave (ADR-0007): the master gave a
+-- character one more attempt at a scene action (scene_attempt_granted,
+-- MR-015) and a player ended their part of a joint turn (turn_part_ended,
+-- MR-013; written by slice 8.11). Their payloads hold IDs only. The CHECK lists
+-- every kind of the history (see 00075): dropped, if present, and added again,
 -- so re-running this migration is safe.
 ALTER TABLE session_events
     DROP CONSTRAINT IF EXISTS session_events_kind_valid,
@@ -38,11 +40,12 @@ ALTER TABLE session_events
         'scene_check_rolled',
         'clue_revealed',
         'stage_changed',
+        'scene_attempt_granted',
         'turn_part_ended'
     ));
 
 -- +goose Down
-DELETE FROM session_events WHERE kind = 'turn_part_ended';
+DELETE FROM session_events WHERE kind IN ('scene_attempt_granted', 'turn_part_ended');
 
 ALTER TABLE session_events
     DROP CONSTRAINT IF EXISTS session_events_kind_valid,

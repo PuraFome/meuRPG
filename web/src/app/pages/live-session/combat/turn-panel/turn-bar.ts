@@ -1,6 +1,6 @@
 import { Component, computed, input, output, signal } from '@angular/core';
 import type { Combatant } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { feetToMeters, formatMeters } from '../../../../core/combat/combat-grid';
+import { distanceText } from '../../../../core/units';
 import { leftSentence, passNote } from '../../../../core/combat/joint-turn';
 import { EndPart } from '../joint-turn/end-part';
 import { EndTurn } from './end-turn';
@@ -20,8 +20,11 @@ import { EndTurn } from './end-turn';
     @if (!asking()) {
     <p class="what">{{ joint() ? 'Ainda disponível na sua parte' : 'Ainda disponível neste turno' }}</p>
     <ul class="left">
-      @for (item of left(); track item) {
-        <li><span class="dot" aria-hidden="true"></span>{{ item }}</li>
+      @for (item of left(); track item.name) {
+        <li>
+          <span class="dot" aria-hidden="true"></span>
+          <span>{{ item.name }}@if (item.amount) {&nbsp;<b>{{ item.amount }}</b>}</span>
+        </li>
       } @empty {
         <li>Nada: só falta encerrar o turno.</li>
       }
@@ -60,9 +63,11 @@ import { EndTurn } from './end-turn';
       color: var(--mr-ink-muted);
     }
 
+    // Two columns, so "Mover 7,5 m · 5 quadrados" never wraps in the middle of
+    // a number: it takes the cell, and the dot stays at the end of its line.
     .left {
-      display: flex;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 4px 16px;
       margin: 0;
       padding: 0;
@@ -78,6 +83,7 @@ import { EndTurn } from './end-turn';
     }
 
     .dot {
+      flex: none;
       box-sizing: border-box;
       width: 16px;
       height: 16px;
@@ -108,20 +114,20 @@ export class TurnBar {
 
   protected readonly left = computed(() => {
     const c = this.own();
-    const items: string[] = [];
+    const items: { name: string; amount?: string }[] = [];
     if (!c.actionUsed) {
-      items.push('Ação');
+      items.push({ name: 'Ação' });
     } else if (this.attacksLeft() > 0) {
-      items.push(`${this.attacksLeft()} ${this.attacksLeft() === 1 ? 'ataque' : 'ataques'}`);
+      items.push({ name: `${this.attacksLeft()} ${this.attacksLeft() === 1 ? 'ataque' : 'ataques'}` });
     }
     if (!c.bonusActionUsed) {
-      items.push('Ação bônus');
+      items.push({ name: 'Ação bônus' });
     }
     if (!c.reactionUsed) {
-      items.push('Reação');
+      items.push({ name: 'Reação' });
     }
     if (c.movementLeftFt > 0) {
-      items.push(`Mover ${formatMeters(feetToMeters(c.movementLeftFt))}`);
+      items.push({ name: 'Mover', amount: distanceText(c.movementLeftFt) });
     }
     return items;
   });

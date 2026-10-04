@@ -1,4 +1,4 @@
-import { Component, ElementRef, Injector, afterNextRender, computed, inject, input, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, Injector, afterNextRender, computed, inject, input, output, signal, viewChild } from '@angular/core';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -11,6 +11,7 @@ import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatLogState } from '../../../../core/combat/combat-log-state';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { entryCount, latestLine, logGroups, truncateGroups, undoLabel } from '../../../../core/combat/combat-log';
+import { isPlayer } from '../../../../core/combat/combat-view';
 import { PHONE_QUERY, mediaQuery } from '../../../../shared/map-view/media-query';
 import { openSheet } from '../sheet-host';
 import { LogList } from './log-list';
@@ -51,9 +52,14 @@ export class CombatLogPanel {
   protected readonly error = signal('');
   private readonly safe = viewChild('safe', { read: ElementRef<HTMLButtonElement> });
 
+  /** "Mudar as condições" under a Sono: the master's dialog for that creature. */
+  readonly conditions = output<string>();
+
   protected readonly groups = computed(() =>
-    logGroups(this.log().rounds(), this.encounter().round, this.encounter().name,
-    ),
+    logGroups(this.log().rounds(), this.encounter().round, this.encounter().name, {
+      master: this.master(),
+      players: new Set(this.encounter().combatants.filter(isPlayer).map((c) => c.label)),
+    }),
   );
   protected readonly shown = computed(() => (this.master() ? this.groups() : truncateGroups(this.groups(), 6)));
   protected readonly more = computed(() => !this.master() && entryCount(this.groups()) > 6);

@@ -1,0 +1,29 @@
+@if (figs().length > 0) {
+  <div class="stage" role="group" [attr.aria-label]="label()" [class.stage--motion]="motion()" [attr.data-count]="count()">
+    <ul class="stage__row">
+      @for (fig of figs(); track fig.npc.id; let i = $index) {
+        @let npc = fig.npc;
+        <li
+          class="stage__item"
+          [class.stage__item--speaking]="npc.speaking"
+          [class.stage__item--in]="fig.entering"
+          [class.stage__item--out]="fig.leaving"
+          [attr.aria-hidden]="fig.leaving ? 'true' : null"
+          [attr.inert]="fig.leaving ? '' : null"
+          [attr.data-side]="side(i)"
+        >
+          <button type="button" class="stage__btn" [attr.data-stage-id]="npc.id" [attr.aria-label]="figureLabel(npc)" (click)="enlarge(npc)">
+            <app-stage-figure [src]="thumb(npc)" [name]="npc.name" [speaking]="npc.speaking" />
+            <span class="stage__who">
+              <span class="stage__name">{{ npc.name }}</span>
+              @if (npc.speaking) {
+                <span class="stage__tag"><mat-icon aria-hidden="true">chat_bubble_outline</mat-icon>Fala agora</span>
+              }
+            </span>
+          </button>
+        </li>
+      }
+    </ul>
+    <span class="stage__hint"><mat-icon aria-hidden="true">zoom_in</mat-icon>Escolha um personagem para ver maior</span>
+  </div>
+}

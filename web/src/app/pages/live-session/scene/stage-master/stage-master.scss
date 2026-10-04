@@ -1,0 +1,205 @@
+:host {
+  display: block;
+}
+
+.st {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.st__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--mr-space-2);
+}
+
+.st__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 700;
+}
+
+.st__count {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+  white-space: nowrap;
+}
+
+.st__lead,
+.st__empty,
+.st__reason {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.st__lead {
+  margin-top: -6px;
+}
+
+// "Aldo entrou na cena.": the green line after "Pôr em cena". The sentence is
+// also said in a live region; this copy is for the eyes.
+.st__entered {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-success-surface);
+  color: var(--mr-success-ink);
+  font-size: 14px;
+  font-weight: 700;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+// Two cards a row on a desktop, one on a phone.
+.st__cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mr-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  box-sizing: border-box;
+  padding: 14px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+
+  // The one who speaks: a 2px accent border (the padding gives 1px back).
+  &--speaking {
+    padding: 13px;
+    border: 2px solid var(--mr-accent);
+  }
+}
+
+.card__who {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.card__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.card__name {
+  font-family: var(--mr-font-display);
+  font-size: 22px;
+  line-height: 26px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.card__kind {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.card__buttons {
+  display: flex;
+  gap: 10px;
+}
+
+// Both buttons the same width; "Fala agora" is pressed: soft accent, a check,
+// the 2px border (words and an icon, never colour alone).
+.card__btn {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0 8px;
+  white-space: nowrap;
+
+  &--on {
+    border: 2px solid var(--mr-accent);
+    background: var(--mr-accent-soft);
+  }
+}
+
+.st__put {
+  align-self: flex-start;
+
+  &--off {
+    border-style: dashed;
+    color: var(--mr-ink-muted);
+  }
+}
+
+// The list in place: a box on the page, its own title and "Fechar".
+.pick {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  padding: 14px 16px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-lg);
+}
+
+.pick__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pick__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.pick__close {
+  padding: 0;
+  min-width: 0;
+}
+
+.pick__lead {
+  margin: 2px 0 6px;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+// A phone: one card a row, 56px portraits, 48px buttons side by side; at 320px
+// the two labels do not fit, so they stack, full width.
+@media (max-width: 767.98px) {
+  .st__cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .card__btn,
+  .st__put {
+    min-height: 48px;
+  }
+
+  .st__put {
+    align-self: stretch;
+  }
+}
+
+@media (max-width: 359.98px) {
+  .card__buttons {
+    flex-direction: column;
+  }
+}

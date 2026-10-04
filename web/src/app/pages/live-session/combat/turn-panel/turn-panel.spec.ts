@@ -44,7 +44,8 @@ describe('TurnPanel', () => {
   it('is the hero on the player\'s own turn, with the movement and "Encerrar turno"', () => {
     const el = text({ currentCombatantId: 'pen' });
     expect(el.querySelector('h2')?.textContent).toBe('Sua vez, Pensantus');
-    expect(el.textContent).toContain('7,5 m');
+    expect(el.textContent).toContain('7,5\u00a0m de 7,5\u00a0m');
+    expect(el.textContent).toContain('5\u00a0quadrados livres');
     const buttons = Array.from(el.querySelectorAll('button'), (b) => b.textContent?.trim());
     // "Mover" lives in the Movimento group now.
     expect(buttons.some((b) => b?.endsWith('Mover'))).toBe(false);

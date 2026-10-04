@@ -17,7 +17,7 @@ export function joinDots(parts: readonly string[]): string {
 export function tight(text: string): string {
   return text
     .replace(/(\d) a (\d)/g, '$1 a $2')
-    .replace(/(\d) (m|XP|PO)\b/g, '$1 $2')
+    .replace(/(\d) (m|XP|PO|quadrados?|pés)\b/g, '$1 $2')
     .replace(/\b(alcance|de|até|mais|restam|Restam|faltam|Faltam|a) (?=\d)/g, '$1 ');
 }
 
@@ -30,4 +30,10 @@ export function formatInt(n: number): string {
 /** "2.700 XP", the number and its unit tied with a no-break space. */
 export function formatXp(xp: number): string {
   return `${formatInt(xp)} XP`;
+}
+
+/** Ties a one-letter word to the next one ("A carroça", "O vau"), so a title never
+ * breaks after "A" and leaves it alone at the end of a line. */
+export function tieShortWords(text: string): string {
+  return text.replace(/(^|\s)(\p{L}) (?=\S)/gu, '$1$2\u00a0');
 }

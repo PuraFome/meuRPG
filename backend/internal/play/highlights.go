@@ -41,17 +41,25 @@ import (
 // characterTally is the numbers of one player's character.
 type characterTally struct {
 	characterID, name string
+	userID            string // the player it belongs to, empty for none
 	damage, healing   int32
 	taken             int32
 	finalBlows, crits int32
+	// checksPassed and checksTried are the checks rolled outside combat, only
+	// in scenes that showed their DC (the session summary, summary.go); a
+	// combat's tally leaves them at 0.
+	checksPassed, checksTried int32
 }
 
-// highlightKinds is the categories, in the order the app shows them, with the
-// number each one ranks.
-var highlightKinds = []struct {
+// highlightKind is a category with the number it ranks.
+type highlightKind struct {
 	kind  playv1.HighlightKind
 	value func(t *characterTally) int32
-}{
+}
+
+// highlightKinds is the categories of a combat, in the order the app shows
+// them. The session summary adds one (sessionHighlightKinds).
+var highlightKinds = []highlightKind{
 	{playv1.HighlightKind_HIGHLIGHT_KIND_MOST_DAMAGE, func(t *characterTally) int32 { return t.damage }},
 	{playv1.HighlightKind_HIGHLIGHT_KIND_MOST_HEALING, func(t *characterTally) int32 { return t.healing }},
 	{playv1.HighlightKind_HIGHLIGHT_KIND_TANK, func(t *characterTally) int32 { return t.taken }},
@@ -77,6 +85,9 @@ func tallyHighlights(events []playdb.ListEncounterCombatEventsRow, combatants []
 			continue
 		}
 		t := &characterTally{characterID: c.CharacterID, name: c.Label}
+		if c.UserID != nil {
+			t.userID = *c.UserID
+		}
 		byCombatant[c.ID] = t
 		out = append(out, t)
 	}
@@ -148,11 +159,16 @@ func tallyHighlights(events []playdb.ListEncounterCombatEventsRow, combatants []
 	return out
 }
 
-// highlightCategories names the winner of each category: the most of it, with
-// everyone tied. A category where nobody has anything is left out.
+// highlightCategories names the winner of each category of a combat: the most
+// of it, with everyone tied. A category where nobody has anything is left out.
 func highlightCategories(tallies []*characterTally) []*playv1.HighlightCategory {
+	return categoriesOf(highlightKinds, tallies)
+}
+
+// categoriesOf does it for the given categories.
+func categoriesOf(kinds []highlightKind, tallies []*characterTally) []*playv1.HighlightCategory {
 	var out []*playv1.HighlightCategory
-	for _, k := range highlightKinds {
+	for _, k := range kinds {
 		var best int32
 		for _, t := range tallies {
 			best = max(best, k.value(t))
@@ -209,8 +225,10 @@ func (s *Service) GetCombatHighlights(
 	tallies := tallyHighlights(events, cs)
 
 	res := &playv1.GetCombatHighlightsResponse{Categories: highlightCategories(tallies)}
-	if m.Role == authz.RoleMaster {
-		for _, t := range tallies {
+	for _, t := range tallies {
+		// The master gets every row; a player only their own character's (RN-20),
+		// zeros included, so "Seu resultado" is whole.
+		if m.Role == authz.RoleMaster || (t.userID != "" && t.userID == m.UserID) {
 			res.Characters = append(res.Characters, &playv1.CharacterHighlights{
 				CharacterId: t.characterID, Name: t.name,
 				DamageDealt: t.damage, HealingDone: t.healing, DamageTaken: t.taken, FinalBlows: t.finalBlows, CriticalHits: t.crits,

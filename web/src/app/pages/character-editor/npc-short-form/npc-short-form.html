@@ -1,4 +1,12 @@
 <div class="short" [formGroup]="form()">
+  <div class="short__id">
+  <app-portrait-field
+    class="short__portrait"
+    [control]="form().controls.portraitImageId"
+    [nameControl]="form().controls.name"
+    [campaignId]="campaignId()"
+  />
+  <div class="short__fields">
   <mat-form-field appearance="outline" subscriptSizing="dynamic" class="short__name">
     <mat-label>Nome do personagem</mat-label>
     <input matInput formControlName="name" maxlength="80" autocomplete="off" />
@@ -40,6 +48,8 @@
     <mat-error>Um número de −10 a +20.</mat-error>
     <mat-hint>Somado ao d20. Aceita 2, +2 ou −1</mat-hint>
   </mat-form-field>
+  </div>
+  </div>
 
   @if (showDefeat()) {
     <section class="short__defeat" aria-labelledby="defeat-heading">

@@ -1,0 +1,87 @@
+:host {
+  display: block;
+}
+
+// A 200px column: the label, the frame, what it holds, then the buttons as
+// wide as the frame.
+.pf {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 200px;
+  max-width: 100%;
+}
+
+.pf__label {
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--mr-ink-muted);
+}
+
+.pf__frame {
+  margin-top: 2px;
+}
+
+.pf__caption {
+  margin: 0 0 6px;
+  font-size: 13px;
+  line-height: 17px;
+  color: var(--mr-ink-muted);
+  overflow-wrap: anywhere;
+}
+
+.pf__pick {
+  width: 100%;
+  min-height: 44px;
+}
+
+// "Remover retrato": a text action that starts at the left edge of the column.
+.pf__remove {
+  align-self: flex-start;
+  margin-inline-start: -12px;
+  min-height: 44px;
+  color: var(--mr-accent-text);
+}
+
+// The question in place: a bordered box the width of the column.
+.pf__ask {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  // Below the app bar when the page scrolls it into view.
+  scroll-margin-top: 80px;
+}
+
+.pf__ask-title {
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 700;
+}
+
+.pf__ask-text {
+  margin: 0 0 4px;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.pf__ask-btn {
+  width: 100%;
+  min-height: 44px;
+
+  &--danger {
+    color: var(--mr-accent-text);
+  }
+}
+
+@media (max-width: 767.98px) {
+  .pf__pick,
+  .pf__ask-btn {
+    min-height: 48px;
+  }
+}

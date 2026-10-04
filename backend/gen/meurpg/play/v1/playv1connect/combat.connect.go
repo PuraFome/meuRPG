@@ -814,8 +814,10 @@ type CombatServiceClient interface {
 	//
 	// What each one gets (RN-20): no NPC is ever named, and damage to an NPC the
 	// master still hides counts as a number like any other. Every member gets
-	// the categories with their winners and numbers; only the master also gets
-	// `characters`, the table with every number of each character.
+	// the categories with their winners and numbers. `characters`, the table
+	// with every number of each character, is the master's; a player gets of it
+	// only the row of their own character, zeros included ("Seu resultado"),
+	// never anyone else's.
 	//
 	// Any member may call it, after the combat ended; the app reads it after
 	// `encounter_changed` shows the combat ended. The combat must be in the
@@ -1867,8 +1869,10 @@ type CombatServiceHandler interface {
 	//
 	// What each one gets (RN-20): no NPC is ever named, and damage to an NPC the
 	// master still hides counts as a number like any other. Every member gets
-	// the categories with their winners and numbers; only the master also gets
-	// `characters`, the table with every number of each character.
+	// the categories with their winners and numbers. `characters`, the table
+	// with every number of each character, is the master's; a player gets of it
+	// only the row of their own character, zeros included ("Seu resultado"),
+	// never anyone else's.
 	//
 	// Any member may call it, after the combat ended; the app reads it after
 	// `encounter_changed` shows the combat ended. The combat must be in the

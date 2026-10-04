@@ -1,18 +1,47 @@
 // One compact panel.
-// - Phone: two columns; the name and the maximum hit points on rows of
-//   their own (their labels are long), then CA and speed, then initiative.
+// - The identity block comes first: the portrait (200px) beside the fields from
+//   900px, above them before that (E8-08).
+// - The fields, phone: two columns; the name and the maximum hit points on rows
+//   of their own (their labels are long), then CA and speed, then initiative.
 // - From 600px: three; the name, then PV, CA and speed, then initiative.
-// - From 900px: four; name, PV and CA, then speed and initiative.
-// The attack cards (npc-attack-card) and the description take the full row.
+// The defeat block, the attack cards and the description take the full row.
 :host {
   display: block;
 }
 
 .short {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+
+  @media (min-width: 600px) {
+    gap: var(--mr-space-5);
+  }
+}
+
+.short__id {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+
+  @media (min-width: 900px) {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: var(--mr-space-6);
+  }
+}
+
+.short__portrait {
+  flex: none;
+}
+
+.short__fields {
   display: grid;
+  flex: 1;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: start;
   gap: var(--mr-space-4) var(--mr-space-3);
+  min-width: 0;
 
   mat-form-field {
     width: 100%;
@@ -22,29 +51,16 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--mr-space-5) var(--mr-space-4);
   }
-
-  @media (min-width: 900px) {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
 }
 
 .short__name,
-.short__hp,
-.short__wide,
-.short__defeat,
-.short__attacks {
+.short__hp {
   grid-column: 1 / -1;
 }
 
 @media (min-width: 600px) {
   .short__hp {
     grid-column: auto;
-  }
-}
-
-@media (min-width: 900px) {
-  .short__name {
-    grid-column: span 2;
   }
 }
 

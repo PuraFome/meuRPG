@@ -784,3 +784,58 @@ func TestLevelUpReason(t *testing.T) {
 		}
 	}
 }
+
+// TestMR040_CanLevelUpClearsAfterwards: the guided level-up (MR-040) takes the
+// character up on a locked sheet, and "Pode subir de nível" goes away by
+// itself: in an XP campaign because the XP no longer reaches the next level,
+// in a milestones campaign because the level passed the mark's.
+func TestMR040_CanLevelUpClearsAfterwards(t *testing.T) {
+	t.Parallel()
+	for _, mode := range []struct {
+		name string
+		mode campaignsv1.XpMode
+		give func(t *testing.T, tb *table)
+		why  charactersv1.LevelUpReason
+	}{
+		{"XP", enemies, func(t *testing.T, tb *table) { tb.master.manual(t, tb.campaign, 300, tb.ids(1)...) }, charactersv1.LevelUpReason_LEVEL_UP_REASON_XP},
+		{"milestones", milestones, func(t *testing.T, tb *table) { tb.master.milestone(t, tb.campaign, tb.ids(1)...) }, charactersv1.LevelUpReason_LEVEL_UP_REASON_MILESTONE},
+	} {
+		t.Run(mode.name, func(t *testing.T) {
+			t.Parallel()
+			tb := newTable(t, mode.mode, 1)
+			player, pc := tb.players[0], tb.pcs[0]
+			if _, err := tb.master.play.StartGameSession(t.Context(), connect.NewRequest(&playv1.StartGameSessionRequest{CampaignId: tb.campaign})); err != nil {
+				t.Fatalf("StartGameSession() error = %v", err)
+			}
+			mode.give(t, tb)
+			c := player.character(t, pc)
+			if c.GetState() != charactersv1.CharacterState_CHARACTER_STATE_LOCKED || !c.GetCanLevelUp() || c.GetLevelUpReason() != mode.why {
+				t.Fatalf("before: state %v, can level up %v (%v), want a locked sheet that can level up (%v)", c.GetState(), c.GetCanLevelUp(), c.GetLevelUpReason(), mode.why)
+			}
+			// Wizard 1 to 2: the subclass, two spells for the book, and prepared ones.
+			res, err := player.characters.LevelUpCharacter(t.Context(), connect.NewRequest(&charactersv1.LevelUpCharacterRequest{
+				CampaignId: tb.campaign, CharacterId: pc.GetId(), Revision: c.GetRevision(),
+				Choices: &charactersv1.LevelUpChoices{
+					ClassKey: "class:wizard", SubclassKey: "subclass:evocation",
+					KnownSpellKeys:    []string{"spell:magic-missile", "spell:shield"},
+					PreparedSpellKeys: []string{"spell:magic-missile", "spell:shield"},
+					HitPoints:         &charactersv1.LevelUpHitPoints{Method: charactersv1.LevelUpHitPointsMethod_LEVEL_UP_HIT_POINTS_METHOD_AVERAGE},
+				},
+			}))
+			if err != nil {
+				t.Fatalf("LevelUpCharacter() error = %v", err)
+			}
+			after := res.Msg.GetCharacter()
+			if after.GetDerived().GetTotalLevel() != 2 || after.GetCanLevelUp() || after.GetLevelUpReason() != charactersv1.LevelUpReason_LEVEL_UP_REASON_UNSPECIFIED {
+				t.Errorf("after: level %d, can level up %v (%v); want level 2 and no tag", after.GetDerived().GetTotalLevel(), after.GetCanLevelUp(), after.GetLevelUpReason())
+			}
+			// The master's tag is gone too, and so is the party's list.
+			if got := tb.master.character(t, pc); got.GetCanLevelUp() {
+				t.Error("the master still sees the tag")
+			}
+			if exp := tb.master.experience(t, tb.campaign).GetCharacters()[0]; exp.GetCanLevelUp() || exp.GetLevel() != 2 {
+				t.Errorf("the campaign's list = level %d, can level up %v", exp.GetLevel(), exp.GetCanLevelUp())
+			}
+		})
+	}
+}

@@ -1,0 +1,44 @@
+<div class="sheets" aria-hidden="true">
+  @for (s of sheets(); track s.key) {
+    <section
+      class="sheet"
+      [style.width.cm]="plan().usableW"
+      [style.height.cm]="plan().usableH"
+    >
+      <img
+        class="sheet__image"
+        alt=""
+        [src]="image().url"
+        [style.left.cm]="s.imageLeft"
+        [style.top.cm]="s.imageTop"
+        [style.width.cm]="mapSize().width"
+        [style.height.cm]="mapSize().height"
+      />
+      <svg class="sheet__lines" [attr.viewBox]="viewBox()" preserveAspectRatio="none">
+        @for (b of s.bands; track $index) {
+          <rect class="band" [attr.x]="b.x" [attr.y]="b.y" [attr.width]="b.w" [attr.height]="b.h" />
+        }
+        <path class="grid" [attr.d]="s.grid" />
+        <path class="mark" [attr.d]="s.marks" />
+        <path class="cross" [attr.d]="s.crosses" />
+      </svg>
+      <span class="chip label">{{ s.label }}</span>
+      @if (s.above) {
+        <span class="chip edge edge--above">{{ s.above }} ↑ sobrepõe {{ overlap }} cm</span>
+      }
+      @if (s.below) {
+        <span class="chip edge edge--below">{{ s.below }} ↓ sobrepõe {{ overlap }} cm</span>
+      }
+      @if (s.left) {
+        <span class="chip edge edge--left">← {{ s.left }} sobrepõe {{ overlap }} cm</span>
+      }
+      @if (s.right) {
+        <span class="chip edge edge--right">{{ s.right }} → sobrepõe {{ overlap }} cm</span>
+      }
+      <span class="chip ruler">
+        <span class="ruler__bar"></span>
+        5 cm · confira a escala · 1 quadrado = {{ squareLabel() }} cm
+      </span>
+    </section>
+  }
+</div>

@@ -5,7 +5,7 @@ import {
   EncounterStatus,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { article } from './combat-log';
-import { SQUARE_FT, feetToMeters, formatMeters } from './combat-grid';
+import { distanceText } from '../units';
 
 /**
  * Joint turns (MR-013, RN-19, RN-20): combatants adjacent in the order with
@@ -215,14 +215,6 @@ export function missingLine(labels: readonly string[], masterToo: boolean): stri
   }
   const list = `${who.slice(0, -1).join(', ')} e ${who[who.length - 1]}`;
   return `Faltam ${list}. O turno passa quando todos encerrarem a parte deles.`;
-}
-
-/** "7,5 m · 5 quadrados": a distance in meters and in squares (5 ft is one
- * square, 1,5 m). */
-export function distanceText(feet: number): string {
-  const squares = Math.floor(feet / SQUARE_FT);
-  const nb = '\u00A0'; // a number and its unit never split
-  return `${formatMeters(feetToMeters(feet)).replace(' ', nb)}${nb}· ${squares}${nb}${squares === 1 ? 'quadrado' : 'quadrados'}`;
 }
 
 /** What a member's part still has and what it spent, as the words the cards

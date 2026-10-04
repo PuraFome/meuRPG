@@ -5,12 +5,11 @@ import type { Combatant } from '../../../gen/meurpg/play/v1/combat_pb';
 import {
   type Square,
   canReach,
-  formatMeters,
   squareAt,
   squareCenter,
-  squaresToMeters,
   stepSquare,
 } from '../../core/combat/combat-grid';
+import { formatMeters, squaresToMeters } from '../../core/units';
 import { conditionTags } from '../../core/combat/conditions';
 import { combatantInitial, isPlayer } from '../../core/combat/combat-view';
 import { CombatantToken } from '../combatant-token/combatant-token';

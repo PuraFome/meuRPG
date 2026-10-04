@@ -8,6 +8,7 @@ import { formatXp } from '../../../../core/format/text';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import type { VitalsVm } from '../../live-session.types';
 import type { CombatantInfo } from '../combat-info';
+import { CombatHighlights } from '../combat-highlights/combat-highlights';
 import { CombatXp, type CombatXpState } from '../combat-xp/combat-xp';
 
 /** One player of "O grupo agora": the numbers as the master sees them. */
@@ -22,12 +23,13 @@ interface GroupRow {
  * "Combate encerrado" (E6-16): what the combat came to. The master reads the
  * rounds, who fell and how the party stands now (the live numbers, which the
  * combat never touches: they stay as they are, and "Ajustar" corrects them);
- * a player reads the same, without hit points. "Voltar à sessão" leaves the
+ * a player reads the same, without hit points. The master's "Destaques do combate"
+ * (MR-032) sit between the tiles and the lists below. "Voltar à sessão" leaves the
  * summary for the session page; it is the page's one filled button.
  */
 @Component({
   selector: 'app-combat-summary',
-  imports: [CombatantToken, CombatXp, MatButtonModule, MatIconModule],
+  imports: [CombatantToken, CombatHighlights, CombatXp, MatButtonModule, MatIconModule],
   templateUrl: './combat-summary.html',
   styleUrl: './combat-summary.scss',
 })
@@ -37,6 +39,8 @@ export class CombatSummary {
   /** The campaign, for the master's "Experiência do combate". */
   readonly campaignId = input('');
   readonly sessionNumber = input(0);
+  /** The heading is kept for a screen reader and for focus, but not drawn (a card above says the same). */
+  readonly quietTitle = input(false);
   readonly info = input<ReadonlyMap<string, CombatantInfo>>(new Map());
   /** The party's live numbers (the master's `vitals`). */
   readonly vitals = input<readonly VitalsVm[]>([]);
@@ -62,7 +66,7 @@ export class CombatSummary {
     this.players().map((c) => {
       const v = this.vitals().find((x) => x.characterId === c.characterId);
       const slots = (v?.spellSlots ?? [])
-        .map((s) => `${s.level}º círculo: ${s.total - s.used} livres de ${s.total}`)
+        .map((s) => `${s.level}º círculo: ${s.total - s.used} livres de ${s.total}`.replace(/(\d) livres de (\d)/, '$1\u00a0livres\u00a0de\u00a0$2'))
         .join(' · ');
       const down =
         v && v.hitPointsCurrent === 0

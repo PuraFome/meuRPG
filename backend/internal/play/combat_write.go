@@ -67,9 +67,15 @@ const (
 	eventStageChanged = "stage_changed"
 )
 
-// The kind of the joint turns (MR-013): a member ended their part and the turn
-// goes on. The last part to end writes turn_ended, as a turn always did.
-const eventTurnPartEnded = "turn_part_ended"
+// The kinds of the second Etapa 8 wave (migration 00083). The master gave a
+// character one more attempt at a scene action (scene_attempt_granted,
+// MR-015); a member of a joint turn ended their part and the turn goes on
+// (turn_part_ended, MR-013). The last part to end writes turn_ended, as a turn
+// always did.
+const (
+	eventSceneAttemptGranted = "scene_attempt_granted"
+	eventTurnPartEnded       = "turn_part_ended"
+)
 
 // combatWrite describes one change to a combat: who makes it, the idempotency
 // key, the kind of event it becomes, and the combat it is about (empty when
