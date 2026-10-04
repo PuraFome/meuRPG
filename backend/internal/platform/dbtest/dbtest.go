@@ -61,9 +61,22 @@ var (
 	templateErr  error
 )
 
+// The databases this process made, and the ones free for the next test: a
+// test that ends gives its database back, and the next test with the same
+// prefix empties it (DELETE, a few milliseconds) instead of building a new
+// one (CREATE DATABASE and every table, seconds on CockroachDB).
+var (
+	freeMu sync.Mutex
+	free   = map[string][]string{}
+	made   []string
+)
+
 // templateDB is a migrated database and the statements that copy it.
 type templateDB struct {
 	name string
+	// tables are the template's tables, each after the ones it references;
+	// emptying a database deletes them in reverse.
+	tables []string
 	// ddl creates the template's sequences and tables, each table after the
 	// ones it references.
 	ddl []string
@@ -91,15 +104,27 @@ func NewPool(t testing.TB, prefix string) *pgxpool.Pool {
 		t.Fatalf("build the test database template: %v", templateErr)
 	}
 
-	admin := open(t, rawURL)
-	name := fmt.Sprintf("%s_%d_%d", prefix, time.Now().UnixNano(), counter.Add(1))
-	mustExec(t, admin, "CREATE DATABASE "+name)
-	t.Cleanup(func() { dropTestDatabase(t, admin, name) })
-
+	name, reused := take(prefix)
+	if !reused {
+		name = fmt.Sprintf("%s_%d_%d", prefix, time.Now().UnixNano(), counter.Add(1))
+	}
 	dsn, err := withDatabase(rawURL, name)
 	if err != nil {
 		t.Fatalf("parse %s: %v", EnvVar, err)
 	}
+	if reused {
+		conn := open(t, dsn)
+		if _, err := conn.ExecContext(t.Context(), template.emptyAll()); err != nil {
+			t.Fatalf("empty the reused test database %s: %v", name, err)
+		}
+		return poolFor(t, prefix, name, dsn)
+	}
+	admin := open(t, rawURL)
+	mustExec(t, admin, "CREATE DATABASE "+name)
+	freeMu.Lock()
+	made = append(made, name)
+	freeMu.Unlock()
+
 	conn := open(t, dsn)
 	for _, stmt := range template.ddl {
 		if _, err := conn.ExecContext(t.Context(), stmt); err != nil {
@@ -116,12 +141,50 @@ func NewPool(t testing.TB, prefix string) *pgxpool.Pool {
 		t.Fatalf("move the migration version sequence: %v", err)
 	}
 
+	return poolFor(t, prefix, name, dsn)
+}
+
+// poolFor connects to a test database and gives it back when the test ends:
+// the pool closes first (cleanups run last-in, first-out), then the database
+// is free for the next test with this prefix.
+func poolFor(t testing.TB, prefix, name, dsn string) *pgxpool.Pool {
+	t.Helper()
+	t.Cleanup(func() {
+		freeMu.Lock()
+		free[prefix] = append(free[prefix], name)
+		freeMu.Unlock()
+	})
 	pool, err := db.NewPool(t.Context(), dsn)
 	if err != nil {
 		t.Fatalf("NewPool() error = %v", err)
 	}
 	t.Cleanup(pool.Close)
 	return pool
+}
+
+// take returns a free database with this prefix, if there is one.
+func take(prefix string) (string, bool) {
+	freeMu.Lock()
+	defer freeMu.Unlock()
+	names := free[prefix]
+	if len(names) == 0 {
+		return "", false
+	}
+	name := names[len(names)-1]
+	free[prefix] = names[:len(names)-1]
+	return name, true
+}
+
+// emptyAll deletes every row of every table, children before parents.
+func (tpl templateDB) emptyAll() string {
+	var b strings.Builder
+	for i := len(tpl.tables) - 1; i >= 0; i-- {
+		if tpl.tables[i] == "goose_db_version" {
+			continue // the migrations it records stay
+		}
+		b.WriteString("DELETE FROM " + pgx.Identifier{tpl.tables[i]}.Sanitize() + ";")
+	}
+	return b.String()
 }
 
 // errStalled says a template has stopped getting migrations: whoever was
@@ -186,11 +249,11 @@ func buildTemplate(rawURL string) (templateDB, error) {
 		break
 	}
 
-	ddl, err := schemaDDL(ctx, tpl)
+	ddl, tables, err := schemaDDL(ctx, tpl)
 	if err != nil {
 		return templateDB{}, err
 	}
-	return templateDB{name: name, ddl: ddl}, nil
+	return templateDB{name: name, ddl: ddl, tables: tables}, nil
 }
 
 // waitForVersion waits until the template has the latest migration. It
@@ -233,28 +296,28 @@ var references = regexp.MustCompile(`REFERENCES public\.(\w+)`)
 // references, so every foreign key finds its table: creating a table with
 // its foreign keys inline is quick, where adding them afterwards, as a
 // migration does, costs a schema change job each.
-func schemaDDL(ctx context.Context, tpl *sql.DB) ([]string, error) {
+func schemaDDL(ctx context.Context, tpl *sql.DB) ([]string, []string, error) {
 	sequences, err := names(ctx, tpl, `SELECT sequence_name FROM information_schema.sequences WHERE sequence_schema = 'public' ORDER BY 1`)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	tables, err := names(ctx, tpl, `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY 1`)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	var ddl []string
+	var ddl, order []string
 	for _, s := range sequences {
 		stmt, err := showCreate(ctx, tpl, "SEQUENCE", s)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		ddl = append(ddl, stmt)
 	}
 	create := make(map[string]string, len(tables))
 	for _, table := range tables {
 		if create[table], err = showCreate(ctx, tpl, "TABLE", table); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 	// Each round adds the tables whose references are all created.
@@ -273,14 +336,15 @@ func schemaDDL(ctx context.Context, tpl *sql.DB) ([]string, error) {
 			}
 			if ready {
 				ddl, done[table], progress = append(ddl, create[table]), true, true
+				order = append(order, table)
 			}
 		}
 		if !progress {
 			left := slices.DeleteFunc(slices.Clone(tables), func(t string) bool { return done[t] })
-			return nil, fmt.Errorf("foreign keys in a cycle among %s", strings.Join(left, ", "))
+			return nil, nil, fmt.Errorf("foreign keys in a cycle among %s", strings.Join(left, ", "))
 		}
 	}
-	return ddl, nil
+	return ddl, order, nil
 }
 
 func names(ctx context.Context, conn *sql.DB, query string) ([]string, error) {
