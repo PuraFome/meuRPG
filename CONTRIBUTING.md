@@ -57,7 +57,7 @@ Cada teste de integração ganha um banco novo, apagado no fim (`backend/interna
 - Os modelos de migrations antigas ficam no servidor de teste. Estão vazios e podem ser apagados (`DROP DATABASE meurpg_tpl_... CASCADE`).
 - O banco de um teste que o CockroachDB não apagou a tempo no fim (ocupado demais, como no CI) fica para trás, com um aviso no log do teste, e o teste não falha por isso. Pode ser apagado à mão do mesmo jeito.
 - As migrations em si continuam testadas do zero pelo pacote `migrations`.
-- No CI, os pacotes rodam ao mesmo tempo contra um CockroachDB só, e cada um tem 18 minutos (`go test -timeout 18m`, dentro dos 20 do job). O padrão do Go, 10 minutos por pacote, já não bastava para o `play` e o `maps`.
+- No CI, os pacotes rodam ao mesmo tempo contra um CockroachDB só, e cada um tem 25 minutos (`go test -timeout 25m`, dentro dos 30 do job; o job inteiro já levava 18 minutos em 04/10/2026). O padrão do Go, 10 minutos por pacote, já não bastava para o `play` e o `maps`.
 
 ## Login local com um provedor OIDC
 
