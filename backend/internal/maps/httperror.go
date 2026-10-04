@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 
 	"connectrpc.com/connect"
 )
@@ -37,6 +38,8 @@ type httpError struct {
 	code    connect.Code
 	reason  string
 	message string
+	// retryAfter, when set, is the Retry-After header in seconds (a 503 the client may retry).
+	retryAfter int
 }
 
 func (e *httpError) Error() string { return e.message }
@@ -104,6 +107,9 @@ func (s *Service) writeError(w http.ResponseWriter, r *http.Request, err error) 
 	header.Set("Content-Type", "application/json")
 	header.Set("Cache-Control", "no-store")
 	header.Set("X-Content-Type-Options", "nosniff")
+	if he.retryAfter > 0 {
+		header.Set("Retry-After", strconv.Itoa(he.retryAfter))
+	}
 	w.WriteHeader(he.status)
 	_ = json.NewEncoder(w).Encode(errorBody{Code: he.code.String(), Reason: he.reason, Message: he.message})
 }

@@ -46,6 +46,25 @@ O stream (`PlayService.WatchGameSession`, ADR-0005) só fica aberto enquanto alg
 
 **`max-instances = 1` enquanto o fan-out for em memória.** A mudança feita pelo mestre é entregue aos streams pelo hub do `play/live`, na memória do servidor. Com duas instâncias, o mestre numa e o jogador na outra, a mudança não chegaria ao jogador. Uma instância só (1 vCPU, 512 MiB) atende a mesa com folga. Quando não bastar, o hub dá lugar a um canal compartilhado (changefeed do CockroachDB ou Pub/Sub), e o `max-instances` pode subir.
 
+## Peças da imagem da névoa
+
+O servidor monta, para cada jogador, as peças da imagem de um mapa com névoa (MR-036, RN-10; [Arquitetura](arquitetura.md#as-peças-da-imagem-por-jogador-etapa-9-fatia-95), ADR-0016). É trabalho de CPU e de memória num servidor de 1 vCPU e 512 MiB, então tem orçamento:
+
+| Regra | Valor | Onde |
+| --- | --- | --- |
+| Cópia de trabalho de um mapa | Até 2.048 px no lado maior (8,4 MB de RGBA para 4.096 × 2.048); decodificada uma vez, encolhida quadrado por quadrado | `maps/tiles.go`, `workingMaxSide` |
+| Mapas com cópia na memória | 2, do servidor todo; o menos usado sai primeiro | `workingCopies` |
+| Renderizações ao mesmo tempo | 1; os outros pedidos esperam até 8 s | `renderWait` |
+| Faltas de cache por usuário | 60 de uma vez e 10 por segundo; passou, `429` com `Retry-After` | `newTileRenderer` |
+| Cache das peças prontas | 32 MiB de PNG, contados em bytes, o menos usado sai primeiro | `tileCacheBytes` |
+| Imagem recusada | A decodificação passaria de 192 MiB (PNG de 16 bits de mais de 24 megapixels, de antes de o envio guardar 8 bits) | `decodeLimit` |
+| Pior caso da memória | Uns 280 MB mais uns 50 MB do resto, contra o `GOMEMLIMIT` de 400 MiB (a conta está no CONTRIBUTING) | CONTRIBUTING |
+
+- **O `503` com `Retry-After: 2` e `reason: BUSY`** quer dizer que mais de uma renderização esperou mais de 8 s: acontece quando muitos jogadores abrem, ao mesmo tempo, um mapa que ninguém abriu desde que o servidor subiu (cada um precisa da primeira peça), ou logo depois de uma troca de grade ou de imagem. O app tenta de novo sozinho; as peças que já estão no cache não esperam nada. Um `429` com `reason: RATE_LIMITED` é um usuário pedindo peças demais sem cache; o app também tenta de novo.
+- **O limite de capacidade: dois mapas com névoa em jogo ao mesmo tempo.** As cópias de trabalho são do servidor todo. Com três ou mais mapas com névoa sendo jogados juntos (várias campanhas na mesma instância), as cópias se revezam, e cada volta decodifica a imagem de novo (de 150 ms a 600 ms, segurando a vez de renderização e a vaga do envio): as primeiras peças demoram mais e o `503` fica mais provável. O remédio é subir `workingCopies` (cada cópia custa até 17 MB) ou ter mais instâncias.
+- **Nada disso é guardado no disco nem no banco:** reiniciar o servidor esvazia a cópia de trabalho, as peças e as peças de cada jogador, e elas se refazem sozinhas. A memória do que cada jogador viu (o que decide as peças) é a de `map_vision_memory`.
+- **A imagem de um mapa com névoa continua no blob store, uma vez só;** as peças não ocupam cota da galeria.
+
 ## Segredos
 
 Credenciais (client secret do Google OAuth, connection string do banco, e outras) ficam no Secret Manager do Google Cloud, nunca em variável de ambiente solta no repositório ou no deploy. A lista exata de segredos por ambiente está **a definir**.
@@ -92,7 +111,7 @@ As imagens da galeria (MR-019) ficam num blob store (ver [Arquitetura](arquitetu
 
 **No primeiro deploy (a implementação do Cloud Storage ainda não existe, porque não há deploy):** um bucket só para as imagens, em `southamerica-east1`, classe Standard, com acesso uniforme no nível do bucket e prevenção de acesso público; soft delete de 7 dias (o prazo da [Privacidade](privacidade.md)); e só a conta de serviço da API com acesso (`roles/storage.objectUser` no bucket), sem nenhuma URL pública nem URL assinada: quem entrega a imagem é sempre a API, depois de conferir quem pede. A implementação entra no pacote `blob`, atrás da mesma interface.
 
-**Memória.** O envio processa uma imagem por vez em cada instância, e recusa a imagem cuja decodificação passaria de 256 MiB (estimativa do pacote `maps/images`). Com 512 MiB por instância, sobra espaço para o resto, desde que o coletor de lixo do Go saiba o limite: definir `GOMEMLIMIT` (por exemplo, `400MiB`) no primeiro deploy.
+**Memória.** O envio processa uma imagem por vez em cada instância, e recusa a imagem cuja decodificação passaria de 256 MiB (estimativa do pacote `maps/images`). Com 512 MiB por instância, sobra espaço para o resto, desde que o coletor de lixo do Go saiba o limite: definir `GOMEMLIMIT` (por exemplo, `400MiB`) no primeiro deploy. O pior caso das peças da névoa, somado, é de uns 330 MB (ver [Peças da imagem da névoa](#peças-da-imagem-da-névoa)); os envios de PNG passam a ser guardados com 8 bits por canal, para que decodificá-los depois custe 4 bytes por pixel.
 
 ## Alertas de orçamento
 

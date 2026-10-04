@@ -184,6 +184,35 @@ A névoa de guerra (MR-036) calcula, por jogador, o que o personagem vê. O `go 
 
 Memória (`TestSceneMemory -v`): uma cena compilada de 200 × 400 ocupa cerca de 430 kB e cada visão, 85 kB. O cache guarda 8 cenas com até 24 visões cada: no máximo 19 MB, dentro do orçamento de 512 MiB.
 
+### As medidas dos tiles da névoa
+
+O jogador de um mapa com névoa recebe a imagem em peças montadas no servidor (MR-036, RN-10; [Arquitetura](docs/arquitetura.md#as-peças-da-imagem-por-jogador-etapa-9-fatia-95)). Os números abaixo são de um Apple M1 Pro, imagens de teste (um gradiente com textura; uma foto de verdade comprime pior, e as peças ficam maiores); o servidor de produção tem 1 vCPU, então conte com uns 2 a 3 vezes isso no tempo.
+
+| O que | Medida |
+| --- | --- |
+| Primeira peça da caverna (240 × 160 px, 24 × 16 quadrados) | Cerca de 2 ms; uma peça de 2 kB; 1 MB de memória |
+| Primeira peça de um envio de 4.096 × 2.048 px (64 colunas) | Cerca de 150 ms (decodificar e encolher quadrado por quadrado, a maior parte) e 11 ms de renderização; a cópia de trabalho fica com 2.048 × 1.024 = 8,4 MB; pico de 46 MB de memória durante a decodificação |
+| Primeira peça de um envio de 8.192 × 4.096 px | Cerca de 460 ms; a cópia de trabalho também tem 8,4 MB; pico de 146 MB (a imagem decodificada, 4 bytes por pixel: um envio pode ter até 40 megapixels, uns 175 MB) |
+| Uma peça pronta, da cópia de trabalho (`BenchmarkTileWarm`, uma peça toda vista de 4.096 × 2.048, PNG) | 10 ms, 2,5 MB de alocação |
+| A mesma num mapa JPEG (`BenchmarkTileWarmJPEG`, com a conta dos blocos) | 22 ms, 4,2 MB de alocação |
+| Uma peça fria (`BenchmarkTileCold`: decodificar o PNG, encolher e renderizar) | 128 ms, 44 MB de alocação |
+| Um pedido de uma peça que já está no cache, pela rota inteira (`TestTileRequestTiming`, com o HTTP do próprio teste e o banco em memória) | 6,7 ms |
+| Um `304` (`If-None-Match`), pela rota inteira | 4,8 ms: não renderiza nem decodifica nada; é o custo das três leituras do banco que conferem a sessão, a participação e se o jogador vê o mapa |
+
+**O pior caso da memória**, contra o `GOMEMLIMIT` de 400 MiB (e os 512 MiB da instância), com um envio de 40 megapixels em PNG de 8 bits (o maior que o servidor guarda):
+
+| Parte | Memória |
+| --- | --- |
+| A decodificação da primeira peça (a imagem decodificada, o arquivo de até 10 MiB e a cópia que `io.ReadAll` faz), uma de cada vez e sem coincidir com um envio (a vaga é a mesma) | até uns 195 MB, passageiros |
+| As cópias de trabalho: 2 mapas de até 2.048 × 2.048 (16,8 MB no pior caso de proporção) | até 34 MB |
+| O cache de peças prontas | 32 MiB (33,5 MB), contados em bytes |
+| As cenas e visões da névoa por jogador (`TestSceneMemory`) | até 19 MB |
+| Soma | **uns 280 MB**, mais uns 50 MB do resto do servidor: dentro dos 400 MiB do `GOMEMLIMIT` e dos 512 MiB da instância |
+
+Uma imagem cuja decodificação passaria de 192 MiB (um PNG de 16 bits de mais de 24 megapixels, de antes de o envio guardar só 8 bits por canal) é recusada na primeira peça, com `503`; um JPEG de 40 megapixels decodifica em uns 60 MB.
+
+Para medir de novo: `MEURPG_MEASURE=1 go test -run 'TestTileMemory|TestTileRequestTiming' -v ./internal/maps` (este com o banco de teste) e `go test -run '^$' -bench 'Tile' -benchmem ./internal/maps` (em `backend/`, sem `-race`: o detector multiplica o tempo e a memória).
+
 ## Queries com sqlc
 
 O SQL de cada módulo fica em `backend/internal/<módulo>/queries.sql`, e o sqlc gera os métodos Go tipados num pacote ao lado (`identitydb`, `campaignsdb`, `charactersdb`, `playdb`, `mapsdb`). O schema que o sqlc usa são as próprias migrations do goose, então não existe uma segunda cópia do schema para manter igual. A configuração está em `backend/sqlc.yaml`.

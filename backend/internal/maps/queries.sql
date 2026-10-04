@@ -84,7 +84,7 @@ RETURNING *;
 -- treasure (a trap revealed to some characters only is the handler's to add).
 SELECT m.id, m.campaign_id, m.name, m.image_id, m.revealed_at, m.revision, m.created_at, m.updated_at, m.grid_columns,
        m.fog_enabled, m.base_light, m.group_vision, m.layers_revision, m.light_revision, m.vision_epoch,
-       g.name AS image_name, g.width AS image_width, g.height AS image_height,
+       g.name AS image_name, g.width AS image_width, g.height AS image_height, g.content_type AS image_content_type,
        (SELECT count(*) FROM map_points AS p WHERE p.map_id = m.id)::INT4 AS point_count,
        (SELECT count(*) FROM map_points AS p
         WHERE p.map_id = m.id AND p.kind <> 'light'
@@ -194,6 +194,15 @@ UPDATE maps
 SET light_revision = light_revision + 1
 WHERE id = $1
 RETURNING light_revision;
+
+-- name: GetMapTileInfo :one
+-- What the tile route needs of a map, in one read, from the map's ID alone: its
+-- campaign, whether players see it, the fog and grid, and its image's size and type.
+SELECT m.id, m.campaign_id, m.image_id, m.revealed_at, m.grid_columns, m.fog_enabled,
+       g.width AS image_width, g.height AS image_height, g.content_type AS image_content_type
+FROM maps AS m
+JOIN gallery_images AS g ON g.id = m.image_id
+WHERE m.id = $1;
 
 -- name: GetMapGrid :one
 -- A map's grid and its image's size, for the rows (package play, through
