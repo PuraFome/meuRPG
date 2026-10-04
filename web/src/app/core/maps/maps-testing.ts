@@ -202,6 +202,18 @@ export class FakeMapsClient {
     return list;
   }
 
+  async setSceneActionAttempts(
+    _c: string,
+    _m: string,
+    pointId: string,
+    actionId: string,
+    maxAttempts: number,
+  ): Promise<readonly SceneAction[]> {
+    this.record('setSceneActionAttempts', pointId, actionId, String(maxAttempts));
+    this.sceneActions = this.sceneActions.map((a) => (a.id === actionId ? { ...a, maxAttempts } : a));
+    return this.sceneActions;
+  }
+
   async removeSceneAction(
     _c: string,
     _m: string,

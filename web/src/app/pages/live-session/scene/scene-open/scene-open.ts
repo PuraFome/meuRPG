@@ -24,7 +24,7 @@ import { joinDots, tieShortWords } from '../../../../core/format/text';
 import { SceneClient } from '../../../../core/play/scene-client';
 import { sceneErrorMessage } from '../../../../core/play/scene-errors';
 import type { SceneState } from '../../../../core/play/scene-state';
-import { actionCount, rollCount } from '../../../../core/play/scene-view';
+import { actionCount, masterAttempts, rollCount } from '../../../../core/play/scene-view';
 import { formatClock } from '../../../../shared/session-time/session-time';
 import { PHONE_QUERY, mediaQuery } from '../../../../shared/map-view/media-query';
 import { SceneClues } from '../scene-clues/scene-clues';
@@ -75,6 +75,11 @@ export class SceneOpen {
   protected readonly error = signal('');
   protected readonly title = actionTitle;
   protected readonly subtitle = actionSubtitle;
+  protected readonly attempts = masterAttempts;
+  /** Who sees the DC, as the top of "Ações" says it (the switch of the point, RN-20). */
+  protected readonly dcNote = computed(() =>
+    this.scene()?.showDc ? 'Os jogadores veem a CD' : 'Só você vê a CD',
+  );
 
   private readonly heading = viewChild<ElementRef<HTMLElement>>('heading');
 

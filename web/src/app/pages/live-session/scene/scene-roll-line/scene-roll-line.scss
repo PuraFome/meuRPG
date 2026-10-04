@@ -1,5 +1,6 @@
 :host {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: var(--mr-space-3);
   min-width: 0;
@@ -12,7 +13,8 @@ app-combatant-token {
 
 .rl__body {
   display: flex;
-  flex: 1 1 auto;
+  // Basis 0, so a long line (the status) never pushes the column under the avatar.
+  flex: 1 1 0;
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
@@ -57,4 +59,103 @@ app-combatant-token {
 .mr-tag {
   margin-top: 4px;
   font-weight: 700;
+}
+
+.rl__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px var(--mr-space-3);
+  margin-top: 4px;
+
+  .mr-tag {
+    margin-top: 0;
+  }
+}
+
+.rl__attempt {
+  margin: 2px 0 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  .rl__line & {
+    margin: 0;
+  }
+}
+
+.rl__status {
+  align-self: stretch;
+  margin-top: var(--mr-space-2);
+  padding: 10px 14px;
+  font-size: 15px;
+  line-height: 20px;
+}
+
+// A text action that starts a line pulls its padding back, so its words line up
+// with the text above (44px tall, as the other text actions).
+.rl__grant {
+  margin: 4px 0 -4px -12px;
+  --mat-button-text-container-height: 44px;
+}
+
+// The question takes the card: a warm box, the two buttons under the words, same width.
+:host(.rl--asking) {
+  padding: 14px;
+  border: 1px solid var(--mr-warning-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-warning-surface);
+  scroll-margin-top: 88px;
+}
+
+// The question takes the whole card, under the token as well.
+.rl__ask {
+  display: flex;
+  flex: 1 0 100%;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  margin-top: var(--mr-space-2);
+}
+
+.rl__ask-title {
+  display: flex;
+  text-wrap: balance;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--mr-warning-ink);
+  font-family: var(--mr-font-display);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 24px;
+
+  .mat-icon {
+    flex: none;
+  }
+}
+
+.rl__ask-text {
+  margin: 0;
+  color: var(--mr-warning-ink);
+  font-size: 15px;
+  line-height: 21px;
+}
+
+.rl__ask-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+
+  button {
+    width: 100%;
+    --mat-button-outlined-container-height: 44px;
+    --mat-button-filled-container-height: 44px;
+  }
+
+  @media (max-width: 767.98px) {
+    button {
+      --mat-button-outlined-container-height: 48px;
+      --mat-button-filled-container-height: 48px;
+    }
+  }
 }

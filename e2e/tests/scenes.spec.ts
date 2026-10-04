@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 import { endOpenSessionRPC, openSessionPage } from './live-session-support';
-import { tableForScenes } from './scene-support';
+import { addActionRPC, rollTyped, sceneActionIdsRPC, setAttemptsRPC, tableForScenes } from './scene-support';
 import { newSignedInContext } from './support';
 
 // MR-015 (the actions of an RP scene), through the screens: the master picks
@@ -311,6 +311,170 @@ test(
       await expect(player.getByRole('region', { name: 'Cena: A carroça tombada' })).toHaveCount(0);
       // The hidden point opened this way is still hidden on the player's map.
       await expect(points.getByText('Escondido').first()).toBeVisible();
+    } finally {
+      if (campaignId) {
+        await endOpenSessionRPC(master, campaignId);
+      }
+      await masterContext.close();
+      await playerContext.close();
+    }
+  },
+);
+
+test(
+  'o mestre liga a CD da cena e dá 3 tentativas a uma ação; o jogador rola duas vezes e vê Passou e Não passou com as tentativas que restam; depois da última, o mestre dá mais uma',
+  { tag: ['@MR-015', '@RN-20'] },
+  async ({ browser }) => {
+    test.setTimeout(180_000);
+    const masterContext = await newSignedInContext(browser, 'Mestre Teste');
+    const playerContext = await newSignedInContext(browser, 'Jogador Teste');
+    const master = await masterContext.newPage();
+    const player = await playerContext.newPage();
+    let campaignId = '';
+    try {
+      await master.goto('/');
+      const table = await tableForScenes(master, player, `Cena com CD ${Date.now()}`, false);
+      campaignId = table.campaignId;
+      await addActionRPC(master, table, table.cartId, { key: 'skill:investigation', name: 'Procurar pistas na carroça', dc: 12 });
+      await addActionRPC(master, table, table.cartId, { key: 'skill:perception', name: 'Ouvir passos' });
+
+      // The editor: the switch is off at first; it and the attempts save at once.
+      await master.goto(`/campanhas/${table.campaignId}/mapas/${table.mapId}`);
+      await master.getByRole('button', { name: /^A carroça tombada, Cena de RP/ }).click();
+      const dcSwitch = master.getByRole('switch', { name: 'Mostrar a CD aos jogadores' });
+      await expect(dcSwitch).toHaveAttribute('aria-checked', 'false');
+      await expect(master.getByText('Desligado: só você vê a CD. Os jogadores veem só o resultado.')).toBeVisible();
+      await expect(master.getByLabel('Tentativas por jogador')).toHaveCount(2);
+      await expect(master.getByLabel('Tentativas por jogador').first()).toHaveValue('1');
+      await master.getByLabel('Tentativas por jogador').first().selectOption('3');
+      await expect(master.getByRole('status').filter({ hasText: 'Procurar pistas na carroça: 3 tentativas por jogador.' })).toHaveCount(1);
+      await dcSwitch.click();
+      await expect(dcSwitch).toHaveAttribute('aria-checked', 'true');
+      await expect(master.getByText('Ligado: cada jogador vê a CD na ação e, depois de rolar, se passou ou não.')).toBeVisible();
+      await expect(master.getByText('Como o jogador vê, antes e depois de rolar')).toBeVisible();
+      // It saved at once, like the attempts: "Salvar ponto" has nothing to send.
+      await expect(master.getByRole('status').filter({ hasText: 'Os jogadores agora veem a CD.' })).toHaveCount(1);
+      await expect(master.getByRole('button', { name: 'Salvar ponto' })).toBeDisabled();
+      // Both survive a reload (the server has them).
+      await master.reload();
+      await master.getByRole('button', { name: /^A carroça tombada, Cena de RP/ }).click();
+      await expect(master.getByRole('switch', { name: 'Mostrar a CD aos jogadores' })).toHaveAttribute('aria-checked', 'true');
+      await expect(master.getByLabel('Tentativas por jogador').first()).toHaveValue('3');
+
+      await openSessionPage(master, campaignId);
+      await openScene(master, 'A carroça tombada');
+      await expect(master.getByText('Os jogadores veem a CD')).toBeVisible();
+      await expect(master.getByText('3 tentativas por jogador')).toBeVisible();
+
+      // The player sees the DC and the attempts before rolling.
+      await openSessionPage(player, campaignId);
+      const scene = player.getByRole('region', { name: 'Cena: A carroça tombada' });
+      const clues = scene.getByRole('listitem').filter({ hasText: 'Procurar pistas na carroça' });
+      const steps = scene.getByRole('listitem').filter({ hasText: 'Ouvir passos' });
+      await expect(clues).toContainText('CD 12');
+      await expect(clues).toContainText('Restam 3 de 3 tentativas');
+      await expect(steps).toContainText('1 tentativa');
+      await expect(steps).not.toContainText('CD');
+
+      // First roll: 3 + 6 = 9 under the DC of 12. The sheet and the row both say "Não passou".
+      await scene.getByRole('button', { name: 'Rolar Procurar pistas na carroça' }).click();
+      const sheet = player.getByRole('dialog', { name: 'Rolar Procurar pistas na carroça' });
+      await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+      await sheet.getByLabel(/Role 1d20 para Investigação/).fill('3');
+      await sheet.getByRole('button', { name: 'Confirmar 3' }).click();
+      await expect(sheet.getByText('Não passou · CD 12')).toBeVisible();
+      await sheet.getByRole('button', { name: 'Voltar à cena' }).click();
+      await expect(clues).toContainText('Não passou · CD 12');
+      await expect(clues).toContainText('Restam 2 de 3 tentativas');
+      // Another try: 10 + 6 = 16 passes. The last result stays and the counter goes down.
+      await rollTyped(player, scene, 'Procurar pistas na carroça', 10);
+      await expect(clues).toContainText('Passou · CD 12');
+      await expect(clues).toContainText('Restam 1 de 3 tentativas');
+      await expect(clues.getByRole('button', { name: 'Rolar Procurar pistas na carroça' })).toBeVisible();
+      // The last: 2 + 6 = 8. No more attempts, no "Rolar", and the last result is kept.
+      await rollTyped(player, scene, 'Procurar pistas na carroça', 2);
+      await expect(clues).toContainText('Não passou · CD 12');
+      await expect(clues).toContainText('Sem mais tentativas');
+      await expect(clues.getByRole('button')).toHaveCount(0);
+
+      // The master reads which attempt each roll was, and "Dar mais uma tentativa" is only on the last, failed, one.
+      const rolls = master.getByRole('heading', { name: 'Rolagens' }).locator('xpath=ancestor::section[1]');
+      await expect(rolls.getByRole('listitem')).toHaveCount(3);
+      await expect(rolls.getByRole('listitem').nth(0)).toContainText('Tentativa 3 de 3');
+      await expect(rolls.getByRole('listitem').nth(2)).toContainText('Tentativa 1 de 3');
+      const grant = master.getByRole('button', { name: 'Dar mais uma tentativa a Pensantus em Procurar pistas na carroça' });
+      await expect(grant).toHaveCount(1);
+      await expect(rolls.getByRole('listitem').nth(0).getByRole('button')).toHaveCount(1);
+
+      // It asks in place first: "Voltar" is focused and goes back with no change.
+      await grant.click();
+      const ask = master.getByRole('alertdialog', { name: 'Dar mais uma tentativa a Pensantus?' });
+      await expect(ask).toContainText('Em “Procurar pistas na carroça”. Passa de 3 para 4 tentativas');
+      await expect(ask.getByRole('button', { name: 'Voltar' })).toBeFocused();
+      await ask.getByRole('button', { name: 'Voltar' }).click();
+      await expect(ask).toBeHidden();
+      await expect(grant).toBeFocused();
+      await expect(clues.getByRole('button')).toHaveCount(0);
+
+      await grant.click();
+      await master.getByRole('alertdialog').getByRole('button', { name: 'Dar mais uma tentativa' }).click();
+      await expect(master.getByRole('status').filter({ hasText: /Mais uma tentativa dada a Pensantus às \d\d:\d\d\./ })).toBeVisible();
+      await expect(rolls.getByRole('listitem').nth(0)).toContainText('Tentativa 3 de 4');
+      await expect(grant).toHaveCount(0);
+
+      // The player has it back at once: the row, the button and the live region.
+      await expect(clues).toContainText('Restam 1 de 3 tentativas');
+      await expect(clues.getByRole('button', { name: 'Rolar Procurar pistas na carroça' })).toBeVisible();
+      await expect(player.getByText('O mestre deu mais uma tentativa em Procurar pistas na carroça.')).toBeAttached();
+    } finally {
+      if (campaignId) {
+        await endOpenSessionRPC(master, campaignId);
+      }
+      await masterContext.close();
+      await playerContext.close();
+    }
+  },
+);
+
+test(
+  'com a CD desligada o jogador não vê CD nem Passou; o mestre vê o resultado e pode dar mais uma tentativa a quem usou todas, mesmo se passou',
+  { tag: ['@MR-015', '@RN-20'] },
+  async ({ browser }) => {
+    test.setTimeout(120_000);
+    const masterContext = await newSignedInContext(browser, 'Mestre Teste');
+    const playerContext = await newSignedInContext(browser, 'Jogador Teste');
+    const master = await masterContext.newPage();
+    const player = await playerContext.newPage();
+    let campaignId = '';
+    try {
+      await master.goto('/');
+      const table = await tableForScenes(master, player, `Cena sem CD ${Date.now()}`, false);
+      campaignId = table.campaignId;
+      await addActionRPC(master, table, table.cartId, { key: 'skill:investigation', name: 'Procurar pistas na carroça', dc: 12 });
+      const ids = await sceneActionIdsRPC(master, table, table.cartId);
+      await setAttemptsRPC(master, table, table.cartId, ids['Procurar pistas na carroça'], 2);
+      await openSessionPage(master, campaignId);
+      await openScene(master, 'A carroça tombada');
+      await expect(master.getByText('Só você vê a CD')).toBeVisible();
+
+      await openSessionPage(player, campaignId);
+      const scene = player.getByRole('region', { name: 'Cena: A carroça tombada' });
+      const row = scene.getByRole('listitem').filter({ hasText: 'Procurar pistas na carroça' });
+      await expect(row).toContainText('Restam 2 de 2 tentativas');
+      await expect(scene).not.toContainText(/\bCD\b/);
+      // 15 + 6 = 21 would pass a DC of 12, but the player is never told.
+      await rollTyped(player, scene, 'Procurar pistas na carroça', 15);
+      await rollTyped(player, scene, 'Procurar pistas na carroça', 14);
+      await expect(row).toContainText('Sem mais tentativas');
+      await expect(row).toContainText('Rolada');
+      await expect(scene).not.toContainText(/\bCD\b|passou/i);
+
+      // The master sees both results, and with the DC hidden any exhausted roll may be given another try.
+      const rolls = master.getByRole('heading', { name: 'Rolagens' }).locator('xpath=ancestor::section[1]');
+      await expect(rolls.getByRole('listitem')).toHaveCount(2);
+      await expect(rolls.getByRole('listitem').nth(0)).toContainText('Passou · CD 12');
+      await expect(rolls.getByRole('listitem').nth(0)).toContainText('Tentativa 2 de 2');
+      await expect(master.getByRole('button', { name: /^Dar mais uma tentativa a Pensantus/ })).toHaveCount(1);
     } finally {
       if (campaignId) {
         await endOpenSessionRPC(master, campaignId);

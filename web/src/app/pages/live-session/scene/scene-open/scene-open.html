@@ -49,7 +49,7 @@
         } @else {
           <ul class="so__list so__list--rolls">
             @for (r of s.rolls; track r.id) {
-              <li><app-scene-roll-line [scene]="s" [roll]="r" /></li>
+              <li><app-scene-roll-line [campaignId]="campaignId()" [state]="state()" [scene]="s" [roll]="r" /></li>
             }
           </ul>
         }
@@ -73,12 +73,12 @@
         } @else {
           <div class="so__sub">
             <h3 class="so__h" id="so-actions">Ações</h3>
-            <span class="so__hint">Só você vê a CD</span>
+            <span class="so__hint so__dcnote"><mat-icon aria-hidden="true">{{ s.showDc ? 'visibility' : 'visibility_off' }}</mat-icon>{{ dcNote() }}</span>
           </div>
         }
         @if (!phone() || actionsOpen()) {
           @if (phone()) {
-            <p class="so__hint">Só você vê a CD</p>
+            <p class="so__hint so__dcnote"><mat-icon aria-hidden="true">{{ s.showDc ? 'visibility' : 'visibility_off' }}</mat-icon>{{ dcNote() }}</p>
           }
           <ul class="so__list" id="so-actions-list">
             @for (a of s.actions; track a.id) {
@@ -86,7 +86,12 @@
                 <span class="so__aname">{{ title(a) }}</span>
                 <span class="so__acheck">{{ subtitle(a) }}</span>
                 @if (a.dc > 0) {
-                  <span class="mr-tag so__dc">CD&nbsp;{{ a.dc }}</span>
+                  <span class="so__dcline">
+                    <span class="mr-tag so__dc">CD&nbsp;{{ a.dc }}</span>
+                    <span class="so__acheck">{{ attempts(a) }}</span>
+                  </span>
+                } @else {
+                  <span class="so__acheck">{{ attempts(a) }}</span>
                 }
               </li>
             }

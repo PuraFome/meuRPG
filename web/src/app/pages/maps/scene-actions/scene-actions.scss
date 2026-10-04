@@ -60,9 +60,9 @@
 
 .sa__row {
   display: flex;
-  align-items: center;
-  gap: var(--mr-space-2);
-  padding: var(--mr-space-2) 0;
+  flex-direction: column;
+  gap: var(--mr-space-1);
+  padding: var(--mr-space-2) 0 var(--mr-space-3);
 
   & + & {
     border-top: 1px solid var(--mr-rule);
@@ -135,4 +135,118 @@
 
 .sa__add--off {
   border-style: dashed;
+}
+
+// "Mostrar a CD aos jogadores": the point's switch at the top of the list, with
+// how the player sees the DC when it is on.
+.sa__dcswitch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  padding: var(--mr-space-3) 0;
+  border-top: 1px solid var(--mr-rule);
+}
+
+.sa__preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sa__preview-title,
+.sa__sample {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.sa__sample .mr-tag {
+  font-weight: 700;
+  color: var(--mr-ink);
+}
+
+.sa__sample .mr-tag--success {
+  color: var(--mr-success-ink);
+}
+
+.sa__sample .mr-tag--danger {
+  color: var(--mr-danger-ink);
+}
+
+.sa__sample {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px var(--mr-space-3);
+}
+
+.sa__main {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+}
+
+// "Tentativas por jogador" under the action: the label left, a 44px select of the
+// same width in every row on the right; at 320px the select goes under its label,
+// full width and 48px.
+.sa__attempts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-1) var(--mr-space-3);
+}
+
+.sa__attempts-label {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.sa__select {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  width: 128px;
+
+  select {
+    box-sizing: border-box;
+    width: 100%;
+    height: 44px;
+    padding: 0 36px 0 12px;
+    border: 1px solid var(--mr-control-line);
+    border-radius: var(--mr-radius-md);
+    background: var(--mr-surface);
+    color: var(--mr-ink);
+    font: inherit;
+    font-size: 16px;
+    appearance: none;
+    cursor: pointer;
+  }
+
+  .mat-icon {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    margin-top: -12px;
+    pointer-events: none;
+  }
+}
+
+.sa__unlimited {
+  flex: 1 0 100%;
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+@media (max-width: 359.98px) {
+  .sa__select {
+    width: 100%;
+
+    select {
+      height: 48px;
+    }
+  }
 }

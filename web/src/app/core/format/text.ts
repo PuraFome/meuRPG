@@ -18,7 +18,7 @@ export function tight(text: string): string {
   return text
     .replace(/(\d) a (\d)/g, '$1 a $2')
     .replace(/(\d) (m|XP|PO|quadrados?|pés)\b/g, '$1 $2')
-    .replace(/\b(alcance|de|até|mais|restam|Restam|faltam|Faltam|a) (?=\d)/g, '$1 ');
+    .replace(/\b(alcance|de|das|às|até|mais|restam|Restam|faltam|Faltam|a) (?=\d)/g, '$1 ');
 }
 
 /** "2.716": pt-BR thousands separator, done by hand so the result never

@@ -21,12 +21,19 @@
     />
   }
   @case ('ended') {
-    <app-session-blocked
-      kind="ended"
-      [campaignId]="campaignId()"
-      [campaignName]="campaign()?.name ?? ''"
-      [sessionNumber]="session()?.sessionNumber ?? 0"
-    />
+    @if (session(); as s) {
+      <!-- The session just ended: the summary (MR-032), or the plain notice if it cannot be read. -->
+      <app-session-ended
+        [campaignId]="campaignId()"
+        [campaignName]="campaign()?.name ?? ''"
+        [sessionId]="s.sessionId"
+        [sessionNumber]="s.sessionNumber"
+        [isMaster]="isMaster()"
+        [players]="playerNames()"
+        [characterId]="ownCharacterId()"
+        [characterName]="ownCharacterName()"
+      />
+    }
   }
   @case ('error') {
     <h1 class="mr-page-title">Não foi possível abrir a sessão</h1>

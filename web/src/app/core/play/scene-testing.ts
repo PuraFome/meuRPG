@@ -33,7 +33,7 @@ export function sceneRoll(
   actionId: string,
   characterName: string,
   total: number,
-  partial: { roll?: MessageInitShape<typeof DiceRollSchema>; passed?: boolean } = {},
+  partial: { roll?: MessageInitShape<typeof DiceRollSchema>; passed?: boolean; attemptsLeft?: number; rolledAt?: Date; characterId?: string } = {},
 ): SceneRoll {
   const init: MessageInitShape<typeof SceneRollSchema> = {
     id,
@@ -41,8 +41,8 @@ export function sceneRoll(
     characterId: characterName.toLowerCase(),
     characterName,
     roll: { diceCount: 1, diceSides: 20, faces: [total - 1], modifier: 1, total },
-    rolledAt: timestampFromDate(new Date(2026, 9, 3, 21, 14)),
     ...partial,
+    rolledAt: timestampFromDate(partial.rolledAt ?? new Date(2026, 9, 3, 21, 14)),
   };
   return create(SceneRollSchema, init);
 }
@@ -78,11 +78,11 @@ export function masterScene(
     name: 'A carroça tombada',
     description: 'Uma carroça de mercador tombada na estrada.',
     actions: [
-      sceneAction('a1', 'Investigação', { name: 'Procurar pistas na carroça', dc: 12, key: 'skill:investigation' }),
-      sceneAction('a2', 'Sobrevivência', { name: 'Seguir os rastros dos goblins', dc: 13 }),
-      sceneAction('a3', 'Adestrar Animais', { name: 'Acalmar os cavalos' }),
-      sceneAction('a4', 'Percepção'),
-      sceneAction('a5', 'Salvaguarda de Constituição', { name: 'Resistir ao cheiro de fumaça', dc: 10, key: 'save:con' }),
+      sceneAction('a1', 'Investigação', { name: 'Procurar pistas na carroça', dc: 12, maxAttempts: 1, key: 'skill:investigation' }),
+      sceneAction('a2', 'Sobrevivência', { name: 'Seguir os rastros dos goblins', dc: 13, maxAttempts: 1 }),
+      sceneAction('a3', 'Adestrar Animais', { name: 'Acalmar os cavalos', maxAttempts: 0 }),
+      sceneAction('a4', 'Percepção', { maxAttempts: 3 }),
+      sceneAction('a5', 'Salvaguarda de Constituição', { name: 'Resistir ao cheiro de fumaça', dc: 10, maxAttempts: 1, key: 'save:con' }),
     ],
     rolls,
     openedAt: timestampFromDate(new Date(2026, 9, 3, 21, 10)),
@@ -90,22 +90,27 @@ export function masterScene(
   });
 }
 
-/** The same scene as Pensantus sees it: his bonuses, no DC. */
-export function playerScene(rolls: SceneRoll[] = [], stage: StageNpc[] = []): OpenSceneInfo {
+/** The same scene as Pensantus sees it: his bonuses, his attempts and, by default, no DC. */
+export function playerScene(
+  rolls: SceneRoll[] = [],
+  stage: StageNpc[] = [],
+  extra: MessageInitShape<typeof OpenSceneInfoSchema> = {},
+): OpenSceneInfo {
   return create(OpenSceneInfoSchema, {
     stage,
     pointId: 'p1',
     name: 'A carroça tombada',
     description: 'Uma carroça de mercador tombada na estrada.',
     actions: [
-      sceneAction('a1', 'Investigação', { name: 'Procurar pistas na carroça', bonus: 6, passive: 16, key: 'skill:investigation' }),
-      sceneAction('a2', 'Sobrevivência', { name: 'Seguir os rastros dos goblins', bonus: 1 }),
+      sceneAction('a1', 'Investigação', { name: 'Procurar pistas na carroça', bonus: 6, passive: 16, maxAttempts: 1, attemptsLeft: 1, key: 'skill:investigation' }),
+      sceneAction('a2', 'Sobrevivência', { name: 'Seguir os rastros dos goblins', bonus: 1, maxAttempts: 1, attemptsLeft: 1 }),
       sceneAction('a3', 'Adestrar Animais', { name: 'Acalmar os cavalos', bonus: 1 }),
-      sceneAction('a4', 'Percepção', { bonus: 1, passive: 11, key: 'skill:perception' }),
-      sceneAction('a5', 'Salvaguarda de Constituição', { name: 'Resistir ao cheiro de fumaça', bonus: 3, key: 'save:con' }),
+      sceneAction('a4', 'Percepção', { bonus: 1, passive: 11, maxAttempts: 3, attemptsLeft: 3, key: 'skill:perception' }),
+      sceneAction('a5', 'Salvaguarda de Constituição', { name: 'Resistir ao cheiro de fumaça', bonus: 3, maxAttempts: 1, attemptsLeft: 1, key: 'save:con' }),
     ],
     rolls,
     openedAt: timestampFromDate(new Date(2026, 9, 3, 21, 10)),
+    ...extra,
   });
 }
 
@@ -172,5 +177,13 @@ export class FakeSceneClient {
   async roll(_campaignId: string, actionId: string, die: SceneDie, key: string): Promise<SceneRoll> {
     this.record(`roll ${actionId} ${'inApp' in die ? 'app' : die.face} ${key}`);
     return this.made;
+  }
+
+  /** The scene `grantAttempt` answers with. */
+  granted: OpenSceneInfo | null = null;
+
+  async grantAttempt(_campaignId: string, actionId: string, characterId: string, key: string): Promise<OpenSceneInfo> {
+    this.record(`grant ${actionId} ${characterId} ${key}`);
+    return this.granted ?? masterScene();
   }
 }

@@ -54,6 +54,7 @@ import { LiveStream } from './live-stream';
 import { PartyPanel } from './party-panel/party-panel';
 import { PlayerVitals } from './player-vitals/player-vitals';
 import { SessionBlocked } from './session-blocked/session-blocked';
+import { SessionEnded } from './session-ended/session-ended';
 import { SessionHeader } from './session-header/session-header';
 import { SessionMap } from './session-map/session-map';
 import { SessionTokens } from './session-tokens/session-tokens';
@@ -99,6 +100,7 @@ type Phase = 'loading' | 'live' | 'no-access' | 'no-session' | 'ended' | 'error'
     PartyPanel,
     PlayerVitals,
     SessionBlocked,
+    SessionEnded,
     SessionHeader,
     SessionMap,
     SessionTokens,
@@ -174,6 +176,11 @@ export class LiveSession {
   protected readonly notesAria = (fresh: number): string =>
     fresh > 0 ? `Anotações, ${fresh} ${fresh === 1 ? 'nova' : 'novas'}` : 'Anotações';
   protected readonly freshCount = computed(() => this.notes.fresh().length);
+
+  /** The players' names by character, for "de Caio" on the session's highlights (master only). */
+  protected readonly playerNames = computed(
+    () => new Map([...this.partyInfo()].flatMap(([id, p]) => (p.playerName ? [[id, p.playerName] as const] : []))),
+  );
 
   protected readonly ownCharacterId = computed(() => this.vitals().at(0)?.characterId ?? '');
   protected readonly ownCharacterName = computed(() => this.vitals().at(0)?.name ?? '');

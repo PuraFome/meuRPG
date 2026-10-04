@@ -1,6 +1,4 @@
 import { Component, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
 
 import type { CharacterHighlights } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { CombatClient } from '../../../../core/combat/combat-client';
@@ -10,31 +8,34 @@ import {
   highlightTiles,
   ownNumbers,
 } from '../../../../core/combat/combat-highlights';
+import { HighlightsFrame } from '../../../../shared/highlights/highlights-frame';
 
 /**
- * The players' "O combate acabou" card (MR-032, E8-11 state 3): at the top of
- * the session page when the server says the combat ended, until the player
- * closes it with "Fechar" or the ✕ (44px, so the way out stays in sight even
- * on a 320x568 screen where the card scrolls with the page).
- *
- * It shows what the master's panel shows, without the table: every category
- * that has a winner, with the number and the names (a tie names everyone), and
- * "Você" on a tile the reader's own character won. "Seu resultado, Pensantus"
- * gives the reader's own four numbers, zeros included: the server sends a
- * player exactly one row of the table, their own character's, never anyone
- * else's (RN-20).
- *
- * The page does not move focus to it (the player is already reading it): the
- * title sits in a polite live region, so a screen reader says "O combate
- * acabou" and the rest is a tab away. Motion (a 200ms fade) only with
- * `prefers-reduced-motion: no-preference`. A failed read shows nothing: it is
- * a bonus, not a screen the player needs.
+ * The players' "O combate acabou" card (MR-032, E8-11 state 3): it reads the
+ * combat's highlights and draws them in the shared card (`HighlightsFrame`,
+ * which the session's "A sessão acabou" uses too). A failed read shows nothing:
+ * it is a bonus, not a screen the player needs.
  */
 @Component({
   selector: 'app-highlights-card',
-  imports: [MatButtonModule, MatIconModule],
-  templateUrl: './highlights-card.html',
-  styleUrl: './highlights-card.scss',
+  imports: [HighlightsFrame],
+  template: `
+    @if (loaded()) {
+      <app-highlights-frame
+        ariaLabel="Destaques do combate"
+        tag="Combate encerrado"
+        title="O combate acabou"
+        [subtitle]="subtitle()"
+        [tiles]="tiles()"
+        none="Ninguém causou, curou ou sofreu dano neste combate."
+        [characterId]="characterId()"
+        [ownTitle]="own().length > 0 ? 'Seu resultado, ' + characterName() : ''"
+        [own]="own()"
+        (closed)="closed.emit()"
+      />
+    }
+  `,
+  styles: ':host { display: block; margin-top: var(--mr-space-5); }',
 })
 export class HighlightsCard {
   private readonly api = inject(CombatClient);
@@ -74,9 +75,5 @@ export class HighlightsCard {
       this.tiles.set([]);
       this.loaded.set(false);
     }
-  }
-
-  protected mine(tile: HighlightTile): boolean {
-    return !!this.characterId() && tile.characterIds.includes(this.characterId());
   }
 }

@@ -1,7 +1,5 @@
 :host {
   display: block;
-  // The gap between the page's blocks, so the card never hugs the header above it.
-  margin-top: var(--mr-space-5);
 }
 
 .card {
@@ -18,12 +16,12 @@
 
 .card__head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: space-between;
   gap: 4px;
 }
 
 .card__titles {
-  flex: 1;
   min-width: 0;
 }
 
@@ -38,12 +36,13 @@
   .mat-icon {
     width: 18px;
     height: 18px;
+    margin-left: -2px;
     font-size: 18px;
   }
 }
 
 .card__title {
-  margin: 2px 0 0;
+  margin: 0;
   font-family: var(--mr-font-display);
   font-size: 36px;
   line-height: 40px;
@@ -70,7 +69,7 @@
   justify-content: center;
   width: 44px;
   height: 44px;
-  margin: -6px -8px 0 0;
+  margin: -10px -8px -10px 0;
   padding: 0;
   border: 0;
   border-radius: 22px;

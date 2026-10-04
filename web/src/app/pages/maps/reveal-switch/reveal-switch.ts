@@ -1,5 +1,7 @@
-import { Component, input, model } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
+
+let nextId = 0;
 
 /**
  * The editor's switch "Revelado aos jogadores" (README-B): not filled with
@@ -14,8 +16,8 @@ import { MatIconModule } from '@angular/material/icon';
   template: `
     <div class="sw">
       <span class="sw__text">
-        <span class="sw__label" id="sw-label">{{ label() }}</span>
-        <span class="sw__hint" id="sw-hint">{{ hint() }}</span>
+        <span class="sw__label" [id]="id + '-label'">{{ label() }}</span>
+        <span class="sw__hint" [id]="id + '-hint'">{{ hint() }}</span>
       </span>
       <button
         type="button"
@@ -23,9 +25,9 @@ import { MatIconModule } from '@angular/material/icon';
         class="sw__track"
         [class.sw__track--on]="checked()"
         [attr.aria-checked]="checked()"
-        aria-labelledby="sw-label"
-        aria-describedby="sw-hint"
-        (click)="checked.set(!checked())"
+        [attr.aria-labelledby]="id + '-label'"
+        [attr.aria-describedby]="id + '-hint'"
+        (click)="checkedChange.emit(!checked())"
       >
         <span class="sw__handle">
           @if (checked()) {
@@ -38,7 +40,11 @@ import { MatIconModule } from '@angular/material/icon';
   styleUrl: './reveal-switch.scss',
 })
 export class RevealSwitch {
+  /** Two switches on one page (the point's and the DC's) need their own ids. */
+  protected readonly id = `sw-${nextId++}`;
   readonly label = input.required<string>();
   readonly hint = input('');
-  readonly checked = model(false);
+  /** Controlled: the switch only says what was asked; the parent decides (a refused save leaves it where it was). */
+  readonly checked = input(false);
+  readonly checkedChange = output<boolean>();
 }

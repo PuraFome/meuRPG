@@ -18,6 +18,11 @@
       <span class="res__text">
         <span class="res__formula">{{ formula() }}</span>
         <span class="res__cap">Seu total em {{ action.checkName }}</span>
+        @if (pass(); as p) {
+          <span class="mr-tag res__pass" [class.mr-tag--success]="p.ok" [class.mr-tag--danger]="!p.ok">
+            <mat-icon aria-hidden="true">{{ p.ok ? 'check' : 'close' }}</mat-icon>{{ p.text }}
+          </span>
+        }
       </span>
     </div>
     <p class="note"><mat-icon aria-hidden="true">visibility</mat-icon>O mestre vê o resultado.</p>

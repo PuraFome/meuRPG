@@ -66,9 +66,12 @@
   list-style: none;
 }
 
-// One action: its words on the left, the bonus (the biggest number of the
-// row) and the 48px "Rolar" on the right; the number and the button never
-// shrink, the name wraps instead.
+// One action: its words on the left, then the result or bonus (the biggest
+// number of the row) with its formula and the 48px "Rolar" (or an empty slot of
+// its width) at the end, so "Rolar" is in the same place on every row. The
+// number and the button never shrink, the name wraps instead. On a phone the
+// words take the whole width and the last line holds the number (left) and
+// "Rolar" (right).
 .sc__row {
   display: flex;
   align-items: center;
@@ -80,12 +83,19 @@
     outline: 2px solid var(--mr-focus);
     outline-offset: 2px;
   }
+
+  @media (max-width: 599.98px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--mr-space-2);
+  }
 }
 
-.sc__text {
+.sc__words {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
+  align-items: flex-start;
   gap: 1px;
   min-width: 0;
 }
@@ -108,6 +118,38 @@
   font-size: 13px;
 }
 
+// The DC pill and "Passou" / "Não passou": a word and an icon, never colour alone.
+.sc__tag {
+  margin: 3px 0 2px;
+  font-weight: 700;
+}
+
+.sc__dc {
+  color: var(--mr-ink);
+}
+
+.sc__attempts {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+
+  // "Restam 2 de 3 tentativas" is what the player must read first.
+  &--left {
+    font-weight: 700;
+    color: var(--mr-ink);
+  }
+}
+
 .sc__done {
   display: inline-flex;
   align-items: center;
@@ -124,6 +166,36 @@
   }
 }
 
+// From a tablet up the end of every row is the same three columns, so the
+// numbers, the formulas and "Rolar" line up from one row to the next; on a phone
+// it is one line, the number and its formula on the left and "Rolar" on the right.
+.sc__last {
+  display: grid;
+  flex: none;
+  grid-template-columns: 64px 112px var(--roll-w);
+  align-items: center;
+  column-gap: var(--mr-space-3);
+
+  .sc__bonus,
+  .sc__total {
+    grid-column: 1;
+  }
+
+  .sc__formula {
+    grid-column: 2;
+  }
+
+  .sc__roll,
+  .sc__slot {
+    grid-column: 3;
+  }
+
+  @media (max-width: 599.98px) {
+    display: flex;
+    gap: var(--mr-space-2);
+  }
+}
+
 .sc__bonus,
 .sc__total {
   flex: none;
@@ -133,24 +205,38 @@
   font-size: 38px;
   font-weight: 800;
   line-height: 42px;
+
+  @media (max-width: 599.98px) {
+    min-width: 0;
+    text-align: left;
+  }
 }
 
-.sc__slot {
-  flex: none;
-  width: var(--roll-w);
-}
-
-// The roll's own line, at the size of the other helper lines.
+// The roll's own line, beside the number: "1d20 (11) + 6".
 .sc__formula {
+  min-width: 0;
   font-size: 14px;
   line-height: 19px;
   color: var(--mr-ink-muted);
+
+  @media (max-width: 599.98px) {
+    flex: 1 1 auto;
+  }
 }
 
-.sc__roll {
+.sc__roll,
+.sc__slot {
   flex: none;
   width: var(--roll-w);
   --mat-button-outlined-container-height: 48px;
+
+  @media (max-width: 599.98px) {
+    margin-left: auto;
+  }
+}
+
+.sc__slot {
+  height: 0;
 }
 
 .sc__note {
@@ -172,21 +258,16 @@
   }
 }
 
-// The narrowest phones (320px): the name gets the room, the bonus and "Rolar" keep
-// their size (48px tall) but tighter, so a name wraps to two lines at most.
+// The narrowest phones (320px): "Rolar" and the number keep their size (80x48),
+// the words get the full width, so a name wraps to two lines at most.
 @media (max-width: 359.98px) {
   .sc {
-    --roll-w: 72px;
+    --roll-w: 80px;
     padding: 12px;
-  }
-
-  .sc__row {
-    gap: var(--mr-space-2);
   }
 
   .sc__bonus,
   .sc__total {
-    min-width: 36px;
     font-size: 32px;
     line-height: 36px;
   }

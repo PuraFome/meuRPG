@@ -1,0 +1,109 @@
+:host {
+  display: block;
+}
+
+// "Números de cada jogador": a table of six columns on a desktop; on a phone
+// each player is a block with the numbers in two columns, each with its label.
+.tbl {
+  position: relative;
+}
+
+.tbl__title {
+  margin: 0 0 4px;
+  font-family: var(--mr-font-display);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.tbl__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) repeat(var(--cols, 5), 1fr);
+  column-gap: 16px;
+  align-items: center;
+  min-height: 40px;
+  border-top: 1px solid var(--mr-rule);
+  font-size: 16px;
+
+  &--head {
+    min-height: 0;
+    border-top: 0;
+    font-size: 13px;
+    color: var(--mr-ink-muted);
+
+    span {
+      text-align: right;
+    }
+
+    span:first-child {
+      text-align: left;
+    }
+  }
+}
+
+.tbl__lbl {
+  display: none;
+}
+
+.tbl__num {
+  display: block;
+  text-align: right;
+  font-family: var(--mr-font-display);
+  font-size: 18px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+@media (max-width: 719.98px) {
+  .tbl__row--head {
+    // Still there for a screen reader, not on screen: each number carries its label.
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .tbl__row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px 12px;
+    padding: 8px 0 10px;
+
+    b {
+      grid-column: 1 / -1;
+    }
+  }
+
+  // The odd cell takes the whole row, never a half-width orphan.
+  [role='cell']:last-child {
+    grid-column: 1 / -1;
+  }
+
+  [role='cell'] {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .tbl__lbl {
+    display: inline;
+    font-size: 13px;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.tbl__caption {
+  max-width: 70ch;
+  margin: 0 0 6px;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.tbl__num--muted {
+  font-family: inherit;
+  font-weight: 400;
+  font-size: 15px;
+  color: var(--mr-ink-muted);
+}

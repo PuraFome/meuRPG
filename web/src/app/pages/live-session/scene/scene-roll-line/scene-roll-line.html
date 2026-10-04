@@ -1,0 +1,75 @@
+<app-combatant-token [initial]="initial()" [size]="32" />
+<div class="rl__body">
+  <div class="rl__top">
+    <b class="rl__who">{{ roll().characterName }}</b>
+    <time class="rl__time">{{ clock() }}</time>
+  </div>
+  <p class="rl__action">{{ action() }}</p>
+  <p class="rl__formula">{{ formula() }}</p>
+  @if (pass(); as text) {
+    <div class="rl__line">
+      <span class="mr-tag" [class.mr-tag--success]="roll().passed" [class.mr-tag--danger]="!roll().passed">
+        <mat-icon aria-hidden="true">{{ roll().passed ? 'check' : 'close' }}</mat-icon>{{ text }}
+      </span>
+      @if (attempt()) {
+        <span class="rl__attempt">{{ attempt() }}</span>
+      }
+    </div>
+  } @else if (attempt()) {
+    <p class="rl__attempt">{{ attempt() }}</p>
+  }
+
+  @if (granted(); as g) {
+    @if (g.used === attemptsNow()) {
+      <div #status class="mr-notice mr-notice--success rl__status" role="status" tabindex="-1">
+        <mat-icon aria-hidden="true">check</mat-icon>
+        <p>
+          <strong>Mais uma tentativa dada a {{ roll().characterName }} às {{ g.at }}.</strong>
+          Agora são {{ g.total }} tentativas em “{{ actionTitle() }}”; {{ g.used }} já {{ g.used === 1 ? 'usada' : 'usadas' }}.
+        </p>
+      </div>
+    }
+  }
+
+  @if (step() !== 'asking' && canGrant()) {
+    <button
+      #opener
+      matButton
+      type="button"
+      class="rl__grant"
+      [attr.aria-label]="grantAria()"
+      (click)="ask()"
+    >
+      <mat-icon aria-hidden="true">replay</mat-icon>Dar mais uma tentativa
+    </button>
+  }
+</div>
+@if (step() === 'asking') {
+  <div
+    class="rl__ask"
+    role="alertdialog"
+    aria-labelledby="ask-title-{{ roll().id }}"
+    aria-describedby="ask-text-{{ roll().id }}"
+  >
+    <h4 class="rl__ask-title" id="ask-title-{{ roll().id }}">
+      <mat-icon aria-hidden="true">replay</mat-icon>Dar mais uma tentativa a {{ roll().characterName }}?
+    </h4>
+    <p class="rl__ask-text" id="ask-text-{{ roll().id }}">
+      Em “{{ actionTitle() }}”. Passa de {{ attemptsNow() }} para {{ attemptsNow() + 1 }}
+      {{ attemptsNow() + 1 === 1 ? 'tentativa' : 'tentativas' }} e pode rolar de novo. Mais ninguém muda, e o
+      resultado de agora fica no registro.
+    </p>
+    @if (error()) {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ error() }}</p>
+      </div>
+    }
+    <div class="rl__ask-buttons">
+      <button #back matButton="outlined" type="button" (click)="cancel()">Voltar</button>
+      <button matButton="filled" type="button" [disabled]="busy()" disabledInteractive (click)="grant()">
+        <mat-icon aria-hidden="true">replay</mat-icon>Dar mais uma tentativa
+      </button>
+    </div>
+  </div>
+}

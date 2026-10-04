@@ -12,7 +12,7 @@ import { newKey } from '../../../../core/combat/combat-client';
 import { SceneClient, type SceneDie } from '../../../../core/play/scene-client';
 import { sceneErrorMessage } from '../../../../core/play/scene-errors';
 import type { SceneState } from '../../../../core/play/scene-state';
-import { sceneRollFormula, signedBonus } from '../../../../core/play/scene-view';
+import { passText, sceneRollFormula, signedBonus } from '../../../../core/play/scene-view';
 import { actionSubtitle, actionTitle } from '../../../../core/maps/scene-actions';
 import { joinDots } from '../../../../core/format/text';
 import { mediaQuery } from '../../../../shared/map-view/media-query';
@@ -48,8 +48,9 @@ export function openSceneRollSheet(
  * ("Rolar no app" is the filled button, "Digitar o resultado" a link; the
  * preference "Como você rola os dados" picks which opens first, a forced mode
  * hides the other). A typed die takes 1 to 20 and the total shows live. The
- * result is only the player's own total with its formula: never a DC, never
- * "passou". The key is made once, so a tap sent again after a lost answer never
+ * result is the player's own total with its formula, and "Passou · CD 12" or
+ * "Não passou · CD 10" only when the master shows the DC (RN-20); otherwise
+ * there is no DC and no "passou". The key is made once, so a tap sent again after a lost answer never
  * rolls twice. Focus: the title opens first, and the result's "Voltar à cena".
  */
 @Component({
@@ -106,6 +107,11 @@ export class SceneRollSheet {
   protected readonly formula = computed(() => {
     const r = this.roll();
     return r ? sceneRollFormula(r) : '';
+  });
+  /** "Passou · CD 12", only when the master shows the DC: the server sends `passed` then and not otherwise. */
+  protected readonly pass = computed(() => {
+    const passed = this.roll()?.passed;
+    return passed === undefined ? null : { ok: passed, text: passText(passed, this.action.dc) };
   });
   protected readonly rollLabel = `Role 1d20 para ${this.action.checkName} (${this.bonusText})`;
 

@@ -104,6 +104,28 @@ describe('PointPanel', () => {
       expect(cenaEl.querySelector('.hf textarea')?.getAttribute('aria-labelledby')).toBe('hf-title');
     });
 
+    it('saves "Mostrar a CD aos jogadores" at once with show_dc alone, and the unsaved name survives', async () => {
+      const name = cenaEl.querySelector('input') as HTMLInputElement;
+      name.value = 'Carroça nova';
+      name.dispatchEvent(new Event('input'));
+      cena.detectChanges();
+      const saved: boolean[] = [];
+      cena.componentInstance.showDcSaved.subscribe((on) => saved.push(on));
+      (cenaEl.querySelector('.sa__dcswitch [role="switch"]') as HTMLElement).click();
+      for (let i = 0; i < 3; i++) {
+        await cena.whenStable();
+        cena.detectChanges();
+      }
+      expect(api.calls).toEqual(['updatePoint map-1 p1 {"showDc":true}']);
+      expect(saved).toEqual([true]);
+      // The page puts the saved flag on the point: the draft is not reset, and "Salvar ponto" sends only the name.
+      cena.componentRef.setInput('point', mapPoint('p1', 'A carroça tombada', { hooks: 'O mercador Aldo foi levado.', showDc: true }));
+      cena.detectChanges();
+      expect((cenaEl.querySelector('input') as HTMLInputElement).value).toBe('Carroça nova');
+      expect(cena.componentInstance.changes()).toEqual({ name: 'Carroça nova' });
+      expect(cenaEl.querySelector('.sa__dcswitch [role="switch"]')?.getAttribute('aria-checked')).toBe('true');
+    });
+
     it('carries the "É ficção" notice once', () => {
       expect(cenaEl.querySelectorAll('app-fiction-notice')).toHaveLength(1);
     });

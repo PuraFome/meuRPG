@@ -19,45 +19,15 @@
       @if (empty()) {
         <p class="hl__note">Ninguém causou, curou ou sofreu dano neste combate.</p>
       } @else {
-        <ul class="hl__tiles">
-          @for (t of tiles(); track t.kind) {
-            <li class="tile">
-              <span class="tile__label"><mat-icon aria-hidden="true">{{ t.icon }}</mat-icon>{{ t.label }}</span>
-              <span class="tile__sub">{{ t.sub }}</span>
-              <span class="tile__value">{{ t.value }}</span>
-              <span class="tile__names">{{ t.names }}</span>
-              @if (playersLine(t); as line) {
-                <span class="tile__who">{{ line }}</span>
-              }
-            </li>
-          }
-        </ul>
+        <app-highlight-tiles [tiles]="tiles()" [players]="players()" />
       }
 
       @if (rows().length > 0) {
-        <div class="tbl">
-          <h3 class="tbl__title" id="tbl-title">Números de cada jogador</h3>
-          <div role="table" aria-labelledby="tbl-title">
-          <div class="tbl__row tbl__row--head" role="row">
-            <span role="columnheader">Personagem</span>
-            <span role="columnheader">Dano causado</span>
-            <span role="columnheader">Cura</span>
-            <span role="columnheader">Dano recebido</span>
-            <span role="columnheader">Golpes finais</span>
-            <span role="columnheader">Acertos críticos</span>
-          </div>
-          @for (r of rows(); track r.characterId) {
-            <div class="tbl__row" role="row">
-              <b role="rowheader">{{ r.name }}</b>
-              <span role="cell"><span class="tbl__lbl" aria-hidden="true">Dano causado</span><span class="tbl__num">{{ r.damageDealt }}</span></span>
-              <span role="cell"><span class="tbl__lbl" aria-hidden="true">Cura</span><span class="tbl__num">{{ r.healingDone }}</span></span>
-              <span role="cell"><span class="tbl__lbl" aria-hidden="true">Dano recebido</span><span class="tbl__num">{{ r.damageTaken }}</span></span>
-              <span role="cell"><span class="tbl__lbl" aria-hidden="true">Golpes finais</span><span class="tbl__num">{{ r.finalBlows }}</span></span>
-              <span role="cell"><span class="tbl__lbl" aria-hidden="true">Acertos críticos</span><span class="tbl__num">{{ r.criticalHits }}</span></span>
-            </div>
-          }
-          </div>
-        </div>
+        <app-highlights-table
+          title="Números de cada jogador"
+          [columns]="columns"
+          [rows]="rows()"
+        />
       }
     }
   }

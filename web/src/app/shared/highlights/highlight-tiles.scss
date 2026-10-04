@@ -1,0 +1,85 @@
+:host {
+  display: block;
+}
+
+// One tile a category, in a fixed grid (E8-11 state 1): one column on a phone,
+// two from a tablet, four on a desktop. A single winner keeps the width of one
+// column instead of stretching across the panel. The number is the largest
+// text of the tile.
+.hl__tiles {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+
+  @media (min-width: 720px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (min-width: 1100px) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+}
+
+.tile__label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 18px;
+  font-weight: 500;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+// The Tanque's "mais dano recebido" lines up with its label; the others keep
+// the same height empty so the numbers share a row.
+.tile__sub {
+  min-height: 16px;
+  padding-left: 26px;
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--mr-ink-muted);
+}
+
+.tile__value {
+  margin-top: 2px;
+  font-family: var(--mr-font-display);
+  font-size: 36px;
+  line-height: 42px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.tile__names {
+  font-family: var(--mr-font-display);
+  font-size: 20px;
+  line-height: 24px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.tile__who {
+  font-size: 14px;
+  line-height: 18px;
+  color: var(--mr-ink-muted);
+}

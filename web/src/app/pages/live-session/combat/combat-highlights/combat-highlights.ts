@@ -5,12 +5,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import {
-  type HighlightRow,
   type HighlightTile,
   highlightRows,
   highlightTiles,
 } from '../../../../core/combat/combat-highlights';
-import { joinNames } from '../../../../core/play/stage-view';
+import { HighlightTiles } from '../../../../shared/highlights/highlight-tiles';
+import { HighlightsTable, type HighlightsTableRow } from '../../../../shared/highlights/highlights-table';
 import type { CombatantInfo } from '../combat-info';
 
 type LoadState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready' };
@@ -31,7 +31,7 @@ type LoadState = { status: 'loading' } | { status: 'error'; message: string } | 
  */
 @Component({
   selector: 'app-combat-highlights',
-  imports: [MatButtonModule, MatIconModule],
+  imports: [HighlightTiles, HighlightsTable, MatButtonModule, MatIconModule],
   templateUrl: './combat-highlights.html',
   styleUrl: './combat-highlights.scss',
 })
@@ -45,7 +45,12 @@ export class CombatHighlights {
 
   protected readonly state = signal<LoadState>({ status: 'loading' });
   protected readonly tiles = signal<readonly HighlightTile[]>([]);
-  protected readonly rows = signal<readonly HighlightRow[]>([]);
+  protected readonly rows = signal<readonly HighlightsTableRow[]>([]);
+  protected readonly columns = ['Dano causado', 'Cura', 'Dano recebido', 'Golpes finais', 'Acertos críticos'];
+  /** The players' names by character, for the tiles' "de Caio". */
+  protected readonly players = computed(
+    () => new Map([...this.info()].flatMap(([id, c]) => (c.playerName ? [[id, c.playerName] as const] : []))),
+  );
   protected readonly error = computed(() => {
     const s = this.state();
     return s.status === 'error' ? s.message : '';
@@ -65,19 +70,16 @@ export class CombatHighlights {
     try {
       const res = await this.api.highlights(campaignId, encounterId);
       this.tiles.set(highlightTiles(res));
-      this.rows.set(highlightRows(res.characters));
+      this.rows.set(
+        highlightRows(res.characters).map((r) => ({
+          id: r.characterId,
+          name: r.name,
+          cells: [r.damageDealt, r.healingDone, r.damageTaken, r.finalBlows, r.criticalHits].map(String),
+        })),
+      );
       this.state.set({ status: 'ready' });
     } catch (err) {
       this.state.set({ status: 'error', message: combatErrorMessage(err, 'carregar os destaques') });
     }
-  }
-
-  /** "de Caio", "cada um · de Lia e Caio": the players behind the winners. */
-  protected playersLine(tile: HighlightTile): string {
-    const names = tile.characterIds
-      .map((id) => this.info().get(id)?.playerName)
-      .filter((n): n is string => !!n);
-    const who = names.length > 0 ? `de ${joinNames(names)}` : '';
-    return tile.tie ? (who ? `cada um · ${who}` : 'cada um') : who;
   }
 }
