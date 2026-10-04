@@ -1,11 +1,15 @@
 /**
  * The combat grid's arithmetic, kept apart from the components so it is
  * tested without a DOM (RN-21): squares of 1,5 m (5 ft) across and down,
- * counted from 0 at the top left, and a king's move (a diagonal costs one
- * square too). The distances in words are `core/units.ts`'s.
+ * counted from 0 at the top left. A move is a straight line between the
+ * centres of two squares and costs its exact length (a diagonal step is 7,1 ft),
+ * so what a combatant reaches is a circle, the same one the server draws.
+ * TEMPORARY: it knows nothing of walls, rubble or other creatures' costs, which
+ * only the server does (slice 9.15 replaces the reach with `GetMoveOptions`).
+ * The distances in words are `core/units.ts`'s.
  */
 
-import { SQUARE_FT, distanceText } from '../units';
+import { metersText } from '../units';
 
 /** The screen takes 5 to 60 columns; the server takes 4 to 200. */
 export const MIN_COLUMNS = 5;
@@ -22,9 +26,19 @@ export function gridRows(columns: number, imageWidth: number, imageHeight: numbe
   return Math.max(1, Math.round((columns * imageHeight) / Math.max(1, imageWidth)));
 }
 
-/** How many squares apart: Chebyshev, so a diagonal counts as one. */
+/** The cost of one square straight, in tenths of a foot: what the server charges. */
+export const DFT_PER_SQUARE = 50;
+
+/** How many squares apart: the straight line between the centres, so a diagonal
+ * step is 1,41 squares (7,1 ft), not one. */
 export function distance(a: Square, b: Square): number {
-  return Math.max(Math.abs(a.col - b.col), Math.abs(a.row - b.row));
+  return Math.hypot(a.col - b.col, a.row - b.row);
+}
+
+/** The same distance in tenths of a foot, rounded to the nearest like the
+ * server's (a square straight is 50, a diagonal one 71). */
+export function lengthDft(a: Square, b: Square): number {
+  return Math.round(distance(a, b) * DFT_PER_SQUARE);
 }
 
 /** Whether `s` is a square of a grid of `columns` x `rows`. */
@@ -75,20 +89,21 @@ export function stepSquare(from: Square, key: string, columns: number, rows: num
   };
 }
 
-/** Whether `to` is within `reach` squares of `from`, a different square,
- * inside the grid and not one of the `occupied` ones. */
+/** Whether `to` is within the circle `leftDft` (the movement left, in tenths of
+ * a foot) draws around `from`, a different square, inside the grid and not one
+ * of the `occupied` ones. */
 export function canReach(
   from: Square,
   to: Square,
-  reach: number,
+  leftDft: number,
   columns: number,
   rows: number,
   occupied: readonly Square[],
 ): boolean {
   return (
     inGrid(to, columns, rows) &&
-    distance(from, to) > 0 &&
-    distance(from, to) <= reach &&
+    lengthDft(from, to) > 0 &&
+    lengthDft(from, to) <= leftDft &&
     !occupied.some((o) => o.col === to.col && o.row === to.row)
   );
 }
@@ -98,7 +113,9 @@ function squares(n: number): string {
 }
 
 /** How a move goes, without its cost: "2 quadrados para a direita e 1 para
- * baixo. Depois restam 4,5 m." `leftFt` is the movement left before it. */
+ * baixo. Depois restam 4,1 m." `leftFt` is the movement left before it. In
+ * metres only: once a diagonal costs its length, a count of squares no longer
+ * adds up (E9-05). */
 export function moveDetail(from: Square, to: Square, leftFt: number): string {
   const dc = to.col - from.col;
   const dr = to.row - from.row;
@@ -109,14 +126,14 @@ export function moveDetail(from: Square, to: Square, leftFt: number): string {
   if (dr !== 0) {
     parts.push(`${squares(Math.abs(dr))} para ${dr > 0 ? 'baixo' : 'cima'}`);
   }
-  const after = Math.max(0, leftFt - distance(from, to) * SQUARE_FT);
-  return `${parts.join(' e ')}. Depois restam ${distanceText(after)}.`;
+  const after = Math.max(0, leftFt - lengthDft(from, to) / 10);
+  return `${parts.join(' e ')}. Depois restam ${metersText(after)}.`;
 }
 
 /** What the live line under the map says once a square is chosen (E6-10):
  * "Mover 3 m. 2 quadrados para a direita e 1 para baixo. Depois restam 4,5 m." */
 export function moveSentence(from: Square, to: Square, leftFt: number): string {
-  return `Mover ${distanceText(distance(from, to) * SQUARE_FT)}. ${moveDetail(from, to, leftFt)}`;
+  return `Mover ${metersText(lengthDft(from, to) / 10)}. ${moveDetail(from, to, leftFt)}`;
 }
 
 /** The ordinal circle: "2º círculo", with a no-break space so a line never

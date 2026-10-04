@@ -129,7 +129,7 @@ test(
       await expect(m.getByText('Vez do Pensantus')).toBeVisible();
       await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
 
-      // The player moves 3 m (2 right, 1 down) inside the reach, and is refused beyond it.
+      // The player moves 2 right and 1 down (11,2 ft, 3,4 m: the straight line, RN-21) inside the circle, and is refused beyond it.
       await p.getByRole('button', { name: 'Mover' }).click();
       await expect(p.getByRole('heading', { name: 'Mover Pensantus' })).toBeVisible();
       const map = p.getByRole('group', { name: /Mapa de batalha/ });
@@ -144,7 +144,7 @@ test(
       await expect(p.getByText('Longe demais: faltam')).toBeVisible();
       await expect(p.getByRole('button', { name: 'Mover para cá' })).toHaveAttribute('aria-disabled', 'true');
       await map.click({ position: at(2, 1) });
-      await expect(p.getByRole('status').filter({ hasText: 'Mover 3 m' })).toContainText('2 quadrados para a direita e 1 quadrado para baixo. Depois restam 4,5 m · 3 quadrados.');
+      await expect(p.getByRole('status').filter({ hasText: 'Mover 3,4 m' })).toContainText('2 quadrados para a direita e 1 quadrado para baixo. Depois restam 4,1 m.');
       await p.getByRole('button', { name: 'Mover para cá' }).click();
       await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
       await expect.poll(async () => (await getEncounterRPC(m, campaignId)).combatants.find((c) => c.label === 'Pensantus')?.col).toBe((own.col ?? 0) + 2);

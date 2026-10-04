@@ -7,8 +7,14 @@ describe('combat errors', () => {
   it('says how far a refused move was, in meters', () => {
     expect(
       blockedMessage({ reason: EncounterBlockedReason.TOO_FAR, missingFt: 5 } as never),
-    ).toBe('Longe demais: faltam 1,5\u00a0m');
+    ).toBe('Esse caminho custa mais do que o movimento que sobra: faltam 1,5\u00a0m.');
     expect(blockedMessage({ reason: EncounterBlockedReason.SQUARE_OCCUPIED } as never)).toMatch(/Ocupado/);
+  });
+
+  it('explains the refusals of walls, enemies and total cover (RN-21, MR-034)', () => {
+    expect(blockedMessage({ reason: EncounterBlockedReason.MOVE_BLOCKED } as never)).toMatch(/parede ou outra criatura/);
+    expect(blockedMessage({ reason: EncounterBlockedReason.ENEMY_IN_THE_WAY } as never)).toMatch(/inimigo está no caminho/);
+    expect(blockedMessage({ reason: EncounterBlockedReason.TARGET_COVER_TOTAL } as never)).toMatch(/cobertura total/);
   });
 
   it('speaks by code when there is no typed detail', () => {

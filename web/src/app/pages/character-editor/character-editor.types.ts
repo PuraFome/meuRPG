@@ -182,6 +182,10 @@ export interface BasicCharacterFormValue {
   /** The NPC's portrait, a gallery image's ID or empty (MR-031). Carried
    * through unchanged, so saving the short form never clears it. */
   portraitImageId: string;
+  /** The NPC's size (`rules.v1.CreatureSize`, 0 = unset, Medium), carried through
+   * unchanged: there is no control for it yet (the combat reads it), and saving
+   * must never clear it. */
+  size: number;
 }
 
 /** One row of the SRD's "Experience Points by Challenge Rating" table

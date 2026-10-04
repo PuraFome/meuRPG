@@ -536,7 +536,7 @@ func TestRN21_PlayerMovementIsLimitedTheMasterIsNot(t *testing.T) {
 		t.Fatalf("order = %v, want Pensantus first", labels(e))
 	}
 	e = f.mustMove(t, f.master, e, "Pensantus", 3, 3)
-	e = f.mustMove(t, f.master, e, "Toren", 4, 3)
+	e = f.mustMove(t, f.master, e, "Toren", 4, 2) // not on Pensantus's row: passing a creature costs 5 ft more (RN-21)
 	e = f.mustMove(t, f.master, e, "Goblin", 10, 8)
 
 	// The master moves anyone anywhere, however far, and nothing is spent.
@@ -556,7 +556,7 @@ func TestRN21_PlayerMovementIsLimitedTheMasterIsNot(t *testing.T) {
 	if b := wantEncounterBlocked(t, err, reasonTooFar); b.GetMissingFt() != 5 {
 		t.Errorf("missing_ft = %d, want 5", b.GetMissingFt())
 	}
-	_, err = f.move(t, f.ana, e, "Pensantus", 4, 3) // Toren is there
+	_, err = f.move(t, f.ana, e, "Pensantus", 4, 2) // Toren is there
 	wantEncounterBlocked(t, err, reasonOccupied)
 	_, err = f.move(t, f.ana, e, "Pensantus", 20, 3)
 	wantCode(t, "Pensantus off the grid", err, connect.CodeInvalidArgument)
@@ -902,6 +902,18 @@ func TestMR013_CombatAuthorizationMatrix(t *testing.T) {
 			_, err := u.combat.BeginCombat(ctx, connect.NewRequest(&playv1.BeginCombatRequest{CampaignId: campaign, EncounterId: enc, IdempotencyKey: newKey()}))
 			return err
 		},
+		"GetMoveOptions": func(u *user, ctx context.Context) error {
+			_, err := u.combat.GetMoveOptions(ctx, connect.NewRequest(&playv1.GetMoveOptionsRequest{CampaignId: campaign, EncounterId: enc, CombatantId: pens}))
+			return err
+		},
+		"SetCombatantSide": func(u *user, ctx context.Context) error {
+			_, err := u.combat.SetCombatantSide(ctx, connect.NewRequest(&playv1.SetCombatantSideRequest{CampaignId: campaign, EncounterId: enc, CombatantId: gob, IdempotencyKey: newKey(), Side: playv1.CombatantSide_COMBATANT_SIDE_PARTY}))
+			return err
+		},
+		"SetCombatantCover": func(u *user, ctx context.Context) error {
+			_, err := u.combat.SetCombatantCover(ctx, connect.NewRequest(&playv1.SetCombatantCoverRequest{CampaignId: campaign, EncounterId: enc, CombatantId: gob, IdempotencyKey: newKey(), Cover: playv1.CoverDegree_COVER_DEGREE_HALF}))
+			return err
+		},
 		"SetCombatantHidden": func(u *user, ctx context.Context) error {
 			_, err := u.combat.SetCombatantHidden(ctx, connect.NewRequest(&playv1.SetCombatantHiddenRequest{CampaignId: campaign, EncounterId: enc, CombatantId: gob, IdempotencyKey: newKey(), Hidden: false}))
 			return err
@@ -945,7 +957,7 @@ func TestMR013_CombatAuthorizationMatrix(t *testing.T) {
 
 	masterOnly := map[string]bool{
 		"StartEncounter": true, "SetInitiativeOrder": true, "BeginCombat": true, "SetCombatantHidden": true,
-		"AddCombatants": true, "RemoveCombatant": true, "EndEncounter": true,
+		"AddCombatants": true, "RemoveCombatant": true, "EndEncounter": true, "SetCombatantSide": true, "SetCombatantCover": true,
 	}
 	for name, call := range calls {
 		if err := call(anonymous, t.Context()); connect.CodeOf(err) != connect.CodeUnauthenticated {

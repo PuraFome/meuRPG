@@ -259,6 +259,10 @@ type Config struct {
 	Roster CombatRoster
 	// Dice says where a player rolls (RN-18). Required.
 	Dice DiceModes
+	// Terrain gives a combat the walls, difficult terrain and cover of its map
+	// (RN-21, D2). Optional: cmd/api sets it with SetTerrain once the maps module
+	// exists (the two need each other); nil means open floor.
+	Terrain TerrainSource
 	// Roller rolls the NPCs' dice and the app's rolls. Nil means the
 	// operating system's random source (dice.Crypto); tests pass faces.
 	Roller dice.Roller
@@ -281,6 +285,7 @@ type Service struct {
 	maps      MapKeeper
 	roster    CombatRoster
 	dice      DiceModes
+	terrain   TerrainSource
 	roller    dice.Roller
 	logger    *slog.Logger
 	now       func() time.Time
@@ -336,6 +341,7 @@ func New(cfg Config) (*Service, error) {
 		maps:      cfg.Maps,
 		roster:    cfg.Roster,
 		dice:      cfg.Dice,
+		terrain:   cfg.Terrain,
 		roller:    cfg.Roller,
 		logger:    cfg.Logger,
 		now:       cfg.Now,

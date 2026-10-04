@@ -3,8 +3,10 @@ import { MatIconModule } from '@angular/material/icon';
 
 import type { Combatant } from '../../../gen/meurpg/play/v1/combat_pb';
 import {
+  DFT_PER_SQUARE,
   type Square,
   canReach,
+  distance,
   squareAt,
   squareCenter,
   stepSquare,
@@ -21,10 +23,11 @@ export interface CombatMapImage {
   readonly height: number;
 }
 
-/** Where a combatant can reach: its square and how many squares away. */
+/** Where a combatant can reach: its square and the movement it has left, in
+ * tenths of a foot (the circle around it). */
 export interface Reach {
   readonly origin: Square;
-  readonly squares: number;
+  readonly leftDft: number;
 }
 
 /** A square the person chose; `refused` when it is out of reach or taken. */
@@ -44,7 +47,7 @@ export interface TokenDrop extends Square {
  *
  * - **Who is drawn:** the combatants that have a square. A player never gets a
  *   hidden one from the server; the master's hidden ones are drawn dashed.
- * - **Reach (E6-10):** the squares a combatant can walk to (a king's move,
+ * - **Reach (E6-10):** the squares a combatant can walk to (the circle its movement left draws,
  *   occupied squares left out), tinted, with a dashed outline around them.
  * - **Moving:** the master drags any token (`masterMoves`); a player drags
  *   their own inside the reach (`ownMoveId`). With `pickSquares`, a click on
@@ -123,10 +126,11 @@ export class CombatMap {
       return [];
     }
     const cells: Square[] = [];
-    const { origin, squares } = reach;
+    const { origin, leftDft } = reach;
+    const squares = Math.ceil(leftDft / DFT_PER_SQUARE);
     for (let row = origin.row - squares; row <= origin.row + squares; row++) {
       for (let col = origin.col - squares; col <= origin.col + squares; col++) {
-        if (canReach(origin, { col, row }, squares, this.columns(), this.rows(), this.occupied())) {
+        if (canReach(origin, { col, row }, leftDft, this.columns(), this.rows(), this.occupied())) {
           cells.push({ col, row });
         }
       }
@@ -139,7 +143,8 @@ export class CombatMap {
     if (!reach) {
       return null;
     }
-    const { origin, squares } = reach;
+    const { origin, leftDft } = reach;
+    const squares = Math.ceil(leftDft / DFT_PER_SQUARE);
     const col = Math.max(0, origin.col - squares);
     const row = Math.max(0, origin.row - squares);
     const lastCol = Math.min(this.columns() - 1, origin.col + squares);
@@ -208,7 +213,7 @@ export class CombatMap {
 
   /** "Vez", "6 m"… the accessible name of the frame. */
   protected meters(from: Square, to: Square): string {
-    return formatMeters(squaresToMeters(Math.max(Math.abs(from.col - to.col), Math.abs(from.row - to.row))));
+    return formatMeters(squaresToMeters(distance(from, to)));
   }
 
   private tokenOf(id: string): Square | null {
