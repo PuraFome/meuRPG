@@ -221,6 +221,10 @@ jobs:
         # With MEURPG_TEST_DATABASE_URL set, the integration tests
         # (migrations, stores, the 40001 retry, row TTL) run instead of
         # being skipped. Each test creates and drops its own database.
+        # -timeout: each package gets 18 minutes, under the job's 20. Go's
+        # default is 10 minutes per package, and the packages share one
+        # CockroachDB, so the slowest (play, maps) took 7 to 10 minutes and
+        # one more package's tests could push them over.
         env:
           MEURPG_TEST_DATABASE_URL: postgresql://root@localhost:26257/defaultdb?sslmode=disable
-        run: go test -race ./...
+        run: go test -race -timeout 18m ./...
