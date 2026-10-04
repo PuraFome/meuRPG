@@ -83,7 +83,7 @@ RETURNING *;
 -- no player ever receives, and either revealed, a triggered trap or a found
 -- treasure (a trap revealed to some characters only is the handler's to add).
 SELECT m.id, m.campaign_id, m.name, m.image_id, m.revealed_at, m.revision, m.created_at, m.updated_at, m.grid_columns,
-       m.fog_enabled, m.base_light, m.group_vision, m.layers_revision, m.light_revision,
+       m.fog_enabled, m.base_light, m.group_vision, m.layers_revision, m.light_revision, m.vision_epoch,
        g.name AS image_name, g.width AS image_width, g.height AS image_height,
        (SELECT count(*) FROM map_points AS p WHERE p.map_id = m.id)::INT4 AS point_count,
        (SELECT count(*) FROM map_points AS p
@@ -98,7 +98,7 @@ ORDER BY m.created_at, m.id;
 -- Every submap point of the campaign that leads to a map: the map it is on,
 -- the map it leads to, and whether the point is revealed. It gives each map
 -- its parents ("Submapa de ...").
-SELECT p.map_id, p.target_map_id::UUID AS target_map_id, (p.revealed_at IS NOT NULL)::BOOL AS revealed
+SELECT p.map_id, p.target_map_id::UUID AS target_map_id, (p.revealed_at IS NOT NULL)::BOOL AS revealed, p.x_bp, p.y_bp
 FROM map_points AS p
 JOIN maps AS m ON m.id = p.map_id
 WHERE m.campaign_id = $1 AND p.kind = 'submap' AND p.target_map_id IS NOT NULL
@@ -578,6 +578,76 @@ SELECT (count(*) FILTER (WHERE treasure_found_at IS NOT NULL))::INT4 AS found,
        (count(*) FILTER (WHERE treasure_converted_award_id IS NOT NULL))::INT4 AS converted
 FROM map_points
 WHERE map_id = $1 AND kind = 'treasure';
+
+-- What each player saw of a map with the fog of war on (MR-036, D6). The bytes are
+-- a packed bitmap in package rules/grid's layout; the handlers size them by the
+-- map's grid.
+
+-- name: GetMapVisionMemory :one
+-- One player's memory of a map; no row means they have seen nothing yet. The
+-- caller compares epoch with the map's vision_epoch: an older one reads as empty.
+SELECT seen, epoch FROM map_vision_memory
+WHERE map_id = $1 AND user_id = $2;
+
+-- name: ListMapVisionMemory :many
+-- Every player's memory of a map (a stream's hint needs each player's view).
+SELECT user_id, seen, epoch FROM map_vision_memory
+WHERE map_id = $1;
+
+-- name: UpsertMapVisionMemory :execrows
+-- The caller already merged the new squares into the old bytes, so the memory
+-- only grows. It writes only while the map is still in the epoch the bytes were
+-- built for: a clear that happened meanwhile bumped it, and nothing is written.
+INSERT INTO map_vision_memory (map_id, user_id, seen, epoch, updated_at)
+SELECT m.id, sqlc.arg(user_id)::UUID, sqlc.arg(seen)::BYTEA, m.vision_epoch, sqlc.arg(updated_at)::TIMESTAMPTZ
+FROM maps AS m
+WHERE m.id = sqlc.arg(map_id) AND m.vision_epoch = sqlc.arg(epoch)
+ON CONFLICT (map_id, user_id) DO UPDATE
+SET seen = excluded.seen, epoch = excluded.epoch, updated_at = excluded.updated_at;
+
+-- name: ClearMapVisionMemory :execrows
+-- "Esquecer o que foi visto", and a new grid or image: every player forgets. The
+-- epoch goes up, so a refresh that was already running cannot write the old bitmap.
+UPDATE maps SET vision_epoch = vision_epoch + 1
+WHERE id = $1;
+
+-- name: DeleteMapVisionMemory :execrows
+-- The rows of the cleared epochs (they already read as empty); tidying only.
+DELETE FROM map_vision_memory
+WHERE map_id = $1;
+
+-- name: ImageIsOnAFogMap :one
+-- Whether the image is the background of a map with the fog of war on: a player
+-- never receives it, whatever else shows it (RN-10, MR-036). The image route asks
+-- it for a player. A map's image is found by maps_image_id_idx.
+SELECT EXISTS (
+    SELECT 1 FROM maps
+    WHERE campaign_id = $1 AND image_id = $2 AND fog_enabled
+);
+
+-- name: ImageIsUsedElsewhere :one
+-- Whether the image is also used another way than as the background of the
+-- given map: the background of any other map, or an image the campaign left with
+-- the players. Turning the fog on copies such an image first, so the fog map's
+-- image is its own.
+SELECT (
+    EXISTS (
+        SELECT 1 FROM maps AS m
+        WHERE m.campaign_id = sqlc.arg(campaign_id) AND m.image_id = sqlc.arg(image_id) AND m.id <> sqlc.arg(map_id)
+    )
+    OR EXISTS (
+        SELECT 1 FROM campaign_left_images AS l
+        WHERE l.campaign_id = sqlc.arg(campaign_id) AND l.image_id = sqlc.arg(image_id)
+    )
+)::BOOL AS used;
+
+-- name: SetMapImageOnly :one
+-- A new copy of the image becomes the map's, without touching the name or the
+-- revision's guard: the map's revision still moves, since the image changed.
+UPDATE maps
+SET image_id = sqlc.arg(image_id), revision = revision + 1, updated_at = sqlc.arg(now)
+WHERE campaign_id = sqlc.arg(campaign_id) AND id = sqlc.arg(id)
+RETURNING *;
 
 -- Gold (slice 9.11, MR-032): the session summary's "Mais tesouro encontrado".
 

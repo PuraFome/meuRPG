@@ -178,7 +178,14 @@ service PlayService {
   //     it (RN-10): a change to hidden things reaches only the master;
   //   - `token_moved` when the master moves a token: to everyone when the
   //     token is visible on a map the players see, only to the master
-  //     otherwise;
+  //     otherwise. On a map with the fog of war on, only a player
+  //     character's token goes to the players: an NPC's move reaches them
+  //     only as `vision_changed`, never with its square;
+  //   - `vision_changed` on a map with the fog of war on: what the player
+  //     sees or remembers changed, or an NPC moved on a square they see; a
+  //     hint, and the app reads MapService.GetMapVision and the map again.
+  //     Sent only to the players it touches, and not queued again while one
+  //     waits in the stream's queue; the master never gets it;
   //   - `shown_image_changed` when the master shows an image, stops showing
   //     it, or deletes it; sent to everyone;
   //   - `left_images_changed` when the list of images left with the players
@@ -283,6 +290,12 @@ service PlayService {
   // `shown_image_changed`. A new session starts showing nothing; deleting
   // the image (GalleryService.DeleteGalleryImage) stops showing it.
   //
+  // An image that is the background of a map with the fog of war on is never
+  // sent to a player (RN-10): the session then shows a copy of it, a new gallery
+  // image with the same bytes (named "... (névoa)"), and the shown image's ID in
+  // the response and in GetLiveSession is the copy's. The copy takes a place in
+  // the campaign's gallery: `resource_exhausted` when it is full.
+  //
   // `keep` is the "Deixar com os jogadores" switch of the image shown. With
   // it on, when the master stops showing the image, shows another one or
   // ends the session, the image is left with the players
@@ -298,6 +311,8 @@ service PlayService {
   //   - `permission_denied`: the caller is a player.
   //   - `failed_precondition`: no open session (GameSessionBlocked,
   //     NO_OPEN_SESSION).
+  //   - `resource_exhausted`: the image is a fog map's background and the
+  //     gallery is full, so it cannot be copied.
   rpc SetShownImage(SetShownImageRequest) returns (SetShownImageResponse);
 
   // ListLeftImages returns the images the master left with the players
@@ -665,8 +680,9 @@ message GetLiveSessionResponse {
 
 // ShownImage is a gallery image the master shows the players during a
 // session, or leaves with them (MR-028), with what the app needs to show
-// it. A player may fetch its files while it is shown or left; the master
-// always may.
+// it. A player may fetch its files while it is shown or left, unless it is the
+// background of a map with the fog of war on (the session then shows a copy of
+// it, whose ID this is); the master always may.
 message ShownImage {
   // The gallery image's ID (a UUID).
   string id = 1;
@@ -814,14 +830,27 @@ message WatchGameSessionResponse {
     // The master revealed a clue to this player: read their notes again
     // (NotesService.ListNotes). Only the players who got it get it.
     NotesChanged notes_changed = 18;
-    // Number 19 is the fog slice's (`vision_changed`, Etapa 9).
-    //
+    // What the player sees of a map with the fog of war on changed: read
+    // MapService.GetMapVision and the map again. Only the players it concerns get it.
+    VisionChanged vision_changed = 19;
     // A character's creatures changed outside a combat: one was summoned, given,
     // renamed, dismissed or had its hit points corrected, or a combat ended
     // and wrote them back. Read them again (CharacterService.ListCharacterCreatures).
     // Only the master and the creatures' owner get it; during a combat
     // `encounter_changed` covers the creatures.
     CreaturesChanged creatures_changed = 20;
+  }
+
+  // VisionChanged is a hint for one player on a map with the fog of war on: what
+  // their character sees, or remembers, changed, or an NPC moved on a square they
+  // see; the app reads MapService.GetMapVision and the map again
+  // (GetMap, GetMapLayers). It carries no square and no creature, so it tells
+  // the player nothing the reads do not. It is sent only to the players it
+  // touches, and at most once while one is still waiting in the stream's queue.
+  // The master never gets it (the map_changed hints cover them).
+  message VisionChanged {
+    // The map (a UUID), which the player sees.
+    string map_id = 1;
   }
 
   // CreaturesChanged carries nothing: it names no creature and no character, so

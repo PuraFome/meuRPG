@@ -102,6 +102,11 @@ const (
 	MapServiceGetMapLayersProcedure = "/meurpg.maps.v1.MapService/GetMapLayers"
 	// MapServiceSetMapFogProcedure is the fully-qualified name of the MapService's SetMapFog RPC.
 	MapServiceSetMapFogProcedure = "/meurpg.maps.v1.MapService/SetMapFog"
+	// MapServiceGetMapVisionProcedure is the fully-qualified name of the MapService's GetMapVision RPC.
+	MapServiceGetMapVisionProcedure = "/meurpg.maps.v1.MapService/GetMapVision"
+	// MapServiceForgetMapVisionProcedure is the fully-qualified name of the MapService's
+	// ForgetMapVision RPC.
+	MapServiceForgetMapVisionProcedure = "/meurpg.maps.v1.MapService/ForgetMapVision"
 	// MapServiceRevealTrapProcedure is the fully-qualified name of the MapService's RevealTrap RPC.
 	MapServiceRevealTrapProcedure = "/meurpg.maps.v1.MapService/RevealTrap"
 	// MapServiceMarkTreasureFoundProcedure is the fully-qualified name of the MapService's
@@ -132,14 +137,25 @@ type MapServiceClient interface {
 	// may call it. The app calls it again whenever the live session says the
 	// map changed (`map_changed`, `current_map_changed`).
 	//
+	// On a map with the fog of war on, a player gets a filtered map: the image
+	// without an id, URL or thumbnail (image_withheld), the points whose square
+	// (any square of its area) they see now or remember, every player
+	// character's token and an NPC's only on a square they see now, and the
+	// counts of what they receive. The master may send as_character_id to get
+	// exactly what that character's player would get ("Ver como").
+	//
 	// Errors:
 	//   - `not_found`: the map is not in this campaign, or the caller is a
 	//     player and the map is hidden from them; the campaign does not
-	//     exist, or the caller is not a member of it.
+	//     exist, or the caller is not a member of it. With as_character_id: the
+	//     character is not a living player character of the campaign.
+	//   - `permission_denied`: a player sent as_character_id.
 	GetMap(context.Context, *connect.Request[v1.GetMapRequest]) (*connect.Response[v1.GetMapResponse], error)
 	// CreateMap creates a map from an image of the campaign's gallery. Only
 	// the campaign's master may call it. The map starts hidden, without
-	// points or tokens.
+	// points or tokens. An image that is the background of a map with the fog on
+	// is copied, and the new map gets the copy (the Map in the response carries its
+	// ID), because a fog map's image is its own.
 	//
 	// Errors:
 	//   - `invalid_argument`: the name breaks its rules, or image_id is not an
@@ -161,9 +177,13 @@ type MapServiceClient interface {
 	//
 	// A different image clears the map's painted layers (PaintMapCells), like
 	// other grid columns do, and is refused while a combat that is not ended runs
-	// on the map; the same image again changes nothing.
+	// on the map; the same image again changes nothing. A new image that is also
+	// used another way (or is the background of a map with the fog on, for a map
+	// without fog) is copied first, as SetMapFog does, and the map gets the copy:
+	// the Map in the response carries the copy's ID.
 	//
 	// Errors:
+	//   - `resource_exhausted`: the image needs a copy and the gallery is full.
 	//   - `invalid_argument`: nothing to change, revision less than 1, the
 	//     name breaks its rules, or image_id is not an image of the
 	//     campaign's gallery.
@@ -451,13 +471,17 @@ type MapServiceClient interface {
 	// byte layout described on GetMapLayersResponse. Any member may call it. The
 	// master gets all four layers. A player of a map they see gets the difficult
 	// terrain, walls and cover, never the light; and, while the map has the fog
-	// of war on, none of them (fog_withheld): slice 9.4 sends each player only
-	// what their character sees.
+	// of war on, only the squares their character sees now or remembers, plus the
+	// walls next to a seen square (fog_withheld is then true: this is a filtered
+	// view). The master may send as_character_id to read as that character's
+	// player would ("Ver como").
 	//
 	// Errors:
 	//   - `not_found`: the map is not in this campaign, or is hidden from the
 	//     caller (a player), the campaign does not exist, or the caller is not a
-	//     member of it.
+	//     member of it. With as_character_id: the character is not a living
+	//     player character of the campaign.
+	//   - `permission_denied`: a player sent as_character_id.
 	GetMapLayers(context.Context, *connect.Request[v1.GetMapLayersRequest]) (*connect.Response[v1.GetMapLayersResponse], error)
 	// SetMapFog changes the fog of war's settings of a map (MR-036, D6): whether
 	// it is on, the base light of a square nobody lit, and "Visão do grupo". Each
@@ -466,14 +490,53 @@ type MapServiceClient interface {
 	// removing the grid (SetMapGrid with 0 columns) turns it off. A player who
 	// sees the map gets `map_changed`.
 	//
+	// A map's image is its own while the fog is on (a player never receives it).
+	// Turning the fog on therefore copies the image when something else uses it (the
+	// background of another map, an image left with the players, the one shown in
+	// the session, an NPC's portrait): the copy is a new gallery image with the same
+	// bytes, named "... (névoa)", and it becomes the map's image, so the Map in the
+	// response carries the copy's ID. The other uses keep the original. The copy
+	// takes a place in the campaign's gallery.
+	//
 	// Errors:
 	//   - `invalid_argument`: nothing to change.
+	//   - `resource_exhausted`: the fog needs a copy of the image and the gallery
+	//     is full.
 	//   - `failed_precondition` (MapBlocked NO_GRID): fog_enabled is true and the
 	//     map has no grid.
 	//   - `not_found`: the map is not in this campaign, the campaign does not
 	//     exist, or the caller is not a member of it.
 	//   - `permission_denied`: the caller is a player.
 	SetMapFog(context.Context, *connect.Request[v1.SetMapFogRequest]) (*connect.Response[v1.SetMapFogResponse], error)
+	// GetMapVision returns what the caller sees of a map with the fog of war on,
+	// square by square, packed as GetMapVisionResponse describes (MR-036, D6). A
+	// player gets their own character's view (the union of every player
+	// character's, with "Visão do grupo" on), plus the squares their character
+	// saw before and remembers. The master, without as_character_id, gets every
+	// square seen; with it, the view of that character's player ("Ver como"). A
+	// map without the fog on answers every square seen. The app reads it again
+	// when the stream says `vision_changed`, and compares `revision` to know
+	// whether anything changed.
+	//
+	// Errors:
+	//   - `not_found`: the map is not in this campaign, or is hidden from the
+	//     caller (a player), the campaign does not exist, or the caller is not a
+	//     member of it. With as_character_id: the character is not a living
+	//     player character of the campaign.
+	//   - `permission_denied`: a player sent as_character_id.
+	//   - `failed_precondition` (MapBlocked NO_GRID): the map has no grid.
+	GetMapVision(context.Context, *connect.Request[v1.GetMapVisionRequest]) (*connect.Response[v1.GetMapVisionResponse], error)
+	// ForgetMapVision clears every player's memory of what they saw on the map
+	// ("Esquecer o que foi visto"): afterwards the remembered part is empty and
+	// each player has only what their character sees now. Only the campaign's
+	// master may call it. Changing the map's grid or image does the same. A
+	// player watching the session gets `vision_changed`.
+	//
+	// Errors:
+	//   - `not_found`: the map is not in this campaign, the campaign does not
+	//     exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	ForgetMapVision(context.Context, *connect.Request[v1.ForgetMapVisionRequest]) (*connect.Response[v1.ForgetMapVisionResponse], error)
 	// RevealTrap shows a TRAP point to the players the master chose: some
 	// characters (their players get the trap, and nobody else does) or everyone
 	// (the same as revealing the point, SetMapPointRevealed). Only the campaign's
@@ -534,8 +597,10 @@ type MapServiceClient interface {
 	// player may set it for their own character, the master for anyone; any other
 	// call is refused. It rides on the character's token, so the character needs
 	// one on the map. The token (MapToken.carried_light) tells it to the master
-	// and the character's own player only; what the other players see of it
-	// comes with slice 9.4.
+	// and the character's own player only; the other players see its light, in
+	// what GetMapVision gives them. On a map with the fog of war on a player's own
+	// character is always on the map for them, so they may set its light even if the
+	// master hid its token.
 	//
 	// Errors:
 	//   - `invalid_argument`: light_key is not empty and is not a light preset's
@@ -719,6 +784,19 @@ func NewMapServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(mapServiceMethods.ByName("SetMapFog")),
 			connect.WithClientOptions(opts...),
 		),
+		getMapVision: connect.NewClient[v1.GetMapVisionRequest, v1.GetMapVisionResponse](
+			httpClient,
+			baseURL+MapServiceGetMapVisionProcedure,
+			connect.WithSchema(mapServiceMethods.ByName("GetMapVision")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
+		forgetMapVision: connect.NewClient[v1.ForgetMapVisionRequest, v1.ForgetMapVisionResponse](
+			httpClient,
+			baseURL+MapServiceForgetMapVisionProcedure,
+			connect.WithSchema(mapServiceMethods.ByName("ForgetMapVision")),
+			connect.WithClientOptions(opts...),
+		),
 		revealTrap: connect.NewClient[v1.RevealTrapRequest, v1.RevealTrapResponse](
 			httpClient,
 			baseURL+MapServiceRevealTrapProcedure,
@@ -774,6 +852,8 @@ type mapServiceClient struct {
 	paintMapCells       *connect.Client[v1.PaintMapCellsRequest, v1.PaintMapCellsResponse]
 	getMapLayers        *connect.Client[v1.GetMapLayersRequest, v1.GetMapLayersResponse]
 	setMapFog           *connect.Client[v1.SetMapFogRequest, v1.SetMapFogResponse]
+	getMapVision        *connect.Client[v1.GetMapVisionRequest, v1.GetMapVisionResponse]
+	forgetMapVision     *connect.Client[v1.ForgetMapVisionRequest, v1.ForgetMapVisionResponse]
 	revealTrap          *connect.Client[v1.RevealTrapRequest, v1.RevealTrapResponse]
 	markTreasureFound   *connect.Client[v1.MarkTreasureFoundRequest, v1.MarkTreasureFoundResponse]
 	unmarkTreasureFound *connect.Client[v1.UnmarkTreasureFoundRequest, v1.UnmarkTreasureFoundResponse]
@@ -910,6 +990,16 @@ func (c *mapServiceClient) SetMapFog(ctx context.Context, req *connect.Request[v
 	return c.setMapFog.CallUnary(ctx, req)
 }
 
+// GetMapVision calls meurpg.maps.v1.MapService.GetMapVision.
+func (c *mapServiceClient) GetMapVision(ctx context.Context, req *connect.Request[v1.GetMapVisionRequest]) (*connect.Response[v1.GetMapVisionResponse], error) {
+	return c.getMapVision.CallUnary(ctx, req)
+}
+
+// ForgetMapVision calls meurpg.maps.v1.MapService.ForgetMapVision.
+func (c *mapServiceClient) ForgetMapVision(ctx context.Context, req *connect.Request[v1.ForgetMapVisionRequest]) (*connect.Response[v1.ForgetMapVisionResponse], error) {
+	return c.forgetMapVision.CallUnary(ctx, req)
+}
+
 // RevealTrap calls meurpg.maps.v1.MapService.RevealTrap.
 func (c *mapServiceClient) RevealTrap(ctx context.Context, req *connect.Request[v1.RevealTrapRequest]) (*connect.Response[v1.RevealTrapResponse], error) {
 	return c.revealTrap.CallUnary(ctx, req)
@@ -947,14 +1037,25 @@ type MapServiceHandler interface {
 	// may call it. The app calls it again whenever the live session says the
 	// map changed (`map_changed`, `current_map_changed`).
 	//
+	// On a map with the fog of war on, a player gets a filtered map: the image
+	// without an id, URL or thumbnail (image_withheld), the points whose square
+	// (any square of its area) they see now or remember, every player
+	// character's token and an NPC's only on a square they see now, and the
+	// counts of what they receive. The master may send as_character_id to get
+	// exactly what that character's player would get ("Ver como").
+	//
 	// Errors:
 	//   - `not_found`: the map is not in this campaign, or the caller is a
 	//     player and the map is hidden from them; the campaign does not
-	//     exist, or the caller is not a member of it.
+	//     exist, or the caller is not a member of it. With as_character_id: the
+	//     character is not a living player character of the campaign.
+	//   - `permission_denied`: a player sent as_character_id.
 	GetMap(context.Context, *connect.Request[v1.GetMapRequest]) (*connect.Response[v1.GetMapResponse], error)
 	// CreateMap creates a map from an image of the campaign's gallery. Only
 	// the campaign's master may call it. The map starts hidden, without
-	// points or tokens.
+	// points or tokens. An image that is the background of a map with the fog on
+	// is copied, and the new map gets the copy (the Map in the response carries its
+	// ID), because a fog map's image is its own.
 	//
 	// Errors:
 	//   - `invalid_argument`: the name breaks its rules, or image_id is not an
@@ -976,9 +1077,13 @@ type MapServiceHandler interface {
 	//
 	// A different image clears the map's painted layers (PaintMapCells), like
 	// other grid columns do, and is refused while a combat that is not ended runs
-	// on the map; the same image again changes nothing.
+	// on the map; the same image again changes nothing. A new image that is also
+	// used another way (or is the background of a map with the fog on, for a map
+	// without fog) is copied first, as SetMapFog does, and the map gets the copy:
+	// the Map in the response carries the copy's ID.
 	//
 	// Errors:
+	//   - `resource_exhausted`: the image needs a copy and the gallery is full.
 	//   - `invalid_argument`: nothing to change, revision less than 1, the
 	//     name breaks its rules, or image_id is not an image of the
 	//     campaign's gallery.
@@ -1266,13 +1371,17 @@ type MapServiceHandler interface {
 	// byte layout described on GetMapLayersResponse. Any member may call it. The
 	// master gets all four layers. A player of a map they see gets the difficult
 	// terrain, walls and cover, never the light; and, while the map has the fog
-	// of war on, none of them (fog_withheld): slice 9.4 sends each player only
-	// what their character sees.
+	// of war on, only the squares their character sees now or remembers, plus the
+	// walls next to a seen square (fog_withheld is then true: this is a filtered
+	// view). The master may send as_character_id to read as that character's
+	// player would ("Ver como").
 	//
 	// Errors:
 	//   - `not_found`: the map is not in this campaign, or is hidden from the
 	//     caller (a player), the campaign does not exist, or the caller is not a
-	//     member of it.
+	//     member of it. With as_character_id: the character is not a living
+	//     player character of the campaign.
+	//   - `permission_denied`: a player sent as_character_id.
 	GetMapLayers(context.Context, *connect.Request[v1.GetMapLayersRequest]) (*connect.Response[v1.GetMapLayersResponse], error)
 	// SetMapFog changes the fog of war's settings of a map (MR-036, D6): whether
 	// it is on, the base light of a square nobody lit, and "Visão do grupo". Each
@@ -1281,14 +1390,53 @@ type MapServiceHandler interface {
 	// removing the grid (SetMapGrid with 0 columns) turns it off. A player who
 	// sees the map gets `map_changed`.
 	//
+	// A map's image is its own while the fog is on (a player never receives it).
+	// Turning the fog on therefore copies the image when something else uses it (the
+	// background of another map, an image left with the players, the one shown in
+	// the session, an NPC's portrait): the copy is a new gallery image with the same
+	// bytes, named "... (névoa)", and it becomes the map's image, so the Map in the
+	// response carries the copy's ID. The other uses keep the original. The copy
+	// takes a place in the campaign's gallery.
+	//
 	// Errors:
 	//   - `invalid_argument`: nothing to change.
+	//   - `resource_exhausted`: the fog needs a copy of the image and the gallery
+	//     is full.
 	//   - `failed_precondition` (MapBlocked NO_GRID): fog_enabled is true and the
 	//     map has no grid.
 	//   - `not_found`: the map is not in this campaign, the campaign does not
 	//     exist, or the caller is not a member of it.
 	//   - `permission_denied`: the caller is a player.
 	SetMapFog(context.Context, *connect.Request[v1.SetMapFogRequest]) (*connect.Response[v1.SetMapFogResponse], error)
+	// GetMapVision returns what the caller sees of a map with the fog of war on,
+	// square by square, packed as GetMapVisionResponse describes (MR-036, D6). A
+	// player gets their own character's view (the union of every player
+	// character's, with "Visão do grupo" on), plus the squares their character
+	// saw before and remembers. The master, without as_character_id, gets every
+	// square seen; with it, the view of that character's player ("Ver como"). A
+	// map without the fog on answers every square seen. The app reads it again
+	// when the stream says `vision_changed`, and compares `revision` to know
+	// whether anything changed.
+	//
+	// Errors:
+	//   - `not_found`: the map is not in this campaign, or is hidden from the
+	//     caller (a player), the campaign does not exist, or the caller is not a
+	//     member of it. With as_character_id: the character is not a living
+	//     player character of the campaign.
+	//   - `permission_denied`: a player sent as_character_id.
+	//   - `failed_precondition` (MapBlocked NO_GRID): the map has no grid.
+	GetMapVision(context.Context, *connect.Request[v1.GetMapVisionRequest]) (*connect.Response[v1.GetMapVisionResponse], error)
+	// ForgetMapVision clears every player's memory of what they saw on the map
+	// ("Esquecer o que foi visto"): afterwards the remembered part is empty and
+	// each player has only what their character sees now. Only the campaign's
+	// master may call it. Changing the map's grid or image does the same. A
+	// player watching the session gets `vision_changed`.
+	//
+	// Errors:
+	//   - `not_found`: the map is not in this campaign, the campaign does not
+	//     exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	ForgetMapVision(context.Context, *connect.Request[v1.ForgetMapVisionRequest]) (*connect.Response[v1.ForgetMapVisionResponse], error)
 	// RevealTrap shows a TRAP point to the players the master chose: some
 	// characters (their players get the trap, and nobody else does) or everyone
 	// (the same as revealing the point, SetMapPointRevealed). Only the campaign's
@@ -1349,8 +1497,10 @@ type MapServiceHandler interface {
 	// player may set it for their own character, the master for anyone; any other
 	// call is refused. It rides on the character's token, so the character needs
 	// one on the map. The token (MapToken.carried_light) tells it to the master
-	// and the character's own player only; what the other players see of it
-	// comes with slice 9.4.
+	// and the character's own player only; the other players see its light, in
+	// what GetMapVision gives them. On a map with the fog of war on a player's own
+	// character is always on the map for them, so they may set its light even if the
+	// master hid its token.
 	//
 	// Errors:
 	//   - `invalid_argument`: light_key is not empty and is not a light preset's
@@ -1530,6 +1680,19 @@ func NewMapServiceHandler(svc MapServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(mapServiceMethods.ByName("SetMapFog")),
 		connect.WithHandlerOptions(opts...),
 	)
+	mapServiceGetMapVisionHandler := connect.NewUnaryHandler(
+		MapServiceGetMapVisionProcedure,
+		svc.GetMapVision,
+		connect.WithSchema(mapServiceMethods.ByName("GetMapVision")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
+	mapServiceForgetMapVisionHandler := connect.NewUnaryHandler(
+		MapServiceForgetMapVisionProcedure,
+		svc.ForgetMapVision,
+		connect.WithSchema(mapServiceMethods.ByName("ForgetMapVision")),
+		connect.WithHandlerOptions(opts...),
+	)
 	mapServiceRevealTrapHandler := connect.NewUnaryHandler(
 		MapServiceRevealTrapProcedure,
 		svc.RevealTrap,
@@ -1608,6 +1771,10 @@ func NewMapServiceHandler(svc MapServiceHandler, opts ...connect.HandlerOption) 
 			mapServiceGetMapLayersHandler.ServeHTTP(w, r)
 		case MapServiceSetMapFogProcedure:
 			mapServiceSetMapFogHandler.ServeHTTP(w, r)
+		case MapServiceGetMapVisionProcedure:
+			mapServiceGetMapVisionHandler.ServeHTTP(w, r)
+		case MapServiceForgetMapVisionProcedure:
+			mapServiceForgetMapVisionHandler.ServeHTTP(w, r)
 		case MapServiceRevealTrapProcedure:
 			mapServiceRevealTrapHandler.ServeHTTP(w, r)
 		case MapServiceMarkTreasureFoundProcedure:
@@ -1727,6 +1894,14 @@ func (UnimplementedMapServiceHandler) GetMapLayers(context.Context, *connect.Req
 
 func (UnimplementedMapServiceHandler) SetMapFog(context.Context, *connect.Request[v1.SetMapFogRequest]) (*connect.Response[v1.SetMapFogResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.SetMapFog is not implemented"))
+}
+
+func (UnimplementedMapServiceHandler) GetMapVision(context.Context, *connect.Request[v1.GetMapVisionRequest]) (*connect.Response[v1.GetMapVisionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.GetMapVision is not implemented"))
+}
+
+func (UnimplementedMapServiceHandler) ForgetMapVision(context.Context, *connect.Request[v1.ForgetMapVisionRequest]) (*connect.Response[v1.ForgetMapVisionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.ForgetMapVision is not implemented"))
 }
 
 func (UnimplementedMapServiceHandler) RevealTrap(context.Context, *connect.Request[v1.RevealTrapRequest]) (*connect.Response[v1.RevealTrapResponse], error) {

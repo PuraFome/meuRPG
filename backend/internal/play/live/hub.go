@@ -75,6 +75,13 @@ type Event struct {
 	// Message is what the stream sends. It must not be changed after
 	// Publish: several streams send the same message.
 	Message *playv1.WatchGameSessionResponse
+	// Coalesce, when not empty, names a hint that says "read it again": while a
+	// stream still has an event with the same Coalesce waiting in its queue, a
+	// new one for that stream is not queued, since the app will read the latest
+	// state when it handles the one that waits. The stream calls
+	// Subscription.Taken when it takes the event off the queue, so a change that
+	// follows is queued again. The vision hints use it (`vision_changed`).
+	Coalesce string
 }
 
 // Hub is the in-memory fan-out. The zero Hub is not usable: call New.
@@ -102,7 +109,8 @@ type Subscription struct {
 	campaignID string
 	who        Subscriber
 	events     chan Event
-	err        error // set, under hub.mu, before events closes
+	pending    map[string]struct{} // the Coalesce keys queued in events, under hub.mu
+	err        error               // set, under hub.mu, before events closes
 }
 
 // Subscribe starts delivering the campaign's events for who. It fails with
@@ -132,8 +140,19 @@ func (h *Hub) Publish(campaignID string, ev Event) int {
 		if !ev.Audience.includes(s.who) {
 			continue
 		}
+		if ev.Coalesce != "" {
+			if _, queued := s.pending[ev.Coalesce]; queued {
+				continue // the one that waits will make the app read the latest state
+			}
+		}
 		select {
 		case s.events <- ev:
+			if ev.Coalesce != "" {
+				if s.pending == nil {
+					s.pending = map[string]struct{}{}
+				}
+				s.pending[ev.Coalesce] = struct{}{}
+			}
 			delivered++
 		default:
 			h.remove(s, ErrSlow)
@@ -184,6 +203,18 @@ func (h *Hub) remove(s *Subscription, err error) {
 // Events delivers the subscription's events. It closes when the
 // subscription ends: Close, too slow, or the hub closed.
 func (s *Subscription) Events() <-chan Event { return s.events }
+
+// Taken tells the hub that the stream took ev off the queue, so another event
+// with the same Coalesce key may be queued. A stream calls it for each event it
+// reads from Events, before it sends it.
+func (s *Subscription) Taken(ev Event) {
+	if ev.Coalesce == "" {
+		return
+	}
+	s.hub.mu.Lock()
+	defer s.hub.mu.Unlock()
+	delete(s.pending, ev.Coalesce)
+}
 
 // Err says why Events closed: ErrSlow, ErrClosed, or nil after Close. Call
 // it only after Events has closed.

@@ -20,13 +20,13 @@ import (
 // fakeGallery says which images each campaign has.
 type fakeGallery map[string][]string
 
-func (g fakeGallery) ImageInCampaign(_ context.Context, campaignID, imageID string) (bool, error) {
+func (g fakeGallery) PortraitImage(_ context.Context, campaignID, imageID string) (string, bool, error) {
 	for _, id := range g[campaignID] {
 		if id == imageID {
-			return true, nil
+			return imageID, true, nil
 		}
 	}
-	return false, nil
+	return "", false, nil
 }
 
 // withPortrait returns a copy of the sheet with the portrait set, full or basic.

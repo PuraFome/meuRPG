@@ -125,6 +125,9 @@ func (s *Service) StartEncounter(
 	if err != nil {
 		return nil, s.dbError(ctx, "start an encounter", err)
 	}
+	if newMap != "" {
+		s.maps.MapShown(ctx, m.CampaignID, newMap)
+	}
 	out, err := s.finish(ctx, m, res, func(d *encounterData) {
 		if newMap != "" {
 			s.Publish(m.CampaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_CurrentMapChanged_{

@@ -368,8 +368,8 @@ func (s *Service) changeActions(ctx context.Context, m authz.Membership, mapID, 
 // revealed on a map they see (map_changed, as any change to a point), and
 // everyone in the session when the point is the open scene (scene_changed).
 func (s *Service) actionsChanged(ctx context.Context, campaignID string, ch changedPoint) {
-	s.publishMapChanged(campaignID, ch.mapRow.ID,
-		playersSee(ch.mapRow.ID, ch.mapRow.RevealedAt, ch.currentMap) && ch.point.RevealedAt != nil)
+	s.publishPointsChanged(ctx, campaignID, ch.mapRow,
+		playersSee(ch.mapRow.ID, ch.mapRow.RevealedAt, ch.currentMap) && ch.point.RevealedAt != nil, ch.point)
 	s.publishSceneChangedIf(ctx, campaignID, ch.point.ID)
 }
 

@@ -28,6 +28,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/images"
+	"github.com/PuraFome/meuRPG/backend/internal/maps/link"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
@@ -447,6 +448,14 @@ func (noCharacters) ClearPortraits(context.Context, pgx.Tx, string, string) (int
 	return 0, errors.New("not in this test")
 }
 
+func (noCharacters) PortraitInUse(context.Context, string, string) (bool, error) {
+	return false, errors.New("not in this test")
+}
+
+func (noCharacters) PartyVision(context.Context, string) ([]link.PartyMember, error) {
+	return nil, errors.New("not in this test")
+}
+
 type noLive struct{}
 
 func (noLive) OnScreen(context.Context, string) (string, string, error) {
@@ -465,6 +474,8 @@ func (noLive) OpenScenePoint(context.Context, string) (string, error) {
 
 func (noLive) PublishToUsers(string, []string, *playv1.WatchGameSessionResponse) {}
 
+func (noLive) PublishToUsersCoalesced(string, []string, string, *playv1.WatchGameSessionResponse) {}
+
 func (noLive) AppendEvent(context.Context, pgx.Tx, string, string, string, []byte, time.Time) (bool, error) {
 	return false, errors.New("not in this test")
 }
@@ -478,6 +489,10 @@ type noCombats struct{}
 
 func (noCombats) CombatRunsOnMap(context.Context, pgx.Tx, string, string) (bool, error) {
 	return false, errors.New("not in this test")
+}
+
+func (noCombats) CombatPositions(context.Context, string, string) (link.CombatPositions, error) {
+	return link.CombatPositions{}, errors.New("not in this test")
 }
 
 // noRules stands in for the rules module.
@@ -586,6 +601,8 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, mapCalls["RevealTrap"] = mc.RevealTrap(ctx, connect.NewRequest(&mapsv1.RevealTrapRequest{CampaignId: id, MapId: id, PointId: id, All: true}))
 	_, mapCalls["MarkTreasureFound"] = mc.MarkTreasureFound(ctx, connect.NewRequest(&mapsv1.MarkTreasureFoundRequest{CampaignId: id, MapId: id, PointId: id, CharacterIds: []string{id}}))
 	_, mapCalls["UnmarkTreasureFound"] = mc.UnmarkTreasureFound(ctx, connect.NewRequest(&mapsv1.UnmarkTreasureFoundRequest{CampaignId: id, MapId: id, PointId: id}))
+	_, mapCalls["GetMapVision"] = mc.GetMapVision(ctx, connect.NewRequest(&mapsv1.GetMapVisionRequest{CampaignId: id, MapId: id}))
+	_, mapCalls["ForgetMapVision"] = mc.ForgetMapVision(ctx, connect.NewRequest(&mapsv1.ForgetMapVisionRequest{CampaignId: id, MapId: id}))
 	_, mapCalls["SetCarriedLight"] = mc.SetCarriedLight(ctx, connect.NewRequest(&mapsv1.SetCarriedLightRequest{CampaignId: id, MapId: id, CharacterId: id, LightKey: "light:torch"}))
 	mapMethods := mapsv1.File_meurpg_maps_v1_maps_proto.Services().ByName("MapService").Methods()
 	if len(mapCalls) != mapMethods.Len() {
@@ -607,6 +624,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 		"ListMaps":          mapMethods.ByName("ListMaps"),
 		"GetMap":            mapMethods.ByName("GetMap"),
 		"GetMapLayers":      mapMethods.ByName("GetMapLayers"),
+		"GetMapVision":      mapMethods.ByName("GetMapVision"),
 	} {
 		opts, _ := desc.Options().(*descriptorpb.MethodOptions)
 		if opts.GetIdempotencyLevel() != descriptorpb.MethodOptions_IDEMPOTENT {

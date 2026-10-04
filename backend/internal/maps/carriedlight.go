@@ -19,7 +19,7 @@ import (
 // the character's token, set by the player for their own character and by the
 // master for anyone. It moves with the token. The master and the character's
 // own player read it (MapToken.carried_light); what the other players see of it
-// is its light, which the fog's read slice (9.4) works out from the key.
+// is its light, which the fog's view (fog.go) works out from the key.
 
 // SetCarriedLight implements mapsv1connect.MapServiceHandler.
 func (s *Service) SetCarriedLight(
@@ -75,7 +75,9 @@ func (s *Service) SetCarriedLight(
 		// A hidden token is not there for a player: the answer is the one for no
 		// token at all, so the call never tells them where their character is hidden.
 		current, err := q.GetMapTokenForUpdate(ctx, mapsdb.GetMapTokenForUpdateParams{MapID: mapID, CharacterID: character.GetId()})
-		if errors.Is(err, pgx.ErrNoRows) || (err == nil && !v.master && current.Hidden) {
+		// On a fog map a player's own character is never hidden from them (D6), so
+		// the hidden flag only hides the token on a map without fog.
+		if errors.Is(err, pgx.ErrNoRows) || (err == nil && !v.master && current.Hidden && !fogged(mapRow)) {
 			return errTokenNotFound()
 		}
 		if err != nil {
@@ -96,10 +98,15 @@ func (s *Service) SetCarriedLight(
 		return nil, s.dbError(ctx, "set a carried light", err)
 	}
 	// The master reads the key, and so does the character's own player; nobody
-	// else is told (what the others see changes with the fog's reads).
+	// else is told of it. What the others see of the light is what the fog's view
+	// works out: on a fog map the light is remembered and the players whose view
+	// changed are told (`vision_changed`).
 	s.publishMapChanged(m.CampaignID, mapID, false)
 	if owner := character.GetPlayerUserId(); owner != "" && playersSee(mapID, mapRow.RevealedAt, v.currentMap) {
 		s.live.PublishToUsers(m.CampaignID, []string{owner}, mapChangedEvent(mapID))
+	}
+	if fogged(mapRow) {
+		s.refreshVision(ctx, m.CampaignID, mapID)
 	}
 	return connect.NewResponse(&mapsv1.SetCarriedLightResponse{Token: tokenToProto(token, character, v)}), nil
 }

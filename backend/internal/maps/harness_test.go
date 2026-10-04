@@ -148,7 +148,7 @@ type harness struct {
 	blobDir string
 	blobs   *blob.FS
 	server  *httptest.Server
-	svc     *Service
+	svc     *Service // the maps service, for the tests that look inside it
 }
 
 // noHeartbeat keeps heartbeats out of the tests' streams: a test that
@@ -183,7 +183,8 @@ func newHarness(t *testing.T, configure ...func(*Config)) *harness {
 	if err != nil {
 		t.Fatalf("characters.New() error = %v", err)
 	}
-	chars.SetGallery(NewSessionMaps(pool)) // an NPC's portrait is an image of the gallery (MR-031)
+	portraits := NewSessionMaps(pool)
+	chars.SetGallery(portraits) // an NPC's portrait is an image of the gallery (MR-031)
 	// Wired as in cmd/api: play reveals the current map through
 	// SessionMaps, and this service reads it and publishes through play.
 	sessionMaps := NewSessionMaps(pool)
@@ -203,6 +204,8 @@ func newHarness(t *testing.T, configure ...func(*Config)) *harness {
 		t.Fatalf("New() error = %v", err)
 	}
 	h.svc = svc
+	sessionMaps.SetService(svc)
+	portraits.SetService(svc)
 
 	notesSvc, err := notes.New(notes.Config{Pool: pool, Scenes: sessionMaps, Logger: logger, Now: clock.Now})
 	if err != nil {

@@ -34,9 +34,15 @@ import "meurpg/rules/v1/rules.proto";
 //   - Four painted layers on a map with a grid (PaintMapCells, GetMapLayers):
 //     difficult terrain, walls, cover and light. The master gets all four. A
 //     player gets walls, difficult terrain and cover (visible things) of a
-//     map they see, never the light, and nothing at all while the map has the
-//     fog of war on: the per-player reads come with the fog's own slice.
-//   - The fog of war's settings (SetMapFog): off by default, per map.
+//     map they see, never the light, and, while the map has the fog of war on,
+//     only the squares their character sees or remembers.
+//   - The fog of war's settings (SetMapFog): off by default, per map. While a
+//     map has the fog on, a player receives only what their own character sees
+//     now or has seen (RN-10): no image id, URL or thumbnail, only the points
+//     whose squares they see or remember, a player character's token always but
+//     an NPC's only on a square seen now, and the layers filtered the same way
+//     (GetMapVision says what is seen). The master reads everything, and may
+//     read as a player's character ("Ver como", as_character_id).
 //   - Three more kinds of point. A TRAP is sent to a player only once it was
 //     revealed to their character (RevealTrap, or found by them in play), was
 //     triggered, or the master revealed it to everyone; and then without its
@@ -95,17 +101,28 @@ service MapService {
   // may call it. The app calls it again whenever the live session says the
   // map changed (`map_changed`, `current_map_changed`).
   //
+  // On a map with the fog of war on, a player gets a filtered map: the image
+  // without an id, URL or thumbnail (image_withheld), the points whose square
+  // (any square of its area) they see now or remember, every player
+  // character's token and an NPC's only on a square they see now, and the
+  // counts of what they receive. The master may send as_character_id to get
+  // exactly what that character's player would get ("Ver como").
+  //
   // Errors:
   //   - `not_found`: the map is not in this campaign, or the caller is a
   //     player and the map is hidden from them; the campaign does not
-  //     exist, or the caller is not a member of it.
+  //     exist, or the caller is not a member of it. With as_character_id: the
+  //     character is not a living player character of the campaign.
+  //   - `permission_denied`: a player sent as_character_id.
   rpc GetMap(GetMapRequest) returns (GetMapResponse) {
     option idempotency_level = IDEMPOTENT;
   }
 
   // CreateMap creates a map from an image of the campaign's gallery. Only
   // the campaign's master may call it. The map starts hidden, without
-  // points or tokens.
+  // points or tokens. An image that is the background of a map with the fog on
+  // is copied, and the new map gets the copy (the Map in the response carries its
+  // ID), because a fog map's image is its own.
   //
   // Errors:
   //   - `invalid_argument`: the name breaks its rules, or image_id is not an
@@ -128,9 +145,13 @@ service MapService {
   //
   // A different image clears the map's painted layers (PaintMapCells), like
   // other grid columns do, and is refused while a combat that is not ended runs
-  // on the map; the same image again changes nothing.
+  // on the map; the same image again changes nothing. A new image that is also
+  // used another way (or is the background of a map with the fog on, for a map
+  // without fog) is copied first, as SetMapFog does, and the map gets the copy:
+  // the Map in the response carries the copy's ID.
   //
   // Errors:
+  //   - `resource_exhausted`: the image needs a copy and the gallery is full.
   //   - `invalid_argument`: nothing to change, revision less than 1, the
   //     name breaks its rules, or image_id is not an image of the
   //     campaign's gallery.
@@ -439,13 +460,17 @@ service MapService {
   // byte layout described on GetMapLayersResponse. Any member may call it. The
   // master gets all four layers. A player of a map they see gets the difficult
   // terrain, walls and cover, never the light; and, while the map has the fog
-  // of war on, none of them (fog_withheld): slice 9.4 sends each player only
-  // what their character sees.
+  // of war on, only the squares their character sees now or remembers, plus the
+  // walls next to a seen square (fog_withheld is then true: this is a filtered
+  // view). The master may send as_character_id to read as that character's
+  // player would ("Ver como").
   //
   // Errors:
   //   - `not_found`: the map is not in this campaign, or is hidden from the
   //     caller (a player), the campaign does not exist, or the caller is not a
-  //     member of it.
+  //     member of it. With as_character_id: the character is not a living
+  //     player character of the campaign.
+  //   - `permission_denied`: a player sent as_character_id.
   rpc GetMapLayers(GetMapLayersRequest) returns (GetMapLayersResponse) {
     option idempotency_level = IDEMPOTENT;
   }
@@ -457,14 +482,57 @@ service MapService {
   // removing the grid (SetMapGrid with 0 columns) turns it off. A player who
   // sees the map gets `map_changed`.
   //
+  // A map's image is its own while the fog is on (a player never receives it).
+  // Turning the fog on therefore copies the image when something else uses it (the
+  // background of another map, an image left with the players, the one shown in
+  // the session, an NPC's portrait): the copy is a new gallery image with the same
+  // bytes, named "... (névoa)", and it becomes the map's image, so the Map in the
+  // response carries the copy's ID. The other uses keep the original. The copy
+  // takes a place in the campaign's gallery.
+  //
   // Errors:
   //   - `invalid_argument`: nothing to change.
+  //   - `resource_exhausted`: the fog needs a copy of the image and the gallery
+  //     is full.
   //   - `failed_precondition` (MapBlocked NO_GRID): fog_enabled is true and the
   //     map has no grid.
   //   - `not_found`: the map is not in this campaign, the campaign does not
   //     exist, or the caller is not a member of it.
   //   - `permission_denied`: the caller is a player.
   rpc SetMapFog(SetMapFogRequest) returns (SetMapFogResponse);
+
+  // GetMapVision returns what the caller sees of a map with the fog of war on,
+  // square by square, packed as GetMapVisionResponse describes (MR-036, D6). A
+  // player gets their own character's view (the union of every player
+  // character's, with "Visão do grupo" on), plus the squares their character
+  // saw before and remembers. The master, without as_character_id, gets every
+  // square seen; with it, the view of that character's player ("Ver como"). A
+  // map without the fog on answers every square seen. The app reads it again
+  // when the stream says `vision_changed`, and compares `revision` to know
+  // whether anything changed.
+  //
+  // Errors:
+  //   - `not_found`: the map is not in this campaign, or is hidden from the
+  //     caller (a player), the campaign does not exist, or the caller is not a
+  //     member of it. With as_character_id: the character is not a living
+  //     player character of the campaign.
+  //   - `permission_denied`: a player sent as_character_id.
+  //   - `failed_precondition` (MapBlocked NO_GRID): the map has no grid.
+  rpc GetMapVision(GetMapVisionRequest) returns (GetMapVisionResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // ForgetMapVision clears every player's memory of what they saw on the map
+  // ("Esquecer o que foi visto"): afterwards the remembered part is empty and
+  // each player has only what their character sees now. Only the campaign's
+  // master may call it. Changing the map's grid or image does the same. A
+  // player watching the session gets `vision_changed`.
+  //
+  // Errors:
+  //   - `not_found`: the map is not in this campaign, the campaign does not
+  //     exist, or the caller is not a member of it.
+  //   - `permission_denied`: the caller is a player.
+  rpc ForgetMapVision(ForgetMapVisionRequest) returns (ForgetMapVisionResponse);
 
   // RevealTrap shows a TRAP point to the players the master chose: some
   // characters (their players get the trap, and nobody else does) or everyone
@@ -529,8 +597,10 @@ service MapService {
   // player may set it for their own character, the master for anyone; any other
   // call is refused. It rides on the character's token, so the character needs
   // one on the map. The token (MapToken.carried_light) tells it to the master
-  // and the character's own player only; what the other players see of it
-  // comes with slice 9.4.
+  // and the character's own player only; the other players see its light, in
+  // what GetMapVision gives them. On a map with the fog of war on a player's own
+  // character is always on the map for them, so they may set its light even if the
+  // master hid its token.
   //
   // Errors:
   //   - `invalid_argument`: light_key is not empty and is not a light preset's
@@ -660,7 +730,9 @@ message Map {
   // (PlayService.SetCurrentMap). False when no session is open.
   bool current = 6;
   // How many points the caller sees on the map: all of them for the
-  // master, the revealed ones for a player.
+  // master, the revealed ones for a player (on a map with the fog of war on,
+  // only those whose squares the player sees or remembers: the count is of the
+  // points the player receives).
   int32 point_count = 7;
   // The maps with a submap point that leads here, as the caller may see
   // them ("Submapa de Mirathel e arredores"); empty for a map no point
@@ -696,6 +768,12 @@ message Map {
   // player reads; a player's counts the other layers only, and is 0 on a map
   // with the fog of war on (the layers are withheld from them).
   int32 layers_revision = 17;
+  // True when the image was left out because the map has the fog of war on and
+  // the caller is a player: image.id, image.url and image.thumbnail_url are then
+  // empty (only the size stays, to lay the map out), and the app draws what the
+  // server sends square by square instead (GetMapVision). Always false for the
+  // master.
+  bool image_withheld = 18;
 }
 
 // MapImage is the image under a map: a gallery image. Any active member of
@@ -799,6 +877,10 @@ message MapPoint {
   // Who knows a TRAP, besides the master, as the master sees it: the characters
   // it was revealed to, oldest first. Empty for a player, and for any other kind.
   repeated TrapReveal trap_revealed_to = 22;
+  // True when the map has the fog of war on, the caller is a player and none of
+  // the point's squares is seen now: it is in the remembered part, which the app
+  // draws darkened. Always false for the master and on a map without fog.
+  bool remembered = 23;
 }
 
 // TrapSpec is what a TRAP point is: how to notice and find it, where and how it
@@ -950,6 +1032,10 @@ message ListMapsResponse {
 message GetMapRequest {
   string campaign_id = 1;
   string map_id = 2;
+  // "Ver como": a living player character of the campaign (a UUID). The master
+  // then gets what that character's player would get on the map. A player may
+  // not send it (`permission_denied`). Empty for the caller's own view.
+  string as_character_id = 3;
 }
 
 // GetMapResponse is a map with what the caller may see on it.
@@ -1392,6 +1478,9 @@ message PaintMapCellsResponse {
 message GetMapLayersRequest {
   string campaign_id = 1;
   string map_id = 2;
+  // "Ver como", as in GetMapRequest: the master reads the layers as that
+  // character's player would. A player may not send it.
+  string as_character_id = 3;
 }
 
 // GetMapLayersResponse is the layers the caller may read, packed as package
@@ -1406,7 +1495,10 @@ message GetMapLayersResponse {
   // then empty).
   int32 grid_columns = 1;
   int32 grid_rows = 2;
-  // Map.layers_revision at the time of the read.
+  // Map.layers_revision at the time of the read. For a player on a map with the
+  // fog of war on it is a number of what they receive (it changes only when the
+  // filtered layers change, never when the master paints something they do not
+  // see), not the map's counter.
   int32 layers_revision = 3;
   // The difficult terrain, one bit a square.
   bytes difficult_terrain = 4;
@@ -1417,8 +1509,11 @@ message GetMapLayersResponse {
   // The painted light (a LightLevel), two bits a square. Only the master gets
   // it: always empty for a player.
   bytes light = 7;
-  // True when a player's layers were left out because the map has the fog of war
-  // on: the empty layers then mean "not sent", not "nothing painted".
+  // True when the layers are a filtered view, because the map has the fog of war
+  // on and the caller is a player (or the master "Ver como"): the squares they
+  // neither see now nor remember are left out (a wall next to a square seen now
+  // is kept), and the empty layers mean "nothing you know", not "nothing
+  // painted". The light layer is never sent.
   bool fog_withheld = 8;
 }
 
@@ -1498,3 +1593,60 @@ message SetCarriedLightRequest {
 message SetCarriedLightResponse {
   MapToken token = 1;
 }
+
+// GetMapVisionRequest names a map of a campaign.
+message GetMapVisionRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+  // "Ver como": a living player character of the campaign (a UUID). The master
+  // then gets the view of that character's player. A player may not send it
+  // (`permission_denied`). Empty for the caller's own view, or, for the master,
+  // everything seen.
+  string as_character_id = 3;
+}
+
+// GetMapVisionResponse is what the caller sees of a map's squares. The states
+// are packed, four bits a square, two squares to a byte, row-major as the layers
+// are (square n = row * grid_columns + col): square n is the low four bits of
+// byte n / 2 when n is even and the high four bits when n is odd. Unused bits of
+// the last byte are 0. The values (VisionState in the app):
+//
+//	0 unseen: nothing is known of the square (draw it black);
+//	1 a wall seen because a square next to it is seen;
+//	2 seen in grey: in the dark, by darkvision or blindsight;
+//	3 seen in dim light (penumbra);
+//	4 seen in bright light;
+//	5 remembered: seen before and not now (draw it darkened, without creatures).
+//
+// A square's value is exactly one, the one that applies now; a wall seen now is
+// 1, and a wall seen before is 5.
+message GetMapVisionResponse {
+  // The map's grid, as in Map.
+  int32 grid_columns = 1;
+  int32 grid_rows = 2;
+  // The packed states, ceil(squares / 2) bytes.
+  bytes states = 3;
+  // A number of the states: it changes whenever any square's state changes, and
+  // the app compares it with the one it holds to know whether to redraw.
+  int32 revision = 4;
+  // False when no living player character of the viewer has a token on this map
+  // (and "Visão do grupo" has none to lend): the player sees only the remembered
+  // part, and the app says "Seu personagem não está neste mapa". True for the
+  // master without as_character_id, and on a map without fog.
+  bool character_on_map = 5;
+  // Whether the map has the fog of war on. When false every square reads 4
+  // (bright), as the master sees them.
+  bool fog_enabled = 6;
+  // "Visão do grupo" is on for this map: the view is the union of every player
+  // character's.
+  bool group_vision = 7;
+}
+
+// ForgetMapVisionRequest names a map of a campaign.
+message ForgetMapVisionRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+}
+
+// ForgetMapVisionResponse is empty.
+message ForgetMapVisionResponse {}

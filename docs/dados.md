@@ -467,8 +467,10 @@ Esta seção lista só o que já existe nas migrations de `backend/migrations/`.
 | `00103_create_character_creatures_indexes` | `character_creatures` | As vivas de um personagem (parcial: `dismissed_at IS NULL`), as de uma conjuração e as de uma campanha. |
 | `00104_add_combatants_creature_columns` | `combatants` | O tipo `creature` (`kind`), com `creature_id` (cascata), `monster_key`, `summon_attack` e `summon_group_id`, todos presentes só nesse tipo (`CHECK`); o `CHECK` do PV passa a deixar a criatura ter PV no combatente, como o NPC. |
 | `00105_create_combatants_creature_index` | `combatants` | O combatente de uma criatura (parcial: `creature_id IS NOT NULL`): dispensar uma criatura o tira do combate. |
+| `00106_create_map_vision_memory` | `map_vision_memory` | O que cada jogador viu de um mapa com névoa (MR-036): `(map_id, user_id)`, o bitmap `seen` no formato de `rules/grid`, a `epoch` em que foi feito e `updated_at`. Só cresce; nunca guarda criaturas. |
+| `00107_add_maps_vision_epoch` | `maps` | `vision_epoch`: a geração da memória dos jogadores (MR-036); sobe a cada limpeza. |
 
-As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021`, a `00022`, a `00027`, a `00034`, a `00035`, a `00036` e a `00037`, do módulo `campaigns`; as `00014` a `00017`, a `00020`, a `00023`, a `00055`, as `00078` a `00080`, a `00102` e a `00103`, do módulo `characters` (o `xp_value` e o nível de desafio de um NPC ficam no JSON da ficha, sem migration); as `00018`, a `00019`, a `00024`, a `00032`, a `00033`, as `00043` a `00054`, `00056` a `00059`, a `00063`, a `00066`, a `00075`, a `00076`, a `00077`, a `00083`, a `00089`, a `00090`, as `00098` a `00100`, a `00104` e a `00105`, do módulo `play`; as `00025`, a `00026`, as `00028` a `00031`, as `00040` a `00042`, a `00064`, a `00065`, as `00067` a `00072`, a `00081`, a `00082` e as `00091` a `00097`, do módulo `maps`; as `00073` e `00074`, do módulo `notes`; as `00060` a `00062`, as `00084` a `00088` e a `00101`, do módulo `progression`. A `00027` é do documento de campanha, no `campaigns`, que chega num PR à parte. Mudanças em relação à proposta acima, no `identity`:
+As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021`, a `00022`, a `00027`, a `00034`, a `00035`, a `00036` e a `00037`, do módulo `campaigns`; as `00014` a `00017`, a `00020`, a `00023`, a `00055`, as `00078` a `00080`, a `00102` e a `00103`, do módulo `characters` (o `xp_value` e o nível de desafio de um NPC ficam no JSON da ficha, sem migration); as `00018`, a `00019`, a `00024`, a `00032`, a `00033`, as `00043` a `00054`, `00056` a `00059`, a `00063`, a `00066`, a `00075`, a `00076`, a `00077`, a `00083`, a `00089`, a `00090`, as `00098` a `00100`, a `00104` e a `00105`, do módulo `play`; as `00025`, a `00026`, as `00028` a `00031`, as `00040` a `00042`, a `00064`, a `00065`, as `00067` a `00072`, a `00081`, a `00082` e as `00091` a `00097`, a `00106` e a `00107`, do módulo `maps`; as `00073` e `00074`, do módulo `notes`; as `00060` a `00062`, as `00084` a `00088` e a `00101`, do módulo `progression`. A `00027` é do documento de campanha, no `campaigns`, que chega num PR à parte. Mudanças em relação à proposta acima, no `identity`:
 
 - `users.google_sub` e `users.email` viraram `user_identities (issuer, subject, email)`. O par `(issuer, subject)` é a chave primária, porque o `sub` só é único dentro de um provedor. Assim o código não depende do Google, e uma conta pode ter outro jeito de entrar (ADR-0009) sem mudar `users`.
 - `UNIQUE (user_id, issuer)`: uma conta tem no máximo uma identidade por provedor, então duas contas Google nunca se juntam.
@@ -554,6 +556,7 @@ No `maps`:
   - `grid_columns` (`00040`, `00041`) é a grade de batalha (MR-013, RN-21): quantos quadrados de 1,5 m cabem na largura da imagem, de 4 a 200, ou `NULL` sem grade. As linhas não são guardadas: seguem a proporção da imagem (`round(colunas × altura / largura)`). Mudar a grade mexe em `updated_at`, não em `revision`. Outras colunas apagam as camadas pintadas, como trocar a imagem, e ficam recusadas enquanto há um combate no mapa; tirar a grade desliga a névoa.
   - `fog_enabled`, `base_light`, `group_vision` (`00091`) são as configurações da névoa de guerra (MR-036, D6): desligada por padrão, luz base `dark`, "Visão do grupo" desligada. Só liga com grade (o servidor confere). Desligar a névoa não apaga nada. `layers_revision` e `light_revision` (`00091`) sobem uma vez por mudança das camadas (a luz, que nenhum jogador lê, no contador dela; o mestre lê a soma); é um contador à parte de `revision` para que pintar nunca faça um `UpdateMap` de outra aba falhar com `aborted`.
 - **`map_layers`** (`00092`) guarda as camadas pintadas de um mapa (MR-034, MR-036, D2): `map_id` é a chave primária (e `CASCADE` com o mapa), e `difficult_terrain`, `walls`, `cover` e `light` são `BYTEA` no formato de `rules/grid` (linha por linha; 1 bit por quadrado para terreno e parede, 2 bits para cobertura e luz). Ficam numa tabela à parte porque `maps` é lido inteiro quase sempre e as quatro camadas somam até 60 KB numa grade de 200 × 400. Mapa sem nada pintado não tem linha, e camada sem nada pintado é `NULL`. O servidor mede cada camada pela grade ao escrever e lê como "nada pintado" uma que não cabe nela; trocar as colunas da grade ou a imagem apaga a linha.
+- **`map_vision_memory`** (`00106`, MR-036, D6): o que cada jogador **já viu** de um mapa com a névoa ligada, uma linha por `(map_id, user_id)` (a chave primária). `seen` é um bitmap no formato de `rules/grid` (1 bit por quadrado, por linha; no máximo 10 KB numa grade de 200 × 400); uma parede vista junto de um quadrado visto conta como vista. Só cresce, nas escritas que mudam o que alguém vê (nunca numa leitura), e guarda **quadrados, nunca criaturas**: um quadrado lembrado não mostra NPC. O mestre a apaga com `ForgetMapVision` ("Esquecer o que foi visto"), e trocar as colunas da grade ou a imagem do mapa a apaga junto com as camadas (`clearLayers`), porque o bitmap só serve à grade em que foi feito. Some com o mapa ou com o jogador (`CASCADE`). `epoch` é o `maps.vision_epoch` (`00107`) em que o bitmap foi feito: cada limpeza (grade ou imagem trocada, "Esquecer o que foi visto") sobe a época do mapa, e uma linha de época velha lê-se vazia e nunca é escrita de volta (a gravação confere a época dentro do próprio comando). Sem índice: a chave primária cobre quem lê (`map_id`, `user_id`) e quem apaga pelo mapa.
 - **`map_points`** (`00029`): `kind` é `battle`, `submap`, `scene`, `trap`, `treasure` ou `light` (`CHECK`, `00093`); `name` (1 a 80) e `description` (até 2.000 caracteres, várias linhas) são texto livre do mestre para os jogadores; `x_bp` e `y_bp` são a posição em pontos-base da largura e da altura da imagem, de 0 a 10000 (`CHECK`), então não dependem do tamanho da imagem.
   - `target_map_id` é o mapa ao qual um ponto de submapa leva, ou o mapa do combate de um ponto de batalha (MR-013): só num `submap` ou `battle` (`CHECK map_points_only_submaps_and_battles_lead`, `00042`), nunca o próprio mapa (`CHECK map_points_not_own_target`), e sempre da mesma campanha (conferido pelo servidor). Apagar o mapa de destino deixa o ponto sem destino (`SET NULL`); apagar o mapa do ponto apaga o ponto (`CASCADE`).
   - `revealed_at` funciona como no mapa, e todo ponto nasce escondido. Para uma **armadilha**, `revealed_at` é "revelada a todos"; ela também é vista por quem tem uma linha em `map_point_reveals` e por todos quando `trap_triggered_at` está preenchido. Um **tesouro** é visto por todos quando `treasure_found_at` está preenchido. Uma **luz** nunca é enviada a um jogador.
@@ -891,6 +894,14 @@ erDiagram
         timestamptz updated_at
     }
 
+    map_vision_memory {
+        uuid map_id PK "e FK para maps, CASCADE"
+        uuid user_id PK "e FK para users, CASCADE"
+        bytea seen "1 bit por quadrado visto"
+        int4 epoch "a maps.vision_epoch do bitmap"
+        timestamptz updated_at
+    }
+
     map_point_reveals {
         uuid point_id PK "e FK para map_points"
         uuid character_id PK "e FK para characters"
@@ -1065,6 +1076,8 @@ erDiagram
     maps ||--o{ map_tokens : "tem"
     characters ||--o{ map_tokens : "está em"
     maps ||--o| map_layers : "tem as camadas"
+    maps ||--o{ map_vision_memory : "lembrado por"
+    users ||--o{ map_vision_memory : "viu"
     map_points ||--o{ map_point_reveals : "é conhecida por"
     characters ||--o{ map_point_reveals : "conhece"
     map_points ||--o{ map_treasure_finders : "foi achado por"
