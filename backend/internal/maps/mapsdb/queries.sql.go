@@ -2023,6 +2023,44 @@ func (q *Queries) ListTreasureFindersOfMap(ctx context.Context, mapID string) ([
 	return items, nil
 }
 
+const listTreasureFindsOfSession = `-- name: ListTreasureFindsOfSession :many
+
+SELECT p.id AS point_id, COALESCE(p.treasure_value_po, 0)::INT4 AS value_po, f.character_id
+FROM map_points AS p
+JOIN map_treasure_finders AS f ON f.point_id = p.id
+WHERE p.kind = 'treasure' AND p.treasure_found_at IS NOT NULL AND p.treasure_session_id = $1::UUID
+ORDER BY p.id, f.character_id
+`
+
+type ListTreasureFindsOfSessionRow struct {
+	PointID     string
+	ValuePo     int32
+	CharacterID string
+}
+
+// Gold (slice 9.11, MR-032): the session summary's "Mais tesouro encontrado".
+// One row per treasure and finder of the treasures found while the game session
+// was open. A treasure unmarked later has no session and no finders.
+func (q *Queries) ListTreasureFindsOfSession(ctx context.Context, sessionID string) ([]ListTreasureFindsOfSessionRow, error) {
+	rows, err := q.db.Query(ctx, listTreasureFindsOfSession, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTreasureFindsOfSessionRow
+	for rows.Next() {
+		var i ListTreasureFindsOfSessionRow
+		if err := rows.Scan(&i.PointID, &i.ValuePo, &i.CharacterID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const moveMapToken = `-- name: MoveMapToken :one
 UPDATE map_tokens
 SET x_bp = $3, y_bp = $4, updated_at = $5

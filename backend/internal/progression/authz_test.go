@@ -100,6 +100,10 @@ func TestAuthorizationMatrix(t *testing.T) {
 			_, err := c.ListXPAwards(ctx, connect.NewRequest(&progressionv1.ListXPAwardsRequest{CampaignId: xpCampaign}))
 			return err
 		}, [5]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"ListTreasuresToConvert", func(ctx context.Context, c client) error {
+			_, err := c.ListTreasuresToConvert(ctx, connect.NewRequest(&progressionv1.ListTreasuresToConvertRequest{CampaignId: xpCampaign}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
 		{"GetCampaignExperience", func(ctx context.Context, c client) error {
 			_, err := c.GetCampaignExperience(ctx, connect.NewRequest(&progressionv1.GetCampaignExperienceRequest{CampaignId: xpCampaign}))
 			return err

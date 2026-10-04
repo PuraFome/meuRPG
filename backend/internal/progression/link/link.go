@@ -9,6 +9,8 @@
 // cmd/api connects the real services (the same arrangement as play/link).
 package link
 
+import "time"
+
 // Member is a living player character of a campaign, with the numbers the XP
 // needs from its sheet.
 type Member struct {
@@ -33,4 +35,27 @@ type Encounter struct {
 	Ended bool
 	// XP is the sum of the XP values of its defeated NPC combatants.
 	XP int32
+}
+
+// Treasure is a treasure point of a campaign's map, as "Voltar à cidade" needs
+// it (MR-041): the maps module implements the interface that returns it.
+type Treasure struct {
+	// PointID is the map point's ID; MapID and MapName are its map's.
+	PointID string
+	MapID   string
+	MapName string
+	// Name is the treasure's own name.
+	Name string
+	// ValuePO is its worth in gold pieces.
+	ValuePO int32
+	// Found says the master marked it found; FoundAt is when (zero when not).
+	Found   bool
+	FoundAt time.Time
+	// InSession says it was found while a game session was open.
+	InSession bool
+	// FinderIDs are the characters that found it, by ID (the progression
+	// module orders them by name).
+	FinderIDs []string
+	// ConvertedAwardID is the XP award that converted it, empty for none.
+	ConvertedAwardID string
 }

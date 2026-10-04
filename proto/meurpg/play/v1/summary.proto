@@ -28,6 +28,14 @@ message SessionCharacterSummary {
   // ("3 de 4"). Passed is never above tried.
   int32 checks_passed = 2;
   int32 checks_tried = 3;
+  // The gold pieces the character found in this session (MR-041): the value
+  // of each treasure marked found while the session was open, split among its
+  // finders and rounded down. A treasure unmarked later, or found outside a
+  // session, counts for nothing. It is worked out on every read from the
+  // treasures as they stand now (their value and finders), not from the
+  // session's events: re-marking the finders writes no event. Not the same as the XP of
+  // "Voltar à cidade".
+  int32 treasure_found_po = 4;
 }
 
 // SessionSummary is how the session went, as the caller may see it.
@@ -49,18 +57,21 @@ message SessionSummary {
   int32 checks_passed = 6;
   int32 checks_tried = 7;
   // The categories that have a winner, in the order of HighlightKind: the five
-  // of the combats summed over the session, then CHECKS_PASSED. A category
+  // of the combats summed over the session, then CHECKS_PASSED and
+  // TREASURE_FOUND (`value` is the PO, in every XP mode). A category
   // where everybody has 0 is left out. `value` is the winners' number (for
   // CHECKS_PASSED, the count of passed; "de N" is the master's table).
   // Everyone tied is named, in the order the characters first appeared in the
   // session. Every member gets the categories.
   repeated HighlightCategory categories = 8;
-  // The table of every player's character that fought or rolled a check, in
+  // The table of every player's character that fought, rolled a check or found
+  // treasure, in
   // the order they first appeared, zeros included. Only the master gets it;
   // for a player it is empty.
   repeated SessionCharacterSummary players = 9;
   // The caller's own result, "Seu resultado": set only for a player whose
-  // character took part in the session (fought or rolled a check). The master
+  // character took part in the session (fought, rolled a check or found
+  // treasure). The master
   // never gets it.
   SessionCharacterSummary mine = 10;
 }

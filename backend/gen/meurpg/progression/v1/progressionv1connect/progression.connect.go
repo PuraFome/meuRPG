@@ -39,6 +39,9 @@ const (
 	// ProgressionServiceAwardXPProcedure is the fully-qualified name of the ProgressionService's
 	// AwardXP RPC.
 	ProgressionServiceAwardXPProcedure = "/meurpg.progression.v1.ProgressionService/AwardXP"
+	// ProgressionServiceListTreasuresToConvertProcedure is the fully-qualified name of the
+	// ProgressionService's ListTreasuresToConvert RPC.
+	ProgressionServiceListTreasuresToConvertProcedure = "/meurpg.progression.v1.ProgressionService/ListTreasuresToConvert"
 	// ProgressionServiceMarkMilestoneProcedure is the fully-qualified name of the ProgressionService's
 	// MarkMilestone RPC.
 	ProgressionServiceMarkMilestoneProcedure = "/meurpg.progression.v1.ProgressionService/MarkMilestone"
@@ -90,19 +93,44 @@ type ProgressionServiceClient interface {
 	// repeat. A sheet's XP is a number the master may also set by hand on the
 	// sheet; the award only adds to it.
 	//
+	// "Voltar à cidade" (MR-041, RN-09): a GOLD award may name the treasures
+	// the party found (treasure_point_ids, from ListTreasuresToConvert) instead
+	// of a typed `gold`. The server sums their PO itself (1 XP per PO), splits
+	// as above and, in the same transaction, links each treasure to the award:
+	// a treasure is converted once, even when two awards race. Undoing the award
+	// (UndoLastXPAward) frees them again. The award, the history and the
+	// `xp_awarded` event carry the treasures (their IDs and PO).
+	//
 	// Errors:
 	//   - `not_found`: the campaign, or the encounter, does not exist, or the
-	//     caller is not a member.
+	//     caller is not a member; a treasure that is not a treasure of the
+	//     campaign.
 	//   - `permission_denied`: the caller is a player.
 	//   - `invalid_argument`: no characters, a repeat, an ID that is not a UUID,
 	//     a reason outside 1 to 120 characters, a field that does not go with
 	//     the mode (a gold amount for ENEMIES), or an amount or gold outside 1
-	//     to 1,000,000.
+	//     to 1,000,000; treasure_point_ids with a mode other than GOLD, with
+	//     `gold`, or with a repeat or more than 100 treasures.
 	//   - `failed_precondition` (XPBlocked): MODE_NOT_ALLOWED, ENCOUNTER_NOT_ENDED,
 	//     ALREADY_AWARDED, NOTHING_TO_GIVE (the total is 0, or too small to give
 	//     each one 1 XP), CHARACTER_NOT_ELIGIBLE (a dead or pending character,
-	//     an NPC, or another campaign's).
+	//     an NPC, or another campaign's), TREASURE_NOT_FOUND_YET and
+	//     TREASURE_ALREADY_CONVERTED (`treasure_point_id` says which), and
+	//     TREASURES_OVER_LIMIT (worth more than 1,000,000 PO together).
 	AwardXP(context.Context, *connect.Request[v1.AwardXPRequest]) (*connect.Response[v1.AwardXPResponse], error)
+	// ListTreasuresToConvert lists the campaign's treasures that were found and
+	// not converted yet, for "Voltar à cidade" (MR-041): oldest find first. Only
+	// the master may call it: the list is the input of AwardXP's
+	// treasure_point_ids. It lists them in every XP mode (the treasures belong to
+	// the map), but only a GOLD campaign converts them.
+	//
+	// At most 100 treasures come (the most one conversion takes), the oldest
+	// finds; `total` says how many there are.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, or the caller is not a member.
+	//   - `permission_denied`: the caller is a player.
+	ListTreasuresToConvert(context.Context, *connect.Request[v1.ListTreasuresToConvertRequest]) (*connect.Response[v1.ListTreasuresToConvertResponse], error)
 	// MarkMilestone marks a milestone: the characters it names "can level up"
 	// (RN-12, question 48), and no XP is counted. Only the master may call it,
 	// and only in a MILESTONES campaign. The mark lasts until the character's
@@ -204,6 +232,11 @@ type ProgressionServiceClient interface {
 	// undoing a "Dar a mais alguém" mark takes the milestone off those
 	// characters only, and it stays reached for the others.
 	//
+	// For a "Voltar à cidade" award (AwardXP with treasure_point_ids), undoing it
+	// also frees its treasures, in the same transaction: they are "found, not
+	// converted" again. A treasure converted by an award that is no longer the
+	// last stays converted until that award is undone.
+	//
 	// expected_award_id, when set, is the award the app shows as the last one: if
 	// another is the last now, the call changes nothing and fails with `aborted`.
 	//
@@ -243,6 +276,13 @@ func NewProgressionServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			httpClient,
 			baseURL+ProgressionServiceAwardXPProcedure,
 			connect.WithSchema(progressionServiceMethods.ByName("AwardXP")),
+			connect.WithClientOptions(opts...),
+		),
+		listTreasuresToConvert: connect.NewClient[v1.ListTreasuresToConvertRequest, v1.ListTreasuresToConvertResponse](
+			httpClient,
+			baseURL+ProgressionServiceListTreasuresToConvertProcedure,
+			connect.WithSchema(progressionServiceMethods.ByName("ListTreasuresToConvert")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
 		markMilestone: connect.NewClient[v1.MarkMilestoneRequest, v1.MarkMilestoneResponse](
@@ -319,23 +359,29 @@ func NewProgressionServiceClient(httpClient connect.HTTPClient, baseURL string, 
 
 // progressionServiceClient implements ProgressionServiceClient.
 type progressionServiceClient struct {
-	awardXP               *connect.Client[v1.AwardXPRequest, v1.AwardXPResponse]
-	markMilestone         *connect.Client[v1.MarkMilestoneRequest, v1.MarkMilestoneResponse]
-	listMilestones        *connect.Client[v1.ListMilestonesRequest, v1.ListMilestonesResponse]
-	addMilestone          *connect.Client[v1.AddMilestoneRequest, v1.AddMilestoneResponse]
-	updateMilestone       *connect.Client[v1.UpdateMilestoneRequest, v1.UpdateMilestoneResponse]
-	moveMilestone         *connect.Client[v1.MoveMilestoneRequest, v1.MoveMilestoneResponse]
-	removeMilestone       *connect.Client[v1.RemoveMilestoneRequest, v1.RemoveMilestoneResponse]
-	markMilestoneReached  *connect.Client[v1.MarkMilestoneReachedRequest, v1.MarkMilestoneReachedResponse]
-	giveMilestoneTo       *connect.Client[v1.GiveMilestoneToRequest, v1.GiveMilestoneToResponse]
-	undoLastXPAward       *connect.Client[v1.UndoLastXPAwardRequest, v1.UndoLastXPAwardResponse]
-	listXPAwards          *connect.Client[v1.ListXPAwardsRequest, v1.ListXPAwardsResponse]
-	getCampaignExperience *connect.Client[v1.GetCampaignExperienceRequest, v1.GetCampaignExperienceResponse]
+	awardXP                *connect.Client[v1.AwardXPRequest, v1.AwardXPResponse]
+	listTreasuresToConvert *connect.Client[v1.ListTreasuresToConvertRequest, v1.ListTreasuresToConvertResponse]
+	markMilestone          *connect.Client[v1.MarkMilestoneRequest, v1.MarkMilestoneResponse]
+	listMilestones         *connect.Client[v1.ListMilestonesRequest, v1.ListMilestonesResponse]
+	addMilestone           *connect.Client[v1.AddMilestoneRequest, v1.AddMilestoneResponse]
+	updateMilestone        *connect.Client[v1.UpdateMilestoneRequest, v1.UpdateMilestoneResponse]
+	moveMilestone          *connect.Client[v1.MoveMilestoneRequest, v1.MoveMilestoneResponse]
+	removeMilestone        *connect.Client[v1.RemoveMilestoneRequest, v1.RemoveMilestoneResponse]
+	markMilestoneReached   *connect.Client[v1.MarkMilestoneReachedRequest, v1.MarkMilestoneReachedResponse]
+	giveMilestoneTo        *connect.Client[v1.GiveMilestoneToRequest, v1.GiveMilestoneToResponse]
+	undoLastXPAward        *connect.Client[v1.UndoLastXPAwardRequest, v1.UndoLastXPAwardResponse]
+	listXPAwards           *connect.Client[v1.ListXPAwardsRequest, v1.ListXPAwardsResponse]
+	getCampaignExperience  *connect.Client[v1.GetCampaignExperienceRequest, v1.GetCampaignExperienceResponse]
 }
 
 // AwardXP calls meurpg.progression.v1.ProgressionService.AwardXP.
 func (c *progressionServiceClient) AwardXP(ctx context.Context, req *connect.Request[v1.AwardXPRequest]) (*connect.Response[v1.AwardXPResponse], error) {
 	return c.awardXP.CallUnary(ctx, req)
+}
+
+// ListTreasuresToConvert calls meurpg.progression.v1.ProgressionService.ListTreasuresToConvert.
+func (c *progressionServiceClient) ListTreasuresToConvert(ctx context.Context, req *connect.Request[v1.ListTreasuresToConvertRequest]) (*connect.Response[v1.ListTreasuresToConvertResponse], error) {
+	return c.listTreasuresToConvert.CallUnary(ctx, req)
 }
 
 // MarkMilestone calls meurpg.progression.v1.ProgressionService.MarkMilestone.
@@ -410,19 +456,44 @@ type ProgressionServiceHandler interface {
 	// repeat. A sheet's XP is a number the master may also set by hand on the
 	// sheet; the award only adds to it.
 	//
+	// "Voltar à cidade" (MR-041, RN-09): a GOLD award may name the treasures
+	// the party found (treasure_point_ids, from ListTreasuresToConvert) instead
+	// of a typed `gold`. The server sums their PO itself (1 XP per PO), splits
+	// as above and, in the same transaction, links each treasure to the award:
+	// a treasure is converted once, even when two awards race. Undoing the award
+	// (UndoLastXPAward) frees them again. The award, the history and the
+	// `xp_awarded` event carry the treasures (their IDs and PO).
+	//
 	// Errors:
 	//   - `not_found`: the campaign, or the encounter, does not exist, or the
-	//     caller is not a member.
+	//     caller is not a member; a treasure that is not a treasure of the
+	//     campaign.
 	//   - `permission_denied`: the caller is a player.
 	//   - `invalid_argument`: no characters, a repeat, an ID that is not a UUID,
 	//     a reason outside 1 to 120 characters, a field that does not go with
 	//     the mode (a gold amount for ENEMIES), or an amount or gold outside 1
-	//     to 1,000,000.
+	//     to 1,000,000; treasure_point_ids with a mode other than GOLD, with
+	//     `gold`, or with a repeat or more than 100 treasures.
 	//   - `failed_precondition` (XPBlocked): MODE_NOT_ALLOWED, ENCOUNTER_NOT_ENDED,
 	//     ALREADY_AWARDED, NOTHING_TO_GIVE (the total is 0, or too small to give
 	//     each one 1 XP), CHARACTER_NOT_ELIGIBLE (a dead or pending character,
-	//     an NPC, or another campaign's).
+	//     an NPC, or another campaign's), TREASURE_NOT_FOUND_YET and
+	//     TREASURE_ALREADY_CONVERTED (`treasure_point_id` says which), and
+	//     TREASURES_OVER_LIMIT (worth more than 1,000,000 PO together).
 	AwardXP(context.Context, *connect.Request[v1.AwardXPRequest]) (*connect.Response[v1.AwardXPResponse], error)
+	// ListTreasuresToConvert lists the campaign's treasures that were found and
+	// not converted yet, for "Voltar à cidade" (MR-041): oldest find first. Only
+	// the master may call it: the list is the input of AwardXP's
+	// treasure_point_ids. It lists them in every XP mode (the treasures belong to
+	// the map), but only a GOLD campaign converts them.
+	//
+	// At most 100 treasures come (the most one conversion takes), the oldest
+	// finds; `total` says how many there are.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, or the caller is not a member.
+	//   - `permission_denied`: the caller is a player.
+	ListTreasuresToConvert(context.Context, *connect.Request[v1.ListTreasuresToConvertRequest]) (*connect.Response[v1.ListTreasuresToConvertResponse], error)
 	// MarkMilestone marks a milestone: the characters it names "can level up"
 	// (RN-12, question 48), and no XP is counted. Only the master may call it,
 	// and only in a MILESTONES campaign. The mark lasts until the character's
@@ -524,6 +595,11 @@ type ProgressionServiceHandler interface {
 	// undoing a "Dar a mais alguém" mark takes the milestone off those
 	// characters only, and it stays reached for the others.
 	//
+	// For a "Voltar à cidade" award (AwardXP with treasure_point_ids), undoing it
+	// also frees its treasures, in the same transaction: they are "found, not
+	// converted" again. A treasure converted by an award that is no longer the
+	// last stays converted until that award is undone.
+	//
 	// expected_award_id, when set, is the award the app shows as the last one: if
 	// another is the last now, the call changes nothing and fails with `aborted`.
 	//
@@ -559,6 +635,13 @@ func NewProgressionServiceHandler(svc ProgressionServiceHandler, opts ...connect
 		ProgressionServiceAwardXPProcedure,
 		svc.AwardXP,
 		connect.WithSchema(progressionServiceMethods.ByName("AwardXP")),
+		connect.WithHandlerOptions(opts...),
+	)
+	progressionServiceListTreasuresToConvertHandler := connect.NewUnaryHandler(
+		ProgressionServiceListTreasuresToConvertProcedure,
+		svc.ListTreasuresToConvert,
+		connect.WithSchema(progressionServiceMethods.ByName("ListTreasuresToConvert")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
 	progressionServiceMarkMilestoneHandler := connect.NewUnaryHandler(
@@ -634,6 +717,8 @@ func NewProgressionServiceHandler(svc ProgressionServiceHandler, opts ...connect
 		switch r.URL.Path {
 		case ProgressionServiceAwardXPProcedure:
 			progressionServiceAwardXPHandler.ServeHTTP(w, r)
+		case ProgressionServiceListTreasuresToConvertProcedure:
+			progressionServiceListTreasuresToConvertHandler.ServeHTTP(w, r)
 		case ProgressionServiceMarkMilestoneProcedure:
 			progressionServiceMarkMilestoneHandler.ServeHTTP(w, r)
 		case ProgressionServiceListMilestonesProcedure:
@@ -667,6 +752,10 @@ type UnimplementedProgressionServiceHandler struct{}
 
 func (UnimplementedProgressionServiceHandler) AwardXP(context.Context, *connect.Request[v1.AwardXPRequest]) (*connect.Response[v1.AwardXPResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.progression.v1.ProgressionService.AwardXP is not implemented"))
+}
+
+func (UnimplementedProgressionServiceHandler) ListTreasuresToConvert(context.Context, *connect.Request[v1.ListTreasuresToConvertRequest]) (*connect.Response[v1.ListTreasuresToConvertResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.progression.v1.ProgressionService.ListTreasuresToConvert is not implemented"))
 }
 
 func (UnimplementedProgressionServiceHandler) MarkMilestone(context.Context, *connect.Request[v1.MarkMilestoneRequest]) (*connect.Response[v1.MarkMilestoneResponse], error) {
