@@ -79,6 +79,8 @@
       [mapId]="point().mapId"
       [pointId]="point().id"
       [actions]="point().sceneActions"
+      [showDc]="point().showDc"
+      (showDcSaved)="showDcSaved.emit($event)"
       (actionsChange)="sceneActionsChange.emit($event)"
     />
     <app-clue-list

@@ -2,7 +2,7 @@ import { computed, signal } from '@angular/core';
 
 import type { SceneClue } from '../../../gen/meurpg/maps/v1/maps_pb';
 import type { OpenSceneInfo, StageNpc } from '../../../gen/meurpg/play/v1/scene_pb';
-import { rollAnnouncement } from './scene-view';
+import { attemptsAnnouncement, rollAnnouncement } from './scene-view';
 import { stageAnnouncement } from './stage-view';
 
 /**
@@ -16,6 +16,8 @@ import { stageAnnouncement } from './stage-view';
  *   fechou a cena." when it closes;
  * - the master hears each new roll ("Toren: Seguir os rastros dos goblins, 7,
  *   não passou");
+ * - a player hears when the master gives another attempt ("O mestre deu mais
+ *   uma tentativa em Resistir ao cheiro de fumaça.", MR-015);
  * - a player also hears the stage move ("Mira entrou na cena.", "Aldo fala.",
  *   MR-031);
  * - a stale answer never overwrites a newer one.
@@ -129,7 +131,10 @@ export class SceneState {
       this.notice.set('O mestre fechou a cena.');
     } else if (next && prev) {
       const stage = stageAnnouncement(prev.stage, next.stage);
-      if (stage) {
+      const attempts = attemptsAnnouncement(prev, next);
+      if (attempts) {
+        this.notice.set(attempts);
+      } else if (stage) {
         this.notice.set(stage);
       }
     }

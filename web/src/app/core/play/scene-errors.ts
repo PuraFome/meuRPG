@@ -26,7 +26,7 @@ export function sceneBlockedMessage(reason: SceneBlockedReason): string {
     case SceneBlockedReason.NO_OPEN_SCENE:
       return 'O mestre fechou a cena. Espere ele abrir de novo.';
     case SceneBlockedReason.ALREADY_ROLLED:
-      return 'Você já rolou essa ação. Para rolar de novo, o mestre fecha e abre a cena.';
+      return 'Você não tem mais tentativas nessa ação. O mestre pode dar mais uma.';
     case SceneBlockedReason.WRONG_DICE_MODE:
       return 'A campanha mudou a forma de rolar os dados. Recarregue a página.';
     case SceneBlockedReason.NO_CHARACTER:

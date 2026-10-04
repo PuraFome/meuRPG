@@ -208,3 +208,25 @@
   font-weight: 700;
   color: var(--mr-ink);
 }
+
+.so__dcnote {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+// The DC pill and the attempts side by side; the attempts alone for an action with no DC.
+.so__dcline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px var(--mr-space-3);
+  margin-top: 2px;
+}

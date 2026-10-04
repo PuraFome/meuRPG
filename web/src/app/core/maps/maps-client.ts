@@ -26,6 +26,8 @@ export interface PointChanges {
   readonly revealed?: boolean;
   /** "Ganchos e anotações" of a SCENE point (MR-029); `''` clears them. */
   readonly hooks?: string;
+  /** "Mostrar a CD aos jogadores" of a SCENE point (RN-20). */
+  readonly showDc?: boolean;
 }
 
 /**
@@ -153,6 +155,19 @@ export class MapsClient {
     action: { key: string; name: string; dc: number },
   ): Promise<readonly SceneAction[]> {
     const res = await this.client.addSceneAction({ campaignId, mapId, pointId, ...action });
+    return res.actions;
+  }
+
+  /** `UpdateSceneAction`: how many attempts each player has at the action
+   * (1 to 5, 0 for unlimited), saved at once. Answers with the point's actions. */
+  async setSceneActionAttempts(
+    campaignId: string,
+    mapId: string,
+    pointId: string,
+    actionId: string,
+    maxAttempts: number,
+  ): Promise<readonly SceneAction[]> {
+    const res = await this.client.updateSceneAction({ campaignId, mapId, pointId, actionId, maxAttempts });
     return res.actions;
   }
 

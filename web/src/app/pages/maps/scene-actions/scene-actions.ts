@@ -21,7 +21,11 @@ import {
   actionSubtitle,
   actionTitle,
 } from '../../../core/maps/scene-actions';
+import { RevealSwitch } from '../reveal-switch/reveal-switch';
 import { SceneActionForm, type NewSceneAction } from './scene-action-form';
+
+/** 1 to 5 attempts, or 0: unlimited (maps.proto, `UpdateSceneAction`). */
+const ATTEMPT_OPTIONS = [1, 2, 3, 4, 5, 0] as const;
 
 /**
  * "Ações da cena" in the point panel of a SCENE point (E7-01, MR-015): what
@@ -31,6 +35,11 @@ import { SceneActionForm, type NewSceneAction } from './scene-action-form';
  * one is in flight, the other buttons answer nothing (`aria-disabled`, not
  * `disabled`, so focus stays where it was).
  *
+ * Each action also has "Tentativas por jogador" (a 44px select, 1 by default, up to 5 or
+ * "Sem limite"; MR-015, question 55) and the list starts with the switch "Mostrar a CD aos
+ * jogadores" (RN-20, a flag of the point). Both save at once (E8-13): the switch with `show_dc`
+ * alone, so the panel's unsaved text is never sent or overwritten.
+ *
  * Focus: after ↑ or ↓ it stays on the same button of the moved row; after a
  * removal it goes to the next row's "Remover", or to "Adicionar ação" when
  * there is none; "Adicionar ação" opens the form with focus on its first
@@ -38,7 +47,7 @@ import { SceneActionForm, type NewSceneAction } from './scene-action-form';
  */
 @Component({
   selector: 'app-scene-actions',
-  imports: [MatButtonModule, MatIconModule, SceneActionForm],
+  imports: [MatButtonModule, MatIconModule, RevealSwitch, SceneActionForm],
   templateUrl: './scene-actions.html',
   styleUrl: './scene-actions.scss',
 })
@@ -51,10 +60,16 @@ export class SceneActions {
   readonly mapId = input.required<string>();
   readonly pointId = input.required<string>();
   readonly actions = input.required<readonly SceneAction[]>();
+  /** "Mostrar a CD aos jogadores" as the server has it. */
+  readonly showDc = input(false);
+  /** The switch was saved (`UpdateMapPoint` with `show_dc` alone): the point carries it. */
+  readonly showDcSaved = output<boolean>();
   /** The point's actions as the server has them now (after each write). */
   readonly actionsChange = output<readonly SceneAction[]>();
 
   protected readonly limit = SCENE_ACTION_LIMIT;
+  protected readonly attemptOptions = ATTEMPT_OPTIONS;
+  protected readonly attemptLabel = (o: number): string => (o === 0 ? 'Sem limite' : String(o));
   protected readonly title = actionTitle;
   protected readonly subtitle = actionSubtitle;
   protected readonly adding = signal(false);
@@ -130,6 +145,56 @@ export class SceneActions {
       this.focusRow(action.id, direction === 'up' ? 'up' : 'down');
     } catch (err) {
       this.error.set(sceneActionErrorMessage(err, 'mover a ação'));
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  /** "Mostrar a CD aos jogadores": saved at once, with only `show_dc` set, so whatever else
+   * is being typed in the panel stays as it is. A refusal leaves the switch where it was
+   * (it is controlled) and says why. */
+  protected async setShowDc(on: boolean): Promise<void> {
+    if (this.busy()) {
+      return;
+    }
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      await this.api.updatePoint(this.campaignId(), this.mapId(), this.pointId(), { showDc: on });
+      this.showDcSaved.emit(on);
+      this.status.set(on ? 'Os jogadores agora veem a CD.' : 'Só você vê a CD.');
+    } catch (err) {
+      this.error.set(sceneActionErrorMessage(err, 'mudar a CD'));
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  /** "Tentativas por jogador": saved at once, like the rest of the list. The select is put
+   * back on what the server has when the save is refused or ignored (one write at a time). */
+  protected async setAttempts(action: SceneAction, select: HTMLSelectElement): Promise<void> {
+    const max = Number(select.value);
+    if (this.busy() || max === action.maxAttempts) {
+      select.value = String(action.maxAttempts);
+      return;
+    }
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      const actions = await this.api.setSceneActionAttempts(
+        this.campaignId(),
+        this.mapId(),
+        this.pointId(),
+        action.id,
+        max,
+      );
+      this.actionsChange.emit(actions);
+      this.status.set(
+        `${actionTitle(action)}: ${max === 0 ? 'sem limite de tentativas' : `${max} ${max === 1 ? 'tentativa' : 'tentativas'} por jogador`}.`,
+      );
+    } catch (err) {
+      select.value = String(action.maxAttempts);
+      this.error.set(sceneActionErrorMessage(err, 'mudar as tentativas'));
     } finally {
       this.busy.set(false);
     }

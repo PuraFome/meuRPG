@@ -12,32 +12,51 @@
     <ul class="sc__list">
       @for (r of rows(); track r.action.id) {
         <li class="sc__row" tabindex="-1" [attr.data-action]="r.action.id">
-          <div class="sc__text">
+          <div class="sc__words">
             <span class="sc__name">{{ r.title }}</span>
             <span class="sc__check">{{ r.check }}</span>
             @if (r.passive) {
               <span class="sc__passive">{{ r.passive }}</span>
             }
-            @if (r.own; as own) {
-              <span class="sc__done"><mat-icon aria-hidden="true">check</mat-icon>Rolada</span>
-              <span class="sc__formula">{{ formula(own) }}</span>
+            @if (r.pass; as pass) {
+              <span class="mr-tag sc__tag" [class.mr-tag--success]="pass.ok" [class.mr-tag--danger]="!pass.ok">
+                <mat-icon aria-hidden="true">{{ pass.ok ? 'check' : 'close' }}</mat-icon>{{ pass.text }}
+              </span>
+            } @else if (r.dc) {
+              <span class="mr-tag sc__tag sc__dc">{{ r.dc }}</span>
+            }
+            @if (r.attempts; as attempts) {
+              <span class="sc__attempts" [class.sc__attempts--out]="attempts.out" [class.sc__attempts--left]="attempts.left">
+                @if (attempts.out) {
+                  <mat-icon aria-hidden="true">block</mat-icon>
+                }{{ attempts.text }}
+              </span>
+            }
+            @if (r.done) {
+              <span class="sc__done"><mat-icon aria-hidden="true">check</mat-icon>{{ r.done }}</span>
             }
           </div>
-          @if (r.own; as own) {
-            <span class="sc__total">{{ own.roll?.total }}</span>
-            <span class="sc__slot" aria-hidden="true"></span>
-          } @else if (r.action.bonus !== undefined) {
-            <span class="sc__bonus">{{ bonusText(r.action.bonus) }}</span>
-            <button
-              matButton="outlined"
-              type="button"
-              class="sc__roll"
-              [attr.aria-label]="'Rolar ' + r.title"
-              (click)="roll(r.action)"
-            >
-              Rolar
-            </button>
-          }
+          <div class="sc__last">
+            @if (r.own; as own) {
+              <span class="sc__total">{{ own.roll?.total }}</span>
+              <span class="sc__formula">{{ formula(own) }}</span>
+            } @else if (r.action.bonus !== undefined) {
+              <span class="sc__bonus">{{ bonusText(r.action.bonus) }}</span>
+            }
+            @if (r.canRoll) {
+              <button
+                matButton="outlined"
+                type="button"
+                class="sc__roll"
+                [attr.aria-label]="'Rolar ' + r.title"
+                (click)="roll(r.action)"
+              >
+                Rolar
+              </button>
+            } @else {
+              <span class="sc__slot" aria-hidden="true"></span>
+            }
+          </div>
         </li>
       }
     </ul>

@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 import { startSessionRPC } from './live-session-support';
 import {
@@ -118,4 +118,48 @@ export async function getOpenSceneRPC(page: Page, campaignId: string): Promise<{
   const res = await callRPC(page, 'meurpg.play.v1.PlayService/GetOpenScene', { campaignId });
   expect(res.ok(), await res.text()).toBeTruthy();
   return res.json();
+}
+
+/** The ids of a point's actions by their title (the name, or the check's name), through `GetMap`. */
+export async function sceneActionIdsRPC(page: Page, table: { campaignId: string; mapId: string }, pointId: string): Promise<Record<string, string>> {
+  const res = await callRPC(page, 'meurpg.maps.v1.MapService/GetMap', { campaignId: table.campaignId, mapId: table.mapId });
+  expect(res.ok(), await res.text()).toBeTruthy();
+  const points = ((await res.json()).points ?? []) as { id: string; sceneActions?: { id: string; name?: string; checkName: string }[] }[];
+  const point = points.find((p) => p.id === pointId);
+  return Object.fromEntries((point?.sceneActions ?? []).map((a) => [a.name || a.checkName, a.id]));
+}
+
+/** "Tentativas por jogador" of one action (1 to 5, 0 unlimited), as the editor's select saves it. */
+export async function setAttemptsRPC(page: Page, table: { campaignId: string; mapId: string }, pointId: string, actionId: string, maxAttempts: number): Promise<void> {
+  const res = await callRPC(page, 'meurpg.maps.v1.MapService/UpdateSceneAction', {
+    campaignId: table.campaignId,
+    mapId: table.mapId,
+    pointId,
+    actionId,
+    maxAttempts,
+  });
+  expect(res.ok(), await res.text()).toBeTruthy();
+}
+
+/** The scene's "Mostrar a CD aos jogadores" switch, as "Salvar ponto" saves it. */
+export async function setShowDcRPC(page: Page, table: { campaignId: string; mapId: string }, pointId: string, showDc: boolean): Promise<void> {
+  const res = await callRPC(page, 'meurpg.maps.v1.MapService/UpdateMapPoint', {
+    campaignId: table.campaignId,
+    mapId: table.mapId,
+    pointId,
+    showDc,
+  });
+  expect(res.ok(), await res.text()).toBeTruthy();
+}
+
+/** A player rolls an action with a physical die: the sheet's "Digitar o resultado", then back to the scene. */
+export async function rollTyped(player: Page, scene: Locator, action: string, face: number): Promise<void> {
+  await scene.getByRole('button', { name: `Rolar ${action}` }).click();
+  const sheet = player.getByRole('dialog', { name: `Rolar ${action}` });
+  await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+  await sheet.getByLabel(/Role 1d20 para/).fill(String(face));
+  await sheet.getByRole('button', { name: `Confirmar ${face}` }).click();
+  await sheet.getByRole('button', { name: 'Voltar à cena' }).waitFor();
+  await sheet.getByRole('button', { name: 'Voltar à cena' }).click();
+  await expect(sheet).toBeHidden();
 }

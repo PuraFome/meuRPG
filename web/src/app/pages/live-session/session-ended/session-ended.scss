@@ -1,0 +1,180 @@
+:host {
+  display: block;
+}
+
+// "← Voltar para a campanha", quiet, above the title (as the live page has it).
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  color: var(--mr-ink-muted);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--mr-ink);
+  }
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-5);
+  margin-top: var(--mr-space-5);
+}
+
+// "Sessão encerrada": the same frame as the combat's "Combate encerrado", the
+// green only on its border.
+.end {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  box-sizing: border-box;
+  padding: 20px 22px;
+  background: var(--mr-surface);
+  border: 1px solid var(--mr-success-ink);
+  border-radius: var(--mr-radius-lg);
+}
+
+.end__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+  }
+}
+
+.end__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 34px;
+  line-height: 38px;
+
+  @media (min-width: 768px) {
+    font-size: 38px;
+    line-height: 42px;
+  }
+}
+
+.end__sub {
+  margin: 4px 0 0;
+  font-size: 17px;
+  color: var(--mr-ink-muted);
+}
+
+// The one button of the page, outlined: 48px on a phone, as the other leaves.
+.end__leave {
+  flex: none;
+  --mat-button-outlined-container-height: 52px;
+  --mat-button-outlined-label-text-size: 18px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  padding-inline: 24px;
+
+  // Centred on the title's line (42px), not on the title and the line under it.
+  @media (min-width: 768px) {
+    margin-top: -5px;
+  }
+}
+
+.end__stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+
+  @media (min-width: 768px) {
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-template-columns: none;
+  }
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+
+  dt {
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 16px;
+    color: var(--mr-ink-muted);
+  }
+
+  dd {
+    // The number sits at the bottom of its tile, so the numbers of a row line up when a label wraps.
+    margin: auto 0 0;
+    font-family: var(--mr-font-display);
+    font-weight: 700;
+    font-size: 30px;
+    line-height: 30px;
+    white-space: nowrap;
+  }
+}
+
+.sum {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sum__head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+  }
+}
+
+.sum__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 21px;
+  line-height: 26px;
+  font-weight: 700;
+}
+
+.sum__h {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.sum__lead,
+.sum__note {
+  margin: 0;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.retry {
+  display: block;
+  max-width: 640px;
+  margin-top: var(--mr-space-4);
+}
+
+.retry.mr-notice {
+  box-sizing: border-box;
+}

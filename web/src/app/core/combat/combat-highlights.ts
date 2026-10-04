@@ -1,6 +1,6 @@
 import {
   type CharacterHighlights,
-  type GetCombatHighlightsResponse,
+  type HighlightCategory,
   HighlightKind,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { joinNames } from '../play/stage-view';
@@ -15,6 +15,8 @@ const KINDS: Record<number, { label: string; icon: string; sub?: string }> = {
   [HighlightKind.TANK]: { label: 'Tanque', icon: 'shield', sub: 'mais dano recebido' },
   [HighlightKind.FINAL_BLOW]: { label: 'Golpe final', icon: 'target' },
   [HighlightKind.CRITICAL_HITS]: { label: 'Acertos críticos', icon: 'casino' },
+  // Only the session's summary has it: the checks passed in scenes that showed their DC.
+  [HighlightKind.CHECKS_PASSED]: { label: 'Mais testes passados fora do combate', icon: 'task_alt' },
 };
 
 /** The number with its unit, tied by a no-break space: "23 de dano", "9 de
@@ -27,6 +29,8 @@ export function highlightValue(kind: HighlightKind, value: number): string {
       return `${value}${NBSP}${value === 1 ? 'inimigo' : 'inimigos'}`;
     case HighlightKind.CRITICAL_HITS:
       return `${value}${NBSP}${value === 1 ? 'crítico' : 'críticos'}`;
+    case HighlightKind.CHECKS_PASSED:
+      return `${value}${NBSP}${value === 1 ? 'teste' : 'testes'}`;
     default:
       return `${value}${NBSP}de${NBSP}dano`;
   }
@@ -49,16 +53,30 @@ export interface HighlightTile {
   readonly characterIds: readonly string[];
 }
 
-/** The categories that have a winner, in the order the server sends them (the
- * order of `HighlightKind`); a category where everybody has 0 is not there. */
-export function highlightTiles(res: GetCombatHighlightsResponse): HighlightTile[] {
+/**
+ * The categories that have a winner, in the order the server sends them (the
+ * order of `HighlightKind`); a category where everybody has 0 is not there.
+ * For the master's session summary, `tried` says how many checks each winner
+ * rolled, and the "Mais testes passados" tile says "de 5 tentados" when the
+ * winners rolled the same number (a tie of different numbers says nothing).
+ */
+export function highlightTiles(
+  res: { readonly categories: readonly HighlightCategory[] },
+  tried: ReadonlyMap<string, number> = new Map(),
+): HighlightTile[] {
   return res.categories.map((c) => {
     const kind = KINDS[c.kind] ?? KINDS[HighlightKind.MOST_DAMAGE];
+    const counts = new Set(c.winners.map((w) => tried.get(w.characterId)));
+    const [count] = counts;
+    const triedLine =
+      c.kind === HighlightKind.CHECKS_PASSED && counts.size === 1 && count !== undefined
+        ? `de${NBSP}${count}${NBSP}${count === 1 ? 'tentado' : 'tentados'}`
+        : '';
     return {
       kind: c.kind,
       label: kind.label,
       icon: kind.icon,
-      sub: kind.sub ?? '',
+      sub: triedLine || (kind.sub ?? ''),
       value: highlightValue(c.kind, c.value),
       names: joinNames(c.winners.map((w) => w.name)),
       tie: c.winners.length > 1,

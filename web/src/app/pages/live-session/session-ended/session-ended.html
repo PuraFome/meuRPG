@@ -1,0 +1,80 @@
+@if (load() === 'ready' && summary() && !(closed() && !isMaster())) {
+  <a class="back" [routerLink]="['/campanhas', campaignId()]">
+    <mat-icon aria-hidden="true">arrow_back</mat-icon>Voltar para a campanha
+  </a>
+  <h1 class="mr-page-title">Sessão {{ sessionNumber() }}</h1>
+  <p class="mr-page-lead">{{ campaignName() }}</p>
+
+  @if (isMaster()) {
+    <div class="stack">
+      <section class="end" aria-labelledby="se-title">
+        <div class="end__head">
+          <div>
+            <div role="status"><h2 class="end__title" id="se-title">Sessão encerrada</h2></div>
+            <p class="end__sub">Sessão {{ sessionNumber() }} · {{ campaignName() }} · {{ span() }}</p>
+          </div>
+          <a matButton="outlined" class="end__leave" [routerLink]="['/campanhas', campaignId()]">Voltar à campanha</a>
+        </div>
+        <dl class="end__stats">
+          <div class="stat"><dt>Duração</dt><dd>{{ duration() }}</dd></div>
+          <div class="stat"><dt>Combates</dt><dd>{{ combats() }}</dd></div>
+          <div class="stat"><dt>Cenas abertas</dt><dd>{{ scenes() }}</dd></div>
+          <div class="stat"><dt>Testes passados fora do combate</dt><dd>{{ checks() }}</dd></div>
+        </dl>
+      </section>
+
+      <section class="mr-panel sum" aria-labelledby="se-sum">
+        <div class="sum__head">
+          <h2 class="sum__title" id="se-sum">Resumo da sessão</h2>
+          <span class="sum__lead">Os jogadores veem os destaques e o resultado de cada um.</span>
+        </div>
+        @if (tiles().length === 0) {
+          <p class="sum__note">Ninguém causou, curou, sofreu dano nem passou em testes nesta sessão.</p>
+        } @else {
+          <h3 class="sum__h">Destaques</h3>
+          <app-highlight-tiles [tiles]="tiles()" [players]="players()" />
+        }
+        @if (rows().length > 0) {
+          <app-highlights-table
+            title="Testes passados fora do combate"
+            caption="Só contam testes de cenas que mostraram a CD aos jogadores; cenas com a CD escondida não entram na conta."
+            [columns]="['Testes passados']"
+            [rows]="rows()"
+          />
+        }
+      </section>
+    </div>
+  } @else {
+    <app-highlights-frame
+      ariaLabel="Resumo da sessão"
+      tag="Sessão encerrada"
+      title="A sessão acabou"
+      [subtitle]="cardSub()"
+      heading="Resumo da sessão"
+      [tiles]="tiles()"
+      none="Ninguém causou, curou, sofreu dano nem passou em testes nesta sessão."
+      [characterId]="characterId()"
+      [ownTitle]="own().length > 0 ? 'Seu resultado, ' + characterName() : ''"
+      [own]="own()"
+      (closed)="closed.set(true)"
+    />
+  }
+} @else if (load() === 'loading') {
+  <h1 class="mr-page-title">Sessão {{ sessionNumber() }}</h1>
+  <p class="mr-page-lead">{{ campaignName() }}</p>
+  <p class="mr-muted" role="status">Abrindo o resumo da sessão...</p>
+} @else {
+  <app-session-blocked
+    kind="ended"
+    [campaignId]="campaignId()"
+    [campaignName]="campaignName()"
+    [sessionNumber]="sessionNumber()"
+  />
+  @if (load() === 'failed') {
+    <div class="mr-notice mr-notice--danger retry" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+    <button matButton="outlined" type="button" class="retry" (click)="retry()">Tentar de novo</button>
+  }
+}

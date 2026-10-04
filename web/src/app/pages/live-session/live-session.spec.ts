@@ -13,6 +13,8 @@ import { XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { CharacterExperienceSchema, GetCampaignExperienceResponseSchema } from '../../../gen/meurpg/progression/v1/progression_pb';
 import { FakeMapsClient, mapMessage, mapPoint, mapResponse, mapToken } from '../../core/maps/maps-testing';
 import { SceneClient } from '../../core/play/scene-client';
+import { SessionSummaryClient } from '../../core/play/session-summary';
+import { SessionSummarySchema } from '../../../gen/meurpg/play/v1/summary_pb';
 import { FakeSceneClient, masterScene, playerScene, sceneRoll } from '../../core/play/scene-testing';
 import { SceneActionSchema } from '../../../gen/meurpg/maps/v1/maps_pb';
 import { OpenSessions } from '../../shell/live-notice/open-sessions';
@@ -120,6 +122,8 @@ describe('LiveSession', () => {
   /** What the master's "Dar XP" reads (MR-016): the party's XP and how the campaign levels. */
   const xpExperience = vi.fn();
   let scenes: FakeSceneClient;
+  /** The summary of the ended session (MR-032); by default it cannot be read, so the page shows the plain notice. */
+  const summary = vi.fn();
   const signIn = vi.fn();
   const liveCampaignIds = signal<ReadonlySet<string>>(new Set());
   const openSessions = {
@@ -138,6 +142,7 @@ describe('LiveSession', () => {
     signIn.mockClear();
     openSessions.dismiss.mockClear();
     liveCampaignIds.set(new Set());
+    summary.mockReset().mockRejectedValue(new Error('no summary'));
     scenes = new FakeSceneClient();
     TestBed.configureTestingModule({
       imports: [LiveSession],
@@ -148,6 +153,7 @@ describe('LiveSession', () => {
         { provide: ProgressionClient, useValue: { experience: xpExperience, listAwards: vi.fn() } },
         { provide: RosterClient, useValue: { list: () => Promise.resolve([]) } },
         { provide: SceneClient, useValue: scenes },
+        { provide: SessionSummaryClient, useValue: { get: summary } },
         { provide: AuthService, useValue: { signIn, state: signal({ status: 'signed-in' }) } },
         { provide: OpenSessions, useValue: openSessions },
         {
@@ -303,6 +309,32 @@ describe('LiveSession', () => {
     expect(el.querySelector('h1')?.textContent).toContain('Sessão 4 encerrada');
     expect(el.textContent).toContain('A sessão acabou.');
     expect(openSessions.refresh).toHaveBeenCalled();
+  });
+
+  it('reads the summary of the session that ended and shows the player the card "A sessão acabou" (MR-032)', async () => {
+    summary.mockResolvedValue(create(SessionSummarySchema, { duration: { seconds: 3600n, nanos: 0 } }));
+    const fixture = TestBed.createComponent(LiveSession);
+    const el = await settle(fixture);
+    source.push({ kind: 'ended' });
+    await settle(fixture);
+    expect(summary).toHaveBeenCalledWith('mirathel', 's4');
+    expect(el.querySelector('h2.card__title')?.textContent).toBe('A sessão acabou');
+    expect(el.querySelector('app-session-blocked')).toBeNull();
+  });
+
+  it('lands the master on "Sessão encerrada" after confirming the end (MR-032)', async () => {
+    source.campaign = { name: 'Mirathel', isMaster: true, awaitingApproval: false, diceMode: 1, dicePreference: 1 };
+    summary.mockResolvedValue(create(SessionSummarySchema, { combats: 1, scenesOpened: 3, checksPassed: 9, checksTried: 12 }));
+    const fixture = TestBed.createComponent(LiveSession);
+    const el = await settle(fixture);
+    button(el, 'Encerrar sessão').click();
+    await settle(fixture);
+    button(el, 'Confirmar encerramento').click();
+    await settle(fixture);
+    expect(el.querySelector('#se-title')?.textContent).toBe('Sessão encerrada');
+    expect(Array.from(el.querySelectorAll('.stat dd'), (d) => d.textContent?.replace(/\u00a0/g, ' '))).toEqual(['menos de 1 min', '1', '3', '9 de 12']);
+    expect(el.querySelectorAll('button')).toHaveLength(0);
+    expect(el.querySelector('.end__leave')?.textContent).toContain('Voltar à campanha');
   });
 
   it('the master ends the session after confirming in place', async () => {
@@ -504,7 +536,11 @@ describe('LiveSession', () => {
       scenes.scene = playerScene();
       const el = await render();
       expect(el.querySelectorAll('.sc__roll')).toHaveLength(5);
-      scenes.scene = playerScene([sceneRoll('r1', 'a1', 'Pensantus', 17)]);
+      scenes.scene = playerScene(
+        [sceneRoll('r1', 'a1', 'Pensantus', 17)],
+        [],
+        { actions: playerScene().actions.map((a) => (a.id === 'a1' ? { ...a, attemptsLeft: 0 } : a)) },
+      );
       source.push({ kind: 'sceneCheckRolled' });
       await tick();
       await tick();

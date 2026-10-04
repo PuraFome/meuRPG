@@ -71,6 +71,21 @@ describe('SceneRollSheet', () => {
     expect(el.textContent).not.toMatch(/CD|passou/i);
   });
 
+  it('says "Passou · CD 12" or "Não passou · CD 12" under the total only when the master shows the DC (RN-20)', async () => {
+    const shown = setup({ action: { ...playerScene().actions[0], dc: 12 } });
+    shown.button('Rolar no app')!.click();
+    await shown.settle();
+    api.made = { ...api.made, passed: true } as never;
+    expect(shown.el.querySelector('.res__pass')).toBeNull();
+    TestBed.resetTestingModule();
+    const again = setup({ action: { ...playerScene().actions[0], dc: 12 } });
+    api.made = { ...api.made, passed: false } as never;
+    again.button('Rolar no app')!.click();
+    await again.settle();
+    expect(again.el.querySelector('.res__pass')?.textContent?.replace(/\u00a0/g, ' ')).toContain('Não passou · CD 12');
+    expect(again.el.querySelector('.res__pass.mr-tag--danger mat-icon')?.textContent).toBe('close');
+  });
+
   it('opens on the typed way when the player prefers their own dice', () => {
     const { el } = setup({ preference: DicePreference.PHYSICAL });
     expect(el.querySelector('input')).toBeNull();
@@ -129,7 +144,7 @@ describe('SceneRollSheet', () => {
     ]);
     button('Rolar no app')!.click();
     await settle();
-    expect(el.querySelector('[role="alert"]')?.textContent).toContain('Você já rolou essa ação');
+    expect(el.querySelector('[role="alert"]')?.textContent).toContain('Você não tem mais tentativas nessa ação');
     expect(el.querySelector('.res')).toBeNull();
   });
 

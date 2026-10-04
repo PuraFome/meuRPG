@@ -320,6 +320,12 @@ export class MapEditor {
     this.state().upsertPoint({ ...now, sceneActions: [...actions] });
   }
 
+  /** "Mostrar a CD aos jogadores" saved on its own: the point carries it. */
+  protected setShowDc(point: MapPoint, showDc: boolean): void {
+    const now = this.state().points().find((p) => p.id === point.id) ?? point;
+    this.state().upsertPoint({ ...now, showDc });
+  }
+
   /** The clues saved on their own: the point carries the new list. */
   protected setClues(point: MapPoint, clues: readonly SceneClue[]): void {
     const now = this.state().points().find((p) => p.id === point.id) ?? point;

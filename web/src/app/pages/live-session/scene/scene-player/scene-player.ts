@@ -16,7 +16,14 @@ import type { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaig
 import type { SceneActionView } from '../../../../../gen/meurpg/play/v1/scene_pb';
 import { actionSubtitle, actionTitle } from '../../../../core/maps/scene-actions';
 import type { SceneState } from '../../../../core/play/scene-state';
-import { ownRollOf, sceneRollFormula, signedBonus } from '../../../../core/play/scene-view';
+import {
+  ownRollOf,
+  passLabel,
+  playerAttempts,
+  rollClock,
+  sceneRollFormula,
+  signedBonus,
+} from '../../../../core/play/scene-view';
 import { tieShortWords, tight } from '../../../../core/format/text';
 import { StagePlayer } from '../stage-player/stage-player';
 import { openSceneRollSheet } from '../scene-roll-sheet/scene-roll-sheet';
@@ -27,9 +34,14 @@ import { openSceneRollSheet } from '../scene-roll-sheet/scene-roll-sheet';
  * point's description and each action as a row: its name (or the check's), the
  * check, the passive value where the server sends one ("Investigação passiva
  * 16"), the player's own bonus and "Rolar" (48px). After rolling, the row is
- * the result and the word "Rolada" with a check; each action rolls once while
- * the scene is open. There is no DC and no pass or fail anywhere: the server
- * never sends them, and the master says what happens.
+ * the result; an action rolls as many times as the master allows (1 by
+ * default; MR-015, question 55) and says how many attempts are left ("Restam 2
+ * de 3 tentativas", "Sem mais tentativas"). When the master shows the DC
+ * (RN-20) the row has the "CD 12" pill and, after a roll, "Passou · CD 12" or
+ * "Não passou · CD 10" (icon and words); otherwise there is no DC and no pass
+ * or fail anywhere, because the server never sends them. "Rolar" sits in the
+ * same place on every row, on the last line: at phone width the words stack
+ * on top and the number is left, "Rolar" right.
  *
  * It comes live without moving focus (a live region elsewhere reads the
  * title), and "Rolar" opens the roll sheet; when that closes, focus returns to
@@ -64,13 +76,25 @@ export class ScenePlayer {
     if (!scene) {
       return [];
     }
-    return scene.actions.map((action) => ({
-      action,
-      title: actionTitle(action),
-      check: actionSubtitle(action),
-      passive: passiveLine(action),
-      own: ownRollOf(scene, action.id),
-    }));
+    return scene.actions.map((action) => {
+      const own = ownRollOf(scene, action.id);
+      const attempts = playerAttempts(action);
+      const pass = own ? passLabel(scene, own) : null;
+      return {
+        action,
+        title: actionTitle(action),
+        check: actionSubtitle(action),
+        passive: passiveLine(action),
+        own,
+        attempts,
+        // The DC comes only when the master shows it; "Passou · CD 12" replaces the pill after a roll.
+        pass: pass && own ? { text: pass, ok: own.passed === true } : null,
+        dc: action.dc > 0 ? `CD\u00a0${action.dc}` : '',
+        // Rolled out of attempts and no pill to say how it went: the word "Rolada".
+        done: own && attempts?.out && !pass ? `Rolada às ${rollClock(own)}` : '',
+        canRoll: action.bonus !== undefined && !attempts?.out,
+      };
+    });
   });
 
   protected roll(action: SceneActionView): void {

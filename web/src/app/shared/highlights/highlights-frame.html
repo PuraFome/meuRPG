@@ -1,0 +1,57 @@
+<section class="card" [attr.aria-label]="ariaLabel()">
+  <div class="card__head">
+    <span class="card__tag"><mat-icon aria-hidden="true">check</mat-icon>{{ tag() }}</span>
+    <button type="button" class="card__x" aria-label="Fechar" (click)="closed.emit()">
+      <mat-icon aria-hidden="true">close</mat-icon>
+    </button>
+  </div>
+  <div class="card__titles">
+    <div role="status"><h2 class="card__title">{{ title() }}</h2></div>
+    @if (subtitle()) {
+      <p class="card__sub">{{ subtitle() }}</p>
+    }
+  </div>
+
+  @if (tiles().length === 0) {
+    <p class="card__none">{{ none() }}</p>
+  } @else {
+    <h3 class="card__h">{{ heading() }}</h3>
+    <ul class="rows">
+      @for (t of tiles(); track t.kind) {
+        <li class="row">
+          <span class="row__icon" aria-hidden="true"><mat-icon>{{ t.icon }}</mat-icon></span>
+          <span class="row__text">
+            <span class="row__label">
+              {{ t.label }}
+              @if (mine(t)) {
+                <span class="row__you">Você</span>
+              }
+            </span>
+            @if (t.sub) {
+              <span class="row__small">{{ t.sub }}</span>
+            }
+            <span class="row__value">{{ t.value }}</span>
+            <span class="row__names">{{ t.names }}</span>
+            @if (t.tie) {
+              <span class="row__small">cada um</span>
+            }
+          </span>
+        </li>
+      }
+    </ul>
+  }
+
+  @if (own().length > 0) {
+    <h3 class="card__h">{{ ownTitle() }}</h3>
+    <ul class="own">
+      @for (n of own(); track n.label) {
+        <li class="own__tile">
+          <span class="own__label">{{ n.label }}</span>
+          <span class="own__value">{{ n.value }}</span>
+        </li>
+      }
+    </ul>
+  }
+
+  <button matButton="outlined" type="button" class="card__close" (click)="closed.emit()">Fechar</button>
+</section>
