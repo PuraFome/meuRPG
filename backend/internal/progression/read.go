@@ -145,6 +145,14 @@ func (s *Service) awardViews(ctx context.Context, m authz.Membership, awards ...
 	if err != nil {
 		return nil, fmt.Errorf("read the combats' names: %w", err)
 	}
+	treasureRows, err := s.queries.ListXPAwardTreasures(ctx, awardIDs)
+	if err != nil {
+		return nil, fmt.Errorf("list the converted treasures: %w", err)
+	}
+	treasuresOf := map[string][]*progressionv1.XPAwardTreasure{}
+	for _, tr := range treasureRows {
+		treasuresOf[tr.AwardID] = append(treasuresOf[tr.AwardID], &progressionv1.XPAwardTreasure{PointId: tr.PointID, ValuePo: tr.ValuePo})
+	}
 	lastID := ""
 	if m.Role == authz.RoleMaster {
 		if lastID, err = s.queries.GetLastXPAwardID(ctx, m.CampaignID); err != nil && !errors.Is(err, pgx.ErrNoRows) {
@@ -166,6 +174,10 @@ func (s *Service) awardViews(ctx context.Context, m authz.Membership, awards ...
 			Undone:              a.UndoneAt != nil,
 			UndoneByDisplayName: userNames[deref(a.UndoneBy)],
 			CanUndo:             m.Role == authz.RoleMaster && a.ID == lastID && a.UndoneAt == nil,
+			TreasureCount:       int32(len(treasuresOf[a.ID])), //nolint:gosec // at most maxAwardTreasures
+		}
+		if m.Role == authz.RoleMaster {
+			v.Treasures = treasuresOf[a.ID] // RN-10: a player gets the count, never which treasures
 		}
 		if a.EncounterID != nil {
 			v.EncounterName = encounterNames[*a.EncounterID]

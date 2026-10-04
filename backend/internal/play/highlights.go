@@ -49,6 +49,9 @@ type characterTally struct {
 	// in scenes that showed their DC (the session summary, summary.go); a
 	// combat's tally leaves them at 0.
 	checksPassed, checksTried int32
+	// treasurePO is the gold pieces it found in the session (MR-041), also
+	// only in the session summary.
+	treasurePO int32
 }
 
 // highlightKind is a category with the number it ranks.

@@ -20,7 +20,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/progression/v1/progression.proto.
  */
 export const file_meurpg_progression_v1_progression: GenFile = /*@__PURE__*/
-  fileDesc("CidtZXVycGcvcHJvZ3Jlc3Npb24vdjEvcHJvZ3Jlc3Npb24ucHJvdG8SFW1ldXJwZy5wcm9ncmVzc2lvbi52MSKHAQoJWFBCbG9ja2VkEjYKBnJlYXNvbhgBIAEoDjImLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5YUEJsb2NrZWRSZWFzb24SFAoMY2hhcmFjdGVyX2lkGAIgASgJEiwKB3hwX21vZGUYAyABKA4yGy5tZXVycGcuY2FtcGFpZ25zLnYxLlhwTW9kZSJDCgdYUFNoYXJlEhQKDGNoYXJhY3Rlcl9pZBgBIAEoCRIWCg5jaGFyYWN0ZXJfbmFtZRgCIAEoCRIKCgJ4cBgDIAEoBSKvAwoHWFBBd2FyZBIKCgJpZBgBIAEoCRIwCgRtb2RlGAIgASgOMiIubWV1cnBnLnByb2dyZXNzaW9uLnYxLlhQQXdhcmRNb2RlEg4KBnJlYXNvbhgDIAEoCRIYChBnaXZlbl9ieV91c2VyX2lkGAQgASgJEh0KFWdpdmVuX2J5X2Rpc3BsYXlfbmFtZRgFIAEoCRIuCgpjcmVhdGVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIUCgxlbmNvdW50ZXJfaWQYByABKAkSFgoOZW5jb3VudGVyX25hbWUYCCABKAkSDAoEZ29sZBgJIAEoBRIQCgh0b3RhbF94cBgKIAEoBRIuCgZzaGFyZXMYCyADKAsyHi5tZXVycGcucHJvZ3Jlc3Npb24udjEuWFBTaGFyZRIOCgZ1bmRvbmUYDCABKAgSLQoJdW5kb25lX2F0GA0gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIeChZ1bmRvbmVfYnlfZGlzcGxheV9uYW1lGA4gASgJEhAKCGNhbl91bmRvGA8gASgIIssBCg5Bd2FyZFhQUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIwCgRtb2RlGAIgASgOMiIubWV1cnBnLnByb2dyZXNzaW9uLnYxLlhQQXdhcmRNb2RlEg4KBnJlYXNvbhgDIAEoCRIUCgxlbmNvdW50ZXJfaWQYBCABKAkSDgoGYW1vdW50GAUgASgFEgwKBGdvbGQYBiABKAUSFQoNY2hhcmFjdGVyX2lkcxgHIAMoCRIXCg9pZGVtcG90ZW5jeV9rZXkYCCABKAkiYgoPQXdhcmRYUFJlc3BvbnNlEi0KBWF3YXJkGAEgASgLMh4ubWV1cnBnLnByb2dyZXNzaW9uLnYxLlhQQXdhcmQSDwoHeHBfZWFjaBgCIAEoBRIPCgdsb3N0X3hwGAMgASgFImsKFE1hcmtNaWxlc3RvbmVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg4KBnJlYXNvbhgCIAEoCRIVCg1jaGFyYWN0ZXJfaWRzGAMgAygJEhcKD2lkZW1wb3RlbmN5X2tleRgEIAEoCSJGChVNYXJrTWlsZXN0b25lUmVzcG9uc2USLQoFYXdhcmQYASABKAsyHi5tZXVycGcucHJvZ3Jlc3Npb24udjEuWFBBd2FyZCJhChZVbmRvTGFzdFhQQXdhcmRSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgCIAEoCRIZChFleHBlY3RlZF9hd2FyZF9pZBgDIAEoCSJIChdVbmRvTGFzdFhQQXdhcmRSZXNwb25zZRItCgVhd2FyZBgBIAEoCzIeLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5YUEF3YXJkIlEKE0xpc3RYUEF3YXJkc1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSEQoJcGFnZV9zaXplGAIgASgFEhIKCnBhZ2VfdG9rZW4YAyABKAkiXwoUTGlzdFhQQXdhcmRzUmVzcG9uc2USLgoGYXdhcmRzGAEgAygLMh4ubWV1cnBnLnByb2dyZXNzaW9uLnYxLlhQQXdhcmQSFwoPbmV4dF9wYWdlX3Rva2VuGAIgASgJIjMKHEdldENhbXBhaWduRXhwZXJpZW5jZVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkijQEKHUdldENhbXBhaWduRXhwZXJpZW5jZVJlc3BvbnNlEiwKB3hwX21vZGUYASABKA4yGy5tZXVycGcuY2FtcGFpZ25zLnYxLlhwTW9kZRI+CgpjaGFyYWN0ZXJzGAIgAygLMioubWV1cnBnLnByb2dyZXNzaW9uLnYxLkNoYXJhY3RlckV4cGVyaWVuY2UigwIKE0NoYXJhY3RlckV4cGVyaWVuY2USFAoMY2hhcmFjdGVyX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSFgoOcGxheWVyX3VzZXJfaWQYAyABKAkSGwoTcGxheWVyX2Rpc3BsYXlfbmFtZRgEIAEoCRINCgVsZXZlbBgFIAEoBRIZChFleHBlcmllbmNlX3BvaW50cxgGIAEoBRIVCg1uZXh0X2xldmVsX3hwGAcgASgFEhQKDGNhbl9sZXZlbF91cBgIIAEoCBI8Cg9sZXZlbF91cF9yZWFzb24YCSABKA4yIy5tZXVycGcuY2hhcmFjdGVycy52MS5MZXZlbFVwUmVhc29uIqcBCglNaWxlc3RvbmUSCgoCaWQYASABKAkSDAoEdGV4dBgCIAEoCRIPCgdyZWFjaGVkGAMgASgIEi4KCnJlYWNoZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi0KBW1hcmtzGAUgAygLMh4ubWV1cnBnLnByb2dyZXNzaW9uLnYxLlhQQXdhcmQSEAoIb2ZmX2xpc3QYBiABKAgiLAoVTGlzdE1pbGVzdG9uZXNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIk4KFkxpc3RNaWxlc3RvbmVzUmVzcG9uc2USNAoKbWlsZXN0b25lcxgBIAMoCzIgLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5NaWxlc3RvbmUiOAoTQWRkTWlsZXN0b25lUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIMCgR0ZXh0GAIgASgJIoEBChRBZGRNaWxlc3RvbmVSZXNwb25zZRIzCgltaWxlc3RvbmUYASABKAsyIC5tZXVycGcucHJvZ3Jlc3Npb24udjEuTWlsZXN0b25lEjQKCm1pbGVzdG9uZXMYAiADKAsyIC5tZXVycGcucHJvZ3Jlc3Npb24udjEuTWlsZXN0b25lIlEKFlVwZGF0ZU1pbGVzdG9uZVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMbWlsZXN0b25lX2lkGAIgASgJEgwKBHRleHQYAyABKAkihAEKF1VwZGF0ZU1pbGVzdG9uZVJlc3BvbnNlEjMKCW1pbGVzdG9uZRgBIAEoCzIgLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5NaWxlc3RvbmUSNAoKbWlsZXN0b25lcxgCIAMoCzIgLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5NaWxlc3RvbmUifwoUTW92ZU1pbGVzdG9uZVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMbWlsZXN0b25lX2lkGAIgASgJEjwKCWRpcmVjdGlvbhgDIAEoDjIpLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5NaWxlc3RvbmVEaXJlY3Rpb24iTQoVTW92ZU1pbGVzdG9uZVJlc3BvbnNlEjQKCm1pbGVzdG9uZXMYASADKAsyIC5tZXVycGcucHJvZ3Jlc3Npb24udjEuTWlsZXN0b25lIkMKFlJlbW92ZU1pbGVzdG9uZVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMbWlsZXN0b25lX2lkGAIgASgJIk8KF1JlbW92ZU1pbGVzdG9uZVJlc3BvbnNlEjQKCm1pbGVzdG9uZXMYASADKAsyIC5tZXVycGcucHJvZ3Jlc3Npb24udjEuTWlsZXN0b25lIngKG01hcmtNaWxlc3RvbmVSZWFjaGVkUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxtaWxlc3RvbmVfaWQYAiABKAkSFQoNY2hhcmFjdGVyX2lkcxgDIAMoCRIXCg9pZGVtcG90ZW5jeV9rZXkYBCABKAkiggEKHE1hcmtNaWxlc3RvbmVSZWFjaGVkUmVzcG9uc2USMwoJbWlsZXN0b25lGAEgASgLMiAubWV1cnBnLnByb2dyZXNzaW9uLnYxLk1pbGVzdG9uZRItCgVhd2FyZBgCIAEoCzIeLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5YUEF3YXJkInMKFkdpdmVNaWxlc3RvbmVUb1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMbWlsZXN0b25lX2lkGAIgASgJEhUKDWNoYXJhY3Rlcl9pZHMYAyADKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAQgASgJIn0KF0dpdmVNaWxlc3RvbmVUb1Jlc3BvbnNlEjMKCW1pbGVzdG9uZRgBIAEoCzIgLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5NaWxlc3RvbmUSLQoFYXdhcmQYAiABKAsyHi5tZXVycGcucHJvZ3Jlc3Npb24udjEuWFBBd2FyZCqWAQoLWFBBd2FyZE1vZGUSHQoZWFBfQVdBUkRfTU9ERV9VTlNQRUNJRklFRBAAEhkKFVhQX0FXQVJEX01PREVfRU5FTUlFUxABEhYKElhQX0FXQVJEX01PREVfR09MRBACEhgKFFhQX0FXQVJEX01PREVfTUFOVUFMEAMSGwoXWFBfQVdBUkRfTU9ERV9NSUxFU1RPTkUQBCrlAwoPWFBCbG9ja2VkUmVhc29uEiEKHVhQX0JMT0NLRURfUkVBU09OX1VOU1BFQ0lGSUVEEAASJgoiWFBfQkxPQ0tFRF9SRUFTT05fTU9ERV9OT1RfQUxMT1dFRBABEikKJVhQX0JMT0NLRURfUkVBU09OX0VOQ09VTlRFUl9OT1RfRU5ERUQQAhIlCiFYUF9CTE9DS0VEX1JFQVNPTl9BTFJFQURZX0FXQVJERUQQAxIlCiFYUF9CTE9DS0VEX1JFQVNPTl9OT1RISU5HX1RPX0dJVkUQBBIlCiFYUF9CTE9DS0VEX1JFQVNPTl9OT1RISU5HX1RPX1VORE8QBRIsCihYUF9CTE9DS0VEX1JFQVNPTl9DSEFSQUNURVJfTk9UX0VMSUdJQkxFEAYSLworWFBfQkxPQ0tFRF9SRUFTT05fTUlMRVNUT05FX0FMUkVBRFlfUkVBQ0hFRBAHEisKJ1hQX0JMT0NLRURfUkVBU09OX01JTEVTVE9ORV9OT1RfUkVBQ0hFRBAIEi4KKlhQX0JMT0NLRURfUkVBU09OX0NIQVJBQ1RFUl9BTFJFQURZX01BUktFRBAJEisKJ1hQX0JMT0NLRURfUkVBU09OX01JTEVTVE9ORV9IQVNfSElTVE9SWRAKKnMKEk1pbGVzdG9uZURpcmVjdGlvbhIjCh9NSUxFU1RPTkVfRElSRUNUSU9OX1VOU1BFQ0lGSUVEEAASGgoWTUlMRVNUT05FX0RJUkVDVElPTl9VUBABEhwKGE1JTEVTVE9ORV9ESVJFQ1RJT05fRE9XThACMuQKChJQcm9ncmVzc2lvblNlcnZpY2USWAoHQXdhcmRYUBIlLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5Bd2FyZFhQUmVxdWVzdBomLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5Bd2FyZFhQUmVzcG9uc2USagoNTWFya01pbGVzdG9uZRIrLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5NYXJrTWlsZXN0b25lUmVxdWVzdBosLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5NYXJrTWlsZXN0b25lUmVzcG9uc2UScgoOTGlzdE1pbGVzdG9uZXMSLC5tZXVycGcucHJvZ3Jlc3Npb24udjEuTGlzdE1pbGVzdG9uZXNSZXF1ZXN0Gi0ubWV1cnBnLnByb2dyZXNzaW9uLnYxLkxpc3RNaWxlc3RvbmVzUmVzcG9uc2UiA5ACAhJnCgxBZGRNaWxlc3RvbmUSKi5tZXVycGcucHJvZ3Jlc3Npb24udjEuQWRkTWlsZXN0b25lUmVxdWVzdBorLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5BZGRNaWxlc3RvbmVSZXNwb25zZRJwCg9VcGRhdGVNaWxlc3RvbmUSLS5tZXVycGcucHJvZ3Jlc3Npb24udjEuVXBkYXRlTWlsZXN0b25lUmVxdWVzdBouLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5VcGRhdGVNaWxlc3RvbmVSZXNwb25zZRJqCg1Nb3ZlTWlsZXN0b25lEisubWV1cnBnLnByb2dyZXNzaW9uLnYxLk1vdmVNaWxlc3RvbmVSZXF1ZXN0GiwubWV1cnBnLnByb2dyZXNzaW9uLnYxLk1vdmVNaWxlc3RvbmVSZXNwb25zZRJwCg9SZW1vdmVNaWxlc3RvbmUSLS5tZXVycGcucHJvZ3Jlc3Npb24udjEuUmVtb3ZlTWlsZXN0b25lUmVxdWVzdBouLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5SZW1vdmVNaWxlc3RvbmVSZXNwb25zZRJ/ChRNYXJrTWlsZXN0b25lUmVhY2hlZBIyLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5NYXJrTWlsZXN0b25lUmVhY2hlZFJlcXVlc3QaMy5tZXVycGcucHJvZ3Jlc3Npb24udjEuTWFya01pbGVzdG9uZVJlYWNoZWRSZXNwb25zZRJwCg9HaXZlTWlsZXN0b25lVG8SLS5tZXVycGcucHJvZ3Jlc3Npb24udjEuR2l2ZU1pbGVzdG9uZVRvUmVxdWVzdBouLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5HaXZlTWlsZXN0b25lVG9SZXNwb25zZRJwCg9VbmRvTGFzdFhQQXdhcmQSLS5tZXVycGcucHJvZ3Jlc3Npb24udjEuVW5kb0xhc3RYUEF3YXJkUmVxdWVzdBouLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5VbmRvTGFzdFhQQXdhcmRSZXNwb25zZRJsCgxMaXN0WFBBd2FyZHMSKi5tZXVycGcucHJvZ3Jlc3Npb24udjEuTGlzdFhQQXdhcmRzUmVxdWVzdBorLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5MaXN0WFBBd2FyZHNSZXNwb25zZSIDkAICEocBChVHZXRDYW1wYWlnbkV4cGVyaWVuY2USMy5tZXVycGcucHJvZ3Jlc3Npb24udjEuR2V0Q2FtcGFpZ25FeHBlcmllbmNlUmVxdWVzdBo0Lm1ldXJwZy5wcm9ncmVzc2lvbi52MS5HZXRDYW1wYWlnbkV4cGVyaWVuY2VSZXNwb25zZSIDkAICQu8BChljb20ubWV1cnBnLnByb2dyZXNzaW9uLnYxQhBQcm9ncmVzc2lvblByb3RvUAFaSmdpdGh1Yi5jb20vUHVyYUZvbWUvbWV1UlBHL2JhY2tlbmQvZ2VuL21ldXJwZy9wcm9ncmVzc2lvbi92MTtwcm9ncmVzc2lvbnYxogIDTVBYqgIVTWV1cnBnLlByb2dyZXNzaW9uLlYxygIVTWV1cnBnXFByb2dyZXNzaW9uXFYx4gIhTWV1cnBnXFByb2dyZXNzaW9uXFYxXEdQQk1ldGFkYXRh6gIXTWV1cnBnOjpQcm9ncmVzc2lvbjo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp, file_meurpg_campaigns_v1_campaigns, file_meurpg_characters_v1_characters]);
+  fileDesc("CidtZXVycGcvcHJvZ3Jlc3Npb24vdjEvcHJvZ3Jlc3Npb24ucHJvdG8SFW1ldXJwZy5wcm9ncmVzc2lvbi52MSKiAQoJWFBCbG9ja2VkEjYKBnJlYXNvbhgBIAEoDjImLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5YUEJsb2NrZWRSZWFzb24SFAoMY2hhcmFjdGVyX2lkGAIgASgJEiwKB3hwX21vZGUYAyABKA4yGy5tZXVycGcuY2FtcGFpZ25zLnYxLlhwTW9kZRIZChF0cmVhc3VyZV9wb2ludF9pZBgEIAEoCSJDCgdYUFNoYXJlEhQKDGNoYXJhY3Rlcl9pZBgBIAEoCRIWCg5jaGFyYWN0ZXJfbmFtZRgCIAEoCRIKCgJ4cBgDIAEoBSKCBAoHWFBBd2FyZBIKCgJpZBgBIAEoCRIwCgRtb2RlGAIgASgOMiIubWV1cnBnLnByb2dyZXNzaW9uLnYxLlhQQXdhcmRNb2RlEg4KBnJlYXNvbhgDIAEoCRIYChBnaXZlbl9ieV91c2VyX2lkGAQgASgJEh0KFWdpdmVuX2J5X2Rpc3BsYXlfbmFtZRgFIAEoCRIuCgpjcmVhdGVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIUCgxlbmNvdW50ZXJfaWQYByABKAkSFgoOZW5jb3VudGVyX25hbWUYCCABKAkSDAoEZ29sZBgJIAEoBRIQCgh0b3RhbF94cBgKIAEoBRIuCgZzaGFyZXMYCyADKAsyHi5tZXVycGcucHJvZ3Jlc3Npb24udjEuWFBTaGFyZRIOCgZ1bmRvbmUYDCABKAgSLQoJdW5kb25lX2F0GA0gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIeChZ1bmRvbmVfYnlfZGlzcGxheV9uYW1lGA4gASgJEhAKCGNhbl91bmRvGA8gASgIEjkKCXRyZWFzdXJlcxgQIAMoCzImLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5YUEF3YXJkVHJlYXN1cmUSFgoOdHJlYXN1cmVfY291bnQYESABKAUiNQoPWFBBd2FyZFRyZWFzdXJlEhAKCHBvaW50X2lkGAEgASgJEhAKCHZhbHVlX3BvGAIgASgFIucBCg5Bd2FyZFhQUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIwCgRtb2RlGAIgASgOMiIubWV1cnBnLnByb2dyZXNzaW9uLnYxLlhQQXdhcmRNb2RlEg4KBnJlYXNvbhgDIAEoCRIUCgxlbmNvdW50ZXJfaWQYBCABKAkSDgoGYW1vdW50GAUgASgFEgwKBGdvbGQYBiABKAUSFQoNY2hhcmFjdGVyX2lkcxgHIAMoCRIXCg9pZGVtcG90ZW5jeV9rZXkYCCABKAkSGgoSdHJlYXN1cmVfcG9pbnRfaWRzGAkgAygJIp0BCg9Bd2FyZFhQUmVzcG9uc2USLQoFYXdhcmQYASABKAsyHi5tZXVycGcucHJvZ3Jlc3Npb24udjEuWFBBd2FyZBIPCgd4cF9lYWNoGAIgASgFEg8KB2xvc3RfeHAYAyABKAUSOQoJdHJlYXN1cmVzGAQgAygLMiYubWV1cnBnLnByb2dyZXNzaW9uLnYxLlhQQXdhcmRUcmVhc3VyZSI0Ch1MaXN0VHJlYXN1cmVzVG9Db252ZXJ0UmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCSJsCh5MaXN0VHJlYXN1cmVzVG9Db252ZXJ0UmVzcG9uc2USOwoJdHJlYXN1cmVzGAEgAygLMigubWV1cnBnLnByb2dyZXNzaW9uLnYxLlRyZWFzdXJlVG9Db252ZXJ0Eg0KBXRvdGFsGAIgASgFIugBChFUcmVhc3VyZVRvQ29udmVydBIQCghwb2ludF9pZBgBIAEoCRIOCgZtYXBfaWQYAiABKAkSEAoIbWFwX25hbWUYAyABKAkSDAoEbmFtZRgEIAEoCRIQCgh2YWx1ZV9wbxgFIAEoBRIsCghmb3VuZF9hdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASNwoIZm91bmRfYnkYByADKAsyJS5tZXVycGcucHJvZ3Jlc3Npb24udjEuVHJlYXN1cmVGaW5kZXISGAoQZm91bmRfaW5fc2Vzc2lvbhgIIAEoCCI+Cg5UcmVhc3VyZUZpbmRlchIUCgxjaGFyYWN0ZXJfaWQYASABKAkSFgoOY2hhcmFjdGVyX25hbWUYAiABKAkiawoUTWFya01pbGVzdG9uZVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSDgoGcmVhc29uGAIgASgJEhUKDWNoYXJhY3Rlcl9pZHMYAyADKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAQgASgJIkYKFU1hcmtNaWxlc3RvbmVSZXNwb25zZRItCgVhd2FyZBgBIAEoCzIeLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5YUEF3YXJkImEKFlVuZG9MYXN0WFBBd2FyZFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAIgASgJEhkKEWV4cGVjdGVkX2F3YXJkX2lkGAMgASgJIkgKF1VuZG9MYXN0WFBBd2FyZFJlc3BvbnNlEi0KBWF3YXJkGAEgASgLMh4ubWV1cnBnLnByb2dyZXNzaW9uLnYxLlhQQXdhcmQiUQoTTGlzdFhQQXdhcmRzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIRCglwYWdlX3NpemUYAiABKAUSEgoKcGFnZV90b2tlbhgDIAEoCSJfChRMaXN0WFBBd2FyZHNSZXNwb25zZRIuCgZhd2FyZHMYASADKAsyHi5tZXVycGcucHJvZ3Jlc3Npb24udjEuWFBBd2FyZBIXCg9uZXh0X3BhZ2VfdG9rZW4YAiABKAkiMwocR2V0Q2FtcGFpZ25FeHBlcmllbmNlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCSKNAQodR2V0Q2FtcGFpZ25FeHBlcmllbmNlUmVzcG9uc2USLAoHeHBfbW9kZRgBIAEoDjIbLm1ldXJwZy5jYW1wYWlnbnMudjEuWHBNb2RlEj4KCmNoYXJhY3RlcnMYAiADKAsyKi5tZXVycGcucHJvZ3Jlc3Npb24udjEuQ2hhcmFjdGVyRXhwZXJpZW5jZSKDAgoTQ2hhcmFjdGVyRXhwZXJpZW5jZRIUCgxjaGFyYWN0ZXJfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIWCg5wbGF5ZXJfdXNlcl9pZBgDIAEoCRIbChNwbGF5ZXJfZGlzcGxheV9uYW1lGAQgASgJEg0KBWxldmVsGAUgASgFEhkKEWV4cGVyaWVuY2VfcG9pbnRzGAYgASgFEhUKDW5leHRfbGV2ZWxfeHAYByABKAUSFAoMY2FuX2xldmVsX3VwGAggASgIEjwKD2xldmVsX3VwX3JlYXNvbhgJIAEoDjIjLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkxldmVsVXBSZWFzb24ipwEKCU1pbGVzdG9uZRIKCgJpZBgBIAEoCRIMCgR0ZXh0GAIgASgJEg8KB3JlYWNoZWQYAyABKAgSLgoKcmVhY2hlZF9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLQoFbWFya3MYBSADKAsyHi5tZXVycGcucHJvZ3Jlc3Npb24udjEuWFBBd2FyZBIQCghvZmZfbGlzdBgGIAEoCCIsChVMaXN0TWlsZXN0b25lc1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiTgoWTGlzdE1pbGVzdG9uZXNSZXNwb25zZRI0CgptaWxlc3RvbmVzGAEgAygLMiAubWV1cnBnLnByb2dyZXNzaW9uLnYxLk1pbGVzdG9uZSI4ChNBZGRNaWxlc3RvbmVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEgwKBHRleHQYAiABKAkigQEKFEFkZE1pbGVzdG9uZVJlc3BvbnNlEjMKCW1pbGVzdG9uZRgBIAEoCzIgLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5NaWxlc3RvbmUSNAoKbWlsZXN0b25lcxgCIAMoCzIgLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5NaWxlc3RvbmUiUQoWVXBkYXRlTWlsZXN0b25lUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxtaWxlc3RvbmVfaWQYAiABKAkSDAoEdGV4dBgDIAEoCSKEAQoXVXBkYXRlTWlsZXN0b25lUmVzcG9uc2USMwoJbWlsZXN0b25lGAEgASgLMiAubWV1cnBnLnByb2dyZXNzaW9uLnYxLk1pbGVzdG9uZRI0CgptaWxlc3RvbmVzGAIgAygLMiAubWV1cnBnLnByb2dyZXNzaW9uLnYxLk1pbGVzdG9uZSJ/ChRNb3ZlTWlsZXN0b25lUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxtaWxlc3RvbmVfaWQYAiABKAkSPAoJZGlyZWN0aW9uGAMgASgOMikubWV1cnBnLnByb2dyZXNzaW9uLnYxLk1pbGVzdG9uZURpcmVjdGlvbiJNChVNb3ZlTWlsZXN0b25lUmVzcG9uc2USNAoKbWlsZXN0b25lcxgBIAMoCzIgLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5NaWxlc3RvbmUiQwoWUmVtb3ZlTWlsZXN0b25lUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxtaWxlc3RvbmVfaWQYAiABKAkiTwoXUmVtb3ZlTWlsZXN0b25lUmVzcG9uc2USNAoKbWlsZXN0b25lcxgBIAMoCzIgLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5NaWxlc3RvbmUieAobTWFya01pbGVzdG9uZVJlYWNoZWRSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDG1pbGVzdG9uZV9pZBgCIAEoCRIVCg1jaGFyYWN0ZXJfaWRzGAMgAygJEhcKD2lkZW1wb3RlbmN5X2tleRgEIAEoCSKCAQocTWFya01pbGVzdG9uZVJlYWNoZWRSZXNwb25zZRIzCgltaWxlc3RvbmUYASABKAsyIC5tZXVycGcucHJvZ3Jlc3Npb24udjEuTWlsZXN0b25lEi0KBWF3YXJkGAIgASgLMh4ubWV1cnBnLnByb2dyZXNzaW9uLnYxLlhQQXdhcmQicwoWR2l2ZU1pbGVzdG9uZVRvUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxtaWxlc3RvbmVfaWQYAiABKAkSFQoNY2hhcmFjdGVyX2lkcxgDIAMoCRIXCg9pZGVtcG90ZW5jeV9rZXkYBCABKAkifQoXR2l2ZU1pbGVzdG9uZVRvUmVzcG9uc2USMwoJbWlsZXN0b25lGAEgASgLMiAubWV1cnBnLnByb2dyZXNzaW9uLnYxLk1pbGVzdG9uZRItCgVhd2FyZBgCIAEoCzIeLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5YUEF3YXJkKpYBCgtYUEF3YXJkTW9kZRIdChlYUF9BV0FSRF9NT0RFX1VOU1BFQ0lGSUVEEAASGQoVWFBfQVdBUkRfTU9ERV9FTkVNSUVTEAESFgoSWFBfQVdBUkRfTU9ERV9HT0xEEAISGAoUWFBfQVdBUkRfTU9ERV9NQU5VQUwQAxIbChdYUF9BV0FSRF9NT0RFX01JTEVTVE9ORRAEKvEECg9YUEJsb2NrZWRSZWFzb24SIQodWFBfQkxPQ0tFRF9SRUFTT05fVU5TUEVDSUZJRUQQABImCiJYUF9CTE9DS0VEX1JFQVNPTl9NT0RFX05PVF9BTExPV0VEEAESKQolWFBfQkxPQ0tFRF9SRUFTT05fRU5DT1VOVEVSX05PVF9FTkRFRBACEiUKIVhQX0JMT0NLRURfUkVBU09OX0FMUkVBRFlfQVdBUkRFRBADEiUKIVhQX0JMT0NLRURfUkVBU09OX05PVEhJTkdfVE9fR0lWRRAEEiUKIVhQX0JMT0NLRURfUkVBU09OX05PVEhJTkdfVE9fVU5ETxAFEiwKKFhQX0JMT0NLRURfUkVBU09OX0NIQVJBQ1RFUl9OT1RfRUxJR0lCTEUQBhIvCitYUF9CTE9DS0VEX1JFQVNPTl9NSUxFU1RPTkVfQUxSRUFEWV9SRUFDSEVEEAcSKwonWFBfQkxPQ0tFRF9SRUFTT05fTUlMRVNUT05FX05PVF9SRUFDSEVEEAgSLgoqWFBfQkxPQ0tFRF9SRUFTT05fQ0hBUkFDVEVSX0FMUkVBRFlfTUFSS0VEEAkSKwonWFBfQkxPQ0tFRF9SRUFTT05fTUlMRVNUT05FX0hBU19ISVNUT1JZEAoSLAooWFBfQkxPQ0tFRF9SRUFTT05fVFJFQVNVUkVfTk9UX0ZPVU5EX1lFVBALEjAKLFhQX0JMT0NLRURfUkVBU09OX1RSRUFTVVJFX0FMUkVBRFlfQ09OVkVSVEVEEAwSKgomWFBfQkxPQ0tFRF9SRUFTT05fVFJFQVNVUkVTX09WRVJfTElNSVQQDSpzChJNaWxlc3RvbmVEaXJlY3Rpb24SIwofTUlMRVNUT05FX0RJUkVDVElPTl9VTlNQRUNJRklFRBAAEhoKFk1JTEVTVE9ORV9ESVJFQ1RJT05fVVAQARIcChhNSUxFU1RPTkVfRElSRUNUSU9OX0RPV04QAjLxCwoSUHJvZ3Jlc3Npb25TZXJ2aWNlElgKB0F3YXJkWFASJS5tZXVycGcucHJvZ3Jlc3Npb24udjEuQXdhcmRYUFJlcXVlc3QaJi5tZXVycGcucHJvZ3Jlc3Npb24udjEuQXdhcmRYUFJlc3BvbnNlEooBChZMaXN0VHJlYXN1cmVzVG9Db252ZXJ0EjQubWV1cnBnLnByb2dyZXNzaW9uLnYxLkxpc3RUcmVhc3VyZXNUb0NvbnZlcnRSZXF1ZXN0GjUubWV1cnBnLnByb2dyZXNzaW9uLnYxLkxpc3RUcmVhc3VyZXNUb0NvbnZlcnRSZXNwb25zZSIDkAICEmoKDU1hcmtNaWxlc3RvbmUSKy5tZXVycGcucHJvZ3Jlc3Npb24udjEuTWFya01pbGVzdG9uZVJlcXVlc3QaLC5tZXVycGcucHJvZ3Jlc3Npb24udjEuTWFya01pbGVzdG9uZVJlc3BvbnNlEnIKDkxpc3RNaWxlc3RvbmVzEiwubWV1cnBnLnByb2dyZXNzaW9uLnYxLkxpc3RNaWxlc3RvbmVzUmVxdWVzdBotLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5MaXN0TWlsZXN0b25lc1Jlc3BvbnNlIgOQAgISZwoMQWRkTWlsZXN0b25lEioubWV1cnBnLnByb2dyZXNzaW9uLnYxLkFkZE1pbGVzdG9uZVJlcXVlc3QaKy5tZXVycGcucHJvZ3Jlc3Npb24udjEuQWRkTWlsZXN0b25lUmVzcG9uc2UScAoPVXBkYXRlTWlsZXN0b25lEi0ubWV1cnBnLnByb2dyZXNzaW9uLnYxLlVwZGF0ZU1pbGVzdG9uZVJlcXVlc3QaLi5tZXVycGcucHJvZ3Jlc3Npb24udjEuVXBkYXRlTWlsZXN0b25lUmVzcG9uc2USagoNTW92ZU1pbGVzdG9uZRIrLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5Nb3ZlTWlsZXN0b25lUmVxdWVzdBosLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5Nb3ZlTWlsZXN0b25lUmVzcG9uc2UScAoPUmVtb3ZlTWlsZXN0b25lEi0ubWV1cnBnLnByb2dyZXNzaW9uLnYxLlJlbW92ZU1pbGVzdG9uZVJlcXVlc3QaLi5tZXVycGcucHJvZ3Jlc3Npb24udjEuUmVtb3ZlTWlsZXN0b25lUmVzcG9uc2USfwoUTWFya01pbGVzdG9uZVJlYWNoZWQSMi5tZXVycGcucHJvZ3Jlc3Npb24udjEuTWFya01pbGVzdG9uZVJlYWNoZWRSZXF1ZXN0GjMubWV1cnBnLnByb2dyZXNzaW9uLnYxLk1hcmtNaWxlc3RvbmVSZWFjaGVkUmVzcG9uc2UScAoPR2l2ZU1pbGVzdG9uZVRvEi0ubWV1cnBnLnByb2dyZXNzaW9uLnYxLkdpdmVNaWxlc3RvbmVUb1JlcXVlc3QaLi5tZXVycGcucHJvZ3Jlc3Npb24udjEuR2l2ZU1pbGVzdG9uZVRvUmVzcG9uc2UScAoPVW5kb0xhc3RYUEF3YXJkEi0ubWV1cnBnLnByb2dyZXNzaW9uLnYxLlVuZG9MYXN0WFBBd2FyZFJlcXVlc3QaLi5tZXVycGcucHJvZ3Jlc3Npb24udjEuVW5kb0xhc3RYUEF3YXJkUmVzcG9uc2USbAoMTGlzdFhQQXdhcmRzEioubWV1cnBnLnByb2dyZXNzaW9uLnYxLkxpc3RYUEF3YXJkc1JlcXVlc3QaKy5tZXVycGcucHJvZ3Jlc3Npb24udjEuTGlzdFhQQXdhcmRzUmVzcG9uc2UiA5ACAhKHAQoVR2V0Q2FtcGFpZ25FeHBlcmllbmNlEjMubWV1cnBnLnByb2dyZXNzaW9uLnYxLkdldENhbXBhaWduRXhwZXJpZW5jZVJlcXVlc3QaNC5tZXVycGcucHJvZ3Jlc3Npb24udjEuR2V0Q2FtcGFpZ25FeHBlcmllbmNlUmVzcG9uc2UiA5ACAkLvAQoZY29tLm1ldXJwZy5wcm9ncmVzc2lvbi52MUIQUHJvZ3Jlc3Npb25Qcm90b1ABWkpnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvcHJvZ3Jlc3Npb24vdjE7cHJvZ3Jlc3Npb252MaICA01QWKoCFU1ldXJwZy5Qcm9ncmVzc2lvbi5WMcoCFU1ldXJwZ1xQcm9ncmVzc2lvblxWMeICIU1ldXJwZ1xQcm9ncmVzc2lvblxWMVxHUEJNZXRhZGF0YeoCF01ldXJwZzo6UHJvZ3Jlc3Npb246OlYxYgZwcm90bzM", [file_google_protobuf_timestamp, file_meurpg_campaigns_v1_campaigns, file_meurpg_characters_v1_characters]);
 
 /**
  * XPBlocked is the error detail of ProgressionService's
@@ -48,6 +48,14 @@ export type XPBlocked = Message<"meurpg.progression.v1.XPBlocked"> & {
    * @generated from field: meurpg.campaigns.v1.XpMode xp_mode = 3;
    */
   xpMode: XpMode;
+
+  /**
+   * For TREASURE_NOT_FOUND_YET and TREASURE_ALREADY_CONVERTED, the treasure's
+   * point (a UUID).
+   *
+   * @generated from field: string treasure_point_id = 4;
+   */
+  treasurePointId: string;
 };
 
 /**
@@ -194,6 +202,26 @@ export type XPAward = Message<"meurpg.progression.v1.XPAward"> & {
    * @generated from field: bool can_undo = 15;
    */
   canUndo: boolean;
+
+  /**
+   * The treasures a "Voltar à cidade" award converted, in a stable order (by
+   * ID); empty for the rest. Only the master gets the list (RN-10: a player
+   * never learns which treasures, nor each one's PO, only how many and the
+   * total). The list stays after an undo (the history is never rewritten),
+   * though the treasures are free again then.
+   *
+   * @generated from field: repeated meurpg.progression.v1.XPAwardTreasure treasures = 16;
+   */
+  treasures: XPAwardTreasure[];
+
+  /**
+   * How many treasures the award converted, for everyone who reads the
+   * history; `gold` is their PO together ("Voltar à cidade: 3 tesouros,
+   * 420 PO"). 0 for an award that converted none.
+   *
+   * @generated from field: int32 treasure_count = 17;
+   */
+  treasureCount: number;
 };
 
 /**
@@ -202,6 +230,34 @@ export type XPAward = Message<"meurpg.progression.v1.XPAward"> & {
  */
 export const XPAwardSchema: GenMessage<XPAward> = /*@__PURE__*/
   messageDesc(file_meurpg_progression_v1_progression, 2);
+
+/**
+ * XPAwardTreasure is one treasure converted by an award: IDs and numbers only.
+ *
+ * @generated from message meurpg.progression.v1.XPAwardTreasure
+ */
+export type XPAwardTreasure = Message<"meurpg.progression.v1.XPAwardTreasure"> & {
+  /**
+   * The treasure's map point (a UUID).
+   *
+   * @generated from field: string point_id = 1;
+   */
+  pointId: string;
+
+  /**
+   * Its worth when it was converted, in gold pieces.
+   *
+   * @generated from field: int32 value_po = 2;
+   */
+  valuePo: number;
+};
+
+/**
+ * Describes the message meurpg.progression.v1.XPAwardTreasure.
+ * Use `create(XPAwardTreasureSchema)` to create a new message.
+ */
+export const XPAwardTreasureSchema: GenMessage<XPAwardTreasure> = /*@__PURE__*/
+  messageDesc(file_meurpg_progression_v1_progression, 3);
 
 /**
  * @generated from message meurpg.progression.v1.AwardXPRequest
@@ -241,7 +297,8 @@ export type AwardXPRequest = Message<"meurpg.progression.v1.AwardXPRequest"> & {
   amount: number;
 
   /**
-   * GOLD only: the gold pieces the group found, 1 to 1,000,000.
+   * GOLD only: the gold pieces the group found, 1 to 1,000,000. Empty (0) when
+   * treasure_point_ids is sent.
    *
    * @generated from field: int32 gold = 6;
    */
@@ -261,6 +318,16 @@ export type AwardXPRequest = Message<"meurpg.progression.v1.AwardXPRequest"> & {
    * @generated from field: string idempotency_key = 8;
    */
   idempotencyKey: string;
+
+  /**
+   * GOLD only, "Voltar à cidade" (MR-041): the found treasures to convert, 1
+   * to 100 map point IDs (UUIDs) from ListTreasuresToConvert, no repeat.
+   * `gold` must then be empty: the server sums the treasures' PO. Only in a
+   * campaign that levels by gold.
+   *
+   * @generated from field: repeated string treasure_point_ids = 9;
+   */
+  treasurePointIds: string[];
 };
 
 /**
@@ -268,7 +335,7 @@ export type AwardXPRequest = Message<"meurpg.progression.v1.AwardXPRequest"> & {
  * Use `create(AwardXPRequestSchema)` to create a new message.
  */
 export const AwardXPRequestSchema: GenMessage<AwardXPRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_progression_v1_progression, 3);
+  messageDesc(file_meurpg_progression_v1_progression, 4);
 
 /**
  * @generated from message meurpg.progression.v1.AwardXPResponse
@@ -294,6 +361,14 @@ export type AwardXPResponse = Message<"meurpg.progression.v1.AwardXPResponse"> &
    * @generated from field: int32 lost_xp = 3;
    */
   lostXp: number;
+
+  /**
+   * The treasures the award converted (the same list as award.treasures; the
+   * master is the only caller of AwardXP); empty when it converted none.
+   *
+   * @generated from field: repeated meurpg.progression.v1.XPAwardTreasure treasures = 4;
+   */
+  treasures: XPAwardTreasure[];
 };
 
 /**
@@ -301,7 +376,152 @@ export type AwardXPResponse = Message<"meurpg.progression.v1.AwardXPResponse"> &
  * Use `create(AwardXPResponseSchema)` to create a new message.
  */
 export const AwardXPResponseSchema: GenMessage<AwardXPResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_progression_v1_progression, 4);
+  messageDesc(file_meurpg_progression_v1_progression, 5);
+
+/**
+ * ListTreasuresToConvertRequest names the campaign.
+ *
+ * @generated from message meurpg.progression.v1.ListTreasuresToConvertRequest
+ */
+export type ListTreasuresToConvertRequest = Message<"meurpg.progression.v1.ListTreasuresToConvertRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+};
+
+/**
+ * Describes the message meurpg.progression.v1.ListTreasuresToConvertRequest.
+ * Use `create(ListTreasuresToConvertRequestSchema)` to create a new message.
+ */
+export const ListTreasuresToConvertRequestSchema: GenMessage<ListTreasuresToConvertRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_progression_v1_progression, 6);
+
+/**
+ * ListTreasuresToConvertResponse is the list "Voltar à cidade" shows.
+ *
+ * @generated from message meurpg.progression.v1.ListTreasuresToConvertResponse
+ */
+export type ListTreasuresToConvertResponse = Message<"meurpg.progression.v1.ListTreasuresToConvertResponse"> & {
+  /**
+   * The treasures found and not converted, the oldest find first.
+   *
+   * @generated from field: repeated meurpg.progression.v1.TreasureToConvert treasures = 1;
+   */
+  treasures: TreasureToConvert[];
+
+  /**
+   * How many treasures are found and not converted in all, which may be more
+   * than the list holds (it stops at 100): the screen says when there are
+   * more.
+   *
+   * @generated from field: int32 total = 2;
+   */
+  total: number;
+};
+
+/**
+ * Describes the message meurpg.progression.v1.ListTreasuresToConvertResponse.
+ * Use `create(ListTreasuresToConvertResponseSchema)` to create a new message.
+ */
+export const ListTreasuresToConvertResponseSchema: GenMessage<ListTreasuresToConvertResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_progression_v1_progression, 7);
+
+/**
+ * TreasureToConvert is a treasure the party found that no award converted.
+ *
+ * @generated from message meurpg.progression.v1.TreasureToConvert
+ */
+export type TreasureToConvert = Message<"meurpg.progression.v1.TreasureToConvert"> & {
+  /**
+   * The treasure's map point (a UUID): what AwardXP's treasure_point_ids take.
+   *
+   * @generated from field: string point_id = 1;
+   */
+  pointId: string;
+
+  /**
+   * The map it is on (a UUID) and that map's name.
+   *
+   * @generated from field: string map_id = 2;
+   */
+  mapId: string;
+
+  /**
+   * @generated from field: string map_name = 3;
+   */
+  mapName: string;
+
+  /**
+   * The treasure's own name.
+   *
+   * @generated from field: string name = 4;
+   */
+  name: string;
+
+  /**
+   * Its worth, in gold pieces: 1 XP each when converted.
+   *
+   * @generated from field: int32 value_po = 5;
+   */
+  valuePo: number;
+
+  /**
+   * When the master marked it found.
+   *
+   * @generated from field: google.protobuf.Timestamp found_at = 6;
+   */
+  foundAt?: Timestamp | undefined;
+
+  /**
+   * The characters that found it, by name.
+   *
+   * @generated from field: repeated meurpg.progression.v1.TreasureFinder found_by = 7;
+   */
+  foundBy: TreasureFinder[];
+
+  /**
+   * Whether it was found while a game session was open. One found outside a
+   * session can be converted, but it counts in no session summary ("Mais
+   * tesouro encontrado").
+   *
+   * @generated from field: bool found_in_session = 8;
+   */
+  foundInSession: boolean;
+};
+
+/**
+ * Describes the message meurpg.progression.v1.TreasureToConvert.
+ * Use `create(TreasureToConvertSchema)` to create a new message.
+ */
+export const TreasureToConvertSchema: GenMessage<TreasureToConvert> = /*@__PURE__*/
+  messageDesc(file_meurpg_progression_v1_progression, 8);
+
+/**
+ * TreasureFinder is a character that found a treasure.
+ *
+ * @generated from message meurpg.progression.v1.TreasureFinder
+ */
+export type TreasureFinder = Message<"meurpg.progression.v1.TreasureFinder"> & {
+  /**
+   * The character (a UUID) and its name now.
+   *
+   * @generated from field: string character_id = 1;
+   */
+  characterId: string;
+
+  /**
+   * @generated from field: string character_name = 2;
+   */
+  characterName: string;
+};
+
+/**
+ * Describes the message meurpg.progression.v1.TreasureFinder.
+ * Use `create(TreasureFinderSchema)` to create a new message.
+ */
+export const TreasureFinderSchema: GenMessage<TreasureFinder> = /*@__PURE__*/
+  messageDesc(file_meurpg_progression_v1_progression, 9);
 
 /**
  * @generated from message meurpg.progression.v1.MarkMilestoneRequest
@@ -340,7 +560,7 @@ export type MarkMilestoneRequest = Message<"meurpg.progression.v1.MarkMilestoneR
  * Use `create(MarkMilestoneRequestSchema)` to create a new message.
  */
 export const MarkMilestoneRequestSchema: GenMessage<MarkMilestoneRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_progression_v1_progression, 5);
+  messageDesc(file_meurpg_progression_v1_progression, 10);
 
 /**
  * @generated from message meurpg.progression.v1.MarkMilestoneResponse
@@ -357,7 +577,7 @@ export type MarkMilestoneResponse = Message<"meurpg.progression.v1.MarkMilestone
  * Use `create(MarkMilestoneResponseSchema)` to create a new message.
  */
 export const MarkMilestoneResponseSchema: GenMessage<MarkMilestoneResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_progression_v1_progression, 6);
+  messageDesc(file_meurpg_progression_v1_progression, 11);
 
 /**
  * @generated from message meurpg.progression.v1.UndoLastXPAwardRequest
@@ -388,7 +608,7 @@ export type UndoLastXPAwardRequest = Message<"meurpg.progression.v1.UndoLastXPAw
  * Use `create(UndoLastXPAwardRequestSchema)` to create a new message.
  */
 export const UndoLastXPAwardRequestSchema: GenMessage<UndoLastXPAwardRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_progression_v1_progression, 7);
+  messageDesc(file_meurpg_progression_v1_progression, 12);
 
 /**
  * @generated from message meurpg.progression.v1.UndoLastXPAwardResponse
@@ -407,7 +627,7 @@ export type UndoLastXPAwardResponse = Message<"meurpg.progression.v1.UndoLastXPA
  * Use `create(UndoLastXPAwardResponseSchema)` to create a new message.
  */
 export const UndoLastXPAwardResponseSchema: GenMessage<UndoLastXPAwardResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_progression_v1_progression, 8);
+  messageDesc(file_meurpg_progression_v1_progression, 13);
 
 /**
  * @generated from message meurpg.progression.v1.ListXPAwardsRequest
@@ -439,7 +659,7 @@ export type ListXPAwardsRequest = Message<"meurpg.progression.v1.ListXPAwardsReq
  * Use `create(ListXPAwardsRequestSchema)` to create a new message.
  */
 export const ListXPAwardsRequestSchema: GenMessage<ListXPAwardsRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_progression_v1_progression, 9);
+  messageDesc(file_meurpg_progression_v1_progression, 14);
 
 /**
  * @generated from message meurpg.progression.v1.ListXPAwardsResponse
@@ -465,7 +685,7 @@ export type ListXPAwardsResponse = Message<"meurpg.progression.v1.ListXPAwardsRe
  * Use `create(ListXPAwardsResponseSchema)` to create a new message.
  */
 export const ListXPAwardsResponseSchema: GenMessage<ListXPAwardsResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_progression_v1_progression, 10);
+  messageDesc(file_meurpg_progression_v1_progression, 15);
 
 /**
  * @generated from message meurpg.progression.v1.GetCampaignExperienceRequest
@@ -482,7 +702,7 @@ export type GetCampaignExperienceRequest = Message<"meurpg.progression.v1.GetCam
  * Use `create(GetCampaignExperienceRequestSchema)` to create a new message.
  */
 export const GetCampaignExperienceRequestSchema: GenMessage<GetCampaignExperienceRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_progression_v1_progression, 11);
+  messageDesc(file_meurpg_progression_v1_progression, 16);
 
 /**
  * @generated from message meurpg.progression.v1.GetCampaignExperienceResponse
@@ -509,7 +729,7 @@ export type GetCampaignExperienceResponse = Message<"meurpg.progression.v1.GetCa
  * Use `create(GetCampaignExperienceResponseSchema)` to create a new message.
  */
 export const GetCampaignExperienceResponseSchema: GenMessage<GetCampaignExperienceResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_progression_v1_progression, 12);
+  messageDesc(file_meurpg_progression_v1_progression, 17);
 
 /**
  * CharacterExperience is one character's progress.
@@ -581,7 +801,7 @@ export type CharacterExperience = Message<"meurpg.progression.v1.CharacterExperi
  * Use `create(CharacterExperienceSchema)` to create a new message.
  */
 export const CharacterExperienceSchema: GenMessage<CharacterExperience> = /*@__PURE__*/
-  messageDesc(file_meurpg_progression_v1_progression, 13);
+  messageDesc(file_meurpg_progression_v1_progression, 18);
 
 /**
  * Milestone is a milestone of a MILESTONES campaign, planned or reached
@@ -646,7 +866,7 @@ export type Milestone = Message<"meurpg.progression.v1.Milestone"> & {
  * Use `create(MilestoneSchema)` to create a new message.
  */
 export const MilestoneSchema: GenMessage<Milestone> = /*@__PURE__*/
-  messageDesc(file_meurpg_progression_v1_progression, 14);
+  messageDesc(file_meurpg_progression_v1_progression, 19);
 
 /**
  * @generated from message meurpg.progression.v1.ListMilestonesRequest
@@ -663,7 +883,7 @@ export type ListMilestonesRequest = Message<"meurpg.progression.v1.ListMilestone
  * Use `create(ListMilestonesRequestSchema)` to create a new message.
  */
 export const ListMilestonesRequestSchema: GenMessage<ListMilestonesRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_progression_v1_progression, 15);
+  messageDesc(file_meurpg_progression_v1_progression, 20);
 
 /**
  * @generated from message meurpg.progression.v1.ListMilestonesResponse
@@ -683,7 +903,7 @@ export type ListMilestonesResponse = Message<"meurpg.progression.v1.ListMileston
  * Use `create(ListMilestonesResponseSchema)` to create a new message.
  */
 export const ListMilestonesResponseSchema: GenMessage<ListMilestonesResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_progression_v1_progression, 16);
+  messageDesc(file_meurpg_progression_v1_progression, 21);
 
 /**
  * @generated from message meurpg.progression.v1.AddMilestoneRequest
@@ -707,7 +927,7 @@ export type AddMilestoneRequest = Message<"meurpg.progression.v1.AddMilestoneReq
  * Use `create(AddMilestoneRequestSchema)` to create a new message.
  */
 export const AddMilestoneRequestSchema: GenMessage<AddMilestoneRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_progression_v1_progression, 17);
+  messageDesc(file_meurpg_progression_v1_progression, 22);
 
 /**
  * @generated from message meurpg.progression.v1.AddMilestoneResponse
@@ -733,7 +953,7 @@ export type AddMilestoneResponse = Message<"meurpg.progression.v1.AddMilestoneRe
  * Use `create(AddMilestoneResponseSchema)` to create a new message.
  */
 export const AddMilestoneResponseSchema: GenMessage<AddMilestoneResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_progression_v1_progression, 18);
+  messageDesc(file_meurpg_progression_v1_progression, 23);
 
 /**
  * @generated from message meurpg.progression.v1.UpdateMilestoneRequest
@@ -762,7 +982,7 @@ export type UpdateMilestoneRequest = Message<"meurpg.progression.v1.UpdateMilest
  * Use `create(UpdateMilestoneRequestSchema)` to create a new message.
  */
 export const UpdateMilestoneRequestSchema: GenMessage<UpdateMilestoneRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_progression_v1_progression, 19);
+  messageDesc(file_meurpg_progression_v1_progression, 24);
 
 /**
  * @generated from message meurpg.progression.v1.UpdateMilestoneResponse
@@ -788,7 +1008,7 @@ export type UpdateMilestoneResponse = Message<"meurpg.progression.v1.UpdateMiles
  * Use `create(UpdateMilestoneResponseSchema)` to create a new message.
  */
 export const UpdateMilestoneResponseSchema: GenMessage<UpdateMilestoneResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_progression_v1_progression, 20);
+  messageDesc(file_meurpg_progression_v1_progression, 25);
 
 /**
  * @generated from message meurpg.progression.v1.MoveMilestoneRequest
@@ -817,7 +1037,7 @@ export type MoveMilestoneRequest = Message<"meurpg.progression.v1.MoveMilestoneR
  * Use `create(MoveMilestoneRequestSchema)` to create a new message.
  */
 export const MoveMilestoneRequestSchema: GenMessage<MoveMilestoneRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_progression_v1_progression, 21);
+  messageDesc(file_meurpg_progression_v1_progression, 26);
 
 /**
  * @generated from message meurpg.progression.v1.MoveMilestoneResponse
@@ -836,7 +1056,7 @@ export type MoveMilestoneResponse = Message<"meurpg.progression.v1.MoveMilestone
  * Use `create(MoveMilestoneResponseSchema)` to create a new message.
  */
 export const MoveMilestoneResponseSchema: GenMessage<MoveMilestoneResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_progression_v1_progression, 22);
+  messageDesc(file_meurpg_progression_v1_progression, 27);
 
 /**
  * @generated from message meurpg.progression.v1.RemoveMilestoneRequest
@@ -858,7 +1078,7 @@ export type RemoveMilestoneRequest = Message<"meurpg.progression.v1.RemoveMilest
  * Use `create(RemoveMilestoneRequestSchema)` to create a new message.
  */
 export const RemoveMilestoneRequestSchema: GenMessage<RemoveMilestoneRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_progression_v1_progression, 23);
+  messageDesc(file_meurpg_progression_v1_progression, 28);
 
 /**
  * @generated from message meurpg.progression.v1.RemoveMilestoneResponse
@@ -877,7 +1097,7 @@ export type RemoveMilestoneResponse = Message<"meurpg.progression.v1.RemoveMiles
  * Use `create(RemoveMilestoneResponseSchema)` to create a new message.
  */
 export const RemoveMilestoneResponseSchema: GenMessage<RemoveMilestoneResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_progression_v1_progression, 24);
+  messageDesc(file_meurpg_progression_v1_progression, 29);
 
 /**
  * @generated from message meurpg.progression.v1.MarkMilestoneReachedRequest
@@ -914,7 +1134,7 @@ export type MarkMilestoneReachedRequest = Message<"meurpg.progression.v1.MarkMil
  * Use `create(MarkMilestoneReachedRequestSchema)` to create a new message.
  */
 export const MarkMilestoneReachedRequestSchema: GenMessage<MarkMilestoneReachedRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_progression_v1_progression, 25);
+  messageDesc(file_meurpg_progression_v1_progression, 30);
 
 /**
  * @generated from message meurpg.progression.v1.MarkMilestoneReachedResponse
@@ -940,7 +1160,7 @@ export type MarkMilestoneReachedResponse = Message<"meurpg.progression.v1.MarkMi
  * Use `create(MarkMilestoneReachedResponseSchema)` to create a new message.
  */
 export const MarkMilestoneReachedResponseSchema: GenMessage<MarkMilestoneReachedResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_progression_v1_progression, 26);
+  messageDesc(file_meurpg_progression_v1_progression, 31);
 
 /**
  * @generated from message meurpg.progression.v1.GiveMilestoneToRequest
@@ -977,7 +1197,7 @@ export type GiveMilestoneToRequest = Message<"meurpg.progression.v1.GiveMileston
  * Use `create(GiveMilestoneToRequestSchema)` to create a new message.
  */
 export const GiveMilestoneToRequestSchema: GenMessage<GiveMilestoneToRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_progression_v1_progression, 27);
+  messageDesc(file_meurpg_progression_v1_progression, 32);
 
 /**
  * @generated from message meurpg.progression.v1.GiveMilestoneToResponse
@@ -1003,7 +1223,7 @@ export type GiveMilestoneToResponse = Message<"meurpg.progression.v1.GiveMilesto
  * Use `create(GiveMilestoneToResponseSchema)` to create a new message.
  */
 export const GiveMilestoneToResponseSchema: GenMessage<GiveMilestoneToResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_progression_v1_progression, 28);
+  messageDesc(file_meurpg_progression_v1_progression, 33);
 
 /**
  * XPAwardMode is where an award's XP came from.
@@ -1137,6 +1357,31 @@ export enum XPBlockedReason {
    * @generated from enum value: XP_BLOCKED_REASON_MILESTONE_HAS_HISTORY = 10;
    */
   XP_BLOCKED_REASON_MILESTONE_HAS_HISTORY = 10,
+
+  /**
+   * AwardXP with a treasure the party has not found (or whose find the master
+   * unmarked): `treasure_point_id` says which.
+   *
+   * @generated from enum value: XP_BLOCKED_REASON_TREASURE_NOT_FOUND_YET = 11;
+   */
+  XP_BLOCKED_REASON_TREASURE_NOT_FOUND_YET = 11,
+
+  /**
+   * AwardXP with a treasure that an award that is not undone already
+   * converted: `treasure_point_id` says which. It is free again when that
+   * award is the last one and the master undoes it.
+   *
+   * @generated from enum value: XP_BLOCKED_REASON_TREASURE_ALREADY_CONVERTED = 12;
+   */
+  XP_BLOCKED_REASON_TREASURE_ALREADY_CONVERTED = 12,
+
+  /**
+   * AwardXP with treasures worth more than 1,000,000 PO together (a sheet
+   * holds at most that much XP): convert fewer of them.
+   *
+   * @generated from enum value: XP_BLOCKED_REASON_TREASURES_OVER_LIMIT = 13;
+   */
+  XP_BLOCKED_REASON_TREASURES_OVER_LIMIT = 13,
 }
 
 /**
@@ -1250,18 +1495,30 @@ export const ProgressionService: GenService<{
    * repeat. A sheet's XP is a number the master may also set by hand on the
    * sheet; the award only adds to it.
    *
+   * "Voltar à cidade" (MR-041, RN-09): a GOLD award may name the treasures
+   * the party found (treasure_point_ids, from ListTreasuresToConvert) instead
+   * of a typed `gold`. The server sums their PO itself (1 XP per PO), splits
+   * as above and, in the same transaction, links each treasure to the award:
+   * a treasure is converted once, even when two awards race. Undoing the award
+   * (UndoLastXPAward) frees them again. The award, the history and the
+   * `xp_awarded` event carry the treasures (their IDs and PO).
+   *
    * Errors:
    *   - `not_found`: the campaign, or the encounter, does not exist, or the
-   *     caller is not a member.
+   *     caller is not a member; a treasure that is not a treasure of the
+   *     campaign.
    *   - `permission_denied`: the caller is a player.
    *   - `invalid_argument`: no characters, a repeat, an ID that is not a UUID,
    *     a reason outside 1 to 120 characters, a field that does not go with
    *     the mode (a gold amount for ENEMIES), or an amount or gold outside 1
-   *     to 1,000,000.
+   *     to 1,000,000; treasure_point_ids with a mode other than GOLD, with
+   *     `gold`, or with a repeat or more than 100 treasures.
    *   - `failed_precondition` (XPBlocked): MODE_NOT_ALLOWED, ENCOUNTER_NOT_ENDED,
    *     ALREADY_AWARDED, NOTHING_TO_GIVE (the total is 0, or too small to give
    *     each one 1 XP), CHARACTER_NOT_ELIGIBLE (a dead or pending character,
-   *     an NPC, or another campaign's).
+   *     an NPC, or another campaign's), TREASURE_NOT_FOUND_YET and
+   *     TREASURE_ALREADY_CONVERTED (`treasure_point_id` says which), and
+   *     TREASURES_OVER_LIMIT (worth more than 1,000,000 PO together).
    *
    * @generated from rpc meurpg.progression.v1.ProgressionService.AwardXP
    */
@@ -1269,6 +1526,27 @@ export const ProgressionService: GenService<{
     methodKind: "unary";
     input: typeof AwardXPRequestSchema;
     output: typeof AwardXPResponseSchema;
+  },
+  /**
+   * ListTreasuresToConvert lists the campaign's treasures that were found and
+   * not converted yet, for "Voltar à cidade" (MR-041): oldest find first. Only
+   * the master may call it: the list is the input of AwardXP's
+   * treasure_point_ids. It lists them in every XP mode (the treasures belong to
+   * the map), but only a GOLD campaign converts them.
+   *
+   * At most 100 treasures come (the most one conversion takes), the oldest
+   * finds; `total` says how many there are.
+   *
+   * Errors:
+   *   - `not_found`: the campaign does not exist, or the caller is not a member.
+   *   - `permission_denied`: the caller is a player.
+   *
+   * @generated from rpc meurpg.progression.v1.ProgressionService.ListTreasuresToConvert
+   */
+  listTreasuresToConvert: {
+    methodKind: "unary";
+    input: typeof ListTreasuresToConvertRequestSchema;
+    output: typeof ListTreasuresToConvertResponseSchema;
   },
   /**
    * MarkMilestone marks a milestone: the characters it names "can level up"
@@ -1435,6 +1713,11 @@ export const ProgressionService: GenService<{
    * its only mark makes it planned again, in the same place of the list;
    * undoing a "Dar a mais alguém" mark takes the milestone off those
    * characters only, and it stays reached for the others.
+   *
+   * For a "Voltar à cidade" award (AwardXP with treasure_point_ids), undoing it
+   * also frees its treasures, in the same transaction: they are "found, not
+   * converted" again. A treasure converted by an award that is no longer the
+   * last stays converted until that award is undone.
    *
    * expected_award_id, when set, is the award the app shows as the last one: if
    * another is the last now, the call changes nothing and fails with `aborted`.

@@ -578,3 +578,14 @@ SELECT (count(*) FILTER (WHERE treasure_found_at IS NOT NULL))::INT4 AS found,
        (count(*) FILTER (WHERE treasure_converted_award_id IS NOT NULL))::INT4 AS converted
 FROM map_points
 WHERE map_id = $1 AND kind = 'treasure';
+
+-- Gold (slice 9.11, MR-032): the session summary's "Mais tesouro encontrado".
+
+-- name: ListTreasureFindsOfSession :many
+-- One row per treasure and finder of the treasures found while the game session
+-- was open. A treasure unmarked later has no session and no finders.
+SELECT p.id AS point_id, COALESCE(p.treasure_value_po, 0)::INT4 AS value_po, f.character_id
+FROM map_points AS p
+JOIN map_treasure_finders AS f ON f.point_id = p.id
+WHERE p.kind = 'treasure' AND p.treasure_found_at IS NOT NULL AND p.treasure_session_id = sqlc.arg(session_id)::UUID
+ORDER BY p.id, f.character_id;

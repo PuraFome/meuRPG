@@ -119,6 +119,16 @@ const (
 	// undone): its awards stay in the history, which is never rewritten, so
 	// the milestone stays too, planned again.
 	XPBlockedReason_XP_BLOCKED_REASON_MILESTONE_HAS_HISTORY XPBlockedReason = 10
+	// AwardXP with a treasure the party has not found (or whose find the master
+	// unmarked): `treasure_point_id` says which.
+	XPBlockedReason_XP_BLOCKED_REASON_TREASURE_NOT_FOUND_YET XPBlockedReason = 11
+	// AwardXP with a treasure that an award that is not undone already
+	// converted: `treasure_point_id` says which. It is free again when that
+	// award is the last one and the master undoes it.
+	XPBlockedReason_XP_BLOCKED_REASON_TREASURE_ALREADY_CONVERTED XPBlockedReason = 12
+	// AwardXP with treasures worth more than 1,000,000 PO together (a sheet
+	// holds at most that much XP): convert fewer of them.
+	XPBlockedReason_XP_BLOCKED_REASON_TREASURES_OVER_LIMIT XPBlockedReason = 13
 )
 
 // Enum value maps for XPBlockedReason.
@@ -135,19 +145,25 @@ var (
 		8:  "XP_BLOCKED_REASON_MILESTONE_NOT_REACHED",
 		9:  "XP_BLOCKED_REASON_CHARACTER_ALREADY_MARKED",
 		10: "XP_BLOCKED_REASON_MILESTONE_HAS_HISTORY",
+		11: "XP_BLOCKED_REASON_TREASURE_NOT_FOUND_YET",
+		12: "XP_BLOCKED_REASON_TREASURE_ALREADY_CONVERTED",
+		13: "XP_BLOCKED_REASON_TREASURES_OVER_LIMIT",
 	}
 	XPBlockedReason_value = map[string]int32{
-		"XP_BLOCKED_REASON_UNSPECIFIED":               0,
-		"XP_BLOCKED_REASON_MODE_NOT_ALLOWED":          1,
-		"XP_BLOCKED_REASON_ENCOUNTER_NOT_ENDED":       2,
-		"XP_BLOCKED_REASON_ALREADY_AWARDED":           3,
-		"XP_BLOCKED_REASON_NOTHING_TO_GIVE":           4,
-		"XP_BLOCKED_REASON_NOTHING_TO_UNDO":           5,
-		"XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE":    6,
-		"XP_BLOCKED_REASON_MILESTONE_ALREADY_REACHED": 7,
-		"XP_BLOCKED_REASON_MILESTONE_NOT_REACHED":     8,
-		"XP_BLOCKED_REASON_CHARACTER_ALREADY_MARKED":  9,
-		"XP_BLOCKED_REASON_MILESTONE_HAS_HISTORY":     10,
+		"XP_BLOCKED_REASON_UNSPECIFIED":                0,
+		"XP_BLOCKED_REASON_MODE_NOT_ALLOWED":           1,
+		"XP_BLOCKED_REASON_ENCOUNTER_NOT_ENDED":        2,
+		"XP_BLOCKED_REASON_ALREADY_AWARDED":            3,
+		"XP_BLOCKED_REASON_NOTHING_TO_GIVE":            4,
+		"XP_BLOCKED_REASON_NOTHING_TO_UNDO":            5,
+		"XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE":     6,
+		"XP_BLOCKED_REASON_MILESTONE_ALREADY_REACHED":  7,
+		"XP_BLOCKED_REASON_MILESTONE_NOT_REACHED":      8,
+		"XP_BLOCKED_REASON_CHARACTER_ALREADY_MARKED":   9,
+		"XP_BLOCKED_REASON_MILESTONE_HAS_HISTORY":      10,
+		"XP_BLOCKED_REASON_TREASURE_NOT_FOUND_YET":     11,
+		"XP_BLOCKED_REASON_TREASURE_ALREADY_CONVERTED": 12,
+		"XP_BLOCKED_REASON_TREASURES_OVER_LIMIT":       13,
 	}
 )
 
@@ -239,9 +255,12 @@ type XPBlocked struct {
 	// UUID).
 	CharacterId string `protobuf:"bytes,2,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
 	// For MODE_NOT_ALLOWED, the campaign's XP mode.
-	XpMode        v1.XpMode `protobuf:"varint,3,opt,name=xp_mode,json=xpMode,proto3,enum=meurpg.campaigns.v1.XpMode" json:"xp_mode,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	XpMode v1.XpMode `protobuf:"varint,3,opt,name=xp_mode,json=xpMode,proto3,enum=meurpg.campaigns.v1.XpMode" json:"xp_mode,omitempty"`
+	// For TREASURE_NOT_FOUND_YET and TREASURE_ALREADY_CONVERTED, the treasure's
+	// point (a UUID).
+	TreasurePointId string `protobuf:"bytes,4,opt,name=treasure_point_id,json=treasurePointId,proto3" json:"treasure_point_id,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *XPBlocked) Reset() {
@@ -293,6 +312,13 @@ func (x *XPBlocked) GetXpMode() v1.XpMode {
 		return x.XpMode
 	}
 	return v1.XpMode(0)
+}
+
+func (x *XPBlocked) GetTreasurePointId() string {
+	if x != nil {
+		return x.TreasurePointId
+	}
+	return ""
 }
 
 // XPShare is what one character got from an award.
@@ -389,7 +415,17 @@ type XPAward struct {
 	UndoneByDisplayName string                 `protobuf:"bytes,14,opt,name=undone_by_display_name,json=undoneByDisplayName,proto3" json:"undone_by_display_name,omitempty"`
 	// Whether the caller may undo it now: the master, for the latest award that
 	// is not undone.
-	CanUndo       bool `protobuf:"varint,15,opt,name=can_undo,json=canUndo,proto3" json:"can_undo,omitempty"`
+	CanUndo bool `protobuf:"varint,15,opt,name=can_undo,json=canUndo,proto3" json:"can_undo,omitempty"`
+	// The treasures a "Voltar à cidade" award converted, in a stable order (by
+	// ID); empty for the rest. Only the master gets the list (RN-10: a player
+	// never learns which treasures, nor each one's PO, only how many and the
+	// total). The list stays after an undo (the history is never rewritten),
+	// though the treasures are free again then.
+	Treasures []*XPAwardTreasure `protobuf:"bytes,16,rep,name=treasures,proto3" json:"treasures,omitempty"`
+	// How many treasures the award converted, for everyone who reads the
+	// history; `gold` is their PO together ("Voltar à cidade: 3 tesouros,
+	// 420 PO"). 0 for an award that converted none.
+	TreasureCount int32 `protobuf:"varint,17,opt,name=treasure_count,json=treasureCount,proto3" json:"treasure_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -529,6 +565,75 @@ func (x *XPAward) GetCanUndo() bool {
 	return false
 }
 
+func (x *XPAward) GetTreasures() []*XPAwardTreasure {
+	if x != nil {
+		return x.Treasures
+	}
+	return nil
+}
+
+func (x *XPAward) GetTreasureCount() int32 {
+	if x != nil {
+		return x.TreasureCount
+	}
+	return 0
+}
+
+// XPAwardTreasure is one treasure converted by an award: IDs and numbers only.
+type XPAwardTreasure struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The treasure's map point (a UUID).
+	PointId string `protobuf:"bytes,1,opt,name=point_id,json=pointId,proto3" json:"point_id,omitempty"`
+	// Its worth when it was converted, in gold pieces.
+	ValuePo       int32 `protobuf:"varint,2,opt,name=value_po,json=valuePo,proto3" json:"value_po,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *XPAwardTreasure) Reset() {
+	*x = XPAwardTreasure{}
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *XPAwardTreasure) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*XPAwardTreasure) ProtoMessage() {}
+
+func (x *XPAwardTreasure) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use XPAwardTreasure.ProtoReflect.Descriptor instead.
+func (*XPAwardTreasure) Descriptor() ([]byte, []int) {
+	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *XPAwardTreasure) GetPointId() string {
+	if x != nil {
+		return x.PointId
+	}
+	return ""
+}
+
+func (x *XPAwardTreasure) GetValuePo() int32 {
+	if x != nil {
+		return x.ValuePo
+	}
+	return 0
+}
+
 type AwardXPRequest struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
 	CampaignId string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
@@ -540,20 +645,26 @@ type AwardXPRequest struct {
 	EncounterId string `protobuf:"bytes,4,opt,name=encounter_id,json=encounterId,proto3" json:"encounter_id,omitempty"`
 	// MANUAL only: the XP to split, 1 to 1,000,000.
 	Amount int32 `protobuf:"varint,5,opt,name=amount,proto3" json:"amount,omitempty"`
-	// GOLD only: the gold pieces the group found, 1 to 1,000,000.
+	// GOLD only: the gold pieces the group found, 1 to 1,000,000. Empty (0) when
+	// treasure_point_ids is sent.
 	Gold int32 `protobuf:"varint,6,opt,name=gold,proto3" json:"gold,omitempty"`
 	// Who gets it: 1 to 40 living player characters of the campaign (UUIDs), no
 	// repeat.
 	CharacterIds []string `protobuf:"bytes,7,rep,name=character_ids,json=characterIds,proto3" json:"character_ids,omitempty"`
 	// A UUID the app generates once for this award and sends again on a retry.
 	IdempotencyKey string `protobuf:"bytes,8,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// GOLD only, "Voltar à cidade" (MR-041): the found treasures to convert, 1
+	// to 100 map point IDs (UUIDs) from ListTreasuresToConvert, no repeat.
+	// `gold` must then be empty: the server sums the treasures' PO. Only in a
+	// campaign that levels by gold.
+	TreasurePointIds []string `protobuf:"bytes,9,rep,name=treasure_point_ids,json=treasurePointIds,proto3" json:"treasure_point_ids,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *AwardXPRequest) Reset() {
 	*x = AwardXPRequest{}
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[3]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -565,7 +676,7 @@ func (x *AwardXPRequest) String() string {
 func (*AwardXPRequest) ProtoMessage() {}
 
 func (x *AwardXPRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[3]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -578,7 +689,7 @@ func (x *AwardXPRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwardXPRequest.ProtoReflect.Descriptor instead.
 func (*AwardXPRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{3}
+	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *AwardXPRequest) GetCampaignId() string {
@@ -637,6 +748,13 @@ func (x *AwardXPRequest) GetIdempotencyKey() string {
 	return ""
 }
 
+func (x *AwardXPRequest) GetTreasurePointIds() []string {
+	if x != nil {
+		return x.TreasurePointIds
+	}
+	return nil
+}
+
 type AwardXPResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The award, as the history shows it.
@@ -644,14 +762,17 @@ type AwardXPResponse struct {
 	// What each character got.
 	XpEach int32 `protobuf:"varint,2,opt,name=xp_each,json=xpEach,proto3" json:"xp_each,omitempty"`
 	// The XP that did not split among the characters (total modulo their number).
-	LostXp        int32 `protobuf:"varint,3,opt,name=lost_xp,json=lostXp,proto3" json:"lost_xp,omitempty"`
+	LostXp int32 `protobuf:"varint,3,opt,name=lost_xp,json=lostXp,proto3" json:"lost_xp,omitempty"`
+	// The treasures the award converted (the same list as award.treasures; the
+	// master is the only caller of AwardXP); empty when it converted none.
+	Treasures     []*XPAwardTreasure `protobuf:"bytes,4,rep,name=treasures,proto3" json:"treasures,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwardXPResponse) Reset() {
 	*x = AwardXPResponse{}
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[4]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -663,7 +784,7 @@ func (x *AwardXPResponse) String() string {
 func (*AwardXPResponse) ProtoMessage() {}
 
 func (x *AwardXPResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[4]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -676,7 +797,7 @@ func (x *AwardXPResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwardXPResponse.ProtoReflect.Descriptor instead.
 func (*AwardXPResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{4}
+	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *AwardXPResponse) GetAward() *XPAward {
@@ -700,6 +821,279 @@ func (x *AwardXPResponse) GetLostXp() int32 {
 	return 0
 }
 
+func (x *AwardXPResponse) GetTreasures() []*XPAwardTreasure {
+	if x != nil {
+		return x.Treasures
+	}
+	return nil
+}
+
+// ListTreasuresToConvertRequest names the campaign.
+type ListTreasuresToConvertRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId    string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListTreasuresToConvertRequest) Reset() {
+	*x = ListTreasuresToConvertRequest{}
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListTreasuresToConvertRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListTreasuresToConvertRequest) ProtoMessage() {}
+
+func (x *ListTreasuresToConvertRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListTreasuresToConvertRequest.ProtoReflect.Descriptor instead.
+func (*ListTreasuresToConvertRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ListTreasuresToConvertRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+// ListTreasuresToConvertResponse is the list "Voltar à cidade" shows.
+type ListTreasuresToConvertResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The treasures found and not converted, the oldest find first.
+	Treasures []*TreasureToConvert `protobuf:"bytes,1,rep,name=treasures,proto3" json:"treasures,omitempty"`
+	// How many treasures are found and not converted in all, which may be more
+	// than the list holds (it stops at 100): the screen says when there are
+	// more.
+	Total         int32 `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListTreasuresToConvertResponse) Reset() {
+	*x = ListTreasuresToConvertResponse{}
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListTreasuresToConvertResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListTreasuresToConvertResponse) ProtoMessage() {}
+
+func (x *ListTreasuresToConvertResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListTreasuresToConvertResponse.ProtoReflect.Descriptor instead.
+func (*ListTreasuresToConvertResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *ListTreasuresToConvertResponse) GetTreasures() []*TreasureToConvert {
+	if x != nil {
+		return x.Treasures
+	}
+	return nil
+}
+
+func (x *ListTreasuresToConvertResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+// TreasureToConvert is a treasure the party found that no award converted.
+type TreasureToConvert struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The treasure's map point (a UUID): what AwardXP's treasure_point_ids take.
+	PointId string `protobuf:"bytes,1,opt,name=point_id,json=pointId,proto3" json:"point_id,omitempty"`
+	// The map it is on (a UUID) and that map's name.
+	MapId   string `protobuf:"bytes,2,opt,name=map_id,json=mapId,proto3" json:"map_id,omitempty"`
+	MapName string `protobuf:"bytes,3,opt,name=map_name,json=mapName,proto3" json:"map_name,omitempty"`
+	// The treasure's own name.
+	Name string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	// Its worth, in gold pieces: 1 XP each when converted.
+	ValuePo int32 `protobuf:"varint,5,opt,name=value_po,json=valuePo,proto3" json:"value_po,omitempty"`
+	// When the master marked it found.
+	FoundAt *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=found_at,json=foundAt,proto3" json:"found_at,omitempty"`
+	// The characters that found it, by name.
+	FoundBy []*TreasureFinder `protobuf:"bytes,7,rep,name=found_by,json=foundBy,proto3" json:"found_by,omitempty"`
+	// Whether it was found while a game session was open. One found outside a
+	// session can be converted, but it counts in no session summary ("Mais
+	// tesouro encontrado").
+	FoundInSession bool `protobuf:"varint,8,opt,name=found_in_session,json=foundInSession,proto3" json:"found_in_session,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *TreasureToConvert) Reset() {
+	*x = TreasureToConvert{}
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TreasureToConvert) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TreasureToConvert) ProtoMessage() {}
+
+func (x *TreasureToConvert) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TreasureToConvert.ProtoReflect.Descriptor instead.
+func (*TreasureToConvert) Descriptor() ([]byte, []int) {
+	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *TreasureToConvert) GetPointId() string {
+	if x != nil {
+		return x.PointId
+	}
+	return ""
+}
+
+func (x *TreasureToConvert) GetMapId() string {
+	if x != nil {
+		return x.MapId
+	}
+	return ""
+}
+
+func (x *TreasureToConvert) GetMapName() string {
+	if x != nil {
+		return x.MapName
+	}
+	return ""
+}
+
+func (x *TreasureToConvert) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *TreasureToConvert) GetValuePo() int32 {
+	if x != nil {
+		return x.ValuePo
+	}
+	return 0
+}
+
+func (x *TreasureToConvert) GetFoundAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.FoundAt
+	}
+	return nil
+}
+
+func (x *TreasureToConvert) GetFoundBy() []*TreasureFinder {
+	if x != nil {
+		return x.FoundBy
+	}
+	return nil
+}
+
+func (x *TreasureToConvert) GetFoundInSession() bool {
+	if x != nil {
+		return x.FoundInSession
+	}
+	return false
+}
+
+// TreasureFinder is a character that found a treasure.
+type TreasureFinder struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The character (a UUID) and its name now.
+	CharacterId   string `protobuf:"bytes,1,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	CharacterName string `protobuf:"bytes,2,opt,name=character_name,json=characterName,proto3" json:"character_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TreasureFinder) Reset() {
+	*x = TreasureFinder{}
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TreasureFinder) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TreasureFinder) ProtoMessage() {}
+
+func (x *TreasureFinder) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TreasureFinder.ProtoReflect.Descriptor instead.
+func (*TreasureFinder) Descriptor() ([]byte, []int) {
+	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *TreasureFinder) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+func (x *TreasureFinder) GetCharacterName() string {
+	if x != nil {
+		return x.CharacterName
+	}
+	return ""
+}
+
 type MarkMilestoneRequest struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
 	CampaignId string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
@@ -716,7 +1110,7 @@ type MarkMilestoneRequest struct {
 
 func (x *MarkMilestoneRequest) Reset() {
 	*x = MarkMilestoneRequest{}
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[5]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -728,7 +1122,7 @@ func (x *MarkMilestoneRequest) String() string {
 func (*MarkMilestoneRequest) ProtoMessage() {}
 
 func (x *MarkMilestoneRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[5]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -741,7 +1135,7 @@ func (x *MarkMilestoneRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MarkMilestoneRequest.ProtoReflect.Descriptor instead.
 func (*MarkMilestoneRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{5}
+	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *MarkMilestoneRequest) GetCampaignId() string {
@@ -781,7 +1175,7 @@ type MarkMilestoneResponse struct {
 
 func (x *MarkMilestoneResponse) Reset() {
 	*x = MarkMilestoneResponse{}
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[6]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -793,7 +1187,7 @@ func (x *MarkMilestoneResponse) String() string {
 func (*MarkMilestoneResponse) ProtoMessage() {}
 
 func (x *MarkMilestoneResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[6]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -806,7 +1200,7 @@ func (x *MarkMilestoneResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MarkMilestoneResponse.ProtoReflect.Descriptor instead.
 func (*MarkMilestoneResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{6}
+	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *MarkMilestoneResponse) GetAward() *XPAward {
@@ -829,7 +1223,7 @@ type UndoLastXPAwardRequest struct {
 
 func (x *UndoLastXPAwardRequest) Reset() {
 	*x = UndoLastXPAwardRequest{}
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[7]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -841,7 +1235,7 @@ func (x *UndoLastXPAwardRequest) String() string {
 func (*UndoLastXPAwardRequest) ProtoMessage() {}
 
 func (x *UndoLastXPAwardRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[7]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -854,7 +1248,7 @@ func (x *UndoLastXPAwardRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UndoLastXPAwardRequest.ProtoReflect.Descriptor instead.
 func (*UndoLastXPAwardRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{7}
+	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *UndoLastXPAwardRequest) GetCampaignId() string {
@@ -888,7 +1282,7 @@ type UndoLastXPAwardResponse struct {
 
 func (x *UndoLastXPAwardResponse) Reset() {
 	*x = UndoLastXPAwardResponse{}
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[8]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -900,7 +1294,7 @@ func (x *UndoLastXPAwardResponse) String() string {
 func (*UndoLastXPAwardResponse) ProtoMessage() {}
 
 func (x *UndoLastXPAwardResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[8]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -913,7 +1307,7 @@ func (x *UndoLastXPAwardResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UndoLastXPAwardResponse.ProtoReflect.Descriptor instead.
 func (*UndoLastXPAwardResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{8}
+	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *UndoLastXPAwardResponse) GetAward() *XPAward {
@@ -937,7 +1331,7 @@ type ListXPAwardsRequest struct {
 
 func (x *ListXPAwardsRequest) Reset() {
 	*x = ListXPAwardsRequest{}
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[9]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -949,7 +1343,7 @@ func (x *ListXPAwardsRequest) String() string {
 func (*ListXPAwardsRequest) ProtoMessage() {}
 
 func (x *ListXPAwardsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[9]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -962,7 +1356,7 @@ func (x *ListXPAwardsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListXPAwardsRequest.ProtoReflect.Descriptor instead.
 func (*ListXPAwardsRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{9}
+	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ListXPAwardsRequest) GetCampaignId() string {
@@ -998,7 +1392,7 @@ type ListXPAwardsResponse struct {
 
 func (x *ListXPAwardsResponse) Reset() {
 	*x = ListXPAwardsResponse{}
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[10]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1010,7 +1404,7 @@ func (x *ListXPAwardsResponse) String() string {
 func (*ListXPAwardsResponse) ProtoMessage() {}
 
 func (x *ListXPAwardsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[10]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1023,7 +1417,7 @@ func (x *ListXPAwardsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListXPAwardsResponse.ProtoReflect.Descriptor instead.
 func (*ListXPAwardsResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{10}
+	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ListXPAwardsResponse) GetAwards() []*XPAward {
@@ -1049,7 +1443,7 @@ type GetCampaignExperienceRequest struct {
 
 func (x *GetCampaignExperienceRequest) Reset() {
 	*x = GetCampaignExperienceRequest{}
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[11]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1061,7 +1455,7 @@ func (x *GetCampaignExperienceRequest) String() string {
 func (*GetCampaignExperienceRequest) ProtoMessage() {}
 
 func (x *GetCampaignExperienceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[11]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1074,7 +1468,7 @@ func (x *GetCampaignExperienceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCampaignExperienceRequest.ProtoReflect.Descriptor instead.
 func (*GetCampaignExperienceRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{11}
+	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *GetCampaignExperienceRequest) GetCampaignId() string {
@@ -1097,7 +1491,7 @@ type GetCampaignExperienceResponse struct {
 
 func (x *GetCampaignExperienceResponse) Reset() {
 	*x = GetCampaignExperienceResponse{}
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[12]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1109,7 +1503,7 @@ func (x *GetCampaignExperienceResponse) String() string {
 func (*GetCampaignExperienceResponse) ProtoMessage() {}
 
 func (x *GetCampaignExperienceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[12]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1122,7 +1516,7 @@ func (x *GetCampaignExperienceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCampaignExperienceResponse.ProtoReflect.Descriptor instead.
 func (*GetCampaignExperienceResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{12}
+	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *GetCampaignExperienceResponse) GetXpMode() v1.XpMode {
@@ -1164,7 +1558,7 @@ type CharacterExperience struct {
 
 func (x *CharacterExperience) Reset() {
 	*x = CharacterExperience{}
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[13]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1176,7 +1570,7 @@ func (x *CharacterExperience) String() string {
 func (*CharacterExperience) ProtoMessage() {}
 
 func (x *CharacterExperience) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[13]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1189,7 +1583,7 @@ func (x *CharacterExperience) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CharacterExperience.ProtoReflect.Descriptor instead.
 func (*CharacterExperience) Descriptor() ([]byte, []int) {
-	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{13}
+	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *CharacterExperience) GetCharacterId() string {
@@ -1285,7 +1679,7 @@ type Milestone struct {
 
 func (x *Milestone) Reset() {
 	*x = Milestone{}
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[14]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1297,7 +1691,7 @@ func (x *Milestone) String() string {
 func (*Milestone) ProtoMessage() {}
 
 func (x *Milestone) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[14]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1310,7 +1704,7 @@ func (x *Milestone) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Milestone.ProtoReflect.Descriptor instead.
 func (*Milestone) Descriptor() ([]byte, []int) {
-	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{14}
+	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *Milestone) GetId() string {
@@ -1364,7 +1758,7 @@ type ListMilestonesRequest struct {
 
 func (x *ListMilestonesRequest) Reset() {
 	*x = ListMilestonesRequest{}
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[15]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1376,7 +1770,7 @@ func (x *ListMilestonesRequest) String() string {
 func (*ListMilestonesRequest) ProtoMessage() {}
 
 func (x *ListMilestonesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[15]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1389,7 +1783,7 @@ func (x *ListMilestonesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMilestonesRequest.ProtoReflect.Descriptor instead.
 func (*ListMilestonesRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{15}
+	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *ListMilestonesRequest) GetCampaignId() string {
@@ -1410,7 +1804,7 @@ type ListMilestonesResponse struct {
 
 func (x *ListMilestonesResponse) Reset() {
 	*x = ListMilestonesResponse{}
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[16]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1422,7 +1816,7 @@ func (x *ListMilestonesResponse) String() string {
 func (*ListMilestonesResponse) ProtoMessage() {}
 
 func (x *ListMilestonesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[16]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1435,7 +1829,7 @@ func (x *ListMilestonesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMilestonesResponse.ProtoReflect.Descriptor instead.
 func (*ListMilestonesResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{16}
+	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *ListMilestonesResponse) GetMilestones() []*Milestone {
@@ -1456,7 +1850,7 @@ type AddMilestoneRequest struct {
 
 func (x *AddMilestoneRequest) Reset() {
 	*x = AddMilestoneRequest{}
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[17]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1468,7 +1862,7 @@ func (x *AddMilestoneRequest) String() string {
 func (*AddMilestoneRequest) ProtoMessage() {}
 
 func (x *AddMilestoneRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[17]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1481,7 +1875,7 @@ func (x *AddMilestoneRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddMilestoneRequest.ProtoReflect.Descriptor instead.
 func (*AddMilestoneRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{17}
+	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *AddMilestoneRequest) GetCampaignId() string {
@@ -1510,7 +1904,7 @@ type AddMilestoneResponse struct {
 
 func (x *AddMilestoneResponse) Reset() {
 	*x = AddMilestoneResponse{}
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[18]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1522,7 +1916,7 @@ func (x *AddMilestoneResponse) String() string {
 func (*AddMilestoneResponse) ProtoMessage() {}
 
 func (x *AddMilestoneResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[18]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1535,7 +1929,7 @@ func (x *AddMilestoneResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddMilestoneResponse.ProtoReflect.Descriptor instead.
 func (*AddMilestoneResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{18}
+	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *AddMilestoneResponse) GetMilestone() *Milestone {
@@ -1564,7 +1958,7 @@ type UpdateMilestoneRequest struct {
 
 func (x *UpdateMilestoneRequest) Reset() {
 	*x = UpdateMilestoneRequest{}
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[19]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1576,7 +1970,7 @@ func (x *UpdateMilestoneRequest) String() string {
 func (*UpdateMilestoneRequest) ProtoMessage() {}
 
 func (x *UpdateMilestoneRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[19]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1589,7 +1983,7 @@ func (x *UpdateMilestoneRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateMilestoneRequest.ProtoReflect.Descriptor instead.
 func (*UpdateMilestoneRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{19}
+	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *UpdateMilestoneRequest) GetCampaignId() string {
@@ -1625,7 +2019,7 @@ type UpdateMilestoneResponse struct {
 
 func (x *UpdateMilestoneResponse) Reset() {
 	*x = UpdateMilestoneResponse{}
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[20]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1637,7 +2031,7 @@ func (x *UpdateMilestoneResponse) String() string {
 func (*UpdateMilestoneResponse) ProtoMessage() {}
 
 func (x *UpdateMilestoneResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[20]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1650,7 +2044,7 @@ func (x *UpdateMilestoneResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateMilestoneResponse.ProtoReflect.Descriptor instead.
 func (*UpdateMilestoneResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{20}
+	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *UpdateMilestoneResponse) GetMilestone() *Milestone {
@@ -1679,7 +2073,7 @@ type MoveMilestoneRequest struct {
 
 func (x *MoveMilestoneRequest) Reset() {
 	*x = MoveMilestoneRequest{}
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[21]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1691,7 +2085,7 @@ func (x *MoveMilestoneRequest) String() string {
 func (*MoveMilestoneRequest) ProtoMessage() {}
 
 func (x *MoveMilestoneRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[21]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1704,7 +2098,7 @@ func (x *MoveMilestoneRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MoveMilestoneRequest.ProtoReflect.Descriptor instead.
 func (*MoveMilestoneRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{21}
+	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *MoveMilestoneRequest) GetCampaignId() string {
@@ -1738,7 +2132,7 @@ type MoveMilestoneResponse struct {
 
 func (x *MoveMilestoneResponse) Reset() {
 	*x = MoveMilestoneResponse{}
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[22]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1750,7 +2144,7 @@ func (x *MoveMilestoneResponse) String() string {
 func (*MoveMilestoneResponse) ProtoMessage() {}
 
 func (x *MoveMilestoneResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[22]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1763,7 +2157,7 @@ func (x *MoveMilestoneResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MoveMilestoneResponse.ProtoReflect.Descriptor instead.
 func (*MoveMilestoneResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{22}
+	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *MoveMilestoneResponse) GetMilestones() []*Milestone {
@@ -1783,7 +2177,7 @@ type RemoveMilestoneRequest struct {
 
 func (x *RemoveMilestoneRequest) Reset() {
 	*x = RemoveMilestoneRequest{}
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[23]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1795,7 +2189,7 @@ func (x *RemoveMilestoneRequest) String() string {
 func (*RemoveMilestoneRequest) ProtoMessage() {}
 
 func (x *RemoveMilestoneRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[23]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1808,7 +2202,7 @@ func (x *RemoveMilestoneRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveMilestoneRequest.ProtoReflect.Descriptor instead.
 func (*RemoveMilestoneRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{23}
+	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *RemoveMilestoneRequest) GetCampaignId() string {
@@ -1835,7 +2229,7 @@ type RemoveMilestoneResponse struct {
 
 func (x *RemoveMilestoneResponse) Reset() {
 	*x = RemoveMilestoneResponse{}
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[24]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1847,7 +2241,7 @@ func (x *RemoveMilestoneResponse) String() string {
 func (*RemoveMilestoneResponse) ProtoMessage() {}
 
 func (x *RemoveMilestoneResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[24]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1860,7 +2254,7 @@ func (x *RemoveMilestoneResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveMilestoneResponse.ProtoReflect.Descriptor instead.
 func (*RemoveMilestoneResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{24}
+	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *RemoveMilestoneResponse) GetMilestones() []*Milestone {
@@ -1885,7 +2279,7 @@ type MarkMilestoneReachedRequest struct {
 
 func (x *MarkMilestoneReachedRequest) Reset() {
 	*x = MarkMilestoneReachedRequest{}
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[25]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1897,7 +2291,7 @@ func (x *MarkMilestoneReachedRequest) String() string {
 func (*MarkMilestoneReachedRequest) ProtoMessage() {}
 
 func (x *MarkMilestoneReachedRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[25]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1910,7 +2304,7 @@ func (x *MarkMilestoneReachedRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MarkMilestoneReachedRequest.ProtoReflect.Descriptor instead.
 func (*MarkMilestoneReachedRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{25}
+	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *MarkMilestoneReachedRequest) GetCampaignId() string {
@@ -1953,7 +2347,7 @@ type MarkMilestoneReachedResponse struct {
 
 func (x *MarkMilestoneReachedResponse) Reset() {
 	*x = MarkMilestoneReachedResponse{}
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[26]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1965,7 +2359,7 @@ func (x *MarkMilestoneReachedResponse) String() string {
 func (*MarkMilestoneReachedResponse) ProtoMessage() {}
 
 func (x *MarkMilestoneReachedResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[26]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1978,7 +2372,7 @@ func (x *MarkMilestoneReachedResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MarkMilestoneReachedResponse.ProtoReflect.Descriptor instead.
 func (*MarkMilestoneReachedResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{26}
+	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *MarkMilestoneReachedResponse) GetMilestone() *Milestone {
@@ -2010,7 +2404,7 @@ type GiveMilestoneToRequest struct {
 
 func (x *GiveMilestoneToRequest) Reset() {
 	*x = GiveMilestoneToRequest{}
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[27]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2022,7 +2416,7 @@ func (x *GiveMilestoneToRequest) String() string {
 func (*GiveMilestoneToRequest) ProtoMessage() {}
 
 func (x *GiveMilestoneToRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[27]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2035,7 +2429,7 @@ func (x *GiveMilestoneToRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GiveMilestoneToRequest.ProtoReflect.Descriptor instead.
 func (*GiveMilestoneToRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{27}
+	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *GiveMilestoneToRequest) GetCampaignId() string {
@@ -2078,7 +2472,7 @@ type GiveMilestoneToResponse struct {
 
 func (x *GiveMilestoneToResponse) Reset() {
 	*x = GiveMilestoneToResponse{}
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[28]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2090,7 +2484,7 @@ func (x *GiveMilestoneToResponse) String() string {
 func (*GiveMilestoneToResponse) ProtoMessage() {}
 
 func (x *GiveMilestoneToResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[28]
+	mi := &file_meurpg_progression_v1_progression_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2103,7 +2497,7 @@ func (x *GiveMilestoneToResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GiveMilestoneToResponse.ProtoReflect.Descriptor instead.
 func (*GiveMilestoneToResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{28}
+	return file_meurpg_progression_v1_progression_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *GiveMilestoneToResponse) GetMilestone() *Milestone {
@@ -2124,15 +2518,16 @@ var File_meurpg_progression_v1_progression_proto protoreflect.FileDescriptor
 
 const file_meurpg_progression_v1_progression_proto_rawDesc = "" +
 	"\n" +
-	"'meurpg/progression/v1/progression.proto\x12\x15meurpg.progression.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a#meurpg/campaigns/v1/campaigns.proto\x1a%meurpg/characters/v1/characters.proto\"\xa4\x01\n" +
+	"'meurpg/progression/v1/progression.proto\x12\x15meurpg.progression.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a#meurpg/campaigns/v1/campaigns.proto\x1a%meurpg/characters/v1/characters.proto\"\xd0\x01\n" +
 	"\tXPBlocked\x12>\n" +
 	"\x06reason\x18\x01 \x01(\x0e2&.meurpg.progression.v1.XPBlockedReasonR\x06reason\x12!\n" +
 	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\x124\n" +
-	"\axp_mode\x18\x03 \x01(\x0e2\x1b.meurpg.campaigns.v1.XpModeR\x06xpMode\"c\n" +
+	"\axp_mode\x18\x03 \x01(\x0e2\x1b.meurpg.campaigns.v1.XpModeR\x06xpMode\x12*\n" +
+	"\x11treasure_point_id\x18\x04 \x01(\tR\x0ftreasurePointId\"c\n" +
 	"\aXPShare\x12!\n" +
 	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12%\n" +
 	"\x0echaracter_name\x18\x02 \x01(\tR\rcharacterName\x12\x0e\n" +
-	"\x02xp\x18\x03 \x01(\x05R\x02xp\"\xd2\x04\n" +
+	"\x02xp\x18\x03 \x01(\x05R\x02xp\"\xbf\x05\n" +
 	"\aXPAward\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x126\n" +
 	"\x04mode\x18\x02 \x01(\x0e2\".meurpg.progression.v1.XPAwardModeR\x04mode\x12\x16\n" +
@@ -2150,7 +2545,12 @@ const file_meurpg_progression_v1_progression_proto_rawDesc = "" +
 	"\x06undone\x18\f \x01(\bR\x06undone\x127\n" +
 	"\tundone_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\bundoneAt\x123\n" +
 	"\x16undone_by_display_name\x18\x0e \x01(\tR\x13undoneByDisplayName\x12\x19\n" +
-	"\bcan_undo\x18\x0f \x01(\bR\acanUndo\"\x9e\x02\n" +
+	"\bcan_undo\x18\x0f \x01(\bR\acanUndo\x12D\n" +
+	"\ttreasures\x18\x10 \x03(\v2&.meurpg.progression.v1.XPAwardTreasureR\ttreasures\x12%\n" +
+	"\x0etreasure_count\x18\x11 \x01(\x05R\rtreasureCount\"G\n" +
+	"\x0fXPAwardTreasure\x12\x19\n" +
+	"\bpoint_id\x18\x01 \x01(\tR\apointId\x12\x19\n" +
+	"\bvalue_po\x18\x02 \x01(\x05R\avaluePo\"\xcc\x02\n" +
 	"\x0eAwardXPRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x126\n" +
@@ -2160,11 +2560,31 @@ const file_meurpg_progression_v1_progression_proto_rawDesc = "" +
 	"\x06amount\x18\x05 \x01(\x05R\x06amount\x12\x12\n" +
 	"\x04gold\x18\x06 \x01(\x05R\x04gold\x12#\n" +
 	"\rcharacter_ids\x18\a \x03(\tR\fcharacterIds\x12'\n" +
-	"\x0fidempotency_key\x18\b \x01(\tR\x0eidempotencyKey\"y\n" +
+	"\x0fidempotency_key\x18\b \x01(\tR\x0eidempotencyKey\x12,\n" +
+	"\x12treasure_point_ids\x18\t \x03(\tR\x10treasurePointIds\"\xbf\x01\n" +
 	"\x0fAwardXPResponse\x124\n" +
 	"\x05award\x18\x01 \x01(\v2\x1e.meurpg.progression.v1.XPAwardR\x05award\x12\x17\n" +
 	"\axp_each\x18\x02 \x01(\x05R\x06xpEach\x12\x17\n" +
-	"\alost_xp\x18\x03 \x01(\x05R\x06lostXp\"\x9d\x01\n" +
+	"\alost_xp\x18\x03 \x01(\x05R\x06lostXp\x12D\n" +
+	"\ttreasures\x18\x04 \x03(\v2&.meurpg.progression.v1.XPAwardTreasureR\ttreasures\"@\n" +
+	"\x1dListTreasuresToConvertRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\"~\n" +
+	"\x1eListTreasuresToConvertResponse\x12F\n" +
+	"\ttreasures\x18\x01 \x03(\v2(.meurpg.progression.v1.TreasureToConvertR\ttreasures\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\"\xb2\x02\n" +
+	"\x11TreasureToConvert\x12\x19\n" +
+	"\bpoint_id\x18\x01 \x01(\tR\apointId\x12\x15\n" +
+	"\x06map_id\x18\x02 \x01(\tR\x05mapId\x12\x19\n" +
+	"\bmap_name\x18\x03 \x01(\tR\amapName\x12\x12\n" +
+	"\x04name\x18\x04 \x01(\tR\x04name\x12\x19\n" +
+	"\bvalue_po\x18\x05 \x01(\x05R\avaluePo\x125\n" +
+	"\bfound_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\afoundAt\x12@\n" +
+	"\bfound_by\x18\a \x03(\v2%.meurpg.progression.v1.TreasureFinderR\afoundBy\x12(\n" +
+	"\x10found_in_session\x18\b \x01(\bR\x0efoundInSession\"Z\n" +
+	"\x0eTreasureFinder\x12!\n" +
+	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12%\n" +
+	"\x0echaracter_name\x18\x02 \x01(\tR\rcharacterName\"\x9d\x01\n" +
 	"\x14MarkMilestoneRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x16\n" +
@@ -2282,7 +2702,7 @@ const file_meurpg_progression_v1_progression_proto_rawDesc = "" +
 	"\x15XP_AWARD_MODE_ENEMIES\x10\x01\x12\x16\n" +
 	"\x12XP_AWARD_MODE_GOLD\x10\x02\x12\x18\n" +
 	"\x14XP_AWARD_MODE_MANUAL\x10\x03\x12\x1b\n" +
-	"\x17XP_AWARD_MODE_MILESTONE\x10\x04*\xe5\x03\n" +
+	"\x17XP_AWARD_MODE_MILESTONE\x10\x04*\xf1\x04\n" +
 	"\x0fXPBlockedReason\x12!\n" +
 	"\x1dXP_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12&\n" +
 	"\"XP_BLOCKED_REASON_MODE_NOT_ALLOWED\x10\x01\x12)\n" +
@@ -2295,14 +2715,17 @@ const file_meurpg_progression_v1_progression_proto_rawDesc = "" +
 	"'XP_BLOCKED_REASON_MILESTONE_NOT_REACHED\x10\b\x12.\n" +
 	"*XP_BLOCKED_REASON_CHARACTER_ALREADY_MARKED\x10\t\x12+\n" +
 	"'XP_BLOCKED_REASON_MILESTONE_HAS_HISTORY\x10\n" +
-	"*s\n" +
+	"\x12,\n" +
+	"(XP_BLOCKED_REASON_TREASURE_NOT_FOUND_YET\x10\v\x120\n" +
+	",XP_BLOCKED_REASON_TREASURE_ALREADY_CONVERTED\x10\f\x12*\n" +
+	"&XP_BLOCKED_REASON_TREASURES_OVER_LIMIT\x10\r*s\n" +
 	"\x12MilestoneDirection\x12#\n" +
 	"\x1fMILESTONE_DIRECTION_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16MILESTONE_DIRECTION_UP\x10\x01\x12\x1c\n" +
-	"\x18MILESTONE_DIRECTION_DOWN\x10\x022\xe4\n" +
-	"\n" +
+	"\x18MILESTONE_DIRECTION_DOWN\x10\x022\xf1\v\n" +
 	"\x12ProgressionService\x12X\n" +
-	"\aAwardXP\x12%.meurpg.progression.v1.AwardXPRequest\x1a&.meurpg.progression.v1.AwardXPResponse\x12j\n" +
+	"\aAwardXP\x12%.meurpg.progression.v1.AwardXPRequest\x1a&.meurpg.progression.v1.AwardXPResponse\x12\x8a\x01\n" +
+	"\x16ListTreasuresToConvert\x124.meurpg.progression.v1.ListTreasuresToConvertRequest\x1a5.meurpg.progression.v1.ListTreasuresToConvertResponse\"\x03\x90\x02\x02\x12j\n" +
 	"\rMarkMilestone\x12+.meurpg.progression.v1.MarkMilestoneRequest\x1a,.meurpg.progression.v1.MarkMilestoneResponse\x12r\n" +
 	"\x0eListMilestones\x12,.meurpg.progression.v1.ListMilestonesRequest\x1a-.meurpg.progression.v1.ListMilestonesResponse\"\x03\x90\x02\x02\x12g\n" +
 	"\fAddMilestone\x12*.meurpg.progression.v1.AddMilestoneRequest\x1a+.meurpg.progression.v1.AddMilestoneResponse\x12p\n" +
@@ -2329,102 +2752,114 @@ func file_meurpg_progression_v1_progression_proto_rawDescGZIP() []byte {
 }
 
 var file_meurpg_progression_v1_progression_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_meurpg_progression_v1_progression_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
+var file_meurpg_progression_v1_progression_proto_msgTypes = make([]protoimpl.MessageInfo, 34)
 var file_meurpg_progression_v1_progression_proto_goTypes = []any{
-	(XPAwardMode)(0),                      // 0: meurpg.progression.v1.XPAwardMode
-	(XPBlockedReason)(0),                  // 1: meurpg.progression.v1.XPBlockedReason
-	(MilestoneDirection)(0),               // 2: meurpg.progression.v1.MilestoneDirection
-	(*XPBlocked)(nil),                     // 3: meurpg.progression.v1.XPBlocked
-	(*XPShare)(nil),                       // 4: meurpg.progression.v1.XPShare
-	(*XPAward)(nil),                       // 5: meurpg.progression.v1.XPAward
-	(*AwardXPRequest)(nil),                // 6: meurpg.progression.v1.AwardXPRequest
-	(*AwardXPResponse)(nil),               // 7: meurpg.progression.v1.AwardXPResponse
-	(*MarkMilestoneRequest)(nil),          // 8: meurpg.progression.v1.MarkMilestoneRequest
-	(*MarkMilestoneResponse)(nil),         // 9: meurpg.progression.v1.MarkMilestoneResponse
-	(*UndoLastXPAwardRequest)(nil),        // 10: meurpg.progression.v1.UndoLastXPAwardRequest
-	(*UndoLastXPAwardResponse)(nil),       // 11: meurpg.progression.v1.UndoLastXPAwardResponse
-	(*ListXPAwardsRequest)(nil),           // 12: meurpg.progression.v1.ListXPAwardsRequest
-	(*ListXPAwardsResponse)(nil),          // 13: meurpg.progression.v1.ListXPAwardsResponse
-	(*GetCampaignExperienceRequest)(nil),  // 14: meurpg.progression.v1.GetCampaignExperienceRequest
-	(*GetCampaignExperienceResponse)(nil), // 15: meurpg.progression.v1.GetCampaignExperienceResponse
-	(*CharacterExperience)(nil),           // 16: meurpg.progression.v1.CharacterExperience
-	(*Milestone)(nil),                     // 17: meurpg.progression.v1.Milestone
-	(*ListMilestonesRequest)(nil),         // 18: meurpg.progression.v1.ListMilestonesRequest
-	(*ListMilestonesResponse)(nil),        // 19: meurpg.progression.v1.ListMilestonesResponse
-	(*AddMilestoneRequest)(nil),           // 20: meurpg.progression.v1.AddMilestoneRequest
-	(*AddMilestoneResponse)(nil),          // 21: meurpg.progression.v1.AddMilestoneResponse
-	(*UpdateMilestoneRequest)(nil),        // 22: meurpg.progression.v1.UpdateMilestoneRequest
-	(*UpdateMilestoneResponse)(nil),       // 23: meurpg.progression.v1.UpdateMilestoneResponse
-	(*MoveMilestoneRequest)(nil),          // 24: meurpg.progression.v1.MoveMilestoneRequest
-	(*MoveMilestoneResponse)(nil),         // 25: meurpg.progression.v1.MoveMilestoneResponse
-	(*RemoveMilestoneRequest)(nil),        // 26: meurpg.progression.v1.RemoveMilestoneRequest
-	(*RemoveMilestoneResponse)(nil),       // 27: meurpg.progression.v1.RemoveMilestoneResponse
-	(*MarkMilestoneReachedRequest)(nil),   // 28: meurpg.progression.v1.MarkMilestoneReachedRequest
-	(*MarkMilestoneReachedResponse)(nil),  // 29: meurpg.progression.v1.MarkMilestoneReachedResponse
-	(*GiveMilestoneToRequest)(nil),        // 30: meurpg.progression.v1.GiveMilestoneToRequest
-	(*GiveMilestoneToResponse)(nil),       // 31: meurpg.progression.v1.GiveMilestoneToResponse
-	(v1.XpMode)(0),                        // 32: meurpg.campaigns.v1.XpMode
-	(*timestamppb.Timestamp)(nil),         // 33: google.protobuf.Timestamp
-	(v11.LevelUpReason)(0),                // 34: meurpg.characters.v1.LevelUpReason
+	(XPAwardMode)(0),                       // 0: meurpg.progression.v1.XPAwardMode
+	(XPBlockedReason)(0),                   // 1: meurpg.progression.v1.XPBlockedReason
+	(MilestoneDirection)(0),                // 2: meurpg.progression.v1.MilestoneDirection
+	(*XPBlocked)(nil),                      // 3: meurpg.progression.v1.XPBlocked
+	(*XPShare)(nil),                        // 4: meurpg.progression.v1.XPShare
+	(*XPAward)(nil),                        // 5: meurpg.progression.v1.XPAward
+	(*XPAwardTreasure)(nil),                // 6: meurpg.progression.v1.XPAwardTreasure
+	(*AwardXPRequest)(nil),                 // 7: meurpg.progression.v1.AwardXPRequest
+	(*AwardXPResponse)(nil),                // 8: meurpg.progression.v1.AwardXPResponse
+	(*ListTreasuresToConvertRequest)(nil),  // 9: meurpg.progression.v1.ListTreasuresToConvertRequest
+	(*ListTreasuresToConvertResponse)(nil), // 10: meurpg.progression.v1.ListTreasuresToConvertResponse
+	(*TreasureToConvert)(nil),              // 11: meurpg.progression.v1.TreasureToConvert
+	(*TreasureFinder)(nil),                 // 12: meurpg.progression.v1.TreasureFinder
+	(*MarkMilestoneRequest)(nil),           // 13: meurpg.progression.v1.MarkMilestoneRequest
+	(*MarkMilestoneResponse)(nil),          // 14: meurpg.progression.v1.MarkMilestoneResponse
+	(*UndoLastXPAwardRequest)(nil),         // 15: meurpg.progression.v1.UndoLastXPAwardRequest
+	(*UndoLastXPAwardResponse)(nil),        // 16: meurpg.progression.v1.UndoLastXPAwardResponse
+	(*ListXPAwardsRequest)(nil),            // 17: meurpg.progression.v1.ListXPAwardsRequest
+	(*ListXPAwardsResponse)(nil),           // 18: meurpg.progression.v1.ListXPAwardsResponse
+	(*GetCampaignExperienceRequest)(nil),   // 19: meurpg.progression.v1.GetCampaignExperienceRequest
+	(*GetCampaignExperienceResponse)(nil),  // 20: meurpg.progression.v1.GetCampaignExperienceResponse
+	(*CharacterExperience)(nil),            // 21: meurpg.progression.v1.CharacterExperience
+	(*Milestone)(nil),                      // 22: meurpg.progression.v1.Milestone
+	(*ListMilestonesRequest)(nil),          // 23: meurpg.progression.v1.ListMilestonesRequest
+	(*ListMilestonesResponse)(nil),         // 24: meurpg.progression.v1.ListMilestonesResponse
+	(*AddMilestoneRequest)(nil),            // 25: meurpg.progression.v1.AddMilestoneRequest
+	(*AddMilestoneResponse)(nil),           // 26: meurpg.progression.v1.AddMilestoneResponse
+	(*UpdateMilestoneRequest)(nil),         // 27: meurpg.progression.v1.UpdateMilestoneRequest
+	(*UpdateMilestoneResponse)(nil),        // 28: meurpg.progression.v1.UpdateMilestoneResponse
+	(*MoveMilestoneRequest)(nil),           // 29: meurpg.progression.v1.MoveMilestoneRequest
+	(*MoveMilestoneResponse)(nil),          // 30: meurpg.progression.v1.MoveMilestoneResponse
+	(*RemoveMilestoneRequest)(nil),         // 31: meurpg.progression.v1.RemoveMilestoneRequest
+	(*RemoveMilestoneResponse)(nil),        // 32: meurpg.progression.v1.RemoveMilestoneResponse
+	(*MarkMilestoneReachedRequest)(nil),    // 33: meurpg.progression.v1.MarkMilestoneReachedRequest
+	(*MarkMilestoneReachedResponse)(nil),   // 34: meurpg.progression.v1.MarkMilestoneReachedResponse
+	(*GiveMilestoneToRequest)(nil),         // 35: meurpg.progression.v1.GiveMilestoneToRequest
+	(*GiveMilestoneToResponse)(nil),        // 36: meurpg.progression.v1.GiveMilestoneToResponse
+	(v1.XpMode)(0),                         // 37: meurpg.campaigns.v1.XpMode
+	(*timestamppb.Timestamp)(nil),          // 38: google.protobuf.Timestamp
+	(v11.LevelUpReason)(0),                 // 39: meurpg.characters.v1.LevelUpReason
 }
 var file_meurpg_progression_v1_progression_proto_depIdxs = []int32{
 	1,  // 0: meurpg.progression.v1.XPBlocked.reason:type_name -> meurpg.progression.v1.XPBlockedReason
-	32, // 1: meurpg.progression.v1.XPBlocked.xp_mode:type_name -> meurpg.campaigns.v1.XpMode
+	37, // 1: meurpg.progression.v1.XPBlocked.xp_mode:type_name -> meurpg.campaigns.v1.XpMode
 	0,  // 2: meurpg.progression.v1.XPAward.mode:type_name -> meurpg.progression.v1.XPAwardMode
-	33, // 3: meurpg.progression.v1.XPAward.created_at:type_name -> google.protobuf.Timestamp
+	38, // 3: meurpg.progression.v1.XPAward.created_at:type_name -> google.protobuf.Timestamp
 	4,  // 4: meurpg.progression.v1.XPAward.shares:type_name -> meurpg.progression.v1.XPShare
-	33, // 5: meurpg.progression.v1.XPAward.undone_at:type_name -> google.protobuf.Timestamp
-	0,  // 6: meurpg.progression.v1.AwardXPRequest.mode:type_name -> meurpg.progression.v1.XPAwardMode
-	5,  // 7: meurpg.progression.v1.AwardXPResponse.award:type_name -> meurpg.progression.v1.XPAward
-	5,  // 8: meurpg.progression.v1.MarkMilestoneResponse.award:type_name -> meurpg.progression.v1.XPAward
-	5,  // 9: meurpg.progression.v1.UndoLastXPAwardResponse.award:type_name -> meurpg.progression.v1.XPAward
-	5,  // 10: meurpg.progression.v1.ListXPAwardsResponse.awards:type_name -> meurpg.progression.v1.XPAward
-	32, // 11: meurpg.progression.v1.GetCampaignExperienceResponse.xp_mode:type_name -> meurpg.campaigns.v1.XpMode
-	16, // 12: meurpg.progression.v1.GetCampaignExperienceResponse.characters:type_name -> meurpg.progression.v1.CharacterExperience
-	34, // 13: meurpg.progression.v1.CharacterExperience.level_up_reason:type_name -> meurpg.characters.v1.LevelUpReason
-	33, // 14: meurpg.progression.v1.Milestone.reached_at:type_name -> google.protobuf.Timestamp
-	5,  // 15: meurpg.progression.v1.Milestone.marks:type_name -> meurpg.progression.v1.XPAward
-	17, // 16: meurpg.progression.v1.ListMilestonesResponse.milestones:type_name -> meurpg.progression.v1.Milestone
-	17, // 17: meurpg.progression.v1.AddMilestoneResponse.milestone:type_name -> meurpg.progression.v1.Milestone
-	17, // 18: meurpg.progression.v1.AddMilestoneResponse.milestones:type_name -> meurpg.progression.v1.Milestone
-	17, // 19: meurpg.progression.v1.UpdateMilestoneResponse.milestone:type_name -> meurpg.progression.v1.Milestone
-	17, // 20: meurpg.progression.v1.UpdateMilestoneResponse.milestones:type_name -> meurpg.progression.v1.Milestone
-	2,  // 21: meurpg.progression.v1.MoveMilestoneRequest.direction:type_name -> meurpg.progression.v1.MilestoneDirection
-	17, // 22: meurpg.progression.v1.MoveMilestoneResponse.milestones:type_name -> meurpg.progression.v1.Milestone
-	17, // 23: meurpg.progression.v1.RemoveMilestoneResponse.milestones:type_name -> meurpg.progression.v1.Milestone
-	17, // 24: meurpg.progression.v1.MarkMilestoneReachedResponse.milestone:type_name -> meurpg.progression.v1.Milestone
-	5,  // 25: meurpg.progression.v1.MarkMilestoneReachedResponse.award:type_name -> meurpg.progression.v1.XPAward
-	17, // 26: meurpg.progression.v1.GiveMilestoneToResponse.milestone:type_name -> meurpg.progression.v1.Milestone
-	5,  // 27: meurpg.progression.v1.GiveMilestoneToResponse.award:type_name -> meurpg.progression.v1.XPAward
-	6,  // 28: meurpg.progression.v1.ProgressionService.AwardXP:input_type -> meurpg.progression.v1.AwardXPRequest
-	8,  // 29: meurpg.progression.v1.ProgressionService.MarkMilestone:input_type -> meurpg.progression.v1.MarkMilestoneRequest
-	18, // 30: meurpg.progression.v1.ProgressionService.ListMilestones:input_type -> meurpg.progression.v1.ListMilestonesRequest
-	20, // 31: meurpg.progression.v1.ProgressionService.AddMilestone:input_type -> meurpg.progression.v1.AddMilestoneRequest
-	22, // 32: meurpg.progression.v1.ProgressionService.UpdateMilestone:input_type -> meurpg.progression.v1.UpdateMilestoneRequest
-	24, // 33: meurpg.progression.v1.ProgressionService.MoveMilestone:input_type -> meurpg.progression.v1.MoveMilestoneRequest
-	26, // 34: meurpg.progression.v1.ProgressionService.RemoveMilestone:input_type -> meurpg.progression.v1.RemoveMilestoneRequest
-	28, // 35: meurpg.progression.v1.ProgressionService.MarkMilestoneReached:input_type -> meurpg.progression.v1.MarkMilestoneReachedRequest
-	30, // 36: meurpg.progression.v1.ProgressionService.GiveMilestoneTo:input_type -> meurpg.progression.v1.GiveMilestoneToRequest
-	10, // 37: meurpg.progression.v1.ProgressionService.UndoLastXPAward:input_type -> meurpg.progression.v1.UndoLastXPAwardRequest
-	12, // 38: meurpg.progression.v1.ProgressionService.ListXPAwards:input_type -> meurpg.progression.v1.ListXPAwardsRequest
-	14, // 39: meurpg.progression.v1.ProgressionService.GetCampaignExperience:input_type -> meurpg.progression.v1.GetCampaignExperienceRequest
-	7,  // 40: meurpg.progression.v1.ProgressionService.AwardXP:output_type -> meurpg.progression.v1.AwardXPResponse
-	9,  // 41: meurpg.progression.v1.ProgressionService.MarkMilestone:output_type -> meurpg.progression.v1.MarkMilestoneResponse
-	19, // 42: meurpg.progression.v1.ProgressionService.ListMilestones:output_type -> meurpg.progression.v1.ListMilestonesResponse
-	21, // 43: meurpg.progression.v1.ProgressionService.AddMilestone:output_type -> meurpg.progression.v1.AddMilestoneResponse
-	23, // 44: meurpg.progression.v1.ProgressionService.UpdateMilestone:output_type -> meurpg.progression.v1.UpdateMilestoneResponse
-	25, // 45: meurpg.progression.v1.ProgressionService.MoveMilestone:output_type -> meurpg.progression.v1.MoveMilestoneResponse
-	27, // 46: meurpg.progression.v1.ProgressionService.RemoveMilestone:output_type -> meurpg.progression.v1.RemoveMilestoneResponse
-	29, // 47: meurpg.progression.v1.ProgressionService.MarkMilestoneReached:output_type -> meurpg.progression.v1.MarkMilestoneReachedResponse
-	31, // 48: meurpg.progression.v1.ProgressionService.GiveMilestoneTo:output_type -> meurpg.progression.v1.GiveMilestoneToResponse
-	11, // 49: meurpg.progression.v1.ProgressionService.UndoLastXPAward:output_type -> meurpg.progression.v1.UndoLastXPAwardResponse
-	13, // 50: meurpg.progression.v1.ProgressionService.ListXPAwards:output_type -> meurpg.progression.v1.ListXPAwardsResponse
-	15, // 51: meurpg.progression.v1.ProgressionService.GetCampaignExperience:output_type -> meurpg.progression.v1.GetCampaignExperienceResponse
-	40, // [40:52] is the sub-list for method output_type
-	28, // [28:40] is the sub-list for method input_type
-	28, // [28:28] is the sub-list for extension type_name
-	28, // [28:28] is the sub-list for extension extendee
-	0,  // [0:28] is the sub-list for field type_name
+	38, // 5: meurpg.progression.v1.XPAward.undone_at:type_name -> google.protobuf.Timestamp
+	6,  // 6: meurpg.progression.v1.XPAward.treasures:type_name -> meurpg.progression.v1.XPAwardTreasure
+	0,  // 7: meurpg.progression.v1.AwardXPRequest.mode:type_name -> meurpg.progression.v1.XPAwardMode
+	5,  // 8: meurpg.progression.v1.AwardXPResponse.award:type_name -> meurpg.progression.v1.XPAward
+	6,  // 9: meurpg.progression.v1.AwardXPResponse.treasures:type_name -> meurpg.progression.v1.XPAwardTreasure
+	11, // 10: meurpg.progression.v1.ListTreasuresToConvertResponse.treasures:type_name -> meurpg.progression.v1.TreasureToConvert
+	38, // 11: meurpg.progression.v1.TreasureToConvert.found_at:type_name -> google.protobuf.Timestamp
+	12, // 12: meurpg.progression.v1.TreasureToConvert.found_by:type_name -> meurpg.progression.v1.TreasureFinder
+	5,  // 13: meurpg.progression.v1.MarkMilestoneResponse.award:type_name -> meurpg.progression.v1.XPAward
+	5,  // 14: meurpg.progression.v1.UndoLastXPAwardResponse.award:type_name -> meurpg.progression.v1.XPAward
+	5,  // 15: meurpg.progression.v1.ListXPAwardsResponse.awards:type_name -> meurpg.progression.v1.XPAward
+	37, // 16: meurpg.progression.v1.GetCampaignExperienceResponse.xp_mode:type_name -> meurpg.campaigns.v1.XpMode
+	21, // 17: meurpg.progression.v1.GetCampaignExperienceResponse.characters:type_name -> meurpg.progression.v1.CharacterExperience
+	39, // 18: meurpg.progression.v1.CharacterExperience.level_up_reason:type_name -> meurpg.characters.v1.LevelUpReason
+	38, // 19: meurpg.progression.v1.Milestone.reached_at:type_name -> google.protobuf.Timestamp
+	5,  // 20: meurpg.progression.v1.Milestone.marks:type_name -> meurpg.progression.v1.XPAward
+	22, // 21: meurpg.progression.v1.ListMilestonesResponse.milestones:type_name -> meurpg.progression.v1.Milestone
+	22, // 22: meurpg.progression.v1.AddMilestoneResponse.milestone:type_name -> meurpg.progression.v1.Milestone
+	22, // 23: meurpg.progression.v1.AddMilestoneResponse.milestones:type_name -> meurpg.progression.v1.Milestone
+	22, // 24: meurpg.progression.v1.UpdateMilestoneResponse.milestone:type_name -> meurpg.progression.v1.Milestone
+	22, // 25: meurpg.progression.v1.UpdateMilestoneResponse.milestones:type_name -> meurpg.progression.v1.Milestone
+	2,  // 26: meurpg.progression.v1.MoveMilestoneRequest.direction:type_name -> meurpg.progression.v1.MilestoneDirection
+	22, // 27: meurpg.progression.v1.MoveMilestoneResponse.milestones:type_name -> meurpg.progression.v1.Milestone
+	22, // 28: meurpg.progression.v1.RemoveMilestoneResponse.milestones:type_name -> meurpg.progression.v1.Milestone
+	22, // 29: meurpg.progression.v1.MarkMilestoneReachedResponse.milestone:type_name -> meurpg.progression.v1.Milestone
+	5,  // 30: meurpg.progression.v1.MarkMilestoneReachedResponse.award:type_name -> meurpg.progression.v1.XPAward
+	22, // 31: meurpg.progression.v1.GiveMilestoneToResponse.milestone:type_name -> meurpg.progression.v1.Milestone
+	5,  // 32: meurpg.progression.v1.GiveMilestoneToResponse.award:type_name -> meurpg.progression.v1.XPAward
+	7,  // 33: meurpg.progression.v1.ProgressionService.AwardXP:input_type -> meurpg.progression.v1.AwardXPRequest
+	9,  // 34: meurpg.progression.v1.ProgressionService.ListTreasuresToConvert:input_type -> meurpg.progression.v1.ListTreasuresToConvertRequest
+	13, // 35: meurpg.progression.v1.ProgressionService.MarkMilestone:input_type -> meurpg.progression.v1.MarkMilestoneRequest
+	23, // 36: meurpg.progression.v1.ProgressionService.ListMilestones:input_type -> meurpg.progression.v1.ListMilestonesRequest
+	25, // 37: meurpg.progression.v1.ProgressionService.AddMilestone:input_type -> meurpg.progression.v1.AddMilestoneRequest
+	27, // 38: meurpg.progression.v1.ProgressionService.UpdateMilestone:input_type -> meurpg.progression.v1.UpdateMilestoneRequest
+	29, // 39: meurpg.progression.v1.ProgressionService.MoveMilestone:input_type -> meurpg.progression.v1.MoveMilestoneRequest
+	31, // 40: meurpg.progression.v1.ProgressionService.RemoveMilestone:input_type -> meurpg.progression.v1.RemoveMilestoneRequest
+	33, // 41: meurpg.progression.v1.ProgressionService.MarkMilestoneReached:input_type -> meurpg.progression.v1.MarkMilestoneReachedRequest
+	35, // 42: meurpg.progression.v1.ProgressionService.GiveMilestoneTo:input_type -> meurpg.progression.v1.GiveMilestoneToRequest
+	15, // 43: meurpg.progression.v1.ProgressionService.UndoLastXPAward:input_type -> meurpg.progression.v1.UndoLastXPAwardRequest
+	17, // 44: meurpg.progression.v1.ProgressionService.ListXPAwards:input_type -> meurpg.progression.v1.ListXPAwardsRequest
+	19, // 45: meurpg.progression.v1.ProgressionService.GetCampaignExperience:input_type -> meurpg.progression.v1.GetCampaignExperienceRequest
+	8,  // 46: meurpg.progression.v1.ProgressionService.AwardXP:output_type -> meurpg.progression.v1.AwardXPResponse
+	10, // 47: meurpg.progression.v1.ProgressionService.ListTreasuresToConvert:output_type -> meurpg.progression.v1.ListTreasuresToConvertResponse
+	14, // 48: meurpg.progression.v1.ProgressionService.MarkMilestone:output_type -> meurpg.progression.v1.MarkMilestoneResponse
+	24, // 49: meurpg.progression.v1.ProgressionService.ListMilestones:output_type -> meurpg.progression.v1.ListMilestonesResponse
+	26, // 50: meurpg.progression.v1.ProgressionService.AddMilestone:output_type -> meurpg.progression.v1.AddMilestoneResponse
+	28, // 51: meurpg.progression.v1.ProgressionService.UpdateMilestone:output_type -> meurpg.progression.v1.UpdateMilestoneResponse
+	30, // 52: meurpg.progression.v1.ProgressionService.MoveMilestone:output_type -> meurpg.progression.v1.MoveMilestoneResponse
+	32, // 53: meurpg.progression.v1.ProgressionService.RemoveMilestone:output_type -> meurpg.progression.v1.RemoveMilestoneResponse
+	34, // 54: meurpg.progression.v1.ProgressionService.MarkMilestoneReached:output_type -> meurpg.progression.v1.MarkMilestoneReachedResponse
+	36, // 55: meurpg.progression.v1.ProgressionService.GiveMilestoneTo:output_type -> meurpg.progression.v1.GiveMilestoneToResponse
+	16, // 56: meurpg.progression.v1.ProgressionService.UndoLastXPAward:output_type -> meurpg.progression.v1.UndoLastXPAwardResponse
+	18, // 57: meurpg.progression.v1.ProgressionService.ListXPAwards:output_type -> meurpg.progression.v1.ListXPAwardsResponse
+	20, // 58: meurpg.progression.v1.ProgressionService.GetCampaignExperience:output_type -> meurpg.progression.v1.GetCampaignExperienceResponse
+	46, // [46:59] is the sub-list for method output_type
+	33, // [33:46] is the sub-list for method input_type
+	33, // [33:33] is the sub-list for extension type_name
+	33, // [33:33] is the sub-list for extension extendee
+	0,  // [0:33] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_progression_v1_progression_proto_init() }
@@ -2438,7 +2873,7 @@ func file_meurpg_progression_v1_progression_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_progression_v1_progression_proto_rawDesc), len(file_meurpg_progression_v1_progression_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   29,
+			NumMessages:   34,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

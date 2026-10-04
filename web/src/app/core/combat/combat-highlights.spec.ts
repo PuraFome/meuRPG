@@ -41,6 +41,7 @@ describe('combat highlights', () => {
     expect(highlightValue(HighlightKind.FINAL_BLOW, 2)).toBe(`2${nbsp}inimigos`);
     expect(highlightValue(HighlightKind.CRITICAL_HITS, 1)).toBe(`1${nbsp}crítico`);
     expect(highlightValue(HighlightKind.CRITICAL_HITS, 3)).toBe(`3${nbsp}críticos`);
+    expect(highlightValue(HighlightKind.TREASURE_FOUND, 120)).toBe(`120${nbsp}PO`);
   });
 
   it('makes one tile per category the server sent, in its order, and none for the ones it left out', () => {

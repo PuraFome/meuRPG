@@ -79,12 +79,28 @@ func (s *Service) UndoLastXPAward(
 				return fmt.Errorf("take the XP off a sheet: %w", err)
 			} // not_found: the character is no longer a player character; nothing to take back
 		}
+		// A "Voltar à cidade" award frees its treasures: found, not converted again.
+		var treasures []eventTreasure
+		if last.Mode == modeGold {
+			rows, err := q.ListXPAwardTreasures(ctx, []string{last.ID})
+			if err != nil {
+				return fmt.Errorf("list the converted treasures: %w", err)
+			}
+			for _, r := range rows {
+				treasures = append(treasures, eventTreasure{PointID: r.PointID, ValuePO: r.ValuePo})
+			}
+			if len(rows) > 0 {
+				if err := s.treasures.Release(ctx, tx, last.ID); err != nil {
+					return err
+				}
+			}
+		}
 		if undone, err = q.MarkXPAwardUndone(ctx, progressiondb.MarkXPAwardUndoneParams{
 			CampaignID: m.CampaignID, ID: last.ID, UndoneAt: &now, UndoneBy: m.UserID, UndoKey: key.String(),
 		}); err != nil {
 			return fmt.Errorf("mark an award undone: %w", err) // no row: undone meanwhile; the retry finds it
 		}
-		payload := eventPayload{AwardID: last.ID, Mode: last.Mode, TotalXP: last.TotalXp, CharacterIDs: ids}
+		payload := eventPayload{AwardID: last.ID, Mode: last.Mode, TotalXP: last.TotalXp, CharacterIDs: ids, Treasures: treasures}
 		if last.EncounterID != nil {
 			payload.EncounterID = *last.EncounterID
 		}
