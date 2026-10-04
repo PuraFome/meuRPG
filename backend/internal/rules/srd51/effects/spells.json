@@ -30,6 +30,38 @@
       "amount": 70,
       "amount_per_level": 10,
       "ends": ["condition:blinded", "condition:deafened"]
+    },
+    "spell:find-familiar": {
+      "kind": "summon",
+      "creatures": ["monster:bat", "monster:cat", "monster:crab", "monster:frog", "monster:hawk", "monster:lizard", "monster:octopus", "monster:owl", "monster:poisonous-snake", "monster:quipper", "monster:rat", "monster:raven", "monster:sea-horse", "monster:spider", "monster:weasel"],
+      "count": 1,
+      "attack": "none",
+      "unlocks": [
+        {
+          "feature": "feature:pact-of-the-chain",
+          "creatures": ["monster:imp", "monster:pseudodragon", "monster:quasit", "monster:sprite"],
+          "attack": "reaction"
+        }
+      ]
+    },
+    "spell:animate-dead": {
+      "kind": "summon",
+      "creatures": ["monster:skeleton", "monster:zombie"],
+      "count": 1,
+      "count_per_level": 2,
+      "attack": "full"
+    },
+    "spell:conjure-animals": {
+      "kind": "summon",
+      "type": "beast",
+      "options": [
+        {"count": 1, "max_cr": "2"},
+        {"count": 2, "max_cr": "1"},
+        {"count": 4, "max_cr": "1/2"},
+        {"count": 8, "max_cr": "1/4"}
+      ],
+      "multiplier_at_level": {"5": 2, "7": 3, "9": 4},
+      "attack": "full"
     }
   }
 }

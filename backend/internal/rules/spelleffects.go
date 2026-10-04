@@ -30,6 +30,10 @@ const (
 	// SpellKindFlatHeal: heals a fixed amount and ends the conditions in Ends
 	// (Cura Completa).
 	SpellKindFlatHeal = "flat_heal"
+	// SpellKindSummon: summons creatures (Encontrar Familiar, Animar os Mortos,
+	// Conjurar Animais); see summon.go. It reads no hit points: SpellEffect
+	// does not return it, and SummonOptions does.
+	SpellKindSummon = "summon"
 )
 
 // SpellEffect is what a spell that reads hit points does, at a slot level.
@@ -68,6 +72,8 @@ type spellEffectJSON struct {
 	Amount       int      `json:"amount,omitempty"`
 	AmountPerLvl int      `json:"amount_per_level,omitempty"`
 	Ends         []string `json:"ends,omitempty"`
+	// summonJSON are the fields of the "summon" kind.
+	summonJSON
 }
 
 // spellEffectDef is a checked entry: the effect at the spell's own level and
@@ -100,6 +106,18 @@ func (c *content) loadSpellEffects(fsys fs.FS) error {
 				return fail("%q is not a condition", k)
 			}
 			return nil
+		}
+		if in.Kind == SpellKindSummon {
+			if in.Dice != "" || in.DicePerLevel != "" || in.Condition != "" || in.Threshold != 0 || in.Dies || in.Amount != 0 || in.AmountPerLvl != 0 || len(in.Ends) != 0 {
+				return fail("a summon takes the summon fields only")
+			}
+			if err := c.loadSummon(key, sp.Level, &in.summonJSON, fail); err != nil {
+				return err
+			}
+			continue
+		}
+		if !in.empty() {
+			return fail("the summon fields belong to the summon kind")
 		}
 		def := spellEffectDef{spellLevel: sp.Level, base: SpellEffect{Kind: in.Kind, Condition: in.Condition, Threshold: in.Threshold, Dies: in.Dies, Ends: in.Ends}}
 		switch in.Kind {

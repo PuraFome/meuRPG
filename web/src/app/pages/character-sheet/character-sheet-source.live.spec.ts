@@ -114,6 +114,12 @@ function minimalDerivedSheet(): DerivedSheet {
     actions: [],
     standardActions: [],
     nextLevelXp: 2700,
+    speedFlyFt: 0,
+    speedSwimFt: 0,
+    speedClimbFt: 0,
+    speedBurrowFt: 0,
+    hover: false,
+    saveActions: [],
   };
 }
 

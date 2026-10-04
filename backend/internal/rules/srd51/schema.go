@@ -319,3 +319,167 @@ type Named struct {
 	Name string   `json:"name"`
 	Desc []string `json:"desc"`
 }
+
+// Monster is a creature's stat block (5e-SRD-Monsters.json), for the
+// creatures a character can have: a familiar, a summoned beast, a Wild Shape
+// form or one the master gives (MR-037). Its key is "monster:<index>", such as
+// "monster:wolf". Text is the SRD's English, as for the spells; speeds,
+// senses and ranges are in feet.
+type Monster struct {
+	Key  string `json:"key"`
+	Name string `json:"name"`
+	// Size is "Tiny", "Small", "Medium", "Large", "Huge" or "Gargantuan".
+	Size string `json:"size"`
+	// Type is the SRD's creature type ("beast", "undead"...), Subtype its
+	// parenthesised tag ("goblinoid"), and Alignment the SRD's text.
+	Type      string `json:"type"`
+	Subtype   string `json:"subtype,omitempty"`
+	Alignment string `json:"alignment"`
+
+	// ArmorClass is the stat block's first armor class, ArmorClassType what
+	// it comes from ("natural", "armor", "dex", "spell", "condition") and
+	// ArmorClassDesc the SRD's note ("armor scraps"), when there is one.
+	// When the SRD lists several, ArmorClass is the one worn: the "armor"
+	// entry over the "natural" or "dex" one (the azer's 17 with a shield, not its
+	// natural 15). ArmorClassItems are the equipment keys of that armor
+	// ("equipment:shield") and ArmorClassAlts the other ways to have an armor
+	// class (the mage's 15 with Mage Armor, the ankheg's 11 while prone).
+	ArmorClass      int            `json:"armor_class"`
+	ArmorClassType  string         `json:"armor_class_type"`
+	ArmorClassDesc  string         `json:"armor_class_desc,omitempty"`
+	ArmorClassItems []string       `json:"armor_class_items,omitempty"`
+	ArmorClassAlts  []MonsterACAlt `json:"armor_class_alts,omitempty"`
+	// HitPoints is the average, HitDice the dice ("2d8") and HitPointsRoll the
+	// dice with the bonus ("2d8+2").
+	HitPoints     int    `json:"hit_points"`
+	HitDice       string `json:"hit_dice"`
+	HitPointsRoll string `json:"hit_points_roll"`
+
+	// Speeds in feet. A creature that has none of a speed omits it. Hover
+	// says a flying creature hovers.
+	Speed MonsterSpeed `json:"speed"`
+
+	// The six ability scores.
+	Str int `json:"str"`
+	Dex int `json:"dex"`
+	Con int `json:"con"`
+	Int int `json:"int"`
+	Wis int `json:"wis"`
+	Cha int `json:"cha"`
+	// Saves are the stat block's saving throw bonuses, by ability index
+	// ("dex"), and Skills its skill bonuses, by skill key ("skill:stealth").
+	// Both are the total bonus, not the proficiency.
+	Saves  map[string]int `json:"saves,omitempty"`
+	Skills map[string]int `json:"skills,omitempty"`
+
+	// Vulnerabilities, Resistances and Immunities are damage the creature
+	// takes double, half or none of. ConditionImmunities are condition keys.
+	Vulnerabilities     []MonsterDamageMod `json:"vulnerabilities,omitempty"`
+	Resistances         []MonsterDamageMod `json:"resistances,omitempty"`
+	Immunities          []MonsterDamageMod `json:"immunities,omitempty"`
+	ConditionImmunities []string           `json:"condition_immunities,omitempty"`
+
+	// Senses, in feet, and the passive Perception.
+	Darkvision        int `json:"darkvision,omitempty"`
+	Blindsight        int `json:"blindsight,omitempty"`
+	Tremorsense       int `json:"tremorsense,omitempty"`
+	Truesight         int `json:"truesight,omitempty"`
+	PassivePerception int `json:"passive_perception"`
+	// Languages is the SRD's text, such as "Common, Goblin".
+	Languages string `json:"languages,omitempty"`
+
+	// ChallengeRating is "0", "1/8", "1/4", "1/2", "1" ... "30".
+	ChallengeRating  string `json:"challenge_rating"`
+	XP               int    `json:"xp"`
+	ProficiencyBonus int    `json:"proficiency_bonus"`
+
+	SpecialAbilities []MonsterAbility `json:"special_abilities,omitempty"`
+	Actions          []MonsterAction  `json:"actions,omitempty"`
+	Reactions        []MonsterAbility `json:"reactions,omitempty"`
+	// LegendaryActions keep only name and text.
+	LegendaryActions []MonsterAbility `json:"legendary_actions,omitempty"`
+}
+
+// MonsterACAlt is another armor class a creature has: Value with a spell
+// ("spell:mage-armor") or while in a condition ("condition:prone").
+type MonsterACAlt struct {
+	Value     int    `json:"value"`
+	Spell     string `json:"spell,omitempty"`
+	Condition string `json:"condition,omitempty"`
+}
+
+// MonsterSpeed is a creature's speeds in feet.
+type MonsterSpeed struct {
+	Walk   int  `json:"walk,omitempty"`
+	Fly    int  `json:"fly,omitempty"`
+	Swim   int  `json:"swim,omitempty"`
+	Climb  int  `json:"climb,omitempty"`
+	Burrow int  `json:"burrow,omitempty"`
+	Hover  bool `json:"hover,omitempty"`
+}
+
+// MonsterDamageMod is one entry of a vulnerability, resistance or immunity
+// list. Types are the damage type keys it names ("damage-type:acid"); Note is
+// the rest of the SRD's text ("from nonmagical weapons"), or the whole text
+// when it names no damage type ("damage from spells").
+type MonsterDamageMod struct {
+	Types []string `json:"types,omitempty"`
+	Note  string   `json:"note,omitempty"`
+}
+
+// MonsterAbility is a trait, a reaction or a legendary action: a name and
+// its text. Usage is the SRD's limit, such as "3/day" or "Recharge 5-6".
+type MonsterAbility struct {
+	Name  string `json:"name"`
+	Desc  string `json:"desc"`
+	Usage string `json:"usage,omitempty"`
+}
+
+// MonsterAction is an action of a stat block.
+type MonsterAction struct {
+	Name  string `json:"name"`
+	Desc  string `json:"desc"`
+	Usage string `json:"usage,omitempty"`
+	// AttackBonus is the to-hit of an attack action, 0 with HasAttack false
+	// for any other. HasAttack distinguishes "+0" from "not an attack".
+	HasAttack   bool `json:"has_attack,omitempty"`
+	AttackBonus int  `json:"attack_bonus,omitempty"`
+	// Damage are the damage parts in the SRD's order. When the SRD offers a
+	// choice (a longsword's one or two hands), the first option is kept; the
+	// text has the rest.
+	Damage []MonsterDamage `json:"damage,omitempty"`
+	// Save is the saving throw the action asks for, when it does.
+	Save *MonsterSave `json:"save,omitempty"`
+	// Multiattack, for the Multiattack action, are its routines: each is a
+	// list of attacks and counts, and the creature makes one of them. A
+	// stat block with one fixed routine has one.
+	Multiattack [][]MonsterAttackCount `json:"multiattack,omitempty"`
+}
+
+// MonsterDamage is one damage part: "2d4+2" and "damage-type:piercing".
+type MonsterDamage struct {
+	Dice       string `json:"dice"`
+	DamageType string `json:"damage_type"`
+}
+
+// MonsterSave is a saving throw an action asks for: the ability index
+// ("con"), the DC and what a success does ("none", "half" or "other").
+type MonsterSave struct {
+	Ability   string `json:"ability"`
+	DC        int    `json:"dc"`
+	OnSuccess string `json:"on_success"`
+}
+
+// MonsterAttackCount is "Bite x1" in a Multiattack: the name of an action of
+// the same stat block, how many times, and what it is ("melee", "ranged",
+// "ability" or "magic").
+//
+// Count is always the number the engine uses (at least 1). When the SRD's count
+// is not a number, Text keeps its words for the master: the hydra's "Number of
+// Heads" (Count 5, its five heads) and the violet fungus's "1d4" (Count 1).
+type MonsterAttackCount struct {
+	Name  string `json:"name"`
+	Count int    `json:"count"`
+	Kind  string `json:"kind"`
+	Text  string `json:"count_text,omitempty"`
+}

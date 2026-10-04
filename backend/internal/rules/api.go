@@ -473,7 +473,12 @@ type Derived struct {
 	// HitDice has one entry per die size, largest first.
 	HitDice     []HitDice
 	SpeedWalkFt int
-	Senses      []Sense
+	// The other speeds, in feet, 0 for none: a character has none today, a
+	// creature (or a druid in Wild Shape) may fly, swim, climb or burrow.
+	// Hover says a flying creature hovers.
+	SpeedFlyFt, SpeedSwimFt, SpeedClimbFt, SpeedBurrowFt int
+	Hover                                                bool
+	Senses                                               []Sense
 	// NextLevelXP is the XP that reaches TotalLevel+1, or 0 at level 20.
 	// The sheet compares it with the XP the player has to show "Pode subir
 	// de nível" (RN-12).
@@ -500,8 +505,13 @@ type Derived struct {
 	Actions         []Action
 	StandardActions []Action
 	// AttacksPerAction is how many attacks the Attack action makes: 1, or
-	// the extra_attack effect's count (Extra Attack: 2 at level 5).
+	// the extra_attack effect's count (Extra Attack: 2 at level 5), or a
+	// creature's Multiattack count.
 	AttacksPerAction int
+	// SaveActions are a creature's actions that ask for a saving throw
+	// (a breath, a bite that knocks prone), with their DC. Empty for a
+	// character.
+	SaveActions []SaveAction
 	// Features are the class, subclass, race and background features and
 	// traits up to the character's level.
 	Features []Feature
@@ -650,6 +660,27 @@ type Attack struct {
 	// (a dagger, a spear, a handaxe), and false for a ranged weapon and a spell:
 	// an opportunity attack needs a melee weapon.
 	Melee bool
+	// Notes is the rest of a creature's action, as the SRD wrote it (in
+	// English): the damage parts after the first, a saving throw, a rider.
+	// The engine rolls the to-hit and the first damage part; the master reads
+	// the rest here. Empty for a character's weapon or cantrip.
+	Notes string
+}
+
+// SaveAction is a creature's action that asks for a saving throw: a dragon's
+// breath, or the Strength save of a wolf's bite.
+type SaveAction struct {
+	// Key is "<creature key>#<action>", such as "monster:wolf#bite", the
+	// same key as the Attack of an action that also attacks.
+	Key, Name string
+	Ability   Ability
+	DC        int
+	// OnSuccess is "none", "half" or "other".
+	OnSuccess string
+	// Usage is the SRD's limit ("Recharge 5-6", "3/day"), or "".
+	Usage string
+	// Text is the SRD's text of the action, in English.
+	Text string
 }
 
 // Feature is a class, subclass, race, subrace or background feature or

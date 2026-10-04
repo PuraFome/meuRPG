@@ -1,5 +1,5 @@
 {
-  "ContentVersion": "srd51@a8abc93b235c+fx.7",
+  "ContentVersion": "srd51@a8abc93b235c+fx.8",
   "RaceNamePT": "Gnomo",
   "SubraceNamePT": "Gnomo das Rochas",
   "BackgroundNamePT": "Sábio",
@@ -255,6 +255,11 @@
     }
   ],
   "SpeedWalkFt": 25,
+  "SpeedFlyFt": 0,
+  "SpeedSwimFt": 0,
+  "SpeedClimbFt": 0,
+  "SpeedBurrowFt": 0,
+  "Hover": false,
   "Senses": [
     {
       "Key": "darkvision",
@@ -630,7 +635,8 @@
       "Proficient": true,
       "RangeFt": 5,
       "LongRangeFt": 0,
-      "Melee": true
+      "Melee": true,
+      "Notes": ""
     },
     {
       "Key": "spell:fire-bolt",
@@ -660,7 +666,8 @@
       "Proficient": true,
       "RangeFt": 120,
       "LongRangeFt": 0,
-      "Melee": false
+      "Melee": false,
+      "Notes": ""
     },
     {
       "Key": "spell:ray-of-frost",
@@ -690,7 +697,8 @@
       "Proficient": true,
       "RangeFt": 60,
       "LongRangeFt": 0,
-      "Melee": false
+      "Melee": false,
+      "Notes": ""
     }
   ],
   "Resources": [
@@ -776,6 +784,7 @@
     }
   ],
   "AttacksPerAction": 1,
+  "SaveActions": null,
   "Features": [
     {
       "Key": "trait:darkvision",

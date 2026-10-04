@@ -2,6 +2,7 @@ package rules
 
 import (
 	"fmt"
+	"reflect"
 	"slices"
 	"strings"
 
@@ -86,6 +87,15 @@ type Effect struct {
 	// effects/standard_actions.json.
 	Economy string `json:"economy,omitempty"`
 
+	// wild_shape: the beasts a druid may turn into (wildshape.go). MaxCR is
+	// the highest challenge rating, such as "1/4", and NoFly and NoSwim leave
+	// out the beasts with a fly or a swim speed. The druid's features of
+	// levels 2, 4 and 8 each carry one; the most permissive one the
+	// character has wins.
+	MaxCR  string `json:"max_cr,omitempty"`
+	NoFly  bool   `json:"no_fly,omitempty"`
+	NoSwim bool   `json:"no_swim,omitempty"`
+
 	// handler: the name of a Go function for what data cannot say, from
 	// handlers.
 	Handler string `json:"handler,omitempty"`
@@ -109,7 +119,7 @@ type Effect struct {
 var (
 	effectTypes = []string{
 		"modifier", "proficiency", "roll_mode", "sense", "spellcasting",
-		"resource", "choice", "grant_action", "extra_attack", "note", "handler",
+		"resource", "choice", "grant_action", "extra_attack", "note", "handler", "wild_shape",
 	}
 	modifierTargets = []string{
 		"ac.base", "ac", "hp.max", "speed.walk", "initiative",
@@ -163,6 +173,10 @@ func (c *content) compileEffect(key string, e *Effect) error {
 		if tag == "" || strings.TrimSpace(tag) != tag {
 			return fail("empty tag")
 		}
+	}
+
+	if e.Type != "wild_shape" && (e.MaxCR != "" || e.NoFly || e.NoSwim) {
+		return fail("max_cr, no_fly and no_swim belong to wild_shape")
 	}
 
 	switch e.Type {
@@ -238,6 +252,15 @@ func (c *content) compileEffect(key string, e *Effect) error {
 	case "extra_attack":
 		if e.Count < 2 || e.Count > 4 {
 			return fail("extra_attack needs a count of 2 to 4 attacks")
+		}
+	case "wild_shape":
+		other := *e
+		other.Type, other.MaxCR, other.NoFly, other.NoSwim = "", "", false, false
+		if !reflect.DeepEqual(other, Effect{}) {
+			return fail("wild_shape takes max_cr, no_fly and no_swim only")
+		}
+		if _, ok := crEighths(e.MaxCR); !ok {
+			return fail("wild_shape needs a max_cr that is a challenge rating, such as \"1/4\"")
 		}
 	case "handler":
 		if !slices.Contains(handlers, e.Handler) {

@@ -182,7 +182,7 @@ func TestNamesPT(t *testing.T) {
 	for _, m := range []map[string]bool{
 		keySet(c.skills), keySet(c.races), keySet(c.subraces), keySet(c.classes), keySet(c.subclasses),
 		keySet(c.backgrounds), keySet(c.equipment), keySet(c.spells), keySet(c.languages), keySet(c.traits),
-		keySet(c.named),
+		keySet(c.named), keySet(c.monsters),
 	} {
 		keys = append(keys, sortedKeys(m)...)
 	}
@@ -203,6 +203,20 @@ func TestNamesPT(t *testing.T) {
 		if _, ok := c.namesPT[key]; !ok {
 			t.Errorf("%s has no Portuguese name in effects/names_pt.json", key)
 		}
+	}
+	// All 334 SRD creatures, and nothing else under "monster:".
+	n := 0
+	for key, name := range c.namesPT {
+		if !strings.HasPrefix(key, "monster:") {
+			continue
+		}
+		n++
+		if _, ok := c.monsters[key]; !ok || strings.TrimSpace(name) == "" {
+			t.Errorf("%s: a Portuguese name for a creature that does not exist, or an empty one", key)
+		}
+	}
+	if n != 334 {
+		t.Errorf("%d creature names in names_pt.json, want 334", n)
 	}
 }
 
@@ -284,6 +298,26 @@ func TestReferences(t *testing.T) {
 		check(s.Key, s.School)
 		for _, k := range s.Classes {
 			check(s.Key, k)
+		}
+	}
+	for _, m := range c.monsters {
+		for _, k := range m.ConditionImmunities {
+			check(m.Key, k)
+		}
+		for k := range m.Skills {
+			check(m.Key, k)
+		}
+		for _, list := range [][]srd51.MonsterDamageMod{m.Vulnerabilities, m.Resistances, m.Immunities} {
+			for _, d := range list {
+				for _, k := range d.Types {
+					check(m.Key, k)
+				}
+			}
+		}
+		for _, a := range m.Actions {
+			for _, d := range a.Damage {
+				check(m.Key+" "+a.Name, d.DamageType)
+			}
 		}
 	}
 	for _, e := range c.equipment {

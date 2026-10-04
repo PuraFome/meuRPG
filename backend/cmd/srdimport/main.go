@@ -29,7 +29,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/PuraFome/meuRPG/backend/internal/rules/srd51"
@@ -63,6 +65,7 @@ var inputHashes = map[string]string{
 	"5e-SRD-Magic-Schools.json":     "9901d0934c16941b871a360f1e866c7ad78679bad9126baf8a5bbd0dfee37daf",
 	"5e-SRD-Weapon-Properties.json": "31604f16560b217549c2b629eef1377cde7a8d91a987cbdd4ad19db790b0d765",
 	"5e-SRD-Conditions.json":        "e2c8d211a4f72722c3490217aea948e78c5235c2d51d3c08a4fd3e9d3cd4468f",
+	"5e-SRD-Monsters.json":          "51edf634e1a9abefa259895b0799e22a788606df56f56e03fe24e130c76c2000",
 }
 
 func main() {
@@ -141,7 +144,7 @@ func convert(in *inputs) ([]output, error) {
 	steps := []func(*inputs) (output, error){
 		convertAbilities, convertSkills, convertRaces, convertSubraces, convertTraits,
 		convertClasses, convertLevels, convertSubclasses, convertFeatures, convertBackgrounds,
-		convertProficiencies, convertEquipment, convertSpells, convertLanguages,
+		convertProficiencies, convertEquipment, convertSpells, convertLanguages, convertMonsters,
 		named("5e-SRD-Damage-Types.json", "damage-types.json", "damage-type:"),
 		named("5e-SRD-Magic-Schools.json", "magic-schools.json", "school:"),
 		named("5e-SRD-Weapon-Properties.json", "weapon-properties.json", "weapon-property:"),
@@ -996,6 +999,514 @@ func convertLanguages(in *inputs) (output, error) {
 	}
 	sortByKey(out, func(l srd51.Language) string { return l.Key })
 	return output{"languages.json", out}, nil
+}
+
+// monstersSource is a stat block of 5e-SRD-Monsters.json, the fields we keep.
+type monstersSource struct {
+	Index        string `json:"index"`
+	Name         string `json:"name"`
+	Size         string `json:"size"`
+	Type         string `json:"type"`
+	Subtype      string `json:"subtype"`
+	Alignment    string `json:"alignment"`
+	ArmorClasses []struct {
+		Type      string `json:"type"`
+		Value     int    `json:"value"`
+		Desc      string `json:"desc"`
+		Armor     []ref  `json:"armor"`
+		Spell     *ref   `json:"spell"`
+		Condition *ref   `json:"condition"`
+	} `json:"armor_class"`
+	HitPoints     int                        `json:"hit_points"`
+	HitDice       string                     `json:"hit_dice"`
+	HitPointsRoll string                     `json:"hit_points_roll"`
+	Speed         map[string]json.RawMessage `json:"speed"`
+	Str           int                        `json:"strength"`
+	Dex           int                        `json:"dexterity"`
+	Con           int                        `json:"constitution"`
+	Int           int                        `json:"intelligence"`
+	Wis           int                        `json:"wisdom"`
+	Cha           int                        `json:"charisma"`
+	Proficiencies []struct {
+		Value       int `json:"value"`
+		Proficiency ref `json:"proficiency"`
+	} `json:"proficiencies"`
+	Vulnerabilities     []string               `json:"damage_vulnerabilities"`
+	Resistances         []string               `json:"damage_resistances"`
+	Immunities          []string               `json:"damage_immunities"`
+	ConditionImmunities []ref                  `json:"condition_immunities"`
+	Senses              map[string]any         `json:"senses"`
+	Languages           string                 `json:"languages"`
+	ChallengeRating     float64                `json:"challenge_rating"`
+	ProficiencyBonus    int                    `json:"proficiency_bonus"`
+	XP                  int                    `json:"xp"`
+	SpecialAbilities    []monsterAbilitySource `json:"special_abilities"`
+	Actions             []monsterActionSource  `json:"actions"`
+	Reactions           []monsterAbilitySource `json:"reactions"`
+	LegendaryActions    []monsterAbilitySource `json:"legendary_actions"`
+}
+
+type monsterUsage struct {
+	Type      string   `json:"type"`
+	Times     int      `json:"times"`
+	Dice      string   `json:"dice"`
+	MinValue  int      `json:"min_value"`
+	RestTypes []string `json:"rest_types"`
+}
+
+type monsterAbilitySource struct {
+	Name  string        `json:"name"`
+	Desc  string        `json:"desc"`
+	Usage *monsterUsage `json:"usage"`
+}
+
+type monsterDamageSource struct {
+	DamageType *ref   `json:"damage_type"`
+	DamageDice string `json:"damage_dice"`
+	// From is a choice of damage: the first option is kept.
+	From *struct {
+		Options []struct {
+			DamageType *ref   `json:"damage_type"`
+			DamageDice string `json:"damage_dice"`
+		} `json:"options"`
+	} `json:"from"`
+}
+
+type monsterDCSource struct {
+	DCType    ref    `json:"dc_type"`
+	DCValue   int    `json:"dc_value"`
+	SuccessTy string `json:"success_type"`
+}
+
+// monsterSubSource is a named effect inside an action: a breath of the
+// metallic dragons' "Breath Weapons", a roar of the androsphinx.
+type monsterSubSource struct {
+	Name   string                `json:"name"`
+	DC     *monsterDCSource      `json:"dc"`
+	Damage []monsterDamageSource `json:"damage"`
+}
+
+type monsterMultiItem struct {
+	ActionName string `json:"action_name"`
+	Count      string `json:"count"`
+	Type       string `json:"type"`
+}
+
+type monsterActionSource struct {
+	Name        string                `json:"name"`
+	Desc        string                `json:"desc"`
+	Usage       *monsterUsage         `json:"usage"`
+	AttackBonus *int                  `json:"attack_bonus"`
+	Damage      []monsterDamageSource `json:"damage"`
+	DC          *monsterDCSource      `json:"dc"`
+	// Options and Attacks carry structured sub-effects (breath weapons, roars).
+	Options *struct {
+		From struct {
+			Options []monsterSubSource `json:"options"`
+		} `json:"from"`
+	} `json:"options"`
+	Attacks         []monsterSubSource `json:"attacks"`
+	MultiattackType string             `json:"multiattack_type"`
+	Actions         []monsterMultiItem `json:"actions"`
+	ActionOptions   *struct {
+		From struct {
+			Options []struct {
+				OptionType string             `json:"option_type"`
+				ActionName string             `json:"action_name"`
+				Count      string             `json:"count"`
+				Type       string             `json:"type"`
+				Items      []monsterMultiItem `json:"items"`
+			} `json:"options"`
+		} `json:"from"`
+	} `json:"action_options"`
+}
+
+// leadingInt reads the number a string such as "60 ft." or "30 ft. (hover)"
+// starts with.
+func leadingInt(s string) int {
+	n, _, _ := strings.Cut(strings.TrimSpace(s), " ")
+	v, _ := strconv.Atoi(n)
+	return v
+}
+
+// damageTypeWords are the SRD's damage types, as the monster lists name them.
+var damageTypeWords = regexp.MustCompile(`^(acid|bludgeoning|cold|fire|force|lightning|necrotic|piercing|poison|psychic|radiant|slashing|thunder)(, and |, | and |\b)`)
+
+// damageMod splits an SRD vulnerability, resistance or immunity entry into
+// the damage types it names and the rest of its text.
+func damageMod(s string) srd51.MonsterDamageMod {
+	var out srd51.MonsterDamageMod
+	rest := strings.TrimSpace(s)
+	for {
+		m := damageTypeWords.FindStringSubmatch(rest)
+		if m == nil {
+			break
+		}
+		out.Types = append(out.Types, "damage-type:"+m[1])
+		rest = rest[len(m[0]):]
+	}
+	out.Note = strings.TrimSpace(rest)
+	return out
+}
+
+func damageMods(list []string) []srd51.MonsterDamageMod {
+	var out []srd51.MonsterDamageMod
+	for _, s := range list {
+		out = append(out, damageMod(s))
+	}
+	return out
+}
+
+// challengeRating writes 0.125, 0.25 and 0.5 as the SRD's "1/8", "1/4" and
+// "1/2".
+func challengeRating(v float64) (string, error) {
+	switch v {
+	case 0.125:
+		return "1/8", nil
+	case 0.25:
+		return "1/4", nil
+	case 0.5:
+		return "1/2", nil
+	}
+	if v < 0 || v > 30 || v != float64(int(v)) {
+		return "", fmt.Errorf("challenge rating %v", v)
+	}
+	return strconv.Itoa(int(v)), nil
+}
+
+func monsterUsageText(u *monsterUsage) string {
+	switch {
+	case u == nil:
+		return ""
+	case u.Type == "per day":
+		return fmt.Sprintf("%d/day", u.Times)
+	case u.Type == "recharge on roll" && u.MinValue >= 6:
+		return "Recharge 6"
+	case u.Type == "recharge on roll":
+		return fmt.Sprintf("Recharge %d-6", u.MinValue)
+	case u.Type == "recharge after rest":
+		return "Recharges after a short or long rest"
+	}
+	return u.Type
+}
+
+func convertMonsters(in *inputs) (output, error) {
+	rows, err := decode[monstersSource](in, "5e-SRD-Monsters.json")
+	if err != nil {
+		return output{}, err
+	}
+	out, err := convertMonsterRows(rows)
+	if err != nil {
+		return output{}, err
+	}
+	if len(out) != 334 {
+		return output{}, fmt.Errorf("monsters: %d creatures, the SRD 5.1 has 334", len(out))
+	}
+	return output{"monsters.json", out}, nil
+}
+
+// convertMonsterRows converts stat blocks, sorted by key.
+func convertMonsterRows(rows []monstersSource) ([]srd51.Monster, error) {
+	out := make([]srd51.Monster, 0, len(rows))
+	for _, r := range rows {
+		m, err := convertMonster(r)
+		if err != nil {
+			return nil, fmt.Errorf("monster %s: %w", r.Index, err)
+		}
+		out = append(out, m)
+	}
+	sortByKey(out, func(m srd51.Monster) string { return m.Key })
+	return out, nil
+}
+
+// armorClass picks the armor class worn: the "armor" entry over the "natural"
+// or "dex" one when both are listed (the azer's 17 with a shield). A "spell" or
+// "condition" entry is another way to have one, kept apart.
+func armorClass(r monstersSource, m *srd51.Monster) error {
+	best := -1
+	for i, a := range r.ArmorClasses {
+		switch a.Type {
+		case "armor":
+			best = i
+		case "natural", "dex":
+			if best < 0 {
+				best = i
+			}
+		case "spell", "condition":
+			alt := srd51.MonsterACAlt{Value: a.Value}
+			switch {
+			case a.Spell != nil:
+				alt.Spell = "spell:" + a.Spell.Index
+			case a.Condition != nil:
+				alt.Condition = "condition:" + a.Condition.Index
+			default:
+				return fmt.Errorf("armor class %q names no spell or condition", a.Type)
+			}
+			m.ArmorClassAlts = append(m.ArmorClassAlts, alt)
+		default:
+			return fmt.Errorf("unknown armor class type %q", a.Type)
+		}
+	}
+	if best < 0 {
+		return errors.New("no armor class")
+	}
+	a := r.ArmorClasses[best]
+	m.ArmorClass, m.ArmorClassType, m.ArmorClassDesc = a.Value, a.Type, a.Desc
+	for _, item := range a.Armor {
+		m.ArmorClassItems = append(m.ArmorClassItems, "equipment:"+item.Index)
+	}
+	return nil
+}
+
+func convertMonster(r monstersSource) (srd51.Monster, error) {
+	cr, err := challengeRating(r.ChallengeRating)
+	if err != nil {
+		return srd51.Monster{}, err
+	}
+	m := srd51.Monster{
+		Key: "monster:" + r.Index, Name: r.Name, Size: r.Size, Type: r.Type, Subtype: r.Subtype, Alignment: r.Alignment,
+		HitPoints: r.HitPoints, HitDice: r.HitDice, HitPointsRoll: r.HitPointsRoll,
+		Str: r.Str, Dex: r.Dex, Con: r.Con, Int: r.Int, Wis: r.Wis, Cha: r.Cha,
+		Vulnerabilities: damageMods(r.Vulnerabilities), Resistances: damageMods(r.Resistances), Immunities: damageMods(r.Immunities),
+		ConditionImmunities: keys("condition:", r.ConditionImmunities),
+		Languages:           r.Languages, ChallengeRating: cr, XP: r.XP, ProficiencyBonus: r.ProficiencyBonus,
+	}
+	if err := armorClass(r, &m); err != nil {
+		return srd51.Monster{}, err
+	}
+	for kind, raw := range r.Speed {
+		if kind == "hover" {
+			m.Speed.Hover = string(raw) == "true"
+			continue
+		}
+		var text string
+		if err := json.Unmarshal(raw, &text); err != nil {
+			return srd51.Monster{}, fmt.Errorf("speed %s: %w", kind, err)
+		}
+		ft := leadingInt(text)
+		switch kind {
+		case "walk":
+			m.Speed.Walk = ft
+		case "fly":
+			m.Speed.Fly = ft
+		case "swim":
+			m.Speed.Swim = ft
+		case "climb":
+			m.Speed.Climb = ft
+		case "burrow":
+			m.Speed.Burrow = ft
+		default:
+			return srd51.Monster{}, fmt.Errorf("unknown speed %q", kind)
+		}
+	}
+	for k, v := range r.Senses {
+		text, _ := v.(string)
+		switch k {
+		case "darkvision":
+			m.Darkvision = leadingInt(text)
+		case "blindsight":
+			m.Blindsight = leadingInt(text)
+		case "tremorsense":
+			m.Tremorsense = leadingInt(text)
+		case "truesight":
+			m.Truesight = leadingInt(text)
+		case "passive_perception":
+			n, _ := v.(float64)
+			m.PassivePerception = int(n)
+		default:
+			return srd51.Monster{}, fmt.Errorf("unknown sense %q", k)
+		}
+	}
+	for _, p := range r.Proficiencies {
+		switch idx := p.Proficiency.Index; {
+		case strings.HasPrefix(idx, "saving-throw-"):
+			if m.Saves == nil {
+				m.Saves = map[string]int{}
+			}
+			m.Saves[strings.TrimPrefix(idx, "saving-throw-")] = p.Value
+		case strings.HasPrefix(idx, "skill-"):
+			if m.Skills == nil {
+				m.Skills = map[string]int{}
+			}
+			m.Skills["skill:"+strings.TrimPrefix(idx, "skill-")] = p.Value
+		default:
+			return srd51.Monster{}, fmt.Errorf("unknown proficiency %q", idx)
+		}
+	}
+	for _, a := range r.SpecialAbilities {
+		m.SpecialAbilities = append(m.SpecialAbilities, srd51.MonsterAbility{Name: a.Name, Desc: a.Desc, Usage: monsterUsageText(a.Usage)})
+	}
+	for _, a := range r.Reactions {
+		m.Reactions = append(m.Reactions, srd51.MonsterAbility{Name: a.Name, Desc: a.Desc})
+	}
+	for _, a := range r.LegendaryActions {
+		m.LegendaryActions = append(m.LegendaryActions, srd51.MonsterAbility{Name: a.Name, Desc: a.Desc})
+	}
+	for _, a := range r.Actions {
+		m.Actions = append(m.Actions, expandMonsterAction(a)...)
+	}
+	fixMultiattackNames(&m)
+	return m, nil
+}
+
+// textSaveRe finds a saving throw in an action's text, such as "DC 11 Strength
+// saving throw" or "DC 16 Strength or Dexterity saving throw" (the first
+// ability is kept).
+var textSaveRe = regexp.MustCompile(`DC (\d+) (Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma)(?: or (?:Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma))? saving throw`)
+
+var (
+	halfRe    = regexp.MustCompile(`(?i)half as much damage|takes only half|half (?:of )?the [a-z, ]*damage`)
+	succeedRe = regexp.MustCompile(`must succeed on a DC|succeed on a DC`)
+)
+
+// textSuccess says what a success does, from the action's text: "half" when it
+// halves the damage, "none" when the text only says the target must succeed,
+// and "other" (read the description) when it says neither.
+func textSuccess(text string) string {
+	switch {
+	case halfRe.MatchString(text):
+		return "half"
+	case succeedRe.MatchString(text):
+		return "none"
+	}
+	return "other"
+}
+
+func convertDamage(list []monsterDamageSource) []srd51.MonsterDamage {
+	var out []srd51.MonsterDamage
+	for _, d := range list {
+		typ, dice := d.DamageType, d.DamageDice
+		if d.From != nil && len(d.From.Options) > 0 { // a choice: keep the first option
+			typ, dice = d.From.Options[0].DamageType, d.From.Options[0].DamageDice
+		}
+		if typ == nil || dice == "" {
+			continue
+		}
+		out = append(out, srd51.MonsterDamage{Dice: dice, DamageType: "damage-type:" + typ.Index})
+	}
+	return out
+}
+
+func convertDC(dc *monsterDCSource) *srd51.MonsterSave {
+	if dc == nil {
+		return nil
+	}
+	return &srd51.MonsterSave{Ability: dc.DCType.Index, DC: dc.DCValue, OnSuccess: dc.SuccessTy}
+}
+
+func convertMonsterAction(a monsterActionSource) srd51.MonsterAction {
+	out := srd51.MonsterAction{Name: a.Name, Desc: strings.TrimSpace(a.Desc), Usage: monsterUsageText(a.Usage)}
+	if a.AttackBonus != nil {
+		out.HasAttack, out.AttackBonus = true, *a.AttackBonus
+	}
+	out.Damage = convertDamage(a.Damage)
+	out.Save = convertDC(a.DC)
+	if out.Save == nil {
+		// Many attacks (a wolf's bite) have a rider save that 5e-database
+		// leaves in the text only.
+		if m := textSaveRe.FindStringSubmatch(a.Desc); m != nil {
+			dc, _ := strconv.Atoi(m[1])
+			out.Save = &srd51.MonsterSave{Ability: strings.ToLower(m[2][:3]), DC: dc, OnSuccess: textSuccess(a.Desc)}
+		}
+	}
+	// Counts: a number, or words for the master (the hydra has "Number of
+	// Heads", five by the SRD; the violet fungus "1d4"); the engine always
+	// gets a number of at least 1.
+	count := func(x monsterMultiItem) srd51.MonsterAttackCount {
+		c, err := strconv.Atoi(x.Count)
+		if err == nil {
+			return srd51.MonsterAttackCount{Name: x.ActionName, Count: c, Kind: x.Type}
+		}
+		c = 1
+		if x.Count == "Number of Heads" {
+			c = 5
+		}
+		return srd51.MonsterAttackCount{Name: x.ActionName, Count: c, Kind: x.Type, Text: x.Count}
+	}
+	switch a.MultiattackType {
+	case "actions":
+		var routine []srd51.MonsterAttackCount
+		for _, x := range a.Actions {
+			routine = append(routine, count(x))
+		}
+		out.Multiattack = [][]srd51.MonsterAttackCount{routine}
+	case "action_options":
+		for _, o := range a.ActionOptions.From.Options {
+			var routine []srd51.MonsterAttackCount
+			if o.OptionType == "multiple" {
+				for _, x := range o.Items {
+					routine = append(routine, count(x))
+				}
+			} else {
+				routine = append(routine, count(monsterMultiItem{ActionName: o.ActionName, Count: o.Count, Type: o.Type}))
+			}
+			out.Multiattack = append(out.Multiattack, routine)
+		}
+	}
+	return out
+}
+
+// expandMonsterAction is the action, followed by the named effects the SRD
+// gives structured inside it (each breath of a metallic dragon, each roar of
+// the androsphinx), so their DCs are not lost. Each one's text is the paragraph
+// of the action's text that starts with its name.
+func expandMonsterAction(a monsterActionSource) []srd51.MonsterAction {
+	out := []srd51.MonsterAction{convertMonsterAction(a)}
+	subs := a.Attacks
+	if a.Options != nil {
+		subs = append(subs, a.Options.From.Options...)
+	}
+	if len(subs) > 0 {
+		out[0].Save = nil // the parent's text names several DCs: the sub-effects carry them
+	}
+	for _, sub := range subs {
+		text := ""
+		for _, line := range strings.Split(a.Desc, "\n") {
+			if strings.HasPrefix(strings.TrimSpace(line), sub.Name+".") {
+				text = strings.TrimSpace(line)
+			}
+		}
+		if text == "" {
+			text = a.Desc
+		}
+		out = append(out, srd51.MonsterAction{Name: sub.Name, Desc: text, Usage: monsterUsageText(a.Usage), Damage: convertDamage(sub.Damage), Save: convertDC(sub.DC)})
+	}
+	return out
+}
+
+// fixMultiattackNames points each Multiattack routine at an action of the same
+// stat block when the SRD's name differs slightly: "Claws" for "Claw", "Claw"
+// for "Claw (Oni Form Only)", "Bite (Bat or Vampire Form Only)" for "Bite".
+// What matches nothing keeps its name (a spell, the glabrezu's casting).
+func fixMultiattackNames(m *srd51.Monster) {
+	names := map[string]bool{}
+	for _, a := range m.Actions {
+		names[a.Name] = true
+	}
+	resolve := func(n string) string {
+		if names[n] {
+			return n
+		}
+		if base, _, ok := strings.Cut(n, " ("); ok && names[base] {
+			return base
+		}
+		if names[strings.TrimSuffix(n, "s")] {
+			return strings.TrimSuffix(n, "s")
+		}
+		for _, a := range m.Actions {
+			if strings.HasPrefix(a.Name, n+" (") {
+				return a.Name
+			}
+		}
+		return n
+	}
+	for i := range m.Actions {
+		for _, routine := range m.Actions[i].Multiattack {
+			for j := range routine {
+				routine[j].Name = resolve(routine[j].Name)
+			}
+		}
+	}
 }
 
 // named converts a small list (damage types, schools...) into Named entries.

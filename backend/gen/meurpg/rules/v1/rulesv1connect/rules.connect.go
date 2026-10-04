@@ -60,6 +60,12 @@ const (
 	// ContentServiceGetSpellDetailsProcedure is the fully-qualified name of the ContentService's
 	// GetSpellDetails RPC.
 	ContentServiceGetSpellDetailsProcedure = "/meurpg.rules.v1.ContentService/GetSpellDetails"
+	// ContentServiceListCreaturesProcedure is the fully-qualified name of the ContentService's
+	// ListCreatures RPC.
+	ContentServiceListCreaturesProcedure = "/meurpg.rules.v1.ContentService/ListCreatures"
+	// ContentServiceGetCreatureProcedure is the fully-qualified name of the ContentService's
+	// GetCreature RPC.
+	ContentServiceGetCreatureProcedure = "/meurpg.rules.v1.ContentService/GetCreature"
 )
 
 // ContentServiceClient is a client for the meurpg.rules.v1.ContentService service.
@@ -89,6 +95,35 @@ type ContentServiceClient interface {
 	//   - `not_found`: the campaign does not exist, the caller is not a
 	//     member of it, or no spell has that key.
 	GetSpellDetails(context.Context, *connect.Request[v1.GetSpellDetailsRequest]) (*connect.Response[v1.GetSpellDetailsResponse], error)
+	// ListCreatures searches the SRD's 334 creatures (MR-037): the master's "Dar
+	// uma criatura", the Wild Shape list, the summon choices. It filters by
+	// part of the name (Portuguese or English, ignoring case and accents), by
+	// creature type, by highest challenge rating and by speeds, sorts by
+	// Portuguese name, and answers a page at a time (page_size 1 to 100, 50 by
+	// default, page_token). Every row has the Portuguese name, size, type,
+	// challenge rating and XP. The creatures are public SRD rules, the same for
+	// every campaign; only an active member of the campaign may ask, and a
+	// pending member (RN-15) gets `not_found` on purpose: a player waiting for
+	// approval needs no creature to build its character.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, or the caller is not an
+	//     active member of it.
+	//   - `invalid_argument`: max_cr is not one of the SRD's challenge ratings,
+	//     query is longer than 100 characters, page_size is not 1 to 100, or
+	//     page_token is not one this list gave for these same filters.
+	ListCreatures(context.Context, *connect.Request[v1.ListCreaturesRequest]) (*connect.Response[v1.ListCreaturesResponse], error)
+	// GetCreature returns one creature's stat block, for the screen that shows
+	// it: armor class, hit points, speeds, abilities, saves and skills, damage
+	// resistances, senses, challenge rating, traits, actions with their attack
+	// bonus, damage and saving throw, reactions and legendary actions. Labels
+	// are in Portuguese; the text of the traits and actions is the SRD's
+	// English, as for spells. Same access as ListCreatures.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, the caller is not an active
+	//     member of it, or no creature has that key.
+	GetCreature(context.Context, *connect.Request[v1.GetCreatureRequest]) (*connect.Response[v1.GetCreatureResponse], error)
 }
 
 // NewContentServiceClient constructs a client for the meurpg.rules.v1.ContentService service. By
@@ -116,6 +151,20 @@ func NewContentServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
+		listCreatures: connect.NewClient[v1.ListCreaturesRequest, v1.ListCreaturesResponse](
+			httpClient,
+			baseURL+ContentServiceListCreaturesProcedure,
+			connect.WithSchema(contentServiceMethods.ByName("ListCreatures")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
+		getCreature: connect.NewClient[v1.GetCreatureRequest, v1.GetCreatureResponse](
+			httpClient,
+			baseURL+ContentServiceGetCreatureProcedure,
+			connect.WithSchema(contentServiceMethods.ByName("GetCreature")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -123,6 +172,8 @@ func NewContentServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 type contentServiceClient struct {
 	listContent     *connect.Client[v1.ListContentRequest, v1.ListContentResponse]
 	getSpellDetails *connect.Client[v1.GetSpellDetailsRequest, v1.GetSpellDetailsResponse]
+	listCreatures   *connect.Client[v1.ListCreaturesRequest, v1.ListCreaturesResponse]
+	getCreature     *connect.Client[v1.GetCreatureRequest, v1.GetCreatureResponse]
 }
 
 // ListContent calls meurpg.rules.v1.ContentService.ListContent.
@@ -133,6 +184,16 @@ func (c *contentServiceClient) ListContent(ctx context.Context, req *connect.Req
 // GetSpellDetails calls meurpg.rules.v1.ContentService.GetSpellDetails.
 func (c *contentServiceClient) GetSpellDetails(ctx context.Context, req *connect.Request[v1.GetSpellDetailsRequest]) (*connect.Response[v1.GetSpellDetailsResponse], error) {
 	return c.getSpellDetails.CallUnary(ctx, req)
+}
+
+// ListCreatures calls meurpg.rules.v1.ContentService.ListCreatures.
+func (c *contentServiceClient) ListCreatures(ctx context.Context, req *connect.Request[v1.ListCreaturesRequest]) (*connect.Response[v1.ListCreaturesResponse], error) {
+	return c.listCreatures.CallUnary(ctx, req)
+}
+
+// GetCreature calls meurpg.rules.v1.ContentService.GetCreature.
+func (c *contentServiceClient) GetCreature(ctx context.Context, req *connect.Request[v1.GetCreatureRequest]) (*connect.Response[v1.GetCreatureResponse], error) {
+	return c.getCreature.CallUnary(ctx, req)
 }
 
 // ContentServiceHandler is an implementation of the meurpg.rules.v1.ContentService service.
@@ -162,6 +223,35 @@ type ContentServiceHandler interface {
 	//   - `not_found`: the campaign does not exist, the caller is not a
 	//     member of it, or no spell has that key.
 	GetSpellDetails(context.Context, *connect.Request[v1.GetSpellDetailsRequest]) (*connect.Response[v1.GetSpellDetailsResponse], error)
+	// ListCreatures searches the SRD's 334 creatures (MR-037): the master's "Dar
+	// uma criatura", the Wild Shape list, the summon choices. It filters by
+	// part of the name (Portuguese or English, ignoring case and accents), by
+	// creature type, by highest challenge rating and by speeds, sorts by
+	// Portuguese name, and answers a page at a time (page_size 1 to 100, 50 by
+	// default, page_token). Every row has the Portuguese name, size, type,
+	// challenge rating and XP. The creatures are public SRD rules, the same for
+	// every campaign; only an active member of the campaign may ask, and a
+	// pending member (RN-15) gets `not_found` on purpose: a player waiting for
+	// approval needs no creature to build its character.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, or the caller is not an
+	//     active member of it.
+	//   - `invalid_argument`: max_cr is not one of the SRD's challenge ratings,
+	//     query is longer than 100 characters, page_size is not 1 to 100, or
+	//     page_token is not one this list gave for these same filters.
+	ListCreatures(context.Context, *connect.Request[v1.ListCreaturesRequest]) (*connect.Response[v1.ListCreaturesResponse], error)
+	// GetCreature returns one creature's stat block, for the screen that shows
+	// it: armor class, hit points, speeds, abilities, saves and skills, damage
+	// resistances, senses, challenge rating, traits, actions with their attack
+	// bonus, damage and saving throw, reactions and legendary actions. Labels
+	// are in Portuguese; the text of the traits and actions is the SRD's
+	// English, as for spells. Same access as ListCreatures.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, the caller is not an active
+	//     member of it, or no creature has that key.
+	GetCreature(context.Context, *connect.Request[v1.GetCreatureRequest]) (*connect.Response[v1.GetCreatureResponse], error)
 }
 
 // NewContentServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -185,12 +275,30 @@ func NewContentServiceHandler(svc ContentServiceHandler, opts ...connect.Handler
 		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
+	contentServiceListCreaturesHandler := connect.NewUnaryHandler(
+		ContentServiceListCreaturesProcedure,
+		svc.ListCreatures,
+		connect.WithSchema(contentServiceMethods.ByName("ListCreatures")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
+	contentServiceGetCreatureHandler := connect.NewUnaryHandler(
+		ContentServiceGetCreatureProcedure,
+		svc.GetCreature,
+		connect.WithSchema(contentServiceMethods.ByName("GetCreature")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/meurpg.rules.v1.ContentService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ContentServiceListContentProcedure:
 			contentServiceListContentHandler.ServeHTTP(w, r)
 		case ContentServiceGetSpellDetailsProcedure:
 			contentServiceGetSpellDetailsHandler.ServeHTTP(w, r)
+		case ContentServiceListCreaturesProcedure:
+			contentServiceListCreaturesHandler.ServeHTTP(w, r)
+		case ContentServiceGetCreatureProcedure:
+			contentServiceGetCreatureHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -206,4 +314,12 @@ func (UnimplementedContentServiceHandler) ListContent(context.Context, *connect.
 
 func (UnimplementedContentServiceHandler) GetSpellDetails(context.Context, *connect.Request[v1.GetSpellDetailsRequest]) (*connect.Response[v1.GetSpellDetailsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.rules.v1.ContentService.GetSpellDetails is not implemented"))
+}
+
+func (UnimplementedContentServiceHandler) ListCreatures(context.Context, *connect.Request[v1.ListCreaturesRequest]) (*connect.Response[v1.ListCreaturesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.rules.v1.ContentService.ListCreatures is not implemented"))
+}
+
+func (UnimplementedContentServiceHandler) GetCreature(context.Context, *connect.Request[v1.GetCreatureRequest]) (*connect.Response[v1.GetCreatureResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.rules.v1.ContentService.GetCreature is not implemented"))
 }

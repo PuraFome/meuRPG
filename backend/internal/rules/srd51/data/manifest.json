@@ -45,6 +45,10 @@
    "sha256": "9901d0934c16941b871a360f1e866c7ad78679bad9126baf8a5bbd0dfee37daf"
   },
   {
+   "name": "5e-SRD-Monsters.json",
+   "sha256": "51edf634e1a9abefa259895b0799e22a788606df56f56e03fe24e130c76c2000"
+  },
+  {
    "name": "5e-SRD-Proficiencies.json",
    "sha256": "60127a2130a5dd0a0a9b4cc20adf9061be81e9ad95218273d3b434c49d229333"
   },
@@ -117,6 +121,10 @@
   {
    "name": "magic-schools.json",
    "sha256": "09ffc5b9dff5841c5562985f2aa6a87e9d30bc5a66e8b87707896581420227ae"
+  },
+  {
+   "name": "monsters.json",
+   "sha256": "80be316be040f69642fdb59d693af6cbbfdbb7cbbba04cd0c862f5acb2dce99b"
   },
   {
    "name": "proficiencies.json",

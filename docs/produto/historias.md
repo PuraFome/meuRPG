@@ -681,10 +681,14 @@ Fatia 8.7 da Etapa 8, só no navegador (a grade e a imagem já vinham do mapa; n
 - **Dado** uma criatura do personagem, **quando** ela sofre dano, **então** o PV dela é separado do PV do personagem, e o mestre pode corrigir (RN-02).
 
 #### Relacionadas
-- Precisa das criaturas do SRD importadas para o módulo `rules` (5e-database, como o resto do SRD).
+- As criaturas do SRD já estão no módulo `rules` (5e-database, como o resto do SRD): ver o "Implementado" abaixo.
+
+#### Implementado
+- **Fatia 9.1 (as regras, só o servidor puro, 04/10/2026):** as 334 criaturas do SRD 5.1 importadas (`srd51/data/monsters.json`, nomes em português `monster:<índice>`), `MonsterDerived` (a ficha da criatura para o combate, com os outros deslocamentos), o efeito `summon` de Encontrar Familiar (com o Pacto da Corrente), Animar os Mortos e Conjurar Animais, e a Forma Selvagem do druida (`wild_shape`, níveis 2, 4 e 8, e a ficha combinada pelo SRD). `ContentService.ListCreatures` e `GetCreature` servem a lista e a ficha. Convocar Montaria fica fora (pergunta 74). Testes: `TestSnapshot`, `TestNamesPT`, `TestReferences`, `TestMonsterDerived`, `TestListCreatures`, `TestSummonOptions`, `TestCheckSummon`, `TestSummonLoaderRefuses`, `TestWildShapeForms`, `TestWildShapeDerived` (`backend/internal/rules`), `TestListAndGetCreatures` e `TestAuthorizationMatrix` (`backend/internal/characters`). Ver [Arquitetura](../arquitetura.md#criaturas-convocações-e-forma-selvagem).
+- **Ainda a fazer** (fatias 9.9 e 9.10, e as telas): guardar a criatura do personagem e a forma na sessão, o combatente `creature` com a vez própria, o dano que sobra voltar ao personagem, "Dar uma criatura" do mestre e o painel "Criaturas" da ficha. Os critérios de aceite acima só valem quando essas fatias terminarem.
 
 #### Dúvidas
-- Como a forma selvagem devolve o dano que sobra ao personagem, e quais criaturas e magias (Conjurar Animais, Animar Mortos, Convocar Familiar) entram primeiro: a definir no desenho da Etapa 9.
+- Respondido pelo Vinicius para o Samuel em 04/10/2026 (pergunta 74): entram a Forma Selvagem, Encontrar Familiar (e o Pacto da Corrente), Animar os Mortos e Conjurar Animais, e o mestre pode dar qualquer criatura do SRD a um personagem; Convocar Montaria fica para depois do MVP (montar pede as regras de combate montado). O dano que sobra na Forma Selvagem passa ao personagem (SRD).
 
 ### MR-038: Quebra-cabeças
 

@@ -51,6 +51,11 @@ func derivedToProto(d rules.Derived) *rulesv1.DerivedSheet {
 		ArmorClassDescription: d.ArmorClassDescription,
 		HitPointsMax:          i32(d.HitPointsMax),
 		SpeedWalkFt:           i32(d.SpeedWalkFt),
+		SpeedFlyFt:            i32(d.SpeedFlyFt),
+		SpeedSwimFt:           i32(d.SpeedSwimFt),
+		SpeedClimbFt:          i32(d.SpeedClimbFt),
+		SpeedBurrowFt:         i32(d.SpeedBurrowFt),
+		Hover:                 d.Hover,
 		Proficiencies:         &rulesv1.Proficiencies{},
 	}
 	for _, c := range d.Classes {
@@ -93,7 +98,7 @@ func derivedToProto(d rules.Derived) *rulesv1.DerivedSheet {
 	}
 	for _, se := range d.Senses {
 		// The proto's key is what grants the sense, as the Hint's source_key.
-		out.Senses = append(out.Senses, &rulesv1.Sense{Key: se.Source, NamePt: se.NamePT, RangeFt: i32(se.RangeFt)})
+		out.Senses = append(out.Senses, &rulesv1.Sense{Key: se.Source, NamePt: se.NamePT, RangeFt: i32(se.RangeFt), Sense: se.Key})
 	}
 	for _, sc := range d.Spellcasting {
 		p := &rulesv1.Spellcasting{
@@ -129,6 +134,12 @@ func derivedToProto(d rules.Derived) *rulesv1.DerivedSheet {
 	for _, r := range d.Resources {
 		out.Resources = append(out.Resources, &rulesv1.Resource{
 			Key: r.Key, NamePt: r.NamePT, Max: i32(r.Max), Recharge: rechargeToProto[r.Recharge], SourceKey: r.Source,
+		})
+	}
+	for _, a := range d.SaveActions {
+		out.SaveActions = append(out.SaveActions, &rulesv1.SaveAction{
+			Key: a.Key, Name: a.Name, Ability: abilityToProto[a.Ability], Dc: i32(a.DC),
+			OnSuccess: saveSuccessToProto[a.OnSuccess], Usage: a.Usage, Text: a.Text,
 		})
 	}
 	for _, a := range d.Actions {
@@ -201,6 +212,7 @@ func attackToProto(a rules.Attack) *rulesv1.Attack {
 		RangeFt:             i32(a.RangeFt),
 		LongRangeFt:         i32(a.LongRangeFt),
 		Melee:               a.Melee,
+		Notes:               a.Notes,
 	}
 }
 

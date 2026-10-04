@@ -66,6 +66,41 @@ service ContentService {
   rpc GetSpellDetails(GetSpellDetailsRequest) returns (GetSpellDetailsResponse) {
     option idempotency_level = IDEMPOTENT;
   }
+
+  // ListCreatures searches the SRD's 334 creatures (MR-037): the master's "Dar
+  // uma criatura", the Wild Shape list, the summon choices. It filters by
+  // part of the name (Portuguese or English, ignoring case and accents), by
+  // creature type, by highest challenge rating and by speeds, sorts by
+  // Portuguese name, and answers a page at a time (page_size 1 to 100, 50 by
+  // default, page_token). Every row has the Portuguese name, size, type,
+  // challenge rating and XP. The creatures are public SRD rules, the same for
+  // every campaign; only an active member of the campaign may ask, and a
+  // pending member (RN-15) gets `not_found` on purpose: a player waiting for
+  // approval needs no creature to build its character.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist, or the caller is not an
+  //     active member of it.
+  //   - `invalid_argument`: max_cr is not one of the SRD's challenge ratings,
+  //     query is longer than 100 characters, page_size is not 1 to 100, or
+  //     page_token is not one this list gave for these same filters.
+  rpc ListCreatures(ListCreaturesRequest) returns (ListCreaturesResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // GetCreature returns one creature's stat block, for the screen that shows
+  // it: armor class, hit points, speeds, abilities, saves and skills, damage
+  // resistances, senses, challenge rating, traits, actions with their attack
+  // bonus, damage and saving throw, reactions and legendary actions. Labels
+  // are in Portuguese; the text of the traits and actions is the SRD's
+  // English, as for spells. Same access as ListCreatures.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist, the caller is not an active
+  //     member of it, or no creature has that key.
+  rpc GetCreature(GetCreatureRequest) returns (GetCreatureResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
 }
 
 // Ability is one of the six ability scores.
@@ -225,6 +260,38 @@ message DerivedSheet {
   // compare it with FullSheet.experience_points to show "Pode subir de
   // nível" (RN-12).
   int32 next_level_xp = 34;
+
+  // The other speeds, in feet, 0 for none. A character has none of them
+  // today; a creature, or a druid in Wild Shape, may fly, swim, climb or
+  // burrow. speed_walk_ft stays the walking speed.
+  int32 speed_fly_ft = 35;
+  int32 speed_swim_ft = 36;
+  int32 speed_climb_ft = 37;
+  int32 speed_burrow_ft = 38;
+  // True for a flying creature that hovers (a ghost).
+  bool hover = 39;
+  // A creature's actions that ask for a saving throw (a breath, a bite that
+  // knocks prone), with their DC. Empty for a character.
+  repeated SaveAction save_actions = 40;
+}
+
+// SaveAction is a creature's action that asks for a saving throw.
+message SaveAction {
+  // "<creature key>#<action>", such as "monster:wolf#bite": the key of the
+  // Attack of the same action, when it also attacks.
+  string key = 1;
+  // The action's English name, such as "Bite".
+  string name = 2;
+  // The ability of the save the target makes.
+  Ability ability = 3;
+  // The difficulty class.
+  int32 dc = 4;
+  // What a success does.
+  SpellSaveSuccess on_success = 5;
+  // The SRD's limit ("Recharge 5-6", "3/day"), empty when there is none.
+  string usage = 6;
+  // The SRD's text of the action, in English.
+  string text = 7;
 }
 
 // Resource is a use-limited feature, such as Second Wind or a monk's ki.
@@ -365,6 +432,10 @@ message Sense {
   string name_pt = 2;
   // Range in feet, such as 60.
   int32 range_ft = 3;
+  // Which sense it is: "darkvision", "blindsight", "tremorsense" or
+  // "truesight". Use it, not `key` (which names what grants the sense: a trait,
+  // or the creature's key for a creature's sense), to tell senses apart.
+  string sense = 4;
 }
 
 // Spellcasting is what one casting class gives the character.
@@ -454,6 +525,11 @@ message Attack {
   // less; false for a ranged weapon and for a spell. An opportunity attack is
   // a melee attack.
   bool melee = 16;
+  // For a creature's attack: the whole action as the SRD wrote it, in English
+  // (the attack, the damage parts after the first, a saving throw, a rider).
+  // The engine rolls the to-hit and the first damage part; the master reads the
+  // rest in this text. Empty for a character's weapon or cantrip.
+  string notes = 17;
 }
 
 // AttackKind says whether an attack is a weapon or a spell.
@@ -1079,4 +1155,247 @@ message ActionOption {
   DisabledReason reason = 3;
   // Uses left of the action's resource. 0 when it has none.
   int32 uses_left = 4;
+}
+
+// ListCreaturesRequest names a campaign (for access) and the filters. Every
+// filter is optional; the filters add up (a creature must pass all of them).
+message ListCreaturesRequest {
+  string campaign_id = 1;
+  // Part of the creature's Portuguese or English name, ignoring case and
+  // accents, such as "lobo", up to 100 characters. Empty for any.
+  string query = 2;
+  // The SRD's creature type, such as "beast", "undead" or "dragon". Empty for
+  // any; a type that no creature has gives an empty list.
+  string type = 3;
+  // The highest challenge rating, one of the SRD's: "0", "1/8", "1/4", "1/2",
+  // "1" to "30". Empty for any.
+  string max_cr = 4;
+  // Leave out the creatures with a fly speed, or with a swim speed (the Wild
+  // Shape rules).
+  bool no_fly = 5;
+  bool no_swim = 6;
+  // How many rows to return, 1 to 100; 0 means 50.
+  int32 page_size = 7;
+  // The next_page_token of the previous page; empty for the first. It is
+  // only good for the same filters: with other ones, the call fails with
+  // `invalid_argument`.
+  string page_token = 8;
+}
+
+// ListCreaturesResponse is one page of creatures, sorted by Portuguese name.
+message ListCreaturesResponse {
+  // The creatures of this page.
+  repeated CreatureSummary creatures = 1;
+  // Pass it as page_token to read the next page. Empty on the last page.
+  string next_page_token = 2;
+  // How many creatures pass the filters, over all the pages.
+  int32 total = 3;
+}
+
+// CreatureSummary is a creature as a list row shows it.
+message CreatureSummary {
+  // Content key, such as "monster:wolf".
+  string key = 1;
+  // The SRD's English name ("Dire Wolf") and our Portuguese one ("Lobo atroz").
+  string name = 2;
+  string name_pt = 3;
+  // The SRD's size word ("Large") and its Portuguese name ("Grande"). The
+  // sizes are Tiny, Small, Medium, Large, Huge and Gargantuan.
+  string size = 4;
+  string size_pt = 5;
+  // The SRD's type ("beast") and its Portuguese name ("fera"). The subtype is
+  // the SRD's tag ("goblinoid"), empty when there is none.
+  string type = 6;
+  string type_pt = 7;
+  string subtype = 8;
+  // The challenge rating: "0", "1/8", "1/4", "1/2", "1" to "30".
+  string challenge_rating = 9;
+  // The XP the creature gives when defeated, by its challenge rating.
+  int32 xp = 10;
+  // Whether the stat block has a fly or a swim speed.
+  bool can_fly = 11;
+  bool can_swim = 12;
+}
+
+// GetCreatureRequest names a creature.
+message GetCreatureRequest {
+  // The campaign, for access.
+  string campaign_id = 1;
+  // Content key of the creature, such as "monster:wolf".
+  string key = 2;
+}
+
+// GetCreatureResponse returns one stat block.
+message GetCreatureResponse {
+  // The creature's stat block.
+  Creature creature = 1;
+}
+
+// Creature is a stat block of the SRD 5.1. Distances are in feet. The names of
+// traits and actions and their text are the SRD's English; the labels are
+// Portuguese.
+message Creature {
+  // The list row: names, size, type, challenge rating and XP.
+  CreatureSummary summary = 1;
+  // The SRD's alignment text, such as "neutral evil".
+  string alignment = 2;
+  // Armor class, where it comes from in Portuguese ("Armadura natural", "Sem
+  // armadura"), and the SRD's note ("armor scraps"), empty when there is none.
+  // The note names what the creature wears ("armadura de couro, escudo") and
+  // its other armor classes ("15 com Armadura Arcana").
+  int32 armor_class = 3;
+  string armor_class_label_pt = 4;
+  string armor_class_note = 5;
+  // The average hit points, the hit dice ("2d8") and the dice with the bonus
+  // ("2d8+2").
+  int32 hit_points = 6;
+  string hit_dice = 7;
+  string hit_points_roll = 8;
+  // The speeds, 0 for none; hover is true for a flying creature that hovers.
+  int32 speed_walk_ft = 9;
+  int32 speed_fly_ft = 10;
+  int32 speed_swim_ft = 11;
+  int32 speed_climb_ft = 12;
+  int32 speed_burrow_ft = 13;
+  bool hover = 14;
+  // The six abilities, in the order strength to charisma.
+  repeated CreatureAbilityScore abilities = 15;
+  // The saving throw and skill bonuses the stat block lists (the total
+  // bonus). The ones it does not list are the ability modifier.
+  repeated CreatureBonus saving_throws = 16;
+  repeated CreatureBonus skills = 17;
+  // Damage the creature takes double, half or none of.
+  repeated CreatureDamageModifier vulnerabilities = 18;
+  repeated CreatureDamageModifier resistances = 19;
+  repeated CreatureDamageModifier immunities = 20;
+  // The conditions it can't suffer, such as "condition:poisoned", "Envenenado".
+  repeated CreatureNamedKey condition_immunities = 21;
+  // Special senses with their range, such as darkvision 60 ft.
+  repeated Sense senses = 22;
+  // 10 + the Perception bonus, as the stat block says.
+  int32 passive_perception = 23;
+  // The SRD's text, in English, such as "Common, Goblin". Empty for none.
+  string languages = 24;
+  // The proficiency bonus, such as 2.
+  int32 proficiency_bonus = 25;
+  // Traits (the SRD's "special abilities"), actions, reactions and legendary
+  // actions.
+  repeated CreatureTrait traits = 26;
+  repeated CreatureAction actions = 27;
+  repeated CreatureTrait reactions = 28;
+  repeated CreatureTrait legendary_actions = 29;
+}
+
+// CreatureAbilityScore is one ability of a stat block.
+message CreatureAbilityScore {
+  // Which ability.
+  Ability ability = 1;
+  // The Portuguese name, such as "Força".
+  string name_pt = 2;
+  // The ability score, 1 to 30.
+  int32 score = 3;
+  // floor((score - 10) / 2).
+  int32 modifier = 4;
+}
+
+// CreatureBonus is a saving throw or skill bonus of a stat block.
+message CreatureBonus {
+  // The ability ("ABILITY_DEXTERITY") for a saving throw, or the skill's
+  // ability for a skill.
+  Ability ability = 1;
+  // Content key of the skill ("skill:stealth"); empty for a saving throw.
+  string key = 2;
+  // The Portuguese name ("Furtividade", "Destreza").
+  string name_pt = 3;
+  // The total bonus to add to the d20.
+  int32 bonus = 4;
+}
+
+// CreatureNamedKey is a content key with its Portuguese name.
+message CreatureNamedKey {
+  // Content key, such as "damage-type:fire" or "condition:poisoned".
+  string key = 1;
+  // Its Portuguese name, such as "Fogo".
+  string name_pt = 2;
+}
+
+// CreatureDamageModifier is one entry of a vulnerability, resistance or
+// immunity list.
+message CreatureDamageModifier {
+  // The damage types it names, such as "damage-type:fire", "Fogo". Empty when
+  // the SRD names none ("damage from spells").
+  repeated CreatureNamedKey types = 1;
+  // The rest of the SRD's text, in English ("from nonmagical weapons"); the
+  // whole text when it names no damage type.
+  string note = 2;
+}
+
+// CreatureTrait is a trait, a reaction or a legendary action: a name and text.
+message CreatureTrait {
+  // The SRD's English name, such as "Pack Tactics".
+  string name = 1;
+  // The SRD's English text.
+  string text = 2;
+  // The SRD's limit ("3/day", "Recharge 5-6"); empty when there is none.
+  string usage = 3;
+}
+
+// CreatureAction is an action of a stat block.
+message CreatureAction {
+  // The action's English name, such as "Bite".
+  string name = 1;
+  // The SRD's English text.
+  string text = 2;
+  // The SRD's limit ("Recharge 5-6"); empty when there is none.
+  string usage = 3;
+  // Whether it is an attack roll, and the bonus to add to the d20.
+  bool has_attack = 4;
+  int32 attack_bonus = 5;
+  // The damage parts, in the SRD's order. When the SRD offers a choice (a
+  // longsword's one or two hands), the first option; the text has the rest.
+  repeated CreatureDamagePart damage = 6;
+  // The saving throw the action asks for. Unset when it asks for none.
+  CreatureSave save = 7;
+  // For the Multiattack action: the routines, of which the creature makes
+  // one. Empty for any other action.
+  repeated CreatureMultiattackRoutine multiattack = 8;
+}
+
+// CreatureDamagePart is one damage roll of an action.
+message CreatureDamagePart {
+  // The dice, such as "2d4+2", or a flat "1".
+  string dice = 1;
+  // Content key of the damage type and its Portuguese name ("perfurante").
+  string damage_type_key = 2;
+  string damage_type_pt = 3;
+}
+
+// CreatureSave is a saving throw an action asks for.
+message CreatureSave {
+  // The ability of the saving throw. When the text offers two ("Strength or
+  // Dexterity"), the first; the action's text has both.
+  Ability ability = 1;
+  // The difficulty class.
+  int32 dc = 2;
+  // What a success does; OTHER when the text says neither "nothing" nor "half".
+  SpellSaveSuccess on_success = 3;
+}
+
+// CreatureMultiattackRoutine is one way to spend a Multiattack: these attacks.
+message CreatureMultiattackRoutine {
+  // The attacks of the routine, in the SRD's order.
+  repeated CreatureAttackCount attacks = 1;
+}
+
+// CreatureAttackCount is "Bite x1" in a Multiattack.
+message CreatureAttackCount {
+  // The name of an action of the same stat block, such as "Claw".
+  string name = 1;
+  // How many times; at least 1. When the SRD gives words instead of a number
+  // (the hydra's "Number of Heads", the violet fungus's "1d4"), see count_text.
+  int32 count = 2;
+  // "melee", "ranged", "ability" or "magic".
+  string kind = 3;
+  // The SRD's words for a count that is not a number, empty otherwise.
+  string count_text = 4;
 }
