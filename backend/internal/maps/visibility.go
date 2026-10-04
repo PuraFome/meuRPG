@@ -149,6 +149,7 @@ func (cm campaignMaps) pointToProto(p mapsdb.MapPoint, v viewer) *mapsv1.MapPoin
 		XBp:         p.XBp,
 		YBp:         p.YBp,
 		Revealed:    p.RevealedAt != nil,
+		ShowDc:      p.ShowDc,
 		CreatedAt:   timestamppb.New(p.CreatedAt),
 		UpdatedAt:   timestamppb.New(p.UpdatedAt),
 	}

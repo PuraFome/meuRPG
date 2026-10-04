@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+// The summary of an ended game session, "Resumo da sessão" (MR-032, Etapa 8,
+// question 64): the combat highlights of the whole session, the checks passed
+// outside combat, and what each member gets of it. The RPC is PlayService's
+// (play.proto, GetSessionSummary); the messages are here.
+package meurpg.play.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+import "meurpg/play/v1/combat.proto";
+
+// GetSessionSummaryRequest names the session.
+message GetSessionSummaryRequest {
+  string campaign_id = 1;
+  // An ended game session of the campaign (a UUID).
+  string game_session_id = 2;
+}
+
+// SessionCharacterSummary is every number of one player's character in the
+// session.
+message SessionCharacterSummary {
+  // The combat numbers, summed over every combat of the session: the same
+  // numbers and the same rules as GetCombatHighlights.
+  CharacterHighlights highlights = 1;
+  // The checks the character passed outside combat, and how many it rolled:
+  // only rolls made while the scene showed its DC, and only actions with a DC
+  // ("3 de 4"). Passed is never above tried.
+  int32 checks_passed = 2;
+  int32 checks_tried = 3;
+}
+
+// SessionSummary is how the session went, as the caller may see it.
+message SessionSummary {
+  // When the session started and ended. Every member gets them.
+  google.protobuf.Timestamp started_at = 1;
+  google.protobuf.Timestamp ended_at = 2;
+  // How long it lasted: ended_at minus started_at. Every member gets it.
+  google.protobuf.Duration duration = 3;
+  // How many combats began in the session, and how many scenes the master
+  // opened (opening one again counts again). Only the master gets them; for a
+  // player they are 0.
+  int32 combats = 4;
+  int32 scenes_opened = 5;
+  // The checks the players passed outside combat, of the ones tried, summed
+  // over the party: "9 de 12". Counted as SessionCharacterSummary says: a roll
+  // in a scene that hid its DC is in neither number. Only the master gets
+  // them; for a player they are 0.
+  int32 checks_passed = 6;
+  int32 checks_tried = 7;
+  // The categories that have a winner, in the order of HighlightKind: the five
+  // of the combats summed over the session, then CHECKS_PASSED. A category
+  // where everybody has 0 is left out. `value` is the winners' number (for
+  // CHECKS_PASSED, the count of passed; "de N" is the master's table).
+  // Everyone tied is named, in the order the characters first appeared in the
+  // session. Every member gets the categories.
+  repeated HighlightCategory categories = 8;
+  // The table of every player's character that fought or rolled a check, in
+  // the order they first appeared, zeros included. Only the master gets it;
+  // for a player it is empty.
+  repeated SessionCharacterSummary players = 9;
+  // The caller's own result, "Seu resultado": set only for a player whose
+  // character took part in the session (fought or rolled a check). The master
+  // never gets it.
+  SessionCharacterSummary mine = 10;
+}
+
+// GetSessionSummaryResponse returns the summary.
+message GetSessionSummaryResponse {
+  SessionSummary summary = 1;
+}

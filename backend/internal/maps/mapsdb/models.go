@@ -45,6 +45,7 @@ type MapPoint struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	Hooks       string
+	ShowDc      bool
 }
 
 type MapToken struct {
@@ -57,14 +58,15 @@ type MapToken struct {
 }
 
 type SceneAction struct {
-	ID        string
-	PointID   string
-	Position  int32
-	Key       string
-	Name      string
-	Dc        *int32
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID          string
+	PointID     string
+	Position    int32
+	Key         string
+	Name        string
+	Dc          *int32
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	MaxAttempts int32
 }
 
 type SceneClue struct {

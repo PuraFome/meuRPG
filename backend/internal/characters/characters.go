@@ -60,6 +60,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1/rulesv1connect"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/nostore"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
@@ -104,6 +105,12 @@ type Config struct {
 	// Rules is the rules content (rules.LoadSRD), loaded once at startup.
 	// Required.
 	Rules *rules.Content
+	// Dice tells what the campaign's dice setting makes a player do with the
+	// hit die of a level-up (RN-18). Nil means every player chooses.
+	Dice DiceRules
+	// Roller rolls the level-up's hit die in the app. Nil means the operating
+	// system's random source (dice.Crypto); tests pass faces.
+	Roller dice.Roller
 	// Logger receives errors, without personal data. Nil means
 	// slog.Default().
 	Logger *slog.Logger
@@ -130,6 +137,12 @@ type Service struct {
 	// gallery says which images are in a campaign's gallery, for the NPCs'
 	// portraits (MR-031): package maps, connected by SetGallery. Nil until then.
 	gallery Gallery
+	// dice and roller are the level-up's hit die (MR-040, RN-18), and live the
+	// session's stream, connected by SetLive (package play is made after this
+	// one). Nil live publishes nothing.
+	dice   DiceRules
+	roller dice.Roller
+	live   Live
 }
 
 // The compiler checks that Service implements both handlers.
@@ -159,6 +172,11 @@ func New(cfg Config) (*Service, error) {
 		logger:   cfg.Logger,
 		now:      cfg.Now,
 		catalog:  catalogToProto(cfg.Rules.Catalog()),
+		dice:     cfg.Dice,
+		roller:   cfg.Roller,
+	}
+	if s.roller == nil {
+		s.roller = dice.Crypto{}
 	}
 	if s.logger == nil {
 		s.logger = slog.Default()

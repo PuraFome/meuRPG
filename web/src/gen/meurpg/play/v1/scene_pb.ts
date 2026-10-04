@@ -22,7 +22,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/play/v1/scene.proto.
  */
 export const file_meurpg_play_v1_scene: GenFile = /*@__PURE__*/
-  fileDesc("ChptZXVycGcvcGxheS92MS9zY2VuZS5wcm90bxIObWV1cnBnLnBsYXkudjEiQgoMU2NlbmVCbG9ja2VkEjIKBnJlYXNvbhgBIAEoDjIiLm1ldXJwZy5wbGF5LnYxLlNjZW5lQmxvY2tlZFJlYXNvbiKxAgoNT3BlblNjZW5lSW5mbxIQCghwb2ludF9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEjAKB2FjdGlvbnMYBCADKAsyHy5tZXVycGcucGxheS52MS5TY2VuZUFjdGlvblZpZXcSKAoFcm9sbHMYBSADKAsyGS5tZXVycGcucGxheS52MS5TY2VuZVJvbGwSLQoJb3BlbmVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBINCgVob29rcxgHIAEoCRIoCgVjbHVlcxgIIAMoCzIZLm1ldXJwZy5tYXBzLnYxLlNjZW5lQ2x1ZRInCgVzdGFnZRgKIAMoCzIYLm1ldXJwZy5wbGF5LnYxLlN0YWdlTnBjImIKCFN0YWdlTnBjEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSFAoMcG9ydHJhaXRfdXJsGAMgASgJEhAKCHNwZWFraW5nGAQgASgIEhQKDGNoYXJhY3Rlcl9pZBgFIAEoCSI+ChFQdXRPblN0YWdlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkiPQoSUHV0T25TdGFnZVJlc3BvbnNlEicKBXN0YWdlGAEgAygLMhgubWV1cnBnLnBsYXkudjEuU3RhZ2VOcGMiQAoTVGFrZU9mZlN0YWdlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkiPwoUVGFrZU9mZlN0YWdlUmVzcG9uc2USJwoFc3RhZ2UYASADKAsyGC5tZXVycGcucGxheS52MS5TdGFnZU5wYyI+ChFTZXRTcGVha2VyUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkiPQoSU2V0U3BlYWtlclJlc3BvbnNlEicKBXN0YWdlGAEgAygLMhgubWV1cnBnLnBsYXkudjEuU3RhZ2VOcGMimAEKD1NjZW5lQWN0aW9uVmlldxIKCgJpZBgBIAEoCRILCgNrZXkYAiABKAkSDAoEbmFtZRgDIAEoCRISCgpjaGVja19uYW1lGAQgASgJEgoKAmRjGAUgASgFEhIKBWJvbnVzGAYgASgFSACIAQESFAoHcGFzc2l2ZRgHIAEoBUgBiAEBQggKBl9ib251c0IKCghfcGFzc2l2ZSLPAQoJU2NlbmVSb2xsEgoKAmlkGAEgASgJEhEKCWFjdGlvbl9pZBgCIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAyABKAkSFgoOY2hhcmFjdGVyX25hbWUYBCABKAkSJgoEcm9sbBgFIAEoCzIYLm1ldXJwZy5wbGF5LnYxLkRpY2VSb2xsEhMKBnBhc3NlZBgGIAEoCEgAiAEBEi0KCXJvbGxlZF9hdBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCCQoHX3Bhc3NlZCI5ChBPcGVuU2NlbmVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhAKCHBvaW50X2lkGAIgASgJIkEKEU9wZW5TY2VuZVJlc3BvbnNlEiwKBXNjZW5lGAEgASgLMh0ubWV1cnBnLnBsYXkudjEuT3BlblNjZW5lSW5mbyIoChFDbG9zZVNjZW5lUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCSIUChJDbG9zZVNjZW5lUmVzcG9uc2UiKgoTR2V0T3BlblNjZW5lUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCSJEChRHZXRPcGVuU2NlbmVSZXNwb25zZRIsCgVzY2VuZRgBIAEoCzIdLm1ldXJwZy5wbGF5LnYxLk9wZW5TY2VuZUluZm8iiwEKFVJvbGxTY2VuZUNoZWNrUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIRCglhY3Rpb25faWQYAiABKAkSFQoLcm9sbF9pbl9hcHAYAyABKAhIABISCghkMjBfZmFjZRgEIAEoBUgAEhcKD2lkZW1wb3RlbmN5X2tleRgFIAEoCUIGCgRyb2xsIkEKFlJvbGxTY2VuZUNoZWNrUmVzcG9uc2USJwoEcm9sbBgBIAEoCzIZLm1ldXJwZy5wbGF5LnYxLlNjZW5lUm9sbCqmAgoSU2NlbmVCbG9ja2VkUmVhc29uEiQKIFNDRU5FX0JMT0NLRURfUkVBU09OX1VOU1BFQ0lGSUVEEAASIwofU0NFTkVfQkxPQ0tFRF9SRUFTT05fTk9fQUNUSU9OUxABEiYKIlNDRU5FX0JMT0NLRURfUkVBU09OX05PX09QRU5fU0NFTkUQAhInCiNTQ0VORV9CTE9DS0VEX1JFQVNPTl9BTFJFQURZX1JPTExFRBADEigKJFNDRU5FX0JMT0NLRURfUkVBU09OX1dST05HX0RJQ0VfTU9ERRAEEiUKIVNDRU5FX0JMT0NLRURfUkVBU09OX05PX0NIQVJBQ1RFUhAFEiMKH1NDRU5FX0JMT0NLRURfUkVBU09OX1NUQUdFX0ZVTEwQBkK4AQoSY29tLm1ldXJwZy5wbGF5LnYxQgpTY2VuZVByb3RvUAFaPGdpdGh1Yi5jb20vUHVyYUZvbWUvbWV1UlBHL2JhY2tlbmQvZ2VuL21ldXJwZy9wbGF5L3YxO3BsYXl2MaICA01QWKoCDk1ldXJwZy5QbGF5LlYxygIOTWV1cnBnXFBsYXlcVjHiAhpNZXVycGdcUGxheVxWMVxHUEJNZXRhZGF0YeoCEE1ldXJwZzo6UGxheTo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp, file_meurpg_maps_v1_maps, file_meurpg_play_v1_combat]);
+  fileDesc("ChptZXVycGcvcGxheS92MS9zY2VuZS5wcm90bxIObWV1cnBnLnBsYXkudjEiQgoMU2NlbmVCbG9ja2VkEjIKBnJlYXNvbhgBIAEoDjIiLm1ldXJwZy5wbGF5LnYxLlNjZW5lQmxvY2tlZFJlYXNvbiLCAgoNT3BlblNjZW5lSW5mbxIQCghwb2ludF9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEjAKB2FjdGlvbnMYBCADKAsyHy5tZXVycGcucGxheS52MS5TY2VuZUFjdGlvblZpZXcSKAoFcm9sbHMYBSADKAsyGS5tZXVycGcucGxheS52MS5TY2VuZVJvbGwSLQoJb3BlbmVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBINCgVob29rcxgHIAEoCRIoCgVjbHVlcxgIIAMoCzIZLm1ldXJwZy5tYXBzLnYxLlNjZW5lQ2x1ZRInCgVzdGFnZRgKIAMoCzIYLm1ldXJwZy5wbGF5LnYxLlN0YWdlTnBjEg8KB3Nob3dfZGMYCyABKAgiYgoIU3RhZ2VOcGMSCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRIUCgxwb3J0cmFpdF91cmwYAyABKAkSEAoIc3BlYWtpbmcYBCABKAgSFAoMY2hhcmFjdGVyX2lkGAUgASgJIj4KEVB1dE9uU3RhZ2VSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCSI9ChJQdXRPblN0YWdlUmVzcG9uc2USJwoFc3RhZ2UYASADKAsyGC5tZXVycGcucGxheS52MS5TdGFnZU5wYyJAChNUYWtlT2ZmU3RhZ2VSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCSI/ChRUYWtlT2ZmU3RhZ2VSZXNwb25zZRInCgVzdGFnZRgBIAMoCzIYLm1ldXJwZy5wbGF5LnYxLlN0YWdlTnBjIj4KEVNldFNwZWFrZXJSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCSI9ChJTZXRTcGVha2VyUmVzcG9uc2USJwoFc3RhZ2UYASADKAsyGC5tZXVycGcucGxheS52MS5TdGFnZU5wYyLcAQoPU2NlbmVBY3Rpb25WaWV3EgoKAmlkGAEgASgJEgsKA2tleRgCIAEoCRIMCgRuYW1lGAMgASgJEhIKCmNoZWNrX25hbWUYBCABKAkSCgoCZGMYBSABKAUSEgoFYm9udXMYBiABKAVIAIgBARIUCgdwYXNzaXZlGAcgASgFSAGIAQESFAoMbWF4X2F0dGVtcHRzGAggASgFEhoKDWF0dGVtcHRzX2xlZnQYCSABKAVIAogBAUIICgZfYm9udXNCCgoIX3Bhc3NpdmVCEAoOX2F0dGVtcHRzX2xlZnQi/QEKCVNjZW5lUm9sbBIKCgJpZBgBIAEoCRIRCglhY3Rpb25faWQYAiABKAkSFAoMY2hhcmFjdGVyX2lkGAMgASgJEhYKDmNoYXJhY3Rlcl9uYW1lGAQgASgJEiYKBHJvbGwYBSABKAsyGC5tZXVycGcucGxheS52MS5EaWNlUm9sbBITCgZwYXNzZWQYBiABKAhIAIgBARItCglyb2xsZWRfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhoKDWF0dGVtcHRzX2xlZnQYCCABKAVIAYgBAUIJCgdfcGFzc2VkQhAKDl9hdHRlbXB0c19sZWZ0IjkKEE9wZW5TY2VuZVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSEAoIcG9pbnRfaWQYAiABKAkiQQoRT3BlblNjZW5lUmVzcG9uc2USLAoFc2NlbmUYASABKAsyHS5tZXVycGcucGxheS52MS5PcGVuU2NlbmVJbmZvIigKEUNsb3NlU2NlbmVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIhQKEkNsb3NlU2NlbmVSZXNwb25zZSIqChNHZXRPcGVuU2NlbmVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIkQKFEdldE9wZW5TY2VuZVJlc3BvbnNlEiwKBXNjZW5lGAEgASgLMh0ubWV1cnBnLnBsYXkudjEuT3BlblNjZW5lSW5mbyKLAQoVUm9sbFNjZW5lQ2hlY2tSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhEKCWFjdGlvbl9pZBgCIAEoCRIVCgtyb2xsX2luX2FwcBgDIAEoCEgAEhIKCGQyMF9mYWNlGAQgASgFSAASFwoPaWRlbXBvdGVuY3lfa2V5GAUgASgJQgYKBHJvbGwiQQoWUm9sbFNjZW5lQ2hlY2tSZXNwb25zZRInCgRyb2xsGAEgASgLMhkubWV1cnBnLnBsYXkudjEuU2NlbmVSb2xsInEKGEdyYW50U2NlbmVBdHRlbXB0UmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIRCglhY3Rpb25faWQYAiABKAkSFAoMY2hhcmFjdGVyX2lkGAMgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgEIAEoCSJJChlHcmFudFNjZW5lQXR0ZW1wdFJlc3BvbnNlEiwKBXNjZW5lGAEgASgLMh0ubWV1cnBnLnBsYXkudjEuT3BlblNjZW5lSW5mbyqmAgoSU2NlbmVCbG9ja2VkUmVhc29uEiQKIFNDRU5FX0JMT0NLRURfUkVBU09OX1VOU1BFQ0lGSUVEEAASIwofU0NFTkVfQkxPQ0tFRF9SRUFTT05fTk9fQUNUSU9OUxABEiYKIlNDRU5FX0JMT0NLRURfUkVBU09OX05PX09QRU5fU0NFTkUQAhInCiNTQ0VORV9CTE9DS0VEX1JFQVNPTl9BTFJFQURZX1JPTExFRBADEigKJFNDRU5FX0JMT0NLRURfUkVBU09OX1dST05HX0RJQ0VfTU9ERRAEEiUKIVNDRU5FX0JMT0NLRURfUkVBU09OX05PX0NIQVJBQ1RFUhAFEiMKH1NDRU5FX0JMT0NLRURfUkVBU09OX1NUQUdFX0ZVTEwQBkK4AQoSY29tLm1ldXJwZy5wbGF5LnYxQgpTY2VuZVByb3RvUAFaPGdpdGh1Yi5jb20vUHVyYUZvbWUvbWV1UlBHL2JhY2tlbmQvZ2VuL21ldXJwZy9wbGF5L3YxO3BsYXl2MaICA01QWKoCDk1ldXJwZy5QbGF5LlYxygIOTWV1cnBnXFBsYXlcVjHiAhpNZXVycGdcUGxheVxWMVxHUEJNZXRhZGF0YeoCEE1ldXJwZzo6UGxheTo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp, file_meurpg_maps_v1_maps, file_meurpg_play_v1_combat]);
 
 /**
  * SceneBlocked is the error detail of a scene call's `failed_precondition`
@@ -122,6 +122,17 @@ export type OpenSceneInfo = Message<"meurpg.play.v1.OpenSceneInfo"> & {
    * @generated from field: repeated meurpg.play.v1.StageNpc stage = 10;
    */
   stage: StageNpc[];
+
+  /**
+   * Whether this scene shows its DCs to the players ("Mostrar a CD aos
+   * jogadores", MR-015, question 52). Every member gets it. On: a player's
+   * actions carry `dc` and their own rolls carry `passed`. Off: they carry
+   * neither, and the master alone reads both (RN-20). The master always gets
+   * the DCs and every `passed`.
+   *
+   * @generated from field: bool show_dc = 11;
+   */
+  showDc: boolean;
 };
 
 /**
@@ -359,8 +370,10 @@ export type SceneActionView = Message<"meurpg.play.v1.SceneActionView"> & {
   checkName: string;
 
   /**
-   * The difficulty class, 1 to 30; 0 for none. Only the master gets it: a
-   * player always gets 0 (RN-20), and never learns whether there is one.
+   * The difficulty class, 1 to 30; 0 for none. The master always gets it. A
+   * player gets it only when the scene's `show_dc` is on, and then 0 still
+   * means "no DC": an action without one shows nothing extra. With `show_dc`
+   * off a player always gets 0 and never learns whether there is one (RN-20).
    *
    * @generated from field: int32 dc = 5;
    */
@@ -382,6 +395,30 @@ export type SceneActionView = Message<"meurpg.play.v1.SceneActionView"> & {
    * @generated from field: optional int32 passive = 7;
    */
   passive?: number | undefined;
+
+  /**
+   * How many times each player's character may roll this action while the
+   * scene stays open: 1 to 5, and 0 means unlimited (no counter on screen).
+   * Every member gets it.
+   *
+   * @generated from field: int32 max_attempts = 8;
+   */
+  maxAttempts: number;
+
+  /**
+   * How many attempts the caller's own character has left in this opening of
+   * the scene (MR-015, question 55): the limit minus their rolls of this
+   * action, plus the attempts the master granted, never below 0. The app
+   * writes "Restam 2 de 3 tentativas", "1 tentativa" or, at 0, "Sem mais
+   * tentativas". Unset for an unlimited action (`max_attempts` 0), for the
+   * master and for a player with no living character: nothing to count. A
+   * player never gets another player's count. A grant the master gave on
+   * purpose may push it above `max_attempts` ("6 de 5"): when it is above,
+   * write "Restam N tentativas" without the "de M".
+   *
+   * @generated from field: optional int32 attempts_left = 9;
+   */
+  attemptsLeft?: number | undefined;
 };
 
 /**
@@ -434,8 +471,11 @@ export type SceneRoll = Message<"meurpg.play.v1.SceneRoll"> & {
 
   /**
    * Whether the total reached the action's DC, as it was when the roll was
-   * made. Set only for the master, and only when the action had a DC: a
-   * player never gets it (RN-20).
+   * made. Set only when the action had a DC. The master always gets it; a
+   * player gets it for their own rolls only when the scene showed its DC at the
+   * moment of the roll (RN-20; turning `show_dc` on later does not reveal the
+   * earlier rolls), and never for anyone else's. These are exactly the rolls
+   * the session summary counts.
    *
    * @generated from field: optional bool passed = 6;
    */
@@ -447,6 +487,17 @@ export type SceneRoll = Message<"meurpg.play.v1.SceneRoll"> & {
    * @generated from field: google.protobuf.Timestamp rolled_at = 7;
    */
   rolledAt?: Timestamp | undefined;
+
+  /**
+   * How many attempts this character has left at this action now, as
+   * SceneActionView.attempts_left says it for a player; the master reads it
+   * here to offer "Dar mais uma tentativa" (GrantSceneAttempt) on the roll
+   * card of a character with none left. Only the master gets it: a player's
+   * count is in their actions. Unset for an unlimited action.
+   *
+   * @generated from field: optional int32 attempts_left = 8;
+   */
+  attemptsLeft?: number | undefined;
 };
 
 /**
@@ -644,7 +695,8 @@ export const RollSceneCheckRequestSchema: GenMessage<RollSceneCheckRequest> = /*
  */
 export type RollSceneCheckResponse = Message<"meurpg.play.v1.RollSceneCheckResponse"> & {
   /**
-   * The caller's roll, with its total. A player never gets `passed` here.
+   * The caller's roll, with its total. `passed` is set only when the scene
+   * shows its DC (`show_dc`) and the action had one.
    *
    * @generated from field: meurpg.play.v1.SceneRoll roll = 1;
    */
@@ -657,6 +709,67 @@ export type RollSceneCheckResponse = Message<"meurpg.play.v1.RollSceneCheckRespo
  */
 export const RollSceneCheckResponseSchema: GenMessage<RollSceneCheckResponse> = /*@__PURE__*/
   messageDesc(file_meurpg_play_v1_scene, 18);
+
+/**
+ * GrantSceneAttemptRequest gives one character one more attempt at one action.
+ *
+ * @generated from message meurpg.play.v1.GrantSceneAttemptRequest
+ */
+export type GrantSceneAttemptRequest = Message<"meurpg.play.v1.GrantSceneAttemptRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * The action (a UUID), one of the open scene's.
+   *
+   * @generated from field: string action_id = 2;
+   */
+  actionId: string;
+
+  /**
+   * The player's character that gets the attempt (a UUID): a living player
+   * character of the campaign.
+   *
+   * @generated from field: string character_id = 3;
+   */
+  characterId: string;
+
+  /**
+   * A UUID the app makes for each grant. Repeating a grant with the same key
+   * adds nothing more and answers like the first.
+   *
+   * @generated from field: string idempotency_key = 4;
+   */
+  idempotencyKey: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.GrantSceneAttemptRequest.
+ * Use `create(GrantSceneAttemptRequestSchema)` to create a new message.
+ */
+export const GrantSceneAttemptRequestSchema: GenMessage<GrantSceneAttemptRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_scene, 19);
+
+/**
+ * GrantSceneAttemptResponse returns the open scene as the master sees it.
+ *
+ * @generated from message meurpg.play.v1.GrantSceneAttemptResponse
+ */
+export type GrantSceneAttemptResponse = Message<"meurpg.play.v1.GrantSceneAttemptResponse"> & {
+  /**
+   * @generated from field: meurpg.play.v1.OpenSceneInfo scene = 1;
+   */
+  scene?: OpenSceneInfo | undefined;
+};
+
+/**
+ * Describes the message meurpg.play.v1.GrantSceneAttemptResponse.
+ * Use `create(GrantSceneAttemptResponseSchema)` to create a new message.
+ */
+export const GrantSceneAttemptResponseSchema: GenMessage<GrantSceneAttemptResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_scene, 20);
 
 /**
  * SceneBlockedReason says why PlayService refused a scene call with
@@ -690,9 +803,13 @@ export enum SceneBlockedReason {
   NO_OPEN_SCENE = 2,
 
   /**
-   * RollSceneCheck: the character already rolled this action while the
-   * scene has been open. The master closes and opens the scene again to
-   * allow another roll.
+   * RollSceneCheck: the character has no attempt left at this action while
+   * the scene has been open: it rolled as many times as the action's
+   * `max_attempts` allows, plus the attempts the master granted
+   * (GrantSceneAttempt). The master may grant one more, raise the limit, or
+   * close and open the scene again, which resets every count. The name stays
+   * from the time the limit was one roll ("already rolled"); the reason is
+   * the same.
    *
    * @generated from enum value: SCENE_BLOCKED_REASON_ALREADY_ROLLED = 3;
    */

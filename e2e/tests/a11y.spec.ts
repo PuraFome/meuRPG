@@ -8,6 +8,7 @@ import { endOpenSessionRPC, endSessionRPC, openSessionPage, startSessionRPC, tab
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
 import { adjustVitalsRPC, beginAttackCombatRPC, combatRPC, getEncounterRPC, passTurnsTo, pensantusCasting, tableForCombat, toren, torenSheet } from './combat-support';
 import { addActionRPC, cartActions, getOpenSceneRPC, openSceneRPC, rollSceneRPC, tableForScenes } from './scene-support';
+import { printRoute, tableForPrinting } from './print-support';
 import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus } from './support';
 import { awardXpRPC, createEnemyRPC, tableForXp, tableForXpCombat, winCombatRPC } from './xp-support';
 
@@ -423,6 +424,80 @@ test('as telas de mapa e da imagem mostrada passam no axe no tema claro, no desk
 
 test('as telas de mapa e da imagem mostrada passam no axe no tema escuro, no celular', { tag: ['@a11y', '@MR-009', '@MR-028'] }, async ({ browser }) => {
   await scanMapScreens(browser, 'dark', 390);
+});
+
+/** Printing a map to scale (MR-033, E8-12): the map page's entry with and
+ * without a grid, and the print view in its states: the defaults, a size and
+ * a paper that need 3 sheets, one that needs 36 (the amber notice, the labels
+ * shrunk), 136 (the labels gone), an invalid size, and a map without a grid.
+ * On a phone the setup stacks above the preview. */
+async function scanPrintScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(180_000);
+  const options = { colorScheme, viewport: { width, height: 900 } };
+  const master = await browser.newContext({ ...options, storageState: authStatePath('Mestre Teste') });
+  const player = await browser.newContext({ ...options, storageState: authStatePath('Jogador Teste') });
+  const masterPage = await master.newPage();
+  const playerPage = await player.newPage();
+  const suffix = `(${colorScheme}, ${width}px)`;
+  try {
+    await masterPage.goto('/');
+    const table = await tableForPrinting(masterPage, playerPage, `Acessibilidade impressão ${Date.now()}`);
+
+    await open(masterPage, `/campanhas/${table.campaignId}/mapas/${table.gridMapId}`);
+    await expectScreenPasses(masterPage, `Mapa com grade, entrada de impressão ${suffix}`);
+    await open(masterPage, `/campanhas/${table.campaignId}/mapas/${table.plainMapId}`);
+    await expect(masterPage.getByText('Defina a grade do mapa para imprimir em escala')).toBeVisible();
+    await expectScreenPasses(masterPage, `Mapa sem grade, entrada de impressão ${suffix}`);
+
+    await open(masterPage, printRoute(table.campaignId, table.gridMapId));
+    await expect(masterPage.getByLabel('Tamanho do quadrado')).toHaveValue('2,54');
+    await expectScreenPasses(masterPage, `Imprimir o mapa, A4 e 2,54 cm ${suffix}`);
+
+    const square = masterPage.getByLabel('Tamanho do quadrado');
+    await square.fill('2');
+    await masterPage.getByRole('radio', { name: /A3/ }).check();
+    await expect(masterPage.getByRole('button', { name: 'Voltar a 2,54 cm' })).toBeVisible();
+    await expectScreenPasses(masterPage, `Imprimir o mapa, 2 cm em A3 ${suffix}`);
+
+    await masterPage.getByRole('radio', { name: /A4/ }).check();
+    await square.fill('5');
+    await expect(masterPage.getByText('São 36 folhas.')).toBeVisible();
+    await expectScreenPasses(masterPage, `Imprimir o mapa, 36 folhas e o aviso ${suffix}`);
+
+    await square.fill('10');
+    await expect(masterPage.getByText('São 136 folhas.')).toBeVisible();
+    await expectScreenPasses(masterPage, `Imprimir o mapa, 136 folhas sem rótulos ${suffix}`);
+
+    await square.fill('0,5');
+    await expect(masterPage.getByRole('alert').filter({ hasText: 'Use um tamanho de 1 a 10 cm.' })).toBeVisible();
+    await expectScreenPasses(masterPage, `Imprimir o mapa, tamanho inválido ${suffix}`);
+
+    await open(masterPage, printRoute(table.campaignId, table.plainMapId));
+    await expect(masterPage.getByText('Este mapa ainda não tem grade.')).toBeVisible();
+    await expectScreenPasses(masterPage, `Imprimir o mapa, sem grade ${suffix}`);
+
+    await open(playerPage, printRoute(table.campaignId, table.gridMapId));
+    await expectScreenPasses(playerPage, `Imprimir o mapa, jogador ${suffix}`);
+  } finally {
+    await master.close();
+    await player.close();
+  }
+}
+
+test('a impressão do mapa passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-033'] }, async ({ browser }) => {
+  await scanPrintScreens(browser, 'light', 1280);
+});
+
+test('a impressão do mapa passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-033'] }, async ({ browser }) => {
+  await scanPrintScreens(browser, 'dark', 390);
+});
+
+test('a impressão do mapa passa no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-033'] }, async ({ browser }) => {
+  await scanPrintScreens(browser, 'dark', 1024);
+});
+
+test('a impressão do mapa passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-033'] }, async ({ browser }) => {
+  await scanPrintScreens(browser, 'light', 320);
 });
 
 /** The dice settings (RN-18): the master's "Dados" panel and the player's

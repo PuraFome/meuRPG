@@ -1,0 +1,37 @@
+<section class="mr-panel table-panel" aria-labelledby="table-title">
+  <h2 class="mr-panel__title" id="table-title">As contas</h2>
+  <p class="intro">{{ intro() }}</p>
+  <table>
+    <thead>
+      <tr>
+        <th scope="col"><span class="mr-visually-hidden">Papel</span></th>
+        <th scope="col">Paisagem</th>
+        <th scope="col">Retrato</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of rows(); track row.id) {
+        <tr>
+          <th scope="row">
+            {{ row.name }}
+            @if (row.chosen) {
+              <span class="chosen">papel escolhido</span>
+            }
+          </th>
+          @for (c of [row.landscape, row.portrait]; track $index) {
+            <td>
+              <span class="lead"
+                ><span class="lead__label">{{ $index === 0 ? 'Paisagem' : 'Retrato' }}: </span
+                ><span class="sum">{{ c.sum }} <strong>{{ c.total }}</strong></span></span
+              >
+              <span class="size">{{ c.size }}</span>
+              @if (c.best) {
+                <span class="smallest">A menor</span>
+              }
+            </td>
+          }
+        </tr>
+      }
+    </tbody>
+  </table>
+</section>

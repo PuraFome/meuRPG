@@ -113,7 +113,11 @@ type harness struct {
 	server *httptest.Server
 }
 
-func newHarness(t *testing.T) *harness {
+func newHarness(t *testing.T) *harness { return newHarnessWith(t, nil) }
+
+// newHarnessWith is newHarness with a say in the service's Config (the
+// level-up tests set the dice setting and the die).
+func newHarnessWith(t *testing.T, tweak func(*Config)) *harness {
 	t.Helper()
 	pool := dbtest.NewPool(t, "meurpg_characters_test")
 	h := &harness{
@@ -129,7 +133,11 @@ func newHarness(t *testing.T) *harness {
 	if err != nil {
 		t.Fatalf("campaigns.New() error = %v", err)
 	}
-	h.svc, err = New(Config{Pool: pool, Profiles: h.users, Members: camps, Rules: loadRules(t), Logger: logger, Now: h.clock.Now})
+	cfg := Config{Pool: pool, Profiles: h.users, Members: camps, Rules: loadRules(t), Logger: logger, Now: h.clock.Now}
+	if tweak != nil {
+		tweak(&cfg)
+	}
+	h.svc, err = New(cfg)
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}

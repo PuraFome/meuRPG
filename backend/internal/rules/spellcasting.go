@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/PuraFome/meuRPG/backend/internal/rules/srd51"
 )
@@ -214,6 +215,11 @@ func (x *deriver) characterSpells(casters []caster) {
 		}
 	}
 	knownByCaster := func(s *srd51.Spell) bool {
+		// A spell off the class's list (the Bard's Magical Secrets) is as known
+		// as the others when the sheet has no spellbook to tell them apart.
+		if hasKnownCaster && !hasSpellbook {
+			return true
+		}
 		for _, cs := range casters {
 			if preparation(cs.e) == PreparationKnown && slices.Contains(s.Classes, cs.oc.key) {
 				return true
@@ -261,7 +267,7 @@ func (x *deriver) characterSpells(casters []caster) {
 
 	// Spells known (a wizard's spellbook, or a known caster's spells) and
 	// prepared.
-	checkSpell := func(field, key string) (*srd51.Spell, bool) {
+	checkSpell := func(field, key string, offList bool) (*srd51.Spell, bool) {
 		s, ok := c.spells[key]
 		if !ok {
 			x.issue(IssueUnknownKey, field, "A magia escolhida não existe no conteúdo %s.", c.version)
@@ -273,20 +279,38 @@ func (x *deriver) characterSpells(casters []caster) {
 		case s.Level > maxLevel:
 			x.issue(IssueSpellLevel, field, "%s é de %dº nível; o personagem conjura até o %dº.", c.namePT(key), s.Level, maxLevel)
 		}
-		if !onClassList(s) && !granted[key] && !alwaysPrepared[key] {
+		if !onClassList(s) && !granted[key] && !alwaysPrepared[key] && !offList {
 			x.issue(IssueSpellNotOnList, field, "%s não está na lista de magias do personagem.", c.namePT(key))
 		}
 		return s, true
 	}
+	// The Bard's Magical Secrets (two spells from any class at levels 10, 14
+	// and 18) and the College of Lore's Additional Magical Secrets (two more,
+	// which do not count against the spells known) allow spells off the list.
+	offListLeft, extraKnown := 0, 0
+	for _, f := range x.d.Features {
+		switch {
+		case strings.HasPrefix(f.Key, "feature:magical-secrets-"):
+			offListLeft += 2
+		case f.Key == "feature:additional-magical-secrets":
+			offListLeft += 2
+			extraKnown += 2
+		}
+	}
 	for i, key := range x.b.SpellsKnown {
-		if s, ok := checkSpell(fmt.Sprintf("full.known_spell_keys[%d]", i), key); ok {
+		offList := false
+		if s := c.spells[key]; s != nil && offListLeft > 0 && !onClassList(s) {
+			offList = true
+			offListLeft--
+		}
+		if s, ok := checkSpell(fmt.Sprintf("full.known_spell_keys[%d]", i), key, offList); ok {
 			addSpell(s, knownByCaster(s))
 		}
 	}
 	counted := 0
 	for i, key := range x.b.SpellsPrepared {
 		field := fmt.Sprintf("full.prepared_spell_keys[%d]", i)
-		s, ok := checkSpell(field, key)
+		s, ok := checkSpell(field, key, false)
 		if !ok {
 			continue
 		}
@@ -303,8 +327,8 @@ func (x *deriver) characterSpells(casters []caster) {
 			addSpell(s, true)
 		}
 	}
-	if hasKnownCaster && !hasSpellbook && len(x.b.SpellsKnown) > knownMax {
-		x.issue(IssueSpellCount, "full.known_spell_keys", "Há %d magias conhecidas; o personagem conhece %d.", len(x.b.SpellsKnown), knownMax)
+	if hasKnownCaster && !hasSpellbook && len(x.b.SpellsKnown) > knownMax+extraKnown {
+		x.issue(IssueSpellCount, "full.known_spell_keys", "Há %d magias conhecidas; o personagem conhece %d.", len(x.b.SpellsKnown), knownMax+extraKnown)
 	}
 	if preparedMax > 0 && counted > preparedMax {
 		x.issue(IssueSpellCount, "full.prepared_spell_keys", "Há %d magias preparadas; o personagem prepara %d.", counted, preparedMax)
