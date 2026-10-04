@@ -66,6 +66,12 @@ const (
 	// ContentServiceGetCreatureProcedure is the fully-qualified name of the ContentService's
 	// GetCreature RPC.
 	ContentServiceGetCreatureProcedure = "/meurpg.rules.v1.ContentService/GetCreature"
+	// ContentServiceListTrapPresetsProcedure is the fully-qualified name of the ContentService's
+	// ListTrapPresets RPC.
+	ContentServiceListTrapPresetsProcedure = "/meurpg.rules.v1.ContentService/ListTrapPresets"
+	// ContentServiceListLightPresetsProcedure is the fully-qualified name of the ContentService's
+	// ListLightPresets RPC.
+	ContentServiceListLightPresetsProcedure = "/meurpg.rules.v1.ContentService/ListLightPresets"
 )
 
 // ContentServiceClient is a client for the meurpg.rules.v1.ContentService service.
@@ -124,6 +130,28 @@ type ContentServiceClient interface {
 	//   - `not_found`: the campaign does not exist, the caller is not an active
 	//     member of it, or no creature has that key.
 	GetCreature(context.Context, *connect.Request[v1.GetCreatureRequest]) (*connect.Response[v1.GetCreatureResponse], error)
+	// ListTrapPresets returns the SRD's eight sample traps (MR-035), in our
+	// words and with the SRD's numbers, to fill the master's trap form, and the
+	// SRD's tables of how severe a trap is (the form's hint: "Revés: CD 10 a 11,
+	// bônus de ataque +3 a +5"). A preset only fills the form: the master edits
+	// anything, and the trap on the map keeps its own copy of the numbers. The
+	// content is the same for every campaign. Any active member may call it; a
+	// pending member (RN-15) gets `not_found`, as for ListCreatures.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, or the caller is not an
+	//     active member of it.
+	ListTrapPresets(context.Context, *connect.Request[v1.ListTrapPresetsRequest]) (*connect.Response[v1.ListTrapPresetsResponse], error)
+	// ListLightPresets returns the SRD's sources of light with their radii
+	// (MR-036): Vela, Tocha, Lâmpada, Lanterna coberta, the spell Luz, Chama
+	// Contínua and Luz do Dia. They fill the master's light form and the light a
+	// character carries (MapService.SetCarriedLight takes a preset's key). Same
+	// access as ListTrapPresets.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, or the caller is not an
+	//     active member of it.
+	ListLightPresets(context.Context, *connect.Request[v1.ListLightPresetsRequest]) (*connect.Response[v1.ListLightPresetsResponse], error)
 }
 
 // NewContentServiceClient constructs a client for the meurpg.rules.v1.ContentService service. By
@@ -165,15 +193,31 @@ func NewContentServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
+		listTrapPresets: connect.NewClient[v1.ListTrapPresetsRequest, v1.ListTrapPresetsResponse](
+			httpClient,
+			baseURL+ContentServiceListTrapPresetsProcedure,
+			connect.WithSchema(contentServiceMethods.ByName("ListTrapPresets")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
+		listLightPresets: connect.NewClient[v1.ListLightPresetsRequest, v1.ListLightPresetsResponse](
+			httpClient,
+			baseURL+ContentServiceListLightPresetsProcedure,
+			connect.WithSchema(contentServiceMethods.ByName("ListLightPresets")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // contentServiceClient implements ContentServiceClient.
 type contentServiceClient struct {
-	listContent     *connect.Client[v1.ListContentRequest, v1.ListContentResponse]
-	getSpellDetails *connect.Client[v1.GetSpellDetailsRequest, v1.GetSpellDetailsResponse]
-	listCreatures   *connect.Client[v1.ListCreaturesRequest, v1.ListCreaturesResponse]
-	getCreature     *connect.Client[v1.GetCreatureRequest, v1.GetCreatureResponse]
+	listContent      *connect.Client[v1.ListContentRequest, v1.ListContentResponse]
+	getSpellDetails  *connect.Client[v1.GetSpellDetailsRequest, v1.GetSpellDetailsResponse]
+	listCreatures    *connect.Client[v1.ListCreaturesRequest, v1.ListCreaturesResponse]
+	getCreature      *connect.Client[v1.GetCreatureRequest, v1.GetCreatureResponse]
+	listTrapPresets  *connect.Client[v1.ListTrapPresetsRequest, v1.ListTrapPresetsResponse]
+	listLightPresets *connect.Client[v1.ListLightPresetsRequest, v1.ListLightPresetsResponse]
 }
 
 // ListContent calls meurpg.rules.v1.ContentService.ListContent.
@@ -194,6 +238,16 @@ func (c *contentServiceClient) ListCreatures(ctx context.Context, req *connect.R
 // GetCreature calls meurpg.rules.v1.ContentService.GetCreature.
 func (c *contentServiceClient) GetCreature(ctx context.Context, req *connect.Request[v1.GetCreatureRequest]) (*connect.Response[v1.GetCreatureResponse], error) {
 	return c.getCreature.CallUnary(ctx, req)
+}
+
+// ListTrapPresets calls meurpg.rules.v1.ContentService.ListTrapPresets.
+func (c *contentServiceClient) ListTrapPresets(ctx context.Context, req *connect.Request[v1.ListTrapPresetsRequest]) (*connect.Response[v1.ListTrapPresetsResponse], error) {
+	return c.listTrapPresets.CallUnary(ctx, req)
+}
+
+// ListLightPresets calls meurpg.rules.v1.ContentService.ListLightPresets.
+func (c *contentServiceClient) ListLightPresets(ctx context.Context, req *connect.Request[v1.ListLightPresetsRequest]) (*connect.Response[v1.ListLightPresetsResponse], error) {
+	return c.listLightPresets.CallUnary(ctx, req)
 }
 
 // ContentServiceHandler is an implementation of the meurpg.rules.v1.ContentService service.
@@ -252,6 +306,28 @@ type ContentServiceHandler interface {
 	//   - `not_found`: the campaign does not exist, the caller is not an active
 	//     member of it, or no creature has that key.
 	GetCreature(context.Context, *connect.Request[v1.GetCreatureRequest]) (*connect.Response[v1.GetCreatureResponse], error)
+	// ListTrapPresets returns the SRD's eight sample traps (MR-035), in our
+	// words and with the SRD's numbers, to fill the master's trap form, and the
+	// SRD's tables of how severe a trap is (the form's hint: "Revés: CD 10 a 11,
+	// bônus de ataque +3 a +5"). A preset only fills the form: the master edits
+	// anything, and the trap on the map keeps its own copy of the numbers. The
+	// content is the same for every campaign. Any active member may call it; a
+	// pending member (RN-15) gets `not_found`, as for ListCreatures.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, or the caller is not an
+	//     active member of it.
+	ListTrapPresets(context.Context, *connect.Request[v1.ListTrapPresetsRequest]) (*connect.Response[v1.ListTrapPresetsResponse], error)
+	// ListLightPresets returns the SRD's sources of light with their radii
+	// (MR-036): Vela, Tocha, Lâmpada, Lanterna coberta, the spell Luz, Chama
+	// Contínua and Luz do Dia. They fill the master's light form and the light a
+	// character carries (MapService.SetCarriedLight takes a preset's key). Same
+	// access as ListTrapPresets.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, or the caller is not an
+	//     active member of it.
+	ListLightPresets(context.Context, *connect.Request[v1.ListLightPresetsRequest]) (*connect.Response[v1.ListLightPresetsResponse], error)
 }
 
 // NewContentServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -289,6 +365,20 @@ func NewContentServiceHandler(svc ContentServiceHandler, opts ...connect.Handler
 		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
+	contentServiceListTrapPresetsHandler := connect.NewUnaryHandler(
+		ContentServiceListTrapPresetsProcedure,
+		svc.ListTrapPresets,
+		connect.WithSchema(contentServiceMethods.ByName("ListTrapPresets")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
+	contentServiceListLightPresetsHandler := connect.NewUnaryHandler(
+		ContentServiceListLightPresetsProcedure,
+		svc.ListLightPresets,
+		connect.WithSchema(contentServiceMethods.ByName("ListLightPresets")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/meurpg.rules.v1.ContentService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ContentServiceListContentProcedure:
@@ -299,6 +389,10 @@ func NewContentServiceHandler(svc ContentServiceHandler, opts ...connect.Handler
 			contentServiceListCreaturesHandler.ServeHTTP(w, r)
 		case ContentServiceGetCreatureProcedure:
 			contentServiceGetCreatureHandler.ServeHTTP(w, r)
+		case ContentServiceListTrapPresetsProcedure:
+			contentServiceListTrapPresetsHandler.ServeHTTP(w, r)
+		case ContentServiceListLightPresetsProcedure:
+			contentServiceListLightPresetsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -322,4 +416,12 @@ func (UnimplementedContentServiceHandler) ListCreatures(context.Context, *connec
 
 func (UnimplementedContentServiceHandler) GetCreature(context.Context, *connect.Request[v1.GetCreatureRequest]) (*connect.Response[v1.GetCreatureResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.rules.v1.ContentService.GetCreature is not implemented"))
+}
+
+func (UnimplementedContentServiceHandler) ListTrapPresets(context.Context, *connect.Request[v1.ListTrapPresetsRequest]) (*connect.Response[v1.ListTrapPresetsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.rules.v1.ContentService.ListTrapPresets is not implemented"))
+}
+
+func (UnimplementedContentServiceHandler) ListLightPresets(context.Context, *connect.Request[v1.ListLightPresetsRequest]) (*connect.Response[v1.ListLightPresetsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.rules.v1.ContentService.ListLightPresets is not implemented"))
 }

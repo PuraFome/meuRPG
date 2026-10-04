@@ -1,0 +1,48 @@
+package play
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"github.com/jackc/pgx/v5"
+)
+
+// What the maps module asks of this one, beside the live session (onscreen.go)
+// and AppendEvent (xp.go). Plain SQL, not sqlc, so this file adds nothing to the
+// generated queries the combat slices share.
+
+// CombatRunsOnMap says, inside tx, whether a combat that is not ended (in setup or active)
+// runs on the map. The maps module asks it before it clears a map's painted
+// layers (a new grid or a new image, MR-034): the fight stands on them. It
+// implements maps.CombatMaps. The campaign is checked too, so a map of another
+// campaign never matches.
+func (s *Service) CombatRunsOnMap(ctx context.Context, tx pgx.Tx, campaignID, mapID string) (bool, error) {
+	var running bool
+	err := tx.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM encounters AS e
+			JOIN game_sessions AS g ON g.id = e.game_session_id
+			WHERE g.campaign_id = $1 AND e.map_id = $2 AND e.status <> 'ended'
+		)`, campaignID, mapID).Scan(&running)
+	if err != nil {
+		return false, fmt.Errorf("read whether a combat runs on the map: %w", err)
+	}
+	return running, nil
+}
+
+// OpenSessionID returns the ID of the campaign's open game session, or "" when
+// none is open. It locks the session's row inside tx, as AppendEvent does, so
+// what the caller writes next belongs to a session that stays open until the
+// transaction ends. The maps module remembers it on a treasure found (MR-041),
+// for the session's summary. It implements maps.LiveSession.
+func (s *Service) OpenSessionID(ctx context.Context, tx pgx.Tx, campaignID string) (string, error) {
+	session, err := s.queries.WithTx(tx).GetOpenGameSessionForUpdate(ctx, campaignID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("lock the open session: %w", err)
+	}
+	return session.ID, nil
+}

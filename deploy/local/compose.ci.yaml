@@ -1,0 +1,8 @@
+# CI only: the e2e job's CockroachDB keeps its store in memory. The data is
+# thrown away with the runner, and the tests' writes and the migrations at
+# start-up run faster than on the runner's disk. Used by
+# .github/workflows/e2e.yml on top of compose.yaml; never by `make up`.
+services:
+  cockroach:
+    command: ["start-single-node", "--insecure", "--store=type=mem,size=2GiB", "--cache=256MiB", "--max-sql-memory=1GiB"]
+    volumes: !reset []

@@ -37,7 +37,8 @@
 // identity too (maps.Sessions), finds the characters that may stand on a
 // map through characters (maps.CharacterDirectory), and reads the session's
 // current map and shown image and publishes map changes on the live stream
-// through play (maps.LiveSession); play locks the players' sheets and keeps the
+// through play (maps.LiveSession), and asks play whether a combat runs on a map
+// (maps.CombatMaps); play locks the players' sheets and keeps the
 // characters' vitals through characters (play.SheetLocker,
 // play.VitalsKeeper), lists a user's campaigns through campaigns
 // (play.CampaignDirectory), and reveals the map it makes current and reads
@@ -242,7 +243,8 @@ func run(logger *slog.Logger, cfg config.Config) error {
 			Blobs:      blobs,             // nil: images are off
 			Characters: charactersService, // the characters that may stand on a map (MR-012)
 			Live:       playService,       // the current map, and where map changes go (RN-10)
-			Rules:      rulesContent,      // which checks an RP scene may ask for (MR-015)
+			Rules:      rulesContent,      // which checks an RP scene may ask for (MR-015), which traps and lights exist (MR-035, MR-036)
+			Combats:    playService,       // whether a combat runs on a map: its grid and image cannot change then (MR-034)
 			Logger:     logger,
 		})
 		if err != nil {

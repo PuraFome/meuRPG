@@ -220,6 +220,17 @@ func TestAuthorizationMatrix(t *testing.T) {
 			return err
 		}, [6]connect.Code{allowed, allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 
+		// The trap and light presets are public rules too, for active members only.
+		{"ListTrapPresets", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.content.ListTrapPresets(ctx, connect.NewRequest(&rulesv1.ListTrapPresetsRequest{CampaignId: campaign}))
+			return err
+		}, [6]connect.Code{allowed, allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+
+		{"ListLightPresets", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.content.ListLightPresets(ctx, connect.NewRequest(&rulesv1.ListLightPresetsRequest{CampaignId: campaign}))
+			return err
+		}, [6]connect.Code{allowed, allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+
 		// A game session starts: the sheet locks, and the story permission
 		// the master gave above ends (RN-01).
 		{

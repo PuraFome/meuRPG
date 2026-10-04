@@ -17,7 +17,14 @@ import (
 // player sees:
 //
 //	a map      when it is revealed, or it is the open session's current map
-//	a point    when it is revealed, on a map they see
+//	a point    when it is revealed, on a map they see, with three kinds
+//	           the rule changes for (Etapa 9, pointVisible):
+//	             a LIGHT never, revealed or not: they see its light, not it;
+//	             a TRAP when it is revealed, or was triggered, or was
+//	             revealed to one of their characters (map_point_reveals), and
+//	             then without its DCs, preset or effect;
+//	             a TREASURE when it is revealed or found, and its description
+//	             and value only once found
 //	a token    when it is not hidden, on a map they see
 //	a target   (where a submap point leads) when they see the target map
 //
@@ -33,6 +40,17 @@ type viewer struct {
 	master     bool
 	userID     string
 	currentMap string // "" when there is no open session or no current map
+	// traps are the traps revealed to one of the player's characters, by point
+	// ID (nil for the master, who sees all of them).
+	traps map[string]knownTrap
+}
+
+// knownTrap is a trap one of a player's characters knows: the map it is on, and
+// whether everyone sees it anyway (revealed to all, or triggered), which the
+// map's point count already holds.
+type knownTrap struct {
+	mapID  string
+	public bool
 }
 
 func newViewer(m authz.Membership, currentMap string) viewer {
@@ -52,7 +70,29 @@ func (v viewer) seesMap(id string, revealedAt *time.Time) bool {
 
 // seesPoint says whether the viewer sees a point of a map they see.
 func (v viewer) seesPoint(p mapsdb.MapPoint) bool {
-	return v.master || p.RevealedAt != nil
+	if v.master {
+		return true
+	}
+	if _, known := v.traps[p.ID]; known && p.Kind == kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_TRAP] {
+		return true // revealed to one of their characters
+	}
+	return everyoneSees(p)
+}
+
+// everyoneSees says whether every player who sees the point's map sees the
+// point. It is also what decides whether a change to the point reaches the
+// players' streams.
+func everyoneSees(p mapsdb.MapPoint) bool {
+	switch p.Kind {
+	case kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_LIGHT]:
+		return false
+	case kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_TRAP]:
+		return p.RevealedAt != nil || p.TrapTriggeredAt != nil // a trap that fired stays public, even disarmed
+	case kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_TREASURE]:
+		return p.RevealedAt != nil || p.TreasureFoundAt != nil
+	default:
+		return p.RevealedAt != nil
+	}
 }
 
 // seesToken says whether the viewer sees a token of a map they see.
@@ -113,10 +153,24 @@ func (cm campaignMaps) mapToProto(r mapsdb.ListMapDetailsRow, v viewer) *mapsv1.
 		out.GridColumns = *r.GridColumns
 		out.GridRows = gridRows(*r.GridColumns, r.ImageWidth, r.ImageHeight)
 	}
+	out.FogEnabled, out.GroupVision, out.LayersRevision = r.FogEnabled, r.GroupVision, r.LayersRevision
 	if v.master {
+		out.LayersRevision += r.LightRevision // the light is the master's: its changes are theirs alone
 		// The gallery is the master's preparation: its names stay with them.
 		out.Image.Name = r.ImageName
 		out.PointCount = r.PointCount
+		out.BaseLight = baseLightFromDB[r.BaseLight]
+	} else {
+		// A trap one of their characters knows counts for them, unless everyone
+		// sees it (the revealed count has it already).
+		for _, k := range v.traps {
+			if k.mapID == r.ID && !k.public {
+				out.PointCount++
+			}
+		}
+		if r.FogEnabled {
+			out.LayersRevision = 0 // it would tell when the master paints (slice 9.4 sends their layers)
+		}
 	}
 	// The parents, in the order of the maps list (oldest first), each once.
 	// A player sees a parent only through a revealed point on a map they
@@ -138,8 +192,9 @@ func (cm campaignMaps) mapToProto(r mapsdb.ListMapDetailsRow, v viewer) *mapsv1.
 
 // pointToProto builds the MapPoint the viewer sees. The caller checked
 // that the viewer sees the point. Its target is left out when the viewer
-// does not see the target map.
-func (cm campaignMaps) pointToProto(p mapsdb.MapPoint, v viewer) *mapsv1.MapPoint {
+// does not see the target map. The trap's reveals and the treasure's finders are
+// attached apart (attachPointDetails).
+func (s *Service) pointToProto(cm campaignMaps, p mapsdb.MapPoint, v viewer) *mapsv1.MapPoint {
 	out := &mapsv1.MapPoint{
 		Id:          p.ID,
 		MapId:       p.MapID,
@@ -148,13 +203,30 @@ func (cm campaignMaps) pointToProto(p mapsdb.MapPoint, v viewer) *mapsv1.MapPoin
 		Description: p.Description,
 		XBp:         p.XBp,
 		YBp:         p.YBp,
-		Revealed:    p.RevealedAt != nil,
+		Revealed:    p.RevealedAt != nil || !v.master, // a player only receives what they see
 		ShowDc:      p.ShowDc,
 		CreatedAt:   timestamppb.New(p.CreatedAt),
 		UpdatedAt:   timestamppb.New(p.UpdatedAt),
 	}
 	if v.master {
 		out.Hooks = p.Hooks // the master's private text (RN-20): never a player's
+		out.Trap = s.trapOf(p)
+		out.Light = lightOf(p)
+	} else {
+		out.Trap = publicTrap(s.trapOf(p))
+	}
+	if p.Kind == kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_TREASURE] {
+		found := p.TreasureFoundAt != nil
+		if found {
+			out.TreasureFoundAt = timestamppb.New(*p.TreasureFoundAt)
+		}
+		if p.TreasureValuePo != nil && (v.master || found) {
+			out.TreasureValuePo = *p.TreasureValuePo
+		}
+		if !v.master && !found {
+			out.Description = "" // what is inside is read once the treasure is found
+		}
+		out.TreasureConverted = v.master && p.TreasureConvertedAwardID != nil
 	}
 	if p.TargetMapID != nil {
 		if target, ok := cm.byID[*p.TargetMapID]; ok && v.seesMap(target.ID, target.RevealedAt) {
@@ -166,7 +238,7 @@ func (cm campaignMaps) pointToProto(p mapsdb.MapPoint, v viewer) *mapsv1.MapPoin
 
 // tokenToProto builds the MapToken the viewer sees, with its character.
 func tokenToProto(t mapsdb.MapToken, c *charactersv1.CharacterSummary, v viewer) *mapsv1.MapToken {
-	return &mapsv1.MapToken{
+	out := &mapsv1.MapToken{
 		MapId:       t.MapID,
 		CharacterId: t.CharacterID,
 		Name:        c.GetName(),
@@ -177,6 +249,12 @@ func tokenToProto(t mapsdb.MapToken, c *charactersv1.CharacterSummary, v viewer)
 		Hidden:      t.Hidden,
 		UpdatedAt:   timestamppb.New(t.UpdatedAt),
 	}
+	if t.CarriedLight != nil && (v.master || out.Mine) {
+		// What the other players see of a carried light is its light, from the
+		// fog's read slice on; the key is for the master and the owner.
+		out.CarriedLight = *t.CarriedLight
+	}
+	return out
 }
 
 // The live events (play.proto, WatchGameSessionResponse). Each one goes to

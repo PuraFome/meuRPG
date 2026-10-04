@@ -33,6 +33,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1/mapsv1connect"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/notes/v1/notesv1connect"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1/playv1connect"
+	"github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1/rulesv1connect"
 	"github.com/PuraFome/meuRPG/backend/internal/campaigns"
 	"github.com/PuraFome/meuRPG/backend/internal/characters"
 	"github.com/PuraFome/meuRPG/backend/internal/identity"
@@ -192,7 +193,7 @@ func newHarness(t *testing.T, configure ...func(*Config)) *harness {
 	if err != nil {
 		t.Fatalf("play.New() error = %v", err)
 	}
-	cfg := Config{Pool: pool, Blobs: blobs, Characters: chars, Live: live, Rules: content, Logger: logger, Now: clock.Now}
+	cfg := Config{Pool: pool, Blobs: blobs, Characters: chars, Live: live, Combats: live, Rules: content, Logger: logger, Now: clock.Now}
 	for _, c := range configure {
 		c(&cfg)
 	}
@@ -225,6 +226,8 @@ type user struct {
 	campaigns  campaignsv1connect.CampaignServiceClient
 	characters charactersv1connect.CharacterServiceClient
 	play       playv1connect.PlayServiceClient
+	combat     playv1connect.CombatServiceClient
+	content    rulesv1connect.ContentServiceClient
 	gallery    mapsv1connect.GalleryServiceClient
 	maps       mapsv1connect.MapServiceClient
 	notes      notesv1connect.NotesServiceClient
@@ -255,6 +258,8 @@ func (h *harness) clients(userID string) *user {
 		campaigns:  campaignsv1connect.NewCampaignServiceClient(c, url),
 		characters: charactersv1connect.NewCharacterServiceClient(c, url),
 		play:       playv1connect.NewPlayServiceClient(c, url),
+		combat:     playv1connect.NewCombatServiceClient(c, url),
+		content:    rulesv1connect.NewContentServiceClient(c, url),
 		gallery:    mapsv1connect.NewGalleryServiceClient(c, url),
 		maps:       mapsv1connect.NewMapServiceClient(c, url),
 		notes:      notesv1connect.NewNotesServiceClient(c, url),
