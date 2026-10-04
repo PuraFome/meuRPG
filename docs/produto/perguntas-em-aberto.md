@@ -78,7 +78,7 @@ O Samuel respondeu as perguntas 43 a 65, e o Vinicius decidiu onde cada mudança
 - **Pergunta 45: quem recebe o XP.** Por inimigos, o mestre decide no fim do combate como dividir (a lista de quem recebe). Já implementado. Por marcos, o mestre define antes os momentos em que dá um nível completo (os marcos planejados). Decidido e feito na Etapa 8 (fatia 8.10, PR #88). Ver [RN-09](regras.md) e [MR-016](historias.md#mr-016-dar-xp).
 - **Pergunta 46: a divisão que não fecha.** Arredonda para baixo. Já implementado. Ver [RN-09](regras.md).
 - **Pergunta 47: XP por ouro.** O ouro vem de tesouros e baús postos antes no mapa; quando o grupo volta à cidade, o que foi achado vira XP, 1 por PO. Digitar as PO continua até lá. Decidido, ainda a fazer, na Etapa 9. Ver [RN-09](regras.md) e [MR-041](historias.md#mr-041-tesouros-e-xp-por-ouro).
-- **Pergunta 48: subir de nível antes da tela completa.** Enquanto o personagem "Pode subir de nível" (pelo marco ou pelo XP), o jogador edita a ficha, só para acrescentar o que o próximo nível dá; o resto continua travado. Decidido, antes do MVP (Etapa 8); o servidor (fatia 8.13) e a tela (fatia 8.15, sem veto do mestre enquanto a pergunta 66 está em aberto) estão feitos. A tela completa de subir de nível fica depois do MVP. Ver [RN-01](regras.md), [RN-12](regras.md), [MR-040](historias.md#mr-040-subir-de-nível-pela-ficha) e [MR-017](historias.md#mr-017-subir-de-nível).
+- **Pergunta 48: subir de nível antes da tela completa.** Enquanto o personagem "Pode subir de nível" (pelo marco ou pelo XP), o jogador edita a ficha, só para acrescentar o que o próximo nível dá; o resto continua travado. Decidido, antes do MVP (Etapa 8); o servidor (fatia 8.13) e a tela (fatia 8.15, sem veto do mestre, como a pergunta 66 decidiu) estão feitos. A tela completa de subir de nível fica depois do MVP. Ver [RN-01](regras.md), [RN-12](regras.md), [MR-040](historias.md#mr-040-subir-de-nível-pela-ficha) e [MR-017](historias.md#mr-017-subir-de-nível).
 - **Pergunta 49: o aviso de subir de nível.** O mestre e o jogador veem. Já implementado. Ver [RN-12](regras.md).
 - **Pergunta 50: quem vê o histórico de XP.** Todos da campanha. Já implementado. Ver [RN-09](regras.md) e [MR-016](historias.md#mr-016-dar-xp).
 - **Pergunta 51: o que as cenas de RP testam.** Testes de perícia, de atributo e salvaguardas; magias e habilidades depois do MVP. Já implementado. Ver [MR-015](historias.md#mr-015-ações-da-cena-de-rp).
@@ -97,11 +97,15 @@ O Samuel respondeu as perguntas 43 a 65, e o Vinicius decidiu onde cada mudança
 - **Pergunta 64: os destaques.** Os do combate, como estão (já implementado, no servidor e na tela, fatia 8.6), mais "mais tesouro encontrado" (junto com a MR-041, Etapa 9) e "mais testes passados fora do combate" (testes de cena com CD, só de cenas que mostravam a CD), este já feito no servidor (`GetSessionSummary`, fatia 8.9) e na tela (fatia 8.14): o resumo aparece quando o mestre encerra a sessão. Ver [MR-032](historias.md#mr-032-destaques-do-combate).
 - **Pergunta 65: imprimir o mapa.** O mestre escolhe o tamanho do quadrado e o do papel (A4, A3, A2, Carta...). Decidido e feito na Etapa 8 (fatia 8.7). Ver [MR-033](historias.md#mr-033-imprimir-o-mapa-com-a-grade).
 
+## Respondida em 04/10/2026
+
+O Vinicius respondeu pelo Samuel, como propusemos.
+
+- **Pergunta 66: o mestre veta uma subida de nível pela ficha?** Não. O mestre é avisado ("Subiu para o nível N") e vê "O que mudou" na lista de personagens, e corrige o que quiser na ficha, como sempre (RN-02). Um veto pediria um estado novo, "esperando o mestre", que não existe. Decidido e já feito assim na Etapa 8 (fatias 8.13 e 8.15). Ver [MR-040](historias.md#mr-040-subir-de-nível-pela-ficha).
+
 ## Em aberto
 
-As perguntas novas ficam no documento de acompanhamento. Uma está em aberto, com o padrão que propusemos até o Samuel responder:
-
-- **Pergunta 66: o mestre veta uma subida de nível pela ficha?** O padrão proposto é que não: o mestre é avisado e vê o que mudou na lista de personagens, e corrige o que quiser na ficha (RN-02). Um veto pediria um estado novo, "esperando o mestre". Até a resposta, a tela (fatia 8.15) segue o padrão: sem veto. Ver [MR-040](historias.md#mr-040-subir-de-nível-pela-ficha).
+Nenhuma pergunta está em aberto agora. As novas ficam no documento de acompanhamento.
 
 ## Ver também
 
