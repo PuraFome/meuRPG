@@ -1073,7 +1073,7 @@ func TestSessionEventKindsMatchTheCheck(t *testing.T) {
 		eventActionTaken, eventHitPointsAdjusted, eventActionUndone,
 		eventSpellCast, eventReactionUsed, eventReactionDeclined, eventDeathSaveRolled, eventDeathConfirmed, eventConditionsSet,
 		eventXPAwarded, eventXPAwardUndone, eventMilestoneMarked, eventSceneOpened, eventSceneClosed, eventSceneCheckRolled,
-		eventClueRevealed, eventStageChanged, eventTurnPartEnded,
+		eventClueRevealed, eventStageChanged,
 		eventSceneAttemptGranted, eventTurnPartEnded,
 	}
 	var clause string
