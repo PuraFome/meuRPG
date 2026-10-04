@@ -178,7 +178,7 @@ jobs:
   go-db:
     name: go (integration tests against CockroachDB)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: backend
@@ -221,10 +221,11 @@ jobs:
         # With MEURPG_TEST_DATABASE_URL set, the integration tests
         # (migrations, stores, the 40001 retry, row TTL) run instead of
         # being skipped. Each test creates and drops its own database.
-        # -timeout: each package gets 18 minutes, under the job's 20. Go's
+        # -timeout: each package gets 25 minutes, under the job's 30. Go's
         # default is 10 minutes per package, and the packages share one
         # CockroachDB, so the slowest (play, maps) took 7 to 10 minutes and
-        # one more package's tests could push them over.
+        # one more package's tests could push them over; the whole job took
+        # 18 minutes on 04/10/2026, so the job now has room for Etapa 9.
         env:
           MEURPG_TEST_DATABASE_URL: postgresql://root@localhost:26257/defaultdb?sslmode=disable
-        run: go test -race -timeout 18m ./...
+        run: go test -race -timeout 25m ./...
