@@ -749,7 +749,7 @@ Fatia 8.7 da Etapa 8, só no navegador (a grade e a imagem já vinham do mapa; n
 
 #### Dúvidas
 - Decidida pelo Samuel em 03/10/2026 (pergunta 48), com o lugar no roadmap decidido pelo Vinicius no mesmo dia: antes do MVP, numa fatia própria depois das telas da Etapa 8. O servidor cobre os PV, o aumento de atributo, as magias (truques, conhecidas ou do grimório, e as preparadas), a subclasse e as opções das features do nível; o que fica de fora (multiclasse, subclasse própria, as invocações do Bruxo depois do nível 2) o mestre faz no editor. A tela está feita (fatia 8.15). A tela completa de subir de nível continua na [MR-017](#mr-017-subir-de-nível), depois do MVP.
-- Pergunta 66, em aberto: o mestre veta uma subida? O padrão construído é que não: ele é avisado e vê o que mudou.
+- O mestre não veta uma subida: é avisado, vê o que mudou e corrige a ficha se quiser (RN-02). Decidido pelo Vinicius em 04/10/2026 (pergunta 66), como a tela já fazia.
 
 ### MR-041: Tesouros e XP por ouro
 
