@@ -191,14 +191,34 @@ export function afterTurn(e: Encounter): { readonly name: string; readonly mine:
     if (c.defeated || inGroup.has(c.id)) {
       continue;
     }
-    const npcGroup = npcGroupOf(e, c.id);
-    const named = npcGroup ? npcPlural(npcGroup.map((m) => m.label)) : null;
-    if (named) {
-      return { name: named, mine: false, plural: true };
+    const npcGroup = npcGroupOf(e, c.id) ?? masterGroupFrom(list, list.indexOf(c));
+    if (npcGroup) {
+      const labels = npcGroup.map((m) => m.label);
+      return { name: npcPlural(labels) ?? listNames(labels), mine: false, plural: true };
     }
     return { name: c.label, mine: c.mine, plural: false };
   }
   return null;
+}
+
+/**
+ * The master's copy has no `npc_only_groups`: the master reads the groups
+ * from the totals, as the order list does. The run of combatants from `at`
+ * on with the same total, when it holds an NPC (only the master has an NPC's
+ * total, so a player never gets one here), without the defeated; `null` for a
+ * turn of one.
+ */
+function masterGroupFrom(list: readonly Combatant[], at: number): readonly Combatant[] | null {
+  const first = list[at];
+  if (first.initiative === undefined) {
+    return null;
+  }
+  const run: Combatant[] = [];
+  for (let i = at; i < list.length && list[i].initiative === first.initiative; i++) {
+    run.push(list[i]);
+  }
+  const living = run.filter((c) => !c.defeated);
+  return living.length > 1 && living.some((c) => c.kind !== CombatantKind.PLAYER) ? living : null;
 }
 
 /** "Falta a Brisa. O turno passa quando ela encerrar a parte dela.", or the

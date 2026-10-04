@@ -97,6 +97,15 @@ describe('joint turns (MR-013)', () => {
     expect(playsBefore(encounter({ combatants: [cap, { ...pens, mine: true }] }))).toBe('do Capitão Goblin');
   });
 
+  it('names the next group from the totals on the master copy, which has no npc_only_groups', () => {
+    const e = encounter({ combatants: [pens, g1, g2, brisa], turnGroupIds: ['p'], currentCombatantId: 'p' });
+    expect(afterTurn(e)).toMatchObject({ name: 'os Goblins', plural: true, mine: false });
+    const mixed = encounter({ combatants: [pens, cap, { ...g1, initiative: 16 }, brisa], turnGroupIds: ['p'], currentCombatantId: 'p' });
+    expect(afterTurn(mixed)?.name).toBe('Capitão Goblin e Goblin 1');
+    const oneLeft = encounter({ combatants: [pens, g1, { ...g2, defeated: true }, brisa], turnGroupIds: ['p'], currentCombatantId: 'p' });
+    expect(afterTurn(oneLeft)).toMatchObject({ name: 'Goblin 1', plural: false });
+  });
+
   it('writes the lines of the footer and the question', () => {
     expect(passNote(['Brisa'], false)).toBe('O turno passa quando você e a Brisa encerrarem.');
     expect(passNote(['Brisa'], true)).toBe('O turno passa quando você, a Brisa e o mestre encerrarem.');
