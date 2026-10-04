@@ -1,5 +1,6 @@
 import { signal } from '@angular/core';
 
+import type { SceneClue } from '../../../gen/meurpg/maps/v1/maps_pb';
 import type { OpenSceneInfo } from '../../../gen/meurpg/play/v1/scene_pb';
 import { rollAnnouncement } from './scene-view';
 
@@ -60,6 +61,17 @@ export class SceneState {
       this.say(prev, next);
     }
     this.loaded = true;
+  }
+
+  /** A clue the master just revealed here: the open scene carries it with the
+   * players who have it now (the stream's `scene_changed` reads the same). */
+  clueRevealed(clue: SceneClue): void {
+    const scene = this.scene();
+    if (!scene) {
+      return;
+    }
+    this.generation++;
+    this.scene.set({ ...scene, clues: scene.clues.map((c) => (c.id === clue.id ? clue : c)) });
   }
 
   /** The master opened (or swapped) the scene here: the title takes focus. */

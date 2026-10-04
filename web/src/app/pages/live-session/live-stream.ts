@@ -43,6 +43,8 @@ export interface LiveStreamHandlers {
   onXpChanged?(): void;
   /** `scene_changed` and `scene_check_rolled`: read the open scene again. */
   onSceneChanged?(): void;
+  /** `notes_changed`: the master revealed a clue to this player, read the notes again. */
+  onNotesChanged?(): void;
   /** `session_ended`, or `NO_OPEN_SESSION` when (re)connecting. */
   onEnded(): void;
   /** `not_found` or `unauthenticated`: no reconnecting. */
@@ -206,6 +208,9 @@ export class LiveStream {
           case 'sceneChanged':
           case 'sceneCheckRolled':
             this.options.handlers.onSceneChanged?.();
+            break;
+          case 'notesChanged':
+            this.options.handlers.onNotesChanged?.();
             break;
           case 'ended':
             this.stop();

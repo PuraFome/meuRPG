@@ -31,3 +31,9 @@ export function formatInt(n: number): string {
 export function formatXp(xp: number): string {
   return `${formatInt(xp)} XP`;
 }
+
+/** Glues a one- or two-letter word to the next one ("A carroça tombada" never
+ * breaks after "A"), with a no-break space, for titles that name something. */
+export function glueShort(text: string): string {
+  return text.replace(/(^|\s)(\p{L}{1,2}) (?=\S)/gu, '$1$2\u00a0');
+}

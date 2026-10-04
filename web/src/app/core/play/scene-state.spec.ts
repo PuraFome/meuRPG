@@ -1,4 +1,7 @@
 import type { OpenSceneInfo } from '../../../gen/meurpg/play/v1/scene_pb';
+import { create } from '@bufbuild/protobuf';
+
+import { SceneClueSchema } from '../../../gen/meurpg/maps/v1/maps_pb';
 import { SceneState } from './scene-state';
 import { masterScene, playerScene, sceneRoll } from './scene-testing';
 
@@ -78,5 +81,23 @@ describe('SceneState', () => {
     expect(state.scene()).toBeNull();
     state.clear();
     expect(state.focusNext()).toBeNull();
+  });
+
+  it('puts a clue the master just revealed into the open scene, and drops a read that was in flight', async () => {
+    const before = create(SceneClueSchema, { id: 'k1', text: 'Uma pista' });
+    const after = create(SceneClueSchema, { id: 'k1', text: 'Uma pista', revealedTo: [{ characterId: 'b' }] });
+    let release!: (scene: OpenSceneInfo) => void;
+    let calls = 0;
+    const state = new SceneState(
+      () => (calls++ === 0 ? Promise.resolve(masterScene([], { clues: [before] })) : new Promise((r) => (release = r))),
+      () => true,
+    );
+    await state.refresh();
+    const stale = state.refresh();
+    state.clueRevealed(after);
+    expect(state.scene()?.clues[0].revealedTo).toHaveLength(1);
+    release(masterScene([], { clues: [before] }));
+    await stale;
+    expect(state.scene()?.clues[0].revealedTo).toHaveLength(1);
   });
 });

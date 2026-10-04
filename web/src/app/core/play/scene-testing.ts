@@ -46,7 +46,10 @@ export function sceneRoll(
 }
 
 /** "A carroça tombada" as the master sees it: five actions with their DCs. */
-export function masterScene(rolls: SceneRoll[] = []): OpenSceneInfo {
+export function masterScene(
+  rolls: SceneRoll[] = [],
+  extra: MessageInitShape<typeof OpenSceneInfoSchema> = {},
+): OpenSceneInfo {
   return create(OpenSceneInfoSchema, {
     pointId: 'p1',
     name: 'A carroça tombada',
@@ -60,6 +63,7 @@ export function masterScene(rolls: SceneRoll[] = []): OpenSceneInfo {
     ],
     rolls,
     openedAt: timestampFromDate(new Date(2026, 9, 3, 21, 10)),
+    ...extra,
   });
 }
 

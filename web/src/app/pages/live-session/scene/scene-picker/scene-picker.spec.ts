@@ -65,14 +65,21 @@ describe('ScenePicker', () => {
     expect(el.textContent).toContain('Estrada do Vale');
   });
 
-  it('disables a point with no actions and says why, once', () => {
+  it('offers a point with no actions like any other, with no reason to refuse it (question 63)', () => {
     const { el } = setup();
     const third = el.querySelectorAll<HTMLInputElement>('input[type="radio"]')[2];
-    expect(third.disabled).toBe(true);
-    expect(el.textContent?.match(/Sem ações/g)).toHaveLength(1);
-    expect(el.textContent).toContain('Adicione no editor do mapa');
-    // The first enabled one is marked.
+    expect(third.disabled).toBe(false);
+    expect(el.textContent).not.toContain('Sem ações');
+    expect(el.textContent).not.toContain('Adicione no editor do mapa');
+    // The first one is marked.
     expect(el.querySelectorAll<HTMLInputElement>('input[type="radio"]')[0].checked).toBe(true);
+  });
+
+  it('counts the clues of a scene in its line', () => {
+    const { el } = setup([
+      mapPoint('p9', 'Vau do riacho', { revealed: true, clues: [{ id: 'c1' } as never, { id: 'c2' } as never] }),
+    ]);
+    expect(el.querySelector('.pk__row')?.textContent?.replace(/\s+/g, ' ')).toContain('Revelado no mapa · 2 pistas');
   });
 
   it('opens a hidden point, and says it stays hidden on the map', async () => {
@@ -88,10 +95,10 @@ describe('ScenePicker', () => {
     expect(state.focusNext()).toBe('title');
   });
 
-  it('keeps "Abrir cena" off when no point can open, and says the map has none to open', () => {
-    const { el, button } = setup([mapPoint('p3', 'Vau do riacho', { revealed: true })]);
+  it('keeps "Abrir cena" off only when the map has no scene at all', () => {
+    const { el, button } = setup([mapPoint('b2', 'Emboscada', { kind: MapPointKind.BATTLE })]);
     expect(button('Abrir cena').disabled || button('Abrir cena').getAttribute('aria-disabled') === 'true').toBe(true);
-    expect(el.querySelectorAll('.pk__why')).toHaveLength(1);
+    expect(el.textContent).toContain('Este mapa não tem cena de RP');
   });
 
   it('marks the scene that is open when swapping', () => {

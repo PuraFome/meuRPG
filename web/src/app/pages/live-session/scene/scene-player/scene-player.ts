@@ -17,7 +17,7 @@ import type { SceneActionView } from '../../../../../gen/meurpg/play/v1/scene_pb
 import { actionSubtitle, actionTitle } from '../../../../core/maps/scene-actions';
 import type { SceneState } from '../../../../core/play/scene-state';
 import { ownRollOf, sceneRollFormula, signedBonus } from '../../../../core/play/scene-view';
-import { tight } from '../../../../core/format/text';
+import { glueShort, tight } from '../../../../core/format/text';
 import { openSceneRollSheet } from '../scene-roll-sheet/scene-roll-sheet';
 
 /**
@@ -41,6 +41,7 @@ import { openSceneRollSheet } from '../scene-roll-sheet/scene-roll-sheet';
   styleUrl: './scene-player.scss',
 })
 export class ScenePlayer {
+  protected readonly glue = glueShort;
   private readonly dialog = inject(MatDialog);
   private readonly bottomSheet = inject(MatBottomSheet);
   private readonly injector = inject(Injector);

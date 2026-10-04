@@ -186,6 +186,9 @@ export class LiveSessionSourceLive implements LiveSessionSource {
         case 'sceneCheckRolled':
           yield { kind: 'sceneCheckRolled' };
           break;
+        case 'notesChanged':
+          yield { kind: 'notesChanged' };
+          break;
         default:
           // A newer server's event this app doesn't know yet: still proof
           // that the stream is alive.

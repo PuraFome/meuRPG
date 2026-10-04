@@ -39,10 +39,6 @@
           <div class="row__scene">
             @if (openScenePointId() === p.id) {
               <span class="row__open"><mat-icon aria-hidden="true">cast</mat-icon>Cena aberta agora</span>
-            } @else if (p.sceneActions.length === 0) {
-              <span class="row__none">
-                <mat-icon aria-hidden="true">block</mat-icon>Sem ações. Adicione no editor do mapa.
-              </span>
             } @else {
               <button
                 matButton="outlined"

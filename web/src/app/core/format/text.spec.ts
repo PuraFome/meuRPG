@@ -1,4 +1,4 @@
-import { formatInt, formatXp, joinDots, tight } from './text';
+import { formatInt, formatXp, joinDots, tight, glueShort } from './text';
 
 describe('tight', () => {
   it('keeps a number, its unit and the word before it together', () => {
@@ -33,5 +33,14 @@ describe('formatInt and formatXp', () => {
     expect(formatInt(1000000)).toBe('1.000.000');
     expect(formatXp(2700)).toBe('2.700\u00a0XP');
     expect(formatXp(0)).toBe('0\u00a0XP');
+  });
+});
+
+describe('glueShort', () => {
+  it('glues a one- or two-letter word to the next, so a name never breaks after "A" or "de"', () => {
+    expect(glueShort('A carroça tombada')).toBe('A\u00a0carroça tombada');
+    expect(glueShort('Vau de riacho')).toBe('Vau de\u00a0riacho');
+    expect(glueShort('Posto da guarda')).toBe('Posto da\u00a0guarda');
+    expect(glueShort('Taverna')).toBe('Taverna');
   });
 });

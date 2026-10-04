@@ -1,0 +1,151 @@
+<section class="cl" aria-labelledby="cl-title">
+  <div class="cl__head">
+    <h3 class="cl__title" id="cl-title">Pistas</h3>
+    <span class="cl__count">{{ count() }}</span>
+  </div>
+  <p class="cl__privacy">
+    <mat-icon aria-hidden="true">visibility</mat-icon>
+    <span>Os jogadores só recebem uma pista quando <b>você a revela</b>, na sessão. Quem não recebeu não a vê.</span>
+  </p>
+
+  @if (clues().length === 0) {
+    @if (!adding()) {
+      <p class="cl__empty">Nenhuma pista ainda. Escreva o que os jogadores podem descobrir aqui.</p>
+    }
+  } @else {
+    <ul class="cl__list">
+      @for (c of shown(); track c.id; let i = $index; let first = $first; let last = $last) {
+        @if (confirmingId() === c.id) {
+          <li class="cl__row cl__row--ask">
+            <div class="cl__ask" role="alertdialog" [attr.aria-labelledby]="'cl-ask-' + c.id" aria-describedby="cl-ask-hint">
+              <p class="cl__ask-title" [id]="'cl-ask-' + c.id">Remover a pista {{ i + 1 }}?</p>
+              <p class="cl__ask-hint" id="cl-ask-hint">Quem já recebeu continua com ela.</p>
+              <div class="cl__ask-actions">
+                <button matButton="outlined" type="button" [attr.data-confirm]="c.id" data-control="back" (click)="cancelRemove(c)">
+                  Voltar
+                </button>
+                <button
+                  matButton="outlined"
+                  type="button"
+                  class="cl__danger"
+                  [attr.data-confirm]="c.id"
+                  data-control="remove"
+                  [attr.aria-disabled]="busy()"
+                  (click)="remove(c)"
+                >
+                  Remover pista
+                </button>
+              </div>
+            </div>
+          </li>
+        } @else if (editingId() === c.id) {
+          <li class="cl__row cl__row--form">
+            <app-clue-form
+              [clue]="editing()"
+              [busy]="busy()"
+              [error]="formError()"
+              (submitted)="save(c, $event)"
+              (cancelled)="stopEdit()"
+            />
+          </li>
+        } @else {
+          <li class="cl__row" [attr.data-row]="c.id">
+            <span class="cl__n" aria-hidden="true">{{ i + 1 }}</span>
+            <button
+              type="button"
+              class="cl__text"
+              [attr.data-clue]="c.id"
+              data-control="text"
+              (click)="startEdit(c)"
+            >
+              <span class="mr-visually-hidden">Editar a pista {{ i + 1 }}: </span>{{ c.text }}
+            </button>
+            <div class="cl__foot">
+              @let a = audience(c);
+              <span class="cl__who" [class.cl__who--all]="a.kind === 'all'" [class.cl__who--some]="a.kind === 'some'" [class.cl__who--none]="a.kind === 'none'">
+                <mat-icon aria-hidden="true">{{ icon(a.kind) }}</mat-icon>{{ a.label }}
+              </span>
+              <span class="cl__controls">
+                <button
+                  type="button"
+                  class="cl__ib"
+                  [class.cl__ib--off]="first"
+                  [attr.aria-label]="'Subir a pista ' + (i + 1)"
+                  [attr.aria-disabled]="first || busy()"
+                  [attr.data-clue]="c.id"
+                  data-control="up"
+                  (click)="move(c, 'up')"
+                >
+                  <mat-icon aria-hidden="true">arrow_upward</mat-icon>
+                </button>
+                <button
+                  type="button"
+                  class="cl__ib"
+                  [class.cl__ib--off]="last"
+                  [attr.aria-label]="'Descer a pista ' + (i + 1)"
+                  [attr.aria-disabled]="last || busy()"
+                  [attr.data-clue]="c.id"
+                  data-control="down"
+                  (click)="move(c, 'down')"
+                >
+                  <mat-icon aria-hidden="true">arrow_downward</mat-icon>
+                </button>
+                <button
+                  type="button"
+                  class="cl__ib cl__ib--danger"
+                  [attr.aria-label]="'Remover a pista ' + (i + 1)"
+                  [attr.aria-disabled]="busy()"
+                  [attr.data-clue]="c.id"
+                  data-control="remove"
+                  (click)="askRemove(c)"
+                >
+                  <mat-icon aria-hidden="true">delete</mat-icon>
+                </button>
+              </span>
+            </div>
+          </li>
+        }
+      }
+    </ul>
+    @if (hiddenCount() > 0 || expanded()) {
+      <p class="cl__more">
+        @if (hiddenCount() > 0) {
+          {{ more() }}
+        }
+        <button matButton type="button" class="cl__fold" [attr.aria-expanded]="expanded()" (click)="expanded.set(!expanded())">
+          {{ expanded() ? 'Mostrar menos' : 'Mostrar todas' }}
+        </button>
+      </p>
+    }
+  }
+
+  @if (error(); as message) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ message }}</p>
+    </div>
+  }
+
+  @if (adding()) {
+    <app-clue-form [busy]="busy()" [error]="formError()" (submitted)="add($event)" (cancelled)="closeForm()" />
+  } @else if (full()) {
+    <p class="cl__limit" id="cl-limit">Limite de {{ limit }} pistas. Remova uma para adicionar outra.</p>
+    <button
+      #addButton
+      matButton="outlined"
+      type="button"
+      class="cl__add cl__add--off"
+      disabled
+      disabledInteractive
+      aria-describedby="cl-limit"
+    >
+      <mat-icon aria-hidden="true">block</mat-icon>Adicionar pista
+    </button>
+  } @else {
+    <button #addButton matButton="outlined" type="button" class="cl__add" (click)="openForm()">
+      <mat-icon aria-hidden="true">add</mat-icon>Adicionar pista
+    </button>
+  }
+
+  <p class="mr-visually-hidden" role="status" aria-live="polite">{{ status() }}</p>
+</section>

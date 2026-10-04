@@ -11,13 +11,15 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 
+import { CharacterKind } from '../../../../gen/meurpg/characters/v1/characters_pb';
 import { MapPointKind } from '../../../../gen/meurpg/maps/v1/maps_pb';
-import type { MapPoint, SceneAction } from '../../../../gen/meurpg/maps/v1/maps_pb';
+import type { MapPoint, SceneAction, SceneClue } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { mapErrorMessage } from '../../../core/maps/map-errors';
 import { MapState } from '../../../core/maps/map-state';
 import { MoveSaves } from '../../../core/maps/move-saves';
 import { RosterClient, RosterEntry } from '../../../core/maps/roster-client';
+import type { CluePlayer } from '../../../core/maps/scene-clues';
 import { MapLegend } from '../../../shared/map-view/map-legend/map-legend';
 import { scaleLabel } from '../../../shared/map-view/map-geometry';
 import { pointKindIcon, pointKindLabel } from '../../../shared/map-view/map-labels';
@@ -106,6 +108,12 @@ export class MapEditor {
     const s = this.selection();
     return this.state().points().find((p) => p.id === s?.id)?.name ?? '';
   });
+  /** The player characters, to say who has each clue ("Todos", "Só Brisa"). */
+  protected readonly players = computed<readonly CluePlayer[]>(() =>
+    this.everyone()
+      .filter((c) => c.kind === CharacterKind.PLAYER && c.playerUserId !== '')
+      .map((c) => ({ id: c.id, name: c.name, playerName: c.playerName ?? '' })),
+  );
   protected readonly available = computed(() => {
     const onMap = new Set(this.state().tokens().map((t) => t.characterId));
     return this.everyone().filter((c) => !onMap.has(c.id));
@@ -310,6 +318,12 @@ export class MapEditor {
   protected setSceneActions(point: MapPoint, actions: readonly SceneAction[]): void {
     const now = this.state().points().find((p) => p.id === point.id) ?? point;
     this.state().upsertPoint({ ...now, sceneActions: [...actions] });
+  }
+
+  /** The clues saved on their own: the point carries the new list. */
+  protected setClues(point: MapPoint, clues: readonly SceneClue[]): void {
+    const now = this.state().points().find((p) => p.id === point.id) ?? point;
+    this.state().upsertPoint({ ...now, clues: [...clues] });
   }
 
   protected async remove(): Promise<void> {

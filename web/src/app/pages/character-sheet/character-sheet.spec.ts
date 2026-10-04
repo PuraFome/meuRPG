@@ -7,6 +7,7 @@ import { of } from 'rxjs';
 import { ABILITY_KEYS } from '../../core/characters/characters.types';
 import { OpenSessions, type OpenSessionVm } from '../../shell/live-notice/open-sessions';
 import { CharacterSheetPage } from './character-sheet';
+import { NotesClient } from '../../core/notes/notes-client';
 import { XpWatcher } from './xp-watcher';
 import {
   BasicSheetVm,
@@ -204,8 +205,14 @@ function vm(overrides: Partial<CharacterSheetVm> = {}): CharacterSheetVm {
 /** What the XP block listens with: no open session, so no stream. */
 const openSessions = signal<readonly OpenSessionVm[]>([]);
 const xpWatcher = { follow: vi.fn<(campaignId: string | null, onChange: () => void) => void>() };
+/** The player's notes panel reads this; nothing here talks to a server. */
+const notesApi = {
+  list: vi.fn(() => Promise.resolve({ notes: [], noteCount: 0, maxNotes: 300 })),
+  scenes: vi.fn(() => Promise.resolve([])),
+};
 function xpProviders() {
   return [
+    { provide: NotesClient, useValue: notesApi },
     { provide: OpenSessions, useValue: { sessions: openSessions } },
     { provide: XpWatcher, useValue: xpWatcher },
   ];
@@ -412,9 +419,27 @@ describe('CharacterSheetPage', () => {
       'Combate',
       'Magias de mago',
       'Equipamento',
+      // The player's own notes, the first block of the fourth column (E8-07).
+      'Anotações',
       'Características e traços',
       'História',
     ]);
+  });
+
+  it("gives the player the 'Anotações' panel and never the master, even on the player's sheet (RN-20)", async () => {
+    configure();
+    fake.getCharacterSheetFn = () => Promise.resolve(vm({ isMaster: false }));
+    const asPlayer = await render();
+    expect(asPlayer.querySelector('app-notes-panel')).not.toBeNull();
+    expect(notesApi.list).toHaveBeenCalledWith('camp-1');
+    TestBed.resetTestingModule();
+    notesApi.list.mockClear();
+    configure();
+    fake.getCharacterSheetFn = () => Promise.resolve(vm({ isMaster: true, canAccessMasterNotes: true }));
+    const asMaster = await render();
+    expect(asMaster.querySelector('app-notes-panel')).toBeNull();
+    expect(Array.from(asMaster.querySelectorAll('h2')).map((h) => h.textContent?.trim())).not.toContain('Anotações');
+    expect(notesApi.list).not.toHaveBeenCalled();
   });
 
   it('shows the six saving throws in their own "Salvaguardas" section, proficiency marked like skills', async () => {

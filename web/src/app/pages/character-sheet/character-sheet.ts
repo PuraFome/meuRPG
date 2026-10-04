@@ -30,6 +30,7 @@ import {
 import { CombatColumn } from './combat-column/combat-column';
 import { FeaturesPanel } from './features-panel/features-panel';
 import { MasterNotes } from './master-notes/master-notes';
+import { NotesPanel } from '../../shared/notes/notes-panel';
 import { ProficiencyColumn } from './proficiency-column/proficiency-column';
 import { SheetHeader } from './sheet-header/sheet-header';
 import { issueTitle } from './sheet-format';
@@ -57,6 +58,11 @@ type SavingState = { status: 'idle' } | { status: 'saving' } | { status: 'error'
  * The browser never computes a rule (ADR-0008): everything under `vm.sheet`
  * is exactly what `GetCharacter` sent, only formatted for display.
  *
+ * Player-only: the "Anotações" panel (E8-07, MR-030), the first block of the
+ * fourth column (right after the header on a narrower screen). The notes are
+ * the player's alone: the master never gets the panel, even on the player's
+ * sheet, and it stays editable on a locked sheet (the notes are not the sheet).
+ *
  * Master-only: the "Notas do mestre" panel and "Marcar como morto", never
  * fetched or rendered for a player (RN-11; `character-sheet.spec.ts` checks
  * `getMasterNotes` is never called for one). "Marcar como morto" asks for a
@@ -78,6 +84,7 @@ type SavingState = { status: 'idle' } | { status: 'saving' } | { status: 'error'
     CombatColumn,
     FeaturesPanel,
     MasterNotes,
+    NotesPanel,
     MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,

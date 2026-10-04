@@ -4,7 +4,7 @@
 
     <div class="so__head">
       <div class="so__titles">
-        <h2 #heading class="so__title" id="so-title" tabindex="-1">Cena: {{ s.name }}</h2>
+        <h2 #heading class="so__title" id="so-title" tabindex="-1">Cena: {{ glue(s.name) }}</h2>
         <p class="so__meta">{{ meta() }}</p>
       </div>
       <div class="so__buttons">
@@ -31,6 +31,12 @@
     }
 
     <div class="so__cols">
+      @if (!phone()) {
+        <div class="so__notes">
+          <app-scene-clues [campaignId]="campaignId()" [state]="state()" [players]="players()" />
+          <app-scene-hooks [hooks]="s.hooks" />
+        </div>
+      }
       <section class="so__rolls" aria-labelledby="so-rolls">
         <div class="so__sub">
           <h3 class="so__h" id="so-rolls">Rolagens</h3>
@@ -87,6 +93,13 @@
       </section>
     </div>
 
-    <p class="mr-visually-hidden" role="status" aria-live="polite">{{ state().notice() }}</p>
+    <p class="mr-visually-hidden so__live" role="status" aria-live="polite">{{ state().notice() }}</p>
   </section>
+
+  @if (phone()) {
+    <div class="so__panel mr-panel">
+      <app-scene-clues [campaignId]="campaignId()" [state]="state()" [players]="players()" [phone]="true" />
+    </div>
+    <app-scene-hooks class="so__panel" [hooks]="s.hooks" [phone]="true" />
+  }
 }

@@ -24,3 +24,23 @@ export function sceneActionErrorMessage(err: unknown, what = 'salvar a ação'):
     [Code.ResourceExhausted]: 'Limite de 20 ações. Remova uma para adicionar outra.',
   });
 }
+
+/** The Portuguese message for a failed clue call on a point (maps.proto,
+ * `AddSceneClue` and the others): `resource_exhausted` is the 30-clue limit. */
+export function sceneClueErrorMessage(err: unknown, what = 'salvar a pista'): string {
+  return describeConnectError(err, {
+    [Code.InvalidArgument]: `Não deu para ${what}: a pista vai de 1 a 500 caracteres, numa linha só.`,
+    [Code.NotFound]: 'Essa pista ou esse ponto não existe mais. Recarregue a página.',
+    [Code.PermissionDenied]: 'Só o mestre da campanha muda as pistas da cena.',
+    [Code.ResourceExhausted]: 'Limite de 30 pistas. Remova uma para adicionar outra.',
+  });
+}
+
+/** The Portuguese message for a failed `RevealSceneClue`. */
+export function revealErrorMessage(err: unknown): string {
+  return describeConnectError(err, {
+    [Code.InvalidArgument]: 'Marque pelo menos um jogador para receber a pista.',
+    [Code.NotFound]: 'A pista, ou um desses personagens, não existe mais. Feche e tente de novo.',
+    [Code.PermissionDenied]: 'Só o mestre da campanha revela pistas.',
+  });
+}

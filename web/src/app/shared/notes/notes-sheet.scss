@@ -1,0 +1,96 @@
+// The first line of the sheet: always there, with a lock.
+.ns__lock {
+  display: flex;
+  align-items: flex-start;
+  text-wrap: pretty;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+    font-size: 18px;
+  }
+}
+
+// The two empty states: a quiet box with the next thing to do.
+.ns__empty {
+  padding: var(--mr-space-4);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+
+  p {
+    margin: 0;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.ns__empty-t {
+  margin: 0 0 var(--mr-space-1);
+  font-family: var(--mr-font-display);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 25px;
+}
+
+.ns__wait {
+  margin: 0;
+  color: var(--mr-ink-muted);
+}
+
+.ns__foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+
+  > button {
+    width: 100%;
+  }
+}
+
+.ns__limit {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 19px;
+}
+
+.ns__off {
+  border-style: dashed;
+}
+
+// The pair: two equal buttons, 48px on a phone and 44px on a computer.
+.ns__pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--mr-space-3);
+
+  button {
+    padding-inline: 8px;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 767.98px) {
+    button {
+      --mat-button-filled-container-height: 48px;
+      --mat-button-outlined-container-height: 48px;
+    }
+  }
+}
+
+.ns__ask-t {
+  margin: 0 0 var(--mr-space-2);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 21px;
+}
+
+.ns__danger {
+  color: var(--mr-danger-ink);
+  --mat-button-outlined-label-text-color: var(--mr-danger-ink);
+}
