@@ -47,6 +47,10 @@ type content struct {
 	// spellEffects are the spells that read hit points, by spell key
 	// (effects/spells.json).
 	spellEffects map[string]spellEffectDef
+	// traps are the trap presets and the SRD's severity tables
+	// (effects/traps.json), and lights the light presets (effects/lights.json).
+	traps  traps
+	lights []LightPreset
 	// standardActions are the actions every character has.
 	standardActions []Action
 	// levelXP[n-1] is the XP to reach level n, and ratings the SRD's challenge
@@ -152,7 +156,7 @@ func load(fsys fs.FS) (*content, error) {
 		return nil, err
 	}
 	for k, v := range names.Names {
-		if !c.exists(k) && !strings.HasPrefix(k, "sense:") && !strings.HasPrefix(k, "resource:") {
+		if !c.exists(k) && !strings.HasPrefix(k, "sense:") && !strings.HasPrefix(k, "resource:") && !strings.HasPrefix(k, "trap:") && !strings.HasPrefix(k, "light:") {
 			return nil, fmt.Errorf("effects/names_pt.json: unknown key %q", k)
 		}
 		c.namesPT[k] = v
@@ -174,6 +178,12 @@ func load(fsys fs.FS) (*content, error) {
 		return nil, err
 	}
 	if err := c.loadSpellEffects(fsys); err != nil {
+		return nil, err
+	}
+	if err := c.loadTraps(fsys); err != nil {
+		return nil, err
+	}
+	if err := c.loadLights(fsys); err != nil {
 		return nil, err
 	}
 	if err := c.indexCasting(); err != nil {
@@ -301,7 +311,7 @@ func (c *content) indexLevels(fsys fs.FS) error {
 }
 
 // loadEffects reads every effects file except names_pt.json, revision.json,
-// standard_actions.json, advancement.json and spells.json (tables, not effects), checks
+// standard_actions.json, advancement.json, spells.json, traps.json and lights.json (tables, not effects), checks
 // and compiles each effect.
 func (c *content) loadEffects(fsys fs.FS) error {
 	files, err := fs.Glob(fsys, "effects/*.json")
@@ -310,7 +320,7 @@ func (c *content) loadEffects(fsys fs.FS) error {
 	}
 	for _, name := range files {
 		switch path.Base(name) {
-		case "names_pt.json", "revision.json", "standard_actions.json", "advancement.json", "spells.json", "corrections.json":
+		case "names_pt.json", "revision.json", "standard_actions.json", "advancement.json", "spells.json", "corrections.json", "traps.json", "lights.json":
 			continue
 		}
 		var f struct {

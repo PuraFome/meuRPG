@@ -632,6 +632,9 @@ Fatia 8.7 da Etapa 8, só no navegador (a grade e a imagem já vinham do mapa; n
 - **Dado** outra criatura no caminho, **quando** o personagem passa pelo espaço dela, **então** o espaço de quem não é inimigo custa como terreno difícil, o de um inimigo não pode ser atravessado (só com dois tamanhos de diferença), e ninguém termina o movimento no espaço de outro.
 - **Dado** um inimigo ao lado, **quando** o personagem sai do alcance dele sem ter usado Desengajar, **então** o app oferece um ataque de oportunidade a quem controla o inimigo, e o movimento espera a resposta.
 
+#### Implementado
+Fatia 9.2 da Etapa 9, só as contas em Go (a ligação com o servidor vem nas fatias 9.3 e 9.6): o movimento em círculo, o custo por quadrado de terreno difícil, as paredes, as colunas, as criaturas no caminho, o salto, a cobertura e o ataque de oportunidade em `rules/grid` e `rules/combat.JumpLimits`. As regras estão em [RN-21](regras.md) e em [Arquitetura](../arquitetura.md#grade-visão-e-predefinições-etapa-9). Testes: `rules/grid` (`TestReachAgainstTheCave`, `TestMoveCostAgainstTheCave`, `TestCreaturesOnTheWay`, `TestCoverBetweenAgainstTheCave`, `TestLeavesReach`, `TestRange`, as camadas e a linha) e `rules/combat` (`TestJumpLimits`): os números da caverna dos desenhos e os do salto de Toren (Força 16: 16 pés de distância e 6 de altura com corrida) e de Brisa (Força 10).
+
 #### Dúvidas
 - Decidido pelo Vinicius, respondendo pelo Samuel, em 04/10/2026 (perguntas 68 a 70), pelas regras oficiais: o mestre pinta no mapa o terreno difícil, as paredes e a cobertura (meia: muro baixo, caixotes; três quartos: coluna, seteira), que os jogadores veem e podem usar; cada quadrado de terreno difícil em que se entra custa 1,5 m a mais; outras criaturas e o ataque de oportunidade como nos critérios acima. **Ainda a fazer**, na Etapa 9.
 
@@ -652,6 +655,9 @@ Fatia 8.7 da Etapa 8, só no navegador (a grade e a imagem já vinham do mapa; n
 #### Relacionadas
 - Vem do que o desenho de masmorras (a antiga MR-010) previa: armadilhas e baús.
 
+#### Implementado
+Fatia 9.2 da Etapa 9, só o conteúdo: as oito armadilhas de exemplo do SRD como predefinições (`effects/traps.json`, `Content.TrapPresets()`) com a tabela de gravidade do SRD. O mapa, o gatilho e o disparo vêm nas fatias 9.3 e 9.8. Testes: `TestTrapPresetsOfTheSRD`, `TestTrapSeverityTables`, `TestLoadTrapsRefuses`.
+
 #### Dúvidas
 - Decidido pelo Vinicius, respondendo pelo Samuel, em 04/10/2026 (perguntas 71 e 73): nota quem chega a até 3 m e enxerga o quadrado, com a Percepção passiva igual ou maior que a CD (−5 na penumbra), e só esse jogador passa a ver a armadilha; ao procurar, o jogador escolhe Percepção ou Investigação; o dano num personagem espera o mestre aplicar, como no combate. **Ainda a fazer**, na Etapa 9.
 
@@ -668,6 +674,9 @@ Fatia 8.7 da Etapa 8, só no navegador (a grade e a imagem já vinham do mapa; n
 - **Dado** uma fonte de luz (uma tocha, uma magia), **quando** o mestre a põe no mapa, **então** a área ao redor fica visível.
 - **Dado** um personagem com Visão no escuro de 18 m na ficha, **quando** ele está numa área escura, **então** ele enxerga até 18 m, em tons de cinza.
 - **Dado** o mestre, **quando** abre o mapa, **então** vê tudo. O que o jogador não enxerga nunca sai do servidor (RN-10).
+
+#### Implementado
+Fatia 9.2 da Etapa 9, só as contas em Go (a ligação com o servidor vem nas fatias 9.3, 9.4 e 9.5): `rules/vision` calcula, de um mapa com paredes, luz base e pintada e fontes de luz, o que cada observador enxerga (claro, penumbra, cinza na visão no escuro, parede vista), a união de vários e a penalidade de −5 na penumbra, e `effects/lights.json` guarda as luzes do SRD. Testes: `TestVisionAgainstTheCave` (os desenhos da caverna: Pensantus, Toren, Brisa e Sálvia no escuro, Toren e Brisa com a tocha), `TestSensesBeyondDarkvision`, `TestLightIsBlockedByWalls`, `TestUnionOfViewers`, `TestPassivePenalty` e os benchmarks do orçamento de tempo.
 
 #### Dúvidas
 - Decidido pelo Vinicius, respondendo pelo Samuel, em 04/10/2026 (perguntas 67, 68 e 72): cada jogador vê o que o próprio personagem enxerga, e o mestre pode ligar "Visão do grupo" em cada mapa; os personagens dos jogadores nunca somem para os outros jogadores; o que já foi visto fica escurecido; as paredes que o mestre pinta bloqueiam a vista e a luz, como nas regras oficiais; e o inimigo que o personagem não vê não aparece para ele: atacar no escuro (até uma Bola de Fogo num canto suspeito) é com o mestre. **Ainda a fazer**, na Etapa 9.
