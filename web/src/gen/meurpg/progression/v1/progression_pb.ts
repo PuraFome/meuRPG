@@ -20,7 +20,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/progression/v1/progression.proto.
  */
 export const file_meurpg_progression_v1_progression: GenFile = /*@__PURE__*/
-  fileDesc("CidtZXVycGcvcHJvZ3Jlc3Npb24vdjEvcHJvZ3Jlc3Npb24ucHJvdG8SFW1ldXJwZy5wcm9ncmVzc2lvbi52MSKHAQoJWFBCbG9ja2VkEjYKBnJlYXNvbhgBIAEoDjImLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5YUEJsb2NrZWRSZWFzb24SFAoMY2hhcmFjdGVyX2lkGAIgASgJEiwKB3hwX21vZGUYAyABKA4yGy5tZXVycGcuY2FtcGFpZ25zLnYxLlhwTW9kZSJDCgdYUFNoYXJlEhQKDGNoYXJhY3Rlcl9pZBgBIAEoCRIWCg5jaGFyYWN0ZXJfbmFtZRgCIAEoCRIKCgJ4cBgDIAEoBSKvAwoHWFBBd2FyZBIKCgJpZBgBIAEoCRIwCgRtb2RlGAIgASgOMiIubWV1cnBnLnByb2dyZXNzaW9uLnYxLlhQQXdhcmRNb2RlEg4KBnJlYXNvbhgDIAEoCRIYChBnaXZlbl9ieV91c2VyX2lkGAQgASgJEh0KFWdpdmVuX2J5X2Rpc3BsYXlfbmFtZRgFIAEoCRIuCgpjcmVhdGVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIUCgxlbmNvdW50ZXJfaWQYByABKAkSFgoOZW5jb3VudGVyX25hbWUYCCABKAkSDAoEZ29sZBgJIAEoBRIQCgh0b3RhbF94cBgKIAEoBRIuCgZzaGFyZXMYCyADKAsyHi5tZXVycGcucHJvZ3Jlc3Npb24udjEuWFBTaGFyZRIOCgZ1bmRvbmUYDCABKAgSLQoJdW5kb25lX2F0GA0gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIeChZ1bmRvbmVfYnlfZGlzcGxheV9uYW1lGA4gASgJEhAKCGNhbl91bmRvGA8gASgIIssBCg5Bd2FyZFhQUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIwCgRtb2RlGAIgASgOMiIubWV1cnBnLnByb2dyZXNzaW9uLnYxLlhQQXdhcmRNb2RlEg4KBnJlYXNvbhgDIAEoCRIUCgxlbmNvdW50ZXJfaWQYBCABKAkSDgoGYW1vdW50GAUgASgFEgwKBGdvbGQYBiABKAUSFQoNY2hhcmFjdGVyX2lkcxgHIAMoCRIXCg9pZGVtcG90ZW5jeV9rZXkYCCABKAkiYgoPQXdhcmRYUFJlc3BvbnNlEi0KBWF3YXJkGAEgASgLMh4ubWV1cnBnLnByb2dyZXNzaW9uLnYxLlhQQXdhcmQSDwoHeHBfZWFjaBgCIAEoBRIPCgdsb3N0X3hwGAMgASgFImsKFE1hcmtNaWxlc3RvbmVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg4KBnJlYXNvbhgCIAEoCRIVCg1jaGFyYWN0ZXJfaWRzGAMgAygJEhcKD2lkZW1wb3RlbmN5X2tleRgEIAEoCSJGChVNYXJrTWlsZXN0b25lUmVzcG9uc2USLQoFYXdhcmQYASABKAsyHi5tZXVycGcucHJvZ3Jlc3Npb24udjEuWFBBd2FyZCJhChZVbmRvTGFzdFhQQXdhcmRSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgCIAEoCRIZChFleHBlY3RlZF9hd2FyZF9pZBgDIAEoCSJIChdVbmRvTGFzdFhQQXdhcmRSZXNwb25zZRItCgVhd2FyZBgBIAEoCzIeLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5YUEF3YXJkIlEKE0xpc3RYUEF3YXJkc1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSEQoJcGFnZV9zaXplGAIgASgFEhIKCnBhZ2VfdG9rZW4YAyABKAkiXwoUTGlzdFhQQXdhcmRzUmVzcG9uc2USLgoGYXdhcmRzGAEgAygLMh4ubWV1cnBnLnByb2dyZXNzaW9uLnYxLlhQQXdhcmQSFwoPbmV4dF9wYWdlX3Rva2VuGAIgASgJIjMKHEdldENhbXBhaWduRXhwZXJpZW5jZVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkijQEKHUdldENhbXBhaWduRXhwZXJpZW5jZVJlc3BvbnNlEiwKB3hwX21vZGUYASABKA4yGy5tZXVycGcuY2FtcGFpZ25zLnYxLlhwTW9kZRI+CgpjaGFyYWN0ZXJzGAIgAygLMioubWV1cnBnLnByb2dyZXNzaW9uLnYxLkNoYXJhY3RlckV4cGVyaWVuY2UigwIKE0NoYXJhY3RlckV4cGVyaWVuY2USFAoMY2hhcmFjdGVyX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSFgoOcGxheWVyX3VzZXJfaWQYAyABKAkSGwoTcGxheWVyX2Rpc3BsYXlfbmFtZRgEIAEoCRINCgVsZXZlbBgFIAEoBRIZChFleHBlcmllbmNlX3BvaW50cxgGIAEoBRIVCg1uZXh0X2xldmVsX3hwGAcgASgFEhQKDGNhbl9sZXZlbF91cBgIIAEoCBI8Cg9sZXZlbF91cF9yZWFzb24YCSABKA4yIy5tZXVycGcuY2hhcmFjdGVycy52MS5MZXZlbFVwUmVhc29uKpYBCgtYUEF3YXJkTW9kZRIdChlYUF9BV0FSRF9NT0RFX1VOU1BFQ0lGSUVEEAASGQoVWFBfQVdBUkRfTU9ERV9FTkVNSUVTEAESFgoSWFBfQVdBUkRfTU9ERV9HT0xEEAISGAoUWFBfQVdBUkRfTU9ERV9NQU5VQUwQAxIbChdYUF9BV0FSRF9NT0RFX01JTEVTVE9ORRAEKqoCCg9YUEJsb2NrZWRSZWFzb24SIQodWFBfQkxPQ0tFRF9SRUFTT05fVU5TUEVDSUZJRUQQABImCiJYUF9CTE9DS0VEX1JFQVNPTl9NT0RFX05PVF9BTExPV0VEEAESKQolWFBfQkxPQ0tFRF9SRUFTT05fRU5DT1VOVEVSX05PVF9FTkRFRBACEiUKIVhQX0JMT0NLRURfUkVBU09OX0FMUkVBRFlfQVdBUkRFRBADEiUKIVhQX0JMT0NLRURfUkVBU09OX05PVEhJTkdfVE9fR0lWRRAEEiUKIVhQX0JMT0NLRURfUkVBU09OX05PVEhJTkdfVE9fVU5ETxAFEiwKKFhQX0JMT0NLRURfUkVBU09OX0NIQVJBQ1RFUl9OT1RfRUxJR0lCTEUQBjLEBAoSUHJvZ3Jlc3Npb25TZXJ2aWNlElgKB0F3YXJkWFASJS5tZXVycGcucHJvZ3Jlc3Npb24udjEuQXdhcmRYUFJlcXVlc3QaJi5tZXVycGcucHJvZ3Jlc3Npb24udjEuQXdhcmRYUFJlc3BvbnNlEmoKDU1hcmtNaWxlc3RvbmUSKy5tZXVycGcucHJvZ3Jlc3Npb24udjEuTWFya01pbGVzdG9uZVJlcXVlc3QaLC5tZXVycGcucHJvZ3Jlc3Npb24udjEuTWFya01pbGVzdG9uZVJlc3BvbnNlEnAKD1VuZG9MYXN0WFBBd2FyZBItLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5VbmRvTGFzdFhQQXdhcmRSZXF1ZXN0Gi4ubWV1cnBnLnByb2dyZXNzaW9uLnYxLlVuZG9MYXN0WFBBd2FyZFJlc3BvbnNlEmwKDExpc3RYUEF3YXJkcxIqLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5MaXN0WFBBd2FyZHNSZXF1ZXN0GisubWV1cnBnLnByb2dyZXNzaW9uLnYxLkxpc3RYUEF3YXJkc1Jlc3BvbnNlIgOQAgIShwEKFUdldENhbXBhaWduRXhwZXJpZW5jZRIzLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5HZXRDYW1wYWlnbkV4cGVyaWVuY2VSZXF1ZXN0GjQubWV1cnBnLnByb2dyZXNzaW9uLnYxLkdldENhbXBhaWduRXhwZXJpZW5jZVJlc3BvbnNlIgOQAgJC7wEKGWNvbS5tZXVycGcucHJvZ3Jlc3Npb24udjFCEFByb2dyZXNzaW9uUHJvdG9QAVpKZ2l0aHViLmNvbS9QdXJhRm9tZS9tZXVSUEcvYmFja2VuZC9nZW4vbWV1cnBnL3Byb2dyZXNzaW9uL3YxO3Byb2dyZXNzaW9udjGiAgNNUFiqAhVNZXVycGcuUHJvZ3Jlc3Npb24uVjHKAhVNZXVycGdcUHJvZ3Jlc3Npb25cVjHiAiFNZXVycGdcUHJvZ3Jlc3Npb25cVjFcR1BCTWV0YWRhdGHqAhdNZXVycGc6OlByb2dyZXNzaW9uOjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp, file_meurpg_campaigns_v1_campaigns, file_meurpg_characters_v1_characters]);
+  fileDesc("CidtZXVycGcvcHJvZ3Jlc3Npb24vdjEvcHJvZ3Jlc3Npb24ucHJvdG8SFW1ldXJwZy5wcm9ncmVzc2lvbi52MSKHAQoJWFBCbG9ja2VkEjYKBnJlYXNvbhgBIAEoDjImLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5YUEJsb2NrZWRSZWFzb24SFAoMY2hhcmFjdGVyX2lkGAIgASgJEiwKB3hwX21vZGUYAyABKA4yGy5tZXVycGcuY2FtcGFpZ25zLnYxLlhwTW9kZSJDCgdYUFNoYXJlEhQKDGNoYXJhY3Rlcl9pZBgBIAEoCRIWCg5jaGFyYWN0ZXJfbmFtZRgCIAEoCRIKCgJ4cBgDIAEoBSKvAwoHWFBBd2FyZBIKCgJpZBgBIAEoCRIwCgRtb2RlGAIgASgOMiIubWV1cnBnLnByb2dyZXNzaW9uLnYxLlhQQXdhcmRNb2RlEg4KBnJlYXNvbhgDIAEoCRIYChBnaXZlbl9ieV91c2VyX2lkGAQgASgJEh0KFWdpdmVuX2J5X2Rpc3BsYXlfbmFtZRgFIAEoCRIuCgpjcmVhdGVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIUCgxlbmNvdW50ZXJfaWQYByABKAkSFgoOZW5jb3VudGVyX25hbWUYCCABKAkSDAoEZ29sZBgJIAEoBRIQCgh0b3RhbF94cBgKIAEoBRIuCgZzaGFyZXMYCyADKAsyHi5tZXVycGcucHJvZ3Jlc3Npb24udjEuWFBTaGFyZRIOCgZ1bmRvbmUYDCABKAgSLQoJdW5kb25lX2F0GA0gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIeChZ1bmRvbmVfYnlfZGlzcGxheV9uYW1lGA4gASgJEhAKCGNhbl91bmRvGA8gASgIIssBCg5Bd2FyZFhQUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIwCgRtb2RlGAIgASgOMiIubWV1cnBnLnByb2dyZXNzaW9uLnYxLlhQQXdhcmRNb2RlEg4KBnJlYXNvbhgDIAEoCRIUCgxlbmNvdW50ZXJfaWQYBCABKAkSDgoGYW1vdW50GAUgASgFEgwKBGdvbGQYBiABKAUSFQoNY2hhcmFjdGVyX2lkcxgHIAMoCRIXCg9pZGVtcG90ZW5jeV9rZXkYCCABKAkiYgoPQXdhcmRYUFJlc3BvbnNlEi0KBWF3YXJkGAEgASgLMh4ubWV1cnBnLnByb2dyZXNzaW9uLnYxLlhQQXdhcmQSDwoHeHBfZWFjaBgCIAEoBRIPCgdsb3N0X3hwGAMgASgFImsKFE1hcmtNaWxlc3RvbmVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg4KBnJlYXNvbhgCIAEoCRIVCg1jaGFyYWN0ZXJfaWRzGAMgAygJEhcKD2lkZW1wb3RlbmN5X2tleRgEIAEoCSJGChVNYXJrTWlsZXN0b25lUmVzcG9uc2USLQoFYXdhcmQYASABKAsyHi5tZXVycGcucHJvZ3Jlc3Npb24udjEuWFBBd2FyZCJhChZVbmRvTGFzdFhQQXdhcmRSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgCIAEoCRIZChFleHBlY3RlZF9hd2FyZF9pZBgDIAEoCSJIChdVbmRvTGFzdFhQQXdhcmRSZXNwb25zZRItCgVhd2FyZBgBIAEoCzIeLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5YUEF3YXJkIlEKE0xpc3RYUEF3YXJkc1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSEQoJcGFnZV9zaXplGAIgASgFEhIKCnBhZ2VfdG9rZW4YAyABKAkiXwoUTGlzdFhQQXdhcmRzUmVzcG9uc2USLgoGYXdhcmRzGAEgAygLMh4ubWV1cnBnLnByb2dyZXNzaW9uLnYxLlhQQXdhcmQSFwoPbmV4dF9wYWdlX3Rva2VuGAIgASgJIjMKHEdldENhbXBhaWduRXhwZXJpZW5jZVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkijQEKHUdldENhbXBhaWduRXhwZXJpZW5jZVJlc3BvbnNlEiwKB3hwX21vZGUYASABKA4yGy5tZXVycGcuY2FtcGFpZ25zLnYxLlhwTW9kZRI+CgpjaGFyYWN0ZXJzGAIgAygLMioubWV1cnBnLnByb2dyZXNzaW9uLnYxLkNoYXJhY3RlckV4cGVyaWVuY2UigwIKE0NoYXJhY3RlckV4cGVyaWVuY2USFAoMY2hhcmFjdGVyX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSFgoOcGxheWVyX3VzZXJfaWQYAyABKAkSGwoTcGxheWVyX2Rpc3BsYXlfbmFtZRgEIAEoCRINCgVsZXZlbBgFIAEoBRIZChFleHBlcmllbmNlX3BvaW50cxgGIAEoBRIVCg1uZXh0X2xldmVsX3hwGAcgASgFEhQKDGNhbl9sZXZlbF91cBgIIAEoCBI8Cg9sZXZlbF91cF9yZWFzb24YCSABKA4yIy5tZXVycGcuY2hhcmFjdGVycy52MS5MZXZlbFVwUmVhc29uIqcBCglNaWxlc3RvbmUSCgoCaWQYASABKAkSDAoEdGV4dBgCIAEoCRIPCgdyZWFjaGVkGAMgASgIEi4KCnJlYWNoZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi0KBW1hcmtzGAUgAygLMh4ubWV1cnBnLnByb2dyZXNzaW9uLnYxLlhQQXdhcmQSEAoIb2ZmX2xpc3QYBiABKAgiLAoVTGlzdE1pbGVzdG9uZXNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIk4KFkxpc3RNaWxlc3RvbmVzUmVzcG9uc2USNAoKbWlsZXN0b25lcxgBIAMoCzIgLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5NaWxlc3RvbmUiOAoTQWRkTWlsZXN0b25lUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIMCgR0ZXh0GAIgASgJIoEBChRBZGRNaWxlc3RvbmVSZXNwb25zZRIzCgltaWxlc3RvbmUYASABKAsyIC5tZXVycGcucHJvZ3Jlc3Npb24udjEuTWlsZXN0b25lEjQKCm1pbGVzdG9uZXMYAiADKAsyIC5tZXVycGcucHJvZ3Jlc3Npb24udjEuTWlsZXN0b25lIlEKFlVwZGF0ZU1pbGVzdG9uZVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMbWlsZXN0b25lX2lkGAIgASgJEgwKBHRleHQYAyABKAkihAEKF1VwZGF0ZU1pbGVzdG9uZVJlc3BvbnNlEjMKCW1pbGVzdG9uZRgBIAEoCzIgLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5NaWxlc3RvbmUSNAoKbWlsZXN0b25lcxgCIAMoCzIgLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5NaWxlc3RvbmUifwoUTW92ZU1pbGVzdG9uZVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMbWlsZXN0b25lX2lkGAIgASgJEjwKCWRpcmVjdGlvbhgDIAEoDjIpLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5NaWxlc3RvbmVEaXJlY3Rpb24iTQoVTW92ZU1pbGVzdG9uZVJlc3BvbnNlEjQKCm1pbGVzdG9uZXMYASADKAsyIC5tZXVycGcucHJvZ3Jlc3Npb24udjEuTWlsZXN0b25lIkMKFlJlbW92ZU1pbGVzdG9uZVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMbWlsZXN0b25lX2lkGAIgASgJIk8KF1JlbW92ZU1pbGVzdG9uZVJlc3BvbnNlEjQKCm1pbGVzdG9uZXMYASADKAsyIC5tZXVycGcucHJvZ3Jlc3Npb24udjEuTWlsZXN0b25lIngKG01hcmtNaWxlc3RvbmVSZWFjaGVkUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxtaWxlc3RvbmVfaWQYAiABKAkSFQoNY2hhcmFjdGVyX2lkcxgDIAMoCRIXCg9pZGVtcG90ZW5jeV9rZXkYBCABKAkiggEKHE1hcmtNaWxlc3RvbmVSZWFjaGVkUmVzcG9uc2USMwoJbWlsZXN0b25lGAEgASgLMiAubWV1cnBnLnByb2dyZXNzaW9uLnYxLk1pbGVzdG9uZRItCgVhd2FyZBgCIAEoCzIeLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5YUEF3YXJkInMKFkdpdmVNaWxlc3RvbmVUb1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMbWlsZXN0b25lX2lkGAIgASgJEhUKDWNoYXJhY3Rlcl9pZHMYAyADKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAQgASgJIn0KF0dpdmVNaWxlc3RvbmVUb1Jlc3BvbnNlEjMKCW1pbGVzdG9uZRgBIAEoCzIgLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5NaWxlc3RvbmUSLQoFYXdhcmQYAiABKAsyHi5tZXVycGcucHJvZ3Jlc3Npb24udjEuWFBBd2FyZCqWAQoLWFBBd2FyZE1vZGUSHQoZWFBfQVdBUkRfTU9ERV9VTlNQRUNJRklFRBAAEhkKFVhQX0FXQVJEX01PREVfRU5FTUlFUxABEhYKElhQX0FXQVJEX01PREVfR09MRBACEhgKFFhQX0FXQVJEX01PREVfTUFOVUFMEAMSGwoXWFBfQVdBUkRfTU9ERV9NSUxFU1RPTkUQBCrlAwoPWFBCbG9ja2VkUmVhc29uEiEKHVhQX0JMT0NLRURfUkVBU09OX1VOU1BFQ0lGSUVEEAASJgoiWFBfQkxPQ0tFRF9SRUFTT05fTU9ERV9OT1RfQUxMT1dFRBABEikKJVhQX0JMT0NLRURfUkVBU09OX0VOQ09VTlRFUl9OT1RfRU5ERUQQAhIlCiFYUF9CTE9DS0VEX1JFQVNPTl9BTFJFQURZX0FXQVJERUQQAxIlCiFYUF9CTE9DS0VEX1JFQVNPTl9OT1RISU5HX1RPX0dJVkUQBBIlCiFYUF9CTE9DS0VEX1JFQVNPTl9OT1RISU5HX1RPX1VORE8QBRIsCihYUF9CTE9DS0VEX1JFQVNPTl9DSEFSQUNURVJfTk9UX0VMSUdJQkxFEAYSLworWFBfQkxPQ0tFRF9SRUFTT05fTUlMRVNUT05FX0FMUkVBRFlfUkVBQ0hFRBAHEisKJ1hQX0JMT0NLRURfUkVBU09OX01JTEVTVE9ORV9OT1RfUkVBQ0hFRBAIEi4KKlhQX0JMT0NLRURfUkVBU09OX0NIQVJBQ1RFUl9BTFJFQURZX01BUktFRBAJEisKJ1hQX0JMT0NLRURfUkVBU09OX01JTEVTVE9ORV9IQVNfSElTVE9SWRAKKnMKEk1pbGVzdG9uZURpcmVjdGlvbhIjCh9NSUxFU1RPTkVfRElSRUNUSU9OX1VOU1BFQ0lGSUVEEAASGgoWTUlMRVNUT05FX0RJUkVDVElPTl9VUBABEhwKGE1JTEVTVE9ORV9ESVJFQ1RJT05fRE9XThACMuQKChJQcm9ncmVzc2lvblNlcnZpY2USWAoHQXdhcmRYUBIlLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5Bd2FyZFhQUmVxdWVzdBomLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5Bd2FyZFhQUmVzcG9uc2USagoNTWFya01pbGVzdG9uZRIrLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5NYXJrTWlsZXN0b25lUmVxdWVzdBosLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5NYXJrTWlsZXN0b25lUmVzcG9uc2UScgoOTGlzdE1pbGVzdG9uZXMSLC5tZXVycGcucHJvZ3Jlc3Npb24udjEuTGlzdE1pbGVzdG9uZXNSZXF1ZXN0Gi0ubWV1cnBnLnByb2dyZXNzaW9uLnYxLkxpc3RNaWxlc3RvbmVzUmVzcG9uc2UiA5ACAhJnCgxBZGRNaWxlc3RvbmUSKi5tZXVycGcucHJvZ3Jlc3Npb24udjEuQWRkTWlsZXN0b25lUmVxdWVzdBorLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5BZGRNaWxlc3RvbmVSZXNwb25zZRJwCg9VcGRhdGVNaWxlc3RvbmUSLS5tZXVycGcucHJvZ3Jlc3Npb24udjEuVXBkYXRlTWlsZXN0b25lUmVxdWVzdBouLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5VcGRhdGVNaWxlc3RvbmVSZXNwb25zZRJqCg1Nb3ZlTWlsZXN0b25lEisubWV1cnBnLnByb2dyZXNzaW9uLnYxLk1vdmVNaWxlc3RvbmVSZXF1ZXN0GiwubWV1cnBnLnByb2dyZXNzaW9uLnYxLk1vdmVNaWxlc3RvbmVSZXNwb25zZRJwCg9SZW1vdmVNaWxlc3RvbmUSLS5tZXVycGcucHJvZ3Jlc3Npb24udjEuUmVtb3ZlTWlsZXN0b25lUmVxdWVzdBouLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5SZW1vdmVNaWxlc3RvbmVSZXNwb25zZRJ/ChRNYXJrTWlsZXN0b25lUmVhY2hlZBIyLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5NYXJrTWlsZXN0b25lUmVhY2hlZFJlcXVlc3QaMy5tZXVycGcucHJvZ3Jlc3Npb24udjEuTWFya01pbGVzdG9uZVJlYWNoZWRSZXNwb25zZRJwCg9HaXZlTWlsZXN0b25lVG8SLS5tZXVycGcucHJvZ3Jlc3Npb24udjEuR2l2ZU1pbGVzdG9uZVRvUmVxdWVzdBouLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5HaXZlTWlsZXN0b25lVG9SZXNwb25zZRJwCg9VbmRvTGFzdFhQQXdhcmQSLS5tZXVycGcucHJvZ3Jlc3Npb24udjEuVW5kb0xhc3RYUEF3YXJkUmVxdWVzdBouLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5VbmRvTGFzdFhQQXdhcmRSZXNwb25zZRJsCgxMaXN0WFBBd2FyZHMSKi5tZXVycGcucHJvZ3Jlc3Npb24udjEuTGlzdFhQQXdhcmRzUmVxdWVzdBorLm1ldXJwZy5wcm9ncmVzc2lvbi52MS5MaXN0WFBBd2FyZHNSZXNwb25zZSIDkAICEocBChVHZXRDYW1wYWlnbkV4cGVyaWVuY2USMy5tZXVycGcucHJvZ3Jlc3Npb24udjEuR2V0Q2FtcGFpZ25FeHBlcmllbmNlUmVxdWVzdBo0Lm1ldXJwZy5wcm9ncmVzc2lvbi52MS5HZXRDYW1wYWlnbkV4cGVyaWVuY2VSZXNwb25zZSIDkAICQu8BChljb20ubWV1cnBnLnByb2dyZXNzaW9uLnYxQhBQcm9ncmVzc2lvblByb3RvUAFaSmdpdGh1Yi5jb20vUHVyYUZvbWUvbWV1UlBHL2JhY2tlbmQvZ2VuL21ldXJwZy9wcm9ncmVzc2lvbi92MTtwcm9ncmVzc2lvbnYxogIDTVBYqgIVTWV1cnBnLlByb2dyZXNzaW9uLlYxygIVTWV1cnBnXFByb2dyZXNzaW9uXFYx4gIhTWV1cnBnXFByb2dyZXNzaW9uXFYxXEdQQk1ldGFkYXRh6gIXTWV1cnBnOjpQcm9ncmVzc2lvbjo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp, file_meurpg_campaigns_v1_campaigns, file_meurpg_characters_v1_characters]);
 
 /**
  * XPBlocked is the error detail of ProgressionService's
@@ -35,7 +35,8 @@ export type XPBlocked = Message<"meurpg.progression.v1.XPBlocked"> & {
   reason: XPBlockedReason;
 
   /**
-   * For CHARACTER_NOT_ELIGIBLE, the character (a UUID).
+   * For CHARACTER_NOT_ELIGIBLE and CHARACTER_ALREADY_MARKED, the character (a
+   * UUID).
    *
    * @generated from field: string character_id = 2;
    */
@@ -583,6 +584,428 @@ export const CharacterExperienceSchema: GenMessage<CharacterExperience> = /*@__P
   messageDesc(file_meurpg_progression_v1_progression, 13);
 
 /**
+ * Milestone is a milestone of a MILESTONES campaign, planned or reached
+ * (MR-016).
+ *
+ * @generated from message meurpg.progression.v1.Milestone
+ */
+export type Milestone = Message<"meurpg.progression.v1.Milestone"> & {
+  /**
+   * Stable milestone ID (a UUID).
+   *
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * What the master wrote: 1 to 120 characters, one line. For a reached
+   * milestone, it is the reason of its awards.
+   *
+   * @generated from field: string text = 2;
+   */
+  text: string;
+
+  /**
+   * Whether at least one mark of it is not undone.
+   *
+   * @generated from field: bool reached = 3;
+   */
+  reached: boolean;
+
+  /**
+   * When it was first marked, among the marks that are not undone; unset for
+   * a planned milestone.
+   *
+   * @generated from field: google.protobuf.Timestamp reached_at = 4;
+   */
+  reachedAt?: Timestamp | undefined;
+
+  /**
+   * The marks that are not undone, oldest first: the first one is the
+   * milestone's being reached, each later one a "Dar a mais alguém". Each has
+   * who it was given to, who gave it, when and whether the master may undo it
+   * now. Empty for a planned milestone.
+   *
+   * @generated from field: repeated meurpg.progression.v1.XPAward marks = 5;
+   */
+  marks: XPAward[];
+
+  /**
+   * Whether this is a milestone marked off the list (MarkMilestone, "Registrar
+   * um marco fora da lista"): it was never planned, it has one mark, and `id`
+   * is that mark's award ID, not a planned milestone's: no call that takes a
+   * milestone_id accepts it, and it cannot be given to more characters.
+   *
+   * @generated from field: bool off_list = 6;
+   */
+  offList: boolean;
+};
+
+/**
+ * Describes the message meurpg.progression.v1.Milestone.
+ * Use `create(MilestoneSchema)` to create a new message.
+ */
+export const MilestoneSchema: GenMessage<Milestone> = /*@__PURE__*/
+  messageDesc(file_meurpg_progression_v1_progression, 14);
+
+/**
+ * @generated from message meurpg.progression.v1.ListMilestonesRequest
+ */
+export type ListMilestonesRequest = Message<"meurpg.progression.v1.ListMilestonesRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+};
+
+/**
+ * Describes the message meurpg.progression.v1.ListMilestonesRequest.
+ * Use `create(ListMilestonesRequestSchema)` to create a new message.
+ */
+export const ListMilestonesRequestSchema: GenMessage<ListMilestonesRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_progression_v1_progression, 15);
+
+/**
+ * @generated from message meurpg.progression.v1.ListMilestonesResponse
+ */
+export type ListMilestonesResponse = Message<"meurpg.progression.v1.ListMilestonesResponse"> & {
+  /**
+   * The master gets every milestone, in the master's order; a player gets the
+   * reached ones only, in that order too.
+   *
+   * @generated from field: repeated meurpg.progression.v1.Milestone milestones = 1;
+   */
+  milestones: Milestone[];
+};
+
+/**
+ * Describes the message meurpg.progression.v1.ListMilestonesResponse.
+ * Use `create(ListMilestonesResponseSchema)` to create a new message.
+ */
+export const ListMilestonesResponseSchema: GenMessage<ListMilestonesResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_progression_v1_progression, 16);
+
+/**
+ * @generated from message meurpg.progression.v1.AddMilestoneRequest
+ */
+export type AddMilestoneRequest = Message<"meurpg.progression.v1.AddMilestoneRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * Required: 1 to 120 characters, one line.
+   *
+   * @generated from field: string text = 2;
+   */
+  text: string;
+};
+
+/**
+ * Describes the message meurpg.progression.v1.AddMilestoneRequest.
+ * Use `create(AddMilestoneRequestSchema)` to create a new message.
+ */
+export const AddMilestoneRequestSchema: GenMessage<AddMilestoneRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_progression_v1_progression, 17);
+
+/**
+ * @generated from message meurpg.progression.v1.AddMilestoneResponse
+ */
+export type AddMilestoneResponse = Message<"meurpg.progression.v1.AddMilestoneResponse"> & {
+  /**
+   * The new milestone.
+   *
+   * @generated from field: meurpg.progression.v1.Milestone milestone = 1;
+   */
+  milestone?: Milestone | undefined;
+
+  /**
+   * Every milestone of the campaign, in order, with the new one last.
+   *
+   * @generated from field: repeated meurpg.progression.v1.Milestone milestones = 2;
+   */
+  milestones: Milestone[];
+};
+
+/**
+ * Describes the message meurpg.progression.v1.AddMilestoneResponse.
+ * Use `create(AddMilestoneResponseSchema)` to create a new message.
+ */
+export const AddMilestoneResponseSchema: GenMessage<AddMilestoneResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_progression_v1_progression, 18);
+
+/**
+ * @generated from message meurpg.progression.v1.UpdateMilestoneRequest
+ */
+export type UpdateMilestoneRequest = Message<"meurpg.progression.v1.UpdateMilestoneRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * @generated from field: string milestone_id = 2;
+   */
+  milestoneId: string;
+
+  /**
+   * Required: 1 to 120 characters, one line.
+   *
+   * @generated from field: string text = 3;
+   */
+  text: string;
+};
+
+/**
+ * Describes the message meurpg.progression.v1.UpdateMilestoneRequest.
+ * Use `create(UpdateMilestoneRequestSchema)` to create a new message.
+ */
+export const UpdateMilestoneRequestSchema: GenMessage<UpdateMilestoneRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_progression_v1_progression, 19);
+
+/**
+ * @generated from message meurpg.progression.v1.UpdateMilestoneResponse
+ */
+export type UpdateMilestoneResponse = Message<"meurpg.progression.v1.UpdateMilestoneResponse"> & {
+  /**
+   * The changed milestone.
+   *
+   * @generated from field: meurpg.progression.v1.Milestone milestone = 1;
+   */
+  milestone?: Milestone | undefined;
+
+  /**
+   * Every milestone of the campaign, in order.
+   *
+   * @generated from field: repeated meurpg.progression.v1.Milestone milestones = 2;
+   */
+  milestones: Milestone[];
+};
+
+/**
+ * Describes the message meurpg.progression.v1.UpdateMilestoneResponse.
+ * Use `create(UpdateMilestoneResponseSchema)` to create a new message.
+ */
+export const UpdateMilestoneResponseSchema: GenMessage<UpdateMilestoneResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_progression_v1_progression, 20);
+
+/**
+ * @generated from message meurpg.progression.v1.MoveMilestoneRequest
+ */
+export type MoveMilestoneRequest = Message<"meurpg.progression.v1.MoveMilestoneRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * @generated from field: string milestone_id = 2;
+   */
+  milestoneId: string;
+
+  /**
+   * Required.
+   *
+   * @generated from field: meurpg.progression.v1.MilestoneDirection direction = 3;
+   */
+  direction: MilestoneDirection;
+};
+
+/**
+ * Describes the message meurpg.progression.v1.MoveMilestoneRequest.
+ * Use `create(MoveMilestoneRequestSchema)` to create a new message.
+ */
+export const MoveMilestoneRequestSchema: GenMessage<MoveMilestoneRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_progression_v1_progression, 21);
+
+/**
+ * @generated from message meurpg.progression.v1.MoveMilestoneResponse
+ */
+export type MoveMilestoneResponse = Message<"meurpg.progression.v1.MoveMilestoneResponse"> & {
+  /**
+   * Every milestone of the campaign, in the new order.
+   *
+   * @generated from field: repeated meurpg.progression.v1.Milestone milestones = 1;
+   */
+  milestones: Milestone[];
+};
+
+/**
+ * Describes the message meurpg.progression.v1.MoveMilestoneResponse.
+ * Use `create(MoveMilestoneResponseSchema)` to create a new message.
+ */
+export const MoveMilestoneResponseSchema: GenMessage<MoveMilestoneResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_progression_v1_progression, 22);
+
+/**
+ * @generated from message meurpg.progression.v1.RemoveMilestoneRequest
+ */
+export type RemoveMilestoneRequest = Message<"meurpg.progression.v1.RemoveMilestoneRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * @generated from field: string milestone_id = 2;
+   */
+  milestoneId: string;
+};
+
+/**
+ * Describes the message meurpg.progression.v1.RemoveMilestoneRequest.
+ * Use `create(RemoveMilestoneRequestSchema)` to create a new message.
+ */
+export const RemoveMilestoneRequestSchema: GenMessage<RemoveMilestoneRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_progression_v1_progression, 23);
+
+/**
+ * @generated from message meurpg.progression.v1.RemoveMilestoneResponse
+ */
+export type RemoveMilestoneResponse = Message<"meurpg.progression.v1.RemoveMilestoneResponse"> & {
+  /**
+   * The milestones that are left, in order.
+   *
+   * @generated from field: repeated meurpg.progression.v1.Milestone milestones = 1;
+   */
+  milestones: Milestone[];
+};
+
+/**
+ * Describes the message meurpg.progression.v1.RemoveMilestoneResponse.
+ * Use `create(RemoveMilestoneResponseSchema)` to create a new message.
+ */
+export const RemoveMilestoneResponseSchema: GenMessage<RemoveMilestoneResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_progression_v1_progression, 24);
+
+/**
+ * @generated from message meurpg.progression.v1.MarkMilestoneReachedRequest
+ */
+export type MarkMilestoneReachedRequest = Message<"meurpg.progression.v1.MarkMilestoneReachedRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * @generated from field: string milestone_id = 2;
+   */
+  milestoneId: string;
+
+  /**
+   * Who levels up: 1 to 40 living player characters of the campaign (UUIDs),
+   * no repeat.
+   *
+   * @generated from field: repeated string character_ids = 3;
+   */
+  characterIds: string[];
+
+  /**
+   * A UUID the app generates once and sends again on a retry.
+   *
+   * @generated from field: string idempotency_key = 4;
+   */
+  idempotencyKey: string;
+};
+
+/**
+ * Describes the message meurpg.progression.v1.MarkMilestoneReachedRequest.
+ * Use `create(MarkMilestoneReachedRequestSchema)` to create a new message.
+ */
+export const MarkMilestoneReachedRequestSchema: GenMessage<MarkMilestoneReachedRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_progression_v1_progression, 25);
+
+/**
+ * @generated from message meurpg.progression.v1.MarkMilestoneReachedResponse
+ */
+export type MarkMilestoneReachedResponse = Message<"meurpg.progression.v1.MarkMilestoneReachedResponse"> & {
+  /**
+   * The milestone, reached now.
+   *
+   * @generated from field: meurpg.progression.v1.Milestone milestone = 1;
+   */
+  milestone?: Milestone | undefined;
+
+  /**
+   * The mark just made, as the history shows it.
+   *
+   * @generated from field: meurpg.progression.v1.XPAward award = 2;
+   */
+  award?: XPAward | undefined;
+};
+
+/**
+ * Describes the message meurpg.progression.v1.MarkMilestoneReachedResponse.
+ * Use `create(MarkMilestoneReachedResponseSchema)` to create a new message.
+ */
+export const MarkMilestoneReachedResponseSchema: GenMessage<MarkMilestoneReachedResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_progression_v1_progression, 26);
+
+/**
+ * @generated from message meurpg.progression.v1.GiveMilestoneToRequest
+ */
+export type GiveMilestoneToRequest = Message<"meurpg.progression.v1.GiveMilestoneToRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * @generated from field: string milestone_id = 2;
+   */
+  milestoneId: string;
+
+  /**
+   * Who gets it: 1 to 40 living player characters of the campaign (UUIDs), no
+   * repeat, none of them with this milestone already.
+   *
+   * @generated from field: repeated string character_ids = 3;
+   */
+  characterIds: string[];
+
+  /**
+   * A UUID the app generates once and sends again on a retry.
+   *
+   * @generated from field: string idempotency_key = 4;
+   */
+  idempotencyKey: string;
+};
+
+/**
+ * Describes the message meurpg.progression.v1.GiveMilestoneToRequest.
+ * Use `create(GiveMilestoneToRequestSchema)` to create a new message.
+ */
+export const GiveMilestoneToRequestSchema: GenMessage<GiveMilestoneToRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_progression_v1_progression, 27);
+
+/**
+ * @generated from message meurpg.progression.v1.GiveMilestoneToResponse
+ */
+export type GiveMilestoneToResponse = Message<"meurpg.progression.v1.GiveMilestoneToResponse"> & {
+  /**
+   * The milestone, with the new mark last.
+   *
+   * @generated from field: meurpg.progression.v1.Milestone milestone = 1;
+   */
+  milestone?: Milestone | undefined;
+
+  /**
+   * The mark just made, as the history shows it.
+   *
+   * @generated from field: meurpg.progression.v1.XPAward award = 2;
+   */
+  award?: XPAward | undefined;
+};
+
+/**
+ * Describes the message meurpg.progression.v1.GiveMilestoneToResponse.
+ * Use `create(GiveMilestoneToResponseSchema)` to create a new message.
+ */
+export const GiveMilestoneToResponseSchema: GenMessage<GiveMilestoneToResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_progression_v1_progression, 28);
+
+/**
  * XPAwardMode is where an award's XP came from.
  *
  * @generated from enum meurpg.progression.v1.XPAwardMode
@@ -682,6 +1105,38 @@ export enum XPBlockedReason {
    * @generated from enum value: XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE = 6;
    */
   XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE = 6,
+
+  /**
+   * The milestone was already reached (MarkMilestoneReached), or is reached
+   * and so cannot be edited, moved or removed.
+   *
+   * @generated from enum value: XP_BLOCKED_REASON_MILESTONE_ALREADY_REACHED = 7;
+   */
+  XP_BLOCKED_REASON_MILESTONE_ALREADY_REACHED = 7,
+
+  /**
+   * GiveMilestoneTo for a milestone that is not reached.
+   *
+   * @generated from enum value: XP_BLOCKED_REASON_MILESTONE_NOT_REACHED = 8;
+   */
+  XP_BLOCKED_REASON_MILESTONE_NOT_REACHED = 8,
+
+  /**
+   * GiveMilestoneTo for a character that already has the milestone (in
+   * `character_id`).
+   *
+   * @generated from enum value: XP_BLOCKED_REASON_CHARACTER_ALREADY_MARKED = 9;
+   */
+  XP_BLOCKED_REASON_CHARACTER_ALREADY_MARKED = 9,
+
+  /**
+   * RemoveMilestone for a milestone that was reached before (all its marks
+   * undone): its awards stay in the history, which is never rewritten, so
+   * the milestone stays too, planned again.
+   *
+   * @generated from enum value: XP_BLOCKED_REASON_MILESTONE_HAS_HISTORY = 10;
+   */
+  XP_BLOCKED_REASON_MILESTONE_HAS_HISTORY = 10,
 }
 
 /**
@@ -689,6 +1144,38 @@ export enum XPBlockedReason {
  */
 export const XPBlockedReasonSchema: GenEnum<XPBlockedReason> = /*@__PURE__*/
   enumDesc(file_meurpg_progression_v1_progression, 1);
+
+/**
+ * MilestoneDirection says where MoveMilestone moves a milestone.
+ *
+ * @generated from enum meurpg.progression.v1.MilestoneDirection
+ */
+export enum MilestoneDirection {
+  /**
+   * @generated from enum value: MILESTONE_DIRECTION_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * Toward the start of the list.
+   *
+   * @generated from enum value: MILESTONE_DIRECTION_UP = 1;
+   */
+  UP = 1,
+
+  /**
+   * Toward the end of the list.
+   *
+   * @generated from enum value: MILESTONE_DIRECTION_DOWN = 2;
+   */
+  DOWN = 2,
+}
+
+/**
+ * Describes the enum meurpg.progression.v1.MilestoneDirection.
+ */
+export const MilestoneDirectionSchema: GenEnum<MilestoneDirection> = /*@__PURE__*/
+  enumDesc(file_meurpg_progression_v1_progression, 2);
 
 /**
  * ProgressionService gives experience to the party and keeps its history.
@@ -699,8 +1186,11 @@ export const XPBlockedReasonSchema: GenEnum<XPBlockedReason> = /*@__PURE__*/
  *     (XP_AWARD_MODE_ENEMIES) or any amount the master wants (MANUAL).
  *   - GOLD: the master gives 1 XP per gold piece the group found (GOLD), or
  *     any amount (MANUAL).
- *   - MILESTONES: there is no XP to count. The master marks a milestone
- *     (MarkMilestone) and every character the master picks "can level up".
+ *   - MILESTONES: there is no XP to count. The master writes the campaign's
+ *     milestones ahead of time (AddMilestone), marks one reached
+ *     (MarkMilestoneReached) and every character the master picks "can level
+ *     up". A milestone that was not planned is still marked with
+ *     MarkMilestone.
  * A call that does not fit the campaign's mode is `failed_precondition`
  * (XPBlocked, MODE_NOT_ALLOWED).
  *
@@ -712,9 +1202,11 @@ export const XPBlockedReasonSchema: GenEnum<XPBlockedReason> = /*@__PURE__*/
  * (ADR-0007). The XP of a character is never typed by the player after the
  * sheet locked: only awards change it.
  *
- * Who may call what: the master gives, marks and undoes; every member of the
- * campaign reads the history and everyone's XP (question 50). The XP an NPC
- * gives never reaches a player (RN-20).
+ * Who may call what: the master gives, marks, plans milestones and undoes;
+ * every member of the campaign reads the history and everyone's XP (question
+ * 50). The XP an NPC gives never reaches a player (RN-20), and a planned
+ * milestone that was not reached is the master's alone: ListMilestones gives
+ * a player only the reached ones.
  *
  * Every method needs a valid session cookie and fails with `unauthenticated`
  * without one. For a campaign the caller is not a member of (a pending member
@@ -794,12 +1286,155 @@ export const ProgressionService: GenService<{
     output: typeof MarkMilestoneResponseSchema;
   },
   /**
+   * ListMilestones lists the campaign's milestones (MR-016, question 45): the
+   * planned ones, in the master's order, and the reached ones, among them
+   * those marked off the list (MarkMilestone), last, oldest first. The master
+   * gets every milestone; a player gets only the reached ones, with when and
+   * for whom, like the XP history (question 50), and never learns that others
+   * are planned. A campaign that counts XP has none. Any member may call it.
+   *
+   * Errors:
+   *   - `not_found`: the campaign does not exist, or the caller is not a member.
+   *
+   * @generated from rpc meurpg.progression.v1.ProgressionService.ListMilestones
+   */
+  listMilestones: {
+    methodKind: "unary";
+    input: typeof ListMilestonesRequestSchema;
+    output: typeof ListMilestonesResponseSchema;
+  },
+  /**
+   * AddMilestone writes one more milestone in the campaign's list, last. Only
+   * the master may call it, and only in a MILESTONES campaign. The master's
+   * list is saved one change at a time, like the scene clues
+   * (maps.v1.MapService.AddSceneClue).
+   *
+   * Errors:
+   *   - `not_found`: the campaign does not exist, or the caller is not a member.
+   *   - `permission_denied`: the caller is a player.
+   *   - `invalid_argument`: text is empty or longer than 120 characters.
+   *   - `failed_precondition` (XPBlocked): MODE_NOT_ALLOWED, for a campaign
+   *     that counts XP.
+   *   - `resource_exhausted`: the campaign already has 100 milestones (the
+   *     reached ones count).
+   *
+   * @generated from rpc meurpg.progression.v1.ProgressionService.AddMilestone
+   */
+  addMilestone: {
+    methodKind: "unary";
+    input: typeof AddMilestoneRequestSchema;
+    output: typeof AddMilestoneResponseSchema;
+  },
+  /**
+   * UpdateMilestone changes the text of a milestone that is still planned.
+   * Only the master may call it. A reached milestone keeps the text it was
+   * marked with: it is never edited.
+   *
+   * Errors:
+   *   - `not_found`: the milestone is not in this campaign, the campaign does
+   *     not exist, or the caller is not a member.
+   *   - `permission_denied`: the caller is a player.
+   *   - `invalid_argument`: text is empty or longer than 120 characters.
+   *   - `failed_precondition` (XPBlocked): MILESTONE_ALREADY_REACHED, or
+   *     MODE_NOT_ALLOWED for a campaign that counts XP (as every milestone
+   *     write: AddMilestone, UpdateMilestone, MoveMilestone, RemoveMilestone,
+   *     MarkMilestoneReached and GiveMilestoneTo).
+   *
+   * @generated from rpc meurpg.progression.v1.ProgressionService.UpdateMilestone
+   */
+  updateMilestone: {
+    methodKind: "unary";
+    input: typeof UpdateMilestoneRequestSchema;
+    output: typeof UpdateMilestoneResponseSchema;
+  },
+  /**
+   * MoveMilestone moves a planned milestone one place up or down among the
+   * planned ones (the reached ones are skipped, and keep their place for when
+   * an undo makes them planned again). Moving the first one up, or the last
+   * one down, changes nothing. Only the master may call it.
+   *
+   * Errors:
+   *   - `invalid_argument`: direction is unspecified.
+   *   - `not_found`, `permission_denied`, `failed_precondition`: as
+   *     UpdateMilestone.
+   *
+   * @generated from rpc meurpg.progression.v1.ProgressionService.MoveMilestone
+   */
+  moveMilestone: {
+    methodKind: "unary";
+    input: typeof MoveMilestoneRequestSchema;
+    output: typeof MoveMilestoneResponseSchema;
+  },
+  /**
+   * RemoveMilestone takes a planned milestone off the list, with no
+   * confirmation from the server (the app asks). Only the master may call it.
+   * A reached milestone is never removed, only undone (UndoLastXPAward), and
+   * one that was reached once and undone is not removed either: its awards
+   * stay in the history, which is never rewritten (ADR-0007), so the refusal
+   * is MILESTONE_HAS_HISTORY.
+   *
+   * Errors: as UpdateMilestone, without `invalid_argument`, and
+   * `failed_precondition` (XPBlocked) MILESTONE_HAS_HISTORY.
+   *
+   * @generated from rpc meurpg.progression.v1.ProgressionService.RemoveMilestone
+   */
+  removeMilestone: {
+    methodKind: "unary";
+    input: typeof RemoveMilestoneRequestSchema;
+    output: typeof RemoveMilestoneResponseSchema;
+  },
+  /**
+   * MarkMilestoneReached marks a planned milestone reached: the characters it
+   * names "can level up" (RN-12), as with MarkMilestone, and the award is
+   * linked to the milestone, with the milestone's text as its reason. Only the
+   * master may call it, and only in a MILESTONES campaign. Milestones may be
+   * reached in any order. A milestone is reached once: to give it to someone
+   * else, GiveMilestoneTo. When the campaign has an open session, the
+   * award is also a session event and the streams get `xp_changed`.
+   *
+   * A retried idempotency_key must carry the same milestone and characters:
+   * otherwise `invalid_argument`.
+   *
+   * Errors: as MarkMilestone, and:
+   *   - `not_found`: the milestone is not in this campaign.
+   *   - `failed_precondition` (XPBlocked): MILESTONE_ALREADY_REACHED.
+   *
+   * @generated from rpc meurpg.progression.v1.ProgressionService.MarkMilestoneReached
+   */
+  markMilestoneReached: {
+    methodKind: "unary";
+    input: typeof MarkMilestoneReachedRequestSchema;
+    output: typeof MarkMilestoneReachedResponseSchema;
+  },
+  /**
+   * GiveMilestoneTo gives a milestone that was already reached to characters
+   * that were left out or arrived late ("Dar a mais alguém"): a new award on
+   * those characters, linked to the same milestone, recorded in the history
+   * with its own date. The milestone stays one. Only the master may call it.
+   *
+   * Errors: as MarkMilestoneReached, with MILESTONE_NOT_REACHED instead of
+   * MILESTONE_ALREADY_REACHED, and CHARACTER_ALREADY_MARKED for a character
+   * that already has this milestone.
+   *
+   * @generated from rpc meurpg.progression.v1.ProgressionService.GiveMilestoneTo
+   */
+  giveMilestoneTo: {
+    methodKind: "unary";
+    input: typeof GiveMilestoneToRequestSchema;
+    output: typeof GiveMilestoneToResponseSchema;
+  },
+  /**
    * UndoLastXPAward takes back the latest award that is not undone: every
    * share is subtracted from its character's sheet (never below 0), or the
    * milestone's marks are cleared. Only the master may call it. The award stays
    * in the history, marked as undone, with who undid it and when: the history
    * is never rewritten (ADR-0007). Only the last one can be undone: to take
    * back an earlier one, undo the later ones first.
+   *
+   * For a planned milestone (MarkMilestoneReached, GiveMilestoneTo), undoing
+   * its only mark makes it planned again, in the same place of the list;
+   * undoing a "Dar a mais alguém" mark takes the milestone off those
+   * characters only, and it stays reached for the others.
    *
    * expected_award_id, when set, is the award the app shows as the last one: if
    * another is the last now, the call changes nothing and fails with `aborted`.

@@ -1,0 +1,68 @@
+:host {
+  display: block;
+}
+
+// What a player's screen learned by itself: read aloud, never drawn.
+.live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.lead {
+  margin: 0 0 var(--mr-space-2);
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.sec {
+  margin-top: var(--mr-space-4);
+}
+
+.sec__head {
+  margin-bottom: var(--mr-space-2);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+}
+
+.sec__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 25px;
+}
+
+.sec__count {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.empty {
+  margin: 0;
+  padding: var(--mr-space-4);
+  background: var(--mr-ground);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  color: var(--mr-ink-muted);
+}
+
+.retry {
+  margin-top: var(--mr-space-3);
+}
+
+// A text action that starts a line pulls its padding back, so its words line
+// up with the text above it.
+.off-list {
+  --mat-button-text-container-height: 44px;
+  --mat-button-text-label-text-color: var(--mr-accent-text);
+  margin-top: var(--mr-space-4);
+  margin-inline-start: -12px;
+}

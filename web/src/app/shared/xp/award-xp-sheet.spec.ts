@@ -17,7 +17,7 @@ import { type AwardXpData, AwardXpSheet } from './award-xp-sheet';
 const nbsp = ' ';
 
 function row(id: string, name: string, sub: string, xp = 2600): ExperienceRow {
-  return { id, name, sub, level: 3, xp, nextLevelXp: 2700, canLevelUp: false, levelUpReason: 0 };
+  return { id, name, playerUserId: "", sub, level: 3, xp, nextLevelXp: 2700, canLevelUp: false, levelUpReason: 0 };
 }
 
 const PARTY = [

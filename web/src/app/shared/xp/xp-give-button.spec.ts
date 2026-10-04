@@ -12,7 +12,7 @@ import { AwardXpSheet } from './award-xp-sheet';
 import { MilestoneSheet } from './milestone-sheet';
 import { type GiveResult, XpGiveButton } from './xp-give-button';
 
-const rows: ExperienceRow[] = [{ id: 'p', name: 'Pensantus', sub: '', level: 3, xp: 0, nextLevelXp: 300, canLevelUp: false, levelUpReason: 0 }];
+const rows: ExperienceRow[] = [{ id: 'p', name: 'Pensantus', playerUserId: '', sub: '', level: 3, xp: 0, nextLevelXp: 300, canLevelUp: false, levelUpReason: 0 }];
 
 @Component({
   imports: [XpGiveButton],

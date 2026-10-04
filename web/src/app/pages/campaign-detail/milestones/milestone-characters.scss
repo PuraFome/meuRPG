@@ -1,0 +1,75 @@
+:host {
+  display: block;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--mr-rule);
+}
+
+// The name and its detail on the left, the state on the right; "Abrir a
+// ficha" is a full row of its own under them.
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--mr-space-2) var(--mr-space-3);
+  padding: 12px 0;
+  border-bottom: 1px solid var(--mr-rule);
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.who__name {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+
+.who__sub {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.state {
+  justify-self: end;
+
+  // On a narrow phone the pill goes under the name block, so the detail line keeps its width.
+  @media (max-width: 360px) {
+    grid-row: 2;
+    justify-self: start;
+  }
+}
+
+.state--none {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+  white-space: nowrap;
+}
+
+.open {
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-accent-text);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  grid-column: 1 / -1;
+  width: 100%;
+
+  @media (min-width: 768px) {
+    --mat-button-outlined-container-height: 44px;
+    justify-self: start;
+    width: auto;
+  }
+}

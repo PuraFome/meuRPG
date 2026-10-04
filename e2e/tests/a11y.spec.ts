@@ -1218,7 +1218,7 @@ async function scanXpScreens(browser: Browser, colorScheme: 'light' | 'dark', wi
     await startSessionRPC(m, marks.campaignId);
     await open(m, `/campanhas/${marks.campaignId}`);
     await expectScreenPasses(m, `Experiência por marcos, sem marcos ${where}`);
-    await m.getByRole('button', { name: 'Registrar marco' }).click();
+    await m.getByRole('button', { name: 'Registrar um marco fora da lista' }).click();
     const markDialog = m.getByRole('dialog', { name: 'Registrar marco' });
     await markDialog.getByLabel('O que aconteceu').fill('Marco: a ponte do rio foi salva');
     await expectScreenPasses(m, `Registrar marco ${where}`);
@@ -1408,6 +1408,99 @@ test('as cenas de RP passam no axe e nas conferências de layout no tema escuro,
 test('as cenas de RP passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-015'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanSceneScreens(browser, 'light', 320);
+});
+
+/**
+ * The planned milestones (Etapa 8, MR-016, RN-12, RN-20; E8-14): the empty panel, "Adicionar marco" open with its
+ * error, the list, the edit field and the removal question in place, "Marcar como alcançado" (a dialog on a
+ * computer, a sheet on a phone), the reached milestone with "Dar a mais alguém"'s absence (one character only),
+ * "Desfazer"'s question, and the player's panel before and after the first milestone. Built in one function so
+ * the sweep is one place.
+ */
+async function scanMilestoneScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width <= 390 ? 700 : 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  const experience = (page: Page) => page.getByRole('region', { name: 'Experiência', exact: true });
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForXp(m, p, `Acessibilidade marcos planejados ${Date.now()}`, 'XP_MODE_MILESTONES');
+    const route = `/campanhas/${table.campaignId}`;
+
+    // Nothing planned yet, and the player's empty state.
+    await open(m, route);
+    await expect(experience(m)).toContainText('Nenhum marco planejado');
+    await expectScreenPasses(m, `Marcos, nenhum planejado ${where}`);
+    await open(p, route);
+    await expect(experience(p)).toContainText('Nenhum marco alcançado ainda');
+    await expectScreenPasses(p, `Marcos, jogador antes do primeiro ${where}`);
+
+    // "Adicionar marco" open, with its error.
+    await experience(m).getByRole('button', { name: 'Adicionar marco', exact: true }).click();
+    await experience(m).getByLabel('Nome do marco').press('Enter');
+    await expect(experience(m).getByRole('alert')).toContainText('Escreva o nome do marco');
+    await expectScreenPasses(m, `Marcos, Adicionar marco com erro ${where}`);
+    for (const text of ['Salvar o mercador', 'Chegar ao Vale Seco', 'Derrotar o Barão Ivo']) {
+      await experience(m).getByLabel('Nome do marco').fill(text);
+      await experience(m).getByLabel('Nome do marco').press('Enter');
+      await expect(experience(m).getByRole('button', { name: `Marcar “${text}” como alcançado` })).toBeVisible();
+      if (text !== 'Derrotar o Barão Ivo') {
+        await experience(m).getByRole('button', { name: 'Adicionar marco', exact: true }).click();
+      }
+    }
+    await expectScreenPasses(m, `Marcos, a lista planejada ${where}`);
+
+    // Edit in place, and the removal question.
+    await experience(m).getByRole('button', { name: 'Editar Salvar o mercador' }).click();
+    await expect(experience(m).getByLabel('Nome do marco')).toHaveValue('Salvar o mercador');
+    await expectScreenPasses(m, `Marcos, editar no lugar ${where}`);
+    await experience(m).getByRole('button', { name: 'Cancelar' }).click();
+    await experience(m).getByRole('button', { name: 'Remover Salvar o mercador' }).click();
+    await expect(m.getByRole('alertdialog')).toBeVisible();
+    await expectScreenPasses(m, `Marcos, remover a pergunta ${where}`);
+    await m.getByRole('button', { name: 'Voltar' }).click();
+
+    // "Marcar como alcançado".
+    await experience(m).getByRole('button', { name: 'Marcar “Chegar ao Vale Seco” como alcançado' }).click();
+    await expect(m.getByRole('dialog', { name: 'Marcar “Chegar ao Vale Seco” como alcançado' })).toBeVisible();
+    await expectScreenPasses(m, `Marcar como alcançado ${where}`);
+    await m.getByRole('dialog').getByRole('button', { name: 'Marcar como alcançado' }).click();
+    await expect(experience(m).getByRole('status').filter({ hasText: 'Marco alcançado' })).toBeVisible();
+    await expectScreenPasses(m, `Marcos, depois de alcançar ${where}`);
+
+    // "Desfazer" asks in place.
+    await experience(m).getByRole('button', { name: 'Desfazer Chegar ao Vale Seco' }).click();
+    await expect(m.getByRole('alertdialog')).toBeVisible();
+    await expectScreenPasses(m, `Marcos, desfazer a pergunta ${where}`);
+    await m.getByRole('button', { name: 'Voltar' }).click();
+
+    // The player, after the first milestone: only the reached one, and the own character.
+    await open(p, route);
+    await expect(experience(p)).toContainText('Chegar ao Vale Seco');
+    await expectScreenPasses(p, `Marcos, jogador depois do marco ${where}`);
+  } finally {
+    await master.close();
+    await player.close();
+  }
+}
+
+test('os marcos planejados passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-016'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanMilestoneScreens(browser, 'light', 1280);
+});
+
+test('os marcos planejados passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-016'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanMilestoneScreens(browser, 'dark', 390);
+});
+
+test('os marcos planejados passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-016'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanMilestoneScreens(browser, 'light', 320);
 });
 
 

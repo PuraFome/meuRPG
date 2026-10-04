@@ -1,0 +1,67 @@
+:host {
+  display: block;
+}
+
+.intro {
+  margin: 0 0 var(--mr-space-3);
+  line-height: 22px;
+}
+
+.who__title {
+  margin: 0 0 var(--mr-space-1);
+  font-size: 14px;
+  line-height: 19px;
+  font-weight: 700;
+  color: var(--mr-ink-muted);
+}
+
+.foot {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  // The frame's rule above, then 16px in all (its own 10px and these 6px).
+  padding-top: 6px;
+}
+
+// A narrow phone: a smaller title (three lines are too many) and no helper note.
+@media (max-width: 360px) {
+  :host ::ng-deep app-sheet-frame .frame__title {
+    font-size: 21px;
+    line-height: 25px;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .effect__note,
+  .note-short {
+    display: none;
+  }
+}
+
+// What the mark does, live: the flag and the words in the success ink.
+.effect:empty {
+  display: none;
+}
+
+.effect__line {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-weight: 700;
+  color: var(--mr-success-ink);
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.effect__note {
+  margin: 2px 0 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}

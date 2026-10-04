@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, signal } from '@angular/core';
+import { Component, ElementRef, Injector, afterNextRender, computed, effect, inject, input, signal, viewChild } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -6,6 +6,7 @@ import { XpMode } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { ExperienceStore } from '../../../core/progression/experience-store';
 import { experienceLead, givenText, milestoneText } from '../../../core/progression/xp-labels';
 import { type GiveResult, XpGiveButton } from '../../../shared/xp/xp-give-button';
+import { MilestonesPanel } from '../milestones/milestones-panel';
 import { AwardHistory } from './award-history';
 import { XpRows } from './xp-rows';
 
@@ -20,7 +21,7 @@ import { XpRows } from './xp-rows';
  */
 @Component({
   selector: 'app-experience-panel',
-  imports: [AwardHistory, MatButtonModule, MatIconModule, XpGiveButton, XpRows],
+  imports: [AwardHistory, MatButtonModule, MatIconModule, MilestonesPanel, XpGiveButton, XpRows],
   templateUrl: './experience-panel.html',
   styleUrl: './experience-panel.scss',
 })
@@ -33,6 +34,17 @@ export class ExperiencePanel {
 
   /** What the master just gave, said once in a polite status. */
   protected readonly confirmation = signal('');
+  private readonly status = viewChild<ElementRef<HTMLElement>>('status');
+  private readonly injector = inject(Injector);
+
+  constructor() {
+    // The news sits above the card: bring it into view, whatever the page was showing.
+    effect(() => {
+      if (this.confirmation()) {
+        afterNextRender(() => this.status()?.nativeElement.scrollIntoView?.({ block: 'start' }), { injector: this.injector });
+      }
+    });
+  }
 
   protected readonly milestones = computed(() => this.store.xpMode() === XpMode.MILESTONES);
   protected readonly lead = computed(() => {

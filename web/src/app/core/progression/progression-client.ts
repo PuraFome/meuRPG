@@ -2,11 +2,19 @@ import { Injectable, inject } from '@angular/core';
 import { createClient } from '@connectrpc/connect';
 
 import {
+  type AddMilestoneResponse,
   type AwardXPResponse,
   type GetCampaignExperienceResponse,
+  type GiveMilestoneToResponse,
+  type ListMilestonesResponse,
   type ListXPAwardsResponse,
+  type MarkMilestoneReachedResponse,
   type MarkMilestoneResponse,
+  MilestoneDirection,
+  type MoveMilestoneResponse,
   ProgressionService,
+  type RemoveMilestoneResponse,
+  type UpdateMilestoneResponse,
   XPAwardMode,
   type UndoLastXPAwardResponse,
 } from '../../../gen/meurpg/progression/v1/progression_pb';
@@ -84,6 +92,62 @@ export class ProgressionClient {
 
   listAwards(campaignId: string, pageToken = ''): Promise<ListXPAwardsResponse> {
     return this.client.listXPAwards({ campaignId, pageSize: AWARDS_PAGE_SIZE, pageToken });
+  }
+
+  /** The campaign's milestones: every one for the master, the reached ones
+   * for a player (`ListMilestones`). */
+  listMilestones(campaignId: string): Promise<ListMilestonesResponse> {
+    return this.client.listMilestones({ campaignId });
+  }
+
+  addMilestone(campaignId: string, text: string): Promise<AddMilestoneResponse> {
+    return this.client.addMilestone({ campaignId, text });
+  }
+
+  updateMilestone(campaignId: string, milestoneId: string, text: string): Promise<UpdateMilestoneResponse> {
+    return this.client.updateMilestone({ campaignId, milestoneId, text });
+  }
+
+  moveMilestone(
+    campaignId: string,
+    milestoneId: string,
+    direction: 'up' | 'down',
+  ): Promise<MoveMilestoneResponse> {
+    return this.client.moveMilestone({
+      campaignId,
+      milestoneId,
+      direction:
+        direction === 'up' ? MilestoneDirection.UP : MilestoneDirection.DOWN,
+    });
+  }
+
+  removeMilestone(campaignId: string, milestoneId: string): Promise<RemoveMilestoneResponse> {
+    return this.client.removeMilestone({ campaignId, milestoneId });
+  }
+
+  /** "Marcar como alcançado": the characters in `characterIds` can level up. */
+  markMilestoneReached(
+    campaignId: string,
+    milestoneId: string,
+    characterIds: readonly string[],
+    idempotencyKey: string,
+  ): Promise<MarkMilestoneReachedResponse> {
+    return this.client.markMilestoneReached({
+      campaignId,
+      milestoneId,
+      characterIds: [...characterIds],
+      idempotencyKey,
+    });
+  }
+
+  /** "Dar a mais alguém": the same reached milestone, for others. */
+  giveMilestoneTo(
+    campaignId: string,
+    milestoneId: string,
+    characterIds: readonly string[],
+    idempotencyKey: string,
+  ): Promise<GiveMilestoneToResponse> {
+    return this.client.giveMilestoneTo({ campaignId, milestoneId, characterIds: [...characterIds], idempotencyKey });
   }
 
   experience(campaignId: string): Promise<GetCampaignExperienceResponse> {

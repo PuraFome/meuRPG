@@ -1,7 +1,15 @@
 <section class="mr-panel exp" aria-labelledby="exp-title">
+  <div #status class="exp__status" role="status">
+    @if (confirmation()) {
+      <p class="mr-notice mr-notice--success">
+        <mat-icon aria-hidden="true">check_circle</mat-icon>{{ confirmation() }}
+      </p>
+    }
+  </div>
+
   <div class="exp__head">
     <h2 class="mr-panel__title" id="exp-title">Experiência</h2>
-    @if (isMaster() && store.rowsState() === 'ready') {
+    @if (isMaster() && store.rowsState() === 'ready' && !milestones()) {
       <app-xp-give-button
         [campaignId]="campaignId()"
         [campaignName]="campaignName()"
@@ -9,14 +17,6 @@
         [rows]="store.rows()"
         (given)="given($event)"
       />
-    }
-  </div>
-
-  <div class="exp__status" role="status">
-    @if (confirmation()) {
-      <p class="mr-notice mr-notice--success">
-        <mat-icon aria-hidden="true">check_circle</mat-icon>{{ confirmation() }}
-      </p>
     }
   </div>
 
@@ -32,30 +32,39 @@
       <button mat-stroked-button type="button" class="exp__retry" (click)="retry()">Tentar de novo</button>
     }
     @case ('ready') {
-      <p class="exp__lead">{{ lead() }}</p>
-
-      @if (store.rows().length === 0) {
-        <p class="mr-muted">Nenhum personagem de jogador vivo nesta campanha.</p>
+      @if (milestones()) {
+        <app-milestones-panel
+          [campaignId]="campaignId()"
+          [campaignName]="campaignName()"
+          [isMaster]="isMaster()"
+          (confirmed)="confirmation.set($event)"
+        />
       } @else {
-        <app-xp-rows [rows]="store.rows()" [milestones]="milestones()" />
-      }
+        <p class="exp__lead">{{ lead() }}</p>
 
-      <h3 class="exp__sub" id="history-title">Histórico</h3>
-      @switch (store.awardsState()) {
-        @case ('loading') {
-          <p class="mr-muted" role="status">Carregando o histórico...</p>
+        @if (store.rows().length === 0) {
+          <p class="mr-muted">Nenhum personagem de jogador vivo nesta campanha.</p>
+        } @else {
+          <app-xp-rows [rows]="store.rows()" />
         }
-        @case ('error') {
-          <p class="mr-muted">Não foi possível carregar o histórico. <button mat-button type="button" class="exp__inline" (click)="retry()">Tentar de novo</button></p>
-        }
-        @default {
-          @if (store.awards().length === 0) {
-            <p class="mr-muted">{{ emptyHistory() }}</p>
-          } @else {
-            <app-award-history [campaignId]="campaignId()" [milestones]="milestones()" />
-            <p class="exp__foot">
-              {{ isMaster() ? 'Só o último prêmio pode ser desfeito.' : 'Todos da campanha veem este histórico.' }}
-            </p>
+
+        <h3 class="exp__sub" id="history-title">Histórico</h3>
+        @switch (store.awardsState()) {
+          @case ('loading') {
+            <p class="mr-muted" role="status">Carregando o histórico...</p>
+          }
+          @case ('error') {
+            <p class="mr-muted">Não foi possível carregar o histórico. <button mat-button type="button" class="exp__inline" (click)="retry()">Tentar de novo</button></p>
+          }
+          @default {
+            @if (store.awards().length === 0) {
+              <p class="mr-muted">{{ emptyHistory() }}</p>
+            } @else {
+              <app-award-history [campaignId]="campaignId()" />
+              <p class="exp__foot">
+                {{ isMaster() ? 'Só o último prêmio pode ser desfeito.' : 'Todos da campanha veem este histórico.' }}
+              </p>
+            }
           }
         }
       }

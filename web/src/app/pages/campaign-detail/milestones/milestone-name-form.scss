@@ -1,0 +1,68 @@
+:host {
+  display: block;
+}
+
+// "Novo marco": a card inside the panel, the width of the list.
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  box-sizing: border-box;
+  padding: var(--mr-space-4);
+  background: var(--mr-surface);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  scroll-margin-top: 80px;
+}
+
+.form__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-weight: 700;
+  font-size: 19px;
+  line-height: 24px;
+}
+
+.form__field {
+  width: 100%;
+  // The floating label needs room above the first field.
+  margin-top: var(--mr-space-1);
+}
+
+// "35 de 120" is one thing: it never breaks.
+mat-hint.mat-mdc-form-field-hint-end {
+  white-space: nowrap;
+}
+
+.form__error {
+  margin: 0;
+  align-items: center;
+}
+
+// Both buttons are outlined and the same size: stacked and full width on a
+// phone, two equal columns from a tablet up.
+.form__btns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.form__btn {
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  width: 100%;
+  white-space: nowrap;
+
+  @media (min-width: 768px) {
+    --mat-button-outlined-container-height: 44px;
+  }
+}
+
+.form__go {
+  --mat-button-outlined-label-text-color: var(--mr-accent-text);
+}

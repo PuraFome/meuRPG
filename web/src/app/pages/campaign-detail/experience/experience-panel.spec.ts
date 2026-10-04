@@ -9,10 +9,12 @@ import { LevelUpReason } from '../../../../gen/meurpg/characters/v1/characters_p
 import {
   CharacterExperienceSchema,
   GetCampaignExperienceResponseSchema,
+  ListMilestonesResponseSchema,
   ListXPAwardsResponseSchema,
   XPAwardMode,
   XPAwardSchema,
 } from '../../../../gen/meurpg/progression/v1/progression_pb';
+import { AuthService } from '../../../core/auth/auth.service';
 import { RosterClient } from '../../../core/maps/roster-client';
 import { ExperienceStore } from '../../../core/progression/experience-store';
 import { ProgressionClient } from '../../../core/progression/progression-client';
@@ -35,6 +37,7 @@ function character(id: string, name: string, xp: number, level = 3) {
 describe('ExperiencePanel (E7-09, E7-08)', () => {
   const experience = vi.fn();
   const listAwards = vi.fn();
+  const listMilestones = vi.fn();
   const dialogOpen = vi.fn();
 
   function respond(mode: XpMode, characters = [character('p', 'Pensantus', 2716), character('t', 'Toren', 2366), character('b', 'Brisa', 0)], awards: ReturnType<typeof award>[] = []) {
@@ -58,8 +61,9 @@ describe('ExperiencePanel (E7-09, E7-08)', () => {
     TestBed.configureTestingModule({
       providers: [
         ExperienceStore,
-        { provide: ProgressionClient, useValue: { experience, listAwards } },
+        { provide: ProgressionClient, useValue: { experience, listAwards, listMilestones } },
         { provide: RosterClient, useValue: { list: () => Promise.resolve([{ id: 'p', name: 'Pensantus', kind: 1, playerUserId: 'u', classSummary: 'Mago 3', raceName: '', playerName: 'Vinicius' }]) } },
+        { provide: AuthService, useValue: { state: () => ({ status: 'signed-in', user: { id: 'u', displayName: null } }) } },
         { provide: MatDialog, useValue: { open: dialogOpen } },
         { provide: MatBottomSheet, useValue: { open: dialogOpen } },
       ],
@@ -83,6 +87,7 @@ describe('ExperiencePanel (E7-09, E7-08)', () => {
   beforeEach(() => {
     experience.mockReset();
     listAwards.mockReset();
+    listMilestones.mockReset();
     dialogOpen.mockReset().mockReturnValue({ afterClosed: () => of(undefined), afterDismissed: () => of(undefined) });
     // jsdom has no matchMedia: openSheet falls back to the dialog.
   });
@@ -139,26 +144,17 @@ describe('ExperiencePanel (E7-09, E7-08)', () => {
   });
 
   describe('in a campaign that levels by milestones', () => {
-    it('shows no XP number anywhere, only the tag', async () => {
-      respond(XpMode.MILESTONES, [character('p', 'Pensantus', 0), character('t', 'Toren', 0)], []);
-      experience.mockResolvedValue(
-        create(GetCampaignExperienceResponseSchema, {
-          xpMode: XpMode.MILESTONES,
-          characters: [
-            create(CharacterExperienceSchema, { characterId: 'p', name: 'Pensantus', level: 3, canLevelUp: true, levelUpReason: LevelUpReason.MILESTONE }),
-            create(CharacterExperienceSchema, { characterId: 't', name: 'Toren', level: 3 }),
-          ],
-        }),
-      );
+    it('hands the panel over to the milestones, with no XP, no "Dar XP" and no history', async () => {
+      respond(XpMode.MILESTONES, [character('p', 'Pensantus', 0)], []);
+      listMilestones.mockResolvedValue(create(ListMilestonesResponseSchema, {}));
       const { el } = await setup(true);
 
+      expect(el.querySelector('app-milestones-panel')).not.toBeNull();
       expect(text(el)).toContain('Campanha por marcos');
       expect(text(el)).not.toMatch(/\d+\s*XP/);
-      expect(rows(el)[0].textContent).toContain('Pode subir de nível');
-      expect(rows(el)[1].textContent).not.toContain('Pode subir de nível');
-      expect(text(el)).toContain('Nenhum marco ainda. Registre um quando o grupo cumprir algo importante na história.');
-      expect(Array.from(el.querySelectorAll('button')).some((b) => b.textContent?.includes('Registrar marco'))).toBe(true);
+      expect(text(el)).not.toContain('Histórico');
       expect(Array.from(el.querySelectorAll('button')).some((b) => b.textContent?.trim() === 'Dar XP')).toBe(false);
+      expect(listAwards).toHaveBeenCalled(); // the page loads it for every mode; this panel does not read it
     });
   });
 

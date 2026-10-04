@@ -1,0 +1,132 @@
+<div class="head">
+  <h3 class="head__title" id="planned-title" tabindex="-1">Marcos planejados</h3>
+  @if (milestones().length > 0) {
+    <span class="head__count">{{ count() }}</span>
+  }
+</div>
+
+<div class="status" role="status">
+  @if (notice()) {
+    <span class="mr-visually-hidden">{{ notice() }}</span>
+  }
+</div>
+
+@if (milestones().length === 0 && !adding()) {
+  <div class="empty">
+    <p class="empty__title">Nenhum marco planejado</p>
+    <p class="empty__text">
+      Escreva os momentos em que o grupo ganha um nível, como “Salvar o mercador”. Só você vê esta lista.
+    </p>
+  </div>
+}
+
+<ul class="list" aria-labelledby="planned-title">
+  @for (m of milestones(); track m.id; let first = $first; let last = $last) {
+    <li class="row">
+      @if (editing() === m.id) {
+        <app-milestone-name-form
+          class="row__form"
+          title="Editar marco"
+          [initial]="m.text"
+          submitLabel="Salvar marco"
+          [busy]="busy()"
+          [error]="error()"
+          (save)="saveEdit(m, $event)"
+          (cancel)="closeEdit(m.id)"
+        />
+      } @else if (removing() === m.id) {
+        <app-milestone-ask
+          class="row__form"
+          [title]="removeText(m)"
+          text="Ele some da lista. Marcos já alcançados não mudam."
+          goLabel="Remover"
+          [error]="error()"
+          [busy]="busy()"
+          (back)="closeRemove(m.id)"
+          (go)="remove(m)"
+        />
+      } @else {
+        <span class="row__name">{{ m.text }}</span>
+        <button
+          mat-stroked-button
+          type="button"
+          class="row__reach"
+          [attr.data-id]="m.id"
+          data-act="reach"
+          [attr.aria-label]="'Marcar “' + m.text + '” como alcançado'"
+          (click)="reach.emit(m)"
+        >
+          <mat-icon aria-hidden="true">flag</mat-icon>Marcar como alcançado
+        </button>
+        <div class="row__tools">
+          <button
+            type="button"
+            class="tool"
+            [attr.data-id]="m.id"
+            data-act="up"
+            [attr.aria-label]="'Subir ' + m.text"
+            [attr.aria-disabled]="first"
+            (click)="move(m, 'up', first)"
+          >
+            <mat-icon aria-hidden="true">arrow_upward</mat-icon>
+          </button>
+          <button
+            type="button"
+            class="tool"
+            [attr.data-id]="m.id"
+            data-act="down"
+            [attr.aria-label]="'Descer ' + m.text"
+            [attr.aria-disabled]="last"
+            (click)="move(m, 'down', last)"
+          >
+            <mat-icon aria-hidden="true">arrow_downward</mat-icon>
+          </button>
+          <button
+            type="button"
+            class="tool"
+            [attr.data-id]="m.id"
+            data-act="edit"
+            [attr.aria-label]="'Editar ' + m.text"
+            (click)="startEdit(m)"
+          >
+            <mat-icon aria-hidden="true">edit</mat-icon>
+          </button>
+          <button
+            type="button"
+            class="tool tool--remove"
+            [attr.data-id]="m.id"
+            data-act="remove"
+            [attr.aria-label]="'Remover ' + m.text"
+            (click)="askRemove(m)"
+          >
+            <mat-icon aria-hidden="true">delete</mat-icon>
+          </button>
+        </div>
+      }
+    </li>
+  }
+</ul>
+
+@if (error() && !adding() && editing() === null && removing() === null) {
+  <p class="mr-notice mr-notice--danger problem" role="alert">
+    <mat-icon aria-hidden="true">error</mat-icon>{{ error() }}
+  </p>
+}
+
+@if (adding()) {
+  <app-milestone-name-form
+    class="add-form"
+    title="Novo marco"
+    submitLabel="Adicionar marco"
+    [busy]="busy()"
+    [error]="error()"
+    (save)="add($event)"
+    (cancel)="closeAdd()"
+  />
+} @else if (full()) {
+  <p class="mr-muted full">A campanha já tem 100 marcos. Remova um marco planejado para escrever outro.</p>
+} @else {
+  <button mat-stroked-button type="button" class="add" data-add (click)="openAdd()">
+    <mat-icon aria-hidden="true">add</mat-icon>Adicionar marco
+  </button>
+}
