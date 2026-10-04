@@ -103,7 +103,8 @@ func (s *Service) ListCombatLog(
 		return nil, s.dbError(ctx, "list the combat's events", err)
 	}
 	slices.Reverse(events) // oldest first, as buildLog reads them
-	cs, err := s.queries.ListCombatants(ctx, enc.ID)
+	// With the dismissed creatures: their lines survive a concentration ending.
+	cs, err := s.queries.ListCombatantsWithDismissed(ctx, enc.ID)
 	if err != nil {
 		return nil, s.dbError(ctx, "list the combatants", err)
 	}
@@ -177,7 +178,7 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 		case eventEncounterEnded:
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_COMBAT_ENDED
 		case eventCombatantMoved:
-			if !ev.OnTurn || ev.DistanceFt == 0 {
+			if !ev.OnTurn || (ev.DistanceFt == 0 && ev.DistanceDFt == 0 && ev.Jump != jumpHigh) {
 				continue // placing a token is not a move of the fight
 			}
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED
@@ -333,7 +334,17 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 	}
 	switch e.kind {
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED:
-		out.DistanceFt = e.ev.DistanceFt
+		out.DistanceFt, out.DistanceDft = e.ev.DistanceFt, e.ev.DistanceDFt
+		if out.DistanceDft == 0 { // an event written before the tenths of a foot
+			out.DistanceDft = e.ev.DistanceFt * 10
+		}
+		switch e.ev.Jump {
+		case jumpLong:
+			out.Jump = playv1.JumpKind_JUMP_KIND_LONG
+		case jumpHigh:
+			out.Jump, out.JumpHeightDft = playv1.JumpKind_JUMP_KIND_HIGH, e.ev.HeightDFt
+		}
+		out.LandingDifficult = v.master && e.ev.LandingDifficult // the Acrobatics reminder is the master's alone
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_REVEAL_CHANGED:
 		out.NowHidden = e.ev.NowHidden
 		out.ActorId, out.ActorLabel = "", ""
@@ -346,6 +357,10 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK:
 		out.Outcome = outcomeToProto[e.ev.Outcome]
 		out.AsReaction = e.ev.AsReaction
+		out.Cover, out.CoverSource = coverDegreeProto(e.ev.Cover), coverSourceProto(e.ev.CoverSource)
+		if v.master && e.ev.TargetAC > 0 { // "CA 17: 15 + 2 de meia cobertura": a player never gets an armor class (RN-20)
+			out.TargetArmorClass, out.CoverBonus = &e.ev.TargetAC, e.ev.CoverBonus
+		}
 		if dice {
 			out.AttackRoll = diceRoll(1, 20, []int32{e.ev.D20}, e.ev.Modifier, e.ev.Total, e.ev.Physical)
 		}
@@ -399,6 +414,10 @@ func (e *logEntry) spellView(v combatViewer, byID map[string]playdb.Combatant) *
 			TargetId: target.ID, TargetLabel: target.Label, Darts: h.Darts, Outcome: outcomeToProto[h.Outcome],
 			AttackRoll: attackRollView(h, v, caster), Save: saveView(h.Save, v, caster, target),
 			Effect: effectView(h, v, target),
+			Cover:  coverDegreeProto(h.Cover), CoverSource: coverSourceProto(h.CoverSource),
+		}
+		if v.master && h.TargetAC > 0 {
+			t.TargetArmorClass, t.CoverBonus = &h.TargetAC, h.CoverBonus
 		}
 		if dl, ok := e.pend[h.Pending]; ok {
 			if slices.Contains(e.stopped, h.Pending) { // Escudo stopped the spell attack
@@ -505,13 +524,13 @@ func (n *keyNames) of(ctx context.Context, c playdb.Combatant, key string) strin
 	if c.CharacterID == "" || key == "" {
 		return ""
 	}
-	sheet, ok := n.byCharacter[c.CharacterID]
+	sheet, ok := n.byCharacter[sheetKey(c)]
 	if !ok {
 		var err error
-		if sheet, err = n.s.roster.CombatSheet(ctx, n.campaignID, c.CharacterID); err != nil {
+		if sheet, err = n.s.sheetOf(ctx, n.campaignID, c); err != nil {
 			n.s.logger.WarnContext(ctx, "play: cannot read a sheet for the combat log") // no names or IDs in logs
 		}
-		n.byCharacter[c.CharacterID] = sheet
+		n.byCharacter[sheetKey(c)] = sheet
 	}
 	for _, a := range sheet.Attacks {
 		if a.Key == key {
@@ -528,7 +547,7 @@ func (n *keyNames) of(ctx context.Context, c playdb.Combatant, key string) strin
 			return a.Name
 		}
 	}
-	if strings.HasPrefix(key, "spell:") {
+	if strings.HasPrefix(key, "spell:") && !isCreature(c) {
 		if sp, err := n.s.roster.CombatSpell(ctx, n.campaignID, c.CharacterID, key, 0); err == nil {
 			return sp.Name
 		}

@@ -10,7 +10,6 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
-	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
 // The combat's own arithmetic: the turn order, whose turn comes next, the
@@ -26,7 +25,23 @@ const (
 
 	kindPlayer = "player"
 	kindNPC    = "npc"
+	// kindCreature is a creature of a player's character (MR-037): a familiar,
+	// summoned animals, a creature the master gave. Its character_id is the
+	// owner's and its user_id the owner's player.
+	kindCreature = "creature"
 )
+
+// holdsHP says whether the combatant keeps its hit points on the combatant row
+// (an NPC and a creature) instead of in a character's vitals (a player's
+// character).
+func holdsHP(c playdb.Combatant) bool { return c.Kind == kindNPC || c.Kind == kindCreature }
+
+// inParty says whether the combatant is on the party's side: a player's
+// character or one of its creatures, whom a player plays.
+func inParty(c playdb.Combatant) bool { return c.Kind != kindNPC }
+
+// isCreature says whether the combatant is a creature of a character.
+func isCreature(c playdb.Combatant) bool { return c.Kind == kindCreature }
 
 // Limits of a combat. Tests cannot go beyond the CHECKs of the tables, which
 // say the same.
@@ -108,31 +123,12 @@ func withOrder(cs []playdb.Combatant, ids []string) []playdb.Combatant {
 	return out
 }
 
-// movementLeftFt is how many feet the combatant can still walk this turn
-// (RN-21): its speed, twice after the Dash action, minus what it walked.
-func movementLeftFt(c playdb.Combatant) int {
-	speed := int(c.SpeedFt)
-	if c.Dashed {
-		speed *= 2
-	}
-	return max(speed-int(c.MovementUsedFt), 0)
-}
-
-// moveCostFt is the feet a move costs: every square costs 5 ft, diagonals
-// included (RN-21, the SRD's rule), so the cost is the king's-move distance.
-func moveCostFt(c playdb.Combatant, col, row int32) int {
-	return combat.GridDistanceFt(int(*c.GridCol), int(*c.GridRow), int(col), int(row))
-}
-
-// placed says whether the combatant has a square on the grid.
-func placed(c playdb.Combatant) bool { return c.GridCol != nil && c.GridRow != nil }
-
-// stateOf is the word that says how hurt an NPC is (RN-20): "Derrotado" when
-// it is out; "Muito ferido" at half of its hit points or fewer; "Ferido" when
-// hurt; "Ileso" otherwise. A player's character has none.
+// stateOf is the word that says how hurt an NPC or a creature is (RN-20):
+// "Derrotado" when it is out; "Muito ferido" at half of its hit points or
+// fewer; "Ferido" when hurt; "Ileso" otherwise. A player's character has none.
 func stateOf(c playdb.Combatant) playv1.CombatantState {
 	switch {
-	case c.Kind != kindNPC || c.HpMax == nil || c.HpCurrent == nil:
+	case !holdsHP(c) || c.HpMax == nil || c.HpCurrent == nil:
 		return playv1.CombatantState_COMBATANT_STATE_UNSPECIFIED
 	case c.Defeated || *c.HpCurrent <= 0:
 		return playv1.CombatantState_COMBATANT_STATE_DEFEATED

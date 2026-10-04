@@ -120,6 +120,39 @@ func (q *Queries) ClearPortraits(ctx context.Context, arg ClearPortraitsParams) 
 	return result.RowsAffected(), nil
 }
 
+const countLiveCreaturesOfCharacter = `-- name: CountLiveCreaturesOfCharacter :one
+SELECT count(*)::INT4 FROM character_creatures
+WHERE campaign_id = $1::UUID AND character_id = $2::UUID AND dismissed_at IS NULL
+`
+
+type CountLiveCreaturesOfCharacterParams struct {
+	CampaignID  string
+	CharacterID string
+}
+
+func (q *Queries) CountLiveCreaturesOfCharacter(ctx context.Context, arg CountLiveCreaturesOfCharacterParams) (int32, error) {
+	row := q.db.QueryRow(ctx, countLiveCreaturesOfCharacter, arg.CampaignID, arg.CharacterID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const deleteCreatures = `-- name: DeleteCreatures :exec
+DELETE FROM character_creatures
+WHERE campaign_id = $1::UUID AND id = ANY($2::UUID[])
+`
+
+type DeleteCreaturesParams struct {
+	CampaignID string
+	Ids        []string
+}
+
+// Takes the creatures a casting made away for good (the master's undo of it).
+func (q *Queries) DeleteCreatures(ctx context.Context, arg DeleteCreaturesParams) error {
+	_, err := q.db.Exec(ctx, deleteCreatures, arg.CampaignID, arg.Ids)
+	return err
+}
+
 const deleteLevelUpRoll = `-- name: DeleteLevelUpRoll :exec
 DELETE FROM character_level_up_rolls
 WHERE character_id = $1::UUID AND to_level = $2
@@ -175,6 +208,51 @@ func (q *Queries) DeletePendingCharacter(ctx context.Context, arg DeletePendingC
 	return result.RowsAffected(), nil
 }
 
+const dismissCreatures = `-- name: DismissCreatures :many
+UPDATE character_creatures
+SET dismissed_at = $1::TIMESTAMPTZ, dismissed_reason = $2::TEXT,
+    hp_current = CASE WHEN $2::TEXT = 'defeated' THEN 0 ELSE hp_current END
+WHERE campaign_id = $3::UUID
+  AND id = ANY($4::UUID[])
+  AND dismissed_at IS NULL
+RETURNING id
+`
+
+type DismissCreaturesParams struct {
+	At         time.Time
+	Reason     string
+	CampaignID string
+	Ids        []string
+}
+
+// Sends the live ones of these creatures away, with the reason; a creature
+// dismissed because it was defeated is at 0 hit points. Returns the ones it
+// dismissed.
+func (q *Queries) DismissCreatures(ctx context.Context, arg DismissCreaturesParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, dismissCreatures,
+		arg.At,
+		arg.Reason,
+		arg.CampaignID,
+		arg.Ids,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const endStoryEditing = `-- name: EndStoryEditing :execrows
 UPDATE characters
 SET story_editing_allowed = false
@@ -220,6 +298,89 @@ func (q *Queries) GetCharacter(ctx context.Context, arg GetCharacterParams) (Cha
 		&i.DiedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getCharacterCreature = `-- name: GetCharacterCreature :one
+SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, c.player_user_id
+FROM character_creatures cc
+JOIN characters c ON c.id = cc.character_id
+WHERE cc.campaign_id = $1::UUID AND cc.id = $2::UUID
+`
+
+type GetCharacterCreatureParams struct {
+	CampaignID string
+	ID         string
+}
+
+type GetCharacterCreatureRow struct {
+	CharacterCreature CharacterCreature
+	PlayerUserID      *string
+}
+
+// One creature of the campaign, live or not, with its owner's player.
+func (q *Queries) GetCharacterCreature(ctx context.Context, arg GetCharacterCreatureParams) (GetCharacterCreatureRow, error) {
+	row := q.db.QueryRow(ctx, getCharacterCreature, arg.CampaignID, arg.ID)
+	var i GetCharacterCreatureRow
+	err := row.Scan(
+		&i.CharacterCreature.ID,
+		&i.CharacterCreature.CampaignID,
+		&i.CharacterCreature.CharacterID,
+		&i.CharacterCreature.MonsterKey,
+		&i.CharacterCreature.Name,
+		&i.CharacterCreature.Source,
+		&i.CharacterCreature.Attack,
+		&i.CharacterCreature.SummonGroupID,
+		&i.CharacterCreature.ConcentrationCastID,
+		&i.CharacterCreature.HpCurrent,
+		&i.CharacterCreature.HpMax,
+		&i.CharacterCreature.CreatedAt,
+		&i.CharacterCreature.DismissedAt,
+		&i.CharacterCreature.DismissedReason,
+		&i.PlayerUserID,
+	)
+	return i, err
+}
+
+const getCharacterCreatureForUpdate = `-- name: GetCharacterCreatureForUpdate :one
+SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, c.player_user_id
+FROM character_creatures cc
+JOIN characters c ON c.id = cc.character_id
+WHERE cc.campaign_id = $1::UUID AND cc.id = $2::UUID
+FOR UPDATE OF cc
+`
+
+type GetCharacterCreatureForUpdateParams struct {
+	CampaignID string
+	ID         string
+}
+
+type GetCharacterCreatureForUpdateRow struct {
+	CharacterCreature CharacterCreature
+	PlayerUserID      *string
+}
+
+// The same, locking the creature's row until the transaction ends.
+func (q *Queries) GetCharacterCreatureForUpdate(ctx context.Context, arg GetCharacterCreatureForUpdateParams) (GetCharacterCreatureForUpdateRow, error) {
+	row := q.db.QueryRow(ctx, getCharacterCreatureForUpdate, arg.CampaignID, arg.ID)
+	var i GetCharacterCreatureForUpdateRow
+	err := row.Scan(
+		&i.CharacterCreature.ID,
+		&i.CharacterCreature.CampaignID,
+		&i.CharacterCreature.CharacterID,
+		&i.CharacterCreature.MonsterKey,
+		&i.CharacterCreature.Name,
+		&i.CharacterCreature.Source,
+		&i.CharacterCreature.Attack,
+		&i.CharacterCreature.SummonGroupID,
+		&i.CharacterCreature.ConcentrationCastID,
+		&i.CharacterCreature.HpCurrent,
+		&i.CharacterCreature.HpMax,
+		&i.CharacterCreature.CreatedAt,
+		&i.CharacterCreature.DismissedAt,
+		&i.CharacterCreature.DismissedReason,
+		&i.PlayerUserID,
 	)
 	return i, err
 }
@@ -444,6 +605,69 @@ func (q *Queries) InsertCharacter(ctx context.Context, arg InsertCharacterParams
 		&i.DiedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const insertCharacterCreature = `-- name: InsertCharacterCreature :one
+
+INSERT INTO character_creatures
+    (campaign_id, character_id, monster_key, name, source, attack, summon_group_id, concentration_cast_id, hp_current, hp_max, created_at)
+VALUES (
+    $1::UUID, $2::UUID, $3, $4, $5,
+    $6, $7::UUID, $8::UUID, $9, $10,
+    $11
+)
+RETURNING id, campaign_id, character_id, monster_key, name, source, attack, summon_group_id, concentration_cast_id, hp_current, hp_max, created_at, dismissed_at, dismissed_reason
+`
+
+type InsertCharacterCreatureParams struct {
+	CampaignID          string
+	CharacterID         string
+	MonsterKey          string
+	Name                string
+	Source              string
+	Attack              string
+	SummonGroupID       string
+	ConcentrationCastID *string
+	HpCurrent           int32
+	HpMax               int32
+	CreatedAt           time.Time
+}
+
+// A character's creatures (MR-037, Etapa 9). A creature is "live" until it is
+// dismissed; a dismissed one is kept (dismissed_at, dismissed_reason) so an
+// undo can bring it back.
+func (q *Queries) InsertCharacterCreature(ctx context.Context, arg InsertCharacterCreatureParams) (CharacterCreature, error) {
+	row := q.db.QueryRow(ctx, insertCharacterCreature,
+		arg.CampaignID,
+		arg.CharacterID,
+		arg.MonsterKey,
+		arg.Name,
+		arg.Source,
+		arg.Attack,
+		arg.SummonGroupID,
+		arg.ConcentrationCastID,
+		arg.HpCurrent,
+		arg.HpMax,
+		arg.CreatedAt,
+	)
+	var i CharacterCreature
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.CharacterID,
+		&i.MonsterKey,
+		&i.Name,
+		&i.Source,
+		&i.Attack,
+		&i.SummonGroupID,
+		&i.ConcentrationCastID,
+		&i.HpCurrent,
+		&i.HpMax,
+		&i.CreatedAt,
+		&i.DismissedAt,
+		&i.DismissedReason,
 	)
 	return i, err
 }
@@ -727,6 +951,61 @@ func (q *Queries) ListCombatParty(ctx context.Context, campaignID string) ([]Lis
 	return items, nil
 }
 
+const listCreaturesByIDs = `-- name: ListCreaturesByIDs :many
+SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, c.player_user_id
+FROM character_creatures cc
+JOIN characters c ON c.id = cc.character_id
+WHERE cc.campaign_id = $1::UUID AND cc.id = ANY($2::UUID[])
+ORDER BY cc.created_at, cc.id
+`
+
+type ListCreaturesByIDsParams struct {
+	CampaignID string
+	Ids        []string
+}
+
+type ListCreaturesByIDsRow struct {
+	CharacterCreature CharacterCreature
+	PlayerUserID      *string
+}
+
+// The creatures of the campaign with the given IDs, live or not.
+func (q *Queries) ListCreaturesByIDs(ctx context.Context, arg ListCreaturesByIDsParams) ([]ListCreaturesByIDsRow, error) {
+	rows, err := q.db.Query(ctx, listCreaturesByIDs, arg.CampaignID, arg.Ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCreaturesByIDsRow
+	for rows.Next() {
+		var i ListCreaturesByIDsRow
+		if err := rows.Scan(
+			&i.CharacterCreature.ID,
+			&i.CharacterCreature.CampaignID,
+			&i.CharacterCreature.CharacterID,
+			&i.CharacterCreature.MonsterKey,
+			&i.CharacterCreature.Name,
+			&i.CharacterCreature.Source,
+			&i.CharacterCreature.Attack,
+			&i.CharacterCreature.SummonGroupID,
+			&i.CharacterCreature.ConcentrationCastID,
+			&i.CharacterCreature.HpCurrent,
+			&i.CharacterCreature.HpMax,
+			&i.CharacterCreature.CreatedAt,
+			&i.CharacterCreature.DismissedAt,
+			&i.CharacterCreature.DismissedReason,
+			&i.PlayerUserID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listLevelUps = `-- name: ListLevelUps :many
 SELECT l.id, l.character_id, l.class_key, l.from_level, l.to_level, l.choices, l.created_at,
        c.name AS character_name, c.player_user_id
@@ -787,6 +1066,180 @@ func (q *Queries) ListLevelUps(ctx context.Context, arg ListLevelUpsParams) ([]L
 			&i.Choices,
 			&i.CreatedAt,
 			&i.CharacterName,
+			&i.PlayerUserID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLiveCreaturesOfCharacters = `-- name: ListLiveCreaturesOfCharacters :many
+SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, c.player_user_id
+FROM character_creatures cc
+JOIN characters c ON c.id = cc.character_id
+WHERE cc.campaign_id = $1::UUID
+  AND cc.character_id = ANY($2::UUID[])
+  AND cc.dismissed_at IS NULL
+ORDER BY cc.created_at, cc.id
+`
+
+type ListLiveCreaturesOfCharactersParams struct {
+	CampaignID   string
+	CharacterIds []string
+}
+
+type ListLiveCreaturesOfCharactersRow struct {
+	CharacterCreature CharacterCreature
+	PlayerUserID      *string
+}
+
+// The live creatures of the given characters of the campaign, oldest first.
+func (q *Queries) ListLiveCreaturesOfCharacters(ctx context.Context, arg ListLiveCreaturesOfCharactersParams) ([]ListLiveCreaturesOfCharactersRow, error) {
+	rows, err := q.db.Query(ctx, listLiveCreaturesOfCharacters, arg.CampaignID, arg.CharacterIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListLiveCreaturesOfCharactersRow
+	for rows.Next() {
+		var i ListLiveCreaturesOfCharactersRow
+		if err := rows.Scan(
+			&i.CharacterCreature.ID,
+			&i.CharacterCreature.CampaignID,
+			&i.CharacterCreature.CharacterID,
+			&i.CharacterCreature.MonsterKey,
+			&i.CharacterCreature.Name,
+			&i.CharacterCreature.Source,
+			&i.CharacterCreature.Attack,
+			&i.CharacterCreature.SummonGroupID,
+			&i.CharacterCreature.ConcentrationCastID,
+			&i.CharacterCreature.HpCurrent,
+			&i.CharacterCreature.HpMax,
+			&i.CharacterCreature.CreatedAt,
+			&i.CharacterCreature.DismissedAt,
+			&i.CharacterCreature.DismissedReason,
+			&i.PlayerUserID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLiveCreaturesOnConcentration = `-- name: ListLiveCreaturesOnConcentration :many
+SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, c.player_user_id
+FROM character_creatures cc
+JOIN characters c ON c.id = cc.character_id
+WHERE cc.campaign_id = $1::UUID
+  AND cc.character_id = $2::UUID
+  AND cc.concentration_cast_id IS NOT NULL
+  AND cc.dismissed_at IS NULL
+ORDER BY cc.created_at, cc.id
+`
+
+type ListLiveCreaturesOnConcentrationParams struct {
+	CampaignID  string
+	CharacterID string
+}
+
+type ListLiveCreaturesOnConcentrationRow struct {
+	CharacterCreature CharacterCreature
+	PlayerUserID      *string
+}
+
+// The live creatures of the character that last only while it concentrates.
+func (q *Queries) ListLiveCreaturesOnConcentration(ctx context.Context, arg ListLiveCreaturesOnConcentrationParams) ([]ListLiveCreaturesOnConcentrationRow, error) {
+	rows, err := q.db.Query(ctx, listLiveCreaturesOnConcentration, arg.CampaignID, arg.CharacterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListLiveCreaturesOnConcentrationRow
+	for rows.Next() {
+		var i ListLiveCreaturesOnConcentrationRow
+		if err := rows.Scan(
+			&i.CharacterCreature.ID,
+			&i.CharacterCreature.CampaignID,
+			&i.CharacterCreature.CharacterID,
+			&i.CharacterCreature.MonsterKey,
+			&i.CharacterCreature.Name,
+			&i.CharacterCreature.Source,
+			&i.CharacterCreature.Attack,
+			&i.CharacterCreature.SummonGroupID,
+			&i.CharacterCreature.ConcentrationCastID,
+			&i.CharacterCreature.HpCurrent,
+			&i.CharacterCreature.HpMax,
+			&i.CharacterCreature.CreatedAt,
+			&i.CharacterCreature.DismissedAt,
+			&i.CharacterCreature.DismissedReason,
+			&i.PlayerUserID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLiveFamiliars = `-- name: ListLiveFamiliars :many
+SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, c.player_user_id
+FROM character_creatures cc
+JOIN characters c ON c.id = cc.character_id
+WHERE cc.campaign_id = $1::UUID
+  AND cc.character_id = $2::UUID
+  AND cc.source = 'familiar'
+  AND cc.dismissed_at IS NULL
+ORDER BY cc.created_at, cc.id
+`
+
+type ListLiveFamiliarsParams struct {
+	CampaignID  string
+	CharacterID string
+}
+
+type ListLiveFamiliarsRow struct {
+	CharacterCreature CharacterCreature
+	PlayerUserID      *string
+}
+
+// The character's live familiars: one at a time (the SRD), so a new one
+// dismisses these.
+func (q *Queries) ListLiveFamiliars(ctx context.Context, arg ListLiveFamiliarsParams) ([]ListLiveFamiliarsRow, error) {
+	rows, err := q.db.Query(ctx, listLiveFamiliars, arg.CampaignID, arg.CharacterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListLiveFamiliarsRow
+	for rows.Next() {
+		var i ListLiveFamiliarsRow
+		if err := rows.Scan(
+			&i.CharacterCreature.ID,
+			&i.CharacterCreature.CampaignID,
+			&i.CharacterCreature.CharacterID,
+			&i.CharacterCreature.MonsterKey,
+			&i.CharacterCreature.Name,
+			&i.CharacterCreature.Source,
+			&i.CharacterCreature.Attack,
+			&i.CharacterCreature.SummonGroupID,
+			&i.CharacterCreature.ConcentrationCastID,
+			&i.CharacterCreature.HpCurrent,
+			&i.CharacterCreature.HpMax,
+			&i.CharacterCreature.CreatedAt,
+			&i.CharacterCreature.DismissedAt,
+			&i.CharacterCreature.DismissedReason,
 			&i.PlayerUserID,
 		); err != nil {
 			return nil, err
@@ -1040,6 +1493,77 @@ func (q *Queries) PortraitInUse(ctx context.Context, arg PortraitInUseParams) (b
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
+}
+
+const reviveCreatures = `-- name: ReviveCreatures :many
+UPDATE character_creatures
+SET dismissed_at = NULL, dismissed_reason = NULL
+WHERE campaign_id = $1::UUID
+  AND id = ANY($2::UUID[])
+  AND dismissed_reason = $3::TEXT
+RETURNING id
+`
+
+type ReviveCreaturesParams struct {
+	CampaignID string
+	Ids        []string
+	Reason     string
+}
+
+// Brings back the creatures dismissed for this reason (an undo): the ones
+// defeated that an undo healed, the ones a master's undo of a casting or of the
+// end of a concentration gives back. Returns the ones it revived.
+func (q *Queries) ReviveCreatures(ctx context.Context, arg ReviveCreaturesParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, reviveCreatures, arg.CampaignID, arg.Ids, arg.Reason)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const setCharacterCreatureHitPoints = `-- name: SetCharacterCreatureHitPoints :exec
+UPDATE character_creatures SET hp_current = $1
+WHERE campaign_id = $2::UUID AND id = $3::UUID
+`
+
+type SetCharacterCreatureHitPointsParams struct {
+	HpCurrent  int32
+	CampaignID string
+	ID         string
+}
+
+// The creature's hit points: the master's correction, or a combat's write-back.
+func (q *Queries) SetCharacterCreatureHitPoints(ctx context.Context, arg SetCharacterCreatureHitPointsParams) error {
+	_, err := q.db.Exec(ctx, setCharacterCreatureHitPoints, arg.HpCurrent, arg.CampaignID, arg.ID)
+	return err
+}
+
+const setCharacterCreatureName = `-- name: SetCharacterCreatureName :exec
+UPDATE character_creatures SET name = $1
+WHERE campaign_id = $2::UUID AND id = $3::UUID
+`
+
+type SetCharacterCreatureNameParams struct {
+	Name       string
+	CampaignID string
+	ID         string
+}
+
+func (q *Queries) SetCharacterCreatureName(ctx context.Context, arg SetCharacterCreatureNameParams) error {
+	_, err := q.db.Exec(ctx, setCharacterCreatureName, arg.Name, arg.CampaignID, arg.ID)
+	return err
 }
 
 const setStoryEditing = `-- name: SetStoryEditing :one

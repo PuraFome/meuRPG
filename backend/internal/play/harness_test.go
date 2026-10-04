@@ -137,6 +137,8 @@ type harness struct {
 	roller *scriptedRoller    // the dice the service rolls
 	http   *httpserver.Server // the API's server, for tests that Serve it
 	server *httptest.Server   // serves http's handler over HTTP/1.1
+	chars  *characters.Service
+	camps  *campaigns.Service
 }
 
 // newHarness serves the play, campaigns and characters services through
@@ -169,7 +171,8 @@ func newHarness(t *testing.T, live ...LiveConfig) *harness {
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
-	h.svc = svc
+	h.svc, h.chars, h.camps = svc, chars, camps
+	chars.SetCreatureHost(svc) // a creature dismissed leaves its combat, and its events and hints go through play (MR-037)
 	srv := httpserver.New(httpserver.Config{Logger: logger})
 	h.http = srv
 	opt := connect.WithRequireConnectProtocolHeader()

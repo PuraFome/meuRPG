@@ -357,6 +357,24 @@ func (q *Queries) InsertXPAward(ctx context.Context, arg InsertXPAwardParams) (X
 	return i, err
 }
 
+const insertXPAwardTreasure = `-- name: InsertXPAwardTreasure :exec
+
+INSERT INTO xp_award_treasures (award_id, point_id, value_po)
+VALUES ($1::UUID, $2::UUID, $3)
+`
+
+type InsertXPAwardTreasureParams struct {
+	AwardID string
+	PointID string
+	ValuePo int32
+}
+
+// The treasures a "Voltar à cidade" award converted (00101).
+func (q *Queries) InsertXPAwardTreasure(ctx context.Context, arg InsertXPAwardTreasureParams) error {
+	_, err := q.db.Exec(ctx, insertXPAwardTreasure, arg.AwardID, arg.PointID, arg.ValuePo)
+	return err
+}
+
 const insertXPShare = `-- name: InsertXPShare :exec
 INSERT INTO xp_award_shares (award_id, character_id, xp, level_at_mark)
 VALUES ($1::UUID, $2::UUID, $3, $4)
@@ -604,6 +622,33 @@ func (q *Queries) ListPlannedMilestonesForUpdate(ctx context.Context, campaignID
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listXPAwardTreasures = `-- name: ListXPAwardTreasures :many
+SELECT award_id, point_id, value_po
+FROM xp_award_treasures
+WHERE award_id = ANY($1::UUID[])
+ORDER BY award_id, point_id
+`
+
+func (q *Queries) ListXPAwardTreasures(ctx context.Context, awardIds []string) ([]XpAwardTreasure, error) {
+	rows, err := q.db.Query(ctx, listXPAwardTreasures, awardIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []XpAwardTreasure
+	for rows.Next() {
+		var i XpAwardTreasure
+		if err := rows.Scan(&i.AwardID, &i.PointID, &i.ValuePo); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

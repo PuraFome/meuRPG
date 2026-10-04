@@ -2,6 +2,7 @@ package characters
 
 import (
 	"context"
+	"errors"
 	"regexp"
 	"slices"
 	"strings"
@@ -90,6 +91,9 @@ func (s *Service) CombatSpell(ctx context.Context, campaignID, characterID, spel
 			Threshold: fx.Threshold, Dies: fx.Dies, Heal: fx.Heal, Ends: fx.Ends,
 		}
 	}
+	_, summonErr := s.rules.SummonOptions(spellKey, det.Spell.Level, rules.Build{})
+	out.Summon = !errors.Is(summonErr, rules.ErrNotSummonSpell)
+	out.IgnoresCover = s.rules.IgnoresCover(spellKey)
 	out.Area = isArea(det)
 	out.ExtraTargetPerLevel = extraTargetRE.MatchString(strings.Join(det.HigherLevel, " "))
 	return out, nil

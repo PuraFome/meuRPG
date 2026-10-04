@@ -71,7 +71,13 @@ export function blockedMessage(blocked: EncounterBlocked): string {
     case EncounterBlockedReason.NOT_PLACED:
       return 'Esse combatente ainda não está no mapa.';
     case EncounterBlockedReason.TOO_FAR:
-      return `Longe demais: faltam ${metersText(blocked.missingFt)}`;
+      return `Esse caminho custa mais do que o movimento que sobra: faltam ${metersText(blocked.missingFt)}.`;
+    case EncounterBlockedReason.MOVE_BLOCKED:
+      return 'Não dá para passar por aí: há uma parede ou outra criatura no caminho.';
+    case EncounterBlockedReason.ENEMY_IN_THE_WAY:
+      return 'Um inimigo está no caminho.';
+    case EncounterBlockedReason.TARGET_COVER_TOTAL:
+      return 'O alvo está atrás de cobertura total.';
     case EncounterBlockedReason.SQUARE_OCCUPIED:
       return 'Ocupado: escolha outro quadrado.';
     case EncounterBlockedReason.PLAYER_IN_COMBAT:

@@ -87,6 +87,13 @@ type castHit struct {
 	Save     *saveRoll `json:"save,omitempty"`
 	// Pending is the pending damage or heal the cast opened for the target.
 	Pending string `json:"pending_id,omitempty"`
+	// The cover the target had against the caster for a spell attack or a Dexterity
+	// save (see actionEvent.Cover), and, for a spell attack, the armor class the
+	// total was compared with (the master's alone).
+	Cover       string `json:"cover,omitempty"`
+	CoverSource string `json:"cover_source,omitempty"`
+	CoverBonus  int32  `json:"cover_bonus,omitempty"`
+	TargetAC    int32  `json:"target_ac,omitempty"`
 
 	// A spell that reads hit points (combat_spells_hp.go): whether it reached the
 	// target (the fx* values below), why not, the target's hit points when it did,
@@ -234,16 +241,66 @@ type actionEvent struct {
 	Mode  string `json:"mode,omitempty"`
 	Delta int32  `json:"delta,omitempty"`
 
-	// A move: the square, what it cost the combatant and how far it went.
-	Col        int32 `json:"col,omitempty"`
-	Row        int32 `json:"row,omitempty"`
-	CostFt     int32 `json:"cost_ft,omitempty"`
-	DistanceFt int32 `json:"distance_ft,omitempty"`
-	OnTurn     bool  `json:"on_turn,omitempty"`
+	// A move: the square, what it cost the combatant and how far it went, in feet
+	// (rounded down) and in tenths of a foot, which is the exact number (RN-21;
+	// events written before Etapa 9 have only the feet).
+	Col         int32 `json:"col,omitempty"`
+	Row         int32 `json:"row,omitempty"`
+	CostFt      int32 `json:"cost_ft,omitempty"`
+	CostDFt     int32 `json:"cost_dft,omitempty"`
+	DistanceFt  int32 `json:"distance_ft,omitempty"`
+	DistanceDFt int32 `json:"distance_dft,omitempty"`
+	OnTurn      bool  `json:"on_turn,omitempty"`
+	// A jump: its kind ("long", "high"), the height of a high one, and whether a
+	// long one landed in difficult terrain (the master's log reminds the
+	// Acrobatics check, D3). From is where the combatant stood and what it had
+	// walked: the undo puts it back.
+	Jump             string     `json:"jump,omitempty"`
+	HeightDFt        int32      `json:"height_dft,omitempty"`
+	LandingDifficult bool       `json:"landing_difficult,omitempty"`
+	From             *moveState `json:"from,omitempty"`
+	// StoppedEarly says a creature the mover did not see cut the move short.
+	StoppedEarly bool `json:"stopped_early,omitempty"`
+
+	// The Disengage action, which an undo of the action takes back.
+	DisengagedBefore bool `json:"disengaged_before,omitempty"`
+	// RunBefore is the running start (tenths of a foot) an action, an attack or a
+	// spell broke: the undo puts it back.
+	RunBefore int32 `json:"run_before,omitempty"`
+
+	// The side an NPC was set to ("party", "enemy") and the one before, and the
+	// cover the master marked ("none", "half", "three_quarters", "total") and the
+	// one before.
+	Side            string `json:"side,omitempty"`
+	SideBefore      string `json:"side_before,omitempty"`
+	CoverMark       string `json:"cover_mark,omitempty"`
+	CoverMarkBefore string `json:"cover_mark_before,omitempty"`
+
+	// The cover the target had against an attack: its degree ("half",
+	// "three_quarters", "total"), where it came from ("map", "mark") and the armor
+	// class it added (TargetAC already includes it).
+	Cover       string `json:"cover,omitempty"`
+	CoverSource string `json:"cover_source,omitempty"`
+	CoverBonus  int32  `json:"cover_bonus,omitempty"`
 
 	// An undo: the event it took back.
 	Undone     string `json:"undone_id,omitempty"`
 	UndoneKind string `json:"undone_kind,omitempty"`
+
+	// The character's creatures (MR-037): the owner's character, the creatures a
+	// casting made (Created, with their MonsterKeys) and the ones it dismissed
+	// (Dismissed: a concentration the cast replaced or ended, with the initiative
+	// their group had, which an undo gives back), where they came from (Source),
+	// whether it was a ritual and why a creature was dismissed (Reason). IDs and
+	// keys only.
+	OwnerCharacter string     `json:"character_id,omitempty"`
+	Created        []string   `json:"creature_ids,omitempty"`
+	MonsterKeys    []string   `json:"monster_keys,omitempty"`
+	Dismissed      []string   `json:"dismissed_ids,omitempty"`
+	SummonRoll     *groupRoll `json:"summon_roll,omitempty"`
+	Source         string     `json:"source,omitempty"`
+	Ritual         bool       `json:"ritual,omitempty"`
+	Reason         string     `json:"reason,omitempty"`
 }
 
 // readEvent decodes an event's payload. A payload of this module never fails

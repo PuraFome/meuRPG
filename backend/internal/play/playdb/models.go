@@ -43,6 +43,20 @@ type Combatant struct {
 	DeathSaveRolled    bool
 	XpValue            int32
 	TurnState          string
+	MovementUsedDft    int32
+	LastMoveDft        int32
+	Side               string
+	Size               string
+	SpeedFlyFt         int32
+	JumpLongDft        int32
+	JumpHighDft        int32
+	CoverMark          string
+	Disengaged         bool
+	CreatureID         *string
+	MonsterKey         *string
+	SummonAttack       *string
+	SummonGroupID      *string
+	Dismissed          bool
 }
 
 type Encounter struct {
@@ -75,28 +89,29 @@ type GameSession struct {
 }
 
 type PendingDamage struct {
-	ID            string
-	EncounterID   string
-	AttackerID    string
-	TargetID      string
-	AttackKey     string
-	Status        string
-	Critical      bool
-	DiceCount     int32
-	DiceSides     int32
-	DiceBonus     int32
-	DamageType    string
-	Faces         []int32
-	Physical      bool
-	Amount        *int32
-	CreatedAt     time.Time
-	ResolvedAt    *time.Time
-	CastID        *string
-	Healing       bool
-	Half          bool
-	AppliedAmount *int32
-	AttackTotal   *int32
-	RollTotal     *int32
+	ID               string
+	EncounterID      string
+	AttackerID       string
+	TargetID         string
+	AttackKey        string
+	Status           string
+	Critical         bool
+	DiceCount        int32
+	DiceSides        int32
+	DiceBonus        int32
+	DamageType       string
+	Faces            []int32
+	Physical         bool
+	Amount           *int32
+	CreatedAt        time.Time
+	ResolvedAt       *time.Time
+	CastID           *string
+	Healing          bool
+	Half             bool
+	AppliedAmount    *int32
+	AttackTotal      *int32
+	RollTotal        *int32
+	AttackArmorClass *int32
 }
 
 type StageNpc struct {

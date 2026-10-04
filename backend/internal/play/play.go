@@ -134,6 +134,11 @@ type MapKeeper interface {
 	// SetTokenPositions moves the characters' tokens on the map inside tx,
 	// creating the ones that are missing.
 	SetTokenPositions(ctx context.Context, tx pgx.Tx, mapID string, positions []link.TokenPosition, at time.Time) error
+	// TreasureFoundIn returns the gold pieces each character found in the game
+	// session, by character ID: the treasures marked found while it was open,
+	// each value split among its finders and rounded down (MR-032, "Mais
+	// tesouro encontrado").
+	TreasureFoundIn(ctx context.Context, sessionID string) (map[string]int32, error)
 }
 
 // CombatRoster tells who can fight and with which numbers (MR-013). The
@@ -186,6 +191,44 @@ type CombatRoster interface {
 	// NamePT is the Portuguese name of a content key ("spell:shield" is "Escudo
 	// Arcano"), or "" for an unknown key.
 	NamePT(key string) string
+
+	// The character's creatures (MR-037, Etapa 9). The ones that write take the
+	// change's transaction.
+
+	// CharacterCreatures returns the live creatures of the given characters,
+	// oldest first: the ones that join a combat with their owners.
+	CharacterCreatures(ctx context.Context, tx pgx.Tx, campaignID string, characterIDs []string) ([]link.Creature, error)
+	// ConcentrationCreatures returns the live creatures of a character that last
+	// only while it concentrates.
+	ConcentrationCreatures(ctx context.Context, tx pgx.Tx, campaignID, characterID string) ([]link.Creature, error)
+	// CheckSummon says what the spell and the character's sheet allow for a
+	// casting (circle 0 is the spell's own) and returns the creatures of the
+	// choice, or one of rules.ErrNotSummonSpell, ErrSummonCircle,
+	// ErrSummonOption, ErrSummonCount, ErrSummonCreature.
+	CheckSummon(ctx context.Context, campaignID, characterID, spellKey string, circle, option int, keys []string) (link.SummonSpell, error)
+	// SummonCreatures records a casting: it creates the creatures, and a new
+	// familiar dismisses the old one.
+	SummonCreatures(ctx context.Context, tx pgx.Tx, sm link.Summon) (link.SummonResult, error)
+	// DismissCreatures sends the live ones of these creatures away with the
+	// reason, and returns the IDs it dismissed. ReviveCreatures brings back
+	// those dismissed for the reason (an undo), DeleteCreatures takes a casting's
+	// creatures away for good.
+	DismissCreatures(ctx context.Context, tx pgx.Tx, campaignID string, ids []string, reason string, at time.Time) ([]string, error)
+	ReviveCreatures(ctx context.Context, tx pgx.Tx, campaignID string, ids []string, reason string) ([]string, error)
+	DeleteCreatures(ctx context.Context, tx pgx.Tx, campaignID string, ids []string) error
+	// SyncCreatures keeps the creatures in step with the combat: a defeated one
+	// is dismissed, one dismissed as defeated and up again is back.
+	SyncCreatures(ctx context.Context, tx pgx.Tx, campaignID string, states []link.CreatureState, at time.Time) (link.CreatureChanges, error)
+	// WriteBackCreatures writes the creatures' hit points back when a combat
+	// ends or they leave it.
+	WriteBackCreatures(ctx context.Context, tx pgx.Tx, campaignID string, states []link.CreatureState, at time.Time) error
+	// CreatureSheet, CreatureTurnOptions and CreatureSave are CombatSheet,
+	// CombatTurnOptions and CombatSave for a creature, from its stat block and
+	// what its spell lets it attack with ("none", "reaction", "full"); false for
+	// a key that is not an SRD creature.
+	CreatureSheet(monsterKey, attack string) (link.Sheet, bool)
+	CreatureTurnOptions(monsterKey, attack string, turn link.Turn) (*rulesv1.TurnOptions, bool)
+	CreatureSave(monsterKey, ability string) link.Save
 }
 
 // DiceForce is what the campaign's dice setting makes a player do (RN-18).
@@ -268,6 +311,10 @@ type Config struct {
 	Roster CombatRoster
 	// Dice says where a player rolls (RN-18). Required.
 	Dice DiceModes
+	// Terrain gives a combat the walls, difficult terrain and cover of its map
+	// (RN-21, D2). Optional: cmd/api sets it with SetTerrain once the maps module
+	// exists (the two need each other); nil means open floor.
+	Terrain TerrainSource
 	// Roller rolls the NPCs' dice and the app's rolls. Nil means the
 	// operating system's random source (dice.Crypto); tests pass faces.
 	Roller dice.Roller
@@ -290,6 +337,7 @@ type Service struct {
 	maps      MapKeeper
 	roster    CombatRoster
 	dice      DiceModes
+	terrain   TerrainSource
 	roller    dice.Roller
 	logger    *slog.Logger
 	now       func() time.Time
@@ -345,6 +393,7 @@ func New(cfg Config) (*Service, error) {
 		maps:      cfg.Maps,
 		roster:    cfg.Roster,
 		dice:      cfg.Dice,
+		terrain:   cfg.Terrain,
 		roller:    cfg.Roller,
 		logger:    cfg.Logger,
 		now:       cfg.Now,

@@ -19,7 +19,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/play/v1/summary.proto.
  */
 export const file_meurpg_play_v1_summary: GenFile = /*@__PURE__*/
-  fileDesc("ChxtZXVycGcvcGxheS92MS9zdW1tYXJ5LnByb3RvEg5tZXVycGcucGxheS52MSJIChhHZXRTZXNzaW9uU3VtbWFyeVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFwoPZ2FtZV9zZXNzaW9uX2lkGAIgASgJIn8KF1Nlc3Npb25DaGFyYWN0ZXJTdW1tYXJ5EjcKCmhpZ2hsaWdodHMYASABKAsyIy5tZXVycGcucGxheS52MS5DaGFyYWN0ZXJIaWdobGlnaHRzEhUKDWNoZWNrc19wYXNzZWQYAiABKAUSFAoMY2hlY2tzX3RyaWVkGAMgASgFIpgDCg5TZXNzaW9uU3VtbWFyeRIuCgpzdGFydGVkX2F0GAEgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIsCghlbmRlZF9hdBgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASKwoIZHVyYXRpb24YAyABKAsyGS5nb29nbGUucHJvdG9idWYuRHVyYXRpb24SDwoHY29tYmF0cxgEIAEoBRIVCg1zY2VuZXNfb3BlbmVkGAUgASgFEhUKDWNoZWNrc19wYXNzZWQYBiABKAUSFAoMY2hlY2tzX3RyaWVkGAcgASgFEjUKCmNhdGVnb3JpZXMYCCADKAsyIS5tZXVycGcucGxheS52MS5IaWdobGlnaHRDYXRlZ29yeRI4CgdwbGF5ZXJzGAkgAygLMicubWV1cnBnLnBsYXkudjEuU2Vzc2lvbkNoYXJhY3RlclN1bW1hcnkSNQoEbWluZRgKIAEoCzInLm1ldXJwZy5wbGF5LnYxLlNlc3Npb25DaGFyYWN0ZXJTdW1tYXJ5IkwKGUdldFNlc3Npb25TdW1tYXJ5UmVzcG9uc2USLwoHc3VtbWFyeRgBIAEoCzIeLm1ldXJwZy5wbGF5LnYxLlNlc3Npb25TdW1tYXJ5QroBChJjb20ubWV1cnBnLnBsYXkudjFCDFN1bW1hcnlQcm90b1ABWjxnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvcGxheS92MTtwbGF5djGiAgNNUFiqAg5NZXVycGcuUGxheS5WMcoCDk1ldXJwZ1xQbGF5XFYx4gIaTWV1cnBnXFBsYXlcVjFcR1BCTWV0YWRhdGHqAhBNZXVycGc6OlBsYXk6OlYxYgZwcm90bzM", [file_google_protobuf_duration, file_google_protobuf_timestamp, file_meurpg_play_v1_combat]);
+  fileDesc("ChxtZXVycGcvcGxheS92MS9zdW1tYXJ5LnByb3RvEg5tZXVycGcucGxheS52MSJIChhHZXRTZXNzaW9uU3VtbWFyeVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFwoPZ2FtZV9zZXNzaW9uX2lkGAIgASgJIpoBChdTZXNzaW9uQ2hhcmFjdGVyU3VtbWFyeRI3CgpoaWdobGlnaHRzGAEgASgLMiMubWV1cnBnLnBsYXkudjEuQ2hhcmFjdGVySGlnaGxpZ2h0cxIVCg1jaGVja3NfcGFzc2VkGAIgASgFEhQKDGNoZWNrc190cmllZBgDIAEoBRIZChF0cmVhc3VyZV9mb3VuZF9wbxgEIAEoBSKYAwoOU2Vzc2lvblN1bW1hcnkSLgoKc3RhcnRlZF9hdBgBIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLAoIZW5kZWRfYXQYAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEisKCGR1cmF0aW9uGAMgASgLMhkuZ29vZ2xlLnByb3RvYnVmLkR1cmF0aW9uEg8KB2NvbWJhdHMYBCABKAUSFQoNc2NlbmVzX29wZW5lZBgFIAEoBRIVCg1jaGVja3NfcGFzc2VkGAYgASgFEhQKDGNoZWNrc190cmllZBgHIAEoBRI1CgpjYXRlZ29yaWVzGAggAygLMiEubWV1cnBnLnBsYXkudjEuSGlnaGxpZ2h0Q2F0ZWdvcnkSOAoHcGxheWVycxgJIAMoCzInLm1ldXJwZy5wbGF5LnYxLlNlc3Npb25DaGFyYWN0ZXJTdW1tYXJ5EjUKBG1pbmUYCiABKAsyJy5tZXVycGcucGxheS52MS5TZXNzaW9uQ2hhcmFjdGVyU3VtbWFyeSJMChlHZXRTZXNzaW9uU3VtbWFyeVJlc3BvbnNlEi8KB3N1bW1hcnkYASABKAsyHi5tZXVycGcucGxheS52MS5TZXNzaW9uU3VtbWFyeUK6AQoSY29tLm1ldXJwZy5wbGF5LnYxQgxTdW1tYXJ5UHJvdG9QAVo8Z2l0aHViLmNvbS9QdXJhRm9tZS9tZXVSUEcvYmFja2VuZC9nZW4vbWV1cnBnL3BsYXkvdjE7cGxheXYxogIDTVBYqgIOTWV1cnBnLlBsYXkuVjHKAg5NZXVycGdcUGxheVxWMeICGk1ldXJwZ1xQbGF5XFYxXEdQQk1ldGFkYXRh6gIQTWV1cnBnOjpQbGF5OjpWMWIGcHJvdG8z", [file_google_protobuf_duration, file_google_protobuf_timestamp, file_meurpg_play_v1_combat]);
 
 /**
  * GetSessionSummaryRequest names the session.
@@ -75,6 +75,19 @@ export type SessionCharacterSummary = Message<"meurpg.play.v1.SessionCharacterSu
    * @generated from field: int32 checks_tried = 3;
    */
   checksTried: number;
+
+  /**
+   * The gold pieces the character found in this session (MR-041): the value
+   * of each treasure marked found while the session was open, split among its
+   * finders and rounded down. A treasure unmarked later, or found outside a
+   * session, counts for nothing. It is worked out on every read from the
+   * treasures as they stand now (their value and finders), not from the
+   * session's events: re-marking the finders writes no event. Not the same as the XP of
+   * "Voltar à cidade".
+   *
+   * @generated from field: int32 treasure_found_po = 4;
+   */
+  treasureFoundPo: number;
 };
 
 /**
@@ -140,7 +153,8 @@ export type SessionSummary = Message<"meurpg.play.v1.SessionSummary"> & {
 
   /**
    * The categories that have a winner, in the order of HighlightKind: the five
-   * of the combats summed over the session, then CHECKS_PASSED. A category
+   * of the combats summed over the session, then CHECKS_PASSED and
+   * TREASURE_FOUND (`value` is the PO, in every XP mode). A category
    * where everybody has 0 is left out. `value` is the winners' number (for
    * CHECKS_PASSED, the count of passed; "de N" is the master's table).
    * Everyone tied is named, in the order the characters first appeared in the
@@ -151,7 +165,8 @@ export type SessionSummary = Message<"meurpg.play.v1.SessionSummary"> & {
   categories: HighlightCategory[];
 
   /**
-   * The table of every player's character that fought or rolled a check, in
+   * The table of every player's character that fought, rolled a check or found
+   * treasure, in
    * the order they first appeared, zeros included. Only the master gets it;
    * for a player it is empty.
    *
@@ -161,7 +176,8 @@ export type SessionSummary = Message<"meurpg.play.v1.SessionSummary"> & {
 
   /**
    * The caller's own result, "Seu resultado": set only for a player whose
-   * character took part in the session (fought or rolled a check). The master
+   * character took part in the session (fought, rolled a check or found
+   * treasure). The master
    * never gets it.
    *
    * @generated from field: meurpg.play.v1.SessionCharacterSummary mine = 10;

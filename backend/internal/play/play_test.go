@@ -151,6 +151,17 @@ func TestAuthorizationMatrix(t *testing.T) {
 			_, err := c.TakeOffStage(ctx, connect.NewRequest(&playv1.TakeOffStageRequest{CampaignId: campaign, CharacterId: pc.GetId()}))
 			return err
 		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		// Casting a summoning spell outside a combat (MR-037). The character is a
+		// level 1 wizard with no Encontrar Familiar, so the rules refuse after the
+		// authorization has passed (invalid_argument); a player may cast for their
+		// own character only, which TestMR037 covers with another player.
+		{"CastSummon", func(ctx context.Context, c client) error {
+			_, err := c.CastSummon(ctx, connect.NewRequest(&playv1.CastSummonRequest{
+				CampaignId: campaign, CharacterId: pc.GetId(), SpellKey: "spell:find-familiar", Ritual: true, IdempotencyKey: newKey(),
+				Summon: &playv1.SummonChoice{CreatureKeys: []string{"monster:owl"}},
+			}))
+			return err
+		}, [5]connect.Code{connect.CodeInvalidArgument, connect.CodeInvalidArgument, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
 		{"SetSpeaker", func(ctx context.Context, c client) error {
 			_, err := c.SetSpeaker(ctx, connect.NewRequest(&playv1.SetSpeakerRequest{CampaignId: campaign}))
 			return err
@@ -509,6 +520,50 @@ func (noRoster) Conditions() []link.Named { return nil }
 
 func (noRoster) NamePT(string) string { return "" }
 
+func (noRoster) CharacterCreatures(context.Context, pgx.Tx, string, []string) ([]link.Creature, error) {
+	return nil, errors.New("not in this test")
+}
+
+func (noRoster) ConcentrationCreatures(context.Context, pgx.Tx, string, string) ([]link.Creature, error) {
+	return nil, errors.New("not in this test")
+}
+
+func (noRoster) CheckSummon(context.Context, string, string, string, int, int, []string) (link.SummonSpell, error) {
+	return link.SummonSpell{}, errors.New("not in this test")
+}
+
+func (noRoster) SummonCreatures(context.Context, pgx.Tx, link.Summon) (link.SummonResult, error) {
+	return link.SummonResult{}, errors.New("not in this test")
+}
+
+func (noRoster) DismissCreatures(context.Context, pgx.Tx, string, []string, string, time.Time) ([]string, error) {
+	return nil, errors.New("not in this test")
+}
+
+func (noRoster) ReviveCreatures(context.Context, pgx.Tx, string, []string, string) ([]string, error) {
+	return nil, errors.New("not in this test")
+}
+
+func (noRoster) DeleteCreatures(context.Context, pgx.Tx, string, []string) error {
+	return errors.New("not in this test")
+}
+
+func (noRoster) SyncCreatures(context.Context, pgx.Tx, string, []link.CreatureState, time.Time) (link.CreatureChanges, error) {
+	return link.CreatureChanges{}, errors.New("not in this test")
+}
+
+func (noRoster) WriteBackCreatures(context.Context, pgx.Tx, string, []link.CreatureState, time.Time) error {
+	return errors.New("not in this test")
+}
+
+func (noRoster) CreatureSheet(string, string) (link.Sheet, bool) { return link.Sheet{}, false }
+
+func (noRoster) CreatureTurnOptions(string, string, link.Turn) (*rulesv1.TurnOptions, bool) {
+	return nil, false
+}
+
+func (noRoster) CreatureSave(string, string) link.Save { return link.Save{} }
+
 type noDice struct{}
 
 func (noDice) ForcedDice(context.Context, string, string) (DiceForce, error) {
@@ -594,6 +649,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["PutOnStage"] = c.PutOnStage(ctx, connect.NewRequest(&playv1.PutOnStageRequest{CampaignId: id, CharacterId: id}))
 	_, calls["TakeOffStage"] = c.TakeOffStage(ctx, connect.NewRequest(&playv1.TakeOffStageRequest{CampaignId: id, CharacterId: id}))
 	_, calls["SetSpeaker"] = c.SetSpeaker(ctx, connect.NewRequest(&playv1.SetSpeakerRequest{CampaignId: id}))
+	_, calls["CastSummon"] = c.CastSummon(ctx, connect.NewRequest(&playv1.CastSummonRequest{CampaignId: id, CharacterId: id, IdempotencyKey: id}))
 	calls["WatchGameSession"] = firstEventError(ctx, c, id)
 	methods := playv1.File_meurpg_play_v1_play_proto.Services().ByName("PlayService").Methods()
 	if len(calls) != methods.Len() {
@@ -609,6 +665,9 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, combat["BeginCombat"] = cc.BeginCombat(ctx, connect.NewRequest(&playv1.BeginCombatRequest{CampaignId: id}))
 	_, combat["EndTurn"] = cc.EndTurn(ctx, connect.NewRequest(&playv1.EndTurnRequest{CampaignId: id}))
 	_, combat["MoveCombatant"] = cc.MoveCombatant(ctx, connect.NewRequest(&playv1.MoveCombatantRequest{CampaignId: id}))
+	_, combat["GetMoveOptions"] = cc.GetMoveOptions(ctx, connect.NewRequest(&playv1.GetMoveOptionsRequest{CampaignId: id}))
+	_, combat["SetCombatantSide"] = cc.SetCombatantSide(ctx, connect.NewRequest(&playv1.SetCombatantSideRequest{CampaignId: id}))
+	_, combat["SetCombatantCover"] = cc.SetCombatantCover(ctx, connect.NewRequest(&playv1.SetCombatantCoverRequest{CampaignId: id}))
 	_, combat["SetCombatantHidden"] = cc.SetCombatantHidden(ctx, connect.NewRequest(&playv1.SetCombatantHiddenRequest{CampaignId: id}))
 	_, combat["AddCombatants"] = cc.AddCombatants(ctx, connect.NewRequest(&playv1.AddCombatantsRequest{CampaignId: id}))
 	_, combat["RemoveCombatant"] = cc.RemoveCombatant(ctx, connect.NewRequest(&playv1.RemoveCombatantRequest{CampaignId: id}))
@@ -627,6 +686,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, combat["RollDeathSave"] = cc.RollDeathSave(ctx, connect.NewRequest(&playv1.RollDeathSaveRequest{CampaignId: id}))
 	_, combat["ConfirmDeath"] = cc.ConfirmDeath(ctx, connect.NewRequest(&playv1.ConfirmDeathRequest{CampaignId: id}))
 	_, combat["SetCombatantConditions"] = cc.SetCombatantConditions(ctx, connect.NewRequest(&playv1.SetCombatantConditionsRequest{CampaignId: id}))
+	_, combat["EndConcentration"] = cc.EndConcentration(ctx, connect.NewRequest(&playv1.EndConcentrationRequest{CampaignId: id}))
 	_, combat["ListCombatLog"] = cc.ListCombatLog(ctx, connect.NewRequest(&playv1.ListCombatLogRequest{CampaignId: id}))
 	_, combat["GetCombatHighlights"] = cc.GetCombatHighlights(ctx, connect.NewRequest(&playv1.GetCombatHighlightsRequest{CampaignId: id}))
 	combatMethods := playv1.File_meurpg_play_v1_combat_proto.Services().ByName("CombatService").Methods()
@@ -647,6 +707,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 
 	for method, want := range map[string]descriptorpb.MethodOptions_IdempotencyLevel{
 		"GetTurnOptions": descriptorpb.MethodOptions_IDEMPOTENT,
+		"GetMoveOptions": descriptorpb.MethodOptions_IDEMPOTENT,
 		"ListCombatLog":  descriptorpb.MethodOptions_IDEMPOTENT,
 	} {
 		opts, _ := combatMethods.ByName(protoreflect.Name(method)).Options().(*descriptorpb.MethodOptions)

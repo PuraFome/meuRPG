@@ -23,9 +23,11 @@ import (
 //
 //	a combatant   when it is not hidden
 //	its numbers   (initiative roll, bonus, speed, economy) only for their own
-//	              character; an NPC's initiative total never
+//	              character and its creatures; an NPC's initiative total never
 //	hit points    an NPC's as a word (CombatantState), never as numbers; a
-//	              player's character only as the word "Caído" at 0
+//	              player's character only as the word "Caído" at 0; a
+//	              creature's as numbers to its owner's player and the master,
+//	              as a word to everyone else (MR-037)
 //	the turn      "Vez do mestre" when a hidden combatant is on turn
 //
 // Everything a player may not see is left out of the response, never
@@ -45,7 +47,9 @@ func viewerOf(m authz.Membership) combatViewer {
 // sees says whether the viewer sees the combatant.
 func (v combatViewer) sees(c playdb.Combatant) bool { return v.master || !c.Hidden }
 
-// owns says whether the combatant is the viewer's own character.
+// owns says whether the viewer's player plays the combatant: their own
+// character, or one of its creatures (which carry the owner's user_id). Only a
+// player's character is "mine" (Combatant.mine); controlled_by_me is this.
 func (v combatViewer) owns(c playdb.Combatant) bool {
 	return !v.master && c.UserID != nil && v.userID != "" && *c.UserID == v.userID
 }
@@ -121,7 +125,7 @@ func (d *encounterData) turnFor(v combatViewer) turnView {
 			seen = append(seen, c)
 		}
 	}
-	hasPlayer := slices.ContainsFunc(members, func(c playdb.Combatant) bool { return c.Kind == kindPlayer })
+	hasPlayer := slices.ContainsFunc(members, inParty) // a player's character or its creature: a player plays it
 	first, visibleActs := acting(seen)
 	if !visibleActs {
 		return turnView{masterTurn: true, groupIDs: ids(seen), flags: hasPlayer} // only hidden members act
@@ -189,8 +193,12 @@ func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.Character
 	shared := !v.master && slices.ContainsFunc(d.cs, func(c playdb.Combatant) bool { return v.owns(c) && inTurn(e, c) })
 	for _, c := range d.cs {
 		if v.sees(c) {
-			p := combatantToProto(c, v, ties[c.ID], vitals[c.CharacterID], armorClass[c.CharacterID], portraits[c.CharacterID], actsNow(e, c), names)
-			if shared && c.Kind == kindPlayer && !v.owns(c) && inTurn(e, c) {
+			var vit *playv1.CharacterVitals
+			if c.Kind == kindPlayer { // a creature's character_id is its owner's: never the owner's vitals
+				vit = vitals[c.CharacterID]
+			}
+			p := combatantToProto(c, v, ties[c.ID], vit, armorClass[sheetKey(c)], portraits[sheetKey(c)], actsNow(e, c), names)
+			if shared && inParty(c) && !v.owns(c) && inTurn(e, c) {
 				shareEconomy(p, c)
 			}
 			p.TurnPartEnded = turn.flags && e.Status == statusActive && c.TurnState == turnEnded
@@ -206,13 +214,15 @@ func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.Character
 // onTurn says it acts now: it is in the group on turn and its part has not
 // ended, in a running combat.
 func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vitals *playv1.CharacterVitals, armorClass int32, portrait string, onTurn bool, names func(key string) string) *playv1.Combatant {
-	mine := v.owns(c)
-	detail := v.master || mine // the numbers of the turn: the master's and the owner's
+	controls := v.owns(c)                    // the caller's player plays it: their character or its creature
+	mine := controls && c.Kind == kindPlayer // only their own character is "mine"; the web finds its combatant with it
+	detail := v.master || controls           // the numbers of the turn: the master's and the player's
 	out := &playv1.Combatant{
 		Id:                 c.ID,
 		Label:              c.Label,
 		Kind:               kindToProto[c.Kind],
 		Mine:               mine,
+		ControlledByMe:     controls,
 		Placed:             placed(c),
 		State:              stateOf(c),
 		Defeated:           c.Defeated,
@@ -220,6 +230,9 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 		DeathFailures:      c.DeathFailures,
 		Conditions:         c.Conditions,
 		ConcentrationSpell: deref(c.ConcentrationSpell),
+		Side:               sideProto(c.Side),
+		Size:               sizeProto(c.Size),
+		CoverMark:          coverDegreeProto(markKeyOf(c)),
 	}
 	for _, key := range c.Conditions {
 		out.ConditionNamesPt = append(out.ConditionNamesPt, names(key))
@@ -230,23 +243,34 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 	if placed(c) {
 		out.Col, out.Row = *c.GridCol, *c.GridRow
 	}
-	if c.Kind == kindPlayer || v.master {
+	switch {
+	case isCreature(c):
+		// A creature stands for no character of its own: its owner is public (the
+		// party knows whose it is), the rest is its owner's and the master's.
+		out.OwnerCharacterId = c.CharacterID
+		out.MonsterKey, out.MonsterNamePt = deref(c.MonsterKey), names(deref(c.MonsterKey))
+		if detail {
+			out.CreatureId, out.CreatureAttack, out.SummonGroupId = deref(c.CreatureID), creatureAttackToProto[deref(c.SummonAttack)], deref(c.SummonGroupID)
+		}
+	case c.Kind == kindPlayer || v.master:
 		out.CharacterId = c.CharacterID // an NPC's character is the master's secret
 	}
-	// A player's roll is public among the players; an NPC's never reaches one
-	// (RN-20).
-	if c.Initiative != nil && (v.master || c.Kind == kindPlayer) {
+	// A player's roll is public among the players, and so is a creature's: it
+	// is on the party's side. An NPC's never reaches a player (RN-20).
+	if c.Initiative != nil && (v.master || inParty(c)) {
 		out.Initiative = c.Initiative
 	}
 	if detail {
 		out.InitiativeBonus = ptr(c.InitiativeBonus)
 		out.InitiativeFace = c.InitiativeFace
-		out.SpeedFt = c.SpeedFt
-		out.MovementUsedFt = c.MovementUsedFt
-		out.MovementLeftFt = clamp32(movementLeftFt(c), 0, 1200) // twice the largest speed
-		out.Dashed, out.ActionUsed, out.BonusActionUsed, out.ReactionUsed = c.Dashed, c.ActionUsed, c.BonusActionUsed, c.ReactionUsed
+		shareEconomy(out, c)
 		out.ArmorClassBonus = c.AcBonus
 		out.DeathSaveDue = onTurn && deathSaveDue(c, vitals)
+	}
+	if controls && isCreature(c) {
+		// A creature's hit points are numbers to its owner's player and the master
+		// (below); everyone else gets the state word.
+		out.HitPointsCurrent, out.HitPointsMax, out.HitPointsTemporary = c.HpCurrent, c.HpMax, c.HpTemp
 	}
 	if v.master {
 		out.Hidden = c.Hidden
@@ -287,11 +311,21 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 // shareEconomy gives a player's combatant's turn economy to another player who
 // is in the same joint turn (the rest of the detail stays the owner's).
 func shareEconomy(out *playv1.Combatant, c playdb.Combatant) {
+	// The movement is kept in tenths of a foot; the `_ft` fields are those rounded
+	// down, for the web that is already shipped (RN-21).
 	out.SpeedFt = c.SpeedFt
-	out.MovementUsedFt = c.MovementUsedFt
-	out.MovementLeftFt = clamp32(movementLeftFt(c), 0, 1200)
+	out.SpeedFlyFt = c.SpeedFlyFt
+	out.SpeedDft = clamp32(speedDFt(c), 0, math.MaxInt32)
+	out.MovementUsedFt = c.MovementUsedDft / 10
+	out.MovementUsedDft = c.MovementUsedDft
+	out.MovementLeftFt = clamp32(movementLeftFt(c), 0, 1200) // twice the largest speed
+	out.MovementLeftDft = clamp32(movementLeftDFt(c), 0, math.MaxInt32)
 	out.Dashed, out.ActionUsed, out.BonusActionUsed, out.ReactionUsed = c.Dashed, c.ActionUsed, c.BonusActionUsed, c.ReactionUsed
+	out.Disengaged = c.Disengaged
 }
+
+// markKeyOf is the cover the master marked, as an event keeps it ("" for none).
+func markKeyOf(c playdb.Combatant) string { return coverKeys[coverToGrid[c.CoverMark]] }
 
 // isDownIn says whether the vitals are of a character at 0 hit points.
 func isDownIn(v *playv1.CharacterVitals) bool {
@@ -314,8 +348,15 @@ var (
 		statusEnded:  playv1.EncounterStatus_ENCOUNTER_STATUS_ENDED,
 	}
 	kindToProto = map[string]playv1.CombatantKind{
-		kindPlayer: playv1.CombatantKind_COMBATANT_KIND_PLAYER,
-		kindNPC:    playv1.CombatantKind_COMBATANT_KIND_NPC,
+		kindPlayer:   playv1.CombatantKind_COMBATANT_KIND_PLAYER,
+		kindNPC:      playv1.CombatantKind_COMBATANT_KIND_NPC,
+		kindCreature: playv1.CombatantKind_COMBATANT_KIND_CREATURE,
+	}
+	// creatureAttackToProto is what the spell lets a creature do (rules.SummonAttack*).
+	creatureAttackToProto = map[string]playv1.CreatureAttack{
+		"none":     playv1.CreatureAttack_CREATURE_ATTACK_NONE,
+		"reaction": playv1.CreatureAttack_CREATURE_ATTACK_REACTION,
+		"full":     playv1.CreatureAttack_CREATURE_ATTACK_FULL,
 	}
 )
 
@@ -363,14 +404,14 @@ func (s *Service) armorClasses(ctx context.Context, m authz.Membership, d *encou
 	}
 	out := make(map[string]int32, len(d.cs))
 	for _, c := range d.cs {
-		if _, done := out[c.CharacterID]; done {
+		if _, done := out[sheetKey(c)]; done {
 			continue
 		}
-		sheet, err := s.roster.CombatSheet(ctx, m.CampaignID, c.CharacterID)
+		sheet, err := s.sheetOf(ctx, m.CampaignID, c)
 		if err != nil {
 			continue
 		}
-		out[c.CharacterID] = clamp32(sheet.ArmorClass, 0, math.MaxInt32)
+		out[sheetKey(c)] = clamp32(sheet.ArmorClass, 0, math.MaxInt32)
 	}
 	return out
 }

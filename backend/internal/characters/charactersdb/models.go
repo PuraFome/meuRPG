@@ -27,6 +27,23 @@ type Character struct {
 	UpdatedAt           time.Time
 }
 
+type CharacterCreature struct {
+	ID                  string
+	CampaignID          string
+	CharacterID         string
+	MonsterKey          string
+	Name                string
+	Source              string
+	Attack              string
+	SummonGroupID       string
+	ConcentrationCastID *string
+	HpCurrent           int32
+	HpMax               int32
+	CreatedAt           time.Time
+	DismissedAt         *time.Time
+	DismissedReason     *string
+}
+
 type CharacterLevelUp struct {
 	ID          string
 	CampaignID  string

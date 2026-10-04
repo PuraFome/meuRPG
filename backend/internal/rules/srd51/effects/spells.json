@@ -22,6 +22,9 @@
       "threshold": 100,
       "dies": true
     },
+    "spell:sacred-flame": {
+      "kind": "ignores_cover"
+    },
     "spell:spare-the-dying": {
       "kind": "zero_hp_target"
     },

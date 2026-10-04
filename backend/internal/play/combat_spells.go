@@ -18,6 +18,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
 // Casting a spell (MR-014, RN-02, RN-18, RN-22, Etapa 6, slice 6.4b). The cast
@@ -264,7 +265,7 @@ func (s *Service) CastSpell(
 
 		// The spell must be one the caster may cast now; the master has the last
 		// word on the economy only.
-		opts, err := s.roster.CombatTurnOptions(ctx, m.CampaignID, caster.CharacterID, turnOf(caster))
+		opts, err := s.optionsOf(ctx, m.CampaignID, caster)
 		if err != nil {
 			return nil, err
 		}
@@ -273,6 +274,14 @@ func (s *Service) CastSpell(
 			return nil, err
 		}
 		if !cast.enabled {
+			// A summoning spell that takes too long is refused with a reason the screen
+			// can say ("Leva 1 hora: conjure fora do combate").
+			if cast.reason.GetCode() == rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_CASTING_TIME_TOO_LONG {
+				if long, err := s.roster.CombatSpell(ctx, m.CampaignID, caster.CharacterID, spellKey, int(cast.level)); err == nil && long.Summon {
+					return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CASTING_TIME_TOO_LONG,
+						"this spell takes too long to cast in a fight: cast it outside the combat")
+				}
+			}
 			if err := castError(cast.reason, v.master); err != nil {
 				return nil, err
 			}
@@ -296,8 +305,25 @@ func (s *Service) CastSpell(
 		for i, t := range targets {
 			dartList[i] = t.darts
 		}
-		if err := s.checkTargets(v, sp, caster, targs, dartList, darts, slotLevel); err != nil {
+		if sp.Summon != (req.Msg.GetSummon() != nil) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("summon is for a summoning spell, and a summoning spell needs it"))
+		}
+		terrain, err := s.terrainOf(ctx, m.CampaignID, c.enc)
+		if err != nil {
 			return nil, err
+		}
+		if sp.Summon {
+			if len(targs) > 0 {
+				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a summoning spell takes no targets: the creatures appear next to the caster"))
+			}
+		} else if err := s.checkTargets(v, terrain, cs, sp, caster, targs, dartList, darts, slotLevel); err != nil {
+			return nil, err
+		}
+		var summon *summoning
+		if sp.Summon {
+			if summon, err = s.prepareSummon(ctx, c, m, v, caster, spellKey, slotLevel, req.Msg.GetSummon(), in, rolled, sp.Concentration); err != nil {
+				return nil, err
+			}
 		}
 		if len(targs) == 0 && selfOnly(sp) {
 			targs, targets = []playdb.Combatant{caster}, []target{{id: caster.ID}}
@@ -325,8 +351,12 @@ func (s *Service) CastSpell(
 		}
 
 		// The cast spends the slot and the economy at once (MR-014).
+		run, err := breakRun(ctx, c, caster)
+		if err != nil {
+			return nil, err
+		}
 		made = actionEvent{
-			Round: c.enc.Round, Actor: caster.ID, Key: spellKey, CastID: uuid.New().String(), Slot: slot,
+			RunBefore: run, Round: c.enc.Round, Actor: caster.ID, Key: spellKey, CastID: uuid.New().String(), Slot: slot,
 			ActionBefore: caster.ActionUsed, BonusBefore: caster.BonusActionUsed, ReactionBefore: caster.ReactionUsed, DashedBefore: caster.Dashed,
 		}
 		if slot != nil && caster.Kind == kindPlayer {
@@ -351,8 +381,18 @@ func (s *Service) CastSpell(
 		if sp.Concentration {
 			made.Concentrate, made.ConcBefore = true, deref(caster.ConcentrationSpell)
 			made.ConcEnded = made.ConcBefore
+			// A new concentration spell ends the old one, and the creatures that lasted
+			// only while it did (MR-037, RN-22).
+			if made.Dismissed, err = s.endSummons(ctx, c, caster); err != nil {
+				return nil, err
+			}
 			if err := c.q.SetCombatantConcentration(ctx, playdb.SetCombatantConcentrationParams{ID: caster.ID, ConcentrationSpell: &spellKey}); err != nil {
 				return nil, fmt.Errorf("set the concentration: %w", err)
+			}
+		}
+		if summon != nil {
+			if err := s.joinSummon(ctx, c, caster, spellKey, sp.Concentration, summon, &made); err != nil {
+				return nil, err
 			}
 		}
 
@@ -372,7 +412,7 @@ func (s *Service) CastSpell(
 		} else {
 			for i, t := range targs {
 				hit := castHit{Target: t.ID, Darts: clamp32(targets[i].darts, 0, 100)}
-				if err := s.resolveOnTarget(ctx, c, m, sp, caster, t, slotLevel, in, &hit); err != nil {
+				if err := s.resolveOnTarget(ctx, c, m, sp, caster, t, slotLevel, in, coverAgainst(terrain, caster, t, cs), &hit); err != nil {
 					return nil, err
 				}
 				made.Hits = append(made.Hits, hit)
@@ -407,14 +447,15 @@ func (s *Service) CastSpell(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&playv1.CastSpellResponse{Encounter: out, Cast: spell}), nil
+	return connect.NewResponse(&playv1.CastSpellResponse{Encounter: out, Cast: spell, SummonedCombatantIds: s.combatantsOfCreatures(ctx, res, ev.Created)}), nil
 }
 
 // checkTargets checks, for a player, who a spell may touch: how many targets
 // (the master is not held to the number), that Magic Missile's darts add up,
 // and that each target is on the map and in range (the master is never held to
-// the range). It does not read the database.
-func (s *Service) checkTargets(v combatViewer, sp link.Spell, caster playdb.Combatant, targs []playdb.Combatant, darts []int, dartsTotal, slotLevel int) error {
+// the range), and that no target of a single-target spell has total cover (D4).
+// It does not read the database.
+func (s *Service) checkTargets(v combatViewer, terrain grid.Terrain, cs []playdb.Combatant, sp link.Spell, caster playdb.Combatant, targs []playdb.Combatant, darts []int, dartsTotal, slotLevel int) error {
 	bad := func(msg string) error { return connect.NewError(connect.CodeInvalidArgument, errors.New(msg)) }
 	switch {
 	case selfOnly(sp):
@@ -448,6 +489,12 @@ func (s *Service) checkTargets(v combatViewer, sp link.Spell, caster playdb.Comb
 	}
 	reach, limited := reachOf(sp)
 	for _, t := range targs {
+		// A target behind total cover (a wall on the line, or the master's mark)
+		// cannot be targeted directly; an area spell may still include it and the
+		// master judges.
+		if t.ID != caster.ID && !sp.Area && coverAgainst(terrain, caster, t, cs).total() {
+			return errCoverTotal()
+		}
 		if t.ID == caster.ID || !limited {
 			continue
 		}
@@ -465,12 +512,16 @@ func (s *Service) checkTargets(v combatViewer, sp link.Spell, caster playdb.Comb
 // resolveOnTarget does what the spell does to one target and fills the hit: a
 // spell attack's roll, a saving throw's roll, and the pending damage or heal
 // the cast opens. Anything else leaves the hit empty.
-func (s *Service) resolveOnTarget(ctx context.Context, c *combatTx, m authz.Membership, sp link.Spell, caster, target playdb.Combatant, slotLevel int, in rollInput, hit *castHit) error {
+func (s *Service) resolveOnTarget(ctx context.Context, c *combatTx, m authz.Membership, sp link.Spell, caster, target playdb.Combatant, slotLevel int, in rollInput, cover coverView, hit *castHit) error {
+	// The cover counts for a spell attack and a Dexterity save (D4).
+	if sp.AttackType != "" || (sp.SaveAbility == "dex" && !cover.total() && !sp.IgnoresCover) {
+		hit.Cover, hit.CoverSource, hit.CoverBonus = cover.key(), cover.sourceKey(), clamp32(cover.bonus(), 0, 5)
+	}
 	switch {
 	case sp.AttackType != "":
-		return s.spellAttack(ctx, c, m, sp, caster, target, in, hit)
+		return s.spellAttack(ctx, c, m, sp, caster, target, in, cover, hit)
 	case sp.SaveAbility != "":
-		return s.spellSave(ctx, c, m, sp, caster, target, hit)
+		return s.spellSave(ctx, c, m, sp, caster, target, cover, hit)
 	case dartsOf(sp, slotLevel) > 0:
 		return s.openDarts(ctx, c, sp, caster, target, hit)
 	case sp.Heal != nil:
@@ -497,16 +548,18 @@ func (s *Service) d20(in rollInput, modifier int) (face int, roll dice.Result, e
 
 // spellAttack rolls a spell attack against a target, as RollAttack does, and
 // opens its pending damage on a hit.
-func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membership, sp link.Spell, caster, target playdb.Combatant, in rollInput, hit *castHit) error {
+func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membership, sp link.Spell, caster, target playdb.Combatant, in rollInput, cover coverView, hit *castHit) error {
 	face, roll, err := s.d20(in, sp.ToHit)
 	if err != nil {
 		return err
 	}
-	sheet, err := s.roster.CombatSheet(ctx, m.CampaignID, target.CharacterID)
+	sheet, err := s.sheetOf(ctx, m.CampaignID, target)
 	if err != nil {
 		return err
 	}
-	result := combat.ResolveAttack(sp.ToHit, sheet.ArmorClass+int(target.AcBonus), face)
+	targetAC := sheet.ArmorClass + int(target.AcBonus) + cover.bonus()
+	result := combat.ResolveAttack(sp.ToHit, targetAC, face)
+	hit.TargetAC = clamp32(targetAC, 0, math.MaxInt32)
 	hit.D20, hit.Modifier, hit.Total, hit.Physical = clamp32(face, 1, 20), clamp32(sp.ToHit, math.MinInt32, math.MaxInt32), clamp32(result.Total, math.MinInt32, math.MaxInt32), roll.Physical
 	hit.Outcome = outcomeMiss
 	if !result.Hit {
@@ -519,7 +572,7 @@ func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membersh
 	if sp.Damage == nil {
 		return nil
 	}
-	p, err := s.openHit(ctx, c, m.CampaignID, caster, target, sp.Key, *sp.Damage, result.Critical, result.Total)
+	p, err := s.openHit(ctx, c, m.CampaignID, caster, target, sp.Key, *sp.Damage, result.Critical, result.Total, targetAC)
 	if err != nil {
 		return err
 	}
@@ -531,10 +584,15 @@ func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membersh
 // opens the damage the save leaves: all of it for a target that failed, half
 // (rounded down) for one that saved when the spell halves, none when it avoids.
 // The d20 is always rolled by the app (RN-18 is for the table's own dice).
-func (s *Service) spellSave(ctx context.Context, c *combatTx, m authz.Membership, sp link.Spell, caster, target playdb.Combatant, hit *castHit) error {
-	save, err := s.roster.CombatSave(ctx, m.CampaignID, target.CharacterID, sp.SaveAbility)
+func (s *Service) spellSave(ctx context.Context, c *combatTx, m authz.Membership, sp link.Spell, caster, target playdb.Combatant, cover coverView, hit *castHit) error {
+	save, err := s.saveOf(ctx, m.CampaignID, target, sp.SaveAbility)
 	if err != nil {
 		return err
+	}
+	// Cover adds to a Dexterity save (SRD): half +2, three-quarters +5. The bonus
+	// the save shows already has it.
+	if sp.SaveAbility == "dex" && !cover.total() && !sp.IgnoresCover { // Chama Sagrada: no benefit from cover (SRD)
+		save.Bonus += cover.bonus()
 	}
 	face, roll, err := s.d20(rollInput{inApp: true}, save.Bonus)
 	if err != nil {

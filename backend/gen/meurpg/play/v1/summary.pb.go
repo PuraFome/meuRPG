@@ -92,10 +92,18 @@ type SessionCharacterSummary struct {
 	// The checks the character passed outside combat, and how many it rolled:
 	// only rolls made while the scene showed its DC, and only actions with a DC
 	// ("3 de 4"). Passed is never above tried.
-	ChecksPassed  int32 `protobuf:"varint,2,opt,name=checks_passed,json=checksPassed,proto3" json:"checks_passed,omitempty"`
-	ChecksTried   int32 `protobuf:"varint,3,opt,name=checks_tried,json=checksTried,proto3" json:"checks_tried,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ChecksPassed int32 `protobuf:"varint,2,opt,name=checks_passed,json=checksPassed,proto3" json:"checks_passed,omitempty"`
+	ChecksTried  int32 `protobuf:"varint,3,opt,name=checks_tried,json=checksTried,proto3" json:"checks_tried,omitempty"`
+	// The gold pieces the character found in this session (MR-041): the value
+	// of each treasure marked found while the session was open, split among its
+	// finders and rounded down. A treasure unmarked later, or found outside a
+	// session, counts for nothing. It is worked out on every read from the
+	// treasures as they stand now (their value and finders), not from the
+	// session's events: re-marking the finders writes no event. Not the same as the XP of
+	// "Voltar à cidade".
+	TreasureFoundPo int32 `protobuf:"varint,4,opt,name=treasure_found_po,json=treasureFoundPo,proto3" json:"treasure_found_po,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *SessionCharacterSummary) Reset() {
@@ -149,6 +157,13 @@ func (x *SessionCharacterSummary) GetChecksTried() int32 {
 	return 0
 }
 
+func (x *SessionCharacterSummary) GetTreasureFoundPo() int32 {
+	if x != nil {
+		return x.TreasureFoundPo
+	}
+	return 0
+}
+
 // SessionSummary is how the session went, as the caller may see it.
 type SessionSummary struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -169,18 +184,21 @@ type SessionSummary struct {
 	ChecksPassed int32 `protobuf:"varint,6,opt,name=checks_passed,json=checksPassed,proto3" json:"checks_passed,omitempty"`
 	ChecksTried  int32 `protobuf:"varint,7,opt,name=checks_tried,json=checksTried,proto3" json:"checks_tried,omitempty"`
 	// The categories that have a winner, in the order of HighlightKind: the five
-	// of the combats summed over the session, then CHECKS_PASSED. A category
+	// of the combats summed over the session, then CHECKS_PASSED and
+	// TREASURE_FOUND (`value` is the PO, in every XP mode). A category
 	// where everybody has 0 is left out. `value` is the winners' number (for
 	// CHECKS_PASSED, the count of passed; "de N" is the master's table).
 	// Everyone tied is named, in the order the characters first appeared in the
 	// session. Every member gets the categories.
 	Categories []*HighlightCategory `protobuf:"bytes,8,rep,name=categories,proto3" json:"categories,omitempty"`
-	// The table of every player's character that fought or rolled a check, in
+	// The table of every player's character that fought, rolled a check or found
+	// treasure, in
 	// the order they first appeared, zeros included. Only the master gets it;
 	// for a player it is empty.
 	Players []*SessionCharacterSummary `protobuf:"bytes,9,rep,name=players,proto3" json:"players,omitempty"`
 	// The caller's own result, "Seu resultado": set only for a player whose
-	// character took part in the session (fought or rolled a check). The master
+	// character took part in the session (fought, rolled a check or found
+	// treasure). The master
 	// never gets it.
 	Mine          *SessionCharacterSummary `protobuf:"bytes,10,opt,name=mine,proto3" json:"mine,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -340,13 +358,14 @@ const file_meurpg_play_v1_summary_proto_rawDesc = "" +
 	"\x18GetSessionSummaryRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12&\n" +
-	"\x0fgame_session_id\x18\x02 \x01(\tR\rgameSessionId\"\xa6\x01\n" +
+	"\x0fgame_session_id\x18\x02 \x01(\tR\rgameSessionId\"\xd2\x01\n" +
 	"\x17SessionCharacterSummary\x12C\n" +
 	"\n" +
 	"highlights\x18\x01 \x01(\v2#.meurpg.play.v1.CharacterHighlightsR\n" +
 	"highlights\x12#\n" +
 	"\rchecks_passed\x18\x02 \x01(\x05R\fchecksPassed\x12!\n" +
-	"\fchecks_tried\x18\x03 \x01(\x05R\vchecksTried\"\x83\x04\n" +
+	"\fchecks_tried\x18\x03 \x01(\x05R\vchecksTried\x12*\n" +
+	"\x11treasure_found_po\x18\x04 \x01(\x05R\x0ftreasureFoundPo\"\x83\x04\n" +
 	"\x0eSessionSummary\x129\n" +
 	"\n" +
 	"started_at\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x125\n" +

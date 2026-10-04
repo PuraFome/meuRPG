@@ -149,12 +149,16 @@ export interface Encounter {
   combatants: Combatant[];
   revision: number;
   reactionPrompts?: { pendingDamageId: string; targetId: string }[];
+  /** The members of the group on turn (a joint turn when more than one). */
+  turnGroupIds?: string[];
 }
 
 export interface Combatant {
   id: string;
   label: string;
   kind: string;
+  /** In a joint turn, this member's part already ended. */
+  turnPartEnded?: boolean;
   mine?: boolean;
   hidden?: boolean;
   initiative?: number;
@@ -217,14 +221,20 @@ export async function adjustVitalsRPC(page: Page, campaignId: string, characterI
 export async function passTurnsTo(master: Page, campaignId: string, label: string): Promise<Encounter> {
   let enc = await getEncounterRPC(master, campaignId);
   for (let i = 0; i < 12; i++) {
-    const current = enc.combatants.find((c) => c.id === enc.currentCombatantId);
-    if (current?.label === label) {
+    // NPC initiative is rolled, so a tie can make a joint turn: the label may be
+    // any member still acting, and each member's part is ended on its own (ending
+    // a part that already ended is `aborted`).
+    const group = enc.turnGroupIds?.length ? enc.turnGroupIds : [enc.currentCombatantId ?? ''];
+    const acting = group
+      .map((id) => enc.combatants.find((c) => c.id === id))
+      .filter((c): c is Combatant => !!c && !c.turnPartEnded);
+    if (acting.some((c) => c.label === label)) {
       return enc;
     }
     enc = await combatRPC(master, 'EndTurn', {
       campaignId,
       encounterId: enc.id,
-      expectedCombatantId: enc.currentCombatantId,
+      expectedCombatantId: acting[0]?.id ?? enc.currentCombatantId,
       discardPendingDamage: true,
     });
   }

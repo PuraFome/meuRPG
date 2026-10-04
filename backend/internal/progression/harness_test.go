@@ -152,7 +152,7 @@ func newHarness(t *testing.T) *harness {
 		t.Fatalf("play.New() error = %v", err)
 	}
 	h.play = pl
-	svc, err := New(Config{Pool: pool, Party: chars, Combats: pl, Log: pl, Campaigns: camps, Profiles: h.users, Logger: logger, Now: clock.Now})
+	svc, err := New(Config{Pool: pool, Party: chars, Combats: pl, Log: pl, Treasures: maps.NewTreasures(pool), Campaigns: camps, Profiles: h.users, Logger: logger, Now: clock.Now})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}

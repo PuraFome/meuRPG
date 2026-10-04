@@ -41,3 +41,9 @@ type XpAwardShare struct {
 	Xp          int32
 	LevelAtMark *int32
 }
+
+type XpAwardTreasure struct {
+	AwardID string
+	PointID string
+	ValuePo int32
+}

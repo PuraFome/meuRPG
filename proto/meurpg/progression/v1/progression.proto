@@ -77,19 +77,47 @@ service ProgressionService {
   // repeat. A sheet's XP is a number the master may also set by hand on the
   // sheet; the award only adds to it.
   //
+  // "Voltar à cidade" (MR-041, RN-09): a GOLD award may name the treasures
+  // the party found (treasure_point_ids, from ListTreasuresToConvert) instead
+  // of a typed `gold`. The server sums their PO itself (1 XP per PO), splits
+  // as above and, in the same transaction, links each treasure to the award:
+  // a treasure is converted once, even when two awards race. Undoing the award
+  // (UndoLastXPAward) frees them again. The award, the history and the
+  // `xp_awarded` event carry the treasures (their IDs and PO).
+  //
   // Errors:
   //   - `not_found`: the campaign, or the encounter, does not exist, or the
-  //     caller is not a member.
+  //     caller is not a member; a treasure that is not a treasure of the
+  //     campaign.
   //   - `permission_denied`: the caller is a player.
   //   - `invalid_argument`: no characters, a repeat, an ID that is not a UUID,
   //     a reason outside 1 to 120 characters, a field that does not go with
   //     the mode (a gold amount for ENEMIES), or an amount or gold outside 1
-  //     to 1,000,000.
+  //     to 1,000,000; treasure_point_ids with a mode other than GOLD, with
+  //     `gold`, or with a repeat or more than 100 treasures.
   //   - `failed_precondition` (XPBlocked): MODE_NOT_ALLOWED, ENCOUNTER_NOT_ENDED,
   //     ALREADY_AWARDED, NOTHING_TO_GIVE (the total is 0, or too small to give
   //     each one 1 XP), CHARACTER_NOT_ELIGIBLE (a dead or pending character,
-  //     an NPC, or another campaign's).
+  //     an NPC, or another campaign's), TREASURE_NOT_FOUND_YET and
+  //     TREASURE_ALREADY_CONVERTED (`treasure_point_id` says which), and
+  //     TREASURES_OVER_LIMIT (worth more than 1,000,000 PO together).
   rpc AwardXP(AwardXPRequest) returns (AwardXPResponse);
+
+  // ListTreasuresToConvert lists the campaign's treasures that were found and
+  // not converted yet, for "Voltar à cidade" (MR-041): oldest find first. Only
+  // the master may call it: the list is the input of AwardXP's
+  // treasure_point_ids. It lists them in every XP mode (the treasures belong to
+  // the map), but only a GOLD campaign converts them.
+  //
+  // At most 100 treasures come (the most one conversion takes), the oldest
+  // finds; `total` says how many there are.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist, or the caller is not a member.
+  //   - `permission_denied`: the caller is a player.
+  rpc ListTreasuresToConvert(ListTreasuresToConvertRequest) returns (ListTreasuresToConvertResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
 
   // MarkMilestone marks a milestone: the characters it names "can level up"
   // (RN-12, question 48), and no XP is counted. Only the master may call it,
@@ -202,6 +230,11 @@ service ProgressionService {
   // undoing a "Dar a mais alguém" mark takes the milestone off those
   // characters only, and it stays reached for the others.
   //
+  // For a "Voltar à cidade" award (AwardXP with treasure_point_ids), undoing it
+  // also frees its treasures, in the same transaction: they are "found, not
+  // converted" again. A treasure converted by an award that is no longer the
+  // last stays converted until that award is undone.
+  //
   // expected_award_id, when set, is the award the app shows as the last one: if
   // another is the last now, the call changes nothing and fails with `aborted`.
   //
@@ -274,6 +307,16 @@ enum XPBlockedReason {
   // undone): its awards stay in the history, which is never rewritten, so
   // the milestone stays too, planned again.
   XP_BLOCKED_REASON_MILESTONE_HAS_HISTORY = 10;
+  // AwardXP with a treasure the party has not found (or whose find the master
+  // unmarked): `treasure_point_id` says which.
+  XP_BLOCKED_REASON_TREASURE_NOT_FOUND_YET = 11;
+  // AwardXP with a treasure that an award that is not undone already
+  // converted: `treasure_point_id` says which. It is free again when that
+  // award is the last one and the master undoes it.
+  XP_BLOCKED_REASON_TREASURE_ALREADY_CONVERTED = 12;
+  // AwardXP with treasures worth more than 1,000,000 PO together (a sheet
+  // holds at most that much XP): convert fewer of them.
+  XP_BLOCKED_REASON_TREASURES_OVER_LIMIT = 13;
 }
 
 // XPBlocked is the error detail of ProgressionService's
@@ -285,6 +328,9 @@ message XPBlocked {
   string character_id = 2;
   // For MODE_NOT_ALLOWED, the campaign's XP mode.
   meurpg.campaigns.v1.XpMode xp_mode = 3;
+  // For TREASURE_NOT_FOUND_YET and TREASURE_ALREADY_CONVERTED, the treasure's
+  // point (a UUID).
+  string treasure_point_id = 4;
 }
 
 // XPShare is what one character got from an award.
@@ -327,6 +373,24 @@ message XPAward {
   // Whether the caller may undo it now: the master, for the latest award that
   // is not undone.
   bool can_undo = 15;
+  // The treasures a "Voltar à cidade" award converted, in a stable order (by
+  // ID); empty for the rest. Only the master gets the list (RN-10: a player
+  // never learns which treasures, nor each one's PO, only how many and the
+  // total). The list stays after an undo (the history is never rewritten),
+  // though the treasures are free again then.
+  repeated XPAwardTreasure treasures = 16;
+  // How many treasures the award converted, for everyone who reads the
+  // history; `gold` is their PO together ("Voltar à cidade: 3 tesouros,
+  // 420 PO"). 0 for an award that converted none.
+  int32 treasure_count = 17;
+}
+
+// XPAwardTreasure is one treasure converted by an award: IDs and numbers only.
+message XPAwardTreasure {
+  // The treasure's map point (a UUID).
+  string point_id = 1;
+  // Its worth when it was converted, in gold pieces.
+  int32 value_po = 2;
 }
 
 message AwardXPRequest {
@@ -339,13 +403,19 @@ message AwardXPRequest {
   string encounter_id = 4;
   // MANUAL only: the XP to split, 1 to 1,000,000.
   int32 amount = 5;
-  // GOLD only: the gold pieces the group found, 1 to 1,000,000.
+  // GOLD only: the gold pieces the group found, 1 to 1,000,000. Empty (0) when
+  // treasure_point_ids is sent.
   int32 gold = 6;
   // Who gets it: 1 to 40 living player characters of the campaign (UUIDs), no
   // repeat.
   repeated string character_ids = 7;
   // A UUID the app generates once for this award and sends again on a retry.
   string idempotency_key = 8;
+  // GOLD only, "Voltar à cidade" (MR-041): the found treasures to convert, 1
+  // to 100 map point IDs (UUIDs) from ListTreasuresToConvert, no repeat.
+  // `gold` must then be empty: the server sums the treasures' PO. Only in a
+  // campaign that levels by gold.
+  repeated string treasure_point_ids = 9;
 }
 
 message AwardXPResponse {
@@ -355,6 +425,52 @@ message AwardXPResponse {
   int32 xp_each = 2;
   // The XP that did not split among the characters (total modulo their number).
   int32 lost_xp = 3;
+  // The treasures the award converted (the same list as award.treasures; the
+  // master is the only caller of AwardXP); empty when it converted none.
+  repeated XPAwardTreasure treasures = 4;
+}
+
+// ListTreasuresToConvertRequest names the campaign.
+message ListTreasuresToConvertRequest {
+  string campaign_id = 1;
+}
+
+// ListTreasuresToConvertResponse is the list "Voltar à cidade" shows.
+message ListTreasuresToConvertResponse {
+  // The treasures found and not converted, the oldest find first.
+  repeated TreasureToConvert treasures = 1;
+  // How many treasures are found and not converted in all, which may be more
+  // than the list holds (it stops at 100): the screen says when there are
+  // more.
+  int32 total = 2;
+}
+
+// TreasureToConvert is a treasure the party found that no award converted.
+message TreasureToConvert {
+  // The treasure's map point (a UUID): what AwardXP's treasure_point_ids take.
+  string point_id = 1;
+  // The map it is on (a UUID) and that map's name.
+  string map_id = 2;
+  string map_name = 3;
+  // The treasure's own name.
+  string name = 4;
+  // Its worth, in gold pieces: 1 XP each when converted.
+  int32 value_po = 5;
+  // When the master marked it found.
+  google.protobuf.Timestamp found_at = 6;
+  // The characters that found it, by name.
+  repeated TreasureFinder found_by = 7;
+  // Whether it was found while a game session was open. One found outside a
+  // session can be converted, but it counts in no session summary ("Mais
+  // tesouro encontrado").
+  bool found_in_session = 8;
+}
+
+// TreasureFinder is a character that found a treasure.
+message TreasureFinder {
+  // The character (a UUID) and its name now.
+  string character_id = 1;
+  string character_name = 2;
 }
 
 message MarkMilestoneRequest {

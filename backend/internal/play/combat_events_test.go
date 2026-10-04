@@ -8,6 +8,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
 // These tests need no database: the undo's search, the log's building and
@@ -121,6 +122,7 @@ func TestTargetsAndReach(t *testing.T) {
 		attacker, at("near", 1, 1, false, false), at("far", 7, 0, false, false), at("secret", 1, 0, true, false), at("dead", 2, 0, false, true),
 		{ID: "lost", Label: "lost", Kind: kindNPC}, // not on the grid
 	}
+	open := grid.Terrain{Grid: grid.Grid{Columns: 20, Rows: 10}}
 	reach := reachFt(0, 0)
 	if reach != 5 {
 		t.Fatalf("reachFt(0, 0) = %d, want a melee reach of 5", reach)
@@ -129,7 +131,7 @@ func TestTargetsAndReach(t *testing.T) {
 		t.Errorf("reachFt(80, 320) = %d, want the long range", got)
 	}
 
-	player := targetsFor(cs, attacker, combatViewer{userID: "u"}, reach)
+	player := targetsFor(open, cs, attacker, combatViewer{userID: "u"}, reach)
 	var ids []string
 	for _, tg := range player {
 		ids = append(ids, tg.GetCombatantId())
@@ -143,7 +145,7 @@ func TestTargetsAndReach(t *testing.T) {
 	if player[2].DistanceFt != nil || !player[2].GetTooFar() {
 		t.Errorf("a target with no square for a player = %v, want no distance and too far", player[2])
 	}
-	master := targetsFor(cs, attacker, combatViewer{master: true}, reach)
+	master := targetsFor(open, cs, attacker, combatViewer{master: true}, reach)
 	if len(master) != 4 {
 		t.Fatalf("the master's targets = %v, want the hidden one too", master)
 	}

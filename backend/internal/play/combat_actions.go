@@ -20,6 +20,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
 // What a turn can do (MR-012, MR-014, Etapa 6, slice 6.4a): the options of a
@@ -83,7 +84,7 @@ func (s *Service) gate(ctx context.Context, tx pgx.Tx, campaignID string, e play
 }
 
 // isDown says whether a player's character is at 0 hit points ("Caído"): its
-// vitals say so. An NPC is never down: it is defeated.
+// vitals say so. An NPC and a creature are never down: they are defeated.
 // A write passes its transaction, so it reads what it will overwrite; a read
 // passes nil.
 func (s *Service) isDown(ctx context.Context, tx pgx.Tx, campaignID string, c playdb.Combatant) (bool, error) {
@@ -135,7 +136,9 @@ func (s *Service) mustActNow(ctx context.Context, c *combatTx, who playdb.Combat
 func turnOf(c playdb.Combatant) link.Turn {
 	return link.Turn{
 		ActionUsed: c.ActionUsed, BonusActionUsed: c.BonusActionUsed, ReactionUsed: c.ReactionUsed, AttacksMade: int(c.AttacksMade),
-		Dashed: c.Dashed, SpeedFt: int(c.SpeedFt), MovementUsedFt: int(c.MovementUsedFt),
+		Dashed: c.Dashed, SpeedFt: int(max(c.SpeedFt, c.SpeedFlyFt)), MovementUsedFt: int(c.MovementUsedDft) / 10,
+		MovementUsedDFt: int(c.MovementUsedDft), LastMoveDFt: int(c.LastMoveDft), Disengaged: c.Disengaged,
+		JumpLongDFt: int(c.JumpLongDft), JumpHighDFt: int(c.JumpHighDft),
 	}
 }
 
@@ -168,13 +171,15 @@ func attackReach(a link.Attack, asReaction bool) int32 {
 	return reachFt(clamp32(a.RangeFt, 0, math.MaxInt32), clamp32(a.LongRangeFt, 0, math.MaxInt32))
 }
 
-// distanceFt is the distance between two combatants on the grid, a king's
-// move at 5 ft a square (RN-21); false when either has no square.
+// distanceFt is the distance between two combatants on the grid for an attack's
+// reach or a spell's range: the squares between the centers, rounded down, times
+// 5 ft (RN-21, grid.RangeFt), so a diagonal neighbor is 5 ft away; false when
+// either has no square.
 func distanceFt(a, b playdb.Combatant) (int32, bool) {
 	if !placed(a) || !placed(b) {
 		return 0, false
 	}
-	return clamp32(combat.GridDistanceFt(int(*a.GridCol), int(*a.GridRow), int(*b.GridCol), int(*b.GridRow)), 0, math.MaxInt32), true
+	return clamp32(grid.RangeFt(squareOfCombatant(a), squareOfCombatant(b)), 0, math.MaxInt32), true
 }
 
 // GetTurnOptions implements playv1connect.CombatServiceHandler.
@@ -218,7 +223,7 @@ func (s *Service) GetTurnOptions(
 		return nil, err
 	}
 
-	opts, err := s.roster.CombatTurnOptions(ctx, m.CampaignID, who.CharacterID, turnOf(who))
+	opts, err := s.optionsOf(ctx, m.CampaignID, who)
 	if err != nil {
 		return nil, s.dbError(ctx, "work out the turn options", err)
 	}
@@ -229,16 +234,20 @@ func (s *Service) GetTurnOptions(
 	if code != rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_UNSPECIFIED {
 		disableAll(opts, code)
 	}
+	terrain, err := s.terrainOf(ctx, m.CampaignID, enc)
+	if err != nil {
+		return nil, s.dbError(ctx, "read the terrain", err)
+	}
 	res := &playv1.GetTurnOptionsResponse{Options: opts, YourTurn: actsNow(enc, who)}
 	for _, a := range opts.GetAttacks() {
 		if a.GetAttack().GetSaveDc() > 0 {
 			continue // a saving throw, not an attack roll: the spells slice
 		}
 		res.AttackTargets = append(res.AttackTargets, &playv1.AttackTargets{
-			AttackKey: a.GetAttack().GetKey(), Targets: targetsFor(d.cs, who, v, reachFt(a.GetAttack().GetRangeFt(), a.GetAttack().GetLongRangeFt())),
+			AttackKey: a.GetAttack().GetKey(), Targets: targetsFor(terrain, d.cs, who, v, reachFt(a.GetAttack().GetRangeFt(), a.GetAttack().GetLongRangeFt())),
 		})
 	}
-	if res.SpellTargets, err = s.spellTargetsFor(ctx, m.CampaignID, who, d.cs, v, opts); err != nil {
+	if res.SpellTargets, err = s.spellTargetsFor(ctx, m.CampaignID, terrain, who, d.cs, v, opts); err != nil {
 		return nil, s.dbError(ctx, "work out the spell targets", err)
 	}
 	open, err := s.queries.ListOpenPendingDamages(ctx, enc.ID)
@@ -258,7 +267,7 @@ func (s *Service) GetTurnOptions(
 // the spell cannot reach it, how many targets it takes and, for Magic Missile,
 // the darts of each slot level. Spells that cannot be cast now are left out:
 // they carry their reason and need no targets.
-func (s *Service) spellTargetsFor(ctx context.Context, campaignID string, who playdb.Combatant, cs []playdb.Combatant, v combatViewer, opts *rulesv1.TurnOptions) ([]*playv1.SpellTargets, error) {
+func (s *Service) spellTargetsFor(ctx context.Context, campaignID string, terrain grid.Terrain, who playdb.Combatant, cs []playdb.Combatant, v combatViewer, opts *rulesv1.TurnOptions) ([]*playv1.SpellTargets, error) {
 	type entry struct {
 		key   string
 		level int
@@ -282,7 +291,7 @@ func (s *Service) spellTargetsFor(ctx context.Context, campaignID string, who pl
 			return nil, err
 		}
 		st := &playv1.SpellTargets{
-			SpellKey: e.key, Targets: spellTargetList(cs, who, v, sp),
+			SpellKey: e.key, Targets: spellTargetList(terrain, cs, who, v, sp),
 			MaxTargets: clamp32(maxTargetsOf(sp, e.level), 0, maxCombatants), ExtraTargetPerLevel: sp.ExtraTargetPerLevel || sp.Key == magicMissile,
 		}
 		for _, slot := range e.slots {
@@ -299,14 +308,16 @@ func (s *Service) spellTargetsFor(ctx context.Context, campaignID string, who pl
 // caster itself and every combatant that is not defeated (one at 0 hit points
 // can be healed), in turn order, with the distance and whether the spell's range
 // cannot reach it. A spell that stays on the caster lists only the caster.
-func spellTargetList(cs []playdb.Combatant, caster playdb.Combatant, v combatViewer, sp link.Spell) []*playv1.TargetInReach {
+func spellTargetList(terrain grid.Terrain, cs []playdb.Combatant, caster playdb.Combatant, v combatViewer, sp link.Spell) []*playv1.TargetInReach {
 	reach, limited := reachOf(sp)
 	var out []*playv1.TargetInReach
 	for _, t := range cs {
 		if t.Defeated || !v.sees(t) || (selfOnly(sp) && t.ID != caster.ID) {
 			continue
 		}
-		target := &playv1.TargetInReach{CombatantId: t.ID, Label: t.Label, State: stateOf(t)}
+		cover := coverAgainst(terrain, caster, t, cs)
+		target := withCover(&playv1.TargetInReach{CombatantId: t.ID, Label: t.Label, State: stateOf(t)}, cover)
+		target.Untargetable = cover.total() && !v.master && !sp.Area && t.ID != caster.ID
 		if dist, ok := distanceFt(caster, t); ok {
 			target.DistanceFt = &dist
 			target.TooFar = limited && t.ID != caster.ID && dist > reach
@@ -340,13 +351,15 @@ func disableAll(o *rulesv1.TurnOptions, code rulesv1.DisabledReasonCode) {
 // as the viewer sees them: not itself, not a defeated one, not a hidden one
 // for a player (RN-10), in turn order, each with the distance and whether it
 // is too far.
-func targetsFor(cs []playdb.Combatant, attacker playdb.Combatant, v combatViewer, reach int32) []*playv1.TargetInReach {
+func targetsFor(terrain grid.Terrain, cs []playdb.Combatant, attacker playdb.Combatant, v combatViewer, reach int32) []*playv1.TargetInReach {
 	var out []*playv1.TargetInReach
 	for _, t := range cs {
 		if t.ID == attacker.ID || t.Defeated || !v.sees(t) {
 			continue
 		}
-		target := &playv1.TargetInReach{CombatantId: t.ID, Label: t.Label, State: stateOf(t)}
+		cover := coverAgainst(terrain, attacker, t, cs)
+		target := withCover(&playv1.TargetInReach{CombatantId: t.ID, Label: t.Label, State: stateOf(t)}, cover)
+		target.Untargetable = cover.total() && !v.master
 		if dist, ok := distanceFt(attacker, t); ok {
 			target.DistanceFt = &dist
 			target.TooFar = dist > reach
@@ -356,6 +369,12 @@ func targetsFor(cs []playdb.Combatant, attacker playdb.Combatant, v combatViewer
 		out = append(out, target)
 	}
 	return out
+}
+
+// withCover puts the cover a target has against the attacker on its list entry.
+func withCover(t *playv1.TargetInReach, cv coverView) *playv1.TargetInReach {
+	t.Cover, t.CoverSource = coverDegreeProto(cv.key()), cv.source
+	return t
 }
 
 // pendingVisible says whether the viewer may get a pending damage: a player
@@ -385,7 +404,7 @@ func pendingProto(p playdb.PendingDamage, cs []playdb.Combatant) *playv1.Pending
 		out.Roll = diceRoll(p.DiceCount, p.DiceSides, p.Faces, p.DiceBonus, total, p.Physical)
 	}
 	if p.Status == pendingApplied {
-		out.TargetDefeated = slices.ContainsFunc(cs, func(c playdb.Combatant) bool { return c.ID == p.TargetID && c.Kind == kindNPC && c.Defeated })
+		out.TargetDefeated = slices.ContainsFunc(cs, func(c playdb.Combatant) bool { return c.ID == p.TargetID && holdsHP(c) && c.Defeated })
 	}
 	return out
 }
@@ -543,7 +562,10 @@ func (s *Service) RollAttack(
 			}
 		}
 
-		attackerSheet, err := s.roster.CombatSheet(ctx, m.CampaignID, attacker.CharacterID)
+		if err := mayAttack(attacker, asReaction); err != nil {
+			return nil, err
+		}
+		attackerSheet, err := s.sheetOf(ctx, m.CampaignID, attacker)
 		if err != nil {
 			return nil, err
 		}
@@ -552,6 +574,10 @@ func (s *Service) RollAttack(
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("attack_key is not one of the attacker's attacks"))
 		}
 		attack := attackerSheet.Attacks[i]
+		terrain, err := s.terrainOf(ctx, m.CampaignID, c.enc)
+		if err != nil {
+			return nil, err
+		}
 		if attack.Save {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("this attack asks for a saving throw, not an attack roll: use CastSpell"))
 		}
@@ -587,28 +613,43 @@ func (s *Service) RollAttack(
 					func(b *playv1.EncounterBlocked) { b.MissingFt = dist - reach })
 			}
 		}
+		// D4: the cover the target has against this attacker. Total cover (a wall on
+		// the line, or the master's mark) makes it untargetable for a player; the
+		// master has the last word.
+		cover := coverAgainst(terrain, attacker, target, cs)
+		if cover.total() && !v.master {
+			return nil, errCoverTotal()
+		}
 
 		// The roll, and what it did against the target's armor class (with the
-		// +5 of an active Escudo). The class stays on the server (RN-20).
+		// +5 of an active Escudo and the cover). The class stays on the server (RN-20).
 		face, roll, err := s.d20(in, attack.ToHit)
 		if err != nil {
 			return nil, err
 		}
-		targetSheet, err := s.roster.CombatSheet(ctx, m.CampaignID, target.CharacterID)
+		targetSheet, err := s.sheetOf(ctx, m.CampaignID, target)
 		if err != nil {
 			return nil, err
 		}
-		result := combat.ResolveAttack(attack.ToHit, targetSheet.ArmorClass+int(target.AcBonus), face)
+		targetAC := targetSheet.ArmorClass + int(target.AcBonus) + cover.bonus()
+		result := combat.ResolveAttack(attack.ToHit, targetAC, face)
 
 		after := attacker
+		var run int32
+		if !asReaction {
+			if run, err = breakRun(ctx, c, attacker); err != nil {
+				return nil, err
+			}
+		}
 		made = actionEvent{
-			Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: target.ID, Key: attackKey,
+			RunBefore: run, Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: target.ID, Key: attackKey,
 			D20: clamp32(face, 1, 20), Modifier: clamp32(attack.ToHit, math.MinInt32, math.MaxInt32), Total: clamp32(result.Total, math.MinInt32, math.MaxInt32),
 			Physical: roll.Physical, Outcome: outcomeMiss, AsReaction: asReaction,
 			ActionBefore: attacker.ActionUsed, ReactionBefore: attacker.ReactionUsed, AttacksBefore: attacker.AttacksMade,
 			// The armor class the roll was compared with (an active Escudo's +5
 			// included): the master's answer shows it, a player's never does.
-			TargetAC: clamp32(targetSheet.ArmorClass+int(target.AcBonus), 0, math.MaxInt32),
+			TargetAC: clamp32(targetAC, 0, math.MaxInt32),
+			Cover:    cover.key(), CoverSource: cover.sourceKey(), CoverBonus: clamp32(cover.bonus(), 0, 5),
 		}
 		if asReaction {
 			after.ReactionUsed = true
@@ -632,7 +673,7 @@ func (s *Service) RollAttack(
 				made.Outcome = outcomeCrit
 			}
 			p, err := s.openHit(ctx, c, m.CampaignID, attacker, target, attackKey,
-				link.Dice{Count: attack.DiceCount, Sides: attack.DiceSides, Bonus: attack.DiceBonus, DamageType: attack.DamageType}, result.Critical, result.Total)
+				link.Dice{Count: attack.DiceCount, Sides: attack.DiceSides, Bonus: attack.DiceBonus, DamageType: attack.DamageType}, result.Critical, result.Total, targetAC)
 			if err != nil {
 				return nil, err
 			}
@@ -665,6 +706,7 @@ func (s *Service) RollAttack(
 	roll := &playv1.AttackRoll{
 		AttackerId: ev.Actor, TargetId: ev.Target, AttackKey: ev.Key,
 		D20: diceRoll(1, 20, faceList(ev), ev.Modifier, ev.Total, ev.Physical), Outcome: outcomeToProto[ev.Outcome],
+		Cover: coverDegreeProto(ev.Cover), CoverSource: coverSourceProto(ev.CoverSource),
 	}
 	if v.master {
 		roll.TargetArmorClass = ptr(ev.TargetAC) // "Acertou contra CA 18": never a player's
@@ -913,7 +955,7 @@ func (s *Service) landDamage(ctx context.Context, c *combatTx, p playdb.PendingD
 		healed, vit, err := s.healCombatant(ctx, c, target, amount)
 		healed.Pending, healed.Half = p.ID, p.Half
 		return healed, vit, err
-	case target.Kind == kindNPC:
+	case holdsHP(target): // an NPC and a creature take a damage at once
 		dmg := combat.ApplyDamage(int(num(target.HpCurrent)), int(num(target.HpTemp)), int(amount))
 		after := hpState{HP: clamp32(dmg.HP, 0, math.MaxInt32), Temp: clamp32(dmg.TempHP, 0, math.MaxInt32), Defeated: dmg.HP == 0}
 		if err := c.q.SetCombatantHitPoints(ctx, playdb.SetCombatantHitPointsParams{ID: target.ID, HpCurrent: &after.HP, HpTemp: &after.Temp, Defeated: after.Defeated}); err != nil {
@@ -933,7 +975,7 @@ func (s *Service) landDamage(ctx context.Context, c *combatTx, p playdb.PendingD
 // character's after.
 func (s *Service) healCombatant(ctx context.Context, c *combatTx, target playdb.Combatant, amount int32) (damageHit, *playv1.CharacterVitals, error) {
 	hit := damageHit{Target: target.ID, Applied: true}
-	if target.Kind == kindNPC {
+	if holdsHP(target) {
 		before := hpOf(target)
 		r := combat.ApplyHeal(int(before.HP), int(num(target.HpMax)), int(amount))
 		after := hpState{HP: clamp32(r.HP, 0, math.MaxInt32), Temp: before.Temp, Defeated: r.HP == 0}
@@ -1324,7 +1366,7 @@ func (s *Service) TakeAction(
 		if err := v.mayAct(who); err != nil {
 			return nil, err
 		}
-		opts, err := s.roster.CombatTurnOptions(ctx, m.CampaignID, who.CharacterID, turnOf(who))
+		opts, err := s.optionsOf(ctx, m.CampaignID, who)
 		if err != nil {
 			return nil, err
 		}
@@ -1358,10 +1400,14 @@ func (s *Service) TakeAction(
 				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ACTION_USED, "the action of this turn is used")
 			}
 		}
+		run, err := breakRun(ctx, c, who)
+		if err != nil {
+			return nil, err
+		}
 		made = actionEvent{
-			Round: c.enc.Round, Secret: who.Hidden, Actor: who.ID, Key: actionKey,
+			Round: c.enc.Round, Secret: who.Hidden, Actor: who.ID, Key: actionKey, RunBefore: run,
 			ActionBefore: who.ActionUsed, BonusBefore: who.BonusActionUsed, ReactionBefore: who.ReactionUsed, DashedBefore: who.Dashed,
-			AttacksBefore: who.AttacksMade,
+			AttacksBefore: who.AttacksMade, DisengagedBefore: who.Disengaged,
 		}
 		after := who
 		switch economy {
@@ -1391,9 +1437,16 @@ func (s *Service) TakeAction(
 				return nil, err
 			}
 		}
+		// Disengage: no opportunity attacks for the rest of the turn (slice 9.6b
+		// reads the flag).
+		if actionKey == "standard:disengage" {
+			if err := c.q.SetCombatantDisengaged(ctx, playdb.SetCombatantDisengagedParams{ID: who.ID, Disengaged: true}); err != nil {
+				return nil, fmt.Errorf("mark the disengage: %w", err)
+			}
+		}
 
 		if feature {
-			sheet, err := s.roster.CombatSheet(ctx, m.CampaignID, who.CharacterID)
+			sheet, err := s.sheetOf(ctx, m.CampaignID, who)
 			if err != nil {
 				return nil, err
 			}
@@ -1558,7 +1611,7 @@ func (s *Service) AdjustCombatantHitPoints(
 		if err != nil {
 			return nil, err
 		}
-		if target.Kind != kindNPC {
+		if !holdsHP(target) {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a player's character keeps its hit points in its vitals: use AdjustCharacterVitals"))
 		}
 		hp, tmp, hpMax := int(num(target.HpCurrent)), int(num(target.HpTemp)), int(num(target.HpMax))

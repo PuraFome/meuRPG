@@ -14,6 +14,7 @@ package meurpg.play.v1;
 
 import "google/protobuf/timestamp.proto";
 import "meurpg/campaigns/v1/campaigns.proto";
+import "meurpg/play/v1/combat.proto";
 import "meurpg/play/v1/scene.proto";
 import "meurpg/play/v1/summary.proto";
 import "meurpg/rules/v1/rules.proto";
@@ -494,6 +495,72 @@ service PlayService {
   //   - `failed_precondition`: no open session (GameSessionBlocked,
   //     NO_OPEN_SESSION).
   rpc SetSpeaker(SetSpeakerRequest) returns (SetSpeakerResponse);
+
+  // CastSummon casts a spell that summons creatures outside a combat (MR-037,
+  // Etapa 9): Encontrar Familiar (1 hour, a ritual: no slot is spent),
+  // Animar os Mortos (1 minute: it spends the slot) and Conjurar Animais
+  // (1 action). The caster is a player's character; its player casts for it,
+  // and the master for anyone. The spell must be one the character has (a
+  // ritual one from its spellbook when cast as a ritual), the slot a free one
+  // of at least the spell's circle, and the choice what rules.SummonOptions
+  // offers for that slot and character. The slot is spent through the vitals
+  // (RN-02); the creatures are created and listed on the character
+  // (CharacterService.ListCharacterCreatures). A new familiar replaces the old
+  // one (the SRD allows one at a time), which is dismissed. Creatures of one
+  // casting share a `summon_group_id`. Nothing is rolled, so there is no dice
+  // mode to follow (RN-18); the initiative is rolled when a combat starts.
+  //
+  // The owner and the master get `creatures_changed`, the caster's player and
+  // the master `vitals_changed` when a slot was spent, and a
+  // `creature_summoned` event (ids and keys only) goes to the history.
+  //
+  // A casting while the caster is a combatant of a combat that is not ended is
+  // refused: the combat has CastSpell, with the initiative.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist or the caller is not a member
+  //     of it, or the character is not a living player's character of the
+  //     campaign that the caller may cast for.
+  //   - `permission_denied`: the caller is a player and the character is not
+  //     theirs.
+  //   - `invalid_argument`: the spell does not summon or is not one of the
+  //     character's, the slot does not fit, ritual is set for a spell that is
+  //     not a ritual or the character cannot cast rituals, a name is not 1 to
+  //     40 characters.
+  //   - `failed_precondition`: no open session (GameSessionBlocked,
+  //     NO_OPEN_SESSION); EncounterBlocked: SUMMON_CHOICE_INVALID,
+  //     NO_SLOT, SUMMON_IN_COMBAT.
+  rpc CastSummon(CastSummonRequest) returns (CastSummonResponse);
+}
+
+// CastSummonRequest casts a summoning spell outside a combat.
+message CastSummonRequest {
+  string campaign_id = 1;
+  // The caster: a player's character (a UUID).
+  string character_id = 2;
+  // The spell, "spell:find-familiar", "spell:animate-dead" or
+  // "spell:conjure-animals".
+  string spell_key = 3;
+  // True: cast as a ritual, spending no slot (Encontrar Familiar, by a
+  // character that casts rituals). False: cast with `slot`.
+  bool ritual = 4;
+  // The slot, for a cast that is not a ritual.
+  SpellSlot slot = 5;
+  // What it brings.
+  SummonChoice summon = 6;
+  // A UUID the app generates once for this casting and sends again on a retry.
+  string idempotency_key = 7;
+}
+
+// CastSummonResponse returns what the casting made.
+message CastSummonResponse {
+  // The creatures created (UUIDs; CharacterService.ListCharacterCreatures has
+  // them), in the order of `summon.creature_keys`.
+  repeated string creature_ids = 1;
+  // The creatures a new familiar replaced and dismissed (UUIDs), if any.
+  repeated string dismissed_creature_ids = 2;
+  // The caster's vitals after the slot was spent; unset for a ritual.
+  CharacterVitals vitals = 3;
 }
 
 // GameSessionBlockedReason says why PlayService refused a call with
@@ -766,6 +833,12 @@ message WatchGameSessionResponse {
     // What the player sees of a map with the fog of war on changed: read
     // MapService.GetMapVision and the map again. Only the players it concerns get it.
     VisionChanged vision_changed = 19;
+    // A character's creatures changed outside a combat: one was summoned, given,
+    // renamed, dismissed or had its hit points corrected, or a combat ended
+    // and wrote them back. Read them again (CharacterService.ListCharacterCreatures).
+    // Only the master and the creatures' owner get it; during a combat
+    // `encounter_changed` covers the creatures.
+    CreaturesChanged creatures_changed = 20;
   }
 
   // VisionChanged is a hint for one player on a map with the fog of war on: what
@@ -779,6 +852,10 @@ message WatchGameSessionResponse {
     // The map (a UUID), which the player sees.
     string map_id = 1;
   }
+
+  // CreaturesChanged carries nothing: it names no creature and no character, so
+  // it tells the master and the owner only that their lists changed.
+  message CreaturesChanged {}
 
   // StageChanged carries nothing: it names no NPC, so a player's stream
   // learns nothing but that the stage moved. The app reads the scene again

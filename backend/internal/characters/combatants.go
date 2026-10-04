@@ -3,10 +3,13 @@ package characters
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
 // The characters that fight (MR-013). Package play declares what it needs
@@ -102,6 +105,9 @@ func (s *Service) combatCharacter(id, kind, name string, playerUserID *string, d
 	case sheet.GetFull() != nil:
 		d := rules.Derive(buildOf(sheet.GetFull()), s.rules)
 		c.InitiativeBonus, c.SpeedFt, c.HitPointsMax = d.Initiative, d.SpeedWalkFt, max(d.HitPointsMax, 0)
+		c.SpeedFlyFt, c.Size = d.SpeedFlyFt, s.raceSize(sheet.GetFull().GetRaceKey())
+		jumps := combat.JumpLimits(d)
+		c.JumpLongDFt, c.JumpHighDFt = jumps.LongRunning, jumps.HighRunning
 		if !c.Player {
 			c.XPValue = int(sheet.GetFull().GetXpValue())
 			c.PortraitImageID = sheet.GetFull().GetPortraitImageId()
@@ -111,8 +117,29 @@ func (s *Service) combatCharacter(id, kind, name string, playerUserID *string, d
 		c.InitiativeBonus, c.SpeedFt, c.HitPointsMax = int(b.GetInitiativeBonus()), int(b.GetSpeedFt()), int(b.GetHitPointsMax())
 		c.XPValue = int(b.GetXpValue())
 		c.PortraitImageID = b.GetPortraitImageId()
+		c.Size = sizeKey(b.GetSize())
 	default:
 		return link.Character{}, fmt.Errorf("%w: the sheet of character %s has no content", errCorruptDocument, id)
 	}
 	return c, nil
+}
+
+// raceSize is the size of a race, as a link.Character.Size: "medium" for a race
+// the content does not know.
+func (s *Service) raceSize(raceKey string) string {
+	for _, r := range s.rules.Catalog().Races {
+		if r.Key == raceKey {
+			return strings.ToLower(r.Size)
+		}
+	}
+	return "medium"
+}
+
+// sizeKey is a basic sheet's Tamanho as a link.Character.Size: "medium" when the
+// sheet says none.
+func sizeKey(z rulesv1.CreatureSize) string {
+	if z == rulesv1.CreatureSize_CREATURE_SIZE_UNSPECIFIED {
+		return "medium"
+	}
+	return strings.ToLower(strings.TrimPrefix(z.String(), "CREATURE_SIZE_"))
 }

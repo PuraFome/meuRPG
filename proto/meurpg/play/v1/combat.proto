@@ -32,6 +32,11 @@ import "meurpg/rules/v1/rules.proto";
 //   - A player sees the other players' combatants, but not their hit
 //     points (the vitals of their own character come from
 //     PlayService.GetLiveSession).
+//   - A character's creatures (MR-037, kind CREATURE) fight on the party's
+//     side and are played by their owner's player. Their hit points are
+//     numbers only to that player and the master; every other player gets
+//     the state word, as for an NPC. A creature's owner, kind and initiative
+//     are public (the party knows whose it is).
 //   - A player never gets the armor class of anyone, the d20 and the
 //     damage dice of the master's NPCs, nor the combat log entries that
 //     involve a hidden combatant (CombatLogEntry).
@@ -280,8 +285,82 @@ service CombatService {
   //     is not ACTIVE and the caller is a player (NOT_ACTIVE); the combatant
   //     is not acting now: its group is not on turn, or its part of the joint
   //     turn ended (NOT_YOUR_TURN); the combatant is not on the map yet (NOT_PLACED);
-  //     the square is too far (TOO_FAR) or occupied (SQUARE_OCCUPIED).
+  //     the square is too far (TOO_FAR: `missing_dft` says by how much, and for a
+  //     jump the limit is the jump's), a wall, a column or a squeeze between two
+  //     blocks the line (MOVE_BLOCKED), an enemy that cannot be passed stands on
+  //     it (ENEMY_IN_THE_WAY), or another creature holds the destination
+  //     (SQUARE_OCCUPIED).
+  //
+  // The move is a straight line from the combatant's square to the chosen one
+  // (RN-21, the SRD's "breaking up your move": to go around something, move in
+  // parts). A player pays the exact length of the line, in tenths of a foot
+  // (`movement_used_dft`): 5 ft for a square straight on, 7.1 ft for a diagonal
+  // one, plus 5 ft for each square of difficult terrain it enters and for each
+  // square holding another creature (once per square). A wall, a three-quarters
+  // cover square or a squeeze between two of them blocks the line; an enemy
+  // blocks it too, unless the two are two sizes apart; nobody ends in another
+  // creature's square (only Tiny with Tiny). A creature with a fly speed moves as
+  // a flier: difficult terrain costs it nothing. Swimming and climbing are not
+  // modelled. The master moves anyone anywhere for free.
+  //
+  // `jump` turns it into a jump (D3): LONG goes to the square without paying for
+  // difficult terrain on the way (it cannot cross a wall or land on a creature),
+  // and costs its length in movement; HIGH spends `jump_height_dft` of movement
+  // and moves nobody. The limits come from the sheet (GetTurnOptions,
+  // options.jumps) and a running start needs a move of 10 ft or more on foot
+  // right before. A move clears the master's manual cover mark of the combatant
+  // (SetCombatantCover).
   rpc MoveCombatant(MoveCombatantRequest) returns (MoveCombatantResponse);
+
+  // GetMoveOptions says where a combatant can go in one straight move: every
+  // square it reaches with its movement left, with what the move costs, and, for
+  // the squares inside the circle that it cannot go to, why. The app only draws
+  // it, so it never computes a distance or a cost of its own (the browser does no
+  // rules math). The caller's own combatant, on its turn, for a player; any
+  // combatant for the master (who moves for free, but sees the circle).
+  //
+  // The reasons never name what the caller does not see: when the fog of war
+  // comes (Etapa 9, 9.4) the server plans on what the mover sees and the real
+  // move is cut short at the last square it can reach.
+  //
+  // Errors:
+  //   - `not_found`: the combat or the combatant is not in the open session.
+  //   - `permission_denied`: the caller is a player and the combatant is not
+  //     their character.
+  //   - `failed_precondition`: the combat is not ACTIVE (NOT_ACTIVE) or it is not
+  //     the combatant's turn (NOT_YOUR_TURN), for a player; the combatant is not
+  //     on the map (NOT_PLACED).
+  rpc GetMoveOptions(GetMoveOptionsRequest) returns (GetMoveOptionsResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // SetCombatantSide says whose side an NPC fights on (Q69): ENEMY, the default,
+  // or PARTY, "Aliado". It decides who may pass whom (an enemy cannot be passed
+  // and provokes an opportunity attack; an ally can be passed) and is never
+  // secret. A player's character is always PARTY. Only the master may call it.
+  // It is a session event, `side_set`.
+  //
+  // Errors:
+  //   - `not_found`: the combatant is not in this combat.
+  //   - `permission_denied`: the caller is a player.
+  //   - `invalid_argument`: the combatant is a player's character, or `side` is
+  //     unspecified.
+  //   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
+  rpc SetCombatantSide(SetCombatantSideRequest) returns (SetCombatantSideResponse);
+
+  // SetCombatantCover marks the cover a combatant has that the map does not show
+  // (D4): none, half (+2 to AC and Dexterity saves), three-quarters (+5) or
+  // total (it cannot be targeted). It adds to the cover the map gives against
+  // each attack: the larger applies, never the sum. The mark clears when the
+  // combatant moves. Only the master may call it. It is a session event,
+  // `cover_set`.
+  //
+  // Errors:
+  //   - `not_found`: the combatant is not in this combat.
+  //   - `permission_denied`: the caller is a player.
+  //   - `invalid_argument`: `cover` is unspecified.
+  //   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
+  rpc SetCombatantCover(SetCombatantCoverRequest) returns (SetCombatantCoverResponse);
 
   // SetCombatantHidden hides an NPC combatant from the players, or shows it
   // (RN-10): a hidden combatant is not in their order, not on their map, and
@@ -347,8 +426,9 @@ service CombatService {
   // (NOT_YOUR_TURN, COMBAT_NOT_ACTIVE, COMBATANT_DOWN, COMBATANT_DEFEATED),
   // so the app can show "fora da vez". Besides the options the rules engine
   // works out (economy, attacks, spells, actions), it lists, for each attack
-  // that rolls to hit, the targets the caller sees with the distance (a
-  // king's move, 5 ft a square: RN-21) and whether each is too far, and the
+  // that rolls to hit, the targets the caller sees with the distance (the squares
+  // between the centres, rounded down, 5 ft a square: RN-21), the cover each has
+  // against this combatant's attack and whether each is too far, and the
   // damage this combatant still has to roll or that waits for the master. For
   // each spell that can be cast, it lists the targets the caller sees, with the
   // distance and whether each is too far for the spell (spell_targets), and
@@ -784,6 +864,29 @@ service CombatService {
   //   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
   rpc SetCombatantConditions(SetCombatantConditionsRequest) returns (SetCombatantConditionsResponse);
 
+  // EndConcentration ends the caster's concentration (RN-22) and dismisses the
+  // creatures of the casting that depended on it (Conjurar Animais, MR-037):
+  // each one leaves the combat and the character's list, with a
+  // `creature_dismissed` event per creature. The master for anyone; a player
+  // for their own character. The same thing happens when the caster casts
+  // another concentration spell, and SetCombatantConditions with
+  // `end_concentration` ends it the same way; this one has no other job. A
+  // combatant that does not concentrate changes nothing.
+  //
+  // Every stream gets `encounter_changed`, `combat_log_changed` as for
+  // SetCombatantConditions, and the owner and the master `creatures_changed`
+  // after the combat.
+  //
+  // Errors:
+  //   - `not_found`: the combatant is not in this combat, or the caller is a
+  //     player and may not see it.
+  //   - `permission_denied`: the caller is a player and the combatant is not
+  //     their character.
+  //   - `invalid_argument`: the combatant is not a player's character or an NPC
+  //     (a creature does not concentrate).
+  //   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
+  rpc EndConcentration(EndConcentrationRequest) returns (EndConcentrationResponse);
+
   // ListCombatLog returns the combat log ("Registro do combate"), latest
   // first, grouped by round. Every entry is structured: the app writes the
   // sentence. A player only gets the entries about what they see: nothing
@@ -855,6 +958,91 @@ enum CombatantKind {
   COMBATANT_KIND_PLAYER = 1;
   // A copy of an NPC.
   COMBATANT_KIND_NPC = 2;
+  // One of a character's creatures (MR-037, Etapa 9): a familiar, summoned
+  // animals or undead, a creature the master gave. It belongs to a player's
+  // character (`owner_character_id`), is controlled by that character's player
+  // and by the master, fights on the party's side and keeps its hit points on
+  // the combatant, like an NPC. Its hit points are numbers only to its owner's
+  // player and the master; everyone else gets the state word. It never has
+  // `mine` set: that is only for the caller's own character
+  // (`controlled_by_me` covers both).
+  COMBATANT_KIND_CREATURE = 3;
+}
+
+// CreatureAttack is what a creature may do on its own turn, from the spell
+// that brought it (rules.SummonAttack*).
+enum CreatureAttack {
+  CREATURE_ATTACK_UNSPECIFIED = 0;
+  // It can't take the Attack action (a familiar); it moves and takes the
+  // other standard actions.
+  CREATURE_ATTACK_NONE = 1;
+  // It attacks only with its reaction (the familiar of a warlock with the Pact
+  // of the Chain).
+  CREATURE_ATTACK_REACTION = 2;
+  // It acts as any creature.
+  CREATURE_ATTACK_FULL = 3;
+}
+
+// CombatantSide is who a combatant fights for (Q69). It decides who is hostile
+// to whom when moving through a crowd: a hostile creature's square cannot be
+// passed (unless two sizes apart) and leaving its reach provokes an opportunity
+// attack; a friendly one's can be passed, at the cost of difficult terrain.
+enum CombatantSide {
+  COMBATANT_SIDE_UNSPECIFIED = 0;
+  // The party: the players' characters and, later, their creatures. An NPC the
+  // master marks "Aliado" is here too.
+  COMBATANT_SIDE_PARTY = 1;
+  // The enemies: the NPCs, unless the master marks one "Aliado".
+  COMBATANT_SIDE_ENEMY = 2;
+}
+
+// CoverDegree is how much a combatant is covered against an attack (SRD 5.1,
+// D4): half gives +2 to armor class and Dexterity saves, three-quarters +5, and
+// a target with total cover cannot be targeted by an attack or a single-target
+// spell. UNSPECIFIED is "not worked out" (for example a combatant with no
+// square): read it as NONE.
+enum CoverDegree {
+  COVER_DEGREE_UNSPECIFIED = 0;
+  COVER_DEGREE_NONE = 1;
+  COVER_DEGREE_HALF = 2;
+  COVER_DEGREE_THREE_QUARTERS = 3;
+  COVER_DEGREE_TOTAL = 4;
+}
+
+// CoverSource says where a cover comes from, for the target list ("Meia
+// cobertura, do mapa" / "marcada pelo mestre").
+enum CoverSource {
+  COVER_SOURCE_UNSPECIFIED = 0;
+  // The map: a painted cover square or a creature on the line, or a wall.
+  COVER_SOURCE_MAP = 1;
+  // The master's manual mark on the target (SetCombatantCover).
+  COVER_SOURCE_MARK = 2;
+}
+
+// JumpKind is the kind of jump of a move (D3, SRD 5.1).
+enum JumpKind {
+  // Not a jump: an ordinary move.
+  JUMP_KIND_UNSPECIFIED = 0;
+  // A long jump to a square.
+  JUMP_KIND_LONG = 1;
+  // A high jump: the combatant stays on its square.
+  JUMP_KIND_HIGH = 2;
+}
+
+// MoveRefusal is why a square inside the circle of GetMoveOptions cannot be
+// moved to.
+enum MoveRefusal {
+  MOVE_REFUSAL_UNSPECIFIED = 0;
+  // A wall, a column (three-quarters cover) or a squeeze between two of them is
+  // on the line, or the square itself is one.
+  MOVE_REFUSAL_WALL = 1;
+  // An enemy that cannot be passed is on the line.
+  MOVE_REFUSAL_ENEMY = 2;
+  // Another creature holds the square and the mover cannot share it.
+  MOVE_REFUSAL_OCCUPIED = 3;
+  // Nothing blocks the line, but it costs more than the movement left (difficult
+  // terrain, creatures to pass).
+  MOVE_REFUSAL_TOO_COSTLY = 4;
 }
 
 // CombatantState is how hurt a combatant is, as a word (RN-20): what a
@@ -975,14 +1163,45 @@ enum EncounterBlockedReason {
   ENCOUNTER_BLOCKED_REASON_NO_USES = 33;
   // GetCombatHighlights: the combat has not ended.
   ENCOUNTER_BLOCKED_REASON_NOT_ENDED = 34;
+  // MoveCombatant: a wall, a three-quarters cover square (a column) or a squeeze
+  // between two of them is on the straight line. The player moves in parts.
+  ENCOUNTER_BLOCKED_REASON_MOVE_BLOCKED = 35;
+  // MoveCombatant: an enemy that cannot be passed stands on the line (only a
+  // creature two sizes apart can be passed).
+  ENCOUNTER_BLOCKED_REASON_ENEMY_IN_THE_WAY = 36;
+  // RollAttack, CastSpell: the target has total cover against the attacker, from
+  // a wall on the line or the master's mark, so it cannot be targeted.
+  ENCOUNTER_BLOCKED_REASON_TARGET_COVER_TOTAL = 37;
+  // CastSpell, CastSummon: the spell takes longer than the place it is cast
+  // allows ("Leva 1 hora: conjure fora do combate"). In a combat only a spell
+  // that takes an action, a bonus action or a reaction is cast.
+  ENCOUNTER_BLOCKED_REASON_CASTING_TIME_TOO_LONG = 40;
+  // CastSpell, CastSummon: the option or the creatures chosen are not what the
+  // spell allows with this slot and this character (wrong number, a creature
+  // of another type or above the challenge rating, a form the character does
+  // not have).
+  ENCOUNTER_BLOCKED_REASON_SUMMON_CHOICE_INVALID = 41;
+  // CastSpell: a summoning spell cast in a combat needs the group's initiative
+  // roll (roll_in_app or d20_face).
+  ENCOUNTER_BLOCKED_REASON_SUMMON_NEEDS_INITIATIVE = 42;
+  // RollAttack: the creature may not take the Attack action (a familiar), or
+  // may attack only with its reaction.
+  ENCOUNTER_BLOCKED_REASON_CREATURE_CANNOT_ATTACK = 43;
+  // CastSummon: the caster is a combatant of a combat that is not ended: the
+  // spell is cast there, with CastSpell.
+  ENCOUNTER_BLOCKED_REASON_SUMMON_IN_COMBAT = 44;
+  // CastSpell: the combat has no room for the creatures a summoning spell
+  // brings (a combat holds 40 combatants). Nothing is spent. ("Não cabem mais
+  // combatentes neste combate".)
+  ENCOUNTER_BLOCKED_REASON_TOO_MANY_COMBATANTS = 45;
 }
 
 // EncounterBlocked is the error detail of CombatService's
 // `failed_precondition`, so the app can show a clear message.
 message EncounterBlocked {
   EncounterBlockedReason reason = 1;
-  // TOO_FAR: how many feet the square is beyond the movement left (5 ft is
-  // one square, 1.5 m).
+  // TOO_FAR, TARGET_OUT_OF_REACH: how many feet the square is beyond the
+  // movement left, or the target beyond the range (5 ft is one square, 1.5 m).
   int32 missing_ft = 2;
   // MAP_HAS_NO_GRID: the map that needs a grid (a UUID).
   string map_id = 3;
@@ -992,6 +1211,14 @@ message EncounterBlocked {
   int32 min_level = 5;
   // NO_USES: when the uses come back.
   meurpg.rules.v1.Recharge recharge = 6;
+  // TOO_FAR: how many tenths of a foot the move costs more than the movement
+  // left, or the jump is longer than the limit (RN-21: 71 is one diagonal
+  // square). `missing_ft` is this rounded up.
+  int32 missing_dft = 7;
+  // TOO_FAR on a jump: the limit that applied, in tenths of a foot.
+  int32 jump_limit_dft = 8;
+  // TOO_FAR on a jump: whether the limit was the one with a running start.
+  bool jump_running_start = 9;
 }
 
 // Encounter is a combat as the caller may see it.
@@ -1101,10 +1328,12 @@ message Combatant {
   // What the table calls it: a character's name, or "Goblin 2".
   string label = 2;
   CombatantKind kind = 3;
-  // Whether it is the caller's own character.
+  // Whether it is the caller's own character. Never true for a creature, not
+  // even one of the caller's: `controlled_by_me` covers both.
   bool mine = 4;
   // The character it stands for (a UUID). For a player's character, everyone
-  // gets it; for an NPC, only the master (several copies share it).
+  // gets it; for an NPC, only the master (several copies share it). Empty for
+  // a creature: `owner_character_id` says whose it is.
   string character_id = 5;
   // Whether the master hides it from the players. Only the master gets it;
   // for a player it is always false (a hidden one is not sent).
@@ -1143,12 +1372,13 @@ message Combatant {
   bool action_used = 18;
   bool bonus_action_used = 19;
   bool reaction_used = 20;
-  // How hurt an NPC is, as a word (RN-20). Unspecified for a player's
-  // character.
+  // How hurt an NPC or a creature is, as a word (RN-20). Unspecified for a
+  // player's character.
   CombatantState state = 21;
   // An NPC's hit points, as numbers. Only the master gets them; for a player's
   // character, they come from its vitals (the master's copy is filled here
-  // too).
+  // too). A creature's are also the numbers of its owner's player (and of no
+  // other player).
   optional int32 hit_points_current = 22;
   optional int32 hit_points_max = 23;
   optional int32 hit_points_temporary = 24;
@@ -1199,6 +1429,55 @@ message Combatant {
   // members of an NPC-only group. A member's economy fields (above) stay the
   // master's and the owner's.
   bool turn_part_ended = 37;
+  // Who it fights for (SetCombatantSide). Everyone who sees the combatant gets it.
+  CombatantSide side = 38;
+  // Its size (rules.v1.CreatureSize); everyone who sees the combatant gets it.
+  meurpg.rules.v1.CreatureSize size = 39;
+  // The movement in tenths of a foot, which is what the server keeps (RN-21): the
+  // speed for the turn (twice after the Dash action; a creature with a fly speed
+  // takes the better of its speeds), what was walked and what is left. The `_ft`
+  // fields above are these rounded down. Same audience as `speed_ft`.
+  int32 speed_dft = 40;
+  int32 movement_used_dft = 41;
+  int32 movement_left_dft = 42;
+  // The cover the master marked on it (SetCombatantCover): NONE or UNSPECIFIED
+  // when there is none. It is no armor class and everyone who sees the combatant
+  // gets it. The cover from the map depends on who attacks, so it is on
+  // TargetInReach, never here.
+  CoverDegree cover_mark = 43;
+  // A fly speed in feet, 0 for none. Same audience as `speed_ft`.
+  int32 speed_fly_ft = 44;
+  // It took the Disengage action this turn (like `dashed`): leaving a hostile
+  // creature's reach provokes no opportunity attack. Same audience as `dashed`.
+  bool disengaged = 45;
+  // Whether the caller's player plays this combatant: their own character, or
+  // one of its creatures. Always false for the master. `mine` stays true only
+  // for the player's own character, so a screen that finds "my" combatant with
+  // it never picks a creature; this field is for the screens that list every
+  // combatant the player controls (MR-037).
+  bool controlled_by_me = 46;
+  // A creature's own ID, the one CharacterService.ListCharacterCreatures lists
+  // (a UUID). Only for a creature, and only for the master and its owner's
+  // player.
+  string creature_id = 47;
+  // The player's character the creature belongs to (a UUID). Only for a
+  // creature, and for everyone who sees it: the party knows whose it is.
+  // `character_id` stays empty for a creature.
+  string owner_character_id = 48;
+  // The creature's kind, "monster:wolf", and its Portuguese name, "Lobo": the
+  // stat block is ContentService.GetCreature. Only for a creature, for everyone
+  // who sees it.
+  string monster_key = 49;
+  string monster_name_pt = 50;
+  // What the creature may do on its own (from the spell that brought it). Only
+  // for a creature, and only for the master and its owner's player. Where it
+  // came from (a familiar, summoned animals, a gift) is on the creature itself:
+  // CharacterService.ListCharacterCreatures. Number 52 is free.
+  CreatureAttack creature_attack = 51;
+  // The casting the creature came from (a UUID): creatures of one casting share
+  // it and share one initiative roll. Only for a creature, and only for the
+  // master and its owner's player.
+  string summon_group_id = 53;
 }
 
 // Participant is who joins a combat: a character of the campaign.
@@ -1321,13 +1600,92 @@ message MoveCombatantRequest {
   string encounter_id = 2;
   string combatant_id = 3;
   string idempotency_key = 4;
-  // The square, from 0, from the top left of the grid.
+  // The square, from 0, from the top left of the grid. Ignored for a high jump.
   int32 col = 5;
   int32 row = 6;
+  // A jump instead of a walk (D3). UNSPECIFIED is a plain move.
+  JumpKind jump = 7;
+  // A high jump: how high, in tenths of a foot, 1 up to the limit; it costs that
+  // much movement. Ignored for any other move.
+  int32 jump_height_dft = 8;
 }
 
 // MoveCombatantResponse returns the combat after the move.
 message MoveCombatantResponse {
+  Encounter encounter = 1;
+  // True when the move ended before the chosen square because something the
+  // player does not see stood in the way (a hidden creature): the screen says
+  // "Algo bloqueia o caminho", never what it was (RN-10, D1). The movement spent
+  // is the real cost up to where the combatant stopped.
+  bool stopped_early = 2;
+}
+
+// GetMoveOptionsRequest names a combatant.
+message GetMoveOptionsRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string combatant_id = 3;
+}
+
+// GetMoveOptionsResponse is where the combatant can go in one straight move.
+message GetMoveOptionsResponse {
+  // The movement left, in tenths of a foot: the circle's radius.
+  int32 movement_left_dft = 1;
+  // Every square it can go to, in reading order (row by row). The start is not
+  // in it.
+  repeated ReachableSquare reachable = 2;
+  // The squares inside the circle that it cannot go to, with the reason, in the
+  // same order.
+  repeated RefusedSquare refused = 3;
+  // True when the mover moves as a flier: difficult terrain costs it nothing.
+  bool flier = 4;
+}
+
+// ReachableSquare is a square a combatant can go to, and what the move costs.
+message ReachableSquare {
+  int32 col = 1;
+  int32 row = 2;
+  // The cost in tenths of a foot: the length of the line plus 50 for each square
+  // of difficult terrain or holding another creature that it enters.
+  int32 cost_dft = 3;
+}
+
+// RefusedSquare is a square inside the circle that the combatant cannot go to.
+message RefusedSquare {
+  int32 col = 1;
+  int32 row = 2;
+  MoveRefusal reason = 3;
+}
+
+// SetCombatantSideRequest marks an NPC "Aliado", or back as an enemy.
+message SetCombatantSideRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  // An NPC combatant (a UUID).
+  string combatant_id = 3;
+  string idempotency_key = 4;
+  // PARTY or ENEMY.
+  CombatantSide side = 5;
+}
+
+// SetCombatantSideResponse returns the combat after the change.
+message SetCombatantSideResponse {
+  Encounter encounter = 1;
+}
+
+// SetCombatantCoverRequest marks the cover a combatant has that the map does not
+// show.
+message SetCombatantCoverRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string combatant_id = 3;
+  string idempotency_key = 4;
+  // NONE, HALF, THREE_QUARTERS or TOTAL.
+  CoverDegree cover = 5;
+}
+
+// SetCombatantCoverResponse returns the combat after the change.
+message SetCombatantCoverResponse {
   Encounter encounter = 1;
 }
 
@@ -1549,13 +1907,27 @@ message TargetInReach {
   string label = 2;
   // How hurt it is, as a word: never hit points.
   CombatantState state = 3;
-  // The distance in feet, a king's move at 5 ft a square (RN-21). Unset when
-  // either of them has no square on the grid.
+  // The distance in feet: the squares between the centres, rounded down, times
+  // 5 ft (RN-21), so a diagonal neighbour is 5 ft away. Unset when either of them
+  // has no square on the grid.
   optional int32 distance_ft = 4;
   // True when the attack cannot reach it: the distance is beyond its range,
   // or unknown for a player (RollAttack refuses it). Never true for the
   // master when the distance is unknown: the master is not held to the reach.
   bool too_far = 5;
+  // The cover it has against this attacker (D4): the larger of what the map
+  // gives along the line (a painted cover square, a creature in between, a wall)
+  // and the master's mark. TOTAL means it cannot be targeted (RollAttack and
+  // CastSpell refuse a player with TARGET_COVER_TOTAL); for an area spell it is
+  // only a note. Never an armor class: a player never gets one (RN-20).
+  CoverDegree cover = 6;
+  // Where `cover` comes from. Unset when there is none.
+  CoverSource cover_source = 7;
+  // True when this caller cannot target it: total cover against the attacker
+  // (an attack, or a single-target spell). The app offers it as no target, with
+  // the reason, and does no cover math of its own. Never true for the master,
+  // who has the last word, and never for an area spell.
+  bool untargetable = 8;
 }
 
 // RollAttackRequest rolls an attack.
@@ -1594,6 +1966,10 @@ message AttackRoll {
   // The target's armor class that the total was compared with ("Acertou
   // contra CA 18"). Only the master gets it; never a player (RN-20).
   optional int32 target_armor_class = 6;
+  // The cover the target had against the attacker, and where it came from (D4).
+  // Everyone who gets the roll gets them; the armor class stays the master's.
+  CoverDegree cover = 7;
+  CoverSource cover_source = 8;
 }
 
 // RollAttackResponse returns the roll and the combat after it.
@@ -1782,6 +2158,30 @@ message CastSpellRequest {
     // a player here as on every roll (RN-18).
     int32 pool_sum = 10;
   }
+  // What a summoning spell (Conjurar Animais) brings, the creatures that join
+  // the combat. Required for such a spell and refused for any other. The d20 of
+  // `roll_in_app` or `d20_face` is then the initiative roll of the whole group
+  // (RN-18, one roll for the creatures of a casting); the spell rolls nothing
+  // else. The campaign's dice setting binds a player here as on every roll.
+  SummonChoice summon = 11;
+}
+
+// SummonChoice is what a casting of a summoning spell brings: one of the
+// spell's options and the creatures, chosen from what rules.SummonOptions
+// offers for the slot and the character.
+message SummonChoice {
+  // The index of the option, from 0 (Conjurar Animais has four: one creature of
+  // challenge rating 2, two of 1, four of 1/2, eight of 1/4; Encontrar Familiar
+  // and Animar os Mortos have one).
+  int32 option = 1;
+  // One content key per creature ("monster:dire-wolf"; a key repeats for
+  // several of one kind), exactly the number the option and the slot allow.
+  repeated string creature_keys = 2;
+  // What to call each creature, in the same order, 1 to 40 characters, one line
+  // (free text by a player: "Nanquim"). Empty, or one for each creature; a
+  // blank name takes the creature's Portuguese name, numbered when several
+  // share it.
+  repeated string names = 3;
 }
 
 // SaveOutcome is what a target's saving throw did.
@@ -1825,6 +2225,10 @@ message SpellTargetResult {
   // A spell that reads hit points (Sono, Palavra de Poder...): what it did to
   // this target. Unset for any other spell.
   SpellEffectResult effect = 7;
+  // The cover the target had against the caster for a spell attack or a
+  // Dexterity save (D4), and where it came from.
+  CoverDegree cover = 8;
+  CoverSource cover_source = 9;
 }
 
 // SpellEffectKind is how a spell that reads hit points works. The same four kinds
@@ -1895,6 +2299,10 @@ message SpellEffectResult {
 message CastSpellResponse {
   Encounter encounter = 1;
   SpellCast cast = 2;
+  // A summoning spell: the combatants (UUIDs) that joined the combat, in the
+  // order of `summon.creature_keys`. They share one initiative total, so they
+  // take a joint turn. Empty for any other spell.
+  repeated string summoned_combatant_ids = 3;
 }
 
 // SpellCast is a cast, as the caller may see it.
@@ -2057,6 +2465,20 @@ message SetCombatantConditionsResponse {
   Encounter encounter = 1;
 }
 
+// EndConcentrationRequest ends a combatant's concentration.
+message EndConcentrationRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  // The caster (a UUID).
+  string combatant_id = 3;
+  string idempotency_key = 4;
+}
+
+// EndConcentrationResponse returns the combat after the change.
+message EndConcentrationResponse {
+  Encounter encounter = 1;
+}
+
 // ListCombatLogRequest names the combat.
 message ListCombatLogRequest {
   string campaign_id = 1;
@@ -2168,6 +2590,22 @@ message CombatLogEntry {
   bool stopped_by_reaction = 24;
   // ATTACK: an opportunity attack, with the reaction.
   bool as_reaction = 25;
+  // ATTACK: the cover the target had against the attacker, and where it came
+  // from. Everyone who gets the entry gets them.
+  CoverDegree cover = 26;
+  CoverSource cover_source = 27;
+  // ATTACK, only the master: the armor class the total was compared with ("CA
+  // 17") and how much of it is the cover ("15 + 2 de meia cobertura").
+  optional int32 target_armor_class = 28;
+  int32 cover_bonus = 29;
+  // MOVED: how far in tenths of a foot (`distance_ft` is it rounded down), and the
+  // jump, if the move was one (a high jump: `jump_height_dft`).
+  int32 distance_dft = 30;
+  JumpKind jump = 31;
+  int32 jump_height_dft = 32;
+  // MOVED by a long jump, only the master: it landed in difficult terrain, so the
+  // line says "Acrobacia CD 10 ou cai Derrubado" (the app rolls nothing).
+  bool landing_difficult = 33;
 }
 
 // CombatLogSpell is a spell in the combat log: the cast, or a reaction.
@@ -2205,6 +2643,13 @@ message CombatLogSpellTarget {
   // A spell that reads hit points: what it did to this target, as in
   // SpellTargetResult.effect.
   SpellEffectResult effect = 8;
+  // The cover the target had for a spell attack or a Dexterity save, and where it
+  // came from; for an attack, only the master also gets the armor class and
+  // how much of it is cover.
+  CoverDegree cover = 9;
+  CoverSource cover_source = 10;
+  optional int32 target_armor_class = 11;
+  int32 cover_bonus = 12;
 }
 
 // CombatLogDeathSave is a death save in the log.
@@ -2277,6 +2722,10 @@ enum HighlightKind {
   // showed their DC. Only GetSessionSummary returns it; a combat's highlights
   // never do.
   HIGHLIGHT_KIND_CHECKS_PASSED = 6;
+  // "Mais tesouro encontrado" (MR-041): the PO found in the session, per
+  // character; a treasure found by two splits its value between them, rounded
+  // down. Only GetSessionSummary returns it; a combat's highlights never do.
+  HIGHLIGHT_KIND_TREASURE_FOUND = 7;
 }
 
 // HighlightWinner is a player's character that won a category.

@@ -277,6 +277,8 @@ func cleanBasicSheet(b *charactersv1.BasicSheet) error {
 		return fieldErr("sheet.basic.attacks", "must have at most %d attacks", maxBasicAttacks)
 	case b.GetAttackBonus() < minAttackBonus || b.GetAttackBonus() > maxAttackBonus:
 		return fieldErr("sheet.basic.attack_bonus", "must be %d to %d", minAttackBonus, maxAttackBonus)
+	case rulesv1.CreatureSize_name[int32(b.GetSize())] == "":
+		return fieldErr("sheet.basic.size", "must be a creature size")
 	}
 	for i, a := range b.GetAttacks() {
 		if err := checkAttack(a, fmt.Sprintf("sheet.basic.attacks[%d]", i)); err != nil {

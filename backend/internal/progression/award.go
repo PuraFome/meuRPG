@@ -64,6 +64,14 @@ type eventPayload struct {
 	EncounterID  string   `json:"encounter_id,omitempty"`
 	CharacterIDs []string `json:"character_ids"`
 	MilestoneID  string   `json:"milestone_id,omitempty"`
+	// Treasures are the ones a "Voltar à cidade" award converted: IDs and PO.
+	Treasures []eventTreasure `json:"treasures,omitempty"`
+}
+
+// eventTreasure is a converted treasure in an event's payload.
+type eventTreasure struct {
+	PointID string `json:"point_id"`
+	ValuePO int32  `json:"value_po"`
 }
 
 // grant is one award to give, checked: what AwardXP and MarkMilestone hand to
@@ -80,6 +88,9 @@ type grant struct {
 	// be reached already, and the reason is its text.
 	milestoneID string
 	again       bool
+	// treasureIDs are the found treasures a "Voltar à cidade" award converts
+	// (gold only): its amount is their PO, summed inside the transaction.
+	treasureIDs []string
 }
 
 // AwardXP implements progressionv1connect.ProgressionServiceHandler.
@@ -108,6 +119,16 @@ func (s *Service) AwardXP(
 		if req.Msg.GetEncounterId() != "" || req.Msg.GetAmount() != 0 {
 			return nil, invalidArgument("encounter_id and amount", errors.New("must be empty for a GOLD award"))
 		}
+		if len(req.Msg.GetTreasurePointIds()) > 0 {
+			// "Voltar à cidade": the treasures' PO is the gold.
+			if req.Msg.GetGold() != 0 {
+				return nil, invalidArgument("gold", errors.New("must be empty when treasure_point_ids is set"))
+			}
+			if g.treasureIDs, err = checkTreasureIDs(req.Msg.GetTreasurePointIds()); err != nil {
+				return nil, err
+			}
+			break
+		}
 		if gold := req.Msg.GetGold(); gold < 1 || gold > maxXPAmount {
 			return nil, invalidArgument("gold", fmt.Errorf("must be 1 to %d", maxXPAmount))
 		}
@@ -124,6 +145,9 @@ func (s *Service) AwardXP(
 	default:
 		return nil, invalidArgument("mode", errors.New("must be ENEMIES, GOLD or MANUAL"))
 	}
+	if g.mode != modeGold && len(req.Msg.GetTreasurePointIds()) > 0 {
+		return nil, invalidArgument("treasure_point_ids", errors.New("must be empty unless the mode is GOLD"))
+	}
 	if g.reason, g.key, g.characters, err = checkCommon(req.Msg.GetReason(), req.Msg.GetIdempotencyKey(), req.Msg.GetCharacterIds()); err != nil {
 		return nil, err
 	}
@@ -136,7 +160,7 @@ func (s *Service) AwardXP(
 		return nil, s.dbError(ctx, "read an award", err)
 	}
 	each, lost := xpEach(award.TotalXp, len(views[0].GetShares()))
-	return connect.NewResponse(&progressionv1.AwardXPResponse{Award: views[0], XpEach: each, LostXp: lost}), nil
+	return connect.NewResponse(&progressionv1.AwardXPResponse{Award: views[0], XpEach: each, LostXp: lost, Treasures: views[0].GetTreasures()}), nil
 }
 
 // MarkMilestone implements progressionv1connect.ProgressionServiceHandler.
@@ -272,6 +296,22 @@ func (s *Service) give(ctx context.Context, m authz.Membership, g grant) (progre
 				return err
 			}
 		}
+		// "Voltar à cidade": lock and check the treasures, and their PO is the
+		// gold. The lock holds until the commit, so two awards for one treasure
+		// take turns and the second finds it converted.
+		var treasures []link.Treasure
+		if len(g.treasureIDs) > 0 {
+			if treasures, err = s.lockTreasures(ctx, tx, m.CampaignID, g.treasureIDs); err != nil {
+				return err
+			}
+			g.amount = 0
+			for _, tr := range treasures {
+				g.amount += tr.ValuePO
+			}
+			if g.amount > maxXPAmount {
+				return errBlocked(progressionv1.XPBlockedReason_XP_BLOCKED_REASON_TREASURES_OVER_LIMIT, "", 0)
+			}
+		}
 		total, err := s.total(ctx, tx, q, m.CampaignID, g)
 		if err != nil {
 			return err
@@ -321,10 +361,23 @@ func (s *Service) give(ctx context.Context, m authz.Membership, g grant) (progre
 				return fmt.Errorf("insert a share: %w", err)
 			}
 		}
+		for _, tr := range treasures {
+			if err := q.InsertXPAwardTreasure(ctx, progressiondb.InsertXPAwardTreasureParams{AwardID: award.ID, PointID: tr.PointID, ValuePo: tr.ValuePO}); err != nil {
+				return fmt.Errorf("insert a converted treasure: %w", err)
+			}
+		}
+		if len(treasures) > 0 {
+			if err := s.treasures.MarkConverted(ctx, tx, award.ID, g.treasureIDs); err != nil {
+				return err
+			}
+		}
 		payload := eventPayload{AwardID: award.ID, Mode: g.mode, TotalXP: total, XPEach: each, CharacterIDs: g.characters, EncounterID: g.encounterID, MilestoneID: g.milestoneID}
 		_, payload.LostXP = xpEach(total, len(g.characters))
 		if g.mode == modeGold {
 			payload.Gold = g.amount
+		}
+		for _, tr := range treasures {
+			payload.Treasures = append(payload.Treasures, eventTreasure{PointID: tr.PointID, ValuePO: tr.ValuePO})
 		}
 		kind := eventXPAwarded
 		if g.mode == modeMilestone {
@@ -350,6 +403,16 @@ func (s *Service) sameRequest(ctx context.Context, q *progressiondb.Queries, don
 	reused := invalidArgument("idempotency_key", errors.New("was already used for another change"))
 	if done.Mode != g.mode || deref(done.MilestoneID) != g.milestoneID || (g.milestoneID != "" && done.MilestoneAgain != g.again) {
 		return progressiondb.XpAward{}, reused
+	}
+	if g.mode == modeGold {
+		// "Voltar à cidade" and a typed amount are different requests.
+		rows, err := q.ListXPAwardTreasures(ctx, []string{done.ID})
+		if err != nil {
+			return progressiondb.XpAward{}, s.dbError(ctx, "read the treasures of an award", err)
+		}
+		if len(rows) != len(g.treasureIDs) || slices.ContainsFunc(rows, func(r progressiondb.XpAwardTreasure) bool { return !slices.Contains(g.treasureIDs, r.PointID) }) {
+			return progressiondb.XpAward{}, reused
+		}
 	}
 	if g.milestoneID != "" {
 		shares, err := q.ListXPSharesOfAwards(ctx, []string{done.ID})
@@ -409,4 +472,54 @@ func (s *Service) appendEvent(ctx context.Context, tx pgx.Tx, m authz.Membership
 		return false, fmt.Errorf("append the session event: %w", err)
 	}
 	return logged, nil
+}
+
+// maxAwardTreasures is the most treasures one "Voltar à cidade" converts.
+const maxAwardTreasures = 100
+
+// checkTreasureIDs checks the treasures of a "Voltar à cidade": 1 to 100 UUIDs,
+// no repeat. It returns them in canonical form.
+func checkTreasureIDs(raw []string) ([]string, error) {
+	if len(raw) > maxAwardTreasures {
+		return nil, invalidArgument("treasure_point_ids", fmt.Errorf("must have at most %d treasures", maxAwardTreasures))
+	}
+	ids := make([]string, 0, len(raw))
+	for _, r := range raw {
+		id, err := uuid.Parse(r)
+		if err != nil {
+			return nil, invalidArgument("treasure_point_ids", errors.New("must be UUIDs"))
+		}
+		if slices.Contains(ids, id.String()) {
+			return nil, invalidArgument("treasure_point_ids", errors.New("must not repeat a treasure"))
+		}
+		ids = append(ids, id.String())
+	}
+	return ids, nil
+}
+
+// lockTreasures locks the treasures inside tx and checks that each is a found
+// treasure of the campaign that no award converted. A point that is not a
+// treasure of the campaign is `not_found`, like any ID of another campaign.
+func (s *Service) lockTreasures(ctx context.Context, tx pgx.Tx, campaignID string, ids []string) ([]link.Treasure, error) {
+	locked, err := s.treasures.LockForConversion(ctx, tx, campaignID, ids)
+	if err != nil {
+		return nil, fmt.Errorf("lock the treasures: %w", err)
+	}
+	// In the order the master sent them (the history lists them by ID).
+	out := make([]link.Treasure, 0, len(ids))
+	for _, id := range ids {
+		i := slices.IndexFunc(locked, func(t link.Treasure) bool { return t.PointID == id })
+		if i < 0 {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("treasure not found"))
+		}
+		tr := locked[i]
+		switch {
+		case tr.ConvertedAwardID != "":
+			return nil, errTreasure(progressionv1.XPBlockedReason_XP_BLOCKED_REASON_TREASURE_ALREADY_CONVERTED, id)
+		case !tr.Found:
+			return nil, errTreasure(progressionv1.XPBlockedReason_XP_BLOCKED_REASON_TREASURE_NOT_FOUND_YET, id)
+		}
+		out = append(out, tr)
+	}
+	return out, nil
 }

@@ -26,6 +26,7 @@ import (
 var undoableKinds = []string{
 	eventAttackRolled, eventDamageRolled, eventDamageApplied, eventDamageDiscarded, eventActionTaken, eventHitPointsAdjusted,
 	eventSpellCast, eventReactionUsed, eventReactionDeclined, eventDeathSaveRolled, eventConditionsSet,
+	eventCombatantMoved,
 }
 
 // recentEvents is how many of the session's latest events the search for the
@@ -48,7 +49,20 @@ func lastAction(recent []playdb.ListRecentSessionEventsRow, encounterID string) 
 		if undone[e.ID] {
 			continue
 		}
+		// The creatures a cast or an ended concentration made or dismissed are
+		// written before the change's own event, which is what an undo acts on: they
+		// never close the undo chain.
+		if e.Kind == eventCreatureSummoned || e.Kind == eventCreatureDismissed {
+			continue
+		}
 		if slices.Contains(undoableKinds, e.Kind) && e.EncounterID != nil && *e.EncounterID == encounterID {
+			// A move written before the undo knew moves says where it came from
+			// nowhere: there is nothing to put back.
+			if e.Kind == eventCombatantMoved {
+				if ev, err := readEvent(e.Payload); err != nil || ev.From == nil {
+					return playdb.ListRecentSessionEventsRow{}, false
+				}
+			}
 			return e, true
 		}
 		return playdb.ListRecentSessionEventsRow{}, false
@@ -158,6 +172,15 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		}
 		return nil
 	}
+	setRun := func(who playdb.Combatant, run int32) error {
+		if run == 0 {
+			return nil
+		}
+		if err := c.q.SetCombatantRun(ctx, playdb.SetCombatantRunParams{ID: who.ID, LastMoveDft: run}); err != nil {
+			return fmt.Errorf("put back the running start: %w", err)
+		}
+		return nil
+	}
 	setAttacks := func(who playdb.Combatant, n int32) error {
 		if err := c.q.SetCombatantAttacksMade(ctx, playdb.SetCombatantAttacksMadeParams{ID: who.ID, AttacksMade: n}); err != nil {
 			return fmt.Errorf("put back the attacks: %w", err)
@@ -207,7 +230,9 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 			if ev.AsReaction {
 				err = setEconomy(who, who.ActionUsed, who.BonusActionUsed, ev.ReactionBefore, who.Dashed)
 			} else if err = setEconomy(who, ev.ActionBefore, who.BonusActionUsed, who.ReactionUsed, who.Dashed); err == nil {
-				err = setAttacks(who, ev.AttacksBefore)
+				if err = setAttacks(who, ev.AttacksBefore); err == nil {
+					err = setRun(who, ev.RunBefore)
+				}
 			}
 			if err != nil {
 				return nil, err
@@ -234,7 +259,7 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 			if !ok || !h.Applied || h.Before == nil {
 				continue
 			}
-			if who.Kind == kindNPC {
+			if holdsHP(who) {
 				if err := setHP(who, *h.Before); err != nil {
 					return nil, err
 				}
@@ -273,6 +298,31 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 			prev = pendingRolled // never: only these can be discarded
 		}
 		return nil, setStatus(ev.Pending, prev)
+	case eventCombatantMoved:
+		// The square, the movement walked, the running start and the master's cover
+		// mark are as they were: a move, a jump (the movement a jump spent comes
+		// back) and the cover a move cleared. An event written before the tenths of
+		// a foot has nothing to put back.
+		who, ok := find(ev.Actor)
+		if ev.From == nil {
+			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOTHING_TO_UNDO, "this move cannot be undone")
+		}
+		if !ok {
+			break
+		}
+		var col, row *int32
+		if ev.From.Placed {
+			col, row = &ev.From.Col, &ev.From.Row
+		}
+		cover := ev.From.Cover
+		if cover == "" {
+			cover = "none"
+		}
+		if err := c.q.SetCombatantMove(ctx, playdb.SetCombatantMoveParams{
+			ID: who.ID, GridCol: col, GridRow: row, MovementUsedFt: ev.From.UsedDFt / 10, MovementUsedDft: ev.From.UsedDFt, LastMoveDft: ev.From.LastDFt, CoverMark: cover,
+		}); err != nil {
+			return nil, fmt.Errorf("put back the move: %w", err)
+		}
 	case eventActionTaken:
 		who, ok := find(ev.Actor)
 		if !ok {
@@ -281,7 +331,13 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		if err := setEconomy(who, ev.ActionBefore, ev.BonusBefore, ev.ReactionBefore, ev.DashedBefore); err != nil {
 			return nil, err
 		}
+		if err := c.q.SetCombatantDisengaged(ctx, playdb.SetCombatantDisengagedParams{ID: who.ID, Disengaged: ev.DisengagedBefore}); err != nil {
+			return nil, fmt.Errorf("put back the disengage: %w", err)
+		}
 		if err := setAttacks(who, ev.AttacksBefore); err != nil {
+			return nil, err
+		}
+		if err := setRun(who, ev.RunBefore); err != nil {
 			return nil, err
 		}
 		if ev.Resource != "" && who.Kind == kindPlayer {
@@ -292,7 +348,7 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 			keep(v)
 		}
 		if ev.Heal && ev.Before != nil {
-			if who.Kind == kindNPC {
+			if holdsHP(who) {
 				return vitals, setHP(who, *ev.Before)
 			}
 			v, err := putVitals(who, *ev.Before)
@@ -318,6 +374,9 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		if err := setEconomy(who, ev.ActionBefore, ev.BonusBefore, ev.ReactionBefore, ev.DashedBefore); err != nil {
 			return nil, err
 		}
+		if err := setRun(who, ev.RunBefore); err != nil {
+			return nil, err
+		}
 		if ev.Slot != nil && who.Kind == kindPlayer {
 			v, err := s.spendSlot(ctx, c, who.CharacterID, *ev.Slot, -1)
 			if err != nil {
@@ -334,6 +393,18 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 				return nil, fmt.Errorf("put back the concentration: %w", err)
 			}
 		}
+		// The creatures the cast made go away, and the ones it dismissed (the old
+		// concentration's) are back with their group's initiative (MR-037).
+		if len(ev.Created) > 0 {
+			if err := s.removeCreatureCombatants(ctx, c, ev.Created); err != nil {
+				return nil, err
+			}
+		}
+		if len(ev.Dismissed) > 0 {
+			if err := s.rejoinCreatures(ctx, c, ev.Dismissed); err != nil {
+				return nil, err
+			}
+		}
 		for _, h := range ev.Hits {
 			if h.Pending != "" {
 				if err := c.q.DeletePendingDamage(ctx, h.Pending); err != nil {
@@ -347,7 +418,7 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 				continue
 			}
 			if h.Restore != nil {
-				if target.Kind == kindNPC {
+				if holdsHP(target) {
 					err = setHP(target, *h.Restore)
 				} else {
 					var after *playv1.CharacterVitals
@@ -419,6 +490,11 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		if ev.ConcEnded != "" {
 			if err := c.q.SetCombatantConcentration(ctx, playdb.SetCombatantConcentrationParams{ID: who.ID, ConcentrationSpell: &ev.ConcEnded}); err != nil {
 				return nil, fmt.Errorf("put back the concentration: %w", err)
+			}
+		}
+		if len(ev.Dismissed) > 0 {
+			if err := s.rejoinCreatures(ctx, c, ev.Dismissed); err != nil {
+				return nil, err
 			}
 		}
 	default:

@@ -140,7 +140,14 @@ WHERE id = $1
 RETURNING *;
 
 -- name: ListCombatants :many
--- The combat's combatants in turn order.
+-- The combat's combatants in turn order. A creature whose concentration ended
+-- is dismissed: it is out of the order and the map until an undo brings it back.
+SELECT * FROM combatants
+WHERE encounter_id = $1 AND NOT dismissed
+ORDER BY order_index, created_at, id;
+
+-- name: ListCombatantsWithDismissed :many
+-- The same with the dismissed ones too: the combat log names who they were.
 SELECT * FROM combatants
 WHERE encounter_id = $1
 ORDER BY order_index, created_at, id;
@@ -148,10 +155,12 @@ ORDER BY order_index, created_at, id;
 -- name: InsertCombatant :one
 INSERT INTO combatants (
     encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face,
-    order_index, grid_col, grid_row, speed_ft, hp_current, hp_max, hp_temp, created_at, xp_value
+    order_index, grid_col, grid_row, speed_ft, hp_current, hp_max, hp_temp, created_at, xp_value,
+    side, size, speed_fly_ft, jump_long_dft, jump_high_dft
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9,
-    $10, $11, $12, $13, $14, $15, $16, $17, $18
+    $10, $11, $12, $13, $14, $15, $16, $17, $18,
+    $19, $20, $21, $22, $23
 )
 RETURNING *;
 
@@ -166,9 +175,33 @@ UPDATE combatants
 SET order_index = $2, tie_ordered = $3
 WHERE id = $1;
 
--- name: SetCombatantSquare :exec
+-- name: SetCombatantMove :exec
+-- A move, or its undo: the square (NULL when the combatant was not on the map),
+-- the movement walked (in feet, rounded down, for the shipped web, and in tenths
+-- of a foot, which is the truth), the length of the last move on foot (the
+-- running start of a jump) and the master's cover mark, which a move clears.
 UPDATE combatants
-SET grid_col = $2, grid_row = $3, movement_used_ft = $4
+SET grid_col = $2, grid_row = $3, movement_used_ft = $4, movement_used_dft = $5, last_move_dft = $6, cover_mark = $7
+WHERE id = $1;
+
+-- name: SetCombatantRun :exec
+-- The length of the last run of moves on foot this turn (the running start of a
+-- jump): 0 when an action, an attack, a spell or a jump breaks it, or its undo.
+UPDATE combatants
+SET last_move_dft = $2
+WHERE id = $1;
+
+-- name: SetCombatantSide :exec
+-- Whose side the combatant fights on ('party' or 'enemy'), the master's "Aliado".
+UPDATE combatants
+SET side = $2
+WHERE id = $1;
+
+-- name: SetCombatantCoverMark :exec
+-- The cover the master marked on the combatant ('none', 'half', 'three_quarters'
+-- or 'total').
+UPDATE combatants
+SET cover_mark = $2
 WHERE id = $1;
 
 -- name: SetCombatantHidden :exec
@@ -182,7 +215,7 @@ WHERE id = $1;
 -- made come back, the Escudo bonus ends, a death save is due again, and the
 -- combatant acts ('acting') in the turn that starts.
 UPDATE combatants
-SET movement_used_ft = 0, dashed = false, action_used = false, bonus_action_used = false, reaction_used = false,
+SET movement_used_ft = 0, movement_used_dft = 0, last_move_dft = 0, dashed = false, disengaged = false, action_used = false, bonus_action_used = false, reaction_used = false,
     attacks_made = 0, ac_bonus = 0, death_save_rolled = false, turn_state = 'acting'
 WHERE id = $1;
 
@@ -203,6 +236,12 @@ WHERE id = $1;
 -- name: MarkCombatantDashed :exec
 UPDATE combatants
 SET dashed = true
+WHERE id = $1;
+
+-- name: SetCombatantDisengaged :exec
+-- The Disengage action of this turn (true), or its undo (false).
+UPDATE combatants
+SET disengaged = $2
 WHERE id = $1;
 
 -- name: DeleteCombatant :exec
@@ -260,6 +299,7 @@ WHERE id = $1;
 UPDATE combatants
 SET death_successes = 0, death_failures = 0
 WHERE character_id = sqlc.arg(character_id)
+  AND kind = 'player'
   AND encounter_id IN (SELECT id FROM encounters WHERE game_session_id = sqlc.arg(game_session_id) AND status <> 'ended');
 
 -- name: MarkDeathSaveRolledOnTurn :exec
@@ -270,6 +310,7 @@ WHERE character_id = sqlc.arg(character_id)
 UPDATE combatants
 SET death_save_rolled = true
 WHERE character_id = sqlc.arg(character_id)
+  AND kind = 'player'
   AND turn_state = 'acting'
   AND encounter_id IN (
       SELECT id FROM encounters
@@ -287,8 +328,8 @@ WHERE character_id = sqlc.arg(character_id)
 INSERT INTO pending_damages (
     encounter_id, attacker_id, target_id, attack_key, status, critical,
     dice_count, dice_sides, dice_bonus, damage_type, created_at,
-    cast_id, healing, half, attack_total
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+    cast_id, healing, half, attack_total, attack_armor_class
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
 RETURNING *;
 
 -- name: GetPendingDamage :one
@@ -492,3 +533,76 @@ GROUP BY e.id, e.name, e.status;
 SELECT e.id, e.name FROM encounters AS e
 JOIN game_sessions AS gs ON gs.id = e.game_session_id
 WHERE gs.campaign_id = sqlc.arg(campaign_id)::UUID AND e.id = ANY(sqlc.arg(ids)::UUID[]);
+
+-- The character's creatures in a combat (MR-037, Etapa 9). A creature is a
+-- combatant of kind 'creature': character_id is its owner's.
+
+-- name: InsertCreatureCombatant :one
+-- A creature joins a combat. It has no initiative until its group rolls one,
+-- and no square until somebody places it; its hit points come from the
+-- creature.
+INSERT INTO combatants (
+    encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face,
+    order_index, grid_col, grid_row, speed_ft, hp_current, hp_max, hp_temp, created_at,
+    creature_id, monster_key, summon_attack, summon_group_id,
+    side, size, speed_fly_ft, jump_long_dft, jump_high_dft
+) VALUES (
+    $1, $2, $3, $4, 'creature', false, $5, $6, $7,
+    $8, $9, $10, $11, $12, $13, 0, $14,
+    $15, $16, $17, $18,
+    'party', $19, $20, $21, $22
+)
+RETURNING *;
+
+-- name: SetGroupInitiative :exec
+-- The roll of a group of creatures that came from one casting: every member of
+-- the group in the combat takes the same total, face and bonus, so they take a
+-- joint turn. A new roll breaks any tie order decided before.
+UPDATE combatants
+SET initiative = sqlc.arg(initiative), initiative_face = sqlc.arg(initiative_face),
+    initiative_bonus = sqlc.arg(initiative_bonus), tie_ordered = false
+WHERE encounter_id = sqlc.arg(encounter_id) AND summon_group_id = sqlc.arg(summon_group_id)::UUID;
+
+-- name: GetEncounterByID :one
+-- A combat by its ID alone (the creatures' host publishes the change of the
+-- combat a dismissed creature left).
+SELECT * FROM encounters WHERE id = $1;
+
+-- name: ListCreatureCombatants :many
+-- The creatures in a combat, in turn order: what the combat writes back to
+-- their owners' lists and what it keeps in step with them.
+SELECT * FROM combatants
+WHERE encounter_id = $1 AND kind = 'creature' AND NOT dismissed
+ORDER BY order_index, created_at, id;
+
+-- name: ListOpenCombatantsOfCreatures :many
+-- The combatants of these creatures in the campaign's combat that is not ended
+-- (a session has at most one).
+SELECT cb.* FROM combatants AS cb
+JOIN encounters AS e ON e.id = cb.encounter_id
+JOIN game_sessions AS gs ON gs.id = e.game_session_id
+WHERE gs.campaign_id = sqlc.arg(campaign_id)::UUID
+  AND e.status <> 'ended'
+  AND NOT cb.dismissed
+  AND cb.creature_id = ANY(sqlc.arg(creature_ids)::UUID[])
+ORDER BY cb.order_index, cb.created_at, cb.id;
+
+-- name: SetCreatureCombatantsDismissed :many
+-- Hides (or brings back) the combatants of the creatures in the combat. A
+-- dismissed one is out of the turn.
+UPDATE combatants
+SET dismissed = sqlc.arg(dismissed), turn_state = 'idle'
+WHERE encounter_id = sqlc.arg(encounter_id) AND creature_id = ANY(sqlc.arg(creature_ids)::UUID[])
+RETURNING id;
+
+-- name: SetCreatureCombatantLabel :many
+-- A creature's new name on its combatant, in the combat that is not ended.
+UPDATE combatants
+SET label = sqlc.arg(label)
+WHERE creature_id = sqlc.arg(creature_id)::UUID
+  AND encounter_id IN (
+      SELECT e.id FROM encounters AS e
+      JOIN game_sessions AS gs ON gs.id = e.game_session_id
+      WHERE gs.campaign_id = sqlc.arg(campaign_id)::UUID AND e.status <> 'ended'
+  )
+RETURNING encounter_id;

@@ -14,7 +14,7 @@
 -- que foi visto" (ForgetMapVision), and changing the map's grid or image clears
 -- it too, since a bitmap only fits the grid it was made on.
 --
--- epoch is the map's vision_epoch (00111) the bitmap was built for. Every clear
+-- epoch is the map's vision_epoch (00107) the bitmap was built for. Every clear
 -- (a new grid or image, "Esquecer o que foi visto") bumps the map's epoch, and a
 -- row with an older epoch reads as empty and is overwritten: so a refresh that was
 -- running while the clear happened can never bring the old bitmap back.

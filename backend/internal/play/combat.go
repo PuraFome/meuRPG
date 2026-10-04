@@ -270,9 +270,13 @@ func (s *Service) addParticipants(ctx context.Context, c *combatTx, grid link.Gr
 				EncounterID: c.enc.ID, CharacterID: p.char.ID, Label: label, Kind: kindNPC, Hidden: p.hidden,
 				InitiativeBonus: clamp32(p.char.InitiativeBonus, -20, 40), OrderIndex: clamp32(len(all), 0, math.MaxInt32),
 				SpeedFt: clamp32(p.char.SpeedFt, 0, 600), CreatedAt: c.now,
+				// Copied from the sheet, like the speed: the side, size and fly speed
+				// that decide who it can pass, and the jump limits (MR-034, RN-21).
+				Side: sideOfKind(kindNPC), Size: sizeKey(p.char.Size), SpeedFlyFt: clamp32(p.char.SpeedFlyFt, 0, 600),
+				JumpLongDft: clamp32(p.char.JumpLongDFt, 0, 6000), JumpHighDft: clamp32(p.char.JumpHighDFt, 0, 6000),
 			}
 			if p.char.Player {
-				row.Kind = kindPlayer
+				row.Kind, row.Side = kindPlayer, sideOfKind(kindPlayer)
 				if p.char.PlayerUserID != "" {
 					row.UserID = &p.char.PlayerUserID
 				}
@@ -306,6 +310,20 @@ func (s *Service) addParticipants(ctx context.Context, c *combatTx, grid link.Gr
 			all = append(all, inserted)
 			added = append(added, inserted)
 		}
+	}
+	// A player's character brings its creatures (MR-037): the ones it has when the
+	// combat is set up. Each has no initiative yet; its owner's player rolls one
+	// for the group, and the master can take any of them out.
+	if ids := playerCharacterIDs(parts); len(ids) > 0 {
+		creatures, err := s.roster.CharacterCreatures(ctx, c.tx, c.session.CampaignID, ids)
+		if err != nil {
+			return nil, nil, err
+		}
+		var joined []playdb.Combatant
+		if all, joined, err = s.joinCreatures(ctx, c, all, creatures, nil); err != nil {
+			return nil, nil, err
+		}
+		added = append(added, joined...)
 	}
 	order, err = saveOrder(ctx, c.q, all, orderCombatants(all))
 	if err != nil {
@@ -423,12 +441,28 @@ func (s *Service) SubmitInitiative(
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("d20_face must be 1 to 20"))
 		}
 		total, f := clamp32(roll.Total, math.MinInt32, math.MaxInt32), clamp32(face, 1, 20)
-		if err := c.q.SetCombatantInitiative(ctx, playdb.SetCombatantInitiativeParams{ID: target.ID, Initiative: &total, InitiativeFace: &f}); err != nil {
-			return nil, fmt.Errorf("save the initiative: %w", err)
-		}
-		for i := range cs {
-			if cs[i].ID == target.ID {
-				cs[i].Initiative, cs[i].InitiativeFace, cs[i].TieOrdered = &total, &f, false
+		if isCreature(target) {
+			// The creatures of one casting roll once (RN-18): every member of the group
+			// takes the roll, with the bonus of the one that rolled, so they take a
+			// joint turn.
+			if err := c.q.SetGroupInitiative(ctx, playdb.SetGroupInitiativeParams{
+				EncounterID: c.enc.ID, SummonGroupID: deref(target.SummonGroupID), Initiative: &total, InitiativeFace: &f, InitiativeBonus: target.InitiativeBonus,
+			}); err != nil {
+				return nil, fmt.Errorf("save the group's initiative: %w", err)
+			}
+			for i := range cs {
+				if isCreature(cs[i]) && deref(cs[i].SummonGroupID) == deref(target.SummonGroupID) {
+					cs[i].Initiative, cs[i].InitiativeFace, cs[i].InitiativeBonus, cs[i].TieOrdered = &total, &f, target.InitiativeBonus, false
+				}
+			}
+		} else {
+			if err := c.q.SetCombatantInitiative(ctx, playdb.SetCombatantInitiativeParams{ID: target.ID, Initiative: &total, InitiativeFace: &f}); err != nil {
+				return nil, fmt.Errorf("save the initiative: %w", err)
+			}
+			for i := range cs {
+				if cs[i].ID == target.ID {
+					cs[i].Initiative, cs[i].InitiativeFace, cs[i].TieOrdered = &total, &f, false
+				}
 			}
 		}
 		if _, err := saveOrder(ctx, c.q, cs, orderCombatants(cs)); err != nil {
@@ -718,7 +752,7 @@ func (s *Service) EndTurn(
 		if len(acting) > 0 {
 			// A part of a group of NPCs alone is the master's, like the group (RN-20),
 			// and so is a hidden member's: no line for the players.
-			holdsPlayer := slices.ContainsFunc(cs, func(o playdb.Combatant) bool { return o.TurnState != turnIdle && o.Kind == kindPlayer })
+			holdsPlayer := slices.ContainsFunc(cs, func(o playdb.Combatant) bool { return o.TurnState != turnIdle && inParty(o) })
 			secret = current.Hidden || !holdsPlayer
 			c.kind = eventTurnPartEnded
 			if err := setCurrent(ctx, c, acting[0], c.enc.Round); err != nil {
@@ -759,123 +793,6 @@ func (s *Service) EndTurn(
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.EndTurnResponse{Encounter: out}), nil
-}
-
-// MoveCombatant implements playv1connect.CombatServiceHandler.
-func (s *Service) MoveCombatant(
-	ctx context.Context,
-	req *connect.Request[playv1.MoveCombatantRequest],
-) (*connect.Response[playv1.MoveCombatantResponse], error) {
-	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
-	if err != nil {
-		return nil, err
-	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
-	if err != nil {
-		return nil, err
-	}
-	combID, err := parseCombatID(req.Msg.GetCombatantId(), "combatant")
-	if err != nil {
-		return nil, err
-	}
-	col, row := req.Msg.GetCol(), req.Msg.GetRow()
-	v := viewerOf(m)
-
-	var moved playdb.Combatant
-	var logged bool // the move is a line of the combat log
-	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventCombatantMoved, encounterID: encID}, func(c *combatTx) (any, error) {
-		logged = false
-		if err := notEnded(c.enc); err != nil {
-			return nil, err
-		}
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the combatants: %w", err)
-		}
-		target, err := findCombatant(cs, combID, v)
-		if err != nil {
-			return nil, err
-		}
-		if err := v.mayAct(target); err != nil {
-			return nil, err
-		}
-		if !inGrid(c.enc, col, row) {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("col and row must be a square of the grid"))
-		}
-		// The log tells how far a combatant walked on its turn: the squares
-		// between where it was and where it goes, whoever moves it.
-		distance := 0
-		if placed(target) {
-			distance = moveCostFt(target, col, row)
-		}
-		onTurn := actsNow(c.enc, target)
-		used, cost := target.MovementUsedFt, 0
-		if !v.master {
-			// RN-21: a player walks only on their own turn, as far as the
-			// movement left, and not onto a square somebody they see stands on.
-			switch {
-			case c.enc.Status != statusActive:
-				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE, "the combat is not running")
-			case !onTurn: // not in the turn that is running, or its part ended
-				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN, "it is not your turn")
-			case !placed(target):
-				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_PLACED, "you are not on the map yet; ask the master")
-			}
-			cost = moveCostFt(target, col, row)
-			if left := movementLeftFt(target); cost > left {
-				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TOO_FAR, "that square is beyond your movement",
-					func(b *playv1.EncounterBlocked) { b.MissingFt = clamp32(cost-left, 0, math.MaxInt32) })
-			}
-			for _, other := range cs {
-				if other.ID != target.ID && !other.Defeated && v.sees(other) && placed(other) && *other.GridCol == col && *other.GridRow == row {
-					return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_SQUARE_OCCUPIED, "another combatant is on that square")
-				}
-			}
-			used += clamp32(cost, 0, math.MaxInt32)
-		}
-		if err := c.q.SetCombatantSquare(ctx, playdb.SetCombatantSquareParams{ID: target.ID, GridCol: &col, GridRow: &row, MovementUsedFt: used}); err != nil {
-			return nil, fmt.Errorf("move the combatant: %w", err)
-		}
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
-		}
-		moved = target
-		moved.GridCol, moved.GridRow, moved.MovementUsedFt = &col, &row, used
-		c.characterID = &target.CharacterID
-		logged = onTurn && distance > 0
-		return actionEvent{
-			Round: c.enc.Round, Secret: target.Hidden, Actor: target.ID, Col: col, Row: row, CostFt: clamp32(cost, 0, math.MaxInt32),
-			OnTurn: onTurn, DistanceFt: clamp32(distance, 0, math.MaxInt32),
-		}, nil
-	})
-	if err != nil {
-		return nil, s.dbError(ctx, "move a combatant", err)
-	}
-	out, err := s.finish(ctx, m, res, func(d *encounterData) {
-		s.publishCombatantMoved(m.CampaignID, d.enc, moved)
-		if logged {
-			s.publishLogChanged(m.CampaignID, d.enc.ID, !moved.Hidden)
-		}
-	})
-	if err != nil {
-		return nil, err
-	}
-	return connect.NewResponse(&playv1.MoveCombatantResponse{Encounter: out}), nil
-}
-
-// markDashed records the Dash action: the combatant's speed counts twice for
-// the rest of the turn (RN-21). TakeAction calls it, inside its own
-// transaction, when the action is spent; it is here because it is movement's
-// rule.
-func markDashed(ctx context.Context, q *playdb.Queries, combatantID string) error {
-	if err := q.MarkCombatantDashed(ctx, combatantID); err != nil {
-		return fmt.Errorf("mark the dash: %w", err)
-	}
-	return nil
 }
 
 // SetCombatantHidden implements playv1connect.CombatServiceHandler.
@@ -1044,6 +961,25 @@ func (s *Service) RemoveCombatant(
 		if target.Kind == kindPlayer && c.enc.Status == statusActive {
 			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_PLAYER_IN_COMBAT, "a player's combatant cannot leave a combat that is running")
 		}
+		// A player's character that leaves a combat in SETUP takes its creatures out
+		// with it.
+		if target.Kind == kindPlayer {
+			owned := slices.DeleteFunc(slices.Clone(cs), func(o playdb.Combatant) bool { return !isCreature(o) || o.CharacterID != target.CharacterID })
+			if len(owned) > 0 {
+				if err := s.writeBackCreatures(ctx, c, owned); err != nil {
+					return nil, err
+				}
+				if cs, _, err = s.dropCombatants(ctx, c, cs, owned, false); err != nil {
+					return nil, err
+				}
+			}
+		}
+		// A creature that leaves the fight keeps the hit points it has.
+		if isCreature(target) {
+			if err := s.writeBackCreatures(ctx, c, []playdb.Combatant{target}); err != nil {
+				return nil, err
+			}
+		}
 		// It leaves the turn first; the turn passes when nobody who acts is left.
 		if turnPassed, err = leaveTurn(ctx, c, cs, target); err != nil {
 			return nil, err
@@ -1115,6 +1051,7 @@ func (s *Service) EndEncounter(
 		if !ended {
 			return
 		}
+		s.publishCreaturesOfCombat(m.CampaignID, d.cs)
 		s.publishEncounterChanged(m.CampaignID, d.enc)
 		s.publishLogChanged(m.CampaignID, d.enc.ID, true)
 		if d.enc.MapID != nil {
@@ -1142,6 +1079,10 @@ func (s *Service) endEncounter(ctx context.Context, c *combatTx, cs []playdb.Com
 		return fmt.Errorf("end the encounter: %w", err)
 	}
 	c.enc = enc
+	// The creatures keep the hit points they had when the fight ended (MR-037).
+	if err := s.writeBackCreatures(ctx, c, cs); err != nil {
+		return err
+	}
 	if enc.MapID == nil {
 		return nil // the map was deleted: nothing to write back to
 	}
@@ -1162,21 +1103,21 @@ func (s *Service) endEncounter(ctx context.Context, c *combatTx, cs []playdb.Com
 // endOpenEncounter ends the session's combat, if it has one, when the master
 // ends the session (EndGameSession), inside its transaction, with a session
 // event.
-func (s *Service) endOpenEncounter(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, actorUserID string) error {
+func (s *Service) endOpenEncounter(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, actorUserID string) ([]playdb.Combatant, error) {
 	enc, err := q.GetOpenEncounter(ctx, session.ID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil
+		return nil, nil
 	}
 	if err != nil {
-		return fmt.Errorf("find the open encounter: %w", err)
+		return nil, fmt.Errorf("find the open encounter: %w", err)
 	}
 	cs, err := q.ListCombatants(ctx, enc.ID)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return nil, fmt.Errorf("list the combatants: %w", err)
 	}
 	c := &combatTx{tx: tx, q: q, session: session, enc: enc, now: s.now()}
 	if err := s.endEncounter(ctx, c, cs); err != nil {
-		return err
+		return nil, err
 	}
-	return insertEvent(ctx, c, eventEncounterEnded, &actorUserID, nil, map[string]any{"round": c.enc.Round, "reason": "session_ended"})
+	return cs, insertEvent(ctx, c, eventEncounterEnded, &actorUserID, nil, map[string]any{"round": c.enc.Round, "reason": "session_ended"})
 }

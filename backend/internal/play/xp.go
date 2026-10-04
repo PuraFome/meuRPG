@@ -26,11 +26,13 @@ import (
 
 // appendableKinds are the session event kinds another module may append
 // through AppendEvent: progression's XP awards and milestones, and the maps
-// module's clue reveals, trap reveals and treasure found or unmarked. A kind
-// that is not one of them is a bug in the caller, never a write.
+// module's clue reveals, trap reveals and treasure found or unmarked, and the
+// characters module's creatures given, dismissed or defeated outside a combat
+// (MR-037). A kind that is not one of them is a bug in the caller, never a write.
 var appendableKinds = []string{
 	eventXPAwarded, eventXPAwardUndone, eventMilestoneMarked, eventClueRevealed,
 	eventTrapRevealed, eventTreasureFound, eventTreasureUnfound,
+	eventCreatureSummoned, eventCreatureDismissed,
 }
 
 // CampaignEncounter returns what an enemies award needs from the campaign's

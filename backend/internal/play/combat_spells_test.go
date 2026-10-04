@@ -26,7 +26,7 @@ import (
 
 // spellRPCs are the CombatService methods of this slice; the authorization
 // matrix of the encounter (combat_test.go) leaves them to this file's.
-var spellRPCs = []string{"CastSpell", "UseReaction", "DeclineReaction", "RollDeathSave", "ConfirmDeath", "SetCombatantConditions"}
+var spellRPCs = []string{"CastSpell", "UseReaction", "DeclineReaction", "RollDeathSave", "ConfirmDeath", "SetCombatantConditions", "EndConcentration"}
 
 const (
 	magicMissileSpell = "spell:magic-missile"
@@ -199,7 +199,13 @@ func (a *armed) castersFight(t *testing.T, goblins int32) *playv1.Encounter {
 		rolls = append(rolls, 1)
 	}
 	reveal := []string{"Capitão Goblin"}
-	at := map[string][2]int32{"Pensantus": {5, 5}, "Toren": {6, 5}, "Brisa": {5, 6}, "Capitão Goblin": {8, 5}}
+	// The Capitão stands next to Pensantus, with nobody between them: a creature
+	// on the line between two others is half cover (D4), and these tests count on
+	// the armor classes and the saves as they are.
+	at := map[string][2]int32{"Pensantus": {5, 5}, "Toren": {6, 5}, "Brisa": {5, 6}, "Capitão Goblin": {4, 4}}
+	if goblins != 1 {
+		at["Toren"] = [2]int32{6, 6} // off Pensantus's line to the goblins: no cover for their saves
+	}
 	if goblins == 1 {
 		reveal, at["Goblin"] = append(reveal, "Goblin"), [2]int32{7, 5}
 	} else {
@@ -426,7 +432,7 @@ func (a *armed) castersFightNPCFirst(t *testing.T) *playv1.Encounter {
 		npcRolls: []int{20, 1},
 		players:  map[string]int32{"Pensantus": 10, "Toren": 9, "Brisa": 8},
 		reveal:   []string{"Capitão Goblin", "Goblin"},
-		at:       map[string][2]int32{"Pensantus": {5, 5}, "Toren": {6, 5}, "Brisa": {5, 6}, "Capitão Goblin": {8, 5}, "Goblin": {9, 5}},
+		at:       map[string][2]int32{"Pensantus": {5, 5}, "Toren": {6, 5}, "Brisa": {5, 6}, "Capitão Goblin": {4, 4}, "Goblin": {9, 5}}, // nobody between the Capitão and Pensantus: no cover (D4)
 	})
 }
 
@@ -1645,7 +1651,7 @@ func (a *armed) hiddenCapitaoFight(t *testing.T) *playv1.Encounter {
 		npcRolls: []int{20, 1},
 		players:  map[string]int32{"Pensantus": 10, "Toren": 9, "Brisa": 8},
 		reveal:   []string{"Goblin"},
-		at:       map[string][2]int32{"Pensantus": {5, 5}, "Toren": {6, 5}, "Brisa": {5, 6}, "Capitão Goblin": {8, 5}, "Goblin": {9, 5}},
+		at:       map[string][2]int32{"Pensantus": {5, 5}, "Toren": {6, 5}, "Brisa": {5, 6}, "Capitão Goblin": {4, 4}, "Goblin": {9, 5}}, // no one between the Capitão and Pensantus: no cover (D4)
 	})
 }
 
@@ -1932,6 +1938,10 @@ func TestMR014_SpellsAuthorizationMatrix(t *testing.T) {
 			return err
 		},
 	}
+	calls["EndConcentration"] = func(u *user, ctx context.Context) error {
+		_, err := u.combat.EndConcentration(ctx, connect.NewRequest(&playv1.EndConcentrationRequest{CampaignId: campaign, EncounterId: enc, CombatantId: toren, IdempotencyKey: newKey()}))
+		return err
+	}
 	methods := playv1.File_meurpg_play_v1_combat_proto.Services().ByName("CombatService").Methods()
 	for _, name := range spellRPCs {
 		if calls[name] == nil || methods.ByName(protoreflect.Name(name)) == nil {
@@ -1945,7 +1955,7 @@ func TestMR014_SpellsAuthorizationMatrix(t *testing.T) {
 	masterOnly := map[string]bool{"ConfirmDeath": true}
 	// The reaction belongs to Pensantus's player, so Toren's player is "another
 	// player" for it; the rest of the calls name Toren.
-	ownerOf := map[string]*user{"UseReaction": a.ana, "DeclineReaction": a.ana, "CastSpell": a.caio, "RollDeathSave": a.caio, "SetCombatantConditions": a.caio}
+	ownerOf := map[string]*user{"UseReaction": a.ana, "DeclineReaction": a.ana, "CastSpell": a.caio, "RollDeathSave": a.caio, "SetCombatantConditions": a.caio, "EndConcentration": a.caio}
 	for name, call := range calls {
 		if err := call(anonymous, t.Context()); connect.CodeOf(err) != connect.CodeUnauthenticated {
 			t.Errorf("%s signed out: %v, want unauthenticated", name, err)

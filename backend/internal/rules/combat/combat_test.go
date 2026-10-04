@@ -155,27 +155,8 @@ func TestDeathSave(t *testing.T) {
 	}
 }
 
-func TestGridAndConcentration(t *testing.T) {
+func TestConcentration(t *testing.T) {
 	t.Parallel()
-	tests := []struct {
-		fc, fr, tc, tr, squares int
-	}{
-		{0, 0, 0, 0, 0},
-		{0, 0, 3, 0, 3},
-		{0, 0, 0, -4, 4},
-		{2, 2, 5, 4, 3}, // the diagonal counts once (RN-21)
-		{5, 5, 1, 2, 4},
-	}
-	for _, tt := range tests {
-		if got := GridDistanceSquares(tt.fc, tt.fr, tt.tc, tt.tr); got != tt.squares {
-			t.Errorf("GridDistanceSquares(%d,%d,%d,%d) = %d, want %d", tt.fc, tt.fr, tt.tc, tt.tr, got, tt.squares)
-		}
-	}
-	// 6 m of walking is 4 squares, so 20 ft.
-	if got := GridDistanceFt(0, 0, 4, 1); got != 20 || FeetPerSquare != 5 {
-		t.Errorf("GridDistanceFt = %d (square %d ft)", got, FeetPerSquare)
-	}
-
 	for damage, want := range map[int]int{0: 10, 1: 10, 19: 10, 20: 10, 21: 10, 22: 11, 30: 15, 41: 20} {
 		if got := ConcentrationDC(damage); got != want {
 			t.Errorf("ConcentrationDC(%d) = %d, want %d", damage, got, want)

@@ -1916,8 +1916,12 @@ func TestVitalsAreReadInsideTheTransaction(t *testing.T) {
 
 // TestCombatLogKeepsTheNewestEvents: a combat longer than the log's limit loses
 // its oldest lines, never the newest, nor the one an undo would take back.
+//
+// Not parallel: it lowers the package's logEventLimit, which every combat log
+// reads. Go holds the parallel tests until the sequential ones end, so none of
+// them reads the log while the limit is 1 (it was a data race, and other
+// tests' logs came back with a single line now and then).
 func TestCombatLogKeepsTheNewestEvents(t *testing.T) {
-	t.Parallel()
 	a := newArmed(t)
 	e := a.threeAndAGoblin(t)
 	if _, err := a.action(t, a.caio, e, "Toren", "standard:dodge"); err != nil {

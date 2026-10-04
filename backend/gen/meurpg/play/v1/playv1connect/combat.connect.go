@@ -61,6 +61,15 @@ const (
 	// CombatServiceMoveCombatantProcedure is the fully-qualified name of the CombatService's
 	// MoveCombatant RPC.
 	CombatServiceMoveCombatantProcedure = "/meurpg.play.v1.CombatService/MoveCombatant"
+	// CombatServiceGetMoveOptionsProcedure is the fully-qualified name of the CombatService's
+	// GetMoveOptions RPC.
+	CombatServiceGetMoveOptionsProcedure = "/meurpg.play.v1.CombatService/GetMoveOptions"
+	// CombatServiceSetCombatantSideProcedure is the fully-qualified name of the CombatService's
+	// SetCombatantSide RPC.
+	CombatServiceSetCombatantSideProcedure = "/meurpg.play.v1.CombatService/SetCombatantSide"
+	// CombatServiceSetCombatantCoverProcedure is the fully-qualified name of the CombatService's
+	// SetCombatantCover RPC.
+	CombatServiceSetCombatantCoverProcedure = "/meurpg.play.v1.CombatService/SetCombatantCover"
 	// CombatServiceSetCombatantHiddenProcedure is the fully-qualified name of the CombatService's
 	// SetCombatantHidden RPC.
 	CombatServiceSetCombatantHiddenProcedure = "/meurpg.play.v1.CombatService/SetCombatantHidden"
@@ -114,6 +123,9 @@ const (
 	// CombatServiceSetCombatantConditionsProcedure is the fully-qualified name of the CombatService's
 	// SetCombatantConditions RPC.
 	CombatServiceSetCombatantConditionsProcedure = "/meurpg.play.v1.CombatService/SetCombatantConditions"
+	// CombatServiceEndConcentrationProcedure is the fully-qualified name of the CombatService's
+	// EndConcentration RPC.
+	CombatServiceEndConcentrationProcedure = "/meurpg.play.v1.CombatService/EndConcentration"
 	// CombatServiceListCombatLogProcedure is the fully-qualified name of the CombatService's
 	// ListCombatLog RPC.
 	CombatServiceListCombatLogProcedure = "/meurpg.play.v1.CombatService/ListCombatLog"
@@ -300,8 +312,77 @@ type CombatServiceClient interface {
 	//     is not ACTIVE and the caller is a player (NOT_ACTIVE); the combatant
 	//     is not acting now: its group is not on turn, or its part of the joint
 	//     turn ended (NOT_YOUR_TURN); the combatant is not on the map yet (NOT_PLACED);
-	//     the square is too far (TOO_FAR) or occupied (SQUARE_OCCUPIED).
+	//     the square is too far (TOO_FAR: `missing_dft` says by how much, and for a
+	//     jump the limit is the jump's), a wall, a column or a squeeze between two
+	//     blocks the line (MOVE_BLOCKED), an enemy that cannot be passed stands on
+	//     it (ENEMY_IN_THE_WAY), or another creature holds the destination
+	//     (SQUARE_OCCUPIED).
+	//
+	// The move is a straight line from the combatant's square to the chosen one
+	// (RN-21, the SRD's "breaking up your move": to go around something, move in
+	// parts). A player pays the exact length of the line, in tenths of a foot
+	// (`movement_used_dft`): 5 ft for a square straight on, 7.1 ft for a diagonal
+	// one, plus 5 ft for each square of difficult terrain it enters and for each
+	// square holding another creature (once per square). A wall, a three-quarters
+	// cover square or a squeeze between two of them blocks the line; an enemy
+	// blocks it too, unless the two are two sizes apart; nobody ends in another
+	// creature's square (only Tiny with Tiny). A creature with a fly speed moves as
+	// a flier: difficult terrain costs it nothing. Swimming and climbing are not
+	// modelled. The master moves anyone anywhere for free.
+	//
+	// `jump` turns it into a jump (D3): LONG goes to the square without paying for
+	// difficult terrain on the way (it cannot cross a wall or land on a creature),
+	// and costs its length in movement; HIGH spends `jump_height_dft` of movement
+	// and moves nobody. The limits come from the sheet (GetTurnOptions,
+	// options.jumps) and a running start needs a move of 10 ft or more on foot
+	// right before. A move clears the master's manual cover mark of the combatant
+	// (SetCombatantCover).
 	MoveCombatant(context.Context, *connect.Request[v1.MoveCombatantRequest]) (*connect.Response[v1.MoveCombatantResponse], error)
+	// GetMoveOptions says where a combatant can go in one straight move: every
+	// square it reaches with its movement left, with what the move costs, and, for
+	// the squares inside the circle that it cannot go to, why. The app only draws
+	// it, so it never computes a distance or a cost of its own (the browser does no
+	// rules math). The caller's own combatant, on its turn, for a player; any
+	// combatant for the master (who moves for free, but sees the circle).
+	//
+	// The reasons never name what the caller does not see: when the fog of war
+	// comes (Etapa 9, 9.4) the server plans on what the mover sees and the real
+	// move is cut short at the last square it can reach.
+	//
+	// Errors:
+	//   - `not_found`: the combat or the combatant is not in the open session.
+	//   - `permission_denied`: the caller is a player and the combatant is not
+	//     their character.
+	//   - `failed_precondition`: the combat is not ACTIVE (NOT_ACTIVE) or it is not
+	//     the combatant's turn (NOT_YOUR_TURN), for a player; the combatant is not
+	//     on the map (NOT_PLACED).
+	GetMoveOptions(context.Context, *connect.Request[v1.GetMoveOptionsRequest]) (*connect.Response[v1.GetMoveOptionsResponse], error)
+	// SetCombatantSide says whose side an NPC fights on (Q69): ENEMY, the default,
+	// or PARTY, "Aliado". It decides who may pass whom (an enemy cannot be passed
+	// and provokes an opportunity attack; an ally can be passed) and is never
+	// secret. A player's character is always PARTY. Only the master may call it.
+	// It is a session event, `side_set`.
+	//
+	// Errors:
+	//   - `not_found`: the combatant is not in this combat.
+	//   - `permission_denied`: the caller is a player.
+	//   - `invalid_argument`: the combatant is a player's character, or `side` is
+	//     unspecified.
+	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
+	SetCombatantSide(context.Context, *connect.Request[v1.SetCombatantSideRequest]) (*connect.Response[v1.SetCombatantSideResponse], error)
+	// SetCombatantCover marks the cover a combatant has that the map does not show
+	// (D4): none, half (+2 to AC and Dexterity saves), three-quarters (+5) or
+	// total (it cannot be targeted). It adds to the cover the map gives against
+	// each attack: the larger applies, never the sum. The mark clears when the
+	// combatant moves. Only the master may call it. It is a session event,
+	// `cover_set`.
+	//
+	// Errors:
+	//   - `not_found`: the combatant is not in this combat.
+	//   - `permission_denied`: the caller is a player.
+	//   - `invalid_argument`: `cover` is unspecified.
+	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
+	SetCombatantCover(context.Context, *connect.Request[v1.SetCombatantCoverRequest]) (*connect.Response[v1.SetCombatantCoverResponse], error)
 	// SetCombatantHidden hides an NPC combatant from the players, or shows it
 	// (RN-10): a hidden combatant is not in their order, not on their map, and
 	// its turn shows as the master's. Only the master may call it. Player
@@ -362,8 +443,9 @@ type CombatServiceClient interface {
 	// (NOT_YOUR_TURN, COMBAT_NOT_ACTIVE, COMBATANT_DOWN, COMBATANT_DEFEATED),
 	// so the app can show "fora da vez". Besides the options the rules engine
 	// works out (economy, attacks, spells, actions), it lists, for each attack
-	// that rolls to hit, the targets the caller sees with the distance (a
-	// king's move, 5 ft a square: RN-21) and whether each is too far, and the
+	// that rolls to hit, the targets the caller sees with the distance (the squares
+	// between the centres, rounded down, 5 ft a square: RN-21), the cover each has
+	// against this combatant's attack and whether each is too far, and the
 	// damage this combatant still has to roll or that waits for the master. For
 	// each spell that can be cast, it lists the targets the caller sees, with the
 	// distance and whether each is too far for the spell (spell_targets), and
@@ -783,6 +865,28 @@ type CombatServiceClient interface {
 	//     condition twice, or more than 20.
 	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
 	SetCombatantConditions(context.Context, *connect.Request[v1.SetCombatantConditionsRequest]) (*connect.Response[v1.SetCombatantConditionsResponse], error)
+	// EndConcentration ends the caster's concentration (RN-22) and dismisses the
+	// creatures of the casting that depended on it (Conjurar Animais, MR-037):
+	// each one leaves the combat and the character's list, with a
+	// `creature_dismissed` event per creature. The master for anyone; a player
+	// for their own character. The same thing happens when the caster casts
+	// another concentration spell, and SetCombatantConditions with
+	// `end_concentration` ends it the same way; this one has no other job. A
+	// combatant that does not concentrate changes nothing.
+	//
+	// Every stream gets `encounter_changed`, `combat_log_changed` as for
+	// SetCombatantConditions, and the owner and the master `creatures_changed`
+	// after the combat.
+	//
+	// Errors:
+	//   - `not_found`: the combatant is not in this combat, or the caller is a
+	//     player and may not see it.
+	//   - `permission_denied`: the caller is a player and the combatant is not
+	//     their character.
+	//   - `invalid_argument`: the combatant is not a player's character or an NPC
+	//     (a creature does not concentrate).
+	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
+	EndConcentration(context.Context, *connect.Request[v1.EndConcentrationRequest]) (*connect.Response[v1.EndConcentrationResponse], error)
 	// ListCombatLog returns the combat log ("Registro do combate"), latest
 	// first, grouped by round. Every entry is structured: the app writes the
 	// sentence. A player only gets the entries about what they see: nothing
@@ -883,6 +987,25 @@ func NewCombatServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			httpClient,
 			baseURL+CombatServiceMoveCombatantProcedure,
 			connect.WithSchema(combatServiceMethods.ByName("MoveCombatant")),
+			connect.WithClientOptions(opts...),
+		),
+		getMoveOptions: connect.NewClient[v1.GetMoveOptionsRequest, v1.GetMoveOptionsResponse](
+			httpClient,
+			baseURL+CombatServiceGetMoveOptionsProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("GetMoveOptions")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
+		setCombatantSide: connect.NewClient[v1.SetCombatantSideRequest, v1.SetCombatantSideResponse](
+			httpClient,
+			baseURL+CombatServiceSetCombatantSideProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("SetCombatantSide")),
+			connect.WithClientOptions(opts...),
+		),
+		setCombatantCover: connect.NewClient[v1.SetCombatantCoverRequest, v1.SetCombatantCoverResponse](
+			httpClient,
+			baseURL+CombatServiceSetCombatantCoverProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("SetCombatantCover")),
 			connect.WithClientOptions(opts...),
 		),
 		setCombatantHidden: connect.NewClient[v1.SetCombatantHiddenRequest, v1.SetCombatantHiddenResponse](
@@ -994,6 +1117,12 @@ func NewCombatServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(combatServiceMethods.ByName("SetCombatantConditions")),
 			connect.WithClientOptions(opts...),
 		),
+		endConcentration: connect.NewClient[v1.EndConcentrationRequest, v1.EndConcentrationResponse](
+			httpClient,
+			baseURL+CombatServiceEndConcentrationProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("EndConcentration")),
+			connect.WithClientOptions(opts...),
+		),
 		listCombatLog: connect.NewClient[v1.ListCombatLogRequest, v1.ListCombatLogResponse](
 			httpClient,
 			baseURL+CombatServiceListCombatLogProcedure,
@@ -1020,6 +1149,9 @@ type combatServiceClient struct {
 	beginCombat              *connect.Client[v1.BeginCombatRequest, v1.BeginCombatResponse]
 	endTurn                  *connect.Client[v1.EndTurnRequest, v1.EndTurnResponse]
 	moveCombatant            *connect.Client[v1.MoveCombatantRequest, v1.MoveCombatantResponse]
+	getMoveOptions           *connect.Client[v1.GetMoveOptionsRequest, v1.GetMoveOptionsResponse]
+	setCombatantSide         *connect.Client[v1.SetCombatantSideRequest, v1.SetCombatantSideResponse]
+	setCombatantCover        *connect.Client[v1.SetCombatantCoverRequest, v1.SetCombatantCoverResponse]
 	setCombatantHidden       *connect.Client[v1.SetCombatantHiddenRequest, v1.SetCombatantHiddenResponse]
 	addCombatants            *connect.Client[v1.AddCombatantsRequest, v1.AddCombatantsResponse]
 	removeCombatant          *connect.Client[v1.RemoveCombatantRequest, v1.RemoveCombatantResponse]
@@ -1038,6 +1170,7 @@ type combatServiceClient struct {
 	rollDeathSave            *connect.Client[v1.RollDeathSaveRequest, v1.RollDeathSaveResponse]
 	confirmDeath             *connect.Client[v1.ConfirmDeathRequest, v1.ConfirmDeathResponse]
 	setCombatantConditions   *connect.Client[v1.SetCombatantConditionsRequest, v1.SetCombatantConditionsResponse]
+	endConcentration         *connect.Client[v1.EndConcentrationRequest, v1.EndConcentrationResponse]
 	listCombatLog            *connect.Client[v1.ListCombatLogRequest, v1.ListCombatLogResponse]
 	getCombatHighlights      *connect.Client[v1.GetCombatHighlightsRequest, v1.GetCombatHighlightsResponse]
 }
@@ -1075,6 +1208,21 @@ func (c *combatServiceClient) EndTurn(ctx context.Context, req *connect.Request[
 // MoveCombatant calls meurpg.play.v1.CombatService.MoveCombatant.
 func (c *combatServiceClient) MoveCombatant(ctx context.Context, req *connect.Request[v1.MoveCombatantRequest]) (*connect.Response[v1.MoveCombatantResponse], error) {
 	return c.moveCombatant.CallUnary(ctx, req)
+}
+
+// GetMoveOptions calls meurpg.play.v1.CombatService.GetMoveOptions.
+func (c *combatServiceClient) GetMoveOptions(ctx context.Context, req *connect.Request[v1.GetMoveOptionsRequest]) (*connect.Response[v1.GetMoveOptionsResponse], error) {
+	return c.getMoveOptions.CallUnary(ctx, req)
+}
+
+// SetCombatantSide calls meurpg.play.v1.CombatService.SetCombatantSide.
+func (c *combatServiceClient) SetCombatantSide(ctx context.Context, req *connect.Request[v1.SetCombatantSideRequest]) (*connect.Response[v1.SetCombatantSideResponse], error) {
+	return c.setCombatantSide.CallUnary(ctx, req)
+}
+
+// SetCombatantCover calls meurpg.play.v1.CombatService.SetCombatantCover.
+func (c *combatServiceClient) SetCombatantCover(ctx context.Context, req *connect.Request[v1.SetCombatantCoverRequest]) (*connect.Response[v1.SetCombatantCoverResponse], error) {
+	return c.setCombatantCover.CallUnary(ctx, req)
 }
 
 // SetCombatantHidden calls meurpg.play.v1.CombatService.SetCombatantHidden.
@@ -1165,6 +1313,11 @@ func (c *combatServiceClient) ConfirmDeath(ctx context.Context, req *connect.Req
 // SetCombatantConditions calls meurpg.play.v1.CombatService.SetCombatantConditions.
 func (c *combatServiceClient) SetCombatantConditions(ctx context.Context, req *connect.Request[v1.SetCombatantConditionsRequest]) (*connect.Response[v1.SetCombatantConditionsResponse], error) {
 	return c.setCombatantConditions.CallUnary(ctx, req)
+}
+
+// EndConcentration calls meurpg.play.v1.CombatService.EndConcentration.
+func (c *combatServiceClient) EndConcentration(ctx context.Context, req *connect.Request[v1.EndConcentrationRequest]) (*connect.Response[v1.EndConcentrationResponse], error) {
+	return c.endConcentration.CallUnary(ctx, req)
 }
 
 // ListCombatLog calls meurpg.play.v1.CombatService.ListCombatLog.
@@ -1355,8 +1508,77 @@ type CombatServiceHandler interface {
 	//     is not ACTIVE and the caller is a player (NOT_ACTIVE); the combatant
 	//     is not acting now: its group is not on turn, or its part of the joint
 	//     turn ended (NOT_YOUR_TURN); the combatant is not on the map yet (NOT_PLACED);
-	//     the square is too far (TOO_FAR) or occupied (SQUARE_OCCUPIED).
+	//     the square is too far (TOO_FAR: `missing_dft` says by how much, and for a
+	//     jump the limit is the jump's), a wall, a column or a squeeze between two
+	//     blocks the line (MOVE_BLOCKED), an enemy that cannot be passed stands on
+	//     it (ENEMY_IN_THE_WAY), or another creature holds the destination
+	//     (SQUARE_OCCUPIED).
+	//
+	// The move is a straight line from the combatant's square to the chosen one
+	// (RN-21, the SRD's "breaking up your move": to go around something, move in
+	// parts). A player pays the exact length of the line, in tenths of a foot
+	// (`movement_used_dft`): 5 ft for a square straight on, 7.1 ft for a diagonal
+	// one, plus 5 ft for each square of difficult terrain it enters and for each
+	// square holding another creature (once per square). A wall, a three-quarters
+	// cover square or a squeeze between two of them blocks the line; an enemy
+	// blocks it too, unless the two are two sizes apart; nobody ends in another
+	// creature's square (only Tiny with Tiny). A creature with a fly speed moves as
+	// a flier: difficult terrain costs it nothing. Swimming and climbing are not
+	// modelled. The master moves anyone anywhere for free.
+	//
+	// `jump` turns it into a jump (D3): LONG goes to the square without paying for
+	// difficult terrain on the way (it cannot cross a wall or land on a creature),
+	// and costs its length in movement; HIGH spends `jump_height_dft` of movement
+	// and moves nobody. The limits come from the sheet (GetTurnOptions,
+	// options.jumps) and a running start needs a move of 10 ft or more on foot
+	// right before. A move clears the master's manual cover mark of the combatant
+	// (SetCombatantCover).
 	MoveCombatant(context.Context, *connect.Request[v1.MoveCombatantRequest]) (*connect.Response[v1.MoveCombatantResponse], error)
+	// GetMoveOptions says where a combatant can go in one straight move: every
+	// square it reaches with its movement left, with what the move costs, and, for
+	// the squares inside the circle that it cannot go to, why. The app only draws
+	// it, so it never computes a distance or a cost of its own (the browser does no
+	// rules math). The caller's own combatant, on its turn, for a player; any
+	// combatant for the master (who moves for free, but sees the circle).
+	//
+	// The reasons never name what the caller does not see: when the fog of war
+	// comes (Etapa 9, 9.4) the server plans on what the mover sees and the real
+	// move is cut short at the last square it can reach.
+	//
+	// Errors:
+	//   - `not_found`: the combat or the combatant is not in the open session.
+	//   - `permission_denied`: the caller is a player and the combatant is not
+	//     their character.
+	//   - `failed_precondition`: the combat is not ACTIVE (NOT_ACTIVE) or it is not
+	//     the combatant's turn (NOT_YOUR_TURN), for a player; the combatant is not
+	//     on the map (NOT_PLACED).
+	GetMoveOptions(context.Context, *connect.Request[v1.GetMoveOptionsRequest]) (*connect.Response[v1.GetMoveOptionsResponse], error)
+	// SetCombatantSide says whose side an NPC fights on (Q69): ENEMY, the default,
+	// or PARTY, "Aliado". It decides who may pass whom (an enemy cannot be passed
+	// and provokes an opportunity attack; an ally can be passed) and is never
+	// secret. A player's character is always PARTY. Only the master may call it.
+	// It is a session event, `side_set`.
+	//
+	// Errors:
+	//   - `not_found`: the combatant is not in this combat.
+	//   - `permission_denied`: the caller is a player.
+	//   - `invalid_argument`: the combatant is a player's character, or `side` is
+	//     unspecified.
+	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
+	SetCombatantSide(context.Context, *connect.Request[v1.SetCombatantSideRequest]) (*connect.Response[v1.SetCombatantSideResponse], error)
+	// SetCombatantCover marks the cover a combatant has that the map does not show
+	// (D4): none, half (+2 to AC and Dexterity saves), three-quarters (+5) or
+	// total (it cannot be targeted). It adds to the cover the map gives against
+	// each attack: the larger applies, never the sum. The mark clears when the
+	// combatant moves. Only the master may call it. It is a session event,
+	// `cover_set`.
+	//
+	// Errors:
+	//   - `not_found`: the combatant is not in this combat.
+	//   - `permission_denied`: the caller is a player.
+	//   - `invalid_argument`: `cover` is unspecified.
+	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
+	SetCombatantCover(context.Context, *connect.Request[v1.SetCombatantCoverRequest]) (*connect.Response[v1.SetCombatantCoverResponse], error)
 	// SetCombatantHidden hides an NPC combatant from the players, or shows it
 	// (RN-10): a hidden combatant is not in their order, not on their map, and
 	// its turn shows as the master's. Only the master may call it. Player
@@ -1417,8 +1639,9 @@ type CombatServiceHandler interface {
 	// (NOT_YOUR_TURN, COMBAT_NOT_ACTIVE, COMBATANT_DOWN, COMBATANT_DEFEATED),
 	// so the app can show "fora da vez". Besides the options the rules engine
 	// works out (economy, attacks, spells, actions), it lists, for each attack
-	// that rolls to hit, the targets the caller sees with the distance (a
-	// king's move, 5 ft a square: RN-21) and whether each is too far, and the
+	// that rolls to hit, the targets the caller sees with the distance (the squares
+	// between the centres, rounded down, 5 ft a square: RN-21), the cover each has
+	// against this combatant's attack and whether each is too far, and the
 	// damage this combatant still has to roll or that waits for the master. For
 	// each spell that can be cast, it lists the targets the caller sees, with the
 	// distance and whether each is too far for the spell (spell_targets), and
@@ -1838,6 +2061,28 @@ type CombatServiceHandler interface {
 	//     condition twice, or more than 20.
 	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
 	SetCombatantConditions(context.Context, *connect.Request[v1.SetCombatantConditionsRequest]) (*connect.Response[v1.SetCombatantConditionsResponse], error)
+	// EndConcentration ends the caster's concentration (RN-22) and dismisses the
+	// creatures of the casting that depended on it (Conjurar Animais, MR-037):
+	// each one leaves the combat and the character's list, with a
+	// `creature_dismissed` event per creature. The master for anyone; a player
+	// for their own character. The same thing happens when the caster casts
+	// another concentration spell, and SetCombatantConditions with
+	// `end_concentration` ends it the same way; this one has no other job. A
+	// combatant that does not concentrate changes nothing.
+	//
+	// Every stream gets `encounter_changed`, `combat_log_changed` as for
+	// SetCombatantConditions, and the owner and the master `creatures_changed`
+	// after the combat.
+	//
+	// Errors:
+	//   - `not_found`: the combatant is not in this combat, or the caller is a
+	//     player and may not see it.
+	//   - `permission_denied`: the caller is a player and the combatant is not
+	//     their character.
+	//   - `invalid_argument`: the combatant is not a player's character or an NPC
+	//     (a creature does not concentrate).
+	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
+	EndConcentration(context.Context, *connect.Request[v1.EndConcentrationRequest]) (*connect.Response[v1.EndConcentrationResponse], error)
 	// ListCombatLog returns the combat log ("Registro do combate"), latest
 	// first, grouped by round. Every entry is structured: the app writes the
 	// sentence. A player only gets the entries about what they see: nothing
@@ -1934,6 +2179,25 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 		CombatServiceMoveCombatantProcedure,
 		svc.MoveCombatant,
 		connect.WithSchema(combatServiceMethods.ByName("MoveCombatant")),
+		connect.WithHandlerOptions(opts...),
+	)
+	combatServiceGetMoveOptionsHandler := connect.NewUnaryHandler(
+		CombatServiceGetMoveOptionsProcedure,
+		svc.GetMoveOptions,
+		connect.WithSchema(combatServiceMethods.ByName("GetMoveOptions")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
+	combatServiceSetCombatantSideHandler := connect.NewUnaryHandler(
+		CombatServiceSetCombatantSideProcedure,
+		svc.SetCombatantSide,
+		connect.WithSchema(combatServiceMethods.ByName("SetCombatantSide")),
+		connect.WithHandlerOptions(opts...),
+	)
+	combatServiceSetCombatantCoverHandler := connect.NewUnaryHandler(
+		CombatServiceSetCombatantCoverProcedure,
+		svc.SetCombatantCover,
+		connect.WithSchema(combatServiceMethods.ByName("SetCombatantCover")),
 		connect.WithHandlerOptions(opts...),
 	)
 	combatServiceSetCombatantHiddenHandler := connect.NewUnaryHandler(
@@ -2045,6 +2309,12 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(combatServiceMethods.ByName("SetCombatantConditions")),
 		connect.WithHandlerOptions(opts...),
 	)
+	combatServiceEndConcentrationHandler := connect.NewUnaryHandler(
+		CombatServiceEndConcentrationProcedure,
+		svc.EndConcentration,
+		connect.WithSchema(combatServiceMethods.ByName("EndConcentration")),
+		connect.WithHandlerOptions(opts...),
+	)
 	combatServiceListCombatLogHandler := connect.NewUnaryHandler(
 		CombatServiceListCombatLogProcedure,
 		svc.ListCombatLog,
@@ -2075,6 +2345,12 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 			combatServiceEndTurnHandler.ServeHTTP(w, r)
 		case CombatServiceMoveCombatantProcedure:
 			combatServiceMoveCombatantHandler.ServeHTTP(w, r)
+		case CombatServiceGetMoveOptionsProcedure:
+			combatServiceGetMoveOptionsHandler.ServeHTTP(w, r)
+		case CombatServiceSetCombatantSideProcedure:
+			combatServiceSetCombatantSideHandler.ServeHTTP(w, r)
+		case CombatServiceSetCombatantCoverProcedure:
+			combatServiceSetCombatantCoverHandler.ServeHTTP(w, r)
 		case CombatServiceSetCombatantHiddenProcedure:
 			combatServiceSetCombatantHiddenHandler.ServeHTTP(w, r)
 		case CombatServiceAddCombatantsProcedure:
@@ -2111,6 +2387,8 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 			combatServiceConfirmDeathHandler.ServeHTTP(w, r)
 		case CombatServiceSetCombatantConditionsProcedure:
 			combatServiceSetCombatantConditionsHandler.ServeHTTP(w, r)
+		case CombatServiceEndConcentrationProcedure:
+			combatServiceEndConcentrationHandler.ServeHTTP(w, r)
 		case CombatServiceListCombatLogProcedure:
 			combatServiceListCombatLogHandler.ServeHTTP(w, r)
 		case CombatServiceGetCombatHighlightsProcedure:
@@ -2150,6 +2428,18 @@ func (UnimplementedCombatServiceHandler) EndTurn(context.Context, *connect.Reque
 
 func (UnimplementedCombatServiceHandler) MoveCombatant(context.Context, *connect.Request[v1.MoveCombatantRequest]) (*connect.Response[v1.MoveCombatantResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.MoveCombatant is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) GetMoveOptions(context.Context, *connect.Request[v1.GetMoveOptionsRequest]) (*connect.Response[v1.GetMoveOptionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.GetMoveOptions is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) SetCombatantSide(context.Context, *connect.Request[v1.SetCombatantSideRequest]) (*connect.Response[v1.SetCombatantSideResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.SetCombatantSide is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) SetCombatantCover(context.Context, *connect.Request[v1.SetCombatantCoverRequest]) (*connect.Response[v1.SetCombatantCoverResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.SetCombatantCover is not implemented"))
 }
 
 func (UnimplementedCombatServiceHandler) SetCombatantHidden(context.Context, *connect.Request[v1.SetCombatantHiddenRequest]) (*connect.Response[v1.SetCombatantHiddenResponse], error) {
@@ -2222,6 +2512,10 @@ func (UnimplementedCombatServiceHandler) ConfirmDeath(context.Context, *connect.
 
 func (UnimplementedCombatServiceHandler) SetCombatantConditions(context.Context, *connect.Request[v1.SetCombatantConditionsRequest]) (*connect.Response[v1.SetCombatantConditionsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.SetCombatantConditions is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) EndConcentration(context.Context, *connect.Request[v1.EndConcentrationRequest]) (*connect.Response[v1.EndConcentrationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.EndConcentration is not implemented"))
 }
 
 func (UnimplementedCombatServiceHandler) ListCombatLog(context.Context, *connect.Request[v1.ListCombatLogRequest]) (*connect.Response[v1.ListCombatLogResponse], error) {

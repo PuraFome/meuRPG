@@ -234,6 +234,10 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		// A level-up changes the sheet everyone in the session watches, so
 		// characters publishes the same hint as an XP award.
 		charactersService.SetLive(playService)
+		// A character's creatures and the combat that holds them (MR-037):
+		// dismissing a creature takes it out of the fight, and its events and
+		// stream hints go through play.
+		charactersService.SetCreatureHost(playService)
 		mapsService, err = maps.New(maps.Config{
 			Pool:       pool,
 			Blobs:      blobs,             // nil: images are off
@@ -246,6 +250,8 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		if err != nil {
 			return err
 		}
+		// the combat walks over the layers the master painted (MR-034, RN-21)
+		playService.SetTerrain(mapsService)
 		// The fog of war and the copy of an image a fog map owns need the maps
 		// service, which is made after SessionMaps (it needs play).
 		sessionMaps.SetService(mapsService)
@@ -254,11 +260,12 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		// progression once it exists.
 		progressionService, err = progression.New(progression.Config{
 			Pool:      pool,
-			Party:     charactersService, // the party, and the XP on the sheets (MR-016)
-			Combats:   playService,       // a combat's defeated NPCs and their XP
-			Log:       playService,       // the session's history and the xp_changed hint
-			Campaigns: campaignsService,  // how the campaign levels (RN-09)
-			Profiles:  users,             // who gave each award
+			Party:     charactersService,       // the party, and the XP on the sheets (MR-016)
+			Combats:   playService,             // a combat's defeated NPCs and their XP
+			Log:       playService,             // the session's history and the xp_changed hint
+			Treasures: maps.NewTreasures(pool), // the found treasures "Voltar à cidade" converts (MR-041)
+			Campaigns: campaignsService,        // how the campaign levels (RN-09)
+			Profiles:  users,                   // who gave each award
 			Logger:    logger,
 		})
 		if err != nil {
