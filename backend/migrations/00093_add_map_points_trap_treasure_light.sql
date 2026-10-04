@@ -15,7 +15,7 @@
 --
 -- A treasure: treasure_value_po is its worth in gold pieces (0 to 1,000,000);
 -- its description is the point's. treasure_found_at is when the master marked
--- it found (the finders are in map_treasure_finders, 00104), and
+-- it found (the finders are in map_treasure_finders, 00095), and
 -- treasure_session_id the game session that was open then, if any, so the
 -- session's summary counts it. treasure_converted_award_id is the XP award
 -- that turned it into XP ("Voltar à cidade", slice 9.11): a converted

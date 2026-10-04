@@ -18,7 +18,7 @@ import {
 } from './combat-support';
 import type { CharacterBuild } from './support';
 import { endOpenSessionRPC, openSessionPage } from './live-session-support';
-import { callRPC, newSignedInContext } from './support';
+import { callRPC, layoutSize, newSignedInContext } from './support';
 
 // The combat on screen (Etapa 6, slice 6.5a, MR-013, RN-18 to RN-22): the
 // master sets the grid and starts a combat, everybody rolls initiative, the
@@ -509,9 +509,9 @@ test('o jogador pode conjurar Escudo: o mestre responde por ele, o acerto vira e
     await expect(m.getByRole('alertdialog', { name: /Há dano sem aplicar/ })).toBeVisible();
     await m.getByRole('button', { name: 'Voltar' }).click();
     // The answers have the same size.
-    const use = await card.getByRole('button', { name: 'Usar Escudo Arcano por ele' }).boundingBox();
-    const skip = await card.getByRole('button', { name: 'Seguir sem Escudo Arcano' }).boundingBox();
-    expect(use?.height).toBe(skip?.height);
+    const use = await layoutSize(card.getByRole('button', { name: 'Usar Escudo Arcano por ele' }));
+    const skip = await layoutSize(card.getByRole('button', { name: 'Seguir sem Escudo Arcano' }));
+    expect(use.height).toBe(skip.height);
 
     // Without Escudo the hit goes on to "Rolar dano" and its apply or discard.
     await card.getByRole('button', { name: 'Seguir sem Escudo Arcano' }).click();
@@ -541,10 +541,10 @@ test('numa tela de 320 × 568: a pergunta de encerrar cabe numa linha por botão
     await openSessionPage(p, campaignId);
     // The two answers keep one line each: the same height, or two full rows of the same height.
     await p.getByRole('button', { name: 'Encerrar turno' }).last().click();
-    const back = await p.getByRole('button', { name: 'Voltar' }).boundingBox();
-    const end = await p.getByRole('button', { name: 'Encerrar turno' }).last().boundingBox();
-    expect(back!.height).toBe(end!.height);
-    expect(end!.height).toBeLessThanOrEqual(48);
+    const back = await layoutSize(p.getByRole('button', { name: 'Voltar' }));
+    const end = await layoutSize(p.getByRole('button', { name: 'Encerrar turno' }).last());
+    expect(back.height).toBe(end.height);
+    expect(end.height).toBeLessThanOrEqual(48);
     expect(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
     await p.getByRole('button', { name: 'Voltar' }).click();
 
@@ -747,10 +747,10 @@ test('o Escudo: o jogador decide num aviso, o cartão do mestre troca ao vivo, e
     await p.keyboard.press('Escape');
     await expect(prompt).toBeVisible();
     await expect(card.getByText('Esperando a reação do Pensantus.')).toBeVisible();
-    const no = await prompt.getByRole('button', { name: 'Não usar' }).boundingBox();
-    const yes = await prompt.getByRole('button', { name: 'Conjurar Escudo Arcano' }).boundingBox();
-    expect(yes?.height).toBe(no?.height);
-    expect(yes?.width).toBe(no?.width);
+    const no = await layoutSize(prompt.getByRole('button', { name: 'Não usar' }));
+    const yes = await layoutSize(prompt.getByRole('button', { name: 'Conjurar Escudo Arcano' }));
+    expect(yes.height).toBe(no.height);
+    expect(yes.width).toBe(no.width);
     await prompt.getByRole('button', { name: 'Conjurar Escudo Arcano' }).click();
     await expect(prompt.getByText('O Escudo Arcano segurou o ataque do Capitão Goblin.')).toBeVisible();
     await expect(prompt.getByText('Espaços de 1º círculo: 3 livres de 4')).toBeVisible();

@@ -8,7 +8,7 @@
 -- base_light is the light of a square nobody lit and the master did not paint:
 -- 'dark' (the default), 'dim' or 'bright'. group_vision makes every player see
 -- what any player character sees (off by default). Turning the fog off keeps
--- the painted layers (map_layers, 00101) and the other two settings.
+-- the painted layers (map_layers, 00092) and the other two settings.
 --
 -- layers_revision goes up by one every time a painted layer (not the light)
 -- changes or all of them are cleared; light_revision does the same for the

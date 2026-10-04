@@ -1,5 +1,5 @@
 -- +goose Up
--- The indexes of the treasure columns of map_points (00102), one statement each,
+-- The indexes of the treasure columns of map_points (00093), one statement each,
 -- all safe to run again. Both are partial: most points are not treasures.
 --
 -- The treasures found in a game session: the session summary's "Mais tesouro

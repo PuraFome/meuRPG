@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { expect, type APIResponse, type Browser, type BrowserContext, type BrowserContextOptions, type Page } from '@playwright/test';
+import { expect, type APIResponse, type Browser, type BrowserContext, type BrowserContextOptions, type Locator, type Page } from '@playwright/test';
 
 // devidp's issuer (deploy/local/compose.yaml). The browser resolves any
 // *.localhost name to 127.0.0.1 by itself.
@@ -75,6 +75,16 @@ export function callRPC(page: Page, method: string, body: object = {}): Promise<
 
 export const getMe = (page: Page) => callRPC(page, 'meurpg.identity.v1.IdentityService/GetMe');
 export const signOut = (page: Page) => callRPC(page, 'meurpg.identity.v1.IdentityService/SignOut');
+
+/**
+ * The layout size of an element: offsetWidth and offsetHeight, which a CSS
+ * transform doesn't change. boundingBox() includes transforms, so two buttons
+ * of a dialog still running its opening animation (a scale) can measure
+ * different sizes a few milliseconds apart; compare sizes with this instead.
+ */
+export function layoutSize(locator: Locator): Promise<{ width: number; height: number }> {
+  return locator.evaluate((el: HTMLElement) => ({ width: el.offsetWidth, height: el.offsetHeight }));
+}
 
 export const day = 24 * 60 * 60 * 1000;
 
