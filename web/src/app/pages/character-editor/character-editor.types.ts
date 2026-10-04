@@ -175,6 +175,9 @@ export interface BasicCharacterFormValue {
    * as `FullSheet` has them (E7-11). */
   challengeRating: string;
   xpValue: number;
+  /** The NPC's portrait, a gallery image's ID or empty (MR-031). Carried
+   * through unchanged, so saving the short form never clears it. */
+  portraitImageId: string;
 }
 
 /** One row of the SRD's "Experience Points by Challenge Rating" table

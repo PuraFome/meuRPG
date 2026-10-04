@@ -934,9 +934,10 @@ func TestMR013_CombatAuthorizationMatrix(t *testing.T) {
 	for name := range calls {
 		covered[strings.SplitN(name, "(", 2)[0]] = true
 	}
-	// The actions of a turn and the spells have their own matrices
-	// (combat_actions_test.go, combat_spells_test.go).
-	if want := methods.Len() - len(actionRPCs) - len(spellRPCs); len(covered) != want {
+	// The actions of a turn, the spells and the highlights have their own
+	// matrices (combat_actions_test.go, combat_spells_test.go,
+	// highlights_test.go).
+	if want := methods.Len() - len(actionRPCs) - len(spellRPCs) - len(highlightRPCs); len(covered) != want {
 		t.Errorf("the matrix covers %d methods, the service has %d besides the actions of a turn", len(covered), want)
 	}
 

@@ -757,6 +757,38 @@ service CombatService {
   rpc ListCombatLog(ListCombatLogRequest) returns (ListCombatLogResponse) {
     option idempotency_level = IDEMPOTENT;
   }
+
+  // GetCombatHighlights tells how the party did in a combat that ended: "Destaques
+  // do combate" (MR-032, D8). Per player's character that fought it counts the
+  // damage dealt to NPCs, the healing done, the damage taken, the final blows
+  // and the critical hits, and names the winner of each category (Mais dano
+  // causado, Mais cura, Tanque, Golpe final, Acertos críticos). Ties name
+  // everyone tied; a category where everybody has 0 is left out.
+  //
+  // The numbers are what really changed (applied hit points): damage past 0
+  // hit points does not count, nor does damage nobody applied (discarded, or
+  // a player's character's still waiting for the master), nor an action the
+  // master undid. A defeated NPC's last hit counts as a final blow for who
+  // landed it; the master's own hand on an NPC's hit points (AdjustCombatantHitPoints)
+  // counts for nobody.
+  //
+  // What each one gets (RN-20): no NPC is ever named, and damage to an NPC the
+  // master still hides counts as a number like any other. Every member gets
+  // the categories with their winners and numbers; only the master also gets
+  // `characters`, the table with every number of each character.
+  //
+  // Any member may call it, after the combat ended; the app reads it after
+  // `encounter_changed` shows the combat ended. The combat must be in the
+  // campaign's open session, as for ListCombatLog.
+  //
+  // Errors:
+  //   - `not_found`: the combat is not in this campaign's open session, or the
+  //     caller is not a member.
+  //   - `failed_precondition`: the combat is not ended (EncounterBlocked,
+  //     NOT_ENDED); or no open session.
+  rpc GetCombatHighlights(GetCombatHighlightsRequest) returns (GetCombatHighlightsResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
 }
 
 // EncounterStatus is where a combat is.
@@ -895,6 +927,8 @@ enum EncounterBlockedReason {
   ENCOUNTER_BLOCKED_REASON_NOT_AWAITING_REACTION = 32;
   // TakeAction: the feature's uses are spent. recharge says when they come back.
   ENCOUNTER_BLOCKED_REASON_NO_USES = 33;
+  // GetCombatHighlights: the combat has not ended.
+  ENCOUNTER_BLOCKED_REASON_NOT_ENDED = 34;
 }
 
 // EncounterBlocked is the error detail of CombatService's
@@ -1069,6 +1103,12 @@ message Combatant {
   // Only the master gets it, and only for an NPC; for a player (RN-20) and for
   // a player's character it is 0.
   int32 xp_value = 35;
+  // The portrait of the NPC's sheet, as a URL ("/images/<id>"; the thumbnail
+  // is that plus "/thumb"), for the master's NPC card (MR-031). Empty when the
+  // NPC has none (the app draws its initials), for a player's character, and
+  // for a player: only the master gets it. A player sees a portrait only on
+  // the stage (StageNpc).
+  string portrait_url = 36;
 }
 
 // Participant is who joins a combat: a character of the campaign.
@@ -2109,4 +2149,74 @@ message CombatLogDamage {
   optional int32 concentration_dc = 11;
   // APPLIED to a character already at 0: the death save failures it caused.
   int32 death_failures_added = 12;
+}
+
+// GetCombatHighlightsRequest names the combat.
+message GetCombatHighlightsRequest {
+  string campaign_id = 1;
+  // An ended combat of the campaign's open session (a UUID).
+  string encounter_id = 2;
+}
+
+// HighlightKind is a category of the combat highlights, in the order the app
+// shows them.
+enum HighlightKind {
+  HIGHLIGHT_KIND_UNSPECIFIED = 0;
+  // "Mais dano causado": applied damage to NPCs.
+  HIGHLIGHT_KIND_MOST_DAMAGE = 1;
+  // "Mais cura": applied healing, to anyone.
+  HIGHLIGHT_KIND_MOST_HEALING = 2;
+  // "Tanque": applied damage taken.
+  HIGHLIGHT_KIND_TANK = 3;
+  // "Golpe final": NPCs brought to 0 hit points by the character's hit.
+  HIGHLIGHT_KIND_FINAL_BLOW = 4;
+  // "Acertos críticos": critical hits.
+  HIGHLIGHT_KIND_CRITICAL_HITS = 5;
+}
+
+// HighlightWinner is a player's character that won a category.
+message HighlightWinner {
+  // The character's ID (a UUID): everyone knows the players' characters.
+  string character_id = 1;
+  // The character's name.
+  string name = 2;
+}
+
+// HighlightCategory is one category of the highlights with its winners.
+message HighlightCategory {
+  HighlightKind kind = 1;
+  // The winners' number in the category: hit points of damage, of healing, of
+  // damage taken, or a count. Always above 0.
+  int32 value = 2;
+  // Who has that number: one character, or everyone tied, in the combat's
+  // order (the turn order).
+  repeated HighlightWinner winners = 3;
+}
+
+// CharacterHighlights is every number of one player's character in the combat.
+message CharacterHighlights {
+  string character_id = 1;
+  string name = 2;
+  // Applied damage dealt to NPCs, past 0 hit points not counted.
+  int32 damage_dealt = 3;
+  // Applied healing done, to anyone.
+  int32 healing_done = 4;
+  // Applied damage taken, from anyone.
+  int32 damage_taken = 5;
+  // NPCs the character's hit brought to 0 hit points.
+  int32 final_blows = 6;
+  // Critical hits, with weapons and spell attacks.
+  int32 critical_hits = 7;
+}
+
+// GetCombatHighlightsResponse is the highlights of a combat that ended.
+message GetCombatHighlightsResponse {
+  // The categories that have a winner, in the order of HighlightKind. A
+  // category where everybody has 0 is not here: the list is empty for a combat
+  // nobody hurt or healed in.
+  repeated HighlightCategory categories = 1;
+  // The table of every player's character that fought, in the combat's order
+  // (the turn order), zeros included ("Números de cada jogador"). Only the
+  // master gets it; for a player it is empty.
+  repeated CharacterHighlights characters = 2;
 }

@@ -206,12 +206,15 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		// characters now that it exists: an invite without approval accepted
 		// by a pending member approves their character (RN-15).
 		campaignsService.SetCharacters(charactersService)
+		// maps.SessionMaps needs nothing but the database, so characters gets
+		// it now too: an NPC's portrait must be an image of the campaign's
+		// gallery (MR-031).
+		sessionMaps := maps.NewSessionMaps(pool)
+		charactersService.SetGallery(sessionMaps)
 		// play and maps need each other: play reveals the map it makes
 		// current and reads the image it shows, and maps reads what the
-		// session shows and publishes on play's live stream.
-		// maps.SessionMaps needs nothing but the database, so play gets it
-		// first, and maps then gets play.
-		sessionMaps := maps.NewSessionMaps(pool)
+		// session shows and publishes on play's live stream. play gets the
+		// SessionMaps made above first, and maps then gets play.
 		playService, err = play.New(play.Config{
 			Pool:      pool,
 			Sheets:    charactersService,           // starting a session locks the sheets (RN-01)

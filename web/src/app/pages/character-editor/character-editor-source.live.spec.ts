@@ -100,6 +100,7 @@ function fullyPopulatedFullSheet(): FullSheet {
     // editor must not drop them when it saves.
     challengeRating: '2',
     xpValue: 450,
+    portraitImageId: '',
   };
 }
 
@@ -161,6 +162,7 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
       featureChoiceKeys: loaded.featureChoiceKeys,
       challengeRating: loaded.challengeRating,
       xpValue: loaded.xpValue,
+      portraitImageId: loaded.portraitImageId,
     });
   });
 
@@ -222,6 +224,7 @@ describe('a basic sheet through the editor', () => {
       initiativeBonus: 2,
       challengeRating: '1/4',
       xpValue: 50,
+      portraitImageId: '',
       attacks: [
         {
           $typeName: 'meurpg.characters.v1.BasicAttack',
@@ -264,10 +267,13 @@ describe('a basic sheet through the editor', () => {
       attacks: [],
       challengeRating: '1/4',
       xpValue: 50,
+      portraitImageId: '6f1c2d3e-0000-4000-8000-000000000001',
     };
     const form = toFormBasicSheet('Goblin', basic);
     expect(form).toMatchObject({ challengeRating: '1/4', xpValue: 50 });
     expect(toBasicSheetInit(form)).toMatchObject({ challengeRating: '1/4', xpValue: 50 });
+    // The portrait (MR-031) survives the save too.
+    expect(toBasicSheetInit(form).portraitImageId).toBe('6f1c2d3e-0000-4000-8000-000000000001');
 
     // What the master typed beyond the table survives too.
     expect(toBasicSheetInit({ ...form, challengeRating: '1/2', xpValue: 70 })).toMatchObject({ challengeRating: '1/2', xpValue: 70 });
@@ -287,6 +293,7 @@ describe('a basic sheet through the editor', () => {
       attacks: [],
       challengeRating: '',
       xpValue: 0,
+      portraitImageId: '',
     });
     expect(form.legacyDamage).toBe('mordida venenosa');
     expect(toBasicSheetInit(form)).toMatchObject({ damage: 'mordida venenosa', attackBonus: 3 });

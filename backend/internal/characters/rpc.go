@@ -60,6 +60,9 @@ func (s *Service) CreateCharacter(
 	if err != nil {
 		return nil, invalidArgument(err)
 	}
+	if err := s.checkPortrait(ctx, m.CampaignID, kind, sheet); err != nil {
+		return nil, invalidArgument(err)
+	}
 	story, err := checkStory(req.Msg.GetStory())
 	if err != nil {
 		return nil, invalidArgument(err)
@@ -259,6 +262,9 @@ func (s *Service) UpdateCharacter(
 			return errBlocked(blockedReason(state), current.ID)
 		}
 		if err := checkSheetKind(current.Kind, sheet); err != nil {
+			return invalidArgument(err)
+		}
+		if err := s.checkPortrait(ctx, m.CampaignID, current.Kind, sheet); err != nil {
 			return invalidArgument(err)
 		}
 		if current.Revision != revision {

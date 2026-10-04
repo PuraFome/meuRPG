@@ -116,7 +116,9 @@ func (s *Service) RenameGalleryImage(
 // fetch the files, so a failure to delete them (logged) leaves nothing
 // reachable behind. An image a map uses stays; an image the session shows
 // (MR-028) goes, and the session stops showing it (the foreign key sets
-// game_sessions.shown_image_id to NULL).
+// game_sessions.shown_image_id to NULL). An image that is an NPC's portrait
+// (MR-031) goes too, and the NPC loses the portrait (in the same
+// transaction): a portrait falls back to the initials, so it never blocks.
 func (s *Service) DeleteGalleryImage(
 	ctx context.Context,
 	req *connect.Request[mapsv1.DeleteGalleryImageRequest],
@@ -141,8 +143,10 @@ func (s *Service) DeleteGalleryImage(
 		return nil, s.dbError(ctx, "check whether the image is left with the players", err)
 	}
 
+	var portraits int64 // the NPCs that lost it as their portrait
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
+		portraits = 0
 		// An image a map uses stays, and the answer names the maps (MR-019:
 		// "o app diz em qual mapa ela está").
 		usedIn, err := s.mapsUsing(ctx, q, m.CampaignID, id.String())
@@ -161,6 +165,9 @@ func (s *Service) DeleteGalleryImage(
 		if err != nil {
 			return fmt.Errorf("delete gallery image: %w", err)
 		}
+		if portraits, err = s.characters.ClearPortraits(ctx, tx, m.CampaignID, id.String()); err != nil {
+			return fmt.Errorf("clear the portraits: %w", err)
+		}
 		return nil
 	})
 	// The check above runs in the transaction, so a map created at the same
@@ -178,6 +185,12 @@ func (s *Service) DeleteGalleryImage(
 		// Everyone watching the session stops seeing it.
 		s.live.Publish(m.CampaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_ShownImageChanged_{
 			ShownImageChanged: &playv1.WatchGameSessionResponse_ShownImageChanged{},
+		}})
+	}
+	if portraits > 0 {
+		// The NPC may have been on the stage: its portrait is gone for everyone.
+		s.live.Publish(m.CampaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_StageChanged_{
+			StageChanged: &playv1.WatchGameSessionResponse_StageChanged{},
 		}})
 	}
 	if wasLeft {

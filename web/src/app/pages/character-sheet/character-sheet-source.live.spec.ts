@@ -144,6 +144,7 @@ function minimalFullSheet(overrides: Partial<FullSheet> = {}): FullSheet {
     customFeaturesText: '',
     featureChoiceKeys: [],
     challengeRating: '',
+    portraitImageId: '',
     xpValue: 0,
     ...overrides,
   };
@@ -238,6 +239,7 @@ describe('the sheet header shows alignment and XP, read from the stored FullShee
       ],
       challengeRating: '',
       xpValue: 0,
+      portraitImageId: '',
     };
     const character: Character = {
       ...characterWithFullSheet(minimalFullSheet()),

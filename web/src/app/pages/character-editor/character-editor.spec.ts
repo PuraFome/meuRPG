@@ -968,6 +968,7 @@ describe('CharacterEditor', () => {
             description: '',
             challengeRating: '1/4',
             xpValue: 50,
+            portraitImageId: '',
           },
         });
       const { el } = await render();
@@ -1334,7 +1335,7 @@ describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () 
           blocked: null,
           sheetLocked: false,
           full: null,
-          basic: { name: 'Goblin', hitPointsMax: 7, armorClass: 15, speedFt: 30, initiativeBonus: 2, attacks: [], legacyDamage: '', legacyAttackBonus: 0, description: '', challengeRating: '1/4', xpValue: 50 },
+          basic: { name: 'Goblin', hitPointsMax: 7, armorClass: 15, speedFt: 30, initiativeBonus: 2, attacks: [], legacyDamage: '', legacyAttackBonus: 0, description: '', challengeRating: '1/4', xpValue: 50, portraitImageId: '' },
         });
       const { fixture } = await render();
       await cmp(fixture).submit();

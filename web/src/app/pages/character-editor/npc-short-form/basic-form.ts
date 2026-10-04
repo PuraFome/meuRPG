@@ -54,6 +54,9 @@ export type BasicSheetFormGroup = FormGroup<{
    * at ND 0, 10 XP, so nobody is left without a number. */
   challengeRating: FormControl<string>;
   xpValue: FormControl<number>;
+  /** The portrait's image ID (MR-031), carried as read: saving the short
+   * form must never clear it. */
+  portraitImageId: FormControl<string>;
 }>;
 
 /** "+2", "2", "-1" and "−1" (a real minus) as a number; `null` for
@@ -123,6 +126,7 @@ export function createBasicForm(fb: FormBuilder): BasicSheetFormGroup {
     description: ['', Validators.maxLength(2000)],
     challengeRating: ['0'],
     xpValue: [10, [Validators.required, Validators.min(0), Validators.max(1_000_000)]],
+    portraitImageId: [''],
   });
 }
 
@@ -147,6 +151,7 @@ export function patchBasicForm(
     description: value.description,
     challengeRating: value.challengeRating,
     xpValue: value.xpValue,
+    portraitImageId: value.portraitImageId,
   });
 }
 
@@ -176,6 +181,7 @@ export function basicFormToValue(form: BasicSheetFormGroup): BasicCharacterFormV
     description: raw.description,
     challengeRating: raw.challengeRating,
     xpValue: raw.xpValue,
+    portraitImageId: raw.portraitImageId,
   };
 }
 

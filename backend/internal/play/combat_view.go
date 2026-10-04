@@ -94,7 +94,7 @@ func (d *encounterData) turnFor(v combatViewer) (id string, masterTurn bool) {
 // view builds the Encounter the viewer sees. vitals are the player
 // characters' vitals by character ID; a player only learns from them that a
 // character is down, and the master gets the hit points.
-func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.CharacterVitals, armorClass map[string]int32, names func(key string) string) *playv1.Encounter {
+func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.CharacterVitals, armorClass map[string]int32, portraits map[string]string, names func(key string) string) *playv1.Encounter {
 	e := d.enc
 	out := &playv1.Encounter{
 		Id:          e.ID,
@@ -116,17 +116,18 @@ func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.Character
 	for _, c := range d.cs {
 		if v.sees(c) {
 			onTurn := e.Status == statusActive && e.CurrentCombatantID != nil && *e.CurrentCombatantID == c.ID
-			out.Combatants = append(out.Combatants, combatantToProto(c, v, ties[c.ID], vitals[c.CharacterID], armorClass[c.CharacterID], onTurn, names))
+			out.Combatants = append(out.Combatants, combatantToProto(c, v, ties[c.ID], vitals[c.CharacterID], armorClass[c.CharacterID], portraits[c.CharacterID], onTurn, names))
 		}
 	}
 	return out
 }
 
 // combatantToProto builds the Combatant the viewer sees. The caller checked
-// that the viewer sees it. armorClass is its sheet's, for the master's copy
-// only (0 when unknown). onTurn says it is the one whose turn it is, in a
+// that the viewer sees it. armorClass is its sheet's, and portrait the URL of
+// its sheet's portrait, for the master's copy only (0 and "" when unknown).
+// onTurn says it is the one whose turn it is, in a
 // running combat.
-func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vitals *playv1.CharacterVitals, armorClass int32, onTurn bool, names func(key string) string) *playv1.Combatant {
+func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vitals *playv1.CharacterVitals, armorClass int32, portrait string, onTurn bool, names func(key string) string) *playv1.Combatant {
 	mine := v.owns(c)
 	detail := v.master || mine // the numbers of the turn: the master's and the owner's
 	out := &playv1.Combatant{
@@ -177,6 +178,7 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 		}
 		out.HitPointsCurrent, out.HitPointsMax, out.HitPointsTemporary = c.HpCurrent, c.HpMax, c.HpTemp
 		out.XpValue = c.XpValue // an NPC's, the master's alone (RN-20); 0 for a player's character
+		out.PortraitUrl = portrait
 		if vitals != nil {
 			out.HitPointsCurrent = ptr(vitals.GetHitPointsCurrent())
 			out.HitPointsMax = ptr(vitals.GetHitPointsMax())
@@ -255,7 +257,7 @@ func (s *Service) viewFor(ctx context.Context, m authz.Membership, d *encounterD
 			byCharacter[vit.GetCharacterId()] = vit
 		}
 	}
-	out := d.view(v, byCharacter, s.armorClasses(ctx, m, d), s.nameOf)
+	out := d.view(v, byCharacter, s.armorClasses(ctx, m, d), s.portraits(ctx, m, d), s.nameOf)
 	prompts, err := s.reactionPrompts(ctx, m, d)
 	if err != nil {
 		return nil, err
@@ -282,6 +284,36 @@ func (s *Service) armorClasses(ctx context.Context, m authz.Membership, d *encou
 			continue
 		}
 		out[c.CharacterID] = clamp32(sheet.ArmorClass, 0, math.MaxInt32)
+	}
+	return out
+}
+
+// portraits reads the portrait URL of each NPC in the combat, for the master's
+// card only (MR-031): a player sees a portrait only on the stage, and only the
+// name and the image there. A sheet that can't be read gives no portrait: the
+// app draws the initials.
+func (s *Service) portraits(ctx context.Context, m authz.Membership, d *encounterData) map[string]string {
+	if m.Role != authz.RoleMaster {
+		return nil
+	}
+	var ids []string
+	for _, c := range d.cs {
+		if c.Kind == kindNPC && !slices.Contains(ids, c.CharacterID) {
+			ids = append(ids, c.CharacterID)
+		}
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	chars, err := s.roster.CombatCharacters(ctx, m.CampaignID, ids)
+	if err != nil {
+		return nil
+	}
+	out := make(map[string]string, len(chars))
+	for _, c := range chars {
+		if c.PortraitImageID != "" {
+			out[c.ID] = imagesPath + c.PortraitImageID
+		}
 	}
 	return out
 }

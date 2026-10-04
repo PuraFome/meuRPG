@@ -60,6 +60,17 @@ SET name = sqlc.arg(name), sheet = sqlc.arg(sheet), revision = revision + 1, upd
 WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id) AND revision = sqlc.arg(revision)
 RETURNING *;
 
+-- name: ClearPortraits :execrows
+-- The master deleted a gallery image: the NPCs that had it as their portrait
+-- lose it (MR-031). The revision goes up, so a stale editor is told. Only the
+-- sheets that have it are touched.
+UPDATE characters
+SET sheet = (sheet #- '{full,portrait_image_id}') #- '{basic,portrait_image_id}',
+    revision = revision + 1, updated_at = sqlc.arg(now)
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID
+  AND (sheet -> 'full' ->> 'portrait_image_id' = sqlc.arg(image_id)::TEXT
+       OR sheet -> 'basic' ->> 'portrait_image_id' = sqlc.arg(image_id)::TEXT);
+
 -- name: UpdateCharacterStory :one
 -- As UpdateCharacterSheet: the story and the sheet share one revision.
 UPDATE characters

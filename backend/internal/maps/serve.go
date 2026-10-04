@@ -18,9 +18,9 @@ import (
 // playersSeeImage says whether the campaign's players see the image now:
 // it is the open session's shown image, an image the master left with them
 // (MR-028), or the background of a map they see (revealed, or the
-// session's current map). Reads, one per module: what
-// the session shows comes from play (LiveSession.OnScreen), the maps from
-// this module's table.
+// session's current map), or the portrait of an NPC on the stage of the open
+// scene (MR-031). Reads, one per module: what the session shows and the
+// stage come from play (LiveSession), the maps from this module's table.
 func (s *Service) playersSeeImage(ctx context.Context, campaignID, imageID string) (bool, error) {
 	currentMap, shownImage, err := s.live.OnScreen(ctx, campaignID)
 	if err != nil {
@@ -37,7 +37,13 @@ func (s *Service) playersSeeImage(ctx context.Context, campaignID, imageID strin
 	if currentMap != "" {
 		current = &currentMap
 	}
-	return s.queries.ImageIsOnAVisibleMap(ctx, mapsdb.ImageIsOnAVisibleMapParams{CampaignID: campaignID, ImageID: imageID, CurrentMapID: current})
+	onMap, err := s.queries.ImageIsOnAVisibleMap(ctx, mapsdb.ImageIsOnAVisibleMapParams{CampaignID: campaignID, ImageID: imageID, CurrentMapID: current})
+	if err != nil || onMap {
+		return onMap, err
+	}
+	// A portrait is fetchable only while its NPC is on the stage (RN-20): the
+	// moment the master takes the NPC off, or closes the scene, it is 404.
+	return s.live.ImageOnStage(ctx, campaignID, imageID)
 }
 
 // handleImage serves GET /images/{id}, the image.
@@ -59,8 +65,9 @@ func (s *Service) handleThumbnail(w http.ResponseWriter, r *http.Request) {
 //   - the campaign's master, every image of the campaign;
 //   - a player, only an image they see at this moment: the background of a
 //     map they see (revealed, or the open session's current map), the
-//     image the master shows in the open session, or an image the master
-//     left with the players (MR-028).
+//     image the master shows in the open session, an image the master
+//     left with the players (MR-028), or the portrait of an NPC that is on
+//     the stage of the open scene (MR-031).
 //
 // Knowing an ID is not enough for a player: they keep the IDs of maps that
 // were hidden again and of images no longer shown, so the rule is checked

@@ -259,10 +259,11 @@ export function toBasicSheetInit(v: BasicCharacterFormValue) {
     attackBonus: v.legacyAttackBonus,
     damage: v.legacyDamage,
     description: v.description,
-    // What the minion gives when defeated (E7-11): without these the save
-    // would wipe the XP the server holds.
+    // What the minion gives when defeated (E7-11) and its portrait (MR-031):
+    // without these the save would wipe what the server holds.
     challengeRating: v.challengeRating,
     xpValue: v.xpValue,
+    portraitImageId: v.portraitImageId,
   };
 }
 
@@ -349,6 +350,7 @@ export function toFormBasicSheet(name: string, basic: GenBasicSheet): BasicChara
     description: basic.description,
     challengeRating: basic.challengeRating,
     xpValue: basic.xpValue,
+    portraitImageId: basic.portraitImageId,
   };
 }
 

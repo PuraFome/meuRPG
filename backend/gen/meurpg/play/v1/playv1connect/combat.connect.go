@@ -117,6 +117,9 @@ const (
 	// CombatServiceListCombatLogProcedure is the fully-qualified name of the CombatService's
 	// ListCombatLog RPC.
 	CombatServiceListCombatLogProcedure = "/meurpg.play.v1.CombatService/ListCombatLog"
+	// CombatServiceGetCombatHighlightsProcedure is the fully-qualified name of the CombatService's
+	// GetCombatHighlights RPC.
+	CombatServiceGetCombatHighlightsProcedure = "/meurpg.play.v1.CombatService/GetCombatHighlights"
 )
 
 // CombatServiceClient is a client for the meurpg.play.v1.CombatService service.
@@ -781,6 +784,35 @@ type CombatServiceClient interface {
 	//   - `not_found`: the combat is not in this campaign's open session, or
 	//     the caller is not a member.
 	ListCombatLog(context.Context, *connect.Request[v1.ListCombatLogRequest]) (*connect.Response[v1.ListCombatLogResponse], error)
+	// GetCombatHighlights tells how the party did in a combat that ended: "Destaques
+	// do combate" (MR-032, D8). Per player's character that fought it counts the
+	// damage dealt to NPCs, the healing done, the damage taken, the final blows
+	// and the critical hits, and names the winner of each category (Mais dano
+	// causado, Mais cura, Tanque, Golpe final, Acertos críticos). Ties name
+	// everyone tied; a category where everybody has 0 is left out.
+	//
+	// The numbers are what really changed (applied hit points): damage past 0
+	// hit points does not count, nor does damage nobody applied (discarded, or
+	// a player's character's still waiting for the master), nor an action the
+	// master undid. A defeated NPC's last hit counts as a final blow for who
+	// landed it; the master's own hand on an NPC's hit points (AdjustCombatantHitPoints)
+	// counts for nobody.
+	//
+	// What each one gets (RN-20): no NPC is ever named, and damage to an NPC the
+	// master still hides counts as a number like any other. Every member gets
+	// the categories with their winners and numbers; only the master also gets
+	// `characters`, the table with every number of each character.
+	//
+	// Any member may call it, after the combat ended; the app reads it after
+	// `encounter_changed` shows the combat ended. The combat must be in the
+	// campaign's open session, as for ListCombatLog.
+	//
+	// Errors:
+	//   - `not_found`: the combat is not in this campaign's open session, or the
+	//     caller is not a member.
+	//   - `failed_precondition`: the combat is not ended (EncounterBlocked,
+	//     NOT_ENDED); or no open session.
+	GetCombatHighlights(context.Context, *connect.Request[v1.GetCombatHighlightsRequest]) (*connect.Response[v1.GetCombatHighlightsResponse], error)
 }
 
 // NewCombatServiceClient constructs a client for the meurpg.play.v1.CombatService service. By
@@ -953,6 +985,13 @@ func NewCombatServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
+		getCombatHighlights: connect.NewClient[v1.GetCombatHighlightsRequest, v1.GetCombatHighlightsResponse](
+			httpClient,
+			baseURL+CombatServiceGetCombatHighlightsProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("GetCombatHighlights")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -984,6 +1023,7 @@ type combatServiceClient struct {
 	confirmDeath             *connect.Client[v1.ConfirmDeathRequest, v1.ConfirmDeathResponse]
 	setCombatantConditions   *connect.Client[v1.SetCombatantConditionsRequest, v1.SetCombatantConditionsResponse]
 	listCombatLog            *connect.Client[v1.ListCombatLogRequest, v1.ListCombatLogResponse]
+	getCombatHighlights      *connect.Client[v1.GetCombatHighlightsRequest, v1.GetCombatHighlightsResponse]
 }
 
 // StartEncounter calls meurpg.play.v1.CombatService.StartEncounter.
@@ -1114,6 +1154,11 @@ func (c *combatServiceClient) SetCombatantConditions(ctx context.Context, req *c
 // ListCombatLog calls meurpg.play.v1.CombatService.ListCombatLog.
 func (c *combatServiceClient) ListCombatLog(ctx context.Context, req *connect.Request[v1.ListCombatLogRequest]) (*connect.Response[v1.ListCombatLogResponse], error) {
 	return c.listCombatLog.CallUnary(ctx, req)
+}
+
+// GetCombatHighlights calls meurpg.play.v1.CombatService.GetCombatHighlights.
+func (c *combatServiceClient) GetCombatHighlights(ctx context.Context, req *connect.Request[v1.GetCombatHighlightsRequest]) (*connect.Response[v1.GetCombatHighlightsResponse], error) {
+	return c.getCombatHighlights.CallUnary(ctx, req)
 }
 
 // CombatServiceHandler is an implementation of the meurpg.play.v1.CombatService service.
@@ -1778,6 +1823,35 @@ type CombatServiceHandler interface {
 	//   - `not_found`: the combat is not in this campaign's open session, or
 	//     the caller is not a member.
 	ListCombatLog(context.Context, *connect.Request[v1.ListCombatLogRequest]) (*connect.Response[v1.ListCombatLogResponse], error)
+	// GetCombatHighlights tells how the party did in a combat that ended: "Destaques
+	// do combate" (MR-032, D8). Per player's character that fought it counts the
+	// damage dealt to NPCs, the healing done, the damage taken, the final blows
+	// and the critical hits, and names the winner of each category (Mais dano
+	// causado, Mais cura, Tanque, Golpe final, Acertos críticos). Ties name
+	// everyone tied; a category where everybody has 0 is left out.
+	//
+	// The numbers are what really changed (applied hit points): damage past 0
+	// hit points does not count, nor does damage nobody applied (discarded, or
+	// a player's character's still waiting for the master), nor an action the
+	// master undid. A defeated NPC's last hit counts as a final blow for who
+	// landed it; the master's own hand on an NPC's hit points (AdjustCombatantHitPoints)
+	// counts for nobody.
+	//
+	// What each one gets (RN-20): no NPC is ever named, and damage to an NPC the
+	// master still hides counts as a number like any other. Every member gets
+	// the categories with their winners and numbers; only the master also gets
+	// `characters`, the table with every number of each character.
+	//
+	// Any member may call it, after the combat ended; the app reads it after
+	// `encounter_changed` shows the combat ended. The combat must be in the
+	// campaign's open session, as for ListCombatLog.
+	//
+	// Errors:
+	//   - `not_found`: the combat is not in this campaign's open session, or the
+	//     caller is not a member.
+	//   - `failed_precondition`: the combat is not ended (EncounterBlocked,
+	//     NOT_ENDED); or no open session.
+	GetCombatHighlights(context.Context, *connect.Request[v1.GetCombatHighlightsRequest]) (*connect.Response[v1.GetCombatHighlightsResponse], error)
 }
 
 // NewCombatServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -1946,6 +2020,13 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
+	combatServiceGetCombatHighlightsHandler := connect.NewUnaryHandler(
+		CombatServiceGetCombatHighlightsProcedure,
+		svc.GetCombatHighlights,
+		connect.WithSchema(combatServiceMethods.ByName("GetCombatHighlights")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/meurpg.play.v1.CombatService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CombatServiceStartEncounterProcedure:
@@ -2000,6 +2081,8 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 			combatServiceSetCombatantConditionsHandler.ServeHTTP(w, r)
 		case CombatServiceListCombatLogProcedure:
 			combatServiceListCombatLogHandler.ServeHTTP(w, r)
+		case CombatServiceGetCombatHighlightsProcedure:
+			combatServiceGetCombatHighlightsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -2111,4 +2194,8 @@ func (UnimplementedCombatServiceHandler) SetCombatantConditions(context.Context,
 
 func (UnimplementedCombatServiceHandler) ListCombatLog(context.Context, *connect.Request[v1.ListCombatLogRequest]) (*connect.Response[v1.ListCombatLogResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.ListCombatLog is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) GetCombatHighlights(context.Context, *connect.Request[v1.GetCombatHighlightsRequest]) (*connect.Response[v1.GetCombatHighlightsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.GetCombatHighlights is not implemented"))
 }

@@ -21,7 +21,8 @@ enum SceneBlockedReason {
   // do not change.
   SCENE_BLOCKED_REASON_NO_ACTIONS = 1;
   // RollSceneCheck: no scene is open in the session, or it is not the one
-  // the action belongs to.
+  // the action belongs to. PutOnStage: no scene is open, so there is no
+  // stage.
   SCENE_BLOCKED_REASON_NO_OPEN_SCENE = 2;
   // RollSceneCheck: the character already rolled this action while the
   // scene has been open. The master closes and opens the scene again to
@@ -34,6 +35,8 @@ enum SceneBlockedReason {
   // RollSceneCheck: the caller has no living character in the campaign to
   // roll for.
   SCENE_BLOCKED_REASON_NO_CHARACTER = 5;
+  // PutOnStage: 4 NPCs are on the stage already (the limit, MR-031).
+  SCENE_BLOCKED_REASON_STAGE_FULL = 6;
 }
 
 // SceneBlocked is the error detail of a scene call's `failed_precondition`
@@ -68,6 +71,68 @@ message OpenSceneInfo {
   // Only the master gets them: a player never gets a clue here, revealed or
   // not (the revealed ones are in their notes, NotesService.ListNotes).
   repeated meurpg.maps.v1.SceneClue clues = 8;
+  // The NPCs "em cena", in the order they came in, at most 4 (MR-031). Every
+  // member gets the same list, each entry with only what a player may see
+  // (StageNpc). Empty when nobody is on the stage.
+  repeated StageNpc stage = 10;
+}
+
+// StageNpc is an NPC on the stage of the open scene, as the caller sees it
+// (MR-031, RN-20). A player gets the name and the portrait and nothing else:
+// not the NPC's kind, hit points, armor class, sheet or character ID. The
+// master gets the character ID too, which the stage's calls take.
+message StageNpc {
+  // The place on the stage (a UUID, made when the NPC came in). It is not
+  // the character's ID: a player may use it to tell the entries apart, and
+  // it names nothing.
+  string id = 1;
+  // The NPC's name.
+  string name = 2;
+  // The portrait's URL ("/images/<id>"; "/images/<id>/thumb" is its
+  // thumbnail), or empty when the NPC has none and the app draws its
+  // initials. A player may fetch it only while the NPC is on the stage.
+  string portrait_url = 3;
+  // Whether the NPC is the one speaking now. At most one entry is.
+  bool speaking = 4;
+  // The character's ID (a UUID). Only the master gets it; a player's is
+  // always empty (RN-20).
+  string character_id = 5;
+}
+
+// PutOnStageRequest names the NPC.
+message PutOnStageRequest {
+  string campaign_id = 1;
+  // A living NPC of the campaign (a UUID).
+  string character_id = 2;
+}
+
+// PutOnStageResponse returns the stage as it is now.
+message PutOnStageResponse {
+  repeated StageNpc stage = 1;
+}
+
+// TakeOffStageRequest names the NPC.
+message TakeOffStageRequest {
+  string campaign_id = 1;
+  // The NPC to take off (a UUID).
+  string character_id = 2;
+}
+
+// TakeOffStageResponse returns the stage as it is now.
+message TakeOffStageResponse {
+  repeated StageNpc stage = 1;
+}
+
+// SetSpeakerRequest names the NPC that speaks.
+message SetSpeakerRequest {
+  string campaign_id = 1;
+  // An NPC on the stage (a UUID), or empty for nobody speaking.
+  string character_id = 2;
+}
+
+// SetSpeakerResponse returns the stage as it is now.
+message SetSpeakerResponse {
+  repeated StageNpc stage = 1;
 }
 
 // SceneActionView is one action of the open scene, with the caller's numbers.

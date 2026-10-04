@@ -383,6 +383,51 @@ ORDER BY seq DESC;
 SELECT open_scene_point_id FROM game_sessions
 WHERE campaign_id = $1 AND ended_at IS NULL;
 
+-- The stage (MR-031): the NPCs "em cena" in the open scene. Every write below
+-- runs after the caller locked the open session's row.
+
+-- name: ListStage :many
+-- The session's stage, in the order the NPCs came in.
+SELECT * FROM stage_npcs
+WHERE game_session_id = $1
+ORDER BY position, id;
+
+-- name: InsertStageNPC :one
+-- An NPC comes in after the ones already there: the highest position plus one.
+INSERT INTO stage_npcs (game_session_id, character_id, position, created_at)
+VALUES (
+    sqlc.arg(game_session_id), sqlc.arg(character_id),
+    (SELECT COALESCE(max(position) + 1, 0)::INT4 FROM stage_npcs WHERE game_session_id = sqlc.arg(game_session_id)),
+    sqlc.arg(created_at)
+)
+RETURNING *;
+
+-- name: DeleteStageNPC :execrows
+DELETE FROM stage_npcs
+WHERE game_session_id = $1 AND character_id = $2;
+
+-- name: ClearStage :execrows
+-- The scene closed or changed: nobody is on the stage.
+DELETE FROM stage_npcs
+WHERE game_session_id = $1;
+
+-- name: ClearStageSpeakers :exec
+UPDATE stage_npcs SET speaking = false
+WHERE game_session_id = $1 AND speaking;
+
+-- name: SetStageSpeaker :execrows
+UPDATE stage_npcs SET speaking = true
+WHERE game_session_id = $1 AND character_id = $2;
+
+-- name: ListEncounterCombatEvents :many
+-- The events that count in the combat highlights (MR-032), oldest first, with
+-- the undos that may take them back.
+SELECT id, kind, payload FROM session_events
+WHERE encounter_id = $1
+  AND kind IN ('attack_rolled', 'damage_rolled', 'damage_applied', 'spell_cast', 'action_taken', 'action_undone')
+ORDER BY seq
+LIMIT 20000;
+
 -- Progression (MR-016): what the XP awards read from the combats and the log.
 
 -- name: GetCampaignEncounterXP :one

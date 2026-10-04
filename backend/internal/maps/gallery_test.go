@@ -442,6 +442,10 @@ func (noCharacters) MapCharacters(context.Context, string, []string) ([]*charact
 	return nil, errors.New("not in this test")
 }
 
+func (noCharacters) ClearPortraits(context.Context, pgx.Tx, string, string) (int64, error) {
+	return 0, errors.New("not in this test")
+}
+
 type noLive struct{}
 
 func (noLive) OnScreen(context.Context, string) (string, string, error) {
@@ -449,6 +453,10 @@ func (noLive) OnScreen(context.Context, string) (string, string, error) {
 }
 
 func (noLive) Publish(string, bool, *playv1.WatchGameSessionResponse) {}
+
+func (noLive) ImageOnStage(context.Context, string, string) (bool, error) {
+	return false, errors.New("not in this test")
+}
 
 func (noLive) OpenScenePoint(context.Context, string) (string, error) {
 	return "", errors.New("not in this test")
