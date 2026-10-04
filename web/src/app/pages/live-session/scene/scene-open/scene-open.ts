@@ -20,7 +20,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { actionSubtitle, actionTitle } from '../../../../core/maps/scene-actions';
 import { type CluePlayer, clueCount } from '../../../../core/maps/scene-clues';
 import type { MapState } from '../../../../core/maps/map-state';
-import { glueShort, joinDots } from '../../../../core/format/text';
+import { joinDots, tieShortWords } from '../../../../core/format/text';
 import { SceneClient } from '../../../../core/play/scene-client';
 import { sceneErrorMessage } from '../../../../core/play/scene-errors';
 import type { SceneState } from '../../../../core/play/scene-state';
@@ -30,6 +30,7 @@ import { PHONE_QUERY, mediaQuery } from '../../../../shared/map-view/media-query
 import { SceneClues } from '../scene-clues/scene-clues';
 import { SceneHooks } from '../scene-hooks/scene-hooks';
 import { SceneRollLine } from '../scene-roll-line/scene-roll-line';
+import { StageMaster } from '../stage-master/stage-master';
 import { openScenePicker } from '../scene-picker/scene-picker';
 
 /**
@@ -52,7 +53,7 @@ import { openScenePicker } from '../scene-picker/scene-picker';
  */
 @Component({
   selector: 'app-scene-open',
-  imports: [MatButtonModule, MatIconModule, SceneClues, SceneHooks, SceneRollLine],
+  imports: [MatButtonModule, MatIconModule, SceneClues, SceneHooks, SceneRollLine, StageMaster],
   templateUrl: './scene-open.html',
   styleUrl: './scene-open.scss',
 })
@@ -73,12 +74,13 @@ export class SceneOpen {
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly title = actionTitle;
-  protected readonly glue = glueShort;
   protected readonly subtitle = actionSubtitle;
 
   private readonly heading = viewChild<ElementRef<HTMLElement>>('heading');
 
   protected readonly scene = computed(() => this.state().scene());
+  /** The scene's name with "A" tied to the next word (no break after it). */
+  protected readonly sceneName = computed(() => tieShortWords(this.scene()?.name ?? ''));
   protected readonly since = computed(() => {
     const at = this.scene()?.openedAt;
     return at ? `Aberta para os jogadores desde ${formatClock(timestampDate(at))}` : 'Aberta para os jogadores';

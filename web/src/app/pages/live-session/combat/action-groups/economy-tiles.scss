@@ -45,6 +45,13 @@
   line-height: 22px;
 }
 
+// The squares under the bar ("5 quadrados livres"): the table counts in squares.
+.tile__sub {
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--mr-ink-muted);
+}
+
 .tile__word--num {
   font-family: var(--mr-font-display);
   font-size: 17px;

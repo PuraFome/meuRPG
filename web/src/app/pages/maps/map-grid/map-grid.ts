@@ -12,10 +12,9 @@ import { CampaignsService } from '../../../core/campaigns/campaigns.service';
 import {
   MAX_COLUMNS,
   MIN_COLUMNS,
-  formatMeters,
   gridRows,
-  squaresToMeters,
 } from '../../../core/combat/combat-grid';
+import { formatMeters, squaresToMeters } from '../../../core/units';
 import { mapErrorMessage } from '../../../core/maps/map-errors';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { CombatMap } from '../../../shared/combat-map/combat-map';

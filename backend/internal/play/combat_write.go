@@ -67,6 +67,15 @@ const (
 	eventStageChanged = "stage_changed"
 )
 
+// The kinds of the second Etapa 8 wave. The master gave a character one more
+// attempt at a scene action (scene_attempt_granted, MR-015); the other is
+// slice 8.11's: a player ended their part of a joint turn (turn_part_ended,
+// MR-013), declared here so the CHECK of session_events and its test agree.
+const (
+	eventSceneAttemptGranted = "scene_attempt_granted"
+	eventTurnPartEnded       = "turn_part_ended" // slice 8.11
+)
+
 // combatWrite describes one change to a combat: who makes it, the idempotency
 // key, the kind of event it becomes, and the combat it is about (empty when
 // the change creates it).

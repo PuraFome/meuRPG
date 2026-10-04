@@ -8,6 +8,8 @@ import {
   SceneActionViewSchema,
   type SceneRoll,
   SceneRollSchema,
+  type StageNpc,
+  StageNpcSchema,
 } from '../../../gen/meurpg/play/v1/scene_pb';
 import { DiceRollSchema } from '../../../gen/meurpg/play/v1/combat_pb';
 import type { SceneDie } from './scene-client';
@@ -45,12 +47,33 @@ export function sceneRoll(
   return create(SceneRollSchema, init);
 }
 
+/**
+ * An NPC on the stage as the server sends it. A player's entry has no
+ * `characterId` (RN-20); the master's has one (`ch-<id>` unless given).
+ */
+export function stageNpc(
+  id: string,
+  name: string,
+  partial: MessageInitShape<typeof StageNpcSchema> & { master?: boolean } = {},
+): StageNpc {
+  const { master, ...rest } = partial;
+  return create(StageNpcSchema, {
+    id,
+    name,
+    characterId: master ? `ch-${id}` : '',
+    portraitUrl: '',
+    speaking: false,
+    ...rest,
+  });
+}
+
 /** "A carroça tombada" as the master sees it: five actions with their DCs. */
 export function masterScene(
-  rolls: SceneRoll[] = [],
+  rolls: SceneRoll[] = [], stage: StageNpc[] = [],
   extra: MessageInitShape<typeof OpenSceneInfoSchema> = {},
 ): OpenSceneInfo {
   return create(OpenSceneInfoSchema, {
+    stage,
     pointId: 'p1',
     name: 'A carroça tombada',
     description: 'Uma carroça de mercador tombada na estrada.',
@@ -68,8 +91,9 @@ export function masterScene(
 }
 
 /** The same scene as Pensantus sees it: his bonuses, no DC. */
-export function playerScene(rolls: SceneRoll[] = []): OpenSceneInfo {
+export function playerScene(rolls: SceneRoll[] = [], stage: StageNpc[] = []): OpenSceneInfo {
   return create(OpenSceneInfoSchema, {
+    stage,
     pointId: 'p1',
     name: 'A carroça tombada',
     description: 'Uma carroça de mercador tombada na estrada.',
@@ -95,6 +119,12 @@ export class FakeSceneClient {
     roll: { diceCount: 1, diceSides: 20, faces: [11], modifier: 6, total: 17 },
   });
 
+  /** The stage the stage calls answer with; `names` says who each NPC is. */
+  stage: StageNpc[] = [];
+  names: Record<string, string> = {};
+  /** Holds the next stage call until `release` runs, to prove one write per NPC. */
+  hold: Promise<void> | null = null;
+
   private record(call: string): void {
     this.calls.push(call);
     if (this.failWith) {
@@ -114,6 +144,29 @@ export class FakeSceneClient {
   async get(): Promise<OpenSceneInfo | null> {
     this.record('get');
     return this.scene;
+  }
+
+  async putOnStage(_campaignId: string, characterId: string): Promise<readonly StageNpc[]> {
+    this.record(`put ${characterId}`);
+    await this.hold;
+    if (!this.stage.some((n) => n.characterId === characterId)) {
+      this.stage = [...this.stage, stageNpc(`s-${characterId}`, this.names[characterId] ?? characterId, { master: true, characterId })];
+    }
+    return this.stage;
+  }
+
+  async takeOffStage(_campaignId: string, characterId: string): Promise<readonly StageNpc[]> {
+    this.record(`take ${characterId}`);
+    await this.hold;
+    this.stage = this.stage.filter((n) => n.characterId !== characterId);
+    return this.stage;
+  }
+
+  async setSpeaker(_campaignId: string, characterId: string): Promise<readonly StageNpc[]> {
+    this.record(`speaker ${characterId || 'nobody'}`);
+    await this.hold;
+    this.stage = this.stage.map((n) => ({ ...n, speaking: n.characterId === characterId }));
+    return this.stage;
   }
 
   async roll(_campaignId: string, actionId: string, die: SceneDie, key: string): Promise<SceneRoll> {

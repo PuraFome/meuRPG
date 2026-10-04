@@ -28,6 +28,10 @@
 }
 
 // Básico and Equipamento: one column on a phone, two, then three.
+.basic-portrait {
+  margin-bottom: var(--mr-space-5);
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

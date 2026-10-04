@@ -53,6 +53,17 @@
       />
       }
 
+      @if (highlightsFor(); as ended) {
+        <app-highlights-card
+          [campaignId]="campaignId()"
+          [encounterId]="ended.id"
+          [subtitle]="highlightsSub()"
+          [characterId]="ownCharacterId()"
+          [characterName]="ownCharacterName()"
+          (closed)="closeHighlights()"
+        />
+      }
+
       @if (combat.shown()) {
         <app-combat-view
           class="combat"
@@ -63,6 +74,7 @@
           [vitals]="vitals()"
           [partyInfo]="partyInfo()"
           [sessionNumber]="s.sessionNumber"
+          [cardAbove]="!!highlightsFor()"
           [armorClass]="playerSheet()?.armorClass ?? null"
           [diceMode]="campaign()?.diceMode ?? 1"
           [dicePreference]="campaign()?.dicePreference ?? 1"

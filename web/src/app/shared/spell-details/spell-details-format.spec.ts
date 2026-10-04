@@ -1,4 +1,4 @@
-import { SpellDetailsVm } from '../character-editor.types';
+import { SpellDetailsVm } from './spell-details.types';
 import {
   formatCastingTime,
   formatComponents,
@@ -68,10 +68,10 @@ describe('formatRange', () => {
   });
 
   it('turns feet into metres at 5 ft = 1,5 m', () => {
-    expect(formatRange(range('ranged', 5)).text).toBe('1,5 m');
-    expect(formatRange(range('ranged', 60)).text).toBe('18 m');
-    expect(formatRange(range('ranged', 120)).text).toBe('36 m');
-    expect(formatRange(range('ranged', 25)).text).toBe('7,5 m');
+    expect(formatRange(range('ranged', 5)).text).toBe('1,5\u00a0m');
+    expect(formatRange(range('ranged', 60)).text).toBe('18\u00a0m');
+    expect(formatRange(range('ranged', 120)).text).toBe('36\u00a0m');
+    expect(formatRange(range('ranged', 25)).text).toBe('7,5\u00a0m');
   });
 
   it('uses kilometres from 1.000 m', () => {
@@ -166,7 +166,7 @@ describe('spellSubtitle and spellFields', () => {
     } as SpellDetailsVm;
     expect(spellFields(knock)).toEqual({
       castingTime: { text: '1 ação' },
-      range: { text: '18 m' },
+      range: { text: '18\u00a0m' },
       components: { text: 'V' },
       duration: { text: 'Instantânea' },
     });

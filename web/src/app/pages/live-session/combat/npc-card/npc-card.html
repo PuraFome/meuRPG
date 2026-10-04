@@ -3,13 +3,22 @@
     <!-- The phone's one turn card (E6-12): whose turn, then what to do, then "Próximo turno". -->
     <span class="mr-label card__kicker">{{ round() }} · {{ encounter().name }}</span>
     <div class="card__who">
-      <app-combatant-token [initial]="initial()" [npc]="isNpc()" [current]="true" [size]="40" />
+      @if (isNpc()) {
+        <app-portrait [src]="subject().portraitUrl" [name]="subject().label" [size]="56" fit="cover" [decorative]="true" />
+      } @else {
+        <app-combatant-token [initial]="initial()" [npc]="isNpc()" [current]="true" [size]="40" />
+      }
       <h2 class="card__title card__title--turn" id="npc-title">Vez do {{ subject().label }}</h2>
     </div>
   } @else {
-    <h2 class="card__title" id="npc-title">
-      {{ isNpc() ? 'Ações do ' + subject().label : 'Dano de ' + subject().label }}
-    </h2>
+    <div class="card__who card__who--desk">
+      @if (isNpc()) {
+        <app-portrait [src]="subject().portraitUrl" [name]="subject().label" [size]="64" fit="cover" [decorative]="true" />
+      }
+      <h2 class="card__title" id="npc-title">
+        {{ isNpc() ? 'Ações do ' + subject().label : 'Dano de ' + subject().label }}
+      </h2>
+    </div>
   }
 
   @if (isNpc()) {
@@ -26,9 +35,9 @@
           <span class="stat__val">{{ stats().ac }}</span>
         </div>
       }
-      <div class="stat">
+      <div class="stat stat--wide">
         <span class="stat__cap">Deslocamento</span>
-        <span class="stat__val">{{ stats().speed }}</span>
+        <span class="stat__val">{{ stats().speed.meters }}<small>&nbsp;· {{ stats().speed.squares }}</small></span>
       </div>
     </div>
 
@@ -41,6 +50,9 @@
       </li>
       <li class="chip" [class.chip--used]="subject().reactionUsed">
         Reação <span class="chip__word">{{ subject().reactionUsed ? 'Usada' : 'Disponível' }}</span>
+      </li>
+      <li class="chip" [class.chip--used]="subject().movementLeftFt <= 0">
+        Movimento <span class="chip__word">{{ stats().movement }}</span>
       </li>
     </ul>
 

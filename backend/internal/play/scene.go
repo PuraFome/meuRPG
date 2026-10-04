@@ -31,19 +31,25 @@ import (
 //     (game_sessions.open_scene_point_id), like showing an image: a hidden
 //     point can be opened, and it stays hidden on the map.
 //   - Every member reads the open scene (GetOpenScene). A player gets their
-//     own character's bonus on each action, from the rules engine, and
-//     never a DC, a pass or fail, or another player's roll (RN-20, question
-//     52). The master gets the DCs and every roll.
-//   - A player rolls each action once while the scene is open (question 55):
-//     the app rolls the d20, or takes a typed one (RN-18). Closing the scene
-//     and opening it again starts afresh: a roll counts for the opening that
-//     is the session's latest `scene_opened` event.
+//     own character's bonus on each action, from the rules engine, and never
+//     another player's roll. A DC, and the pass or fail of their own rolls,
+//     come only when the master turned the scene's "Mostrar a CD aos
+//     jogadores" on (map_points.show_dc, question 52, RN-20); the master
+//     always gets the DCs and every roll.
+//   - A player rolls each action as many times as the master allowed
+//     (scene_actions.max_attempts: 1 to 5, or unlimited, question 55): the
+//     app rolls the d20, or takes a typed one (RN-18). The master may give
+//     one character one more attempt (GrantSceneAttempt). Closing the scene
+//     and opening it again starts afresh: the rolls and the grants count for
+//     the opening that is the session's latest `scene_opened` event.
 //   - A scene may have no actions (question 63): any SCENE point opens. The
 //     master also reads the point's hooks and clues in the open scene (MR-029);
 //     a player never does (RN-20).
 //   - Opening a scene makes it "discovered" for the group (MR-030).
 //   - Opening, closing and rolling are session events (ADR-0007): ids and
-//     numbers only, never a name or the master's words.
+//     numbers only, never a name or the master's words. A roll also keeps
+//     whether the scene showed its DC when it was made: the session summary
+//     counts only those (summary.go).
 //   - The NPCs "em cena" (the stage, stage.go) go with the scene: every member
 //     reads them in GetOpenScene, and closing or changing the scene empties
 //     the stage.
@@ -68,6 +74,17 @@ type sceneRollEvent struct {
 	Physical bool   `json:"physical,omitempty"`
 	// Passed is set only when the action had a DC.
 	Passed *bool `json:"passed,omitempty"`
+	// DCShown says the scene showed its DC to the players when the roll was
+	// made. The session summary counts a roll only when it is true, so a
+	// scene that hid its DC never gives a pass or a fail to anyone (RN-20).
+	DCShown bool `json:"dc_shown,omitempty"`
+}
+
+// sceneGrantEvent is the payload of scene_attempt_granted: the action; the
+// character is the event's.
+type sceneGrantEvent struct {
+	PointID  string `json:"point_id"`
+	ActionID string `json:"action_id"`
 }
 
 // errScene is the failed_precondition of the scene calls, with the
@@ -262,27 +279,33 @@ func (s *Service) GetOpenScene(
 	if err != nil {
 		return nil, err
 	}
+	info, err := s.openSceneInfo(ctx, m)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&playv1.GetOpenSceneResponse{Scene: info}), nil
+}
+
+// openSceneInfo reads the open scene as the caller sees it: nil when none is
+// open.
+func (s *Service) openSceneInfo(ctx context.Context, m authz.Membership) (*playv1.OpenSceneInfo, error) {
 	session, err := s.openSession(ctx, m.CampaignID)
 	if err != nil {
 		return nil, err
 	}
-	res := &playv1.GetOpenSceneResponse{}
 	if session.OpenScenePointID == nil {
-		return connect.NewResponse(res), nil
+		return nil, nil
 	}
 	scene, err := s.maps.ScenePoint(ctx, m.CampaignID, *session.OpenScenePointID)
 	if connect.CodeOf(err) == connect.CodeNotFound {
 		// The point stopped being a scene since it was opened (the master
 		// changed its kind): no scene is open.
-		return connect.NewResponse(res), nil
+		return nil, nil
 	}
 	if err != nil {
 		return nil, s.dbError(ctx, "read the open scene", err)
 	}
-	if res.Scene, err = s.sceneInfo(ctx, m, session, scene); err != nil {
-		return nil, err
-	}
-	return connect.NewResponse(res), nil
+	return s.sceneInfo(ctx, m, session, scene)
 }
 
 // myCharacter is the caller's own living character, if they have one: the
@@ -304,11 +327,13 @@ func (s *Service) myCharacter(ctx context.Context, m authz.Membership) (link.Cha
 
 // sceneInfo builds the open scene as the caller sees it (RN-20, question 52):
 // the master gets the DCs and every roll with its pass or fail; a player gets
-// no DC, their own character's bonus on each action, and only their own
-// rolls, with no pass or fail.
+// their own character's bonus and attempts left on each action and only their
+// own rolls, and the DCs and the pass or fail of those rolls only when the
+// scene shows its DC.
 func (s *Service) sceneInfo(ctx context.Context, m authz.Membership, session playdb.GameSession, scene link.Scene) (*playv1.OpenSceneInfo, error) {
 	master := m.Role == authz.RoleMaster
-	info := &playv1.OpenSceneInfo{PointId: scene.PointID, Name: scene.Name, Description: scene.Description}
+	sees := master || scene.ShowDC // who reads the DCs (the pass or fail follows each roll's own flag)
+	info := &playv1.OpenSceneInfo{PointId: scene.PointID, Name: scene.Name, Description: scene.Description, ShowDc: scene.ShowDC}
 
 	mine, hasMine, err := s.myCharacter(ctx, m)
 	if err != nil {
@@ -324,15 +349,37 @@ func (s *Service) sceneInfo(ctx context.Context, m authz.Membership, session pla
 			return nil, s.dbError(ctx, "work out the scene's bonuses", err)
 		}
 	}
+	// The opening this read belongs to: its rolls and its grants.
+	opened, err := s.queries.GetOpenSceneEvent(ctx, session.ID)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		opened.Seq = 0 // opened before events were kept: every roll counts
+	case err != nil:
+		return nil, s.dbError(ctx, "read when the scene opened", err)
+	default:
+		info.OpenedAt = timestamppb.New(opened.CreatedAt)
+	}
+	tally, err := tallyAttempts(ctx, s.queries, session.ID, opened.Seq)
+	if err != nil {
+		return nil, s.dbError(ctx, "count the scene's attempts", err)
+	}
+
 	for i, a := range scene.Actions {
-		v := &playv1.SceneActionView{Id: a.ID, Key: a.Key, Name: a.Name, CheckName: s.roster.SceneCheckName(a.Key)}
-		if master {
+		v := &playv1.SceneActionView{
+			Id: a.ID, Key: a.Key, Name: a.Name, CheckName: s.roster.SceneCheckName(a.Key),
+			MaxAttempts: clamp32(a.MaxAttempts, 0, 5),
+		}
+		if sees {
 			v.Dc = clamp32(a.DC, 0, 30)
-		} else if i < len(options) && options[i].Known {
+		}
+		if !master && i < len(options) && options[i].Known {
 			v.Bonus = ptr(clamp32(options[i].Bonus, math.MinInt32, math.MaxInt32))
 			if options[i].HasPassive {
 				v.Passive = ptr(clamp32(options[i].Passive, math.MinInt32, math.MaxInt32))
 			}
+		}
+		if hasMine {
+			v.AttemptsLeft = tally.left(a, mine.ID)
 		}
 		info.Actions = append(info.Actions, v)
 	}
@@ -344,16 +391,7 @@ func (s *Service) sceneInfo(ctx context.Context, m authz.Membership, session pla
 		}
 	}
 
-	opened, err := s.queries.GetOpenSceneEvent(ctx, session.ID)
-	switch {
-	case errors.Is(err, pgx.ErrNoRows):
-		opened.Seq = 0 // opened before events were kept: every roll counts
-	case err != nil:
-		return nil, s.dbError(ctx, "read when the scene opened", err)
-	default:
-		info.OpenedAt = timestamppb.New(opened.CreatedAt)
-	}
-	rolls, err := s.sceneRolls(ctx, m, session.ID, opened.Seq, mine.ID, hasMine)
+	rolls, err := s.sceneRolls(ctx, m, scene, session.ID, opened.Seq, tally, mine.ID, hasMine)
 	if err != nil {
 		return nil, err
 	}
@@ -400,8 +438,10 @@ func (s *Service) masterSceneNotes(ctx context.Context, campaignID string, scene
 
 // sceneRolls reads the rolls of the opening that began at event number
 // after, newest first: all of them for the master, the caller's own
-// character's for a player.
-func (s *Service) sceneRolls(ctx context.Context, m authz.Membership, sessionID string, after int32, mineID string, hasMine bool) ([]*playv1.SceneRoll, error) {
+// character's for a player. The pass or fail goes to the master, and to a
+// player for the rolls made while the scene showed its DC (RN-20); the attempts
+// left, only to the master.
+func (s *Service) sceneRolls(ctx context.Context, m authz.Membership, scene link.Scene, sessionID string, after int32, tally attemptTally, mineID string, hasMine bool) ([]*playv1.SceneRoll, error) {
 	master := m.Role == authz.RoleMaster
 	if !master && !hasMine {
 		return nil, nil // a player with no living character has no rolls
@@ -435,23 +475,81 @@ func (s *Service) sceneRolls(ctx context.Context, m authz.Membership, sessionID 
 		if err := json.Unmarshal(r.Payload, &ev); err != nil {
 			return nil, s.dbError(ctx, "read a scene roll", fmt.Errorf("decode the roll of event %s: %w", r.ID, err))
 		}
-		out = append(out, sceneRollToProto(r.ID, deref(r.CharacterID), names[deref(r.CharacterID)], r.CreatedAt, ev, master))
+		// One rule for pass or fail: whether the scene showed its DC when the
+		// roll was made (the same flag the session summary counts).
+		roll := sceneRollToProto(r.ID, deref(r.CharacterID), names[deref(r.CharacterID)], r.CreatedAt, ev, master || ev.DCShown)
+		if master {
+			// An action the master removed since has no limit to read.
+			if i := slices.IndexFunc(scene.Actions, func(a link.SceneAction) bool { return a.ID == ev.ActionID }); i >= 0 {
+				roll.AttemptsLeft = tally.left(scene.Actions[i], deref(r.CharacterID))
+			}
+		}
+		out = append(out, roll)
 	}
 	return out, nil
 }
 
-// sceneRollToProto builds a roll as the caller sees it: the pass or fail goes
-// only to the master (RN-20).
-func sceneRollToProto(id, characterID, characterName string, at time.Time, ev sceneRollEvent, master bool) *playv1.SceneRoll {
+// sceneRollToProto builds a roll as the caller sees it: showPassed says
+// whether the pass or fail goes to the caller (RN-20).
+func sceneRollToProto(id, characterID, characterName string, at time.Time, ev sceneRollEvent, showPassed bool) *playv1.SceneRoll {
 	out := &playv1.SceneRoll{
 		Id: id, ActionId: ev.ActionID, CharacterId: characterID, CharacterName: characterName,
 		Roll:     diceRoll(1, 20, []int32{ev.D20}, ev.Modifier, ev.Total, ev.Physical),
 		RolledAt: timestamppb.New(at),
 	}
-	if master {
+	if showPassed {
 		out.Passed = ev.Passed
 	}
 	return out
+}
+
+// attemptTally counts, for one opening of a scene, each character's rolls and
+// the attempts the master granted, per action.
+type attemptTally struct {
+	rolled, granted map[attemptKey]int
+}
+
+type attemptKey struct{ characterID, actionID string }
+
+// tallyAttempts reads the rolls and the grants of the opening that began at
+// event number after.
+func tallyAttempts(ctx context.Context, q *playdb.Queries, sessionID string, after int32) (attemptTally, error) {
+	t := attemptTally{rolled: map[attemptKey]int{}, granted: map[attemptKey]int{}}
+	rolls, err := q.ListSceneRollEvents(ctx, playdb.ListSceneRollEventsParams{GameSessionID: sessionID, Seq: after})
+	if err != nil {
+		return t, fmt.Errorf("list the scene's rolls: %w", err)
+	}
+	for _, r := range rolls {
+		var ev sceneRollEvent
+		if err := json.Unmarshal(r.Payload, &ev); err != nil {
+			return t, fmt.Errorf("decode the roll of event %s: %w", r.ID, err)
+		}
+		t.rolled[attemptKey{deref(r.CharacterID), ev.ActionID}]++
+	}
+	grants, err := q.ListSceneAttemptGrantEvents(ctx, playdb.ListSceneAttemptGrantEventsParams{GameSessionID: sessionID, Seq: after})
+	if err != nil {
+		return t, fmt.Errorf("list the scene's granted attempts: %w", err)
+	}
+	for _, g := range grants {
+		var ev sceneGrantEvent
+		if err := json.Unmarshal(g.Payload, &ev); err != nil {
+			return t, fmt.Errorf("decode a granted attempt: %w", err)
+		}
+		t.granted[attemptKey{deref(g.CharacterID), ev.ActionID}]++
+	}
+	return t, nil
+}
+
+// left is how many attempts the character has at the action: the limit minus
+// their rolls plus the grants, never below 0. Unset for an unlimited action.
+// Lowering the limit below what they used leaves them with 0 and erases
+// nothing.
+func (t attemptTally) left(a link.SceneAction, characterID string) *int32 {
+	if a.MaxAttempts == 0 {
+		return nil
+	}
+	k := attemptKey{characterID, a.ID}
+	return ptr(clamp32(max(a.MaxAttempts-t.rolled[k]+t.granted[k], 0), 0, math.MaxInt32))
 }
 
 // RollSceneCheck implements playv1connect.PlayServiceHandler.
@@ -528,6 +626,11 @@ func (s *Service) RollSceneCheck(
 		if session.OpenScenePointID == nil {
 			return errScene(playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_NO_OPEN_SCENE, "no scene is open")
 		}
+		// The scene is read through the maps module, outside this transaction
+		// (the interface takes none): a master's change to show_dc or to a limit
+		// that races this roll may be missed by it. The effect is one roll
+		// recorded with the old flag, so counted in the summary or not; the
+		// player's own attempts are safe, the session row is locked.
 		scene, err := s.maps.ScenePoint(ctx, m.CampaignID, *session.OpenScenePointID)
 		if connect.CodeOf(err) == connect.CodeNotFound {
 			return errScene(playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_NO_OPEN_SCENE, "no scene is open") // no longer a scene point
@@ -565,24 +668,19 @@ func (s *Service) RollSceneCheck(
 			return errScene(playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_NO_CHARACTER, "your character has no numbers for this check")
 		}
 
-		// One roll per character per action while the scene is open: the rolls
-		// since its opening (question 55).
+		// As many attempts per character per action as the master allowed while
+		// the scene is open: the rolls and the grants since its opening
+		// (question 55).
 		opened, err := q.GetOpenSceneEvent(ctx, session.ID)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			return fmt.Errorf("read when the scene opened: %w", err)
 		}
-		rolled, err := q.ListSceneRollEvents(ctx, playdb.ListSceneRollEventsParams{GameSessionID: session.ID, Seq: opened.Seq})
+		tally, err := tallyAttempts(ctx, q, session.ID, opened.Seq)
 		if err != nil {
-			return fmt.Errorf("list the scene's rolls: %w", err)
+			return err
 		}
-		for _, r := range rolled {
-			var prev sceneRollEvent
-			if err := json.Unmarshal(r.Payload, &prev); err != nil {
-				return fmt.Errorf("decode the roll of event %s: %w", r.ID, err)
-			}
-			if r.CharacterID != nil && *r.CharacterID == who.ID && prev.ActionID == action.ID {
-				return errScene(playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_ALREADY_ROLLED, "this action was already rolled; the master closes and opens the scene again to allow another roll")
-			}
+		if left := tally.left(action, who.ID); left != nil && *left == 0 {
+			return errScene(playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_ALREADY_ROLLED, "no attempt left at this action; the master may grant one more")
 		}
 
 		bonus := options[0].Bonus
@@ -593,7 +691,7 @@ func (s *Service) RollSceneCheck(
 		ev = sceneRollEvent{
 			PointID: scene.PointID, ActionID: action.ID, Key: action.Key,
 			D20: clamp32(face, 1, 20), Modifier: clamp32(bonus, math.MinInt32, math.MaxInt32), Total: clamp32(roll.Total, math.MinInt32, math.MaxInt32),
-			Physical: roll.Physical,
+			Physical: roll.Physical, DCShown: scene.ShowDC,
 		}
 		if action.DC > 0 {
 			ev.Passed = ptr(roll.Total >= action.DC)
@@ -623,8 +721,104 @@ func (s *Service) RollSceneCheck(
 			}},
 		})
 	}
-	// The caller is a player: no pass or fail in the answer.
+	// The caller is a player: the pass or fail is in the answer only when the
+	// scene showed its DC (RN-20).
 	return connect.NewResponse(&playv1.RollSceneCheckResponse{
-		Roll: sceneRollToProto(rollID, characterID, name, at, ev, false),
+		Roll: sceneRollToProto(rollID, characterID, name, at, ev, ev.DCShown),
 	}), nil
+}
+
+// GrantSceneAttempt implements playv1connect.PlayServiceHandler.
+func (s *Service) GrantSceneAttempt(
+	ctx context.Context,
+	req *connect.Request[playv1.GrantSceneAttemptRequest],
+) (*connect.Response[playv1.GrantSceneAttemptResponse], error) {
+	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	if err != nil {
+		return nil, err
+	}
+	key, err := parseKey(req.Msg.GetIdempotencyKey())
+	if err != nil {
+		return nil, err
+	}
+	actionID, err := uuid.Parse(req.Msg.GetActionId())
+	if err != nil {
+		return nil, errSceneActionNotFound()
+	}
+	characterID, err := uuid.Parse(req.Msg.GetCharacterId())
+	if err != nil {
+		return nil, errSceneCharacterNotFound()
+	}
+
+	var granted bool
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := s.queries.WithTx(tx)
+		granted = false
+		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errNoOpenSession()
+		}
+		if err != nil {
+			return fmt.Errorf("lock the open session: %w", err)
+		}
+
+		// A retry of a grant already made changes nothing.
+		done, err := q.GetSessionEventByIdempotencyKey(ctx, playdb.GetSessionEventByIdempotencyKeyParams{GameSessionID: session.ID, IdempotencyKey: &key})
+		switch {
+		case err == nil:
+			var prev sceneGrantEvent
+			if done.Kind != eventSceneAttemptGranted || json.Unmarshal(done.Payload, &prev) != nil ||
+				prev.ActionID != actionID.String() || deref(done.CharacterID) != characterID.String() {
+				return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
+			}
+			return nil
+		case !errors.Is(err, pgx.ErrNoRows):
+			return fmt.Errorf("find the event of this idempotency key: %w", err)
+		}
+
+		if session.OpenScenePointID == nil {
+			return errScene(playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_NO_OPEN_SCENE, "no scene is open")
+		}
+		scene, err := s.maps.ScenePoint(ctx, m.CampaignID, *session.OpenScenePointID)
+		if connect.CodeOf(err) == connect.CodeNotFound {
+			return errScene(playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_NO_OPEN_SCENE, "no scene is open") // no longer a scene point
+		}
+		if err != nil {
+			return err
+		}
+		i := slices.IndexFunc(scene.Actions, func(a link.SceneAction) bool { return a.ID == actionID.String() })
+		if i < 0 {
+			return errSceneActionNotFound()
+		}
+		party, err := s.roster.CombatParty(ctx, m.CampaignID)
+		if err != nil {
+			return err
+		}
+		if !slices.ContainsFunc(party, func(c link.Character) bool { return c.ID == characterID.String() }) {
+			return errSceneCharacterNotFound()
+		}
+		if scene.Actions[i].MaxAttempts == 0 {
+			return nil // unlimited: there is nothing to add
+		}
+		c := &combatTx{tx: tx, q: q, session: session, now: s.now(), characterID: ptr(characterID.String())}
+		granted = true
+		_, err = insertSceneEvent(ctx, c, eventSceneAttemptGranted, &m.UserID, &key, sceneGrantEvent{PointID: scene.PointID, ActionID: scene.Actions[i].ID})
+		return err
+	})
+	if err != nil {
+		return nil, s.dbError(ctx, "grant a scene attempt", err)
+	}
+	if granted {
+		// The hint names nothing: the player reads the scene again.
+		s.publishSceneChanged(m.CampaignID)
+	}
+	info, err := s.openSceneInfo(ctx, m)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&playv1.GrantSceneAttemptResponse{Scene: info}), nil
+}
+
+func errSceneCharacterNotFound() error {
+	return connect.NewError(connect.CodeNotFound, errors.New("character not found"))
 }

@@ -1,7 +1,8 @@
-import { Component, input } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import type { LogGroup } from '../../../../core/combat/combat-log';
+import { PoolCardView } from './pool-card';
 
 /**
  * The rounds of the log (E6-11, E6-14, E6-15): the latest round first, each
@@ -12,7 +13,7 @@ import type { LogGroup } from '../../../../core/combat/combat-log';
  */
 @Component({
   selector: 'app-log-list',
-  imports: [MatIconModule],
+  imports: [MatIconModule, PoolCardView],
   template: `
     <div class="log" role="log" tabindex="0" [attr.aria-label]="'Registro do combate'">
       @for (g of groups(); track g.round) {
@@ -31,6 +32,10 @@ import type { LogGroup } from '../../../../core/combat/combat-log';
                     <span class="line__secret"><mat-icon aria-hidden="true">visibility_off</mat-icon>Só o mestre vê</span>
                   }
                 </span>
+                <!-- The card has the whole width of the line, under it, not the text's column. -->
+                @if (l.card; as card) {
+                  <app-pool-card class="line__card" [card]="card" (change)="conditions.emit($event)" />
+                }
               </li>
             }
           </ul>
@@ -44,4 +49,6 @@ import type { LogGroup } from '../../../../core/combat/combat-log';
 })
 export class LogList {
   readonly groups = input.required<readonly LogGroup[]>();
+  /** "Mudar as condições" under a pool spell: the creature whose conditions the master opens. */
+  readonly conditions = output<string>();
 }

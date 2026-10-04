@@ -50,6 +50,11 @@ import "meurpg/rules/v1/rules.proto";
 //     own PENDING character), and ContentService.ListContent. Inside those
 //     methods they are treated like a player.
 //   - An ID that is not a UUID is answered like an ID that does not exist.
+//   - The guided level-up (MR-040) is the player's own: GetLevelUpOptions and
+//     PreviewLevelUp are for the master and the owning player, while the
+//     character can level up; RollLevelUpHitPoints and LevelUpCharacter only
+//     for the owning player (the master edits the sheet as always); and
+//     ListLevelUps only for the master.
 //
 // Errors every method can return, besides those listed on each method:
 //   - `unauthenticated`: no valid session cookie.
@@ -302,6 +307,123 @@ service CharacterService {
   //     character stays in the campaign. The error carries a CharacterBlocked
   //     detail with reason NOT_PENDING.
   rpc RejectCharacter(RejectCharacterRequest) returns (RejectCharacterResponse);
+
+  // GetLevelUpOptions says what the next level of one of the character's
+  // classes gives, so the app can draw the guided level-up (MR-040, RN-12):
+  // the ability increase, the hit die, the new cantrips and spells, the
+  // subclass and the new feature options, and the numbers that change by
+  // themselves. It names the choices, never makes them: nothing is stored.
+  //
+  // Who may call it: the master, and the owning player, while
+  // Character.can_level_up is true. Anyone else asking about a character they
+  // cannot see gets `not_found`.
+  //
+  // Errors:
+  //   - `not_found`: the character is not in this campaign, or the caller may
+  //     not see it.
+  //   - `failed_precondition`: the character cannot level up now. The error
+  //     carries a CharacterBlocked detail with reason CANNOT_LEVEL_UP (it is
+  //     not marked for a milestone and has too little XP, it is at level 20,
+  //     or it is an NPC), CHARACTER_DEAD or AWAITING_APPROVAL.
+  //   - `invalid_argument`: class_key is not a class of the character.
+  rpc GetLevelUpOptions(GetLevelUpOptionsRequest) returns (GetLevelUpOptionsResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // PreviewLevelUp tells what the sheet would be like with these choices,
+  // without saving anything: the Summary step of the guided level-up
+  // ("Resumo", before and after). The server derives the new numbers (the web
+  // has no rules engine), so the app also reads here the prepared-spell maximum
+  // that an ability increase changes. The choices may be incomplete: the
+  // answer then carries the first refusal (LevelUpRefusal) next to the sheet
+  // as far as the choices go, so the app knows which step is missing.
+  //
+  // Who may call it, and the errors, are those of GetLevelUpOptions. A choice
+  // that LevelUpCharacter would answer `invalid_argument` to (an unknown key,
+  // a list too long) is `invalid_argument` here too.
+  rpc PreviewLevelUp(PreviewLevelUpRequest) returns (PreviewLevelUpResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // RollLevelUpHitPoints rolls the hit die of the class's next level, on the
+  // server, and keeps the result for this character, class and level:
+  // calling it again returns the same roll (it is not a reroll), so the
+  // result stays on record (RN-18). LevelUpCharacter takes it back with the
+  // method ROLLED_IN_APP. A roll that was never used (the player left the
+  // flow) is still there when they come back.
+  //
+  // Only the owning player may call it: the master keeps the editor.
+  //
+  // Errors:
+  //   - `not_found`: the character is not in this campaign, or the caller may
+  //     not see it.
+  //   - `permission_denied`: the caller is the master.
+  //   - `failed_precondition`: the character cannot level up now (a
+  //     CharacterBlocked detail with CANNOT_LEVEL_UP, CHARACTER_DEAD or
+  //     AWAITING_APPROVAL), or the campaign makes everybody roll physical dice
+  //     (a CharacterBlocked detail with DICE_FORCED_PHYSICAL).
+  //   - `invalid_argument`: idempotency_key is not a UUID, or class_key is not
+  //     a class of the character.
+  rpc RollLevelUpHitPoints(RollLevelUpHitPointsRequest) returns (RollLevelUpHitPointsResponse);
+
+  // LevelUpCharacter takes the character up a level with the player's choices
+  // (MR-040, RN-01's exception, RN-12). It works on a locked sheet: the
+  // server builds the new sheet from the stored one and the choices (the
+  // client never sends the whole sheet), refuses everything the level does
+  // not allow, and saves it all at once, keeping the record of the level-up
+  // for the master (ListLevelUps). The rest of the sheet stays locked.
+  //
+  // What it does not cover, the master does in the sheet editor
+  // (UpdateCharacter): the features listed in LevelUpOptions.master_adds
+  // (Mystic Arcanum, Spell Mastery, Signature Spells, Additional Magical
+  // Secrets, favored enemies and terrains); swapping a spell known for
+  // another, which the SRD lets Bards, Rangers, Sorcerers and Warlocks do when
+  // they level up (a level-up only adds spells, never removes one); and
+  // multiclassing and custom subclasses.
+  //
+  // Who may call it: only the owning player, and only while
+  // Character.can_level_up is true. The master keeps the sheet editor
+  // (UpdateCharacter). Afterwards can_level_up goes away by itself: the
+  // milestone mark's level has passed, or the XP does not reach the next level.
+  // Every session stream of the campaign gets `xp_changed`
+  // (WatchGameSessionResponse), so the sheets and the master's list read
+  // again.
+  //
+  // Errors:
+  //   - `not_found`: the character is not in this campaign, or the caller may
+  //     not see it.
+  //   - `permission_denied`: the caller is the master.
+  //   - `invalid_argument`: a choice is malformed (an unknown content key, a
+  //     list too long, no hit points method, a typed value that is not a
+  //     number).
+  //   - `aborted`: revision is not the character's current one (the master
+  //     changed the sheet, or an XP award came in); read it and try again.
+  //   - `failed_precondition`, with one of two details:
+  //     - CharacterBlocked: CANNOT_LEVEL_UP, CHARACTER_DEAD,
+  //       AWAITING_APPROVAL, or DICE_FORCED_IN_APP (a typed die result in a
+  //       campaign where everybody rolls in the app);
+  //     - LevelUpRefusal: the choices break a rule of the level (the field
+  //       and a reason code), or the in-app roll was never made.
+  rpc LevelUpCharacter(LevelUpCharacterRequest) returns (LevelUpCharacterResponse);
+
+  // ListLevelUps lists the level-ups of the campaign, newest first, a page
+  // at a time (page_size up to 50, page_token): the master's "O que mudou"
+  // (MR-040). Each carries what the player
+  // chose and when. With character_id, only that character's. The master is
+  // told by the stream (`xp_changed`) and reads here; there is no approval
+  // and no veto: the master can still edit the sheet as always.
+  //
+  // Only the master may call it.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist, or the caller is not a
+  //     member of it.
+  //   - `permission_denied`: the caller is a player.
+  //   - `invalid_argument`: page_size is not 1 to 50, or page_token is not one
+  //     this list gave.
+  rpc ListLevelUps(ListLevelUpsRequest) returns (ListLevelUpsResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
 }
 
 // CharacterKind is what a character is for. The kind never changes after
@@ -408,8 +530,10 @@ message Character {
   // reached the next level's, or the master marked a milestone and its level
   // on the sheet has not gone up since. Only the master and the owning player
   // get it; always false for anyone else, for NPCs, for a dead character and
-  // at level 20. The master raises the level on the sheet; the tag goes away
-  // when the level goes up.
+  // at level 20. The tag goes away when the level goes up. The owning player
+  // goes up with the guided level-up (GetLevelUpOptions, LevelUpCharacter),
+  // even on a locked sheet; the master raises the level in the sheet editor
+  // (UpdateCharacter).
   bool can_level_up = 23;
   // Why can_level_up is true: XP, or a MILESTONE. Unspecified when it is
   // false.
@@ -443,6 +567,12 @@ message CharacterSummary {
   // race's, such as "Gnomo das Rochas". Empty for a basic sheet.
   string race_name_pt = 8;
   google.protobuf.Timestamp created_at = 9;
+  // An NPC's portrait as a URL ("/images/<id>"; "/images/<id>/thumb" is its
+  // thumbnail), as Combatant.portrait_url, or empty for none and for a
+  // player's character. Only the master lists NPCs, so only the master gets
+  // it (MR-031): the app draws "Pôr em cena" with it, with no read of each
+  // sheet.
+  string portrait_url = 10;
 }
 
 // CharacterBlockedReason says why a character cannot be changed now.
@@ -465,6 +595,18 @@ enum CharacterBlockedReason {
   // MarkCharacterDead on a character that still waits for the master's
   // approval (MR-024): approve or reject it instead.
   CHARACTER_BLOCKED_REASON_AWAITING_APPROVAL = 6;
+  // A guided level-up call (GetLevelUpOptions, PreviewLevelUp,
+  // RollLevelUpHitPoints, LevelUpCharacter) on a character that cannot level
+  // up now (can_level_up is false): not marked for a milestone, or too little
+  // XP, or at level 20, or an NPC.
+  CHARACTER_BLOCKED_REASON_CANNOT_LEVEL_UP = 7;
+  // RollLevelUpHitPoints in a campaign where everybody rolls physical dice
+  // (RN-18): type the result of the real die instead (LevelUpCharacter with
+  // ROLLED_PHYSICAL).
+  CHARACTER_BLOCKED_REASON_DICE_FORCED_PHYSICAL = 8;
+  // LevelUpCharacter with ROLLED_PHYSICAL in a campaign where everybody rolls
+  // in the app (RN-18): use RollLevelUpHitPoints.
+  CHARACTER_BLOCKED_REASON_DICE_FORCED_IN_APP = 9;
 }
 
 // CharacterBlocked is the error detail of CharacterService's
@@ -972,3 +1114,407 @@ message RejectCharacterRequest {
 
 // RejectCharacterResponse is empty: the character is gone.
 message RejectCharacterResponse {}
+
+// GetLevelUpOptionsRequest names the character to level up.
+message GetLevelUpOptionsRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+  // The class that gains the level, one the character already has (a new
+  // class is multiclassing, which stays in the sheet editor). Empty means the
+  // character's first class.
+  string class_key = 3;
+}
+
+// GetLevelUpOptionsResponse is what the next level gives.
+message GetLevelUpOptionsResponse {
+  LevelUpOptions options = 1;
+}
+
+// LevelUpNamedKey is a content key with its Portuguese name.
+message LevelUpNamedKey {
+  string key = 1;
+  string name_pt = 2;
+}
+
+// LevelUpSpellsKind says where the new spells of a level go.
+enum LevelUpSpellsKind {
+  LEVEL_UP_SPELLS_KIND_UNSPECIFIED = 0;
+  // The Wizard's spellbook: two new spells per level, in
+  // FullSheet.known_spell_keys. The spells to prepare come from it.
+  LEVEL_UP_SPELLS_KIND_SPELLBOOK = 1;
+  // Bard, Ranger, Sorcerer and Warlock: the new spells the class table gives,
+  // in FullSheet.known_spell_keys.
+  LEVEL_UP_SPELLS_KIND_KNOWN = 2;
+}
+
+// LevelUpDiceRule is what the campaign's dice setting makes the player do
+// with the hit die (RN-18).
+enum LevelUpDiceRule {
+  LEVEL_UP_DICE_RULE_UNSPECIFIED = 0;
+  // Each player chooses, on every roll: roll in the app, or type the result of
+  // a physical die. The player's saved preference is only the default the
+  // screen highlights.
+  LEVEL_UP_DICE_RULE_PLAYER_CHOOSES = 1;
+  // Everybody rolls in the app: ROLLED_PHYSICAL is refused.
+  LEVEL_UP_DICE_RULE_FORCED_IN_APP = 2;
+  // Everybody rolls physical dice: RollLevelUpHitPoints is refused.
+  LEVEL_UP_DICE_RULE_FORCED_PHYSICAL = 3;
+}
+
+// LevelUpOptions is what the next level of one class gives, in data the
+// guided level-up draws. A step with nothing to choose does not exist: the
+// app skips a step whose counts are zero and whose lists are empty.
+//
+// Steps and their data: "Atributos" (ability_score_improvement), "Vida"
+// (hit_die, hit_point_average, dice_rule, kept_hit_point_roll), "Magias"
+// (cantrips, spells, prepares), and the steps for the subclass
+// (subclass_due), the feature options (feature_choices), the skills and
+// expertise. "Resumo" is PreviewLevelUp. The numbers of the sheet that change
+// by themselves (slots, proficiency bonus, features) are only shown.
+message LevelUpOptions {
+  // The class that gains the level, and its Portuguese name.
+  string class_key = 1;
+  string class_name_pt = 2;
+  // The class's level before and after, and the character's total level
+  // before and after.
+  int32 from_level = 3;
+  int32 to_level = 4;
+  int32 total_from_level = 5;
+  int32 total_to_level = 6;
+
+  // The class's hit die (8 for a d8) and the fixed gain: half the die plus
+  // one, before the Constitution modifier (the sheet adds the modifier, and
+  // never less than 1 in all). The hit points of the new level are one of:
+  // the average, a roll of the die in the app (RollLevelUpHitPoints), or the
+  // result of a physical die typed in (1 to hit_die).
+  int32 hit_die = 7;
+  int32 hit_point_average = 8;
+  // What the campaign's dice setting allows. With PLAYER_CHOOSES, the
+  // player's own preference (the campaign's dice_preference) tells which
+  // option the screen highlights.
+  LevelUpDiceRule dice_rule = 9;
+  // The roll the server already made and kept for this level, 0 for none: a
+  // player who comes back sees the same roll.
+  int32 kept_hit_point_roll = 10;
+
+  // True at an Ability Score Improvement level: +2 in one ability or +1 in
+  // two, none above 20 (LevelUpChoices.ability_increase). The SRD 5.1 has no
+  // feats.
+  bool ability_score_improvement = 11;
+
+  // True when the class picks its subclass at this level: one of subclasses
+  // (LevelUpChoices.subclass_key).
+  bool subclass_due = 12;
+  repeated LevelUpSubclass subclasses = 13;
+
+  // How many new cantrips to add (LevelUpChoices.cantrip_keys), from the list
+  // of spell_list_class_key.
+  int32 cantrips = 14;
+  // How many new spells to add (LevelUpChoices.known_spell_keys): to the
+  // spellbook or to the spells known (spells_kind says which), from the list
+  // of spell_list_class_key, each up to max_spell_level.
+  int32 spells = 15;
+  LevelUpSpellsKind spells_kind = 16;
+  // The class whose spell list the new cantrips and spells come from (empty
+  // when the class casts nothing yet), and the highest spell level it can
+  // cast at the new level.
+  string spell_list_class_key = 17;
+  int32 max_spell_level = 18;
+  // True for a class that prepares spells (Cleric, Druid, Paladin, Wizard):
+  // the player may prepare more, up to the new maximum
+  // (LevelUpChoices.prepared_spell_keys, none removed). prepared_max is the
+  // maximum now; prepared_max_after is the one at the new level with the
+  // abilities as they are today. An ability increase can raise it again, so
+  // the app reads the final number in PreviewLevelUp
+  // (DerivedSheet.spellcasting).
+  bool prepares = 19;
+  int32 prepared_max = 20;
+  int32 prepared_max_after = 21;
+
+  // The options the new features offer (a fighting style, a metamagic), for
+  // the class's own features and, when the subclass is already chosen, the
+  // subclass's (LevelUpChoices.feature_choice_keys).
+  repeated LevelUpFeatureChoice feature_choices = 22;
+  // How many new skills (LevelUpChoices.skill_proficiency_keys) and how many
+  // new expertise (LevelUpChoices.expertise_skill_keys) the new level gives.
+  int32 skill_choices = 23;
+  int32 expertise_choices = 24;
+
+  // What changes by itself: the proficiency bonus, the spell slots per
+  // circle (9 entries, the 1st circle first) and the warlock's pact slots,
+  // before and after, and the class features the level gives.
+  int32 proficiency_bonus_before = 25;
+  int32 proficiency_bonus_after = 26;
+  repeated int32 spell_slots_before = 27;
+  repeated int32 spell_slots_after = 28;
+  meurpg.rules.v1.PactMagic pact_magic_before = 29;
+  meurpg.rules.v1.PactMagic pact_magic_after = 30;
+  repeated LevelUpNamedKey new_features = 31;
+
+  // How many of `spells` may come from any class's list, not only
+  // spell_list_class_key's: the Bard's Magical Secrets (2 at levels 10, 14 and
+  // 18). They must still be of a circle the class can cast. 0 for every
+  // other level.
+  int32 any_class_spells = 32;
+  // The features of this level whose choice the guided level-up does not
+  // cover, so the app tells the player "o mestre acrescenta pelo editor":
+  // the Warlock's Mystic Arcanum (levels 11, 13, 15 and 17), the Wizard's Spell
+  // Mastery (18) and Signature Spells (20), the College of Lore's Additional
+  // Magical Secrets (6), and the Ranger's favored enemies and terrains. They
+  // are part of the level (new_features lists them too); only their choice is
+  // the master's.
+  repeated LevelUpNamedKey master_adds = 33;
+  // The class of the kept roll, when there is one (kept_hit_point_roll is the
+  // roll for the character's next total level, whichever class rolled it). A
+  // roll kept for another class cannot be rolled again nor used for this
+  // class: RollLevelUpHitPoints and LevelUpCharacter answer
+  // HIT_POINT_ROLL_OTHER_CLASS.
+  string kept_hit_point_roll_class_key = 34;
+}
+
+// LevelUpSubclass is a subclass the player may pick at this level, with the
+// options its features at the new level offer.
+message LevelUpSubclass {
+  string key = 1;
+  string name_pt = 2;
+  // Shown once the subclass is picked: choose them with the subclass.
+  repeated LevelUpFeatureChoice feature_choices = 3;
+  // What this subclass adds to the level's counts, which are not in
+  // LevelUpOptions' own until it is chosen: new cantrips (the Circle of the
+  // Land's bonus cantrip, from the druid list), new skills (the College of
+  // Lore's three) and new expertise. Add them to cantrips, skill_choices and
+  // expertise_choices once the player picks it.
+  int32 cantrips = 4;
+  int32 skill_choices = 5;
+  int32 expertise_choices = 6;
+}
+
+// LevelUpFeatureChoice is "choose `choose` of `options`" for a feature the
+// character gains at the new level.
+message LevelUpFeatureChoice {
+  // The feature that offers the options, such as "feature:metamagic-1".
+  LevelUpNamedKey feature = 1;
+  // The subclass the feature belongs to, or empty for a class feature.
+  string subclass_key = 2;
+  // How many options to choose.
+  int32 choose = 3;
+  // The options the character does not have yet, as content keys.
+  repeated LevelUpNamedKey options = 4;
+}
+
+// LevelUpHitPointsMethod is how the hit points of the new level are decided.
+enum LevelUpHitPointsMethod {
+  LEVEL_UP_HIT_POINTS_METHOD_UNSPECIFIED = 0;
+  // The average: half the die plus one.
+  LEVEL_UP_HIT_POINTS_METHOD_AVERAGE = 1;
+  // The roll the server made and kept (RollLevelUpHitPoints).
+  LEVEL_UP_HIT_POINTS_METHOD_ROLLED_IN_APP = 2;
+  // The result of a physical die, typed in: LevelUpHitPoints.value, 1 to the
+  // hit die.
+  LEVEL_UP_HIT_POINTS_METHOD_ROLLED_PHYSICAL = 3;
+}
+
+// LevelUpHitPoints is the hit points of the new level.
+message LevelUpHitPoints {
+  LevelUpHitPointsMethod method = 1;
+  // With ROLLED_PHYSICAL, the typed result of the die: 1 to the hit die. The
+  // server ignores it for the other methods and fills it in the record
+  // (ListLevelUps) with the number the level took: the average, or the roll.
+  int32 value = 2;
+}
+
+// LevelUpChoices is what the player chose for one level up. The lists hold
+// only what is new, never the sheet's whole lists: the server adds them to the
+// stored sheet. The same message is what ListLevelUps shows the master.
+message LevelUpChoices {
+  // The class that gains the level: one the character has.
+  string class_key = 1;
+  // The ability increase at an Ability Score Improvement level: +2 in one
+  // ability, or +1 in two, as AbilityScores fields; the others 0 or unset.
+  // The sheet keeps it in extra_ability_bonuses. Unset for none.
+  meurpg.rules.v1.AbilityScores ability_increase = 2;
+  // The subclass, when the class picks it at this level.
+  string subclass_key = 3;
+  // The new cantrips, spells known (or spellbook) and prepared spells. At most
+  // 30, 30 and 100 entries.
+  repeated string cantrip_keys = 4;
+  repeated string known_spell_keys = 5;
+  repeated string prepared_spell_keys = 6;
+  // The options the new features offer, the new skills, and the new
+  // expertise. At most 100 entries each.
+  repeated string feature_choice_keys = 7;
+  repeated string skill_proficiency_keys = 8;
+  repeated string expertise_skill_keys = 9;
+  // The hit points of the level. Required.
+  LevelUpHitPoints hit_points = 10;
+}
+
+// LevelUpRefusalReason says why the rules refuse a set of choices, so the app
+// shows its own Portuguese copy for each; never parse a message.
+enum LevelUpRefusalReason {
+  LEVEL_UP_REFUSAL_REASON_UNSPECIFIED = 0;
+  // Not exactly one class of the character gaining one level (a new class is
+  // multiclassing, which stays in the sheet editor).
+  LEVEL_UP_REFUSAL_REASON_CLASS = 1;
+  // The character is already level 20.
+  LEVEL_UP_REFUSAL_REASON_MAX_LEVEL = 2;
+  // A field the level does not change would differ (name, race, base scores,
+  // equipment...): it stays locked (RN-01). `field` says which.
+  LEVEL_UP_REFUSAL_REASON_LOCKED_FIELD = 3;
+  // An ability increase at a level that has none.
+  LEVEL_UP_REFUSAL_REASON_ABILITY_NOT_DUE = 4;
+  // The increase is not +2 in one ability or +1 in two.
+  LEVEL_UP_REFUSAL_REASON_ABILITY_SHAPE = 5;
+  // The increase would take an ability above 20.
+  LEVEL_UP_REFUSAL_REASON_ABILITY_ABOVE_20 = 6;
+  // The hit points are out of range: the die result is not 1 to the hit die.
+  LEVEL_UP_REFUSAL_REASON_HIT_POINTS = 7;
+  // A subclass chosen when none is due, or none chosen when one is due, or one
+  // that is not the class's.
+  LEVEL_UP_REFUSAL_REASON_SUBCLASS = 8;
+  // Not exactly the number of new cantrips the level gives.
+  LEVEL_UP_REFUSAL_REASON_CANTRIPS = 9;
+  // Not exactly the number of new spells the level gives.
+  LEVEL_UP_REFUSAL_REASON_SPELLS = 10;
+  // Prepared spells removed, or added by a class that does not prepare.
+  LEVEL_UP_REFUSAL_REASON_PREPARED = 11;
+  // Not exactly the options the new features offer.
+  LEVEL_UP_REFUSAL_REASON_FEATURE_CHOICE = 12;
+  // Not exactly the new skills the level gives.
+  LEVEL_UP_REFUSAL_REASON_SKILLS = 13;
+  // Not exactly the new expertise the level gives.
+  LEVEL_UP_REFUSAL_REASON_EXPERTISE = 14;
+  // The new sheet would have a problem that the old one did not: a spell off
+  // the class's list or above the highest circle, more prepared spells than
+  // the new maximum... `issue_code` is the Issue code (meurpg.rules.v1.Issue)
+  // and `field` the sheet field.
+  LEVEL_UP_REFUSAL_REASON_SHEET_ISSUE = 15;
+  // The method ROLLED_IN_APP, but the server has no kept roll for this level:
+  // call RollLevelUpHitPoints first.
+  LEVEL_UP_REFUSAL_REASON_HIT_POINT_ROLL_MISSING = 16;
+  // The kept roll was made for another class of the character (a multiclass
+  // character gets one roll per level, so it cannot roll a d6 and a d12 for the
+  // same level and keep the better). RollLevelUpHitPoints for the other class,
+  // and LevelUpCharacter with ROLLED_IN_APP, are refused.
+  LEVEL_UP_REFUSAL_REASON_HIT_POINT_ROLL_OTHER_CLASS = 17;
+  // The stored sheet does not pass today's rules by itself (a key the content
+  // no longer has, a value out of range), so no choice could fix it: the app
+  // says "peça ao mestre para corrigir a ficha", and the master edits it.
+  // `field` is the sheet field.
+  LEVEL_UP_REFUSAL_REASON_SHEET_NEEDS_MASTER = 18;
+}
+
+// LevelUpRefusal is the first rule the choices break: the sheet field and a
+// reason code. It is the detail of LevelUpCharacter's `failed_precondition`,
+// and PreviewLevelUp returns it as data.
+message LevelUpRefusal {
+  // The sheet field, with the CharacterSheet field names, such as
+  // "full.extra_ability_bonuses" or "full.cantrip_keys".
+  string field = 1;
+  LevelUpRefusalReason reason = 2;
+  // With SHEET_ISSUE: the Issue code, such as "spell_count" or "spell_level".
+  string issue_code = 3;
+}
+
+// PreviewLevelUpRequest asks for the sheet with the choices applied.
+message PreviewLevelUpRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+  // The choices so far, possibly incomplete. A hit points method left
+  // UNSPECIFIED previews with the average.
+  LevelUpChoices choices = 3;
+}
+
+// PreviewLevelUpResponse is the sheet the choices would make.
+message PreviewLevelUpResponse {
+  // The derived numbers after the level up, as far as the choices go. The
+  // app compares it with Character.derived: level, abilities, hit points, hit
+  // dice, spell save DC and attack bonus, saves, skills, passive scores,
+  // cantrips, slots, prepared spells.
+  meurpg.rules.v1.DerivedSheet after = 1;
+  // The first rule the choices break, unset when LevelUpCharacter would
+  // accept them. An incomplete step shows here (for example CANTRIPS while
+  // the new cantrip is not picked).
+  LevelUpRefusal refusal = 2;
+}
+
+// RollLevelUpHitPointsRequest names the character, and the class if it has
+// several.
+message RollLevelUpHitPointsRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+  // As in GetLevelUpOptionsRequest.
+  string class_key = 3;
+  // A UUID the app generates once for the tap, and sends again on a retry.
+  // The roll is kept per character, class and level whatever the key, so a
+  // second call with another key returns the same roll too.
+  string idempotency_key = 4;
+}
+
+// RollLevelUpHitPointsResponse is the kept roll.
+message RollLevelUpHitPointsResponse {
+  // The class's hit die (8 for a d8) and the result, 1 to die.
+  int32 die = 1;
+  int32 value = 2;
+  // False when this call rolled; true when the roll was already there.
+  bool already_rolled = 3;
+}
+
+// LevelUpCharacterRequest is the guided level-up's "Confirmar o nível N".
+message LevelUpCharacterRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+  // The character's revision as the app read it (Character.revision). A
+  // different one is `aborted`.
+  int32 revision = 3;
+  LevelUpChoices choices = 4;
+}
+
+// LevelUpCharacterResponse returns the leveled-up character.
+message LevelUpCharacterResponse {
+  // The character with its new sheet, revision and derived numbers.
+  // can_level_up is already false when this was the level it could take.
+  Character character = 1;
+}
+
+// ListLevelUpsRequest asks for a campaign's level-ups.
+message ListLevelUpsRequest {
+  string campaign_id = 1;
+  // Only this character's level-ups. Empty for the campaign's.
+  string character_id = 2;
+  // At most this many level-ups: 1 to 50, 20 when 0.
+  int32 page_size = 3;
+  // The next_page_token of the previous page, to read the next one.
+  string page_token = 4;
+}
+
+// ListLevelUpsResponse is the master's "O que mudou".
+message ListLevelUpsResponse {
+  // Newest first.
+  repeated LevelUp level_ups = 1;
+  // Pass it as page_token to read the next page; empty on the last one.
+  string next_page_token = 2;
+}
+
+// LevelUp is the record of one guided level-up.
+message LevelUp {
+  string id = 1;
+  string character_id = 2;
+  // The character's current name, and its player's display name (empty when
+  // the player has not chosen one or left).
+  string character_name = 3;
+  string player_display_name = 4;
+  // The class that gained the level, and its Portuguese name.
+  string class_key = 5;
+  string class_name_pt = 6;
+  // The character's total level before and after ("Subiu para o nível 4").
+  int32 from_level = 7;
+  int32 to_level = 8;
+  // What the player chose. hit_points.value is the number the level took.
+  LevelUpChoices choices = 9;
+  // The Portuguese name of every content key in choices (spells, features,
+  // subclass), by key.
+  map<string, string> names_pt = 10;
+  // When the player confirmed.
+  google.protobuf.Timestamp created_at = 11;
+}

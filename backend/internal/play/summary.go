@@ -1,0 +1,237 @@
+package play
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"slices"
+	"uuid"
+
+	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
+	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+)
+
+// The session summary, "Resumo da sessão" (MR-032, Etapa 8; question 64 of
+// the progress doc). Like the combat highlights, it is worked out on every
+// read from the session's events, never stored. It reuses the combat
+// highlights' code (tallyHighlights, categoriesOf) for each combat and sums
+// the tallies per character, then adds the checks passed outside combat.
+//
+// The checks count only rolls made in a scene that showed its DC to the
+// players at that moment (sceneRollEvent.DCShown), on an action that had one
+// (Passed is set). A roll in a scene that hid its DC enters no count, for
+// anyone: the scene never told the players whether it was a pass or a fail,
+// and the summary must not tell it either (RN-20).
+//
+// "Mais tesouro encontrado" (MR-041, Etapa 9) does not exist yet: it is one
+// more category here when the treasure does.
+
+// maxSummaryEvents is how many scene events a summary reads. A session never
+// gets near it (a table of a handful of players); past it the summary fails
+// loudly instead of silently dropping the newest events and under-counting.
+const maxSummaryEvents = 20000
+
+// sessionHighlightKinds is the summary's categories: the combat's, then the
+// checks passed.
+var sessionHighlightKinds = append(slices.Clone(highlightKinds), highlightKind{
+	kind:  playv1.HighlightKind_HIGHLIGHT_KIND_CHECKS_PASSED,
+	value: func(t *characterTally) int32 { return t.checksPassed },
+})
+
+// sessionTally is the numbers of every player's character in a session, in the
+// order they first appeared.
+type sessionTally struct {
+	list []*characterTally
+	byID map[string]*characterTally
+}
+
+func (st *sessionTally) of(characterID, name string) *characterTally {
+	if t, ok := st.byID[characterID]; ok {
+		return t
+	}
+	t := &characterTally{characterID: characterID, name: name}
+	if st.byID == nil {
+		st.byID = map[string]*characterTally{}
+	}
+	st.byID[characterID] = t
+	st.list = append(st.list, t)
+	return t
+}
+
+// addCombat sums one combat's tallies in.
+func (st *sessionTally) addCombat(tallies []*characterTally) {
+	for _, c := range tallies {
+		t := st.of(c.characterID, c.name)
+		t.damage += c.damage
+		t.healing += c.healing
+		t.taken += c.taken
+		t.finalBlows += c.finalBlows
+		t.crits += c.crits
+	}
+}
+
+// GetSessionSummary implements playv1connect.PlayServiceHandler.
+func (s *Service) GetSessionSummary(
+	ctx context.Context,
+	req *connect.Request[playv1.GetSessionSummaryRequest],
+) (*connect.Response[playv1.GetSessionSummaryResponse], error) {
+	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
+	if err != nil {
+		return nil, err
+	}
+	id, err := uuid.Parse(req.Msg.GetGameSessionId())
+	if err != nil {
+		return nil, errSessionNotFound()
+	}
+	session, err := s.queries.GetGameSessionInCampaign(ctx, playdb.GetGameSessionInCampaignParams{CampaignID: m.CampaignID, ID: id.String()})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, errSessionNotFound()
+	}
+	if err != nil {
+		return nil, s.dbError(ctx, "find the session", err)
+	}
+	if session.EndedAt == nil {
+		// Its numbers keep moving until the master ends it, and each combat has
+		// its own highlights meanwhile.
+		return nil, errBlocked(playv1.GameSessionBlockedReason_GAME_SESSION_BLOCKED_REASON_SESSION_NOT_ENDED,
+			"the game session has not ended")
+	}
+
+	var st sessionTally
+	combats, err := s.queries.ListSessionCombats(ctx, session.ID)
+	if err != nil {
+		return nil, s.dbError(ctx, "list the session's combats", err)
+	}
+	for _, enc := range combats {
+		events, err := s.queries.ListEncounterCombatEvents(ctx, &enc.ID)
+		if err != nil {
+			return nil, s.dbError(ctx, "list a combat's events", fmt.Errorf("summary: %w", err))
+		}
+		cs, err := s.queries.ListCombatants(ctx, enc.ID)
+		if err != nil {
+			return nil, s.dbError(ctx, "list the combatants", err)
+		}
+		st.addCombat(tallyHighlights(events, cs))
+	}
+
+	scenesOpened, err := s.tallyChecks(ctx, session.ID, &st)
+	if err != nil {
+		return nil, err
+	}
+
+	// The names of the ones who only rolled checks, and whose character each
+	// one is (for "mine").
+	ids := make([]string, 0, len(st.list))
+	for _, t := range st.list {
+		ids = append(ids, t.characterID)
+	}
+	chars := map[string]link.Character{}
+	if len(ids) > 0 {
+		// Whatever their status: a character that died during the session is
+		// still in its summary, with its name and its player.
+		found, err := s.roster.SessionCharacters(ctx, m.CampaignID, ids)
+		if err != nil {
+			return nil, s.dbError(ctx, "read the characters' names", err)
+		}
+		for _, c := range found {
+			chars[c.ID] = c
+		}
+	}
+	for _, t := range st.list {
+		if t.name == "" {
+			t.name = chars[t.characterID].Name
+		}
+	}
+
+	sum := &playv1.SessionSummary{
+		StartedAt:  timestamppb.New(session.StartedAt),
+		EndedAt:    timestamppb.New(*session.EndedAt),
+		Duration:   durationpb.New(session.EndedAt.Sub(session.StartedAt)),
+		Categories: categoriesOf(sessionHighlightKinds, st.list),
+	}
+	if m.Role == authz.RoleMaster {
+		sum.Combats = clamp32(len(combats), 0, 1<<30)
+		sum.ScenesOpened = clamp32(scenesOpened, 0, 1<<30)
+		for _, t := range st.list {
+			sum.ChecksPassed += t.checksPassed
+			sum.ChecksTried += t.checksTried
+			sum.Players = append(sum.Players, characterSummary(t))
+		}
+	} else if m.UserID != "" {
+		// Every character the caller played in the session, summed: a player
+		// that lost a character and went on with another sees both.
+		var own []*characterTally
+		for _, t := range st.list {
+			if chars[t.characterID].PlayerUserID == m.UserID {
+				own = append(own, t)
+			}
+		}
+		if len(own) > 0 {
+			total := *own[len(own)-1] // named after the latest
+			total.damage, total.healing, total.taken, total.finalBlows, total.crits, total.checksPassed, total.checksTried = 0, 0, 0, 0, 0, 0, 0
+			for _, t := range own {
+				total.damage += t.damage
+				total.healing += t.healing
+				total.taken += t.taken
+				total.finalBlows += t.finalBlows
+				total.crits += t.crits
+				total.checksPassed += t.checksPassed
+				total.checksTried += t.checksTried
+			}
+			sum.Mine = characterSummary(&total)
+		}
+	}
+	return connect.NewResponse(&playv1.GetSessionSummaryResponse{Summary: sum}), nil
+}
+
+// tallyChecks adds the checks passed and tried outside combat to the tallies,
+// and returns how many scenes the master opened.
+func (s *Service) tallyChecks(ctx context.Context, sessionID string, st *sessionTally) (int, error) {
+	events, err := s.queries.ListSessionSceneEvents(ctx, sessionID)
+	if err != nil {
+		return 0, s.dbError(ctx, "list the session's scenes", err)
+	}
+	if len(events) > maxSummaryEvents {
+		return 0, s.dbError(ctx, "list the session's scenes", fmt.Errorf("a session with more than %d scene events", maxSummaryEvents))
+	}
+	opened := 0
+	for _, e := range events {
+		if e.Kind == eventSceneOpened {
+			opened++
+			continue
+		}
+		var ev sceneRollEvent
+		if err := json.Unmarshal(e.Payload, &ev); err != nil {
+			return 0, s.dbError(ctx, "read a scene roll", fmt.Errorf("decode a roll of the summary: %w", err))
+		}
+		// Only a roll the players could see the DC of, on an action that had one.
+		if e.CharacterID == nil || !ev.DCShown || ev.Passed == nil {
+			continue
+		}
+		t := st.of(*e.CharacterID, "")
+		t.checksTried++
+		if *ev.Passed {
+			t.checksPassed++
+		}
+	}
+	return opened, nil
+}
+
+// characterSummary is one character's numbers.
+func characterSummary(t *characterTally) *playv1.SessionCharacterSummary {
+	return &playv1.SessionCharacterSummary{
+		Highlights: &playv1.CharacterHighlights{
+			CharacterId: t.characterID, Name: t.name,
+			DamageDealt: t.damage, HealingDone: t.healing, DamageTaken: t.taken, FinalBlows: t.finalBlows, CriticalHits: t.crits,
+		},
+		ChecksPassed: t.checksPassed, ChecksTried: t.checksTried,
+	}
+}

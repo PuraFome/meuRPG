@@ -209,6 +209,11 @@ func (s *Service) ListCharacters(
 		if err != nil {
 			return nil, s.dbError(ctx, "list characters", err)
 		}
+		if row.Kind != kindPlayer {
+			if id := portraitOf(sheet); id != "" {
+				summary.PortraitUrl = "/images/" + id
+			}
+		}
 		if full := sheet.GetFull(); full != nil {
 			labels := s.rules.Summary(buildOf(full))
 			summary.ClassSummary = labels.ClassSummaryPT

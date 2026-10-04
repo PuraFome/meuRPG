@@ -83,6 +83,21 @@ const (
 	// CharacterServiceRejectCharacterProcedure is the fully-qualified name of the CharacterService's
 	// RejectCharacter RPC.
 	CharacterServiceRejectCharacterProcedure = "/meurpg.characters.v1.CharacterService/RejectCharacter"
+	// CharacterServiceGetLevelUpOptionsProcedure is the fully-qualified name of the CharacterService's
+	// GetLevelUpOptions RPC.
+	CharacterServiceGetLevelUpOptionsProcedure = "/meurpg.characters.v1.CharacterService/GetLevelUpOptions"
+	// CharacterServicePreviewLevelUpProcedure is the fully-qualified name of the CharacterService's
+	// PreviewLevelUp RPC.
+	CharacterServicePreviewLevelUpProcedure = "/meurpg.characters.v1.CharacterService/PreviewLevelUp"
+	// CharacterServiceRollLevelUpHitPointsProcedure is the fully-qualified name of the
+	// CharacterService's RollLevelUpHitPoints RPC.
+	CharacterServiceRollLevelUpHitPointsProcedure = "/meurpg.characters.v1.CharacterService/RollLevelUpHitPoints"
+	// CharacterServiceLevelUpCharacterProcedure is the fully-qualified name of the CharacterService's
+	// LevelUpCharacter RPC.
+	CharacterServiceLevelUpCharacterProcedure = "/meurpg.characters.v1.CharacterService/LevelUpCharacter"
+	// CharacterServiceListLevelUpsProcedure is the fully-qualified name of the CharacterService's
+	// ListLevelUps RPC.
+	CharacterServiceListLevelUpsProcedure = "/meurpg.characters.v1.CharacterService/ListLevelUps"
 )
 
 // CharacterServiceClient is a client for the meurpg.characters.v1.CharacterService service.
@@ -309,6 +324,112 @@ type CharacterServiceClient interface {
 	//     character stays in the campaign. The error carries a CharacterBlocked
 	//     detail with reason NOT_PENDING.
 	RejectCharacter(context.Context, *connect.Request[v1.RejectCharacterRequest]) (*connect.Response[v1.RejectCharacterResponse], error)
+	// GetLevelUpOptions says what the next level of one of the character's
+	// classes gives, so the app can draw the guided level-up (MR-040, RN-12):
+	// the ability increase, the hit die, the new cantrips and spells, the
+	// subclass and the new feature options, and the numbers that change by
+	// themselves. It names the choices, never makes them: nothing is stored.
+	//
+	// Who may call it: the master, and the owning player, while
+	// Character.can_level_up is true. Anyone else asking about a character they
+	// cannot see gets `not_found`.
+	//
+	// Errors:
+	//   - `not_found`: the character is not in this campaign, or the caller may
+	//     not see it.
+	//   - `failed_precondition`: the character cannot level up now. The error
+	//     carries a CharacterBlocked detail with reason CANNOT_LEVEL_UP (it is
+	//     not marked for a milestone and has too little XP, it is at level 20,
+	//     or it is an NPC), CHARACTER_DEAD or AWAITING_APPROVAL.
+	//   - `invalid_argument`: class_key is not a class of the character.
+	GetLevelUpOptions(context.Context, *connect.Request[v1.GetLevelUpOptionsRequest]) (*connect.Response[v1.GetLevelUpOptionsResponse], error)
+	// PreviewLevelUp tells what the sheet would be like with these choices,
+	// without saving anything: the Summary step of the guided level-up
+	// ("Resumo", before and after). The server derives the new numbers (the web
+	// has no rules engine), so the app also reads here the prepared-spell maximum
+	// that an ability increase changes. The choices may be incomplete: the
+	// answer then carries the first refusal (LevelUpRefusal) next to the sheet
+	// as far as the choices go, so the app knows which step is missing.
+	//
+	// Who may call it, and the errors, are those of GetLevelUpOptions. A choice
+	// that LevelUpCharacter would answer `invalid_argument` to (an unknown key,
+	// a list too long) is `invalid_argument` here too.
+	PreviewLevelUp(context.Context, *connect.Request[v1.PreviewLevelUpRequest]) (*connect.Response[v1.PreviewLevelUpResponse], error)
+	// RollLevelUpHitPoints rolls the hit die of the class's next level, on the
+	// server, and keeps the result for this character, class and level:
+	// calling it again returns the same roll (it is not a reroll), so the
+	// result stays on record (RN-18). LevelUpCharacter takes it back with the
+	// method ROLLED_IN_APP. A roll that was never used (the player left the
+	// flow) is still there when they come back.
+	//
+	// Only the owning player may call it: the master keeps the editor.
+	//
+	// Errors:
+	//   - `not_found`: the character is not in this campaign, or the caller may
+	//     not see it.
+	//   - `permission_denied`: the caller is the master.
+	//   - `failed_precondition`: the character cannot level up now (a
+	//     CharacterBlocked detail with CANNOT_LEVEL_UP, CHARACTER_DEAD or
+	//     AWAITING_APPROVAL), or the campaign makes everybody roll physical dice
+	//     (a CharacterBlocked detail with DICE_FORCED_PHYSICAL).
+	//   - `invalid_argument`: idempotency_key is not a UUID, or class_key is not
+	//     a class of the character.
+	RollLevelUpHitPoints(context.Context, *connect.Request[v1.RollLevelUpHitPointsRequest]) (*connect.Response[v1.RollLevelUpHitPointsResponse], error)
+	// LevelUpCharacter takes the character up a level with the player's choices
+	// (MR-040, RN-01's exception, RN-12). It works on a locked sheet: the
+	// server builds the new sheet from the stored one and the choices (the
+	// client never sends the whole sheet), refuses everything the level does
+	// not allow, and saves it all at once, keeping the record of the level-up
+	// for the master (ListLevelUps). The rest of the sheet stays locked.
+	//
+	// What it does not cover, the master does in the sheet editor
+	// (UpdateCharacter): the features listed in LevelUpOptions.master_adds
+	// (Mystic Arcanum, Spell Mastery, Signature Spells, Additional Magical
+	// Secrets, favored enemies and terrains); swapping a spell known for
+	// another, which the SRD lets Bards, Rangers, Sorcerers and Warlocks do when
+	// they level up (a level-up only adds spells, never removes one); and
+	// multiclassing and custom subclasses.
+	//
+	// Who may call it: only the owning player, and only while
+	// Character.can_level_up is true. The master keeps the sheet editor
+	// (UpdateCharacter). Afterwards can_level_up goes away by itself: the
+	// milestone mark's level has passed, or the XP does not reach the next level.
+	// Every session stream of the campaign gets `xp_changed`
+	// (WatchGameSessionResponse), so the sheets and the master's list read
+	// again.
+	//
+	// Errors:
+	//   - `not_found`: the character is not in this campaign, or the caller may
+	//     not see it.
+	//   - `permission_denied`: the caller is the master.
+	//   - `invalid_argument`: a choice is malformed (an unknown content key, a
+	//     list too long, no hit points method, a typed value that is not a
+	//     number).
+	//   - `aborted`: revision is not the character's current one (the master
+	//     changed the sheet, or an XP award came in); read it and try again.
+	//   - `failed_precondition`, with one of two details:
+	//     - CharacterBlocked: CANNOT_LEVEL_UP, CHARACTER_DEAD,
+	//       AWAITING_APPROVAL, or DICE_FORCED_IN_APP (a typed die result in a
+	//       campaign where everybody rolls in the app);
+	//     - LevelUpRefusal: the choices break a rule of the level (the field
+	//       and a reason code), or the in-app roll was never made.
+	LevelUpCharacter(context.Context, *connect.Request[v1.LevelUpCharacterRequest]) (*connect.Response[v1.LevelUpCharacterResponse], error)
+	// ListLevelUps lists the level-ups of the campaign, newest first, a page
+	// at a time (page_size up to 50, page_token): the master's "O que mudou"
+	// (MR-040). Each carries what the player
+	// chose and when. With character_id, only that character's. The master is
+	// told by the stream (`xp_changed`) and reads here; there is no approval
+	// and no veto: the master can still edit the sheet as always.
+	//
+	// Only the master may call it.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, or the caller is not a
+	//     member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `invalid_argument`: page_size is not 1 to 50, or page_token is not one
+	//     this list gave.
+	ListLevelUps(context.Context, *connect.Request[v1.ListLevelUpsRequest]) (*connect.Response[v1.ListLevelUpsResponse], error)
 }
 
 // NewCharacterServiceClient constructs a client for the meurpg.characters.v1.CharacterService
@@ -391,6 +512,39 @@ func NewCharacterServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(characterServiceMethods.ByName("RejectCharacter")),
 			connect.WithClientOptions(opts...),
 		),
+		getLevelUpOptions: connect.NewClient[v1.GetLevelUpOptionsRequest, v1.GetLevelUpOptionsResponse](
+			httpClient,
+			baseURL+CharacterServiceGetLevelUpOptionsProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("GetLevelUpOptions")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
+		previewLevelUp: connect.NewClient[v1.PreviewLevelUpRequest, v1.PreviewLevelUpResponse](
+			httpClient,
+			baseURL+CharacterServicePreviewLevelUpProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("PreviewLevelUp")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
+		rollLevelUpHitPoints: connect.NewClient[v1.RollLevelUpHitPointsRequest, v1.RollLevelUpHitPointsResponse](
+			httpClient,
+			baseURL+CharacterServiceRollLevelUpHitPointsProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("RollLevelUpHitPoints")),
+			connect.WithClientOptions(opts...),
+		),
+		levelUpCharacter: connect.NewClient[v1.LevelUpCharacterRequest, v1.LevelUpCharacterResponse](
+			httpClient,
+			baseURL+CharacterServiceLevelUpCharacterProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("LevelUpCharacter")),
+			connect.WithClientOptions(opts...),
+		),
+		listLevelUps: connect.NewClient[v1.ListLevelUpsRequest, v1.ListLevelUpsResponse](
+			httpClient,
+			baseURL+CharacterServiceListLevelUpsProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("ListLevelUps")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -407,6 +561,11 @@ type characterServiceClient struct {
 	updateMasterNotes    *connect.Client[v1.UpdateMasterNotesRequest, v1.UpdateMasterNotesResponse]
 	approveCharacter     *connect.Client[v1.ApproveCharacterRequest, v1.ApproveCharacterResponse]
 	rejectCharacter      *connect.Client[v1.RejectCharacterRequest, v1.RejectCharacterResponse]
+	getLevelUpOptions    *connect.Client[v1.GetLevelUpOptionsRequest, v1.GetLevelUpOptionsResponse]
+	previewLevelUp       *connect.Client[v1.PreviewLevelUpRequest, v1.PreviewLevelUpResponse]
+	rollLevelUpHitPoints *connect.Client[v1.RollLevelUpHitPointsRequest, v1.RollLevelUpHitPointsResponse]
+	levelUpCharacter     *connect.Client[v1.LevelUpCharacterRequest, v1.LevelUpCharacterResponse]
+	listLevelUps         *connect.Client[v1.ListLevelUpsRequest, v1.ListLevelUpsResponse]
 }
 
 // CreateCharacter calls meurpg.characters.v1.CharacterService.CreateCharacter.
@@ -462,6 +621,31 @@ func (c *characterServiceClient) ApproveCharacter(ctx context.Context, req *conn
 // RejectCharacter calls meurpg.characters.v1.CharacterService.RejectCharacter.
 func (c *characterServiceClient) RejectCharacter(ctx context.Context, req *connect.Request[v1.RejectCharacterRequest]) (*connect.Response[v1.RejectCharacterResponse], error) {
 	return c.rejectCharacter.CallUnary(ctx, req)
+}
+
+// GetLevelUpOptions calls meurpg.characters.v1.CharacterService.GetLevelUpOptions.
+func (c *characterServiceClient) GetLevelUpOptions(ctx context.Context, req *connect.Request[v1.GetLevelUpOptionsRequest]) (*connect.Response[v1.GetLevelUpOptionsResponse], error) {
+	return c.getLevelUpOptions.CallUnary(ctx, req)
+}
+
+// PreviewLevelUp calls meurpg.characters.v1.CharacterService.PreviewLevelUp.
+func (c *characterServiceClient) PreviewLevelUp(ctx context.Context, req *connect.Request[v1.PreviewLevelUpRequest]) (*connect.Response[v1.PreviewLevelUpResponse], error) {
+	return c.previewLevelUp.CallUnary(ctx, req)
+}
+
+// RollLevelUpHitPoints calls meurpg.characters.v1.CharacterService.RollLevelUpHitPoints.
+func (c *characterServiceClient) RollLevelUpHitPoints(ctx context.Context, req *connect.Request[v1.RollLevelUpHitPointsRequest]) (*connect.Response[v1.RollLevelUpHitPointsResponse], error) {
+	return c.rollLevelUpHitPoints.CallUnary(ctx, req)
+}
+
+// LevelUpCharacter calls meurpg.characters.v1.CharacterService.LevelUpCharacter.
+func (c *characterServiceClient) LevelUpCharacter(ctx context.Context, req *connect.Request[v1.LevelUpCharacterRequest]) (*connect.Response[v1.LevelUpCharacterResponse], error) {
+	return c.levelUpCharacter.CallUnary(ctx, req)
+}
+
+// ListLevelUps calls meurpg.characters.v1.CharacterService.ListLevelUps.
+func (c *characterServiceClient) ListLevelUps(ctx context.Context, req *connect.Request[v1.ListLevelUpsRequest]) (*connect.Response[v1.ListLevelUpsResponse], error) {
+	return c.listLevelUps.CallUnary(ctx, req)
 }
 
 // CharacterServiceHandler is an implementation of the meurpg.characters.v1.CharacterService
@@ -689,6 +873,112 @@ type CharacterServiceHandler interface {
 	//     character stays in the campaign. The error carries a CharacterBlocked
 	//     detail with reason NOT_PENDING.
 	RejectCharacter(context.Context, *connect.Request[v1.RejectCharacterRequest]) (*connect.Response[v1.RejectCharacterResponse], error)
+	// GetLevelUpOptions says what the next level of one of the character's
+	// classes gives, so the app can draw the guided level-up (MR-040, RN-12):
+	// the ability increase, the hit die, the new cantrips and spells, the
+	// subclass and the new feature options, and the numbers that change by
+	// themselves. It names the choices, never makes them: nothing is stored.
+	//
+	// Who may call it: the master, and the owning player, while
+	// Character.can_level_up is true. Anyone else asking about a character they
+	// cannot see gets `not_found`.
+	//
+	// Errors:
+	//   - `not_found`: the character is not in this campaign, or the caller may
+	//     not see it.
+	//   - `failed_precondition`: the character cannot level up now. The error
+	//     carries a CharacterBlocked detail with reason CANNOT_LEVEL_UP (it is
+	//     not marked for a milestone and has too little XP, it is at level 20,
+	//     or it is an NPC), CHARACTER_DEAD or AWAITING_APPROVAL.
+	//   - `invalid_argument`: class_key is not a class of the character.
+	GetLevelUpOptions(context.Context, *connect.Request[v1.GetLevelUpOptionsRequest]) (*connect.Response[v1.GetLevelUpOptionsResponse], error)
+	// PreviewLevelUp tells what the sheet would be like with these choices,
+	// without saving anything: the Summary step of the guided level-up
+	// ("Resumo", before and after). The server derives the new numbers (the web
+	// has no rules engine), so the app also reads here the prepared-spell maximum
+	// that an ability increase changes. The choices may be incomplete: the
+	// answer then carries the first refusal (LevelUpRefusal) next to the sheet
+	// as far as the choices go, so the app knows which step is missing.
+	//
+	// Who may call it, and the errors, are those of GetLevelUpOptions. A choice
+	// that LevelUpCharacter would answer `invalid_argument` to (an unknown key,
+	// a list too long) is `invalid_argument` here too.
+	PreviewLevelUp(context.Context, *connect.Request[v1.PreviewLevelUpRequest]) (*connect.Response[v1.PreviewLevelUpResponse], error)
+	// RollLevelUpHitPoints rolls the hit die of the class's next level, on the
+	// server, and keeps the result for this character, class and level:
+	// calling it again returns the same roll (it is not a reroll), so the
+	// result stays on record (RN-18). LevelUpCharacter takes it back with the
+	// method ROLLED_IN_APP. A roll that was never used (the player left the
+	// flow) is still there when they come back.
+	//
+	// Only the owning player may call it: the master keeps the editor.
+	//
+	// Errors:
+	//   - `not_found`: the character is not in this campaign, or the caller may
+	//     not see it.
+	//   - `permission_denied`: the caller is the master.
+	//   - `failed_precondition`: the character cannot level up now (a
+	//     CharacterBlocked detail with CANNOT_LEVEL_UP, CHARACTER_DEAD or
+	//     AWAITING_APPROVAL), or the campaign makes everybody roll physical dice
+	//     (a CharacterBlocked detail with DICE_FORCED_PHYSICAL).
+	//   - `invalid_argument`: idempotency_key is not a UUID, or class_key is not
+	//     a class of the character.
+	RollLevelUpHitPoints(context.Context, *connect.Request[v1.RollLevelUpHitPointsRequest]) (*connect.Response[v1.RollLevelUpHitPointsResponse], error)
+	// LevelUpCharacter takes the character up a level with the player's choices
+	// (MR-040, RN-01's exception, RN-12). It works on a locked sheet: the
+	// server builds the new sheet from the stored one and the choices (the
+	// client never sends the whole sheet), refuses everything the level does
+	// not allow, and saves it all at once, keeping the record of the level-up
+	// for the master (ListLevelUps). The rest of the sheet stays locked.
+	//
+	// What it does not cover, the master does in the sheet editor
+	// (UpdateCharacter): the features listed in LevelUpOptions.master_adds
+	// (Mystic Arcanum, Spell Mastery, Signature Spells, Additional Magical
+	// Secrets, favored enemies and terrains); swapping a spell known for
+	// another, which the SRD lets Bards, Rangers, Sorcerers and Warlocks do when
+	// they level up (a level-up only adds spells, never removes one); and
+	// multiclassing and custom subclasses.
+	//
+	// Who may call it: only the owning player, and only while
+	// Character.can_level_up is true. The master keeps the sheet editor
+	// (UpdateCharacter). Afterwards can_level_up goes away by itself: the
+	// milestone mark's level has passed, or the XP does not reach the next level.
+	// Every session stream of the campaign gets `xp_changed`
+	// (WatchGameSessionResponse), so the sheets and the master's list read
+	// again.
+	//
+	// Errors:
+	//   - `not_found`: the character is not in this campaign, or the caller may
+	//     not see it.
+	//   - `permission_denied`: the caller is the master.
+	//   - `invalid_argument`: a choice is malformed (an unknown content key, a
+	//     list too long, no hit points method, a typed value that is not a
+	//     number).
+	//   - `aborted`: revision is not the character's current one (the master
+	//     changed the sheet, or an XP award came in); read it and try again.
+	//   - `failed_precondition`, with one of two details:
+	//     - CharacterBlocked: CANNOT_LEVEL_UP, CHARACTER_DEAD,
+	//       AWAITING_APPROVAL, or DICE_FORCED_IN_APP (a typed die result in a
+	//       campaign where everybody rolls in the app);
+	//     - LevelUpRefusal: the choices break a rule of the level (the field
+	//       and a reason code), or the in-app roll was never made.
+	LevelUpCharacter(context.Context, *connect.Request[v1.LevelUpCharacterRequest]) (*connect.Response[v1.LevelUpCharacterResponse], error)
+	// ListLevelUps lists the level-ups of the campaign, newest first, a page
+	// at a time (page_size up to 50, page_token): the master's "O que mudou"
+	// (MR-040). Each carries what the player
+	// chose and when. With character_id, only that character's. The master is
+	// told by the stream (`xp_changed`) and reads here; there is no approval
+	// and no veto: the master can still edit the sheet as always.
+	//
+	// Only the master may call it.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, or the caller is not a
+	//     member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `invalid_argument`: page_size is not 1 to 50, or page_token is not one
+	//     this list gave.
+	ListLevelUps(context.Context, *connect.Request[v1.ListLevelUpsRequest]) (*connect.Response[v1.ListLevelUpsResponse], error)
 }
 
 // NewCharacterServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -767,6 +1057,39 @@ func NewCharacterServiceHandler(svc CharacterServiceHandler, opts ...connect.Han
 		connect.WithSchema(characterServiceMethods.ByName("RejectCharacter")),
 		connect.WithHandlerOptions(opts...),
 	)
+	characterServiceGetLevelUpOptionsHandler := connect.NewUnaryHandler(
+		CharacterServiceGetLevelUpOptionsProcedure,
+		svc.GetLevelUpOptions,
+		connect.WithSchema(characterServiceMethods.ByName("GetLevelUpOptions")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
+	characterServicePreviewLevelUpHandler := connect.NewUnaryHandler(
+		CharacterServicePreviewLevelUpProcedure,
+		svc.PreviewLevelUp,
+		connect.WithSchema(characterServiceMethods.ByName("PreviewLevelUp")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
+	characterServiceRollLevelUpHitPointsHandler := connect.NewUnaryHandler(
+		CharacterServiceRollLevelUpHitPointsProcedure,
+		svc.RollLevelUpHitPoints,
+		connect.WithSchema(characterServiceMethods.ByName("RollLevelUpHitPoints")),
+		connect.WithHandlerOptions(opts...),
+	)
+	characterServiceLevelUpCharacterHandler := connect.NewUnaryHandler(
+		CharacterServiceLevelUpCharacterProcedure,
+		svc.LevelUpCharacter,
+		connect.WithSchema(characterServiceMethods.ByName("LevelUpCharacter")),
+		connect.WithHandlerOptions(opts...),
+	)
+	characterServiceListLevelUpsHandler := connect.NewUnaryHandler(
+		CharacterServiceListLevelUpsProcedure,
+		svc.ListLevelUps,
+		connect.WithSchema(characterServiceMethods.ByName("ListLevelUps")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/meurpg.characters.v1.CharacterService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CharacterServiceCreateCharacterProcedure:
@@ -791,6 +1114,16 @@ func NewCharacterServiceHandler(svc CharacterServiceHandler, opts ...connect.Han
 			characterServiceApproveCharacterHandler.ServeHTTP(w, r)
 		case CharacterServiceRejectCharacterProcedure:
 			characterServiceRejectCharacterHandler.ServeHTTP(w, r)
+		case CharacterServiceGetLevelUpOptionsProcedure:
+			characterServiceGetLevelUpOptionsHandler.ServeHTTP(w, r)
+		case CharacterServicePreviewLevelUpProcedure:
+			characterServicePreviewLevelUpHandler.ServeHTTP(w, r)
+		case CharacterServiceRollLevelUpHitPointsProcedure:
+			characterServiceRollLevelUpHitPointsHandler.ServeHTTP(w, r)
+		case CharacterServiceLevelUpCharacterProcedure:
+			characterServiceLevelUpCharacterHandler.ServeHTTP(w, r)
+		case CharacterServiceListLevelUpsProcedure:
+			characterServiceListLevelUpsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -842,4 +1175,24 @@ func (UnimplementedCharacterServiceHandler) ApproveCharacter(context.Context, *c
 
 func (UnimplementedCharacterServiceHandler) RejectCharacter(context.Context, *connect.Request[v1.RejectCharacterRequest]) (*connect.Response[v1.RejectCharacterResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.RejectCharacter is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) GetLevelUpOptions(context.Context, *connect.Request[v1.GetLevelUpOptionsRequest]) (*connect.Response[v1.GetLevelUpOptionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.GetLevelUpOptions is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) PreviewLevelUp(context.Context, *connect.Request[v1.PreviewLevelUpRequest]) (*connect.Response[v1.PreviewLevelUpResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.PreviewLevelUp is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) RollLevelUpHitPoints(context.Context, *connect.Request[v1.RollLevelUpHitPointsRequest]) (*connect.Response[v1.RollLevelUpHitPointsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.RollLevelUpHitPoints is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) LevelUpCharacter(context.Context, *connect.Request[v1.LevelUpCharacterRequest]) (*connect.Response[v1.LevelUpCharacterResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.LevelUpCharacter is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) ListLevelUps(context.Context, *connect.Request[v1.ListLevelUpsRequest]) (*connect.Response[v1.ListLevelUpsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.ListLevelUps is not implemented"))
 }

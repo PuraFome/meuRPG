@@ -31,6 +31,8 @@ export function sceneBlockedMessage(reason: SceneBlockedReason): string {
       return 'A campanha mudou a forma de rolar os dados. Recarregue a página.';
     case SceneBlockedReason.NO_CHARACTER:
       return 'Você não tem um personagem vivo nesta campanha para rolar.';
+    case SceneBlockedReason.STAGE_FULL:
+      return 'A cena comporta 4 NPCs. Tire um para pôr outro.';
     default:
       return 'A cena não está num estado que aceite isso. A tela foi atualizada.';
   }
@@ -57,4 +59,19 @@ export function sceneErrorMessage(err: unknown, what = 'fazer isso'): string {
     [Code.PermissionDenied]: 'Você não pode fazer isso agora.',
     [Code.Unavailable]: `Não deu para ${what}: o servidor não respondeu. Tente de novo.`,
   });
+}
+
+/** What a failed stage call (`PutOnStage`, `TakeOffStage`, `SetSpeaker`) says
+ * to the master, by code and typed detail. A scene that closed meanwhile is
+ * not "the master closed the scene" here: the master did it. */
+export function stageErrorMessage(err: unknown): string {
+  const blocked = sceneBlocked(err);
+  if (blocked?.reason === SceneBlockedReason.NO_OPEN_SCENE) {
+    return 'Não há cena aberta, então não há palco. Abra uma cena para pôr NPCs em cena.';
+  }
+  const connectErr = ConnectError.from(err, Code.Unavailable);
+  if (connectErr.code === Code.NotFound) {
+    return 'Esse NPC não está mais na campanha ou não está em cena. A tela foi atualizada.';
+  }
+  return sceneErrorMessage(err, 'mudar o palco');
 }

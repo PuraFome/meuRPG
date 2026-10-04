@@ -1,0 +1,96 @@
+<section class="st" aria-labelledby="st-title">
+  <div class="st__head">
+    <h3 class="st__title" id="st-title">Em cena</h3>
+    <span class="st__count">{{ count() }}</span>
+  </div>
+  <p class="st__lead">Os jogadores veem os retratos e o nome de quem está aqui, e quem fala fica na frente.</p>
+
+  @if (ctl().error(); as message) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ message }}</p>
+    </div>
+  }
+  @if (ctl().entered(); as sentence) {
+    <p class="st__entered"><mat-icon aria-hidden="true">check</mat-icon>{{ sentence }}</p>
+  }
+
+  @if (cards().length === 0) {
+    <p class="st__empty">Ninguém em cena. Ponha um NPC para os jogadores o verem.</p>
+  } @else {
+    <ul class="st__cards">
+      @for (card of cards(); track card.npc.id; let i = $index) {
+        <li class="card" [class.card--speaking]="card.npc.speaking" data-stage-card>
+          <div class="card__who">
+            <app-portrait [src]="card.npc.portraitUrl" [name]="card.npc.name" [size]="64" fit="cover" />
+            <div class="card__text">
+              <span class="card__name">{{ card.npc.name }}</span>
+              @if (card.kind) {
+                <span class="card__kind">{{ card.kind }}</span>
+              }
+            </div>
+          </div>
+          <div class="card__buttons">
+            <button
+              matButton="outlined"
+              type="button"
+              class="card__btn"
+              [class.card__btn--on]="card.npc.speaking"
+              [attr.aria-pressed]="card.npc.speaking"
+              [aria-disabled]="ctl().busy(card.npc.characterId)"
+              [attr.aria-label]="card.npc.speaking ? card.npc.name + ' está com a fala. Tirar a fala' : 'Dar a fala a ' + card.npc.name"
+              (click)="speak(card)"
+            >
+              <mat-icon aria-hidden="true">{{ card.npc.speaking ? 'check' : 'chat_bubble_outline' }}</mat-icon>
+              {{ card.npc.speaking ? 'Fala agora' : 'Dar a fala' }}
+            </button>
+            <button
+              matButton="outlined"
+              type="button"
+              class="card__btn"
+              [aria-disabled]="ctl().busy(card.npc.characterId)"
+              [attr.aria-label]="'Tirar ' + card.npc.name + ' de cena'"
+              (click)="take(card, i)"
+            >
+              <mat-icon aria-hidden="true">logout</mat-icon>Tirar de cena
+            </button>
+          </div>
+        </li>
+      }
+    </ul>
+  }
+
+  @if (!listOpen()) {
+    @if (full()) {
+      <p class="st__reason" id="st-reason">{{ reason }}</p>
+    }
+    <button
+      #putButton
+      matButton="outlined"
+      type="button"
+      class="st__put"
+      [class.st__put--off]="full()"
+      [aria-disabled]="full()"
+      [attr.aria-describedby]="full() ? 'st-reason' : null"
+      (click)="openList()"
+    >
+      <mat-icon aria-hidden="true">{{ full() ? 'block' : 'login' }}</mat-icon>Pôr em cena
+    </button>
+  } @else {
+    <div class="pick">
+      <div class="pick__head">
+        <h4 #listTitle class="pick__title" tabindex="-1">Pôr em cena</h4>
+        <button matButton type="button" class="pick__close" (click)="closeList()">Fechar</button>
+      </div>
+      <p class="pick__lead">Os NPCs desta campanha. Quem entra vai para o fim da fila, à direita do palco.</p>
+      @if (rosterError()) {
+        <p class="pick__lead" role="alert">Não deu para carregar os NPCs da campanha. Feche e tente de novo.</p>
+      } @else if (candidates().length === 0) {
+        <p class="pick__lead">A campanha ainda não tem NPCs. Crie um na página da campanha.</p>
+      }
+      <app-stage-list [candidates]="candidates()" [state]="state()" [ctl]="ctl()" (exhausted)="focusTitle()" />
+    </div>
+  }
+
+  <p class="mr-visually-hidden" role="status" aria-live="polite">{{ ctl().status() }}</p>
+</section>

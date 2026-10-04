@@ -1,9 +1,9 @@
-import { formatInt, formatXp, joinDots, tight, glueShort } from './text';
+import { formatInt, formatXp, joinDots, tight } from './text';
 
 describe('tight', () => {
   it('keeps a number, its unit and the word before it together', () => {
     expect(tight('+5 para acertar · alcance 6 m')).toBe('+5 para acertar · alcance\u00a06\u00a0m');
-    expect(tight('Dá para andar mais 4,5 m (3 quadrados)')).toBe('Dá para andar mais\u00a04,5\u00a0m (3 quadrados)');
+    expect(tight('Dá para andar mais 4,5 m (3 quadrados)')).toBe('Dá para andar mais\u00a04,5\u00a0m (3\u00a0quadrados)');
     expect(tight('Digite um número de 1 a 20')).toBe('Digite um número de\u00a01\u00a0a\u00a020');
     expect(tight('Restam 7,5 m de 15 m')).toBe('Restam\u00a07,5\u00a0m de\u00a015\u00a0m');
   });
@@ -36,11 +36,3 @@ describe('formatInt and formatXp', () => {
   });
 });
 
-describe('glueShort', () => {
-  it('glues a one- or two-letter word to the next, so a name never breaks after "A" or "de"', () => {
-    expect(glueShort('A carroça tombada')).toBe('A\u00a0carroça tombada');
-    expect(glueShort('Vau de riacho')).toBe('Vau de\u00a0riacho');
-    expect(glueShort('Posto da guarda')).toBe('Posto da\u00a0guarda');
-    expect(glueShort('Taverna')).toBe('Taverna');
-  });
-});

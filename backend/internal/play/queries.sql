@@ -377,6 +377,12 @@ SELECT id, seq, character_id, payload, created_at FROM session_events
 WHERE game_session_id = $1 AND kind = 'scene_check_rolled' AND seq > $2
 ORDER BY seq DESC;
 
+-- name: ListSceneAttemptGrantEvents :many
+-- The attempts the master granted since the opening (seq): which character, at
+-- which action (the payload's action_id).
+SELECT character_id, payload FROM session_events
+WHERE game_session_id = $1 AND kind = 'scene_attempt_granted' AND seq > $2;
+
 -- name: GetOpenScenePoint :one
 -- The map point of the scene open in the campaign's open session (NULL when
 -- none). No row: no open session.
@@ -427,6 +433,30 @@ WHERE encounter_id = $1
   AND kind IN ('attack_rolled', 'damage_rolled', 'damage_applied', 'spell_cast', 'action_taken', 'action_undone')
 ORDER BY seq
 LIMIT 20000;
+
+-- The session summary (MR-032): what happened in an ended session.
+
+-- name: GetGameSessionInCampaign :one
+-- One session of the campaign, ended or not (a session of another campaign
+-- matches no row).
+SELECT * FROM game_sessions
+WHERE campaign_id = $1 AND id = $2;
+
+-- name: ListSessionCombats :many
+-- The combats that began in the session, oldest first. A combat that never
+-- left setup (the session ended first) has no started_at and is not a combat
+-- that happened.
+SELECT * FROM encounters
+WHERE game_session_id = $1 AND started_at IS NOT NULL
+ORDER BY created_at, id;
+
+-- name: ListSessionSceneEvents :many
+-- The scenes opened and the checks rolled in them, oldest first: what the
+-- summary counts outside combat.
+SELECT kind, character_id, payload FROM session_events
+WHERE game_session_id = $1 AND kind IN ('scene_opened', 'scene_check_rolled')
+ORDER BY seq
+LIMIT 20001; -- one past maxSummaryEvents: the caller fails loudly rather than under-count
 
 -- Progression (MR-016): what the XP awards read from the combats and the log.
 

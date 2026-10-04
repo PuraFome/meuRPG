@@ -1,5 +1,6 @@
-import { spellLevelLabel } from '../../../core/characters/character-labels';
-import { SpellDetailsVm } from '../character-editor.types';
+import { spellLevelLabel } from '../../core/characters/character-labels';
+import { formatMeters, feetToMeters } from '../../core/units';
+import { SpellDetailsVm } from './spell-details.types';
 
 /**
  * The "?" dialog's text (E6-22, E6-23): the SRD's structured values written
@@ -63,10 +64,11 @@ export function formatCastingTime(t: SpellDetailsVm['castingTime']): SpellFieldV
   }
 }
 
-/** Metres for a distance in feet: 5 ft = 1,5 m, and kilometres from 1.000 m. */
+/** Metres for a distance in feet (`core/units.ts`: 5 ft = 1,5 m), and
+ * kilometres from 1.000 m. */
 export function formatRangeFt(feet: number): string {
-  const meters = feet * 0.3;
-  return meters >= 1000 ? `${decimal(Math.round(meters / 100) / 10)} km` : `${decimal(meters)} m`;
+  const meters = feetToMeters(feet);
+  return meters >= 1000 ? `${decimal(Math.round(meters / 100) / 10)} km` : formatMeters(meters);
 }
 
 export function formatRange(r: SpellDetailsVm['range']): SpellFieldValue {

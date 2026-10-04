@@ -173,6 +173,7 @@ function vm(overrides: Partial<CharacterSheetVm> = {}): CharacterSheetVm {
     campaignId: 'camp-1',
     characterKind: 'player',
     name: 'Pensantus',
+    portraitImageId: '',
     state: 'draft',
     canEdit: true,
     sheetLockedAt: null,

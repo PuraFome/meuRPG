@@ -138,6 +138,10 @@ type CombatRoster interface {
 	// CombatCharacters returns those of ids that are living characters of
 	// the campaign, players' or NPCs; the others are left out.
 	CombatCharacters(ctx context.Context, campaignID string, ids []string) ([]link.Character, error)
+	// SessionCharacters returns those of ids that are characters of the
+	// campaign whatever their status (a dead one too), with only their name and
+	// player filled: the session summary names who fought, even if they died.
+	SessionCharacters(ctx context.Context, campaignID string, ids []string) ([]link.Character, error)
 	// CombatSheet returns what an attack needs from the sheet of a living
 	// character of the campaign, a player's or an NPC's: its armor class, its
 	// attacks and the standard actions. Its armor class never goes to a

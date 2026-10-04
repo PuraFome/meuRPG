@@ -44,9 +44,13 @@ const (
 	// the action belongs to. PutOnStage: no scene is open, so there is no
 	// stage.
 	SceneBlockedReason_SCENE_BLOCKED_REASON_NO_OPEN_SCENE SceneBlockedReason = 2
-	// RollSceneCheck: the character already rolled this action while the
-	// scene has been open. The master closes and opens the scene again to
-	// allow another roll.
+	// RollSceneCheck: the character has no attempt left at this action while
+	// the scene has been open: it rolled as many times as the action's
+	// `max_attempts` allows, plus the attempts the master granted
+	// (GrantSceneAttempt). The master may grant one more, raise the limit, or
+	// close and open the scene again, which resets every count. The name stays
+	// from the time the limit was one roll ("already rolled"); the reason is
+	// the same.
 	SceneBlockedReason_SCENE_BLOCKED_REASON_ALREADY_ROLLED SceneBlockedReason = 3
 	// RollSceneCheck: the campaign's dice setting does not allow this way of
 	// rolling (RN-18): the app's roll when everybody rolls real dice, a typed
@@ -184,7 +188,13 @@ type OpenSceneInfo struct {
 	// The NPCs "em cena", in the order they came in, at most 4 (MR-031). Every
 	// member gets the same list, each entry with only what a player may see
 	// (StageNpc). Empty when nobody is on the stage.
-	Stage         []*StageNpc `protobuf:"bytes,10,rep,name=stage,proto3" json:"stage,omitempty"`
+	Stage []*StageNpc `protobuf:"bytes,10,rep,name=stage,proto3" json:"stage,omitempty"`
+	// Whether this scene shows its DCs to the players ("Mostrar a CD aos
+	// jogadores", MR-015, question 52). Every member gets it. On: a player's
+	// actions carry `dc` and their own rolls carry `passed`. Off: they carry
+	// neither, and the master alone reads both (RN-20). The master always gets
+	// the DCs and every `passed`.
+	ShowDc        bool `protobuf:"varint,11,opt,name=show_dc,json=showDc,proto3" json:"show_dc,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -280,6 +290,13 @@ func (x *OpenSceneInfo) GetStage() []*StageNpc {
 		return x.Stage
 	}
 	return nil
+}
+
+func (x *OpenSceneInfo) GetShowDc() bool {
+	if x != nil {
+		return x.ShowDc
+	}
+	return false
 }
 
 // StageNpc is an NPC on the stage of the open scene, as the caller sees it
@@ -681,8 +698,10 @@ type SceneActionView struct {
 	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	// The check's name in Portuguese: "Investigação", "Teste de Força".
 	CheckName string `protobuf:"bytes,4,opt,name=check_name,json=checkName,proto3" json:"check_name,omitempty"`
-	// The difficulty class, 1 to 30; 0 for none. Only the master gets it: a
-	// player always gets 0 (RN-20), and never learns whether there is one.
+	// The difficulty class, 1 to 30; 0 for none. The master always gets it. A
+	// player gets it only when the scene's `show_dc` is on, and then 0 still
+	// means "no DC": an action without one shows nothing extra. With `show_dc`
+	// off a player always gets 0 and never learns whether there is one (RN-20).
 	Dc int32 `protobuf:"varint,5,opt,name=dc,proto3" json:"dc,omitempty"`
 	// What the caller's own character adds to the d20: from their sheet, for
 	// a player. Unset for the master, who has no character, and for a player
@@ -690,7 +709,21 @@ type SceneActionView struct {
 	Bonus *int32 `protobuf:"varint,6,opt,name=bonus,proto3,oneof" json:"bonus,omitempty"`
 	// The character's passive value, set only for Percepção, Investigação and
 	// Intuição, and only for a player's own character.
-	Passive       *int32 `protobuf:"varint,7,opt,name=passive,proto3,oneof" json:"passive,omitempty"`
+	Passive *int32 `protobuf:"varint,7,opt,name=passive,proto3,oneof" json:"passive,omitempty"`
+	// How many times each player's character may roll this action while the
+	// scene stays open: 1 to 5, and 0 means unlimited (no counter on screen).
+	// Every member gets it.
+	MaxAttempts int32 `protobuf:"varint,8,opt,name=max_attempts,json=maxAttempts,proto3" json:"max_attempts,omitempty"`
+	// How many attempts the caller's own character has left in this opening of
+	// the scene (MR-015, question 55): the limit minus their rolls of this
+	// action, plus the attempts the master granted, never below 0. The app
+	// writes "Restam 2 de 3 tentativas", "1 tentativa" or, at 0, "Sem mais
+	// tentativas". Unset for an unlimited action (`max_attempts` 0), for the
+	// master and for a player with no living character: nothing to count. A
+	// player never gets another player's count. A grant the master gave on
+	// purpose may push it above `max_attempts` ("6 de 5"): when it is above,
+	// write "Restam N tentativas" without the "de M".
+	AttemptsLeft  *int32 `protobuf:"varint,9,opt,name=attempts_left,json=attemptsLeft,proto3,oneof" json:"attempts_left,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -774,6 +807,20 @@ func (x *SceneActionView) GetPassive() int32 {
 	return 0
 }
 
+func (x *SceneActionView) GetMaxAttempts() int32 {
+	if x != nil {
+		return x.MaxAttempts
+	}
+	return 0
+}
+
+func (x *SceneActionView) GetAttemptsLeft() int32 {
+	if x != nil && x.AttemptsLeft != nil {
+		return *x.AttemptsLeft
+	}
+	return 0
+}
+
 // SceneRoll is one check rolled in the scene.
 type SceneRoll struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -789,11 +836,20 @@ type SceneRoll struct {
 	// typed face is in faces.
 	Roll *DiceRoll `protobuf:"bytes,5,opt,name=roll,proto3" json:"roll,omitempty"`
 	// Whether the total reached the action's DC, as it was when the roll was
-	// made. Set only for the master, and only when the action had a DC: a
-	// player never gets it (RN-20).
+	// made. Set only when the action had a DC. The master always gets it; a
+	// player gets it for their own rolls only when the scene showed its DC at the
+	// moment of the roll (RN-20; turning `show_dc` on later does not reveal the
+	// earlier rolls), and never for anyone else's. These are exactly the rolls
+	// the session summary counts.
 	Passed *bool `protobuf:"varint,6,opt,name=passed,proto3,oneof" json:"passed,omitempty"`
 	// When it was rolled.
-	RolledAt      *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=rolled_at,json=rolledAt,proto3" json:"rolled_at,omitempty"`
+	RolledAt *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=rolled_at,json=rolledAt,proto3" json:"rolled_at,omitempty"`
+	// How many attempts this character has left at this action now, as
+	// SceneActionView.attempts_left says it for a player; the master reads it
+	// here to offer "Dar mais uma tentativa" (GrantSceneAttempt) on the roll
+	// card of a character with none left. Only the master gets it: a player's
+	// count is in their actions. Unset for an unlimited action.
+	AttemptsLeft  *int32 `protobuf:"varint,8,opt,name=attempts_left,json=attemptsLeft,proto3,oneof" json:"attempts_left,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -875,6 +931,13 @@ func (x *SceneRoll) GetRolledAt() *timestamppb.Timestamp {
 		return x.RolledAt
 	}
 	return nil
+}
+
+func (x *SceneRoll) GetAttemptsLeft() int32 {
+	if x != nil && x.AttemptsLeft != nil {
+		return *x.AttemptsLeft
+	}
+	return 0
 }
 
 // OpenSceneRequest names the campaign and the point.
@@ -1271,7 +1334,8 @@ func (*RollSceneCheckRequest_D20Face) isRollSceneCheckRequest_Roll() {}
 // RollSceneCheckResponse is the roll that was made.
 type RollSceneCheckResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The caller's roll, with its total. A player never gets `passed` here.
+	// The caller's roll, with its total. `passed` is set only when the scene
+	// shows its DC (`show_dc`) and the action had one.
 	Roll          *SceneRoll `protobuf:"bytes,1,opt,name=roll,proto3" json:"roll,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1314,13 +1378,132 @@ func (x *RollSceneCheckResponse) GetRoll() *SceneRoll {
 	return nil
 }
 
+// GrantSceneAttemptRequest gives one character one more attempt at one action.
+type GrantSceneAttemptRequest struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	// The action (a UUID), one of the open scene's.
+	ActionId string `protobuf:"bytes,2,opt,name=action_id,json=actionId,proto3" json:"action_id,omitempty"`
+	// The player's character that gets the attempt (a UUID): a living player
+	// character of the campaign.
+	CharacterId string `protobuf:"bytes,3,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	// A UUID the app makes for each grant. Repeating a grant with the same key
+	// adds nothing more and answers like the first.
+	IdempotencyKey string `protobuf:"bytes,4,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *GrantSceneAttemptRequest) Reset() {
+	*x = GrantSceneAttemptRequest{}
+	mi := &file_meurpg_play_v1_scene_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GrantSceneAttemptRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GrantSceneAttemptRequest) ProtoMessage() {}
+
+func (x *GrantSceneAttemptRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_scene_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GrantSceneAttemptRequest.ProtoReflect.Descriptor instead.
+func (*GrantSceneAttemptRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_scene_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *GrantSceneAttemptRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *GrantSceneAttemptRequest) GetActionId() string {
+	if x != nil {
+		return x.ActionId
+	}
+	return ""
+}
+
+func (x *GrantSceneAttemptRequest) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+func (x *GrantSceneAttemptRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
+}
+
+// GrantSceneAttemptResponse returns the open scene as the master sees it.
+type GrantSceneAttemptResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Scene         *OpenSceneInfo         `protobuf:"bytes,1,opt,name=scene,proto3" json:"scene,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GrantSceneAttemptResponse) Reset() {
+	*x = GrantSceneAttemptResponse{}
+	mi := &file_meurpg_play_v1_scene_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GrantSceneAttemptResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GrantSceneAttemptResponse) ProtoMessage() {}
+
+func (x *GrantSceneAttemptResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_scene_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GrantSceneAttemptResponse.ProtoReflect.Descriptor instead.
+func (*GrantSceneAttemptResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_scene_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *GrantSceneAttemptResponse) GetScene() *OpenSceneInfo {
+	if x != nil {
+		return x.Scene
+	}
+	return nil
+}
+
 var File_meurpg_play_v1_scene_proto protoreflect.FileDescriptor
 
 const file_meurpg_play_v1_scene_proto_rawDesc = "" +
 	"\n" +
 	"\x1ameurpg/play/v1/scene.proto\x12\x0emeurpg.play.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x19meurpg/maps/v1/maps.proto\x1a\x1bmeurpg/play/v1/combat.proto\"J\n" +
 	"\fSceneBlocked\x12:\n" +
-	"\x06reason\x18\x01 \x01(\x0e2\".meurpg.play.v1.SceneBlockedReasonR\x06reason\"\xfc\x02\n" +
+	"\x06reason\x18\x01 \x01(\x0e2\".meurpg.play.v1.SceneBlockedReasonR\x06reason\"\x95\x03\n" +
 	"\rOpenSceneInfo\x12\x19\n" +
 	"\bpoint_id\x18\x01 \x01(\tR\apointId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
@@ -1331,7 +1514,8 @@ const file_meurpg_play_v1_scene_proto_rawDesc = "" +
 	"\x05hooks\x18\a \x01(\tR\x05hooks\x12/\n" +
 	"\x05clues\x18\b \x03(\v2\x19.meurpg.maps.v1.SceneClueR\x05clues\x12.\n" +
 	"\x05stage\x18\n" +
-	" \x03(\v2\x18.meurpg.play.v1.StageNpcR\x05stage\"\x90\x01\n" +
+	" \x03(\v2\x18.meurpg.play.v1.StageNpcR\x05stage\x12\x17\n" +
+	"\ashow_dc\x18\v \x01(\bR\x06showDc\"\x90\x01\n" +
 	"\bStageNpc\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12!\n" +
@@ -1355,7 +1539,7 @@ const file_meurpg_play_v1_scene_proto_rawDesc = "" +
 	"campaignId\x12!\n" +
 	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\"D\n" +
 	"\x12SetSpeakerResponse\x12.\n" +
-	"\x05stage\x18\x01 \x03(\v2\x18.meurpg.play.v1.StageNpcR\x05stage\"\xc6\x01\n" +
+	"\x05stage\x18\x01 \x03(\v2\x18.meurpg.play.v1.StageNpcR\x05stage\"\xa5\x02\n" +
 	"\x0fSceneActionView\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
 	"\x03key\x18\x02 \x01(\tR\x03key\x12\x12\n" +
@@ -1364,10 +1548,13 @@ const file_meurpg_play_v1_scene_proto_rawDesc = "" +
 	"check_name\x18\x04 \x01(\tR\tcheckName\x12\x0e\n" +
 	"\x02dc\x18\x05 \x01(\x05R\x02dc\x12\x19\n" +
 	"\x05bonus\x18\x06 \x01(\x05H\x00R\x05bonus\x88\x01\x01\x12\x1d\n" +
-	"\apassive\x18\a \x01(\x05H\x01R\apassive\x88\x01\x01B\b\n" +
+	"\apassive\x18\a \x01(\x05H\x01R\apassive\x88\x01\x01\x12!\n" +
+	"\fmax_attempts\x18\b \x01(\x05R\vmaxAttempts\x12(\n" +
+	"\rattempts_left\x18\t \x01(\x05H\x02R\fattemptsLeft\x88\x01\x01B\b\n" +
 	"\x06_bonusB\n" +
 	"\n" +
-	"\b_passive\"\x91\x02\n" +
+	"\b_passiveB\x10\n" +
+	"\x0e_attempts_left\"\xcd\x02\n" +
 	"\tSceneRoll\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\taction_id\x18\x02 \x01(\tR\bactionId\x12!\n" +
@@ -1375,8 +1562,10 @@ const file_meurpg_play_v1_scene_proto_rawDesc = "" +
 	"\x0echaracter_name\x18\x04 \x01(\tR\rcharacterName\x12,\n" +
 	"\x04roll\x18\x05 \x01(\v2\x18.meurpg.play.v1.DiceRollR\x04roll\x12\x1b\n" +
 	"\x06passed\x18\x06 \x01(\bH\x00R\x06passed\x88\x01\x01\x127\n" +
-	"\trolled_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\brolledAtB\t\n" +
-	"\a_passed\"N\n" +
+	"\trolled_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\brolledAt\x12(\n" +
+	"\rattempts_left\x18\b \x01(\x05H\x01R\fattemptsLeft\x88\x01\x01B\t\n" +
+	"\a_passedB\x10\n" +
+	"\x0e_attempts_left\"N\n" +
 	"\x10OpenSceneRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x19\n" +
@@ -1401,7 +1590,15 @@ const file_meurpg_play_v1_scene_proto_rawDesc = "" +
 	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKeyB\x06\n" +
 	"\x04roll\"G\n" +
 	"\x16RollSceneCheckResponse\x12-\n" +
-	"\x04roll\x18\x01 \x01(\v2\x19.meurpg.play.v1.SceneRollR\x04roll*\xa6\x02\n" +
+	"\x04roll\x18\x01 \x01(\v2\x19.meurpg.play.v1.SceneRollR\x04roll\"\xa4\x01\n" +
+	"\x18GrantSceneAttemptRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x12\x1b\n" +
+	"\taction_id\x18\x02 \x01(\tR\bactionId\x12!\n" +
+	"\fcharacter_id\x18\x03 \x01(\tR\vcharacterId\x12'\n" +
+	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\"P\n" +
+	"\x19GrantSceneAttemptResponse\x123\n" +
+	"\x05scene\x18\x01 \x01(\v2\x1d.meurpg.play.v1.OpenSceneInfoR\x05scene*\xa6\x02\n" +
 	"\x12SceneBlockedReason\x12$\n" +
 	" SCENE_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12#\n" +
 	"\x1fSCENE_BLOCKED_REASON_NO_ACTIONS\x10\x01\x12&\n" +
@@ -1426,52 +1623,55 @@ func file_meurpg_play_v1_scene_proto_rawDescGZIP() []byte {
 }
 
 var file_meurpg_play_v1_scene_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_meurpg_play_v1_scene_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_meurpg_play_v1_scene_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_meurpg_play_v1_scene_proto_goTypes = []any{
-	(SceneBlockedReason)(0),        // 0: meurpg.play.v1.SceneBlockedReason
-	(*SceneBlocked)(nil),           // 1: meurpg.play.v1.SceneBlocked
-	(*OpenSceneInfo)(nil),          // 2: meurpg.play.v1.OpenSceneInfo
-	(*StageNpc)(nil),               // 3: meurpg.play.v1.StageNpc
-	(*PutOnStageRequest)(nil),      // 4: meurpg.play.v1.PutOnStageRequest
-	(*PutOnStageResponse)(nil),     // 5: meurpg.play.v1.PutOnStageResponse
-	(*TakeOffStageRequest)(nil),    // 6: meurpg.play.v1.TakeOffStageRequest
-	(*TakeOffStageResponse)(nil),   // 7: meurpg.play.v1.TakeOffStageResponse
-	(*SetSpeakerRequest)(nil),      // 8: meurpg.play.v1.SetSpeakerRequest
-	(*SetSpeakerResponse)(nil),     // 9: meurpg.play.v1.SetSpeakerResponse
-	(*SceneActionView)(nil),        // 10: meurpg.play.v1.SceneActionView
-	(*SceneRoll)(nil),              // 11: meurpg.play.v1.SceneRoll
-	(*OpenSceneRequest)(nil),       // 12: meurpg.play.v1.OpenSceneRequest
-	(*OpenSceneResponse)(nil),      // 13: meurpg.play.v1.OpenSceneResponse
-	(*CloseSceneRequest)(nil),      // 14: meurpg.play.v1.CloseSceneRequest
-	(*CloseSceneResponse)(nil),     // 15: meurpg.play.v1.CloseSceneResponse
-	(*GetOpenSceneRequest)(nil),    // 16: meurpg.play.v1.GetOpenSceneRequest
-	(*GetOpenSceneResponse)(nil),   // 17: meurpg.play.v1.GetOpenSceneResponse
-	(*RollSceneCheckRequest)(nil),  // 18: meurpg.play.v1.RollSceneCheckRequest
-	(*RollSceneCheckResponse)(nil), // 19: meurpg.play.v1.RollSceneCheckResponse
-	(*timestamppb.Timestamp)(nil),  // 20: google.protobuf.Timestamp
-	(*v1.SceneClue)(nil),           // 21: meurpg.maps.v1.SceneClue
-	(*DiceRoll)(nil),               // 22: meurpg.play.v1.DiceRoll
+	(SceneBlockedReason)(0),           // 0: meurpg.play.v1.SceneBlockedReason
+	(*SceneBlocked)(nil),              // 1: meurpg.play.v1.SceneBlocked
+	(*OpenSceneInfo)(nil),             // 2: meurpg.play.v1.OpenSceneInfo
+	(*StageNpc)(nil),                  // 3: meurpg.play.v1.StageNpc
+	(*PutOnStageRequest)(nil),         // 4: meurpg.play.v1.PutOnStageRequest
+	(*PutOnStageResponse)(nil),        // 5: meurpg.play.v1.PutOnStageResponse
+	(*TakeOffStageRequest)(nil),       // 6: meurpg.play.v1.TakeOffStageRequest
+	(*TakeOffStageResponse)(nil),      // 7: meurpg.play.v1.TakeOffStageResponse
+	(*SetSpeakerRequest)(nil),         // 8: meurpg.play.v1.SetSpeakerRequest
+	(*SetSpeakerResponse)(nil),        // 9: meurpg.play.v1.SetSpeakerResponse
+	(*SceneActionView)(nil),           // 10: meurpg.play.v1.SceneActionView
+	(*SceneRoll)(nil),                 // 11: meurpg.play.v1.SceneRoll
+	(*OpenSceneRequest)(nil),          // 12: meurpg.play.v1.OpenSceneRequest
+	(*OpenSceneResponse)(nil),         // 13: meurpg.play.v1.OpenSceneResponse
+	(*CloseSceneRequest)(nil),         // 14: meurpg.play.v1.CloseSceneRequest
+	(*CloseSceneResponse)(nil),        // 15: meurpg.play.v1.CloseSceneResponse
+	(*GetOpenSceneRequest)(nil),       // 16: meurpg.play.v1.GetOpenSceneRequest
+	(*GetOpenSceneResponse)(nil),      // 17: meurpg.play.v1.GetOpenSceneResponse
+	(*RollSceneCheckRequest)(nil),     // 18: meurpg.play.v1.RollSceneCheckRequest
+	(*RollSceneCheckResponse)(nil),    // 19: meurpg.play.v1.RollSceneCheckResponse
+	(*GrantSceneAttemptRequest)(nil),  // 20: meurpg.play.v1.GrantSceneAttemptRequest
+	(*GrantSceneAttemptResponse)(nil), // 21: meurpg.play.v1.GrantSceneAttemptResponse
+	(*timestamppb.Timestamp)(nil),     // 22: google.protobuf.Timestamp
+	(*v1.SceneClue)(nil),              // 23: meurpg.maps.v1.SceneClue
+	(*DiceRoll)(nil),                  // 24: meurpg.play.v1.DiceRoll
 }
 var file_meurpg_play_v1_scene_proto_depIdxs = []int32{
 	0,  // 0: meurpg.play.v1.SceneBlocked.reason:type_name -> meurpg.play.v1.SceneBlockedReason
 	10, // 1: meurpg.play.v1.OpenSceneInfo.actions:type_name -> meurpg.play.v1.SceneActionView
 	11, // 2: meurpg.play.v1.OpenSceneInfo.rolls:type_name -> meurpg.play.v1.SceneRoll
-	20, // 3: meurpg.play.v1.OpenSceneInfo.opened_at:type_name -> google.protobuf.Timestamp
-	21, // 4: meurpg.play.v1.OpenSceneInfo.clues:type_name -> meurpg.maps.v1.SceneClue
+	22, // 3: meurpg.play.v1.OpenSceneInfo.opened_at:type_name -> google.protobuf.Timestamp
+	23, // 4: meurpg.play.v1.OpenSceneInfo.clues:type_name -> meurpg.maps.v1.SceneClue
 	3,  // 5: meurpg.play.v1.OpenSceneInfo.stage:type_name -> meurpg.play.v1.StageNpc
 	3,  // 6: meurpg.play.v1.PutOnStageResponse.stage:type_name -> meurpg.play.v1.StageNpc
 	3,  // 7: meurpg.play.v1.TakeOffStageResponse.stage:type_name -> meurpg.play.v1.StageNpc
 	3,  // 8: meurpg.play.v1.SetSpeakerResponse.stage:type_name -> meurpg.play.v1.StageNpc
-	22, // 9: meurpg.play.v1.SceneRoll.roll:type_name -> meurpg.play.v1.DiceRoll
-	20, // 10: meurpg.play.v1.SceneRoll.rolled_at:type_name -> google.protobuf.Timestamp
+	24, // 9: meurpg.play.v1.SceneRoll.roll:type_name -> meurpg.play.v1.DiceRoll
+	22, // 10: meurpg.play.v1.SceneRoll.rolled_at:type_name -> google.protobuf.Timestamp
 	2,  // 11: meurpg.play.v1.OpenSceneResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
 	2,  // 12: meurpg.play.v1.GetOpenSceneResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
 	11, // 13: meurpg.play.v1.RollSceneCheckResponse.roll:type_name -> meurpg.play.v1.SceneRoll
-	14, // [14:14] is the sub-list for method output_type
-	14, // [14:14] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	2,  // 14: meurpg.play.v1.GrantSceneAttemptResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
+	15, // [15:15] is the sub-list for method output_type
+	15, // [15:15] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_scene_proto_init() }
@@ -1492,7 +1692,7 @@ func file_meurpg_play_v1_scene_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_play_v1_scene_proto_rawDesc), len(file_meurpg_play_v1_scene_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   19,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

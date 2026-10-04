@@ -9,6 +9,9 @@ import {
   CharacterBlockedReason,
   CharacterBlockedSchema,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
+import { GalleryClient } from '../../core/images/gallery-client';
+import { galleryImage, galleryUsage } from '../../core/images/gallery-testing';
+import type { SpellDetailsVm } from '../../shared/spell-details/spell-details.types';
 import { CharacterEditor } from './character-editor';
 import { createAttackGroup } from './npc-short-form/basic-form';
 import {
@@ -16,7 +19,6 @@ import {
   CharacterForEdit,
   CreateCharacterInput,
   RulesCatalogVm,
-  SpellDetailsVm,
   UpdateCharacterInput,
 } from './character-editor.types';
 
@@ -587,6 +589,7 @@ describe('CharacterEditor', () => {
           experiencePoints: 0,
           challengeRating: '',
           xpValue: 0,
+          portraitImageId: '',
           alignment: '',
           customFeaturesText: '',
         },
@@ -1153,7 +1156,7 @@ describe('CharacterEditor', () => {
 
       const dialog = document.querySelector('app-spell-details')!;
       expect(dialog.textContent).toContain('Alcance');
-      expect(dialog.textContent).toContain('18 m');
+      expect(dialog.textContent).toContain('18\u00a0m');
       expect(dialog.querySelector('[lang=en]')).not.toBeNull();
       expect(fake.loadSpellDetailsCalls).toEqual(['spell:magic-missile']);
 
@@ -1250,6 +1253,7 @@ describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () 
       experiencePoints: 0,
       challengeRating: '1',
       xpValue: 200,
+      portraitImageId: '',
       alignment: '',
       customFeaturesText: '',
       ...over,
@@ -1395,3 +1399,133 @@ describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () 
   });
 });
 
+// MR-031 (E8-08): the NPC's portrait. The form carries its ID through every
+// rebuild, so saving an NPC never loses it: the short form once dropped it.
+describe('CharacterEditor, the NPC portrait', () => {
+  let fake: FakeCharacterEditorSource;
+  const images = [galleryImage('img-1', 'Retrato da Mira'), galleryImage('img-2', 'Capitão Goblin')];
+
+  function configure(params: Record<string, string>): void {
+    TestBed.configureTestingModule({
+      imports: [CharacterEditor],
+      providers: [
+        provideRouter([]),
+        { provide: CharacterEditorSource, useClass: FakeCharacterEditorSource },
+        { provide: ActivatedRoute, useValue: routeParams(params) },
+        { provide: GalleryClient, useValue: { list: () => Promise.resolve({ images, usage: galleryUsage(images) }) } },
+      ],
+    });
+    fake = TestBed.inject(CharacterEditorSource) as unknown as FakeCharacterEditorSource;
+  }
+
+  async function render() {
+    const fixture = TestBed.createComponent(CharacterEditor);
+    fixture.detectChanges();
+    await flush();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return { fixture, el: fixture.nativeElement as HTMLElement };
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const cmp = (fixture: ComponentFixture<CharacterEditor>) => fixture.componentInstance as any;
+
+  const basicNpc = (portraitImageId: string): CharacterForEdit => ({
+    kind: 'story',
+    revision: 2,
+    blocked: null,
+    sheetLocked: false,
+    full: null,
+    basic: { name: 'Mira', hitPointsMax: 9, armorClass: 11, speedFt: 30, initiativeBonus: 2, attacks: [], legacyDamage: '', legacyAttackBonus: 0, description: '', challengeRating: '', xpValue: 0, portraitImageId },
+  });
+
+  it('shows "Retrato" on the short form of a new NPC, with the initials and "Escolher retrato"', async () => {
+    configure({ id: 'camp-1', tipo: 'historia' });
+    const { fixture, el } = await render();
+    cmp(fixture).basicForm.patchValue({ name: 'Aldo' });
+    fixture.detectChanges();
+    const field = el.querySelector('app-portrait-field')!;
+    expect(field.textContent).toContain('Retrato');
+    expect(field.querySelector('.pt__initials')?.textContent).toBe('AL');
+    expect(field.textContent).toContain('Escolher retrato');
+  });
+
+  it('keeps the portrait when the short form is saved: an edit that touches nothing else sends the same image', async () => {
+    configure({ id: 'camp-1', characterId: 'char-1' });
+    fake.loadCharacterForEditFn = () => Promise.resolve(basicNpc('img-1'));
+    const { fixture, el } = await render();
+    expect(el.querySelector('app-portrait-field img')?.getAttribute('src')).toBe('/images/img-1');
+
+    cmp(fixture).basicForm.patchValue({ hitPointsMax: 12 });
+    await cmp(fixture).submit();
+    expect(fake.updateCharacterCalls).toHaveLength(1);
+    expect(fake.updateCharacterCalls[0].basic).toMatchObject({ hitPointsMax: 12, portraitImageId: 'img-1' });
+  });
+
+  it('saves a portrait chosen on a new NPC, a changed one and a removed one', async () => {
+    configure({ id: 'camp-1', tipo: 'historia' });
+    const { fixture } = await render();
+    cmp(fixture).basicForm.patchValue({ name: 'Mira', portraitImageId: 'img-2' });
+    await cmp(fixture).submit();
+    expect(fake.createCharacterCalls[0].basic).toMatchObject({ portraitImageId: 'img-2' });
+
+    TestBed.resetTestingModule();
+    configure({ id: 'camp-1', characterId: 'char-1' });
+    fake.loadCharacterForEditFn = () => Promise.resolve(basicNpc('img-1'));
+    const second = await render();
+    cmp(second.fixture).basicForm.controls.portraitImageId.setValue('img-2');
+    await cmp(second.fixture).submit();
+    expect(fake.updateCharacterCalls[0].basic).toMatchObject({ portraitImageId: 'img-2' });
+
+    TestBed.resetTestingModule();
+    configure({ id: 'camp-1', characterId: 'char-1' });
+    fake.loadCharacterForEditFn = () => Promise.resolve(basicNpc('img-1'));
+    const third = await render();
+    cmp(third.fixture).basicForm.controls.portraitImageId.setValue('');
+    await cmp(third.fixture).submit();
+    expect(fake.updateCharacterCalls[0].basic).toMatchObject({ portraitImageId: '' });
+  });
+
+  describe('an enemy or a boss (the full form)', () => {
+    const enemy = (portraitImageId: string): CharacterForEdit => {
+      const base = basicNpc('');
+      return {
+        ...base,
+        kind: 'enemy',
+        basic: null,
+        full: {
+          name: 'Capitão Goblin', race: 'race:gnome', subrace: '', className: 'class:wizard', subclassName: '', customSubclassName: '', level: 3,
+          background: 'background:acolyte', customBackgroundName: '', customBackgroundSkills: null, skillProficiencies: [], expertiseSkillKeys: [],
+          abilities: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 }, extraAbilityBonuses: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+          hitPointsMethod: 'average', hitPointsRolls: [], isCaster: false, cantrips: [], spellsKnown: [], spellsPrepared: [], armor: '', shield: false,
+          weapons: [], equipmentText: '', languagesText: '', toolProficienciesText: '', experiencePoints: 0, challengeRating: '1', xpValue: 200, portraitImageId,
+          alignment: '', customFeaturesText: '',
+        },
+      };
+    };
+
+    it('shows "Retrato" on the Básico step of an enemy, and not for a player', async () => {
+      configure({ id: 'camp-1', characterId: 'char-1' });
+      fake.loadCharacterForEditFn = () => Promise.resolve(enemy('img-2'));
+      const { el } = await render();
+      expect(el.querySelector('app-portrait-field')?.textContent).toContain('Trocar retrato');
+
+      TestBed.resetTestingModule();
+      configure({ id: 'camp-1' });
+      const player = await render();
+      expect(player.el.querySelector('app-portrait-field')).toBeNull();
+    });
+
+    it('keeps the portrait when the enemy is saved, and saves a new one', async () => {
+      configure({ id: 'camp-1', characterId: 'char-1' });
+      fake.loadCharacterForEditFn = () => Promise.resolve(enemy('img-2'));
+      const { fixture } = await render();
+      await cmp(fixture).submit();
+      expect(fake.updateCharacterCalls[0].full).toMatchObject({ portraitImageId: 'img-2' });
+
+      cmp(fixture).fullForm.controls.portraitImageId.setValue('img-1');
+      await cmp(fixture).submit();
+      expect(fake.updateCharacterCalls[1].full).toMatchObject({ portraitImageId: 'img-1' });
+    });
+  });
+});

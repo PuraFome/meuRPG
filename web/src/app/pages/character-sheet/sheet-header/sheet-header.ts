@@ -1,6 +1,8 @@
 import { Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
+import { Portrait } from '../../../shared/portrait/portrait';
+
 import { characterKindLabel } from '../../../core/characters/character-labels';
 import { LevelUpTag } from '../../../shared/xp/level-up-tag';
 import { CampaignXpMode, CharacterSheetVm } from '../character-sheet.types';
@@ -17,11 +19,13 @@ interface HeaderField {
  * The top of the sheet, as on the paper sheet (docs/design.md): the name,
  * the state tags, the lock or death line, and the identity fields as a
  * `<dl>` (value above a rule, label below; a field with no value is left
- * out). The page projects the viewer's actions into the row at the bottom.
+ * out). An NPC's portrait (MR-031) stands at the left, 112px wide, or its
+ * initials when it has none. The page projects the viewer's actions into the
+ * row at the bottom.
  */
 @Component({
   selector: 'app-sheet-header',
-  imports: [LevelUpTag, MatIconModule, XpBlock],
+  imports: [LevelUpTag, MatIconModule, Portrait, XpBlock],
   templateUrl: './sheet-header.html',
   styleUrl: './sheet-header.scss',
 })
@@ -31,6 +35,10 @@ export class SheetHeader {
   readonly xpMode = input<CampaignXpMode | null>(null);
 
   protected readonly isNpc = computed(() => this.vm().characterKind !== 'player');
+  /** The portrait's thumbnail ("/images/<id>/thumb"), or empty for none. */
+  protected readonly portraitUrl = computed(() =>
+    this.vm().portraitImageId ? `/images/${this.vm().portraitImageId}/thumb` : '',
+  );
   protected readonly kindLabel = computed(() => characterKindLabel(this.vm().characterKind));
   protected readonly stateLabel = computed(() => stateTagLabel(this.vm().state));
   /** An NPC never leaves "Rascunho" (only player sheets lock, RN-01, and an

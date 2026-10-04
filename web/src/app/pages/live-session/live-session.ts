@@ -19,7 +19,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import type { Map as MapMessage } from '../../../gen/meurpg/maps/v1/maps_pb';
-import type { Encounter } from '../../../gen/meurpg/play/v1/combat_pb';
+import { type Encounter, EncounterStatus } from '../../../gen/meurpg/play/v1/combat_pb';
 import { AuthService } from '../../core/auth/auth.service';
 import { CombatClient } from '../../core/combat/combat-client';
 import { CombatState } from '../../core/combat/combat-state';
@@ -49,6 +49,7 @@ import { ClueNotice } from './clue-notice/clue-notice';
 import { CombatLaunch } from './combat/combat-launch';
 import { DiceDialog, DiceDialogData } from './combat/dice-dialog';
 import { CombatView } from './combat/combat-view';
+import { HighlightsCard } from './combat/combat-highlights/highlights-card';
 import { LiveStream } from './live-stream';
 import { PartyPanel } from './party-panel/party-panel';
 import { PlayerVitals } from './player-vitals/player-vitals';
@@ -94,6 +95,7 @@ type Phase = 'loading' | 'live' | 'no-access' | 'no-session' | 'ended' | 'error'
     ClueNotice,
     CombatLaunch,
     CombatView,
+    HighlightsCard,
     PartyPanel,
     PlayerVitals,
     SessionBlocked,
@@ -173,6 +175,21 @@ export class LiveSession {
     fresh > 0 ? `Anotações, ${fresh} ${fresh === 1 ? 'nova' : 'novas'}` : 'Anotações';
   protected readonly freshCount = computed(() => this.notes.fresh().length);
 
+  protected readonly ownCharacterId = computed(() => this.vitals().at(0)?.characterId ?? '');
+  protected readonly ownCharacterName = computed(() => this.vitals().at(0)?.name ?? '');
+  /** The ended combat whose "Destaques" card this player closed (MR-032). */
+  private readonly highlightsClosed = signal<string | null>(null);
+  /** The players' "O combate acabou" card: the combat that ended, until they close it. */
+  protected readonly highlightsFor = computed(() => {
+    const e = this.combat.encounter();
+    return !this.isMaster() && e?.status === EncounterStatus.ENDED && e.id !== this.highlightsClosed() ? e : null;
+  });
+  protected readonly highlightsSub = computed(() => {
+    const e = this.highlightsFor();
+    const rounds = Math.max(1, e?.round ?? 1);
+    return e ? `${e.name} · ${rounds} ${rounds === 1 ? 'rodada' : 'rodadas'}` : '';
+  });
+
   protected readonly stream = signal<LiveStream | null>(null);
   protected readonly connection = computed(() => this.stream()?.status() ?? 'connecting');
   protected readonly lastUpdate = computed(() => this.stream()?.lastMessageAt() ?? null);
@@ -247,6 +264,7 @@ export class LiveSession {
     this.campaignMaps.set([]);
     void this.mapState.open(null);
     this.combat.clear();
+    this.highlightsClosed.set(null);
     this.scene.clear();
     this.notes.clear();
     this.loadedSheetFor = null;
@@ -321,6 +339,8 @@ export class LiveSession {
         onXpChanged: () => this.xpChanges.bump(),
         onSceneChanged: () => void this.scene.refresh(),
         onNotesChanged: () => void this.notes.refresh(true),
+        // The stage is part of the open scene: read it again (it names nobody).
+        onStageChanged: () => void this.scene.refresh(),
         onShownImage: (image) => this.shownImageChanged(image),
         onLeftImages: () => void this.reloadLeftImages(),
         onEnded: () => this.ended(),
@@ -402,6 +422,14 @@ export class LiveSession {
       }
     } catch {
       // The stream's next event, or reconnection, reads it again.
+    }
+  }
+
+  /** "Fechar" on the players' "Destaques" card. */
+  protected closeHighlights(): void {
+    const e = this.highlightsFor();
+    if (e) {
+      this.highlightsClosed.set(e.id);
     }
   }
 

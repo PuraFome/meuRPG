@@ -1,0 +1,136 @@
+:host {
+  display: block;
+}
+
+.table-panel {
+  min-width: 0;
+  padding: 16px 18px;
+
+  .mr-panel__title {
+    margin: 0 0 var(--mr-space-1);
+  }
+}
+
+.intro {
+  margin: 0 0 var(--mr-space-3);
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 8px 8px 8px 0;
+  text-align: left;
+  vertical-align: top;
+  font-size: 15px;
+  line-height: 24px;
+  border-top: 1px solid var(--mr-line);
+}
+
+thead th {
+  border-top: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--mr-ink-muted);
+}
+
+tbody th {
+  font-family: var(--mr-font-display);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.chosen {
+  display: block;
+  font-family: var(--mr-font-sans);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+  color: var(--mr-ink-muted);
+}
+
+.sum,
+.size {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.size {
+  margin-inline-start: 4px;
+  color: var(--mr-ink-muted);
+}
+
+.smallest {
+  display: inline-block;
+  margin-inline-start: 6px;
+  padding: 0 8px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-pill);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+// On a phone each paper is a block: its name, then one line per orientation.
+// A line is the orientation, its count and, right after the count, "A menor"
+// (the pill belongs to the count it marks); the sheet size follows. The label
+// and the count never part, and the pill wraps with the count, not alone.
+.lead {
+  white-space: nowrap;
+}
+
+.lead__label {
+  display: none;
+}
+
+@media (max-width: 767.98px) {
+  thead {
+    position: absolute;
+    clip: rect(0 0 0 0);
+  }
+
+  tr,
+  tbody th {
+    display: block;
+  }
+
+  tr {
+    padding: 8px 0;
+    border-top: 1px solid var(--mr-line);
+  }
+
+  th,
+  td {
+    padding: 0;
+    border-top: 0;
+  }
+
+  td {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 6px;
+  }
+
+  .lead__label {
+    display: inline;
+    color: var(--mr-ink-muted);
+  }
+
+  .smallest {
+    order: 1;
+    margin-inline-start: 0;
+  }
+
+  .size {
+    order: 2;
+    margin-inline-start: 0;
+  }
+}

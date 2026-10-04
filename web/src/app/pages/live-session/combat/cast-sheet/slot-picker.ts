@@ -44,6 +44,8 @@ let nextId = 0;
           </span>
           @if (isChosen(r)) {
             <mat-icon class="row__check" aria-hidden="true">check_circle</mat-icon>
+          } @else if (r.enabled) {
+            <mat-icon class="row__empty" aria-hidden="true">radio_button_unchecked</mat-icon>
           }
         </label>
       }

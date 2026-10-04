@@ -1003,6 +1003,10 @@ const (
 	HighlightKind_HIGHLIGHT_KIND_FINAL_BLOW HighlightKind = 4
 	// "Acertos críticos": critical hits.
 	HighlightKind_HIGHLIGHT_KIND_CRITICAL_HITS HighlightKind = 5
+	// "Mais testes passados fora do combate": the checks passed in scenes that
+	// showed their DC. Only GetSessionSummary returns it; a combat's highlights
+	// never do.
+	HighlightKind_HIGHLIGHT_KIND_CHECKS_PASSED HighlightKind = 6
 )
 
 // Enum value maps for HighlightKind.
@@ -1014,6 +1018,7 @@ var (
 		3: "HIGHLIGHT_KIND_TANK",
 		4: "HIGHLIGHT_KIND_FINAL_BLOW",
 		5: "HIGHLIGHT_KIND_CRITICAL_HITS",
+		6: "HIGHLIGHT_KIND_CHECKS_PASSED",
 	}
 	HighlightKind_value = map[string]int32{
 		"HIGHLIGHT_KIND_UNSPECIFIED":   0,
@@ -1022,6 +1027,7 @@ var (
 		"HIGHLIGHT_KIND_TANK":          3,
 		"HIGHLIGHT_KIND_FINAL_BLOW":    4,
 		"HIGHLIGHT_KIND_CRITICAL_HITS": 5,
+		"HIGHLIGHT_KIND_CHECKS_PASSED": 6,
 	}
 )
 
@@ -5669,7 +5675,8 @@ type SpellEffectResult struct {
 	PoolLeft  *int32 `protobuf:"varint,4,opt,name=pool_left,json=poolLeft,proto3,oneof" json:"pool_left,omitempty"`
 	PoolOrder *int32 `protobuf:"varint,5,opt,name=pool_order,json=poolOrder,proto3,oneof" json:"pool_order,omitempty"`
 	// A heal: how many hit points the target regained, up to its maximum. Only the
-	// master, the caster's player and the target's own player.
+	// master and the target's own player: on an NPC the amount would tell the
+	// caster how many hit points it lacked.
 	Healed        *int32 `protobuf:"varint,6,opt,name=healed,proto3,oneof" json:"healed,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -7909,8 +7916,9 @@ type GetCombatHighlightsResponse struct {
 	// nobody hurt or healed in.
 	Categories []*HighlightCategory `protobuf:"bytes,1,rep,name=categories,proto3" json:"categories,omitempty"`
 	// The table of every player's character that fought, in the combat's order
-	// (the turn order), zeros included ("Números de cada jogador"). Only the
-	// master gets it; for a player it is empty.
+	// (the turn order), zeros included ("Números de cada jogador"). The master
+	// gets every row; a player gets exactly one, their own character's (empty if
+	// they had none in the combat), and never another player's (RN-20).
 	Characters    []*CharacterHighlights `protobuf:"bytes,2,rep,name=characters,proto3" json:"characters,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -8685,14 +8693,15 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x1aCOMBAT_LOG_KIND_DEATH_SAVE\x10\n" +
 	"\x12#\n" +
 	"\x1fCOMBAT_LOG_KIND_DEATH_CONFIRMED\x10\v\x12&\n" +
-	"\"COMBAT_LOG_KIND_CONDITIONS_CHANGED\x10\f*\xca\x01\n" +
+	"\"COMBAT_LOG_KIND_CONDITIONS_CHANGED\x10\f*\xec\x01\n" +
 	"\rHighlightKind\x12\x1e\n" +
 	"\x1aHIGHLIGHT_KIND_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aHIGHLIGHT_KIND_MOST_DAMAGE\x10\x01\x12\x1f\n" +
 	"\x1bHIGHLIGHT_KIND_MOST_HEALING\x10\x02\x12\x17\n" +
 	"\x13HIGHLIGHT_KIND_TANK\x10\x03\x12\x1d\n" +
 	"\x19HIGHLIGHT_KIND_FINAL_BLOW\x10\x04\x12 \n" +
-	"\x1cHIGHLIGHT_KIND_CRITICAL_HITS\x10\x052\xed\x14\n" +
+	"\x1cHIGHLIGHT_KIND_CRITICAL_HITS\x10\x05\x12 \n" +
+	"\x1cHIGHLIGHT_KIND_CHECKS_PASSED\x10\x062\xed\x14\n" +
 	"\rCombatService\x12_\n" +
 	"\x0eStartEncounter\x12%.meurpg.play.v1.StartEncounterRequest\x1a&.meurpg.play.v1.StartEncounterResponse\x12^\n" +
 	"\fGetEncounter\x12#.meurpg.play.v1.GetEncounterRequest\x1a$.meurpg.play.v1.GetEncounterResponse\"\x03\x90\x02\x02\x12e\n" +

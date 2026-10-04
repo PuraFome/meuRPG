@@ -26,3 +26,16 @@ type Character struct {
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 }
+
+type CharacterLevelUp struct {
+	ID          string
+	CampaignID  string
+	CharacterID string
+	ClassKey    string
+	FromLevel   int32
+	ToLevel     int32
+	HpMethod    string
+	HpValue     int32
+	Choices     []byte
+	CreatedAt   time.Time
+}

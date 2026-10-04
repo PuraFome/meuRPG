@@ -19,7 +19,6 @@ import { characterKindLabel } from '../../core/characters/character-labels';
 import { CharacterKind, isFullSheetKind } from '../../core/characters/characters.types';
 import { formatXp } from '../../core/format/text';
 import { FictionNotice } from '../../shared/fiction-notice/fiction-notice';
-import { PHONE_QUERY, mediaQuery } from '../../shared/map-view/media-query';
 import { AbilityFields } from './ability-fields/ability-fields';
 import { AbilityScores } from './ability-scores/ability-scores';
 import {
@@ -30,10 +29,11 @@ import {
   CharacterFormValue,
   HitPointsMethod,
   RulesCatalogVm,
-  SpellDetailsVm,
   SpellOptionVm,
 } from './character-editor.types';
-import { SpellDetails, SpellDetailsData } from './spell-details/spell-details';
+import type { SpellDetailsData } from '../../shared/spell-details/spell-details';
+import { openSpellDetails } from '../../shared/spell-details/open-spell-details';
+import type { SpellDetailsVm } from '../../shared/spell-details/spell-details.types';
 import { EditorStepper } from './editor-stepper/editor-stepper';
 import { HitPointsRolls } from './hit-points-rolls/hit-points-rolls';
 import {
@@ -54,6 +54,7 @@ import {
   patchBasicForm,
 } from './npc-short-form/basic-form';
 import { DefeatXp } from './defeat-xp/defeat-xp';
+import { PortraitField } from './portrait-field/portrait-field';
 import { NpcShortForm } from './npc-short-form/npc-short-form';
 import { SkillPicker } from './skill-picker/skill-picker';
 import { SpellPicker } from './spell-picker/spell-picker';
@@ -192,6 +193,7 @@ function filterByName<T extends { readonly namePt: string }>(
     MatSelectModule,
     DefeatXp,
     NpcShortForm,
+    PortraitField,
     ReactiveFormsModule,
     RouterLink,
     SkillPicker,
@@ -208,7 +210,6 @@ export class CharacterEditor {
   private readonly fb = inject(FormBuilder);
   private readonly dialog = inject(MatDialog);
   private readonly bottomSheet = inject(MatBottomSheet);
-  private readonly onPhone = mediaQuery(PHONE_QUERY);
   /** The spell descriptions already fetched, by spell key, for the life of
    * the page (a second "?" on the same spell is instant; nothing is stored
    * in the browser). A failed fetch is dropped so "Tentar de novo" asks again. */
@@ -280,6 +281,8 @@ export class CharacterEditor {
     // player's stay empty and 0 and are never shown.
     challengeRating: [''],
     xpValue: [0, [Validators.required, Validators.min(0), Validators.max(1000000)]],
+    // An enemy's or boss's portrait (MR-031): a gallery image's ID, or empty.
+    portraitImageId: [''],
     alignment: ['' as AlignmentKey],
     customFeaturesText: ['', Validators.maxLength(5000)],
     hitPointsMethod: ['average' as HitPointsMethod],
@@ -712,6 +715,7 @@ export class CharacterEditor {
       experiencePoints: full.experiencePoints,
       challengeRating: full.challengeRating,
       xpValue: full.xpValue,
+      portraitImageId: full.portraitImageId,
       alignment: full.alignment,
       customFeaturesText: full.customFeaturesText,
       hitPointsMethod: full.hitPointsMethod,
@@ -803,21 +807,7 @@ export class CharacterEditor {
       namePt: spell.namePt,
       load: () => this.loadSpellDetails(s.campaignId, spell.key),
     };
-    if (this.onPhone()) {
-      this.bottomSheet.open(SpellDetails, {
-        data,
-        ariaLabel: `Descrição de ${spell.namePt}`,
-        autoFocus: 'first-heading',
-      });
-    } else {
-      this.dialog.open(SpellDetails, {
-        data,
-        width: '560px',
-        maxWidth: 'calc(100vw - 32px)',
-        ariaLabelledBy: 'spell-title',
-        autoFocus: 'first-heading',
-      });
-    }
+    openSpellDetails(this.dialog, this.bottomSheet, data);
   }
 
   private loadSpellDetails(campaignId: string, key: string): Promise<SpellDetailsVm> {
@@ -889,6 +879,7 @@ export class CharacterEditor {
       experiencePoints: v.experiencePoints,
       challengeRating: v.challengeRating,
       xpValue: v.xpValue,
+      portraitImageId: v.portraitImageId,
       alignment: v.alignment,
       customFeaturesText: v.customFeaturesText,
     };

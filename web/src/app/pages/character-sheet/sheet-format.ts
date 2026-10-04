@@ -26,15 +26,6 @@ export function formatDate(date: Date): string {
   return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
 }
 
-/** "7,5 m" for 25 ft: the metres half of `formatSpeedFt`, with the same
- * table rounding (5 ft = 1,5 m), for the speed box whose label carries the
- * feet ("Deslocamento (25 pés)"). */
-export function formatMeters(feet: number): string {
-  const meters = feet * 0.3;
-  const label = Number.isInteger(meters) ? String(meters) : meters.toFixed(1).replace('.', ',');
-  return `${label} m`;
-}
-
 /** The one-word state tag (docs/design.md, StatusTag): "Pendente", not the
  * lifecycle's full "Pendente de aprovação", which the notice under the
  * header spells out. */

@@ -13,7 +13,7 @@ import { CampaignsService } from '../../../../core/campaigns/campaigns.service';
 import { effectivePreference, preferenceLabel } from '../../../../core/campaigns/dice-labels';
 import { CombatClient, type JoinSpec, newKey } from '../../../../core/combat/combat-client';
 import { combatErrorMessage, encounterBlocked } from '../../../../core/combat/combat-errors';
-import { feetToMeters, formatMeters, squaresToMeters } from '../../../../core/combat/combat-grid';
+import { formatMeters, squaresToMeters } from '../../../../core/units';
 import { combatantInitial, npcKindLabel } from '../../../../core/combat/combat-view';
 import { type RosterEntry, RosterClient } from '../../../../core/maps/roster-client';
 import { CombatMap } from '../../../../shared/combat-map/combat-map';
@@ -253,9 +253,5 @@ export class StartCombatDialog {
       }
       this.error.set(combatErrorMessage(err, this.adding ? 'adicionar os combatentes' : 'iniciar o combate'));
     }
-  }
-
-  protected metersOf(ft: number): string {
-    return formatMeters(feetToMeters(ft));
   }
 }

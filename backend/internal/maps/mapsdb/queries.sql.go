@@ -111,7 +111,7 @@ func (q *Queries) DeleteMap(ctx context.Context, arg DeleteMapParams) (Map, erro
 const deleteMapPoint = `-- name: DeleteMapPoint :one
 DELETE FROM map_points
 WHERE map_id = $1 AND id = $2
-RETURNING id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at, hooks
+RETURNING id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at, hooks, show_dc
 `
 
 type DeleteMapPointParams struct {
@@ -135,6 +135,7 @@ func (q *Queries) DeleteMapPoint(ctx context.Context, arg DeleteMapPointParams) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Hooks,
+		&i.ShowDc,
 	)
 	return i, err
 }
@@ -389,7 +390,7 @@ func (q *Queries) GetMapGrid(ctx context.Context, arg GetMapGridParams) (GetMapG
 }
 
 const getMapPointForUpdate = `-- name: GetMapPointForUpdate :one
-SELECT id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at, hooks FROM map_points
+SELECT id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at, hooks, show_dc FROM map_points
 WHERE map_id = $1 AND id = $2
 FOR UPDATE
 `
@@ -416,12 +417,13 @@ func (q *Queries) GetMapPointForUpdate(ctx context.Context, arg GetMapPointForUp
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Hooks,
+		&i.ShowDc,
 	)
 	return i, err
 }
 
 const getMapPointInCampaign = `-- name: GetMapPointInCampaign :one
-SELECT p.id, p.map_id, p.kind, p.name, p.description, p.x_bp, p.y_bp, p.target_map_id, p.revealed_at, p.created_at, p.updated_at, p.hooks FROM map_points AS p
+SELECT p.id, p.map_id, p.kind, p.name, p.description, p.x_bp, p.y_bp, p.target_map_id, p.revealed_at, p.created_at, p.updated_at, p.hooks, p.show_dc FROM map_points AS p
 JOIN maps AS m ON m.id = p.map_id
 WHERE m.campaign_id = $1 AND p.id = $2
 `
@@ -449,6 +451,7 @@ func (q *Queries) GetMapPointInCampaign(ctx context.Context, arg GetMapPointInCa
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Hooks,
+		&i.ShowDc,
 	)
 	return i, err
 }
@@ -479,7 +482,7 @@ func (q *Queries) GetMapTokenForUpdate(ctx context.Context, arg GetMapTokenForUp
 }
 
 const getSceneActionForUpdate = `-- name: GetSceneActionForUpdate :one
-SELECT id, point_id, position, key, name, dc, created_at, updated_at FROM scene_actions
+SELECT id, point_id, position, key, name, dc, created_at, updated_at, max_attempts FROM scene_actions
 WHERE point_id = $1 AND id = $2
 FOR UPDATE
 `
@@ -501,6 +504,7 @@ func (q *Queries) GetSceneActionForUpdate(ctx context.Context, arg GetSceneActio
 		&i.Dc,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MaxAttempts,
 	)
 	return i, err
 }
@@ -559,7 +563,7 @@ func (q *Queries) GetSceneClueInCampaign(ctx context.Context, arg GetSceneClueIn
 }
 
 const getScenePoint = `-- name: GetScenePoint :one
-SELECT p.id, p.map_id, p.kind, p.name, p.description, p.x_bp, p.y_bp, p.target_map_id, p.revealed_at, p.created_at, p.updated_at, p.hooks FROM map_points AS p
+SELECT p.id, p.map_id, p.kind, p.name, p.description, p.x_bp, p.y_bp, p.target_map_id, p.revealed_at, p.created_at, p.updated_at, p.hooks, p.show_dc FROM map_points AS p
 JOIN maps AS m ON m.id = p.map_id
 WHERE m.campaign_id = $1 AND p.id = $2 AND p.kind = 'scene'
 `
@@ -587,6 +591,7 @@ func (q *Queries) GetScenePoint(ctx context.Context, arg GetScenePointParams) (M
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Hooks,
+		&i.ShowDc,
 	)
 	return i, err
 }
@@ -754,12 +759,12 @@ func (q *Queries) InsertMap(ctx context.Context, arg InsertMapParams) (Map, erro
 }
 
 const insertMapPoint = `-- name: InsertMapPoint :one
-INSERT INTO map_points (map_id, kind, name, description, hooks, x_bp, y_bp, target_map_id, created_at, updated_at)
+INSERT INTO map_points (map_id, kind, name, description, hooks, show_dc, x_bp, y_bp, target_map_id, created_at, updated_at)
 VALUES (
-    $1, $2, $3, $4, $5, $6, $7,
-    $8, $9, $9
+    $1, $2, $3, $4, $5, $6, $7, $8,
+    $9, $10, $10
 )
-RETURNING id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at, hooks
+RETURNING id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at, hooks, show_dc
 `
 
 type InsertMapPointParams struct {
@@ -768,6 +773,7 @@ type InsertMapPointParams struct {
 	Name        string
 	Description string
 	Hooks       string
+	ShowDc      bool
 	XBp         int32
 	YBp         int32
 	TargetMapID *string
@@ -782,6 +788,7 @@ func (q *Queries) InsertMapPoint(ctx context.Context, arg InsertMapPointParams) 
 		arg.Name,
 		arg.Description,
 		arg.Hooks,
+		arg.ShowDc,
 		arg.XBp,
 		arg.YBp,
 		arg.TargetMapID,
@@ -801,6 +808,7 @@ func (q *Queries) InsertMapPoint(ctx context.Context, arg InsertMapPointParams) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Hooks,
+		&i.ShowDc,
 	)
 	return i, err
 }
@@ -842,18 +850,19 @@ func (q *Queries) InsertMapToken(ctx context.Context, arg InsertMapTokenParams) 
 }
 
 const insertSceneAction = `-- name: InsertSceneAction :one
-INSERT INTO scene_actions (point_id, position, key, name, dc, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $6)
-RETURNING id, point_id, position, key, name, dc, created_at, updated_at
+INSERT INTO scene_actions (point_id, position, key, name, dc, max_attempts, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
+RETURNING id, point_id, position, key, name, dc, created_at, updated_at, max_attempts
 `
 
 type InsertSceneActionParams struct {
-	PointID  string
-	Position int32
-	Key      string
-	Name     string
-	Dc       *int32
-	Now      time.Time
+	PointID     string
+	Position    int32
+	Key         string
+	Name        string
+	Dc          *int32
+	MaxAttempts int32
+	Now         time.Time
 }
 
 func (q *Queries) InsertSceneAction(ctx context.Context, arg InsertSceneActionParams) (SceneAction, error) {
@@ -863,6 +872,7 @@ func (q *Queries) InsertSceneAction(ctx context.Context, arg InsertSceneActionPa
 		arg.Key,
 		arg.Name,
 		arg.Dc,
+		arg.MaxAttempts,
 		arg.Now,
 	)
 	var i SceneAction
@@ -875,6 +885,7 @@ func (q *Queries) InsertSceneAction(ctx context.Context, arg InsertSceneActionPa
 		&i.Dc,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MaxAttempts,
 	)
 	return i, err
 }
@@ -1220,7 +1231,7 @@ func (q *Queries) ListMapImageIDs(ctx context.Context, campaignID string) ([]Lis
 }
 
 const listMapPoints = `-- name: ListMapPoints :many
-SELECT id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at, hooks FROM map_points
+SELECT id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at, hooks, show_dc FROM map_points
 WHERE map_id = $1
 ORDER BY created_at, id
 `
@@ -1248,6 +1259,7 @@ func (q *Queries) ListMapPoints(ctx context.Context, mapID string) ([]MapPoint, 
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Hooks,
+			&i.ShowDc,
 		); err != nil {
 			return nil, err
 		}
@@ -1377,7 +1389,7 @@ func (q *Queries) ListReceivedClues(ctx context.Context, arg ListReceivedCluesPa
 
 const listSceneActions = `-- name: ListSceneActions :many
 
-SELECT id, point_id, position, key, name, dc, created_at, updated_at FROM scene_actions
+SELECT id, point_id, position, key, name, dc, created_at, updated_at, max_attempts FROM scene_actions
 WHERE point_id = $1
 ORDER BY position, created_at, id
 `
@@ -1403,6 +1415,7 @@ func (q *Queries) ListSceneActions(ctx context.Context, pointID string) ([]Scene
 			&i.Dc,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.MaxAttempts,
 		); err != nil {
 			return nil, err
 		}
@@ -1415,7 +1428,7 @@ func (q *Queries) ListSceneActions(ctx context.Context, pointID string) ([]Scene
 }
 
 const listSceneActionsOfMap = `-- name: ListSceneActionsOfMap :many
-SELECT a.id, a.point_id, a.position, a.key, a.name, a.dc, a.created_at, a.updated_at FROM scene_actions AS a
+SELECT a.id, a.point_id, a.position, a.key, a.name, a.dc, a.created_at, a.updated_at, a.max_attempts FROM scene_actions AS a
 JOIN map_points AS p ON p.id = a.point_id
 WHERE p.map_id = $1
 ORDER BY a.point_id, a.position, a.created_at, a.id
@@ -1441,6 +1454,7 @@ func (q *Queries) ListSceneActionsOfMap(ctx context.Context, mapID string) ([]Sc
 			&i.Dc,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.MaxAttempts,
 		); err != nil {
 			return nil, err
 		}
@@ -1829,10 +1843,10 @@ func (q *Queries) UpdateMap(ctx context.Context, arg UpdateMapParams) (Map, erro
 const updateMapPoint = `-- name: UpdateMapPoint :one
 UPDATE map_points
 SET kind = $1, name = $2, description = $3, hooks = $4,
-    x_bp = $5, y_bp = $6, target_map_id = $7,
-    revealed_at = $8, updated_at = $9
-WHERE map_id = $10 AND id = $11
-RETURNING id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at, hooks
+    show_dc = $5, x_bp = $6, y_bp = $7, target_map_id = $8,
+    revealed_at = $9, updated_at = $10
+WHERE map_id = $11 AND id = $12
+RETURNING id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at, hooks, show_dc
 `
 
 type UpdateMapPointParams struct {
@@ -1840,6 +1854,7 @@ type UpdateMapPointParams struct {
 	Name        string
 	Description string
 	Hooks       string
+	ShowDc      bool
 	XBp         int32
 	YBp         int32
 	TargetMapID *string
@@ -1857,6 +1872,7 @@ func (q *Queries) UpdateMapPoint(ctx context.Context, arg UpdateMapPointParams) 
 		arg.Name,
 		arg.Description,
 		arg.Hooks,
+		arg.ShowDc,
 		arg.XBp,
 		arg.YBp,
 		arg.TargetMapID,
@@ -1879,24 +1895,26 @@ func (q *Queries) UpdateMapPoint(ctx context.Context, arg UpdateMapPointParams) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Hooks,
+		&i.ShowDc,
 	)
 	return i, err
 }
 
 const updateSceneAction = `-- name: UpdateSceneAction :one
 UPDATE scene_actions
-SET key = $1, name = $2, dc = $3, updated_at = $4
-WHERE point_id = $5 AND id = $6
-RETURNING id, point_id, position, key, name, dc, created_at, updated_at
+SET key = $1, name = $2, dc = $3, max_attempts = $4, updated_at = $5
+WHERE point_id = $6 AND id = $7
+RETURNING id, point_id, position, key, name, dc, created_at, updated_at, max_attempts
 `
 
 type UpdateSceneActionParams struct {
-	Key     string
-	Name    string
-	Dc      *int32
-	Now     time.Time
-	PointID string
-	ID      string
+	Key         string
+	Name        string
+	Dc          *int32
+	MaxAttempts int32
+	Now         time.Time
+	PointID     string
+	ID          string
 }
 
 func (q *Queries) UpdateSceneAction(ctx context.Context, arg UpdateSceneActionParams) (SceneAction, error) {
@@ -1904,6 +1922,7 @@ func (q *Queries) UpdateSceneAction(ctx context.Context, arg UpdateSceneActionPa
 		arg.Key,
 		arg.Name,
 		arg.Dc,
+		arg.MaxAttempts,
 		arg.Now,
 		arg.PointID,
 		arg.ID,
@@ -1918,6 +1937,7 @@ func (q *Queries) UpdateSceneAction(ctx context.Context, arg UpdateSceneActionPa
 		&i.Dc,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MaxAttempts,
 	)
 	return i, err
 }

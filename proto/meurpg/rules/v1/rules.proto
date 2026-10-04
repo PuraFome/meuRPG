@@ -781,6 +781,46 @@ message SpellDetails {
   // The SRD's "At Higher Levels" paragraphs, in English. Empty when the
   // spell has none.
   repeated string higher_level = 11;
+  // What a spell that reads hit points does (Sono, Borrifo de Cores, Palavra de
+  // Poder, Poupar os Moribundos, Cura Completa). Unset for any other spell.
+  // These are public spell rules, like the rest of the message: every member
+  // gets them, and the app reads them instead of keeping a copy of the table.
+  SpellHitPointEffect hit_point_effect = 12;
+}
+
+// SpellHitPointEffectKind is how a spell that reads hit points works.
+enum SpellHitPointEffectKind {
+  SPELL_HIT_POINT_EFFECT_KIND_UNSPECIFIED = 0;
+  // A pool of dice is rolled and the creatures are affected in ascending order
+  // of current hit points (Sono, Borrifo de Cores).
+  SPELL_HIT_POINT_EFFECT_KIND_POOL = 1;
+  // A creature at or below a number of hit points is affected (Palavra de Poder).
+  SPELL_HIT_POINT_EFFECT_KIND_THRESHOLD = 2;
+  // Works only on a creature at 0 hit points (Poupar os Moribundos).
+  SPELL_HIT_POINT_EFFECT_KIND_ZERO_HP = 3;
+  // A fixed heal that also ends conditions (Cura Completa).
+  SPELL_HIT_POINT_EFFECT_KIND_FLAT_HEAL = 4;
+}
+
+// SpellHitPointEffect is the rule of a spell that reads hit points, from
+// effects/spells.json, at the spell's own circle and what each circle above adds.
+message SpellHitPointEffect {
+  SpellHitPointEffectKind kind = 1;
+  // A pool: the dice at the spell's own circle (5d8) and how many dice each
+  // circle above adds (2). 0 for any other kind.
+  int32 pool_dice_count = 2;
+  int32 pool_dice_sides = 3;
+  int32 pool_dice_per_level = 4;
+  // The condition given to each creature affected ("condition:unconscious").
+  // Empty when none is given (a kill, a stabilise, a heal).
+  string condition_key = 5;
+  // A threshold: the most hit points a creature may have to be affected.
+  int32 threshold = 6;
+  // A threshold that kills instead of giving a condition.
+  bool dies = 7;
+  // A flat heal: the amount at the spell's own circle and what each circle above adds.
+  int32 heal_amount = 8;
+  int32 heal_per_level = 9;
 }
 
 // SpellCastingTime is "1 action", "1 bonus action", "10 minutes"...

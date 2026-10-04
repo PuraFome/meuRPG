@@ -1,0 +1,112 @@
+<section class="mr-panel setup" aria-labelledby="setup-title">
+  <h2 class="mr-panel__title" id="setup-title">Papel e escala</h2>
+
+  <div class="field">
+    <label class="label" for="square">Tamanho do quadrado</label>
+    <div class="field__box">
+      <input
+        id="square"
+        class="field__input"
+        type="text"
+        inputmode="decimal"
+        maxlength="6"
+        autocomplete="off"
+        [value]="typed()"
+        [attr.aria-invalid]="invalid()"
+        aria-describedby="square-hint"
+        (input)="onType($event)"
+      />
+      <span class="field__unit" aria-hidden="true">cm</span>
+    </div>
+    @if (invalid()) {
+      <div id="square-hint" class="mr-notice mr-notice--danger hint-error" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>Use um tamanho de {{ min }} a {{ max }}&nbsp;cm.</p>
+      </div>
+    } @else {
+      <p id="square-hint" class="hint">
+        De {{ min }} a {{ max }}&nbsp;cm. 2,54&nbsp;cm é uma polegada, a base de uma miniatura.
+      </p>
+    }
+    @if (changed()) {
+      <button matButton type="button" class="reset" (click)="resetSquare()">Voltar a 2,54&nbsp;cm</button>
+    }
+  </div>
+
+  <mat-radio-group class="papers" aria-labelledby="papers-label" [value]="paperId()" (change)="paperId.set($event.value)">
+    <p class="label" id="papers-label">Papel</p>
+    @for (p of papers; track p.id) {
+      <mat-radio-button class="paper" [value]="p.id">
+        <span class="paper__name">{{ p.name }}</span>
+        <span class="paper__size">{{ p.size }}</span>
+      </mat-radio-button>
+    }
+  </mat-radio-group>
+
+  <div class="block">
+    <p class="label">Orientação</p>
+    @if (orientationText(); as o) {
+      <p class="block__main">
+        <strong>{{ o.name }}</strong> (automática)
+      </p>
+      <p class="hint">{{ o.detail }}</p>
+    } @else {
+      <p class="block__main block__main--muted">Depende do tamanho do quadrado e do papel.</p>
+    }
+  </div>
+
+  <div class="block">
+    <p class="label">O que sai na folha</p>
+    <ul class="checks">
+      <li><mat-icon aria-hidden="true">check</mat-icon>A imagem do mapa</li>
+      <li>
+        <mat-icon aria-hidden="true">check</mat-icon>A grade, de {{ gridColumns() }}&nbsp;×&nbsp;{{ gridRows() }}&nbsp;quadrados
+      </li>
+    </ul>
+    <p class="hint">Pontos, marcas e tokens ficam de fora.</p>
+  </div>
+
+  <div class="summary" [class.summary--off]="invalid()" role="status">
+    @if (mapText(); as text) {
+      <p class="summary__big">{{ text }}</p>
+      <p class="summary__sheets">{{ sheetsText() }}</p>
+      @if (gridText(); as g) {
+        <p class="hint">{{ g }}</p>
+      }
+    } @else {
+      <p class="summary__big">—&nbsp;×&nbsp;—&nbsp;cm</p>
+      <p class="hint">Corrija o tamanho do quadrado para ver as folhas.</p>
+    }
+  </div>
+
+  @if (manySheets(); as many) {
+    <div class="mr-notice mr-notice--warning" role="status">
+      <mat-icon aria-hidden="true">warning</mat-icon>
+      <p>
+        <strong>{{ many.total }}</strong> {{ many.rest }}
+      </p>
+    </div>
+  }
+
+  <div class="mr-notice mr-notice--warning">
+    <mat-icon aria-hidden="true">warning</mat-icon>
+    <p>
+      <strong>Na janela de impressão, deixe a escala em 100%</strong> (tamanho real) e desligue
+      “Cabeçalhos e rodapés”. Confira com a régua de 5&nbsp;cm em cada folha.
+    </p>
+  </div>
+
+  <div class="actions">
+    <button
+      mat-flat-button
+      type="button"
+      class="actions__print"
+      [class.actions__print--off]="invalid()"
+      [attr.aria-disabled]="invalid()"
+      (click)="invalid() || printMap.emit()"
+    >
+      <mat-icon aria-hidden="true">{{ invalid() ? 'block' : 'print' }}</mat-icon>Imprimir
+    </button>
+    <a mat-stroked-button class="actions__back" [routerLink]="backLink()">Voltar ao mapa</a>
+  </div>
+</section>

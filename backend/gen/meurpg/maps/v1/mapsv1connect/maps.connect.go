@@ -203,7 +203,9 @@ type MapServiceClient interface {
 	// the current value, and unset fields stay as they are. Moving a point is
 	// an update of x_bp and y_bp. Only the campaign's master may call it.
 	// Changing the kind to anything but SUBMAP or BATTLE removes the target,
-	// and changing it from SCENE removes the point's scene actions, clues and hooks.
+	// and changing it from SCENE removes the point's scene actions, clues, hooks
+	// and "Mostrar a CD" switch (show_dc). Turning show_dc on or off while the
+	// point is the open scene sends `scene_changed` to every stream.
 	//
 	// Errors:
 	//   - `invalid_argument`: nothing to change; a field breaks its rules;
@@ -238,7 +240,8 @@ type MapServiceClient interface {
 	SetMapPointRevealed(context.Context, *connect.Request[v1.SetMapPointRevealedRequest]) (*connect.Response[v1.SetMapPointRevealedResponse], error)
 	// AddSceneAction puts one more check on a SCENE point (MR-015): a skill
 	// check, an ability check or a saving throw, with an optional name and an
-	// optional DC. Actions save one by one, as the master edits them: there is
+	// optional DC and how many attempts each player has (max_attempts, 1 by
+	// default). Actions save one by one, as the master edits them: there is
 	// no "save all". Only the campaign's master may call it. The action goes
 	// last. When the point is the scene open in the session, the streams get
 	// `scene_changed`.
@@ -248,7 +251,7 @@ type MapServiceClient interface {
 	//     skill, an ability check or a saving throw of the rules ("skill:
 	//     investigation", "ability:str", "save:wis": never an attack, a spell
 	//     or a feature); name is longer than 60 characters; dc is not 1 to
-	//     30.
+	//     30; max_attempts is not 0 to 5.
 	//   - `not_found`: the point is not on this map, the map is not in this
 	//     campaign, the campaign does not exist, or the caller is not a
 	//     member of it.
@@ -790,7 +793,9 @@ type MapServiceHandler interface {
 	// the current value, and unset fields stay as they are. Moving a point is
 	// an update of x_bp and y_bp. Only the campaign's master may call it.
 	// Changing the kind to anything but SUBMAP or BATTLE removes the target,
-	// and changing it from SCENE removes the point's scene actions, clues and hooks.
+	// and changing it from SCENE removes the point's scene actions, clues, hooks
+	// and "Mostrar a CD" switch (show_dc). Turning show_dc on or off while the
+	// point is the open scene sends `scene_changed` to every stream.
 	//
 	// Errors:
 	//   - `invalid_argument`: nothing to change; a field breaks its rules;
@@ -825,7 +830,8 @@ type MapServiceHandler interface {
 	SetMapPointRevealed(context.Context, *connect.Request[v1.SetMapPointRevealedRequest]) (*connect.Response[v1.SetMapPointRevealedResponse], error)
 	// AddSceneAction puts one more check on a SCENE point (MR-015): a skill
 	// check, an ability check or a saving throw, with an optional name and an
-	// optional DC. Actions save one by one, as the master edits them: there is
+	// optional DC and how many attempts each player has (max_attempts, 1 by
+	// default). Actions save one by one, as the master edits them: there is
 	// no "save all". Only the campaign's master may call it. The action goes
 	// last. When the point is the scene open in the session, the streams get
 	// `scene_changed`.
@@ -835,7 +841,7 @@ type MapServiceHandler interface {
 	//     skill, an ability check or a saving throw of the rules ("skill:
 	//     investigation", "ability:str", "save:wis": never an attack, a spell
 	//     or a feature); name is longer than 60 characters; dc is not 1 to
-	//     30.
+	//     30; max_attempts is not 0 to 5.
 	//   - `not_found`: the point is not on this map, the map is not in this
 	//     campaign, the campaign does not exist, or the caller is not a
 	//     member of it.

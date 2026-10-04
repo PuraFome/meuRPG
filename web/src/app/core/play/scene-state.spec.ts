@@ -3,7 +3,7 @@ import { create } from '@bufbuild/protobuf';
 
 import { SceneClueSchema } from '../../../gen/meurpg/maps/v1/maps_pb';
 import { SceneState } from './scene-state';
-import { masterScene, playerScene, sceneRoll } from './scene-testing';
+import { masterScene, playerScene, sceneRoll, stageNpc } from './scene-testing';
 
 describe('SceneState', () => {
   function stateWith(isMaster: boolean, ...answers: (OpenSceneInfo | null | Error)[]): SceneState {
@@ -89,15 +89,73 @@ describe('SceneState', () => {
     let release!: (scene: OpenSceneInfo) => void;
     let calls = 0;
     const state = new SceneState(
-      () => (calls++ === 0 ? Promise.resolve(masterScene([], { clues: [before] })) : new Promise((r) => (release = r))),
+      () => (calls++ === 0 ? Promise.resolve(masterScene([], [], { clues: [before] })) : new Promise((r) => (release = r))),
       () => true,
     );
     await state.refresh();
     const stale = state.refresh();
     state.clueRevealed(after);
     expect(state.scene()?.clues[0].revealedTo).toHaveLength(1);
-    release(masterScene([], { clues: [before] }));
+    release(masterScene([], [], { clues: [before] }));
     await stale;
     expect(state.scene()?.clues[0].revealedTo).toHaveLength(1);
+  });
+
+  describe('the stage (MR-031)', () => {
+    const mira = stageNpc('s1', 'Mira');
+    const capitao = stageNpc('s2', 'Capitão Goblin');
+
+    it('is the open scene\'s list, and empty with no scene', async () => {
+      const state = stateWith(false, playerScene([], [mira, capitao]));
+      expect(state.stage()).toEqual([]);
+      await state.refresh();
+      expect(state.stage().map((n) => n.name)).toEqual(['Mira', 'Capitão Goblin']);
+    });
+
+    it('tells a player who came in, who left and who speaks, but not the first read', async () => {
+      const state = stateWith(
+        false,
+        playerScene([], [mira]),
+        playerScene([], [mira, capitao]),
+        playerScene([], [mira, { ...capitao, speaking: true }]),
+        playerScene([], [{ ...capitao, speaking: true }]),
+      );
+      await state.refresh();
+      expect(state.notice()).toBe('');
+      await state.refresh();
+      expect(state.notice()).toBe('Capitão Goblin entrou na cena.');
+      await state.refresh();
+      expect(state.notice()).toBe('Capitão Goblin fala.');
+      await state.refresh();
+      expect(state.notice()).toBe('Mira saiu da cena.');
+    });
+
+    it('does not read the stage aloud to the master, who moved it', async () => {
+      const state = stateWith(true, masterScene([], [mira]), masterScene([], [mira, capitao]));
+      await state.refresh();
+      await state.refresh();
+      expect(state.notice()).toBe('');
+    });
+
+    it('applies the master\'s own answer at once, and drops a read that was still on its way', async () => {
+      let release: (s: OpenSceneInfo | null) => void = () => undefined;
+      const slow = new Promise<OpenSceneInfo | null>((r) => (release = r));
+      let calls = 0;
+      const state = new SceneState(() => (calls++ === 0 ? Promise.resolve(masterScene()) : slow), () => true);
+      await state.refresh();
+      const late = state.refresh();
+      state.setStage([mira]);
+      expect(state.stage().map((n) => n.name)).toEqual(['Mira']);
+      release(masterScene());
+      await late;
+      expect(state.stage().map((n) => n.name)).toEqual(['Mira']);
+    });
+
+    it('ignores a stage answer when no scene is open', () => {
+      const state = stateWith(true, null);
+      state.setStage([mira]);
+      expect(state.scene()).toBeNull();
+      expect(state.stage()).toEqual([]);
+    });
   });
 });

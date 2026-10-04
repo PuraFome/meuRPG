@@ -1,8 +1,9 @@
-import { signal } from '@angular/core';
+import { computed, signal } from '@angular/core';
 
 import type { SceneClue } from '../../../gen/meurpg/maps/v1/maps_pb';
-import type { OpenSceneInfo } from '../../../gen/meurpg/play/v1/scene_pb';
+import type { OpenSceneInfo, StageNpc } from '../../../gen/meurpg/play/v1/scene_pb';
 import { rollAnnouncement } from './scene-view';
+import { stageAnnouncement } from './stage-view';
 
 /**
  * The scene open in the session, as this person sees it (MR-015): a signal
@@ -15,10 +16,15 @@ import { rollAnnouncement } from './scene-view';
  *   fechou a cena." when it closes;
  * - the master hears each new roll ("Toren: Seguir os rastros dos goblins, 7,
  *   não passou");
+ * - a player also hears the stage move ("Mira entrou na cena.", "Aldo fala.",
+ *   MR-031);
  * - a stale answer never overwrites a newer one.
  */
 export class SceneState {
   readonly scene = signal<OpenSceneInfo | null>(null);
+  /** The NPCs on the scene's stage, in the order they came in (empty with no
+   * scene). Part of the scene: the server clears it when the scene closes. */
+  readonly stage = computed<readonly StageNpc[]>(() => this.scene()?.stage ?? []);
   /** What the live region says now; changes with each news. */
   readonly notice = signal('');
   /**
@@ -74,6 +80,17 @@ export class SceneState {
     this.scene.set({ ...scene, clues: scene.clues.map((c) => (c.id === clue.id ? clue : c)) });
   }
 
+  /** The master's own stage call answered: the stage as it is now. Applied in
+   * place, so the cards change at once; a read still on its way is dropped. */
+  setStage(stage: readonly StageNpc[]): void {
+    const scene = this.scene();
+    if (!scene) {
+      return;
+    }
+    this.generation++;
+    this.scene.set({ ...scene, stage: [...stage] });
+  }
+
   /** The master opened (or swapped) the scene here: the title takes focus. */
   openedHere(next: OpenSceneInfo): void {
     this.apply(next);
@@ -110,6 +127,11 @@ export class SceneState {
       this.notice.set(`O mestre abriu uma cena: ${next.name}.`);
     } else if (!next && prev) {
       this.notice.set('O mestre fechou a cena.');
+    } else if (next && prev) {
+      const stage = stageAnnouncement(prev.stage, next.stage);
+      if (stage) {
+        this.notice.set(stage);
+      }
     }
   }
 }

@@ -47,7 +47,7 @@
 
   @if (showList()) {
     <div id="log-body" class="body">
-      <app-log-list [groups]="shown()" />
+      <app-log-list [groups]="shown()" (conditions)="conditions.emit($event)" />
     </div>
   }
 

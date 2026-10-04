@@ -40,7 +40,7 @@ describe('SceneClues (the open scene)', () => {
 
   function setup(phone = false) {
     state = new SceneState(() => Promise.resolve(null), () => true);
-    state.apply(masterScene([], { clues: CLUES }));
+    state.apply(masterScene([], [], { clues: CLUES }));
     opened = [];
     answer = undefined;
     TestBed.configureTestingModule({
@@ -151,7 +151,7 @@ describe('SceneClues (the open scene)', () => {
 
   it('invites the master to write clues when the scene has none', () => {
     const { fixture, el, flat } = setup();
-    state.apply(masterScene([], { clues: [] }));
+    state.apply(masterScene([], [], { clues: [] }));
     fixture.detectChanges();
     expect(flat(el.querySelector('.sc__empty'))).toBe('Esta cena não tem pistas. Adicione no editor do mapa.');
   });

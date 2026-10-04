@@ -8,6 +8,7 @@ import {
   type DeathSave,
   type DiceRoll,
   type Encounter,
+  type GetCombatHighlightsResponse,
   type GetTurnOptionsResponse,
   type ListCombatLogResponse,
   type ParticipantSchema,
@@ -39,6 +40,8 @@ export type AttackDie = InitiativeRoll;
 /** How the damage comes: the app rolls it, or the sum of the physical dice
  * (without the modifier; the server adds it). */
 export type DamageDie = { readonly inApp: true } | { readonly sum: number };
+/** How the pool of Sono or Borrifo de Cores comes: rolled by the server, or the sum of the physical dice. */
+export type PoolDie = { readonly inApp: true } | { readonly poolSum: number };
 
 /** What an attack answers: the combat, the roll and the damage it opened. */
 export interface AttackResult {
@@ -402,7 +405,8 @@ export class CombatClient {
   }
 
   /** `CastSpell`. `slot` is `null` for a cantrip; `die` is the d20 of a spell
-   * attack (one per target in the app, or a typed face for one target). */
+   * attack (one per target in the app, or a typed face for one target), or the
+   * pool of a spell that reads hit points (rolled by the server, or the typed sum). */
   async castSpell(
     campaignId: string,
     encounterId: string,
@@ -410,7 +414,7 @@ export class CombatClient {
     spellKey: string,
     slot: SlotRef | null,
     targets: readonly CastTarget[],
-    die: AttackDie | null,
+    die: AttackDie | PoolDie | null,
     key: string,
   ): Promise<CastResult> {
     const res = await this.client.castSpell({
@@ -425,7 +429,9 @@ export class CombatClient {
         ? { case: undefined }
         : 'inApp' in die
           ? { case: 'rollInApp', value: true }
-          : { case: 'd20Face', value: die.face },
+          : 'poolSum' in die
+            ? { case: 'poolSum', value: die.poolSum }
+            : { case: 'd20Face', value: die.face },
     });
     return { encounter: need(res.encounter, 'CastSpell'), cast: need(res.cast, 'CastSpell') };
   }
@@ -513,6 +519,12 @@ export class CombatClient {
   /** The combat log, latest first, as the caller may see it. */
   log(campaignId: string, encounterId: string): Promise<ListCombatLogResponse> {
     return this.client.listCombatLog({ campaignId, encounterId });
+  }
+
+  /** "Destaques do combate" (MR-032): who did the most in a combat that ended.
+   * The master's answer also has the table of every player's numbers. */
+  highlights(campaignId: string, encounterId: string): Promise<GetCombatHighlightsResponse> {
+    return this.client.getCombatHighlights({ campaignId, encounterId });
   }
 
   async end(campaignId: string, encounterId: string): Promise<Encounter> {

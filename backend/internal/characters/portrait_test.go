@@ -117,3 +117,35 @@ func TestMR031_APortraitMustBeAnImageOfTheCampaign(t *testing.T) {
 	_, err = jogador.update(t, pens, "Pensantus", withPortrait(pens.GetSheet(), mine))
 	wantCode(t, "UpdateCharacter(a portrait on a player's character, by the player)", err, connect.CodeInvalidArgument)
 }
+
+// MR-031: the master's character list carries each NPC's portrait as a URL, so
+// "Pôr em cena" needs no read of every sheet; a player's character has none,
+// and an NPC without a portrait has an empty URL.
+func TestMR031_TheMastersListCarriesThePortraitURL(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	mestre, jogador := h.newUser("Mestre"), h.newUser("Jogadora")
+	campaign := h.newCampaign(mestre, "Mirathel", jogador)
+	mine := uuid.New().String()
+	h.svc.SetGallery(fakeGallery{campaign: {mine}})
+	mestre.create(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_STORY, "Mira", withPortrait(basicSheet(), mine))
+	mestre.create(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_BOSS, "Ivo", withPortrait(enemySheet(), mine))
+	mestre.create(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_MINION, "Goblin", basicSheet())
+	jogador.create(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Pensantus", pensantusSheet())
+
+	got := map[string]string{}
+	for _, c := range mestre.list(t, campaign) {
+		got[c.GetName()] = c.GetPortraitUrl()
+	}
+	want := map[string]string{"Mira": "/images/" + mine, "Ivo": "/images/" + mine, "Goblin": "", "Pensantus": ""}
+	for name, url := range want {
+		if got[name] != url {
+			t.Errorf("the master's list: %s has portrait_url %q, want %q", name, got[name], url)
+		}
+	}
+	for _, c := range jogador.list(t, campaign) {
+		if c.GetPortraitUrl() != "" {
+			t.Errorf("the player's list carries a portrait_url: %v", c)
+		}
+	}
+}

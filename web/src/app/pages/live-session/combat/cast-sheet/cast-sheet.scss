@@ -39,6 +39,9 @@
 
 .cast {
   --mat-button-filled-container-height: 48px;
+  // The focus moves here after the result: the state layer would dim the fill, and the
+  // global focus ring already shows where it is.
+  --mat-button-filled-focus-state-layer-opacity: 0;
   width: 100%;
 }
 
@@ -49,19 +52,29 @@
   cursor: default;
 }
 
+// "Cancelar" and "Conjurar" are two real buttons of the same width, side by
+// side, Cancelar first (the DOM has Conjurar first, for the order of focus). At
+// 320px they would be 138px each: stacked, full width, Conjurar on top.
+.actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+
+  @media (max-width: 359.98px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .cancel {
-  align-self: center;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 0 12px;
-  border: 0;
-  background: none;
-  color: var(--mr-accent-text);
-  font: inherit;
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-accent-text);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  width: 100%;
   font-weight: 700;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  cursor: pointer;
+
+  @media (min-width: 360px) {
+    order: -1;
+  }
 }
 
 [foot] {

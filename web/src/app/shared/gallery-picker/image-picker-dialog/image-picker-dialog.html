@@ -1,6 +1,11 @@
 <div class="dlg">
   <header class="dlg__head">
-    <h2 class="dlg__title" id="image-picker-title">{{ data.title }}</h2>
+    <div class="dlg__titles">
+      <h2 class="dlg__title" id="image-picker-title">{{ data.title }}</h2>
+      @if (data.lead) {
+        <p class="dlg__lead">{{ data.lead }}</p>
+      }
+    </div>
     <button type="button" class="dlg__close" aria-label="Fechar" (click)="close()">
       <mat-icon aria-hidden="true">close</mat-icon>
     </button>
@@ -25,23 +30,40 @@
         <mat-icon aria-hidden="true">error</mat-icon>{{ message }}
       </p>
     }
-    <p class="dlg__note">
-      <mat-icon aria-hidden="true">visibility</mat-icon>{{ note() }}
-    </p>
+    @if (note()) {
+      <p class="dlg__note">
+        <mat-icon aria-hidden="true">{{ data.noteIcon ?? 'visibility' }}</mat-icon>{{ note() }}
+      </p>
+    }
+    @if (waiting()) {
+      <p class="dlg__wait" id="image-picker-wait">{{ data.emptyError }}</p>
+    }
     <div class="dlg__actions">
-      <button
-        matButton="filled"
-        type="button"
-        class="dlg__confirm"
-        [disabled]="isCurrent() || busy()"
-        (click)="confirm()"
-      >
-        @if (data.confirmIcon) {
-          <mat-icon aria-hidden="true">{{ data.confirmIcon }}</mat-icon>
-        }
-        {{ data.confirmLabel }}
-      </button>
-      <button matButton type="button" (click)="close()">Cancelar</button>
+      @if (waiting()) {
+        <button
+          matButton="outlined"
+          type="button"
+          class="dlg__confirm dlg__confirm--off"
+          aria-disabled="true"
+          aria-describedby="image-picker-wait"
+        >
+          <mat-icon aria-hidden="true">block</mat-icon>{{ data.confirmLabel }}
+        </button>
+      } @else {
+        <button
+          matButton="filled"
+          type="button"
+          class="dlg__confirm"
+          [disabled]="isCurrent() || busy()"
+          (click)="confirm()"
+        >
+          @if (data.confirmIcon) {
+            <mat-icon aria-hidden="true">{{ data.confirmIcon }}</mat-icon>
+          }
+          {{ data.confirmLabel }}
+        </button>
+      }
+      <button [matButton]="data.dashedUntilPicked ? 'outlined' : 'text'" type="button" class="dlg__cancel" (click)="close()">Cancelar</button>
     </div>
   </footer>
 </div>

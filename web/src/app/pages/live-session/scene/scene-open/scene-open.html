@@ -4,7 +4,7 @@
 
     <div class="so__head">
       <div class="so__titles">
-        <h2 #heading class="so__title" id="so-title" tabindex="-1">Cena: {{ glue(s.name) }}</h2>
+        <h2 #heading class="so__title" id="so-title" tabindex="-1">Cena: {{ sceneName() }}</h2>
         <p class="so__meta">{{ meta() }}</p>
       </div>
       <div class="so__buttons">
@@ -29,6 +29,8 @@
         <p>{{ error() }}</p>
       </div>
     }
+
+    <app-stage-master class="so__stage" [campaignId]="campaignId()" [state]="state()" />
 
     <div class="so__cols">
       @if (!phone()) {
