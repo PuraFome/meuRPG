@@ -1261,8 +1261,11 @@ export const WatchGameSessionResponse_CombatLogChangedSchema: GenMessage<WatchGa
   messageDesc(file_meurpg_play_v1_play, 19, 15);
 
 /**
- * XpChanged says the campaign's XP changed: an award was given, the last one
- * undone, or a milestone marked (ProgressionService). It carries no content
+ * XpChanged says the campaign's XP or levels changed: an award was given, the
+ * last one undone, a milestone marked (ProgressionService), or a player's
+ * character went up a level (CharacterService.LevelUpCharacter, MR-040: the
+ * level on the sheet and `can_level_up` change, and the master reads "O que
+ * mudou", ListLevelUps). It carries no content
  * (the XP of the other characters is not the player's business until they
  * read it, where it is allowed): the app reads GetCampaignExperience and
  * ListXPAwards again. Everyone in the session gets it, the master and every

@@ -120,6 +120,22 @@ func (q *Queries) ClearPortraits(ctx context.Context, arg ClearPortraitsParams) 
 	return result.RowsAffected(), nil
 }
 
+const deleteLevelUpRoll = `-- name: DeleteLevelUpRoll :exec
+DELETE FROM character_level_up_rolls
+WHERE character_id = $1::UUID AND to_level = $2
+`
+
+type DeleteLevelUpRollParams struct {
+	CharacterID string
+	ToLevel     int32
+}
+
+// The level-up used the roll; its value goes on in character_level_ups.
+func (q *Queries) DeleteLevelUpRoll(ctx context.Context, arg DeleteLevelUpRollParams) error {
+	_, err := q.db.Exec(ctx, deleteLevelUpRoll, arg.CharacterID, arg.ToLevel)
+	return err
+}
+
 const deleteMasterNotes = `-- name: DeleteMasterNotes :exec
 DELETE FROM character_master_notes
 WHERE campaign_id = $1 AND character_id = $2
@@ -243,6 +259,32 @@ func (q *Queries) GetCharacterForUpdate(ctx context.Context, arg GetCharacterFor
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
+	return i, err
+}
+
+const getLevelUpRoll = `-- name: GetLevelUpRoll :one
+SELECT class_key, die, value FROM character_level_up_rolls
+WHERE character_id = $1::UUID AND to_level = $2
+`
+
+type GetLevelUpRollParams struct {
+	CharacterID string
+	ToLevel     int32
+}
+
+type GetLevelUpRollRow struct {
+	ClassKey string
+	Die      int32
+	Value    int32
+}
+
+// The hit die the server rolled for the character's next level (MR-040): one
+// per character and target total level (not per class: a multiclass
+// character cannot roll twice for a level), kept until the level-up uses it.
+func (q *Queries) GetLevelUpRoll(ctx context.Context, arg GetLevelUpRollParams) (GetLevelUpRollRow, error) {
+	row := q.db.QueryRow(ctx, getLevelUpRoll, arg.CharacterID, arg.ToLevel)
+	var i GetLevelUpRollRow
+	err := row.Scan(&i.ClassKey, &i.Die, &i.Value)
 	return i, err
 }
 
@@ -404,6 +446,90 @@ func (q *Queries) InsertCharacter(ctx context.Context, arg InsertCharacterParams
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const insertLevelUp = `-- name: InsertLevelUp :one
+INSERT INTO character_level_ups
+    (campaign_id, character_id, class_key, from_level, to_level, hp_method, hp_value, choices, created_at)
+VALUES (
+    $1::UUID, $2::UUID, $3, $4,
+    $5, $6, $7, $8, $9
+)
+RETURNING id, campaign_id, character_id, class_key, from_level, to_level, hp_method, hp_value, choices, created_at
+`
+
+type InsertLevelUpParams struct {
+	CampaignID  string
+	CharacterID string
+	ClassKey    string
+	FromLevel   int32
+	ToLevel     int32
+	HpMethod    string
+	HpValue     int32
+	Choices     []byte
+	CreatedAt   time.Time
+}
+
+// The record of a guided level-up (MR-040), written in the transaction that
+// saves the sheet.
+func (q *Queries) InsertLevelUp(ctx context.Context, arg InsertLevelUpParams) (CharacterLevelUp, error) {
+	row := q.db.QueryRow(ctx, insertLevelUp,
+		arg.CampaignID,
+		arg.CharacterID,
+		arg.ClassKey,
+		arg.FromLevel,
+		arg.ToLevel,
+		arg.HpMethod,
+		arg.HpValue,
+		arg.Choices,
+		arg.CreatedAt,
+	)
+	var i CharacterLevelUp
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.CharacterID,
+		&i.ClassKey,
+		&i.FromLevel,
+		&i.ToLevel,
+		&i.HpMethod,
+		&i.HpValue,
+		&i.Choices,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const insertLevelUpRoll = `-- name: InsertLevelUpRoll :execrows
+INSERT INTO character_level_up_rolls (character_id, class_key, to_level, die, value, created_at)
+VALUES ($1::UUID, $2, $3, $4, $5, $6)
+ON CONFLICT (character_id, to_level) DO NOTHING
+`
+
+type InsertLevelUpRollParams struct {
+	CharacterID string
+	ClassKey    string
+	ToLevel     int32
+	Die         int32
+	Value       int32
+	Now         time.Time
+}
+
+// Keeps a roll. A second roll for the same level does nothing (0 rows), so the
+// first one stands: asking again never rerolls.
+func (q *Queries) InsertLevelUpRoll(ctx context.Context, arg InsertLevelUpRollParams) (int64, error) {
+	result, err := q.db.Exec(ctx, insertLevelUpRoll,
+		arg.CharacterID,
+		arg.ClassKey,
+		arg.ToLevel,
+		arg.Die,
+		arg.Value,
+		arg.Now,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const listCharacterNames = `-- name: ListCharacterNames :many
@@ -590,6 +716,78 @@ func (q *Queries) ListCombatParty(ctx context.Context, campaignID string) ([]Lis
 			&i.Name,
 			&i.PlayerUserID,
 			&i.Sheet,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLevelUps = `-- name: ListLevelUps :many
+SELECT l.id, l.character_id, l.class_key, l.from_level, l.to_level, l.choices, l.created_at,
+       c.name AS character_name, c.player_user_id
+FROM character_level_ups l
+JOIN characters c ON c.id = l.character_id
+WHERE l.campaign_id = $1::UUID
+  AND ($2::UUID IS NULL OR l.character_id = $2::UUID)
+  AND ($3::TIMESTAMPTZ IS NULL
+       OR (l.created_at, l.id) < ($3::TIMESTAMPTZ, $4::UUID))
+ORDER BY l.created_at DESC, l.id DESC
+LIMIT $5
+`
+
+type ListLevelUpsParams struct {
+	CampaignID      string
+	CharacterID     *string
+	BeforeCreatedAt *time.Time
+	BeforeID        *string
+	MaxRows         int32
+}
+
+type ListLevelUpsRow struct {
+	ID            string
+	CharacterID   string
+	ClassKey      string
+	FromLevel     int32
+	ToLevel       int32
+	Choices       []byte
+	CreatedAt     time.Time
+	CharacterName string
+	PlayerUserID  *string
+}
+
+// A campaign's level-ups, newest first, for the master's "O que mudou". With
+// character_id, only that character's. The character's name is the current
+// one, and its player the character's own.
+func (q *Queries) ListLevelUps(ctx context.Context, arg ListLevelUpsParams) ([]ListLevelUpsRow, error) {
+	rows, err := q.db.Query(ctx, listLevelUps,
+		arg.CampaignID,
+		arg.CharacterID,
+		arg.BeforeCreatedAt,
+		arg.BeforeID,
+		arg.MaxRows,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListLevelUpsRow
+	for rows.Next() {
+		var i ListLevelUpsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CharacterID,
+			&i.ClassKey,
+			&i.FromLevel,
+			&i.ToLevel,
+			&i.Choices,
+			&i.CreatedAt,
+			&i.CharacterName,
+			&i.PlayerUserID,
 		); err != nil {
 			return nil, err
 		}
