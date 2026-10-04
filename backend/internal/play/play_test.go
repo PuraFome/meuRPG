@@ -419,6 +419,12 @@ func (noMaps) RevealMap(context.Context, pgx.Tx, string, string, time.Time) erro
 	return errors.New("not in this test")
 }
 
+func (noMaps) ImageToShow(context.Context, string, string) (*playv1.ShownImage, error) {
+	return nil, errors.New("not in this test")
+}
+
+func (noMaps) MapShown(context.Context, string, string) {}
+
 func (noMaps) ShownImage(context.Context, string, string) (*playv1.ShownImage, error) {
 	return nil, errors.New("not in this test")
 }

@@ -29,15 +29,16 @@ import (
 //   - the master reads all four;
 //   - a player reads the walls, the difficult terrain and the cover of a map
 //     they see, because those are things you can see, but never the light;
-//   - a player reads none of them while the map has the fog of war on. Until the
-//     fog's own read slice (9.4) each player will be sent only the squares
-//     their character sees, and GetMapLayers is where that goes: it answers
-//     fog_withheld for a player of a fog map, and the points, tokens and image of
-//     a fog map still reach players as they always did.
+//   - while the map has the fog of war on, a player reads only the squares
+//     their character sees now or remembers, and the walls next to a seen square
+//     (fog.go says which; GetMapLayers answers fog_withheld, "this is a filtered
+//     view"), and the master reads them as a player's character does when they
+//     ask "Ver como".
 //
 // What clears them: a new grid (other columns) and a new image, because a layer
 // is sized by the grid. clearLayers is the one place that does it, and where the
-// players' memory of the map (slice 9.4) will be forgotten too.
+// players' memory of the map (map_vision_memory) is forgotten too, since a bitmap
+// only fits the grid it was made on.
 
 // maxPaintSquares is how many squares one PaintMapCells may carry. Painting is
 // dragged, so the app sends small batches; this bounds what one call costs.
@@ -252,8 +253,19 @@ func paintBit(l *grid.Layer, col, row int, on bool) bool {
 
 // layersChanged tells the watchers that a map's layers changed. The master
 // always hears; the players only when they may read the layers (a map they see,
-// no fog) and the layer is one they read (never the light).
+// no fog) and the layer is one they read (never the light). On a fog map the
+// walls and the light decide what the players see: what each one sees, and
+// remembers, is worked out again, and `vision_changed` goes to the players it
+// changed (refreshVision); terrain and cover are theirs only on squares they
+// know, and the hint of the walls and the light covers the squares they see.
 func (s *Service) layersChanged(ctx context.Context, campaignID string, mapRow mapsdb.Map, layer mapsv1.MapLayer) {
+	if fogged(mapRow) {
+		s.layerHints.fire(mapRow.ID, layerHintEvery, false, func(bool) {
+			s.publishMapChanged(campaignID, mapRow.ID, false)
+			s.refreshVision(ctx, campaignID, mapRow.ID)
+		})
+		return
+	}
 	players := false
 	if layer != mapsv1.MapLayer_MAP_LAYER_LIGHT && !mapRow.FogEnabled {
 		current, err := s.currentMap(ctx, campaignID)
@@ -329,9 +341,12 @@ func (g *hintGate) forget(except string, every time.Duration) {
 
 // clearLayers deletes a map's painted layers inside the transaction and bumps
 // their revision when there were any: its grid's columns or its image changed,
-// and a layer only makes sense for the grid it was painted on (D2). It is where
-// slice 9.4 also forgets what the players saw of the map.
+// and a layer only makes sense for the grid it was painted on (D2). The players'
+// memory of the map goes too: it is a bitmap of that grid.
 func clearLayers(ctx context.Context, q *mapsdb.Queries, mapID string) error {
+	if err := clearVisionMemory(ctx, q, mapID); err != nil {
+		return err
+	}
 	n, err := q.DeleteMapLayers(ctx, mapID)
 	if err != nil {
 		return fmt.Errorf("clear the layers: %w", err)
@@ -340,6 +355,19 @@ func clearLayers(ctx context.Context, q *mapsdb.Queries, mapID string) error {
 		if _, err := q.BumpMapLayersRevision(ctx, mapID); err != nil {
 			return fmt.Errorf("bump the layers' revision: %w", err)
 		}
+	}
+	return nil
+}
+
+// clearVisionMemory makes every player forget what they saw of the map: the map's
+// vision epoch goes up (what was remembered under an older one reads as empty and
+// is never written back) and the old rows go.
+func clearVisionMemory(ctx context.Context, q *mapsdb.Queries, mapID string) error {
+	if _, err := q.ClearMapVisionMemory(ctx, mapID); err != nil {
+		return fmt.Errorf("forget what the players saw: %w", err)
+	}
+	if _, err := q.DeleteMapVisionMemory(ctx, mapID); err != nil {
+		return fmt.Errorf("forget what the players saw: %w", err)
 	}
 	return nil
 }
@@ -371,7 +399,7 @@ func (s *Service) GetMapLayers(
 	if !ok {
 		return nil, errMapNotFound()
 	}
-	v, err := s.viewerOf(ctx, m)
+	v, err := s.readerOf(ctx, m, req.Msg.GetAsCharacterId())
 	if err != nil {
 		return nil, err
 	}
@@ -391,17 +419,25 @@ func (s *Service) GetMapLayers(
 	if !g.Valid() {
 		return connect.NewResponse(res), nil
 	}
-	if !v.master && row.FogEnabled {
-		// Each player will get only what their character sees (slice 9.4). The
-		// revision is withheld too: it would tell when the master paints.
-		res.LayersRevision, res.FogWithheld = 0, true
-		return connect.NewResponse(res), nil
-	}
 	stored, err := s.queries.GetMapLayers(ctx, mapID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, s.dbError(ctx, "read a map's layers", err)
 	}
 	set := loadLayers(stored, g)
+	if foggedFor(v, row) {
+		// A player gets only the squares their character sees or remembers (RN-10).
+		// The map's counter is withheld: it would tell when the master paints what
+		// they do not see; the revision is a number of what they receive.
+		pv, _, _, err := s.fogViewOf(ctx, row, v)
+		if err != nil {
+			return nil, s.dbError(ctx, "work out what a player sees", err)
+		}
+		set = filterLayers(set, pv)
+		res.DifficultTerrain, res.Wall, res.Cover = nilIfBlank(set.terrain.Encode()), nilIfBlank(set.walls.Encode()), nilIfBlank(set.cover.Encode())
+		res.LayersRevision = hashOf(res.DifficultTerrain, res.Wall, res.Cover)
+		res.FogWithheld = true
+		return connect.NewResponse(res), nil
+	}
 	res.DifficultTerrain, res.Wall, res.Cover = nilIfBlank(set.terrain.Encode()), nilIfBlank(set.walls.Encode()), nilIfBlank(set.cover.Encode())
 	if v.master {
 		res.Light = nilIfBlank(set.light.Encode())
@@ -439,10 +475,22 @@ func (s *Service) SetMapFog(
 		return nil, err
 	}
 
+	// Turning the fog on keeps the raw image from the players (RN-10): an image
+	// that is also used another way is copied first, and the map gets the copy.
+	var imageCopy *fogCopy
+	if msg.GetFogEnabled() {
+		if row, err := s.queries.GetMap(ctx, mapsdb.GetMapParams{CampaignID: m.CampaignID, ID: mapID}); err == nil && !row.FogEnabled {
+			if imageCopy, err = s.prepareFogCopy(ctx, m.CampaignID, mapID, row.ImageID); err != nil {
+				return nil, s.dbError(ctx, "copy the map's image for the fog", err)
+			}
+		}
+	}
 	var before, after mapsdb.Map
+	copied := false
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
 		var err error
+		copied = false
 		if before, err = q.GetMapForUpdate(ctx, mapsdb.GetMapForUpdateParams{CampaignID: m.CampaignID, ID: mapID}); errors.Is(err, pgx.ErrNoRows) {
 			return errMapNotFound()
 		} else if err != nil {
@@ -450,6 +498,17 @@ func (s *Service) SetMapFog(
 		}
 		if msg.GetFogEnabled() && before.GridColumns == nil {
 			return errNoGrid() // the fog is made of squares
+		}
+		// The copy is used only if the map still has the image it was made from and
+		// the fog is still off.
+		if imageCopy != nil && !before.FogEnabled && before.ImageID == imageCopy.source.ID {
+			if err := imageCopy.insert(ctx, q, s, m.CampaignID, m.UserID); err != nil {
+				return err
+			}
+			if _, err := q.SetMapImageOnly(ctx, mapsdb.SetMapImageOnlyParams{CampaignID: m.CampaignID, ID: mapID, ImageID: imageCopy.id, Now: s.now()}); err != nil {
+				return fmt.Errorf("give the map its copy of the image: %w", err)
+			}
+			copied = true
 		}
 		after, err = q.SetMapFog(ctx, mapsdb.SetMapFogParams{
 			CampaignID: m.CampaignID, ID: mapID, FogEnabled: msg.FogEnabled, BaseLight: baseLight, GroupVision: msg.GroupVision, Now: s.now(),
@@ -459,6 +518,9 @@ func (s *Service) SetMapFog(
 		}
 		return nil
 	})
+	if imageCopy != nil && (err != nil || !copied) {
+		s.deleteFiles(ctx, m.CampaignID, imageCopy.id) // made for nothing
+	}
 	if err != nil {
 		return nil, s.dbError(ctx, "set a map's fog", err)
 	}
@@ -466,6 +528,11 @@ func (s *Service) SetMapFog(
 	// base light, which is the master's.
 	playersRead := before.FogEnabled != after.FogEnabled || before.GroupVision != after.GroupVision
 	s.publishMapChanged(m.CampaignID, mapID, playersRead && playersSee(mapID, after.RevealedAt, current))
+	// What everyone sees, and remembers, is worked out again (the base light is the
+	// master's, but it moves what the squares look like).
+	if after.FogEnabled {
+		s.refreshVision(ctx, m.CampaignID, mapID)
+	}
 	out, err := s.masterMap(ctx, m, mapID)
 	if err != nil {
 		return nil, err

@@ -93,10 +93,19 @@ type MapKeeper interface {
 	// as it is), or returns a `not_found` Connect error when mapID is not a
 	// map of the campaign.
 	RevealMap(ctx context.Context, tx pgx.Tx, campaignID, mapID string, at time.Time) error
+	// MapShown tells the maps module, after the commit, that the map became the
+	// session's current one: a map with the fog on records the players' first
+	// view of it (MR-036).
+	MapShown(ctx context.Context, campaignID, mapID string)
 	// ShownImage returns the campaign's gallery image imageID as the
 	// session shows it, or a `not_found` Connect error when it is not an
 	// image of the campaign's gallery.
 	ShownImage(ctx context.Context, campaignID, imageID string) (*playv1.ShownImage, error)
+	// ImageToShow is ShownImage for an image the master is about to show: one that
+	// is the background of a map with the fog of war on comes back as a copy of its
+	// own, whose ID the caller stores (RN-10, MR-036). `resource_exhausted` when the
+	// gallery has no room for the copy.
+	ImageToShow(ctx context.Context, campaignID, imageID string) (*playv1.ShownImage, error)
 	// LeaveImage adds the campaign's image to the images left with the
 	// players inside tx. An image already left stays as it is, and one that
 	// is not the campaign's anymore is skipped.

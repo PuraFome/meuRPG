@@ -221,7 +221,14 @@ type PlayServiceClient interface {
 	//     it (RN-10): a change to hidden things reaches only the master;
 	//   - `token_moved` when the master moves a token: to everyone when the
 	//     token is visible on a map the players see, only to the master
-	//     otherwise;
+	//     otherwise. On a map with the fog of war on, only a player
+	//     character's token goes to the players: an NPC's move reaches them
+	//     only as `vision_changed`, never with its square;
+	//   - `vision_changed` on a map with the fog of war on: what the player
+	//     sees or remembers changed, or an NPC moved on a square they see; a
+	//     hint, and the app reads MapService.GetMapVision and the map again.
+	//     Sent only to the players it touches, and not queued again while one
+	//     waits in the stream's queue; the master never gets it;
 	//   - `shown_image_changed` when the master shows an image, stops showing
 	//     it, or deletes it; sent to everyone;
 	//   - `left_images_changed` when the list of images left with the players
@@ -323,6 +330,12 @@ type PlayServiceClient interface {
 	// `shown_image_changed`. A new session starts showing nothing; deleting
 	// the image (GalleryService.DeleteGalleryImage) stops showing it.
 	//
+	// An image that is the background of a map with the fog of war on is never
+	// sent to a player (RN-10): the session then shows a copy of it, a new gallery
+	// image with the same bytes (named "... (névoa)"), and the shown image's ID in
+	// the response and in GetLiveSession is the copy's. The copy takes a place in
+	// the campaign's gallery: `resource_exhausted` when it is full.
+	//
 	// `keep` is the "Deixar com os jogadores" switch of the image shown. With
 	// it on, when the master stops showing the image, shows another one or
 	// ends the session, the image is left with the players
@@ -338,6 +351,8 @@ type PlayServiceClient interface {
 	//   - `permission_denied`: the caller is a player.
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
 	//     NO_OPEN_SESSION).
+	//   - `resource_exhausted`: the image is a fog map's background and the
+	//     gallery is full, so it cannot be copied.
 	SetShownImage(context.Context, *connect.Request[v1.SetShownImageRequest]) (*connect.Response[v1.SetShownImageResponse], error)
 	// ListLeftImages returns the images the master left with the players
 	// (SetShownImage's `keep`), in the order they were left. Any active
@@ -892,7 +907,14 @@ type PlayServiceHandler interface {
 	//     it (RN-10): a change to hidden things reaches only the master;
 	//   - `token_moved` when the master moves a token: to everyone when the
 	//     token is visible on a map the players see, only to the master
-	//     otherwise;
+	//     otherwise. On a map with the fog of war on, only a player
+	//     character's token goes to the players: an NPC's move reaches them
+	//     only as `vision_changed`, never with its square;
+	//   - `vision_changed` on a map with the fog of war on: what the player
+	//     sees or remembers changed, or an NPC moved on a square they see; a
+	//     hint, and the app reads MapService.GetMapVision and the map again.
+	//     Sent only to the players it touches, and not queued again while one
+	//     waits in the stream's queue; the master never gets it;
 	//   - `shown_image_changed` when the master shows an image, stops showing
 	//     it, or deletes it; sent to everyone;
 	//   - `left_images_changed` when the list of images left with the players
@@ -994,6 +1016,12 @@ type PlayServiceHandler interface {
 	// `shown_image_changed`. A new session starts showing nothing; deleting
 	// the image (GalleryService.DeleteGalleryImage) stops showing it.
 	//
+	// An image that is the background of a map with the fog of war on is never
+	// sent to a player (RN-10): the session then shows a copy of it, a new gallery
+	// image with the same bytes (named "... (névoa)"), and the shown image's ID in
+	// the response and in GetLiveSession is the copy's. The copy takes a place in
+	// the campaign's gallery: `resource_exhausted` when it is full.
+	//
 	// `keep` is the "Deixar com os jogadores" switch of the image shown. With
 	// it on, when the master stops showing the image, shows another one or
 	// ends the session, the image is left with the players
@@ -1009,6 +1037,8 @@ type PlayServiceHandler interface {
 	//   - `permission_denied`: the caller is a player.
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
 	//     NO_OPEN_SESSION).
+	//   - `resource_exhausted`: the image is a fog map's background and the
+	//     gallery is full, so it cannot be copied.
 	SetShownImage(context.Context, *connect.Request[v1.SetShownImageRequest]) (*connect.Response[v1.SetShownImageResponse], error)
 	// ListLeftImages returns the images the master left with the players
 	// (SetShownImage's `keep`), in the order they were left. Any active

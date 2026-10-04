@@ -40,6 +40,24 @@ import (
 // play, then builds Service with play as its LiveSession.
 type SessionMaps struct {
 	queries *mapsdb.Queries
+	// svc is the maps service, for what needs more than the database: the fog's
+	// first view of a map that becomes visible (MapShown) and the copy of an image
+	// a fog map owns (see fogimage.go). Connected by SetService; nil until then.
+	svc *Service
+}
+
+// SetService connects the maps service, which is made after this (it needs play,
+// and play needs this). cmd/api calls it once both exist.
+func (sm *SessionMaps) SetService(s *Service) { sm.svc = s }
+
+// MapShown tells the fog that the players can see the map from now on (it became
+// the session's current map, or the combat's): what their characters see there is
+// their first view, and is remembered. The play module calls it after the commit
+// that made the map current. Nothing happens for a map without fog.
+func (sm *SessionMaps) MapShown(ctx context.Context, campaignID, mapID string) {
+	if sm.svc != nil {
+		sm.svc.refreshVision(ctx, campaignID, mapID)
+	}
 }
 
 // NewSessionMaps returns the SessionMaps for play.
@@ -75,6 +93,25 @@ func (sm *SessionMaps) ShownImage(ctx context.Context, campaignID, imageID strin
 	}
 	if err != nil {
 		return nil, fmt.Errorf("find the shown image: %w", err)
+	}
+	return shownImage(img), nil
+}
+
+// ImageToShow is ShownImage for the master who is about to show the image: an
+// image that is a fog map's background is copied first, and the copy is what the
+// session shows (RN-10, MR-036). The caller stores the returned ID.
+func (sm *SessionMaps) ImageToShow(ctx context.Context, campaignID, imageID string) (*playv1.ShownImage, error) {
+	img, err := sm.queries.GetGalleryImageInCampaign(ctx, mapsdb.GetGalleryImageInCampaignParams{CampaignID: campaignID, ID: imageID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, errImageNotFound()
+	}
+	if err != nil {
+		return nil, fmt.Errorf("find the image to show: %w", err)
+	}
+	if sm.svc != nil {
+		if img, err = sm.svc.ownImage(ctx, campaignID, img); err != nil {
+			return nil, err
+		}
 	}
 	return shownImage(img), nil
 }
@@ -210,17 +247,25 @@ func (sm *SessionMaps) SetTokenPositions(ctx context.Context, tx pgx.Tx, mapID s
 	return nil
 }
 
-// ImageInCampaign reports whether imageID is an image of the campaign's
-// gallery. The characters module asks it before it keeps an NPC's portrait
-// (MR-031): an image of another campaign, or one that does not exist, is not
-// accepted. It implements characters.Gallery.
-func (sm *SessionMaps) ImageInCampaign(ctx context.Context, campaignID, imageID string) (bool, error) {
-	_, err := sm.queries.GetGalleryImageInCampaign(ctx, mapsdb.GetGalleryImageInCampaignParams{CampaignID: campaignID, ID: imageID})
+// PortraitImage reports whether imageID is an image of the campaign's gallery and
+// returns the image the portrait should be. The characters module asks it before
+// it keeps an NPC's portrait (MR-031): an image of another campaign, or one that
+// does not exist, is not accepted, and one that is the background of a map with
+// the fog of war on is replaced by a copy of its own (RN-10). It implements
+// characters.Gallery.
+func (sm *SessionMaps) PortraitImage(ctx context.Context, campaignID, imageID string) (string, bool, error) {
+	img, err := sm.queries.GetGalleryImageInCampaign(ctx, mapsdb.GetGalleryImageInCampaignParams{CampaignID: campaignID, ID: imageID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return false, nil
+		return "", false, nil
 	}
 	if err != nil {
-		return false, fmt.Errorf("find the portrait's image: %w", err)
+		return "", false, fmt.Errorf("find the portrait's image: %w", err)
 	}
-	return true, nil
+	if sm.svc != nil {
+		// A fog map's own image is never a portrait: the portrait gets a copy.
+		if img, err = sm.svc.ownImage(ctx, campaignID, img); err != nil {
+			return "", false, err
+		}
+	}
+	return img.ID, true, nil
 }

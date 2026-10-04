@@ -488,8 +488,11 @@ func TestMR034_PlayersReadOnlyWhatTheyMay(t *testing.T) {
 		t.Fatal(err)
 	}
 	res := s.ana.mustLayers(s.campaign, s.mapID)
-	if !res.GetFogWithheld() || len(res.GetWall())+len(res.GetDifficultTerrain())+len(res.GetCover())+len(res.GetLight()) != 0 || res.GetLayersRevision() != 0 {
-		t.Errorf("a player's layers on a fog map = %v, want none, withheld and no revision", res)
+	// Ana has no character on the map, so she sees and remembers nothing: a filtered
+	// view with no layers, and a revision that is a number of what she receives,
+	// never the map's own counter.
+	if !res.GetFogWithheld() || len(res.GetWall())+len(res.GetDifficultTerrain())+len(res.GetCover())+len(res.GetLight()) != 0 || res.GetLayersRevision() != hashOf(nil, nil, nil) {
+		t.Errorf("a player's layers on a fog map = %v, want none, a filtered view and the revision of nothing", res)
 	}
 	if d := decode(t, m.mustLayers(s.campaign, s.mapID)); d.light.Get(4, 4) != grid.Bright {
 		t.Error("the fog took the master's layers away")

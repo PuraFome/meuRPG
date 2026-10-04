@@ -21,7 +21,17 @@ import (
 // session's current map), or the portrait of an NPC on the stage of the open
 // scene (MR-031). Reads, one per module: what the session shows and the
 // stage come from play (LiveSession), the maps from this module's table.
+//
+// The background of a map with the fog of war on is never one of them: a player
+// receives such a map only as the squares their character sees (MR-036), so the
+// raw image is refused them whatever else shows it (RN-10). Turning the fog on
+// copies an image that is also used another way (fogimage.go), so the fog map's
+// image is its own.
 func (s *Service) playersSeeImage(ctx context.Context, campaignID, imageID string) (bool, error) {
+	fog, err := s.queries.ImageIsOnAFogMap(ctx, mapsdb.ImageIsOnAFogMapParams{CampaignID: campaignID, ImageID: imageID})
+	if err != nil || fog {
+		return false, err
+	}
 	currentMap, shownImage, err := s.live.OnScreen(ctx, campaignID)
 	if err != nil {
 		return false, err

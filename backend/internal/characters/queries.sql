@@ -71,6 +71,16 @@ WHERE campaign_id = sqlc.arg(campaign_id)::UUID
   AND (sheet -> 'full' ->> 'portrait_image_id' = sqlc.arg(image_id)::TEXT
        OR sheet -> 'basic' ->> 'portrait_image_id' = sqlc.arg(image_id)::TEXT);
 
+-- name: PortraitInUse :one
+-- Whether any NPC of the campaign has the gallery image as its portrait (the
+-- maps module copies a fog map's image when something else uses it, MR-036).
+SELECT EXISTS (
+    SELECT 1 FROM characters
+    WHERE campaign_id = sqlc.arg(campaign_id)::UUID
+      AND (sheet -> 'full' ->> 'portrait_image_id' = sqlc.arg(image_id)::TEXT
+           OR sheet -> 'basic' ->> 'portrait_image_id' = sqlc.arg(image_id)::TEXT)
+);
+
 -- name: UpdateCharacterStory :one
 -- As UpdateCharacterSheet: the story and the sheet share one revision.
 UPDATE characters

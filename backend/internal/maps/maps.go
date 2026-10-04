@@ -50,6 +50,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1/mapsv1connect"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/maps/link"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/nostore"
@@ -92,6 +93,14 @@ type CharacterDirectory interface {
 	// campaign that has it, inside tx, and returns how many it cleared
 	// (MR-031): the master deleted the image from the gallery.
 	ClearPortraits(ctx context.Context, tx pgx.Tx, campaignID, imageID string) (int64, error)
+	// PartyVision returns the campaign's living player characters that have a
+	// player, each with what it sees with (its derived darkvision, blindsight
+	// and truesight): the fog of war's viewers (MR-036). Slice 9.10 has it send
+	// a beast's senses in Wild Shape and a familiar's eyes.
+	PartyVision(ctx context.Context, campaignID string) ([]link.PartyMember, error)
+	// PortraitInUse says whether any NPC of the campaign has the gallery image as
+	// its portrait.
+	PortraitInUse(ctx context.Context, campaignID, imageID string) (bool, error)
 }
 
 // LiveSession is what this package needs from the live session. The play
@@ -122,6 +131,10 @@ type LiveSession interface {
 	// the campaign's session, and to nobody else: not the master, not the
 	// other players. Without an open session nothing happens.
 	PublishToUsers(campaignID string, userIDs []string, ev *playv1.WatchGameSessionResponse)
+	// PublishToUsersCoalesced is PublishToUsers for a hint that says "read it
+	// again" (`vision_changed`): while a user's stream still has an event with the
+	// same key waiting in its queue, no other is queued for it.
+	PublishToUsersCoalesced(campaignID string, userIDs []string, key string, ev *playv1.WatchGameSessionResponse)
 	// AppendEvent appends an event to the history of the campaign's open
 	// session inside tx, and says whether there was one. The payload holds
 	// IDs only (docs/privacidade.md).
@@ -132,10 +145,15 @@ type LiveSession interface {
 	OpenSessionID(ctx context.Context, tx pgx.Tx, campaignID string) (string, error)
 }
 
-// CombatMaps says whether a combat is running on a map. The play module
-// implements it (play.Service.CombatRunsOnMap): a map's grid and image cannot
-// change while a fight stands on its painted layers (MR-034, D2).
+// CombatMaps says whether a combat is running on a map, and where its combatants
+// stand. The play module implements it (play.Service.CombatRunsOnMap,
+// CombatPositions): a map's grid and image cannot change while a fight stands on
+// its painted layers (MR-034, D2), and the fog of war sees from the combatant's
+// square while it runs (MR-036, D6).
 type CombatMaps interface {
+	// CombatPositions says where the combatants of the combat running on the map
+	// stand, by character, in squares of its grid, and whether a combat runs.
+	CombatPositions(ctx context.Context, campaignID, mapID string) (link.CombatPositions, error)
 	// CombatRunsOnMap reports, inside tx, whether a combat of the campaign that
 	// is not ended (in setup or active) runs on the map.
 	CombatRunsOnMap(ctx context.Context, tx pgx.Tx, campaignID, mapID string) (bool, error)
@@ -199,12 +217,20 @@ type Service struct {
 	rules      Rules
 	combats    CombatMaps
 	layerHints hintGate
-	logger     *slog.Logger
-	now        func() time.Time
-	maxImages  int32
-	maxBytes   int32
-	maxMaps    int32
-	maxPoints  int32
+
+	// The fog of war (fog.go): the compiled scenes, the revision each player was
+	// last told, and the lock that makes a refresh and "Esquecer o que foi visto"
+	// take turns, so the memory only ever grows from what was seen.
+	lits        litCache
+	seen        visionState
+	visionLocks visionLocks
+	counts      pointCounts
+	logger      *slog.Logger
+	now         func() time.Time
+	maxImages   int32
+	maxBytes    int32
+	maxMaps     int32
+	maxPoints   int32
 
 	// processing lets one image at a time be decoded, so a few uploads at
 	// once cannot take all the server's memory (package images bounds

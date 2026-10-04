@@ -1,0 +1,223 @@
+package maps
+
+import (
+	"context"
+	"errors"
+
+	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
+
+	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
+)
+
+// The reads and writes of the fog of war that players meet (MR-036, RN-10): the
+// player's view of a map (GetMapVision), "Ver como", the master's "Esquecer o
+// que foi visto", and the pieces GetMap, ListMaps and GetMapLayers use to filter
+// what a player receives. What is seen is worked out in fog.go.
+
+// visionKey is the key under which `vision_changed` hints of a map are
+// coalesced in a stream.
+func visionKey(mapID string) string { return "vision:" + mapID }
+
+// visionChangedEvent is the hint that tells one player to read the map's view
+// again. It carries the map, which the player sees, and nothing of what changed.
+func visionChangedEvent(mapID string) *playv1.WatchGameSessionResponse {
+	return &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_VisionChanged_{
+		VisionChanged: &playv1.WatchGameSessionResponse_VisionChanged{MapId: mapID},
+	}}
+}
+
+// readerOf is the viewer of a read: the caller, or, for the master who sends
+// as_character_id, the player of that character ("Ver como"): the same rules the
+// player gets, on any map. A player sending it is refused, before anything else
+// is looked up.
+func (s *Service) readerOf(ctx context.Context, m authz.Membership, asCharacterID string) (viewer, error) {
+	v, err := s.viewerOf(ctx, m)
+	if err != nil {
+		return viewer{}, err
+	}
+	if asCharacterID == "" {
+		return v, nil
+	}
+	if !v.master {
+		return viewer{}, connect.NewError(connect.CodePermissionDenied, errors.New("only the master may read as a character"))
+	}
+	id, ok := parseID(asCharacterID)
+	if !ok {
+		return viewer{}, errCharacterNotFound()
+	}
+	party, err := s.characters.PartyVision(ctx, m.CampaignID)
+	if err != nil {
+		return viewer{}, s.dbError(ctx, "read the party", err)
+	}
+	for _, member := range party {
+		if member.CharacterID != id {
+			continue
+		}
+		as := viewer{userID: member.UserID, currentMap: v.currentMap, preview: true}
+		if as.traps, err = s.knownTraps(ctx, m.CampaignID, member.UserID); err != nil {
+			return viewer{}, s.dbError(ctx, "read the traps a player knows", err)
+		}
+		return as, nil
+	}
+	return viewer{}, errCharacterNotFound()
+}
+
+// foggedFor says whether what the viewer receives of the map is filtered by
+// their view: the fog is on and they are a player (or the master "Ver como").
+func foggedFor(v viewer, r mapsdb.ListMapDetailsRow) bool {
+	return !v.master && r.FogEnabled && r.GridColumns != nil
+}
+
+// parentKnows is the viewer's test for a submap point of a parent map: on a map
+// with the fog on, the parent is named only when the point is on a square the
+// player sees or remembers. The views are worked out once for each parent.
+func (s *Service) parentKnows(ctx context.Context, cm campaignMaps, v viewer) func(mapsdb.ListSubmapLinksRow) bool {
+	views := map[string]*playerView{}
+	return func(l mapsdb.ListSubmapLinksRow) bool {
+		parent, ok := cm.byID[l.MapID]
+		if !ok || !foggedFor(v, parent) {
+			return true
+		}
+		pv, done := views[parent.ID]
+		if !done {
+			var err error
+			if pv, _, _, err = s.fogViewOf(ctx, parent, v); err != nil {
+				s.logger.ErrorContext(ctx, "maps: cannot work out what a player sees of a parent map", "error", err)
+				pv = nil // the parent stays unnamed
+			}
+			views[parent.ID] = pv
+		}
+		return pv != nil && pv.known(pv.g.SquareOf(int(l.XBp), int(l.YBp)))
+	}
+}
+
+// visiblePoints is the points a player receives of a map: the ones they would
+// without the fog (RN-10, and the traps, treasures and lights rules), and, on a fog
+// map, only those with a square they see now or remember.
+func (s *Service) visiblePoints(points []mapsdb.MapPoint, v viewer, pv *playerView) []mapsdb.MapPoint {
+	var out []mapsdb.MapPoint
+	for _, p := range points {
+		if v.seesPoint(p) && (pv == nil || s.pointKnown(pv, p)) {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// fogViewOf reads what the viewer knows of a fog map: loads its points and
+// tokens, and builds the scene.
+func (s *Service) fogViewOf(ctx context.Context, r mapsdb.ListMapDetailsRow, v viewer) (*playerView, []mapsdb.MapPoint, []mapsdb.MapToken, error) {
+	points, err := s.queries.ListMapPoints(ctx, r.ID)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	tokens, err := s.queries.ListMapTokens(ctx, r.ID)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	pv, err := s.playerViewOf(ctx, fogInputOfDetails(r), points, tokens, v.userID)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	return pv, points, tokens, nil
+}
+
+// filterLayers is a player's copy of the layers: the walls, the difficult terrain
+// and the cover of the squares they see now or remember (a wall next to a seen
+// square is one of them). The light is never theirs.
+func filterLayers(set layerSet, pv *playerView) layerSet {
+	out := layerSet{terrain: grid.NewLayer(pv.g), walls: grid.NewLayer(pv.g), cover: grid.NewCoverLayer(pv.g)}
+	for row := 0; row < pv.g.Rows; row++ {
+		for col := 0; col < pv.g.Columns; col++ {
+			if !pv.known(grid.Square{Col: col, Row: row}) {
+				continue
+			}
+			out.terrain.Set(col, row, set.terrain.Get(col, row))
+			out.walls.Set(col, row, set.walls.Get(col, row))
+			out.cover.Set(col, row, set.cover.Get(col, row))
+		}
+	}
+	return out
+}
+
+// GetMapVision implements mapsv1connect.MapServiceHandler.
+func (s *Service) GetMapVision(
+	ctx context.Context,
+	req *connect.Request[mapsv1.GetMapVisionRequest],
+) (*connect.Response[mapsv1.GetMapVisionResponse], error) {
+	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
+	if err != nil {
+		return nil, err
+	}
+	mapID, ok := parseID(req.Msg.GetMapId())
+	if !ok {
+		return nil, errMapNotFound()
+	}
+	v, err := s.readerOf(ctx, m, req.Msg.GetAsCharacterId())
+	if err != nil {
+		return nil, err
+	}
+	cm, err := s.loadMaps(ctx, m.CampaignID)
+	if err != nil {
+		return nil, s.dbError(ctx, "read a map", err)
+	}
+	row, ok := cm.byID[mapID]
+	if !ok || !v.seesMap(row.ID, row.RevealedAt) {
+		return nil, errMapNotFound() // a hidden map is not found to a player (RN-10)
+	}
+	g := gridOf(row.GridColumns, row.ImageWidth, row.ImageHeight)
+	if !g.Valid() {
+		return nil, errNoGrid()
+	}
+	pv := everything(g) // the master, and a map without the fog: every square seen
+	if foggedFor(v, row) {
+		if pv, _, _, err = s.fogViewOf(ctx, row, v); err != nil {
+			return nil, s.dbError(ctx, "work out what a player sees", err)
+		}
+	}
+	if foggedFor(v, row) && !v.preview {
+		// The player has read this view: the next write tells them only if it changed.
+		s.seen.swap(mapID, v.userID, pv.revision())
+	}
+	return connect.NewResponse(&mapsv1.GetMapVisionResponse{
+		GridColumns: int32(g.Columns), GridRows: int32(g.Rows), //nolint:gosec // G115: a grid is at most 200 x 400
+		States: pv.pack(), Revision: pv.revision(), CharacterOnMap: pv.onMap,
+		FogEnabled: row.FogEnabled, GroupVision: row.GroupVision,
+	}), nil
+}
+
+// ForgetMapVision implements mapsv1connect.MapServiceHandler.
+func (s *Service) ForgetMapVision(
+	ctx context.Context,
+	req *connect.Request[mapsv1.ForgetMapVisionRequest],
+) (*connect.Response[mapsv1.ForgetMapVisionResponse], error) {
+	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	if err != nil {
+		return nil, err
+	}
+	mapID, ok := parseID(req.Msg.GetMapId())
+	if !ok {
+		return nil, errMapNotFound()
+	}
+	// The epoch goes up with the clear, so a refresh that is already running cannot
+	// write the old memory back (rememberFor).
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := s.queries.WithTx(tx)
+		if _, err := s.campaignMap(ctx, q, m.CampaignID, mapID); err != nil {
+			return err
+		}
+		return clearVisionMemory(ctx, q, mapID)
+	})
+	if err != nil {
+		return nil, s.dbError(ctx, "forget what the players saw", err)
+	}
+	// What the players see now is theirs again, from this moment.
+	s.refreshVision(ctx, m.CampaignID, mapID)
+	return connect.NewResponse(&mapsv1.ForgetMapVisionResponse{}), nil
+}

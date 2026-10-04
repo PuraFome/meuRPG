@@ -246,6 +246,9 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		if err != nil {
 			return err
 		}
+		// The fog of war and the copy of an image a fog map owns need the maps
+		// service, which is made after SessionMaps (it needs play).
+		sessionMaps.SetService(mapsService)
 		// progression and characters need each other too (the XP lives on the
 		// sheets, and a sheet shows "pode subir de nível"): characters gets
 		// progression once it exists.

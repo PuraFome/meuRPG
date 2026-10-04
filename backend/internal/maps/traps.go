@@ -319,7 +319,7 @@ func (s *Service) RevealTrap(
 		// Everyone who sees the map hears of a trap revealed to all. A trap
 		// revealed to some characters reaches only their players (and the master,
 		// who made the change), never the others.
-		s.publishMapChanged(m.CampaignID, mapID, all && seen)
+		s.publishPointsChanged(ctx, m.CampaignID, mapRow, all && seen, after)
 		if !all && seen && len(newUsers) > 0 {
 			s.live.PublishToUsers(m.CampaignID, newUsers, mapChangedEvent(mapID))
 		}
@@ -406,7 +406,7 @@ func (s *Service) MarkTreasureFound(
 		return nil, s.dbError(ctx, "mark a treasure found", err)
 	}
 	// A found treasure is visible to everyone who sees the map.
-	s.publishMapChanged(m.CampaignID, mapID, playersSee(mapID, mapRow.RevealedAt, current))
+	s.publishPointsChanged(ctx, m.CampaignID, mapRow, playersSee(mapID, mapRow.RevealedAt, current), after)
 	out, err := s.masterPoint(ctx, m, after)
 	if err != nil {
 		return nil, err
@@ -468,7 +468,7 @@ func (s *Service) UnmarkTreasureFound(
 	}
 	if changed {
 		// A found treasure was visible to everyone; so was the change.
-		s.publishMapChanged(m.CampaignID, mapID, playersSee(mapID, mapRow.RevealedAt, current))
+		s.publishPointsChanged(ctx, m.CampaignID, mapRow, playersSee(mapID, mapRow.RevealedAt, current), after)
 	}
 	out, err := s.masterPoint(ctx, m, after)
 	if err != nil {
