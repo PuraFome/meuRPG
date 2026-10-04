@@ -1,0 +1,107 @@
+:host {
+  display: block;
+  // Room under the last button, so a scrolling sheet never clips its border or focus ring.
+  padding-bottom: var(--mr-space-2);
+}
+
+.sl {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sl__reason {
+  margin: 0 0 var(--mr-space-2);
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.sl__row {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  padding: 10px 0;
+  border-top: 1px solid var(--mr-rule);
+}
+
+.sl__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sl__name {
+  font-size: 16px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.sl__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px var(--mr-space-2);
+}
+
+.sl__kind {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+// "Em cena": the state is a word and a check, not a colour alone.
+.sl__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  box-sizing: border-box;
+  padding: 0 9px 0 7px;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-success-surface);
+  color: var(--mr-success-ink);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+
+  .mat-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+  }
+}
+
+.sl__put {
+  flex: none;
+  white-space: nowrap;
+
+  // The dashed button of a full stage, as the page's own: off but reachable.
+  &--off {
+    border-style: dashed;
+    color: var(--mr-ink-muted);
+  }
+}
+
+// A phone: the button is 48px, as every phone button; at 320px it drops
+// under the name, full width, since both do not fit on a line.
+@media (max-width: 767.98px) {
+  .sl__put {
+    min-height: 48px;
+  }
+}
+
+@media (max-width: 359.98px) {
+  .sl__row {
+    flex-wrap: wrap;
+  }
+
+  .sl__text {
+    flex-basis: calc(100% - 48px - var(--mr-space-3));
+  }
+
+  .sl__put {
+    flex: 1 1 100%;
+  }
+}

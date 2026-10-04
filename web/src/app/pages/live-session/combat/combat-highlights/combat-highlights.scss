@@ -1,0 +1,212 @@
+:host {
+  display: block;
+}
+
+.hl {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-sizing: border-box;
+  padding: 16px 18px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+}
+
+.hl__head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hl__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 21px;
+  line-height: 26px;
+  font-weight: 700;
+}
+
+.hl__lead,
+.hl__note {
+  margin: 0;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.hl__retry {
+  align-self: flex-start;
+}
+
+// One tile a category, in a fixed grid (E8-11 state 1): one column on a phone,
+// two from a tablet, four on a desktop. A single winner keeps the width of one
+// column instead of stretching across the panel. The number is the largest
+// text of the tile.
+.hl__tiles {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+
+  @media (min-width: 720px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (min-width: 1100px) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+}
+
+.tile__label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 18px;
+  font-weight: 500;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+// The Tanque's "mais dano recebido" lines up with its label; the others keep
+// the same height empty so the numbers share a row.
+.tile__sub {
+  min-height: 16px;
+  padding-left: 26px;
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--mr-ink-muted);
+}
+
+.tile__value {
+  margin-top: 2px;
+  font-family: var(--mr-font-display);
+  font-size: 36px;
+  line-height: 42px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.tile__names {
+  font-family: var(--mr-font-display);
+  font-size: 20px;
+  line-height: 24px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.tile__who {
+  font-size: 14px;
+  line-height: 18px;
+  color: var(--mr-ink-muted);
+}
+
+// "Números de cada jogador": a table of six columns on a desktop; on a phone
+// each player is a block with the numbers in two columns, each with its label.
+.tbl {
+  position: relative;
+}
+
+.tbl__title {
+  margin: 0 0 4px;
+  font-family: var(--mr-font-display);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.tbl__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) repeat(5, 1fr);
+  column-gap: 16px;
+  align-items: center;
+  min-height: 40px;
+  border-top: 1px solid var(--mr-rule);
+  font-size: 16px;
+
+  &--head {
+    min-height: 0;
+    border-top: 0;
+    font-size: 13px;
+    color: var(--mr-ink-muted);
+
+    span {
+      text-align: right;
+    }
+
+    span:first-child {
+      text-align: left;
+    }
+  }
+}
+
+.tbl__lbl {
+  display: none;
+}
+
+.tbl__num {
+  display: block;
+  text-align: right;
+  font-family: var(--mr-font-display);
+  font-size: 18px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+@media (max-width: 719.98px) {
+  .tbl__row--head {
+    // Still there for a screen reader, not on screen: each number carries its label.
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .tbl__row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px 12px;
+    padding: 8px 0 10px;
+
+    b {
+      grid-column: 1 / -1;
+    }
+  }
+
+  // The odd cell takes the whole row, never a half-width orphan.
+  [role='cell']:last-child {
+    grid-column: 1 / -1;
+  }
+
+  [role='cell'] {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .tbl__lbl {
+    display: inline;
+    font-size: 13px;
+    color: var(--mr-ink-muted);
+  }
+}

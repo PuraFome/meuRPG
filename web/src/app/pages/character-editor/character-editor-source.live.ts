@@ -202,6 +202,7 @@ export function toFullSheetInit(v: CharacterFormValue) {
     experiencePoints: v.experiencePoints,
     challengeRating: v.challengeRating,
     xpValue: v.xpValue,
+    portraitImageId: v.portraitImageId,
     alignment: ALIGNMENT_TO_GEN[v.alignment],
     customFeaturesText: v.customFeaturesText,
   };
@@ -315,6 +316,7 @@ export function toFormFullSheet(name: string, full: GenFullSheet): CharacterForm
     experiencePoints: full.experiencePoints,
     challengeRating: full.challengeRating,
     xpValue: full.xpValue,
+    portraitImageId: full.portraitImageId,
     alignment: ALIGNMENT_FROM_GEN[full.alignment],
     customFeaturesText: full.customFeaturesText,
   };

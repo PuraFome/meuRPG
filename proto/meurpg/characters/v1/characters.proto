@@ -567,6 +567,12 @@ message CharacterSummary {
   // race's, such as "Gnomo das Rochas". Empty for a basic sheet.
   string race_name_pt = 8;
   google.protobuf.Timestamp created_at = 9;
+  // An NPC's portrait as a URL ("/images/<id>"; "/images/<id>/thumb" is its
+  // thumbnail), as Combatant.portrait_url, or empty for none and for a
+  // player's character. Only the master lists NPCs, so only the master gets
+  // it (MR-031): the app draws "Pôr em cena" with it, with no read of each
+  // sheet.
+  string portrait_url = 10;
 }
 
 // CharacterBlockedReason says why a character cannot be changed now.

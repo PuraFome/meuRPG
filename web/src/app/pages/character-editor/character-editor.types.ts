@@ -140,6 +140,9 @@ export interface CharacterFormValue {
   challengeRating: string;
   /** The XP an enemy or boss gives when defeated ("XP ao derrotar"). */
   xpValue: number;
+  /** An enemy's or boss's portrait, a gallery image's ID or empty (MR-031). A
+   * player's is always empty. */
+  portraitImageId: string;
   alignment: AlignmentKey;
   /** Locks with the rest of the sheet, unlike the story fields (A3). */
   customFeaturesText: string;

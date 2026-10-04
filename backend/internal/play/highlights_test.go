@@ -241,13 +241,22 @@ func TestMR032_HighlightsOfTheAmbush(t *testing.T) {
 		t.Errorf("the master's table = %+v, want %+v", table, wantTable)
 	}
 
-	// A player: the same categories and numbers, and no table (RN-20). Nothing
-	// of an NPC is named: not a name, not an ID.
-	for who, u := range map[string]*user{"Pensantus's player": a.ana, "Toren's player": a.caio} {
+	// A player: the same categories and numbers, and of the table exactly one
+	// row, their own character's (zeros included): never anyone else's (RN-20).
+	// Nothing of an NPC is named: not a name, not an ID.
+	for who, c := range map[string]struct {
+		u   *user
+		own row
+	}{"Pensantus's player": {a.ana, row{"Pensantus", 17, 0, 0, 2, 0}}, "Toren's player": {a.caio, row{"Toren", 23, 0, 10, 2, 0}}} {
+		u := c.u
 		res := a.mustHighlights(t, u, e)
 		wantCategories(t, who, res, want...)
-		if len(res.GetCharacters()) != 0 {
-			t.Errorf("%s got the table of every player's numbers: %v", who, res.GetCharacters())
+		var mine []row
+		for _, ch := range res.GetCharacters() {
+			mine = append(mine, row{ch.GetName(), ch.GetDamageDealt(), ch.GetHealingDone(), ch.GetDamageTaken(), ch.GetFinalBlows(), ch.GetCriticalHits()})
+		}
+		if !slices.Equal(mine, []row{c.own}) {
+			t.Errorf("%s got the rows %+v, want only their own %+v", who, mine, c.own)
 		}
 		text := asJSON(t, res)
 		for _, banned := range []string{"Goblin", "Capitão", a.capitao.GetId(), a.goblin.GetId()} {
