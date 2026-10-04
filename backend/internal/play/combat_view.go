@@ -391,6 +391,9 @@ func (s *Service) viewFor(ctx context.Context, m authz.Membership, d *encounterD
 		return nil, err
 	}
 	out.ReactionPrompts = prompts
+	if out.OpportunityOffers, err = s.opportunityOffers(ctx, m, d); err != nil {
+		return nil, err
+	}
 	return out, nil
 }
 

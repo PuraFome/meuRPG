@@ -289,7 +289,20 @@ service CombatService {
   //     jump the limit is the jump's), a wall, a column or a squeeze between two
   //     blocks the line (MOVE_BLOCKED), an enemy that cannot be passed stands on
   //     it (ENEMY_IN_THE_WAY), or another creature holds the destination
-  //     (SQUARE_OCCUPIED).
+  //     (SQUARE_OCCUPIED); a player's combatant waits for an opportunity
+  //     attack's answer (OPPORTUNITY_PENDING).
+  //
+  // Opportunity attacks (MR-034, RN-21): a move (on foot or a long jump) that
+  // leaves the reach (5 ft, or the reach of its melee weapon on its sheet) of a combatant hostile to the mover that sees it, has its reaction
+  // and is not incapacitated, unless the mover took the Disengage action this
+  // turn, lands at once and gives that combatant an opportunity offer
+  // (Encounter.opportunity_offers; the event `opportunity_offered`). The
+  // master's placement out of turn and the move back of the 0 hit points rule
+  // offer nothing. A long jump is a move that spends movement, so it provokes; a
+  // high jump moves no square and does not; `forced` (the master) never does.
+  // The mover's turn then waits (OPPORTUNITY_PENDING for its
+  // player) until each offer is answered: RollAttack with `opportunity_offer_id`,
+  // DeclineOpportunity, or the master's SkipOpportunity.
   //
   // The move is a straight line from the combatant's square to the chosen one
   // (RN-21, the SRD's "breaking up your move": to go around something, move in
@@ -793,6 +806,31 @@ service CombatService {
   // Errors: as UseReaction, without the slot errors.
   rpc DeclineReaction(DeclineReactionRequest) returns (DeclineReactionResponse);
 
+  // DeclineOpportunity turns an opportunity offer down ("Não atacar"): the offer
+  // is answered, and the mover's turn stops waiting for it. The reactor's
+  // controller may call it (the player of a character or of its creature, the
+  // master for an NPC), and the master for any offer.
+  //
+  // Every stream gets `encounter_changed`.
+  //
+  // Errors:
+  //   - `not_found`: the combat is not in the open session, or the caller may not
+  //     see the reactor.
+  //   - `permission_denied`: the caller is a player and the reactor is not theirs.
+  //   - `aborted`: the offer is gone (the move was undone, or the combat's
+  //     turn passed) or was answered already. The screen reads the combat again.
+  //   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
+  rpc DeclineOpportunity(DeclineOpportunityRequest) returns (DeclineOpportunityResponse);
+
+  // SkipOpportunity is the master's "Seguir sem esperar": it passes over an
+  // opportunity offer whose player does not answer (offline), so the mover's
+  // turn goes on. Only the master.
+  //
+  // Every stream gets `encounter_changed`.
+  //
+  // Errors: as DeclineOpportunity, and `permission_denied` for a player.
+  rpc SkipOpportunity(SkipOpportunityRequest) returns (SkipOpportunityResponse);
+
   // RollDeathSave rolls a death save for a player's character at 0 hit points
   // (RN-03): its turn starts with one due (Combatant.death_save_due). The
   // character's player may roll for their own, and the master for any, with the
@@ -1194,6 +1232,15 @@ enum EncounterBlockedReason {
   // brings (a combat holds 40 combatants). Nothing is spent. ("Não cabem mais
   // combatentes neste combate".)
   ENCOUNTER_BLOCKED_REASON_TOO_MANY_COMBATANTS = 45;
+  // MoveCombatant, RollAttack, TakeAction, CastSpell, EndTurn: the turn waits
+  // for an opportunity attack. For a player, an offer on the combatant (or on a
+  // member of the same player's turn group) is not answered yet, or the attack
+  // an answered offer made still has its damage to roll, apply or discard
+  // ("Esperando a reação do mestre"). The master never gets it. The screen reads
+  // Encounter.opportunity_offers to say who it waits for. (RollAttack with
+  // `opportunity_offer_id` refuses a used reaction with REACTION_USED, and a
+  // defeated or down reactor with the usual reasons.)
+  ENCOUNTER_BLOCKED_REASON_OPPORTUNITY_PENDING = 46;
 }
 
 // EncounterBlocked is the error detail of CombatService's
@@ -1284,6 +1331,48 @@ message Encounter {
   // total, and the app never draws a box for it (RN-20). The master works the
   // groups out from the totals he already has; this is empty for him.
   repeated NpcGroup npc_only_groups = 17;
+  // The opportunity offers that wait (MR-034), as the caller may see them: the
+  // master all; a player the ones whose reactor they control (to answer) and the
+  // ones on a combatant of theirs (the turn waits; the reactor is named only when
+  // they see it). Nobody else gets any. Empty when nothing waits. The app opens
+  // its prompt from this after each `encounter_changed`.
+  repeated OpportunityOffer opportunity_offers = 18;
+}
+
+// OpportunityOffer is the attack a combatant may make on an enemy that left its
+// reach (SRD "opportunity attack", RN-21): the mover's move already landed, and
+// its turn waits for the answer. Answer with RollAttack
+// (`opportunity_offer_id`), DeclineOpportunity or, for the master,
+// SkipOpportunity.
+message OpportunityOffer {
+  // Stable offer ID (a UUID): what the answers name.
+  string id = 1;
+  // The combatant that moved (a UUID). The caller sees it.
+  string mover_id = 2;
+  string mover_label = 3;
+  // The combatant that may attack (a UUID) and its label ("Goblin 2"). Empty for
+  // the mover's player when the reactor is hidden from them (RN-10): the screen
+  // then says only "Esperando o mestre".
+  string reactor_id = 4;
+  string reactor_label = 5;
+  // True when the caller may answer: the reactor's controller, and the master.
+  bool for_you = 6;
+  // The square of the move's line where the mover left the reach: where it goes
+  // back to if the attack drops it to 0 hit points. Only for whoever answers.
+  int32 left_col = 7;
+  int32 left_row = 8;
+  // The reactor's melee attacks (opportunity attacks are melee), as
+  // GetTurnOptions names them, for whoever answers: the screen offers "Atacar com
+  // Espada longa". Empty for the mover's player.
+  repeated OpportunityAttack attacks = 9;
+}
+
+// OpportunityAttack is one melee attack of an offer's reactor.
+message OpportunityAttack {
+  // The attack key RollAttack takes.
+  string key = 1;
+  // Its Portuguese name ("Espada longa").
+  string name_pt = 2;
 }
 
 // NpcGroup is a group of NPCs that act together, for a player to name (see
@@ -1608,6 +1697,11 @@ message MoveCombatantRequest {
   // A high jump: how high, in tenths of a foot, 1 up to the limit; it costs that
   // much movement. Ignored for any other move.
   int32 jump_height_dft = 8;
+  // Only the master: a forced move, a teleport (Passo Nebuloso) or a token put
+  // right. It never provokes an opportunity attack. A player sending it gets
+  // `permission_denied`. Without it, the master's move of the combatant that is
+  // on turn is a move like any, and provokes.
+  bool forced = 9;
 }
 
 // MoveCombatantResponse returns the combat after the move.
@@ -1618,6 +1712,11 @@ message MoveCombatantResponse {
   // "Algo bloqueia o caminho", never what it was (RN-10, D1). The movement spent
   // is the real cost up to where the combatant stopped.
   bool stopped_early = 2;
+  // True when the move left an enemy's reach and so made at least one
+  // opportunity offer: the turn now waits (Encounter.opportunity_offers has the
+  // ones the caller may see). It is true even when every reactor is hidden from
+  // the caller (the wait itself is a hint, accepted).
+  bool provoked = 3;
 }
 
 // GetMoveOptionsRequest names a combatant.
@@ -1648,6 +1747,15 @@ message ReachableSquare {
   // The cost in tenths of a foot: the length of the line plus 50 for each square
   // of difficult terrain or holding another creature that it enters.
   int32 cost_dft = 3;
+  // The combatants this move would let attack with an opportunity attack (UUIDs):
+  // only ones the caller sees, never a hidden one (RN-10). Empty when the move
+  // provokes nothing, or the mover took Disengage. For a player it is a warning
+  // worked out from what they see (hostile, visible, not defeated, its visible
+  // conditions, a 5 ft reach): it may name a reactor whose reaction is already
+  // spent, or that has no melee attack, so the screen says "pode provocar". The
+  // master's list is exact. The screen warns before confirming ("Sair do alcance
+  // do Goblin 2 pode provocar um ataque de oportunidade").
+  repeated string provokes_reactor_ids = 4;
 }
 
 // RefusedSquare is a square inside the circle that the combatant cannot go to.
@@ -1953,6 +2061,17 @@ message RollAttackRequest {
   // unused; the master may for anyone). Other reaction spells stay the
   // table's.
   bool as_reaction = 9;
+  // Answers an opportunity offer (Encounter.opportunity_offers) with this attack:
+  // the attacker must be the offer's reactor and the target its mover. It
+  // implies `as_reaction`, ignores the reach (the attack comes right before the
+  // mover leaves) and spends the reactor's reaction. Errors for it: a malformed id is
+  // `invalid_argument`, and so is an attacker or target that is not the offer's
+  // reactor and mover, or an attack that is not melee; an offer that is gone
+  // (the move was undone, the turn passed, nobody can answer it any more) or
+  // answered is `aborted`; the wrong player `permission_denied`; a used reaction
+  // is `failed_precondition` (REACTION_USED). The cover is measured with the
+  // mover on the square it left the reach at, not where it stands now.
+  string opportunity_offer_id = 10;
 }
 
 // AttackRoll is the attack roll and what it did.
@@ -2377,6 +2496,33 @@ message DeclineReactionResponse {
   Encounter encounter = 1;
 }
 
+// DeclineOpportunityRequest turns an opportunity offer down.
+message DeclineOpportunityRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  // The offer (OpportunityOffer.id).
+  string opportunity_offer_id = 3;
+  string idempotency_key = 4;
+}
+
+// DeclineOpportunityResponse returns the combat after the offer was declined.
+message DeclineOpportunityResponse {
+  Encounter encounter = 1;
+}
+
+// SkipOpportunityRequest passes over an opportunity offer (the master).
+message SkipOpportunityRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string opportunity_offer_id = 3;
+  string idempotency_key = 4;
+}
+
+// SkipOpportunityResponse returns the combat after the offer was passed over.
+message SkipOpportunityResponse {
+  Encounter encounter = 1;
+}
+
 // DeathSaveOutcome is what a death save did.
 enum DeathSaveOutcome {
   DEATH_SAVE_OUTCOME_UNSPECIFIED = 0;
@@ -2606,6 +2752,12 @@ message CombatLogEntry {
   // MOVED by a long jump, only the master: it landed in difficult terrain, so the
   // line says "Acrobacia CD 10 ou cai Derrubado" (the app rolls nothing).
   bool landing_difficult = 33;
+  // ATTACK, an opportunity attack whose damage dropped the mover to 0 hit points:
+  // it went back to the square where it left the reach.
+  bool returned_to_reach = 34;
+  // Only the master: the same, but that square was taken, so the mover stayed
+  // where it was.
+  bool return_blocked = 35;
 }
 
 // CombatLogSpell is a spell in the combat log: the cast, or a reaction.
