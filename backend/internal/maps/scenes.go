@@ -28,7 +28,8 @@ import (
 // Playing the scene (opening it in the session, rolling, the log) is package
 // play's; this package keeps the actions, which belong to the map point, and
 // gives play the scene through SessionMaps.ScenePoint. A player gets the
-// actions of a point they see without the DC (RN-20, question 52); the open
+// actions of a point they see, with the DC only when the scene shows it
+// (show_dc, RN-20, question 52); the open
 // scene carries the actions of a hidden point too, but that is play's read.
 
 const (
@@ -40,6 +41,11 @@ const (
 	maxActionName = 60
 	// maxDC is the highest difficulty class (scene_actions_dc_valid).
 	maxDC = 30
+	// defaultAttempts is how many times a player's character may roll a new
+	// action; maxAttempts is the most the master may allow, and 0 means
+	// unlimited (scene_actions_max_attempts_valid, question 55).
+	defaultAttempts = 1
+	maxAttempts     = 5
 )
 
 // SceneChecks tells which checks a scene may ask for. The rules module
@@ -74,6 +80,12 @@ func (s *Service) AddSceneAction(
 	if err != nil {
 		return nil, err
 	}
+	attempts := int32(defaultAttempts)
+	if req.Msg.MaxAttempts != nil {
+		if attempts, err = cleanAttempts(req.Msg.GetMaxAttempts()); err != nil {
+			return nil, err
+		}
+	}
 
 	var added mapsdb.SceneAction
 	var actions []mapsdb.SceneAction
@@ -90,7 +102,7 @@ func (s *Service) AddSceneAction(
 			position = current[n-1].Position + 1
 		}
 		added, err = q.InsertSceneAction(ctx, mapsdb.InsertSceneActionParams{
-			PointID: pointID, Position: position, Key: key, Name: name, Dc: dc, Now: s.now(),
+			PointID: pointID, Position: position, Key: key, Name: name, Dc: dc, MaxAttempts: attempts, Now: s.now(),
 		})
 		if err != nil {
 			return fmt.Errorf("insert action: %w", err)
@@ -121,7 +133,7 @@ func (s *Service) UpdateSceneAction(
 		return nil, errActionNotFound()
 	}
 	msg := req.Msg
-	if msg.Key == nil && msg.Name == nil && msg.Dc == nil {
+	if msg.Key == nil && msg.Name == nil && msg.Dc == nil && msg.MaxAttempts == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("nothing to change"))
 	}
 	var key, name *string
@@ -147,6 +159,14 @@ func (s *Service) UpdateSceneAction(
 		}
 		dc = d // nil removes the DC
 	}
+	var attempts *int32
+	if msg.MaxAttempts != nil {
+		a, err := cleanAttempts(msg.GetMaxAttempts())
+		if err != nil {
+			return nil, err
+		}
+		attempts = &a
+	}
 
 	var changed mapsdb.SceneAction
 	var actions []mapsdb.SceneAction
@@ -158,7 +178,7 @@ func (s *Service) UpdateSceneAction(
 		if err != nil {
 			return fmt.Errorf("find action: %w", err)
 		}
-		params := mapsdb.UpdateSceneActionParams{PointID: pointID, ID: actionID, Key: a.Key, Name: a.Name, Dc: a.Dc, Now: s.now()}
+		params := mapsdb.UpdateSceneActionParams{PointID: pointID, ID: actionID, Key: a.Key, Name: a.Name, Dc: a.Dc, MaxAttempts: a.MaxAttempts, Now: s.now()}
 		if key != nil {
 			params.Key = *key
 		}
@@ -167,6 +187,9 @@ func (s *Service) UpdateSceneAction(
 		}
 		if msg.Dc != nil {
 			params.Dc = dc
+		}
+		if attempts != nil {
+			params.MaxAttempts = *attempts
 		}
 		if changed, err = q.UpdateSceneAction(ctx, params); err != nil {
 			return fmt.Errorf("update action: %w", err)
@@ -405,15 +428,25 @@ func cleanDC(dc int32) (*int32, error) {
 	return &dc, nil
 }
 
+// cleanAttempts checks an action's attempts per player: 1 to 5, or 0 for
+// unlimited.
+func cleanAttempts(n int32) (int32, error) {
+	if n < 0 || n > maxAttempts {
+		return 0, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("max_attempts must be 1 to %d, or 0 for unlimited", maxAttempts))
+	}
+	return n, nil
+}
+
 func errActionNotFound() error {
 	return connect.NewError(connect.CodeNotFound, errors.New("action not found"))
 }
 
-// actionToProto builds a SceneAction. The DC goes only to the master
-// (RN-20): withDC says whether the viewer is the master.
+// actionToProto builds a SceneAction. The DC goes to the master, and to a
+// player only when the scene shows it (RN-20): withDC says whether the viewer
+// gets it.
 func (s *Service) actionToProto(a mapsdb.SceneAction, withDC bool) *mapsv1.SceneAction {
 	checkName, _ := s.checks.SceneCheckName(a.Key)
-	out := &mapsv1.SceneAction{Id: a.ID, Key: a.Key, Name: a.Name, CheckName: checkName}
+	out := &mapsv1.SceneAction{Id: a.ID, Key: a.Key, Name: a.Name, CheckName: checkName, MaxAttempts: a.MaxAttempts}
 	if withDC && a.Dc != nil {
 		out.Dc = *a.Dc
 	}
@@ -429,7 +462,8 @@ func (s *Service) actionsToProto(rows []mapsdb.SceneAction, withDC bool) []*maps
 }
 
 // attachActions fills the scene_actions of the SCENE points of a map, as the
-// viewer sees them: a player never gets a DC.
+// viewer sees them: a player gets a DC only from a scene that shows it
+// (show_dc).
 func (s *Service) attachActions(ctx context.Context, mapID string, points []*mapsv1.MapPoint, master bool) error {
 	if !slices.ContainsFunc(points, func(p *mapsv1.MapPoint) bool { return p.GetKind() == mapsv1.MapPointKind_MAP_POINT_KIND_SCENE }) {
 		return nil
@@ -443,7 +477,7 @@ func (s *Service) attachActions(ctx context.Context, mapID string, points []*map
 		byPoint[r.PointID] = append(byPoint[r.PointID], r)
 	}
 	for _, p := range points {
-		p.SceneActions = s.actionsToProto(byPoint[p.GetId()], master)
+		p.SceneActions = s.actionsToProto(byPoint[p.GetId()], master || p.GetShowDc())
 	}
 	return nil
 }
@@ -464,12 +498,12 @@ func (sm *SessionMaps) ScenePoint(ctx context.Context, campaignID, pointID strin
 	if err != nil {
 		return link.Scene{}, fmt.Errorf("list the scene's actions: %w", err)
 	}
-	out := link.Scene{PointID: p.ID, Name: p.Name, Description: p.Description, Hooks: p.Hooks}
+	out := link.Scene{PointID: p.ID, Name: p.Name, Description: p.Description, Hooks: p.Hooks, ShowDC: p.ShowDc}
 	if out.Clues, err = sm.sceneClues(ctx, p.ID); err != nil {
 		return link.Scene{}, err
 	}
 	for _, a := range rows {
-		act := link.SceneAction{ID: a.ID, Key: a.Key, Name: a.Name}
+		act := link.SceneAction{ID: a.ID, Key: a.Key, Name: a.Name, MaxAttempts: int(a.MaxAttempts)}
 		if a.Dc != nil {
 			act.DC = int(*a.Dc)
 		}

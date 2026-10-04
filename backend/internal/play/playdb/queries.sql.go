@@ -276,6 +276,37 @@ func (q *Queries) GetGameSessionForUpdate(ctx context.Context, arg GetGameSessio
 	return i, err
 }
 
+const getGameSessionInCampaign = `-- name: GetGameSessionInCampaign :one
+
+SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id FROM game_sessions
+WHERE campaign_id = $1 AND id = $2
+`
+
+type GetGameSessionInCampaignParams struct {
+	CampaignID string
+	ID         string
+}
+
+// The session summary (MR-032): what happened in an ended session.
+// One session of the campaign, ended or not (a session of another campaign
+// matches no row).
+func (q *Queries) GetGameSessionInCampaign(ctx context.Context, arg GetGameSessionInCampaignParams) (GameSession, error) {
+	row := q.db.QueryRow(ctx, getGameSessionInCampaign, arg.CampaignID, arg.ID)
+	var i GameSession
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.SessionNumber,
+		&i.StartedAt,
+		&i.EndedAt,
+		&i.CurrentMapID,
+		&i.ShownImageID,
+		&i.ShownImageKeep,
+		&i.OpenScenePointID,
+	)
+	return i, err
+}
+
 const getLatestEncounter = `-- name: GetLatestEncounter :one
 
 SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at FROM encounters
@@ -1257,6 +1288,43 @@ func (q *Queries) ListRecentSessionEvents(ctx context.Context, arg ListRecentSes
 	return items, nil
 }
 
+const listSceneAttemptGrantEvents = `-- name: ListSceneAttemptGrantEvents :many
+SELECT character_id, payload FROM session_events
+WHERE game_session_id = $1 AND kind = 'scene_attempt_granted' AND seq > $2
+`
+
+type ListSceneAttemptGrantEventsParams struct {
+	GameSessionID string
+	Seq           int32
+}
+
+type ListSceneAttemptGrantEventsRow struct {
+	CharacterID *string
+	Payload     []byte
+}
+
+// The attempts the master granted since the opening (seq): which character, at
+// which action (the payload's action_id).
+func (q *Queries) ListSceneAttemptGrantEvents(ctx context.Context, arg ListSceneAttemptGrantEventsParams) ([]ListSceneAttemptGrantEventsRow, error) {
+	rows, err := q.db.Query(ctx, listSceneAttemptGrantEvents, arg.GameSessionID, arg.Seq)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSceneAttemptGrantEventsRow
+	for rows.Next() {
+		var i ListSceneAttemptGrantEventsRow
+		if err := rows.Scan(&i.CharacterID, &i.Payload); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSceneRollEvents = `-- name: ListSceneRollEvents :many
 SELECT id, seq, character_id, payload, created_at FROM session_events
 WHERE game_session_id = $1 AND kind = 'scene_check_rolled' AND seq > $2
@@ -1293,6 +1361,85 @@ func (q *Queries) ListSceneRollEvents(ctx context.Context, arg ListSceneRollEven
 			&i.Payload,
 			&i.CreatedAt,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSessionCombats = `-- name: ListSessionCombats :many
+SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at FROM encounters
+WHERE game_session_id = $1 AND started_at IS NOT NULL
+ORDER BY created_at, id
+`
+
+// The combats that began in the session, oldest first. A combat that never
+// left setup (the session ended first) has no started_at and is not a combat
+// that happened.
+func (q *Queries) ListSessionCombats(ctx context.Context, gameSessionID string) ([]Encounter, error) {
+	rows, err := q.db.Query(ctx, listSessionCombats, gameSessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Encounter
+	for rows.Next() {
+		var i Encounter
+		if err := rows.Scan(
+			&i.ID,
+			&i.GameSessionID,
+			&i.MapID,
+			&i.MapPointID,
+			&i.Name,
+			&i.Status,
+			&i.Round,
+			&i.CurrentCombatantID,
+			&i.GridColumns,
+			&i.GridRows,
+			&i.Revision,
+			&i.CreatedAt,
+			&i.StartedAt,
+			&i.EndedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSessionSceneEvents = `-- name: ListSessionSceneEvents :many
+SELECT kind, character_id, payload FROM session_events
+WHERE game_session_id = $1 AND kind IN ('scene_opened', 'scene_check_rolled')
+ORDER BY seq
+LIMIT 20000
+`
+
+type ListSessionSceneEventsRow struct {
+	Kind        string
+	CharacterID *string
+	Payload     []byte
+}
+
+// The scenes opened and the checks rolled in them, oldest first: what the
+// summary counts outside combat.
+func (q *Queries) ListSessionSceneEvents(ctx context.Context, gameSessionID string) ([]ListSessionSceneEventsRow, error) {
+	rows, err := q.db.Query(ctx, listSessionSceneEvents, gameSessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSessionSceneEventsRow
+	for rows.Next() {
+		var i ListSessionSceneEventsRow
+		if err := rows.Scan(&i.Kind, &i.CharacterID, &i.Payload); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

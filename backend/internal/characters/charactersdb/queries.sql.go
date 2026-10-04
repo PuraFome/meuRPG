@@ -650,6 +650,52 @@ func (q *Queries) ListMapCharacters(ctx context.Context, arg ListMapCharactersPa
 	return items, nil
 }
 
+const listSessionCharacters = `-- name: ListSessionCharacters :many
+SELECT id, kind, name, player_user_id FROM characters
+WHERE campaign_id = $1::UUID
+  AND id = ANY($2::UUID[])
+`
+
+type ListSessionCharactersParams struct {
+	CampaignID string
+	Ids        []string
+}
+
+type ListSessionCharactersRow struct {
+	ID           string
+	Kind         string
+	Name         string
+	PlayerUserID *string
+}
+
+// Those of the given characters of the campaign, whatever their status: the
+// session summary names a character that died or left during the session
+// (package play).
+func (q *Queries) ListSessionCharacters(ctx context.Context, arg ListSessionCharactersParams) ([]ListSessionCharactersRow, error) {
+	rows, err := q.db.Query(ctx, listSessionCharacters, arg.CampaignID, arg.Ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSessionCharactersRow
+	for rows.Next() {
+		var i ListSessionCharactersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Kind,
+			&i.Name,
+			&i.PlayerUserID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listVitals = `-- name: ListVitals :many
 SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,

@@ -1,0 +1,85 @@
+-- +goose Up
+-- The session events of the second Etapa 8 wave (ADR-0007): the master gave a
+-- character one more attempt at a scene action (scene_attempt_granted,
+-- MR-015) and a player ended their part of a joint turn (turn_part_ended,
+-- MR-013; written by slice 8.11). Their payloads hold IDs only. The CHECK lists
+-- every kind of the history (see 00075): dropped, if present, and added again,
+-- so re-running this migration is safe.
+ALTER TABLE session_events
+    DROP CONSTRAINT IF EXISTS session_events_kind_valid,
+    ADD CONSTRAINT session_events_kind_valid CHECK (kind IN (
+        'character_vitals_adjusted',
+        'encounter_started',
+        'initiative_submitted',
+        'initiative_order_set',
+        'combat_begun',
+        'turn_ended',
+        'combatant_moved',
+        'combatant_hidden_set',
+        'combatants_added',
+        'combatant_removed',
+        'encounter_ended',
+        'attack_rolled',
+        'damage_rolled',
+        'damage_applied',
+        'damage_discarded',
+        'action_taken',
+        'hit_points_adjusted',
+        'action_undone',
+        'spell_cast',
+        'reaction_used',
+        'reaction_declined',
+        'death_save_rolled',
+        'death_confirmed',
+        'conditions_set',
+        'xp_awarded',
+        'xp_award_undone',
+        'milestone_marked',
+        'scene_opened',
+        'scene_closed',
+        'scene_check_rolled',
+        'clue_revealed',
+        'stage_changed',
+        'scene_attempt_granted',
+        'turn_part_ended'
+    ));
+
+-- +goose Down
+DELETE FROM session_events WHERE kind IN ('scene_attempt_granted', 'turn_part_ended');
+
+ALTER TABLE session_events
+    DROP CONSTRAINT IF EXISTS session_events_kind_valid,
+    ADD CONSTRAINT session_events_kind_valid CHECK (kind IN (
+        'character_vitals_adjusted',
+        'encounter_started',
+        'initiative_submitted',
+        'initiative_order_set',
+        'combat_begun',
+        'turn_ended',
+        'combatant_moved',
+        'combatant_hidden_set',
+        'combatants_added',
+        'combatant_removed',
+        'encounter_ended',
+        'attack_rolled',
+        'damage_rolled',
+        'damage_applied',
+        'damage_discarded',
+        'action_taken',
+        'hit_points_adjusted',
+        'action_undone',
+        'spell_cast',
+        'reaction_used',
+        'reaction_declined',
+        'death_save_rolled',
+        'death_confirmed',
+        'conditions_set',
+        'xp_awarded',
+        'xp_award_undone',
+        'milestone_marked',
+        'scene_opened',
+        'scene_closed',
+        'scene_check_rolled',
+        'clue_revealed',
+        'stage_changed'
+    ));

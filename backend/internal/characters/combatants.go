@@ -37,6 +37,30 @@ func (s *Service) CombatParty(ctx context.Context, campaignID string) ([]link.Ch
 	return out, nil
 }
 
+// SessionCharacters returns those of ids that are characters of the campaign,
+// whatever their status (a dead one included), with their name and player
+// only. It implements play.CombatRoster.
+func (s *Service) SessionCharacters(ctx context.Context, campaignID string, ids []string) ([]link.Character, error) {
+	valid := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if id, ok := parseUUID(id); ok {
+			valid = append(valid, id)
+		}
+	}
+	if len(valid) == 0 {
+		return nil, nil
+	}
+	rows, err := s.queries.ListSessionCharacters(ctx, charactersdb.ListSessionCharactersParams{CampaignID: campaignID, Ids: valid})
+	if err != nil {
+		return nil, s.dbError(ctx, "list the characters of a session", err)
+	}
+	out := make([]link.Character, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, link.Character{ID: r.ID, Name: r.Name, Player: r.Kind == "player", PlayerUserID: deref(r.PlayerUserID)})
+	}
+	return out, nil
+}
+
 // CombatCharacters returns those of ids that may fight in a combat of the
 // campaign: its living characters, players' or NPCs, oldest first. IDs that
 // are not UUIDs, or name any other character, are left out.
