@@ -8,7 +8,7 @@ import type { ExperienceRow } from '../../core/progression/experience-store';
 import { ProgressionClient } from '../../core/progression/progression-client';
 import { type MilestoneData, MilestoneSheet } from './milestone-sheet';
 
-const row = (id: string, name: string, sub: string): ExperienceRow => ({ id, name, sub, level: 3, xp: 0, nextLevelXp: 2700, canLevelUp: false, levelUpReason: 0 });
+const row = (id: string, name: string, sub: string): ExperienceRow => ({ id, name, playerUserId: "", sub, level: 3, xp: 0, nextLevelXp: 2700, canLevelUp: false, levelUpReason: 0 });
 const PARTY = [row('p1', 'Pensantus', 'Mago 3 · de Vinicius'), row('t1', 'Toren', 'Guerreiro 3'), row('b1', 'Brisa', 'Ladina 3')];
 
 describe('MilestoneSheet (E7-08)', () => {

@@ -17,8 +17,11 @@ import "meurpg/characters/v1/characters.proto";
 //     (XP_AWARD_MODE_ENEMIES) or any amount the master wants (MANUAL).
 //   - GOLD: the master gives 1 XP per gold piece the group found (GOLD), or
 //     any amount (MANUAL).
-//   - MILESTONES: there is no XP to count. The master marks a milestone
-//     (MarkMilestone) and every character the master picks "can level up".
+//   - MILESTONES: there is no XP to count. The master writes the campaign's
+//     milestones ahead of time (AddMilestone), marks one reached
+//     (MarkMilestoneReached) and every character the master picks "can level
+//     up". A milestone that was not planned is still marked with
+//     MarkMilestone.
 // A call that does not fit the campaign's mode is `failed_precondition`
 // (XPBlocked, MODE_NOT_ALLOWED).
 //
@@ -30,9 +33,11 @@ import "meurpg/characters/v1/characters.proto";
 // (ADR-0007). The XP of a character is never typed by the player after the
 // sheet locked: only awards change it.
 //
-// Who may call what: the master gives, marks and undoes; every member of the
-// campaign reads the history and everyone's XP (question 50). The XP an NPC
-// gives never reaches a player (RN-20).
+// Who may call what: the master gives, marks, plans milestones and undoes;
+// every member of the campaign reads the history and everyone's XP (question
+// 50). The XP an NPC gives never reaches a player (RN-20), and a planned
+// milestone that was not reached is the master's alone: ListMilestones gives
+// a player only the reached ones.
 //
 // Every method needs a valid session cookie and fails with `unauthenticated`
 // without one. For a campaign the caller is not a member of (a pending member
@@ -94,12 +99,108 @@ service ProgressionService {
   // Errors: as AwardXP, with MODE_NOT_ALLOWED for a campaign that counts XP.
   rpc MarkMilestone(MarkMilestoneRequest) returns (MarkMilestoneResponse);
 
+  // ListMilestones lists the campaign's milestones (MR-016, question 45): the
+  // planned ones, in the master's order, and the reached ones, among them
+  // those marked off the list (MarkMilestone), last, oldest first. The master
+  // gets every milestone; a player gets only the reached ones, with when and
+  // for whom, like the XP history (question 50), and never learns that others
+  // are planned. A campaign that counts XP has none. Any member may call it.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist, or the caller is not a member.
+  rpc ListMilestones(ListMilestonesRequest) returns (ListMilestonesResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // AddMilestone writes one more milestone in the campaign's list, last. Only
+  // the master may call it, and only in a MILESTONES campaign. The master's
+  // list is saved one change at a time, like the scene clues
+  // (maps.v1.MapService.AddSceneClue).
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist, or the caller is not a member.
+  //   - `permission_denied`: the caller is a player.
+  //   - `invalid_argument`: text is empty or longer than 120 characters.
+  //   - `failed_precondition` (XPBlocked): MODE_NOT_ALLOWED, for a campaign
+  //     that counts XP.
+  //   - `resource_exhausted`: the campaign already has 100 milestones (the
+  //     reached ones count).
+  rpc AddMilestone(AddMilestoneRequest) returns (AddMilestoneResponse);
+
+  // UpdateMilestone changes the text of a milestone that is still planned.
+  // Only the master may call it. A reached milestone keeps the text it was
+  // marked with: it is never edited.
+  //
+  // Errors:
+  //   - `not_found`: the milestone is not in this campaign, the campaign does
+  //     not exist, or the caller is not a member.
+  //   - `permission_denied`: the caller is a player.
+  //   - `invalid_argument`: text is empty or longer than 120 characters.
+  //   - `failed_precondition` (XPBlocked): MILESTONE_ALREADY_REACHED, or
+  //     MODE_NOT_ALLOWED for a campaign that counts XP (as every milestone
+  //     write: AddMilestone, UpdateMilestone, MoveMilestone, RemoveMilestone,
+  //     MarkMilestoneReached and GiveMilestoneTo).
+  rpc UpdateMilestone(UpdateMilestoneRequest) returns (UpdateMilestoneResponse);
+
+  // MoveMilestone moves a planned milestone one place up or down among the
+  // planned ones (the reached ones are skipped, and keep their place for when
+  // an undo makes them planned again). Moving the first one up, or the last
+  // one down, changes nothing. Only the master may call it.
+  //
+  // Errors:
+  //   - `invalid_argument`: direction is unspecified.
+  //   - `not_found`, `permission_denied`, `failed_precondition`: as
+  //     UpdateMilestone.
+  rpc MoveMilestone(MoveMilestoneRequest) returns (MoveMilestoneResponse);
+
+  // RemoveMilestone takes a planned milestone off the list, with no
+  // confirmation from the server (the app asks). Only the master may call it.
+  // A reached milestone is never removed, only undone (UndoLastXPAward), and
+  // one that was reached once and undone is not removed either: its awards
+  // stay in the history, which is never rewritten (ADR-0007), so the refusal
+  // is MILESTONE_HAS_HISTORY.
+  //
+  // Errors: as UpdateMilestone, without `invalid_argument`, and
+  // `failed_precondition` (XPBlocked) MILESTONE_HAS_HISTORY.
+  rpc RemoveMilestone(RemoveMilestoneRequest) returns (RemoveMilestoneResponse);
+
+  // MarkMilestoneReached marks a planned milestone reached: the characters it
+  // names "can level up" (RN-12), as with MarkMilestone, and the award is
+  // linked to the milestone, with the milestone's text as its reason. Only the
+  // master may call it, and only in a MILESTONES campaign. Milestones may be
+  // reached in any order. A milestone is reached once: to give it to someone
+  // else, GiveMilestoneTo. When the campaign has an open session, the
+  // award is also a session event and the streams get `xp_changed`.
+  //
+  // A retried idempotency_key must carry the same milestone and characters:
+  // otherwise `invalid_argument`.
+  //
+  // Errors: as MarkMilestone, and:
+  //   - `not_found`: the milestone is not in this campaign.
+  //   - `failed_precondition` (XPBlocked): MILESTONE_ALREADY_REACHED.
+  rpc MarkMilestoneReached(MarkMilestoneReachedRequest) returns (MarkMilestoneReachedResponse);
+
+  // GiveMilestoneTo gives a milestone that was already reached to characters
+  // that were left out or arrived late ("Dar a mais alguém"): a new award on
+  // those characters, linked to the same milestone, recorded in the history
+  // with its own date. The milestone stays one. Only the master may call it.
+  //
+  // Errors: as MarkMilestoneReached, with MILESTONE_NOT_REACHED instead of
+  // MILESTONE_ALREADY_REACHED, and CHARACTER_ALREADY_MARKED for a character
+  // that already has this milestone.
+  rpc GiveMilestoneTo(GiveMilestoneToRequest) returns (GiveMilestoneToResponse);
+
   // UndoLastXPAward takes back the latest award that is not undone: every
   // share is subtracted from its character's sheet (never below 0), or the
   // milestone's marks are cleared. Only the master may call it. The award stays
   // in the history, marked as undone, with who undid it and when: the history
   // is never rewritten (ADR-0007). Only the last one can be undone: to take
   // back an earlier one, undo the later ones first.
+  //
+  // For a planned milestone (MarkMilestoneReached, GiveMilestoneTo), undoing
+  // its only mark makes it planned again, in the same place of the list;
+  // undoing a "Dar a mais alguém" mark takes the milestone off those
+  // characters only, and it stays reached for the others.
   //
   // expected_award_id, when set, is the award the app shows as the last one: if
   // another is the last now, the call changes nothing and fails with `aborted`.
@@ -161,13 +262,26 @@ enum XPBlockedReason {
   XP_BLOCKED_REASON_NOTHING_TO_UNDO = 5;
   // A character that is not a living player character of the campaign.
   XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE = 6;
+  // The milestone was already reached (MarkMilestoneReached), or is reached
+  // and so cannot be edited, moved or removed.
+  XP_BLOCKED_REASON_MILESTONE_ALREADY_REACHED = 7;
+  // GiveMilestoneTo for a milestone that is not reached.
+  XP_BLOCKED_REASON_MILESTONE_NOT_REACHED = 8;
+  // GiveMilestoneTo for a character that already has the milestone (in
+  // `character_id`).
+  XP_BLOCKED_REASON_CHARACTER_ALREADY_MARKED = 9;
+  // RemoveMilestone for a milestone that was reached before (all its marks
+  // undone): its awards stay in the history, which is never rewritten, so
+  // the milestone stays too, planned again.
+  XP_BLOCKED_REASON_MILESTONE_HAS_HISTORY = 10;
 }
 
 // XPBlocked is the error detail of ProgressionService's
 // `failed_precondition`, so the app can show a clear message.
 message XPBlocked {
   XPBlockedReason reason = 1;
-  // For CHARACTER_NOT_ELIGIBLE, the character (a UUID).
+  // For CHARACTER_NOT_ELIGIBLE and CHARACTER_ALREADY_MARKED, the character (a
+  // UUID).
   string character_id = 2;
   // For MODE_NOT_ALLOWED, the campaign's XP mode.
   meurpg.campaigns.v1.XpMode xp_mode = 3;
@@ -317,4 +431,131 @@ message CharacterExperience {
   // Whether it can level up now (RN-12), and why.
   bool can_level_up = 8;
   meurpg.characters.v1.LevelUpReason level_up_reason = 9;
+}
+
+// MilestoneDirection says where MoveMilestone moves a milestone.
+enum MilestoneDirection {
+  MILESTONE_DIRECTION_UNSPECIFIED = 0;
+  // Toward the start of the list.
+  MILESTONE_DIRECTION_UP = 1;
+  // Toward the end of the list.
+  MILESTONE_DIRECTION_DOWN = 2;
+}
+
+// Milestone is a milestone of a MILESTONES campaign, planned or reached
+// (MR-016).
+message Milestone {
+  // Stable milestone ID (a UUID).
+  string id = 1;
+  // What the master wrote: 1 to 120 characters, one line. For a reached
+  // milestone, it is the reason of its awards.
+  string text = 2;
+  // Whether at least one mark of it is not undone.
+  bool reached = 3;
+  // When it was first marked, among the marks that are not undone; unset for
+  // a planned milestone.
+  google.protobuf.Timestamp reached_at = 4;
+  // The marks that are not undone, oldest first: the first one is the
+  // milestone's being reached, each later one a "Dar a mais alguém". Each has
+  // who it was given to, who gave it, when and whether the master may undo it
+  // now. Empty for a planned milestone.
+  repeated XPAward marks = 5;
+  // Whether this is a milestone marked off the list (MarkMilestone, "Registrar
+  // um marco fora da lista"): it was never planned, it has one mark, and `id`
+  // is that mark's award ID, not a planned milestone's: no call that takes a
+  // milestone_id accepts it, and it cannot be given to more characters.
+  bool off_list = 6;
+}
+
+message ListMilestonesRequest {
+  string campaign_id = 1;
+}
+
+message ListMilestonesResponse {
+  // The master gets every milestone, in the master's order; a player gets the
+  // reached ones only, in that order too.
+  repeated Milestone milestones = 1;
+}
+
+message AddMilestoneRequest {
+  string campaign_id = 1;
+  // Required: 1 to 120 characters, one line.
+  string text = 2;
+}
+
+message AddMilestoneResponse {
+  // The new milestone.
+  Milestone milestone = 1;
+  // Every milestone of the campaign, in order, with the new one last.
+  repeated Milestone milestones = 2;
+}
+
+message UpdateMilestoneRequest {
+  string campaign_id = 1;
+  string milestone_id = 2;
+  // Required: 1 to 120 characters, one line.
+  string text = 3;
+}
+
+message UpdateMilestoneResponse {
+  // The changed milestone.
+  Milestone milestone = 1;
+  // Every milestone of the campaign, in order.
+  repeated Milestone milestones = 2;
+}
+
+message MoveMilestoneRequest {
+  string campaign_id = 1;
+  string milestone_id = 2;
+  // Required.
+  MilestoneDirection direction = 3;
+}
+
+message MoveMilestoneResponse {
+  // Every milestone of the campaign, in the new order.
+  repeated Milestone milestones = 1;
+}
+
+message RemoveMilestoneRequest {
+  string campaign_id = 1;
+  string milestone_id = 2;
+}
+
+message RemoveMilestoneResponse {
+  // The milestones that are left, in order.
+  repeated Milestone milestones = 1;
+}
+
+message MarkMilestoneReachedRequest {
+  string campaign_id = 1;
+  string milestone_id = 2;
+  // Who levels up: 1 to 40 living player characters of the campaign (UUIDs),
+  // no repeat.
+  repeated string character_ids = 3;
+  // A UUID the app generates once and sends again on a retry.
+  string idempotency_key = 4;
+}
+
+message MarkMilestoneReachedResponse {
+  // The milestone, reached now.
+  Milestone milestone = 1;
+  // The mark just made, as the history shows it.
+  XPAward award = 2;
+}
+
+message GiveMilestoneToRequest {
+  string campaign_id = 1;
+  string milestone_id = 2;
+  // Who gets it: 1 to 40 living player characters of the campaign (UUIDs), no
+  // repeat, none of them with this milestone already.
+  repeated string character_ids = 3;
+  // A UUID the app generates once and sends again on a retry.
+  string idempotency_key = 4;
+}
+
+message GiveMilestoneToResponse {
+  // The milestone, with the new mark last.
+  Milestone milestone = 1;
+  // The mark just made, as the history shows it.
+  XPAward award = 2;
 }

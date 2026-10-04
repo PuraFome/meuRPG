@@ -42,6 +42,27 @@ const (
 	// ProgressionServiceMarkMilestoneProcedure is the fully-qualified name of the ProgressionService's
 	// MarkMilestone RPC.
 	ProgressionServiceMarkMilestoneProcedure = "/meurpg.progression.v1.ProgressionService/MarkMilestone"
+	// ProgressionServiceListMilestonesProcedure is the fully-qualified name of the ProgressionService's
+	// ListMilestones RPC.
+	ProgressionServiceListMilestonesProcedure = "/meurpg.progression.v1.ProgressionService/ListMilestones"
+	// ProgressionServiceAddMilestoneProcedure is the fully-qualified name of the ProgressionService's
+	// AddMilestone RPC.
+	ProgressionServiceAddMilestoneProcedure = "/meurpg.progression.v1.ProgressionService/AddMilestone"
+	// ProgressionServiceUpdateMilestoneProcedure is the fully-qualified name of the
+	// ProgressionService's UpdateMilestone RPC.
+	ProgressionServiceUpdateMilestoneProcedure = "/meurpg.progression.v1.ProgressionService/UpdateMilestone"
+	// ProgressionServiceMoveMilestoneProcedure is the fully-qualified name of the ProgressionService's
+	// MoveMilestone RPC.
+	ProgressionServiceMoveMilestoneProcedure = "/meurpg.progression.v1.ProgressionService/MoveMilestone"
+	// ProgressionServiceRemoveMilestoneProcedure is the fully-qualified name of the
+	// ProgressionService's RemoveMilestone RPC.
+	ProgressionServiceRemoveMilestoneProcedure = "/meurpg.progression.v1.ProgressionService/RemoveMilestone"
+	// ProgressionServiceMarkMilestoneReachedProcedure is the fully-qualified name of the
+	// ProgressionService's MarkMilestoneReached RPC.
+	ProgressionServiceMarkMilestoneReachedProcedure = "/meurpg.progression.v1.ProgressionService/MarkMilestoneReached"
+	// ProgressionServiceGiveMilestoneToProcedure is the fully-qualified name of the
+	// ProgressionService's GiveMilestoneTo RPC.
+	ProgressionServiceGiveMilestoneToProcedure = "/meurpg.progression.v1.ProgressionService/GiveMilestoneTo"
 	// ProgressionServiceUndoLastXPAwardProcedure is the fully-qualified name of the
 	// ProgressionService's UndoLastXPAward RPC.
 	ProgressionServiceUndoLastXPAwardProcedure = "/meurpg.progression.v1.ProgressionService/UndoLastXPAward"
@@ -89,12 +110,99 @@ type ProgressionServiceClient interface {
 	//
 	// Errors: as AwardXP, with MODE_NOT_ALLOWED for a campaign that counts XP.
 	MarkMilestone(context.Context, *connect.Request[v1.MarkMilestoneRequest]) (*connect.Response[v1.MarkMilestoneResponse], error)
+	// ListMilestones lists the campaign's milestones (MR-016, question 45): the
+	// planned ones, in the master's order, and the reached ones, among them
+	// those marked off the list (MarkMilestone), last, oldest first. The master
+	// gets every milestone; a player gets only the reached ones, with when and
+	// for whom, like the XP history (question 50), and never learns that others
+	// are planned. A campaign that counts XP has none. Any member may call it.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, or the caller is not a member.
+	ListMilestones(context.Context, *connect.Request[v1.ListMilestonesRequest]) (*connect.Response[v1.ListMilestonesResponse], error)
+	// AddMilestone writes one more milestone in the campaign's list, last. Only
+	// the master may call it, and only in a MILESTONES campaign. The master's
+	// list is saved one change at a time, like the scene clues
+	// (maps.v1.MapService.AddSceneClue).
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, or the caller is not a member.
+	//   - `permission_denied`: the caller is a player.
+	//   - `invalid_argument`: text is empty or longer than 120 characters.
+	//   - `failed_precondition` (XPBlocked): MODE_NOT_ALLOWED, for a campaign
+	//     that counts XP.
+	//   - `resource_exhausted`: the campaign already has 100 milestones (the
+	//     reached ones count).
+	AddMilestone(context.Context, *connect.Request[v1.AddMilestoneRequest]) (*connect.Response[v1.AddMilestoneResponse], error)
+	// UpdateMilestone changes the text of a milestone that is still planned.
+	// Only the master may call it. A reached milestone keeps the text it was
+	// marked with: it is never edited.
+	//
+	// Errors:
+	//   - `not_found`: the milestone is not in this campaign, the campaign does
+	//     not exist, or the caller is not a member.
+	//   - `permission_denied`: the caller is a player.
+	//   - `invalid_argument`: text is empty or longer than 120 characters.
+	//   - `failed_precondition` (XPBlocked): MILESTONE_ALREADY_REACHED, or
+	//     MODE_NOT_ALLOWED for a campaign that counts XP (as every milestone
+	//     write: AddMilestone, UpdateMilestone, MoveMilestone, RemoveMilestone,
+	//     MarkMilestoneReached and GiveMilestoneTo).
+	UpdateMilestone(context.Context, *connect.Request[v1.UpdateMilestoneRequest]) (*connect.Response[v1.UpdateMilestoneResponse], error)
+	// MoveMilestone moves a planned milestone one place up or down among the
+	// planned ones (the reached ones are skipped, and keep their place for when
+	// an undo makes them planned again). Moving the first one up, or the last
+	// one down, changes nothing. Only the master may call it.
+	//
+	// Errors:
+	//   - `invalid_argument`: direction is unspecified.
+	//   - `not_found`, `permission_denied`, `failed_precondition`: as
+	//     UpdateMilestone.
+	MoveMilestone(context.Context, *connect.Request[v1.MoveMilestoneRequest]) (*connect.Response[v1.MoveMilestoneResponse], error)
+	// RemoveMilestone takes a planned milestone off the list, with no
+	// confirmation from the server (the app asks). Only the master may call it.
+	// A reached milestone is never removed, only undone (UndoLastXPAward), and
+	// one that was reached once and undone is not removed either: its awards
+	// stay in the history, which is never rewritten (ADR-0007), so the refusal
+	// is MILESTONE_HAS_HISTORY.
+	//
+	// Errors: as UpdateMilestone, without `invalid_argument`, and
+	// `failed_precondition` (XPBlocked) MILESTONE_HAS_HISTORY.
+	RemoveMilestone(context.Context, *connect.Request[v1.RemoveMilestoneRequest]) (*connect.Response[v1.RemoveMilestoneResponse], error)
+	// MarkMilestoneReached marks a planned milestone reached: the characters it
+	// names "can level up" (RN-12), as with MarkMilestone, and the award is
+	// linked to the milestone, with the milestone's text as its reason. Only the
+	// master may call it, and only in a MILESTONES campaign. Milestones may be
+	// reached in any order. A milestone is reached once: to give it to someone
+	// else, GiveMilestoneTo. When the campaign has an open session, the
+	// award is also a session event and the streams get `xp_changed`.
+	//
+	// A retried idempotency_key must carry the same milestone and characters:
+	// otherwise `invalid_argument`.
+	//
+	// Errors: as MarkMilestone, and:
+	//   - `not_found`: the milestone is not in this campaign.
+	//   - `failed_precondition` (XPBlocked): MILESTONE_ALREADY_REACHED.
+	MarkMilestoneReached(context.Context, *connect.Request[v1.MarkMilestoneReachedRequest]) (*connect.Response[v1.MarkMilestoneReachedResponse], error)
+	// GiveMilestoneTo gives a milestone that was already reached to characters
+	// that were left out or arrived late ("Dar a mais alguém"): a new award on
+	// those characters, linked to the same milestone, recorded in the history
+	// with its own date. The milestone stays one. Only the master may call it.
+	//
+	// Errors: as MarkMilestoneReached, with MILESTONE_NOT_REACHED instead of
+	// MILESTONE_ALREADY_REACHED, and CHARACTER_ALREADY_MARKED for a character
+	// that already has this milestone.
+	GiveMilestoneTo(context.Context, *connect.Request[v1.GiveMilestoneToRequest]) (*connect.Response[v1.GiveMilestoneToResponse], error)
 	// UndoLastXPAward takes back the latest award that is not undone: every
 	// share is subtracted from its character's sheet (never below 0), or the
 	// milestone's marks are cleared. Only the master may call it. The award stays
 	// in the history, marked as undone, with who undid it and when: the history
 	// is never rewritten (ADR-0007). Only the last one can be undone: to take
 	// back an earlier one, undo the later ones first.
+	//
+	// For a planned milestone (MarkMilestoneReached, GiveMilestoneTo), undoing
+	// its only mark makes it planned again, in the same place of the list;
+	// undoing a "Dar a mais alguém" mark takes the milestone off those
+	// characters only, and it stays reached for the others.
 	//
 	// expected_award_id, when set, is the award the app shows as the last one: if
 	// another is the last now, the call changes nothing and fails with `aborted`.
@@ -143,6 +251,49 @@ func NewProgressionServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			connect.WithSchema(progressionServiceMethods.ByName("MarkMilestone")),
 			connect.WithClientOptions(opts...),
 		),
+		listMilestones: connect.NewClient[v1.ListMilestonesRequest, v1.ListMilestonesResponse](
+			httpClient,
+			baseURL+ProgressionServiceListMilestonesProcedure,
+			connect.WithSchema(progressionServiceMethods.ByName("ListMilestones")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
+		addMilestone: connect.NewClient[v1.AddMilestoneRequest, v1.AddMilestoneResponse](
+			httpClient,
+			baseURL+ProgressionServiceAddMilestoneProcedure,
+			connect.WithSchema(progressionServiceMethods.ByName("AddMilestone")),
+			connect.WithClientOptions(opts...),
+		),
+		updateMilestone: connect.NewClient[v1.UpdateMilestoneRequest, v1.UpdateMilestoneResponse](
+			httpClient,
+			baseURL+ProgressionServiceUpdateMilestoneProcedure,
+			connect.WithSchema(progressionServiceMethods.ByName("UpdateMilestone")),
+			connect.WithClientOptions(opts...),
+		),
+		moveMilestone: connect.NewClient[v1.MoveMilestoneRequest, v1.MoveMilestoneResponse](
+			httpClient,
+			baseURL+ProgressionServiceMoveMilestoneProcedure,
+			connect.WithSchema(progressionServiceMethods.ByName("MoveMilestone")),
+			connect.WithClientOptions(opts...),
+		),
+		removeMilestone: connect.NewClient[v1.RemoveMilestoneRequest, v1.RemoveMilestoneResponse](
+			httpClient,
+			baseURL+ProgressionServiceRemoveMilestoneProcedure,
+			connect.WithSchema(progressionServiceMethods.ByName("RemoveMilestone")),
+			connect.WithClientOptions(opts...),
+		),
+		markMilestoneReached: connect.NewClient[v1.MarkMilestoneReachedRequest, v1.MarkMilestoneReachedResponse](
+			httpClient,
+			baseURL+ProgressionServiceMarkMilestoneReachedProcedure,
+			connect.WithSchema(progressionServiceMethods.ByName("MarkMilestoneReached")),
+			connect.WithClientOptions(opts...),
+		),
+		giveMilestoneTo: connect.NewClient[v1.GiveMilestoneToRequest, v1.GiveMilestoneToResponse](
+			httpClient,
+			baseURL+ProgressionServiceGiveMilestoneToProcedure,
+			connect.WithSchema(progressionServiceMethods.ByName("GiveMilestoneTo")),
+			connect.WithClientOptions(opts...),
+		),
 		undoLastXPAward: connect.NewClient[v1.UndoLastXPAwardRequest, v1.UndoLastXPAwardResponse](
 			httpClient,
 			baseURL+ProgressionServiceUndoLastXPAwardProcedure,
@@ -170,6 +321,13 @@ func NewProgressionServiceClient(httpClient connect.HTTPClient, baseURL string, 
 type progressionServiceClient struct {
 	awardXP               *connect.Client[v1.AwardXPRequest, v1.AwardXPResponse]
 	markMilestone         *connect.Client[v1.MarkMilestoneRequest, v1.MarkMilestoneResponse]
+	listMilestones        *connect.Client[v1.ListMilestonesRequest, v1.ListMilestonesResponse]
+	addMilestone          *connect.Client[v1.AddMilestoneRequest, v1.AddMilestoneResponse]
+	updateMilestone       *connect.Client[v1.UpdateMilestoneRequest, v1.UpdateMilestoneResponse]
+	moveMilestone         *connect.Client[v1.MoveMilestoneRequest, v1.MoveMilestoneResponse]
+	removeMilestone       *connect.Client[v1.RemoveMilestoneRequest, v1.RemoveMilestoneResponse]
+	markMilestoneReached  *connect.Client[v1.MarkMilestoneReachedRequest, v1.MarkMilestoneReachedResponse]
+	giveMilestoneTo       *connect.Client[v1.GiveMilestoneToRequest, v1.GiveMilestoneToResponse]
 	undoLastXPAward       *connect.Client[v1.UndoLastXPAwardRequest, v1.UndoLastXPAwardResponse]
 	listXPAwards          *connect.Client[v1.ListXPAwardsRequest, v1.ListXPAwardsResponse]
 	getCampaignExperience *connect.Client[v1.GetCampaignExperienceRequest, v1.GetCampaignExperienceResponse]
@@ -183,6 +341,41 @@ func (c *progressionServiceClient) AwardXP(ctx context.Context, req *connect.Req
 // MarkMilestone calls meurpg.progression.v1.ProgressionService.MarkMilestone.
 func (c *progressionServiceClient) MarkMilestone(ctx context.Context, req *connect.Request[v1.MarkMilestoneRequest]) (*connect.Response[v1.MarkMilestoneResponse], error) {
 	return c.markMilestone.CallUnary(ctx, req)
+}
+
+// ListMilestones calls meurpg.progression.v1.ProgressionService.ListMilestones.
+func (c *progressionServiceClient) ListMilestones(ctx context.Context, req *connect.Request[v1.ListMilestonesRequest]) (*connect.Response[v1.ListMilestonesResponse], error) {
+	return c.listMilestones.CallUnary(ctx, req)
+}
+
+// AddMilestone calls meurpg.progression.v1.ProgressionService.AddMilestone.
+func (c *progressionServiceClient) AddMilestone(ctx context.Context, req *connect.Request[v1.AddMilestoneRequest]) (*connect.Response[v1.AddMilestoneResponse], error) {
+	return c.addMilestone.CallUnary(ctx, req)
+}
+
+// UpdateMilestone calls meurpg.progression.v1.ProgressionService.UpdateMilestone.
+func (c *progressionServiceClient) UpdateMilestone(ctx context.Context, req *connect.Request[v1.UpdateMilestoneRequest]) (*connect.Response[v1.UpdateMilestoneResponse], error) {
+	return c.updateMilestone.CallUnary(ctx, req)
+}
+
+// MoveMilestone calls meurpg.progression.v1.ProgressionService.MoveMilestone.
+func (c *progressionServiceClient) MoveMilestone(ctx context.Context, req *connect.Request[v1.MoveMilestoneRequest]) (*connect.Response[v1.MoveMilestoneResponse], error) {
+	return c.moveMilestone.CallUnary(ctx, req)
+}
+
+// RemoveMilestone calls meurpg.progression.v1.ProgressionService.RemoveMilestone.
+func (c *progressionServiceClient) RemoveMilestone(ctx context.Context, req *connect.Request[v1.RemoveMilestoneRequest]) (*connect.Response[v1.RemoveMilestoneResponse], error) {
+	return c.removeMilestone.CallUnary(ctx, req)
+}
+
+// MarkMilestoneReached calls meurpg.progression.v1.ProgressionService.MarkMilestoneReached.
+func (c *progressionServiceClient) MarkMilestoneReached(ctx context.Context, req *connect.Request[v1.MarkMilestoneReachedRequest]) (*connect.Response[v1.MarkMilestoneReachedResponse], error) {
+	return c.markMilestoneReached.CallUnary(ctx, req)
+}
+
+// GiveMilestoneTo calls meurpg.progression.v1.ProgressionService.GiveMilestoneTo.
+func (c *progressionServiceClient) GiveMilestoneTo(ctx context.Context, req *connect.Request[v1.GiveMilestoneToRequest]) (*connect.Response[v1.GiveMilestoneToResponse], error) {
+	return c.giveMilestoneTo.CallUnary(ctx, req)
 }
 
 // UndoLastXPAward calls meurpg.progression.v1.ProgressionService.UndoLastXPAward.
@@ -237,12 +430,99 @@ type ProgressionServiceHandler interface {
 	//
 	// Errors: as AwardXP, with MODE_NOT_ALLOWED for a campaign that counts XP.
 	MarkMilestone(context.Context, *connect.Request[v1.MarkMilestoneRequest]) (*connect.Response[v1.MarkMilestoneResponse], error)
+	// ListMilestones lists the campaign's milestones (MR-016, question 45): the
+	// planned ones, in the master's order, and the reached ones, among them
+	// those marked off the list (MarkMilestone), last, oldest first. The master
+	// gets every milestone; a player gets only the reached ones, with when and
+	// for whom, like the XP history (question 50), and never learns that others
+	// are planned. A campaign that counts XP has none. Any member may call it.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, or the caller is not a member.
+	ListMilestones(context.Context, *connect.Request[v1.ListMilestonesRequest]) (*connect.Response[v1.ListMilestonesResponse], error)
+	// AddMilestone writes one more milestone in the campaign's list, last. Only
+	// the master may call it, and only in a MILESTONES campaign. The master's
+	// list is saved one change at a time, like the scene clues
+	// (maps.v1.MapService.AddSceneClue).
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, or the caller is not a member.
+	//   - `permission_denied`: the caller is a player.
+	//   - `invalid_argument`: text is empty or longer than 120 characters.
+	//   - `failed_precondition` (XPBlocked): MODE_NOT_ALLOWED, for a campaign
+	//     that counts XP.
+	//   - `resource_exhausted`: the campaign already has 100 milestones (the
+	//     reached ones count).
+	AddMilestone(context.Context, *connect.Request[v1.AddMilestoneRequest]) (*connect.Response[v1.AddMilestoneResponse], error)
+	// UpdateMilestone changes the text of a milestone that is still planned.
+	// Only the master may call it. A reached milestone keeps the text it was
+	// marked with: it is never edited.
+	//
+	// Errors:
+	//   - `not_found`: the milestone is not in this campaign, the campaign does
+	//     not exist, or the caller is not a member.
+	//   - `permission_denied`: the caller is a player.
+	//   - `invalid_argument`: text is empty or longer than 120 characters.
+	//   - `failed_precondition` (XPBlocked): MILESTONE_ALREADY_REACHED, or
+	//     MODE_NOT_ALLOWED for a campaign that counts XP (as every milestone
+	//     write: AddMilestone, UpdateMilestone, MoveMilestone, RemoveMilestone,
+	//     MarkMilestoneReached and GiveMilestoneTo).
+	UpdateMilestone(context.Context, *connect.Request[v1.UpdateMilestoneRequest]) (*connect.Response[v1.UpdateMilestoneResponse], error)
+	// MoveMilestone moves a planned milestone one place up or down among the
+	// planned ones (the reached ones are skipped, and keep their place for when
+	// an undo makes them planned again). Moving the first one up, or the last
+	// one down, changes nothing. Only the master may call it.
+	//
+	// Errors:
+	//   - `invalid_argument`: direction is unspecified.
+	//   - `not_found`, `permission_denied`, `failed_precondition`: as
+	//     UpdateMilestone.
+	MoveMilestone(context.Context, *connect.Request[v1.MoveMilestoneRequest]) (*connect.Response[v1.MoveMilestoneResponse], error)
+	// RemoveMilestone takes a planned milestone off the list, with no
+	// confirmation from the server (the app asks). Only the master may call it.
+	// A reached milestone is never removed, only undone (UndoLastXPAward), and
+	// one that was reached once and undone is not removed either: its awards
+	// stay in the history, which is never rewritten (ADR-0007), so the refusal
+	// is MILESTONE_HAS_HISTORY.
+	//
+	// Errors: as UpdateMilestone, without `invalid_argument`, and
+	// `failed_precondition` (XPBlocked) MILESTONE_HAS_HISTORY.
+	RemoveMilestone(context.Context, *connect.Request[v1.RemoveMilestoneRequest]) (*connect.Response[v1.RemoveMilestoneResponse], error)
+	// MarkMilestoneReached marks a planned milestone reached: the characters it
+	// names "can level up" (RN-12), as with MarkMilestone, and the award is
+	// linked to the milestone, with the milestone's text as its reason. Only the
+	// master may call it, and only in a MILESTONES campaign. Milestones may be
+	// reached in any order. A milestone is reached once: to give it to someone
+	// else, GiveMilestoneTo. When the campaign has an open session, the
+	// award is also a session event and the streams get `xp_changed`.
+	//
+	// A retried idempotency_key must carry the same milestone and characters:
+	// otherwise `invalid_argument`.
+	//
+	// Errors: as MarkMilestone, and:
+	//   - `not_found`: the milestone is not in this campaign.
+	//   - `failed_precondition` (XPBlocked): MILESTONE_ALREADY_REACHED.
+	MarkMilestoneReached(context.Context, *connect.Request[v1.MarkMilestoneReachedRequest]) (*connect.Response[v1.MarkMilestoneReachedResponse], error)
+	// GiveMilestoneTo gives a milestone that was already reached to characters
+	// that were left out or arrived late ("Dar a mais alguém"): a new award on
+	// those characters, linked to the same milestone, recorded in the history
+	// with its own date. The milestone stays one. Only the master may call it.
+	//
+	// Errors: as MarkMilestoneReached, with MILESTONE_NOT_REACHED instead of
+	// MILESTONE_ALREADY_REACHED, and CHARACTER_ALREADY_MARKED for a character
+	// that already has this milestone.
+	GiveMilestoneTo(context.Context, *connect.Request[v1.GiveMilestoneToRequest]) (*connect.Response[v1.GiveMilestoneToResponse], error)
 	// UndoLastXPAward takes back the latest award that is not undone: every
 	// share is subtracted from its character's sheet (never below 0), or the
 	// milestone's marks are cleared. Only the master may call it. The award stays
 	// in the history, marked as undone, with who undid it and when: the history
 	// is never rewritten (ADR-0007). Only the last one can be undone: to take
 	// back an earlier one, undo the later ones first.
+	//
+	// For a planned milestone (MarkMilestoneReached, GiveMilestoneTo), undoing
+	// its only mark makes it planned again, in the same place of the list;
+	// undoing a "Dar a mais alguém" mark takes the milestone off those
+	// characters only, and it stays reached for the others.
 	//
 	// expected_award_id, when set, is the award the app shows as the last one: if
 	// another is the last now, the call changes nothing and fails with `aborted`.
@@ -287,6 +567,49 @@ func NewProgressionServiceHandler(svc ProgressionServiceHandler, opts ...connect
 		connect.WithSchema(progressionServiceMethods.ByName("MarkMilestone")),
 		connect.WithHandlerOptions(opts...),
 	)
+	progressionServiceListMilestonesHandler := connect.NewUnaryHandler(
+		ProgressionServiceListMilestonesProcedure,
+		svc.ListMilestones,
+		connect.WithSchema(progressionServiceMethods.ByName("ListMilestones")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
+	progressionServiceAddMilestoneHandler := connect.NewUnaryHandler(
+		ProgressionServiceAddMilestoneProcedure,
+		svc.AddMilestone,
+		connect.WithSchema(progressionServiceMethods.ByName("AddMilestone")),
+		connect.WithHandlerOptions(opts...),
+	)
+	progressionServiceUpdateMilestoneHandler := connect.NewUnaryHandler(
+		ProgressionServiceUpdateMilestoneProcedure,
+		svc.UpdateMilestone,
+		connect.WithSchema(progressionServiceMethods.ByName("UpdateMilestone")),
+		connect.WithHandlerOptions(opts...),
+	)
+	progressionServiceMoveMilestoneHandler := connect.NewUnaryHandler(
+		ProgressionServiceMoveMilestoneProcedure,
+		svc.MoveMilestone,
+		connect.WithSchema(progressionServiceMethods.ByName("MoveMilestone")),
+		connect.WithHandlerOptions(opts...),
+	)
+	progressionServiceRemoveMilestoneHandler := connect.NewUnaryHandler(
+		ProgressionServiceRemoveMilestoneProcedure,
+		svc.RemoveMilestone,
+		connect.WithSchema(progressionServiceMethods.ByName("RemoveMilestone")),
+		connect.WithHandlerOptions(opts...),
+	)
+	progressionServiceMarkMilestoneReachedHandler := connect.NewUnaryHandler(
+		ProgressionServiceMarkMilestoneReachedProcedure,
+		svc.MarkMilestoneReached,
+		connect.WithSchema(progressionServiceMethods.ByName("MarkMilestoneReached")),
+		connect.WithHandlerOptions(opts...),
+	)
+	progressionServiceGiveMilestoneToHandler := connect.NewUnaryHandler(
+		ProgressionServiceGiveMilestoneToProcedure,
+		svc.GiveMilestoneTo,
+		connect.WithSchema(progressionServiceMethods.ByName("GiveMilestoneTo")),
+		connect.WithHandlerOptions(opts...),
+	)
 	progressionServiceUndoLastXPAwardHandler := connect.NewUnaryHandler(
 		ProgressionServiceUndoLastXPAwardProcedure,
 		svc.UndoLastXPAward,
@@ -313,6 +636,20 @@ func NewProgressionServiceHandler(svc ProgressionServiceHandler, opts ...connect
 			progressionServiceAwardXPHandler.ServeHTTP(w, r)
 		case ProgressionServiceMarkMilestoneProcedure:
 			progressionServiceMarkMilestoneHandler.ServeHTTP(w, r)
+		case ProgressionServiceListMilestonesProcedure:
+			progressionServiceListMilestonesHandler.ServeHTTP(w, r)
+		case ProgressionServiceAddMilestoneProcedure:
+			progressionServiceAddMilestoneHandler.ServeHTTP(w, r)
+		case ProgressionServiceUpdateMilestoneProcedure:
+			progressionServiceUpdateMilestoneHandler.ServeHTTP(w, r)
+		case ProgressionServiceMoveMilestoneProcedure:
+			progressionServiceMoveMilestoneHandler.ServeHTTP(w, r)
+		case ProgressionServiceRemoveMilestoneProcedure:
+			progressionServiceRemoveMilestoneHandler.ServeHTTP(w, r)
+		case ProgressionServiceMarkMilestoneReachedProcedure:
+			progressionServiceMarkMilestoneReachedHandler.ServeHTTP(w, r)
+		case ProgressionServiceGiveMilestoneToProcedure:
+			progressionServiceGiveMilestoneToHandler.ServeHTTP(w, r)
 		case ProgressionServiceUndoLastXPAwardProcedure:
 			progressionServiceUndoLastXPAwardHandler.ServeHTTP(w, r)
 		case ProgressionServiceListXPAwardsProcedure:
@@ -334,6 +671,34 @@ func (UnimplementedProgressionServiceHandler) AwardXP(context.Context, *connect.
 
 func (UnimplementedProgressionServiceHandler) MarkMilestone(context.Context, *connect.Request[v1.MarkMilestoneRequest]) (*connect.Response[v1.MarkMilestoneResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.progression.v1.ProgressionService.MarkMilestone is not implemented"))
+}
+
+func (UnimplementedProgressionServiceHandler) ListMilestones(context.Context, *connect.Request[v1.ListMilestonesRequest]) (*connect.Response[v1.ListMilestonesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.progression.v1.ProgressionService.ListMilestones is not implemented"))
+}
+
+func (UnimplementedProgressionServiceHandler) AddMilestone(context.Context, *connect.Request[v1.AddMilestoneRequest]) (*connect.Response[v1.AddMilestoneResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.progression.v1.ProgressionService.AddMilestone is not implemented"))
+}
+
+func (UnimplementedProgressionServiceHandler) UpdateMilestone(context.Context, *connect.Request[v1.UpdateMilestoneRequest]) (*connect.Response[v1.UpdateMilestoneResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.progression.v1.ProgressionService.UpdateMilestone is not implemented"))
+}
+
+func (UnimplementedProgressionServiceHandler) MoveMilestone(context.Context, *connect.Request[v1.MoveMilestoneRequest]) (*connect.Response[v1.MoveMilestoneResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.progression.v1.ProgressionService.MoveMilestone is not implemented"))
+}
+
+func (UnimplementedProgressionServiceHandler) RemoveMilestone(context.Context, *connect.Request[v1.RemoveMilestoneRequest]) (*connect.Response[v1.RemoveMilestoneResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.progression.v1.ProgressionService.RemoveMilestone is not implemented"))
+}
+
+func (UnimplementedProgressionServiceHandler) MarkMilestoneReached(context.Context, *connect.Request[v1.MarkMilestoneReachedRequest]) (*connect.Response[v1.MarkMilestoneReachedResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.progression.v1.ProgressionService.MarkMilestoneReached is not implemented"))
+}
+
+func (UnimplementedProgressionServiceHandler) GiveMilestoneTo(context.Context, *connect.Request[v1.GiveMilestoneToRequest]) (*connect.Response[v1.GiveMilestoneToResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.progression.v1.ProgressionService.GiveMilestoneTo is not implemented"))
 }
 
 func (UnimplementedProgressionServiceHandler) UndoLastXPAward(context.Context, *connect.Request[v1.UndoLastXPAwardRequest]) (*connect.Response[v1.UndoLastXPAwardResponse], error) {

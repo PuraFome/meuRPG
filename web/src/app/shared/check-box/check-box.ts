@@ -66,9 +66,9 @@ import { MatIconModule } from '@angular/material/icon';
     }
 
     .box:checked + .mark {
-      border-color: var(--mr-ink);
-      background: var(--mr-ink);
-      color: var(--mr-surface);
+      border-color: var(--mr-accent);
+      background: var(--mr-accent);
+      color: var(--mr-on-accent);
     }
 
     .box:focus-visible + .mark {

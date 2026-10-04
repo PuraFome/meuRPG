@@ -3,10 +3,11 @@
 
 -- name: InsertXPAward :one
 INSERT INTO xp_awards
-    (campaign_id, given_by, created_at, mode, reason, encounter_id, gold, total_xp, idempotency_key)
+    (campaign_id, given_by, created_at, mode, reason, encounter_id, gold, total_xp, idempotency_key, milestone_id, milestone_again)
 VALUES (
     sqlc.arg(campaign_id)::UUID, sqlc.arg(given_by)::UUID, sqlc.arg(created_at), sqlc.arg(mode), sqlc.arg(reason),
-    sqlc.narg(encounter_id)::UUID, sqlc.narg(gold), sqlc.arg(total_xp), sqlc.arg(idempotency_key)::UUID
+    sqlc.narg(encounter_id)::UUID, sqlc.narg(gold), sqlc.arg(total_xp), sqlc.arg(idempotency_key)::UUID,
+    sqlc.narg(milestone_id)::UUID, sqlc.arg(milestone_again)::BOOL
 )
 RETURNING *;
 
@@ -97,3 +98,70 @@ FROM xp_award_shares AS s
 JOIN xp_awards AS a ON a.id = s.award_id
 WHERE a.campaign_id = sqlc.arg(campaign_id)::UUID AND a.mode = 'milestone' AND a.undone_at IS NULL
   AND s.character_id = sqlc.arg(character_id)::UUID AND s.level_at_mark IS NOT NULL;
+
+-- The planned milestones (00100). Every query names the campaign next to the
+-- milestone: an ID of another campaign matches no row.
+
+-- name: ListPlannedMilestones :many
+SELECT * FROM planned_milestones
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID
+ORDER BY position, id;
+
+-- name: ListPlannedMilestonesForUpdate :many
+-- The campaign's whole list, locked: an add or a move takes turns with the
+-- others, so positions never repeat and the count limit holds.
+SELECT * FROM planned_milestones
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID
+ORDER BY position, id
+FOR UPDATE;
+
+-- name: GetPlannedMilestoneForUpdate :one
+SELECT * FROM planned_milestones
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id)::UUID
+FOR UPDATE;
+
+-- name: InsertPlannedMilestone :one
+INSERT INTO planned_milestones (campaign_id, position, text, created_at, updated_at)
+VALUES (sqlc.arg(campaign_id)::UUID, sqlc.arg(position), sqlc.arg(text), sqlc.arg(now), sqlc.arg(now))
+RETURNING *;
+
+-- name: UpdatePlannedMilestoneText :exec
+UPDATE planned_milestones SET text = sqlc.arg(text), updated_at = sqlc.arg(now)
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id)::UUID;
+
+-- name: SetPlannedMilestonePosition :exec
+UPDATE planned_milestones SET position = sqlc.arg(position)
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id)::UUID;
+
+-- name: DeletePlannedMilestone :exec
+DELETE FROM planned_milestones
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id)::UUID;
+
+-- name: ListLiveMilestoneAwards :many
+-- The milestone marks that are not undone, oldest first: those of the planned
+-- milestones (what makes one reached) and the ones marked off the list
+-- (milestone_id NULL).
+SELECT * FROM xp_awards
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND mode = 'milestone' AND undone_at IS NULL
+ORDER BY created_at, id;
+
+-- name: ListLiveMilestoneAwardsOf :many
+-- The same for one milestone.
+SELECT * FROM xp_awards
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND milestone_id = sqlc.arg(milestone_id)::UUID AND undone_at IS NULL
+ORDER BY created_at, id;
+
+-- name: ListMilestoneMarkedCharacters :many
+-- The characters that have the milestone now (a mark not undone).
+SELECT s.character_id
+FROM xp_award_shares AS s
+JOIN xp_awards AS a ON a.id = s.award_id
+WHERE a.campaign_id = sqlc.arg(campaign_id)::UUID AND a.milestone_id = sqlc.arg(milestone_id)::UUID AND a.undone_at IS NULL;
+
+-- name: HasMilestoneAwards :one
+-- Whether any award, undone ones included, names the milestone: a milestone
+-- with history is never removed (ADR-0007: awards are never rewritten).
+SELECT EXISTS (
+    SELECT 1 FROM xp_awards
+    WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND milestone_id = sqlc.arg(milestone_id)::UUID
+);
