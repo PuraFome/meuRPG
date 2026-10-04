@@ -17,6 +17,10 @@ describe('combat errors', () => {
     expect(blockedMessage({ reason: EncounterBlockedReason.TARGET_COVER_TOTAL } as never)).toMatch(/cobertura total/);
   });
 
+  it('says the turn waits for an opportunity attack (MR-034)', () => {
+    expect(blockedMessage({ reason: EncounterBlockedReason.OPPORTUNITY_PENDING } as never)).toMatch(/Esperando a reação do mestre/);
+  });
+
   it('speaks by code when there is no typed detail', () => {
     expect(combatErrorMessage(new ConnectError('x', Code.Aborted))).toMatch(/mudou/);
     expect(combatErrorMessage(new ConnectError('x', Code.NotFound))).toMatch(/não existe mais/);

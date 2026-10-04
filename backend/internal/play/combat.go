@@ -699,6 +699,14 @@ func (s *Service) EndTurn(
 		if err := v.mayAct(current); err != nil {
 			return nil, err
 		}
+		// The turn waits for an opportunity attack's answer; the master may end it
+		// anyway, which passes the offers over.
+		if err := s.mustNotWait(ctx, c, current); err != nil {
+			return nil, err
+		}
+		if _, err := c.q.SkipPendingOpportunityOffersOfMover(ctx, playdb.SkipPendingOpportunityOffersOfMoverParams{EncounterID: c.enc.ID, MoverID: current.ID, AnsweredAt: &c.now}); err != nil {
+			return nil, fmt.Errorf("pass the opportunity offers over: %w", err)
+		}
 		// A player whose character is down rolls its death save first (RN-03); the
 		// master may end the part anyway.
 		if !v.master && current.Kind == kindPlayer {

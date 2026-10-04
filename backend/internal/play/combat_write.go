@@ -131,6 +131,9 @@ type combatTx struct {
 	// actorUserID is who makes the change, for the events a change writes besides
 	// its own (the creatures it summons or dismisses).
 	actorUserID string
+	// master says the master makes the change: the turn that waits for an
+	// opportunity attack's answer never stops him.
+	master bool
 }
 
 // combatResult is what a change leaves for the handler: the session, and
@@ -181,7 +184,7 @@ func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx)
 			return fmt.Errorf("find the event of this idempotency key: %w", err)
 		}
 
-		c := &combatTx{tx: tx, q: q, session: session, now: s.now(), kind: w.kind, actorUserID: w.m.UserID}
+		c := &combatTx{tx: tx, q: q, session: session, now: s.now(), kind: w.kind, actorUserID: w.m.UserID, master: w.m.Role == authz.RoleMaster}
 		if w.encounterID != "" {
 			c.enc, err = q.GetEncounterInSession(ctx, playdb.GetEncounterInSessionParams{GameSessionID: session.ID, ID: w.encounterID})
 			if errors.Is(err, pgx.ErrNoRows) {
@@ -198,6 +201,10 @@ func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx)
 		// A change to a combatant's hit points may defeat a creature or give one back
 		// (MR-037): the creatures follow, before the change's own event is written.
 		if err := s.syncCreatures(ctx, c); err != nil {
+			return err
+		}
+		// The offers nobody can answer any more stop holding the mover's turn.
+		if err := s.pruneOffers(ctx, c); err != nil {
 			return err
 		}
 		res.encounterID = c.enc.ID

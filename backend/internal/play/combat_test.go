@@ -951,7 +951,7 @@ func TestMR013_CombatAuthorizationMatrix(t *testing.T) {
 	// The actions of a turn, the spells and the highlights have their own
 	// matrices (combat_actions_test.go, combat_spells_test.go,
 	// highlights_test.go).
-	if want := methods.Len() - len(actionRPCs) - len(spellRPCs) - len(highlightRPCs); len(covered) != want {
+	if want := methods.Len() - len(actionRPCs) - len(spellRPCs) - len(highlightRPCs) - len(opportunityRPCs); len(covered) != want {
 		t.Errorf("the matrix covers %d methods, the service has %d besides the actions of a turn", len(covered), want)
 	}
 

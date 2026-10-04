@@ -677,6 +677,8 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, combat["CastSpell"] = cc.CastSpell(ctx, connect.NewRequest(&playv1.CastSpellRequest{CampaignId: id}))
 	_, combat["UseReaction"] = cc.UseReaction(ctx, connect.NewRequest(&playv1.UseReactionRequest{CampaignId: id}))
 	_, combat["DeclineReaction"] = cc.DeclineReaction(ctx, connect.NewRequest(&playv1.DeclineReactionRequest{CampaignId: id}))
+	_, combat["DeclineOpportunity"] = cc.DeclineOpportunity(ctx, connect.NewRequest(&playv1.DeclineOpportunityRequest{CampaignId: id}))
+	_, combat["SkipOpportunity"] = cc.SkipOpportunity(ctx, connect.NewRequest(&playv1.SkipOpportunityRequest{CampaignId: id}))
 	_, combat["RollDeathSave"] = cc.RollDeathSave(ctx, connect.NewRequest(&playv1.RollDeathSaveRequest{CampaignId: id}))
 	_, combat["ConfirmDeath"] = cc.ConfirmDeath(ctx, connect.NewRequest(&playv1.ConfirmDeathRequest{CampaignId: id}))
 	_, combat["SetCombatantConditions"] = cc.SetCombatantConditions(ctx, connect.NewRequest(&playv1.SetCombatantConditionsRequest{CampaignId: id}))
