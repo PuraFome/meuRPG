@@ -177,14 +177,18 @@
         </div>
       }
 
-      <div class="sheet">
+      <div class="sheet" [class.sheet--pnotes]="!vm.isMaster">
         <app-ability-medallions class="sheet__abilities" [abilities]="full.abilities" />
         <app-proficiency-column class="sheet__proficiencies" [sheet]="full" />
         <app-combat-column class="sheet__combat" [sheet]="full" />
         <div class="sheet__traits">
-          <app-features-panel [sheet]="full" />
+          <!-- The player's own notes (E8-07); the master never gets this panel (RN-20). -->
+          @if (!vm.isMaster) {
+            <app-notes-panel class="sheet__pnotes" [campaignId]="vm.campaignId" />
+          }
+          <app-features-panel class="sheet__features" [sheet]="full" />
           @if (vm.story) {
-            <app-story-panel [vm]="vm" (changed)="replaceVm($event)" />
+            <app-story-panel class="sheet__tstory" [vm]="vm" (changed)="replaceVm($event)" />
           }
         </div>
         @if (vm.canAccessMasterNotes) {

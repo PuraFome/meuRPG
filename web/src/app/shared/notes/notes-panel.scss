@@ -1,0 +1,131 @@
+:host {
+  display: block;
+}
+
+.np {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.np__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+}
+
+.np__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 26px;
+}
+
+.np__count {
+  flex: none;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.np__lock {
+  display: flex;
+  align-items: flex-start;
+  text-wrap: pretty;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+    font-size: 18px;
+  }
+}
+
+.np__wait {
+  margin: 0;
+  color: var(--mr-ink-muted);
+}
+
+.np__empty {
+  padding: var(--mr-space-4);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-ground);
+
+  p {
+    margin: 0;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.np__empty-t {
+  margin: 0 0 var(--mr-space-1);
+  font-family: var(--mr-font-display);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 25px;
+}
+
+.np__limit {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 19px;
+}
+
+.np__new {
+  width: 100%;
+}
+
+.np__new--off {
+  border-style: dashed;
+}
+
+// The form in place: its own bordered card at the top of the panel.
+.np__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  padding: var(--mr-space-4);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+}
+
+.np__form-t {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+// The filled one and the outlined one, the same size, under the fields.
+.np__pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--mr-space-3);
+
+  button {
+    padding-inline: 8px;
+    white-space: nowrap;
+  }
+}
+
+.np__ask-t {
+  margin: 0 0 var(--mr-space-2);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 21px;
+}
+
+.np__danger {
+  color: var(--mr-danger-ink);
+  --mat-button-outlined-label-text-color: var(--mr-danger-ink);
+}

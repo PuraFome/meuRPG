@@ -112,6 +112,8 @@ export type LiveEventVm =
   | { readonly kind: 'sceneChanged' }
   /** `scene_check_rolled`: a check was rolled in it, read it again. */
   | { readonly kind: 'sceneCheckRolled' }
+  /** `notes_changed`: the master revealed a clue to this player; read the notes again. */
+  | { readonly kind: 'notesChanged' }
   /** `stage_changed` (MR-031): an NPC came in or went out, or the speaker
    * changed. It names nobody: the page reads the open scene again. */
   | { readonly kind: 'stageChanged' };

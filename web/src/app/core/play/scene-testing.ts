@@ -68,7 +68,10 @@ export function stageNpc(
 }
 
 /** "A carroça tombada" as the master sees it: five actions with their DCs. */
-export function masterScene(rolls: SceneRoll[] = [], stage: StageNpc[] = []): OpenSceneInfo {
+export function masterScene(
+  rolls: SceneRoll[] = [], stage: StageNpc[] = [],
+  extra: MessageInitShape<typeof OpenSceneInfoSchema> = {},
+): OpenSceneInfo {
   return create(OpenSceneInfoSchema, {
     stage,
     pointId: 'p1',
@@ -83,6 +86,7 @@ export function masterScene(rolls: SceneRoll[] = [], stage: StageNpc[] = []): Op
     ],
     rolls,
     openedAt: timestampFromDate(new Date(2026, 9, 3, 21, 10)),
+    ...extra,
   });
 }
 

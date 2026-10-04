@@ -183,6 +183,45 @@
   }
 }
 
+// With the player's notes (E8-07): the panel is the first block of the fourth
+// column from 1200px, and right after the header on a narrower screen, where
+// the traits' wrapper dissolves so the notes, the features and the story are
+// cells of the sheet's own grid.
+.sheet--pnotes {
+  @media (max-width: 1199.98px) {
+    grid-template-areas: 'pnotes' 'abilities' 'proficiencies' 'combat' 'features' 'tstory' 'notes';
+
+    .sheet__traits {
+      display: contents;
+    }
+  }
+
+  @media (min-width: 768px) and (max-width: 1199.98px) {
+    grid-template-rows: auto auto auto 1fr auto;
+    grid-template-areas:
+      'pnotes pnotes'
+      'abilities abilities'
+      'proficiencies combat'
+      'proficiencies notes'
+      'features tstory';
+  }
+}
+
+.sheet__pnotes {
+  grid-area: pnotes;
+  min-width: 0;
+}
+
+.sheet__features {
+  grid-area: features;
+  min-width: 0;
+}
+
+.sheet__tstory {
+  grid-area: tstory;
+  min-width: 0;
+}
+
 .sheet__basic {
   grid-area: basic;
 }

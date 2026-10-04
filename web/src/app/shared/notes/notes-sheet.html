@@ -1,0 +1,73 @@
+<app-sheet-frame [title]="title()" titleId="notes-t" [phone]="inSheet" (closed)="closeSheet()">
+  @if (editing.stage() === 'list') {
+    <p class="ns__lock"><mat-icon aria-hidden="true">lock</mat-icon>Só você lê as suas anotações. O mestre não vê.</p>
+
+    @if (empty() && state.loaded()) {
+      <div class="ns__empty">
+        <h3 class="ns__empty-t">Nenhuma anotação ainda</h3>
+        <p>Anote nomes, dívidas e o que o mestre disser. As pistas que ele revelar para você aparecem aqui também.</p>
+      </div>
+    } @else if (!state.loaded()) {
+      <p class="ns__wait" role="status">{{ state.failed() ? 'Não deu para carregar as anotações. Feche e abra de novo.' : 'Carregando as anotações...' }}</p>
+    } @else {
+      <app-notes-select label="Cena" [options]="options()" [value]="filter()" (valueChange)="setFilter($event)" />
+      @if (visible().length === 0) {
+        <div class="ns__empty">
+          <h3 class="ns__empty-t">{{ filter() === 'none' ? 'Nada sem cena' : 'Nada nesta cena ainda' }}</h3>
+          <p>
+            @if (filter() === 'none') {
+              Todas as suas anotações têm uma cena.
+            } @else {
+              Você ainda não anotou nada sobre “{{ chosen()?.label }}”.
+            }
+          </p>
+        </div>
+      } @else {
+        <app-note-list [notes]="visible()" (edit)="editNote($event)" />
+      }
+    }
+    <p class="mr-visually-hidden" role="status" aria-live="polite">{{ announce() }}</p>
+  } @else {
+    <app-note-fields [editing]="editing" [scenes]="state.scenes()" (removed)="backToList()" />
+  }
+
+  <div foot class="ns__foot">
+    @if (editing.stage() === 'list') {
+      @if (state.atLimit()) {
+        <p class="ns__limit" id="ns-limit">{{ limitReason }}</p>
+        <button
+          #newButton
+          matButton="outlined"
+          type="button"
+          class="ns__off"
+          disabled
+          disabledInteractive
+          aria-describedby="ns-limit"
+        >
+          <mat-icon aria-hidden="true">block</mat-icon>Nova anotação
+        </button>
+      } @else {
+        <button #newButton matButton="filled" type="button" (click)="newNote()">
+          <mat-icon aria-hidden="true">add</mat-icon>Nova anotação
+        </button>
+      }
+    } @else if (editing.confirmingDiscard()) {
+      <div class="ns__ask" role="alertdialog" aria-labelledby="ns-discard">
+        <p class="ns__ask-t" id="ns-discard">Descartar o que você escreveu?</p>
+        <div class="ns__pair">
+          <button #keep matButton="outlined" type="button" (click)="editing.keepWriting()">Continuar</button>
+          <button matButton="outlined" type="button" class="ns__danger" (click)="editing.close(); backToList()">
+            Descartar
+          </button>
+        </div>
+      </div>
+    } @else {
+      <div class="ns__pair">
+        <button matButton="outlined" type="button" (click)="cancel()">Cancelar</button>
+        <button matButton="filled" type="button" [attr.aria-disabled]="editing.busy()" (click)="save()">
+          Salvar anotação
+        </button>
+      </div>
+    }
+  </div>
+</app-sheet-frame>

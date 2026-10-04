@@ -107,7 +107,7 @@ describe('SceneOpen', () => {
     const { fixture, el, state } = await setup(masterScene([toren]));
     state.apply(masterScene([pens, toren]));
     fixture.detectChanges();
-    const region = el.querySelector('.so > [role="status"]');
+    const region = el.querySelector('.so__live');
     expect(region?.getAttribute('aria-live')).toBe('polite');
     expect(region?.textContent).toBe('Pensantus: Procurar pistas na carroça, 17, passou');
     expect(lines(el)).toHaveLength(2);

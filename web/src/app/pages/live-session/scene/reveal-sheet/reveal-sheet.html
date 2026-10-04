@@ -1,0 +1,91 @@
+<app-sheet-frame
+  title="Revelar pista"
+  titleId="reveal-t"
+  [subtitle]="subtitle"
+  [phone]="inSheet"
+  (closed)="cancel()"
+>
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+
+  <blockquote class="rv__clue">{{ data.clue.text }}</blockquote>
+
+  <section class="rv__who" aria-labelledby="rv-who">
+    <div class="rv__legend">
+      <h3 class="rv__h" id="rv-who">Quem recebe a pista</h3>
+      @if (open().length > 0) {
+        <button matButton type="button" class="rv__all" (click)="toggleAll()">
+          {{ allPicked() ? 'Desmarcar todos' : 'Marcar todos' }}
+        </button>
+      }
+    </div>
+
+    @if (data.players.length === 0) {
+      <p class="rv__none">Nenhum personagem de jogador vivo nesta campanha.</p>
+    } @else {
+      <ul class="rv__list">
+        @for (p of open(); track p.id) {
+          <li>
+            <label class="rv__row" [class.rv__row--on]="picked().has(p.id)">
+              <input
+                type="checkbox"
+                class="mr-visually-hidden"
+                [checked]="picked().has(p.id)"
+                (change)="toggle(p.id)"
+              />
+              <span class="rv__box" aria-hidden="true"><mat-icon>check</mat-icon></span>
+              <b class="rv__name">{{ p.name }}</b>
+              @if (p.playerName) {
+                <span class="rv__player">{{ p.playerName }}</span>
+              }
+            </label>
+          </li>
+        }
+        @for (p of has(); track p.id) {
+          <li>
+            <label class="rv__row rv__row--has">
+              <input type="checkbox" class="mr-visually-hidden" checked disabled />
+              <span class="rv__box rv__box--has" aria-hidden="true"><mat-icon>check</mat-icon></span>
+              <b class="rv__name">{{ p.name }}</b>
+              <span class="rv__player">Já tem a pista</span>
+            </label>
+          </li>
+        }
+      </ul>
+    }
+
+    <p class="rv__summary" role="status" aria-live="polite">{{ summary() }}</p>
+    <p class="rv__info">
+      <mat-icon aria-hidden="true">info</mat-icon>
+      <span>Quem recebe a lê em “Anotações”, marcada como “Pista do mestre”. Revelar não dá para desfazer.</span>
+    </p>
+  </section>
+
+  <div foot #foot class="rv__foot" [class.rv__foot--stacked]="stacked()">
+    @if (stacked()) {
+      <ng-container [ngTemplateOutlet]="confirmBtn" />
+      <ng-container [ngTemplateOutlet]="cancelBtn" />
+    } @else {
+      <ng-container [ngTemplateOutlet]="cancelBtn" />
+      <ng-container [ngTemplateOutlet]="confirmBtn" />
+    }
+  </div>
+</app-sheet-frame>
+
+<ng-template #cancelBtn>
+  <button matButton="outlined" type="button" (click)="cancel()">Cancelar</button>
+</ng-template>
+
+<ng-template #confirmBtn>
+  @if (chosen().length === 0) {
+    <button matButton="outlined" type="button" class="rv__off" aria-disabled="true">
+      <mat-icon aria-hidden="true">block</mat-icon>{{ label() }}
+    </button>
+  } @else {
+    <button matButton="filled" type="button" [attr.aria-disabled]="busy()" (click)="confirm()">{{ label() }}</button>
+  }
+</ng-template>

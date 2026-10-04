@@ -1,0 +1,248 @@
+:host {
+  display: block;
+}
+
+.cl {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+.cl__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+}
+
+.cl__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 26px;
+}
+
+.cl__count {
+  flex: none;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+// What the section is for, in words and with an icon, on its first line.
+.cl__privacy {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-2);
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-ground);
+  font-size: 14px;
+  line-height: 19px;
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.cl__empty {
+  margin: 0;
+  padding: var(--mr-space-3) var(--mr-space-4);
+  border: 1px dashed var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  color: var(--mr-ink-muted);
+}
+
+.cl__list {
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--mr-rule);
+  list-style: none;
+}
+
+// The number and the text on the first line; who has it and the three
+// controls on the second, under the text.
+.cl__row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  column-gap: var(--mr-space-2);
+  padding: var(--mr-space-3) 0 var(--mr-space-2);
+
+  & + & {
+    border-top: 1px solid var(--mr-rule);
+  }
+
+  &--ask,
+  &--form {
+    display: block;
+    padding: var(--mr-space-3) 0;
+  }
+}
+
+.cl__n {
+  padding-top: 1px;
+  font-family: var(--mr-font-display);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 22px;
+  color: var(--mr-ink-muted);
+}
+
+// The clue's words are the button that opens the editor in place.
+.cl__text {
+  min-height: 44px;
+  margin: -11px 0 -11px;
+  padding: 11px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 17px;
+  line-height: 22px;
+  text-align: start;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.cl__foot {
+  display: flex;
+  grid-column: 2;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-2);
+}
+
+// Who has it: an icon and words, never colour alone.
+.cl__who {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-pill);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+
+  .mat-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+  }
+
+  &--all {
+    border-color: transparent;
+    background: var(--mr-success-surface);
+    color: var(--mr-success-ink);
+  }
+
+  &--none {
+    border-style: dashed;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.cl__controls {
+  display: flex;
+  flex: none;
+}
+
+// ↑ ↓ and remove: 44px targets. The first ↑ and the last ↓ are quieter
+// (`aria-disabled`, still focusable).
+.cl__ib {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mr-ink);
+  cursor: pointer;
+
+  &--off {
+    color: var(--mr-ink-muted);
+    opacity: 0.7;
+    cursor: default;
+  }
+
+  &--danger {
+    color: var(--mr-danger-ink);
+  }
+}
+
+// The question that replaces a row: two equal buttons, "Voltar" first.
+.cl__ask {
+  padding: var(--mr-space-3);
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  scroll-margin-block: 72px 16px;
+}
+
+.cl__ask-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 21px;
+}
+
+.cl__ask-hint {
+  margin: var(--mr-space-1) 0 var(--mr-space-3);
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.cl__ask-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--mr-space-2);
+
+  button {
+    white-space: nowrap;
+  }
+}
+
+.cl__danger {
+  color: var(--mr-danger-ink);
+  --mat-button-outlined-label-text-color: var(--mr-danger-ink);
+}
+
+.cl__more,
+.cl__limit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--mr-space-2);
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+// The limit is said in words, above the disabled button.
+.cl__limit {
+  font-weight: 700;
+  color: var(--mr-ink);
+}
+
+.cl__fold {
+  margin-inline-start: -12px;
+}
+
+.cl__add {
+  width: 100%;
+  margin-top: var(--mr-space-1);
+}
+
+.cl__add--off {
+  border-style: dashed;
+}

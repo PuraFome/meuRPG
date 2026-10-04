@@ -16,7 +16,7 @@
 }
 
 // One scene: a bordered row. The chosen one is accent-soft with a check and
-// a thicker border; a point with no actions is dashed, with the reason.
+// a thicker border.
 .pk__row {
   position: relative;
   display: flex;
@@ -39,12 +39,6 @@
     border: 2px solid var(--mr-accent);
     padding: 9px 13px;
     background: var(--mr-accent-soft);
-  }
-
-  &--off {
-    border-style: dashed;
-    color: var(--mr-ink-muted);
-    cursor: default;
   }
 }
 
@@ -74,14 +68,12 @@
   overflow-wrap: anywhere;
 }
 
-.pk__detail,
-.pk__why {
+.pk__detail {
   font-size: 14px;
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
 
-.pk__why,
 .pk__detail {
   display: flex;
   align-items: center;

@@ -8,6 +8,8 @@ import {
   inject,
   signal,
   untracked,
+  viewChild,
+  TemplateRef,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
@@ -22,11 +24,16 @@ import { AuthService } from '../../core/auth/auth.service';
 import { CombatClient } from '../../core/combat/combat-client';
 import { CombatState } from '../../core/combat/combat-state';
 import { MapState } from '../../core/maps/map-state';
+import { NotesClient } from '../../core/notes/notes-client';
+import { NotesState } from '../../core/notes/notes-state';
+import type { CluePlayer } from '../../core/maps/scene-clues';
 import { XpChanges } from '../../core/progression/xp-changes';
 import { MapsClient } from '../../core/maps/maps-client';
 import { SceneClient } from '../../core/play/scene-client';
 import { SceneState } from '../../core/play/scene-state';
+import { openNotesSheet } from '../../shared/notes/notes-sheet';
 import { OpenSessions } from '../../shell/live-notice/open-sessions';
+import { SessionNotes } from '../../shell/session-notes/session-notes';
 import { AdjustVitals } from './adjust-vitals/adjust-vitals';
 import { AdjustVitalsData, AdjustVitalsResult } from './adjust-vitals/adjust-vitals.types';
 import {
@@ -38,6 +45,7 @@ import {
   ShownImageVm,
   VitalsVm,
 } from './live-session.types';
+import { ClueNotice } from './clue-notice/clue-notice';
 import { CombatLaunch } from './combat/combat-launch';
 import { DiceDialog, DiceDialogData } from './combat/dice-dialog';
 import { CombatView } from './combat/combat-view';
@@ -84,6 +92,7 @@ type Phase = 'loading' | 'live' | 'no-access' | 'no-session' | 'ended' | 'error'
   imports: [
     MatButtonModule,
     MatIconModule,
+    ClueNotice,
     CombatLaunch,
     CombatView,
     HighlightsCard,
@@ -114,6 +123,8 @@ export class LiveSession {
   private readonly mapsApi = inject(MapsClient);
   private readonly combatApi = inject(CombatClient);
   private readonly sceneApi = inject(SceneClient);
+  private readonly notesApi = inject(NotesClient);
+  private readonly sessionNotes = inject(SessionNotes);
   private readonly openSessions = inject(OpenSessions);
   private readonly destroyRef = inject(DestroyRef);
   /** The adjust sheet needs this route's `LiveSessionSource`: MatDialog
@@ -153,6 +164,17 @@ export class LiveSession {
     () => this.isMaster(),
   );
 
+  /** The player's notes and the clues the master revealed (MR-030): read after
+   * each `ready` and each `notes_changed`. The master has none. */
+  protected readonly notes = new NotesState(this.notesApi, () => this.campaignId());
+
+  /** The app bar's "Anotações" button, drawn by the bar (see `SessionNotes`). */
+  protected readonly notesBar = viewChild<TemplateRef<unknown>>('notesBar');
+  /** What a screen reader hears when the visible words are cut short on a narrow phone. */
+  protected readonly notesAria = (fresh: number): string =>
+    fresh > 0 ? `Anotações, ${fresh} ${fresh === 1 ? 'nova' : 'novas'}` : 'Anotações';
+  protected readonly freshCount = computed(() => this.notes.fresh().length);
+
   protected readonly ownCharacterId = computed(() => this.vitals().at(0)?.characterId ?? '');
   protected readonly ownCharacterName = computed(() => this.vitals().at(0)?.name ?? '');
   /** The ended combat whose "Destaques" card this player closed (MR-032). */
@@ -174,6 +196,16 @@ export class LiveSession {
   protected readonly isMaster = computed(() => this.campaign()?.isMaster ?? false);
   /** The player's own character: the only one the server sends them. */
   protected readonly ownVitals = computed(() => this.vitals()[0] ?? null);
+  /** The master's player characters, for who gets a clue (a deleted account has no player). */
+  protected readonly cluePlayers = computed<readonly CluePlayer[]>(() =>
+    this.vitals()
+      .filter((v) => v.playerUserId !== '')
+      .map((v) => ({
+        id: v.characterId,
+        name: v.name,
+        playerName: this.partyInfo().get(v.characterId)?.playerName ?? '',
+      })),
+  );
 
   /** The campaign of the current load; `null` once it turned out the page
    * can't show it (no access, a pending member, an error). */
@@ -191,7 +223,18 @@ export class LiveSession {
           this.load(id);
         }
       });
-    this.destroyRef.onDestroy(() => this.closeStream());
+    this.destroyRef.onDestroy(() => {
+      this.closeStream();
+      this.sessionNotes.bar.set(null);
+    });
+
+    // A player's session page hands the app bar the "Anotações" button (the
+    // bar only draws it); the master has no notes.
+    effect(() => {
+      const show = this.phase() === 'live' && !this.isMaster();
+      const bar = this.notesBar();
+      untracked(() => this.sessionNotes.bar.set(show ? (bar ?? null) : null));
+    });
 
     // Waiting on the link before the master starts: the app's light poll
     // (RN-06) notices the new session, and the page opens it by itself.
@@ -223,6 +266,7 @@ export class LiveSession {
     this.combat.clear();
     this.highlightsClosed.set(null);
     this.scene.clear();
+    this.notes.clear();
     this.loadedSheetFor = null;
     this.partyInfoIds = new Set();
 
@@ -294,6 +338,7 @@ export class LiveSession {
         onCombatLogChanged: () => this.combat.touchLog(),
         onXpChanged: () => this.xpChanges.bump(),
         onSceneChanged: () => void this.scene.refresh(),
+        onNotesChanged: () => void this.notes.refresh(true),
         // The stage is part of the open scene: read it again (it names nobody).
         onStageChanged: () => void this.scene.refresh(),
         onShownImage: (image) => this.shownImageChanged(image),
@@ -329,6 +374,10 @@ export class LiveSession {
       void this.reloadLeftImages();
       void this.loadCombat(generation);
       void this.scene.refresh();
+      if (!this.isMaster()) {
+        // A clue that arrived while the stream was down counts as new too.
+        void this.notes.refresh(true);
+      }
       this.combat.touchLog(); // the log is read again too, after a reconnection
       // Each `ready` (a reconnection too) reads the map again: a missed event never leaves it stale.
       void this.mapState.open(snapshot.currentMapId);
@@ -546,6 +595,20 @@ export class LiveSession {
 
   protected sessionEndedHere(): void {
     this.ended();
+  }
+
+  /** "Anotações": the bar's button, or the notice's "Abrir anotações". */
+  protected openNotes(): void {
+    openNotesSheet(this.dialog, this.bottomSheet, {
+      state: this.notes,
+      openScene: () => this.scene.scene()?.pointId ?? '',
+    })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        // Drawn twice (phone and wide): the one on screen takes the focus.
+        const bars = Array.from(this.document.querySelectorAll<HTMLElement>('.notes-bar'));
+        bars.find((b) => b.offsetParent !== null)?.focus();
+      });
   }
 
   /** "Ajustar": a bottom sheet on a phone, a dialog from a tablet up, with

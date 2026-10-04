@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, ViewContainerRef, computed, effect, inject, signal, viewChildren } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
@@ -6,6 +6,7 @@ import { filter } from 'rxjs';
 
 import { LivePill } from './shared/live-pill/live-pill';
 import { LiveNotice } from './shell/live-notice/live-notice';
+import { SessionNotes } from './shell/session-notes/session-notes';
 import { OpenSessionVm, OpenSessions, sessionForLiveLink } from './shell/live-notice/open-sessions';
 import { UserMenu } from './shell/user-menu/user-menu';
 
@@ -25,6 +26,10 @@ import { UserMenu } from './shell/user-menu/user-menu';
  * (RN-06; `shell/live-notice`). Both read `OpenSessions`, whose poll loads
  * the generated PlayService client lazily, so neither adds it to the
  * initial bundle.
+ *
+ * On a player's session page the bar also shows "Anotações" (E8-06): the
+ * page turns it on through `SessionNotes`, a small service with no generated
+ * client, so the shell stays light.
  */
 @Component({
   selector: 'app-root',
@@ -44,6 +49,9 @@ import { UserMenu } from './shell/user-menu/user-menu';
 export class App {
   private readonly router = inject(Router);
   private readonly openSessions = inject(OpenSessions);
+  protected readonly sessionNotes = inject(SessionNotes);
+  /** Where the player's "Anotações" button goes (the session page hands over its template). */
+  private readonly notesSlots = viewChildren('notesSlot', { read: ViewContainerRef });
 
   protected readonly menuOpen = signal(false);
   /** The current URL: the notice and the "Ao vivo" link hide on some pages. */
@@ -53,6 +61,17 @@ export class App {
   );
 
   constructor() {
+    // The phone's slot is the first (beside the menu button), the wide one the second
+    // (before the account); the template says which it is drawn in.
+    effect(() => {
+      const template = this.sessionNotes.bar();
+      this.notesSlots().forEach((slot, i) => {
+        slot.clear();
+        if (template) {
+          slot.createEmbeddedView(template, { $implicit: i === 0 ? 'phone' : 'wide' });
+        }
+      });
+    });
     // Following a link from the open panel closes it.
     this.router.events
       .pipe(
