@@ -171,6 +171,9 @@ export class MapView {
   private nudging = false;
 
   constructor() {
+    // Read here: inject() only works while the component is being built, not
+    // inside the render callback below (NG0203).
+    const destroyRef = inject(DestroyRef);
     afterNextRender(() => {
       const el = this.viewport().nativeElement;
       const measure = () => {
@@ -185,7 +188,7 @@ export class MapView {
       if (typeof ResizeObserver !== 'undefined') {
         const observer = new ResizeObserver(measure);
         observer.observe(el);
-        inject(DestroyRef).onDestroy(() => observer.disconnect());
+        destroyRef.onDestroy(() => observer.disconnect());
       }
     });
 
