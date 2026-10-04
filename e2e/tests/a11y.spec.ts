@@ -1638,8 +1638,11 @@ async function scanNotesScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await p.getByRole('option', { name: /Sem cena/ }).click();
     await expect(sheet.getByText('Nada sem cena')).toBeVisible();
     await expectScreenPasses(p, `Anotações, filtro sem resultado ${where}`);
+    // Reopened only once the list that faded out is gone (see notes.spec.ts).
+    await expect(p.getByRole('listbox')).toHaveCount(0);
     await sheet.getByRole('combobox', { name: /^Cena/ }).click();
     await p.getByRole('option', { name: /Todas as anotações/ }).click();
+    await expect(p.getByRole('listbox')).toHaveCount(0);
     await sheet.getByRole('button', { name: /^Editar a anotação/ }).click();
     await sheet.getByRole('button', { name: 'Apagar anotação' }).click();
     await expect(sheet.getByRole('alertdialog', { name: 'Apagar esta anotação?' })).toBeVisible();

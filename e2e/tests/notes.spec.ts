@@ -173,8 +173,12 @@ test(
       await player.getByRole('option', { name: /Sem cena/ }).click();
       await expect(sheet.getByText('Nada sem cena')).toBeVisible();
       await expect(player.getByRole('status').filter({ hasText: '0 anotações' })).toBeAttached();
+      // The list fades out after a choice; a click before it is gone lands on
+      // its first option, "Todas as anotações", instead of opening it again.
+      await expect(player.getByRole('listbox')).toHaveCount(0);
       await sheet.getByRole('combobox', { name: /^Cena/ }).click();
       await player.getByRole('option', { name: /Todas as anotações/ }).click();
+      await expect(player.getByRole('listbox')).toHaveCount(0);
 
       // Editing and deleting one's own note; the clue has a lock, not a pencil.
       await expect(sheet.getByRole('button', { name: /^Editar a anotação/ })).toHaveCount(1);
