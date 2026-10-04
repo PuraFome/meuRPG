@@ -208,6 +208,9 @@ test('por ouro: o mestre digita as peças de ouro e cada um recebe a sua parte',
     await panel(m).getByRole('button', { name: 'Dar XP' }).click();
     const dialog = m.getByRole('dialog', { name: 'Dar XP' });
     await expect(dialog).toContainText('Campanha por ouro: 1 XP por peça de ouro (PO).');
+    // The sheet puts the focus on "Motivo" when its opening animation ends:
+    // typing before that, the late focus can land "120" in the wrong field.
+    await expect(dialog.getByLabel('Motivo')).toBeFocused();
     await dialog.getByLabel('Motivo').fill('O baú do Capitão');
     await dialog.getByLabel('Ouro encontrado (PO)').fill('120');
     await expect(dialog).toContainText('Vale 1 XP por PO: 120 PO são 120 XP.');
