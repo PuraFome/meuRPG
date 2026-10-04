@@ -219,7 +219,7 @@ export function castTargetRows(targets: readonly TargetInReach[], casterId: stri
       id: t.combatantId,
       label: t.combatantId === casterId ? `${t.label} (você)` : t.label,
       sub: tight(joinDots(parts)),
-      blocked: t.tooFar ? tight(reachFt ? `Longe demais: alcance de ${metersText(reachFt)}` : 'Longe demais') : '',
+      blocked: t.untargetable ? 'Atrás de cobertura total' : t.tooFar ? tight(reachFt ? `Longe demais: alcance de ${metersText(reachFt)}` : 'Longe demais') : '',
     };
   });
 }

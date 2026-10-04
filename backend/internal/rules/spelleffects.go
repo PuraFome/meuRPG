@@ -34,6 +34,10 @@ const (
 	// Conjurar Animais); see summon.go. It reads no hit points: SpellEffect
 	// does not return it, and SummonOptions does.
 	SpellKindSummon = "summon"
+	// SpellKindIgnoresCover: the spell's saving throw gets no benefit from cover
+	// (Chama Sagrada, SRD 5.1). It reads no hit points either: SpellEffect does
+	// not return it, and IgnoresCover says it.
+	SpellKindIgnoresCover = "ignores_cover"
 )
 
 // SpellEffect is what a spell that reads hit points does, at a slot level.
@@ -92,6 +96,7 @@ func (c *content) loadSpellEffects(fsys fs.FS) error {
 		return err
 	}
 	c.spellEffects = map[string]spellEffectDef{}
+	c.coverIgnoring = map[string]bool{}
 	for _, key := range sortedKeys(f.Spells) {
 		in := f.Spells[key]
 		sp, ok := c.spells[key]
@@ -118,6 +123,13 @@ func (c *content) loadSpellEffects(fsys fs.FS) error {
 		}
 		if !in.empty() {
 			return fail("the summon fields belong to the summon kind")
+		}
+		if in.Kind == SpellKindIgnoresCover {
+			if in.Dice != "" || in.DicePerLevel != "" || in.Condition != "" || in.Threshold != 0 || in.Dies || in.Amount != 0 || in.AmountPerLvl != 0 || len(in.Ends) != 0 {
+				return fail("an ignores_cover spell takes nothing else")
+			}
+			c.coverIgnoring[key] = true
+			continue
 		}
 		def := spellEffectDef{spellLevel: sp.Level, base: SpellEffect{Kind: in.Kind, Condition: in.Condition, Threshold: in.Threshold, Dies: in.Dies, Ends: in.Ends}}
 		switch in.Kind {
@@ -160,6 +172,10 @@ func (c *content) loadSpellEffects(fsys fs.FS) error {
 	}
 	return nil
 }
+
+// IgnoresCover says the spell's saving throw gets no benefit from cover (the
+// SRD's Chama Sagrada), from the "ignores_cover" kind of effects/spells.json.
+func (c *Content) IgnoresCover(key string) bool { return c.c.coverIgnoring[key] }
 
 // SpellEffect returns what a spell that reads hit points does when cast with a
 // slot of slotLevel (the spell's own level for a smaller or zero slotLevel),

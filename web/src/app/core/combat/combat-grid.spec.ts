@@ -4,6 +4,7 @@ import {
   distance,
   gridRows,
   inGrid,
+  lengthDft,
   moveSentence,
   squareAt,
   type Square,
@@ -19,19 +20,31 @@ describe('combat grid maths', () => {
     expect(gridRows(5, 10000, 100)).toBe(1); // never fewer than one row
   });
 
-  it('counts a diagonal as one square (a king\'s move)', () => {
-    expect(distance({ col: 4, row: 8 }, { col: 6, row: 9 })).toBe(2);
-    expect(distance({ col: 0, row: 0 }, { col: 3, row: 3 })).toBe(3);
+  it('measures the straight line between centres: a diagonal step is 7,1 ft, not 5 (RN-21)', () => {
+    expect(distance({ col: 0, row: 0 }, { col: 3, row: 0 })).toBe(3);
+    expect(distance({ col: 4, row: 8 }, { col: 6, row: 9 })).toBeCloseTo(2.236, 3);
+    expect(lengthDft({ col: 0, row: 0 }, { col: 1, row: 0 })).toBe(50); // a square straight
+    expect(lengthDft({ col: 0, row: 0 }, { col: 1, row: 1 })).toBe(71); // one diagonal step
+    expect(lengthDft({ col: 0, row: 0 }, { col: 4, row: 4 })).toBe(283);
   });
 
-  it('reaches a free square inside the range and the grid, never an occupied one', () => {
+  it('reaches a free square inside the circle and the grid, never an occupied one', () => {
     const from = { col: 5, row: 7 };
     const taken = [{ col: 6, row: 7 }];
-    expect(canReach(from, { col: 7, row: 8 }, 5, 20, 14, taken)).toBe(true);
-    expect(canReach(from, { col: 6, row: 7 }, 5, 20, 14, taken)).toBe(false);
-    expect(canReach(from, { col: 11, row: 7 }, 5, 20, 14, taken)).toBe(false);
-    expect(canReach(from, from, 5, 20, 14, taken)).toBe(false);
-    expect(canReach({ col: 0, row: 0 }, { col: -1, row: 0 }, 5, 20, 14, [])).toBe(false);
+    // 25 ft left = 250 dft.
+    expect(canReach(from, { col: 7, row: 8 }, 250, 20, 14, taken)).toBe(true);
+    expect(canReach(from, { col: 6, row: 7 }, 250, 20, 14, taken)).toBe(false);
+    expect(canReach(from, { col: 11, row: 7 }, 250, 20, 14, taken)).toBe(false);
+    expect(canReach(from, from, 250, 20, 14, taken)).toBe(false);
+    expect(canReach({ col: 0, row: 0 }, { col: -1, row: 0 }, 250, 20, 14, [])).toBe(false);
+  });
+
+  it('draws a circle: with 30 ft (4, 4) is in reach and (5, 5) is not, as on the server', () => {
+    const from = { col: 5, row: 5 };
+    expect(canReach(from, { col: 9, row: 9 }, 300, 20, 14, [])).toBe(true); // 28,3 ft
+    expect(canReach(from, { col: 10, row: 10 }, 300, 20, 14, [])).toBe(false); // 35,4 ft
+    expect(canReach(from, { col: 11, row: 5 }, 300, 20, 14, [])).toBe(true); // 6 squares straight
+    expect(canReach(from, { col: 5, row: 12 }, 300, 20, 14, [])).toBe(false); // 7 squares
   });
 
   it('puts the center of a square and finds the square under a point', () => {
@@ -54,8 +67,9 @@ describe('combat grid maths', () => {
   it('says how far a move is, in meters and squares (E6-10, E8-01)', () => {
     // The text ties numbers to their units with no-break spaces: read it with plain ones.
     const say = (from: Square, to: Square, left: number) => moveSentence(from, to, left).replace(/\u00a0/g, ' ');
+    // 2 squares across and 1 down is 11,2 ft: 3,4 m, no longer the 10 ft of a king's move.
     expect(say({ col: 4, row: 8 }, { col: 6, row: 9 }, 25)).toBe(
-      'Mover 3 m · 2 quadrados. 2 quadrados para a direita e 1 quadrado para baixo. Depois restam 4,5 m · 3 quadrados.',
+      'Mover 3,4 m · 2 quadrados. 2 quadrados para a direita e 1 quadrado para baixo. Depois restam 4,1 m · 2 quadrados.',
     );
     expect(say({ col: 4, row: 8 }, { col: 4, row: 7 }, 25)).toBe(
       'Mover 1,5 m · 1 quadrado. 1 quadrado para cima. Depois restam 6 m · 4 quadrados.',

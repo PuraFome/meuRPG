@@ -1040,6 +1040,9 @@ message TurnOptions {
   repeated ActionOption standard_actions = 4;
   // The actions the character's features grant.
   repeated ActionOption feature_actions = 5;
+  // How far and how high it can jump (MR-034). Unset for a combatant with no
+  // Strength on its sheet (a basic-sheet NPC): the master moves it by hand.
+  JumpLimits jumps = 6;
 }
 
 // TurnEconomy is the state of the turn's action economy.
@@ -1065,10 +1068,50 @@ message EconomyState {
 
 // MovementLeft is the walking left in the turn, in feet.
 message MovementLeft {
-  // The speed for this turn: doubled after the Dash action.
+  // The speed for this turn: doubled after the Dash action. For a creature
+  // with a fly speed, the best of its speeds.
   int32 speed_ft = 1;
   int32 used_ft = 2;
   int32 left_ft = 3;
+  // The same three in tenths of a foot, which is what the server keeps and
+  // charges (RN-21: a move costs the exact length of its straight line, so a
+  // diagonal step is 7.1 ft, 71 here). The `_ft` fields above are these
+  // rounded down, for older clients.
+  int32 speed_dft = 4;
+  int32 used_dft = 5;
+  int32 left_dft = 6;
+}
+
+// JumpLimits is how far and how high the combatant can jump this turn, in tenths
+// of a foot (SRD 5.1, RN-21): a long jump of as many feet as its Strength score
+// with a running start and half that standing; a high jump of 3 feet plus its
+// Strength modifier with a running start and half that standing. A running start
+// is a move of at least 10 ft on foot right before, in the same turn
+// (`running_start`). The jump costs as many feet of movement as it covers.
+message JumpLimits {
+  // The long jump with and without a running start.
+  int32 long_running_dft = 1;
+  int32 long_standing_dft = 2;
+  // The high jump with and without a running start. Never below 0.
+  int32 high_running_dft = 3;
+  int32 high_standing_dft = 4;
+  // True when the move this combatant made just before, this turn, was 10 ft or
+  // more on foot: a jump now may use the running numbers.
+  bool running_start = 5;
+}
+
+// CreatureSize is a creature's size in the SRD's order. It decides whether a
+// combatant may pass a hostile creature (two sizes apart) and share a square
+// (only Tiny with Tiny); every combatant still occupies one square, Large or
+// not. UNSPECIFIED counts as MEDIUM.
+enum CreatureSize {
+  CREATURE_SIZE_UNSPECIFIED = 0;
+  CREATURE_SIZE_TINY = 1;
+  CREATURE_SIZE_SMALL = 2;
+  CREATURE_SIZE_MEDIUM = 3;
+  CREATURE_SIZE_LARGE = 4;
+  CREATURE_SIZE_HUGE = 5;
+  CREATURE_SIZE_GARGANTUAN = 6;
 }
 
 // DisabledReason says why an option cannot be used now.

@@ -734,7 +734,7 @@ async function scanCombatScreens(browser: Browser, colorScheme: 'light' | 'dark'
     const own = (await getEncounterRPC(p, campaignId)).combatants.find((c) => c.mine)!;
     const at = (dc: number, dr: number) => ({ x: ((own.col ?? 0) + dc + 0.5) * (box.width / 20), y: ((own.row ?? 0) + dr + 0.5) * (box.height / 14) });
     await map.click({ position: at(2, 1) });
-    await expect(p.getByText('Mover 3 m')).toBeVisible();
+    await expect(p.getByText('Mover 3,4 m')).toBeVisible();
     await expectScreenPasses(p, `Mover, quadrado escolhido ${where}`);
     await map.click({ position: at(8, 1) });
     await expect(p.getByText('Longe demais: faltam')).toBeVisible();

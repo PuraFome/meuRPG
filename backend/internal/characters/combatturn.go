@@ -152,7 +152,27 @@ func (s *Service) CombatTurnOptions(ctx context.Context, campaignID, characterID
 		ActionUsed: turn.ActionUsed, BonusActionUsed: turn.BonusActionUsed, ReactionUsed: turn.ReactionUsed,
 		MovementUsedFt: turn.MovementUsedFt, Dashed: turn.Dashed, AttacksMade: turn.AttacksMade,
 	}, usage)
-	return turnOptionsToProto(opts), nil
+	out := turnOptionsToProto(opts)
+	// The movement is kept in tenths of a foot (RN-21): the feet fields are those
+	// rounded down, so the two never disagree.
+	speed := turn.SpeedFt * 10
+	if turn.Dashed {
+		speed *= 2
+	}
+	left := max(speed-turn.MovementUsedDFt, 0)
+	out.Economy.Movement = &rulesv1.MovementLeft{
+		SpeedFt: i32(speed / 10), UsedFt: i32(turn.MovementUsedDFt / 10), LeftFt: i32(left / 10),
+		SpeedDft: i32(speed), UsedDft: i32(turn.MovementUsedDFt), LeftDft: i32(left),
+	}
+	if len(d.Abilities) > 0 { // a basic sheet has no Strength to jump with
+		// What the combatant has on it, which is what MoveCombatant enforces.
+		out.Jumps = &rulesv1.JumpLimits{
+			LongRunningDft: i32(turn.JumpLongDFt), LongStandingDft: i32(turn.JumpLongDFt / 2),
+			HighRunningDft: i32(turn.JumpHighDFt), HighStandingDft: i32(turn.JumpHighDFt / 2),
+			RunningStart: combat.HasRunningStart(turn.LastMoveDFt),
+		}
+	}
+	return out, nil
 }
 
 // usageOf reads the slots a character has spent from its vitals.

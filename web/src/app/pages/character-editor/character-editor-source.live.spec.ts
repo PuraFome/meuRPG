@@ -12,6 +12,7 @@ import {
   toFormFullSheet,
   toFullSheetInit,
 } from './character-editor-source.live';
+import { CreatureSize } from '../../../gen/meurpg/rules/v1/rules_pb';
 
 /**
  * A fully populated `FullSheet` — every field set, including the two the
@@ -215,6 +216,7 @@ describe('a basic sheet through the editor', () => {
   it('reads and writes initiative and attacks, with the damage type and the reach', () => {
     const basic: BasicSheet = {
       $typeName: 'meurpg.characters.v1.BasicSheet',
+      size: CreatureSize.UNSPECIFIED,
       hitPointsMax: 7,
       armorClass: 15,
       speedFt: 30,
@@ -268,12 +270,16 @@ describe('a basic sheet through the editor', () => {
       challengeRating: '1/4',
       xpValue: 50,
       portraitImageId: '6f1c2d3e-0000-4000-8000-000000000001',
+      size: CreatureSize.UNSPECIFIED,
     };
     const form = toFormBasicSheet('Goblin', basic);
     expect(form).toMatchObject({ challengeRating: '1/4', xpValue: 50 });
     expect(toBasicSheetInit(form)).toMatchObject({ challengeRating: '1/4', xpValue: 50 });
     // The portrait (MR-031) survives the save too.
     expect(toBasicSheetInit(form).portraitImageId).toBe('6f1c2d3e-0000-4000-8000-000000000001');
+    // The size (MR-034) survives the save too, though no control shows it yet.
+    const large = toFormBasicSheet('Ogro', { ...basic, size: CreatureSize.LARGE });
+    expect(toBasicSheetInit(large).size).toBe(CreatureSize.LARGE);
 
     // What the master typed beyond the table survives too.
     expect(toBasicSheetInit({ ...form, challengeRating: '1/2', xpValue: 70 })).toMatchObject({ challengeRating: '1/2', xpValue: 70 });
@@ -283,6 +289,7 @@ describe('a basic sheet through the editor', () => {
   it('sends the old damage text back unchanged while there are no attacks', () => {
     const form = toFormBasicSheet('Goblin', {
       $typeName: 'meurpg.characters.v1.BasicSheet',
+      size: CreatureSize.UNSPECIFIED,
       hitPointsMax: 7,
       armorClass: 15,
       speedFt: 30,

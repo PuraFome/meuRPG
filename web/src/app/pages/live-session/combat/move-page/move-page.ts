@@ -3,8 +3,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import type { Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { type Square, canReach, distance, moveDetail } from '../../../../core/combat/combat-grid';
-import { SQUARE_FT, distanceText, metersText, reachSquares } from '../../../../core/units';
+import { type Square, canReach, lengthDft, moveDetail } from '../../../../core/combat/combat-grid';
+import { distanceText, metersText } from '../../../../core/units';
 import { ownCombatant, roundLabel } from '../../../../core/combat/combat-view';
 import { CombatMap, type CombatMapImage } from '../../../../shared/combat-map/combat-map';
 import { PHONE_QUERY, mediaQuery } from '../../../../shared/map-view/media-query';
@@ -15,8 +15,8 @@ const CELL_PX = 32;
 
 /**
  * "Mover" (E6-10, RN-21): a full page where the map is the control. The
- * squares the combatant reaches are tinted (a king's move, occupied squares
- * left out); the player taps one, reads how far it is, and confirms with
+ * squares the combatant reaches are tinted (the circle its movement draws,
+ * occupied squares left out); the player taps one, reads how far it is, and confirms with
  * "Mover para cá". A square out of reach or taken is framed as refused, with
  * the reason, and the button stays blocked: the player is never moved past
  * the limit. The line under the map is a live region that says the distance
@@ -59,12 +59,13 @@ export class MovePage {
     const own = this.own();
     return own ? { col: own.col, row: own.row } : { col: 0, row: 0 };
   });
-  protected readonly squares = computed(() => reachSquares(this.own()?.movementLeftFt ?? 0));
-  protected readonly reach = computed(() => ({ origin: this.origin(), squares: this.squares() }));
-  protected readonly leftText = computed(() => distanceText(this.own()?.movementLeftFt ?? 0));
+  protected readonly leftDft = computed(() => this.own()?.movementLeftDft ?? 0);
+  protected readonly reach = computed(() => ({ origin: this.origin(), leftDft: this.leftDft() }));
+  protected readonly leftText = computed(() => distanceText(this.leftDft() / 10));
   protected readonly totalMeters = computed(() => {
     const own = this.own();
-    return metersText((own?.speedFt ?? 0) * (own?.dashed ? 2 : 1));
+    // The best of its speeds (a flier's), as the movement left is.
+    return metersText(((own?.speedDft ?? 0) / 10) * (own?.dashed ? 2 : 1));
   });
   protected readonly occupied = computed<Square[]>(() =>
     this.encounter()
@@ -85,11 +86,11 @@ export class MovePage {
     ) {
       return { ok: false as const, title: 'Ocupado', detail: 'Há alguém nesse quadrado. Escolha um quadrado destacado.' };
     }
-    if (canReach(this.origin(), to, this.squares(), e.gridColumns, e.gridRows, this.occupied())) {
-      return { ok: true as const, detail: moveDetail(this.origin(), to, this.own()?.movementLeftFt ?? 0), cost: distanceText(distance(this.origin(), to) * SQUARE_FT) };
+    if (canReach(this.origin(), to, this.leftDft(), e.gridColumns, e.gridRows, this.occupied())) {
+      return { ok: true as const, detail: moveDetail(this.origin(), to, this.leftDft() / 10), cost: distanceText(lengthDft(this.origin(), to) / 10) };
     }
-    const away = distance(this.origin(), to) * SQUARE_FT;
-    const missing = away - (this.own()?.movementLeftFt ?? 0);
+    const away = lengthDft(this.origin(), to) / 10;
+    const missing = away - this.leftDft() / 10;
     return {
       ok: false as const,
       title: `Longe demais: faltam ${distanceText(missing)}`,
