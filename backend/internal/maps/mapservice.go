@@ -86,11 +86,31 @@ func (s *Service) ListMaps(
 	if err != nil {
 		return nil, s.dbError(ctx, "list maps", err)
 	}
+	if !v.master {
+		v.parentKnows = s.parentKnows(ctx, cm, v)
+	}
+	ctx = withPartyMemo(ctx) // the party's senses are read once for all the fog maps
 	res := &mapsv1.ListMapsResponse{}
 	for _, r := range cm.rows {
-		if v.seesMap(r.ID, r.RevealedAt) {
-			res.Maps = append(res.Maps, cm.mapToProto(r, v))
+		if !v.seesMap(r.ID, r.RevealedAt) {
+			continue
 		}
+		out := cm.mapToProto(r, v)
+		if foggedFor(v, r) {
+			// What a player counts on a fog map is what they receive of it (RN-10).
+			pv, points, _, err := s.fogViewOf(ctx, r, v)
+			if err != nil {
+				return nil, s.dbError(ctx, "work out what a player sees", err)
+			}
+			key := countKey{mapID: r.ID, userID: v.userID, revision: pv.revision(), points: pointsSig(points), traps: trapsSig(v.traps)}
+			n, ok := s.counts.get(key)
+			if !ok {
+				n = int32(len(s.visiblePoints(points, v, pv))) //nolint:gosec // G115: a map has at most 200 points
+				s.counts.put(key, n)
+			}
+			out.PointCount = n
+		}
+		res.Maps = append(res.Maps, out)
 	}
 	return connect.NewResponse(res), nil
 }
@@ -108,7 +128,7 @@ func (s *Service) GetMap(
 	if !ok {
 		return nil, errMapNotFound()
 	}
-	v, err := s.viewerOf(ctx, m)
+	v, err := s.readerOf(ctx, m, req.Msg.GetAsCharacterId())
 	if err != nil {
 		return nil, err
 	}
@@ -122,16 +142,34 @@ func (s *Service) GetMap(
 		// does not exist (RN-10).
 		return nil, errMapNotFound()
 	}
+	if !v.master {
+		v.parentKnows = s.parentKnows(ctx, cm, v)
+	}
 	res := &mapsv1.GetMapResponse{Map: cm.mapToProto(row, v)}
 
 	points, err := s.queries.ListMapPoints(ctx, mapID)
 	if err != nil {
 		return nil, s.dbError(ctx, "list a map's points", err)
 	}
-	for _, p := range points {
-		if v.seesPoint(p) {
-			res.Points = append(res.Points, s.pointToProto(cm, p, v))
+	tokens, err := s.queries.ListMapTokens(ctx, mapID)
+	if err != nil {
+		return nil, s.dbError(ctx, "list a map's tokens", err)
+	}
+	// On a fog map a player receives only what their character sees now or
+	// remembers (RN-10): pv says which squares those are.
+	var pv *playerView
+	if foggedFor(v, row) {
+		if pv, err = s.playerViewOf(ctx, fogInputOfDetails(row), points, tokens, v.userID); err != nil {
+			return nil, s.dbError(ctx, "work out what a player sees", err)
 		}
+	}
+	for _, p := range s.visiblePoints(points, v, pv) {
+		out := s.pointToProto(cm, p, v)
+		out.Remembered = pv != nil && !s.pointSeenNow(pv, p)
+		res.Points = append(res.Points, out)
+	}
+	if pv != nil {
+		res.Map.PointCount = int32(len(res.Points)) //nolint:gosec // G115: a map has at most 200 points
 	}
 	if err := s.attachPointDetails(ctx, m.CampaignID, mapID, res.Points, v.master); err != nil {
 		return nil, s.dbError(ctx, "list a map's traps and treasures", err)
@@ -143,14 +181,12 @@ func (s *Service) GetMap(
 		return nil, s.dbError(ctx, "list a map's scene clues", err)
 	}
 
-	tokens, err := s.queries.ListMapTokens(ctx, mapID)
-	if err != nil {
-		return nil, s.dbError(ctx, "list a map's tokens", err)
-	}
 	byCharacter := make(map[string]mapsdb.MapToken, len(tokens))
 	ids := make([]string, 0, len(tokens))
 	for _, t := range tokens {
-		if v.seesToken(t) {
+		// On a fog map the kind decides (a player character is always shown), so
+		// the characters are asked for before the tokens are filtered.
+		if pv != nil || v.seesToken(t) {
 			byCharacter[t.CharacterID] = t
 			ids = append(ids, t.CharacterID)
 		}
@@ -163,9 +199,18 @@ func (s *Service) GetMap(
 		return nil, s.dbError(ctx, "read the characters on a map", err)
 	}
 	for _, c := range characters {
-		if t, ok := byCharacter[c.GetId()]; ok {
-			res.Tokens = append(res.Tokens, tokenToProto(t, c, v))
+		t, ok := byCharacter[c.GetId()]
+		if !ok {
+			continue
 		}
+		if pv != nil {
+			player := c.GetKind() == charactersv1.CharacterKind_CHARACTER_KIND_PLAYER
+			if !tokenSeen(pv, t, player) || (!player && t.Hidden) {
+				continue
+			}
+			t.Hidden = false // a player's character is never hidden from the party (D6)
+		}
+		res.Tokens = append(res.Tokens, tokenToProto(t, c, v))
 	}
 	return connect.NewResponse(res), nil
 }
@@ -188,9 +233,16 @@ func (s *Service) CreateMap(
 		return nil, errNotAGalleryImage()
 	}
 
+	// A new map has no fog: an image that is a fog map's background is copied.
+	reuse, err := s.prepareReuseCopy(ctx, m.CampaignID, imageID)
+	if err != nil {
+		return nil, s.dbError(ctx, "copy the image of a fog map", err)
+	}
 	var created mapsdb.Map
+	used := false
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
+		used = false
 		count, err := q.CountMaps(ctx, m.CampaignID)
 		if err != nil {
 			return fmt.Errorf("count maps: %w", err)
@@ -201,12 +253,21 @@ func (s *Service) CreateMap(
 		if err := checkImage(ctx, q, m.CampaignID, imageID); err != nil {
 			return err
 		}
+		if reuse != nil {
+			if err := reuse.insert(ctx, q, s, m.CampaignID, m.UserID); err != nil {
+				return err
+			}
+			imageID, used = reuse.id, true
+		}
 		created, err = q.InsertMap(ctx, mapsdb.InsertMapParams{CampaignID: m.CampaignID, Name: name, ImageID: imageID, Now: s.now()})
 		if err != nil {
 			return fmt.Errorf("insert map: %w", err)
 		}
 		return nil
 	})
+	if reuse != nil && (err != nil || !used) {
+		s.deleteFiles(ctx, m.CampaignID, reuse.id)
+	}
 	if err != nil {
 		return nil, s.dbError(ctx, "create a map", err)
 	}
@@ -257,9 +318,27 @@ func (s *Service) UpdateMap(
 	if err != nil {
 		return nil, err
 	}
+	// A map with the fog on never has an image a player can fetch (RN-10): a new
+	// image that is also used another way is copied, and the map gets the copy.
+	var imageCopy *fogCopy
+	if imageID != nil {
+		if old, err := s.queries.GetMap(ctx, mapsdb.GetMapParams{CampaignID: m.CampaignID, ID: mapID}); err == nil && *imageID != old.ImageID {
+			if old.FogEnabled {
+				imageCopy, err = s.prepareFogCopy(ctx, m.CampaignID, mapID, *imageID)
+			} else {
+				// A map without fog never takes a fog map's own image either.
+				imageCopy, err = s.prepareReuseCopy(ctx, m.CampaignID, *imageID)
+			}
+			if err != nil {
+				return nil, s.dbError(ctx, "copy the map's image", err)
+			}
+		}
+	}
 	var updated mapsdb.Map
+	cleared, copied := false, false
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
+		cleared, copied = false, false
 		row, err := q.GetMapForUpdate(ctx, mapsdb.GetMapForUpdateParams{CampaignID: m.CampaignID, ID: mapID})
 		if errors.Is(err, pgx.ErrNoRows) {
 			return errMapNotFound()
@@ -279,6 +358,12 @@ func (s *Service) UpdateMap(
 				return err
 			}
 			params.ImageID = *imageID
+			if imageCopy != nil && *imageID == imageCopy.source.ID {
+				if err := imageCopy.insert(ctx, q, s, m.CampaignID, m.UserID); err != nil {
+					return err
+				}
+				params.ImageID, copied = imageCopy.id, true
+			}
 		}
 		// A new image clears the painted layers (D2), which a fight standing on
 		// them cannot lose; the same image again clears nothing. Decided from the
@@ -297,14 +382,21 @@ func (s *Service) UpdateMap(
 			return fmt.Errorf("update map: %w", err)
 		}
 		if imageChanged {
+			cleared = true
 			return clearLayers(ctx, q, mapID)
 		}
 		return nil
 	})
+	if imageCopy != nil && (err != nil || !copied) {
+		s.deleteFiles(ctx, m.CampaignID, imageCopy.id) // made for nothing
+	}
 	if err != nil {
 		return nil, s.dbError(ctx, "update a map", err)
 	}
 	s.publishMapChanged(m.CampaignID, mapID, playersSee(mapID, updated.RevealedAt, current))
+	if cleared {
+		s.refreshVision(ctx, m.CampaignID, mapID) // the players' memory went with the layers
+	}
 	out, err := s.masterMap(ctx, m, mapID)
 	if err != nil {
 		return nil, err
@@ -369,6 +461,8 @@ func (s *Service) DeleteMap(
 	if err != nil {
 		return nil, s.dbError(ctx, "delete a map", err)
 	}
+	s.lits.forget(mapID)
+	s.seen.forget(mapID)
 	seen := playersSee(mapID, deleted.RevealedAt, current)
 	s.publishMapChanged(m.CampaignID, mapID, seen)
 	s.publishParentsChanged(m.CampaignID, mapID, before, current, seen, false)
@@ -426,6 +520,9 @@ func (s *Service) SetMapRevealed(
 	}
 	seenBefore, seenAfter := playersSee(mapID, before.RevealedAt, current), playersSee(mapID, after.RevealedAt, current)
 	s.publishMapChanged(m.CampaignID, mapID, seenBefore || seenAfter)
+	if seenAfter && !seenBefore {
+		s.refreshVision(ctx, m.CampaignID, mapID) // the first view the players have of a fog map is recorded now
+	}
 	if cm, err := s.loadMaps(ctx, m.CampaignID); err == nil {
 		s.publishParentsChanged(m.CampaignID, mapID, cm, current, seenBefore, seenAfter)
 	} else {
@@ -474,8 +571,10 @@ func (s *Service) SetMapGrid(
 		return nil, err
 	}
 	var updated mapsdb.Map
+	cleared := false
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
+		cleared = false
 		before, err := q.GetMapForUpdate(ctx, mapsdb.GetMapForUpdateParams{CampaignID: m.CampaignID, ID: mapID})
 		if errors.Is(err, pgx.ErrNoRows) {
 			return errMapNotFound()
@@ -502,6 +601,7 @@ func (s *Service) SetMapGrid(
 			return fmt.Errorf("set map grid: %w", err)
 		}
 		if gridChanges {
+			cleared = true
 			return clearLayers(ctx, q, mapID)
 		}
 		return nil
@@ -510,6 +610,10 @@ func (s *Service) SetMapGrid(
 		return nil, s.dbError(ctx, "set a map's grid", err)
 	}
 	s.publishMapChanged(m.CampaignID, mapID, playersSee(mapID, updated.RevealedAt, current))
+	if cleared {
+		s.lits.forget(mapID)
+		s.refreshVision(ctx, m.CampaignID, mapID) // the players' memory went with the layers
+	}
 	out, err := s.masterMap(ctx, m, mapID)
 	if err != nil {
 		return nil, err
@@ -626,7 +730,7 @@ func (s *Service) CreateMapPoint(
 	}
 	// A new point is hidden: only the master hears about it (MR-009), unless it
 	// is born visible to everyone (a trap created already triggered).
-	s.publishMapChanged(m.CampaignID, mapID, playersSee(mapID, mapRow.RevealedAt, current) && everyoneSees(created))
+	s.publishPointsChanged(ctx, m.CampaignID, mapRow, playersSee(mapID, mapRow.RevealedAt, current) && everyoneSees(created), created)
 	out, err := s.masterPoint(ctx, m, created)
 	if err != nil {
 		return nil, err
@@ -721,8 +825,8 @@ func (s *Service) UpdateMapPoint(
 	if err != nil {
 		return nil, s.dbError(ctx, "update a point", err)
 	}
-	s.publishMapChanged(m.CampaignID, mapID,
-		playersSee(mapID, mapRow.RevealedAt, current) && (everyoneSees(before) || everyoneSees(after)))
+	s.publishPointsChanged(ctx, m.CampaignID, mapRow,
+		playersSee(mapID, mapRow.RevealedAt, current) && (everyoneSees(before) || everyoneSees(after)), before, after)
 	s.tellTrapKnowers(m.CampaignID, mapID, mapRow, current, knowers)
 	// The open scene shows the point's name and description, and stops being
 	// one when the point changes kind.
@@ -974,7 +1078,7 @@ func (s *Service) DeleteMapPoint(
 	if err != nil {
 		return nil, s.dbError(ctx, "delete a point", err)
 	}
-	s.publishMapChanged(m.CampaignID, mapID, playersSee(mapID, mapRow.RevealedAt, current) && everyoneSees(deleted))
+	s.publishPointsChanged(ctx, m.CampaignID, mapRow, playersSee(mapID, mapRow.RevealedAt, current) && everyoneSees(deleted), deleted)
 	s.tellTrapKnowers(m.CampaignID, mapID, mapRow, current, knowers)
 	if openScene == pointID {
 		s.publishSceneChanged(m.CampaignID)
@@ -1030,8 +1134,8 @@ func (s *Service) SetMapPointRevealed(
 	if err != nil {
 		return nil, s.dbError(ctx, "reveal or hide a point", err)
 	}
-	s.publishMapChanged(m.CampaignID, mapID,
-		playersSee(mapID, mapRow.RevealedAt, current) && (everyoneSees(before) || everyoneSees(after)))
+	s.publishPointsChanged(ctx, m.CampaignID, mapRow,
+		playersSee(mapID, mapRow.RevealedAt, current) && (everyoneSees(before) || everyoneSees(after)), before, after)
 	s.tellTrapKnowers(m.CampaignID, mapID, mapRow, current, knowers)
 	out, err := s.masterPoint(ctx, m, after)
 	if err != nil {
@@ -1066,7 +1170,7 @@ func (s *Service) PlaceMapToken(
 	}
 
 	var mapRow mapsdb.Map
-	var token mapsdb.MapToken
+	var token, was mapsdb.MapToken
 	var placed bool // a new token, not a move
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
@@ -1076,7 +1180,7 @@ func (s *Service) PlaceMapToken(
 			return err
 		}
 		key := mapsdb.GetMapTokenForUpdateParams{MapID: mapID, CharacterID: character.GetId()}
-		_, err = q.GetMapTokenForUpdate(ctx, key)
+		was, err = q.GetMapTokenForUpdate(ctx, key)
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
 			// A player's character starts visible, an NPC hidden (question
@@ -1101,13 +1205,14 @@ func (s *Service) PlaceMapToken(
 	if err != nil {
 		return nil, s.dbError(ctx, "place a token", err)
 	}
-	players := playersSee(mapID, mapRow.RevealedAt, current) && !token.Hidden
-	if placed {
-		// A new token needs its name: the app reads the map again.
-		s.publishMapChanged(m.CampaignID, mapID, players)
-	} else {
-		s.publishTokenMoved(m.CampaignID, token, players)
+	// A new token needs its name: the app reads the map again. A move is a
+	// `token_moved`, except for an NPC on a fog map, which reaches a player only as
+	// what they see (publishTokenWritten).
+	var before *mapsdb.MapToken
+	if !placed {
+		before = &was
 	}
+	s.publishTokenWritten(ctx, m.CampaignID, mapRow, current, before, &token, isPlayerCharacter(character), !placed)
 	return connect.NewResponse(&mapsv1.PlaceMapTokenResponse{Token: tokenToProto(token, character, newViewer(m, current))}), nil
 }
 
@@ -1159,7 +1264,7 @@ func (s *Service) SetMapTokenHidden(
 	if err != nil {
 		return nil, s.dbError(ctx, "hide or show a token", err)
 	}
-	s.publishMapChanged(m.CampaignID, mapID, playersSee(mapID, mapRow.RevealedAt, current) && (!before.Hidden || !after.Hidden))
+	s.publishTokenWritten(ctx, m.CampaignID, mapRow, current, &before, &after, isPlayerCharacter(character), false)
 	return connect.NewResponse(&mapsv1.SetMapTokenHiddenResponse{Token: tokenToProto(after, character, newViewer(m, current))}), nil
 }
 
@@ -1207,7 +1312,13 @@ func (s *Service) RemoveMapToken(
 	if err != nil {
 		return nil, s.dbError(ctx, "remove a token", err)
 	}
-	s.publishMapChanged(m.CampaignID, mapID, playersSee(mapID, mapRow.RevealedAt, current) && !deleted.Hidden)
+	// Whose token it was: a dead character's is told as an NPC's, which reaches no
+	// player on a fog map but through what they see.
+	player := false
+	if found, err := s.characters.MapCharacters(ctx, m.CampaignID, []string{characterID}); err == nil && len(found) == 1 {
+		player = isPlayerCharacter(found[0])
+	}
+	s.publishTokenWritten(ctx, m.CampaignID, mapRow, current, &deleted, nil, player, false)
 	return connect.NewResponse(&mapsv1.RemoveMapTokenResponse{}), nil
 }
 

@@ -80,6 +80,9 @@ func (s *Service) SetCurrentMap(
 	}
 
 	current := deref(mapID)
+	if mapID != nil {
+		s.maps.MapShown(ctx, m.CampaignID, *mapID)
+	}
 	s.Publish(m.CampaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_CurrentMapChanged_{
 		CurrentMapChanged: &playv1.WatchGameSessionResponse_CurrentMapChanged{MapId: current},
 	}})
@@ -104,9 +107,13 @@ func (s *Service) SetShownImage(
 	if imageID != nil {
 		// The image must be the campaign's. The foreign key keeps it from
 		// disappearing before the commit (below).
-		if shown, err = s.maps.ShownImage(ctx, m.CampaignID, *imageID); err != nil {
+		if shown, err = s.maps.ImageToShow(ctx, m.CampaignID, *imageID); err != nil {
 			return nil, s.dbError(ctx, "find the image to show", err)
 		}
+		// What is shown is the image the maps module answered with: the copy, when
+		// the one asked for is a fog map's.
+		shownID := shown.GetId()
+		imageID = &shownID
 	}
 
 	var moved bool   // an image went to the left list
@@ -243,6 +250,16 @@ func (s *Service) Publish(campaignID string, players bool, ev *playv1.WatchGameS
 func (s *Service) PublishToUsers(campaignID string, userIDs []string, ev *playv1.WatchGameSessionResponse) {
 	for _, id := range userIDs {
 		s.hub.Publish(campaignID, live.Event{Audience: live.Audience{UserID: id}, Message: ev})
+	}
+}
+
+// PublishToUsersCoalesced is PublishToUsers for a hint that says "read it
+// again": while a user's stream still has an event with the same key waiting
+// in its queue, no other is queued for it (live.Event.Coalesce). It implements
+// maps.LiveSession.
+func (s *Service) PublishToUsersCoalesced(campaignID string, userIDs []string, key string, ev *playv1.WatchGameSessionResponse) {
+	for _, id := range userIDs {
+		s.hub.Publish(campaignID, live.Event{Audience: live.Audience{UserID: id}, Message: ev, Coalesce: key})
 	}
 }
 

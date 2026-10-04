@@ -1472,6 +1472,29 @@ func (q *Queries) MarkCharacterDead(ctx context.Context, arg MarkCharacterDeadPa
 	return i, err
 }
 
+const portraitInUse = `-- name: PortraitInUse :one
+SELECT EXISTS (
+    SELECT 1 FROM characters
+    WHERE campaign_id = $1::UUID
+      AND (sheet -> 'full' ->> 'portrait_image_id' = $2::TEXT
+           OR sheet -> 'basic' ->> 'portrait_image_id' = $2::TEXT)
+)
+`
+
+type PortraitInUseParams struct {
+	CampaignID string
+	ImageID    string
+}
+
+// Whether any NPC of the campaign has the gallery image as its portrait (the
+// maps module copies a fog map's image when something else uses it, MR-036).
+func (q *Queries) PortraitInUse(ctx context.Context, arg PortraitInUseParams) (bool, error) {
+	row := q.db.QueryRow(ctx, portraitInUse, arg.CampaignID, arg.ImageID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const reviveCreatures = `-- name: ReviveCreatures :many
 UPDATE character_creatures
 SET dismissed_at = NULL, dismissed_reason = NULL

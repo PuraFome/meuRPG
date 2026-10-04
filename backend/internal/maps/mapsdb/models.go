@@ -35,6 +35,7 @@ type Map struct {
 	GroupVision    bool
 	LayersRevision int32
 	LightRevision  int32
+	VisionEpoch    int32
 }
 
 type MapLayer struct {

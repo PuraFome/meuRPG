@@ -187,6 +187,7 @@ func (s *Service) WatchGameSession(
 				}
 				return nil // the server is shutting down
 			}
+			sub.Taken(ev) // a coalesced hint that follows is queued again
 			if ended := ev.Message.GetSessionEnded(); ended != nil && ended.GetGameSession().GetId() != session.ID {
 				continue // another session of the campaign; not this stream's
 			}

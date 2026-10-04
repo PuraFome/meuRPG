@@ -40,6 +40,13 @@ type viewer struct {
 	master     bool
 	userID     string
 	currentMap string // "" when there is no open session or no current map
+	// preview is the master reading as a player's character ("Ver como"): every
+	// map is then theirs to read, and everything else follows the player's rules.
+	preview bool
+	// parentKnows, for a player, says whether a submap point of a parent map with
+	// the fog on is on a square they see or remember (nil: not asked, the master).
+	// "Submapa de ..." names the parent only through such a point.
+	parentKnows func(mapsdb.ListSubmapLinksRow) bool
 	// traps are the traps revealed to one of the player's characters, by point
 	// ID (nil for the master, who sees all of them).
 	traps map[string]knownTrap
@@ -65,6 +72,13 @@ func playersSee(id string, revealedAt *time.Time, currentMap string) bool {
 
 // seesMap says whether the viewer sees a map.
 func (v viewer) seesMap(id string, revealedAt *time.Time) bool {
+	return v.master || v.preview || playersSee(id, revealedAt, v.currentMap)
+}
+
+// seesLinked says whether the viewer sees a map that something they read leads to
+// or comes from (a submap's target, a parent): the master sees all, and a player, or
+// the master "Ver como", only the maps the players see.
+func (v viewer) seesLinked(id string, revealedAt *time.Time) bool {
 	return v.master || playersSee(id, revealedAt, v.currentMap)
 }
 
@@ -168,8 +182,14 @@ func (cm campaignMaps) mapToProto(r mapsdb.ListMapDetailsRow, v viewer) *mapsv1.
 				out.PointCount++
 			}
 		}
-		if r.FogEnabled {
-			out.LayersRevision = 0 // it would tell when the master paints (slice 9.4 sends their layers)
+		if r.FogEnabled && r.GridColumns != nil {
+			// On a fog map a player never receives the image: only its size, to lay
+			// the map out. What they see is drawn square by square (GetMapVision).
+			// The counter of the layers would tell when the master paints, so it is
+			// 0 too: the app reads the view's own revision.
+			out.LayersRevision = 0
+			out.Image = &mapsv1.MapImage{Width: r.ImageWidth, Height: r.ImageHeight}
+			out.ImageWithheld = true
 		}
 	}
 	// The parents, in the order of the maps list (oldest first), each once.
@@ -178,7 +198,7 @@ func (cm campaignMaps) mapToProto(r mapsdb.ListMapDetailsRow, v viewer) *mapsv1.
 	parents := map[string]bool{}
 	for _, l := range cm.links {
 		parent, ok := cm.byID[l.MapID]
-		if l.TargetMapID == r.ID && ok && (v.master || (l.Revealed && v.seesMap(parent.ID, parent.RevealedAt))) {
+		if l.TargetMapID == r.ID && ok && (v.master || (l.Revealed && v.seesLinked(parent.ID, parent.RevealedAt) && (v.parentKnows == nil || v.parentKnows(l)))) {
 			parents[parent.ID] = true
 		}
 	}
@@ -229,7 +249,7 @@ func (s *Service) pointToProto(cm campaignMaps, p mapsdb.MapPoint, v viewer) *ma
 		out.TreasureConverted = v.master && p.TreasureConvertedAwardID != nil
 	}
 	if p.TargetMapID != nil {
-		if target, ok := cm.byID[*p.TargetMapID]; ok && v.seesMap(target.ID, target.RevealedAt) {
+		if target, ok := cm.byID[*p.TargetMapID]; ok && v.seesLinked(target.ID, target.RevealedAt) {
 			out.TargetMap = &mapsv1.MapRef{Id: target.ID, Name: target.Name}
 		}
 	}

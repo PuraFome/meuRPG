@@ -42,6 +42,21 @@ func (q *Queries) BumpMapLightRevision(ctx context.Context, id string) (int32, e
 	return light_revision, err
 }
 
+const clearMapVisionMemory = `-- name: ClearMapVisionMemory :execrows
+UPDATE maps SET vision_epoch = vision_epoch + 1
+WHERE id = $1
+`
+
+// "Esquecer o que foi visto", and a new grid or image: every player forgets. The
+// epoch goes up, so a refresh that was already running cannot write the old bitmap.
+func (q *Queries) ClearMapVisionMemory(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.Exec(ctx, clearMapVisionMemory, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const clearTreasureFound = `-- name: ClearTreasureFound :one
 UPDATE map_points
 SET treasure_found_at = NULL, treasure_session_id = NULL, updated_at = $1
@@ -158,7 +173,7 @@ func (q *Queries) DeleteGalleryImage(ctx context.Context, arg DeleteGalleryImage
 const deleteMap = `-- name: DeleteMap :one
 DELETE FROM maps
 WHERE campaign_id = $1 AND id = $2
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch
 `
 
 type DeleteMapParams struct {
@@ -186,6 +201,7 @@ func (q *Queries) DeleteMap(ctx context.Context, arg DeleteMapParams) (Map, erro
 		&i.GroupVision,
 		&i.LayersRevision,
 		&i.LightRevision,
+		&i.VisionEpoch,
 	)
 	return i, err
 }
@@ -270,6 +286,20 @@ func (q *Queries) DeleteMapToken(ctx context.Context, arg DeleteMapTokenParams) 
 		&i.CarriedLight,
 	)
 	return i, err
+}
+
+const deleteMapVisionMemory = `-- name: DeleteMapVisionMemory :execrows
+DELETE FROM map_vision_memory
+WHERE map_id = $1
+`
+
+// The rows of the cleared epochs (they already read as empty); tidying only.
+func (q *Queries) DeleteMapVisionMemory(ctx context.Context, mapID string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteMapVisionMemory, mapID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const deletePointReveals = `-- name: DeletePointReveals :exec
@@ -433,7 +463,7 @@ func (q *Queries) GetGalleryUsage(ctx context.Context, campaignID string) (GetGa
 }
 
 const getMap = `-- name: GetMap :one
-SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision FROM maps
+SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch FROM maps
 WHERE campaign_id = $1 AND id = $2
 `
 
@@ -460,12 +490,13 @@ func (q *Queries) GetMap(ctx context.Context, arg GetMapParams) (Map, error) {
 		&i.GroupVision,
 		&i.LayersRevision,
 		&i.LightRevision,
+		&i.VisionEpoch,
 	)
 	return i, err
 }
 
 const getMapForUpdate = `-- name: GetMapForUpdate :one
-SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision FROM maps
+SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch FROM maps
 WHERE campaign_id = $1 AND id = $2
 FOR UPDATE
 `
@@ -496,6 +527,7 @@ func (q *Queries) GetMapForUpdate(ctx context.Context, arg GetMapForUpdateParams
 		&i.GroupVision,
 		&i.LayersRevision,
 		&i.LightRevision,
+		&i.VisionEpoch,
 	)
 	return i, err
 }
@@ -681,6 +713,34 @@ func (q *Queries) GetMapTreasureLocks(ctx context.Context, mapID string) (GetMap
 	return i, err
 }
 
+const getMapVisionMemory = `-- name: GetMapVisionMemory :one
+
+SELECT seen, epoch FROM map_vision_memory
+WHERE map_id = $1 AND user_id = $2
+`
+
+type GetMapVisionMemoryParams struct {
+	MapID  string
+	UserID string
+}
+
+type GetMapVisionMemoryRow struct {
+	Seen  []byte
+	Epoch int32
+}
+
+// What each player saw of a map with the fog of war on (MR-036, D6). The bytes are
+// a packed bitmap in package rules/grid's layout; the handlers size them by the
+// map's grid.
+// One player's memory of a map; no row means they have seen nothing yet. The
+// caller compares epoch with the map's vision_epoch: an older one reads as empty.
+func (q *Queries) GetMapVisionMemory(ctx context.Context, arg GetMapVisionMemoryParams) (GetMapVisionMemoryRow, error) {
+	row := q.db.QueryRow(ctx, getMapVisionMemory, arg.MapID, arg.UserID)
+	var i GetMapVisionMemoryRow
+	err := row.Scan(&i.Seen, &i.Epoch)
+	return i, err
+}
+
 const getSceneActionForUpdate = `-- name: GetSceneActionForUpdate :one
 SELECT id, point_id, position, key, name, dc, created_at, updated_at, max_attempts FROM scene_actions
 WHERE point_id = $1 AND id = $2
@@ -827,6 +887,28 @@ func (q *Queries) ImageIsLeft(ctx context.Context, arg ImageIsLeftParams) (bool,
 	return exists, err
 }
 
+const imageIsOnAFogMap = `-- name: ImageIsOnAFogMap :one
+SELECT EXISTS (
+    SELECT 1 FROM maps
+    WHERE campaign_id = $1 AND image_id = $2 AND fog_enabled
+)
+`
+
+type ImageIsOnAFogMapParams struct {
+	CampaignID string
+	ImageID    string
+}
+
+// Whether the image is the background of a map with the fog of war on: a player
+// never receives it, whatever else shows it (RN-10, MR-036). The image route asks
+// it for a player. A map's image is found by maps_image_id_idx.
+func (q *Queries) ImageIsOnAFogMap(ctx context.Context, arg ImageIsOnAFogMapParams) (bool, error) {
+	row := q.db.QueryRow(ctx, imageIsOnAFogMap, arg.CampaignID, arg.ImageID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const imageIsOnAVisibleMap = `-- name: ImageIsOnAVisibleMap :one
 SELECT EXISTS (
     SELECT 1 FROM maps
@@ -850,6 +932,36 @@ func (q *Queries) ImageIsOnAVisibleMap(ctx context.Context, arg ImageIsOnAVisibl
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
+}
+
+const imageIsUsedElsewhere = `-- name: ImageIsUsedElsewhere :one
+SELECT (
+    EXISTS (
+        SELECT 1 FROM maps AS m
+        WHERE m.campaign_id = $1 AND m.image_id = $2 AND m.id <> $3
+    )
+    OR EXISTS (
+        SELECT 1 FROM campaign_left_images AS l
+        WHERE l.campaign_id = $1 AND l.image_id = $2
+    )
+)::BOOL AS used
+`
+
+type ImageIsUsedElsewhereParams struct {
+	CampaignID string
+	ImageID    string
+	MapID      string
+}
+
+// Whether the image is also used another way than as the background of the
+// given map: the background of any other map, or an image the campaign left with
+// the players. Turning the fog on copies such an image first, so the fog map's
+// image is its own.
+func (q *Queries) ImageIsUsedElsewhere(ctx context.Context, arg ImageIsUsedElsewhereParams) (bool, error) {
+	row := q.db.QueryRow(ctx, imageIsUsedElsewhere, arg.CampaignID, arg.ImageID, arg.MapID)
+	var used bool
+	err := row.Scan(&used)
+	return used, err
 }
 
 const insertClueReveal = `-- name: InsertClueReveal :execrows
@@ -935,7 +1047,7 @@ func (q *Queries) InsertGalleryImage(ctx context.Context, arg InsertGalleryImage
 const insertMap = `-- name: InsertMap :one
 INSERT INTO maps (campaign_id, name, image_id, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $4)
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch
 `
 
 type InsertMapParams struct {
@@ -969,6 +1081,7 @@ func (q *Queries) InsertMap(ctx context.Context, arg InsertMapParams) (Map, erro
 		&i.GroupVision,
 		&i.LayersRevision,
 		&i.LightRevision,
+		&i.VisionEpoch,
 	)
 	return i, err
 }
@@ -1418,7 +1531,7 @@ func (q *Queries) ListLeftImages(ctx context.Context, campaignID string) ([]Gall
 
 const listMapDetails = `-- name: ListMapDetails :many
 SELECT m.id, m.campaign_id, m.name, m.image_id, m.revealed_at, m.revision, m.created_at, m.updated_at, m.grid_columns,
-       m.fog_enabled, m.base_light, m.group_vision, m.layers_revision, m.light_revision,
+       m.fog_enabled, m.base_light, m.group_vision, m.layers_revision, m.light_revision, m.vision_epoch,
        g.name AS image_name, g.width AS image_width, g.height AS image_height,
        (SELECT count(*) FROM map_points AS p WHERE p.map_id = m.id)::INT4 AS point_count,
        (SELECT count(*) FROM map_points AS p
@@ -1445,6 +1558,7 @@ type ListMapDetailsRow struct {
 	GroupVision        bool
 	LayersRevision     int32
 	LightRevision      int32
+	VisionEpoch        int32
 	ImageName          string
 	ImageWidth         int32
 	ImageHeight        int32
@@ -1484,6 +1598,7 @@ func (q *Queries) ListMapDetails(ctx context.Context, campaignID string) ([]List
 			&i.GroupVision,
 			&i.LayersRevision,
 			&i.LightRevision,
+			&i.VisionEpoch,
 			&i.ImageName,
 			&i.ImageWidth,
 			&i.ImageHeight,
@@ -1610,6 +1725,38 @@ func (q *Queries) ListMapTokens(ctx context.Context, mapID string) ([]MapToken, 
 			&i.UpdatedAt,
 			&i.CarriedLight,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMapVisionMemory = `-- name: ListMapVisionMemory :many
+SELECT user_id, seen, epoch FROM map_vision_memory
+WHERE map_id = $1
+`
+
+type ListMapVisionMemoryRow struct {
+	UserID string
+	Seen   []byte
+	Epoch  int32
+}
+
+// Every player's memory of a map (a stream's hint needs each player's view).
+func (q *Queries) ListMapVisionMemory(ctx context.Context, mapID string) ([]ListMapVisionMemoryRow, error) {
+	rows, err := q.db.Query(ctx, listMapVisionMemory, mapID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMapVisionMemoryRow
+	for rows.Next() {
+		var i ListMapVisionMemoryRow
+		if err := rows.Scan(&i.UserID, &i.Seen, &i.Epoch); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -1960,7 +2107,7 @@ func (q *Queries) ListSceneCluesOfMap(ctx context.Context, mapID string) ([]Scen
 }
 
 const listSubmapLinks = `-- name: ListSubmapLinks :many
-SELECT p.map_id, p.target_map_id::UUID AS target_map_id, (p.revealed_at IS NOT NULL)::BOOL AS revealed
+SELECT p.map_id, p.target_map_id::UUID AS target_map_id, (p.revealed_at IS NOT NULL)::BOOL AS revealed, p.x_bp, p.y_bp
 FROM map_points AS p
 JOIN maps AS m ON m.id = p.map_id
 WHERE m.campaign_id = $1 AND p.kind = 'submap' AND p.target_map_id IS NOT NULL
@@ -1971,6 +2118,8 @@ type ListSubmapLinksRow struct {
 	MapID       string
 	TargetMapID string
 	Revealed    bool
+	XBp         int32
+	YBp         int32
 }
 
 // Every submap point of the campaign that leads to a map: the map it is on,
@@ -1985,7 +2134,13 @@ func (q *Queries) ListSubmapLinks(ctx context.Context, campaignID string) ([]Lis
 	var items []ListSubmapLinksRow
 	for rows.Next() {
 		var i ListSubmapLinksRow
-		if err := rows.Scan(&i.MapID, &i.TargetMapID, &i.Revealed); err != nil {
+		if err := rows.Scan(
+			&i.MapID,
+			&i.TargetMapID,
+			&i.Revealed,
+			&i.XBp,
+			&i.YBp,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -2136,7 +2291,7 @@ SET fog_enabled = COALESCE($1::BOOL, fog_enabled),
                         OR COALESCE($3::BOOL, group_vision) <> group_vision
                       THEN $4::TIMESTAMPTZ ELSE updated_at END
 WHERE campaign_id = $5 AND id = $6
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch
 `
 
 type SetMapFogParams struct {
@@ -2177,6 +2332,7 @@ func (q *Queries) SetMapFog(ctx context.Context, arg SetMapFogParams) (Map, erro
 		&i.GroupVision,
 		&i.LayersRevision,
 		&i.LightRevision,
+		&i.VisionEpoch,
 	)
 	return i, err
 }
@@ -2186,7 +2342,7 @@ UPDATE maps
 SET grid_columns = $1, fog_enabled = fog_enabled AND $1::INT4 IS NOT NULL,
     updated_at = $2
 WHERE campaign_id = $3 AND id = $4
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch
 `
 
 type SetMapGridParams struct {
@@ -2222,6 +2378,51 @@ func (q *Queries) SetMapGrid(ctx context.Context, arg SetMapGridParams) (Map, er
 		&i.GroupVision,
 		&i.LayersRevision,
 		&i.LightRevision,
+		&i.VisionEpoch,
+	)
+	return i, err
+}
+
+const setMapImageOnly = `-- name: SetMapImageOnly :one
+UPDATE maps
+SET image_id = $1, revision = revision + 1, updated_at = $2
+WHERE campaign_id = $3 AND id = $4
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch
+`
+
+type SetMapImageOnlyParams struct {
+	ImageID    string
+	Now        time.Time
+	CampaignID string
+	ID         string
+}
+
+// A new copy of the image becomes the map's, without touching the name or the
+// revision's guard: the map's revision still moves, since the image changed.
+func (q *Queries) SetMapImageOnly(ctx context.Context, arg SetMapImageOnlyParams) (Map, error) {
+	row := q.db.QueryRow(ctx, setMapImageOnly,
+		arg.ImageID,
+		arg.Now,
+		arg.CampaignID,
+		arg.ID,
+	)
+	var i Map
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.Name,
+		&i.ImageID,
+		&i.RevealedAt,
+		&i.Revision,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.GridColumns,
+		&i.FogEnabled,
+		&i.BaseLight,
+		&i.GroupVision,
+		&i.LayersRevision,
+		&i.LightRevision,
+		&i.VisionEpoch,
 	)
 	return i, err
 }
@@ -2231,7 +2432,7 @@ UPDATE maps
 SET revealed_at = CASE WHEN $1::BOOL THEN COALESCE(revealed_at, $2::TIMESTAMPTZ) ELSE NULL END,
     updated_at = CASE WHEN (revealed_at IS NOT NULL) = $1::BOOL THEN updated_at ELSE $2::TIMESTAMPTZ END
 WHERE campaign_id = $3 AND id = $4
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch
 `
 
 type SetMapRevealedParams struct {
@@ -2267,6 +2468,7 @@ func (q *Queries) SetMapRevealed(ctx context.Context, arg SetMapRevealedParams) 
 		&i.GroupVision,
 		&i.LayersRevision,
 		&i.LightRevision,
+		&i.VisionEpoch,
 	)
 	return i, err
 }
@@ -2449,7 +2651,7 @@ const updateMap = `-- name: UpdateMap :one
 UPDATE maps
 SET name = $1, image_id = $2, revision = revision + 1, updated_at = $3
 WHERE campaign_id = $4 AND id = $5 AND revision = $6
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch
 `
 
 type UpdateMapParams struct {
@@ -2488,6 +2690,7 @@ func (q *Queries) UpdateMap(ctx context.Context, arg UpdateMapParams) (Map, erro
 		&i.GroupVision,
 		&i.LayersRevision,
 		&i.LightRevision,
+		&i.VisionEpoch,
 	)
 	return i, err
 }
@@ -2717,6 +2920,40 @@ func (q *Queries) UpsertMapTokenPosition(ctx context.Context, arg UpsertMapToken
 		arg.UpdatedAt,
 	)
 	return err
+}
+
+const upsertMapVisionMemory = `-- name: UpsertMapVisionMemory :execrows
+INSERT INTO map_vision_memory (map_id, user_id, seen, epoch, updated_at)
+SELECT m.id, $1::UUID, $2::BYTEA, m.vision_epoch, $3::TIMESTAMPTZ
+FROM maps AS m
+WHERE m.id = $4 AND m.vision_epoch = $5
+ON CONFLICT (map_id, user_id) DO UPDATE
+SET seen = excluded.seen, epoch = excluded.epoch, updated_at = excluded.updated_at
+`
+
+type UpsertMapVisionMemoryParams struct {
+	UserID    string
+	Seen      []byte
+	UpdatedAt time.Time
+	MapID     string
+	Epoch     int32
+}
+
+// The caller already merged the new squares into the old bytes, so the memory
+// only grows. It writes only while the map is still in the epoch the bytes were
+// built for: a clear that happened meanwhile bumped it, and nothing is written.
+func (q *Queries) UpsertMapVisionMemory(ctx context.Context, arg UpsertMapVisionMemoryParams) (int64, error) {
+	result, err := q.db.Exec(ctx, upsertMapVisionMemory,
+		arg.UserID,
+		arg.Seen,
+		arg.UpdatedAt,
+		arg.MapID,
+		arg.Epoch,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const upsertSceneDiscovery = `-- name: UpsertSceneDiscovery :exec

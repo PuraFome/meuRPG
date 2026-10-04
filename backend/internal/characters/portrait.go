@@ -30,9 +30,11 @@ import (
 // Gallery says which images are in a campaign's gallery. The maps module
 // implements it (maps.SessionMaps), because the gallery is its own.
 type Gallery interface {
-	// ImageInCampaign reports whether imageID is an image of the campaign's
-	// gallery.
-	ImageInCampaign(ctx context.Context, campaignID, imageID string) (bool, error)
+	// PortraitImage reports whether imageID is an image of the campaign's gallery
+	// and returns the image the portrait should be: the same one, or, when it is
+	// the background of a map with the fog of war on (a player never gets such an
+	// image, MR-036), a copy of it of its own.
+	PortraitImage(ctx context.Context, campaignID, imageID string) (string, bool, error)
 }
 
 // SetGallery connects the gallery, which package maps owns (the same
@@ -69,12 +71,19 @@ func (s *Service) checkPortrait(ctx context.Context, campaignID, kind string, sh
 	if s.gallery == nil {
 		return fieldErr(field, "cannot be set: the gallery is off")
 	}
-	found, err := s.gallery.ImageInCampaign(ctx, campaignID, id)
+	use, found, err := s.gallery.PortraitImage(ctx, campaignID, id)
 	if err != nil {
 		return s.dbError(ctx, "check a portrait", err)
 	}
 	if !found {
 		return fieldErr(field, "must be an image of the campaign's gallery")
+	}
+	if use != id { // a copy of a fog map's image: the portrait is the copy
+		if sheet.GetFull() != nil {
+			sheet.GetFull().PortraitImageId = use
+		} else {
+			sheet.GetBasic().PortraitImageId = use
+		}
 	}
 	return nil
 }

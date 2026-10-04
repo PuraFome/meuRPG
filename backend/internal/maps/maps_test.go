@@ -433,6 +433,16 @@ func TestMapServiceAuthorizationMatrix(t *testing.T) {
 			_, err := u.maps.GetMapLayers(ctx, connect.NewRequest(&mapsv1.GetMapLayersRequest{CampaignId: campaign, MapId: gridMap.GetId()}))
 			return err
 		}, [5]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		// The fog's reads (MR-036): any member reads the view, only the master
+		// forgets what was seen, and only the master reads as a character.
+		{"GetMapVision", func(ctx context.Context, u *user) error {
+			_, err := u.maps.GetMapVision(ctx, connect.NewRequest(&mapsv1.GetMapVisionRequest{CampaignId: campaign, MapId: gridMap.GetId()}))
+			return err
+		}, [5]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"ForgetMapVision", func(ctx context.Context, u *user) error {
+			_, err := u.maps.ForgetMapVision(ctx, connect.NewRequest(&mapsv1.ForgetMapVisionRequest{CampaignId: campaign, MapId: gridMap.GetId()}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 		{"SetMapFog", func(ctx context.Context, u *user) error {
 			_, err := u.maps.SetMapFog(ctx, connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: campaign, MapId: gridMap.GetId(), GroupVision: proto.Bool(true)}))
 			return err

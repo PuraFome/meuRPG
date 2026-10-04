@@ -18,7 +18,7 @@ Ferramentas: Go 1.27, buf, sqlc 1.31.1, goose, golangci-lint, Docker e Node 22. 
 | `make sqlc` | Gera o código Go das queries SQL (`backend/internal/<módulo>/<módulo>db`) com o sqlc 1.31.1. Ver [Queries com sqlc](#queries-com-sqlc). |
 | `make lint` | Roda `buf lint` e `golangci-lint`. |
 | `make test` | Roda `go test -race` em todo o backend. |
-| `MEURPG_TEST_DATABASE_URL='postgresql://root@localhost:26258/defaultdb?sslmode=disable' make test` | Roda os testes de integração (migrations, transações, login, campanhas, convites, personagens, sessões de jogo, a sessão ao vivo, com o stream, a galeria, os mapas, as cenas de RP, as pistas e as anotações dos jogadores, o palco e os retratos dos NPCs, o combate, os destaques do combate, o XP, a subida de nível guiada, as opções das cenas, o resumo da sessão, as criaturas do SRD, as camadas dos mapas, as armadilhas, os tesouros e a luz carregada, o movimento em círculo, o salto e a cobertura do combate, as criaturas do personagem) contra o CockroachDB dos testes (`make db-test-start`); a porta 26257 também serve, a do `make up` ou do `make db-native-start`. Sem a variável, eles são pulados. |
+| `MEURPG_TEST_DATABASE_URL='postgresql://root@localhost:26258/defaultdb?sslmode=disable' make test` | Roda os testes de integração (migrations, transações, login, campanhas, convites, personagens, sessões de jogo, a sessão ao vivo, com o stream, a galeria, os mapas, as cenas de RP, as pistas e as anotações dos jogadores, o palco e os retratos dos NPCs, o combate, os destaques do combate, o XP, a subida de nível guiada, as opções das cenas, o resumo da sessão, as criaturas do SRD, as camadas dos mapas, as armadilhas, os tesouros, a luz carregada, a névoa de guerra por jogador, o movimento em círculo, o salto e a cobertura do combate, as criaturas do personagem) contra o CockroachDB dos testes (`make db-test-start`); a porta 26257 também serve, a do `make up` ou do `make db-native-start`. Sem a variável, eles são pulados. |
 | `make migrate` | Aplica as migrations do goose no banco local. |
 | `make e2e` | Sobe o ambiente local (como o `make up`), roda os testes Playwright de `e2e/` contra ele e mostra onde está o relatório. O ambiente continua de pé; `make down` derruba. Ver [Testes ponta a ponta](#testes-ponta-a-ponta-playwright). |
 | `make down` | Derruba o ambiente local (`docker compose down`). |
@@ -172,6 +172,17 @@ Toda tela nova, ou mudança visível numa tela, segue o [design](docs/design.md)
 3. **Código com os tokens** (`--mr-*` em `web/src/styles.scss`) e as peças comuns (`web/src/styles/_ui.scss`), nunca uma cor escrita à mão.
 4. **Revisão pela tela:** prints a 390, 768 e 1280px, no tema claro e no escuro, em cada estado, conferidos com o desenho, e cada peça olhada de perto (2x): alinhamento não aparece num print reduzido. O PR leva os prints de antes e depois e a checklist de telas preenchida.
 5. **Conferência automática:** a tela entra no `a11y.spec.ts`, que passa o axe e as conferências de alinhamento do `layout.ts`, sem nenhuma falha.
+
+### As medidas da névoa
+
+A névoa de guerra (MR-036) calcula, por jogador, o que o personagem vê. O `go test -run '^$' -bench FilteredMap -benchmem ./internal/maps` (em `backend/`) mede só a parte de cálculo de uma leitura filtrada de um jogador (a visão, os estados por quadrado e as camadas filtradas), sem o banco: bem abaixo de 1 ms com a cena e as visões no cache (a leitura de sempre), e também sem o cache nos mapas medidos. O `TestFogGetMapTiming` mede o `GetMap` inteiro, com o banco, e mostra os tempos com `-v`. Medido em 04/10/2026 (Apple M1 Pro):
+
+| Mapa | Com cache (leitura de sempre) | Sem cache (depois de um movimento) |
+| --- | --- | --- |
+| A caverna (24 × 16, uma tocha, 6 jogadores) | 3,5 µs, 1 KB | 9,4 µs, 1,5 KB |
+| 60 × 40, 6 jogadores e 3 luzes | 34 µs, 5,8 KB | 166 µs, 8,5 KB |
+
+Memória (`TestSceneMemory -v`): uma cena compilada de 200 × 400 ocupa cerca de 430 kB e cada visão, 85 kB. O cache guarda 8 cenas com até 24 visões cada: no máximo 19 MB, dentro do orçamento de 512 MiB.
 
 ## Queries com sqlc
 

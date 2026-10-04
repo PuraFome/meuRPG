@@ -232,3 +232,41 @@ func TestConcurrentUse(t *testing.T) {
 	wg.Wait()
 	close(stop)
 }
+
+// TestCoalescedHintsQueueOnce: while a stream still has a hint with the same
+// Coalesce key waiting in its queue, another is not queued for it; once the
+// stream took it (Taken), the next is. Events with no key, and the streams
+// that are not waiting, are not affected (the `vision_changed` hint, D6).
+func TestCoalescedHintsQueueOnce(t *testing.T) {
+	t.Parallel()
+	h := New(0)
+	waiting, reading, other := subscribe(t, h, campaignA, ana), subscribe(t, h, campaignA, bruno), subscribe(t, h, campaignB, ana)
+	hint := func(key string) Event {
+		ev := heartbeat()
+		ev.Coalesce = key
+		return ev
+	}
+	for range 3 {
+		h.Publish(campaignA, hint("vision:1"))
+	}
+	if got := received(waiting); got != 1 {
+		t.Errorf("a stream that never read got %d hints for 3 with the same key, want 1", got)
+	}
+	// Reading takes it off the queue: the next change is queued again.
+	ev := <-reading.Events()
+	reading.Taken(ev)
+	h.Publish(campaignA, hint("vision:1"))
+	if got := received(reading); got != 1 {
+		t.Errorf("a stream that read its hint got %d more, want 1", got)
+	}
+	// Another key, and an event with no key, always queue.
+	h.Publish(campaignA, hint("vision:2"))
+	h.Publish(campaignA, heartbeat())
+	h.Publish(campaignA, heartbeat())
+	if got := received(waiting); got != 1+2 {
+		t.Errorf("a stream that never read got %d events for another key and two plain ones, want 3", got)
+	}
+	if got := received(other); got != 0 {
+		t.Errorf("another campaign's stream got %d events, want none", got)
+	}
+}
