@@ -176,7 +176,9 @@ service MapService {
   // the current value, and unset fields stay as they are. Moving a point is
   // an update of x_bp and y_bp. Only the campaign's master may call it.
   // Changing the kind to anything but SUBMAP or BATTLE removes the target,
-  // and changing it from SCENE removes the point's scene actions, clues and hooks.
+  // and changing it from SCENE removes the point's scene actions, clues, hooks
+  // and "Mostrar a CD" switch (show_dc). Turning show_dc on or off while the
+  // point is the open scene sends `scene_changed` to every stream.
   //
   // Errors:
   //   - `invalid_argument`: nothing to change; a field breaks its rules;
@@ -214,7 +216,8 @@ service MapService {
 
   // AddSceneAction puts one more check on a SCENE point (MR-015): a skill
   // check, an ability check or a saving throw, with an optional name and an
-  // optional DC. Actions save one by one, as the master edits them: there is
+  // optional DC and how many attempts each player has (max_attempts, 1 by
+  // default). Actions save one by one, as the master edits them: there is
   // no "save all". Only the campaign's master may call it. The action goes
   // last. When the point is the scene open in the session, the streams get
   // `scene_changed`.
@@ -224,7 +227,7 @@ service MapService {
   //     skill, an ability check or a saving throw of the rules ("skill:
   //     investigation", "ability:str", "save:wis": never an attack, a spell
   //     or a feature); name is longer than 60 characters; dc is not 1 to
-  //     30.
+  //     30; max_attempts is not 0 to 5.
   //   - `not_found`: the point is not on this map, the map is not in this
   //     campaign, the campaign does not exist, or the caller is not a
   //     member of it.
@@ -489,7 +492,8 @@ message MapPoint {
   google.protobuf.Timestamp updated_at = 11;
   // The checks of a SCENE point (MR-015), in the order the master put them;
   // empty for any other kind. The master gets each one with its DC; a player
-  // gets them without it (RN-20), and only for a point they see (RN-10).
+  // gets the DC only when the master turned `show_dc` on for the scene
+  // (RN-20), and only for a point they see (RN-10).
   repeated SceneAction scene_actions = 12;
   // "Ganchos e anotações" (MR-029): the master's private Markdown text on a
   // SCENE point, 0 to 4,000 characters. Only the master gets it: a player
@@ -499,6 +503,14 @@ message MapPoint {
   // each with who has it. Only the master gets them: a player always gets
   // none, not even the revealed ones (those are in their notes).
   repeated SceneClue clues = 14;
+  // "Mostrar a CD aos jogadores" (MR-015, question 52): whether the scene
+  // shows its actions' DCs to the players, and whether a player sees if
+  // their own rolls passed. Only a SCENE point has it; false for any other
+  // kind and by default. The master changes it with UpdateMapPoint (or
+  // CreateMapPoint) and always sees the DCs, on or off. Everyone gets this
+  // flag: a player's copy is true exactly when their `scene_actions` carry
+  // DCs.
+  bool show_dc = 15;
 }
 
 // SceneClue is a clue the master prepared on an RP scene (MR-029), as the
@@ -538,9 +550,16 @@ message SceneAction {
   // The check's name in Portuguese: "Investigação", "Teste de Força",
   // "Salvaguarda de Sabedoria".
   string check_name = 4;
-  // The difficulty class, 1 to 30; 0 means none. Only the master receives
-  // it: a player always gets 0 (RN-20).
+  // The difficulty class, 1 to 30; 0 means none. The master always receives
+  // it; a player only when the scene's `show_dc` is on (RN-20), and then
+  // 0 still means none.
   int32 dc = 5;
+  // How many times each player's character may roll this action while the
+  // scene stays open (MR-015, question 55): 1 to 5, and 0 means unlimited.
+  // New actions have 1. Closing the scene and opening it again starts every
+  // count afresh. Every viewer gets it; the open scene
+  // (PlayService.GetOpenScene) also says how many a player has left.
+  int32 max_attempts = 6;
 }
 
 // MapToken is a character's token on a map.
@@ -686,6 +705,9 @@ message CreateMapPointRequest {
   // Only for a SCENE point: the master's hooks, 0 to 4,000 characters, with
   // line breaks. Any other kind with hooks is `invalid_argument`.
   string hooks = 9;
+  // Only for a SCENE point: true shows the scene's DCs to the players
+  // (MapPoint.show_dc). Any other kind with it true is `invalid_argument`.
+  bool show_dc = 10;
 }
 
 // CreateMapPointResponse returns the new, hidden point.
@@ -719,6 +741,12 @@ message UpdateMapPointRequest {
   // The new hooks of a SCENE point (MR-029), 0 to 4,000 characters; empty
   // clears them. The point must be a SCENE point after the change.
   optional string hooks = 11;
+  // Turns "Mostrar a CD aos jogadores" on or off (MapPoint.show_dc). The point
+  // must be a SCENE point after the change to turn it on; a point that stops
+  // being a scene loses it. When the point is the open scene, every stream
+  // gets `scene_changed`: the players read the scene again with or without the
+  // DCs.
+  optional bool show_dc = 12;
 }
 
 // UpdateMapPointResponse returns the point as saved.
@@ -801,6 +829,9 @@ message AddSceneActionRequest {
   string name = 5;
   // 1 to 30; 0 for none.
   int32 dc = 6;
+  // How many times each player's character may roll it while the scene is
+  // open: 1 to 5, or 0 for unlimited. Unset means 1.
+  optional int32 max_attempts = 7;
 }
 
 // AddSceneActionResponse returns the point's actions as they are now.
@@ -825,6 +856,10 @@ message UpdateSceneActionRequest {
   optional string name = 6;
   // The new DC, 1 to 30; 0 removes it.
   optional int32 dc = 7;
+  // The new limit of attempts per player, 1 to 5, or 0 for unlimited. Lowering
+  // it below what someone already used leaves them without attempts in the
+  // open scene; nothing is erased, and a raise gives attempts back.
+  optional int32 max_attempts = 8;
 }
 
 // UpdateSceneActionResponse returns the point's actions as they are now.

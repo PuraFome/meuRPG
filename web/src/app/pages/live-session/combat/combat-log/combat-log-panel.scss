@@ -69,7 +69,7 @@
 }
 
 .body app-log-list {
-  max-height: 440px;
+  max-height: min(760px, 85dvh);
 }
 
 .undo {

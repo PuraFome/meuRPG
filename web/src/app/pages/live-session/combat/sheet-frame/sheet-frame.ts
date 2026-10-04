@@ -24,16 +24,18 @@ import { MatIconModule } from '@angular/material/icon';
         }
         <div class="frame__titles">
           <h2 class="frame__title" [id]="titleId()" tabindex="-1">{{ title() }}</h2>
-          @if (subtitle()) {
-            <p class="frame__sub">{{ subtitle() }}</p>
-          }
         </div>
+        <!-- An extra icon button before the close one (the cast sheet's "?"). -->
+        <ng-content select="[head-action]" />
         @if (closable()) {
           <button type="button" class="frame__close" aria-label="Fechar" (click)="closed.emit()">
             <mat-icon aria-hidden="true">close</mat-icon>
           </button>
         }
       </div>
+      @if (subtitle()) {
+        <p class="frame__sub">{{ subtitle() }}</p>
+      }
       <div #body class="frame__body"><ng-content /></div>
       <div class="frame__foot"><ng-content select="[foot]" /></div>
     </div>

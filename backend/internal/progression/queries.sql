@@ -99,7 +99,7 @@ JOIN xp_awards AS a ON a.id = s.award_id
 WHERE a.campaign_id = sqlc.arg(campaign_id)::UUID AND a.mode = 'milestone' AND a.undone_at IS NULL
   AND s.character_id = sqlc.arg(character_id)::UUID AND s.level_at_mark IS NOT NULL;
 
--- The planned milestones (00100). Every query names the campaign next to the
+-- The planned milestones (00084). Every query names the campaign next to the
 -- milestone: an ID of another campaign matches no row.
 
 -- name: ListPlannedMilestones :many

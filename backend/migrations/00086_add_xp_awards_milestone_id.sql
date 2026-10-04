@@ -3,7 +3,7 @@
 -- alcançado" and "Dar a mais alguém" write it, the ad hoc "Registrar um marco
 -- fora da lista" leaves it NULL. SET NULL when the master removes a milestone
 -- that was only ever planned again (all its awards undone): the history keeps
--- the award and its reason. Index: 00103.
+-- the award and its reason. Index: 00087.
 --
 -- One statement with several parts, as 00066, so re-running it is safe (an
 -- inline REFERENCES would add the constraint again every time).

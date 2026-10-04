@@ -549,7 +549,7 @@ WHERE campaign_id = $1::UUID
 ORDER BY position, id
 `
 
-// The planned milestones (00100). Every query names the campaign next to the
+// The planned milestones (00084). Every query names the campaign next to the
 // milestone: an ID of another campaign matches no row.
 func (q *Queries) ListPlannedMilestones(ctx context.Context, campaignID string) ([]PlannedMilestone, error) {
 	rows, err := q.db.Query(ctx, listPlannedMilestones, campaignID)

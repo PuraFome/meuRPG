@@ -1,0 +1,144 @@
+:host {
+  display: block;
+}
+
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  min-width: 0;
+  padding: 16px 18px;
+
+  .mr-panel__title {
+    margin: 0;
+  }
+}
+
+.preview__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0 var(--mr-space-3);
+}
+
+.preview__count {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+// The chips are placed over the SVG by percentage; the stage is the SVG's box.
+.stage {
+  position: relative;
+  // Stacked under the setup (under 1100px) the panel is wider than the
+  // drawing needs to be.
+  max-width: 760px;
+}
+
+.stage__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.stage__paper {
+  fill: #fff;
+}
+
+.stage__grid {
+  fill: none;
+  stroke: #1b202b;
+  stroke-opacity: 0.4;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.stage__band {
+  fill: #1b202b;
+  fill-opacity: 0.32;
+}
+
+.stage__edge {
+  fill: none;
+  stroke: #1b202b;
+  stroke-width: 1;
+  stroke-dasharray: 3 2;
+  vector-effect: non-scaling-stroke;
+}
+
+// A sheet's name, in the corner of its own piece of map.
+.chip {
+  position: absolute;
+  margin: 6px 0 0 6px;
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: #1b202b;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 20px;
+  pointer-events: none;
+
+  &--small {
+    margin: 3px 0 0 3px;
+    padding: 0 4px;
+    font-size: 13px;
+    line-height: 17px;
+  }
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  margin: 0;
+  padding: var(--mr-space-4);
+  border: 1px dashed var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  color: var(--mr-ink-muted);
+  text-align: center;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-1) var(--mr-space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+
+  // One column for the icon or the swatch, so the words share a left edge;
+  // the mark sits on the middle of the first line when the words wrap.
+  li {
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr);
+    column-gap: var(--mr-space-2);
+    align-items: start;
+  }
+
+  .mat-icon {
+    justify-self: center;
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+    font-size: 18px;
+  }
+}
+
+.swatch {
+  width: 26px;
+  height: 16px;
+  margin-top: 2px;
+  box-sizing: border-box;
+  border: 1px solid var(--mr-ink);
+  background: var(--mr-surface);
+
+  &--band {
+    border: 0;
+    background: var(--mr-control-line);
+  }
+}

@@ -29,6 +29,7 @@ Tabelas novas para a mesa ao vivo:
 - `pending_damages`: o dano de um ataque ou de uma magia que acertou, e as curas, do d20 até o mestre aplicar ou descartar (MR-012, MR-014). Já existe (Etapa 6).
 - `xp_awards` e `xp_award_shares`: quem deu XP ou registrou um marco, quanto, quando e por quê, e o que cada personagem recebeu (MR-016). O modo de XP fica em `campaigns.xp_mode`. Já existem (Etapa 7, ver [Esquema implementado](#esquema-implementado)).
 - `planned_milestones`: os marcos que o mestre escreve antes numa campanha por marcos (MR-016, Etapa 8, fatia 8.10); `xp_awards.milestone_id` liga cada prêmio de marco ao marco planejado.
+- `character_level_ups` e `character_level_up_rolls`: o registro de cada subida de nível feita pelo jogador na ficha travada, que o mestre lê como "O que mudou", e o dado de vida que o servidor rolou para o próximo nível, guardado até a subida o usar (MR-040). Já existem (Etapa 8, ver [Esquema implementado](#esquema-implementado)).
 - `stage_npcs`: os NPCs "em cena" na cena aberta de uma sessão, na ordem em que entraram, no máximo 4, com quem fala (MR-031). Já existe (Etapa 8, ver [Esquema implementado](#esquema-implementado)).
 - `scene_actions`: as ações que o mestre pôs numa cena de RP (MR-015). A cena não tem tabela própria: é um ponto do mapa do tipo `scene` (`map_points`), e a cena aberta na sessão é a coluna `game_sessions.open_scene_point_id`. Já existem (Etapa 7, ver [Esquema implementado](#esquema-implementado)).
 - `scene_clues` e `scene_clue_reveals`: as pistas que o mestre prepara numa cena e a quem ele as revelou, com a cópia do texto que o jogador recebeu (MR-029). Já existem (Etapa 8, ver [Esquema implementado](#esquema-implementado)). O texto "Ganchos e anotações" é a coluna `map_points.hooks`.
@@ -67,6 +68,7 @@ Toda tabela abaixo é nova — nasce numa migration do goose de algum módulo, n
 | `pending_damages` | Sem equivalente lá |
 | `scene_actions` | Sem equivalente lá |
 | `stage_npcs` | Sem equivalente lá |
+| `character_level_ups`, `character_level_up_rolls` | Sem equivalente lá |
 | `scene_clues`, `scene_clue_reveals`, `scene_discoveries`, `player_notes` | Sem equivalente lá |
 | `xp_awards`, `xp_award_shares` | Sem equivalente lá |
 
@@ -148,6 +150,27 @@ erDiagram
         integer hit_points_temporary
         integer_array spell_slots_used
         integer hit_dice_used
+    }
+
+    character_level_ups {
+        uuid id PK
+        uuid campaign_id FK
+        uuid character_id FK
+        text class_key
+        integer from_level
+        integer to_level
+        text hp_method
+        integer hp_value
+        jsonb choices
+        timestamptz created_at
+    }
+
+    character_level_up_rolls {
+        uuid character_id PK
+        integer to_level PK
+        text class_key
+        integer die
+        integer value
     }
 
     maps {
@@ -258,6 +281,9 @@ erDiagram
     characters ||--o{ campaign_characters : "entra em"
     characters ||--o| character_master_notes : "tem"
     characters ||--o| character_vitals : "tem"
+    characters ||--o{ character_level_ups : "subiu de nível"
+    characters ||--o{ character_level_up_rolls : "tem o dado guardado"
+    campaigns ||--o{ character_level_ups : "registra"
     characters ||--o{ combatants : "atua como"
     characters |o--o| characters : "copiado de"
 
@@ -294,6 +320,7 @@ flowchart TD
         t_campaign_characters["campaign_characters, com a MR-022"]
         t_character_master_notes["character_master_notes"]
         t_character_vitals["character_vitals"]
+        t_character_level_ups["character_level_ups, character_level_up_rolls"]
     end
 
     subgraph play["Módulo play"]
@@ -390,11 +417,6 @@ Esta seção lista só o que já existe nas migrations de `backend/migrations/`.
 | `00059_add_combatants_xp_value` | `combatants` | `xp_value`: o XP que o NPC dá ao ser derrotado, copiado da ficha quando ele entra no combate (MR-016). |
 | `00060_create_xp_awards` | `xp_awards` | Cada prêmio de XP ou marco que o mestre deu (MR-016, RN-09), com o modo, o motivo, o total e o desfazer (`undone_at`, nunca um `DELETE`). |
 | `00061_create_xp_award_shares` | `xp_award_shares` | O que cada personagem recebeu de um prêmio e, num marco, o nível em que foi marcado. |
-| `00100_create_planned_milestones` | `planned_milestones` | Os marcos planejados de uma campanha por marcos (MR-016, RN-09): texto de 1 a 120 caracteres, `position` (a ordem do mestre, não única: mover renumera). "Alcançado" não é coluna. |
-| `00101_create_planned_milestones_index` | `planned_milestones` | A lista de uma campanha na ordem (`campaign_id, position`). |
-| `00102_add_xp_awards_milestone_id` | `xp_awards` | `milestone_id` (`ON DELETE SET NULL`): o marco que o prêmio marca; vazio no "marco fora da lista". |
-| `00103_create_xp_awards_milestone_index` | `xp_awards` | Os prêmios de um marco: se está alcançado, quando e para quem. |
-| `00104_add_xp_awards_milestone_again` | `xp_awards` | `milestone_again`: o prêmio é "Dar a mais alguém" e não o que alcançou o marco; serve para recusar uma chave de idempotência reusada com outro tipo de pedido. |
 | `00062_create_xp_awards_indexes` | `xp_awards`, `xp_award_shares` | O histórico de uma campanha do mais novo ao mais antigo, a chave de idempotência (única por campanha), um prêmio por inimigos por combate (índice único parcial, só onde não foi desfeito) e os prêmios de um personagem. |
 | `00063_add_xp_and_scene_session_event_kinds` | `session_events` | O `CHECK` de `kind` ganha os seis tipos da Etapa 7: `xp_awarded`, `xp_award_undone`, `milestone_marked`, `scene_opened`, `scene_closed` e `scene_check_rolled`. |
 | `00064_create_scene_actions` | `scene_actions` | As ações de uma cena de RP (MR-015): o ponto do mapa, a posição, a chave do teste (`skill:investigation`, `ability:str`, `save:wis`), o nome opcional (até 60) e a CD opcional (1 a 30). |
@@ -411,8 +433,19 @@ Esta seção lista só o que já existe nas migrations de `backend/migrations/`.
 | `00075_add_etapa8_session_event_kinds` | `session_events` | O `CHECK` de `kind` ganha `clue_revealed` (MR-029) e `stage_changed` (MR-031). |
 | `00076_create_stage_npcs` | `stage_npcs` | O palco de uma sessão (MR-031): os NPCs em cena, na ordem em que entraram, com quem fala. |
 | `00077_create_stage_npcs_one_speaker_index` | `stage_npcs` | Índice único parcial: no máximo um NPC fala por sessão. |
+| `00078_create_character_level_ups` | `character_level_ups` | O registro de cada subida de nível guiada (MR-040): a classe, o nível de antes e o de depois, como os PV foram decididos e o que o jogador escolheu (JSON). O mestre lê como "O que mudou". |
+| `00079_create_character_level_ups_indexes` | `character_level_ups` | Índices por `(campaign_id, created_at)` e por `(character_id, created_at)`: o registro da campanha e o de um personagem, do mais novo ao mais antigo. |
+| `00080_create_character_level_up_rolls` | `character_level_up_rolls` | O dado de vida que o servidor rolou para o próximo nível, guardado até a subida o usar (MR-040, RN-18). |
+| `00081_add_map_points_show_dc` | `map_points` | A chave `show_dc` ("Mostrar a CD aos jogadores", MR-015, pergunta 52): `BOOL NOT NULL DEFAULT false`, só num ponto de cena. |
+| `00082_add_scene_actions_max_attempts` | `scene_actions` | O limite de tentativas por jogador, `max_attempts` (MR-015, pergunta 55): `INT4 NOT NULL DEFAULT 1`, de 0 a 5 (0 é sem limite). |
+| `00083_add_scene_attempt_and_turn_part_event_kinds` | `session_events` | O `CHECK` de `kind` ganha `scene_attempt_granted` (MR-015) e `turn_part_ended` (MR-013, fatia 8.11). |
+| `00084_create_planned_milestones` | `planned_milestones` | Os marcos planejados de uma campanha por marcos (MR-016, RN-09): texto de 1 a 120 caracteres, `position` (a ordem do mestre, não única: mover renumera). "Alcançado" não é coluna. |
+| `00085_create_planned_milestones_index` | `planned_milestones` | A lista de uma campanha na ordem (`campaign_id, position`). |
+| `00086_add_xp_awards_milestone_id` | `xp_awards` | `milestone_id` (`ON DELETE SET NULL`): o marco que o prêmio marca; vazio no "marco fora da lista". |
+| `00087_create_xp_awards_milestone_index` | `xp_awards` | Os prêmios de um marco: se está alcançado, quando e para quem. |
+| `00088_add_xp_awards_milestone_again` | `xp_awards` | `milestone_again`: o prêmio é "Dar a mais alguém" e não o que alcançou o marco; serve para recusar uma chave de idempotência reusada com outro tipo de pedido. |
 
-As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021`, a `00022`, a `00027`, a `00034`, a `00035`, a `00036` e a `00037`, do módulo `campaigns`; as `00014` a `00017`, a `00020`, a `00023` e a `00055`, do módulo `characters` (o `xp_value` e o nível de desafio de um NPC ficam no JSON da ficha, sem migration); as `00018`, a `00019`, a `00024`, a `00032`, a `00033`, as `00043` a `00054`, `00056` a `00059`, a `00063`, a `00066`, a `00075`, a `00076` e a `00077`, do módulo `play`; as `00025`, a `00026`, as `00028` a `00031`, as `00040` a `00042`, a `00064`, a `00065` e as `00067` a `00072`, do módulo `maps`; as `00073` e `00074`, do módulo `notes`; as `00060` a `00062` e as `00100` a `00104`, do módulo `progression`. A `00027` é do documento de campanha, no `campaigns`, que chega num PR à parte. Mudanças em relação à proposta acima, no `identity`:
+As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021`, a `00022`, a `00027`, a `00034`, a `00035`, a `00036` e a `00037`, do módulo `campaigns`; as `00014` a `00017`, a `00020`, a `00023`, a `00055` e as `00078` a `00080`, do módulo `characters` (o `xp_value` e o nível de desafio de um NPC ficam no JSON da ficha, sem migration); as `00018`, a `00019`, a `00024`, a `00032`, a `00033`, as `00043` a `00054`, `00056` a `00059`, a `00063`, a `00066`, a `00075`, a `00076`, a `00077` e a `00083`, do módulo `play`; as `00025`, a `00026`, as `00028` a `00031`, as `00040` a `00042`, a `00064`, a `00065`, as `00067` a `00072`, a `00081` e a `00082`, do módulo `maps`; as `00073` e `00074`, do módulo `notes`; as `00060` a `00062` e as `00084` a `00088`, do módulo `progression`. A `00027` é do documento de campanha, no `campaigns`, que chega num PR à parte. Mudanças em relação à proposta acima, no `identity`:
 
 - `users.google_sub` e `users.email` viraram `user_identities (issuer, subject, email)`. O par `(issuer, subject)` é a chave primária, porque o `sub` só é único dentro de um provedor. Assim o código não depende do Google, e uma conta pode ter outro jeito de entrar (ADR-0009) sem mudar `users`.
 - `UNIQUE (user_id, issuer)`: uma conta tem no máximo uma identidade por provedor, então duas contas Google nunca se juntam.
@@ -462,7 +495,7 @@ No `play`:
 - **O que a sessão mostra** fica na linha da sessão: `current_map_id` (`00032`), o mapa atual, e `shown_image_id` (`00033`), a imagem que o mestre mostra aos jogadores (MR-028). Os dois são opcionais e independentes, e uma sessão nova começa sem nenhum. As chaves estrangeiras são `ON DELETE SET NULL`: apagar o mapa, ou a imagem, tira da tela. Não há índice nessas colunas: só apagar um mapa ou uma imagem procura por elas, e `game_sessions` é pequena (uma linha por noite de jogo). As duas tabelas de destino são do módulo `maps`; o `play` só guarda o ID, e confere e lê o mapa e a imagem pela interface `MapKeeper` (ver [Arquitetura](arquitetura.md#o-que-a-sessão-mostra)).
 - **As imagens deixadas com os jogadores** (`campaign_left_images`, `00039`) são da campanha, não da sessão: continuam depois que a sessão acaba, até o mestre tirar (MR-028). A chave primária é (`campaign_id`, `image_id`): lista as imagens de uma campanha e impede deixar a mesma duas vezes; `left_at` dá a ordem. Apagar a campanha ou a imagem da galeria apaga a linha (`CASCADE`). Não há índice em `image_id`: só apagar uma imagem procura por ele, e uma campanha deixa poucas imagens. O interruptor da imagem que ainda está à mostra é `game_sessions.shown_image_keep` (`00038`): ligado, parar de mostrar, trocar ou encerrar a sessão copia a imagem para esta tabela, na mesma transação.
 - Iniciar uma sessão grava a linha, trava as fichas e desliga as liberações da história, tudo na mesma transação. As duas últimas partes são do módulo `characters`, que o `play` chama por uma interface (ver [Arquitetura](arquitetura.md#módulo-play-sessões-de-jogo)).
-- **`session_events`** (`00024`, ADR-0007) é o histórico da sessão: cada mudança feita na mesa vira uma linha que nunca é alterada, gravada na mesma transação da mudança. Na Etapa 5 existe um tipo só, `character_vitals_adjusted` (a correção do mestre, RN-02); o combate (`00046`) acrescenta `encounter_started`, `initiative_submitted`, `initiative_order_set`, `combat_begun`, `turn_ended`, `combatant_moved`, `combatant_hidden_set`, `combatants_added`, `combatant_removed` e `encounter_ended`, as ações (`00051`) `attack_rolled`, `damage_rolled`, `damage_applied`, `damage_discarded`, `action_taken`, `hit_points_adjusted` e `action_undone` (o desfazer: uma linha compensatória, a desfeita continua lá), as magias e o resto (`00058`) `spell_cast`, `reaction_used`, `reaction_declined`, `death_save_rolled`, `death_confirmed` e `conditions_set`, o XP e as cenas (`00063`, Etapa 7) `xp_awarded`, `xp_award_undone`, `milestone_marked`, `scene_opened`, `scene_closed` e `scene_check_rolled`, e a mesa (`00075`, Etapa 8) `clue_revealed` e `stage_changed`, com payloads só de IDs e números (o nome de uma arma nunca entra: o registro o lê da ficha; o motivo de um prêmio de XP fica em `xp_awards`, nunca no payload). Os das cenas guardam: `scene_opened`, o `point_id` e quantas ações a cena tinha; `scene_closed`, o `point_id`; e `scene_check_rolled`, o `point_id`, o `action_id`, a chave do teste, o d20, o bônus, o total, se foi dado físico e, quando a ação tinha CD, `passed`; `clue_revealed` guarda o `clue_id`, o `point_id` e os `character_ids` que ainda não tinham a pista (nunca o texto dela): nenhum nome de pessoa, de ação ou de cena, e nenhuma CD. Cada migration que muda o `CHECK` (`session_events_kind_valid`) o reescreve inteiro; o `TestSessionEventKindsMatchTheCheck` confere que a lista do código e a do `CHECK` são a mesma. `encounter_id` (`00047`) diz a que combate o evento pertence; fica nulo nas correções dos PV e nos eventos anteriores a ele. O payload dos eventos de ação leva a rodada, `secret` (um combatente escondido estava nele: o jogador nunca recebe a linha, mesmo que o mestre mostre o combatente depois, RN-20) e o antes de tudo que o desfazer repõe (`combat_events.go`).
+- **`session_events`** (`00024`, ADR-0007) é o histórico da sessão: cada mudança feita na mesa vira uma linha que nunca é alterada, gravada na mesma transação da mudança. Na Etapa 5 existe um tipo só, `character_vitals_adjusted` (a correção do mestre, RN-02); o combate (`00046`) acrescenta `encounter_started`, `initiative_submitted`, `initiative_order_set`, `combat_begun`, `turn_ended`, `combatant_moved`, `combatant_hidden_set`, `combatants_added`, `combatant_removed` e `encounter_ended`, as ações (`00051`) `attack_rolled`, `damage_rolled`, `damage_applied`, `damage_discarded`, `action_taken`, `hit_points_adjusted` e `action_undone` (o desfazer: uma linha compensatória, a desfeita continua lá), as magias e o resto (`00058`) `spell_cast`, `reaction_used`, `reaction_declined`, `death_save_rolled`, `death_confirmed` e `conditions_set`, o XP e as cenas (`00063`, Etapa 7) `xp_awarded`, `xp_award_undone`, `milestone_marked`, `scene_opened`, `scene_closed` e `scene_check_rolled`, e a mesa (`00075`, Etapa 8) `clue_revealed` e `stage_changed`, com payloads só de IDs e números (o nome de uma arma nunca entra: o registro o lê da ficha; o motivo de um prêmio de XP fica em `xp_awards`, nunca no payload). Os das cenas guardam: `scene_opened`, o `point_id` e quantas ações a cena tinha; `scene_closed`, o `point_id`; e `scene_check_rolled`, o `point_id`, o `action_id`, a chave do teste, o d20, o bônus, o total, se foi dado físico, se a cena mostrava a CD aos jogadores na hora (`dc_shown`, o que o resumo da sessão conta) e, quando a ação tinha CD, `passed`; `scene_attempt_granted` (`00083`, "Dar mais uma tentativa"), o `point_id` e o `action_id` (o personagem é o `character_id` do evento); `clue_revealed` guarda o `clue_id`, o `point_id` e os `character_ids` que ainda não tinham a pista (nunca o texto dela): nenhum nome de pessoa, de ação ou de cena, e nenhuma CD. Cada migration que muda o `CHECK` (`session_events_kind_valid`) o reescreve inteiro; o `TestSessionEventKindsMatchTheCheck` confere que a lista do código e a do `CHECK` são a mesma. `encounter_id` (`00047`) diz a que combate o evento pertence; fica nulo nas correções dos PV e nos eventos anteriores a ele. O payload dos eventos de ação leva a rodada, `secret` (um combatente escondido estava nele: o jogador nunca recebe a linha, mesmo que o mestre mostre o combatente depois, RN-20) e o antes de tudo que o desfazer repõe (`combat_events.go`).
 - **`pending_damages`** (`00048`, MR-012, MR-014) guarda o dano de um ataque que acertou, desde o d20 até o fim: `status` é `awaiting_reaction` (o golpe acertou um personagem que pode conjurar o Escudo e espera a resposta dele, `00057`), `awaiting_roll` (acertou, falta rolar o dano), `rolled` (rolado, num personagem de jogador, esperando o mestre), `applied` ou `discarded`. `dice_count` (já dobrado no crítico), `dice_sides` e `dice_bonus` são o dano a rolar, **copiados da ficha** quando o ataque acerta, então mudar a ficha depois não mexe numa rolagem aberta; zero dados é um número fixo. `faces`, `physical` e `amount` são o que foi rolado (ou a soma digitada com o dado físico) e o dano, nulo até rolar. `damage_type` é a chave do conteúdo, como `damage-type:fire`. Uma magia (`00056`) abre linhas que dividem o `cast_id` (um rótulo, sem chave estrangeira: o evento `spell_cast` diz o que foi a conjuração, e uma área rola o dano uma vez para todas); `healing` marca uma cura, `half` o alvo que passou na resistência (o `amount` é a metade, arredondada para baixo, e `roll_total` a rolagem inteira), `applied_amount` o que o mestre aplicou quando não foi o `amount`, e `attack_total` o total do golpe enquanto espera a reação do Escudo (para compará-lo de novo com a CA mais 5, sem rolar nada). Some com o combate ou com qualquer um dos dois combatentes (`CASCADE`). Sem índice por atacante ou alvo: só tirar um combatente procura por eles.
   - `seq` numera os eventos de cada sessão a partir de 1, na ordem em que aconteceram: o próximo é o maior mais 1, lido com a linha da sessão travada (`FOR UPDATE`), e `UNIQUE (game_session_id, seq)` é a garantia final.
   - `idempotency_key` é o UUID que o app manda com a mudança; `UNIQUE (game_session_id, idempotency_key)` faz uma nova tentativa com a mesma chave não gravar nada. É `NULL` num evento sem chave (NULLs não colidem num `UNIQUE`).
@@ -476,7 +509,7 @@ No `play`:
 No `progression` (Etapa 7, MR-016, RN-09, RN-12):
 
 - **`xp_awards`** (`00060`) é o histórico de XP da campanha: uma linha por "Dar XP" ou "Registrar marco". `mode` é `enemies` (o XP dos NPCs derrotados de um combate encerrado), `gold` (1 XP por PO), `manual` (o número que o mestre digitou) ou `milestone` (sem XP: marca os personagens "pode subir de nível"), com `CHECK`. `reason` (1 a 120 caracteres) é o que o mestre escreveu; toda a campanha o lê, e ele nunca vai para um payload de `session_events`. `encounter_id` (`ON DELETE SET NULL`) é o combate de um prêmio por inimigos, `gold` as PO de um prêmio por ouro, `total_xp` o que foi dividido (0 num marco; os `CHECK` amarram cada campo ao modo). `idempotency_key` é o UUID do app (`UNIQUE (campaign_id, idempotency_key)`): a mesma chave outra vez devolve o prêmio que ela fez. **Nunca se apaga nem se reescreve** (ADR-0007): desfazer o último prêmio preenche `undone_at`, `undone_by` e `undo_key` (a chave do desfazer, que também aceita nova tentativa), e o XP volta pelas fichas. O índice único parcial `xp_awards_one_per_encounter` (`encounter_id` onde `mode = 'enemies'` e `undone_at IS NULL`) garante um prêmio por combate, a menos que seja desfeito. `given_by` e `undone_by` ficam nulos (`SET NULL`) se a conta for excluída.
-- **`planned_milestones`** (`00100`, fatia 8.10) guarda os marcos planejados de uma campanha: `text` (1 a 120 caracteres, ficção do mestre) e `position` (a ordem dele; mover renumera a lista numa transação). Apagar a campanha apaga os marcos (`CASCADE`). Um marco está **alcançado** enquanto algum `xp_awards` com `milestone_id` igual ao dele não foi desfeito: desfazer a única marca o faz voltar a planejado, sem nada para manter em sincronia. O `milestone_id` (`00102`) é `SET NULL` por segurança, mas a API nunca remove um marco que teve algum prêmio (vivo ou desfeito), então um prêmio nunca perde o vínculo.
+- **`planned_milestones`** (`00084`, fatia 8.10) guarda os marcos planejados de uma campanha: `text` (1 a 120 caracteres, ficção do mestre) e `position` (a ordem dele; mover renumera a lista numa transação). Apagar a campanha apaga os marcos (`CASCADE`). Um marco está **alcançado** enquanto algum `xp_awards` com `milestone_id` igual ao dele não foi desfeito: desfazer a única marca o faz voltar a planejado, sem nada para manter em sincronia. O `milestone_id` (`00086`) é `SET NULL` por segurança, mas a API nunca remove um marco que teve algum prêmio (vivo ou desfeito), então um prêmio nunca perde o vínculo.
 - **`xp_award_shares`** (`00061`) é o que cada personagem recebeu: `xp` (a divisão do total, arredondada para baixo, pergunta 46; 0 num marco) e, só num marco, `level_at_mark`, o nível total do personagem quando foi marcado. A marca "Pode subir de nível" dura enquanto o nível da ficha não passa de `level_at_mark`: compara-se na leitura, e nada é gravado quando o mestre sobe o nível (pergunta 48). Some com o prêmio ou com o personagem (`CASCADE`).
 - **O XP em si** continua em `FullSheet.experience_points`, no JSON da ficha (módulo `characters`): o prêmio soma a parte de cada um lá, na mesma transação, e o desfazer subtrai (nunca abaixo de 0). A trava da ficha (RN-01) não impede, porque é um ato do mestre. A revisão da ficha sobe, então uma edição que o jogador abriu antes é recusada como velha.
 - **`combatants.xp_value`** (`00059`) é o XP de um NPC derrotado, copiado da ficha ao entrar no combate, como a velocidade: editar a ficha depois não mexe num combate em andamento. Só o mestre o recebe (RN-20).
@@ -496,7 +529,8 @@ No `maps`:
 - **`map_points`** (`00029`): `kind` é `battle`, `submap` ou `scene` (`CHECK`); `name` (1 a 80) e `description` (até 2.000 caracteres, várias linhas) são texto livre do mestre para os jogadores; `x_bp` e `y_bp` são a posição em pontos-base da largura e da altura da imagem, de 0 a 10000 (`CHECK`), então não dependem do tamanho da imagem.
   - `target_map_id` é o mapa ao qual um ponto de submapa leva, ou o mapa do combate de um ponto de batalha (MR-013): só num `submap` ou `battle` (`CHECK map_points_only_submaps_and_battles_lead`, `00042`), nunca o próprio mapa (`CHECK map_points_not_own_target`), e sempre da mesma campanha (conferido pelo servidor). Apagar o mapa de destino deixa o ponto sem destino (`SET NULL`); apagar o mapa do ponto apaga o ponto (`CASCADE`).
   - `revealed_at` funciona como no mapa, e todo ponto nasce escondido.
-- **`scene_actions`** (`00064`, `00065`, MR-015) são as ações de uma cena de RP, uma linha por ação: `point_id` é um ponto `scene` (`ON DELETE CASCADE`; a API só aceita ação em ponto desse tipo, e apaga as ações quando o ponto muda de tipo), `position` ordena as ações do ponto a partir de 0 (não é única: mover renumera a lista numa transação), `key` é `skill:<perícia>`, `ability:<atributo>` ou `save:<atributo>` (o `CHECK` só deixa passar esse formato, e a API confere a chave no catálogo das regras, `rules.Content.SceneCheckName`: ataque, magia e habilidade de combate nunca entram, MR-015), `name` é o nome que o mestre deu ("Convencer o guarda", até 60 caracteres, vazio para nenhum) e `dc` vai de 1 a 30 ou é `NULL`. No máximo 20 ações por ponto (pergunta 51, aceita pelo Samuel em 03/10/2026), conferido na transação do `INSERT`. A CD só o mestre recebe (RN-20).
+- **`scene_actions`** (`00064`, `00065`, MR-015) são as ações de uma cena de RP, uma linha por ação: `point_id` é um ponto `scene` (`ON DELETE CASCADE`; a API só aceita ação em ponto desse tipo, e apaga as ações quando o ponto muda de tipo), `position` ordena as ações do ponto a partir de 0 (não é única: mover renumera a lista numa transação), `key` é `skill:<perícia>`, `ability:<atributo>` ou `save:<atributo>` (o `CHECK` só deixa passar esse formato, e a API confere a chave no catálogo das regras, `rules.Content.SceneCheckName`: ataque, magia e habilidade de combate nunca entram, MR-015), `name` é o nome que o mestre deu ("Convencer o guarda", até 60 caracteres, vazio para nenhum) e `dc` vai de 1 a 30 ou é `NULL`. No máximo 20 ações por ponto (pergunta 51, aceita pelo Samuel em 03/10/2026), conferido na transação do `INSERT`. A CD o mestre sempre recebe; o jogador só a recebe quando `map_points.show_dc` está ligada (RN-20). `max_attempts` (`00082`, pergunta 55) é quantas vezes cada jogador pode rolar a ação enquanto a cena está aberta: 1 por padrão, de 1 a 5, ou 0 para sem limite; as rolagens e as tentativas dadas ficam em `session_events`, então baixar o limite não apaga nada. `map_points.show_dc` (`00081`, pergunta 52) é a chave "Mostrar a CD aos jogadores", desligada por padrão; só um ponto de cena a liga, e um ponto que deixa de ser cena a perde.
+- **O registro da subida de nível** (`00078`, `00079`, MR-040) é `character_level_ups`: uma linha por subida guiada, escrita na mesma transação que grava a ficha e nunca mais mudada. `campaign_id` e `character_id` são `ON DELETE CASCADE`. `class_key` é a classe que ganhou o nível, `from_level` e `to_level` são os níveis totais (`to_level = from_level + 1`, conferido por `CHECK`), `hp_method` (`average`, `rolled_in_app` ou `rolled_physical`) e `hp_value` (1 a 12) repetem os PV do nível para o histórico ser lido sem abrir o JSON, e `choices` é o `protojson` de `LevelUpChoices`: só o que foi novo (o aumento de atributo, a subclasse, os truques, as magias, as preparadas, as opções, as perícias e a especialização) e os PV, tudo em chaves de conteúdo e números, nenhum texto livre. O mestre lê o registro da campanha do mais novo ao mais antigo, em páginas de até 50 (`ListLevelUps`, com `page_token`), pelo índice `(campaign_id, created_at DESC, id DESC)`. **O dado rolado** (`00080`) é `character_level_up_rolls`, uma linha por `(character_id, to_level)`, **não** por classe: o servidor rola o dado de vida do próximo nível uma vez e devolve o mesmo resultado nas chamadas seguintes, então o jogador não rola de novo até gostar do número (RN-18), e um personagem de duas classes não rola um d6 e um d12 para o mesmo nível e fica com o melhor. `class_key` é a classe que rolou, e a rolagem só vale para ela. Se o mestre baixa o nível na ficha, a rolagem de um nível acima fica guardada e ainda vale quando o personagem chegar lá. A subida usa a linha e a apaga; o valor continua em `character_level_ups`. `die` (6, 8, 10 ou 12) e `value` (1 a `die`) são conferidos por `CHECK`.
 - **O palco** (`00076`, `00077`, MR-031, D7) é uma tabela pequena, `stage_npcs`, e não colunas de `game_sessions`: uma linha por NPC em cena, com `game_session_id` e `character_id` (os dois `ON DELETE CASCADE`: um NPC apagado sai de cena), `position` (a ordem de entrada, a partir de 0; um NPC novo toma a maior posição mais um, então tirar um deixa um buraco que não muda a ordem), `speaking` e `created_at`. `UNIQUE (game_session_id, character_id)` impede o mesmo NPC duas vezes, e o índice único parcial `stage_npcs_one_speaker` (`00077`) deixa no máximo um falando. O limite de 4 é conferido na transação que insere, com a linha da sessão travada, como o das ações de uma cena. `id` é o lugar no palco, feito quando o NPC entra: é o que a cópia do jogador leva no lugar do ID do personagem, que é segredo do mestre (RN-20). Fechar ou trocar a cena apaga as linhas da sessão; a sessão encerrada só deixa de ser lida. Cada mudança é um `session_events` `stage_changed`, com o payload só de IDs (`change`: `put`, `taken_off`, `speaker` ou `cleared`, e o `character_id`).
 - **O retrato do NPC** (MR-031) não tem coluna: é o campo `portrait_image_id` do JSON da ficha (`FullSheet` e `BasicSheet`), o ID de uma imagem da galeria da campanha. A ficha de um jogador o recusa, e o servidor confere que a imagem é da campanha. Apagar a imagem da galeria tira o campo das fichas que o têm, na mesma transação, e sobe a `revision` delas (`UPDATE ... sheet #- '{...}'`); sem migration, porque a ficha é JSON.
 - **A cena aberta** (`00066`): `game_sessions.open_scene_point_id` é o ponto `scene` que o mestre abriu na sessão, um de cada vez, como `current_map_id` e `shown_image_id`. `NULL` é nenhuma cena; uma sessão nova começa sem cena. Abrir um ponto escondido não o revela no mapa (RN-10). Apagar o ponto fecha a cena (`SET NULL`); mudar o tipo do ponto faz a cena ler como fechada. O que vale como "cena aberta de novo" é o último `scene_opened` da sessão: uma rolagem só conta, para a regra de uma rolagem por ação (a que a pergunta 55, decidida pelo Samuel em 03/10/2026, vai trocar por tentativas definidas pelo mestre; ainda a fazer), se vier depois dele, então fechar e abrir a cena zera as rolagens sem apagar nenhuma linha do histórico.
@@ -644,6 +678,28 @@ erDiagram
         timestamptz updated_at
     }
 
+    character_level_ups {
+        uuid id PK
+        uuid campaign_id FK "CASCADE"
+        uuid character_id FK "CASCADE"
+        text class_key "a classe que ganhou o nível"
+        int4 from_level "nível total antes"
+        int4 to_level "nível total depois, from_level + 1"
+        text hp_method "average, rolled_in_app ou rolled_physical"
+        int4 hp_value "1 a 12: o que o nível tomou"
+        jsonb choices "LevelUpChoices: só o que é novo"
+        timestamptz created_at
+    }
+
+    character_level_up_rolls {
+        uuid character_id PK "e FK, CASCADE"
+        int4 to_level PK "nível total depois"
+        text class_key "a classe que rolou"
+        int4 die "6, 8, 10 ou 12"
+        int4 value "1 a die"
+        timestamptz created_at
+    }
+
     session_events {
         uuid id PK
         uuid game_session_id FK
@@ -766,6 +822,7 @@ erDiagram
         text name "1 a 80"
         text description "até 2000"
         text hooks "Ganchos e anotações, só o mestre, até 4000"
+        bool show_dc "Mostrar a CD aos jogadores, só cena; padrão false"
         int4 x_bp "0 a 10000"
         int4 y_bp "0 a 10000"
         uuid target_map_id FK "submap ou battle, SET NULL"
@@ -780,7 +837,8 @@ erDiagram
         int4 position "ordem na lista, de 0"
         text key "skill:..., ability:... ou save:..."
         text name "até 60, vazio: sem nome"
-        int4 dc "1 a 30, opcional; só o mestre vê"
+        int4 dc "1 a 30, opcional; o mestre vê, o jogador só com show_dc"
+        int4 max_attempts "tentativas por jogador: 1 a 5, 0 sem limite; padrão 1"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -873,6 +931,9 @@ erDiagram
     characters ||--o{ character_master_notes : "tem"
     campaigns ||--o{ game_sessions : "realiza"
     characters ||--o| character_vitals : "tem"
+    characters ||--o{ character_level_ups : "subiu de nível"
+    campaigns ||--o{ character_level_ups : "registra"
+    characters ||--o{ character_level_up_rolls : "tem o dado guardado"
     game_sessions ||--o{ session_events : "registra"
     users |o--o{ session_events : "fez"
     characters |o--o{ session_events : "é assunto de"

@@ -16,9 +16,10 @@
       <dd class="box__value">{{ formatModifier(init) }}</dd>
     </div>
   }
-  <div class="box">
-    <dt class="stat__label">Deslocamento ({{ speedFt() }} pés)</dt>
-    <dd class="box__value">{{ formatMeters(speedFt()) }}</dd>
+  <div class="box box--speed">
+    <dt class="stat__label">Deslocamento</dt>
+    <!-- One run of text, not flex items: a wrapped line must never begin with the dot. -->
+    <dd class="box__value box__value--speed">{{ speed().meters }}<span class="speed__rest">&nbsp;· {{ speed().rest }}</span></dd>
   </div>
 
   <div class="hp" [class.hp--wide]="dice === null">

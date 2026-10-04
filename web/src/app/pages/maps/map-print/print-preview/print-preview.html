@@ -1,0 +1,61 @@
+<section class="mr-panel preview" aria-labelledby="preview-title">
+  <div class="preview__head">
+    <h2 class="mr-panel__title" id="preview-title">As folhas sobre o mapa</h2>
+    @if (plan()) {
+      <span class="preview__count" role="status">{{ summary() }}</span>
+    }
+  </div>
+
+  @if (plan(); as p) {
+    @if (image(); as img) {
+      <div class="stage">
+        <svg
+          class="stage__svg"
+          role="img"
+          [attr.viewBox]="viewBox()"
+          [attr.aria-label]="description()"
+        >
+          <rect class="stage__paper" x="0" y="0" [attr.width]="glued()!.width" [attr.height]="glued()!.height" />
+          <image
+            [attr.href]="img.url"
+            x="0"
+            y="0"
+            [attr.width]="mapSize()!.width"
+            [attr.height]="mapSize()!.height"
+            preserveAspectRatio="none"
+          />
+          <path class="stage__grid" [attr.d]="gridPath()" />
+          @for (x of vBands(); track x) {
+            <rect class="stage__band" [attr.x]="x" y="0" [attr.width]="overlap" [attr.height]="glued()!.height" />
+          }
+          @for (y of hBands(); track y) {
+            <rect class="stage__band" x="0" [attr.y]="y" [attr.width]="glued()!.width" [attr.height]="overlap" />
+          }
+          <rect class="stage__edge" x="0" y="0" [attr.width]="glued()!.width" [attr.height]="glued()!.height" />
+        </svg>
+        @for (chip of chips(); track chip.name) {
+          <span
+            class="chip"
+            [class.chip--small]="smallLabels()"
+            aria-hidden="true"
+            [style.left.%]="chip.left"
+            [style.top.%]="chip.top"
+            >{{ chip.name }}</span
+          >
+        }
+      </div>
+    }
+    <ul class="legend">
+      <li><span class="swatch swatch--sheet"></span>Uma folha ({{ usable() }})</li>
+      <li>
+        <span class="swatch swatch--band"></span>Faixa de {{ overlap }}&nbsp;cm que sai nas duas folhas
+      </li>
+      <li>
+        <mat-icon aria-hidden="true">info</mat-icon>{{ spare() }}
+      </li>
+      <li><mat-icon aria-hidden="true">warning</mat-icon>Prévia fora de escala</li>
+    </ul>
+  } @else {
+    <p class="empty">A prévia volta quando o tamanho do quadrado for válido.</p>
+  }
+</section>

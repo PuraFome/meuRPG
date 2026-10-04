@@ -58,7 +58,7 @@
       @if (total(); as t) {
         <span class="type__num">{{ t.sum }}</span>
         <span class="type__formula">
-          <span>{{ t.text }} · dado físico</span>
+          <span>{{ modifier() === 0 ? t.sum : t.text }} · dado físico</span>
           <span class="type__cap">{{ totalNote() }}</span>
         </span>
       } @else {

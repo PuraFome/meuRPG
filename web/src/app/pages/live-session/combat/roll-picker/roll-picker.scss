@@ -13,6 +13,7 @@
 // (one filled button per screen).
 // Inside a sheet that scrolls, the buttons stay at its bottom.
 .foot {
+  margin-top: 8px;
   position: sticky;
   bottom: 0;
   z-index: 1;
@@ -53,6 +54,8 @@
 }
 
 .pick__link {
+  min-height: 44px;
+  padding: 0 12px;
   --mat-button-filled-container-color: transparent;
   --mat-button-filled-container-height: 44px;
   border: 0;
@@ -142,6 +145,7 @@
 }
 
 .type__sum {
+  margin-bottom: 4px;
   display: flex;
   align-items: center;
   gap: 14px;

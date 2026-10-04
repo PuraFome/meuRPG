@@ -8,7 +8,7 @@
 -- reached (RN-20).
 --
 -- "Reached" is not a column: a milestone is reached while at least one of the
--- xp_awards that name it (xp_awards.milestone_id, 00102) is not undone, so
+-- xp_awards that name it (xp_awards.milestone_id, 00086) is not undone, so
 -- undoing the last mark makes it planned again with nothing to keep in step.
 -- A reached milestone is never edited, moved nor removed (the API refuses).
 --

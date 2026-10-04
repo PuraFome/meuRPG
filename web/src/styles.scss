@@ -244,6 +244,14 @@ html {
   max-height: calc(100dvh - 24px);
 }
 
+// A dialog laid out like a phone's bottom sheet: the "?" inside the cast sheet
+// opens the spell's details over it (a second bottom sheet would close the
+// first and lose its choices). `panelClass` lands on the overlay pane.
+.mr-sheet-over .mat-mdc-dialog-container {
+  --mat-dialog-container-shape: 28px 28px 0 0;
+  --mdc-dialog-container-shape: 28px 28px 0 0;
+}
+
 // The ND list of the NPC editor (E7-11): six rows of 44px, then it scrolls,
 // with a quiet "mais 28 opções" stuck under the last visible row.
 .mr-nd-panel.mat-mdc-select-panel {

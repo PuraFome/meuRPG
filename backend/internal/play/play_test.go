@@ -125,6 +125,21 @@ func TestAuthorizationMatrix(t *testing.T) {
 			}))
 			return err
 		}, [5]connect.Code{connect.CodePermissionDenied, connect.CodeFailedPrecondition, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		// One more attempt (MR-015, question 55). No scene is open here, so the
+		// master's grant is refused by the state (NO_OPEN_SCENE); the full matrix,
+		// with a scene, is in package maps' tests (TestSceneAuthorizationMatrix).
+		{"GrantSceneAttempt", func(ctx context.Context, c client) error {
+			_, err := c.GrantSceneAttempt(ctx, connect.NewRequest(&playv1.GrantSceneAttemptRequest{
+				CampaignId: campaign, ActionId: campaign, CharacterId: pc.GetId(), IdempotencyKey: newKey(),
+			}))
+			return err
+		}, [5]connect.Code{connect.CodeFailedPrecondition, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		// The session summary (MR-032): any member, for an ended session. The
+		// first row ended `open`, so it is ended for every caller after it.
+		{"GetSessionSummary", func(ctx context.Context, c client) error {
+			_, err := c.GetSessionSummary(ctx, connect.NewRequest(&playv1.GetSessionSummaryRequest{CampaignId: campaign, GameSessionId: open.GetId()}))
+			return err
+		}, [5]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
 		// The stage (MR-031). No scene is open here, so the master's PutOnStage
 		// is refused by the state (NO_OPEN_SCENE); the full matrix, with a scene
 		// and NPCs, is in package maps' tests (TestStageAuthorizationMatrix).
@@ -454,6 +469,10 @@ func (noRoster) CombatCharacters(context.Context, string, []string) ([]link.Char
 	return nil, errors.New("not in this test")
 }
 
+func (noRoster) SessionCharacters(context.Context, string, []string) ([]link.Character, error) {
+	return nil, nil
+}
+
 func (noRoster) CombatSheet(context.Context, string, string) (link.Sheet, error) {
 	return link.Sheet{}, errors.New("not in this test")
 }
@@ -564,6 +583,8 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["RollSceneCheck"] = c.RollSceneCheck(ctx, connect.NewRequest(&playv1.RollSceneCheckRequest{
 		CampaignId: id, ActionId: id, IdempotencyKey: id, Roll: &playv1.RollSceneCheckRequest_RollInApp{RollInApp: true},
 	}))
+	_, calls["GrantSceneAttempt"] = c.GrantSceneAttempt(ctx, connect.NewRequest(&playv1.GrantSceneAttemptRequest{CampaignId: id, ActionId: id, CharacterId: id, IdempotencyKey: id}))
+	_, calls["GetSessionSummary"] = c.GetSessionSummary(ctx, connect.NewRequest(&playv1.GetSessionSummaryRequest{CampaignId: id, GameSessionId: id}))
 	_, calls["PutOnStage"] = c.PutOnStage(ctx, connect.NewRequest(&playv1.PutOnStageRequest{CampaignId: id, CharacterId: id}))
 	_, calls["TakeOffStage"] = c.TakeOffStage(ctx, connect.NewRequest(&playv1.TakeOffStageRequest{CampaignId: id, CharacterId: id}))
 	_, calls["SetSpeaker"] = c.SetSpeaker(ctx, connect.NewRequest(&playv1.SetSpeakerRequest{CampaignId: id}))
@@ -630,6 +651,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	for method, want := range map[string]descriptorpb.MethodOptions_IdempotencyLevel{
 		"ListGameSessions":     descriptorpb.MethodOptions_IDEMPOTENT,
 		"GetLiveSession":       descriptorpb.MethodOptions_IDEMPOTENT,
+		"GetSessionSummary":    descriptorpb.MethodOptions_IDEMPOTENT,
 		"ListLeftImages":       descriptorpb.MethodOptions_IDEMPOTENT,
 		"ListOpenGameSessions": descriptorpb.MethodOptions_NO_SIDE_EFFECTS, // an empty request
 	} {

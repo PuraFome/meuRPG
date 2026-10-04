@@ -481,7 +481,8 @@ type MapPoint struct {
 	UpdatedAt *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	// The checks of a SCENE point (MR-015), in the order the master put them;
 	// empty for any other kind. The master gets each one with its DC; a player
-	// gets them without it (RN-20), and only for a point they see (RN-10).
+	// gets the DC only when the master turned `show_dc` on for the scene
+	// (RN-20), and only for a point they see (RN-10).
 	SceneActions []*SceneAction `protobuf:"bytes,12,rep,name=scene_actions,json=sceneActions,proto3" json:"scene_actions,omitempty"`
 	// "Ganchos e anotações" (MR-029): the master's private Markdown text on a
 	// SCENE point, 0 to 4,000 characters. Only the master gets it: a player
@@ -490,7 +491,15 @@ type MapPoint struct {
 	// The clues of a SCENE point (MR-029), in the order the master put them,
 	// each with who has it. Only the master gets them: a player always gets
 	// none, not even the revealed ones (those are in their notes).
-	Clues         []*SceneClue `protobuf:"bytes,14,rep,name=clues,proto3" json:"clues,omitempty"`
+	Clues []*SceneClue `protobuf:"bytes,14,rep,name=clues,proto3" json:"clues,omitempty"`
+	// "Mostrar a CD aos jogadores" (MR-015, question 52): whether the scene
+	// shows its actions' DCs to the players, and whether a player sees if
+	// their own rolls passed. Only a SCENE point has it; false for any other
+	// kind and by default. The master changes it with UpdateMapPoint (or
+	// CreateMapPoint) and always sees the DCs, on or off. Everyone gets this
+	// flag: a player's copy is true exactly when their `scene_actions` carry
+	// DCs.
+	ShowDc        bool `protobuf:"varint,15,opt,name=show_dc,json=showDc,proto3" json:"show_dc,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -621,6 +630,13 @@ func (x *MapPoint) GetClues() []*SceneClue {
 		return x.Clues
 	}
 	return nil
+}
+
+func (x *MapPoint) GetShowDc() bool {
+	if x != nil {
+		return x.ShowDc
+	}
+	return false
 }
 
 // SceneClue is a clue the master prepared on an RP scene (MR-029), as the
@@ -769,9 +785,16 @@ type SceneAction struct {
 	// The check's name in Portuguese: "Investigação", "Teste de Força",
 	// "Salvaguarda de Sabedoria".
 	CheckName string `protobuf:"bytes,4,opt,name=check_name,json=checkName,proto3" json:"check_name,omitempty"`
-	// The difficulty class, 1 to 30; 0 means none. Only the master receives
-	// it: a player always gets 0 (RN-20).
-	Dc            int32 `protobuf:"varint,5,opt,name=dc,proto3" json:"dc,omitempty"`
+	// The difficulty class, 1 to 30; 0 means none. The master always receives
+	// it; a player only when the scene's `show_dc` is on (RN-20), and then
+	// 0 still means none.
+	Dc int32 `protobuf:"varint,5,opt,name=dc,proto3" json:"dc,omitempty"`
+	// How many times each player's character may roll this action while the
+	// scene stays open (MR-015, question 55): 1 to 5, and 0 means unlimited.
+	// New actions have 1. Closing the scene and opening it again starts every
+	// count afresh. Every viewer gets it; the open scene
+	// (PlayService.GetOpenScene) also says how many a player has left.
+	MaxAttempts   int32 `protobuf:"varint,6,opt,name=max_attempts,json=maxAttempts,proto3" json:"max_attempts,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -837,6 +860,13 @@ func (x *SceneAction) GetCheckName() string {
 func (x *SceneAction) GetDc() int32 {
 	if x != nil {
 		return x.Dc
+	}
+	return 0
+}
+
+func (x *SceneAction) GetMaxAttempts() int32 {
+	if x != nil {
+		return x.MaxAttempts
 	}
 	return 0
 }
@@ -1732,7 +1762,10 @@ type CreateMapPointRequest struct {
 	TargetMapId string `protobuf:"bytes,8,opt,name=target_map_id,json=targetMapId,proto3" json:"target_map_id,omitempty"`
 	// Only for a SCENE point: the master's hooks, 0 to 4,000 characters, with
 	// line breaks. Any other kind with hooks is `invalid_argument`.
-	Hooks         string `protobuf:"bytes,9,opt,name=hooks,proto3" json:"hooks,omitempty"`
+	Hooks string `protobuf:"bytes,9,opt,name=hooks,proto3" json:"hooks,omitempty"`
+	// Only for a SCENE point: true shows the scene's DCs to the players
+	// (MapPoint.show_dc). Any other kind with it true is `invalid_argument`.
+	ShowDc        bool `protobuf:"varint,10,opt,name=show_dc,json=showDc,proto3" json:"show_dc,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1830,6 +1863,13 @@ func (x *CreateMapPointRequest) GetHooks() string {
 	return ""
 }
 
+func (x *CreateMapPointRequest) GetShowDc() bool {
+	if x != nil {
+		return x.ShowDc
+	}
+	return false
+}
+
 // CreateMapPointResponse returns the new, hidden point.
 type CreateMapPointResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -1901,7 +1941,13 @@ type UpdateMapPointRequest struct {
 	Revealed *bool `protobuf:"varint,10,opt,name=revealed,proto3,oneof" json:"revealed,omitempty"`
 	// The new hooks of a SCENE point (MR-029), 0 to 4,000 characters; empty
 	// clears them. The point must be a SCENE point after the change.
-	Hooks         *string `protobuf:"bytes,11,opt,name=hooks,proto3,oneof" json:"hooks,omitempty"`
+	Hooks *string `protobuf:"bytes,11,opt,name=hooks,proto3,oneof" json:"hooks,omitempty"`
+	// Turns "Mostrar a CD aos jogadores" on or off (MapPoint.show_dc). The point
+	// must be a SCENE point after the change to turn it on; a point that stops
+	// being a scene loses it. When the point is the open scene, every stream
+	// gets `scene_changed`: the players read the scene again with or without the
+	// DCs.
+	ShowDc        *bool `protobuf:"varint,12,opt,name=show_dc,json=showDc,proto3,oneof" json:"show_dc,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2011,6 +2057,13 @@ func (x *UpdateMapPointRequest) GetHooks() string {
 		return *x.Hooks
 	}
 	return ""
+}
+
+func (x *UpdateMapPointRequest) GetShowDc() bool {
+	if x != nil && x.ShowDc != nil {
+		return *x.ShowDc
+	}
+	return false
 }
 
 // UpdateMapPointResponse returns the point as saved.
@@ -2619,7 +2672,10 @@ type AddSceneActionRequest struct {
 	// 0 to 60 characters, one line; empty for none.
 	Name string `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
 	// 1 to 30; 0 for none.
-	Dc            int32 `protobuf:"varint,6,opt,name=dc,proto3" json:"dc,omitempty"`
+	Dc int32 `protobuf:"varint,6,opt,name=dc,proto3" json:"dc,omitempty"`
+	// How many times each player's character may roll it while the scene is
+	// open: 1 to 5, or 0 for unlimited. Unset means 1.
+	MaxAttempts   *int32 `protobuf:"varint,7,opt,name=max_attempts,json=maxAttempts,proto3,oneof" json:"max_attempts,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2696,6 +2752,13 @@ func (x *AddSceneActionRequest) GetDc() int32 {
 	return 0
 }
 
+func (x *AddSceneActionRequest) GetMaxAttempts() int32 {
+	if x != nil && x.MaxAttempts != nil {
+		return *x.MaxAttempts
+	}
+	return 0
+}
+
 // AddSceneActionResponse returns the point's actions as they are now.
 type AddSceneActionResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -2765,7 +2828,11 @@ type UpdateSceneActionRequest struct {
 	// The new name, 0 to 60 characters; empty removes it.
 	Name *string `protobuf:"bytes,6,opt,name=name,proto3,oneof" json:"name,omitempty"`
 	// The new DC, 1 to 30; 0 removes it.
-	Dc            *int32 `protobuf:"varint,7,opt,name=dc,proto3,oneof" json:"dc,omitempty"`
+	Dc *int32 `protobuf:"varint,7,opt,name=dc,proto3,oneof" json:"dc,omitempty"`
+	// The new limit of attempts per player, 1 to 5, or 0 for unlimited. Lowering
+	// it below what someone already used leaves them without attempts in the
+	// open scene; nothing is erased, and a raise gives attempts back.
+	MaxAttempts   *int32 `protobuf:"varint,8,opt,name=max_attempts,json=maxAttempts,proto3,oneof" json:"max_attempts,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2845,6 +2912,13 @@ func (x *UpdateSceneActionRequest) GetName() string {
 func (x *UpdateSceneActionRequest) GetDc() int32 {
 	if x != nil && x.Dc != nil {
 		return *x.Dc
+	}
+	return 0
+}
+
+func (x *UpdateSceneActionRequest) GetMaxAttempts() int32 {
+	if x != nil && x.MaxAttempts != nil {
+		return *x.MaxAttempts
 	}
 	return 0
 }
@@ -3780,7 +3854,7 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\x04name\x18\x06 \x01(\tR\x04name\",\n" +
 	"\x06MapRef\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\"\x91\x04\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"\xaa\x04\n" +
 	"\bMapPoint\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x15\n" +
 	"\x06map_id\x18\x02 \x01(\tR\x05mapId\x120\n" +
@@ -3799,7 +3873,8 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"updated_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12@\n" +
 	"\rscene_actions\x18\f \x03(\v2\x1b.meurpg.maps.v1.SceneActionR\fsceneActions\x12\x14\n" +
 	"\x05hooks\x18\r \x01(\tR\x05hooks\x12/\n" +
-	"\x05clues\x18\x0e \x03(\v2\x19.meurpg.maps.v1.SceneClueR\x05clues\"o\n" +
+	"\x05clues\x18\x0e \x03(\v2\x19.meurpg.maps.v1.SceneClueR\x05clues\x12\x17\n" +
+	"\ashow_dc\x18\x0f \x01(\bR\x06showDc\"o\n" +
 	"\tSceneClue\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12>\n" +
@@ -3809,14 +3884,15 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12%\n" +
 	"\x0echaracter_name\x18\x02 \x01(\tR\rcharacterName\x12;\n" +
 	"\vrevealed_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"revealedAt\"r\n" +
+	"revealedAt\"\x95\x01\n" +
 	"\vSceneAction\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
 	"\x03key\x18\x02 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x1d\n" +
 	"\n" +
 	"check_name\x18\x04 \x01(\tR\tcheckName\x12\x0e\n" +
-	"\x02dc\x18\x05 \x01(\x05R\x02dc\"\x9e\x02\n" +
+	"\x02dc\x18\x05 \x01(\x05R\x02dc\x12!\n" +
+	"\fmax_attempts\x18\x06 \x01(\x05R\vmaxAttempts\"\x9e\x02\n" +
 	"\bMapToken\x12\x15\n" +
 	"\x06map_id\x18\x01 \x01(\tR\x05mapId\x12!\n" +
 	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\x12\x12\n" +
@@ -3877,7 +3953,7 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\x06map_id\x18\x02 \x01(\tR\x05mapId\x12\x18\n" +
 	"\acolumns\x18\x03 \x01(\x05R\acolumns\";\n" +
 	"\x12SetMapGridResponse\x12%\n" +
-	"\x03map\x18\x01 \x01(\v2\x13.meurpg.maps.v1.MapR\x03map\"\x97\x02\n" +
+	"\x03map\x18\x01 \x01(\v2\x13.meurpg.maps.v1.MapR\x03map\"\xb0\x02\n" +
 	"\x15CreateMapPointRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x15\n" +
@@ -3888,9 +3964,11 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\x04x_bp\x18\x06 \x01(\x05R\x03xBp\x12\x11\n" +
 	"\x04y_bp\x18\a \x01(\x05R\x03yBp\x12\"\n" +
 	"\rtarget_map_id\x18\b \x01(\tR\vtargetMapId\x12\x14\n" +
-	"\x05hooks\x18\t \x01(\tR\x05hooks\"H\n" +
+	"\x05hooks\x18\t \x01(\tR\x05hooks\x12\x17\n" +
+	"\ashow_dc\x18\n" +
+	" \x01(\bR\x06showDc\"H\n" +
 	"\x16CreateMapPointResponse\x12.\n" +
-	"\x05point\x18\x01 \x01(\v2\x18.meurpg.maps.v1.MapPointR\x05point\"\xd3\x03\n" +
+	"\x05point\x18\x01 \x01(\v2\x18.meurpg.maps.v1.MapPointR\x05point\"\xfd\x03\n" +
 	"\x15UpdateMapPointRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x15\n" +
@@ -3904,7 +3982,8 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\rtarget_map_id\x18\t \x01(\tH\x05R\vtargetMapId\x88\x01\x01\x12\x1f\n" +
 	"\brevealed\x18\n" +
 	" \x01(\bH\x06R\brevealed\x88\x01\x01\x12\x19\n" +
-	"\x05hooks\x18\v \x01(\tH\aR\x05hooks\x88\x01\x01B\a\n" +
+	"\x05hooks\x18\v \x01(\tH\aR\x05hooks\x88\x01\x01\x12\x1c\n" +
+	"\ashow_dc\x18\f \x01(\bH\bR\x06showDc\x88\x01\x01B\a\n" +
 	"\x05_kindB\a\n" +
 	"\x05_nameB\x0e\n" +
 	"\f_descriptionB\a\n" +
@@ -3912,7 +3991,9 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\x05_y_bpB\x10\n" +
 	"\x0e_target_map_idB\v\n" +
 	"\t_revealedB\b\n" +
-	"\x06_hooks\"H\n" +
+	"\x06_hooksB\n" +
+	"\n" +
+	"\b_show_dc\"H\n" +
 	"\x16UpdateMapPointResponse\x12.\n" +
 	"\x05point\x18\x01 \x01(\v2\x18.meurpg.maps.v1.MapPointR\x05point\"j\n" +
 	"\x15DeleteMapPointRequest\x12\x1f\n" +
@@ -3951,7 +4032,7 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"campaignId\x12\x15\n" +
 	"\x06map_id\x18\x02 \x01(\tR\x05mapId\x12!\n" +
 	"\fcharacter_id\x18\x03 \x01(\tR\vcharacterId\"\x18\n" +
-	"\x16RemoveMapTokenResponse\"\xa0\x01\n" +
+	"\x16RemoveMapTokenResponse\"\xd9\x01\n" +
 	"\x15AddSceneActionRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x15\n" +
@@ -3959,10 +4040,12 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\bpoint_id\x18\x03 \x01(\tR\apointId\x12\x10\n" +
 	"\x03key\x18\x04 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x05 \x01(\tR\x04name\x12\x0e\n" +
-	"\x02dc\x18\x06 \x01(\x05R\x02dc\"\x84\x01\n" +
+	"\x02dc\x18\x06 \x01(\x05R\x02dc\x12&\n" +
+	"\fmax_attempts\x18\a \x01(\x05H\x00R\vmaxAttempts\x88\x01\x01B\x0f\n" +
+	"\r_max_attempts\"\x84\x01\n" +
 	"\x16AddSceneActionResponse\x123\n" +
 	"\x06action\x18\x01 \x01(\v2\x1b.meurpg.maps.v1.SceneActionR\x06action\x125\n" +
-	"\aactions\x18\x02 \x03(\v2\x1b.meurpg.maps.v1.SceneActionR\aactions\"\xe7\x01\n" +
+	"\aactions\x18\x02 \x03(\v2\x1b.meurpg.maps.v1.SceneActionR\aactions\"\xa0\x02\n" +
 	"\x18UpdateSceneActionRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x15\n" +
@@ -3971,10 +4054,12 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\taction_id\x18\x04 \x01(\tR\bactionId\x12\x15\n" +
 	"\x03key\x18\x05 \x01(\tH\x00R\x03key\x88\x01\x01\x12\x17\n" +
 	"\x04name\x18\x06 \x01(\tH\x01R\x04name\x88\x01\x01\x12\x13\n" +
-	"\x02dc\x18\a \x01(\x05H\x02R\x02dc\x88\x01\x01B\x06\n" +
+	"\x02dc\x18\a \x01(\x05H\x02R\x02dc\x88\x01\x01\x12&\n" +
+	"\fmax_attempts\x18\b \x01(\x05H\x03R\vmaxAttempts\x88\x01\x01B\x06\n" +
 	"\x04_keyB\a\n" +
 	"\x05_nameB\x05\n" +
-	"\x03_dc\"\x87\x01\n" +
+	"\x03_dcB\x0f\n" +
+	"\r_max_attempts\"\x87\x01\n" +
 	"\x19UpdateSceneActionResponse\x123\n" +
 	"\x06action\x18\x01 \x01(\v2\x1b.meurpg.maps.v1.SceneActionR\x06action\x125\n" +
 	"\aactions\x18\x02 \x03(\v2\x1b.meurpg.maps.v1.SceneActionR\aactions\"\xcc\x01\n" +
@@ -4254,6 +4339,7 @@ func file_meurpg_maps_v1_maps_proto_init() {
 	}
 	file_meurpg_maps_v1_maps_proto_msgTypes[14].OneofWrappers = []any{}
 	file_meurpg_maps_v1_maps_proto_msgTypes[24].OneofWrappers = []any{}
+	file_meurpg_maps_v1_maps_proto_msgTypes[36].OneofWrappers = []any{}
 	file_meurpg_maps_v1_maps_proto_msgTypes[38].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

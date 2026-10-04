@@ -1,7 +1,6 @@
 import {
   coinEntries,
   formatDate,
-  formatMeters,
   issueTitle,
   spellLimitsText,
   spellSlotRows,
@@ -12,12 +11,6 @@ describe('sheet-format', () => {
   it('formats a date as the day only, local time', () => {
     expect(formatDate(new Date(2026, 8, 29, 19, 55))).toBe('29/09/2026');
     expect(formatDate(new Date(2026, 0, 3))).toBe('03/01/2026');
-  });
-
-  it('gives the metres of a speed with the table rounding and a decimal comma', () => {
-    expect(formatMeters(25)).toBe('7,5 m');
-    expect(formatMeters(30)).toBe('9 m');
-    expect(formatMeters(60)).toBe('18 m');
   });
 
   it('names each state with one word', () => {

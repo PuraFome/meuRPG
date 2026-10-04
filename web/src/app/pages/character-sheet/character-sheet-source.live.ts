@@ -20,7 +20,8 @@ import {
   DerivedSheet as GenDerivedSheet,
   ProficiencyLevel as GenProficiencyLevel,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
-import { formatSpeedFt, SkillProficiency } from '../../core/characters/character-labels';
+import { SkillProficiency } from '../../core/characters/character-labels';
+import { metersWithFeet } from '../../core/units';
 import { AbilityKey, CharacterKind, CharacterState } from '../../core/characters/characters.types';
 import { damageTypeFromGen } from '../../core/characters/damage-type-gen';
 import { CONNECT_TRANSPORT } from '../../core/connect/transport';
@@ -145,7 +146,7 @@ function toFullSheetVm(full: GenFullSheet, derived: GenDerivedSheet): FullSheetV
     hitPointsMax: derived.hitPointsMax,
     hitDice: derived.hitDice.map((hd) => `${hd.count}d${hd.faces}`).join(' + ') || '—',
     speedWalkFt: derived.speedWalkFt,
-    senses: derived.senses.map((s) => `${s.namePt}: ${formatSpeedFt(s.rangeFt)}`),
+    senses: derived.senses.map((s) => `${s.namePt}: ${metersWithFeet(s.rangeFt)}`),
     attacks: derived.attacks.map(toAttackVm),
     spellcasting: derived.spellcasting.map((sc) => ({
       className: sc.classNamePt,
