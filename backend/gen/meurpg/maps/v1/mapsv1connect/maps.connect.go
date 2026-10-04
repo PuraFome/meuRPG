@@ -95,6 +95,24 @@ const (
 	// MapServiceRemoveMapTokenProcedure is the fully-qualified name of the MapService's RemoveMapToken
 	// RPC.
 	MapServiceRemoveMapTokenProcedure = "/meurpg.maps.v1.MapService/RemoveMapToken"
+	// MapServicePaintMapCellsProcedure is the fully-qualified name of the MapService's PaintMapCells
+	// RPC.
+	MapServicePaintMapCellsProcedure = "/meurpg.maps.v1.MapService/PaintMapCells"
+	// MapServiceGetMapLayersProcedure is the fully-qualified name of the MapService's GetMapLayers RPC.
+	MapServiceGetMapLayersProcedure = "/meurpg.maps.v1.MapService/GetMapLayers"
+	// MapServiceSetMapFogProcedure is the fully-qualified name of the MapService's SetMapFog RPC.
+	MapServiceSetMapFogProcedure = "/meurpg.maps.v1.MapService/SetMapFog"
+	// MapServiceRevealTrapProcedure is the fully-qualified name of the MapService's RevealTrap RPC.
+	MapServiceRevealTrapProcedure = "/meurpg.maps.v1.MapService/RevealTrap"
+	// MapServiceMarkTreasureFoundProcedure is the fully-qualified name of the MapService's
+	// MarkTreasureFound RPC.
+	MapServiceMarkTreasureFoundProcedure = "/meurpg.maps.v1.MapService/MarkTreasureFound"
+	// MapServiceUnmarkTreasureFoundProcedure is the fully-qualified name of the MapService's
+	// UnmarkTreasureFound RPC.
+	MapServiceUnmarkTreasureFoundProcedure = "/meurpg.maps.v1.MapService/UnmarkTreasureFound"
+	// MapServiceSetCarriedLightProcedure is the fully-qualified name of the MapService's
+	// SetCarriedLight RPC.
+	MapServiceSetCarriedLightProcedure = "/meurpg.maps.v1.MapService/SetCarriedLight"
 )
 
 // MapServiceClient is a client for the meurpg.maps.v1.MapService service.
@@ -141,10 +159,16 @@ type MapServiceClient interface {
 	// nothing: the app reloads the map and the master tries again. On
 	// success, the revision goes up by one.
 	//
+	// A different image clears the map's painted layers (PaintMapCells), like
+	// other grid columns do, and is refused while a combat that is not ended runs
+	// on the map; the same image again changes nothing.
+	//
 	// Errors:
 	//   - `invalid_argument`: nothing to change, revision less than 1, the
 	//     name breaks its rules, or image_id is not an image of the
 	//     campaign's gallery.
+	//   - `failed_precondition` (MapBlocked COMBAT_RUNNING): image_id is another
+	//     image and a combat runs on the map.
 	//   - `not_found`: the map is not in this campaign, the campaign does not
 	//     exist, or the caller is not a member of it.
 	//   - `permission_denied`: the caller is a player.
@@ -154,9 +178,12 @@ type MapServiceClient interface {
 	// master may call it. It cannot be undone. The gallery image stays.
 	// Submap points of other maps that led to it lose their target, and if
 	// it was the session's current map, the session has no current map
-	// anymore (`current_map_changed` with an empty map_id).
+	// anymore (`current_map_changed` with an empty map_id). A map that holds a
+	// treasure that was found or turned into XP cannot be deleted.
 	//
 	// Errors:
+	//   - `failed_precondition` (MapBlocked TREASURE_FOUND or
+	//     TREASURE_CONVERTED): the map holds such a treasure; unmark it first.
 	//   - `not_found`: the map is not in this campaign (or was already
 	//     deleted), the campaign does not exist, or the caller is not a member
 	//     of it.
@@ -178,17 +205,26 @@ type MapServiceClient interface {
 	// the rows follow the image's proportions. A combat can only start on a
 	// map with a grid (PlayService/CombatService.StartEncounter).
 	//
-	// A combat already running keeps the grid it started with. A player who
+	// Other columns clear the map's painted layers (PaintMapCells), because a
+	// layer is sized by the grid; the same columns again change nothing. Removing
+	// the grid (0) also turns the fog of war off. A change that clears the layers
+	// is refused while a combat that is not ended runs on the map. A player who
 	// sees the map gets `map_changed`.
 	//
 	// Errors:
 	//   - `invalid_argument`: columns is neither 0 nor between 4 and 200.
+	//   - `failed_precondition` (MapBlocked COMBAT_RUNNING): the columns would
+	//     change while a combat runs on the map.
 	//   - `not_found`: the map is not in this campaign, the campaign does not
 	//     exist, or the caller is not a member of it.
 	//   - `permission_denied`: the caller is a player.
 	SetMapGrid(context.Context, *connect.Request[v1.SetMapGridRequest]) (*connect.Response[v1.SetMapGridResponse], error)
 	// CreateMapPoint puts a point of interest on a map (MR-008). Only the
-	// campaign's master may call it. The point starts hidden.
+	// campaign's master may call it. The point starts hidden. A TRAP needs its
+	// `trap`, a LIGHT its `light` and a TREASURE may carry `treasure_value_po`
+	// (0 when unset); each field is refused on any other kind. A trap's numbers
+	// are checked against the rules content (DCs 1 to 30, an area of 1 to 4
+	// squares, dice of d4 to d12, damage types and conditions that exist).
 	//
 	// Errors:
 	//   - `invalid_argument`: a field breaks its rules; kind is unspecified;
@@ -218,9 +254,12 @@ type MapServiceClient interface {
 	//   - `permission_denied`: the caller is a player.
 	UpdateMapPoint(context.Context, *connect.Request[v1.UpdateMapPointRequest]) (*connect.Response[v1.UpdateMapPointResponse], error)
 	// DeleteMapPoint deletes a point. Only the campaign's master may call it.
-	// It cannot be undone.
+	// It cannot be undone. A TREASURE that was found, or turned into XP, cannot
+	// be deleted: unmark it first, so a session's summary never loses it silently.
 	//
 	// Errors:
+	//   - `failed_precondition` (MapBlocked TREASURE_FOUND or
+	//     TREASURE_CONVERTED): the point is such a treasure.
 	//   - `not_found`: the point is not on this map (or was already deleted),
 	//     the map is not in this campaign, the campaign does not exist, or
 	//     the caller is not a member of it.
@@ -389,6 +428,125 @@ type MapServiceClient interface {
 	//     a member of it.
 	//   - `permission_denied`: the caller is a player.
 	RemoveMapToken(context.Context, *connect.Request[v1.RemoveMapTokenRequest]) (*connect.Response[v1.RemoveMapTokenResponse], error)
+	// PaintMapCells paints squares of one layer of a map's grid (MR-034,
+	// MR-036): difficult terrain, walls, cover or light, one value for a batch of
+	// squares. Only the campaign's master may call it. The last write wins, with
+	// no revision to send: painting is dragged, and a batch that repeats what is
+	// there changes nothing (and bumps nothing). Send at most 400 squares a call.
+	//
+	// A change bumps Map.layers_revision, sends `map_changed` to the master and,
+	// when players may read the layers (a map they see, with no fog), to them,
+	// at most once a second for a map; the app then reads GetMapLayers again.
+	//
+	// Errors:
+	//   - `invalid_argument`: layer is unspecified, value is not valid for the
+	//     layer (terrain and wall: 0 or 1; cover: 0 to 2; light: 0 to 3), squares
+	//     is empty or has more than 400, or a square is outside the map's grid.
+	//   - `failed_precondition` (MapBlocked NO_GRID): the map has no grid.
+	//   - `not_found`: the map is not in this campaign, the campaign does not
+	//     exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	PaintMapCells(context.Context, *connect.Request[v1.PaintMapCellsRequest]) (*connect.Response[v1.PaintMapCellsResponse], error)
+	// GetMapLayers returns the painted layers of a map as packed bytes, in the
+	// byte layout described on GetMapLayersResponse. Any member may call it. The
+	// master gets all four layers. A player of a map they see gets the difficult
+	// terrain, walls and cover, never the light; and, while the map has the fog
+	// of war on, none of them (fog_withheld): slice 9.4 sends each player only
+	// what their character sees.
+	//
+	// Errors:
+	//   - `not_found`: the map is not in this campaign, or is hidden from the
+	//     caller (a player), the campaign does not exist, or the caller is not a
+	//     member of it.
+	GetMapLayers(context.Context, *connect.Request[v1.GetMapLayersRequest]) (*connect.Response[v1.GetMapLayersResponse], error)
+	// SetMapFog changes the fog of war's settings of a map (MR-036, D6): whether
+	// it is on, the base light of a square nobody lit, and "Visão do grupo". Each
+	// field set replaces the current value. Only the campaign's master may call
+	// it. Turning the fog off keeps the painted layers. The fog needs a grid, and
+	// removing the grid (SetMapGrid with 0 columns) turns it off. A player who
+	// sees the map gets `map_changed`.
+	//
+	// Errors:
+	//   - `invalid_argument`: nothing to change.
+	//   - `failed_precondition` (MapBlocked NO_GRID): fog_enabled is true and the
+	//     map has no grid.
+	//   - `not_found`: the map is not in this campaign, the campaign does not
+	//     exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	SetMapFog(context.Context, *connect.Request[v1.SetMapFogRequest]) (*connect.Response[v1.SetMapFogResponse], error)
+	// RevealTrap shows a TRAP point to the players the master chose: some
+	// characters (their players get the trap, and nobody else does) or everyone
+	// (the same as revealing the point, SetMapPointRevealed). Only the campaign's
+	// master may call it, with or without an open session. Revealing again to a
+	// character who already knows changes nothing; there is no way to take it
+	// back.
+	//
+	// With an open session a `trap_revealed` event goes into its history (IDs
+	// only), and the streams of the players who now see the trap, and the
+	// master's, get `map_changed`.
+	//
+	// Errors:
+	//   - `invalid_argument`: the point is not a TRAP; character_ids is empty
+	//     and all is false, or both are set, or it has more than 50.
+	//   - `not_found`: the point is not on this map, the map is not in this
+	//     campaign, one of the characters is not a living player character of the
+	//     campaign with a player, the campaign does not exist, or the caller is
+	//     not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	RevealTrap(context.Context, *connect.Request[v1.RevealTrapRequest]) (*connect.Response[v1.RevealTrapResponse], error)
+	// MarkTreasureFound marks a TREASURE point found, by one or more characters
+	// (MR-041, D8). Only the campaign's master may call it, with or without an
+	// open session. A found treasure is visible to everyone who sees the map,
+	// with its description, its value and who found it, even if the master never
+	// revealed the point. Marking a treasure that is already found replaces who
+	// found it and keeps when. During an open session the treasure remembers the
+	// session (the session's summary counts it) and a `treasure_found` event
+	// (IDs and the PO only) goes into its history; outside one, it counts in no
+	// session's summary.
+	//
+	// Errors:
+	//   - `invalid_argument`: the point is not a TREASURE; character_ids is empty
+	//     or has more than 50.
+	//   - `failed_precondition` (MapBlocked TREASURE_CONVERTED): the treasure
+	//     was already turned into XP (slice 9.11).
+	//   - `not_found`: the point is not on this map, the map is not in this
+	//     campaign, one of the characters is not a living player character of the
+	//     campaign, the campaign does not exist, or the caller is not a member of
+	//     it.
+	//   - `permission_denied`: the caller is a player.
+	MarkTreasureFound(context.Context, *connect.Request[v1.MarkTreasureFoundRequest]) (*connect.Response[v1.MarkTreasureFoundResponse], error)
+	// UnmarkTreasureFound takes the "found" mark off a TREASURE point: it goes back
+	// to the reveal rule. Only the campaign's master may call it. Unmarking a
+	// treasure that is not found changes nothing. With an open session a
+	// `treasure_unfound` event goes into its history.
+	//
+	// Errors:
+	//   - `invalid_argument`: the point is not a TREASURE.
+	//   - `failed_precondition` (MapBlocked TREASURE_CONVERTED): the treasure
+	//     was already turned into XP.
+	//   - `not_found`: the point is not on this map, the map is not in this
+	//     campaign, the campaign does not exist, or the caller is not a member of
+	//     it.
+	//   - `permission_denied`: the caller is a player.
+	UnmarkTreasureFound(context.Context, *connect.Request[v1.UnmarkTreasureFoundRequest]) (*connect.Response[v1.UnmarkTreasureFoundResponse], error)
+	// SetCarriedLight sets the light a character carries on a map (MR-036, D6): a
+	// light preset's key (ContentService.ListLightPresets), or empty for none. A
+	// player may set it for their own character, the master for anyone; any other
+	// call is refused. It rides on the character's token, so the character needs
+	// one on the map. The token (MapToken.carried_light) tells it to the master
+	// and the character's own player only; what the other players see of it
+	// comes with slice 9.4.
+	//
+	// Errors:
+	//   - `invalid_argument`: light_key is not empty and is not a light preset's
+	//     key.
+	//   - `not_found`: the character has no token on this map, is not a living
+	//     character of the campaign, or is an NPC and the caller is a player; the
+	//     map is not in this campaign; the campaign does not exist, or the caller
+	//     is not a member of it.
+	//   - `permission_denied`: the caller is a player and the character is
+	//     another player's.
+	SetCarriedLight(context.Context, *connect.Request[v1.SetCarriedLightRequest]) (*connect.Response[v1.SetCarriedLightResponse], error)
 }
 
 // NewMapServiceClient constructs a client for the meurpg.maps.v1.MapService service. By default, it
@@ -542,6 +700,49 @@ func NewMapServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(mapServiceMethods.ByName("RemoveMapToken")),
 			connect.WithClientOptions(opts...),
 		),
+		paintMapCells: connect.NewClient[v1.PaintMapCellsRequest, v1.PaintMapCellsResponse](
+			httpClient,
+			baseURL+MapServicePaintMapCellsProcedure,
+			connect.WithSchema(mapServiceMethods.ByName("PaintMapCells")),
+			connect.WithClientOptions(opts...),
+		),
+		getMapLayers: connect.NewClient[v1.GetMapLayersRequest, v1.GetMapLayersResponse](
+			httpClient,
+			baseURL+MapServiceGetMapLayersProcedure,
+			connect.WithSchema(mapServiceMethods.ByName("GetMapLayers")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
+		setMapFog: connect.NewClient[v1.SetMapFogRequest, v1.SetMapFogResponse](
+			httpClient,
+			baseURL+MapServiceSetMapFogProcedure,
+			connect.WithSchema(mapServiceMethods.ByName("SetMapFog")),
+			connect.WithClientOptions(opts...),
+		),
+		revealTrap: connect.NewClient[v1.RevealTrapRequest, v1.RevealTrapResponse](
+			httpClient,
+			baseURL+MapServiceRevealTrapProcedure,
+			connect.WithSchema(mapServiceMethods.ByName("RevealTrap")),
+			connect.WithClientOptions(opts...),
+		),
+		markTreasureFound: connect.NewClient[v1.MarkTreasureFoundRequest, v1.MarkTreasureFoundResponse](
+			httpClient,
+			baseURL+MapServiceMarkTreasureFoundProcedure,
+			connect.WithSchema(mapServiceMethods.ByName("MarkTreasureFound")),
+			connect.WithClientOptions(opts...),
+		),
+		unmarkTreasureFound: connect.NewClient[v1.UnmarkTreasureFoundRequest, v1.UnmarkTreasureFoundResponse](
+			httpClient,
+			baseURL+MapServiceUnmarkTreasureFoundProcedure,
+			connect.WithSchema(mapServiceMethods.ByName("UnmarkTreasureFound")),
+			connect.WithClientOptions(opts...),
+		),
+		setCarriedLight: connect.NewClient[v1.SetCarriedLightRequest, v1.SetCarriedLightResponse](
+			httpClient,
+			baseURL+MapServiceSetCarriedLightProcedure,
+			connect.WithSchema(mapServiceMethods.ByName("SetCarriedLight")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -570,6 +771,13 @@ type mapServiceClient struct {
 	placeMapToken       *connect.Client[v1.PlaceMapTokenRequest, v1.PlaceMapTokenResponse]
 	setMapTokenHidden   *connect.Client[v1.SetMapTokenHiddenRequest, v1.SetMapTokenHiddenResponse]
 	removeMapToken      *connect.Client[v1.RemoveMapTokenRequest, v1.RemoveMapTokenResponse]
+	paintMapCells       *connect.Client[v1.PaintMapCellsRequest, v1.PaintMapCellsResponse]
+	getMapLayers        *connect.Client[v1.GetMapLayersRequest, v1.GetMapLayersResponse]
+	setMapFog           *connect.Client[v1.SetMapFogRequest, v1.SetMapFogResponse]
+	revealTrap          *connect.Client[v1.RevealTrapRequest, v1.RevealTrapResponse]
+	markTreasureFound   *connect.Client[v1.MarkTreasureFoundRequest, v1.MarkTreasureFoundResponse]
+	unmarkTreasureFound *connect.Client[v1.UnmarkTreasureFoundRequest, v1.UnmarkTreasureFoundResponse]
+	setCarriedLight     *connect.Client[v1.SetCarriedLightRequest, v1.SetCarriedLightResponse]
 }
 
 // ListMaps calls meurpg.maps.v1.MapService.ListMaps.
@@ -687,6 +895,41 @@ func (c *mapServiceClient) RemoveMapToken(ctx context.Context, req *connect.Requ
 	return c.removeMapToken.CallUnary(ctx, req)
 }
 
+// PaintMapCells calls meurpg.maps.v1.MapService.PaintMapCells.
+func (c *mapServiceClient) PaintMapCells(ctx context.Context, req *connect.Request[v1.PaintMapCellsRequest]) (*connect.Response[v1.PaintMapCellsResponse], error) {
+	return c.paintMapCells.CallUnary(ctx, req)
+}
+
+// GetMapLayers calls meurpg.maps.v1.MapService.GetMapLayers.
+func (c *mapServiceClient) GetMapLayers(ctx context.Context, req *connect.Request[v1.GetMapLayersRequest]) (*connect.Response[v1.GetMapLayersResponse], error) {
+	return c.getMapLayers.CallUnary(ctx, req)
+}
+
+// SetMapFog calls meurpg.maps.v1.MapService.SetMapFog.
+func (c *mapServiceClient) SetMapFog(ctx context.Context, req *connect.Request[v1.SetMapFogRequest]) (*connect.Response[v1.SetMapFogResponse], error) {
+	return c.setMapFog.CallUnary(ctx, req)
+}
+
+// RevealTrap calls meurpg.maps.v1.MapService.RevealTrap.
+func (c *mapServiceClient) RevealTrap(ctx context.Context, req *connect.Request[v1.RevealTrapRequest]) (*connect.Response[v1.RevealTrapResponse], error) {
+	return c.revealTrap.CallUnary(ctx, req)
+}
+
+// MarkTreasureFound calls meurpg.maps.v1.MapService.MarkTreasureFound.
+func (c *mapServiceClient) MarkTreasureFound(ctx context.Context, req *connect.Request[v1.MarkTreasureFoundRequest]) (*connect.Response[v1.MarkTreasureFoundResponse], error) {
+	return c.markTreasureFound.CallUnary(ctx, req)
+}
+
+// UnmarkTreasureFound calls meurpg.maps.v1.MapService.UnmarkTreasureFound.
+func (c *mapServiceClient) UnmarkTreasureFound(ctx context.Context, req *connect.Request[v1.UnmarkTreasureFoundRequest]) (*connect.Response[v1.UnmarkTreasureFoundResponse], error) {
+	return c.unmarkTreasureFound.CallUnary(ctx, req)
+}
+
+// SetCarriedLight calls meurpg.maps.v1.MapService.SetCarriedLight.
+func (c *mapServiceClient) SetCarriedLight(ctx context.Context, req *connect.Request[v1.SetCarriedLightRequest]) (*connect.Response[v1.SetCarriedLightResponse], error) {
+	return c.setCarriedLight.CallUnary(ctx, req)
+}
+
 // MapServiceHandler is an implementation of the meurpg.maps.v1.MapService service.
 type MapServiceHandler interface {
 	// ListMaps lists the campaign's maps the caller may see, oldest first:
@@ -731,10 +974,16 @@ type MapServiceHandler interface {
 	// nothing: the app reloads the map and the master tries again. On
 	// success, the revision goes up by one.
 	//
+	// A different image clears the map's painted layers (PaintMapCells), like
+	// other grid columns do, and is refused while a combat that is not ended runs
+	// on the map; the same image again changes nothing.
+	//
 	// Errors:
 	//   - `invalid_argument`: nothing to change, revision less than 1, the
 	//     name breaks its rules, or image_id is not an image of the
 	//     campaign's gallery.
+	//   - `failed_precondition` (MapBlocked COMBAT_RUNNING): image_id is another
+	//     image and a combat runs on the map.
 	//   - `not_found`: the map is not in this campaign, the campaign does not
 	//     exist, or the caller is not a member of it.
 	//   - `permission_denied`: the caller is a player.
@@ -744,9 +993,12 @@ type MapServiceHandler interface {
 	// master may call it. It cannot be undone. The gallery image stays.
 	// Submap points of other maps that led to it lose their target, and if
 	// it was the session's current map, the session has no current map
-	// anymore (`current_map_changed` with an empty map_id).
+	// anymore (`current_map_changed` with an empty map_id). A map that holds a
+	// treasure that was found or turned into XP cannot be deleted.
 	//
 	// Errors:
+	//   - `failed_precondition` (MapBlocked TREASURE_FOUND or
+	//     TREASURE_CONVERTED): the map holds such a treasure; unmark it first.
 	//   - `not_found`: the map is not in this campaign (or was already
 	//     deleted), the campaign does not exist, or the caller is not a member
 	//     of it.
@@ -768,17 +1020,26 @@ type MapServiceHandler interface {
 	// the rows follow the image's proportions. A combat can only start on a
 	// map with a grid (PlayService/CombatService.StartEncounter).
 	//
-	// A combat already running keeps the grid it started with. A player who
+	// Other columns clear the map's painted layers (PaintMapCells), because a
+	// layer is sized by the grid; the same columns again change nothing. Removing
+	// the grid (0) also turns the fog of war off. A change that clears the layers
+	// is refused while a combat that is not ended runs on the map. A player who
 	// sees the map gets `map_changed`.
 	//
 	// Errors:
 	//   - `invalid_argument`: columns is neither 0 nor between 4 and 200.
+	//   - `failed_precondition` (MapBlocked COMBAT_RUNNING): the columns would
+	//     change while a combat runs on the map.
 	//   - `not_found`: the map is not in this campaign, the campaign does not
 	//     exist, or the caller is not a member of it.
 	//   - `permission_denied`: the caller is a player.
 	SetMapGrid(context.Context, *connect.Request[v1.SetMapGridRequest]) (*connect.Response[v1.SetMapGridResponse], error)
 	// CreateMapPoint puts a point of interest on a map (MR-008). Only the
-	// campaign's master may call it. The point starts hidden.
+	// campaign's master may call it. The point starts hidden. A TRAP needs its
+	// `trap`, a LIGHT its `light` and a TREASURE may carry `treasure_value_po`
+	// (0 when unset); each field is refused on any other kind. A trap's numbers
+	// are checked against the rules content (DCs 1 to 30, an area of 1 to 4
+	// squares, dice of d4 to d12, damage types and conditions that exist).
 	//
 	// Errors:
 	//   - `invalid_argument`: a field breaks its rules; kind is unspecified;
@@ -808,9 +1069,12 @@ type MapServiceHandler interface {
 	//   - `permission_denied`: the caller is a player.
 	UpdateMapPoint(context.Context, *connect.Request[v1.UpdateMapPointRequest]) (*connect.Response[v1.UpdateMapPointResponse], error)
 	// DeleteMapPoint deletes a point. Only the campaign's master may call it.
-	// It cannot be undone.
+	// It cannot be undone. A TREASURE that was found, or turned into XP, cannot
+	// be deleted: unmark it first, so a session's summary never loses it silently.
 	//
 	// Errors:
+	//   - `failed_precondition` (MapBlocked TREASURE_FOUND or
+	//     TREASURE_CONVERTED): the point is such a treasure.
 	//   - `not_found`: the point is not on this map (or was already deleted),
 	//     the map is not in this campaign, the campaign does not exist, or
 	//     the caller is not a member of it.
@@ -979,6 +1243,125 @@ type MapServiceHandler interface {
 	//     a member of it.
 	//   - `permission_denied`: the caller is a player.
 	RemoveMapToken(context.Context, *connect.Request[v1.RemoveMapTokenRequest]) (*connect.Response[v1.RemoveMapTokenResponse], error)
+	// PaintMapCells paints squares of one layer of a map's grid (MR-034,
+	// MR-036): difficult terrain, walls, cover or light, one value for a batch of
+	// squares. Only the campaign's master may call it. The last write wins, with
+	// no revision to send: painting is dragged, and a batch that repeats what is
+	// there changes nothing (and bumps nothing). Send at most 400 squares a call.
+	//
+	// A change bumps Map.layers_revision, sends `map_changed` to the master and,
+	// when players may read the layers (a map they see, with no fog), to them,
+	// at most once a second for a map; the app then reads GetMapLayers again.
+	//
+	// Errors:
+	//   - `invalid_argument`: layer is unspecified, value is not valid for the
+	//     layer (terrain and wall: 0 or 1; cover: 0 to 2; light: 0 to 3), squares
+	//     is empty or has more than 400, or a square is outside the map's grid.
+	//   - `failed_precondition` (MapBlocked NO_GRID): the map has no grid.
+	//   - `not_found`: the map is not in this campaign, the campaign does not
+	//     exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	PaintMapCells(context.Context, *connect.Request[v1.PaintMapCellsRequest]) (*connect.Response[v1.PaintMapCellsResponse], error)
+	// GetMapLayers returns the painted layers of a map as packed bytes, in the
+	// byte layout described on GetMapLayersResponse. Any member may call it. The
+	// master gets all four layers. A player of a map they see gets the difficult
+	// terrain, walls and cover, never the light; and, while the map has the fog
+	// of war on, none of them (fog_withheld): slice 9.4 sends each player only
+	// what their character sees.
+	//
+	// Errors:
+	//   - `not_found`: the map is not in this campaign, or is hidden from the
+	//     caller (a player), the campaign does not exist, or the caller is not a
+	//     member of it.
+	GetMapLayers(context.Context, *connect.Request[v1.GetMapLayersRequest]) (*connect.Response[v1.GetMapLayersResponse], error)
+	// SetMapFog changes the fog of war's settings of a map (MR-036, D6): whether
+	// it is on, the base light of a square nobody lit, and "Visão do grupo". Each
+	// field set replaces the current value. Only the campaign's master may call
+	// it. Turning the fog off keeps the painted layers. The fog needs a grid, and
+	// removing the grid (SetMapGrid with 0 columns) turns it off. A player who
+	// sees the map gets `map_changed`.
+	//
+	// Errors:
+	//   - `invalid_argument`: nothing to change.
+	//   - `failed_precondition` (MapBlocked NO_GRID): fog_enabled is true and the
+	//     map has no grid.
+	//   - `not_found`: the map is not in this campaign, the campaign does not
+	//     exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	SetMapFog(context.Context, *connect.Request[v1.SetMapFogRequest]) (*connect.Response[v1.SetMapFogResponse], error)
+	// RevealTrap shows a TRAP point to the players the master chose: some
+	// characters (their players get the trap, and nobody else does) or everyone
+	// (the same as revealing the point, SetMapPointRevealed). Only the campaign's
+	// master may call it, with or without an open session. Revealing again to a
+	// character who already knows changes nothing; there is no way to take it
+	// back.
+	//
+	// With an open session a `trap_revealed` event goes into its history (IDs
+	// only), and the streams of the players who now see the trap, and the
+	// master's, get `map_changed`.
+	//
+	// Errors:
+	//   - `invalid_argument`: the point is not a TRAP; character_ids is empty
+	//     and all is false, or both are set, or it has more than 50.
+	//   - `not_found`: the point is not on this map, the map is not in this
+	//     campaign, one of the characters is not a living player character of the
+	//     campaign with a player, the campaign does not exist, or the caller is
+	//     not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	RevealTrap(context.Context, *connect.Request[v1.RevealTrapRequest]) (*connect.Response[v1.RevealTrapResponse], error)
+	// MarkTreasureFound marks a TREASURE point found, by one or more characters
+	// (MR-041, D8). Only the campaign's master may call it, with or without an
+	// open session. A found treasure is visible to everyone who sees the map,
+	// with its description, its value and who found it, even if the master never
+	// revealed the point. Marking a treasure that is already found replaces who
+	// found it and keeps when. During an open session the treasure remembers the
+	// session (the session's summary counts it) and a `treasure_found` event
+	// (IDs and the PO only) goes into its history; outside one, it counts in no
+	// session's summary.
+	//
+	// Errors:
+	//   - `invalid_argument`: the point is not a TREASURE; character_ids is empty
+	//     or has more than 50.
+	//   - `failed_precondition` (MapBlocked TREASURE_CONVERTED): the treasure
+	//     was already turned into XP (slice 9.11).
+	//   - `not_found`: the point is not on this map, the map is not in this
+	//     campaign, one of the characters is not a living player character of the
+	//     campaign, the campaign does not exist, or the caller is not a member of
+	//     it.
+	//   - `permission_denied`: the caller is a player.
+	MarkTreasureFound(context.Context, *connect.Request[v1.MarkTreasureFoundRequest]) (*connect.Response[v1.MarkTreasureFoundResponse], error)
+	// UnmarkTreasureFound takes the "found" mark off a TREASURE point: it goes back
+	// to the reveal rule. Only the campaign's master may call it. Unmarking a
+	// treasure that is not found changes nothing. With an open session a
+	// `treasure_unfound` event goes into its history.
+	//
+	// Errors:
+	//   - `invalid_argument`: the point is not a TREASURE.
+	//   - `failed_precondition` (MapBlocked TREASURE_CONVERTED): the treasure
+	//     was already turned into XP.
+	//   - `not_found`: the point is not on this map, the map is not in this
+	//     campaign, the campaign does not exist, or the caller is not a member of
+	//     it.
+	//   - `permission_denied`: the caller is a player.
+	UnmarkTreasureFound(context.Context, *connect.Request[v1.UnmarkTreasureFoundRequest]) (*connect.Response[v1.UnmarkTreasureFoundResponse], error)
+	// SetCarriedLight sets the light a character carries on a map (MR-036, D6): a
+	// light preset's key (ContentService.ListLightPresets), or empty for none. A
+	// player may set it for their own character, the master for anyone; any other
+	// call is refused. It rides on the character's token, so the character needs
+	// one on the map. The token (MapToken.carried_light) tells it to the master
+	// and the character's own player only; what the other players see of it
+	// comes with slice 9.4.
+	//
+	// Errors:
+	//   - `invalid_argument`: light_key is not empty and is not a light preset's
+	//     key.
+	//   - `not_found`: the character has no token on this map, is not a living
+	//     character of the campaign, or is an NPC and the caller is a player; the
+	//     map is not in this campaign; the campaign does not exist, or the caller
+	//     is not a member of it.
+	//   - `permission_denied`: the caller is a player and the character is
+	//     another player's.
+	SetCarriedLight(context.Context, *connect.Request[v1.SetCarriedLightRequest]) (*connect.Response[v1.SetCarriedLightResponse], error)
 }
 
 // NewMapServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -1128,6 +1511,49 @@ func NewMapServiceHandler(svc MapServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(mapServiceMethods.ByName("RemoveMapToken")),
 		connect.WithHandlerOptions(opts...),
 	)
+	mapServicePaintMapCellsHandler := connect.NewUnaryHandler(
+		MapServicePaintMapCellsProcedure,
+		svc.PaintMapCells,
+		connect.WithSchema(mapServiceMethods.ByName("PaintMapCells")),
+		connect.WithHandlerOptions(opts...),
+	)
+	mapServiceGetMapLayersHandler := connect.NewUnaryHandler(
+		MapServiceGetMapLayersProcedure,
+		svc.GetMapLayers,
+		connect.WithSchema(mapServiceMethods.ByName("GetMapLayers")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
+	mapServiceSetMapFogHandler := connect.NewUnaryHandler(
+		MapServiceSetMapFogProcedure,
+		svc.SetMapFog,
+		connect.WithSchema(mapServiceMethods.ByName("SetMapFog")),
+		connect.WithHandlerOptions(opts...),
+	)
+	mapServiceRevealTrapHandler := connect.NewUnaryHandler(
+		MapServiceRevealTrapProcedure,
+		svc.RevealTrap,
+		connect.WithSchema(mapServiceMethods.ByName("RevealTrap")),
+		connect.WithHandlerOptions(opts...),
+	)
+	mapServiceMarkTreasureFoundHandler := connect.NewUnaryHandler(
+		MapServiceMarkTreasureFoundProcedure,
+		svc.MarkTreasureFound,
+		connect.WithSchema(mapServiceMethods.ByName("MarkTreasureFound")),
+		connect.WithHandlerOptions(opts...),
+	)
+	mapServiceUnmarkTreasureFoundHandler := connect.NewUnaryHandler(
+		MapServiceUnmarkTreasureFoundProcedure,
+		svc.UnmarkTreasureFound,
+		connect.WithSchema(mapServiceMethods.ByName("UnmarkTreasureFound")),
+		connect.WithHandlerOptions(opts...),
+	)
+	mapServiceSetCarriedLightHandler := connect.NewUnaryHandler(
+		MapServiceSetCarriedLightProcedure,
+		svc.SetCarriedLight,
+		connect.WithSchema(mapServiceMethods.ByName("SetCarriedLight")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/meurpg.maps.v1.MapService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case MapServiceListMapsProcedure:
@@ -1176,6 +1602,20 @@ func NewMapServiceHandler(svc MapServiceHandler, opts ...connect.HandlerOption) 
 			mapServiceSetMapTokenHiddenHandler.ServeHTTP(w, r)
 		case MapServiceRemoveMapTokenProcedure:
 			mapServiceRemoveMapTokenHandler.ServeHTTP(w, r)
+		case MapServicePaintMapCellsProcedure:
+			mapServicePaintMapCellsHandler.ServeHTTP(w, r)
+		case MapServiceGetMapLayersProcedure:
+			mapServiceGetMapLayersHandler.ServeHTTP(w, r)
+		case MapServiceSetMapFogProcedure:
+			mapServiceSetMapFogHandler.ServeHTTP(w, r)
+		case MapServiceRevealTrapProcedure:
+			mapServiceRevealTrapHandler.ServeHTTP(w, r)
+		case MapServiceMarkTreasureFoundProcedure:
+			mapServiceMarkTreasureFoundHandler.ServeHTTP(w, r)
+		case MapServiceUnmarkTreasureFoundProcedure:
+			mapServiceUnmarkTreasureFoundHandler.ServeHTTP(w, r)
+		case MapServiceSetCarriedLightProcedure:
+			mapServiceSetCarriedLightHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1275,4 +1715,32 @@ func (UnimplementedMapServiceHandler) SetMapTokenHidden(context.Context, *connec
 
 func (UnimplementedMapServiceHandler) RemoveMapToken(context.Context, *connect.Request[v1.RemoveMapTokenRequest]) (*connect.Response[v1.RemoveMapTokenResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.RemoveMapToken is not implemented"))
+}
+
+func (UnimplementedMapServiceHandler) PaintMapCells(context.Context, *connect.Request[v1.PaintMapCellsRequest]) (*connect.Response[v1.PaintMapCellsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.PaintMapCells is not implemented"))
+}
+
+func (UnimplementedMapServiceHandler) GetMapLayers(context.Context, *connect.Request[v1.GetMapLayersRequest]) (*connect.Response[v1.GetMapLayersResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.GetMapLayers is not implemented"))
+}
+
+func (UnimplementedMapServiceHandler) SetMapFog(context.Context, *connect.Request[v1.SetMapFogRequest]) (*connect.Response[v1.SetMapFogResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.SetMapFog is not implemented"))
+}
+
+func (UnimplementedMapServiceHandler) RevealTrap(context.Context, *connect.Request[v1.RevealTrapRequest]) (*connect.Response[v1.RevealTrapResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.RevealTrap is not implemented"))
+}
+
+func (UnimplementedMapServiceHandler) MarkTreasureFound(context.Context, *connect.Request[v1.MarkTreasureFoundRequest]) (*connect.Response[v1.MarkTreasureFoundResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.MarkTreasureFound is not implemented"))
+}
+
+func (UnimplementedMapServiceHandler) UnmarkTreasureFound(context.Context, *connect.Request[v1.UnmarkTreasureFoundRequest]) (*connect.Response[v1.UnmarkTreasureFoundResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.UnmarkTreasureFound is not implemented"))
+}
+
+func (UnimplementedMapServiceHandler) SetCarriedLight(context.Context, *connect.Request[v1.SetCarriedLightRequest]) (*connect.Response[v1.SetCarriedLightResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.SetCarriedLight is not implemented"))
 }

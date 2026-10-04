@@ -78,10 +78,17 @@ RETURNING *;
 -- its image's name and size, and how many points it has, in all and
 -- revealed. Campaigns have a few maps, so one query answers ListMaps and
 -- gives GetMap the names and states it needs (parents, submap targets).
+--
+-- revealed_point_count is how many points every player sees: not a light, which
+-- no player ever receives, and either revealed, a triggered trap or a found
+-- treasure (a trap revealed to some characters only is the handler's to add).
 SELECT m.id, m.campaign_id, m.name, m.image_id, m.revealed_at, m.revision, m.created_at, m.updated_at, m.grid_columns,
+       m.fog_enabled, m.base_light, m.group_vision, m.layers_revision, m.light_revision,
        g.name AS image_name, g.width AS image_width, g.height AS image_height,
        (SELECT count(*) FROM map_points AS p WHERE p.map_id = m.id)::INT4 AS point_count,
-       (SELECT count(*) FROM map_points AS p WHERE p.map_id = m.id AND p.revealed_at IS NOT NULL)::INT4 AS revealed_point_count
+       (SELECT count(*) FROM map_points AS p
+        WHERE p.map_id = m.id AND p.kind <> 'light'
+          AND (p.revealed_at IS NOT NULL OR p.trap_triggered_at IS NOT NULL OR p.treasure_found_at IS NOT NULL))::INT4 AS revealed_point_count
 FROM maps AS m
 JOIN gallery_images AS g ON g.id = m.image_id
 WHERE m.campaign_id = $1
@@ -128,13 +135,65 @@ WHERE campaign_id = sqlc.arg(campaign_id) AND id = sqlc.arg(id)
 RETURNING *;
 
 -- name: SetMapGrid :one
--- The master's grid (MR-013): NULL clears it. It is a change to the map
--- itself, so updated_at moves, but the revision (the name and the image's
--- guard) does not.
+-- The master's grid (MR-013): NULL clears it, and a map without a grid has no
+-- fog of war. It is a change to the map itself, so updated_at moves, but the
+-- revision (the name and the image's guard) does not.
 UPDATE maps
-SET grid_columns = sqlc.narg(grid_columns), updated_at = sqlc.arg(now)
+SET grid_columns = sqlc.narg(grid_columns), fog_enabled = fog_enabled AND sqlc.narg(grid_columns)::INT4 IS NOT NULL,
+    updated_at = sqlc.arg(now)
 WHERE campaign_id = sqlc.arg(campaign_id) AND id = sqlc.arg(id)
 RETURNING *;
+
+-- name: SetMapFog :one
+-- The fog of war's settings (MR-036): each one the handler sends replaces the
+-- current value, the others stay. updated_at moves only when something a
+-- player reads changes (the switch or "Visão do grupo"): the base light is the
+-- master's, and a player must not learn that it changed.
+UPDATE maps
+SET fog_enabled = COALESCE(sqlc.narg(fog_enabled)::BOOL, fog_enabled),
+    base_light = COALESCE(sqlc.narg(base_light)::TEXT, base_light),
+    group_vision = COALESCE(sqlc.narg(group_vision)::BOOL, group_vision),
+    updated_at = CASE WHEN COALESCE(sqlc.narg(fog_enabled)::BOOL, fog_enabled) <> fog_enabled
+                        OR COALESCE(sqlc.narg(group_vision)::BOOL, group_vision) <> group_vision
+                      THEN sqlc.arg(now)::TIMESTAMPTZ ELSE updated_at END
+WHERE campaign_id = sqlc.arg(campaign_id) AND id = sqlc.arg(id)
+RETURNING *;
+
+-- name: GetMapLayers :one
+-- The map's painted layers; no row means nothing is painted.
+SELECT * FROM map_layers
+WHERE map_id = $1;
+
+-- name: UpsertMapLayers :exec
+-- Writes the four layers of a map (NULL for a layer with nothing painted). The
+-- handler holds the map's row lock (GetMapForUpdate), so two batches of paint
+-- take turns.
+INSERT INTO map_layers (map_id, difficult_terrain, walls, cover, light, updated_at)
+VALUES (sqlc.arg(map_id), sqlc.narg(difficult_terrain), sqlc.narg(walls), sqlc.narg(cover), sqlc.narg(light), sqlc.arg(now))
+ON CONFLICT (map_id) DO UPDATE
+SET difficult_terrain = excluded.difficult_terrain, walls = excluded.walls, cover = excluded.cover,
+    light = excluded.light, updated_at = excluded.updated_at;
+
+-- name: DeleteMapLayers :execrows
+-- Clears every layer of the map: the grid's columns or the image changed.
+DELETE FROM map_layers
+WHERE map_id = $1;
+
+-- name: BumpMapLayersRevision :one
+-- A painted layer changed, or all of them were cleared: readers must read them
+-- again. It leaves updated_at and revision (the name and image's guard) alone.
+UPDATE maps
+SET layers_revision = layers_revision + 1
+WHERE id = $1
+RETURNING layers_revision;
+
+-- name: BumpMapLightRevision :one
+-- The painted light changed. No player reads the light, so this is not the
+-- number they see: the master reads layers_revision + light_revision.
+UPDATE maps
+SET light_revision = light_revision + 1
+WHERE id = $1
+RETURNING light_revision;
 
 -- name: GetMapGrid :one
 -- A map's grid and its image's size, for the rows (package play, through
@@ -174,10 +233,14 @@ WHERE map_id = $1;
 
 -- name: InsertMapPoint :one
 -- A new point starts hidden (revealed_at NULL).
-INSERT INTO map_points (map_id, kind, name, description, hooks, show_dc, x_bp, y_bp, target_map_id, created_at, updated_at)
+INSERT INTO map_points (
+    map_id, kind, name, description, hooks, show_dc, x_bp, y_bp, target_map_id,
+    trap, trap_state, trap_triggered_at, treasure_value_po, light_preset, light_bright_ft, light_dim_ft, created_at, updated_at
+)
 VALUES (
     sqlc.arg(map_id), sqlc.arg(kind), sqlc.arg(name), sqlc.arg(description), sqlc.arg(hooks), sqlc.arg(show_dc), sqlc.arg(x_bp), sqlc.arg(y_bp),
-    sqlc.narg(target_map_id), sqlc.arg(now), sqlc.arg(now)
+    sqlc.narg(target_map_id), sqlc.narg(trap), sqlc.narg(trap_state), sqlc.narg(trap_triggered_at), sqlc.narg(treasure_value_po),
+    sqlc.narg(light_preset), sqlc.narg(light_bright_ft), sqlc.narg(light_dim_ft), sqlc.arg(now), sqlc.arg(now)
 )
 RETURNING *;
 
@@ -199,7 +262,10 @@ FOR UPDATE;
 UPDATE map_points
 SET kind = sqlc.arg(kind), name = sqlc.arg(name), description = sqlc.arg(description), hooks = sqlc.arg(hooks),
     show_dc = sqlc.arg(show_dc), x_bp = sqlc.arg(x_bp), y_bp = sqlc.arg(y_bp), target_map_id = sqlc.narg(target_map_id),
-    revealed_at = sqlc.narg(revealed_at), updated_at = sqlc.arg(now)
+    revealed_at = sqlc.narg(revealed_at), trap = sqlc.narg(trap), trap_state = sqlc.narg(trap_state), trap_triggered_at = sqlc.narg(trap_triggered_at),
+    treasure_value_po = sqlc.narg(treasure_value_po), treasure_found_at = sqlc.narg(treasure_found_at),
+    treasure_session_id = sqlc.narg(treasure_session_id), light_preset = sqlc.narg(light_preset),
+    light_bright_ft = sqlc.narg(light_bright_ft), light_dim_ft = sqlc.narg(light_dim_ft), updated_at = sqlc.arg(now)
 WHERE map_id = sqlc.arg(map_id) AND id = sqlc.arg(id)
 RETURNING *;
 
@@ -240,6 +306,70 @@ RETURNING *;
 DELETE FROM map_tokens
 WHERE map_id = $1 AND character_id = $2
 RETURNING *;
+
+-- name: SetMapTokenCarriedLight :one
+-- The light a character carries (MR-036): a preset's key, NULL for none. Moving
+-- the token is a change to it (the master and the owner read it again).
+UPDATE map_tokens
+SET carried_light = sqlc.narg(carried_light), updated_at = sqlc.arg(now)
+WHERE map_id = sqlc.arg(map_id) AND character_id = sqlc.arg(character_id)
+RETURNING *;
+
+-- name: ListPointRevealsOfMap :many
+-- Who knows each trap of a map, for the master's read.
+SELECT r.* FROM map_point_reveals AS r
+JOIN map_points AS p ON p.id = r.point_id
+WHERE p.map_id = $1
+ORDER BY r.at, r.character_id;
+
+-- name: ListPointRevealsOfCampaign :many
+-- Every trap reveal of the campaign's maps, with whether the trap is already
+-- visible to everyone: what a player's reads need to know which traps their
+-- characters know (RN-10).
+SELECT r.point_id, p.map_id, r.character_id,
+       (p.revealed_at IS NOT NULL OR p.trap_triggered_at IS NOT NULL)::BOOL AS public
+FROM map_point_reveals AS r
+JOIN map_points AS p ON p.id = r.point_id
+JOIN maps AS m ON m.id = p.map_id
+WHERE m.campaign_id = $1;
+
+-- name: InsertPointReveal :execrows
+-- Tells a character about a trap, once: a second reveal inserts nothing.
+INSERT INTO map_point_reveals (point_id, character_id, how, at)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (point_id, character_id) DO NOTHING;
+
+-- name: SetTreasureFound :one
+-- Marks a treasure found (MR-041). The session is the one open at that time, or
+-- NULL. A treasure already found keeps its first time and session.
+UPDATE map_points
+SET treasure_found_at = COALESCE(treasure_found_at, sqlc.arg(found_at)::TIMESTAMPTZ),
+    treasure_session_id = CASE WHEN treasure_found_at IS NULL THEN sqlc.narg(session_id)::UUID ELSE treasure_session_id END,
+    updated_at = sqlc.arg(now)
+WHERE map_id = sqlc.arg(map_id) AND id = sqlc.arg(id) AND kind = 'treasure'
+RETURNING *;
+
+-- name: ClearTreasureFound :one
+-- Takes the found mark off a treasure.
+UPDATE map_points
+SET treasure_found_at = NULL, treasure_session_id = NULL, updated_at = sqlc.arg(now)
+WHERE map_id = sqlc.arg(map_id) AND id = sqlc.arg(id) AND kind = 'treasure'
+RETURNING *;
+
+-- name: InsertTreasureFinder :exec
+INSERT INTO map_treasure_finders (point_id, character_id)
+VALUES ($1, $2)
+ON CONFLICT (point_id, character_id) DO NOTHING;
+
+-- name: DeleteTreasureFinders :exec
+DELETE FROM map_treasure_finders
+WHERE point_id = $1;
+
+-- name: ListTreasureFindersOfMap :many
+-- Who found each treasure of a map.
+SELECT f.* FROM map_treasure_finders AS f
+JOIN map_points AS p ON p.id = f.point_id
+WHERE p.map_id = $1;
 
 -- name: ImageIsOnAVisibleMap :one
 -- Whether the image is the background of a map the players see now: a
@@ -430,3 +560,21 @@ ORDER BY d.discovered_at, p.id;
 SELECT id, point_id, text, revealed_at FROM scene_clue_reveals
 WHERE campaign_id = $1 AND user_id = $2
 ORDER BY revealed_at DESC, id;
+
+-- name: DeletePointReveals :exec
+-- A point that stops being a trap tells nobody anything.
+DELETE FROM map_point_reveals
+WHERE point_id = $1;
+
+-- name: ListPointRevealsOfPoint :many
+-- Who knows one trap: the players to tell when it changes or goes away.
+SELECT * FROM map_point_reveals
+WHERE point_id = $1;
+
+-- name: GetMapTreasureLocks :one
+-- Whether the map holds a treasure that was found or converted: such a map
+-- cannot be deleted, so a found treasure never vanishes from a session's summary.
+SELECT (count(*) FILTER (WHERE treasure_found_at IS NOT NULL))::INT4 AS found,
+       (count(*) FILTER (WHERE treasure_converted_award_id IS NOT NULL))::INT4 AS converted
+FROM map_points
+WHERE map_id = $1 AND kind = 'treasure';

@@ -52,14 +52,20 @@ const maxPosition = 10000
 // The database's point kinds (map_points_kind_valid) and the API's.
 var (
 	kindToDB = map[mapsv1.MapPointKind]string{
-		mapsv1.MapPointKind_MAP_POINT_KIND_BATTLE: "battle",
-		mapsv1.MapPointKind_MAP_POINT_KIND_SUBMAP: "submap",
-		mapsv1.MapPointKind_MAP_POINT_KIND_SCENE:  "scene",
+		mapsv1.MapPointKind_MAP_POINT_KIND_BATTLE:   "battle",
+		mapsv1.MapPointKind_MAP_POINT_KIND_SUBMAP:   "submap",
+		mapsv1.MapPointKind_MAP_POINT_KIND_SCENE:    "scene",
+		mapsv1.MapPointKind_MAP_POINT_KIND_TRAP:     "trap",
+		mapsv1.MapPointKind_MAP_POINT_KIND_TREASURE: "treasure",
+		mapsv1.MapPointKind_MAP_POINT_KIND_LIGHT:    "light",
 	}
 	kindFromDB = map[string]mapsv1.MapPointKind{
-		"battle": mapsv1.MapPointKind_MAP_POINT_KIND_BATTLE,
-		"submap": mapsv1.MapPointKind_MAP_POINT_KIND_SUBMAP,
-		"scene":  mapsv1.MapPointKind_MAP_POINT_KIND_SCENE,
+		"battle":   mapsv1.MapPointKind_MAP_POINT_KIND_BATTLE,
+		"submap":   mapsv1.MapPointKind_MAP_POINT_KIND_SUBMAP,
+		"scene":    mapsv1.MapPointKind_MAP_POINT_KIND_SCENE,
+		"trap":     mapsv1.MapPointKind_MAP_POINT_KIND_TRAP,
+		"treasure": mapsv1.MapPointKind_MAP_POINT_KIND_TREASURE,
+		"light":    mapsv1.MapPointKind_MAP_POINT_KIND_LIGHT,
 	}
 )
 
@@ -124,8 +130,11 @@ func (s *Service) GetMap(
 	}
 	for _, p := range points {
 		if v.seesPoint(p) {
-			res.Points = append(res.Points, cm.pointToProto(p, v))
+			res.Points = append(res.Points, s.pointToProto(cm, p, v))
 		}
+	}
+	if err := s.attachPointDetails(ctx, m.CampaignID, mapID, res.Points, v.master); err != nil {
+		return nil, s.dbError(ctx, "list a map's traps and treasures", err)
 	}
 	if err := s.attachActions(ctx, mapID, res.Points, v.master); err != nil {
 		return nil, s.dbError(ctx, "list a map's scene actions", err)
@@ -248,7 +257,6 @@ func (s *Service) UpdateMap(
 	if err != nil {
 		return nil, err
 	}
-
 	var updated mapsdb.Map
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
@@ -272,12 +280,24 @@ func (s *Service) UpdateMap(
 			}
 			params.ImageID = *imageID
 		}
+		// A new image clears the painted layers (D2), which a fight standing on
+		// them cannot lose; the same image again clears nothing. Decided from the
+		// row locked here, so a combat that starts meanwhile is seen.
+		imageChanged := params.ImageID != row.ImageID
+		if imageChanged {
+			if err := s.refuseWhileCombat(ctx, tx, m.CampaignID, mapID); err != nil {
+				return err
+			}
+		}
 		updated, err = q.UpdateMap(ctx, params)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return errStaleMap() // never, under the lock above: a second guard
 		}
 		if err != nil {
 			return fmt.Errorf("update map: %w", err)
+		}
+		if imageChanged {
+			return clearLayers(ctx, q, mapID)
 		}
 		return nil
 	})
@@ -321,8 +341,23 @@ func (s *Service) DeleteMap(
 
 	var deleted mapsdb.Map
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		var err error
-		deleted, err = s.queries.WithTx(tx).DeleteMap(ctx, mapsdb.DeleteMapParams{CampaignID: m.CampaignID, ID: mapID})
+		q := s.queries.WithTx(tx)
+		if _, err := s.campaignMap(ctx, q, m.CampaignID, mapID); err != nil {
+			return err
+		}
+		// A map holding a treasure that was found or turned into XP cannot go:
+		// the treasure is part of the session's record (unmark it first).
+		locks, err := q.GetMapTreasureLocks(ctx, mapID)
+		if err != nil {
+			return fmt.Errorf("read the map's treasures: %w", err)
+		}
+		if locks.Converted > 0 {
+			return errTreasureConverted()
+		}
+		if locks.Found > 0 {
+			return errTreasureFound()
+		}
+		deleted, err = q.DeleteMap(ctx, mapsdb.DeleteMapParams{CampaignID: m.CampaignID, ID: mapID})
 		if errors.Is(err, pgx.ErrNoRows) {
 			return errMapNotFound()
 		}
@@ -438,11 +473,26 @@ func (s *Service) SetMapGrid(
 	if err != nil {
 		return nil, err
 	}
-
 	var updated mapsdb.Map
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		var err error
-		updated, err = s.queries.WithTx(tx).SetMapGrid(ctx, mapsdb.SetMapGridParams{
+		q := s.queries.WithTx(tx)
+		before, err := q.GetMapForUpdate(ctx, mapsdb.GetMapForUpdateParams{CampaignID: m.CampaignID, ID: mapID})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errMapNotFound()
+		}
+		if err != nil {
+			return fmt.Errorf("find map: %w", err)
+		}
+		// Other columns clear the painted layers, which a fight standing on them
+		// cannot lose (D2); the same columns again change nothing. Decided from
+		// the row locked here, so a combat that starts meanwhile is seen.
+		gridChanges := columns != int32PtrValue(before.GridColumns)
+		if gridChanges {
+			if err := s.refuseWhileCombat(ctx, tx, m.CampaignID, mapID); err != nil {
+				return err
+			}
+		}
+		updated, err = q.SetMapGrid(ctx, mapsdb.SetMapGridParams{
 			CampaignID: m.CampaignID, ID: mapID, GridColumns: gridColumns, Now: s.now(),
 		})
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -450,6 +500,9 @@ func (s *Service) SetMapGrid(
 		}
 		if err != nil {
 			return fmt.Errorf("set map grid: %w", err)
+		}
+		if gridChanges {
+			return clearLayers(ctx, q, mapID)
 		}
 		return nil
 	})
@@ -464,6 +517,14 @@ func (s *Service) SetMapGrid(
 	return connect.NewResponse(&mapsv1.SetMapGridResponse{Map: out}), nil
 }
 
+// int32PtrValue is the number a nullable column holds, 0 for NULL.
+func int32PtrValue(n *int32) int32 {
+	if n == nil {
+		return 0
+	}
+	return *n
+}
+
 // pointChange is what the master asks to change in a point. Nil fields
 // stay as they are.
 type pointChange struct {
@@ -475,6 +536,9 @@ type pointChange struct {
 	x, y        *int32
 	target      *string // "" removes the target
 	revealed    *bool
+	trap        *mapsv1.TrapSpec
+	treasure    *int32
+	light       *mapsv1.LightSpec
 }
 
 // CreateMapPoint implements mapsv1connect.MapServiceHandler.
@@ -519,11 +583,21 @@ func (s *Service) CreateMapPoint(
 	if err != nil {
 		return nil, err
 	}
+	spec, err := s.specFor(kind, req.Msg.GetTrap(), req.Msg.TreasureValuePo, req.Msg.GetLight())
+	if err != nil {
+		return nil, err
+	}
 
+	current, err := s.currentMap(ctx, m.CampaignID)
+	if err != nil {
+		return nil, err
+	}
 	var created mapsdb.MapPoint
+	var mapRow mapsdb.Map
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
-		if _, err := s.campaignMap(ctx, q, m.CampaignID, mapID); err != nil {
+		var err error
+		if mapRow, err = s.campaignMap(ctx, q, m.CampaignID, mapID); err != nil {
 			return err
 		}
 		count, err := q.CountMapPoints(ctx, mapID)
@@ -539,6 +613,8 @@ func (s *Service) CreateMapPoint(
 		created, err = q.InsertMapPoint(ctx, mapsdb.InsertMapPointParams{
 			MapID: mapID, Kind: kind, Name: name, Description: description, Hooks: hooks, ShowDc: req.Msg.GetShowDc(),
 			XBp: req.Msg.GetXBp(), YBp: req.Msg.GetYBp(), TargetMapID: target, Now: s.now(),
+			Trap: spec.trap, TrapState: spec.trapSt, TrapTriggeredAt: spec.triggeredAt(s.now), TreasureValuePo: spec.value,
+			LightPreset: spec.light.preset, LightBrightFt: spec.lightBright(), LightDimFt: spec.lightDim(),
 		})
 		if err != nil {
 			return fmt.Errorf("insert point: %w", err)
@@ -548,8 +624,9 @@ func (s *Service) CreateMapPoint(
 	if err != nil {
 		return nil, s.dbError(ctx, "create a point", err)
 	}
-	// A new point is hidden: only the master hears about it (MR-009).
-	s.publishMapChanged(m.CampaignID, mapID, false)
+	// A new point is hidden: only the master hears about it (MR-009), unless it
+	// is born visible to everyone (a trap created already triggered).
+	s.publishMapChanged(m.CampaignID, mapID, playersSee(mapID, mapRow.RevealedAt, current) && everyoneSees(created))
 	out, err := s.masterPoint(ctx, m, created)
 	if err != nil {
 		return nil, err
@@ -575,10 +652,14 @@ func (s *Service) UpdateMapPoint(
 		return nil, errPointNotFound()
 	}
 	msg := req.Msg
-	if msg.Kind == nil && msg.Name == nil && msg.Description == nil && msg.Hooks == nil && msg.ShowDc == nil && msg.XBp == nil && msg.YBp == nil && msg.TargetMapId == nil && msg.Revealed == nil {
+	if msg.Kind == nil && msg.Name == nil && msg.Description == nil && msg.Hooks == nil && msg.ShowDc == nil && msg.XBp == nil && msg.YBp == nil &&
+		msg.TargetMapId == nil && msg.Revealed == nil && msg.Trap == nil && msg.TreasureValuePo == nil && msg.Light == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("nothing to change"))
 	}
-	change := pointChange{x: msg.XBp, y: msg.YBp, target: msg.TargetMapId, revealed: msg.Revealed, showDC: msg.ShowDc}
+	change := pointChange{
+		x: msg.XBp, y: msg.YBp, target: msg.TargetMapId, revealed: msg.Revealed, showDC: msg.ShowDc,
+		trap: msg.Trap, treasure: msg.TreasureValuePo, light: msg.Light,
+	}
 	if msg.Kind != nil {
 		kind, ok := kindToDB[msg.GetKind()]
 		if !ok {
@@ -617,6 +698,7 @@ func (s *Service) UpdateMapPoint(
 
 	var mapRow mapsdb.Map
 	var before, after mapsdb.MapPoint
+	var knowers []string
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
 		var err error
@@ -630,6 +712,9 @@ func (s *Service) UpdateMapPoint(
 		if err != nil {
 			return fmt.Errorf("find point: %w", err)
 		}
+		if knowers, err = s.trapKnowers(ctx, q, m.CampaignID, before); err != nil {
+			return err
+		}
 		after, err = s.applyPointChange(ctx, q, m.CampaignID, before, change)
 		return err
 	})
@@ -637,7 +722,8 @@ func (s *Service) UpdateMapPoint(
 		return nil, s.dbError(ctx, "update a point", err)
 	}
 	s.publishMapChanged(m.CampaignID, mapID,
-		playersSee(mapID, mapRow.RevealedAt, current) && (before.RevealedAt != nil || after.RevealedAt != nil))
+		playersSee(mapID, mapRow.RevealedAt, current) && (everyoneSees(before) || everyoneSees(after)))
+	s.tellTrapKnowers(m.CampaignID, mapID, mapRow, current, knowers)
 	// The open scene shows the point's name and description, and stops being
 	// one when the point changes kind.
 	s.publishSceneChangedIf(ctx, m.CampaignID, pointID)
@@ -654,6 +740,8 @@ func (s *Service) applyPointChange(ctx context.Context, q *mapsdb.Queries, campa
 	params := mapsdb.UpdateMapPointParams{
 		MapID: p.MapID, ID: p.ID, Kind: p.Kind, Name: p.Name, Description: p.Description,
 		Hooks: p.Hooks, ShowDc: p.ShowDc, XBp: p.XBp, YBp: p.YBp, TargetMapID: p.TargetMapID, RevealedAt: p.RevealedAt, Now: s.now(),
+		Trap: p.Trap, TrapState: p.TrapState, TrapTriggeredAt: p.TrapTriggeredAt, TreasureValuePo: p.TreasureValuePo, TreasureFoundAt: p.TreasureFoundAt,
+		TreasureSessionID: p.TreasureSessionID, LightPreset: p.LightPreset, LightBrightFt: p.LightBrightFt, LightDimFt: p.LightDimFt,
 	}
 	if c.kind != nil {
 		params.Kind = *c.kind
@@ -692,6 +780,9 @@ func (s *Service) applyPointChange(ctx context.Context, q *mapsdb.Queries, campa
 	if c.revealed != nil {
 		params.RevealedAt = revealedAt(p.RevealedAt, *c.revealed, params.Now)
 	}
+	if err := s.applySpecChange(ctx, q, p, c, &params); err != nil {
+		return mapsdb.MapPoint{}, err
+	}
 	scene := kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_SCENE]
 	if params.Kind != scene && c.hooks != nil && *c.hooks != "" {
 		return mapsdb.MapPoint{}, errOnlyScenesHaveHooks()
@@ -727,6 +818,96 @@ func (s *Service) applyPointChange(ctx context.Context, q *mapsdb.Queries, campa
 	return out, nil
 }
 
+// applySpecChange works out the data of the new kinds (a trap, a treasure's
+// value, a light) for the point after the change, and cleans up what a point
+// that changes kind leaves behind. Each kind needs its own data, and refuses
+// another's; a point keeps what it has unless the request replaces it.
+func (s *Service) applySpecChange(ctx context.Context, q *mapsdb.Queries, p mapsdb.MapPoint, c pointChange, params *mapsdb.UpdateMapPointParams) error {
+	trap, treasure, light := kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_TRAP], kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_TREASURE], kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_LIGHT]
+	switch {
+	case params.Kind == trap:
+		if c.trap != nil {
+			var current *string
+			if p.Kind == trap {
+				current = p.TrapState
+			}
+			t, err := s.cleanTrap(c.trap, current)
+			if err != nil {
+				return err
+			}
+			params.Trap, params.TrapState = t.json, &t.state
+			if t.state == stateTriggered && params.TrapTriggeredAt == nil {
+				params.TrapTriggeredAt = &params.Now // the first time it fires, for good
+			}
+		} else if p.Kind != trap {
+			return badSpec("trap is required to make a point a TRAP")
+		}
+	case c.trap != nil:
+		return errNotThatKind("trap", "TRAP")
+	default:
+		params.Trap, params.TrapState, params.TrapTriggeredAt = nil, nil, nil
+		if p.Kind == trap {
+			if err := q.DeletePointReveals(ctx, p.ID); err != nil {
+				return fmt.Errorf("forget the trap's reveals: %w", err)
+			}
+		}
+	}
+
+	converted := p.TreasureConvertedAwardID != nil
+	switch {
+	case params.Kind == treasure:
+		switch {
+		case c.treasure != nil:
+			v, err := cleanTreasureValue(*c.treasure)
+			if err != nil {
+				return err
+			}
+			if converted && (p.TreasureValuePo == nil || *p.TreasureValuePo != v) {
+				return errTreasureConverted() // its worth became XP
+			}
+			params.TreasureValuePo = &v
+		case p.Kind != treasure:
+			zero := int32(0)
+			params.TreasureValuePo = &zero
+		}
+	case c.treasure != nil:
+		return errNotThatKind("treasure_value_po", "TREASURE")
+	default:
+		if p.Kind == treasure {
+			if converted {
+				return errTreasureConverted()
+			}
+			if err := q.DeleteTreasureFinders(ctx, p.ID); err != nil {
+				return fmt.Errorf("forget the treasure's finders: %w", err)
+			}
+		}
+		params.TreasureValuePo, params.TreasureFoundAt, params.TreasureSessionID = nil, nil, nil
+	}
+
+	switch {
+	case params.Kind == light:
+		if c.light != nil {
+			l, err := s.cleanLight(c.light)
+			if err != nil {
+				return err
+			}
+			params.LightPreset, params.LightBrightFt, params.LightDimFt = l.preset, &l.bright, &l.dimmed
+		} else if p.Kind != light {
+			return badSpec("light is required to make a point a LIGHT")
+		}
+		// No player ever receives a light, so it has nothing to reveal.
+		if c.revealed != nil && *c.revealed {
+			return badSpec("a LIGHT point is never shown to the players, so it cannot be revealed")
+		}
+		params.RevealedAt = nil
+	case c.light != nil:
+		return errNotThatKind("light", "LIGHT")
+	default:
+		params.LightPreset, params.LightBrightFt, params.LightDimFt = nil, nil, nil
+	}
+	return nil
+}
+
 // DeleteMapPoint implements mapsv1connect.MapServiceHandler.
 func (s *Service) DeleteMapPoint(
 	ctx context.Context,
@@ -755,10 +936,30 @@ func (s *Service) DeleteMapPoint(
 
 	var mapRow mapsdb.Map
 	var deleted mapsdb.MapPoint
+	var knowers []string
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
 		var err error
 		if mapRow, err = s.campaignMap(ctx, q, m.CampaignID, mapID); err != nil {
+			return err
+		}
+		point, err := q.GetMapPointForUpdate(ctx, mapsdb.GetMapPointForUpdateParams{MapID: mapID, ID: pointID})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errPointNotFound()
+		}
+		if err != nil {
+			return fmt.Errorf("find point: %w", err)
+		}
+		// A treasure that was found or turned into XP is part of the session's
+		// record: it is unmarked before it goes, never lost silently.
+		if point.TreasureConvertedAwardID != nil {
+			return errTreasureConverted()
+		}
+		if point.TreasureFoundAt != nil {
+			return errTreasureFound()
+		}
+		// Read before the delete cascades the reveal rows away.
+		if knowers, err = s.trapKnowers(ctx, q, m.CampaignID, point); err != nil {
 			return err
 		}
 		deleted, err = q.DeleteMapPoint(ctx, mapsdb.DeleteMapPointParams{MapID: mapID, ID: pointID})
@@ -773,7 +974,8 @@ func (s *Service) DeleteMapPoint(
 	if err != nil {
 		return nil, s.dbError(ctx, "delete a point", err)
 	}
-	s.publishMapChanged(m.CampaignID, mapID, playersSee(mapID, mapRow.RevealedAt, current) && deleted.RevealedAt != nil)
+	s.publishMapChanged(m.CampaignID, mapID, playersSee(mapID, mapRow.RevealedAt, current) && everyoneSees(deleted))
+	s.tellTrapKnowers(m.CampaignID, mapID, mapRow, current, knowers)
 	if openScene == pointID {
 		s.publishSceneChanged(m.CampaignID)
 	}
@@ -805,6 +1007,7 @@ func (s *Service) SetMapPointRevealed(
 
 	var mapRow mapsdb.Map
 	var before, after mapsdb.MapPoint
+	var knowers []string
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
 		var err error
@@ -818,6 +1021,9 @@ func (s *Service) SetMapPointRevealed(
 		if err != nil {
 			return fmt.Errorf("find point: %w", err)
 		}
+		if knowers, err = s.trapKnowers(ctx, q, m.CampaignID, before); err != nil {
+			return err
+		}
 		after, err = s.applyPointChange(ctx, q, m.CampaignID, before, pointChange{revealed: &revealed})
 		return err
 	})
@@ -825,7 +1031,8 @@ func (s *Service) SetMapPointRevealed(
 		return nil, s.dbError(ctx, "reveal or hide a point", err)
 	}
 	s.publishMapChanged(m.CampaignID, mapID,
-		playersSee(mapID, mapRow.RevealedAt, current) && (before.RevealedAt != nil || after.RevealedAt != nil))
+		playersSee(mapID, mapRow.RevealedAt, current) && (everyoneSees(before) || everyoneSees(after)))
+	s.tellTrapKnowers(m.CampaignID, mapID, mapRow, current, knowers)
 	out, err := s.masterPoint(ctx, m, after)
 	if err != nil {
 		return nil, err
@@ -1012,7 +1219,13 @@ func (s *Service) viewerOf(ctx context.Context, m authz.Membership) (viewer, err
 	if err != nil {
 		return viewer{}, err
 	}
-	return newViewer(m, current), nil
+	v := newViewer(m, current)
+	if !v.master {
+		if v.traps, err = s.knownTraps(ctx, m.CampaignID, m.UserID); err != nil {
+			return viewer{}, s.dbError(ctx, "read the traps a player knows", err)
+		}
+	}
+	return v, nil
 }
 
 // currentMap asks the live session for the current map.
@@ -1049,7 +1262,10 @@ func (s *Service) masterPoint(ctx context.Context, m authz.Membership, p mapsdb.
 	if err != nil {
 		return nil, s.dbError(ctx, "read the maps", err)
 	}
-	out := cm.pointToProto(p, viewer{master: true, userID: m.UserID})
+	out := s.pointToProto(cm, p, viewer{master: true, userID: m.UserID})
+	if err := s.attachPointDetails(ctx, m.CampaignID, p.MapID, []*mapsv1.MapPoint{out}, true); err != nil {
+		return nil, s.dbError(ctx, "list a point's traps and treasures", err)
+	}
 	if err := s.attachActions(ctx, p.MapID, []*mapsv1.MapPoint{out}, true); err != nil {
 		return nil, s.dbError(ctx, "list a point's scene actions", err)
 	}

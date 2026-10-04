@@ -10,7 +10,7 @@
 --
 -- side is whose side the combatant fights on: 'party' (the players' characters,
 -- and an NPC the master marks "Aliado") or 'enemy' (the default; the service
--- gives a player's character 'party' when it joins, and 00111 fixes the rows
+-- gives a player's character 'party' when it joins, and 00099 fixes the rows
 -- that already existed). size, speed_fly_ft and the two jump limits are copied
 -- from the sheet when the combatant joins, like speed_ft: size in the SRD's
 -- order (Medium is the default), a fly speed in feet (0 for none), and the long

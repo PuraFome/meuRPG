@@ -1,5 +1,5 @@
 -- +goose Up
--- The combatants that joined a combat before 00110 get what the new columns
+-- The combatants that joined a combat before 00098 get what the new columns
 -- would have held: the tenths of a foot already walked (movement_used_ft times
 -- ten), and 'party' for a player's character. Both statements only touch a row
 -- that still holds the column's default, so re-running this is safe. A combat

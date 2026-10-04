@@ -293,6 +293,17 @@ func TestMapServiceAuthorizationMatrix(t *testing.T) {
 	pc := player.createCharacter(campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Pensantus")
 	npc := master.createCharacter(campaign, charactersv1.CharacterKind_CHARACTER_KIND_MINION, "Goblin")
 	master.placeToken(campaign, shown.GetId(), pc.GetId(), 5000, 5000)
+	gridMap := master.createMap(campaign, "Com grade", image)
+	master.setMapRevealed(campaign, gridMap.GetId(), true)
+	if _, err := master.setGrid(campaign, gridMap.GetId(), 20); err != nil {
+		t.Fatalf("SetMapGrid() error = %v", err)
+	}
+	trap := master.createPoint(&mapsv1.CreateMapPointRequest{
+		CampaignId: campaign, MapId: shown.GetId(), Kind: mapsv1.MapPointKind_MAP_POINT_KIND_TRAP, Name: "Fosso", Trap: testTrap(),
+	})
+	treasure := master.createPoint(&mapsv1.CreateMapPointRequest{
+		CampaignId: campaign, MapId: shown.GetId(), Kind: mapsv1.MapPointKind_MAP_POINT_KIND_TREASURE, Name: "Baú", TreasureValuePo: proto.Int32(250),
+	})
 
 	type call = func(ctx context.Context, u *user) error
 	rows := []struct {
@@ -410,6 +421,40 @@ func TestMapServiceAuthorizationMatrix(t *testing.T) {
 			_, err := u.maps.RemoveMapToken(ctx, connect.NewRequest(&mapsv1.RemoveMapTokenRequest{CampaignId: campaign, MapId: shown.GetId(), CharacterId: npc.GetId()}))
 			return err
 		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		// Etapa 9: the layers, the fog, the traps, the treasure and the carried
+		// light. The map has a grid for these.
+		{"PaintMapCells", func(ctx context.Context, u *user) error {
+			_, err := u.maps.PaintMapCells(ctx, connect.NewRequest(&mapsv1.PaintMapCellsRequest{
+				CampaignId: campaign, MapId: gridMap.GetId(), Layer: mapsv1.MapLayer_MAP_LAYER_WALL, Value: 1, Squares: []*mapsv1.MapSquare{{Col: 1, Row: 1}},
+			}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"GetMapLayers", func(ctx context.Context, u *user) error {
+			_, err := u.maps.GetMapLayers(ctx, connect.NewRequest(&mapsv1.GetMapLayersRequest{CampaignId: campaign, MapId: gridMap.GetId()}))
+			return err
+		}, [5]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"SetMapFog", func(ctx context.Context, u *user) error {
+			_, err := u.maps.SetMapFog(ctx, connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: campaign, MapId: gridMap.GetId(), GroupVision: proto.Bool(true)}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"RevealTrap", func(ctx context.Context, u *user) error {
+			_, err := u.maps.RevealTrap(ctx, connect.NewRequest(&mapsv1.RevealTrapRequest{CampaignId: campaign, MapId: shown.GetId(), PointId: trap.GetId(), CharacterIds: []string{pc.GetId()}}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"MarkTreasureFound", func(ctx context.Context, u *user) error {
+			_, err := u.maps.MarkTreasureFound(ctx, connect.NewRequest(&mapsv1.MarkTreasureFoundRequest{CampaignId: campaign, MapId: shown.GetId(), PointId: treasure.GetId(), CharacterIds: []string{pc.GetId()}}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"UnmarkTreasureFound", func(ctx context.Context, u *user) error {
+			_, err := u.maps.UnmarkTreasureFound(ctx, connect.NewRequest(&mapsv1.UnmarkTreasureFoundRequest{CampaignId: campaign, MapId: shown.GetId(), PointId: treasure.GetId()}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		// A player may set the light of their own character (pc), the master of
+		// anyone; the player's call on the NPC is TestMR036_CarriedLight's.
+		{"SetCarriedLight", func(ctx context.Context, u *user) error {
+			_, err := u.maps.SetCarriedLight(ctx, connect.NewRequest(&mapsv1.SetCarriedLightRequest{CampaignId: campaign, MapId: shown.GetId(), CharacterId: pc.GetId(), LightKey: "light:torch"}))
+			return err
+		}, [5]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 	}
 
 	covered := map[string]bool{}

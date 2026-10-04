@@ -29,6 +29,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/images"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // TestAuthorizationMatrix calls every GalleryService method and every image
@@ -468,10 +469,24 @@ func (noLive) AppendEvent(context.Context, pgx.Tx, string, string, string, []byt
 	return false, errors.New("not in this test")
 }
 
+func (noLive) OpenSessionID(context.Context, pgx.Tx, string) (string, error) {
+	return "", errors.New("not in this test")
+}
+
+// noCombats stands in for the play module's combats.
+type noCombats struct{}
+
+func (noCombats) CombatRunsOnMap(context.Context, pgx.Tx, string, string) (bool, error) {
+	return false, errors.New("not in this test")
+}
+
 // noRules stands in for the rules module.
 type noRules struct{}
 
-func (noRules) SceneCheckName(string) (string, bool) { return "", false }
+func (noRules) SceneCheckName(string) (string, bool)         { return "", false }
+func (noRules) NamePT(string) string                         { return "" }
+func (noRules) TrapPreset(string) (rules.TrapPreset, bool)   { return rules.TrapPreset{}, false }
+func (noRules) LightPreset(string) (rules.LightPreset, bool) { return rules.LightPreset{}, false }
 
 // noMembers is a MembershipSource with no members at all.
 type noMembers struct{}
@@ -494,16 +509,17 @@ func TestNewValidatesItsConfig(t *testing.T) {
 	t.Parallel()
 	pool := lazyPool(t)
 	for name, cfg := range map[string]Config{
-		"Pool":       {Characters: noCharacters{}, Live: noLive{}, Rules: noRules{}},
-		"Characters": {Pool: pool, Live: noLive{}, Rules: noRules{}},
-		"Live":       {Pool: pool, Characters: noCharacters{}, Rules: noRules{}},
-		"Rules":      {Pool: pool, Characters: noCharacters{}, Live: noLive{}},
+		"Pool":       {Characters: noCharacters{}, Live: noLive{}, Rules: noRules{}, Combats: noCombats{}},
+		"Characters": {Pool: pool, Live: noLive{}, Rules: noRules{}, Combats: noCombats{}},
+		"Live":       {Pool: pool, Characters: noCharacters{}, Rules: noRules{}, Combats: noCombats{}},
+		"Rules":      {Pool: pool, Characters: noCharacters{}, Live: noLive{}, Combats: noCombats{}},
+		"Combats":    {Pool: pool, Characters: noCharacters{}, Live: noLive{}, Rules: noRules{}},
 	} {
 		if _, err := New(cfg); err == nil {
 			t.Errorf("New() without %s succeeded", name)
 		}
 	}
-	s, err := New(Config{Pool: pool, Characters: noCharacters{}, Live: noLive{}, Rules: noRules{}})
+	s, err := New(Config{Pool: pool, Characters: noCharacters{}, Live: noLive{}, Rules: noRules{}, Combats: noCombats{}})
 	if err != nil || s.maxImages != DefaultMaxImages || s.maxBytes != DefaultMaxBytes ||
 		s.maxMaps != DefaultMaxMaps || s.maxPoints != DefaultMaxPointsPerMap {
 		t.Errorf("New() = %+v, %v; want the default limits", s, err)
@@ -519,7 +535,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 		t.Fatalf("blob.NewFS() error = %v", err)
 	}
 	t.Cleanup(func() { _ = blobs.Close() })
-	svc, err := New(Config{Pool: lazyPool(t), Blobs: blobs, Characters: noCharacters{}, Live: noLive{}, Rules: noRules{}, Logger: slog.New(slog.DiscardHandler)})
+	svc, err := New(Config{Pool: lazyPool(t), Blobs: blobs, Characters: noCharacters{}, Live: noLive{}, Rules: noRules{}, Combats: noCombats{}, Logger: slog.New(slog.DiscardHandler)})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -564,6 +580,13 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, mapCalls["PlaceMapToken"] = mc.PlaceMapToken(ctx, connect.NewRequest(&mapsv1.PlaceMapTokenRequest{CampaignId: id, MapId: id, CharacterId: id}))
 	_, mapCalls["SetMapTokenHidden"] = mc.SetMapTokenHidden(ctx, connect.NewRequest(&mapsv1.SetMapTokenHiddenRequest{CampaignId: id, MapId: id, CharacterId: id, Hidden: true}))
 	_, mapCalls["RemoveMapToken"] = mc.RemoveMapToken(ctx, connect.NewRequest(&mapsv1.RemoveMapTokenRequest{CampaignId: id, MapId: id, CharacterId: id}))
+	_, mapCalls["PaintMapCells"] = mc.PaintMapCells(ctx, connect.NewRequest(&mapsv1.PaintMapCellsRequest{CampaignId: id, MapId: id, Layer: mapsv1.MapLayer_MAP_LAYER_WALL, Value: 1, Squares: []*mapsv1.MapSquare{{}}}))
+	_, mapCalls["GetMapLayers"] = mc.GetMapLayers(ctx, connect.NewRequest(&mapsv1.GetMapLayersRequest{CampaignId: id, MapId: id}))
+	_, mapCalls["SetMapFog"] = mc.SetMapFog(ctx, connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: id, MapId: id, FogEnabled: proto.Bool(true)}))
+	_, mapCalls["RevealTrap"] = mc.RevealTrap(ctx, connect.NewRequest(&mapsv1.RevealTrapRequest{CampaignId: id, MapId: id, PointId: id, All: true}))
+	_, mapCalls["MarkTreasureFound"] = mc.MarkTreasureFound(ctx, connect.NewRequest(&mapsv1.MarkTreasureFoundRequest{CampaignId: id, MapId: id, PointId: id, CharacterIds: []string{id}}))
+	_, mapCalls["UnmarkTreasureFound"] = mc.UnmarkTreasureFound(ctx, connect.NewRequest(&mapsv1.UnmarkTreasureFoundRequest{CampaignId: id, MapId: id, PointId: id}))
+	_, mapCalls["SetCarriedLight"] = mc.SetCarriedLight(ctx, connect.NewRequest(&mapsv1.SetCarriedLightRequest{CampaignId: id, MapId: id, CharacterId: id, LightKey: "light:torch"}))
 	mapMethods := mapsv1.File_meurpg_maps_v1_maps_proto.Services().ByName("MapService").Methods()
 	if len(mapCalls) != mapMethods.Len() {
 		t.Errorf("called %d MapService methods, the service has %d", len(mapCalls), mapMethods.Len())
@@ -583,6 +606,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 		"ListGalleryImages": methods.ByName("ListGalleryImages"),
 		"ListMaps":          mapMethods.ByName("ListMaps"),
 		"GetMap":            mapMethods.ByName("GetMap"),
+		"GetMapLayers":      mapMethods.ByName("GetMapLayers"),
 	} {
 		opts, _ := desc.Options().(*descriptorpb.MethodOptions)
 		if opts.GetIdempotencyLevel() != descriptorpb.MethodOptions_IDEMPOTENT {
