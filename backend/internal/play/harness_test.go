@@ -170,6 +170,7 @@ func newHarness(t *testing.T, live ...LiveConfig) *harness {
 		t.Fatalf("New() error = %v", err)
 	}
 	h.svc = svc
+	chars.SetCreatureHost(svc) // a creature dismissed leaves its combat, and its events and hints go through play (MR-037)
 	srv := httpserver.New(httpserver.Config{Logger: logger})
 	h.http = srv
 	opt := connect.WithRequireConnectProtocolHeader()

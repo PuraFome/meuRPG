@@ -424,6 +424,85 @@ service CharacterService {
   rpc ListLevelUps(ListLevelUpsRequest) returns (ListLevelUpsResponse) {
     option idempotency_level = IDEMPOTENT;
   }
+
+  // ListCharacterCreatures lists a character's creatures that are still with
+  // it (MR-037, Etapa 9): its familiar, the animals and undead it summoned that
+  // the table has not dismissed, the creatures the master gave. They live
+  // from one session to the next until the player or the master dismisses
+  // them (the app does not count a spell's duration). Each is a kind of
+  // creature from the SRD (monster_key; the stat block is
+  // ContentService.GetCreature), a name, where it came from, what it may do on
+  // its own and its hit points, which the master corrects (RN-02) and a combat
+  // writes back when it ends.
+  //
+  // The master reads any character's, and the player their own character's;
+  // another player's creatures, and with them their hit points, are
+  // `not_found` for everyone else, as the character itself is (RN-20).
+  //
+  // Errors:
+  //   - `not_found`: the campaign or the character does not exist, or the
+  //     caller may not see the character (or character_id is not a UUID).
+  //   - `invalid_argument`: the character is an NPC (only a player's character
+  //     has creatures).
+  rpc ListCharacterCreatures(ListCharacterCreaturesRequest) returns (ListCharacterCreaturesResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // GiveCreature gives a character a creature (MR-037): any SRD creature, for a
+  // hireling, a pet or a house rule, whatever the character's class. The
+  // creature starts at full hit points, acts as any creature in a combat
+  // (`CREATURE_ATTACK_FULL`) and has source `CREATURE_SOURCE_MASTER`. A
+  // character has at most 40 creatures at a time. Only the master may call it.
+  // A `creature_summoned` event goes to the history while a session is open.
+  //
+  // The owner's player and the master get `creatures_changed`; a creature
+  // given during a combat does not join it: the master adds it with the
+  // combat's own tools after the combat, or the next combat takes it.
+  //
+  // Errors:
+  //   - `not_found`: the campaign or the character does not exist, or the
+  //     caller is not a member of it.
+  //   - `permission_denied`: the caller is a player.
+  //   - `invalid_argument`: the character is an NPC or is dead, monster_key is
+  //     not an SRD creature, or name is not 1 to 40 characters on one line.
+  //   - `failed_precondition` (CharacterBlocked): CREATURE_LIMIT.
+  rpc GiveCreature(GiveCreatureRequest) returns (GiveCreatureResponse);
+
+  // RenameCreature changes a creature's name. The character's player and the
+  // master may. The name is free text by a player: 1 to 40 characters on one
+  // line.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist or the caller is not a member
+  //     of it, or the creature is not one the caller may see (another
+  //     player's, dismissed, or not a UUID).
+  //   - `invalid_argument`: name is not 1 to 40 characters on one line.
+  rpc RenameCreature(RenameCreatureRequest) returns (RenameCreatureResponse);
+
+  // DismissCreature sends a creature away ("Dispensar"): it leaves the
+  // character's list and any combat it is in, and a `creature_dismissed` event
+  // goes to the history while a session is open. The character's player and the
+  // master may. Dismissing a creature that is gone already changes nothing.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist or the caller is not a member
+  //     of it, or the creature is not one the caller may see (another player's,
+  //     or not a UUID).
+  rpc DismissCreature(DismissCreatureRequest) returns (DismissCreatureResponse);
+
+  // AdjustCreatureHitPoints is the master's correction of a creature's hit
+  // points outside a combat (RN-02): damage, healing, or the number itself.
+  // Only the master may call it. A creature taken to 0 is dismissed. In a
+  // combat the master uses CombatService.AdjustCombatantHitPoints instead.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist or the caller is not a member
+  //     of it, or the creature does not exist.
+  //   - `permission_denied`: the caller is a player.
+  //   - `invalid_argument`: no change is set, or a value is outside 0 to its
+  //     maximum (damage and heal: 0 to 9999).
+  //   - `failed_precondition` (CharacterBlocked): CREATURE_IN_COMBAT.
+  rpc AdjustCreatureHitPoints(AdjustCreatureHitPointsRequest) returns (AdjustCreatureHitPointsResponse);
 }
 
 // CharacterKind is what a character is for. The kind never changes after
@@ -607,6 +686,11 @@ enum CharacterBlockedReason {
   // LevelUpCharacter with ROLLED_PHYSICAL in a campaign where everybody rolls
   // in the app (RN-18): use RollLevelUpHitPoints.
   CHARACTER_BLOCKED_REASON_DICE_FORCED_IN_APP = 9;
+  // AdjustCreatureHitPoints on a creature that is in a combat that is not
+  // ended: the hit points are the combatant's now (AdjustCombatantHitPoints).
+  CHARACTER_BLOCKED_REASON_CREATURE_IN_COMBAT = 10;
+  // GiveCreature, or a summon, for a character that has 40 creatures already.
+  CHARACTER_BLOCKED_REASON_CREATURE_LIMIT = 11;
 }
 
 // CharacterBlocked is the error detail of CharacterService's
@@ -1517,4 +1601,131 @@ message LevelUp {
   map<string, string> names_pt = 10;
   // When the player confirmed.
   google.protobuf.Timestamp created_at = 11;
+}
+
+// CreatureSource is where a creature came from.
+enum CreatureSource {
+  CREATURE_SOURCE_UNSPECIFIED = 0;
+  // Encontrar Familiar: at most one at a time.
+  CREATURE_SOURCE_FAMILIAR = 1;
+  // Animar os Mortos: skeletons and zombies.
+  CREATURE_SOURCE_ANIMATE_DEAD = 2;
+  // Conjurar Animais: animals that last while the caster concentrates.
+  CREATURE_SOURCE_CONJURE_ANIMALS = 3;
+  // Given by the master (GiveCreature).
+  CREATURE_SOURCE_MASTER = 4;
+}
+
+// CharacterCreature is a creature that belongs to a character (MR-037).
+message CharacterCreature {
+  // Stable ID (a UUID).
+  string id = 1;
+  // The character it belongs to (a UUID).
+  string character_id = 2;
+  // The SRD creature it is: "monster:wolf". The stat block is
+  // meurpg.rules.v1.ContentService.GetCreature; the Portuguese name of the
+  // kind is below.
+  string monster_key = 3;
+  // The creature kind's Portuguese name ("Lobo atroz").
+  string monster_name_pt = 4;
+  // What the table calls it, 1 to 40 characters ("Nanquim").
+  string name = 5;
+  // Where it came from.
+  CreatureSource source = 6;
+  // What it may do on its own in a combat (meurpg.play.v1.CreatureAttack, as
+  // its number: 1 none, 2 reaction, 3 full). A number, not the enum, so this
+  // file does not import the combat's.
+  int32 attack = 7;
+  // Creatures of one casting share it (a UUID); they share one initiative roll.
+  string summon_group_id = 8;
+  // Whether it lasts only while the caster concentrates (Conjurar Animais).
+  bool depends_on_concentration = 9;
+  // Its hit points: only the master and its owner's player get them here.
+  int32 hit_points_current = 10;
+  int32 hit_points_max = 11;
+  // When it was created (the creatures of one casting a microsecond apart, in
+  // the order of the casting).
+  google.protobuf.Timestamp created_at = 12;
+}
+
+// ListCharacterCreaturesRequest names a character.
+message ListCharacterCreaturesRequest {
+  // The campaign (a UUID).
+  string campaign_id = 1;
+  // A player's character of the campaign (a UUID).
+  string character_id = 2;
+}
+
+// ListCharacterCreaturesResponse lists the character's creatures.
+message ListCharacterCreaturesResponse {
+  // Oldest first. Dismissed creatures are not listed.
+  repeated CharacterCreature creatures = 1;
+}
+
+// GiveCreatureRequest gives a creature to a character.
+message GiveCreatureRequest {
+  // The campaign (a UUID).
+  string campaign_id = 1;
+  // A player's character (a UUID).
+  string character_id = 2;
+  // An SRD creature's key, "monster:wolf" (ContentService.ListCreatures).
+  string monster_key = 3;
+  // What to call it, 1 to 40 characters on one line; blank takes the
+  // creature's Portuguese name.
+  string name = 4;
+}
+
+// GiveCreatureResponse returns the new creature.
+message GiveCreatureResponse {
+  CharacterCreature creature = 1;
+}
+
+// RenameCreatureRequest renames a creature.
+message RenameCreatureRequest {
+  // The campaign (a UUID).
+  string campaign_id = 1;
+  // The creature (a UUID). If it is in a combat that is not ended, its combatant
+  // takes the new name there too.
+  string creature_id = 2;
+  // The new name: 1 to 40 characters on one line.
+  string name = 3;
+}
+
+// RenameCreatureResponse returns the creature with its new name.
+message RenameCreatureResponse {
+  CharacterCreature creature = 1;
+}
+
+// DismissCreatureRequest sends a creature away.
+message DismissCreatureRequest {
+  // The campaign (a UUID).
+  string campaign_id = 1;
+  // The creature (a UUID).
+  string creature_id = 2;
+}
+
+// DismissCreatureResponse is empty: the creature is gone from the list.
+message DismissCreatureResponse {}
+
+// AdjustCreatureHitPointsRequest corrects a creature's hit points.
+message AdjustCreatureHitPointsRequest {
+  // The campaign (a UUID).
+  string campaign_id = 1;
+  // The creature (a UUID).
+  string creature_id = 2;
+  // Exactly one.
+  oneof change {
+    // Damage taken: 0 to 9999; the hit points stop at 0.
+    int32 damage = 3;
+    // Healing: 0 to 9999; the hit points stop at the maximum.
+    int32 heal = 4;
+    // The hit points themselves, 0 to the maximum.
+    int32 hit_points = 5;
+  }
+}
+
+// AdjustCreatureHitPointsResponse returns the creature after the correction.
+// A creature taken to 0 is dismissed: it is unset then.
+message AdjustCreatureHitPointsResponse {
+  CharacterCreature creature = 1;
 }

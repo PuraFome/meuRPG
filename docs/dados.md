@@ -321,6 +321,7 @@ flowchart TD
         t_character_master_notes["character_master_notes"]
         t_character_vitals["character_vitals"]
         t_character_level_ups["character_level_ups, character_level_up_rolls"]
+        t_character_creatures["character_creatures"]
     end
 
     subgraph play["Módulo play"]
@@ -446,8 +447,12 @@ Esta seção lista só o que já existe nas migrations de `backend/migrations/`.
 | `00088_add_xp_awards_milestone_again` | `xp_awards` | `milestone_again`: o prêmio é "Dar a mais alguém" e não o que alcançou o marco; serve para recusar uma chave de idempotência reusada com outro tipo de pedido. |
 | `00089_add_combatants_turn_state` | `combatants` | Coluna `turn_state` (`idle`, `acting`, `ended`): quem está no turno que roda e se a parte dele terminou (turno conjunto, MR-013). O grupo é calculado da ordem e dos totais quando a vez começa, e esta coluna guarda a resposta até o turno passar. |
 | `00090_add_etapa9_session_event_kinds` | `session_events` | O `CHECK` de `kind` ganha, de uma vez, todos os tipos da Etapa 9, antes das fatias que os escrevem (para fatias feitas ao mesmo tempo não reescreverem o `CHECK` uma da outra): as armadilhas (`trap_noticed`, `trap_searched`, `trap_triggered`, `trap_disarmed`, `trap_revealed`; MR-035), os tesouros (`treasure_found`, `treasure_unfound`; MR-041), a cobertura e o lado no combate (`cover_set`, `side_set`; MR-034), o ataque de oportunidade que o servidor oferece (`opportunity_offered`; MR-034, RN-21), as criaturas do personagem e a Forma Selvagem (`creature_summoned`, `creature_dismissed`, `wild_shape_started`, `wild_shape_ended`; MR-037) e ver pelos olhos do familiar (`familiar_sight`; MR-036). |
+| `00120_create_character_creatures` | `character_creatures` | As criaturas do personagem (MR-037): dono (`character_id`, cascata), tipo do SRD (`monster_key`), nome de 1 a 40 caracteres, origem (`familiar`, `animate_dead`, `conjure_animals`, `master`), o que pode fazer (`attack`: `none`, `reaction`, `full`), o grupo da conjuração (`summon_group_id`), a conjuração de que depende da concentração (`concentration_cast_id`), PV atual e máximo, e quando e por que foi dispensada (`dismissed_at`, `dismissed_reason`). |
+| `00121_create_character_creatures_indexes` | `character_creatures` | As vivas de um personagem (parcial: `dismissed_at IS NULL`), as de uma conjuração e as de uma campanha. |
+| `00122_add_combatants_creature_columns` | `combatants` | O tipo `creature` (`kind`), com `creature_id` (cascata), `monster_key`, `summon_attack` e `summon_group_id`, todos presentes só nesse tipo (`CHECK`); o `CHECK` do PV passa a deixar a criatura ter PV no combatente, como o NPC. |
+| `00123_create_combatants_creature_index` | `combatants` | O combatente de uma criatura (parcial: `creature_id IS NOT NULL`): dispensar uma criatura o tira do combate. |
 
-As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021`, a `00022`, a `00027`, a `00034`, a `00035`, a `00036` e a `00037`, do módulo `campaigns`; as `00014` a `00017`, a `00020`, a `00023`, a `00055` e as `00078` a `00080`, do módulo `characters` (o `xp_value` e o nível de desafio de um NPC ficam no JSON da ficha, sem migration); as `00018`, a `00019`, a `00024`, a `00032`, a `00033`, as `00043` a `00054`, `00056` a `00059`, a `00063`, a `00066`, a `00075`, a `00076`, a `00077`, a `00083`, a `00089` e a `00090`, do módulo `play`; as `00025`, a `00026`, as `00028` a `00031`, as `00040` a `00042`, a `00064`, a `00065`, as `00067` a `00072`, a `00081` e a `00082`, do módulo `maps`; as `00073` e `00074`, do módulo `notes`; as `00060` a `00062` e as `00084` a `00088`, do módulo `progression`. A `00027` é do documento de campanha, no `campaigns`, que chega num PR à parte. Mudanças em relação à proposta acima, no `identity`:
+As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021`, a `00022`, a `00027`, a `00034`, a `00035`, a `00036` e a `00037`, do módulo `campaigns`; as `00014` a `00017`, a `00020`, a `00023`, a `00055`, as `00078` a `00080`, a `00120` e a `00121`, do módulo `characters` (o `xp_value` e o nível de desafio de um NPC ficam no JSON da ficha, sem migration); as `00018`, a `00019`, a `00024`, a `00032`, a `00033`, as `00043` a `00054`, `00056` a `00059`, a `00063`, a `00066`, a `00075`, a `00076`, a `00077`, a `00083`, a `00089`, a `00090`, a `00122` e a `00123`, do módulo `play`; as `00025`, a `00026`, as `00028` a `00031`, as `00040` a `00042`, a `00064`, a `00065`, as `00067` a `00072`, a `00081` e a `00082`, do módulo `maps`; as `00073` e `00074`, do módulo `notes`; as `00060` a `00062` e as `00084` a `00088`, do módulo `progression`. A `00027` é do documento de campanha, no `campaigns`, que chega num PR à parte. Mudanças em relação à proposta acima, no `identity`:
 
 - `users.google_sub` e `users.email` viraram `user_identities (issuer, subject, email)`. O par `(issuer, subject)` é a chave primária, porque o `sub` só é único dentro de um provedor. Assim o código não depende do Google, e uma conta pode ter outro jeito de entrar (ADR-0009) sem mudar `users`.
 - `UNIQUE (user_id, issuer)`: uma conta tem no máximo uma identidade por provedor, então duas contas Google nunca se juntam.
@@ -504,7 +509,9 @@ No `play`:
   - `payload` é um JSON pequeno (objeto, até 4 KiB, por `CHECK`) com os números antes e depois: sem texto livre, sem nome. `actor_user_id` é quem fez a mudança (`ON DELETE SET NULL`: a conta excluída some do histórico) e `character_id` o personagem (`SET NULL` se ele for apagado, o que mantém o histórico).
   - Não há API de leitura ainda: a tela do histórico vem com o combate. Some com a sessão, e a sessão com a campanha.
 - **`encounters`** (`00043`, MR-013) são os combates da sessão: `status` é `setup` (escolhendo quem luta e rolando a iniciativa), `active` (os turnos rodam) ou `ended`, com `CHECK`. Uma sessão tem no máximo um que não terminou (índice único parcial `encounters_one_open_per_session`, `00045`); os terminados ficam, como registro. `round` é 0 em `setup` e conta de 1. `current_combatant_id` é de quem é a vez e **não tem chave estrangeira**: os combatentes apontam para o combate, e o serviço passa a vez antes de apagar o combatente da vez. `map_id` (`SET NULL`) e `map_point_id` (`SET NULL`) dizem onde e de onde o combate começou; `grid_columns` e `grid_rows` são **copiados** da grade do mapa quando o combate nasce, então mudar a grade depois não move ninguém. `revision` sobe a cada mudança. Some com a sessão, e a sessão com a campanha (`CASCADE`).
-- **`combatants`** (`00044`) são quem luta: `kind` é `player` ou `npc`. Cópias do mesmo NPC compartilham o `character_id`, cada uma com o próprio `label` ("Goblin 2", até 40 caracteres) e a própria iniciativa (RN-19). `user_id` é o jogador de um combatente de jogador (`SET NULL` se a conta é excluída, RN-16). `hidden` é o interruptor do mestre: o servidor nunca manda um combatente escondido a um jogador (RN-10, RN-20), e todo NPC novo nasce escondido (pergunta 31). Iniciativa: `initiative` é o total, `initiative_face` o d20 (os dois nulos até rolar, `CHECK`), `initiative_bonus` o bônus copiado da ficha, `order_index` o lugar na ordem dos turnos e `tie_ordered` diz que o mestre decidiu o empate (RN-19). Posição: `grid_col` e `grid_row` (os dois nulos enquanto não tem quadrado). `speed_ft` é a velocidade copiada ao entrar; `movement_used_ft`, `dashed`, `action_used`, `bonus_action_used`, `reaction_used`, `attacks_made` (`00052`, os ataques da Ação de Atacar), `ac_bonus` (`00053`, os +5 do Escudo, que voltam a 0 no começo da próxima vez do personagem) e `death_save_rolled` (`00054`) são o turno atual; todos voltam ao começo da vez do combatente (`ResetCombatantTurn`). **Só o NPC tem PV aqui** (`hp_current`, `hp_max`, `hp_temp`, conferido por `CHECK` conforme o `kind`): o do personagem de jogador continua em `character_vitals`, uma fonte só (RN-02), e o combate nunca muda a ficha do NPC (RN-04). `defeated` é preenchido pelo dano e pelo "Dano/Cura" do mestre: um NPC a 0 PV fica derrotado, e curado acima de 0 volta à ordem. Um personagem de jogador a 0 PV **não** fica `defeated` (continua nos turnos, para os testes contra a morte): o "Caído" que o `GetEncounter` mostra vem dos `character_vitals`. Só a morte que o mestre confirma (`ConfirmDeath`) o deixa `defeated`, e então ele sai da ordem e o personagem passa a `dead` no `characters`. `death_successes` e `death_failures` (0 a 3) guardam os testes contra a morte (RN-03) e ficam na linha depois do combate, para o resumo; `conditions` (chaves do SRD, até 20) e `concentration_spell` (a chave da magia) são os rótulos de RN-22, sem efeito. Sem índice por `character_id` nem `user_id`: só apagar um personagem ou uma conta procura por eles.
+- **`combatants`** (`00044`) são quem luta: `kind` é `player`, `npc` ou, desde a `00122`, `creature` (uma criatura do personagem, MR-037: o `character_id` dela é o do **dono**, o `user_id` é o jogador do dono, e `creature_id`, `monster_key`, `summon_attack` e `summon_group_id` só existem nesse tipo, conferido por `CHECK`; `dismissed` esconde o combatente de uma criatura cuja concentração acabou, sem apagá-lo, para o desfazer do mestre; as criaturas do mesmo `summon_group_id` rolam uma iniciativa só). Cópias do mesmo NPC compartilham o `character_id`, cada uma com o próprio `label` ("Goblin 2", até 40 caracteres) e a própria iniciativa (RN-19). `user_id` é o jogador de um combatente de jogador (`SET NULL` se a conta é excluída, RN-16). `hidden` é o interruptor do mestre: o servidor nunca manda um combatente escondido a um jogador (RN-10, RN-20), e todo NPC novo nasce escondido (pergunta 31). Iniciativa: `initiative` é o total, `initiative_face` o d20 (os dois nulos até rolar, `CHECK`), `initiative_bonus` o bônus copiado da ficha, `order_index` o lugar na ordem dos turnos e `tie_ordered` diz que o mestre decidiu o empate (RN-19). Posição: `grid_col` e `grid_row` (os dois nulos enquanto não tem quadrado). `speed_ft` é a velocidade copiada ao entrar; `movement_used_ft`, `dashed`, `action_used`, `bonus_action_used`, `reaction_used`, `attacks_made` (`00052`, os ataques da Ação de Atacar), `ac_bonus` (`00053`, os +5 do Escudo, que voltam a 0 no começo da próxima vez do personagem) e `death_save_rolled` (`00054`) são o turno atual; todos voltam ao começo da vez do combatente (`ResetCombatantTurn`). **Só o NPC e a criatura têm PV aqui** (`hp_current`, `hp_max`, `hp_temp`, conferido por `CHECK` conforme o `kind`; o da criatura volta para `character_creatures` quando o combate acaba): o do personagem de jogador continua em `character_vitals`, uma fonte só (RN-02), e o combate nunca muda a ficha do NPC (RN-04). `defeated` é preenchido pelo dano e pelo "Dano/Cura" do mestre: um NPC a 0 PV fica derrotado, e curado acima de 0 volta à ordem. Um personagem de jogador a 0 PV **não** fica `defeated` (continua nos turnos, para os testes contra a morte): o "Caído" que o `GetEncounter` mostra vem dos `character_vitals`. Só a morte que o mestre confirma (`ConfirmDeath`) o deixa `defeated`, e então ele sai da ordem e o personagem passa a `dead` no `characters`. `death_successes` e `death_failures` (0 a 3) guardam os testes contra a morte (RN-03) e ficam na linha depois do combate, para o resumo; `conditions` (chaves do SRD, até 20) e `concentration_spell` (a chave da magia) são os rótulos de RN-22, sem efeito. Sem índice por `character_id` nem `user_id`: só apagar um personagem ou uma conta procura por eles.
+
+- **`character_creatures`** (`00120`, módulo `characters`) são as criaturas de um personagem de jogador (MR-037): o familiar, os animais e mortos-vivos que uma magia convocou, as que o mestre deu. Duram de uma sessão para outra até o jogador ou o mestre as dispensar (o app não conta a duração da magia). `monster_key` é a criatura do SRD (a ficha vem do `rules`, nunca é guardada); `name` é o nome que o jogador deu, **texto livre de 1 a 40 caracteres** (está em [Privacidade](privacidade.md)); `source` diz de onde veio, e `attack` o que a magia deixa fazer (`none` para o familiar, `reaction` para o do Pacto da Corrente, `full`). `summon_group_id` é o das criaturas de uma conjuração (a iniciativa e o desfazer), e `concentration_cast_id` marca as que duram só enquanto o conjurador se concentra (Conjurar Animais): quando a concentração acaba, elas são dispensadas. `hp_current` e `hp_max` (o máximo é o da ficha da criatura, copiado ao nascer) são o PV dela fora do combate, corrigido pelo mestre (RN-02). Uma dispensada **não é apagada**: fica com `dismissed_at` e `dismissed_reason` (`owner`, `master`, `defeated` a 0 PV, `concentration`, `replaced` por um familiar novo, `undone`), para o "Desfazer" do mestre trazê-la de volta. Apaga em cascata com a campanha e com o personagem.
 
 **O PV que dura entre sessões (a lacuna da Etapa 4, resolvida na Etapa 5).** O PV atual, os espaços de magia gastos e os dados de vida de um personagem de jogador precisam durar de um encontro para outro e de uma sessão para outra, e `combatants.current_hp` só vale para um combate. Esse estado ficou em `character_vitals` (`00023`, no `characters`, acima). No combate (Etapa 6), o combatente de um personagem de jogador parte desses valores, e o resultado do combate volta para eles.
 
@@ -738,7 +745,7 @@ erDiagram
         uuid character_id FK "CASCADE"
         uuid user_id FK "opcional, SET NULL"
         text label "1 a 40, Goblin 2"
-        text kind "player ou npc"
+        text kind "player, npc ou creature"
         bool hidden "RN-10, NPC nasce escondido"
         int4 initiative "total, opcional"
         int4 initiative_bonus
@@ -765,7 +772,29 @@ erDiagram
         int4 death_failures
         text_array conditions "RN-22"
         text concentration_spell "opcional"
+        uuid creature_id FK "só creature, character_creatures, CASCADE"
+        text monster_key "só creature"
+        text summon_attack "só creature: none, reaction ou full"
+        uuid summon_group_id "só creature, a conjuração"
+        bool dismissed "creature dispensada: fora da ordem, mas guardada"
         timestamptz created_at
+    }
+
+    character_creatures {
+        uuid id PK
+        uuid campaign_id FK "CASCADE"
+        uuid character_id FK "o dono, CASCADE"
+        text monster_key "criatura do SRD"
+        text name "1 a 40, texto livre do jogador"
+        text source "familiar, animate_dead, conjure_animals ou master"
+        text attack "none, reaction ou full"
+        uuid summon_group_id "criaturas de uma conjuração"
+        uuid concentration_cast_id "opcional, dura enquanto concentra"
+        int4 hp_current
+        int4 hp_max
+        timestamptz created_at
+        timestamptz dismissed_at "opcional"
+        text dismissed_reason "opcional"
     }
 
     pending_damages {
@@ -970,6 +999,9 @@ erDiagram
     map_points |o--o{ encounters : "começou em"
     encounters ||--o{ combatants : "inclui"
     characters ||--o{ combatants : "atua como"
+    characters ||--o{ character_creatures : "tem"
+    campaigns ||--o{ character_creatures : "guarda"
+    character_creatures |o--o{ combatants : "luta como"
     users |o--o{ combatants : "joga"
     encounters ||--o{ pending_damages : "tem"
     combatants ||--o{ pending_damages : "ataca"

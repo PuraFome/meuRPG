@@ -177,6 +177,10 @@ type Spell struct {
 	// HP is set for a spell that reads hit points (Sono, Palavra de Poder...):
 	// Damage and Heal are nil for it, and the cast applies HP instead.
 	HP *HPEffect
+	// Summon says the spell brings creatures (Encontrar Familiar, Animar os
+	// Mortos, Conjurar Animais; MR-037): the cast takes a choice of creatures
+	// instead of targets.
+	Summon bool
 }
 
 // HPEffect is what a spell that reads hit points does at the slot level, from
@@ -284,4 +288,96 @@ type SceneOption struct {
 	// Passive is the character's passive value, when HasPassive.
 	Passive    int
 	HasPassive bool
+}
+
+// Creature is a creature of a player's character (MR-037, Etapa 9) as a
+// combat reads it: an SRD creature the table named, with its own hit points.
+// The stat block is rules content; what a combat needs of it is copied in.
+type Creature struct {
+	ID string
+	// CharacterID is the owner, and OwnerUserID the owner's player ("" when the
+	// player left).
+	CharacterID, OwnerUserID string
+	// MonsterKey is the SRD creature, "monster:wolf", and Name what the table
+	// calls it (1 to 40 characters).
+	MonsterKey, Name string
+	// Source is "familiar", "animate_dead", "conjure_animals" or "master".
+	Source string
+	// Attack is "none", "reaction" or "full" (rules.SummonAttack*).
+	Attack string
+	// GroupID is shared by the creatures of one casting.
+	GroupID string
+	// DependsOnConcentration says it lasts only while the caster concentrates.
+	DependsOnConcentration bool
+	// HitPointsCurrent and HitPointsMax are its own.
+	HitPointsCurrent, HitPointsMax int
+	// InitiativeBonus is its Dexterity modifier and SpeedFt its best speed, in
+	// feet: what a combatant copies when it joins.
+	InitiativeBonus, SpeedFt int
+	// Flier says it flies (its SpeedFt is then its fly speed): the movement slice
+	// lets a flier ignore difficult terrain.
+	Flier bool
+}
+
+// CreatureSpec is one creature a casting makes: the SRD creature, the name the
+// player gave it ("" for the default) and what it may do on its own.
+type CreatureSpec struct {
+	MonsterKey, Name, Attack string
+}
+
+// Summon is a casting to record: the creatures a spell made for a character.
+type Summon struct {
+	CampaignID, CharacterID string
+	// Source is "familiar", "animate_dead" or "conjure_animals".
+	Source string
+	// GroupID is the id the creatures of the casting share.
+	GroupID string
+	// Concentration says the creatures last only while the caster concentrates.
+	Concentration bool
+	Creatures     []CreatureSpec
+}
+
+// SummonResult is what recording a casting did: the creatures it made, in
+// order, and the ones it dismissed (a new familiar replaces the old one).
+type SummonResult struct {
+	Created, Replaced []Creature
+}
+
+// SummonedForm is a creature a casting may make, as the rules check it.
+type SummonedForm struct {
+	MonsterKey, Attack string
+}
+
+// SummonSpell is what a summoning spell asks and what the character has of
+// it, from the spell's data and the sheet.
+type SummonSpell struct {
+	// Known says the spell is on the character's sheet (a wizard's spellbook
+	// counts), Prepared that it can be cast with a slot today, and CanRitual
+	// that the character may cast it as a ritual: the spell is a ritual and the
+	// character's class casts rituals.
+	Known, Prepared, CanRitual bool
+	// Ritual, Concentration and CastingUnit come from the spell: Find Familiar
+	// is a ritual that takes 1 hour, Conjure Animals takes 1 action and needs
+	// concentration. CastingUnit is a rules.Cast* constant.
+	Ritual, Concentration bool
+	CastingUnit           string
+	// Level is the spell's own circle.
+	Level int
+	// Creatures are the creatures the choice made, with what each may do.
+	Creatures []SummonedForm
+}
+
+// CreatureState is where a combat leaves a creature: its hit points and whether
+// it is out of the fight (0 hit points).
+type CreatureState struct {
+	ID       string
+	HP       int
+	Defeated bool
+}
+
+// CreatureChanges says what keeping creatures in step with a combat did.
+type CreatureChanges struct {
+	// Dismissed are the creatures that were defeated and are dismissed now;
+	// Revived the ones that were dismissed as defeated and an undo healed.
+	Dismissed, Revived []Creature
 }

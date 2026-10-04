@@ -37,10 +37,10 @@ type fxTarget struct {
 	temp    int
 }
 
-// readFxTarget reads a target's hit points: an NPC's from its combatant row, a
-// player's character's from its vitals.
+// readFxTarget reads a target's hit points: an NPC's or a creature's from its
+// combatant row, a player's character's from its vitals.
 func (s *Service) readFxTarget(ctx context.Context, c *combatTx, t playdb.Combatant) (fxTarget, error) {
-	if t.Kind == kindNPC {
+	if holdsHP(t) {
 		return fxTarget{c: t, hp: int(num(t.HpCurrent)), max: int(num(t.HpMax)), temp: int(num(t.HpTemp))}, nil
 	}
 	v, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, t.CharacterID)
@@ -220,7 +220,7 @@ func (s *Service) setCondition(ctx context.Context, c *combatTx, t playdb.Combat
 // a character by itself). It returns the character's vitals after.
 func (s *Service) dropToZero(ctx context.Context, c *combatTx, t fxTarget, h *castHit) (*playv1.CharacterVitals, error) {
 	zero := int32(0)
-	if t.c.Kind == kindNPC {
+	if holdsHP(t.c) {
 		before := hpOf(t.c)
 		h.Restore = &before
 		if err := c.q.SetCombatantHitPoints(ctx, playdb.SetCombatantHitPointsParams{ID: t.c.ID, HpCurrent: &zero, HpTemp: &zero, Defeated: true}); err != nil {

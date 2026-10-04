@@ -26,7 +26,23 @@ const (
 
 	kindPlayer = "player"
 	kindNPC    = "npc"
+	// kindCreature is a creature of a player's character (MR-037): a familiar,
+	// summoned animals, a creature the master gave. Its character_id is the
+	// owner's and its user_id the owner's player.
+	kindCreature = "creature"
 )
+
+// holdsHP says whether the combatant keeps its hit points on the combatant row
+// (an NPC and a creature) instead of in a character's vitals (a player's
+// character).
+func holdsHP(c playdb.Combatant) bool { return c.Kind == kindNPC || c.Kind == kindCreature }
+
+// inParty says whether the combatant is on the party's side: a player's
+// character or one of its creatures, whom a player plays.
+func inParty(c playdb.Combatant) bool { return c.Kind != kindNPC }
+
+// isCreature says whether the combatant is a creature of a character.
+func isCreature(c playdb.Combatant) bool { return c.Kind == kindCreature }
 
 // Limits of a combat. Tests cannot go beyond the CHECKs of the tables, which
 // say the same.
@@ -127,12 +143,12 @@ func moveCostFt(c playdb.Combatant, col, row int32) int {
 // placed says whether the combatant has a square on the grid.
 func placed(c playdb.Combatant) bool { return c.GridCol != nil && c.GridRow != nil }
 
-// stateOf is the word that says how hurt an NPC is (RN-20): "Derrotado" when
-// it is out; "Muito ferido" at half of its hit points or fewer; "Ferido" when
-// hurt; "Ileso" otherwise. A player's character has none.
+// stateOf is the word that says how hurt an NPC or a creature is (RN-20):
+// "Derrotado" when it is out; "Muito ferido" at half of its hit points or
+// fewer; "Ferido" when hurt; "Ileso" otherwise. A player's character has none.
 func stateOf(c playdb.Combatant) playv1.CombatantState {
 	switch {
-	case c.Kind != kindNPC || c.HpMax == nil || c.HpCurrent == nil:
+	case !holdsHP(c) || c.HpMax == nil || c.HpCurrent == nil:
 		return playv1.CombatantState_COMBATANT_STATE_UNSPECIFIED
 	case c.Defeated || *c.HpCurrent <= 0:
 		return playv1.CombatantState_COMBATANT_STATE_DEFEATED

@@ -87,10 +87,10 @@ func (s *Service) SetCombatantConditions(
 			changed = true
 		}
 		if endConcentration && target.ConcentrationSpell != nil {
-			if err := c.q.SetCombatantConcentration(ctx, playdb.SetCombatantConcentrationParams{ID: target.ID}); err != nil {
-				return nil, fmt.Errorf("end the concentration: %w", err)
+			// The creatures that lasted only while it did leave with it (MR-037, RN-22).
+			if err := s.stopConcentrating(ctx, c, target, &ev); err != nil {
+				return nil, err
 			}
-			ev.ConcBefore, ev.ConcEnded = *target.ConcentrationSpell, *target.ConcentrationSpell
 			changed = true
 		}
 		if !changed {
@@ -110,6 +110,9 @@ func (s *Service) SetCombatantConditions(
 		s.publishEncounterChanged(m.CampaignID, d.enc)
 		i := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == combID })
 		s.publishLogChanged(m.CampaignID, d.enc.ID, i >= 0 && !d.cs[i].Hidden)
+		if i >= 0 && endConcentration && d.cs[i].UserID != nil {
+			s.publishCreaturesChanged(m.CampaignID, *d.cs[i].UserID)
+		}
 	})
 	if err != nil {
 		return nil, err

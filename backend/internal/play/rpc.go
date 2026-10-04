@@ -101,10 +101,11 @@ func (s *Service) EndGameSession(
 	}
 
 	var session playdb.GameSession
-	var ended bool // this call ended an open session
+	var ended bool                // this call ended an open session
+	var fought []playdb.Combatant // the combatants of the combat the session ended, for the creatures' owners
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
-		ended = false
+		ended, fought = false, nil
 		// Lock the row first: a vitals correction in progress finishes
 		// before the session ends, and this call learns whether the session
 		// was still open.
@@ -121,8 +122,9 @@ func (s *Service) EndGameSession(
 		}
 		// A combat ends with its session; the player characters' tokens move to
 		// where they stood (MR-013).
-		if err := s.endOpenEncounter(ctx, tx, q, current, m.UserID); err != nil {
-			return err
+		var err2 error
+		if fought, err2 = s.endOpenEncounter(ctx, tx, q, current, m.UserID); err2 != nil {
+			return err2
 		}
 		if current.ShownImageKeep && current.ShownImageID != nil {
 			// The image left with the players outlives the session (MR-028).
@@ -144,6 +146,7 @@ func (s *Service) EndGameSession(
 	}
 	res := sessionToProto(session)
 	if ended {
+		s.publishCreaturesOfCombat(m.CampaignID, fought) // the combat wrote their hit points back
 		// Every stream of the session ends (WatchGameSession).
 		s.hub.Publish(m.CampaignID, live.Event{
 			Audience: live.Audience{Everyone: true},

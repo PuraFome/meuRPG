@@ -32,6 +32,11 @@ import "meurpg/rules/v1/rules.proto";
 //   - A player sees the other players' combatants, but not their hit
 //     points (the vitals of their own character come from
 //     PlayService.GetLiveSession).
+//   - A character's creatures (MR-037, kind CREATURE) fight on the party's
+//     side and are played by their owner's player. Their hit points are
+//     numbers only to that player and the master; every other player gets
+//     the state word, as for an NPC. A creature's owner, kind and initiative
+//     are public (the party knows whose it is).
 //   - A player never gets the armor class of anyone, the d20 and the
 //     damage dice of the master's NPCs, nor the combat log entries that
 //     involve a hidden combatant (CombatLogEntry).
@@ -784,6 +789,29 @@ service CombatService {
   //   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
   rpc SetCombatantConditions(SetCombatantConditionsRequest) returns (SetCombatantConditionsResponse);
 
+  // EndConcentration ends the caster's concentration (RN-22) and dismisses the
+  // creatures of the casting that depended on it (Conjurar Animais, MR-037):
+  // each one leaves the combat and the character's list, with a
+  // `creature_dismissed` event per creature. The master for anyone; a player
+  // for their own character. The same thing happens when the caster casts
+  // another concentration spell, and SetCombatantConditions with
+  // `end_concentration` ends it the same way; this one has no other job. A
+  // combatant that does not concentrate changes nothing.
+  //
+  // Every stream gets `encounter_changed`, `combat_log_changed` as for
+  // SetCombatantConditions, and the owner and the master `creatures_changed`
+  // after the combat.
+  //
+  // Errors:
+  //   - `not_found`: the combatant is not in this combat, or the caller is a
+  //     player and may not see it.
+  //   - `permission_denied`: the caller is a player and the combatant is not
+  //     their character.
+  //   - `invalid_argument`: the combatant is not a player's character or an NPC
+  //     (a creature does not concentrate).
+  //   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
+  rpc EndConcentration(EndConcentrationRequest) returns (EndConcentrationResponse);
+
   // ListCombatLog returns the combat log ("Registro do combate"), latest
   // first, grouped by round. Every entry is structured: the app writes the
   // sentence. A player only gets the entries about what they see: nothing
@@ -855,6 +883,29 @@ enum CombatantKind {
   COMBATANT_KIND_PLAYER = 1;
   // A copy of an NPC.
   COMBATANT_KIND_NPC = 2;
+  // One of a character's creatures (MR-037, Etapa 9): a familiar, summoned
+  // animals or undead, a creature the master gave. It belongs to a player's
+  // character (`owner_character_id`), is controlled by that character's player
+  // and by the master, fights on the party's side and keeps its hit points on
+  // the combatant, like an NPC. Its hit points are numbers only to its owner's
+  // player and the master; everyone else gets the state word. It never has
+  // `mine` set: that is only for the caller's own character
+  // (`controlled_by_me` covers both).
+  COMBATANT_KIND_CREATURE = 3;
+}
+
+// CreatureAttack is what a creature may do on its own turn, from the spell
+// that brought it (rules.SummonAttack*).
+enum CreatureAttack {
+  CREATURE_ATTACK_UNSPECIFIED = 0;
+  // It can't take the Attack action (a familiar); it moves and takes the
+  // other standard actions.
+  CREATURE_ATTACK_NONE = 1;
+  // It attacks only with its reaction (the familiar of a warlock with the Pact
+  // of the Chain).
+  CREATURE_ATTACK_REACTION = 2;
+  // It acts as any creature.
+  CREATURE_ATTACK_FULL = 3;
 }
 
 // CombatantState is how hurt a combatant is, as a word (RN-20): what a
@@ -975,6 +1026,30 @@ enum EncounterBlockedReason {
   ENCOUNTER_BLOCKED_REASON_NO_USES = 33;
   // GetCombatHighlights: the combat has not ended.
   ENCOUNTER_BLOCKED_REASON_NOT_ENDED = 34;
+  // Numbers 35 to 39 belong to the movement slice (Etapa 9, 9.6).
+
+  // CastSpell, CastSummon: the spell takes longer than the place it is cast
+  // allows ("Leva 1 hora: conjure fora do combate"). In a combat only a spell
+  // that takes an action, a bonus action or a reaction is cast.
+  ENCOUNTER_BLOCKED_REASON_CASTING_TIME_TOO_LONG = 40;
+  // CastSpell, CastSummon: the option or the creatures chosen are not what the
+  // spell allows with this slot and this character (wrong number, a creature
+  // of another type or above the challenge rating, a form the character does
+  // not have).
+  ENCOUNTER_BLOCKED_REASON_SUMMON_CHOICE_INVALID = 41;
+  // CastSpell: a summoning spell cast in a combat needs the group's initiative
+  // roll (roll_in_app or d20_face).
+  ENCOUNTER_BLOCKED_REASON_SUMMON_NEEDS_INITIATIVE = 42;
+  // RollAttack: the creature may not take the Attack action (a familiar), or
+  // may attack only with its reaction.
+  ENCOUNTER_BLOCKED_REASON_CREATURE_CANNOT_ATTACK = 43;
+  // CastSummon: the caster is a combatant of a combat that is not ended: the
+  // spell is cast there, with CastSpell.
+  ENCOUNTER_BLOCKED_REASON_SUMMON_IN_COMBAT = 44;
+  // CastSpell: the combat has no room for the creatures a summoning spell
+  // brings (a combat holds 40 combatants). Nothing is spent. ("Não cabem mais
+  // combatentes neste combate".)
+  ENCOUNTER_BLOCKED_REASON_TOO_MANY_COMBATANTS = 45;
 }
 
 // EncounterBlocked is the error detail of CombatService's
@@ -1101,10 +1176,12 @@ message Combatant {
   // What the table calls it: a character's name, or "Goblin 2".
   string label = 2;
   CombatantKind kind = 3;
-  // Whether it is the caller's own character.
+  // Whether it is the caller's own character. Never true for a creature, not
+  // even one of the caller's: `controlled_by_me` covers both.
   bool mine = 4;
   // The character it stands for (a UUID). For a player's character, everyone
-  // gets it; for an NPC, only the master (several copies share it).
+  // gets it; for an NPC, only the master (several copies share it). Empty for
+  // a creature: `owner_character_id` says whose it is.
   string character_id = 5;
   // Whether the master hides it from the players. Only the master gets it;
   // for a player it is always false (a hidden one is not sent).
@@ -1143,12 +1220,13 @@ message Combatant {
   bool action_used = 18;
   bool bonus_action_used = 19;
   bool reaction_used = 20;
-  // How hurt an NPC is, as a word (RN-20). Unspecified for a player's
-  // character.
+  // How hurt an NPC or a creature is, as a word (RN-20). Unspecified for a
+  // player's character.
   CombatantState state = 21;
   // An NPC's hit points, as numbers. Only the master gets them; for a player's
   // character, they come from its vitals (the master's copy is filled here
-  // too).
+  // too). A creature's are also the numbers of its owner's player (and of no
+  // other player).
   optional int32 hit_points_current = 22;
   optional int32 hit_points_max = 23;
   optional int32 hit_points_temporary = 24;
@@ -1199,6 +1277,36 @@ message Combatant {
   // members of an NPC-only group. A member's economy fields (above) stay the
   // master's and the owner's.
   bool turn_part_ended = 37;
+  // Fields 38 to 45 belong to the movement slice (Etapa 9, 9.6).
+
+  // Whether the caller's player plays this combatant: their own character, or
+  // one of its creatures. Always false for the master. `mine` stays true only
+  // for the player's own character, so a screen that finds "my" combatant with
+  // it never picks a creature; this field is for the screens that list every
+  // combatant the player controls (MR-037).
+  bool controlled_by_me = 46;
+  // A creature's own ID, the one CharacterService.ListCharacterCreatures lists
+  // (a UUID). Only for a creature, and only for the master and its owner's
+  // player.
+  string creature_id = 47;
+  // The player's character the creature belongs to (a UUID). Only for a
+  // creature, and for everyone who sees it: the party knows whose it is.
+  // `character_id` stays empty for a creature.
+  string owner_character_id = 48;
+  // The creature's kind, "monster:wolf", and its Portuguese name, "Lobo": the
+  // stat block is ContentService.GetCreature. Only for a creature, for everyone
+  // who sees it.
+  string monster_key = 49;
+  string monster_name_pt = 50;
+  // What the creature may do on its own (from the spell that brought it). Only
+  // for a creature, and only for the master and its owner's player. Where it
+  // came from (a familiar, summoned animals, a gift) is on the creature itself:
+  // CharacterService.ListCharacterCreatures. Number 52 is free.
+  CreatureAttack creature_attack = 51;
+  // The casting the creature came from (a UUID): creatures of one casting share
+  // it and share one initiative roll. Only for a creature, and only for the
+  // master and its owner's player.
+  string summon_group_id = 53;
 }
 
 // Participant is who joins a combat: a character of the campaign.
@@ -1782,6 +1890,30 @@ message CastSpellRequest {
     // a player here as on every roll (RN-18).
     int32 pool_sum = 10;
   }
+  // What a summoning spell (Conjurar Animais) brings, the creatures that join
+  // the combat. Required for such a spell and refused for any other. The d20 of
+  // `roll_in_app` or `d20_face` is then the initiative roll of the whole group
+  // (RN-18, one roll for the creatures of a casting); the spell rolls nothing
+  // else. The campaign's dice setting binds a player here as on every roll.
+  SummonChoice summon = 11;
+}
+
+// SummonChoice is what a casting of a summoning spell brings: one of the
+// spell's options and the creatures, chosen from what rules.SummonOptions
+// offers for the slot and the character.
+message SummonChoice {
+  // The index of the option, from 0 (Conjurar Animais has four: one creature of
+  // challenge rating 2, two of 1, four of 1/2, eight of 1/4; Encontrar Familiar
+  // and Animar os Mortos have one).
+  int32 option = 1;
+  // One content key per creature ("monster:dire-wolf"; a key repeats for
+  // several of one kind), exactly the number the option and the slot allow.
+  repeated string creature_keys = 2;
+  // What to call each creature, in the same order, 1 to 40 characters, one line
+  // (free text by a player: "Nanquim"). Empty, or one for each creature; a
+  // blank name takes the creature's Portuguese name, numbered when several
+  // share it.
+  repeated string names = 3;
 }
 
 // SaveOutcome is what a target's saving throw did.
@@ -1895,6 +2027,10 @@ message SpellEffectResult {
 message CastSpellResponse {
   Encounter encounter = 1;
   SpellCast cast = 2;
+  // A summoning spell: the combatants (UUIDs) that joined the combat, in the
+  // order of `summon.creature_keys`. They share one initiative total, so they
+  // take a joint turn. Empty for any other spell.
+  repeated string summoned_combatant_ids = 3;
 }
 
 // SpellCast is a cast, as the caller may see it.
@@ -2054,6 +2190,20 @@ message SetCombatantConditionsRequest {
 
 // SetCombatantConditionsResponse returns the combat after the change.
 message SetCombatantConditionsResponse {
+  Encounter encounter = 1;
+}
+
+// EndConcentrationRequest ends a combatant's concentration.
+message EndConcentrationRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  // The caster (a UUID).
+  string combatant_id = 3;
+  string idempotency_key = 4;
+}
+
+// EndConcentrationResponse returns the combat after the change.
+message EndConcentrationResponse {
   Encounter encounter = 1;
 }
 

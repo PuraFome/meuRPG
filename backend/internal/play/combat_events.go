@@ -244,6 +244,21 @@ type actionEvent struct {
 	// An undo: the event it took back.
 	Undone     string `json:"undone_id,omitempty"`
 	UndoneKind string `json:"undone_kind,omitempty"`
+
+	// The character's creatures (MR-037): the owner's character, the creatures a
+	// casting made (Created, with their MonsterKeys) and the ones it dismissed
+	// (Dismissed: a concentration the cast replaced or ended, with the initiative
+	// their group had, which an undo gives back), where they came from (Source),
+	// whether it was a ritual and why a creature was dismissed (Reason). IDs and
+	// keys only.
+	OwnerCharacter string     `json:"character_id,omitempty"`
+	Created        []string   `json:"creature_ids,omitempty"`
+	MonsterKeys    []string   `json:"monster_keys,omitempty"`
+	Dismissed      []string   `json:"dismissed_ids,omitempty"`
+	SummonRoll     *groupRoll `json:"summon_roll,omitempty"`
+	Source         string     `json:"source,omitempty"`
+	Ritual         bool       `json:"ritual,omitempty"`
+	Reason         string     `json:"reason,omitempty"`
 }
 
 // readEvent decodes an event's payload. A payload of this module never fails

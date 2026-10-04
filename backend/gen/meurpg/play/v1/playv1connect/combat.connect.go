@@ -114,6 +114,9 @@ const (
 	// CombatServiceSetCombatantConditionsProcedure is the fully-qualified name of the CombatService's
 	// SetCombatantConditions RPC.
 	CombatServiceSetCombatantConditionsProcedure = "/meurpg.play.v1.CombatService/SetCombatantConditions"
+	// CombatServiceEndConcentrationProcedure is the fully-qualified name of the CombatService's
+	// EndConcentration RPC.
+	CombatServiceEndConcentrationProcedure = "/meurpg.play.v1.CombatService/EndConcentration"
 	// CombatServiceListCombatLogProcedure is the fully-qualified name of the CombatService's
 	// ListCombatLog RPC.
 	CombatServiceListCombatLogProcedure = "/meurpg.play.v1.CombatService/ListCombatLog"
@@ -783,6 +786,28 @@ type CombatServiceClient interface {
 	//     condition twice, or more than 20.
 	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
 	SetCombatantConditions(context.Context, *connect.Request[v1.SetCombatantConditionsRequest]) (*connect.Response[v1.SetCombatantConditionsResponse], error)
+	// EndConcentration ends the caster's concentration (RN-22) and dismisses the
+	// creatures of the casting that depended on it (Conjurar Animais, MR-037):
+	// each one leaves the combat and the character's list, with a
+	// `creature_dismissed` event per creature. The master for anyone; a player
+	// for their own character. The same thing happens when the caster casts
+	// another concentration spell, and SetCombatantConditions with
+	// `end_concentration` ends it the same way; this one has no other job. A
+	// combatant that does not concentrate changes nothing.
+	//
+	// Every stream gets `encounter_changed`, `combat_log_changed` as for
+	// SetCombatantConditions, and the owner and the master `creatures_changed`
+	// after the combat.
+	//
+	// Errors:
+	//   - `not_found`: the combatant is not in this combat, or the caller is a
+	//     player and may not see it.
+	//   - `permission_denied`: the caller is a player and the combatant is not
+	//     their character.
+	//   - `invalid_argument`: the combatant is not a player's character or an NPC
+	//     (a creature does not concentrate).
+	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
+	EndConcentration(context.Context, *connect.Request[v1.EndConcentrationRequest]) (*connect.Response[v1.EndConcentrationResponse], error)
 	// ListCombatLog returns the combat log ("Registro do combate"), latest
 	// first, grouped by round. Every entry is structured: the app writes the
 	// sentence. A player only gets the entries about what they see: nothing
@@ -994,6 +1019,12 @@ func NewCombatServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(combatServiceMethods.ByName("SetCombatantConditions")),
 			connect.WithClientOptions(opts...),
 		),
+		endConcentration: connect.NewClient[v1.EndConcentrationRequest, v1.EndConcentrationResponse](
+			httpClient,
+			baseURL+CombatServiceEndConcentrationProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("EndConcentration")),
+			connect.WithClientOptions(opts...),
+		),
 		listCombatLog: connect.NewClient[v1.ListCombatLogRequest, v1.ListCombatLogResponse](
 			httpClient,
 			baseURL+CombatServiceListCombatLogProcedure,
@@ -1038,6 +1069,7 @@ type combatServiceClient struct {
 	rollDeathSave            *connect.Client[v1.RollDeathSaveRequest, v1.RollDeathSaveResponse]
 	confirmDeath             *connect.Client[v1.ConfirmDeathRequest, v1.ConfirmDeathResponse]
 	setCombatantConditions   *connect.Client[v1.SetCombatantConditionsRequest, v1.SetCombatantConditionsResponse]
+	endConcentration         *connect.Client[v1.EndConcentrationRequest, v1.EndConcentrationResponse]
 	listCombatLog            *connect.Client[v1.ListCombatLogRequest, v1.ListCombatLogResponse]
 	getCombatHighlights      *connect.Client[v1.GetCombatHighlightsRequest, v1.GetCombatHighlightsResponse]
 }
@@ -1165,6 +1197,11 @@ func (c *combatServiceClient) ConfirmDeath(ctx context.Context, req *connect.Req
 // SetCombatantConditions calls meurpg.play.v1.CombatService.SetCombatantConditions.
 func (c *combatServiceClient) SetCombatantConditions(ctx context.Context, req *connect.Request[v1.SetCombatantConditionsRequest]) (*connect.Response[v1.SetCombatantConditionsResponse], error) {
 	return c.setCombatantConditions.CallUnary(ctx, req)
+}
+
+// EndConcentration calls meurpg.play.v1.CombatService.EndConcentration.
+func (c *combatServiceClient) EndConcentration(ctx context.Context, req *connect.Request[v1.EndConcentrationRequest]) (*connect.Response[v1.EndConcentrationResponse], error) {
+	return c.endConcentration.CallUnary(ctx, req)
 }
 
 // ListCombatLog calls meurpg.play.v1.CombatService.ListCombatLog.
@@ -1838,6 +1875,28 @@ type CombatServiceHandler interface {
 	//     condition twice, or more than 20.
 	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
 	SetCombatantConditions(context.Context, *connect.Request[v1.SetCombatantConditionsRequest]) (*connect.Response[v1.SetCombatantConditionsResponse], error)
+	// EndConcentration ends the caster's concentration (RN-22) and dismisses the
+	// creatures of the casting that depended on it (Conjurar Animais, MR-037):
+	// each one leaves the combat and the character's list, with a
+	// `creature_dismissed` event per creature. The master for anyone; a player
+	// for their own character. The same thing happens when the caster casts
+	// another concentration spell, and SetCombatantConditions with
+	// `end_concentration` ends it the same way; this one has no other job. A
+	// combatant that does not concentrate changes nothing.
+	//
+	// Every stream gets `encounter_changed`, `combat_log_changed` as for
+	// SetCombatantConditions, and the owner and the master `creatures_changed`
+	// after the combat.
+	//
+	// Errors:
+	//   - `not_found`: the combatant is not in this combat, or the caller is a
+	//     player and may not see it.
+	//   - `permission_denied`: the caller is a player and the combatant is not
+	//     their character.
+	//   - `invalid_argument`: the combatant is not a player's character or an NPC
+	//     (a creature does not concentrate).
+	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
+	EndConcentration(context.Context, *connect.Request[v1.EndConcentrationRequest]) (*connect.Response[v1.EndConcentrationResponse], error)
 	// ListCombatLog returns the combat log ("Registro do combate"), latest
 	// first, grouped by round. Every entry is structured: the app writes the
 	// sentence. A player only gets the entries about what they see: nothing
@@ -2045,6 +2104,12 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(combatServiceMethods.ByName("SetCombatantConditions")),
 		connect.WithHandlerOptions(opts...),
 	)
+	combatServiceEndConcentrationHandler := connect.NewUnaryHandler(
+		CombatServiceEndConcentrationProcedure,
+		svc.EndConcentration,
+		connect.WithSchema(combatServiceMethods.ByName("EndConcentration")),
+		connect.WithHandlerOptions(opts...),
+	)
 	combatServiceListCombatLogHandler := connect.NewUnaryHandler(
 		CombatServiceListCombatLogProcedure,
 		svc.ListCombatLog,
@@ -2111,6 +2176,8 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 			combatServiceConfirmDeathHandler.ServeHTTP(w, r)
 		case CombatServiceSetCombatantConditionsProcedure:
 			combatServiceSetCombatantConditionsHandler.ServeHTTP(w, r)
+		case CombatServiceEndConcentrationProcedure:
+			combatServiceEndConcentrationHandler.ServeHTTP(w, r)
 		case CombatServiceListCombatLogProcedure:
 			combatServiceListCombatLogHandler.ServeHTTP(w, r)
 		case CombatServiceGetCombatHighlightsProcedure:
@@ -2222,6 +2289,10 @@ func (UnimplementedCombatServiceHandler) ConfirmDeath(context.Context, *connect.
 
 func (UnimplementedCombatServiceHandler) SetCombatantConditions(context.Context, *connect.Request[v1.SetCombatantConditionsRequest]) (*connect.Response[v1.SetCombatantConditionsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.SetCombatantConditions is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) EndConcentration(context.Context, *connect.Request[v1.EndConcentrationRequest]) (*connect.Response[v1.EndConcentrationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.EndConcentration is not implemented"))
 }
 
 func (UnimplementedCombatServiceHandler) ListCombatLog(context.Context, *connect.Request[v1.ListCombatLogRequest]) (*connect.Response[v1.ListCombatLogResponse], error) {

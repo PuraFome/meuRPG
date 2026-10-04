@@ -241,6 +241,34 @@ func (q *Queries) GetCampaignEncounterXP(ctx context.Context, arg GetCampaignEnc
 	return i, err
 }
 
+const getEncounterByID = `-- name: GetEncounterByID :one
+SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at FROM encounters WHERE id = $1
+`
+
+// A combat by its ID alone (the creatures' host publishes the change of the
+// combat a dismissed creature left).
+func (q *Queries) GetEncounterByID(ctx context.Context, id string) (Encounter, error) {
+	row := q.db.QueryRow(ctx, getEncounterByID, id)
+	var i Encounter
+	err := row.Scan(
+		&i.ID,
+		&i.GameSessionID,
+		&i.MapID,
+		&i.MapPointID,
+		&i.Name,
+		&i.Status,
+		&i.Round,
+		&i.CurrentCombatantID,
+		&i.GridColumns,
+		&i.GridRows,
+		&i.Revision,
+		&i.CreatedAt,
+		&i.StartedAt,
+		&i.EndedAt,
+	)
+	return i, err
+}
+
 const getEncounterInSession = `-- name: GetEncounterInSession :one
 SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at FROM encounters
 WHERE game_session_id = $1 AND id = $2
@@ -589,7 +617,7 @@ INSERT INTO combatants (
     $1, $2, $3, $4, $5, $6, $7, $8, $9,
     $10, $11, $12, $13, $14, $15, $16, $17, $18
 )
-RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state
+RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, creature_id, monster_key, summon_attack, summon_group_id, dismissed
 `
 
 type InsertCombatantParams struct {
@@ -670,6 +698,117 @@ func (q *Queries) InsertCombatant(ctx context.Context, arg InsertCombatantParams
 		&i.DeathSaveRolled,
 		&i.XpValue,
 		&i.TurnState,
+		&i.CreatureID,
+		&i.MonsterKey,
+		&i.SummonAttack,
+		&i.SummonGroupID,
+		&i.Dismissed,
+	)
+	return i, err
+}
+
+const insertCreatureCombatant = `-- name: InsertCreatureCombatant :one
+
+INSERT INTO combatants (
+    encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face,
+    order_index, grid_col, grid_row, speed_ft, hp_current, hp_max, hp_temp, created_at,
+    creature_id, monster_key, summon_attack, summon_group_id
+) VALUES (
+    $1, $2, $3, $4, 'creature', false, $5, $6, $7,
+    $8, $9, $10, $11, $12, $13, 0, $14,
+    $15, $16, $17, $18
+)
+RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, creature_id, monster_key, summon_attack, summon_group_id, dismissed
+`
+
+type InsertCreatureCombatantParams struct {
+	EncounterID     string
+	CharacterID     string
+	UserID          *string
+	Label           string
+	Initiative      *int32
+	InitiativeBonus int32
+	InitiativeFace  *int32
+	OrderIndex      int32
+	GridCol         *int32
+	GridRow         *int32
+	SpeedFt         int32
+	HpCurrent       *int32
+	HpMax           *int32
+	CreatedAt       time.Time
+	CreatureID      *string
+	MonsterKey      *string
+	SummonAttack    *string
+	SummonGroupID   *string
+}
+
+// The character's creatures in a combat (MR-037, Etapa 9). A creature is a
+// combatant of kind 'creature': character_id is its owner's.
+// A creature joins a combat. It has no initiative until its group rolls one,
+// and no square until somebody places it; its hit points come from the
+// creature.
+func (q *Queries) InsertCreatureCombatant(ctx context.Context, arg InsertCreatureCombatantParams) (Combatant, error) {
+	row := q.db.QueryRow(ctx, insertCreatureCombatant,
+		arg.EncounterID,
+		arg.CharacterID,
+		arg.UserID,
+		arg.Label,
+		arg.Initiative,
+		arg.InitiativeBonus,
+		arg.InitiativeFace,
+		arg.OrderIndex,
+		arg.GridCol,
+		arg.GridRow,
+		arg.SpeedFt,
+		arg.HpCurrent,
+		arg.HpMax,
+		arg.CreatedAt,
+		arg.CreatureID,
+		arg.MonsterKey,
+		arg.SummonAttack,
+		arg.SummonGroupID,
+	)
+	var i Combatant
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.CharacterID,
+		&i.UserID,
+		&i.Label,
+		&i.Kind,
+		&i.Hidden,
+		&i.Initiative,
+		&i.InitiativeBonus,
+		&i.InitiativeFace,
+		&i.TieOrdered,
+		&i.OrderIndex,
+		&i.GridCol,
+		&i.GridRow,
+		&i.SpeedFt,
+		&i.MovementUsedFt,
+		&i.Dashed,
+		&i.ActionUsed,
+		&i.BonusActionUsed,
+		&i.ReactionUsed,
+		&i.HpCurrent,
+		&i.HpMax,
+		&i.HpTemp,
+		&i.Defeated,
+		&i.DeathSuccesses,
+		&i.DeathFailures,
+		&i.Conditions,
+		&i.ConcentrationSpell,
+		&i.CreatedAt,
+		&i.AttacksMade,
+		&i.AcBonus,
+		&i.DeathSaveRolled,
+		&i.XpValue,
+		&i.TurnState,
+		&i.CreatureID,
+		&i.MonsterKey,
+		&i.SummonAttack,
+		&i.SummonGroupID,
+		&i.Dismissed,
 	)
 	return i, err
 }
@@ -995,12 +1134,13 @@ func (q *Queries) ListCastPendingDamages(ctx context.Context, arg ListCastPendin
 }
 
 const listCombatants = `-- name: ListCombatants :many
-SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state FROM combatants
-WHERE encounter_id = $1
+SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, creature_id, monster_key, summon_attack, summon_group_id, dismissed FROM combatants
+WHERE encounter_id = $1 AND NOT dismissed
 ORDER BY order_index, created_at, id
 `
 
-// The combat's combatants in turn order.
+// The combat's combatants in turn order. A creature whose concentration ended
+// is dismissed: it is out of the order and the map until an undo brings it back.
 func (q *Queries) ListCombatants(ctx context.Context, encounterID string) ([]Combatant, error) {
 	rows, err := q.db.Query(ctx, listCombatants, encounterID)
 	if err != nil {
@@ -1045,6 +1185,146 @@ func (q *Queries) ListCombatants(ctx context.Context, encounterID string) ([]Com
 			&i.DeathSaveRolled,
 			&i.XpValue,
 			&i.TurnState,
+			&i.CreatureID,
+			&i.MonsterKey,
+			&i.SummonAttack,
+			&i.SummonGroupID,
+			&i.Dismissed,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCombatantsWithDismissed = `-- name: ListCombatantsWithDismissed :many
+SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, creature_id, monster_key, summon_attack, summon_group_id, dismissed FROM combatants
+WHERE encounter_id = $1
+ORDER BY order_index, created_at, id
+`
+
+// The same with the dismissed ones too: the combat log names who they were.
+func (q *Queries) ListCombatantsWithDismissed(ctx context.Context, encounterID string) ([]Combatant, error) {
+	rows, err := q.db.Query(ctx, listCombatantsWithDismissed, encounterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Combatant
+	for rows.Next() {
+		var i Combatant
+		if err := rows.Scan(
+			&i.ID,
+			&i.EncounterID,
+			&i.CharacterID,
+			&i.UserID,
+			&i.Label,
+			&i.Kind,
+			&i.Hidden,
+			&i.Initiative,
+			&i.InitiativeBonus,
+			&i.InitiativeFace,
+			&i.TieOrdered,
+			&i.OrderIndex,
+			&i.GridCol,
+			&i.GridRow,
+			&i.SpeedFt,
+			&i.MovementUsedFt,
+			&i.Dashed,
+			&i.ActionUsed,
+			&i.BonusActionUsed,
+			&i.ReactionUsed,
+			&i.HpCurrent,
+			&i.HpMax,
+			&i.HpTemp,
+			&i.Defeated,
+			&i.DeathSuccesses,
+			&i.DeathFailures,
+			&i.Conditions,
+			&i.ConcentrationSpell,
+			&i.CreatedAt,
+			&i.AttacksMade,
+			&i.AcBonus,
+			&i.DeathSaveRolled,
+			&i.XpValue,
+			&i.TurnState,
+			&i.CreatureID,
+			&i.MonsterKey,
+			&i.SummonAttack,
+			&i.SummonGroupID,
+			&i.Dismissed,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCreatureCombatants = `-- name: ListCreatureCombatants :many
+SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, creature_id, monster_key, summon_attack, summon_group_id, dismissed FROM combatants
+WHERE encounter_id = $1 AND kind = 'creature' AND NOT dismissed
+ORDER BY order_index, created_at, id
+`
+
+// The creatures in a combat, in turn order: what the combat writes back to
+// their owners' lists and what it keeps in step with them.
+func (q *Queries) ListCreatureCombatants(ctx context.Context, encounterID string) ([]Combatant, error) {
+	rows, err := q.db.Query(ctx, listCreatureCombatants, encounterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Combatant
+	for rows.Next() {
+		var i Combatant
+		if err := rows.Scan(
+			&i.ID,
+			&i.EncounterID,
+			&i.CharacterID,
+			&i.UserID,
+			&i.Label,
+			&i.Kind,
+			&i.Hidden,
+			&i.Initiative,
+			&i.InitiativeBonus,
+			&i.InitiativeFace,
+			&i.TieOrdered,
+			&i.OrderIndex,
+			&i.GridCol,
+			&i.GridRow,
+			&i.SpeedFt,
+			&i.MovementUsedFt,
+			&i.Dashed,
+			&i.ActionUsed,
+			&i.BonusActionUsed,
+			&i.ReactionUsed,
+			&i.HpCurrent,
+			&i.HpMax,
+			&i.HpTemp,
+			&i.Defeated,
+			&i.DeathSuccesses,
+			&i.DeathFailures,
+			&i.Conditions,
+			&i.ConcentrationSpell,
+			&i.CreatedAt,
+			&i.AttacksMade,
+			&i.AcBonus,
+			&i.DeathSaveRolled,
+			&i.XpValue,
+			&i.TurnState,
+			&i.CreatureID,
+			&i.MonsterKey,
+			&i.SummonAttack,
+			&i.SummonGroupID,
+			&i.Dismissed,
 		); err != nil {
 			return nil, err
 		}
@@ -1171,6 +1451,84 @@ func (q *Queries) ListGameSessions(ctx context.Context, campaignID string) ([]Ga
 			&i.ShownImageID,
 			&i.ShownImageKeep,
 			&i.OpenScenePointID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOpenCombatantsOfCreatures = `-- name: ListOpenCombatantsOfCreatures :many
+SELECT cb.id, cb.encounter_id, cb.character_id, cb.user_id, cb.label, cb.kind, cb.hidden, cb.initiative, cb.initiative_bonus, cb.initiative_face, cb.tie_ordered, cb.order_index, cb.grid_col, cb.grid_row, cb.speed_ft, cb.movement_used_ft, cb.dashed, cb.action_used, cb.bonus_action_used, cb.reaction_used, cb.hp_current, cb.hp_max, cb.hp_temp, cb.defeated, cb.death_successes, cb.death_failures, cb.conditions, cb.concentration_spell, cb.created_at, cb.attacks_made, cb.ac_bonus, cb.death_save_rolled, cb.xp_value, cb.turn_state, cb.creature_id, cb.monster_key, cb.summon_attack, cb.summon_group_id, cb.dismissed FROM combatants AS cb
+JOIN encounters AS e ON e.id = cb.encounter_id
+JOIN game_sessions AS gs ON gs.id = e.game_session_id
+WHERE gs.campaign_id = $1::UUID
+  AND e.status <> 'ended'
+  AND NOT cb.dismissed
+  AND cb.creature_id = ANY($2::UUID[])
+ORDER BY cb.order_index, cb.created_at, cb.id
+`
+
+type ListOpenCombatantsOfCreaturesParams struct {
+	CampaignID  string
+	CreatureIds []string
+}
+
+// The combatants of these creatures in the campaign's combat that is not ended
+// (a session has at most one).
+func (q *Queries) ListOpenCombatantsOfCreatures(ctx context.Context, arg ListOpenCombatantsOfCreaturesParams) ([]Combatant, error) {
+	rows, err := q.db.Query(ctx, listOpenCombatantsOfCreatures, arg.CampaignID, arg.CreatureIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Combatant
+	for rows.Next() {
+		var i Combatant
+		if err := rows.Scan(
+			&i.ID,
+			&i.EncounterID,
+			&i.CharacterID,
+			&i.UserID,
+			&i.Label,
+			&i.Kind,
+			&i.Hidden,
+			&i.Initiative,
+			&i.InitiativeBonus,
+			&i.InitiativeFace,
+			&i.TieOrdered,
+			&i.OrderIndex,
+			&i.GridCol,
+			&i.GridRow,
+			&i.SpeedFt,
+			&i.MovementUsedFt,
+			&i.Dashed,
+			&i.ActionUsed,
+			&i.BonusActionUsed,
+			&i.ReactionUsed,
+			&i.HpCurrent,
+			&i.HpMax,
+			&i.HpTemp,
+			&i.Defeated,
+			&i.DeathSuccesses,
+			&i.DeathFailures,
+			&i.Conditions,
+			&i.ConcentrationSpell,
+			&i.CreatedAt,
+			&i.AttacksMade,
+			&i.AcBonus,
+			&i.DeathSaveRolled,
+			&i.XpValue,
+			&i.TurnState,
+			&i.CreatureID,
+			&i.MonsterKey,
+			&i.SummonAttack,
+			&i.SummonGroupID,
+			&i.Dismissed,
 		); err != nil {
 			return nil, err
 		}
@@ -1532,6 +1890,7 @@ const markDeathSaveRolledOnTurn = `-- name: MarkDeathSaveRolledOnTurn :exec
 UPDATE combatants
 SET death_save_rolled = true
 WHERE character_id = $1
+  AND kind = 'player'
   AND turn_state = 'acting'
   AND encounter_id IN (
       SELECT id FROM encounters
@@ -1605,6 +1964,7 @@ const resetDeathSavesOfCharacter = `-- name: ResetDeathSavesOfCharacter :exec
 UPDATE combatants
 SET death_successes = 0, death_failures = 0
 WHERE character_id = $1
+  AND kind = 'player'
   AND encounter_id IN (SELECT id FROM encounters WHERE game_session_id = $2 AND status <> 'ended')
 `
 
@@ -1841,6 +2201,80 @@ func (q *Queries) SetCombatantSquare(ctx context.Context, arg SetCombatantSquare
 	return err
 }
 
+const setCreatureCombatantLabel = `-- name: SetCreatureCombatantLabel :many
+UPDATE combatants
+SET label = $1
+WHERE creature_id = $2::UUID
+  AND encounter_id IN (
+      SELECT e.id FROM encounters AS e
+      JOIN game_sessions AS gs ON gs.id = e.game_session_id
+      WHERE gs.campaign_id = $3::UUID AND e.status <> 'ended'
+  )
+RETURNING encounter_id
+`
+
+type SetCreatureCombatantLabelParams struct {
+	Label      string
+	CreatureID string
+	CampaignID string
+}
+
+// A creature's new name on its combatant, in the combat that is not ended.
+func (q *Queries) SetCreatureCombatantLabel(ctx context.Context, arg SetCreatureCombatantLabelParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, setCreatureCombatantLabel, arg.Label, arg.CreatureID, arg.CampaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var encounter_id string
+		if err := rows.Scan(&encounter_id); err != nil {
+			return nil, err
+		}
+		items = append(items, encounter_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const setCreatureCombatantsDismissed = `-- name: SetCreatureCombatantsDismissed :many
+UPDATE combatants
+SET dismissed = $1, turn_state = 'idle'
+WHERE encounter_id = $2 AND creature_id = ANY($3::UUID[])
+RETURNING id
+`
+
+type SetCreatureCombatantsDismissedParams struct {
+	Dismissed   bool
+	EncounterID string
+	CreatureIds []string
+}
+
+// Hides (or brings back) the combatants of the creatures in the combat. A
+// dismissed one is out of the turn.
+func (q *Queries) SetCreatureCombatantsDismissed(ctx context.Context, arg SetCreatureCombatantsDismissedParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, setCreatureCombatantsDismissed, arg.Dismissed, arg.EncounterID, arg.CreatureIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const setCurrentMap = `-- name: SetCurrentMap :one
 UPDATE game_sessions
 SET current_map_id = $1
@@ -1918,6 +2352,35 @@ func (q *Queries) SetEncounterState(ctx context.Context, arg SetEncounterStatePa
 		&i.EndedAt,
 	)
 	return i, err
+}
+
+const setGroupInitiative = `-- name: SetGroupInitiative :exec
+UPDATE combatants
+SET initiative = $1, initiative_face = $2,
+    initiative_bonus = $3, tie_ordered = false
+WHERE encounter_id = $4 AND summon_group_id = $5::UUID
+`
+
+type SetGroupInitiativeParams struct {
+	Initiative      *int32
+	InitiativeFace  *int32
+	InitiativeBonus int32
+	EncounterID     string
+	SummonGroupID   string
+}
+
+// The roll of a group of creatures that came from one casting: every member of
+// the group in the combat takes the same total, face and bonus, so they take a
+// joint turn. A new roll breaks any tie order decided before.
+func (q *Queries) SetGroupInitiative(ctx context.Context, arg SetGroupInitiativeParams) error {
+	_, err := q.db.Exec(ctx, setGroupInitiative,
+		arg.Initiative,
+		arg.InitiativeFace,
+		arg.InitiativeBonus,
+		arg.EncounterID,
+		arg.SummonGroupID,
+	)
+	return err
 }
 
 const setOpenScene = `-- name: SetOpenScene :one

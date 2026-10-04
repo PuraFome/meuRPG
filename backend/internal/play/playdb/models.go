@@ -43,6 +43,11 @@ type Combatant struct {
 	DeathSaveRolled    bool
 	XpValue            int32
 	TurnState          string
+	CreatureID         *string
+	MonsterKey         *string
+	SummonAttack       *string
+	SummonGroupID      *string
+	Dismissed          bool
 }
 
 type Encounter struct {

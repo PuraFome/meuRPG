@@ -120,7 +120,7 @@ func (s *Service) reactionPrompts(ctx context.Context, m authz.Membership, d *en
 		// the screen says "Capitão Goblin · Cimitarra", and a hidden attacker stays hidden.
 		if j := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == p.AttackerID }); j >= 0 && v.sees(d.cs[j]) {
 			prompt.AttackerLabel = d.cs[j].Label
-			if sheet, err := s.roster.CombatSheet(ctx, m.CampaignID, d.cs[j].CharacterID); err == nil {
+			if sheet, err := s.sheetOf(ctx, m.CampaignID, d.cs[j]); err == nil {
 				if k := slices.IndexFunc(sheet.Attacks, func(a link.Attack) bool { return a.Key == p.AttackKey }); k >= 0 {
 					prompt.AttackNamePt = sheet.Attacks[k].Name
 				}
@@ -221,7 +221,7 @@ func (s *Service) UseReaction(
 
 		// The attack is compared again with the new armor class, and it never
 		// leaves the server: the player decided without the total (as at a table).
-		sheet, err := s.roster.CombatSheet(ctx, m.CampaignID, target.CharacterID)
+		sheet, err := s.sheetOf(ctx, m.CampaignID, target)
 		if err != nil {
 			return nil, err
 		}

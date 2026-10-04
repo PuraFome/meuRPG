@@ -103,7 +103,8 @@ func (s *Service) ListCombatLog(
 		return nil, s.dbError(ctx, "list the combat's events", err)
 	}
 	slices.Reverse(events) // oldest first, as buildLog reads them
-	cs, err := s.queries.ListCombatants(ctx, enc.ID)
+	// With the dismissed creatures: their lines survive a concentration ending.
+	cs, err := s.queries.ListCombatantsWithDismissed(ctx, enc.ID)
 	if err != nil {
 		return nil, s.dbError(ctx, "list the combatants", err)
 	}
@@ -505,13 +506,13 @@ func (n *keyNames) of(ctx context.Context, c playdb.Combatant, key string) strin
 	if c.CharacterID == "" || key == "" {
 		return ""
 	}
-	sheet, ok := n.byCharacter[c.CharacterID]
+	sheet, ok := n.byCharacter[sheetKey(c)]
 	if !ok {
 		var err error
-		if sheet, err = n.s.roster.CombatSheet(ctx, n.campaignID, c.CharacterID); err != nil {
+		if sheet, err = n.s.sheetOf(ctx, n.campaignID, c); err != nil {
 			n.s.logger.WarnContext(ctx, "play: cannot read a sheet for the combat log") // no names or IDs in logs
 		}
-		n.byCharacter[c.CharacterID] = sheet
+		n.byCharacter[sheetKey(c)] = sheet
 	}
 	for _, a := range sheet.Attacks {
 		if a.Key == key {
@@ -528,7 +529,7 @@ func (n *keyNames) of(ctx context.Context, c playdb.Combatant, key string) strin
 			return a.Name
 		}
 	}
-	if strings.HasPrefix(key, "spell:") {
+	if strings.HasPrefix(key, "spell:") && !isCreature(c) {
 		if sp, err := n.s.roster.CombatSpell(ctx, n.campaignID, c.CharacterID, key, 0); err == nil {
 			return sp.Name
 		}
