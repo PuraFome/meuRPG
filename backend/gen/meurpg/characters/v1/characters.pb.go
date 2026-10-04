@@ -1131,8 +1131,14 @@ type CharacterSummary struct {
 	ClassSummary string `protobuf:"bytes,7,opt,name=class_summary,json=classSummary,proto3" json:"class_summary,omitempty"`
 	// The subrace's Portuguese name if the sheet has one, otherwise the
 	// race's, such as "Gnomo das Rochas". Empty for a basic sheet.
-	RaceNamePt    string                 `protobuf:"bytes,8,opt,name=race_name_pt,json=raceNamePt,proto3" json:"race_name_pt,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	RaceNamePt string                 `protobuf:"bytes,8,opt,name=race_name_pt,json=raceNamePt,proto3" json:"race_name_pt,omitempty"`
+	CreatedAt  *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	// An NPC's portrait as a URL ("/images/<id>"; "/images/<id>/thumb" is its
+	// thumbnail), as Combatant.portrait_url, or empty for none and for a
+	// player's character. Only the master lists NPCs, so only the master gets
+	// it (MR-031): the app draws "Pôr em cena" with it, with no read of each
+	// sheet.
+	PortraitUrl   string `protobuf:"bytes,10,opt,name=portrait_url,json=portraitUrl,proto3" json:"portrait_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1228,6 +1234,13 @@ func (x *CharacterSummary) GetCreatedAt() *timestamppb.Timestamp {
 		return x.CreatedAt
 	}
 	return nil
+}
+
+func (x *CharacterSummary) GetPortraitUrl() string {
+	if x != nil {
+		return x.PortraitUrl
+	}
+	return ""
 }
 
 // CharacterBlocked is the error detail of CharacterService's
@@ -5406,7 +5419,7 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"canApprove\x12 \n" +
 	"\fcan_level_up\x18\x17 \x01(\bR\n" +
 	"canLevelUp\x12K\n" +
-	"\x0flevel_up_reason\x18\x18 \x01(\x0e2#.meurpg.characters.v1.LevelUpReasonR\rlevelUpReason\"\x83\x03\n" +
+	"\x0flevel_up_reason\x18\x18 \x01(\x0e2#.meurpg.characters.v1.LevelUpReasonR\rlevelUpReason\"\xa6\x03\n" +
 	"\x10CharacterSummary\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x127\n" +
 	"\x04kind\x18\x02 \x01(\x0e2#.meurpg.characters.v1.CharacterKindR\x04kind\x12:\n" +
@@ -5418,7 +5431,9 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\frace_name_pt\x18\b \x01(\tR\n" +
 	"raceNamePt\x129\n" +
 	"\n" +
-	"created_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"{\n" +
+	"created_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12!\n" +
+	"\fportrait_url\x18\n" +
+	" \x01(\tR\vportraitUrl\"{\n" +
 	"\x10CharacterBlocked\x12D\n" +
 	"\x06reason\x18\x01 \x01(\x0e2,.meurpg.characters.v1.CharacterBlockedReasonR\x06reason\x12!\n" +
 	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\"\x8c\x01\n" +

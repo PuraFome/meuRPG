@@ -1,0 +1,38 @@
+<app-sheet-frame [title]="title" titleId="sheet-t" [phone]="inSheet" (closed)="cancel()">
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+
+  <p class="intro">{{ intro }}</p>
+
+  <section class="who" aria-labelledby="who-title">
+    <h3 class="who__title" id="who-title">{{ groupLabel }}</h3>
+    @if (data.rows.length === 0) {
+      <p class="mr-muted">Nenhum personagem de jogador vivo nesta campanha.</p>
+    } @else {
+      <app-xp-recipients [label]="groupLabel" [rows]="recipients()" (toggle)="toggle($event)" />
+    }
+  </section>
+
+  <div foot class="foot">
+    <div class="effect" role="status" aria-live="polite">
+      @if (effect()) {
+        <p class="effect__line"><mat-icon aria-hidden="true">flag</mat-icon>{{ effect() }}</p>
+        <p class="effect__note">{{ note }}</p>
+      }
+    </div>
+    <app-xp-actions
+      [primaryLabel]="primaryLabel"
+      secondaryLabel="Cancelar"
+      align="end"
+      [blocked]="blocked()"
+      [busy]="busy()"
+      [reason]="reasonToWait()"
+      (primary)="confirm()"
+      (secondary)="cancel()"
+    />
+  </div>
+</app-sheet-frame>

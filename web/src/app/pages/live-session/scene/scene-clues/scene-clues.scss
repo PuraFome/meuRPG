@@ -1,0 +1,164 @@
+:host {
+  display: block;
+  container-type: inline-size;
+}
+
+.sc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+.sc__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+}
+
+.sc__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 26px;
+}
+
+.sc__count {
+  flex: none;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.sc__hint {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+// What just happened, in words and with a check, until the next action.
+.sc__done {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: var(--mr-space-1) 0 0;
+  padding: 10px 12px;
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-success-surface);
+  color: var(--mr-success-ink);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 19px;
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.sc__empty {
+  margin: var(--mr-space-2) 0 0;
+  padding: var(--mr-space-3) var(--mr-space-4);
+  border: 1px dashed var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  color: var(--mr-ink-muted);
+}
+
+.sc__list {
+  margin: var(--mr-space-1) 0 0;
+  padding: 0;
+  border-top: 1px solid var(--mr-rule);
+  list-style: none;
+}
+
+// Number, the text and its status, and the button: on a computer the button
+// sits on the right (176px); on a phone it goes full width under the status.
+.sc__row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: var(--mr-space-2) var(--mr-space-2);
+  padding: var(--mr-space-3) 0;
+
+  & + & {
+    border-top: 1px solid var(--mr-rule);
+  }
+
+  @container (min-width: 380px) {
+    grid-template-columns: 22px minmax(0, 1fr) 176px;
+    align-items: start;
+  }
+}
+
+.sc__n {
+  font-family: var(--mr-font-display);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 22px;
+  color: var(--mr-ink-muted);
+}
+
+.sc__body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.sc__text {
+  margin: 0;
+  font-size: 17px;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+
+.sc__who {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  max-width: 100%;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-pill);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+
+  .mat-icon {
+    flex: none;
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+  }
+
+  &--all {
+    border-color: transparent;
+    background: var(--mr-success-surface);
+    color: var(--mr-success-ink);
+  }
+
+  &--none {
+    border-style: dashed;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.sc__reveal {
+  grid-column: 2;
+  width: 100%;
+
+  @media (max-width: 767.98px) {
+    --mat-button-outlined-container-height: 48px;
+  }
+
+  @container (min-width: 380px) {
+    grid-column: 3;
+    grid-row: 1;
+  }
+}

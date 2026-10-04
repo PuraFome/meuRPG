@@ -40,7 +40,7 @@ describe('SceneOpen', () => {
 
   it('shows the title, when it opened, where it is and how much has happened', async () => {
     const { el } = await setup();
-    expect(el.querySelector('h2')?.textContent).toBe('Cena: A carroça tombada');
+    expect(el.querySelector('h2')?.textContent).toBe('Cena: A\u00a0carroça tombada');
     expect(flat(el.querySelector('.so__since'))).toContain('Aberta para os jogadores desde 21:10');
     expect(flat(el.querySelector('.so__meta'))).toBe('Mapa Estrada do Vale · 5 ações · 3 rolagens');
   });
@@ -107,7 +107,7 @@ describe('SceneOpen', () => {
     const { fixture, el, state } = await setup(masterScene([toren]));
     state.apply(masterScene([pens, toren]));
     fixture.detectChanges();
-    const region = el.querySelector('[role="status"]');
+    const region = el.querySelector('.so__live');
     expect(region?.getAttribute('aria-live')).toBe('polite');
     expect(region?.textContent).toBe('Pensantus: Procurar pistas na carroça, 17, passou');
     expect(lines(el)).toHaveLength(2);

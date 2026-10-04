@@ -1,0 +1,142 @@
+:host {
+  display: block;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+}
+
+.card .mr-panel__title {
+  margin: 0;
+}
+
+.card__lead,
+.card__note {
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.card__note {
+  color: var(--mr-ink-muted);
+}
+
+.card__members {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// One block per member: its own box, so each one's state and what it has stay
+// together.
+.member {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+}
+
+.member__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.member__who {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.member__name {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 20px;
+}
+
+.member__sub {
+  font-size: 14px;
+  line-height: 18px;
+  color: var(--mr-ink-muted);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  // On a phone two to a row, the movement on its own line.
+  @media (max-width: 480px) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+
+    li:last-child {
+      grid-column: 1 / -1;
+    }
+  }
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chip {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 6px;
+  box-sizing: border-box;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 1px solid var(--mr-line);
+  border-radius: 16px;
+  font-size: 14px;
+  line-height: 18px;
+  color: var(--mr-ink-muted);
+
+  b {
+    color: var(--mr-ink);
+  }
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+    color: var(--mr-ink);
+  }
+}
+
+// Outlined, full width of the block: 48px on a phone, 44px from the tablet up.
+.member__end {
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  width: 100%;
+
+  @media (min-width: 768px) {
+    --mat-button-outlined-container-height: 44px;
+  }
+}
+
+// At 320px the long button label stays on one line.
+@media (max-width: 359.98px) {
+  .member {
+    padding: 10px;
+  }
+
+  .member__end {
+    padding: 0 6px;
+    font-size: 15px;
+  }
+}

@@ -309,6 +309,7 @@ export function toCharacterSheetVm(character: Character): CharacterSheetVm {
     campaignId: character.campaignId,
     characterKind: KIND_FROM_GEN[character.kind],
     name: character.name,
+    portraitImageId: character.sheet?.content.value?.portraitImageId ?? '',
     state: STATE_FROM_GEN[character.state],
     canEdit: character.canEdit,
     sheetLockedAt: character.sheetLockedAt ? timestampDate(character.sheetLockedAt) : null,

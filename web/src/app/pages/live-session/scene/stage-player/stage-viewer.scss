@@ -1,0 +1,31 @@
+:host {
+  display: block;
+}
+
+// The portrait: 5 by 6, as tall as the screen allows (270 x 324 on a 390 x
+// 844 phone, 168 x 202 on 320 x 568, 300 x 360 on a desktop). It sits on the
+// sheet itself, no box behind it, with its thin base line.
+.big {
+  display: flex;
+  justify-content: center;
+  padding: var(--mr-space-2) 0;
+  --big-h: clamp(160px, 36dvh, 324px);
+
+  &:not(.big--phone) {
+    --big-h: clamp(200px, 45dvh, 360px);
+  }
+}
+
+.big__fig {
+  --fig-w: calc(var(--big-h) * 5 / 6);
+}
+
+.foot {
+  width: 100%;
+  min-height: 44px;
+}
+
+.big--phone ~ [foot] .foot,
+:host-context(.mr-sheet) .foot {
+  min-height: 48px;
+}

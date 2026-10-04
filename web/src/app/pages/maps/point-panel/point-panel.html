@@ -81,6 +81,15 @@
       [actions]="point().sceneActions"
       (actionsChange)="sceneActionsChange.emit($event)"
     />
+    <app-clue-list
+      [campaignId]="campaignId()"
+      [mapId]="point().mapId"
+      [pointId]="point().id"
+      [clues]="point().clues"
+      [players]="players()"
+      (cluesChange)="cluesChange.emit($event)"
+    />
+    <app-hooks-field [control]="hooksControl" [length]="hooksLength()" [error]="errors().hooks" />
   }
 
   <app-reveal-switch

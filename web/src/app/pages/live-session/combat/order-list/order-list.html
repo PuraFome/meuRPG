@@ -17,144 +17,168 @@
   </div>
 
   <ol class="order__list">
-    @for (c of rows(); track c.id) {
-      <li class="row" [class.row--turn]="current(c)" [class.row--dying]="dying(c)" [class.on-danger]="dying(c)">
-        <app-combatant-token
-          class="row__token"
-          [initial]="initial(c)"
-          [npc]="npc(c)"
-          [hidden]="c.hidden"
-          [defeated]="c.defeated"
-          [current]="current(c)"
-          [size]="28"
-        />
-        <div class="row__text">
-          <span class="row__name" [class.row__name--out]="c.defeated">
-            {{ c.label }}
-            @if (current(c)) {
-              <span class="row__turn">Vez</span>
-            }
-          </span>
-          <span class="row__meta">
-            <span class="row__sub">{{ sub(c) }}</span>
-            @if (c.defeated && !npc(c)) {
-              <span class="row__state row__state--out">
-                <mat-icon aria-hidden="true">close</mat-icon>{{ word(c) }}
-              </span>
-            } @else if (c.defeated) {
-              <span class="row__state row__state--out">
-                <mat-icon aria-hidden="true">close</mat-icon>Derrotado
-              </span>
-            } @else if (down(c)) {
-              <span class="row__state" [class.row__state--out]="c.state !== Stable">
-                <mat-icon aria-hidden="true">{{ dying(c) ? 'skull' : 'favorite_border' }}</mat-icon>{{ downText(c) }}
-              </span>
-            } @else if (c.hidden) {
-              <span class="row__state"><mat-icon aria-hidden="true">visibility_off</mat-icon>Escondido</span>
-            } @else if (npc(c)) {
-              <span class="row__state">Revelado</span>
-            }
-          </span>
-          @if (down(c)) {
-            <app-death-row [successes]="c.deathSuccesses" [failures]="c.deathFailures" />
-          }
-          <app-combatant-tags [names]="tags(c)" [concentration]="concentration(c)" [label]="c.label" />
-          @if (c.hitPointsMax !== undefined) {
-            <span class="row__pv-inline">PV {{ c.hitPointsCurrent }} de {{ c.hitPointsMax }}</span>
-          }
-        </div>
-        <span class="row__init">{{ c.initiative ?? '—' }}</span>
-        <span class="row__hp">
-          @if (c.hitPointsMax !== undefined) {
-            <span class="row__hp-n">{{ c.hitPointsCurrent }}<span class="row__hp-of"> de {{ c.hitPointsMax }}</span></span>
-            <span
-              class="row__bar"
-              role="img"
-              [attr.aria-label]="c.hitPointsCurrent + ' de ' + c.hitPointsMax + ' pontos de vida'"
-            >
-              <span class="row__fill" [style.width.%]="percent(c)"></span>
-            </span>
-          }
-        </span>
-        <span class="row__actions">
-          @if (live() && canAdjust(c)) {
-            <button
-              mat-stroked-button
-              type="button"
-              class="row__adjust"
-              [attr.aria-label]="'Dano ou cura em ' + c.label"
-              (click)="adjust.emit(c.characterId)"
-            >
-              Dano/Cura
-            </button>
-          }
-          @if (live() && canAdjustNpc(c)) {
-            <button
-              mat-stroked-button
-              type="button"
-              class="row__adjust"
-              [attr.aria-label]="'Dano ou cura em ' + c.label"
-              (click)="adjustNpc.emit(c.id)"
-            >
-              Dano/Cura
-            </button>
-          }
-          @if (live() && (npc(c) || !c.defeated)) {
-            <button
-              type="button"
-              class="row__more"
-              [attr.aria-label]="'Mais ações para ' + c.label"
-              [matMenuTriggerFor]="menu"
-            >
-              <mat-icon aria-hidden="true">more_vert</mat-icon>
-            </button>
-            <mat-menu #menu="matMenu" xPosition="before">
-              @if (npc(c)) {
-                <button mat-menu-item type="button" (click)="reveal.emit({ id: c.id, hidden: !c.hidden })">
-                  {{ c.hidden ? 'Revelar aos jogadores' : 'Esconder dos jogadores' }}
-                </button>
+    @for (item of items(); track key(item)) {
+      @if (item.kind === 'group') {
+        <li>
+          <app-order-group
+            class="bleed"
+            [total]="item.total"
+            [onTurn]="item.onTurn"
+            [label]="groupLabel(item)"
+            [hint]="item.members.length === 2 ? 'os dois agem no mesmo turno' : 'todos agem no mesmo turno'"
+          >
+            <ol class="rows">
+              @for (c of item.members; track c.id) {
+                <ng-container *ngTemplateOutlet="rowTpl; context: { $implicit: c, inGroup: true }" />
               }
-              <button mat-menu-item type="button" (click)="conditions.emit(c.id)">Condições…</button>
-              @if (npc(c)) {
-                <button mat-menu-item type="button" (click)="ask(c.id)">Remover do combate</button>
-              }
-            </mat-menu>
-          } @else if (live()) {
-            <!-- The place of the menu, so every "Dano/Cura" lines up. -->
-            <span class="row__spacer" aria-hidden="true"></span>
-          }
-        </span>
-
-        @if (live() && dying(c) && deathDismissed().has(c.id)) {
-          <div class="row__extra">
-            <p class="row__hidden-note">O mestre ainda não confirmou a morte.</p>
-            <button mat-button type="button" class="row__reveal" (click)="askDeath.emit(c.id)">Confirmar a morte</button>
-          </div>
-        }
-        @if (live() && c.hidden && removing() !== c.id) {
-          <div class="row__extra">
-            <p class="row__hidden-note">Só você vê este combatente.</p>
-            <button
-              mat-button
-              type="button"
-              class="row__reveal"
-              [disabled]="busy()"
-              (click)="reveal.emit({ id: c.id, hidden: false })"
-            >
-              Revelar aos jogadores
-            </button>
-          </div>
-        }
-        @if (removing() === c.id) {
-          <div class="row__confirm" role="alertdialog" [attr.aria-label]="'Remover ' + c.label">
-            <p>Remover {{ c.label }} do combate?</p>
-            <button mat-stroked-button type="button" #back (click)="removing.set(null)">Voltar</button>
-            <button mat-stroked-button type="button" class="danger" (click)="confirmRemove(c.id)">
-              Remover
-            </button>
-          </div>
-        }
-      </li>
+            </ol>
+          </app-order-group>
+        </li>
+      } @else {
+        <ng-container *ngTemplateOutlet="rowTpl; context: { $implicit: item.combatant, inGroup: false }" />
+      }
     }
   </ol>
+  <ng-template #rowTpl let-c let-inGroup="inGroup">
+      <li class="row" [class.row--turn]="current(c)" [class.row--dying]="dying(c)" [class.on-danger]="dying(c)">
+      <app-combatant-token
+        class="row__token"
+        [initial]="initial(c)"
+        [npc]="npc(c)"
+        [hidden]="c.hidden"
+        [defeated]="c.defeated"
+        [current]="current(c)"
+        [size]="28"
+      />
+      <div class="row__text">
+        <span class="row__name" [class.row__name--out]="c.defeated">
+          {{ c.label }}
+          @if (current(c)) {
+            <span class="row__turn">Vez</span>
+          }
+          @if (inTurn(c)) {
+            <app-part-state [ended]="c.turnPartEnded" />
+          }
+        </span>
+        <span class="row__meta">
+          <span class="row__sub">{{ sub(c) }}</span>
+          @if (c.defeated && !npc(c)) {
+            <span class="row__state row__state--out">
+              <mat-icon aria-hidden="true">close</mat-icon>{{ word(c) }}
+            </span>
+          } @else if (c.defeated) {
+            <span class="row__state row__state--out">
+              <mat-icon aria-hidden="true">close</mat-icon>Derrotado
+            </span>
+          } @else if (down(c)) {
+            <span class="row__state" [class.row__state--out]="c.state !== Stable">
+              <mat-icon aria-hidden="true">{{ dying(c) ? 'skull' : 'favorite_border' }}</mat-icon>{{ downText(c) }}
+            </span>
+          } @else if (c.hidden) {
+            <span class="row__state"><mat-icon aria-hidden="true">visibility_off</mat-icon>Escondido</span>
+          } @else if (npc(c)) {
+            <span class="row__state">Revelado</span>
+          }
+        </span>
+        @if (down(c)) {
+          <app-death-row [successes]="c.deathSuccesses" [failures]="c.deathFailures" />
+        }
+        <app-combatant-tags [names]="tags(c)" [concentration]="concentration(c)" [label]="c.label" />
+        @if (c.hitPointsMax !== undefined) {
+          <span class="row__pv-inline">PV {{ c.hitPointsCurrent }} de {{ c.hitPointsMax }}@if (c.initiative !== undefined && !inGroup) { · iniciativa&nbsp;<b>{{ c.initiative }}</b>}</span>
+        }
+      </div>
+      <span class="row__init">{{ c.initiative ?? '—' }}</span>
+      <span class="row__hp">
+        @if (c.hitPointsMax !== undefined) {
+          <span class="row__hp-n">{{ c.hitPointsCurrent }}<span class="row__hp-of"> de {{ c.hitPointsMax }}</span></span>
+          <span
+            class="row__bar"
+            role="img"
+            [attr.aria-label]="c.hitPointsCurrent + ' de ' + c.hitPointsMax + ' pontos de vida'"
+          >
+            <span class="row__fill" [style.width.%]="percent(c)"></span>
+          </span>
+        }
+      </span>
+      <span class="row__actions">
+        @if (live() && canAdjust(c)) {
+          <button
+            mat-stroked-button
+            type="button"
+            class="row__adjust"
+            [attr.aria-label]="'Dano ou cura em ' + c.label"
+            (click)="adjust.emit(c.characterId)"
+          >
+            Dano/Cura
+          </button>
+        }
+        @if (live() && canAdjustNpc(c)) {
+          <button
+            mat-stroked-button
+            type="button"
+            class="row__adjust"
+            [attr.aria-label]="'Dano ou cura em ' + c.label"
+            (click)="adjustNpc.emit(c.id)"
+          >
+            Dano/Cura
+          </button>
+        }
+        @if (live() && (npc(c) || !c.defeated)) {
+          <button
+            type="button"
+            class="row__more"
+            [attr.aria-label]="'Mais ações para ' + c.label"
+            [matMenuTriggerFor]="menu"
+          >
+            <mat-icon aria-hidden="true">more_vert</mat-icon>
+          </button>
+          <mat-menu #menu="matMenu" xPosition="before">
+            @if (npc(c)) {
+              <button mat-menu-item type="button" (click)="reveal.emit({ id: c.id, hidden: !c.hidden })">
+                {{ c.hidden ? 'Revelar aos jogadores' : 'Esconder dos jogadores' }}
+              </button>
+            }
+            <button mat-menu-item type="button" (click)="conditions.emit(c.id)">Condições…</button>
+            @if (npc(c)) {
+              <button mat-menu-item type="button" (click)="ask(c.id)">Remover do combate</button>
+            }
+          </mat-menu>
+        } @else if (live()) {
+          <!-- The place of the menu, so every "Dano/Cura" lines up. -->
+          <span class="row__spacer" aria-hidden="true"></span>
+        }
+      </span>
+
+      @if (live() && dying(c) && deathDismissed().has(c.id)) {
+        <div class="row__extra">
+          <p class="row__hidden-note">O mestre ainda não confirmou a morte.</p>
+          <button mat-button type="button" class="row__reveal" (click)="askDeath.emit(c.id)">Confirmar a morte</button>
+        </div>
+      }
+      @if (live() && c.hidden && removing() !== c.id) {
+        <div class="row__extra">
+          <p class="row__hidden-note">Só você vê este combatente.</p>
+          <button
+            mat-button
+            type="button"
+            class="row__reveal"
+            [disabled]="busy()"
+            (click)="reveal.emit({ id: c.id, hidden: false })"
+          >
+            Revelar aos jogadores
+          </button>
+        </div>
+      }
+      @if (removing() === c.id) {
+        <div class="row__confirm" role="alertdialog" [attr.aria-label]="'Remover ' + c.label">
+          <p>Remover {{ c.label }} do combate?</p>
+          <button mat-stroked-button type="button" #back (click)="removing.set(null)">Voltar</button>
+          <button mat-stroked-button type="button" class="danger" (click)="confirmRemove(c.id)">
+            Remover
+          </button>
+        </div>
+      }
+    </li>
+  </ng-template>
 </section>

@@ -3,13 +3,22 @@
     <!-- The phone's one turn card (E6-12): whose turn, then what to do, then "Próximo turno". -->
     <span class="mr-label card__kicker">{{ round() }} · {{ encounter().name }}</span>
     <div class="card__who">
-      <app-combatant-token [initial]="initial()" [npc]="isNpc()" [current]="true" [size]="40" />
+      @if (isNpc()) {
+        <app-portrait [src]="subject().portraitUrl" [name]="subject().label" [size]="56" fit="cover" [decorative]="true" />
+      } @else {
+        <app-combatant-token [initial]="initial()" [npc]="isNpc()" [current]="true" [size]="40" />
+      }
       <h2 class="card__title card__title--turn" id="npc-title">Vez do {{ subject().label }}</h2>
     </div>
   } @else {
-    <h2 class="card__title" id="npc-title">
-      {{ isNpc() ? 'Ações do ' + subject().label : 'Dano de ' + subject().label }}
-    </h2>
+    <div class="card__who card__who--desk">
+      @if (isNpc()) {
+        <app-portrait [src]="subject().portraitUrl" [name]="subject().label" [size]="64" fit="cover" [decorative]="true" />
+      }
+      <h2 class="card__title" id="npc-title">
+        {{ isNpc() ? 'Ações do ' + subject().label : 'Dano de ' + subject().label }}
+      </h2>
+    </div>
   }
 
   @if (isNpc()) {
@@ -127,6 +136,8 @@
         <p><strong>{{ pendingNote() }}</strong> antes de passar o turno.</p>
       </div>
     }
-    <app-next-turn [pendingNote]="pendingNote()" [busy]="busy() || turnBusy()" (next)="next.emit($event)" />
+    @if (!joint()) {
+      <app-next-turn [pendingNote]="pendingNote()" [busy]="busy() || turnBusy()" (next)="next.emit($event)" />
+    }
   }
 </section>

@@ -3,7 +3,7 @@ import { create } from '@bufbuild/protobuf';
 
 import { GameSessionBlockedReason, GameSessionBlockedSchema } from '../../../gen/meurpg/play/v1/play_pb';
 import { SceneBlockedReason, SceneBlockedSchema } from '../../../gen/meurpg/play/v1/scene_pb';
-import { sceneBlockedMessage, sceneErrorMessage } from './scene-errors';
+import { sceneBlockedMessage, sceneErrorMessage, stageErrorMessage } from './scene-errors';
 
 function blocked(reason: SceneBlockedReason): ConnectError {
   return new ConnectError('no', Code.FailedPrecondition, undefined, [
@@ -18,6 +18,7 @@ describe('scene errors', () => {
     SceneBlockedReason.ALREADY_ROLLED,
     SceneBlockedReason.WRONG_DICE_MODE,
     SceneBlockedReason.NO_CHARACTER,
+    SceneBlockedReason.STAGE_FULL,
   ];
 
   it('has its own Portuguese sentence for every refusal', () => {
@@ -60,5 +61,12 @@ describe('scene errors', () => {
     expect(sceneErrorMessage(new ConnectError('x', Code.PermissionDenied))).toContain('não pode');
     expect(sceneErrorMessage(new ConnectError('x', Code.Unavailable), 'rolar')).toContain('Não deu para rolar');
     expect(sceneErrorMessage(new Error('network'), 'rolar')).toContain('Não deu para rolar');
+  });
+
+  it('says why the stage refused, for the master', () => {
+    expect(stageErrorMessage(blocked(SceneBlockedReason.STAGE_FULL))).toBe('A cena comporta 4 NPCs. Tire um para pôr outro.');
+    expect(stageErrorMessage(blocked(SceneBlockedReason.NO_OPEN_SCENE))).toContain('Não há cena aberta');
+    expect(stageErrorMessage(new ConnectError('x', Code.NotFound))).toContain('A tela foi atualizada');
+    expect(stageErrorMessage(new ConnectError('x', Code.PermissionDenied))).toBe('Você não pode fazer isso agora.');
   });
 });

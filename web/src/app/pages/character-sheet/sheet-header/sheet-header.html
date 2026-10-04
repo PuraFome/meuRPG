@@ -1,5 +1,15 @@
 <header class="head">
   <div class="head__top">
+    @if (isNpc()) {
+      <app-portrait
+        class="head__portrait"
+        [src]="portraitUrl()"
+        [name]="vm().name"
+        [size]="112"
+        fit="cover"
+        [decorative]="true"
+      />
+    }
     <div class="head__id">
       <div class="head__title">
         <h1 class="head__name">{{ vm().name }}</h1>

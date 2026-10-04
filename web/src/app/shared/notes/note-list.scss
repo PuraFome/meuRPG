@@ -1,0 +1,110 @@
+:host {
+  display: block;
+}
+
+.nl {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nl__row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-2);
+  padding: var(--mr-space-3) 0;
+
+  & + & {
+    border-top: 1px solid var(--mr-rule);
+  }
+}
+
+.nl__main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+
+// "Pista do mestre": a magnifier and words in the accent colour.
+.nl__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--mr-accent);
+  border-radius: var(--mr-radius-pill);
+  color: var(--mr-accent-text);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+
+  .mat-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+  }
+}
+
+.nl__text {
+  margin: 0;
+  font-size: 17px;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+.nl__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px var(--mr-space-3);
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.nl__scene {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+// The pencil and the lock share one 44px box at the right of the row.
+.nl__edit,
+.nl__lock {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: -8px -10px -8px 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mr-accent-text);
+}
+
+.nl__edit {
+  cursor: pointer;
+}
+
+.nl__lock {
+  color: var(--mr-ink-muted);
+}
+
+.nl__row--clue .nl__lock {
+  margin-top: -6px;
+}

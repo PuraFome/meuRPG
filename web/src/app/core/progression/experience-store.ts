@@ -13,6 +13,8 @@ import { ProgressionClient } from './progression-client';
 export interface ExperienceRow {
   readonly id: string;
   readonly name: string;
+  /** The account that plays it, empty when the player deleted theirs. */
+  readonly playerUserId: string;
   /** "Mago 3 · de Vinicius", or what there is of it. */
   readonly sub: string;
   readonly level: number;
@@ -112,6 +114,7 @@ export class ExperienceStore {
           return {
             id: c.characterId,
             name: c.name,
+            playerUserId: c.playerUserId,
             sub: joinDots([entry?.classSummary ?? '', player ? `de ${player}` : ''].filter(Boolean)),
             level: c.level,
             xp: c.experiencePoints,

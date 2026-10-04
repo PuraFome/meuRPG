@@ -10,6 +10,8 @@
     /></a>
   }
 
+  <ng-container #notesSlot />
+
   <button
     type="button"
     class="app-bar__toggle"
@@ -39,6 +41,7 @@
         >Minhas campanhas</a
       >
     </nav>
+    <ng-container #notesSlot />
     @if (liveSession(); as live) {
       <a
         class="app-bar__live app-bar__live--wide"

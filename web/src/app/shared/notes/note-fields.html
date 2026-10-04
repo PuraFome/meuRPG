@@ -1,0 +1,64 @@
+<div class="nf">
+  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+    <mat-label>Anotação</mat-label>
+    <textarea
+      #field
+      matInput
+      rows="6"
+      autocomplete="off"
+      [attr.maxlength]="editing().max"
+      [formControl]="editing().text"
+    ></textarea>
+    <mat-hint>Só você lê.</mat-hint>
+    <mat-hint align="end" [class.nf__over]="atLimit()">{{ counter() }}</mat-hint>
+  </mat-form-field>
+
+  @if (atLimit()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>Chegou ao limite de 2.000 caracteres. Corte um trecho para escrever mais.</p>
+    </div>
+  }
+
+  <app-notes-select
+    label="Cena (opcional)"
+    hint="Só aparecem as cenas que o grupo já descobriu."
+    [options]="options()"
+    [value]="editing().sceneId()"
+    (valueChange)="editing().sceneId.set($event)"
+  />
+
+  <app-fiction-notice />
+
+  @if (editing().error(); as message) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ message }}</p>
+    </div>
+  }
+
+  @if (editing().editing()) {
+    @if (editing().confirmingDelete()) {
+      <div class="nf__ask" role="alertdialog" aria-labelledby="nf-ask-t" aria-describedby="nf-ask-d">
+        <p class="nf__ask-t" id="nf-ask-t">Apagar esta anotação?</p>
+        <p class="nf__ask-d" id="nf-ask-d">Não dá para desfazer.</p>
+        <div class="nf__ask-actions">
+          <button #back matButton="outlined" type="button" (click)="editing().keepNote()">Voltar</button>
+          <button
+            matButton="outlined"
+            type="button"
+            class="nf__danger"
+            [attr.aria-disabled]="editing().busy()"
+            (click)="confirmDelete()"
+          >
+            Apagar anotação
+          </button>
+        </div>
+      </div>
+    } @else {
+      <button matButton type="button" class="nf__delete" (click)="askDelete()">
+        <mat-icon aria-hidden="true">delete</mat-icon>Apagar anotação
+      </button>
+    }
+  }
+</div>

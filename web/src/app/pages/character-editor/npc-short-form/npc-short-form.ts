@@ -10,6 +10,7 @@ import { map, startWith, switchMap } from 'rxjs';
 import { FictionNotice } from '../../../shared/fiction-notice/fiction-notice';
 import type { ChallengeRatingVm } from '../character-editor.types';
 import { DefeatXp } from '../defeat-xp/defeat-xp';
+import { PortraitField } from '../portrait-field/portrait-field';
 import { BasicSheetFormGroup, MAX_ATTACKS, createAttackGroup } from './basic-form';
 import { NpcAttackCard } from './npc-attack-card';
 
@@ -17,7 +18,7 @@ export type { BasicSheetFormGroup } from './basic-form';
 
 /**
  * The short form of a minion or story NPC (`BasicSheet`), as one compact
- * panel: the name, the combat numbers, up to three attack cards, and the
+ * panel: the portrait beside the name and the combat numbers, up to three attack cards, and the
  * description with the fiction notice next to it. The form itself and its
  * submit stay in `CharacterEditor`.
  */
@@ -31,6 +32,7 @@ export type { BasicSheetFormGroup } from './basic-form';
     MatIconModule,
     MatInputModule,
     NpcAttackCard,
+    PortraitField,
     ReactiveFormsModule,
   ],
   templateUrl: './npc-short-form.html',
@@ -38,6 +40,8 @@ export type { BasicSheetFormGroup } from './basic-form';
 })
 export class NpcShortForm {
   readonly form = input.required<BasicSheetFormGroup>();
+  /** The campaign, whose gallery the portrait comes from. */
+  readonly campaignId = input.required<string>();
   /** The ND to XP table, for the picker. */
   readonly ratings = input<readonly ChallengeRatingVm[]>([]);
   /** "Ao ser derrotado" is for a minion, which fights; a story NPC keeps no XP. */

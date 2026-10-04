@@ -37,6 +37,14 @@
                   Quem é o personagem, na ordem do cabeçalho da ficha. Os campos com * são
                   obrigatórios.
                 </p>
+                @if (s.kind === 'enemy' || s.kind === 'boss') {
+                  <app-portrait-field
+                    class="basic-portrait"
+                    [control]="fullForm.controls.portraitImageId"
+                    [nameControl]="fullForm.controls.name"
+                    [campaignId]="s.campaignId"
+                  />
+                }
                 <div class="form-grid form-grid--four">
                   <mat-form-field appearance="outline" subscriptSizing="dynamic" class="span-2">
                     <mat-label>Nome do personagem</mat-label>
@@ -465,6 +473,7 @@
           <form class="mr-panel editor__short" [formGroup]="basicForm">
             <app-npc-short-form
               [form]="basicForm"
+              [campaignId]="s.campaignId"
               [ratings]="s.catalog.challengeRatings"
               [showDefeat]="s.kind === 'minion'"
             />

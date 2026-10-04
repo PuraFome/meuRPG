@@ -54,7 +54,10 @@
       </div>
     </div>
     <div class="bar__actions">
-      <app-next-turn class="next" [pendingNote]="pendingNote()" [busy]="busy()" (next)="next.emit($event)" />
+      <!-- A joint turn has no "end the group's turn": it passes when the last part ends. -->
+      @if (!banner().joint) {
+        <app-next-turn class="next" [pendingNote]="pendingNote()" [busy]="busy()" (next)="next.emit($event)" />
+      }
       <button mat-stroked-button type="button" class="end" (click)="ask()">
         <mat-icon aria-hidden="true">flag</mat-icon>Encerrar combate
       </button>

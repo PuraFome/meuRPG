@@ -1,0 +1,181 @@
+:host {
+  display: block;
+}
+
+.head {
+  margin-bottom: var(--mr-space-2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  // The count is under the title on a phone, at the right from a tablet up.
+  @media (min-width: 768px) {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--mr-space-3);
+  }
+}
+
+.head__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-weight: 700;
+  font-size: 21px;
+  line-height: 26px;
+}
+
+.head__count {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  @media (min-width: 768px) {
+    text-align: right;
+    white-space: nowrap;
+  }
+}
+
+.status:empty {
+  display: none;
+}
+
+.list {
+  margin: 0 0 var(--mr-space-4);
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--mr-rule);
+}
+
+.list:empty {
+  display: none;
+}
+
+// A phone: the name, then "Marcar como alcançado" the width of the row, then
+// the four tools spread under it. From a tablet up, one line: the name, the
+// button, the tools.
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--mr-space-2);
+  padding: 12px 0;
+  border-bottom: 1px solid var(--mr-rule);
+
+  @media (min-width: 768px) {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: var(--mr-space-3);
+  }
+}
+
+.row__name {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+
+.row__form {
+  grid-column: 1 / -1;
+}
+
+// The same button on every row: 48px on a phone and the width of the row,
+// 44px from a tablet up.
+.row__reach {
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-accent-text);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  width: 100%;
+  white-space: nowrap;
+
+  @media (min-width: 768px) {
+    --mat-button-outlined-container-height: 44px;
+    width: auto;
+  }
+}
+
+.row__tools {
+  display: flex;
+  justify-content: space-between;
+
+  @media (min-width: 768px) {
+    justify-content: flex-end;
+    gap: 0;
+  }
+}
+
+// 44px targets, an icon in the middle of each. The first row's ↑ and the
+// last row's ↓ are dimmed and do nothing, but stay in the tab order.
+.tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--mr-radius-sm);
+  background: transparent;
+  color: var(--mr-ink);
+  cursor: pointer;
+
+  &[aria-disabled='true'] {
+    color: var(--mr-ink-muted);
+    opacity: 0.55;
+    cursor: default;
+  }
+
+  .mat-icon {
+    width: 22px;
+    height: 22px;
+    font-size: 22px;
+  }
+}
+
+.tool--remove {
+  color: var(--mr-danger-ink);
+}
+
+.empty {
+  margin: 0 0 var(--mr-space-4);
+  padding: var(--mr-space-4);
+  background: var(--mr-ground);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+}
+
+.empty__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-weight: 700;
+  font-size: 19px;
+  line-height: 24px;
+}
+
+.empty__text {
+  margin: var(--mr-space-1) 0 0;
+  color: var(--mr-ink-muted);
+}
+
+.problem {
+  margin: 0 0 var(--mr-space-3);
+}
+
+.add {
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-accent-text);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  width: 100%;
+
+  @media (min-width: 768px) {
+    --mat-button-outlined-container-height: 44px;
+  }
+}
+
+.add-form {
+  margin-top: var(--mr-space-3);
+}
+
+.full {
+  margin: 0;
+}

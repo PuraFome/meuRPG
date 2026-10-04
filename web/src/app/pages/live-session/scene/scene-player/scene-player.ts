@@ -17,7 +17,8 @@ import type { SceneActionView } from '../../../../../gen/meurpg/play/v1/scene_pb
 import { actionSubtitle, actionTitle } from '../../../../core/maps/scene-actions';
 import type { SceneState } from '../../../../core/play/scene-state';
 import { ownRollOf, sceneRollFormula, signedBonus } from '../../../../core/play/scene-view';
-import { tight } from '../../../../core/format/text';
+import { tieShortWords, tight } from '../../../../core/format/text';
+import { StagePlayer } from '../stage-player/stage-player';
 import { openSceneRollSheet } from '../scene-roll-sheet/scene-roll-sheet';
 
 /**
@@ -36,7 +37,7 @@ import { openSceneRollSheet } from '../scene-roll-sheet/scene-roll-sheet';
  */
 @Component({
   selector: 'app-scene-player',
-  imports: [MatButtonModule, MatIconModule],
+  imports: [MatButtonModule, MatIconModule, StagePlayer],
   templateUrl: './scene-player.html',
   styleUrl: './scene-player.scss',
 })
@@ -52,6 +53,8 @@ export class ScenePlayer {
   readonly dicePreference = input.required<DicePreference>();
 
   protected readonly scene = computed(() => this.state().scene());
+  /** The scene's name with "A" tied to the next word (no break after it). */
+  protected readonly sceneName = computed(() => tieShortWords(this.scene()?.name ?? ''));
   protected readonly bonusText = signedBonus;
   protected readonly formula = sceneRollFormula;
 

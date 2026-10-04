@@ -1,0 +1,45 @@
+<section class="sc" aria-labelledby="sc-title">
+  <div class="sc__head">
+    <h3 class="sc__title" id="sc-title" tabindex="-1">Pistas</h3>
+    <span class="sc__count">{{ count(rows().length) }}</span>
+  </div>
+  <p class="sc__hint">
+    {{ phone() ? 'Só quem você escolher recebe a pista.' : 'Só quem você escolher recebe a pista, e ela vai para as anotações da pessoa.' }}
+  </p>
+
+  <div role="status" aria-live="polite">
+    @if (confirmation(); as text) {
+      <p class="sc__done"><mat-icon aria-hidden="true">check</mat-icon>{{ text }}</p>
+    }
+  </div>
+
+  @if (rows().length === 0) {
+    <p class="sc__empty">Esta cena não tem pistas. Adicione no editor do mapa.</p>
+  } @else {
+    <ul class="sc__list">
+      @for (r of rows(); track r.clue.id) {
+        <li class="sc__row">
+          <span class="sc__n" aria-hidden="true">{{ r.n }}</span>
+          <div class="sc__body">
+            <p class="sc__text">{{ r.clue.text }}</p>
+            <span class="sc__who" [class.sc__who--all]="r.audience.kind === 'all'" [class.sc__who--none]="r.audience.kind === 'none'">
+              <mat-icon aria-hidden="true">{{ icon(r.audience.kind) }}</mat-icon>{{ r.audience.kind === 'none' ? r.audience.label : r.line }}
+            </span>
+          </div>
+          @if (r.button; as label) {
+            <button
+              matButton="outlined"
+              type="button"
+              class="sc__reveal"
+              [attr.data-reveal]="r.clue.id"
+              [attr.aria-label]="label === 'Revelar' ? 'Revelar a pista ' + r.n : 'Revelar a pista ' + r.n + ' aos outros'"
+              (click)="reveal(r.clue, r.n)"
+            >
+              <mat-icon aria-hidden="true">visibility</mat-icon>{{ label }}
+            </button>
+          }
+        </li>
+      }
+    </ul>
+  }
+</section>

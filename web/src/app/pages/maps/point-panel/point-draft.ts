@@ -1,5 +1,6 @@
 import type { PointChanges } from '../../../core/maps/maps-client';
 import { MapPointKind } from '../../../../gen/meurpg/maps/v1/maps_pb';
+import { HOOKS_MAX, textLength } from '../../../core/maps/scene-clues';
 
 export const POINT_NAME_MAX = 80;
 export const POINT_DESCRIPTION_MAX = 2000;
@@ -10,6 +11,8 @@ export interface PointDraft {
   readonly kind: MapPointKind;
   readonly name: string;
   readonly description: string;
+  /** "Ganchos e anotações" (a SCENE point's private text). */
+  readonly hooks: string;
   readonly revealed: boolean;
   /** A Submapa's target map ID, or `''`. */
   readonly targetMapId: string;
@@ -19,6 +22,7 @@ export interface DraftSource {
   readonly kind: MapPointKind;
   readonly name: string;
   readonly description: string;
+  readonly hooks?: string;
   readonly revealed: boolean;
   readonly targetMap?: { readonly id: string } | undefined;
 }
@@ -28,14 +32,19 @@ export function draftOf(point: DraftSource): PointDraft {
     kind: point.kind,
     name: point.name,
     description: point.description,
+    hooks: point.hooks ?? '',
     revealed: point.revealed,
     targetMapId: point.kind === MapPointKind.SUBMAP ? (point.targetMap?.id ?? '') : '',
   };
 }
 
-/** The target that counts: only a Submapa has one. */
+/** What counts: only a Submapa has a target, and only a Cena has hooks. */
 function effective(d: PointDraft): PointDraft {
-  return d.kind === MapPointKind.SUBMAP ? d : { ...d, targetMapId: '' };
+  return {
+    ...d,
+    targetMapId: d.kind === MapPointKind.SUBMAP ? d.targetMapId : '',
+    hooks: d.kind === MapPointKind.SCENE ? d.hooks : '',
+  };
 }
 
 export function isDirty(draft: PointDraft, point: DraftSource): boolean {
@@ -45,6 +54,7 @@ export function isDirty(draft: PointDraft, point: DraftSource): boolean {
     a.kind !== b.kind ||
     a.name !== b.name ||
     a.description !== b.description ||
+    a.hooks !== b.hooks ||
     a.revealed !== b.revealed ||
     a.targetMapId !== b.targetMapId
   );
@@ -53,13 +63,14 @@ export function isDirty(draft: PointDraft, point: DraftSource): boolean {
 export interface DraftErrors {
   readonly name?: string;
   readonly description?: string;
+  readonly hooks?: string;
 }
 
 /** The server's rules (maps.proto), checked first so the field can say
  * what is wrong; the server stays the authority. */
 export function draftErrors(draft: PointDraft): DraftErrors {
   const name = draft.name.trim();
-  const errors: { name?: string; description?: string } = {};
+  const errors: { name?: string; description?: string; hooks?: string } = {};
   if (name === '') {
     errors.name = 'Dê um nome ao ponto.';
   } else if ([...name].length > POINT_NAME_MAX) {
@@ -69,6 +80,9 @@ export function draftErrors(draft: PointDraft): DraftErrors {
   }
   if ([...draft.description].length > POINT_DESCRIPTION_MAX) {
     errors.description = 'Use até 2.000 caracteres.';
+  }
+  if (draft.kind === MapPointKind.SCENE && textLength(draft.hooks) > HOOKS_MAX) {
+    errors.hooks = 'Use até 4.000 caracteres.';
   }
   return errors;
 }
@@ -83,6 +97,7 @@ export function changesOf(draft: PointDraft, point: DraftSource): PointChanges |
     kind?: MapPointKind;
     name?: string;
     description?: string;
+    hooks?: string;
     revealed?: boolean;
     targetMapId?: string;
   } = {};
@@ -94,6 +109,10 @@ export function changesOf(draft: PointDraft, point: DraftSource): PointChanges |
   }
   if (now.description !== before.description) {
     changes.description = now.description;
+  }
+  // A kind other than Cena drops the hooks on its own (the server clears them).
+  if (now.kind === MapPointKind.SCENE && now.hooks !== before.hooks) {
+    changes.hooks = now.hooks;
   }
   if (now.revealed !== before.revealed) {
     changes.revealed = now.revealed;

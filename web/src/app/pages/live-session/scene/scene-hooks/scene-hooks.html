@@ -1,0 +1,25 @@
+<section class="sh" aria-labelledby="sh-title">
+  <div class="sh__head">
+    <h3 class="sh__title" id="sh-title">Ganchos e anotações</h3>
+    <p class="sh__lock"><mat-icon aria-hidden="true">lock</mat-icon>Só você vê</p>
+    <button
+      type="button"
+      class="sh__toggle"
+      [attr.aria-expanded]="open()"
+      [attr.aria-controls]="id"
+      [attr.aria-label]="(open() ? 'Recolher' : 'Abrir') + ' os ganchos e anotações'"
+      (click)="toggle()"
+    >
+      <mat-icon aria-hidden="true">{{ open() ? 'expand_less' : 'expand_more' }}</mat-icon>
+    </button>
+  </div>
+  @if (open()) {
+    <div class="sh__body" [id]="id">
+      @if (empty()) {
+        <p class="sh__none">Esta cena não tem ganchos. Escreva no editor do mapa.</p>
+      } @else {
+        <div class="sh__text"><app-markdown [source]="hooks()" idPrefix="sh-md-" /></div>
+      }
+    </div>
+  }
+</section>

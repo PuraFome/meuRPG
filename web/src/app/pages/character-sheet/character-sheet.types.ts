@@ -215,6 +215,9 @@ export interface CharacterSheetVm {
   readonly campaignId: string;
   readonly characterKind: CharacterKind;
   readonly name: string;
+  /** An NPC's portrait, a gallery image's ID, or empty (MR-031). Only the
+   * master reads an NPC's sheet. */
+  readonly portraitImageId: string;
   readonly state: CharacterState;
   /** `Character.can_edit`: true for the master always (except a dead NPC's
    * game data, which simply has no lock concept); true for the owning

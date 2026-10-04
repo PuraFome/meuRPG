@@ -179,6 +179,24 @@
   min-width: 150px;
 }
 
+// 360px and narrower: the name block takes the whole line and the PV bar goes
+// under it, so a name never breaks mid-word.
+@media (max-width: 360px) {
+  .line {
+    flex-wrap: wrap;
+  }
+
+  .line .mr-list__text {
+    flex: 1 1 calc(100% - 28px - var(--mr-space-3));
+    min-width: 0;
+  }
+
+  .hp {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+}
+
 .hp__n {
   font-family: var(--mr-font-display);
   font-weight: 700;

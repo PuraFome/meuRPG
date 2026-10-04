@@ -247,11 +247,11 @@ test(
       campaignId = table.campaignId;
       await openSessionPage(master, campaignId);
 
-      // The picker lists the three scene points; the one with no actions is disabled, with the reason said once.
+      // The picker lists the three scene points; every one opens, even the one with no actions (question 63).
       await master.getByRole('button', { name: 'Abrir cena', exact: true }).click();
       const picker = master.getByRole('dialog', { name: 'Abrir uma cena' });
-      await expect(picker.getByRole('radio', { name: /Vau do riacho/ })).toBeDisabled();
-      await expect(picker.getByText('Sem ações. Adicione no editor do mapa.')).toHaveCount(1);
+      await expect(picker.getByRole('radio', { name: /Vau do riacho/ })).toBeEnabled();
+      await expect(picker.getByText('Sem ações')).toHaveCount(0);
       await expect(picker.getByText('Escondido no mapa · 3 ações')).toBeVisible();
       await picker.getByRole('button', { name: 'Cancelar' }).click();
       await expect(picker).toBeHidden();
@@ -295,9 +295,10 @@ test(
       await openSessionPage(master, campaignId);
       await openSessionPage(player, campaignId);
 
-      // The list of points: a scene with actions opens, one with none says why.
+      // The list of points: every scene opens, even the one with no actions (question 63).
       const points = master.getByRole('list', { name: 'Pontos do mapa' });
-      await expect(points.getByText('Sem ações. Adicione no editor do mapa.')).toHaveCount(1);
+      await expect(points.getByText('Sem ações')).toHaveCount(0);
+      await expect(points.getByRole('button', { name: 'Abrir cena Vau do riacho' })).toBeVisible();
       await points.getByRole('button', { name: 'Abrir cena A carroça tombada' }).click();
       await expect(master.getByRole('heading', { name: 'Cena: A carroça tombada' })).toBeFocused();
       await expect(player.getByRole('region', { name: 'Cena: A carroça tombada' })).toBeVisible();

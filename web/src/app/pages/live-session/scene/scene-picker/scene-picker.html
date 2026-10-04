@@ -18,13 +18,12 @@
 
   <div class="pk__list" role="radiogroup" aria-label="Cenas do mapa">
     @for (r of rows(); track r.id) {
-      <label class="pk__row" [class.pk__row--off]="r.off" [class.pk__row--on]="choice() === r.id">
+      <label class="pk__row" [class.pk__row--on]="choice() === r.id">
         <input
           type="radio"
           class="mr-visually-hidden"
           name="scene-point"
           [value]="r.id"
-          [disabled]="r.off"
           [checked]="choice() === r.id"
           (change)="choice.set(r.id)"
         />
@@ -34,11 +33,6 @@
           <span class="pk__detail">
             <mat-icon aria-hidden="true">{{ r.revealed ? 'visibility' : 'visibility_off' }}</mat-icon>{{ r.detail }}
           </span>
-          @if (r.off) {
-            <span class="pk__why">
-              <mat-icon aria-hidden="true">block</mat-icon>Sem ações. Adicione no editor do mapa.
-            </span>
-          }
         </span>
         @if (choice() === r.id) {
           <mat-icon class="pk__check" aria-hidden="true">check</mat-icon>

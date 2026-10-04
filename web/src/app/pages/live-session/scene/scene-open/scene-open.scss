@@ -1,5 +1,7 @@
 :host {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
   container-type: inline-size;
 }
 
@@ -81,7 +83,8 @@
 }
 
 // Rolls first (the live part), then the actions; from a wide enough block
-// (the map's column at 1280) the actions go left and the rolls right.
+// (the map's column at 1280) the clues and the hooks go left, the actions
+// right, and the rolls under them.
 .so__cols {
   display: flex;
   flex-direction: column;
@@ -89,20 +92,32 @@
 
   @container (min-width: 640px) {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
-    gap: var(--mr-space-6);
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: var(--mr-space-4) var(--mr-space-6);
     align-items: start;
 
-    .so__rolls {
+    .so__notes {
+      grid-column: 1;
+      grid-row: 1 / span 2;
+    }
+
+    .so__actions {
       grid-column: 2;
       grid-row: 1;
     }
 
-    .so__actions {
-      grid-column: 1;
-      grid-row: 1;
+    .so__rolls {
+      grid-column: 2;
+      grid-row: 2;
     }
   }
+}
+
+.so__notes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+  min-width: 0;
 }
 
 .so__sub {

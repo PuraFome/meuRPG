@@ -1,9 +1,12 @@
-import { Component, input } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { Component, computed, input } from '@angular/core';
 
 import type { Combatant, Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { conditionTags } from '../../../../core/combat/conditions';
 import { combatantInitial, isPlayer, playerWord, stateWord } from '../../../../core/combat/combat-view';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
+import { type OrderItem, jointTurn, listNames, orderItems } from '../../../../core/combat/joint-turn';
+import { OrderGroup } from '../joint-turn/order-group';
 import { CombatantTags } from '../combatant-tags/combatant-tags';
 
 /**
@@ -18,19 +21,29 @@ import { CombatantTags } from '../combatant-tags/combatant-tags';
  */
 @Component({
   selector: 'app-order-strip',
-  imports: [CombatantTags, CombatantToken],
+  imports: [CombatantTags, CombatantToken, NgTemplateOutlet, OrderGroup],
   template: `
   <ol class="strip" aria-label="Ordem de iniciativa" tabindex="0">
-    @for (c of encounter().combatants; track c.id) {
+    @for (item of items(); track key(item)) {
+      @if (item.kind === 'group') {
+        <li class="group-item">
+          <app-order-group class="dense" [total]="item.total" [onTurn]="item.onTurn" [label]="groupLabel(item)">
+            <ol class="group__chips">
+              @for (c of item.members; track c.id) {
+                <ng-container *ngTemplateOutlet="chipTpl; context: { $implicit: c }" />
+              }
+            </ol>
+          </app-order-group>
+        </li>
+      } @else {
+        <ng-container *ngTemplateOutlet="chipTpl; context: { $implicit: item.combatant }" />
+      }
+    }
+  </ol>
+  <ng-template #chipTpl let-c>
       <li class="chip" [class.chip--turn]="current(c)">
         <span class="chip__top">
-          <app-combatant-token
-            [initial]="initial(c)"
-            [npc]="npc(c)"
-            [defeated]="c.defeated"
-            [mine]="c.mine"
-            [size]="24"
-          />
+          <app-combatant-token [initial]="initial(c)" [npc]="npc(c)" [defeated]="c.defeated" [mine]="c.mine" [size]="24" />
           @if (current(c)) {
             <span class="chip__word chip__word--turn">Vez</span>
           } @else if (c.mine) {
@@ -41,8 +54,7 @@ import { CombatantTags } from '../combatant-tags/combatant-tags';
         <span class="chip__sub">{{ word(c) }}</span>
         <app-combatant-tags [names]="tags(c)" [label]="c.label" [compact]="true" />
       </li>
-    }
-  </ol>
+  </ng-template>
   `,
   styles: `
 :host {
@@ -77,6 +89,30 @@ import { CombatantTags } from '../combatant-tags/combatant-tags';
   padding: 7px 9px;
   border: 2px solid var(--mr-accent);
   background: var(--mr-accent-soft);
+}
+
+.group__chips {
+  display: flex;
+  padding: 0 0 2px;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.group-item {
+  flex: none;
+  scroll-snap-align: start;
+}
+
+.group__chips {
+  padding: 4px 6px 6px;
+}
+
+.group-item .chip--turn {
+  padding: 8px 10px;
+  border: 1px solid var(--mr-line);
+  background: var(--mr-surface);
 }
 
 .chip__top {
@@ -136,7 +172,19 @@ export class OrderStrip {
     return conditionTags(c);
   }
 
+  protected readonly items = computed(() => orderItems(this.encounter(), false));
+  private readonly joint = computed(() => jointTurn(this.encounter()));
+
+  /** In a joint turn the box is on turn, not one chip. */
   protected current(c: Combatant): boolean {
-    return c.id === this.encounter().currentCombatantId;
+    return !this.joint() && c.id === this.encounter().currentCombatantId;
+  }
+
+  protected key(item: OrderItem): string {
+    return item.kind === 'group' ? item.members.map((m) => m.id).join('+') : item.combatant.id;
+  }
+
+  protected groupLabel(item: OrderItem): string {
+    return item.kind === 'group' ? `Turno conjunto: ${listNames(item.members.map((m) => m.label))}, iniciativa ${item.total}` : '';
   }
 }

@@ -12,6 +12,8 @@ import {
   type GetMapResponse,
   type SceneAction,
   SceneActionSchema,
+  type SceneClue,
+  SceneClueSchema,
 } from '../../../gen/meurpg/maps/v1/maps_pb';
 import type { PointChanges } from './maps-client';
 
@@ -209,5 +211,61 @@ export class FakeMapsClient {
     this.record('removeSceneAction', pointId, actionId);
     this.sceneActions = this.sceneActions.filter((a) => a.id !== actionId);
     return this.sceneActions;
+  }
+
+  /** The clues of the point the specs work on, as the server keeps them. */
+  sceneClues: SceneClue[] = [];
+  /** What the next reveal answers with (set by the spec). */
+  revealed: SceneClue | null = null;
+
+  async addSceneClue(_c: string, _m: string, pointId: string, text: string): Promise<readonly SceneClue[]> {
+    this.record('addSceneClue', pointId, text);
+    if (this.sceneClues.length >= 30) {
+      const { ConnectError, Code } = await import('@connectrpc/connect');
+      throw new ConnectError('limit', Code.ResourceExhausted);
+    }
+    this.sceneClues = [...this.sceneClues, create(SceneClueSchema, { id: `k${this.sceneClues.length + 1}`, text })];
+    return this.sceneClues;
+  }
+
+  async updateSceneClue(
+    _c: string,
+    _m: string,
+    pointId: string,
+    clueId: string,
+    text: string,
+  ): Promise<readonly SceneClue[]> {
+    this.record('updateSceneClue', pointId, clueId, text);
+    this.sceneClues = this.sceneClues.map((c) => (c.id === clueId ? { ...c, text } : c));
+    return this.sceneClues;
+  }
+
+  async moveSceneClue(
+    _c: string,
+    _m: string,
+    pointId: string,
+    clueId: string,
+    direction: 'up' | 'down',
+  ): Promise<readonly SceneClue[]> {
+    this.record('moveSceneClue', pointId, clueId, direction);
+    const list = [...this.sceneClues];
+    const i = list.findIndex((c) => c.id === clueId);
+    const j = direction === 'up' ? i - 1 : i + 1;
+    if (j >= 0 && j < list.length) {
+      [list[i], list[j]] = [list[j], list[i]];
+    }
+    this.sceneClues = list;
+    return list;
+  }
+
+  async removeSceneClue(_c: string, _m: string, pointId: string, clueId: string): Promise<readonly SceneClue[]> {
+    this.record('removeSceneClue', pointId, clueId);
+    this.sceneClues = this.sceneClues.filter((c) => c.id !== clueId);
+    return this.sceneClues;
+  }
+
+  async revealSceneClue(_c: string, clueId: string, characterIds: readonly string[]): Promise<SceneClue> {
+    this.record('revealSceneClue', clueId, characterIds.join(','));
+    return this.revealed ?? create(SceneClueSchema, { id: clueId, text: 'x' });
   }
 }

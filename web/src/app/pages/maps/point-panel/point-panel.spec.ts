@@ -1,7 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { MapPointKind } from '../../../../gen/meurpg/maps/v1/maps_pb';
-import { mapPoint } from '../../../core/maps/maps-testing';
+import { MapsClient } from '../../../core/maps/maps-client';
+import { FakeMapsClient, mapPoint } from '../../../core/maps/maps-testing';
 import { PointPanel } from './point-panel';
 
 describe('PointPanel', () => {
@@ -78,5 +79,55 @@ describe('PointPanel', () => {
     fixture.componentInstance.discard();
     fixture.detectChanges();
     expect((el.querySelector('input') as HTMLInputElement).value).toBe('Taverna do Javali');
+  });
+
+  describe('a saved Cena (MR-029)', () => {
+    let api: FakeMapsClient;
+    let cena: ComponentFixture<PointPanel>;
+    let cenaEl: HTMLElement;
+
+    beforeEach(() => {
+      api = new FakeMapsClient();
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({ providers: [{ provide: MapsClient, useValue: api }] });
+      cena = TestBed.createComponent(PointPanel);
+      cena.componentRef.setInput('point', mapPoint('p1', 'A carroça tombada', { hooks: 'O mercador Aldo foi levado.' }));
+      cena.componentRef.setInput('campaignId', 'c1');
+      cena.detectChanges();
+      cenaEl = cena.nativeElement;
+    });
+
+    it('has "Pistas" and "Ganchos e anotações" after the actions, with the lock and "Só você vê" first', () => {
+      const titles = Array.from(cenaEl.querySelectorAll('h3'), (h) => h.textContent?.trim());
+      expect(titles).toEqual(['Ações da cena', 'Pistas', 'Ganchos e anotações']);
+      expect(cenaEl.querySelector('.hf__lock')?.textContent).toContain('Só você vê. Nunca aparece para os jogadores.');
+      expect(cenaEl.querySelector('.hf textarea')?.getAttribute('aria-labelledby')).toBe('hf-title');
+    });
+
+    it('carries the "É ficção" notice once', () => {
+      expect(cenaEl.querySelectorAll('app-fiction-notice')).toHaveLength(1);
+    });
+
+    it('waits for "Salvar ponto" for the hooks, and sends only them', () => {
+      const field = cenaEl.querySelector('.hf textarea') as HTMLTextAreaElement;
+      expect(field.value).toBe('O mercador Aldo foi levado.');
+      expect(cena.componentInstance.changes()).toBeNull();
+      field.value = 'Mira está escondida debaixo da carroça.';
+      field.dispatchEvent(new Event('input'));
+      cena.detectChanges();
+      expect(cena.componentInstance.changes()).toEqual({ hooks: 'Mira está escondida debaixo da carroça.' });
+      expect(cenaEl.querySelector('.hf mat-hint[align="end"], .hf .mat-mdc-form-field-hint-wrapper')?.textContent).toContain('39 de 4.000');
+      expect(api.calls).toEqual([]);
+    });
+
+    it('says a text over 4.000 characters under the field and keeps it', () => {
+      const field = cenaEl.querySelector('.hf textarea') as HTMLTextAreaElement;
+      field.value = 'x'.repeat(4001);
+      field.dispatchEvent(new Event('input'));
+      cena.detectChanges();
+      expect(cena.componentInstance.changes()).toBeNull();
+      cena.detectChanges();
+      expect(cenaEl.querySelector('.hf mat-error')?.textContent).toContain('Use até 4.000 caracteres.');
+    });
   });
 });

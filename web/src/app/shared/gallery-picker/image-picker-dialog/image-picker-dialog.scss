@@ -21,6 +21,17 @@
   border-bottom: 1px solid var(--mr-rule);
 }
 
+.dlg__titles {
+  min-width: 0;
+}
+
+.dlg__lead {
+  margin: 2px 0 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
 .dlg__title {
   margin: 0;
   font-family: var(--mr-font-display);
@@ -48,7 +59,8 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
-  padding: var(--mr-space-4) var(--mr-space-6);
+  // Room under the last tile and the privacy note, so a scroll never ends on a cut line.
+  padding: var(--mr-space-4) var(--mr-space-6) var(--mr-space-5);
 }
 
 .dlg__foot {
@@ -77,6 +89,12 @@
   }
 }
 
+.dlg__wait {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
 .dlg__error {
   color: var(--mr-danger-ink);
   font-weight: 700;
@@ -92,11 +110,29 @@
     min-height: 44px;
   }
 
+  // Nothing chosen yet: dashed and quiet, as the page's other unavailable buttons.
+  .dlg__confirm--off {
+    border-style: dashed;
+    color: var(--mr-ink-muted);
+  }
+
+  // The dashed variant's "Cancelar" is outlined, the same size as the button beside it.
+  .dlg__cancel.mat-mdc-outlined-button {
+    min-height: 44px;
+    // ... and it comes first, the dashed button last: "Cancelar | Usar este retrato".
+    order: -1;
+  }
+
+  &:has(.dlg__cancel.mat-mdc-outlined-button) {
+    justify-content: flex-end;
+  }
+
   @media (max-width: 599.98px) {
     flex-direction: column;
     align-items: stretch;
 
-    .dlg__confirm {
+    .dlg__confirm,
+    .dlg__cancel.mat-mdc-outlined-button {
       min-height: 48px;
     }
   }

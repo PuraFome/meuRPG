@@ -89,12 +89,14 @@
           [point]="p"
           [campaignId]="campaignId()"
           [maps]="maps()"
+          [players]="players()"
           [saving]="saving()"
           [error]="panelError()"
           [focusName]="justCreated()"
           (saveRequested)="save()"
           (removeConfirmed)="remove()"
           (sceneActionsChange)="setSceneActions(p, $event)"
+          (cluesChange)="setClues(p, $event)"
           (dirtyChange)="dirty.set($event)"
         />
       }

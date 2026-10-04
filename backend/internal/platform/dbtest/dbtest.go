@@ -94,7 +94,7 @@ func NewPool(t testing.TB, prefix string) *pgxpool.Pool {
 	admin := open(t, rawURL)
 	name := fmt.Sprintf("%s_%d_%d", prefix, time.Now().UnixNano(), counter.Add(1))
 	mustExec(t, admin, "CREATE DATABASE "+name)
-	t.Cleanup(func() { mustExec(t, admin, "DROP DATABASE IF EXISTS "+name+" CASCADE") })
+	t.Cleanup(func() { dropTestDatabase(t, admin, name) })
 
 	dsn, err := withDatabase(rawURL, name)
 	if err != nil {
@@ -335,6 +335,21 @@ func open(t testing.TB, dsn string) *sql.DB {
 	}
 	t.Cleanup(func() { _ = conn.Close() })
 	return conn
+}
+
+// dropTestDatabase drops a test's database when the test ends. A drop that
+// fails is logged, not a failure: the test already passed or failed, and a
+// busy CockroachDB (in CI every package runs against one server) sometimes
+// takes longer than the timeout. A database left behind holds only that
+// test's rows and can be dropped by hand (see CONTRIBUTING.md).
+func dropTestDatabase(t testing.TB, conn *sql.DB, name string) {
+	t.Helper()
+	// Not t.Context(): cleanups run after it is canceled.
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if _, err := conn.ExecContext(ctx, "DROP DATABASE IF EXISTS "+name+" CASCADE"); err != nil {
+		t.Logf("drop the test database %s (left behind): %v", name, err)
+	}
 }
 
 func mustExec(t testing.TB, conn *sql.DB, query string) {

@@ -48,6 +48,12 @@ export function xpBlockedMessage(blocked: XPBlocked): string {
       return 'Não há nenhum prêmio para desfazer. A tela foi atualizada.';
     case XPBlockedReason.XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE:
       return 'Um dos personagens marcados não pode receber: ele morreu ou saiu da campanha. A lista foi atualizada.';
+    case XPBlockedReason.XP_BLOCKED_REASON_MILESTONE_ALREADY_REACHED:
+      return 'Esse marco já foi alcançado. A lista foi atualizada.';
+    case XPBlockedReason.XP_BLOCKED_REASON_MILESTONE_NOT_REACHED:
+      return 'Esse marco não está mais alcançado: ele foi desfeito. A lista foi atualizada.';
+    case XPBlockedReason.XP_BLOCKED_REASON_CHARACTER_ALREADY_MARKED:
+      return 'Um dos personagens marcados já tem esse marco. A lista foi atualizada.';
     default:
       return 'Isso não pode ser feito agora. A tela foi atualizada.';
   }
@@ -65,6 +71,7 @@ export function xpErrorMessage(err: unknown, what = 'fazer isso'): string {
     [Code.InvalidArgument]: `Não deu para ${what}: confira o motivo e o valor e tente de novo.`,
     [Code.NotFound]: 'Essa campanha não existe mais, ou você não faz parte dela. Recarregue a página.',
     [Code.PermissionDenied]: 'Só o mestre da campanha pode fazer isso.',
+    [Code.ResourceExhausted]: 'A campanha já tem 100 marcos. Remova um marco planejado para escrever outro.',
     [Code.Aborted]: 'O XP mudou enquanto você agia. A tela foi atualizada; confira e tente de novo.',
     [Code.Unavailable]: `Não deu para ${what}: o servidor não respondeu. Tente de novo.`,
   });

@@ -1,0 +1,137 @@
+import { Code, ConnectError } from '@connectrpc/connect';
+
+import { FakeNotesClient, note, scene } from './notes-testing';
+import { NotesState } from './notes-state';
+
+const AT = (min: number) => new Date(2026, 9, 3, 21, min);
+
+describe('NotesState', () => {
+  let api: FakeNotesClient;
+  let state: NotesState;
+
+  beforeEach(() => {
+    api = new FakeNotesClient();
+    api.scenesList = [scene('s1', 'A carroça tombada')];
+    api.notes = [note('n1', 'Brisa me deve 5 PO', AT(3)), note('n2', 'Comprar tinta', AT(1))];
+    state = new NotesState(api as never, () => 'c1');
+  });
+
+  it('reads the list and the discovered scenes, newest first, and says nothing the first time', async () => {
+    await state.refresh(true);
+    expect(state.notes().map((n) => n.id)).toEqual(['n1', 'n2']);
+    expect(state.scenes().map((s) => s.name)).toEqual(['A carroça tombada']);
+    expect(state.noteCount()).toBe(2);
+    expect(state.loaded()).toBe(true);
+    expect(state.fresh()).toEqual([]);
+    expect(state.notice()).toBe(false);
+  });
+
+  it('counts a clue that arrives through notes_changed as new and raises the notice', async () => {
+    await state.refresh();
+    api.notes = [note('c1', 'Um brasão de lobo', AT(20), { clue: true, sceneId: 's1', sceneName: 'A carroça tombada' }), ...api.notes];
+    await state.refresh(true);
+    expect(state.fresh().map((n) => n.id)).toEqual(['c1']);
+    expect(state.notice()).toBe(true);
+    // A clue is in the list but is not one of the 300 notes.
+    expect(state.noteCount()).toBe(2);
+    expect(state.notes()[0].id).toBe('c1');
+  });
+
+  it('does not count again what it already had, nor a note, nor the clues of a read that is not an announcement', async () => {
+    await state.refresh();
+    api.notes = [note('c1', 'Pista', AT(20), { clue: true }), note('n3', 'Outra', AT(21)), ...api.notes];
+    await state.refresh(false);
+    expect(state.fresh()).toEqual([]);
+    await state.refresh(true);
+    // c1 was already read silently: only clues never seen count.
+    expect(state.fresh()).toEqual([]);
+    api.notes = [note('c2', 'Mais uma', AT(25), { clue: true }), ...api.notes];
+    await state.refresh(true);
+    expect(state.fresh().map((n) => n.id)).toEqual(['c2']);
+  });
+
+  it('keeps the news until the notes are opened, and the notice until it is dismissed or opened', async () => {
+    await state.refresh();
+    api.notes = [note('c1', 'Pista', AT(20), { clue: true }), ...api.notes];
+    await state.refresh(true);
+    state.dismissNotice();
+    expect(state.notice()).toBe(false);
+    expect(state.fresh()).toHaveLength(1);
+    state.seen();
+    expect(state.fresh()).toEqual([]);
+    expect(state.notice()).toBe(false);
+  });
+
+  it('keeps the copy on screen when a read fails, and says so', async () => {
+    await state.refresh();
+    api.failWith = new ConnectError('x', Code.Unavailable);
+    await state.refresh(true);
+    expect(state.notes()).toHaveLength(2);
+    expect(state.failed()).toBe(true);
+    await state.refresh();
+    expect(state.failed()).toBe(false);
+  });
+
+  it('never lets an older read overwrite a newer one', async () => {
+    await state.refresh();
+    let release!: () => void;
+    const slow = new Promise<void>((r) => (release = r));
+    const original = api.list.bind(api);
+    api.list = async (c: string) => {
+      const result = await original(c);
+      await slow;
+      return result;
+    };
+    const stale = state.refresh();
+    await Promise.resolve();
+    await state.create('Nova', '');
+    release();
+    await stale;
+    expect(state.notes().map((n) => n.text)).toContain('Nova');
+  });
+
+  it('puts a new note first, counts it, and moves an edited one to the top', async () => {
+    await state.refresh();
+    const created = await state.create('Nova anotação', 's1');
+    expect(created?.sceneName).toBe('A carroça tombada');
+    expect(state.notes()[0].text).toBe('Nova anotação');
+    expect(state.noteCount()).toBe(3);
+    api.now = AT(40);
+    await state.update('n2', { text: 'Comprar tinta e pergaminho' });
+    expect(state.notes()[0].id).toBe('n2');
+    expect(state.noteCount()).toBe(3);
+  });
+
+  it('removes a note and counts it out', async () => {
+    await state.refresh();
+    expect(await state.remove('n1')).toBe(true);
+    expect(state.notes().map((n) => n.id)).toEqual(['n2']);
+    expect(state.noteCount()).toBe(1);
+  });
+
+  it('allows one write at a time per note', async () => {
+    await state.refresh();
+    const first = state.update('n1', { text: 'A' });
+    expect(state.isWriting('n1')).toBe(true);
+    expect(await state.update('n1', { text: 'B' })).toBeNull();
+    await first;
+    expect(state.isWriting('n1')).toBe(false);
+    expect(api.calls.filter((c) => c.startsWith('update'))).toHaveLength(1);
+    // Another note is not blocked.
+    const both = await Promise.all([state.update('n1', { text: 'C' }), state.update('n2', { text: 'D' })]);
+    expect(both.every((n) => n !== null)).toBe(true);
+  });
+
+  it('is at the limit when the player has 300 notes', async () => {
+    api.maxNotes = 2;
+    await state.refresh();
+    expect(state.atLimit()).toBe(true);
+  });
+
+  it('forgets everything for a new page', async () => {
+    await state.refresh();
+    state.clear();
+    expect(state.notes()).toEqual([]);
+    expect(state.loaded()).toBe(false);
+  });
+});

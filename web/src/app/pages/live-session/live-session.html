@@ -53,6 +53,17 @@
       />
       }
 
+      @if (highlightsFor(); as ended) {
+        <app-highlights-card
+          [campaignId]="campaignId()"
+          [encounterId]="ended.id"
+          [subtitle]="highlightsSub()"
+          [characterId]="ownCharacterId()"
+          [characterName]="ownCharacterName()"
+          (closed)="closeHighlights()"
+        />
+      }
+
       @if (combat.shown()) {
         <app-combat-view
           class="combat"
@@ -63,6 +74,7 @@
           [vitals]="vitals()"
           [partyInfo]="partyInfo()"
           [sessionNumber]="s.sessionNumber"
+          [cardAbove]="!!highlightsFor()"
           [armorClass]="playerSheet()?.armorClass ?? null"
           [diceMode]="campaign()?.diceMode ?? 1"
           [dicePreference]="campaign()?.dicePreference ?? 1"
@@ -116,6 +128,7 @@
                 [campaignId]="campaignId()"
                 [state]="scene"
                 [mapState]="mapState"
+                [players]="cluePlayers()"
               />
             }
             <app-session-map
@@ -136,6 +149,11 @@
           />
         </div>
       } @else {
+        <app-clue-notice
+          [clues]="notes.notice() ? notes.fresh() : []"
+          (opened)="openNotes()"
+          (dismissed)="notes.dismissNotice()"
+        />
         <div class="board" [class.board--scene]="scene.scene()">
           <div class="board__main">
             <app-scene-player
@@ -172,3 +190,13 @@
     }
   }
 }
+
+<!-- The player's "Anotações" button: the app bar draws it (E8-06); it lives here so the shell stays small. -->
+<ng-template #notesBar let-where>
+  <button type="button" class="notes-bar" [class.notes-bar--phone]="where === 'phone'" [class.notes-bar--wide]="where === 'wide'" [attr.aria-label]="notesAria(freshCount())" (click)="openNotes()">
+    <mat-icon aria-hidden="true">description</mat-icon>
+    <span>Anotações@if (freshCount() > 0) {
+      · {{ freshCount() }}<span class="notes-bar__more">&nbsp;{{ freshCount() === 1 ? 'nova' : 'novas' }}</span>
+    }</span>
+  </button>
+</ng-template>

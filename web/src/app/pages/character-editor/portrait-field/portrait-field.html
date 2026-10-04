@@ -1,0 +1,31 @@
+<div class="pf">
+  <span class="pf__label" id="pf-label">Retrato</span>
+  <app-portrait class="pf__frame" [src]="url()" [name]="name()" [size]="200" />
+  <p class="pf__caption">{{ caption() }}</p>
+
+  @if (!removing()) {
+    <button
+      #pickBtn
+      matButton="outlined"
+      type="button"
+      class="pf__pick"
+      (click)="choose()"
+    >
+      <mat-icon aria-hidden="true">image</mat-icon>{{ imageId() ? 'Trocar retrato' : 'Escolher retrato' }}
+    </button>
+    @if (imageId()) {
+      <button #removeBtn matButton type="button" class="pf__remove" (click)="ask()">
+        <mat-icon aria-hidden="true">delete</mat-icon>Remover retrato
+      </button>
+    }
+  } @else {
+    <div #question class="pf__ask" role="group" aria-labelledby="pf-ask-title">
+      <p class="pf__ask-title" id="pf-ask-title">Remover o retrato de {{ name() }}?</p>
+      <p class="pf__ask-text">A imagem continua na galeria.</p>
+      <button #backBtn matButton="outlined" type="button" class="pf__ask-btn" (click)="back()">Voltar</button>
+      <button matButton="outlined" type="button" class="pf__ask-btn pf__ask-btn--danger" (click)="remove()">
+        Remover retrato
+      </button>
+    </div>
+  }
+</div>

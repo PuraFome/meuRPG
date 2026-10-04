@@ -20,9 +20,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 
 import { MapPointKind } from '../../../../gen/meurpg/maps/v1/maps_pb';
-import type { MapPoint, SceneAction } from '../../../../gen/meurpg/maps/v1/maps_pb';
+import type { MapPoint, SceneAction, SceneClue } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import type { PointChanges } from '../../../core/maps/maps-client';
+import type { CluePlayer } from '../../../core/maps/scene-clues';
 import { pointKindIcon, pointKindLabel } from '../../../shared/map-view/map-labels';
+import { ClueList } from '../clue-list/clue-list';
+import { HooksField } from '../hooks-field/hooks-field';
 import { RevealSwitch } from '../reveal-switch/reveal-switch';
 import { SceneActions } from '../scene-actions/scene-actions';
 import {
@@ -44,8 +47,10 @@ const KINDS = [MapPointKind.BATTLE, MapPointKind.SUBMAP, MapPointKind.SCENE] as 
  * "Revelado aos jogadores", the screen's one primary action "Salvar ponto",
  * and "Apagar ponto", which confirms in place ("Apagar Taverna do Javali?
  * Não dá para desfazer."). A saved SCENE point also has "Ações da cena"
- * (E7-01), which save on their own. The rest saves together; positions don't
- * belong here (the map moves them). The page runs the calls.
+ * (E7-01) and "Pistas" (E8-04), which save on their own; "Ganchos e
+ * anotações" (the master's private text) waits for "Salvar ponto" like the
+ * description. The rest saves together; positions don't belong here (the map
+ * moves them). The page runs the calls.
  */
 @Component({
   selector: 'app-point-panel',
@@ -55,6 +60,8 @@ const KINDS = [MapPointKind.BATTLE, MapPointKind.SUBMAP, MapPointKind.SCENE] as 
     MatIconModule,
     MatInputModule,
     ReactiveFormsModule,
+    ClueList,
+    HooksField,
     RevealSwitch,
     SceneActions,
   ],
@@ -67,6 +74,8 @@ export class PointPanel {
   readonly point = input.required<MapPoint>();
   /** The campaign, for the scene actions the panel saves on its own. */
   readonly campaignId = input('');
+  /** The campaign's player characters, to say who has each clue. */
+  readonly players = input<readonly CluePlayer[]>([]);
   /** The campaign's other maps, for "Leva para". */
   readonly maps = input<readonly { id: string; name: string }[]>([]);
   readonly saving = input(false);
@@ -82,6 +91,8 @@ export class PointPanel {
   /** A SCENE point's actions changed (each change is saved at once, apart
    * from "Salvar ponto"): the page puts the new list on the point. */
   readonly sceneActionsChange = output<readonly SceneAction[]>();
+  /** A SCENE point's clues changed (saved at once too). */
+  readonly cluesChange = output<readonly SceneClue[]>();
 
   protected readonly kinds = KINDS;
   protected readonly kindLabel = pointKindLabel;
@@ -95,6 +106,7 @@ export class PointPanel {
     kind: MapPointKind.SCENE,
     name: '',
     description: '',
+    hooks: '',
     revealed: false,
     targetMapId: '',
   });
@@ -105,6 +117,8 @@ export class PointPanel {
   // which Material shows for a control with errors that was touched.
   protected readonly nameControl = new FormControl('', { nonNullable: true });
   protected readonly descriptionControl = new FormControl('', { nonNullable: true });
+  protected readonly hooksControl = new FormControl('', { nonNullable: true });
+  protected readonly hooksLength = computed(() => [...this.draft().hooks].length);
   protected readonly targets = computed(() => this.maps().filter((m) => m.id !== this.point().mapId));
 
   private readonly nameField = viewChild('nameField', { read: ElementRef<HTMLInputElement> });
@@ -137,6 +151,9 @@ export class PointPanel {
     this.descriptionControl.valueChanges
       .pipe(takeUntilDestroyed())
       .subscribe((description) => this.patch({ description }));
+    this.hooksControl.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe((hooks) => this.patch({ hooks }));
   }
 
   /** A fresh draft: the fields show it, with no message. */
@@ -144,8 +161,10 @@ export class PointPanel {
     this.draft.set(draft);
     this.nameControl.setValue(draft.name, { emitEvent: false });
     this.descriptionControl.setValue(draft.description, { emitEvent: false });
+    this.hooksControl.setValue(draft.hooks, { emitEvent: false });
     this.nameControl.setErrors(null);
     this.descriptionControl.setErrors(null);
+    this.hooksControl.setErrors(null);
     this.errors.set({});
   }
 
@@ -166,7 +185,11 @@ export class PointPanel {
       this.descriptionControl.setErrors({ description: true });
       this.descriptionControl.markAsTouched();
     }
-    if (errors.name || errors.description) {
+    if (errors.hooks) {
+      this.hooksControl.setErrors({ hooks: true });
+      this.hooksControl.markAsTouched();
+    }
+    if (errors.name || errors.description || errors.hooks) {
       (errors.name ? this.nameField() : undefined)?.nativeElement.focus();
       return null;
     }

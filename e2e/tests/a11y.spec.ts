@@ -8,9 +8,12 @@ import { endOpenSessionRPC, endSessionRPC, openSessionPage, startSessionRPC, tab
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
 import { adjustVitalsRPC, beginAttackCombatRPC, combatRPC, getEncounterRPC, passTurnsTo, pensantusCasting, tableForCombat, toren, torenSheet } from './combat-support';
 import { addActionRPC, cartActions, getOpenSceneRPC, openSceneRPC, rollSceneRPC, tableForScenes } from './scene-support';
+import { addClueRPC, cartClues, cartHooks, createNoteRPC } from './notes-support';
+import { createCapitaoRPC, createMiraRPC, playedCombatRPC, putOnStageRPC, uploadPortrait } from './stage-support';
 import { printRoute, tableForPrinting } from './print-support';
 import { tableForLevelUp } from './levelup-support';
 import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus } from './support';
+import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
 import { awardXpRPC, createEnemyRPC, tableForXp, tableForXpCombat, winCombatRPC } from './xp-support';
 
 // docs/design.md#como-uma-tela-é-feita: every screen passes axe with no
@@ -1220,7 +1223,7 @@ async function scanXpScreens(browser: Browser, colorScheme: 'light' | 'dark', wi
     await startSessionRPC(m, marks.campaignId);
     await openLive(m, `/campanhas/${marks.campaignId}`);
     await expectScreenPasses(m, `Experiência por marcos, sem marcos ${where}`);
-    await m.getByRole('button', { name: 'Registrar marco' }).click();
+    await m.getByRole('button', { name: 'Registrar um marco fora da lista' }).click();
     const markDialog = m.getByRole('dialog', { name: 'Registrar marco' });
     await markDialog.getByLabel('O que aconteceu').fill('Marco: a ponte do rio foi salva');
     await expectScreenPasses(m, `Registrar marco ${where}`);
@@ -1410,6 +1413,492 @@ test('as cenas de RP passam no axe e nas conferências de layout no tema escuro,
 test('as cenas de RP passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-015'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanSceneScreens(browser, 'light', 320);
+});
+
+/**
+ * The planned milestones (Etapa 8, MR-016, RN-12, RN-20; E8-14): the empty panel, "Adicionar marco" open with its
+ * error, the list, the edit field and the removal question in place, "Marcar como alcançado" (a dialog on a
+ * computer, a sheet on a phone), the reached milestone with "Dar a mais alguém"'s absence (one character only),
+ * "Desfazer"'s question, and the player's panel before and after the first milestone. Built in one function so
+ * the sweep is one place.
+ */
+async function scanMilestoneScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width <= 390 ? 700 : 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  const experience = (page: Page) => page.getByRole('region', { name: 'Experiência', exact: true });
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForXp(m, p, `Acessibilidade marcos planejados ${Date.now()}`, 'XP_MODE_MILESTONES');
+    const route = `/campanhas/${table.campaignId}`;
+
+    // Nothing planned yet, and the player's empty state.
+    await open(m, route);
+    await expect(experience(m)).toContainText('Nenhum marco planejado');
+    await expectScreenPasses(m, `Marcos, nenhum planejado ${where}`);
+    await open(p, route);
+    await expect(experience(p)).toContainText('Nenhum marco alcançado ainda');
+    await expectScreenPasses(p, `Marcos, jogador antes do primeiro ${where}`);
+
+    // "Adicionar marco" open, with its error.
+    await experience(m).getByRole('button', { name: 'Adicionar marco', exact: true }).click();
+    await experience(m).getByLabel('Nome do marco').press('Enter');
+    await expect(experience(m).getByRole('alert')).toContainText('Escreva o nome do marco');
+    await expectScreenPasses(m, `Marcos, Adicionar marco com erro ${where}`);
+    for (const text of ['Salvar o mercador', 'Chegar ao Vale Seco', 'Derrotar o Barão Ivo']) {
+      await experience(m).getByLabel('Nome do marco').fill(text);
+      await experience(m).getByLabel('Nome do marco').press('Enter');
+      await expect(experience(m).getByRole('button', { name: `Marcar “${text}” como alcançado` })).toBeVisible();
+      if (text !== 'Derrotar o Barão Ivo') {
+        await experience(m).getByRole('button', { name: 'Adicionar marco', exact: true }).click();
+      }
+    }
+    await expectScreenPasses(m, `Marcos, a lista planejada ${where}`);
+
+    // Edit in place, and the removal question.
+    await experience(m).getByRole('button', { name: 'Editar Salvar o mercador' }).click();
+    await expect(experience(m).getByLabel('Nome do marco')).toHaveValue('Salvar o mercador');
+    await expectScreenPasses(m, `Marcos, editar no lugar ${where}`);
+    await experience(m).getByRole('button', { name: 'Cancelar' }).click();
+    await experience(m).getByRole('button', { name: 'Remover Salvar o mercador' }).click();
+    await expect(m.getByRole('alertdialog')).toBeVisible();
+    await expectScreenPasses(m, `Marcos, remover a pergunta ${where}`);
+    await m.getByRole('button', { name: 'Voltar' }).click();
+
+    // "Marcar como alcançado".
+    await experience(m).getByRole('button', { name: 'Marcar “Chegar ao Vale Seco” como alcançado' }).click();
+    await expect(m.getByRole('dialog', { name: 'Marcar “Chegar ao Vale Seco” como alcançado' })).toBeVisible();
+    await expectScreenPasses(m, `Marcar como alcançado ${where}`);
+    await m.getByRole('dialog').getByRole('button', { name: 'Marcar como alcançado' }).click();
+    await expect(experience(m).getByRole('status').filter({ hasText: 'Marco alcançado' })).toBeVisible();
+    await expectScreenPasses(m, `Marcos, depois de alcançar ${where}`);
+
+    // "Desfazer" asks in place.
+    await experience(m).getByRole('button', { name: 'Desfazer Chegar ao Vale Seco' }).click();
+    await expect(m.getByRole('alertdialog')).toBeVisible();
+    await expectScreenPasses(m, `Marcos, desfazer a pergunta ${where}`);
+    await m.getByRole('button', { name: 'Voltar' }).click();
+
+    // The player, after the first milestone: only the reached one, and the own character.
+    await open(p, route);
+    await expect(experience(p)).toContainText('Chegar ao Vale Seco');
+    await expectScreenPasses(p, `Marcos, jogador depois do marco ${where}`);
+  } finally {
+    await master.close();
+    await player.close();
+  }
+}
+
+test('os marcos planejados passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-016'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanMilestoneScreens(browser, 'light', 1280);
+});
+
+test('os marcos planejados passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-016'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanMilestoneScreens(browser, 'dark', 390);
+});
+
+test('os marcos planejados passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-016'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanMilestoneScreens(browser, 'light', 320);
+});
+
+/**
+ * Clues, hooks and the players' notes (Etapa 8, MR-029, MR-030, E8-04 to
+ * E8-07): the point panel's "Pistas" (empty, the list with who has each, the
+ * add form with its error, the remove question, the full list) and "Ganchos e
+ * anotações"; the open scene's clues and hooks (open and, on a phone, folded);
+ * "Revelar pista" with nobody checked, one checked and after revealing; the
+ * player's notice and the bar's button with a new clue; the notes sheet (empty,
+ * the list with a clue, the filter open, a scene with nothing, a new note, the
+ * limit of 2.000, editing with its two questions); and the panel on the
+ * character sheet (list, form, empty).
+ */
+async function scanNotesScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width >= 768 ? 900 : 844 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForScenes(m, p, `Acessibilidade pistas ${Date.now()}`, false);
+    campaignId = table.campaignId;
+
+    // The editor is for a computer: "Pistas" and "Ganchos e anotações" in the point panel.
+    if (width >= 768) {
+      await open(m, `/campanhas/${campaignId}/mapas/${table.mapId}`);
+      await m.getByRole('button', { name: /^A carroça tombada, Cena de RP/ }).click();
+      await expect(m.getByText('Nenhuma pista ainda')).toBeVisible();
+      await expectScreenPasses(m, `Pistas e ganchos, vazios ${where}`);
+      for (const text of cartClues) {
+        await addClueRPC(m, table, table.cartId, text);
+      }
+      await open(m, `/campanhas/${campaignId}/mapas/${table.mapId}`);
+      await m.getByRole('button', { name: /^A carroça tombada, Cena de RP/ }).click();
+      await expect(m.getByText('3 de 30', { exact: true })).toBeVisible();
+      await m.getByRole('textbox', { name: 'Ganchos e anotações' }).fill(cartHooks);
+      await expectScreenPasses(m, `Pistas e ganchos, com três pistas ${where}`);
+      await m.getByRole('button', { name: 'Adicionar pista' }).click();
+      await expect(m.getByRole('form', { name: 'Nova pista' })).toBeVisible();
+      await expectScreenPasses(m, `Nova pista ${where}`);
+      await m.getByRole('form', { name: 'Nova pista' }).getByRole('button', { name: 'Adicionar pista' }).click();
+      await expect(m.getByText('Escreva a pista antes de salvar.')).toBeVisible();
+      await expectScreenPasses(m, `Nova pista, com o erro ${where}`);
+      await m.getByRole('form', { name: 'Nova pista' }).getByLabel('Texto da pista').fill('x'.repeat(512));
+      await expect(m.getByText('512 de 500')).toBeVisible();
+      await expectScreenPasses(m, `Nova pista, passou de 500 caracteres ${where}`);
+      await m.getByRole('button', { name: 'Cancelar' }).click();
+      await m.getByRole('button', { name: 'Remover a pista 2' }).click();
+      await expect(m.getByRole('alertdialog', { name: 'Remover a pista 2?' })).toBeVisible();
+      await expectScreenPasses(m, `Remover a pista, a pergunta ${where}`);
+      await m.getByRole('button', { name: 'Voltar' }).click();
+      await m.getByRole('button', { name: /^Vau do riacho, Cena de RP/ }).click();
+      for (let i = 1; i <= 30; i++) {
+        await addClueRPC(m, table, table.fordId, `Pista número ${i}`);
+      }
+      await open(m, `/campanhas/${campaignId}/mapas/${table.mapId}`);
+      await m.getByRole('button', { name: /^Vau do riacho, Cena de RP/ }).click();
+      await expect(m.getByText('Limite de 30 pistas. Remova uma para adicionar outra.')).toBeVisible();
+      await expectScreenPasses(m, `Pistas, lista cheia ${where}`);
+    } else {
+      for (const text of cartClues) {
+        await addClueRPC(m, table, table.cartId, text);
+      }
+      const hooks = await callRPC(m, 'meurpg.maps.v1.MapService/UpdateMapPoint', { campaignId, mapId: table.mapId, pointId: table.cartId, hooks: cartHooks });
+      expect(hooks.ok()).toBeTruthy();
+    }
+    await callRPC(m, 'meurpg.maps.v1.MapService/UpdateMapPoint', { campaignId, mapId: table.mapId, pointId: table.cartId, hooks: cartHooks });
+
+    // The player's notes before anything arrived: the empty sheet.
+    await openSessionPage(m, campaignId);
+    await openSessionPage(p, campaignId);
+    await p.getByRole('button', { name: 'Anotações', exact: true }).click();
+    await expect(p.getByText('Nenhuma anotação ainda')).toBeVisible();
+    await p.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await expectScreenPasses(p, `Anotações, vazias ${where}`);
+    await p.getByRole('button', { name: 'Fechar' }).click();
+
+    // The open scene with its clues and hooks, and "Revelar pista".
+    await m.getByRole('button', { name: 'Abrir cena', exact: true }).click();
+    await m.getByRole('dialog').getByText('A carroça tombada', { exact: true }).click();
+    await m.getByRole('dialog').getByRole('button', { name: 'Abrir cena', exact: true }).click();
+    await expect(m.getByRole('heading', { name: 'Cena: A carroça tombada' })).toBeFocused();
+    await expectScreenPasses(m, `Cena aberta com pistas e ganchos ${where}`);
+    if (width < 768) {
+      await m.getByRole('button', { name: 'Abrir os ganchos e anotações' }).click();
+      await expect(m.getByText(cartHooks)).toBeVisible();
+      await expectScreenPasses(m, `Cena aberta, ganchos abertos ${where}`);
+    }
+    await m.getByRole('button', { name: 'Revelar a pista 2' }).click();
+    await expect(m.getByRole('dialog', { name: 'Revelar pista' })).toBeVisible();
+    await m.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await expectScreenPasses(m, `Revelar pista, ninguém marcado ${where}`);
+    await m.getByRole('button', { name: 'Marcar todos' }).click();
+    await expect(m.getByRole('button', { name: 'Revelar para Pensantus' })).toBeVisible();
+    await expectScreenPasses(m, `Revelar pista, uma pessoa marcada ${where}`);
+    await m.getByRole('button', { name: 'Revelar para Pensantus' }).click();
+    await expect(m.getByText(/Pista revelada para todos às/)).toBeVisible();
+    await expectScreenPasses(m, `Cena aberta, depois de revelar ${where}`);
+
+    // The player: the notice, the bar's button with a new clue, the sheet.
+    await expect(p.getByText('O mestre revelou uma pista para você.')).toBeVisible();
+    await expect(p.getByRole('button', { name: 'Anotações, 1 nova' })).toBeVisible();
+    await expectScreenPasses(p, `Sessão do jogador com a pista nova ${where}`);
+    await p.getByRole('button', { name: 'Abrir anotações' }).click();
+    const sheet = p.getByRole('dialog');
+    await expect(sheet.getByText('Pista do mestre')).toBeVisible();
+    await p.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await expectScreenPasses(p, `Anotações, só a pista ${where}`);
+    await sheet.getByRole('button', { name: 'Nova anotação' }).click();
+    await expect(sheet.getByRole('heading', { name: 'Nova anotação' })).toBeVisible();
+    await expectScreenPasses(p, `Nova anotação ${where}`);
+    await sheet.getByLabel('Anotação', { exact: true }).fill('x'.repeat(2000));
+    await expect(sheet.getByText('Chegou ao limite de 2.000 caracteres.')).toBeVisible();
+    await expectScreenPasses(p, `Nova anotação, no limite de 2.000 ${where}`);
+    await sheet.getByLabel('Anotação', { exact: true }).fill('Perguntar ao ferreiro sobre o brasão de lobo');
+    await sheet.getByRole('combobox', { name: /Cena \(opcional\)/ }).click();
+    await expect(p.getByRole('option', { name: 'A carroça tombada' })).toBeVisible();
+    await expectScreenPasses(p, `Nova anotação, escolhendo a cena ${where}`);
+    await p.getByRole('option', { name: 'A carroça tombada' }).click();
+    await sheet.getByRole('button', { name: 'Cancelar' }).click();
+    await expect(sheet.getByRole('alertdialog', { name: 'Descartar o que você escreveu?' })).toBeVisible();
+    await expectScreenPasses(p, `Nova anotação, descartar ${where}`);
+    await sheet.getByRole('button', { name: 'Continuar' }).click();
+    await sheet.getByRole('button', { name: 'Salvar anotação' }).click();
+    await expect(sheet.getByRole('heading', { name: 'Anotações' })).toBeVisible();
+    await expectScreenPasses(p, `Anotações, uma nota e uma pista ${where}`);
+    await sheet.getByRole('combobox', { name: /^Cena/ }).click();
+    await expect(p.getByRole('option', { name: /Todas as anotações/ })).toBeVisible();
+    await expectScreenPasses(p, `Anotações, o filtro por cena aberto ${where}`);
+    await p.getByRole('option', { name: /Sem cena/ }).click();
+    await expect(sheet.getByText('Nada sem cena')).toBeVisible();
+    await expectScreenPasses(p, `Anotações, filtro sem resultado ${where}`);
+    // Reopened only once the list that faded out is gone (see notes.spec.ts).
+    await expect(p.getByRole('listbox')).toHaveCount(0);
+    await sheet.getByRole('combobox', { name: /^Cena/ }).click();
+    await p.getByRole('option', { name: /Todas as anotações/ }).click();
+    await expect(p.getByRole('listbox')).toHaveCount(0);
+    await sheet.getByRole('button', { name: /^Editar a anotação/ }).click();
+    await sheet.getByRole('button', { name: 'Apagar anotação' }).click();
+    await expect(sheet.getByRole('alertdialog', { name: 'Apagar esta anotação?' })).toBeVisible();
+    await expectScreenPasses(p, `Editar anotação, apagar ${where}`);
+    await sheet.getByRole('button', { name: 'Voltar' }).click();
+    await sheet.getByRole('button', { name: 'Cancelar' }).click();
+    await sheet.getByRole('button', { name: 'Fechar' }).click();
+
+    // The panel on the player's sheet; the master's own sheet page has none.
+    await createNoteRPC(p, campaignId, 'Brisa me deve 5 PO');
+    // Not `open()`: with a session open the sheet follows its stream, so the network is never idle.
+    await p.goto(`/campanhas/${campaignId}/personagens/${table.characterId}`);
+    const panel = p.getByRole('region', { name: 'Anotações' });
+    await expect(panel.getByText('Brisa me deve 5 PO')).toBeVisible();
+    await expectScreenPasses(p, `Ficha com as anotações ${where}`);
+    await panel.getByRole('button', { name: 'Nova anotação' }).click();
+    await expect(panel.getByRole('heading', { name: 'Nova anotação' })).toBeVisible();
+    await expectScreenPasses(p, `Ficha, nova anotação ${where}`);
+    await panel.getByRole('button', { name: 'Cancelar' }).click();
+    await m.goto(`/campanhas/${campaignId}/personagens/${table.characterId}`);
+    await expect(m.getByRole('heading', { name: 'Pensantus' }).first()).toBeVisible();
+    await expect(m.getByRole('heading', { name: 'Anotações' })).toHaveCount(0);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('pistas, ganchos e anotações passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-029', '@MR-030'] }, async ({ browser }) => {
+  test.setTimeout(600_000);
+  await scanNotesScreens(browser, 'light', 1280);
+});
+
+test('pistas, ganchos e anotações passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-029', '@MR-030'] }, async ({ browser }) => {
+  test.setTimeout(600_000);
+  await scanNotesScreens(browser, 'dark', 390);
+});
+
+test('pistas, ganchos e anotações passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-029', '@MR-030'] }, async ({ browser }) => {
+  test.setTimeout(600_000);
+  await scanNotesScreens(browser, 'dark', 1024);
+});
+
+test('pistas, ganchos e anotações passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-029', '@MR-030'] }, async ({ browser }) => {
+  test.setTimeout(600_000);
+  await scanNotesScreens(browser, 'light', 320);
+});
+
+/** The joint turn (MR-013, E8-01): the master's card and boxes, the player's
+ * pill, the other members' card, "Encerrar a minha parte" and its question, the
+ * state after the part ended, and the goblins' turn (a group of NPCs alone). */
+async function scanJointTurnScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const joint = await jointTable(m, p, `Acessibilidade turno conjunto ${Date.now()}`);
+    campaignId = joint.table.campaignId;
+    await beginJointCombat(m, joint);
+
+    await m.goto(`/campanhas/${campaignId}/sessao`);
+    await expect(m.getByRole('heading', { name: /^Turno conjunto: / })).toBeVisible();
+    await expectScreenPasses(m, `Turno conjunto, visto pelo mestre ${where}`);
+    await openSessionPage(p, campaignId);
+    await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
+    await expectScreenPasses(p, `Turno conjunto, a vez do jogador ${where}`);
+    await p.getByRole('button', { name: 'Encerrar a minha parte' }).click();
+    await expect(p.getByRole('alertdialog', { name: 'Encerrar a sua parte?' })).toBeVisible();
+    await expectScreenPasses(p, `Encerrar a minha parte, com pergunta ${where}`);
+    await p.getByRole('alertdialog').getByRole('button', { name: 'Encerrar a minha parte' }).click();
+    await expect(p.getByRole('heading', { name: 'Você encerrou a sua parte' })).toBeVisible();
+    await expectScreenPasses(p, `Turno conjunto, depois de encerrar ${where}`);
+    await expectScreenPasses(m, `Turno conjunto, uma parte encerrada ${where}`);
+
+    await endPartRPC(m, campaignId, 'Brisa');
+    await expect(p.getByRole('heading', { name: 'Vez dos Goblins' })).toBeVisible();
+    await expectScreenPasses(p, `Vez de um grupo de NPCs, jogador ${where}`);
+    await expectScreenPasses(m, `Vez de um grupo de NPCs, mestre ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('o turno conjunto passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-013'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanJointTurnScreens(browser, 'light', 1280);
+});
+
+test('o turno conjunto passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-013'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanJointTurnScreens(browser, 'dark', 390);
+});
+
+test('o turno conjunto passa no axe e nas conferências de layout no celular de 320', { tag: ['@a11y', '@MR-013'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanJointTurnScreens(browser, 'light', 320);
+});
+
+
+// Etapa 8.6 (MR-031, MR-032): the NPC's portrait field, the master's and the
+// players' stage with its larger view, and the combat highlights.
+async function scanStageScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width >= 768 ? 900 : 844 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForScenes(m, p, `Acessibilidade palco ${Date.now()}`);
+    campaignId = table.campaignId;
+    const miraImage = await uploadPortrait(m, campaignId, 'Retrato da Mira');
+    const capitaoImage = await uploadPortrait(m, campaignId, 'Retrato do Capitão', '#6e8a52');
+    const miraId = await createMiraRPC(m, campaignId, miraImage);
+    const capitaoId = await createCapitaoRPC(m, campaignId, capitaoImage);
+    const aldoId = await createMiraRPC(m, campaignId, '', 'Aldo');
+    const ids = [miraId, capitaoId, aldoId];
+
+    // The portrait field: with an image, the gallery picker, the question, and without.
+    await open(m, `/campanhas/${campaignId}/personagens/${miraId}/editar`);
+    await expectScreenPasses(m, `Retrato do NPC ${where}`);
+    await m.getByRole('button', { name: 'Trocar retrato' }).click();
+    await expect(m.getByRole('dialog', { name: 'Escolher o retrato de Mira' })).toBeVisible();
+    await m.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await expectScreenPasses(m, `Escolher o retrato ${where}`);
+    await m.getByRole('dialog').getByRole('radio', { name: /Retrato do Capitão/ }).click();
+    await expectScreenPasses(m, `Escolher o retrato, uma imagem escolhida ${where}`);
+    await m.getByRole('dialog').getByRole('button', { name: 'Cancelar' }).click();
+    await m.getByRole('button', { name: 'Remover retrato' }).click();
+    await expect(m.getByText('A imagem continua na galeria.')).toBeVisible();
+    await expectScreenPasses(m, `Remover o retrato, a pergunta ${where}`);
+    await m.getByRole('button', { name: 'Voltar' }).click();
+    await open(m, `/campanhas/${campaignId}/personagens/${capitaoId}/editar`);
+    await expectScreenPasses(m, `Retrato do inimigo ${where}`);
+    await open(m, `/campanhas/${campaignId}/personagens/${capitaoId}`);
+    await expectScreenPasses(m, `Ficha do inimigo com o retrato ${where}`);
+
+    // The stage: the master's cards and list, then the players' stage.
+    await openSceneRPC(m, campaignId, table.cartId);
+    await openSessionPage(m, campaignId);
+    await openSessionPage(p, campaignId);
+    await expect(m.getByRole('heading', { name: 'Cena: A carroça tombada' })).toBeVisible();
+    await expectScreenPasses(m, `Em cena, vazio ${where}`);
+    await m.getByRole('button', { name: 'Pôr em cena', exact: true }).click();
+    await expect(m.getByRole('button', { name: 'Pôr Mira em cena' })).toBeVisible();
+    await m.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await expectScreenPasses(m, `Pôr em cena ${where}`);
+    for (const name of ['Mira', 'Capitão Goblin']) {
+      await m.getByRole('button', { name: `Pôr ${name} em cena` }).click();
+      await expect(m.getByRole('button', { name: `Tirar ${name} de cena` }).or(m.getByText(`${name} entrou na cena.`).first()).first()).toBeVisible();
+    }
+    await m.getByRole('button', { name: width >= 768 ? 'Fechar' : 'Fechar', exact: true }).last().click();
+    await m.getByRole('button', { name: 'Dar a fala a Capitão Goblin' }).click();
+    await expect(m.getByRole('button', { name: 'Capitão Goblin está com a fala. Tirar a fala' })).toBeVisible();
+    await expectScreenPasses(m, `Em cena, dois NPCs, um falando ${where}`);
+
+    const stage = p.getByRole('group', { name: 'Em cena: Mira e Capitão Goblin' });
+    await expect(stage).toBeVisible();
+    await p.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await expectScreenPasses(p, `Palco do jogador, dois NPCs ${where}`);
+    await stage.getByRole('button', { name: 'Ver Mira maior' }).click();
+    await expect(p.getByRole('heading', { name: 'Mira' })).toBeFocused();
+    await p.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await expectScreenPasses(p, `Mira maior ${where}`);
+    await p.keyboard.press('Escape');
+    await expect(stage.getByRole('button', { name: 'Ver Mira maior' })).toBeFocused();
+
+    // Four on the stage: the grid on a phone, the row on a desktop.
+    await putOnStageRPC(m, campaignId, aldoId);
+    const extra = await createMiraRPC(m, campaignId, '', 'Barão Ivo');
+    await putOnStageRPC(m, campaignId, extra);
+    await expect(p.getByRole('group', { name: /^Em cena: .*, .* e / })).toBeVisible();
+    await p.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await expectScreenPasses(p, `Palco do jogador, quatro NPCs ${where}`);
+    await expect(m.getByText('A cena comporta 4 NPCs. Tire um para pôr outro.')).toBeVisible();
+    await expectScreenPasses(m, `Em cena, quatro de quatro ${where}`);
+    expect(ids).toHaveLength(3);
+    await m.getByRole('button', { name: 'Fechar cena' }).click();
+    await endOpenSessionRPC(m, campaignId);
+    campaignId = '';
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+
+  // The combat highlights, in a table of their own.
+  const master2 = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player2 = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m2 = await master2.newPage();
+  const p2 = await player2.newPage();
+  let id2 = '';
+  try {
+    await m2.goto('/');
+    await p2.goto('/');
+    const table = await tableForCombat(m2, p2, `Acessibilidade destaques ${Date.now()}`, true, true);
+    id2 = table.campaignId;
+    const enc = await playedCombatRPC(m2, p2, table);
+    await openSessionPage(m2, id2);
+    await openSessionPage(p2, id2);
+    await combatRPC(m2, 'EndEncounter', { campaignId: id2, encounterId: enc.id });
+    await expect(m2.getByRole('region', { name: 'Destaques do combate' })).toBeVisible();
+    await expect(p2.getByRole('region', { name: 'Destaques do combate' })).toBeVisible();
+    await m2.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await p2.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await expectScreenPasses(m2, `Destaques do combate, o mestre ${where}`);
+    await expectScreenPasses(p2, `Destaques do combate, o cartão do jogador ${where}`);
+  } finally {
+    if (id2) {
+      await endOpenSessionRPC(m2, id2);
+    }
+    await master2.close();
+    await player2.close();
+  }
+}
+
+test('o retrato, o palco e os destaques passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-031', '@MR-032'] }, async ({ browser }) => {
+  test.setTimeout(480_000);
+  await scanStageScreens(browser, 'light', 1280);
+});
+
+test('o retrato, o palco e os destaques passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-031', '@MR-032'] }, async ({ browser }) => {
+  test.setTimeout(480_000);
+  await scanStageScreens(browser, 'dark', 390);
+});
+
+test('o retrato, o palco e os destaques passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-031', '@MR-032'] }, async ({ browser }) => {
+  test.setTimeout(480_000);
+  await scanStageScreens(browser, 'dark', 1024);
+});
+
+test('o retrato, o palco e os destaques passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-031', '@MR-032'] }, async ({ browser }) => {
+  test.setTimeout(480_000);
+  await scanStageScreens(browser, 'light', 320);
 });
 
 /** The spells in the session (Etapa 8, slice 8.4; E8-02, E8-03): the list with its "?" and slot
