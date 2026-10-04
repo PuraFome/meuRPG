@@ -28,7 +28,7 @@
   </div>
 } @else {
   <div class="type" [class.type--compact]="compact()">
-    <label class="type__label" [for]="id">{{ label() }}</label>
+    <label class="type__label" [class.mr-visually-hidden]="labelHidden()" [for]="id">{{ label() }}</label>
     @if (hint()) {
       <p class="type__hint">{{ hintText() }}</p>
     }
@@ -54,7 +54,7 @@
     @if (!sticky() || inlineError()) {
       <ng-container *ngTemplateOutlet="alertTpl" />
     }
-    <div [id]="id + '-sum'" class="type__sum" [class.type__sum--wait]="!total()" role="status">
+    <div [id]="id + '-sum'" class="type__sum" [class.type__sum--wait]="!total()" [class.mr-visually-hidden]="hideWait() && !total()" role="status">
       @if (total(); as t) {
         <span class="type__num">{{ t.sum }}</span>
         <span class="type__formula">

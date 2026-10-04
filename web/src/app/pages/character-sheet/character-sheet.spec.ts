@@ -197,6 +197,7 @@ function vm(overrides: Partial<CharacterSheetVm> = {}): CharacterSheetVm {
     totalLevel: 3,
     nextLevelXp: 2700,
     canLevelUp: false,
+    levelUpReason: null,
     challengeRating: '',
     xpValue: 0,
     ...overrides,
@@ -1174,12 +1175,21 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
 
   it('has no XP block in a milestones campaign, only the tag when it can level up', async () => {
     fake.xpMode = 'milestones';
-    fake.getCharacterSheetFn = () => Promise.resolve(vm({ canLevelUp: true, state: 'locked' }));
+    fake.getCharacterSheetFn = () => Promise.resolve(vm({ canLevelUp: true, state: 'locked', isMaster: true }));
     const el = (await render()).nativeElement as HTMLElement;
 
     expect(block(el)).toBeNull();
     expect(el.textContent).not.toContain('XP');
     expect(el.querySelector('.head__tags app-level-up-tag')?.textContent).toContain('Pode subir de nível');
+  });
+
+  it('leaves the tag to the level-up block when the owner of a locked sheet can level up (MR-040)', async () => {
+    fake.xpMode = 'milestones';
+    fake.getCharacterSheetFn = () => Promise.resolve(vm({ canLevelUp: true, state: 'locked', levelUpReason: 'milestone' }));
+    const el = (await render()).nativeElement as HTMLElement;
+
+    expect(el.querySelector('.head__tags app-level-up-tag')).toBeNull();
+    expect(el.querySelector('app-level-up-banner a')?.textContent).toContain('Subir para o nível 4');
   });
 
   it('has no tag in a milestones campaign when the character cannot level up', async () => {

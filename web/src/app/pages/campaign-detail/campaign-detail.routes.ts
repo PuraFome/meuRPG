@@ -1,5 +1,7 @@
 import { Routes } from '@angular/router';
 
+import { XpWatcher } from '../character-sheet/xp-watcher';
+import { LiveSessionSourceLive } from '../live-session/live-session-source.live';
 import { CampaignCharactersSource } from './characters/campaign-characters.types';
 import { CampaignCharactersSourceLive } from './characters/campaign-characters-source.live';
 import { GameSessionSource } from './game-session/game-session-card.types';
@@ -19,6 +21,9 @@ export const CAMPAIGN_DETAIL_ROUTES: Routes = [
     providers: [
       { provide: CampaignCharactersSource, useClass: CampaignCharactersSourceLive },
       { provide: GameSessionSource, useClass: GameSessionSourceLive },
+      // The session's stream client, for the master's `xp_changed` (a level-up arrives on it, MR-040).
+      LiveSessionSourceLive,
+      XpWatcher,
     ],
     loadComponent: () => import('./campaign-detail').then((m) => m.CampaignDetail),
   },

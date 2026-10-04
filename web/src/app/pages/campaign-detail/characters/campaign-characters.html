@@ -69,6 +69,13 @@
                       @if (canLevelUp(c.id)) {
                         <app-level-up-tag />
                       }
+                      @if (levelUpOf(c.id); as lu) {
+                        @if (isFresh(lu)) {
+                          <span class="mr-tag mr-tag--success">
+                            <mat-icon aria-hidden="true">arrow_upward</mat-icon>Subiu para o nível {{ lu.toLevel }}
+                          </span>
+                        }
+                      }
                       <span class="mr-tag" [class]="stateTagClass(c.state)">
                         @if (c.state === 'locked') {
                           <mat-icon aria-hidden="true">lock</mat-icon>
@@ -77,6 +84,25 @@
                       </span>
                     </span>
                   </a>
+                  @if (levelUpOf(c.id); as lu) {
+                    <button
+                      type="button"
+                      class="changes-toggle"
+                      [id]="'changes-toggle-' + c.id"
+                      [attr.aria-expanded]="openChanges() === c.id"
+                      [attr.aria-controls]="'changes-' + c.id"
+                      [attr.aria-label]="'O que mudou: ' + c.name"
+                      (click)="toggleChanges(c.id)"
+                    >
+                      O que mudou
+                      <mat-icon aria-hidden="true">{{ openChanges() === c.id ? 'expand_less' : 'expand_more' }}</mat-icon>
+                    </button>
+                    @if (openChanges() === c.id) {
+                      <div [id]="'changes-' + c.id">
+                        <app-level-up-changes [levelUp]="lu" [campaignId]="campaignId()" />
+                      </div>
+                    }
+                  }
                 </li>
               }
             </ul>

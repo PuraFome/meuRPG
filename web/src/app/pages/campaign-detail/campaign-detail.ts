@@ -9,7 +9,9 @@ import { Campaign, Member, Role } from '../../../gen/meurpg/campaigns/v1/campaig
 import { AuthService } from '../../core/auth/auth.service';
 import { CampaignsService } from '../../core/campaigns/campaigns.service';
 import { describeConnectError } from '../../core/connect/connect-errors';
+import { LevelUpFeed } from '../../core/levelup/levelup-feed';
 import { ExperienceStore } from '../../core/progression/experience-store';
+import { LevelUpNotice } from './level-up-notice/level-up-notice';
 import { campaignLead } from '../campaigns/campaign-copy';
 import { memberRows } from './campaign-detail.copy';
 import { CampaignCharacters } from './characters/campaign-characters';
@@ -67,13 +69,15 @@ type PageState =
     GalleryPanel,
     MapsPanel,
     GameSessionCard,
+    LevelUpNotice,
     PendingMembers,
     MatIconModule,
     MatProgressSpinnerModule,
     RouterLink,
   ],
   // One XP store for the page: the "Experiência" panel and the characters' "Pode subir de nível" tag read it.
-  providers: [ExperienceStore],
+  // And one feed of the master's level-ups: the status line and the characters' "O que mudou" read it.
+  providers: [ExperienceStore, LevelUpFeed],
   templateUrl: './campaign-detail.html',
   styleUrl: './campaign-detail.scss',
 })

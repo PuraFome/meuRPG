@@ -51,6 +51,10 @@
         <p class="mr-page-lead">{{ campaignLead(s.campaign) }}</p>
       </header>
 
+      @if (isMaster) {
+        <app-level-up-notice [campaignId]="s.campaign.id" />
+      }
+
       <div class="campaign-layout">
         <div class="campaign-layout__column">
           <!-- For a player, only while a session is open (it's empty otherwise). -->

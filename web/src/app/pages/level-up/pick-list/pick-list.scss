@@ -1,0 +1,239 @@
+:host {
+  display: block;
+}
+
+.list__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+}
+
+.list__title {
+  margin-bottom: var(--mr-space-1);
+}
+
+// How many of how many: the warning icon and the words while one is missing,
+// a tick when complete, so the state never rides on colour alone.
+.list__count {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+
+  &--missing {
+    color: var(--mr-warning-ink);
+  }
+}
+
+.list__lead {
+  margin: 0 0 var(--mr-space-2);
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.list__lead--strong {
+  color: var(--mr-ink);
+  font-weight: 700;
+}
+
+.list__foot {
+  margin: var(--mr-space-3) 0 0;
+  padding-top: var(--mr-space-3);
+  border-top: 1px solid var(--mr-rule);
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+// The first missing choice, after a tap on the dashed "Próximo": the card says it is the one.
+:host([data-attn]) .list {
+  border-color: var(--mr-warning-ink);
+  box-shadow: 0 0 0 1px var(--mr-warning-ink);
+}
+
+.list__search {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: var(--mr-space-2) 0;
+
+  input {
+    box-sizing: border-box;
+    width: 100%;
+    height: 48px;
+    padding: 0 12px;
+    border: 1px solid var(--mr-control-line);
+    border-radius: var(--mr-radius-sm);
+    background: var(--mr-surface);
+    color: var(--mr-ink);
+    font: inherit;
+    font-size: 16px;
+
+    &:focus,
+    &:focus-visible {
+      outline: none;
+      border: 2px solid var(--mr-accent);
+      padding: 0 11px;
+    }
+  }
+}
+
+.list__search-label {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  border-top: 1px solid var(--mr-rule);
+}
+
+.row__main {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  box-sizing: border-box;
+  min-height: 56px;
+  padding: 6px 0;
+  cursor: pointer;
+
+  // The global focus ring, on the row because the input is hidden.
+  &:has(:focus-visible) {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+    border-radius: var(--mr-radius-sm);
+  }
+
+  &--off {
+    cursor: default;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.row__input {
+  position: absolute;
+  opacity: 0;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+}
+
+.row__mark {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--mr-control-line);
+  border-radius: 6px;
+  background: var(--mr-surface);
+  color: transparent;
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+
+  &--radio {
+    border-radius: 50%;
+  }
+
+  :checked ~ & {
+    border-color: var(--mr-accent);
+    background: var(--mr-accent);
+    color: var(--mr-on-accent);
+  }
+
+  :checked ~ &--radio {
+    background: var(--mr-surface);
+    box-shadow: inset 0 0 0 4px var(--mr-surface), inset 0 0 0 12px var(--mr-accent);
+  }
+
+  :disabled ~ & {
+    border-style: dashed;
+  }
+}
+
+.row__text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.row__name {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+
+.row__sub {
+  font-size: 14px;
+  line-height: 18px;
+  color: var(--mr-ink-muted);
+}
+
+// Reading a spell and picking it are different actions: "?" is its own 44px button.
+.row__help {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  // The glyph, not the 44px target, ends at the edge where the counters end.
+  margin-right: -10px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--mr-ink);
+  cursor: pointer;
+}
+
+.rows__empty {
+  padding: var(--mr-space-3) 0;
+  border-top: 1px solid var(--mr-rule);
+  color: var(--mr-ink-muted);
+}
+
+.list__more {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin: var(--mr-space-1) 0 0 -12px;
+  padding: 0 12px;
+  border: 0;
+  background: none;
+  color: var(--mr-accent-text);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}

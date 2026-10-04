@@ -1,0 +1,17 @@
+<ol class="steps" aria-label="Passos do nível">
+  @for (key of steps(); track key; let i = $index) {
+    <li class="step" [class.step--done]="i < index()" [class.step--now]="i === index()" [attr.aria-current]="i === index() ? 'step' : null">
+      <span class="step__num" aria-hidden="true">
+        @if (i < index()) {
+          <mat-icon>check</mat-icon>
+        } @else {
+          {{ i + 1 }}
+        }
+      </span>
+      <span class="step__label">{{ labels[key] }}</span>
+      @if (i < index()) {
+        <span class="mr-visually-hidden"> (feito)</span>
+      }
+    </li>
+  }
+</ol>

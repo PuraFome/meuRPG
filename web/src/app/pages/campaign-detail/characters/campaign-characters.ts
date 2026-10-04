@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, input, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, Injector, OnInit, afterNextRender, effect, inject, input, signal, untracked } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
@@ -10,9 +10,13 @@ import {
   characterStateLabel,
 } from '../../../core/characters/character-labels';
 import { CharacterKind } from '../../../core/characters/characters.types';
+import { LevelUpFeed } from '../../../core/levelup/levelup-feed';
 import { ExperienceStore } from '../../../core/progression/experience-store';
+import { OpenSessions } from '../../../shell/live-notice/open-sessions';
+import { XpWatcher } from '../../character-sheet/xp-watcher';
 import { LevelUpTag } from '../../../shared/xp/level-up-tag';
 import { characterRowSub, stateTagClass } from './campaign-characters.copy';
+import { LevelUpChanges } from './level-up-changes';
 import {
   CampaignCharacterListItemVm,
   CampaignCharactersSource,
@@ -50,7 +54,7 @@ const NPC_KINDS: ReadonlyArray<{ kind: CharacterKind; tipo: string }> = [
  */
 @Component({
   selector: 'app-campaign-characters',
-  imports: [LevelUpTag, MatButtonModule, MatIconModule, MatMenuModule, RouterLink],
+  imports: [LevelUpChanges, LevelUpTag, MatButtonModule, MatIconModule, MatMenuModule, RouterLink],
   templateUrl: './campaign-characters.html',
   styleUrl: './campaign-characters.scss',
 })
@@ -59,6 +63,12 @@ export class CampaignCharacters implements OnInit {
   // The page's XP store (RN-12, D4): which characters "can level up". Optional:
   // the list also works on its own, without the tag.
   private readonly experience = inject(ExperienceStore, { optional: true });
+  // The master's level-ups (MR-040): "Subiu para o nível N" and "O que mudou". Optional like the store.
+  private readonly levelUps = inject(LevelUpFeed, { optional: true });
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
+  private readonly openSessions = inject(OpenSessions, { optional: true });
+  private readonly xpWatcher = inject(XpWatcher, { optional: true });
 
   readonly campaignId = input.required<string>();
   readonly isMaster = input.required<boolean>();
@@ -69,6 +79,57 @@ export class CampaignCharacters implements OnInit {
   protected readonly npcKinds = NPC_KINDS;
   protected readonly characterRowSub = characterRowSub;
   protected readonly stateTagClass = stateTagClass;
+
+  /** Whose "O que mudou" is open, in place under its row. */
+  protected readonly openChanges = signal<string | null>(null);
+
+  constructor() {
+    // While the campaign has an open session, a player's level-up arrives on its stream (`xp_changed`):
+    // the list and the XP are read again, so "Subiu para o nível N" shows without a reload.
+    effect(() => {
+      const id = this.campaignId();
+      const live = this.isMaster() && (this.openSessions?.sessions().some((o) => o.campaignId === id) ?? false);
+      untracked(() =>
+        this.xpWatcher?.follow(live ? id : null, () => {
+          void this.levelUps?.refresh();
+          void this.experience?.refresh();
+        }),
+      );
+    });
+    inject(DestroyRef).onDestroy(() => this.xpWatcher?.follow(null, () => undefined));
+
+    // "Ver o que mudou" in the master's status line: the row opens and comes into view.
+    effect(() => {
+      const r = this.levelUps?.reveal();
+      if (!r) {
+        return;
+      }
+      untracked(() => {
+        this.openChanges.set(r.characterId);
+        afterNextRender(
+          () => {
+            const toggle = this.host.nativeElement.querySelector<HTMLElement>(`#changes-toggle-${r.characterId}`);
+            toggle?.scrollIntoView({ block: 'center' });
+            toggle?.focus({ preventScroll: true });
+          },
+          { injector: this.injector },
+        );
+      });
+    });
+  }
+
+  /** The newest level-up of a character, for the master's list. */
+  protected levelUpOf(characterId: string) {
+    return this.isMaster() ? this.levelUps?.latestOf(characterId) : undefined;
+  }
+
+  protected isFresh(levelUp: NonNullable<ReturnType<CampaignCharacters['levelUpOf']>>): boolean {
+    return this.levelUps?.isFresh(levelUp) ?? false;
+  }
+
+  protected toggleChanges(characterId: string): void {
+    this.openChanges.update((open) => (open === characterId ? null : characterId));
+  }
 
   /** Whether the character can go up a level now (the tag beside its state). */
   protected canLevelUp(characterId: string): boolean {
@@ -91,6 +152,9 @@ export class CampaignCharacters implements OnInit {
     // pattern: a required signal input is only set before the first
     // change-detection pass, and ngOnInit is guaranteed to run after that.
     this.load();
+    if (this.isMaster()) {
+      void this.levelUps?.load(this.campaignId());
+    }
   }
 
   private load(): void {

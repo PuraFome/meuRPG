@@ -15,11 +15,11 @@ function item(overrides: Partial<CampaignCharacterListItemVm>): CampaignCharacte
 
 describe('campaign characters copy', () => {
   it('tells the master whose character it is', () => {
-    expect(characterRowSub(item({}), true)).toBe('Mago 3, de Vinicius');
+    expect(characterRowSub(item({}), true)).toBe('Mago 3, de\u00a0Vinicius');
   });
 
   it('never says "Sem nome" for a player with no display name', () => {
-    expect(characterRowSub(item({ playerDisplayName: null }), true)).toBe('Mago 3, de um jogador sem nome');
+    expect(characterRowSub(item({ playerDisplayName: null }), true)).toBe('Mago 3, de\u00a0um\u00a0jogador\u00a0sem\u00a0nome');
   });
 
   it('shows a player only the class of their own character', () => {

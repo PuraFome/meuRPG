@@ -1,0 +1,49 @@
+:host {
+  display: block;
+}
+
+.banner {
+  align-items: flex-start;
+  margin-bottom: var(--mr-space-4);
+  // The same padding as the header card above it, so their words start on the same edge.
+  padding: var(--mr-space-4);
+
+  @media (min-width: 768px) {
+    padding: 20px 28px;
+  }
+}
+
+// The icon sits on the middle of the title's capitals (the title is 26px high, the icon 20px).
+.banner > .mat-icon {
+  margin-top: 3px;
+}
+
+.banner__body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--mr-space-1);
+}
+
+.banner__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 26px;
+}
+
+.banner__why {
+  margin-bottom: var(--mr-space-2);
+}
+
+// The one filled button of the sheet: 48px, full width on a phone.
+.banner__go {
+  --mat-button-filled-container-height: 48px;
+  align-self: stretch;
+
+  @media (min-width: 768px) {
+    align-self: flex-start;
+  }
+}

@@ -1,0 +1,245 @@
+:host {
+  display: block;
+
+  // The phone's footer is fixed: its height (set by the page) stays free at the end of the content.
+  @media (max-width: 767.98px) {
+    padding-bottom: var(--foot-h, 0px);
+  }
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mr-space-1);
+  min-height: 44px;
+  margin: 0 0 var(--mr-space-2) -4px;
+  color: var(--mr-ink-muted);
+  text-decoration: none;
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+
+  &:hover {
+    color: var(--mr-ink);
+  }
+}
+
+.head {
+  margin-bottom: var(--mr-space-4);
+}
+
+.head__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 34px;
+  line-height: 38px;
+
+  @media (min-width: 768px) {
+    font-size: 38px;
+    line-height: 42px;
+  }
+}
+
+.head__sub {
+  margin: 2px 0 var(--mr-space-4);
+  font-size: 17px;
+  color: var(--mr-ink-muted);
+}
+
+.head__step {
+  margin: var(--mr-space-2) 0 0;
+  font-size: 15px;
+  color: var(--mr-ink-muted);
+
+  strong {
+    color: var(--mr-ink);
+  }
+}
+
+// A short phone (320x568): the title and "Passo N de M" stay at the top, in one line each, under
+// the app bar; the body scrolls between them and the fixed footer.
+@media (max-width: 767.98px) and (max-height: 640px) {
+  .head {
+    position: sticky;
+    top: 56px;
+    z-index: 5;
+    margin: 0 calc(-1 * var(--mr-gutter)) var(--mr-space-3);
+    padding: var(--mr-space-2) var(--mr-gutter);
+    background: var(--mr-ground);
+    border-bottom: 1px solid var(--mr-line);
+  }
+
+  .head__title {
+    margin-bottom: 12px;
+    font-size: 22px;
+    line-height: 26px;
+  }
+
+  .head__sub {
+    display: none;
+  }
+
+  .head__step {
+    margin-top: 6px;
+  }
+}
+
+// Two columns from 1100px: the step on the left, what changes on the right. Under that the right
+// column drops below the step, full width, and on a phone it is not shown at all.
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--mr-space-4);
+
+  @media (min-width: 1100px) {
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: var(--mr-space-6);
+    align-items: start;
+  }
+}
+
+.side {
+  @media (max-width: 767.98px) {
+    display: none;
+  }
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+}
+
+.failure {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--mr-space-2);
+}
+
+// The footer: on a phone it is pinned to the bottom of the screen (under the safe area), with its reason
+// above the two buttons; from a tablet up it is the end of the step, the buttons 160 x 44.
+.foot {
+  margin-top: var(--mr-space-4);
+
+  @media (max-width: 767.98px) {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 5;
+    margin: 0;
+    padding: var(--mr-space-3) var(--mr-gutter) calc(var(--mr-space-3) + env(safe-area-inset-bottom));
+    background: var(--mr-surface);
+    border-top: 1px solid var(--mr-line);
+  }
+}
+
+.foot__reason {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: 0 0 var(--mr-space-2);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--mr-warning-ink);
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.foot__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2);
+
+  button {
+    flex: 1 1 140px;
+    --mat-button-filled-container-height: 48px;
+    --mat-button-outlined-container-height: 48px;
+    white-space: nowrap;
+  }
+
+  @media (min-width: 768px) {
+    gap: var(--mr-space-3);
+
+    button {
+      flex: 0 0 auto;
+      min-width: 160px;
+      --mat-button-filled-container-height: 44px;
+      --mat-button-outlined-container-height: 44px;
+    }
+  }
+
+  // "Confirmar o nível 4" does not fit beside "Voltar" at 320: the pair stacks, both full width.
+  // Stacked, the filled one comes first.
+  &--long button {
+    @media (max-width: 359.98px) {
+      flex-basis: 100%;
+
+      &:last-child {
+        order: -1;
+      }
+    }
+  }
+
+  // "Continuar escolhendo" is longer still: the question's pair stacks on any phone narrower than 420px.
+  &--ask button {
+    @media (max-width: 419.98px) {
+      flex-basis: 100%;
+    }
+  }
+}
+
+// "Próximo": the filled button on a phone (the artboards), outlined from a tablet up, where the
+// only filled button of the screen is "Confirmar o nível N". Disabled by a missing choice it is
+// dashed, and a tap still answers: the focus goes to the first missing choice.
+.next {
+  @media (min-width: 768px) {
+    --mat-button-filled-container-color: var(--mr-surface);
+    --mat-button-filled-label-text-color: var(--mr-accent-text);
+    border: 1px solid var(--mr-control-line);
+  }
+
+  // Material fades a disabled button; this one is only "not yet", so its words keep full contrast.
+  &--off {
+    --mat-button-filled-container-color: var(--mr-surface);
+    --mat-button-filled-label-text-color: var(--mr-ink-muted);
+    --mat-button-filled-disabled-container-color: var(--mr-surface);
+    --mat-button-filled-disabled-label-text-color: var(--mr-ink-muted);
+    border: 1px dashed var(--mr-control-line);
+    opacity: 1;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.ask {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+.ask__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 21px;
+  font-weight: 700;
+}
+
+.ask__text {
+  margin: 0;
+  color: var(--mr-ink-muted);
+}
+
+.blocked__back {
+  --mat-button-filled-container-height: 48px;
+  margin-top: var(--mr-space-4);
+}

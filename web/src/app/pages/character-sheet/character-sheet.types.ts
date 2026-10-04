@@ -291,6 +291,8 @@ export interface CharacterSheetVm {
    * master marked a milestone and its level has not gone up since. Only the
    * master and the owning player ever get it as true. */
   readonly canLevelUp: boolean;
+  /** Why it can (`Character.level_up_reason`): XP, or a milestone the master marked; null when it cannot. */
+  readonly levelUpReason: 'xp' | 'milestone' | null;
   /** An enemy's, boss's or minion's challenge rating ("ND") and the XP it gives
    * when defeated: the master's, `''` and 0 for everyone else (RN-20). */
   readonly challengeRating: string;

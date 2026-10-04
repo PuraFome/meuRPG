@@ -78,6 +78,13 @@ export const routes: Routes = [
       ),
   },
   {
+    // The guided level-up of a locked sheet (MR-040, RN-01's exception, RN-12): the owning
+    // player's own page; the server answers for anyone else, and the page says so.
+    path: 'campanhas/:id/personagens/:characterId/subir-de-nivel',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/level-up/level-up').then((m) => m.LevelUpPage),
+  },
+  {
     // The master's gallery (MR-019). A plain `loadComponent`: its clients
     // (GalleryClient, ImageUploader) are `providedIn: 'root'` services that
     // only lazy code imports, so the generated gallery code stays in this

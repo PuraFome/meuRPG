@@ -12,6 +12,7 @@ import {
   CharacterState as GenCharacterState,
   CharacterStory as GenCharacterStory,
   FullSheet as GenFullSheet,
+  LevelUpReason as GenLevelUpReason,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import {
   Ability as GenAbility,
@@ -51,6 +52,12 @@ const STATE_FROM_GEN: Record<GenCharacterState, CharacterState> = {
   [GenCharacterState.DEAD]: 'dead',
   // Created through an invite that requires approval (RN-15, MR-024).
   [GenCharacterState.PENDING]: 'pending',
+};
+
+const LEVEL_UP_REASON: Record<GenLevelUpReason, 'xp' | 'milestone' | null> = {
+  [GenLevelUpReason.UNSPECIFIED]: null,
+  [GenLevelUpReason.XP]: 'xp',
+  [GenLevelUpReason.MILESTONE]: 'milestone',
 };
 
 const ABILITY_FROM_GEN: Record<GenAbility, AbilityKey> = {
@@ -335,6 +342,7 @@ export function toCharacterSheetVm(character: Character): CharacterSheetVm {
     totalLevel: character.derived?.totalLevel ?? 0,
     nextLevelXp: character.derived?.nextLevelXp ?? 0,
     canLevelUp: character.canLevelUp,
+    levelUpReason: LEVEL_UP_REASON[character.levelUpReason] ?? null,
     challengeRating: full ? full.challengeRating : basicRating(character),
     xpValue: full ? full.xpValue : basicXp(character),
   };
