@@ -252,3 +252,48 @@ WHERE campaign_id = sqlc.arg(campaign_id)::UUID
 SELECT id, name FROM characters
 WHERE campaign_id = sqlc.arg(campaign_id)::UUID
   AND id = ANY(sqlc.arg(ids)::UUID[]);
+
+-- name: GetLevelUpRoll :one
+-- The hit die the server rolled for the character's next level (MR-040): one
+-- per character and target total level (not per class: a multiclass
+-- character cannot roll twice for a level), kept until the level-up uses it.
+SELECT class_key, die, value FROM character_level_up_rolls
+WHERE character_id = sqlc.arg(character_id)::UUID AND to_level = sqlc.arg(to_level);
+
+-- name: InsertLevelUpRoll :execrows
+-- Keeps a roll. A second roll for the same level does nothing (0 rows), so the
+-- first one stands: asking again never rerolls.
+INSERT INTO character_level_up_rolls (character_id, class_key, to_level, die, value, created_at)
+VALUES (sqlc.arg(character_id)::UUID, sqlc.arg(class_key), sqlc.arg(to_level), sqlc.arg(die), sqlc.arg(value), sqlc.arg(now))
+ON CONFLICT (character_id, to_level) DO NOTHING;
+
+-- name: DeleteLevelUpRoll :exec
+-- The level-up used the roll; its value goes on in character_level_ups.
+DELETE FROM character_level_up_rolls
+WHERE character_id = sqlc.arg(character_id)::UUID AND to_level = sqlc.arg(to_level);
+
+-- name: InsertLevelUp :one
+-- The record of a guided level-up (MR-040), written in the transaction that
+-- saves the sheet.
+INSERT INTO character_level_ups
+    (campaign_id, character_id, class_key, from_level, to_level, hp_method, hp_value, choices, created_at)
+VALUES (
+    sqlc.arg(campaign_id)::UUID, sqlc.arg(character_id)::UUID, sqlc.arg(class_key), sqlc.arg(from_level),
+    sqlc.arg(to_level), sqlc.arg(hp_method), sqlc.arg(hp_value), sqlc.arg(choices), sqlc.arg(created_at)
+)
+RETURNING *;
+
+-- name: ListLevelUps :many
+-- A campaign's level-ups, newest first, for the master's "O que mudou". With
+-- character_id, only that character's. The character's name is the current
+-- one, and its player the character's own.
+SELECT l.id, l.character_id, l.class_key, l.from_level, l.to_level, l.choices, l.created_at,
+       c.name AS character_name, c.player_user_id
+FROM character_level_ups l
+JOIN characters c ON c.id = l.character_id
+WHERE l.campaign_id = sqlc.arg(campaign_id)::UUID
+  AND (sqlc.narg(character_id)::UUID IS NULL OR l.character_id = sqlc.narg(character_id)::UUID)
+  AND (sqlc.narg(before_created_at)::TIMESTAMPTZ IS NULL
+       OR (l.created_at, l.id) < (sqlc.narg(before_created_at)::TIMESTAMPTZ, sqlc.narg(before_id)::UUID))
+ORDER BY l.created_at DESC, l.id DESC
+LIMIT sqlc.arg(max_rows);

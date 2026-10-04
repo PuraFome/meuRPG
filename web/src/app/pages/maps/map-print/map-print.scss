@@ -1,0 +1,68 @@
+:host {
+  display: block;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+}
+
+.page-notice {
+  max-width: 44rem;
+  margin-bottom: var(--mr-space-5);
+}
+
+// The note for a phone (E8-12): the page works there, a computer is better.
+.phone-note {
+  margin-bottom: var(--mr-space-4);
+
+  @media (min-width: 600px) {
+    display: none;
+  }
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+// The no-grid page is not a dead end: the way back is a real button.
+.back-button {
+  --mat-button-outlined-container-height: 44px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+
+  @media (max-width: 767.98px) {
+    --mat-button-outlined-container-height: 48px;
+    display: flex;
+    max-width: 44rem;
+  }
+}
+
+// The setup in a column on the left, the preview and the arithmetic on the
+// right; under 1100px (so at 1024) the setup sits above the preview, full width (E8-12).
+.layout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-5);
+
+  @media (min-width: 1100px) {
+    display: grid;
+    grid-template-columns: 400px minmax(0, 1fr);
+    align-items: start;
+    gap: var(--mr-space-6);
+  }
+}
+
+.right {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-5);
+  min-width: 0;
+}
+
+// On paper only the sheets print: the whole screen is left out.
+@media print {
+  .screen {
+    display: none;
+  }
+}

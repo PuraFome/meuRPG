@@ -120,6 +120,11 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["UpdateMasterNotes"] = c.UpdateMasterNotes(ctx, connect.NewRequest(&charactersv1.UpdateMasterNotesRequest{CampaignId: id, CharacterId: id}))
 	_, calls["ApproveCharacter"] = c.ApproveCharacter(ctx, connect.NewRequest(&charactersv1.ApproveCharacterRequest{CampaignId: id, CharacterId: id}))
 	_, calls["RejectCharacter"] = c.RejectCharacter(ctx, connect.NewRequest(&charactersv1.RejectCharacterRequest{CampaignId: id, CharacterId: id}))
+	_, calls["GetLevelUpOptions"] = c.GetLevelUpOptions(ctx, connect.NewRequest(&charactersv1.GetLevelUpOptionsRequest{CampaignId: id, CharacterId: id}))
+	_, calls["PreviewLevelUp"] = c.PreviewLevelUp(ctx, connect.NewRequest(&charactersv1.PreviewLevelUpRequest{CampaignId: id, CharacterId: id}))
+	_, calls["RollLevelUpHitPoints"] = c.RollLevelUpHitPoints(ctx, connect.NewRequest(&charactersv1.RollLevelUpHitPointsRequest{CampaignId: id, CharacterId: id}))
+	_, calls["LevelUpCharacter"] = c.LevelUpCharacter(ctx, connect.NewRequest(&charactersv1.LevelUpCharacterRequest{CampaignId: id, CharacterId: id}))
+	_, calls["ListLevelUps"] = c.ListLevelUps(ctx, connect.NewRequest(&charactersv1.ListLevelUpsRequest{CampaignId: id}))
 	_, calls["ListContent"] = content.ListContent(ctx, connect.NewRequest(&rulesv1.ListContentRequest{CampaignId: id}))
 	_, calls["GetSpellDetails"] = content.GetSpellDetails(ctx, connect.NewRequest(&rulesv1.GetSpellDetailsRequest{CampaignId: id, SpellKey: "spell:fire-bolt"}))
 
@@ -154,13 +159,13 @@ func TestReadsWithIDsArePostOnly(t *testing.T) {
 	} {
 		for i := range service.Methods().Len() {
 			m := service.Methods().Get(i)
-			if strings.HasPrefix(string(m.Name()), "Get") || strings.HasPrefix(string(m.Name()), "List") {
+			if strings.HasPrefix(string(m.Name()), "Get") || strings.HasPrefix(string(m.Name()), "List") || strings.HasPrefix(string(m.Name()), "Preview") {
 				reads["/"+string(service.FullName())+"/"+string(m.Name())] = m
 			}
 		}
 	}
-	if len(reads) != 5 {
-		t.Errorf("found %d reads, want 5 (GetCharacter, ListCharacters, GetMasterNotes, ListContent, GetSpellDetails)", len(reads))
+	if len(reads) != 8 {
+		t.Errorf("found %d reads, want 8 (GetCharacter, ListCharacters, GetMasterNotes, GetLevelUpOptions, PreviewLevelUp, ListLevelUps, ListContent, GetSpellDetails)", len(reads))
 	}
 	for procedure, method := range reads {
 		opts, _ := method.Options().(*descriptorpb.MethodOptions)

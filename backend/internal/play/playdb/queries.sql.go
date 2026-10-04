@@ -183,6 +183,7 @@ func (q *Queries) EndGameSession(ctx context.Context, arg EndGameSessionParams) 
 
 const getCampaignEncounterXP = `-- name: GetCampaignEncounterXP :one
 
+
 SELECT e.name, e.status,
        COALESCE(SUM(c.xp_value) FILTER (WHERE c.kind = 'npc' AND c.defeated), 0)::INT8 AS xp
 FROM encounters AS e
@@ -203,6 +204,7 @@ type GetCampaignEncounterXPRow struct {
 	Xp     int64
 }
 
+// one past maxSummaryEvents: the caller fails loudly rather than under-count
 // Progression (MR-016): what the XP awards read from the combats and the log.
 // A combat of the campaign (never another campaign's) with the XP its defeated
 // NPC combatants give. No row: no such combat in the campaign.
@@ -1419,7 +1421,7 @@ const listSessionSceneEvents = `-- name: ListSessionSceneEvents :many
 SELECT kind, character_id, payload FROM session_events
 WHERE game_session_id = $1 AND kind IN ('scene_opened', 'scene_check_rolled')
 ORDER BY seq
-LIMIT 20000
+LIMIT 20001
 `
 
 type ListSessionSceneEventsRow struct {

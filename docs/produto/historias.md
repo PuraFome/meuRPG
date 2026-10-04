@@ -587,13 +587,23 @@ Servidor da Etapa 8 (fatia 8.3); a tela vem na fatia 8.6. `CombatService.GetComb
 - Módulos: maps
 
 #### Critérios de aceite
-- **Dado** um mapa com grade, **quando** o mestre manda imprimir, **então** sai um PDF com a grade na escala da mesa (por padrão 2,54 cm por quadrado de 1,5 m).
-- **Dado** um mapa maior que uma página, **quando** o mestre imprime, **então** o mapa é dividido em várias páginas, com a grade alinhada entre elas.
-- **Dado** um mapa escondido dos jogadores, **quando** o mestre imprime, **então** sai o mapa inteiro: a impressão é do mestre.
-- **Dado** a impressão, **quando** o mestre a configura (pergunta 65), **então** escolhe o tamanho do quadrado (editável) e o do papel (A4, A3, A2, Carta...).
+- **Dado** um mapa com grade, **quando** o mestre abre "Imprimir com a grade", **então** vê a tela "Imprimir o mapa" com o quadrado de 2,54 cm (uma polegada) e o papel A4, e a conta das folhas: 30 × 20 quadrados dão 76,2 × 50,8 cm, em 9 folhas A4.
+- **Dado** a tela de impressão, **quando** o mestre muda o tamanho do quadrado (de 1 a 10 cm, com vírgula ou ponto) ou o papel (A4, A3, A2, A1, Carta ou Ofício), **então** o resumo, a prévia das folhas e "As contas" (uma linha por papel, nas duas orientações) mudam na hora; a orientação é a que gasta menos folhas, paisagem se empatam. Com 2 cm em A3, são 3 folhas em retrato.
+- **Dado** um mapa maior que uma página, **quando** o mestre imprime, **então** o mapa é dividido em folhas com 1 cm de margem e 1 cm de sobreposição, com a grade alinhada entre elas, cada folha com o rótulo de onde colar ("Página B2 · cole à direita da B1 e abaixo da A2") e uma régua de 5 cm para conferir a escala.
+- **Dado** um tamanho fora de 1 a 10 cm, **quando** o mestre digita, **então** a tela mostra o erro, deixa a prévia vazia e o "Imprimir" tracejado, que não faz nada.
+- **Dado** uma impressão de mais de 16 folhas, **quando** o mestre a configura, **então** um aviso âmbar nomeia o papel que gasta menos; acima de 36, a prévia deixa de mostrar os rótulos. Nada é bloqueado.
+- **Dado** um mapa sem grade, **quando** o mestre olha a página do mapa, **então** o botão "Imprimir com a grade" está desabilitado, com o motivo escrito ao lado.
+- **Dado** um mapa escondido dos jogadores, **quando** o mestre imprime, **então** sai o mapa inteiro: a impressão é do mestre. O jogador nunca vê o botão nem a tela (a rota responde "Só o mestre imprime o mapa.").
+- **Dado** a impressão, **então** saem só a imagem e a grade: pontos, marcas e tokens ficam de fora (pergunta 65).
+
+#### Implementado
+Fatia 8.7 da Etapa 8, só no navegador (a grade e a imagem já vinham do mapa; nada no servidor). A tela é a rota `/campanhas/:id/mapas/:mapId/imprimir` (`pages/maps/map-print`) e a conta fica em `print-math.ts`, sem DOM. O que sai da impressora é só CSS de impressão (`@page` com o tamanho do papel escolhido e margem de 1 cm, `@media print`); não há PDF no servidor nem dependência nova. Ver [Design](../design.md#imprimir-o-mapa). Testes:
+- Vitest: `print-math.spec.ts` (as contas verificadas na revisão do desenho, todo papel nas duas orientações, o desempate, os rótulos, a grade em cada folha), `map-print.spec.ts` (o campo, "Voltar a 2,54 cm", os avisos de 16 e 36 folhas, o mapa sem grade, o jogador, as folhas da impressora e o `@page`) e `map-head.spec.ts` (a entrada na página do mapa, com e sem grade).
+- Playwright (`map-print.spec.ts`, `@MR-033`): o mestre abre a impressão, muda para 2 cm e A3 e vê 3 folhas; uma medida fora de 1 a 10 cm trava o "Imprimir"; um mapa sem grade mostra o motivo; o jogador não vê o botão e a rota diz que é só do mestre; no papel (`emulateMedia` de impressão e `page.pdf`) sai uma folha por página, na escala, sem nenhum controle. A tela passa o axe e as conferências de alinhamento em `a11y.spec.ts` (`scanPrintScreens`).
 
 #### Dúvidas
-- Decidido pelo Samuel em 03/10/2026 (pergunta 65): o mestre escolhe o tamanho do quadrado e o do papel (A4, A3, A2, Carta...). Se pontos e tokens saem na impressão: a definir no plano da Etapa 8.
+- Decidido pelo Samuel em 03/10/2026 (pergunta 65): o mestre escolhe o tamanho do quadrado e o do papel; só a imagem e a grade saem, e só o mestre imprime. O Ofício é o brasileiro (21,6 × 33 cm).
+- O navegador pode encolher a página ao imprimir: por isso a tela pede escala 100% e sem cabeçalhos e rodapés, e cada folha leva a régua de 5 cm.
 
 ### MR-034: Movimentos especiais
 
@@ -716,10 +726,17 @@ Servidor da Etapa 8 (fatia 8.3); a tela vem na fatia 8.6. `CombatService.GetComb
 - **Dado** a edição guiada, **quando** o jogador a usa, **então** soma um nível de classe e só as escolhas desse nível, como os PV, as habilidades, as magias e o aumento de atributo.
 - **Dado** a edição guiada, **quando** o jogador tenta mudar qualquer outra coisa da ficha, **então** o servidor recusa: o resto continua travado.
 - **Dado** uma edição que as regras do D&D 5e não permitem, **quando** o jogador a envia, **então** o motor de regras a recusa.
+- **Dado** o dado de vida de um nível, **quando** o jogador rola no app, **então** o servidor rola e guarda o resultado, e rolar de novo devolve o mesmo; numa campanha que força dado físico, o app não rola e o jogador digita o resultado (RN-18).
+- **Dado** que o jogador subiu de nível, **quando** o mestre abre a lista de personagens, **então** é avisado e vê "O que mudou": as escolhas do jogador naquele nível (atributo, PV e como, truques, magias, preparadas), com a hora. Não há aprovação nem veto: o mestre continua editando a ficha como sempre.
+- **Dado** que o jogador confirmou a subida, **quando** a ficha é gravada, **então** "Pode subir de nível" some sozinho.
+
+#### Implementado
+- **Servidor pronto (Etapa 8, fatia 8.13; a tela vem depois).** O `rules` ganhou `LevelUpOptions` (o que o próximo nível de uma classe dá), `ApplyLevelUp` (a ficha que as escolhas fazem) e `CheckLevelUp` (recusa tudo o que o nível não permite, com o campo e um motivo), e o `CharacterService`, as chamadas `GetLevelUpOptions`, `PreviewLevelUp` (o "Resumo": a ficha derivada de depois, feita pelo servidor), `RollLevelUpHitPoints`, `LevelUpCharacter` e `ListLevelUps` (o "O que mudou" do mestre), mais a tabela `character_level_ups` (o registro) e `character_level_up_rolls` (o dado guardado). Ver [Arquitetura](../arquitetura.md#subir-de-nível-pela-ficha-mr-040) e [RN-01](regras.md).
+- Testes (critério → teste): ficha travada que sobe de nível → `TestMR040_ThePlayerLevelsUpALockedSheet`; só com a marca → `TestMR040_OnlyWhenTheCharacterCanLevelUp`; o resto continua travado → `TestMR040_TheRestStaysLocked` e, no motor, `TestLevelUpRefusals`; o que o D&D não permite → `TestMR040_TheRulesRefuseWhatTheLevelDoesNotGive`, `TestLevelUpRefusesBadSpells` e `TestLevelUpPensantus` (Mago 3 para 4); o dado → `TestMR040_TheHitPointRollIsKept` e `TestMR040_ATypedPhysicalDie`; o mestre → `TestMR040_TheMasterSeesWhatChanged`; a marca some → `TestMR040_CanLevelUpClearsAfterwards` (no `progression`, por XP e por marcos). Também: `TestLevelUpSweep` (as 12 classes de 1 a 20, com cada subclasse do SRD: as opções e a checagem concordam), `TestLevelUpOptionsForTheSubclassLevel`, `TestLevelUpGainsTheEngineModels` (invocações, Segredos Mágicos, o que fica com o mestre), `TestLevelUpRefusesDuplicates`, `TestMR040_OneRollPerLevelNotPerClass`, `TestMR040_DuplicatesAreInvalid`, `TestMR040_AStoredSheetThatFailsToday`, `TestMR040_ListLevelUpsPages`, `TestMR040_StaleRevision`, `TestMR040_ADeadCharacterDoesNotLevelUp`, `TestMR040_AFighterWithNothingToChoose` (Toren sem nada a escolher além dos PV) e as linhas novas do `TestAuthorizationMatrix`.
 
 #### Dúvidas
-- Decidida pelo Samuel em 03/10/2026 (pergunta 48), com o lugar no roadmap decidido pelo Vinicius no mesmo dia: antes do MVP, numa fatia própria depois das telas da Etapa 8. **Ainda a fazer.** Como a edição é desenhada e quais escolhas ela cobre (a lista de PV, habilidades, magias e aumento de atributo é a nossa leitura da resposta) fica para o plano da Etapa 8. A tela completa de subir de nível continua na [MR-017](#mr-017-subir-de-nível), depois do MVP.
-- Pergunta 66, em aberto: o mestre veta uma subida? O padrão proposto é que não: ele é avisado e vê o que mudou.
+- Decidida pelo Samuel em 03/10/2026 (pergunta 48), com o lugar no roadmap decidido pelo Vinicius no mesmo dia: antes do MVP, numa fatia própria depois das telas da Etapa 8. O servidor cobre os PV, o aumento de atributo, as magias (truques, conhecidas ou do grimório, e as preparadas), a subclasse e as opções das features do nível; o que fica de fora (multiclasse, subclasse própria, as invocações do Bruxo depois do nível 2) o mestre faz no editor. **A tela ainda é a fazer** (desenho aprovado `E8-15`). A tela completa de subir de nível continua na [MR-017](#mr-017-subir-de-nível), depois do MVP.
+- Pergunta 66, em aberto: o mestre veta uma subida? O padrão construído é que não: ele é avisado e vê o que mudou.
 
 ### MR-041: Tesouros e XP por ouro
 
