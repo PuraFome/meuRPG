@@ -57,6 +57,8 @@ export class NpcCard {
   /** On a phone or a tablet the card is the whole turn (E6-12): its title, the
    * warning that damage is owed and "Próximo turno" at its end. */
   readonly narrow = input(false);
+  /** A joint turn is running: the turn passes when the last part ends, so no "Próximo turno". */
+  readonly joint = input(false);
   /** What the turn still owes ("Falta aplicar 5 de dano"), or `null`. */
   readonly pendingNote = input<string | null>(null);
   /** The newest attack of this one was stopped by the target's Escudo (from the log). */

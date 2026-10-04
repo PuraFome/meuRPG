@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, ElementRef, computed, effect, inject, input, output, signal, viewChild } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -7,10 +8,13 @@ import { type Combatant, CombatantState, type Encounter, EncounterStatus } from 
 import { joinDots } from '../../../../core/format/text';
 import { conditionTags } from '../../../../core/combat/conditions';
 import { combatantInitial, isPlayer, stateWord } from '../../../../core/combat/combat-view';
+import { type OrderItem, jointTurn, listNames, orderItems } from '../../../../core/combat/joint-turn';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import type { CombatantInfo } from '../combat-info';
 import { CombatantTags } from '../combatant-tags/combatant-tags';
 import { DeathRow } from '../death-saves/death-marks';
+import { OrderGroup } from '../joint-turn/order-group';
+import { PartState } from '../joint-turn/part-state';
 
 /**
  * The master's order of initiative while the combat runs (E6-11, E6-12): who
@@ -25,7 +29,7 @@ import { DeathRow } from '../death-saves/death-marks';
  */
 @Component({
   selector: 'app-order-list',
-  imports: [CombatantTags, CombatantToken, DeathRow, MatButtonModule, MatIconModule, MatMenuModule],
+  imports: [CombatantTags, CombatantToken, DeathRow, MatButtonModule, MatIconModule, MatMenuModule, NgTemplateOutlet, OrderGroup, PartState],
   templateUrl: './order-list.html',
   styleUrl: './order-list.scss',
 })
@@ -53,6 +57,9 @@ export class OrderList {
   protected readonly removing = signal<string | null>(null);
   private readonly back = viewChild('back', { read: ElementRef<HTMLButtonElement> });
   protected readonly rows = computed(() => this.encounter().combatants);
+  /** The order with the boxes of the joint turns (the master has every total). */
+  protected readonly items = computed(() => orderItems(this.encounter(), true));
+  private readonly joint = computed(() => jointTurn(this.encounter()));
   /** Everything is read-only after the combat ends. */
   protected readonly live = computed(() => this.encounter().status !== EncounterStatus.ENDED);
 
@@ -108,8 +115,23 @@ export class OrderList {
     return max > 0 ? Math.min(100, Math.round(((c.hitPointsCurrent ?? 0) / max) * 100)) : 0;
   }
 
+  /** The row of the one on turn; in a joint turn the box is on turn instead. */
   protected current(c: Combatant): boolean {
-    return c.id === this.encounter().currentCombatantId;
+    return !this.joint() && c.id === this.encounter().currentCombatantId;
+  }
+
+  /** The combatant is a member of the joint turn that is running. */
+  protected inTurn(c: Combatant): boolean {
+    return !!this.joint()?.members.some((m) => m.id === c.id);
+  }
+
+  protected key(item: OrderItem): string {
+    return item.kind === 'group' ? item.members.map((m) => m.id).join('+') : item.combatant.id;
+  }
+
+  /** "Turno conjunto: Brisa e Toren, iniciativa 19", for a screen reader. */
+  protected groupLabel(item: OrderItem): string {
+    return item.kind === 'group' ? `Turno conjunto: ${listNames(item.members.map((m) => m.label))}, iniciativa ${item.total}` : '';
   }
 
   protected canAdjust(c: Combatant): boolean {

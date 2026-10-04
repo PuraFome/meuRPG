@@ -67,13 +67,14 @@ const (
 	eventStageChanged = "stage_changed"
 )
 
-// The kinds of the second Etapa 8 wave. The master gave a character one more
-// attempt at a scene action (scene_attempt_granted, MR-015); the other is
-// slice 8.11's: a player ended their part of a joint turn (turn_part_ended,
-// MR-013), declared here so the CHECK of session_events and its test agree.
+// The kinds of the second Etapa 8 wave (migration 00083). The master gave a
+// character one more attempt at a scene action (scene_attempt_granted,
+// MR-015); a member of a joint turn ended their part and the turn goes on
+// (turn_part_ended, MR-013). The last part to end writes turn_ended, as a turn
+// always did.
 const (
 	eventSceneAttemptGranted = "scene_attempt_granted"
-	eventTurnPartEnded       = "turn_part_ended" // slice 8.11
+	eventTurnPartEnded       = "turn_part_ended"
 )
 
 // combatWrite describes one change to a combat: who makes it, the idempotency
@@ -84,6 +85,10 @@ type combatWrite struct {
 	key         string
 	kind        string
 	encounterID string
+	// altKind is the other kind the change may write instead of kind (EndTurn
+	// writes turn_part_ended when the turn does not pass yet): a retry of the
+	// change under the same key may find either.
+	altKind string
 }
 
 // combatTx is what a change works with inside its transaction: the open
@@ -96,6 +101,9 @@ type combatTx struct {
 	enc         playdb.Encounter
 	now         time.Time
 	characterID *string
+	// kind is the kind of the event the change writes: the one in combatWrite,
+	// unless the closure sets it to the altKind.
+	kind string
 	// castID is the id the pending damages of the spell being cast share.
 	castID string
 }
@@ -138,7 +146,7 @@ func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx)
 		})
 		switch {
 		case err == nil:
-			if done.Kind != w.kind {
+			if done.Kind != w.kind && (w.altKind == "" || done.Kind != w.altKind) {
 				return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
 			}
 			res.repeated = true // a retry of a change already made
@@ -148,7 +156,7 @@ func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx)
 			return fmt.Errorf("find the event of this idempotency key: %w", err)
 		}
 
-		c := &combatTx{tx: tx, q: q, session: session, now: s.now()}
+		c := &combatTx{tx: tx, q: q, session: session, now: s.now(), kind: w.kind}
 		if w.encounterID != "" {
 			c.enc, err = q.GetEncounterInSession(ctx, playdb.GetEncounterInSessionParams{GameSessionID: session.ID, ID: w.encounterID})
 			if errors.Is(err, pgx.ErrNoRows) {
@@ -163,7 +171,7 @@ func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx)
 			return err
 		}
 		res.encounterID = c.enc.ID
-		return insertEvent(ctx, c, w.kind, &w.m.UserID, &w.key, payload)
+		return insertEvent(ctx, c, c.kind, &w.m.UserID, &w.key, payload)
 	})
 	if err != nil {
 		return combatResult{}, err

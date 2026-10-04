@@ -1,0 +1,46 @@
+<!-- The live line stays when the card goes: it says who has the turn next. -->
+<p class="mr-visually-hidden" role="status" aria-live="polite">{{ live() }}</p>
+@if (joint(); as j) {
+  <section class="mr-panel card" aria-labelledby="joint-title">
+    <h2 class="mr-panel__title" id="joint-title">{{ title() }}</h2>
+    <p class="card__lead">{{ missing() }}</p>
+    <ul class="card__members">
+      @for (m of j.members; track m.id) {
+        <li class="member" [class.member--ended]="ended(m)">
+          <div class="member__head">
+            <app-combatant-token [initial]="initial(m)" [npc]="npc(m)" [hidden]="m.hidden" [size]="28" />
+            <div class="member__who">
+              <span class="member__name">{{ m.label }}</span>
+              <span class="member__sub">{{ sub(m) }}</span>
+            </div>
+            <app-part-state [ended]="ended(m)" />
+          </div>
+          <ul class="chips" [attr.aria-label]="'O que ' + m.label + ' tem neste turno'">
+            @for (c of chips(m); track c.name) {
+              <li class="chip">
+                {{ c.name }}
+                <mat-icon aria-hidden="true">{{ c.used ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
+                <b>{{ c.word }}</b>
+              </li>
+            }
+          </ul>
+          @if (!ended(m)) {
+            <button
+              mat-stroked-button
+              type="button"
+              class="member__end"
+              [disabled]="busy()"
+              (click)="endPart.emit(m.id)"
+            >
+              {{ endLabel(m) }}
+            </button>
+          }
+        </li>
+      }
+    </ul>
+    <p class="card__note">
+      Cada um tem a sua ação, ação bônus, reação e movimento. O jogador encerra a própria parte no
+      celular; você encerra por quem não está na mesa.
+    </p>
+  </section>
+}

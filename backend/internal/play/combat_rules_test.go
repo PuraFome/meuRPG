@@ -71,30 +71,77 @@ func TestMR013_NextTurnSkipsTheDefeatedAndCountsRounds(t *testing.T) {
 	t.Parallel()
 	cs := []playdb.Combatant{cb("a", i32p(3), 0, 0), cb("b", i32p(2), 0, 1), cb("c", i32p(1), 0, 2)}
 	cs[1].Defeated = true
+	next := func(current, skip string) (string, bool, bool) {
+		ids, newRound, ok := nextTurnGroup(cs, current, skip)
+		if len(ids) != 1 && ok {
+			t.Fatalf("nextTurnGroup(%q, %q) = %v, want a group of one", current, skip, ids)
+		}
+		if !ok {
+			return "", newRound, ok
+		}
+		return ids[0], newRound, ok
+	}
 
-	if next, newRound, ok := nextTurn(cs, "a", ""); next != "c" || newRound || !ok {
+	if next, newRound, ok := next("a", ""); next != "c" || newRound || !ok {
 		t.Errorf("after a = %q, newRound %v, ok %v; want c, false, true (b is defeated)", next, newRound, ok)
 	}
-	if next, newRound, ok := nextTurn(cs, "c", ""); next != "a" || !newRound || !ok {
+	if next, newRound, ok := next("c", ""); next != "a" || !newRound || !ok {
 		t.Errorf("after c = %q, newRound %v, ok %v; want a, true, true", next, newRound, ok)
 	}
 	// The one that leaves does not count; the turn goes on in the same round.
-	if next, newRound, _ := nextTurn(cs, "a", "a"); next != "c" || newRound {
+	if next, newRound, _ := next("a", "a"); next != "c" || newRound {
 		t.Errorf("removing a: next %q, newRound %v; want c, false", next, newRound)
 	}
 	// Alone: its own turn again, in a new round.
 	cs[2].Defeated = true
-	if next, newRound, ok := nextTurn(cs, "a", ""); next != "a" || !newRound || !ok {
+	if next, newRound, ok := next("a", ""); next != "a" || !newRound || !ok {
 		t.Errorf("alone = %q, newRound %v, ok %v; want a, true, true", next, newRound, ok)
 	}
 	cs[0].Defeated = true
-	if _, _, ok := nextTurn(cs, "a", ""); ok {
-		t.Error("nextTurn() with everybody defeated: ok = true")
+	if _, _, ok := next("a", ""); ok {
+		t.Error("nextTurnGroup() with everybody defeated: ok = true")
 	}
 	// A current that is not in the list (it was removed): from the first one.
 	cs[0].Defeated, cs[1].Defeated, cs[2].Defeated = false, false, false
-	if next, newRound, _ := nextTurn(cs, "gone", ""); next != "a" || newRound {
+	if next, newRound, _ := next("gone", ""); next != "a" || newRound {
 		t.Errorf("after a missing current = %q, newRound %v; want a, false", next, newRound)
+	}
+}
+
+// TestMR013_GroupsAreTheRunsWithTheSameTotal: adjacent combatants with the
+// same total are one group, whatever their bonus or kind; one alone on its
+// total is a group of one; the next turn goes to the next group, and its
+// defeated members do not take it.
+func TestMR013_GroupsAreTheRunsWithTheSameTotal(t *testing.T) {
+	t.Parallel()
+	cs := []playdb.Combatant{
+		cb("brisa", i32p(19), 3, 0), cb("toren", i32p(19), 1, 1), cb("capitao", i32p(16), 0, 2),
+		cb("g1", i32p(12), 0, 3), cb("g2", i32p(12), 0, 4), cb("g3", i32p(9), 0, 5),
+	}
+	var shape []int
+	for _, g := range groupRuns(cs) {
+		shape = append(shape, len(g))
+	}
+	if !slices.Equal(shape, []int{2, 1, 2, 1}) {
+		t.Fatalf("groups = %v, want 2 1 2 1", shape)
+	}
+	next, newRound, ok := nextTurnGroup(cs, "toren", "")
+	if !ok || newRound || !slices.Equal(next, []string{"capitao"}) {
+		t.Errorf("after toren = %v, %v, %v; want capitao in the same round", next, newRound, ok)
+	}
+	cs[3].Defeated = true
+	next, _, _ = nextTurnGroup(cs, "capitao", "")
+	if !slices.Equal(next, []string{"g2"}) {
+		t.Errorf("after capitao = %v, want only g2 (g1 is defeated)", next)
+	}
+	next, newRound, _ = nextTurnGroup(cs, "g3", "")
+	if !slices.Equal(next, []string{"brisa", "toren"}) || !newRound {
+		t.Errorf("after g3 = %v, %v; want brisa and toren in a new round", next, newRound)
+	}
+	// Without an initiative, a combatant is a group of its own.
+	cs[1].Initiative, cs[0].Initiative = nil, nil
+	if n := len(groupRuns(cs[:2])); n != 2 {
+		t.Errorf("two combatants without an initiative make %d groups, want 2", n)
 	}
 }
 

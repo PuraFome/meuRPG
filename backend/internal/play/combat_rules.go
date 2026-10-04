@@ -108,30 +108,6 @@ func withOrder(cs []playdb.Combatant, ids []string) []playdb.Combatant {
 	return out
 }
 
-// nextTurn says who plays after current: the next combatant in cs (in turn
-// order) that is not defeated and is not skip, and whether the round changed
-// to find it (it wrapped past the last combatant). ok is false when nobody
-// can play. current may be missing from cs (it was removed): then the turn
-// starts from the first combatant, in the same round.
-func nextTurn(cs []playdb.Combatant, current, skip string) (next string, newRound, ok bool) {
-	start := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == current })
-	for step := 1; step <= len(cs); step++ {
-		i := start + step
-		wrapped := false
-		if start < 0 {
-			i = step - 1
-		}
-		if i >= len(cs) {
-			i -= len(cs)
-			wrapped = true
-		}
-		if c := cs[i]; !c.Defeated && c.ID != skip {
-			return c.ID, wrapped, true
-		}
-	}
-	return "", false, false
-}
-
 // movementLeftFt is how many feet the combatant can still walk this turn
 // (RN-21): its speed, twice after the Dash action, minus what it walked.
 func movementLeftFt(c playdb.Combatant) int {

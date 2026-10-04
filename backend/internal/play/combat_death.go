@@ -113,7 +113,7 @@ func (s *Service) RollDeathSave(
 		switch {
 		case c.enc.Status != statusActive:
 			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE, "the combat is not running")
-		case c.enc.CurrentCombatantID == nil || *c.enc.CurrentCombatantID != who.ID:
+		case !actsNow(c.enc, who):
 			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN, "it is not this combatant's turn")
 		}
 		now, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, who.CharacterID)
@@ -246,25 +246,13 @@ func (s *Service) ConfirmDeath(
 		}); err != nil {
 			return nil, fmt.Errorf("take the character out of the order: %w", err)
 		}
-		// Out of the order: if it was its turn, the turn passes first.
-		if c.enc.Status == statusActive && c.enc.CurrentCombatantID != nil && *c.enc.CurrentCombatantID == who.ID {
-			next, newRound, ok := nextTurn(cs, who.ID, who.ID)
-			round, current := c.enc.Round, (*string)(nil)
-			if ok {
-				current = &next
-				if newRound {
-					round++
-				}
-				if err := c.q.ResetCombatantTurn(ctx, next); err != nil {
-					return nil, fmt.Errorf("reset the turn: %w", err)
-				}
+		// Out of the order: it leaves the turn first, and the turn passes when
+		// nobody who acts is left in its group.
+		if c.enc.Status == statusActive {
+			if _, err := leaveTurn(ctx, c, cs, who); err != nil {
+				return nil, err
 			}
-			if c.enc, err = c.q.SetEncounterState(ctx, playdb.SetEncounterStateParams{
-				ID: c.enc.ID, Status: c.enc.Status, Round: round, CurrentCombatantID: current, StartedAt: c.enc.StartedAt,
-			}); err != nil {
-				return nil, fmt.Errorf("pass the turn: %w", err)
-			}
-			turnPassed = true
+			turnPassed = inTurn(c.enc, who)
 		} else if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
 			return nil, fmt.Errorf("touch the encounter: %w", err)
 		}

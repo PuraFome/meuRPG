@@ -12,6 +12,7 @@ import { addClueRPC, cartClues, cartHooks, createNoteRPC } from './notes-support
 import { createCapitaoRPC, createMiraRPC, playedCombatRPC, putOnStageRPC, uploadPortrait } from './stage-support';
 import { printRoute, tableForPrinting } from './print-support';
 import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus } from './support';
+import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
 import { awardXpRPC, createEnemyRPC, tableForXp, tableForXpCombat, winCombatRPC } from './xp-support';
 
 // docs/design.md#como-uma-tela-é-feita: every screen passes axe with no
@@ -1692,6 +1693,66 @@ test('pistas, ganchos e anotações passam no axe e nas conferências de layout 
 test('pistas, ganchos e anotações passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-029', '@MR-030'] }, async ({ browser }) => {
   test.setTimeout(600_000);
   await scanNotesScreens(browser, 'light', 320);
+});
+
+/** The joint turn (MR-013, E8-01): the master's card and boxes, the player's
+ * pill, the other members' card, "Encerrar a minha parte" and its question, the
+ * state after the part ended, and the goblins' turn (a group of NPCs alone). */
+async function scanJointTurnScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const joint = await jointTable(m, p, `Acessibilidade turno conjunto ${Date.now()}`);
+    campaignId = joint.table.campaignId;
+    await beginJointCombat(m, joint);
+
+    await m.goto(`/campanhas/${campaignId}/sessao`);
+    await expect(m.getByRole('heading', { name: /^Turno conjunto: / })).toBeVisible();
+    await expectScreenPasses(m, `Turno conjunto, visto pelo mestre ${where}`);
+    await openSessionPage(p, campaignId);
+    await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
+    await expectScreenPasses(p, `Turno conjunto, a vez do jogador ${where}`);
+    await p.getByRole('button', { name: 'Encerrar a minha parte' }).click();
+    await expect(p.getByRole('alertdialog', { name: 'Encerrar a sua parte?' })).toBeVisible();
+    await expectScreenPasses(p, `Encerrar a minha parte, com pergunta ${where}`);
+    await p.getByRole('alertdialog').getByRole('button', { name: 'Encerrar a minha parte' }).click();
+    await expect(p.getByRole('heading', { name: 'Você encerrou a sua parte' })).toBeVisible();
+    await expectScreenPasses(p, `Turno conjunto, depois de encerrar ${where}`);
+    await expectScreenPasses(m, `Turno conjunto, uma parte encerrada ${where}`);
+
+    await endPartRPC(m, campaignId, 'Brisa');
+    await expect(p.getByRole('heading', { name: 'Vez dos Goblins' })).toBeVisible();
+    await expectScreenPasses(p, `Vez de um grupo de NPCs, jogador ${where}`);
+    await expectScreenPasses(m, `Vez de um grupo de NPCs, mestre ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('o turno conjunto passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-013'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanJointTurnScreens(browser, 'light', 1280);
+});
+
+test('o turno conjunto passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-013'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanJointTurnScreens(browser, 'dark', 390);
+});
+
+test('o turno conjunto passa no axe e nas conferências de layout no celular de 320', { tag: ['@a11y', '@MR-013'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanJointTurnScreens(browser, 'light', 320);
 });
 
 

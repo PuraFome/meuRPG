@@ -438,6 +438,9 @@ export function logLine(
       return { ...base, actor: e.targetLabel || e.actorLabel, icon: 'close', text: ' morreu' };
     case CombatLogKind.CONDITIONS_CHANGED:
       return { ...base, actor: e.targetLabel || e.actorLabel, icon: 'label', text: conditionsText(e) };
+    case CombatLogKind.TURN_PART_ENDED:
+      // A member of a joint turn ended their part and the turn goes on.
+      return { ...base, icon: 'flag', text: ` encerrou a parte ${article(e.actorLabel) === 'a' ? 'dela' : 'dele'}` };
     default:
       return null;
   }

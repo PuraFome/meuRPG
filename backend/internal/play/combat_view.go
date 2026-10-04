@@ -66,29 +66,98 @@ func loadEncounter(ctx context.Context, q *playdb.Queries, enc playdb.Encounter)
 	return &encounterData{enc: enc, cs: cs}, nil
 }
 
-// current returns the combatant on turn, if there is one.
-func (d *encounterData) current() (playdb.Combatant, bool) {
-	if d.enc.CurrentCombatantID == nil {
-		return playdb.Combatant{}, false
-	}
-	i := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == *d.enc.CurrentCombatantID })
-	if i < 0 {
-		return playdb.Combatant{}, false
-	}
-	return d.cs[i], true
+// turnView is the turn as one viewer sees it (RN-20, joint turns): who acts,
+// whether it is the master's part, and the members of the group on turn the
+// viewer is told about.
+type turnView struct {
+	currentID  string
+	masterTurn bool
+	groupIDs   []string
+	// flags says whether the viewer gets each member's turn_part_ended.
+	flags bool
 }
 
-// turnFor says whose turn the viewer sees: the combatant on turn, or, when
-// that one is hidden from them, "the master's".
-func (d *encounterData) turnFor(v combatViewer) (id string, masterTurn bool) {
-	c, ok := d.current()
-	switch {
-	case !ok:
-		return "", false
-	case v.sees(c):
-		return c.ID, false
+// turnFor works out the turn for the viewer.
+//
+//   - The master sees the whole group, and its first member who acts is the
+//     current one.
+//   - A player sees a group that holds a player's character with the members
+//     they see (never a hidden one), and the first of them who acts is the
+//     current one. When every member who acts is hidden, it is the master's
+//     turn ("Vez do mestre", or "Falta o mestre").
+//   - A group of NPCs alone is the master's: the player gets the members they
+//     see so the app can say "Vez dos Goblins", but no member is made the
+//     current one when there are two or more, and no flags.
+func (d *encounterData) turnFor(v combatViewer) turnView {
+	if d.enc.Status != statusActive {
+		return turnView{}
 	}
-	return "", true
+	members := turnMembers(d.cs)
+	acting := func(cs []playdb.Combatant) (playdb.Combatant, bool) {
+		for _, c := range cs {
+			if c.TurnState == turnActing {
+				return c, true
+			}
+		}
+		return playdb.Combatant{}, false
+	}
+	if _, someone := acting(members); !someone {
+		return turnView{}
+	}
+	ids := func(cs []playdb.Combatant) []string {
+		var out []string
+		for _, c := range cs {
+			out = append(out, c.ID)
+		}
+		return out
+	}
+	if v.master {
+		first, _ := acting(members)
+		return turnView{currentID: first.ID, groupIDs: ids(members), flags: true}
+	}
+	var seen []playdb.Combatant
+	for _, c := range members {
+		if v.sees(c) {
+			seen = append(seen, c)
+		}
+	}
+	hasPlayer := slices.ContainsFunc(members, func(c playdb.Combatant) bool { return c.Kind == kindPlayer })
+	first, visibleActs := acting(seen)
+	if !visibleActs {
+		return turnView{masterTurn: true, groupIDs: ids(seen), flags: hasPlayer} // only hidden members act
+	}
+	if !hasPlayer && len(seen) > 1 {
+		return turnView{groupIDs: ids(seen)} // NPCs alone: named by the group, none picked
+	}
+	return turnView{currentID: first.ID, groupIDs: ids(seen), flags: hasPlayer}
+}
+
+// npcOnlyGroups are the groups of two or more NPCs, adjacent in the order with
+// the same total, that a player may see: without hidden or defeated members,
+// as lists of IDs. Only for the player's copy, to name a group by its plural.
+func (d *encounterData) npcOnlyGroups(v combatViewer) []*playv1.NpcGroup {
+	if v.master || d.enc.Status != statusActive {
+		return nil
+	}
+	// The runs come from the whole order, so a hidden or defeated combatant in
+	// between never makes two groups one; only then each run is filtered for
+	// the viewer, and kept when it has two or more visible NPCs and no player.
+	var out []*playv1.NpcGroup
+	for _, g := range groupRuns(d.cs) {
+		if slices.ContainsFunc(g, func(c playdb.Combatant) bool { return c.Kind != kindNPC }) {
+			continue
+		}
+		var ids []string
+		for _, c := range g {
+			if !c.Defeated && v.sees(c) {
+				ids = append(ids, c.ID)
+			}
+		}
+		if len(ids) >= 2 {
+			out = append(out, &playv1.NpcGroup{CombatantIds: ids})
+		}
+	}
+	return out
 }
 
 // view builds the Encounter the viewer sees. vitals are the player
@@ -111,12 +180,21 @@ func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.Character
 	if v.master {
 		out.MapPointId = deref(e.MapPointID)
 	}
-	out.CurrentCombatantId, out.MasterTurn = d.turnFor(v)
+	turn := d.turnFor(v)
+	out.CurrentCombatantId, out.MasterTurn, out.TurnGroupIds = turn.currentID, turn.masterTurn, turn.groupIDs
+	out.NpcOnlyGroups = d.npcOnlyGroups(v)
 	ties := unresolvedTies(d.cs)
+	// Players in the same joint turn read each other's economy: they act
+	// together and say what each still has. A player outside the group does not.
+	shared := !v.master && slices.ContainsFunc(d.cs, func(c playdb.Combatant) bool { return v.owns(c) && inTurn(e, c) })
 	for _, c := range d.cs {
 		if v.sees(c) {
-			onTurn := e.Status == statusActive && e.CurrentCombatantID != nil && *e.CurrentCombatantID == c.ID
-			out.Combatants = append(out.Combatants, combatantToProto(c, v, ties[c.ID], vitals[c.CharacterID], armorClass[c.CharacterID], portraits[c.CharacterID], onTurn, names))
+			p := combatantToProto(c, v, ties[c.ID], vitals[c.CharacterID], armorClass[c.CharacterID], portraits[c.CharacterID], actsNow(e, c), names)
+			if shared && c.Kind == kindPlayer && !v.owns(c) && inTurn(e, c) {
+				shareEconomy(p, c)
+			}
+			p.TurnPartEnded = turn.flags && e.Status == statusActive && c.TurnState == turnEnded
+			out.Combatants = append(out.Combatants, p)
 		}
 	}
 	return out
@@ -125,8 +203,8 @@ func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.Character
 // combatantToProto builds the Combatant the viewer sees. The caller checked
 // that the viewer sees it. armorClass is its sheet's, and portrait the URL of
 // its sheet's portrait, for the master's copy only (0 and "" when unknown).
-// onTurn says it is the one whose turn it is, in a
-// running combat.
+// onTurn says it acts now: it is in the group on turn and its part has not
+// ended, in a running combat.
 func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vitals *playv1.CharacterVitals, armorClass int32, portrait string, onTurn bool, names func(key string) string) *playv1.Combatant {
 	mine := v.owns(c)
 	detail := v.master || mine // the numbers of the turn: the master's and the owner's
@@ -204,6 +282,15 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 		}
 	}
 	return out
+}
+
+// shareEconomy gives a player's combatant's turn economy to another player who
+// is in the same joint turn (the rest of the detail stays the owner's).
+func shareEconomy(out *playv1.Combatant, c playdb.Combatant) {
+	out.SpeedFt = c.SpeedFt
+	out.MovementUsedFt = c.MovementUsedFt
+	out.MovementLeftFt = clamp32(movementLeftFt(c), 0, 1200)
+	out.Dashed, out.ActionUsed, out.BonusActionUsed, out.ReactionUsed = c.Dashed, c.ActionUsed, c.BonusActionUsed, c.ReactionUsed
 }
 
 // isDownIn says whether the vitals are of a character at 0 hit points.
@@ -368,12 +455,12 @@ func (s *Service) publishEncounterChanged(campaignID string, e playdb.Encounter)
 // the players what they may see (a hidden one's turn is "the master's").
 func (s *Service) publishTurnChanged(campaignID string, d *encounterData) {
 	for _, v := range []combatViewer{{master: true}, {}} {
-		id, masterTurn := d.turnFor(v)
+		turn := d.turnFor(v)
 		s.hub.Publish(campaignID, live.Event{
 			Audience: live.Audience{Master: v.master, Players: !v.master},
 			Message: &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_TurnChanged_{
 				TurnChanged: &playv1.WatchGameSessionResponse_TurnChanged{
-					EncounterId: d.enc.ID, Round: d.enc.Round, CurrentCombatantId: id, MasterTurn: masterTurn,
+					EncounterId: d.enc.ID, Round: d.enc.Round, CurrentCombatantId: turn.currentID, MasterTurn: turn.masterTurn,
 				},
 			}},
 		})
