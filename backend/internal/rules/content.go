@@ -132,6 +132,9 @@ func load(fsys fs.FS) (*content, error) {
 	if err := c.indexLevels(fsys); err != nil {
 		return nil, err
 	}
+	if err := c.applyCorrections(fsys); err != nil {
+		return nil, err
+	}
 
 	var rev effectsRevision
 	if err := readJSON(fsys, "effects/revision.json", &rev); err != nil {
@@ -307,7 +310,7 @@ func (c *content) loadEffects(fsys fs.FS) error {
 	}
 	for _, name := range files {
 		switch path.Base(name) {
-		case "names_pt.json", "revision.json", "standard_actions.json", "advancement.json", "spells.json":
+		case "names_pt.json", "revision.json", "standard_actions.json", "advancement.json", "spells.json", "corrections.json":
 			continue
 		}
 		var f struct {
@@ -541,4 +544,58 @@ func sortedKeys[T any](m map[string]T) []string {
 	}
 	slices.Sort(keys)
 	return keys
+}
+
+// correctionFields are the class table columns effects/corrections.json may
+// correct. The set is closed.
+var correctionFields = []string{"invocations_known"}
+
+// applyCorrections reads effects/corrections.json and writes its numbers over
+// the class table rows of the snapshot (data/ is never edited by hand, so a
+// number the snapshot has wrong against the SRD 5.1 is fixed here). It refuses
+// an unknown class, field or level, and a row without the column.
+func (c *content) applyCorrections(fsys fs.FS) error {
+	const name = "effects/corrections.json"
+	var f struct {
+		Comment     string `json:"_comment"`
+		Corrections []struct {
+			Class   string         `json:"class"`
+			Field   string         `json:"field"`
+			Source  string         `json:"source"`
+			ByLevel map[string]int `json:"by_level"`
+		} `json:"corrections"`
+	}
+	if err := readJSON(fsys, name, &f); err != nil {
+		return err
+	}
+	for _, corr := range f.Corrections {
+		rows, ok := c.classLevels[corr.Class]
+		if !ok {
+			return fmt.Errorf("%s: unknown class %q", name, corr.Class)
+		}
+		if !slices.Contains(correctionFields, corr.Field) {
+			return fmt.Errorf("%s: %s: field %q cannot be corrected", name, corr.Class, corr.Field)
+		}
+		for lvl, v := range corr.ByLevel {
+			n, err := strconv.Atoi(lvl)
+			if err != nil || n < 1 || n > MaxLevel {
+				return fmt.Errorf("%s: %s: level %q is not 1 to %d", name, corr.Class, lvl, MaxLevel)
+			}
+			row := rows[n-1]
+			cols := map[string]json.RawMessage{}
+			if err := json.Unmarshal(row.ClassSpecific, &cols); err != nil {
+				return fmt.Errorf("%s: %s level %d has no class_specific columns: %w", name, corr.Class, n, err)
+			}
+			if _, has := cols[corr.Field]; !has {
+				return fmt.Errorf("%s: %s level %d has no column %q", name, corr.Class, n, corr.Field)
+			}
+			cols[corr.Field] = json.RawMessage(strconv.Itoa(v))
+			raw, err := json.Marshal(cols)
+			if err != nil {
+				return err
+			}
+			row.ClassSpecific = raw
+		}
+	}
+	return nil
 }

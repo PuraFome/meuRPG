@@ -28,6 +28,7 @@ Tabelas novas para a mesa ao vivo:
 - `session_events`: cada ação da sessão (dano, cura, magia, XP) vira uma linha que nunca é alterada. É o histórico da mesa; o stream manda a mudança que ela registra. Já existe (Etapa 5), com a correção do mestre nos PV, espaços de magia e dados de vida, e, na Etapa 6, as mudanças do combate: o ataque, o dano, as ações, as magias, as reações, os testes contra a morte, as condições, o desfazer. O registro do combate é lido dela (ver [Esquema implementado](#esquema-implementado)).
 - `pending_damages`: o dano de um ataque ou de uma magia que acertou, e as curas, do d20 até o mestre aplicar ou descartar (MR-012, MR-014). Já existe (Etapa 6).
 - `xp_awards` e `xp_award_shares`: quem deu XP ou registrou um marco, quanto, quando e por quê, e o que cada personagem recebeu (MR-016). O modo de XP fica em `campaigns.xp_mode`. Já existem (Etapa 7, ver [Esquema implementado](#esquema-implementado)).
+- `character_level_ups` e `character_level_up_rolls`: o registro de cada subida de nível feita pelo jogador na ficha travada, que o mestre lê como "O que mudou", e o dado de vida que o servidor rolou para o próximo nível, guardado até a subida o usar (MR-040). Já existem (Etapa 8, ver [Esquema implementado](#esquema-implementado)).
 - `stage_npcs`: os NPCs "em cena" na cena aberta de uma sessão, na ordem em que entraram, no máximo 4, com quem fala (MR-031). Já existe (Etapa 8, ver [Esquema implementado](#esquema-implementado)).
 - `scene_actions`: as ações que o mestre pôs numa cena de RP (MR-015). A cena não tem tabela própria: é um ponto do mapa do tipo `scene` (`map_points`), e a cena aberta na sessão é a coluna `game_sessions.open_scene_point_id`. Já existem (Etapa 7, ver [Esquema implementado](#esquema-implementado)).
 - `scene_clues` e `scene_clue_reveals`: as pistas que o mestre prepara numa cena e a quem ele as revelou, com a cópia do texto que o jogador recebeu (MR-029). Já existem (Etapa 8, ver [Esquema implementado](#esquema-implementado)). O texto "Ganchos e anotações" é a coluna `map_points.hooks`.
@@ -66,6 +67,7 @@ Toda tabela abaixo é nova — nasce numa migration do goose de algum módulo, n
 | `pending_damages` | Sem equivalente lá |
 | `scene_actions` | Sem equivalente lá |
 | `stage_npcs` | Sem equivalente lá |
+| `character_level_ups`, `character_level_up_rolls` | Sem equivalente lá |
 | `scene_clues`, `scene_clue_reveals`, `scene_discoveries`, `player_notes` | Sem equivalente lá |
 | `xp_awards`, `xp_award_shares` | Sem equivalente lá |
 
@@ -147,6 +149,27 @@ erDiagram
         integer hit_points_temporary
         integer_array spell_slots_used
         integer hit_dice_used
+    }
+
+    character_level_ups {
+        uuid id PK
+        uuid campaign_id FK
+        uuid character_id FK
+        text class_key
+        integer from_level
+        integer to_level
+        text hp_method
+        integer hp_value
+        jsonb choices
+        timestamptz created_at
+    }
+
+    character_level_up_rolls {
+        uuid character_id PK
+        integer to_level PK
+        text class_key
+        integer die
+        integer value
     }
 
     maps {
@@ -248,6 +271,9 @@ erDiagram
     characters ||--o{ campaign_characters : "entra em"
     characters ||--o| character_master_notes : "tem"
     characters ||--o| character_vitals : "tem"
+    characters ||--o{ character_level_ups : "subiu de nível"
+    characters ||--o{ character_level_up_rolls : "tem o dado guardado"
+    campaigns ||--o{ character_level_ups : "registra"
     characters ||--o{ combatants : "atua como"
     characters |o--o| characters : "copiado de"
 
@@ -284,6 +310,7 @@ flowchart TD
         t_campaign_characters["campaign_characters, com a MR-022"]
         t_character_master_notes["character_master_notes"]
         t_character_vitals["character_vitals"]
+        t_character_level_ups["character_level_ups, character_level_up_rolls"]
     end
 
     subgraph play["Módulo play"]
@@ -396,8 +423,11 @@ Esta seção lista só o que já existe nas migrations de `backend/migrations/`.
 | `00075_add_etapa8_session_event_kinds` | `session_events` | O `CHECK` de `kind` ganha `clue_revealed` (MR-029) e `stage_changed` (MR-031). |
 | `00076_create_stage_npcs` | `stage_npcs` | O palco de uma sessão (MR-031): os NPCs em cena, na ordem em que entraram, com quem fala. |
 | `00077_create_stage_npcs_one_speaker_index` | `stage_npcs` | Índice único parcial: no máximo um NPC fala por sessão. |
+| `00078_create_character_level_ups` | `character_level_ups` | O registro de cada subida de nível guiada (MR-040): a classe, o nível de antes e o de depois, como os PV foram decididos e o que o jogador escolheu (JSON). O mestre lê como "O que mudou". |
+| `00079_create_character_level_ups_indexes` | `character_level_ups` | Índices por `(campaign_id, created_at)` e por `(character_id, created_at)`: o registro da campanha e o de um personagem, do mais novo ao mais antigo. |
+| `00080_create_character_level_up_rolls` | `character_level_up_rolls` | O dado de vida que o servidor rolou para o próximo nível, guardado até a subida o usar (MR-040, RN-18). |
 
-As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021`, a `00022`, a `00027`, a `00034`, a `00035`, a `00036` e a `00037`, do módulo `campaigns`; as `00014` a `00017`, a `00020`, a `00023` e a `00055`, do módulo `characters` (o `xp_value` e o nível de desafio de um NPC ficam no JSON da ficha, sem migration); as `00018`, a `00019`, a `00024`, a `00032`, a `00033`, as `00043` a `00054`, `00056` a `00059`, a `00063`, a `00066`, a `00075`, a `00076` e a `00077`, do módulo `play`; as `00025`, a `00026`, as `00028` a `00031`, as `00040` a `00042`, a `00064`, a `00065` e as `00067` a `00072`, do módulo `maps`; as `00073` e `00074`, do módulo `notes`; as `00060` a `00062`, do módulo `progression`. A `00027` é do documento de campanha, no `campaigns`, que chega num PR à parte. Mudanças em relação à proposta acima, no `identity`:
+As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021`, a `00022`, a `00027`, a `00034`, a `00035`, a `00036` e a `00037`, do módulo `campaigns`; as `00014` a `00017`, a `00020`, a `00023`, a `00055` e as `00078` a `00080`, do módulo `characters` (o `xp_value` e o nível de desafio de um NPC ficam no JSON da ficha, sem migration); as `00018`, a `00019`, a `00024`, a `00032`, a `00033`, as `00043` a `00054`, `00056` a `00059`, a `00063`, a `00066`, a `00075`, a `00076` e a `00077`, do módulo `play`; as `00025`, a `00026`, as `00028` a `00031`, as `00040` a `00042`, a `00064`, a `00065` e as `00067` a `00072`, do módulo `maps`; as `00073` e `00074`, do módulo `notes`; as `00060` a `00062`, do módulo `progression`. A `00027` é do documento de campanha, no `campaigns`, que chega num PR à parte. Mudanças em relação à proposta acima, no `identity`:
 
 - `users.google_sub` e `users.email` viraram `user_identities (issuer, subject, email)`. O par `(issuer, subject)` é a chave primária, porque o `sub` só é único dentro de um provedor. Assim o código não depende do Google, e uma conta pode ter outro jeito de entrar (ADR-0009) sem mudar `users`.
 - `UNIQUE (user_id, issuer)`: uma conta tem no máximo uma identidade por provedor, então duas contas Google nunca se juntam.
@@ -481,6 +511,7 @@ No `maps`:
   - `target_map_id` é o mapa ao qual um ponto de submapa leva, ou o mapa do combate de um ponto de batalha (MR-013): só num `submap` ou `battle` (`CHECK map_points_only_submaps_and_battles_lead`, `00042`), nunca o próprio mapa (`CHECK map_points_not_own_target`), e sempre da mesma campanha (conferido pelo servidor). Apagar o mapa de destino deixa o ponto sem destino (`SET NULL`); apagar o mapa do ponto apaga o ponto (`CASCADE`).
   - `revealed_at` funciona como no mapa, e todo ponto nasce escondido.
 - **`scene_actions`** (`00064`, `00065`, MR-015) são as ações de uma cena de RP, uma linha por ação: `point_id` é um ponto `scene` (`ON DELETE CASCADE`; a API só aceita ação em ponto desse tipo, e apaga as ações quando o ponto muda de tipo), `position` ordena as ações do ponto a partir de 0 (não é única: mover renumera a lista numa transação), `key` é `skill:<perícia>`, `ability:<atributo>` ou `save:<atributo>` (o `CHECK` só deixa passar esse formato, e a API confere a chave no catálogo das regras, `rules.Content.SceneCheckName`: ataque, magia e habilidade de combate nunca entram, MR-015), `name` é o nome que o mestre deu ("Convencer o guarda", até 60 caracteres, vazio para nenhum) e `dc` vai de 1 a 30 ou é `NULL`. No máximo 20 ações por ponto (pergunta 51, aceita pelo Samuel em 03/10/2026), conferido na transação do `INSERT`. A CD só o mestre recebe (RN-20).
+- **O registro da subida de nível** (`00078`, `00079`, MR-040) é `character_level_ups`: uma linha por subida guiada, escrita na mesma transação que grava a ficha e nunca mais mudada. `campaign_id` e `character_id` são `ON DELETE CASCADE`. `class_key` é a classe que ganhou o nível, `from_level` e `to_level` são os níveis totais (`to_level = from_level + 1`, conferido por `CHECK`), `hp_method` (`average`, `rolled_in_app` ou `rolled_physical`) e `hp_value` (1 a 12) repetem os PV do nível para o histórico ser lido sem abrir o JSON, e `choices` é o `protojson` de `LevelUpChoices`: só o que foi novo (o aumento de atributo, a subclasse, os truques, as magias, as preparadas, as opções, as perícias e a especialização) e os PV, tudo em chaves de conteúdo e números, nenhum texto livre. O mestre lê o registro da campanha do mais novo ao mais antigo, em páginas de até 50 (`ListLevelUps`, com `page_token`), pelo índice `(campaign_id, created_at DESC, id DESC)`. **O dado rolado** (`00080`) é `character_level_up_rolls`, uma linha por `(character_id, to_level)`, **não** por classe: o servidor rola o dado de vida do próximo nível uma vez e devolve o mesmo resultado nas chamadas seguintes, então o jogador não rola de novo até gostar do número (RN-18), e um personagem de duas classes não rola um d6 e um d12 para o mesmo nível e fica com o melhor. `class_key` é a classe que rolou, e a rolagem só vale para ela. Se o mestre baixa o nível na ficha, a rolagem de um nível acima fica guardada e ainda vale quando o personagem chegar lá. A subida usa a linha e a apaga; o valor continua em `character_level_ups`. `die` (6, 8, 10 ou 12) e `value` (1 a `die`) são conferidos por `CHECK`.
 - **O palco** (`00076`, `00077`, MR-031, D7) é uma tabela pequena, `stage_npcs`, e não colunas de `game_sessions`: uma linha por NPC em cena, com `game_session_id` e `character_id` (os dois `ON DELETE CASCADE`: um NPC apagado sai de cena), `position` (a ordem de entrada, a partir de 0; um NPC novo toma a maior posição mais um, então tirar um deixa um buraco que não muda a ordem), `speaking` e `created_at`. `UNIQUE (game_session_id, character_id)` impede o mesmo NPC duas vezes, e o índice único parcial `stage_npcs_one_speaker` (`00077`) deixa no máximo um falando. O limite de 4 é conferido na transação que insere, com a linha da sessão travada, como o das ações de uma cena. `id` é o lugar no palco, feito quando o NPC entra: é o que a cópia do jogador leva no lugar do ID do personagem, que é segredo do mestre (RN-20). Fechar ou trocar a cena apaga as linhas da sessão; a sessão encerrada só deixa de ser lida. Cada mudança é um `session_events` `stage_changed`, com o payload só de IDs (`change`: `put`, `taken_off`, `speaker` ou `cleared`, e o `character_id`).
 - **O retrato do NPC** (MR-031) não tem coluna: é o campo `portrait_image_id` do JSON da ficha (`FullSheet` e `BasicSheet`), o ID de uma imagem da galeria da campanha. A ficha de um jogador o recusa, e o servidor confere que a imagem é da campanha. Apagar a imagem da galeria tira o campo das fichas que o têm, na mesma transação, e sobe a `revision` delas (`UPDATE ... sheet #- '{...}'`); sem migration, porque a ficha é JSON.
 - **A cena aberta** (`00066`): `game_sessions.open_scene_point_id` é o ponto `scene` que o mestre abriu na sessão, um de cada vez, como `current_map_id` e `shown_image_id`. `NULL` é nenhuma cena; uma sessão nova começa sem cena. Abrir um ponto escondido não o revela no mapa (RN-10). Apagar o ponto fecha a cena (`SET NULL`); mudar o tipo do ponto faz a cena ler como fechada. O que vale como "cena aberta de novo" é o último `scene_opened` da sessão: uma rolagem só conta, para a regra de uma rolagem por ação (a que a pergunta 55, decidida pelo Samuel em 03/10/2026, vai trocar por tentativas definidas pelo mestre; ainda a fazer), se vier depois dele, então fechar e abrir a cena zera as rolagens sem apagar nenhuma linha do histórico.
@@ -626,6 +657,28 @@ erDiagram
         jsonb resources_used "usos gastos dos recursos, {chave: n}"
         int4 revision "sobe a cada correção"
         timestamptz updated_at
+    }
+
+    character_level_ups {
+        uuid id PK
+        uuid campaign_id FK "CASCADE"
+        uuid character_id FK "CASCADE"
+        text class_key "a classe que ganhou o nível"
+        int4 from_level "nível total antes"
+        int4 to_level "nível total depois, from_level + 1"
+        text hp_method "average, rolled_in_app ou rolled_physical"
+        int4 hp_value "1 a 12: o que o nível tomou"
+        jsonb choices "LevelUpChoices: só o que é novo"
+        timestamptz created_at
+    }
+
+    character_level_up_rolls {
+        uuid character_id PK "e FK, CASCADE"
+        int4 to_level PK "nível total depois"
+        text class_key "a classe que rolou"
+        int4 die "6, 8, 10 ou 12"
+        int4 value "1 a die"
+        timestamptz created_at
     }
 
     session_events {
@@ -850,6 +903,9 @@ erDiagram
     characters ||--o{ character_master_notes : "tem"
     campaigns ||--o{ game_sessions : "realiza"
     characters ||--o| character_vitals : "tem"
+    characters ||--o{ character_level_ups : "subiu de nível"
+    campaigns ||--o{ character_level_ups : "registra"
+    characters ||--o{ character_level_up_rolls : "tem o dado guardado"
     game_sessions ||--o{ session_events : "registra"
     users |o--o{ session_events : "fez"
     characters |o--o{ session_events : "é assunto de"
