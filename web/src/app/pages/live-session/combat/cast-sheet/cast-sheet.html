@@ -1,4 +1,7 @@
 <app-sheet-frame [title]="title()" [subtitle]="subtitle()" [phone]="inSheet" (closed)="close()">
+  @if (!done()) {
+    <app-spell-help head-action [name]="data.name" (press)="describe()" />
+  }
   <div class="body">
     @if (error()) {
       <div class="mr-notice mr-notice--danger" role="alert">
@@ -25,9 +28,32 @@
           [dealt]="dealt()"
           [total]="dartsTotal()"
           [npcs]="npcs()"
+          [area]="hpArea()"
           (toggle)="toggle($event)"
           (deal)="deal($event)"
         />
+      }
+      @if (pool(); as p) {
+        @if (usesPicker()) {
+          <app-roll-picker
+            [compact]="true"
+            [canApp]="canApp"
+            [canType]="canTypeDamage"
+            [preferApp]="preferApp"
+            [label]="'Role ' + p.count + 'd' + p.sides + ' para ' + data.name + ': some os dados'"
+            [hint]="'Digite a soma dos dados, de ' + p.count + ' a ' + p.count * p.sides + '.'"
+            totalNote="Total dos dados"
+            [min]="p.count"
+            [max]="p.count * p.sides"
+            [modifier]="0"
+            [busy]="busy() || !ready()"
+            [appLabel]="'Conjurar e rolar no app'"
+            [sticky]="true"
+            [(typing)]="typing"
+            (app)="castPooled({ inApp: true })"
+            (typed)="castPooled({ poolSum: $event })"
+          />
+        }
       }
       @if (kind() === 'attack') {
         <app-roll-picker
@@ -48,7 +74,7 @@
         />
       }
     } @else {
-      <app-cast-result [rows]="resultRows()" [plain]="plain()" />
+      <app-cast-result [rows]="resultRows()" [plain]="plain()" [sentence]="sentence()" [pool]="poolText()" />
       @if (nextRoll(); as r) {
         <div class="dmg">
           <p class="dmg__what">
@@ -81,25 +107,28 @@
     }
   </div>
 
-  @if (!done() && kind() !== 'attack') {
+  @if (!done() && kind() !== 'attack' && !(kind() === 'pool' && usesPicker())) {
     <div foot>
       @if (missing()) {
         <p class="missing" role="status"><mat-icon aria-hidden="true">block</mat-icon>{{ missing() }}</p>
       } @else if (dartsLine()) {
         <p class="missing" role="status"><mat-icon aria-hidden="true">check_circle</mat-icon>{{ dartsLine() }}</p>
       }
-      <button
-        mat-flat-button
-        type="button"
-        class="cast"
-        [class.cast--off]="!ready()"
-        [disabled]="busy() || !ready()"
-        disabledInteractive
-        (click)="castNow()"
-      >
-        <mat-icon aria-hidden="true">auto_awesome</mat-icon>Conjurar {{ data.name }}
-      </button>
-      <button type="button" class="cancel" (click)="close()">Cancelar</button>
+      <!-- Two real buttons of the same width side by side; stacked at 320px, "Conjurar" on top. -->
+      <div class="actions">
+        <button
+          mat-flat-button
+          type="button"
+          class="cast"
+          [class.cast--off]="!ready()"
+          [disabled]="busy() || !ready()"
+          disabledInteractive
+          (click)="castNow()"
+        >
+          <mat-icon aria-hidden="true">auto_awesome</mat-icon>Conjurar {{ data.name }}
+        </button>
+        <button mat-stroked-button type="button" class="cancel" (click)="close()">Cancelar</button>
+      </div>
     </div>
   }
   @if (done() && !owed()) {

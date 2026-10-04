@@ -25,7 +25,38 @@ func (s *Service) GetSpellDetails(
 	if !ok {
 		return nil, connect.NewError(connect.CodeNotFound, errUnknownSpell)
 	}
-	return connect.NewResponse(&rulesv1.GetSpellDetailsResponse{Spell: spellDetailsToProto(d)}), nil
+	out := spellDetailsToProto(d)
+	out.HitPointEffect = s.hitPointEffect(req.Msg.GetSpellKey(), d.Spell.Level)
+	return connect.NewResponse(&rulesv1.GetSpellDetailsResponse{Spell: out}), nil
+}
+
+var hpEffectKindToProto = map[string]rulesv1.SpellHitPointEffectKind{
+	rules.SpellKindHPPool:      rulesv1.SpellHitPointEffectKind_SPELL_HIT_POINT_EFFECT_KIND_POOL,
+	rules.SpellKindHPThreshold: rulesv1.SpellHitPointEffectKind_SPELL_HIT_POINT_EFFECT_KIND_THRESHOLD,
+	rules.SpellKindZeroHP:      rulesv1.SpellHitPointEffectKind_SPELL_HIT_POINT_EFFECT_KIND_ZERO_HP,
+	rules.SpellKindFlatHeal:    rulesv1.SpellHitPointEffectKind_SPELL_HIT_POINT_EFFECT_KIND_FLAT_HEAL,
+}
+
+// hitPointEffect is the rule of a spell that reads hit points, at its own circle
+// and what one circle more adds (the difference of two reads of the effects).
+// Nil for any other spell.
+func (s *Service) hitPointEffect(key string, level int) *rulesv1.SpellHitPointEffect {
+	base, ok := s.rules.SpellEffect(key, level)
+	if !ok {
+		return nil
+	}
+	next, _ := s.rules.SpellEffect(key, level+1)
+	return &rulesv1.SpellHitPointEffect{
+		Kind:             hpEffectKindToProto[base.Kind],
+		PoolDiceCount:    i32(base.Dice.Count),
+		PoolDiceSides:    i32(base.Dice.Sides),
+		PoolDicePerLevel: i32(next.Dice.Count - base.Dice.Count),
+		ConditionKey:     base.Condition,
+		Threshold:        i32(base.Threshold),
+		Dies:             base.Dies,
+		HealAmount:       i32(base.Heal),
+		HealPerLevel:     i32(next.Heal - base.Heal),
+	}
 }
 
 var errUnknownSpell = errors.New("spell not found")

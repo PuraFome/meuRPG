@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
-import { SpellDetailsVm } from '../character-editor.types';
+import { SpellDetailsVm } from './spell-details.types';
 import { SpellDetails, SpellDetailsData } from './spell-details';
 
 const KNOCK: SpellDetailsVm = {

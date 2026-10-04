@@ -17,7 +17,7 @@ describe('ActionRow', () => {
   it('shows the name, the pill, the detail and the button with its own accessible name', () => {
     const { el, pressed } = setup({
       name: 'Raio de Fogo',
-      pill: 'Truque',
+      tags: ['Truque'],
       detail: '+6 para acertar · 1d10 de fogo · alcance 36 m',
       button: 'Atacar',
       buttonLabel: 'Atacar com Raio de Fogo',
@@ -30,7 +30,7 @@ describe('ActionRow', () => {
   });
 
   it('keeps a disabled option in place and in the keyboard order, with the reason wired to the button', () => {
-    const { el, pressed } = setup({ name: 'Teia', pill: '2º círculo', button: 'Conjurar', off: true, reason: 'Sem espaço de 2º círculo ou maior' });
+    const { el, pressed } = setup({ name: 'Teia', tags: ['2º círculo'], button: 'Conjurar', off: true, reason: 'Sem espaço de 2º círculo ou maior' });
     const button = el.querySelector('button')!;
     expect(button.disabled).toBe(false); // `disabledInteractive`: still a focus stop
     expect(button.getAttribute('aria-disabled')).toBe('true');
@@ -39,6 +39,30 @@ describe('ActionRow', () => {
     expect(button.getAttribute('aria-describedby')).toBe(why.id);
     button.click();
     expect(pressed).toEqual([]);
+  });
+
+  it('puts the tags on a line of their own and the "?" between the text and the button', () => {
+    const { el } = setup({ name: 'Escudo Arcano', tags: ['1º círculo', 'Reação'], helpName: 'Escudo Arcano' });
+    const tags = [...el.querySelectorAll('.row__tags .row__pill')].map((t) => t.textContent!.trim());
+    expect(tags).toEqual(['1º círculo', 'Reação']);
+    expect(el.querySelector('.row__name .row__pill')).toBeNull();
+    expect(el.querySelector('app-spell-help button')!.getAttribute('aria-label')).toBe('Detalhes de Escudo Arcano');
+  });
+
+  it('opens the details from the "?" even when the row is off', () => {
+    const fixture = TestBed.createComponent(ActionRow);
+    fixture.componentRef.setInput('name', 'Teia');
+    fixture.componentRef.setInput('helpName', 'Teia');
+    fixture.componentRef.setInput('off', true);
+    fixture.componentRef.setInput('button', 'Conjurar');
+    const helped: number[] = [];
+    fixture.componentInstance.help.subscribe(() => helped.push(1));
+    fixture.detectChanges();
+    const help = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('app-spell-help button')!;
+    expect(help.disabled).toBe(false);
+    expect(help.getAttribute('aria-disabled')).toBeNull();
+    help.click();
+    expect(helped).toEqual([1]);
   });
 
   it('has no button for a row that waits for something else (Escudo)', () => {

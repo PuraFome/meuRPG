@@ -1,0 +1,213 @@
+:host {
+  display: block;
+  // The table or the cards: by the width of the card, not of the screen (the log is a half column at 1024).
+  container-type: inline-size;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-sizing: border-box;
+  margin: 4px 0 2px;
+  padding: 12px 16px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+  font-size: 15px;
+  line-height: 20px;
+
+  p {
+    margin: 0;
+  }
+}
+
+.card__cap {
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--mr-ink-muted);
+}
+
+.card__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 16px;
+}
+
+.card__roll {
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 28px;
+  line-height: 32px;
+}
+
+.card__unit {
+  font-size: 22px;
+}
+
+.card__dice {
+  white-space: nowrap;
+  font-family: var(--mr-font-sans);
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.secret {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+// The same four columns for the head and every row on a laptop; on a phone the head
+// is gone and each row is a card of its own.
+.card__head,
+.row {
+  display: grid;
+  grid-template-columns: minmax(190px, 1.3fr) 72px minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 4px 12px;
+}
+
+.card__head {
+  display: none;
+  white-space: nowrap;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--mr-rule);
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--mr-ink-muted);
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 10px 0;
+  border-top: 1px solid var(--mr-rule);
+
+  &:first-child {
+    border-top: 0;
+  }
+}
+
+.row__name {
+  font-family: var(--mr-font-display);
+  font-size: 18px;
+  line-height: 22px;
+}
+
+.row__hp {
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 18px;
+  text-align: right;
+}
+
+.row__math {
+  grid-column: 1 / -1;
+  color: var(--mr-ink-muted);
+}
+
+.row__word {
+  display: inline-flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: 6px;
+  justify-self: start;
+  box-sizing: border-box;
+  min-height: 28px;
+  padding: 0 10px 0 8px;
+  border: 1px solid var(--mr-ink);
+  border-radius: var(--mr-radius-pill);
+  font-size: 14px;
+  font-weight: 700;
+
+  .mat-icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.row__word--off {
+  border-color: var(--mr-control-line);
+  color: var(--mr-ink-muted);
+}
+
+.card__note {
+  padding-top: 8px;
+  border-top: 1px solid var(--mr-rule);
+  color: var(--mr-ink-muted);
+}
+
+.card__foot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--mr-rule);
+}
+
+.change {
+  min-height: 44px;
+  margin-inline-start: -4px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--mr-accent-text);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+// The table needs about 680 px for the math and the pill on one line each;
+// narrower cards stay stacked.
+@container (min-width: 700px) {
+  .card__head {
+    display: grid;
+  }
+
+  .row {
+    grid-template-columns: minmax(120px, 1.3fr) 72px minmax(max-content, 1fr) max-content;
+  }
+
+  .row__hp {
+    text-align: left;
+  }
+
+  .row__math,
+  .row__word {
+    grid-column: auto;
+  }
+
+  .row__math,
+  .row__word {
+    white-space: nowrap;
+  }
+}
+
+.card__nb {
+  white-space: nowrap;
+}

@@ -5669,7 +5669,8 @@ type SpellEffectResult struct {
 	PoolLeft  *int32 `protobuf:"varint,4,opt,name=pool_left,json=poolLeft,proto3,oneof" json:"pool_left,omitempty"`
 	PoolOrder *int32 `protobuf:"varint,5,opt,name=pool_order,json=poolOrder,proto3,oneof" json:"pool_order,omitempty"`
 	// A heal: how many hit points the target regained, up to its maximum. Only the
-	// master, the caster's player and the target's own player.
+	// master and the target's own player: on an NPC the amount would tell the
+	// caster how many hit points it lacked.
 	Healed        *int32 `protobuf:"varint,6,opt,name=healed,proto3,oneof" json:"healed,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

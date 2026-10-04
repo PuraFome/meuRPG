@@ -1790,7 +1790,8 @@ message SpellEffectResult {
   optional int32 pool_left = 4;
   optional int32 pool_order = 5;
   // A heal: how many hit points the target regained, up to its maximum. Only the
-  // master, the caster's player and the target's own player.
+  // master and the target's own player: on an NPC the amount would tell the
+  // caster how many hit points it lacked.
   optional int32 healed = 6;
 }
 

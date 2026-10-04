@@ -7,9 +7,12 @@ import {
   PendingDamageStatus,
   SaveOutcome,
   SpellCastSchema,
+  SpellEffectKind,
+  SpellEffectOutcome,
+  SpellEffectReason,
   SpellTargetsSchema,
 } from '../../../gen/meurpg/play/v1/combat_pb';
-import { SlotChoiceSchema } from '../../../gen/meurpg/rules/v1/rules_pb';
+import { SlotChoiceSchema, SpellHitPointEffectKind } from '../../../gen/meurpg/rules/v1/rules_pb';
 import {
   castRows,
   castTargetRows,
@@ -18,6 +21,7 @@ import {
   dartTargets,
   dealOne,
   defaultSlot,
+  effectSentence,
   freeText,
   lastSlotWarning,
   rollGroups,
@@ -123,7 +127,13 @@ describe('Magic Missile\'s darts', () => {
 describe('the result of a cast', () => {
   it('reads what the spell is by what it asks for', () => {
     expect(spellKind('spell:magic-missile', null)).toBe('darts');
-    expect(spellKind('spell:sleep', null)).toBe('plain');
+    expect(spellKind('spell:x', null)).toBe('plain');
+    // The spells that read hit points say so in their own details: Sono rolls a pool, Palavra de Poder only names who it touches.
+    const fx = (kind: SpellHitPointEffectKind) => ({ hitPointEffect: { kind } }) as never;
+    expect(spellKind('spell:sleep', fx(SpellHitPointEffectKind.POOL))).toBe('pool');
+    expect(spellKind('spell:power-word-stun', fx(SpellHitPointEffectKind.THRESHOLD))).toBe('hp');
+    expect(spellKind('spell:spare-the-dying', fx(SpellHitPointEffectKind.ZERO_HP))).toBe('hp');
+    expect(spellKind('spell:heal', fx(SpellHitPointEffectKind.FLAT_HEAL))).toBe('hp');
     expect(spellKind('spell:x', { attackType: 3 } as never)).toBe('attack');
     expect(spellKind('spell:x', { attackType: 1, save: { ability: 2 }, healBySlotLevel: {} } as never)).toBe('save');
     expect(spellKind('spell:x', { attackType: 1, healBySlotLevel: { 1: '1d8 + MOD' } } as never)).toBe('heal');
@@ -156,5 +166,87 @@ describe('the result of a cast', () => {
     const p = (id: string, castId: string) => ({ id, castId, status: PendingDamageStatus.AWAITING_ROLL }) as PendingDamage;
     expect(rollGroups([p('a', 'c1'), p('b', 'c1'), p('c', ''), p('d', '')]).map((g) => g.map((x) => x.id))).toEqual([['a', 'b'], ['c'], ['d']]);
     expect(rollGroups([{ id: 'x', castId: '', status: PendingDamageStatus.APPLIED } as PendingDamage])).toEqual([]);
+  });
+});
+
+describe('what a spell that reads hit points did (E8-03)', () => {
+  const labels = new Map([
+    ['g1', { label: 'Goblin 1', state: CombatantState.UNHURT }],
+    ['cap', { label: 'Capitão Goblin', state: CombatantState.UNHURT }],
+    ['b', { label: 'Brisa', state: CombatantState.DOWN }],
+  ]);
+  const npcs = new Set(['g1', 'cap']);
+  const isNpc = (id: string) => npcs.has(id);
+  const sleep = create(SpellCastSchema, {
+    spellKey: 'spell:sleep',
+    effectKind: SpellEffectKind.POOL,
+    effectConditionKey: 'condition:unconscious',
+    targets: [
+      { combatantId: 'g1', effect: { outcome: SpellEffectOutcome.AFFECTED } },
+      { combatantId: 'cap', effect: { outcome: SpellEffectOutcome.NOT_AFFECTED } },
+    ],
+  });
+
+  it("tells a player who fell asleep and who was not affected, in words and an icon", () => {
+    const rows = castRows(sleep, new Map(), labels);
+    expect(rows.map((r) => [r.label, r.word, r.icon])).toEqual([
+      ['Goblin 1', 'Adormeceu', 'bedtime'],
+      ['Capitão Goblin', 'Não foi afetado', 'block'],
+    ]);
+    expect(effectSentence(sleep, labels, isNpc)).toBe('O Goblin 1 adormeceu. O Capitão Goblin não foi afetado.');
+  });
+
+  it('shows a player no enemy hit points, no order of the pool and no reason', () => {
+    // What the server sends a player: only the outcome (the proto's comments say who gets what).
+    const rows = castRows(sleep, new Map(), labels);
+    const everything = JSON.stringify(rows) + effectSentence(sleep, labels, isNpc);
+    expect(everything).not.toMatch(/PV|restam|restantes|\d{2,}/);
+  });
+
+  it("names a player's character without an article, and feminine words agree", () => {
+    const spare = create(SpellCastSchema, {
+      spellKey: 'spell:spare-the-dying',
+      effectKind: SpellEffectKind.ZERO_HP,
+      targets: [{ combatantId: 'b', effect: { outcome: SpellEffectOutcome.AFFECTED } }],
+    });
+    expect(effectSentence(spare, labels, isNpc)).toBe('Brisa ficou estável.');
+    const missed = create(SpellCastSchema, {
+      spellKey: 'spell:spare-the-dying',
+      effectKind: SpellEffectKind.ZERO_HP,
+      targets: [{ combatantId: 'b', effect: { outcome: SpellEffectOutcome.NOT_AFFECTED, reason: SpellEffectReason.NOT_AT_ZERO } }],
+    });
+    expect(effectSentence(missed, labels, isNpc)).toBe('Brisa não foi afetada.');
+  });
+
+  it('writes the heal as an amount only when the server sent it, never on an NPC for the caster', () => {
+    const heal = (healed?: number) =>
+      create(SpellCastSchema, {
+        spellKey: 'spell:heal',
+        effectKind: SpellEffectKind.FLAT_HEAL,
+        targets: [{ combatantId: 'b', effect: { outcome: SpellEffectOutcome.AFFECTED, healed } }],
+      });
+    expect(castRows(heal(70), new Map(), labels)[0].lines).toEqual(['70 PV recuperados']);
+    expect(castRows(heal(), new Map(), labels)[0]).toMatchObject({ word: 'Foi curada', lines: [] });
+  });
+
+  it('a threshold that kills says "Morreu"; one with a condition says which', () => {
+    const kill = create(SpellCastSchema, {
+      effectKind: SpellEffectKind.THRESHOLD,
+      targets: [{ combatantId: 'cap', effect: { outcome: SpellEffectOutcome.AFFECTED } }],
+    });
+    expect(castRows(kill, new Map(), labels)[0].word).toBe('Morreu');
+    const stun = create(SpellCastSchema, {
+      effectKind: SpellEffectKind.THRESHOLD,
+      effectConditionKey: 'condition:stunned',
+      targets: [{ combatantId: 'cap', effect: { outcome: SpellEffectOutcome.AFFECTED } }],
+    });
+    expect(castRows(stun, new Map(), labels)[0].word).toBe('Ficou atordoado');
+    expect(effectSentence(stun, labels, isNpc)).toBe('O Capitão Goblin ficou atordoado.');
+  });
+
+  it('is empty for a spell that does not read hit points', () => {
+    const missile = create(SpellCastSchema, { targets: [{ combatantId: 'g1', darts: 2 }] });
+    expect(effectSentence(missile, labels, isNpc)).toBe('');
+    expect(castRows(missile, new Map(), labels)[0].icon).toBeUndefined();
   });
 });

@@ -71,6 +71,7 @@
           <span class="tile__name">Movimento</span>
           <span class="tile__meters">{{ m.left }} <small>de {{ m.total }}</small></span>
           <span class="bar" aria-hidden="true"><span class="bar__fill" [style.width.%]="m.percent"></span></span>
+          <span class="tile__word">{{ m.free }}</span>
           @if (m.used) {
             <span class="tile__word">{{ m.used }} já usados</span>
           }

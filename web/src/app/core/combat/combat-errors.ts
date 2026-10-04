@@ -8,7 +8,8 @@ import {
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { describeConnectError } from '../connect/connect-errors';
 import { Recharge } from '../../../gen/meurpg/rules/v1/rules_pb';
-import { circleLabel, formatMeters, feetToMeters } from './combat-grid';
+import { circleLabel } from './combat-grid';
+import { metersText } from '../units';
 
 /** The typed detail of a `failed_precondition` from `CombatService`, or
  * `null` (another code, or another detail). Never read from the message. */
@@ -70,7 +71,7 @@ export function blockedMessage(blocked: EncounterBlocked): string {
     case EncounterBlockedReason.NOT_PLACED:
       return 'Esse combatente ainda não está no mapa.';
     case EncounterBlockedReason.TOO_FAR:
-      return `Longe demais: faltam ${formatMeters(feetToMeters(blocked.missingFt))}`;
+      return `Longe demais: faltam ${metersText(blocked.missingFt)}`;
     case EncounterBlockedReason.SQUARE_OCCUPIED:
       return 'Ocupado: escolha outro quadrado.';
     case EncounterBlockedReason.PLAYER_IN_COMBAT:
@@ -82,7 +83,7 @@ export function blockedMessage(blocked: EncounterBlocked): string {
     case EncounterBlockedReason.ATTACKS_USED:
       return 'Os ataques desta ação já foram usados.';
     case EncounterBlockedReason.TARGET_OUT_OF_REACH:
-      return `Longe demais: faltam ${formatMeters(feetToMeters(blocked.missingFt))} para chegar ao alvo.`;
+      return `Longe demais: faltam ${metersText(blocked.missingFt)} para chegar ao alvo.`;
     case EncounterBlockedReason.TARGET_DEFEATED:
       return 'Esse alvo já foi derrotado. Escolha outro.';
     case EncounterBlockedReason.PENDING_DAMAGE:

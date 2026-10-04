@@ -223,6 +223,10 @@ As telas do combate (MR-013, desenhos E6-01 a E6-16; Etapa 6, fatia 6.5a). Os do
 | "Aplicar outro valor" (`pending-damages`) | E6-31. Uma ação de texto sob o par "Aplicar 5 de dano" / "Não aplicar"; troca o par por um campo numérico (0 a 9.999, já com o valor do dado), "Aplicar N de dano" e "Voltar" embaixo. O campo recebe o foco com o número selecionado, e "Voltar" devolve o foco a "Aplicar outro valor". Depois de aplicar, o aviso `warning-surface` lembra o teste de Constituição quando o alvo concentra. |
 | Fim do combate (`combat-summary`) | Moldura `success-ink`: "Combate encerrado", "Voltar à sessão", rodadas, combatentes, derrotados e jogadores em pé; "Derrotados" (com o XP de cada um, só para o mestre) e, para o mestre, "O grupo agora" com a barra de PV e o que ficou de espaços. Em campanha por inimigos o mestre também vê "Experiência do combate" (ver [Experiência](#experiência)); enquanto o XP não foi dado, "Voltar à sessão" é contornado e o cheio é o botão do XP |
 
+**Distância sempre com quadrados (MR-013, E8-01).** Toda distância que a tela escreve vem de `core/units.ts`, e o deslocamento sai em metros e em quadrados, "7,5 m · 5 quadrados" (1 quadrado = 1,5 m = 5 pés; na ficha, em pés, com "(25 pés)" no fim). O quadro Movimento diz "7,5 m" e "5 quadrados livres"; um alcance ou a distância até um alvo ficam em metros (`metersText`). Nunca se escreve "m" à mão: o número e a unidade andam juntos (espaço sem quebra) e o "·" nunca começa uma linha.
+
+**Detalhes da magia (`shared/spell-details`).** O "?" de 44 px (`spell-help`) e a folha de detalhes (`SpellDetails`) são uma peça compartilhada, do editor da ficha e do combate: `openSpellDetails` abre uma folha no celular e um diálogo de 560 px do tablet para cima; por cima de outra folha (a de conjurar), no celular, é um diálogo desenhado como folha, para a de baixo continuar aberta. O título e "Fechar" ficam à vista e só o texto rola. O texto do SRD segue em inglês.
+
 ### Experiência
 
 Etapa 7, MR-016 (desenhos E7-06 a E7-11). As peças comuns ficam em `web/src/app/shared/xp`; a divisão e os textos, em `core/progression`.

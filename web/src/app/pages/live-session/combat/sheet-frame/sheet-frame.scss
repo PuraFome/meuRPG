@@ -47,13 +47,24 @@
   font-size: 26px;
   line-height: 30px;
   overflow-wrap: anywhere;
+
+  @media (max-width: 359.98px) {
+    font-size: 23px;
+    line-height: 27px;
+  }
 }
 
 .frame__sub {
-  margin: 2px 0 0;
+  margin: -8px 0 0;
   font-size: 14px;
   line-height: 19px;
   color: var(--mr-ink-muted);
+}
+
+// An icon button projected before the close one: the title's row keeps both at
+// the top right, 44 px each, like the artboard's "?" and X.
+.frame__head ::ng-deep [head-action] {
+  margin-top: -6px;
 }
 
 .frame__close {
