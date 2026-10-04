@@ -11,10 +11,14 @@
     ],
     "feature:wild-shape-cr-1-4-or-below-no-flying-or-swim-speed": [
       {"type": "grant_action", "economy": "action"},
-      {"type": "resource", "resource": "wild_shape", "max": "2", "recharge": "short_rest"}
+      {"type": "resource", "resource": "wild_shape", "max": "2", "recharge": "short_rest"},
+      {"type": "wild_shape", "max_cr": "1/4", "no_fly": true, "no_swim": true}
     ],
     "feature:wild-shape-cr-1-2-or-below-no-flying-speed": [
-      {"type": "note"}
+      {"type": "wild_shape", "max_cr": "1/2", "no_fly": true}
+    ],
+    "feature:wild-shape-cr-1-or-below": [
+      {"type": "wild_shape", "max_cr": "1"}
     ],
     "feature:bonus-cantrip": [
       {"type": "choice", "choice": "cantrip", "count": 1, "from": ["class:druid"]}

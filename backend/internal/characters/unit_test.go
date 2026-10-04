@@ -127,6 +127,8 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["ListLevelUps"] = c.ListLevelUps(ctx, connect.NewRequest(&charactersv1.ListLevelUpsRequest{CampaignId: id}))
 	_, calls["ListContent"] = content.ListContent(ctx, connect.NewRequest(&rulesv1.ListContentRequest{CampaignId: id}))
 	_, calls["GetSpellDetails"] = content.GetSpellDetails(ctx, connect.NewRequest(&rulesv1.GetSpellDetailsRequest{CampaignId: id, SpellKey: "spell:fire-bolt"}))
+	_, calls["ListCreatures"] = content.ListCreatures(ctx, connect.NewRequest(&rulesv1.ListCreaturesRequest{CampaignId: id}))
+	_, calls["GetCreature"] = content.GetCreature(ctx, connect.NewRequest(&rulesv1.GetCreatureRequest{CampaignId: id, Key: "monster:wolf"}))
 
 	methods := charactersv1.File_meurpg_characters_v1_characters_proto.Services().ByName("CharacterService").Methods().Len() +
 		rulesv1.File_meurpg_rules_v1_rules_proto.Services().ByName("ContentService").Methods().Len()
@@ -164,8 +166,8 @@ func TestReadsWithIDsArePostOnly(t *testing.T) {
 			}
 		}
 	}
-	if len(reads) != 8 {
-		t.Errorf("found %d reads, want 8 (GetCharacter, ListCharacters, GetMasterNotes, GetLevelUpOptions, PreviewLevelUp, ListLevelUps, ListContent, GetSpellDetails)", len(reads))
+	if len(reads) != 10 {
+		t.Errorf("found %d reads, want 10 (GetCharacter, ListCharacters, GetMasterNotes, GetLevelUpOptions, PreviewLevelUp, ListLevelUps, ListContent, GetSpellDetails, ListCreatures, GetCreature)", len(reads))
 	}
 	for procedure, method := range reads {
 		opts, _ := method.Options().(*descriptorpb.MethodOptions)

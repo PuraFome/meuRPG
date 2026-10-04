@@ -196,6 +196,18 @@ func TestAuthorizationMatrix(t *testing.T) {
 			return err
 		}, [6]connect.Code{allowed, allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated, allowed}},
 
+		// The creatures are public rules, but only for an active member: the
+		// pending member gets not_found (RN-15).
+		{"ListCreatures", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.content.ListCreatures(ctx, connect.NewRequest(&rulesv1.ListCreaturesRequest{CampaignId: campaign, Query: "lobo"}))
+			return err
+		}, [6]connect.Code{allowed, allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+
+		{"GetCreature", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.content.GetCreature(ctx, connect.NewRequest(&rulesv1.GetCreatureRequest{CampaignId: campaign, Key: "monster:wolf"}))
+			return err
+		}, [6]connect.Code{allowed, allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+
 		// A game session starts: the sheet locks, and the story permission
 		// the master gave above ends (RN-01).
 		{

@@ -683,7 +683,7 @@ Fatia 9.2 da Etapa 9, só as contas em Go (a ligação com o servidor vem nas fa
 
 ### MR-037: Criaturas do personagem
 
-**Como** jogador, **quero** controlar uma criatura minha (a forma selvagem do druida, os mortos-vivos de Animar Mortos, um familiar), **para** jogá-la no combate com a ficha dela.
+**Como** jogador, **quero** controlar uma criatura minha (a forma selvagem do druida, os mortos-vivos de Animar os Mortos, um familiar), **para** jogá-la no combate com a ficha dela.
 
 - Prioridade: MVP (Etapa 9)
 - Regras: RN-02, RN-20
@@ -695,10 +695,14 @@ Fatia 9.2 da Etapa 9, só as contas em Go (a ligação com o servidor vem nas fa
 - **Dado** uma criatura do personagem, **quando** ela sofre dano, **então** o PV dela é separado do PV do personagem, e o mestre pode corrigir (RN-02).
 
 #### Relacionadas
-- Precisa das criaturas do SRD importadas para o módulo `rules` (5e-database, como o resto do SRD).
+- As criaturas do SRD já estão no módulo `rules` (5e-database, como o resto do SRD): ver o "Implementado" abaixo.
+
+#### Implementado
+- **Fatia 9.1 (as regras, só o servidor puro, 04/10/2026):** as 334 criaturas do SRD 5.1 importadas (`srd51/data/monsters.json`, nomes em português `monster:<índice>`), `MonsterDerived` (a ficha da criatura para o combate, com os outros deslocamentos), o efeito `summon` de Encontrar Familiar (com o Pacto da Corrente), Animar os Mortos e Conjurar Animais, e a Forma Selvagem do druida (`wild_shape`, níveis 2, 4 e 8, e a ficha combinada pelo SRD). `ContentService.ListCreatures` e `GetCreature` servem a lista e a ficha. Encontrar Montaria fica fora (pergunta 74). Testes: `TestSnapshot`, `TestNamesPT`, `TestReferences`, `TestMonsterDerived`, `TestListCreatures`, `TestSummonOptions`, `TestCheckSummon`, `TestSummonLoaderRefuses`, `TestWildShapeForms`, `TestWildShapeDerived` (`backend/internal/rules`), `TestListAndGetCreatures` e `TestAuthorizationMatrix` (`backend/internal/characters`). Ver [Arquitetura](../arquitetura.md#criaturas-convocações-e-forma-selvagem).
+- **Ainda a fazer** (fatias 9.9 e 9.10, e as telas): guardar a criatura do personagem e a forma na sessão, o combatente `creature` com a vez própria, o dano que sobra voltar ao personagem, "Dar uma criatura" do mestre e o painel "Criaturas" da ficha. Os critérios de aceite acima só valem quando essas fatias terminarem.
 
 #### Dúvidas
-- Decidido pelo Vinicius, respondendo pelo Samuel, em 04/10/2026 (pergunta 74): entram a Forma Selvagem (o dano que sobra quando a fera cai a 0 PV passa para o druida, como no SRD), Convocar Familiar (e o Pacto da Corrente do bruxo), Animar Mortos e Conjurar Animais, e o mestre pode dar qualquer criatura do SRD a um personagem; Convocar Montaria fica para depois do MVP (pede as regras de combate montado). As criaturas invocadas juntas rolam uma iniciativa só e agem juntas (o turno conjunto). **Ainda a fazer**, na Etapa 9.
+- Decidido pelo Vinicius, respondendo pelo Samuel, em 04/10/2026 (pergunta 74): entram a Forma Selvagem (o dano que sobra quando a fera cai a 0 PV passa para o druida, como no SRD), Encontrar Familiar (e o Pacto da Corrente do bruxo), Animar os Mortos e Conjurar Animais, e o mestre pode dar qualquer criatura do SRD a um personagem; Encontrar Montaria fica para depois do MVP (pede as regras de combate montado). As criaturas invocadas juntas rolam uma iniciativa só e agem juntas (o turno conjunto). As regras estão feitas (fatia 9.1, acima); a criatura no jogo é **ainda a fazer**, na Etapa 9.
 
 ### MR-038: Quebra-cabeças
 

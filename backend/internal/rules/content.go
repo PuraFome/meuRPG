@@ -34,6 +34,7 @@ type content struct {
 	proficiencies map[string]*srd51.Proficiency
 	equipment     map[string]*srd51.Equipment
 	spells        map[string]*srd51.Spell
+	monsters      map[string]*srd51.Monster
 	languages     map[string]*srd51.Language
 	named         map[string]*srd51.Named
 
@@ -47,6 +48,12 @@ type content struct {
 	// spellEffects are the spells that read hit points, by spell key
 	// (effects/spells.json).
 	spellEffects map[string]spellEffectDef
+	// summons are the spells that summon a creature (the "summon" kind of
+	// effects/spells.json), by spell key.
+	summons map[string]*summonDef
+	// monsterEntries are the creatures as the lists show them, sorted by
+	// Portuguese name.
+	monsterEntries []CreatureEntry
 	// traps are the trap presets and the SRD's severity tables
 	// (effects/traps.json), and lights the light presets (effects/lights.json).
 	traps  traps
@@ -114,6 +121,7 @@ func load(fsys fs.FS) (*content, error) {
 		proficiencies:  map[string]*srd51.Proficiency{},
 		equipment:      map[string]*srd51.Equipment{},
 		spells:         map[string]*srd51.Spell{},
+		monsters:       map[string]*srd51.Monster{},
 		languages:      map[string]*srd51.Language{},
 		named:          map[string]*srd51.Named{},
 		classLevels:    map[string][]*srd51.Level{},
@@ -131,6 +139,9 @@ func load(fsys fs.FS) (*content, error) {
 		return nil, fmt.Errorf("data/manifest.json has no snapshot_version")
 	}
 	if err := c.loadData(fsys); err != nil {
+		return nil, err
+	}
+	if err := c.checkMonsters(); err != nil {
 		return nil, err
 	}
 	if err := c.indexLevels(fsys); err != nil {
@@ -190,6 +201,7 @@ func load(fsys fs.FS) (*content, error) {
 		return nil, err
 	}
 	c.buildCatalog()
+	c.buildCreatures()
 	return c, nil
 }
 
@@ -252,6 +264,7 @@ func (c *content) loadData(fsys fs.FS) error {
 		index(fsys, "proficiencies.json", func(r *srd51.Proficiency) string { return r.Key }, c.proficiencies, c.namesEN, func(r *srd51.Proficiency) string { return r.Name }),
 		index(fsys, "equipment.json", func(r *srd51.Equipment) string { return r.Key }, c.equipment, c.namesEN, func(r *srd51.Equipment) string { return r.Name }),
 		index(fsys, "spells.json", func(r *srd51.Spell) string { return r.Key }, c.spells, c.namesEN, func(r *srd51.Spell) string { return r.Name }),
+		index(fsys, "monsters.json", func(r *srd51.Monster) string { return r.Key }, c.monsters, c.namesEN, func(r *srd51.Monster) string { return r.Name }),
 		index(fsys, "languages.json", func(r *srd51.Language) string { return r.Key }, c.languages, c.namesEN, func(r *srd51.Language) string { return r.Name }),
 	}
 	for _, name := range []string{"damage-types.json", "magic-schools.json", "weapon-properties.json", "conditions.json"} {
