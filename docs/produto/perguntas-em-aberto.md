@@ -1,6 +1,6 @@
 # Perguntas em aberto
 
-Nenhuma delas trava a Etapa 1. Todas são para o Samuel, e cada resposta vira uma regra marcada como "Decidido". Pergunta nova, a partir de agora, entra pelo documento de acompanhamento, não aqui; quando o Samuel responde (ou o Vinicius responde por ele), a resposta fica registrada nesta página.
+Nenhuma pergunta trava a Etapa 1. Cada resposta do Samuel vira uma regra marcada como "Decidido". Pergunta nova, a partir de agora, entra pelo documento de acompanhamento, não aqui; quando o Samuel responde (ou o Vinicius responde por ele), a resposta fica registrada nesta página.
 
 ## Respondidas em 29/09/2026
 
@@ -69,11 +69,39 @@ Trazidas pelo Vinicius. As perguntas 33 a 42 o Samuel aceitou como propusemos. O
 - **Pergunta 41: como rolar os atributos.** O app oferece rolar 4d6 descartando o menor, seis vezes, com o jogador distribuindo os valores, e também o conjunto padrão (15, 14, 13, 12, 10, 8); quem preferir continua digitando. Decidido e implementado (02/10/2026, Etapa 6). Ver [MR-004](historias.md#mr-004-ficha-no-formato-do-pdf).
 - **Pergunta 42: condições e concentração.** No MVP, o app só marca e lembra (lembra o teste de concentração quando o personagem leva dano), sem aplicar os efeitos sozinho; o mestre decide. Decidido, ainda a fazer, na Etapa 6. Ver [RN-22](regras.md).
 
+## Respondidas em 03/10/2026
+
+O Samuel respondeu as perguntas 43 a 65, e o Vinicius decidiu onde cada mudança entra no roadmap. O que ele aceitou como propusemos só muda o texto dos documentos; o que muda o que existe ou o que está desenhado está marcado "ainda a fazer".
+
+- **Pergunta 43: o nome da condição "prone".** "Derrubado", para não confundir com "Caído" (o estado a 0 PV). Já implementado. Ver [RN-22](regras.md) e o [glossário](glossario.md).
+- **Pergunta 44: o XP do NPC, pelo ND ou digitado.** Os dois jeitos valem, e o mestre escolhe: o ND é opcional, e o campo de XP aceita qualquer número. Já implementado. Ver [RN-09](regras.md) e [MR-016](historias.md#mr-016-dar-xp).
+- **Pergunta 45: quem recebe o XP.** Por inimigos, o mestre decide no fim do combate como dividir (a lista de quem recebe). Já implementado. Por marcos, o mestre define antes os momentos em que dá um nível completo (os marcos planejados). Decidido, ainda a fazer, na Etapa 8 (como acabamento da Etapa 7). Ver [RN-09](regras.md) e [MR-016](historias.md#mr-016-dar-xp).
+- **Pergunta 46: a divisão que não fecha.** Arredonda para baixo. Já implementado. Ver [RN-09](regras.md).
+- **Pergunta 47: XP por ouro.** O ouro vem de tesouros e baús postos antes no mapa; quando o grupo volta à cidade, o que foi achado vira XP, 1 por PO. Digitar as PO continua até lá. Decidido, ainda a fazer, na Etapa 9. Ver [RN-09](regras.md) e [MR-041](historias.md#mr-041-tesouros-e-xp-por-ouro).
+- **Pergunta 48: subir de nível antes da tela completa.** Enquanto o personagem "Pode subir de nível" (pelo marco ou pelo XP), o jogador edita a ficha, só para acrescentar o que o próximo nível dá; o resto continua travado. Decidido, ainda a fazer, antes do MVP (Etapa 8). A tela completa de subir de nível fica depois do MVP. Ver [RN-01](regras.md), [RN-12](regras.md), [MR-040](historias.md#mr-040-subir-de-nível-pela-ficha) e [MR-017](historias.md#mr-017-subir-de-nível).
+- **Pergunta 49: o aviso de subir de nível.** O mestre e o jogador veem. Já implementado. Ver [RN-12](regras.md).
+- **Pergunta 50: quem vê o histórico de XP.** Todos da campanha. Já implementado. Ver [RN-09](regras.md) e [MR-016](historias.md#mr-016-dar-xp).
+- **Pergunta 51: o que as cenas de RP testam.** Testes de perícia, de atributo e salvaguardas; magias e habilidades depois do MVP. Já implementado. Ver [MR-015](historias.md#mr-015-ações-da-cena-de-rp).
+- **Pergunta 52: o jogador vê a CD?** O mestre escolhe, por cena, se os jogadores veem a CD e se passaram; o padrão continua escondido. Decidido, ainda a fazer, na Etapa 8 (acabamento da Etapa 7). Ver [RN-20](regras.md) e [MR-015](historias.md#mr-015-ações-da-cena-de-rp).
+- **Pergunta 53: quem abre a cena.** O mestre abre, e um ponto revelado também a abre. Já implementado. Ver [MR-015](historias.md#mr-015-ações-da-cena-de-rp).
+- **Pergunta 54: o registro das rolagens da cena.** Existe, como está. Já implementado. Ver [MR-015](historias.md#mr-015-ações-da-cena-de-rp).
+- **Pergunta 55: as tentativas.** Não é uma por abertura da cena: o mestre define o limite por ação e por jogador, e pode dar mais uma tentativa a um jogador. Decidido, ainda a fazer, na Etapa 8 (acabamento da Etapa 7). Ver [RN-20](regras.md) e [MR-015](historias.md#mr-015-ações-da-cena-de-rp).
+- **Pergunta 56: ataque conjunto.** O grupo inclui os jogadores, e os combatentes do grupo agem no mesmo turno. Decidido, ainda a fazer, na Etapa 8. Ver [MR-013](historias.md#mr-013-ordem-dos-turnos).
+- **Pergunta 57: o Escudo Arcano na lista de magias.** Fica entre as indisponíveis na vez do próprio personagem. Já implementado no servidor (fatia 8.1); a tela é da Etapa 8. Ver [MR-014](historias.md#mr-014-sua-vez).
+- **Pergunta 58: as magias que leem PV.** As seis do SRD (Sono, Borrifo de Cores, Palavra de Poder: Atordoar e Matar, Poupar os Moribundos e Cura Completa), sem Dobre pelos Mortos. Já implementado no servidor (fatia 8.1). Ver [MR-014](historias.md#mr-014-sua-vez).
+- **Pergunta 59: a quem a pista vai.** Só a quem o mestre escolher, sem ninguém marcado de antemão; os jogadores compartilham o que descobriram à mesa, em roleplay. O servidor já recebe a lista; a tela é decidida, ainda a fazer, na Etapa 8. Ver [MR-029](historias.md#mr-029-ganchos-e-pistas-da-cena).
+- **Pergunta 60: o mestre lê as anotações dos jogadores?** Nunca. Já implementado. Ver [MR-030](historias.md#mr-030-anotações-do-jogador).
+- **Pergunta 61: o que é uma cena descoberta.** A cena revelada ou aberta, para o grupo todo. Já implementado. Ver [MR-030](historias.md#mr-030-anotações-do-jogador).
+- **Pergunta 62: o retrato do NPC.** Fica na ficha do NPC, e um PNG com fundo transparente tem de funcionar, mantendo a transparência. Decidido, ainda a fazer, na Etapa 8. Ver [MR-031](historias.md#mr-031-npcs-na-cena).
+- **Pergunta 63: o que o jogador faz na cena.** A cena é toda do mestre; qualquer ponto de cena abre (já implementado). O jogador só vê os NPCs e pode tocar num para vê-lo maior, sem mais nada (ainda a fazer, Etapa 8). Ver [MR-031](historias.md#mr-031-npcs-na-cena).
+- **Pergunta 64: os destaques.** Os do combate, como estão (já implementado no servidor), mais "mais tesouro encontrado" (junto com a MR-041, Etapa 9) e "mais testes passados fora do combate" (testes de cena com CD, Etapa 8), ainda a fazer. Onde o resumo da sessão aparece fica a definir no plano da Etapa 8. Ver [MR-032](historias.md#mr-032-destaques-do-combate).
+- **Pergunta 65: imprimir o mapa.** O mestre escolhe o tamanho do quadrado e o do papel (A4, A3, A2, Carta...). Decidido, ainda a fazer, na Etapa 8. Ver [MR-033](historias.md#mr-033-imprimir-o-mapa-com-a-grade).
+
 ## Em aberto
 
-As perguntas novas ficam no documento de acompanhamento. Uma já está nas telas com o padrão que propusemos, até o Samuel responder:
+As perguntas novas ficam no documento de acompanhamento. Uma está em aberto, com o padrão que propusemos até o Samuel responder:
 
-- **Pergunta 43: o nome da condição "prone".** O padrão adotado é **"Derrubado"** (`condition:prone`), para não confundir com **"Caído"**, o estado do personagem a 0 PV. O app usa "Derrubado" na lista de condições do mestre, nas etiquetas e no registro; se o Samuel preferir outro nome, muda só o `names_pt.json`, numa revisão nova do conteúdo (hoje `fx.4`). Ver [glossário](glossario.md).
+- **Pergunta 66: o mestre veta uma subida de nível pela ficha?** O padrão proposto é que não: o mestre é avisado e vê o que mudou na lista de personagens, e corrige o que quiser na ficha (RN-02). Um veto pediria um estado novo, "esperando o mestre". Ver [MR-040](historias.md#mr-040-subir-de-nível-pela-ficha).
 
 ## Ver também
 
