@@ -199,15 +199,28 @@ jobs:
           cache: true
           cache-dependency-path: backend/go.sum
 
-      - name: Start CockroachDB (single node, insecure, CI only)
+      - name: Start CockroachDB (single node, insecure, in memory, CI only)
         # Not a service container: those cannot pass arguments to the image,
         # and CockroachDB needs `start-single-node`. Published on 127.0.0.1
-        # only.
+        # only. The store lives in memory (the data is thrown away with the
+        # runner anyway): schema changes, which the test databases are full
+        # of, take a quarter of the time they take on disk. Background work
+        # that only matters for a long-lived database (automatic statistics,
+        # merging empty ranges, keeping finished jobs) is turned off, and a
+        # dropped database gives its memory back after 10 minutes instead of
+        # the default 4 hours.
         run: |
           docker run --detach --name cockroach --publish 127.0.0.1:26257:26257 \
-            "$COCKROACH_IMAGE" start-single-node --insecure
+            "$COCKROACH_IMAGE" start-single-node --insecure \
+            --store=type=mem,size=4GiB --cache=512MiB --max-sql-memory=2GiB
           for _ in $(seq 1 60); do
             if docker exec cockroach cockroach sql --insecure --host=localhost:26257 -e 'SELECT 1' >/dev/null 2>&1; then
+              docker exec cockroach cockroach sql --insecure --host=localhost:26257 \
+                -e "SET CLUSTER SETTING sql.stats.automatic_collection.enabled = false" \
+                -e "SET CLUSTER SETTING kv.range_merge.queue.enabled = false" \
+                -e "SET CLUSTER SETTING jobs.retention_time = '15s'" \
+                -e "SET CLUSTER SETTING diagnostics.reporting.enabled = false" \
+                -e "ALTER RANGE default CONFIGURE ZONE USING gc.ttlseconds = 600"
               echo "CockroachDB is ready."
               exit 0
             fi
