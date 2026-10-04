@@ -144,7 +144,7 @@ test(
       await expect(p.getByText('Longe demais: faltam')).toBeVisible();
       await expect(p.getByRole('button', { name: 'Mover para cá' })).toHaveAttribute('aria-disabled', 'true');
       await map.click({ position: at(2, 1) });
-      await expect(p.getByRole('status').filter({ hasText: 'Mover 3 m' })).toContainText('2 quadrados para a direita e 1 quadrado para baixo. Depois restam 4,5 m.');
+      await expect(p.getByRole('status').filter({ hasText: 'Mover 3 m' })).toContainText('2 quadrados para a direita e 1 quadrado para baixo. Depois restam 4,5 m · 3 quadrados.');
       await p.getByRole('button', { name: 'Mover para cá' }).click();
       await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
       await expect.poll(async () => (await getEncounterRPC(m, campaignId)).combatants.find((c) => c.label === 'Pensantus')?.col).toBe((own.col ?? 0) + 2);
@@ -1030,6 +1030,152 @@ test('o mestre passa a vez de quem está caído com o teste por rolar; o jogador
     // ...the master can, and the turn moves on.
     enc = await combatRPC(m, 'EndTurn', { campaignId, encounterId: enc.id, expectedCombatantId: enc.currentCombatantId });
     expect(enc.combatants.find((c) => c.id === enc.currentCombatantId)?.label).not.toBe('Pensantus');
+  } finally {
+    await done();
+  }
+});
+
+// Squares everywhere, spells in the session and the spells that read hit points
+// (Etapa 8, slice 8.4, MR-013, MR-014, RN-20): the table counts in squares of
+// 1,5 m, every spell has its "?" and the server's order, and Sono tells the master
+// the whole account and a player only who fell asleep. Pensantus carries Mísseis
+// Mágicos, Sono, Escudo Arcano, Teia and Passo Nebuloso (`pensantusAttacks`), a
+// gnome with 25 ft of speed (7,5 m, 5 squares); the Goblins have 7 hit points.
+
+test('a distância sai em metros e em quadrados: o quadro Movimento, a barra do turno, o cartão do mestre e a ficha', { tag: ['@MR-013'] }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  const { m, p, table, campaignId, done } = await actingTable(browser, 'Quadrados', playerFirst);
+  try {
+    await openSessionPage(p, campaignId);
+    await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
+    // The Movimento tile: the meters, and the squares under the bar.
+    const tiles = p.getByRole('list', { name: 'O que você tem neste turno' });
+    await expect(tiles.getByText('7,5 m de 7,5 m')).toBeVisible();
+    await expect(tiles.getByText('5 quadrados livres')).toBeVisible();
+    // The turn bar: "Mover 7,5 m · 5 quadrados" in a cell of its own, inside the bar.
+    const bar = p.locator('app-turn-bar');
+    await expect(bar.getByText('Mover 7,5 m · 5 quadrados')).toBeVisible();
+    expect(await bar.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+    // The "Movimento" group says it in a sentence.
+    await expect(p.getByText('Você ainda não andou. Dá para andar até 7,5 m (5 quadrados).')).toBeVisible();
+
+    // The master's card for the captain (a gnome too): the Deslocamento in both units, and the Movimento chip.
+    await openSessionPage(m, campaignId);
+    await passTurnsTo(m, campaignId, 'Capitão Goblin');
+    const card = m.getByRole('region', { name: /Ações do Capitão Goblin|Vez do Capitão Goblin/ });
+    await expect(card.locator('.stat', { hasText: 'Deslocamento' })).toContainText('7,5 m · 5 quadrados');
+    await expect(card.locator('.chip', { hasText: 'Movimento' })).toContainText('7,5 m · 5 quadrados');
+
+    // The sheet: one line, in a box of its own, with the feet in parentheses.
+    await p.goto(`/campanhas/${campaignId}/personagens/${table.characterId}`);
+    await expect(p.getByText('7,5 m · 5 quadrados (25 pés)')).toBeVisible();
+  } finally {
+    await done();
+  }
+});
+
+test('as magias vêm na ordem do servidor, cada uma com o "?", e o Escudo na sua vez diz "Só fora da sua vez"', { tag: ['@MR-014'] }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  const { m, p, table, campaignId, done } = await actingTable(browser, 'Magias com o ponto de interrogação', playerFirst);
+  try {
+    await openSessionPage(p, campaignId);
+    const groups = p.getByRole('region', { name: 'O que você pode fazer' });
+    // What can be cast now first, then by circle and by name; Escudo Arcano, a reaction, with the ones that can't.
+    const names = groups.locator('app-action-row:has(app-spell-help) .row__name');
+    await expect(names).toHaveText(['Raio de Fogo', 'Mísseis Mágicos', 'Sono', 'Passo Nebuloso', 'Teia', 'Escudo Arcano']);
+    const shield = groups.locator('app-action-row', { hasText: 'Escudo Arcano' });
+    await expect(shield.getByText('Só fora da sua vez')).toBeVisible();
+    await expect(shield.getByRole('button', { name: 'Conjurar Escudo Arcano' })).toHaveAttribute('aria-disabled', 'true');
+    await expect(shield.getByText('Reação', { exact: true })).toBeVisible();
+
+    // The "?" opens the spell's description in the session, and "Fechar" gives the focus back to it.
+    const help = groups.getByRole('button', { name: 'Detalhes de Sono' });
+    await help.click();
+    const details = p.getByRole('dialog', { name: 'Descrição de Sono' });
+    await expect(details.getByRole('heading', { name: 'Sono' })).toBeVisible();
+    await expect(details.getByText('Tempo de conjuração')).toBeVisible();
+    await expect(details.getByText('This spell sends creatures into a magical slumber.')).toBeVisible();
+    await expect(details.getByRole('button', { name: 'Fechar' }).last()).toBeInViewport({ ratio: 1 });
+    await details.getByRole('button', { name: 'Fechar' }).last().click();
+    await expect(details).toHaveCount(0);
+    await expect(help).toBeFocused();
+
+    // With no free slot the 1st and 2nd circles say "Sem espaço", and the slot rows above are the explanation.
+    await adjustVitalsRPC(m, campaignId, table.characterId, { spellSlotsUsed: [{ level: 1, used: 4 }, { level: 2, used: 2 }] });
+    await openSessionPage(p, campaignId);
+    await expect(groups.getByText('0 livres de 4')).toBeVisible();
+    await expect(groups.getByText('0 livres de 2')).toBeVisible();
+    await expect(groups.locator('.row__why', { hasText: /^\s*block\s*Sem espaço\s*$/ })).toHaveCount(4);
+    await expect(groups.getByText(/Sem espaço de/)).toHaveCount(0);
+    // Nothing can be cast now: the order is by circle, then by name, and Escudo Arcano is among them.
+    await expect(names).toHaveText(['Raio de Fogo', 'Escudo Arcano', 'Mísseis Mágicos', 'Sono', 'Passo Nebuloso', 'Teia']);
+  } finally {
+    await done();
+  }
+});
+
+test('Sono em dois goblins e no Capitão: o mestre vê o total e os PV, o jogador só vê quem adormeceu', { tag: ['@MR-014', '@RN-20'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  const { m, p, campaignId, done } = await actingTable(browser, 'Sono', playerFirst);
+  try {
+    await openSessionPage(m, campaignId);
+    await openSessionPage(p, campaignId);
+    await p.getByRole('button', { name: 'Conjurar Sono' }).click();
+    const sheet = p.getByRole('dialog', { name: 'Conjurar Sono' });
+    await expect(sheet.getByRole('heading', { name: 'Conjurar Sono' })).toBeFocused();
+    await expect(sheet.getByText('Ação · alcance 27 m · 5d8 de pontos de vida')).toBeVisible();
+    // The caster says who is in the area, by name: no hit points on the list.
+    await expect(sheet.getByText('Quem está na área da magia')).toBeVisible();
+    await expect(sheet.getByText('O mestre confere quem está na área. Você não vê os pontos de vida dos inimigos.')).toBeVisible();
+    await expect(sheet.getByText(/\bPV\b/)).toHaveCount(0);
+    await sheet.locator('label', { hasText: 'Goblin 1' }).click();
+    await sheet.locator('label', { hasText: 'Goblin 2' }).click();
+    await sheet.locator('label', { hasText: 'Capitão Goblin' }).click();
+
+    // The "?" in the header opens the description over the sheet; "Fechar" comes back to the choices.
+    await sheet.getByRole('button', { name: 'Detalhes de Sono' }).click();
+    const details = p.getByRole('dialog', { name: 'Descrição de Sono' });
+    await expect(details.getByText('This spell sends creatures into a magical slumber.')).toBeVisible();
+    await details.getByRole('button', { name: 'Fechar' }).last().click();
+    await expect(details).toHaveCount(0);
+    await expect(sheet.getByRole('checkbox', { name: /Goblin 1/ })).toBeChecked();
+
+    // The pool is typed from the physical dice: 20 reaches both goblins (7 + 7), not the captain.
+    await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await sheet.getByLabel(/Role 5d8/).fill('41');
+    await expect(sheet.getByText('Digite um número de 5 a 40')).toBeVisible();
+    await sheet.getByLabel(/Role 5d8/).fill('20');
+    await sheet.getByRole('button', { name: 'Confirmar 20' }).click();
+
+    // The player: who fell asleep, who was not affected, the caster's own roll, and no number of an enemy's.
+    await expect(sheet.getByRole('heading', { name: 'Sono conjurado' })).toBeVisible();
+    await expect(sheet.getByText('O Goblin 1 adormeceu. O Goblin 2 adormeceu. O Capitão Goblin não foi afetado.')).toBeVisible();
+    await expect(sheet.getByText('Sua rolagem')).toBeVisible();
+    await expect(sheet.getByText('5d8 = 20 · dado físico')).toBeVisible();
+    await expect(sheet.getByText(/\bPV\b|restam|restantes/)).toHaveCount(0);
+    await sheet.getByRole('button', { name: 'Voltar à sua vez' }).click();
+    await p.getByRole('button', { name: 'Abrir o registro do combate' }).click();
+    const playerLog = p.getByRole('log', { name: 'Registro do combate' });
+    await expect(playerLog).toContainText('Pensantus conjura Sono: o Goblin 1 adormece. O Goblin 2 adormece. O Capitão Goblin não foi afetado.');
+    await expect(playerLog).not.toContainText('PV');
+
+    // The master: the pool, each creature from the lowest hit points up with the total that is left.
+    const masterLog = m.getByRole('log', { name: 'Registro do combate' });
+    await expect(masterLog).toContainText('Pensantus conjura Sono (1º círculo)');
+    const card = m.locator('app-pool-card');
+    await expect(card).toContainText('5d8 = 20');
+    await expect(card.locator('.row', { hasText: 'Goblin 1' })).toContainText('7 PV');
+    await expect(card.locator('.row', { hasText: 'Goblin 1' })).toContainText('20 − 7 = 13 restam');
+    await expect(card.locator('.row', { hasText: 'Goblin 1' })).toContainText('Adormeceu · Inconsciente');
+    await expect(card.locator('.row', { hasText: 'Goblin 2' })).toContainText('13 − 7 = 6 restam');
+    await expect(card.locator('.row', { hasText: 'Capitão Goblin' })).toContainText('é mais que 6 restantes');
+    await expect(card.locator('.row', { hasText: 'Capitão Goblin' })).toContainText('Não afetado');
+    await card.getByRole('button', { name: 'Mudar as condições do Goblin 1' }).click();
+    await expect(m.getByRole('dialog', { name: 'Condições de Goblin 1' })).toBeVisible();
+    // The sleepers carry the condition on both screens; the hit points did not change.
+    const enc = await getEncounterRPC(m, campaignId);
+    expect(enc.combatants.find((c) => c.label === 'Goblin 1')?.conditions).toContain('condition:unconscious');
+    expect(enc.combatants.find((c) => c.label === 'Capitão Goblin')?.conditions ?? []).not.toContain('condition:unconscious');
   } finally {
     await done();
   }

@@ -2609,7 +2609,8 @@ export type SpellEffectResult = Message<"meurpg.play.v1.SpellEffectResult"> & {
 
   /**
    * A heal: how many hit points the target regained, up to its maximum. Only the
-   * master, the caster's player and the target's own player.
+   * master and the target's own player: on an NPC the amount would tell the
+   * caster how many hit points it lacked.
    *
    * @generated from field: optional int32 healed = 6;
    */

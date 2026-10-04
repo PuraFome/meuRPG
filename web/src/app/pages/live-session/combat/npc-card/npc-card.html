@@ -26,9 +26,9 @@
           <span class="stat__val">{{ stats().ac }}</span>
         </div>
       }
-      <div class="stat">
+      <div class="stat stat--wide">
         <span class="stat__cap">Deslocamento</span>
-        <span class="stat__val">{{ stats().speed }}</span>
+        <span class="stat__val">{{ stats().speed.meters }}<small>&nbsp;· {{ stats().speed.squares }}</small></span>
       </div>
     </div>
 
@@ -41,6 +41,9 @@
       </li>
       <li class="chip" [class.chip--used]="subject().reactionUsed">
         Reação <span class="chip__word">{{ subject().reactionUsed ? 'Usada' : 'Disponível' }}</span>
+      </li>
+      <li class="chip" [class.chip--used]="subject().movementLeftFt <= 0">
+        Movimento <span class="chip__word">{{ stats().movement }}</span>
       </li>
     </ul>
 

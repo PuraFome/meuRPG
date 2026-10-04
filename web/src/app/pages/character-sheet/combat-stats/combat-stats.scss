@@ -2,8 +2,8 @@
   display: block;
 }
 
-// Six tracks: the top row is three boxes of two tracks (or two of three on
-// a basic sheet), the hit points take four and the hit dice two.
+// Six tracks: the top row is two boxes of three tracks, Deslocamento takes a
+// row of its own, then the hit points take four and the hit dice two.
 .stats {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -12,13 +12,20 @@
   margin: 0;
 }
 
+// The shield and Iniciativa share the first row; Deslocamento has a row of its
+// own, wide enough for "7,5 m · 5 quadrados (25 pés)" on one line.
 .shield,
 .box {
-  grid-column: span 2;
+  grid-column: span 3;
+}
 
-  .stats--basic & {
-    grid-column: span 3;
-  }
+.box--speed {
+  grid-column: 1 / -1;
+}
+
+// A basic sheet has no Iniciativa: the shield stands alone in its row.
+.stats--basic .shield {
+  grid-column: 1 / -1;
 }
 
 // Label under the number, as on the paper sheet.
@@ -106,7 +113,29 @@
   }
 }
 
+// The speed reads as a sentence, not a number: the display type for the
+// meters, the plain small type for the squares and the feet after it.
+.box--speed {
+  height: auto;
+  min-height: 72px;
+  padding: 10px 14px;
+}
+
+.box__value--speed {
+  white-space: normal;
+  text-wrap: balance;
+}
+
+.speed__rest {
+  font-family: var(--mr-font-sans);
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 22px;
+  color: var(--mr-ink-muted);
+}
+
 .box--dice {
+  grid-column: span 2;
   align-self: stretch;
   height: auto;
 }

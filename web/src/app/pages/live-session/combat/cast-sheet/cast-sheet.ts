@@ -1,5 +1,7 @@
 import { Component, ElementRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
+import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
@@ -30,6 +32,7 @@ import {
   dartsStatus,
   dealOne,
   defaultSlot,
+  effectSentence,
   freeText,
   lastSlotWarning,
   rollGroups,
@@ -39,13 +42,18 @@ import {
   targetRule,
   toggled,
 } from '../../../../core/combat/cast-flow';
-import { type AttackDie, type DamageDie, CombatClient, newKey } from '../../../../core/combat/combat-client';
+import { type AttackDie, type DamageDie, type PoolDie, CombatClient, newKey } from '../../../../core/combat/combat-client';
 import { diceName, sumRange } from '../../../../core/combat/combat-dice';
+import { poolDice, poolRollText } from '../../../../core/combat/hp-effects';
+import { article } from '../../../../core/combat/combat-log';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { circleLabel } from '../../../../core/combat/combat-grid';
 import { isPlayer } from '../../../../core/combat/combat-view';
 import { SpellCatalog } from '../../../../core/combat/spell-catalog';
+import { openSpellDetails } from '../../../../shared/spell-details/open-spell-details';
+import { spellDetailsFromGen } from '../../../../shared/spell-details/spell-details-map';
+import { SpellHelp } from '../../../../shared/spell-details/spell-help';
 import { RollPicker } from '../roll-picker/roll-picker';
 import { injectSheet } from '../sheet-host';
 import { SheetFrame } from '../sheet-frame/sheet-frame';
@@ -104,13 +112,15 @@ export interface CastSheetData {
  */
 @Component({
   selector: 'app-cast-sheet',
-  imports: [CastResult, CastSlots, CastTargets, MatButtonModule, MatIconModule, RollPicker, SheetFrame, SlotPicker],
+  imports: [CastResult, CastSlots, CastTargets, MatButtonModule, MatIconModule, RollPicker, SheetFrame, SlotPicker, SpellHelp],
   templateUrl: './cast-sheet.html',
   styleUrl: './cast-sheet.scss',
 })
 export class CastSheet {
   private readonly api = inject(CombatClient);
   private readonly catalog = inject(SpellCatalog);
+  private readonly dialog = inject(MatDialog);
+  private readonly bottomSheet = inject(MatBottomSheet);
   private readonly sheet = injectSheet<CastSheetData, boolean>();
   protected readonly data = this.sheet.data;
   protected readonly inSheet = this.sheet.inSheet;
@@ -145,6 +155,13 @@ export class CastSheet {
 
   protected readonly rows = computed(() => slotRows(this.data.level, this.data.slots, this.data.usage, this.data.pact));
   protected readonly kind = computed(() => spellKind(this.data.spellKey, this.details()));
+  /** Sono and Borrifo de Cores roll a pool of dice: the dice at this slot. */
+  protected readonly pool = computed(() => (this.kind() === 'pool' ? poolDice(this.details(), this.slotLevel()) : null));
+  /** The roll the sheet asks for before the cast: the d20 of a spell attack, or the pool when the
+   * table's dice may be typed (with the app rolling every die, "Conjurar" is enough). */
+  protected readonly usesPicker = computed(() => this.kind() === 'attack' || (this.kind() === 'pool' && this.canTypeDamage));
+  /** A spell that reads hit points says its area: who is in it is for the caster to say. */
+  protected readonly hpArea = computed(() => this.kind() === 'pool');
   protected readonly slotLevel = computed(() => this.slot()?.level ?? this.data.level);
   protected readonly rule = computed(() =>
     targetRule(this.data.targets, this.data.casterId, this.data.level, this.slotLevel()),
@@ -207,15 +224,23 @@ export class CastSheet {
     if (this.data.resume) {
       return `Role o dano de ${this.data.name}`;
     }
+    if (this.hpDone()) {
+      return `${this.data.name} conjurad${article(this.data.name) === 'a' ? 'a' : 'o'}`;
+    }
     if (this.done()) {
       return `Você conjurou ${this.data.name}`;
     }
-    return this.typing() ? 'Digite o resultado do dado' : `Conjurar ${this.data.name}`;
+    return this.typing() ? 'Digite o resultado' : `Conjurar ${this.data.name}`;
   });
+  /** "Sono conjurado", "Palavra de Poder: Atordoar conjurada": the sheet of a spell that
+   * reads hit points says what was done, then who it touched. */
+  private readonly hpDone = computed(() => this.done() && (this.kind() === 'pool' || this.kind() === 'hp'));
   protected readonly subtitle = computed(() => {
     if (this.done()) {
       const s = this.cast()?.slot;
-      return s ? circleLabel(s.level) : this.data.level === 0 ? 'Truque' : '';
+      const circle = s ? circleLabel(s.level) : this.data.level === 0 ? 'Truque' : '';
+      const n = this.cast()?.targets.length ?? 0;
+      return this.kind() === 'pool' && n > 0 ? `${circle} · ${n} ${n === 1 ? 'criatura' : 'criaturas'} na área` : circle;
     }
     if (this.typing()) {
       return `${this.data.name} · Rodada ${this.data.round}`;
@@ -235,6 +260,16 @@ export class CastSheet {
   protected readonly resultRows = computed(() => {
     const cast = this.cast() ?? this.resumedCast();
     return castRows(cast, this.pendings(), this.labels());
+  });
+  /** The live sentence of a spell that reads hit points ("O Goblin 1 adormeceu. ..."), and the caster's
+   * own roll of the pool: the server sends it only to the master and to the caster's player. */
+  protected readonly sentence = computed(() => {
+    const cast = this.cast();
+    return cast ? effectSentence(cast, this.labels(), (id) => this.npcs().has(id)) : '';
+  });
+  protected readonly poolText = computed(() => {
+    const roll = this.cast()?.poolRoll;
+    return roll ? poolRollText(roll) : '';
   });
   protected readonly groups = computed(() => rollGroups([...this.pendings().values()]));
   protected readonly owed = computed(() => this.groups().length > 0);
@@ -389,7 +424,12 @@ export class CastSheet {
     return this.doCast(die);
   }
 
-  private async doCast(die: AttackDie | null): Promise<void> {
+  /** A pool spell with the dice the table's mode allows: rolled in the app, or the typed sum. */
+  protected castPooled(die: PoolDie): Promise<void> {
+    return this.doCast(die);
+  }
+
+  private async doCast(die: AttackDie | PoolDie | null): Promise<void> {
     if (this.busy() || !this.ready()) {
       return;
     }
@@ -410,7 +450,8 @@ export class CastSheet {
         this.data.spellKey,
         this.data.level > 0 && slot ? { level: slot.level, pact: slot.pact } : null,
         targets,
-        die,
+        // A pool is always rolled by someone: the server does it when the app rolls every die.
+        die ?? (this.kind() === 'pool' ? { inApp: true } : null),
         this.castKey,
       );
       this.data.state.apply(res.encounter);
@@ -468,6 +509,26 @@ export class CastSheet {
     } finally {
       this.busy.set(false);
     }
+  }
+
+  /** The "?" in the header: the spell's description over this sheet, so the slot and the targets chosen stay. */
+  protected describe(): void {
+    const { campaignId, spellKey, name } = this.data;
+    openSpellDetails(
+      this.dialog,
+      this.bottomSheet,
+      {
+        namePt: name,
+        load: async () => {
+          const details = await this.catalog.details(campaignId, spellKey);
+          if (!details) {
+            throw new Error('spell details unavailable');
+          }
+          return spellDetailsFromGen(details);
+        },
+      },
+      true,
+    );
   }
 
   protected close(): void {

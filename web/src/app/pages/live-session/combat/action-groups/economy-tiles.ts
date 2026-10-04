@@ -2,7 +2,7 @@ import { Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import type { Combatant } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { feetToMeters, formatMeters } from '../../../../core/combat/combat-grid';
+import { metersText, squaresFree } from '../../../../core/units';
 import { tight } from '../../../../core/format/text';
 
 /**
@@ -28,6 +28,7 @@ import { tight } from '../../../../core/format/text';
         <span class="tile__name">Movimento</span>
         <span class="tile__word tile__word--num">{{ move().text }}</span>
         <span class="bar" aria-hidden="true"><span class="bar__fill" [style.width.%]="move().percent"></span></span>
+        <span class="tile__sub">{{ move().free }}</span>
       </li>
     </ul>
   `,
@@ -57,7 +58,8 @@ export class EconomyTiles {
     const c = this.own();
     const total = Math.max(1, c.speedFt * (c.dashed ? 2 : 1));
     return {
-      text: tight(`${formatMeters(feetToMeters(c.movementLeftFt))} de ${formatMeters(feetToMeters(total))}`),
+      text: tight(`${metersText(c.movementLeftFt)} de ${metersText(total)}`),
+      free: squaresFree(c.movementLeftFt),
       percent: Math.max(0, Math.min(100, (c.movementLeftFt / total) * 100)),
     };
   });

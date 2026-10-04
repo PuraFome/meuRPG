@@ -3,7 +3,6 @@ import {
   characterKindLabel,
   characterStateLabel,
   formatModifier,
-  formatSpeedFt,
   formatSpellSlots,
   lockedSheetCountLabel,
   skillProficiencyLabel,
@@ -59,17 +58,6 @@ describe('formatModifier', () => {
     // The plan's own example: a score of 18 paired with an inconsistent
     // +9 modifier must still render "+9" — the browser trusts the server.
     expect(formatModifier(9)).toBe('+9');
-  });
-});
-
-describe('formatSpeedFt', () => {
-  it('shows meters and feet, matching the plan\'s worked example exactly', () => {
-    expect(formatSpeedFt(25)).toBe('7,5 m (25 pés)');
-  });
-
-  it('drops a trailing ",0" when the meters value is a whole number', () => {
-    expect(formatSpeedFt(30)).toBe('9 m (30 pés)');
-    expect(formatSpeedFt(20)).toBe('6 m (20 pés)');
   });
 });
 

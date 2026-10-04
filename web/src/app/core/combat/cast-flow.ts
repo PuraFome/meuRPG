@@ -21,9 +21,11 @@ import {
   SpellSaveSuccess,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { rollFormula } from './combat-dice';
-import { feetToMeters, formatMeters } from './combat-grid';
+import { metersText } from '../units';
 import { joinDots, tight } from '../format/text';
 import { circleLabel } from './combat-options';
+import { article } from './combat-log';
+import { effectWords, hpSpellKind, poolDice } from './hp-effects';
 import { stateWord } from './combat-view';
 
 /**
@@ -34,11 +36,17 @@ import { stateWord } from './combat-view';
  */
 
 /** What a spell does, which decides what the sheet asks and what it shows. */
-export type SpellKind = 'attack' | 'save' | 'darts' | 'heal' | 'plain';
+export type SpellKind = 'attack' | 'save' | 'darts' | 'heal' | 'plain' | 'pool' | 'hp';
 
 export function spellKind(key: string, details: SpellDetails | null): SpellKind {
   if (key === 'spell:magic-missile') {
     return 'darts';
+  }
+  // The spells that read hit points: Sono and Borrifo de Cores roll a pool before
+  // the cast, the others only name who they touch (E8-03).
+  const hp = hpSpellKind(details);
+  if (hp) {
+    return hp === 'pool' ? 'pool' : 'hp';
   }
   if (!details) {
     return 'plain';
@@ -204,14 +212,14 @@ export function castTargetRows(targets: readonly TargetInReach[], casterId: stri
         parts.push(word);
       }
       if (t.distanceFt !== undefined) {
-        parts.push(`a ${formatMeters(feetToMeters(t.distanceFt))}`);
+        parts.push(`a ${metersText(t.distanceFt)}`);
       }
     }
     return {
       id: t.combatantId,
       label: t.combatantId === casterId ? `${t.label} (você)` : t.label,
       sub: tight(joinDots(parts)),
-      blocked: t.tooFar ? tight(reachFt ? `Longe demais: alcance de ${formatMeters(feetToMeters(reachFt))}` : 'Longe demais') : '',
+      blocked: t.tooFar ? tight(reachFt ? `Longe demais: alcance de ${metersText(reachFt)}` : 'Longe demais') : '',
     };
   });
 }
@@ -301,7 +309,7 @@ export function castSubtitle(
   const parts = [economy === ActionEconomy.BONUS_ACTION ? 'Ação bônus' : economy === ActionEconomy.REACTION ? 'Reação' : 'Ação'];
   const range = details?.range;
   if (range?.kind === SpellRangeKind.RANGED && range.distanceFt > 0) {
-    parts.push(`alcance ${formatMeters(feetToMeters(range.distanceFt))}`);
+    parts.push(`alcance ${metersText(range.distanceFt)}`);
   } else if (range?.kind === SpellRangeKind.TOUCH) {
     parts.push('toque');
   } else if (range?.kind === SpellRangeKind.SELF) {
@@ -325,6 +333,11 @@ export function castSubtitle(
     case 'heal':
       parts.push('cura');
       break;
+    case 'pool': {
+      const pool = poolDice(details, slotLevel);
+      parts.push(pool ? `${pool.count}d${pool.sides} de pontos de vida` : 'pontos de vida');
+      break;
+    }
     default:
   }
   return tight(joinDots(parts));
@@ -341,6 +354,8 @@ export interface CastRow {
   /** "Acertou", "Errou", "Crítico", "Falhou", "Resistiu: metade". */
   readonly word: string;
   readonly tone: 'good' | 'bad' | 'plain';
+  /** The pill's icon when it is not the check or the cross: the moon of "Adormeceu". */
+  readonly icon?: string;
   /** The formulas: the d20, "Dardo 1: 1d4 (3) + 1 = 4", the damage. */
   readonly lines: readonly string[];
   /** The big line: "7 de energia", "8 de cura", "Esperando o mestre aplicar o dano". */
@@ -371,18 +386,54 @@ export function castRows(
   pendings: ReadonlyMap<string, PendingDamage>,
   labels: ReadonlyMap<string, { label: string; state: CombatantState }>,
 ): CastRow[] {
-  return cast.targets.map((t) => castRow(t, pendings.get(t.pendingDamageId), labels.get(t.combatantId)));
+  return cast.targets.map((t) => castRow(t, pendings.get(t.pendingDamageId), labels.get(t.combatantId), cast));
+}
+
+/** What a spell that reads hit points did, as one live sentence for the whole
+ * cast, in the past: "O Goblin 1 adormeceu. O Capitão Goblin não foi afetado."
+ * A player's character has no article ("Brisa ficou estável"). Empty for any
+ * other spell. */
+export function effectSentence(
+  cast: SpellCast,
+  labels: ReadonlyMap<string, { label: string; state: CombatantState }>,
+  isNpc: (id: string) => boolean,
+): string {
+  const parts: string[] = [];
+  for (const t of cast.targets) {
+    if (!t.effect) {
+      continue;
+    }
+    const label = labels.get(t.combatantId)?.label ?? 'Alvo';
+    const w = effectWords(cast.effectKind, cast.effectConditionKey, t.effect.outcome, label);
+    const who = isNpc(t.combatantId) ? `${article(label)} ${label}` : label;
+    const sentence = `${who} ${w.past.charAt(0).toLowerCase()}${w.past.slice(1)}.`;
+    parts.push(`${sentence.charAt(0).toUpperCase()}${sentence.slice(1)}`);
+  }
+  return parts.join(' ');
 }
 
 function castRow(
   t: SpellTargetResult,
   p: PendingDamage | undefined,
   who: { label: string; state: CombatantState } | undefined,
+  cast: SpellCast,
 ): CastRow {
   const label = who?.label ?? 'Alvo';
   const lines: string[] = [];
   let word = '';
+  let icon: string | undefined;
   let tone: CastRow['tone'] = 'plain';
+  if (t.effect) {
+    // A spell that reads hit points: the outcome in a word and an icon, never a number
+    // of the target's (a player has none), and the heal's amount only when it is sent.
+    const w = effectWords(cast.effectKind, cast.effectConditionKey, t.effect.outcome, label);
+    word = w.past;
+    icon = w.icon;
+    tone = w.affected ? 'good' : 'plain';
+    if (t.effect.healed !== undefined) {
+      lines.push(`${t.effect.healed} PV recuperados`);
+    }
+  }
   if (t.attackRoll) {
     lines.push(rollFormula(t.attackRoll));
   }
@@ -424,6 +475,7 @@ function castRow(
     state: who ? stateWord(who.state, who.label) : '',
     word,
     tone,
+    icon,
     lines,
     summary,
     owed,

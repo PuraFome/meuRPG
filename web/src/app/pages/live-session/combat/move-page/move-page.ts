@@ -3,17 +3,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import type { Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import {
-  type Square,
-  SQUARE_FT,
-  canReach,
-  distance,
-  feetToMeters,
-  formatMeters,
-  moveDetail,
-  reachSquares,
-  squaresToMeters,
-} from '../../../../core/combat/combat-grid';
+import { type Square, canReach, distance, moveDetail } from '../../../../core/combat/combat-grid';
+import { SQUARE_FT, distanceText, metersText, reachSquares } from '../../../../core/units';
 import { ownCombatant, roundLabel } from '../../../../core/combat/combat-view';
 import { CombatMap, type CombatMapImage } from '../../../../shared/combat-map/combat-map';
 import { PHONE_QUERY, mediaQuery } from '../../../../shared/map-view/media-query';
@@ -70,10 +61,10 @@ export class MovePage {
   });
   protected readonly squares = computed(() => reachSquares(this.own()?.movementLeftFt ?? 0));
   protected readonly reach = computed(() => ({ origin: this.origin(), squares: this.squares() }));
-  protected readonly leftMeters = computed(() => formatMeters(feetToMeters(this.own()?.movementLeftFt ?? 0)));
+  protected readonly leftText = computed(() => distanceText(this.own()?.movementLeftFt ?? 0));
   protected readonly totalMeters = computed(() => {
     const own = this.own();
-    return formatMeters(feetToMeters((own?.speedFt ?? 0) * (own?.dashed ? 2 : 1)));
+    return metersText((own?.speedFt ?? 0) * (own?.dashed ? 2 : 1));
   });
   protected readonly occupied = computed<Square[]>(() =>
     this.encounter()
@@ -95,14 +86,14 @@ export class MovePage {
       return { ok: false as const, title: 'Ocupado', detail: 'Há alguém nesse quadrado. Escolha um quadrado destacado.' };
     }
     if (canReach(this.origin(), to, this.squares(), e.gridColumns, e.gridRows, this.occupied())) {
-      return { ok: true as const, detail: moveDetail(this.origin(), to, this.own()?.movementLeftFt ?? 0), cost: formatMeters(squaresToMeters(distance(this.origin(), to))) };
+      return { ok: true as const, detail: moveDetail(this.origin(), to, this.own()?.movementLeftFt ?? 0), cost: distanceText(distance(this.origin(), to) * SQUARE_FT) };
     }
     const away = distance(this.origin(), to) * SQUARE_FT;
     const missing = away - (this.own()?.movementLeftFt ?? 0);
     return {
       ok: false as const,
-      title: `Longe demais: faltam ${formatMeters(feetToMeters(missing))}`,
-      detail: `Esse quadrado fica a ${formatMeters(feetToMeters(away))} e você tem ${this.leftMeters()}. Escolha um quadrado destacado.`,
+      title: `Longe demais: faltam ${distanceText(missing)}`,
+      detail: `Esse quadrado fica a ${distanceText(away)} e você tem ${this.leftText()}. Escolha um quadrado destacado.`,
     };
   });
   protected readonly frame = computed(() => {

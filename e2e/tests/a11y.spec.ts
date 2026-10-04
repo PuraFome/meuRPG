@@ -1408,3 +1408,74 @@ test('as cenas de RP passam no axe e nas conferências de layout no tema claro, 
   test.setTimeout(240_000);
   await scanSceneScreens(browser, 'light', 320);
 });
+
+/** The spells in the session (Etapa 8, slice 8.4; E8-02, E8-03): the list with its "?" and slot
+ * rows, the details sheet, the cast sheet with its "?", the details over it, the result a player
+ * reads, and the master's card under Sono in the log. */
+async function scanCombatDetailsScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  const phone = width < 768;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade magias ${Date.now()}`, true, true);
+    campaignId = table.campaignId;
+    await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    await openSessionPage(m, campaignId);
+    await openSessionPage(p, campaignId);
+
+    await expect(p.getByRole('button', { name: 'Detalhes de Sono' })).toBeVisible();
+    await expectScreenPasses(p, `Magias com o "?" e os espaços ${where}`);
+    await p.getByRole('button', { name: 'Detalhes de Sono' }).click();
+    const details = p.getByRole('dialog', { name: phone ? 'Descrição de Sono' : 'Sono', exact: true });
+    await expect(details.getByText('This spell sends creatures into a magical slumber.')).toBeVisible();
+    await expectScreenPasses(p, `Detalhes de Sono na sessão ${where}`);
+    await details.getByRole('button', { name: 'Fechar' }).last().click();
+
+    await p.getByRole('button', { name: 'Conjurar Sono' }).click();
+    const sheet = p.getByRole('dialog', { name: 'Conjurar Sono' });
+    await sheet.locator('label', { hasText: 'Goblin 1' }).click();
+    await sheet.locator('label', { hasText: 'Capitão Goblin' }).click();
+    await expectScreenPasses(p, `Conjurar Sono, quem está na área ${where}`);
+    await sheet.getByRole('button', { name: 'Detalhes de Sono' }).click();
+    await expect(p.getByRole('dialog', { name: phone ? 'Descrição de Sono' : 'Sono', exact: true })).toBeVisible();
+    await expectScreenPasses(p, `Detalhes de Sono por cima de Conjurar ${where}`);
+    await p.getByRole('dialog', { name: phone ? 'Descrição de Sono' : 'Sono', exact: true }).getByRole('button', { name: 'Fechar' }).last().click();
+    // A dialog on a desktop is named by its title, which changes with the step: ask the page.
+    await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await p.getByLabel(/Role 5d8/).fill('20');
+    await p.getByRole('button', { name: 'Confirmar 20' }).click();
+    await expect(p.getByRole('heading', { name: 'Sono conjurado' })).toBeVisible();
+    await expectScreenPasses(p, `Sono conjurado, o resultado do jogador ${where}`);
+    await p.getByRole('button', { name: 'Voltar à sua vez' }).click();
+
+    if (phone) {
+      // The master's log is folded on a phone.
+      await m.getByRole('button', { name: 'Abrir o registro' }).click();
+    }
+    await expect(m.locator('app-pool-card')).toBeVisible({ timeout: 20_000 });
+    await expectScreenPasses(m, `O cartão do Sono no registro do mestre ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('as magias na sessão passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanCombatDetailsScreens(browser, 'light', 1280);
+});
+
+test('as magias na sessão passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanCombatDetailsScreens(browser, 'dark', 390);
+});

@@ -82,18 +82,18 @@ let nextId = 0;
                 <span class="why"><mat-icon aria-hidden="true">block</mat-icon>{{ t.blocked }}</span>
               }
             </span>
-            @if (rule().kind !== 'single') {
-              <span class="box" aria-hidden="true">
-                @if (chosen().includes(t.id)) {
-                  <mat-icon>check</mat-icon>
-                }
-              </span>
+            <!-- The same mark as the slot cards: a check circle when chosen, an empty one when not. -->
+            @if (!t.blocked) {
+              <mat-icon class="mark" [class.mark--on]="chosen().includes(t.id)" aria-hidden="true">{{ chosen().includes(t.id) ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
             }
           </label>
         } @empty {
           <p class="note">Não há ninguém ao alcance.</p>
         }
       </div>
+      @if (area()) {
+        <p class="note">O mestre confere quem está na área. Você não vê os pontos de vida dos inimigos.</p>
+      }
     }
   `,
   styleUrl: './cast-targets.scss',
@@ -107,6 +107,9 @@ export class CastTargets {
   readonly total = input(0);
   /** The ids of the NPCs, drawn as squares. */
   readonly npcs = input<ReadonlySet<string>>(new Set());
+  /** A spell that reads hit points over an area (Sono): the caster says who is in it, by name, and
+   * is told why there is no hit point on the list. */
+  readonly area = input(false);
 
   readonly toggle = output<string>();
   readonly deal = output<{ id: string; delta: 1 | -1 }>();
@@ -122,6 +125,9 @@ export class CastTargets {
       case 'single':
         return 'Escolha o alvo (só quem você vê)';
       default:
+        if (this.area()) {
+          return 'Quem está na área da magia';
+        }
         return r.min === 0 ? 'Quem a magia atinge (pode ser ninguém)' : `Escolha até ${r.max} alvos (só quem você vê)`;
     }
   });

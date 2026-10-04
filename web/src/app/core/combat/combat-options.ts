@@ -9,7 +9,8 @@ import {
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { ActionEconomy } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { rechargeText } from './combat-errors';
-import { circleLabel, feetToMeters, formatMeters } from './combat-grid';
+import { circleLabel } from './combat-grid';
+import { metersText } from '../units';
 import { joinDots, tight } from '../format/text';
 
 /**
@@ -36,13 +37,15 @@ export function reasonText(reason: DisabledReason | undefined): string {
       // Extra Attack: the attacks of this Attack action are all made.
       return 'Ataques desta ação já usados';
     case DisabledReasonCode.NO_SLOT:
-      return reason.minLevel > 0
-        ? `Sem espaço de ${circleLabel(reason.minLevel)} ou maior`
-        : 'Sem espaço de magia livre';
+      // Short on purpose: it repeats on every spell row, and the slot rows above
+      // the list are the one explanation of which circles are out (E8-02).
+      return 'Sem espaço';
     case DisabledReasonCode.NO_USES:
       return `Sem usos: ${rechargeText(reason.recharge)}`;
     case DisabledReasonCode.REACTION_ONLY_WHEN_HIT:
-      return 'Só quando você for atingido';
+      // Escudo Arcano is listed on the character's own turn, where it cannot be
+      // cast: it waits for a hit (the app asks then).
+      return 'Só fora da sua vez';
     case DisabledReasonCode.REACTION_ONLY:
       return 'Só quando o gatilho acontecer';
     case DisabledReasonCode.CASTING_TIME_TOO_LONG:
@@ -86,9 +89,9 @@ export function damageText(attack: Attack): string {
  * `reach`, a close attack says its reach too ("corpo a corpo, 1,5 m"). */
 export function rangeText(attack: Attack, reach = false): string {
   if (isMelee(attack)) {
-    return reach ? `corpo a corpo, ${formatMeters(feetToMeters(attack.rangeFt || 5))}` : 'corpo a corpo';
+    return reach ? `corpo a corpo, ${metersText(attack.rangeFt || 5)}` : 'corpo a corpo';
   }
-  return `alcance ${formatMeters(feetToMeters(attack.rangeFt))}`;
+  return `alcance ${metersText(attack.rangeFt)}`;
 }
 
 /** A melee attack (a weapon with no range of its own): the only kind an
@@ -137,6 +140,40 @@ export function spellDetail(o: SpellOption): string {
     parts.push(`gasta o último espaço de ${circleLabel(o.slots[0].level)}`);
   }
   return parts.filter(Boolean).join(' · ');
+}
+
+/** The tags under a spell's name: its circle, and the economy when it is not
+ * an action ("Reação", "Ação bônus"): the spells of every economy share one
+ * list in the server's order (E8-02). */
+export function spellTags(o: SpellOption): string[] {
+  const tags = [circleLabel(o.spell?.level ?? 0)];
+  if (o.spell?.concentration) {
+    tags.push('Concentração');
+  }
+  if (o.spell?.ritual) {
+    tags.push('Ritual');
+  }
+  if (o.economy === ActionEconomy.BONUS_ACTION) {
+    tags.push('Ação bônus');
+  } else if (o.economy === ActionEconomy.REACTION) {
+    tags.push('Reação');
+  }
+  return tags;
+}
+
+/** What the "Reação" spell does for the line under its name: Escudo asks when
+ * a hit lands, so it says so instead of its school. */
+export function spellLine(o: SpellOption, summary = ''): string {
+  if (o.spell?.key === 'spell:shield') {
+    return 'Quando você for atingido, o app pergunta se quer usar.';
+  }
+  const parts = [summary || o.spell?.schoolNamePt || ''];
+  const level = o.spell?.level ?? 0;
+  const free = o.slots.reduce((sum, s) => sum + s.free, 0);
+  if (level > 0 && o.enabled && free === 1) {
+    parts.push(`gasta o último espaço de ${circleLabel(o.slots[0].level)}`);
+  }
+  return tight(joinDots(parts.filter(Boolean)));
 }
 
 /** The economy a group of the screen stands for. */

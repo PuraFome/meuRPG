@@ -9,6 +9,7 @@ import {
   CharacterBlockedReason,
   CharacterBlockedSchema,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
+import type { SpellDetailsVm } from '../../shared/spell-details/spell-details.types';
 import { CharacterEditor } from './character-editor';
 import { createAttackGroup } from './npc-short-form/basic-form';
 import {
@@ -16,7 +17,6 @@ import {
   CharacterForEdit,
   CreateCharacterInput,
   RulesCatalogVm,
-  SpellDetailsVm,
   UpdateCharacterInput,
 } from './character-editor.types';
 
@@ -1153,7 +1153,7 @@ describe('CharacterEditor', () => {
 
       const dialog = document.querySelector('app-spell-details')!;
       expect(dialog.textContent).toContain('Alcance');
-      expect(dialog.textContent).toContain('18 m');
+      expect(dialog.textContent).toContain('18\u00a0m');
       expect(dialog.querySelector('[lang=en]')).not.toBeNull();
       expect(fake.loadSpellDetailsCalls).toEqual(['spell:magic-missile']);
 

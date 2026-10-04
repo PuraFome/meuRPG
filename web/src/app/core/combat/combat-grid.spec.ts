@@ -2,13 +2,11 @@ import {
   arrowStep,
   canReach,
   distance,
-  feetToMeters,
-  formatMeters,
   gridRows,
   inGrid,
   moveSentence,
-  reachSquares,
   squareAt,
+  type Square,
   squareCenter,
   stepSquare,
 } from './combat-grid';
@@ -21,22 +19,9 @@ describe('combat grid maths', () => {
     expect(gridRows(5, 10000, 100)).toBe(1); // never fewer than one row
   });
 
-  it('says meters with a decimal comma and no useless zero', () => {
-    expect(formatMeters(1.5)).toBe('1,5 m');
-    expect(formatMeters(30)).toBe('30 m');
-    expect(formatMeters(feetToMeters(25))).toBe('7,5 m');
-    expect(formatMeters(feetToMeters(5))).toBe('1,5 m');
-  });
-
   it('counts a diagonal as one square (a king\'s move)', () => {
     expect(distance({ col: 4, row: 8 }, { col: 6, row: 9 })).toBe(2);
     expect(distance({ col: 0, row: 0 }, { col: 3, row: 3 })).toBe(3);
-  });
-
-  it('turns the movement left into whole squares', () => {
-    expect(reachSquares(25)).toBe(5);
-    expect(reachSquares(22)).toBe(4);
-    expect(reachSquares(0)).toBe(0);
   });
 
   it('reaches a free square inside the range and the grid, never an occupied one', () => {
@@ -66,15 +51,17 @@ describe('combat grid maths', () => {
     expect(arrowStep('Enter')).toBeNull();
   });
 
-  it('says how far a move is, as the artboard does (E6-10)', () => {
-    expect(moveSentence({ col: 4, row: 8 }, { col: 6, row: 9 }, 25)).toBe(
-      'Mover 3 m. 2 quadrados para a direita e 1 quadrado para baixo. Depois restam 4,5 m.',
+  it('says how far a move is, in meters and squares (E6-10, E8-01)', () => {
+    // The text ties numbers to their units with no-break spaces: read it with plain ones.
+    const say = (from: Square, to: Square, left: number) => moveSentence(from, to, left).replace(/\u00a0/g, ' ');
+    expect(say({ col: 4, row: 8 }, { col: 6, row: 9 }, 25)).toBe(
+      'Mover 3 m · 2 quadrados. 2 quadrados para a direita e 1 quadrado para baixo. Depois restam 4,5 m · 3 quadrados.',
     );
-    expect(moveSentence({ col: 4, row: 8 }, { col: 4, row: 7 }, 25)).toBe(
-      'Mover 1,5 m. 1 quadrado para cima. Depois restam 6 m.',
+    expect(say({ col: 4, row: 8 }, { col: 4, row: 7 }, 25)).toBe(
+      'Mover 1,5 m · 1 quadrado. 1 quadrado para cima. Depois restam 6 m · 4 quadrados.',
     );
-    expect(moveSentence({ col: 4, row: 8 }, { col: 1, row: 8 }, 10)).toBe(
-      'Mover 4,5 m. 3 quadrados para a esquerda. Depois restam 0 m.',
+    expect(say({ col: 4, row: 8 }, { col: 1, row: 8 }, 10)).toBe(
+      'Mover 4,5 m · 3 quadrados. 3 quadrados para a esquerda. Depois restam 0 m · 0 quadrados.',
     );
   });
 });

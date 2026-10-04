@@ -14,31 +14,23 @@ import {
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import {
   Ability as GenAbility,
-  CastingTimeUnit as GenCastingTimeUnit,
   ContentService,
-  SpellDetails as GenSpellDetails,
-  SpellDurationKind as GenSpellDurationKind,
-  SpellDurationUnit as GenSpellDurationUnit,
   SpellPreparation as GenSpellPreparation,
-  SpellRangeKind as GenSpellRangeKind,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { AbilityKey, CharacterKind } from '../../core/characters/characters.types';
 import { damageTypeFromGen, damageTypeToGen } from '../../core/characters/damage-type-gen';
 import { CONNECT_TRANSPORT } from '../../core/connect/transport';
+import { spellDetailsFromGen } from '../../shared/spell-details/spell-details-map';
+import type { SpellDetailsVm } from '../../shared/spell-details/spell-details.types';
 import {
   AlignmentKey,
   BasicCharacterFormValue,
-  CastingTimeUnitKey,
   CharacterEditorSource,
   CharacterForEdit,
   CharacterFormValue,
   CreateCharacterInput,
-  DurationKindKey,
-  DurationUnitKey,
   HitPointsMethod,
-  RangeKindKey,
   RulesCatalogVm,
-  SpellDetailsVm,
   SpellPreparation,
   SubclassOptionVm,
   SubraceOptionVm,
@@ -351,82 +343,6 @@ export function toFormBasicSheet(name: string, basic: GenBasicSheet): BasicChara
     challengeRating: basic.challengeRating,
     xpValue: basic.xpValue,
     portraitImageId: basic.portraitImageId,
-  };
-}
-
-const CASTING_UNIT_FROM_GEN: Record<GenCastingTimeUnit, CastingTimeUnitKey> = {
-  [GenCastingTimeUnit.UNSPECIFIED]: '',
-  [GenCastingTimeUnit.ACTION]: 'action',
-  [GenCastingTimeUnit.BONUS_ACTION]: 'bonus_action',
-  [GenCastingTimeUnit.REACTION]: 'reaction',
-  [GenCastingTimeUnit.MINUTE]: 'minute',
-  [GenCastingTimeUnit.HOUR]: 'hour',
-};
-
-const RANGE_KIND_FROM_GEN: Record<GenSpellRangeKind, RangeKindKey> = {
-  [GenSpellRangeKind.UNSPECIFIED]: '',
-  [GenSpellRangeKind.SELF]: 'self',
-  [GenSpellRangeKind.TOUCH]: 'touch',
-  [GenSpellRangeKind.RANGED]: 'ranged',
-  [GenSpellRangeKind.SIGHT]: 'sight',
-  [GenSpellRangeKind.UNLIMITED]: 'unlimited',
-  [GenSpellRangeKind.SPECIAL]: 'special',
-};
-
-const DURATION_KIND_FROM_GEN: Record<GenSpellDurationKind, DurationKindKey> = {
-  [GenSpellDurationKind.UNSPECIFIED]: '',
-  [GenSpellDurationKind.INSTANTANEOUS]: 'instantaneous',
-  [GenSpellDurationKind.TIMED]: 'timed',
-  [GenSpellDurationKind.UNTIL_DISPELLED]: 'until_dispelled',
-  [GenSpellDurationKind.SPECIAL]: 'special',
-};
-
-const DURATION_UNIT_FROM_GEN: Record<GenSpellDurationUnit, DurationUnitKey> = {
-  [GenSpellDurationUnit.UNSPECIFIED]: '',
-  [GenSpellDurationUnit.ROUND]: 'round',
-  [GenSpellDurationUnit.MINUTE]: 'minute',
-  [GenSpellDurationUnit.HOUR]: 'hour',
-  [GenSpellDurationUnit.DAY]: 'day',
-};
-
-/** `SpellDetails` as the gen-free view-model; exported for the spec. */
-export function spellDetailsFromGen(d: GenSpellDetails): SpellDetailsVm {
-  const spell = d.spell;
-  return {
-    key: spell?.key ?? '',
-    namePt: spell?.namePt ?? '',
-    nameEn: spell?.name ?? '',
-    level: spell?.level ?? 0,
-    schoolNamePt: spell?.schoolNamePt ?? '',
-    ritual: spell?.ritual ?? false,
-    concentration: spell?.concentration ?? false,
-    castingTime: {
-      amount: d.castingTime?.amount ?? 0,
-      unit: CASTING_UNIT_FROM_GEN[d.castingTime?.unit ?? GenCastingTimeUnit.UNSPECIFIED],
-      trigger: d.castingTime?.trigger ?? '',
-      raw: d.castingTime?.raw ?? '',
-    },
-    range: {
-      kind: RANGE_KIND_FROM_GEN[d.range?.kind ?? GenSpellRangeKind.UNSPECIFIED],
-      distanceFt: d.range?.distanceFt ?? 0,
-      raw: d.range?.raw ?? '',
-    },
-    components: {
-      verbal: d.components?.verbal ?? false,
-      somatic: d.components?.somatic ?? false,
-      material: d.components?.material ?? false,
-      materialText: d.components?.materialText ?? '',
-    },
-    duration: {
-      kind: DURATION_KIND_FROM_GEN[d.duration?.kind ?? GenSpellDurationKind.UNSPECIFIED],
-      amount: d.duration?.amount ?? 0,
-      unit: DURATION_UNIT_FROM_GEN[d.duration?.unit ?? GenSpellDurationUnit.UNSPECIFIED],
-      upTo: d.duration?.upTo ?? false,
-      concentration: d.duration?.concentration ?? false,
-      raw: d.duration?.raw ?? '',
-    },
-    description: d.description,
-    higherLevel: d.higherLevel,
   };
 }
 
