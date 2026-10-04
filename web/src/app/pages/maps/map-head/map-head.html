@@ -40,6 +40,31 @@
       <mat-icon aria-hidden="true">edit</mat-icon>Renomear
     </button>
     @if (mode() !== 'delete') {
+      <span class="print">
+        @if (map().gridColumns > 0) {
+          <a
+            matButton="outlined"
+            class="print__button"
+            [routerLink]="['/campanhas', campaignId(), 'mapas', map().id, 'imprimir']"
+          >
+            <mat-icon aria-hidden="true">print</mat-icon>Imprimir com a grade
+          </a>
+        } @else {
+          <button
+            matButton="outlined"
+            type="button"
+            class="print__button print__button--off"
+            aria-disabled="true"
+            aria-describedby="print-reason"
+          >
+            <mat-icon aria-hidden="true">print</mat-icon>Imprimir com a grade
+          </button>
+          <span id="print-reason" class="print__reason">
+            <mat-icon aria-hidden="true">block</mat-icon>Defina a grade do mapa para imprimir em
+            escala
+          </span>
+        }
+      </span>
       <button
         #deleteButton
         matButton

@@ -1,0 +1,282 @@
+:host {
+  display: block;
+}
+
+.setup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+  min-width: 0;
+  padding: 16px 18px 18px;
+
+  .mr-panel__title {
+    margin: 0;
+  }
+}
+
+.label {
+  margin: 0;
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 700;
+  color: var(--mr-ink-muted);
+}
+
+.hint {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  align-items: flex-start;
+}
+
+// The unit sits inside the box: the field stays 48px, whatever is typed.
+.field__box {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: 168px;
+  height: 48px;
+  padding: 0 16px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-surface);
+
+  &:focus-within {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 1px;
+  }
+}
+
+.field__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--mr-ink);
+  font-family: var(--mr-font-display);
+  font-size: 20px;
+  font-weight: 700;
+  outline: none;
+}
+
+.field__unit {
+  color: var(--mr-ink-muted);
+}
+
+.hint-error {
+  align-self: stretch;
+  padding: 8px 12px;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 500;
+}
+
+.reset {
+  min-height: 44px;
+  margin-inline-start: -12px;
+  font-weight: 700;
+  color: var(--mr-accent-text);
+}
+
+// Two columns of radio tiles: the selected one gets the accent border.
+.papers {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mr-space-2);
+
+  .label {
+    grid-column: 1 / -1;
+  }
+}
+
+.paper {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: 56px;
+  padding: 0 var(--mr-space-2);
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+
+  &.mat-mdc-radio-checked {
+    border: 2px solid var(--mr-accent);
+    padding: 0 7px;
+    background: var(--mr-accent-soft);
+  }
+}
+
+.paper__name,
+.paper__size {
+  display: block;
+}
+
+.paper__name {
+  font-weight: 700;
+}
+
+.paper__size {
+  font-size: 13px;
+  white-space: nowrap;
+  color: var(--mr-ink-muted);
+}
+
+// At 320px two tiles are 122px each: a smaller radio keeps "21,6 × 27,9 cm"
+// on one line.
+@media (max-width: 359.98px) {
+  .setup {
+    padding-inline: 14px;
+  }
+
+  .paper {
+    --mat-radio-state-layer-size: 32px;
+    padding-inline: 4px;
+
+    &.mat-mdc-radio-checked {
+      padding-inline: 3px;
+    }
+  }
+
+  .paper__size {
+    font-size: 12px;
+  }
+}
+
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-1);
+}
+
+.block__main {
+  margin: 0;
+  font-size: 17px;
+
+  &--muted {
+    color: var(--mr-ink-muted);
+  }
+}
+
+.checks {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 17px;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: var(--mr-space-2);
+  }
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+
+  &--off {
+    border-style: dashed;
+  }
+}
+
+.summary__big,
+.summary__sheets {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-weight: 700;
+}
+
+.summary__big {
+  font-size: 24px;
+  line-height: 30px;
+}
+
+.summary__sheets {
+  font-size: 19px;
+  line-height: 26px;
+}
+
+.summary--off .summary__big {
+  color: var(--mr-ink-muted);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2);
+
+  // A pair that does not fit stacks, both full width ("Imprimir" first); the
+  // labels never wrap.
+  > * {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 767.98px) {
+    > * {
+      flex: 1 1 140px;
+      min-width: 0;
+    }
+  }
+
+  // Two columns: the buttons stay at the foot of the screen while the panel
+  // is on it, so the one filled button is always in reach (the panel's own
+  // surface behind it, a rule above).
+  @media (min-width: 1100px) {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    margin: 0 -18px -18px;
+    padding: 12px 18px 18px;
+    border-top: 1px solid var(--mr-line);
+    border-radius: 0 0 var(--mr-radius-lg) var(--mr-radius-lg);
+    background: var(--mr-surface);
+  }
+}
+
+// Whatever takes focus in the panel is scrolled clear of the sticky buttons.
+.setup :is(input, button, a, mat-radio-button) {
+  scroll-margin-bottom: 96px;
+}
+
+.actions__print,
+.actions__back {
+  --mat-button-filled-container-height: 44px;
+  --mat-button-outlined-container-height: 44px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+
+  @media (max-width: 767.98px) {
+    --mat-button-filled-container-height: 48px;
+    --mat-button-outlined-container-height: 48px;
+  }
+}
+
+// Out of range: a dashed outline that does nothing, with the blocked icon.
+.actions__print--off {
+  --mat-button-filled-container-color: var(--mr-surface);
+  --mat-button-filled-label-text-color: var(--mr-ink-muted);
+  border: 1px dashed var(--mr-control-line);
+  cursor: default;
+}
