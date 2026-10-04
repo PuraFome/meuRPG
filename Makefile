@@ -34,6 +34,14 @@ endif
 COCKROACH_VERSION := v26.2.7
 COCKROACH_STORE ?= $(HOME)/.meurpg/cockroach
 
+# The test CockroachDB (`make db-test-start`): a second native node on port
+# 26258 for the integration tests only, whose store lives in memory (2 GiB at
+# most) and disappears when it stops. Schema changes, which the test
+# databases are made of, take a quarter of the time they take on disk, and
+# the development database on 26257 doesn't fill up with test databases.
+TEST_DB_DIR ?= $(HOME)/.meurpg/cockroach-test
+TEST_DATABASE_URL := postgresql://root@localhost:26258/defaultdb?sslmode=disable
+
 # sqlc is pinned: its version is written into every file it generates, so
 # every machine and CI must run the same one. `go run pkg@version` builds
 # exactly that version, checked against Go's checksum database, with no
@@ -41,7 +49,7 @@ COCKROACH_STORE ?= $(HOME)/.meurpg/cockroach
 # Go's build cache.
 SQLC := go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
 
-.PHONY: help proto sqlc proto-lint lint test run migrate up down logs docker-build web-install web-test web-build e2e db-native-start db-native-stop
+.PHONY: help proto sqlc proto-lint lint test run migrate up down logs docker-build web-install web-test web-build e2e db-native-start db-native-stop db-test-start db-test-stop
 
 help: ## Show this help message
 	@echo "MeuRPG - available targets:"
@@ -107,6 +115,35 @@ db-native-stop: ## Stop the native CockroachDB started by db-native-start
 		echo "CockroachDB stopped"; \
 	else \
 		echo "CockroachDB is not running (no live $(COCKROACH_STORE)/cockroach.pid)"; \
+	fi
+
+db-test-start: ## Start the in-memory test CockroachDB on localhost:26258 (brew cockroach@26.2) for the integration tests
+	@command -v cockroach >/dev/null || { echo "cockroach not found: brew install cockroachdb/tap/cockroach@26.2 (CONTRIBUTING.md, \"CockroachDB nativo\")"; exit 1; }
+	@mkdir -p "$(TEST_DB_DIR)"
+	@if cockroach sql --insecure --host=localhost:26258 -e 'SELECT 1' >/dev/null 2>&1; then \
+		echo "The test CockroachDB is already running on localhost:26258"; \
+	else \
+		cockroach start-single-node --insecure --listen-addr=localhost:26258 --http-addr=localhost:8082 \
+			--store=type=mem,size=2GiB --cache=256MiB --max-sql-memory=512MiB \
+			--log-dir="$(TEST_DB_DIR)/logs" --pid-file="$(TEST_DB_DIR)/cockroach.pid" --background \
+			>"$(TEST_DB_DIR)/start.log" 2>&1 || { cat "$(TEST_DB_DIR)/start.log"; exit 1; }; \
+		cockroach sql --insecure --host=localhost:26258 \
+			-e "SET CLUSTER SETTING sql.stats.automatic_collection.enabled = false" \
+			-e "SET CLUSTER SETTING kv.range_merge.queue.enabled = false" \
+			-e "SET CLUSTER SETTING jobs.retention_time = '15s'" \
+			-e "SET CLUSTER SETTING diagnostics.reporting.enabled = false" >/dev/null; \
+	fi
+	@echo "Test CockroachDB on localhost:26258. Run the integration tests with:"
+	@echo "  MEURPG_TEST_DATABASE_URL='$(TEST_DATABASE_URL)' make test"
+	@echo "Stop it (and throw its data away) with: make db-test-stop"
+
+db-test-stop: ## Stop the in-memory test CockroachDB started by db-test-start
+	@if [ -f "$(TEST_DB_DIR)/cockroach.pid" ] && kill -0 $$(cat "$(TEST_DB_DIR)/cockroach.pid") 2>/dev/null; then \
+		kill $$(cat "$(TEST_DB_DIR)/cockroach.pid"); \
+		while kill -0 $$(cat "$(TEST_DB_DIR)/cockroach.pid") 2>/dev/null; do sleep 0.5; done; \
+		echo "The test CockroachDB stopped"; \
+	else \
+		echo "The test CockroachDB is not running (no live $(TEST_DB_DIR)/cockroach.pid)"; \
 	fi
 
 docker-build: ## Build the backend+web Docker image standalone (no compose)

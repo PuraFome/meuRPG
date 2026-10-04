@@ -10,11 +10,15 @@
 // Migrating a brand-new database for every test took about 25 seconds on
 // CockroachDB (each schema change is a job, and Etapa 6 brought 46
 // migrations), and the play package alone makes dozens of databases: CI hit
-// its 10-minute limit (PR #59). So the migrations run once per set of migration files, into a
-// template database named after their fingerprint (meurpg_tpl_<hash>), and
-// each test's database copies the template's tables in about 3 seconds. The
-// schema is the one the migrations build; the migrations package still tests
-// the migrations themselves, from scratch.
+// its 10-minute limit (PR #59). So the migrations run once per set of
+// migration files, into a template database named after their fingerprint
+// (meurpg_tpl_<hash>), and a test database copies the template's tables.
+// Even that copy took about 5 seconds, and dropping the database 1.5 more
+// (04/10/2026, 32 tables), for each of some 400 tests; so a package makes
+// only as many databases as it runs tests at once and reuses them: emptying
+// one with DELETE takes about 10 milliseconds. The schema is the one the
+// migrations build; the migrations package still tests the migrations
+// themselves, from scratch.
 //
 // Every test process shares the template: the first one to create it
 // migrates it, and the others wait until it has every migration. A template
@@ -85,11 +89,13 @@ type templateDB struct {
 // Enabled reports whether a test database is configured.
 func Enabled() bool { return os.Getenv(EnvVar) != "" }
 
-// NewPool creates a brand-new database on the test server with every
+// NewPool gives the test an empty database on the test server with every
 // migration's schema and returns a pool connected to it. The database is
-// dropped when the test ends, so tests can run in parallel without seeing
-// each other's rows. prefix names the database, to tell tests apart in
-// CockroachDB's console.
+// the test's alone while it runs, so tests can run in parallel without
+// seeing each other's rows; when the test ends it goes back to the package,
+// and the next test with the same prefix empties it and uses it again (the
+// package's TestMain drops them all at the end, see Main). prefix names the
+// databases, to tell packages apart in CockroachDB's console.
 //
 // Without MEURPG_TEST_DATABASE_URL, NewPool skips the test.
 func NewPool(t testing.TB, prefix string) *pgxpool.Pool {
@@ -142,6 +148,36 @@ func NewPool(t testing.TB, prefix string) *pgxpool.Pool {
 	}
 
 	return poolFor(t, prefix, name, dsn)
+}
+
+// Main runs a package's tests and then drops the databases this process
+// made. Every package that uses NewPool calls it from its TestMain:
+//
+//	func TestMain(m *testing.M) { dbtest.Main(m) }
+//
+// Without it the databases stay on the test server after the run (harmless,
+// but they pile up; they can be dropped by hand, see CONTRIBUTING.md).
+func Main(m *testing.M) {
+	code := m.Run()
+	if url := os.Getenv(EnvVar); url != "" && len(made) > 0 {
+		dropAll(url)
+	}
+	os.Exit(code)
+}
+
+// dropAll drops every database this process made, in one statement each, and
+// gives up quietly on a server too busy to answer: the run is over.
+func dropAll(rawURL string) {
+	conn, err := sql.Open("pgx", rawURL)
+	if err != nil {
+		return
+	}
+	defer func() { _ = conn.Close() }()
+	for _, name := range made {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		_, _ = conn.ExecContext(ctx, "DROP DATABASE IF EXISTS "+name+" CASCADE")
+		cancel()
+	}
 }
 
 // poolFor connects to a test database and gives it back when the test ends:
@@ -399,21 +435,6 @@ func open(t testing.TB, dsn string) *sql.DB {
 	}
 	t.Cleanup(func() { _ = conn.Close() })
 	return conn
-}
-
-// dropTestDatabase drops a test's database when the test ends. A drop that
-// fails is logged, not a failure: the test already passed or failed, and a
-// busy CockroachDB (in CI every package runs against one server) sometimes
-// takes longer than the timeout. A database left behind holds only that
-// test's rows and can be dropped by hand (see CONTRIBUTING.md).
-func dropTestDatabase(t testing.TB, conn *sql.DB, name string) {
-	t.Helper()
-	// Not t.Context(): cleanups run after it is canceled.
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	if _, err := conn.ExecContext(ctx, "DROP DATABASE IF EXISTS "+name+" CASCADE"); err != nil {
-		t.Logf("drop the test database %s (left behind): %v", name, err)
-	}
 }
 
 func mustExec(t testing.TB, conn *sql.DB, query string) {
