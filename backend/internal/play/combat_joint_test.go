@@ -225,6 +225,9 @@ func TestMR013_EachMemberHasItsOwnEconomy(t *testing.T) {
 	})); err != nil {
 		t.Fatalf("Brisa's move: %v", err)
 	}
+	// Brisa walked out of the goblins' reach: they are offered an opportunity
+	// attack (slice 9.6b), which this test is not about.
+	a.skipOffers(t)
 	if got := byLabel(t, a.get(t, a.caio), "Toren").GetMovementUsedFt(); got != 0 {
 		t.Errorf("Toren's movement used = %d ft after Brisa walked, want 0", got)
 	}
