@@ -1,0 +1,11 @@
+{
+ "lights": [
+  { "key": "candle", "bright_ft": 5, "dim_ft": 5, "duration_pt": "1 hora" },
+  { "key": "torch", "bright_ft": 20, "dim_ft": 20, "duration_pt": "1 hora" },
+  { "key": "lamp", "bright_ft": 15, "dim_ft": 30, "duration_pt": "6 horas por frasco de óleo" },
+  { "key": "hooded-lantern", "bright_ft": 30, "dim_ft": 30, "duration_pt": "6 horas por frasco de óleo" },
+  { "key": "light-spell", "bright_ft": 20, "dim_ft": 20, "duration_pt": "1 hora" },
+  { "key": "continual-flame", "bright_ft": 20, "dim_ft": 20, "duration_pt": "até ser dissipada" },
+  { "key": "daylight", "bright_ft": 60, "dim_ft": 60, "duration_pt": "1 hora" }
+ ]
+}

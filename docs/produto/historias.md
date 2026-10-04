@@ -627,11 +627,16 @@ Fatia 8.7 da Etapa 8, só no navegador (a grade e a imagem já vinham do mapa; n
 #### Critérios de aceite
 - **Dado** um personagem com Força 16, **quando** ele salta, **então** o app mostra o alcance do salto em distância e em altura, calculado a partir da Força, e desconta do movimento.
 - **Dado** um quadrado marcado como terreno difícil, **quando** o personagem entra nele, **então** cada quadrado custa o dobro do movimento.
-- **Dado** um alvo com meia cobertura ou três quartos de cobertura (o mestre marca), **quando** alguém ataca ou resiste, **então** o servidor soma +2 ou +5 à CA, conforme a cobertura.
+- **Dado** um alvo atrás de uma cobertura marcada no mapa (meia ou três quartos), **quando** alguém o ataca ou ele resiste a um efeito de Destreza, **então** o servidor soma +2 ou +5 à CA ou ao teste, pela linha entre os dois; atrás de uma parede, ele não pode ser alvo. O mestre também pode marcar a cobertura de um combatente para o que o mapa não mostra.
 - **Dado** a Disparada, **quando** o jogador a usa, **então** ela continua funcionando junto com o terreno difícil.
+- **Dado** outra criatura no caminho, **quando** o personagem passa pelo espaço dela, **então** o espaço de quem não é inimigo custa como terreno difícil, o de um inimigo não pode ser atravessado (só com dois tamanhos de diferença), e ninguém termina o movimento no espaço de outro.
+- **Dado** um inimigo ao lado, **quando** o personagem sai do alcance dele sem ter usado Desengajar, **então** o app oferece um ataque de oportunidade a quem controla o inimigo, e o movimento espera a resposta.
+
+#### Implementado
+Fatia 9.2 da Etapa 9, só as contas em Go (a ligação com o servidor vem nas fatias 9.3 e 9.6): o movimento em círculo, o custo por quadrado de terreno difícil, as paredes, as colunas, as criaturas no caminho, o salto, a cobertura e o ataque de oportunidade em `rules/grid` e `rules/combat.JumpLimits`. As regras estão em [RN-21](regras.md) e em [Arquitetura](../arquitetura.md#grade-visão-e-predefinições-etapa-9). Testes: `rules/grid` (`TestReachAgainstTheCave`, `TestMoveCostAgainstTheCave`, `TestCreaturesOnTheWay`, `TestCoverBetweenAgainstTheCave`, `TestLeavesReach`, `TestRange`, as camadas e a linha) e `rules/combat` (`TestJumpLimits`): os números da caverna dos desenhos e os do salto de Toren (Força 16: 16 pés de distância e 6 de altura com corrida) e de Brisa (Força 10).
 
 #### Dúvidas
-- Quem marca o terreno difícil e a cobertura é o mestre, no mapa ou no combate: a definir no desenho da Etapa 9.
+- Decidido pelo Vinicius, respondendo pelo Samuel, em 04/10/2026 (perguntas 68 a 70), pelas regras oficiais: o mestre pinta no mapa o terreno difícil, as paredes e a cobertura (meia: muro baixo, caixotes; três quartos: coluna, seteira), que os jogadores veem e podem usar; cada quadrado de terreno difícil em que se entra custa 1,5 m a mais; outras criaturas e o ataque de oportunidade como nos critérios acima. **Ainda a fazer**, na Etapa 9.
 
 ### MR-035: Armadilhas
 
@@ -643,12 +648,18 @@ Fatia 8.7 da Etapa 8, só no navegador (a grade e a imagem já vinham do mapa; n
 
 #### Critérios de aceite
 - **Dado** um mapa, **quando** o mestre põe uma armadilha com a CD para notar (Percepção passiva), a CD para achar (Investigação), o gatilho e o efeito (dano, uma resistência), **então** só o mestre a vê.
-- **Dado** uma armadilha escondida, **quando** um personagem tem a Percepção passiva igual ou maior que a CD, ou passa no teste de Investigação, **então** o jogador passa a ver a armadilha.
+- **Dado** uma armadilha escondida, **quando** um personagem chega perto e enxerga o quadrado com a Percepção passiva igual ou maior que a CD para notar, ou procura e passa num teste de Percepção (contra a CD para notar) ou de Investigação (contra a CD para achar), **então** o jogador dele passa a ver a armadilha.
 - **Dado** uma armadilha disparada, **quando** o gatilho acontece, **então** o efeito é aplicado pelo servidor (dano, resistência) **e** a armadilha passa a aparecer para os jogadores.
 - **Dado** uma armadilha que ainda não foi achada nem disparada, **quando** um jogador consulta o mapa, **então** o servidor não manda nem a posição (RN-10).
 
 #### Relacionadas
 - Vem do que o desenho de masmorras (a antiga MR-010) previa: armadilhas e baús.
+
+#### Implementado
+Fatia 9.2 da Etapa 9, só o conteúdo: as oito armadilhas de exemplo do SRD como predefinições (`effects/traps.json`, `Content.TrapPresets()`) com a tabela de gravidade do SRD. O mapa, o gatilho e o disparo vêm nas fatias 9.3 e 9.8. Testes: `TestTrapPresetsOfTheSRD`, `TestTrapSeverityTables`, `TestLoadTrapsRefuses`.
+
+#### Dúvidas
+- Decidido pelo Vinicius, respondendo pelo Samuel, em 04/10/2026 (perguntas 71 e 73): nota quem chega a até 3 m e enxerga o quadrado, com a Percepção passiva igual ou maior que a CD (−5 na penumbra), e só esse jogador passa a ver a armadilha; ao procurar, o jogador escolhe Percepção ou Investigação; o dano num personagem espera o mestre aplicar, como no combate. **Ainda a fazer**, na Etapa 9.
 
 ### MR-036: Névoa de guerra pela visão
 
@@ -664,12 +675,15 @@ Fatia 8.7 da Etapa 8, só no navegador (a grade e a imagem já vinham do mapa; n
 - **Dado** um personagem com Visão no escuro de 18 m na ficha, **quando** ele está numa área escura, **então** ele enxerga até 18 m, em tons de cinza.
 - **Dado** o mestre, **quando** abre o mapa, **então** vê tudo. O que o jogador não enxerga nunca sai do servidor (RN-10).
 
+#### Implementado
+Fatia 9.2 da Etapa 9, só as contas em Go (a ligação com o servidor vem nas fatias 9.3, 9.4 e 9.5): `rules/vision` calcula, de um mapa com paredes, luz base e pintada e fontes de luz, o que cada observador enxerga (claro, penumbra, cinza na visão no escuro, parede vista), a união de vários e a penalidade de −5 na penumbra, e `effects/lights.json` guarda as luzes do SRD. Testes: `TestVisionAgainstTheCave` (os desenhos da caverna: Pensantus, Toren, Brisa e Sálvia no escuro, Toren e Brisa com a tocha), `TestSensesBeyondDarkvision`, `TestLightIsBlockedByWalls`, `TestUnionOfViewers`, `TestPassivePenalty` e os benchmarks do orçamento de tempo.
+
 #### Dúvidas
-- Se a visão de um jogador é compartilhada com o grupo e se as paredes bloqueiam a vista (o que depende de o mapa saber onde ficam as paredes, ver a [MR-010](#mr-010-gerar-masmorras)): a definir no desenho da Etapa 9.
+- Decidido pelo Vinicius, respondendo pelo Samuel, em 04/10/2026 (perguntas 67, 68 e 72): cada jogador vê o que o próprio personagem enxerga, e o mestre pode ligar "Visão do grupo" em cada mapa; os personagens dos jogadores nunca somem para os outros jogadores; o que já foi visto fica escurecido; as paredes que o mestre pinta bloqueiam a vista e a luz, como nas regras oficiais; e o inimigo que o personagem não vê não aparece para ele: atacar no escuro (até uma Bola de Fogo num canto suspeito) é com o mestre. **Ainda a fazer**, na Etapa 9.
 
 ### MR-037: Criaturas do personagem
 
-**Como** jogador, **quero** controlar uma criatura minha (a forma selvagem do druida, os mortos-vivos do necromante, um familiar), **para** jogá-la no combate com a ficha dela.
+**Como** jogador, **quero** controlar uma criatura minha (a forma selvagem do druida, os mortos-vivos de Animar os Mortos, um familiar), **para** jogá-la no combate com a ficha dela.
 
 - Prioridade: MVP (Etapa 9)
 - Regras: RN-02, RN-20
@@ -684,11 +698,11 @@ Fatia 8.7 da Etapa 8, só no navegador (a grade e a imagem já vinham do mapa; n
 - As criaturas do SRD já estão no módulo `rules` (5e-database, como o resto do SRD): ver o "Implementado" abaixo.
 
 #### Implementado
-- **Fatia 9.1 (as regras, só o servidor puro, 04/10/2026):** as 334 criaturas do SRD 5.1 importadas (`srd51/data/monsters.json`, nomes em português `monster:<índice>`), `MonsterDerived` (a ficha da criatura para o combate, com os outros deslocamentos), o efeito `summon` de Encontrar Familiar (com o Pacto da Corrente), Animar os Mortos e Conjurar Animais, e a Forma Selvagem do druida (`wild_shape`, níveis 2, 4 e 8, e a ficha combinada pelo SRD). `ContentService.ListCreatures` e `GetCreature` servem a lista e a ficha. Convocar Montaria fica fora (pergunta 74). Testes: `TestSnapshot`, `TestNamesPT`, `TestReferences`, `TestMonsterDerived`, `TestListCreatures`, `TestSummonOptions`, `TestCheckSummon`, `TestSummonLoaderRefuses`, `TestWildShapeForms`, `TestWildShapeDerived` (`backend/internal/rules`), `TestListAndGetCreatures` e `TestAuthorizationMatrix` (`backend/internal/characters`). Ver [Arquitetura](../arquitetura.md#criaturas-convocações-e-forma-selvagem).
+- **Fatia 9.1 (as regras, só o servidor puro, 04/10/2026):** as 334 criaturas do SRD 5.1 importadas (`srd51/data/monsters.json`, nomes em português `monster:<índice>`), `MonsterDerived` (a ficha da criatura para o combate, com os outros deslocamentos), o efeito `summon` de Encontrar Familiar (com o Pacto da Corrente), Animar os Mortos e Conjurar Animais, e a Forma Selvagem do druida (`wild_shape`, níveis 2, 4 e 8, e a ficha combinada pelo SRD). `ContentService.ListCreatures` e `GetCreature` servem a lista e a ficha. Encontrar Montaria fica fora (pergunta 74). Testes: `TestSnapshot`, `TestNamesPT`, `TestReferences`, `TestMonsterDerived`, `TestListCreatures`, `TestSummonOptions`, `TestCheckSummon`, `TestSummonLoaderRefuses`, `TestWildShapeForms`, `TestWildShapeDerived` (`backend/internal/rules`), `TestListAndGetCreatures` e `TestAuthorizationMatrix` (`backend/internal/characters`). Ver [Arquitetura](../arquitetura.md#criaturas-convocações-e-forma-selvagem).
 - **Ainda a fazer** (fatias 9.9 e 9.10, e as telas): guardar a criatura do personagem e a forma na sessão, o combatente `creature` com a vez própria, o dano que sobra voltar ao personagem, "Dar uma criatura" do mestre e o painel "Criaturas" da ficha. Os critérios de aceite acima só valem quando essas fatias terminarem.
 
 #### Dúvidas
-- Respondido pelo Vinicius para o Samuel em 04/10/2026 (pergunta 74): entram a Forma Selvagem, Encontrar Familiar (e o Pacto da Corrente), Animar os Mortos e Conjurar Animais, e o mestre pode dar qualquer criatura do SRD a um personagem; Convocar Montaria fica para depois do MVP (montar pede as regras de combate montado). O dano que sobra na Forma Selvagem passa ao personagem (SRD).
+- Decidido pelo Vinicius, respondendo pelo Samuel, em 04/10/2026 (pergunta 74): entram a Forma Selvagem (o dano que sobra quando a fera cai a 0 PV passa para o druida, como no SRD), Encontrar Familiar (e o Pacto da Corrente do bruxo), Animar os Mortos e Conjurar Animais, e o mestre pode dar qualquer criatura do SRD a um personagem; Encontrar Montaria fica para depois do MVP (pede as regras de combate montado). As criaturas invocadas juntas rolam uma iniciativa só e agem juntas (o turno conjunto). As regras estão feitas (fatia 9.1, acima); a criatura no jogo é **ainda a fazer**, na Etapa 9.
 
 ### MR-038: Quebra-cabeças
 
@@ -769,7 +783,7 @@ Fatia 8.7 da Etapa 8, só no navegador (a grade e a imagem já vinham do mapa; n
 - **Dado** tesouros encontrados, **quando** o mestre usa "Voltar à cidade", **então** o app os converte em XP, 1 XP por PO (RN-09), dividido como o mestre escolher, e cada tesouro só é convertido uma vez.
 
 #### Dúvidas
-- Decidida pelo Samuel em 03/10/2026 (pergunta 47), com o lugar no roadmap decidido pelo Vinicius no mesmo dia: Etapa 9, junto das armadilhas e dos baús ([MR-035](#mr-035-armadilhas)). **Ainda a fazer.** Até lá, o mestre continua digitando as PO em "Dar XP por ouro" ([MR-016](#mr-016-dar-xp)), que fica como alternativa depois também. O destaque "mais tesouro encontrado" da [MR-032](#mr-032-destaques-do-combate) depende desta história. Os detalhes (quem achou, a tela) ficam para o plano da Etapa 9.
+- Decidida pelo Samuel em 03/10/2026 (pergunta 47), com o lugar no roadmap decidido pelo Vinicius no mesmo dia: Etapa 9, junto das armadilhas e dos baús ([MR-035](#mr-035-armadilhas)). **Ainda a fazer.** Até lá, o mestre continua digitando as PO em "Dar XP por ouro" ([MR-016](#mr-016-dar-xp)), que fica como alternativa depois também. O destaque "mais tesouro encontrado" da [MR-032](#mr-032-destaques-do-combate) depende desta história. Os detalhes foram decididos pelo Vinicius, respondendo pelo Samuel, em 04/10/2026 (pergunta 75): o mestre marca quem achou (um ou mais personagens); "Voltar à cidade" converte os tesouros escolhidos (todos marcados) para os personagens escolhidos (todos os vivos marcados), 1 XP por PO, dividido e arredondado para baixo, num prêmio só, que pode ser desfeito; só em campanha por ouro, e nas outras o tesouro conta no resumo da sessão.
 
 ## Prioridade: MVP (pré-requisito)
 

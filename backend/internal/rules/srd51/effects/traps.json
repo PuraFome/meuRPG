@@ -1,0 +1,281 @@
+{
+ "severity": {
+  "levels": [
+   {
+    "key": "setback",
+    "name_pt": "Revés",
+    "save_dc": {
+     "min": 10,
+     "max": 11
+    },
+    "attack_bonus": {
+     "min": 3,
+     "max": 5
+    }
+   },
+   {
+    "key": "dangerous",
+    "name_pt": "Perigosa",
+    "save_dc": {
+     "min": 12,
+     "max": 15
+    },
+    "attack_bonus": {
+     "min": 6,
+     "max": 8
+    }
+   },
+   {
+    "key": "deadly",
+    "name_pt": "Mortal",
+    "save_dc": {
+     "min": 16,
+     "max": 20
+    },
+    "attack_bonus": {
+     "min": 9,
+     "max": 12
+    }
+   }
+  ],
+  "damage_by_level": [
+   {
+    "from": 1,
+    "to": 4,
+    "setback": "1d10",
+    "dangerous": "2d10",
+    "deadly": "4d10"
+   },
+   {
+    "from": 5,
+    "to": 10,
+    "setback": "2d10",
+    "dangerous": "4d10",
+    "deadly": "10d10"
+   },
+   {
+    "from": 11,
+    "to": 16,
+    "setback": "4d10",
+    "dangerous": "10d10",
+    "deadly": "18d10"
+   },
+   {
+    "from": 17,
+    "to": 20,
+    "setback": "10d10",
+    "dangerous": "18d10",
+    "deadly": "24d10"
+   }
+  ]
+ },
+ "traps": [
+  {
+   "key": "simple-pit",
+   "kind": "mechanical",
+   "description_pt": "Buraco coberto por um pano com terra por cima. Quem pisa cai: 1d6 de concussão (3 m de queda) e fica Derrubado.",
+   "notice_dc": 10,
+   "find_dc": 10,
+   "trigger": "enter",
+   "area_size": 1,
+   "targets": "area",
+   "fall_ft": 10,
+   "damage": [
+    {
+     "dice": "1d6",
+     "type": "damage-type:bludgeoning"
+    }
+   ],
+   "conditions": [
+    {
+     "condition": "condition:prone"
+    }
+   ],
+   "find_dc_ours": true
+  },
+  {
+   "key": "hidden-pit",
+   "kind": "mechanical",
+   "description_pt": "Fosso com a tampa igual ao piso, que abre como um alçapão. Notar a tampa: Percepção CD 15; confirmar o fosso: Investigação CD 15. Queda de 6 m: 2d6 de concussão, e a pessoa fica Derrubada.",
+   "notice_dc": 15,
+   "find_dc": 15,
+   "trigger": "enter",
+   "area_size": 2,
+   "targets": "area",
+   "fall_ft": 20,
+   "damage": [
+    {
+     "dice": "2d6",
+     "type": "damage-type:bludgeoning"
+    }
+   ],
+   "conditions": [
+    {
+     "condition": "condition:prone"
+    }
+   ]
+  },
+  {
+   "key": "poison-needle",
+   "kind": "mechanical",
+   "description_pt": "Agulha na fechadura de um baú, que sai quando abrem sem a chave. Dá 1 de dano perfurante e 2d10 de veneno; Constituição CD 15 ou Envenenado por 1 hora. Achar: Investigação CD 20. Desarmar: Destreza CD 15 com ferramentas de ladrão.",
+   "find_dc": 20,
+   "trigger": "manual",
+   "area_size": 1,
+   "targets": "manual",
+   "damage": [
+    {
+     "dice": "1",
+     "type": "damage-type:piercing"
+    },
+    {
+     "dice": "2d10",
+     "type": "damage-type:poison"
+    }
+   ],
+   "save": {
+    "ability": "con",
+    "dc": 15,
+    "applies_to": "caught",
+    "on_fail": {
+     "condition": "condition:poisoned",
+     "duration_pt": "1 hora"
+    },
+    "on_pass": "none"
+   }
+  },
+  {
+   "key": "poison-darts",
+   "kind": "mechanical",
+   "description_pt": "Uma placa de pressão solta 4 dardos das paredes, cada um com +8 contra um alvo a até 3 m. Cada acerto causa 1d4 perfurante e pede Constituição CD 15: 2d10 de veneno, ou metade se passar. Notar e achar: CD 15.",
+   "notice_dc": 15,
+   "find_dc": 15,
+   "trigger": "enter",
+   "area_size": 1,
+   "targets": "manual",
+   "attack": {
+    "bonus": 8,
+    "count": 4,
+    "damage": {
+     "dice": "1d4",
+     "type": "damage-type:piercing"
+    }
+   },
+   "save": {
+    "ability": "con",
+    "dc": 15,
+    "applies_to": "hit",
+    "on_fail": {
+     "damage": [
+      {
+       "dice": "2d10",
+       "type": "damage-type:poison"
+      }
+     ]
+    },
+    "on_pass": "half"
+   }
+  },
+  {
+   "key": "collapsing-roof",
+   "kind": "mechanical",
+   "description_pt": "Um fio de tropeço derruba o teto sobre a área. Destreza CD 15: 4d10 de concussão, ou metade se passar. O chão vira entulho (terreno difícil), que o mestre pinta. Desarmar: Destreza CD 15 com ferramentas de ladrão.",
+   "notice_dc": 10,
+   "find_dc": 10,
+   "trigger": "enter",
+   "area_size": 3,
+   "targets": "area",
+   "save": {
+    "ability": "dex",
+    "dc": 15,
+    "applies_to": "caught",
+    "on_fail": {
+     "damage": [
+      {
+       "dice": "4d10",
+       "type": "damage-type:bludgeoning"
+      }
+     ]
+    },
+    "on_pass": "half"
+   },
+   "find_dc_ours": true
+  },
+  {
+   "key": "fire-breathing-statue",
+   "kind": "magic",
+   "description_pt": "Uma placa de pressão faz uma estátua soltar um cone de fogo de 9 m. Destreza CD 13: 4d10 de fogo, ou metade se passar. Notar a placa: CD 15. O mestre escolhe quem está no cone.",
+   "notice_dc": 15,
+   "find_dc": 15,
+   "trigger": "enter",
+   "area_size": 1,
+   "targets": "manual",
+   "save": {
+    "ability": "dex",
+    "dc": 13,
+    "applies_to": "caught",
+    "on_fail": {
+     "damage": [
+      {
+       "dice": "4d10",
+       "type": "damage-type:fire"
+      }
+     ]
+    },
+    "on_pass": "half"
+   },
+   "find_dc_ours": true
+  },
+  {
+   "key": "falling-net",
+   "kind": "mechanical",
+   "description_pt": "Um fio de tropeço solta uma rede sobre 3 m por 3 m. Quem está embaixo fica Contido, e quem falha em Força CD 10 também fica Derrubado. Soltar-se: Força CD 10, uma ação. A rede tem CA 10 e 20 PV.",
+   "notice_dc": 10,
+   "find_dc": 10,
+   "trigger": "enter",
+   "area_size": 2,
+   "targets": "area",
+   "conditions": [
+    {
+     "condition": "condition:restrained",
+     "duration_pt": "até se soltar"
+    }
+   ],
+   "save": {
+    "ability": "str",
+    "dc": 10,
+    "applies_to": "caught",
+    "on_fail": {
+     "condition": "condition:prone"
+    },
+    "on_pass": "none"
+   },
+   "find_dc_ours": true
+  },
+  {
+   "key": "rolling-sphere",
+   "kind": "mechanical",
+   "description_pt": "Uma placa de pressão solta uma esfera de pedra de 3 m. Ela rola 18 m por turno em linha reta, e quem ela alcança faz Destreza CD 15: 10d10 de concussão e Derrubado se falhar. Frear: Força CD 20 (−4,5 m de velocidade). O mestre escolhe quem a esfera atinge.",
+   "notice_dc": 15,
+   "find_dc": 15,
+   "trigger": "enter",
+   "area_size": 1,
+   "targets": "manual",
+   "save": {
+    "ability": "dex",
+    "dc": 15,
+    "applies_to": "caught",
+    "on_fail": {
+     "damage": [
+      {
+       "dice": "10d10",
+       "type": "damage-type:bludgeoning"
+      }
+     ],
+     "condition": "condition:prone"
+    },
+    "on_pass": "none"
+   }
+  }
+ ]
+}
