@@ -77,6 +77,28 @@ const (
 	eventTurnPartEnded       = "turn_part_ended"
 )
 
+// The kinds of Etapa 9 (migration 00090), added in one migration before the
+// slices that write them, so that slices built at the same time never fight
+// over the CHECK. Traps and treasure are written by package maps through
+// AppendEvent, the rest by this package.
+const (
+	eventTrapNoticed        = "trap_noticed"
+	eventTrapSearched       = "trap_searched"
+	eventTrapTriggered      = "trap_triggered"
+	eventTrapDisarmed       = "trap_disarmed"
+	eventTrapRevealed       = "trap_revealed"
+	eventTreasureFound      = "treasure_found"
+	eventTreasureUnfound    = "treasure_unfound"
+	eventCoverSet           = "cover_set"
+	eventSideSet            = "side_set"
+	eventOpportunityOffered = "opportunity_offered"
+	eventCreatureSummoned   = "creature_summoned"
+	eventCreatureDismissed  = "creature_dismissed"
+	eventWildShapeStarted   = "wild_shape_started"
+	eventWildShapeEnded     = "wild_shape_ended"
+	eventFamiliarSight      = "familiar_sight"
+)
+
 // combatWrite describes one change to a combat: who makes it, the idempotency
 // key, the kind of event it becomes, and the combat it is about (empty when
 // the change creates it).
