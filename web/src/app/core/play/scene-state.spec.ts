@@ -101,6 +101,28 @@ describe('SceneState', () => {
     expect(state.scene()?.clues[0].revealedTo).toHaveLength(1);
   });
 
+  it('tells a player when the master gives another attempt, not the master', async () => {
+    const before = playerScene();
+    const granted = playerScene([], [], { actions: before.actions.map((a) => (a.id === 'a5' ? { ...a, attemptsLeft: 2 } : a)) });
+    const player = stateWith(false, before, granted);
+    await player.refresh();
+    await player.refresh();
+    expect(player.notice()).toBe('O mestre deu mais uma tentativa em Resistir ao cheiro de fumaça.');
+    const master = stateWith(true, masterScene(), masterScene());
+    await master.refresh();
+    await master.refresh();
+    expect(master.notice()).toBe('');
+  });
+
+  it('says nothing about attempts when the scene was closed and opened again (the counts start over)', async () => {
+    const before = playerScene([], [], { actions: playerScene().actions.map((a) => ({ ...a, attemptsLeft: 0 })) });
+    const reopened = playerScene([], [], { openedAt: { seconds: 1791000000n, nanos: 0 } as never });
+    const player = stateWith(false, before, reopened);
+    await player.refresh();
+    await player.refresh();
+    expect(player.notice()).toBe('O mestre abriu uma cena: A carroça tombada.');
+  });
+
   describe('the stage (MR-031)', () => {
     const mira = stageNpc('s1', 'Mira');
     const capitao = stageNpc('s2', 'Capitão Goblin');

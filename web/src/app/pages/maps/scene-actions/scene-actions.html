@@ -3,9 +3,28 @@
     <h3 class="sa__title" id="sa-title">Ações da cena</h3>
     <span class="sa__count">{{ actions().length }} de {{ limit }}</span>
   </div>
-  <p class="sa__lead">
-    O que os jogadores podem rolar nesta cena. A lista salva na hora; só você vê a CD.
-  </p>
+  <p class="sa__lead">O que os jogadores podem rolar nesta cena. A lista salva na hora.</p>
+
+  <div class="sa__dcswitch">
+    <app-reveal-switch
+      label="Mostrar a CD aos jogadores"
+      [hint]="showDc() ? 'Ligado: cada jogador vê a CD na ação e, depois de rolar, se passou ou não.' : 'Desligado: só você vê a CD. Os jogadores veem só o resultado.'"
+      [checked]="showDc()"
+      (checkedChange)="setShowDc($event)"
+    />
+    @if (showDc()) {
+      <div class="sa__preview" role="group" aria-label="Como o jogador vê, antes e depois de rolar">
+        <p class="sa__preview-title">Como o jogador vê, antes e depois de rolar</p>
+        <p class="sa__sample"><span class="mr-tag">CD&nbsp;12</span><span>antes de rolar</span></p>
+        <p class="sa__sample">
+          <span class="mr-tag mr-tag--success"><mat-icon aria-hidden="true">check</mat-icon>Passou · CD&nbsp;12</span><span>depois, se passou</span>
+        </p>
+        <p class="sa__sample">
+          <span class="mr-tag mr-tag--danger"><mat-icon aria-hidden="true">close</mat-icon>Não passou · CD&nbsp;12</span><span>ou se não passou</span>
+        </p>
+      </div>
+    }
+  </div>
 
   @if (actions().length === 0) {
     @if (!adding()) {
@@ -15,49 +34,71 @@
     <ul class="sa__list">
       @for (a of actions(); track a.id; let first = $first; let last = $last) {
         <li class="sa__row">
-          <div class="sa__text">
-            <span class="sa__name">{{ title(a) }}</span>
-            <span class="sa__check">{{ subtitle(a) }}</span>
-            @if (a.dc > 0) {
-              <span class="mr-tag sa__dc">CD&nbsp;{{ a.dc }}</span>
-            }
+          <div class="sa__main">
+            <div class="sa__text">
+              <span class="sa__name">{{ title(a) }}</span>
+              <span class="sa__check">{{ subtitle(a) }}</span>
+              @if (a.dc > 0) {
+                <span class="mr-tag sa__dc">CD&nbsp;{{ a.dc }}</span>
+              }
+            </div>
+            <div class="sa__controls">
+              <button
+                type="button"
+                class="sa__ib"
+                [class.sa__ib--off]="first"
+                [attr.aria-label]="'Subir ' + title(a)"
+                [attr.aria-disabled]="first || busy()"
+                [attr.data-action]="a.id"
+                data-control="up"
+                (click)="move(a, 'up')"
+              >
+                <mat-icon aria-hidden="true">arrow_upward</mat-icon>
+              </button>
+              <button
+                type="button"
+                class="sa__ib"
+                [class.sa__ib--off]="last"
+                [attr.aria-label]="'Descer ' + title(a)"
+                [attr.aria-disabled]="last || busy()"
+                [attr.data-action]="a.id"
+                data-control="down"
+                (click)="move(a, 'down')"
+              >
+                <mat-icon aria-hidden="true">arrow_downward</mat-icon>
+              </button>
+              <button
+                type="button"
+                class="sa__ib sa__ib--danger"
+                [attr.aria-label]="'Remover ' + title(a)"
+                [attr.aria-disabled]="busy()"
+                [attr.data-action]="a.id"
+                data-control="remove"
+                (click)="remove(a)"
+              >
+                <mat-icon aria-hidden="true">delete</mat-icon>
+              </button>
+            </div>
           </div>
-          <div class="sa__controls">
-            <button
-              type="button"
-              class="sa__ib"
-              [class.sa__ib--off]="first"
-              [attr.aria-label]="'Subir ' + title(a)"
-              [attr.aria-disabled]="first || busy()"
-              [attr.data-action]="a.id"
-              data-control="up"
-              (click)="move(a, 'up')"
-            >
-              <mat-icon aria-hidden="true">arrow_upward</mat-icon>
-            </button>
-            <button
-              type="button"
-              class="sa__ib"
-              [class.sa__ib--off]="last"
-              [attr.aria-label]="'Descer ' + title(a)"
-              [attr.aria-disabled]="last || busy()"
-              [attr.data-action]="a.id"
-              data-control="down"
-              (click)="move(a, 'down')"
-            >
-              <mat-icon aria-hidden="true">arrow_downward</mat-icon>
-            </button>
-            <button
-              type="button"
-              class="sa__ib sa__ib--danger"
-              [attr.aria-label]="'Remover ' + title(a)"
-              [attr.aria-disabled]="busy()"
-              [attr.data-action]="a.id"
-              data-control="remove"
-              (click)="remove(a)"
-            >
-              <mat-icon aria-hidden="true">delete</mat-icon>
-            </button>
+          <div class="sa__attempts">
+            <label class="sa__attempts-label" [for]="'sa-att-' + a.id">Tentativas por jogador</label>
+            <span class="sa__select">
+              <select
+                [id]="'sa-att-' + a.id"
+                [attr.aria-disabled]="busy()"
+                (change)="setAttempts(a, $any($event.target))"
+              >
+                @for (o of attemptOptions; track o) {
+                  <option [value]="o" [selected]="o === a.maxAttempts">{{ attemptLabel(o) }}</option>
+                }
+              </select>
+              <mat-icon aria-hidden="true">expand_more</mat-icon>
+            </span>
+            @if (a.maxAttempts === 0) {
+              <p class="sa__unlimited">
+                Sem limite: o jogador rola quantas vezes quiser e você vê cada rolagem. A ação não mostra contagem para ele.
+              </p>
+            }
           </div>
         </li>
       }

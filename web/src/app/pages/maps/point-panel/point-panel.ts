@@ -93,6 +93,8 @@ export class PointPanel {
   readonly sceneActionsChange = output<readonly SceneAction[]>();
   /** A SCENE point's clues changed (saved at once too). */
   readonly cluesChange = output<readonly SceneClue[]>();
+  /** "Mostrar a CD aos jogadores" saved on its own (at once, like the actions): the point carries it. */
+  readonly showDcSaved = output<boolean>();
 
   protected readonly kinds = KINDS;
   protected readonly kindLabel = pointKindLabel;

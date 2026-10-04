@@ -211,7 +211,9 @@ test(
       await dialog.getByRole('button', { name: 'Salvar ajuste' }).click();
       await expect(dialog.getByText('A sessão acabou.')).toBeVisible();
       await dialog.getByRole('button', { name: 'Fechar' }).click();
-      await expect(masterPage.getByRole('heading', { level: 1, name: 'Sessão 1 encerrada' })).toBeVisible();
+      // The session ended: the master lands on its summary (MR-032).
+      await expect(masterPage.getByRole('heading', { level: 1, name: 'Sessão 1' })).toBeVisible();
+      await expect(masterPage.getByRole('heading', { name: 'Sessão encerrada' })).toBeVisible();
     } finally {
       await master.close();
       await player.close();

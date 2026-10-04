@@ -69,6 +69,19 @@ export class SceneClient {
     });
     return need(res.roll, 'RollSceneCheck');
   }
+
+  /** `GrantSceneAttempt` (MR-015): one more attempt for one character at one
+   * action. The key is made once per grant and sent again on a retry. The
+   * answer is the open scene as the master sees it. */
+  async grantAttempt(
+    campaignId: string,
+    actionId: string,
+    characterId: string,
+    idempotencyKey: string,
+  ): Promise<OpenSceneInfo> {
+    const res = await this.client.grantSceneAttempt({ campaignId, actionId, characterId, idempotencyKey });
+    return need(res.scene, 'GrantSceneAttempt');
+  }
 }
 
 function need<T>(value: T | undefined, call: string): T {

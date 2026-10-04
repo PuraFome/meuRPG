@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { create } from '@bufbuild/protobuf';
+import { Code, ConnectError } from '@connectrpc/connect';
 
 import { type SceneAction, SceneActionSchema } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { MapsClient } from '../../../core/maps/maps-client';
@@ -181,7 +182,7 @@ describe('SceneActions', () => {
     setup([...FIVE]);
     button('Adicionar ação').click();
     await settle();
-    const select = () => el.querySelector<HTMLSelectElement>('select')!;
+    const select = () => el.querySelector<HTMLSelectElement>('app-scene-action-form select')!;
     expect(Array.from(select().options, (o) => o.textContent?.trim())).toEqual(['Arcanismo', 'Investigação']);
     el.querySelectorAll<HTMLInputElement>('input[type="radio"]')[1].click();
     fixture.detectChanges();
@@ -277,5 +278,99 @@ describe('SceneActions', () => {
     control('a4', 'up').click();
     await settle();
     expect(api.calls).toEqual(['moveSceneAction p1 a3 up']);
+  });
+
+  describe('the DC switch and the attempts (E8-13, MR-015, RN-20)', () => {
+    const select = (id: string) => el.querySelector<HTMLSelectElement>(`#sa-att-${id}`)!;
+    const dcSwitch = () => el.querySelector<HTMLButtonElement>('.sa__dcswitch [role="switch"]')!;
+
+    it('starts the list with "Mostrar a CD aos jogadores", off, saying only the master sees the DC', () => {
+      setup([...FIVE]);
+      expect(flat(el.querySelector('.sa__dcswitch .sw__label'))).toBe('Mostrar a CD aos jogadores');
+      expect(dcSwitch().getAttribute('aria-checked')).toBe('false');
+      expect(flat(el.querySelector('.sa__dcswitch .sw__hint'))).toBe(
+        'Desligado: só você vê a CD. Os jogadores veem só o resultado.',
+      );
+      expect(el.querySelector('.sa__preview')).toBeNull();
+      // The switch is above the first action.
+      expect(dcSwitch().compareDocumentPosition(rows()[0]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('turns on with its own copy and shows how the player sees the DC, saving at once with show_dc alone', async () => {
+      setup([...FIVE]);
+      const saved: boolean[] = [];
+      fixture.componentInstance.showDcSaved.subscribe((on) => {
+        saved.push(on);
+        fixture.componentRef.setInput('showDc', on);
+      });
+      dcSwitch().click();
+      await settle();
+      expect(api.calls).toEqual(['updatePoint m1 p1 {"showDc":true}']);
+      expect(saved).toEqual([true]);
+      expect(dcSwitch().getAttribute('aria-checked')).toBe('true');
+      expect(flat(el.querySelector('.sa__dcswitch .sw__hint'))).toBe(
+        'Ligado: cada jogador vê a CD na ação e, depois de rolar, se passou ou não.',
+      );
+      const samples = Array.from(el.querySelectorAll('.sa__sample'), (e) => [
+        flat(e.querySelector('.mr-tag'))?.replace(/^(check|close)\s*/, ''),
+        flat(e.querySelector(':scope > span:not(.mr-tag)')),
+      ]);
+      expect(samples).toEqual([
+        ['CD 12', 'antes de rolar'],
+        ['Passou · CD 12', 'depois, se passou'],
+        ['Não passou · CD 12', 'ou se não passou'],
+      ]);
+    });
+
+    it('leaves the switch where it was and says why when the save is refused', async () => {
+      setup([...FIVE]);
+      api.failWith = new ConnectError('gone', Code.NotFound);
+      dcSwitch().click();
+      await settle();
+      expect(dcSwitch().getAttribute('aria-checked')).toBe('false');
+      expect(el.querySelector('[role="alert"]')).not.toBeNull();
+    });
+
+    it('gives every action a 44px select "Tentativas por jogador": 1 to 5 and "Sem limite", 1 by default', () => {
+      setup([...FIVE.map((a) => ({ ...a, maxAttempts: 1 }))]);
+      const first = select('a1');
+      expect(Array.from(first.options, (o) => o.textContent?.trim())).toEqual(['1', '2', '3', '4', '5', 'Sem limite']);
+      expect(first.value).toBe('1');
+      expect(flat(el.querySelector('label[for="sa-att-a1"]'))).toBe('Tentativas por jogador');
+      expect(el.querySelectorAll('.sa__select select')).toHaveLength(5);
+    });
+
+    it('shows the saved limit, "Sem limite" included, with what it means', () => {
+      setup([action('a1', 'Percepção', { maxAttempts: 3 }), action('a2', 'Adestrar Animais', { maxAttempts: 0 })]);
+      expect(select('a1').value).toBe('3');
+      expect(select('a2').value).toBe('0');
+      expect(select('a2').selectedOptions[0].textContent?.trim()).toBe('Sem limite');
+      expect(el.querySelectorAll('.sa__unlimited')).toHaveLength(1);
+      expect(flat(el.querySelector('.sa__unlimited'))).toContain('o jogador rola quantas vezes quiser e você vê cada rolagem');
+    });
+
+    it('puts the select back on what the server has when the save is refused', async () => {
+      setup([action('a1', 'Percepção', { maxAttempts: 1 })]);
+      api.failWith = new ConnectError('gone', Code.NotFound);
+      select('a1').value = '4';
+      select('a1').dispatchEvent(new Event('change'));
+      await settle();
+      expect(select('a1').value).toBe('1');
+      expect(el.querySelector('[role="alert"]')).not.toBeNull();
+    });
+
+    it('saves a change at once and says it in the live region', async () => {
+      setup([action('a1', 'Percepção', { maxAttempts: 1 })]);
+      select('a1').value = '3';
+      select('a1').dispatchEvent(new Event('change'));
+      await settle();
+      expect(api.calls).toEqual(['setSceneActionAttempts p1 a1 3']);
+      expect(emitted.at(-1)?.[0].maxAttempts).toBe(3);
+      expect(flat(el.querySelector('[role="status"]'))).toBe('Percepção: 3 tentativas por jogador.');
+      select('a1').value = '0';
+      select('a1').dispatchEvent(new Event('change'));
+      await settle();
+      expect(flat(el.querySelector('[role="status"]'))).toBe('Percepção: sem limite de tentativas.');
+    });
   });
 });

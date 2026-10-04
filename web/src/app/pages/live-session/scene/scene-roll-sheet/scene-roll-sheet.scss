@@ -95,3 +95,10 @@
   --mat-button-filled-container-height: 48px;
   width: 100%;
 }
+
+// "Passou · CD 12" under the player's total, when the master shows the DC.
+.res__pass {
+  align-self: flex-start;
+  margin-top: 6px;
+  font-weight: 700;
+}

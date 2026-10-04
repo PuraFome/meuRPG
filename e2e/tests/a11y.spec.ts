@@ -7,7 +7,7 @@ import { expectAligned } from './layout';
 import { endOpenSessionRPC, endSessionRPC, openSessionPage, startSessionRPC, tableWithPensantus } from './live-session-support';
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
 import { adjustVitalsRPC, beginAttackCombatRPC, combatRPC, getEncounterRPC, passTurnsTo, pensantusCasting, tableForCombat, toren, torenSheet } from './combat-support';
-import { addActionRPC, cartActions, getOpenSceneRPC, openSceneRPC, rollSceneRPC, tableForScenes } from './scene-support';
+import { addActionRPC, cartActions, getOpenSceneRPC, openSceneRPC, rollSceneRPC, sceneActionIdsRPC, setAttemptsRPC, setShowDcRPC, tableForScenes } from './scene-support';
 import { addClueRPC, cartClues, cartHooks, createNoteRPC } from './notes-support';
 import { createCapitaoRPC, createMiraRPC, playedCombatRPC, putOnStageRPC, uploadPortrait } from './stage-support';
 import { printRoute, tableForPrinting } from './print-support';
@@ -1967,4 +1967,178 @@ test('as magias na sessão passam no axe e nas conferências de layout no tema c
 test('as magias na sessão passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
   test.setTimeout(420_000);
   await scanCombatDetailsScreens(browser, 'dark', 390);
+});
+
+/**
+ * The options of the scene (Etapa 8, MR-015, RN-20; E8-13): the point panel with the DC switch off and on and the
+ * attempts of each action (on a computer), the master's open scene with "Os jogadores veem a CD", the limits and
+ * "Tentativa 1 de 3", "Dar mais uma tentativa" and its question in place and the status after it, and the
+ * player's scene with the CD pill, "Passou"/"Não passou", the attempts that are left ("Restam 2 de 3 tentativas",
+ * "Sem mais tentativas") and the page with the DC hidden. The rolls are made through the API, so the screens are
+ * the same on every run.
+ */
+async function scanSceneOptionsScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForScenes(m, p, `Acessibilidade opções ${Date.now()}`);
+    campaignId = table.campaignId;
+    const ids = await sceneActionIdsRPC(m, table, table.cartId);
+    await setAttemptsRPC(m, table, table.cartId, ids['Percepção'], 3);
+    await setAttemptsRPC(m, table, table.cartId, ids['Acalmar os cavalos'], 0);
+
+    // The editor: the switch off and on, and every action with its attempts.
+    await open(m, `/campanhas/${campaignId}/mapas/${table.mapId}`);
+    const cart = m.getByRole('button', { name: /^A carroça tombada, Cena de RP/ });
+    if (await cart.isVisible()) {
+      await cart.click();
+      await expect(m.getByRole('switch', { name: 'Mostrar a CD aos jogadores' })).toBeVisible();
+      await expectScreenPasses(m, `Ações da cena com o interruptor da CD desligado ${where}`);
+      await m.getByRole('switch', { name: 'Mostrar a CD aos jogadores' }).click();
+      await expect(m.getByText('Como o jogador vê, antes e depois de rolar')).toBeVisible();
+      await expectScreenPasses(m, `Ações da cena com o interruptor da CD ligado ${where}`);
+      await expect(m.getByRole('status').filter({ hasText: 'Os jogadores agora veem a CD.' })).toHaveCount(1);
+      await expect(m.getByText('Sem limite: o jogador rola quantas vezes quiser')).toBeVisible();
+      await expectScreenPasses(m, `Ações da cena com "Sem limite" ${where}`);
+    }
+
+    // The session: the scene is open with the DC shown. The player rolls (Percepção 4 + 1 = 5, Investigação 11 + 6 = 17, Constituição 3 + 3 = 6).
+    await setShowDcRPC(m, table, table.cartId, true);
+    await openSceneRPC(m, campaignId, table.cartId);
+    await openSessionPage(p, campaignId);
+    const scene = p.getByRole('region', { name: 'Cena: A carroça tombada' });
+    await expect(scene).toBeVisible();
+    await expect(scene.getByText('CD 12')).toBeVisible();
+    await expect(scene.getByText('Restam 3 de 3 tentativas')).toBeVisible();
+    await expectScreenPasses(p, `Cena do jogador com a CD à mostra ${where}`);
+    const open1 = await getOpenSceneRPC(p, campaignId);
+    const actionIds = open1.scene!.actions.map((a) => a.id);
+    await rollSceneRPC(p, campaignId, actionIds[3], 4);
+    await rollSceneRPC(p, campaignId, actionIds[0], 11);
+    await rollSceneRPC(p, campaignId, actionIds[4], 3);
+    await expect(scene.getByText('Restam 2 de 3 tentativas')).toBeVisible();
+    await expect(scene.getByText('Passou · CD 12')).toBeVisible();
+    await expect(scene.getByText('Não passou · CD 10')).toBeVisible();
+    await expect(scene.getByText('Sem mais tentativas').first()).toBeVisible();
+    await expectScreenPasses(p, `Cena do jogador com Passou, Não passou e as tentativas ${where}`);
+
+    await openSessionPage(m, campaignId);
+    await expect(m.getByRole('heading', { name: 'Cena: A carroça tombada' })).toBeVisible();
+    await expect(m.getByText('Os jogadores veem a CD')).toBeVisible();
+    await expect(m.getByText('Tentativa 1 de 1').first()).toBeVisible();
+    await expectScreenPasses(m, `Cena aberta do mestre com os limites e as tentativas ${where}`);
+    const grant = m.getByRole('button', { name: 'Dar mais uma tentativa a Pensantus em Resistir ao cheiro de fumaça' });
+    await grant.click();
+    const ask = m.getByRole('alertdialog', { name: 'Dar mais uma tentativa a Pensantus?' });
+    await expect(ask.getByRole('button', { name: 'Voltar' })).toBeFocused();
+    await expectScreenPasses(m, `Dar mais uma tentativa, a pergunta no lugar ${where}`);
+    await ask.getByRole('button', { name: 'Dar mais uma tentativa' }).click();
+    await expect(m.getByRole('status').filter({ hasText: 'Mais uma tentativa dada a Pensantus' })).toBeVisible();
+    await expectScreenPasses(m, `Dar mais uma tentativa, depois de dar ${where}`);
+    await expect(scene.getByText('Restam 1 de 1 tentativas').or(scene.getByText('1 tentativa')).first()).toBeVisible();
+    await expectScreenPasses(p, `Cena do jogador com uma tentativa a mais ${where}`);
+
+    // The DC hidden (the default): no CD and no "Passou" for the player.
+    await setShowDcRPC(m, table, table.cartId, false);
+    await expect(scene.getByText('CD 12')).toHaveCount(0);
+    await expectScreenPasses(p, `Cena do jogador com a CD escondida ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('as opções da cena passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-015'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanSceneOptionsScreens(browser, 'light', 1280);
+});
+
+test('as opções da cena passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-015'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanSceneOptionsScreens(browser, 'dark', 390);
+});
+
+test('as opções da cena passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-015'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanSceneOptionsScreens(browser, 'dark', 1024);
+});
+
+test('as opções da cena passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-015'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanSceneOptionsScreens(browser, 'light', 320);
+});
+
+/**
+ * The session summary (Etapa 8, MR-032, RN-20; E8-11 states 4 and 5): the master's "Sessão encerrada" with the
+ * highlights and the table, the player's card "A sessão acabou" and the plain notice after "Fechar". The rolls are
+ * made through the API, with the DC shown, so the numbers are the same on every run.
+ */
+async function scanSessionSummaryScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForScenes(m, p, `Acessibilidade resumo ${Date.now()}`);
+    campaignId = table.campaignId;
+    await setShowDcRPC(m, table, table.cartId, true);
+    await openSceneRPC(m, campaignId, table.cartId);
+    await openSessionPage(p, campaignId);
+    const open1 = await getOpenSceneRPC(p, campaignId);
+    const actionIds = open1.scene!.actions.map((a) => a.id);
+    await rollSceneRPC(p, campaignId, actionIds[0], 11);
+    await rollSceneRPC(p, campaignId, actionIds[4], 3);
+    await openSessionPage(m, campaignId);
+    await expect(m.getByText('Passou · CD 12')).toBeVisible();
+
+    await m.getByRole('button', { name: 'Encerrar sessão' }).click();
+    await m.getByRole('button', { name: 'Confirmar encerramento' }).click();
+    await expect(m.getByRole('heading', { name: 'Sessão encerrada' })).toBeVisible();
+    await expect(m.getByRole('table', { name: 'Testes passados fora do combate' })).toBeVisible();
+    await expectScreenPasses(m, `Resumo da sessão do mestre ${where}`);
+
+    const card = p.getByRole('region', { name: 'Resumo da sessão' });
+    await expect(card.getByRole('heading', { name: 'A sessão acabou' })).toBeVisible();
+    await expect(card.getByRole('heading', { name: 'Seu resultado, Pensantus' })).toBeVisible();
+    await expectScreenPasses(p, `Cartão "A sessão acabou" do jogador ${where}`);
+    await card.getByRole('button', { name: 'Fechar' }).last().click();
+    await expect(p.getByText('A sessão acabou.')).toBeVisible();
+    await expectScreenPasses(p, `A sessão acabou, o aviso simples ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('o resumo da sessão passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-032'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanSessionSummaryScreens(browser, 'light', 1280);
+});
+
+test('o resumo da sessão passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-032'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanSessionSummaryScreens(browser, 'dark', 390);
+});
+
+test('o resumo da sessão passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-032'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanSessionSummaryScreens(browser, 'light', 320);
 });

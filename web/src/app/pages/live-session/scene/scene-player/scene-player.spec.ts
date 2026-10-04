@@ -8,6 +8,8 @@ import { playerScene, sceneAction, sceneRoll } from '../../../../core/play/scene
 import { ScenePlayer } from './scene-player';
 
 describe('ScenePlayer', () => {
+  /** The scene's actions with one at no attempts left, as the server sends it after the roll. */
+  const exhausted = (id: string) => playerScene().actions.map((a) => (a.id === id ? { ...a, attemptsLeft: 0 } : a));
   function setup(scene = playerScene()) {
     const state = new SceneState(() => Promise.resolve(scene), () => false);
     state.apply(scene);
@@ -22,6 +24,15 @@ describe('ScenePlayer', () => {
 
   const rows = (el: HTMLElement) => Array.from(el.querySelectorAll<HTMLElement>('.sc__row'));
   const flat = (e: Element | null | undefined) => e?.textContent?.replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+  /** The words of an element, without its icons' ligature names. */
+  const words = (e: Element | null | undefined) => {
+    if (!e) {
+      return undefined;
+    }
+    const copy = e.cloneNode(true) as Element;
+    copy.querySelectorAll('mat-icon').forEach((i) => i.remove());
+    return flat(copy);
+  };
 
   it('shows nothing while no scene is open', () => {
     const state = new SceneState(() => Promise.resolve(null), () => false);
@@ -70,7 +81,7 @@ describe('ScenePlayer', () => {
     const roll = sceneRoll('r1', 'a1', 'Pensantus', 17, {
       roll: { diceCount: 1, diceSides: 20, faces: [11], modifier: 6, total: 17 },
     });
-    const { el } = setup(playerScene([roll]));
+    const { el } = setup(playerScene([roll], [], { actions: exhausted('a1') }));
     const first = rows(el)[0];
     expect(first.querySelector('.sc__total')?.textContent).toBe('17');
     expect(flat(first.querySelector('.sc__formula'))).toBe('1d20 (11) + 6 = 17');
@@ -99,5 +110,90 @@ describe('ScenePlayer', () => {
     const config = (open.mock.calls[0] as unknown[])[1] as { data: { action: { id: string }; diceMode: number } };
     expect(config.data.action.id).toBe('a2');
     expect(config.data.diceMode).toBe(DiceMode.PLAYERS_CHOOSE);
+  });
+
+  describe('the DC and the attempts (E8-13)', () => {
+    const roll = (passed?: boolean) =>
+      sceneRoll('r1', 'a1', 'Pensantus', 17, {
+        passed,
+        roll: { diceCount: 1, diceSides: 20, faces: [11], modifier: 6, total: 17 },
+      });
+    const withActions = (change: (a: ReturnType<typeof playerScene>['actions'][number]) => object) =>
+      playerScene().actions.map((a) => ({ ...a, ...change(a) }));
+    const tags = (el: HTMLElement) => rows(el).map((r) => words(r.querySelector('.mr-tag')) ?? null);
+    const attempts = (el: HTMLElement) => rows(el).map((r) => words(r.querySelector('.sc__attempts')) ?? null);
+
+    it('shows the "CD 12" pill only when the master shows the DC, and only on an action that has one', () => {
+      const shown = playerScene([], [], {
+        showDc: true,
+        actions: withActions((a) => (a.id === 'a1' ? { dc: 12 } : a.id === 'a2' ? { dc: 13 } : {})),
+      });
+      const { el } = setup(shown);
+      expect(tags(el)).toEqual(['CD 12', 'CD 13', null, null, null]);
+      // The DC hidden: the server sends 0 and the row shows nothing.
+      expect(tags(setup().el)).toEqual([null, null, null, null, null]);
+    });
+
+    it('turns the pill into "Passou · CD 12" with a check, or "Não passou · CD 10" with a cross', () => {
+      const scene = playerScene([roll(true), sceneRoll('r2', 'a5', 'Pensantus', 7, { passed: false })], [], {
+        showDc: true,
+        actions: withActions((a) => (a.id === 'a1' ? { dc: 12, attemptsLeft: 0 } : a.id === 'a5' ? { dc: 10, attemptsLeft: 0 } : {})),
+      });
+      const { el } = setup(scene);
+      const [first, , , , last] = rows(el);
+      expect(words(first.querySelector('.mr-tag'))).toBe('Passou · CD 12');
+      expect(first.querySelector('.mr-tag--success mat-icon')?.textContent).toBe('check');
+      expect(words(last.querySelector('.mr-tag'))).toBe('Não passou · CD 10');
+      expect(last.querySelector('.mr-tag--danger mat-icon')?.textContent).toBe('close');
+      // The pill says how it went, so there is no "Rolada" line beside it.
+      expect(first.querySelector('.sc__done')).toBeNull();
+    });
+
+    it('writes the attempts: "1 tentativa", "Restam 2 de 3 tentativas", "Restam N" over the limit, "Sem mais tentativas", and nothing when unlimited', () => {
+      const scene = playerScene([roll()], [], {
+        actions: withActions((a) =>
+          a.id === 'a1' ? { attemptsLeft: 0 } : a.id === 'a4' ? { attemptsLeft: 2 } : a.id === 'a5' ? { attemptsLeft: 2 } : {},
+        ),
+      });
+      const { el } = setup(scene);
+      expect(attempts(el)).toEqual([
+        'Sem mais tentativas',
+        '1 tentativa',
+        null,
+        'Restam 2 de 3 tentativas',
+        // maxAttempts 1 and a grant: above the limit, so no "de M".
+        'Restam 2 tentativas',
+      ]);
+      expect(rows(el)[1].querySelector('.sc__attempts--left')).toBeNull();
+      expect(rows(el)[3].querySelector('.sc__attempts--left')).not.toBeNull();
+      expect(rows(el)[0].querySelector('.sc__attempts mat-icon')?.textContent).toBe('block');
+    });
+
+    it('keeps "Rolar" on an action with attempts left (and the last result), and drops it at none', () => {
+      const scene = playerScene([sceneRoll('r1', 'a4', 'Pensantus', 9)], [], {
+        actions: withActions((a) => (a.id === 'a4' ? { attemptsLeft: 2 } : a.id === 'a1' ? { attemptsLeft: 0 } : {})),
+      });
+      const { el } = setup(scene);
+      const perception = rows(el)[3];
+      expect(perception.querySelector('.sc__total')?.textContent).toBe('9');
+      expect(perception.querySelector('button')?.getAttribute('aria-label')).toBe('Rolar Percepção');
+      expect(perception.querySelector('.sc__done')).toBeNull();
+      expect(rows(el)[0].querySelector('button')).toBeNull();
+      // Every row keeps the slot or the button at its end: "Rolar" never moves.
+      expect(rows(el).every((r) => r.querySelector('.sc__last')?.lastElementChild?.matches('button, .sc__slot'))).toBe(true);
+    });
+
+    it('says "Rolada às 21:14" when it was rolled out of attempts and no pill says how it went', () => {
+      const { el } = setup(playerScene([roll()], [], { actions: exhausted('a1') }));
+      expect(words(rows(el)[0].querySelector('.sc__done'))).toBe('Rolada às 21:14');
+    });
+
+    it('shows the last roll of an unlimited action and still offers "Rolar", with no counter', () => {
+      const { el } = setup(playerScene([sceneRoll('r1', 'a3', 'Pensantus', 8)]));
+      const row = rows(el)[2];
+      expect(row.querySelector('.sc__total')?.textContent).toBe('8');
+      expect(row.querySelector('.sc__attempts')).toBeNull();
+      expect(row.querySelector('button')).not.toBeNull();
+    });
   });
 });

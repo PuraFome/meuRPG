@@ -30,7 +30,7 @@ describe('scene errors', () => {
     }
     expect(sceneBlockedMessage(SceneBlockedReason.NO_ACTIONS)).toContain('não tem ações');
     expect(sceneBlockedMessage(SceneBlockedReason.NO_OPEN_SCENE)).toContain('fechou a cena');
-    expect(sceneBlockedMessage(SceneBlockedReason.ALREADY_ROLLED)).toContain('já rolou');
+    expect(sceneBlockedMessage(SceneBlockedReason.ALREADY_ROLLED)).toContain('não tem mais tentativas');
     expect(sceneBlockedMessage(SceneBlockedReason.WRONG_DICE_MODE)).toContain('forma de rolar');
     expect(sceneBlockedMessage(SceneBlockedReason.NO_CHARACTER)).toContain('personagem vivo');
   });
