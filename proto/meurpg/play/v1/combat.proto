@@ -2277,6 +2277,10 @@ enum HighlightKind {
   // showed their DC. Only GetSessionSummary returns it; a combat's highlights
   // never do.
   HIGHLIGHT_KIND_CHECKS_PASSED = 6;
+  // "Mais tesouro encontrado" (MR-041): the PO found in the session, per
+  // character; a treasure found by two splits its value between them, rounded
+  // down. Only GetSessionSummary returns it; a combat's highlights never do.
+  HIGHLIGHT_KIND_TREASURE_FOUND = 7;
 }
 
 // HighlightWinner is a player's character that won a category.

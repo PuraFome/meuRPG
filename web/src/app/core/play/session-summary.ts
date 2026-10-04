@@ -78,12 +78,19 @@ export function summaryTiles(summary: SessionSummary): HighlightTile[] {
  * zeros included. One row for every player the server lists (they fought or rolled a
  * check); one who tried no test reads "nenhum teste", muted, not "0 de 0". */
 export function summaryRows(summary: SessionSummary): HighlightsTableRow[] {
-  return summary.players.map((p) => ({
+  // A character that only found treasure fought and tried nothing: no row of zeros
+  // for it here ("Mais tesouro encontrado" is its own block).
+  return summary.players.filter((p) => p.checksTried > 0 || foughtIn(p)).map((p) => ({
     id: p.highlights?.characterId ?? '',
     name: p.highlights?.name ?? '',
     cells: [p.checksTried === 0 ? 'nenhum teste' : checksRatio(p.checksPassed, p.checksTried)],
     muted: p.checksTried === 0,
   }));
+}
+
+function foughtIn(p: SessionCharacterSummary): boolean {
+  const h = p.highlights;
+  return !!h && h.damageDealt + h.damageTaken + h.healingDone + h.finalBlows + h.criticalHits > 0;
 }
 
 /** "Seu resultado": the player's own numbers. The four of the combat when any is above 0, and the
@@ -93,10 +100,12 @@ export function summaryOwn(mine: SessionCharacterSummary | undefined): OwnNumber
     return [];
   }
   const h = mine.highlights;
-  const fought = !!h && h.damageDealt + h.damageTaken + h.healingDone + h.finalBlows + h.criticalHits > 0;
-  const own: OwnNumber[] = fought ? ownNumbers([h], h.characterId) : [];
+  const own: OwnNumber[] = foughtIn(mine) && h ? ownNumbers([h], h.characterId) : [];
   if (mine.checksTried > 0) {
     own.push({ label: 'Testes passados fora do combate', value: checksRatio(mine.checksPassed, mine.checksTried) });
+  }
+  if (mine.treasureFoundPo > 0) {
+    own.push({ label: 'Tesouro encontrado', value: `${mine.treasureFoundPo}${NBSP}PO` });
   }
   return own;
 }

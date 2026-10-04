@@ -165,3 +165,15 @@ SELECT EXISTS (
     SELECT 1 FROM xp_awards
     WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND milestone_id = sqlc.arg(milestone_id)::UUID
 );
+
+-- The treasures a "Voltar à cidade" award converted (00120).
+
+-- name: InsertXPAwardTreasure :exec
+INSERT INTO xp_award_treasures (award_id, point_id, value_po)
+VALUES (sqlc.arg(award_id)::UUID, sqlc.arg(point_id)::UUID, sqlc.arg(value_po));
+
+-- name: ListXPAwardTreasures :many
+SELECT award_id, point_id, value_po
+FROM xp_award_treasures
+WHERE award_id = ANY(sqlc.arg(award_ids)::UUID[])
+ORDER BY award_id, point_id;

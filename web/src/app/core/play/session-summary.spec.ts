@@ -123,4 +123,32 @@ describe('session summary (MR-032)', () => {
     expect(summaryOwn(player('pens', 'Pensantus', 0, 0))).toEqual([]);
     expect(summaryOwn(undefined)).toEqual([]);
   });
+
+  it('draws "Mais tesouro encontrado" as its own tile, never as damage, and skips a kind it does not know', () => {
+    const withTreasure = create(SessionSummarySchema, {
+      categories: [
+        category(HighlightKind.MOST_DAMAGE, 8, ['brisa', 'Brisa']),
+        category(HighlightKind.TREASURE_FOUND, 245, ['toren', 'Toren']),
+        category(99 as HighlightKind, 3, ['toren', 'Toren']),
+      ],
+    });
+    const tiles = summaryTiles(withTreasure);
+    expect(tiles.map((t) => t.label)).toEqual(['Mais dano causado', 'Mais tesouro encontrado']);
+    expect(plain(tiles[1].value)).toBe('245 PO');
+    expect(tiles[1].icon).toBe('paid');
+  });
+
+  it('gives a character that only found treasure no row of zeros, and a "Seu resultado" with the treasure', () => {
+    const onlyTreasure = create(SessionCharacterSummarySchema, {
+      highlights: create(CharacterHighlightsSchema, { characterId: 'toren', name: 'Toren' }),
+      treasureFoundPo: 245,
+    });
+    expect(summaryRows(create(SessionSummarySchema, { players: [onlyTreasure, player('brisa', 'Brisa', 1, 1)] })).map((r) => r.name)).toEqual(['Brisa']);
+    expect(summaryOwn(onlyTreasure).map((n) => [n.label, plain(n.value)])).toEqual([['Tesouro encontrado', '245 PO']]);
+    const both = create(SessionCharacterSummarySchema, {
+      highlights: create(CharacterHighlightsSchema, { characterId: 'toren', name: 'Toren', damageDealt: 7 }),
+      treasureFoundPo: 120,
+    });
+    expect(summaryOwn(both).map((n) => n.label)).toEqual(['Dano causado', 'Dano recebido', 'Golpes finais', 'Cura', 'Tesouro encontrado']);
+  });
 });

@@ -84,6 +84,26 @@ type SessionLog interface {
 	PublishXPChanged(campaignID string)
 }
 
+// Treasures is the found treasure of the maps, for "Voltar à cidade" (MR-041;
+// the maps module implements it, as maps.Treasures). The treasure points are
+// the maps' own tables: this package only asks, and links a treasure to an
+// award inside the award's transaction.
+type Treasures interface {
+	// ListUnconverted returns the campaign's treasures that were found and no
+	// award converted, the oldest find first.
+	ListUnconverted(ctx context.Context, campaignID string) ([]link.Treasure, error)
+	// LockForConversion returns, inside tx, those of pointIDs that are treasures
+	// of the campaign, with their rows locked until tx ends (two awards that
+	// race for one treasure take turns). Any other ID is left out.
+	LockForConversion(ctx context.Context, tx pgx.Tx, campaignID string, pointIDs []string) ([]link.Treasure, error)
+	// MarkConverted links the treasures, already locked and checked, to the
+	// award inside tx.
+	MarkConverted(ctx context.Context, tx pgx.Tx, awardID string, pointIDs []string) error
+	// Release frees the treasures the award converted inside tx (it was
+	// undone): they are "found, not converted" again.
+	Release(ctx context.Context, tx pgx.Tx, awardID string) error
+}
+
 // Campaigns tells how the campaign levels (the campaigns module implements it).
 type Campaigns interface {
 	// CampaignXPMode returns the campaign's XP mode (RN-09).
@@ -107,6 +127,8 @@ type Config struct {
 	Combats Combats
 	// Log is the session's history and stream. Required.
 	Log SessionLog
+	// Treasures is the found treasure "Voltar à cidade" converts. Required.
+	Treasures Treasures
 	// Campaigns tells the campaign's XP mode. Required.
 	Campaigns Campaigns
 	// Profiles gives display names. Required.
@@ -126,6 +148,7 @@ type Service struct {
 	party     Party
 	combats   Combats
 	log       SessionLog
+	treasures Treasures
 	campaigns Campaigns
 	profiles  Profiles
 	logger    *slog.Logger
@@ -146,6 +169,8 @@ func New(cfg Config) (*Service, error) {
 		return nil, errors.New("progression: Combats is required")
 	case cfg.Log == nil:
 		return nil, errors.New("progression: Log is required")
+	case cfg.Treasures == nil:
+		return nil, errors.New("progression: Treasures is required")
 	case cfg.Campaigns == nil:
 		return nil, errors.New("progression: Campaigns is required")
 	case cfg.Profiles == nil:
@@ -157,6 +182,7 @@ func New(cfg Config) (*Service, error) {
 		party:     cfg.Party,
 		combats:   cfg.Combats,
 		log:       cfg.Log,
+		treasures: cfg.Treasures,
 		campaigns: cfg.Campaigns,
 		profiles:  cfg.Profiles,
 		logger:    cfg.Logger,

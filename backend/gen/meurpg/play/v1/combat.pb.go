@@ -1013,6 +1013,10 @@ const (
 	// showed their DC. Only GetSessionSummary returns it; a combat's highlights
 	// never do.
 	HighlightKind_HIGHLIGHT_KIND_CHECKS_PASSED HighlightKind = 6
+	// "Mais tesouro encontrado" (MR-041): the PO found in the session, per
+	// character; a treasure found by two splits its value between them, rounded
+	// down. Only GetSessionSummary returns it; a combat's highlights never do.
+	HighlightKind_HIGHLIGHT_KIND_TREASURE_FOUND HighlightKind = 7
 )
 
 // Enum value maps for HighlightKind.
@@ -1025,15 +1029,17 @@ var (
 		4: "HIGHLIGHT_KIND_FINAL_BLOW",
 		5: "HIGHLIGHT_KIND_CRITICAL_HITS",
 		6: "HIGHLIGHT_KIND_CHECKS_PASSED",
+		7: "HIGHLIGHT_KIND_TREASURE_FOUND",
 	}
 	HighlightKind_value = map[string]int32{
-		"HIGHLIGHT_KIND_UNSPECIFIED":   0,
-		"HIGHLIGHT_KIND_MOST_DAMAGE":   1,
-		"HIGHLIGHT_KIND_MOST_HEALING":  2,
-		"HIGHLIGHT_KIND_TANK":          3,
-		"HIGHLIGHT_KIND_FINAL_BLOW":    4,
-		"HIGHLIGHT_KIND_CRITICAL_HITS": 5,
-		"HIGHLIGHT_KIND_CHECKS_PASSED": 6,
+		"HIGHLIGHT_KIND_UNSPECIFIED":    0,
+		"HIGHLIGHT_KIND_MOST_DAMAGE":    1,
+		"HIGHLIGHT_KIND_MOST_HEALING":   2,
+		"HIGHLIGHT_KIND_TANK":           3,
+		"HIGHLIGHT_KIND_FINAL_BLOW":     4,
+		"HIGHLIGHT_KIND_CRITICAL_HITS":  5,
+		"HIGHLIGHT_KIND_CHECKS_PASSED":  6,
+		"HIGHLIGHT_KIND_TREASURE_FOUND": 7,
 	}
 )
 
@@ -8824,7 +8830,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x12#\n" +
 	"\x1fCOMBAT_LOG_KIND_DEATH_CONFIRMED\x10\v\x12&\n" +
 	"\"COMBAT_LOG_KIND_CONDITIONS_CHANGED\x10\f\x12#\n" +
-	"\x1fCOMBAT_LOG_KIND_TURN_PART_ENDED\x10\r*\xec\x01\n" +
+	"\x1fCOMBAT_LOG_KIND_TURN_PART_ENDED\x10\r*\x8f\x02\n" +
 	"\rHighlightKind\x12\x1e\n" +
 	"\x1aHIGHLIGHT_KIND_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aHIGHLIGHT_KIND_MOST_DAMAGE\x10\x01\x12\x1f\n" +
@@ -8832,7 +8838,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x13HIGHLIGHT_KIND_TANK\x10\x03\x12\x1d\n" +
 	"\x19HIGHLIGHT_KIND_FINAL_BLOW\x10\x04\x12 \n" +
 	"\x1cHIGHLIGHT_KIND_CRITICAL_HITS\x10\x05\x12 \n" +
-	"\x1cHIGHLIGHT_KIND_CHECKS_PASSED\x10\x062\xed\x14\n" +
+	"\x1cHIGHLIGHT_KIND_CHECKS_PASSED\x10\x06\x12!\n" +
+	"\x1dHIGHLIGHT_KIND_TREASURE_FOUND\x10\a2\xed\x14\n" +
 	"\rCombatService\x12_\n" +
 	"\x0eStartEncounter\x12%.meurpg.play.v1.StartEncounterRequest\x1a&.meurpg.play.v1.StartEncounterResponse\x12^\n" +
 	"\fGetEncounter\x12#.meurpg.play.v1.GetEncounterRequest\x1a$.meurpg.play.v1.GetEncounterResponse\"\x03\x90\x02\x02\x12e\n" +

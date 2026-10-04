@@ -125,6 +125,11 @@ type MapKeeper interface {
 	// SetTokenPositions moves the characters' tokens on the map inside tx,
 	// creating the ones that are missing.
 	SetTokenPositions(ctx context.Context, tx pgx.Tx, mapID string, positions []link.TokenPosition, at time.Time) error
+	// TreasureFoundIn returns the gold pieces each character found in the game
+	// session, by character ID: the treasures marked found while it was open,
+	// each value split among its finders and rounded down (MR-032, "Mais
+	// tesouro encontrado").
+	TreasureFoundIn(ctx context.Context, sessionID string) (map[string]int32, error)
 }
 
 // CombatRoster tells who can fight and with which numbers (MR-013). The

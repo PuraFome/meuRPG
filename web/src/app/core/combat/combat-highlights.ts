@@ -17,6 +17,8 @@ const KINDS: Record<number, { label: string; icon: string; sub?: string }> = {
   [HighlightKind.CRITICAL_HITS]: { label: 'Acertos críticos', icon: 'casino' },
   // Only the session's summary has it: the checks passed in scenes that showed their DC.
   [HighlightKind.CHECKS_PASSED]: { label: 'Mais testes passados fora do combate', icon: 'task_alt' },
+  // Also only the session's summary: the PO found while the session was open.
+  [HighlightKind.TREASURE_FOUND]: { label: 'Mais tesouro encontrado', icon: 'paid' },
 };
 
 /** The number with its unit, tied by a no-break space: "23 de dano", "9 de
@@ -31,6 +33,8 @@ export function highlightValue(kind: HighlightKind, value: number): string {
       return `${value}${NBSP}${value === 1 ? 'crítico' : 'críticos'}`;
     case HighlightKind.CHECKS_PASSED:
       return `${value}${NBSP}${value === 1 ? 'teste' : 'testes'}`;
+    case HighlightKind.TREASURE_FOUND:
+      return `${value}${NBSP}PO`;
     default:
       return `${value}${NBSP}de${NBSP}dano`;
   }
@@ -64,8 +68,9 @@ export function highlightTiles(
   res: { readonly categories: readonly HighlightCategory[] },
   tried: ReadonlyMap<string, number> = new Map(),
 ): HighlightTile[] {
-  return res.categories.map((c) => {
-    const kind = KINDS[c.kind] ?? KINDS[HighlightKind.MOST_DAMAGE];
+  // A kind this app does not know (a newer server) is left out, never drawn as damage.
+  return res.categories.filter((c) => KINDS[c.kind] !== undefined).map((c) => {
+    const kind = KINDS[c.kind];
     const counts = new Set(c.winners.map((w) => tried.get(w.characterId)));
     const [count] = counts;
     const triedLine =
