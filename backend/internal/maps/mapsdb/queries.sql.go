@@ -10,6 +10,83 @@ import (
 	"time"
 )
 
+const bumpMapLayersRevision = `-- name: BumpMapLayersRevision :one
+UPDATE maps
+SET layers_revision = layers_revision + 1
+WHERE id = $1
+RETURNING layers_revision
+`
+
+// A painted layer changed, or all of them were cleared: readers must read them
+// again. It leaves updated_at and revision (the name and image's guard) alone.
+func (q *Queries) BumpMapLayersRevision(ctx context.Context, id string) (int32, error) {
+	row := q.db.QueryRow(ctx, bumpMapLayersRevision, id)
+	var layers_revision int32
+	err := row.Scan(&layers_revision)
+	return layers_revision, err
+}
+
+const bumpMapLightRevision = `-- name: BumpMapLightRevision :one
+UPDATE maps
+SET light_revision = light_revision + 1
+WHERE id = $1
+RETURNING light_revision
+`
+
+// The painted light changed. No player reads the light, so this is not the
+// number they see: the master reads layers_revision + light_revision.
+func (q *Queries) BumpMapLightRevision(ctx context.Context, id string) (int32, error) {
+	row := q.db.QueryRow(ctx, bumpMapLightRevision, id)
+	var light_revision int32
+	err := row.Scan(&light_revision)
+	return light_revision, err
+}
+
+const clearTreasureFound = `-- name: ClearTreasureFound :one
+UPDATE map_points
+SET treasure_found_at = NULL, treasure_session_id = NULL, updated_at = $1
+WHERE map_id = $2 AND id = $3 AND kind = 'treasure'
+RETURNING id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at, hooks, show_dc, trap, trap_state, trap_triggered_at, treasure_value_po, treasure_found_at, treasure_session_id, treasure_converted_award_id, light_preset, light_bright_ft, light_dim_ft
+`
+
+type ClearTreasureFoundParams struct {
+	Now   time.Time
+	MapID string
+	ID    string
+}
+
+// Takes the found mark off a treasure.
+func (q *Queries) ClearTreasureFound(ctx context.Context, arg ClearTreasureFoundParams) (MapPoint, error) {
+	row := q.db.QueryRow(ctx, clearTreasureFound, arg.Now, arg.MapID, arg.ID)
+	var i MapPoint
+	err := row.Scan(
+		&i.ID,
+		&i.MapID,
+		&i.Kind,
+		&i.Name,
+		&i.Description,
+		&i.XBp,
+		&i.YBp,
+		&i.TargetMapID,
+		&i.RevealedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Hooks,
+		&i.ShowDc,
+		&i.Trap,
+		&i.TrapState,
+		&i.TrapTriggeredAt,
+		&i.TreasureValuePo,
+		&i.TreasureFoundAt,
+		&i.TreasureSessionID,
+		&i.TreasureConvertedAwardID,
+		&i.LightPreset,
+		&i.LightBrightFt,
+		&i.LightDimFt,
+	)
+	return i, err
+}
+
 const countMapPoints = `-- name: CountMapPoints :one
 SELECT count(*)::INT4 AS point_count FROM map_points
 WHERE map_id = $1
@@ -81,7 +158,7 @@ func (q *Queries) DeleteGalleryImage(ctx context.Context, arg DeleteGalleryImage
 const deleteMap = `-- name: DeleteMap :one
 DELETE FROM maps
 WHERE campaign_id = $1 AND id = $2
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision
 `
 
 type DeleteMapParams struct {
@@ -104,14 +181,33 @@ func (q *Queries) DeleteMap(ctx context.Context, arg DeleteMapParams) (Map, erro
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.GridColumns,
+		&i.FogEnabled,
+		&i.BaseLight,
+		&i.GroupVision,
+		&i.LayersRevision,
+		&i.LightRevision,
 	)
 	return i, err
+}
+
+const deleteMapLayers = `-- name: DeleteMapLayers :execrows
+DELETE FROM map_layers
+WHERE map_id = $1
+`
+
+// Clears every layer of the map: the grid's columns or the image changed.
+func (q *Queries) DeleteMapLayers(ctx context.Context, mapID string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteMapLayers, mapID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const deleteMapPoint = `-- name: DeleteMapPoint :one
 DELETE FROM map_points
 WHERE map_id = $1 AND id = $2
-RETURNING id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at, hooks, show_dc
+RETURNING id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at, hooks, show_dc, trap, trap_state, trap_triggered_at, treasure_value_po, treasure_found_at, treasure_session_id, treasure_converted_award_id, light_preset, light_bright_ft, light_dim_ft
 `
 
 type DeleteMapPointParams struct {
@@ -136,6 +232,16 @@ func (q *Queries) DeleteMapPoint(ctx context.Context, arg DeleteMapPointParams) 
 		&i.UpdatedAt,
 		&i.Hooks,
 		&i.ShowDc,
+		&i.Trap,
+		&i.TrapState,
+		&i.TrapTriggeredAt,
+		&i.TreasureValuePo,
+		&i.TreasureFoundAt,
+		&i.TreasureSessionID,
+		&i.TreasureConvertedAwardID,
+		&i.LightPreset,
+		&i.LightBrightFt,
+		&i.LightDimFt,
 	)
 	return i, err
 }
@@ -143,7 +249,7 @@ func (q *Queries) DeleteMapPoint(ctx context.Context, arg DeleteMapPointParams) 
 const deleteMapToken = `-- name: DeleteMapToken :one
 DELETE FROM map_tokens
 WHERE map_id = $1 AND character_id = $2
-RETURNING map_id, character_id, x_bp, y_bp, hidden, updated_at
+RETURNING map_id, character_id, x_bp, y_bp, hidden, updated_at, carried_light
 `
 
 type DeleteMapTokenParams struct {
@@ -161,8 +267,20 @@ func (q *Queries) DeleteMapToken(ctx context.Context, arg DeleteMapTokenParams) 
 		&i.YBp,
 		&i.Hidden,
 		&i.UpdatedAt,
+		&i.CarriedLight,
 	)
 	return i, err
+}
+
+const deletePointReveals = `-- name: DeletePointReveals :exec
+DELETE FROM map_point_reveals
+WHERE point_id = $1
+`
+
+// A point that stops being a trap tells nobody anything.
+func (q *Queries) DeletePointReveals(ctx context.Context, pointID string) error {
+	_, err := q.db.Exec(ctx, deletePointReveals, pointID)
+	return err
 }
 
 const deleteSceneAction = `-- name: DeleteSceneAction :execrows
@@ -221,6 +339,16 @@ WHERE point_id = $1
 // received stays (scene_clue_reveals keeps its own copy of the text).
 func (q *Queries) DeleteSceneCluesOfPoint(ctx context.Context, pointID string) error {
 	_, err := q.db.Exec(ctx, deleteSceneCluesOfPoint, pointID)
+	return err
+}
+
+const deleteTreasureFinders = `-- name: DeleteTreasureFinders :exec
+DELETE FROM map_treasure_finders
+WHERE point_id = $1
+`
+
+func (q *Queries) DeleteTreasureFinders(ctx context.Context, pointID string) error {
+	_, err := q.db.Exec(ctx, deleteTreasureFinders, pointID)
 	return err
 }
 
@@ -305,7 +433,7 @@ func (q *Queries) GetGalleryUsage(ctx context.Context, campaignID string) (GetGa
 }
 
 const getMap = `-- name: GetMap :one
-SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns FROM maps
+SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision FROM maps
 WHERE campaign_id = $1 AND id = $2
 `
 
@@ -327,12 +455,17 @@ func (q *Queries) GetMap(ctx context.Context, arg GetMapParams) (Map, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.GridColumns,
+		&i.FogEnabled,
+		&i.BaseLight,
+		&i.GroupVision,
+		&i.LayersRevision,
+		&i.LightRevision,
 	)
 	return i, err
 }
 
 const getMapForUpdate = `-- name: GetMapForUpdate :one
-SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns FROM maps
+SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision FROM maps
 WHERE campaign_id = $1 AND id = $2
 FOR UPDATE
 `
@@ -358,6 +491,11 @@ func (q *Queries) GetMapForUpdate(ctx context.Context, arg GetMapForUpdateParams
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.GridColumns,
+		&i.FogEnabled,
+		&i.BaseLight,
+		&i.GroupVision,
+		&i.LayersRevision,
+		&i.LightRevision,
 	)
 	return i, err
 }
@@ -389,8 +527,28 @@ func (q *Queries) GetMapGrid(ctx context.Context, arg GetMapGridParams) (GetMapG
 	return i, err
 }
 
+const getMapLayers = `-- name: GetMapLayers :one
+SELECT map_id, difficult_terrain, walls, cover, light, updated_at FROM map_layers
+WHERE map_id = $1
+`
+
+// The map's painted layers; no row means nothing is painted.
+func (q *Queries) GetMapLayers(ctx context.Context, mapID string) (MapLayer, error) {
+	row := q.db.QueryRow(ctx, getMapLayers, mapID)
+	var i MapLayer
+	err := row.Scan(
+		&i.MapID,
+		&i.DifficultTerrain,
+		&i.Walls,
+		&i.Cover,
+		&i.Light,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getMapPointForUpdate = `-- name: GetMapPointForUpdate :one
-SELECT id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at, hooks, show_dc FROM map_points
+SELECT id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at, hooks, show_dc, trap, trap_state, trap_triggered_at, treasure_value_po, treasure_found_at, treasure_session_id, treasure_converted_award_id, light_preset, light_bright_ft, light_dim_ft FROM map_points
 WHERE map_id = $1 AND id = $2
 FOR UPDATE
 `
@@ -418,12 +576,22 @@ func (q *Queries) GetMapPointForUpdate(ctx context.Context, arg GetMapPointForUp
 		&i.UpdatedAt,
 		&i.Hooks,
 		&i.ShowDc,
+		&i.Trap,
+		&i.TrapState,
+		&i.TrapTriggeredAt,
+		&i.TreasureValuePo,
+		&i.TreasureFoundAt,
+		&i.TreasureSessionID,
+		&i.TreasureConvertedAwardID,
+		&i.LightPreset,
+		&i.LightBrightFt,
+		&i.LightDimFt,
 	)
 	return i, err
 }
 
 const getMapPointInCampaign = `-- name: GetMapPointInCampaign :one
-SELECT p.id, p.map_id, p.kind, p.name, p.description, p.x_bp, p.y_bp, p.target_map_id, p.revealed_at, p.created_at, p.updated_at, p.hooks, p.show_dc FROM map_points AS p
+SELECT p.id, p.map_id, p.kind, p.name, p.description, p.x_bp, p.y_bp, p.target_map_id, p.revealed_at, p.created_at, p.updated_at, p.hooks, p.show_dc, p.trap, p.trap_state, p.trap_triggered_at, p.treasure_value_po, p.treasure_found_at, p.treasure_session_id, p.treasure_converted_award_id, p.light_preset, p.light_bright_ft, p.light_dim_ft FROM map_points AS p
 JOIN maps AS m ON m.id = p.map_id
 WHERE m.campaign_id = $1 AND p.id = $2
 `
@@ -452,12 +620,22 @@ func (q *Queries) GetMapPointInCampaign(ctx context.Context, arg GetMapPointInCa
 		&i.UpdatedAt,
 		&i.Hooks,
 		&i.ShowDc,
+		&i.Trap,
+		&i.TrapState,
+		&i.TrapTriggeredAt,
+		&i.TreasureValuePo,
+		&i.TreasureFoundAt,
+		&i.TreasureSessionID,
+		&i.TreasureConvertedAwardID,
+		&i.LightPreset,
+		&i.LightBrightFt,
+		&i.LightDimFt,
 	)
 	return i, err
 }
 
 const getMapTokenForUpdate = `-- name: GetMapTokenForUpdate :one
-SELECT map_id, character_id, x_bp, y_bp, hidden, updated_at FROM map_tokens
+SELECT map_id, character_id, x_bp, y_bp, hidden, updated_at, carried_light FROM map_tokens
 WHERE map_id = $1 AND character_id = $2
 FOR UPDATE
 `
@@ -477,7 +655,29 @@ func (q *Queries) GetMapTokenForUpdate(ctx context.Context, arg GetMapTokenForUp
 		&i.YBp,
 		&i.Hidden,
 		&i.UpdatedAt,
+		&i.CarriedLight,
 	)
+	return i, err
+}
+
+const getMapTreasureLocks = `-- name: GetMapTreasureLocks :one
+SELECT (count(*) FILTER (WHERE treasure_found_at IS NOT NULL))::INT4 AS found,
+       (count(*) FILTER (WHERE treasure_converted_award_id IS NOT NULL))::INT4 AS converted
+FROM map_points
+WHERE map_id = $1 AND kind = 'treasure'
+`
+
+type GetMapTreasureLocksRow struct {
+	Found     int32
+	Converted int32
+}
+
+// Whether the map holds a treasure that was found or converted: such a map
+// cannot be deleted, so a found treasure never vanishes from a session's summary.
+func (q *Queries) GetMapTreasureLocks(ctx context.Context, mapID string) (GetMapTreasureLocksRow, error) {
+	row := q.db.QueryRow(ctx, getMapTreasureLocks, mapID)
+	var i GetMapTreasureLocksRow
+	err := row.Scan(&i.Found, &i.Converted)
 	return i, err
 }
 
@@ -563,7 +763,7 @@ func (q *Queries) GetSceneClueInCampaign(ctx context.Context, arg GetSceneClueIn
 }
 
 const getScenePoint = `-- name: GetScenePoint :one
-SELECT p.id, p.map_id, p.kind, p.name, p.description, p.x_bp, p.y_bp, p.target_map_id, p.revealed_at, p.created_at, p.updated_at, p.hooks, p.show_dc FROM map_points AS p
+SELECT p.id, p.map_id, p.kind, p.name, p.description, p.x_bp, p.y_bp, p.target_map_id, p.revealed_at, p.created_at, p.updated_at, p.hooks, p.show_dc, p.trap, p.trap_state, p.trap_triggered_at, p.treasure_value_po, p.treasure_found_at, p.treasure_session_id, p.treasure_converted_award_id, p.light_preset, p.light_bright_ft, p.light_dim_ft FROM map_points AS p
 JOIN maps AS m ON m.id = p.map_id
 WHERE m.campaign_id = $1 AND p.id = $2 AND p.kind = 'scene'
 `
@@ -592,6 +792,16 @@ func (q *Queries) GetScenePoint(ctx context.Context, arg GetScenePointParams) (M
 		&i.UpdatedAt,
 		&i.Hooks,
 		&i.ShowDc,
+		&i.Trap,
+		&i.TrapState,
+		&i.TrapTriggeredAt,
+		&i.TreasureValuePo,
+		&i.TreasureFoundAt,
+		&i.TreasureSessionID,
+		&i.TreasureConvertedAwardID,
+		&i.LightPreset,
+		&i.LightBrightFt,
+		&i.LightDimFt,
 	)
 	return i, err
 }
@@ -725,7 +935,7 @@ func (q *Queries) InsertGalleryImage(ctx context.Context, arg InsertGalleryImage
 const insertMap = `-- name: InsertMap :one
 INSERT INTO maps (campaign_id, name, image_id, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $4)
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision
 `
 
 type InsertMapParams struct {
@@ -754,30 +964,46 @@ func (q *Queries) InsertMap(ctx context.Context, arg InsertMapParams) (Map, erro
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.GridColumns,
+		&i.FogEnabled,
+		&i.BaseLight,
+		&i.GroupVision,
+		&i.LayersRevision,
+		&i.LightRevision,
 	)
 	return i, err
 }
 
 const insertMapPoint = `-- name: InsertMapPoint :one
-INSERT INTO map_points (map_id, kind, name, description, hooks, show_dc, x_bp, y_bp, target_map_id, created_at, updated_at)
+INSERT INTO map_points (
+    map_id, kind, name, description, hooks, show_dc, x_bp, y_bp, target_map_id,
+    trap, trap_state, trap_triggered_at, treasure_value_po, light_preset, light_bright_ft, light_dim_ft, created_at, updated_at
+)
 VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8,
-    $9, $10, $10
+    $9, $10, $11, $12, $13,
+    $14, $15, $16, $17, $17
 )
-RETURNING id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at, hooks, show_dc
+RETURNING id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at, hooks, show_dc, trap, trap_state, trap_triggered_at, treasure_value_po, treasure_found_at, treasure_session_id, treasure_converted_award_id, light_preset, light_bright_ft, light_dim_ft
 `
 
 type InsertMapPointParams struct {
-	MapID       string
-	Kind        string
-	Name        string
-	Description string
-	Hooks       string
-	ShowDc      bool
-	XBp         int32
-	YBp         int32
-	TargetMapID *string
-	Now         time.Time
+	MapID           string
+	Kind            string
+	Name            string
+	Description     string
+	Hooks           string
+	ShowDc          bool
+	XBp             int32
+	YBp             int32
+	TargetMapID     *string
+	Trap            []byte
+	TrapState       *string
+	TrapTriggeredAt *time.Time
+	TreasureValuePo *int32
+	LightPreset     *string
+	LightBrightFt   *int32
+	LightDimFt      *int32
+	Now             time.Time
 }
 
 // A new point starts hidden (revealed_at NULL).
@@ -792,6 +1018,13 @@ func (q *Queries) InsertMapPoint(ctx context.Context, arg InsertMapPointParams) 
 		arg.XBp,
 		arg.YBp,
 		arg.TargetMapID,
+		arg.Trap,
+		arg.TrapState,
+		arg.TrapTriggeredAt,
+		arg.TreasureValuePo,
+		arg.LightPreset,
+		arg.LightBrightFt,
+		arg.LightDimFt,
 		arg.Now,
 	)
 	var i MapPoint
@@ -809,6 +1042,16 @@ func (q *Queries) InsertMapPoint(ctx context.Context, arg InsertMapPointParams) 
 		&i.UpdatedAt,
 		&i.Hooks,
 		&i.ShowDc,
+		&i.Trap,
+		&i.TrapState,
+		&i.TrapTriggeredAt,
+		&i.TreasureValuePo,
+		&i.TreasureFoundAt,
+		&i.TreasureSessionID,
+		&i.TreasureConvertedAwardID,
+		&i.LightPreset,
+		&i.LightBrightFt,
+		&i.LightDimFt,
 	)
 	return i, err
 }
@@ -816,7 +1059,7 @@ func (q *Queries) InsertMapPoint(ctx context.Context, arg InsertMapPointParams) 
 const insertMapToken = `-- name: InsertMapToken :one
 INSERT INTO map_tokens (map_id, character_id, x_bp, y_bp, hidden, updated_at)
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING map_id, character_id, x_bp, y_bp, hidden, updated_at
+RETURNING map_id, character_id, x_bp, y_bp, hidden, updated_at, carried_light
 `
 
 type InsertMapTokenParams struct {
@@ -845,8 +1088,36 @@ func (q *Queries) InsertMapToken(ctx context.Context, arg InsertMapTokenParams) 
 		&i.YBp,
 		&i.Hidden,
 		&i.UpdatedAt,
+		&i.CarriedLight,
 	)
 	return i, err
+}
+
+const insertPointReveal = `-- name: InsertPointReveal :execrows
+INSERT INTO map_point_reveals (point_id, character_id, how, at)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (point_id, character_id) DO NOTHING
+`
+
+type InsertPointRevealParams struct {
+	PointID     string
+	CharacterID string
+	How         string
+	At          time.Time
+}
+
+// Tells a character about a trap, once: a second reveal inserts nothing.
+func (q *Queries) InsertPointReveal(ctx context.Context, arg InsertPointRevealParams) (int64, error) {
+	result, err := q.db.Exec(ctx, insertPointReveal,
+		arg.PointID,
+		arg.CharacterID,
+		arg.How,
+		arg.At,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const insertSceneAction = `-- name: InsertSceneAction :one
@@ -920,6 +1191,22 @@ func (q *Queries) InsertSceneClue(ctx context.Context, arg InsertSceneClueParams
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const insertTreasureFinder = `-- name: InsertTreasureFinder :exec
+INSERT INTO map_treasure_finders (point_id, character_id)
+VALUES ($1, $2)
+ON CONFLICT (point_id, character_id) DO NOTHING
+`
+
+type InsertTreasureFinderParams struct {
+	PointID     string
+	CharacterID string
+}
+
+func (q *Queries) InsertTreasureFinder(ctx context.Context, arg InsertTreasureFinderParams) error {
+	_, err := q.db.Exec(ctx, insertTreasureFinder, arg.PointID, arg.CharacterID)
+	return err
 }
 
 const leaveImage = `-- name: LeaveImage :execrows
@@ -1131,9 +1418,12 @@ func (q *Queries) ListLeftImages(ctx context.Context, campaignID string) ([]Gall
 
 const listMapDetails = `-- name: ListMapDetails :many
 SELECT m.id, m.campaign_id, m.name, m.image_id, m.revealed_at, m.revision, m.created_at, m.updated_at, m.grid_columns,
+       m.fog_enabled, m.base_light, m.group_vision, m.layers_revision, m.light_revision,
        g.name AS image_name, g.width AS image_width, g.height AS image_height,
        (SELECT count(*) FROM map_points AS p WHERE p.map_id = m.id)::INT4 AS point_count,
-       (SELECT count(*) FROM map_points AS p WHERE p.map_id = m.id AND p.revealed_at IS NOT NULL)::INT4 AS revealed_point_count
+       (SELECT count(*) FROM map_points AS p
+        WHERE p.map_id = m.id AND p.kind <> 'light'
+          AND (p.revealed_at IS NOT NULL OR p.trap_triggered_at IS NOT NULL OR p.treasure_found_at IS NOT NULL))::INT4 AS revealed_point_count
 FROM maps AS m
 JOIN gallery_images AS g ON g.id = m.image_id
 WHERE m.campaign_id = $1
@@ -1150,6 +1440,11 @@ type ListMapDetailsRow struct {
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 	GridColumns        *int32
+	FogEnabled         bool
+	BaseLight          string
+	GroupVision        bool
+	LayersRevision     int32
+	LightRevision      int32
 	ImageName          string
 	ImageWidth         int32
 	ImageHeight        int32
@@ -1161,6 +1456,10 @@ type ListMapDetailsRow struct {
 // its image's name and size, and how many points it has, in all and
 // revealed. Campaigns have a few maps, so one query answers ListMaps and
 // gives GetMap the names and states it needs (parents, submap targets).
+//
+// revealed_point_count is how many points every player sees: not a light, which
+// no player ever receives, and either revealed, a triggered trap or a found
+// treasure (a trap revealed to some characters only is the handler's to add).
 func (q *Queries) ListMapDetails(ctx context.Context, campaignID string) ([]ListMapDetailsRow, error) {
 	rows, err := q.db.Query(ctx, listMapDetails, campaignID)
 	if err != nil {
@@ -1180,6 +1479,11 @@ func (q *Queries) ListMapDetails(ctx context.Context, campaignID string) ([]List
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.GridColumns,
+			&i.FogEnabled,
+			&i.BaseLight,
+			&i.GroupVision,
+			&i.LayersRevision,
+			&i.LightRevision,
 			&i.ImageName,
 			&i.ImageWidth,
 			&i.ImageHeight,
@@ -1231,7 +1535,7 @@ func (q *Queries) ListMapImageIDs(ctx context.Context, campaignID string) ([]Lis
 }
 
 const listMapPoints = `-- name: ListMapPoints :many
-SELECT id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at, hooks, show_dc FROM map_points
+SELECT id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at, hooks, show_dc, trap, trap_state, trap_triggered_at, treasure_value_po, treasure_found_at, treasure_session_id, treasure_converted_award_id, light_preset, light_bright_ft, light_dim_ft FROM map_points
 WHERE map_id = $1
 ORDER BY created_at, id
 `
@@ -1260,6 +1564,16 @@ func (q *Queries) ListMapPoints(ctx context.Context, mapID string) ([]MapPoint, 
 			&i.UpdatedAt,
 			&i.Hooks,
 			&i.ShowDc,
+			&i.Trap,
+			&i.TrapState,
+			&i.TrapTriggeredAt,
+			&i.TreasureValuePo,
+			&i.TreasureFoundAt,
+			&i.TreasureSessionID,
+			&i.TreasureConvertedAwardID,
+			&i.LightPreset,
+			&i.LightBrightFt,
+			&i.LightDimFt,
 		); err != nil {
 			return nil, err
 		}
@@ -1272,7 +1586,7 @@ func (q *Queries) ListMapPoints(ctx context.Context, mapID string) ([]MapPoint, 
 }
 
 const listMapTokens = `-- name: ListMapTokens :many
-SELECT map_id, character_id, x_bp, y_bp, hidden, updated_at FROM map_tokens
+SELECT map_id, character_id, x_bp, y_bp, hidden, updated_at, carried_light FROM map_tokens
 WHERE map_id = $1
 `
 
@@ -1294,6 +1608,7 @@ func (q *Queries) ListMapTokens(ctx context.Context, mapID string) ([]MapToken, 
 			&i.YBp,
 			&i.Hidden,
 			&i.UpdatedAt,
+			&i.CarriedLight,
 		); err != nil {
 			return nil, err
 		}
@@ -1333,6 +1648,114 @@ func (q *Queries) ListMapsUsingImage(ctx context.Context, arg ListMapsUsingImage
 	for rows.Next() {
 		var i ListMapsUsingImageRow
 		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPointRevealsOfCampaign = `-- name: ListPointRevealsOfCampaign :many
+SELECT r.point_id, p.map_id, r.character_id,
+       (p.revealed_at IS NOT NULL OR p.trap_triggered_at IS NOT NULL)::BOOL AS public
+FROM map_point_reveals AS r
+JOIN map_points AS p ON p.id = r.point_id
+JOIN maps AS m ON m.id = p.map_id
+WHERE m.campaign_id = $1
+`
+
+type ListPointRevealsOfCampaignRow struct {
+	PointID     string
+	MapID       string
+	CharacterID string
+	Public      bool
+}
+
+// Every trap reveal of the campaign's maps, with whether the trap is already
+// visible to everyone: what a player's reads need to know which traps their
+// characters know (RN-10).
+func (q *Queries) ListPointRevealsOfCampaign(ctx context.Context, campaignID string) ([]ListPointRevealsOfCampaignRow, error) {
+	rows, err := q.db.Query(ctx, listPointRevealsOfCampaign, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPointRevealsOfCampaignRow
+	for rows.Next() {
+		var i ListPointRevealsOfCampaignRow
+		if err := rows.Scan(
+			&i.PointID,
+			&i.MapID,
+			&i.CharacterID,
+			&i.Public,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPointRevealsOfMap = `-- name: ListPointRevealsOfMap :many
+SELECT r.point_id, r.character_id, r.how, r.at FROM map_point_reveals AS r
+JOIN map_points AS p ON p.id = r.point_id
+WHERE p.map_id = $1
+ORDER BY r.at, r.character_id
+`
+
+// Who knows each trap of a map, for the master's read.
+func (q *Queries) ListPointRevealsOfMap(ctx context.Context, mapID string) ([]MapPointReveal, error) {
+	rows, err := q.db.Query(ctx, listPointRevealsOfMap, mapID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []MapPointReveal
+	for rows.Next() {
+		var i MapPointReveal
+		if err := rows.Scan(
+			&i.PointID,
+			&i.CharacterID,
+			&i.How,
+			&i.At,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPointRevealsOfPoint = `-- name: ListPointRevealsOfPoint :many
+SELECT point_id, character_id, how, at FROM map_point_reveals
+WHERE point_id = $1
+`
+
+// Who knows one trap: the players to tell when it changes or goes away.
+func (q *Queries) ListPointRevealsOfPoint(ctx context.Context, pointID string) ([]MapPointReveal, error) {
+	rows, err := q.db.Query(ctx, listPointRevealsOfPoint, pointID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []MapPointReveal
+	for rows.Next() {
+		var i MapPointReveal
+		if err := rows.Scan(
+			&i.PointID,
+			&i.CharacterID,
+			&i.How,
+			&i.At,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -1573,11 +1996,38 @@ func (q *Queries) ListSubmapLinks(ctx context.Context, campaignID string) ([]Lis
 	return items, nil
 }
 
+const listTreasureFindersOfMap = `-- name: ListTreasureFindersOfMap :many
+SELECT f.point_id, f.character_id FROM map_treasure_finders AS f
+JOIN map_points AS p ON p.id = f.point_id
+WHERE p.map_id = $1
+`
+
+// Who found each treasure of a map.
+func (q *Queries) ListTreasureFindersOfMap(ctx context.Context, mapID string) ([]MapTreasureFinder, error) {
+	rows, err := q.db.Query(ctx, listTreasureFindersOfMap, mapID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []MapTreasureFinder
+	for rows.Next() {
+		var i MapTreasureFinder
+		if err := rows.Scan(&i.PointID, &i.CharacterID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const moveMapToken = `-- name: MoveMapToken :one
 UPDATE map_tokens
 SET x_bp = $3, y_bp = $4, updated_at = $5
 WHERE map_id = $1 AND character_id = $2
-RETURNING map_id, character_id, x_bp, y_bp, hidden, updated_at
+RETURNING map_id, character_id, x_bp, y_bp, hidden, updated_at, carried_light
 `
 
 type MoveMapTokenParams struct {
@@ -1604,6 +2054,7 @@ func (q *Queries) MoveMapToken(ctx context.Context, arg MoveMapTokenParams) (Map
 		&i.YBp,
 		&i.Hidden,
 		&i.UpdatedAt,
+		&i.CarriedLight,
 	)
 	return i, err
 }
@@ -1638,11 +2089,66 @@ func (q *Queries) RenameGalleryImage(ctx context.Context, arg RenameGalleryImage
 	return i, err
 }
 
+const setMapFog = `-- name: SetMapFog :one
+UPDATE maps
+SET fog_enabled = COALESCE($1::BOOL, fog_enabled),
+    base_light = COALESCE($2::TEXT, base_light),
+    group_vision = COALESCE($3::BOOL, group_vision),
+    updated_at = CASE WHEN COALESCE($1::BOOL, fog_enabled) <> fog_enabled
+                        OR COALESCE($3::BOOL, group_vision) <> group_vision
+                      THEN $4::TIMESTAMPTZ ELSE updated_at END
+WHERE campaign_id = $5 AND id = $6
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision
+`
+
+type SetMapFogParams struct {
+	FogEnabled  *bool
+	BaseLight   *string
+	GroupVision *bool
+	Now         time.Time
+	CampaignID  string
+	ID          string
+}
+
+// The fog of war's settings (MR-036): each one the handler sends replaces the
+// current value, the others stay. updated_at moves only when something a
+// player reads changes (the switch or "Visão do grupo"): the base light is the
+// master's, and a player must not learn that it changed.
+func (q *Queries) SetMapFog(ctx context.Context, arg SetMapFogParams) (Map, error) {
+	row := q.db.QueryRow(ctx, setMapFog,
+		arg.FogEnabled,
+		arg.BaseLight,
+		arg.GroupVision,
+		arg.Now,
+		arg.CampaignID,
+		arg.ID,
+	)
+	var i Map
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.Name,
+		&i.ImageID,
+		&i.RevealedAt,
+		&i.Revision,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.GridColumns,
+		&i.FogEnabled,
+		&i.BaseLight,
+		&i.GroupVision,
+		&i.LayersRevision,
+		&i.LightRevision,
+	)
+	return i, err
+}
+
 const setMapGrid = `-- name: SetMapGrid :one
 UPDATE maps
-SET grid_columns = $1, updated_at = $2
+SET grid_columns = $1, fog_enabled = fog_enabled AND $1::INT4 IS NOT NULL,
+    updated_at = $2
 WHERE campaign_id = $3 AND id = $4
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision
 `
 
 type SetMapGridParams struct {
@@ -1652,9 +2158,9 @@ type SetMapGridParams struct {
 	ID          string
 }
 
-// The master's grid (MR-013): NULL clears it. It is a change to the map
-// itself, so updated_at moves, but the revision (the name and the image's
-// guard) does not.
+// The master's grid (MR-013): NULL clears it, and a map without a grid has no
+// fog of war. It is a change to the map itself, so updated_at moves, but the
+// revision (the name and the image's guard) does not.
 func (q *Queries) SetMapGrid(ctx context.Context, arg SetMapGridParams) (Map, error) {
 	row := q.db.QueryRow(ctx, setMapGrid,
 		arg.GridColumns,
@@ -1673,6 +2179,11 @@ func (q *Queries) SetMapGrid(ctx context.Context, arg SetMapGridParams) (Map, er
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.GridColumns,
+		&i.FogEnabled,
+		&i.BaseLight,
+		&i.GroupVision,
+		&i.LayersRevision,
+		&i.LightRevision,
 	)
 	return i, err
 }
@@ -1682,7 +2193,7 @@ UPDATE maps
 SET revealed_at = CASE WHEN $1::BOOL THEN COALESCE(revealed_at, $2::TIMESTAMPTZ) ELSE NULL END,
     updated_at = CASE WHEN (revealed_at IS NOT NULL) = $1::BOOL THEN updated_at ELSE $2::TIMESTAMPTZ END
 WHERE campaign_id = $3 AND id = $4
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision
 `
 
 type SetMapRevealedParams struct {
@@ -1713,6 +2224,47 @@ func (q *Queries) SetMapRevealed(ctx context.Context, arg SetMapRevealedParams) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.GridColumns,
+		&i.FogEnabled,
+		&i.BaseLight,
+		&i.GroupVision,
+		&i.LayersRevision,
+		&i.LightRevision,
+	)
+	return i, err
+}
+
+const setMapTokenCarriedLight = `-- name: SetMapTokenCarriedLight :one
+UPDATE map_tokens
+SET carried_light = $1, updated_at = $2
+WHERE map_id = $3 AND character_id = $4
+RETURNING map_id, character_id, x_bp, y_bp, hidden, updated_at, carried_light
+`
+
+type SetMapTokenCarriedLightParams struct {
+	CarriedLight *string
+	Now          time.Time
+	MapID        string
+	CharacterID  string
+}
+
+// The light a character carries (MR-036): a preset's key, NULL for none. Moving
+// the token is a change to it (the master and the owner read it again).
+func (q *Queries) SetMapTokenCarriedLight(ctx context.Context, arg SetMapTokenCarriedLightParams) (MapToken, error) {
+	row := q.db.QueryRow(ctx, setMapTokenCarriedLight,
+		arg.CarriedLight,
+		arg.Now,
+		arg.MapID,
+		arg.CharacterID,
+	)
+	var i MapToken
+	err := row.Scan(
+		&i.MapID,
+		&i.CharacterID,
+		&i.XBp,
+		&i.YBp,
+		&i.Hidden,
+		&i.UpdatedAt,
+		&i.CarriedLight,
 	)
 	return i, err
 }
@@ -1721,7 +2273,7 @@ const setMapTokenHidden = `-- name: SetMapTokenHidden :one
 UPDATE map_tokens
 SET hidden = $1, updated_at = CASE WHEN hidden = $1 THEN updated_at ELSE $2::TIMESTAMPTZ END
 WHERE map_id = $3 AND character_id = $4
-RETURNING map_id, character_id, x_bp, y_bp, hidden, updated_at
+RETURNING map_id, character_id, x_bp, y_bp, hidden, updated_at, carried_light
 `
 
 type SetMapTokenHiddenParams struct {
@@ -1746,6 +2298,7 @@ func (q *Queries) SetMapTokenHidden(ctx context.Context, arg SetMapTokenHiddenPa
 		&i.YBp,
 		&i.Hidden,
 		&i.UpdatedAt,
+		&i.CarriedLight,
 	)
 	return i, err
 }
@@ -1780,6 +2333,62 @@ func (q *Queries) SetSceneCluePosition(ctx context.Context, arg SetSceneCluePosi
 	return err
 }
 
+const setTreasureFound = `-- name: SetTreasureFound :one
+UPDATE map_points
+SET treasure_found_at = COALESCE(treasure_found_at, $1::TIMESTAMPTZ),
+    treasure_session_id = CASE WHEN treasure_found_at IS NULL THEN $2::UUID ELSE treasure_session_id END,
+    updated_at = $3
+WHERE map_id = $4 AND id = $5 AND kind = 'treasure'
+RETURNING id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at, hooks, show_dc, trap, trap_state, trap_triggered_at, treasure_value_po, treasure_found_at, treasure_session_id, treasure_converted_award_id, light_preset, light_bright_ft, light_dim_ft
+`
+
+type SetTreasureFoundParams struct {
+	FoundAt   time.Time
+	SessionID *string
+	Now       time.Time
+	MapID     string
+	ID        string
+}
+
+// Marks a treasure found (MR-041). The session is the one open at that time, or
+// NULL. A treasure already found keeps its first time and session.
+func (q *Queries) SetTreasureFound(ctx context.Context, arg SetTreasureFoundParams) (MapPoint, error) {
+	row := q.db.QueryRow(ctx, setTreasureFound,
+		arg.FoundAt,
+		arg.SessionID,
+		arg.Now,
+		arg.MapID,
+		arg.ID,
+	)
+	var i MapPoint
+	err := row.Scan(
+		&i.ID,
+		&i.MapID,
+		&i.Kind,
+		&i.Name,
+		&i.Description,
+		&i.XBp,
+		&i.YBp,
+		&i.TargetMapID,
+		&i.RevealedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Hooks,
+		&i.ShowDc,
+		&i.Trap,
+		&i.TrapState,
+		&i.TrapTriggeredAt,
+		&i.TreasureValuePo,
+		&i.TreasureFoundAt,
+		&i.TreasureSessionID,
+		&i.TreasureConvertedAwardID,
+		&i.LightPreset,
+		&i.LightBrightFt,
+		&i.LightDimFt,
+	)
+	return i, err
+}
+
 const takeBackLeftImage = `-- name: TakeBackLeftImage :execrows
 DELETE FROM campaign_left_images
 WHERE campaign_id = $1 AND image_id = $2
@@ -1802,7 +2411,7 @@ const updateMap = `-- name: UpdateMap :one
 UPDATE maps
 SET name = $1, image_id = $2, revision = revision + 1, updated_at = $3
 WHERE campaign_id = $4 AND id = $5 AND revision = $6
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision
 `
 
 type UpdateMapParams struct {
@@ -1836,6 +2445,11 @@ func (q *Queries) UpdateMap(ctx context.Context, arg UpdateMapParams) (Map, erro
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.GridColumns,
+		&i.FogEnabled,
+		&i.BaseLight,
+		&i.GroupVision,
+		&i.LayersRevision,
+		&i.LightRevision,
 	)
 	return i, err
 }
@@ -1844,24 +2458,36 @@ const updateMapPoint = `-- name: UpdateMapPoint :one
 UPDATE map_points
 SET kind = $1, name = $2, description = $3, hooks = $4,
     show_dc = $5, x_bp = $6, y_bp = $7, target_map_id = $8,
-    revealed_at = $9, updated_at = $10
-WHERE map_id = $11 AND id = $12
-RETURNING id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at, hooks, show_dc
+    revealed_at = $9, trap = $10, trap_state = $11, trap_triggered_at = $12,
+    treasure_value_po = $13, treasure_found_at = $14,
+    treasure_session_id = $15, light_preset = $16,
+    light_bright_ft = $17, light_dim_ft = $18, updated_at = $19
+WHERE map_id = $20 AND id = $21
+RETURNING id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at, hooks, show_dc, trap, trap_state, trap_triggered_at, treasure_value_po, treasure_found_at, treasure_session_id, treasure_converted_award_id, light_preset, light_bright_ft, light_dim_ft
 `
 
 type UpdateMapPointParams struct {
-	Kind        string
-	Name        string
-	Description string
-	Hooks       string
-	ShowDc      bool
-	XBp         int32
-	YBp         int32
-	TargetMapID *string
-	RevealedAt  *time.Time
-	Now         time.Time
-	MapID       string
-	ID          string
+	Kind              string
+	Name              string
+	Description       string
+	Hooks             string
+	ShowDc            bool
+	XBp               int32
+	YBp               int32
+	TargetMapID       *string
+	RevealedAt        *time.Time
+	Trap              []byte
+	TrapState         *string
+	TrapTriggeredAt   *time.Time
+	TreasureValuePo   *int32
+	TreasureFoundAt   *time.Time
+	TreasureSessionID *string
+	LightPreset       *string
+	LightBrightFt     *int32
+	LightDimFt        *int32
+	Now               time.Time
+	MapID             string
+	ID                string
 }
 
 // Every column the API may change, with the values the handler worked out
@@ -1877,6 +2503,15 @@ func (q *Queries) UpdateMapPoint(ctx context.Context, arg UpdateMapPointParams) 
 		arg.YBp,
 		arg.TargetMapID,
 		arg.RevealedAt,
+		arg.Trap,
+		arg.TrapState,
+		arg.TrapTriggeredAt,
+		arg.TreasureValuePo,
+		arg.TreasureFoundAt,
+		arg.TreasureSessionID,
+		arg.LightPreset,
+		arg.LightBrightFt,
+		arg.LightDimFt,
 		arg.Now,
 		arg.MapID,
 		arg.ID,
@@ -1896,6 +2531,16 @@ func (q *Queries) UpdateMapPoint(ctx context.Context, arg UpdateMapPointParams) 
 		&i.UpdatedAt,
 		&i.Hooks,
 		&i.ShowDc,
+		&i.Trap,
+		&i.TrapState,
+		&i.TrapTriggeredAt,
+		&i.TreasureValuePo,
+		&i.TreasureFoundAt,
+		&i.TreasureSessionID,
+		&i.TreasureConvertedAwardID,
+		&i.LightPreset,
+		&i.LightBrightFt,
+		&i.LightDimFt,
 	)
 	return i, err
 }
@@ -1973,6 +2618,38 @@ func (q *Queries) UpdateSceneClue(ctx context.Context, arg UpdateSceneClueParams
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const upsertMapLayers = `-- name: UpsertMapLayers :exec
+INSERT INTO map_layers (map_id, difficult_terrain, walls, cover, light, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6)
+ON CONFLICT (map_id) DO UPDATE
+SET difficult_terrain = excluded.difficult_terrain, walls = excluded.walls, cover = excluded.cover,
+    light = excluded.light, updated_at = excluded.updated_at
+`
+
+type UpsertMapLayersParams struct {
+	MapID            string
+	DifficultTerrain []byte
+	Walls            []byte
+	Cover            []byte
+	Light            []byte
+	Now              time.Time
+}
+
+// Writes the four layers of a map (NULL for a layer with nothing painted). The
+// handler holds the map's row lock (GetMapForUpdate), so two batches of paint
+// take turns.
+func (q *Queries) UpsertMapLayers(ctx context.Context, arg UpsertMapLayersParams) error {
+	_, err := q.db.Exec(ctx, upsertMapLayers,
+		arg.MapID,
+		arg.DifficultTerrain,
+		arg.Walls,
+		arg.Cover,
+		arg.Light,
+		arg.Now,
+	)
+	return err
 }
 
 const upsertMapTokenPosition = `-- name: UpsertMapTokenPosition :exec
