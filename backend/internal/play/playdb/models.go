@@ -52,6 +52,11 @@ type Combatant struct {
 	JumpHighDft        int32
 	CoverMark          string
 	Disengaged         bool
+	CreatureID         *string
+	MonsterKey         *string
+	SummonAttack       *string
+	SummonGroupID      *string
+	Dismissed          bool
 }
 
 type Encounter struct {

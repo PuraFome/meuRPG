@@ -143,6 +143,10 @@ type Service struct {
 	dice   DiceRules
 	roller dice.Roller
 	live   Live
+	// creatureHost is package play, connected by SetCreatureHost: the combat
+	// that holds a character's creatures and the history they are written to
+	// (MR-037). Nil until then.
+	creatureHost CreatureHost
 }
 
 // The compiler checks that Service implements both handlers.

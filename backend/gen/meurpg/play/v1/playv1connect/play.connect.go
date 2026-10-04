@@ -99,6 +99,8 @@ const (
 	PlayServiceTakeOffStageProcedure = "/meurpg.play.v1.PlayService/TakeOffStage"
 	// PlayServiceSetSpeakerProcedure is the fully-qualified name of the PlayService's SetSpeaker RPC.
 	PlayServiceSetSpeakerProcedure = "/meurpg.play.v1.PlayService/SetSpeaker"
+	// PlayServiceCastSummonProcedure is the fully-qualified name of the PlayService's CastSummon RPC.
+	PlayServiceCastSummonProcedure = "/meurpg.play.v1.PlayService/CastSummon"
 )
 
 // PlayServiceClient is a client for the meurpg.play.v1.PlayService service.
@@ -506,6 +508,41 @@ type PlayServiceClient interface {
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
 	//     NO_OPEN_SESSION).
 	SetSpeaker(context.Context, *connect.Request[v1.SetSpeakerRequest]) (*connect.Response[v1.SetSpeakerResponse], error)
+	// CastSummon casts a spell that summons creatures outside a combat (MR-037,
+	// Etapa 9): Encontrar Familiar (1 hour, a ritual: no slot is spent),
+	// Animar os Mortos (1 minute: it spends the slot) and Conjurar Animais
+	// (1 action). The caster is a player's character; its player casts for it,
+	// and the master for anyone. The spell must be one the character has (a
+	// ritual one from its spellbook when cast as a ritual), the slot a free one
+	// of at least the spell's circle, and the choice what rules.SummonOptions
+	// offers for that slot and character. The slot is spent through the vitals
+	// (RN-02); the creatures are created and listed on the character
+	// (CharacterService.ListCharacterCreatures). A new familiar replaces the old
+	// one (the SRD allows one at a time), which is dismissed. Creatures of one
+	// casting share a `summon_group_id`. Nothing is rolled, so there is no dice
+	// mode to follow (RN-18); the initiative is rolled when a combat starts.
+	//
+	// The owner and the master get `creatures_changed`, the caster's player and
+	// the master `vitals_changed` when a slot was spent, and a
+	// `creature_summoned` event (ids and keys only) goes to the history.
+	//
+	// A casting while the caster is a combatant of a combat that is not ended is
+	// refused: the combat has CastSpell, with the initiative.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist or the caller is not a member
+	//     of it, or the character is not a living player's character of the
+	//     campaign that the caller may cast for.
+	//   - `permission_denied`: the caller is a player and the character is not
+	//     theirs.
+	//   - `invalid_argument`: the spell does not summon or is not one of the
+	//     character's, the slot does not fit, ritual is set for a spell that is
+	//     not a ritual or the character cannot cast rituals, a name is not 1 to
+	//     40 characters.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION); EncounterBlocked: SUMMON_CHOICE_INVALID,
+	//     NO_SLOT, SUMMON_IN_COMBAT.
+	CastSummon(context.Context, *connect.Request[v1.CastSummonRequest]) (*connect.Response[v1.CastSummonResponse], error)
 }
 
 // NewPlayServiceClient constructs a client for the meurpg.play.v1.PlayService service. By default,
@@ -645,6 +682,12 @@ func NewPlayServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(playServiceMethods.ByName("SetSpeaker")),
 			connect.WithClientOptions(opts...),
 		),
+		castSummon: connect.NewClient[v1.CastSummonRequest, v1.CastSummonResponse](
+			httpClient,
+			baseURL+PlayServiceCastSummonProcedure,
+			connect.WithSchema(playServiceMethods.ByName("CastSummon")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -670,6 +713,7 @@ type playServiceClient struct {
 	putOnStage            *connect.Client[v1.PutOnStageRequest, v1.PutOnStageResponse]
 	takeOffStage          *connect.Client[v1.TakeOffStageRequest, v1.TakeOffStageResponse]
 	setSpeaker            *connect.Client[v1.SetSpeakerRequest, v1.SetSpeakerResponse]
+	castSummon            *connect.Client[v1.CastSummonRequest, v1.CastSummonResponse]
 }
 
 // StartGameSession calls meurpg.play.v1.PlayService.StartGameSession.
@@ -770,6 +814,11 @@ func (c *playServiceClient) TakeOffStage(ctx context.Context, req *connect.Reque
 // SetSpeaker calls meurpg.play.v1.PlayService.SetSpeaker.
 func (c *playServiceClient) SetSpeaker(ctx context.Context, req *connect.Request[v1.SetSpeakerRequest]) (*connect.Response[v1.SetSpeakerResponse], error) {
 	return c.setSpeaker.CallUnary(ctx, req)
+}
+
+// CastSummon calls meurpg.play.v1.PlayService.CastSummon.
+func (c *playServiceClient) CastSummon(ctx context.Context, req *connect.Request[v1.CastSummonRequest]) (*connect.Response[v1.CastSummonResponse], error) {
+	return c.castSummon.CallUnary(ctx, req)
 }
 
 // PlayServiceHandler is an implementation of the meurpg.play.v1.PlayService service.
@@ -1177,6 +1226,41 @@ type PlayServiceHandler interface {
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
 	//     NO_OPEN_SESSION).
 	SetSpeaker(context.Context, *connect.Request[v1.SetSpeakerRequest]) (*connect.Response[v1.SetSpeakerResponse], error)
+	// CastSummon casts a spell that summons creatures outside a combat (MR-037,
+	// Etapa 9): Encontrar Familiar (1 hour, a ritual: no slot is spent),
+	// Animar os Mortos (1 minute: it spends the slot) and Conjurar Animais
+	// (1 action). The caster is a player's character; its player casts for it,
+	// and the master for anyone. The spell must be one the character has (a
+	// ritual one from its spellbook when cast as a ritual), the slot a free one
+	// of at least the spell's circle, and the choice what rules.SummonOptions
+	// offers for that slot and character. The slot is spent through the vitals
+	// (RN-02); the creatures are created and listed on the character
+	// (CharacterService.ListCharacterCreatures). A new familiar replaces the old
+	// one (the SRD allows one at a time), which is dismissed. Creatures of one
+	// casting share a `summon_group_id`. Nothing is rolled, so there is no dice
+	// mode to follow (RN-18); the initiative is rolled when a combat starts.
+	//
+	// The owner and the master get `creatures_changed`, the caster's player and
+	// the master `vitals_changed` when a slot was spent, and a
+	// `creature_summoned` event (ids and keys only) goes to the history.
+	//
+	// A casting while the caster is a combatant of a combat that is not ended is
+	// refused: the combat has CastSpell, with the initiative.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist or the caller is not a member
+	//     of it, or the character is not a living player's character of the
+	//     campaign that the caller may cast for.
+	//   - `permission_denied`: the caller is a player and the character is not
+	//     theirs.
+	//   - `invalid_argument`: the spell does not summon or is not one of the
+	//     character's, the slot does not fit, ritual is set for a spell that is
+	//     not a ritual or the character cannot cast rituals, a name is not 1 to
+	//     40 characters.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION); EncounterBlocked: SUMMON_CHOICE_INVALID,
+	//     NO_SLOT, SUMMON_IN_COMBAT.
+	CastSummon(context.Context, *connect.Request[v1.CastSummonRequest]) (*connect.Response[v1.CastSummonResponse], error)
 }
 
 // NewPlayServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -1312,6 +1396,12 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(playServiceMethods.ByName("SetSpeaker")),
 		connect.WithHandlerOptions(opts...),
 	)
+	playServiceCastSummonHandler := connect.NewUnaryHandler(
+		PlayServiceCastSummonProcedure,
+		svc.CastSummon,
+		connect.WithSchema(playServiceMethods.ByName("CastSummon")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/meurpg.play.v1.PlayService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case PlayServiceStartGameSessionProcedure:
@@ -1354,6 +1444,8 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 			playServiceTakeOffStageHandler.ServeHTTP(w, r)
 		case PlayServiceSetSpeakerProcedure:
 			playServiceSetSpeakerHandler.ServeHTTP(w, r)
+		case PlayServiceCastSummonProcedure:
+			playServiceCastSummonHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1441,4 +1533,8 @@ func (UnimplementedPlayServiceHandler) TakeOffStage(context.Context, *connect.Re
 
 func (UnimplementedPlayServiceHandler) SetSpeaker(context.Context, *connect.Request[v1.SetSpeakerRequest]) (*connect.Response[v1.SetSpeakerResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.SetSpeaker is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) CastSummon(context.Context, *connect.Request[v1.CastSummonRequest]) (*connect.Response[v1.CastSummonResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.CastSummon is not implemented"))
 }

@@ -49,6 +49,12 @@ func lastAction(recent []playdb.ListRecentSessionEventsRow, encounterID string) 
 		if undone[e.ID] {
 			continue
 		}
+		// The creatures a cast or an ended concentration made or dismissed are
+		// written before the change's own event, which is what an undo acts on: they
+		// never close the undo chain.
+		if e.Kind == eventCreatureSummoned || e.Kind == eventCreatureDismissed {
+			continue
+		}
 		if slices.Contains(undoableKinds, e.Kind) && e.EncounterID != nil && *e.EncounterID == encounterID {
 			// A move written before the undo knew moves says where it came from
 			// nowhere: there is nothing to put back.
@@ -253,7 +259,7 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 			if !ok || !h.Applied || h.Before == nil {
 				continue
 			}
-			if who.Kind == kindNPC {
+			if holdsHP(who) {
 				if err := setHP(who, *h.Before); err != nil {
 					return nil, err
 				}
@@ -342,7 +348,7 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 			keep(v)
 		}
 		if ev.Heal && ev.Before != nil {
-			if who.Kind == kindNPC {
+			if holdsHP(who) {
 				return vitals, setHP(who, *ev.Before)
 			}
 			v, err := putVitals(who, *ev.Before)
@@ -387,6 +393,18 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 				return nil, fmt.Errorf("put back the concentration: %w", err)
 			}
 		}
+		// The creatures the cast made go away, and the ones it dismissed (the old
+		// concentration's) are back with their group's initiative (MR-037).
+		if len(ev.Created) > 0 {
+			if err := s.removeCreatureCombatants(ctx, c, ev.Created); err != nil {
+				return nil, err
+			}
+		}
+		if len(ev.Dismissed) > 0 {
+			if err := s.rejoinCreatures(ctx, c, ev.Dismissed); err != nil {
+				return nil, err
+			}
+		}
 		for _, h := range ev.Hits {
 			if h.Pending != "" {
 				if err := c.q.DeletePendingDamage(ctx, h.Pending); err != nil {
@@ -400,7 +418,7 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 				continue
 			}
 			if h.Restore != nil {
-				if target.Kind == kindNPC {
+				if holdsHP(target) {
 					err = setHP(target, *h.Restore)
 				} else {
 					var after *playv1.CharacterVitals
@@ -472,6 +490,11 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		if ev.ConcEnded != "" {
 			if err := c.q.SetCombatantConcentration(ctx, playdb.SetCombatantConcentrationParams{ID: who.ID, ConcentrationSpell: &ev.ConcEnded}); err != nil {
 				return nil, fmt.Errorf("put back the concentration: %w", err)
+			}
+		}
+		if len(ev.Dismissed) > 0 {
+			if err := s.rejoinCreatures(ctx, c, ev.Dismissed); err != nil {
+				return nil, err
 			}
 		}
 	default:

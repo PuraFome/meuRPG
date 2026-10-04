@@ -128,6 +128,9 @@ type combatTx struct {
 	kind string
 	// castID is the id the pending damages of the spell being cast share.
 	castID string
+	// actorUserID is who makes the change, for the events a change writes besides
+	// its own (the creatures it summons or dismisses).
+	actorUserID string
 }
 
 // combatResult is what a change leaves for the handler: the session, and
@@ -178,7 +181,7 @@ func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx)
 			return fmt.Errorf("find the event of this idempotency key: %w", err)
 		}
 
-		c := &combatTx{tx: tx, q: q, session: session, now: s.now(), kind: w.kind}
+		c := &combatTx{tx: tx, q: q, session: session, now: s.now(), kind: w.kind, actorUserID: w.m.UserID}
 		if w.encounterID != "" {
 			c.enc, err = q.GetEncounterInSession(ctx, playdb.GetEncounterInSessionParams{GameSessionID: session.ID, ID: w.encounterID})
 			if errors.Is(err, pgx.ErrNoRows) {
@@ -190,6 +193,11 @@ func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx)
 		}
 		payload, err := do(c)
 		if err != nil || payload == nil {
+			return err
+		}
+		// A change to a combatant's hit points may defeat a creature or give one back
+		// (MR-037): the creatures follow, before the change's own event is written.
+		if err := s.syncCreatures(ctx, c); err != nil {
 			return err
 		}
 		res.encounterID = c.enc.ID

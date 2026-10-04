@@ -84,7 +84,7 @@ func (s *Service) gate(ctx context.Context, tx pgx.Tx, campaignID string, e play
 }
 
 // isDown says whether a player's character is at 0 hit points ("Caído"): its
-// vitals say so. An NPC is never down: it is defeated.
+// vitals say so. An NPC and a creature are never down: they are defeated.
 // A write passes its transaction, so it reads what it will overwrite; a read
 // passes nil.
 func (s *Service) isDown(ctx context.Context, tx pgx.Tx, campaignID string, c playdb.Combatant) (bool, error) {
@@ -223,7 +223,7 @@ func (s *Service) GetTurnOptions(
 		return nil, err
 	}
 
-	opts, err := s.roster.CombatTurnOptions(ctx, m.CampaignID, who.CharacterID, turnOf(who))
+	opts, err := s.optionsOf(ctx, m.CampaignID, who)
 	if err != nil {
 		return nil, s.dbError(ctx, "work out the turn options", err)
 	}
@@ -404,7 +404,7 @@ func pendingProto(p playdb.PendingDamage, cs []playdb.Combatant) *playv1.Pending
 		out.Roll = diceRoll(p.DiceCount, p.DiceSides, p.Faces, p.DiceBonus, total, p.Physical)
 	}
 	if p.Status == pendingApplied {
-		out.TargetDefeated = slices.ContainsFunc(cs, func(c playdb.Combatant) bool { return c.ID == p.TargetID && c.Kind == kindNPC && c.Defeated })
+		out.TargetDefeated = slices.ContainsFunc(cs, func(c playdb.Combatant) bool { return c.ID == p.TargetID && holdsHP(c) && c.Defeated })
 	}
 	return out
 }
@@ -562,7 +562,10 @@ func (s *Service) RollAttack(
 			}
 		}
 
-		attackerSheet, err := s.roster.CombatSheet(ctx, m.CampaignID, attacker.CharacterID)
+		if err := mayAttack(attacker, asReaction); err != nil {
+			return nil, err
+		}
+		attackerSheet, err := s.sheetOf(ctx, m.CampaignID, attacker)
 		if err != nil {
 			return nil, err
 		}
@@ -624,7 +627,7 @@ func (s *Service) RollAttack(
 		if err != nil {
 			return nil, err
 		}
-		targetSheet, err := s.roster.CombatSheet(ctx, m.CampaignID, target.CharacterID)
+		targetSheet, err := s.sheetOf(ctx, m.CampaignID, target)
 		if err != nil {
 			return nil, err
 		}
@@ -952,7 +955,7 @@ func (s *Service) landDamage(ctx context.Context, c *combatTx, p playdb.PendingD
 		healed, vit, err := s.healCombatant(ctx, c, target, amount)
 		healed.Pending, healed.Half = p.ID, p.Half
 		return healed, vit, err
-	case target.Kind == kindNPC:
+	case holdsHP(target): // an NPC and a creature take a damage at once
 		dmg := combat.ApplyDamage(int(num(target.HpCurrent)), int(num(target.HpTemp)), int(amount))
 		after := hpState{HP: clamp32(dmg.HP, 0, math.MaxInt32), Temp: clamp32(dmg.TempHP, 0, math.MaxInt32), Defeated: dmg.HP == 0}
 		if err := c.q.SetCombatantHitPoints(ctx, playdb.SetCombatantHitPointsParams{ID: target.ID, HpCurrent: &after.HP, HpTemp: &after.Temp, Defeated: after.Defeated}); err != nil {
@@ -972,7 +975,7 @@ func (s *Service) landDamage(ctx context.Context, c *combatTx, p playdb.PendingD
 // character's after.
 func (s *Service) healCombatant(ctx context.Context, c *combatTx, target playdb.Combatant, amount int32) (damageHit, *playv1.CharacterVitals, error) {
 	hit := damageHit{Target: target.ID, Applied: true}
-	if target.Kind == kindNPC {
+	if holdsHP(target) {
 		before := hpOf(target)
 		r := combat.ApplyHeal(int(before.HP), int(num(target.HpMax)), int(amount))
 		after := hpState{HP: clamp32(r.HP, 0, math.MaxInt32), Temp: before.Temp, Defeated: r.HP == 0}
@@ -1363,7 +1366,7 @@ func (s *Service) TakeAction(
 		if err := v.mayAct(who); err != nil {
 			return nil, err
 		}
-		opts, err := s.roster.CombatTurnOptions(ctx, m.CampaignID, who.CharacterID, turnOf(who))
+		opts, err := s.optionsOf(ctx, m.CampaignID, who)
 		if err != nil {
 			return nil, err
 		}
@@ -1443,7 +1446,7 @@ func (s *Service) TakeAction(
 		}
 
 		if feature {
-			sheet, err := s.roster.CombatSheet(ctx, m.CampaignID, who.CharacterID)
+			sheet, err := s.sheetOf(ctx, m.CampaignID, who)
 			if err != nil {
 				return nil, err
 			}
@@ -1608,7 +1611,7 @@ func (s *Service) AdjustCombatantHitPoints(
 		if err != nil {
 			return nil, err
 		}
-		if target.Kind != kindNPC {
+		if !holdsHP(target) {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a player's character keeps its hit points in its vitals: use AdjustCharacterVitals"))
 		}
 		hp, tmp, hpMax := int(num(target.HpCurrent)), int(num(target.HpTemp)), int(num(target.HpMax))

@@ -82,8 +82,10 @@ func hpLost(before, after *hpState) int32 {
 // each player's character, in the order of the combatants.
 func tallyHighlights(events []playdb.ListEncounterCombatEventsRow, combatants []playdb.Combatant) []*characterTally {
 	byCombatant := map[string]*characterTally{}
+	ally := map[string]bool{} // the party's side: a hit on it is friendly fire and counts nowhere
 	var out []*characterTally
 	for _, c := range combatants {
+		ally[c.ID] = inParty(c)
 		if c.Kind != kindPlayer {
 			continue
 		}
@@ -117,12 +119,12 @@ func tallyHighlights(events []playdb.ListEncounterCombatEventsRow, combatants []
 		actor := byCombatant[ev.Actor] // nil: an NPC's action, or a combatant that left
 		switch e.Kind {
 		case eventAttackRolled:
-			if actor != nil && ev.Outcome == outcomeCrit {
+			if actor != nil && ev.Outcome == outcomeCrit && !ally[ev.Target] {
 				actor.crits++
 			}
 		case eventSpellCast:
 			for _, h := range ev.Hits {
-				if actor != nil && h.Outcome == outcomeCrit {
+				if actor != nil && h.Outcome == outcomeCrit && !ally[h.Target] {
 					actor.crits++
 				}
 			}
@@ -143,6 +145,8 @@ func tallyHighlights(events []playdb.ListEncounterCombatEventsRow, combatants []
 					// for the master (damage_applied counts it).
 				case ev.Heal:
 					actor.healing += h.Amount // what was regained, up to the maximum
+				case ally[h.Target]:
+					// Friendly fire (a hit on a creature of the party) counts nowhere.
 				case h.Before != nil && h.After != nil:
 					// Only an NPC takes a damage at once: this is damage dealt to one.
 					actor.damage += hpLost(h.Before, h.After)

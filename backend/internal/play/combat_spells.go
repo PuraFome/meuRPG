@@ -265,7 +265,7 @@ func (s *Service) CastSpell(
 
 		// The spell must be one the caster may cast now; the master has the last
 		// word on the economy only.
-		opts, err := s.roster.CombatTurnOptions(ctx, m.CampaignID, caster.CharacterID, turnOf(caster))
+		opts, err := s.optionsOf(ctx, m.CampaignID, caster)
 		if err != nil {
 			return nil, err
 		}
@@ -274,6 +274,14 @@ func (s *Service) CastSpell(
 			return nil, err
 		}
 		if !cast.enabled {
+			// A summoning spell that takes too long is refused with a reason the screen
+			// can say ("Leva 1 hora: conjure fora do combate").
+			if cast.reason.GetCode() == rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_CASTING_TIME_TOO_LONG {
+				if long, err := s.roster.CombatSpell(ctx, m.CampaignID, caster.CharacterID, spellKey, int(cast.level)); err == nil && long.Summon {
+					return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CASTING_TIME_TOO_LONG,
+						"this spell takes too long to cast in a fight: cast it outside the combat")
+				}
+			}
 			if err := castError(cast.reason, v.master); err != nil {
 				return nil, err
 			}
@@ -297,12 +305,25 @@ func (s *Service) CastSpell(
 		for i, t := range targets {
 			dartList[i] = t.darts
 		}
+		if sp.Summon != (req.Msg.GetSummon() != nil) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("summon is for a summoning spell, and a summoning spell needs it"))
+		}
 		terrain, err := s.terrainOf(ctx, m.CampaignID, c.enc)
 		if err != nil {
 			return nil, err
 		}
-		if err := s.checkTargets(v, terrain, cs, sp, caster, targs, dartList, darts, slotLevel); err != nil {
+		if sp.Summon {
+			if len(targs) > 0 {
+				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a summoning spell takes no targets: the creatures appear next to the caster"))
+			}
+		} else if err := s.checkTargets(v, terrain, cs, sp, caster, targs, dartList, darts, slotLevel); err != nil {
 			return nil, err
+		}
+		var summon *summoning
+		if sp.Summon {
+			if summon, err = s.prepareSummon(ctx, c, m, v, caster, spellKey, slotLevel, req.Msg.GetSummon(), in, rolled, sp.Concentration); err != nil {
+				return nil, err
+			}
 		}
 		if len(targs) == 0 && selfOnly(sp) {
 			targs, targets = []playdb.Combatant{caster}, []target{{id: caster.ID}}
@@ -360,8 +381,18 @@ func (s *Service) CastSpell(
 		if sp.Concentration {
 			made.Concentrate, made.ConcBefore = true, deref(caster.ConcentrationSpell)
 			made.ConcEnded = made.ConcBefore
+			// A new concentration spell ends the old one, and the creatures that lasted
+			// only while it did (MR-037, RN-22).
+			if made.Dismissed, err = s.endSummons(ctx, c, caster); err != nil {
+				return nil, err
+			}
 			if err := c.q.SetCombatantConcentration(ctx, playdb.SetCombatantConcentrationParams{ID: caster.ID, ConcentrationSpell: &spellKey}); err != nil {
 				return nil, fmt.Errorf("set the concentration: %w", err)
+			}
+		}
+		if summon != nil {
+			if err := s.joinSummon(ctx, c, caster, spellKey, sp.Concentration, summon, &made); err != nil {
+				return nil, err
 			}
 		}
 
@@ -416,7 +447,7 @@ func (s *Service) CastSpell(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&playv1.CastSpellResponse{Encounter: out, Cast: spell}), nil
+	return connect.NewResponse(&playv1.CastSpellResponse{Encounter: out, Cast: spell, SummonedCombatantIds: s.combatantsOfCreatures(ctx, res, ev.Created)}), nil
 }
 
 // checkTargets checks, for a player, who a spell may touch: how many targets
@@ -522,7 +553,7 @@ func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membersh
 	if err != nil {
 		return err
 	}
-	sheet, err := s.roster.CombatSheet(ctx, m.CampaignID, target.CharacterID)
+	sheet, err := s.sheetOf(ctx, m.CampaignID, target)
 	if err != nil {
 		return err
 	}
@@ -554,7 +585,7 @@ func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membersh
 // (rounded down) for one that saved when the spell halves, none when it avoids.
 // The d20 is always rolled by the app (RN-18 is for the table's own dice).
 func (s *Service) spellSave(ctx context.Context, c *combatTx, m authz.Membership, sp link.Spell, caster, target playdb.Combatant, cover coverView, hit *castHit) error {
-	save, err := s.roster.CombatSave(ctx, m.CampaignID, target.CharacterID, sp.SaveAbility)
+	save, err := s.saveOf(ctx, m.CampaignID, target, sp.SaveAbility)
 	if err != nil {
 		return err
 	}

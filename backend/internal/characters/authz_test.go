@@ -55,6 +55,18 @@ func TestAuthorizationMatrix(t *testing.T) {
 	// fresh reads a character's current revision as the master, so every
 	// caller's write is judged on its permission, not on a stale revision.
 	fresh := func(id string) *charactersv1.Character { return master.get(t, campaign, id) }
+	// gift is a creature the master gave Pensantus, for the creature rows.
+	var giftCreature *charactersv1.CharacterCreature
+	gift := func() *charactersv1.CharacterCreature {
+		if giftCreature == nil {
+			res, err := master.api.GiveCreature(t.Context(), connect.NewRequest(&charactersv1.GiveCreatureRequest{CampaignId: campaign, CharacterId: pc.GetId(), MonsterKey: "monster:wolf", Name: "Presa"}))
+			if err != nil {
+				t.Fatalf("GiveCreature() error = %v", err)
+			}
+			giftCreature = res.Msg.GetCreature()
+		}
+		return giftCreature
+	}
 	create := func(kind charactersv1.CharacterKind, sheet *charactersv1.CharacterSheet) func(ctx context.Context, u *user) error {
 		return func(ctx context.Context, u *user) error {
 			_, err := u.api.CreateCharacter(ctx, connect.NewRequest(&charactersv1.CreateCharacterRequest{
@@ -265,6 +277,34 @@ func TestAuthorizationMatrix(t *testing.T) {
 			}))
 			return err
 		}, [6]connect.Code{connect.CodePermissionDenied, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+
+		// The character's creatures (MR-037): the master and the owner's player
+		// read them; every other player and the pending member get not_found, as
+		// for the character itself; only the master gives and corrects hit points.
+		{"GiveCreature", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.GiveCreature(ctx, connect.NewRequest(&charactersv1.GiveCreatureRequest{CampaignId: campaign, CharacterId: pc.GetId(), MonsterKey: "monster:wolf"}))
+			return err
+		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"ListCharacterCreatures", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.ListCharacterCreatures(ctx, connect.NewRequest(&charactersv1.ListCharacterCreaturesRequest{CampaignId: campaign, CharacterId: pc.GetId()}))
+			return err
+		}, [6]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"RenameCreature", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.RenameCreature(ctx, connect.NewRequest(&charactersv1.RenameCreatureRequest{CampaignId: campaign, CreatureId: gift().GetId(), Name: "Presa"}))
+			return err
+		}, [6]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"AdjustCreatureHitPoints", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.AdjustCreatureHitPoints(ctx, connect.NewRequest(&charactersv1.AdjustCreatureHitPointsRequest{
+				CampaignId: campaign, CreatureId: gift().GetId(), Change: &charactersv1.AdjustCreatureHitPointsRequest_Damage{Damage: 1},
+			}))
+			return err
+		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		// The master dismisses it; for the owner it is gone already, which changes
+		// nothing; another player never sees it.
+		{"DismissCreature", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.DismissCreature(ctx, connect.NewRequest(&charactersv1.DismissCreatureRequest{CampaignId: campaign, CreatureId: gift().GetId()}))
+			return err
+		}, [6]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 
 		// A game session does not lock a pending character (RN-15): its
 		// player still edits it.

@@ -234,6 +234,10 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		// A level-up changes the sheet everyone in the session watches, so
 		// characters publishes the same hint as an XP award.
 		charactersService.SetLive(playService)
+		// A character's creatures and the combat that holds them (MR-037):
+		// dismissing a creature takes it out of the fight, and its events and
+		// stream hints go through play.
+		charactersService.SetCreatureHost(playService)
 		mapsService, err = maps.New(maps.Config{
 			Pool:       pool,
 			Blobs:      blobs,             // nil: images are off

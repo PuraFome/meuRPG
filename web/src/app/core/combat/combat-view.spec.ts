@@ -2,6 +2,7 @@ import { CombatantKind, CombatantState } from '../../../gen/meurpg/play/v1/comba
 import { combatant, encounter } from './combat-testing';
 import {
   combatantInitial,
+  ownCombatant,
   initiativeFormula,
   moveInGroup,
   nextCombatant,
@@ -13,6 +14,21 @@ import {
 } from './combat-view';
 
 describe('combat view helpers', () => {
+  it('finds the player\'s own combatant by `mine`, never a creature of theirs (MR-037)', () => {
+    // The server marks a character's creature `controlledByMe`, never `mine`: a
+    // combat with a familiar must not make the screen pick the owl as "me".
+    const e = encounter({
+      combatants: [
+        combatant({ id: 'nanquim', label: 'Nanquim', kind: CombatantKind.CREATURE, mine: false, controlledByMe: true, ownerCharacterId: 'pens' }),
+        combatant({ id: 'pens', label: 'Pensantus', kind: CombatantKind.PLAYER, mine: true, controlledByMe: true }),
+        combatant({ id: 'toren', label: 'Toren', kind: CombatantKind.PLAYER }),
+      ],
+    });
+    expect(ownCombatant(e)?.label).toBe('Pensantus');
+    // A player whose character is not in the fight but whose creature is has no "own" combatant.
+    expect(ownCombatant(encounter({ combatants: [e.combatants[0]!, e.combatants[2]!] }))).toBeNull();
+  });
+
   it('says how hurt an NPC is in words, never numbers (RN-20)', () => {
     expect(stateWord(CombatantState.UNHURT)).toBe('Ileso');
     expect(stateWord(CombatantState.HURT)).toBe('Ferido');

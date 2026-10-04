@@ -98,6 +98,21 @@ const (
 	// CharacterServiceListLevelUpsProcedure is the fully-qualified name of the CharacterService's
 	// ListLevelUps RPC.
 	CharacterServiceListLevelUpsProcedure = "/meurpg.characters.v1.CharacterService/ListLevelUps"
+	// CharacterServiceListCharacterCreaturesProcedure is the fully-qualified name of the
+	// CharacterService's ListCharacterCreatures RPC.
+	CharacterServiceListCharacterCreaturesProcedure = "/meurpg.characters.v1.CharacterService/ListCharacterCreatures"
+	// CharacterServiceGiveCreatureProcedure is the fully-qualified name of the CharacterService's
+	// GiveCreature RPC.
+	CharacterServiceGiveCreatureProcedure = "/meurpg.characters.v1.CharacterService/GiveCreature"
+	// CharacterServiceRenameCreatureProcedure is the fully-qualified name of the CharacterService's
+	// RenameCreature RPC.
+	CharacterServiceRenameCreatureProcedure = "/meurpg.characters.v1.CharacterService/RenameCreature"
+	// CharacterServiceDismissCreatureProcedure is the fully-qualified name of the CharacterService's
+	// DismissCreature RPC.
+	CharacterServiceDismissCreatureProcedure = "/meurpg.characters.v1.CharacterService/DismissCreature"
+	// CharacterServiceAdjustCreatureHitPointsProcedure is the fully-qualified name of the
+	// CharacterService's AdjustCreatureHitPoints RPC.
+	CharacterServiceAdjustCreatureHitPointsProcedure = "/meurpg.characters.v1.CharacterService/AdjustCreatureHitPoints"
 )
 
 // CharacterServiceClient is a client for the meurpg.characters.v1.CharacterService service.
@@ -430,6 +445,78 @@ type CharacterServiceClient interface {
 	//   - `invalid_argument`: page_size is not 1 to 50, or page_token is not one
 	//     this list gave.
 	ListLevelUps(context.Context, *connect.Request[v1.ListLevelUpsRequest]) (*connect.Response[v1.ListLevelUpsResponse], error)
+	// ListCharacterCreatures lists a character's creatures that are still with
+	// it (MR-037, Etapa 9): its familiar, the animals and undead it summoned that
+	// the table has not dismissed, the creatures the master gave. They live
+	// from one session to the next until the player or the master dismisses
+	// them (the app does not count a spell's duration). Each is a kind of
+	// creature from the SRD (monster_key; the stat block is
+	// ContentService.GetCreature), a name, where it came from, what it may do on
+	// its own and its hit points, which the master corrects (RN-02) and a combat
+	// writes back when it ends.
+	//
+	// The master reads any character's, and the player their own character's;
+	// another player's creatures, and with them their hit points, are
+	// `not_found` for everyone else, as the character itself is (RN-20).
+	//
+	// Errors:
+	//   - `not_found`: the campaign or the character does not exist, or the
+	//     caller may not see the character (or character_id is not a UUID).
+	//   - `invalid_argument`: the character is an NPC (only a player's character
+	//     has creatures).
+	ListCharacterCreatures(context.Context, *connect.Request[v1.ListCharacterCreaturesRequest]) (*connect.Response[v1.ListCharacterCreaturesResponse], error)
+	// GiveCreature gives a character a creature (MR-037): any SRD creature, for a
+	// hireling, a pet or a house rule, whatever the character's class. The
+	// creature starts at full hit points, acts as any creature in a combat
+	// (`CREATURE_ATTACK_FULL`) and has source `CREATURE_SOURCE_MASTER`. A
+	// character has at most 40 creatures at a time. Only the master may call it.
+	// A `creature_summoned` event goes to the history while a session is open.
+	//
+	// The owner's player and the master get `creatures_changed`; a creature
+	// given during a combat does not join it: the master adds it with the
+	// combat's own tools after the combat, or the next combat takes it.
+	//
+	// Errors:
+	//   - `not_found`: the campaign or the character does not exist, or the
+	//     caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `invalid_argument`: the character is an NPC or is dead, monster_key is
+	//     not an SRD creature, or name is not 1 to 40 characters on one line.
+	//   - `failed_precondition` (CharacterBlocked): CREATURE_LIMIT.
+	GiveCreature(context.Context, *connect.Request[v1.GiveCreatureRequest]) (*connect.Response[v1.GiveCreatureResponse], error)
+	// RenameCreature changes a creature's name. The character's player and the
+	// master may. The name is free text by a player: 1 to 40 characters on one
+	// line.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist or the caller is not a member
+	//     of it, or the creature is not one the caller may see (another
+	//     player's, dismissed, or not a UUID).
+	//   - `invalid_argument`: name is not 1 to 40 characters on one line.
+	RenameCreature(context.Context, *connect.Request[v1.RenameCreatureRequest]) (*connect.Response[v1.RenameCreatureResponse], error)
+	// DismissCreature sends a creature away ("Dispensar"): it leaves the
+	// character's list and any combat it is in, and a `creature_dismissed` event
+	// goes to the history while a session is open. The character's player and the
+	// master may. Dismissing a creature that is gone already changes nothing.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist or the caller is not a member
+	//     of it, or the creature is not one the caller may see (another player's,
+	//     or not a UUID).
+	DismissCreature(context.Context, *connect.Request[v1.DismissCreatureRequest]) (*connect.Response[v1.DismissCreatureResponse], error)
+	// AdjustCreatureHitPoints is the master's correction of a creature's hit
+	// points outside a combat (RN-02): damage, healing, or the number itself.
+	// Only the master may call it. A creature taken to 0 is dismissed. In a
+	// combat the master uses CombatService.AdjustCombatantHitPoints instead.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist or the caller is not a member
+	//     of it, or the creature does not exist.
+	//   - `permission_denied`: the caller is a player.
+	//   - `invalid_argument`: no change is set, or a value is outside 0 to its
+	//     maximum (damage and heal: 0 to 9999).
+	//   - `failed_precondition` (CharacterBlocked): CREATURE_IN_COMBAT.
+	AdjustCreatureHitPoints(context.Context, *connect.Request[v1.AdjustCreatureHitPointsRequest]) (*connect.Response[v1.AdjustCreatureHitPointsResponse], error)
 }
 
 // NewCharacterServiceClient constructs a client for the meurpg.characters.v1.CharacterService
@@ -545,27 +632,63 @@ func NewCharacterServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
+		listCharacterCreatures: connect.NewClient[v1.ListCharacterCreaturesRequest, v1.ListCharacterCreaturesResponse](
+			httpClient,
+			baseURL+CharacterServiceListCharacterCreaturesProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("ListCharacterCreatures")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
+		giveCreature: connect.NewClient[v1.GiveCreatureRequest, v1.GiveCreatureResponse](
+			httpClient,
+			baseURL+CharacterServiceGiveCreatureProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("GiveCreature")),
+			connect.WithClientOptions(opts...),
+		),
+		renameCreature: connect.NewClient[v1.RenameCreatureRequest, v1.RenameCreatureResponse](
+			httpClient,
+			baseURL+CharacterServiceRenameCreatureProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("RenameCreature")),
+			connect.WithClientOptions(opts...),
+		),
+		dismissCreature: connect.NewClient[v1.DismissCreatureRequest, v1.DismissCreatureResponse](
+			httpClient,
+			baseURL+CharacterServiceDismissCreatureProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("DismissCreature")),
+			connect.WithClientOptions(opts...),
+		),
+		adjustCreatureHitPoints: connect.NewClient[v1.AdjustCreatureHitPointsRequest, v1.AdjustCreatureHitPointsResponse](
+			httpClient,
+			baseURL+CharacterServiceAdjustCreatureHitPointsProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("AdjustCreatureHitPoints")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // characterServiceClient implements CharacterServiceClient.
 type characterServiceClient struct {
-	createCharacter      *connect.Client[v1.CreateCharacterRequest, v1.CreateCharacterResponse]
-	getCharacter         *connect.Client[v1.GetCharacterRequest, v1.GetCharacterResponse]
-	listCharacters       *connect.Client[v1.ListCharactersRequest, v1.ListCharactersResponse]
-	updateCharacter      *connect.Client[v1.UpdateCharacterRequest, v1.UpdateCharacterResponse]
-	updateCharacterStory *connect.Client[v1.UpdateCharacterStoryRequest, v1.UpdateCharacterStoryResponse]
-	setStoryEditing      *connect.Client[v1.SetStoryEditingRequest, v1.SetStoryEditingResponse]
-	markCharacterDead    *connect.Client[v1.MarkCharacterDeadRequest, v1.MarkCharacterDeadResponse]
-	getMasterNotes       *connect.Client[v1.GetMasterNotesRequest, v1.GetMasterNotesResponse]
-	updateMasterNotes    *connect.Client[v1.UpdateMasterNotesRequest, v1.UpdateMasterNotesResponse]
-	approveCharacter     *connect.Client[v1.ApproveCharacterRequest, v1.ApproveCharacterResponse]
-	rejectCharacter      *connect.Client[v1.RejectCharacterRequest, v1.RejectCharacterResponse]
-	getLevelUpOptions    *connect.Client[v1.GetLevelUpOptionsRequest, v1.GetLevelUpOptionsResponse]
-	previewLevelUp       *connect.Client[v1.PreviewLevelUpRequest, v1.PreviewLevelUpResponse]
-	rollLevelUpHitPoints *connect.Client[v1.RollLevelUpHitPointsRequest, v1.RollLevelUpHitPointsResponse]
-	levelUpCharacter     *connect.Client[v1.LevelUpCharacterRequest, v1.LevelUpCharacterResponse]
-	listLevelUps         *connect.Client[v1.ListLevelUpsRequest, v1.ListLevelUpsResponse]
+	createCharacter         *connect.Client[v1.CreateCharacterRequest, v1.CreateCharacterResponse]
+	getCharacter            *connect.Client[v1.GetCharacterRequest, v1.GetCharacterResponse]
+	listCharacters          *connect.Client[v1.ListCharactersRequest, v1.ListCharactersResponse]
+	updateCharacter         *connect.Client[v1.UpdateCharacterRequest, v1.UpdateCharacterResponse]
+	updateCharacterStory    *connect.Client[v1.UpdateCharacterStoryRequest, v1.UpdateCharacterStoryResponse]
+	setStoryEditing         *connect.Client[v1.SetStoryEditingRequest, v1.SetStoryEditingResponse]
+	markCharacterDead       *connect.Client[v1.MarkCharacterDeadRequest, v1.MarkCharacterDeadResponse]
+	getMasterNotes          *connect.Client[v1.GetMasterNotesRequest, v1.GetMasterNotesResponse]
+	updateMasterNotes       *connect.Client[v1.UpdateMasterNotesRequest, v1.UpdateMasterNotesResponse]
+	approveCharacter        *connect.Client[v1.ApproveCharacterRequest, v1.ApproveCharacterResponse]
+	rejectCharacter         *connect.Client[v1.RejectCharacterRequest, v1.RejectCharacterResponse]
+	getLevelUpOptions       *connect.Client[v1.GetLevelUpOptionsRequest, v1.GetLevelUpOptionsResponse]
+	previewLevelUp          *connect.Client[v1.PreviewLevelUpRequest, v1.PreviewLevelUpResponse]
+	rollLevelUpHitPoints    *connect.Client[v1.RollLevelUpHitPointsRequest, v1.RollLevelUpHitPointsResponse]
+	levelUpCharacter        *connect.Client[v1.LevelUpCharacterRequest, v1.LevelUpCharacterResponse]
+	listLevelUps            *connect.Client[v1.ListLevelUpsRequest, v1.ListLevelUpsResponse]
+	listCharacterCreatures  *connect.Client[v1.ListCharacterCreaturesRequest, v1.ListCharacterCreaturesResponse]
+	giveCreature            *connect.Client[v1.GiveCreatureRequest, v1.GiveCreatureResponse]
+	renameCreature          *connect.Client[v1.RenameCreatureRequest, v1.RenameCreatureResponse]
+	dismissCreature         *connect.Client[v1.DismissCreatureRequest, v1.DismissCreatureResponse]
+	adjustCreatureHitPoints *connect.Client[v1.AdjustCreatureHitPointsRequest, v1.AdjustCreatureHitPointsResponse]
 }
 
 // CreateCharacter calls meurpg.characters.v1.CharacterService.CreateCharacter.
@@ -646,6 +769,31 @@ func (c *characterServiceClient) LevelUpCharacter(ctx context.Context, req *conn
 // ListLevelUps calls meurpg.characters.v1.CharacterService.ListLevelUps.
 func (c *characterServiceClient) ListLevelUps(ctx context.Context, req *connect.Request[v1.ListLevelUpsRequest]) (*connect.Response[v1.ListLevelUpsResponse], error) {
 	return c.listLevelUps.CallUnary(ctx, req)
+}
+
+// ListCharacterCreatures calls meurpg.characters.v1.CharacterService.ListCharacterCreatures.
+func (c *characterServiceClient) ListCharacterCreatures(ctx context.Context, req *connect.Request[v1.ListCharacterCreaturesRequest]) (*connect.Response[v1.ListCharacterCreaturesResponse], error) {
+	return c.listCharacterCreatures.CallUnary(ctx, req)
+}
+
+// GiveCreature calls meurpg.characters.v1.CharacterService.GiveCreature.
+func (c *characterServiceClient) GiveCreature(ctx context.Context, req *connect.Request[v1.GiveCreatureRequest]) (*connect.Response[v1.GiveCreatureResponse], error) {
+	return c.giveCreature.CallUnary(ctx, req)
+}
+
+// RenameCreature calls meurpg.characters.v1.CharacterService.RenameCreature.
+func (c *characterServiceClient) RenameCreature(ctx context.Context, req *connect.Request[v1.RenameCreatureRequest]) (*connect.Response[v1.RenameCreatureResponse], error) {
+	return c.renameCreature.CallUnary(ctx, req)
+}
+
+// DismissCreature calls meurpg.characters.v1.CharacterService.DismissCreature.
+func (c *characterServiceClient) DismissCreature(ctx context.Context, req *connect.Request[v1.DismissCreatureRequest]) (*connect.Response[v1.DismissCreatureResponse], error) {
+	return c.dismissCreature.CallUnary(ctx, req)
+}
+
+// AdjustCreatureHitPoints calls meurpg.characters.v1.CharacterService.AdjustCreatureHitPoints.
+func (c *characterServiceClient) AdjustCreatureHitPoints(ctx context.Context, req *connect.Request[v1.AdjustCreatureHitPointsRequest]) (*connect.Response[v1.AdjustCreatureHitPointsResponse], error) {
+	return c.adjustCreatureHitPoints.CallUnary(ctx, req)
 }
 
 // CharacterServiceHandler is an implementation of the meurpg.characters.v1.CharacterService
@@ -979,6 +1127,78 @@ type CharacterServiceHandler interface {
 	//   - `invalid_argument`: page_size is not 1 to 50, or page_token is not one
 	//     this list gave.
 	ListLevelUps(context.Context, *connect.Request[v1.ListLevelUpsRequest]) (*connect.Response[v1.ListLevelUpsResponse], error)
+	// ListCharacterCreatures lists a character's creatures that are still with
+	// it (MR-037, Etapa 9): its familiar, the animals and undead it summoned that
+	// the table has not dismissed, the creatures the master gave. They live
+	// from one session to the next until the player or the master dismisses
+	// them (the app does not count a spell's duration). Each is a kind of
+	// creature from the SRD (monster_key; the stat block is
+	// ContentService.GetCreature), a name, where it came from, what it may do on
+	// its own and its hit points, which the master corrects (RN-02) and a combat
+	// writes back when it ends.
+	//
+	// The master reads any character's, and the player their own character's;
+	// another player's creatures, and with them their hit points, are
+	// `not_found` for everyone else, as the character itself is (RN-20).
+	//
+	// Errors:
+	//   - `not_found`: the campaign or the character does not exist, or the
+	//     caller may not see the character (or character_id is not a UUID).
+	//   - `invalid_argument`: the character is an NPC (only a player's character
+	//     has creatures).
+	ListCharacterCreatures(context.Context, *connect.Request[v1.ListCharacterCreaturesRequest]) (*connect.Response[v1.ListCharacterCreaturesResponse], error)
+	// GiveCreature gives a character a creature (MR-037): any SRD creature, for a
+	// hireling, a pet or a house rule, whatever the character's class. The
+	// creature starts at full hit points, acts as any creature in a combat
+	// (`CREATURE_ATTACK_FULL`) and has source `CREATURE_SOURCE_MASTER`. A
+	// character has at most 40 creatures at a time. Only the master may call it.
+	// A `creature_summoned` event goes to the history while a session is open.
+	//
+	// The owner's player and the master get `creatures_changed`; a creature
+	// given during a combat does not join it: the master adds it with the
+	// combat's own tools after the combat, or the next combat takes it.
+	//
+	// Errors:
+	//   - `not_found`: the campaign or the character does not exist, or the
+	//     caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `invalid_argument`: the character is an NPC or is dead, monster_key is
+	//     not an SRD creature, or name is not 1 to 40 characters on one line.
+	//   - `failed_precondition` (CharacterBlocked): CREATURE_LIMIT.
+	GiveCreature(context.Context, *connect.Request[v1.GiveCreatureRequest]) (*connect.Response[v1.GiveCreatureResponse], error)
+	// RenameCreature changes a creature's name. The character's player and the
+	// master may. The name is free text by a player: 1 to 40 characters on one
+	// line.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist or the caller is not a member
+	//     of it, or the creature is not one the caller may see (another
+	//     player's, dismissed, or not a UUID).
+	//   - `invalid_argument`: name is not 1 to 40 characters on one line.
+	RenameCreature(context.Context, *connect.Request[v1.RenameCreatureRequest]) (*connect.Response[v1.RenameCreatureResponse], error)
+	// DismissCreature sends a creature away ("Dispensar"): it leaves the
+	// character's list and any combat it is in, and a `creature_dismissed` event
+	// goes to the history while a session is open. The character's player and the
+	// master may. Dismissing a creature that is gone already changes nothing.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist or the caller is not a member
+	//     of it, or the creature is not one the caller may see (another player's,
+	//     or not a UUID).
+	DismissCreature(context.Context, *connect.Request[v1.DismissCreatureRequest]) (*connect.Response[v1.DismissCreatureResponse], error)
+	// AdjustCreatureHitPoints is the master's correction of a creature's hit
+	// points outside a combat (RN-02): damage, healing, or the number itself.
+	// Only the master may call it. A creature taken to 0 is dismissed. In a
+	// combat the master uses CombatService.AdjustCombatantHitPoints instead.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist or the caller is not a member
+	//     of it, or the creature does not exist.
+	//   - `permission_denied`: the caller is a player.
+	//   - `invalid_argument`: no change is set, or a value is outside 0 to its
+	//     maximum (damage and heal: 0 to 9999).
+	//   - `failed_precondition` (CharacterBlocked): CREATURE_IN_COMBAT.
+	AdjustCreatureHitPoints(context.Context, *connect.Request[v1.AdjustCreatureHitPointsRequest]) (*connect.Response[v1.AdjustCreatureHitPointsResponse], error)
 }
 
 // NewCharacterServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -1090,6 +1310,37 @@ func NewCharacterServiceHandler(svc CharacterServiceHandler, opts ...connect.Han
 		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
+	characterServiceListCharacterCreaturesHandler := connect.NewUnaryHandler(
+		CharacterServiceListCharacterCreaturesProcedure,
+		svc.ListCharacterCreatures,
+		connect.WithSchema(characterServiceMethods.ByName("ListCharacterCreatures")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
+	characterServiceGiveCreatureHandler := connect.NewUnaryHandler(
+		CharacterServiceGiveCreatureProcedure,
+		svc.GiveCreature,
+		connect.WithSchema(characterServiceMethods.ByName("GiveCreature")),
+		connect.WithHandlerOptions(opts...),
+	)
+	characterServiceRenameCreatureHandler := connect.NewUnaryHandler(
+		CharacterServiceRenameCreatureProcedure,
+		svc.RenameCreature,
+		connect.WithSchema(characterServiceMethods.ByName("RenameCreature")),
+		connect.WithHandlerOptions(opts...),
+	)
+	characterServiceDismissCreatureHandler := connect.NewUnaryHandler(
+		CharacterServiceDismissCreatureProcedure,
+		svc.DismissCreature,
+		connect.WithSchema(characterServiceMethods.ByName("DismissCreature")),
+		connect.WithHandlerOptions(opts...),
+	)
+	characterServiceAdjustCreatureHitPointsHandler := connect.NewUnaryHandler(
+		CharacterServiceAdjustCreatureHitPointsProcedure,
+		svc.AdjustCreatureHitPoints,
+		connect.WithSchema(characterServiceMethods.ByName("AdjustCreatureHitPoints")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/meurpg.characters.v1.CharacterService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CharacterServiceCreateCharacterProcedure:
@@ -1124,6 +1375,16 @@ func NewCharacterServiceHandler(svc CharacterServiceHandler, opts ...connect.Han
 			characterServiceLevelUpCharacterHandler.ServeHTTP(w, r)
 		case CharacterServiceListLevelUpsProcedure:
 			characterServiceListLevelUpsHandler.ServeHTTP(w, r)
+		case CharacterServiceListCharacterCreaturesProcedure:
+			characterServiceListCharacterCreaturesHandler.ServeHTTP(w, r)
+		case CharacterServiceGiveCreatureProcedure:
+			characterServiceGiveCreatureHandler.ServeHTTP(w, r)
+		case CharacterServiceRenameCreatureProcedure:
+			characterServiceRenameCreatureHandler.ServeHTTP(w, r)
+		case CharacterServiceDismissCreatureProcedure:
+			characterServiceDismissCreatureHandler.ServeHTTP(w, r)
+		case CharacterServiceAdjustCreatureHitPointsProcedure:
+			characterServiceAdjustCreatureHitPointsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1195,4 +1456,24 @@ func (UnimplementedCharacterServiceHandler) LevelUpCharacter(context.Context, *c
 
 func (UnimplementedCharacterServiceHandler) ListLevelUps(context.Context, *connect.Request[v1.ListLevelUpsRequest]) (*connect.Response[v1.ListLevelUpsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.ListLevelUps is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) ListCharacterCreatures(context.Context, *connect.Request[v1.ListCharacterCreaturesRequest]) (*connect.Response[v1.ListCharacterCreaturesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.ListCharacterCreatures is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) GiveCreature(context.Context, *connect.Request[v1.GiveCreatureRequest]) (*connect.Response[v1.GiveCreatureResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.GiveCreature is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) RenameCreature(context.Context, *connect.Request[v1.RenameCreatureRequest]) (*connect.Response[v1.RenameCreatureResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.RenameCreature is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) DismissCreature(context.Context, *connect.Request[v1.DismissCreatureRequest]) (*connect.Response[v1.DismissCreatureResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.DismissCreature is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) AdjustCreatureHitPoints(context.Context, *connect.Request[v1.AdjustCreatureHitPointsRequest]) (*connect.Response[v1.AdjustCreatureHitPointsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.AdjustCreatureHitPoints is not implemented"))
 }

@@ -297,3 +297,114 @@ WHERE l.campaign_id = sqlc.arg(campaign_id)::UUID
        OR (l.created_at, l.id) < (sqlc.narg(before_created_at)::TIMESTAMPTZ, sqlc.narg(before_id)::UUID))
 ORDER BY l.created_at DESC, l.id DESC
 LIMIT sqlc.arg(max_rows);
+
+-- A character's creatures (MR-037, Etapa 9). A creature is "live" until it is
+-- dismissed; a dismissed one is kept (dismissed_at, dismissed_reason) so an
+-- undo can bring it back.
+
+-- name: InsertCharacterCreature :one
+INSERT INTO character_creatures
+    (campaign_id, character_id, monster_key, name, source, attack, summon_group_id, concentration_cast_id, hp_current, hp_max, created_at)
+VALUES (
+    sqlc.arg(campaign_id)::UUID, sqlc.arg(character_id)::UUID, sqlc.arg(monster_key), sqlc.arg(name), sqlc.arg(source),
+    sqlc.arg(attack), sqlc.arg(summon_group_id)::UUID, sqlc.narg(concentration_cast_id)::UUID, sqlc.arg(hp_current), sqlc.arg(hp_max),
+    sqlc.arg(created_at)
+)
+RETURNING *;
+
+-- name: GetCharacterCreature :one
+-- One creature of the campaign, live or not, with its owner's player.
+SELECT sqlc.embed(cc), c.player_user_id
+FROM character_creatures cc
+JOIN characters c ON c.id = cc.character_id
+WHERE cc.campaign_id = sqlc.arg(campaign_id)::UUID AND cc.id = sqlc.arg(id)::UUID;
+
+-- name: GetCharacterCreatureForUpdate :one
+-- The same, locking the creature's row until the transaction ends.
+SELECT sqlc.embed(cc), c.player_user_id
+FROM character_creatures cc
+JOIN characters c ON c.id = cc.character_id
+WHERE cc.campaign_id = sqlc.arg(campaign_id)::UUID AND cc.id = sqlc.arg(id)::UUID
+FOR UPDATE OF cc;
+
+-- name: ListLiveCreaturesOfCharacters :many
+-- The live creatures of the given characters of the campaign, oldest first.
+SELECT sqlc.embed(cc), c.player_user_id
+FROM character_creatures cc
+JOIN characters c ON c.id = cc.character_id
+WHERE cc.campaign_id = sqlc.arg(campaign_id)::UUID
+  AND cc.character_id = ANY(sqlc.arg(character_ids)::UUID[])
+  AND cc.dismissed_at IS NULL
+ORDER BY cc.created_at, cc.id;
+
+-- name: ListCreaturesByIDs :many
+-- The creatures of the campaign with the given IDs, live or not.
+SELECT sqlc.embed(cc), c.player_user_id
+FROM character_creatures cc
+JOIN characters c ON c.id = cc.character_id
+WHERE cc.campaign_id = sqlc.arg(campaign_id)::UUID AND cc.id = ANY(sqlc.arg(ids)::UUID[])
+ORDER BY cc.created_at, cc.id;
+
+-- name: ListLiveCreaturesOnConcentration :many
+-- The live creatures of the character that last only while it concentrates.
+SELECT sqlc.embed(cc), c.player_user_id
+FROM character_creatures cc
+JOIN characters c ON c.id = cc.character_id
+WHERE cc.campaign_id = sqlc.arg(campaign_id)::UUID
+  AND cc.character_id = sqlc.arg(character_id)::UUID
+  AND cc.concentration_cast_id IS NOT NULL
+  AND cc.dismissed_at IS NULL
+ORDER BY cc.created_at, cc.id;
+
+-- name: ListLiveFamiliars :many
+-- The character's live familiars: one at a time (the SRD), so a new one
+-- dismisses these.
+SELECT sqlc.embed(cc), c.player_user_id
+FROM character_creatures cc
+JOIN characters c ON c.id = cc.character_id
+WHERE cc.campaign_id = sqlc.arg(campaign_id)::UUID
+  AND cc.character_id = sqlc.arg(character_id)::UUID
+  AND cc.source = 'familiar'
+  AND cc.dismissed_at IS NULL
+ORDER BY cc.created_at, cc.id;
+
+-- name: CountLiveCreaturesOfCharacter :one
+SELECT count(*)::INT4 FROM character_creatures
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND character_id = sqlc.arg(character_id)::UUID AND dismissed_at IS NULL;
+
+-- name: DismissCreatures :many
+-- Sends the live ones of these creatures away, with the reason; a creature
+-- dismissed because it was defeated is at 0 hit points. Returns the ones it
+-- dismissed.
+UPDATE character_creatures
+SET dismissed_at = sqlc.arg(at)::TIMESTAMPTZ, dismissed_reason = sqlc.arg(reason)::TEXT,
+    hp_current = CASE WHEN sqlc.arg(reason)::TEXT = 'defeated' THEN 0 ELSE hp_current END
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID
+  AND id = ANY(sqlc.arg(ids)::UUID[])
+  AND dismissed_at IS NULL
+RETURNING id;
+
+-- name: ReviveCreatures :many
+-- Brings back the creatures dismissed for this reason (an undo): the ones
+-- defeated that an undo healed, the ones a master's undo of a casting or of the
+-- end of a concentration gives back. Returns the ones it revived.
+UPDATE character_creatures
+SET dismissed_at = NULL, dismissed_reason = NULL
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID
+  AND id = ANY(sqlc.arg(ids)::UUID[])
+  AND dismissed_reason = sqlc.arg(reason)::TEXT
+RETURNING id;
+
+-- name: DeleteCreatures :exec
+-- Takes the creatures a casting made away for good (the master's undo of it).
+DELETE FROM character_creatures
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = ANY(sqlc.arg(ids)::UUID[]);
+
+-- name: SetCharacterCreatureName :exec
+UPDATE character_creatures SET name = sqlc.arg(name)
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id)::UUID;
+
+-- name: SetCharacterCreatureHitPoints :exec
+-- The creature's hit points: the master's correction, or a combat's write-back.
+UPDATE character_creatures SET hp_current = sqlc.arg(hp_current)
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id)::UUID;

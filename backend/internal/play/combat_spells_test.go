@@ -26,7 +26,7 @@ import (
 
 // spellRPCs are the CombatService methods of this slice; the authorization
 // matrix of the encounter (combat_test.go) leaves them to this file's.
-var spellRPCs = []string{"CastSpell", "UseReaction", "DeclineReaction", "RollDeathSave", "ConfirmDeath", "SetCombatantConditions"}
+var spellRPCs = []string{"CastSpell", "UseReaction", "DeclineReaction", "RollDeathSave", "ConfirmDeath", "SetCombatantConditions", "EndConcentration"}
 
 const (
 	magicMissileSpell = "spell:magic-missile"
@@ -1938,6 +1938,10 @@ func TestMR014_SpellsAuthorizationMatrix(t *testing.T) {
 			return err
 		},
 	}
+	calls["EndConcentration"] = func(u *user, ctx context.Context) error {
+		_, err := u.combat.EndConcentration(ctx, connect.NewRequest(&playv1.EndConcentrationRequest{CampaignId: campaign, EncounterId: enc, CombatantId: toren, IdempotencyKey: newKey()}))
+		return err
+	}
 	methods := playv1.File_meurpg_play_v1_combat_proto.Services().ByName("CombatService").Methods()
 	for _, name := range spellRPCs {
 		if calls[name] == nil || methods.ByName(protoreflect.Name(name)) == nil {
@@ -1951,7 +1955,7 @@ func TestMR014_SpellsAuthorizationMatrix(t *testing.T) {
 	masterOnly := map[string]bool{"ConfirmDeath": true}
 	// The reaction belongs to Pensantus's player, so Toren's player is "another
 	// player" for it; the rest of the calls name Toren.
-	ownerOf := map[string]*user{"UseReaction": a.ana, "DeclineReaction": a.ana, "CastSpell": a.caio, "RollDeathSave": a.caio, "SetCombatantConditions": a.caio}
+	ownerOf := map[string]*user{"UseReaction": a.ana, "DeclineReaction": a.ana, "CastSpell": a.caio, "RollDeathSave": a.caio, "SetCombatantConditions": a.caio, "EndConcentration": a.caio}
 	for name, call := range calls {
 		if err := call(anonymous, t.Context()); connect.CodeOf(err) != connect.CodeUnauthenticated {
 			t.Errorf("%s signed out: %v, want unauthenticated", name, err)
