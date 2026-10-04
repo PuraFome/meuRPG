@@ -39,6 +39,8 @@ COCKROACH_STORE ?= $(HOME)/.meurpg/cockroach
 # most) and disappears when it stops. Schema changes, which the test
 # databases are made of, take a quarter of the time they take on disk, and
 # the development database on 26257 doesn't fill up with test databases.
+# Dropped databases give their memory back after 10 minutes, not the
+# default 4 hours (gc.ttlseconds).
 TEST_DB_DIR ?= $(HOME)/.meurpg/cockroach-test
 TEST_DATABASE_URL := postgresql://root@localhost:26258/defaultdb?sslmode=disable
 
@@ -131,7 +133,8 @@ db-test-start: ## Start the in-memory test CockroachDB on localhost:26258 (brew 
 			-e "SET CLUSTER SETTING sql.stats.automatic_collection.enabled = false" \
 			-e "SET CLUSTER SETTING kv.range_merge.queue.enabled = false" \
 			-e "SET CLUSTER SETTING jobs.retention_time = '15s'" \
-			-e "SET CLUSTER SETTING diagnostics.reporting.enabled = false" >/dev/null; \
+			-e "SET CLUSTER SETTING diagnostics.reporting.enabled = false" \
+			-e "ALTER RANGE default CONFIGURE ZONE USING gc.ttlseconds = 600" >/dev/null; \
 	fi
 	@echo "Test CockroachDB on localhost:26258. Run the integration tests with:"
 	@echo "  MEURPG_TEST_DATABASE_URL='$(TEST_DATABASE_URL)' make test"

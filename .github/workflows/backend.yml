@@ -206,7 +206,9 @@ jobs:
         # runner anyway): schema changes, which the test databases are full
         # of, take a quarter of the time they take on disk. Background work
         # that only matters for a long-lived database (automatic statistics,
-        # merging empty ranges, keeping finished jobs) is turned off.
+        # merging empty ranges, keeping finished jobs) is turned off, and a
+        # dropped database gives its memory back after 10 minutes instead of
+        # the default 4 hours.
         run: |
           docker run --detach --name cockroach --publish 127.0.0.1:26257:26257 \
             "$COCKROACH_IMAGE" start-single-node --insecure \
@@ -217,7 +219,8 @@ jobs:
                 -e "SET CLUSTER SETTING sql.stats.automatic_collection.enabled = false" \
                 -e "SET CLUSTER SETTING kv.range_merge.queue.enabled = false" \
                 -e "SET CLUSTER SETTING jobs.retention_time = '15s'" \
-                -e "SET CLUSTER SETTING diagnostics.reporting.enabled = false"
+                -e "SET CLUSTER SETTING diagnostics.reporting.enabled = false" \
+                -e "ALTER RANGE default CONFIGURE ZONE USING gc.ttlseconds = 600"
               echo "CockroachDB is ready."
               exit 0
             fi
