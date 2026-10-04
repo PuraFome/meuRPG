@@ -95,7 +95,7 @@ O Samuel respondeu as perguntas 43 a 65, e o Vinicius decidiu onde cada mudança
 - **Pergunta 62: o retrato do NPC.** Fica na ficha do NPC, e um PNG com fundo transparente tem de funcionar, mantendo a transparência. Decidido, ainda a fazer, na Etapa 8. Ver [MR-031](historias.md#mr-031-npcs-na-cena).
 - **Pergunta 63: o que o jogador faz na cena.** A cena é toda do mestre; qualquer ponto de cena abre (já implementado). O jogador só vê os NPCs e pode tocar num para vê-lo maior, sem mais nada (ainda a fazer, Etapa 8). Ver [MR-031](historias.md#mr-031-npcs-na-cena).
 - **Pergunta 64: os destaques.** Os do combate, como estão (já implementado no servidor), mais "mais tesouro encontrado" (junto com a MR-041, Etapa 9) e "mais testes passados fora do combate" (testes de cena com CD, Etapa 8), ainda a fazer. Onde o resumo da sessão aparece fica a definir no plano da Etapa 8. Ver [MR-032](historias.md#mr-032-destaques-do-combate).
-- **Pergunta 65: imprimir o mapa.** O mestre escolhe o tamanho do quadrado e o do papel (A4, A3, A2, Carta...). Decidido, ainda a fazer, na Etapa 8. Ver [MR-033](historias.md#mr-033-imprimir-o-mapa-com-a-grade).
+- **Pergunta 65: imprimir o mapa.** O mestre escolhe o tamanho do quadrado e o do papel (A4, A3, A2, Carta...). Decidido e feito na Etapa 8 (fatia 8.7). Ver [MR-033](historias.md#mr-033-imprimir-o-mapa-com-a-grade).
 
 ## Em aberto
 
