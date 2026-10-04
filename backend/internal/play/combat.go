@@ -267,9 +267,13 @@ func (s *Service) addParticipants(ctx context.Context, c *combatTx, grid link.Gr
 				EncounterID: c.enc.ID, CharacterID: p.char.ID, Label: label, Kind: kindNPC, Hidden: p.hidden,
 				InitiativeBonus: clamp32(p.char.InitiativeBonus, -20, 40), OrderIndex: clamp32(len(all), 0, math.MaxInt32),
 				SpeedFt: clamp32(p.char.SpeedFt, 0, 600), CreatedAt: c.now,
+				// Copied from the sheet, like the speed: the side, size and fly speed
+				// that decide who it can pass, and the jump limits (MR-034, RN-21).
+				Side: sideOfKind(kindNPC), Size: sizeKey(p.char.Size), SpeedFlyFt: clamp32(p.char.SpeedFlyFt, 0, 600),
+				JumpLongDft: clamp32(p.char.JumpLongDFt, 0, 6000), JumpHighDft: clamp32(p.char.JumpHighDFt, 0, 6000),
 			}
 			if p.char.Player {
-				row.Kind = kindPlayer
+				row.Kind, row.Side = kindPlayer, sideOfKind(kindPlayer)
 				if p.char.PlayerUserID != "" {
 					row.UserID = &p.char.PlayerUserID
 				}
@@ -786,123 +790,6 @@ func (s *Service) EndTurn(
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.EndTurnResponse{Encounter: out}), nil
-}
-
-// MoveCombatant implements playv1connect.CombatServiceHandler.
-func (s *Service) MoveCombatant(
-	ctx context.Context,
-	req *connect.Request[playv1.MoveCombatantRequest],
-) (*connect.Response[playv1.MoveCombatantResponse], error) {
-	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
-	if err != nil {
-		return nil, err
-	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
-	if err != nil {
-		return nil, err
-	}
-	combID, err := parseCombatID(req.Msg.GetCombatantId(), "combatant")
-	if err != nil {
-		return nil, err
-	}
-	col, row := req.Msg.GetCol(), req.Msg.GetRow()
-	v := viewerOf(m)
-
-	var moved playdb.Combatant
-	var logged bool // the move is a line of the combat log
-	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventCombatantMoved, encounterID: encID}, func(c *combatTx) (any, error) {
-		logged = false
-		if err := notEnded(c.enc); err != nil {
-			return nil, err
-		}
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the combatants: %w", err)
-		}
-		target, err := findCombatant(cs, combID, v)
-		if err != nil {
-			return nil, err
-		}
-		if err := v.mayAct(target); err != nil {
-			return nil, err
-		}
-		if !inGrid(c.enc, col, row) {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("col and row must be a square of the grid"))
-		}
-		// The log tells how far a combatant walked on its turn: the squares
-		// between where it was and where it goes, whoever moves it.
-		distance := 0
-		if placed(target) {
-			distance = moveCostFt(target, col, row)
-		}
-		onTurn := actsNow(c.enc, target)
-		used, cost := target.MovementUsedFt, 0
-		if !v.master {
-			// RN-21: a player walks only on their own turn, as far as the
-			// movement left, and not onto a square somebody they see stands on.
-			switch {
-			case c.enc.Status != statusActive:
-				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE, "the combat is not running")
-			case !onTurn: // not in the turn that is running, or its part ended
-				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN, "it is not your turn")
-			case !placed(target):
-				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_PLACED, "you are not on the map yet; ask the master")
-			}
-			cost = moveCostFt(target, col, row)
-			if left := movementLeftFt(target); cost > left {
-				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TOO_FAR, "that square is beyond your movement",
-					func(b *playv1.EncounterBlocked) { b.MissingFt = clamp32(cost-left, 0, math.MaxInt32) })
-			}
-			for _, other := range cs {
-				if other.ID != target.ID && !other.Defeated && v.sees(other) && placed(other) && *other.GridCol == col && *other.GridRow == row {
-					return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_SQUARE_OCCUPIED, "another combatant is on that square")
-				}
-			}
-			used += clamp32(cost, 0, math.MaxInt32)
-		}
-		if err := c.q.SetCombatantSquare(ctx, playdb.SetCombatantSquareParams{ID: target.ID, GridCol: &col, GridRow: &row, MovementUsedFt: used}); err != nil {
-			return nil, fmt.Errorf("move the combatant: %w", err)
-		}
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
-		}
-		moved = target
-		moved.GridCol, moved.GridRow, moved.MovementUsedFt = &col, &row, used
-		c.characterID = &target.CharacterID
-		logged = onTurn && distance > 0
-		return actionEvent{
-			Round: c.enc.Round, Secret: target.Hidden, Actor: target.ID, Col: col, Row: row, CostFt: clamp32(cost, 0, math.MaxInt32),
-			OnTurn: onTurn, DistanceFt: clamp32(distance, 0, math.MaxInt32),
-		}, nil
-	})
-	if err != nil {
-		return nil, s.dbError(ctx, "move a combatant", err)
-	}
-	out, err := s.finish(ctx, m, res, func(d *encounterData) {
-		s.publishCombatantMoved(m.CampaignID, d.enc, moved)
-		if logged {
-			s.publishLogChanged(m.CampaignID, d.enc.ID, !moved.Hidden)
-		}
-	})
-	if err != nil {
-		return nil, err
-	}
-	return connect.NewResponse(&playv1.MoveCombatantResponse{Encounter: out}), nil
-}
-
-// markDashed records the Dash action: the combatant's speed counts twice for
-// the rest of the turn (RN-21). TakeAction calls it, inside its own
-// transaction, when the action is spent; it is here because it is movement's
-// rule.
-func markDashed(ctx context.Context, q *playdb.Queries, combatantID string) error {
-	if err := q.MarkCombatantDashed(ctx, combatantID); err != nil {
-		return fmt.Errorf("mark the dash: %w", err)
-	}
-	return nil
 }
 
 // SetCombatantHidden implements playv1connect.CombatServiceHandler.

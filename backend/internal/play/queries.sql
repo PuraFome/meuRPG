@@ -155,10 +155,12 @@ ORDER BY order_index, created_at, id;
 -- name: InsertCombatant :one
 INSERT INTO combatants (
     encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face,
-    order_index, grid_col, grid_row, speed_ft, hp_current, hp_max, hp_temp, created_at, xp_value
+    order_index, grid_col, grid_row, speed_ft, hp_current, hp_max, hp_temp, created_at, xp_value,
+    side, size, speed_fly_ft, jump_long_dft, jump_high_dft
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9,
-    $10, $11, $12, $13, $14, $15, $16, $17, $18
+    $10, $11, $12, $13, $14, $15, $16, $17, $18,
+    $19, $20, $21, $22, $23
 )
 RETURNING *;
 
@@ -173,9 +175,33 @@ UPDATE combatants
 SET order_index = $2, tie_ordered = $3
 WHERE id = $1;
 
--- name: SetCombatantSquare :exec
+-- name: SetCombatantMove :exec
+-- A move, or its undo: the square (NULL when the combatant was not on the map),
+-- the movement walked (in feet, rounded down, for the shipped web, and in tenths
+-- of a foot, which is the truth), the length of the last move on foot (the
+-- running start of a jump) and the master's cover mark, which a move clears.
 UPDATE combatants
-SET grid_col = $2, grid_row = $3, movement_used_ft = $4
+SET grid_col = $2, grid_row = $3, movement_used_ft = $4, movement_used_dft = $5, last_move_dft = $6, cover_mark = $7
+WHERE id = $1;
+
+-- name: SetCombatantRun :exec
+-- The length of the last run of moves on foot this turn (the running start of a
+-- jump): 0 when an action, an attack, a spell or a jump breaks it, or its undo.
+UPDATE combatants
+SET last_move_dft = $2
+WHERE id = $1;
+
+-- name: SetCombatantSide :exec
+-- Whose side the combatant fights on ('party' or 'enemy'), the master's "Aliado".
+UPDATE combatants
+SET side = $2
+WHERE id = $1;
+
+-- name: SetCombatantCoverMark :exec
+-- The cover the master marked on the combatant ('none', 'half', 'three_quarters'
+-- or 'total').
+UPDATE combatants
+SET cover_mark = $2
 WHERE id = $1;
 
 -- name: SetCombatantHidden :exec
@@ -189,7 +215,7 @@ WHERE id = $1;
 -- made come back, the Escudo bonus ends, a death save is due again, and the
 -- combatant acts ('acting') in the turn that starts.
 UPDATE combatants
-SET movement_used_ft = 0, dashed = false, action_used = false, bonus_action_used = false, reaction_used = false,
+SET movement_used_ft = 0, movement_used_dft = 0, last_move_dft = 0, dashed = false, disengaged = false, action_used = false, bonus_action_used = false, reaction_used = false,
     attacks_made = 0, ac_bonus = 0, death_save_rolled = false, turn_state = 'acting'
 WHERE id = $1;
 
@@ -210,6 +236,12 @@ WHERE id = $1;
 -- name: MarkCombatantDashed :exec
 UPDATE combatants
 SET dashed = true
+WHERE id = $1;
+
+-- name: SetCombatantDisengaged :exec
+-- The Disengage action of this turn (true), or its undo (false).
+UPDATE combatants
+SET disengaged = $2
 WHERE id = $1;
 
 -- name: DeleteCombatant :exec
@@ -296,8 +328,8 @@ WHERE character_id = sqlc.arg(character_id)
 INSERT INTO pending_damages (
     encounter_id, attacker_id, target_id, attack_key, status, critical,
     dice_count, dice_sides, dice_bonus, damage_type, created_at,
-    cast_id, healing, half, attack_total
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+    cast_id, healing, half, attack_total, attack_armor_class
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
 RETURNING *;
 
 -- name: GetPendingDamage :one

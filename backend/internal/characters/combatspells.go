@@ -93,6 +93,7 @@ func (s *Service) CombatSpell(ctx context.Context, campaignID, characterID, spel
 	}
 	_, summonErr := s.rules.SummonOptions(spellKey, det.Spell.Level, rules.Build{})
 	out.Summon = !errors.Is(summonErr, rules.ErrNotSummonSpell)
+	out.IgnoresCover = s.rules.IgnoresCover(spellKey)
 	out.Area = isArea(det)
 	out.ExtraTargetPerLevel = extraTargetRE.MatchString(strings.Join(det.HigherLevel, " "))
 	return out, nil

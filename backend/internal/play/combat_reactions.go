@@ -62,7 +62,7 @@ func (s *Service) shieldFor(ctx context.Context, tx pgx.Tx, campaignID string, t
 // is not a critical hit (the SRD's Escudo still works against one, but the
 // table keeps the prompt for the hits it can stop), to wait for the reaction
 // first. attackTotal is kept for the new comparison.
-func (s *Service) openHit(ctx context.Context, c *combatTx, campaignID string, attacker, target playdb.Combatant, key string, dmg link.Dice, critical bool, attackTotal int) (playdb.PendingDamage, error) {
+func (s *Service) openHit(ctx context.Context, c *combatTx, campaignID string, attacker, target playdb.Combatant, key string, dmg link.Dice, critical bool, attackTotal, attackAC int) (playdb.PendingDamage, error) {
 	status := pendingAwaitingRoll
 	if !critical {
 		slots, err := s.shieldFor(ctx, c.tx, campaignID, target)
@@ -78,7 +78,7 @@ func (s *Service) openHit(ctx context.Context, c *combatTx, campaignID string, a
 		EncounterID: c.enc.ID, AttackerID: attacker.ID, TargetID: target.ID, AttackKey: key, Status: status, Critical: critical,
 		DiceCount: clamp32(combat.DiceToRoll(rules.DiceFormula{Count: dmg.Count}, critical), 0, 100),
 		DiceSides: clamp32(dmg.Sides, 0, 100), DiceBonus: clamp32(dmg.Bonus, -1000, 1000),
-		DamageType: dmg.DamageType, CreatedAt: c.now, AttackTotal: &total,
+		DamageType: dmg.DamageType, CreatedAt: c.now, AttackTotal: &total, AttackArmorClass: ptr(clamp32(attackAC, 0, math.MaxInt32)),
 	})
 	if err != nil {
 		return playdb.PendingDamage{}, fmt.Errorf("open the pending damage: %w", err)
@@ -225,7 +225,14 @@ func (s *Service) UseReaction(
 		if err != nil {
 			return nil, err
 		}
-		stopped := int(num(p.AttackTotal)) < sheet.ArmorClass+combat.ShieldACBonus
+		// Escudo replaces the bonus the target had: the hit is compared again with the
+		// armor class it was compared with (cover included), plus the Escudo's 5. A
+		// damage opened before the column existed falls back to the sheet's.
+		base := sheet.ArmorClass
+		if p.AttackArmorClass != nil {
+			base = int(*p.AttackArmorClass) - int(target.AcBonus)
+		}
+		stopped := int(num(p.AttackTotal)) < base+combat.ShieldACBonus
 		next := pendingAwaitingRoll
 		if stopped {
 			next = pendingDiscarded

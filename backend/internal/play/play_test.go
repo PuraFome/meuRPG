@@ -659,6 +659,9 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, combat["BeginCombat"] = cc.BeginCombat(ctx, connect.NewRequest(&playv1.BeginCombatRequest{CampaignId: id}))
 	_, combat["EndTurn"] = cc.EndTurn(ctx, connect.NewRequest(&playv1.EndTurnRequest{CampaignId: id}))
 	_, combat["MoveCombatant"] = cc.MoveCombatant(ctx, connect.NewRequest(&playv1.MoveCombatantRequest{CampaignId: id}))
+	_, combat["GetMoveOptions"] = cc.GetMoveOptions(ctx, connect.NewRequest(&playv1.GetMoveOptionsRequest{CampaignId: id}))
+	_, combat["SetCombatantSide"] = cc.SetCombatantSide(ctx, connect.NewRequest(&playv1.SetCombatantSideRequest{CampaignId: id}))
+	_, combat["SetCombatantCover"] = cc.SetCombatantCover(ctx, connect.NewRequest(&playv1.SetCombatantCoverRequest{CampaignId: id}))
 	_, combat["SetCombatantHidden"] = cc.SetCombatantHidden(ctx, connect.NewRequest(&playv1.SetCombatantHiddenRequest{CampaignId: id}))
 	_, combat["AddCombatants"] = cc.AddCombatants(ctx, connect.NewRequest(&playv1.AddCombatantsRequest{CampaignId: id}))
 	_, combat["RemoveCombatant"] = cc.RemoveCombatant(ctx, connect.NewRequest(&playv1.RemoveCombatantRequest{CampaignId: id}))
@@ -698,6 +701,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 
 	for method, want := range map[string]descriptorpb.MethodOptions_IdempotencyLevel{
 		"GetTurnOptions": descriptorpb.MethodOptions_IDEMPOTENT,
+		"GetMoveOptions": descriptorpb.MethodOptions_IDEMPOTENT,
 		"ListCombatLog":  descriptorpb.MethodOptions_IDEMPOTENT,
 	} {
 		opts, _ := combatMethods.ByName(protoreflect.Name(method)).Options().(*descriptorpb.MethodOptions)

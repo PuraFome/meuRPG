@@ -48,6 +48,9 @@ type content struct {
 	// spellEffects are the spells that read hit points, by spell key
 	// (effects/spells.json).
 	spellEffects map[string]spellEffectDef
+	// coverIgnoring are the spells whose saving throw gets no benefit from cover
+	// (the "ignores_cover" kind of effects/spells.json), by spell key.
+	coverIgnoring map[string]bool
 	// summons are the spells that summon a creature (the "summon" kind of
 	// effects/spells.json), by spell key.
 	summons map[string]*summonDef

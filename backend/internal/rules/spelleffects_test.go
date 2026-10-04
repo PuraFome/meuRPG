@@ -67,6 +67,7 @@ func TestLoadSpellEffectsRefuses(t *testing.T) {
 	}
 	bad := map[string]string{
 		"an unknown kind":          `{"spells":{"spell:sleep":{"kind":"mind_blast"}}}`,
+		"ignores_cover with dice":  `{"spells":{"spell:sleep":{"kind":"ignores_cover","dice":"5d8"}}}`,
 		"an unknown field":         `{"spells":{"spell:sleep":{"kind":"zero_hp_target","power":9}}}`,
 		"a spell the SRD lacks":    `{"spells":{"spell:toll-the-dead":{"kind":"zero_hp_target"}}}`,
 		"a pool of other dice":     `{"spells":{"spell:sleep":{"kind":"hp_pool","dice":"5d8","dice_per_level":"2d10","condition":"condition:unconscious"}}}`,
@@ -82,5 +83,21 @@ func TestLoadSpellEffectsRefuses(t *testing.T) {
 		if err := load(body); err == nil {
 			t.Errorf("%s: the loader accepted it", name)
 		}
+	}
+}
+
+// Chama Sagrada's save gets no benefit from cover (SRD 5.1): the content says so,
+// in its data, and the spell is no hit point spell.
+func TestSacredFlameIgnoresCover(t *testing.T) {
+	t.Parallel()
+	c, err := LoadSRD()
+	if err != nil {
+		t.Fatalf("LoadSRD() error = %v", err)
+	}
+	if !c.IgnoresCover("spell:sacred-flame") || c.IgnoresCover("spell:burning-hands") {
+		t.Errorf("IgnoresCover: sacred flame %v, burning hands %v; want true, false", c.IgnoresCover("spell:sacred-flame"), c.IgnoresCover("spell:burning-hands"))
+	}
+	if _, ok := c.SpellEffect("spell:sacred-flame", 0); ok {
+		t.Errorf("Sacred Flame reads no hit points")
 	}
 }

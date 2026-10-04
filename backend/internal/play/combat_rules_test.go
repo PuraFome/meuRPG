@@ -145,27 +145,29 @@ func TestMR013_GroupsAreTheRunsWithTheSameTotal(t *testing.T) {
 	}
 }
 
-func TestRN21_MovementLeftAndCostPerSquare(t *testing.T) {
+func TestRN21_MovementLeftIsKeptInTenthsOfAFoot(t *testing.T) {
 	t.Parallel()
-	col, row := int32(2), int32(2)
-	c := playdb.Combatant{SpeedFt: 25, GridCol: &col, GridRow: &row}
-	if got := moveCostFt(c, 5, 2); got != 15 {
-		t.Errorf("moveCostFt(3 squares across) = %d, want 15", got)
+	c := playdb.Combatant{SpeedFt: 25}
+	if got := movementLeftDFt(c); got != 250 {
+		t.Errorf("movementLeftDFt() at the start = %d, want 250", got)
 	}
-	if got := moveCostFt(c, 5, 5); got != 15 { // diagonals cost one square each
-		t.Errorf("moveCostFt(3 squares diagonally) = %d, want 15", got)
-	}
-	c.MovementUsedFt = 15
-	if got := movementLeftFt(c); got != 10 {
-		t.Errorf("movementLeftFt() = %d, want 10", got)
+	// A diagonal step is 7,1 ft: three of them leave 25 - 21,3 = 3,7 ft.
+	c.MovementUsedDft = 3 * 71
+	if got, ft := movementLeftDFt(c), movementLeftFt(c); got != 37 || ft != 3 {
+		t.Errorf("after three diagonal steps = %d dft, %d ft; want 37 dft and 3 ft (rounded down)", got, ft)
 	}
 	c.Dashed = true
-	if got := movementLeftFt(c); got != 35 {
-		t.Errorf("movementLeftFt() after the Dash = %d, want 35", got)
+	if got := movementLeftDFt(c); got != 287 {
+		t.Errorf("movementLeftDFt() after the Dash = %d, want 287", got)
 	}
-	c.MovementUsedFt = 100
-	if got := movementLeftFt(c); got != 0 {
-		t.Errorf("movementLeftFt() overspent = %d, want 0", got)
+	c.Dashed, c.MovementUsedDft = false, 1000
+	if got := movementLeftDFt(c); got != 0 {
+		t.Errorf("movementLeftDFt() overspent = %d, want 0", got)
+	}
+	// A creature with a fly speed moves with the better of its speeds.
+	c = playdb.Combatant{SpeedFt: 10, SpeedFlyFt: 50}
+	if got := speedDFt(c); got != 500 {
+		t.Errorf("speedDFt() of a flier = %d, want 500", got)
 	}
 }
 

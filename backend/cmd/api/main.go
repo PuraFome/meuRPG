@@ -250,6 +250,8 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		if err != nil {
 			return err
 		}
+		// the combat walks over the layers the master painted (MR-034, RN-21)
+		playService.SetTerrain(mapsService)
 		// progression and characters need each other too (the XP lives on the
 		// sheets, and a sheet shows "pode subir de nível"): characters gets
 		// progression once it exists.

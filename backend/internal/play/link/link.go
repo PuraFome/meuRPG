@@ -37,6 +37,16 @@ type Character struct {
 	// PortraitImageID is the gallery image of an NPC's portrait (MR-031), ""
 	// for none and for a player's character.
 	PortraitImageID string
+	// Size is the creature's size, one of "tiny", "small", "medium", "large",
+	// "huge" or "gargantuan": a character's race size, or a basic sheet's Tamanho.
+	// "" means medium (MR-034, RN-21).
+	Size string
+	// SpeedFlyFt is the fly speed in feet, 0 for none.
+	SpeedFlyFt int
+	// JumpLongDFt and JumpHighDFt are the long and high jump with a running start,
+	// in tenths of a foot (rules/combat.JumpLimits); 0 for a sheet with no
+	// Strength. Standing, each is half.
+	JumpLongDFt, JumpHighDFt int
 }
 
 // Grid is a map's battle grid: squares of 1.5 m (5 ft) across the image's
@@ -181,6 +191,9 @@ type Spell struct {
 	// Mortos, Conjurar Animais; MR-037): the cast takes a choice of creatures
 	// instead of targets.
 	Summon bool
+	// IgnoresCover says the spell's saving throw gets no benefit from cover (Chama
+	// Sagrada, SRD 5.1); the total-cover targeting refusal stays.
+	IgnoresCover bool
 }
 
 // HPEffect is what a spell that reads hit points does at the slot level, from
@@ -224,9 +237,20 @@ type Turn struct {
 	AttacksMade int
 	// Dashed says the Dash action doubled the speed.
 	Dashed bool
-	// SpeedFt is the combatant's walking speed in a combat, and MovementUsedFt
-	// the feet walked this turn.
+	// SpeedFt is the combatant's best speed in a combat (walking, or flying when
+	// it can), and MovementUsedFt the feet walked this turn, rounded down.
 	SpeedFt, MovementUsedFt int
+	// MovementUsedDFt is the movement used this turn in tenths of a foot, which is
+	// what the server charges (RN-21); LastMoveDFt the length of the last move on
+	// foot this turn, the running start of a jump; Disengaged says the Disengage
+	// action was taken.
+	MovementUsedDFt, LastMoveDFt int
+	// JumpLongDFt and JumpHighDFt are the combatant's jump limits with a running
+	// start, in tenths of a foot, as kept on the combatant (copied from the sheet
+	// when it joined, like its speed): the turn options show exactly what the
+	// server enforces. Standing, each is half.
+	JumpLongDFt, JumpHighDFt int
+	Disengaged               bool
 }
 
 // Scene is an RP scene (MR-015): a SCENE point of a map as the session opens

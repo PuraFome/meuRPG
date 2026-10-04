@@ -257,6 +257,8 @@ export function toBasicSheetInit(v: BasicCharacterFormValue) {
     challengeRating: v.challengeRating,
     xpValue: v.xpValue,
     portraitImageId: v.portraitImageId,
+    // The size set elsewhere (the combat reads it) survives the save.
+    size: v.size,
   };
 }
 
@@ -345,6 +347,7 @@ export function toFormBasicSheet(name: string, basic: GenBasicSheet): BasicChara
     challengeRating: basic.challengeRating,
     xpValue: basic.xpValue,
     portraitImageId: basic.portraitImageId,
+    size: basic.size,
   };
 }
 

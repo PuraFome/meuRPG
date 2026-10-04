@@ -10,7 +10,6 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
-	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
 // The combat's own arithmetic: the turn order, whose turn comes next, the
@@ -123,25 +122,6 @@ func withOrder(cs []playdb.Combatant, ids []string) []playdb.Combatant {
 	}
 	return out
 }
-
-// movementLeftFt is how many feet the combatant can still walk this turn
-// (RN-21): its speed, twice after the Dash action, minus what it walked.
-func movementLeftFt(c playdb.Combatant) int {
-	speed := int(c.SpeedFt)
-	if c.Dashed {
-		speed *= 2
-	}
-	return max(speed-int(c.MovementUsedFt), 0)
-}
-
-// moveCostFt is the feet a move costs: every square costs 5 ft, diagonals
-// included (RN-21, the SRD's rule), so the cost is the king's-move distance.
-func moveCostFt(c playdb.Combatant, col, row int32) int {
-	return combat.GridDistanceFt(int(*c.GridCol), int(*c.GridRow), int(col), int(row))
-}
-
-// placed says whether the combatant has a square on the grid.
-func placed(c playdb.Combatant) bool { return c.GridCol != nil && c.GridRow != nil }
 
 // stateOf is the word that says how hurt an NPC or a creature is (RN-20):
 // "Derrotado" when it is out; "Muito ferido" at half of its hit points or

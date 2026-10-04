@@ -9,7 +9,7 @@ import {
   FullSheet,
   LevelUpReason,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
-import { DerivedSheet } from '../../../gen/meurpg/rules/v1/rules_pb';
+import { CreatureSize, DerivedSheet } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { BasicSheetVm, FullSheetVm } from './character-sheet.types';
 import { toCharacterSheetVm, toCharacterStoryInit, toStoryVm } from './character-sheet-source.live';
 
@@ -224,6 +224,7 @@ describe('the sheet header shows alignment and XP, read from the stored FullShee
   it('has no alignment or XP for a BasicSheet NPC', () => {
     const basic: BasicSheet = {
       $typeName: 'meurpg.characters.v1.BasicSheet',
+      size: CreatureSize.UNSPECIFIED,
       hitPointsMax: 7,
       armorClass: 13,
       speedFt: 30,

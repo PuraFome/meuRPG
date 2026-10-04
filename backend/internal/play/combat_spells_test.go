@@ -199,7 +199,13 @@ func (a *armed) castersFight(t *testing.T, goblins int32) *playv1.Encounter {
 		rolls = append(rolls, 1)
 	}
 	reveal := []string{"Capitão Goblin"}
-	at := map[string][2]int32{"Pensantus": {5, 5}, "Toren": {6, 5}, "Brisa": {5, 6}, "Capitão Goblin": {8, 5}}
+	// The Capitão stands next to Pensantus, with nobody between them: a creature
+	// on the line between two others is half cover (D4), and these tests count on
+	// the armor classes and the saves as they are.
+	at := map[string][2]int32{"Pensantus": {5, 5}, "Toren": {6, 5}, "Brisa": {5, 6}, "Capitão Goblin": {4, 4}}
+	if goblins != 1 {
+		at["Toren"] = [2]int32{6, 6} // off Pensantus's line to the goblins: no cover for their saves
+	}
 	if goblins == 1 {
 		reveal, at["Goblin"] = append(reveal, "Goblin"), [2]int32{7, 5}
 	} else {
@@ -426,7 +432,7 @@ func (a *armed) castersFightNPCFirst(t *testing.T) *playv1.Encounter {
 		npcRolls: []int{20, 1},
 		players:  map[string]int32{"Pensantus": 10, "Toren": 9, "Brisa": 8},
 		reveal:   []string{"Capitão Goblin", "Goblin"},
-		at:       map[string][2]int32{"Pensantus": {5, 5}, "Toren": {6, 5}, "Brisa": {5, 6}, "Capitão Goblin": {8, 5}, "Goblin": {9, 5}},
+		at:       map[string][2]int32{"Pensantus": {5, 5}, "Toren": {6, 5}, "Brisa": {5, 6}, "Capitão Goblin": {4, 4}, "Goblin": {9, 5}}, // nobody between the Capitão and Pensantus: no cover (D4)
 	})
 }
 
@@ -1645,7 +1651,7 @@ func (a *armed) hiddenCapitaoFight(t *testing.T) *playv1.Encounter {
 		npcRolls: []int{20, 1},
 		players:  map[string]int32{"Pensantus": 10, "Toren": 9, "Brisa": 8},
 		reveal:   []string{"Goblin"},
-		at:       map[string][2]int32{"Pensantus": {5, 5}, "Toren": {6, 5}, "Brisa": {5, 6}, "Capitão Goblin": {8, 5}, "Goblin": {9, 5}},
+		at:       map[string][2]int32{"Pensantus": {5, 5}, "Toren": {6, 5}, "Brisa": {5, 6}, "Capitão Goblin": {4, 4}, "Goblin": {9, 5}}, // no one between the Capitão and Pensantus: no cover (D4)
 	})
 }
 
