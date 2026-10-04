@@ -60,9 +60,15 @@ export class SheetHeader {
       canLevelUp: vm.canLevelUp,
     };
   });
+  /** The owner of a locked sheet levels up with the block under the header (MR-040), which already says so:
+   * the tag and the XP block's own tag would say it twice. */
+  protected readonly selfLevelUp = computed(() => {
+    const vm = this.vm();
+    return vm.canLevelUp && !vm.isMaster && vm.state === 'locked' && !this.isNpc();
+  });
   /** "Pode subir de nível" beside the state tags, where there is no XP block to carry it. */
   protected readonly milestoneTag = computed(
-    () => this.xpMode() === 'milestones' && this.vm().canLevelUp && !this.isNpc(),
+    () => this.xpMode() === 'milestones' && this.vm().canLevelUp && !this.isNpc() && !this.selfLevelUp(),
   );
 
   protected readonly fields = computed<HeaderField[]>(() => {

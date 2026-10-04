@@ -1,0 +1,138 @@
+<a class="back js-leave-top" [attr.href]="sheetHref()" (click)="onTopBack($event)">
+  <mat-icon aria-hidden="true">arrow_back</mat-icon>
+  Voltar para a ficha
+</a>
+
+@let st = state();
+@switch (st.status) {
+  @case ('loading') {
+    <h1 class="mr-page-title">Subir de nível</h1>
+    <div class="mr-notice mr-notice--neutral" role="status">
+      <mat-spinner diameter="20" aria-label="Carregando o nível" />
+      <p>Carregando o que o próximo nível dá...</p>
+    </div>
+  }
+  @case ('blocked') {
+    <h1 class="mr-page-title">Ainda não dá para subir de nível</h1>
+    <div class="mr-notice mr-notice--warning" role="alert">
+      <mat-icon aria-hidden="true">lock</mat-icon>
+      <p>{{ st.message }}</p>
+    </div>
+    <a matButton="filled" class="blocked__back" [attr.href]="sheetHref()" (click)="onBlockedBack($event)">Voltar para a ficha</a>
+  }
+  @case ('error') {
+    <h1 class="mr-page-title">Não foi possível abrir o nível</h1>
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ st.message }}</p>
+    </div>
+  }
+  @case ('ready') {
+    @let s = st.session;
+    <header class="head">
+      <h1 class="head__title">{{ title(s) }}</h1>
+      <p class="head__sub">{{ subtitle(s) }}</p>
+      <app-steps-bar [steps]="steps()" [index]="index()" />
+      <p class="head__step js-step" tabindex="-1"><strong>{{ stepOf() }}</strong> · {{ stepLabel() }}</p>
+    </header>
+
+    <div class="layout">
+      <div class="main">
+        <div class="body" (change)="onPick()">
+          @if (failure(); as f) {
+            <div class="mr-notice mr-notice--danger js-failure" role="alert" tabindex="-1">
+              <mat-icon aria-hidden="true">error</mat-icon>
+              <div class="failure">
+                <p>{{ f.message }}</p>
+                @if (f.kind === 'stale') {
+                  <button matButton="outlined" type="button" (click)="rereadSheet()">Ler a ficha de novo</button>
+                } @else if (f.kind === 'refusal' && f.step && steps().includes(f.step)) {
+                  <button matButton="outlined" type="button" (click)="goToStep(f.step)">Ir para {{ stepWords(f.step) }}</button>
+                }
+              </div>
+            </div>
+          }
+          @switch (step()) {
+            @case ('abilities') {
+              <app-abilities-step [s]="s" />
+            }
+            @case ('hp') {
+              <app-hp-step [s]="s" />
+            }
+            @case ('picks') {
+              <app-picks-step [s]="s" />
+            }
+            @case ('spells') {
+              <app-spells-step [s]="s" />
+            }
+            @case ('summary') {
+              <app-summary-step [s]="s" />
+              @if (refusal()) {
+                <p class="mr-notice mr-notice--warning" role="status">
+                  <mat-icon aria-hidden="true">warning</mat-icon>
+                  <span>As regras ainda não aceitam estas escolhas. Volte e confira os passos.</span>
+                </p>
+              }
+              @if (s.preview.state().failed; as why) {
+                <p class="mr-notice mr-notice--danger" role="alert">
+                  <mat-icon aria-hidden="true">error</mat-icon>
+                  <span>{{ why }}</span>
+                </p>
+              }
+            }
+          }
+        </div>
+
+        <footer class="foot">
+          @if (asking()) {
+            <div class="ask" role="group" aria-labelledby="ask-title">
+              <p class="ask__title" id="ask-title">Descartar as escolhas?</p>
+              <p class="ask__text">Nada foi guardado ainda: se sair agora, o nível {{ s.options.totalToLevel }} fica para depois.</p>
+              <div class="foot__buttons foot__buttons--ask">
+                <button matButton="outlined" type="button" class="js-keep" (click)="keepChoosing()">Continuar escolhendo</button>
+                <button matButton="filled" type="button" (click)="leave()">Descartar e sair</button>
+              </div>
+            </div>
+          } @else {
+            @if (attempted() && blocked()) {
+              <p class="mr-visually-hidden" role="alert">{{ blockReason() }}</p>
+            }
+            @if (blocked()) {
+              <p class="foot__reason" id="foot-reason" role="status">
+                <mat-icon aria-hidden="true">warning</mat-icon>
+                <span>{{ blockReason() }}</span>
+              </p>
+            }
+            <div class="foot__buttons" [class.foot__buttons--long]="isLast()">
+              @if (isFirst()) {
+                <button matButton="outlined" type="button" class="js-leave-foot" (click)="back()">Cancelar</button>
+              } @else {
+                <button matButton="outlined" type="button" (click)="back()">Voltar</button>
+              }
+              @if (isLast()) {
+                <button matButton="filled" type="button" class="js-next" [disabled]="busy() || s.draft.missing().length > 0" disabledInteractive (click)="confirm()">
+                  {{ confirmLabel(s) }}
+                </button>
+              } @else {
+                <button
+                  matButton="filled"
+                  type="button"
+                  class="next js-next"
+                  [class.next--off]="blocked()"
+                  [disabled]="blocked()"
+                  disabledInteractive
+                  [attr.aria-describedby]="blocked() ? 'foot-reason' : null"
+                  (click)="next()"
+                >
+                  Próximo
+                </button>
+              }
+            </div>
+          }
+        </footer>
+      </div>
+
+      <app-side-column class="side" [s]="s" [showChanges]="!isLast()" />
+    </div>
+  }
+}

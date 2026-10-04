@@ -24,7 +24,7 @@ import { LevelUpTag } from '../../../shared/xp/level-up-tag';
       <span class="xp__label">Experiência</span>
       <div class="xp__top">
         <span class="xp__n">{{ xpText() }}</span>
-        @if (canLevelUp()) {
+        @if (canLevelUp() && !selfLevelUp()) {
           <app-level-up-tag />
         }
       </div>
@@ -47,6 +47,8 @@ export class XpBlock {
   readonly canLevelUp = input(false);
   /** The master reads the same block: the instruction is for him. */
   readonly isMaster = input(false);
+  /** The owner of a locked sheet levels up by the block under the header: the tag and the "O mestre sobe" line step aside. */
+  readonly selfLevelUp = input(false);
 
   protected readonly xpText = computed(() => tight(`${formatInt(this.xp())} XP`));
   protected readonly bar = computed(() => progress(this.xp(), this.nextLevelXp(), this.canLevelUp()));
@@ -59,7 +61,7 @@ export class XpBlock {
     const target = `o nível ${this.level() + 1}`;
     if (this.canLevelUp()) {
       return tight(
-        `Chegou aos ${formatInt(next)} XP d${target}. ${this.isMaster() ? 'Suba o nível na ficha.' : 'O mestre sobe o seu nível na ficha.'}`,
+        `Chegou aos ${formatInt(next)} XP d${target}. ${this.isMaster() ? 'Suba o nível na ficha.' : this.selfLevelUp() ? 'Suba o nível pelo botão abaixo.' : 'O mestre sobe o seu nível na ficha.'}`,
       );
     }
     return tight(`${formatInt(xp)} de ${formatInt(next)} XP para ${target}. Faltam ${formatInt(Math.max(0, next - xp))} XP.`);

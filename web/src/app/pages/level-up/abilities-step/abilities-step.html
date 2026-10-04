@@ -1,0 +1,68 @@
+<section class="mr-panel" id="pick-abilities" [attr.data-missing]="missing() ? '' : null" aria-labelledby="asi-title">
+  <h2 class="mr-panel__title" id="asi-title">Aumento no Valor de Atributo</h2>
+  <p class="lead">Aumente um atributo em 2, ou dois atributos em 1. Nenhum passa de 20.</p>
+
+  <div class="mode" role="radiogroup" aria-label="Como aumentar">
+    <label class="mode__opt" [class.mode__opt--on]="one()">
+      <input type="radio" name="asi-mode" class="mode__input" [checked]="one()" (change)="s().draft.setAbilityMode('one')" />
+      +2 em um atributo
+    </label>
+    <label class="mode__opt" [class.mode__opt--on]="!one()">
+      <input type="radio" name="asi-mode" class="mode__input" [checked]="!one()" (change)="s().draft.setAbilityMode('two')" />
+      +1 em dois
+    </label>
+  </div>
+
+  @if (aboveTwenty()) {
+    <p class="mr-notice mr-notice--warning above" role="alert">
+      <mat-icon aria-hidden="true">warning</mat-icon>
+      <span>Nenhum atributo passa de 20. Escolha outro.</span>
+    </p>
+  }
+  <div [attr.role]="one() ? 'radiogroup' : 'group'" aria-labelledby="asi-title">
+  <ul class="rows">
+    @for (r of rows(); track r.key) {
+      <li class="rows__item">
+        <label class="row" [class.row--on]="r.picked">
+          <input
+            class="row__input"
+            [type]="one() ? 'radio' : 'checkbox'"
+            name="asi-ability"
+            [checked]="r.picked"
+            (change)="s().draft.toggleAbility(r.key)"
+          />
+          <span class="row__mark" [class.row__mark--radio]="one()" aria-hidden="true">
+            @if (!one()) {
+              <mat-icon>check</mat-icon>
+            }
+          </span>
+          <span class="row__name">{{ r.label }}</span>
+          <span class="row__score">
+            <span class="row__n" [class.row__n--moved]="r.picked">{{ r.score }}</span>
+            @if (r.modifier) {
+              <span class="row__mod">{{ r.modifier }}</span>
+            }
+          </span>
+        </label>
+      </li>
+    }
+  </ul>
+  </div>
+</section>
+
+<section class="mr-panel" aria-labelledby="asi-effect">
+  <h2 class="mr-panel__title" id="asi-effect">{{ title() ? 'O que muda com ' + title() : 'O que muda com o aumento' }}</h2>
+  @if (changes().length > 0) {
+    <app-change-rows [rows]="changes()" />
+  } @else {
+    <p class="lead lead--none">Escolha um atributo para ver o que muda.</p>
+  }
+  @if (!constitutionPicked()) {
+    <p class="note">Constituição, se fosse a escolhida, também muda os pontos de vida (passo 2).</p>
+  }
+</section>
+
+<p class="srd" role="note">
+  <mat-icon aria-hidden="true">info</mat-icon>
+  <span>O conteúdo do SRD 5.1 não traz dotes: aqui só dá para aumentar atributos.</span>
+</p>

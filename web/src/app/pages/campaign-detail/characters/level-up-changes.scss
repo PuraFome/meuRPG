@@ -1,0 +1,64 @@
+:host {
+  display: block;
+}
+
+.changes {
+  margin: 0 0 var(--mr-space-3);
+  padding: var(--mr-space-3) var(--mr-space-4);
+  background: var(--mr-ground);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+}
+
+.changes__title {
+  margin: 0 0 var(--mr-space-2);
+  font-family: var(--mr-font-display);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.changes__rows {
+  margin: 0;
+}
+
+.changes__row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 0;
+
+  // From a tablet up: the label on the left, the value on the right. On a phone the value stays under its label.
+  @media (min-width: 768px) {
+    flex-direction: row;
+    justify-content: space-between;
+    gap: var(--mr-space-3);
+  }
+  border-top: 1px solid var(--mr-rule);
+
+  &:first-child {
+    border-top: 0;
+  }
+
+  dt {
+    color: var(--mr-ink-muted);
+  }
+
+  dd {
+    margin: 0;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+    text-wrap: balance;
+
+    @media (min-width: 768px) {
+      text-align: right;
+    }
+  }
+}
+
+.changes__when {
+  margin: var(--mr-space-2) 0 var(--mr-space-3);
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}

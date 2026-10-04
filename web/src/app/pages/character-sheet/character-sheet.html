@@ -5,6 +5,10 @@
   </a>
 }
 
+@if (levelUpDone(); as done) {
+  <app-level-up-done [done]="done" (dismissed)="levelUpDone.set(null)" />
+}
+
 @let s = state();
 @switch (s.status) {
   <!-- The title and its notice in one block: the shared .mr-page-title
@@ -81,6 +85,8 @@
         }
       }
     </app-sheet-header>
+
+    <app-level-up-banner [vm]="vm" />
 
     @if (markDeadState(); as md) {
       @if (md.status === 'error') {

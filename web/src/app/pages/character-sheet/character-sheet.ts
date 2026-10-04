@@ -17,6 +17,10 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { formatModifier } from '../../core/characters/character-labels';
 import { describeCharacterError } from '../../core/characters/character-errors';
+import type { LevelUpDone } from '../../core/levelup/levelup-flow';
+import { takeLevelUpDone } from '../../core/levelup/levelup-done';
+import { LevelUpBanner } from './level-up-banner/level-up-banner';
+import { LevelUpDoneNotice } from './level-up-banner/level-up-done';
 import { AbilityMedallions } from './ability-medallions/ability-medallions';
 import { BasicSheet } from './basic-sheet/basic-sheet';
 import { OpenSessions } from '../../shell/live-notice/open-sessions';
@@ -77,6 +81,8 @@ type SavingState = { status: 'idle' } | { status: 'saving' } | { status: 'error'
     BasicSheet,
     CombatColumn,
     FeaturesPanel,
+    LevelUpBanner,
+    LevelUpDoneNotice,
     MasterNotes,
     MatButtonModule,
     MatIconModule,
@@ -116,6 +122,10 @@ export class CharacterSheetPage {
 
   /** How the campaign levels: decides whether the header has an XP block or only the tag. */
   protected readonly xpMode = signal<CampaignXpMode | null>(null);
+
+  /** "Pensantus subiu para o nível 4. O mestre foi avisado.": what the level-up page leaves in the
+   * navigation state (not Web Storage), shown until it is dismissed. */
+  protected readonly levelUpDone = signal<LevelUpDone | null>(takeLevelUpDone(this.router));
 
   protected readonly formatModifier = formatModifier;
   protected readonly issueTitle = issueTitle;

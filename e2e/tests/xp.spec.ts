@@ -65,8 +65,9 @@ test(
 
       // The player's sheet changes by itself, no reload, and says what to do (RN-12).
       await expect(xp).toContainText('2.950 XP');
-      await expect(xp.getByText('Pode subir de nível')).toBeVisible();
-      await expect(xp).toContainText('Chegou aos 2.700 XP do nível 4. O mestre sobe o seu nível na ficha.');
+      // Since MR-040 the owner of the locked sheet levels up by the block under the header (it says it, once).
+      await expect(p.getByRole('heading', { name: 'Pensantus pode subir de nível' })).toBeVisible();
+      await expect(xp).toContainText('Chegou aos 2.700 XP do nível 4. Suba o nível pelo botão abaixo.');
 
       // The campaign page: the history, and the tag in the group list.
       await m.goto(`/campanhas/${campaignId}`);
@@ -261,7 +262,8 @@ test('por marcos: o marco marca quem pode subir de nível, sem nenhum número de
 
     // The player's sheet: no XP anywhere, only the tag.
     await p.goto(sheetOf(p, campaignId, table.characterId));
-    await expect(p.locator('app-sheet-header').getByText('Pode subir de nível')).toBeVisible();
+    // The block of the level-up (MR-040) says it, not the header's tag.
+    await expect(p.getByRole('heading', { name: 'Pensantus pode subir de nível' })).toBeVisible();
     await expect(p.locator('app-xp-block')).toHaveCount(0);
     await expect(p.locator('app-sheet-header')).not.toContainText('XP');
 

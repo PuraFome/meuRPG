@@ -52,4 +52,28 @@
   flex-direction: column;
   align-items: flex-end;
   gap: var(--mr-space-1);
+  // Two tags stay one under the other, evenly, instead of one wrapping beside the name.
+  flex-shrink: 0;
+}
+
+// "O que mudou" under a character's row (MR-040): a text button that opens the choices in place.
+.changes-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 44px;
+  margin: 0 0 var(--mr-space-1) -12px;
+  padding: 0 12px;
+  border: 0;
+  background: none;
+  color: var(--mr-accent-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
 }

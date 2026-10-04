@@ -245,6 +245,21 @@ Etapa 7, MR-016 (desenhos E7-06 a E7-11). As peças comuns ficam em `web/src/app
 
 Números e unidades não se separam ("2.716 XP", "120 PO"): `tight()` e `joinDots()` ficam em `core/format/text.ts`, com `formatInt`/`formatXp` (separador de milhar do pt-BR feito à mão).
 
+### Subir de nível (MR-040)
+
+Etapa 8, fatia 8.15 (desenho E8-15). A página de passos fica em `web/src/app/pages/level-up`; o bloco da ficha, em `pages/character-sheet/level-up-banner`; o "O que mudou" do mestre, em `pages/campaign-detail`.
+
+| Peça | Como é |
+| --- | --- |
+| Bloco da ficha (`level-up-banner`) | Aviso de sucesso sob o cabeçalho, só do dono da ficha travada: o título "Pensantus pode subir de nível", o motivo e o botão cheio de 48 px "Subir para o nível 4", o único cheio da ficha. Depois de confirmar, a ficha mostra o status que se dispensa (`level-up-done`): "Pensantus subiu para o nível 4. O mestre foi avisado." |
+| Cabeçalho da página e passos (`steps-bar`) | O título "Subir para o nível 4", "Pensantus · Mago 3 → Mago 4" e os passos: no celular, um segmento por passo (feito cheio, atual mais alto, com o anel por dentro, para a barra alinhar com as bordas do conteúdo), do tablet para cima a lista numerada (visto nos feitos, número cheio no atual). Sempre a frase "Passo 3 de 4 · Magias", com palavras. Os passos não são botões: "Voltar" e "Próximo" andam entre eles |
+| Rodapé | No celular fica preso ao pé da tela (acima da área segura, sem faixa embaixo; a página guarda o espaço dele), com o motivo acima ("Falta escolher 1 truque.", `role="status"`) e dois botões de 48 px da mesma largura (empilham quando "Confirmar o nível 4" não cabe, a 320 px); do tablet para cima é o fim do passo, com botões de 160 × 44 px. "Próximo" é cheio no celular e contornado no desktop; sem a escolha, fica tracejado e, ao tocar, o foco vai para a primeira escolha que falta. Só "Confirmar o nível N" é cheio no desktop. "Cancelar" e "Voltar para a ficha" perguntam no lugar ("Descartar as escolhas?", "Continuar escolhendo" primeiro e com o foco) |
+| 320 × 568 | Numa tela de 640 px de altura ou menos, o título e "Passo N de M" ficam fixos sob a barra do app, numa linha cada; o corpo rola entre eles e o rodapé fixo |
+| Lista de escolhas (`pick-list`) | O painel de cada escolha: o título, "1 de 2" com o ícone de aviso e as palavras enquanto falta (um visto quando completa), linhas de 56 px com rádio (uma vaga) ou caixa (várias), a linha de baixo ("2º círculo · Conjuração") e o "?" de 44 px para a descrição da magia. A lista longa mostra as primeiras linhas e "Ver os outros 7 truques", e leva a busca. Cheia, as linhas sem marca ficam tracejadas e desligadas |
+| Vida | Os dois cartões do `dice-choice` ("Média: 4" já escolhido, "Rolar 1d6") e, sob o de rolar, o `roll-picker` do combate (rolar no app ou digitar o dado físico, conforme a regra de dados da campanha), sem o título e sem a caixa vazia do total (`labelHidden`, `hideWait`). A conta da vida vem do servidor: o cartão diz "4 + Constituição +3 · de 23 para 30", sem somar na tela. "O que o nível 4 dá" lista, só para leitura, o que está escolhido, o que ainda se escolhe e o que entra sozinho |
+| Coluna da direita (`side-column`) | Do desktop em diante: "O que muda até aqui" (região viva educada, atualiza a cada escolha) e "O resto da ficha", as linhas só de leitura com cadeado. Abaixo de 1100 px desce para baixo do passo; no celular não aparece |
+| Mestre (`level-up-notice`, `level-up-changes`) | O aviso de sucesso no alto da campanha ("Pensantus subiu para o nível 4. Veja o que foi escolhido em “O que mudou”.", região viva, dispensável); na lista de personagens, a etiqueta "Subiu para o nível 4" (por 24 horas) e o botão de texto "O que mudou", que abre no lugar as escolhas, a hora e "Abrir a ficha". Não há aprovar nem recusar |
+
 ### Cenas de RP
 
 As telas da cena (MR-015, desenhos E7-01 a E7-05; Etapa 7, fatia 7.5). A moldura de 1 px `accent` diz "está nas telas dos jogadores agora" (a mesma da imagem mostrada), sempre com a frase e o ícone ao lado. O mestre vê a CD e o resultado; o jogador nunca recebe nenhuma das duas, e a tela dele não tem a palavra "CD" nem "passou".

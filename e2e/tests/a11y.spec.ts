@@ -9,6 +9,7 @@ import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, s
 import { adjustVitalsRPC, beginAttackCombatRPC, combatRPC, getEncounterRPC, passTurnsTo, pensantusCasting, tableForCombat, toren, torenSheet } from './combat-support';
 import { addActionRPC, cartActions, getOpenSceneRPC, openSceneRPC, rollSceneRPC, tableForScenes } from './scene-support';
 import { printRoute, tableForPrinting } from './print-support';
+import { tableForLevelUp } from './levelup-support';
 import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus } from './support';
 import { awardXpRPC, createEnemyRPC, tableForXp, tableForXpCombat, winCombatRPC } from './xp-support';
 
@@ -1191,7 +1192,8 @@ async function scanXpScreens(browser: Browser, colorScheme: 'light' | 'dark', wi
 
     // The campaign page: the panel with its history, the question, the player's view and the sheet.
     await awardXpRPC(m, campaignId, { mode: 'MANUAL', reason: 'Pela ajuda ao ferreiro', characterIds: [combat.table.characterId], amount: 40 });
-    await open(m, `/campanhas/${campaignId}`);
+    // The campaign page of a master with a session open keeps the session's stream (MR-040): not `open`.
+    await openLive(m, `/campanhas/${campaignId}`);
     await expect(m.getByRole('region', { name: 'Experiência', exact: true })).toContainText('Pela ajuda ao ferreiro');
     await expectScreenPasses(m, `Campanha com Experiência, mestre ${where}`);
     await m.getByRole('button', { name: /^Desfazer/ }).click();
@@ -1208,14 +1210,15 @@ async function scanXpScreens(browser: Browser, colorScheme: 'light' | 'dark', wi
     await expect(p.getByRole('region', { name: 'Experiência', exact: true })).toContainText('Todos da campanha veem este histórico.');
     await expectScreenPasses(p, `Campanha com Experiência, jogador ${where}`);
     await openLive(p, `/campanhas/${campaignId}/personagens/${combat.table.characterId}`);
-    await expect(p.locator('app-xp-block').getByText('Pode subir de nível')).toBeVisible();
+    // The level-up block says it (MR-040), not the XP block's tag.
+    await expect(p.getByRole('heading', { name: 'Pensantus pode subir de nível' })).toBeVisible();
     await expectScreenPasses(p, `Ficha com XP e Pode subir de nível ${where}`);
 
     // Milestones: the dialog, the panel after it and the sheet with only the tag.
     const marks = await tableForXp(m, p, `Acessibilidade marcos ${Date.now()}`, 'XP_MODE_MILESTONES');
     campaigns.push(marks.campaignId);
     await startSessionRPC(m, marks.campaignId);
-    await open(m, `/campanhas/${marks.campaignId}`);
+    await openLive(m, `/campanhas/${marks.campaignId}`);
     await expectScreenPasses(m, `Experiência por marcos, sem marcos ${where}`);
     await m.getByRole('button', { name: 'Registrar marco' }).click();
     const markDialog = m.getByRole('dialog', { name: 'Registrar marco' });
@@ -1225,8 +1228,8 @@ async function scanXpScreens(browser: Browser, colorScheme: 'light' | 'dark', wi
     await expect(m.getByRole('status').filter({ hasText: 'Marco registrado' })).toBeVisible();
     await expectScreenPasses(m, `Experiência por marcos, depois do marco ${where}`);
     await openLive(p, `/campanhas/${marks.campaignId}/personagens/${marks.characterId}`);
-    await expect(p.locator('app-sheet-header').getByText('Pode subir de nível')).toBeVisible();
-    await expectScreenPasses(p, `Ficha por marcos, só a etiqueta ${where}`);
+    await expect(p.getByRole('heading', { name: /pode subir de nível/ })).toBeVisible();
+    await expectScreenPasses(p, `Ficha por marcos, o bloco de subir de nível ${where}`);
 
     // The NPC: the minion's section with the list open, "Usar 50 XP", and the enemy's header fields.
     const npc = await createEnemyRPC(m, campaignId, 'Capitão Goblin', '1', 200);
@@ -1478,4 +1481,116 @@ test('as magias na sessão passam no axe e nas conferências de layout no tema c
 test('as magias na sessão passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
   test.setTimeout(420_000);
   await scanCombatDetailsScreens(browser, 'dark', 390);
+});
+
+// The guided level-up (MR-040, E8-15): the sheet's block, every step and state of the page, the question
+// before discarding, the blocked route, and the master's "O que mudou". Pensantus goes from Mago 3 to 4.
+async function scanLevelUpScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const where = `${colorScheme === 'light' ? 'no tema claro' : 'no tema escuro'}, a ${width} px`;
+  const height = width === 320 ? 568 : width === 1024 ? 768 : width < 768 ? 844 : 800;
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height } });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height } });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const row = (name: string) => p.locator('.row__main, .row').filter({ hasText: name }).first();
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForLevelUp(m, p, `Acessibilidade subida ${Date.now()}`);
+    campaignId = table.campaignId;
+    const sheet = `/campanhas/${campaignId}/personagens/${table.characterId}`;
+
+    // Not `open`: with a session open the page keeps its stream, so the network is never idle.
+    await p.goto(sheet);
+    await expect(p.getByRole('link', { name: 'Subir para o nível 4' })).toBeVisible();
+    await expectScreenPasses(p, `A ficha que pode subir de nível ${where}`);
+
+    await p.getByRole('link', { name: 'Subir para o nível 4' }).click();
+    await expect(p.getByText('Passo 1 de 4 · Atributos')).toBeVisible();
+    await expectScreenPasses(p, `Atributos, com a escolha faltando ${where}`);
+    await row('Inteligência').click();
+    await expect(p.getByText('18 → 20')).toBeVisible();
+    await expectScreenPasses(p, `Atributos, Inteligência 20 ${where}`);
+    await p.getByRole('button', { name: 'Cancelar' }).click();
+    await expect(p.getByText('Descartar as escolhas?')).toBeVisible();
+    await expectScreenPasses(p, `A pergunta de descartar ${where}`);
+    await p.getByRole('button', { name: 'Continuar escolhendo' }).click();
+    await p.getByRole('button', { name: 'Próximo' }).click();
+
+    await expect(p.getByText('Passo 2 de 4 · Vida')).toBeVisible();
+    await expectScreenPasses(p, `Vida, a média ${where}`);
+    await p.locator('.dice-choice__card').filter({ hasText: 'Rolar 1d6' }).click();
+    await expectScreenPasses(p, `Vida, rolar o dado ${where}`);
+    await p.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await p.getByLabel(/Role 1d6/).fill('4');
+    await expectScreenPasses(p, `Vida, o dado físico digitado ${where}`);
+    await p.getByRole('button', { name: 'Confirmar 4' }).click();
+    await expect(p.getByText('Dado físico: 4 no d6')).toBeVisible();
+    await expectScreenPasses(p, `Vida, o resultado do dado ${where}`);
+    await p.getByRole('button', { name: 'Próximo' }).click();
+
+    await expect(p.getByText('Passo 3 de 4 · Magias')).toBeVisible();
+    await expectScreenPasses(p, `Magias, com a escolha faltando ${where}`);
+    await p.getByRole('button', { name: /Ver os outros \d+ truques/ }).click();
+    await row('Prestidigitação').click();
+    await p.getByLabel('Buscar magia').fill('nebuloso');
+    await row('Passo Nebuloso').click();
+    await p.getByLabel('Buscar magia').fill('espelhada');
+    await row('Imagem Espelhada').click();
+    await p.getByLabel('Buscar magia').fill('');
+    await expectScreenPasses(p, `Magias, o livro completo e as preparadas faltando ${where}`);
+    await p.getByRole('button', { name: 'Descrição de Passo Nebuloso' }).first().click();
+    await expect(p.getByRole('dialog').first()).toBeVisible();
+    await expectScreenPasses(p, `O "?" de uma magia do subir de nível ${where}`);
+    await p.keyboard.press('Escape');
+    const prepare = p.locator('#pick-prepared');
+    await prepare.locator('.row__main').filter({ hasText: 'Passo Nebuloso' }).click();
+    await prepare.locator('.row__main').filter({ hasText: 'Detectar Magia' }).click();
+    await expectScreenPasses(p, `Magias, tudo escolhido ${where}`);
+    await p.getByRole('button', { name: 'Próximo' }).click();
+
+    await expect(p.getByText('Passo 4 de 4 · Resumo')).toBeVisible();
+    await expectScreenPasses(p, `Resumo ${where}`);
+    await p.getByRole('button', { name: 'Confirmar o nível 4' }).click();
+    await expect(p.getByText('Pensantus subiu para o nível 4.').first()).toBeVisible();
+    await expectScreenPasses(p, `A ficha depois de subir ${where}`);
+
+    await p.goto(`${sheet}/subir-de-nivel`);
+    await expect(p.getByRole('heading', { name: 'Ainda não dá para subir de nível' })).toBeVisible();
+    await expectScreenPasses(p, `A rota sem a marca ${where}`);
+
+    await m.goto(`/campanhas/${campaignId}`);
+    await expect(m.getByRole('status').filter({ hasText: 'Pensantus subiu para o nível 4.' })).toBeVisible();
+    await expectScreenPasses(m, `O mestre, o aviso da subida ${where}`);
+    await m.getByRole('button', { name: 'O que mudou: Pensantus' }).click();
+    await expect(m.getByRole('region', { name: 'O que Pensantus escolheu no nível 4' })).toBeVisible();
+    await expectScreenPasses(m, `O mestre, "O que mudou" aberto ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('o subir de nível passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-040'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanLevelUpScreens(browser, 'light', 1280);
+});
+
+test('o subir de nível passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-040'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanLevelUpScreens(browser, 'dark', 390);
+});
+
+test('o subir de nível passa no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-040'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanLevelUpScreens(browser, 'dark', 1024);
+});
+
+test('o subir de nível passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-040'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanLevelUpScreens(browser, 'light', 320);
 });

@@ -1,0 +1,43 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+}
+
+.lead {
+  margin: 0 0 var(--mr-space-2);
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.locked {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.locked__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+  min-height: 44px;
+  padding: 4px 0;
+  border-top: 1px solid var(--mr-rule);
+}
+
+.locked__tag {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}

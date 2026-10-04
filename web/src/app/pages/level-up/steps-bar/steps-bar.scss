@@ -1,0 +1,128 @@
+:host {
+  display: block;
+}
+
+.steps {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// A phone: one segment per step, filled for the done ones. The current one is taller and its ring is drawn
+// inside it, so the whole bar lines up with the page's content edges.
+.step {
+  position: relative;
+  flex: 1 1 0;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--mr-line);
+
+  &--done {
+    background: var(--mr-accent);
+  }
+
+  &--now {
+    box-sizing: border-box;
+    height: 10px;
+    border: 2px solid var(--mr-accent);
+    border-radius: 5px;
+    background: var(--mr-accent);
+    box-shadow: inset 0 0 0 2px var(--mr-ground);
+  }
+}
+
+.step__num,
+.step__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (min-width: 768px) {
+  .steps {
+    align-items: center;
+    gap: 0;
+    padding: 0;
+  }
+
+  .step {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: var(--mr-space-2);
+    height: auto;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    color: var(--mr-ink-muted);
+
+    &--done,
+    &--now {
+      background: none;
+      box-shadow: none;
+      color: var(--mr-ink);
+    }
+
+    &--now {
+      border: 0;
+      height: auto;
+      font-weight: 700;
+    }
+
+    // The line between two steps.
+    &:not(:last-child)::after {
+      content: '';
+      flex: none;
+      width: 56px;
+      height: 1px;
+      margin: 0 var(--mr-space-3);
+      background: var(--mr-line);
+    }
+  }
+
+  .step__num,
+  .step__label {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+  }
+
+  .step__num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: 30px;
+    height: 30px;
+    border: 1.5px solid var(--mr-control-line);
+    border-radius: 50%;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1;
+
+    .mat-icon {
+      width: 18px;
+      height: 18px;
+      font-size: 18px;
+    }
+  }
+
+  .step--done .step__num {
+    border-color: var(--mr-accent);
+    color: var(--mr-accent-text);
+  }
+
+  .step--now .step__num {
+    border-color: var(--mr-accent);
+    background: var(--mr-accent);
+    color: var(--mr-on-accent);
+  }
+}

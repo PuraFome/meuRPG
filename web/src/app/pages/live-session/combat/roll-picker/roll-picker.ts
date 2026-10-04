@@ -56,6 +56,10 @@ export class RollPicker {
   /** The inline roll (the cast's damage, the death save): a label in the small
    * size, the field and the total tighter. The attack sheet keeps its E6-08 size. */
   readonly compact = input(false);
+  /** The label stays for screen readers but is not drawn: a page that already says it in its own heading. */
+  readonly labelHidden = input(false);
+  /** No empty result box while the number is not typed: only the status text for a screen reader. */
+  readonly hideWait = input(false);
   /** Typing mode, two-way: the sheet reads it to change its title. */
   readonly typing = model(false);
 

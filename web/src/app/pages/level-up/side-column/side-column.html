@@ -1,0 +1,21 @@
+@if (showChanges()) {
+<section class="mr-panel" aria-labelledby="side-changes">
+  <h2 class="mr-panel__title" id="side-changes">O que muda até aqui</h2>
+  <div role="status" aria-live="polite">
+    <app-change-rows [rows]="s().rows()" [compact]="true" />
+  </div>
+</section>
+}
+
+<section class="mr-panel" aria-labelledby="side-locked">
+  <h2 class="mr-panel__title" id="side-locked">O resto da ficha</h2>
+  <p class="lead">Continua travado até o fim da sessão.</p>
+  <ul class="locked">
+    @for (item of locked; track item) {
+      <li class="locked__row">
+        <span class="locked__name">{{ item }}</span>
+        <span class="locked__tag"><mat-icon aria-hidden="true">lock</mat-icon>Só leitura</span>
+      </li>
+    }
+  </ul>
+</section>

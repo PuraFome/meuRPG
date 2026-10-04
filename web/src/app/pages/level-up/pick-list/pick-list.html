@@ -1,0 +1,87 @@
+<section class="mr-panel list" [attr.aria-labelledby]="'pick-title-' + pickId()">
+  <div class="list__head">
+    <h2 class="mr-panel__title list__title" [id]="'pick-title-' + pickId()">{{ title() }}</h2>
+    <p class="list__count" [class.list__count--missing]="missing()">
+      <mat-icon aria-hidden="true">{{ missing() ? 'warning' : 'check_circle' }}</mat-icon>
+      <span>{{ countText() }}</span>
+      <span class="mr-visually-hidden">{{ missing() ? ': falta escolher' : ': completo' }}</span>
+    </p>
+  </div>
+  @if (leadStrong()) {
+    <p class="list__lead list__lead--strong">{{ leadStrong() }}</p>
+  }
+  @if (lead()) {
+    <p class="list__lead">{{ lead() }}</p>
+  }
+  @if (note()) {
+    <p class="list__lead">{{ note() }}</p>
+  }
+
+  @if (searchable()) {
+    <label class="list__search">
+      <span class="list__search-label">{{ searchLabel() }}</span>
+      <input
+        type="search"
+        autocomplete="off"
+        [placeholder]="'Nome da ' + noun()"
+        [value]="query()"
+        (input)="onSearch($event)"
+      />
+    </label>
+  }
+
+  <div [attr.role]="single() ? 'radiogroup' : 'group'" [attr.aria-labelledby]="'pick-title-' + pickId()">
+  <ul class="rows">
+    @for (item of rows(); track item.key) {
+      @let on = picked().has(item.key);
+      @let off = !on && (full() || !!item.disabled);
+      <li class="row">
+        <label class="row__main" [class.row__main--on]="on" [class.row__main--off]="off">
+          <input
+            [type]="single() ? 'radio' : 'checkbox'"
+            class="row__input"
+            [name]="'pick-' + pickId()"
+            [checked]="on"
+            [disabled]="off"
+            (change)="pick.emit(item.key)"
+          />
+          <span class="row__mark" [class.row__mark--radio]="single()" aria-hidden="true">
+            @if (!single()) {
+              <mat-icon>check</mat-icon>
+            }
+          </span>
+          <span class="row__text">
+            <span class="row__name">{{ item.name }}</span>
+            @if (off && (item.disabled || fullNote())) {
+              <span class="row__sub">{{ item.disabled || fullNote() }}</span>
+            } @else if (item.sub) {
+              <span class="row__sub">{{ item.sub }}</span>
+            }
+          </span>
+        </label>
+        @if (describable()) {
+          <button
+            type="button"
+            class="row__help"
+            [attr.aria-label]="'Descrição de ' + item.name"
+            (click)="describe.emit(item)"
+          >
+            <mat-icon aria-hidden="true">help_outline</mat-icon>
+          </button>
+        }
+      </li>
+    } @empty {
+      <li class="rows__empty">Nenhum resultado para essa busca. Apague a busca para ver a lista toda.</li>
+    }
+  </ul>
+  </div>
+
+  @if (hidden() > 0) {
+    <button type="button" class="list__more" (click)="expanded.set(true)">
+      Ver os outros {{ hidden() }} {{ hidden() === 1 ? noun() : nounMany() }}
+    </button>
+  }
+  @if (footnote()) {
+    <p class="list__foot">{{ footnote() }}</p>
+  }
+</section>

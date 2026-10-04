@@ -1,0 +1,60 @@
+@let d = s().draft;
+@if (cantrips().n > 0) {
+  <app-pick-list
+    pickId="cantrips"
+    [title]="cantrips().title"
+    [lead]="cantrips().lead"
+    noun="truque"
+    nounMany="truques"
+    [items]="d.cantripItems()"
+    [picked]="d.cantrips()"
+    [count]="cantrips().n"
+    [fullNote]="'Limite de ' + cantrips().n + ' truques novos'"
+    [describable]="true"
+    (pick)="d.toggleCantrip($event)"
+    (describe)="describe($event)"
+  />
+}
+@if (spells().n > 0) {
+  <app-pick-list
+    pickId="spells"
+    [title]="spells().title"
+    [lead]="spells().lead"
+    noun="magia"
+    nounMany="magias"
+    searchLabel="Buscar magia"
+    [items]="d.spellItems()"
+    [picked]="d.spells()"
+    [count]="spells().n"
+    [fullNote]="'Limite de ' + spells().n + (spells().n === 1 ? ' magia nova' : ' magias novas')"
+    [describable]="true"
+    (pick)="d.toggleSpell($event)"
+    (describe)="describe($event)"
+  />
+}
+@if (prepared().n > 0) {
+  <app-pick-list
+    pickId="prepared"
+    title="Magias preparadas"
+    [leadStrong]="prepared().strong"
+    [note]="prepared().note"
+    [fullNote]="'Limite de ' + prepared().max + ' preparadas'"
+    [footnote]="prepared().swap ? 'Para trocar uma das magias já preparadas, desmarque na ficha como sempre: aqui só entram as novas vagas.' : ''"
+    noun="magia"
+    nounMany="magias"
+    [items]="d.preparedItems()"
+    [picked]="d.prepared()"
+    [count]="prepared().n"
+    [base]="prepared().base"
+    [describable]="true"
+    (pick)="d.togglePrepared($event)"
+    (describe)="describe($event)"
+  />
+}
+@if (slots().length > 0) {
+  <section class="mr-panel" aria-labelledby="slots-title">
+    <h2 class="mr-panel__title" id="slots-title">Espaços de magia</h2>
+    <app-change-rows [rows]="slots()" [compact]="true" />
+    <p class="hint hint--in">Os espaços entram sozinhos. Nada a escolher aqui.</p>
+  </section>
+}
