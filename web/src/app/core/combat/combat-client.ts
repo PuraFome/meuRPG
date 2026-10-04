@@ -186,6 +186,7 @@ export class CombatClient {
     encounterId: string,
     expectedCombatantId: string,
     discardPendingDamage = false,
+    expectedRound = 0,
   ): Promise<Encounter> {
     const res = await this.client.endTurn({
       campaignId,
@@ -193,6 +194,7 @@ export class CombatClient {
       idempotencyKey: newKey(),
       expectedCombatantId,
       discardPendingDamage,
+      expectedRound,
     });
     return need(res.encounter, 'EndTurn');
   }

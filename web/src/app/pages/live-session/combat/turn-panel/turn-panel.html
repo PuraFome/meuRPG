@@ -5,15 +5,27 @@
       <div role="status" aria-live="polite">
         <h2 #hero class="banner__title" tabindex="-1">{{ banner().title }}</h2>
       </div>
+      @if (pill(); as text) {
+        <app-joint-pill [text]="text" />
+      }
       <p class="banner__sub">
         {{ round() }} · {{ encounter().name }}
-        @if (banner().next; as after) {
-          · Depois de você: <b>{{ after.label }}</b>
+        @if (banner().after; as after) {
+          · {{ afterPrefix() }}: <b>{{ after.name }}</b>
         }
       </p>
     </div>
-    <app-end-turn class="banner__end" [own]="me" [attacksLeft]="attacksLeft()" [busy]="busy()" (endTurn)="endTurn.emit()" />
+    @if (banner().joint) {
+      <div class="banner__end">
+        <app-end-part [note]="footerNote()" [left]="partLeft()" [busy]="busy()" (endPart)="endTurn.emit()" />
+      </div>
+    } @else {
+      <app-end-turn class="banner__end" [own]="me" [attacksLeft]="attacksLeft()" [busy]="busy()" (endTurn)="endTurn.emit()" />
+    }
   </section>
+  @if (banner().joint) {
+    <app-joint-others class="banner__strip" mode="others" [encounter]="encounter()" />
+  }
   @if (concentration()) {
     <app-concentration-line class="banner__strip" [spell]="concentration()" [busy]="busy()" (end)="endConcentration.emit()" />
   }
@@ -33,7 +45,7 @@
 }
 <section class="turn" [class.turn--mine]="banner().mine && !down()" [class.turn--down]="banner().mine && down()" aria-label="Vez no combate">
   <span class="mr-label turn__kicker">
-    {{ banner().mine ? round() + ' · ' + encounter().name : 'Combate · ' + round() }}
+    {{ banner().mine || banner().ownEnded ? round() + ' · ' + encounter().name : 'Combate · ' + round() }}
   </span>
   <div class="turn__banner" role="status" aria-live="polite">
     @if (banner().who; as who) {
@@ -48,13 +60,16 @@
     }
     <h2 #hero class="turn__title" tabindex="-1">{{ downTitle() || banner().title }}</h2>
   </div>
+  @if (pill(); as text) {
+    <app-joint-pill [text]="text" />
+  }
 
   @if (banner().mine && own(); as me) {
     @if (down()) {
       <p class="turn__next">{{ downText() }}</p>
     } @else {
-    @if (banner().next; as after) {
-      <p class="turn__next">Depois de você: <b>{{ after.label }}</b></p>
+    @if (banner().after; as after) {
+      <p class="turn__next">{{ afterPrefix() }}: <b>{{ after.name }}</b></p>
     }
     <ul class="eco" aria-label="O que você tem neste turno">
       @for (t of tiles(); track t.name) {
@@ -77,13 +92,30 @@
         </li>
       }
     </ul>
-    <app-end-turn class="turn__end" [own]="me" [attacksLeft]="attacksLeft()" [busy]="busy()" (endTurn)="endTurn.emit()" />
+    @if (banner().joint) {
+      <div class="turn__end">
+        <app-end-part [note]="footerNote()" [left]="partLeft()" [busy]="busy()" (endPart)="endTurn.emit()" />
+      </div>
+    } @else {
+      <app-end-turn class="turn__end" [own]="me" [attacksLeft]="attacksLeft()" [busy]="busy()" (endTurn)="endTurn.emit()" />
+    }
     @if (movement()?.none) {
       <p class="turn__why"><mat-icon aria-hidden="true">block</mat-icon>Sem movimento neste turno</p>
     }
+    @if (banner().joint) {
+      <app-joint-others mode="others" [encounter]="encounter()" />
+    }
     }
   } @else {
-    @if (nextLine(); as next) {
+    @if (banner().ownEnded) {
+      <p class="turn__next" role="status">{{ missing() }}</p>
+      <app-joint-others mode="summary" [encounter]="encounter()" />
+    } @else if (outsiderJoint()) {
+      @if (before(); as who) {
+        <p class="turn__next">A sua vez vem depois {{ who }}.</p>
+      }
+      <app-joint-others mode="outside" [encounter]="encounter()" />
+    } @else if (nextLine(); as next) {
       <p class="turn__next">{{ next.prefix }}<b>{{ next.name }}</b>.</p>
     }
     @if (own(); as me) {
@@ -93,10 +125,12 @@
           <span>{{ offTurnDown() }}</span>
         </p>
       } @else {
-        <p class="turn__react">
-          <mat-icon aria-hidden="true">{{ me.reactionUsed ? 'cancel' : 'radio_button_unchecked' }}</mat-icon>
-          Sua reação: {{ me.reactionUsed ? 'Usada' : 'Disponível' }}.
-        </p>
+        @if (!banner().ownEnded) {
+          <p class="turn__react">
+            <mat-icon aria-hidden="true">{{ me.reactionUsed ? 'cancel' : 'radio_button_unchecked' }}</mat-icon>
+            Sua reação: {{ me.reactionUsed ? 'Usada' : 'Disponível' }}.
+          </p>
+        }
         <app-turn-reaction [opportunities]="opportunities()" (opportunity)="opportunity.emit($event)" />
       }
     }

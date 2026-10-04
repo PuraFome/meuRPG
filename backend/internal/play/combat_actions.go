@@ -69,7 +69,7 @@ func (s *Service) gate(ctx context.Context, tx pgx.Tx, campaignID string, e play
 		return rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBAT_NOT_ACTIVE, nil
 	case c.Defeated:
 		return rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBATANT_DEFEATED, nil
-	case e.CurrentCombatantID == nil || *e.CurrentCombatantID != c.ID:
+	case !actsNow(e, c): // its group is not on turn, or its part of a joint turn ended
 		return rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_NOT_YOUR_TURN, nil
 	}
 	down, err := s.isDown(ctx, tx, campaignID, c)
@@ -229,7 +229,7 @@ func (s *Service) GetTurnOptions(
 	if code != rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_UNSPECIFIED {
 		disableAll(opts, code)
 	}
-	res := &playv1.GetTurnOptionsResponse{Options: opts, YourTurn: enc.CurrentCombatantID != nil && *enc.CurrentCombatantID == who.ID}
+	res := &playv1.GetTurnOptionsResponse{Options: opts, YourTurn: actsNow(enc, who)}
 	for _, a := range opts.GetAttacks() {
 		if a.GetAttack().GetSaveDc() > 0 {
 			continue // a saving throw, not an attack roll: the spells slice
@@ -446,7 +446,7 @@ func (s *Service) mustReactNow(ctx context.Context, c *combatTx, who playdb.Comb
 		return gateError(rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBAT_NOT_ACTIVE)
 	case who.Defeated:
 		return gateError(rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBATANT_DEFEATED)
-	case c.enc.CurrentCombatantID != nil && *c.enc.CurrentCombatantID == who.ID:
+	case actsNow(c.enc, who):
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("on its own turn an attack spends the action, not the reaction"))
 	}
 	down, err := s.isDown(ctx, c.tx, c.session.CampaignID, who)

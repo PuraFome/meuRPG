@@ -124,6 +124,8 @@
         <p><strong>{{ pendingNote() }}</strong> antes de passar o turno.</p>
       </div>
     }
-    <app-next-turn [pendingNote]="pendingNote()" [busy]="busy() || turnBusy()" (next)="next.emit($event)" />
+    @if (!joint()) {
+      <app-next-turn [pendingNote]="pendingNote()" [busy]="busy() || turnBusy()" (next)="next.emit($event)" />
+    }
   }
 </section>

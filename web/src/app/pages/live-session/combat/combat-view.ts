@@ -27,6 +27,7 @@ import type { CombatState } from '../../../core/combat/combat-state';
 import { TurnOptionsState } from '../../../core/combat/turn-options-state';
 import { saveAnnouncement } from '../../../core/combat/death-saves';
 import { currentCombatant, isDown, isPlayer, ownCombatant, npcKindLabel } from '../../../core/combat/combat-view';
+import { acts, jointTurn } from '../../../core/combat/joint-turn';
 import type { MapState } from '../../../core/maps/map-state';
 import { MoveSaves } from '../../../core/maps/move-saves';
 import { RosterClient } from '../../../core/maps/roster-client';
@@ -47,6 +48,7 @@ import type { CombatantInfo } from './combat-info';
 import { CombatBar } from './combat-bar/combat-bar';
 import { CombatMapCard } from './combat-map-card/combat-map-card';
 import { CombatSummary } from './combat-summary/combat-summary';
+import { JointCard } from './joint-turn/joint-card';
 import { InitiativeSetup } from './initiative-setup/initiative-setup';
 import { InitiativeSide } from './initiative-side/initiative-side';
 import { MovePage } from './move-page/move-page';
@@ -86,6 +88,7 @@ import { TurnPanel } from './turn-panel/turn-panel';
     CombatSummary,
     InitiativeSetup,
     InitiativeSide,
+    JointCard,
     MatButtonModule,
     MatIconModule,
     MovePage,
@@ -178,7 +181,21 @@ export class CombatView {
   });
   protected readonly myTurn = computed(() => {
     const e = this.encounter();
-    return !!e && !!this.own() && e.currentCombatantId === this.own()?.id;
+    const own = this.own();
+    return !!e && !!own && acts(e, own);
+  });
+  /** The joint turn that is running (a group of two or more), or `null`. */
+  protected readonly joint = computed(() => {
+    const e = this.encounter();
+    return e ? jointTurn(e) : null;
+  });
+  /** In a joint turn, who else must end their part, for the player's footer. */
+  protected readonly jointOthers = computed(() => {
+    const joint = this.joint();
+    if (!joint || !this.myTurn()) {
+      return null;
+    }
+    return [...joint.acting.filter((m) => !m.mine).map((m) => m.label), ...(joint.waitsForMaster ? ['o mestre'] : [])];
   });
   /** The squares a player's own token may be dragged to, on their turn. */
   protected readonly reach = computed(() => {
@@ -409,7 +426,18 @@ export class CombatView {
 
   /** `discard`: the master passes the turn although a damage waits. */
   protected nextTurn(discard = false): Promise<boolean> {
-    return this.run((e) => this.api.endTurn(this.campaignId(), e.id, e.currentCombatantId, discard));
+    // In a joint turn a player ends their own part; the master ends the part of
+    // the first member who still acts (the others have their own button).
+    return this.run((e) => {
+      const own = this.own();
+      const who = !this.isMaster() && own && acts(e, own) ? own.id : e.currentCombatantId;
+      return this.api.endTurn(this.campaignId(), e.id, who, discard, e.round);
+    });
+  }
+
+  /** "Encerrar a parte da Brisa": the master ends one member's part. */
+  protected endPart(id: string): Promise<boolean> {
+    return this.run((e) => this.api.endTurn(this.campaignId(), e.id, id, false, e.round));
   }
 
   /** A standard action ("Disparada"): it spends the action; Dash doubles the

@@ -35,7 +35,37 @@ import "meurpg/rules/v1/rules.proto";
 //   - A player never gets the armor class of anyone, the d20 and the
 //     damage dice of the master's NPCs, nor the combat log entries that
 //     involve a hidden combatant (CombatLogEntry).
+//   - A player sees a joint turn (see "Joint turns" below) only when its
+//     group holds a player's character. A group of NPCs alone stays the
+//     master's: the player gets no box and no total for it, and is only told
+//     who acts ("Vez dos Goblins"), never one of them picked.
 //   - The master sees everything.
+//
+// Joint turns (MR-013, RN-19, RN-20). RN-20 note: a player member's economy
+// (action, bonus action, reaction, movement) reaches the master, that player and
+// the other players in the same group, never a player outside it. Combatants that are adjacent in the turn
+// order with the same initiative total form a group, players and NPCs alike
+// (a combatant alone on its total is a group of one, and works as it always
+// did). A group takes ONE turn together: when the turn reaches it, the start of
+// the turn happens for every member at once (movement, action, bonus action,
+// dash, reaction, the Escudo bonus and the death save due all reset, each
+// member with its own economy). Defeated members are left out. Each member's
+// player ends their own part with EndTurn, and the master may end anyone's.
+// The turn passes to the next group when the last member who acts has ended;
+// there is no "end the group's turn", and a part that ended is never reopened.
+// The group is worked out from the order and the totals when its turn starts
+// and stays as it was until that turn passes, so these cases never change a
+// turn already running:
+//   - SetInitiativeOrder reorders a tie: the combatants stay one group (a
+//     group depends on the total alone, not on the order inside it).
+//   - AddCombatants adds an NPC with the same total as the group on turn: it
+//     is in the group's box from the group's next turn, not now (it is not in
+//     `turn_group_ids` and does not act in the turn that is running).
+//   - RemoveCombatant, a confirmed death or a defeated member: it leaves the
+//     turn; if nobody who acts is left, the turn passes at once.
+//   - SetCombatantHidden hides a member: the turn goes on as it was, and the
+//     players are never sent the hidden one (they see the master's part as
+//     "Falta o mestre", without a name).
 //
 // Every method needs a valid session cookie and fails with `unauthenticated`
 // without one. For a campaign the caller is not a member of (a pending member
@@ -155,6 +185,11 @@ service CombatService {
   // Combatants with a higher bonus already go first without it. Only the
   // master may call it, and only while the combat is in SETUP or ACTIVE.
   //
+  // Since joint turns, the order inside a tie only decides how the group is
+  // listed (and which member is `current_combatant_id` while it acts): the
+  // tied combatants act in the same turn, and they stay one group after the
+  // master orders them.
+  //
   // Errors:
   //   - `not_found`: a combatant is not in this combat.
   //   - `permission_denied`: the caller is a player.
@@ -165,7 +200,7 @@ service CombatService {
   rpc SetInitiativeOrder(SetInitiativeOrderRequest) returns (SetInitiativeOrderResponse);
 
   // BeginCombat starts the turns: the combat becomes ACTIVE, in round 1,
-  // with the first combatant of the order on turn. Only the master may call
+  // with the first group of the order on turn (every member of it acts). Only the master may call
   // it, and only while the combat is in SETUP. Every combatant must have an
   // initiative: otherwise the call fails with `failed_precondition`
   // (EncounterBlocked, INITIATIVE_MISSING) and names who is missing. Ties
@@ -180,38 +215,45 @@ service CombatService {
   //     missing (INITIATIVE_MISSING, with combatant_ids).
   rpc BeginCombat(BeginCombatRequest) returns (BeginCombatResponse);
 
-  // EndTurn ends the current combatant's turn and passes it to the next one
-  // that is not defeated; after the last, the round goes up by one. The
-  // current combatant's player may call it, and the master for anyone. At
-  // the start of its own turn, the new current combatant's movement,
-  // action, bonus action, dash and reaction are reset.
+  // EndTurn ends one member's part of the turn that is running: the whole
+  // turn when the member is alone in its group, and, in a joint turn, only the
+  // member's own part (the member is marked turn_part_ended and writes a
+  // `turn_part_ended` event). The turn passes to the next group, the next one
+  // that is not defeated, when the last member who acts ends; after the last
+  // group, the round goes up by one. At the start of the new group's turn,
+  // every member's movement, action, bonus action, dash and reaction are reset.
+  // A member's player may end that member's part, and the master anyone's (also
+  // the part of a player who is away). A player cannot end another member's
+  // part. A part that ended cannot be ended again, nor reopened.
   //
-  // expected_combatant_id is the combatant whose turn the caller thinks it
-  // is. If another one is on turn (a double tap, a stale screen), the call
-  // changes nothing and fails with `aborted`, so one tap never skips two
-  // turns.
+  // expected_combatant_id is the member whose part the caller thinks it ends
+  // (a member that still acts). If that member's part already ended, or the
+  // turn passed to another group (a double tap, a stale screen), the call
+  // changes nothing and fails with `aborted`, so one tap never ends two parts
+  // or two turns.
   //
-  // Nobody may be on turn: the combatant on turn left the fight (the master
+  // Nobody may be acting: the members who acted left the fight (the master
   // removed the last one who could act, or its character was deleted), and
   // `current_combatant_id` is empty while the combat is ACTIVE. Then only the
   // master may call it, with expected_combatant_id empty, and the turns start
   // again from the top of the order, in the same round.
   //
-  // Every stream gets `turn_changed` (each audience its own copy: a player
-  // sees a hidden combatant's turn as the master's) and `encounter_changed`.
+  // Every stream gets `encounter_changed`; when the turn passes, also
+  // `turn_changed` (each audience its own copy: a player sees a hidden
+  // combatant's turn as the master's).
   //
   // Errors:
   //   - `not_found`: the combat is not this campaign's, or the caller is a
   //     player and may not see the combatant.
-  //   - `permission_denied`: the caller is a player and the current
-  //     combatant is not their character, or nobody is on turn.
+  //   - `permission_denied`: the caller is a player and the member is not
+  //     their character, or nobody is acting.
   //   - `failed_precondition`: the combat is not ACTIVE, or nobody in it can
-  //     take a turn (NOT_ACTIVE); the combatant has a damage that waits to be
+  //     take a turn (NOT_ACTIVE); the member has a damage that waits to be
   //     rolled, applied or for a reaction (PENDING_DAMAGE, see
   //     discard_pending_damage); the player's character is down and its death
-  //     save is due (DEATH_SAVE_DUE: roll it first; the master may pass the
-  //     turn anyway).
-  //   - `aborted`: expected_combatant_id is not the one on turn.
+  //     save is due (DEATH_SAVE_DUE: roll it first; the master may end the part
+  //     anyway).
+  //   - `aborted`: expected_combatant_id is not a member who still acts.
   rpc EndTurn(EndTurnRequest) returns (EndTurnResponse);
 
   // MoveCombatant puts a combatant on a square of the grid (RN-21).
@@ -235,16 +277,17 @@ service CombatService {
   //     their character.
   //   - `invalid_argument`: the square is outside the grid.
   //   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED), or it
-  //     is not ACTIVE and the caller is a player (NOT_ACTIVE); it is not the
-  //     combatant's
-  //     turn (NOT_YOUR_TURN); the combatant is not on the map yet (NOT_PLACED);
+  //     is not ACTIVE and the caller is a player (NOT_ACTIVE); the combatant
+  //     is not acting now: its group is not on turn, or its part of the joint
+  //     turn ended (NOT_YOUR_TURN); the combatant is not on the map yet (NOT_PLACED);
   //     the square is too far (TOO_FAR) or occupied (SQUARE_OCCUPIED).
   rpc MoveCombatant(MoveCombatantRequest) returns (MoveCombatantResponse);
 
   // SetCombatantHidden hides an NPC combatant from the players, or shows it
   // (RN-10): a hidden combatant is not in their order, not on their map, and
   // its turn shows as the master's. Only the master may call it. Player
-  // combatants are never hidden.
+  // combatants are never hidden. Hiding a member of a joint turn changes
+  // nothing for the turn: the players simply stop being sent that member.
   //
   // Errors:
   //   - `not_found`: the combatant is not in this combat.
@@ -256,7 +299,8 @@ service CombatService {
   // AddCombatants brings reinforcements into the combat: copies of NPCs, as
   // in StartEncounter. Only the master may call it, while the combat is in
   // SETUP or ACTIVE. Each new NPC rolls its initiative at once and takes its
-  // place in the order; during an ACTIVE combat the turn does not change.
+  // place in the order; during an ACTIVE combat the turn does not change: an NPC that ties with the
+  // group on turn is in its box from the group's next turn, not now.
   // Player characters can be added only in SETUP.
   //
   // Errors:
@@ -269,8 +313,8 @@ service CombatService {
   rpc AddCombatants(AddCombatantsRequest) returns (AddCombatantsResponse);
 
   // RemoveCombatant takes a combatant out of the combat. Only the master may
-  // call it. If it is on turn in an ACTIVE combat, the turn passes to the
-  // next combatant first. A player's combatant can be removed only in SETUP.
+  // call it. If it is acting in an ACTIVE combat, it leaves the turn first: the
+  // turn passes to the next group when nobody who acts is left in its group. A player's combatant can be removed only in SETUP.
   //
   // Errors:
   //   - `not_found`: the combatant is not in this combat.
@@ -967,12 +1011,17 @@ message Encounter {
   // grid_columns - 1 and row 0 to grid_rows - 1, from the top left.
   int32 grid_columns = 7;
   int32 grid_rows = 8;
-  // Whose turn it is (a combatant ID). Empty in SETUP, when ENDED, and for a
-  // player when the one on turn is hidden from them: then master_turn is
-  // true.
+  // Whose turn it is (a combatant ID): the first member of the group on turn
+  // (in the order) that still acts, so a group of one works as it always did.
+  // Empty in SETUP, when ENDED, and when nobody acts. For a player it is also
+  // empty when every member who acts is hidden from them (then master_turn is
+  // true) and when the group on turn is NPCs alone with two or more members
+  // they see: no member is picked at random, `turn_group_ids` lists them and
+  // the app says "Vez dos Goblins".
   string current_combatant_id = 9;
-  // True when the one on turn is a combatant the caller may not see: the app
-  // shows "Vez do mestre". Always false for the master.
+  // True when everyone who acts in the turn is a combatant the caller may not
+  // see: the app shows "Vez do mestre" (or "Falta o mestre" when a visible
+  // member already ended). Always false for the master.
   bool master_turn = 10;
   // The combatants the caller sees, in turn order: by initiative, highest
   // first; combatants without an initiative yet come last.
@@ -989,6 +1038,30 @@ message Encounter {
   // nothing waits. The app opens its prompt from this after each
   // `encounter_changed`.
   repeated ReactionPrompt reaction_prompts = 15;
+  // The combatants on turn, in the order: the members of the group whose turn
+  // it is, the ones who still act and the ones whose part ended
+  // (Combatant.turn_part_ended). Empty in SETUP, when ENDED and when nobody is
+  // on turn. A group of one has one id.
+  //   - The master gets every member.
+  //   - A player gets it only for a group that holds a player's character,
+  //     without any member hidden from them, and for a group of NPCs alone
+  //     only the members they see: it is how the app says "Vez dos Goblins"
+  //     (RN-20: the player gets no total and no box for that group).
+  repeated string turn_group_ids = 16;
+  // The groups of two or more NPCs that tie on the initiative total and are
+  // adjacent in the order, as lists of ids, in the order, without a hidden or
+  // defeated one. Only a player gets it, and only so that the app can name a
+  // group by its plural ("Depois de você: os Goblins"): it comes with no
+  // total, and the app never draws a box for it (RN-20). The master works the
+  // groups out from the totals he already has; this is empty for him.
+  repeated NpcGroup npc_only_groups = 17;
+}
+
+// NpcGroup is a group of NPCs that act together, for a player to name (see
+// Encounter.npc_only_groups).
+message NpcGroup {
+  // The combatants (UUIDs), in the order.
+  repeated string combatant_ids = 1;
 }
 
 // ReactionPrompt is a hit that waits for its target's reaction: "Você foi
@@ -1042,7 +1115,10 @@ message Combatant {
   optional int32 initiative_bonus = 8;
   optional int32 initiative_face = 9;
   // Only the master: it is tied with another combatant on the same total and
-  // bonus, and the master has not ordered them yet (SetInitiativeOrder).
+  // bonus, and the master has not ordered them yet (SetInitiativeOrder). It is
+  // now only a display order: tied combatants take one joint turn whatever
+  // their order, and this flag no longer decides who acts first. It keeps
+  // telling the master the list holds a tie he has not looked at.
   bool tie_unresolved = 10;
   // Whether it has a square on the grid. A combatant without one is not on
   // the map yet; the master places it (MoveCombatant).
@@ -1052,11 +1128,15 @@ message Combatant {
   int32 row = 13;
   // Walking speed in feet (5 ft is one square, 1.5 m); the feet walked this
   // turn; and the feet left (twice the speed after the Dash action, minus
-  // the feet walked). Only the master and the combatant's own player.
+  // the feet walked). Only the master and the combatant's own player, and the
+  // other players of the same joint turn (see `dashed`).
   int32 speed_ft = 14;
   int32 movement_used_ft = 15;
   int32 movement_left_ft = 16;
-  // The turn's economy. Only the master and the combatant's own player.
+  // The turn's economy. Only the master and the combatant's own player; and,
+  // in a joint turn, the other players in the same group, who act together
+  // and tell each other what is left (a player outside the group never gets
+  // them). Also the `movement` fields above.
   bool dashed = 17;
   bool action_used = 18;
   bool bonus_action_used = 19;
@@ -1109,6 +1189,14 @@ message Combatant {
   // for a player: only the master gets it. A player sees a portrait only on
   // the stage (StageNpc).
   string portrait_url = 36;
+  // In the group on turn (Encounter.turn_group_ids), this member's part of the
+  // turn already ended: it acts no more until its group's next turn. False for
+  // a member who still acts, for one not on turn and in SETUP. The master gets
+  // it for every member. A player gets it for a member they see in a group that
+  // holds a player's character ("Encerrou" / "Ainda age"), and never for the
+  // members of an NPC-only group. A member's economy fields (above) stay the
+  // master's and the owner's.
+  bool turn_part_ended = 37;
 }
 
 // Participant is who joins a combat: a character of the campaign.
@@ -1205,13 +1293,19 @@ message EndTurnRequest {
   string campaign_id = 1;
   string encounter_id = 2;
   string idempotency_key = 3;
-  // The combatant whose turn the caller thinks it is (a UUID); empty only
-  // when nobody is on turn (see EndTurn).
+  // The member whose part the caller thinks it ends (a UUID): one that still
+  // acts in the turn; empty only when nobody is acting (see EndTurn).
   string expected_combatant_id = 4;
   // True: pass the turn although the combatant has a damage still waiting
   // (to be rolled or applied), discarding it. Only the master's call counts;
   // without it, that is `failed_precondition` (PENDING_DAMAGE).
   bool discard_pending_damage = 5;
+  // The round the caller's screen is in (optional; 0 means do not check). If
+  // it differs from the combat's round the call changes nothing and fails with
+  // `aborted`: when a group is the only one, its last part ending starts the
+  // next round with the same members acting, and a late second tap must not
+  // end a part of the new round.
+  int32 expected_round = 6;
 }
 
 // EndTurnResponse returns the combat after the turn passed.
@@ -2014,6 +2108,10 @@ enum CombatLogKind {
   // The conditions or the concentration of a combatant changed: the target,
   // `conditions` and `concentration_ended_key`.
   COMBAT_LOG_KIND_CONDITIONS_CHANGED = 12;
+  // A member of a joint turn ended their part and the turn goes on ("Brisa
+  // encerrou a parte dela"): the actor. The last part to end is not a line:
+  // the turn passes. A line with a hidden member never reaches a player.
+  COMBAT_LOG_KIND_TURN_PART_ENDED = 13;
 }
 
 // CombatLogEntry is one line of the combat log, as the caller may see it.

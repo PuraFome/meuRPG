@@ -1,9 +1,13 @@
-import { Component, input } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import type { Combatant, Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { CombatantState } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { combatantInitial, isDown, isPlayer, playerWord, stateWord } from '../../../../core/combat/combat-view';
+import { type OrderItem, jointTurn, listNames, orderItems } from '../../../../core/combat/joint-turn';
+import { OrderGroup } from '../joint-turn/order-group';
+import { PartState } from '../joint-turn/part-state';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 
 /**
@@ -15,27 +19,43 @@ import { CombatantToken } from '../../../../shared/combatant-token/combatant-tok
  */
 @Component({
   selector: 'app-order-column',
-  imports: [CombatantToken, MatIconModule],
+  imports: [CombatantToken, MatIconModule, NgTemplateOutlet, OrderGroup, PartState],
   template: `
     <section class="panel" aria-labelledby="order-col-title">
       <h2 class="panel__title" id="order-col-title">Ordem</h2>
       <ol class="rows">
-        @for (c of encounter().combatants; track c.id; let i = $index) {
-          <li class="row" [class.row--turn]="current(c)">
-            <span class="row__n" aria-hidden="true">{{ i + 1 }}</span>
-            <app-combatant-token [initial]="initial(c)" [npc]="!player(c)" [defeated]="c.defeated" [mine]="c.mine" [current]="current(c)" [size]="30" />
-            <span class="row__text">
-              <span class="row__name" [class.row__name--out]="c.defeated">
-                {{ c.label }}
-                @if (current(c)) {<span class="row__turn">Vez</span>}
-              </span>
-              <span class="row__word" [class.row__word--out]="c.defeated">
-                @if (c.defeated) {<mat-icon aria-hidden="true">close</mat-icon>}{{ word(c) }}
-              </span>
-            </span>
-          </li>
+        @for (item of items(); track key(item)) {
+          @if (item.kind === 'group') {
+            <li>
+              <app-order-group class="dense" [total]="item.total" [onTurn]="item.onTurn" [label]="groupLabel(item)">
+                <ol class="rows">
+                  @for (c of item.members; track c.id) {
+                    <ng-container *ngTemplateOutlet="rowTpl; context: { $implicit: c, grouped: true }" />
+                  }
+                </ol>
+              </app-order-group>
+            </li>
+          } @else {
+            <ng-container *ngTemplateOutlet="rowTpl; context: { $implicit: item.combatant, grouped: false }" />
+          }
         }
       </ol>
+      <ng-template #rowTpl let-c let-grouped="grouped">
+        <li class="row" [class.row--turn]="current(c)">
+          <span class="row__n" aria-hidden="true">{{ number(c) }}</span>
+          <app-combatant-token [initial]="initial(c)" [npc]="!player(c)" [defeated]="c.defeated" [mine]="c.mine" [current]="current(c)" [size]="30" />
+          <span class="row__text">
+            <span class="row__name" [class.row__name--out]="c.defeated">
+              {{ c.label }}
+              @if (current(c)) {<span class="row__turn">Vez</span>}
+              @if (grouped && inTurn(c)) {<app-part-state [ended]="c.turnPartEnded" />}
+            </span>
+            <span class="row__word" [class.row__word--out]="c.defeated">
+              @if (c.defeated) {<mat-icon aria-hidden="true">close</mat-icon>}{{ word(c) }}
+            </span>
+          </span>
+        </li>
+      </ng-template>
     </section>
   `,
   styleUrl: './order-column.scss',
@@ -51,8 +71,29 @@ export class OrderColumn {
     return isPlayer(c);
   }
 
+  /** Boxes only for groups that hold a player's character (RN-20). */
+  protected readonly items = computed(() => orderItems(this.encounter(), false));
+  private readonly joint = computed(() => jointTurn(this.encounter()));
+
   protected current(c: Combatant): boolean {
-    return c.id === this.encounter().currentCombatantId;
+    return !this.joint() && c.id === this.encounter().currentCombatantId;
+  }
+
+  /** Its place in the whole order, from 1. */
+  protected number(c: Combatant): number {
+    return this.encounter().combatants.indexOf(c) + 1;
+  }
+
+  protected inTurn(c: Combatant): boolean {
+    return !!this.joint()?.members.some((m) => m.id === c.id);
+  }
+
+  protected key(item: OrderItem): string {
+    return item.kind === 'group' ? item.members.map((m) => m.id).join('+') : item.combatant.id;
+  }
+
+  protected groupLabel(item: OrderItem): string {
+    return item.kind === 'group' ? `Turno conjunto: ${listNames(item.members.map((m) => m.label))}, iniciativa ${item.total}` : '';
   }
 
   protected word(c: Combatant): string {

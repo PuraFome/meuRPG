@@ -1,0 +1,44 @@
+@if (joint()) {
+  <section class="mr-panel others" aria-labelledby="others-title">
+    <h2 class="others__title" id="others-title">{{ title() }}</h2>
+    <ul class="others__list">
+      @for (m of blocks(); track m.id) {
+        <li class="block">
+          <div class="block__head">
+            <app-combatant-token [initial]="initial(m)" [npc]="m.kind !== Player" [size]="28" />
+            <span class="block__name">
+              {{ m.label }}
+              @if (m.mine) {
+                <span class="block__you">(você)</span>
+              }
+            </span>
+            <app-part-state [ended]="m.turnPartEnded" />
+          </div>
+          @if (showsEconomy(m)) {
+            @let e = economy(m);
+            <p class="block__label">Ainda tem</p>
+            <ul class="items">
+              @for (item of e.left; track item) {
+                <li><mat-icon aria-hidden="true">radio_button_unchecked</mat-icon>{{ item }}</li>
+              }
+              @if (e.movement) {
+                <li><mat-icon aria-hidden="true">radio_button_unchecked</mat-icon>Mover <b>{{ e.movement }}</b></li>
+              }
+              @if (e.left.length === 0 && !e.movement) {
+                <li>Nada.</li>
+              }
+            </ul>
+            @if (mode() === 'summary' && e.used.length > 0) {
+              <p class="block__label">Já usou</p>
+              <ul class="items">
+                @for (item of e.used; track item) {
+                  <li><mat-icon aria-hidden="true">check_circle</mat-icon>{{ item }}</li>
+                }
+              </ul>
+            }
+          }
+        </li>
+      }
+    </ul>
+  </section>
+}

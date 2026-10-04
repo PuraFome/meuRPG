@@ -512,7 +512,9 @@ func (f *fight) submitAll(t *testing.T, e *playv1.Encounter) {
 		u     *user
 		label string
 	}{{f.ana, "Pensantus"}, {f.caio, "Toren"}} {
-		if _, err := f.submit(t, c.u, e, c.label, inApp); err != nil {
+		// Typed faces, one apart, so the two never tie: a tie is a joint turn
+		// (MR-013), and these tests are about one combatant on turn at a time.
+		if _, err := f.submit(t, c.u, e, c.label, typed(map[string]int32{"Pensantus": 11, "Toren": 10}[c.label])); err != nil {
 			t.Fatalf("SubmitInitiative(%s) error = %v", c.label, err)
 		}
 	}
@@ -1071,7 +1073,7 @@ func TestSessionEventKindsMatchTheCheck(t *testing.T) {
 		eventActionTaken, eventHitPointsAdjusted, eventActionUndone,
 		eventSpellCast, eventReactionUsed, eventReactionDeclined, eventDeathSaveRolled, eventDeathConfirmed, eventConditionsSet,
 		eventXPAwarded, eventXPAwardUndone, eventMilestoneMarked, eventSceneOpened, eventSceneClosed, eventSceneCheckRolled,
-		eventClueRevealed, eventStageChanged,
+		eventClueRevealed, eventStageChanged, eventTurnPartEnded,
 	}
 	var clause string
 	if err := h.pool.QueryRow(t.Context(),

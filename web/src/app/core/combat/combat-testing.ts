@@ -33,6 +33,7 @@ export function combatant(over: Partial<Combatant> & { id: string; label: string
     concentrationSpell: '',
     armorClassBonus: 0,
     deathSaveDue: false,
+    turnPartEnded: false,
     ...over,
   } as unknown as Combatant;
 }
@@ -51,6 +52,8 @@ export function encounter(over: Partial<Encounter> = {}): Encounter {
     masterTurn: false,
     combatants: [],
     reactionPrompts: [],
+    turnGroupIds: [],
+    npcOnlyGroups: [],
     revision: 1,
     ...over,
   } as unknown as Encounter;

@@ -10,6 +10,19 @@ import (
 	"time"
 )
 
+const clearCombatTurns = `-- name: ClearCombatTurns :exec
+UPDATE combatants
+SET turn_state = 'idle'
+WHERE encounter_id = $1 AND turn_state <> 'idle'
+`
+
+// Nobody is on turn: every combatant of the combat goes back to 'idle'. A new
+// turn starts with this and then ResetCombatantTurn for each of its members.
+func (q *Queries) ClearCombatTurns(ctx context.Context, encounterID string) error {
+	_, err := q.db.Exec(ctx, clearCombatTurns, encounterID)
+	return err
+}
+
 const clearPendingDamageApplied = `-- name: ClearPendingDamageApplied :one
 UPDATE pending_damages
 SET status = 'rolled', resolved_at = NULL, applied_amount = NULL
@@ -146,6 +159,19 @@ func (q *Queries) DeleteStageNPC(ctx context.Context, arg DeleteStageNPCParams) 
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const endCombatantTurnPart = `-- name: EndCombatantTurnPart :exec
+UPDATE combatants
+SET turn_state = 'ended'
+WHERE id = $1
+`
+
+// A member of the joint turn ended its part: it acts no more until its group's
+// next turn.
+func (q *Queries) EndCombatantTurnPart(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, endCombatantTurnPart, id)
+	return err
 }
 
 const endGameSession = `-- name: EndGameSession :one
@@ -530,7 +556,7 @@ INSERT INTO combatants (
     $1, $2, $3, $4, $5, $6, $7, $8, $9,
     $10, $11, $12, $13, $14, $15, $16, $17, $18
 )
-RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value
+RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state
 `
 
 type InsertCombatantParams struct {
@@ -610,6 +636,7 @@ func (q *Queries) InsertCombatant(ctx context.Context, arg InsertCombatantParams
 		&i.AcBonus,
 		&i.DeathSaveRolled,
 		&i.XpValue,
+		&i.TurnState,
 	)
 	return i, err
 }
@@ -935,7 +962,7 @@ func (q *Queries) ListCastPendingDamages(ctx context.Context, arg ListCastPendin
 }
 
 const listCombatants = `-- name: ListCombatants :many
-SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value FROM combatants
+SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state FROM combatants
 WHERE encounter_id = $1
 ORDER BY order_index, created_at, id
 `
@@ -984,6 +1011,7 @@ func (q *Queries) ListCombatants(ctx context.Context, encounterID string) ([]Com
 			&i.AcBonus,
 			&i.DeathSaveRolled,
 			&i.XpValue,
+			&i.TurnState,
 		); err != nil {
 			return nil, err
 		}
@@ -1355,9 +1383,10 @@ const markDeathSaveRolledOnTurn = `-- name: MarkDeathSaveRolledOnTurn :exec
 UPDATE combatants
 SET death_save_rolled = true
 WHERE character_id = $1
-  AND id IN (
-      SELECT current_combatant_id FROM encounters
-      WHERE game_session_id = $2 AND status = 'active' AND current_combatant_id IS NOT NULL
+  AND turn_state = 'acting'
+  AND encounter_id IN (
+      SELECT id FROM encounters
+      WHERE game_session_id = $2 AND status = 'active'
   )
 `
 
@@ -1368,8 +1397,8 @@ type MarkDeathSaveRolledOnTurnParams struct {
 
 // A character that drops to 0 hit points during its own turn owes no death save
 // until its next turn starts (SRD 5.1: the save is rolled at the start of the
-// turn), so this turn's save counts as done. Only the combatant on turn, in the
-// session's active combat.
+// turn), so this turn's save counts as done. Only a combatant who acts in the
+// turn, in the session's active combat.
 func (q *Queries) MarkDeathSaveRolledOnTurn(ctx context.Context, arg MarkDeathSaveRolledOnTurnParams) error {
 	_, err := q.db.Exec(ctx, markDeathSaveRolledOnTurn, arg.CharacterID, arg.GameSessionID)
 	return err
@@ -1410,13 +1439,14 @@ func (q *Queries) NextSessionNumber(ctx context.Context, campaignID string) (int
 const resetCombatantTurn = `-- name: ResetCombatantTurn :exec
 UPDATE combatants
 SET movement_used_ft = 0, dashed = false, action_used = false, bonus_action_used = false, reaction_used = false,
-    attacks_made = 0, ac_bonus = 0, death_save_rolled = false
+    attacks_made = 0, ac_bonus = 0, death_save_rolled = false, turn_state = 'acting'
 WHERE id = $1
 `
 
-// The start of a combatant's own turn: movement, action, bonus action, dash,
-// reaction and the attacks made come back, the Escudo bonus ends, and a death
-// save is due again.
+// The start of a combatant's own turn (every living member of a joint turn
+// gets it): movement, action, bonus action, dash, reaction and the attacks
+// made come back, the Escudo bonus ends, a death save is due again, and the
+// combatant acts ('acting') in the turn that starts.
 func (q *Queries) ResetCombatantTurn(ctx context.Context, id string) error {
 	_, err := q.db.Exec(ctx, resetCombatantTurn, id)
 	return err

@@ -67,6 +67,10 @@ const (
 	eventStageChanged = "stage_changed"
 )
 
+// The kind of the joint turns (MR-013): a member ended their part and the turn
+// goes on. The last part to end writes turn_ended, as a turn always did.
+const eventTurnPartEnded = "turn_part_ended"
+
 // combatWrite describes one change to a combat: who makes it, the idempotency
 // key, the kind of event it becomes, and the combat it is about (empty when
 // the change creates it).
@@ -75,6 +79,10 @@ type combatWrite struct {
 	key         string
 	kind        string
 	encounterID string
+	// altKind is the other kind the change may write instead of kind (EndTurn
+	// writes turn_part_ended when the turn does not pass yet): a retry of the
+	// change under the same key may find either.
+	altKind string
 }
 
 // combatTx is what a change works with inside its transaction: the open
@@ -87,6 +95,9 @@ type combatTx struct {
 	enc         playdb.Encounter
 	now         time.Time
 	characterID *string
+	// kind is the kind of the event the change writes: the one in combatWrite,
+	// unless the closure sets it to the altKind.
+	kind string
 	// castID is the id the pending damages of the spell being cast share.
 	castID string
 }
@@ -129,7 +140,7 @@ func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx)
 		})
 		switch {
 		case err == nil:
-			if done.Kind != w.kind {
+			if done.Kind != w.kind && (w.altKind == "" || done.Kind != w.altKind) {
 				return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
 			}
 			res.repeated = true // a retry of a change already made
@@ -139,7 +150,7 @@ func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx)
 			return fmt.Errorf("find the event of this idempotency key: %w", err)
 		}
 
-		c := &combatTx{tx: tx, q: q, session: session, now: s.now()}
+		c := &combatTx{tx: tx, q: q, session: session, now: s.now(), kind: w.kind}
 		if w.encounterID != "" {
 			c.enc, err = q.GetEncounterInSession(ctx, playdb.GetEncounterInSessionParams{GameSessionID: session.ID, ID: w.encounterID})
 			if errors.Is(err, pgx.ErrNoRows) {
@@ -154,7 +165,7 @@ func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx)
 			return err
 		}
 		res.encounterID = c.enc.ID
-		return insertEvent(ctx, c, w.kind, &w.m.UserID, &w.key, payload)
+		return insertEvent(ctx, c, c.kind, &w.m.UserID, &w.key, payload)
 	})
 	if err != nil {
 		return combatResult{}, err

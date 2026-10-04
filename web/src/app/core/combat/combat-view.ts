@@ -6,6 +6,7 @@ import {
   type Encounter,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { article } from './combat-log';
+import { afterTurn, jointTurn, listNames, type JointTurn, npcPlural } from './joint-turn';
 
 /**
  * What the combat screens say about an encounter, kept as small pure
@@ -160,20 +161,31 @@ export function nextCombatant(e: Encounter): Combatant | null {
 
 /** The turn banner of the combat bar (master) and of the player's screen. */
 export interface TurnBanner {
-  /** "Vez do Capitão Goblin", "Vez do mestre" or "Sua vez, Pensantus". */
+  /** "Vez do Capitão Goblin", "Vez do mestre", "Sua vez, Pensantus", or, in a
+   * joint turn, "Vez de Brisa e Toren" and "Você encerrou a sua parte". */
   readonly title: string;
   /** Who is on turn; `null` for the master's turn (no name, no token). */
   readonly who: Combatant | null;
+  /** The caller's own combatant may act now. */
   readonly mine: boolean;
   readonly masterTurn: boolean;
   /** "Em seguida: Pensantus" (master) or the player's "Você é o próximo". */
   readonly next: Combatant | null;
   /** Whether the next one is the caller's own combatant. */
   readonly nextIsMine: boolean;
+  /** Who follows the turn that is running: a name, "os Goblins" for a group of
+   * NPCs. `null` when nobody follows. */
+  readonly after: { readonly name: string; readonly mine: boolean; readonly plural: boolean } | null;
+  /** The joint turn that is running, or `null` for a turn of one. */
+  readonly joint: JointTurn | null;
+  /** The caller's own part of the joint turn ended. */
+  readonly ownEnded: boolean;
 }
 
 export function turnBanner(e: Encounter): TurnBanner {
-  if (e.masterTurn) {
+  const joint = jointTurn(e);
+  const after = afterTurn(e);
+  if (e.masterTurn && !joint) {
     return {
       title: 'Vez do mestre',
       who: null,
@@ -181,6 +193,32 @@ export function turnBanner(e: Encounter): TurnBanner {
       masterTurn: true,
       next: null,
       nextIsMine: false,
+      after: null,
+      joint: null,
+      ownEnded: false,
+    };
+  }
+  if (joint) {
+    const own = joint.members.find((m) => m.mine);
+    const labels = joint.members.map((m) => m.label);
+    const named = joint.npcOnly ? npcPlural(labels) : null;
+    let title = named ? `Vez d${named}` : `Vez de ${listNames(labels)}`;
+    if (own && !own.turnPartEnded) {
+      title = `Sua vez, ${own.label}`;
+    } else if (own) {
+      title = 'Você encerrou a sua parte';
+    }
+    const who = own ?? joint.acting[0] ?? joint.members[0];
+    return {
+      title,
+      who,
+      mine: !!own && !own.turnPartEnded,
+      masterTurn: e.masterTurn,
+      next: null,
+      nextIsMine: after?.mine ?? false,
+      after,
+      joint,
+      ownEnded: !!own?.turnPartEnded,
     };
   }
   const who = currentCombatant(e);
@@ -192,6 +230,9 @@ export function turnBanner(e: Encounter): TurnBanner {
     masterTurn: false,
     next,
     nextIsMine: next?.mine ?? false,
+    after,
+    joint: null,
+    ownEnded: false,
   };
 }
 

@@ -208,6 +208,11 @@ type CombatServiceClient interface {
 	// Combatants with a higher bonus already go first without it. Only the
 	// master may call it, and only while the combat is in SETUP or ACTIVE.
 	//
+	// Since joint turns, the order inside a tie only decides how the group is
+	// listed (and which member is `current_combatant_id` while it acts): the
+	// tied combatants act in the same turn, and they stay one group after the
+	// master orders them.
+	//
 	// Errors:
 	//   - `not_found`: a combatant is not in this combat.
 	//   - `permission_denied`: the caller is a player.
@@ -217,7 +222,7 @@ type CombatServiceClient interface {
 	//     ENCOUNTER_ENDED).
 	SetInitiativeOrder(context.Context, *connect.Request[v1.SetInitiativeOrderRequest]) (*connect.Response[v1.SetInitiativeOrderResponse], error)
 	// BeginCombat starts the turns: the combat becomes ACTIVE, in round 1,
-	// with the first combatant of the order on turn. Only the master may call
+	// with the first group of the order on turn (every member of it acts). Only the master may call
 	// it, and only while the combat is in SETUP. Every combatant must have an
 	// initiative: otherwise the call fails with `failed_precondition`
 	// (EncounterBlocked, INITIATIVE_MISSING) and names who is missing. Ties
@@ -231,38 +236,45 @@ type CombatServiceClient interface {
 	//   - `failed_precondition`: not in SETUP (NOT_IN_SETUP); an initiative is
 	//     missing (INITIATIVE_MISSING, with combatant_ids).
 	BeginCombat(context.Context, *connect.Request[v1.BeginCombatRequest]) (*connect.Response[v1.BeginCombatResponse], error)
-	// EndTurn ends the current combatant's turn and passes it to the next one
-	// that is not defeated; after the last, the round goes up by one. The
-	// current combatant's player may call it, and the master for anyone. At
-	// the start of its own turn, the new current combatant's movement,
-	// action, bonus action, dash and reaction are reset.
+	// EndTurn ends one member's part of the turn that is running: the whole
+	// turn when the member is alone in its group, and, in a joint turn, only the
+	// member's own part (the member is marked turn_part_ended and writes a
+	// `turn_part_ended` event). The turn passes to the next group, the next one
+	// that is not defeated, when the last member who acts ends; after the last
+	// group, the round goes up by one. At the start of the new group's turn,
+	// every member's movement, action, bonus action, dash and reaction are reset.
+	// A member's player may end that member's part, and the master anyone's (also
+	// the part of a player who is away). A player cannot end another member's
+	// part. A part that ended cannot be ended again, nor reopened.
 	//
-	// expected_combatant_id is the combatant whose turn the caller thinks it
-	// is. If another one is on turn (a double tap, a stale screen), the call
-	// changes nothing and fails with `aborted`, so one tap never skips two
-	// turns.
+	// expected_combatant_id is the member whose part the caller thinks it ends
+	// (a member that still acts). If that member's part already ended, or the
+	// turn passed to another group (a double tap, a stale screen), the call
+	// changes nothing and fails with `aborted`, so one tap never ends two parts
+	// or two turns.
 	//
-	// Nobody may be on turn: the combatant on turn left the fight (the master
+	// Nobody may be acting: the members who acted left the fight (the master
 	// removed the last one who could act, or its character was deleted), and
 	// `current_combatant_id` is empty while the combat is ACTIVE. Then only the
 	// master may call it, with expected_combatant_id empty, and the turns start
 	// again from the top of the order, in the same round.
 	//
-	// Every stream gets `turn_changed` (each audience its own copy: a player
-	// sees a hidden combatant's turn as the master's) and `encounter_changed`.
+	// Every stream gets `encounter_changed`; when the turn passes, also
+	// `turn_changed` (each audience its own copy: a player sees a hidden
+	// combatant's turn as the master's).
 	//
 	// Errors:
 	//   - `not_found`: the combat is not this campaign's, or the caller is a
 	//     player and may not see the combatant.
-	//   - `permission_denied`: the caller is a player and the current
-	//     combatant is not their character, or nobody is on turn.
+	//   - `permission_denied`: the caller is a player and the member is not
+	//     their character, or nobody is acting.
 	//   - `failed_precondition`: the combat is not ACTIVE, or nobody in it can
-	//     take a turn (NOT_ACTIVE); the combatant has a damage that waits to be
+	//     take a turn (NOT_ACTIVE); the member has a damage that waits to be
 	//     rolled, applied or for a reaction (PENDING_DAMAGE, see
 	//     discard_pending_damage); the player's character is down and its death
-	//     save is due (DEATH_SAVE_DUE: roll it first; the master may pass the
-	//     turn anyway).
-	//   - `aborted`: expected_combatant_id is not the one on turn.
+	//     save is due (DEATH_SAVE_DUE: roll it first; the master may end the part
+	//     anyway).
+	//   - `aborted`: expected_combatant_id is not a member who still acts.
 	EndTurn(context.Context, *connect.Request[v1.EndTurnRequest]) (*connect.Response[v1.EndTurnResponse], error)
 	// MoveCombatant puts a combatant on a square of the grid (RN-21).
 	//
@@ -285,15 +297,16 @@ type CombatServiceClient interface {
 	//     their character.
 	//   - `invalid_argument`: the square is outside the grid.
 	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED), or it
-	//     is not ACTIVE and the caller is a player (NOT_ACTIVE); it is not the
-	//     combatant's
-	//     turn (NOT_YOUR_TURN); the combatant is not on the map yet (NOT_PLACED);
+	//     is not ACTIVE and the caller is a player (NOT_ACTIVE); the combatant
+	//     is not acting now: its group is not on turn, or its part of the joint
+	//     turn ended (NOT_YOUR_TURN); the combatant is not on the map yet (NOT_PLACED);
 	//     the square is too far (TOO_FAR) or occupied (SQUARE_OCCUPIED).
 	MoveCombatant(context.Context, *connect.Request[v1.MoveCombatantRequest]) (*connect.Response[v1.MoveCombatantResponse], error)
 	// SetCombatantHidden hides an NPC combatant from the players, or shows it
 	// (RN-10): a hidden combatant is not in their order, not on their map, and
 	// its turn shows as the master's. Only the master may call it. Player
-	// combatants are never hidden.
+	// combatants are never hidden. Hiding a member of a joint turn changes
+	// nothing for the turn: the players simply stop being sent that member.
 	//
 	// Errors:
 	//   - `not_found`: the combatant is not in this combat.
@@ -304,7 +317,8 @@ type CombatServiceClient interface {
 	// AddCombatants brings reinforcements into the combat: copies of NPCs, as
 	// in StartEncounter. Only the master may call it, while the combat is in
 	// SETUP or ACTIVE. Each new NPC rolls its initiative at once and takes its
-	// place in the order; during an ACTIVE combat the turn does not change.
+	// place in the order; during an ACTIVE combat the turn does not change: an NPC that ties with the
+	// group on turn is in its box from the group's next turn, not now.
 	// Player characters can be added only in SETUP.
 	//
 	// Errors:
@@ -316,8 +330,8 @@ type CombatServiceClient interface {
 	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
 	AddCombatants(context.Context, *connect.Request[v1.AddCombatantsRequest]) (*connect.Response[v1.AddCombatantsResponse], error)
 	// RemoveCombatant takes a combatant out of the combat. Only the master may
-	// call it. If it is on turn in an ACTIVE combat, the turn passes to the
-	// next combatant first. A player's combatant can be removed only in SETUP.
+	// call it. If it is acting in an ACTIVE combat, it leaves the turn first: the
+	// turn passes to the next group when nobody who acts is left in its group. A player's combatant can be removed only in SETUP.
 	//
 	// Errors:
 	//   - `not_found`: the combatant is not in this combat.
@@ -1247,6 +1261,11 @@ type CombatServiceHandler interface {
 	// Combatants with a higher bonus already go first without it. Only the
 	// master may call it, and only while the combat is in SETUP or ACTIVE.
 	//
+	// Since joint turns, the order inside a tie only decides how the group is
+	// listed (and which member is `current_combatant_id` while it acts): the
+	// tied combatants act in the same turn, and they stay one group after the
+	// master orders them.
+	//
 	// Errors:
 	//   - `not_found`: a combatant is not in this combat.
 	//   - `permission_denied`: the caller is a player.
@@ -1256,7 +1275,7 @@ type CombatServiceHandler interface {
 	//     ENCOUNTER_ENDED).
 	SetInitiativeOrder(context.Context, *connect.Request[v1.SetInitiativeOrderRequest]) (*connect.Response[v1.SetInitiativeOrderResponse], error)
 	// BeginCombat starts the turns: the combat becomes ACTIVE, in round 1,
-	// with the first combatant of the order on turn. Only the master may call
+	// with the first group of the order on turn (every member of it acts). Only the master may call
 	// it, and only while the combat is in SETUP. Every combatant must have an
 	// initiative: otherwise the call fails with `failed_precondition`
 	// (EncounterBlocked, INITIATIVE_MISSING) and names who is missing. Ties
@@ -1270,38 +1289,45 @@ type CombatServiceHandler interface {
 	//   - `failed_precondition`: not in SETUP (NOT_IN_SETUP); an initiative is
 	//     missing (INITIATIVE_MISSING, with combatant_ids).
 	BeginCombat(context.Context, *connect.Request[v1.BeginCombatRequest]) (*connect.Response[v1.BeginCombatResponse], error)
-	// EndTurn ends the current combatant's turn and passes it to the next one
-	// that is not defeated; after the last, the round goes up by one. The
-	// current combatant's player may call it, and the master for anyone. At
-	// the start of its own turn, the new current combatant's movement,
-	// action, bonus action, dash and reaction are reset.
+	// EndTurn ends one member's part of the turn that is running: the whole
+	// turn when the member is alone in its group, and, in a joint turn, only the
+	// member's own part (the member is marked turn_part_ended and writes a
+	// `turn_part_ended` event). The turn passes to the next group, the next one
+	// that is not defeated, when the last member who acts ends; after the last
+	// group, the round goes up by one. At the start of the new group's turn,
+	// every member's movement, action, bonus action, dash and reaction are reset.
+	// A member's player may end that member's part, and the master anyone's (also
+	// the part of a player who is away). A player cannot end another member's
+	// part. A part that ended cannot be ended again, nor reopened.
 	//
-	// expected_combatant_id is the combatant whose turn the caller thinks it
-	// is. If another one is on turn (a double tap, a stale screen), the call
-	// changes nothing and fails with `aborted`, so one tap never skips two
-	// turns.
+	// expected_combatant_id is the member whose part the caller thinks it ends
+	// (a member that still acts). If that member's part already ended, or the
+	// turn passed to another group (a double tap, a stale screen), the call
+	// changes nothing and fails with `aborted`, so one tap never ends two parts
+	// or two turns.
 	//
-	// Nobody may be on turn: the combatant on turn left the fight (the master
+	// Nobody may be acting: the members who acted left the fight (the master
 	// removed the last one who could act, or its character was deleted), and
 	// `current_combatant_id` is empty while the combat is ACTIVE. Then only the
 	// master may call it, with expected_combatant_id empty, and the turns start
 	// again from the top of the order, in the same round.
 	//
-	// Every stream gets `turn_changed` (each audience its own copy: a player
-	// sees a hidden combatant's turn as the master's) and `encounter_changed`.
+	// Every stream gets `encounter_changed`; when the turn passes, also
+	// `turn_changed` (each audience its own copy: a player sees a hidden
+	// combatant's turn as the master's).
 	//
 	// Errors:
 	//   - `not_found`: the combat is not this campaign's, or the caller is a
 	//     player and may not see the combatant.
-	//   - `permission_denied`: the caller is a player and the current
-	//     combatant is not their character, or nobody is on turn.
+	//   - `permission_denied`: the caller is a player and the member is not
+	//     their character, or nobody is acting.
 	//   - `failed_precondition`: the combat is not ACTIVE, or nobody in it can
-	//     take a turn (NOT_ACTIVE); the combatant has a damage that waits to be
+	//     take a turn (NOT_ACTIVE); the member has a damage that waits to be
 	//     rolled, applied or for a reaction (PENDING_DAMAGE, see
 	//     discard_pending_damage); the player's character is down and its death
-	//     save is due (DEATH_SAVE_DUE: roll it first; the master may pass the
-	//     turn anyway).
-	//   - `aborted`: expected_combatant_id is not the one on turn.
+	//     save is due (DEATH_SAVE_DUE: roll it first; the master may end the part
+	//     anyway).
+	//   - `aborted`: expected_combatant_id is not a member who still acts.
 	EndTurn(context.Context, *connect.Request[v1.EndTurnRequest]) (*connect.Response[v1.EndTurnResponse], error)
 	// MoveCombatant puts a combatant on a square of the grid (RN-21).
 	//
@@ -1324,15 +1350,16 @@ type CombatServiceHandler interface {
 	//     their character.
 	//   - `invalid_argument`: the square is outside the grid.
 	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED), or it
-	//     is not ACTIVE and the caller is a player (NOT_ACTIVE); it is not the
-	//     combatant's
-	//     turn (NOT_YOUR_TURN); the combatant is not on the map yet (NOT_PLACED);
+	//     is not ACTIVE and the caller is a player (NOT_ACTIVE); the combatant
+	//     is not acting now: its group is not on turn, or its part of the joint
+	//     turn ended (NOT_YOUR_TURN); the combatant is not on the map yet (NOT_PLACED);
 	//     the square is too far (TOO_FAR) or occupied (SQUARE_OCCUPIED).
 	MoveCombatant(context.Context, *connect.Request[v1.MoveCombatantRequest]) (*connect.Response[v1.MoveCombatantResponse], error)
 	// SetCombatantHidden hides an NPC combatant from the players, or shows it
 	// (RN-10): a hidden combatant is not in their order, not on their map, and
 	// its turn shows as the master's. Only the master may call it. Player
-	// combatants are never hidden.
+	// combatants are never hidden. Hiding a member of a joint turn changes
+	// nothing for the turn: the players simply stop being sent that member.
 	//
 	// Errors:
 	//   - `not_found`: the combatant is not in this combat.
@@ -1343,7 +1370,8 @@ type CombatServiceHandler interface {
 	// AddCombatants brings reinforcements into the combat: copies of NPCs, as
 	// in StartEncounter. Only the master may call it, while the combat is in
 	// SETUP or ACTIVE. Each new NPC rolls its initiative at once and takes its
-	// place in the order; during an ACTIVE combat the turn does not change.
+	// place in the order; during an ACTIVE combat the turn does not change: an NPC that ties with the
+	// group on turn is in its box from the group's next turn, not now.
 	// Player characters can be added only in SETUP.
 	//
 	// Errors:
@@ -1355,8 +1383,8 @@ type CombatServiceHandler interface {
 	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
 	AddCombatants(context.Context, *connect.Request[v1.AddCombatantsRequest]) (*connect.Response[v1.AddCombatantsResponse], error)
 	// RemoveCombatant takes a combatant out of the combat. Only the master may
-	// call it. If it is on turn in an ACTIVE combat, the turn passes to the
-	// next combatant first. A player's combatant can be removed only in SETUP.
+	// call it. If it is acting in an ACTIVE combat, it leaves the turn first: the
+	// turn passes to the next group when nobody who acts is left in its group. A player's combatant can be removed only in SETUP.
 	//
 	// Errors:
 	//   - `not_found`: the combatant is not in this combat.

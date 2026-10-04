@@ -14,8 +14,12 @@ import {
   stateWord,
   turnBanner,
 } from '../../../../core/combat/combat-view';
+import { leftSentence, listNames, missingLine, passNote, playsBefore } from '../../../../core/combat/joint-turn';
 import { mediaQuery } from '../../../../shared/map-view/media-query';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
+import { EndPart } from '../joint-turn/end-part';
+import { JointOthers } from '../joint-turn/joint-others';
+import { JointPill } from '../joint-turn/joint-pill';
 import { EndTurn } from './end-turn';
 import { OrderStrip } from './order-strip';
 import { ConcentrationLine, TurnReaction } from './turn-extras';
@@ -36,7 +40,7 @@ import { ConcentrationLine, TurnReaction } from './turn-extras';
  */
 @Component({
   selector: 'app-turn-panel',
-  imports: [CombatantToken, ConcentrationLine, EndTurn, MatIconModule, OrderStrip, TurnReaction],
+  imports: [CombatantToken, ConcentrationLine, EndPart, EndTurn, JointOthers, JointPill, MatIconModule, OrderStrip, TurnReaction],
   templateUrl: './turn-panel.html',
   styleUrl: './turn-panel.scss',
 })
@@ -136,6 +140,39 @@ export class TurnPanel {
         }
       : null;
   });
+  /** The pill of a joint turn: "Turno conjunto com Brisa" for a member, "Turno
+   * conjunto" for the other players. A group of NPCs alone has none (RN-20). */
+  protected readonly pill = computed(() => {
+    const joint = this.banner().joint;
+    if (!joint || joint.npcOnly) {
+      return '';
+    }
+    const others = joint.members.filter((m) => !m.mine).map((m) => m.label);
+    return joint.members.some((m) => m.mine) && others.length > 0 ? `Turno conjunto com ${listNames(others)}` : 'Turno conjunto';
+  });
+  protected readonly afterPrefix = computed(() => (this.banner().joint ? 'Depois de vocês' : 'Depois de você'));
+  /** "O turno passa quando você e a Brisa encerrarem." */
+  protected readonly footerNote = computed(() => {
+    const joint = this.banner().joint;
+    return passNote((joint?.acting ?? []).filter((m) => !m.mine).map((m) => m.label), !!joint?.waitsForMaster);
+  });
+  /** What the own part still has, for the question before ending it. */
+  protected readonly partLeft = computed(() => {
+    const c = this.own();
+    return c ? leftSentence(c) : '';
+  });
+  /** "Falta a Brisa. O turno passa quando ela encerrar a parte dela." */
+  protected readonly missing = computed(() => {
+    const joint = this.banner().joint;
+    return joint ? missingLine(joint.acting.filter((m) => !m.mine).map((m) => m.label), joint.waitsForMaster) : '';
+  });
+  /** A player whose group is not on turn, with a joint turn of players going on. */
+  protected readonly outsiderJoint = computed(() => {
+    const joint = this.banner().joint;
+    return !!joint && !joint.npcOnly && !joint.members.some((m) => m.mine);
+  });
+  /** "do Capitão Goblin": who plays right before the player's own turn. */
+  protected readonly before = computed(() => playsBefore(this.encounter()));
   protected readonly nextLine = computed(() => {
     const banner = this.banner();
     if (banner.mine || banner.masterTurn || !banner.next) {

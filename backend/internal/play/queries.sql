@@ -177,12 +177,27 @@ SET hidden = $2
 WHERE id = $1;
 
 -- name: ResetCombatantTurn :exec
--- The start of a combatant's own turn: movement, action, bonus action, dash,
--- reaction and the attacks made come back, the Escudo bonus ends, and a death
--- save is due again.
+-- The start of a combatant's own turn (every living member of a joint turn
+-- gets it): movement, action, bonus action, dash, reaction and the attacks
+-- made come back, the Escudo bonus ends, a death save is due again, and the
+-- combatant acts ('acting') in the turn that starts.
 UPDATE combatants
 SET movement_used_ft = 0, dashed = false, action_used = false, bonus_action_used = false, reaction_used = false,
-    attacks_made = 0, ac_bonus = 0, death_save_rolled = false
+    attacks_made = 0, ac_bonus = 0, death_save_rolled = false, turn_state = 'acting'
+WHERE id = $1;
+
+-- name: ClearCombatTurns :exec
+-- Nobody is on turn: every combatant of the combat goes back to 'idle'. A new
+-- turn starts with this and then ResetCombatantTurn for each of its members.
+UPDATE combatants
+SET turn_state = 'idle'
+WHERE encounter_id = $1 AND turn_state <> 'idle';
+
+-- name: EndCombatantTurnPart :exec
+-- A member of the joint turn ended its part: it acts no more until its group's
+-- next turn.
+UPDATE combatants
+SET turn_state = 'ended'
 WHERE id = $1;
 
 -- name: MarkCombatantDashed :exec
@@ -250,14 +265,15 @@ WHERE character_id = sqlc.arg(character_id)
 -- name: MarkDeathSaveRolledOnTurn :exec
 -- A character that drops to 0 hit points during its own turn owes no death save
 -- until its next turn starts (SRD 5.1: the save is rolled at the start of the
--- turn), so this turn's save counts as done. Only the combatant on turn, in the
--- session's active combat.
+-- turn), so this turn's save counts as done. Only a combatant who acts in the
+-- turn, in the session's active combat.
 UPDATE combatants
 SET death_save_rolled = true
 WHERE character_id = sqlc.arg(character_id)
-  AND id IN (
-      SELECT current_combatant_id FROM encounters
-      WHERE game_session_id = sqlc.arg(game_session_id) AND status = 'active' AND current_combatant_id IS NOT NULL
+  AND turn_state = 'acting'
+  AND encounter_id IN (
+      SELECT id FROM encounters
+      WHERE game_session_id = sqlc.arg(game_session_id) AND status = 'active'
   );
 
 -- Pending damage (MR-012, MR-014): the damage of an attack that hit. Every write
