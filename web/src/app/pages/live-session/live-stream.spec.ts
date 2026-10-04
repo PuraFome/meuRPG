@@ -113,6 +113,7 @@ describe('LiveStream (ADR-0005 client rules)', () => {
       onCombatLogChanged: vi.fn(),
       onXpChanged: vi.fn(),
       onSceneChanged: vi.fn(),
+      onStageChanged: vi.fn(),
       onEnded: vi.fn(),
       onFatal: vi.fn(),
     };
@@ -170,6 +171,15 @@ describe('LiveStream (ADR-0005 client rules)', () => {
     last().push({ kind: 'sceneCheckRolled' });
     await flush();
     expect(handlers.onSceneChanged).toHaveBeenCalledTimes(2);
+  });
+
+  it('hands `stage_changed` to the page on its own, so the stage is read again (MR-031)', async () => {
+    stream.start();
+    last().push({ kind: 'ready' });
+    last().push({ kind: 'stageChanged' });
+    await flush();
+    expect(handlers.onStageChanged).toHaveBeenCalledTimes(1);
+    expect(handlers.onSceneChanged).not.toHaveBeenCalled();
   });
 
   it('hands the combat\'s events to the page (MR-013)', async () => {

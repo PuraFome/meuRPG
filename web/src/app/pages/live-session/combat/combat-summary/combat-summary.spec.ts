@@ -5,8 +5,9 @@ import { provideRouter } from '@angular/router';
 import { create } from '@bufbuild/protobuf';
 
 import { XpMode } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { CombatantKind, CombatantState, EncounterStatus } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { CombatantKind, CombatantState, EncounterStatus, GetCombatHighlightsResponseSchema } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { CharacterExperienceSchema, GetCampaignExperienceResponseSchema, ListXPAwardsResponseSchema } from '../../../../../gen/meurpg/progression/v1/progression_pb';
+import { CombatClient } from '../../../../core/combat/combat-client';
 import { combatant, encounter } from '../../../../core/combat/combat-testing';
 import { RosterClient } from '../../../../core/maps/roster-client';
 import { ProgressionClient } from '../../../../core/progression/progression-client';
@@ -21,8 +22,10 @@ const combatants = [
 
 describe('CombatSummary and the XP (E7-06)', () => {
   const experience = vi.fn();
+  const highlights = vi.fn();
 
   beforeEach(() => {
+    highlights.mockReset().mockResolvedValue(create(GetCombatHighlightsResponseSchema, {}));
     experience.mockReset().mockResolvedValue(
       create(GetCampaignExperienceResponseSchema, {
         xpMode: XpMode.ENEMIES,
@@ -34,6 +37,7 @@ describe('CombatSummary and the XP (E7-06)', () => {
         provideRouter([]),
         { provide: ProgressionClient, useValue: { experience, listAwards: () => Promise.resolve(create(ListXPAwardsResponseSchema, {})), award: vi.fn() } },
         { provide: RosterClient, useValue: { list: () => Promise.resolve([]) } },
+        { provide: CombatClient, useValue: { highlights } },
         { provide: MatDialog, useValue: { open: vi.fn() } },
         { provide: MatBottomSheet, useValue: { open: vi.fn() } },
       ],
@@ -103,5 +107,23 @@ describe('CombatSummary and the XP (E7-06)', () => {
     expect(player.el.querySelector('app-combat-xp')).toBeNull();
     expect(filled(leave(player.el))).toBe(true);
     expect(experience).toHaveBeenCalledTimes(1); // only the master's block read it
+  });
+
+  it('puts the master\'s "Destaques do combate" between the summary tiles and the XP block, and asks for them by combat', async () => {
+    const { fixture, el } = setup(true);
+    await ready(fixture);
+    const panel = el.querySelector('app-combat-highlights');
+    expect(panel).not.toBeNull();
+    expect(highlights).toHaveBeenCalledWith('camp-1', 'enc');
+    const order = Array.from(el.children).map((c) => c.tagName.toLowerCase());
+    expect(order.indexOf('app-combat-highlights')).toBeGreaterThan(order.indexOf('section'));
+    expect(order.indexOf('app-combat-highlights')).toBeLessThan(order.indexOf('div'));
+  });
+
+  it('has no highlights panel for a player: theirs is the card on the session page', async () => {
+    const { fixture, el } = setup(false);
+    await ready(fixture);
+    expect(el.querySelector('app-combat-highlights')).toBeNull();
+    expect(highlights).not.toHaveBeenCalled();
   });
 });

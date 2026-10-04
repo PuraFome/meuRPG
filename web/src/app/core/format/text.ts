@@ -31,3 +31,9 @@ export function formatInt(n: number): string {
 export function formatXp(xp: number): string {
   return `${formatInt(xp)} XP`;
 }
+
+/** Ties a one-letter word to the next one ("A carroça", "O vau"), so a title never
+ * breaks after "A" and leaves it alone at the end of a line. */
+export function tieShortWords(text: string): string {
+  return text.replace(/(^|\s)(\p{L}) (?=\S)/gu, '$1$2\u00a0');
+}

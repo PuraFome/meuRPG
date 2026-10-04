@@ -8,6 +8,7 @@ import {
   type DeathSave,
   type DiceRoll,
   type Encounter,
+  type GetCombatHighlightsResponse,
   type GetTurnOptionsResponse,
   type ListCombatLogResponse,
   type ParticipantSchema,
@@ -518,6 +519,12 @@ export class CombatClient {
   /** The combat log, latest first, as the caller may see it. */
   log(campaignId: string, encounterId: string): Promise<ListCombatLogResponse> {
     return this.client.listCombatLog({ campaignId, encounterId });
+  }
+
+  /** "Destaques do combate" (MR-032): who did the most in a combat that ended.
+   * The master's answer also has the table of every player's numbers. */
+  highlights(campaignId: string, encounterId: string): Promise<GetCombatHighlightsResponse> {
+    return this.client.getCombatHighlights({ campaignId, encounterId });
   }
 
   async end(campaignId: string, encounterId: string): Promise<Encounter> {

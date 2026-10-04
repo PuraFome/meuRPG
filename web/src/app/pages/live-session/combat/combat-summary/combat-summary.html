@@ -2,7 +2,7 @@
   <div class="end__head">
     <div>
       <div role="status">
-        <h2 #title id="end-title" class="end__title" tabindex="-1">Combate encerrado</h2>
+        <h2 #title id="end-title" class="end__title" [class.mr-visually-hidden]="quietTitle()" tabindex="-1">Combate encerrado</h2>
       </div>
       <p class="end__sub">{{ encounter().name }} · Sessão {{ sessionNumber() }}</p>
     </div>
@@ -32,6 +32,10 @@
     }
   </dl>
 </section>
+
+@if (isMaster() && campaignId()) {
+  <app-combat-highlights [campaignId]="campaignId()" [encounterId]="encounter().id" [info]="info()" />
+}
 
 <div class="cols" [class.cols--one]="!isMaster()" [class.cols--xp]="xpBlock()">
   <section class="mr-panel cols__out" aria-labelledby="out-title">

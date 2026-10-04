@@ -41,6 +41,7 @@ import (
 // characterTally is the numbers of one player's character.
 type characterTally struct {
 	characterID, name string
+	userID            string // the player it belongs to, empty for none
 	damage, healing   int32
 	taken             int32
 	finalBlows, crits int32
@@ -84,6 +85,9 @@ func tallyHighlights(events []playdb.ListEncounterCombatEventsRow, combatants []
 			continue
 		}
 		t := &characterTally{characterID: c.CharacterID, name: c.Label}
+		if c.UserID != nil {
+			t.userID = *c.UserID
+		}
 		byCombatant[c.ID] = t
 		out = append(out, t)
 	}
@@ -221,8 +225,10 @@ func (s *Service) GetCombatHighlights(
 	tallies := tallyHighlights(events, cs)
 
 	res := &playv1.GetCombatHighlightsResponse{Categories: highlightCategories(tallies)}
-	if m.Role == authz.RoleMaster {
-		for _, t := range tallies {
+	for _, t := range tallies {
+		// The master gets every row; a player only their own character's (RN-20),
+		// zeros included, so "Seu resultado" is whole.
+		if m.Role == authz.RoleMaster || (t.userID != "" && t.userID == m.UserID) {
 			res.Characters = append(res.Characters, &playv1.CharacterHighlights{
 				CharacterId: t.characterID, Name: t.name,
 				DamageDealt: t.damage, HealingDone: t.healing, DamageTaken: t.taken, FinalBlows: t.finalBlows, CriticalHits: t.crits,

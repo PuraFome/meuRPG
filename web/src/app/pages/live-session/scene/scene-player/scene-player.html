@@ -1,11 +1,13 @@
 @if (scene(); as s) {
   <section class="sc" aria-labelledby="sc-title">
     <p class="sc__eyebrow"><mat-icon aria-hidden="true">chat_bubble_outline</mat-icon>O mestre abriu uma cena</p>
-    <h2 class="sc__title" id="sc-title">Cena: {{ s.name }}</h2>
+    <h2 class="sc__title" id="sc-title">Cena: {{ sceneName() }}</h2>
+    <app-stage-player class="sc__stage" [state]="state()" />
     @if (s.description) {
       <p class="sc__text">{{ s.description }}</p>
     }
 
+    @if (rows().length > 0) {
     <h3 class="sc__sub">O que você pode fazer</h3>
     <ul class="sc__list">
       @for (r of rows(); track r.action.id) {
@@ -43,5 +45,6 @@
     <p class="sc__note">
       <mat-icon aria-hidden="true">visibility</mat-icon>O mestre vê cada resultado. Você vê só os seus.
     </p>
+    }
   </section>
 }

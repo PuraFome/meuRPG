@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { createClient } from '@connectrpc/connect';
 
 import { PlayService } from '../../../gen/meurpg/play/v1/play_pb';
-import type { OpenSceneInfo, SceneRoll } from '../../../gen/meurpg/play/v1/scene_pb';
+import type { OpenSceneInfo, SceneRoll, StageNpc } from '../../../gen/meurpg/play/v1/scene_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
 
 /** How a scene check's d20 comes (RN-18): the app rolls it, or the player's
@@ -32,6 +32,25 @@ export class SceneClient {
   async get(campaignId: string): Promise<OpenSceneInfo | null> {
     const res = await this.client.getOpenScene({ campaignId });
     return res.scene ?? null;
+  }
+
+  /** `PutOnStage` (MR-031): the NPC comes in after those already there. The
+   * answer is the stage as it is now. */
+  async putOnStage(campaignId: string, characterId: string): Promise<readonly StageNpc[]> {
+    const res = await this.client.putOnStage({ campaignId, characterId });
+    return res.stage;
+  }
+
+  /** `TakeOffStage`: at once, nothing to confirm. */
+  async takeOffStage(campaignId: string, characterId: string): Promise<readonly StageNpc[]> {
+    const res = await this.client.takeOffStage({ campaignId, characterId });
+    return res.stage;
+  }
+
+  /** `SetSpeaker`: who speaks now, or nobody (an empty `characterId`). */
+  async setSpeaker(campaignId: string, characterId: string): Promise<readonly StageNpc[]> {
+    const res = await this.client.setSpeaker({ campaignId, characterId });
+    return res.stage;
   }
 
   /** `RollSceneCheck`. The key is made once per roll and sent again on a retry:

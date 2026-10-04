@@ -32,6 +32,11 @@
   }
 }
 
+.head__portrait {
+  flex: none;
+  align-self: flex-start;
+}
+
 .head__id {
   display: flex;
   flex-direction: column;

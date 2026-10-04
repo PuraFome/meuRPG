@@ -25,6 +25,14 @@ export interface ImagePickerData {
   /** Images that are the background of a hidden map, with the map's name. */
   readonly hiddenMapImages: ReadonlyMap<string, string>;
   readonly emptyError: string;
+  /** A line under the title ("Toque numa imagem da galeria da campanha."). */
+  readonly lead?: string;
+  /** The icon of the line under the grid (default: the eye). */
+  readonly noteIcon?: string;
+  /** With nothing chosen the filled button is the dashed, off one (`aria-disabled`,
+   * a ⊘) and `emptyError` is a plain line above the actions instead of an error
+   * after a press; "Cancelar" is outlined. The portrait picker (E8-08). */
+  readonly dashedUntilPicked?: boolean;
   /** Does the work; a rejection becomes `errorMessage` in the dialog. */
   readonly submit: (image: GalleryImage) => Promise<void>;
   readonly errorMessage: (err: unknown) => string;
@@ -43,7 +51,9 @@ export interface ImagePickerData {
  *   and when it is, the line under the grid says it does not reveal the map.
  * - The filled button is enabled with nothing checked: pressing it says
  *   "Escolha uma imagem…" (the form pattern); with the current image
- *   checked it is disabled and the line says why.
+ *   checked it is disabled and the line says why. With `dashedUntilPicked`
+ *   it is the dashed, off button with the phrase above it until a tile is
+ *   checked.
  * - The dialog closes with `true` once `submit` worked.
  */
 @Component({
@@ -89,6 +99,9 @@ export class ImagePickerDialog {
     return map ? `${base} Mostrar essa imagem não revela o mapa ${map}.` : base;
   });
 
+  /** The dashed variant, with nothing chosen yet. */
+  protected readonly waiting = computed(() => !!this.data.dashedUntilPicked && !this.picked());
+
   protected choose(image: GalleryImage): void {
     this.picked.set(image);
     this.error.set(null);
@@ -106,7 +119,9 @@ export class ImagePickerDialog {
   protected async confirm(): Promise<void> {
     const image = this.picked();
     if (!image) {
-      this.error.set(this.data.emptyError);
+      if (!this.data.dashedUntilPicked) {
+        this.error.set(this.data.emptyError);
+      }
       return;
     }
     if (this.isCurrent() || this.busy()) {

@@ -7916,8 +7916,9 @@ type GetCombatHighlightsResponse struct {
 	// nobody hurt or healed in.
 	Categories []*HighlightCategory `protobuf:"bytes,1,rep,name=categories,proto3" json:"categories,omitempty"`
 	// The table of every player's character that fought, in the combat's order
-	// (the turn order), zeros included ("Números de cada jogador"). Only the
-	// master gets it; for a player it is empty.
+	// (the turn order), zeros included ("Números de cada jogador"). The master
+	// gets every row; a player gets exactly one, their own character's (empty if
+	// they had none in the combat), and never another player's (RN-20).
 	Characters    []*CharacterHighlights `protobuf:"bytes,2,rep,name=characters,proto3" json:"characters,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

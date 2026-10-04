@@ -36,7 +36,7 @@ describe('ScenePlayer', () => {
 
   it('shows the title, the description and one row per action with the own bonus and "Rolar"', () => {
     const { el } = setup();
-    expect(el.querySelector('h2')?.textContent).toBe('Cena: A carroça tombada');
+    expect(el.querySelector('h2')?.textContent).toBe('Cena: A\u00a0carroça tombada');
     expect(el.textContent).toContain('Uma carroça de mercador tombada na estrada.');
     expect(rows(el)).toHaveLength(5);
     expect(flat(rows(el)[0])).toContain('Procurar pistas na carroça');

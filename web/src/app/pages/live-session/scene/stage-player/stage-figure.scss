@@ -1,0 +1,45 @@
+// The figure fills the width its host gives it (`--fig-w`), 5 wide by 6 tall.
+:host {
+  display: block;
+  width: var(--fig-w, 100%);
+}
+
+// The base line: the figure stands on it. No box, border or radius on the
+// image itself.
+.fig {
+  display: block;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--mr-control-line);
+
+  &--speaking {
+    border-bottom: 4px solid var(--mr-accent);
+  }
+}
+
+.fig__img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 5 / 6;
+  object-fit: contain;
+  // Whatever its proportion, the figure touches the base line.
+  object-position: center bottom;
+}
+
+// The one frame: initials are not an image, so they keep their tile.
+.fig__tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  aspect-ratio: 5 / 6;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+  color: var(--mr-ink-muted);
+  font-family: var(--mr-font-display);
+  font-size: calc(var(--fig-w, 100px) * 0.357);
+  font-weight: 800;
+  letter-spacing: 1px;
+  line-height: 1;
+  user-select: none;
+}

@@ -41,6 +41,10 @@
   overflow-wrap: anywhere;
 }
 
+.sc__stage {
+  margin-top: var(--mr-space-3);
+}
+
 .sc__text {
   margin: var(--mr-space-2) 0 0;
   color: var(--mr-ink-muted);

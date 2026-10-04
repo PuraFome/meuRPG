@@ -1,0 +1,230 @@
+:host {
+  display: block;
+  // The gap between the page's blocks, so the card never hugs the header above it.
+  margin-top: var(--mr-space-5);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-sizing: border-box;
+  padding: 16px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+  margin-bottom: var(--mr-space-4);
+}
+
+.card__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.card__titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.card__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--mr-success-ink);
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.card__title {
+  margin: 2px 0 0;
+  font-family: var(--mr-font-display);
+  font-size: 36px;
+  line-height: 40px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.card__sub {
+  margin: 2px 0 6px;
+  font-size: 15px;
+  color: var(--mr-ink-muted);
+}
+
+.card__none {
+  margin: 0;
+  color: var(--mr-ink-muted);
+}
+
+// The way out stays in sight: 44px, at the corner of the header.
+.card__x {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: -6px -8px 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: 22px;
+  background: none;
+  color: var(--mr-ink);
+  cursor: pointer;
+}
+
+.card__h {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+
+  & + .own {
+    margin-top: 2px;
+  }
+}
+
+.rows,
+.own {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  column-gap: 12px;
+  align-items: start;
+  padding: 12px 0;
+  border-top: 1px solid var(--mr-rule);
+}
+
+.row__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 36px;
+  height: 36px;
+  border: 1.5px solid var(--mr-control-line);
+  border-radius: 50%;
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.row__text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.row__label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 18px;
+  color: var(--mr-ink-muted);
+}
+
+// "Você": a word on a pill, never colour alone.
+.row__you {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--mr-accent-text);
+  border-radius: var(--mr-radius-pill);
+  color: var(--mr-accent-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.row__small {
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--mr-ink-muted);
+}
+
+.row__value {
+  font-family: var(--mr-font-display);
+  font-size: 34px;
+  line-height: 40px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.row__names {
+  font-family: var(--mr-font-display);
+  font-size: 20px;
+  line-height: 24px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.own {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.own__tile {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+}
+
+.own__label {
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--mr-ink-muted);
+}
+
+.own__value {
+  font-family: var(--mr-font-display);
+  font-size: 20px;
+  line-height: 24px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.card__close {
+  min-height: 48px;
+  margin-top: var(--mr-space-2);
+}
+
+@media (min-width: 768px) {
+  .card__close {
+    align-self: flex-start;
+    min-width: 160px;
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .card {
+    animation: card-in 200ms ease-out;
+  }
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+  }
+}
