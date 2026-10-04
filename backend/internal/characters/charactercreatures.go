@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 	"uuid"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
 // The character's creatures (MR-037, Etapa 9): the familiar, the animals and
@@ -129,12 +131,14 @@ func (s *Service) creatureOf(v creatureView) link.Creature {
 	}
 	if d, ok := s.rules.MonsterDerived(v.MonsterKey); ok {
 		out.InitiativeBonus = d.Initiative
-		// It walks, or flies if it is a flier; swimming and climbing speeds are never the
-		// speed on the map.
-		out.SpeedFt = d.SpeedWalkFt
-		if d.SpeedFlyFt > 0 {
-			out.SpeedFt, out.Flier = max(d.SpeedWalkFt, d.SpeedFlyFt), true
-		}
+		// It walks, or flies when it can (the movement uses the better of the two);
+		// swimming and climbing speeds are never the speed on the map.
+		out.SpeedFt, out.SpeedFlyFt = d.SpeedWalkFt, d.SpeedFlyFt
+		jumps := combat.JumpLimits(d)
+		out.JumpLongDFt, out.JumpHighDFt = jumps.LongRunning, jumps.HighRunning
+	}
+	if c, ok := s.rules.CreatureByKey(v.MonsterKey); ok {
+		out.Size = strings.ToLower(c.Size)
 	}
 	return out
 }

@@ -736,11 +736,13 @@ const insertCreatureCombatant = `-- name: InsertCreatureCombatant :one
 INSERT INTO combatants (
     encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face,
     order_index, grid_col, grid_row, speed_ft, hp_current, hp_max, hp_temp, created_at,
-    creature_id, monster_key, summon_attack, summon_group_id
+    creature_id, monster_key, summon_attack, summon_group_id,
+    side, size, speed_fly_ft, jump_long_dft, jump_high_dft
 ) VALUES (
     $1, $2, $3, $4, 'creature', false, $5, $6, $7,
     $8, $9, $10, $11, $12, $13, 0, $14,
-    $15, $16, $17, $18
+    $15, $16, $17, $18,
+    'party', $19, $20, $21, $22
 )
 RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed
 `
@@ -764,6 +766,10 @@ type InsertCreatureCombatantParams struct {
 	MonsterKey      *string
 	SummonAttack    *string
 	SummonGroupID   *string
+	Size            string
+	SpeedFlyFt      int32
+	JumpLongDft     int32
+	JumpHighDft     int32
 }
 
 // The character's creatures in a combat (MR-037, Etapa 9). A creature is a
@@ -791,6 +797,10 @@ func (q *Queries) InsertCreatureCombatant(ctx context.Context, arg InsertCreatur
 		arg.MonsterKey,
 		arg.SummonAttack,
 		arg.SummonGroupID,
+		arg.Size,
+		arg.SpeedFlyFt,
+		arg.JumpLongDft,
+		arg.JumpHighDft,
 	)
 	var i Combatant
 	err := row.Scan(

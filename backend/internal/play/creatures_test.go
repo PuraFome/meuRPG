@@ -2,6 +2,9 @@ package play
 
 import (
 	"errors"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -9,8 +12,12 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
+	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
+	"github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1/mapsv1connect"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/maps"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
 )
 
 // The character's creatures (MR-037, Etapa 9, slice 9.9): the familiar, the
@@ -1236,5 +1243,130 @@ func TestMR037_RenamingACreatureRenamesItsCombatantAndFriendlyFireIsNotAHighligh
 	h, err := a.highlights(t, a.master, e)
 	if err != nil || len(h.GetCategories()) != 0 {
 		t.Errorf("highlights = %v, %v, want none: friendly fire counts nowhere", h, err)
+	}
+}
+
+// wolfFight starts the cave fight with Toren's wolf "Presa" (the master's gift,
+// 40 ft of speed) on (7, 7), and passes Toren's turn so it is the wolf's.
+func (c *cave) wolfFight(t *testing.T) *playv1.Encounter {
+	t.Helper()
+	c.give(t, c.toren, "monster:wolf", "Presa")
+	e := c.start(t, plan{
+		npcs: []*playv1.Participant{
+			{CharacterId: c.capitao.GetId()}, {CharacterId: c.goblins.GetId(), Count: 3}, {CharacterId: c.ogre.GetId()}, {CharacterId: c.squire.GetId()},
+		},
+		npcRolls: []int{2, 2, 2, 2, 2, 2},
+		players:  map[string]int32{"Toren": 18, "Pensantus": 10, "Brisa": 1, "Presa": 15},
+		reveal:   []string{"Capitão Goblin", "Goblin 1", "Goblin 2", "Goblin 3", "Ogro", "Escudeiro"},
+		at: map[string][2]int32{
+			"Toren": {6, 7}, "Pensantus": {5, 8}, "Brisa": {4, 7}, "Escudeiro": {3, 8}, "Presa": {7, 7},
+			"Goblin 1": {18, 5}, "Goblin 2": {20, 7}, "Goblin 3": {21, 3}, "Capitão Goblin": {12, 13}, "Ogro": {22, 9},
+		},
+	})
+	return c.mustEndTurn(t, c.caio, e)
+}
+
+// TestMR037_ACreatureMovesLikeAnyCombatant: the creature joins the party's side
+// with its stat block's size, fly speed and jumps; its owner's player moves it on
+// its turn and the master always; another player is refused. It crosses painted
+// rubble at a cost, an enemy in the way stops it, an undo gives the movement back,
+// and an attack breaks its running start.
+func TestMR037_ACreatureMovesLikeAnyCombatant(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	content, err := testRules()
+	if err != nil {
+		t.Fatalf("rules.LoadSRD() error = %v", err)
+	}
+	msvc, err := maps.New(maps.Config{Pool: c.h.pool, Characters: c.h.chars, Live: c.h.svc, Rules: content, Combats: c.h.svc, Logger: slog.New(slog.DiscardHandler)})
+	if err != nil {
+		t.Fatalf("maps.New() error = %v", err)
+	}
+	c.h.svc.SetTerrain(msvc)
+	srv := httpserver.New(httpserver.Config{Logger: slog.New(slog.DiscardHandler)})
+	msvc.Mount(srv.Handle, mapsSessions{testSessions}, c.h.camps, connect.WithRequireConnectProtocolHeader())
+	server := httptest.NewServer(srv.Handler())
+	t.Cleanup(server.Close)
+	paint := mapsv1connect.NewMapServiceClient(&http.Client{Transport: userTransport{userID: c.master.id, next: server.Client().Transport}}, server.URL)
+
+	e := c.wolfFight(t)
+	wolf := byLabel(t, e, "Presa")
+	if wolf.GetSide() != playv1.CombatantSide_COMBATANT_SIDE_PARTY || wolf.GetSize() != rulesv1.CreatureSize_CREATURE_SIZE_MEDIUM {
+		t.Errorf("wolf = %v, want the party's side and a Medium size", wolf)
+	}
+	if e.GetCurrentCombatantId() != wolf.GetId() {
+		t.Fatalf("current = %s, want the wolf's turn", e.GetCurrentCombatantId())
+	}
+
+	// Another player may not move it; its owner and the master may.
+	_, err = c.move(t, c.ana, "Presa", 8, 7)
+	wantCode(t, "MoveCombatant by another player", err, connect.CodePermissionDenied)
+	_, err = c.options(t, c.ana, "Presa")
+	wantCode(t, "GetMoveOptions by another player", err, connect.CodePermissionDenied)
+	if opts, err := c.options(t, c.caio, "Presa"); err != nil || len(opts.GetReachable()) == 0 {
+		t.Errorf("GetMoveOptions by the owner = %v, %v, want squares", opts, err)
+	}
+
+	// An enemy in the way stops it (a Small goblin is not two sizes apart).
+	c.mustMove(t, c.master, "Goblin 1", 9, 7)
+	_, err = c.move(t, c.caio, "Presa", 11, 7)
+	wantEncounterBlocked(t, err, reasonEnemy)
+	c.mustMove(t, c.master, "Goblin 1", 18, 5)
+
+	// Painted rubble costs 5 ft more: 10 ft of line and 5 ft of rubble.
+	if _, err := paint.PaintMapCells(t.Context(), connect.NewRequest(&mapsv1.PaintMapCellsRequest{
+		CampaignId: c.campaignID, MapId: c.mapID, Layer: mapsv1.MapLayer_MAP_LAYER_DIFFICULT_TERRAIN, Value: 1, Squares: []*mapsv1.MapSquare{{Col: 8, Row: 7}},
+	})); err != nil {
+		t.Fatalf("PaintMapCells() error = %v", err)
+	}
+	c.mustMove(t, c.caio, "Presa", 9, 7)
+	if got := c.who(t, c.caio, "Presa"); got.GetMovementUsedDft() != 150 {
+		t.Errorf("through rubble = %d dft used, want 150", got.GetMovementUsedDft())
+	}
+	c.undoLast(t)
+	if got := c.who(t, c.caio, "Presa"); got.GetMovementUsedDft() != 0 || got.GetCol() != 7 {
+		t.Errorf("after the undo: %d dft used on column %d, want 0 and 7", got.GetMovementUsedDft(), got.GetCol())
+	}
+
+	// Run 15 ft, then a bite breaks the running start: the 10 ft jump (a wolf's
+	// Strength 12 gives 12 ft running, 6 ft standing) is then refused.
+	c.mustMove(t, c.master, "Goblin 1", 10, 6)
+	c.mustMove(t, c.caio, "Presa", 10, 7)
+	hit, err := c.attack(t, c.caio, c.get(t, c.master), "Presa", "monster:wolf#bite", "Goblin 1", d20(15))
+	if err != nil || hit.GetRoll().GetOutcome() == playv1.AttackOutcome_ATTACK_OUTCOME_MISS {
+		t.Fatalf("the wolf's bite = %v, %v, want a hit", hit, err)
+	}
+	_, err = c.move(t, c.caio, "Presa", 12, 7, jumpTo(playv1.JumpKind_JUMP_KIND_LONG))
+	wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TOO_FAR)
+}
+
+// TestMR037_ADismissedCreatureBlocksNoSquare: the combatant of a creature whose
+// concentration ended is hidden from the movement: its square is free.
+func TestMR037_ADismissedCreatureBlocksNoSquare(t *testing.T) {
+	t.Parallel()
+	a := newSummoners(t)
+	e := a.summonersFight(t)
+	e = a.toSalvia(t, e)
+	if _, err := a.summonWolves(t, a.bia, e, 11); err != nil {
+		t.Fatalf("CastSpell() error = %v", err)
+	}
+	w := byLabel(t, a.get(t, a.master), "Lobo atroz 1")
+	col, row := w.GetCol(), w.GetRow()
+	// Alive, the wolf's square is taken (Toren cannot end his move there): the master
+	// moves Toren next to it first, as Toren's turn is not now.
+	if _, err := a.conditions(t, a.bia, e, "Sálvia", nil, false, true); err != nil {
+		t.Fatalf("end concentration error = %v", err)
+	}
+	a.mustEndTurn(t, a.bia, e) // Sálvia's turn ends: Toren's
+	if _, err := a.master.combat.MoveCombatant(t.Context(), connect.NewRequest(&playv1.MoveCombatantRequest{
+		CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, "Goblin"), IdempotencyKey: newKey(), Col: 0, Row: 0,
+	})); err != nil { // the goblin stands on Toren's line
+		t.Fatalf("MoveCombatant(Goblin) error = %v", err)
+	}
+	_, err := a.caio.combat.MoveCombatant(t.Context(), connect.NewRequest(&playv1.MoveCombatantRequest{
+		CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, "Toren"), IdempotencyKey: newKey(), Col: col, Row: row,
+	}))
+	if connect.CodeOf(err) == connect.CodeFailedPrecondition {
+		t.Errorf("MoveCombatant onto a dismissed wolf's square error = %v, want it free", err)
 	}
 }

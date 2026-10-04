@@ -338,9 +338,14 @@ type Creature struct {
 	// InitiativeBonus is its Dexterity modifier and SpeedFt its best speed, in
 	// feet: what a combatant copies when it joins.
 	InitiativeBonus, SpeedFt int
-	// Flier says it flies (its SpeedFt is then its fly speed): the movement slice
-	// lets a flier ignore difficult terrain.
-	Flier bool
+	// SpeedFlyFt is its fly speed, 0 for none; Size its size ("tiny" to
+	// "gargantuan"); JumpLongDFt and JumpHighDFt its jump limits with a running
+	// start, in tenths of a foot (rules/combat.JumpLimits of its Strength). What a
+	// combatant copies when it joins, as a character's.
+	SpeedFlyFt  int
+	Size        string
+	JumpLongDFt int
+	JumpHighDFt int
 }
 
 // CreatureSpec is one creature a casting makes: the SRD creature, the name the

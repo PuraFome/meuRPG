@@ -160,6 +160,10 @@ func (s *Service) joinCreatures(ctx context.Context, c *combatTx, all []playdb.C
 			SpeedFt: clamp32(cr.SpeedFt, 0, 600), CreatedAt: c.now,
 			HpCurrent: ptr(clamp32(max(cr.HitPointsCurrent, 1), 1, math.MaxInt32)), HpMax: ptr(clamp32(max(cr.HitPointsMax, 1), 1, math.MaxInt32)),
 			CreatureID: &cr.ID, MonsterKey: &cr.MonsterKey, SummonAttack: &cr.Attack, SummonGroupID: &cr.GroupID,
+			// A creature fights for the party (D7), with its stat block's size, fly speed and
+			// jump limits, as a character's are copied when it joins (slice 9.6).
+			Size: sizeKey(cr.Size), SpeedFlyFt: clamp32(cr.SpeedFlyFt, 0, 600),
+			JumpLongDft: clamp32(cr.JumpLongDFt, 0, 6000), JumpHighDft: clamp32(cr.JumpHighDFt, 0, 6000),
 		}
 		if cr.OwnerUserID != "" {
 			row.UserID = &cr.OwnerUserID

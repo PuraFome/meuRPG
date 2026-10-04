@@ -544,11 +544,13 @@ WHERE gs.campaign_id = sqlc.arg(campaign_id)::UUID AND e.id = ANY(sqlc.arg(ids):
 INSERT INTO combatants (
     encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face,
     order_index, grid_col, grid_row, speed_ft, hp_current, hp_max, hp_temp, created_at,
-    creature_id, monster_key, summon_attack, summon_group_id
+    creature_id, monster_key, summon_attack, summon_group_id,
+    side, size, speed_fly_ft, jump_long_dft, jump_high_dft
 ) VALUES (
     $1, $2, $3, $4, 'creature', false, $5, $6, $7,
     $8, $9, $10, $11, $12, $13, 0, $14,
-    $15, $16, $17, $18
+    $15, $16, $17, $18,
+    'party', $19, $20, $21, $22
 )
 RETURNING *;
 
