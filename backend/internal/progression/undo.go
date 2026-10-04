@@ -88,6 +88,7 @@ func (s *Service) UndoLastXPAward(
 		if last.EncounterID != nil {
 			payload.EncounterID = *last.EncounterID
 		}
+		payload.MilestoneID = deref(last.MilestoneID)
 		logged, err = s.appendEvent(ctx, tx, m, eventXPAwardUndone, payload, now)
 		return err
 	})

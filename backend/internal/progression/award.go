@@ -63,6 +63,7 @@ type eventPayload struct {
 	Gold         int32    `json:"gold,omitempty"`
 	EncounterID  string   `json:"encounter_id,omitempty"`
 	CharacterIDs []string `json:"character_ids"`
+	MilestoneID  string   `json:"milestone_id,omitempty"`
 }
 
 // grant is one award to give, checked: what AwardXP and MarkMilestone hand to
@@ -74,6 +75,11 @@ type grant struct {
 	encounterID string // enemies
 	amount      int32  // manual's amount, or gold's
 	characters  []string
+	// milestoneID is the planned milestone a milestone award marks, empty for
+	// the ad hoc ones. again says it is "Dar a mais alguém": the milestone must
+	// be reached already, and the reason is its text.
+	milestoneID string
+	again       bool
 }
 
 // AwardXP implements progressionv1connect.ProgressionServiceHandler.
@@ -159,31 +165,39 @@ func (s *Service) MarkMilestone(
 
 // checkCommon checks what every award has: the reason, the idempotency key and
 // the characters (1 to 40 UUIDs, no repeat). It returns them cleaned, the IDs
-// in canonical form.
+// in canonical form. The planned milestones' calls have no reason of their
+// own (it is the milestone's text) and call checkTargets.
 func checkCommon(reason, key string, characterIDs []string) (string, string, []string, error) {
 	reason, err := names.Clean(reason, maxReasonLength)
 	if err != nil {
 		return "", "", nil, invalidArgument("reason", err)
 	}
+	key, ids, err := checkTargets(key, characterIDs)
+	return reason, key, ids, err
+}
+
+// checkTargets checks the idempotency key and the characters of an award, and
+// returns them in canonical form.
+func checkTargets(key string, characterIDs []string) (string, []string, error) {
 	k, err := uuid.Parse(key)
 	if err != nil {
-		return "", "", nil, invalidArgument("idempotency_key", errors.New("must be a UUID"))
+		return "", nil, invalidArgument("idempotency_key", errors.New("must be a UUID"))
 	}
 	if len(characterIDs) < 1 || len(characterIDs) > maxAwardTargets {
-		return "", "", nil, invalidArgument("character_ids", fmt.Errorf("must have 1 to %d characters", maxAwardTargets))
+		return "", nil, invalidArgument("character_ids", fmt.Errorf("must have 1 to %d characters", maxAwardTargets))
 	}
 	ids := make([]string, 0, len(characterIDs))
 	for _, raw := range characterIDs {
 		id, err := uuid.Parse(raw)
 		if err != nil {
-			return "", "", nil, invalidArgument("character_ids", errors.New("must be UUIDs"))
+			return "", nil, invalidArgument("character_ids", errors.New("must be UUIDs"))
 		}
 		if slices.Contains(ids, id.String()) {
-			return "", "", nil, invalidArgument("character_ids", errors.New("must not repeat a character"))
+			return "", nil, invalidArgument("character_ids", errors.New("must not repeat a character"))
 		}
 		ids = append(ids, id.String())
 	}
-	return reason, k.String(), ids, nil
+	return k.String(), ids, nil
 }
 
 // xpEach is each character's share of total among n, and the XP that does not
@@ -217,7 +231,7 @@ func (s *Service) give(ctx context.Context, m authz.Membership, g grant) (progre
 	// A retry comes first: whatever changed since (the mode, a character that
 	// died) must not turn the answer to a request already done into an error.
 	if done, err := s.queries.GetXPAwardByKey(ctx, progressiondb.GetXPAwardByKeyParams{CampaignID: m.CampaignID, IdempotencyKey: g.key}); err == nil {
-		return s.sameRequest(done, g)
+		return s.sameRequest(ctx, s.queries, done, g)
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		return progressiondb.XpAward{}, s.dbError(ctx, "find an award by its key", err)
 	}
@@ -246,12 +260,18 @@ func (s *Service) give(ctx context.Context, m authz.Membership, g grant) (progre
 		q := s.queries.WithTx(tx)
 		if done, err := q.GetXPAwardByKey(ctx, progressiondb.GetXPAwardByKeyParams{CampaignID: m.CampaignID, IdempotencyKey: g.key}); err == nil {
 			repeated = true // a request that raced with its own retry
-			award, err = s.sameRequest(done, g)
+			award, err = s.sameRequest(ctx, q, done, g)
 			return err
 		} else if !errors.Is(err, pgx.ErrNoRows) {
 			return fmt.Errorf("find an award by its key: %w", err)
 		}
 
+		reason := g.reason
+		if g.milestoneID != "" {
+			if reason, err = s.checkMilestone(ctx, q, m.CampaignID, g); err != nil {
+				return err
+			}
+		}
 		total, err := s.total(ctx, tx, q, m.CampaignID, g)
 		if err != nil {
 			return err
@@ -264,8 +284,11 @@ func (s *Service) give(ctx context.Context, m authz.Membership, g grant) (progre
 		}
 		now := s.now()
 		params := progressiondb.InsertXPAwardParams{
-			CampaignID: m.CampaignID, GivenBy: m.UserID, CreatedAt: now, Mode: g.mode, Reason: g.reason,
+			CampaignID: m.CampaignID, GivenBy: m.UserID, CreatedAt: now, Mode: g.mode, Reason: reason,
 			TotalXp: total, IdempotencyKey: g.key,
+		}
+		if g.milestoneID != "" {
+			params.MilestoneID, params.MilestoneAgain = &g.milestoneID, g.again
 		}
 		switch g.mode {
 		case modeEnemies:
@@ -298,7 +321,7 @@ func (s *Service) give(ctx context.Context, m authz.Membership, g grant) (progre
 				return fmt.Errorf("insert a share: %w", err)
 			}
 		}
-		payload := eventPayload{AwardID: award.ID, Mode: g.mode, TotalXP: total, XPEach: each, CharacterIDs: g.characters, EncounterID: g.encounterID}
+		payload := eventPayload{AwardID: award.ID, Mode: g.mode, TotalXP: total, XPEach: each, CharacterIDs: g.characters, EncounterID: g.encounterID, MilestoneID: g.milestoneID}
 		_, payload.LostXP = xpEach(total, len(g.characters))
 		if g.mode == modeGold {
 			payload.Gold = g.amount
@@ -319,12 +342,27 @@ func (s *Service) give(ctx context.Context, m authz.Membership, g grant) (progre
 	return award, nil
 }
 
-// sameRequest checks that a retried key is for the same kind of request, and
-// returns the award it made. A key already used for another change is a bug in
-// the app, not a retry.
-func (s *Service) sameRequest(done progressiondb.XpAward, g grant) (progressiondb.XpAward, error) {
-	if done.Mode != g.mode {
-		return progressiondb.XpAward{}, invalidArgument("idempotency_key", errors.New("was already used for another change"))
+// sameRequest checks that a retried key is for the same request, and returns
+// the award it made. A key already used for another change is a bug in the
+// app, not a retry: another mode, another milestone, "Dar a mais alguém" for a
+// first mark (or the reverse), or other characters.
+func (s *Service) sameRequest(ctx context.Context, q *progressiondb.Queries, done progressiondb.XpAward, g grant) (progressiondb.XpAward, error) {
+	reused := invalidArgument("idempotency_key", errors.New("was already used for another change"))
+	if done.Mode != g.mode || deref(done.MilestoneID) != g.milestoneID || (g.milestoneID != "" && done.MilestoneAgain != g.again) {
+		return progressiondb.XpAward{}, reused
+	}
+	if g.milestoneID != "" {
+		shares, err := q.ListXPSharesOfAwards(ctx, []string{done.ID})
+		if err != nil {
+			return progressiondb.XpAward{}, s.dbError(ctx, "read the shares of an award", err)
+		}
+		ids := make([]string, 0, len(shares))
+		for _, sh := range shares {
+			ids = append(ids, sh.CharacterID)
+		}
+		if len(ids) != len(g.characters) || slices.ContainsFunc(ids, func(id string) bool { return !slices.Contains(g.characters, id) }) {
+			return progressiondb.XpAward{}, reused
+		}
 	}
 	return done, nil
 }

@@ -1,0 +1,55 @@
+@if (notice()) {
+  <p class="notice mr-notice mr-notice--neutral" role="status">
+    <mat-icon aria-hidden="true">info</mat-icon>{{ notice() }}
+  </p>
+}
+
+<ul class="list">
+  @for (r of rows(); track r.m.id) {
+    <li class="item">
+      @if (asking() === r.m.id && r.last) {
+        <app-milestone-ask
+          class="item__ask"
+          [title]="askTitle(r.m)"
+          [text]="consequence(r.m, r.last)"
+          goLabel="Desfazer marco"
+          [error]="error()"
+          [busy]="busy()"
+          (back)="back(r.m)"
+          (go)="undo(r.m, r.last)"
+        />
+      } @else {
+        <span class="item__when">{{ r.when }}</span>
+        <div class="item__what">
+          <span class="item__title">{{ r.m.text }}</span>
+          @for (line of r.lines; track $index) {
+            <span class="item__sub">{{ line }}</span>
+          }
+          @if (r.give) {
+            <button
+              mat-button
+              type="button"
+              class="item__give"
+              [attr.aria-label]="'Dar ' + r.m.text + ' a mais alguém'"
+              (click)="give.emit(r.m)"
+            >
+              <mat-icon aria-hidden="true">add</mat-icon>Dar a mais alguém
+            </button>
+          }
+        </div>
+        @if (r.last) {
+          <button
+            mat-button
+            type="button"
+            class="item__undo"
+            [attr.data-undo]="r.m.id"
+            [attr.aria-label]="'Desfazer ' + r.m.text"
+            (click)="ask(r.m)"
+          >
+            <mat-icon aria-hidden="true">undo</mat-icon>Desfazer
+          </button>
+        }
+      }
+    </li>
+  }
+</ul>

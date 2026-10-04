@@ -16,12 +16,16 @@ import (
 // the reason uses them.
 func errBlocked(reason progressionv1.XPBlockedReason, characterID string, mode campaignsv1.XpMode) error {
 	msg := map[progressionv1.XPBlockedReason]string{
-		progressionv1.XPBlockedReason_XP_BLOCKED_REASON_MODE_NOT_ALLOWED:       "this campaign's XP mode does not take this",
-		progressionv1.XPBlockedReason_XP_BLOCKED_REASON_ENCOUNTER_NOT_ENDED:    "the combat has not ended",
-		progressionv1.XPBlockedReason_XP_BLOCKED_REASON_ALREADY_AWARDED:        "the combat's XP was already given",
-		progressionv1.XPBlockedReason_XP_BLOCKED_REASON_NOTHING_TO_GIVE:        "there is no XP to give each character",
-		progressionv1.XPBlockedReason_XP_BLOCKED_REASON_NOTHING_TO_UNDO:        "there is no award to undo",
-		progressionv1.XPBlockedReason_XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE: "only the campaign's living player characters can get XP",
+		progressionv1.XPBlockedReason_XP_BLOCKED_REASON_MODE_NOT_ALLOWED:          "this campaign's XP mode does not take this",
+		progressionv1.XPBlockedReason_XP_BLOCKED_REASON_ENCOUNTER_NOT_ENDED:       "the combat has not ended",
+		progressionv1.XPBlockedReason_XP_BLOCKED_REASON_ALREADY_AWARDED:           "the combat's XP was already given",
+		progressionv1.XPBlockedReason_XP_BLOCKED_REASON_NOTHING_TO_GIVE:           "there is no XP to give each character",
+		progressionv1.XPBlockedReason_XP_BLOCKED_REASON_NOTHING_TO_UNDO:           "there is no award to undo",
+		progressionv1.XPBlockedReason_XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE:    "only the campaign's living player characters can get XP",
+		progressionv1.XPBlockedReason_XP_BLOCKED_REASON_MILESTONE_ALREADY_REACHED: "the milestone was already reached",
+		progressionv1.XPBlockedReason_XP_BLOCKED_REASON_MILESTONE_NOT_REACHED:     "the milestone was not reached yet",
+		progressionv1.XPBlockedReason_XP_BLOCKED_REASON_CHARACTER_ALREADY_MARKED:  "the character already has this milestone",
+		progressionv1.XPBlockedReason_XP_BLOCKED_REASON_MILESTONE_HAS_HISTORY:     "the milestone was reached before and stays in the history",
 	}[reason]
 	err := connect.NewError(connect.CodeFailedPrecondition, errors.New(msg))
 	if detail, detailErr := connect.NewErrorDetail(&progressionv1.XPBlocked{Reason: reason, CharacterId: characterID, XpMode: mode}); detailErr == nil {

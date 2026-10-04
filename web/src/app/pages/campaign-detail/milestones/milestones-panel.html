@@ -1,0 +1,84 @@
+<div class="live" role="status">{{ announcement() }}</div>
+
+@switch (store.state()) {
+  @case ('loading') {
+    <p class="mr-muted" role="status">Carregando os marcos...</p>
+  }
+  @case ('error') {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p><strong>Não foi possível carregar os marcos.</strong> Confira a conexão e tente de novo.</p>
+    </div>
+    <button mat-stroked-button type="button" class="retry" (click)="retry()">Tentar de novo</button>
+  }
+  @case ('ready') {
+    <p class="lead">{{ lead() }}</p>
+
+    @if (isMaster()) {
+      @if (store.reached().length > 0) {
+        <ng-container [ngTemplateOutlet]="reachedList" />
+        <ng-container [ngTemplateOutlet]="group" />
+        <ng-container [ngTemplateOutlet]="planned" />
+      } @else {
+        <ng-container [ngTemplateOutlet]="planned" />
+        @if (showReached()) {
+          <ng-container [ngTemplateOutlet]="reachedList" />
+        }
+      }
+      <button mat-button type="button" class="off-list" (click)="registerOffList()">
+        <mat-icon aria-hidden="true">flag</mat-icon>Registrar um marco fora da lista
+      </button>
+    } @else {
+      <ng-container [ngTemplateOutlet]="reachedList" />
+      @if (showCharacters()) {
+        <ng-container [ngTemplateOutlet]="group" />
+      }
+    }
+  }
+}
+
+<ng-template #reachedList>
+  <section class="sec" aria-labelledby="reached-title">
+    <div class="sec__head">
+      <h3 class="sec__title" id="reached-title" tabindex="-1">Marcos alcançados</h3>
+      @if (isMaster()) {
+        <span class="sec__count">{{ store.reached().length === 1 ? '1 marco' : store.reached().length + ' marcos' }}</span>
+      }
+    </div>
+    @if (store.reached().length === 0) {
+      <p class="empty">{{ emptyReached() }}</p>
+    } @else {
+      <app-reached-milestones
+        [campaignId]="campaignId()"
+        [milestones]="store.reached()"
+        [isMaster]="isMaster()"
+        [giveable]="giveable()"
+        (give)="give($event)"
+        (undone)="undone($event)"
+      />
+    }
+  </section>
+</ng-template>
+
+<ng-template #group>
+  @if (showCharacters()) {
+    <!-- Not a named region: the page already has a "Personagens" one (the characters' list). -->
+    <div class="sec">
+      <div class="sec__head">
+        <h3 class="sec__title">{{ isMaster() ? 'Personagens' : 'Seu personagem' }}</h3>
+      </div>
+      <app-milestone-characters [campaignId]="campaignId()" [rows]="characters()" [openable]="!isMaster()" />
+    </div>
+  }
+</ng-template>
+
+<ng-template #planned>
+  <section class="sec">
+    <app-planned-milestones
+      [campaignId]="campaignId()"
+      [milestones]="store.planned()"
+      [total]="store.list().length"
+      (reach)="reach($event)"
+    />
+  </section>
+</ng-template>

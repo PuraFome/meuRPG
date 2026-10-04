@@ -22,6 +22,10 @@
 }
 
 // What was just given: its own polite region, empty until there is news.
+.exp__status {
+  scroll-margin-top: 80px; // below the sticky app bar when it is scrolled to
+}
+
 .exp__status:empty {
   display: none;
 }

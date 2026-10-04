@@ -241,10 +241,10 @@ test('por marcos: o marco marca quem pode subir de nível, sem nenhum número de
 
     await m.goto(`/campanhas/${campaignId}`);
     await expect(panel(m)).toContainText('Campanha por marcos');
-    await expect(panel(m)).toContainText('Nenhum marco ainda');
+    await expect(panel(m)).toContainText('Nenhum marco planejado');
     await expect(panel(m).getByRole('button', { name: 'Dar XP' })).toHaveCount(0);
 
-    await panel(m).getByRole('button', { name: 'Registrar marco' }).click();
+    await panel(m).getByRole('button', { name: 'Registrar um marco fora da lista' }).click();
     const dialog = m.getByRole('dialog', { name: 'Registrar marco' });
     await expect(dialog.getByLabel('O que aconteceu')).toBeFocused();
     await expect(dialog).not.toContainText(/\d\s*XP/);
@@ -253,7 +253,7 @@ test('por marcos: o marco marca quem pode subir de nível, sem nenhum número de
     await dialog.getByRole('button', { name: 'Registrar marco' }).click();
 
     await expect(panel(m).getByRole('status').filter({ hasText: 'Marco registrado' })).toContainText('todos podem subir de nível');
-    await expect(panel(m).getByRole('button', { name: 'Registrar marco' })).toBeFocused();
+    await expect(panel(m).getByRole('button', { name: 'Registrar um marco fora da lista' })).toBeFocused();
     await expect(panel(m)).toContainText('Marco: a ponte do rio foi salva');
     await expect(panel(m).getByText('Pode subir de nível')).toBeVisible();
     await expect(panel(m)).not.toContainText(/\d\s*XP/);

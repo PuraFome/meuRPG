@@ -22,11 +22,19 @@ func TestAuthorizationMatrix(t *testing.T) {
 	master, player, pending := h.newUser("Mestre"), h.newUser("Jogadora"), h.newUser("Pendente")
 	// Two campaigns with the same people: one counts XP, one marks milestones.
 	xpCampaign := h.newCampaign(master, "Mirathel", enemies, player)
-	markCampaign := h.newCampaign(master, "Valdris", milestones, player)
+	player2 := h.newUser("Segundo")
+	markCampaign := h.newCampaign(master, "Valdris", milestones, player, player2)
 	h.joinPending(master, xpCampaign, pending)
 	h.joinPending(master, markCampaign, pending)
 	xpPC := player.pc(t, xpCampaign, "Pensantus")
 	markPC := player.pc(t, markCampaign, "Pensantus")
+	markPC2 := player2.pc(t, markCampaign, "Toren")
+	// The master's one call to each milestone method needs a milestone to act
+	// on: one to edit, one to move, one to remove, one to mark reached and
+	// one that is reached already, to give to Toren.
+	forUpdate, forMove, forRemove, forMark, forGive := master.plan(t, markCampaign, "A"), master.plan(t, markCampaign, "B"),
+		master.plan(t, markCampaign, "C"), master.plan(t, markCampaign, "D"), master.plan(t, markCampaign, "E")
+	master.reach(t, markCampaign, forGive.GetId(), markPC.GetId())
 
 	type client = progressionv1connect.ProgressionServiceClient
 	rows := []struct {
@@ -46,6 +54,40 @@ func TestAuthorizationMatrix(t *testing.T) {
 		{"MarkMilestone", func(ctx context.Context, c client) error {
 			_, err := c.MarkMilestone(ctx, connect.NewRequest(&progressionv1.MarkMilestoneRequest{
 				CampaignId: markCampaign, Reason: "Teste", CharacterIds: []string{markPC.GetId()}, IdempotencyKey: newKey(),
+			}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"ListMilestones", func(ctx context.Context, c client) error {
+			_, err := c.ListMilestones(ctx, connect.NewRequest(&progressionv1.ListMilestonesRequest{CampaignId: markCampaign}))
+			return err
+		}, [5]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"AddMilestone", func(ctx context.Context, c client) error {
+			_, err := c.AddMilestone(ctx, connect.NewRequest(&progressionv1.AddMilestoneRequest{CampaignId: markCampaign, Text: "Teste"}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"UpdateMilestone", func(ctx context.Context, c client) error {
+			_, err := c.UpdateMilestone(ctx, connect.NewRequest(&progressionv1.UpdateMilestoneRequest{CampaignId: markCampaign, MilestoneId: forUpdate.GetId(), Text: "Novo"}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"MoveMilestone", func(ctx context.Context, c client) error {
+			_, err := c.MoveMilestone(ctx, connect.NewRequest(&progressionv1.MoveMilestoneRequest{
+				CampaignId: markCampaign, MilestoneId: forMove.GetId(), Direction: progressionv1.MilestoneDirection_MILESTONE_DIRECTION_UP,
+			}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"RemoveMilestone", func(ctx context.Context, c client) error {
+			_, err := c.RemoveMilestone(ctx, connect.NewRequest(&progressionv1.RemoveMilestoneRequest{CampaignId: markCampaign, MilestoneId: forRemove.GetId()}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"MarkMilestoneReached", func(ctx context.Context, c client) error {
+			_, err := c.MarkMilestoneReached(ctx, connect.NewRequest(&progressionv1.MarkMilestoneReachedRequest{
+				CampaignId: markCampaign, MilestoneId: forMark.GetId(), CharacterIds: []string{markPC.GetId()}, IdempotencyKey: newKey(),
+			}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"GiveMilestoneTo", func(ctx context.Context, c client) error {
+			_, err := c.GiveMilestoneTo(ctx, connect.NewRequest(&progressionv1.GiveMilestoneToRequest{
+				CampaignId: markCampaign, MilestoneId: forGive.GetId(), CharacterIds: []string{markPC2.GetId()}, IdempotencyKey: newKey(),
 			}))
 			return err
 		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},

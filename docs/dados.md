@@ -28,6 +28,7 @@ Tabelas novas para a mesa ao vivo:
 - `session_events`: cada ação da sessão (dano, cura, magia, XP) vira uma linha que nunca é alterada. É o histórico da mesa; o stream manda a mudança que ela registra. Já existe (Etapa 5), com a correção do mestre nos PV, espaços de magia e dados de vida, e, na Etapa 6, as mudanças do combate: o ataque, o dano, as ações, as magias, as reações, os testes contra a morte, as condições, o desfazer. O registro do combate é lido dela (ver [Esquema implementado](#esquema-implementado)).
 - `pending_damages`: o dano de um ataque ou de uma magia que acertou, e as curas, do d20 até o mestre aplicar ou descartar (MR-012, MR-014). Já existe (Etapa 6).
 - `xp_awards` e `xp_award_shares`: quem deu XP ou registrou um marco, quanto, quando e por quê, e o que cada personagem recebeu (MR-016). O modo de XP fica em `campaigns.xp_mode`. Já existem (Etapa 7, ver [Esquema implementado](#esquema-implementado)).
+- `planned_milestones`: os marcos que o mestre escreve antes numa campanha por marcos (MR-016, Etapa 8, fatia 8.10); `xp_awards.milestone_id` liga cada prêmio de marco ao marco planejado.
 - `character_level_ups` e `character_level_up_rolls`: o registro de cada subida de nível feita pelo jogador na ficha travada, que o mestre lê como "O que mudou", e o dado de vida que o servidor rolou para o próximo nível, guardado até a subida o usar (MR-040). Já existem (Etapa 8, ver [Esquema implementado](#esquema-implementado)).
 - `stage_npcs`: os NPCs "em cena" na cena aberta de uma sessão, na ordem em que entraram, no máximo 4, com quem fala (MR-031). Já existe (Etapa 8, ver [Esquema implementado](#esquema-implementado)).
 - `scene_actions`: as ações que o mestre pôs numa cena de RP (MR-015). A cena não tem tabela própria: é um ponto do mapa do tipo `scene` (`map_points`), e a cena aberta na sessão é a coluna `game_sessions.open_scene_point_id`. Já existem (Etapa 7, ver [Esquema implementado](#esquema-implementado)).
@@ -235,6 +236,13 @@ erDiagram
         bool speaking
     }
 
+    planned_milestones {
+        uuid id PK
+        uuid campaign_id FK
+        integer position
+        text text
+    }
+
     xp_awards {
         uuid id PK
         uuid campaign_id FK
@@ -265,6 +273,8 @@ erDiagram
     gallery_images ||--o{ maps : "é a imagem de"
     campaigns ||--o{ game_sessions : "realiza"
     campaigns ||--o{ xp_awards : "registra"
+    campaigns ||--o{ planned_milestones : "planeja"
+    planned_milestones |o--o{ xp_awards : "é marcado por"
     xp_awards ||--o{ xp_award_shares : "divide em"
     characters ||--o{ xp_award_shares : "recebe"
 
@@ -429,9 +439,14 @@ Esta seção lista só o que já existe nas migrations de `backend/migrations/`.
 | `00081_add_map_points_show_dc` | `map_points` | A chave `show_dc` ("Mostrar a CD aos jogadores", MR-015, pergunta 52): `BOOL NOT NULL DEFAULT false`, só num ponto de cena. |
 | `00082_add_scene_actions_max_attempts` | `scene_actions` | O limite de tentativas por jogador, `max_attempts` (MR-015, pergunta 55): `INT4 NOT NULL DEFAULT 1`, de 0 a 5 (0 é sem limite). |
 | `00083_add_scene_attempt_and_turn_part_event_kinds` | `session_events` | O `CHECK` de `kind` ganha `scene_attempt_granted` (MR-015) e `turn_part_ended` (MR-013, fatia 8.11). |
+| `00084_create_planned_milestones` | `planned_milestones` | Os marcos planejados de uma campanha por marcos (MR-016, RN-09): texto de 1 a 120 caracteres, `position` (a ordem do mestre, não única: mover renumera). "Alcançado" não é coluna. |
+| `00085_create_planned_milestones_index` | `planned_milestones` | A lista de uma campanha na ordem (`campaign_id, position`). |
+| `00086_add_xp_awards_milestone_id` | `xp_awards` | `milestone_id` (`ON DELETE SET NULL`): o marco que o prêmio marca; vazio no "marco fora da lista". |
+| `00087_create_xp_awards_milestone_index` | `xp_awards` | Os prêmios de um marco: se está alcançado, quando e para quem. |
+| `00088_add_xp_awards_milestone_again` | `xp_awards` | `milestone_again`: o prêmio é "Dar a mais alguém" e não o que alcançou o marco; serve para recusar uma chave de idempotência reusada com outro tipo de pedido. |
 | `00089_add_combatants_turn_state` | `combatants` | Coluna `turn_state` (`idle`, `acting`, `ended`): quem está no turno que roda e se a parte dele terminou (turno conjunto, MR-013). O grupo é calculado da ordem e dos totais quando a vez começa, e esta coluna guarda a resposta até o turno passar. |
 
-As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021`, a `00022`, a `00027`, a `00034`, a `00035`, a `00036` e a `00037`, do módulo `campaigns`; as `00014` a `00017`, a `00020`, a `00023`, a `00055` e as `00078` a `00080`, do módulo `characters` (o `xp_value` e o nível de desafio de um NPC ficam no JSON da ficha, sem migration); as `00018`, a `00019`, a `00024`, a `00032`, a `00033`, as `00043` a `00054`, `00056` a `00059`, a `00063`, a `00066`, a `00075`, a `00076`, a `00077`, a `00083` e a `00089`, do módulo `play`; as `00025`, a `00026`, as `00028` a `00031`, as `00040` a `00042`, a `00064`, a `00065`, as `00067` a `00072`, a `00081` e a `00082`, do módulo `maps`; as `00073` e `00074`, do módulo `notes`; as `00060` a `00062`, do módulo `progression`. A `00027` é do documento de campanha, no `campaigns`, que chega num PR à parte. Mudanças em relação à proposta acima, no `identity`:
+As migrations `00002` a `00007` e a `00013` são do módulo `identity`; as `00008` a `00012`, a `00021`, a `00022`, a `00027`, a `00034`, a `00035`, a `00036` e a `00037`, do módulo `campaigns`; as `00014` a `00017`, a `00020`, a `00023`, a `00055` e as `00078` a `00080`, do módulo `characters` (o `xp_value` e o nível de desafio de um NPC ficam no JSON da ficha, sem migration); as `00018`, a `00019`, a `00024`, a `00032`, a `00033`, as `00043` a `00054`, `00056` a `00059`, a `00063`, a `00066`, a `00075`, a `00076`, a `00077`, a `00083` e a `00089`, do módulo `play`; as `00025`, a `00026`, as `00028` a `00031`, as `00040` a `00042`, a `00064`, a `00065`, as `00067` a `00072`, a `00081` e a `00082`, do módulo `maps`; as `00073` e `00074`, do módulo `notes`; as `00060` a `00062` e as `00084` a `00088`, do módulo `progression`. A `00027` é do documento de campanha, no `campaigns`, que chega num PR à parte. Mudanças em relação à proposta acima, no `identity`:
 
 - `users.google_sub` e `users.email` viraram `user_identities (issuer, subject, email)`. O par `(issuer, subject)` é a chave primária, porque o `sub` só é único dentro de um provedor. Assim o código não depende do Google, e uma conta pode ter outro jeito de entrar (ADR-0009) sem mudar `users`.
 - `UNIQUE (user_id, issuer)`: uma conta tem no máximo uma identidade por provedor, então duas contas Google nunca se juntam.
@@ -495,6 +510,7 @@ No `play`:
 No `progression` (Etapa 7, MR-016, RN-09, RN-12):
 
 - **`xp_awards`** (`00060`) é o histórico de XP da campanha: uma linha por "Dar XP" ou "Registrar marco". `mode` é `enemies` (o XP dos NPCs derrotados de um combate encerrado), `gold` (1 XP por PO), `manual` (o número que o mestre digitou) ou `milestone` (sem XP: marca os personagens "pode subir de nível"), com `CHECK`. `reason` (1 a 120 caracteres) é o que o mestre escreveu; toda a campanha o lê, e ele nunca vai para um payload de `session_events`. `encounter_id` (`ON DELETE SET NULL`) é o combate de um prêmio por inimigos, `gold` as PO de um prêmio por ouro, `total_xp` o que foi dividido (0 num marco; os `CHECK` amarram cada campo ao modo). `idempotency_key` é o UUID do app (`UNIQUE (campaign_id, idempotency_key)`): a mesma chave outra vez devolve o prêmio que ela fez. **Nunca se apaga nem se reescreve** (ADR-0007): desfazer o último prêmio preenche `undone_at`, `undone_by` e `undo_key` (a chave do desfazer, que também aceita nova tentativa), e o XP volta pelas fichas. O índice único parcial `xp_awards_one_per_encounter` (`encounter_id` onde `mode = 'enemies'` e `undone_at IS NULL`) garante um prêmio por combate, a menos que seja desfeito. `given_by` e `undone_by` ficam nulos (`SET NULL`) se a conta for excluída.
+- **`planned_milestones`** (`00084`, fatia 8.10) guarda os marcos planejados de uma campanha: `text` (1 a 120 caracteres, ficção do mestre) e `position` (a ordem dele; mover renumera a lista numa transação). Apagar a campanha apaga os marcos (`CASCADE`). Um marco está **alcançado** enquanto algum `xp_awards` com `milestone_id` igual ao dele não foi desfeito: desfazer a única marca o faz voltar a planejado, sem nada para manter em sincronia. O `milestone_id` (`00086`) é `SET NULL` por segurança, mas a API nunca remove um marco que teve algum prêmio (vivo ou desfeito), então um prêmio nunca perde o vínculo.
 - **`xp_award_shares`** (`00061`) é o que cada personagem recebeu: `xp` (a divisão do total, arredondada para baixo, pergunta 46; 0 num marco) e, só num marco, `level_at_mark`, o nível total do personagem quando foi marcado. A marca "Pode subir de nível" dura enquanto o nível da ficha não passa de `level_at_mark`: compara-se na leitura, e nada é gravado quando o mestre sobe o nível (pergunta 48). Some com o prêmio ou com o personagem (`CASCADE`).
 - **O XP em si** continua em `FullSheet.experience_points`, no JSON da ficha (módulo `characters`): o prêmio soma a parte de cada um lá, na mesma transação, e o desfazer subtrai (nunca abaixo de 0). A trava da ficha (RN-01) não impede, porque é um ato do mestre. A revisão da ficha sobe, então uma edição que o jogador abriu antes é recusada como velha.
 - **`combatants.xp_value`** (`00059`) é o XP de um NPC derrotado, copiado da ficha ao entrar no combate, como a velocidade: editar a ficha depois não mexe num combate em andamento. Só o mestre o recebe (RN-20).
@@ -873,6 +889,13 @@ erDiagram
         timestamptz updated_at
     }
 
+    planned_milestones {
+        uuid id PK
+        uuid campaign_id FK
+        integer position
+        text text
+    }
+
     xp_awards {
         uuid id PK
         uuid campaign_id FK "CASCADE"
@@ -952,6 +975,8 @@ erDiagram
     combatants ||--o{ pending_damages : "sofre"
     encounters |o--o{ session_events : "tem os eventos de"
     campaigns ||--o{ xp_awards : "registra"
+    campaigns ||--o{ planned_milestones : "planeja"
+    planned_milestones |o--o{ xp_awards : "é marcado por"
     users |o--o{ xp_awards : "deu ou desfez"
     encounters |o--o{ xp_awards : "rendeu"
     xp_awards ||--o{ xp_award_shares : "divide em"

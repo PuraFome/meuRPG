@@ -10,8 +10,23 @@ import (
 	"time"
 )
 
+const deletePlannedMilestone = `-- name: DeletePlannedMilestone :exec
+DELETE FROM planned_milestones
+WHERE campaign_id = $1::UUID AND id = $2::UUID
+`
+
+type DeletePlannedMilestoneParams struct {
+	CampaignID string
+	ID         string
+}
+
+func (q *Queries) DeletePlannedMilestone(ctx context.Context, arg DeletePlannedMilestoneParams) error {
+	_, err := q.db.Exec(ctx, deletePlannedMilestone, arg.CampaignID, arg.ID)
+	return err
+}
+
 const getLastXPAwardForUpdate = `-- name: GetLastXPAwardForUpdate :one
-SELECT id, campaign_id, given_by, created_at, mode, reason, encounter_id, gold, total_xp, idempotency_key, undone_at, undone_by, undo_key FROM xp_awards
+SELECT id, campaign_id, given_by, created_at, mode, reason, encounter_id, gold, total_xp, idempotency_key, undone_at, undone_by, undo_key, milestone_id, milestone_again FROM xp_awards
 WHERE campaign_id = $1::UUID AND undone_at IS NULL
 ORDER BY created_at DESC, id DESC
 LIMIT 1
@@ -37,6 +52,8 @@ func (q *Queries) GetLastXPAwardForUpdate(ctx context.Context, campaignID string
 		&i.UndoneAt,
 		&i.UndoneBy,
 		&i.UndoKey,
+		&i.MilestoneID,
+		&i.MilestoneAgain,
 	)
 	return i, err
 }
@@ -77,8 +94,33 @@ func (q *Queries) GetMilestoneMark(ctx context.Context, arg GetMilestoneMarkPara
 	return level, err
 }
 
+const getPlannedMilestoneForUpdate = `-- name: GetPlannedMilestoneForUpdate :one
+SELECT id, campaign_id, position, text, created_at, updated_at FROM planned_milestones
+WHERE campaign_id = $1::UUID AND id = $2::UUID
+FOR UPDATE
+`
+
+type GetPlannedMilestoneForUpdateParams struct {
+	CampaignID string
+	ID         string
+}
+
+func (q *Queries) GetPlannedMilestoneForUpdate(ctx context.Context, arg GetPlannedMilestoneForUpdateParams) (PlannedMilestone, error) {
+	row := q.db.QueryRow(ctx, getPlannedMilestoneForUpdate, arg.CampaignID, arg.ID)
+	var i PlannedMilestone
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.Position,
+		&i.Text,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getXPAward = `-- name: GetXPAward :one
-SELECT id, campaign_id, given_by, created_at, mode, reason, encounter_id, gold, total_xp, idempotency_key, undone_at, undone_by, undo_key FROM xp_awards
+SELECT id, campaign_id, given_by, created_at, mode, reason, encounter_id, gold, total_xp, idempotency_key, undone_at, undone_by, undo_key, milestone_id, milestone_again FROM xp_awards
 WHERE campaign_id = $1::UUID AND id = $2::UUID
 `
 
@@ -104,12 +146,14 @@ func (q *Queries) GetXPAward(ctx context.Context, arg GetXPAwardParams) (XpAward
 		&i.UndoneAt,
 		&i.UndoneBy,
 		&i.UndoKey,
+		&i.MilestoneID,
+		&i.MilestoneAgain,
 	)
 	return i, err
 }
 
 const getXPAwardByKey = `-- name: GetXPAwardByKey :one
-SELECT id, campaign_id, given_by, created_at, mode, reason, encounter_id, gold, total_xp, idempotency_key, undone_at, undone_by, undo_key FROM xp_awards
+SELECT id, campaign_id, given_by, created_at, mode, reason, encounter_id, gold, total_xp, idempotency_key, undone_at, undone_by, undo_key, milestone_id, milestone_again FROM xp_awards
 WHERE campaign_id = $1::UUID AND idempotency_key = $2::UUID
 `
 
@@ -136,12 +180,14 @@ func (q *Queries) GetXPAwardByKey(ctx context.Context, arg GetXPAwardByKeyParams
 		&i.UndoneAt,
 		&i.UndoneBy,
 		&i.UndoKey,
+		&i.MilestoneID,
+		&i.MilestoneAgain,
 	)
 	return i, err
 }
 
 const getXPAwardByUndoKey = `-- name: GetXPAwardByUndoKey :one
-SELECT id, campaign_id, given_by, created_at, mode, reason, encounter_id, gold, total_xp, idempotency_key, undone_at, undone_by, undo_key FROM xp_awards
+SELECT id, campaign_id, given_by, created_at, mode, reason, encounter_id, gold, total_xp, idempotency_key, undone_at, undone_by, undo_key, milestone_id, milestone_again FROM xp_awards
 WHERE campaign_id = $1::UUID AND undo_key = $2::UUID
 `
 
@@ -168,6 +214,8 @@ func (q *Queries) GetXPAwardByUndoKey(ctx context.Context, arg GetXPAwardByUndoK
 		&i.UndoneAt,
 		&i.UndoneBy,
 		&i.UndoKey,
+		&i.MilestoneID,
+		&i.MilestoneAgain,
 	)
 	return i, err
 }
@@ -193,15 +241,69 @@ func (q *Queries) HasLiveEnemiesAward(ctx context.Context, arg HasLiveEnemiesAwa
 	return exists, err
 }
 
+const hasMilestoneAwards = `-- name: HasMilestoneAwards :one
+SELECT EXISTS (
+    SELECT 1 FROM xp_awards
+    WHERE campaign_id = $1::UUID AND milestone_id = $2::UUID
+)
+`
+
+type HasMilestoneAwardsParams struct {
+	CampaignID  string
+	MilestoneID string
+}
+
+// Whether any award, undone ones included, names the milestone: a milestone
+// with history is never removed (ADR-0007: awards are never rewritten).
+func (q *Queries) HasMilestoneAwards(ctx context.Context, arg HasMilestoneAwardsParams) (bool, error) {
+	row := q.db.QueryRow(ctx, hasMilestoneAwards, arg.CampaignID, arg.MilestoneID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const insertPlannedMilestone = `-- name: InsertPlannedMilestone :one
+INSERT INTO planned_milestones (campaign_id, position, text, created_at, updated_at)
+VALUES ($1::UUID, $2, $3, $4, $4)
+RETURNING id, campaign_id, position, text, created_at, updated_at
+`
+
+type InsertPlannedMilestoneParams struct {
+	CampaignID string
+	Position   int32
+	Text       string
+	Now        time.Time
+}
+
+func (q *Queries) InsertPlannedMilestone(ctx context.Context, arg InsertPlannedMilestoneParams) (PlannedMilestone, error) {
+	row := q.db.QueryRow(ctx, insertPlannedMilestone,
+		arg.CampaignID,
+		arg.Position,
+		arg.Text,
+		arg.Now,
+	)
+	var i PlannedMilestone
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.Position,
+		&i.Text,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const insertXPAward = `-- name: InsertXPAward :one
 
 INSERT INTO xp_awards
-    (campaign_id, given_by, created_at, mode, reason, encounter_id, gold, total_xp, idempotency_key)
+    (campaign_id, given_by, created_at, mode, reason, encounter_id, gold, total_xp, idempotency_key, milestone_id, milestone_again)
 VALUES (
     $1::UUID, $2::UUID, $3, $4, $5,
-    $6::UUID, $7, $8, $9::UUID
+    $6::UUID, $7, $8, $9::UUID,
+    $10::UUID, $11::BOOL
 )
-RETURNING id, campaign_id, given_by, created_at, mode, reason, encounter_id, gold, total_xp, idempotency_key, undone_at, undone_by, undo_key
+RETURNING id, campaign_id, given_by, created_at, mode, reason, encounter_id, gold, total_xp, idempotency_key, undone_at, undone_by, undo_key, milestone_id, milestone_again
 `
 
 type InsertXPAwardParams struct {
@@ -214,6 +316,8 @@ type InsertXPAwardParams struct {
 	Gold           *int32
 	TotalXp        int32
 	IdempotencyKey string
+	MilestoneID    *string
+	MilestoneAgain bool
 }
 
 // Every query names the campaign next to the award: an award ID of another
@@ -229,6 +333,8 @@ func (q *Queries) InsertXPAward(ctx context.Context, arg InsertXPAwardParams) (X
 		arg.Gold,
 		arg.TotalXp,
 		arg.IdempotencyKey,
+		arg.MilestoneID,
+		arg.MilestoneAgain,
 	)
 	var i XpAward
 	err := row.Scan(
@@ -245,6 +351,8 @@ func (q *Queries) InsertXPAward(ctx context.Context, arg InsertXPAwardParams) (X
 		&i.UndoneAt,
 		&i.UndoneBy,
 		&i.UndoKey,
+		&i.MilestoneID,
+		&i.MilestoneAgain,
 	)
 	return i, err
 }
@@ -269,6 +377,132 @@ func (q *Queries) InsertXPShare(ctx context.Context, arg InsertXPShareParams) er
 		arg.LevelAtMark,
 	)
 	return err
+}
+
+const listLiveMilestoneAwards = `-- name: ListLiveMilestoneAwards :many
+SELECT id, campaign_id, given_by, created_at, mode, reason, encounter_id, gold, total_xp, idempotency_key, undone_at, undone_by, undo_key, milestone_id, milestone_again FROM xp_awards
+WHERE campaign_id = $1::UUID AND mode = 'milestone' AND undone_at IS NULL
+ORDER BY created_at, id
+`
+
+// The milestone marks that are not undone, oldest first: those of the planned
+// milestones (what makes one reached) and the ones marked off the list
+// (milestone_id NULL).
+func (q *Queries) ListLiveMilestoneAwards(ctx context.Context, campaignID string) ([]XpAward, error) {
+	rows, err := q.db.Query(ctx, listLiveMilestoneAwards, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []XpAward
+	for rows.Next() {
+		var i XpAward
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.GivenBy,
+			&i.CreatedAt,
+			&i.Mode,
+			&i.Reason,
+			&i.EncounterID,
+			&i.Gold,
+			&i.TotalXp,
+			&i.IdempotencyKey,
+			&i.UndoneAt,
+			&i.UndoneBy,
+			&i.UndoKey,
+			&i.MilestoneID,
+			&i.MilestoneAgain,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLiveMilestoneAwardsOf = `-- name: ListLiveMilestoneAwardsOf :many
+SELECT id, campaign_id, given_by, created_at, mode, reason, encounter_id, gold, total_xp, idempotency_key, undone_at, undone_by, undo_key, milestone_id, milestone_again FROM xp_awards
+WHERE campaign_id = $1::UUID AND milestone_id = $2::UUID AND undone_at IS NULL
+ORDER BY created_at, id
+`
+
+type ListLiveMilestoneAwardsOfParams struct {
+	CampaignID  string
+	MilestoneID string
+}
+
+// The same for one milestone.
+func (q *Queries) ListLiveMilestoneAwardsOf(ctx context.Context, arg ListLiveMilestoneAwardsOfParams) ([]XpAward, error) {
+	rows, err := q.db.Query(ctx, listLiveMilestoneAwardsOf, arg.CampaignID, arg.MilestoneID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []XpAward
+	for rows.Next() {
+		var i XpAward
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.GivenBy,
+			&i.CreatedAt,
+			&i.Mode,
+			&i.Reason,
+			&i.EncounterID,
+			&i.Gold,
+			&i.TotalXp,
+			&i.IdempotencyKey,
+			&i.UndoneAt,
+			&i.UndoneBy,
+			&i.UndoKey,
+			&i.MilestoneID,
+			&i.MilestoneAgain,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMilestoneMarkedCharacters = `-- name: ListMilestoneMarkedCharacters :many
+SELECT s.character_id
+FROM xp_award_shares AS s
+JOIN xp_awards AS a ON a.id = s.award_id
+WHERE a.campaign_id = $1::UUID AND a.milestone_id = $2::UUID AND a.undone_at IS NULL
+`
+
+type ListMilestoneMarkedCharactersParams struct {
+	CampaignID  string
+	MilestoneID string
+}
+
+// The characters that have the milestone now (a mark not undone).
+func (q *Queries) ListMilestoneMarkedCharacters(ctx context.Context, arg ListMilestoneMarkedCharactersParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, listMilestoneMarkedCharacters, arg.CampaignID, arg.MilestoneID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var character_id string
+		if err := rows.Scan(&character_id); err != nil {
+			return nil, err
+		}
+		items = append(items, character_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listMilestoneMarks = `-- name: ListMilestoneMarks :many
@@ -308,8 +542,80 @@ func (q *Queries) ListMilestoneMarks(ctx context.Context, campaignID string) ([]
 	return items, nil
 }
 
+const listPlannedMilestones = `-- name: ListPlannedMilestones :many
+
+SELECT id, campaign_id, position, text, created_at, updated_at FROM planned_milestones
+WHERE campaign_id = $1::UUID
+ORDER BY position, id
+`
+
+// The planned milestones (00084). Every query names the campaign next to the
+// milestone: an ID of another campaign matches no row.
+func (q *Queries) ListPlannedMilestones(ctx context.Context, campaignID string) ([]PlannedMilestone, error) {
+	rows, err := q.db.Query(ctx, listPlannedMilestones, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PlannedMilestone
+	for rows.Next() {
+		var i PlannedMilestone
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.Position,
+			&i.Text,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPlannedMilestonesForUpdate = `-- name: ListPlannedMilestonesForUpdate :many
+SELECT id, campaign_id, position, text, created_at, updated_at FROM planned_milestones
+WHERE campaign_id = $1::UUID
+ORDER BY position, id
+FOR UPDATE
+`
+
+// The campaign's whole list, locked: an add or a move takes turns with the
+// others, so positions never repeat and the count limit holds.
+func (q *Queries) ListPlannedMilestonesForUpdate(ctx context.Context, campaignID string) ([]PlannedMilestone, error) {
+	rows, err := q.db.Query(ctx, listPlannedMilestonesForUpdate, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PlannedMilestone
+	for rows.Next() {
+		var i PlannedMilestone
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.Position,
+			&i.Text,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listXPAwardsPage = `-- name: ListXPAwardsPage :many
-SELECT id, campaign_id, given_by, created_at, mode, reason, encounter_id, gold, total_xp, idempotency_key, undone_at, undone_by, undo_key FROM xp_awards
+SELECT id, campaign_id, given_by, created_at, mode, reason, encounter_id, gold, total_xp, idempotency_key, undone_at, undone_by, undo_key, milestone_id, milestone_again FROM xp_awards
 WHERE campaign_id = $1::UUID
   AND (
       $2::TIMESTAMPTZ IS NULL
@@ -356,6 +662,8 @@ func (q *Queries) ListXPAwardsPage(ctx context.Context, arg ListXPAwardsPagePara
 			&i.UndoneAt,
 			&i.UndoneBy,
 			&i.UndoKey,
+			&i.MilestoneID,
+			&i.MilestoneAgain,
 		); err != nil {
 			return nil, err
 		}
@@ -404,7 +712,7 @@ const markXPAwardUndone = `-- name: MarkXPAwardUndone :one
 UPDATE xp_awards
 SET undone_at = $1, undone_by = $2::UUID, undo_key = $3::UUID
 WHERE campaign_id = $4::UUID AND id = $5::UUID AND undone_at IS NULL
-RETURNING id, campaign_id, given_by, created_at, mode, reason, encounter_id, gold, total_xp, idempotency_key, undone_at, undone_by, undo_key
+RETURNING id, campaign_id, given_by, created_at, mode, reason, encounter_id, gold, total_xp, idempotency_key, undone_at, undone_by, undo_key, milestone_id, milestone_again
 `
 
 type MarkXPAwardUndoneParams struct {
@@ -440,6 +748,46 @@ func (q *Queries) MarkXPAwardUndone(ctx context.Context, arg MarkXPAwardUndonePa
 		&i.UndoneAt,
 		&i.UndoneBy,
 		&i.UndoKey,
+		&i.MilestoneID,
+		&i.MilestoneAgain,
 	)
 	return i, err
+}
+
+const setPlannedMilestonePosition = `-- name: SetPlannedMilestonePosition :exec
+UPDATE planned_milestones SET position = $1
+WHERE campaign_id = $2::UUID AND id = $3::UUID
+`
+
+type SetPlannedMilestonePositionParams struct {
+	Position   int32
+	CampaignID string
+	ID         string
+}
+
+func (q *Queries) SetPlannedMilestonePosition(ctx context.Context, arg SetPlannedMilestonePositionParams) error {
+	_, err := q.db.Exec(ctx, setPlannedMilestonePosition, arg.Position, arg.CampaignID, arg.ID)
+	return err
+}
+
+const updatePlannedMilestoneText = `-- name: UpdatePlannedMilestoneText :exec
+UPDATE planned_milestones SET text = $1, updated_at = $2
+WHERE campaign_id = $3::UUID AND id = $4::UUID
+`
+
+type UpdatePlannedMilestoneTextParams struct {
+	Text       string
+	Now        time.Time
+	CampaignID string
+	ID         string
+}
+
+func (q *Queries) UpdatePlannedMilestoneText(ctx context.Context, arg UpdatePlannedMilestoneTextParams) error {
+	_, err := q.db.Exec(ctx, updatePlannedMilestoneText,
+		arg.Text,
+		arg.Now,
+		arg.CampaignID,
+		arg.ID,
+	)
+	return err
 }
