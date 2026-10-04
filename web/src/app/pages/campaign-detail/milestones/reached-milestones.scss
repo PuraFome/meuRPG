@@ -1,0 +1,84 @@
+:host {
+  display: block;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--mr-rule);
+}
+
+.notice {
+  margin: 0 0 var(--mr-space-3);
+}
+
+// A phone stacks the milestone: when, name and who, then the buttons. From a
+// tablet up it is a row: when, name and who, "Desfazer".
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-1);
+  padding: 14px 0;
+  border-bottom: 1px solid var(--mr-rule);
+
+  @media (min-width: 768px) {
+    display: grid;
+    grid-template-columns: 132px minmax(0, 1fr) auto;
+    align-items: start;
+    gap: var(--mr-space-4);
+  }
+}
+
+.item__ask {
+  grid-column: 1 / -1;
+}
+
+.item__when {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.item__what {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.item__title {
+  font-family: var(--mr-font-display);
+  font-weight: 700;
+  font-size: 21px;
+  line-height: 26px;
+  overflow-wrap: anywhere;
+}
+
+.item__sub {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+// Text actions: the first one lines its words up with the text above it.
+.item__give,
+.item__undo {
+  --mat-button-text-container-height: 44px;
+  --mat-button-text-label-text-color: var(--mr-accent-text);
+  align-self: flex-start;
+}
+
+.item__give {
+  margin-inline-start: -12px;
+  margin-top: var(--mr-space-1);
+}
+
+.item__undo {
+  // On a phone it lines up with the words above it, like "Dar a mais alguém".
+  margin-inline-start: -12px;
+
+  @media (min-width: 768px) {
+    align-self: start;
+    margin-inline-start: 0;
+  }
+}

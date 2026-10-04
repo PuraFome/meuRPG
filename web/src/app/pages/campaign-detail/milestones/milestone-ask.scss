@@ -1,0 +1,70 @@
+:host {
+  display: block;
+}
+
+// The question's top edge clears the sticky app bar when it is scrolled to.
+.ask {
+  scroll-margin-top: 80px;
+}
+
+// The icon sits on the middle of the title's first line (20px words on a 26px line).
+.ask > .mat-icon {
+  margin-top: 3px;
+}
+
+.ask__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  min-width: 0;
+}
+
+.ask__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 20px;
+  line-height: 26px;
+  overflow-wrap: anywhere;
+}
+
+.ask__text {
+  margin: 0;
+}
+
+.ask__error {
+  margin: 0;
+  font-weight: 700;
+  color: var(--mr-danger-ink);
+}
+
+// The two answers are the same size: stacked and full width on a phone
+// (neither label fits half of it), two equal columns from a tablet up.
+.ask__btns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  margin-top: var(--mr-space-1);
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(2, 180px);
+  }
+}
+
+.ask__btn {
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  width: 100%;
+  white-space: nowrap;
+
+  @media (min-width: 768px) {
+    --mat-button-outlined-container-height: 44px;
+  }
+}
+
+.ask__go {
+  --mat-button-outlined-label-text-color: var(--mr-danger-ink);
+  --mat-button-outlined-outline-color: var(--mr-danger-ink);
+}

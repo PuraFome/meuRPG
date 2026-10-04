@@ -55,8 +55,8 @@ describe('AwardHistory (E7-09)', () => {
     const store = TestBed.inject(ExperienceStore);
     store.awards.set(awards);
     store.rows.set([
-      { id: 'p', name: 'Pensantus', sub: '', level: 3, xp: 2716, nextLevelXp: 2700, canLevelUp: true, levelUpReason: 1 },
-      { id: 't', name: 'Toren', sub: '', level: 3, xp: 2366, nextLevelXp: 2700, canLevelUp: false, levelUpReason: 0 },
+      { id: 'p', name: 'Pensantus', playerUserId: '', sub: '', level: 3, xp: 2716, nextLevelXp: 2700, canLevelUp: true, levelUpReason: 1 },
+      { id: 't', name: 'Toren', playerUserId: '', sub: '', level: 3, xp: 2366, nextLevelXp: 2700, canLevelUp: false, levelUpReason: 0 },
     ]);
     const fixture = TestBed.createComponent(AwardHistory);
     fixture.componentRef.setInput('campaignId', 'camp-1');
@@ -232,9 +232,9 @@ describe('AwardHistory (E7-09)', () => {
 
 describe('what undoing says', () => {
   const rows = [
-    { id: 'p', name: 'Pensantus', sub: '', level: 3, xp: 2716, nextLevelXp: 2700, canLevelUp: true, levelUpReason: 1 },
-    { id: 't', name: 'Toren', sub: '', level: 3, xp: 3000, nextLevelXp: 2700, canLevelUp: true, levelUpReason: 1 },
-    { id: 'b', name: 'Brisa', sub: '', level: 3, xp: 2066, nextLevelXp: 2700, canLevelUp: false, levelUpReason: 0 },
+    { id: 'p', name: 'Pensantus', playerUserId: '', sub: '', level: 3, xp: 2716, nextLevelXp: 2700, canLevelUp: true, levelUpReason: 1 },
+    { id: 't', name: 'Toren', playerUserId: '', sub: '', level: 3, xp: 3000, nextLevelXp: 2700, canLevelUp: true, levelUpReason: 1 },
+    { id: 'b', name: 'Brisa', playerUserId: '', sub: '', level: 3, xp: 2066, nextLevelXp: 2700, canLevelUp: false, levelUpReason: 0 },
   ];
 
   it('names the one who stops being able to level up, and not the one who still can', () => {

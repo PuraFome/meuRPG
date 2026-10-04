@@ -160,7 +160,7 @@ describe('CampaignCharacters', () => {
   });
 
   describe('"Pode subir de nível" (RN-12, D4)', () => {
-    const row = (id: string, canLevelUp: boolean): ExperienceRow => ({ id, name: id, sub: '', level: 3, xp: 2716, nextLevelXp: 2700, canLevelUp, levelUpReason: 1 });
+    const row = (id: string, canLevelUp: boolean): ExperienceRow => ({ id, name: id, playerUserId: '', sub: '', level: 3, xp: 2716, nextLevelXp: 2700, canLevelUp, levelUpReason: 1 });
     const list = (state = 'locked' as const) =>
       Promise.resolve({
         playerCharacters: [

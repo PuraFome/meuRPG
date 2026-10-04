@@ -8,6 +8,15 @@ import (
 	"time"
 )
 
+type PlannedMilestone struct {
+	ID         string
+	CampaignID string
+	Position   int32
+	Text       string
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
 type XpAward struct {
 	ID             string
 	CampaignID     string
@@ -22,6 +31,8 @@ type XpAward struct {
 	UndoneAt       *time.Time
 	UndoneBy       *string
 	UndoKey        *string
+	MilestoneID    *string
+	MilestoneAgain bool
 }
 
 type XpAwardShare struct {
