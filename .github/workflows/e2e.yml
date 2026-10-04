@@ -45,15 +45,26 @@ permissions:
 
 jobs:
   e2e:
-    # The suite is split across three runners, each with its own stack: on
+    # The suite is split across four runners, each with its own stack: on
     # one runner the 171 tests took 13 minutes with 2 workers (04/10/2026).
-    name: playwright ${{ matrix.shard }}/3 (local stack with devidp)
+    # Playwright splits a shard by test count, not time, and the axe scans
+    # (@a11y) are the long ones: three plain shards took 522, 171 and 119
+    # seconds. So the @a11y tests get two runners and the rest two.
+    name: playwright ${{ matrix.part }} (local stack with devidp)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        include:
+          - part: a11y 1/2
+            args: --grep @a11y --shard=1/2
+          - part: a11y 2/2
+            args: --grep @a11y --shard=2/2
+          - part: 1/2
+            args: --grep-invert @a11y --shard=1/2
+          - part: 2/2
+            args: --grep-invert @a11y --shard=2/2
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -90,8 +101,8 @@ jobs:
         # compose builds the api service from backend/Dockerfile, the
         # production image. devidp signs anyone in without a password and
         # must only ever exist in its own image (deploy/local/devidp.Dockerfile).
-        # One shard checks it: they all build the same image.
-        if: matrix.shard == 1
+        # One runner checks it: they all build the same image.
+        if: matrix.part == '1/2'
         run: |
           container=$(docker compose -f deploy/local/compose.yaml -f deploy/local/compose.ci.yaml ps --quiet api)
           files=$(docker cp "$container:/app" - | tar -t)
@@ -110,9 +121,14 @@ jobs:
       - name: Run the Playwright tests
         # CI=true makes the config use Playwright's Chromium instead of an
         # installed Google Chrome. The global setup waits for /readyz. Each
-        # shard runs a third of the tests (Playwright splits them evenly).
+        # runner runs its part (matrix.args: a grep and a shard).
         working-directory: e2e
-        run: npx playwright test --shard=${{ matrix.shard }}/3
+        env:
+          PART_ARGS: ${{ matrix.args }}
+        run: |
+          # PART_ARGS holds several flags, so it is word-split on purpose.
+          # shellcheck disable=SC2086
+          npx playwright test $PART_ARGS
 
       - name: Show the stack logs
         if: failure()
@@ -122,7 +138,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: playwright-report-${{ matrix.shard }}
+          name: playwright-report-${{ strategy.job-index }}
           path: |
             e2e/playwright-report/
             e2e/test-results/
