@@ -87,14 +87,14 @@ export class MovePage {
       return { ok: false as const, title: 'Ocupado', detail: 'Há alguém nesse quadrado. Escolha um quadrado destacado.' };
     }
     if (canReach(this.origin(), to, this.leftDft(), e.gridColumns, e.gridRows, this.occupied())) {
-      return { ok: true as const, detail: moveDetail(this.origin(), to, this.leftDft() / 10), cost: distanceText(lengthDft(this.origin(), to) / 10) };
+      return { ok: true as const, detail: moveDetail(this.origin(), to, this.leftDft() / 10), cost: metersText(lengthDft(this.origin(), to) / 10) };
     }
     const away = lengthDft(this.origin(), to) / 10;
     const missing = away - this.leftDft() / 10;
     return {
       ok: false as const,
-      title: `Longe demais: faltam ${distanceText(missing)}`,
-      detail: `Esse quadrado fica a ${distanceText(away)} e você tem ${this.leftText()}. Escolha um quadrado destacado.`,
+      title: `Longe demais: faltam ${metersText(missing)}`,
+      detail: `Esse quadrado fica a ${metersText(away)} e você tem ${metersText(this.leftDft() / 10)}. Escolha um quadrado destacado.`,
     };
   });
   protected readonly frame = computed(() => {

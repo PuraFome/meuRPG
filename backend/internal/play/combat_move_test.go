@@ -2,6 +2,9 @@ package play
 
 import (
 	"context"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
@@ -9,8 +12,12 @@ import (
 	"connectrpc.com/connect"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
+	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
+	"github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1/mapsv1connect"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/maps"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -1263,4 +1270,52 @@ func TestMR034_NothingMovedKeepsTheMarkAndTheRun(t *testing.T) {
 	if got := c.who(t, c.caio, "Toren"); got.GetCoverMark() != playv1.CoverDegree_COVER_DEGREE_NONE {
 		t.Errorf("after a step the mark = %v, want it cleared", got.GetCoverMark())
 	}
+}
+
+// TestMR034_TheMapsLayersDecideTheMove: through the real maps service, a wall
+// painted with PaintMapCells blocks a straight move and a square of difficult
+// terrain costs 5 ft more.
+func TestMR034_TheMapsLayersDecideTheMove(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	content, err := testRules()
+	if err != nil {
+		t.Fatalf("rules.LoadSRD() error = %v", err)
+	}
+	msvc, err := maps.New(maps.Config{Pool: c.h.pool, Characters: c.h.chars, Live: c.h.svc, Rules: content, Combats: c.h.svc, Logger: slog.New(slog.DiscardHandler)})
+	if err != nil {
+		t.Fatalf("maps.New() error = %v", err)
+	}
+	c.h.svc.SetTerrain(msvc)
+	srv := httpserver.New(httpserver.Config{Logger: slog.New(slog.DiscardHandler)})
+	msvc.Mount(srv.Handle, mapsSessions{testSessions}, c.h.camps, connect.WithRequireConnectProtocolHeader())
+	server := httptest.NewServer(srv.Handler())
+	t.Cleanup(server.Close)
+	paint := mapsv1connect.NewMapServiceClient(&http.Client{Transport: userTransport{userID: c.master.id, next: server.Client().Transport}}, server.URL)
+	put := func(layer mapsv1.MapLayer, col, row int32) {
+		t.Helper()
+		if _, err := paint.PaintMapCells(t.Context(), connect.NewRequest(&mapsv1.PaintMapCellsRequest{
+			CampaignId: c.campaignID, MapId: c.mapID, Layer: layer, Value: 1, Squares: []*mapsv1.MapSquare{{Col: col, Row: row}},
+		})); err != nil {
+			t.Fatalf("PaintMapCells(%v) error = %v", layer, err)
+		}
+	}
+
+	c.fight(t)
+	put(mapsv1.MapLayer_MAP_LAYER_WALL, 8, 7)
+	put(mapsv1.MapLayer_MAP_LAYER_DIFFICULT_TERRAIN, 6, 8)
+	_, err = c.move(t, c.caio, "Toren", 10, 7)
+	wantEncounterBlocked(t, err, reasonMoveBlocked)
+	c.mustMove(t, c.caio, "Toren", 6, 9) // (6, 8) is rubble: 10 ft of line and 5 ft more
+	if got := c.who(t, c.caio, "Toren"); got.GetMovementUsedDft() != 150 {
+		t.Errorf("through painted rubble = %d dft used, want 150", got.GetMovementUsedDft())
+	}
+}
+
+// mapsSessions lets the test sessions serve the maps module, whose image routes
+// authenticate plain requests too (none is made here).
+type mapsSessions struct{ Sessions }
+
+func (mapsSessions) AuthenticateRequest(r *http.Request) (context.Context, error) {
+	return withTestUser(r.Context(), r.Header), nil
 }

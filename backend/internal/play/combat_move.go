@@ -24,14 +24,18 @@ import (
 // browser does no geometry: GetMoveOptions says where a combatant can go.
 
 // TerrainSource gives a combat the layers of the map it runs on: walls,
-// difficult terrain and cover. The maps module implements it (the layers come
-// with Etapa 9's slice 9.3); until then cmd/api wires an adapter with empty
-// layers. A nil source, and a map with no layers, are open floor.
+// difficult terrain and cover. The maps module implements it
+// (maps.Service.Terrain) and cmd/api connects it with SetTerrain, after both
+// services exist. A nil source, and a map with no layers, are open floor.
 type TerrainSource interface {
 	// Terrain returns the map's grid and layers, or a `not_found` Connect error
 	// when mapID is not a map of the campaign.
 	Terrain(ctx context.Context, campaignID, mapID string) (grid.Terrain, error)
 }
+
+// SetTerrain connects the source of the maps' layers. play and maps need each
+// other, so cmd/api calls it once maps exists, before the server starts.
+func (s *Service) SetTerrain(t TerrainSource) { s.terrain = t }
 
 // terrainOf is the terrain of the encounter's map. The grid is the one copied
 // into the encounter when it started: layers sized for another grid (the map's

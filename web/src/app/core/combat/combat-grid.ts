@@ -9,7 +9,7 @@
  * The distances in words are `core/units.ts`'s.
  */
 
-import { distanceText } from '../units';
+import { metersText } from '../units';
 
 /** The screen takes 5 to 60 columns; the server takes 4 to 200. */
 export const MIN_COLUMNS = 5;
@@ -113,7 +113,9 @@ function squares(n: number): string {
 }
 
 /** How a move goes, without its cost: "2 quadrados para a direita e 1 para
- * baixo. Depois restam 4,5 m." `leftFt` is the movement left before it. */
+ * baixo. Depois restam 4,1 m." `leftFt` is the movement left before it. In
+ * metres only: once a diagonal costs its length, a count of squares no longer
+ * adds up (E9-05). */
 export function moveDetail(from: Square, to: Square, leftFt: number): string {
   const dc = to.col - from.col;
   const dr = to.row - from.row;
@@ -125,13 +127,13 @@ export function moveDetail(from: Square, to: Square, leftFt: number): string {
     parts.push(`${squares(Math.abs(dr))} para ${dr > 0 ? 'baixo' : 'cima'}`);
   }
   const after = Math.max(0, leftFt - lengthDft(from, to) / 10);
-  return `${parts.join(' e ')}. Depois restam ${distanceText(after)}.`;
+  return `${parts.join(' e ')}. Depois restam ${metersText(after)}.`;
 }
 
 /** What the live line under the map says once a square is chosen (E6-10):
  * "Mover 3 m. 2 quadrados para a direita e 1 para baixo. Depois restam 4,5 m." */
 export function moveSentence(from: Square, to: Square, leftFt: number): string {
-  return `Mover ${distanceText(lengthDft(from, to) / 10)}. ${moveDetail(from, to, leftFt)}`;
+  return `Mover ${metersText(lengthDft(from, to) / 10)}. ${moveDetail(from, to, leftFt)}`;
 }
 
 /** The ordinal circle: "2º círculo", with a no-break space so a line never

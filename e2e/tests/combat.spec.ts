@@ -144,7 +144,7 @@ test(
       await expect(p.getByText('Longe demais: faltam')).toBeVisible();
       await expect(p.getByRole('button', { name: 'Mover para cá' })).toHaveAttribute('aria-disabled', 'true');
       await map.click({ position: at(2, 1) });
-      await expect(p.getByRole('status').filter({ hasText: 'Mover 3,4 m' })).toContainText('2 quadrados para a direita e 1 quadrado para baixo. Depois restam 4,1 m · 2 quadrados.');
+      await expect(p.getByRole('status').filter({ hasText: 'Mover 3,4 m' })).toContainText('2 quadrados para a direita e 1 quadrado para baixo. Depois restam 4,1 m.');
       await p.getByRole('button', { name: 'Mover para cá' }).click();
       await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
       await expect.poll(async () => (await getEncounterRPC(m, campaignId)).combatants.find((c) => c.label === 'Pensantus')?.col).toBe((own.col ?? 0) + 2);

@@ -260,7 +260,8 @@ type Config struct {
 	// Dice says where a player rolls (RN-18). Required.
 	Dice DiceModes
 	// Terrain gives a combat the walls, difficult terrain and cover of its map
-	// (RN-21, D2). Optional: nil means open floor.
+	// (RN-21, D2). Optional: cmd/api sets it with SetTerrain once the maps module
+	// exists (the two need each other); nil means open floor.
 	Terrain TerrainSource
 	// Roller rolls the NPCs' dice and the app's rolls. Nil means the
 	// operating system's random source (dice.Crypto); tests pass faces.

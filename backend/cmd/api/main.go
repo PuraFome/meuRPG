@@ -79,7 +79,6 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play"
 	"github.com/PuraFome/meuRPG/backend/internal/progression"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
-	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 	"github.com/PuraFome/meuRPG/backend/internal/system"
 )
 
@@ -227,7 +226,6 @@ func run(logger *slog.Logger, cfg config.Config) error {
 			Maps:      sessionMaps,                 // the current map (RN-10), the shown image (MR-028), the grid and tokens (MR-013)
 			Roster:    charactersService,           // who can fight, with which numbers (MR-013)
 			Dice:      diceModes{campaignsService}, // where a player rolls (RN-18)
-			Terrain:   openTerrain{sessionMaps},    // TEMPORARY: the map's grid with no walls, rubble or cover, until the maps module gives its layers (Etapa 9, slice 9.3)
 			Logger:    logger,
 		})
 		if err != nil {
@@ -248,6 +246,8 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		if err != nil {
 			return err
 		}
+		// the combat walks over the layers the master painted (MR-034, RN-21)
+		playService.SetTerrain(mapsService)
 		// progression and characters need each other too (the XP lives on the
 		// sheets, and a sheet shows "pode subir de nível"): characters gets
 		// progression once it exists.
@@ -372,20 +372,6 @@ func (d diceModes) ForcedDice(ctx context.Context, campaignID, userID string) (p
 		return play.DiceForcedPhysical, err
 	}
 	return play.DiceChoice, err
-}
-
-// openTerrain is a temporary play.TerrainSource: the map's grid with every layer
-// empty (open floor), so combat movement runs on the circle with no walls,
-// difficult terrain or cover. The maps module replaces it when it stores the
-// layers (Etapa 9, slice 9.3): it implements play.TerrainSource itself.
-type openTerrain struct{ maps play.MapKeeper }
-
-func (t openTerrain) Terrain(ctx context.Context, campaignID, mapID string) (grid.Terrain, error) {
-	g, err := t.maps.MapGrid(ctx, campaignID, mapID)
-	if err != nil {
-		return grid.Terrain{}, err
-	}
-	return grid.Terrain{Grid: grid.Grid{Columns: int(g.Columns), Rows: int(g.Rows)}}, nil
 }
 
 // levelUpDice adapts the campaigns service to the characters module's

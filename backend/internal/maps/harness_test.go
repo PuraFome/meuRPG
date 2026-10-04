@@ -148,6 +148,7 @@ type harness struct {
 	blobDir string
 	blobs   *blob.FS
 	server  *httptest.Server
+	svc     *Service
 }
 
 // noHeartbeat keeps heartbeats out of the tests' streams: a test that
@@ -201,6 +202,7 @@ func newHarness(t *testing.T, configure ...func(*Config)) *harness {
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
+	h.svc = svc
 
 	notesSvc, err := notes.New(notes.Config{Pool: pool, Scenes: sessionMaps, Logger: logger, Now: clock.Now})
 	if err != nil {

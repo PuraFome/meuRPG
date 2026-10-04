@@ -69,13 +69,13 @@ describe('combat grid maths', () => {
     const say = (from: Square, to: Square, left: number) => moveSentence(from, to, left).replace(/\u00a0/g, ' ');
     // 2 squares across and 1 down is 11,2 ft: 3,4 m, no longer the 10 ft of a king's move.
     expect(say({ col: 4, row: 8 }, { col: 6, row: 9 }, 25)).toBe(
-      'Mover 3,4 m · 2 quadrados. 2 quadrados para a direita e 1 quadrado para baixo. Depois restam 4,1 m · 2 quadrados.',
+      'Mover 3,4 m. 2 quadrados para a direita e 1 quadrado para baixo. Depois restam 4,1 m.',
     );
     expect(say({ col: 4, row: 8 }, { col: 4, row: 7 }, 25)).toBe(
-      'Mover 1,5 m · 1 quadrado. 1 quadrado para cima. Depois restam 6 m · 4 quadrados.',
+      'Mover 1,5 m. 1 quadrado para cima. Depois restam 6 m.',
     );
     expect(say({ col: 4, row: 8 }, { col: 1, row: 8 }, 10)).toBe(
-      'Mover 4,5 m · 3 quadrados. 3 quadrados para a esquerda. Depois restam 0 m · 0 quadrados.',
+      'Mover 4,5 m. 3 quadrados para a esquerda. Depois restam 0 m.',
     );
   });
 });
