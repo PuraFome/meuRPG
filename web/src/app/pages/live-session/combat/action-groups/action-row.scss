@@ -56,6 +56,14 @@
   color: var(--mr-ink-muted);
 }
 
+// The SRD's English text of a creature's attack, as the stat block shows SRD text.
+.row__rider {
+  text-wrap: pretty;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
 .row__why {
   display: flex;
   align-items: center;

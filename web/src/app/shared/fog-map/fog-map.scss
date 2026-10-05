@@ -111,20 +111,19 @@
   margin-block: calc(-1 * var(--mr-space-1));
 }
 
-// A character's creature in the legend: round, with a dashed ring (MAP-LANGUAGE.md).
+// A character's creature in the legend: round, hollow, with a dashed ink outline (MAP-LANGUAGE.md): the token's own look.
 .fm__creature {
   box-sizing: border-box;
   display: inline-flex;
   flex: none;
   align-items: center;
   justify-content: center;
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
+  border: 1.5px dashed var(--mr-ink);
   border-radius: 50%;
-  background: var(--mr-ink);
-  color: var(--mr-surface);
-  outline: 1.5px dashed var(--mr-ink);
-  outline-offset: 2px;
+  background: var(--mr-surface);
+  color: var(--mr-ink);
   font-family: var(--mr-font-display);
   font-size: 8px;
   font-weight: 700;

@@ -11,6 +11,7 @@ import {
   type TurnOptions,
 } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { metersFixed, reachSquares, squaresText } from '../../../../core/units';
+import { article } from '../../../../core/combat/combat-log';
 import { tight } from '../../../../core/format/text';
 import {
   attackDetail,
@@ -83,6 +84,14 @@ export class ActionGroups {
 
   /** What `GetSpellDetails` said about each spell of the list, for the line under its name. */
   readonly details = input<ReadonlyMap<string, SpellDetails>>(new Map());
+  /**
+   * The druid's Wild Shape as a line of the Ação (MR-037, E9-11 state 1): the line under its name ("Vire uma fera
+   * · restam 2 de 2 usos · volta no descanso curto ou longo") and, when it cannot be used, the reason. `null` for a
+   * character without it, or already in a beast form (then `leaveForm` is the bonus action).
+   */
+  readonly wild = input<{ readonly key: string; readonly detail: string; readonly reason: string } | null>(null);
+  /** The beast the character is in ("Lobo"): no spells, and "Voltar à forma normal" is a bonus action. */
+  readonly beast = input('');
 
   /** "Atacar": the key of the attack, as in `Attack.key`. */
   readonly attack = output<string>();
@@ -99,6 +108,18 @@ export class ActionGroups {
   readonly familiarEyes = output<void>();
   /** The "?" of a spell: the key and the Portuguese name. */
   readonly describe = output<{ key: string; name: string }>();
+  /** "Você volta a ser a Sálvia, com os seus PV. Os PV que sobraram do Lobo se perdem.": the character and the beast, by name. */
+  protected readonly leaveDetail = computed(() => {
+    const name = this.own().label;
+    const beast = this.beast();
+    const a = (n: string) => (article(n) === 'a' ? 'a' : 'o');
+    return `Você volta a ser ${a(name)} ${name}, com os seus PV. Os PV que sobraram d${a(beast)} ${beast} se perdem.`;
+  });
+
+  /** "Transformar": the page opens the list of beasts. */
+  readonly transform = output<void>();
+  /** "Voltar" (to the normal shape), a bonus action. */
+  readonly leaveForm = output<void>();
 
 
   /** From 1024px the economy tiles are the panel's first thing (E6-14). */
@@ -191,6 +212,20 @@ export class ActionGroups {
 
   protected featureOff(a: ActionOption): boolean {
     return !a.enabled && !isReactionHint(a.reason);
+  }
+
+  /** The feature that is the druid's Wild Shape: it opens the beasts' sheet instead of being "used". */
+  protected isWild(a: ActionOption): boolean {
+    const wild = this.wild();
+    return !!wild && a.action?.key === wild.key;
+  }
+
+  /** The features of the Ação but Wild Shape (a row of its own after the attacks), and none of it as a beast: the form's own way out is "Voltar à forma normal". */
+  protected readonly otherFeatures = computed(() => this.action_().features.filter((f) => !this.isWild(f) && !(this.beast() && f.action?.key?.startsWith('feature:wild-shape'))));
+
+  /** The SRD's own text of a creature's attack, under it (English); a character's attack has none shown. */
+  protected rider(a: Attack): string {
+    return a.key.includes('#') ? a.notes : '';
   }
 
   /** "1 uso", "2 usos": what is left of the feature's resource. */

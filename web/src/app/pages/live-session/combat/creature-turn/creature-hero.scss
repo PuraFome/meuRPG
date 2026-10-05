@@ -1,0 +1,69 @@
+:host {
+  display: block;
+}
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-sizing: border-box;
+  padding: 14px 16px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+
+  @media (min-width: 768px) {
+    padding: 16px 18px;
+  }
+}
+
+// Its turn is the hero: a 2px accent frame, no fill.
+.hero--turn {
+  padding: 13px 15px;
+  border: 2px solid var(--mr-accent);
+
+  @media (min-width: 768px) {
+    padding: 15px 17px;
+  }
+}
+
+.hero__kicker {
+  font-size: 14px;
+}
+
+.hero__banner {
+  display: block;
+}
+
+.hero__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 28px;
+  line-height: 32px;
+  overflow-wrap: anywhere;
+
+  &:focus-visible {
+    outline-offset: 4px;
+  }
+
+  @media (min-width: 768px) {
+    font-size: 34px;
+    line-height: 38px;
+  }
+}
+
+.hero__next {
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.hero__notice {
+  margin: 0;
+}
+
+.hero__end {
+  margin-top: 4px;
+}

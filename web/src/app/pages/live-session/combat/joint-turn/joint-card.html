@@ -8,7 +8,7 @@
       @for (m of j.members; track m.id) {
         <li class="member" [class.member--ended]="ended(m)">
           <div class="member__head">
-            <app-combatant-token [initial]="initial(m)" [npc]="npc(m)" [hidden]="m.hidden" [size]="28" />
+            <app-combatant-token [initial]="initial(m)" [npc]="npc(m)" [creature]="creature(m)" [hidden]="m.hidden" [size]="28" />
             <div class="member__who">
               <span class="member__name">{{ m.label }}</span>
               <span class="member__sub">{{ sub(m) }}</span>

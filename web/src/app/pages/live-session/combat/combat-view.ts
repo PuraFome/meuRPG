@@ -8,6 +8,7 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import type { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { CharacterKind } from '../../../../gen/meurpg/characters/v1/characters_pb';
 import {
+  type Combatant,
   CombatLogKind,
   CombatantState,
   DeathSaveOutcome,
@@ -22,10 +23,16 @@ import {
   type ReactionPrompt,
   type GetTurnOptionsResponse,
 } from '../../../../gen/meurpg/play/v1/combat_pb';
-import { ActionEconomy, type Attack, AttackKind, type SpellDetails } from '../../../../gen/meurpg/rules/v1/rules_pb';
+import { ActionEconomy, type Attack, AttackKind, DisabledReasonCode, type SpellDetails } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { type AttackDie, CombatClient, type MoveResult, newKey } from '../../../core/combat/combat-client';
 import { combatErrorMessage } from '../../../core/combat/combat-errors';
+import { type FormEnded, ConcentrationWatch, FormNotices, type LostConcentration, formNoticeText, lostNoticeText, wildActionLine } from '../../../core/combat/combat-notices';
+import { reasonText } from '../../../core/combat/combat-options';
+import { joinDots, tight } from '../../../core/format/text';
 import { MoveOptionsState } from '../../../core/combat/move-options-state';
+import { CreatureOptionsState } from '../../../core/combat/creature-options-state';
+import { CHARACTER_TAB, type MineTab, actingTab, membersToEnd, mineTabs, ownCreatures, validTab } from '../../../core/combat/mine';
+import { article } from '../../../core/combat/combat-log';
 import { ofThe } from '../../../core/combat/move-plan';
 import {
   type ReactorAttack,
@@ -39,7 +46,7 @@ import {
 import type { FogView } from '../../../core/maps/fog-view';
 import { LayersState } from '../../../core/maps/layers-state';
 import { MapsClient } from '../../../core/maps/maps-client';
-import { fallNote } from '../../../core/traps/trap-log';
+import { type FallNote, fallNote } from '../../../core/traps/trap-log';
 import { type SearchSkills, searchRoute } from '../../../core/traps/trap-search';
 import type { TrapBoard } from '../../../core/traps/trap-board';
 import type { OfferMark, Reach } from '../../../shared/combat-map/combat-map';
@@ -86,8 +93,16 @@ import { NpcCard } from './npc-card/npc-card';
 import { OrderList } from './order-list/order-list';
 import { PlayerInitiative } from './player-initiative/player-initiative';
 import { CreatureSource } from '../../../../gen/meurpg/characters/v1/characters_pb';
+import type { Creature } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { CreaturesClient } from '../../../core/creatures/creatures-client';
 import { openFamiliarEyes } from '../../../shared/familiar-eyes/familiar-eyes-sheet';
+import { openWildShape } from '../../../shared/wild-shape/wild-shape-sheet';
+import { BeastTraits } from '../../../shared/wild-shape/beast-traits';
+import { SummonSheet, type SummonSheetData } from '../../character-sheet/creatures-panel/summon-sheet';
+import { CreatureBar } from './creature-turn/creature-bar';
+import { CreatureBlock } from './creature-turn/creature-block';
+import { CreatureHero } from './creature-turn/creature-hero';
+import { MineTabs } from './mine-tabs/mine-tabs';
 import { openSheet } from './sheet-host';
 import { type StartCombatData, StartCombatDialog } from './start-combat/start-combat-dialog';
 import { TrapDamages } from '../traps/trap-damages/trap-damages';
@@ -115,6 +130,10 @@ import { TurnPanel } from './turn-panel/turn-panel';
   selector: 'app-combat-view',
   imports: [
     ActionGroups,
+    BeastTraits,
+    CreatureBar,
+    CreatureBlock,
+    CreatureHero,
     DeathQuestion,
     DeathSaves,
     CombatBar,
@@ -126,6 +145,7 @@ import { TurnPanel } from './turn-panel/turn-panel';
     JointCard,
     MatButtonModule,
     MatIconModule,
+    MineTabs,
     MovePage,
     NpcCard,
     OpportunityCard,
@@ -241,6 +261,80 @@ export class CombatView {
     }).subscribe();
   }
 
+  // ---- Forma Selvagem (MR-037, E9-11) ----
+
+  /** The character's own vitals row: the hit points that wait while it is a beast, and the uses of its resources. */
+  protected readonly ownVitals = computed(() => {
+    const own = this.own();
+    return own ? (this.vitals().find((v) => v.characterId === own.characterId) ?? null) : null;
+  });
+  /** The book's stat block of the beast the druid is, for its traits (read once per beast). */
+  protected readonly beastBlock = signal<Creature | null>(null);
+  /** The druid's Wild Shape as a line of the Ação: its uses ("restam 2 de 2 usos") and why it cannot be used now. `null` without it, and while in a form. */
+  protected readonly wild = computed(() => {
+    const own = this.own();
+    const feature = this.options()?.options?.featureActions.find((a) => a.action?.key.startsWith('feature:wild-shape'));
+    const resource = feature?.action ? this.ownVitals()?.resources?.find((r) => r.key === feature.action?.resourceKey) : undefined;
+    return own ? wildActionLine(feature, !!own.wildShapeBeastKey, resource) : null;
+  });
+  /** What the form's end said, from the combat log's line (the server's number and reason): until it is touched. */
+  protected readonly formEnded = signal<FormEnded | null>(null);
+  protected readonly formNotice = computed(() => {
+    const ended = this.formEnded();
+    return ended ? formNoticeText(ended) : '';
+  });
+  private readonly formNotices = new FormNotices();
+  /** The combat the notices belong to: another combat starts clean. */
+  private noticeOf = '';
+  /** "Transformar": the list of beasts the level allows. */
+  protected openTransform(): void {
+    const own = this.own();
+    if (!own) {
+      return;
+    }
+    const resource = this.ownVitals()?.resources?.find((r) => r.key === 'wild_shape');
+    openWildShape(this.dialog, this.bottomSheet, {
+      campaignId: this.campaignId(),
+      characterId: own.characterId,
+      inCombat: true,
+      uses: resource ? { left: resource.total - resource.used, total: resource.total } : null,
+    }).subscribe((result) => {
+      if (result?.encounter) {
+        this.state().apply(result.encounter);
+      }
+    });
+  }
+
+  /** "Voltar à forma normal": a bonus action. The druid knows it came back: the log's line says "left", and no notice comes of it. */
+  protected async leaveForm(): Promise<void> {
+    const own = this.own();
+    if (!own || this.busy()) {
+      return;
+    }
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      const res = await this.creaturesApi.leaveWildShape(this.campaignId(), own.characterId, newKey());
+      if (res.encounter) {
+        this.state().apply(res.encounter);
+      }
+    } catch (err) {
+      this.error.set(combatErrorMessage(err, 'voltar à forma normal'));
+      await this.refreshAfter(err);
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  // ---- losing the concentration that holds the creatures (MR-037, E9-12 state 5) ----
+
+  /** What the player's own concentration ending took with it: the spell and the creatures that left, until it is touched. */
+  protected readonly lostConcentration = signal<LostConcentration | null>(null);
+  protected readonly lostNotice = computed(() => {
+    const lost = this.lostConcentration();
+    return lost ? lostNoticeText(lost) : '';
+  });
+  private readonly concentration = new ConcentrationWatch();
   protected readonly lookingThroughFamiliar = computed(() => !!this.own()?.familiarSightCreatureId);
   protected readonly own = computed(() => {
     const e = this.encounter();
@@ -251,6 +345,46 @@ export class CombatView {
     const own = this.own();
     return !!e && !!own && acts(e, own);
   });
+  // ---- what the player plays: the character and its creatures (MR-037, E9-12) ----
+
+  /** The tabs of the turn bar: the character, then each group of creatures (a casting's, in a joint turn, or one alone). */
+  protected readonly tabs = computed<readonly MineTab[]>(() => {
+    const e = this.encounter();
+    return !this.isMaster() && e && e.status === EncounterStatus.ACTIVE ? mineTabs(e) : [];
+  });
+  /** The tabs show only when the player plays more than one combatant. */
+  protected readonly showTabs = computed(() => this.tabs().length > 1);
+  /** The tab the page shows; it follows the turn to where the player acts, and a tap changes it. */
+  protected readonly tabId = signal(CHARACTER_TAB);
+  protected readonly tab = computed<MineTab | null>(() => this.tabs().find((t) => t.id === this.tabId()) ?? this.tabs()[0] ?? null);
+  /** The page of a creature's turn is open (not the character's). */
+  protected readonly creatureTab = computed(() => {
+    const t = this.tab();
+    return t?.creature ? t : null;
+  });
+  /** `GetTurnOptions` of each creature the player plays: the attacks with their numbers, the standard actions. */
+  protected readonly creatureOptions = new CreatureOptionsState();
+  /** The question to end a group's part is open: the tabs are inert until it is answered. */
+  protected readonly partAsking = signal(false);
+  /** The creature whose "Mover" page is open (`''`: the character's own). */
+  protected readonly moverId = signal('');
+  /** Whoever the "Mover" page is for: one of the creatures, or the character. */
+  private readonly mover = computed(() => {
+    const e = this.encounter();
+    const id = this.moverId();
+    // A creature that left the combat is not the character: nothing moves, and the page closes (the effect below says so).
+    return e ? (id ? (e.combatants.find((c) => c.id === id) ?? null) : this.own()) : null;
+  });
+  /** The name of the creature the page was opened for, to say it left. */
+  private moverName = '';
+  private readonly moverActs = computed(() => {
+    const e = this.encounter();
+    const who = this.mover();
+    return !!e && !!who && acts(e, who);
+  });
+  /** What it waits for ("Esperando a reação do mestre") on the page of a creature's turn. */
+  protected readonly creatureLocked = computed(() => this.waiting()?.title ?? '');
+
   /** The joint turn that is running (a group of two or more), or `null`. */
   protected readonly joint = computed(() => {
     const e = this.encounter();
@@ -344,9 +478,11 @@ export class CombatView {
   });
   /** "Desengajar" can still be taken here: the action is free and it was not. */
   protected readonly canDisengage = computed(() => {
-    const own = this.own();
-    return !!own && !own.actionUsed && !own.disengaged;
+    const who = this.mover();
+    return !!who && !who.actionUsed && !who.disengaged;
   });
+  /** How far and how high the mover can jump: the creature's own options, or the character's. */
+  protected readonly moverJumps = computed(() => (this.moverId() ? this.creatureOptions.data().get(this.moverId())?.options?.jumps : this.options()?.options?.jumps));
   private readonly offersHandled = new Set<string>();
   private readonly reactorReading = new Set<string>();
   /** The offers whose reactor's attacks could not be read: the master's card offers "Tentar de novo". */
@@ -556,8 +692,14 @@ export class CombatView {
     });
     // "Mover" belongs to the player's turn: when it ends, the page closes.
     effect(() => {
-      if (!this.myTurn() || !this.active()) {
-        this.state().moving.set(false);
+      if (!this.moverActs() || !this.active()) {
+        untracked(() => {
+          if (this.moverId() && this.active() && !this.mover() && this.moverName) {
+            this.moveNote.set(`${article(this.moverName) === 'a' ? 'A' : 'O'} ${this.moverName} saiu do combate.`);
+          }
+          this.state().moving.set(false);
+          this.moverId.set('');
+        });
       }
       if (!this.active()) {
         this.state().mapOpen.set(false);
@@ -595,6 +737,82 @@ export class CombatView {
           untracked(() => void this.openOpportunity(offer));
         }
       }
+    });
+    // The tab follows the turn: when it comes to a group of the player's (the character or its creatures), the page shows it.
+    let acting = '';
+    effect(() => {
+      const now = actingTab(this.tabs());
+      if (now && now !== acting) {
+        untracked(() => this.tabId.set(now));
+      }
+      acting = now;
+    });
+    // The tabs go away when the player is back to one combatant: the page is the character's again.
+    effect(() => {
+      const keep = validTab(this.tabs(), this.tabId());
+      if (keep !== this.tabId()) {
+        untracked(() => this.tabId.set(keep));
+      }
+    });
+    // The creatures' own options (their attacks, their standard actions), asked again whenever the combat changes.
+    effect(() => {
+      const e = this.encounter();
+      const campaignId = this.campaignId();
+      const ids = e && !this.isMaster() && e.status === EncounterStatus.ACTIVE ? ownCreatures(e).map((c) => c.id) : [];
+      if (!e || ids.length === 0) {
+        untracked(() => this.creatureOptions.clear());
+        return;
+      }
+      void e.revision;
+      untracked(() => void this.creatureOptions.load(this.api, campaignId, e.id, ids));
+    });
+    // The beast's book (its armor class and traits), read once for each beast the druid becomes.
+    effect(() => {
+      const key = this.own()?.wildShapeBeastKey ?? '';
+      const campaignId = this.campaignId();
+      untracked(() => {
+        if (!key) {
+          this.beastBlock.set(null);
+          return;
+        }
+        void this.creaturesApi.statBlock(campaignId, key).then(
+          (block) => this.beastBlock.set(block),
+          () => this.beastBlock.set(null),
+        );
+      });
+    });
+    // When the form ends without the druid asking (the beast fell to 0, the master ended it), the player is told, until they touch it:
+    // the combat log's line says why and how much damage passed on (the server's number; nothing is worked out here). The lines that
+    // were there when the combat was read are not news, so a reconnect or a re-read never repeats a notice.
+    effect(() => {
+      const id = this.encounter()?.id ?? '';
+      const own = this.own();
+      const rounds = this.log.rounds();
+      const loaded = this.log.loaded();
+      untracked(() => {
+        const { reset, notice } = this.formNotices.read(id, own?.id ?? '', loaded, rounds.flatMap((r) => r.entries));
+        if (reset) {
+          this.formEnded.set(null);
+          this.lostConcentration.set(null);
+        }
+        if (notice) {
+          this.formEnded.set(notice);
+        }
+      });
+    });
+    // When the concentration that held creatures ends (a lost save, another spell, the master), the player is told too. It reads the
+    // combat's own data, for this combat only: another combat starts without it, and an undo that brings the creatures (or the spell)
+    // back takes it away.
+    effect(() => {
+      const e = this.encounter();
+      const spell = this.own()?.concentrationSpellNamePt ?? '';
+      const creatures = e && !this.isMaster() ? ownCreatures(e).filter((c) => !!c.summonGroupId) : [];
+      untracked(() => {
+        const out = this.concentration.read(e?.id ?? '', spell, creatures, this.lostConcentration());
+        if (out !== undefined) {
+          this.lostConcentration.set(out);
+        }
+      });
     });
     // The master's prompts need each NPC reactor's attacks with their numbers.
     effect(() => {
@@ -642,8 +860,8 @@ export class CombatView {
       const who = currentCombatant(e);
       return this.reachOn() && who?.placed ? who.id : null;
     }
-    const own = this.own();
-    return this.state().moving() && this.myTurn() && own?.placed ? own.id : null;
+    const who = this.mover();
+    return this.state().moving() && this.moverActs() && who?.placed ? who.id : null;
   });
 
   private async loadRoster(campaignId: string): Promise<void> {
@@ -725,9 +943,12 @@ export class CombatView {
    * movement. */
   protected takeAction(key: string): Promise<boolean> {
     const own = this.own();
-    return own
-      ? this.run(async (e) => (await this.api.takeAction(this.campaignId(), e.id, own.id, key)).encounter)
-      : Promise.resolve(false);
+    return own ? this.takeActionFor(own.id, key) : Promise.resolve(false);
+  }
+
+  /** The same for a combatant of the player's: their character, or one of their creatures. */
+  protected takeActionFor(id: string, key: string): Promise<boolean> {
+    return this.run(async (e) => (await this.api.takeAction(this.campaignId(), e.id, id, key)).encounter);
   }
 
   /** A standard action from the list: "Procurar" opens the search for traps (E9-08, it spends the action
@@ -768,6 +989,28 @@ export class CombatView {
       }
     }
     return null;
+  });
+
+  /** The same note for each of the player's creatures that a trap caught (a wolf or Nanquim that walked into one on its own part). */
+  protected readonly creatureTrapNotes = computed(() => {
+    const e = this.encounter();
+    const notes = new Map<string, FallNote>();
+    if (!e || this.isMaster()) {
+      return notes;
+    }
+    const round = this.log.rounds().find((r) => r.round === e.round);
+    for (const c of ownCreatures(e)) {
+      for (const entry of round?.entries ?? []) {
+        if (entry.kind === CombatLogKind.TRAP_TRIGGERED && entry.trap) {
+          const note = fallNote(entry.trap, c.id, c.label);
+          if (note) {
+            notes.set(c.id, note);
+            break;
+          }
+        }
+      }
+    }
+    return notes;
   });
 
   /** "Usar" on a feature: Retomar o Fôlego rolls (its own sheet); the others
@@ -832,10 +1075,33 @@ export class CombatView {
     this.castSheet(p.attackKey, owed);
   }
 
-  private attackSheet(key: string, resume?: PendingDamage, asReaction = false): void {
+  /** "Atacar" on one of the player's creatures (E9-12): the same sheet, with the creature as the attacker; `asReaction` for the familiar of the Pacto da Corrente. */
+  protected openCreatureAttack(id: string, key: string, asReaction = false): void {
+    const who = this.encounter()?.combatants.find((c) => c.id === id);
+    if (who) {
+      this.attackSheet(key, undefined, asReaction, who, this.creatureOptions.data().get(id) ?? null);
+    }
+  }
+
+  /** A hit of one of the player's creatures whose damage waits to be rolled (from the creature's own options). */
+  protected creaturePending(id: string): PendingDamage | null {
+    return this.creatureOptions.data().get(id)?.pendingDamages.find((p) => p.status === PendingDamageStatus.AWAITING_ROLL && p.attackerId === id) ?? null;
+  }
+
+  /** "Rolar o dano" of a creature's hit: the attack sheet again, at the damage. */
+  protected rollCreatureDamage(id: string): void {
+    const p = this.creaturePending(id);
+    const who = this.encounter()?.combatants.find((c) => c.id === id);
+    if (p && who) {
+      this.attackSheet(p.attackKey, p, false, who, this.creatureOptions.data().get(id) ?? null);
+    }
+  }
+
+  private attackSheet(key: string, resume?: PendingDamage, asReaction = false, who?: Combatant, creatureOpts?: GetTurnOptionsResponse | null): void {
     const e = this.encounter();
-    const own = this.own();
-    const attack = this.options()?.options?.attacks.find((a) => a.attack?.key === key)?.attack;
+    const own = who ?? this.own();
+    const opts = who ? creatureOpts : this.options();
+    const attack = opts?.options?.attacks.find((a) => a.attack?.key === key)?.attack;
     if (!e || !own || !attack) {
       return;
     }
@@ -845,20 +1111,20 @@ export class CombatView {
       attackerId: own.id,
       round: e.round,
       attack,
-      targets: this.options()?.attackTargets.find((t) => t.attackKey === key)?.targets ?? [],
+      targets: opts?.attackTargets.find((t) => t.attackKey === key)?.targets ?? [],
       diceMode: this.diceMode(),
       preference: this.dicePreference(),
       state: this.state(),
       asReaction,
-      attacksLeft: this.attacksLeft(),
-      attacksPerAction: this.attacksPerAction(),
+      attacksLeft: who ? (opts?.options?.economy?.attacksLeft ?? 0) : this.attacksLeft(),
+      attacksPerAction: who ? (opts?.options?.economy?.attacksPerAction ?? 1) : this.attacksPerAction(),
       resume: resume
         ? { pending: resume, targetLabel: e.combatants.find((c) => c.id === resume.targetId)?.label ?? '' }
         : undefined,
     };
     openSheet<AttackSheet, AttackSheetData, boolean>(this.dialog, this.bottomSheet, AttackSheet, {
       data,
-      ariaLabel: asReaction ? `Ataque de oportunidade com ${attack.namePt || attack.name}` : `Atacar com ${attack.namePt || attack.name}`,
+      ariaLabel: asReaction ? `Ataque de oportunidade com ${attack.namePt || attack.name}` : `Atacar com ${attack.namePt || attack.name}${who ? `: ${who.label}` : ''}`,
       labelledBy: 'sheet-t',
     }).subscribe();
   }
@@ -883,8 +1149,13 @@ export class CombatView {
     };
   }
 
-  /** "Conjurar": the cast sheet (the slot, the targets, the roll, the damage). */
-  protected openCast(key: string): void {
+  /** "Conjurar": the cast sheet (the slot, the targets, the roll, the damage); a summoning spell asks for the creatures instead. */
+  protected async openCast(key: string): Promise<void> {
+    const spell = this.options()?.options?.spells.find((s) => s.spell?.key === key);
+    if (spell?.spell && (await this.isSummon(key))) {
+      this.summonSheet(key, spell.spell.namePt || spell.spell.name);
+      return;
+    }
     this.castSheet(key);
   }
 
@@ -982,9 +1253,79 @@ export class CombatView {
   /** The player ends their own concentration (the conditions are the master's). */
   protected endOwnConcentration(): Promise<boolean> {
     const own = this.own();
+    this.concentration.endedByMe = true;
     return own
-      ? this.run((e) => this.api.setConditions(this.campaignId(), e.id, own.id, { endConcentration: true }))
+      ? this.run((e) => this.api.setConditions(this.campaignId(), e.id, own.id, { endConcentration: true })).then((ok) => {
+          if (!ok) {
+            this.concentration.endedByMe = false;
+          }
+          return ok;
+        })
       : Promise.resolve(false);
+  }
+
+  /** "Encerrar a parte dos Lobos" / "Encerrar a vez do Nanquim": the part of every member of the tab that still acts, one call each (a joint turn ends part by part). */
+  protected async endTab(tab: MineTab): Promise<void> {
+    for (const member of tab.members) {
+      const e = this.encounter();
+      // Read again before each call: the answer to the one before may have moved the turn on.
+      if (!e || !membersToEnd(e, { ...tab, members: [member] }).length) {
+        continue;
+      }
+      if (!(await this.run((current) => this.api.endTurn(this.campaignId(), current.id, member.id, false, current.round)))) {
+        return;
+      }
+    }
+  }
+
+  /** What the player's combatants say a summoning spell is: the keys `GetSummonOptions` lists, read once for the character. */
+  private summonSpells: Promise<ReadonlySet<string>> | null = null;
+
+  private isSummon(key: string): Promise<boolean> {
+    const own = this.own();
+    if (!own) {
+      return Promise.resolve(false);
+    }
+    // A failed read is not kept: the next cast asks again, so one error never hides Conjurar Animais for the whole session.
+    this.summonSpells ??= this.creaturesApi.summonOptions(this.campaignId(), own.characterId).then(
+      (options) => new Set(options.spells.map((s) => s.spellKey)),
+      (err: unknown) => {
+        this.summonSpells = null;
+        throw err;
+      },
+    );
+    return this.summonSpells.then(
+      (keys) => keys.has(key),
+      () => false,
+    );
+  }
+
+  /** Conjurar Animais in a combat: the choices of the creatures and the group's one initiative roll (E9-12). */
+  private summonSheet(key: string, name: string): void {
+    const e = this.encounter();
+    const own = this.own();
+    if (!e || !own) {
+      return;
+    }
+    const data: SummonSheetData = {
+      campaignId: this.campaignId(),
+      characterId: own.characterId,
+      spellKey: key,
+      combat: {
+        encounterId: e.id,
+        casterId: own.id,
+        diceMode: this.diceMode(),
+        preference: this.dicePreference(),
+        state: this.state(),
+        concentrating: own.concentrationSpellNamePt,
+      },
+    };
+    openSheet<SummonSheet, SummonSheetData, unknown>(this.dialog, this.bottomSheet, SummonSheet, {
+      data,
+      ariaLabel: `Conjurar ${name}`,
+      labelledBy: 'summon-t',
+      width: '560px',
+    }).subscribe();
   }
 
   /** "Condições…" in a combatant's menu (the master). */
@@ -1066,6 +1407,11 @@ export class CombatView {
 
   protected reveal(change: { id: string; hidden: boolean }): Promise<boolean> {
     return this.run((e) => this.api.setHidden(this.campaignId(), e.id, change.id, change.hidden));
+  }
+
+  /** The master: "Perdeu a concentração" (the app does not roll the save; the damage card reminds the DC). */
+  protected loseConcentration(id: string): Promise<boolean> {
+    return this.run((e) => this.api.setConditions(this.campaignId(), e.id, id, { endConcentration: true }));
   }
 
   protected remove(id: string): Promise<boolean> {
@@ -1252,7 +1598,7 @@ export class CombatView {
 
   /** "Mover para cá" on the "Mover" page. */
   protected async confirmMove(to: Square): Promise<void> {
-    const own = this.own();
+    const own = this.mover();
     if (!own) {
       return;
     }
@@ -1264,7 +1610,7 @@ export class CombatView {
   /** "Saltar para cá" or "Saltar 1,8 m para cima": the same call, as a jump. The new movement
    * used, less what was used before, is what the jump cost: the server's own numbers. */
   protected async confirmJump(req: JumpRequest): Promise<void> {
-    const own = this.own();
+    const own = this.mover();
     if (!own) {
       return;
     }
@@ -1276,7 +1622,7 @@ export class CombatView {
         : this.api.move(this.campaignId(), e.id, own.id, own.col, own.row, { kind: 'high', heightDft: req.heightDft }),
     );
     if (ok) {
-      const spent = (this.own()?.movementUsedDft ?? before) - before;
+      const spent = (this.mover()?.movementUsedDft ?? before) - before;
       this.moveNote.set(
         req.kind === 'long' ? `Você saltou ${metersFixed(spent / 10)}.` : `Você saltou ${metersFixed(spent / 10)} para cima.`,
       );
@@ -1322,16 +1668,28 @@ export class CombatView {
 
   /** "Desengajar (gasta a ação)" on the "Mover" page: the warning goes once it is taken. */
   protected disengage(): Promise<boolean> {
-    return this.takeAction('standard:disengage');
+    const who = this.mover();
+    return who ? this.takeActionFor(who.id, 'standard:disengage') : Promise.resolve(false);
   }
 
   protected closeFullPage(): void {
+    this.moverId.set('');
     this.dropStart.set(null);
     this.state().moving.set(false);
     this.state().mapOpen.set(false);
   }
 
   protected openMove(): void {
+    this.moverId.set('');
+    this.dropStart.set(null);
+    this.moveError.set('');
+    this.state().moving.set(true);
+  }
+
+  /** "Mover o Lobo atroz 1": the same page, for the creature. */
+  protected openCreatureMove(id: string): void {
+    this.moverName = this.encounter()?.combatants.find((c) => c.id === id)?.label ?? '';
+    this.moverId.set(id);
     this.dropStart.set(null);
     this.moveError.set('');
     this.state().moving.set(true);

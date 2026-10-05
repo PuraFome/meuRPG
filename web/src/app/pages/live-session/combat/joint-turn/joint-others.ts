@@ -4,7 +4,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { type Combatant, CombatantKind, type Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { article } from '../../../../core/combat/combat-log';
 import { combatantInitial } from '../../../../core/combat/combat-view';
-import { jointTurn, partEconomy } from '../../../../core/combat/joint-turn';
+import { groupFeminine, groupName, isCreature } from '../../../../core/combat/creature-names';
+import { jointTurn, listNames, partEconomy } from '../../../../core/combat/joint-turn';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import { PartState } from './part-state';
 
@@ -30,6 +31,7 @@ export class JointOthers {
   readonly mode = input.required<'others' | 'summary' | 'outside'>();
 
   protected readonly Player = CombatantKind.PLAYER;
+  protected readonly Creature = CombatantKind.CREATURE;
   protected readonly joint = computed(() => jointTurn(this.encounter()));
   /** The members the card draws: the others while it is their turn, everyone otherwise. */
   protected readonly blocks = computed(() => {
@@ -37,7 +39,24 @@ export class JointOthers {
     if (!j) {
       return [];
     }
+    if (this.mode() === 'outside') {
+      // Who ended is news; who still acts is one line ("Faltam os 2 Lobos"), never a row each saying "Ainda age".
+      return j.members.filter((m) => m.turnPartEnded);
+    }
     return this.mode() === 'others' ? j.members.filter((m) => !m.mine) : j.members;
+  });
+  /** "Faltam os 2 Lobos", "Falta a Brisa": the members that still act, for the viewer outside the group. */
+  protected readonly missing = computed(() => {
+    const j = this.joint();
+    const still = j ? j.members.filter((m) => !m.turnPartEnded) : [];
+    if (this.mode() !== 'outside' || still.length === 0) {
+      return '';
+    }
+    const who =
+      still.length > 1 && still.every(isCreature) && new Set(still.map((m) => m.monsterKey)).size === 1
+        ? `${groupFeminine(still) ? 'as' : 'os'} ${still.length} ${groupName(still).split(' ')[0]}`
+        : listNames(still.map((m) => `${article(m.label)} ${m.label}`));
+    return `${still.length === 1 ? 'Falta' : 'Faltam'} ${who}`;
   });
   protected readonly title = computed(() => {
     switch (this.mode()) {
@@ -48,7 +67,7 @@ export class JointOthers {
       case 'summary':
         return 'Neste turno conjunto';
       default:
-        return 'Quem já encerrou';
+        return this.blocks().length === 0 ? this.missing() : 'Quem já encerrou';
     }
   });
   /** The economy of a member, only for a player's character when the card shows it. */
@@ -59,7 +78,8 @@ export class JointOthers {
   }
 
   protected showsEconomy(c: Combatant): boolean {
-    return this.detailed() && c.kind === CombatantKind.PLAYER;
+    // Only a player's character, or the viewer's own creature: nobody else's creature has its economy sent.
+    return this.detailed() && (c.kind === CombatantKind.PLAYER || c.controlledByMe);
   }
 
   protected economy(c: Combatant) {

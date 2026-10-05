@@ -1,3 +1,7 @@
+:host(.flow) {
+  min-height: 0;
+}
+
 :host {
   display: flex;
   flex: 1 1 auto;
@@ -68,6 +72,15 @@
   }
 }
 
+// A phone's bottom sheet scrolls as a whole: the list shows every row and has no scroll of its own.
+.rows--flow {
+  flex: none;
+  min-height: 0;
+  max-height: none;
+  contain: none;
+  overflow: visible;
+}
+
 .row {
   position: relative;
   display: flex;
@@ -118,7 +131,12 @@
   min-width: 0;
 }
 
+// The name and the book's English name: each its own line height, so a wrapped "(Giant Wolf Spider)" leaves no gap.
 .row__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 6px;
   font-family: var(--mr-font-display);
   font-size: 19px;
   font-weight: 700;
@@ -127,16 +145,37 @@
 }
 
 .row__alias {
-  margin-left: 4px;
   font-family: var(--mr-font-sans);
   font-size: 14px;
   font-weight: 400;
+  line-height: 19px;
   color: var(--mr-ink-muted);
 }
 
 .row__sub {
   font-size: 14px;
   line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+// What the creature attacks with: the name and the numbers, and under them the book's own text (English).
+.row__attacks {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: 2px;
+}
+
+.row__atk {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 19px;
+  color: var(--mr-ink);
+}
+
+.row__rider {
+  font-size: 13px;
+  line-height: 18px;
   color: var(--mr-ink-muted);
 }
 
@@ -161,6 +200,13 @@
   justify-content: center;
   width: 44px;
   height: 44px;
+
+  // A finger's size on a phone.
+  @media (max-width: 767.98px) {
+    width: 48px;
+    height: 48px;
+  }
+
   border: 1px solid var(--mr-control-line);
   border-radius: var(--mr-radius-md);
   background: var(--mr-surface);

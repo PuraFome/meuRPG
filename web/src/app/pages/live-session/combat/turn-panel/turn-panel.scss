@@ -311,6 +311,19 @@
   margin-top: var(--mr-space-3);
 }
 
+// The tokens of a group of creatures on turn: side by side, each in its own ring.
+.turn__tokens {
+  display: inline-flex;
+  flex: none;
+  gap: 8px;
+  padding: 3px;
+}
+
+.banner__band {
+  margin-top: 10px;
+  align-self: flex-start;
+}
+
 // "Esperando o mestre aplicar o dano": the tag under the trap's notice.
 .turn__wait {
   display: flex;

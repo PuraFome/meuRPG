@@ -1,9 +1,9 @@
 <!-- A dialog (tablet and up) has a definite height, like "Dar uma criatura": the list takes what is left. The phone's bottom sheet keeps its own. -->
 <app-sheet-frame
-  [title]="spell()?.namePt ?? data.spellKey"
+  [title]="title()"
   [subtitle]="subtitle()"
   [phone]="inSheet"
-  [height]="inSheet ? '' : 'min(700px, calc(92dvh - 48px))'"
+  [height]="inSheet ? (combat ? 'calc(100dvh - 56px)' : '') : 'min(700px, calc(92dvh - 48px))'"
   titleId="summon-t"
   (closed)="close()"
 >
@@ -15,7 +15,22 @@
       </div>
     }
 
-    @if (options() === null) {
+    @if (result(); as r) {
+      <!-- The result of a casting in a combat (E9-12 state 2): what entered, with whose initiative, then each creature. -->
+      <p class="done" role="status">{{ r.text }}</p>
+      <ul class="made" aria-label="As criaturas que entraram no combate">
+        @for (c of r.creatures; track c.id) {
+          <li class="made__row">
+            <app-creature-art class="made__art" [monsterKey]="c.monsterKey" />
+            <span class="made__text">
+              <b class="made__name">{{ c.label }}</b>
+              <span class="made__sub">{{ line(c) }}</span>
+            </span>
+            <span class="made__state">{{ word(c) }}</span>
+          </li>
+        }
+      </ul>
+    } @else if (options() === null) {
       <p class="wait" role="status">Lendo o que a sua ficha conjura…</p>
     } @else if (spell(); as s) {
       @if (replacesNote()) {
@@ -33,28 +48,37 @@
         </mat-form-field>
       }
 
-      @if (!ritual()) {
-        @if (slotRows().length === 0) {
-          <div class="mr-notice mr-notice--warning fixed" role="status">
-            <mat-icon aria-hidden="true">info</mat-icon>
-            <p>Não há espaço de {{ s.level }}º círculo ou maior nesta ficha.</p>
-          </div>
-        } @else {
-          <app-slot-picker class="fixed" [rows]="slotRows()" [chosen]="slot()" (pick)="pickSlot($event)" />
-        }
-      }
-
-      @if (circleOptions().length > 1) {
-        <fieldset class="options fixed">
-          <legend class="cap">Quantas criaturas</legend>
-          @for (o of circleOptions(); track $index) {
-            <label class="opt" [class.opt--on]="option() === $index">
-              <input type="radio" class="mr-visually-hidden" name="option" [checked]="option() === $index" (change)="pickOption($index)" />
-              <mat-icon aria-hidden="true">{{ option() === $index ? 'radio_button_checked' : 'radio_button_unchecked' }}</mat-icon>
-              <span>{{ optionLabel(o) }}</span>
-            </label>
+      @if (collapsed()) {
+        <!-- A creature is chosen: the slot and the quantity fold into one line, so the list gets the room. -->
+        <p class="setup fixed">
+          <span class="setup__text">{{ setupLine() }}</span>
+          <button type="button" class="setup__edit" [attr.aria-label]="'Mudar o espaço e a quantidade: ' + setupLine()" (click)="editing.set(true)">Mudar</button>
+        </p>
+      } @else {
+        @if (!ritual()) {
+          @if (slotRows().length === 0) {
+            <div class="mr-notice mr-notice--warning fixed" role="status">
+              <mat-icon aria-hidden="true">info</mat-icon>
+              <p>Não há espaço de {{ s.level }}º círculo ou maior nesta ficha.</p>
+            </div>
+          } @else {
+            <app-slot-picker class="fixed" [rows]="slotRows()" [chosen]="slot()" (pick)="pickSlot($event)" />
           }
-        </fieldset>
+        }
+
+        @if (circleOptions().length > 1) {
+          <fieldset class="options fixed">
+            <legend class="cap">Quantas criaturas</legend>
+            @for (o of circleOptions(); track $index) {
+              <label class="opt" [class.opt--on]="option() === $index">
+                <input type="radio" class="mr-visually-hidden" name="option" [checked]="option() === $index" (change)="pickOption($index)" />
+                <mat-icon aria-hidden="true">{{ option() === $index ? 'radio_button_checked' : 'radio_button_unchecked' }}</mat-icon>
+                <span>{{ optionLabel(o) }}</span>
+              </label>
+            }
+          </fieldset>
+        }
+
       }
 
       @if (opt()) {
@@ -65,6 +89,8 @@
           } @else {
             <app-creature-choice-list
               [rows]="rows()"
+              [flow]="inSheet"
+              [attacksAlways]="!familiar() && (opt()?.forms?.length ?? 0) === 0"
               [chosen]="single()"
               [multi]="several()"
               [counts]="counts()"
@@ -78,28 +104,68 @@
           }
         </div>
       }
+      @if (combat && canApp && canType && !typing()) {
+        <!-- One d20 rolls the initiative of the whole group: the app's, unless the player has a physical die. -->
+        <p class="roll__line">
+          O app rola o d20 da iniciativa das criaturas.
+          <button type="button" class="roll__switch" (click)="typing.set(true)">Digitar o d20 de um dado físico</button>
+        </p>
+      }
     }
   </div>
 
   <div foot>
-    @if (spell()) {
-      @if (missing()) {
-        <p class="line line--missing" role="status"><mat-icon aria-hidden="true">block</mat-icon>{{ missing() }}</p>
-      } @else {
-        <p class="line" role="status"><mat-icon aria-hidden="true">info</mat-icon><span><b>{{ costLine() }}</b></span></p>
+    @if (result()) {
+      <button #back type="button" mat-stroked-button class="no" (click)="close()">Fechar</button>
+    } @else {
+      @if (spell()) {
+        @if (concentrationLine(); as c) {
+          <p class="line"><mat-icon aria-hidden="true">hourglass_empty</mat-icon><span><b>{{ c.lead }}</b> {{ c.text }}@if (c.ends) { <b>{{ c.ends }}</b> }</span></p>
+        }
+        @if (missing()) {
+          <p class="line line--missing" role="status"><mat-icon aria-hidden="true">block</mat-icon>{{ missing() }}</p>
+        } @else if (!combat) {
+          <p class="line" role="status"><mat-icon aria-hidden="true">info</mat-icon><span><b>{{ costLine() }}</b></span></p>
+        }
       }
+      @if (combat && spell()) {
+        <!-- One d20 for the whole group's initiative: the app's (the server rolls it), or the face of a physical die. -->
+        @if (needsFace()) {
+          <div class="roll">
+            <label class="roll__label" for="initiative-face">Role 1d20 para a iniciativa das criaturas</label>
+            <input
+              id="initiative-face"
+              class="roll__field"
+              type="text"
+              inputmode="numeric"
+              maxlength="2"
+              autocomplete="off"
+              aria-describedby="initiative-hint"
+              [value]="typed()"
+              (input)="typed.set($any($event.target).value)"
+            />
+            <!-- What the die is for, next to the field: one d20 for the whole group. -->
+            <p class="roll__hint" id="initiative-hint">
+              A iniciativa das criaturas sai do dado físico que você digitar.
+              @if (canApp && canType) {
+                <button type="button" class="roll__switch" (click)="typing.set(false)">Rolar no app</button>
+              }
+            </p>
+          </div>
+        }
+      }
+      <button
+        type="button"
+        mat-flat-button
+        class="go"
+        [class.mr-button--off]="!ready()"
+        [disabled]="!ready()"
+        disabledInteractive
+        (click)="cast()"
+      >
+        <mat-icon aria-hidden="true">auto_awesome</mat-icon>{{ buttonLabel() }}
+      </button>
+      <button type="button" mat-stroked-button class="no" [disabled]="busy()" (click)="close()">Cancelar</button>
     }
-    <button
-      type="button"
-      mat-flat-button
-      class="go"
-      [class.mr-button--off]="!ready()"
-      [disabled]="!ready()"
-      disabledInteractive
-      (click)="cast()"
-    >
-      <mat-icon aria-hidden="true">auto_awesome</mat-icon>{{ buttonLabel() }}
-    </button>
-    <button type="button" mat-stroked-button class="no" [disabled]="busy()" (click)="close()">Cancelar</button>
   </div>
 </app-sheet-frame>

@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"cmp"
 	"fmt"
 	"regexp"
 	"slices"
@@ -276,6 +277,9 @@ type CreatureAbility struct {
 // CreatureAction is an action of a stat block.
 type CreatureAction struct {
 	Name, Text, Usage string
+	// NamePT is the action's Portuguese name when the content has one (the attacks
+	// a character can have through a creature: names_pt.json "attack:<slug>"); empty otherwise.
+	NamePT string
 	// HasAttack says it is an attack roll, with AttackBonus to the d20.
 	HasAttack   bool
 	AttackBonus int
@@ -378,7 +382,7 @@ func (c *content) creature(m *srd51.Monster) Creature {
 	}
 	out.Traits, out.Reactions, out.LegendaryActions = ability(m.SpecialAbilities), ability(m.Reactions), ability(m.LegendaryActions)
 	for _, a := range m.Actions {
-		act := CreatureAction{Name: a.Name, Text: a.Desc, Usage: a.Usage, HasAttack: a.HasAttack, AttackBonus: a.AttackBonus}
+		act := CreatureAction{Name: a.Name, NamePT: c.namesPT["attack:"+slugOf(a.Name)], Text: a.Desc, Usage: a.Usage, HasAttack: a.HasAttack, AttackBonus: a.AttackBonus}
 		for _, d := range a.Damage {
 			act.Damage = append(act.Damage, CreatureDamage{Dice: d.Dice, TypeKey: d.DamageType, TypeNamePT: c.namePT(d.DamageType)})
 		}
@@ -559,7 +563,7 @@ func slugOf(name string) string {
 func (c *content) monsterAttack(m *srd51.Monster, a srd51.MonsterAction, key string, mods map[Ability]int) Attack {
 	melee := strings.HasPrefix(a.Desc, "Melee")
 	at := Attack{
-		Key: key, Name: a.Name, NamePT: a.Name, Kind: "weapon", AttackBonus: a.AttackBonus, Proficient: true,
+		Key: key, Name: a.Name, NamePT: cmp.Or(c.namesPT["attack:"+slugOf(a.Name)], a.Name), Kind: "weapon", AttackBonus: a.AttackBonus, Proficient: true,
 		Melee: melee, Notes: a.Desc,
 	}
 	if strings.Contains(a.Desc, "Spell Attack") {

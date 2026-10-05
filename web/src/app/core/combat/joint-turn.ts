@@ -5,6 +5,7 @@ import {
   EncounterStatus,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { article } from './combat-log';
+import { groupName, ofOwner } from './creature-names';
 import { distanceText } from '../units';
 
 /**
@@ -164,8 +165,9 @@ function sameGroup(a: Combatant, b: Combatant, master: boolean, inTurnGroup: Rea
   if (a.initiative === undefined || b.initiative === undefined || a.initiative !== b.initiative) {
     return false;
   }
-  // A player never groups NPCs: they have no total for the player anyway.
-  return master || (a.kind === CombatantKind.PLAYER && b.kind === CombatantKind.PLAYER);
+  // A player never groups NPCs: they have no total for the player anyway. The totals of characters
+  // and of their creatures are public (RN-20), so those group.
+  return master || (a.kind !== CombatantKind.NPC && b.kind !== CombatantKind.NPC);
 }
 
 /** The ids of the NPC-only groups a player is told about (to name them). */
@@ -191,6 +193,13 @@ export function afterTurn(e: Encounter): { readonly name: string; readonly mine:
     if (c.defeated || inGroup.has(c.id)) {
       continue;
     }
+    if (c.kind === CombatantKind.CREATURE) {
+      // A player's creatures: "os Lobos atrozes da Sálvia" for a group that shares a total, the creature's name alone.
+      const run = creatureRun(list, list.indexOf(c));
+      const owner = ofOwner(e, c);
+      const name = run.length > 1 ? `${groupName(run)}${owner ? ` ${owner}` : ''}` : c.label;
+      return { name, mine: run.some((m) => m.controlledByMe), plural: run.length > 1 };
+    }
     const npcGroup = npcGroupOf(e, c.id) ?? masterGroupFrom(list, list.indexOf(c));
     if (npcGroup) {
       const labels = npcGroup.map((m) => m.label);
@@ -199,6 +208,22 @@ export function afterTurn(e: Encounter): { readonly name: string; readonly mine:
     return { name: c.label, mine: c.mine, plural: false };
   }
   return null;
+}
+
+/** The creatures from `at` on that share the first one's total and owner (one casting's, in a joint turn), without the defeated. */
+function creatureRun(list: readonly Combatant[], at: number): readonly Combatant[] {
+  const first = list[at];
+  const run: Combatant[] = [];
+  for (let i = at; i < list.length; i++) {
+    const c = list[i];
+    if (c.kind !== CombatantKind.CREATURE || c.initiative !== first.initiative || c.ownerCharacterId !== first.ownerCharacterId) {
+      break;
+    }
+    if (!c.defeated) {
+      run.push(c);
+    }
+  }
+  return run.length > 0 ? run : [first];
 }
 
 /**

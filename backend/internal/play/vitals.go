@@ -119,12 +119,17 @@ func (s *Service) AdjustCharacterVitals(
 			if err != nil {
 				return fmt.Errorf("next event number: %w", err)
 			}
-			ended, err := json.Marshal(actionEvent{OwnerCharacter: charText, Beast: before.GetWildShape().GetBeastKey(), Reason: endedByMaster})
+			encID, round, actor, hidden := s.shapeLine(ctx, q, session.ID, charText)
+			ended, err := json.Marshal(actionEvent{OwnerCharacter: charText, Beast: before.GetWildShape().GetBeastKey(), Reason: endedByMaster, EncounterID: encID, Round: round, Actor: actor, Secret: hidden})
 			if err != nil {
 				return fmt.Errorf("encode the event payload: %w", err)
 			}
+			var encounterID *string
+			if encID != "" {
+				encounterID = &encID
+			}
 			if _, err := q.InsertSessionEvent(ctx, playdb.InsertSessionEventParams{
-				GameSessionID: session.ID, Seq: seq, Kind: eventWildShapeEnded, ActorUserID: &m.UserID, CharacterID: &charText, Payload: ended, CreatedAt: s.now(),
+				GameSessionID: session.ID, Seq: seq, Kind: eventWildShapeEnded, ActorUserID: &m.UserID, CharacterID: &charText, Payload: ended, CreatedAt: s.now(), EncounterID: encounterID,
 			}); err != nil {
 				return fmt.Errorf("insert session event: %w", err)
 			}

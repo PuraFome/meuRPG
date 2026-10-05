@@ -90,6 +90,19 @@
   gap: 10px;
 }
 
+// A dialog (from a tablet up): the two buttons side by side, so the list keeps the room.
+@media (min-width: 768px) {
+  [foot] {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+
+    > :not(button),
+    > button:only-child {
+      grid-column: 1 / -1;
+    }
+  }
+}
+
 .line {
   display: flex;
   align-items: flex-start;
@@ -121,4 +134,158 @@
   --mat-button-outlined-label-text-color: var(--mr-accent-text);
   --mat-button-outlined-outline-color: var(--mr-control-line);
   font-weight: 700;
+}
+
+// The result of a casting in a combat: the sentence, then a line for each creature that entered (E9-12 state 2).
+.done {
+  margin: 0;
+  font-size: 15px;
+  line-height: 21px;
+}
+
+.made {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.made__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--mr-rule);
+}
+
+.made__art {
+  --art-size: 48px;
+}
+
+.made__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.made__name {
+  font-family: var(--mr-font-display);
+  font-size: 20px;
+  line-height: 24px;
+}
+
+.made__sub {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.made__state {
+  flex: none;
+  padding: 2px 10px;
+  border: 1px solid var(--mr-ink);
+  border-radius: var(--mr-radius-pill);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 18px;
+}
+
+// The d20 of the group's initiative, typed from a physical die: the label and the field on a row, the hint under them.
+.roll {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px;
+  align-items: center;
+  gap: 4px 12px;
+}
+
+.roll__label {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 19px;
+}
+
+.roll__field {
+  box-sizing: border-box;
+  width: 64px;
+  height: 44px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font: inherit;
+  font-size: 20px;
+  text-align: center;
+
+  // Inside the field's own edge: a ring outside it is cut by the dialog's edge on a desktop.
+  &:focus-visible {
+    border-color: var(--mr-focus);
+    outline: 2px solid var(--mr-focus);
+    outline-offset: -3px;
+  }
+}
+
+.roll__hint {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 8px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.roll__line {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+// A text action: it starts the line, so its words line up with the text above.
+.roll__switch {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mr-accent-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+// The slot and the quantity, folded once a creature is chosen: one line and "Mudar".
+.setup {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 4px 0 4px 12px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+}
+
+.setup__text {
+  font-weight: 700;
+  line-height: 20px;
+}
+
+.setup__edit {
+  min-width: 64px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  background: none;
+  color: var(--mr-accent-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
 }

@@ -207,6 +207,11 @@ a.mr-list__row:hover .mr-list__name {
   --mat-button-filled-disabled-label-text-color: var(--mr-ink-muted);
   --mat-button-outlined-disabled-label-text-color: var(--mr-ink-muted);
   --mat-button-outlined-disabled-outline-color: var(--mr-control-line);
+  // Nothing to press: no tint under the pointer or the finger either (a grey fill would read as a different button).
+  --mat-button-filled-hover-state-layer-opacity: 0;
+  --mat-button-outlined-hover-state-layer-opacity: 0;
+  --mat-button-filled-pressed-state-layer-opacity: 0;
+  --mat-button-outlined-pressed-state-layer-opacity: 0;
   border: 1px dashed var(--mr-control-line);
   cursor: default;
 }

@@ -37,6 +37,7 @@
             [tags]="isCantrip(atk) ? ['Truque'] : []"
             [helpName]="isCantrip(atk) ? attackName(atk) : ''"
             [detail]="attackDetail(atk)"
+            [rider]="rider(atk)"
             [button]="asksSave(atk) ? 'Conjurar' : 'Atacar'"
             [buttonLabel]="(asksSave(atk) ? 'Conjurar ' : 'Atacar com ') + attackName(atk)"
             [off]="!a.enabled || !!locked()"
@@ -48,7 +49,27 @@
         }
       }
     }
-    @if (spells().length) {
+    @for (f of action_().features; track f.action?.key) {
+      @if (isWild(f)) {
+        <!-- A row of the Ação, right after the attacks (E9-11 1): it is how the druid becomes a beast. -->
+        <app-action-row
+          class="wild"
+          [name]="f.action?.namePt ?? ''"
+          [tags]="['Característica']"
+          [detail]="wild()?.detail ?? ''"
+          button="Transformar"
+          [buttonLabel]="'Transformar: ' + (f.action?.namePt ?? '')"
+          [off]="!!wild()?.reason || !!locked()"
+          [reason]="locked() || (wild()?.reason ?? '')"
+          [busy]="busy()"
+          (press)="transform.emit()"
+        />
+      }
+    }
+    @if (beast()) {
+      <p class="group__sub">Magias</p>
+      <p class="group__why" id="no-spells"><mat-icon aria-hidden="true">block</mat-icon><span><b>Sem magias na forma de fera.</b> Volte à forma normal para conjurar.</span></p>
+    } @else if (spells().length) {
       <p class="group__sub">
         Magias <span class="group__note">(as que dá para conjurar agora vêm primeiro)</span>
       </p>
@@ -79,9 +100,9 @@
         />
       }
     }
-    @if (action_().features.length) {
+    @if (otherFeatures().length) {
       <p class="group__sub">Habilidades</p>
-      @for (f of action_().features; track f.action?.key) {
+      @for (f of otherFeatures(); track f.action?.key) {
         <app-action-row
           [name]="f.action?.namePt ?? ''"
           [detail]="featureDetail(f)"
@@ -119,6 +140,7 @@
           type="button"
           class="std__btn"
           [class.std__btn--off]="!a.enabled || !!locked()"
+          [class.mr-button--off]="!a.enabled || !!locked()"
           [disabled]="!a.enabled || !!locked() || busy()"
           disabledInteractive
           [attr.aria-describedby]="!a.enabled || locked() ? 'std-why' : null"
@@ -130,12 +152,24 @@
     </div>
   </section>
 
-  @if (bonus().features.length) {
+  @if (bonus().features.length || beast()) {
     <section class="group" aria-labelledby="g-bonus">
       <header class="group__head">
         <h3 class="group__name" id="g-bonus">Ação bônus</h3>
         <app-group-state [word]="state(own().bonusActionUsed)" [used]="own().bonusActionUsed" />
       </header>
+      @if (beast()) {
+        <app-action-row
+          name="Voltar à forma normal"
+          [detail]="leaveDetail()"
+          button="Voltar"
+          buttonLabel="Voltar à forma normal"
+          [off]="own().bonusActionUsed || !!locked()"
+          [reason]="locked() || 'Ação bônus já usada'"
+          [busy]="busy()"
+          (press)="leaveForm.emit()"
+        />
+      }
       @for (f of bonus().features; track f.action?.key) {
         <app-action-row
           [name]="f.action?.namePt ?? ''"

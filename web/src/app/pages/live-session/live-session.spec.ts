@@ -112,6 +112,9 @@ class FakeLiveSessionSource implements LiveSessionSource {
     return Promise.resolve(this.sheet);
   }
 
+  getCreatureArmorClass(): Promise<number | null> {
+    return Promise.resolve(13);
+  }
   getPartyInfo(): Promise<ReadonlyMap<string, PartyMemberInfoVm>> {
     return Promise.resolve(this.party);
   }

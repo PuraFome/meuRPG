@@ -3,7 +3,9 @@ import type { Combatant } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { metersFixed, reachSquares, squaresText } from '../../../../core/units';
 import { joinDots, tight } from '../../../../core/format/text';
 import { leftSentence, passNote } from '../../../../core/combat/joint-turn';
+import type { MineTab } from '../../../../core/combat/mine';
 import { EndPart } from '../joint-turn/end-part';
+import { MineTabs } from '../mine-tabs/mine-tabs';
 import { EndTurn } from './end-turn';
 
 /**
@@ -16,8 +18,12 @@ import { EndTurn } from './end-turn';
  */
 @Component({
   selector: 'app-turn-bar',
-  imports: [EndPart, EndTurn],
+  imports: [EndPart, EndTurn, MineTabs],
   template: `
+    @if (tabs().length > 1) {
+      <app-mine-tabs [tabs]="tabs()" [selected]="selected()" (select)="select.emit($event)" />
+    }
+    @if (own(); as me) {
     @if (waiting()) {
       <p class="what">{{ waiting() }}: a vez continua quando responderem.</p>
     } @else if (!asking()) {
@@ -39,7 +45,8 @@ import { EndTurn } from './end-turn';
       }
       <app-end-part [left]="partLeft()" [busy]="busy()" (endPart)="endTurn.emit()" (asked)="asking.set($event)" />
     } @else {
-      <app-end-turn [own]="own()" [attacksLeft]="attacksLeft()" [busy]="busy()" [waiting]="waiting()" [block]="true" (endTurn)="endTurn.emit()" />
+      <app-end-turn [own]="me" [attacksLeft]="attacksLeft()" [busy]="busy()" [waiting]="waiting()" [block]="true" (endTurn)="endTurn.emit()" />
+    }
     }
   `,
   styles: `
@@ -96,8 +103,11 @@ import { EndTurn } from './end-turn';
   `,
 })
 export class TurnBar {
-  /** The player's own combatant. */
-  readonly own = input.required<Combatant>();
+  /** The player's own character while it acts; `null` when only the tabs are drawn (it is not its turn, or a creature's page is open). */
+  readonly own = input<Combatant | null>(null);
+  /** The tabs of what the player plays (MR-037, E9-12), drawn above when there is more than one. */
+  readonly tabs = input<readonly MineTab[]>([]);
+  readonly selected = input('');
   readonly busy = input(false);
   /** Extra Attack: the attacks that remain once the action is spent. */
   readonly attacksLeft = input(0);
@@ -108,9 +118,13 @@ export class TurnBar {
   readonly joint = input<readonly string[] | null>(null);
 
   readonly endTurn = output<void>();
+  readonly select = output<string>();
 
   protected readonly asking = signal(false);
-  protected readonly partLeft = computed(() => leftSentence(this.own()));
+  protected readonly partLeft = computed(() => {
+    const c = this.own();
+    return c ? leftSentence(c) : '';
+  });
 
   /** "O turno passa quando você e a Brisa encerrarem." */
   protected note(others: readonly string[]): string {
@@ -119,6 +133,9 @@ export class TurnBar {
 
   protected readonly left = computed(() => {
     const c = this.own();
+    if (!c) {
+      return [];
+    }
     const items: { name: string; amount?: string }[] = [];
     if (!c.actionUsed) {
       items.push({ name: 'Ação' });

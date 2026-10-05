@@ -122,3 +122,87 @@ describe('OrderList', () => {
     });
   });
 });
+
+describe('OrderList with a player\'s creatures (E9-12)', () => {
+  const salvia = combatant({ id: 's', label: 'Sálvia', kind: CombatantKind.PLAYER, characterId: 'sc', hitPointsCurrent: 38, hitPointsMax: 38, initiative: 13, concentrationSpell: 'spell:conjure-animals', concentrationSpellNamePt: 'Conjurar Animais' });
+  const wolf = (n: number) =>
+    combatant({ id: `w${n}`, label: `Lobo atroz ${n}`, kind: CombatantKind.CREATURE, characterId: '', ownerCharacterId: 'sc', summonGroupId: 'cast', monsterKey: 'monster:dire-wolf', monsterNamePt: 'Lobo atroz', hitPointsCurrent: 37, hitPointsMax: 37, armorClass: 14, initiative: 10 });
+
+  function setup() {
+    const fixture = TestBed.createComponent(OrderList);
+    fixture.componentRef.setInput('encounter', encounter({ combatants: [salvia, wolf(1), wolf(2)], currentCombatantId: 'w1', turnGroupIds: ['w1', 'w2'] }));
+    const ended: string[] = [];
+    fixture.componentInstance.endConcentration.subscribe((id) => ended.push(id));
+    fixture.detectChanges();
+    return { el: fixture.nativeElement as HTMLElement, ended, fixture };
+  }
+  const text = (n: Element | null | undefined) => n?.textContent?.replace(/\s+/g, ' ').trim();
+
+  it('draws a creature as a dashed round token, with whose it is, in a box named for the group, and a legend', () => {
+    const { el } = setup();
+    expect(el.querySelectorAll('.row__token.tk--creature').length).toBe(2);
+    expect(text(el.querySelector('.row--turn, .row'))).toBeTruthy();
+    const rows = Array.from(el.querySelectorAll('.row__sub'), (n) => text(n));
+    expect(rows).toContain('CA 14 · da Sálvia');
+    expect(text(el.querySelector('app-order-group'))).toContain('Lobos atrozes da Sálvia');
+    expect(text(el.querySelector('.legend'))).toBe('P Jogador C NPC N Criatura de um jogador');
+  });
+
+  it('asks in place before the concentration is lost, with "Voltar" first, and says what goes with it', () => {
+    const { el, ended, fixture } = setup();
+    const open = Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => b.textContent?.includes('Perdeu a concentração'))!;
+    expect(text(open.closest('.row__extra'))).toContain('Concentra em Conjurar Animais · 2 Lobos atrozes');
+    open.click();
+    fixture.detectChanges();
+    const ask = el.querySelector('[role=alertdialog]')!;
+    expect(text(ask)).toContain('A Sálvia perdeu a concentração?');
+    expect(text(ask)).toContain('Conjurar Animais acaba e os 2 Lobos atrozes somem do combate, da ordem e do mapa.');
+    expect(text(ask)).not.toContain('Isso não se desfaz');
+    const buttons = ask.querySelectorAll('button');
+    expect(text(buttons[0])).toBe('Voltar');
+    expect(text(buttons[1])).toBe('Dispensar os Lobos');
+    buttons[1].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(ended).toEqual(['s']);
+  });
+
+  it('offers to dismiss only a caster that has creatures: an NPC on Teia has the line and no question', () => {
+    const fixture = TestBed.createComponent(OrderList);
+    const web = combatant({ id: 'cap', label: 'Capitão Goblin', concentrationSpell: 'spell:web', concentrationSpellNamePt: 'Teia', hitPointsCurrent: 20, hitPointsMax: 20 });
+    fixture.componentRef.setInput('encounter', encounter({ combatants: [web, salvia, wolf(1)], currentCombatantId: 'cap' }));
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const row = (name: string) => Array.from(el.querySelectorAll('li.row')).find((r) => r.textContent?.includes(name))!;
+    expect(text(row('Capitão Goblin').querySelector('.row__extra'))).toBe('Concentra em Teia');
+    expect(row('Capitão Goblin').textContent).not.toContain('Perdeu a concentração');
+    // The caster with a casting's creatures does.
+    expect(row('Sálvia').textContent).toContain('Perdeu a concentração');
+    // The pill is one solid "Concentração", not a dashed "Concentrado" chip.
+    expect(text(row('Capitão Goblin').querySelector('.row__conc'))).toContain('Concentração');
+    expect(el.textContent).not.toContain('Concentrado');
+  });
+
+  it('shows a druid in a beast form to the master: "Na forma de Lobo" and the beast\'s pool beside the druid\'s own', () => {
+    const wolfForm = { ...salvia, wildShapeBeastKey: 'monster:wolf', wildShapeBeastNamePt: 'Lobo', wildShapeHitPointsCurrent: 11, wildShapeHitPointsMax: 11, concentrationSpell: '' } as typeof salvia;
+    const fixture = TestBed.createComponent(OrderList);
+    fixture.componentRef.setInput('encounter', encounter({ combatants: [wolfForm], currentCombatantId: 's' }));
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(text(el.querySelector('app-form-tag'))).toContain('Na forma de Lobo');
+    const hp = text(el.querySelector('.row__hp'));
+    expect(hp).toContain('Lobo 11 de 11');
+    expect(hp).toContain('38 de 38');
+    expect(hp!.indexOf('11 de 11')).toBeLessThan(hp!.indexOf('38 de 38'));
+  });
+
+  it('shows no pool where the combat sends none, and no form tag for a druid in her own shape', () => {
+    const fixture = TestBed.createComponent(OrderList);
+    fixture.componentRef.setInput('encounter', encounter({ combatants: [{ ...salvia, wildShapeBeastKey: 'monster:wolf', wildShapeBeastNamePt: 'Lobo' } as typeof salvia], currentCombatantId: 's' }));
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('app-beast-pool')).toBeNull();
+    const plain = TestBed.createComponent(OrderList);
+    plain.componentRef.setInput('encounter', encounter({ combatants: [salvia], currentCombatantId: 's' }));
+    plain.detectChanges();
+    expect(plain.nativeElement.querySelector('app-form-tag')).toBeNull();
+  });
+});

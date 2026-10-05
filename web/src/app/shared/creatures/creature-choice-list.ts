@@ -1,6 +1,7 @@
-import { Component, ElementRef, afterNextRender, computed, input, output, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, afterNextRender, computed, effect, input, output, signal, viewChild } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
+import type { AttackLine } from '../../core/creatures/creature-format';
 import { CreatureArt } from './creature-art';
 
 /** One creature of a choice list. */
@@ -14,6 +15,8 @@ export interface ChoiceRow {
   readonly subtitle: string;
   /** Shows the silhouette (the master's search); the forms of a spell are plain. */
   readonly art?: boolean;
+  /** The creature's attacks (from its stat block): the name and numbers under the subtitle, and the book's text under them. */
+  readonly attacks?: readonly AttackLine[];
 }
 
 let nextId = 0;
@@ -46,7 +49,8 @@ let nextId = 0;
     <div
       #list
       class="rows"
-      [class.rows--more]="more()"
+      [class.rows--flow]="flow()"
+      [class.rows--more]="more() && !flow()"
       [attr.role]="multi() ? 'group' : 'radiogroup'"
       [attr.aria-label]="label()"
       (scroll)="measure()"
@@ -55,12 +59,15 @@ let nextId = 0;
         @let n = counts()[r.key] ?? 0;
         <label class="row" [class.row--on]="multi() ? n > 0 : r.key === chosen()">
           @if (multi()) {
-            <span class="step">
-              <button type="button" class="step__b" [attr.aria-label]="'Menos ' + r.title" [disabled]="n === 0" (click)="step.emit({ key: r.key, delta: -1 })">
-                <mat-icon aria-hidden="true">remove</mat-icon>
-              </button>
-              <output class="step__n" [attr.aria-label]="n + ' de ' + r.title">{{ n }}</output>
-              <button type="button" class="step__b" [attr.aria-label]="'Mais ' + r.title" [disabled]="full()" (click)="step.emit({ key: r.key, delta: 1 })">
+            <!-- Only a chosen row has the whole stepper; the others have the "+" that chooses one. -->
+            <span class="step" [class.step--one]="n === 0">
+              @if (n > 0) {
+                <button type="button" class="step__b" [attr.aria-label]="'Menos ' + r.title" (click)="step.emit({ key: r.key, delta: -1 })">
+                  <mat-icon aria-hidden="true">remove</mat-icon>
+                </button>
+                <output class="step__n" [attr.aria-label]="n + ' de ' + r.title">{{ n }}</output>
+              }
+              <button type="button" class="step__b" [attr.aria-label]="(n === 0 ? 'Escolher ' : 'Mais ') + r.title" [disabled]="full()" (click)="step.emit({ key: r.key, delta: 1 })">
                 <mat-icon aria-hidden="true">add</mat-icon>
               </button>
             </span>
@@ -79,8 +86,18 @@ let nextId = 0;
             <app-creature-art [monsterKey]="r.key" />
           }
           <span class="row__text">
-            <span class="row__title">{{ r.title }}@if (r.alias) { <span class="row__alias">({{ r.alias }})</span> }</span>
+            <span class="row__title">{{ r.title }}@if (r.alias) { <span class="row__alias" lang="en">({{ r.alias }})</span> }</span>
             <span class="row__sub">{{ r.subtitle }}</span>
+            @if (r.attacks?.length && (attacksAlways() || (multi() ? n > 0 : r.key === chosen()))) {
+              <span class="row__attacks">
+                @for (a of r.attacks; track a.name) {
+                  <span class="row__atk"><b [attr.lang]="a.english ? 'en' : null">{{ a.name }}</b> {{ a.detail }}</span>
+                  @if (a.text && (multi() ? n > 0 : r.key === chosen())) {
+                    <span class="row__rider" lang="en">{{ a.text }}</span>
+                  }
+                }
+              </span>
+            }
           </span>
         </label>
       } @empty {
@@ -89,7 +106,7 @@ let nextId = 0;
     </div>
   `,
   styleUrl: './creature-choice-list.scss',
-  host: { '[style.--rows-max]': 'rowsMax()' },
+  host: { '[style.--rows-max]': 'rowsMax()', '[class.flow]': 'flow()' },
 })
 export class CreatureChoiceList {
   readonly rows = input.required<readonly ChoiceRow[]>();
@@ -101,6 +118,10 @@ export class CreatureChoiceList {
   readonly full = input(false);
   /** The group's name for a screen reader: "Forma". */
   readonly label = input('Criatura');
+  /** Every row says what its creature attacks with, so the creatures can be compared; otherwise only the chosen one does. */
+  readonly attacksAlways = input(false);
+  /** The list shows all its rows and the sheet around it scrolls (a phone's bottom sheet), instead of scrolling inside itself. */
+  readonly flow = input(false);
   readonly searchable = input(false);
   readonly searchLabel = input('Buscar');
   readonly emptyText = input('Nenhuma criatura encontrada.');
@@ -120,6 +141,14 @@ export class CreatureChoiceList {
   private readonly list = viewChild.required<ElementRef<HTMLElement>>('list');
 
   constructor() {
+    // The row just chosen opens (its attacks and their text): bring all of it into view, in the list and in the sheet around it.
+    effect(() => {
+      const key = this.chosen();
+      if (!key || this.multi()) {
+        return;
+      }
+      setTimeout(() => this.list().nativeElement.querySelector('.row--on')?.scrollIntoView?.({ block: 'nearest' }));
+    });
     afterNextRender(() => {
       this.measure();
       // The sheet around changes size (the keyboard, a rotation): measure again.

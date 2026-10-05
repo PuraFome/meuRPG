@@ -28,6 +28,7 @@
           [dealt]="dealt()"
           [total]="dartsTotal()"
           [npcs]="npcs()"
+          [creatures]="creatures()"
           [area]="hpArea()"
           (toggle)="toggle($event)"
           (deal)="deal($event)"
@@ -109,6 +110,10 @@
 
   @if (!done() && kind() !== 'attack' && !(kind() === 'pool' && usesPicker())) {
     <div foot>
+      @if (endsConcentration(); as ends) {
+        <!-- A concentration spell cast over another one: what it ends, and what goes with it (the combat's own data). -->
+        <p class="ends" role="status"><mat-icon aria-hidden="true">hourglass_empty</mat-icon><span><b>{{ ends.ends }}</b>@if (ends.goes) { {{ ends.goes }}}</span></p>
+      }
       @if (missing()) {
         <p class="missing" role="status"><mat-icon aria-hidden="true">block</mat-icon>{{ missing() }}</p>
       } @else if (dartsLine()) {

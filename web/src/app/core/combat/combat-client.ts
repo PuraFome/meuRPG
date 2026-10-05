@@ -86,6 +86,15 @@ export interface CastTarget {
 export interface CastResult {
   readonly encounter: Encounter;
   readonly cast: SpellCast;
+  /** A summoning spell: the combatants that joined the combat, in the order of the creatures chosen. */
+  readonly summoned: readonly string[];
+}
+
+/** What a summoning spell brings (`SummonChoice`): the option, a content key per creature and, optionally, a name each. */
+export interface SummonRequest {
+  readonly option: number;
+  readonly creatureKeys: readonly string[];
+  readonly names?: readonly string[];
 }
 
 /** What a death save answers: the combat and the save. */
@@ -469,6 +478,7 @@ export class CombatClient {
     targets: readonly CastTarget[],
     die: AttackDie | PoolDie | null,
     key: string,
+    summon?: SummonRequest,
   ): Promise<CastResult> {
     const res = await this.client.castSpell({
       campaignId,
@@ -485,8 +495,9 @@ export class CombatClient {
           : 'poolSum' in die
             ? { case: 'poolSum', value: die.poolSum }
             : { case: 'd20Face', value: die.face },
+      summon: summon ? { option: summon.option, creatureKeys: [...summon.creatureKeys], names: [...(summon.names ?? [])] } : undefined,
     });
-    return { encounter: need(res.encounter, 'CastSpell'), cast: need(res.cast, 'CastSpell') };
+    return { encounter: need(res.encounter, 'CastSpell'), cast: need(res.cast, 'CastSpell'), summoned: res.summonedCombatantIds };
   }
 
   async rollDeathSave(

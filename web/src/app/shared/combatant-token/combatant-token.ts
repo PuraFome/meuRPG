@@ -6,7 +6,8 @@ import { MatIconModule } from '@angular/material/icon';
  * is a round disc, filled `ink`; an NPC is a rounded square, with a 2px
  * `ink` border. The two differ by shape and fill, never by colour. A
  * defeated one is grey with a ✕; a hidden one (the master only) is dashed
- * with the eye-off badge. A combatant with conditions has a dot at its lower
+ * with the eye-off badge. A player's creature (a familiar, summoned animals) is
+ * round like a character with a dashed outline (MAP-LANGUAGE.md). A combatant with conditions has a dot at its lower
  * right corner (E6-29): the names are in the lists and the map's text list.
  * `current` adds the 3px accent ring and `mine` the
  * player's own accent halo. The "Vez" word above a token on the map belongs
@@ -33,6 +34,7 @@ import { MatIconModule } from '@angular/material/icon';
   host: {
     'aria-hidden': 'true',
     '[class.tk--npc]': 'npc()',
+    '[class.tk--creature]': 'creature()',
     '[class.tk--hidden]': 'hidden()',
     '[class.tk--defeated]': 'defeated()',
     '[class.tk--current]': 'current()',
@@ -46,6 +48,8 @@ export class CombatantToken {
   readonly initial = input.required<string>();
   /** An NPC (a rounded square) rather than a player's character (a disc). */
   readonly npc = input(false);
+  /** A player's creature: round, with a dashed ink outline (E9-12). */
+  readonly creature = input(false);
   readonly hidden = input(false);
   readonly defeated = input(false);
   readonly current = input(false);

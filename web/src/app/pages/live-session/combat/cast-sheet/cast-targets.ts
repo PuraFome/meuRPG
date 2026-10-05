@@ -28,7 +28,7 @@ let nextId = 0;
       <ul class="darts" [attr.aria-labelledby]="id + '-l'">
         @for (t of rows(); track t.id) {
           <li class="dart" [class.dart--off]="t.blocked">
-            <app-combatant-token [initial]="initial(t.label)" [npc]="isNpc(t.id)" [size]="30" />
+            <app-combatant-token [initial]="initial(t.label)" [npc]="isNpc(t.id) && !isCreature(t.id)" [creature]="isCreature(t.id)" [size]="30" />
             <span class="dart__text">
               <b class="dart__name">{{ t.label }}</b>
               <span class="dart__sub">{{ t.sub }}</span>
@@ -74,7 +74,7 @@ let nextId = 0;
               [disabled]="!!t.blocked || (!chosen().includes(t.id) && full())"
               (change)="toggle.emit(t.id)"
             />
-            <app-combatant-token [initial]="initial(t.label)" [npc]="isNpc(t.id)" [size]="30" />
+            <app-combatant-token [initial]="initial(t.label)" [npc]="isNpc(t.id) && !isCreature(t.id)" [creature]="isCreature(t.id)" [size]="30" />
             <span class="target__text">
               <b class="target__name">{{ t.label }}</b>
               <span class="target__sub">{{ t.sub }}</span>
@@ -115,6 +115,8 @@ export class CastTargets {
   readonly total = input(0);
   /** The ids of the NPCs, drawn as squares. */
   readonly npcs = input<ReadonlySet<string>>(new Set());
+  /** The targets that are a player's creatures: the round dashed token, not the NPC's rounded square. */
+  readonly creatures = input<ReadonlySet<string>>(new Set());
   /** A spell that reads hit points over an area (Sono): the caster says who is in it, by name, and
    * is told why there is no hit point on the list. */
   readonly area = input(false);
@@ -146,5 +148,9 @@ export class CastTargets {
 
   protected isNpc(id: string): boolean {
     return this.npcs().has(id);
+  }
+
+  protected isCreature(id: string): boolean {
+    return this.creatures().has(id);
   }
 }

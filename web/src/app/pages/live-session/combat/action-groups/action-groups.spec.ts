@@ -190,3 +190,51 @@ describe('ActionGroups: "Ver pelos olhos do Nanquim" (MR-036, E9-04)', () => {
     expect(setup(null).row).toBeUndefined();
   });
 });
+
+describe('ActionGroups: Wild Shape (MR-037, E9-11)', () => {
+  const wildFeature = () => ({
+    action: { key: 'feature:wild-shape', namePt: 'Forma Selvagem', economy: ActionEconomy.ACTION, resourceKey: 'wild_shape' },
+    enabled: true,
+    usesLeft: 2,
+  });
+
+  function setup(over: { wild?: { key: string; detail: string; reason: string } | null; beast?: string } = {}) {
+    const fixture = TestBed.createComponent(ActionGroups);
+    fixture.componentRef.setInput('options', create(TurnOptionsSchema, { featureActions: [wildFeature() as never] }));
+    fixture.componentRef.setInput('own', create(CombatantSchema, { movementLeftFt: 25, speedFt: 25 }));
+    fixture.componentRef.setInput('wild', over.wild === undefined ? { key: 'feature:wild-shape', detail: 'Vire uma fera · restam 2 de 2 usos', reason: '' } : over.wild);
+    fixture.componentRef.setInput('beast', over.beast ?? '');
+    const events: string[] = [];
+    fixture.componentInstance.transform.subscribe(() => events.push('transform'));
+    fixture.componentInstance.leaveForm.subscribe(() => events.push('leave'));
+    fixture.detectChanges();
+    return { el: fixture.nativeElement as HTMLElement, events };
+  }
+  const text = (n: Element | null | undefined) => n?.textContent?.replace(/\s+/g, ' ').trim();
+
+  it('is a line of the Ação with "Transformar" and what it costs', () => {
+    const { el, events } = setup();
+    const row = Array.from(el.querySelectorAll('app-action-row')).find((r) => text(r)?.includes('Forma Selvagem'))!;
+    expect(text(row)).toContain('Característica');
+    expect(text(row)).toContain('Vire uma fera · restam 2 de 2 usos');
+    row.querySelector('button')!.click();
+    expect(events).toEqual(['transform']);
+    expect(row.querySelector('button')?.getAttribute('aria-label')).toBe('Transformar: Forma Selvagem');
+  });
+
+  it('with no uses the button is off and the line says why', () => {
+    const { el } = setup({ wild: { key: 'feature:wild-shape', detail: 'Vire uma fera', reason: 'Sem usos' } });
+    const row = Array.from(el.querySelectorAll('app-action-row')).find((r) => text(r)?.includes('Forma Selvagem'))!;
+    expect(row.querySelector('button')?.getAttribute('aria-disabled')).toBe('true');
+    expect(text(row)).toContain('Sem usos');
+  });
+
+  it('as a beast: no spells, no Transformar, and "Voltar à forma normal" is a bonus action', () => {
+    const { el, events } = setup({ wild: null, beast: 'Lobo' });
+    expect(text(el)).toContain('Sem magias na forma de fera. Volte à forma normal para conjurar.');
+    expect(text(el)).not.toContain('Transformar');
+    const back = Array.from(el.querySelectorAll('app-action-row')).find((r) => text(r)?.includes('Voltar à forma normal'))!;
+    back.querySelector('button')!.click();
+    expect(events).toEqual(['leave']);
+  });
+});

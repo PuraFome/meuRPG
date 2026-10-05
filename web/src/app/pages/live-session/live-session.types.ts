@@ -25,6 +25,26 @@ export interface PactSlotsVm {
   readonly used: number;
 }
 
+/** The beast a druid is in (`WildShapeState`, MR-037): its own pool of hit points. */
+export interface WildShapeVm {
+  /** "monster:wolf". */
+  readonly beastKey: string;
+  /** "Lobo". */
+  readonly beastNamePt: string;
+  readonly hitPointsCurrent: number;
+  readonly hitPointsMax: number;
+}
+
+/** How many uses of a class or race resource the sheet gives and how many are spent (`ResourceUsage`). */
+export interface ResourceUsageVm {
+  /** "wild_shape", "second_wind". */
+  readonly key: string;
+  readonly total: number;
+  readonly used: number;
+  /** When the uses come back, for "volta no descanso curto ou longo". */
+  readonly recharge: 'short_rest' | 'long_rest' | 'dawn' | 'none';
+}
+
 /** A player character's live numbers (`CharacterVitals`, RN-02). */
 export interface VitalsVm {
   readonly characterId: string;
@@ -45,6 +65,10 @@ export interface VitalsVm {
   readonly revision: number;
   /** The player looks through their familiar's eyes (MR-036); absent otherwise. */
   readonly familiarSight?: FamiliarSightVm | null;
+  /** The uses of the character's resources (Forma Selvagem: "restam 2 de 2 usos"); absent for older copies. */
+  readonly resources?: readonly ResourceUsageVm[];
+  /** The beast a druid is in now; `null` or absent in the character's own shape. While it is set, the numbers above wait. */
+  readonly wildShape?: WildShapeVm | null;
 }
 
 /** The open game session being watched. */
@@ -218,6 +242,8 @@ export abstract class LiveSessionSource {
   /** `TakeBackLeftImage`: the master takes an image back ("Tirar"). */
   abstract takeBackLeftImage(campaignId: string, imageId: string): Promise<void>;
   abstract getPlayerSheet(campaignId: string, characterId: string): Promise<PlayerSheetVm>;
+  /** The armor class of a creature's book (`GetCreature`), for a druid in a beast form; `null` when it cannot be read. */
+  abstract getCreatureArmorClass(campaignId: string, key: string): Promise<number | null>;
   abstract getPartyInfo(campaignId: string): Promise<ReadonlyMap<string, PartyMemberInfoVm>>;
   abstract classifyError(err: unknown): LiveErrorKind;
 }

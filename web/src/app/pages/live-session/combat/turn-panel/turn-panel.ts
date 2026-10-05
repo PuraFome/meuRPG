@@ -3,6 +3,7 @@ import { Component, ElementRef, computed, effect, input, output, viewChild } fro
 import { MatIconModule } from '@angular/material/icon';
 
 import { type Combatant, CombatantState, type Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { joinDots, tight } from '../../../../core/format/text';
 import { metersFixed, squaresFree } from '../../../../core/units';
 import { article } from '../../../../core/combat/combat-log';
 import {
@@ -15,8 +16,10 @@ import {
   stateWord,
   turnBanner,
 } from '../../../../core/combat/combat-view';
+import { isCreature } from '../../../../core/combat/creature-names';
 import { leftSentence, listNames, missingLine, passNote, playsBefore } from '../../../../core/combat/joint-turn';
 import { mediaQuery } from '../../../../shared/map-view/media-query';
+import { WildBand } from '../../../../shared/wild-shape/wild-band';
 import type { FallNote } from '../../../../core/traps/trap-log';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import { EndPart } from '../joint-turn/end-part';
@@ -42,7 +45,7 @@ import { ConcentrationLine, TurnReaction } from './turn-extras';
  */
 @Component({
   selector: 'app-turn-panel',
-  imports: [CombatantToken, ConcentrationLine, EndPart, EndTurn, JointOthers, JointPill, MatIconModule, NgTemplateOutlet, OrderStrip, TurnReaction],
+  imports: [CombatantToken, ConcentrationLine, EndPart, EndTurn, JointOthers, JointPill, MatIconModule, NgTemplateOutlet, OrderStrip, TurnReaction, WildBand],
   templateUrl: './turn-panel.html',
   styleUrl: './turn-panel.scss',
 })
@@ -79,8 +82,23 @@ export class TurnPanel {
   protected readonly wide = mediaQuery('(min-width: 1280px)');
   protected readonly compact = computed(() => this.desktop() && this.banner().mine && !this.down());
   protected readonly banner = computed(() => turnBanner(this.encounter()));
+  /** The members of a joint turn that is all creatures (the wolves): the header draws each one's token. */
+  protected readonly groupTokens = computed<readonly Combatant[]>(() => {
+    const members = this.banner().joint?.members ?? [];
+    return members.length > 1 && members.every(isCreature) ? members : [];
+  });
   protected readonly round = computed(() => roundLabel(this.encounter().round));
   protected readonly own = computed(() => ownCombatant(this.encounter()));
+  /** The beast the druid is in, with its own reserve of hit points (only the druid's player and the master get the numbers). */
+  protected readonly form = computed(() => {
+    const c = this.own();
+    return c?.wildShapeBeastKey ? { name: c.wildShapeBeastNamePt, current: c.wildShapeHitPointsCurrent, max: c.wildShapeHitPointsMax } : null;
+  });
+  /** "Sem magias · 12,0 m": the beast's armor class is the one on the vitals card, once on the page. */
+  protected readonly formDetail = computed(() => {
+    const c = this.own();
+    return c?.wildShapeBeastKey ? joinDots(['Sem magias', tight(metersFixed(c.speedDft / 10))]) : '';
+  });
   /** The player looks through their familiar's eyes: the character is blind and does not attack (the master resolves it, MR-036). */
   protected readonly blind = computed(() => !!this.own()?.familiarSightCreatureId);
   /** The player's character is at 0 hit points (any turn). */
@@ -211,7 +229,11 @@ export class TurnPanel {
   }
 
   protected npc(c: Combatant): boolean {
-    return !isPlayer(c);
+    return !isPlayer(c) && !isCreature(c);
+  }
+
+  protected creature(c: Combatant): boolean {
+    return isCreature(c);
   }
 
   /** The chip's second line: an NPC's state word, "Jogador" for another

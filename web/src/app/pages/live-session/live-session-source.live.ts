@@ -12,6 +12,7 @@ import {
   PlayService,
   ShownImage,
 } from '../../../gen/meurpg/play/v1/play_pb';
+import { ContentService, Recharge } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { CONNECT_TRANSPORT } from '../../core/connect/transport';
 import { metersText } from '../../core/units';
 import {
@@ -27,6 +28,12 @@ import {
   VitalsChange,
   VitalsVm,
 } from './live-session.types';
+
+const RECHARGE: Partial<Record<Recharge, 'short_rest' | 'long_rest' | 'dawn' | 'none'>> = {
+  [Recharge.SHORT_REST]: 'short_rest',
+  [Recharge.LONG_REST]: 'long_rest',
+  [Recharge.DAWN]: 'dawn',
+};
 
 export function toVitalsVm(v: CharacterVitals): VitalsVm {
   return {
@@ -46,6 +53,15 @@ export function toVitalsVm(v: CharacterVitals): VitalsVm {
     revision: v.revision,
     familiarSight: v.familiarSight
       ? { creatureId: v.familiarSight.creatureId, inCombat: v.familiarSight.inCombat }
+      : null,
+    resources: v.resources.map((r) => ({ key: r.key, total: r.total, used: r.used, recharge: RECHARGE[r.recharge] ?? 'none' })),
+    wildShape: v.wildShape
+      ? {
+          beastKey: v.wildShape.beastKey,
+          beastNamePt: v.wildShape.beastNamePt,
+          hitPointsCurrent: v.wildShape.hitPointsCurrent,
+          hitPointsMax: v.wildShape.hitPointsMax,
+        }
       : null,
   };
 }
@@ -103,6 +119,7 @@ export class LiveSessionSourceLive implements LiveSessionSource {
   private readonly play = createClient(PlayService, this.transport);
   private readonly characters = createClient(CharacterService, this.transport);
   private readonly campaigns = createClient(CampaignService, this.transport);
+  private readonly content = createClient(ContentService, this.transport);
 
   async getCampaign(campaignId: string): Promise<CampaignInfoVm> {
     const res = await this.campaigns.getCampaign({ campaignId });
@@ -284,6 +301,11 @@ export class LiveSessionSourceLive implements LiveSessionSource {
       skills: derived ? { perception: skill('skill:perception'), investigation: skill('skill:investigation') } : undefined,
       senses: derived?.senses.map((s) => `${s.namePt}: ${metersText(s.rangeFt)}`) ?? [],
     };
+  }
+
+  async getCreatureArmorClass(campaignId: string, key: string): Promise<number | null> {
+    const res = await this.content.getCreature({ campaignId, key });
+    return res.creature?.armorClass ?? null;
   }
 
   async getPartyInfo(campaignId: string): Promise<ReadonlyMap<string, PartyMemberInfoVm>> {

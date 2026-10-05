@@ -12,6 +12,7 @@ import {
   offersOn,
   offersToAnswer,
   playerQuestion,
+  spendText,
   reactorAttacks,
   reactorIsMasters,
   waitingText,
@@ -52,6 +53,13 @@ describe('opportunity attacks in words', () => {
     expect(offersOn(e, 'toren').map((o) => o.id)).toEqual(['o1', 'o3']);
     expect(reactorIsMasters(e, toGoblin)).toBe(true);
     expect(reactorIsMasters(encounter({ combatants: [toren, g2] }), toToren)).toBe(false);
+  });
+
+  it('names the creature that would react when it is not the character: "do alcance do Lobo atroz 1", "Gasta a reação do Lobo atroz 1"', () => {
+    const toWolf = { ...toToren, reactorLabel: 'Lobo atroz 1' } as typeof toToren;
+    expect(playerQuestion(toWolf, false)).toBe('O Goblin 2 está saindo do alcance do Lobo atroz 1. Ataque de oportunidade?');
+    expect(spendText(toWolf, false)).toBe('Gasta a reação do Lobo atroz 1.');
+    expect(spendText(toToren)).toBe('Gasta a sua reação.');
   });
 
   it('asks the player, and tells the master', () => {

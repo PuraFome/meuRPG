@@ -8214,7 +8214,11 @@ type CreatureAction struct {
 	Save *CreatureSave `protobuf:"bytes,7,opt,name=save,proto3" json:"save,omitempty"`
 	// For the Multiattack action: the routines, of which the creature makes
 	// one. Empty for any other action.
-	Multiattack   []*CreatureMultiattackRoutine `protobuf:"bytes,8,rep,name=multiattack,proto3" json:"multiattack,omitempty"`
+	Multiattack []*CreatureMultiattackRoutine `protobuf:"bytes,8,rep,name=multiattack,proto3" json:"multiattack,omitempty"`
+	// The action's Portuguese name ("Mordida") for the attacks a character can have
+	// through a creature; empty when the content has none, and the screen then shows
+	// the English `name` as it is.
+	NamePt        string `protobuf:"bytes,9,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -8303,6 +8307,13 @@ func (x *CreatureAction) GetMultiattack() []*CreatureMultiattackRoutine {
 		return x.Multiattack
 	}
 	return nil
+}
+
+func (x *CreatureAction) GetNamePt() string {
+	if x != nil {
+		return x.NamePt
+	}
+	return ""
 }
 
 // CreatureDamagePart is one damage roll of an action.
@@ -9140,7 +9151,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\rCreatureTrait\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12\x14\n" +
-	"\x05usage\x18\x03 \x01(\tR\x05usage\"\xcf\x02\n" +
+	"\x05usage\x18\x03 \x01(\tR\x05usage\"\xe8\x02\n" +
 	"\x0eCreatureAction\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12\x14\n" +
@@ -9150,7 +9161,8 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\fattack_bonus\x18\x05 \x01(\x05R\vattackBonus\x12;\n" +
 	"\x06damage\x18\x06 \x03(\v2#.meurpg.rules.v1.CreatureDamagePartR\x06damage\x121\n" +
 	"\x04save\x18\a \x01(\v2\x1d.meurpg.rules.v1.CreatureSaveR\x04save\x12M\n" +
-	"\vmultiattack\x18\b \x03(\v2+.meurpg.rules.v1.CreatureMultiattackRoutineR\vmultiattack\"v\n" +
+	"\vmultiattack\x18\b \x03(\v2+.meurpg.rules.v1.CreatureMultiattackRoutineR\vmultiattack\x12\x17\n" +
+	"\aname_pt\x18\t \x01(\tR\x06namePt\"v\n" +
 	"\x12CreatureDamagePart\x12\x12\n" +
 	"\x04dice\x18\x01 \x01(\tR\x04dice\x12&\n" +
 	"\x0fdamage_type_key\x18\x02 \x01(\tR\rdamageTypeKey\x12$\n" +

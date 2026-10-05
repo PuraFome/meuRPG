@@ -170,7 +170,7 @@ func load(fsys fs.FS) (*content, error) {
 		return nil, err
 	}
 	for k, v := range names.Names {
-		if !c.exists(k) && !strings.HasPrefix(k, "sense:") && !strings.HasPrefix(k, "resource:") && !strings.HasPrefix(k, "trap:") && !strings.HasPrefix(k, "light:") {
+		if !c.exists(k) && !strings.HasPrefix(k, "sense:") && !strings.HasPrefix(k, "resource:") && !strings.HasPrefix(k, "trap:") && !strings.HasPrefix(k, "light:") && !c.isAttackName(k) {
 			return nil, fmt.Errorf("effects/names_pt.json: unknown key %q", k)
 		}
 		c.namesPT[k] = v
@@ -624,4 +624,21 @@ func (c *content) applyCorrections(fsys fs.FS) error {
 		}
 	}
 	return nil
+}
+
+// isAttackName reports whether key is "attack:<slug>" for the name of an attack
+// action of some SRD creature (the Portuguese names of creature attacks).
+func (c *content) isAttackName(key string) bool {
+	slug, ok := strings.CutPrefix(key, "attack:")
+	if !ok {
+		return false
+	}
+	for _, m := range c.monsters {
+		for _, a := range m.Actions {
+			if a.HasAttack && slugOf(a.Name) == slug {
+				return true
+			}
+		}
+	}
+	return false
 }

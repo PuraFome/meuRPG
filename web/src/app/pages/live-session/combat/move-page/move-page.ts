@@ -101,6 +101,8 @@ export class MovePage {
   readonly jumps = input<JumpLimits | undefined>(undefined);
   /** "Desengajar" is still possible: the action is free and it was not taken. */
   readonly canDisengage = input(false);
+  /** Who moves: one of the player's creatures (E9-12); empty for the player's own character. */
+  readonly moverId = input('');
   /** A square to start with: where the player dropped their token on the main map (the drop never moves, the page asks). */
   readonly start = input<Square | null>(null);
 
@@ -133,7 +135,11 @@ export class MovePage {
   protected readonly sessionLabel = computed(() => tieNumbers(`Sessão ${this.sessionNumber()}`));
   /** The height of a high jump has no map: the page is one column, with the content where the eye starts. */
   protected readonly soloHeight = computed(() => this.jumping() && this.kind() === 'high');
-  protected readonly own = computed(() => ownCombatant(this.encounter()));
+  protected readonly own = computed(() => {
+    const e = this.encounter();
+    const id = this.moverId();
+    return (id ? e.combatants.find((c) => c.id === id) : null) ?? ownCombatant(e);
+  });
   protected readonly origin = computed<Square>(() => {
     const own = this.own();
     return own ? { col: own.col, row: own.row } : { col: 0, row: 0 };

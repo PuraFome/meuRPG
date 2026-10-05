@@ -46,7 +46,7 @@
       <ul class="mr-list">
         @for (c of defeated(); track c.id) {
           <li class="mr-list__row line">
-            <app-combatant-token [initial]="initial(c)" [npc]="true" [defeated]="true" [size]="28" />
+            <app-combatant-token [initial]="initial(c)" [npc]="!creature(c)" [creature]="creature(c)" [defeated]="true" [size]="28" />
             <span class="mr-list__text">
               <span class="mr-list__name">{{ c.label }}</span>
               <span class="mr-list__sub">{{ sub(c) }}</span>
