@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { combatRPC, getEncounterRPC, torenSheet, toren, pensantusCasting } from './combat-support';
 import { openSessionPage } from './live-session-support';
+import { layoutSize } from './support';
 import { movingTable, paintRPC, pickRadio, tapSquare } from './move-support';
 
 // Movement, jumps, cover, "Aliado" and the opportunity attacks on screen (Etapa 9,
@@ -48,7 +49,7 @@ test(
       await expect(p.getByText('Depois restam 4,5 m.')).toBeVisible();
       // A wall square inside the circle is refused by the server's reason, naming nothing else.
       await tapSquare(p, 5, 5);
-      await expect(p.getByRole('alert').filter({ hasText: 'Sem caminho reto' })).toContainText('Há uma parede entre você e esse quadrado.');
+      await expect(p.getByRole('alert').filter({ hasText: 'Sem caminho reto' })).toContainText('Uma parede bloqueia esse caminho');
       await expect(p.getByRole('button', { name: 'Mover para cá' })).toHaveAttribute('aria-disabled', 'true');
       // Beyond the circle: too far, and it does not make up a number.
       await tapSquare(p, 19, 7);
@@ -66,11 +67,14 @@ test(
       await expect(p.getByRole('heading', { name: 'Saltar Toren' })).toBeVisible();
       await expect(p.getByText('5,1 m com corrida · 2,6 m parado')).toBeVisible();
       await expect(p.getByText('1,8 m com corrida · 0,9 m parado')).toBeVisible();
-      await expect(p.getByText('Você andou 3,0 m a pé antes de saltar.')).toBeVisible();
-      // Too far for the limit: the server's answer says the limit.
-      await tapSquare(p, 15, 7);
-      await p.getByRole('button', { name: 'Saltar para cá' }).click();
-      await expect(p.getByRole('alert').filter({ hasText: 'Longe demais para o seu salto: ele vai até 5,1 m com corrida' })).toBeVisible();
+      await expect(p.getByText('Você andou pelo menos 3,0 m a pé antes de saltar.')).toBeVisible();
+      // Too far for the limit: the page does not offer it, and says the limit (the button is off).
+      await tapSquare(p, 14, 7);
+      await expect(p.getByRole('alert').filter({ hasText: 'Seu salto vai até 5,1 m' })).toBeVisible();
+      await expect(p.getByRole('button', { name: 'Saltar para cá' })).toHaveAttribute('aria-disabled', 'true');
+      // Inside the limit but beyond the movement left (4,5 m): says what it has.
+      await tapSquare(p, 10, 8);
+      await expect(p.getByRole('alert').filter({ hasText: 'Você só tem 4,5 m de movimento' })).toBeVisible();
       await tapSquare(p, 9, 7);
       await expect(p.getByText('Saltar 3,0 m', { exact: true })).toBeVisible();
       await p.getByRole('button', { name: 'Saltar para cá' }).click();
@@ -124,8 +128,10 @@ test(
       await order.getByRole('button', { name: 'Marcar cobertura de Capitão Goblin' }).click();
       const mark = order.getByRole('radiogroup', { name: 'Cobertura marcada de Capitão Goblin' });
       await pickRadio(mark, 'Três quartos');
-      await expect(order.getByText('Três quartos · marcada pelo mestre')).toBeVisible();
+      // The master's list says it in the cover line (no pill): the mark is the larger cover now.
+      await expect(order.getByText('Três quartos (marcada pelo mestre) contra o Pensantus')).toBeVisible();
       await order.getByRole('button', { name: 'Fechar' }).click();
+      await expect(order.getByRole('button', { name: 'Marcar cobertura de Capitão Goblin' })).toBeFocused();
       await order.getByRole('button', { name: 'Mais ações para Goblin 2' }).click();
       await m.getByRole('menuitem', { name: 'Marcar cobertura…' }).click();
       await pickRadio(order.getByRole('radiogroup', { name: 'Cobertura marcada de Goblin 2' }), 'Cobertura total');
@@ -181,6 +187,12 @@ test(
       await expect(prompt.getByText('Gasta a sua reação.')).toBeVisible();
       await expect(prompt.getByRole('button', { name: 'Não atacar' })).toBeFocused();
       await expect(prompt).not.toContainText(/CA \d/);
+      // The answers are stacked at one width and one height, with the weapon's numbers above them.
+      await expect(prompt.getByText('Espada longa').or(prompt.getByText('Adaga')).first()).toBeVisible();
+      const no = await layoutSize(prompt.getByRole('button', { name: 'Não atacar' }));
+      const yes = await layoutSize(prompt.getByRole('button', { name: 'Atacar com Adaga' }));
+      expect(Math.abs(no.width - yes.width)).toBeLessThanOrEqual(1);
+      expect(Math.abs(no.height - yes.height)).toBeLessThanOrEqual(1);
       // The master reads that the goblin's move waits for a player, and can go on without them.
       const card = m.getByRole('group', { name: 'Ataque de oportunidade de Pensantus' });
       await expect(card.getByText('Esperando a reação do jogador de Pensantus')).toBeVisible();
@@ -194,7 +206,7 @@ test(
       await sheet.getByLabel(/Role 1d20/).fill('1');
       await sheet.getByRole('button', { name: 'Confirmar 1' }).click();
       await expect(sheet.getByText('Sua reação foi usada.')).toBeVisible();
-      await sheet.getByRole('button', { name: 'Voltar à sua vez' }).click();
+      await sheet.getByRole('button', { name: 'Fechar' }).last().click();
       await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('Pensantus ataca o Goblin 1 com a Adaga (ataque de oportunidade): errou');
       await expect(card).toHaveCount(0);
     } finally {
@@ -377,11 +389,43 @@ test(
       const order = m.getByRole('region', { name: 'Ordem de iniciativa' });
       await order.getByRole('button', { name: 'Mais ações para Goblin 2' }).click();
       await m.getByRole('menuitem', { name: 'Marcar como aliado' }).click();
-      await expect(order.getByRole('list', { name: 'Condições de Goblin 2' }).getByText('Aliado')).toBeVisible();
+      await expect(order.getByText('Aliado')).toBeVisible();
+      await expect(order.getByRole('list', { name: 'Condições de Goblin 2' })).toHaveCount(0);
       await expect(p.getByText('Aliado').first()).toBeVisible();
       await order.getByRole('button', { name: 'Mais ações para Goblin 2' }).click();
       await m.getByRole('menuitem', { name: 'Voltar a ser inimigo' }).click();
       await expect(order.getByText('Aliado')).toHaveCount(0);
+    } finally {
+      await done();
+    }
+  },
+);
+
+test(
+  'o jogador arrasta o token no mapa: a página "Mover" abre naquele quadrado, com os avisos, e nada anda sozinho',
+  { tag: ['@MR-034', '@RN-21'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    const { m, p, campaignId, done } = await movingTable(browser, 'Arrastar', pensantusFirst, { at: adjacent });
+    try {
+      await openSessionPage(p, campaignId);
+      await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
+      const map = p.getByRole('group', { name: /Mapa de batalha/ });
+      const box = (await map.boundingBox())!;
+      const token = p.locator('.cm__tk--movable').first();
+      const from = (await token.boundingBox())!;
+      await p.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+      await p.mouse.down();
+      // Two squares to the left of the token (it starts on column 5): out of the goblin's reach.
+      await p.mouse.move(box.x + (3.5 * box.width) / 20, box.y + (7.5 * box.height) / 14, { steps: 8 });
+      await p.mouse.up();
+      await expect(p.getByRole('heading', { name: 'Mover Pensantus' })).toBeVisible();
+      await expect(p.getByText('Mover 3,0 m', { exact: true })).toBeVisible();
+      await expect(p.getByText('Sair do alcance do Goblin 1 pode provocar um ataque de oportunidade.')).toBeVisible();
+      // Nothing moved: the token is still where it was until "Mover para cá".
+      expect((await getEncounterRPC(m, campaignId)).combatants.find((c) => c.label === 'Pensantus')?.col).toBe(5);
+      await p.getByRole('button', { name: 'Mover para cá' }).click();
+      await expect.poll(async () => (await getEncounterRPC(m, campaignId)).combatants.find((c) => c.label === 'Pensantus')?.col).toBe(3);
     } finally {
       await done();
     }

@@ -37,8 +37,7 @@ let nextId = 0;
               class="mr-visually-hidden"
               [name]="id"
               [checked]="c.value === current()"
-              [disabled]="busy()"
-              (change)="pick.emit(c.value)"
+              (change)="choose($event, c.value)"
             />
             <span class="mark__dot" aria-hidden="true"></span>
             <span class="mark__words">
@@ -69,6 +68,16 @@ export class CoverMark {
     { value: CoverDegree.THREE_QUARTERS, name: 'Três quartos', sub: '+5 na CA e em Destreza' },
     { value: CoverDegree.TOTAL, name: 'Cobertura total', sub: 'Não pode ser alvo' },
   ];
+
+  /** A choice applies at once. While a call is in flight another is ignored and the radio goes back
+   * to what is marked (the control keeps its focus: it is never disabled under the person's hands). */
+  protected choose(event: Event, value: CoverDegree): void {
+    if (this.busy()) {
+      (event.target as HTMLInputElement).checked = value === this.current();
+      return;
+    }
+    this.pick.emit(value);
+  }
 
   constructor() {
     // Opens on the one that is marked.

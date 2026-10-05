@@ -33,7 +33,7 @@
     repeating-linear-gradient(-45deg, color-mix(in srgb, var(--mr-map-token-ink) 55%, transparent) 0 1.5px, transparent 1.5px 6px);
 }
 
-// Cobertura: a dotted square, filled from the bottom (one half, three quarters).
+// Cobertura: a dotted square all round, filled from the bottom (one half, three quarters).
 .sq--cover::before,
 .sq--cover::after {
   position: absolute;
@@ -46,10 +46,13 @@
 .sq--cover::before {
   top: 22%;
   border: 1.5px dotted var(--mr-map-token-ink);
-  background: color-mix(in srgb, var(--mr-map-token-surface) 55%, transparent);
+  background: color-mix(in srgb, var(--mr-map-token-surface) 60%, transparent);
 }
 
 .sq--cover::after {
+  right: calc(22% + 1.5px);
+  bottom: calc(22% + 1.5px);
+  left: calc(22% + 1.5px);
   background: var(--mr-map-token-ink);
 }
 

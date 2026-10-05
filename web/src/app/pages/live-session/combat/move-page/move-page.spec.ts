@@ -84,7 +84,8 @@ describe('MovePage', () => {
     expect(el.querySelectorAll('app-map-layers .sq--terrain').length).toBe(1);
     // The legend names every mark that is drawn, layers first (MAP-LANGUAGE.md).
     const legend = Array.from(el.querySelectorAll('.mr-legend li'), (li) => plain(li.textContent));
-    expect(legend).toEqual(['Parede', 'Terreno difícil', 'Você alcança', 'Alcance de 9,0 m', 'Quadrado escolhido']);
+    // The chosen square is named only once there is one.
+    expect(legend).toEqual(['Parede', 'Terreno difícil', 'Você alcança', 'Alcance de 9,0 m']);
     expect(plain(el.textContent)).toContain('Dentro do círculo, o que fica sem cor não dá para alcançar: parede, inimigo ou custo a mais.');
   });
 
@@ -92,7 +93,6 @@ describe('MovePage', () => {
     const { el } = setup();
     expect(plain(el.querySelector('h1')?.textContent)).toBe('Mover Toren');
     expect(plain(el.querySelector('.move__lead')?.textContent)).toBe('Restam 9,0 m de 9,0 m (6 quadrados de 1,5 m). Toque num quadrado destacado.');
-    expect(plain(el.textContent)).toContain('Toque num quadrado destacado para escolher onde parar.');
     expect(el.querySelector<HTMLButtonElement>('.move__go')?.getAttribute('aria-disabled')).toBe('true');
   });
 
@@ -111,8 +111,8 @@ describe('MovePage', () => {
     choose(8, 5);
     const alert = el.querySelector('[role="alert"]');
     expect(plain(alert?.textContent)).toContain('Sem caminho reto');
-    expect(plain(alert?.textContent)).toContain('Para contornar, mova em partes.');
-    expect(plain(el.querySelector('.cm__cost')?.textContent)).toBe('Sem caminho reto');
+    expect(plain(alert?.textContent)).toContain('para contornar uma parede no caminho, mova em partes.');
+    expect(plain(el.querySelector('.cm__cost')?.textContent)).toBe('Sem caminho');
     press('Mover para cá');
     expect(confirmed).toEqual([]);
   });
@@ -201,7 +201,7 @@ describe('MovePage', () => {
       const text = plain(el.textContent);
       expect(text).toContain('Distância4,8 m com corrida · 2,4 m parado');
       expect(text).toContain('Altura1,8 m com corrida · 0,9 m parado');
-      expect(text).toContain('Você andou 3,0 m a pé antes de saltar.');
+      expect(text).toContain('Você andou pelo menos 3,0 m a pé antes de saltar.');
       expect(el.querySelectorAll('.cm__cell').length).toBe(0);
       expect(plain(el.querySelector('.mr-legend')?.textContent)).toContain('Alcance de 4,8 m');
     });
@@ -238,5 +238,82 @@ describe('MovePage', () => {
       press('Saltar 1,5 m para cima');
       expect(jumped).toEqual([{ kind: 'high', heightDft: 50 }]);
     });
+  });
+
+  describe('Saltar never promises what the server refuses', () => {
+    const jumps = create(JumpLimitsSchema, { longRunningDft: 160, longStandingDft: 80, highRunningDft: 60, highStandingDft: 30, runningStart: true });
+
+    function jumpMode(left: number) {
+      const t = setup({ jumps });
+      t.fixture.componentRef.setInput('options', create(GetMoveOptionsResponseSchema, { ...options, movementLeftDft: left } as never));
+      t.fixture.componentRef.setInput(
+        'encounter',
+        encounter({ combatants: [{ ...toren, movementLeftDft: left } as never, goblin], currentCombatantId: 'toren', turnGroupIds: ['toren'] }),
+      );
+      t.fixture.detectChanges();
+      const radios = Array.from(t.el.querySelectorAll<HTMLInputElement>('input[type="radio"]'));
+      radios[1].click();
+      t.fixture.detectChanges();
+      return t;
+    }
+
+    it('draws the circle with the smaller of the limit and the movement left', () => {
+      const { el } = jumpMode(60);
+      expect(plain(el.querySelector('.mr-legend')?.textContent)).toContain('Alcance de 1,8 m');
+    });
+
+    it('refuses a landing the movement left does not pay, even inside the limit, and says what it has', () => {
+      const { el, choose, fixture } = jumpMode(60);
+      choose(10, 7); // 3 squares: 4,5 m, inside the 4,8 m limit, beyond the 1,8 m left
+      const alert = el.querySelector('[role="alert"]');
+      expect(plain(alert?.textContent)).toContain('Longe demais');
+      expect(plain(alert?.textContent)).toContain('Você só tem 1,8 m de movimento');
+      expect(el.querySelector<HTMLButtonElement>('.move__go')?.getAttribute('aria-disabled')).toBe('true');
+      expect(fixture.componentInstance).toBeTruthy();
+    });
+
+    it('refuses a landing on a creature, and one the options show behind a wall', () => {
+      const { el, choose } = jumpMode(300);
+      choose(7, 7); // Goblin 2
+      expect(plain(el.querySelector('[role="alert"]')?.textContent)).toContain('Ocupado');
+      choose(8, 5); // the wall square of the options' refusals
+      expect(plain(el.querySelector('[role="alert"]')?.textContent)).toContain('Sem caminho');
+    });
+
+    it('caps the high jump at the movement left, and does not start above it', () => {
+      const { el, fixture } = jumpMode(30);
+      const kinds = Array.from(el.querySelectorAll<HTMLInputElement>('input[type="radio"]')).slice(2);
+      kinds[1].click();
+      fixture.detectChanges();
+      expect(plain(el.querySelector('.high__val')?.textContent)).toBe('0,9 m');
+      el.querySelector<HTMLButtonElement>('[aria-label="Aumentar a altura em 0,3 m"]')!.click();
+      fixture.detectChanges();
+      expect(plain(el.querySelector('.high__val')?.textContent)).toBe('0,9 m');
+      // One column, with no map: the content sits where the eye starts.
+      expect(el.querySelector('.move--solo')).not.toBeNull();
+      expect(el.querySelector('app-combat-map')).toBeNull();
+    });
+
+    it('asks the trap question before a long jump that lands on a known trap square', () => {
+      const { el, choose, press, jumped, fixture } = jumpMode(300);
+      choose(8, 9); // the options know a trap there ("Fosso escondido")
+      press('Saltar para cá');
+      expect(plain(el.querySelector('.move__ask')?.textContent)).toBe('Isso entra no Fosso escondido. Mover assim mesmo?');
+      expect(jumped).toEqual([]);
+      press('Saltar assim mesmo');
+      expect(jumped).toEqual([{ kind: 'long', square: { col: 8, row: 9 } }]);
+      expect(fixture.componentInstance).toBeTruthy();
+    });
+  });
+
+  it('starts on the square a player dropped their token on, and "Voltar" on the trap question gives the focus back', () => {
+    const { fixture, el, press } = setup();
+    fixture.componentRef.setInput('start', { col: 8, row: 9 });
+    fixture.detectChanges();
+    expect(plain(el.querySelector('.status__title')?.textContent)).toBe('Mover 3,0 m');
+    press('Mover para cá');
+    expect(el.querySelector('.move__ask')).not.toBeNull();
+    press('Voltar');
+    expect(el.querySelector('.move__ask')).toBeNull();
   });
 });

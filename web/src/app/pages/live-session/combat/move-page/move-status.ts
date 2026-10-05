@@ -41,7 +41,8 @@ export interface MoveSummary {
         </div>
       }
       @default {
-        <p class="status__idle" role="status">{{ idle() }}</p>
+        <!-- Nothing chosen: the page's lead says what to do; the live region is here for what comes. -->
+        <p class="mr-visually-hidden" role="status"></p>
       }
     }
     @if (summary().kind === 'ok' && summary().warning) {
@@ -71,8 +72,6 @@ export interface MoveSummary {
 })
 export class MoveStatus {
   readonly summary = input.required<MoveSummary>();
-  /** What to say when nothing is chosen yet. */
-  readonly idle = input('Toque num quadrado destacado para escolher onde parar.');
   readonly canDisengage = input(false);
   readonly busy = input(false);
   readonly disengage = output<void>();

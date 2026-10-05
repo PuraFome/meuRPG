@@ -32,8 +32,8 @@ const RUN_M = metersFixed(10);
 /** The seal beside the limits: "Com corrida" or "Parado", with the reason. */
 export function runSeal(limits: JumpLimits): { readonly word: string; readonly reason: string } {
   return limits.runningStart
-    ? { word: 'Com corrida', reason: `Você andou ${RUN_M} a pé antes de saltar.` }
-    : { word: 'Parado', reason: `Você ainda não andou ${RUN_M} a pé neste turno.` };
+    ? { word: 'Com corrida', reason: `Você andou pelo menos ${RUN_M} a pé antes de saltar.` }
+    : { word: 'Parado', reason: `Você ainda não andou pelo menos ${RUN_M} a pé neste turno.` };
 }
 
 /** The high jump's stepper moves 0,3 m (1 ft) at a time, from 0,3 m up to the

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, Injector, afterNextRender, inject, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 
 import type { CoverDegree } from '../../../../../gen/meurpg/play/v1/combat_pb';
@@ -30,11 +30,13 @@ import { CoverMark } from './cover-mark';
       </button>
     }
     @if (marking()) {
-      <app-cover-mark [label]="label()" [current]="current()" [busy]="busy()" (pick)="pick.emit($event)" (close)="close.emit()" />
+      <app-cover-mark [label]="label()" [current]="current()" [busy]="busy()" (pick)="pick.emit($event)" (close)="closeMark()" />
     }
   `,
   styles: `
     :host {
+      grid-area: cover;
+      min-width: 0;
       display: flex;
       flex-direction: column;
       gap: 4px;
@@ -42,7 +44,7 @@ import { CoverMark } from './cover-mark';
 
     .cover {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 6px;
       font-size: 14px;
       line-height: 19px;
@@ -50,8 +52,13 @@ import { CoverMark } from './cover-mark';
     }
 
     // A text action that starts a line pulls its padding back, to line up with the words above.
+    .cover .mr-swatch {
+      margin-top: 0.5px;
+    }
+
     .action {
       align-self: flex-start;
+      white-space: nowrap;
       margin-inline-start: -12px;
     }
   `,
@@ -70,4 +77,13 @@ export class RowCover {
   readonly open = output<void>();
   readonly close = output<void>();
   readonly pick = output<CoverDegree>();
+
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
+
+  /** "Fechar": the focus goes back to "Marcar cobertura", where the person was. */
+  protected closeMark(): void {
+    this.close.emit();
+    afterNextRender(() => this.host.nativeElement.querySelector<HTMLButtonElement>('.action')?.focus(), { injector: this.injector });
+  }
 }

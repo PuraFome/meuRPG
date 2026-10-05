@@ -1,6 +1,7 @@
 import { Component, computed, input, output, signal } from '@angular/core';
 import type { Combatant } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { distanceText } from '../../../../core/units';
+import { metersFixed, reachSquares, squaresText } from '../../../../core/units';
+import { joinDots, tight } from '../../../../core/format/text';
 import { leftSentence, passNote } from '../../../../core/combat/joint-turn';
 import { EndPart } from '../joint-turn/end-part';
 import { EndTurn } from './end-turn';
@@ -17,7 +18,9 @@ import { EndTurn } from './end-turn';
   selector: 'app-turn-bar',
   imports: [EndPart, EndTurn],
   template: `
-    @if (!asking()) {
+    @if (waiting()) {
+      <p class="what">{{ waiting() }}: a vez continua quando responderem.</p>
+    } @else if (!asking()) {
     <p class="what">{{ joint() ? 'Ainda disponível na sua parte' : 'Ainda disponível neste turno' }}</p>
     <ul class="left">
       @for (item of left(); track item.name) {
@@ -36,7 +39,7 @@ import { EndTurn } from './end-turn';
       }
       <app-end-part [left]="partLeft()" [busy]="busy()" (endPart)="endTurn.emit()" (asked)="asking.set($event)" />
     } @else {
-      <app-end-turn [own]="own()" [attacksLeft]="attacksLeft()" [busy]="busy()" [block]="true" (endTurn)="endTurn.emit()" />
+      <app-end-turn [own]="own()" [attacksLeft]="attacksLeft()" [busy]="busy()" [waiting]="waiting()" [block]="true" (endTurn)="endTurn.emit()" />
     }
   `,
   styles: `
@@ -98,6 +101,8 @@ export class TurnBar {
   readonly busy = input(false);
   /** Extra Attack: the attacks that remain once the action is spent. */
   readonly attacksLeft = input(0);
+  /** An opportunity attack waits for an answer: the list of what is left and the end button say so instead. */
+  readonly waiting = input('');
 
   /** In a joint turn, who else must end their part (labels; "o mestre" is the hidden one's). */
   readonly joint = input<readonly string[] | null>(null);
@@ -127,7 +132,7 @@ export class TurnBar {
       items.push({ name: 'Reação' });
     }
     if (c.movementLeftFt > 0) {
-      items.push({ name: 'Mover', amount: distanceText(c.movementLeftFt) });
+      items.push({ name: 'Mover', amount: tight(joinDots([metersFixed(c.movementLeftDft / 10), squaresText(reachSquares(c.movementLeftFt))])) });
     }
     return items;
   });

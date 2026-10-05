@@ -48,7 +48,7 @@ describe('the targets', () => {
     const plain = (t: string) => t.replace(/\u00a0/g, ' ');
     expect(rows.map((r) => [plain(r.sub), plain(r.blocked)])).toEqual([
       ['Ferido · a 7,5 m', ''],
-      ['Ileso · a 12 m', 'Longe demais: alcance de 36 m'],
+      ['Ileso · a 12,0 m', 'Longe demais: alcance de 36 m'],
     ]);
     expect(rows[1].blocked).toContain('alcance de\u00a036\u00a0m');
   });

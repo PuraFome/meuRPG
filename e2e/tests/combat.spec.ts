@@ -362,6 +362,9 @@ test('o jogador encerra o turno: pergunta com a ação livre, e a Disparada dobr
     await p.getByRole('button', { name: 'Disparada' }).click();
     await expect(p.getByText('Ação já usada').first()).toBeVisible();
     await expect(p.getByText('Restam 15,0 m')).toBeVisible();
+    // The speed already includes the Dash: the total is the doubled one, never doubled again.
+    await expect(p.getByText('de 15,0 m').first()).toBeVisible();
+    await expect(p.getByText('de 30,0 m')).toHaveCount(0);
     const after = (await getEncounterRPC(m, campaignId)).combatants.find((c) => c.label === 'Pensantus');
     expect(after?.movementLeftFt).toBe(50);
     await expect(p.getByRole('log', { name: 'Registro do combate' })).toHaveCount(0);

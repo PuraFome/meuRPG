@@ -54,8 +54,10 @@
   margin-bottom: var(--mr-space-3);
 }
 
-// The map is wider than the screen and scrolls under the thumb, edge to
-// edge on a phone.
+// One column on a phone: title, map, legend, the move in words, the arrows, and the
+// footer, which stays at the foot of the screen from the first moment (it is the
+// page's own last child, so it sticks for the whole page). From 1024px the map is
+// the left column and the rest the right one; the high jump has no map: one column.
 .move {
   display: flex;
   flex-direction: column;
@@ -63,8 +65,31 @@
   @media (min-width: 1024px) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 340px;
+    grid-template-areas:
+      'main side'
+      'main foot';
+    grid-template-rows: auto 1fr;
     align-items: start;
-    gap: var(--mr-space-6);
+    gap: 0 var(--mr-space-6);
+  }
+}
+
+.move__main {
+  grid-area: main;
+}
+
+.move__side {
+  grid-area: side;
+}
+
+.move__foot {
+  grid-area: foot;
+}
+
+.move--solo {
+  @media (min-width: 1024px) {
+    display: flex;
+    max-width: 640px;
   }
 }
 
@@ -87,7 +112,18 @@
 }
 
 .move__scroll {
-  overflow-x: auto;
+  overflow: auto;
+
+  // On a phone or a tablet the map is a window, not the whole page: the chosen square
+  // never has to scroll the page away, and the window is moved to it.
+  @media (max-width: 1023.98px) {
+    max-height: 300px;
+    overscroll-behavior: contain;
+  }
+
+  @media (max-width: 359.98px) {
+    max-height: 270px;
+  }
 }
 
 // The zoom stays at the corner of the visible map while the map scrolls under it.
@@ -95,6 +131,7 @@
   position: absolute;
   top: 8px;
   right: 8px;
+  z-index: 6;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -156,8 +193,8 @@
   gap: var(--mr-space-3);
 }
 
-// Under the map, where the thumb is; on a phone it stays at the foot of the
-// screen while the rest scrolls (E9-05, 320 x 568).
+// Under the map, where the thumb is; on a phone it stays at the foot of the screen
+// while the rest scrolls (E9-05, 320 x 568).
 .move__foot {
   position: sticky;
   bottom: 0;

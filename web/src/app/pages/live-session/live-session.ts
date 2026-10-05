@@ -326,9 +326,12 @@ export class LiveSession {
           }
         },
         onEncounterChanged: (change) => {
-          // Read again only when the news is newer than the copy on screen.
+          // Read again only when the news is newer than the copy on screen. A hint with no revision
+          // (0) is the server telling a player "read again" without counting: an opportunity offer
+          // made to them, or any change on a fog map, where each player has a revision of their own
+          // (ADR-0007). It is always read.
           const current = this.combat.encounter();
-          if (!current || current.id !== change.encounterId || change.revision > current.revision) {
+          if (!current || current.id !== change.encounterId || change.revision === 0 || change.revision > current.revision) {
             void this.loadCombat(generation);
           }
         },
@@ -338,11 +341,9 @@ export class LiveSession {
           }
         },
         onCombatantMoved: (move) => {
-          // The token moves at once; then the combat is read again: a move that leaves an enemy's
-          // reach makes an opportunity offer (MR-034), which lives in the combat and has no hint of
-          // its own, and the master and the reactor's player have to see it to answer.
-          this.combat.applyMove(move);
-          void this.loadCombat(generation);
+          if (!this.combat.applyMove(move)) {
+            void this.loadCombat(generation);
+          }
         },
         onCombatLogChanged: () => this.combat.touchLog(),
         onXpChanged: () => this.xpChanges.bump(),

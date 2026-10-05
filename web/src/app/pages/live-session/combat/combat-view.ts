@@ -30,7 +30,7 @@ import { ofThe } from '../../../core/combat/move-plan';
 import {
   type ReactorAttack,
   barText,
-  offersOn,
+  offersHolding,
   offersToAnswer,
   reactorAttacks,
   reactorIsMasters,
@@ -273,7 +273,7 @@ export class CombatView {
   protected readonly waiting = computed(() => {
     const e = this.encounter();
     const own = this.own();
-    return e && own && !this.isMaster() ? waitingText(e, offersOn(e, own.id)) : null;
+    return e && own && !this.isMaster() ? waitingText(e, offersHolding(e, own.id)) : null;
   });
   /** The master's bar: "Esperando a sua reação: Goblin 2". */
   protected readonly waitNote = computed(() => {
@@ -310,6 +310,14 @@ export class CombatView {
     return !!own && !own.actionUsed && !own.disengaged;
   });
   private readonly offersHandled = new Set<string>();
+  private readonly reactorReading = new Set<string>();
+  /** The offers whose reactor's attacks could not be read: the master's card offers "Tentar de novo". */
+  protected readonly reactorFailed = signal<ReadonlySet<string>>(new Set());
+  /** Where the player dropped their token on the main map: the "Mover" page starts there (the drop never moves). */
+  protected readonly dropStart = signal<Square | null>(null);
+  /** The master's last action is a move: the log's undoable entry says so ("Desfazer o movimento"). */
+  protected readonly canUndoMove = computed(() => this.log.undoable()?.kind === CombatLogKind.MOVED);
+  protected readonly turnSide = computed(() => this.subject()?.side ?? CombatantSide.UNSPECIFIED);
   /** Who has the cover each combatant has against whoever has the turn (the master's order list). */
   protected readonly coverAgainst = computed(() => {
     const out = new Map<string, { cover: CoverDegree; source: CoverSource }>();
@@ -536,19 +544,37 @@ export class CombatView {
     // The master's prompts need each NPC reactor's attacks with their numbers.
     effect(() => {
       const e = this.encounter();
-      const campaignId = this.campaignId();
       if (!this.isMaster() || !e) {
         return;
       }
       for (const offer of this.toAnswer()) {
-        if (reactorIsMasters(e, offer) && !untracked(() => this.reactorOptions().has(offer.id))) {
-          void this.api
-            .turnOptions(campaignId, e.id, offer.reactorId)
-            .then((res) => this.reactorOptions.update((m) => new Map(m).set(offer.id, res)))
-            .catch(() => undefined);
+        if (reactorIsMasters(e, offer) && !untracked(() => this.reactorOptions().has(offer.id) || this.reactorReading.has(offer.id))) {
+          untracked(() => void this.loadReactor(offer));
         }
       }
     });
+  }
+
+  /** Reads an NPC reactor's own options (its attacks with their numbers) for the master's prompt. */
+  protected async loadReactor(offer: OpportunityOffer): Promise<void> {
+    const e = this.encounter();
+    if (!e) {
+      return;
+    }
+    this.reactorReading.add(offer.id);
+    this.reactorFailed.update((s) => {
+      const next = new Set(s);
+      next.delete(offer.id);
+      return next;
+    });
+    try {
+      const res = await this.api.turnOptions(this.campaignId(), e.id, offer.reactorId);
+      this.reactorOptions.update((m) => new Map(m).set(offer.id, res));
+    } catch {
+      this.reactorFailed.update((s) => new Set(s).add(offer.id));
+    } finally {
+      this.reactorReading.delete(offer.id);
+    }
   }
 
   /** Whose reach the server is asked for: the player's own on the "Mover" page, the master's on turn with the reach on. */
@@ -987,20 +1013,25 @@ export class CombatView {
 
   // ---- opportunity attacks (E9-13) ----
 
-  /** The player's prompt: "O Goblin 2 está saindo do seu alcance. Ataque de oportunidade?" */
-  private async openOpportunity(offer: OpportunityOffer): Promise<void> {
+  /** The player's prompt: "O Goblin 2 está saindo do seu alcance. Ataque de oportunidade?" It reads the
+   * reactor's attacks itself (its buttons are off until they are in), so an offer is never stuck on a failed read. */
+  private openOpportunity(offer: OpportunityOffer): void {
     const e = this.encounter();
     if (!e) {
       return;
     }
-    const res = await this.api.turnOptions(this.campaignId(), e.id, offer.reactorId).catch(() => null);
-    const attacks = reactorAttacks(offer, (res?.options?.attacks ?? []).flatMap((a) => (a.attack ? [a.attack] : [])));
     const data: OpportunitySheetData = {
       campaignId: this.campaignId(),
       encounterId: e.id,
       offer,
       round: e.round,
-      attacks,
+      load: async () => {
+        const options = await this.api.turnOptions(this.campaignId(), e.id, offer.reactorId);
+        return {
+          options,
+          attacks: reactorAttacks(offer, (options.options?.attacks ?? []).flatMap((a) => (a.attack ? [a.attack] : []))),
+        };
+      },
       state: this.state(),
     };
     openSheet<OpportunitySheet, OpportunitySheetData, OpportunityAnswer>(this.dialog, this.bottomSheet, OpportunitySheet, {
@@ -1009,9 +1040,17 @@ export class CombatView {
       alert: true,
     }).subscribe((answer) => {
       if (answer) {
-        this.opportunityAttack(offer, answer.attackKey, res, false);
+        this.opportunityAttack(offer, answer.attackKey, answer.options, false);
       }
     });
+  }
+
+  /** The offer is still pending after the attack sheet closed (nobody rolled): ask again, it must be answered. */
+  private rearm(offer: OpportunityOffer): void {
+    const still = this.encounter()?.opportunityOffers.some((o) => o.id === offer.id && o.forYou) ?? false;
+    if (still && !this.isMaster()) {
+      untracked(() => this.openOpportunity(offer));
+    }
   }
 
   /** "Atacar com <arma>": the attack sheet, with the mover as its target. */
@@ -1038,7 +1077,7 @@ export class CombatView {
       data,
       ariaLabel: `Ataque de oportunidade com ${attack.namePt || attack.name}`,
       labelledBy: 'sheet-t',
-    }).subscribe();
+    }).subscribe(() => this.rearm(offer));
   }
 
   /** The master answers for an NPC: "Não atacar", or "Atacar com <arma>". */
@@ -1047,6 +1086,14 @@ export class CombatView {
       return this.run((e) => this.api.declineOpportunity(this.campaignId(), e.id, a.offer.id));
     }
     this.opportunityAttack(a.offer, a.attack.key, this.reactorOptions().get(a.offer.id), true);
+  }
+
+  /** "Desfazer o movimento": the master takes back his last action when it is the move that made the offers. */
+  protected undoMove(): Promise<boolean> {
+    const entry = this.log.undoable();
+    return entry
+      ? this.run((e) => this.api.undo(this.campaignId(), e.id, entry.id))
+      : Promise.resolve(false);
   }
 
   /** "Seguir sem esperar": the master passes over an offer the player does not answer. */
@@ -1077,6 +1124,14 @@ export class CombatView {
     }
     const from: Square = { col: c.col, row: c.row };
     if (c.placed && from.col === drop.col && from.row === drop.row) {
+      return;
+    }
+    // A player's drop picks the square on the "Mover" page: the same warnings, the same
+    // question about a trap, the same confirm. It never moves by itself.
+    if (!this.isMaster()) {
+      this.moveError.set('');
+      this.dropStart.set({ col: drop.col, row: drop.row });
+      this.state().moving.set(true);
       return;
     }
     this.error.set('');
@@ -1176,11 +1231,13 @@ export class CombatView {
   }
 
   protected closeFullPage(): void {
+    this.dropStart.set(null);
     this.state().moving.set(false);
     this.state().mapOpen.set(false);
   }
 
   protected openMove(): void {
+    this.dropStart.set(null);
     this.moveError.set('');
     this.state().moving.set(true);
   }

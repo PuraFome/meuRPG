@@ -30,6 +30,13 @@ export function offersOn(e: Encounter, moverId: string): OpportunityOffer[] {
   return e.opportunityOffers.filter((o) => o.moverId === moverId);
 }
 
+/** The offers that hold a player's turn: the server makes the whole turn group of the same
+ * player wait (their character and their creatures that act in it), not only the one who moved. */
+export function offersHolding(e: Encounter, ownId: string): OpportunityOffer[] {
+  const group = new Set([ownId, ...e.turnGroupIds.filter((id) => e.combatants.some((c) => c.id === id && (c.mine || c.controlledByMe)))]);
+  return e.opportunityOffers.filter((o) => group.has(o.moverId));
+}
+
 function combatant(e: Encounter, id: string): Combatant | undefined {
   return id ? e.combatants.find((c) => c.id === id) : undefined;
 }

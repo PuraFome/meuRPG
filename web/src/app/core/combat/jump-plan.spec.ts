@@ -35,7 +35,7 @@ describe('jump plan', () => {
     expect(plain(limitsLine(160, 80))).toBe('4,8 m com corrida · 2,4 m parado');
     expect(runSeal(toren).word).toBe('Com corrida');
     expect(runSeal(brisa).word).toBe('Parado');
-    expect(plain(runSeal(brisa).reason)).toBe('Você ainda não andou 3,0 m a pé neste turno.');
+    expect(plain(runSeal(brisa).reason)).toBe('Você ainda não andou pelo menos 3,0 m a pé neste turno.');
   });
 
   it('steps the high jump by 0,3 m, rounded down, never above the limit', () => {

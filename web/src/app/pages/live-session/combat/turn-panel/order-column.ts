@@ -7,7 +7,7 @@ import { CombatantState } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { combatantInitial, isDown, isPlayer, playerWord, stateWord } from '../../../../core/combat/combat-view';
 import { type OrderItem, jointTurn, listNames, orderItems } from '../../../../core/combat/joint-turn';
 import { conditionTags } from '../../../../core/combat/conditions';
-import { markTags } from '../../../../core/combat/cover';
+import { coverMarkTags, sideTags } from '../../../../core/combat/cover';
 import { CombatantTags } from '../combatant-tags/combatant-tags';
 import { OrderGroup } from '../joint-turn/order-group';
 import { PartState } from '../joint-turn/part-state';
@@ -73,7 +73,7 @@ export class OrderColumn {
 
   /** The conditions, "Aliado" and the master's cover mark under the name: what everyone who sees it may read. */
   protected tags(c: Combatant): string[] {
-    return [...conditionTags(c), ...markTags(c)];
+    return [...conditionTags(c), ...coverMarkTags(c)];
   }
 
   protected player(c: Combatant): boolean {
@@ -114,6 +114,7 @@ export class OrderColumn {
     if (c.mine) {
       return down ? `Você, ${down.toLowerCase()}` : 'Você';
     }
-    return isPlayer(c) ? playerWord(c) : stateWord(c.state);
+    const word = isPlayer(c) ? playerWord(c) : stateWord(c.state);
+    return sideTags(c).length > 0 ? `${word} · Aliado` : word;
   }
 }

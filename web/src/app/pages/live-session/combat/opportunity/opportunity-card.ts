@@ -23,6 +23,7 @@ import {
   offersToAnswer,
   reactorIsMasters,
 } from '../../../../core/combat/opportunity';
+import { tieNumbers } from '../../../../core/format/text';
 import { article } from '../../../../core/combat/combat-log';
 import { ofThe } from '../../../../core/combat/move-plan';
 import type { CombatantInfo } from '../combat-info';
@@ -56,20 +57,28 @@ export interface MasterAnswer {
     @for (o of offers(); track o.id) {
       <section class="op" role="group" [attr.aria-label]="'Ataque de oportunidade de ' + o.reactorLabel">
         <h2 class="op__title"><mat-icon aria-hidden="true">swords</mat-icon>Ataque de oportunidade</h2>
-        <p class="op__news">{{ news(o) }}</p>
+        <p class="op__news">{{ mine(o) ? news(o) : leaving(o) }}</p>
         @if (mine(o)) {
           <p class="op__ask"><b>{{ ask(o) }}</b></p>
           @if (attacks(o)[0]; as first) {
             <p class="op__sub">{{ first.detail }} · gasta a reação dele</p>
+          }
+          @if (!attacks(o).length) {
+            <p class="op__sub" role="status">
+              {{ failed().has(o.id) ? 'Não deu para ler os ataques dele.' : 'Lendo os ataques dele…' }}
+            </p>
           }
           <div class="op__pair">
             <button mat-stroked-button type="button" class="op__btn" data-safe [disabled]="busy()" (click)="answer.emit({ offer: o, attack: null })">
               Não atacar
             </button>
             @for (a of attacks(o); track a.key) {
-              <button mat-flat-button type="button" class="op__btn" [disabled]="busy()" (click)="answer.emit({ offer: o, attack: a })">
+              <button mat-flat-button type="button" class="op__btn" [disabled]="busy() || !a.attack" disabledInteractive (click)="answer.emit({ offer: o, attack: a })">
                 {{ label(a) }}
               </button>
+            }
+            @if (!attacks(o).length && failed().has(o.id)) {
+              <button mat-stroked-button type="button" class="op__btn" (click)="retry.emit(o)">Tentar de novo</button>
             }
           </div>
           <p class="op__note">
@@ -77,8 +86,8 @@ export interface MasterAnswer {
             O turno {{ ofMover(o) }} espera a sua resposta. {{ walked(o) }}
           </p>
           <p class="op__note op__note--plain">
-            O ataque de oportunidade ignora o alcance. Se ele levar {{ theMover(o) }} a 0 PV, volta ao último quadrado que ainda
-            estava no alcance.
+            O ataque conta como feito logo antes de {{ theMover(o) }} sair do alcance: se levar a 0 PV, o token volta ao último
+            quadrado que ainda estava no alcance.
           </p>
         } @else {
           <p class="op__ask"><b>Esperando a reação {{ waitingFor(o) }}</b></p>
@@ -86,10 +95,15 @@ export interface MasterAnswer {
             <button mat-stroked-button type="button" class="op__btn" [disabled]="busy()" (click)="skip.emit(o)">
               Seguir sem esperar
             </button>
+            @if (canUndo()) {
+              <button mat-stroked-button type="button" class="op__btn" [disabled]="busy()" (click)="undo.emit()">
+                Desfazer o movimento
+              </button>
+            }
           </div>
           <p class="op__note op__note--plain">
-            Se você seguir sem esperar, {{ theReactor(o) }} perde essa reação. O aviso fica na tela do jogador até ele responder ou
-            você pular.
+            Se você seguir sem esperar, {{ theReactor(o) }} perde essa reação. O aviso fica na tela do jogador até a resposta, ou até
+            você seguir sem esperar.
           </p>
         }
       </section>
@@ -105,9 +119,15 @@ export class OpportunityCard {
   readonly attacksByOffer = input<ReadonlyMap<string, readonly ReactorAttack[]>>(new Map());
   readonly info = input<ReadonlyMap<string, CombatantInfo>>(new Map());
   readonly busy = input(false);
+  /** The offers whose reactor's attacks could not be read (the card offers to try again). */
+  readonly failed = input<ReadonlySet<string>>(new Set());
+  /** The master's last action is the move that made the offers: "Desfazer o movimento" is possible. */
+  readonly canUndo = input(false);
 
   readonly answer = output<MasterAnswer>();
   readonly skip = output<OpportunityOffer>();
+  readonly retry = output<OpportunityOffer>();
+  readonly undo = output<void>();
 
   protected readonly offers = computed(() => offersToAnswer(this.encounter()));
 
@@ -117,7 +137,7 @@ export class OpportunityCard {
     effect(() => {
       const ids = this.offers().map((o) => o.id).join(',');
       if (ids !== '' && ids !== seen) {
-        afterNextRender(() => this.host.nativeElement.querySelector<HTMLButtonElement>('[data-safe]')?.focus(), {
+        afterNextRender(() => this.host.nativeElement.querySelector<HTMLButtonElement>('[data-safe]')?.focus({ focusVisible: true } as FocusOptions), {
           injector: this.injector,
         });
       }
@@ -130,11 +150,19 @@ export class OpportunityCard {
   }
 
   protected news(o: OpportunityOffer): string {
-    return masterNews(o);
+    return tieNumbers(masterNews(o));
+  }
+
+  /** "O Goblin 2 sai do alcance do Toren: espera o Caio". */
+  protected leaving(o: OpportunityOffer): string {
+    const reactor = this.encounter().combatants.find((c) => c.id === o.reactorId);
+    const name = reactor ? (this.info().get(reactor.characterId)?.playerName ?? '') : '';
+    const who = name ? `${article(name)} ${name}` : 'o jogador';
+    return tieNumbers(`${capitalize(`${article(o.moverLabel)} ${o.moverLabel}`)} sai do alcance ${ofThe([o.reactorLabel])}: espera ${who}.`);
   }
 
   protected ask(o: OpportunityOffer): string {
-    return masterAsk(o);
+    return tieNumbers(masterAsk(o));
   }
 
   protected attacks(o: OpportunityOffer): readonly ReactorAttack[] {
@@ -168,6 +196,10 @@ export class OpportunityCard {
   protected waitingFor(o: OpportunityOffer): string {
     const reactor = this.encounter().combatants.find((c) => c.id === o.reactorId);
     const name = reactor ? (this.info().get(reactor.characterId)?.playerName ?? '') : '';
-    return name ? `${ofThe([name])} (${o.reactorLabel})` : `do jogador de ${o.reactorLabel}`;
+    return tieNumbers(name ? `${ofThe([name])} (${o.reactorLabel})` : `do jogador de ${o.reactorLabel}`);
   }
+}
+
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }

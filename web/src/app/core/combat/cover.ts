@@ -68,13 +68,16 @@ export function listing(t: Pick<TargetInReach, 'cover' | 'coverSource' | 'untarg
  * quartos · marcada pelo mestre"). The map's cover is not a tag: it depends on
  * who attacks, so only the target list and the master's order say it. */
 export function markTags(c: Pick<Combatant, 'kind' | 'side' | 'coverMark'>): string[] {
-  const tags: string[] = [];
-  if (c.kind === CombatantKind.NPC && c.side === CombatantSide.PARTY) {
-    tags.push('Aliado');
-  }
+  return [...sideTags(c), ...coverMarkTags(c)];
+}
+
+/** "Aliado": a side, not a condition; never secret. */
+export function sideTags(c: Pick<Combatant, 'kind' | 'side'>): string[] {
+  return c.kind === CombatantKind.NPC && c.side === CombatantSide.PARTY ? ['Aliado'] : [];
+}
+
+/** The master's manual cover mark as a tag ("Três quartos · marcada pelo mestre"). */
+export function coverMarkTags(c: Pick<Combatant, 'coverMark'>): string[] {
   const word = degreeWord(c.coverMark);
-  if (word) {
-    tags.push(`${word} · marcada pelo mestre`);
-  }
-  return tags;
+  return word ? [`${word} · marcada pelo mestre`] : [];
 }

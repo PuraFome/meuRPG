@@ -56,8 +56,8 @@ describe('opportunity attacks in words', () => {
 
   it('asks the player, and tells the master', () => {
     expect(playerQuestion(toToren)).toBe('O Goblin 2 está saindo do seu alcance. Ataque de oportunidade?');
-    expect(masterNews(toGoblin)).toBe('O Toren saiu do alcance do Goblin 2.');
-    expect(masterAsk(toGoblin)).toBe('Goblin 2 ataca o Toren?');
+    expect(plain(masterNews(toGoblin))).toBe('O Toren saiu do alcance do Goblin 2.');
+    expect(plain(masterAsk(toGoblin))).toBe('Goblin 2 ataca o Toren?');
   });
 
   it('says who the mover waits for, and names no reactor it does not see', () => {

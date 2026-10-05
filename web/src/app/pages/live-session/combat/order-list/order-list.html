@@ -79,23 +79,15 @@
           } @else if (npc(c)) {
             <span class="row__state">Revelado</span>
           }
+          @if (ally(c)) {
+            <span class="row__state"><mat-icon aria-hidden="true">handshake</mat-icon>Aliado</span>
+          }
         </span>
         @if (down(c)) {
           <app-death-row [successes]="c.deathSuccesses" [failures]="c.deathFailures" />
         }
         <app-combatant-tags [names]="tags(c)" [concentration]="concentration(c)" [label]="c.label" />
-        <app-row-cover
-          [label]="c.label"
-          [line]="coverLine(c)"
-          [pictogram]="coverPictogram(c)"
-          [current]="c.coverMark"
-          [offer]="live() && hasCover(c)"
-          [marking]="marking() === c.id"
-          [busy]="busy()"
-          (open)="marking.set(c.id)"
-          (close)="marking.set(null)"
-          (pick)="pickCover(c.id, $event)"
-        />
+
         @if (c.hitPointsMax !== undefined) {
           <span class="row__pv-inline">PV {{ c.hitPointsCurrent }} de {{ c.hitPointsMax }}@if (c.initiative !== undefined && !inGroup) { · iniciativa&nbsp;<b>{{ c.initiative }}</b>}</span>
         }
@@ -167,6 +159,19 @@
           <span class="row__spacer" aria-hidden="true"></span>
         }
       </span>
+
+      <app-row-cover
+          [label]="c.label"
+          [line]="coverLine(c)"
+          [pictogram]="coverPictogram(c)"
+          [current]="c.coverMark"
+          [offer]="live() && hasCover(c)"
+          [marking]="marking() === c.id"
+          [busy]="busy()"
+          (open)="marking.set(c.id)"
+          (close)="marking.set(null)"
+          (pick)="pickCover(c.id, $event)"
+        />
 
       @if (live() && dying(c) && deathDismissed().has(c.id)) {
         <div class="row__extra">

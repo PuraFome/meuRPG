@@ -20,7 +20,7 @@
         <app-end-part [note]="footerNote()" [left]="partLeft()" [busy]="busy()" (endPart)="endTurn.emit()" />
       </div>
     } @else {
-      <app-end-turn class="banner__end" [own]="me" [attacksLeft]="attacksLeft()" [busy]="busy()" (endTurn)="endTurn.emit()" />
+      <app-end-turn class="banner__end" [own]="me" [attacksLeft]="attacksLeft()" [busy]="busy()" [waiting]="waiting()?.title ?? ''" (endTurn)="endTurn.emit()" />
     }
   </section>
   <ng-container *ngTemplateOutlet="notes" />
@@ -72,6 +72,7 @@
     @if (banner().after; as after) {
       <p class="turn__next">{{ afterPrefix() }}: <b>{{ after.name }}</b></p>
     }
+    <ng-container *ngTemplateOutlet="notes" />
     <ul class="eco" aria-label="O que você tem neste turno">
       @for (t of tiles(); track t.name) {
         <li class="tile" [class.tile--used]="t.used">
@@ -99,12 +100,11 @@
         <app-end-part [note]="footerNote()" [left]="partLeft()" [busy]="busy()" (endPart)="endTurn.emit()" />
       </div>
     } @else {
-      <app-end-turn class="turn__end" [own]="me" [attacksLeft]="attacksLeft()" [busy]="busy()" (endTurn)="endTurn.emit()" />
+      <app-end-turn class="turn__end" [own]="me" [attacksLeft]="attacksLeft()" [busy]="busy()" [waiting]="waiting()?.title ?? ''" (endTurn)="endTurn.emit()" />
     }
     @if (movement()?.none) {
       <p class="turn__why"><mat-icon aria-hidden="true">block</mat-icon>Sem movimento neste turno</p>
     }
-    <ng-container *ngTemplateOutlet="notes" />
     @if (banner().joint) {
       <app-joint-others mode="others" [encounter]="encounter()" />
     }

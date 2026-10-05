@@ -2,12 +2,12 @@
   <button type="button" class="bar__back" aria-label="Voltar à sessão" (click)="back.emit()">
     <mat-icon aria-hidden="true">arrow_back</mat-icon>
   </button>
-  <span class="bar__title">Sessão {{ sessionNumber() }}</span>
+  <span class="bar__title">{{ sessionLabel() }}</span>
   <app-live-pill />
   <span class="bar__round">{{ round() }}</span>
 </div>
 
-<div class="move">
+<div class="move" [class.move--solo]="soloHeight()">
   <div class="move__main">
     @if (readOnly()) {
       <h1 class="mr-page-title move__title">{{ mapName() }}</h1>
@@ -23,62 +23,63 @@
       }
     }
 
-    <div class="move__map" [hidden]="jumping() && kind() === 'high'">
-      <div #scroller class="move__scroll">
-        <app-combat-map
-          [image]="image()"
-          [mapName]="mapName()"
-          [columns]="encounter().gridColumns"
-          [rows]="encounter().gridRows"
-          [combatants]="encounter().combatants"
-          [currentId]="encounter().currentCombatantId"
-          [isMaster]="isMaster()"
-          [layers]="layers()"
-          [reach]="reach()"
-          [chosen]="readOnly() ? null : frame()"
-          [pickSquares]="!readOnly()"
-          [ownMoveId]="readOnly() ? null : (own()?.id ?? null)"
-          [cellPx]="wide() ? null : cell()"
-          (choose)="choose($event)"
-          (confirm)="go()"
-        />
-      </div>
-      @if (!readOnly() && !wide()) {
-        <div class="move__zoom" role="group" aria-label="Zoom do mapa">
-          <button type="button" aria-label="Aproximar o mapa" [attr.aria-disabled]="zoom() === 3 ? 'true' : null" (click)="zoomBy(1)">
-            <mat-icon aria-hidden="true">zoom_in</mat-icon>
-          </button>
-          <button type="button" aria-label="Afastar o mapa" [attr.aria-disabled]="zoom() === 0 ? 'true' : null" (click)="zoomBy(-1)">
-            <mat-icon aria-hidden="true">zoom_out</mat-icon>
-          </button>
+    @if (!soloHeight()) {
+      <div class="move__map">
+        <div #scroller class="move__scroll">
+          <app-combat-map
+            [image]="image()"
+            [mapName]="mapName()"
+            [columns]="encounter().gridColumns"
+            [rows]="encounter().gridRows"
+            [combatants]="encounter().combatants"
+            [currentId]="encounter().currentCombatantId"
+            [isMaster]="isMaster()"
+            [layers]="layers()"
+            [reach]="reach()"
+            [chosen]="readOnly() ? null : frame()"
+            [pickSquares]="!readOnly()"
+            [showTurn]="readOnly()"
+            [ownMoveId]="readOnly() ? null : (own()?.id ?? null)"
+            [cellPx]="wide() ? null : cell()"
+            (choose)="choose($event)"
+            (confirm)="go()"
+          />
         </div>
-      }
-    </div>
+        @if (!readOnly() && !wide()) {
+          <div class="move__zoom" role="group" aria-label="Zoom do mapa">
+            <button type="button" aria-label="Aproximar o mapa" [attr.aria-disabled]="zoom() === 3 ? 'true' : null" (click)="zoomBy(1)">
+              <mat-icon aria-hidden="true">zoom_in</mat-icon>
+            </button>
+            <button type="button" aria-label="Afastar o mapa" [attr.aria-disabled]="zoom() === 0 ? 'true' : null" (click)="zoomBy(-1)">
+              <mat-icon aria-hidden="true">zoom_out</mat-icon>
+            </button>
+          </div>
+        }
+      </div>
 
-    @if (readOnly()) {
-      <app-map-layers-legend [layers]="layers()">
-        @if (own(); as me) {
-          <li><span class="legend__sq legend__sq--mine" aria-hidden="true"></span>{{ me.label }} (você)</li>
-          <li><span class="legend__sq" aria-hidden="true"></span>Os outros</li>
-        } @else {
-          <li><span class="legend__sq" aria-hidden="true"></span>Jogadores e NPCs</li>
+      @if (readOnly()) {
+        <app-map-layers-legend [layers]="layers()">
+          @if (own(); as me) {
+            <li><span class="legend__sq legend__sq--mine" aria-hidden="true"></span>{{ me.label }} (você)</li>
+            <li><span class="legend__sq" aria-hidden="true"></span>Os outros</li>
+          } @else {
+            <li><span class="legend__sq" aria-hidden="true"></span>Jogadores e NPCs</li>
+          }
+        </app-map-layers-legend>
+      } @else {
+        <app-map-layers-legend [layers]="layers()">
+          <li><span class="mr-swatch mr-swatch--reach" aria-hidden="true"></span>{{ jumping() ? 'Alcance do salto' : 'Você alcança' }}</li>
+          <li><span class="mr-swatch mr-swatch--ring" aria-hidden="true"></span>Alcance de {{ jumping() ? limitText() : leftText() }}</li>
+          @if (chosen()) {
+            <li><span class="mr-swatch mr-swatch--chosen" aria-hidden="true"></span>Quadrado escolhido</li>
+          }
+        </app-map-layers-legend>
+        @if (!jumping()) {
+          <p class="move__rule">
+            <mat-icon aria-hidden="true">info</mat-icon>
+            Dentro do círculo, o que fica sem cor não dá para alcançar: parede, inimigo ou custo a mais.
+          </p>
         }
-      </app-map-layers-legend>
-    } @else if (!jumping() || kind() === 'long') {
-      <app-map-layers-legend [layers]="layers()">
-        <li><span class="mr-swatch mr-swatch--reach" aria-hidden="true"></span>{{ jumping() ? 'Alcance do salto' : 'Você alcança' }}</li>
-        @if (jumping()) {
-          <li><span class="mr-swatch mr-swatch--ring" aria-hidden="true"></span>Alcance de {{ limitText() }}</li>
-        } @else {
-          <li><span class="mr-swatch mr-swatch--ring" aria-hidden="true"></span>Alcance de {{ leftText() }}</li>
-        }
-        <li><span class="mr-swatch mr-swatch--chosen" aria-hidden="true"></span>Quadrado escolhido</li>
-      </app-map-layers-legend>
-      @if (!jumping()) {
-        <p class="move__rule">
-          <mat-icon aria-hidden="true">info</mat-icon>
-          Dentro do círculo, o que fica sem cor não dá para alcançar: parede, inimigo ou custo a mais.
-        </p>
       }
     }
   </div>
@@ -101,7 +102,6 @@
         } @else {
           <app-move-status
             [summary]="summary()"
-            [idle]="jumping() ? (kind() === 'long' ? 'Toque no quadrado onde quer cair.' : '') : 'Toque num quadrado destacado para escolher onde parar.'"
             [canDisengage]="canDisengage()"
             [busy]="busy()"
             (disengage)="disengage.emit()"
@@ -113,39 +113,42 @@
             <p>Não deu para ler o alcance. Dá para tentar um quadrado: o servidor diz se vale.</p>
           </div>
         }
-        @if (!jumping() || kind() === 'long') {
+        @if (!soloHeight()) {
           <app-move-adjust (nudge)="nudge($event)" />
-        }
-      </div>
-
-      <div class="move__foot">
-        @if (trapAsk()) {
-          <p class="move__ask" role="alert">{{ trapText() }}</p>
-          <div class="move__buttons">
-            <button #safe mat-stroked-button type="button" class="move__cancel" (click)="trapAsk.set(false)">Voltar</button>
-            <button mat-flat-button type="button" class="move__go" (click)="confirm.emit(chosen()!)">
-              <mat-icon aria-hidden="true">arrow_forward</mat-icon>Mover assim mesmo
-            </button>
-          </div>
-        } @else {
-          <div class="move__buttons">
-            <button
-              mat-flat-button
-              type="button"
-              class="move__go"
-              [class.move__go--off]="!canMove()"
-              [disabled]="!canMove()"
-              disabledInteractive
-              (click)="go()"
-            >
-              <mat-icon aria-hidden="true">{{ jumping() ? 'north_east' : 'arrow_forward' }}</mat-icon>{{ goLabel() }}
-            </button>
-            <button mat-stroked-button type="button" class="move__cancel" (click)="back.emit()">
-              Cancelar
-            </button>
-          </div>
         }
       </div>
     }
   </div>
+
+  @if (!readOnly()) {
+    <div class="move__foot">
+      @if (trapAsk()) {
+        <p class="move__ask" role="alert">{{ trapText() }}</p>
+        <div class="move__buttons">
+          <button #safe mat-stroked-button type="button" class="move__cancel" (click)="closeTrapAsk()">Voltar</button>
+          <button mat-flat-button type="button" class="move__go" [disabled]="busy()" disabledInteractive (click)="commit()">
+            <mat-icon aria-hidden="true">{{ jumping() ? 'north_east' : 'arrow_forward' }}</mat-icon>{{ jumping() ? 'Saltar assim mesmo' : 'Mover assim mesmo' }}
+          </button>
+        </div>
+      } @else {
+        <div class="move__buttons">
+          <button
+            #goButton
+            mat-flat-button
+            type="button"
+            class="move__go"
+            [class.move__go--off]="!canMove()"
+            [disabled]="!canMove()"
+            disabledInteractive
+            (click)="go()"
+          >
+            <mat-icon aria-hidden="true">{{ goIcon() }}</mat-icon>{{ goLabel() }}
+          </button>
+          <button mat-stroked-button type="button" class="move__cancel" (click)="back.emit()">
+            Cancelar
+          </button>
+        </div>
+      }
+    </div>
+  }
 </div>

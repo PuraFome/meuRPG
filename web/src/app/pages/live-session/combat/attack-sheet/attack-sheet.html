@@ -63,8 +63,11 @@
       </div>
       <p class="sheet__note">
         <mat-icon aria-hidden="true">info</mat-icon>
-        Um alvo fora do alcance de {{ rangeText }} aparece desabilitado, com "Longe demais".
+        Um alvo fora do alcance de {{ rangeText }} aparece desabilitado, com “Longe demais”.
       </p>
+      <div class="sheet__foot">
+        <button mat-stroked-button type="button" class="sheet__done" (click)="close()">Cancelar</button>
+      </div>
     }
     @case ('roll') {
       <div class="chosen">

@@ -23,7 +23,7 @@ import { MatIconModule } from '@angular/material/icon';
         </div>
       </div>
     } @else {
-      <button mat-flat-button type="button" class="next" [disabled]="busy() || waiting()" disabledInteractive (click)="press()">
+      <button mat-flat-button type="button" class="next" [class.next--off]="waiting()" [disabled]="busy() || waiting()" disabledInteractive (click)="press()">
         <mat-icon aria-hidden="true">skip_next</mat-icon>Próximo turno
       </button>
     }
@@ -36,6 +36,13 @@ import { MatIconModule } from '@angular/material/icon';
     .next {
       --mat-button-filled-container-height: 52px;
       width: 100%;
+    }
+
+    // Waiting for an opportunity attack's answer: the app's dashed, off button.
+    .next--off {
+      --mat-button-filled-disabled-container-color: var(--mr-surface);
+      --mat-button-filled-disabled-label-text-color: var(--mr-ink-muted);
+      border: 1px dashed var(--mr-control-line);
     }
 
     .ask {

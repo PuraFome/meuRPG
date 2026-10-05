@@ -123,8 +123,12 @@
                 [attacksByOffer]="masterAttacks()"
                 [info]="info()"
                 [busy]="busy()"
+                [failed]="reactorFailed()"
+                [canUndo]="canUndoMove()"
                 (answer)="answerOpportunity($event)"
                 (skip)="skipOpportunity($event)"
+                (retry)="loadReactor($event)"
+                (undo)="undoMove()"
               />
               <app-death-question
                 [dying]="dying()"
@@ -165,6 +169,7 @@
                 (add)="addCombatants()"
                 [coverAgainst]="coverAgainst()"
                 [turnLabel]="turnLabel()"
+                [turnSide]="turnSide()"
                 (side)="setSide($event)"
                 (cover)="setCover($event)"
               />
@@ -226,6 +231,7 @@
             [optionsFailed]="moveOptions.failed()"
             [jumps]="options()?.options?.jumps"
             [canDisengage]="canDisengage()"
+            [start]="dropStart()"
             (confirm)="confirmMove($event)"
             (jump)="confirmJump($event)"
             (disengage)="disengage()"
@@ -315,7 +321,7 @@
             <div class="player__side"><ng-content /></div>
             @if (myTurn() && own(); as me) {
               @if (!ownDown()) {
-                <app-turn-bar class="player__bar" [own]="me" [attacksLeft]="attacksLeft()" [busy]="busy()" [joint]="jointOthers()" (endTurn)="nextTurn()" />
+                <app-turn-bar class="player__bar" [own]="me" [attacksLeft]="attacksLeft()" [busy]="busy()" [waiting]="waiting()?.title ?? ''" [joint]="jointOthers()" (endTurn)="nextTurn()" />
               }
             }
           </div>

@@ -14,9 +14,16 @@ export class MoveOptionsState {
   /** The read failed (the page says so): not a reason to block the move, the server still decides. */
   readonly failed = signal(false);
   private asked = 0;
+  private subject = '';
 
   async load(api: CombatClient, campaignId: string, encounterId: string, combatantId: string): Promise<void> {
     const mine = ++this.asked;
+    // Another combatant's circle is never drawn for this one while the answer comes.
+    if (this.subject !== combatantId) {
+      this.subject = combatantId;
+      this.data.set(null);
+      this.failed.set(false);
+    }
     try {
       const res = await api.moveOptions(campaignId, encounterId, combatantId);
       if (mine === this.asked) {
@@ -33,6 +40,7 @@ export class MoveOptionsState {
 
   clear(): void {
     this.asked++;
+    this.subject = '';
     this.data.set(null);
     this.failed.set(false);
   }

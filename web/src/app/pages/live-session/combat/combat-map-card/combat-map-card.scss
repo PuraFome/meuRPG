@@ -51,6 +51,16 @@
     font-size: 14px;
     gap: var(--mr-space-2) var(--mr-space-5);
   }
+
+  // The rings are outlines, drawn outside the token: room for them keeps the
+  // ring on the legend's left edge instead of past it.
+  app-combatant-token.tk--current {
+    margin: 5px;
+  }
+
+  app-combatant-token.tk--mine:not(.tk--current) {
+    margin: 3px;
+  }
 }
 
 .card__reach {

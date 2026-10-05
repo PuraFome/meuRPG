@@ -966,7 +966,7 @@ async function scanMoveScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     await expect(order.getByRole('radiogroup', { name: 'Cobertura marcada de Capitão Goblin' })).toBeVisible();
     await expectScreenPasses(m, `Marcar cobertura, no lugar ${where}`);
     await pickRadio(order, 'Três quartos');
-    await expect(order.getByText('Três quartos · marcada pelo mestre')).toBeVisible();
+    await expect(order.getByText('Três quartos (marcada pelo mestre) contra o Pensantus')).toBeVisible();
     await order.getByRole('button', { name: 'Fechar' }).click();
     await order.getByRole('button', { name: 'Mais ações para Goblin 2' }).click();
     await m.getByRole('menuitem', { name: 'Marcar como aliado' }).click();

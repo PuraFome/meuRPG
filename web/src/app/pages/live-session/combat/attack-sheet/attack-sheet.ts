@@ -136,7 +136,7 @@ export class AttackSheet {
   protected readonly targetLabel = computed(
     () => this.target()?.label ?? this.data.resume?.targetLabel ?? '',
   );
-  protected readonly doneLabel = this.data.opportunity?.byMaster ? 'Fechar' : 'Voltar à sua vez';
+  protected readonly doneLabel = this.data.opportunity ? 'Fechar' : 'Voltar à sua vez';
   protected readonly canApp = this.data.diceMode !== DiceMode.PHYSICAL;
   protected readonly canType = this.data.diceMode !== DiceMode.APP;
   protected readonly preferApp =

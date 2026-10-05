@@ -4,6 +4,7 @@ import {
   MoveRefusal,
   type ReachableSquare,
 } from '../../../gen/meurpg/play/v1/combat_pb';
+import { tieNumbers } from '../format/text';
 import { metersFixed } from '../units';
 import { article } from './combat-log';
 import type { Square } from './combat-grid';
@@ -70,7 +71,7 @@ export function refusalText(
         case MoveRefusal.WALL:
           return {
             title: 'Sem caminho reto',
-            detail: 'Há uma parede entre você e esse quadrado. Para contornar, mova em partes.',
+            detail: 'Uma parede bloqueia esse caminho, no meio da linha ou no próprio quadrado. Escolha outro quadrado; para contornar uma parede no caminho, mova em partes.',
           };
         case MoveRefusal.ENEMY:
           return {
@@ -103,7 +104,8 @@ export function costTitle(costDft: number): string {
 
 /** "Depois restam 6,9 m." */
 export function afterText(leftDft: number, costDft: number): string {
-  return `Depois restam ${metersFixed(Math.max(0, leftDft - costDft) / 10)}.`;
+  // No clamp: the callers only say it for a cost the movement left pays.
+  return `Depois restam ${metersFixed((leftDft - costDft) / 10)}.`;
 }
 
 /** Who a square's exit may provoke, by name: only combatants the caller sees
@@ -115,7 +117,7 @@ export function provokedBy(square: ReachableSquare, combatants: readonly Combata
 /** "do Goblin 2", "da Brisa", "do Goblin 1 e do Goblin 2". */
 export function ofThe(labels: readonly string[]): string {
   const each = labels.map((l) => `${article(l) === 'a' ? 'da' : 'do'} ${l}`);
-  return each.length <= 1 ? each.join('') : `${each.slice(0, -1).join(', ')} e ${each[each.length - 1]}`;
+  return tieNumbers(each.length <= 1 ? each.join('') : `${each.slice(0, -1).join(', ')} e ${each[each.length - 1]}`);
 }
 
 /** The warning before a move that may provoke: a warning, since the server says "pode". */
@@ -126,11 +128,6 @@ export function provokeWarning(labels: readonly string[]): string {
 /** The question before a move into a trap the character knows. */
 export function trapQuestion(name: string): string {
   return `Isso entra no ${name}. Mover assim mesmo?`;
-}
-
-/** "Parte 1: 3,0 m" is the page's note after a first part; `used` in tenths of a foot. */
-export function partNote(usedDft: number): string {
-  return `Parte 1: ${metersFixed(usedDft / 10)}`;
 }
 
 /** The line under the title: "Restam 6,0 m de 9,0 m (4 quadrados de 1,5 m). Você já andou 3,0 m."

@@ -1,12 +1,13 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, Injector, afterNextRender, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import type { OpportunityOffer } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import type { GetTurnOptionsResponse, OpportunityOffer } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { type ReactorAttack, attackLabel, playerQuestion } from '../../../../core/combat/opportunity';
+import { tieNumbers } from '../../../../core/format/text';
 import { SheetFrame } from '../sheet-frame/sheet-frame';
 import { injectSheet } from '../sheet-host';
 
@@ -16,24 +17,27 @@ export interface OpportunitySheetData {
   readonly encounterId: string;
   readonly offer: OpportunityOffer;
   readonly round: number;
-  /** The reactor's melee attacks with their numbers (the player's own options). */
-  readonly attacks: readonly ReactorAttack[];
+  /** Reads the reactor's melee attacks with their numbers (its own `GetTurnOptions`) and the options they came from. */
+  readonly load: () => Promise<{ readonly attacks: readonly ReactorAttack[]; readonly options: GetTurnOptionsResponse }>;
   readonly state: CombatState;
 }
 
-/** What the prompt closes with: the attack the player chose, or nothing for "Não atacar". */
-export type OpportunityAnswer = { readonly attackKey: string } | null;
+/** What the prompt closes with: the attack the player chose (with the options it comes from), or nothing for "Não atacar". */
+export type OpportunityAnswer = { readonly attackKey: string; readonly options: GetTurnOptionsResponse } | null;
 
 /**
  * "O Goblin 2 está saindo do seu alcance. Ataque de oportunidade?" (E9-13): the
  * player's `alertdialog`, like Escudo's. The server detected the exit and made
  * the offer (`Encounter.opportunity_offers`); the page opens this by itself and it
- * cannot be closed without an answer. Focus starts on the safe "Não atacar"; the
- * answers are the same width (stacked on a phone) and one "Atacar com <arma>" per
- * melee attack, which closes the prompt and hands over to the attack sheet, with
- * the mover as its target. It says what is spent (the reaction) and the weapon,
- * never the target's armor class. If the master answered or skipped meanwhile,
- * it says so and only closes.
+ * cannot be closed without an answer. Focus starts on the safe "Não atacar" (with
+ * its ring: it is a keyboard-style focus); the answers are stacked at the same width,
+ * the first weapon's "Atacar com <arma>" the one filled button, with a line of numbers per
+ * weapon above them ("Espada longa +5 · 1d8 + 3 cortante"). The weapons are read when the
+ * prompt opens: until they are in the attack buttons are off and say why, and if the read fails
+ * the prompt says so and offers "Tentar de novo" ("Não atacar" always works, so the offer is
+ * never stuck). A chosen attack closes the prompt and hands over to the attack sheet, with
+ * the mover as its target. It says what is spent (the reaction), never the target's armor
+ * class. If the master answered or skipped meanwhile, it says so and only closes.
  */
 @Component({
   selector: 'app-opportunity-sheet',
@@ -50,20 +54,39 @@ export type OpportunityAnswer = { readonly attackKey: string } | null;
         <p class="what" role="status">O mestre respondeu por você: esse ataque de oportunidade não espera mais a sua resposta.</p>
       } @else {
         <p class="what">{{ question() }}</p>
-        <p class="small">Gasta a sua reação.{{ weapons() ? ' ' + weapons() : '' }}</p>
+        <p class="small">Gasta a sua reação.</p>
+        @if (attacks(); as list) {
+          <ul class="weapons" aria-label="Seus ataques corpo a corpo">
+            @for (a of list; track a.key) {
+              <li><b>{{ a.name }}</b> {{ a.numbers }}</li>
+            }
+          </ul>
+        } @else if (readFailed()) {
+          <p class="small" role="status">Não deu para ler os seus ataques. Dá para tentar de novo, ou não atacar.</p>
+        } @else {
+          <p class="small" role="status">Lendo os seus ataques…</p>
+        }
       }
       <div foot>
         @if (gone()) {
           <button mat-stroked-button type="button" class="btn" data-initial-focus (click)="sheet.close(null)">Fechar</button>
         } @else {
-          <div class="pair" [class.pair--many]="data.attacks.length > 1">
-            <button mat-stroked-button type="button" class="btn" data-initial-focus [disabled]="busy()" (click)="decline()">
+          <div class="stack">
+            <button #safe mat-stroked-button type="button" class="btn" data-initial-focus [disabled]="busy()" (click)="decline()">
               Não atacar
             </button>
-            @for (a of data.attacks; track a.key) {
-              <button mat-flat-button type="button" class="btn" [disabled]="busy()" (click)="attack(a)">
-                {{ label(a) }}
-              </button>
+            @if (attacks(); as list) {
+              @for (a of list; track a.key; let first = $first) {
+                @if (first) {
+                  <button mat-flat-button type="button" class="btn" [disabled]="busy()" (click)="attack(a)">{{ label(a) }}</button>
+                } @else {
+                  <button mat-stroked-button type="button" class="btn" [disabled]="busy()" (click)="attack(a)">{{ label(a) }}</button>
+                }
+              }
+            } @else if (readFailed()) {
+              <button mat-stroked-button type="button" class="btn" (click)="read()">Tentar de novo</button>
+            } @else {
+              <button mat-flat-button type="button" class="btn btn--off" disabled disabledInteractive>Atacar</button>
             }
           </div>
         }
@@ -74,23 +97,48 @@ export type OpportunityAnswer = { readonly attackKey: string } | null;
 })
 export class OpportunitySheet {
   private readonly api = inject(CombatClient);
+  private readonly injector = inject(Injector);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   protected readonly sheet = injectSheet<OpportunitySheetData, OpportunityAnswer>();
   protected readonly data = this.sheet.data;
   protected readonly inSheet = this.sheet.inSheet;
   protected readonly busy = signal(false);
   protected readonly error = signal('');
+  /** The attacks, once read; `null` while they come or when the read failed. */
+  protected readonly attacks = signal<readonly (ReactorAttack & { numbers: string })[] | null>(null);
+  protected readonly readFailed = signal(false);
+  private options: GetTurnOptionsResponse | null = null;
 
-  protected readonly subtitle = computed(() => `${this.data.offer.moverLabel} · Rodada ${this.data.round}`);
+  protected readonly subtitle = computed(() => tieNumbers(`${this.data.offer.moverLabel} · Rodada ${this.data.round}`));
   protected readonly question = computed(() => playerQuestion(this.data.offer));
-  /** "Espada longa +5 · 1d8 + 3 cortante." for one attack; the names when there are several. */
-  protected readonly weapons = computed(() => {
-    const a = this.data.attacks;
-    return a.length === 1 ? `${a[0].detail}.` : '';
-  });
   /** The offer is no longer in the combat: the master (or the turn) answered it. */
   protected readonly gone = computed(
     () => !this.busy() && !(this.data.state.encounter()?.opportunityOffers ?? []).some((o) => o.id === this.data.offer.id),
   );
+
+  constructor() {
+    void this.read();
+    // The safe answer has the focus, and its ring: the sheet opens for a keyboard-style answer.
+    afterNextRender(
+      () =>
+        (this.host.nativeElement.querySelector('[data-initial-focus]') as HTMLButtonElement | null)?.focus({
+          focusVisible: true,
+        } as FocusOptions),
+      { injector: this.injector },
+    );
+  }
+
+  protected async read(): Promise<void> {
+    this.readFailed.set(false);
+    try {
+      const { attacks, options } = await this.data.load();
+      this.options = options;
+      // The numbers after the name: "+5 · 1d8 + 3 cortante".
+      this.attacks.set(attacks.map((a) => ({ ...a, numbers: a.detail.replace(`${a.name} `, '') })));
+    } catch {
+      this.readFailed.set(true);
+    }
+  }
 
   protected label(a: ReactorAttack): string {
     return attackLabel(a);
@@ -113,6 +161,8 @@ export class OpportunitySheet {
   }
 
   protected attack(a: ReactorAttack): void {
-    this.sheet.close({ attackKey: a.key });
+    if (this.options) {
+      this.sheet.close({ attackKey: a.key, options: this.options });
+    }
   }
 }

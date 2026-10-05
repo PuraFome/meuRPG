@@ -15,11 +15,21 @@
   color: var(--mr-ink-muted);
 }
 
-// The answers have the same width and height; when the pair does not fit on a
-// line, each takes its own (never a wrapped label).
-.pair {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+.weapons {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 15px;
+  line-height: 20px;
+}
+
+// The answers are stacked at one width and one height; the first weapon is the one filled button.
+.stack {
+  display: flex;
+  flex-direction: column;
   gap: 10px;
 }
 
@@ -34,4 +44,10 @@
     --mat-button-outlined-container-height: 44px;
     --mat-button-filled-container-height: 44px;
   }
+}
+
+.btn--off {
+  --mat-button-filled-disabled-container-color: var(--mr-surface);
+  --mat-button-filled-disabled-label-text-color: var(--mr-ink-muted);
+  border: 1px dashed var(--mr-control-line);
 }

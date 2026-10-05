@@ -56,7 +56,7 @@ export interface TokenDrop extends Square {
  * - **Reach (E6-10, MAP-LANGUAGE.md):** the squares the server says a combatant
  *   can go to, tinted, inside a dashed circle of the movement left. A square the
  *   circle holds that is not tinted gets no mark of its own.
- * - **Offers (E9-13):** a dashed outline around the reactor of a pending
+ * - **Offers (E9-13):** a dashed outline on the square of the reactor of a pending
  *   opportunity attack and a label on the square the mover left.
  * - **Moving:** the master drags any token (`masterMoves`); a player drags
  *   their own inside the reach (`ownMoveId`). With `pickSquares`, a click on
@@ -92,6 +92,8 @@ export class CombatMap {
   readonly pickSquares = input(false);
   /** Side of one square in pixels; `null` fits the map to its container. */
   readonly cellPx = input<number | null>(null);
+  /** The "Vez" word above the one on turn: left out where the page is about one mover (the "Mover" page). */
+  readonly showTurn = input(true);
 
   /** A square was chosen (a click, or an arrow key) in `pickSquares` mode. */
   readonly choose = output<Square>();
@@ -135,9 +137,9 @@ export class CombatMap {
     const reach = this.reach();
     return reach ? reach.leftDft / DFT_PER_SQUARE : 0;
   });
-  /** The 3 x 3 squares around a reactor: its 5 ft reach, drawn as an outline. */
+  /** The square of each reactor, outlined: the server does not say how far its reach goes, so none is drawn. */
   protected readonly reactorBoxes = computed(() =>
-    this.offers().map((o) => ({ col: o.reactor.col - 1, row: o.reactor.row - 1, left: o.left })),
+    this.offers().map((o) => ({ col: o.reactor.col, row: o.reactor.row, left: o.left })),
   );
 
   /** The frame on the chosen square (a tap, or the arrow keys' cursor). */

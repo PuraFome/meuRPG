@@ -5,7 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import type { Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { PHONE_QUERY, mediaQuery } from '../../../../shared/map-view/media-query';
 import { ownCombatant } from '../../../../core/combat/combat-view';
-import { metersText } from '../../../../core/units';
+import { metersFixed } from '../../../../core/units';
 import { type MapLayers, NO_LAYERS } from '../../../../core/maps/layers';
 import {
   CombatMap,
@@ -20,10 +20,10 @@ import { MapLayersLegend } from '../../../../shared/map-layers/map-layers-legend
 /**
  * The map panel of a running combat or of its setup (E6-04, E6-05, E6-11):
  * the battle map with its legend. The master drags any token ("O mestre anda
- * sem limite"); a player drags their own inside the reach, on their turn.
+ * sem limite"); a player drags their own on their turn, which opens the "Mover" page on that square (the page asks, with its warnings; a drop never moves).
  * The legend names every shape the map uses, so no meaning is colour alone: the
  * layer marks the map has (`app-map-layers-legend`), then the tokens and, when
- * they are drawn, the movement marks and the reach of an opportunity attack's
+ * they are drawn, the movement marks and the square of an opportunity attack's
  * reactor. The master can turn the reach of whoever is on turn on and off
  * ("Mostrar o alcance do Toren no mapa", E9-05): the server's `GetMoveOptions`
  * answer, drawn as it comes.
@@ -48,7 +48,7 @@ export class CombatMapCard {
   readonly offers = input<readonly OfferMark[]>([]);
   /** The master's switch for the reach of whoever is on turn: its name, and whether it is on. */
   readonly reachSwitch = input<{ readonly name: string; readonly on: boolean } | null>(null);
-  /** The player's own combatant may be dragged (their turn, desktop). */
+  /** The player's own combatant may be dragged to pick a square (their turn, desktop): the drop opens "Mover" there. */
   readonly ownMovable = input(false);
   readonly hint = input(true);
   /** The legend of the shapes; the setup's small map says it in a note. */
@@ -91,7 +91,7 @@ export class CombatMapCard {
     return `${e.gridColumns} × ${e.gridRows} quadrados de 1,5 m`;
   });
   protected readonly emptyLayers = NO_LAYERS;
-  protected readonly reachMeters = computed(() => metersText((this.reach()?.leftDft ?? 0) / 10));
+  protected readonly reachMeters = computed(() => metersFixed((this.reach()?.leftDft ?? 0) / 10));
   protected readonly hasHidden = computed(() => this.encounter().combatants.some((c) => c.hidden));
   protected readonly hasDefeated = computed(() => this.encounter().combatants.some((c) => c.defeated));
 }

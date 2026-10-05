@@ -43,11 +43,12 @@ import { Component, computed, input } from '@angular/core';
       box-sizing: border-box;
       padding: 1px 9px;
       border: 1px solid var(--mr-ink);
-      border-radius: var(--mr-radius-pill);
+      border-radius: 12px;
       font-size: 13px;
       font-weight: 700;
       line-height: 18px;
-      white-space: nowrap;
+      // A long tag ("Três quartos · marcada pelo mestre") wraps in a narrow chip instead of being cut.
+      overflow-wrap: anywhere;
     }
 
     .tag--conc {

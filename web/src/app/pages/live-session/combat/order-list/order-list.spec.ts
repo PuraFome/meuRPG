@@ -113,11 +113,12 @@ describe('OrderList', () => {
       expect(el.querySelector('[role="radiogroup"]')).toBeNull();
     });
 
-    it('tags the master\'s mark and the ally for everyone', () => {
+    it('says "Aliado" as a side, apart from the conditions, and leaves the mark to the cover line', () => {
       const { el } = withCover({ marked: CoverDegree.THREE_QUARTERS, ally: true });
-      const tags = Array.from(el.querySelectorAll('.tag'), (t) => plain(t.textContent));
-      expect(tags).toContain('Aliado');
-      expect(tags).toContain('Três quartos · marcada pelo mestre');
+      const row = Array.from(el.querySelectorAll('li.row')).find((r) => r.textContent?.includes('Goblin 2'))!;
+      expect(plain(row.querySelector('.row__meta')?.textContent)).toContain('Aliado');
+      // Not inside "Condições de Goblin 2", and the master's list has no mark pill: the line says it.
+      expect(Array.from(row.querySelectorAll('.tag'), (t) => plain(t.textContent))).toEqual([]);
     });
   });
 });

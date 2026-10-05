@@ -16,6 +16,7 @@
           [isMaster]="true"
           [currentId]="encounter().currentCombatantId"
           [layers]="layers()"
+          [offers]="offers()"
         />
       </div>
     </div>
@@ -88,13 +89,13 @@
     @if (hasDefeated()) {
       <li><app-combatant-token initial="X" [defeated]="true" [npc]="true" [size]="22" />Derrotado</li>
     }
-    <li><app-combatant-token initial="P" [current]="true" [size]="22" />Vez</li>
+    <li><app-combatant-token initial="P" [current]="true" [size]="18" />Vez</li>
     @if (reach()) {
       <li><span class="mr-swatch mr-swatch--reach" aria-hidden="true"></span>Alcance {{ reachSwitch()?.name }}</li>
       <li><span class="mr-swatch mr-swatch--ring" aria-hidden="true"></span>Alcance de {{ reachMeters() }}</li>
     }
     @if (offers().length) {
-      <li><span class="mr-swatch mr-swatch--reactor" aria-hidden="true"></span>Alcance de quem pode atacar</li>
+      <li><span class="mr-swatch mr-swatch--reactor" aria-hidden="true"></span>Quem pode atacar</li>
     }
   </app-map-layers-legend>
   }

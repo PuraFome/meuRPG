@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { MatIconModule } from '@angular/material/icon';
 
 import type { JumpLimits } from '../../../../../gen/meurpg/rules/v1/rules_pb';
-import { type JumpMode, limitFor, limitsLine, runSeal } from '../../../../core/combat/jump-plan';
+import { type JumpMode, limitFor, runSeal } from '../../../../core/combat/jump-plan';
 import { metersFixed } from '../../../../core/units';
 
 /**
@@ -19,13 +19,13 @@ import { metersFixed } from '../../../../core/units';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <dl class="lim">
-      <div class="lim__card" [class.lim__card--on]="kind() === 'long'">
+      <div class="lim__row">
         <dt>Distância</dt>
-        <dd>{{ long() }}</dd>
+        <dd><b>{{ long().running }}</b> com corrida · <b>{{ long().standing }}</b> parado</dd>
       </div>
-      <div class="lim__card" [class.lim__card--on]="kind() === 'high'">
+      <div class="lim__row">
         <dt>Altura</dt>
-        <dd>{{ high() }}</dd>
+        <dd><b>{{ high().running }}</b> com corrida · <b>{{ high().standing }}</b> parado</dd>
       </div>
     </dl>
     <p class="seal" role="status">
@@ -72,8 +72,8 @@ export class JumpPanel {
   /** The stepper moved one step: `+1` or `-1`. */
   readonly step = output<1 | -1>();
 
-  protected readonly long = computed(() => limitsLine(this.limits().longRunningDft, this.limits().longStandingDft));
-  protected readonly high = computed(() => limitsLine(this.limits().highRunningDft, this.limits().highStandingDft));
+  protected readonly long = computed(() => ({ running: metersFixed(this.limits().longRunningDft / 10), standing: metersFixed(this.limits().longStandingDft / 10) }));
+  protected readonly high = computed(() => ({ running: metersFixed(this.limits().highRunningDft / 10), standing: metersFixed(this.limits().highStandingDft / 10) }));
   protected readonly seal = computed(() => runSeal(this.limits()));
   protected readonly heightText = computed(() => metersFixed(this.height() / 10));
   /** For the page: the limit that applies to the picked kind. */

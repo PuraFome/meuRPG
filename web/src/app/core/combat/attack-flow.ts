@@ -4,7 +4,7 @@ import {
   PendingDamageStatus,
   type TargetInReach,
 } from '../../../gen/meurpg/play/v1/combat_pb';
-import { metersText } from '../units';
+import { metersFixed, metersText } from '../units';
 import { joinDots, tight } from '../format/text';
 import { listing } from './cover';
 import { stateWord } from './combat-view';
@@ -88,7 +88,7 @@ export function targetRows(targets: readonly TargetInReach[], rangeFt: number): 
       parts.push(word);
     }
     if (t.distanceFt !== undefined) {
-      parts.push(`a ${metersText(t.distanceFt)}`);
+      parts.push(`a ${metersFixed(t.distanceFt)}`);
     }
     return [
       {

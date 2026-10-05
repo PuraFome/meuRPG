@@ -57,7 +57,7 @@ export class EconomyTiles {
   protected readonly move = computed(() => {
     const c = this.own();
     // In tenths of a foot, as the server keeps it, and metres with one decimal ("6,9 m de 9,0 m").
-    const total = Math.max(1, c.speedDft * (c.dashed ? 2 : 1));
+    const total = Math.max(1, c.speedDft);
     return {
       text: tight(`${metersFixed(c.movementLeftDft / 10)} de ${metersFixed(total / 10)}`),
       free: squaresFree(c.movementLeftFt),

@@ -21,7 +21,7 @@ import {
   SpellSaveSuccess,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { rollFormula } from './combat-dice';
-import { metersText } from '../units';
+import { metersFixed, metersText } from '../units';
 import { joinDots, tight } from '../format/text';
 import { circleLabel } from './combat-options';
 import { article } from './combat-log';
@@ -220,7 +220,7 @@ export function castTargetRows(targets: readonly TargetInReach[], casterId: stri
         parts.push(word);
       }
       if (t.distanceFt !== undefined) {
-        parts.push(`a ${metersText(t.distanceFt)}`);
+        parts.push(`a ${metersFixed(t.distanceFt)}`);
       }
     }
     return [

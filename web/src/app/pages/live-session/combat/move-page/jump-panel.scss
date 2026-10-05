@@ -5,34 +5,41 @@
 }
 
 .lim {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--mr-space-2);
   margin: 0;
-}
-
-.lim__card {
-  box-sizing: border-box;
-  padding: 10px 12px;
+  padding: 10px 14px;
   border: 1px solid var(--mr-line);
   border-radius: var(--mr-radius-md);
   background: var(--mr-surface);
+}
+
+.lim__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--mr-space-3);
+
+  + .lim__row {
+    margin-top: 6px;
+  }
 
   dt {
+    min-width: 76px;
     font-size: 14px;
     font-weight: 700;
     color: var(--mr-ink-muted);
   }
 
   dd {
-    margin: 2px 0 0;
+    margin: 0;
     font-size: 15px;
     line-height: 20px;
   }
-}
 
-.lim__card--on {
-  border-color: var(--mr-accent);
+  b {
+    font-family: var(--mr-font-display);
+    font-size: 18px;
+    font-weight: 800;
+  }
 }
 
 .seal {

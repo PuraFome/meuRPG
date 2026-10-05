@@ -136,13 +136,13 @@ export class TurnPanel {
       ? {
           // Tenths of a foot, metres with one decimal: "6,9 m de 9,0 m".
           left: metersFixed(own.movementLeftDft / 10),
-          total: metersFixed((own.speedDft * (own.dashed ? 2 : 1)) / 10),
+          total: metersFixed(own.speedDft / 10),
           free: squaresFree(own.movementLeftFt),
           used: own.movementUsedDft > 0 ? metersFixed(own.movementUsedDft / 10) : '',
           none: own.movementLeftDft <= 0,
           percent: Math.max(
             0,
-            Math.min(100, (own.movementLeftDft / Math.max(1, own.speedDft * (own.dashed ? 2 : 1))) * 100),
+            Math.min(100, (own.movementLeftDft / Math.max(1, own.speedDft)) * 100),
           ),
         }
       : null;

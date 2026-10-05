@@ -61,7 +61,7 @@ describe('the move page reads the server\'s options', () => {
     const say = (reason: MoveRefusal) => refusalText({ kind: 'refused', reason }, 300);
     expect(say(MoveRefusal.WALL)).toEqual({
       title: 'Sem caminho reto',
-      detail: 'Há uma parede entre você e esse quadrado. Para contornar, mova em partes.',
+      detail: 'Uma parede bloqueia esse caminho, no meio da linha ou no próprio quadrado. Escolha outro quadrado; para contornar uma parede no caminho, mova em partes.',
     });
     expect(say(MoveRefusal.ENEMY)?.title).toBe('Inimigo no caminho');
     expect(say(MoveRefusal.OCCUPIED)?.title).toBe('Ocupado');
@@ -74,8 +74,8 @@ describe('the move page reads the server\'s options', () => {
     const goblin = combatant({ id: 'g2', label: 'Goblin 2' });
     const names = provokedBy(options.reachable[1], [goblin, combatant({ id: 'g3', label: 'Goblin 3' })]);
     expect(names).toEqual(['Goblin 2']);
-    expect(provokeWarning(names)).toBe('Sair do alcance do Goblin 2 pode provocar um ataque de oportunidade.');
-    expect(provokeWarning(['Goblin 1', 'Brisa'])).toBe(
+    expect(plain(provokeWarning(names))).toBe('Sair do alcance do Goblin 2 pode provocar um ataque de oportunidade.');
+    expect(plain(provokeWarning(['Goblin 1', 'Brisa']))).toBe(
       'Sair do alcance do Goblin 1 e da Brisa pode provocar um ataque de oportunidade.',
     );
     expect(provokedBy(options.reachable[0], [goblin])).toEqual([]);

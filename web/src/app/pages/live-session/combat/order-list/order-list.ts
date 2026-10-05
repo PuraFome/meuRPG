@@ -13,9 +13,10 @@ import {
   type Encounter,
   EncounterStatus,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { tieNumbers } from '../../../../core/format/text';
 import { joinDots } from '../../../../core/format/text';
 import { conditionTags } from '../../../../core/combat/conditions';
-import { coverMark, coverText, markTags } from '../../../../core/combat/cover';
+import { coverMark, coverText, sideTags } from '../../../../core/combat/cover';
 import { article } from '../../../../core/combat/combat-log';
 import { combatantInitial, isPlayer, stateWord } from '../../../../core/combat/combat-view';
 import { type OrderItem, jointTurn, listNames, orderItems } from '../../../../core/combat/joint-turn';
@@ -63,6 +64,8 @@ export class OrderList {
    * of the master's subject), and who that is: "Três quartos (do mapa) contra o Pensantus". */
   readonly coverAgainst = input<ReadonlyMap<string, { cover: CoverDegree; source: CoverSource }>>(new Map());
   readonly turnLabel = input('');
+  /** The side of whoever has the turn: the cover is said only against an opponent. */
+  readonly turnSide = input<CombatantSide>(CombatantSide.UNSPECIFIED);
   /** The master's "Aliado" (PARTY) or back to enemy (ENEMY). */
   readonly side = output<{ id: string; side: CombatantSide }>();
   /** The master's manual cover mark. */
@@ -99,8 +102,14 @@ export class OrderList {
     return !isPlayer(c);
   }
 
+  /** An NPC the master marked "Aliado": a side, said apart from the conditions. */
+  protected ally(c: Combatant): boolean {
+    return sideTags(c).length > 0;
+  }
+
   protected tags(c: Combatant): string[] {
-    return [...conditionTags(c), ...markTags(c)];
+    // The master's list says the cover in the line under the name; "Aliado" is a side, shown apart.
+    return conditionTags(c);
   }
 
   /** The spell it concentrates on, written out (the combat sends its name). */
@@ -162,7 +171,9 @@ export class OrderList {
     const against = this.coverAgainst().get(c.id);
     const text = against ? coverText(against.cover, against.source) : '';
     const who = this.turnLabel();
-    return text && who && c.label !== who ? `${text} contra ${article(who)} ${who}` : '';
+    const side = this.turnSide();
+    // Only against opponents: a combatant of the same side as whoever has the turn is no target of theirs.
+    return text && who && c.label !== who && (side === CombatantSide.UNSPECIFIED || c.side !== side) ? tieNumbers(`${text} contra ${article(who)} ${who}`) : '';
   }
 
   protected coverPictogram(c: Combatant): 'half' | 'three' | null {
