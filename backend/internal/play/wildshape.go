@@ -442,9 +442,9 @@ func (s *Service) shapeChange(ctx context.Context, campaignID, rawCharacter, raw
 	var out *playv1.Encounter
 	if ev.EncounterID != "" {
 		res.encounterID = ev.EncounterID
-		if out, err = s.finish(ctx, m, res, func(d *encounterData) {
-			s.publishEncounterChanged(m.CampaignID, d.enc)
-			s.publishLogChanged(m.CampaignID, d.enc.ID, !ev.Secret)
+		if out, err = s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
+			s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
+			s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
 		}); err != nil {
 			return nil, nil, err
 		}

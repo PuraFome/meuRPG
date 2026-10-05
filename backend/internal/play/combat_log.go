@@ -601,8 +601,15 @@ func (e *logEntry) trapEntry(ctx context.Context, v combatViewer, byID map[strin
 	tv := trapView{
 		master: v.master,
 		owns:   func(id string) bool { return v.owns(byID[id]) },
-		hidden: func(id string) bool { return byID[id].Hidden },
-		label:  func(id string) string { return byID[id].Label },
+		hidden: func(id string) bool {
+			if byID[id].Hidden {
+				return true
+			}
+			// On a fog map: an NPC the firing caught is the line of the players who saw it then.
+			i := slices.IndexFunc(e.ev.Trap.Caught, func(cc trapCaughtEvent) bool { return cc.Target == id })
+			return i >= 0 && e.ev.Trap.Caught[i].Fogged && !slices.Contains(e.ev.Trap.Caught[i].SeenBy, v.userID)
+		},
+		label: func(id string) string { return byID[id].Label },
 		status: func(pendingID string) (playv1.PendingDamageStatus, bool) {
 			if dl, ok := e.pend[pendingID]; ok {
 				return dl.status, true

@@ -467,7 +467,7 @@ func (s *Service) markProvokes(ctx context.Context, m authz.Membership, enc play
 		sheet := p.sheet
 		if len(sheet.Attacks) == 0 { // a player's warning never read the sheet
 			var err error
-			if sheet, err = s.sheetOf(ctx, m.CampaignID, p.reactor); err != nil && connect.CodeOf(err) != connect.CodeNotFound {
+			if sheet, err = s.sheetOf(ctx, nil, m.CampaignID, p.reactor); err != nil && connect.CodeOf(err) != connect.CodeNotFound {
 				return false, err
 			}
 		}

@@ -1196,3 +1196,109 @@ func TestFogCombatMoveCost(t *testing.T) {
 		t.Errorf("a move on the big table takes %v on average", avg)
 	}
 }
+
+// TestRN10_FogCombatATrapThatCaughtAnNPCOutOfSightIsNotItsLineToThePlayer: a firing is
+// public (the trap is revealed to everyone), but what it did to an NPC is the line of
+// the players who saw the NPC then. The master's hand fires the statue and catches
+// Goblin 1, far in the dark, and Goblin 2, in Toren's light.
+func TestRN10_FogCombatATrapThatCaughtAnNPCOutOfSightIsNotItsLineToThePlayer(t *testing.T) {
+	t.Parallel()
+	f := newFogCave(t)
+	f.h.svc.SetTraps(f.msvc)
+	f.msvc.SetTrapFirer(f.h.svc)
+	e := f.fight(t)
+	f.mustMove(t, f.master, "Goblin 2", 8, 8)
+	x, y := atBP(grid.Square{Col: 15, Row: 12})
+	res, err := f.mapsAs(f.master).CreateMapPoint(t.Context(), connect.NewRequest(&mapsv1.CreateMapPointRequest{
+		CampaignId: f.campaignID, MapId: f.mapID, Kind: mapsv1.MapPointKind_MAP_POINT_KIND_TRAP, Name: "Estátua de Fogo", XBp: x, YBp: y,
+		Trap: &mapsv1.TrapSpec{
+			NoticeDc: 12, FindDc: 15, AreaSize: 1, Trigger: rulesv1.TrapTrigger_TRAP_TRIGGER_MANUAL,
+			Effect: &rulesv1.TrapEffect{
+				Save: &rulesv1.TrapSaveEffect{
+					Ability: rulesv1.Ability_ABILITY_DEXTERITY, Dc: 12, AppliesTo: rulesv1.TrapSaveApplies_TRAP_SAVE_APPLIES_CAUGHT,
+					OnFail: &rulesv1.TrapOnFail{Condition: &rulesv1.TrapCondition{ConditionKey: "condition:poisoned"}},
+					OnPass: rulesv1.TrapPassOutcome_TRAP_PASS_OUTCOME_NONE,
+				},
+				Targets: rulesv1.TrapTargets_TRAP_TARGETS_MANUAL,
+			},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("CreateMapPoint(trap) error = %v", err)
+	}
+	if _, err := f.master.play.FireTrap(t.Context(), connect.NewRequest(&playv1.FireTrapRequest{
+		CampaignId: f.campaignID, MapId: f.mapID, PointId: res.Msg.GetPoint().GetId(), TargetIds: []string{f.id(t, "Goblin 1"), f.id(t, "Goblin 2")}, IdempotencyKey: newKey(),
+	})); err != nil {
+		t.Fatalf("FireTrap() error = %v", err)
+	}
+	caught := func(u *user) []string {
+		var out []string
+		for _, r := range f.log(t, u, e).GetRounds() {
+			for _, en := range r.GetEntries() {
+				if en.GetKind() == playv1.CombatLogKind_COMBAT_LOG_KIND_TRAP_TRIGGERED {
+					out = append(out, "firing")
+					for _, c := range en.GetTrap().GetCaught() {
+						out = append(out, c.GetTargetLabel())
+					}
+				}
+			}
+		}
+		slices.Sort(out)
+		return out
+	}
+	if got, want := caught(f.master), []string{"Goblin 1", "Goblin 2", "firing"}; !slices.Equal(got, want) {
+		t.Errorf("the master reads %v, want %v", got, want)
+	}
+	for name, u := range map[string]*user{"Toren's player": f.caio, "Brisa's player": f.bia, "Pensantus's player": f.ana} {
+		got := caught(u)
+		if want := []string{"Goblin 2", "firing"}; !slices.Equal(got, want) {
+			t.Errorf("%s reads %v, want the public firing and only the goblin they saw %v", name, got, want)
+		}
+		f.noLeak(t, name+"'s log", asJSON(t, f.log(t, u, e)), "Goblin 1")
+	}
+}
+
+// TestRN10_FogCombatAWolfFormReactorSeesWithTheBeastsEyes: Sálvia, a half-elf druid
+// (darkvision), sees a goblin that leaves her reach in the dark and is offered the
+// attack; as a wolf, which has no darkvision, she does not see it and is not.
+func TestRN10_FogCombatAWolfFormReactorSeesWithTheBeastsEyes(t *testing.T) {
+	t.Parallel()
+	f := newFogCave(t)
+	f.torch(t, false)
+	dani := f.h.newUser("Dani")
+	f.h.join(f.master, f.campaignID, dani)
+	salvia := dani.caster(t, f.campaignID, "Sálvia", "class:druid", "race:half-elf", 5,
+		&rulesv1.AbilityScores{Strength: 10, Dexterity: 12, Constitution: 14, Intelligence: 10, Wisdom: 16, Charisma: 8}, []string{maceKey}, nil, nil, []string{conjureAnimals})
+	e := f.start(t, plan{
+		npcs:     []*playv1.Participant{{CharacterId: f.goblins.GetId(), Count: 2}},
+		npcRolls: []int{1, 1},
+		players:  map[string]int32{"Sálvia": 20, "Toren": 18, "Pensantus": 10, "Brisa": 5},
+		reveal:   []string{"Goblin 1", "Goblin 2"},
+		at: map[string][2]int32{
+			"Sálvia": {9, 8}, "Goblin 1": {8, 8}, "Goblin 2": {10, 8}, "Toren": {6, 7}, "Pensantus": {5, 8}, "Brisa": {4, 7},
+		},
+	})
+	offersOfSalvia := func() int {
+		n := 0
+		for _, o := range f.get(t, f.master).GetOpportunityOffers() {
+			if o.GetReactorLabel() == "Sálvia" {
+				n++
+			}
+		}
+		return n
+	}
+	f.passTo(t, e, "Goblin 2")
+	f.moveOffering(t, "Goblin 2", 14, 8)
+	if offersOfSalvia() != 1 {
+		t.Fatalf("Sálvia, who sees in the dark, has %d offers on the goblin that left her reach, want 1", offersOfSalvia())
+	}
+	f.skipOffers(t)
+
+	f.passTo(t, e, "Sálvia")
+	f.mustAssume(t, dani, salvia, wolfKey)
+	f.passTo(t, e, "Goblin 1")
+	f.moveOffering(t, "Goblin 1", 6, 8)
+	if n := offersOfSalvia(); n != 0 {
+		t.Errorf("Sálvia as a wolf, with no darkvision, has %d offers on a goblin she cannot see, want none", n)
+	}
+}

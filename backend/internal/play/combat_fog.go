@@ -308,6 +308,23 @@ func (c *combatTx) stamp(ctx context.Context, kind string, ev actionEvent) (acti
 		}
 		npcSquares = append(npcSquares, squares)
 	}
+	if ev.Trap != nil { // the firing is public; what it did to an NPC is for the players who saw it
+		t := *ev.Trap
+		t.Caught = slices.Clone(t.Caught)
+		for i, cc := range t.Caught {
+			j := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == cc.Target })
+			if j < 0 || cs[j].Kind != kindNPC {
+				continue
+			}
+			t.Caught[i].Fogged, t.Caught[i].SeenBy = true, nil
+			for _, u := range c.sight.sight.Users() {
+				if c.sight.seesNPC(u, cs[j]) {
+					t.Caught[i].SeenBy = append(t.Caught[i].SeenBy, u)
+				}
+			}
+		}
+		ev.Trap = &t
+	}
 	if len(npcSquares) == 0 {
 		return ev, nil
 	}
