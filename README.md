@@ -64,7 +64,7 @@ As Etapas 1 a 9 do [roadmap](docs/roadmap.md) estão na `main`:
 - **Movimento como nas regras oficiais.** O alcance em círculo, o terreno difícil, o salto, a cobertura e o ataque de oportunidade, tudo decidido pelo servidor.
 - **As criaturas do personagem.** O familiar, os mortos-vivos e os animais convocados entram na ficha e no combate, cada um com a vez dele, e o druida vira fera na Forma Selvagem.
 
-Agora vem a Etapa 10, a última antes do MVP: o conteúdo e a geração (as regras da própria mesa, os quebra-cabeças, o gerador de masmorras e as imagens geradas por IA). O MVP termina quando a mesa joga a primeira sessão inteira pelo app. Ver [Roadmap](docs/roadmap.md).
+Agora vem a Etapa 10, a última antes do MVP: o conteúdo e a geração (o conteúdo e as regras da própria mesa, os quebra-cabeças, o gerador de masmorras, as imagens geradas por IA, e o bestiário, os encontros e o tesouro do mestre), planejada em 05/10/2026. O MVP termina quando a mesa joga a primeira sessão inteira pelo app. Ver [Roadmap](docs/roadmap.md).
 
 ## O visual: a ficha de papel
 
