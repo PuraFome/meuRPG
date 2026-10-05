@@ -7,6 +7,7 @@ import {
   type GetCampaignExperienceResponse,
   type GiveMilestoneToResponse,
   type ListMilestonesResponse,
+  type ListTreasuresToConvertResponse,
   type ListXPAwardsResponse,
   type MarkMilestoneReachedResponse,
   type MarkMilestoneResponse,
@@ -25,7 +26,9 @@ import { CONNECT_TRANSPORT } from '../connect/transport';
 export type AwardInput =
   | { readonly mode: 'enemies'; readonly encounterId: string }
   | { readonly mode: 'manual'; readonly amount: number }
-  | { readonly mode: 'gold'; readonly gold: number };
+  | { readonly mode: 'gold'; readonly gold: number }
+  /** "Voltar à cidade": the found treasures to convert; the server sums their PO. */
+  | { readonly mode: 'town'; readonly treasurePointIds: readonly string[] };
 
 /** The awards a page asks for at once; "Mostrar mais" asks for the next page. */
 export const AWARDS_PAGE_SIZE = 20;
@@ -57,13 +60,20 @@ export class ProgressionClient {
       mode:
         input.mode === 'enemies'
           ? XPAwardMode.XP_AWARD_MODE_ENEMIES
-          : input.mode === 'gold'
+          : input.mode === 'gold' || input.mode === 'town'
             ? XPAwardMode.XP_AWARD_MODE_GOLD
             : XPAwardMode.XP_AWARD_MODE_MANUAL,
       encounterId: input.mode === 'enemies' ? input.encounterId : '',
       amount: input.mode === 'manual' ? input.amount : 0,
       gold: input.mode === 'gold' ? input.gold : 0,
+      treasurePointIds: input.mode === 'town' ? [...input.treasurePointIds] : [],
     });
+  }
+
+  /** The found treasures waiting to be converted (master only): at most 100,
+   * the oldest finds, and `total` says how many there are. */
+  listTreasures(campaignId: string): Promise<ListTreasuresToConvertResponse> {
+    return this.client.listTreasuresToConvert({ campaignId });
   }
 
   markMilestone(

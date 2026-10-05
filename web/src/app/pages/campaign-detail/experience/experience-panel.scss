@@ -6,6 +6,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: var(--mr-space-3);
   margin-bottom: var(--mr-space-2);
 
@@ -55,4 +56,13 @@
 
 .exp__inline {
   --mat-button-text-label-text-color: var(--mr-accent-text);
+}
+
+// The treasure strip (master): under the lead, nothing at all when it has nothing to say.
+.exp__strip {
+  margin: var(--mr-space-3) 0 var(--mr-space-2);
+
+  &:empty {
+    display: none;
+  }
 }

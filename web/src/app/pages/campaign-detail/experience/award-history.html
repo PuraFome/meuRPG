@@ -1,4 +1,4 @@
-@if (notice()) {
+@if (notice() && !hideNotice()) {
   <p class="notice mr-notice mr-notice--neutral" role="status">
     <mat-icon aria-hidden="true">info</mat-icon>{{ notice() }}
   </p>
@@ -47,10 +47,24 @@
           }
         </div>
         <div class="what">
-          <span class="what__title">{{ a.reason }}</span>
+          <span class="what__title">{{ heading(a) }}</span>
           <span class="what__sub">{{ given(a) }}</span>
           @if (a.undone) {
-            <span class="what__sub">{{ undone(a) }}</span>
+            <span class="what__sub">{{ undoneText(a) }}</span>
+          } @else if (isMaster() && a.treasureCount > 0 && !a.canUndo) {
+            <span class="what__sub">Os tesouros ficam livres quando os prêmios mais novos forem desfeitos.</span>
+          }
+          @if (a.canUndo) {
+            <button
+              mat-button
+              type="button"
+              class="undo"
+              [attr.data-undo]="a.id"
+              [attr.aria-label]="'Desfazer ' + heading(a)"
+              (click)="ask(a)"
+            >
+              <mat-icon aria-hidden="true">undo</mat-icon>Desfazer
+            </button>
           }
         </div>
         @if (!milestones() && a.mode !== Mode.XP_AWARD_MODE_MILESTONE) {
@@ -58,18 +72,6 @@
             <span class="amount__each">{{ each(a) }}</span>
             <span class="amount__total">{{ total(a) }}</span>
           </div>
-        }
-        @if (a.canUndo) {
-          <button
-            mat-button
-            type="button"
-            class="undo"
-            [attr.data-undo]="a.id"
-            [attr.aria-label]="'Desfazer ' + a.reason"
-            (click)="ask(a)"
-          >
-            <mat-icon aria-hidden="true">undo</mat-icon>Desfazer
-          </button>
         }
       }
     </li>

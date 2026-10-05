@@ -60,3 +60,21 @@ app-xp-reason {
   flex-direction: column;
   gap: 10px;
 }
+
+// "ou digite o ouro": a rule with the words on it, between the strip and the form.
+.or {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  margin: var(--mr-space-4) 0 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    border-top: 1px solid var(--mr-rule);
+  }
+}

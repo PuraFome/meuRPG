@@ -7,15 +7,16 @@ import { MatInputModule } from '@angular/material/input';
 import { startWith } from 'rxjs';
 
 import { XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import type { XPAward } from '../../../gen/meurpg/progression/v1/progression_pb';
+import { type TreasureToConvert, type XPAward, XPBlockedReason } from '../../../gen/meurpg/progression/v1/progression_pb';
 import { newKey } from '../../core/connect/idempotency';
 import { formatInt, tight } from '../../core/format/text';
 import type { ExperienceRow } from '../../core/progression/experience-store';
 import { ProgressionClient } from '../../core/progression/progression-client';
-import { xpErrorMessage } from '../../core/progression/xp-errors';
+import { xpBlocked, xpErrorMessage } from '../../core/progression/xp-errors';
 import { parseAmount, shortDivision, splitXp } from '../../core/progression/xp-math';
 import { SheetFrame } from '../../pages/live-session/combat/sheet-frame/sheet-frame';
 import { injectSheet } from '../../pages/live-session/combat/sheet-host';
+import { TreasureStrip } from './treasure-strip';
 import { XpActions } from './xp-actions';
 import { XpReason } from './xp-reason';
 import { type Recipient, XpRecipients } from './xp-recipients';
@@ -35,6 +36,17 @@ export interface AwardXpData {
   /** The ended combat the amount came from: sent as an enemies award while
    * the amount is still the combat's total, as an avulso one when edited. */
   readonly encounterId?: string;
+  /** By gold: the treasures waiting for "Voltar à cidade", as the host knows
+   * them (the sheet reads them again as it opens). */
+  readonly treasures?: readonly TreasureToConvert[];
+  readonly treasuresTotal?: number;
+}
+
+/** What the sheet closes with when the master chose "Voltar à cidade" in its
+ * strip: the host closes this one and opens that one (a phone has room for one
+ * sheet at a time). */
+export interface TownRequest {
+  readonly town: true;
 }
 
 /** What the sheet closes with when the XP was given. */
@@ -72,6 +84,7 @@ const wholeAmount = (control: AbstractControl): ValidationErrors | null =>
     MatInputModule,
     ReactiveFormsModule,
     SheetFrame,
+    TreasureStrip,
     XpActions,
     XpReason,
     XpRecipients,
@@ -82,7 +95,7 @@ const wholeAmount = (control: AbstractControl): ValidationErrors | null =>
 })
 export class AwardXpSheet {
   private readonly api = inject(ProgressionClient);
-  private readonly sheet = injectSheet<AwardXpData, AwardXpResult | undefined>();
+  private readonly sheet = injectSheet<AwardXpData, AwardXpResult | TownRequest | undefined>();
   protected readonly data = this.sheet.data;
   protected readonly inSheet = this.sheet.inSheet;
 
@@ -111,6 +124,8 @@ export class AwardXpSheet {
     initialValue: this.reason.value,
   });
 
+  /** Who is alive: a character the server says cannot receive leaves the list. */
+  protected readonly rows = signal<readonly ExperienceRow[]>(this.data.rows);
   protected readonly checked = signal<ReadonlySet<string>>(new Set(this.data.rows.map((r) => r.id)));
   protected readonly busy = signal(false);
   protected readonly error = signal('');
@@ -143,7 +158,7 @@ export class AwardXpSheet {
 
   protected readonly recipients = computed<Recipient[]>(() => {
     const each = this.split().each;
-    return this.data.rows.map((r) => {
+    return this.rows().map((r) => {
       const on = this.checked().has(r.id);
       return {
         id: r.id,
@@ -175,8 +190,43 @@ export class AwardXpSheet {
     !this.blocked() ? tight(`Dar ${formatInt(this.split().each)} XP a cada um`) : 'Dar XP',
   );
 
+  /** By gold: what waits for "Voltar à cidade", the host's list and then the server's. */
+  protected readonly treasures = signal<readonly TreasureToConvert[]>(this.data.treasures ?? []);
+  protected readonly treasuresTotal = signal(this.data.treasuresTotal ?? 0);
+  protected readonly treasuresState = signal<'loading' | 'ready' | 'error'>(this.data.treasures ? 'ready' : 'loading');
+
   private key = newKey();
   private keyFor = '';
+
+  constructor() {
+    // The strip is only there for a gold campaign's own "Dar XP" (a combat's has none): no read for it otherwise.
+    if (this.gold && !this.data.encounterId) {
+      void this.readTreasures();
+    }
+  }
+
+  protected async readTreasures(): Promise<void> {
+    try {
+      const res = await this.api.listTreasures(this.data.campaignId);
+      this.treasures.set(res.treasures);
+      this.treasuresTotal.set(res.total);
+      this.treasuresState.set('ready');
+    } catch {
+      // The host's list stays when there is one (even an empty one that was read); with none, say it could not read.
+      if (!this.data.treasures) {
+        this.treasuresState.set('error');
+      }
+    }
+  }
+
+  protected retryTreasures(): void {
+    this.treasuresState.set('loading');
+    void this.readTreasures();
+  }
+
+  protected goTown(): void {
+    this.sheet.close({ town: true });
+  }
 
   protected toggle(id: string): void {
     this.checked.update((set) => {
@@ -208,7 +258,7 @@ export class AwardXpSheet {
     }
     const reason = this.reason.value.trim();
     const total = this.total();
-    const ids = this.data.rows.filter((r) => this.checked().has(r.id)).map((r) => r.id);
+    const ids = this.rows().filter((r) => this.checked().has(r.id)).map((r) => r.id);
     const fromCombat =
       !this.gold && !!this.data.encounterId && total === this.data.amount ? this.data.encounterId : '';
     const input = this.gold
@@ -234,6 +284,16 @@ export class AwardXpSheet {
       }
     } catch (err) {
       this.error.set(xpErrorMessage(err, 'dar o XP'));
+      // A character that cannot receive (died, left) leaves the list, so the retry can go.
+      const blocked = xpBlocked(err);
+      if (blocked?.reason === XPBlockedReason.XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE && blocked.characterId) {
+        this.rows.update((rows) => rows.filter((r) => r.id !== blocked.characterId));
+        this.checked.update((set) => {
+          const next = new Set(set);
+          next.delete(blocked.characterId);
+          return next;
+        });
+      }
       this.frame().scrollToTop();
     } finally {
       this.busy.set(false);
