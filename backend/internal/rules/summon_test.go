@@ -236,3 +236,13 @@ func TestSummonLoaderRefuses(t *testing.T) {
 		}
 	}
 }
+
+// TestSummonSpells: the three spells that summon, by circle and then key.
+func TestSummonSpells(t *testing.T) {
+	t.Parallel()
+	got := loadForTest(t).SummonSpells()
+	want := []string{"spell:find-familiar", "spell:animate-dead", "spell:conjure-animals"}
+	if !slices.Equal(got, want) {
+		t.Errorf("SummonSpells() = %v, want %v", got, want)
+	}
+}

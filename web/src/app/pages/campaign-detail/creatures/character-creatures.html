@@ -1,0 +1,44 @@
+<div class="cr">
+  <div class="cr__list">
+    @if (creatures(); as list) {
+      @for (c of list; track c.id) {
+        <div class="item">
+          <div class="item__row">
+            <app-creature-art class="item__art" [monsterKey]="c.monsterKey" />
+            <span class="item__name">{{ c.name }}</span>
+            <span class="item__sub">{{ c.monsterNamePt }} · {{ sourceShort(c.source) }}</span>
+          </div>
+          @if (asking() === c.id) {
+            <app-creature-edit
+              [campaignId]="campaignId()"
+              [creature]="c"
+              mode="dismiss"
+              [ownerView]="false"
+              [ownerName]="characterName()"
+              (closed)="closed($event, c.id)"
+            />
+          } @else {
+            <button type="button" class="dismiss" [id]="'dismiss-' + c.id" (click)="ask(c.id)">
+              <mat-icon aria-hidden="true">close</mat-icon>Dispensar {{ c.name }}
+            </button>
+          }
+        </div>
+      } @empty {
+        <span class="none">Nenhuma criatura</span>
+      }
+    } @else if (failed()) {
+      <span class="none">Não deu para ler as criaturas.</span>
+    } @else {
+      <span class="none" role="status">Lendo as criaturas…</span>
+    }
+  </div>
+  <button
+    type="button"
+    matButton="outlined"
+    class="give"
+    [attr.aria-label]="'Dar uma criatura a ' + characterName()"
+    (click)="give()"
+  >
+    <mat-icon aria-hidden="true">add</mat-icon>Dar uma criatura
+  </button>
+</div>

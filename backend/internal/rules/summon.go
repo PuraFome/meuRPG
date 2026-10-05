@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"strconv"
+	"strings"
 )
 
 // Spells that summon creatures (MR-037, Etapa 9): the "summon" kind of
@@ -236,6 +237,23 @@ func (d *summonDef) times(circle int) int {
 		}
 	}
 	return n
+}
+
+// SummonSpells lists the keys of the spells that summon creatures, by their own
+// circle and then their key: the character sheet offers the ones its build can
+// cast (SummonOptions says what each may bring).
+func (c *Content) SummonSpells() []string {
+	keys := make([]string, 0, len(c.c.summons))
+	for k := range c.c.summons {
+		keys = append(keys, k)
+	}
+	slices.SortFunc(keys, func(a, b string) int {
+		if d := c.c.summons[a].spellLevel - c.c.summons[b].spellLevel; d != 0 {
+			return d
+		}
+		return strings.Compare(a, b)
+	})
+	return keys
 }
 
 // SummonOptions says what casting a summoning spell with a slot of the given

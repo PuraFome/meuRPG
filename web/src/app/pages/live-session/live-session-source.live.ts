@@ -195,6 +195,9 @@ export class LiveSessionSourceLive implements LiveSessionSource {
         case 'trapNoticed':
           yield { kind: 'trapNoticed', mapId: res.event.value.mapId, pointId: res.event.value.pointId };
           break;
+        case 'creaturesChanged':
+          yield { kind: 'creaturesChanged' };
+          break;
         default:
           // A newer server's event this app doesn't know yet: still proof
           // that the stream is alive.

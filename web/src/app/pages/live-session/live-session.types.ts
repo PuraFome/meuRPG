@@ -118,7 +118,9 @@ export type LiveEventVm =
    * changed. It names nobody: the page reads the open scene again. */
   | { readonly kind: 'stageChanged' }
   /** `trap_noticed` (MR-035): this player's character noticed a trap by passing near it. Only they get it. */
-  | { readonly kind: 'trapNoticed'; readonly mapId: string; readonly pointId: string };
+  | { readonly kind: 'trapNoticed'; readonly mapId: string; readonly pointId: string }
+  /** `creatures_changed` (MR-037): the character's creatures changed outside a combat; read them again. */
+  | { readonly kind: 'creaturesChanged' };
 
 /**
  * What a failed call means for the page, from its Connect code and typed

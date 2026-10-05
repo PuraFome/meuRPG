@@ -67,6 +67,39 @@ describe('XpWatcher (E7-10)', () => {
     watcher.follow(null, onChange);
   });
 
+  it('says so when the creatures change (MR-037), through the real stream, and not for the XP', async () => {
+    const onChange = vi.fn();
+    const onCreatures = vi.fn();
+    const watcher = TestBed.inject(XpWatcher);
+    watcher.follow('camp-1', onChange, onCreatures);
+    await flush();
+    calls[0].push({ kind: 'ready' });
+    calls[0].push({ kind: 'creaturesChanged' });
+    await flush();
+    expect(onCreatures).toHaveBeenCalledTimes(1);
+    expect(onChange).not.toHaveBeenCalled();
+    calls[0].push({ kind: 'xpChanged' });
+    await flush();
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onCreatures).toHaveBeenCalledTimes(1);
+    watcher.follow(null, onChange);
+  });
+
+  it('reads the creatures again on a later `ready` too: a gift made while the tab was hidden shows up', async () => {
+    const onCreatures = vi.fn();
+    const watcher = TestBed.inject(XpWatcher);
+    watcher.follow('camp-1', vi.fn(), onCreatures);
+    await flush();
+    calls[0].push({ kind: 'ready' });
+    await flush();
+    // The page reads on load itself: the first `ready` asks for nothing.
+    expect(onCreatures).not.toHaveBeenCalled();
+    calls[0].push({ kind: 'ready' });
+    await flush();
+    expect(onCreatures).toHaveBeenCalledTimes(1);
+    watcher.follow(null, vi.fn());
+  });
+
   it('does not open a second stream for the same campaign, and closes the first for another', async () => {
     const watcher = TestBed.inject(XpWatcher);
     watcher.follow('camp-1', vi.fn());

@@ -1,0 +1,118 @@
+:host {
+  display: block;
+  scroll-margin-top: 72px;
+}
+
+.ask {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  padding: var(--mr-space-3);
+  border: 1px solid var(--mr-warning-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-warning-surface);
+  color: var(--mr-warning-ink);
+}
+
+.ask__t {
+  display: flex;
+  // The icon stays on the first line when the name wraps.
+  align-items: flex-start;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 21px;
+  font-weight: 800;
+  line-height: 26px;
+  overflow-wrap: anywhere;
+
+  .mat-icon {
+    flex: none;
+    width: 24px;
+    height: 24px;
+    margin-top: 1px;
+    font-size: 24px;
+  }
+}
+
+.ask__d {
+  margin: 0 0 var(--mr-space-1);
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  padding-top: var(--mr-space-2);
+}
+
+.err {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-danger-ink);
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+// Two real buttons of the same width: side by side where they fit, stacked
+// (the confirming one first, as everywhere) on a narrow card.
+.pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--mr-space-2);
+}
+
+.big {
+  --mat-button-outlined-container-height: 48px;
+  width: 100%;
+  white-space: nowrap;
+  background: var(--mr-surface);
+}
+
+.big--danger {
+  --mat-button-outlined-label-text-color: var(--mr-danger-ink);
+  --mat-button-outlined-outline-color: var(--mr-danger-ink);
+}
+
+// A free-text name of up to 40 letters never makes a label wrap or overflow: it is cut with an ellipsis.
+.lbl {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.nm {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// Why a dashed button cannot act yet.
+.why {
+  margin: -4px 0 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+// The number field without the browser's spin arrows: the count is typed.
+input[type='number'] {
+  appearance: textfield;
+
+  &::-webkit-outer-spin-button,
+  &::-webkit-inner-spin-button {
+    margin: 0;
+    appearance: none;
+  }
+}

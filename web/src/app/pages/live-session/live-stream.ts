@@ -50,6 +50,8 @@ export interface LiveStreamHandlers {
   onStageChanged?(): void;
   /** `trap_noticed` (MR-035): this player's character noticed a trap; only they get it. */
   onTrapNoticed?(notice: { mapId: string; pointId: string }): void;
+  /** `creatures_changed` (MR-037): a character's creatures changed outside a combat, read them again. */
+  onCreaturesChanged?(): void;
   /** `session_ended`, or `NO_OPEN_SESSION` when (re)connecting. */
   onEnded(): void;
   /** `not_found` or `unauthenticated`: no reconnecting. */
@@ -222,6 +224,9 @@ export class LiveStream {
             break;
           case 'trapNoticed':
             this.options.handlers.onTrapNoticed?.(event);
+            break;
+          case 'creaturesChanged':
+            this.options.handlers.onCreaturesChanged?.();
             break;
           case 'ended':
             this.stop();

@@ -196,6 +196,7 @@ function toFullSheetVm(full: GenFullSheet, derived: GenDerivedSheet): FullSheetV
     customFeaturesText: full.customFeaturesText,
     issues: derived.issues.map((i) => ({ code: i.code, field: i.field, message: i.message })),
     hints: derived.hints.map((h) => ({ sourceKey: h.sourceKey, text: h.text })),
+    hasWildShape: derived.features.some((f) => f.key.startsWith('feature:wild-shape')),
     contentVersion: derived.contentVersion,
   };
 }

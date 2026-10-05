@@ -15,6 +15,7 @@ import { tableForLevelUp } from './levelup-support';
 import { paintRPC, pickRadio } from './move-support';
 import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus } from './support';
 import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
+import { tableForCaster, tableForCreatures } from './creatures-support';
 import { awardXpRPC, createEnemyRPC, tableForXp, tableForXpCombat, winCombatRPC } from './xp-support';
 import { tableForGold, threeTreasuresRPC, treasureFoundRPC } from './gold-support';
 import { movePensantus, pensantusFirst, sq20, trapRPC, treasureRPC } from './trap-support';
@@ -2546,6 +2547,158 @@ test('"Voltar à cidade" e o tesouro no resumo passam no axe e nas conferências
 test('"Voltar à cidade" e o tesouro no resumo passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-041', '@MR-032'] }, async ({ browser }) => {
   test.setTimeout(420_000);
   await scanGoldScreens(browser, 'light', 320);
+});
+
+// Etapa 9, MR-037: the character's creatures. The sheet's "Criaturas" panel (empty, outside a
+// session, with a creature), the cast sheet, the questions in place, the stat block, and the
+// master's list with "Dar uma criatura" (a computer's dialog: not on a phone).
+async function scanCreatureScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const height = width < 768 ? (width < 360 ? 568 : 844) : width === 1024 ? 768 : 800;
+  const options = { colorScheme, viewport: { width, height } };
+  const master = await newSignedInContext(browser, 'Mestre Teste', options);
+  const player = await newSignedInContext(browser, 'Jogador Teste', options);
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const closed = await tableForCreatures(m, p, `Criaturas fechada ${Date.now()}`, false);
+    await p.goto(`/campanhas/${closed.campaignId}/personagens/${closed.characterId}`);
+    await expect(p.locator('app-creatures-panel').getByRole('heading', { name: 'Criaturas' })).toBeVisible();
+    await expectScreenPasses(p, `Criaturas, fora de uma sessão ${where}`);
+
+    const table = await tableForCreatures(m, p, `Criaturas ${Date.now()}`);
+    campaignId = table.campaignId;
+    const panel = p.locator('app-creatures-panel');
+    await p.goto(`/campanhas/${campaignId}/personagens/${table.characterId}`);
+    await expect(panel.getByRole('heading', { name: 'Criaturas' })).toBeVisible();
+    await expectScreenPasses(p, `Criaturas, vazio ${where}`);
+
+    await panel.getByRole('button', { name: 'Encontrar Familiar' }).click();
+    const sheet = p.getByRole('dialog', { name: 'Encontrar Familiar' }).or(p.locator('mat-bottom-sheet-container'));
+    await expect(sheet.getByText('Escolha a forma e dê um nome ao familiar.')).toBeVisible();
+    await expectScreenPasses(p, `Encontrar Familiar, faltando o nome ${where}`);
+    await sheet.getByLabel('Nome do familiar').fill('Nanquim');
+    await sheet.locator('label', { hasText: /Corvo/ }).click();
+    await expect(sheet.getByText('Conjurar como ritual · 1 hora · sem gastar espaço')).toBeVisible();
+    await expectScreenPasses(p, `Encontrar Familiar, pronto ${where}`);
+    await sheet.getByRole('button', { name: 'Convocar o familiar' }).click();
+    await expect(panel.getByText('Nanquim chegou.')).toBeVisible();
+    await expectScreenPasses(p, `Criaturas, com o Nanquim e o aviso ${where}`);
+
+    await panel.getByRole('button', { name: 'Renomear' }).click();
+    await expect(panel.getByLabel('Nome da criatura')).toBeFocused();
+    await expectScreenPasses(p, `Criaturas, renomear ${where}`);
+    await panel.getByRole('button', { name: 'Cancelar' }).click();
+    await panel.getByRole('button', { name: 'Dispensar' }).click();
+    await expect(panel.getByRole('button', { name: 'Voltar' })).toBeFocused();
+    await expectScreenPasses(p, `Criaturas, dispensar pergunta ${where}`);
+    await panel.getByRole('button', { name: 'Voltar' }).click();
+
+    await panel.getByRole('link', { name: 'Ver a ficha de Nanquim' }).click();
+    await expect(p.getByRole('heading', { name: 'Nanquim', level: 1 })).toBeVisible();
+    await expectScreenPasses(p, `A ficha da criatura ${where}`);
+    await p.getByRole('button', { name: 'Dispensar' }).click();
+    await expect(p.getByRole('alertdialog', { name: 'Dispensar Nanquim?' })).toBeVisible();
+    await expectScreenPasses(p, `A ficha da criatura, dispensar pergunta ${where}`);
+
+    await m.goto(`/campanhas/${campaignId}`);
+    const row = m.locator('app-character-creatures');
+    await expect(row.locator('.item__name', { hasText: 'Nanquim' })).toBeVisible();
+    await expectScreenPasses(m, `O mestre, a lista de personagens com a criatura ${where}`);
+    if (width >= 768) {
+      await row.getByRole('button', { name: 'Dar uma criatura a Pensantus' }).click();
+      const dialog = m.getByRole('dialog', { name: 'Dar uma criatura a Pensantus' });
+      await expect(dialog.getByText(/de 334 · em ordem de nome/)).toBeVisible();
+      await expectScreenPasses(m, `Dar uma criatura, aberta ${where}`);
+      await dialog.getByLabel('Nome, em português ou inglês').fill('ma');
+      await dialog.getByLabel('Tipo').selectOption('beast');
+      await dialog.getByLabel('Nível de desafio').selectOption('1/8');
+      await expect(dialog.getByText('2 de 334 · em ordem de nome')).toBeVisible();
+      await dialog.locator('label', { hasText: /Mastim/ }).click();
+      await expect(dialog.getByText(/com os PV do livro \(5\)/)).toBeVisible();
+      await expectScreenPasses(m, `Dar uma criatura, o Mastim escolhido ${where}`);
+      await dialog.getByRole('button', { name: 'Dar Mastim a Pensantus' }).click();
+      await expect(m.getByText('Mastim dado a Pensantus.')).toBeVisible();
+      await expectScreenPasses(m, `O mestre, depois de dar ${where}`);
+    }
+    await row.getByRole('button', { name: 'Dispensar Nanquim' }).click();
+    await expect(row.getByRole('alertdialog')).toBeVisible();
+    await expectScreenPasses(m, `O mestre, dispensar pergunta ${where}`);
+    await row.getByRole('button', { name: 'Voltar' }).click();
+
+    await m.goto(`/campanhas/${campaignId}/personagens/${table.characterId}`);
+    const mc = m.locator('app-creatures-panel app-creature-card').first();
+    await mc.getByRole('button', { name: 'Corrigir PV' }).click();
+    await expect(mc.getByLabel(/PV de /)).toBeFocused();
+    await expectScreenPasses(m, `O mestre, corrigir os PV da criatura ${where}`);
+
+    // A creature that is not there (or that the viewer may not read): the page's not-found state.
+    await p.goto(`/campanhas/${campaignId}/personagens/${table.characterId}/criaturas/6f1c7a52-3b5e-4c55-9d0b-2a51f0c1e001`);
+    await expect(p.getByRole('heading', { name: 'Criatura não encontrada', level: 1 })).toBeVisible();
+    await expectScreenPasses(p, `A ficha da criatura, não encontrada ${where}`);
+
+    // A druid: the slot picker, "Quantas criaturas", the list with "−" and "+", the warning of what a new
+    // concentration ends, and a refusal of the server inside the sheet.
+    const druid = await tableForCaster(m, p, `Criaturas druida ${Date.now()}`, 'druid');
+    const druidCampaign = druid.campaignId;
+    try {
+      await p.goto(`/campanhas/${druidCampaign}/personagens/${druid.characterId}`);
+      const dpanel = p.locator('app-creatures-panel');
+      await dpanel.getByRole('button', { name: 'Conjurar Animais' }).click();
+      const cast = p.getByRole('dialog', { name: 'Conjurar Animais' }).or(p.locator('mat-bottom-sheet-container'));
+      await expect(cast.getByText('Quantas criaturas')).toBeVisible();
+      await expectScreenPasses(p, `Conjurar Animais, as opções e o espaço ${where}`);
+      await cast.locator('label', { hasText: /2\s+criaturas\s+de\s+ND\s+1\s/ }).click();
+      await cast.getByRole('button', { name: 'Mais Lobo', exact: true }).click();
+      await cast.getByRole('button', { name: 'Mais Lobo', exact: true }).click();
+      await expect(cast.locator('.line')).toContainText('2 criaturas · 1 ação · gasta um espaço de 3º círculo');
+      await expectScreenPasses(p, `Conjurar Animais, a mistura pronta ${where}`);
+      await cast.getByRole('button', { name: 'Conjurar os animais' }).click();
+      await expect(dpanel.getByText('2 criaturas chegaram.')).toBeVisible();
+
+      await dpanel.getByRole('button', { name: 'Conjurar Animais' }).click();
+      await expect(cast.getByText('Isso encerra Conjurar Animais e dispensa 2 criaturas')).toBeVisible();
+      await expectScreenPasses(p, `Conjurar Animais, o aviso do que a concentração encerra ${where}`);
+      // The session ends while the sheet is open: the server refuses, and the sheet says so, still open.
+      await cast.locator('label', { hasText: /1\s+criatura\s+de\s+ND\s+2\s/ }).click();
+      await cast.locator('app-creature-choice-list label.row').first().click();
+      await endOpenSessionRPC(m, druidCampaign);
+      await cast.getByRole('button', { name: 'Conjurar os animais' }).click();
+      await expect(cast.getByRole('alert')).toContainText('A sessão acabou');
+      await expectScreenPasses(p, `Conjurar Animais, a recusa do servidor na folha ${where}`);
+    } finally {
+      await endOpenSessionRPC(m, druidCampaign);
+    }
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('as criaturas passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanCreatureScreens(browser, 'light', 1280);
+});
+
+test('as criaturas passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanCreatureScreens(browser, 'dark', 390);
+});
+
+test('as criaturas passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanCreatureScreens(browser, 'dark', 1024);
+});
+
+test('as criaturas passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanCreatureScreens(browser, 'light', 320);
 });
 
 // Traps and treasure in the session (slice 9.14, MR-035, MR-041, E9-08, E9-09): the master's cards and

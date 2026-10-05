@@ -8,6 +8,7 @@ import { ABILITY_KEYS } from '../../core/characters/characters.types';
 import { OpenSessions, type OpenSessionVm } from '../../shell/live-notice/open-sessions';
 import { CharacterSheetPage } from './character-sheet';
 import { NotesClient } from '../../core/notes/notes-client';
+import { CreaturesClient } from '../../core/creatures/creatures-client';
 import { XpWatcher } from './xp-watcher';
 import {
   BasicSheetVm,
@@ -131,6 +132,7 @@ function fullSheet(overrides: Partial<FullSheetVm> = {}): FullSheetVm {
     customFeaturesText: '',
     issues: [],
     hints: [],
+    hasWildShape: false,
     contentVersion: 'srd51@test',
     ...overrides,
   };
@@ -206,7 +208,7 @@ function vm(overrides: Partial<CharacterSheetVm> = {}): CharacterSheetVm {
 
 /** What the XP block listens with: no open session, so no stream. */
 const openSessions = signal<readonly OpenSessionVm[]>([]);
-const xpWatcher = { follow: vi.fn<(campaignId: string | null, onChange: () => void) => void>() };
+const xpWatcher = { follow: vi.fn<(campaignId: string | null, onChange: () => void, onCreatures?: () => void) => void>() };
 /** The player's notes panel reads this; nothing here talks to a server. */
 const notesApi = {
   list: vi.fn(() => Promise.resolve({ notes: [], noteCount: 0, maxNotes: 300 })),
@@ -215,6 +217,8 @@ const notesApi = {
 function xpProviders() {
   return [
     { provide: NotesClient, useValue: notesApi },
+    // No creatures: the panel stays out of these tests (its own spec covers it).
+    { provide: CreaturesClient, useValue: { list: () => Promise.resolve([]), summonOptions: () => Promise.resolve({ spells: [], slots: [] }), statBlock: () => Promise.reject(new Error('none')) } },
     { provide: OpenSessions, useValue: { sessions: openSessions } },
     { provide: XpWatcher, useValue: xpWatcher },
   ];
@@ -1090,6 +1094,16 @@ describe('CharacterSheetPage: approval (MR-024)', () => {
 
     expect(el.querySelector('[role="alert"]')?.textContent).toContain('Personagem não encontrado');
   });
+
+  it('a sheet the server does not show (not_found) reads "Personagem não encontrado", not an error (RN-20)', async () => {
+    fake.getCharacterSheetFn = () => Promise.reject(new ConnectError('character not found', Code.NotFound));
+    const fixture = await render();
+    const el = fixture.nativeElement as HTMLElement;
+
+    expect(el.querySelector('h1')?.textContent).toContain('Personagem não encontrado');
+    expect(el.textContent).toContain('Esse personagem não existe, ou você não pode vê-lo.');
+    expect(el.textContent).not.toContain('Não foi possível abrir a ficha');
+  });
 });
 
 describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
@@ -1234,14 +1248,14 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
     openSessions.set([]);
     const fixture = await render();
     // No open session: it follows nothing.
-    expect(xpWatcher.follow).toHaveBeenLastCalledWith(null, expect.any(Function));
+    expect(xpWatcher.follow).toHaveBeenLastCalledWith(null, expect.any(Function), expect.any(Function));
 
     openSessions.set([
       { sessionId: 's1', campaignId: 'camp-1', campaignName: 'Mirathel', sessionNumber: 5, startedAt: new Date(), isMaster: false },
     ]);
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(xpWatcher.follow).toHaveBeenLastCalledWith('camp-1', expect.any(Function));
+    expect(xpWatcher.follow).toHaveBeenLastCalledWith('camp-1', expect.any(Function), expect.any(Function));
 
     fixture.destroy();
     expect(xpWatcher.follow).toHaveBeenLastCalledWith(null, expect.any(Function));
@@ -1253,7 +1267,7 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
       { sessionId: 's1', campaignId: 'camp-1', campaignName: 'Mirathel', sessionNumber: 5, startedAt: new Date(), isMaster: true },
     ]);
     await render();
-    expect(xpWatcher.follow).not.toHaveBeenCalledWith('camp-1', expect.any(Function));
+    expect(xpWatcher.follow).not.toHaveBeenCalledWith('camp-1', expect.any(Function), expect.any(Function));
   });
 
   it('reads the character again, without the loading state, when the master gives XP', async () => {

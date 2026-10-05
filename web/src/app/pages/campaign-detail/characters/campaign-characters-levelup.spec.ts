@@ -66,7 +66,7 @@ describe("the master's characters list and the stream (MR-040)", () => {
   it('follows the open session and, on `xp_changed`, reads the level-ups again: "Subiu para o nível 4" appears', async () => {
     const f = await setup();
     const el = f.nativeElement as HTMLElement;
-    expect(follow).toHaveBeenCalledWith('camp-1', expect.any(Function));
+    expect(follow).toHaveBeenCalledWith('camp-1', expect.any(Function), expect.any(Function));
     expect(el.textContent).not.toContain('Subiu para o nível 4');
 
     // The player confirms a level-up: the stream says `xp_changed`, the callback reads again.

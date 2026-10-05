@@ -1,0 +1,92 @@
+<app-sheet-frame
+  [title]="'Dar uma criatura a ' + data.characterName"
+  [subtitle]="'Escolha uma criatura do livro de regras (SRD) para ' + data.characterName + '.'"
+  [phone]="inSheet"
+  height="min(700px, calc(92dvh - 48px))"
+  titleId="give-t"
+  (closed)="close()"
+>
+  <div class="stack">
+    @if (error()) {
+      <div class="mr-notice mr-notice--danger fixed" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ error() }}</p>
+      </div>
+    }
+
+    <div class="filters fixed">
+      <label class="field field--name">
+        <span class="mr-label">Nome, em português ou inglês</span>
+        <span class="box">
+          <mat-icon aria-hidden="true">search</mat-icon>
+          <input type="search" name="query" autocomplete="off" [value]="query()" (input)="setQuery($any($event.target).value)" />
+        </span>
+      </label>
+      <label class="field">
+        <span class="mr-label">Tipo</span>
+        <span class="box box--select">
+          <select name="type" [value]="type()" (change)="setType($any($event.target).value)">
+            @for (t of types; track t.value) {
+              <option [value]="t.value" [selected]="type() === t.value">{{ t.label }}</option>
+            }
+          </select>
+          <mat-icon aria-hidden="true">expand_more</mat-icon>
+        </span>
+      </label>
+      <label class="field">
+        <span class="mr-label">Nível de desafio</span>
+        <span class="box box--select">
+          <select name="cr" [value]="maxCr()" (change)="setCr($any($event.target).value)">
+            <option value="" [selected]="maxCr() === ''">Qualquer</option>
+            @for (c of crs; track c) {
+              <option [value]="c" [selected]="maxCr() === c">Até {{ c }}</option>
+            }
+          </select>
+          <mat-icon aria-hidden="true">expand_more</mat-icon>
+        </span>
+      </label>
+    </div>
+
+    <div class="list">
+      <div class="list__head fixed">
+        <span class="list__t" id="give-list">Criaturas do livro</span>
+        <span class="list__n" role="status" aria-live="polite">{{ found() ? count() : 'Buscando…' }}</span>
+      </div>
+      <app-creature-choice-list
+        [rows]="rows()"
+        [chosen]="picked()?.key ?? ''"
+        label="Criaturas do livro"
+        emptyText="Nenhuma criatura passa nesses filtros. Mude o nome, o tipo ou o nível de desafio."
+        (pick)="pick($event)"
+      />
+    </div>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="fixed">
+      <mat-label>Nome da criatura</mat-label>
+      <input matInput name="name" autocomplete="off" [maxlength]="max" [disabled]="!picked()" [ngModel]="name()" (ngModelChange)="name.set($event)" />
+      <mat-hint align="end">{{ nameCounter(name().length, max) }}</mat-hint>
+    </mat-form-field>
+    <p class="note fixed">{{ note() }}</p>
+  </div>
+
+  <div foot>
+    @if (missing()) {
+      <p class="why" id="give-why" role="status">{{ missing() }}</p>
+    }
+    <div class="actions">
+      <button type="button" mat-stroked-button class="no" [disabled]="busy()" (click)="close()">Cancelar</button>
+      <button
+        type="button"
+        mat-flat-button
+        class="go"
+        [class.mr-button--off]="!ready()"
+        [disabled]="!ready()"
+        disabledInteractive
+        [attr.aria-describedby]="missing() ? 'give-why' : null"
+        (click)="give()"
+      >
+        <mat-icon aria-hidden="true">add</mat-icon>{{ goText() }}
+      </button>
+    </div>
+  </div>
+</app-sheet-frame>

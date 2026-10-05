@@ -1,0 +1,174 @@
+:host {
+  display: block;
+}
+
+// The filters, the count, the name and the footer stay put; only the list scrolls (E9-10).
+.stack {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  min-height: 0;
+}
+
+.fixed {
+  flex: none;
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--mr-space-3);
+  padding-top: 2px;
+
+  // On a wide dialog the three fields sit side by side, all 44 px high.
+  @media (min-width: 640px) {
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.box {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  height: 44px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+
+  &:focus-within {
+    border-color: var(--mr-focus);
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 1px;
+  }
+
+  .mat-icon {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    font-size: 22px;
+    color: var(--mr-ink-muted);
+  }
+
+  input,
+  select {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    border: 0;
+    outline: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-size: 16px;
+  }
+}
+
+// The select keeps its own arrow out of sight: the icon after it is the arrow.
+.box--select {
+  position: relative;
+
+  select {
+    appearance: none;
+    padding-right: 28px;
+    cursor: pointer;
+  }
+
+  .mat-icon {
+    position: absolute;
+    right: 10px;
+    pointer-events: none;
+  }
+}
+
+.list {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+}
+
+.list__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px var(--mr-space-3);
+}
+
+.list__t {
+  font-family: var(--mr-font-display);
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.list__n {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.note {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+// Cancelar, then the one filled button, side by side and right-aligned from a tablet up; stacked
+// (the filled first) on a narrow dialog.
+.actions {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 10px;
+
+  @media (min-width: 560px) {
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+}
+
+.go,
+.no {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.go {
+  max-width: 100%;
+  --mat-button-filled-container-height: 44px;
+
+}
+
+.no {
+  --mat-button-outlined-container-height: 44px;
+  --mat-button-outlined-label-text-color: var(--mr-accent-text);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  font-weight: 700;
+}
+
+@media (max-width: 559.98px) {
+  .go,
+  .no {
+    width: 100%;
+    --mat-button-filled-container-height: 48px;
+    --mat-button-outlined-container-height: 48px;
+  }
+}
+
+.why {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}

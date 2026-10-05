@@ -1,0 +1,189 @@
+:host {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  // The least it needs: the search field (44 px) and two rows of the list (112 px) with the gap. A
+  // sheet that cannot give it this much scrolls as a whole instead of squeezing the list.
+  min-height: 164px;
+}
+
+.search {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  height: 44px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  color: var(--mr-ink-muted);
+
+  &:focus-within {
+    border-color: var(--mr-focus);
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 1px;
+  }
+
+  .mat-icon {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    font-size: 22px;
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    border: 0;
+    outline: 0;
+    background: none;
+    color: var(--mr-ink);
+    font: inherit;
+    font-size: 16px;
+  }
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  // Two rows always show; the rest scrolls inside the list, never the sheet around it.
+  flex: 1 1 auto;
+  min-height: 112px;
+  // At most as tall as its rows (the host says how many), and `contain: size` keeps the rows' own height
+  // out of the sheet's minimum: the sheet's body scrolls only when even these 112 px do not fit.
+  max-height: var(--rows-max, none);
+  contain: size;
+  overflow-y: auto;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  scrollbar-width: thin;
+
+  // More below: the last row fades out.
+  &--more {
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+  }
+}
+
+.row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  min-height: 56px;
+  box-sizing: border-box;
+  padding: 6px 12px;
+  border: 2px solid transparent;
+  cursor: pointer;
+
+  // The rule between rows is a shadow, so it takes no room and never doubles a chosen row's frame.
+  & + & {
+    box-shadow: 0 -1px 0 var(--mr-rule);
+  }
+
+  // A row never shrinks below its text (the list scrolls instead).
+  flex: none;
+
+  &:has(input:focus-visible) {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: -2px;
+  }
+
+  &--on {
+    border-radius: var(--mr-radius-md);
+    box-shadow: none;
+    border-color: var(--mr-accent);
+    background: var(--mr-accent-soft);
+  }
+}
+
+.row__mark {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  font-size: 24px;
+  color: var(--mr-control-line);
+
+  .row--on & {
+    color: var(--mr-accent-text);
+  }
+}
+
+.row__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.row__title {
+  font-family: var(--mr-font-display);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+
+.row__alias {
+  margin-left: 4px;
+  font-family: var(--mr-font-sans);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--mr-ink-muted);
+}
+
+.row__sub {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.empty {
+  margin: 0;
+  padding: var(--mr-space-4);
+  font-size: 15px;
+  color: var(--mr-ink-muted);
+}
+
+// "−" 1 "+" for a casting that makes several creatures.
+.step {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+}
+
+.step__b {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  color: var(--mr-accent-text);
+  cursor: pointer;
+
+  &:disabled {
+    border-style: dashed;
+    color: var(--mr-ink-muted);
+    cursor: default;
+  }
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.step__n {
+  min-width: 24px;
+  font-family: var(--mr-font-display);
+  font-size: 20px;
+  font-weight: 800;
+  text-align: center;
+}
