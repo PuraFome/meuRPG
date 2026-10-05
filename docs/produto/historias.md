@@ -470,7 +470,7 @@ Prioridade decidida em 02/10/2026 (pergunta 20): primeiro o cadastro pelo mestre
 - **Dado** uma classe da mesa que uma ficha usa, **quando** o mestre muda um número dela, **então** a ficha mostra o número novo, também travada, **e** o que ficou fora das regras aparece nela como aviso ("A classe mudou"), sem impedir outra edição (RN-23, pergunta 80).
 - **Dado** um conteúdo da mesa que uma ficha usa, **quando** o mestre o arquiva, **então** a ficha continua com ele **e** ele não aparece mais como escolha nova; nada do conteúdo da mesa se apaga.
 - **Dado** uma característica que o mestre cadastra, **quando** ele escolhe o efeito, **então** escolhe de um menu fechado (modificador, proficiência, recurso, sentido, modo de rolagem, ação, ataque extra, escolha, nota), ou deixa só o texto: o conteúdo da mesa nunca roda código.
-- **Dado** que sou mestre de "Mirathel", **quando** escolho na página "Regras da mesa" como se ganham PV, como se fazem os atributos, o crítico e quem vê os testes contra a morte, **então** o servidor segue a escolha em cada ficha e em cada combate (RN-24); o conjunto padrão e a compra por pontos aparecem com o rótulo "SRD 5.2.1 (regras de 2024)".
+- **Dado** que sou mestre de "Mirathel", **quando** escolho na página "Regras da mesa" como se ganham PV, como se fazem os atributos, o crítico e quem vê os testes contra a morte, **então** o servidor segue a escolha em cada ficha e em cada combate (RN-24); o conjunto padrão, a compra por pontos e os 4d6 aparecem com o rótulo "SRD 5.2.1 (regras de 2024)".
 - **Dado** uma campanha que permite 4d6 descartando o menor, **quando** o jogador rola os atributos de uma ficha nova, **então** o servidor rola e guarda, e rolar de novo devolve o mesmo.
 - **Dado** um mapa desenhado com quadrados de 3 m, **quando** o mestre diz "cada quadrado deste desenho vale 3 m", **então** o app conta quatro quadrados de 1,5 m em cada um, e o movimento, o alcance e a névoa seguem as regras de sempre (RN-25).
 - **Dado** um combate que o mestre começa sem mapa ("teatro da mente"), **quando** o jogador se move, **então** ele gasta o movimento por número ("Restam 6 m"), sem posição na grade, **e** o mestre julga o alcance (RN-25, ADR-0017).
@@ -899,7 +899,7 @@ Nova em 05/10/2026, junto com a [MR-042](#mr-042-bestiário) e a [MR-043](#mr-04
 - **Dado** o mesmo pedido e a mesma semente, **quando** gero duas vezes, **então** o resultado é o mesmo.
 
 #### Dúvidas
-- Os valores por raridade vêm da tabela "Magic Item Rarities and Values" do SRD 5.2.1 (CC BY 4.0), com crédito; o SRD 5.1 não tem valores nem tabelas de tesouro aleatório, então as tabelas de moedas, gemas e arte são nossas.
+- Os valores por raridade vêm da tabela "Magic Item Rarities and Values" do SRD 5.2.1 (CC BY 4.0, p. 205), com crédito: comum 100 PO, incomum 400, raro 4.000, muito raro 40.000, lendário 200.000; um item que se gasta (uma poção) vale a metade. O SRD 5.1 não tem valores nem tabelas de tesouro aleatório, então as tabelas de moedas, gemas e arte são nossas.
 - Itens mágicos próprios ficam fora do MVP.
 
 ## Prioridade: MVP (pré-requisito)
