@@ -25,6 +25,7 @@ import { SkillProficiency } from '../../core/characters/character-labels';
 import { metersWithFeet } from '../../core/units';
 import { AbilityKey, CharacterKind, CharacterState } from '../../core/characters/characters.types';
 import { damageTypeFromGen } from '../../core/characters/damage-type-gen';
+import { creatureAccess } from '../../core/creatures/summon-access';
 import { CONNECT_TRANSPORT } from '../../core/connect/transport';
 import {
   AttackVm,
@@ -196,6 +197,7 @@ function toFullSheetVm(full: GenFullSheet, derived: GenDerivedSheet): FullSheetV
     customFeaturesText: full.customFeaturesText,
     issues: derived.issues.map((i) => ({ code: i.code, field: i.field, message: i.message })),
     hints: derived.hints.map((h) => ({ sourceKey: h.sourceKey, text: h.text })),
+    creatureAccess: creatureAccess(derived),
     contentVersion: derived.contentVersion,
   };
 }

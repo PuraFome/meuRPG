@@ -1,0 +1,62 @@
+@if (visible()) {
+  <section class="mr-panel panel" aria-labelledby="criaturas-heading">
+    <div class="panel__head">
+      <h2 id="criaturas-heading" class="mr-panel__title">Criaturas</h2>
+      @if (countText()) {
+        <span class="panel__count">{{ countText() }}</span>
+      }
+    </div>
+
+    <!-- The live region is always in the DOM, so what it says is read out when it fills. -->
+    <div class="live" role="status" aria-live="polite">
+      @if (notice()) {
+        <div class="mr-notice mr-notice--success">
+          <mat-icon aria-hidden="true">check</mat-icon>
+          <p>{{ notice() }}</p>
+        </div>
+      }
+    </div>
+
+    @if (creatures().length === 0) {
+      <p class="empty">{{ emptyText() }}</p>
+    } @else {
+      <ul class="cards">
+        @for (c of creatures(); track c.id) {
+          <li>
+            <app-creature-card
+              [campaignId]="campaignId()"
+              [characterId]="characterId()"
+              [ownerName]="characterName()"
+              [creature]="c"
+              [isMaster]="isMaster()"
+              (changed)="refresh()"
+            />
+          </li>
+        }
+      </ul>
+    }
+
+    @for (c of casts(); track c.key) {
+      <div class="cast">
+        <button
+          type="button"
+          matButton="outlined"
+          class="cast__btn"
+          [class.cast__btn--off]="!live()"
+          [disabled]="!live()"
+          disabledInteractive
+          [attr.aria-describedby]="'cast-cost-' + $index"
+          (click)="cast(c)"
+        >
+          <mat-icon aria-hidden="true">auto_awesome</mat-icon>{{ c.name }}
+        </button>
+        <p class="cast__cost" [id]="'cast-cost-' + $index">
+          {{ costText(c) }}
+          @if (!live()) {
+            <strong class="cast__why">Agora não há sessão aberta.</strong>
+          }
+        </p>
+      </div>
+    }
+  </section>
+}

@@ -186,7 +186,20 @@
       <div class="sheet" [class.sheet--pnotes]="!vm.isMaster">
         <app-ability-medallions class="sheet__abilities" [abilities]="full.abilities" />
         <app-proficiency-column class="sheet__proficiencies" [sheet]="full" />
-        <app-combat-column class="sheet__combat" [sheet]="full" />
+        <div class="sheet__combat">
+          <app-combat-column [sheet]="full" />
+          <!-- MR-037: the character's creatures, after Combate and Magias (E9-10). -->
+          @if (vm.characterKind === 'player') {
+            <app-creatures-panel
+              [campaignId]="vm.campaignId"
+              [characterId]="vm.id"
+              [characterName]="vm.name"
+              [isMaster]="vm.isMaster"
+              [access]="full.creatureAccess"
+              [reload]="creaturesTick()"
+            />
+          }
+        </div>
         <div class="sheet__traits">
           <!-- The player's own notes (E8-07); the master never gets this panel (RN-20). -->
           @if (!vm.isMaster) {

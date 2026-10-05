@@ -1,0 +1,130 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  min-height: 0;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  height: 44px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  color: var(--mr-ink-muted);
+
+  &:focus-within {
+    border-color: var(--mr-focus);
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 1px;
+  }
+
+  .mat-icon {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    font-size: 22px;
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    border: 0;
+    outline: 0;
+    background: none;
+    color: var(--mr-ink);
+    font: inherit;
+    font-size: 16px;
+  }
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  max-height: var(--list-max, none);
+  min-height: 0;
+  overflow-y: auto;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+}
+
+.row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  min-height: 56px;
+  box-sizing: border-box;
+  padding: 6px 12px;
+  border: 2px solid transparent;
+  cursor: pointer;
+
+  // The rule between rows is a shadow, so it takes no room and never doubles a chosen row's frame.
+  & + & {
+    box-shadow: 0 -1px 0 var(--mr-rule);
+  }
+
+  &:has(input:focus-visible) {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: -2px;
+  }
+
+  &--on {
+    border-radius: var(--mr-radius-md);
+    box-shadow: none;
+    border-color: var(--mr-accent);
+    background: var(--mr-accent-soft);
+  }
+}
+
+.row__mark {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  font-size: 24px;
+  color: var(--mr-control-line);
+
+  .row--on & {
+    color: var(--mr-accent-text);
+  }
+}
+
+.row__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.row__title {
+  font-family: var(--mr-font-display);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+
+.row__alias {
+  margin-left: 4px;
+  font-family: var(--mr-font-sans);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--mr-ink-muted);
+}
+
+.row__sub {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.empty {
+  margin: 0;
+  padding: var(--mr-space-4);
+  font-size: 15px;
+  color: var(--mr-ink-muted);
+}

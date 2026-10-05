@@ -14,6 +14,7 @@ import { printRoute, tableForPrinting } from './print-support';
 import { tableForLevelUp } from './levelup-support';
 import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus } from './support';
 import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
+import { tableForCreatures } from './creatures-support';
 import { awardXpRPC, createEnemyRPC, tableForXp, tableForXpCombat, winCombatRPC } from './xp-support';
 
 // docs/design.md#como-uma-tela-é-feita: every screen passes axe with no
@@ -2256,4 +2257,118 @@ test('o subir de nível passa no axe e nas conferências de layout no tema escur
 test('o subir de nível passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-040'] }, async ({ browser }) => {
   test.setTimeout(420_000);
   await scanLevelUpScreens(browser, 'light', 320);
+});
+
+// Etapa 9, MR-037: the character's creatures. The sheet's "Criaturas" panel (empty, outside a
+// session, with a creature), the cast sheet, the questions in place, the stat block, and the
+// master's list with "Dar uma criatura" (a computer's dialog: not on a phone).
+async function scanCreatureScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const height = width < 768 ? (width < 360 ? 568 : 844) : width === 1024 ? 768 : 800;
+  const options = { colorScheme, viewport: { width, height } };
+  const master = await newSignedInContext(browser, 'Mestre Teste', options);
+  const player = await newSignedInContext(browser, 'Jogador Teste', options);
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const closed = await tableForCreatures(m, p, `Criaturas fechada ${Date.now()}`, false);
+    await p.goto(`/campanhas/${closed.campaignId}/personagens/${closed.characterId}`);
+    await expect(p.locator('app-creatures-panel').getByRole('heading', { name: 'Criaturas' })).toBeVisible();
+    await expectScreenPasses(p, `Criaturas, fora de uma sessão ${where}`);
+
+    const table = await tableForCreatures(m, p, `Criaturas ${Date.now()}`);
+    campaignId = table.campaignId;
+    const panel = p.locator('app-creatures-panel');
+    await p.goto(`/campanhas/${campaignId}/personagens/${table.characterId}`);
+    await expect(panel.getByRole('heading', { name: 'Criaturas' })).toBeVisible();
+    await expectScreenPasses(p, `Criaturas, vazio ${where}`);
+
+    await panel.getByRole('button', { name: 'Encontrar Familiar' }).click();
+    const sheet = p.getByRole('dialog', { name: 'Encontrar Familiar' }).or(p.locator('mat-bottom-sheet-container'));
+    await expect(sheet.getByText('Falta dar um nome ao familiar.')).toBeVisible();
+    await expectScreenPasses(p, `Encontrar Familiar, faltando o nome ${where}`);
+    await sheet.getByLabel('Nome do familiar').fill('Nanquim');
+    await sheet.locator('label', { hasText: /Corvo/ }).click();
+    await expect(sheet.getByText('Conjurar como ritual · 1 hora · sem gastar espaço')).toBeVisible();
+    await expectScreenPasses(p, `Encontrar Familiar, pronto ${where}`);
+    await sheet.getByRole('button', { name: 'Convocar Nanquim' }).click();
+    await expect(panel.getByText('Nanquim chegou.')).toBeVisible();
+    await expectScreenPasses(p, `Criaturas, com o Nanquim e o aviso ${where}`);
+
+    await panel.getByRole('button', { name: 'Renomear' }).click();
+    await expect(panel.getByLabel('Nome da criatura')).toBeFocused();
+    await expectScreenPasses(p, `Criaturas, renomear ${where}`);
+    await panel.getByRole('button', { name: 'Cancelar' }).click();
+    await panel.getByRole('button', { name: 'Dispensar' }).click();
+    await expect(panel.getByRole('button', { name: 'Voltar' })).toBeFocused();
+    await expectScreenPasses(p, `Criaturas, dispensar pergunta ${where}`);
+    await panel.getByRole('button', { name: 'Voltar' }).click();
+
+    await panel.getByRole('link', { name: 'Ver a ficha do Nanquim' }).click();
+    await expect(p.getByRole('heading', { name: 'Nanquim', level: 1 })).toBeVisible();
+    await expectScreenPasses(p, `A ficha da criatura ${where}`);
+    await p.getByRole('button', { name: 'Dispensar' }).click();
+    await expect(p.getByRole('alertdialog', { name: 'Dispensar Nanquim?' })).toBeVisible();
+    await expectScreenPasses(p, `A ficha da criatura, dispensar pergunta ${where}`);
+
+    await m.goto(`/campanhas/${campaignId}`);
+    const row = m.locator('app-character-creatures');
+    await expect(row.locator('.item__name', { hasText: 'Nanquim' })).toBeVisible();
+    await expectScreenPasses(m, `O mestre, a lista de personagens com a criatura ${where}`);
+    if (width >= 768) {
+      await row.getByRole('button', { name: 'Dar uma criatura a Pensantus' }).click();
+      const dialog = m.getByRole('dialog', { name: 'Dar uma criatura a Pensantus' });
+      await expect(dialog.getByText(/de 334 · em ordem de nome/)).toBeVisible();
+      await expectScreenPasses(m, `Dar uma criatura, aberta ${where}`);
+      await dialog.getByLabel('Nome, em português ou inglês').fill('ma');
+      await dialog.getByLabel('Tipo').selectOption('beast');
+      await dialog.getByLabel('Nível de desafio').selectOption('1/8');
+      await expect(dialog.getByText('2 de 334 · em ordem de nome')).toBeVisible();
+      await dialog.locator('label', { hasText: /Mastim/ }).click();
+      await expect(dialog.getByText(/com os PV do livro \(5\)/)).toBeVisible();
+      await expectScreenPasses(m, `Dar uma criatura, o Mastim escolhido ${where}`);
+      await dialog.getByRole('button', { name: 'Dar Mastim a Pensantus' }).click();
+      await expect(m.getByText('Mastim dado a Pensantus.')).toBeVisible();
+      await expectScreenPasses(m, `O mestre, depois de dar ${where}`);
+    }
+    await row.getByRole('button', { name: 'Dispensar Nanquim' }).click();
+    await expect(row.getByRole('alertdialog')).toBeVisible();
+    await expectScreenPasses(m, `O mestre, dispensar pergunta ${where}`);
+    await row.getByRole('button', { name: 'Voltar' }).click();
+
+    await m.goto(`/campanhas/${campaignId}/personagens/${table.characterId}`);
+    const mc = m.locator('app-creatures-panel app-creature-card').first();
+    await mc.getByRole('button', { name: 'Corrigir PV' }).click();
+    await expect(mc.getByLabel(/PV de /)).toBeFocused();
+    await expectScreenPasses(m, `O mestre, corrigir os PV da criatura ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('as criaturas passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanCreatureScreens(browser, 'light', 1280);
+});
+
+test('as criaturas passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanCreatureScreens(browser, 'dark', 390);
+});
+
+test('as criaturas passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanCreatureScreens(browser, 'dark', 1024);
+});
+
+test('as criaturas passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanCreatureScreens(browser, 'light', 320);
 });

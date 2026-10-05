@@ -1,0 +1,138 @@
+:host {
+  display: block;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  box-sizing: border-box;
+  padding: var(--mr-space-3);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+}
+
+.head__art {
+  --art-size: 64px;
+}
+
+.head__text {
+  min-width: 0;
+}
+
+.name {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 28px;
+  overflow-wrap: anywhere;
+}
+
+.sub {
+  margin: 2px 0 0;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.5fr);
+  gap: var(--mr-space-2);
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 8px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+}
+
+.tile__l {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 16px;
+  color: var(--mr-ink-muted);
+}
+
+.tile__v {
+  font-family: var(--mr-font-display);
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 28px;
+
+  small {
+    font-family: var(--mr-font-sans);
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.tile__x {
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--mr-ink-muted);
+}
+
+.see {
+  --mat-button-outlined-container-height: 48px;
+  width: 100%;
+}
+
+// Text actions: the first one lines up with the card's text edge.
+.acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--mr-space-4);
+}
+
+.act {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mr-accent-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+
+  &--danger {
+    color: var(--mr-danger-ink);
+  }
+}
+
+@media (max-width: 359.98px) {
+  // 320px: the picture and the name on top, the three numbers in a line under them.
+  .head {
+    align-items: flex-start;
+  }
+
+  .tile {
+    padding: 6px;
+  }
+
+  .tile__l {
+    font-size: 12px;
+  }
+}

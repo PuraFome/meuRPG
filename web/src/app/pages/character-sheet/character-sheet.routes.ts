@@ -22,6 +22,16 @@ export const CHARACTER_SHEET_ROUTES: Routes = [
       LiveSessionSourceLive,
       XpWatcher,
     ],
-    loadComponent: () => import('./character-sheet').then((m) => m.CharacterSheetPage),
+    children: [
+      {
+        path: '',
+        loadComponent: () => import('./character-sheet').then((m) => m.CharacterSheetPage),
+      },
+      {
+        // A creature's stat block (MR-037, E9-10).
+        path: 'criaturas/:creatureId',
+        loadComponent: () => import('./creature-page/creature-page').then((m) => m.CreaturePage),
+      },
+    ],
   },
 ];

@@ -1,5 +1,6 @@
 import { AbilityKey, CharacterKind, CharacterState } from '../../core/characters/characters.types';
 import { DamageTypeKey, SkillProficiency } from '../../core/characters/character-labels';
+import type { CreatureAccessVm } from '../../core/creatures/summon-access';
 
 /**
  * The view-model `CharacterSheetPage` renders. Phase 2 maps `GetCharacter`'s
@@ -149,6 +150,8 @@ export interface FullSheetVm {
   readonly customFeaturesText: string;
   readonly issues: readonly IssueVm[];
   readonly hints: readonly HintVm[];
+  /** Which summoning spells it can cast, for the "Criaturas" panel (MR-037). */
+  readonly creatureAccess: CreatureAccessVm;
   /** Internal: never shown on the page (docs/design.md, "Nada interno na
    * tela"). */
   readonly contentVersion: string;
