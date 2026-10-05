@@ -1,5 +1,5 @@
 import { CreatureSource } from '../../../gen/meurpg/characters/v1/characters_pb';
-import type { Creature, CreatureSummary } from '../../../gen/meurpg/rules/v1/rules_pb';
+import { Ability, type Creature, type CreatureSummary } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { joinDots, tight } from '../format/text';
 import { metersText } from '../units';
 
@@ -84,3 +84,36 @@ export function nameCounter(length: number, max: number): string {
 
 /** The longest name a creature may have (`RenameCreature`, `GiveCreature`). */
 export const CREATURE_NAME_MAX = 40;
+
+const ABILITY_PT: Partial<Record<Ability, string>> = {
+  [Ability.STRENGTH]: 'Força',
+  [Ability.DEXTERITY]: 'Destreza',
+  [Ability.CONSTITUTION]: 'Constituição',
+  [Ability.INTELLIGENCE]: 'Inteligência',
+  [Ability.WISDOM]: 'Sabedoria',
+  [Ability.CHARISMA]: 'Carisma',
+};
+
+/** A beast's line in Wild Shape's list: "Médio · ND 1/4 · 12 m · CA 13 · PV 11"; only the book's summary until its stat block is read. */
+export function beastLine(s: CreatureSummary, c?: Creature): string {
+  const parts = [s.sizePt, challengeText(s.challengeRating)];
+  if (c) {
+    parts.push(speedsText(c), `CA ${c.armorClass}`, tight(`PV ${c.hitPoints}`));
+  }
+  return joinDots(parts);
+}
+
+/** What a beast's attacks do, from its stat block: "Ataque +4 · 2d4 + 2 perfurante · Força CD 11" (the numbers are the book's). Empty when it has none. */
+export function beastAttacks(c: Creature): string {
+  const attacks = c.actions.filter((a) => a.hasAttack);
+  if (attacks.length === 0) {
+    return '';
+  }
+  return attacks
+    .map((a) => {
+      const damage = a.damage.map((d) => `${d.dice.replace(/([+-])/g, ' $1 ').replace(/\s+/g, ' ').trim()} ${d.damageTypePt}`.trim()).join(' + ');
+      const save = a.save ? ` · ${ABILITY_PT[a.save.ability] ?? ''} CD ${a.save.dc}` : '';
+      return tight(joinDots([`Ataque ${signed(a.attackBonus)}`, damage]) + save);
+    })
+    .join(' e ');
+}

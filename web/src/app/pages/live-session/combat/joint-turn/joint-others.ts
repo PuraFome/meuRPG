@@ -30,6 +30,7 @@ export class JointOthers {
   readonly mode = input.required<'others' | 'summary' | 'outside'>();
 
   protected readonly Player = CombatantKind.PLAYER;
+  protected readonly Creature = CombatantKind.CREATURE;
   protected readonly joint = computed(() => jointTurn(this.encounter()));
   /** The members the card draws: the others while it is their turn, everyone otherwise. */
   protected readonly blocks = computed(() => {
@@ -59,7 +60,8 @@ export class JointOthers {
   }
 
   protected showsEconomy(c: Combatant): boolean {
-    return this.detailed() && c.kind === CombatantKind.PLAYER;
+    // Only a player's character, or the viewer's own creature: nobody else's creature has its economy sent.
+    return this.detailed() && (c.kind === CombatantKind.PLAYER || c.controlledByMe);
   }
 
   protected economy(c: Combatant) {

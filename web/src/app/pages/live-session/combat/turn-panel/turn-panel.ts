@@ -3,6 +3,7 @@ import { Component, ElementRef, computed, effect, input, output, viewChild } fro
 import { MatIconModule } from '@angular/material/icon';
 
 import { type Combatant, CombatantState, type Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { joinDots, tight } from '../../../../core/format/text';
 import { metersFixed, squaresFree } from '../../../../core/units';
 import { article } from '../../../../core/combat/combat-log';
 import {
@@ -15,8 +16,11 @@ import {
   stateWord,
   turnBanner,
 } from '../../../../core/combat/combat-view';
+import { isCreature } from '../../../../core/combat/creature-names';
 import { leftSentence, listNames, missingLine, passNote, playsBefore } from '../../../../core/combat/joint-turn';
 import { mediaQuery } from '../../../../shared/map-view/media-query';
+import { WildBand } from '../../../../shared/wild-shape/wild-band';
+import { WildPools } from '../../../../shared/wild-shape/wild-pools';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import { EndPart } from '../joint-turn/end-part';
 import { JointOthers } from '../joint-turn/joint-others';
@@ -41,7 +45,7 @@ import { ConcentrationLine, TurnReaction } from './turn-extras';
  */
 @Component({
   selector: 'app-turn-panel',
-  imports: [CombatantToken, ConcentrationLine, EndPart, EndTurn, JointOthers, JointPill, MatIconModule, NgTemplateOutlet, OrderStrip, TurnReaction],
+  imports: [CombatantToken, ConcentrationLine, EndPart, EndTurn, JointOthers, JointPill, MatIconModule, NgTemplateOutlet, OrderStrip, TurnReaction, WildBand, WildPools],
   templateUrl: './turn-panel.html',
   styleUrl: './turn-panel.scss',
 })
@@ -54,6 +58,10 @@ export class TurnPanel {
   readonly attacksPerAction = input(1);
   /** The player's maximum hit points, for "com 0 de 24 pontos de vida". */
   readonly hitPointsMax = input<number | null>(null);
+  /** The character's own hit points now: with the beast's, the two reserves of a druid in Wild Shape (E9-11). */
+  readonly hitPointsNow = input<number | null>(null);
+  /** The beast's armor class from its book (a player never gets an armor class from the combat: RN-20). */
+  readonly beastAc = input<number | null>(null);
   /** The melee attacks an opportunity attack can use (off turn, reaction free). */
   readonly opportunities = input<readonly { key: string; name: string }[]>([]);
   /** An opportunity attack waits for an answer: the title ("Esperando a reação do mestre") and the line under it (E9-13). */
@@ -78,6 +86,30 @@ export class TurnPanel {
   protected readonly banner = computed(() => turnBanner(this.encounter()));
   protected readonly round = computed(() => roundLabel(this.encounter().round));
   protected readonly own = computed(() => ownCombatant(this.encounter()));
+  /** The beast the druid is in, with its own reserve of hit points (only the druid's player and the master get the numbers). */
+  protected readonly form = computed(() => {
+    const c = this.own();
+    return c?.wildShapeBeastKey ? { name: c.wildShapeBeastNamePt, current: c.wildShapeHitPointsCurrent, max: c.wildShapeHitPointsMax } : null;
+  });
+  /** "Sem magias · CA 13 · 12,0 m". */
+  protected readonly formDetail = computed(() => {
+    const c = this.own();
+    const ac = this.beastAc();
+    return c?.wildShapeBeastKey ? joinDots(['Sem magias', ...(ac === null ? [] : [`CA ${ac}`]), tight(metersFixed(c.speedDft / 10))]) : '';
+  });
+  /** The two reserves, when the numbers are known. */
+  protected readonly pools = computed(() => {
+    const f = this.form();
+    const now = this.hitPointsNow();
+    const max = this.hitPointsMax();
+    if (!f || f.current === undefined || f.max === undefined || now === null || max === null) {
+      return null;
+    }
+    return {
+      beast: { label: `PV d${article(f.name) === 'a' ? 'a' : 'o'} ${f.name}`, current: f.current, max: f.max },
+      character: { label: `PV d${article(this.own()?.label ?? '') === 'a' ? 'a' : 'o'} ${this.own()?.label ?? ''}`, current: now, max },
+    };
+  });
   /** The player looks through their familiar's eyes: the character is blind and does not attack (the master resolves it, MR-036). */
   protected readonly blind = computed(() => !!this.own()?.familiarSightCreatureId);
   /** The player's character is at 0 hit points (any turn). */
@@ -208,7 +240,11 @@ export class TurnPanel {
   }
 
   protected npc(c: Combatant): boolean {
-    return !isPlayer(c);
+    return !isPlayer(c) && !isCreature(c);
+  }
+
+  protected creature(c: Combatant): boolean {
+    return isCreature(c);
   }
 
   /** The chip's second line: an NPC's state word, "Jogador" for another

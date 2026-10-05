@@ -24,6 +24,9 @@
     }
   </section>
   <ng-container *ngTemplateOutlet="notes" />
+  @if (form(); as f) {
+    <app-wild-band class="banner__strip" [beast]="f.name" [detail]="formDetail()" />
+  }
   @if (banner().joint) {
     <app-joint-others class="banner__strip" mode="others" [encounter]="encounter()" />
   }
@@ -53,6 +56,7 @@
       <app-combatant-token
         [initial]="initial(who)"
         [npc]="npc(who)"
+        [creature]="creature(who)"
         [current]="true"
         [size]="30"
       />
@@ -73,6 +77,9 @@
       <p class="turn__next">{{ afterPrefix() }}: <b>{{ after.name }}</b></p>
     }
     <ng-container *ngTemplateOutlet="notes" />
+    @if (form(); as f) {
+      <app-wild-band [beast]="f.name" [detail]="formDetail()" />
+    }
     <ul class="eco" aria-label="O que você tem neste turno">
       @for (t of tiles(); track t.name) {
         <li class="tile" [class.tile--used]="t.used">
@@ -147,6 +154,9 @@
     <app-order-strip [encounter]="encounter()" />
   }
 </section>
+}
+@if (pools(); as p) {
+  <app-wild-pools class="pools" [beast]="p.beast" [character]="p.character" />
 }
 
 <ng-template #notes>

@@ -1,0 +1,58 @@
+<!-- A definite height, on a phone and from a tablet up, like "Dar uma criatura": the list takes what the title and the footer leave. -->
+<app-sheet-frame
+  title="Forma Selvagem"
+  [subtitle]="rule()"
+  [phone]="inSheet"
+  [height]="inSheet ? 'calc(100dvh - 56px)' : 'min(680px, calc(92dvh - 48px))'"
+  titleId="wild-t"
+  (closed)="close()"
+>
+  <div class="stack">
+    @if (error()) {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ error() }}</p>
+      </div>
+    }
+
+    @if (forms() === null) {
+      <p class="wait" role="status">Abrindo a lista de feras…</p>
+    } @else if (rows().length === 0) {
+      @if (!error()) {
+        <p class="wait">Nenhuma fera está ao seu alcance neste nível.</p>
+      }
+    } @else {
+      <p class="cap" id="beasts-cap">{{ count() }}</p>
+      <app-creature-choice-list
+        class="list"
+        [rows]="rows()"
+        [chosen]="chosen()"
+        label="Fera"
+        [searchable]="true"
+        searchLabel="Buscar fera"
+        emptyText="Nenhuma fera com esse nome."
+        (pick)="pick($event)"
+      />
+    }
+  </div>
+
+  <div foot>
+    @if (beast()) {
+      <p class="line"><mat-icon aria-hidden="true">info</mat-icon><span>{{ cost() }}</span></p>
+    } @else {
+      <p class="line line--missing" role="status"><mat-icon aria-hidden="true">block</mat-icon><span>Escolha uma fera.</span></p>
+    }
+    <button
+      type="button"
+      mat-flat-button
+      class="go"
+      [class.mr-button--off]="!beast()"
+      [disabled]="!beast() || busy()"
+      disabledInteractive
+      (click)="confirm()"
+    >
+      <mat-icon aria-hidden="true">pets</mat-icon>{{ buttonLabel() }}
+    </button>
+    <button type="button" mat-stroked-button class="no" [disabled]="busy()" (click)="close()">Cancelar</button>
+  </div>
+</app-sheet-frame>

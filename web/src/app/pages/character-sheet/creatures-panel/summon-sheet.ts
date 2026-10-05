@@ -1,15 +1,27 @@
 import { create } from '@bufbuild/protobuf';
-import { Component, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
+import { Component, ElementRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 
+import { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { type GetSummonOptionsResponse, GetSummonOptionsResponseSchema, type SummonOption, SummonSlot, SummonSpellOptions } from '../../../../gen/meurpg/characters/v1/characters_pb';
+import type { Combatant } from '../../../../gen/meurpg/play/v1/combat_pb';
 import type { Creature, CreatureSummary } from '../../../../gen/meurpg/rules/v1/rules_pb';
+import { effectivePreference } from '../../../core/campaigns/dice-labels';
 import { type SlotRow, freeText } from '../../../core/combat/cast-flow';
+import { CombatClient } from '../../../core/combat/combat-client';
+import { combatErrorMessage } from '../../../core/combat/combat-errors';
+import type { CombatState } from '../../../core/combat/combat-state';
 import { circleLabel } from '../../../core/combat/combat-grid';
+import { parseSum } from '../../../core/combat/combat-dice';
+import { groupFeminine, pluralName } from '../../../core/combat/creature-names';
+import { stateWord } from '../../../core/combat/combat-view';
+import { summonResult } from '../../../core/combat/summon-result';
+import { metersText } from '../../../core/units';
+import { CreatureArt } from '../../../shared/creatures/creature-art';
 import { newKey } from '../../../core/connect/idempotency';
 import { CreaturesClient } from '../../../core/creatures/creatures-client';
 import { creatureErrorMessage } from '../../../core/creatures/creature-errors';
@@ -21,11 +33,26 @@ import { SheetFrame } from '../../live-session/combat/sheet-frame/sheet-frame';
 import { injectSheet } from '../../live-session/combat/sheet-host';
 import { type ChoiceRow, CreatureChoiceList } from '../../../shared/creatures/creature-choice-list';
 
-/** What the panel hands the sheet. */
+/** The sheet opened in a combat (Conjurar Animais, MR-037, E9-12): the cast goes through the combat. */
+export interface SummonCombat {
+  readonly encounterId: string;
+  /** The caster's combatant (a UUID). */
+  readonly casterId: string;
+  readonly diceMode: DiceMode;
+  readonly preference: DicePreference;
+  /** The page's copy of the combat: the answer's combat goes there. */
+  readonly state: CombatState;
+  /** The spell the caster concentrates on now ("Teia"); empty when none: casting this ends it. */
+  readonly concentrating: string;
+}
+
+/** What the panel (or the combat) hands the sheet. */
 export interface SummonSheetData {
   readonly campaignId: string;
   readonly characterId: string;
   readonly spellKey: string;
+  /** Set in a combat: the group's initiative roll and the result stage. */
+  readonly combat?: SummonCombat;
 }
 
 /** What the sheet answers when it cast: for the panel's live notice. */
@@ -53,14 +80,28 @@ export interface SummonSheetResult {
  */
 @Component({
   selector: 'app-summon-sheet',
-  imports: [CreatureChoiceList, FormsModule, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, SheetFrame, SlotPicker],
+  imports: [CreatureArt, CreatureChoiceList, FormsModule, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, SheetFrame, SlotPicker],
   templateUrl: './summon-sheet.html',
   styleUrl: './summon-sheet.scss',
 })
 export class SummonSheet {
   private readonly client = inject(CreaturesClient);
+  private readonly combatApi = inject(CombatClient);
   private readonly sheet = injectSheet<SummonSheetData, SummonSheetResult>();
   protected readonly data = this.sheet.data;
+  /** Set when the spell is cast in a combat. */
+  protected readonly combat = this.data.combat;
+  /** The result stage of a casting in a combat: the sentence and the creatures that joined. */
+  protected readonly result = signal<{ readonly text: string; readonly creatures: readonly Combatant[]; readonly title: string } | null>(null);
+  /** The book's armor class of each creature of the result (the combat sends none to a player). */
+  protected readonly resultAc = signal<ReadonlyMap<string, number>>(new Map());
+  /** The group's initiative d20 typed from a physical die (a combat only). */
+  protected readonly typing = signal(false);
+  protected readonly typed = signal('');
+  protected readonly canApp = this.combat ? this.combat.diceMode !== DiceMode.PHYSICAL : true;
+  protected readonly canType = this.combat ? this.combat.diceMode !== DiceMode.APP : false;
+  protected readonly preferApp = this.combat ? effectivePreference(this.combat.diceMode, this.combat.preference) === DicePreference.APP : true;
+  private readonly back = viewChild('back', { read: ElementRef<HTMLButtonElement> });
   protected readonly inSheet = this.sheet.inSheet;
   protected readonly max = CREATURE_NAME_MAX;
   protected readonly nameCounter = nameCounter;
@@ -81,12 +122,34 @@ export class SummonSheet {
 
   protected readonly spell = computed<SummonSpellOptions | null>(() => this.options()?.spells.find((s) => s.spellKey === this.data.spellKey) ?? null);
   /** A ritual spends no slot: the server says whether the character can cast this one as one. */
-  protected readonly ritual = computed(() => this.spell()?.canRitual ?? false);
+  protected readonly ritual = computed(() => !this.combat && (this.spell()?.canRitual ?? false));
   protected readonly familiar = computed(() => this.data.spellKey === FIND_FAMILIAR);
 
   protected readonly subtitle = computed(() => {
     const s = this.spell();
-    return s ? tight(`Magia de ${circleLabel(s.level)}${this.ritual() ? ' · ritual' : ''} · ${s.castingTimePt}`) : '';
+    if (this.result()) {
+      const slot = this.slot();
+      return s ? tight(joinDotsOf([s.namePt, slot ? circleLabel(slot.level) : '', s.concentration ? 'concentração' : ''])) : '';
+    }
+    return s ? tight(`Magia de ${circleLabel(s.level)}${this.ritual() ? ' · ritual' : ''} · ${s.castingTimePt}${this.combat && s.concentration ? ' · concentração' : ''}`) : '';
+  });
+  protected readonly title = computed(() => this.result()?.title ?? this.spell()?.namePt ?? this.data.spellKey);
+  /** The d20 typed for the group's initiative: a number from 1 to 20, or `null`. */
+  protected readonly face = computed(() => parseSum(this.typed(), 1, 20));
+  /** In a combat: what losing the concentration does, and what casting it ends now, in the footer where it is always in view. */
+  protected readonly concentrationLine = computed(() => {
+    const s = this.spell();
+    if (!this.combat || !s?.concentration) {
+      return null;
+    }
+    const n = this.count();
+    const kinds = this.rows().filter((r) => (this.counts()[r.key] ?? 0) > 0);
+    // "os 2 Lobos atrozes" once the player chose one kind; "as 2 criaturas" until then.
+    const name = kinds.length === 1 ? pluralName(kinds[0].title) : '';
+    const fem = kinds.length === 1 && /a$/i.test(kinds[0].title.split(/\s+/)[0]);
+    const them = n === 1 ? 'a criatura' : name ? `${fem ? 'as' : 'os'} ${n} ${name}` : `as ${n} criaturas`;
+    const ends = this.combat.concentrating ? `${s.namePt} encerra a concentração em ${this.combat.concentrating}.` : '';
+    return { lead: 'Concentração.', text: tight(`Se você perder a concentração, ${them} ${n > 1 ? 'somem' : 'some'}.`), ends: tight(ends) };
   });
 
   /** The slots this spell can use: from its circle up, only the circles the server lists for it. */
@@ -166,7 +229,7 @@ export class SummonSheet {
     const text = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} e ${parts[parts.length - 1]}`;
     return `${text[0].toUpperCase()}${text.slice(1)}.`;
   });
-  protected readonly ready = computed(() => this.missing() === '' && !this.busy() && this.spell() !== null);
+  protected readonly ready = computed(() => this.missing() === '' && !this.busy() && this.spell() !== null && (!this.typing() || this.face() !== null));
 
   /** "Conjurar como ritual · 1 hora · sem gastar espaço", or what the slot costs. */
   protected readonly costLine = computed(() => {
@@ -187,6 +250,8 @@ export class SummonSheet {
 
   constructor() {
     void this.load();
+    // After the result, the focus goes to its one button, as soon as it is drawn.
+    effect(() => this.back()?.nativeElement.focus());
     // The forms (their numbers) are read once the spell is known; the beasts again when the option changes.
     effect(() => {
       const o = this.opt();
@@ -310,6 +375,10 @@ export class SummonSheet {
     const names = this.familiar() && this.name().trim() !== '' ? [this.name().trim()] : [];
     const slot = this.slot();
     try {
+      if (this.combat) {
+        await this.castInCombat(spell, keys, names);
+        return;
+      }
       const res = await this.client.castSummon({
         campaignId: this.data.campaignId,
         characterId: this.data.characterId,
@@ -328,7 +397,7 @@ export class SummonSheet {
         dismissed: res.replacedIds.length,
       });
     } catch (err) {
-      this.error.set(creatureErrorMessage(err, 'cast'));
+      this.error.set(this.combat ? combatErrorMessage(err, 'conjurar a magia') : creatureErrorMessage(err, 'cast'));
       // The refusal is at the top of the body: scroll there, where it is seen.
       setTimeout(() => this.frame().scrollToTop());
     } finally {
@@ -336,7 +405,59 @@ export class SummonSheet {
     }
   }
 
+  /** In a combat the cast goes through `CastSpell`: the d20 of the group's initiative (the app's, or the one typed), the slot and the choice. */
+  private async castInCombat(spell: SummonSpellOptions, keys: readonly string[], names: readonly string[]): Promise<void> {
+    const combat = this.combat;
+    const slot = this.slot();
+    if (!combat || !slot) {
+      return;
+    }
+    const face = this.face();
+    const die = this.typing() && face !== null ? { face } : { inApp: true as const };
+    const res = await this.combatApi.castSpell(
+      this.data.campaignId,
+      combat.encounterId,
+      combat.casterId,
+      spell.spellKey,
+      { level: slot.level, pact: slot.pact },
+      [],
+      die,
+      this.key,
+      { option: this.option(), creatureKeys: keys, names },
+    );
+    combat.state.apply(res.encounter);
+    const made = summonResult(res.encounter, res.summoned);
+    const first = made.creatures[0];
+    const sameKind = made.creatures.every((c) => c.monsterKey === first?.monsterKey);
+    const fem = made.creatures.length > 0 && groupFeminine(made.creatures);
+    const title =
+      made.creatures.length === 1
+        ? `${first.label} ${fem ? 'conjurada' : 'conjurado'}`
+        : `${sameKind && first?.monsterNamePt ? pluralName(first.monsterNamePt) : 'Criaturas'} ${fem ? 'conjuradas' : 'conjurados'}`;
+    this.result.set({ text: made.text, creatures: made.creatures, title });
+    // The book's armor class of each kind, for the lines of the result (read once, in memory after).
+    for (const key of new Set(made.creatures.map((c) => c.monsterKey))) {
+      void this.client.statBlock(this.data.campaignId, key).then(
+        (block) => this.resultAc.update((m) => new Map(m).set(key, block.armorClass)),
+        () => undefined,
+      );
+    }
+    queueMicrotask(() => this.frame().scrollToTop());
+  }
+
+  /** "CA 14 · PV 37 de 37 · 15 m" for a creature of the result (its numbers are the owner's). */
+  protected line(c: Combatant): string {
+    const ac = this.resultAc().get(c.monsterKey);
+    const hp = c.hitPointsCurrent !== undefined && c.hitPointsMax !== undefined ? `PV ${c.hitPointsCurrent} de ${c.hitPointsMax}` : '';
+    return tight(joinDotsOf([ac === undefined ? '' : `CA ${ac}`, hp, metersText(c.speedFt)]));
+  }
+
+  protected word(c: Combatant): string {
+    return stateWord(c.state);
+  }
+
   protected close(): void {
+    // A casting in a combat hands nothing back: the combat already has what it did.
     this.sheet.close();
   }
 }
@@ -356,4 +477,9 @@ function slotRow(sl: SummonSlot): SlotRow {
     title: sl.pact ? `${circleLabel(sl.level)} (pacto)` : circleLabel(sl.level),
     count: freeText(sl.free, sl.total),
   };
+}
+
+/** "Conjurar Animais · 3º círculo · concentração": the parts that are there, with a dot between them. */
+function joinDotsOf(parts: readonly string[]): string {
+  return parts.filter(Boolean).join(' · ');
 }

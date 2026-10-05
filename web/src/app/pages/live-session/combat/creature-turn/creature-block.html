@@ -1,0 +1,96 @@
+<section class="block" [attr.aria-label]="c().label">
+  <div class="head">
+    <app-creature-art class="head__art" [monsterKey]="c().monsterKey" />
+    <div class="head__text">
+      <h3 class="head__name">{{ c().label }}</h3>
+      <span class="head__sub">{{ hp() }}</span>
+    </div>
+    @if (joint()) {
+      <app-part-state [ended]="ended()" />
+    }
+  </div>
+
+  <ul class="eco" [attr.aria-label]="'O que ' + c().label + ' tem neste turno'">
+    <li class="tile" [class.tile--used]="c().actionUsed">
+      <span class="tile__name">Ação</span>
+      <span class="tile__word">{{ actionWord() }}</span>
+    </li>
+    <li class="tile">
+      <span class="tile__name">Movimento</span>
+      <span class="tile__num">{{ moveLeft() }} <small>de {{ moveTotal() }}</small></span>
+      @if (flies()) {
+        <span class="tile__sub">voo</span>
+      }
+    </li>
+  </ul>
+
+  @if (why()) {
+    <p class="why"><mat-icon aria-hidden="true">block</mat-icon>{{ why() }}</p>
+  }
+
+  @for (a of attacks(); track a.attack?.key) {
+    @if (a.attack; as atk) {
+      <app-action-row
+        class="atk"
+        [name]="attackName(atk)"
+        [detail]="detail(a)"
+        button="Atacar"
+        [buttonLabel]="'Atacar com ' + attackName(atk) + ': ' + c().label"
+        [off]="!a.enabled || off()"
+        [reason]="why() || reasonText(a.reason)"
+        [busy]="busy()"
+        (press)="attack.emit(atk.key)"
+      />
+    }
+  }
+
+  @for (a of reactionAttacks(); track a.attack?.key) {
+    @if (a.attack; as atk) {
+      <app-action-row
+        class="atk"
+        [name]="attackName(atk)"
+        [tags]="['Reação']"
+        [detail]="detail(a)"
+        button="Atacar"
+        [buttonLabel]="'Atacar com ' + attackName(atk) + ' como reação: ' + c().label"
+        [off]="c().reactionUsed || !!locked()"
+        [reason]="locked() || reactionWhy()"
+        [busy]="busy()"
+        (press)="reactionAttack.emit(atk.key)"
+      />
+    }
+  }
+
+  <button
+    type="button"
+    mat-stroked-button
+    class="go"
+    [class.go--off]="off() || c().movementLeftDft <= 0"
+    [disabled]="busy() || off() || c().movementLeftDft <= 0"
+    disabledInteractive
+    [attr.aria-label]="moveLabel()"
+    (click)="move.emit()"
+  >
+    <mat-icon aria-hidden="true">directions_run</mat-icon>{{ moveLabel() }}
+  </button>
+
+  @if (cannotAttack()) {
+    <p class="note"><mat-icon aria-hidden="true">block</mat-icon><span><b>O familiar não ataca.</b> Ele usa as outras ações:</span></p>
+    <div class="std" role="group" aria-label="Ações padrão">
+      @for (a of standard(); track a.action?.key) {
+        <button
+          type="button"
+          mat-stroked-button
+          class="std__btn"
+          [class.std__btn--off]="!a.enabled || off()"
+          [disabled]="!a.enabled || off() || busy()"
+          disabledInteractive
+          [attr.aria-label]="(a.action?.namePt ?? '') + ': ' + c().label"
+          (click)="a.enabled && !off() && action.emit(a.action?.key ?? '')"
+        >
+          {{ a.action?.namePt }}
+        </button>
+      }
+    </div>
+  }
+</section>

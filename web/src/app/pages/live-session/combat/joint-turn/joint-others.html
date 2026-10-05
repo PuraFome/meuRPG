@@ -5,7 +5,7 @@
       @for (m of blocks(); track m.id) {
         <li class="block">
           <div class="block__head">
-            <app-combatant-token [initial]="initial(m)" [npc]="m.kind !== Player" [size]="28" />
+            <app-combatant-token [initial]="initial(m)" [npc]="m.kind !== Player && m.kind !== Creature" [creature]="m.kind === Creature" [size]="28" />
             <span class="block__name">
               {{ m.label }}
               @if (m.mine) {

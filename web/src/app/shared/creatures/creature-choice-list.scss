@@ -140,6 +140,14 @@
   color: var(--mr-ink-muted);
 }
 
+.row__extra {
+  margin-top: 2px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 19px;
+  color: var(--mr-ink);
+}
+
 .empty {
   margin: 0;
   padding: var(--mr-space-4);

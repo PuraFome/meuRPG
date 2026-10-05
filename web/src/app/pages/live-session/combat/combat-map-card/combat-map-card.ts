@@ -2,7 +2,7 @@ import { Component, computed, input, output, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import type { Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { CombatantKind, type Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { PHONE_QUERY, mediaQuery } from '../../../../shared/map-view/media-query';
 import { ownCombatant } from '../../../../core/combat/combat-view';
 import { metersFixed } from '../../../../core/units';
@@ -113,5 +113,7 @@ export class CombatMapCard {
   protected readonly emptyLayers = NO_LAYERS;
   protected readonly reachMeters = computed(() => metersFixed((this.reach()?.leftDft ?? 0) / 10));
   protected readonly hasHidden = computed(() => this.encounter().combatants.some((c) => c.hidden));
+  /** A player's creature has a square on the map: the legend names the dashed round token. */
+  protected readonly hasCreatures = computed(() => this.encounter().combatants.some((c) => c.kind === CombatantKind.CREATURE && c.placed));
   protected readonly hasDefeated = computed(() => this.encounter().combatants.some((c) => c.defeated));
 }

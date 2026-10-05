@@ -6,6 +6,7 @@ import { DFT_PER_SQUARE, type Square, squareAt, squareCenter, stepSquare } from 
 import type { MapLayers } from '../../core/maps/layers';
 import { conditionTags } from '../../core/combat/conditions';
 import { combatantInitial, isPlayer } from '../../core/combat/combat-view';
+import { isCreature } from '../../core/combat/creature-names';
 import { CombatantToken } from '../combatant-token/combatant-token';
 import type { Vision } from '../../core/maps/vision';
 import { FogBase } from '../fog-map/fog-base';
@@ -190,8 +191,13 @@ export class CombatMap {
     return combatantInitial(c.label);
   }
 
+  /** An NPC is the rounded square; a player's creature is round with a dashed outline (MAP-LANGUAGE.md). */
   protected npc(c: Combatant): boolean {
-    return !isPlayer(c);
+    return !isPlayer(c) && !isCreature(c);
+  }
+
+  protected creature(c: Combatant): boolean {
+    return isCreature(c);
   }
 
   protected place(c: Combatant): Square {

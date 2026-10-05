@@ -1,0 +1,66 @@
+:host {
+  display: block;
+}
+
+// The sheet's body: the search and the count stay put, the list takes what is left and scrolls inside itself.
+.stack {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 8px;
+}
+
+.cap {
+  flex: none;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--mr-ink-muted);
+}
+
+.wait {
+  margin: 0;
+  font-size: 15px;
+  color: var(--mr-ink-muted);
+}
+
+// The footer: what it costs in words, the one filled button, then "Cancelar", both 48 px and the full width.
+[foot] {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.line {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.go,
+.no {
+  width: 100%;
+}
+
+.go {
+  --mat-button-filled-container-height: 48px;
+  --mat-button-filled-focus-state-layer-opacity: 0;
+}
+
+.no {
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-accent-text);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  font-weight: 700;
+}

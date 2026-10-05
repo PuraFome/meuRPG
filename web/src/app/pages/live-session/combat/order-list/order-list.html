@@ -25,6 +25,7 @@
             [total]="item.total"
             [onTurn]="item.onTurn"
             [label]="groupLabel(item)"
+            [names]="creatureNames(item)"
             [hint]="item.members.length === 2 ? 'os dois agem no mesmo turno' : 'todos agem no mesmo turno'"
           >
             <ol class="rows">
@@ -39,12 +40,16 @@
       }
     }
   </ol>
+  @if (hasCreatures()) {
+    <app-order-legend />
+  }
   <ng-template #rowTpl let-c let-inGroup="inGroup">
       <li class="row" [class.row--turn]="current(c)" [class.row--dying]="dying(c)" [class.on-danger]="dying(c)">
       <app-combatant-token
         class="row__token"
         [initial]="initial(c)"
         [npc]="npc(c)"
+        [creature]="creature(c)"
         [hidden]="c.hidden"
         [defeated]="c.defeated"
         [current]="current(c)"
@@ -62,7 +67,7 @@
         </span>
         <span class="row__meta">
           <span class="row__sub">{{ sub(c) }}</span>
-          @if (c.defeated && !npc(c)) {
+          @if (c.defeated && player(c)) {
             <span class="row__state row__state--out">
               <mat-icon aria-hidden="true">close</mat-icon>{{ word(c) }}
             </span>
@@ -191,6 +196,20 @@
           >
             Revelar aos jogadores
           </button>
+        </div>
+      }
+      @if (live() && c.concentrationSpell && losing() !== c.id && removing() !== c.id) {
+        <div class="row__extra">
+          <p class="row__hidden-note"><mat-icon aria-hidden="true">hourglass_empty</mat-icon>Se concentra em <b>{{ concentration(c) }}</b>{{ held(c) }}</p>
+          <button mat-stroked-button type="button" class="row__lose" [disabled]="busy()" (click)="losing.set(c.id)">Perdeu a concentração</button>
+        </div>
+      }
+      @if (losing() === c.id) {
+        <div class="row__confirm" role="alertdialog" [attr.aria-label]="'Perdeu a concentração: ' + c.label">
+          <p>{{ c.label }} perdeu a concentração?</p>
+          <p class="row__lose-text">{{ concentration(c) }} acaba{{ heldText(c) }} Isso não se desfaz.</p>
+          <button mat-stroked-button type="button" #back (click)="losing.set(null)">Voltar</button>
+          <button mat-stroked-button type="button" class="danger" (click)="confirmLose(c.id)">Dispensar as criaturas</button>
         </div>
       }
       @if (removing() === c.id) {

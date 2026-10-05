@@ -103,6 +103,9 @@
     @if (isMaster()) {
       <li><app-combatant-token initial="P" [size]="22" />Jogador</li>
       <li><app-combatant-token initial="C" [npc]="true" [size]="22" />NPC</li>
+      @if (hasCreatures()) {
+        <li><app-combatant-token initial="N" [creature]="true" [size]="22" />Criatura de um jogador</li>
+      }
       @if (hasHidden()) {
         <li><app-combatant-token initial="G" [npc]="true" [hidden]="true" [size]="22" />Escondido (só você vê)</li>
       }
@@ -112,6 +115,9 @@
       }
       <li><app-combatant-token initial="B" [size]="22" />Personagens</li>
       <li><app-combatant-token initial="C" [npc]="true" [size]="22" />Inimigos</li>
+      @if (hasCreatures()) {
+        <li><app-combatant-token initial="N" [creature]="true" [size]="22" />Criatura de um jogador</li>
+      }
     }
     @if (hasDefeated()) {
       <li><app-combatant-token initial="X" [defeated]="true" [npc]="true" [size]="22" />Derrotado</li>

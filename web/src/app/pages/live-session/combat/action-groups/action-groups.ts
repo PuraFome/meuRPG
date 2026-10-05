@@ -83,6 +83,14 @@ export class ActionGroups {
 
   /** What `GetSpellDetails` said about each spell of the list, for the line under its name. */
   readonly details = input<ReadonlyMap<string, SpellDetails>>(new Map());
+  /**
+   * The druid's Wild Shape as a line of the Ação (MR-037, E9-11 state 1): the line under its name ("Vire uma fera
+   * · restam 2 de 2 usos · volta no descanso curto ou longo") and, when it cannot be used, the reason. `null` for a
+   * character without it, or already in a beast form (then `leaveForm` is the bonus action).
+   */
+  readonly wild = input<{ readonly key: string; readonly detail: string; readonly reason: string } | null>(null);
+  /** The beast the character is in ("Lobo"): no spells, and "Voltar à forma normal" is a bonus action. */
+  readonly beast = input('');
 
   /** "Atacar": the key of the attack, as in `Attack.key`. */
   readonly attack = output<string>();
@@ -99,6 +107,10 @@ export class ActionGroups {
   readonly familiarEyes = output<void>();
   /** The "?" of a spell: the key and the Portuguese name. */
   readonly describe = output<{ key: string; name: string }>();
+  /** "Transformar": the page opens the list of beasts. */
+  readonly transform = output<void>();
+  /** "Voltar" (to the normal shape), a bonus action. */
+  readonly leaveForm = output<void>();
 
 
   /** From 1024px the economy tiles are the panel's first thing (E6-14). */
@@ -191,6 +203,12 @@ export class ActionGroups {
 
   protected featureOff(a: ActionOption): boolean {
     return !a.enabled && !isReactionHint(a.reason);
+  }
+
+  /** The feature that is the druid's Wild Shape: it opens the beasts' sheet instead of being "used". */
+  protected isWild(a: ActionOption): boolean {
+    const wild = this.wild();
+    return !!wild && a.action?.key === wild.key;
   }
 
   /** "1 uso", "2 usos": what is left of the feature's resource. */

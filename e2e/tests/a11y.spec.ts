@@ -14,6 +14,7 @@ import { printRoute, tableForPrinting } from './print-support';
 import { tableForLevelUp } from './levelup-support';
 import { paintRPC, pickRadio } from './move-support';
 import { beginFogCombat, moveTo, sessionRoute, tableForFog } from './fog-support';
+import { beginCreatureCombat, hitAndApply, tableForCreatureCombat } from './creatures-combat-support';
 import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus } from './support';
 import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
 import { tableForCaster, tableForCreatures } from './creatures-support';
@@ -2873,4 +2874,128 @@ test('a névoa no combate passa no axe e nas conferências de layout no tema cla
 test('a névoa no combate passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-036'] }, async ({ browser }) => {
   test.setTimeout(300_000);
   await scanFogCombatScreens(browser, 'dark', 390);
+});
+
+
+// ---- the creatures in combat and Wild Shape (MR-037, E9-11, E9-12) ----
+
+/** Taps a button of the page on a phone, where the pinned turn bar can cover half the screen: it is brought up under the app bar first. */
+async function tapAboveBar(button: import('@playwright/test').Locator): Promise<void> {
+  await button.evaluate((el) => {
+    el.scrollIntoView({ block: 'start' });
+    window.scrollBy(0, -140);
+  });
+  await button.click();
+}
+
+async function scanCreatureCombatScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width < 700 ? 800 : 900 };
+  const contexts = await Promise.all(
+    (['Mestre Teste', 'Jogador Teste', 'E-mail Não Verificado'] as const).map((user) =>
+      browser.newContext({ storageState: authStatePath(user), colorScheme, viewport }),
+    ),
+  );
+  const [m, p, t] = await Promise.all(contexts.map((c) => c.newPage()));
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await Promise.all([m.goto('/'), p.goto('/'), t.goto('/')]);
+    const table = await tableForCreatureCombat(m, p, t, `Acessibilidade criaturas ${Date.now()}`);
+    campaignId = table.campaignId;
+    await beginCreatureCombat(m, table, { Sálvia: p, Toren: t }, { Toren: 20, Sálvia: 13, 'Capitão Goblin': 5, 'Goblin 1': 4, 'Goblin 2': 4 }, { 'Capitão Goblin': [21, 3], 'Goblin 1': [6, 6], 'Goblin 2': [20, 7] });
+    await passTurnsTo(m, campaignId, 'Sálvia');
+    await p.goto(sessionRoute(campaignId));
+    await expect(p.getByRole('heading', { name: 'Sua vez, Sálvia' })).toBeVisible();
+    await expectScreenPasses(p, `A vez da Sálvia, com Forma Selvagem ${where}`);
+
+    // Wild Shape: the list of beasts, with one chosen.
+    await tapAboveBar(p.getByRole('button', { name: 'Transformar: Forma Selvagem' }));
+    const wild = p.getByRole('dialog', { name: 'Forma Selvagem' });
+    await expect(wild.getByText('Escolha uma fera.')).toBeVisible();
+    await expectScreenPasses(p, `Forma Selvagem, a lista ${where}`);
+    await wild.getByLabel('Buscar fera').fill('lobo');
+    await wild.locator('label', { hasText: '(Wolf)' }).click();
+    await expect(wild.locator('.row__sub').first()).toContainText('CA 13');
+    await expectScreenPasses(p, `Forma Selvagem, a fera escolhida ${where}`);
+    await wild.getByRole('button', { name: 'Virar Lobo' }).click();
+    await expect(p.getByText('Na forma de Lobo').first()).toBeVisible();
+    await expectScreenPasses(p, `A vez como Lobo ${where}`);
+
+    // The beast falls: the notice that stays.
+    await hitAndApply(m, campaignId, 'Goblin 1', 'Sálvia', 30);
+    await expect(p.getByTestId('form-ended')).toBeVisible();
+    await expectScreenPasses(p, `O aviso da fera que caiu ${where}`);
+    await p.getByTestId('form-ended').getByRole('button', { name: 'Entendi' }).click();
+    // Next round: her action is free again.
+    await p.getByRole('button', { name: 'Encerrar turno' }).click();
+    await passTurnsTo(m, campaignId, 'Sálvia');
+    await expect(p.getByRole('heading', { name: 'Sua vez, Sálvia' })).toBeVisible();
+
+    // Conjurar Animais: the sheet, then the result.
+    await tapAboveBar(p.getByRole('button', { name: 'Conjurar Conjurar Animais' }));
+    // The dialog's name is its title, which changes to "Lobos atrozes conjurados" with the result.
+    const sheet = p.getByRole('dialog');
+    await sheet.getByText('2 criaturas de ND 1 ou menos').click();
+    await sheet.getByRole('button', { name: 'Mais Lobo atroz' }).click();
+    await sheet.getByRole('button', { name: 'Mais Lobo atroz' }).click();
+    await expectScreenPasses(p, `Conjurar Animais em combate ${where}`);
+    await sheet.getByRole('button', { name: 'Digitar o d20 de um dado físico' }).click();
+    await sheet.getByLabel('Role 1d20 para a iniciativa das criaturas').fill('8');
+    await expectScreenPasses(p, `Conjurar Animais, o d20 digitado ${where}`);
+    await sheet.getByRole('button', { name: 'Conjurar os animais' }).click();
+    await expect(sheet.getByRole('heading', { name: 'Lobos atrozes conjurados' })).toBeVisible();
+    await expectScreenPasses(p, `Os Lobos atrozes conjurados ${where}`);
+    await sheet.getByRole('button', { name: 'Fechar' }).last().click();
+    await expect(p.getByRole('tablist', { name: 'O que você joga' })).toBeVisible();
+    await expectScreenPasses(p, `As abas, a vez da Sálvia ${where}`);
+
+    // The wolves' turn, and what Toren sees.
+    await p.getByRole('button', { name: 'Encerrar turno' }).click();
+    await expect(p.getByRole('heading', { name: 'Vez dos seus Lobos atrozes' })).toBeVisible();
+    await expectScreenPasses(p, `A vez dos Lobos atrozes ${where}`);
+    await p.getByRole('button', { name: 'Encerrar a parte dos Lobos' }).click();
+    await expect(p.getByRole('alertdialog')).toBeVisible();
+    await expectScreenPasses(p, `Encerrar a parte dos Lobos, a pergunta ${where}`);
+    await p.getByRole('alertdialog').getByRole('button', { name: 'Voltar' }).click();
+    await t.goto(sessionRoute(campaignId));
+    await expect(t.getByRole('heading', { name: 'Vez dos Lobos atrozes da Sálvia' })).toBeVisible();
+    await expectScreenPasses(t, `A vez dos Lobos atrozes, vista por outro jogador ${where}`);
+
+    // The master: the order with the group box, the legend and the concentration question.
+    await m.goto(sessionRoute(campaignId));
+    const order = m.getByRole('region', { name: 'Ordem de iniciativa' });
+    await expect(order.getByText('Se concentra em Conjurar Animais · 2 Lobos atrozes')).toBeVisible();
+    await expectScreenPasses(m, `A ordem do mestre com as criaturas ${where}`);
+    await order.getByRole('button', { name: 'Perdeu a concentração' }).click();
+    await expect(order.getByRole('alertdialog')).toBeVisible();
+    await expectScreenPasses(m, `Perdeu a concentração, a pergunta ${where}`);
+    await order.getByRole('alertdialog').getByRole('button', { name: 'Dispensar as criaturas' }).click();
+    await expect(p.getByTestId('concentration-lost')).toBeVisible();
+    await expectScreenPasses(p, `O aviso da concentração perdida ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await Promise.all(contexts.map((c) => c.close()));
+  }
+}
+
+test('as criaturas no combate e a Forma Selvagem passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
+  test.setTimeout(360_000);
+  await scanCreatureCombatScreens(browser, 'light', 1280);
+});
+
+test('as criaturas no combate e a Forma Selvagem passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
+  test.setTimeout(360_000);
+  await scanCreatureCombatScreens(browser, 'dark', 390);
+});
+
+test('as criaturas no combate e a Forma Selvagem passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
+  test.setTimeout(360_000);
+  await scanCreatureCombatScreens(browser, 'dark', 1024);
+});
+
+test('as criaturas no combate e a Forma Selvagem passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
+  test.setTimeout(360_000);
+  await scanCreatureCombatScreens(browser, 'light', 320);
 });

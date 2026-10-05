@@ -19,10 +19,12 @@ import { conditionTags } from '../../../../core/combat/conditions';
 import { coverMark, coverText, sideTags } from '../../../../core/combat/cover';
 import { article } from '../../../../core/combat/combat-log';
 import { combatantInitial, isPlayer, stateWord } from '../../../../core/combat/combat-view';
+import { groupName, isCreature, kindWord, ofOwner } from '../../../../core/combat/creature-names';
 import { type OrderItem, jointTurn, listNames, orderItems } from '../../../../core/combat/joint-turn';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import type { CombatantInfo } from '../combat-info';
 import { CombatantTags } from '../combatant-tags/combatant-tags';
+import { OrderLegend } from './order-legend';
 import { RowCover } from './row-cover';
 import { DeathRow } from '../death-saves/death-marks';
 import { OrderGroup } from '../joint-turn/order-group';
@@ -41,7 +43,7 @@ import { PartState } from '../joint-turn/part-state';
  */
 @Component({
   selector: 'app-order-list',
-  imports: [CombatantTags, CombatantToken, RowCover, DeathRow, MatButtonModule, MatIconModule, MatMenuModule, NgTemplateOutlet, OrderGroup, PartState],
+  imports: [CombatantTags, CombatantToken, OrderLegend, RowCover, DeathRow, MatButtonModule, MatIconModule, MatMenuModule, NgTemplateOutlet, OrderGroup, PartState],
   templateUrl: './order-list.html',
   styleUrl: './order-list.scss',
 })
@@ -57,6 +59,8 @@ export class OrderList {
   readonly adjustNpc = output<string>();
   readonly reveal = output<{ id: string; hidden: boolean }>();
   readonly remove = output<string>();
+  /** "Perdeu a concentração": ends the spell the combatant holds (the creatures it kept go with it). */
+  readonly endConcentration = output<string>();
   readonly add = output<void>();
   /** "Condições…": the combatant's ID. */
   readonly conditions = output<string>();
@@ -77,6 +81,8 @@ export class OrderList {
 
   protected readonly Stable = CombatantState.STABLE;
   protected readonly removing = signal<string | null>(null);
+  /** The combatant whose "Perdeu a concentração" question is open. */
+  protected readonly losing = signal<string | null>(null);
   /** The combatant whose cover mark is open. */
   protected readonly marking = signal<string | null>(null);
   protected readonly Party = CombatantSide.PARTY;
@@ -98,8 +104,13 @@ export class OrderList {
     return combatantInitial(c.label);
   }
 
+  /** An NPC (the rounded square); a player's creature is its own shape. */
   protected npc(c: Combatant): boolean {
-    return !isPlayer(c);
+    return !isPlayer(c) && !isCreature(c);
+  }
+
+  protected creature(c: Combatant): boolean {
+    return isCreature(c);
   }
 
   /** An NPC the master marked "Aliado": a side, said apart from the conditions. */
@@ -131,13 +142,33 @@ export class OrderList {
     return this.dying(c) ? joinDots(['Morrendo', `${c.deathFailures} falhas`]) : stateWord(c.state, c.label);
   }
 
+  protected player(c: Combatant): boolean {
+    return isPlayer(c);
+  }
+
   protected word(c: Combatant): string {
-    return stateWord(c.defeated && !this.npc(c) ? CombatantState.DEAD : c.state, c.label);
+    return stateWord(c.defeated && isPlayer(c) ? CombatantState.DEAD : c.state, c.label);
+  }
+
+  /** The legend of the three shapes, once a player's creature is in the order. */
+  protected readonly hasCreatures = computed(() => this.rows().some(isCreature));
+
+  /** "Lobos atrozes da Sálvia" in the box of a group that is only creatures; nothing for any other group. */
+  protected creatureNames(item: OrderItem): string {
+    if (item.kind !== 'group' || !item.members.every(isCreature)) {
+      return '';
+    }
+    const owner = ofOwner(this.encounter(), item.members[0]);
+    return `${groupName(item.members)}${owner ? ` ${owner}` : ''}`;
   }
 
   protected sub(c: Combatant): string {
     const info = this.info().get(c.characterId);
     const ac = c.armorClass === undefined ? '' : `CA ${c.armorClass}`;
+    if (isCreature(c)) {
+      // "Criatura · CA 14 · da Sálvia": what it is, its armor class and whose it is.
+      return [kindWord(c), ac, ofOwner(this.encounter(), c)].filter(Boolean).join(' · ');
+    }
     const first = isPlayer(c) ? (info?.classSummary ?? '') : (info?.kindLabel ?? 'NPC');
     return [first, ac].filter(Boolean).join(' · ');
   }
@@ -201,6 +232,28 @@ export class OrderList {
 
   protected ask(id: string): void {
     this.removing.set(id);
+  }
+
+  /** The creatures a combatant's concentration keeps (a casting's, by what the combat says), for "· 2 Lobos atrozes". */
+  private heldBy(c: Combatant): readonly Combatant[] {
+    return c.concentrationSpell === 'spell:conjure-animals'
+      ? this.rows().filter((x) => isCreature(x) && x.ownerCharacterId === c.characterId && !!x.summonGroupId && !x.defeated)
+      : [];
+  }
+
+  protected held(c: Combatant): string {
+    const held = this.heldBy(c);
+    return held.length > 0 ? ` · ${held.length === 1 ? held[0].label : `${held.length} ${groupName(held)}`}` : '';
+  }
+
+  protected heldText(c: Combatant): string {
+    const held = this.heldBy(c);
+    return held.length > 0 ? ` e ${held.length === 1 ? held[0].label : `os ${held.length} ${groupName(held)}`} somem do combate, da ordem e do mapa.` : '.';
+  }
+
+  protected confirmLose(id: string): void {
+    this.losing.set(null);
+    this.endConcentration.emit(id);
   }
 
   protected confirmRemove(id: string): void {

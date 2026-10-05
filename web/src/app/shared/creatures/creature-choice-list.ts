@@ -14,6 +14,8 @@ export interface ChoiceRow {
   readonly subtitle: string;
   /** Shows the silhouette (the master's search); the forms of a spell are plain. */
   readonly art?: boolean;
+  /** A line that opens under the subtitle only while the row is the chosen one (Wild Shape: what the beast's attack does). */
+  readonly extra?: string;
 }
 
 let nextId = 0;
@@ -81,6 +83,9 @@ let nextId = 0;
           <span class="row__text">
             <span class="row__title">{{ r.title }}@if (r.alias) { <span class="row__alias">({{ r.alias }})</span> }</span>
             <span class="row__sub">{{ r.subtitle }}</span>
+            @if (r.extra && (multi() ? n > 0 : r.key === chosen())) {
+              <span class="row__extra">{{ r.extra }}</span>
+            }
           </span>
         </label>
       } @empty {

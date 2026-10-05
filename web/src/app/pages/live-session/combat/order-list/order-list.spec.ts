@@ -122,3 +122,44 @@ describe('OrderList', () => {
     });
   });
 });
+
+describe('OrderList with a player\'s creatures (E9-12)', () => {
+  const salvia = combatant({ id: 's', label: 'Sálvia', kind: CombatantKind.PLAYER, characterId: 'sc', hitPointsCurrent: 38, hitPointsMax: 38, initiative: 13, concentrationSpell: 'spell:conjure-animals', concentrationSpellNamePt: 'Conjurar Animais' });
+  const wolf = (n: number) =>
+    combatant({ id: `w${n}`, label: `Lobo atroz ${n}`, kind: CombatantKind.CREATURE, characterId: '', ownerCharacterId: 'sc', summonGroupId: 'cast', monsterKey: 'monster:dire-wolf', monsterNamePt: 'Lobo atroz', hitPointsCurrent: 37, hitPointsMax: 37, armorClass: 14, initiative: 10 });
+
+  function setup() {
+    const fixture = TestBed.createComponent(OrderList);
+    fixture.componentRef.setInput('encounter', encounter({ combatants: [salvia, wolf(1), wolf(2)], currentCombatantId: 'w1', turnGroupIds: ['w1', 'w2'] }));
+    const ended: string[] = [];
+    fixture.componentInstance.endConcentration.subscribe((id) => ended.push(id));
+    fixture.detectChanges();
+    return { el: fixture.nativeElement as HTMLElement, ended, fixture };
+  }
+  const text = (n: Element | null | undefined) => n?.textContent?.replace(/\s+/g, ' ').trim();
+
+  it('draws a creature as a dashed round token, with whose it is, in a box named for the group, and a legend', () => {
+    const { el } = setup();
+    expect(el.querySelectorAll('.row__token.tk--creature').length).toBe(2);
+    expect(text(el.querySelector('.row--turn, .row'))).toBeTruthy();
+    const rows = Array.from(el.querySelectorAll('.row__sub'), (n) => text(n));
+    expect(rows).toContain('Criatura · CA 14 · da Sálvia');
+    expect(text(el.querySelector('app-order-group'))).toContain('Lobos atrozes da Sálvia');
+    expect(text(el.querySelector('.legend'))).toBe('P Jogador C NPC N Criatura de um jogador');
+  });
+
+  it('asks in place before the concentration is lost, with "Voltar" first, and says what goes with it', () => {
+    const { el, ended, fixture } = setup();
+    const open = Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => b.textContent?.includes('Perdeu a concentração'))!;
+    expect(text(open.closest('.row__extra'))).toContain('Se concentra em Conjurar Animais · 2 Lobos atrozes');
+    open.click();
+    fixture.detectChanges();
+    const ask = el.querySelector('[role=alertdialog]')!;
+    expect(text(ask)).toContain('Sálvia perdeu a concentração?');
+    expect(text(ask)).toContain('Conjurar Animais acaba e os 2 Lobos atrozes somem do combate, da ordem e do mapa. Isso não se desfaz.');
+    const buttons = ask.querySelectorAll('button');
+    expect(text(buttons[0])).toBe('Voltar');
+    buttons[1].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(ended).toEqual(['s']);
+  });
+});

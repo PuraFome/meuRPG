@@ -5,6 +5,7 @@ import type { Combatant, Encounter } from '../../../../../gen/meurpg/play/v1/com
 import { conditionTags } from '../../../../core/combat/conditions';
 import { coverMarkTags, sideTags } from '../../../../core/combat/cover';
 import { combatantInitial, isPlayer, playerWord, stateWord } from '../../../../core/combat/combat-view';
+import { isCreature } from '../../../../core/combat/creature-names';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import { type OrderItem, jointTurn, listNames, orderItems } from '../../../../core/combat/joint-turn';
 import { OrderGroup } from '../joint-turn/order-group';
@@ -44,7 +45,7 @@ import { CombatantTags } from '../combatant-tags/combatant-tags';
   <ng-template #chipTpl let-c>
       <li class="chip" [class.chip--turn]="current(c)">
         <span class="chip__top">
-          <app-combatant-token [initial]="initial(c)" [npc]="npc(c)" [defeated]="c.defeated" [mine]="c.mine" [size]="24" />
+          <app-combatant-token [initial]="initial(c)" [npc]="npc(c)" [creature]="creature(c)" [defeated]="c.defeated" [mine]="c.mine" [size]="24" />
           @if (current(c)) {
             <span class="chip__word chip__word--turn">Vez</span>
           } @else if (c.mine) {
@@ -162,7 +163,11 @@ export class OrderStrip {
   }
 
   protected npc(c: Combatant): boolean {
-    return !isPlayer(c);
+    return !isPlayer(c) && !isCreature(c);
+  }
+
+  protected creature(c: Combatant): boolean {
+    return isCreature(c);
   }
 
   protected word(c: Combatant): string {

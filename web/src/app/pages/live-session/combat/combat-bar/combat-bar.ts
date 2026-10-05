@@ -5,6 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { type Encounter, EncounterStatus } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { combatantInitial, isPlayer, roundLabel, turnBanner } from '../../../../core/combat/combat-view';
+import { isCreature } from '../../../../core/combat/creature-names';
 import { NextTurn } from './next-turn';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 
@@ -45,7 +46,11 @@ export class CombatBar {
   protected readonly initial = computed(() => combatantInitial(this.banner().who?.label ?? ''));
   protected readonly npc = computed(() => {
     const who = this.banner().who;
-    return !who || !isPlayer(who);
+    return !who || (!isPlayer(who) && !isCreature(who));
+  });
+  protected readonly creature = computed(() => {
+    const who = this.banner().who;
+    return !!who && isCreature(who);
   });
   protected readonly nextLine = computed(() => {
     const after = this.banner().after;

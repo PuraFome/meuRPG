@@ -115,7 +115,44 @@
 }
 
 .player__turn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
   grid-area: turn;
+  min-width: 0;
+}
+
+// The blocks of a creature's turn, or the actions and the beast's traits: one under the other.
+.player__blocks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+}
+
+// What ended without the player asking: a notice that stays until it is touched (E9-11, E9-12).
+.notices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+
+  &:empty {
+    display: none;
+  }
+}
+
+.notice {
+  flex-wrap: wrap;
+  align-items: center;
+
+  p {
+    flex: 1 1 200px;
+    margin: 0;
+  }
+}
+
+.notice__ok {
+  --mat-button-text-label-text-color: var(--mr-accent-text);
+  margin-right: -12px;
 }
 
 // From 1280px the order is a column on the left (E6-14): order | map and log |

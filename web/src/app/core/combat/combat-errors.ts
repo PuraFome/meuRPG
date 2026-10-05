@@ -132,6 +132,27 @@ export function blockedMessage(blocked: EncounterBlocked): string {
       return 'Esperando a reação do mestre: um ataque de oportunidade ainda não foi respondido.';
     case EncounterBlockedReason.NOT_ENDED:
       return 'O combate ainda não terminou. Os destaques aparecem quando ele acabar.';
+    // The creatures and Wild Shape (MR-037): what the server refused, in words.
+    case EncounterBlockedReason.CASTING_TIME_TOO_LONG:
+      return 'Essa magia leva mais tempo do que um combate dá. Conjure fora do combate.';
+    case EncounterBlockedReason.SUMMON_CHOICE_INVALID:
+      return 'Essa escolha não vale para o espaço que você usou. Mude a quantidade, a criatura ou o espaço e tente de novo.';
+    case EncounterBlockedReason.SUMMON_NEEDS_INITIATIVE:
+      return 'Falta o d20 da iniciativa das criaturas.';
+    case EncounterBlockedReason.CREATURE_CANNOT_ATTACK:
+      return 'Essa criatura não ataca assim: um familiar não ataca, e o do Pacto da Corrente só com a reação.';
+    case EncounterBlockedReason.TOO_MANY_COMBATANTS:
+      return 'Não cabem mais combatentes neste combate. Nada foi gasto.';
+    case EncounterBlockedReason.SUMMON_IN_COMBAT:
+      return 'Há um combate em andamento: conjure pela sua vez, na tela do combate.';
+    case EncounterBlockedReason.WILD_SHAPE_BEAST_NOT_ALLOWED:
+      return 'Essa não é uma das feras que o seu nível permite. Feche a lista e abra de novo.';
+    case EncounterBlockedReason.ALREADY_IN_WILD_SHAPE:
+      return 'Você já está na forma de uma fera.';
+    case EncounterBlockedReason.NOT_IN_WILD_SHAPE:
+      return 'Você já está na sua forma normal. A tela foi atualizada.';
+    case EncounterBlockedReason.WILD_SHAPE_NO_SPELLS:
+      return 'Na forma de fera não dá para conjurar. Volte à forma normal e tente de novo.';
     default:
       return 'O combate não está num estado que aceite isso. A tela foi atualizada.';
   }

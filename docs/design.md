@@ -361,6 +361,19 @@ As telas das criaturas na ficha (desenho E9-10; Etapa 9, fatia 9.16). O painel "
 
 O que difere do desenho: o desenho põe a coluna "Criaturas" ao lado do nome do personagem; a lista de personagens do app já é uma linha-link com etiquetas, então as criaturas ficam numa linha própria sob ela. A linha de cada criatura do catálogo traz tamanho, tipo e ND (o catálogo do servidor não traz CA e PV): a CA e os PV aparecem na linha da criatura escolhida, lidos da ficha dela. Os nomes de traços e ações ficam só em inglês (o servidor não os traduz). Nomes livres não levam artigo ("Dispensar Nanquim?"), porque o gênero de um nome da mesa não se adivinha.
 
+### As criaturas no combate e a Forma Selvagem (MR-037)
+
+As telas da fatia 9.17 (desenhos E9-11 e E9-12). A regra de cada peça: o servidor manda os números e as listas, a tela só os desenha (nada de conta de regra no navegador).
+
+| Peça | Como é |
+| --- | --- |
+| Abas (`combat/mine-tabs`) | Um `tablist` de abas de 48 px em duas colunas: o nome ("Sálvia", "Lobos atrozes (2)") e a palavra de onde ela está na ordem ("Sua vez · 10", "Já agiu · 13", "Espera · vez 10"; a 320 px sem o número). A escolhida tem contorno e fundo rosado (e a palavra), nunca só a cor. Só aparecem quando o jogador joga mais de um combatente; no celular ficam na barra fixa embaixo, a partir de 1024 px em cima da página. Setas, Home e End trocam de aba; a página segue o turno até a aba de quem age. |
+| Página da vez das criaturas (`combat/creature-turn`) | O cartão (`creature-hero`: "Vez dos seus Lobos atrozes", "Depois de vocês: Nanquim", moldura de destaque enquanto agem) e um bloco por criatura (`creature-block`: figura, nome, "PV 37 de 37 · CA 14", "Ainda age"/"Encerrou" num turno conjunto, os ladrilhos de ação e de movimento, os ataques como linhas com "Atacar", "Mover o Lobo atroz 1" de 48 px, ou "O familiar não ataca" e as ações padrão). A barra (`creature-bar`) tem as abas e "Encerrar a parte dos Lobos" / "Encerrar a vez do Nanquim", contornado, que pergunta no lugar quando é um grupo. |
+| Ficha redonda tracejada (`combatant-token`, `creature`) | Uma criatura de jogador é redonda como um personagem, vazada, com o contorno tracejado (MAP-LANGUAGE.md); a legenda das três formas ("Jogador", "NPC", "Criatura de um jogador", `order-legend`) aparece na ordem do mestre e no mapa quando há uma criatura. |
+| Folha de conjurar em combate (`summon-sheet` com `combat`) | A mesma folha de conjurar criaturas da ficha: o espaço, as opções, as feras, a linha da concentração no rodapé ("Se você perder a concentração, os 2 Lobos atrozes somem." e "Conjurar Animais encerra a concentração em Teia."), o d20 do grupo (o do app, ou "Digitar o d20 de um dado físico") e o resultado no lugar, com "Fechar". |
+| Forma Selvagem (`shared/wild-shape`) | A folha "Forma Selvagem" (`wild-shape-sheet`: a regra "Feras de ND até 1/2, sem voo.", a busca, a contagem, a lista de escolha única com os números do livro, o custo no rodapé e "Virar Lobo"), a faixa "Na forma de Lobo" (`wild-band`), as duas reservas de PV lado a lado e empilhadas abaixo de 360 px (`wild-pools`) e os traços do livro em inglês (`beast-traits`). Na Ação, "Transformar"; na Ação bônus, "Voltar à forma normal". |
+| Avisos que ficam | "O Lobo caiu a 0 PV e você voltou à forma normal. 6 de dano passaram para você." e "Você perdeu a concentração em Conjurar Animais. Os 2 Lobos atrozes sumiram.": `role="status"`, ficam até o jogador tocar em "Entendi". |
+
 ### Imprimir o mapa
 
 A tela "Imprimir o mapa" (MR-033, desenho E8-12; Etapa 8, fatia 8.7), só do mestre, em `pages/maps/map-print`. A entrada é o botão contornado "Imprimir com a grade" (ícone de impressora, 44 px) na linha do título da página do mapa; sem grade ele fica tracejado e desabilitado (`aria-disabled`, ainda focável), com o motivo ao lado e ligado a ele por `aria-describedby`; no celular o botão e o motivo ficam numa linha própria, de 48 px.

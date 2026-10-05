@@ -12,6 +12,7 @@ import {
   PlayService,
   ShownImage,
 } from '../../../gen/meurpg/play/v1/play_pb';
+import { Recharge } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { CONNECT_TRANSPORT } from '../../core/connect/transport';
 import { metersText } from '../../core/units';
 import {
@@ -27,6 +28,12 @@ import {
   VitalsChange,
   VitalsVm,
 } from './live-session.types';
+
+const RECHARGE: Partial<Record<Recharge, 'short_rest' | 'long_rest' | 'dawn' | 'none'>> = {
+  [Recharge.SHORT_REST]: 'short_rest',
+  [Recharge.LONG_REST]: 'long_rest',
+  [Recharge.DAWN]: 'dawn',
+};
 
 export function toVitalsVm(v: CharacterVitals): VitalsVm {
   return {
@@ -46,6 +53,15 @@ export function toVitalsVm(v: CharacterVitals): VitalsVm {
     revision: v.revision,
     familiarSight: v.familiarSight
       ? { creatureId: v.familiarSight.creatureId, inCombat: v.familiarSight.inCombat }
+      : null,
+    resources: v.resources.map((r) => ({ key: r.key, total: r.total, used: r.used, recharge: RECHARGE[r.recharge] ?? 'none' })),
+    wildShape: v.wildShape
+      ? {
+          beastKey: v.wildShape.beastKey,
+          beastNamePt: v.wildShape.beastNamePt,
+          hitPointsCurrent: v.wildShape.hitPointsCurrent,
+          hitPointsMax: v.wildShape.hitPointsMax,
+        }
       : null,
   };
 }

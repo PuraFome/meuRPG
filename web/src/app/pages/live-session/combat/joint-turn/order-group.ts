@@ -17,6 +17,9 @@ import { MatIconModule } from '@angular/material/icon';
       <p class="head">
         <mat-icon aria-hidden="true">link</mat-icon>
         <b>Turno conjunto</b>
+        @if (names()) {
+          <span>{{ names() }} ·</span>
+        }
         <span>iniciativa {{ total() }}</span>
         @if (onTurn()) {
           <span class="vez">Vez</span>
@@ -138,6 +141,8 @@ export class OrderGroup {
   readonly onTurn = input(false);
   /** For a screen reader: "Turno conjunto: Brisa e Toren, iniciativa 19". */
   readonly label = input('');
+  /** Who is in it, when the box names them ("Lobos atrozes da Sálvia"). */
+  readonly names = input('');
   /** The line after the total when the group is not on turn (the master's desktop). */
   readonly hint = input('');
 }

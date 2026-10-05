@@ -37,7 +37,7 @@
   } @else {
     <div class="bar__turn" role="status" aria-live="polite">
       @if (banner().who; as who) {
-        <app-combatant-token [initial]="initial()" [npc]="npc()" [current]="true" [size]="48" />
+        <app-combatant-token [initial]="initial()" [npc]="npc()" [creature]="creature()" [current]="true" [size]="48" />
       }
       <div class="bar__who">
         <span class="bar__title">{{ banner().title }}</span>
