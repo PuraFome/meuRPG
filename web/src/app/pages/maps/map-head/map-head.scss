@@ -280,3 +280,42 @@
     }
   }
 }
+
+// "Trocar imagem" while a combat runs: grey, and the banner of the editor says why.
+.state__action--off {
+  color: var(--mr-ink-muted);
+  cursor: default;
+}
+
+// The image is what the players see: said once under the state line.
+.visible-note {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: var(--mr-space-2) 0 0;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+// "Trocar imagem" asks here, in place of the state line.
+.ask {
+  max-width: 440px;
+  margin-top: var(--mr-space-1);
+  padding: var(--mr-space-4);
+  border: 2px solid var(--mr-accent);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+}
+
+.ask__now {
+  margin: 0;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}

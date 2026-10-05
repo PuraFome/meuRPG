@@ -20,6 +20,7 @@ import { tableForCaster, tableForCreatures } from './creatures-support';
 import { awardXpRPC, createEnemyRPC, tableForXp, tableForXpCombat, winCombatRPC } from './xp-support';
 import { tableForGold, threeTreasuresRPC, treasureFoundRPC } from './gold-support';
 import { movePensantus, pensantusFirst, sq20, trapRPC, treasureRPC } from './trap-support';
+import { cavePoints, clickSquare, dragSquares, editorRoute } from './editor-support';
 
 // docs/design.md#como-uma-tela-é-feita: every screen passes axe with no
 // serious or critical violation of WCAG 2.1 A and AA, in the light and the
@@ -2980,4 +2981,175 @@ test('as armadilhas e os tesouros na sessão passam no axe e nas conferências d
 test('as armadilhas e os tesouros na sessão passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-035', '@MR-041'] }, async ({ browser }) => {
   test.setTimeout(420_000);
   await scanTrapScreens(browser, 'light', 320);
+});
+
+// The map editor (slice 9.12, MR-034, MR-035, MR-036, MR-041, E9-01 and E9-02): painting with each tool, the in-place questions, the
+// fog's settings, the Luz, Armadilha and Tesouro panels in each state, the map with no grid, with a combat on it, "Ver como", and,
+// on a phone, the manage view with its fixed notice. Every state goes through axe and the alignment checks.
+async function scanMapEditorScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const pensantus = await newSignedInContext(browser, 'Jogador Teste');
+  const toren = await newSignedInContext(browser, 'E-mail Não Verificado');
+  const [m, ap, bp] = [await master.newPage(), await pensantus.newPage(), await toren.newPage()];
+  const where = `(${colorScheme}, ${width}px)`;
+  const phone = width < 768;
+  let campaignId = '';
+  try {
+    await Promise.all([m.goto('/'), ap.goto('/'), bp.goto('/')]);
+    const table = await tableForFog(m, ap, bp, `Acessibilidade editor ${Date.now()}`, {});
+    campaignId = table.campaignId;
+    await cavePoints(m, table);
+    const image = await uploadImageRPC(m, campaignId, 'Sem grade', await canvasPng(m, 960, 640, 'Sem grade'));
+    const noGrid = await createMapRPC(m, campaignId, 'Mapa sem grade', image);
+    const map = { columns: 24, rows: 16 };
+    const route = editorRoute(campaignId, table.mapId);
+    // Back to the list with nothing chosen: the editor asks before it leaves a point with unsaved changes, so these scans start again.
+    const reopen = async () => {
+      await m.goto(route);
+      await expect(m.getByRole('radio', { name: 'Pontos' })).toBeVisible();
+    };
+    const list = m.getByRole('region', { name: 'Pontos do mapa' });
+    const tools = m.getByRole('group', { name: 'Ferramenta de pintura' });
+
+    if (phone) {
+      await m.goto(editorRoute(campaignId, table.mapId));
+      await expect(m.getByText('Pintar só no notebook')).toBeVisible();
+      await m.waitForLoadState('networkidle');
+      await expectScreenPasses(m, `Mapa no celular, sem pintura ${where}`);
+      await m.getByRole('button', { name: 'Esquecer o que foi visto' }).click();
+      await expect(m.getByRole('heading', { name: 'Esquecer o que foi visto?' })).toBeVisible();
+      await expectScreenPasses(m, `Esquecer o que foi visto, no celular ${where}`);
+      await m.goto(editorRoute(campaignId, noGrid));
+      await expect(m.getByText('Pintar só no notebook')).toBeVisible();
+      await m.waitForLoadState('networkidle');
+      await expectScreenPasses(m, `Mapa sem grade no celular ${where}`);
+      return;
+    }
+
+    // Pontos: the list, and each kind's panel.
+    await m.goto(editorRoute(campaignId, table.mapId));
+    await expect(m.getByRole('radio', { name: 'Pontos' })).toBeVisible();
+    await m.waitForLoadState('networkidle');
+    await expectScreenPasses(m, `Editor, Pontos, a lista ${where}`);
+    await list.getByRole('button', { name: /Fosso escondido/ }).click();
+    await expect(m.getByRole('heading', { name: 'Predefinições do SRD' })).toBeVisible();
+    await expect(m.getByText('Percepção passiva contra a CD 15')).toBeVisible();
+    await expectScreenPasses(m, `Armadilha, o formulário e Quem notaria ${where}`);
+    await m.getByLabel('CD para achar (Investigação)').fill('40');
+    await m.getByRole('button', { name: 'Salvar ponto' }).click();
+    await expect(m.getByText('Use uma CD de 1 a 30.')).toBeVisible();
+    await expectScreenPasses(m, `Armadilha, um campo com erro ${where}`);
+    await m.getByRole('radio', { name: /Agulha envenenada/ }).click();
+    await expect(m.getByRole('heading', { name: 'Teste de resistência' })).toBeVisible();
+    await expectScreenPasses(m, `Armadilha, a Agulha envenenada em partes ${where}`);
+    await reopen();
+    await list.getByRole('button', { name: /Brasa do altar/ }).click();
+    await expect(m.getByRole('radiogroup', { name: 'Tipo de luz' })).toBeVisible();
+    await expectScreenPasses(m, `Luz personalizada ${where}`);
+    await m.getByRole('radio', { name: /Tocha/ }).click();
+    await expectScreenPasses(m, `Luz, uma predefinição ${where}`);
+    await reopen();
+    // The list is drawn a moment after the page: pick the row again until the panel is there.
+    await expect(async () => {
+      await list.getByRole('button', { name: /Baú de moedas/ }).click();
+      await expect(m.getByRole('heading', { name: 'Baú de moedas', level: 2 })).toBeVisible({ timeout: 2_000 });
+    }).toPass();
+    await expect(m.locator('app-treasure-point-panel').getByText('Não encontrado')).toBeVisible();
+    await expectScreenPasses(m, `Tesouro escondido ${where}`);
+    await m.getByRole('button', { name: 'Marcar como encontrado' }).click();
+    await expect(m.getByRole('group', { name: /Quem encontrou/ })).toBeVisible();
+    await expectScreenPasses(m, `Tesouro, quem encontrou ${where}`);
+    await m.getByRole('group', { name: /Quem encontrou/ }).locator('label', { hasText: 'Pensantus' }).click();
+    await m.getByRole('button', { name: 'Marcar como encontrado' }).last().click();
+    await expect(m.getByText(/Encontrado por Pensantus/)).toBeVisible();
+    await expectScreenPasses(m, `Tesouro encontrado ${where}`);
+    await m.getByRole('button', { name: 'Desmarcar' }).click();
+    await expect(m.getByRole('alertdialog')).toBeVisible();
+    await expectScreenPasses(m, `Tesouro, desmarcar no lugar ${where}`);
+    await m.getByRole('alertdialog').getByRole('button', { name: 'Desmarcar' }).click();
+    await reopen();
+
+    // Ver como
+    await expect(m.getByRole('heading', { name: 'Ver como' })).toBeVisible();
+    await m.getByRole('radio', { name: /Toren/ }).click();
+    await expect(m.getByText('Você está vendo o mapa como Toren')).toBeVisible();
+    await m.waitForLoadState('networkidle');
+    await expectScreenPasses(m, `Ver como Toren, no editor ${where}`);
+    await m.getByRole('button', { name: 'Voltar à sua vista' }).click();
+
+    // Pintar: every tool, the brush, the layers.
+    await reopen();
+    await m.getByRole('radio', { name: 'Pintar' }).click();
+    await expect(tools).toBeVisible();
+    await tools.getByRole('button', { name: 'Terreno difícil' }).click();
+    await dragSquares(m, map, [4, 9], [5, 10]);
+    await expect(m.locator('app-layers-panel').getByText('Tudo salvo')).toBeVisible();
+    await expectScreenPasses(m, `Pintar, Terreno difícil ${where}`);
+    await tools.getByRole('button', { name: 'Cobertura' }).click();
+    await m.getByRole('radio', { name: 'Três quartos' }).click();
+    await clickSquare(m, map, 20, 4);
+    await expectScreenPasses(m, `Pintar, Cobertura e o grau ${where}`);
+    await tools.getByRole('button', { name: 'Luz' }).click();
+    await m.getByRole('radio', { name: 'Claro' }).first().click();
+    await m.getByRole('radio', { name: '3×3' }).click();
+    await clickSquare(m, map, 8, 13);
+    await expect(m.locator('app-layers-panel').getByText('Tudo salvo')).toBeVisible();
+    await expectScreenPasses(m, `Pintar, Luz com os glifos ${where}`);
+    await tools.getByRole('button', { name: 'Apagar' }).click();
+    await expectScreenPasses(m, `Pintar, Apagar ${where}`);
+
+    // The questions in place.
+    await m.getByRole('button', { name: 'Mudar a grade' }).click();
+    await expect(m.getByRole('heading', { name: 'Mudar a grade?' })).toBeFocused();
+    await expectScreenPasses(m, `Mudar a grade? ${where}`);
+    await m.getByRole('button', { name: 'Voltar' }).click();
+    await m.getByRole('button', { name: 'Esquecer o que foi visto' }).click();
+    await expect(m.getByRole('heading', { name: 'Esquecer o que foi visto?' })).toBeFocused();
+    await expectScreenPasses(m, `Esquecer o que foi visto? ${where}`);
+    await m.getByRole('button', { name: 'Voltar' }).click();
+    await m.evaluate(() => window.scrollTo(0, 0));
+    await m.getByRole('button', { name: 'Trocar imagem' }).click();
+    await expect(m.getByRole('heading', { name: 'Trocar a imagem?' })).toBeFocused();
+    await expectScreenPasses(m, `Trocar a imagem? ${where}`);
+    await m.getByRole('button', { name: 'Voltar' }).first().click();
+
+    // No grid, and a combat on the map.
+    await m.goto(editorRoute(campaignId, noGrid));
+    await m.getByRole('radio', { name: 'Pintar' }).click();
+    await expect(m.getByText('Defina a grade para pintar e ligar a névoa.')).toBeVisible();
+    await m.waitForLoadState('networkidle');
+    await expectScreenPasses(m, `Mapa sem grade, Pintar ${where}`);
+    await beginFogCombat(m, table);
+    await m.goto(editorRoute(campaignId, table.mapId));
+    await m.getByRole('radio', { name: 'Pintar' }).click();
+    await expect(m.getByText('Combate em andamento')).toBeVisible();
+    await m.waitForLoadState('networkidle');
+    await expectScreenPasses(m, `Combate no mapa, Pintar ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await Promise.all([master.close(), pensantus.close(), toren.close()]);
+  }
+}
+
+test('o editor do mapa passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-034', '@MR-035', '@MR-036', '@MR-041'] }, async ({ browser }) => {
+  test.setTimeout(600_000);
+  await scanMapEditorScreens(browser, 'light', 1280);
+});
+
+test('o editor do mapa passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-034', '@MR-036'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanMapEditorScreens(browser, 'dark', 390);
+});
+
+test('o editor do mapa passa no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-034', '@MR-035', '@MR-036', '@MR-041'] }, async ({ browser }) => {
+  test.setTimeout(600_000);
+  await scanMapEditorScreens(browser, 'dark', 1024);
+});
+
+test('o editor do mapa passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-034', '@MR-036'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanMapEditorScreens(browser, 'light', 320);
 });

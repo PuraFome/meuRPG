@@ -189,3 +189,90 @@ describe('MapHead: "Imprimir com a grade" (MR-033, E8-12)', () => {
     expect(reason.textContent).toContain('Defina a grade do mapa para imprimir em escala');
   });
 });
+
+describe('MapHead: "Trocar imagem" asks before it erases (E9-01 4)', () => {
+  let fixture: ComponentFixture<MapHead>;
+  let el: HTMLElement;
+  let changes: number;
+
+  function render(inputs: { imageErases?: boolean; combatRunning?: boolean; showImage?: boolean } = {}) {
+    changes = 0;
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [provideRouter([])] });
+    fixture = TestBed.createComponent(MapHead);
+    fixture.componentRef.setInput('campaignId', 'camp-1');
+    fixture.componentRef.setInput('map', mapMessage('map-1', 'A caverna do Vale Seco', { gridColumns: 24, gridRows: 16 }));
+    fixture.componentRef.setInput('saveName', () => Promise.resolve());
+    fixture.componentRef.setInput('deleteMap', () => Promise.resolve());
+    fixture.componentRef.setInput('imageErases', inputs.imageErases ?? false);
+    fixture.componentRef.setInput('combatRunning', inputs.combatRunning ?? false);
+    fixture.componentRef.setInput('showImage', inputs.showImage ?? true);
+    fixture.componentInstance.changeImage.subscribe(() => changes++);
+    fixture.detectChanges();
+    el = fixture.nativeElement;
+  }
+  const button = (text: string) => Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim().endsWith(text))!;
+  const settle = async () => {
+    fixture.detectChanges();
+    await new Promise((r) => setTimeout(r));
+    await fixture.whenStable();
+    fixture.detectChanges();
+  };
+
+  it('says on a computer that what is drawn on the image is what the players see', () => {
+    render();
+    expect(el.textContent).toContain('O que está desenhado na imagem, os jogadores veem.');
+  });
+
+  it('goes straight to the picker when nothing is painted or seen', () => {
+    render({ imageErases: false });
+    button('Trocar imagem').click();
+    expect(changes).toBe(1);
+    expect(el.querySelector('[role="group"] h3')).toBeNull();
+  });
+
+  it('asks in place when something would be erased: the focus on the title, "Voltar" first, nothing before the second click', async () => {
+    render({ imageErases: true });
+    button('Trocar imagem').click();
+    await settle();
+    const ask = el.querySelector('app-map-ask')!;
+    expect(ask.querySelector('h3')?.textContent).toContain('Trocar a imagem?');
+    expect(document.activeElement).toBe(ask.querySelector('h3'));
+    expect(ask.textContent).toContain('Imagem agora: Imagem de A caverna do Vale Seco');
+    expect(ask.textContent).toContain('apaga o terreno, as paredes, a cobertura e a luz pintados, e o que os jogadores já viram. Os pontos e os tokens ficam.');
+    expect(Array.from(ask.querySelectorAll('button'), (b) => b.textContent?.trim())).toEqual(['Voltar', 'Apagar e trocar a imagem']);
+    expect(changes).toBe(0);
+    ask.querySelectorAll('button')[1].click();
+    await settle();
+    expect(changes).toBe(1);
+    expect(el.querySelector('app-map-ask')).toBeNull();
+  });
+
+  it('"Voltar" asks nothing of the server and gives the focus back to "Trocar imagem"', async () => {
+    render({ imageErases: true });
+    button('Trocar imagem').click();
+    await settle();
+    el.querySelector('app-map-ask button')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await settle();
+    expect(changes).toBe(0);
+    expect(document.activeElement?.textContent?.trim()).toBe('Trocar imagem');
+  });
+
+  it('while a combat runs "Trocar imagem" cannot act, and points at the reason', async () => {
+    render({ combatRunning: true, imageErases: true });
+    const swap = button('Trocar imagem');
+    expect(swap.getAttribute('aria-disabled')).toBe('true');
+    expect(swap.getAttribute('aria-describedby')).toBe('combat-why');
+    swap.click();
+    await settle();
+    expect(changes).toBe(0);
+    expect(el.querySelector('app-map-ask')).toBeNull();
+  });
+
+  it('on a phone the grid is only words, with no way to change it', () => {
+    render({ showImage: false });
+    expect(el.textContent).toContain('24 × 16 quadrados');
+    expect(el.textContent).not.toContain('Mudar a grade');
+    expect(el.textContent).not.toContain('O que está desenhado na imagem');
+  });
+});

@@ -12,6 +12,9 @@ export interface LightOption {
   readonly name: string;
   /** "6 m claro + 6 m de penumbra", or "6 m claro" when the light has no dim part. */
   readonly radii: string;
+  /** The radii in feet, when the option comes from the server's list (the editor's custom light fills from them). */
+  readonly brightFt?: number;
+  readonly dimFt?: number;
 }
 
 /** The light a character carries when it carries none. */
@@ -26,7 +29,7 @@ export function lightRadii(brightFt: number, dimFt: number): string {
 }
 
 export function lightOption(p: LightPreset): LightOption {
-  return { key: p.key, name: p.namePt, radii: lightRadii(p.brightFt, p.dimFt) };
+  return { key: p.key, name: p.namePt, radii: lightRadii(p.brightFt, p.dimFt), brightFt: p.brightFt, dimFt: p.dimFt };
 }
 
 /**

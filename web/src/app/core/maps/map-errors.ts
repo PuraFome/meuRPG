@@ -1,5 +1,6 @@
-import { Code } from '@connectrpc/connect';
+import { Code, ConnectError } from '@connectrpc/connect';
 
+import { MapBlockedReason, MapBlockedSchema } from '../../../gen/meurpg/maps/v1/maps_pb';
 import { describeConnectError } from '../connect/connect-errors';
 
 /** The Portuguese message for a failed map call: what happened and how to
@@ -43,4 +44,34 @@ export function revealErrorMessage(err: unknown): string {
     [Code.NotFound]: 'A pista, ou um desses personagens, não existe mais. Feche e tente de novo.',
     [Code.PermissionDenied]: 'Só o mestre da campanha revela pistas.',
   });
+}
+
+/** The reason of a map call refused with `failed_precondition` (`MapBlocked`), or `null`. By the typed detail, never the message. */
+export function mapBlockedReason(err: unknown): MapBlockedReason | null {
+  const connectErr = ConnectError.from(err, Code.Unavailable);
+  if (connectErr.code !== Code.FailedPrecondition) {
+    return null;
+  }
+  return connectErr.findDetails(MapBlockedSchema)[0]?.reason ?? null;
+}
+
+/** The Portuguese message for a failed call of the map editor's painting, grid and fog (maps.proto: `PaintMapCells`,
+ * `SetMapGrid`, `SetMapFog`, `ForgetMapVision`, `UpdateMap` with a new image) and of the trap, light and treasure points. */
+export function editorErrorMessage(err: unknown, what: string): string {
+  switch (mapBlockedReason(err)) {
+    case MapBlockedReason.NO_GRID:
+      return 'Defina a grade para pintar e ligar a névoa.';
+    case MapBlockedReason.COMBAT_RUNNING:
+      return 'Há um combate neste mapa: a grade e a imagem só mudam depois dele.';
+    case MapBlockedReason.TREASURE_CONVERTED:
+      return 'Esse tesouro já virou XP. Para mexer nele, desfaça esse XP na página da campanha.';
+    case MapBlockedReason.TREASURE_FOUND:
+      return 'Esse tesouro foi encontrado. Desmarque antes de apagar.';
+    default:
+  }
+  const connectErr = ConnectError.from(err, Code.Unavailable);
+  if (connectErr.code === Code.ResourceExhausted) {
+    return 'A galeria da campanha está cheia: apague uma imagem para ligar a névoa.';
+  }
+  return mapErrorMessage(err, what);
 }

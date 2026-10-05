@@ -1,0 +1,46 @@
+:host {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: block;
+  pointer-events: none;
+}
+
+.grid,
+.reach {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+// One path for every line: 1px, whatever the zoom. The picture is a drawing, light in both themes.
+.grid path {
+  fill: none;
+  stroke: color-mix(in srgb, var(--mr-map-token-ink) 28%, transparent);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+// The light's reach (the radii, in squares): a solid ring for the bright light, a dashed one for the dim.
+.reach {
+  z-index: 1;
+  overflow: hidden;
+
+  circle {
+    fill: none;
+    vector-effect: non-scaling-stroke;
+  }
+}
+
+.reach__bright {
+  stroke: var(--mr-map-accent);
+  stroke-width: 2.5;
+}
+
+.reach__dim {
+  stroke: var(--mr-map-accent);
+  stroke-width: 2.5;
+  stroke-dasharray: 8 6;
+}

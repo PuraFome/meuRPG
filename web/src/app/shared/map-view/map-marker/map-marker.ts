@@ -38,7 +38,7 @@ import { pointAriaLabel, pointKindIcon } from '../map-labels';
       <span class="pt__shape" [class]="'pt__shape pt__shape--' + kindClass()">
         <mat-icon class="pt__icon" aria-hidden="true">{{ icon() }}</mat-icon>
       </span>
-      @if (!point().revealed) {
+      @if (!point().revealed && !pin()) {
         <span class="pt__badge" aria-hidden="true"><mat-icon>visibility_off</mat-icon></span>
       }
     </ng-template>
@@ -65,12 +65,18 @@ export class MapMarker {
   protected readonly top = computed(() => bpToPercent(this.at()?.yBp ?? this.point().yBp));
   protected readonly icon = computed(() => pointKindIcon(this.point().kind));
   protected readonly label = computed(() => pointAriaLabel(this.point()));
+  /** A trap, a treasure or a light (kinds 4 to 6): the map's own marks (`app-map-pins`) draw it, and this is only the hit area and the selection ring. */
+  protected readonly pin = computed(() => this.point().kind >= 4);
   protected readonly kindClass = computed(() => {
     switch (this.point().kind) {
       case 1:
         return 'battle';
       case 2:
         return 'submap';
+      case 4:
+      case 5:
+      case 6:
+        return 'pin';
       default:
         return 'scene';
     }

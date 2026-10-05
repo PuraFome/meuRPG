@@ -1,3 +1,10 @@
+<div class="mr-notice mr-notice--neutral" role="note">
+  <mat-icon aria-hidden="true">info</mat-icon>
+  <p>
+    <strong>Pintar só no notebook</strong>
+    Pintar o terreno, as paredes, a cobertura e a luz é no notebook. No celular você vê as camadas e muda a névoa.
+  </p>
+</div>
 @if (image(); as img) {
   <app-map-view
     [image]="img"
@@ -6,14 +13,33 @@
     [tokens]="state().tokens()"
     [isMaster]="true"
     [selectablePoints]="false"
-  />
+    [squares]="map()?.gridColumns ?? 0"
+    [kindShapes]="true"
+    [initialOf]="initialOf"
+  >
+    <app-editor-overlay
+      mapOverlay
+      [columns]="map()?.gridColumns ?? 0"
+      [rows]="map()?.gridRows ?? 0"
+      [layers]="painted.layers()"
+      [points]="state().points()"
+    />
+  </app-map-view>
 }
 <p class="caption">
   <mat-icon aria-hidden="true">open_in_full</mat-icon>
   Use dois dedos para mover e ampliar. Para mudar pontos e tokens de lugar, abra o mapa no
   computador.
 </p>
-<app-map-legend [states]="true" [tokens]="state().tokens()" />
+<div>
+  <app-map-layers-legend [layers]="painted.layers()" />
+  <app-map-pins-legend [points]="state().points()" [isMaster]="true" />
+  <app-map-legend [states]="true" [tokens]="state().tokens()" />
+</div>
+
+@if (map(); as m) {
+  <app-fog-panel [campaignId]="campaignId()" [map]="m" (changed)="onMapChanged($event)" />
+}
 
 @if (reveals.error(); as message) {
   <div class="mr-notice mr-notice--danger" role="alert">

@@ -1,0 +1,137 @@
+:host {
+  display: block;
+}
+
+.fp {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+
+  .mr-panel__title {
+    margin: 0;
+  }
+}
+
+.fp__cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--mr-space-4) var(--mr-space-5);
+
+  @media (min-width: 1100px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.fp__col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  min-width: 0;
+}
+
+.fp__rule {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--mr-rule);
+}
+
+.fp__light {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+.fp__label {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 22px;
+}
+
+.fp__hint {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.fp__note {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-size: 14px;
+  color: var(--mr-success-ink);
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.fp__forget {
+  align-self: flex-start;
+  min-height: 44px;
+  font-weight: 700;
+
+  @media (max-width: 767.98px) {
+    align-self: stretch;
+    min-height: 48px;
+  }
+}
+
+// Luz de base: one strip of three choices, as wide as the room (the artboard's 96 px each at 320).
+.seg {
+  display: flex;
+  overflow: hidden;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+}
+
+.seg__item {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 6px;
+  border: 0;
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+
+  & + & {
+    border-left: 1px solid var(--mr-control-line);
+  }
+
+  &--on {
+    background: var(--mr-accent-soft);
+    font-weight: 700;
+  }
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+
+  @media (max-width: 767.98px) {
+    min-height: 48px;
+  }
+}
+
+.seg--off {
+  border-style: dashed;
+  color: var(--mr-ink-muted);
+
+  .seg__item {
+    background: none;
+    color: var(--mr-ink-muted);
+    cursor: default;
+  }
+}

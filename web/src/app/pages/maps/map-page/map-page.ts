@@ -9,6 +9,7 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import { Role } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import type { Map as MapMessage } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { CampaignsService } from '../../../core/campaigns/campaigns.service';
+import { CombatOnMap } from '../../../core/maps/combat-on-map';
 import { mapErrorMessage } from '../../../core/maps/map-errors';
 import { MapState } from '../../../core/maps/map-state';
 import { MapsClient } from '../../../core/maps/maps-client';
@@ -55,6 +56,7 @@ type Phase = 'loading' | 'ready' | 'gone' | 'error';
 export class MapPage {
   private readonly api = inject(MapsClient);
   private readonly campaigns = inject(CampaignsService);
+  private readonly combat = inject(CombatOnMap);
   private readonly dialog = inject(MatDialog);
   private readonly injector = inject(Injector);
   private readonly route = inject(ActivatedRoute);
@@ -71,6 +73,12 @@ export class MapPage {
   protected readonly fromSession = signal(false);
   /** The open session's number when it is on this map (the master only). */
   protected readonly currentSession = signal<number | null>(null);
+  /** The open session's number, on any map (a treasure marked found counts in its summary). */
+  protected readonly sessionNumber = signal<number | null>(null);
+  /** A combat that has not ended runs on this map: the grid and the image cannot change. */
+  protected readonly combatRunning = signal(false);
+  /** A new grid or a new image would erase painting or what the players saw (the editor tells). */
+  protected readonly erases = signal(false);
 
   protected readonly state = new MapState((mapId) => this.api.get(this.campaignId(), mapId));
   protected readonly map = this.state.map;
@@ -156,9 +164,14 @@ export class MapPage {
   }
 
   private async loadSession(mapId: string, generation: number): Promise<void> {
-    const session = await this.sessions.currentMap(this.campaignId());
+    const [session, running] = await Promise.all([
+      this.sessions.currentMap(this.campaignId()),
+      this.combat.running(this.campaignId(), mapId),
+    ]);
     if (generation === this.generation) {
       this.currentSession.set(session?.mapId === mapId ? session.sessionNumber : null);
+      this.sessionNumber.set(session?.sessionNumber ?? null);
+      this.combatRunning.set(running);
     }
   }
 

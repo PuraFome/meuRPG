@@ -1,0 +1,156 @@
+// The three parts of the trap panel: the presets, the form and "Quem notaria". One column in the side column; two when the
+// panel has the room (the editor under the map at 1024 px), three when it has a lot.
+.tp {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--mr-space-4);
+  align-items: start;
+
+  @container (min-width: 700px) {
+    grid-template-columns: minmax(200px, 280px) minmax(0, 1fr);
+
+    .tp__presets {
+      grid-row: 1 / span 2;
+    }
+  }
+
+  @container (min-width: 1100px) {
+    grid-template-columns: minmax(200px, 280px) minmax(0, 1fr) minmax(260px, 340px);
+
+    .tp__presets {
+      grid-row: auto;
+    }
+  }
+}
+
+.tp__presets {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+
+  .mr-panel__title {
+    margin: 0;
+  }
+
+  .pk__hint {
+    margin: -8px 0 0;
+  }
+}
+
+.tp__dc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+// A part of the effect: a card with a 1 px border; the bin removes only that part.
+.part {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  padding: var(--mr-space-3);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+}
+
+.part__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-2);
+}
+
+.part__title {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-size: 16px;
+  line-height: 22px;
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.part__sub {
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.part__remove {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: -6px -6px -6px 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mr-danger-ink);
+  cursor: pointer;
+}
+
+.part__row {
+  align-items: start;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px;
+}
+
+.part__adds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-1) var(--mr-space-3);
+}
+
+.part__add {
+  margin-inline-start: -12px;
+  color: var(--mr-accent-text);
+}
+
+.tp__who {
+  padding: var(--mr-space-4);
+}
+
+.seg {
+  display: flex;
+  overflow: hidden;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+}
+
+.seg__item {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 6px;
+  border: 0;
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+
+  & + & {
+    border-left: 1px solid var(--mr-control-line);
+  }
+
+  &--on {
+    background: var(--mr-accent-soft);
+    font-weight: 700;
+  }
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}

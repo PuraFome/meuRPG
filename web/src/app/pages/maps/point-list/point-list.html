@@ -1,0 +1,34 @@
+<section class="mr-panel pl" aria-labelledby="pl-title">
+  <h2 class="mr-panel__title" id="pl-title">Pontos do mapa</h2>
+  @if (rows().length === 0) {
+    <p class="pl__empty">Nenhum ponto ainda. Escolha um tipo na barra e clique no mapa para pôr o primeiro.</p>
+  } @else {
+    <ul class="pl__list">
+      @for (r of rows(); track r.point.id) {
+        <li>
+          <button type="button" class="pl__row" [class.pl__row--on]="selectedId() === r.point.id" [attr.aria-pressed]="selectedId() === r.point.id" (click)="pick.emit(r.point.id)">
+            <span class="pl__icon" aria-hidden="true">
+              @if (r.point.kind === Treasure) {
+                <app-chest-icon />
+              } @else {
+                <mat-icon>{{ icon(r.point.kind) }}</mat-icon>
+              }
+            </span>
+            <span class="pl__text">
+              <b class="pl__name">{{ r.point.name }}</b>
+              <span class="pl__sub">{{ r.sub }}</span>
+              @if (r.tags.length > 0) {
+                <span class="pl__tags">
+                  @for (t of r.tags; track t.text) {
+                    <span class="mr-tag"><mat-icon aria-hidden="true">{{ t.icon }}</mat-icon>{{ t.text }}</span>
+                  }
+                </span>
+              }
+            </span>
+          </button>
+        </li>
+      }
+    </ul>
+    <p class="pl__hint">Clique num ponto, na lista ou no mapa, para editar. Arraste no mapa para mover.</p>
+  }
+</section>

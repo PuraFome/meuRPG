@@ -15,6 +15,7 @@ let nextId = 0;
   imports: [MatIconModule],
   template: `
     <div class="sw">
+      <ng-content select="[lead]" />
       <span class="sw__text">
         <span class="sw__label" [id]="id + '-label'">{{ label() }}</span>
         <span class="sw__hint" [id]="id + '-hint'">{{ hint() }}</span>
@@ -24,10 +25,12 @@ let nextId = 0;
         role="switch"
         class="sw__track"
         [class.sw__track--on]="checked()"
+        [class.sw__track--off]="disabled()"
+        [attr.aria-disabled]="disabled() ? true : null"
         [attr.aria-checked]="checked()"
         [attr.aria-labelledby]="id + '-label'"
         [attr.aria-describedby]="id + '-hint'"
-        (click)="checkedChange.emit(!checked())"
+        (click)="!disabled() && checkedChange.emit(!checked())"
       >
         <span class="sw__handle">
           @if (checked()) {
@@ -46,5 +49,7 @@ export class RevealSwitch {
   readonly hint = input('');
   /** Controlled: the switch only says what was asked; the parent decides (a refused save leaves it where it was). */
   readonly checked = input(false);
+  /** The switch cannot be changed now (the reason is a sentence beside it): `aria-disabled`, still focusable. */
+  readonly disabled = input(false);
   readonly checkedChange = output<boolean>();
 }

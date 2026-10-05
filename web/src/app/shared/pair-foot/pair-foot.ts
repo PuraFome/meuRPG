@@ -86,6 +86,10 @@ export class PairFoot {
       check();
       const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(check) : null;
       observer?.observe(foot);
+      // The room it has is the host's: a narrow column (the map editor's side panel) shrinks it without changing the pair's own size.
+      if (foot.parentElement) {
+        observer?.observe(foot.parentElement);
+      }
       destroyRef.onDestroy(() => observer?.disconnect());
       // A new label may fit or not.
       effect(
@@ -101,23 +105,26 @@ export class PairFoot {
   }
 }
 
-/** Whether either button's words need more than half of the footer: then the two stack. Measured on the
- * buttons' own content (icon and label), which has the same width side by side or one over the other.
- * Only a phone stacks; from a tablet up the pair is right-aligned and equal. */
+/** Whether the two buttons must stack. On a phone, when either button's words need more than half of the footer;
+ * from a tablet up, when the room the pair has is less than two equal buttons need (a narrow column). Measured on the
+ * buttons' own content (icon and label), which has the same width side by side or one over the other. */
 export function needsStack(foot: HTMLElement): boolean {
-  if (foot.ownerDocument.defaultView?.matchMedia?.('(min-width: 768px)').matches) {
-    return false;
-  }
   const buttons = Array.from(foot.querySelectorAll<HTMLElement>('button'));
   if (buttons.length < 2) {
     return false;
   }
   const gap = parseFloat(getComputedStyle(foot).columnGap) || 12;
-  const half = (foot.clientWidth - gap) / 2;
-  return buttons.some((button) => {
+  const need = (button: HTMLElement) => {
     const style = getComputedStyle(button);
     const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
-    const content = Array.from(button.children).reduce((sum, child) => sum + child.getBoundingClientRect().width, 0);
-    return content + padding > half;
-  });
+    return Array.from(button.children).reduce((sum, child) => sum + child.getBoundingClientRect().width, 0) + padding;
+  };
+  if (foot.ownerDocument.defaultView?.matchMedia?.('(min-width: 768px)').matches) {
+    // From a tablet up the pair is right-aligned and equal (176 px at least each); it stacks only when the room it has
+    // (a narrow column) is less than the two need side by side.
+    const room = foot.parentElement?.clientWidth ?? 0;
+    return room > 0 && 2 * Math.max(176, ...buttons.map(need)) + gap > room;
+  }
+  const half = (foot.clientWidth - gap) / 2;
+  return buttons.some((button) => need(button) > half);
 }

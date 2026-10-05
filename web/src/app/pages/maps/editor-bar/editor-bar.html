@@ -1,0 +1,132 @@
+<div class="bar" role="toolbar" aria-label="Ferramentas do mapa">
+  <div class="seg" role="radiogroup" aria-label="O que editar" (keydown)="onSegKey($event)">
+    <button type="button" role="radio" class="seg__item" [class.seg__item--on]="mode() === 'points'" [attr.aria-checked]="mode() === 'points'" [tabIndex]="mode() === 'points' ? 0 : -1" (click)="modeChange.emit('points')">
+      @if (mode() === 'points') {
+        <mat-icon aria-hidden="true">check</mat-icon>
+      }Pontos
+    </button>
+    <button type="button" role="radio" class="seg__item" [class.seg__item--on]="mode() === 'paint'" [attr.aria-checked]="mode() === 'paint'" [tabIndex]="mode() === 'paint' ? 0 : -1" (click)="modeChange.emit('paint')">
+      @if (mode() === 'paint') {
+        <mat-icon aria-hidden="true">check</mat-icon>
+      }Pintar
+    </button>
+  </div>
+  <span class="bar__sep" aria-hidden="true"></span>
+
+  @if (mode() === 'points') {
+    <span class="bar__label" id="bar-add">Adicionar ponto</span>
+    <div class="bar__group" role="group" aria-labelledby="bar-add">
+      @for (k of pointKinds; track k) {
+        <button matButton="outlined" type="button" class="bar__tool" [attr.aria-pressed]="placing() === k" [class.bar__tool--on]="placing() === k" (click)="toggleKind.emit(k)">
+          <mat-icon aria-hidden="true">{{ kindIcon(k) }}</mat-icon>{{ kindLabel(k) }}
+        </button>
+      }
+      <span class="bar__sep" aria-hidden="true"></span>
+      @for (k of newKinds; track k) {
+        <button matButton="outlined" type="button" class="bar__tool" [attr.aria-pressed]="placing() === k" [class.bar__tool--on]="placing() === k" (click)="toggleKind.emit(k)">
+          <mat-icon aria-hidden="true">{{ kindIcon(k) }}</mat-icon>{{ kindLabel(k) }}
+        </button>
+      }
+    </div>
+    <div class="bar__zoom" role="group" aria-label="Token e zoom do mapa">
+      <button type="button" class="bar__icon" aria-label="Adicionar token" [matMenuTriggerFor]="tokenMenu">
+        <mat-icon aria-hidden="true">person_add</mat-icon>
+      </button>
+      <mat-menu #tokenMenu="matMenu">
+        @for (c of available(); track c.id) {
+          <button mat-menu-item type="button" (click)="addToken.emit(c)">{{ c.name }}{{ c.classSummary ? ' (' + c.classSummary + ')' : '' }}</button>
+        } @empty {
+          <p class="bar__none">Todos os personagens já estão no mapa.</p>
+        }
+      </mat-menu>
+      <button type="button" class="bar__icon" aria-label="Reduzir" (click)="zoomOut.emit()"><mat-icon aria-hidden="true">remove</mat-icon></button>
+      <span class="mr-visually-hidden" aria-live="polite">Zoom {{ scaleText() }}</span>
+      <button type="button" class="bar__icon" aria-label="Ampliar" (click)="zoomIn.emit()"><mat-icon aria-hidden="true">add</mat-icon></button>
+      <button type="button" class="bar__icon" aria-label="Ajustar à tela" (click)="fit.emit()"><mat-icon aria-hidden="true">fit_screen</mat-icon></button>
+    </div>
+  } @else {
+    <div class="bar__group" role="group" aria-label="Ferramenta de pintura">
+      @for (t of tools; track t.tool) {
+        <button
+          matButton="outlined"
+          type="button"
+          class="bar__tool"
+          [class.bar__tool--on]="settings().tool === t.tool && !settings().erase"
+          [class.mr-button--off]="!canPaint()"
+          [attr.aria-pressed]="settings().tool === t.tool"
+          [disabled]="!canPaint()"
+          disabledInteractive
+          [attr.aria-describedby]="canPaint() ? null : 'bar-why'"
+          (click)="canPaint() && set({ tool: t.tool })"
+        >
+          @if (settings().tool === t.tool) {
+            <mat-icon aria-hidden="true">check</mat-icon>
+          }<mat-icon aria-hidden="true">{{ t.icon }}</mat-icon>{{ toolLabel[t.tool] }}
+        </button>
+      }
+      <button
+        matButton="outlined"
+        type="button"
+        class="bar__tool"
+        [class.bar__tool--on]="settings().erase"
+        [class.mr-button--off]="!canPaint()"
+        [attr.aria-pressed]="settings().erase"
+        [disabled]="!canPaint()"
+        disabledInteractive
+        [attr.aria-describedby]="canPaint() ? null : 'bar-why'"
+        (click)="canPaint() && set({ erase: !settings().erase })"
+      >
+        <mat-icon aria-hidden="true">ink_eraser</mat-icon>Apagar
+      </button>
+    </div>
+    <span class="bar__sep" aria-hidden="true"></span>
+    <span class="bar__label" id="bar-brush">Pincel</span>
+    <div class="seg seg--small" role="radiogroup" aria-labelledby="bar-brush" (keydown)="onSegKey($event)" [class.seg--off]="!canPaint()">
+      @for (b of [1, 3]; track b) {
+        <button type="button" role="radio" class="seg__item" [class.seg__item--on]="settings().brush === b" [attr.aria-checked]="settings().brush === b" [attr.aria-disabled]="!canPaint()" [tabIndex]="settings().brush === b ? 0 : -1" (click)="canPaint() && set({ brush: $any(b) })">
+          @if (settings().brush === b) {
+            <mat-icon aria-hidden="true">check</mat-icon>
+          }{{ b }}×{{ b }}
+        </button>
+      }
+    </div>
+    <div class="bar__zoom" role="group" aria-label="Zoom do mapa">
+      <button type="button" class="bar__icon" aria-label="Reduzir" (click)="zoomOut.emit()"><mat-icon aria-hidden="true">remove</mat-icon></button>
+      <button type="button" class="bar__icon" aria-label="Ampliar" (click)="zoomIn.emit()"><mat-icon aria-hidden="true">add</mat-icon></button>
+      <button type="button" class="bar__icon" aria-label="Ajustar à tela" (click)="fit.emit()"><mat-icon aria-hidden="true">fit_screen</mat-icon></button>
+    </div>
+
+    @if (canPaint() && settings().tool === 'cover') {
+      <div class="bar__row">
+        <span class="bar__label" id="bar-cover">Cobertura pintada</span>
+        <div class="seg" role="radiogroup" aria-labelledby="bar-cover" (keydown)="onSegKey($event)">
+          @for (c of covers; track c) {
+            <button type="button" role="radio" class="seg__item" [class.seg__item--on]="settings().cover === c" [attr.aria-checked]="settings().cover === c" [tabIndex]="settings().cover === c ? 0 : -1" (click)="set({ cover: c })">
+              @if (settings().cover === c) {
+                <mat-icon aria-hidden="true">check</mat-icon>
+              }{{ coverLabel[c] }}
+            </button>
+          }
+        </div>
+        <span class="bar__hint">Meia cobertura: dá para passar por cima. Três quartos: não dá para entrar. Parede já é cobertura total.</span>
+      </div>
+    }
+    @if (canPaint() && settings().tool === 'light') {
+      <div class="bar__row">
+        <span class="bar__label" id="bar-light">Luz pintada</span>
+        <div class="seg" role="radiogroup" aria-labelledby="bar-light" (keydown)="onSegKey($event)">
+          @for (l of lights; track l) {
+            <button type="button" role="radio" class="seg__item" [class.seg__item--on]="settings().light === l" [attr.aria-checked]="settings().light === l" [tabIndex]="settings().light === l ? 0 : -1" (click)="set({ light: l })">
+              @if (settings().light === l) {
+                <mat-icon aria-hidden="true">check</mat-icon>
+              } @else {
+                <mat-icon aria-hidden="true">{{ lightIcon[l] }}</mat-icon>
+              }{{ lightLabel[l] }}
+            </button>
+          }
+        </div>
+        <span class="bar__hint">O que você pinta vale por quadrado, e a luz não atravessa parede. Só vale com a névoa ligada.</span>
+      </div>
+    }
+  }
+</div>

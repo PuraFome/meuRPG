@@ -1,0 +1,76 @@
+<section class="mr-panel fp" aria-labelledby="fp-title">
+  <h2 class="mr-panel__title" id="fp-title">Névoa de guerra</h2>
+  <div class="fp__cols">
+    <div class="fp__col">
+      <app-reveal-switch
+        label="Ligar a névoa"
+        [hint]="hasGrid() ? 'Cada jogador vê só o que o personagem dele enxerga. Fora disso, o mapa fica preto.' : 'Precisa da grade definida.'"
+        [checked]="on()"
+        [disabled]="!hasGrid() || busy()"
+        (checkedChange)="set({ fogEnabled: $event })"
+      />
+      <hr class="fp__rule" />
+      <div class="fp__light">
+        <span class="fp__label" id="fp-light">Luz de base</span>
+        <div class="seg" [class.seg--off]="!hasGrid()" role="radiogroup" aria-labelledby="fp-light" aria-describedby="fp-light-hint" (keydown)="onKey($event)">
+          @for (l of levels; track l.level) {
+            <button
+              type="button"
+              role="radio"
+              class="seg__item"
+              [class.seg__item--on]="hasGrid() && base() === l.level"
+              [attr.aria-checked]="base() === l.level"
+              [attr.aria-disabled]="!hasGrid() || busy()"
+              [tabIndex]="base() === l.level ? 0 : -1"
+              (click)="hasGrid() && base() !== l.level && set({ baseLight: l.level })"
+            >
+              @if (base() === l.level) {
+                <mat-icon aria-hidden="true">check</mat-icon>
+              } @else {
+                <mat-icon aria-hidden="true">{{ l.icon }}</mat-icon>
+              }{{ l.label }}
+            </button>
+          }
+        </div>
+        <p class="fp__hint" id="fp-light-hint">A luz onde nada foi pintado e nenhuma fonte alcança. Escuro: só quem tem visão no escuro ou uma luz enxerga.</p>
+      </div>
+    </div>
+
+    <div class="fp__col">
+      @if (asking()) {
+        <app-map-ask title="Esquecer o que foi visto?" confirmLabel="Esquecer o que foi visto" [busy]="busy()" (cancel)="cancel()" (confirm)="forget()">
+          <div class="mr-notice mr-notice--warning">
+            <mat-icon aria-hidden="true">warning</mat-icon>
+            <p>Os jogadores voltam a ver só o que o personagem deles vê agora. O que já exploraram some do mapa deles. Isso não dá para desfazer.</p>
+          </div>
+        </app-map-ask>
+      } @else {
+        <app-reveal-switch
+          label="Visão do grupo"
+          [hint]="map().groupVision ? 'Ligada: todos veem o que o grupo todo vê.' : 'Desligada: cada um vê o que o próprio personagem vê.'"
+          [checked]="map().groupVision"
+          [disabled]="!hasGrid() || busy()"
+          (checkedChange)="set({ groupVision: $event })"
+        />
+        <hr class="fp__rule" />
+        @if (on()) {
+          <button #opener matButton="outlined" type="button" class="fp__forget" (click)="ask()">
+            <mat-icon aria-hidden="true">history</mat-icon>Esquecer o que foi visto
+          </button>
+          <p class="fp__hint">Apaga o que os jogadores já exploraram. Pergunta antes.</p>
+        } @else {
+          <p class="fp__hint">Sem névoa, não há o que esquecer.</p>
+        }
+      }
+    </div>
+  </div>
+  @if (note()) {
+    <p class="fp__note" role="status"><mat-icon aria-hidden="true">check</mat-icon>{{ note() }}</p>
+  }
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+</section>

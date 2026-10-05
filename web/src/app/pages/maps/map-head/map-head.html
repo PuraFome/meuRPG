@@ -109,6 +109,16 @@
       </div>
     </div>
   </div>
+} @else if (mode() === 'image') {
+  <div class="ask">
+    <app-map-ask title="Trocar a imagem?" confirmLabel="Apagar e trocar a imagem" (cancel)="keepImage()" (confirm)="confirmImage()">
+      <p class="ask__now">Imagem agora: {{ map().image?.name }}</p>
+      <div class="mr-notice mr-notice--warning">
+        <mat-icon aria-hidden="true">warning</mat-icon>
+        <p>Trocar a imagem apaga o terreno, as paredes, a cobertura e a luz pintados, e o que os jogadores já viram. Os pontos e os tokens ficam.</p>
+      </div>
+    </app-map-ask>
+  </div>
 } @else {
   <div class="state">
     <span class="state__group">
@@ -129,31 +139,35 @@
         {{ map().revealed ? 'Esconder' : 'Revelar aos jogadores' }}
       </button>
     </span>
-    <span class="state__group">
-      <mat-icon aria-hidden="true">grid_on</mat-icon>
-      <span class="state__text">
-        {{
-          map().gridColumns > 0
-            ? 'Grade de ' + map().gridColumns + ' × ' + map().gridRows + ' quadrados'
-            : 'Sem grade'
-        }}
+    @if (!showImage()) {
+      <span class="state__group">
+        <mat-icon aria-hidden="true">grid_on</mat-icon>
+        <span class="state__text">{{ map().gridColumns > 0 ? map().gridColumns + ' × ' + map().gridRows + ' quadrados' : 'Sem grade' }}</span>
       </span>
-      <a
-        matButton
-        class="state__action"
-        [routerLink]="['/campanhas', campaignId(), 'mapas', map().id, 'grade']"
-      >
-        {{ map().gridColumns > 0 ? 'Mudar a grade' : 'Definir a grade' }}
-      </a>
-    </span>
+    }
     @if (showImage()) {
       <span class="state__group">
         <mat-icon aria-hidden="true">image</mat-icon>
         <span class="state__text">Imagem: {{ map().image?.name }}</span>
-        <button matButton type="button" class="state__action" (click)="changeImage.emit()">
+        <button
+          #imageButton
+          matButton
+          type="button"
+          class="state__action"
+          [class.state__action--off]="combatRunning()"
+          [disabled]="combatRunning()"
+          disabledInteractive
+          [attr.aria-describedby]="combatRunning() ? 'combat-why' : null"
+          (click)="startImage()"
+        >
           Trocar imagem
         </button>
       </span>
     }
   </div>
+  @if (showImage()) {
+    <p class="visible-note">
+      <mat-icon aria-hidden="true">info</mat-icon>O que está desenhado na imagem, os jogadores veem.
+    </p>
+  }
 }

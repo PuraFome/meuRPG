@@ -38,6 +38,8 @@
           [pointCount]="state.points().length"
           [tokenCount]="state.tokens().length"
           [currentSession]="currentSession()"
+          [imageErases]="erases()"
+          [combatRunning]="combatRunning()"
           [saveName]="saveName"
           [deleteMap]="deleteMap"
           (toggleReveal)="toggleReveal()"
@@ -53,7 +55,14 @@
           @if (phone()) {
             <app-map-manage [campaignId]="campaignId()" [state]="state" />
           } @else {
-            <app-map-editor [campaignId]="campaignId()" [state]="state" [maps]="others()" />
+            <app-map-editor
+              [campaignId]="campaignId()"
+              [state]="state"
+              [maps]="others()"
+              [combatRunning]="combatRunning()"
+              [sessionNumber]="sessionNumber()"
+              (erasesChange)="erases.set($event)"
+            />
           }
         </div>
       } @else {

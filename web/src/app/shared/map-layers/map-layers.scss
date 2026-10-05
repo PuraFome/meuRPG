@@ -63,3 +63,37 @@
 .sq--three::after {
   top: 34%;
 }
+
+// Luz pintada (the master's editor): a small glyph in the corner of the square, on a paper chip, no texture.
+.sq--light {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 1px;
+}
+
+.lg {
+  box-sizing: content-box;
+  width: 11px;
+  height: 11px;
+  padding: 1px;
+  border: 1px solid var(--mr-map-token-ink);
+  border-radius: 3px;
+  background: var(--mr-map-token-surface);
+  color: var(--mr-map-token-ink);
+  font-size: 11px;
+  line-height: 11px;
+}
+
+// The brush: the squares the next stroke would paint, outlined in garnet (a solid line, a dashed one when it erases).
+.cursor {
+  position: absolute;
+  z-index: 2;
+  box-sizing: border-box;
+  border: 2px solid var(--mr-map-accent);
+  background: color-mix(in srgb, var(--mr-map-accent) 12%, transparent);
+}
+
+.cursor--erase {
+  border-style: dashed;
+}

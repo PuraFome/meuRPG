@@ -1,0 +1,139 @@
+:host {
+  display: block;
+}
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-2) 10px;
+  padding: var(--mr-space-3);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+}
+
+.bar__label {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+
+.bar__group,
+.bar__zoom,
+.bar__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.bar__zoom {
+  margin-left: auto;
+}
+
+// The degree of the cover or of the light: a line of its own, as wide as the bar.
+.bar__row {
+  flex-basis: 100%;
+  gap: var(--mr-space-2) var(--mr-space-3);
+  padding-top: var(--mr-space-3);
+  border-top: 1px solid var(--mr-rule);
+}
+
+.bar__hint {
+  flex: 1 1 18rem;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.bar__tool.mat-mdc-outlined-button {
+  --mat-button-outlined-horizontal-padding: 11px;
+  padding-inline: 11px;
+  min-height: 44px;
+  color: var(--mr-ink);
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+
+  &--on {
+    background: var(--mr-accent-soft);
+    font-weight: 700;
+  }
+}
+
+.bar__sep {
+  width: 1px;
+  height: 28px;
+  background: var(--mr-line);
+}
+
+.bar__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  cursor: pointer;
+}
+
+.bar__scale {
+  min-width: 48px;
+  text-align: center;
+  color: var(--mr-ink-muted);
+}
+
+.bar__none {
+  margin: 0;
+  padding: var(--mr-space-3) var(--mr-space-4);
+  color: var(--mr-ink-muted);
+}
+
+// Segmented choices: one bordered strip, the chosen one soft garnet, bold and checked (never colour alone).
+.seg {
+  display: flex;
+  overflow: hidden;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+}
+
+.seg__item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 0;
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+
+  & + & {
+    border-left: 1px solid var(--mr-control-line);
+  }
+
+  &--on {
+    background: var(--mr-accent-soft);
+    font-weight: 700;
+  }
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.seg--small .seg__item {
+  padding: 0 var(--mr-space-3);
+}
+
+.seg--off {
+  opacity: 0.7;
+}
