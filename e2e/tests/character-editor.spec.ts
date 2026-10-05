@@ -159,6 +159,8 @@ test(
     await expect(level2).toHaveValue('');
     await page.getByRole('button', { name: 'Rolar os níveis que faltam' }).click();
     for (const field of [level2, level3]) {
+      // The rolls land a moment after the click: wait for them, or an empty field reads as 0.
+      await expect(field).not.toHaveValue('');
       const value = Number(await field.inputValue());
       expect(value).toBeGreaterThanOrEqual(1);
       expect(value).toBeLessThanOrEqual(12);
