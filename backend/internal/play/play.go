@@ -42,6 +42,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1/playv1connect"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/nostore"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
@@ -229,6 +230,10 @@ type CombatRoster interface {
 	CreatureSheet(monsterKey, attack string) (link.Sheet, bool)
 	CreatureTurnOptions(monsterKey, attack string, turn link.Turn) (*rulesv1.TurnOptions, bool)
 	CreatureSave(monsterKey, ability string) link.Save
+	// CreatureEyes is what a creature notices a trap with, from its stat block:
+	// its passive Perception and its senses (MR-035). False for a key that is not an
+	// SRD creature.
+	CreatureEyes(monsterKey string) (maplink.Eyes, bool)
 }
 
 // DiceForce is what the campaign's dice setting makes a player do (RN-18).
@@ -338,6 +343,7 @@ type Service struct {
 	roster    CombatRoster
 	dice      DiceModes
 	terrain   TerrainSource
+	traps     TrapBook
 	roller    dice.Roller
 	logger    *slog.Logger
 	now       func() time.Time

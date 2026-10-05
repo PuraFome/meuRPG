@@ -26,7 +26,7 @@ import (
 var undoableKinds = []string{
 	eventAttackRolled, eventDamageRolled, eventDamageApplied, eventDamageDiscarded, eventActionTaken, eventHitPointsAdjusted,
 	eventSpellCast, eventReactionUsed, eventReactionDeclined, eventDeathSaveRolled, eventConditionsSet,
-	eventCombatantMoved,
+	eventCombatantMoved, eventTrapTriggered,
 }
 
 // recentEvents is how many of the session's latest events the search for the
@@ -58,6 +58,13 @@ func lastAction(recent []playdb.ListRecentSessionEventsRow, encounterID string) 
 		// The offers a move made are written before the move's own event, the same
 		// way: the undo acts on the move.
 		if e.Kind == eventOpportunityOffered {
+			continue
+		}
+		// What the traps did that is not this combat's never closes the chain: a trap noticed
+		// after a move (the knowledge stays after an undo), a firing, a search or a disarm
+		// outside a combat or in another one, and the master settling a trap damage that
+		// has no combat (MR-035).
+		if trapOutsideTheChain(e, encounterID) {
 			continue
 		}
 		if slices.Contains(undoableKinds, e.Kind) && e.EncounterID != nil && *e.EncounterID == encounterID {
@@ -99,8 +106,9 @@ func (s *Service) UndoLastAction(
 
 	var made actionEvent
 	var vitals []*playv1.CharacterVitals // the characters' vitals put back, if any
+	var rearmed *trapFireEvent           // the trap an undone firing armed again
 	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventActionUndone, encounterID: encID}, func(c *combatTx) (any, error) {
-		vitals = nil
+		vitals, rearmed = nil, nil
 		if err := notEnded(c.enc); err != nil {
 			return nil, err
 		}
@@ -122,6 +130,9 @@ func (s *Service) UndoLastAction(
 		if vitals, err = s.takeBack(ctx, c, last.Kind, ev); err != nil {
 			return nil, err
 		}
+		if last.Kind == eventTrapTriggered {
+			rearmed = ev.Trap
+		}
 		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
 			return nil, fmt.Errorf("touch the encounter: %w", err)
 		}
@@ -140,6 +151,9 @@ func (s *Service) UndoLastAction(
 		s.publishLogChanged(m.CampaignID, d.enc.ID, !ev.Secret)
 		for _, vit := range vitals {
 			s.publishVitals(m.CampaignID, vit)
+		}
+		if rearmed != nil && s.traps != nil {
+			s.traps.TrapChanged(ctx, m.CampaignID, rearmed.MapID, rearmed.PointID) // players who saw it fire lose it again
 		}
 	})
 	if err != nil {
@@ -347,6 +361,14 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 				return nil, fmt.Errorf("take the opportunity offers away: %w", err)
 			}
 		}
+	case eventTrapTriggered:
+		// The trap armed again, the hit points and conditions it changed put back, and
+		// the pending damages it opened gone (MR-035).
+		if ev.Trap != nil {
+			if err := s.takeBackTrap(ctx, c, *ev.Trap, find); err != nil {
+				return nil, err
+			}
+		}
 	case eventActionTaken:
 		who, ok := find(ev.Actor)
 		if !ok {
@@ -536,4 +558,20 @@ func nonNil(l []string) []string {
 		return []string{}
 	}
 	return l
+}
+
+// trapOutsideTheChain says an event is about traps and not this combat's: the undo
+// goes past it. `trap_noticed` is always so (it is written after the move that caused
+// it, with no combat); the others are when they belong to no combat or to another.
+func trapOutsideTheChain(e playdb.ListRecentSessionEventsRow, encounterID string) bool {
+	ours := e.EncounterID != nil && *e.EncounterID == encounterID
+	switch e.Kind {
+	case eventTrapNoticed:
+		return true
+	case eventTrapSearched, eventTrapTriggered, eventTrapDisarmed, eventTrapRevealed:
+		return !ours
+	case eventDamageApplied, eventDamageDiscarded:
+		return e.EncounterID == nil // ApplyTrapDamage: a damage with no combat
+	}
+	return false
 }

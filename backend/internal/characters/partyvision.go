@@ -29,13 +29,16 @@ func (s *Service) PartyVision(ctx context.Context, campaignID string) ([]link.Pa
 		if user == "" {
 			continue // its player deleted the account (RN-16): nobody sees through it
 		}
-		member := link.PartyMember{CharacterID: row.ID, UserID: user}
+		// A basic sheet has no skills: its passive Perception is the plain 10.
+		member := link.PartyMember{CharacterID: row.ID, UserID: user, PassivePerception: 10}
 		sheet, err := loadSheet(row.ID, row.Sheet)
 		if err != nil {
 			return nil, s.dbError(ctx, "list the party's senses", err)
 		}
 		if full := sheet.GetFull(); full != nil {
-			member.Senses = sensesOf(rules.Derive(buildOf(full), s.rules).Senses)
+			derived := rules.Derive(buildOf(full), s.rules)
+			member.Senses = sensesOf(derived.Senses)
+			member.PassivePerception = derived.PassivePerception
 		}
 		out = append(out, member)
 	}

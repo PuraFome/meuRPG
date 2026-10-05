@@ -1079,6 +1079,9 @@ func (s *Service) EndEncounter(
 // the player characters' tokens, which move to the squares where they ended
 // (the map shows them where they stand). cs are its combatants.
 func (s *Service) endEncounter(ctx context.Context, c *combatTx, cs []playdb.Combatant) error {
+	if err := s.keepTrapDamage(ctx, c, cs); err != nil {
+		return err
+	}
 	ended := c.now
 	enc, err := c.q.SetEncounterState(ctx, playdb.SetEncounterStateParams{
 		ID: c.enc.ID, Status: statusEnded, Round: c.enc.Round, StartedAt: c.enc.StartedAt, EndedAt: &ended,

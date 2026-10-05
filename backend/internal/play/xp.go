@@ -31,7 +31,7 @@ import (
 // (MR-037). A kind that is not one of them is a bug in the caller, never a write.
 var appendableKinds = []string{
 	eventXPAwarded, eventXPAwardUndone, eventMilestoneMarked, eventClueRevealed,
-	eventTrapRevealed, eventTreasureFound, eventTreasureUnfound,
+	eventTrapRevealed, eventTrapNoticed, eventTrapDisarmed, eventTreasureFound, eventTreasureUnfound,
 	eventCreatureSummoned, eventCreatureDismissed,
 }
 

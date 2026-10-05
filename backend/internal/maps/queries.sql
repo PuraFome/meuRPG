@@ -668,3 +668,31 @@ FROM map_points AS p
 JOIN map_treasure_finders AS f ON f.point_id = p.id
 WHERE p.kind = 'treasure' AND p.treasure_found_at IS NOT NULL AND p.treasure_session_id = sqlc.arg(session_id)::UUID
 ORDER BY p.id, f.character_id;
+
+-- name: SetTrapState :one
+-- The live game changes a trap's state (MR-035, slice 9.8): it fires (state
+-- 'triggered', with when), the master disarms it, or an undo puts back what
+-- there was. The caller locked the point first.
+UPDATE map_points
+SET trap_state = sqlc.arg(trap_state), trap_triggered_at = sqlc.narg(trap_triggered_at), updated_at = sqlc.arg(now)
+WHERE map_id = sqlc.arg(map_id) AND id = sqlc.arg(id) AND kind = 'trap'
+RETURNING *;
+
+-- name: ListPointRevealCharacters :many
+-- The characters that know each trap of the map, for the noticing: one row per
+-- trap and character.
+SELECT r.point_id, r.character_id FROM map_point_reveals AS r
+JOIN map_points AS p ON p.id = r.point_id
+WHERE p.map_id = $1;
+
+-- name: GetMapPoint :one
+-- One point of a map, without locking it.
+SELECT * FROM map_points
+WHERE map_id = $1 AND id = $2;
+
+-- name: ListTrapNamesInCampaign :many
+-- The names of traps by point ID, for the combat log: a trap that fired is
+-- public, so its name may be told (MR-035). A deleted point is simply absent.
+SELECT p.id, p.name FROM map_points AS p
+JOIN maps AS m ON m.id = p.map_id
+WHERE m.campaign_id = $1 AND p.kind = 'trap' AND p.id = ANY($2::uuid[]);

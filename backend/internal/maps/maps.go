@@ -216,6 +216,7 @@ type Service struct {
 	checks     SceneChecks
 	rules      Rules
 	combats    CombatMaps
+	firer      TrapFirer
 	layerHints hintGate
 
 	// The fog of war (fog.go): the compiled scenes, the revision each player was

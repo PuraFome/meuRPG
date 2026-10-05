@@ -25,6 +25,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1/playv1connect"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 )
 
@@ -37,6 +38,7 @@ const allowed connect.Code = 0
 func TestAuthorizationMatrix(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
+	h.svc.SetTraps(emptyTrapBook{}) // a map book with no traps (see the traps rows below)
 	master, player, pending := h.newUser("Mestre"), h.newUser("Jogadora"), h.newUser("Pendente")
 	campaign := h.newCampaign(master, "Mirathel", player)
 	h.joinPending(master, campaign, pending)
@@ -166,6 +168,38 @@ func TestAuthorizationMatrix(t *testing.T) {
 			_, err := c.SetSpeaker(ctx, connect.NewRequest(&playv1.SetSpeakerRequest{CampaignId: campaign}))
 			return err
 		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		// The traps in play (MR-035, ADR-0011). This harness has a map book with no
+		// traps and no map on screen: a player's search is refused by the state
+		// (TRAP_NOT_ON_MAP), the master's is the player's alone; firing a trap that is
+		// not there is not_found; the master reads and settles the damage, a player
+		// never does. The full matrix with real traps is in TestMR035_*.
+		{"SearchForTraps", func(ctx context.Context, c client) error {
+			_, err := c.SearchForTraps(ctx, connect.NewRequest(&playv1.SearchForTrapsRequest{
+				CampaignId: campaign, IdempotencyKey: newKey(), Skill: playv1.TrapSearchSkill_TRAP_SEARCH_SKILL_PERCEPTION,
+				Roll: &playv1.SearchForTrapsRequest_RollInApp{RollInApp: true},
+			}))
+			return err
+		}, [5]connect.Code{connect.CodePermissionDenied, connect.CodeFailedPrecondition, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"ListTrapActivity", func(ctx context.Context, c client) error {
+			_, err := c.ListTrapActivity(ctx, connect.NewRequest(&playv1.ListTrapActivityRequest{CampaignId: campaign}))
+			return err
+		}, [5]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"FireTrap", func(ctx context.Context, c client) error {
+			_, err := c.FireTrap(ctx, connect.NewRequest(&playv1.FireTrapRequest{CampaignId: campaign, MapId: campaign, PointId: campaign, IdempotencyKey: newKey()}))
+			return err
+		}, [5]connect.Code{connect.CodeNotFound, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"ListTrapDamages", func(ctx context.Context, c client) error {
+			_, err := c.ListTrapDamages(ctx, connect.NewRequest(&playv1.ListTrapDamagesRequest{CampaignId: campaign}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"ApplyTrapDamage", func(ctx context.Context, c client) error {
+			_, err := c.ApplyTrapDamage(ctx, connect.NewRequest(&playv1.ApplyTrapDamageRequest{CampaignId: campaign, TrapDamageId: campaign, IdempotencyKey: newKey()}))
+			return err
+		}, [5]connect.Code{connect.CodeNotFound, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"DiscardTrapDamage", func(ctx context.Context, c client) error {
+			_, err := c.DiscardTrapDamage(ctx, connect.NewRequest(&playv1.DiscardTrapDamageRequest{CampaignId: campaign, TrapDamageId: campaign, IdempotencyKey: newKey()}))
+			return err
+		}, [5]connect.Code{connect.CodeNotFound, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
 	}
 
 	covered := map[string]bool{}
@@ -564,6 +598,8 @@ func (noRoster) CreatureTurnOptions(string, string, link.Turn) (*rulesv1.TurnOpt
 
 func (noRoster) CreatureSave(string, string) link.Save { return link.Save{} }
 
+func (noRoster) CreatureEyes(string) (maplink.Eyes, bool) { return maplink.Eyes{}, false }
+
 type noDice struct{}
 
 func (noDice) ForcedDice(context.Context, string, string) (DiceForce, error) {
@@ -649,6 +685,14 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["PutOnStage"] = c.PutOnStage(ctx, connect.NewRequest(&playv1.PutOnStageRequest{CampaignId: id, CharacterId: id}))
 	_, calls["TakeOffStage"] = c.TakeOffStage(ctx, connect.NewRequest(&playv1.TakeOffStageRequest{CampaignId: id, CharacterId: id}))
 	_, calls["SetSpeaker"] = c.SetSpeaker(ctx, connect.NewRequest(&playv1.SetSpeakerRequest{CampaignId: id}))
+	_, calls["SearchForTraps"] = c.SearchForTraps(ctx, connect.NewRequest(&playv1.SearchForTrapsRequest{
+		CampaignId: id, IdempotencyKey: id, Skill: playv1.TrapSearchSkill_TRAP_SEARCH_SKILL_PERCEPTION, Roll: &playv1.SearchForTrapsRequest_RollInApp{RollInApp: true},
+	}))
+	_, calls["ListTrapActivity"] = c.ListTrapActivity(ctx, connect.NewRequest(&playv1.ListTrapActivityRequest{CampaignId: id}))
+	_, calls["FireTrap"] = c.FireTrap(ctx, connect.NewRequest(&playv1.FireTrapRequest{CampaignId: id, MapId: id, PointId: id, IdempotencyKey: id}))
+	_, calls["ListTrapDamages"] = c.ListTrapDamages(ctx, connect.NewRequest(&playv1.ListTrapDamagesRequest{CampaignId: id}))
+	_, calls["ApplyTrapDamage"] = c.ApplyTrapDamage(ctx, connect.NewRequest(&playv1.ApplyTrapDamageRequest{CampaignId: id, TrapDamageId: id, IdempotencyKey: id}))
+	_, calls["DiscardTrapDamage"] = c.DiscardTrapDamage(ctx, connect.NewRequest(&playv1.DiscardTrapDamageRequest{CampaignId: id, TrapDamageId: id, IdempotencyKey: id}))
 	_, calls["CastSummon"] = c.CastSummon(ctx, connect.NewRequest(&playv1.CastSummonRequest{CampaignId: id, CharacterId: id, IdempotencyKey: id}))
 	calls["WatchGameSession"] = firstEventError(ctx, c, id)
 	methods := playv1.File_meurpg_play_v1_play_proto.Services().ByName("PlayService").Methods()
@@ -754,4 +798,34 @@ func firstEventError(ctx context.Context, c playv1connect.PlayServiceClient, cam
 		return nil
 	}
 	return stream.Err()
+}
+
+// emptyTrapBook is a map book with no trap: the authorization matrix's harness has
+// no maps module.
+type emptyTrapBook struct{}
+
+func (emptyTrapBook) Traps(context.Context, pgx.Tx, string, string) ([]maplink.Trap, error) {
+	return nil, nil
+}
+
+func (emptyTrapBook) KnownTraps(context.Context, string, string, string) ([]maplink.Trap, error) {
+	return nil, nil
+}
+
+func (emptyTrapBook) Notice(context.Context, string, string, []maplink.Observer) error { return nil }
+
+func (emptyTrapBook) SearchTraps(context.Context, pgx.Tx, string, string, maplink.Observer, string, []int, time.Time) (maplink.SearchResult, error) {
+	return maplink.SearchResult{}, nil
+}
+func (emptyTrapBook) Told(context.Context, string, string, []string) {}
+func (emptyTrapBook) TriggerTrap(context.Context, pgx.Tx, string, string, string, time.Time) (maplink.Trap, error) {
+	return maplink.Trap{}, maplink.ErrTrapNotArmed
+}
+
+func (emptyTrapBook) RestoreTrap(context.Context, pgx.Tx, string, string, string, string, *time.Time, time.Time) error {
+	return nil
+}
+func (emptyTrapBook) TrapChanged(context.Context, string, string, string) {}
+func (emptyTrapBook) TrapNames(context.Context, string, []string) (map[string]string, error) {
+	return nil, nil
 }
