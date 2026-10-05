@@ -227,14 +227,21 @@ func (s *Service) MoveCombatant(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("jump must be a kind of jump"))
 	}
 	v := viewerOf(m)
+	// A forced move (a teleport, a token put right) is the master's, and never
+	// provokes.
+	forced := req.Msg.GetForced()
+	if forced && !v.master {
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("only the master may force a move"))
+	}
 
 	var moved playdb.Combatant
 	var made actionEvent
 	var stoppedEarly bool // a creature the player does not see cut the move short
 	var logged bool       // the move is a line of the combat log
 	var th *trapHook      // the traps the move may fire (combat_traps.go, MR-035)
+	var moveID string     // the id of the opportunity offers the move made, if any
 	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventCombatantMoved, altKind: eventTrapTriggered, encounterID: encID}, func(c *combatTx) (any, error) {
-		logged, stoppedEarly = false, false
+		logged, stoppedEarly, moveID = false, false, ""
 		if err := notEnded(c.enc); err != nil {
 			return nil, err
 		}
@@ -285,6 +292,9 @@ func (s *Service) MoveCombatant(
 		}
 
 		if !v.master {
+			if err := s.mustNotWait(ctx, c, target); err != nil {
+				return nil, err
+			}
 			// The player plans on what they see (RN-10); the real move runs against
 			// everyone, and stops before a creature they do not see, without saying
 			// what it was (D1): the answer only says it was cut short.
@@ -369,6 +379,16 @@ func (s *Service) MoveCombatant(
 		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
 			return nil, fmt.Errorf("touch the encounter: %w", err)
 		}
+		// Opportunity attacks (D1b): a move on foot or a long jump (it spends
+		// movement), on the mover's turn, that leaves an enemy's reach lands, and the
+		// enemy is offered an attack. A high jump moves nobody; a placement out of
+		// turn, a forced move and a move that stays put offer nothing.
+		if jump != playv1.JumpKind_JUMP_KIND_HIGH && !forced && onTurn && placed(target) && squareChanged {
+			if moveID, err = s.offerOpportunities(ctx, c, cs, target, squareOfCombatant(target), to); err != nil {
+				return nil, err
+			}
+			made.MoveID = moveID
+		}
 		moved = target
 		moved.GridCol, moved.GridRow, moved.MovementUsedFt, moved.MovementUsedDft = &newCol, &newRow, clamp32(used/10, 0, math.MaxInt32), clamp32(used, 0, math.MaxInt32)
 		moved.LastMoveDft, moved.CoverMark = clamp32(last, 0, math.MaxInt32), coverMark
@@ -412,7 +432,7 @@ func (s *Service) MoveCombatant(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the move", err)
 	}
-	return connect.NewResponse(&playv1.MoveCombatantResponse{Encounter: out, StoppedEarly: ev.StoppedEarly}), nil
+	return connect.NewResponse(&playv1.MoveCombatantResponse{Encounter: out, StoppedEarly: ev.StoppedEarly, Provoked: ev.MoveID != ""}), nil
 }
 
 // The two jumps as a move event keeps them.
@@ -526,6 +546,9 @@ func (s *Service) GetMoveOptions(
 		return nil, s.dbError(ctx, "read the terrain", err)
 	}
 	out := moveOptions(terrain, who, occupantsFor(d.cs, who, v))
+	if err := s.markProvokes(ctx, m, enc, d.cs, who, out); err != nil {
+		return nil, s.dbError(ctx, "work out the opportunity attacks", err)
+	}
 	if !v.master {
 		s.markKnownTraps(ctx, m.CampaignID, enc, who, out) // the warning before stepping into a trap the character knows
 	}

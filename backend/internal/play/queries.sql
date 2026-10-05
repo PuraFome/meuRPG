@@ -668,3 +668,53 @@ RETURNING *;
 -- name: DeleteTrapDamage :exec
 DELETE FROM trap_damages
 WHERE id = $1;
+
+-- Opportunity offers (MR-034, RN-21): the right to one attack on a mover that
+-- left a reactor's reach.
+
+-- name: InsertOpportunityOffer :one
+INSERT INTO opportunity_offers (encounter_id, move_id, mover_id, reactor_id, left_col, left_row, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING *;
+
+-- name: ListPendingOpportunityOffers :many
+-- What waits in the combat, oldest first.
+SELECT * FROM opportunity_offers
+WHERE encounter_id = $1 AND state = 'pending'
+ORDER BY created_at, id;
+
+-- name: GetOpportunityOffer :one
+SELECT * FROM opportunity_offers
+WHERE encounter_id = $1 AND id = $2;
+
+-- name: GetOpportunityOfferByAttack :one
+-- The offer an opportunity attack answered, by the damage it opened.
+SELECT * FROM opportunity_offers
+WHERE encounter_id = $1 AND attack_pending_id = $2;
+
+-- name: SetOpportunityOfferState :one
+-- Answered (attacked, declined or skipped), or back to pending (an undo).
+UPDATE opportunity_offers
+SET state = $2, attack_pending_id = $3, answered_at = $4
+WHERE id = $1
+RETURNING *;
+
+-- name: SkipPendingOpportunityOffersOfMover :execrows
+-- The master ended the mover's turn: what it waited for is passed over.
+UPDATE opportunity_offers
+SET state = 'skipped', answered_at = $3
+WHERE encounter_id = $1 AND mover_id = $2 AND state = 'pending';
+
+-- name: DeleteOpportunityOffersOfMove :exec
+-- The master's undo of the move that made them.
+DELETE FROM opportunity_offers
+WHERE move_id = $1;
+
+-- name: ListWaitingOpportunityOffers :many
+-- What holds the mover's turn: the offers nobody answered yet, and the offers
+-- answered with an attack whose damage is still to roll, apply or discard.
+SELECT o.* FROM opportunity_offers o
+LEFT JOIN pending_damages p ON p.id = o.attack_pending_id
+WHERE o.encounter_id = $1
+  AND (o.state = 'pending' OR (o.state = 'attacked' AND p.status IN ('awaiting_reaction', 'awaiting_roll', 'rolled')))
+ORDER BY o.created_at, o.id;

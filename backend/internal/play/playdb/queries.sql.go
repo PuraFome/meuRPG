@@ -137,6 +137,17 @@ func (q *Queries) DeleteCombatant(ctx context.Context, id string) error {
 	return err
 }
 
+const deleteOpportunityOffersOfMove = `-- name: DeleteOpportunityOffersOfMove :exec
+DELETE FROM opportunity_offers
+WHERE move_id = $1
+`
+
+// The master's undo of the move that made them.
+func (q *Queries) DeleteOpportunityOffersOfMove(ctx context.Context, moveID string) error {
+	_, err := q.db.Exec(ctx, deleteOpportunityOffersOfMove, moveID)
+	return err
+}
+
 const deletePendingDamage = `-- name: DeletePendingDamage :exec
 DELETE FROM pending_damages
 WHERE id = $1
@@ -546,6 +557,65 @@ func (q *Queries) GetOpenScenePoint(ctx context.Context, campaignID string) (*st
 	var open_scene_point_id *string
 	err := row.Scan(&open_scene_point_id)
 	return open_scene_point_id, err
+}
+
+const getOpportunityOffer = `-- name: GetOpportunityOffer :one
+SELECT id, encounter_id, move_id, mover_id, reactor_id, left_col, left_row, state, attack_pending_id, created_at, answered_at FROM opportunity_offers
+WHERE encounter_id = $1 AND id = $2
+`
+
+type GetOpportunityOfferParams struct {
+	EncounterID string
+	ID          string
+}
+
+func (q *Queries) GetOpportunityOffer(ctx context.Context, arg GetOpportunityOfferParams) (OpportunityOffer, error) {
+	row := q.db.QueryRow(ctx, getOpportunityOffer, arg.EncounterID, arg.ID)
+	var i OpportunityOffer
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.MoveID,
+		&i.MoverID,
+		&i.ReactorID,
+		&i.LeftCol,
+		&i.LeftRow,
+		&i.State,
+		&i.AttackPendingID,
+		&i.CreatedAt,
+		&i.AnsweredAt,
+	)
+	return i, err
+}
+
+const getOpportunityOfferByAttack = `-- name: GetOpportunityOfferByAttack :one
+SELECT id, encounter_id, move_id, mover_id, reactor_id, left_col, left_row, state, attack_pending_id, created_at, answered_at FROM opportunity_offers
+WHERE encounter_id = $1 AND attack_pending_id = $2
+`
+
+type GetOpportunityOfferByAttackParams struct {
+	EncounterID     string
+	AttackPendingID *string
+}
+
+// The offer an opportunity attack answered, by the damage it opened.
+func (q *Queries) GetOpportunityOfferByAttack(ctx context.Context, arg GetOpportunityOfferByAttackParams) (OpportunityOffer, error) {
+	row := q.db.QueryRow(ctx, getOpportunityOfferByAttack, arg.EncounterID, arg.AttackPendingID)
+	var i OpportunityOffer
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.MoveID,
+		&i.MoverID,
+		&i.ReactorID,
+		&i.LeftCol,
+		&i.LeftRow,
+		&i.State,
+		&i.AttackPendingID,
+		&i.CreatedAt,
+		&i.AnsweredAt,
+	)
+	return i, err
 }
 
 const getPendingDamage = `-- name: GetPendingDamage :one
@@ -978,6 +1048,52 @@ func (q *Queries) InsertGameSession(ctx context.Context, arg InsertGameSessionPa
 		&i.ShownImageID,
 		&i.ShownImageKeep,
 		&i.OpenScenePointID,
+	)
+	return i, err
+}
+
+const insertOpportunityOffer = `-- name: InsertOpportunityOffer :one
+
+INSERT INTO opportunity_offers (encounter_id, move_id, mover_id, reactor_id, left_col, left_row, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, encounter_id, move_id, mover_id, reactor_id, left_col, left_row, state, attack_pending_id, created_at, answered_at
+`
+
+type InsertOpportunityOfferParams struct {
+	EncounterID string
+	MoveID      string
+	MoverID     string
+	ReactorID   string
+	LeftCol     int32
+	LeftRow     int32
+	CreatedAt   time.Time
+}
+
+// Opportunity offers (MR-034, RN-21): the right to one attack on a mover that
+// left a reactor's reach.
+func (q *Queries) InsertOpportunityOffer(ctx context.Context, arg InsertOpportunityOfferParams) (OpportunityOffer, error) {
+	row := q.db.QueryRow(ctx, insertOpportunityOffer,
+		arg.EncounterID,
+		arg.MoveID,
+		arg.MoverID,
+		arg.ReactorID,
+		arg.LeftCol,
+		arg.LeftRow,
+		arg.CreatedAt,
+	)
+	var i OpportunityOffer
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.MoveID,
+		&i.MoverID,
+		&i.ReactorID,
+		&i.LeftCol,
+		&i.LeftRow,
+		&i.State,
+		&i.AttackPendingID,
+		&i.CreatedAt,
+		&i.AnsweredAt,
 	)
 	return i, err
 }
@@ -2017,6 +2133,45 @@ func (q *Queries) ListOpenTrapPendingDamages(ctx context.Context, gameSessionID 
 	return items, nil
 }
 
+const listPendingOpportunityOffers = `-- name: ListPendingOpportunityOffers :many
+SELECT id, encounter_id, move_id, mover_id, reactor_id, left_col, left_row, state, attack_pending_id, created_at, answered_at FROM opportunity_offers
+WHERE encounter_id = $1 AND state = 'pending'
+ORDER BY created_at, id
+`
+
+// What waits in the combat, oldest first.
+func (q *Queries) ListPendingOpportunityOffers(ctx context.Context, encounterID string) ([]OpportunityOffer, error) {
+	rows, err := q.db.Query(ctx, listPendingOpportunityOffers, encounterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []OpportunityOffer
+	for rows.Next() {
+		var i OpportunityOffer
+		if err := rows.Scan(
+			&i.ID,
+			&i.EncounterID,
+			&i.MoveID,
+			&i.MoverID,
+			&i.ReactorID,
+			&i.LeftCol,
+			&i.LeftRow,
+			&i.State,
+			&i.AttackPendingID,
+			&i.CreatedAt,
+			&i.AnsweredAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRecentSessionEvents = `-- name: ListRecentSessionEvents :many
 SELECT id, seq, kind, encounter_id, payload FROM session_events
 WHERE game_session_id = $1
@@ -2310,6 +2465,48 @@ func (q *Queries) ListTrapPendingDamagesOfFiring(ctx context.Context, arg ListTr
 			&i.RollTotal,
 			&i.AttackArmorClass,
 			&i.TrapPointID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listWaitingOpportunityOffers = `-- name: ListWaitingOpportunityOffers :many
+SELECT o.id, o.encounter_id, o.move_id, o.mover_id, o.reactor_id, o.left_col, o.left_row, o.state, o.attack_pending_id, o.created_at, o.answered_at FROM opportunity_offers o
+LEFT JOIN pending_damages p ON p.id = o.attack_pending_id
+WHERE o.encounter_id = $1
+  AND (o.state = 'pending' OR (o.state = 'attacked' AND p.status IN ('awaiting_reaction', 'awaiting_roll', 'rolled')))
+ORDER BY o.created_at, o.id
+`
+
+// What holds the mover's turn: the offers nobody answered yet, and the offers
+// answered with an attack whose damage is still to roll, apply or discard.
+func (q *Queries) ListWaitingOpportunityOffers(ctx context.Context, encounterID string) ([]OpportunityOffer, error) {
+	rows, err := q.db.Query(ctx, listWaitingOpportunityOffers, encounterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []OpportunityOffer
+	for rows.Next() {
+		var i OpportunityOffer
+		if err := rows.Scan(
+			&i.ID,
+			&i.EncounterID,
+			&i.MoveID,
+			&i.MoverID,
+			&i.ReactorID,
+			&i.LeftCol,
+			&i.LeftRow,
+			&i.State,
+			&i.AttackPendingID,
+			&i.CreatedAt,
+			&i.AnsweredAt,
 		); err != nil {
 			return nil, err
 		}
@@ -2941,6 +3138,45 @@ func (q *Queries) SetOpenScene(ctx context.Context, arg SetOpenSceneParams) (Gam
 	return i, err
 }
 
+const setOpportunityOfferState = `-- name: SetOpportunityOfferState :one
+UPDATE opportunity_offers
+SET state = $2, attack_pending_id = $3, answered_at = $4
+WHERE id = $1
+RETURNING id, encounter_id, move_id, mover_id, reactor_id, left_col, left_row, state, attack_pending_id, created_at, answered_at
+`
+
+type SetOpportunityOfferStateParams struct {
+	ID              string
+	State           string
+	AttackPendingID *string
+	AnsweredAt      *time.Time
+}
+
+// Answered (attacked, declined or skipped), or back to pending (an undo).
+func (q *Queries) SetOpportunityOfferState(ctx context.Context, arg SetOpportunityOfferStateParams) (OpportunityOffer, error) {
+	row := q.db.QueryRow(ctx, setOpportunityOfferState,
+		arg.ID,
+		arg.State,
+		arg.AttackPendingID,
+		arg.AnsweredAt,
+	)
+	var i OpportunityOffer
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.MoveID,
+		&i.MoverID,
+		&i.ReactorID,
+		&i.LeftCol,
+		&i.LeftRow,
+		&i.State,
+		&i.AttackPendingID,
+		&i.CreatedAt,
+		&i.AnsweredAt,
+	)
+	return i, err
+}
+
 const setPendingDamageApplied = `-- name: SetPendingDamageApplied :one
 UPDATE pending_damages
 SET status = 'applied', resolved_at = $2, applied_amount = $3
@@ -3187,6 +3423,27 @@ func (q *Queries) SetTrapDamageStatus(ctx context.Context, arg SetTrapDamageStat
 		&i.ResolvedAt,
 	)
 	return i, err
+}
+
+const skipPendingOpportunityOffersOfMover = `-- name: SkipPendingOpportunityOffersOfMover :execrows
+UPDATE opportunity_offers
+SET state = 'skipped', answered_at = $3
+WHERE encounter_id = $1 AND mover_id = $2 AND state = 'pending'
+`
+
+type SkipPendingOpportunityOffersOfMoverParams struct {
+	EncounterID string
+	MoverID     string
+	AnsweredAt  *time.Time
+}
+
+// The master ended the mover's turn: what it waited for is passed over.
+func (q *Queries) SkipPendingOpportunityOffersOfMover(ctx context.Context, arg SkipPendingOpportunityOffersOfMoverParams) (int64, error) {
+	result, err := q.db.Exec(ctx, skipPendingOpportunityOffersOfMover, arg.EncounterID, arg.MoverID, arg.AnsweredAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const touchEncounter = `-- name: TouchEncounter :one

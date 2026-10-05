@@ -88,6 +88,20 @@ type GameSession struct {
 	OpenScenePointID *string
 }
 
+type OpportunityOffer struct {
+	ID              string
+	EncounterID     string
+	MoveID          string
+	MoverID         string
+	ReactorID       string
+	LeftCol         int32
+	LeftRow         int32
+	State           string
+	AttackPendingID *string
+	CreatedAt       time.Time
+	AnsweredAt      *time.Time
+}
+
 type PendingDamage struct {
 	ID               string
 	EncounterID      string

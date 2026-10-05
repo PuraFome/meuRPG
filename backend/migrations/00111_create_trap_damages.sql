@@ -13,7 +13,7 @@
 -- applied_amount is what the master applied when it is not amount.
 --
 -- fire_id labels the damages of one firing. trap_point_id has no foreign key
--- (see 00140); the session and the character do, and deleting either deletes the
+-- (see 00110); the session and the character do, and deleting either deletes the
 -- row. No personal data: fiction, numbers and IDs.
 CREATE TABLE IF NOT EXISTS trap_damages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

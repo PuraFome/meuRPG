@@ -758,12 +758,49 @@ flowchart LR
 | Lado e tamanho | `combatants.side` (`party` ou `enemy`) e `size`. Os personagens de jogador e as criaturas deles (MR-037) são `party` e os NPCs `enemy`; o mestre troca um NPC com `SetCombatantSide` (evento `side_set`). O tamanho vem da raça do personagem (o `Catalog`), do `BasicSheet.size` (sem valor, Médio) ou, numa criatura, da ficha dela (`CreatureByKey`). Todo combatente ocupa um quadrado, Grande ou não. |
 | Alcance | `grid.RangeFt`, os quadrados entre os centros arredondados para baixo vezes 5 ft, em todo lugar onde havia `GridDistanceFt` (`combat_actions.go`, `combat_spells.go`): um vizinho na diagonal está a 5 ft. |
 | Cobertura | `coverAgainst`: a maior entre `Terrain.CoverBetween` (com os quadrados das outras criaturas) e a marca do mestre (`SetCombatantCover`, evento `cover_set`, apagada quando o combatente se move). Soma +2 ou +5 na CA do ataque com arma e do ataque de magia e no teste de Destreza da magia; a cobertura total faz `RollAttack` e `CastSpell` recusarem o jogador (`TARGET_COVER_TOTAL`; magia de área não recusa) e a lista de alvos a anota (`TargetInReach.cover`, `cover_source`). A CA com a cobertura (`target_armor_class`, `cover_bonus`) só vai ao mestre; é guardada no dano pendente (`pending_damages.attack_armor_class`, migration `00100`) para o Escudo comparar o golpe com ela mais 5. Uma magia com o tipo `ignores_cover` em `effects/spells.json` (Chama Sagrada, `Content.IgnoresCover`, `link.Spell.IgnoresCover`) não soma cobertura ao teste, mas a recusa de alvo por cobertura total fica. `TargetInReach.untargetable` diz ao app que o jogador não pode escolher o alvo. |
-| Desengajar | `standard:disengage` liga `combatants.disengaged`, zerado no começo da vez (`ResetCombatantTurn`) e devolvido pelo desfazer. É a marca que a fatia 9.6b lê para o ataque de oportunidade. |
+| Desengajar | `standard:disengage` liga `combatants.disengaged`, zerado no começo da vez (`ResetCombatantTurn`) e devolvido pelo desfazer. É a marca que o ataque de oportunidade lê ([abaixo](#ataques-de-oportunidade-etapa-9-fatia-96b)). |
 | Desfazer | `combatant_moved` passou a ser um tipo que o `UndoLastAction` desfaz: o evento guarda de onde o combatente saiu (`from`: quadrado, movimento andado, corrida, marca de cobertura), e o desfazer põe tudo de volta (um salto e a cobertura que o movimento apagou incluídos). |
 
 **Em décimos de pé.** O servidor guarda e cobra o movimento em décimos de pé (`movement_used_dft`, `last_move_dft`; `Combatant.movement_*_dft`, `MovementLeft.*_dft`); os campos em pés continuam preenchidos, arredondados para baixo, para o app publicado. O app publicado só mudou para desenhar o mesmo círculo (`web/src/app/core/combat/combat-grid.ts`, provisório até a fatia 9.15, que passa a desenhar o que o `GetMoveOptions` manda).
 
-**Limites desta fatia, ditos claro.** Não há névoa de guerra (fatia 9.4) nem ataque de oportunidade (9.6b) ainda; nadar e escalar não custam diferente; todo combatente ocupa um quadrado; uma criatura escondida dos jogadores não conta como cobertura para o ataque de um jogador (contaria como "cobertura do mapa" e entregaria que ela está ali); quando o mestre ataca, todas contam. O combate que já estava rodando quando a migration chegou fica sem limites de salto até as pessoas voltarem a entrar (os campos novos têm padrão 0).
+**Limites desta fatia, ditos claro.** Não havia névoa de guerra (fatia 9.4) nem ataque de oportunidade (feito na 9.6b, abaixo); nadar e escalar não custam diferente; todo combatente ocupa um quadrado; uma criatura escondida dos jogadores não conta como cobertura para o ataque de um jogador (contaria como "cobertura do mapa" e entregaria que ela está ali); quando o mestre ataca, todas contam. O combate que já estava rodando quando a migration chegou fica sem limites de salto até as pessoas voltarem a entrar (os campos novos têm padrão 0).
+
+### Ataques de oportunidade (Etapa 9, fatia 9.6b)
+
+Um movimento que sai do alcance de um inimigo aterrissa na hora e **oferece** um ataque a esse inimigo; o turno de quem andou espera a resposta (MR-034, RN-21, pergunta 69; `combat_opportunity.go`). O `play` chama `grid.LeavesReach` (a linha inteira, o quadrado de saída incluso, e o último quadrado ainda dentro do alcance) e o caminho de ataque e de dano que já existia, sem refazer nenhum dos dois.
+
+```mermaid
+sequenceDiagram
+    participant J as Jogador (quem anda)
+    participant S as play
+    participant R as Controlador do reator
+    J->>S: MoveCombatant (a pé, na vez)
+    S->>S: LeavesReach para cada reator elegível
+    S-->>J: move aterrissou (provoked), opportunity_offered e encounter_changed
+    Note over J,S: OPPORTUNITY_PENDING: o turno de quem anda espera
+    alt ataca
+        R->>S: RollAttack(opportunity_offer_id), sem conferir alcance
+        S->>S: reação gasta, dano pelo caminho de sempre (Escudo incluso)
+        S->>S: se o dano leva a 0 PV: quem anda volta ao quadrado de saída
+    else recusa
+        R->>S: DeclineOpportunity
+    else o jogador está fora
+        R->>S: SkipOpportunity (só o mestre)
+    end
+    S-->>J: o turno segue
+```
+
+| Peça | O que faz |
+| --- | --- |
+| Quem provoca | `opportunityReactors`: o outro `side`, no mapa, não derrotado, com a reação livre, sem condição que incapacite (Incapacitado, Paralisado, Petrificado, Atordoado, Inconsciente) nem Cego, não caído (a vista de quem está a 0 PV), uma criatura que pode atacar com a reação (`mayAttack`) e com um ataque corpo a corpo; quem está no mesmo grupo de turno também reage. O alcance é o maior alcance corpo a corpo da ficha, no mínimo 5 ft (`meleeReachOf`; uma arma de arremesso, com alcance longo, não conta). Quem anda escondido não é visto por ninguém (até a 9.7), e quem usou Desengajar não provoca. Um salto em distância provoca (gasta movimento); o salto em altura, a colocação do mestre fora da vez de quem anda, o movimento `forced` do mestre e o movimento de volta da regra dos 0 PV não oferecem. Para o jogador, `GetMoveOptions` avisa só com o que ele vê (alcance de 5 ft, sem a reação nem a ficha do NPC). |
+| Ofertas | `opportunity_offers` (`00108`): uma por reator por movimento, com o quadrado de saída. O `MoveCombatant` grava um evento `opportunity_offered` por oferta (ids e quadrado, antes do evento do movimento, como os das criaturas) e põe o `move_id` no próprio evento. |
+| O turno espera | `mustNotWait` (chamado por `mustActNow`, que o ataque, a ação e a magia usam, pelo `MoveCombatant` e pelo `EndTurn`): `OPPORTUNITY_PENDING` para o jogador de quem tem oferta pendente, ou cujo ataque de oportunidade ainda tem o dano por rolar, aplicar ou descartar (`ListWaitingOpportunityOffers`); vale para o mover e para as criaturas do mesmo jogador no grupo de turno. Depois de qualquer mudança, `pruneOffers` passa a `skipped` as ofertas que ninguém responde mais (derrotado, caído, incapacitado, reação gasta). O mestre nunca é parado, e quando ele encerra o turno de quem andou as ofertas pendentes passam a `skipped`. As reações dos outros combatentes não esperam. |
+| Respostas | Atacar é o `RollAttack` com `opportunity_offer_id` (implica `as_reaction`, não confere o alcance e grava `offer_id` no evento do ataque); recusar, `DeclineOpportunity`; seguir sem esperar, `SkipOpportunity` (só o mestre). Os dois últimos gravam `reaction_declined` com o `offer_id`. Quem pode: o controlador do reator (o jogador do personagem ou da criatura; o mestre, de um NPC) e o mestre em qualquer uma (RN-10: um reator que o jogador não vê é `not_found`). Uma oferta que não existe mais (movimento desfeito, turno que passou) ou já respondida é `aborted`. |
+| Regra dos 0 PV | O ataque guarda o dano que abriu em `attack_pending_id`. Quando esse dano leva quem anda de mais de 0 PV a 0 (`RollDamage` para um NPC ou criatura; `ApplyPendingDamage` para um personagem), `returnToReach` põe o combatente no quadrado de saída da oferta e o evento do dano guarda `returned_from`, o que o desfazer do dano repõe; se o quadrado de saída está ocupado, quem anda fica onde está e o evento guarda `return_blocked` (a linha do mestre diz). O ataque conta a cobertura com quem anda no quadrado de saída. O movimento é publicado (`combatant_moved`) como qualquer outro. |
+| Desfazer | O desfazer do movimento apaga as ofertas pendentes dele (`move_id`). Só a última ação se desfaz: um movimento cuja oferta foi respondida só se desfaz depois de desfazer a resposta, e o desfazer de um ataque de oportunidade, de uma recusa ou de um "seguir sem esperar" devolve a oferta a `pending`. A recusa e o "seguir sem esperar" não têm linha própria no registro: o evento fica preso à linha do movimento (`move_id`), que passa a ser a desfazível. Os eventos `opportunity_offered` não fecham a cadeia do desfazer. |
+| Quem vê o quê | `Encounter.opportunity_offers` (`opportunityOffers`): o mestre vê todas, com nomes; o controlador do reator vê a sua, com os ataques corpo a corpo e o quadrado de saída; o jogador de quem anda vê o `mover_id` e só vê o reator (id e nome) se o reator não está escondido dele (RN-10); os outros jogadores não veem nenhuma. O stream continua só com a dica `encounter_changed` (e `combatant_moved` quando alguém volta), então nada novo vaza por ele. O `GetMoveOptions` põe em cada quadrado `provokes_reactor_ids`, só com reatores que quem pergunta enxerga. |
+
+**O que o ADR-0007 e o ADR-0011 devem ganhar.** O ADR-0007 (o payload dos eventos): `opportunity_offered` guarda ids e o quadrado de saída (`combatant_id` = quem anda, `target_id` = o reator, `offer_id`, `move_id`, `col`, `row`); o evento do movimento ganha `move_id`; o do ataque e o da recusa ganham `offer_id` (e `skipped`); o do dano ganha `returned_from`. O ADR-0011 (quem pode responder): o controlador do reator e o mestre respondem (atacam ou recusam); só o mestre segue sem esperar; o mestre não é parado pelo turno que espera.
 
 ### Armadilhas em jogo (Etapa 9, fatia 9.8)
 
@@ -1201,6 +1238,7 @@ stateDiagram-v2
 | `GetTurnOptions` | O jogador no próprio personagem; o mestre em qualquer um | O que o combatente pode fazer agora ("Sua vez"), com os alvos de cada ataque e de cada magia (`spell_targets`, com a distância, os dardos por círculo e quantos alvos a magia aceita) e o dano que falta rolar ou aplicar. Responde também fora da vez, com tudo desabilitado e o motivo |
 | `RollAttack` | O jogador no próprio personagem, na vez dele (ou com `as_reaction`, fora dela); o mestre em qualquer combatente da vez | O ataque, primeiro passo: rola o d20 (app ou face física), gasta a ação (ou a reação, no ataque de oportunidade) e compara com a CA do alvo |
 | `CastSpell` | O jogador no próprio personagem, na vez dele; o mestre em qualquer combatente da vez | Conjura: gasta o espaço e a ação ou a ação bônus de uma vez, e resolve pelo que a magia é (ataque de magia, resistência, dardos, cura ou só registro) |
+| `DeclineOpportunity`, `SkipOpportunity` | O controlador do reator (o jogador do personagem ou da criatura; o mestre, de um NPC) recusa; só o mestre segue sem esperar | Respondem uma oferta de ataque de oportunidade sem atacar (o ataque é o `RollAttack` com `opportunity_offer_id`); gravam `reaction_declined` ([Ataques de oportunidade](#ataques-de-oportunidade-etapa-9-fatia-96b)) |
 | `UseReaction`, `DeclineReaction` | O jogador no personagem atingido; o mestre em qualquer um | O Escudo quando um golpe acerta: gasta o espaço e a reação, dá +5 na CA até o começo da próxima vez do personagem e compara o golpe de novo; ou deixa o golpe passar |
 | `RollDeathSave` | O jogador no próprio personagem; o mestre em qualquer um | O teste contra a morte de quem está a 0 PV, no começo da vez dele |
 | `ConfirmDeath` | O mestre | Confirma a morte de quem falhou três vezes: marca o personagem como morto e o tira da ordem. Não se desfaz |

@@ -122,6 +122,8 @@ export function blockedMessage(blocked: EncounterBlocked): string {
       return 'Não há teste contra a morte para rolar agora. A tela foi atualizada.';
     case EncounterBlockedReason.NOT_DYING:
       return 'Esse personagem não falhou três testes contra a morte. A tela foi atualizada.';
+    case EncounterBlockedReason.OPPORTUNITY_PENDING:
+      return 'Esperando a reação do mestre: um ataque de oportunidade ainda não foi respondido.';
     case EncounterBlockedReason.NOT_ENDED:
       return 'O combate ainda não terminou. Os destaques aparecem quando ele acabar.';
     default:

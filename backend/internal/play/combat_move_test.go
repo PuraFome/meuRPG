@@ -215,8 +215,16 @@ func (c *cave) move(t *testing.T, u *user, label string, col, row int32, edit ..
 	return res.Msg.GetEncounter(), nil
 }
 
+// mustMove is a move that must work. The master's moves here are setup, not
+// play: the master's move of someone on turn that leaves an enemy's reach is a
+// move like any, which offers the enemy an opportunity attack (slice 9.6b), so
+// the setup is a forced move, which never provokes. The tests of the offers
+// themselves move with moveOffering.
 func (c *cave) mustMove(t *testing.T, u *user, label string, col, row int32, edit ...func(*playv1.MoveCombatantRequest)) *playv1.Encounter {
 	t.Helper()
+	if u == c.master {
+		edit = append(edit, func(r *playv1.MoveCombatantRequest) { r.Forced = true })
+	}
 	e, err := c.move(t, u, label, col, row, edit...)
 	if err != nil {
 		t.Fatalf("MoveCombatant(%s to %d,%d) error = %v", label, col, row, err)
