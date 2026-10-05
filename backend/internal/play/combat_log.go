@@ -164,6 +164,7 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 	}
 	var out []*logEntry
 	byPending := map[string]*logEntry{}
+	byFiring := map[string]*logEntry{}
 	// An opportunity offer's answer without an attack (a decline, a skip) is no
 	// line, but the master's undo can take it back: it belongs to the entry of
 	// the move that made the offer, so that entry is the one to undo.
@@ -224,10 +225,33 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 				}
 			}
 		case eventTrapTriggered:
+			if ev.Trap != nil && ev.Trap.ExtendsID != "" {
+				// The master added creatures to a firing: they join its entry, and their damage
+				// moves on with the master's apply like the rest.
+				if host, ok := byFiring[ev.Trap.ExtendsID]; ok && host.ev.Trap != nil {
+					host.ev.Trap.Caught = append(host.ev.Trap.Caught, ev.Trap.Caught...)
+					host.hosts = append(host.hosts, e.ID)
+					for _, cc := range ev.Trap.Caught {
+						for _, d := range cc.Damages {
+							if d.Pending == "" {
+								continue
+							}
+							status := playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_ROLLED
+							if d.Applied {
+								status = playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED
+							}
+							host.pend[d.Pending] = &damageLog{status: status}
+							byPending[d.Pending] = host
+						}
+					}
+				}
+				continue
+			}
 			// A trap fired (MR-035): the entry holds its pending damages, which the
 			// master's apply or discard moves on like a spell's.
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_TRAP_TRIGGERED
 			entry.pend = map[string]*damageLog{}
+			byFiring[e.ID] = entry
 			if ev.Trap != nil {
 				for _, cc := range ev.Trap.Caught {
 					for _, d := range cc.Damages {
@@ -583,7 +607,7 @@ func (e *logEntry) trapEntry(ctx context.Context, v combatViewer, byID map[strin
 			return 0, false
 		},
 	}
-	return firingProto(e.ev.Trap, names.trapName(ctx, e.ev.Trap.PointID), tv)
+	return firingProto(e.ev.Trap, e.id, names.trapName(ctx, e.ev.Trap.PointID), tv)
 }
 
 // trapName is the name of a trap that fired, "" when it was deleted since.

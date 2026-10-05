@@ -2264,57 +2264,6 @@ func (q *Queries) ListTrapNamesInCampaign(ctx context.Context, arg ListTrapNames
 	return items, nil
 }
 
-const listTrapsOfMap = `-- name: ListTrapsOfMap :many
-SELECT id, map_id, kind, name, description, x_bp, y_bp, target_map_id, revealed_at, created_at, updated_at, hooks, show_dc, trap, trap_state, trap_triggered_at, treasure_value_po, treasure_found_at, treasure_session_id, treasure_converted_award_id, light_preset, light_bright_ft, light_dim_ft FROM map_points
-WHERE map_id = $1 AND kind = 'trap'
-ORDER BY created_at, id
-`
-
-// The map's traps, oldest first: what noticing, searching and firing read.
-func (q *Queries) ListTrapsOfMap(ctx context.Context, mapID string) ([]MapPoint, error) {
-	rows, err := q.db.Query(ctx, listTrapsOfMap, mapID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []MapPoint
-	for rows.Next() {
-		var i MapPoint
-		if err := rows.Scan(
-			&i.ID,
-			&i.MapID,
-			&i.Kind,
-			&i.Name,
-			&i.Description,
-			&i.XBp,
-			&i.YBp,
-			&i.TargetMapID,
-			&i.RevealedAt,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.Hooks,
-			&i.ShowDc,
-			&i.Trap,
-			&i.TrapState,
-			&i.TrapTriggeredAt,
-			&i.TreasureValuePo,
-			&i.TreasureFoundAt,
-			&i.TreasureSessionID,
-			&i.TreasureConvertedAwardID,
-			&i.LightPreset,
-			&i.LightBrightFt,
-			&i.LightDimFt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listTreasureFindersOfMap = `-- name: ListTreasureFindersOfMap :many
 SELECT f.point_id, f.character_id FROM map_treasure_finders AS f
 JOIN map_points AS p ON p.id = f.point_id

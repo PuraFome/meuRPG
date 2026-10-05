@@ -479,11 +479,28 @@ service PlayService {
   //   - `failed_precondition`: no open session; EncounterBlocked TRAP_NOT_ARMED.
   rpc FireTrap(FireTrapRequest) returns (FireTrapResponse);
 
-  // ListTrapDamages lists the trap damages that wait for the master, in a combat
-  // and outside one (MR-035, RN-02). Only the campaign's master may call it.
+  // ListTrapActivity reads what traps did in the open session outside a combat (MR-035,
+  // RN-10): the firings, with each creature's attack, saving throw and damage (the
+  // conditions are a reminder), and the searches. The master gets all of it; a player
+  // only the lines of their own characters, with their own d20 and "passou" or
+  // "falhou", never a DC and never a trap their characters do not know. In a combat the
+  // same is in the combat log. Any member may call it. A player's search, and a firing
+  // outside a combat, send the master a `map_changed` hint with no content.
+  //
+  // Errors: `not_found` (the campaign does not exist, or the caller is not a member),
+  // `failed_precondition` (no open session).
+  rpc ListTrapActivity(ListTrapActivityRequest) returns (ListTrapActivityResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // ListTrapDamages lists the trap damages that wait for the master (MR-035, RN-02):
+  // the open combat's, and every one outside a combat, from any session of the
+  // campaign, until the master applies or discards it (a combat that ends turns its
+  // waiting damage into one of these). Only the campaign's master may call it, with or
+  // without an open session.
   //
   // Errors: `not_found` (the campaign does not exist, or the caller is not a
-  // member), `permission_denied` (a player), `failed_precondition` (no open session).
+  // member), `permission_denied` (a player).
   rpc ListTrapDamages(ListTrapDamagesRequest) returns (ListTrapDamagesResponse) {
     option idempotency_level = IDEMPOTENT;
   }
@@ -495,8 +512,9 @@ service PlayService {
   //
   // Errors: `invalid_argument` (amount outside 0 to 1000, key), `not_found` (the
   // damage is not the session's, or the campaign), `permission_denied`,
-  // `failed_precondition` (no open session; EncounterBlocked DAMAGE_RESOLVED when it
-  // was applied or discarded already).
+  // `failed_precondition` (EncounterBlocked DAMAGE_RESOLVED when it was applied or
+  // discarded already). It works with no session open (the damage outlives its session);
+  // a key reused for another damage is `invalid_argument`.
   rpc ApplyTrapDamage(ApplyTrapDamageRequest) returns (ApplyTrapDamageResponse);
 
   // DiscardTrapDamage drops a trap damage that is not in a combat, applying

@@ -279,7 +279,7 @@ func (s *Service) MoveCombatant(
 			}
 		}
 
-		th = s.newTrapHook(ctx, m.CampaignID, c.enc, target)
+		th = s.newTrapHook(ctx, c.tx, m.CampaignID, c.enc, target)
 		from := moveStateOf(target)
 		made = actionEvent{Round: c.enc.Round, Secret: target.Hidden, Actor: target.ID, OnTurn: onTurn, From: from}
 		to := grid.Square{Col: int(col), Row: int(row)}

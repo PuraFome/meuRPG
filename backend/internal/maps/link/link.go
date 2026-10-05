@@ -120,3 +120,7 @@ type SearchResult struct {
 
 // ErrTrapNotArmed is the error of firing a trap that is not armed.
 var ErrTrapNotArmed = errors.New("the trap is not armed")
+
+// ErrSearchNeedsTwoDice is the error of a Perception search with one die when a square
+// within 3 m that the searcher sees is lightly obscured: the roll has disadvantage.
+var ErrSearchNeedsTwoDice = errors.New("the search needs two dice")

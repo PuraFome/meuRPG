@@ -7,6 +7,9 @@ import (
 	"slices"
 	"time"
 
+	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
+
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
@@ -47,8 +50,11 @@ type trapFireEvent struct {
 	// undo puts them back.
 	PrevState       string     `json:"prev_state"`
 	PrevTriggeredAt *time.Time `json:"prev_triggered_at,omitempty"`
-	// Manual says the master fired it.
-	Manual bool `json:"manual,omitempty"`
+	// Manual says the master fired it. ExtendsID is the firing this one adds creatures
+	// to (the master picks who is caught, D5): the trap is not triggered again, and an
+	// undo takes back only the creatures it added.
+	Manual    bool   `json:"manual,omitempty"`
+	ExtendsID string `json:"extends_id,omitempty"`
 	// Caught is what happened to each creature the trap caught, in order. In a
 	// combat the target is a combatant; outside one, a character.
 	Caught []trapCaughtEvent `json:"caught,omitempty"`
@@ -62,7 +68,7 @@ type trapCaughtEvent struct {
 	// master.
 	Player  bool              `json:"player,omitempty"`
 	Attacks []trapAttackEvent `json:"attacks,omitempty"`
-	Save    *saveRoll         `json:"save,omitempty"`
+	Saves   []saveRoll        `json:"saves,omitempty"` // one, or one for each hit of a trap that asks it of the creatures it hit
 	Damages []trapDamageEvent `json:"damages,omitempty"`
 	// Conditions are the keys the trap gave; in a combat CondBefore are the
 	// combatant's conditions before, which the undo puts back (CondSet).
@@ -138,14 +144,21 @@ func (s *Service) trapTargetsOf(ctx context.Context, campaignID string, effect *
 // now on), the effect is rolled, and each result lands where it belongs. The
 // caller writes the event and touches the combat. maplink.ErrTrapNotArmed comes
 // back as it is.
-func (s *Service) fireInCombat(ctx context.Context, c *combatTx, trap maplink.Trap, caught []playdb.Combatant, manual bool) (*trapFireEvent, error) {
+func (s *Service) fireInCombat(ctx context.Context, c *combatTx, trap maplink.Trap, caught []playdb.Combatant, manual bool, extends string) (*trapFireEvent, error) {
 	campaignID := c.session.CampaignID
-	prev, err := s.traps.TriggerTrap(ctx, c.tx, campaignID, trap.MapID, trap.PointID, c.now)
-	if err != nil {
-		return nil, err // maplink.ErrTrapNotArmed is the caller's to turn into an answer
+	prev := trap
+	ev := &trapFireEvent{PointID: trap.PointID, MapID: trap.MapID, Manual: manual, ExtendsID: extends}
+	if extends == "" {
+		var err error
+		if prev, err = s.traps.TriggerTrap(ctx, c.tx, campaignID, trap.MapID, trap.PointID, c.now); err != nil {
+			if connect.CodeOf(err) == connect.CodeNotFound {
+				err = maplink.ErrTrapNotArmed // deleted meanwhile: it is simply not there
+			}
+			return nil, err // maplink.ErrTrapNotArmed is the caller's to turn into an answer
+		}
+		ev.PrevState, ev.PrevTriggeredAt = prev.State, prev.TriggeredAt
 	}
 	effect := prev.Spec.GetEffect()
-	ev := &trapFireEvent{PointID: trap.PointID, MapID: trap.MapID, PrevState: prev.State, PrevTriggeredAt: prev.TriggeredAt, Manual: manual}
 	targets, err := s.trapTargetsOf(ctx, campaignID, effect, caught)
 	if err != nil {
 		return nil, err
@@ -167,7 +180,7 @@ func (s *Service) fireInCombat(ctx context.Context, c *combatTx, trap maplink.Tr
 			}
 			cc.Attacks = append(cc.Attacks, trapAttackEvent{D20: clampInt32(a.d20), Modifier: clampInt32(a.bonus), Total: clampInt32(a.total), Outcome: outcome, TargetAC: clampInt32(a.armorClass)})
 		}
-		cc.Save = saveEventOf(o.save)
+		cc.Saves = savesEventOf(o.saves)
 		if len(o.conditions) > 0 {
 			merged := slices.Clone(who.Conditions)
 			for _, k := range o.conditions {
@@ -197,12 +210,13 @@ func (s *Service) fireInCombat(ctx context.Context, c *combatTx, trap maplink.Tr
 	return ev, nil
 }
 
-// saveEventOf is a rolled saving throw as the event keeps it.
-func saveEventOf(r *trapSaveRoll) *saveRoll {
-	if r == nil {
-		return nil
+// savesEventOf are the rolled saving throws as the event keeps them.
+func savesEventOf(rs []trapSaveRoll) []saveRoll {
+	var out []saveRoll
+	for _, r := range rs {
+		out = append(out, saveRoll{D20: clampInt32(r.d20), Bonus: clampInt32(r.bonus), Total: clampInt32(r.total), DC: clampInt32(r.dc), Saved: r.saved, Unknown: !r.known})
 	}
-	return &saveRoll{D20: clampInt32(r.d20), Bonus: clampInt32(r.bonus), Total: clampInt32(r.total), DC: clampInt32(r.dc), Saved: r.saved, Unknown: !r.known}
+	return out
 }
 
 // trapDamageInCombat records one damage part for a combatant: a player's
@@ -267,8 +281,8 @@ func (s *Service) takeBackTrap(ctx context.Context, c *combatTx, ev trapFireEven
 			}
 		}
 	}
-	if s.traps == nil {
-		return nil
+	if s.traps == nil || ev.ExtendsID != "" {
+		return nil // an extension never changed the trap
 	}
 	return s.traps.RestoreTrap(ctx, c.tx, c.session.CampaignID, ev.MapID, ev.PointID, ev.PrevState, ev.PrevTriggeredAt, c.now)
 }
@@ -311,13 +325,13 @@ type trapHook struct {
 // a player's character or a creature of one, in a combat that is running. An NPC,
 // a combat that has not begun and a map with no traps give a hook that does
 // nothing. A failure to read them is logged: a move never fails for it.
-func (s *Service) newTrapHook(ctx context.Context, campaignID string, enc playdb.Encounter, mover playdb.Combatant) *trapHook {
+func (s *Service) newTrapHook(ctx context.Context, tx pgx.Tx, campaignID string, enc playdb.Encounter, mover playdb.Combatant) *trapHook {
 	th := &trapHook{s: s, mover: mover}
 	if s.traps == nil || enc.MapID == nil || enc.Status != statusActive || mover.Kind == kindNPC || !placed(mover) {
 		return th
 	}
 	th.mapID, th.origin = *enc.MapID, squareOfCombatant(mover)
-	traps, err := s.traps.Traps(ctx, campaignID, th.mapID)
+	traps, err := s.traps.Traps(ctx, tx, campaignID, th.mapID) // inside the move's transaction: a trap disarmed or deleted meanwhile makes it retry, and is simply not there
 	if err != nil {
 		s.logger.ErrorContext(ctx, "play: cannot read the map's traps", "error", err)
 		return th
@@ -384,7 +398,7 @@ func (th *trapHook) finish(ctx context.Context, c *combatTx, made actionEvent, c
 			caught = append([]playdb.Combatant{moved}, caught...)
 		}
 	}
-	ev, err := th.s.fireInCombat(ctx, c, *th.entered, caught, false)
+	ev, err := th.s.fireInCombat(ctx, c, *th.entered, caught, false, "")
 	if errors.Is(err, maplink.ErrTrapNotArmed) {
 		return made, nil // fired or disarmed meanwhile: the move stands, the trap does not fire again
 	}
@@ -397,7 +411,7 @@ func (th *trapHook) finish(ctx context.Context, c *combatTx, made actionEvent, c
 	}
 	th.fired = ev
 	c.kind = eventTrapTriggered
-	return actionEvent{Round: c.enc.Round, Actor: moved.ID, Trap: ev, StoppedEarly: made.StoppedEarly, OnTurn: made.OnTurn}, nil
+	return actionEvent{Round: c.enc.Round, Actor: moved.ID, Trap: ev, StoppedEarly: made.StoppedEarly, OnTurn: made.OnTurn, MoveID: made.MoveID}, nil
 }
 
 // after tells the streams about the traps the move changed, after the commit: the
@@ -486,8 +500,8 @@ type trapView struct {
 }
 
 // firingProto is the trap's firing as the viewer gets it, built from its event.
-func firingProto(ev *trapFireEvent, name string, v trapView) *playv1.TrapFiring {
-	out := &playv1.TrapFiring{PointId: ev.PointID, Name: name}
+func firingProto(ev *trapFireEvent, id, name string, v trapView) *playv1.TrapFiring {
+	out := &playv1.TrapFiring{PointId: ev.PointID, Name: name, Id: id}
 	for _, cc := range ev.Caught {
 		if !v.master && v.hidden != nil && v.hidden(cc.Target) {
 			continue // a combatant the players do not see stays out of their line
@@ -507,7 +521,7 @@ func firingProto(ev *trapFireEvent, name string, v trapView) *playv1.TrapFiring 
 			}
 			t.Attacks = append(t.Attacks, r)
 		}
-		if sv := cc.Save; sv != nil {
+		for _, sv := range cc.Saves {
 			r := &playv1.TrapSaveRoll{Outcome: playv1.SaveOutcome_SAVE_OUTCOME_FAILED}
 			if sv.Saved {
 				r.Outcome = playv1.SaveOutcome_SAVE_OUTCOME_SAVED
@@ -518,7 +532,10 @@ func firingProto(ev *trapFireEvent, name string, v trapView) *playv1.TrapFiring 
 			if v.master {
 				r.Dc, r.BonusKnown = sv.DC, !sv.Unknown
 			}
-			t.Save = r
+			if t.Save == nil {
+				t.Save = r
+			}
+			t.Saves = append(t.Saves, r)
 		}
 		for _, d := range cc.Damages {
 			status := playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_ROLLED

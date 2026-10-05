@@ -322,8 +322,10 @@ type actionEvent struct {
 	// puts back. A search (`trap_searched`) keeps its roll in the same fields as an
 	// attack (D20, Modifier, Total, Physical), Key the skill ("perception" or
 	// "investigation") and Found the traps it revealed (point IDs).
-	Trap  *trapFireEvent `json:"trap,omitempty"`
-	Found []string       `json:"found,omitempty"`
+	Trap *trapFireEvent `json:"trap,omitempty"`
+	// D20B is the second d20 of a Perception search with disadvantage.
+	D20B  int32    `json:"d20_b,omitempty"`
+	Found []string `json:"found,omitempty"`
 }
 
 // readEvent decodes an event's payload. A payload of this module never fails

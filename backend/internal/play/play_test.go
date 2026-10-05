@@ -180,6 +180,10 @@ func TestAuthorizationMatrix(t *testing.T) {
 			}))
 			return err
 		}, [5]connect.Code{connect.CodePermissionDenied, connect.CodeFailedPrecondition, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"ListTrapActivity", func(ctx context.Context, c client) error {
+			_, err := c.ListTrapActivity(ctx, connect.NewRequest(&playv1.ListTrapActivityRequest{CampaignId: campaign}))
+			return err
+		}, [5]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
 		{"FireTrap", func(ctx context.Context, c client) error {
 			_, err := c.FireTrap(ctx, connect.NewRequest(&playv1.FireTrapRequest{CampaignId: campaign, MapId: campaign, PointId: campaign, IdempotencyKey: newKey()}))
 			return err
@@ -684,6 +688,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["SearchForTraps"] = c.SearchForTraps(ctx, connect.NewRequest(&playv1.SearchForTrapsRequest{
 		CampaignId: id, IdempotencyKey: id, Skill: playv1.TrapSearchSkill_TRAP_SEARCH_SKILL_PERCEPTION, Roll: &playv1.SearchForTrapsRequest_RollInApp{RollInApp: true},
 	}))
+	_, calls["ListTrapActivity"] = c.ListTrapActivity(ctx, connect.NewRequest(&playv1.ListTrapActivityRequest{CampaignId: id}))
 	_, calls["FireTrap"] = c.FireTrap(ctx, connect.NewRequest(&playv1.FireTrapRequest{CampaignId: id, MapId: id, PointId: id, IdempotencyKey: id}))
 	_, calls["ListTrapDamages"] = c.ListTrapDamages(ctx, connect.NewRequest(&playv1.ListTrapDamagesRequest{CampaignId: id}))
 	_, calls["ApplyTrapDamage"] = c.ApplyTrapDamage(ctx, connect.NewRequest(&playv1.ApplyTrapDamageRequest{CampaignId: id, TrapDamageId: id, IdempotencyKey: id}))
@@ -799,7 +804,9 @@ func firstEventError(ctx context.Context, c playv1connect.PlayServiceClient, cam
 // no maps module.
 type emptyTrapBook struct{}
 
-func (emptyTrapBook) Traps(context.Context, string, string) ([]maplink.Trap, error) { return nil, nil }
+func (emptyTrapBook) Traps(context.Context, pgx.Tx, string, string) ([]maplink.Trap, error) {
+	return nil, nil
+}
 
 func (emptyTrapBook) KnownTraps(context.Context, string, string, string) ([]maplink.Trap, error) {
 	return nil, nil
@@ -807,7 +814,7 @@ func (emptyTrapBook) KnownTraps(context.Context, string, string, string) ([]mapl
 
 func (emptyTrapBook) Notice(context.Context, string, string, []maplink.Observer) error { return nil }
 
-func (emptyTrapBook) SearchTraps(context.Context, pgx.Tx, string, string, maplink.Observer, string, int, time.Time) (maplink.SearchResult, error) {
+func (emptyTrapBook) SearchTraps(context.Context, pgx.Tx, string, string, maplink.Observer, string, []int, time.Time) (maplink.SearchResult, error) {
 	return maplink.SearchResult{}, nil
 }
 func (emptyTrapBook) Told(context.Context, string, string, []string) {}

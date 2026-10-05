@@ -669,12 +669,6 @@ SET trap_state = sqlc.arg(trap_state), trap_triggered_at = sqlc.narg(trap_trigge
 WHERE map_id = sqlc.arg(map_id) AND id = sqlc.arg(id) AND kind = 'trap'
 RETURNING *;
 
--- name: ListTrapsOfMap :many
--- The map's traps, oldest first: what noticing, searching and firing read.
-SELECT * FROM map_points
-WHERE map_id = $1 AND kind = 'trap'
-ORDER BY created_at, id;
-
 -- name: ListPointRevealCharacters :many
 -- The characters that know each trap of the map, for the noticing: one row per
 -- trap and character.

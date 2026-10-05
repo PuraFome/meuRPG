@@ -60,10 +60,19 @@ func (s *Service) FireTrap(
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("target_ids must be UUIDs"))
 		}
 	}
+	extend := req.Msg.GetExtendFiringId()
+	if extend != "" {
+		if _, err := uuid.Parse(extend); err != nil {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("firing not found"))
+		}
+		if len(targets) == 0 {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("extend_firing_id needs the target_ids to add"))
+		}
+	}
 	if s.traps == nil {
 		return nil, errNoTraps()
 	}
-	traps, err := s.traps.Traps(ctx, m.CampaignID, mapID.String())
+	traps, err := s.traps.Traps(ctx, nil, m.CampaignID, mapID.String())
 	if err != nil {
 		return nil, s.dbError(ctx, "read the map's traps", err)
 	}
@@ -80,10 +89,28 @@ func (s *Service) FireTrap(
 	if err != nil {
 		return nil, s.dbError(ctx, "find the combat", err)
 	}
-	if inCombat {
-		return s.fireByHandInCombat(ctx, m, key, trap, enc, targets)
+	if extend != "" {
+		// The firing to extend is this trap's, from this session, in the same place (a
+		// combat, or outside one), and the trap is as it left it.
+		row, err := s.queries.GetSessionEventByID(ctx, playdb.GetSessionEventByIDParams{GameSessionID: session.ID, ID: extend})
+		var host actionEvent
+		if err == nil {
+			err = json.Unmarshal(row.Payload, &host)
+		}
+		if errors.Is(err, pgx.ErrNoRows) || (err == nil && (row.Kind != eventTrapTriggered || host.Trap == nil || host.Trap.PointID != trap.PointID)) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("firing not found"))
+		}
+		if err != nil {
+			return nil, s.dbError(ctx, "read the firing", err)
+		}
+		if host.Trap.ExtendsID != "" || (inCombat && (row.EncounterID == nil || *row.EncounterID != enc.ID)) || (!inCombat && row.EncounterID != nil) || trap.State != "triggered" {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("that firing cannot be extended now"))
+		}
 	}
-	fired, repeated, err := s.fireOutsideCombat(ctx, m.CampaignID, m.UserID, key, trap, targets, true)
+	if inCombat {
+		return s.fireByHandInCombat(ctx, m, key, trap, enc, targets, extend)
+	}
+	fired, firingID, repeated, err := s.fireOutsideCombat(ctx, m.CampaignID, m.UserID, key, trap, targets, true, extend)
 	if err != nil {
 		return nil, s.dbError(ctx, "fire a trap", err)
 	}
@@ -94,11 +121,14 @@ func (s *Service) FireTrap(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the characters' names", err)
 	}
-	return connect.NewResponse(&playv1.FireTrapResponse{Firing: firingProto(fired, trap.Name, trapView{master: true, label: func(id string) string { return names[id] }})}), nil
+	if extend != "" {
+		firingID = extend
+	}
+	return connect.NewResponse(&playv1.FireTrapResponse{Firing: firingProto(fired, firingID, trap.Name, trapView{master: true, label: func(id string) string { return names[id] }})}), nil
 }
 
 // fireByHandInCombat is FireTrap while a combat runs on the trap's map.
-func (s *Service) fireByHandInCombat(ctx context.Context, m authz.Membership, key string, trap maplink.Trap, enc playdb.Encounter, targetIDs []string) (*connect.Response[playv1.FireTrapResponse], error) {
+func (s *Service) fireByHandInCombat(ctx context.Context, m authz.Membership, key string, trap maplink.Trap, enc playdb.Encounter, targetIDs []string, extend string) (*connect.Response[playv1.FireTrapResponse], error) {
 	var made actionEvent
 	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventTrapTriggered, encounterID: enc.ID}, func(c *combatTx) (any, error) {
 		if err := notEnded(c.enc); err != nil {
@@ -121,7 +151,7 @@ func (s *Service) fireByHandInCombat(ctx context.Context, m authz.Membership, ke
 				caught = append(caught, who)
 			}
 		}
-		fired, err := s.fireInCombat(ctx, c, trap, caught, true)
+		fired, err := s.fireInCombat(ctx, c, trap, caught, true, extend)
 		if errors.Is(err, maplink.ErrTrapNotArmed) {
 			return nil, errTrapNotArmed()
 		}
@@ -148,8 +178,16 @@ func (s *Service) fireByHandInCombat(ctx context.Context, m authz.Membership, ke
 		return nil, err
 	}
 	_ = out
+	firingID := extend
+	if firingID == "" {
+		row, err := s.queries.GetSessionEventByIdempotencyKey(ctx, playdb.GetSessionEventByIdempotencyKeyParams{GameSessionID: res.session.ID, IdempotencyKey: &key})
+		if err != nil {
+			return nil, s.dbError(ctx, "read the firing", err)
+		}
+		firingID = row.ID
+	}
 	label := s.membersOf(ctx, res)
-	return connect.NewResponse(&playv1.FireTrapResponse{Firing: firingProto(ev.Trap, trap.Name, trapView{master: true, label: func(id string) string {
+	return connect.NewResponse(&playv1.FireTrapResponse{Firing: firingProto(ev.Trap, firingID, trap.Name, trapView{master: true, label: func(id string) string {
 		c, _ := label(id)
 		return c.Label
 	}})}), nil
@@ -222,10 +260,10 @@ func (s *Service) tokensOn(ctx context.Context, campaignID, mapID string) (map[s
 // transaction of its own, and returns the firing and whether it was a retry. key
 // is "" for a firing nobody retries (a token landing); targetIDs are characters
 // with tokens on the map, empty for every token in the area.
-func (s *Service) fireOutsideCombat(ctx context.Context, campaignID, actorUserID, key string, trap maplink.Trap, targetIDs []string, manual bool) (*trapFireEvent, bool, error) {
+func (s *Service) fireOutsideCombat(ctx context.Context, campaignID, actorUserID, key string, trap maplink.Trap, targetIDs []string, manual bool, extend string) (*trapFireEvent, string, bool, error) {
 	at, living, err := s.tokensOn(ctx, campaignID, trap.MapID)
 	if err != nil {
-		return nil, false, err
+		return nil, "", false, err
 	}
 	var caught []link.Character
 	for _, ch := range living {
@@ -239,15 +277,16 @@ func (s *Service) fireOutsideCombat(ctx context.Context, campaignID, actorUserID
 	}
 	for _, id := range targetIDs {
 		if !slices.ContainsFunc(caught, func(ch link.Character) bool { return ch.ID == id }) {
-			return nil, false, connect.NewError(connect.CodeInvalidArgument, errors.New("target_ids must be characters with a token on the trap's map"))
+			return nil, "", false, connect.NewError(connect.CodeInvalidArgument, errors.New("target_ids must be characters with a token on the trap's map"))
 		}
 	}
 
 	var fired *trapFireEvent
+	var firingID string
 	var repeated bool
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
-		fired, repeated = nil, false
+		fired, firingID, repeated = nil, "", false
 		session, err := q.GetOpenGameSessionForUpdate(ctx, campaignID)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return errNoOpenSession()
@@ -266,41 +305,45 @@ func (s *Service) fireOutsideCombat(ctx context.Context, campaignID, actorUserID
 				if err := json.Unmarshal(done.Payload, &ev); err != nil {
 					return fmt.Errorf("decode the event of %s: %w", done.ID, err)
 				}
-				fired, repeated = ev.Trap, true
+				fired, firingID, repeated = ev.Trap, done.ID, true
 				return nil
 			case !errors.Is(err, pgx.ErrNoRows):
 				return fmt.Errorf("find the event of this idempotency key: %w", err)
 			}
 		}
 		c := &combatTx{tx: tx, q: q, session: session, now: s.now(), actorUserID: actorUserID}
-		if fired, err = s.fireOutside(ctx, c, trap, caught, manual); err != nil {
+		if fired, err = s.fireOutside(ctx, c, trap, caught, manual, extend); err != nil {
 			return err
 		}
 		var keyPtr *string
 		if key != "" {
 			keyPtr = &key
 		}
-		_, err = insertSceneEvent(ctx, c, eventTrapTriggered, &actorUserID, keyPtr, actionEvent{Trap: fired})
+		firingID, err = insertSceneEvent(ctx, c, eventTrapTriggered, &actorUserID, keyPtr, actionEvent{Trap: fired})
 		return err
 	})
 	if errors.Is(err, maplink.ErrTrapNotArmed) {
-		return nil, false, errTrapNotArmed()
+		return nil, "", false, errTrapNotArmed()
 	}
-	return fired, repeated, err
+	return fired, firingID, repeated, err
 }
 
 // fireOutside resolves the trap against characters, inside the transaction: the
 // trap is triggered, the effect rolled, and the damage to a player's character
 // waits for the master in trap_damages. An NPC has no hit points stored outside a
 // combat: its damage is only in the event. Conditions are a reminder in it.
-func (s *Service) fireOutside(ctx context.Context, c *combatTx, trap maplink.Trap, caught []link.Character, manual bool) (*trapFireEvent, error) {
+func (s *Service) fireOutside(ctx context.Context, c *combatTx, trap maplink.Trap, caught []link.Character, manual bool, extend string) (*trapFireEvent, error) {
 	campaignID := c.session.CampaignID
-	prev, err := s.traps.TriggerTrap(ctx, c.tx, campaignID, trap.MapID, trap.PointID, c.now)
-	if err != nil {
-		return nil, err
+	prev := trap
+	ev := &trapFireEvent{PointID: trap.PointID, MapID: trap.MapID, Manual: manual, ExtendsID: extend}
+	if extend == "" {
+		var err error
+		if prev, err = s.traps.TriggerTrap(ctx, c.tx, campaignID, trap.MapID, trap.PointID, c.now); err != nil {
+			return nil, err
+		}
+		ev.PrevState, ev.PrevTriggeredAt = prev.State, prev.TriggeredAt
 	}
 	effect := prev.Spec.GetEffect()
-	ev := &trapFireEvent{PointID: trap.PointID, MapID: trap.MapID, PrevState: prev.State, PrevTriggeredAt: prev.TriggeredAt, Manual: manual}
 	ability := trapSaveAbility(effect)
 	targets := make([]trapTarget, len(caught))
 	for i, ch := range caught {
@@ -327,7 +370,7 @@ func (s *Service) fireOutside(ctx context.Context, c *combatTx, trap maplink.Tra
 	fireID := uuid.New().String()
 	for i, o := range outcomes {
 		ch := caught[i]
-		cc := trapCaughtEvent{Target: ch.ID, Character: ch.ID, Player: ch.Player, Conditions: o.conditions, Save: saveEventOf(o.save)}
+		cc := trapCaughtEvent{Target: ch.ID, Character: ch.ID, Player: ch.Player, Conditions: o.conditions, Saves: savesEventOf(o.saves)}
 		for _, a := range o.attacks {
 			outcome := outcomeMiss
 			switch {
@@ -385,7 +428,7 @@ func (s *Service) TokenDropped(ctx context.Context, campaignID, mapID, character
 	if _, inCombat, err := s.runningEncounterOn(ctx, session.ID, mapID); err != nil || inCombat {
 		return err
 	}
-	traps, err := s.traps.Traps(ctx, campaignID, mapID)
+	traps, err := s.traps.Traps(ctx, nil, campaignID, mapID)
 	if err != nil {
 		return err
 	}
@@ -397,7 +440,7 @@ func (s *Service) TokenDropped(ctx context.Context, campaignID, mapID, character
 		if t.Spec.GetEffect().GetTargets() != rulesv1.TrapTargets_TRAP_TARGETS_MANUAL {
 			targets = nil // everyone standing in the area, the one that landed included
 		}
-		fired, _, err := s.fireOutsideCombat(ctx, campaignID, actorUserID, "", t, targets, false)
+		fired, _, _, err := s.fireOutsideCombat(ctx, campaignID, actorUserID, "", t, targets, false, "")
 		if err != nil && connect.CodeOf(err) == connect.CodeFailedPrecondition {
 			continue // fired or disarmed since it was read: it does not fire twice
 		}

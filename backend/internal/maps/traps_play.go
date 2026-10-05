@@ -69,12 +69,16 @@ type trapScene struct {
 
 // loadTrapScene reads what noticing needs. A map with no grid has no traps in
 // play: a trap's area is squares (g is invalid and points empty).
-func (s *Service) loadTrapScene(ctx context.Context, campaignID, mapID string, withEyes bool) (*trapScene, error) {
-	row, err := s.campaignMap(ctx, s.queries, campaignID, mapID)
+func (s *Service) loadTrapScene(ctx context.Context, tx pgx.Tx, campaignID, mapID string, withEyes bool) (*trapScene, error) {
+	q := s.queries
+	if tx != nil {
+		q = q.WithTx(tx) // read inside the caller's transaction: a change that commits meanwhile makes it retry
+	}
+	row, err := s.campaignMap(ctx, q, campaignID, mapID)
 	if err != nil {
 		return nil, err
 	}
-	size, err := s.queries.GetMapGrid(ctx, mapsdb.GetMapGridParams{CampaignID: campaignID, ID: mapID})
+	size, err := q.GetMapGrid(ctx, mapsdb.GetMapGridParams{CampaignID: campaignID, ID: mapID})
 	if err != nil {
 		return nil, fmt.Errorf("read the map's grid: %w", err)
 	}
@@ -85,7 +89,7 @@ func (s *Service) loadTrapScene(ctx context.Context, campaignID, mapID string, w
 	if !ts.g.Valid() {
 		return ts, nil
 	}
-	all, err := s.queries.ListMapPoints(ctx, mapID)
+	all, err := q.ListMapPoints(ctx, mapID)
 	if err != nil {
 		return nil, fmt.Errorf("list the points: %w", err)
 	}
@@ -96,7 +100,7 @@ func (s *Service) loadTrapScene(ctx context.Context, campaignID, mapID string, w
 			ts.specs[p.ID] = s.trapOf(p)
 		}
 	}
-	revealed, err := s.queries.ListPointRevealCharacters(ctx, mapID)
+	revealed, err := q.ListPointRevealCharacters(ctx, mapID)
 	if err != nil {
 		return nil, fmt.Errorf("list who knows the traps: %w", err)
 	}
@@ -152,6 +156,34 @@ type sighting struct {
 	// seenPenalty is the same at the best square seen at all, near or not: what the
 	// master's card shows for a character that is out of range.
 	seenPenalty int
+	// obscured says the best eligible square is lightly obscured to the observer: an
+	// active Perception check on it has disadvantage (SRD).
+	obscured bool
+}
+
+// penaltyAt is the passive-check penalty at a square the viewer sees: dim light, or
+// darkness seen through darkvision, takes 5 (vision.PassivePenalty); a square within
+// the viewer's blindsight is not lightly obscured to it.
+func (ts *trapScene) penaltyAt(v vision.Viewer, sq grid.Square) int {
+	if bs := v.Senses.BlindsightFt; bs > 0 && grid.LengthDFt(v.At, sq) <= bs*10 {
+		return 0
+	}
+	return vision.PassivePenalty(ts.stateAt(v, sq))
+}
+
+// nearbyObscured says some square within 3 m that the viewer sees is lightly obscured
+// to it. It looks at squares, never at traps, so it tells nothing about them: it is
+// what decides whether a Perception search on a real die needs a second one.
+func (ts *trapScene) nearbyObscured(v vision.Viewer) bool {
+	for row := v.At.Row - 2; row <= v.At.Row+2; row++ {
+		for col := v.At.Col - 2; col <= v.At.Col+2; col++ {
+			sq := grid.Square{Col: col, Row: row}
+			if ts.g.Contains(sq) && grid.LengthDFt(v.At, sq) <= noticeRangeDFt && seesSquare(ts.stateAt(v, sq)) && ts.penaltyAt(v, sq) < 0 {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // sightOf is what the viewer makes of the squares of an area.
@@ -162,14 +194,14 @@ func (ts *trapScene) sightOf(v vision.Viewer, area []grid.Square) sighting {
 		seen := seesSquare(ts.stateAt(v, sq))
 		out.inRange = out.inRange || near
 		if seen {
-			pen := vision.PassivePenalty(ts.stateAt(v, sq))
+			pen := ts.penaltyAt(v, sq)
 			if !out.sees || pen > out.seenPenalty {
 				out.seenPenalty = pen
 			}
 			out.sees = true
 			if near {
 				if !out.eligible || pen > out.penalty {
-					out.penalty = pen
+					out.penalty, out.obscured = pen, pen < 0
 				}
 				out.eligible = true
 			}
@@ -211,7 +243,7 @@ func (s *Service) Notice(ctx context.Context, campaignID, mapID string, who []li
 	if len(who) == 0 {
 		return nil
 	}
-	ts, err := s.loadTrapScene(ctx, campaignID, mapID, true)
+	ts, err := s.loadTrapScene(ctx, nil, campaignID, mapID, true)
 	if err != nil || len(ts.points) == 0 {
 		return err
 	}
@@ -242,8 +274,10 @@ func (s *Service) Notice(ctx context.Context, campaignID, mapID string, who []li
 		q := s.queries.WithTx(tx)
 		told = nil
 		now := s.now()
-		byPoint := map[string][]string{}
-		var order []string
+		// One event for each trap and player: the actor is the one whose character noticed.
+		type key struct{ point, user string }
+		byKey := map[key][]string{}
+		var order []key
 		for _, f := range finds {
 			n, err := q.InsertPointReveal(ctx, mapsdb.InsertPointRevealParams{PointID: f.point, CharacterID: f.character, How: "noticed", At: now})
 			if err != nil {
@@ -252,20 +286,21 @@ func (s *Service) Notice(ctx context.Context, campaignID, mapID string, who []li
 			if n == 0 {
 				continue
 			}
-			if _, seen := byPoint[f.point]; !seen {
-				order = append(order, f.point)
+			k := key{f.point, f.user}
+			if _, seen := byKey[k]; !seen {
+				order = append(order, k)
 			}
-			byPoint[f.point] = append(byPoint[f.point], f.character)
+			byKey[k] = append(byKey[k], f.character)
 			if !slices.Contains(told, f.user) {
 				told = append(told, f.user)
 			}
 		}
-		for _, point := range order {
-			payload, err := json.Marshal(trapNoticedEvent{PointID: point, CharacterIDs: byPoint[point]})
+		for _, k := range order {
+			payload, err := json.Marshal(trapNoticedEvent{PointID: k.point, CharacterIDs: byKey[k]})
 			if err != nil {
 				return fmt.Errorf("encode the event payload: %w", err)
 			}
-			if _, err := s.live.AppendEvent(ctx, tx, campaignID, eventTrapNoticed, finds[0].user, payload, now); err != nil {
+			if _, err := s.live.AppendEvent(ctx, tx, campaignID, eventTrapNoticed, k.user, payload, now); err != nil {
 				return fmt.Errorf("record the notice: %w", err)
 			}
 		}
@@ -275,6 +310,8 @@ func (s *Service) Notice(ctx context.Context, campaignID, mapID string, who []li
 		return fmt.Errorf("notice a trap: %w", err)
 	}
 	s.tellUsers(ctx, campaignID, mapID, ts.row, told)
+	// The master's trap card and log have news: a hint with no content.
+	s.live.Publish(campaignID, false, mapChangedEvent(mapID))
 	return nil
 }
 
@@ -301,8 +338,8 @@ func (s *Service) tellUsers(ctx context.Context, campaignID, mapID string, row m
 // (a trap with none is never found by it), Investigation its DC to find it. A
 // pass reveals the trap to the observer's character, inside tx, and nothing else
 // is said: who found what is the play module's event. It implements play.TrapBook.
-func (s *Service) SearchTraps(ctx context.Context, tx pgx.Tx, campaignID, mapID string, who link.Observer, skill string, total int, at time.Time) (link.SearchResult, error) {
-	ts, err := s.loadTrapScene(ctx, campaignID, mapID, true)
+func (s *Service) SearchTraps(ctx context.Context, tx pgx.Tx, campaignID, mapID string, who link.Observer, skill string, totals []int, at time.Time) (link.SearchResult, error) {
+	ts, err := s.loadTrapScene(ctx, tx, campaignID, mapID, true)
 	if err != nil || len(ts.points) == 0 {
 		return link.SearchResult{}, err
 	}
@@ -311,6 +348,12 @@ func (s *Service) SearchTraps(ctx context.Context, tx pgx.Tx, campaignID, mapID 
 		return link.SearchResult{}, nil
 	}
 	viewer := vision.Viewer{At: who.At, Senses: eyes.Senses}
+	// A Perception search has disadvantage on what is lightly obscured to the searcher
+	// (SRD): two rolls, the lower counts there and the first elsewhere. With a real die
+	// the second one is asked for whenever some square nearby is lightly obscured.
+	if skill == "perception" && len(totals) < 2 && ts.nearbyObscured(viewer) {
+		return link.SearchResult{}, link.ErrSearchNeedsTwoDice
+	}
 	q := s.queries.WithTx(tx)
 	var out link.SearchResult
 	for _, p := range ts.points {
@@ -322,7 +365,12 @@ func (s *Service) SearchTraps(ctx context.Context, tx pgx.Tx, campaignID, mapID 
 		if skill == "perception" {
 			dc = int(spec.GetNoticeDc())
 		}
-		if dc == 0 || total < dc || !ts.sightOf(viewer, s.pointSquares(ts.g, p)).eligible {
+		sg := ts.sightOf(viewer, s.pointSquares(ts.g, p))
+		total := totals[0]
+		if skill == "perception" && sg.obscured && len(totals) > 1 {
+			total = min(totals[0], totals[1])
+		}
+		if dc == 0 || total < dc || !sg.eligible {
 			continue
 		}
 		n, err := q.InsertPointReveal(ctx, mapsdb.InsertPointRevealParams{PointID: p.ID, CharacterID: who.CharacterID, How: "searched", At: at})
@@ -353,8 +401,8 @@ func (s *Service) Told(ctx context.Context, campaignID, mapID string, users []st
 // Traps returns the map's traps with the master's data, for the play module to
 // fire, search and warn with. It never goes to a player as it is. A map with no
 // grid has traps with no squares. It implements play.TrapBook.
-func (s *Service) Traps(ctx context.Context, campaignID, mapID string) ([]link.Trap, error) {
-	ts, err := s.loadTrapScene(ctx, campaignID, mapID, false)
+func (s *Service) Traps(ctx context.Context, tx pgx.Tx, campaignID, mapID string) ([]link.Trap, error) {
+	ts, err := s.loadTrapScene(ctx, tx, campaignID, mapID, false)
 	if err != nil {
 		return nil, err
 	}
@@ -370,7 +418,7 @@ func (s *Service) Traps(ctx context.Context, campaignID, mapID string) ([]link.T
 // their data, for the warning before a move into one. It implements
 // play.TrapBook.
 func (s *Service) KnownTraps(ctx context.Context, campaignID, mapID, characterID string) ([]link.Trap, error) {
-	ts, err := s.loadTrapScene(ctx, campaignID, mapID, false)
+	ts, err := s.loadTrapScene(ctx, nil, campaignID, mapID, false)
 	if err != nil {
 		return nil, err
 	}
@@ -500,7 +548,7 @@ func (s *Service) GetTrapNoticers(
 	if err != nil {
 		return nil, err
 	}
-	ts, err := s.loadTrapScene(ctx, m.CampaignID, mapID, true)
+	ts, err := s.loadTrapScene(ctx, nil, m.CampaignID, mapID, true)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the map's traps", err)
 	}
@@ -664,6 +712,16 @@ func (s *Service) tokenLanded(ctx context.Context, campaignID, actorUserID, mapI
 		return
 	}
 	ctx = context.WithoutCancel(ctx)
+	// Only on a map the players see (revealed, or the session's current one): a token
+	// put right on a map the master is still preparing fires and notices nothing.
+	row, err := s.queries.GetMap(ctx, mapsdb.GetMapParams{CampaignID: campaignID, ID: mapID})
+	if err != nil {
+		return
+	}
+	current, err := s.currentMap(ctx, campaignID)
+	if err != nil || !playersSee(mapID, row.RevealedAt, current) {
+		return
+	}
 	g := s.gridOfMap(ctx, campaignID, mapID)
 	if !g.Valid() {
 		return

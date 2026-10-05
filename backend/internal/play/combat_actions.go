@@ -790,7 +790,13 @@ func (s *Service) pendingFor(ctx context.Context, res combatResult, id string, v
 	if !pendingVisible(p, cs, v) {
 		return nil, nil
 	}
-	return pendingProto(p, cs), nil
+	out := pendingProto(p, cs)
+	if p.TrapPointID != nil && v.master && s.traps != nil { // a fired trap is public; its name is the master's card's
+		if names, err := s.traps.TrapNames(ctx, res.session.CampaignID, []string{*p.TrapPointID}); err == nil {
+			out.TrapName = names[*p.TrapPointID]
+		}
+	}
+	return out, nil
 }
 
 // RollDamage implements playv1connect.CombatServiceHandler.

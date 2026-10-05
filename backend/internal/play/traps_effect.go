@@ -25,8 +25,8 @@ import (
 //     with the trap's bonus; a hit rolls the attack's damage, doubled dice on a
 //     natural 20, and a natural 1 misses.
 //   - Damage that "always lands" is rolled for every creature caught.
-//   - The saving throw is asked of every creature caught, or of the ones an attack
-//     hit, with the creature's own bonus; on a failure its damage parts and its
+//   - The saving throw is asked of every creature caught, or, for a trap that asks it
+//     of the creatures it hit, once for each hit (each dart), with the creature's own bonus; on a failure its damage parts and its
 //     condition apply, on a pass half the damage (rounded down) or none.
 //   - Conditions of the effect go to every creature caught.
 //   - Each damage part of each creature is its own roll.
@@ -71,7 +71,7 @@ type trapSaveRoll struct {
 type trapOutcome struct {
 	target     trapTarget
 	attacks    []trapAttackRoll
-	save       *trapSaveRoll
+	saves      []trapSaveRoll // one, or one for each hit (applies_to HIT)
 	damages    []trapDamageRoll
 	conditions []string // the keys the trap gives, each once
 }
@@ -139,7 +139,7 @@ func resolveTrap(e *rulesv1.TrapEffect, targets []trapTarget, d20 func() (int, e
 	}
 
 	// The attacks, round the creatures.
-	hit := make([]bool, len(targets))
+	hits := make([]int, len(targets)) // how many attacks hit each creature
 	if a := e.GetAttack(); a != nil {
 		for n := range int(a.GetCount()) {
 			i := n % len(targets)
@@ -154,7 +154,7 @@ func resolveTrap(e *rulesv1.TrapEffect, targets []trapTarget, d20 func() (int, e
 			if !r.Hit {
 				continue
 			}
-			hit[i] = true
+			hits[i]++
 			dmg, err := rollDamage(a.GetDamage(), r.Critical, false)
 			if err != nil {
 				return nil, err
@@ -175,39 +175,43 @@ func resolveTrap(e *rulesv1.TrapEffect, targets []trapTarget, d20 func() (int, e
 			out[i].conditions = appendOnce(out[i].conditions, c.GetConditionKey())
 		}
 	}
-	// The saving throw.
+	// The saving throw: once for each creature caught, or, when the trap asks it of the
+	// creatures it hit, once for each hit (each dart is its own).
 	if sv := e.GetSave(); sv != nil {
 		for i := range out {
-			if sv.GetAppliesTo() == rulesv1.TrapSaveApplies_TRAP_SAVE_APPLIES_HIT && !hit[i] {
-				continue
+			asks := 1
+			if sv.GetAppliesTo() == rulesv1.TrapSaveApplies_TRAP_SAVE_APPLIES_HIT {
+				asks = hits[i]
 			}
-			face, err := d20()
-			if err != nil {
-				return nil, err
-			}
-			t := out[i].target
-			roll := &trapSaveRoll{d20: face, bonus: t.save, total: face + t.save, dc: int(sv.GetDc()), known: t.saveKnown}
-			roll.saved = combat.SaveSucceeded(roll.total, roll.dc)
-			out[i].save = roll
-			switch {
-			case !roll.saved:
-				for _, d := range sv.GetOnFail().GetDamage() {
-					dmg, err := rollDamage(d, false, false)
-					if err != nil {
-						return nil, err
-					}
-					out[i].damages = append(out[i].damages, dmg)
+			for range asks {
+				face, err := d20()
+				if err != nil {
+					return nil, err
 				}
-				if c := sv.GetOnFail().GetCondition(); c != nil {
-					out[i].conditions = appendOnce(out[i].conditions, c.GetConditionKey())
-				}
-			case sv.GetOnPass() == rulesv1.TrapPassOutcome_TRAP_PASS_OUTCOME_HALF:
-				for _, d := range sv.GetOnFail().GetDamage() {
-					dmg, err := rollDamage(d, false, true)
-					if err != nil {
-						return nil, err
+				t := out[i].target
+				roll := trapSaveRoll{d20: face, bonus: t.save, total: face + t.save, dc: int(sv.GetDc()), known: t.saveKnown}
+				roll.saved = combat.SaveSucceeded(roll.total, roll.dc)
+				out[i].saves = append(out[i].saves, roll)
+				switch {
+				case !roll.saved:
+					for _, d := range sv.GetOnFail().GetDamage() {
+						dmg, err := rollDamage(d, false, false)
+						if err != nil {
+							return nil, err
+						}
+						out[i].damages = append(out[i].damages, dmg)
 					}
-					out[i].damages = append(out[i].damages, dmg)
+					if c := sv.GetOnFail().GetCondition(); c != nil {
+						out[i].conditions = appendOnce(out[i].conditions, c.GetConditionKey())
+					}
+				case sv.GetOnPass() == rulesv1.TrapPassOutcome_TRAP_PASS_OUTCOME_HALF:
+					for _, d := range sv.GetOnFail().GetDamage() {
+						dmg, err := rollDamage(d, false, true)
+						if err != nil {
+							return nil, err
+						}
+						out[i].damages = append(out[i].damages, dmg)
+					}
 				}
 			}
 		}

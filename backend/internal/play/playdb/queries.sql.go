@@ -176,16 +176,6 @@ func (q *Queries) DeleteStageNPC(ctx context.Context, arg DeleteStageNPCParams) 
 	return result.RowsAffected(), nil
 }
 
-const deleteTrapDamage = `-- name: DeleteTrapDamage :exec
-DELETE FROM trap_damages
-WHERE id = $1
-`
-
-func (q *Queries) DeleteTrapDamage(ctx context.Context, id string) error {
-	_, err := q.db.Exec(ctx, deleteTrapDamage, id)
-	return err
-}
-
 const endCombatantTurnPart = `-- name: EndCombatantTurnPart :exec
 UPDATE combatants
 SET turn_state = 'ended'
@@ -263,6 +253,70 @@ func (q *Queries) GetCampaignEncounterXP(ctx context.Context, arg GetCampaignEnc
 	row := q.db.QueryRow(ctx, getCampaignEncounterXP, arg.CampaignID, arg.ID)
 	var i GetCampaignEncounterXPRow
 	err := row.Scan(&i.Name, &i.Status, &i.Xp)
+	return i, err
+}
+
+const getCampaignTrapDamageForUpdate = `-- name: GetCampaignTrapDamageForUpdate :one
+SELECT d.id, d.game_session_id, d.trap_point_id, d.fire_id, d.character_id, d.status, d.critical, d.dice_count, d.dice_sides, d.dice_bonus, d.damage_type, d.faces, d.roll_total, d.half, d.amount, d.applied_amount, d.created_at, d.resolved_at, g.session_number, g.started_at AS session_started_at FROM trap_damages AS d
+JOIN game_sessions AS g ON g.id = d.game_session_id
+WHERE g.campaign_id = $1 AND d.id = $2
+FOR UPDATE OF d
+`
+
+type GetCampaignTrapDamageForUpdateParams struct {
+	CampaignID string
+	ID         string
+}
+
+type GetCampaignTrapDamageForUpdateRow struct {
+	ID               string
+	GameSessionID    string
+	TrapPointID      string
+	FireID           string
+	CharacterID      string
+	Status           string
+	Critical         bool
+	DiceCount        int32
+	DiceSides        int32
+	DiceBonus        int32
+	DamageType       string
+	Faces            []int32
+	RollTotal        int32
+	Half             bool
+	Amount           int32
+	AppliedAmount    *int32
+	CreatedAt        time.Time
+	ResolvedAt       *time.Time
+	SessionNumber    int32
+	SessionStartedAt time.Time
+}
+
+// One trap damage of the campaign, locked, with its session's number and start.
+func (q *Queries) GetCampaignTrapDamageForUpdate(ctx context.Context, arg GetCampaignTrapDamageForUpdateParams) (GetCampaignTrapDamageForUpdateRow, error) {
+	row := q.db.QueryRow(ctx, getCampaignTrapDamageForUpdate, arg.CampaignID, arg.ID)
+	var i GetCampaignTrapDamageForUpdateRow
+	err := row.Scan(
+		&i.ID,
+		&i.GameSessionID,
+		&i.TrapPointID,
+		&i.FireID,
+		&i.CharacterID,
+		&i.Status,
+		&i.Critical,
+		&i.DiceCount,
+		&i.DiceSides,
+		&i.DiceBonus,
+		&i.DamageType,
+		&i.Faces,
+		&i.RollTotal,
+		&i.Half,
+		&i.Amount,
+		&i.AppliedAmount,
+		&i.CreatedAt,
+		&i.ResolvedAt,
+		&i.SessionNumber,
+		&i.SessionStartedAt,
+	)
 	return i, err
 }
 
@@ -661,6 +715,35 @@ func (q *Queries) GetPendingDamage(ctx context.Context, arg GetPendingDamagePara
 	return i, err
 }
 
+const getSessionEventByID = `-- name: GetSessionEventByID :one
+SELECT id, kind, encounter_id, payload FROM session_events
+WHERE game_session_id = $1 AND id = $2
+`
+
+type GetSessionEventByIDParams struct {
+	GameSessionID string
+	ID            string
+}
+
+type GetSessionEventByIDRow struct {
+	ID          string
+	Kind        string
+	EncounterID *string
+	Payload     []byte
+}
+
+func (q *Queries) GetSessionEventByID(ctx context.Context, arg GetSessionEventByIDParams) (GetSessionEventByIDRow, error) {
+	row := q.db.QueryRow(ctx, getSessionEventByID, arg.GameSessionID, arg.ID)
+	var i GetSessionEventByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Kind,
+		&i.EncounterID,
+		&i.Payload,
+	)
+	return i, err
+}
+
 const getSessionEventByIdempotencyKey = `-- name: GetSessionEventByIdempotencyKey :one
 SELECT id, seq, kind, character_id, payload, created_at FROM session_events
 WHERE game_session_id = $1 AND idempotency_key = $2
@@ -691,43 +774,6 @@ func (q *Queries) GetSessionEventByIdempotencyKey(ctx context.Context, arg GetSe
 		&i.CharacterID,
 		&i.Payload,
 		&i.CreatedAt,
-	)
-	return i, err
-}
-
-const getTrapDamageForUpdate = `-- name: GetTrapDamageForUpdate :one
-SELECT id, game_session_id, trap_point_id, fire_id, character_id, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, roll_total, half, amount, applied_amount, created_at, resolved_at FROM trap_damages
-WHERE game_session_id = $1 AND id = $2
-FOR UPDATE
-`
-
-type GetTrapDamageForUpdateParams struct {
-	GameSessionID string
-	ID            string
-}
-
-func (q *Queries) GetTrapDamageForUpdate(ctx context.Context, arg GetTrapDamageForUpdateParams) (TrapDamage, error) {
-	row := q.db.QueryRow(ctx, getTrapDamageForUpdate, arg.GameSessionID, arg.ID)
-	var i TrapDamage
-	err := row.Scan(
-		&i.ID,
-		&i.GameSessionID,
-		&i.TrapPointID,
-		&i.FireID,
-		&i.CharacterID,
-		&i.Status,
-		&i.Critical,
-		&i.DiceCount,
-		&i.DiceSides,
-		&i.DiceBonus,
-		&i.DamageType,
-		&i.Faces,
-		&i.RollTotal,
-		&i.Half,
-		&i.Amount,
-		&i.AppliedAmount,
-		&i.CreatedAt,
-		&i.ResolvedAt,
 	)
 	return i, err
 }
@@ -1441,6 +1487,79 @@ func (q *Queries) ListCampaignEncounterNames(ctx context.Context, arg ListCampai
 	return items, nil
 }
 
+const listCampaignTrapDamages = `-- name: ListCampaignTrapDamages :many
+SELECT d.id, d.game_session_id, d.trap_point_id, d.fire_id, d.character_id, d.status, d.critical, d.dice_count, d.dice_sides, d.dice_bonus, d.damage_type, d.faces, d.roll_total, d.half, d.amount, d.applied_amount, d.created_at, d.resolved_at, g.session_number, g.started_at AS session_started_at FROM trap_damages AS d
+JOIN game_sessions AS g ON g.id = d.game_session_id
+WHERE g.campaign_id = $1 AND d.status = 'rolled'
+ORDER BY d.created_at, d.id
+`
+
+type ListCampaignTrapDamagesRow struct {
+	ID               string
+	GameSessionID    string
+	TrapPointID      string
+	FireID           string
+	CharacterID      string
+	Status           string
+	Critical         bool
+	DiceCount        int32
+	DiceSides        int32
+	DiceBonus        int32
+	DamageType       string
+	Faces            []int32
+	RollTotal        int32
+	Half             bool
+	Amount           int32
+	AppliedAmount    *int32
+	CreatedAt        time.Time
+	ResolvedAt       *time.Time
+	SessionNumber    int32
+	SessionStartedAt time.Time
+}
+
+// The campaign's trap damages that wait for the master, outside a combat, from any
+// session (they outlive it), with the session's number and start.
+func (q *Queries) ListCampaignTrapDamages(ctx context.Context, campaignID string) ([]ListCampaignTrapDamagesRow, error) {
+	rows, err := q.db.Query(ctx, listCampaignTrapDamages, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCampaignTrapDamagesRow
+	for rows.Next() {
+		var i ListCampaignTrapDamagesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.GameSessionID,
+			&i.TrapPointID,
+			&i.FireID,
+			&i.CharacterID,
+			&i.Status,
+			&i.Critical,
+			&i.DiceCount,
+			&i.DiceSides,
+			&i.DiceBonus,
+			&i.DamageType,
+			&i.Faces,
+			&i.RollTotal,
+			&i.Half,
+			&i.Amount,
+			&i.AppliedAmount,
+			&i.CreatedAt,
+			&i.ResolvedAt,
+			&i.SessionNumber,
+			&i.SessionStartedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCastPendingDamages = `-- name: ListCastPendingDamages :many
 SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id FROM pending_damages
 WHERE encounter_id = $1 AND cast_id = $2
@@ -2032,52 +2151,6 @@ func (q *Queries) ListOpenPendingDamages(ctx context.Context, encounterID string
 	return items, nil
 }
 
-const listOpenTrapDamages = `-- name: ListOpenTrapDamages :many
-SELECT id, game_session_id, trap_point_id, fire_id, character_id, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, roll_total, half, amount, applied_amount, created_at, resolved_at FROM trap_damages
-WHERE game_session_id = $1 AND status = 'rolled'
-ORDER BY created_at, id
-`
-
-// The session's trap damages that wait for the master, outside a combat.
-func (q *Queries) ListOpenTrapDamages(ctx context.Context, gameSessionID string) ([]TrapDamage, error) {
-	rows, err := q.db.Query(ctx, listOpenTrapDamages, gameSessionID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []TrapDamage
-	for rows.Next() {
-		var i TrapDamage
-		if err := rows.Scan(
-			&i.ID,
-			&i.GameSessionID,
-			&i.TrapPointID,
-			&i.FireID,
-			&i.CharacterID,
-			&i.Status,
-			&i.Critical,
-			&i.DiceCount,
-			&i.DiceSides,
-			&i.DiceBonus,
-			&i.DamageType,
-			&i.Faces,
-			&i.RollTotal,
-			&i.Half,
-			&i.Amount,
-			&i.AppliedAmount,
-			&i.CreatedAt,
-			&i.ResolvedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listOpenTrapPendingDamages = `-- name: ListOpenTrapPendingDamages :many
 SELECT p.id, p.encounter_id, p.attacker_id, p.target_id, p.attack_key, p.status, p.critical, p.dice_count, p.dice_sides, p.dice_bonus, p.damage_type, p.faces, p.physical, p.amount, p.created_at, p.resolved_at, p.cast_id, p.healing, p.half, p.applied_amount, p.attack_total, p.roll_total, p.attack_armor_class, p.trap_point_id FROM pending_damages AS p
 JOIN encounters AS e ON e.id = p.encounter_id
@@ -2090,6 +2163,59 @@ ORDER BY p.created_at, p.id
 // there anymore.
 func (q *Queries) ListOpenTrapPendingDamages(ctx context.Context, gameSessionID string) ([]PendingDamage, error) {
 	rows, err := q.db.Query(ctx, listOpenTrapPendingDamages, gameSessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PendingDamage
+	for rows.Next() {
+		var i PendingDamage
+		if err := rows.Scan(
+			&i.ID,
+			&i.EncounterID,
+			&i.AttackerID,
+			&i.TargetID,
+			&i.AttackKey,
+			&i.Status,
+			&i.Critical,
+			&i.DiceCount,
+			&i.DiceSides,
+			&i.DiceBonus,
+			&i.DamageType,
+			&i.Faces,
+			&i.Physical,
+			&i.Amount,
+			&i.CreatedAt,
+			&i.ResolvedAt,
+			&i.CastID,
+			&i.Healing,
+			&i.Half,
+			&i.AppliedAmount,
+			&i.AttackTotal,
+			&i.RollTotal,
+			&i.AttackArmorClass,
+			&i.TrapPointID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOpenTrapPendingDamagesOfEncounter = `-- name: ListOpenTrapPendingDamagesOfEncounter :many
+SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id FROM pending_damages
+WHERE encounter_id = $1 AND trap_point_id IS NOT NULL AND status = 'rolled'
+ORDER BY created_at, id
+`
+
+// The trap damages a combat still holds for the master: what its end turns into
+// trap_damages rows.
+func (q *Queries) ListOpenTrapPendingDamagesOfEncounter(ctx context.Context, encounterID string) ([]PendingDamage, error) {
+	rows, err := q.db.Query(ctx, listOpenTrapPendingDamagesOfEncounter, encounterID)
 	if err != nil {
 		return nil, err
 	}
@@ -2418,53 +2544,69 @@ func (q *Queries) ListStage(ctx context.Context, gameSessionID string) ([]StageN
 	return items, nil
 }
 
-const listTrapPendingDamagesOfFiring = `-- name: ListTrapPendingDamagesOfFiring :many
-SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id FROM pending_damages
-WHERE encounter_id = $1 AND trap_point_id = $2
-ORDER BY created_at, id
+const listTrapDamageStatuses = `-- name: ListTrapDamageStatuses :many
+SELECT id, status, applied_amount FROM trap_damages
+WHERE id = ANY($1::uuid[])
 `
 
-type ListTrapPendingDamagesOfFiringParams struct {
-	EncounterID string
-	TrapPointID *string
+type ListTrapDamageStatusesRow struct {
+	ID            string
+	Status        string
+	AppliedAmount *int32
 }
 
-// The trap damages a combat holds for one trap, newest first: what the log of a
-// firing says became of them.
-func (q *Queries) ListTrapPendingDamagesOfFiring(ctx context.Context, arg ListTrapPendingDamagesOfFiringParams) ([]PendingDamage, error) {
-	rows, err := q.db.Query(ctx, listTrapPendingDamagesOfFiring, arg.EncounterID, arg.TrapPointID)
+// Where trap damages are now (applied by the master since the firing), by ID.
+func (q *Queries) ListTrapDamageStatuses(ctx context.Context, dollar_1 []string) ([]ListTrapDamageStatusesRow, error) {
+	rows, err := q.db.Query(ctx, listTrapDamageStatuses, dollar_1)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []PendingDamage
+	var items []ListTrapDamageStatusesRow
 	for rows.Next() {
-		var i PendingDamage
+		var i ListTrapDamageStatusesRow
+		if err := rows.Scan(&i.ID, &i.Status, &i.AppliedAmount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTrapEventsOfSession = `-- name: ListTrapEventsOfSession :many
+SELECT id, kind, character_id, payload, created_at FROM session_events
+WHERE game_session_id = $1 AND encounter_id IS NULL AND kind IN ('trap_triggered', 'trap_searched')
+ORDER BY seq
+LIMIT 500
+`
+
+type ListTrapEventsOfSessionRow struct {
+	ID          string
+	Kind        string
+	CharacterID *string
+	Payload     []byte
+	CreatedAt   time.Time
+}
+
+// The trap firings and searches of a session outside a combat, oldest first.
+func (q *Queries) ListTrapEventsOfSession(ctx context.Context, gameSessionID string) ([]ListTrapEventsOfSessionRow, error) {
+	rows, err := q.db.Query(ctx, listTrapEventsOfSession, gameSessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTrapEventsOfSessionRow
+	for rows.Next() {
+		var i ListTrapEventsOfSessionRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.EncounterID,
-			&i.AttackerID,
-			&i.TargetID,
-			&i.AttackKey,
-			&i.Status,
-			&i.Critical,
-			&i.DiceCount,
-			&i.DiceSides,
-			&i.DiceBonus,
-			&i.DamageType,
-			&i.Faces,
-			&i.Physical,
-			&i.Amount,
+			&i.Kind,
+			&i.CharacterID,
+			&i.Payload,
 			&i.CreatedAt,
-			&i.ResolvedAt,
-			&i.CastID,
-			&i.Healing,
-			&i.Half,
-			&i.AppliedAmount,
-			&i.AttackTotal,
-			&i.RollTotal,
-			&i.AttackArmorClass,
-			&i.TrapPointID,
 		); err != nil {
 			return nil, err
 		}

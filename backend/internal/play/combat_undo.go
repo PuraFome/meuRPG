@@ -60,6 +60,13 @@ func lastAction(recent []playdb.ListRecentSessionEventsRow, encounterID string) 
 		if e.Kind == eventOpportunityOffered {
 			continue
 		}
+		// What the traps did that is not this combat's never closes the chain: a trap noticed
+		// after a move (the knowledge stays after an undo), a firing, a search or a disarm
+		// outside a combat or in another one, and the master settling a trap damage that
+		// has no combat (MR-035).
+		if trapOutsideTheChain(e, encounterID) {
+			continue
+		}
 		if slices.Contains(undoableKinds, e.Kind) && e.EncounterID != nil && *e.EncounterID == encounterID {
 			// A move written before the undo knew moves says where it came from
 			// nowhere: there is nothing to put back.
@@ -551,4 +558,20 @@ func nonNil(l []string) []string {
 		return []string{}
 	}
 	return l
+}
+
+// trapOutsideTheChain says an event is about traps and not this combat's: the undo
+// goes past it. `trap_noticed` is always so (it is written after the move that caused
+// it, with no combat); the others are when they belong to no combat or to another.
+func trapOutsideTheChain(e playdb.ListRecentSessionEventsRow, encounterID string) bool {
+	ours := e.EncounterID != nil && *e.EncounterID == encounterID
+	switch e.Kind {
+	case eventTrapNoticed:
+		return true
+	case eventTrapSearched, eventTrapTriggered, eventTrapDisarmed, eventTrapRevealed:
+		return !ours
+	case eventDamageApplied, eventDamageDiscarded:
+		return e.EncounterID == nil // ApplyTrapDamage: a damage with no combat
+	}
+	return false
 }

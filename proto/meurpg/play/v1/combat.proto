@@ -1253,6 +1253,11 @@ enum EncounterBlockedReason {
   // SearchForTraps: the character is a combatant in a combat that is not active
   // yet or already ended; searching during a fight is for the character's own turn.
   ENCOUNTER_BLOCKED_REASON_TRAP_SEARCH_NOT_NOW = 52;
+  // SearchForTraps with Perception on a typed die: a square the character sees within
+  // 3 m is lightly obscured (dim light, or darkness seen through darkvision), so the
+  // roll has disadvantage and needs a second die (`d20_face_2`). The screen knows from
+  // GetMapVision.
+  ENCOUNTER_BLOCKED_REASON_SEARCH_NEEDS_TWO_DICE = 53;
 }
 
 // EncounterBlocked is the error detail of CombatService's
@@ -2972,6 +2977,9 @@ message TrapFiring {
   string point_id = 1;
   string name = 2;
   repeated TrapCaught caught = 3;
+  // The firing's ID (a UUID): what FireTrapRequest.extend_firing_id asks for. In the
+  // combat log it is the entry's ID.
+  string id = 4;
 }
 
 // TrapCaught is what one creature suffered.
@@ -2987,6 +2995,9 @@ message TrapCaught {
   TrapSaveRoll save = 5;
   // The damage it takes, a row for each damage part.
   repeated TrapDamageDone damages = 6;
+  // Every saving throw it made, in order: a trap that asks the save of each creature
+  // hit (applies_to HIT) asks it once per hit. `save` is the first.
+  repeated TrapSaveRoll saves = 8;
   // The conditions the trap gave it (keys of the SRD's, "condition:restrained").
   // In a combat they are on the combatant; outside one they are a reminder for
   // the master's log.

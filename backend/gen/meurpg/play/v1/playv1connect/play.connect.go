@@ -94,6 +94,9 @@ const (
 	PlayServiceSearchForTrapsProcedure = "/meurpg.play.v1.PlayService/SearchForTraps"
 	// PlayServiceFireTrapProcedure is the fully-qualified name of the PlayService's FireTrap RPC.
 	PlayServiceFireTrapProcedure = "/meurpg.play.v1.PlayService/FireTrap"
+	// PlayServiceListTrapActivityProcedure is the fully-qualified name of the PlayService's
+	// ListTrapActivity RPC.
+	PlayServiceListTrapActivityProcedure = "/meurpg.play.v1.PlayService/ListTrapActivity"
 	// PlayServiceListTrapDamagesProcedure is the fully-qualified name of the PlayService's
 	// ListTrapDamages RPC.
 	PlayServiceListTrapDamagesProcedure = "/meurpg.play.v1.PlayService/ListTrapDamages"
@@ -521,11 +524,25 @@ type PlayServiceClient interface {
 	//   - `permission_denied`: the caller is a player.
 	//   - `failed_precondition`: no open session; EncounterBlocked TRAP_NOT_ARMED.
 	FireTrap(context.Context, *connect.Request[v1.FireTrapRequest]) (*connect.Response[v1.FireTrapResponse], error)
-	// ListTrapDamages lists the trap damages that wait for the master, in a combat
-	// and outside one (MR-035, RN-02). Only the campaign's master may call it.
+	// ListTrapActivity reads what traps did in the open session outside a combat (MR-035,
+	// RN-10): the firings, with each creature's attack, saving throw and damage (the
+	// conditions are a reminder), and the searches. The master gets all of it; a player
+	// only the lines of their own characters, with their own d20 and "passou" or
+	// "falhou", never a DC and never a trap their characters do not know. In a combat the
+	// same is in the combat log. Any member may call it. A player's search, and a firing
+	// outside a combat, send the master a `map_changed` hint with no content.
+	//
+	// Errors: `not_found` (the campaign does not exist, or the caller is not a member),
+	// `failed_precondition` (no open session).
+	ListTrapActivity(context.Context, *connect.Request[v1.ListTrapActivityRequest]) (*connect.Response[v1.ListTrapActivityResponse], error)
+	// ListTrapDamages lists the trap damages that wait for the master (MR-035, RN-02):
+	// the open combat's, and every one outside a combat, from any session of the
+	// campaign, until the master applies or discards it (a combat that ends turns its
+	// waiting damage into one of these). Only the campaign's master may call it, with or
+	// without an open session.
 	//
 	// Errors: `not_found` (the campaign does not exist, or the caller is not a
-	// member), `permission_denied` (a player), `failed_precondition` (no open session).
+	// member), `permission_denied` (a player).
 	ListTrapDamages(context.Context, *connect.Request[v1.ListTrapDamagesRequest]) (*connect.Response[v1.ListTrapDamagesResponse], error)
 	// ApplyTrapDamage applies a trap damage that is not in a combat to the
 	// character's vitals: temporary hit points first, never below 0, as in a combat
@@ -534,8 +551,9 @@ type PlayServiceClient interface {
 	//
 	// Errors: `invalid_argument` (amount outside 0 to 1000, key), `not_found` (the
 	// damage is not the session's, or the campaign), `permission_denied`,
-	// `failed_precondition` (no open session; EncounterBlocked DAMAGE_RESOLVED when it
-	// was applied or discarded already).
+	// `failed_precondition` (EncounterBlocked DAMAGE_RESOLVED when it was applied or
+	// discarded already). It works with no session open (the damage outlives its session);
+	// a key reused for another damage is `invalid_argument`.
 	ApplyTrapDamage(context.Context, *connect.Request[v1.ApplyTrapDamageRequest]) (*connect.Response[v1.ApplyTrapDamageResponse], error)
 	// DiscardTrapDamage drops a trap damage that is not in a combat, applying
 	// nothing. Same errors as ApplyTrapDamage.
@@ -766,6 +784,13 @@ func NewPlayServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(playServiceMethods.ByName("FireTrap")),
 			connect.WithClientOptions(opts...),
 		),
+		listTrapActivity: connect.NewClient[v1.ListTrapActivityRequest, v1.ListTrapActivityResponse](
+			httpClient,
+			baseURL+PlayServiceListTrapActivityProcedure,
+			connect.WithSchema(playServiceMethods.ByName("ListTrapActivity")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
 		listTrapDamages: connect.NewClient[v1.ListTrapDamagesRequest, v1.ListTrapDamagesResponse](
 			httpClient,
 			baseURL+PlayServiceListTrapDamagesProcedure,
@@ -838,6 +863,7 @@ type playServiceClient struct {
 	rollSceneCheck        *connect.Client[v1.RollSceneCheckRequest, v1.RollSceneCheckResponse]
 	searchForTraps        *connect.Client[v1.SearchForTrapsRequest, v1.SearchForTrapsResponse]
 	fireTrap              *connect.Client[v1.FireTrapRequest, v1.FireTrapResponse]
+	listTrapActivity      *connect.Client[v1.ListTrapActivityRequest, v1.ListTrapActivityResponse]
 	listTrapDamages       *connect.Client[v1.ListTrapDamagesRequest, v1.ListTrapDamagesResponse]
 	applyTrapDamage       *connect.Client[v1.ApplyTrapDamageRequest, v1.ApplyTrapDamageResponse]
 	discardTrapDamage     *connect.Client[v1.DiscardTrapDamageRequest, v1.DiscardTrapDamageResponse]
@@ -936,6 +962,11 @@ func (c *playServiceClient) SearchForTraps(ctx context.Context, req *connect.Req
 // FireTrap calls meurpg.play.v1.PlayService.FireTrap.
 func (c *playServiceClient) FireTrap(ctx context.Context, req *connect.Request[v1.FireTrapRequest]) (*connect.Response[v1.FireTrapResponse], error) {
 	return c.fireTrap.CallUnary(ctx, req)
+}
+
+// ListTrapActivity calls meurpg.play.v1.PlayService.ListTrapActivity.
+func (c *playServiceClient) ListTrapActivity(ctx context.Context, req *connect.Request[v1.ListTrapActivityRequest]) (*connect.Response[v1.ListTrapActivityResponse], error) {
+	return c.listTrapActivity.CallUnary(ctx, req)
 }
 
 // ListTrapDamages calls meurpg.play.v1.PlayService.ListTrapDamages.
@@ -1382,11 +1413,25 @@ type PlayServiceHandler interface {
 	//   - `permission_denied`: the caller is a player.
 	//   - `failed_precondition`: no open session; EncounterBlocked TRAP_NOT_ARMED.
 	FireTrap(context.Context, *connect.Request[v1.FireTrapRequest]) (*connect.Response[v1.FireTrapResponse], error)
-	// ListTrapDamages lists the trap damages that wait for the master, in a combat
-	// and outside one (MR-035, RN-02). Only the campaign's master may call it.
+	// ListTrapActivity reads what traps did in the open session outside a combat (MR-035,
+	// RN-10): the firings, with each creature's attack, saving throw and damage (the
+	// conditions are a reminder), and the searches. The master gets all of it; a player
+	// only the lines of their own characters, with their own d20 and "passou" or
+	// "falhou", never a DC and never a trap their characters do not know. In a combat the
+	// same is in the combat log. Any member may call it. A player's search, and a firing
+	// outside a combat, send the master a `map_changed` hint with no content.
+	//
+	// Errors: `not_found` (the campaign does not exist, or the caller is not a member),
+	// `failed_precondition` (no open session).
+	ListTrapActivity(context.Context, *connect.Request[v1.ListTrapActivityRequest]) (*connect.Response[v1.ListTrapActivityResponse], error)
+	// ListTrapDamages lists the trap damages that wait for the master (MR-035, RN-02):
+	// the open combat's, and every one outside a combat, from any session of the
+	// campaign, until the master applies or discards it (a combat that ends turns its
+	// waiting damage into one of these). Only the campaign's master may call it, with or
+	// without an open session.
 	//
 	// Errors: `not_found` (the campaign does not exist, or the caller is not a
-	// member), `permission_denied` (a player), `failed_precondition` (no open session).
+	// member), `permission_denied` (a player).
 	ListTrapDamages(context.Context, *connect.Request[v1.ListTrapDamagesRequest]) (*connect.Response[v1.ListTrapDamagesResponse], error)
 	// ApplyTrapDamage applies a trap damage that is not in a combat to the
 	// character's vitals: temporary hit points first, never below 0, as in a combat
@@ -1395,8 +1440,9 @@ type PlayServiceHandler interface {
 	//
 	// Errors: `invalid_argument` (amount outside 0 to 1000, key), `not_found` (the
 	// damage is not the session's, or the campaign), `permission_denied`,
-	// `failed_precondition` (no open session; EncounterBlocked DAMAGE_RESOLVED when it
-	// was applied or discarded already).
+	// `failed_precondition` (EncounterBlocked DAMAGE_RESOLVED when it was applied or
+	// discarded already). It works with no session open (the damage outlives its session);
+	// a key reused for another damage is `invalid_argument`.
 	ApplyTrapDamage(context.Context, *connect.Request[v1.ApplyTrapDamageRequest]) (*connect.Response[v1.ApplyTrapDamageResponse], error)
 	// DiscardTrapDamage drops a trap damage that is not in a combat, applying
 	// nothing. Same errors as ApplyTrapDamage.
@@ -1623,6 +1669,13 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(playServiceMethods.ByName("FireTrap")),
 		connect.WithHandlerOptions(opts...),
 	)
+	playServiceListTrapActivityHandler := connect.NewUnaryHandler(
+		PlayServiceListTrapActivityProcedure,
+		svc.ListTrapActivity,
+		connect.WithSchema(playServiceMethods.ByName("ListTrapActivity")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
 	playServiceListTrapDamagesHandler := connect.NewUnaryHandler(
 		PlayServiceListTrapDamagesProcedure,
 		svc.ListTrapDamages,
@@ -1710,6 +1763,8 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 			playServiceSearchForTrapsHandler.ServeHTTP(w, r)
 		case PlayServiceFireTrapProcedure:
 			playServiceFireTrapHandler.ServeHTTP(w, r)
+		case PlayServiceListTrapActivityProcedure:
+			playServiceListTrapActivityHandler.ServeHTTP(w, r)
 		case PlayServiceListTrapDamagesProcedure:
 			playServiceListTrapDamagesHandler.ServeHTTP(w, r)
 		case PlayServiceApplyTrapDamageProcedure:
@@ -1805,6 +1860,10 @@ func (UnimplementedPlayServiceHandler) SearchForTraps(context.Context, *connect.
 
 func (UnimplementedPlayServiceHandler) FireTrap(context.Context, *connect.Request[v1.FireTrapRequest]) (*connect.Response[v1.FireTrapResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.FireTrap is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) ListTrapActivity(context.Context, *connect.Request[v1.ListTrapActivityRequest]) (*connect.Response[v1.ListTrapActivityResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.ListTrapActivity is not implemented"))
 }
 
 func (UnimplementedPlayServiceHandler) ListTrapDamages(context.Context, *connect.Request[v1.ListTrapDamagesRequest]) (*connect.Response[v1.ListTrapDamagesResponse], error) {

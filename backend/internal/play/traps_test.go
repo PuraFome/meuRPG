@@ -1056,15 +1056,27 @@ func TestRN10_NoPlayerResponseNamesAnUnrevealedTrap(t *testing.T) {
 	r.wantKnows(t, "Toren's player", r.caio, secret.GetId(), true)
 	both()
 
-	r.fight(t)
+	e := r.fight(t)
 	both()
 	readCombat("Pensantus's player", r.ana)
 	readCombat("Brisa's player", r.bia)
-	if opts, err := r.options(t, r.bia, "Brisa"); err == nil { // not her turn: refused
-		check("Brisa's player", "GetMoveOptions", opts, nil)
-	}
 	r.mustMove(t, r.caio, "Toren", 8, 7) // Toren knows it: he stays out of the area
 	readCombat("Pensantus's player", r.ana)
+	// It is Brisa's turn after Toren's and Pensantus's: she is the mover, so her move
+	// options and her move are read, far from the pit.
+	e = r.mustEndTurn(t, r.caio, e)
+	r.mustEndTurn(t, r.ana, e)
+	opts, err := r.options(t, r.bia, "Brisa")
+	if err != nil {
+		t.Fatalf("GetMoveOptions() as Brisa error = %v", err)
+	}
+	if len(opts.GetReachable()) == 0 {
+		t.Fatalf("Brisa's move options are empty: the sweep read nothing")
+	}
+	check("Brisa's player", "GetMoveOptions", opts, nil)
+	mv, err := r.moveResult(t, r.bia, "Brisa", 5, 7)
+	check("Brisa's player", "MoveCombatant", mv, err)
+	readCombat("Brisa's player", r.bia)
 	readStream("Pensantus's player", pensStream)
 
 	// The master reveals it to Pensantus: from now on only Brisa's player is held to it.

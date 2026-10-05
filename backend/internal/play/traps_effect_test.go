@@ -76,10 +76,10 @@ func TestMR035_TheEffectsArithmetic(t *testing.T) {
 			t.Fatalf("resolveTrap() error = %v", err)
 		}
 		a, b := out[0], out[1]
-		if a.save == nil || a.save.saved || a.save.total != 12 || len(a.damages) != 1 || a.damages[0].amount != 7 || a.damages[0].half || !slices.Equal(a.conditions, []string{"condition:poisoned"}) {
+		if len(a.saves) != 1 || a.saves[0].saved || a.saves[0].total != 12 || len(a.damages) != 1 || a.damages[0].amount != 7 || a.damages[0].half || !slices.Equal(a.conditions, []string{"condition:poisoned"}) {
 			t.Errorf("a = %+v, want a failed save (12), 7 poison, poisoned", a)
 		}
-		if b.save == nil || !b.save.saved || b.save.known || len(b.damages) != 1 || b.damages[0].amount != 2 || b.damages[0].rollTotal != 5 || !b.damages[0].half || len(b.conditions) != 0 {
+		if len(b.saves) != 1 || !b.saves[0].saved || b.saves[0].known || len(b.damages) != 1 || b.damages[0].amount != 2 || b.damages[0].rollTotal != 5 || !b.damages[0].half || len(b.conditions) != 0 {
 			t.Errorf("b = %+v, want a passed save with no bonus, half of 5 = 2, no condition", b)
 		}
 	})
@@ -94,10 +94,10 @@ func TestMR035_TheEffectsArithmetic(t *testing.T) {
 			t.Fatalf("resolveTrap() error = %v", err)
 		}
 		a, b := out[0], out[1]
-		if b.save != nil || len(b.damages) != 0 || len(b.conditions) != 0 {
+		if len(b.saves) != 0 || len(b.damages) != 0 || len(b.conditions) != 0 {
 			t.Errorf("b = %+v, want no save and nothing taken", b)
 		}
-		if a.save == nil || !a.save.saved || len(a.damages) != 1 || a.damages[0].amount != 4 || len(a.conditions) != 0 {
+		if len(a.saves) != 1 || !a.saves[0].saved || len(a.damages) != 1 || a.damages[0].amount != 4 || len(a.conditions) != 0 {
 			t.Errorf("a = %+v, want the attack's 4 only, the save passed", a)
 		}
 	})
@@ -123,10 +123,34 @@ func TestMR035_TheEffectsArithmetic(t *testing.T) {
 		}
 	})
 
+	t.Run("a trap that asks the save of the creatures hit asks it once for each hit", func(t *testing.T) {
+		t.Parallel()
+		// Three darts at a: 15, 12 and 1 against an armor class of 12 (bonus 5): two hits (1d6: 2, 5)
+		// and a miss, so two saves, 10 + 2 fails (2d4: 1 + 1) and 18 + 2 passes (nothing).
+		e := saveEffect(rulesv1.TrapSaveApplies_TRAP_SAVE_APPLIES_HIT, rulesv1.TrapPassOutcome_TRAP_PASS_OUTCOME_NONE)
+		e.Attack.Count = 3
+		s := &scripted{faces: []int{15, 2, 12, 5, 1, 10, 1, 1, 18}}
+		out, err := resolveTrap(e, targets[:1], s.d20, s.dice)
+		if err != nil {
+			t.Fatalf("resolveTrap() error = %v", err)
+		}
+		a := out[0]
+		if len(a.attacks) != 3 || len(a.saves) != 2 || a.saves[0].saved || !a.saves[1].saved {
+			t.Fatalf("a = %+v, want 3 darts and 2 saves (one failed, one passed)", a)
+		}
+		// 2 + 5 from the hits, 1 + 1 from the failed save.
+		if len(a.damages) != 3 || a.damages[0].amount != 2 || a.damages[1].amount != 5 || a.damages[2].amount != 2 || !slices.Equal(a.conditions, []string{"condition:poisoned"}) {
+			t.Errorf("damages = %+v, conditions %v; want 2, 5 and 2, poisoned", a.damages, a.conditions)
+		}
+		if len(s.faces) != 0 {
+			t.Errorf("faces left = %v, want none", s.faces)
+		}
+	})
+
 	t.Run("an empty effect does nothing", func(t *testing.T) {
 		t.Parallel()
 		out, err := resolveTrap(&rulesv1.TrapEffect{}, targets, (&scripted{}).d20, (&scripted{}).dice)
-		if err != nil || len(out) != 2 || len(out[0].damages) != 0 || out[0].save != nil || len(out[0].attacks) != 0 {
+		if err != nil || len(out) != 2 || len(out[0].damages) != 0 || len(out[0].saves) != 0 || len(out[0].attacks) != 0 {
 			t.Errorf("resolveTrap() = %+v, %v; want nothing done", out, err)
 		}
 	})

@@ -2,6 +2,7 @@ package play
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
@@ -33,15 +34,17 @@ func (s *Service) ListTrapDamages(
 	if err != nil {
 		return nil, err
 	}
-	session, err := s.openSession(ctx, m.CampaignID)
-	if err != nil {
-		return nil, err
+	// What waits in the open combat (a combat that ended turned it into the rows below),
+	// and what waits outside a combat, from any session of the campaign.
+	var inCombat []playdb.PendingDamage
+	if session, err := s.queries.GetOpenGameSession(ctx, m.CampaignID); err == nil {
+		if inCombat, err = s.queries.ListOpenTrapPendingDamages(ctx, session.ID); err != nil {
+			return nil, s.dbError(ctx, "list the trap damages in combat", err)
+		}
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, s.dbError(ctx, "find the open session", err)
 	}
-	inCombat, err := s.queries.ListOpenTrapPendingDamages(ctx, session.ID)
-	if err != nil {
-		return nil, s.dbError(ctx, "list the trap damages in combat", err)
-	}
-	outside, err := s.queries.ListOpenTrapDamages(ctx, session.ID)
+	outside, err := s.queries.ListCampaignTrapDamages(ctx, m.CampaignID)
 	if err != nil {
 		return nil, s.dbError(ctx, "list the trap damages", err)
 	}
@@ -91,9 +94,20 @@ func (s *Service) ListTrapDamages(
 		})
 	}
 	for _, d := range outside {
-		res.Damages = append(res.Damages, trapDamageProto(d, trapNames[d.TrapPointID], names[d.CharacterID]))
+		out := trapDamageProto(trapDamageOf(d), trapNames[d.TrapPointID], names[d.CharacterID])
+		out.SessionNumber, out.SessionStartedAt = d.SessionNumber, timestamppb.New(d.SessionStartedAt)
+		res.Damages = append(res.Damages, out)
 	}
 	return connect.NewResponse(res), nil
+}
+
+// trapDamageOf is the row of a listing as the trap_damages row it is.
+func trapDamageOf(d playdb.ListCampaignTrapDamagesRow) playdb.TrapDamage {
+	return playdb.TrapDamage{
+		ID: d.ID, GameSessionID: d.GameSessionID, TrapPointID: d.TrapPointID, FireID: d.FireID, CharacterID: d.CharacterID, Status: d.Status,
+		Critical: d.Critical, DiceCount: d.DiceCount, DiceSides: d.DiceSides, DiceBonus: d.DiceBonus, DamageType: d.DamageType, Faces: d.Faces,
+		RollTotal: d.RollTotal, Half: d.Half, Amount: d.Amount, AppliedAmount: d.AppliedAmount, CreatedAt: d.CreatedAt, ResolvedAt: d.ResolvedAt,
+	}
 }
 
 // trapDamageProto is a trap_damages row as the API says it.
@@ -127,28 +141,34 @@ func (s *Service) settleTrapDamage(ctx context.Context, m authz.Membership, key,
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
 		after, repeated = nil, false
+		// The damage outlives its session, so it may be settled with none open (then there
+		// is no event to write and no key to remember).
 		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errNoOpenSession()
-		}
-		if err != nil {
+		hasSession := err == nil
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			return fmt.Errorf("lock the open session: %w", err)
 		}
-		if row, err = q.GetTrapDamageForUpdate(ctx, playdb.GetTrapDamageForUpdateParams{GameSessionID: session.ID, ID: id.String()}); errors.Is(err, pgx.ErrNoRows) {
+		found, err := q.GetCampaignTrapDamageForUpdate(ctx, playdb.GetCampaignTrapDamageForUpdateParams{CampaignID: m.CampaignID, ID: id.String()})
+		if errors.Is(err, pgx.ErrNoRows) {
 			return connect.NewError(connect.CodeNotFound, errors.New("trap damage not found"))
-		} else if err != nil {
+		}
+		if err != nil {
 			return fmt.Errorf("find the trap damage: %w", err)
 		}
-		done, err := q.GetSessionEventByIdempotencyKey(ctx, playdb.GetSessionEventByIdempotencyKeyParams{GameSessionID: session.ID, IdempotencyKey: &key})
-		switch {
-		case err == nil:
-			if done.Kind != kind {
-				return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
+		row = trapDamageOf(playdb.ListCampaignTrapDamagesRow(found))
+		if hasSession {
+			done, err := q.GetSessionEventByIdempotencyKey(ctx, playdb.GetSessionEventByIdempotencyKeyParams{GameSessionID: session.ID, IdempotencyKey: &key})
+			switch {
+			case err == nil:
+				var prior actionEvent
+				if done.Kind != kind || json.Unmarshal(done.Payload, &prior) != nil || prior.Pending != row.ID {
+					return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
+				}
+				repeated = true // a retry: the damage is as the first call left it
+				return nil
+			case !errors.Is(err, pgx.ErrNoRows):
+				return fmt.Errorf("find the event of this idempotency key: %w", err)
 			}
-			repeated = true // a retry: the damage is as the first call left it
-			return nil
-		case !errors.Is(err, pgx.ErrNoRows):
-			return fmt.Errorf("find the event of this idempotency key: %w", err)
 		}
 		if row.Status != "rolled" {
 			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DAMAGE_RESOLVED, "the damage was applied or discarded already")
@@ -171,7 +191,7 @@ func (s *Service) settleTrapDamage(ctx context.Context, m authz.Membership, key,
 			}
 			dmg := combat.ApplyDamage(int(now.GetHitPointsCurrent()), int(now.GetHitPointsTemporary()), int(amount))
 			hp, temp := clamp32(dmg.HP, 0, maxHitPointChange), clamp32(dmg.TempHP, 0, maxHitPointChange)
-			before, vit, err := s.changeVitals(ctx, q, tx, session.ID, m.CampaignID, row.CharacterID, &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: &hp, HitPointsTemporary: &temp})
+			before, vit, err := s.changeVitals(ctx, q, tx, row.GameSessionID, m.CampaignID, row.CharacterID, &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: &hp, HitPointsTemporary: &temp})
 			if err != nil {
 				return err
 			}
@@ -182,6 +202,9 @@ func (s *Service) settleTrapDamage(ctx context.Context, m authz.Membership, key,
 		resolved := c.now
 		if row, err = q.SetTrapDamageStatus(ctx, playdb.SetTrapDamageStatusParams{ID: row.ID, Status: final, ResolvedAt: &resolved, AppliedAmount: applied}); err != nil {
 			return fmt.Errorf("settle the trap damage: %w", err)
+		}
+		if !hasSession {
+			return nil
 		}
 		_, err = insertSceneEvent(ctx, c, kind, &m.UserID, &key, ev)
 		return err
@@ -253,4 +276,32 @@ func (s *Service) DiscardTrapDamage(
 	}
 	trapName, name := s.trapDamageNames(ctx, m.CampaignID, row)
 	return connect.NewResponse(&playv1.DiscardTrapDamageResponse{Damage: trapDamageProto(row, trapName, name)}), nil
+}
+
+// keepTrapDamage turns the trap damage a combat still holds for the master into
+// trap_damages rows when the combat ends, inside the change's transaction: the damage
+// to a player's character always waits for the master (question 73, RN-02), and a
+// combat that ended has no way to apply it. The rows are the combat's, now outside it.
+func (s *Service) keepTrapDamage(ctx context.Context, c *combatTx, cs []playdb.Combatant) error {
+	open, err := c.q.ListOpenTrapPendingDamagesOfEncounter(ctx, c.enc.ID)
+	if err != nil {
+		return fmt.Errorf("list the trap damage that waits: %w", err)
+	}
+	for _, p := range open {
+		i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == p.TargetID })
+		if i < 0 {
+			continue
+		}
+		if _, err := c.q.InsertTrapDamage(ctx, playdb.InsertTrapDamageParams{
+			GameSessionID: c.session.ID, TrapPointID: deref(p.TrapPointID), FireID: p.ID, CharacterID: cs[i].CharacterID, Critical: p.Critical,
+			DiceCount: p.DiceCount, DiceSides: p.DiceSides, DiceBonus: p.DiceBonus, DamageType: p.DamageType, Faces: p.Faces,
+			RollTotal: num(p.RollTotal), Half: p.Half, Amount: num(p.Amount), CreatedAt: p.CreatedAt,
+		}); err != nil {
+			return fmt.Errorf("keep the trap damage: %w", err)
+		}
+		if _, err := c.q.SetPendingDamageStatus(ctx, playdb.SetPendingDamageStatusParams{ID: p.ID, Status: pendingDiscarded, ResolvedAt: &c.now}); err != nil {
+			return fmt.Errorf("close the pending damage: %w", err)
+		}
+	}
+	return nil
 }

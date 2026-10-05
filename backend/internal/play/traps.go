@@ -15,6 +15,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
@@ -40,7 +41,7 @@ import (
 type TrapBook interface {
 	// Traps returns the map's traps with the master's data (DCs, effect), or a
 	// `not_found` Connect error when it is not a map of the campaign.
-	Traps(ctx context.Context, campaignID, mapID string) ([]maplink.Trap, error)
+	Traps(ctx context.Context, tx pgx.Tx, campaignID, mapID string) ([]maplink.Trap, error)
 	// KnownTraps returns the armed traps the character knows, with their squares
 	// and names and without their data.
 	KnownTraps(ctx context.Context, campaignID, mapID, characterID string) ([]maplink.Trap, error)
@@ -50,7 +51,7 @@ type TrapBook interface {
 	Notice(ctx context.Context, campaignID, mapID string, who []maplink.Observer) error
 	// SearchTraps is "Procurar armadilhas" with the roll's total: it reveals, inside
 	// tx, the traps the observer finds to its character.
-	SearchTraps(ctx context.Context, tx pgx.Tx, campaignID, mapID string, who maplink.Observer, skill string, total int, at time.Time) (maplink.SearchResult, error)
+	SearchTraps(ctx context.Context, tx pgx.Tx, campaignID, mapID string, who maplink.Observer, skill string, totals []int, at time.Time) (maplink.SearchResult, error)
 	// Told tells the players, after the commit, that the map changed for them.
 	Told(ctx context.Context, campaignID, mapID string, users []string)
 	// TriggerTrap marks the trap triggered inside tx and returns it as it was;
@@ -142,6 +143,15 @@ func (s *Service) SearchForTraps(
 	default:
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("set roll_in_app or d20_face"))
 	}
+	var typed2 int
+	if f := req.Msg.D20Face_2; f != nil {
+		if !in.inApp && skill == searchPerception {
+			typed2 = int(*f)
+			if typed2 < 1 || typed2 > 20 {
+				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("d20_face_2 must be 1 to 20"))
+			}
+		}
+	}
 	if s.traps == nil {
 		return nil, errNoTraps()
 	}
@@ -202,14 +212,33 @@ func (s *Service) SearchForTraps(
 		if err != nil {
 			return err
 		}
-		found, err := s.traps.SearchTraps(ctx, tx, m.CampaignID, place.mapID, maplink.Observer{CharacterID: who.ID, At: place.at}, skill, roll.Total, c.now)
+		totals := []int{roll.Total}
+		// A Perception search is rolled twice in the app (the lower counts where the
+		// light is dim to the searcher); with a real die the second one is typed.
+		var face2 int
+		switch {
+		case skill != searchPerception:
+		case in.inApp:
+			var roll2 dice.Result
+			if face2, roll2, err = s.d20(in, options[0].Bonus); err != nil {
+				return err
+			}
+			totals = append(totals, roll2.Total)
+		case typed2 > 0:
+			face2 = typed2
+			totals = append(totals, typed2+options[0].Bonus)
+		}
+		found, err := s.traps.SearchTraps(ctx, tx, m.CampaignID, place.mapID, maplink.Observer{CharacterID: who.ID, At: place.at}, skill, totals, c.now)
+		if errors.Is(err, maplink.ErrSearchNeedsTwoDice) {
+			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_SEARCH_NEEDS_TWO_DICE, "a Perception search in dim light has disadvantage: roll a second die")
+		}
 		if err != nil {
 			return err
 		}
 		told = found.Users
 		ev = actionEvent{
 			Round: c.enc.Round, Actor: place.combatantID, Key: skill, D20: clampInt32(face), Modifier: clampInt32(options[0].Bonus), Total: clampInt32(roll.Total),
-			Physical: roll.Physical, Found: found.Found, OnTurn: place.spent,
+			Physical: roll.Physical, Found: found.Found, OnTurn: place.spent, D20B: clampInt32(face2),
 		}
 		if place.spent {
 			if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
@@ -232,12 +261,17 @@ func (s *Service) SearchForTraps(
 			s.publishEncounterChanged(m.CampaignID, place.enc)
 			s.publishLogChanged(m.CampaignID, place.enc.ID, false) // the master's log has the search
 		}
+		s.Publish(m.CampaignID, false, mapChangedHint(place.mapID)) // the master's activity read has a new line: a hint with no content
 	}
-	return connect.NewResponse(&playv1.SearchForTrapsResponse{
+	out := &playv1.SearchForTrapsResponse{
 		Roll:          diceRoll(1, 20, []int32{ev.D20}, ev.Modifier, ev.Total, ev.Physical),
 		FoundPointIds: ev.Found,
 		SpentAction:   ev.OnTurn,
-	}), nil
+	}
+	if ev.D20B != 0 {
+		out.SecondRoll = diceRoll(1, 20, []int32{ev.D20B}, ev.Modifier, ev.D20B+ev.Modifier, ev.Physical)
+	}
+	return connect.NewResponse(out), nil
 }
 
 // searchPlace is where a character searches from, and what the search costs.
