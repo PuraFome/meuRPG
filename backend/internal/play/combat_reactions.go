@@ -75,7 +75,7 @@ func (s *Service) openHit(ctx context.Context, c *combatTx, campaignID string, a
 	}
 	total := clamp32(attackTotal, math.MinInt32, math.MaxInt32)
 	p, err := c.q.InsertPendingDamage(ctx, playdb.InsertPendingDamageParams{
-		EncounterID: c.enc.ID, AttackerID: attacker.ID, TargetID: target.ID, AttackKey: key, Status: status, Critical: critical,
+		EncounterID: c.enc.ID, AttackerID: &attacker.ID, TargetID: target.ID, AttackKey: key, Status: status, Critical: critical,
 		DiceCount: clamp32(combat.DiceToRoll(rules.DiceFormula{Count: dmg.Count}, critical), 0, 100),
 		DiceSides: clamp32(dmg.Sides, 0, 100), DiceBonus: clamp32(dmg.Bonus, -1000, 1000),
 		DamageType: dmg.DamageType, CreatedAt: c.now, AttackTotal: &total, AttackArmorClass: ptr(clamp32(attackAC, 0, math.MaxInt32)),
@@ -114,11 +114,11 @@ func (s *Service) reactionPrompts(ctx context.Context, m authz.Membership, d *en
 		}
 		prompt := &playv1.ReactionPrompt{PendingDamageId: p.ID, TargetId: p.TargetID, SpellKey: shield, Slots: slots, SpellNamePt: s.nameOf(shield)}
 		if v.master {
-			prompt.AttackerId = p.AttackerID
+			prompt.AttackerId = deref(p.AttackerID)
 		}
 		// Who attacked, and with what, only when the viewer sees the attacker (RN-20):
 		// the screen says "Capitão Goblin · Cimitarra", and a hidden attacker stays hidden.
-		if j := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == p.AttackerID }); j >= 0 && v.sees(d.cs[j]) {
+		if j := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == deref(p.AttackerID) }); j >= 0 && v.sees(d.cs[j]) {
 			prompt.AttackerLabel = d.cs[j].Label
 			if sheet, err := s.sheetOf(ctx, nil, m.CampaignID, d.cs[j]); err == nil {
 				if k := slices.IndexFunc(sheet.Attacks, func(a link.Attack) bool { return a.Key == p.AttackKey }); k >= 0 {
@@ -154,7 +154,7 @@ func (s *Service) reactionTarget(ctx context.Context, c *combatTx, v combatViewe
 	if err = v.mayAct(target); err != nil {
 		return p, attacker, target, err
 	}
-	attacker, _ = findCombatant(cs, p.AttackerID, combatViewer{master: true})
+	attacker, _ = findCombatant(cs, deref(p.AttackerID), combatViewer{master: true})
 	if p.Status != pendingAwaitingReaction {
 		return p, attacker, target, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_AWAITING_REACTION, "the hit does not wait for a reaction")
 	}

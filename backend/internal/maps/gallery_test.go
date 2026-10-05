@@ -603,6 +603,8 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, mapCalls["GetMapLayers"] = mc.GetMapLayers(ctx, connect.NewRequest(&mapsv1.GetMapLayersRequest{CampaignId: id, MapId: id}))
 	_, mapCalls["SetMapFog"] = mc.SetMapFog(ctx, connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: id, MapId: id, FogEnabled: proto.Bool(true)}))
 	_, mapCalls["RevealTrap"] = mc.RevealTrap(ctx, connect.NewRequest(&mapsv1.RevealTrapRequest{CampaignId: id, MapId: id, PointId: id, All: true}))
+	_, mapCalls["GetTrapNoticers"] = mc.GetTrapNoticers(ctx, connect.NewRequest(&mapsv1.GetTrapNoticersRequest{CampaignId: id, MapId: id, PointId: id}))
+	_, mapCalls["DisarmTrap"] = mc.DisarmTrap(ctx, connect.NewRequest(&mapsv1.DisarmTrapRequest{CampaignId: id, MapId: id, PointId: id}))
 	_, mapCalls["MarkTreasureFound"] = mc.MarkTreasureFound(ctx, connect.NewRequest(&mapsv1.MarkTreasureFoundRequest{CampaignId: id, MapId: id, PointId: id, CharacterIds: []string{id}}))
 	_, mapCalls["UnmarkTreasureFound"] = mc.UnmarkTreasureFound(ctx, connect.NewRequest(&mapsv1.UnmarkTreasureFoundRequest{CampaignId: id, MapId: id, PointId: id}))
 	_, mapCalls["GetMapVision"] = mc.GetMapVision(ctx, connect.NewRequest(&mapsv1.GetMapVisionRequest{CampaignId: id, MapId: id}))

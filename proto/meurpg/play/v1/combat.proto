@@ -1241,6 +1241,23 @@ enum EncounterBlockedReason {
   // `opportunity_offer_id` refuses a used reaction with REACTION_USED, and a
   // defeated or down reactor with the usual reasons.)
   ENCOUNTER_BLOCKED_REASON_OPPORTUNITY_PENDING = 46;
+  // The traps (MR-035, PlayService.SearchForTraps and FireTrap). The first three
+  // are 9.8's; 53 and 54 are free.
+  //
+  // SearchForTraps: the caller's character has no square on the map of the
+  // session's current map (or of its combat), or the map has no grid.
+  ENCOUNTER_BLOCKED_REASON_TRAP_NOT_ON_MAP = 50;
+  // FireTrap: the trap is not armed (it fired already, or it is disarmed). The
+  // master arms it again with UpdateMapPoint.
+  ENCOUNTER_BLOCKED_REASON_TRAP_NOT_ARMED = 51;
+  // SearchForTraps: the character is a combatant in a combat that is not active
+  // yet or already ended; searching during a fight is for the character's own turn.
+  ENCOUNTER_BLOCKED_REASON_TRAP_SEARCH_NOT_NOW = 52;
+  // SearchForTraps with Perception on a typed die: a square the character sees within
+  // 3 m is lightly obscured (dim light, or darkness seen through darkvision), so the
+  // roll has disadvantage and needs a second die (`d20_face_2`). The screen knows from
+  // GetMapVision.
+  ENCOUNTER_BLOCKED_REASON_SEARCH_NEEDS_TWO_DICE = 53;
   // AssumeWildShape: the beast is not one the character's Wild Shape allows (its
   // level, the fly and swim limits, a creature that is not a beast), or the
   // character has no Wild Shape (MR-037).
@@ -1811,6 +1828,14 @@ message ReachableSquare {
   // master's list is exact. The screen warns before confirming ("Sair do alcance
   // do Goblin 2 pode provocar um ataque de oportunidade").
   repeated string provokes_reactor_ids = 4;
+  // The armed trap this square is inside, when the caller's character knows it
+  // (it noticed or found it, the master revealed it to the character or to
+  // everyone, or it fired before): the app asks "Isso entra no Fosso escondido.
+  // Mover assim mesmo?" before the move. Never set for a trap the character does
+  // not know (RN-10). Fields 4 to 6 are slice 9.6b's.
+  string known_trap_point_id = 7;
+  // That trap's name ("Fosso escondido").
+  string known_trap_name = 8;
 }
 
 // RefusedSquare is a square inside the circle that the combatant cannot go to.
@@ -2002,6 +2027,14 @@ message PendingDamage {
   // death save failures the damage caused (1, or 2 for a critical hit) instead
   // of hit points.
   int32 death_failures_added = 20;
+  // The damage comes from a trap (MR-035): the trap's point (a UUID), and its
+  // name. attacker_id is empty then, attack_key is "trap" and the damage was
+  // rolled when the trap fired, so it is ROLLED (a player's character: it waits
+  // for the master, who may change the amount, RN-02) or APPLIED (an NPC or a
+  // creature, which takes it at once). Only the master and the target's own
+  // player get these rows; a trap that fired is public.
+  string trap_point_id = 21;
+  string trap_name = 22;
 }
 
 // GetTurnOptionsRequest names a combatant.
@@ -2738,6 +2771,11 @@ enum CombatLogKind {
   // encerrou a parte dela"): the actor. The last part to end is not a line:
   // the turn passes. A line with a hidden member never reaches a player.
   COMBAT_LOG_KIND_TURN_PART_ENDED = 13;
+  // A trap fired (MR-035): the trap's name (it is public now) and `trap`, with what
+  // happened to each creature it caught. A fired trap is never a secret of
+  // the master's, so every player gets the line; the dice of the other creatures
+  // and every DC stay with the master (RN-10, RN-20).
+  COMBAT_LOG_KIND_TRAP_TRIGGERED = 20;
 }
 
 // CombatLogEntry is one line of the combat log, as the caller may see it.
@@ -2813,6 +2851,8 @@ message CombatLogEntry {
   // Only the master: the same, but that square was taken, so the mover stayed
   // where it was.
   bool return_blocked = 35;
+  // TRAP_TRIGGERED: what the trap did.
+  TrapFiring trap = 40;
 }
 
 // CombatLogSpell is a spell in the combat log: the cast, or a reaction.
@@ -2981,4 +3021,80 @@ message GetCombatHighlightsResponse {
   // gets every row; a player gets exactly one, their own character's (empty if
   // they had none in the combat), and never another player's (RN-20).
   repeated CharacterHighlights characters = 2;
+}
+
+// TrapFiring is what a fired trap did to each creature it caught. The master
+// gets all of it. The players read the same event only through the combat log
+// (CombatLogEntry.trap), with the dice of their own characters and "passou" or
+// "falhou" for the rest.
+message TrapFiring {
+  // The trap's point (a UUID) and its name; a trap that fired is public.
+  string point_id = 1;
+  string name = 2;
+  repeated TrapCaught caught = 3;
+  // The firing's ID (a UUID): what FireTrapRequest.extend_firing_id asks for. In the
+  // combat log it is the entry's ID.
+  string id = 4;
+}
+
+// TrapCaught is what one creature suffered.
+message TrapCaught {
+  // The combatant (in a combat) or the character (outside one): a UUID.
+  string target_id = 1;
+  string target_label = 2;
+  // The player's character, or the NPC's character, the target stands for (a UUID).
+  string character_id = 3;
+  // The trap's attacks that were made against it, in order.
+  repeated TrapAttackRoll attacks = 4;
+  // Its saving throw, when the trap asked one of it.
+  TrapSaveRoll save = 5;
+  // The damage it takes, a row for each damage part.
+  repeated TrapDamageDone damages = 6;
+  // Every saving throw it made, in order: a trap that asks the save of each creature
+  // hit (applies_to HIT) asks it once per hit. `save` is the first.
+  repeated TrapSaveRoll saves = 8;
+  // The conditions the trap gave it (keys of the SRD's, "condition:restrained").
+  // In a combat they are on the combatant; outside one they are a reminder for
+  // the master's log.
+  repeated string condition_keys = 7;
+}
+
+// TrapAttackRoll is one attack of a trap.
+message TrapAttackRoll {
+  // The d20 plus the trap's attack bonus.
+  DiceRoll roll = 1;
+  AttackOutcome outcome = 2;
+  // The target's armor class the total was compared with. Only the master.
+  int32 target_armor_class = 3;
+}
+
+// TrapSaveRoll is the saving throw a creature made against a trap.
+message TrapSaveRoll {
+  SaveOutcome outcome = 1;
+  // The d20 plus the creature's bonus. Only the master and the creature's own
+  // player; everyone else gets the outcome as a word.
+  DiceRoll roll = 2;
+  // The trap's save DC. Only the master.
+  int32 dc = 3;
+  // False for a basic-sheet NPC with no saving throw bonus (d20 + 0). Only the master.
+  bool bonus_known = 4;
+}
+
+// TrapDamageDone is the damage of one part of the trap's effect, rolled.
+message TrapDamageDone {
+  // The row that holds it: pending_damages.id in a combat (apply it with
+  // CombatService.ApplyPendingDamage) or trap_damages.id outside one (ApplyTrapDamage).
+  string damage_id = 1;
+  // ROLLED: a player's character, waits for the master. APPLIED: an NPC or a
+  // creature took it at once.
+  PendingDamageStatus status = 2;
+  DiceRoll roll = 3;
+  // What lands: half the roll for a creature that passed a save that halves.
+  int32 amount = 4;
+  string damage_type_key = 5;
+  string damage_type_pt = 6;
+  bool half = 7;
+  bool critical = 8;
+  // APPLIED to an NPC that reached 0: defeated.
+  bool target_defeated = 9;
 }

@@ -354,6 +354,14 @@ type actionEvent struct {
 	// Spent says the change spent the combatant's action or bonus action (the
 	// economy fields above are then what an undo puts back).
 	Spent bool `json:"spent,omitempty"`
+	// A trap that fired (`trap_triggered`, MR-035): what it did and what an undo
+	// puts back. A search (`trap_searched`) keeps its roll in the same fields as an
+	// attack (D20, Modifier, Total, Physical), Key the skill ("perception" or
+	// "investigation") and Found the traps it revealed (point IDs).
+	Trap *trapFireEvent `json:"trap,omitempty"`
+	// D20B is the second d20 of a Perception search with disadvantage.
+	D20B  int32    `json:"d20_b,omitempty"`
+	Found []string `json:"found,omitempty"`
 }
 
 // readEvent decodes an event's payload. A payload of this module never fails
@@ -378,7 +386,7 @@ func touchesHidden(cs []playdb.Combatant, pending []playdb.PendingDamage) bool {
 	for _, c := range cs {
 		hidden[c.ID] = c.Hidden
 	}
-	return slices.ContainsFunc(pending, func(p playdb.PendingDamage) bool { return hidden[p.AttackerID] || hidden[p.TargetID] })
+	return slices.ContainsFunc(pending, func(p playdb.PendingDamage) bool { return hidden[deref(p.AttackerID)] || hidden[p.TargetID] })
 }
 
 // hpOf is a combatant's hit points as the undo stores them.
@@ -401,7 +409,7 @@ func (c *combatTx) pendingOf(ctx context.Context, attackerID string) ([]playdb.P
 	if err != nil {
 		return nil, fmt.Errorf("list the pending damage: %w", err)
 	}
-	return slices.DeleteFunc(open, func(p playdb.PendingDamage) bool { return p.AttackerID != attackerID }), nil
+	return slices.DeleteFunc(open, func(p playdb.PendingDamage) bool { return deref(p.AttackerID) != attackerID }), nil
 }
 
 // publishLogChanged tells the streams to read the combat log again: the

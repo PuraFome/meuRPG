@@ -815,6 +815,10 @@ func (l *visionLocks) of(mapID string) *sync.Mutex {
 // reconnection.
 func (s *Service) refreshVision(ctx context.Context, campaignID, mapID string, watch ...grid.Square) {
 	ctx = context.WithoutCancel(ctx)
+	// What the players' tiles depend on is about to change, and has when this
+	// returns: drop their kept tiles at both ends.
+	s.tiles.views.drop(mapID)
+	defer s.tiles.views.drop(mapID)
 	if err := s.updateVision(ctx, campaignID, mapID, watch); err != nil {
 		s.logger.ErrorContext(ctx, "maps: cannot update what the players see", "error", err)
 	}

@@ -29,17 +29,21 @@ func (s *Service) PartyVision(ctx context.Context, campaignID string) ([]link.Pa
 		if user == "" {
 			continue // its player deleted the account (RN-16): nobody sees through it
 		}
-		member := link.PartyMember{CharacterID: row.ID, UserID: user}
+		// A basic sheet has no skills: its passive Perception is the plain 10.
+		member := link.PartyMember{CharacterID: row.ID, UserID: user, PassivePerception: 10}
 		sheet, err := loadSheet(row.ID, row.Sheet)
 		if err != nil {
 			return nil, s.dbError(ctx, "list the party's senses", err)
 		}
 		if full := sheet.GetFull(); full != nil {
-			member.Senses = sensesOf(s.derive(full, row.WildShapeBeast).Senses)
+			// The form's senses and passive Perception, when the druid is a beast (MR-037).
+			derived := s.derive(full, row.WildShapeBeast)
+			member.Senses = sensesOf(derived.Senses)
+			member.PassivePerception = derived.PassivePerception
 		}
 		if row.FamiliarID != nil && row.FamiliarMonsterKey != nil {
 			if d, ok := s.rules.MonsterDerived(*row.FamiliarMonsterKey); ok {
-				member.Eyes = &link.Eyes{CreatureID: *row.FamiliarID, Senses: sensesOf(d.Senses)}
+				member.Eyes = &link.FamiliarEyes{CreatureID: *row.FamiliarID, Senses: sensesOf(d.Senses)}
 			}
 		}
 		out = append(out, member)

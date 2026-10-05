@@ -557,6 +557,39 @@ service MapService {
   //   - `permission_denied`: the caller is a player.
   rpc RevealTrap(RevealTrapRequest) returns (RevealTrapResponse);
 
+  // GetTrapNoticers is the master's "Quem notaria" on a trap's card (MR-035, D5):
+  // each living player character of the campaign with its passive Perception,
+  // and whether the light penalty applies at the trap's squares as that character
+  // sees them now (dim light, or darkness seen through darkvision, takes 5 from a
+  // passive check; dim light within darkvision counts as bright). The server
+  // works it out, so the browser does no rules math. Only the campaign's master
+  // may call it; a player never gets a trap's DCs (RN-10).
+  //
+  // Errors:
+  //   - `invalid_argument`: the point is not a TRAP.
+  //   - `not_found`: the point is not on this map, the map is not in this
+  //     campaign, the campaign does not exist, or the caller is not a member of it.
+  //   - `permission_denied`: the caller is a player.
+  rpc GetTrapNoticers(GetTrapNoticersRequest) returns (GetTrapNoticersResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // DisarmTrap marks a trap "Desarmada" (MR-035, D5): the master calls it after
+  // the table resolved the thieves' tools check (the app rolls nothing). A
+  // disarmed trap never fires again until the master arms it again
+  // (UpdateMapPoint). With an open session a `trap_disarmed` event goes into its
+  // history (IDs only). A trap that is not revealed to everyone stays hidden from
+  // the players who do not know it; one that is public tells everyone who sees
+  // the map (`map_changed`). Disarming a trap that is already disarmed changes
+  // nothing. Only the campaign's master may call it.
+  //
+  // Errors:
+  //   - `invalid_argument`: the point is not a TRAP.
+  //   - `not_found`: the point is not on this map, the map is not in this
+  //     campaign, the campaign does not exist, or the caller is not a member of it.
+  //   - `permission_denied`: the caller is a player.
+  rpc DisarmTrap(DisarmTrapRequest) returns (DisarmTrapResponse);
+
   // MarkTreasureFound marks a TREASURE point found, by one or more characters
   // (MR-041, D8). Only the campaign's master may call it, with or without an
   // open session. A found treasure is visible to everyone who sees the map,
@@ -1574,6 +1607,59 @@ message RevealTrapResponse {
   MapPoint point = 1;
 }
 
+// GetTrapNoticersRequest names a trap.
+message GetTrapNoticersRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+  string point_id = 3;
+}
+
+// GetTrapNoticersResponse says who would notice the trap by passing near it.
+message GetTrapNoticersResponse {
+  // Every living player character of the campaign that has a player, oldest
+  // first.
+  repeated TrapNoticer noticers = 1;
+  // The trap's DC to notice it (passive Perception), 0 when only a search finds it.
+  int32 notice_dc = 2;
+}
+
+// TrapNoticer is one player character on the trap's card.
+message TrapNoticer {
+  string character_id = 1;
+  string character_name = 2;
+  // Its passive Perception from the derived sheet.
+  int32 passive_perception = 3;
+  // The light penalty at the trap's squares as the character sees them now: 0 or
+  // -5. 0 as well when the character does not see them.
+  int32 light_penalty = 4;
+  // The character stands on this map (a token, or a combatant while a combat runs
+  // on it).
+  bool on_map = 5;
+  // It is within 3 m of the trap's area.
+  bool in_range = 6;
+  // It sees at least one square of the trap's area now.
+  bool sees = 7;
+  // It would notice the trap standing there: in range, seeing it, and
+  // passive_perception + light_penalty reaches the DC. False for a trap with no
+  // DC to notice.
+  bool would_notice = 8;
+  // It already knows the trap (noticed, found, revealed by the master, or the trap
+  // is public).
+  bool knows = 9;
+}
+
+// DisarmTrapRequest names the trap.
+message DisarmTrapRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+  string point_id = 3;
+}
+
+// DisarmTrapResponse returns the point as the master sees it.
+message DisarmTrapResponse {
+  MapPoint point = 1;
+}
+
 // MarkTreasureFoundRequest names the treasure and who found it.
 message MarkTreasureFoundRequest {
   string campaign_id = 1;
@@ -1661,6 +1747,32 @@ message GetMapVisionResponse {
   // "Visão do grupo" is on for this map: the view is the union of every player
   // character's.
   bool group_vision = 7;
+  // The path of the viewer's image tiles (MR-036, RN-10): a player on a map with
+  // the fog on never receives the image whole, only its tiles of tile_squares x
+  // tile_squares squares, each with the pixels of the squares they see or
+  // remember and solid black elsewhere. A tile is GET <tiles_path><tx>/<ty>?r=<revision>
+  // (same origin, with the session cookie; the master adds &as=<character ID>
+  // to read as a player). The tile's pixels never change except by gaining squares:
+  // the app fetches a tile again only when its revision changed. A tile with no
+  // square the viewer knows is not in `tiles` and answers 404. Empty for the master
+  // (who reads the whole image), on a map without the fog, and while images are off.
+  string tiles_path = 8;
+  // How many squares a tile is on each side: 16.
+  int32 tile_squares = 9;
+  // The tiles that exist for the viewer, in row-major order.
+  repeated MapTile tiles = 10;
+}
+
+// MapTile is one tile of a map's image for a viewer on a map with the fog on.
+message MapTile {
+  // The tile's column and row, from 0: it covers the squares from column
+  // tx * tile_squares and row ty * tile_squares, up to the grid's edge.
+  int32 tx = 1;
+  int32 ty = 2;
+  // A number of the squares of this tile the viewer knows. It is the `r` of the
+  // tile's URL, and the tile's ETag: it changes when the tile gains a square
+  // (and when the map's image or grid changes).
+  int32 revision = 3;
 }
 
 // ForgetMapVisionRequest names a map of a campaign.

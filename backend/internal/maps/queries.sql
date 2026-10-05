@@ -84,7 +84,7 @@ RETURNING *;
 -- treasure (a trap revealed to some characters only is the handler's to add).
 SELECT m.id, m.campaign_id, m.name, m.image_id, m.revealed_at, m.revision, m.created_at, m.updated_at, m.grid_columns,
        m.fog_enabled, m.base_light, m.group_vision, m.layers_revision, m.light_revision, m.vision_epoch,
-       g.name AS image_name, g.width AS image_width, g.height AS image_height,
+       g.name AS image_name, g.width AS image_width, g.height AS image_height, g.content_type AS image_content_type,
        (SELECT count(*) FROM map_points AS p WHERE p.map_id = m.id)::INT4 AS point_count,
        (SELECT count(*) FROM map_points AS p
         WHERE p.map_id = m.id AND p.kind <> 'light'
@@ -194,6 +194,15 @@ UPDATE maps
 SET light_revision = light_revision + 1
 WHERE id = $1
 RETURNING light_revision;
+
+-- name: GetMapTileInfo :one
+-- What the tile route needs of a map, in one read, from the map's ID alone: its
+-- campaign, whether players see it, the fog and grid, and its image's size and type.
+SELECT m.id, m.campaign_id, m.image_id, m.revealed_at, m.grid_columns, m.fog_enabled,
+       g.width AS image_width, g.height AS image_height, g.content_type AS image_content_type
+FROM maps AS m
+JOIN gallery_images AS g ON g.id = m.image_id
+WHERE m.id = $1;
 
 -- name: GetMapGrid :one
 -- A map's grid and its image's size, for the rows (package play, through
@@ -685,3 +694,31 @@ FROM map_points AS p
 JOIN map_treasure_finders AS f ON f.point_id = p.id
 WHERE p.kind = 'treasure' AND p.treasure_found_at IS NOT NULL AND p.treasure_session_id = sqlc.arg(session_id)::UUID
 ORDER BY p.id, f.character_id;
+
+-- name: SetTrapState :one
+-- The live game changes a trap's state (MR-035, slice 9.8): it fires (state
+-- 'triggered', with when), the master disarms it, or an undo puts back what
+-- there was. The caller locked the point first.
+UPDATE map_points
+SET trap_state = sqlc.arg(trap_state), trap_triggered_at = sqlc.narg(trap_triggered_at), updated_at = sqlc.arg(now)
+WHERE map_id = sqlc.arg(map_id) AND id = sqlc.arg(id) AND kind = 'trap'
+RETURNING *;
+
+-- name: ListPointRevealCharacters :many
+-- The characters that know each trap of the map, for the noticing: one row per
+-- trap and character.
+SELECT r.point_id, r.character_id FROM map_point_reveals AS r
+JOIN map_points AS p ON p.id = r.point_id
+WHERE p.map_id = $1;
+
+-- name: GetMapPoint :one
+-- One point of a map, without locking it.
+SELECT * FROM map_points
+WHERE map_id = $1 AND id = $2;
+
+-- name: ListTrapNamesInCampaign :many
+-- The names of traps by point ID, for the combat log: a trap that fired is
+-- public, so its name may be told (MR-035). A deleted point is simply absent.
+SELECT p.id, p.name FROM map_points AS p
+JOIN maps AS m ON m.id = p.map_id
+WHERE m.campaign_id = $1 AND p.kind = 'trap' AND p.id = ANY($2::uuid[]);

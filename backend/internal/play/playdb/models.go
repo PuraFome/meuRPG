@@ -105,7 +105,7 @@ type OpportunityOffer struct {
 type PendingDamage struct {
 	ID               string
 	EncounterID      string
-	AttackerID       string
+	AttackerID       *string
 	TargetID         string
 	AttackKey        string
 	Status           string
@@ -126,6 +126,7 @@ type PendingDamage struct {
 	AttackTotal      *int32
 	RollTotal        *int32
 	AttackArmorClass *int32
+	TrapPointID      *string
 }
 
 type StageNpc struct {
@@ -135,4 +136,25 @@ type StageNpc struct {
 	Position      int32
 	Speaking      bool
 	CreatedAt     time.Time
+}
+
+type TrapDamage struct {
+	ID            string
+	GameSessionID string
+	TrapPointID   string
+	FireID        string
+	CharacterID   string
+	Status        string
+	Critical      bool
+	DiceCount     int32
+	DiceSides     int32
+	DiceBonus     int32
+	DamageType    string
+	Faces         []int32
+	RollTotal     int32
+	Half          bool
+	Amount        int32
+	AppliedAmount *int32
+	CreatedAt     time.Time
+	ResolvedAt    *time.Time
 }
