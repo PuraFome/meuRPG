@@ -198,6 +198,9 @@ export class LiveSessionSourceLive implements LiveSessionSource {
         case 'stageChanged':
           yield { kind: 'stageChanged' };
           break;
+        case 'creaturesChanged':
+          yield { kind: 'creaturesChanged' };
+          break;
         default:
           // A newer server's event this app doesn't know yet: still proof
           // that the stream is alive.

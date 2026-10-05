@@ -77,3 +77,8 @@
     font-size: 20px;
   }
 }
+
+// An empty live region takes no room.
+.gift:empty {
+  display: none;
+}

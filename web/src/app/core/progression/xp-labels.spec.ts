@@ -69,6 +69,8 @@ describe('who got what', () => {
   it('writes when, and when it was undone', () => {
     expect(awardWhen(award())).toBe(formatDayAt(new Date(2026, 9, 2, 20, 41)));
     expect(awardWhen(award())).toMatch(/^02\/10\s+às\s+20:41$/);
+    // An account that was deleted has no name: "pelo mestre", not "por o mestre".
+    expect(undoneLine(award({ undone: true, undoneByDisplayName: '' }))).toBe('Desfeito pelo mestre.');
     expect(undoneLine(award({ undone: true, undoneByDisplayName: 'Samuel', undoneAt: timestampFromDate(new Date(2026, 9, 2, 21, 10)) }))).toBe(
       `Desfeito por Samuel em ${formatDayAt(new Date(2026, 9, 2, 21, 10))}.`,
     );

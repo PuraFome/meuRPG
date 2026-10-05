@@ -17,6 +17,7 @@ import { XpWatcher } from '../../character-sheet/xp-watcher';
 import { LevelUpTag } from '../../../shared/xp/level-up-tag';
 import { characterRowSub, stateTagClass } from './campaign-characters.copy';
 import { LevelUpChanges } from './level-up-changes';
+import { CharacterCreatures } from '../creatures/character-creatures';
 import {
   CampaignCharacterListItemVm,
   CampaignCharactersSource,
@@ -54,7 +55,7 @@ const NPC_KINDS: ReadonlyArray<{ kind: CharacterKind; tipo: string }> = [
  */
 @Component({
   selector: 'app-campaign-characters',
-  imports: [LevelUpChanges, LevelUpTag, MatButtonModule, MatIconModule, MatMenuModule, RouterLink],
+  imports: [CharacterCreatures, LevelUpChanges, LevelUpTag, MatButtonModule, MatIconModule, MatMenuModule, RouterLink],
   templateUrl: './campaign-characters.html',
   styleUrl: './campaign-characters.scss',
 })
@@ -80,6 +81,11 @@ export class CampaignCharacters implements OnInit {
   protected readonly characterRowSub = characterRowSub;
   protected readonly stateTagClass = stateTagClass;
 
+  /** Bumped when the stream says a character's creatures changed (the master's lines read again). */
+  protected readonly creaturesTick = signal(0);
+  /** "Mastim dado ao Toren. Ele aparece na ficha dele, que foi avisado.": the live region's words after a gift. */
+  protected readonly giftNotice = signal('');
+
   /** Whose "O que mudou" is open, in place under its row. */
   protected readonly openChanges = signal<string | null>(null);
 
@@ -93,7 +99,7 @@ export class CampaignCharacters implements OnInit {
         this.xpWatcher?.follow(live ? id : null, () => {
           void this.levelUps?.refresh();
           void this.experience?.refresh();
-        }),
+        }, () => this.creaturesTick.update((n) => n + 1)),
       );
     });
     inject(DestroyRef).onDestroy(() => this.xpWatcher?.follow(null, () => undefined));
@@ -116,6 +122,11 @@ export class CampaignCharacters implements OnInit {
         );
       });
     });
+  }
+
+  /** The master gave a creature (E9-10, quadro 6). */
+  protected gave(character: string, creature: string): void {
+    this.giftNotice.set(`${creature} dado a ${character}. A criatura aparece na ficha do personagem, e o jogador foi avisado.`);
   }
 
   /** The newest level-up of a character, for the master's list. */

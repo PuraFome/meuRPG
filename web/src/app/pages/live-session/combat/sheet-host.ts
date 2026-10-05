@@ -27,6 +27,9 @@ export function openSheet<C, D, R>(
     alert?: boolean;
     /** A form's first field (a CSS selector inside the sheet), instead of the title. */
     focus?: string;
+    /** `false`: the sheet does not put the focus back on its opener when it closes (the opener does it,
+     * with the focus ring: the browser draws none for a focus a dialog restores). */
+    restoreFocus?: boolean;
   },
 ): Observable<R | undefined> {
   const phone = typeof matchMedia === 'function' && matchMedia(PHONE_QUERY).matches;
@@ -40,6 +43,7 @@ export function openSheet<C, D, R>(
         autoFocus: config.alert ? '[data-initial-focus]' : (config.focus ?? 'first-heading'),
         panelClass: config.tall ? 'mr-sheet-tall' : 'mr-sheet',
         disableClose: config.alert,
+        restoreFocus: config.restoreFocus ?? true,
         // MatBottomSheet hands its whole config to the CDK dialog, which knows
         // `role`; the sheet's own type does not list it.
         ...(config.alert ? { role: 'alertdialog' } : {}),
@@ -56,6 +60,7 @@ export function openSheet<C, D, R>(
       ariaLabel: config.labelledBy ? undefined : config.ariaLabel,
       autoFocus: config.alert ? '[data-initial-focus]' : (config.focus ?? 'first-heading'),
       disableClose: config.alert,
+      restoreFocus: config.restoreFocus ?? true,
       role: config.alert ? 'alertdialog' : 'dialog',
     })
     .afterClosed();

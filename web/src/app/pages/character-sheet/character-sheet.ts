@@ -10,6 +10,7 @@ import {
   untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Code, ConnectError } from '@connectrpc/connect';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -32,6 +33,7 @@ import {
   FullSheetVm,
 } from './character-sheet.types';
 import { CombatColumn } from './combat-column/combat-column';
+import { CreaturesPanel } from './creatures-panel/creatures-panel';
 import { FeaturesPanel } from './features-panel/features-panel';
 import { MasterNotes } from './master-notes/master-notes';
 import { NotesPanel } from '../../shared/notes/notes-panel';
@@ -86,6 +88,7 @@ type SavingState = { status: 'idle' } | { status: 'saving' } | { status: 'error'
     AbilityMedallions,
     BasicSheet,
     CombatColumn,
+    CreaturesPanel,
     FeaturesPanel,
     LevelUpBanner,
     LevelUpDoneNotice,
@@ -127,6 +130,9 @@ export class CharacterSheetPage {
    * ("Confirmar recusa") after "Recusar personagem". */
   protected readonly confirmingReject = signal(false);
 
+  /** Bumped when the stream says the character's creatures changed (the panel reads its list again). */
+  protected readonly creaturesTick = signal(0);
+
   /** How the campaign levels: decides whether the header has an XP block or only the tag. */
   protected readonly xpMode = signal<CampaignXpMode | null>(null);
 
@@ -157,7 +163,13 @@ export class CharacterSheetPage {
       const s = this.state();
       const player = s.status === 'ready' && s.vm.characterKind === 'player';
       const live = player && id !== '' && this.openSessions.sessions().some((o) => o.campaignId === id);
-      untracked(() => this.xpWatcher.follow(live ? id : null, () => void this.reloadQuietly()));
+      untracked(() =>
+        this.xpWatcher.follow(
+          live ? id : null,
+          () => void this.reloadQuietly(),
+          () => this.creaturesTick.update((n) => n + 1),
+        ),
+      );
     });
     this.destroyRef.onDestroy(() => this.xpWatcher.follow(null, () => undefined));
   }
@@ -184,7 +196,14 @@ export class CharacterSheetPage {
     this.state.set({ status: 'loading' });
     this.source.getCharacterSheet(campaignId, characterId).then(
       (vm) => this.state.set({ status: 'ready', vm }),
-      (err: unknown) => this.state.set({ status: 'error', message: describeCharacterError(err) }),
+      (err: unknown) => {
+        if (ConnectError.from(err, Code.Unavailable).code === Code.NotFound) {
+          // The same page for "does not exist" and "not yours to see" (RN-20, ADR-0011).
+          this.state.set({ status: 'not-found' });
+          return;
+        }
+        this.state.set({ status: 'error', message: describeCharacterError(err) });
+      },
     );
     // Only a detail of the header: without it the sheet shows as for an XP campaign.
     this.source.getXpMode(campaignId).then(

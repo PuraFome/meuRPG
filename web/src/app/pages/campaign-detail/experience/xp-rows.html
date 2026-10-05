@@ -13,6 +13,8 @@
           <span class="num__of">{{ l.progress.of }}</span>
           @if (l.row.canLevelUp) {
             <app-level-up-tag class="tag" />
+          } @else if (l.gain) {
+            <span class="num__gain">{{ l.gain }}</span>
           } @else if (l.progress.missing) {
             <span class="num__missing">{{ l.progress.missing }}</span>
           }

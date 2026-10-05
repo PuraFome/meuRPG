@@ -81,3 +81,13 @@
     }
   }
 }
+
+// Nothing typed yet: a quiet line, not the biggest thing on the screen.
+.split .split__big--quiet,
+.split--foot .split__big--quiet {
+  font-family: var(--mr-font-sans);
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 21px;
+  color: var(--mr-ink-muted);
+}

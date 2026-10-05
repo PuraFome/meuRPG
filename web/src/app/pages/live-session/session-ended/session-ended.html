@@ -28,11 +28,11 @@
           <h2 class="sum__title" id="se-sum">Resumo da sessão</h2>
           <span class="sum__lead">Os jogadores veem os destaques e o resultado de cada um.</span>
         </div>
-        @if (tiles().length === 0) {
+        @if (masterTiles().length === 0) {
           <p class="sum__note">Ninguém causou, curou, sofreu dano nem passou em testes nesta sessão.</p>
         } @else {
           <h3 class="sum__h">Destaques</h3>
-          <app-highlight-tiles [tiles]="tiles()" [players]="players()" />
+          <app-highlight-tiles [tiles]="masterTiles()" [players]="players()" />
         }
         @if (rows().length > 0) {
           <app-highlights-table
@@ -41,6 +41,23 @@
             [columns]="['Testes passados']"
             [rows]="rows()"
           />
+        }
+        <!-- "Mais tesouro encontrado" (MR-041): every character that found something, or the line that none did. -->
+        @if (treasure().length === 0) {
+          <h3 class="sum__h">Mais tesouro encontrado</h3>
+          <p class="sum__none">
+            <mat-icon aria-hidden="true">paid</mat-icon>Nenhum tesouro registrado nesta sessão.
+          </p>
+        } @else {
+          <app-highlights-table
+            title="Mais tesouro encontrado"
+            caption="Só conta o que foi marcado durante a sessão."
+            [columns]="['Tesouro encontrado']"
+            [rows]="treasure()"
+          />
+          <p class="sum__note">
+            Quem não encontrou nada não aparece. Um tesouro encontrado por duas pessoas divide o valor, arredondado para baixo.
+          </p>
         }
       </section>
     </div>

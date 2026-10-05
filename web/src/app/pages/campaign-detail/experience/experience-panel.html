@@ -15,6 +15,11 @@
         [campaignName]="campaignName()"
         [xpMode]="store.xpMode()"
         [rows]="store.rows()"
+        [treasures]="store.treasures()"
+        [treasuresTotal]="store.treasuresTotal()"
+        [treasuresState]="store.treasuresState()"
+        [showTown]="true"
+        [block]="true"
         (given)="given($event)"
       />
     }
@@ -42,10 +47,21 @@
       } @else {
         <p class="exp__lead">{{ lead() }}</p>
 
+        @if (isMaster()) {
+          <app-treasure-strip
+            class="exp__strip"
+            [treasures]="store.treasures()"
+            [total]="store.treasuresTotal()"
+            [mode]="store.xpMode()"
+            [state]="store.treasuresState()"
+            (retry)="store.loadTreasures()"
+          />
+        }
+
         @if (store.rows().length === 0) {
           <p class="mr-muted">Nenhum personagem de jogador vivo nesta campanha.</p>
         } @else {
-          <app-xp-rows [rows]="store.rows()" />
+          <app-xp-rows [rows]="store.rows()" [gained]="gained()" />
         }
 
         <h3 class="exp__sub" id="history-title">Histórico</h3>
@@ -60,7 +76,12 @@
             @if (store.awards().length === 0) {
               <p class="mr-muted">{{ emptyHistory() }}</p>
             } @else {
-              <app-award-history [campaignId]="campaignId()" />
+              <app-award-history
+                [campaignId]="campaignId()"
+                [isMaster]="isMaster()"
+                [hideNotice]="confirmation() !== ''"
+                (undone)="undone()"
+              />
               <p class="exp__foot">
                 {{ isMaster() ? 'Só o último prêmio pode ser desfeito.' : 'Todos da campanha veem este histórico.' }}
               </p>

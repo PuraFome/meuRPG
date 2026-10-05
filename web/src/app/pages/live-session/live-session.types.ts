@@ -122,7 +122,9 @@ export type LiveEventVm =
   | { readonly kind: 'notesChanged' }
   /** `stage_changed` (MR-031): an NPC came in or went out, or the speaker
    * changed. It names nobody: the page reads the open scene again. */
-  | { readonly kind: 'stageChanged' };
+  | { readonly kind: 'stageChanged' }
+  /** `creatures_changed` (MR-037): the character's creatures changed outside a combat; read them again. */
+  | { readonly kind: 'creaturesChanged' };
 
 /**
  * What a failed call means for the page, from its Connect code and typed

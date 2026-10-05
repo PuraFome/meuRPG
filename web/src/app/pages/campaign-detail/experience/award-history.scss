@@ -9,7 +9,7 @@
 }
 
 // A line of the history. A phone stacks it (when, why, how much); from a
-// tablet up it is a row: when and tag, why, how much, "Desfazer".
+// tablet up it is a row: when and tag, why (with "Desfazer" under the words), how much.
 .item {
   display: flex;
   flex-direction: column;
@@ -19,16 +19,17 @@
 
   @media (min-width: 768px) {
     display: grid;
-    grid-template-columns: 132px minmax(0, 1fr) auto auto;
+    grid-template-columns: 132px minmax(0, 1fr) auto;
     align-items: start;
     gap: var(--mr-space-4);
   }
 }
 
-// "Desfeito": the line stays, quiet. The tag says it, not the colour alone.
+// "Desfeito": the line stays, quiet and struck through. The tag says it, not the colour or the strike alone.
 .item--undone .what__title,
 .item--undone .amount__each {
   color: var(--mr-ink-muted);
+  text-decoration: line-through;
 }
 
 .when {
@@ -73,9 +74,11 @@
   display: flex;
   flex-direction: column;
 
+  // One column of amounts, each one flush right with the others.
   @media (min-width: 768px) {
     align-items: flex-end;
     text-align: right;
+    min-width: 170px;
   }
 }
 
@@ -96,15 +99,9 @@
 
 .undo {
   --mat-button-text-label-text-color: var(--mr-accent-text);
-  // On a phone it starts a line: its words line up with the text above.
+  // Under the words, and its own words line up with theirs, not its padding.
   align-self: flex-start;
   margin-inline-start: -12px;
-
-  @media (min-width: 768px) {
-    align-self: start;
-    justify-self: end;
-    margin-inline-start: 0;
-  }
 }
 
 .more {

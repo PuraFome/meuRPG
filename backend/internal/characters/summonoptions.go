@@ -1,0 +1,179 @@
+package characters
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"slices"
+
+	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
+
+	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
+)
+
+// GetSummonOptions implements charactersv1connect.CharacterServiceHandler: what
+// a character can summon from its sheet (MR-037). It is a read of the same
+// rules CastSummon enforces (rules.SummonOptions for what a circle may bring,
+// summonStanding for what the sheet lets the character cast), so the
+// "Criaturas" panel keeps no copy of them. Same access as ListCharacterCreatures:
+// the master and the owner's player; anyone else gets `not_found` (RN-20). It
+// carries no hit points.
+func (s *Service) GetSummonOptions(
+	ctx context.Context,
+	req *connect.Request[charactersv1.GetSummonOptionsRequest],
+) (*connect.Response[charactersv1.GetSummonOptionsResponse], error) {
+	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
+	if err != nil {
+		return nil, err
+	}
+	id, ok := parseUUID(req.Msg.GetCharacterId())
+	if !ok {
+		return nil, errCharacterNotFound()
+	}
+	row, err := s.queries.GetCharacter(ctx, charactersdb.GetCharacterParams{CampaignID: m.CampaignID, ID: id})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, errCharacterNotFound()
+	}
+	if err != nil {
+		return nil, s.dbError(ctx, "read a character", err)
+	}
+	if !canSee(m, row.Kind, row.Status, row.PlayerUserID) {
+		return nil, errCharacterNotFound()
+	}
+	if row.Kind != kindPlayer {
+		return nil, invalidArgument(fieldErr("character_id", "is an NPC: only a player's character has creatures"))
+	}
+	out := &charactersv1.GetSummonOptionsResponse{}
+	b, err := s.summonCharacter(ctx, m.CampaignID, id)
+	if err != nil {
+		if connect.CodeOf(err) == connect.CodeNotFound {
+			return connect.NewResponse(out), nil // no full sheet (or a dead character): nothing to cast
+		}
+		return nil, err
+	}
+	vitals, err := s.getVitals(ctx, s.queries, m.CampaignID, id)
+	if err != nil {
+		return nil, err
+	}
+	// The slots, lowest circle first, the pact magic slots after their circle.
+	for _, u := range vitals.GetSpellSlots() {
+		out.Slots = append(out.Slots, &charactersv1.SummonSlot{Level: u.GetLevel(), Total: u.GetTotal(), Free: u.GetTotal() - u.GetUsed()})
+	}
+	if p := vitals.GetPactSlots(); p != nil && p.GetTotal() > 0 {
+		out.Slots = append(out.Slots, &charactersv1.SummonSlot{Level: p.GetSlotLevel(), Pact: true, Total: p.GetTotal(), Free: p.GetTotal() - p.GetUsed()})
+		slices.SortStableFunc(out.Slots, func(a, c *charactersv1.SummonSlot) int { return int(a.GetLevel() - c.GetLevel()) })
+	}
+	d := rules.Derive(b, s.rules)
+	for _, key := range s.rules.SummonSpells() {
+		spell, err := s.summonSpellOptions(ctx, m.CampaignID, id, b, d, key, out.Slots)
+		if err != nil {
+			return nil, err
+		}
+		if spell != nil {
+			out.Spells = append(out.Spells, spell)
+		}
+	}
+	return connect.NewResponse(out), nil
+}
+
+// summonSpellOptions is one spell's entry, or nil when the character cannot cast
+// it (no ritual and no ready slot cast).
+func (s *Service) summonSpellOptions(ctx context.Context, campaignID, characterID string, b rules.Build, d rules.Derived, key string, slots []*charactersv1.SummonSlot) (*charactersv1.SummonSpellOptions, error) {
+	det, ok := s.rules.SpellDetails(key)
+	if !ok {
+		return nil, nil
+	}
+	own, err := s.rules.SummonOptions(key, det.Spell.Level, b)
+	if err != nil {
+		return nil, fmt.Errorf("summon options of %s: %w", key, err)
+	}
+	st := s.summonStanding(d, key, own.Ritual)
+	canSlot := st.known && st.prepared
+	if !st.canRitual && !canSlot {
+		return nil, nil
+	}
+	out := &charactersv1.SummonSpellOptions{
+		SpellKey: key, NamePt: s.rules.NamePT(key), Level: int32(det.Spell.Level), CastingTimePt: castingTimePT(own.CastingTime), //nolint:gosec // a spell's circle is 1 to 9
+		Ritual: own.Ritual, Concentration: own.Concentration, CanRitual: st.canRitual, CanCastWithSlot: canSlot,
+	}
+	circles := map[int]bool{}
+	if st.canRitual {
+		circles[det.Spell.Level] = true
+	}
+	if canSlot {
+		for _, sl := range slots {
+			if int(sl.GetLevel()) >= det.Spell.Level && sl.GetTotal() > 0 {
+				circles[int(sl.GetLevel())] = true
+			}
+		}
+	}
+	levels := make([]int, 0, len(circles))
+	for c := range circles {
+		levels = append(levels, c)
+	}
+	slices.Sort(levels)
+	for _, c := range levels {
+		choices, err := s.rules.SummonOptions(key, c, b)
+		if err != nil {
+			continue // a pact slot above the spell's reach, or a circle the spell does not take
+		}
+		sc := &charactersv1.SummonCircle{Circle: int32(c)} //nolint:gosec // 1 to 9
+		for _, o := range choices.Options {
+			opt := &charactersv1.SummonOption{Count: int32(o.Count), Type: o.Type, MaxCr: o.MaxCR, Attack: creatureAttackNumber[o.Attack]} //nolint:gosec // a few dozen at most
+			for _, f := range o.Forms {
+				opt.Forms = append(opt.Forms, &charactersv1.SummonForm{MonsterKey: f.Key, NamePt: s.rules.NamePT(f.Key), Attack: creatureAttackNumber[f.Attack]})
+			}
+			sc.Options = append(sc.Options, opt)
+		}
+		out.Circles = append(out.Circles, sc)
+	}
+	// What a casting sends away: a new familiar replaces the old one, and a new
+	// concentration ends the creatures of the old one (SummonCreatures).
+	if key == "spell:find-familiar" {
+		rows, err := s.queries.ListLiveFamiliars(ctx, charactersdb.ListLiveFamiliarsParams{CampaignID: campaignID, CharacterID: characterID})
+		if err != nil {
+			return nil, s.dbError(ctx, "list the familiars", err)
+		}
+		for _, r := range rows {
+			out.Replaces = append(out.Replaces, s.replaced(r.CharacterCreature))
+		}
+	}
+	if own.Concentration {
+		rows, err := s.queries.ListLiveCreaturesOnConcentration(ctx, charactersdb.ListLiveCreaturesOnConcentrationParams{CampaignID: campaignID, CharacterID: characterID})
+		if err != nil {
+			return nil, s.dbError(ctx, "list the creatures that depend on a concentration", err)
+		}
+		for _, r := range rows {
+			out.Replaces = append(out.Replaces, s.replaced(r.CharacterCreature))
+		}
+	}
+	return out, nil
+}
+
+func (s *Service) replaced(c charactersdb.CharacterCreature) *charactersv1.ReplacedCreature {
+	return &charactersv1.ReplacedCreature{Id: c.ID, Name: c.Name, MonsterKey: c.MonsterKey, MonsterNamePt: s.rules.NamePT(c.MonsterKey)}
+}
+
+// castingTimePT says a summoning spell's casting time in Portuguese: "1 hora",
+// "10 minutos", "1 ação".
+func castingTimePT(t rules.CastingTime) string {
+	n := max(t.Amount, 1)
+	word := ""
+	switch t.Unit {
+	case rules.CastHour:
+		word = map[bool]string{true: "hora", false: "horas"}[n == 1]
+	case rules.CastMinute:
+		word = map[bool]string{true: "minuto", false: "minutos"}[n == 1]
+	case rules.CastAction:
+		word = map[bool]string{true: "ação", false: "ações"}[n == 1]
+	case rules.CastBonusAction:
+		word = map[bool]string{true: "ação bônus", false: "ações bônus"}[n == 1]
+	default:
+		return t.Raw
+	}
+	return fmt.Sprintf("%d %s", n, word)
+}

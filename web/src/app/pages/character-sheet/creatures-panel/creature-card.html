@@ -1,0 +1,56 @@
+@let c = creature();
+<article class="card" [attr.aria-labelledby]="'creature-' + c.id">
+  <header class="head">
+    <app-creature-art class="head__art" [monsterKey]="c.monsterKey" />
+    <div class="head__text">
+      <h3 class="name" tabindex="-1" [id]="'creature-' + c.id">{{ c.name }}</h3>
+      <p class="sub">{{ subtitle() }}</p>
+    </div>
+  </header>
+
+  <div class="tiles">
+    <div class="tile">
+      <span class="tile__l">CA</span>
+      <span class="tile__v">{{ block() ? block()!.armorClass : '—' }}</span>
+    </div>
+    <div class="tile">
+      <span class="tile__l">PV</span>
+      <span class="tile__v">{{ c.hitPointsCurrent }}&nbsp;<small>de {{ c.hitPointsMax }}</small></span>
+    </div>
+    <div class="tile">
+      <span class="tile__l">Deslocamento</span>
+      <span class="tile__v">{{ speed().main }}</span>
+      @if (speed().extra) {
+        <span class="tile__x">{{ speed().extra }}</span>
+      }
+    </div>
+  </div>
+
+  @if (mode(); as m) {
+    <app-creature-edit
+      [campaignId]="campaignId()"
+      [creature]="c"
+      [mode]="m"
+      [ownerView]="!isMaster()"
+      [ownerName]="ownerName()"
+      (closed)="close($event)"
+    />
+  } @else {
+    <a matButton="outlined" class="see" [routerLink]="link()" [attr.aria-label]="'Ver a ficha de ' + c.name">
+      <mat-icon aria-hidden="true">menu_book</mat-icon>Ver a ficha
+    </a>
+    <div class="acts">
+      <button type="button" class="act js-rename" (click)="open('rename')">
+        <mat-icon aria-hidden="true">edit</mat-icon>Renomear
+      </button>
+      @if (isMaster()) {
+        <button type="button" class="act js-hp" (click)="open('hp')">
+          <mat-icon aria-hidden="true">favorite</mat-icon>Corrigir PV
+        </button>
+      }
+      <button type="button" class="act act--danger js-dismiss" (click)="open('dismiss')">
+        <mat-icon aria-hidden="true">close</mat-icon>Dispensar
+      </button>
+    </div>
+  }
+</article>

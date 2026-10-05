@@ -2,7 +2,7 @@ import { Code, ConnectError } from '@connectrpc/connect';
 
 import { XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { XPBlockedReason, XPBlockedSchema } from '../../../gen/meurpg/progression/v1/progression_pb';
-import { xpAborted, xpBlocked, xpBlockedMessage, xpErrorMessage } from './xp-errors';
+import { townErrorMessage, xpAborted, xpBlocked, xpBlockedMessage, xpErrorMessage } from './xp-errors';
 
 /** A `failed_precondition` the way the server sends it: the typed `XPBlocked`. */
 function blocked(reason: XPBlockedReason, xpMode = XpMode.UNSPECIFIED): ConnectError {
@@ -70,5 +70,29 @@ describe('xpErrorMessage', () => {
     expect(xpAborted(new ConnectError('x', Code.Aborted))).toBe(true);
     expect(xpAborted(new ConnectError('x', Code.NotFound))).toBe(false);
     expect(xpAborted(new Error('x'))).toBe(false);
+  });
+});
+
+describe('XPBlocked for "Voltar à cidade" (E9-09)', () => {
+  const said = (reason: XPBlockedReason) => xpBlockedMessage({ reason, xpMode: XpMode.GOLD } as never);
+
+  it('says why a treasure cannot be converted, and that the list was updated', () => {
+    expect(said(XPBlockedReason.XP_BLOCKED_REASON_TREASURE_NOT_FOUND_YET)).toMatch(/não está mais como encontrado.*lista foi atualizada/);
+    expect(said(XPBlockedReason.XP_BLOCKED_REASON_TREASURE_ALREADY_CONVERTED)).toMatch(/já virou XP.*lista foi atualizada/);
+  });
+
+  it('says the limit in PO and what to do', () => {
+    expect(said(XPBlockedReason.XP_BLOCKED_REASON_TREASURES_OVER_LIMIT)).toMatch(/1\.000\.000 PO.*Desmarque alguns/);
+  });
+
+  it('says in the treasures\' words that a campaign by enemies or milestones does not convert them', () => {
+    const enemies = townErrorMessage(blocked(XPBlockedReason.XP_BLOCKED_REASON_MODE_NOT_ALLOWED, XpMode.ENEMIES));
+    expect(enemies).toBe('Esta campanha dá XP por inimigos, então o tesouro não vira XP. Ele continua aparecendo no resumo de cada sessão.');
+    expect(townErrorMessage(blocked(XPBlockedReason.XP_BLOCKED_REASON_MODE_NOT_ALLOWED, XpMode.MILESTONES))).toMatch(/marcos, não XP/);
+  });
+
+  it('keeps every other error as for any award', () => {
+    expect(townErrorMessage(blocked(XPBlockedReason.XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE))).toMatch(/morreu ou saiu/);
+    expect(townErrorMessage(new ConnectError('x', Code.PermissionDenied))).toBe('Só o mestre da campanha pode fazer isso.');
   });
 });

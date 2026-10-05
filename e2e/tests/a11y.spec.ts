@@ -16,7 +16,9 @@ import { paintRPC, pickRadio } from './move-support';
 import { moveTo, sessionRoute, tableForFog } from './fog-support';
 import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus } from './support';
 import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
+import { tableForCaster, tableForCreatures } from './creatures-support';
 import { awardXpRPC, createEnemyRPC, tableForXp, tableForXpCombat, winCombatRPC } from './xp-support';
+import { tableForGold, threeTreasuresRPC, treasureFoundRPC } from './gold-support';
 
 // docs/design.md#como-uma-tela-é-feita: every screen passes axe with no
 // serious or critical violation of WCAG 2.1 A and AA, in the light and the
@@ -2389,6 +2391,315 @@ test('o subir de nível passa no axe e nas conferências de layout no tema claro
   await scanLevelUpScreens(browser, 'light', 320);
 });
 
+/**
+ * "Voltar à cidade" and "Mais tesouro encontrado" (Etapa 9, MR-041, MR-032; E9-09): the Experiência panel of a
+ * campaign by gold with its strip and the two buttons, "Dar XP" with the strip, the conversion dialog (everything
+ * checked, a change, nothing checked, a refusal, nothing to convert), the history line and the question to undo,
+ * the player's view, the campaign by enemies, and the session summary with the treasure block and the card.
+ */
+async function scanGoldScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  const campaigns: string[] = [];
+  const panel = (page: Page) => page.getByRole('region', { name: 'Experiência', exact: true });
+  try {
+    await m.goto('/');
+    await p.goto('/');
+
+    // Nothing found yet: the strip invites, and the dialog explains.
+    const gold = await tableForGold(m, p, `Acessibilidade ouro ${Date.now()}`);
+    campaigns.push(gold.campaignId);
+    await open(m, `/campanhas/${gold.campaignId}`);
+    await expect(panel(m)).toContainText('Nenhum tesouro esperando.');
+    await expectScreenPasses(m, `Experiência por ouro, nada esperando ${where}`);
+    await panel(m).getByRole('button', { name: 'Voltar à cidade', exact: true }).click();
+    const empty = m.getByRole('dialog', { name: 'Voltar à cidade' });
+    await expect(empty).toContainText('Nenhum tesouro encontrado para converter.');
+    await expectScreenPasses(m, `Voltar à cidade, nada para converter ${where}`);
+    await empty.getByRole('button', { name: 'Fechar', exact: true }).last().click();
+
+    // Three finds: the strip, the dialog and its calculation in each state.
+    const ids = await threeTreasuresRPC(m, gold);
+    await open(m, `/campanhas/${gold.campaignId}`);
+    await expect(panel(m).getByText('3 tesouros · 420 PO')).toBeVisible();
+    await expectScreenPasses(m, `Experiência por ouro, três tesouros esperando ${where}`);
+    await panel(m).getByRole('button', { name: 'Voltar à cidade', exact: true }).click();
+    const town = m.getByRole('dialog', { name: 'Voltar à cidade' });
+    await expect(town).toContainText('420 XP ÷ 1 = 420 XP para cada');
+    await expectScreenPasses(m, `Voltar à cidade, tudo marcado ${where}`);
+    await town.getByRole('checkbox', { name: 'Converter Ídolo de prata' }).uncheck({ force: true });
+    await expect(town).toContainText('370 XP ÷ 1 = 370 XP para cada');
+    await expectScreenPasses(m, `Voltar à cidade, sem um tesouro ${where}`);
+    await town.getByRole('checkbox', { name: 'Marcar Pensantus' }).uncheck({ force: true });
+    await expect(town).toContainText('Marque pelo menos um tesouro e um personagem.');
+    await expectScreenPasses(m, `Voltar à cidade, ninguém marcado ${where}`);
+    await town.getByRole('button', { name: 'Cancelar' }).click();
+
+    // Converted meanwhile: the refusal stays in the dialog.
+    await panel(m).getByRole('button', { name: 'Voltar à cidade', exact: true }).click();
+    await expect(m.getByRole('dialog', { name: 'Voltar à cidade' })).toContainText('420 XP ÷ 1 = 420 XP para cada');
+    const other = await callRPC(m, 'meurpg.progression.v1.ProgressionService/AwardXP', {
+      campaignId: gold.campaignId,
+      mode: 'XP_AWARD_MODE_GOLD',
+      reason: 'Voltar à cidade',
+      characterIds: gold.characterIds,
+      treasurePointIds: [ids[0]],
+      idempotencyKey: crypto.randomUUID(),
+    });
+    expect(other.ok(), await other.text()).toBeTruthy();
+    await m.getByRole('dialog', { name: 'Voltar à cidade' }).getByRole('button', { name: /^Dar 420 XP/ }).click();
+    await expect(m.getByRole('dialog', { name: 'Voltar à cidade' }).getByRole('alert')).toContainText('já virou XP em outro prêmio');
+    await expectScreenPasses(m, `Voltar à cidade, o erro no lugar ${where}`);
+    await m.getByRole('dialog', { name: 'Voltar à cidade' }).getByRole('button', { name: /^Dar 170 XP/ }).click();
+    await expect(panel(m).getByRole('status').filter({ hasText: 'foram convertidos' })).toContainText('Os 2 tesouros foram convertidos.');
+    await expect(panel(m).getByText('Voltar à cidade · 170 PO em 2 tesouros')).toBeVisible();
+    await expectScreenPasses(m, `Experiência, depois de converter ${where}`);
+    await panel(m).getByRole('button', { name: /^Desfazer/ }).click();
+    await expect(panel(m).getByRole('alertdialog')).toContainText('voltam a “encontrado, não convertido”');
+    await expectScreenPasses(m, `Experiência, desfazer a conversão ${where}`);
+    await panel(m).getByRole('alertdialog').getByRole('button', { name: 'Desfazer XP' }).click();
+    await expect(panel(m).getByRole('status').filter({ hasText: 'XP desfeito' })).toBeVisible();
+    await expectScreenPasses(m, `Experiência, conversão desfeita ${where}`);
+
+    // "Dar XP" has the strip too, and its button.
+    await panel(m).getByRole('button', { name: 'Dar XP' }).click();
+    const give = m.getByRole('dialog', { name: 'Dar XP' });
+    await expect(give).toContainText('ou digite o ouro');
+    await expectScreenPasses(m, `Dar XP por ouro com os tesouros ${where}`);
+    await give.getByRole('button', { name: 'Cancelar' }).click();
+
+    // The player: the history line and the strip's absence.
+    await panel(m).getByRole('button', { name: 'Voltar à cidade', exact: true }).click();
+    await m.getByRole('dialog', { name: 'Voltar à cidade' }).getByRole('button', { name: /^Dar 170 XP/ }).click();
+    await expect(panel(m).getByRole('status').filter({ hasText: 'foram convertidos' })).toContainText('Os 2 tesouros foram convertidos.');
+    await open(p, `/campanhas/${gold.campaignId}`);
+    await expect(panel(p)).toContainText('Voltar à cidade · 170 PO em 2 tesouros');
+    await expectScreenPasses(p, `Experiência por ouro, jogador ${where}`);
+
+    // A campaign by enemies: no button, the line why.
+    const enemies = await tableForGold(m, p, `Acessibilidade inimigos ${Date.now()}`, 'XP_MODE_ENEMIES');
+    campaigns.push(enemies.campaignId);
+    await treasureFoundRPC(m, enemies, { name: 'Baú de moedas', valuePo: 250, finders: [enemies.characterIds[0]] });
+    await open(m, `/campanhas/${enemies.campaignId}`);
+    await expect(panel(m)).toContainText('Esta campanha dá XP por inimigos, então o tesouro não vira XP.');
+    await expectScreenPasses(m, `Experiência por inimigos, com tesouro ${where}`);
+
+    // "Dar XP" of the live session (state 6c): the strip with the way in, then the conversion from it.
+    const live = await tableForGold(m, p, `Acessibilidade ouro sessão ${Date.now()}`);
+    campaigns.push(live.campaignId);
+    await threeTreasuresRPC(m, live);
+    await startSessionRPC(m, live.campaignId);
+    await openSessionPage(m, live.campaignId);
+    await m.getByRole('button', { name: 'Dar XP', exact: true }).click();
+    const liveGive = m.getByRole('dialog', { name: 'Dar XP' });
+    await expect(liveGive).toContainText('3 tesouros · 420 PO');
+    await expectScreenPasses(m, `Dar XP da sessão com a faixa de tesouros ${where}`);
+    await liveGive.getByRole('button', { name: 'Voltar à cidade' }).click();
+    await expect(m.getByRole('dialog', { name: 'Voltar à cidade' })).toContainText('420 XP ÷ 1 = 420 XP para cada');
+    await expectScreenPasses(m, `Voltar à cidade aberto do Dar XP da sessão ${where}`);
+    await m.getByRole('dialog', { name: 'Voltar à cidade' }).getByRole('button', { name: 'Cancelar' }).click();
+    await endOpenSessionRPC(m, live.campaignId);
+
+    // The session summary: the master's block and the player's card.
+    const summary = await tableForGold(m, p, `Acessibilidade resumo ouro ${Date.now()}`, 'XP_MODE_ENEMIES');
+    campaigns.push(summary.campaignId);
+    await startSessionRPC(m, summary.campaignId);
+    await threeTreasuresRPC(m, summary);
+    await openSessionPage(p, summary.campaignId);
+    await openSessionPage(m, summary.campaignId);
+    await m.getByRole('button', { name: 'Encerrar sessão' }).click();
+    await m.getByRole('button', { name: 'Confirmar encerramento' }).click();
+    await expect(m.getByRole('heading', { name: 'Sessão encerrada' })).toBeVisible();
+    await expect(m.getByRole('table', { name: 'Mais tesouro encontrado' })).toBeVisible();
+    await expectScreenPasses(m, `Resumo da sessão com Mais tesouro encontrado, mestre ${where}`);
+    const card = p.getByRole('region', { name: 'Resumo da sessão' });
+    await expect(card.getByRole('heading', { name: 'A sessão acabou' })).toBeVisible();
+    await expect(card).toContainText('Mais tesouro encontrado');
+    await expectScreenPasses(p, `Cartão com Mais tesouro encontrado, jogador ${where}`);
+  } finally {
+    for (const id of campaigns) {
+      await endOpenSessionRPC(m, id);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('"Voltar à cidade" e o tesouro no resumo passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-041', '@MR-032'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanGoldScreens(browser, 'light', 1280);
+});
+
+test('"Voltar à cidade" e o tesouro no resumo passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-041', '@MR-032'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanGoldScreens(browser, 'dark', 390);
+});
+
+test('"Voltar à cidade" e o tesouro no resumo passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-041', '@MR-032'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanGoldScreens(browser, 'dark', 1024);
+});
+
+test('"Voltar à cidade" e o tesouro no resumo passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-041', '@MR-032'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanGoldScreens(browser, 'light', 320);
+});
+
+// Etapa 9, MR-037: the character's creatures. The sheet's "Criaturas" panel (empty, outside a
+// session, with a creature), the cast sheet, the questions in place, the stat block, and the
+// master's list with "Dar uma criatura" (a computer's dialog: not on a phone).
+async function scanCreatureScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const height = width < 768 ? (width < 360 ? 568 : 844) : width === 1024 ? 768 : 800;
+  const options = { colorScheme, viewport: { width, height } };
+  const master = await newSignedInContext(browser, 'Mestre Teste', options);
+  const player = await newSignedInContext(browser, 'Jogador Teste', options);
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const closed = await tableForCreatures(m, p, `Criaturas fechada ${Date.now()}`, false);
+    await p.goto(`/campanhas/${closed.campaignId}/personagens/${closed.characterId}`);
+    await expect(p.locator('app-creatures-panel').getByRole('heading', { name: 'Criaturas' })).toBeVisible();
+    await expectScreenPasses(p, `Criaturas, fora de uma sessão ${where}`);
+
+    const table = await tableForCreatures(m, p, `Criaturas ${Date.now()}`);
+    campaignId = table.campaignId;
+    const panel = p.locator('app-creatures-panel');
+    await p.goto(`/campanhas/${campaignId}/personagens/${table.characterId}`);
+    await expect(panel.getByRole('heading', { name: 'Criaturas' })).toBeVisible();
+    await expectScreenPasses(p, `Criaturas, vazio ${where}`);
+
+    await panel.getByRole('button', { name: 'Encontrar Familiar' }).click();
+    const sheet = p.getByRole('dialog', { name: 'Encontrar Familiar' }).or(p.locator('mat-bottom-sheet-container'));
+    await expect(sheet.getByText('Escolha a forma e dê um nome ao familiar.')).toBeVisible();
+    await expectScreenPasses(p, `Encontrar Familiar, faltando o nome ${where}`);
+    await sheet.getByLabel('Nome do familiar').fill('Nanquim');
+    await sheet.locator('label', { hasText: /Corvo/ }).click();
+    await expect(sheet.getByText('Conjurar como ritual · 1 hora · sem gastar espaço')).toBeVisible();
+    await expectScreenPasses(p, `Encontrar Familiar, pronto ${where}`);
+    await sheet.getByRole('button', { name: 'Convocar o familiar' }).click();
+    await expect(panel.getByText('Nanquim chegou.')).toBeVisible();
+    await expectScreenPasses(p, `Criaturas, com o Nanquim e o aviso ${where}`);
+
+    await panel.getByRole('button', { name: 'Renomear' }).click();
+    await expect(panel.getByLabel('Nome da criatura')).toBeFocused();
+    await expectScreenPasses(p, `Criaturas, renomear ${where}`);
+    await panel.getByRole('button', { name: 'Cancelar' }).click();
+    await panel.getByRole('button', { name: 'Dispensar' }).click();
+    await expect(panel.getByRole('button', { name: 'Voltar' })).toBeFocused();
+    await expectScreenPasses(p, `Criaturas, dispensar pergunta ${where}`);
+    await panel.getByRole('button', { name: 'Voltar' }).click();
+
+    await panel.getByRole('link', { name: 'Ver a ficha de Nanquim' }).click();
+    await expect(p.getByRole('heading', { name: 'Nanquim', level: 1 })).toBeVisible();
+    await expectScreenPasses(p, `A ficha da criatura ${where}`);
+    await p.getByRole('button', { name: 'Dispensar' }).click();
+    await expect(p.getByRole('alertdialog', { name: 'Dispensar Nanquim?' })).toBeVisible();
+    await expectScreenPasses(p, `A ficha da criatura, dispensar pergunta ${where}`);
+
+    await m.goto(`/campanhas/${campaignId}`);
+    const row = m.locator('app-character-creatures');
+    await expect(row.locator('.item__name', { hasText: 'Nanquim' })).toBeVisible();
+    await expectScreenPasses(m, `O mestre, a lista de personagens com a criatura ${where}`);
+    if (width >= 768) {
+      await row.getByRole('button', { name: 'Dar uma criatura a Pensantus' }).click();
+      const dialog = m.getByRole('dialog', { name: 'Dar uma criatura a Pensantus' });
+      await expect(dialog.getByText(/de 334 · em ordem de nome/)).toBeVisible();
+      await expectScreenPasses(m, `Dar uma criatura, aberta ${where}`);
+      await dialog.getByLabel('Nome, em português ou inglês').fill('ma');
+      await dialog.getByLabel('Tipo').selectOption('beast');
+      await dialog.getByLabel('Nível de desafio').selectOption('1/8');
+      await expect(dialog.getByText('2 de 334 · em ordem de nome')).toBeVisible();
+      await dialog.locator('label', { hasText: /Mastim/ }).click();
+      await expect(dialog.getByText(/com os PV do livro \(5\)/)).toBeVisible();
+      await expectScreenPasses(m, `Dar uma criatura, o Mastim escolhido ${where}`);
+      await dialog.getByRole('button', { name: 'Dar Mastim a Pensantus' }).click();
+      await expect(m.getByText('Mastim dado a Pensantus.')).toBeVisible();
+      await expectScreenPasses(m, `O mestre, depois de dar ${where}`);
+    }
+    await row.getByRole('button', { name: 'Dispensar Nanquim' }).click();
+    await expect(row.getByRole('alertdialog')).toBeVisible();
+    await expectScreenPasses(m, `O mestre, dispensar pergunta ${where}`);
+    await row.getByRole('button', { name: 'Voltar' }).click();
+
+    await m.goto(`/campanhas/${campaignId}/personagens/${table.characterId}`);
+    const mc = m.locator('app-creatures-panel app-creature-card').first();
+    await mc.getByRole('button', { name: 'Corrigir PV' }).click();
+    await expect(mc.getByLabel(/PV de /)).toBeFocused();
+    await expectScreenPasses(m, `O mestre, corrigir os PV da criatura ${where}`);
+
+    // A creature that is not there (or that the viewer may not read): the page's not-found state.
+    await p.goto(`/campanhas/${campaignId}/personagens/${table.characterId}/criaturas/6f1c7a52-3b5e-4c55-9d0b-2a51f0c1e001`);
+    await expect(p.getByRole('heading', { name: 'Criatura não encontrada', level: 1 })).toBeVisible();
+    await expectScreenPasses(p, `A ficha da criatura, não encontrada ${where}`);
+
+    // A druid: the slot picker, "Quantas criaturas", the list with "−" and "+", the warning of what a new
+    // concentration ends, and a refusal of the server inside the sheet.
+    const druid = await tableForCaster(m, p, `Criaturas druida ${Date.now()}`, 'druid');
+    const druidCampaign = druid.campaignId;
+    try {
+      await p.goto(`/campanhas/${druidCampaign}/personagens/${druid.characterId}`);
+      const dpanel = p.locator('app-creatures-panel');
+      await dpanel.getByRole('button', { name: 'Conjurar Animais' }).click();
+      const cast = p.getByRole('dialog', { name: 'Conjurar Animais' }).or(p.locator('mat-bottom-sheet-container'));
+      await expect(cast.getByText('Quantas criaturas')).toBeVisible();
+      await expectScreenPasses(p, `Conjurar Animais, as opções e o espaço ${where}`);
+      await cast.locator('label', { hasText: /2\s+criaturas\s+de\s+ND\s+1\s/ }).click();
+      await cast.getByRole('button', { name: 'Mais Lobo', exact: true }).click();
+      await cast.getByRole('button', { name: 'Mais Lobo', exact: true }).click();
+      await expect(cast.locator('.line')).toContainText('2 criaturas · 1 ação · gasta um espaço de 3º círculo');
+      await expectScreenPasses(p, `Conjurar Animais, a mistura pronta ${where}`);
+      await cast.getByRole('button', { name: 'Conjurar os animais' }).click();
+      await expect(dpanel.getByText('2 criaturas chegaram.')).toBeVisible();
+
+      await dpanel.getByRole('button', { name: 'Conjurar Animais' }).click();
+      await expect(cast.getByText('Isso encerra Conjurar Animais e dispensa 2 criaturas')).toBeVisible();
+      await expectScreenPasses(p, `Conjurar Animais, o aviso do que a concentração encerra ${where}`);
+      // The session ends while the sheet is open: the server refuses, and the sheet says so, still open.
+      await cast.locator('label', { hasText: /1\s+criatura\s+de\s+ND\s+2\s/ }).click();
+      await cast.locator('app-creature-choice-list label.row').first().click();
+      await endOpenSessionRPC(m, druidCampaign);
+      await cast.getByRole('button', { name: 'Conjurar os animais' }).click();
+      await expect(cast.getByRole('alert')).toContainText('A sessão acabou');
+      await expectScreenPasses(p, `Conjurar Animais, a recusa do servidor na folha ${where}`);
+    } finally {
+      await endOpenSessionRPC(m, druidCampaign);
+    }
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('as criaturas passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanCreatureScreens(browser, 'light', 1280);
+});
+
+test('as criaturas passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanCreatureScreens(browser, 'dark', 390);
+});
+
+test('as criaturas passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanCreatureScreens(browser, 'dark', 1024);
+});
+
+test('as criaturas passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanCreatureScreens(browser, 'light', 320);
+});
 
 // The fog of war (Etapa 9, MR-036, E9-03 and E9-04): the player's map with its legend and caption, the tiles on their way,
 // what was seen before, the character who is not on the map, the carried light (the row, the sheet, the toast), the

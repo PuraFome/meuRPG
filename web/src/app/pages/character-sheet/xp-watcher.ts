@@ -4,9 +4,10 @@ import { LiveSessionSourceLive } from '../live-session/live-session-source.live'
 import { LiveStream } from '../live-session/live-stream';
 
 /**
- * Listens to a campaign's live session for `xp_changed` and says so (E7-10), so
- * a page that shows XP (the character sheet) reads again when the master gives
- * some. It is the session page's own stream client (`LiveStream`, ADR-0005's
+ * Listens to a campaign's live session for `xp_changed` (E7-10) and
+ * `creatures_changed` (MR-037) and says so, so a page that shows XP or the
+ * creatures (the character sheet, the campaign's list) reads again when the
+ * master gives some or a creature arrives. It is the session page's own stream client (`LiveStream`, ADR-0005's
  * rules: backoff, closed when the tab is hidden, no reconnect when there is no
  * access) over `LiveSessionSourceLive`, not a copy of it. One stream at a time;
  * `follow(null)` closes it, which the page does when it goes away. Provided at
@@ -21,8 +22,9 @@ export class XpWatcher {
   private campaignId: string | null = null;
 
   /** Follows `campaignId` (its open session), or stops with `null`. `onChange`
-   * runs on every `xp_changed`, and on a reconnection (an event may have been missed). */
-  follow(campaignId: string | null, onChange: () => void): void {
+   * runs on every `xp_changed`, and on a reconnection (an event may have been missed);
+   * `onCreatures`, when given, on every `creatures_changed` and on a reconnection too. */
+  follow(campaignId: string | null, onChange: () => void, onCreatures?: () => void): void {
     if (campaignId === this.campaignId) {
       return;
     }
@@ -38,15 +40,18 @@ export class XpWatcher {
       classify: (err) => this.source.classifyError(err),
       document: this.document,
       handlers: {
-        // The page reads on load itself: only a later `ready` (a reconnection) reads again.
+        // The page reads on load itself: only a later `ready` (a reconnection, the tab back after a
+        // while) reads again, both the XP and the creatures: an event may have been missed.
         onReady: () => {
           if (!first) {
             onChange();
+            onCreatures?.();
           }
           first = false;
         },
         onVitals: () => undefined,
         onXpChanged: onChange,
+        onCreaturesChanged: onCreatures,
         onEnded: () => this.stop(stream),
         onFatal: () => this.stop(stream),
       },

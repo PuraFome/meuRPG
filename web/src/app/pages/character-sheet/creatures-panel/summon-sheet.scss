@@ -1,0 +1,124 @@
+:host {
+  display: block;
+}
+
+// The sheet's body: everything above the list stays put, the list takes what is left and scrolls
+// inside itself (E9-10). If the sheet is too short for even two rows, the body scrolls as a last resort.
+.stack {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 14px;
+  // No `min-height: 0`: the stack never gets smaller than its parts' own minimums (the list keeps its
+  // 164 px), so a short sheet scrolls its body, as a last resort.
+  // The outlined field's floating label would be cut by the body's top edge.
+  padding-top: 8px;
+}
+
+.fixed {
+  flex: none;
+}
+
+.cap {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--mr-ink-muted);
+}
+
+.wait {
+  margin: 0;
+  font-size: 15px;
+  color: var(--mr-ink-muted);
+}
+
+.forms {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 6px;
+  // The caption (20 px), the gap and the list's own minimum (164 px).
+  min-height: 190px;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.opt {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  min-height: 48px;
+  box-sizing: border-box;
+  padding: 6px 12px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  cursor: pointer;
+
+  .mat-icon {
+    flex: none;
+    color: var(--mr-control-line);
+  }
+
+  &:has(:focus-visible) {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  &--on {
+    padding: 5px 11px;
+    border: 2px solid var(--mr-accent);
+    background: var(--mr-accent-soft);
+
+    .mat-icon {
+      color: var(--mr-accent-text);
+    }
+  }
+}
+
+// The footer: what it costs (or everything that is missing) in words, the one filled button, then
+// "Cancelar", both 48 px and the full width, stacked (E9-10).
+[foot] {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.line {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.go,
+.no {
+  width: 100%;
+}
+
+.go {
+  --mat-button-filled-container-height: 48px;
+  --mat-button-filled-focus-state-layer-opacity: 0;
+}
+
+.no {
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-accent-text);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  font-weight: 700;
+}
