@@ -1213,6 +1213,7 @@ func (s *Service) PlaceMapToken(
 		before = &was
 	}
 	s.publishTokenWritten(ctx, m.CampaignID, mapRow, current, before, &token, isPlayerCharacter(character), !placed)
+	s.tokenLanded(ctx, m.CampaignID, m.UserID, mapID, token, character) // a trap may fire, or be noticed (MR-035)
 	return connect.NewResponse(&mapsv1.PlaceMapTokenResponse{Token: tokenToProto(token, character, newViewer(m, current))}), nil
 }
 

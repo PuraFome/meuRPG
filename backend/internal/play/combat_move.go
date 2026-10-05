@@ -232,7 +232,8 @@ func (s *Service) MoveCombatant(
 	var made actionEvent
 	var stoppedEarly bool // a creature the player does not see cut the move short
 	var logged bool       // the move is a line of the combat log
-	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventCombatantMoved, encounterID: encID}, func(c *combatTx) (any, error) {
+	var th *trapHook      // the traps the move may fire (combat_traps.go, MR-035)
+	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventCombatantMoved, altKind: eventTrapTriggered, encounterID: encID}, func(c *combatTx) (any, error) {
 		logged, stoppedEarly = false, false
 		if err := notEnded(c.enc); err != nil {
 			return nil, err
@@ -271,6 +272,7 @@ func (s *Service) MoveCombatant(
 			}
 		}
 
+		th = s.newTrapHook(ctx, m.CampaignID, c.enc, target)
 		from := moveStateOf(target)
 		made = actionEvent{Round: c.enc.Round, Secret: target.Hidden, Actor: target.ID, OnTurn: onTurn, From: from}
 		to := grid.Square{Col: int(col), Row: int(row)}
@@ -299,8 +301,9 @@ func (s *Service) MoveCombatant(
 				if mv.CostDFt > left {
 					return nil, tooFar(mv.CostDFt - left)
 				}
-				st := terrain.MoveUntil(origin, to, all, mover, nil, left)
-				stoppedEarly = st.Reason != grid.StopNone
+				st := terrain.MoveUntil(origin, to, all, mover, th.stops(), left)
+				stoppedEarly = st.Reason != grid.StopNone && (st.Reason != grid.StopMarked || st.Reached != to) // a trap's area is not "in the way" when it is where the mover went
+				th.marked(st.Marked, st.MarkedAt)
 				to, cost = st.Reached, st.CostDFt
 				length = grid.LengthDFt(origin, to)
 				// Consecutive moves on foot add up to the running start (10 ft just
@@ -332,6 +335,7 @@ func (s *Service) MoveCombatant(
 					stoppedEarly, to, length = true, origin, 0
 				} else {
 					cost, last = mv.CostDFt, 0
+					th.landed(to) // a jump fires a trap only where it lands (D3, D5)
 				}
 			case playv1.JumpKind_JUMP_KIND_HIGH:
 				running := combat.HasRunningStart(int(target.LastMoveDft))
@@ -385,7 +389,10 @@ func (s *Service) MoveCombatant(
 			made.Jump, made.HeightDFt = jumpHigh, height
 		}
 		logged = onTurn && (length > 0 || made.Jump == jumpHigh)
-		return made, nil
+		if v.master && squareChanged {
+			th.landed(to) // the master's move is not a walk: only where it ends counts
+		}
+		return th.finish(ctx, c, made, cs, moved)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "move a combatant", err)
@@ -395,6 +402,8 @@ func (s *Service) MoveCombatant(
 		if logged {
 			s.publishLogChanged(m.CampaignID, d.enc.ID, !moved.Hidden)
 		}
+		th.after(ctx, m.CampaignID, d.enc)
+		s.noticeAfterMove(ctx, m.CampaignID, d.enc, moved) // a trap near where the mover ended may be noticed (MR-035)
 	})
 	if err != nil {
 		return nil, err
@@ -516,7 +525,11 @@ func (s *Service) GetMoveOptions(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the terrain", err)
 	}
-	return connect.NewResponse(moveOptions(terrain, who, occupantsFor(d.cs, who, v))), nil
+	out := moveOptions(terrain, who, occupantsFor(d.cs, who, v))
+	if !v.master {
+		s.markKnownTraps(ctx, m.CampaignID, enc, who, out) // the warning before stepping into a trap the character knows
+	}
+	return connect.NewResponse(out), nil
 }
 
 // moveOptions works out where the combatant can go in one straight move: the

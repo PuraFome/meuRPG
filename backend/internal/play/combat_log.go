@@ -211,6 +211,31 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 					byPending[h.Pending] = entry
 				}
 			}
+		case eventTrapTriggered:
+			// A trap fired (MR-035): the entry holds its pending damages, which the
+			// master's apply or discard moves on like a spell's.
+			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_TRAP_TRIGGERED
+			entry.pend = map[string]*damageLog{}
+			if ev.Trap != nil {
+				for _, cc := range ev.Trap.Caught {
+					for _, d := range cc.Damages {
+						if d.Pending == "" {
+							continue
+						}
+						status := playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_ROLLED
+						if d.Applied {
+							status = playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED
+						}
+						entry.pend[d.Pending] = &damageLog{status: status}
+						byPending[d.Pending] = entry
+					}
+				}
+			}
+		case eventTrapSearched:
+			// A search is the Search action: the master's line only, with the roll in
+			// his history; the table sees nothing of it (RN-10).
+			entry.kind, entry.masterOnly = playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION, true
+			entry.ev.Key = "standard:search"
 		case eventReactionUsed:
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION
 			// Escudo that stopped the attack takes its damage away; the hit waits for
@@ -380,6 +405,8 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 		}
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_SPELL_CAST:
 		out.Spell = e.spellView(v, byID)
+	case playv1.CombatLogKind_COMBAT_LOG_KIND_TRAP_TRIGGERED:
+		out.Trap = e.trapEntry(ctx, v, byID, names)
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION:
 		out.Spell = &playv1.CombatLogSpell{Slot: slotProto(e.ev.Slot)}
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_DEATH_SAVE:
@@ -510,12 +537,60 @@ func (e *logEntry) damage(dice, master, targetsOwn bool, out *playv1.CombatLogEn
 	return d
 }
 
+// trapEntry is the firing as the viewer gets it: everyone gets the trap (it is
+// public now) and what it did, the master the DCs and armor classes too, and the
+// dice are the master's and the target's own player's.
+func (e *logEntry) trapEntry(ctx context.Context, v combatViewer, byID map[string]playdb.Combatant, names *keyNames) *playv1.TrapFiring {
+	if e.ev.Trap == nil {
+		return nil
+	}
+	tv := trapView{
+		master: v.master,
+		owns:   func(id string) bool { return v.owns(byID[id]) },
+		hidden: func(id string) bool { return byID[id].Hidden },
+		label:  func(id string) string { return byID[id].Label },
+		status: func(pendingID string) (playv1.PendingDamageStatus, bool) {
+			if dl, ok := e.pend[pendingID]; ok {
+				return dl.status, true
+			}
+			return 0, false
+		},
+		amount: func(pendingID string) (int32, bool) {
+			if dl, ok := e.pend[pendingID]; ok && dl.applied != nil {
+				return dl.applied.Amount, true
+			}
+			return 0, false
+		},
+	}
+	return firingProto(e.ev.Trap, names.trapName(ctx, e.ev.Trap.PointID), tv)
+}
+
+// trapName is the name of a trap that fired, "" when it was deleted since.
+func (n *keyNames) trapName(ctx context.Context, pointID string) string {
+	if n.s.traps == nil {
+		return ""
+	}
+	if name, ok := n.traps[pointID]; ok {
+		return name
+	}
+	found, err := n.s.traps.TrapNames(ctx, n.campaignID, []string{pointID})
+	if err != nil {
+		n.s.logger.WarnContext(ctx, "play: cannot read a trap's name for the combat log")
+	}
+	if n.traps == nil {
+		n.traps = map[string]string{}
+	}
+	n.traps[pointID] = found[pointID]
+	return found[pointID]
+}
+
 // keyNames finds the Portuguese names of the attacks and actions an entry
 // mentions, from the actor's sheet, read once for each character.
 type keyNames struct {
 	s           *Service
 	campaignID  string
 	byCharacter map[string]link.Sheet
+	traps       map[string]string // the names of the traps that fired, by point
 }
 
 // of returns the name of the key on the combatant's sheet, or "" when the

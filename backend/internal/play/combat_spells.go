@@ -624,7 +624,7 @@ func (s *Service) openDarts(ctx context.Context, c *combatTx, sp link.Spell, cas
 	// has no cast id for them: each target's damage is its own roll.
 	dmg := link.Dice{Count: perDart.Count * n, Sides: perDart.Sides, Bonus: perDart.Bonus * n, DamageType: perDart.DamageType}
 	p, err := c.q.InsertPendingDamage(ctx, playdb.InsertPendingDamageParams{
-		EncounterID: c.enc.ID, AttackerID: caster.ID, TargetID: target.ID, AttackKey: sp.Key, Status: pendingAwaitingRoll,
+		EncounterID: c.enc.ID, AttackerID: &caster.ID, TargetID: target.ID, AttackKey: sp.Key, Status: pendingAwaitingRoll,
 		DiceCount: clamp32(dmg.Count, 0, 100), DiceSides: clamp32(dmg.Sides, 0, 100), DiceBonus: clamp32(dmg.Bonus, -1000, 1000), DamageType: dmg.DamageType,
 		CreatedAt: c.now,
 	})
@@ -641,7 +641,7 @@ func (s *Service) openDarts(ctx context.Context, c *combatTx, sp link.Spell, cas
 func (s *Service) openSpellPending(ctx context.Context, c *combatTx, sp link.Spell, dmg link.Dice, caster, target playdb.Combatant, healing, half bool, hit *castHit) error {
 	castID := c.castID
 	p, err := c.q.InsertPendingDamage(ctx, playdb.InsertPendingDamageParams{
-		EncounterID: c.enc.ID, AttackerID: caster.ID, TargetID: target.ID, AttackKey: sp.Key, Status: pendingAwaitingRoll,
+		EncounterID: c.enc.ID, AttackerID: &caster.ID, TargetID: target.ID, AttackKey: sp.Key, Status: pendingAwaitingRoll,
 		DiceCount: clamp32(dmg.Count, 0, 100), DiceSides: clamp32(dmg.Sides, 0, 100), DiceBonus: clamp32(dmg.Bonus, -1000, 1000), DamageType: dmg.DamageType,
 		CreatedAt: c.now, CastID: &castID, Healing: healing, Half: half,
 	})

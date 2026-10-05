@@ -252,6 +252,10 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		}
 		// the combat walks over the layers the master painted (MR-034, RN-21)
 		playService.SetTerrain(mapsService)
+		// traps in play (MR-035): play asks maps for the traps (where, what a character
+		// sees, who knows them) and maps asks play to fire one when a token lands in it
+		playService.SetTraps(mapsService)
+		mapsService.SetTrapFirer(playService)
 		// The fog of war and the copy of an image a fog map owns need the maps
 		// service, which is made after SessionMaps (it needs play).
 		sessionMaps.SetService(mapsService)

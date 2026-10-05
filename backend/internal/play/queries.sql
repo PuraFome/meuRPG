@@ -606,3 +606,65 @@ WHERE creature_id = sqlc.arg(creature_id)::UUID
       WHERE gs.campaign_id = sqlc.arg(campaign_id)::UUID AND e.status <> 'ended'
   )
 RETURNING encounter_id;
+
+-- Trap damage (MR-035, Etapa 9, D5): the server rolls it when the trap fires.
+
+-- name: InsertTrapPendingDamage :one
+-- A trap's damage in a combat: no attacker, rolled already. 'rolled' for a
+-- player's character (waits for the master), 'applied' for an NPC or a creature
+-- (the caller put it on the combatant). amount is what lands, roll_total the roll
+-- before a half damage halves it.
+INSERT INTO pending_damages (
+    encounter_id, attacker_id, target_id, attack_key, status, critical,
+    dice_count, dice_sides, dice_bonus, damage_type, faces, amount, roll_total, half,
+    created_at, resolved_at, trap_point_id
+) VALUES (
+    $1, NULL, $2, 'trap', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, sqlc.narg(resolved_at), $14
+)
+RETURNING *;
+
+-- name: ListOpenTrapPendingDamages :many
+-- The trap damages of the session's combats that wait for the master, oldest
+-- first. A combat that ended takes its open damage with it: nothing can be applied
+-- there anymore.
+SELECT p.* FROM pending_damages AS p
+JOIN encounters AS e ON e.id = p.encounter_id
+WHERE e.game_session_id = $1 AND e.status <> 'ended' AND p.trap_point_id IS NOT NULL AND p.status = 'rolled'
+ORDER BY p.created_at, p.id;
+
+-- name: ListTrapPendingDamagesOfFiring :many
+-- The trap damages a combat holds for one trap, newest first: what the log of a
+-- firing says became of them.
+SELECT * FROM pending_damages
+WHERE encounter_id = $1 AND trap_point_id = $2
+ORDER BY created_at, id;
+
+-- name: InsertTrapDamage :one
+-- A trap's damage to a player's character outside a combat.
+INSERT INTO trap_damages (
+    game_session_id, trap_point_id, fire_id, character_id, status, critical,
+    dice_count, dice_sides, dice_bonus, damage_type, faces, roll_total, half, amount, created_at
+) VALUES ($1, $2, $3, $4, 'rolled', $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+RETURNING *;
+
+-- name: ListOpenTrapDamages :many
+-- The session's trap damages that wait for the master, outside a combat.
+SELECT * FROM trap_damages
+WHERE game_session_id = $1 AND status = 'rolled'
+ORDER BY created_at, id;
+
+-- name: GetTrapDamageForUpdate :one
+SELECT * FROM trap_damages
+WHERE game_session_id = $1 AND id = $2
+FOR UPDATE;
+
+-- name: SetTrapDamageStatus :one
+-- Applied (with the amount when it is not the rolled one) or discarded.
+UPDATE trap_damages
+SET status = $2, resolved_at = $3, applied_amount = $4
+WHERE id = $1
+RETURNING *;
+
+-- name: DeleteTrapDamage :exec
+DELETE FROM trap_damages
+WHERE id = $1;

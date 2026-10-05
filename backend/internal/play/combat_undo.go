@@ -26,7 +26,7 @@ import (
 var undoableKinds = []string{
 	eventAttackRolled, eventDamageRolled, eventDamageApplied, eventDamageDiscarded, eventActionTaken, eventHitPointsAdjusted,
 	eventSpellCast, eventReactionUsed, eventReactionDeclined, eventDeathSaveRolled, eventConditionsSet,
-	eventCombatantMoved,
+	eventCombatantMoved, eventTrapTriggered,
 }
 
 // recentEvents is how many of the session's latest events the search for the
@@ -94,8 +94,9 @@ func (s *Service) UndoLastAction(
 
 	var made actionEvent
 	var vitals []*playv1.CharacterVitals // the characters' vitals put back, if any
+	var rearmed *trapFireEvent           // the trap an undone firing armed again
 	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventActionUndone, encounterID: encID}, func(c *combatTx) (any, error) {
-		vitals = nil
+		vitals, rearmed = nil, nil
 		if err := notEnded(c.enc); err != nil {
 			return nil, err
 		}
@@ -117,6 +118,9 @@ func (s *Service) UndoLastAction(
 		if vitals, err = s.takeBack(ctx, c, last.Kind, ev); err != nil {
 			return nil, err
 		}
+		if last.Kind == eventTrapTriggered {
+			rearmed = ev.Trap
+		}
 		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
 			return nil, fmt.Errorf("touch the encounter: %w", err)
 		}
@@ -135,6 +139,9 @@ func (s *Service) UndoLastAction(
 		s.publishLogChanged(m.CampaignID, d.enc.ID, !ev.Secret)
 		for _, vit := range vitals {
 			s.publishVitals(m.CampaignID, vit)
+		}
+		if rearmed != nil && s.traps != nil {
+			s.traps.TrapChanged(ctx, m.CampaignID, rearmed.MapID, rearmed.PointID) // players who saw it fire lose it again
 		}
 	})
 	if err != nil {
@@ -322,6 +329,14 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 			ID: who.ID, GridCol: col, GridRow: row, MovementUsedFt: ev.From.UsedDFt / 10, MovementUsedDft: ev.From.UsedDFt, LastMoveDft: ev.From.LastDFt, CoverMark: cover,
 		}); err != nil {
 			return nil, fmt.Errorf("put back the move: %w", err)
+		}
+	case eventTrapTriggered:
+		// The trap armed again, the hit points and conditions it changed put back, and
+		// the pending damages it opened gone (MR-035).
+		if ev.Trap != nil {
+			if err := s.takeBackTrap(ctx, c, *ev.Trap, find); err != nil {
+				return nil, err
+			}
 		}
 	case eventActionTaken:
 		who, ok := find(ev.Actor)

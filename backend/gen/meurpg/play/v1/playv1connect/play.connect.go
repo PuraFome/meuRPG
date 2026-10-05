@@ -89,6 +89,20 @@ const (
 	// PlayServiceRollSceneCheckProcedure is the fully-qualified name of the PlayService's
 	// RollSceneCheck RPC.
 	PlayServiceRollSceneCheckProcedure = "/meurpg.play.v1.PlayService/RollSceneCheck"
+	// PlayServiceSearchForTrapsProcedure is the fully-qualified name of the PlayService's
+	// SearchForTraps RPC.
+	PlayServiceSearchForTrapsProcedure = "/meurpg.play.v1.PlayService/SearchForTraps"
+	// PlayServiceFireTrapProcedure is the fully-qualified name of the PlayService's FireTrap RPC.
+	PlayServiceFireTrapProcedure = "/meurpg.play.v1.PlayService/FireTrap"
+	// PlayServiceListTrapDamagesProcedure is the fully-qualified name of the PlayService's
+	// ListTrapDamages RPC.
+	PlayServiceListTrapDamagesProcedure = "/meurpg.play.v1.PlayService/ListTrapDamages"
+	// PlayServiceApplyTrapDamageProcedure is the fully-qualified name of the PlayService's
+	// ApplyTrapDamage RPC.
+	PlayServiceApplyTrapDamageProcedure = "/meurpg.play.v1.PlayService/ApplyTrapDamage"
+	// PlayServiceDiscardTrapDamageProcedure is the fully-qualified name of the PlayService's
+	// DiscardTrapDamage RPC.
+	PlayServiceDiscardTrapDamageProcedure = "/meurpg.play.v1.PlayService/DiscardTrapDamage"
 	// PlayServiceGrantSceneAttemptProcedure is the fully-qualified name of the PlayService's
 	// GrantSceneAttempt RPC.
 	PlayServiceGrantSceneAttemptProcedure = "/meurpg.play.v1.PlayService/GrantSceneAttempt"
@@ -459,6 +473,73 @@ type PlayServiceClient interface {
 	//     NO_OPEN_SESSION); or SceneBlocked: NO_OPEN_SCENE, ALREADY_ROLLED (no
 	//     attempt left), WRONG_DICE_MODE, NO_CHARACTER.
 	RollSceneCheck(context.Context, *connect.Request[v1.RollSceneCheckRequest]) (*connect.Response[v1.RollSceneCheckResponse], error)
+	// SearchForTraps is the player's "Procurar armadilhas" (MR-035, D5, question
+	// 71): the caller's living character rolls Wisdom (Perception) against each trap's
+	// DC to notice it, or Intelligence (Investigation) against its DC to find it
+	// (RN-18: the app rolls the d20, or the player types a real die, as the
+	// campaign's dice setting allows). The server rolls against every armed trap
+	// within 3 m of the character's square whose square the character sees (with the
+	// fog, what it sees; without it, every square), that the character does not
+	// know yet. A pass reveals the trap to that character alone (the master's log
+	// gets `trap_searched`, with the roll and what it found, never the DC to a
+	// player). The answer reads the same when no trap is there and when the roll
+	// fell short.
+	//
+	// Outside a combat it costs nothing. While a combat runs on the map it is the
+	// SRD's Search action: only on the character's own turn, and it spends the
+	// action (ACTION_USED when it is spent already, NOT_YOUR_TURN, TRAP_SEARCH_NOT_NOW
+	// before the combat starts). Outside a combat a player may search again whenever
+	// they like.
+	//
+	// Errors:
+	//   - `invalid_argument`: skill unspecified; neither roll_in_app nor d20_face is
+	//     set; roll_in_app is false; d20_face is not 1 to 20; the key is not a UUID.
+	//   - `not_found`: the campaign does not exist, or the caller is not a member.
+	//   - `permission_denied`: the caller is the master.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION); SceneBlocked NO_CHARACTER (the caller has no living
+	//     character) or WRONG_DICE_MODE; EncounterBlocked TRAP_NOT_ON_MAP,
+	//     TRAP_SEARCH_NOT_NOW, NOT_YOUR_TURN, ACTION_USED.
+	SearchForTraps(context.Context, *connect.Request[v1.SearchForTrapsRequest]) (*connect.Response[v1.SearchForTrapsResponse], error)
+	// FireTrap is the master firing a trap by hand (MR-035, D5): the trap's
+	// "Manual" trigger, or any trap whenever he decides. Only during a session. The
+	// server rolls the trap's attack and damage and each caught creature's saving
+	// throw with its bonus, as it does for spell saves (see TrapFiring). The trap
+	// becomes "Disparada" and visible to everyone who sees the map; a `trap_triggered`
+	// event goes into the history. In a combat that runs on the map the damage on a
+	// combatant that is an NPC or a creature lands at once and the conditions go on
+	// the combatants; the damage on a player's character is a PendingDamage that waits
+	// for the master (RN-02), and CombatService.UndoLastAction takes the whole firing
+	// back. Outside a combat the damage on a player's character waits as a
+	// TrapDamage, an NPC's has only a log line and the conditions are a reminder.
+	// Only the campaign's master may call it.
+	//
+	// Errors:
+	//   - `invalid_argument`: a target is not valid for the map; the key is not a UUID.
+	//   - `not_found`: the point is not a trap of this map, the campaign does not
+	//     exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: no open session; EncounterBlocked TRAP_NOT_ARMED.
+	FireTrap(context.Context, *connect.Request[v1.FireTrapRequest]) (*connect.Response[v1.FireTrapResponse], error)
+	// ListTrapDamages lists the trap damages that wait for the master, in a combat
+	// and outside one (MR-035, RN-02). Only the campaign's master may call it.
+	//
+	// Errors: `not_found` (the campaign does not exist, or the caller is not a
+	// member), `permission_denied` (a player), `failed_precondition` (no open session).
+	ListTrapDamages(context.Context, *connect.Request[v1.ListTrapDamagesRequest]) (*connect.Response[v1.ListTrapDamagesResponse], error)
+	// ApplyTrapDamage applies a trap damage that is not in a combat to the
+	// character's vitals: temporary hit points first, never below 0, as in a combat
+	// (RN-02). The master may change the amount first. A damage in a combat is
+	// applied with CombatService.ApplyPendingDamage. Only the master may call it.
+	//
+	// Errors: `invalid_argument` (amount outside 0 to 1000, key), `not_found` (the
+	// damage is not the session's, or the campaign), `permission_denied`,
+	// `failed_precondition` (no open session; EncounterBlocked DAMAGE_RESOLVED when it
+	// was applied or discarded already).
+	ApplyTrapDamage(context.Context, *connect.Request[v1.ApplyTrapDamageRequest]) (*connect.Response[v1.ApplyTrapDamageResponse], error)
+	// DiscardTrapDamage drops a trap damage that is not in a combat, applying
+	// nothing. Same errors as ApplyTrapDamage.
+	DiscardTrapDamage(context.Context, *connect.Request[v1.DiscardTrapDamageRequest]) (*connect.Response[v1.DiscardTrapDamageResponse], error)
 	// GrantSceneAttempt gives one character one more attempt at one action of
 	// the open scene: "Dar mais uma tentativa" (MR-015, question 55). Only the
 	// campaign's master may call it, and only while a scene is open. The
@@ -673,6 +754,37 @@ func NewPlayServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(playServiceMethods.ByName("RollSceneCheck")),
 			connect.WithClientOptions(opts...),
 		),
+		searchForTraps: connect.NewClient[v1.SearchForTrapsRequest, v1.SearchForTrapsResponse](
+			httpClient,
+			baseURL+PlayServiceSearchForTrapsProcedure,
+			connect.WithSchema(playServiceMethods.ByName("SearchForTraps")),
+			connect.WithClientOptions(opts...),
+		),
+		fireTrap: connect.NewClient[v1.FireTrapRequest, v1.FireTrapResponse](
+			httpClient,
+			baseURL+PlayServiceFireTrapProcedure,
+			connect.WithSchema(playServiceMethods.ByName("FireTrap")),
+			connect.WithClientOptions(opts...),
+		),
+		listTrapDamages: connect.NewClient[v1.ListTrapDamagesRequest, v1.ListTrapDamagesResponse](
+			httpClient,
+			baseURL+PlayServiceListTrapDamagesProcedure,
+			connect.WithSchema(playServiceMethods.ByName("ListTrapDamages")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
+		applyTrapDamage: connect.NewClient[v1.ApplyTrapDamageRequest, v1.ApplyTrapDamageResponse](
+			httpClient,
+			baseURL+PlayServiceApplyTrapDamageProcedure,
+			connect.WithSchema(playServiceMethods.ByName("ApplyTrapDamage")),
+			connect.WithClientOptions(opts...),
+		),
+		discardTrapDamage: connect.NewClient[v1.DiscardTrapDamageRequest, v1.DiscardTrapDamageResponse](
+			httpClient,
+			baseURL+PlayServiceDiscardTrapDamageProcedure,
+			connect.WithSchema(playServiceMethods.ByName("DiscardTrapDamage")),
+			connect.WithClientOptions(opts...),
+		),
 		grantSceneAttempt: connect.NewClient[v1.GrantSceneAttemptRequest, v1.GrantSceneAttemptResponse](
 			httpClient,
 			baseURL+PlayServiceGrantSceneAttemptProcedure,
@@ -724,6 +836,11 @@ type playServiceClient struct {
 	closeScene            *connect.Client[v1.CloseSceneRequest, v1.CloseSceneResponse]
 	getOpenScene          *connect.Client[v1.GetOpenSceneRequest, v1.GetOpenSceneResponse]
 	rollSceneCheck        *connect.Client[v1.RollSceneCheckRequest, v1.RollSceneCheckResponse]
+	searchForTraps        *connect.Client[v1.SearchForTrapsRequest, v1.SearchForTrapsResponse]
+	fireTrap              *connect.Client[v1.FireTrapRequest, v1.FireTrapResponse]
+	listTrapDamages       *connect.Client[v1.ListTrapDamagesRequest, v1.ListTrapDamagesResponse]
+	applyTrapDamage       *connect.Client[v1.ApplyTrapDamageRequest, v1.ApplyTrapDamageResponse]
+	discardTrapDamage     *connect.Client[v1.DiscardTrapDamageRequest, v1.DiscardTrapDamageResponse]
 	grantSceneAttempt     *connect.Client[v1.GrantSceneAttemptRequest, v1.GrantSceneAttemptResponse]
 	putOnStage            *connect.Client[v1.PutOnStageRequest, v1.PutOnStageResponse]
 	takeOffStage          *connect.Client[v1.TakeOffStageRequest, v1.TakeOffStageResponse]
@@ -809,6 +926,31 @@ func (c *playServiceClient) GetOpenScene(ctx context.Context, req *connect.Reque
 // RollSceneCheck calls meurpg.play.v1.PlayService.RollSceneCheck.
 func (c *playServiceClient) RollSceneCheck(ctx context.Context, req *connect.Request[v1.RollSceneCheckRequest]) (*connect.Response[v1.RollSceneCheckResponse], error) {
 	return c.rollSceneCheck.CallUnary(ctx, req)
+}
+
+// SearchForTraps calls meurpg.play.v1.PlayService.SearchForTraps.
+func (c *playServiceClient) SearchForTraps(ctx context.Context, req *connect.Request[v1.SearchForTrapsRequest]) (*connect.Response[v1.SearchForTrapsResponse], error) {
+	return c.searchForTraps.CallUnary(ctx, req)
+}
+
+// FireTrap calls meurpg.play.v1.PlayService.FireTrap.
+func (c *playServiceClient) FireTrap(ctx context.Context, req *connect.Request[v1.FireTrapRequest]) (*connect.Response[v1.FireTrapResponse], error) {
+	return c.fireTrap.CallUnary(ctx, req)
+}
+
+// ListTrapDamages calls meurpg.play.v1.PlayService.ListTrapDamages.
+func (c *playServiceClient) ListTrapDamages(ctx context.Context, req *connect.Request[v1.ListTrapDamagesRequest]) (*connect.Response[v1.ListTrapDamagesResponse], error) {
+	return c.listTrapDamages.CallUnary(ctx, req)
+}
+
+// ApplyTrapDamage calls meurpg.play.v1.PlayService.ApplyTrapDamage.
+func (c *playServiceClient) ApplyTrapDamage(ctx context.Context, req *connect.Request[v1.ApplyTrapDamageRequest]) (*connect.Response[v1.ApplyTrapDamageResponse], error) {
+	return c.applyTrapDamage.CallUnary(ctx, req)
+}
+
+// DiscardTrapDamage calls meurpg.play.v1.PlayService.DiscardTrapDamage.
+func (c *playServiceClient) DiscardTrapDamage(ctx context.Context, req *connect.Request[v1.DiscardTrapDamageRequest]) (*connect.Response[v1.DiscardTrapDamageResponse], error) {
+	return c.discardTrapDamage.CallUnary(ctx, req)
 }
 
 // GrantSceneAttempt calls meurpg.play.v1.PlayService.GrantSceneAttempt.
@@ -1192,6 +1334,73 @@ type PlayServiceHandler interface {
 	//     NO_OPEN_SESSION); or SceneBlocked: NO_OPEN_SCENE, ALREADY_ROLLED (no
 	//     attempt left), WRONG_DICE_MODE, NO_CHARACTER.
 	RollSceneCheck(context.Context, *connect.Request[v1.RollSceneCheckRequest]) (*connect.Response[v1.RollSceneCheckResponse], error)
+	// SearchForTraps is the player's "Procurar armadilhas" (MR-035, D5, question
+	// 71): the caller's living character rolls Wisdom (Perception) against each trap's
+	// DC to notice it, or Intelligence (Investigation) against its DC to find it
+	// (RN-18: the app rolls the d20, or the player types a real die, as the
+	// campaign's dice setting allows). The server rolls against every armed trap
+	// within 3 m of the character's square whose square the character sees (with the
+	// fog, what it sees; without it, every square), that the character does not
+	// know yet. A pass reveals the trap to that character alone (the master's log
+	// gets `trap_searched`, with the roll and what it found, never the DC to a
+	// player). The answer reads the same when no trap is there and when the roll
+	// fell short.
+	//
+	// Outside a combat it costs nothing. While a combat runs on the map it is the
+	// SRD's Search action: only on the character's own turn, and it spends the
+	// action (ACTION_USED when it is spent already, NOT_YOUR_TURN, TRAP_SEARCH_NOT_NOW
+	// before the combat starts). Outside a combat a player may search again whenever
+	// they like.
+	//
+	// Errors:
+	//   - `invalid_argument`: skill unspecified; neither roll_in_app nor d20_face is
+	//     set; roll_in_app is false; d20_face is not 1 to 20; the key is not a UUID.
+	//   - `not_found`: the campaign does not exist, or the caller is not a member.
+	//   - `permission_denied`: the caller is the master.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION); SceneBlocked NO_CHARACTER (the caller has no living
+	//     character) or WRONG_DICE_MODE; EncounterBlocked TRAP_NOT_ON_MAP,
+	//     TRAP_SEARCH_NOT_NOW, NOT_YOUR_TURN, ACTION_USED.
+	SearchForTraps(context.Context, *connect.Request[v1.SearchForTrapsRequest]) (*connect.Response[v1.SearchForTrapsResponse], error)
+	// FireTrap is the master firing a trap by hand (MR-035, D5): the trap's
+	// "Manual" trigger, or any trap whenever he decides. Only during a session. The
+	// server rolls the trap's attack and damage and each caught creature's saving
+	// throw with its bonus, as it does for spell saves (see TrapFiring). The trap
+	// becomes "Disparada" and visible to everyone who sees the map; a `trap_triggered`
+	// event goes into the history. In a combat that runs on the map the damage on a
+	// combatant that is an NPC or a creature lands at once and the conditions go on
+	// the combatants; the damage on a player's character is a PendingDamage that waits
+	// for the master (RN-02), and CombatService.UndoLastAction takes the whole firing
+	// back. Outside a combat the damage on a player's character waits as a
+	// TrapDamage, an NPC's has only a log line and the conditions are a reminder.
+	// Only the campaign's master may call it.
+	//
+	// Errors:
+	//   - `invalid_argument`: a target is not valid for the map; the key is not a UUID.
+	//   - `not_found`: the point is not a trap of this map, the campaign does not
+	//     exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: no open session; EncounterBlocked TRAP_NOT_ARMED.
+	FireTrap(context.Context, *connect.Request[v1.FireTrapRequest]) (*connect.Response[v1.FireTrapResponse], error)
+	// ListTrapDamages lists the trap damages that wait for the master, in a combat
+	// and outside one (MR-035, RN-02). Only the campaign's master may call it.
+	//
+	// Errors: `not_found` (the campaign does not exist, or the caller is not a
+	// member), `permission_denied` (a player), `failed_precondition` (no open session).
+	ListTrapDamages(context.Context, *connect.Request[v1.ListTrapDamagesRequest]) (*connect.Response[v1.ListTrapDamagesResponse], error)
+	// ApplyTrapDamage applies a trap damage that is not in a combat to the
+	// character's vitals: temporary hit points first, never below 0, as in a combat
+	// (RN-02). The master may change the amount first. A damage in a combat is
+	// applied with CombatService.ApplyPendingDamage. Only the master may call it.
+	//
+	// Errors: `invalid_argument` (amount outside 0 to 1000, key), `not_found` (the
+	// damage is not the session's, or the campaign), `permission_denied`,
+	// `failed_precondition` (no open session; EncounterBlocked DAMAGE_RESOLVED when it
+	// was applied or discarded already).
+	ApplyTrapDamage(context.Context, *connect.Request[v1.ApplyTrapDamageRequest]) (*connect.Response[v1.ApplyTrapDamageResponse], error)
+	// DiscardTrapDamage drops a trap damage that is not in a combat, applying
+	// nothing. Same errors as ApplyTrapDamage.
+	DiscardTrapDamage(context.Context, *connect.Request[v1.DiscardTrapDamageRequest]) (*connect.Response[v1.DiscardTrapDamageResponse], error)
 	// GrantSceneAttempt gives one character one more attempt at one action of
 	// the open scene: "Dar mais uma tentativa" (MR-015, question 55). Only the
 	// campaign's master may call it, and only while a scene is open. The
@@ -1402,6 +1611,37 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(playServiceMethods.ByName("RollSceneCheck")),
 		connect.WithHandlerOptions(opts...),
 	)
+	playServiceSearchForTrapsHandler := connect.NewUnaryHandler(
+		PlayServiceSearchForTrapsProcedure,
+		svc.SearchForTraps,
+		connect.WithSchema(playServiceMethods.ByName("SearchForTraps")),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceFireTrapHandler := connect.NewUnaryHandler(
+		PlayServiceFireTrapProcedure,
+		svc.FireTrap,
+		connect.WithSchema(playServiceMethods.ByName("FireTrap")),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceListTrapDamagesHandler := connect.NewUnaryHandler(
+		PlayServiceListTrapDamagesProcedure,
+		svc.ListTrapDamages,
+		connect.WithSchema(playServiceMethods.ByName("ListTrapDamages")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceApplyTrapDamageHandler := connect.NewUnaryHandler(
+		PlayServiceApplyTrapDamageProcedure,
+		svc.ApplyTrapDamage,
+		connect.WithSchema(playServiceMethods.ByName("ApplyTrapDamage")),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceDiscardTrapDamageHandler := connect.NewUnaryHandler(
+		PlayServiceDiscardTrapDamageProcedure,
+		svc.DiscardTrapDamage,
+		connect.WithSchema(playServiceMethods.ByName("DiscardTrapDamage")),
+		connect.WithHandlerOptions(opts...),
+	)
 	playServiceGrantSceneAttemptHandler := connect.NewUnaryHandler(
 		PlayServiceGrantSceneAttemptProcedure,
 		svc.GrantSceneAttempt,
@@ -1466,6 +1706,16 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 			playServiceGetOpenSceneHandler.ServeHTTP(w, r)
 		case PlayServiceRollSceneCheckProcedure:
 			playServiceRollSceneCheckHandler.ServeHTTP(w, r)
+		case PlayServiceSearchForTrapsProcedure:
+			playServiceSearchForTrapsHandler.ServeHTTP(w, r)
+		case PlayServiceFireTrapProcedure:
+			playServiceFireTrapHandler.ServeHTTP(w, r)
+		case PlayServiceListTrapDamagesProcedure:
+			playServiceListTrapDamagesHandler.ServeHTTP(w, r)
+		case PlayServiceApplyTrapDamageProcedure:
+			playServiceApplyTrapDamageHandler.ServeHTTP(w, r)
+		case PlayServiceDiscardTrapDamageProcedure:
+			playServiceDiscardTrapDamageHandler.ServeHTTP(w, r)
 		case PlayServiceGrantSceneAttemptProcedure:
 			playServiceGrantSceneAttemptHandler.ServeHTTP(w, r)
 		case PlayServicePutOnStageProcedure:
@@ -1547,6 +1797,26 @@ func (UnimplementedPlayServiceHandler) GetOpenScene(context.Context, *connect.Re
 
 func (UnimplementedPlayServiceHandler) RollSceneCheck(context.Context, *connect.Request[v1.RollSceneCheckRequest]) (*connect.Response[v1.RollSceneCheckResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.RollSceneCheck is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) SearchForTraps(context.Context, *connect.Request[v1.SearchForTrapsRequest]) (*connect.Response[v1.SearchForTrapsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.SearchForTraps is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) FireTrap(context.Context, *connect.Request[v1.FireTrapRequest]) (*connect.Response[v1.FireTrapResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.FireTrap is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) ListTrapDamages(context.Context, *connect.Request[v1.ListTrapDamagesRequest]) (*connect.Response[v1.ListTrapDamagesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.ListTrapDamages is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) ApplyTrapDamage(context.Context, *connect.Request[v1.ApplyTrapDamageRequest]) (*connect.Response[v1.ApplyTrapDamageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.ApplyTrapDamage is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) DiscardTrapDamage(context.Context, *connect.Request[v1.DiscardTrapDamageRequest]) (*connect.Response[v1.DiscardTrapDamageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.DiscardTrapDamage is not implemented"))
 }
 
 func (UnimplementedPlayServiceHandler) GrantSceneAttempt(context.Context, *connect.Request[v1.GrantSceneAttemptRequest]) (*connect.Response[v1.GrantSceneAttemptResponse], error) {

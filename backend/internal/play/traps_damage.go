@@ -1,0 +1,256 @@
+package play
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"slices"
+	"uuid"
+
+	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
+)
+
+// The damage a fired trap did to a player's character, waiting for the master
+// (MR-035, Etapa 9, D5; RN-02). In a combat it is a pending_damages row, which the
+// master applies with CombatService.ApplyPendingDamage like any other; outside a
+// combat it is a trap_damages row, applied here to the character's vitals. The
+// master may change the amount before applying: resistances are not modeled.
+
+// ListTrapDamages implements playv1connect.PlayServiceHandler.
+func (s *Service) ListTrapDamages(
+	ctx context.Context,
+	req *connect.Request[playv1.ListTrapDamagesRequest],
+) (*connect.Response[playv1.ListTrapDamagesResponse], error) {
+	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	if err != nil {
+		return nil, err
+	}
+	session, err := s.openSession(ctx, m.CampaignID)
+	if err != nil {
+		return nil, err
+	}
+	inCombat, err := s.queries.ListOpenTrapPendingDamages(ctx, session.ID)
+	if err != nil {
+		return nil, s.dbError(ctx, "list the trap damages in combat", err)
+	}
+	outside, err := s.queries.ListOpenTrapDamages(ctx, session.ID)
+	if err != nil {
+		return nil, s.dbError(ctx, "list the trap damages", err)
+	}
+	var pointIDs, characterIDs []string
+	combatants := map[string]playdb.Combatant{}
+	for _, p := range inCombat {
+		pointIDs = append(pointIDs, deref(p.TrapPointID))
+		if _, ok := combatants[p.TargetID]; !ok {
+			cs, err := s.queries.ListCombatantsWithDismissed(ctx, p.EncounterID)
+			if err != nil {
+				return nil, s.dbError(ctx, "list the combatants", err)
+			}
+			for _, c := range cs {
+				combatants[c.ID] = c
+			}
+		}
+		characterIDs = append(characterIDs, combatants[p.TargetID].CharacterID)
+	}
+	for _, d := range outside {
+		pointIDs = append(pointIDs, d.TrapPointID)
+		characterIDs = append(characterIDs, d.CharacterID)
+	}
+	trapNames, names := map[string]string{}, map[string]string{}
+	if s.traps != nil && len(pointIDs) > 0 {
+		if trapNames, err = s.traps.TrapNames(ctx, m.CampaignID, slices.Compact(slices.Sorted(slices.Values(pointIDs)))); err != nil {
+			return nil, s.dbError(ctx, "read the traps' names", err)
+		}
+	}
+	if len(characterIDs) > 0 {
+		chars, err := s.roster.SessionCharacters(ctx, m.CampaignID, slices.Compact(slices.Sorted(slices.Values(characterIDs))))
+		if err != nil {
+			return nil, s.dbError(ctx, "read the characters' names", err)
+		}
+		for _, c := range chars {
+			names[c.ID] = c.Name
+		}
+	}
+	res := &playv1.ListTrapDamagesResponse{}
+	for _, p := range inCombat {
+		who := combatants[p.TargetID]
+		res.Damages = append(res.Damages, &playv1.TrapDamage{
+			Id: p.ID, EncounterId: p.EncounterID, TrapPointId: deref(p.TrapPointID), TrapName: trapNames[deref(p.TrapPointID)],
+			CharacterId: who.CharacterID, CharacterName: names[who.CharacterID], CombatantId: p.TargetID,
+			Status: pendingStatusToProto[p.Status], Roll: diceRoll(p.DiceCount, p.DiceSides, p.Faces, p.DiceBonus, num(p.RollTotal), false),
+			Amount: num(p.Amount), DamageTypeKey: p.DamageType, DamageTypePt: damageTypePT[p.DamageType], Half: p.Half, Critical: p.Critical,
+			AppliedAmount: p.AppliedAmount, CreatedAt: timestamppb.New(p.CreatedAt),
+		})
+	}
+	for _, d := range outside {
+		res.Damages = append(res.Damages, trapDamageProto(d, trapNames[d.TrapPointID], names[d.CharacterID]))
+	}
+	return connect.NewResponse(res), nil
+}
+
+// trapDamageProto is a trap_damages row as the API says it.
+func trapDamageProto(d playdb.TrapDamage, trapName, characterName string) *playv1.TrapDamage {
+	status := map[string]playv1.PendingDamageStatus{
+		"rolled": playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_ROLLED, "applied": playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED,
+		"discarded": playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_DISCARDED,
+	}[d.Status]
+	return &playv1.TrapDamage{
+		Id: d.ID, TrapPointId: d.TrapPointID, TrapName: trapName, CharacterId: d.CharacterID, CharacterName: characterName, Status: status,
+		Roll: diceRoll(d.DiceCount, d.DiceSides, d.Faces, d.DiceBonus, d.RollTotal, false), Amount: d.Amount,
+		DamageTypeKey: d.DamageType, DamageTypePt: damageTypePT[d.DamageType], Half: d.Half, Critical: d.Critical,
+		AppliedAmount: d.AppliedAmount, CreatedAt: timestamppb.New(d.CreatedAt),
+	}
+}
+
+// settleTrapDamage applies or discards a trap damage outside a combat. apply says
+// which; override is the master's amount, nil to apply the rolled one.
+func (s *Service) settleTrapDamage(ctx context.Context, m authz.Membership, key, rawID string, apply bool, override *int32) (playdb.TrapDamage, *playv1.CharacterVitals, error) {
+	id, err := uuid.Parse(rawID)
+	if err != nil {
+		return playdb.TrapDamage{}, nil, connect.NewError(connect.CodeNotFound, errors.New("trap damage not found"))
+	}
+	kind := eventDamageDiscarded
+	if apply {
+		kind = eventDamageApplied
+	}
+	var row playdb.TrapDamage
+	var after *playv1.CharacterVitals
+	var repeated bool
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := s.queries.WithTx(tx)
+		after, repeated = nil, false
+		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errNoOpenSession()
+		}
+		if err != nil {
+			return fmt.Errorf("lock the open session: %w", err)
+		}
+		if row, err = q.GetTrapDamageForUpdate(ctx, playdb.GetTrapDamageForUpdateParams{GameSessionID: session.ID, ID: id.String()}); errors.Is(err, pgx.ErrNoRows) {
+			return connect.NewError(connect.CodeNotFound, errors.New("trap damage not found"))
+		} else if err != nil {
+			return fmt.Errorf("find the trap damage: %w", err)
+		}
+		done, err := q.GetSessionEventByIdempotencyKey(ctx, playdb.GetSessionEventByIdempotencyKeyParams{GameSessionID: session.ID, IdempotencyKey: &key})
+		switch {
+		case err == nil:
+			if done.Kind != kind {
+				return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
+			}
+			repeated = true // a retry: the damage is as the first call left it
+			return nil
+		case !errors.Is(err, pgx.ErrNoRows):
+			return fmt.Errorf("find the event of this idempotency key: %w", err)
+		}
+		if row.Status != "rolled" {
+			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DAMAGE_RESOLVED, "the damage was applied or discarded already")
+		}
+		c := &combatTx{tx: tx, q: q, session: session, now: s.now(), characterID: &row.CharacterID, actorUserID: m.UserID}
+		ev := actionEvent{Pending: row.ID, Target: row.CharacterID, Key: "trap", Amount: row.Amount, DamageType: row.DamageType}
+		final, applied := "discarded", (*int32)(nil)
+		if apply {
+			final = "applied"
+			amount := row.Amount
+			if override != nil && *override != row.Amount {
+				amount, applied = *override, override
+			}
+			ev.Amount, ev.Overridden, ev.Rolled = amount, applied != nil, row.Amount
+			// RN-02: the damage goes through the character's vitals, temporary hit
+			// points first, never below 0.
+			now, err := s.vitals.GetVitalsTx(ctx, tx, m.CampaignID, row.CharacterID)
+			if err != nil {
+				return err
+			}
+			dmg := combat.ApplyDamage(int(now.GetHitPointsCurrent()), int(now.GetHitPointsTemporary()), int(amount))
+			hp, temp := clamp32(dmg.HP, 0, maxHitPointChange), clamp32(dmg.TempHP, 0, maxHitPointChange)
+			before, vit, err := s.changeVitals(ctx, q, tx, session.ID, m.CampaignID, row.CharacterID, &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: &hp, HitPointsTemporary: &temp})
+			if err != nil {
+				return err
+			}
+			after = vit
+			ev.Before = &hpState{HP: before.GetHitPointsCurrent(), Temp: before.GetHitPointsTemporary()}
+			ev.After = &hpState{HP: vit.GetHitPointsCurrent(), Temp: vit.GetHitPointsTemporary()}
+		}
+		resolved := c.now
+		if row, err = q.SetTrapDamageStatus(ctx, playdb.SetTrapDamageStatusParams{ID: row.ID, Status: final, ResolvedAt: &resolved, AppliedAmount: applied}); err != nil {
+			return fmt.Errorf("settle the trap damage: %w", err)
+		}
+		_, err = insertSceneEvent(ctx, c, kind, &m.UserID, &key, ev)
+		return err
+	})
+	if err != nil {
+		return playdb.TrapDamage{}, nil, err
+	}
+	if !repeated {
+		s.publishVitals(m.CampaignID, after)
+		s.Publish(m.CampaignID, false, mapChangedHint("")) // the trap card has one damage less
+	}
+	return row, after, nil
+}
+
+// trapDamageNames reads the names a trap damage's answer shows.
+func (s *Service) trapDamageNames(ctx context.Context, campaignID string, d playdb.TrapDamage) (trapName, characterName string) {
+	if s.traps != nil {
+		if names, err := s.traps.TrapNames(ctx, campaignID, []string{d.TrapPointID}); err == nil {
+			trapName = names[d.TrapPointID]
+		}
+	}
+	if chars, err := s.roster.SessionCharacters(ctx, campaignID, []string{d.CharacterID}); err == nil && len(chars) == 1 {
+		characterName = chars[0].Name
+	}
+	return trapName, characterName
+}
+
+// ApplyTrapDamage implements playv1connect.PlayServiceHandler.
+func (s *Service) ApplyTrapDamage(
+	ctx context.Context,
+	req *connect.Request[playv1.ApplyTrapDamageRequest],
+) (*connect.Response[playv1.ApplyTrapDamageResponse], error) {
+	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	if err != nil {
+		return nil, err
+	}
+	key, err := parseKey(req.Msg.GetIdempotencyKey())
+	if err != nil {
+		return nil, err
+	}
+	override := req.Msg.Amount
+	if override != nil && (*override < 0 || *override > maxHitPointChange) {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("amount must be 0 to %d", maxHitPointChange))
+	}
+	row, _, err := s.settleTrapDamage(ctx, m, key, req.Msg.GetTrapDamageId(), true, override)
+	if err != nil {
+		return nil, s.dbError(ctx, "apply a trap damage", err)
+	}
+	trapName, name := s.trapDamageNames(ctx, m.CampaignID, row)
+	return connect.NewResponse(&playv1.ApplyTrapDamageResponse{Damage: trapDamageProto(row, trapName, name)}), nil
+}
+
+// DiscardTrapDamage implements playv1connect.PlayServiceHandler.
+func (s *Service) DiscardTrapDamage(
+	ctx context.Context,
+	req *connect.Request[playv1.DiscardTrapDamageRequest],
+) (*connect.Response[playv1.DiscardTrapDamageResponse], error) {
+	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	if err != nil {
+		return nil, err
+	}
+	key, err := parseKey(req.Msg.GetIdempotencyKey())
+	if err != nil {
+		return nil, err
+	}
+	row, _, err := s.settleTrapDamage(ctx, m, key, req.Msg.GetTrapDamageId(), false, nil)
+	if err != nil {
+		return nil, s.dbError(ctx, "discard a trap damage", err)
+	}
+	trapName, name := s.trapDamageNames(ctx, m.CampaignID, row)
+	return connect.NewResponse(&playv1.DiscardTrapDamageResponse{Damage: trapDamageProto(row, trapName, name)}), nil
+}

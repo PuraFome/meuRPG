@@ -255,7 +255,7 @@ func (s *Service) GetTurnOptions(
 		return nil, s.dbError(ctx, "list the pending damage", err)
 	}
 	for _, p := range open {
-		if p.AttackerID == who.ID && pendingVisible(p, d.cs, v) {
+		if deref(p.AttackerID) == who.ID && pendingVisible(p, d.cs, v) {
 			res.PendingDamages = append(res.PendingDamages, pendingProto(p, d.cs))
 		}
 	}
@@ -389,11 +389,12 @@ func pendingVisible(p playdb.PendingDamage, cs []playdb.Combatant, v combatViewe
 // player get. cs are the combat's combatants, for the target's defeat.
 func pendingProto(p playdb.PendingDamage, cs []playdb.Combatant) *playv1.PendingDamage {
 	out := &playv1.PendingDamage{
-		Id: p.ID, AttackerId: p.AttackerID, TargetId: p.TargetID, AttackKey: p.AttackKey,
+		Id: p.ID, AttackerId: deref(p.AttackerID), TargetId: p.TargetID, AttackKey: p.AttackKey,
 		Status: pendingStatusToProto[p.Status], Critical: p.Critical,
 		DiceCount: p.DiceCount, DiceSides: p.DiceSides, Bonus: p.DiceBonus,
 		DamageTypeKey: p.DamageType, DamageTypePt: damageTypePT[p.DamageType],
 		CastId: deref(p.CastID), Healing: p.Healing, Half: p.Half, AppliedAmount: p.AppliedAmount,
+		TrapPointId: deref(p.TrapPointID), // a trap's damage has no attacker (MR-035)
 	}
 	if p.Amount != nil {
 		out.Amount = *p.Amount
@@ -804,7 +805,7 @@ func (s *Service) RollDamage(
 		if err != nil {
 			return nil, fmt.Errorf("list the combatants: %w", err)
 		}
-		attacker, err := findCombatant(cs, p.AttackerID, v)
+		attacker, err := findCombatant(cs, deref(p.AttackerID), v)
 		if err != nil {
 			return nil, err
 		}
@@ -1206,10 +1207,13 @@ func (s *Service) settling(ctx context.Context, c *combatTx, pendingID string) (
 		return p, attacker, target, fmt.Errorf("list the combatants: %w", err)
 	}
 	master := combatViewer{master: true}
-	if attacker, err = findCombatant(cs, p.AttackerID, master); err != nil {
+	if target, err = findCombatant(cs, p.TargetID, master); err != nil {
 		return p, attacker, target, err
 	}
-	target, err = findCombatant(cs, p.TargetID, master)
+	if p.AttackerID == nil {
+		return p, target, target, nil // a trap's damage (MR-035) has no attacker: the target stands in
+	}
+	attacker, err = findCombatant(cs, *p.AttackerID, master)
 	return p, attacker, target, err
 }
 

@@ -17,6 +17,7 @@ import "meurpg/campaigns/v1/campaigns.proto";
 import "meurpg/play/v1/combat.proto";
 import "meurpg/play/v1/scene.proto";
 import "meurpg/play/v1/summary.proto";
+import "meurpg/play/v1/traps.proto";
 import "meurpg/rules/v1/rules.proto";
 
 // PlayService runs a campaign's game sessions and the live session.
@@ -427,6 +428,80 @@ service PlayService {
   //     NO_OPEN_SESSION); or SceneBlocked: NO_OPEN_SCENE, ALREADY_ROLLED (no
   //     attempt left), WRONG_DICE_MODE, NO_CHARACTER.
   rpc RollSceneCheck(RollSceneCheckRequest) returns (RollSceneCheckResponse);
+
+  // SearchForTraps is the player's "Procurar armadilhas" (MR-035, D5, question
+  // 71): the caller's living character rolls Wisdom (Perception) against each trap's
+  // DC to notice it, or Intelligence (Investigation) against its DC to find it
+  // (RN-18: the app rolls the d20, or the player types a real die, as the
+  // campaign's dice setting allows). The server rolls against every armed trap
+  // within 3 m of the character's square whose square the character sees (with the
+  // fog, what it sees; without it, every square), that the character does not
+  // know yet. A pass reveals the trap to that character alone (the master's log
+  // gets `trap_searched`, with the roll and what it found, never the DC to a
+  // player). The answer reads the same when no trap is there and when the roll
+  // fell short.
+  //
+  // Outside a combat it costs nothing. While a combat runs on the map it is the
+  // SRD's Search action: only on the character's own turn, and it spends the
+  // action (ACTION_USED when it is spent already, NOT_YOUR_TURN, TRAP_SEARCH_NOT_NOW
+  // before the combat starts). Outside a combat a player may search again whenever
+  // they like.
+  //
+  // Errors:
+  //   - `invalid_argument`: skill unspecified; neither roll_in_app nor d20_face is
+  //     set; roll_in_app is false; d20_face is not 1 to 20; the key is not a UUID.
+  //   - `not_found`: the campaign does not exist, or the caller is not a member.
+  //   - `permission_denied`: the caller is the master.
+  //   - `failed_precondition`: no open session (GameSessionBlocked,
+  //     NO_OPEN_SESSION); SceneBlocked NO_CHARACTER (the caller has no living
+  //     character) or WRONG_DICE_MODE; EncounterBlocked TRAP_NOT_ON_MAP,
+  //     TRAP_SEARCH_NOT_NOW, NOT_YOUR_TURN, ACTION_USED.
+  rpc SearchForTraps(SearchForTrapsRequest) returns (SearchForTrapsResponse);
+
+  // FireTrap is the master firing a trap by hand (MR-035, D5): the trap's
+  // "Manual" trigger, or any trap whenever he decides. Only during a session. The
+  // server rolls the trap's attack and damage and each caught creature's saving
+  // throw with its bonus, as it does for spell saves (see TrapFiring). The trap
+  // becomes "Disparada" and visible to everyone who sees the map; a `trap_triggered`
+  // event goes into the history. In a combat that runs on the map the damage on a
+  // combatant that is an NPC or a creature lands at once and the conditions go on
+  // the combatants; the damage on a player's character is a PendingDamage that waits
+  // for the master (RN-02), and CombatService.UndoLastAction takes the whole firing
+  // back. Outside a combat the damage on a player's character waits as a
+  // TrapDamage, an NPC's has only a log line and the conditions are a reminder.
+  // Only the campaign's master may call it.
+  //
+  // Errors:
+  //   - `invalid_argument`: a target is not valid for the map; the key is not a UUID.
+  //   - `not_found`: the point is not a trap of this map, the campaign does not
+  //     exist, or the caller is not a member of it.
+  //   - `permission_denied`: the caller is a player.
+  //   - `failed_precondition`: no open session; EncounterBlocked TRAP_NOT_ARMED.
+  rpc FireTrap(FireTrapRequest) returns (FireTrapResponse);
+
+  // ListTrapDamages lists the trap damages that wait for the master, in a combat
+  // and outside one (MR-035, RN-02). Only the campaign's master may call it.
+  //
+  // Errors: `not_found` (the campaign does not exist, or the caller is not a
+  // member), `permission_denied` (a player), `failed_precondition` (no open session).
+  rpc ListTrapDamages(ListTrapDamagesRequest) returns (ListTrapDamagesResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // ApplyTrapDamage applies a trap damage that is not in a combat to the
+  // character's vitals: temporary hit points first, never below 0, as in a combat
+  // (RN-02). The master may change the amount first. A damage in a combat is
+  // applied with CombatService.ApplyPendingDamage. Only the master may call it.
+  //
+  // Errors: `invalid_argument` (amount outside 0 to 1000, key), `not_found` (the
+  // damage is not the session's, or the campaign), `permission_denied`,
+  // `failed_precondition` (no open session; EncounterBlocked DAMAGE_RESOLVED when it
+  // was applied or discarded already).
+  rpc ApplyTrapDamage(ApplyTrapDamageRequest) returns (ApplyTrapDamageResponse);
+
+  // DiscardTrapDamage drops a trap damage that is not in a combat, applying
+  // nothing. Same errors as ApplyTrapDamage.
+  rpc DiscardTrapDamage(DiscardTrapDamageRequest) returns (DiscardTrapDamageResponse);
 
   // GrantSceneAttempt gives one character one more attempt at one action of
   // the open scene: "Dar mais uma tentativa" (MR-015, question 55). Only the

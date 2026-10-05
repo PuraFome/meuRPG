@@ -1,0 +1,144 @@
+syntax = "proto3";
+
+// Traps in play (MR-035, Etapa 9, D5; RN-10, RN-02): searching for them, firing
+// them and the damage they do. The RPCs are PlayService's (play.proto); the
+// messages are here. A trap's own data (its DCs, its effect) is the map point's
+// (meurpg.maps.v1, TrapSpec) and never reaches a player until the trap fired.
+//
+// What a player never receives: a trap their characters do not know, its name,
+// its position, its DCs. A search that finds nothing reads the same as one that
+// failed. A player sees "passou" or "falhou" for the saves of a fired trap, never
+// the DC; the owner of a character sees their own d20.
+package meurpg.play.v1;
+
+import "google/protobuf/timestamp.proto";
+import "meurpg/play/v1/combat.proto";
+
+// TrapSearchSkill is the skill a search rolls (question 71).
+enum TrapSearchSkill {
+  TRAP_SEARCH_SKILL_UNSPECIFIED = 0;
+  // Wisdom (Perception), against the trap's DC to notice it. A trap with no such
+  // DC (the poison needle) is never found this way.
+  TRAP_SEARCH_SKILL_PERCEPTION = 1;
+  // Intelligence (Investigation), against the trap's DC to find it.
+  TRAP_SEARCH_SKILL_INVESTIGATION = 2;
+}
+
+// SearchForTrapsRequest is the player's "Procurar armadilhas".
+message SearchForTrapsRequest {
+  string campaign_id = 1;
+  // The skill to roll. Required.
+  TrapSearchSkill skill = 2;
+  // How the d20 comes (RN-18): the app rolls it, or the player typed the face of
+  // a real die. Required: one of them.
+  oneof roll {
+    // True: the server rolls the d20.
+    bool roll_in_app = 3;
+    // The face of the real d20, 1 to 20. The server adds the bonus.
+    int32 d20_face = 4;
+  }
+  // A UUID the app makes for each search. Repeating it returns the first answer
+  // and changes nothing.
+  string idempotency_key = 5;
+}
+
+// SearchForTrapsResponse is what the search found.
+message SearchForTrapsResponse {
+  // The caller's d20 with the skill's bonus. The total is the player's own; the
+  // DC never comes.
+  DiceRoll roll = 1;
+  // The traps this search revealed to the caller's character (UUIDs of map
+  // points, readable now with GetMap). Empty when nothing was found, whether
+  // there was a trap or the roll fell short: the two cannot be told apart.
+  repeated string found_point_ids = 2;
+  // True when the search cost the character's action, because a combat is
+  // running and it is the character's turn.
+  bool spent_action = 3;
+}
+
+// FireTrapRequest is the master firing a trap by hand.
+message FireTrapRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+  string point_id = 3;
+  // Who is caught: in a combat that runs on the map, combatant IDs; otherwise
+  // character IDs of tokens on the map. Empty: the creatures standing in the
+  // trap's area (up to 40).
+  repeated string target_ids = 4;
+  // A UUID the app makes for each firing.
+  string idempotency_key = 5;
+}
+
+// FireTrapResponse is what the trap did, as the master sees it.
+message FireTrapResponse {
+  TrapFiring firing = 1;
+}
+
+// TrapDamage is a damage a fired trap did to a player's character that waits for
+// the master (RN-02), in a combat or outside one. ListTrapDamages lists them.
+message TrapDamage {
+  // pending_damages.id when encounter_id is set, trap_damages.id otherwise.
+  string id = 1;
+  // The combat the damage belongs to (a UUID); empty outside a combat. In a combat,
+  // apply or discard it with CombatService; outside one, with ApplyTrapDamage and
+  // DiscardTrapDamage.
+  string encounter_id = 2;
+  string trap_point_id = 3;
+  // The trap's name; empty when the trap was deleted since.
+  string trap_name = 4;
+  // The character that takes it (a UUID) and its name; in a combat, also the
+  // combatant.
+  string character_id = 5;
+  string character_name = 6;
+  string combatant_id = 7;
+  PendingDamageStatus status = 8;
+  DiceRoll roll = 9;
+  // What would land.
+  int32 amount = 10;
+  string damage_type_key = 11;
+  string damage_type_pt = 12;
+  bool half = 13;
+  bool critical = 14;
+  // What the master applied when it is not `amount`. Unset otherwise.
+  optional int32 applied_amount = 15;
+  google.protobuf.Timestamp created_at = 16;
+}
+
+// ListTrapDamagesRequest asks for the open trap damages.
+message ListTrapDamagesRequest {
+  string campaign_id = 1;
+}
+
+// ListTrapDamagesResponse is every trap damage of the open session that waits for
+// the master (status ROLLED), oldest first.
+message ListTrapDamagesResponse {
+  repeated TrapDamage damages = 1;
+}
+
+// ApplyTrapDamageRequest applies a trap damage outside a combat.
+message ApplyTrapDamageRequest {
+  string campaign_id = 1;
+  string trap_damage_id = 2;
+  // What to apply when the master changes it (0 to 1000); unset applies the
+  // rolled amount. Resistances are not modelled: the master decides here (RN-02).
+  optional int32 amount = 3;
+  string idempotency_key = 4;
+}
+
+// ApplyTrapDamageResponse returns the damage as it is now. The character's new
+// vitals reach the streams as `vitals_changed`.
+message ApplyTrapDamageResponse {
+  TrapDamage damage = 1;
+}
+
+// DiscardTrapDamageRequest drops a trap damage outside a combat.
+message DiscardTrapDamageRequest {
+  string campaign_id = 1;
+  string trap_damage_id = 2;
+  string idempotency_key = 3;
+}
+
+// DiscardTrapDamageResponse returns the damage as it is now.
+message DiscardTrapDamageResponse {
+  TrapDamage damage = 1;
+}
