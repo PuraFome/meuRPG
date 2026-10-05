@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/PuraFome/meuRPG/backend/internal/maps/link"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -58,9 +59,14 @@ func (s *Service) OpenSessionID(ctx context.Context, tx pgx.Tx, campaignID strin
 // character, so it has none and its token's square stands for any light it
 // carries); a combatant that has no square yet (a combat in setup) is left out
 // too, and its token's square stands. The maps module asks for it, after its own
-// authorization check. It implements maps.CombatMaps.
-func (s *Service) CombatPositions(ctx context.Context, campaignID, mapID string) (link.CombatPositions, error) {
-	rows, err := s.pool.Query(ctx, `
+// authorization check. It reads inside tx when the caller has one (nil: the pool).
+// It implements maps.CombatMaps.
+func (s *Service) CombatPositions(ctx context.Context, tx pgx.Tx, campaignID, mapID string) (link.CombatPositions, error) {
+	var conn playdb.DBTX = s.pool
+	if tx != nil {
+		conn = tx // inside the caller's transaction: no second connection (plain SQL, so not queriesIn)
+	}
+	rows, err := conn.Query(ctx, `
 		SELECT c.character_id, c.kind, c.grid_col, c.grid_row, c.creature_id, c.dismissed
 		FROM combatants AS c
 		JOIN encounters AS e ON e.id = c.encounter_id

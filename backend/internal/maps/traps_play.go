@@ -74,10 +74,7 @@ type trapScene struct {
 // loadTrapScene reads what noticing needs. A map with no grid has no traps in
 // play: a trap's area is squares (g is invalid and points empty).
 func (s *Service) loadTrapScene(ctx context.Context, tx pgx.Tx, campaignID, mapID string, withEyes bool) (*trapScene, error) {
-	q := s.queries
-	if tx != nil {
-		q = q.WithTx(tx) // read inside the caller's transaction: a change that commits meanwhile makes it retry
-	}
+	q := queriesIn(s.queries, tx) // inside the caller's transaction: a change that commits meanwhile makes it retry, and no second connection is taken
 	row, err := s.campaignMap(ctx, q, campaignID, mapID)
 	if err != nil {
 		return nil, err
@@ -114,7 +111,7 @@ func (s *Service) loadTrapScene(ctx context.Context, tx pgx.Tx, campaignID, mapI
 	if !withEyes {
 		return ts, nil // who sees what is not asked: the party's sheets are not derived
 	}
-	party, err := partyOf(ctx, s, campaignID)
+	party, err := partyOf(ctx, tx, s, campaignID)
 	if err != nil {
 		return nil, fmt.Errorf("read the party: %w", err)
 	}
@@ -123,11 +120,11 @@ func (s *Service) loadTrapScene(ctx context.Context, tx pgx.Tx, campaignID, mapI
 		ts.order = append(ts.order, m.CharacterID)
 	}
 	if fogged(row) {
-		tokens, err := s.queries.ListMapTokens(ctx, mapID)
+		tokens, err := q.ListMapTokens(ctx, mapID)
 		if err != nil {
 			return nil, fmt.Errorf("list the tokens: %w", err)
 		}
-		if ts.sg, err = s.newSight(ctx, fogInputOfRow(row, size.ImageWidth, size.ImageHeight), all, tokens); err != nil {
+		if ts.sg, err = s.newSight(ctx, tx, fogInputOfRow(row, size.ImageWidth, size.ImageHeight), all, tokens); err != nil {
 			return nil, err
 		}
 	}
@@ -493,7 +490,13 @@ func (s *Service) TriggerTrap(ctx context.Context, tx pgx.Tx, campaignID, mapID,
 	if !armed(p) {
 		return link.Trap{}, link.ErrTrapNotArmed
 	}
-	before := s.linkTrap(s.gridOfMap(ctx, campaignID, mapID), p, nil, true)
+	// A failed read aborts the transaction: it is returned, so a retryable conflict
+	// (40001) is retried, never hidden behind 25P02 or a trap with no squares.
+	size, err := q.GetMapGrid(ctx, mapsdb.GetMapGridParams{CampaignID: campaignID, ID: mapID})
+	if err != nil {
+		return link.Trap{}, fmt.Errorf("read the trap's map grid: %w", err)
+	}
+	before := s.linkTrap(gridOf(size.GridColumns, size.ImageWidth, size.ImageHeight), p, nil, true)
 	state := stateTriggered
 	if _, err := q.SetTrapState(ctx, mapsdb.SetTrapStateParams{MapID: mapID, ID: pointID, TrapState: &state, TrapTriggeredAt: &at, Now: at}); err != nil {
 		return link.Trap{}, fmt.Errorf("trigger the trap: %w", err)
@@ -518,10 +521,11 @@ func (s *Service) RestoreTrap(ctx context.Context, tx pgx.Tx, campaignID, mapID,
 	return nil
 }
 
-// gridOfMap is the map's grid, or the zero grid when the read fails: used only to
-// decorate a trap with its squares after the point was locked.
-func (s *Service) gridOfMap(ctx context.Context, campaignID, mapID string) grid.Grid {
-	size, err := s.queries.GetMapGrid(ctx, mapsdb.GetMapGridParams{CampaignID: campaignID, ID: mapID})
+// gridOfMap is the map's grid, or the zero grid when the read fails: used only
+// after a commit, on the pool, to decorate a trap with its squares. Inside a
+// transaction a failed read is returned instead (see TriggerTrap).
+func (s *Service) gridOfMap(ctx context.Context, q *mapsdb.Queries, campaignID, mapID string) grid.Grid {
+	size, err := q.GetMapGrid(ctx, mapsdb.GetMapGridParams{CampaignID: campaignID, ID: mapID})
 	if err != nil {
 		return grid.Grid{}
 	}
@@ -641,7 +645,7 @@ func (s *Service) standsOf(ctx context.Context, ts *trapScene, campaignID, mapID
 	if err != nil {
 		return nil, fmt.Errorf("list the tokens: %w", err)
 	}
-	combat, err := s.combats.CombatPositions(ctx, campaignID, mapID)
+	combat, err := s.combats.CombatPositions(ctx, nil, campaignID, mapID)
 	if err != nil {
 		return nil, fmt.Errorf("read the combatants' squares: %w", err)
 	}
@@ -684,7 +688,7 @@ func (s *Service) DisarmTrap(
 		if before.TrapState != nil && *before.TrapState == "disarmed" {
 			return nil // already disarmed: nothing changes, nothing is recorded
 		}
-		if knowers, err = s.trapKnowers(ctx, q, m.CampaignID, before); err != nil {
+		if knowers, err = s.trapKnowers(ctx, tx, q, m.CampaignID, before); err != nil {
 			return err
 		}
 		now := s.now()
@@ -758,7 +762,7 @@ func (s *Service) tokenLanded(ctx context.Context, campaignID, actorUserID, mapI
 	if err != nil || !playersSee(mapID, row.RevealedAt, current) {
 		return
 	}
-	g := s.gridOfMap(ctx, campaignID, mapID)
+	g := s.gridOfMap(ctx, s.queries, campaignID, mapID)
 	if !g.Valid() {
 		return
 	}
@@ -790,7 +794,7 @@ func (s *Service) creatureLanded(ctx context.Context, campaignID, actorUserID, m
 	if err != nil || !playersSee(mapID, row.RevealedAt, current) {
 		return
 	}
-	g := s.gridOfMap(ctx, campaignID, mapID)
+	g := s.gridOfMap(ctx, s.queries, campaignID, mapID)
 	if !g.Valid() {
 		return
 	}

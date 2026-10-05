@@ -189,9 +189,10 @@ func gridRows(columns, width, height int32) int32 {
 
 // MapGrid returns the battle grid of the campaign's map (MR-013), or the
 // zero Grid when it has none. It returns a `not_found` Connect error when
-// mapID is not a map of the campaign.
-func (sm *SessionMaps) MapGrid(ctx context.Context, campaignID, mapID string) (link.Grid, error) {
-	row, err := sm.queries.GetMapGrid(ctx, mapsdb.GetMapGridParams{CampaignID: campaignID, ID: mapID})
+// mapID is not a map of the campaign. Like the other reads below, it reads inside
+// tx when the caller has one (nil: the pool).
+func (sm *SessionMaps) MapGrid(ctx context.Context, tx pgx.Tx, campaignID, mapID string) (link.Grid, error) {
+	row, err := queriesIn(sm.queries, tx).GetMapGrid(ctx, mapsdb.GetMapGridParams{CampaignID: campaignID, ID: mapID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return link.Grid{}, errMapNotFound()
 	}
@@ -229,8 +230,9 @@ func (sm *SessionMaps) BattlePoint(ctx context.Context, campaignID, pointID stri
 // included: the combat places the combatants on the squares where their
 // characters' tokens are. The caller is the play module, after its own
 // authorization check, and sends nothing of it to a player.
-func (sm *SessionMaps) MapTokens(ctx context.Context, mapID string) ([]link.TokenPosition, error) {
-	rows, err := sm.queries.ListMapTokens(ctx, mapID)
+func (sm *SessionMaps) MapTokens(ctx context.Context, tx pgx.Tx, mapID string) ([]link.TokenPosition, error) {
+	q := queriesIn(sm.queries, tx)
+	rows, err := q.ListMapTokens(ctx, mapID)
 	if err != nil {
 		return nil, fmt.Errorf("list the map's tokens: %w", err)
 	}
@@ -240,7 +242,7 @@ func (sm *SessionMaps) MapTokens(ctx context.Context, mapID string) ([]link.Toke
 	}
 	// The creatures' tokens too (MR-037): the familiar's eyes need to know where it
 	// stands. They have no character of their own: CreatureID says whose they are.
-	creatures, err := sm.queries.ListMapCreatureTokens(ctx, mapID)
+	creatures, err := q.ListMapCreatureTokens(ctx, mapID)
 	if err != nil {
 		return nil, fmt.Errorf("list the map's creature tokens: %w", err)
 	}
@@ -271,6 +273,55 @@ func (sm *SessionMaps) SetTokenPositions(ctx context.Context, tx pgx.Tx, mapID s
 		}
 	}
 	return nil
+}
+
+// PortraitCopy is what PreparePortrait hands back: the same method set as
+// characters.PortraitCopy, spelled out because modules do not import each other.
+type PortraitCopy = interface {
+	Insert(ctx context.Context, tx pgx.Tx) error
+	Discard(ctx context.Context)
+}
+
+// PreparePortrait is PortraitImage for a save that has a transaction (it
+// implements characters.Gallery): the copy of a fog map's image has its files made
+// now, and its gallery row is left to the caller's transaction (Insert), so the
+// copy is never committed on its own and a save that fails leaves nothing but the
+// files, which Discard deletes.
+func (sm *SessionMaps) PreparePortrait(ctx context.Context, campaignID, imageID string) (string, bool, PortraitCopy, error) {
+	img, err := sm.queries.GetGalleryImageInCampaign(ctx, mapsdb.GetGalleryImageInCampaignParams{CampaignID: campaignID, ID: imageID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", false, nil, nil
+	}
+	if err != nil {
+		return "", false, nil, fmt.Errorf("find the portrait's image: %w", err)
+	}
+	if sm.svc == nil {
+		return img.ID, true, nil, nil
+	}
+	c, err := sm.svc.prepareReuseCopy(ctx, campaignID, img.ID)
+	if err != nil {
+		return "", false, nil, err
+	}
+	if c == nil {
+		return img.ID, true, nil, nil
+	}
+	return c.id, true, &portraitCopy{c: c, s: sm.svc, campaignID: campaignID}, nil
+}
+
+// portraitCopy is the fogCopy of a portrait, for the characters module's transaction.
+type portraitCopy struct {
+	c          *fogCopy
+	s          *Service
+	campaignID string
+}
+
+func (p *portraitCopy) Insert(ctx context.Context, tx pgx.Tx) error {
+	_, err := p.c.insertRow(ctx, queriesIn(p.s.queries, tx), p.s, p.campaignID, nil)
+	return err
+}
+
+func (p *portraitCopy) Discard(ctx context.Context) {
+	p.s.deleteFiles(context.WithoutCancel(ctx), p.campaignID, p.c.id)
 }
 
 // PortraitImage reports whether imageID is an image of the campaign's gallery and

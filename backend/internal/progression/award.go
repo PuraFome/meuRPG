@@ -260,7 +260,7 @@ func (s *Service) give(ctx context.Context, m authz.Membership, g grant) (progre
 		return progressiondb.XpAward{}, s.dbError(ctx, "find an award by its key", err)
 	}
 
-	campaignMode, err := s.campaigns.CampaignXPMode(ctx, m.CampaignID)
+	campaignMode, err := s.campaigns.CampaignXPMode(ctx, nil, m.CampaignID)
 	if err != nil {
 		return progressiondb.XpAward{}, s.dbError(ctx, "read the campaign's XP mode", err)
 	}

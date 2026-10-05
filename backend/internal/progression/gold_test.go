@@ -14,6 +14,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	progressionv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/progression/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
 // The acceptance criteria of MR-041's server part (docs/produto/historias.md):
@@ -202,11 +203,13 @@ func TestMR041_VoltarACidadeConvertsTreasuresIntoOneGoldAward(t *testing.T) {
 // the other is refused with TREASURE_ALREADY_CONVERTED, and the XP is given once.
 func TestMR041_ATreasureIsConvertedOnce(t *testing.T) {
 	t.Parallel()
+	dbtest.PoolSize(t, 4) // the racers must overlap: one connection would run them one by one
 	tb := newTable(t, gold, 2)
 	mapID := tb.newMap()
 	chest := tb.treasure(t, mapID, "Baú de moedas", 250, nil, tb.pcs[0].GetId())
 
-	holder, err := tb.h.pool.Begin(t.Context())
+	// A connection of its own: the service's pool has one, and the awards need it.
+	holder, err := dbtest.SideConnection(t, tb.h.pool).Begin(t.Context())
 	if err != nil {
 		t.Fatalf("Begin() error = %v", err)
 	}
@@ -257,6 +260,7 @@ func TestMR041_ATreasureIsConvertedOnce(t *testing.T) {
 // answers with that award (or asks to try again).
 func TestMR041_ADoubleSubmitConvertsOnce(t *testing.T) {
 	t.Parallel()
+	dbtest.PoolSize(t, 4) // the racers must overlap: one connection would run them one by one
 	tb := newTable(t, gold, 2)
 	mapID := tb.newMap()
 	chest := tb.treasure(t, mapID, "Baú de moedas", 250, nil, tb.pcs[0].GetId())

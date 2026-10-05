@@ -43,7 +43,7 @@ func (s *Service) playerViews(ctx context.Context, campaignID string, mapRow map
 	if err != nil {
 		return nil, err
 	}
-	sg, err := s.newSight(ctx, in, points, tokens)
+	sg, err := s.newSight(ctx, nil, in, points, tokens)
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +158,7 @@ func (s *Service) publishTokenWritten(ctx context.Context, campaignID string, ma
 	}
 	// While a combat runs on the map the NPC tokens are out of a player's reads
 	// (the combatants are slice 9.7's), so a token's move is no news to anyone.
-	if combat, err := s.combats.CombatPositions(ctx, campaignID, mapRow.ID); err == nil && combat.Running {
+	if combat, err := s.combats.CombatPositions(ctx, nil, campaignID, mapRow.ID); err == nil && combat.Running {
 		s.refreshVision(ctx, campaignID, mapRow.ID)
 		return
 	}

@@ -8,6 +8,7 @@ import (
 	"slices"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
@@ -71,11 +72,11 @@ func (s *Service) poolRoll(d link.Dice, in rollInput) (dice.Result, error) {
 // mustRollPool checks the roll of a pool spell: it needs the app's roll or the
 // sum of physical dice (not a d20 face), and a player's way of rolling must
 // agree with the campaign's dice setting (RN-18); the master rolls either way.
-func (s *Service) mustRollPool(ctx context.Context, m authz.Membership, in rollInput, rolled bool) error {
+func (s *Service) mustRollPool(ctx context.Context, tx pgx.Tx, m authz.Membership, in rollInput, rolled bool) error {
 	if !rolled || (!in.inApp && !in.pool) {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("set roll_in_app or pool_sum: this spell rolls a pool of dice"))
 	}
-	return s.mustRollThisWay(ctx, m, in)
+	return s.mustRollThisWay(ctx, tx, m, in)
 }
 
 // castHPSpell applies a spell that reads hit points to its targets, in the order

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
@@ -333,8 +334,8 @@ func wantCode(t *testing.T, call string, err error, want connect.Code) {
 // wires it.
 type testDice struct{ camps *campaigns.Service }
 
-func (d testDice) ForcedDice(ctx context.Context, campaignID, userID string) (DiceForce, error) {
-	mode, err := d.camps.CampaignDiceMode(ctx, campaignID, userID)
+func (d testDice) ForcedDice(ctx context.Context, tx pgx.Tx, campaignID, userID string) (DiceForce, error) {
+	mode, err := d.camps.CampaignDiceMode(ctx, tx, campaignID, userID)
 	switch mode {
 	case campaigns.DiceModeApp:
 		return DiceForcedInApp, err

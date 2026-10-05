@@ -150,7 +150,7 @@ func (s *Service) GetSessionSummary(
 	if len(ids) > 0 {
 		// Whatever their status: a character that died during the session is
 		// still in its summary, with its name and its player.
-		found, err := s.roster.SessionCharacters(ctx, m.CampaignID, ids)
+		found, err := s.roster.SessionCharacters(ctx, nil, m.CampaignID, ids)
 		if err != nil {
 			return nil, s.dbError(ctx, "read the characters' names", err)
 		}

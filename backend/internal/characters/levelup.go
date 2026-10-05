@@ -36,8 +36,9 @@ import (
 // hit die (RN-18). cmd/api wires it to the campaigns module, so this package
 // never imports it. Without one, every player chooses.
 type DiceRules interface {
-	// LevelUpDice returns the rule for userID, an active member of the campaign.
-	LevelUpDice(ctx context.Context, campaignID, userID string) (charactersv1.LevelUpDiceRule, error)
+	// LevelUpDice returns the rule for userID, an active member of the campaign. It
+	// reads inside tx when the caller has one (nil: the pool).
+	LevelUpDice(ctx context.Context, tx pgx.Tx, campaignID, userID string) (charactersv1.LevelUpDiceRule, error)
 }
 
 // Live is the session's live stream (package play implements it): a level-up
@@ -145,7 +146,7 @@ type levelUpTarget struct {
 // a character the caller may not see, the CharacterBlocked detail for one
 // that is dead, pending or cannot level up, and `invalid_argument` for a class
 // the character does not have. An empty classKey means the first class.
-func (s *Service) newLevelUpTarget(ctx context.Context, m authz.Membership, row charactersdb.Character, classKey string) (levelUpTarget, error) {
+func (s *Service) newLevelUpTarget(ctx context.Context, tx pgx.Tx, m authz.Membership, row charactersdb.Character, classKey string) (levelUpTarget, error) {
 	if !canSee(m, row.Kind, row.Status, row.PlayerUserID) {
 		return levelUpTarget{}, errCharacterNotFound()
 	}
@@ -165,7 +166,7 @@ func (s *Service) newLevelUpTarget(ctx context.Context, m authz.Membership, row 
 		return levelUpTarget{}, cannot
 	}
 	d := rules.Derive(buildOf(full), s.rules)
-	reason, err := s.levelUps.LevelUpReason(ctx, deref(row.CampaignID), row.ID, i32(d.TotalLevel), full.GetExperiencePoints(), i32(d.NextLevelXP))
+	reason, err := s.levelUps.LevelUpReason(ctx, tx, deref(row.CampaignID), row.ID, i32(d.TotalLevel), full.GetExperiencePoints(), i32(d.NextLevelXP))
 	if err != nil {
 		return levelUpTarget{}, wrap("check the level up", err)
 	}
@@ -204,15 +205,15 @@ func (s *Service) readLevelUpTarget(ctx context.Context, m authz.Membership, cha
 	if err != nil {
 		return levelUpTarget{}, s.dbError(ctx, "get a character", err)
 	}
-	return s.newLevelUpTarget(ctx, m, row, classKey)
+	return s.newLevelUpTarget(ctx, nil, m, row, classKey)
 }
 
 // diceRule is what the campaign's dice setting makes the caller do.
-func (s *Service) diceRule(ctx context.Context, m authz.Membership) (charactersv1.LevelUpDiceRule, error) {
+func (s *Service) diceRule(ctx context.Context, tx pgx.Tx, m authz.Membership) (charactersv1.LevelUpDiceRule, error) {
 	if s.dice == nil {
 		return charactersv1.LevelUpDiceRule_LEVEL_UP_DICE_RULE_PLAYER_CHOOSES, nil
 	}
-	rule, err := s.dice.LevelUpDice(ctx, m.CampaignID, m.UserID)
+	rule, err := s.dice.LevelUpDice(ctx, tx, m.CampaignID, m.UserID)
 	if err != nil {
 		return 0, wrap("read the dice setting", err)
 	}
@@ -237,7 +238,7 @@ func (s *Service) GetLevelUpOptions(
 		return nil, levelUpRulesError(err)
 	}
 	out := levelUpOptionsToProto(offer)
-	if out.DiceRule, err = s.diceRule(ctx, m); err != nil {
+	if out.DiceRule, err = s.diceRule(ctx, nil, m); err != nil {
 		return nil, s.dbError(ctx, "read the dice setting", err)
 	}
 	roll, err := s.queries.GetLevelUpRoll(ctx, charactersdb.GetLevelUpRollParams{CharacterID: t.row.ID, ToLevel: i32(offer.TotalTo)})
@@ -310,11 +311,11 @@ func (s *Service) RollLevelUpHitPoints(
 		if err != nil {
 			return err
 		}
-		t, err := s.newLevelUpTarget(ctx, m, row, req.Msg.GetClassKey())
+		t, err := s.newLevelUpTarget(ctx, tx, m, row, req.Msg.GetClassKey())
 		if err != nil {
 			return err
 		}
-		rule, err := s.diceRule(ctx, m)
+		rule, err := s.diceRule(ctx, tx, m)
 		if err != nil {
 			return err
 		}
@@ -407,11 +408,11 @@ func (s *Service) LevelUpCharacter(
 		if current.Revision != revision {
 			return errStaleRevision()
 		}
-		t, err := s.newLevelUpTarget(ctx, m, current, choices.GetClassKey())
+		t, err := s.newLevelUpTarget(ctx, tx, m, current, choices.GetClassKey())
 		if err != nil {
 			return err
 		}
-		plan, err := s.planLevelUpIn(ctx, q, m, t, choices)
+		plan, err := s.planLevelUpIn(ctx, tx, q, m, t, choices)
 		if err != nil {
 			return err
 		}
@@ -606,7 +607,7 @@ type levelUpPlan struct {
 
 // planLevelUp is planLevelUpIn outside a transaction.
 func (s *Service) planLevelUp(ctx context.Context, m authz.Membership, t levelUpTarget, choices *charactersv1.LevelUpChoices) (levelUpPlan, error) {
-	return s.planLevelUpIn(ctx, s.queries, m, t, choices)
+	return s.planLevelUpIn(ctx, nil, s.queries, m, t, choices)
 }
 
 // planLevelUpIn builds the new sheet from the stored one and the choices, and
@@ -615,7 +616,7 @@ func (s *Service) planLevelUp(ctx context.Context, m authz.Membership, t levelUp
 // the choices break is plan.refusal. A choice that is not ready (a preview
 // without a hit points method, an in-app roll that was never made) takes the
 // average, and the plan still carries the sheet as far as the choices go.
-func (s *Service) planLevelUpIn(ctx context.Context, q *charactersdb.Queries, m authz.Membership, t levelUpTarget, choices *charactersv1.LevelUpChoices) (levelUpPlan, error) {
+func (s *Service) planLevelUpIn(ctx context.Context, tx pgx.Tx, q *charactersdb.Queries, m authz.Membership, t levelUpTarget, choices *charactersv1.LevelUpChoices) (levelUpPlan, error) {
 	if err := checkLevelUpChoices(choices); err != nil {
 		return levelUpPlan{}, invalidArgument(err)
 	}
@@ -635,7 +636,7 @@ func (s *Service) planLevelUpIn(ctx context.Context, q *charactersdb.Queries, m 
 	value := offer.HitPointAverage
 	switch method {
 	case charactersv1.LevelUpHitPointsMethod_LEVEL_UP_HIT_POINTS_METHOD_ROLLED_IN_APP:
-		rule, err := s.diceRule(ctx, m)
+		rule, err := s.diceRule(ctx, tx, m)
 		if err != nil {
 			return levelUpPlan{}, err
 		}
@@ -658,7 +659,7 @@ func (s *Service) planLevelUpIn(ctx context.Context, q *charactersdb.Queries, m 
 			return levelUpPlan{}, wrap("read the kept roll", err)
 		}
 	case charactersv1.LevelUpHitPointsMethod_LEVEL_UP_HIT_POINTS_METHOD_ROLLED_PHYSICAL:
-		rule, err := s.diceRule(ctx, m)
+		rule, err := s.diceRule(ctx, tx, m)
 		if err != nil {
 			return levelUpPlan{}, err
 		}

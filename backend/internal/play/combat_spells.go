@@ -312,11 +312,11 @@ func (s *Service) CastSpell(
 		if sp.Summon != (req.Msg.GetSummon() != nil) {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("summon is for a summoning spell, and a summoning spell needs it"))
 		}
-		known, err := c.sight.knownTerrain(ctx, v) // what the player knows of the map, for the cover they are told
+		known, err := c.sight.knownTerrain(ctx, c.tx, v) // what the player knows of the map, for the cover they are told
 		if err != nil {
 			return nil, err
 		}
-		terrain, err := s.terrainOf(ctx, m.CampaignID, c.enc)
+		terrain, err := s.terrainOf(ctx, c.tx, m.CampaignID, c.enc)
 		if err != nil {
 			return nil, err
 		}
@@ -337,7 +337,7 @@ func (s *Service) CastSpell(
 			targs, targets = []playdb.Combatant{caster}, []target{{id: caster.ID}}
 		}
 		if sp.HP != nil && sp.HP.Kind == rules.SpellKindHPPool {
-			if err := s.mustRollPool(ctx, m, in, rolled); err != nil {
+			if err := s.mustRollPool(ctx, c.tx, m, in, rolled); err != nil {
 				return nil, err
 			}
 		}
@@ -352,7 +352,7 @@ func (s *Service) CastSpell(
 				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("d20_face fits a single target: use roll_in_app for several"))
 			}
 			if !v.master {
-				if err := s.mustRollThisWay(ctx, m, in); err != nil {
+				if err := s.mustRollThisWay(ctx, c.tx, m, in); err != nil {
 					return nil, err
 				}
 			}
@@ -602,7 +602,7 @@ func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membersh
 // (rounded down) for one that saved when the spell halves, none when it avoids.
 // The d20 is always rolled by the app (RN-18 is for the table's own dice).
 func (s *Service) spellSave(ctx context.Context, c *combatTx, m authz.Membership, sp link.Spell, caster, target playdb.Combatant, cover coverView, hit *castHit) error {
-	save, err := s.saveOf(ctx, m.CampaignID, target, sp.SaveAbility)
+	save, err := s.saveOf(ctx, c.tx, m.CampaignID, target, sp.SaveAbility)
 	if err != nil {
 		return err
 	}

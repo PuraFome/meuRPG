@@ -319,12 +319,12 @@ func (s *Service) WriteBackCreatures(ctx context.Context, tx pgx.Tx, campaignID 
 
 // summonCharacter reads the living player's character that casts and its
 // build; `not_found` for any other.
-func (s *Service) summonCharacter(ctx context.Context, campaignID, characterID string) (rules.Build, error) {
+func (s *Service) summonCharacter(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (rules.Build, error) {
 	id, ok := parseUUID(characterID)
 	if !ok {
 		return rules.Build{}, errCharacterNotFound()
 	}
-	rows, err := s.queries.ListCombatCharacters(ctx, charactersdb.ListCombatCharactersParams{CampaignID: campaignID, Ids: []string{id}})
+	rows, err := s.queriesIn(tx).ListCombatCharacters(ctx, charactersdb.ListCombatCharactersParams{CampaignID: campaignID, Ids: []string{id}})
 	if err != nil {
 		return rules.Build{}, s.dbError(ctx, "read a character for a summon", err)
 	}
@@ -348,8 +348,8 @@ func (s *Service) summonCharacter(ctx context.Context, campaignID, characterID s
 // the spell does not allow comes back as one of rules.ErrSummonOption,
 // ErrSummonCount, ErrSummonCreature or ErrSummonCircle, a spell that does not
 // summon as rules.ErrNotSummonSpell, for play to turn into its own reasons.
-func (s *Service) CheckSummon(ctx context.Context, campaignID, characterID, spellKey string, circle, option int, keys []string) (link.SummonSpell, error) {
-	b, err := s.summonCharacter(ctx, campaignID, characterID)
+func (s *Service) CheckSummon(ctx context.Context, tx pgx.Tx, campaignID, characterID, spellKey string, circle, option int, keys []string) (link.SummonSpell, error) {
+	b, err := s.summonCharacter(ctx, tx, campaignID, characterID)
 	if err != nil {
 		return link.SummonSpell{}, err
 	}

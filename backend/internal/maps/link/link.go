@@ -15,6 +15,8 @@ import (
 	"slices"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/vision"
@@ -95,9 +97,10 @@ type CombatSight interface {
 	// NPC's darkvision, say), sees a creature standing on another square: the same
 	// light and walls the players' sight uses, worked out for that one pair.
 	CanSee(from grid.Square, senses vision.Senses, to grid.Square) bool
-	// KnownTerrain is the terrain the player knows: the walls, difficult terrain and
+	// KnownTerrain, like the other reads of the seams, reads inside tx when the
+	// caller has one (nil: the pool). It is the terrain the player knows: the walls, difficult terrain and
 	// cover of the squares they see now or remember, and plain floor elsewhere.
-	KnownTerrain(ctx context.Context, userID string) (grid.Terrain, error)
+	KnownTerrain(ctx context.Context, tx pgx.Tx, userID string) (grid.Terrain, error)
 }
 
 // Eyes is what a creature notices with: its passive Perception and its senses

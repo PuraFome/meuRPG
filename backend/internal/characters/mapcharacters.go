@@ -3,6 +3,8 @@ package characters
 import (
 	"context"
 
+	"github.com/jackc/pgx/v5"
+
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 )
@@ -17,7 +19,7 @@ import (
 // authorization check, and decides what each caller sees; so this method
 // takes no caller, like LockSheets. Only id, kind, name and player_user_id
 // are set: a token needs no sheet, and never the master's notes (RN-11).
-func (s *Service) MapCharacters(ctx context.Context, campaignID string, ids []string) ([]*charactersv1.CharacterSummary, error) {
+func (s *Service) MapCharacters(ctx context.Context, tx pgx.Tx, campaignID string, ids []string) ([]*charactersv1.CharacterSummary, error) {
 	valid := make([]string, 0, len(ids))
 	for _, id := range ids {
 		if id, ok := parseUUID(id); ok {
@@ -27,7 +29,7 @@ func (s *Service) MapCharacters(ctx context.Context, campaignID string, ids []st
 	if len(valid) == 0 {
 		return nil, nil
 	}
-	rows, err := s.queries.ListMapCharacters(ctx, charactersdb.ListMapCharactersParams{CampaignID: campaignID, Ids: valid})
+	rows, err := s.queriesIn(tx).ListMapCharacters(ctx, charactersdb.ListMapCharactersParams{CampaignID: campaignID, Ids: valid})
 	if err != nil {
 		return nil, s.dbError(ctx, "list the characters on a map", err)
 	}
