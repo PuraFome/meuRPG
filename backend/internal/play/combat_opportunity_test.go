@@ -1021,3 +1021,27 @@ func TestRN21_AProvokingMoveTellsWhoMustAnswer(t *testing.T) {
 		})
 	}
 }
+
+// TestMR034_AMoveThatClearsTheCoverMarkTellsEveryone: the master's cover mark is on
+// the combatant, and everyone who sees it reads it; a move takes it off, and the
+// move's own hint carries only the square, so the move also sends encounter_changed.
+func TestMR034_AMoveThatClearsTheCoverMarkTellsEveryone(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	c.fight(t)
+	c.mark(t, "Goblin 2", playv1.CoverDegree_COVER_DEGREE_HALF)
+	if got := c.who(t, c.ana, "Goblin 2").GetCoverMark(); got != playv1.CoverDegree_COVER_DEGREE_HALF {
+		t.Fatalf("a player reads Goblin 2's mark as %v, want half", got)
+	}
+	w := c.ana.watch(t, c.campaignID)
+	w.ready(t)
+	c.mustMove(t, c.master, "Goblin 2", 21, 7)
+	// The move's own combatant_moved comes first; with no encounter_changed after it
+	// the test fails on the time limit.
+	for got := false; !got; {
+		got = w.nextChange(t).GetEncounterChanged() != nil
+	}
+	if got := c.who(t, c.ana, "Goblin 2").GetCoverMark(); got != playv1.CoverDegree_COVER_DEGREE_NONE && got != playv1.CoverDegree_COVER_DEGREE_UNSPECIFIED {
+		t.Errorf("after the move a player reads the mark %v, want none", got)
+	}
+}
