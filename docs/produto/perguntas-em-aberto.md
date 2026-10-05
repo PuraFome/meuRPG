@@ -114,7 +114,7 @@ O Vinicius respondeu pelo Samuel: a 66 como propusemos, e as de 67 a 75, da Etap
 
 ## Respondidas em 05/10/2026
 
-O Vinicius respondeu pelo Samuel oito das perguntas da Etapa 10: seis como sugerimos, duas com acréscimos (82 e 85, que ele ampliou no mesmo dia, e um detalhe na 86). As de 76, 79 e 83 pedem mais detalhe e seguem em aberto, abaixo.
+O Vinicius respondeu pelo Samuel todas as perguntas da Etapa 10: seis como sugerimos, outras com acréscimos (82, 85, que ele ampliou no mesmo dia, e 86), e a 76, a 79 e a 83 depois de detalhar as ideias.
 
 - **Pergunta 77: os PV ao subir de nível.** O jogador escolhe entre rolar e a média; o mestre pode deixar só um dos dois. Aceito como sugerimos. Ver [RN-24](regras.md).
 - **Pergunta 78: os jeitos de fazer os atributos.** Os quatro valem: o conjunto padrão, a compra por 27 pontos, 4d6 descartando o menor (rolados e guardados pelo servidor) e digitar. Aceito; o 4d6 já era o costume das mesas, e o SRD 5.2.1 só o pôs num texto aberto. Ver [RN-24](regras.md).
@@ -125,13 +125,13 @@ O Vinicius respondeu pelo Samuel oito das perguntas da Etapa 10: seis como suger
 - **Pergunta 85: a imagem gerada por IA.** No MVP, os três jeitos: a arte da cena, a vista isométrica de um mapa e o próprio mapa com textura, casando com a grade (o Vinicius corrigiu no mesmo dia: a vista isométrica e o mapa na grade entram no MVP, não depois). O mestre escolhe quais NPCs e inimigos aparecem, e pode dar outras referências da galeria (o mapa do combate, os retratos). Ver [MR-039](historias.md#mr-039-imagens-geradas-para-masmorras-e-cenas).
 - **Pergunta 86: quem é o grupo de um encontro.** Os personagens de jogador vivos da campanha, e o mestre pode pôr no grupo os NPCs que acompanham os personagens naquele momento da história, com o nível que ele disser. Ver [MR-043](historias.md#mr-043-gerar-encontros).
 
+- **Pergunta 76: o estilo da mesa e as regras da casa.** Aceito como sugerimos, para o MVP: no alto de "Regras da mesa", três estilos prontos — "Tudo no app" (os dados no app, o combate com mapa, a névoa ligada nos mapas novos), "Mesa física" (os dados físicos, o combate sem mapa por padrão, a névoa desligada) e "Teatro da mente" (cada jogador escolhe os dados, o combate sem mapa, sem névoa) — e "Personalizado"; um estilo só preenche os padrões, que continuam editáveis, e as regras da casa seguem (RN-24). A ideia vem de mestres diferentes (o narrador, o da mesa física, o tático, o iniciante, o improvisador, a mesa sem celulares): o app deve tirar a maior dor de cada um. O resto ficou guardado para depois do MVP na [MR-046](historias.md#mr-046-o-estilo-da-mesa-recurso-por-recurso). Ver [RN-24](regras.md).
+- **Pergunta 79: o que resolver um quebra-cabeça dá.** Aceito como sugerimos — o mestre é avisado, e "Ao resolver" pode abrir uma porta, revelar um ponto do mapa ou revelar uma pista a quem resolveu —, com as dicas que o mestre solta e, para a sessão do MVP não ficar repetitiva, mais estas ideias já no MVP: as consequências (uma jogada errada dispara uma armadilha, gasta uma tentativa ou conta para um limite de jogadas ou de tempo), uma dica ganha num teste de perícia, a informação dividida (cada jogador vê uma parte da pista) e três tipos novos: o enigma, a sequência para repetir e a cifra. O resto ficou guardado para depois do MVP na [MR-047](historias.md#mr-047-mais-quebra-cabeças). Ver [MR-038](historias.md#mr-038-quebra-cabeças) e [RN-27](regras.md).
+- **Pergunta 83: o que os jogadores veem do conteúdo da mesa.** (a) Toda opção jogável: o mestre tem a tela "Opções para os jogadores", com um interruptor por classe, subclasse, raça, sub-raça, antecedente e magia (do SRD e da mesa); (b) uma consulta de magias no app, "Magias", com todas as magias ligadas, mas na ficha cada um só escolhe as da lista da sua classe, também na multiclasse (o mestre aceitar uma magia fora da lista fica para depois do MVP); (c) tudo, os números e os efeitos; (d) o que está desligado nunca aparece para os jogadores; (e) quando uma entrada muda, só os donos das fichas que a usam são avisados. Ver [RN-23](regras.md) e [MR-045](historias.md#mr-045-consultar-as-magias).
+
 ## Em aberto
 
-As perguntas 76, 79 e 83 são da Etapa 10 (05/10/2026) e estão no documento de acompanhamento. Em 05/10/2026 o Vinicius pediu mais detalhe nas três (o estilo de cada mestre, as ideias de quebra-cabeça e o que exatamente os jogadores veem); até a resposta, o app segue o nosso padrão.
-
-- **Pergunta 76: as regras da casa.** Quais escolhas da página "Regras da mesa" a mesa quer (os PV ao subir de nível, os jeitos de fazer atributos, o crítico, quem vê os testes contra a morte, a poção como ação bônus). Padrão: todas existem, e cada campanha começa com as regras do SRD (a poção como ação, os testes contra a morte vistos por todos). Ver [RN-24](regras.md).
-- **Pergunta 79: o que resolver um quebra-cabeça dá.** Padrão: o mestre é avisado e decide; não há teste de perícia automático. Ver [MR-038](historias.md#mr-038-quebra-cabeças).
-- **Pergunta 83: o que os jogadores veem do conteúdo da mesa.** Padrão: tudo o que um jogador pode escolher; uma magia, só para quem pode aprendê-la. A outra opção é uma marca "os jogadores veem isto" em cada entrada. Ver [RN-23](regras.md).
+Nenhuma pergunta está em aberto agora. As novas ficam no documento de acompanhamento.
 
 ## Ver também
 
