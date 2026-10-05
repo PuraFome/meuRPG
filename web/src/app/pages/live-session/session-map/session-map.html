@@ -43,13 +43,22 @@
           <app-map-view
             [image]="img"
             [mapName]="map()?.name ?? ''"
-            [points]="state().points()"
+            [points]="markerPoints()"
             [tokens]="state().tokens()"
             [isMaster]="isMaster()"
             [mode]="isMaster() && !phone() ? 'tokens' : 'preview'"
             [focusParty]="phone()"
             (moved)="onMoved($event)"
-          />
+          >
+            <!-- The traps, the chests and the lights: drawn over the picture (MAP-LANGUAGE.md). -->
+            <app-map-pins
+              mapOverlay
+              [points]="state().points()"
+              [columns]="map()?.gridColumns ?? 0"
+              [rows]="map()?.gridRows ?? 0"
+              [isMaster]="isMaster()"
+            />
+          </app-map-view>
           @if (!isMaster() || phone()) {
             <a
               class="map__cover"
@@ -74,21 +83,29 @@
               [states]="isMaster()"
               [tokens]="isMaster() && !phone() ? [] : state().tokens()"
             />
+            <app-map-pins-legend [points]="state().points()" [isMaster]="isMaster()" />
           </div>
-          <a
-            matButton="outlined"
-            class="map__open"
-            [routerLink]="['/campanhas', campaignId(), 'mapas', map()?.id]"
-            [queryParams]="{ de: 'sessao' }"
-          >
-            <mat-icon aria-hidden="true">open_in_full</mat-icon>{{ isMaster() ? 'Abrir mapa' : 'Ver mapa' }}
-          </a>
+          <div class="map__actions">
+            @if (searchable()) {
+              <button matButton="outlined" type="button" class="map__search" (click)="searchTraps.emit()">
+                <mat-icon aria-hidden="true">search</mat-icon>Procurar armadilhas
+              </button>
+            }
+            <a
+              matButton="outlined"
+              class="map__open"
+              [routerLink]="['/campanhas', campaignId(), 'mapas', map()?.id]"
+              [queryParams]="{ de: 'sessao' }"
+            >
+              <mat-icon aria-hidden="true">open_in_full</mat-icon>{{ isMaster() ? 'Abrir mapa' : 'Ver mapa' }}
+            </a>
+          </div>
         </div>
 
         @if (isMaster()) {
           <div class="map__points">
             <app-map-points-list
-              [points]="state().points()"
+              [points]="markerPoints()"
               [pendingId]="reveals.pendingId()"
               [openScenePointId]="scene() ? (scene()!.scene()?.pointId ?? null) : undefined"
               [pendingSceneId]="pendingScene()"

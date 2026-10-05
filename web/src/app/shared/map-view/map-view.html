@@ -32,6 +32,9 @@
         decoding="async"
       />
 
+      <!-- Marks a screen draws over the picture and under the markers (the trap areas and the chests, `app-map-pins`). -->
+      <ng-content select="[mapOverlay]" />
+
       @for (p of shownPoints(); track p.id) {
         <app-map-marker
           [point]="p"

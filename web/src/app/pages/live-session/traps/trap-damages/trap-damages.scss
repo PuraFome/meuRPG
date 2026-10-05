@@ -1,0 +1,154 @@
+// No box of its own: its cards join the column they are in, and an empty one leaves no gap behind.
+:host {
+  display: contents;
+}
+
+.td,
+.td__done {
+  margin: 0;
+}
+
+.td {
+  padding: 16px 18px;
+  border: 1px solid var(--mr-warning-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-warning-surface);
+}
+
+.td__head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-3);
+}
+
+.td__icon {
+  flex: none;
+  margin-top: 0;
+}
+
+.td__title {
+  margin: 0;
+  font-family: var(--mr-font-display, inherit);
+  font-size: 19px;
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+
+.td__sub {
+  margin: 2px 0 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.td__field {
+  display: block;
+  margin-top: var(--mr-space-3);
+}
+
+.td__label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 17px;
+}
+
+.td__input {
+  box-sizing: border-box;
+  width: 96px;
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font: inherit;
+  font-size: 17px;
+  font-weight: 700;
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  &[aria-invalid='true'] {
+    border-color: var(--mr-danger-ink);
+  }
+}
+
+.td__hint {
+  margin: 4px 0 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.td__hp {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  margin: var(--mr-space-3) 0 0;
+  font-size: 15px;
+  line-height: 20px;
+
+  b {
+    font-size: 18px;
+  }
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+// "Aplicar" is the one filled button of the card; "Não aplicar" has the same size beside it.
+.td__pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--mr-space-3);
+  margin-top: var(--mr-space-3);
+
+  button {
+    min-height: 44px;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 479.98px) {
+    grid-template-columns: 1fr;
+
+    button {
+      min-height: 48px;
+    }
+  }
+}
+
+.td__ask {
+  margin-top: var(--mr-space-3);
+}
+
+.td__askt {
+  margin: 0;
+  font-weight: 700;
+}
+
+.td__danger {
+  color: var(--mr-danger-ink);
+}
+
+.td__done {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 14px;
+  color: var(--mr-success-ink);
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}

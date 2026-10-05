@@ -1,0 +1,46 @@
+// The pair: two equal buttons, right-aligned on a computer. On a phone they share the width; when a
+// label does not fit half of it (the component measures) they stack, each full width, filled on top.
+.pf {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: var(--mr-space-3);
+
+  button {
+    white-space: nowrap;
+  }
+
+  @media (min-width: 768px) {
+    button {
+      min-width: 176px;
+    }
+  }
+
+  @media (max-width: 767.98px) {
+    width: 100%;
+
+    button {
+      --mat-button-filled-container-height: 48px;
+      --mat-button-outlined-container-height: 48px;
+    }
+  }
+
+  &--stacked {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+    grid-template-columns: 1fr;
+  }
+}
+
+:host {
+  display: flex;
+  justify-content: flex-end;
+}
+
+// Nothing to confirm yet: the app's dashed, disabled button; a sentence above says why.
+.pf__off {
+  border-style: dashed;
+  color: var(--mr-ink);
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  cursor: default;
+}

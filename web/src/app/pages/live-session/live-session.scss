@@ -105,6 +105,17 @@
   flex-direction: column;
 }
 
+// The master's trap and treasure panels under a running combat.
+.board__traps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+
+  &:has(.mr-panel) {
+    margin-top: var(--mr-space-6);
+  }
+}
+
 .board__party,
 .board__image,
 .board__tokens,

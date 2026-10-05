@@ -48,6 +48,8 @@ export interface LiveStreamHandlers {
   /** `stage_changed` (MR-031): the stage lives in the open scene, so the page
    * reads the scene again; the event names nobody. */
   onStageChanged?(): void;
+  /** `trap_noticed` (MR-035): this player's character noticed a trap; only they get it. */
+  onTrapNoticed?(notice: { mapId: string; pointId: string }): void;
   /** `session_ended`, or `NO_OPEN_SESSION` when (re)connecting. */
   onEnded(): void;
   /** `not_found` or `unauthenticated`: no reconnecting. */
@@ -217,6 +219,9 @@ export class LiveStream {
             break;
           case 'stageChanged':
             this.options.handlers.onStageChanged?.();
+            break;
+          case 'trapNoticed':
+            this.options.handlers.onTrapNoticed?.(event);
             break;
           case 'ended':
             this.stop();

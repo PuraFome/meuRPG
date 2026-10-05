@@ -1,0 +1,161 @@
+import { Component, computed, inject, signal, viewChild } from '@angular/core';
+import { MatBottomSheet } from '@angular/material/bottom-sheet';
+import { MatDialog } from '@angular/material/dialog';
+import { MatIconModule } from '@angular/material/icon';
+import type { Observable } from 'rxjs';
+
+import type { MapPoint } from '../../../../../gen/meurpg/maps/v1/maps_pb';
+import type { TrapFiring } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { newKey } from '../../../../core/connect/idempotency';
+import { TrapsClient } from '../../../../core/traps/traps-client';
+import { trapErrorMessage } from '../../../../core/traps/trap-errors';
+import { firstLine } from '../../../../core/traps/trap-text';
+import { joinDots } from '../../../../core/format/text';
+import { PairFoot } from '../../../../shared/pair-foot/pair-foot';
+import { type PickRow, PersonPick } from '../../../../shared/person-pick/person-pick';
+import { SheetFrame } from '../../combat/sheet-frame/sheet-frame';
+import { injectSheet, openSheet } from '../../combat/sheet-host';
+
+/** What the trap card hands "Disparar…". */
+export interface TrapFireData {
+  readonly campaignId: string;
+  readonly mapId: string;
+  readonly point: MapPoint;
+  /** Who can be caught: outside a combat the characters with a token on the map (ID of the character), in a
+   * combat the combatants (ID of the combatant). The server decides who stands in the area; this list only
+   * lets the master pick someone else. */
+  readonly targets: readonly PickRow[];
+  /** The firing to add creatures to (a trap that fired already); empty for a new firing. */
+  readonly extendFiringId: string;
+}
+
+/** "Disparar…": a dialog from a tablet up and a bottom sheet on a phone; it answers the firing, or `undefined`. */
+export function openTrapFire(
+  dialog: MatDialog,
+  bottomSheet: MatBottomSheet,
+  data: TrapFireData,
+): Observable<TrapFiring | undefined> {
+  return openSheet<TrapFireSheet, TrapFireData, TrapFiring>(dialog, bottomSheet, TrapFireSheet, {
+    data,
+    ariaLabel: data.extendFiringId ? 'Pegar mais gente na armadilha' : 'Disparar a armadilha',
+    labelledBy: 'trap-fire-t',
+    width: '520px',
+  });
+}
+
+/** The button's words: "Disparar para quem está na área" (nobody picked), "Disparar para Toren", "Disparar para 2 personagens". */
+export function fireLabel(picked: readonly string[], extend: boolean): string {
+  if (extend) {
+    return picked.length === 0 ? 'Incluir' : `Incluir ${picked.length === 1 ? picked[0] : `${picked.length} personagens`}`;
+  }
+  if (picked.length === 0) {
+    return 'Disparar para quem está na área';
+  }
+  return picked.length === 1 ? `Disparar para ${picked[0]}` : `Disparar para ${picked.length} personagens`;
+}
+
+/**
+ * "Disparar o …" (E9-08 3, MR-035): the master fires a trap by hand and picks who was caught. **The server
+ * knows who stands in the area** (it reads the tokens and the combat), and the app never works it out: with
+ * nobody checked the trap fires for whoever is in its area, and the button says so; to catch someone else
+ * the master checks them ("Disparar para Toren", "Disparar para 2 personagens"). The same sheet adds
+ * creatures to a firing that already happened (`extend_firing_id`), where at least one must be checked.
+ * The effect and the dice are the server's; the damage to a player's character waits for the master.
+ */
+@Component({
+  selector: 'app-trap-fire-sheet',
+  imports: [MatIconModule, PairFoot, PersonPick, SheetFrame],
+  template: `
+    <app-sheet-frame [title]="title" titleId="trap-fire-t" [subtitle]="subtitle" [phone]="inSheet" (closed)="cancel()">
+      @if (error()) {
+        <div class="mr-notice mr-notice--danger" role="alert">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <p>{{ error() }}</p>
+        </div>
+      }
+      <p class="lead">
+        {{ extend ? 'Quem mais foi pego? O app rola o efeito e o dano para quem você marcar.' : 'O app rola o efeito e o dano. O dano de um personagem espera você aplicar.' }}
+      </p>
+      <app-person-pick headingId="trap-fire-who" [heading]="extend ? 'Quem mais foi pego' : 'Quem foi pego'" [rows]="data.targets" [(picked)]="picked" empty="Ninguém com token no mapa." />
+      <p class="note" role="status" aria-live="polite">{{ note() }}</p>
+      <app-pair-foot
+        foot
+        [confirmLabel]="label()"
+        [ready]="ready()"
+        [busy]="busy()"
+        (cancel)="cancel()"
+        (confirm)="confirm()"
+      />
+    </app-sheet-frame>
+  `,
+  styles: `
+    .lead {
+      margin: 0 0 var(--mr-space-3);
+      font-size: 15px;
+      line-height: 20px;
+      color: var(--mr-ink-muted);
+    }
+
+    .note {
+      margin: var(--mr-space-3) 0 0;
+      font-size: 14px;
+      line-height: 19px;
+      color: var(--mr-ink-muted);
+    }
+  `,
+})
+export class TrapFireSheet {
+  private readonly api = inject(TrapsClient);
+  private readonly sheet = injectSheet<TrapFireData, TrapFiring>();
+  protected readonly data = this.sheet.data;
+  protected readonly inSheet = this.sheet.inSheet;
+  private readonly frame = viewChild(SheetFrame);
+  private readonly key = newKey();
+
+  protected readonly extend = this.data.extendFiringId !== '';
+  protected readonly title = this.extend ? `Pegar mais gente no ${this.data.point.name}` : `Disparar o ${this.data.point.name}`;
+  protected readonly subtitle = joinDots([this.data.point.name, firstLine(this.data.point.description)].filter(Boolean));
+  protected readonly picked = signal<ReadonlySet<string>>(new Set());
+  private readonly chosen = computed(() => this.data.targets.filter((t) => this.picked().has(t.id)));
+  protected readonly label = computed(() => fireLabel(this.chosen().map((t) => t.name), this.extend));
+  /** A new firing needs nobody (the area); adding to one needs someone. */
+  protected readonly ready = computed(() => !this.extend || this.chosen().length > 0);
+  protected readonly note = computed(() => {
+    if (this.extend) {
+      return this.chosen().length === 0 ? 'Marque quem entra no disparo que já aconteceu.' : '';
+    }
+    return this.chosen().length === 0
+      ? 'Ninguém marcado: dispara para quem estiver na área da armadilha. Quem está lá, o servidor sabe.'
+      : 'Só quem você marcou é pego, esteja na área ou não.';
+  });
+  protected readonly busy = signal(false);
+  protected readonly error = signal('');
+
+  protected cancel(): void {
+    this.sheet.close(undefined);
+  }
+
+  protected async confirm(): Promise<void> {
+    if (!this.ready() || this.busy()) {
+      return;
+    }
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      const res = await this.api.fire(
+        this.data.campaignId,
+        this.data.mapId,
+        this.data.point.id,
+        this.chosen().map((t) => t.id),
+        this.key,
+        this.data.extendFiringId,
+      );
+      this.sheet.close(res.firing);
+    } catch (err) {
+      this.error.set(trapErrorMessage(err, 'disparar a armadilha'));
+      this.frame()?.scrollToTop();
+    } finally {
+      this.busy.set(false);
+    }
+  }
+}

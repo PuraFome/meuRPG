@@ -1,0 +1,81 @@
+<article class="tr" [attr.aria-labelledby]="'tr-' + point().id">
+  <header class="tr__head">
+    <mat-icon class="tr__icon" aria-hidden="true">inventory_2</mat-icon>
+    <div class="tr__titles">
+      <h3 class="tr__name" [id]="'tr-' + point().id">{{ point().name }}</h3>
+      <p class="tr__sub">{{ sub() }}</p>
+      @if (converted()) {
+        <span class="mr-tag"><mat-icon aria-hidden="true">lock</mat-icon>Convertido em XP</span>
+      } @else if (found()) {
+        <span class="mr-tag mr-tag--success"><mat-icon aria-hidden="true">check</mat-icon>Encontrado</span>
+      } @else {
+        <span class="mr-tag"><mat-icon aria-hidden="true">visibility_off</mat-icon>Escondido</span>
+      }
+    </div>
+  </header>
+
+  <p class="tr__label">{{ found() ? 'O que tem dentro' : 'O que tem dentro · só você vê até achar' }}</p>
+  <p class="tr__inside">{{ point().description || 'O mestre não escreveu o que tem dentro.' }}</p>
+
+  @if (found()) {
+    <p class="tr__found">
+      Encontrado por <b>{{ line().names }}</b>@if (line().at) { às&nbsp;{{ line().at }} }
+    </p>
+    @if (converted()) {
+      <p class="tr__why">
+        <mat-icon aria-hidden="true">lock</mat-icon>
+        Convertido em XP em "Voltar à cidade". Para desmarcar, desfaça esse XP na página da campanha.
+      </p>
+    } @else if (mode() === 'unmarking') {
+      <div #ask class="tr__ask" role="alertdialog" [attr.aria-labelledby]="'tr-ask-' + point().id">
+        <mat-icon class="tr__askicon" aria-hidden="true">warning</mat-icon>
+        <div>
+          <h4 class="tr__askt" [id]="'tr-ask-' + point().id">Desmarcar o {{ point().name }}?</h4>
+          <p class="tr__asks">Ele volta a ficar escondido para os jogadores e sai do resumo da sessão. O registro guarda que foi desmarcado.</p>
+        </div>
+        <div class="tr__pair">
+          <button matButton="outlined" type="button" data-initial-focus (click)="cancelUnmark()">Voltar</button>
+          <button matButton="outlined" type="button" class="tr__danger" [attr.aria-disabled]="busy()" (click)="!busy() && unmark.emit(point())">
+            Desmarcar
+          </button>
+        </div>
+      </div>
+    } @else {
+      <p class="tr__said">Todos os jogadores veem o tesouro, o valor e o que tem dentro.</p>
+      <button #undo matButton type="button" class="tr__undo" (click)="startUnmark()">
+        <mat-icon aria-hidden="true">undo</mat-icon>Desmarcar
+      </button>
+    }
+  } @else if (mode() === 'marking') {
+    <div #form class="tr__form" role="group" [attr.aria-labelledby]="'tr-who-' + point().id" (keydown.escape)="cancelMarking()">
+      <app-person-pick
+        [headingId]="'tr-who-' + point().id"
+        [heading]="'Quem encontrou o ' + point().name + '?'"
+        [rows]="people()"
+        [(picked)]="picked"
+        [allToggle]="false"
+      />
+      <p class="tr__lead">Marque uma ou mais pessoas. Com mais de uma, o valor se divide no resumo da sessão.</p>
+      <p class="tr__summary" role="status" aria-live="polite">{{ summary() }}</p>
+      <app-pair-foot
+        cancelLabel="Voltar"
+        confirmLabel="Marcar como encontrado"
+        confirmIcon="check"
+        [ready]="picked().size > 0"
+        [busy]="busy()"
+        (cancel)="cancelMarking()"
+        (confirm)="confirmMarking()"
+      />
+    </div>
+  } @else {
+    <button #opener matButton="outlined" type="button" class="tr__mark" [attr.aria-label]="'Marcar o ' + point().name + ' como encontrado'" (click)="startMarking()">
+      <mat-icon aria-hidden="true">check</mat-icon>Marcar como encontrado
+    </button>
+  }
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+</article>

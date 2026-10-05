@@ -52,6 +52,9 @@ func (s *Service) FireTrap(
 		return nil, errTrapNotFound()
 	}
 	targets := req.Msg.GetTargetIds()
+	if len(targets) == 0 {
+		targets = nil // the creatures in the area
+	}
 	if len(targets) > maxTrapTargets {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("target_ids must have at most %d ids", maxTrapTargets))
 	}
@@ -110,7 +113,7 @@ func (s *Service) FireTrap(
 	if inCombat {
 		return s.fireByHandInCombat(ctx, m, key, trap, enc, targets, extend)
 	}
-	fired, firingID, repeated, err := s.fireOutsideCombat(ctx, m.CampaignID, m.UserID, key, trap, targets, true, extend)
+	fired, firingID, repeated, err := s.fireOutsideCombat(ctx, m.CampaignID, m.UserID, key, trap, targets, nil, true, extend)
 	if err != nil {
 		return nil, s.dbError(ctx, "fire a trap", err)
 	}
@@ -259,8 +262,10 @@ func (s *Service) tokensOn(ctx context.Context, campaignID, mapID string) (map[s
 // fireOutsideCombat fires the trap while no combat runs on its map, in a
 // transaction of its own, and returns the firing and whether it was a retry. key
 // is "" for a firing nobody retries (a token landing); targetIDs are characters
-// with tokens on the map, empty for every token in the area.
-func (s *Service) fireOutsideCombat(ctx context.Context, campaignID, actorUserID, key string, trap maplink.Trap, targetIDs []string, manual bool, extend string) (*trapFireEvent, string, bool, error) {
+// with tokens on the map, nil for every character in the area (an empty, non-nil
+// list catches none: a creature's token dropped into a trap that picks its targets by
+// hand); creatures are the creature tokens that are caught as well.
+func (s *Service) fireOutsideCombat(ctx context.Context, campaignID, actorUserID, key string, trap maplink.Trap, targetIDs []string, creatures []maplink.MapCreature, manual bool, extend string) (*trapFireEvent, string, bool, error) {
 	at, living, err := s.tokensOn(ctx, campaignID, trap.MapID)
 	if err != nil {
 		return nil, "", false, err
@@ -269,7 +274,7 @@ func (s *Service) fireOutsideCombat(ctx context.Context, campaignID, actorUserID
 	for _, ch := range living {
 		sq, onMap := at[ch.ID]
 		switch {
-		case len(targetIDs) == 0 && onMap && trap.Covers(sq):
+		case targetIDs == nil && onMap && trap.Covers(sq):
 			caught = append(caught, ch)
 		case slices.Contains(targetIDs, ch.ID):
 			caught = append(caught, ch)
@@ -312,7 +317,7 @@ func (s *Service) fireOutsideCombat(ctx context.Context, campaignID, actorUserID
 			}
 		}
 		c := &combatTx{tx: tx, q: q, session: session, now: s.now(), actorUserID: actorUserID}
-		if fired, err = s.fireOutside(ctx, c, trap, caught, manual, extend); err != nil {
+		if fired, err = s.fireOutside(ctx, c, trap, caught, creatures, manual, extend); err != nil {
 			return err
 		}
 		var keyPtr *string
@@ -332,7 +337,7 @@ func (s *Service) fireOutsideCombat(ctx context.Context, campaignID, actorUserID
 // trap is triggered, the effect rolled, and the damage to a player's character
 // waits for the master in trap_damages. An NPC has no hit points stored outside a
 // combat: its damage is only in the event. Conditions are a reminder in it.
-func (s *Service) fireOutside(ctx context.Context, c *combatTx, trap maplink.Trap, caught []link.Character, manual bool, extend string) (*trapFireEvent, error) {
+func (s *Service) fireOutside(ctx context.Context, c *combatTx, trap maplink.Trap, caught []link.Character, creatures []maplink.MapCreature, manual bool, extend string) (*trapFireEvent, error) {
 	campaignID := c.session.CampaignID
 	prev := trap
 	ev := &trapFireEvent{PointID: trap.PointID, MapID: trap.MapID, Manual: manual, ExtendsID: extend}
@@ -345,7 +350,9 @@ func (s *Service) fireOutside(ctx context.Context, c *combatTx, trap maplink.Tra
 	}
 	effect := prev.Spec.GetEffect()
 	ability := trapSaveAbility(effect)
-	targets := make([]trapTarget, len(caught))
+	// The creatures caught come after the characters: a creature has no hit points
+	// stored outside a combat either, so its part is only the line, as an NPC's.
+	targets := make([]trapTarget, len(caught)+len(creatures))
 	for i, ch := range caught {
 		targets[i].id = ch.ID
 		if trapNeedsAC(effect) {
@@ -363,14 +370,40 @@ func (s *Service) fireOutside(ctx context.Context, c *combatTx, trap maplink.Tra
 			targets[i].save, targets[i].saveKnown = save.Bonus, save.Known
 		}
 	}
+	for j, cr := range creatures {
+		i := len(caught) + j
+		targets[i].id = cr.ID
+		if trapNeedsAC(effect) {
+			sheet, ok := s.roster.CreatureSheet(cr.MonsterKey, "")
+			if !ok {
+				return nil, errCombatantNotFound()
+			}
+			targets[i].armorClass = sheet.ArmorClass
+		}
+		if ability != "" {
+			save := s.roster.CreatureSave(cr.MonsterKey, ability)
+			targets[i].save, targets[i].saveKnown = save.Bonus, save.Known
+		}
+	}
 	outcomes, err := resolveTrap(effect, targets, s.trapD20, s.trapDice)
 	if err != nil {
 		return nil, err
 	}
 	fireID := uuid.New().String()
 	for i, o := range outcomes {
-		ch := caught[i]
+		var ch link.Character
+		if i < len(caught) {
+			ch = caught[i]
+		} else {
+			// A creature: it is a line only (no stored hit points), under its owner's
+			// character, who reads it and whose player owns it.
+			cr := creatures[i-len(caught)]
+			ch = link.Character{ID: cr.ID}
+		}
 		cc := trapCaughtEvent{Target: ch.ID, Character: ch.ID, Player: ch.Player, Conditions: o.conditions, Saves: savesEventOf(o.saves)}
+		if i >= len(caught) {
+			cc.Character = creatures[i-len(caught)].OwnerCharacterID
+		}
 		for _, a := range o.attacks {
 			outcome := outcomeMiss
 			switch {
@@ -440,9 +473,53 @@ func (s *Service) TokenDropped(ctx context.Context, campaignID, mapID, character
 		if t.Spec.GetEffect().GetTargets() != rulesv1.TrapTargets_TRAP_TARGETS_MANUAL {
 			targets = nil // everyone standing in the area, the one that landed included
 		}
-		fired, _, _, err := s.fireOutsideCombat(ctx, campaignID, actorUserID, "", t, targets, false, "")
+		fired, _, _, err := s.fireOutsideCombat(ctx, campaignID, actorUserID, "", t, targets, nil, false, "")
 		if err != nil && connect.CodeOf(err) == connect.CodeFailedPrecondition {
 			continue // fired or disarmed since it was read: it does not fire twice
+		}
+		if err != nil {
+			return err
+		}
+		s.afterFiring(ctx, campaignID, fired, playdb.Encounter{})
+	}
+	return nil
+}
+
+// CreatureDropped implements maps.TrapFirer: the master dropped a creature of a
+// player's character on a square (9.10 left this to the traps slice), and the armed
+// "Ao entrar na área" traps whose area holds it fire, as for a character's token: the
+// characters standing in the area are caught with it, or only the creature when the
+// trap picks its targets by hand. The creature's part is a line only: no hit points
+// are stored for it outside a combat (as for an NPC), so nothing waits for the master.
+func (s *Service) CreatureDropped(ctx context.Context, campaignID, mapID string, creature maplink.MapCreature, actorUserID string, at grid.Square) error {
+	if s.traps == nil {
+		return nil
+	}
+	session, err := s.queries.GetOpenGameSession(ctx, campaignID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("find the open session: %w", err)
+	}
+	if _, inCombat, err := s.runningEncounterOn(ctx, session.ID, mapID); err != nil || inCombat {
+		return err // in a combat the creature's moves are the combat's
+	}
+	traps, err := s.traps.Traps(ctx, nil, campaignID, mapID)
+	if err != nil {
+		return err
+	}
+	for _, t := range traps {
+		if !t.Armed() || !t.OnEnter || !t.Covers(at) {
+			continue
+		}
+		var targets []string // everyone standing in the area
+		if t.Spec.GetEffect().GetTargets() == rulesv1.TrapTargets_TRAP_TARGETS_MANUAL {
+			targets = []string{} // only the creature
+		}
+		fired, _, _, err := s.fireOutsideCombat(ctx, campaignID, actorUserID, "", t, targets, []maplink.MapCreature{creature}, false, "")
+		if err != nil && connect.CodeOf(err) == connect.CodeFailedPrecondition {
+			continue
 		}
 		if err != nil {
 			return err

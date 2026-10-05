@@ -1,0 +1,111 @@
+:host {
+  display: block;
+}
+
+.tn__h {
+  margin: 0 0 var(--mr-space-2);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 22px;
+}
+
+.tn__lead {
+  margin: 0 0 var(--mr-space-3);
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.tn {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+  line-height: 20px;
+
+  th,
+  td {
+    padding: 8px 8px 8px 0;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  thead th {
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 17px;
+    color: var(--mr-ink-muted);
+  }
+
+  tbody tr {
+    border-top: 1px solid var(--mr-rule);
+  }
+}
+
+.tn__name {
+  font-weight: 700;
+}
+
+.tn__num {
+  display: block;
+  font-size: 17px;
+}
+
+.tn__sub {
+  display: block;
+  font-size: 13px;
+  line-height: 17px;
+  color: var(--mr-ink-muted);
+}
+
+.tn__verdict {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+
+  &--yes {
+    color: var(--mr-success-ink);
+  }
+}
+
+// On a phone each character is a block: the name, then each number under its label.
+@media (max-width: 559.98px) {
+  .tn thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .tn,
+  .tn tbody,
+  .tn tr,
+  .tn th,
+  .tn td {
+    display: block;
+  }
+
+  .tn tr {
+    padding: 8px 0;
+  }
+
+  .tn th,
+  .tn td {
+    padding: 2px 0;
+  }
+
+  .tn td::before {
+    display: block;
+    font-size: 13px;
+    line-height: 17px;
+    color: var(--mr-ink-muted);
+    content: attr(data-label);
+  }
+}

@@ -1,0 +1,51 @@
+<h4 class="tn__h" id="tn-h">Quem notaria</h4>
+@if (noticers(); as res) {
+  @if (res.noticeDc === 0) {
+    <p class="tn__lead">Ninguém nota esta armadilha sozinho: ela não tem CD para notar. Só se acha com Investigação.</p>
+  } @else {
+    <p class="tn__lead">
+      Percepção passiva contra a CD {{ res.noticeDc }} para notar, de quem está a até 3&nbsp;m e vê o quadrado. A
+      penumbra tira 5 da passiva.
+    </p>
+    @if (rows().length === 0) {
+      <p class="tn__lead">Nenhum personagem de jogador vivo nesta campanha.</p>
+    } @else {
+      <table class="tn" aria-labelledby="tn-h">
+        <thead>
+          <tr>
+            <th scope="col">Personagem</th>
+            <th scope="col">Percepção passiva</th>
+            <th scope="col">Onde está</th>
+            <th scope="col">Nota?</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of rows(); track r.n.characterId) {
+            <tr>
+              <th scope="row" class="tn__name">{{ r.n.characterName }}</th>
+              <td data-label="Percepção passiva">
+                <b class="tn__num">{{ r.n.passivePerception }}</b>
+                @if (r.penalty) {
+                  <span class="tn__sub">{{ r.penalty }}</span>
+                }
+              </td>
+              <td data-label="Onde está">
+                {{ r.near }}
+                @if (r.nearNote) {
+                  <span class="tn__sub">{{ r.nearNote }}</span>
+                }
+              </td>
+              <td data-label="Nota?">
+                <span class="tn__verdict" [class]="'tn__verdict tn__verdict--' + r.verdict">
+                  <mat-icon aria-hidden="true">{{ r.verdict === 'yes' ? 'visibility' : r.verdict === 'knows' ? 'check' : 'close' }}</mat-icon>{{ r.verdictWord }}
+                </span>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  }
+} @else {
+  <p class="tn__lead" role="status">Lendo quem notaria...</p>
+}

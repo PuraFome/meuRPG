@@ -1,0 +1,176 @@
+:host {
+  display: block;
+}
+
+.tr {
+  padding: 16px 18px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+}
+
+.tr__head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-3);
+}
+
+.tr__icon {
+  flex: none;
+  margin-top: 0.5px;
+}
+
+.tr__titles {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.tr__name {
+  margin: 0;
+  font-family: var(--mr-font-display, inherit);
+  font-size: 20px;
+  line-height: 26px;
+  overflow-wrap: anywhere;
+}
+
+.tr__sub {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.tr__label {
+  margin: var(--mr-space-3) 0 0;
+  font-size: 13px;
+  line-height: 17px;
+  color: var(--mr-ink-muted);
+}
+
+.tr__inside,
+.tr__found,
+.tr__said,
+.tr__lead,
+.tr__summary {
+  margin: 2px 0 0;
+  font-size: 16px;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+
+.tr__found {
+  margin-top: var(--mr-space-2);
+}
+
+.tr__said,
+.tr__lead {
+  margin-top: var(--mr-space-2);
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.tr__why {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: var(--mr-space-3) 0 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+// The marking form: in place, under a rule, inside the card.
+.tr__form {
+  margin-top: var(--mr-space-3);
+  padding-top: var(--mr-space-3);
+  border-top: 1px solid var(--mr-rule);
+}
+
+.tr__summary {
+  margin: var(--mr-space-3) 0;
+  padding: 10px 12px;
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-ground);
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.tr__mark,
+.tr__undo {
+  margin-top: var(--mr-space-3);
+  min-height: 44px;
+}
+
+.tr__mark {
+  color: var(--mr-accent-text);
+  --mat-button-outlined-label-text-color: var(--mr-accent-text);
+}
+
+// "Desmarcar" is a text action: its words line up with the text above.
+.tr__undo {
+  margin-inline-start: -12px;
+  color: var(--mr-accent-text);
+  --mat-button-text-label-text-color: var(--mr-accent-text);
+}
+
+// The question in place: a warning surface; the two buttons are the same size.
+.tr__ask {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--mr-space-2) var(--mr-space-3);
+  margin-top: var(--mr-space-3);
+  padding: 12px 14px;
+  border: 1px solid var(--mr-warning-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-warning-surface);
+  color: var(--mr-warning-ink);
+}
+
+.tr__askt {
+  margin: 0;
+  font-size: 18px;
+  line-height: 24px;
+}
+
+.tr__asks {
+  margin: 2px 0 0;
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.tr__pair {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--mr-space-3);
+
+  button {
+    min-height: 44px;
+    border-color: var(--mr-control-line);
+    background: var(--mr-surface);
+  }
+
+  @media (max-width: 479.98px) {
+    grid-template-columns: 1fr;
+
+    button {
+      min-height: 48px;
+    }
+  }
+}
+
+.tr__danger {
+  color: var(--mr-accent-text);
+  --mat-button-outlined-label-text-color: var(--mr-accent-text);
+}

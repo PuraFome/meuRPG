@@ -179,7 +179,7 @@ message ListTrapActivityResponse {
   repeated TrapActivity activity = 1;
 }
 
-// TrapActivity is one line: a firing or a search.
+// TrapActivity is one line: a firing, a search or a notice.
 message TrapActivity {
   // The event's ID (a UUID); for a firing, the ID to extend it with (FireTrapRequest).
   string id = 1;
@@ -188,6 +188,24 @@ message TrapActivity {
   TrapFiring firing = 3;
   // Set for a search.
   TrapSearchResult search = 4;
+  // Set for a trap a character noticed by passing near it (the passive notice). The
+  // master reads every one; a player only their own characters', with the trap's name
+  // (they know it now) and never a DC.
+  TrapNotice notice = 5;
+}
+
+// TrapNotice is a passive notice: a character's passive Perception reached the trap's
+// DC to notice it when the character stopped near it (RN-10: told to that character's
+// player alone).
+message TrapNotice {
+  // The characters (UUIDs) that noticed the trap at the same move, with their names;
+  // for a player, only their own. Always at least one.
+  repeated string character_ids = 1;
+  repeated string character_names = 2;
+  // The trap's point (a UUID) and its name; the name is empty when the trap was deleted
+  // since.
+  string point_id = 3;
+  string trap_name = 4;
 }
 
 // TrapSearchResult is a search made outside a combat, as the viewer reads it.

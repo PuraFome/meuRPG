@@ -1,0 +1,202 @@
+// The three steps: a numbered dot and a word each, a rule between them.
+.steps {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin: 0 0 var(--mr-space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.steps__item {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+
+  &:not(:last-child)::after {
+    flex: 1 1 8px;
+    height: 1px;
+    margin: 0 8px;
+    background: var(--mr-control-line);
+    content: '';
+  }
+
+  &:last-child {
+    flex: none;
+  }
+}
+
+.steps__dot {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
+  border: 1.5px solid var(--mr-control-line);
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 700;
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+
+  .steps__item--now & {
+    border-color: var(--mr-accent);
+  }
+
+  .steps__item--done & {
+    border-color: var(--mr-ink);
+    background: var(--mr-ink);
+    color: var(--mr-surface);
+  }
+}
+
+.steps__name {
+  font-weight: 700;
+}
+
+.how {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.how__legend {
+  margin: 0 0 var(--mr-space-2);
+  padding: 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 20px;
+}
+
+// A radio card: the chosen one has a thicker accent border and a soft fill (the dot is filled too).
+.opt {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  box-sizing: border-box;
+  min-height: 56px;
+  margin-bottom: var(--mr-space-2);
+  padding: 8px 14px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  cursor: pointer;
+
+  &:has(input:focus-visible) {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  &--on {
+    padding: 7px 13px;
+    border: 2px solid var(--mr-accent);
+    background: var(--mr-accent-soft);
+  }
+}
+
+.opt__radio {
+  flex: none;
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--mr-control-line);
+  border-radius: 50%;
+
+  .opt--on & {
+    border: 6px solid var(--mr-accent);
+  }
+}
+
+.opt__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.opt__sub {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: var(--mr-space-2) 0 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+// The result: the player's own total and the formula; nothing about a DC.
+.res {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-4);
+  margin-bottom: var(--mr-space-3);
+}
+
+.res__sum {
+  flex: none;
+  font-family: var(--mr-font-display);
+  font-size: 48px;
+  font-weight: 800;
+  line-height: 52px;
+}
+
+.res__text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+
+.res__formula {
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.res__cap {
+  font-size: 13px;
+  color: var(--mr-ink-muted);
+}
+
+.res__more {
+  display: block;
+}
+
+.foot {
+  display: flex;
+}
+
+.foot__btn {
+  flex: 1 1 auto;
+  min-height: 48px;
+}
+
+@media (min-width: 768px) {
+  .foot {
+    justify-content: flex-end;
+  }
+
+  .foot__btn {
+    flex: none;
+    min-width: 176px;
+  }
+}

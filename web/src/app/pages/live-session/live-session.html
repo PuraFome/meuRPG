@@ -85,6 +85,8 @@
           [armorClass]="playerSheet()?.armorClass ?? null"
           [diceMode]="campaign()?.diceMode ?? 1"
           [dicePreference]="campaign()?.dicePreference ?? 1"
+          [trapSkills]="trapSkills()"
+          [traps]="isMaster() ? trapBoard : null"
           (adjust)="adjust($event)"
           (changeDice)="changeDice()"
         >
@@ -92,6 +94,21 @@
             <app-player-vitals [vitals]="v" [sheet]="playerSheet()" [campaignId]="campaignId()" [compact]="true" />
           }
         </app-combat-view>
+        @if (isMaster()) {
+          <!-- In a combat the master still reveals, fires and disarms (E9-08) and marks treasure (E9-09). -->
+          <div class="board__traps">
+            <app-trap-panel
+              [campaignId]="campaignId()"
+              [state]="mapState"
+              [board]="trapBoard"
+              [players]="cluePlayers()"
+              [vitals]="vitals()"
+              [combat]="combat"
+              [withDamages]="false"
+            />
+            <app-treasure-panel [campaignId]="campaignId()" [state]="mapState" [people]="finderRows()" />
+          </div>
+        }
       } @else if (isMaster()) {
         <app-combat-launch
           class="launch"
@@ -147,6 +164,14 @@
               [maps]="campaignMaps()"
               (currentChanged)="showMap($event)"
             />
+            <app-trap-panel
+              [campaignId]="campaignId()"
+              [state]="mapState"
+              [board]="trapBoard"
+              [players]="cluePlayers()"
+              [vitals]="vitals()"
+            />
+            <app-treasure-panel [campaignId]="campaignId()" [state]="mapState" [people]="finderRows()" />
           </div>
           <app-session-tokens
             class="board__tokens"
@@ -156,6 +181,7 @@
           />
         </div>
       } @else {
+        <app-live-toast [toasts]="toasts.toasts()" (dismissed)="toasts.dismiss($event)" />
         <app-clue-notice
           [clues]="notes.notice() ? notes.fresh() : []"
           (opened)="openNotes()"
@@ -175,7 +201,11 @@
               [campaignId]="campaignId()"
               [state]="mapState"
               [mapId]="currentMapId()"
+              [searchable]="searchable()"
+              (searchTraps)="searchTraps()"
             />
+            <app-found-treasures [points]="mapState.points()" [mapName]="mapState.map()?.name ?? ''" />
+            <app-trap-activity [activity]="trapBoard.activity()" />
           </div>
           <div class="board__side">
             @if (ownVitals(); as v) {

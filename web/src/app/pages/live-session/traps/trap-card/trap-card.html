@@ -1,0 +1,82 @@
+<article class="tc" [class.tc--open]="open()" [attr.aria-labelledby]="'tc-' + point().id">
+  <header class="tc__head">
+    <h3 class="tc__name" [id]="'tc-' + point().id">{{ point().name }}</h3>
+    <span class="tc__tags">
+      <span class="mr-tag" [class.mr-tag--pending]="fired()" [class.mr-tag--success]="disarmed()">
+        <mat-icon aria-hidden="true">{{ stateIcon() }}</mat-icon>{{ stateWord() }}
+      </span>
+      <span class="mr-tag">
+        <mat-icon aria-hidden="true">{{ visibility().kind === 'secret' ? 'visibility_off' : 'visibility' }}</mat-icon>{{ visibility().label }}
+      </span>
+    </span>
+  </header>
+  <p class="tc__sub">{{ sub() }}</p>
+
+  @if (open()) {
+    <dl class="tc__facts">
+      <div>
+        <dt>CD para notar</dt>
+        <dd>{{ notice() > 0 ? notice() : 'Nenhuma' }}</dd>
+      </div>
+      <div>
+        <dt>CD para achar</dt>
+        <dd>{{ find() }}</dd>
+      </div>
+      <div>
+        <dt>Gatilho</dt>
+        <dd>{{ trigger() }}</dd>
+      </div>
+      <div>
+        <dt>Efeito</dt>
+        <dd>{{ effect() }}</dd>
+      </div>
+    </dl>
+
+    @if (armed()) {
+      <app-trap-noticers class="tc__noticers" [noticers]="noticers()" />
+      <div class="tc__actions" role="group" [attr.aria-label]="'Ações de ' + point().name">
+        <button
+          matButton="outlined"
+          type="button"
+          [disabled]="busy() || everyoneSees()"
+          disabledInteractive
+          [attr.aria-describedby]="everyoneSees() ? 'tc-all-' + point().id : null"
+          (click)="reveal.emit()"
+        >
+          <mat-icon aria-hidden="true">visibility</mat-icon>Revelar para…
+        </button>
+        <button matButton="outlined" type="button" [disabled]="busy()" disabledInteractive (click)="fire.emit()">
+          <mat-icon aria-hidden="true">bolt</mat-icon>Disparar…
+        </button>
+        <button matButton="outlined" type="button" [disabled]="busy()" disabledInteractive (click)="disarm.emit()">
+          <mat-icon aria-hidden="true">block</mat-icon>Desarmar
+        </button>
+      </div>
+      @if (everyoneSees()) {
+        <p class="tc__why" [id]="'tc-all-' + point().id"><mat-icon aria-hidden="true">info</mat-icon>Todos já veem esta armadilha.</p>
+      }
+    } @else if (fired()) {
+      <p class="tc__why"><mat-icon aria-hidden="true">info</mat-icon>Todos veem a armadilha no mapa. "Marcar como desarmada" fica para quando a mesa resolver o teste de ladrão.</p>
+      <div class="tc__actions tc__actions--one">
+        <button matButton="outlined" type="button" [disabled]="busy()" disabledInteractive (click)="disarm.emit()">
+          <mat-icon aria-hidden="true">block</mat-icon>Marcar como desarmada
+        </button>
+      </div>
+      @if (canExtend()) {
+        <button matButton type="button" class="tc__more" [disabled]="busy()" disabledInteractive (click)="extend.emit()">
+          <mat-icon aria-hidden="true">person_add</mat-icon>Pegou mais alguém?
+        </button>
+      }
+    } @else {
+      <p class="tc__why"><mat-icon aria-hidden="true">info</mat-icon>Desarmada: não dispara mais.</p>
+    }
+    <button matButton type="button" class="tc__fold" (click)="toggle.emit()">Fechar a armadilha</button>
+  } @else {
+    <div class="tc__closed">
+      <p class="tc__line">{{ closedNote() || dcLine() }}</p>
+      <button matButton type="button" class="tc__openbtn" [attr.aria-label]="'Abrir a armadilha ' + point().name" (click)="toggle.emit()">
+        Abrir a armadilha
+      </button>
+    </div>
+  }
+</article>

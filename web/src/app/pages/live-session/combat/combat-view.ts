@@ -38,6 +38,9 @@ import {
 } from '../../../core/combat/opportunity';
 import { LayersState } from '../../../core/maps/layers-state';
 import { MapsClient } from '../../../core/maps/maps-client';
+import { fallNote } from '../../../core/traps/trap-log';
+import type { SearchSkills } from '../../../core/traps/trap-search';
+import type { TrapBoard } from '../../../core/traps/trap-board';
 import type { OfferMark, Reach } from '../../../shared/combat-map/combat-map';
 import type { Square } from '../../../core/combat/combat-grid';
 import { openDamages, pendingNote } from '../../../core/combat/attack-flow';
@@ -83,6 +86,8 @@ import { OrderList } from './order-list/order-list';
 import { PlayerInitiative } from './player-initiative/player-initiative';
 import { openSheet } from './sheet-host';
 import { type StartCombatData, StartCombatDialog } from './start-combat/start-combat-dialog';
+import { TrapDamages } from '../traps/trap-damages/trap-damages';
+import { openTrapSearch } from '../traps/trap-search-sheet/trap-search-sheet';
 import { OrderColumn } from './turn-panel/order-column';
 import { TurnBar } from './turn-panel/turn-bar';
 import { TurnPanel } from './turn-panel/turn-panel';
@@ -124,6 +129,7 @@ import { TurnPanel } from './turn-panel/turn-panel';
     OrderList,
     PlayerInitiative,
     TurnBar,
+    TrapDamages,
     TurnPanel,
   ],
   templateUrl: './combat-view.html',
@@ -157,6 +163,10 @@ export class CombatView {
   readonly armorClass = input<number | null>(null);
   readonly diceMode = input.required<DiceMode>();
   readonly dicePreference = input.required<DicePreference>();
+  /** The player's bonuses in Percepção and Investigação, for "Procurar" (E9-08); `null` while unknown. */
+  readonly trapSkills = input<SearchSkills | null>(null);
+  /** The traps' board: the master's damage that waits for him (a trap that fired in the combat), read here too. */
+  readonly traps = input<TrapBoard | null>(null);
 
   /** "Dano/Cura" on a player's row: the page opens its adjust dialog. */
   readonly adjust = output<VitalsVm>();
@@ -674,6 +684,46 @@ export class CombatView {
       ? this.run(async (e) => (await this.api.takeAction(this.campaignId(), e.id, own.id, key)).encounter)
       : Promise.resolve(false);
   }
+
+  /** A standard action from the list: "Procurar" opens the search for traps (E9-08, it spends the action
+   * through `SearchForTraps`); the others spend the action (`takeAction`). */
+  protected standardAction(key: string): void {
+    if (key === 'standard:search') {
+      this.searchTraps();
+      return;
+    }
+    void this.takeAction(key);
+  }
+
+  private searchTraps(): void {
+    openTrapSearch(this.dialog, this.bottomSheet, {
+      campaignId: this.campaignId(),
+      skills: this.trapSkills(),
+      diceMode: this.diceMode(),
+      preference: this.dicePreference(),
+      state: this.mapState(),
+      inCombat: true,
+    }).subscribe();
+  }
+
+  /** What a trap did to this player's character this round (E9-08 E), from the combat log. */
+  protected readonly trapNote = computed(() => {
+    const e = this.encounter();
+    const own = this.own();
+    if (!e || !own) {
+      return null;
+    }
+    const round = this.log.rounds().find((r) => r.round === e.round);
+    for (const entry of round?.entries ?? []) {
+      if (entry.kind === CombatLogKind.TRAP_TRIGGERED && entry.trap) {
+        const note = fallNote(entry.trap, own.characterId);
+        if (note) {
+          return note;
+        }
+      }
+    }
+    return null;
+  });
 
   /** "Usar" on a feature: Retomar o Fôlego rolls (its own sheet); the others
    * only spend the action and remind the table ("Você tem outra ação"). */

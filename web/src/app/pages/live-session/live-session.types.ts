@@ -116,7 +116,9 @@ export type LiveEventVm =
   | { readonly kind: 'notesChanged' }
   /** `stage_changed` (MR-031): an NPC came in or went out, or the speaker
    * changed. It names nobody: the page reads the open scene again. */
-  | { readonly kind: 'stageChanged' };
+  | { readonly kind: 'stageChanged' }
+  /** `trap_noticed` (MR-035): this player's character noticed a trap by passing near it. Only they get it. */
+  | { readonly kind: 'trapNoticed'; readonly mapId: string; readonly pointId: string };
 
 /**
  * What a failed call means for the page, from its Connect code and typed
@@ -151,6 +153,8 @@ export interface CampaignInfoVm {
 export interface PlayerSheetVm {
   /** `DerivedSheet.armor_class`; `null` for a sheet without it. */
   readonly armorClass: number | null;
+  /** The bonuses in Percepção and Investigação, for "Procurar armadilhas"; `null` for a sheet without skills. */
+  readonly skills?: { readonly perception: number | null; readonly investigation: number | null };
   /** "Mago 3, Gnomo das Rochas". */
   readonly summary: string;
 }

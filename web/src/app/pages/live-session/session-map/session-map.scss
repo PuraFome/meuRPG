@@ -79,7 +79,22 @@
   min-width: 0;
 }
 
-.map__open {
+.map__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+    flex: none;
+    align-items: flex-start;
+  }
+}
+
+// "Procurar armadilhas" and "Ver mapa" are two outlined buttons of the same height; on a phone they
+// stack, each as wide as the room.
+.map__open,
+.map__search {
   min-height: 44px;
   flex: none;
 

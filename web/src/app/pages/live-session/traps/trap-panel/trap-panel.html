@@ -1,0 +1,53 @@
+@if (traps().length > 0 || (withDamages() && board().damages().length > 0)) {
+  <section class="tp mr-panel" aria-labelledby="tp-h">
+    <div class="tp__head">
+      <h2 class="mr-panel__title" id="tp-h">Armadilhas do mapa</h2>
+      @if (traps().length > 0) {
+        <span class="tp__count">{{ count() }}</span>
+      }
+    </div>
+
+    @if (withDamages()) {
+      <app-trap-damages
+        [damages]="board().damages()"
+        [campaignId]="campaignId()"
+        [vitals]="vitals()"
+        [combat]="combat()"
+        (settled)="board().settled($event)"
+      />
+    }
+
+    @if (error()) {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ error() }}</p>
+      </div>
+    }
+
+    @for (p of traps(); track p.id) {
+      <app-trap-card
+        [point]="p"
+        [open]="openId() === p.id"
+        [noticers]="board().noticers().get(p.id)"
+        [firedAt]="firedAt(p)"
+        [canExtend]="canExtend(p)"
+        [busy]="busy()"
+        (toggle)="toggle(p.id)"
+        (reveal)="reveal(p)"
+        (fire)="fire(p)"
+        (extend)="fire(p, true)"
+        (disarm)="disarm(p)"
+      />
+    }
+    @if (traps().length > 0) {
+      <p class="tp__note">
+        <mat-icon aria-hidden="true">info</mat-icon>
+        Os jogadores não veem a armadilha, nem o lugar dela, enquanto você não revelar ou alguém não achar.
+      </p>
+    }
+    <p class="mr-visually-hidden" role="status" aria-live="polite">{{ announcement() }}</p>
+  </section>
+}
+@if (traps().length > 0) {
+  <app-trap-activity [activity]="board().activity()" [master]="true" />
+}

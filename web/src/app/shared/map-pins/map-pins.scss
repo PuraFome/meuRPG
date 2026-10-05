@@ -1,0 +1,100 @@
+// The map's own tokens: the image under the marks is a drawing, the same in both themes.
+:host {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: block;
+  pointer-events: none;
+}
+
+// A trap's area: a dashed garnet border over a light tint; fired is solid and filled, disarmed grey.
+.area {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px dashed var(--mr-map-accent);
+  background:
+    repeating-linear-gradient(45deg, color-mix(in srgb, var(--mr-map-accent) 22%, transparent) 0 3px, transparent 3px 9px);
+
+  &--fired {
+    border-style: solid;
+    background: color-mix(in srgb, var(--mr-map-accent) 24%, transparent);
+  }
+
+  &--disarmed {
+    border-color: var(--mr-map-token-down-line);
+    background: color-mix(in srgb, var(--mr-map-token-down) 40%, transparent);
+  }
+}
+
+// The glyph sits on the point's square; it keeps its size when the map zooms (--s is the zoom).
+.pin {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 calc(-13px + var(--n, 0) * 30px);
+  border: 2px solid var(--mr-map-token-ink);
+  border-radius: 6px;
+  background: var(--mr-map-token-surface);
+  color: var(--mr-map-token-ink);
+  transform: scale(calc(1 / var(--s, 1)));
+
+  &--trap {
+    border-color: var(--mr-map-accent);
+    border-radius: 50%;
+    color: var(--mr-map-accent);
+  }
+
+  &--fired {
+    background: var(--mr-map-accent);
+    color: var(--mr-map-token-surface);
+  }
+
+  &--disarmed {
+    border-color: var(--mr-map-token-down-line);
+    color: var(--mr-map-token-down-ink);
+  }
+
+  // A hidden treasure and the master's light are dashed: only the master sees them.
+  &--hidden,
+  &--light {
+    border-style: dashed;
+  }
+}
+
+.pin__icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+}
+
+// The crossed eye of what only the master sees: a badge at the corner.
+.pin__eye {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--mr-map-token-ink);
+  border-radius: 50%;
+  background: var(--mr-map-token-surface);
+  color: var(--mr-map-token-ink);
+
+  .mat-icon {
+    width: 11px;
+    height: 11px;
+    font-size: 11px;
+  }
+}
+
+// A remembered point is darkened like the squares around it (fog, slice 9.13).
+.pin--remembered {
+  opacity: 0.55;
+}
