@@ -2,7 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 
 import { XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import type { LevelUpReason } from '../../../gen/meurpg/characters/v1/characters_pb';
-import type { XPAward } from '../../../gen/meurpg/progression/v1/progression_pb';
+import type { TreasureToConvert, XPAward } from '../../../gen/meurpg/progression/v1/progression_pb';
 import { joinDots } from '../format/text';
 import { RosterClient } from '../maps/roster-client';
 import { ProgressionClient } from './progression-client';
@@ -43,6 +43,8 @@ export class ExperienceStore {
 
   private campaignId = '';
   private withAwards = false;
+  private withTreasures = false;
+  private treasuresSeq = 0;
   private rowsSeq = 0;
   private awardsSeq = 0;
 
@@ -57,19 +59,52 @@ export class ExperienceStore {
   readonly nextPageToken = signal('');
   readonly loadingMore = signal(false);
 
-  /** Reads the XP of the campaign, and its history when `withAwards`. */
-  async load(campaignId: string, withAwards: boolean): Promise<void> {
+  /** The found treasures nobody converted yet (MR-041), the oldest finds first,
+   * at most 100. Only the master reads them (`withTreasures`), and only in a
+   * campaign that counts XP: a milestones campaign has no use for them. */
+  readonly treasures = signal<readonly TreasureToConvert[]>([]);
+  /** How many there are in all, which may be more than `treasures` holds. */
+  readonly treasuresTotal = signal(0);
+  readonly treasuresState = signal<LoadState>('loading');
+
+  /** Reads the XP of the campaign, its history when `withAwards` and, for the
+   * master, the treasures waiting for "Voltar à cidade" when `withTreasures`. */
+  async load(campaignId: string, withAwards: boolean, withTreasures = false): Promise<void> {
     this.campaignId = campaignId;
     this.withAwards = withAwards;
+    this.withTreasures = withTreasures;
     this.rowsState.set('loading');
     this.awardsState.set('loading');
+    this.treasuresState.set('loading');
     await Promise.all([this.loadRows(), withAwards ? this.loadAwards() : Promise.resolve()]);
+    await this.loadTreasures();
   }
 
   /** Reads again, keeping what is on screen until the answer comes. */
   async refresh(): Promise<void> {
     if (this.campaignId) {
       await Promise.all([this.loadRows(), this.withAwards ? this.loadAwards() : Promise.resolve()]);
+      await this.loadTreasures();
+    }
+  }
+
+  /** The treasures again (after an award, an undo, or a conversion that went wrong). */
+  async loadTreasures(): Promise<void> {
+    if (!this.withTreasures || this.xpMode() === XpMode.MILESTONES || this.xpMode() === XpMode.UNSPECIFIED) {
+      return;
+    }
+    const seq = ++this.treasuresSeq;
+    try {
+      const res = await this.api.listTreasures(this.campaignId);
+      if (seq === this.treasuresSeq) {
+        this.treasures.set(res.treasures);
+        this.treasuresTotal.set(res.total);
+        this.treasuresState.set('ready');
+      }
+    } catch {
+      if (seq === this.treasuresSeq && this.treasures().length === 0) {
+        this.treasuresState.set('error');
+      }
     }
   }
 

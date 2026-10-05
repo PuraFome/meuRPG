@@ -35,11 +35,12 @@ function category(kind: HighlightKind, value: number, ...winners: [string, strin
     winners: winners.map(([characterId, name]) => create(HighlightWinnerSchema, { characterId, name })),
   });
 }
-const row = (id: string, name: string, passed: number, tried: number, combat = {}) =>
+const row = (id: string, name: string, passed: number, tried: number, combat = {}, treasureFoundPo = 0) =>
   create(SessionCharacterSummarySchema, {
     highlights: create(CharacterHighlightsSchema, { characterId: id, name, ...combat }),
     checksPassed: passed,
     checksTried: tried,
+    treasureFoundPo,
   });
 
 const categories = [
@@ -161,9 +162,46 @@ describe('SessionEnded (MR-032, E8-11 states 4 and 5)', () => {
       expect(Array.from(el.querySelectorAll('.tbl__row--head [role="columnheader"]'), (h) => h.textContent)).toEqual(['Personagem', 'Testes passados']);
     });
 
-    it('does not show "Mais tesouro encontrado" yet (it comes with the treasure)', async () => {
+    it('says no treasure was found when none was (E9-09)', async () => {
       const { el } = await setup(masterSummary, true);
-      expect(el.textContent).not.toContain('tesouro');
+      expect(words(el.querySelector('.sum__none'))).toBe('Nenhum tesouro registrado nesta sessão.');
+      expect(Array.from(el.querySelectorAll('.sum__h'), (h) => words(h))).toContain('Mais tesouro encontrado');
+    });
+
+    it('has the block "Mais tesouro encontrado": every finder with the PO, not only the top one (E9-09)', async () => {
+      const withTreasure = create(SessionSummarySchema, {
+        ...common,
+        categories: [...categories, category(HighlightKind.TREASURE_FOUND, 250, ['brisa', 'Brisa'])],
+        combats: 1,
+        scenesOpened: 3,
+        checksPassed: 9,
+        checksTried: 12,
+        players: [
+          row('pens', 'Pensantus', 3, 4, {}, 25),
+          row('toren', 'Toren', 2, 3),
+          row('brisa', 'Brisa', 4, 5, {}, 1250),
+        ],
+      });
+      const { el } = await setup(withTreasure, true);
+      const titles = Array.from(el.querySelectorAll('.tbl__title'), (h) => words(h));
+      expect(titles).toEqual(['Testes passados fora do combate', 'Mais tesouro encontrado']);
+      const block = Array.from(el.querySelectorAll('.tbl'))[1];
+      expect(words(block.querySelector('.tbl__caption'))).toBe('Só conta o que foi marcado durante a sessão.');
+      expect(Array.from(block.querySelectorAll('.tbl__row--head [role="columnheader"]'), (h) => h.textContent)).toEqual([
+        'Personagem',
+        'Tesouro encontrado',
+      ]);
+      const rows = Array.from(block.querySelectorAll('.tbl__row:not(.tbl__row--head)'), (r) => [
+        words(r.querySelector('b')),
+        words(r.querySelector('.tbl__num')),
+      ]);
+      // The server's order, the number with its unit tied and a thousands separator.
+      expect(rows).toEqual([['Pensantus', '25 PO'], ['Brisa', '1.250 PO']]);
+      expect(words(el.querySelectorAll('.sum__note')[0])).toContain('divide o valor, arredondado para baixo');
+      // The treasure has its block: the tiles of "Destaques" do not repeat it.
+      const tiles = Array.from(el.querySelectorAll('.tile'), (t) => words(t));
+      expect(tiles.some((t) => t?.includes('Mais tesouro encontrado'))).toBe(false);
+      expect(el.querySelector('.sum__none')).toBeNull();
     });
   });
 
@@ -215,6 +253,21 @@ describe('SessionEnded (MR-032, E8-11 states 4 and 5)', () => {
       expect(el.querySelector('.card')).toBeNull();
       expect(words(el.querySelector('h1'))).toBe('Sessão 5 encerrada');
       expect(el.textContent).toContain('A sessão acabou.');
+    });
+
+    it('has "Mais tesouro encontrado" as a tile, the PO of the finder, and their own "Tesouro encontrado" (E9-09 state 11)', async () => {
+      const found = create(SessionSummarySchema, {
+        ...common,
+        categories: [category(HighlightKind.TREASURE_FOUND, 250, ['brisa', 'Brisa'])],
+        mine: row('pens', 'Pensantus', 0, 0, {}, 125),
+      });
+      const { el } = await setup(found, false);
+      const rows = Array.from(el.querySelectorAll('.row'));
+      expect(rows).toHaveLength(1);
+      expect(words(rows[0].querySelector('.row__label'))).toBe('Mais tesouro encontrado');
+      expect(words(rows[0].querySelector('.row__value'))).toBe('250 PO');
+      expect(words(rows[0].querySelector('.row__names'))).toBe('Brisa');
+      expect(words(el.querySelector('.own__tile'))).toBe('Tesouro encontrado125 PO');
     });
 
     it('leaves the player\'s own block out when the character took no part', async () => {

@@ -15,6 +15,7 @@ import { tableForLevelUp } from './levelup-support';
 import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus } from './support';
 import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
 import { awardXpRPC, createEnemyRPC, tableForXp, tableForXpCombat, winCombatRPC } from './xp-support';
+import { tableForGold, threeTreasuresRPC, treasureFoundRPC } from './gold-support';
 
 // docs/design.md#como-uma-tela-é-feita: every screen passes axe with no
 // serious or critical violation of WCAG 2.1 A and AA, in the light and the
@@ -2256,4 +2257,146 @@ test('o subir de nível passa no axe e nas conferências de layout no tema escur
 test('o subir de nível passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-040'] }, async ({ browser }) => {
   test.setTimeout(420_000);
   await scanLevelUpScreens(browser, 'light', 320);
+});
+
+/**
+ * "Voltar à cidade" and "Mais tesouro encontrado" (Etapa 9, MR-041, MR-032; E9-09): the Experiência panel of a
+ * campaign by gold with its strip and the two buttons, "Dar XP" with the strip, the conversion dialog (everything
+ * checked, a change, nothing checked, a refusal, nothing to convert), the history line and the question to undo,
+ * the player's view, the campaign by enemies, and the session summary with the treasure block and the card.
+ */
+async function scanGoldScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  const campaigns: string[] = [];
+  const panel = (page: Page) => page.getByRole('region', { name: 'Experiência', exact: true });
+  try {
+    await m.goto('/');
+    await p.goto('/');
+
+    // Nothing found yet: the strip invites, and the dialog explains.
+    const gold = await tableForGold(m, p, `Acessibilidade ouro ${Date.now()}`);
+    campaigns.push(gold.campaignId);
+    await open(m, `/campanhas/${gold.campaignId}`);
+    await expect(panel(m)).toContainText('Nenhum tesouro esperando.');
+    await expectScreenPasses(m, `Experiência por ouro, nada esperando ${where}`);
+    await panel(m).getByRole('button', { name: 'Voltar à cidade', exact: true }).click();
+    const empty = m.getByRole('dialog', { name: 'Voltar à cidade' });
+    await expect(empty).toContainText('Nenhum tesouro encontrado para converter.');
+    await expectScreenPasses(m, `Voltar à cidade, nada para converter ${where}`);
+    await empty.getByRole('button', { name: 'Fechar', exact: true }).last().click();
+
+    // Three finds: the strip, the dialog and its calculation in each state.
+    const ids = await threeTreasuresRPC(m, gold);
+    await open(m, `/campanhas/${gold.campaignId}`);
+    await expect(panel(m).getByText('3 tesouros · 420 PO')).toBeVisible();
+    await expectScreenPasses(m, `Experiência por ouro, três tesouros esperando ${where}`);
+    await panel(m).getByRole('button', { name: 'Voltar à cidade', exact: true }).click();
+    const town = m.getByRole('dialog', { name: 'Voltar à cidade' });
+    await expect(town).toContainText('420 XP ÷ 1 = 420 XP para cada');
+    await expectScreenPasses(m, `Voltar à cidade, tudo marcado ${where}`);
+    await town.getByRole('checkbox', { name: 'Converter Ídolo de prata' }).uncheck({ force: true });
+    await expect(town).toContainText('370 XP ÷ 1 = 370 XP para cada');
+    await expectScreenPasses(m, `Voltar à cidade, sem um tesouro ${where}`);
+    await town.getByRole('checkbox', { name: 'Marcar Pensantus' }).uncheck({ force: true });
+    await expect(town).toContainText('Marque pelo menos um tesouro e um personagem.');
+    await expectScreenPasses(m, `Voltar à cidade, ninguém marcado ${where}`);
+    await town.getByRole('button', { name: 'Cancelar' }).click();
+
+    // Converted meanwhile: the refusal stays in the dialog.
+    await panel(m).getByRole('button', { name: 'Voltar à cidade', exact: true }).click();
+    await expect(m.getByRole('dialog', { name: 'Voltar à cidade' })).toContainText('420 XP ÷ 1 = 420 XP para cada');
+    const other = await callRPC(m, 'meurpg.progression.v1.ProgressionService/AwardXP', {
+      campaignId: gold.campaignId,
+      mode: 'XP_AWARD_MODE_GOLD',
+      reason: 'Voltar à cidade',
+      characterIds: gold.characterIds,
+      treasurePointIds: [ids[0]],
+      idempotencyKey: crypto.randomUUID(),
+    });
+    expect(other.ok(), await other.text()).toBeTruthy();
+    await m.getByRole('dialog', { name: 'Voltar à cidade' }).getByRole('button', { name: /^Dar 420 XP/ }).click();
+    await expect(m.getByRole('dialog', { name: 'Voltar à cidade' }).getByRole('alert')).toContainText('já virou XP em outro prêmio');
+    await expectScreenPasses(m, `Voltar à cidade, o erro no lugar ${where}`);
+    await m.getByRole('dialog', { name: 'Voltar à cidade' }).getByRole('button', { name: /^Dar 170 XP/ }).click();
+    await expect(panel(m).getByRole('status').filter({ hasText: 'foram convertidos' })).toContainText('Os 2 tesouros foram convertidos.');
+    await expect(panel(m).getByText('Voltar à cidade · 170 PO em 2 tesouros')).toBeVisible();
+    await expectScreenPasses(m, `Experiência, depois de converter ${where}`);
+    await panel(m).getByRole('button', { name: /^Desfazer/ }).click();
+    await expect(panel(m).getByRole('alertdialog')).toContainText('voltam a “encontrado, não convertido”');
+    await expectScreenPasses(m, `Experiência, desfazer a conversão ${where}`);
+    await panel(m).getByRole('alertdialog').getByRole('button', { name: 'Desfazer XP' }).click();
+    await expect(panel(m).getByRole('status').filter({ hasText: 'XP desfeito' })).toBeVisible();
+    await expectScreenPasses(m, `Experiência, conversão desfeita ${where}`);
+
+    // "Dar XP" has the strip too, and its button.
+    await panel(m).getByRole('button', { name: 'Dar XP' }).click();
+    const give = m.getByRole('dialog', { name: 'Dar XP' });
+    await expect(give).toContainText('ou digite o ouro');
+    await expectScreenPasses(m, `Dar XP por ouro com os tesouros ${where}`);
+    await give.getByRole('button', { name: 'Cancelar' }).click();
+
+    // The player: the history line and the strip's absence.
+    await panel(m).getByRole('button', { name: 'Voltar à cidade', exact: true }).click();
+    await m.getByRole('dialog', { name: 'Voltar à cidade' }).getByRole('button', { name: /^Dar 170 XP/ }).click();
+    await expect(panel(m).getByRole('status').filter({ hasText: 'foram convertidos' })).toContainText('Os 2 tesouros foram convertidos.');
+    await open(p, `/campanhas/${gold.campaignId}`);
+    await expect(panel(p)).toContainText('Voltar à cidade · 170 PO em 2 tesouros');
+    await expectScreenPasses(p, `Experiência por ouro, jogador ${where}`);
+
+    // A campaign by enemies: no button, the line why.
+    const enemies = await tableForGold(m, p, `Acessibilidade inimigos ${Date.now()}`, 'XP_MODE_ENEMIES');
+    campaigns.push(enemies.campaignId);
+    await treasureFoundRPC(m, enemies, { name: 'Baú de moedas', valuePo: 250, finders: [enemies.characterIds[0]] });
+    await open(m, `/campanhas/${enemies.campaignId}`);
+    await expect(panel(m)).toContainText('Esta campanha dá XP por inimigos, então o tesouro não vira XP.');
+    await expectScreenPasses(m, `Experiência por inimigos, com tesouro ${where}`);
+
+    // The session summary: the master's block and the player's card.
+    const summary = await tableForGold(m, p, `Acessibilidade resumo ouro ${Date.now()}`, 'XP_MODE_ENEMIES');
+    campaigns.push(summary.campaignId);
+    await startSessionRPC(m, summary.campaignId);
+    await threeTreasuresRPC(m, summary);
+    await openSessionPage(p, summary.campaignId);
+    await openSessionPage(m, summary.campaignId);
+    await m.getByRole('button', { name: 'Encerrar sessão' }).click();
+    await m.getByRole('button', { name: 'Confirmar encerramento' }).click();
+    await expect(m.getByRole('heading', { name: 'Sessão encerrada' })).toBeVisible();
+    await expect(m.getByRole('table', { name: 'Mais tesouro encontrado' })).toBeVisible();
+    await expectScreenPasses(m, `Resumo da sessão com Mais tesouro encontrado, mestre ${where}`);
+    const card = p.getByRole('region', { name: 'Resumo da sessão' });
+    await expect(card.getByRole('heading', { name: 'A sessão acabou' })).toBeVisible();
+    await expect(card).toContainText('Mais tesouro encontrado');
+    await expectScreenPasses(p, `Cartão com Mais tesouro encontrado, jogador ${where}`);
+  } finally {
+    for (const id of campaigns) {
+      await endOpenSessionRPC(m, id);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('"Voltar à cidade" e o tesouro no resumo passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-041', '@MR-032'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanGoldScreens(browser, 'light', 1280);
+});
+
+test('"Voltar à cidade" e o tesouro no resumo passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-041', '@MR-032'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanGoldScreens(browser, 'dark', 390);
+});
+
+test('"Voltar à cidade" e o tesouro no resumo passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-041', '@MR-032'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanGoldScreens(browser, 'dark', 1024);
+});
+
+test('"Voltar à cidade" e o tesouro no resumo passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-041', '@MR-032'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanGoldScreens(browser, 'light', 320);
 });

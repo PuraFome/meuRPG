@@ -6,6 +6,8 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import { XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import {
   AwardXPResponseSchema,
+  ListTreasuresToConvertResponseSchema,
+  TreasureToConvertSchema,
   XPAwardSchema,
   XPBlockedReason,
   XPBlockedSchema,
@@ -285,5 +287,62 @@ describe('AwardXpSheet (E7-07)', () => {
     const { el } = setup({ rows: [] });
     expect(el.textContent).toContain('Nenhum personagem de jogador vivo');
     expect(give(el).getAttribute('aria-disabled')).toBe('true');
+  });
+
+  describe('the treasure strip in a campaign by gold (E9-09 state 6c)', () => {
+    const chest = create(TreasureToConvertSchema, { pointId: 'c', name: 'Baú de moedas', valuePo: 250, foundBy: [{ characterId: 'b1', characterName: 'Brisa' }] });
+    const listTreasures = vi.fn();
+
+    function setupGold(over: Partial<AwardXpData> = {}) {
+      listTreasures.mockReset().mockResolvedValue(create(ListTreasuresToConvertResponseSchema, { treasures: [chest], total: 1 }));
+      const data: AwardXpData = { campaignId: 'camp-1', xpMode: XpMode.GOLD, rows: PARTY, treasures: [chest], treasuresTotal: 1, ...over };
+      TestBed.configureTestingModule({
+        imports: [AwardXpSheet],
+        providers: [
+          { provide: ProgressionClient, useValue: { award, listTreasures } },
+          { provide: MAT_DIALOG_DATA, useValue: data },
+          { provide: MatDialogRef, useValue: { close } },
+        ],
+      });
+      const fixture = TestBed.createComponent(AwardXpSheet);
+      fixture.detectChanges();
+      return { fixture, el: fixture.nativeElement as HTMLElement };
+    }
+
+    it('opens with what waits, the outlined "Voltar à cidade" and "ou digite o ouro" before the form', () => {
+      const { el } = setupGold();
+      const strip = el.querySelector('app-treasure-strip')!;
+      expect(strip.textContent).toContain(`1 tesouro · 250${nbsp}PO`);
+      expect(strip.querySelector('button')?.textContent).toContain('Voltar à cidade');
+      expect(el.querySelector('.or')?.textContent?.trim()).toBe('ou digite o ouro');
+      // The typed gold stays, as the alternative.
+      expect(amountInput(el)).not.toBeNull();
+    });
+
+    it('closes with a request for "Voltar à cidade" (the host opens it: a phone has room for one sheet)', () => {
+      const { fixture, el } = setupGold();
+      el.querySelector<HTMLButtonElement>('.strip__go')!.click();
+      fixture.detectChanges();
+      expect(close).toHaveBeenCalledWith({ town: true });
+      expect(award).not.toHaveBeenCalled();
+    });
+
+    it('reads the treasures again as it opens', async () => {
+      const { fixture, el } = setupGold({ treasures: undefined, treasuresTotal: undefined });
+      expect(el.querySelector('app-treasure-strip')?.textContent).toContain('Lendo os tesouros encontrados...');
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(listTreasures).toHaveBeenCalledWith('camp-1');
+      expect(el.querySelector('app-treasure-strip')?.textContent).toContain('Baú de moedas');
+    });
+
+    it('has no strip in a campaign by enemies, nor when the sheet is a combat\'s XP', () => {
+      const enemies = setup({ xpMode: XpMode.ENEMIES });
+      expect(enemies.el.querySelector('app-treasure-strip')).toBeNull();
+      TestBed.resetTestingModule();
+      const combat = setupGold({ encounterId: 'enc-1' });
+      expect(combat.el.querySelector('app-treasure-strip')).toBeNull();
+      expect(combat.el.querySelector('.or')).toBeNull();
+    });
   });
 });

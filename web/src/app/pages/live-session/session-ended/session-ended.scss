@@ -169,6 +169,23 @@
   color: var(--mr-ink-muted);
 }
 
+.sum__none {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
 .retry {
   display: block;
   max-width: 640px;

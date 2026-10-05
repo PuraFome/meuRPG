@@ -1,6 +1,7 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 
 /**
  * The two buttons of an XP screen: the one filled action ("Dar 116 XP a cada
@@ -18,7 +19,7 @@ import { MatButtonModule } from '@angular/material/button';
  */
 @Component({
   selector: 'app-xp-actions',
-  imports: [MatButtonModule, NgTemplateOutlet],
+  imports: [MatButtonModule, MatIconModule, NgTemplateOutlet],
   template: `
     @if (reason()) {
       <p class="reason" [id]="reasonId">{{ reason() }}</p>
@@ -34,6 +35,7 @@ import { MatButtonModule } from '@angular/material/button';
     </div>
 
     <ng-template #main>
+      @if (!primaryHidden()) {
       <button
         mat-flat-button
         type="button"
@@ -43,8 +45,12 @@ import { MatButtonModule } from '@angular/material/button';
         [attr.aria-describedby]="reason() ? reasonId : null"
         (click)="primary.emit()"
       >
+        @if (primaryIcon()) {
+          <mat-icon aria-hidden="true">{{ primaryIcon() }}</mat-icon>
+        }
         {{ primaryLabel() }}
       </button>
+      }
     </ng-template>
     <ng-template #other>
       @if (secondaryStyle() === 'text') {
@@ -63,6 +69,10 @@ import { MatButtonModule } from '@angular/material/button';
 export class XpActions {
   readonly primaryLabel = input.required<string>();
   readonly secondaryLabel = input.required<string>();
+  /** An icon before the filled button's words ("Voltar à cidade"'s coin). */
+  readonly primaryIcon = input('');
+  /** Nothing to confirm (an empty list): only the way out is drawn. */
+  readonly primaryHidden = input(false);
   /** The action cannot go yet: the button is dashed and `reason` says why. */
   readonly blocked = input(false);
   /** A call is in flight: nothing more to press. */

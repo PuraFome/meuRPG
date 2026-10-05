@@ -54,9 +54,27 @@ export function xpBlockedMessage(blocked: XPBlocked): string {
       return 'Esse marco não está mais alcançado: ele foi desfeito. A lista foi atualizada.';
     case XPBlockedReason.XP_BLOCKED_REASON_CHARACTER_ALREADY_MARKED:
       return 'Um dos personagens marcados já tem esse marco. A lista foi atualizada.';
+    case XPBlockedReason.XP_BLOCKED_REASON_TREASURE_NOT_FOUND_YET:
+      return 'Um dos tesouros marcados não está mais como encontrado: o mestre desmarcou o achado. A lista foi atualizada; confira e tente de novo.';
+    case XPBlockedReason.XP_BLOCKED_REASON_TREASURE_ALREADY_CONVERTED:
+      return 'Um dos tesouros marcados já virou XP em outro prêmio. A lista foi atualizada; confira e tente de novo.';
+    case XPBlockedReason.XP_BLOCKED_REASON_TREASURES_OVER_LIMIT:
+      return 'Os tesouros marcados valem mais de 1.000.000 PO juntos, o máximo de um prêmio. Desmarque alguns e converta o resto depois.';
     default:
       return 'Isso não pode ser feito agora. A tela foi atualizada.';
   }
+}
+
+/** The same for "Voltar à cidade": a mode that does not take it says so in
+ * the treasures' words, the rest is as for any award. */
+export function townErrorMessage(err: unknown): string {
+  const blocked = xpBlocked(err);
+  if (blocked?.reason === XPBlockedReason.XP_BLOCKED_REASON_MODE_NOT_ALLOWED) {
+    return blocked.xpMode === XpMode.MILESTONES
+      ? 'Esta campanha conta marcos, não XP: o tesouro não vira XP.'
+      : 'Esta campanha dá XP por inimigos, então o tesouro não vira XP. Ele continua aparecendo no resumo de cada sessão.';
+  }
+  return xpErrorMessage(err, 'voltar à cidade');
 }
 
 /** The Portuguese message for a failed XP call, by code and by typed detail

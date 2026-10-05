@@ -12,6 +12,19 @@
     </div>
   }
 
+  @if (gold && !data.encounterId) {
+    <app-treasure-strip
+      [treasures]="treasures()"
+      [total]="treasuresTotal()"
+      [mode]="data.xpMode"
+      [state]="treasuresState()"
+      [button]="true"
+      (town)="goTown()"
+      (retry)="readTreasures()"
+    />
+    <p class="or" aria-hidden="true"><span>ou digite o ouro</span></p>
+  }
+
   <app-xp-reason
     [control]="reason"
     [placeholder]="'Por exemplo: Pelo resgate do mercador'"

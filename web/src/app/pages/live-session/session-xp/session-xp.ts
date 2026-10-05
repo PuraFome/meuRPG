@@ -65,7 +65,7 @@ export class SessionXp {
   constructor() {
     effect(() => {
       const id = this.campaignId();
-      untracked(() => void this.store.load(id, false));
+      untracked(() => void this.store.load(id, false, true));
     });
     // `xp_changed`: the characters' XP and who is alive may have moved.
     let seen = untracked(() => this.changes.version());

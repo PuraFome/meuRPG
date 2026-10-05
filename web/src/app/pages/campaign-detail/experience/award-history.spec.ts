@@ -44,7 +44,7 @@ describe('AwardHistory (E7-09)', () => {
     Element.prototype.scrollIntoView = vi.fn();
   });
 
-  async function setup(awards = [LAST, MIDDLE, UNDONE], milestones = false) {
+  async function setup(awards = [LAST, MIDDLE, UNDONE], milestones = false, isMaster = false) {
     TestBed.configureTestingModule({
       providers: [
         ExperienceStore,
@@ -61,6 +61,7 @@ describe('AwardHistory (E7-09)', () => {
     const fixture = TestBed.createComponent(AwardHistory);
     fixture.componentRef.setInput('campaignId', 'camp-1');
     fixture.componentRef.setInput('milestones', milestones);
+    fixture.componentRef.setInput('isMaster', isMaster);
     fixture.detectChanges();
     return { fixture, el: fixture.nativeElement as HTMLElement, store };
   }
@@ -227,6 +228,109 @@ describe('AwardHistory (E7-09)', () => {
     const more = vi.spyOn(store, 'more').mockResolvedValue();
     button(el, 'Mostrar mais').click();
     expect(more).toHaveBeenCalled();
+  });
+});
+
+describe('"Voltar à cidade" in the history (E9-09)', () => {
+  const TOWN = award({
+    id: 'a9',
+    mode: XPAwardMode.XP_AWARD_MODE_GOLD,
+    reason: 'Voltar à cidade',
+    gold: 420,
+    totalXp: 420,
+    treasureCount: 3,
+    canUndo: true,
+    shares: [
+      { characterId: 'p', characterName: 'Pensantus', xp: 105 },
+      { characterId: 't', characterName: 'Toren', xp: 105 },
+    ],
+  });
+  const OLDER = award({ id: 'a8', mode: XPAwardMode.XP_AWARD_MODE_GOLD, reason: 'Venda do cálice de prata', gold: 60, totalXp: 120, shares: [{ characterId: 'p', characterName: 'Pensantus', xp: 60 }] });
+
+  const undoLast = vi.fn();
+  const refresh = vi.fn();
+
+  async function setup(awards: (typeof TOWN)[], isMaster: boolean) {
+    undoLast.mockReset().mockResolvedValue(create(UndoLastXPAwardResponseSchema, {}));
+    refresh.mockReset().mockResolvedValue(undefined);
+    Element.prototype.scrollIntoView = vi.fn();
+    TestBed.configureTestingModule({
+      providers: [
+        ExperienceStore,
+        { provide: ProgressionClient, useValue: { undoLast } },
+        { provide: RosterClient, useValue: { list: () => Promise.resolve([]) } },
+      ],
+    });
+    const store = TestBed.inject(ExperienceStore);
+    store.awards.set(awards);
+    store.rows.set([]);
+    vi.spyOn(store, 'refresh').mockImplementation(refresh);
+    const fixture = TestBed.createComponent(AwardHistory);
+    fixture.componentRef.setInput('campaignId', 'camp-1');
+    fixture.componentRef.setInput('isMaster', isMaster);
+    fixture.detectChanges();
+    return { fixture, el: fixture.nativeElement as HTMLElement };
+  }
+  const items = (el: HTMLElement) => Array.from(el.querySelectorAll('li.item'));
+  const settle = async (fixture: { whenStable(): Promise<unknown>; detectChanges(): void }) => {
+    await fixture.whenStable();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  };
+
+  it('writes the line from the treasures (the count and the PO), with the XP each and the total', async () => {
+    const { el } = await setup([TOWN, OLDER], true);
+    const first = items(el)[0].textContent!;
+    expect(first).toContain(`Voltar à cidade · 420${nbsp}PO em 3 tesouros`);
+    expect(first).toContain('Por ouro');
+    expect(first).toContain(`105${nbsp}XP para cada`);
+    expect(first).toContain(`Total de${nbsp}420${nbsp}XP`);
+    // An award typed by hand keeps what the master wrote.
+    expect(items(el)[1].textContent).toContain('Venda do cálice de prata');
+  });
+
+  it('reads the same for a player, who gets only the count and the total (no list, no buttons)', async () => {
+    const { el } = await setup([{ ...TOWN, canUndo: false } as typeof TOWN, OLDER], false);
+    expect(items(el)[0].textContent).toContain(`Voltar à cidade · 420${nbsp}PO em 3 tesouros`);
+    expect(el.querySelectorAll('button')).toHaveLength(0);
+    expect(items(el)[0].textContent).not.toContain('Só o último prêmio');
+  });
+
+  it('asks in place and says that the treasures go back to "encontrado, não convertido"', async () => {
+    const { fixture, el } = await setup([TOWN, OLDER], true);
+    Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Desfazer'))!.click();
+    await settle(fixture);
+    const question = el.querySelector('[role="alertdialog"]')!;
+    expect(question.textContent).toContain('Desfazer o XP de “Voltar à cidade”?');
+    expect(question.textContent).toContain(`Pensantus e Toren perdem 105${nbsp}XP cada.`);
+    expect(question.textContent).toContain(`Os 3 tesouros (420${nbsp}PO) voltam a “encontrado, não convertido”.`);
+    expect(question.textContent).toContain('O histórico guarda o desfazer.');
+  });
+
+  it('says after undoing that the treasures are free again, and reads the XP and the treasures again', async () => {
+    const { fixture, el } = await setup([TOWN, OLDER], true);
+    Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Desfazer'))!.click();
+    await settle(fixture);
+    Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Desfazer XP')!.click();
+    await settle(fixture);
+    expect(undoLast).toHaveBeenCalledWith('camp-1', 'a9', expect.any(String));
+    expect(el.querySelector('[role="status"]')?.textContent).toContain('os 3 tesouros voltaram a “encontrado, não convertido”');
+    expect(refresh).toHaveBeenCalled();
+  });
+
+  it('tells the master why a "Voltar à cidade" that is not the last cannot be undone', async () => {
+    const newer = award({ id: 'a10', mode: XPAwardMode.XP_AWARD_MODE_MANUAL, reason: 'Avulso', canUndo: true });
+    const { el } = await setup([newer, { ...TOWN, canUndo: false } as typeof TOWN], true);
+    expect(items(el)[1].textContent).toContain('Só o último prêmio pode ser desfeito: desfaça os mais novos antes, e estes tesouros ficam livres.');
+    expect(items(el)[1].querySelector('button')).toBeNull();
+    expect(items(el)[0].textContent).not.toContain('Só o último prêmio');
+  });
+
+  it('keeps an undone one as it was, with its tag', async () => {
+    const { el } = await setup([{ ...TOWN, undone: true, canUndo: false, undoneByDisplayName: 'Samuel' } as typeof TOWN], true);
+    expect(items(el)[0].textContent).toContain('Desfeito por Samuel');
+    expect(items(el)[0].textContent).not.toContain('Só o último prêmio');
   });
 });
 

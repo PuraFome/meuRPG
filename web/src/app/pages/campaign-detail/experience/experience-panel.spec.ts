@@ -10,6 +10,8 @@ import {
   CharacterExperienceSchema,
   GetCampaignExperienceResponseSchema,
   ListMilestonesResponseSchema,
+  ListTreasuresToConvertResponseSchema,
+  TreasureToConvertSchema,
   ListXPAwardsResponseSchema,
   XPAwardMode,
   XPAwardSchema,
@@ -38,6 +40,7 @@ describe('ExperiencePanel (E7-09, E7-08)', () => {
   const experience = vi.fn();
   const listAwards = vi.fn();
   const listMilestones = vi.fn();
+  const listTreasures = vi.fn();
   const dialogOpen = vi.fn();
 
   function respond(mode: XpMode, characters = [character('p', 'Pensantus', 2716), character('t', 'Toren', 2366), character('b', 'Brisa', 0)], awards: ReturnType<typeof award>[] = []) {
@@ -61,7 +64,7 @@ describe('ExperiencePanel (E7-09, E7-08)', () => {
     TestBed.configureTestingModule({
       providers: [
         ExperienceStore,
-        { provide: ProgressionClient, useValue: { experience, listAwards, listMilestones } },
+        { provide: ProgressionClient, useValue: { experience, listAwards, listMilestones, listTreasures } },
         { provide: RosterClient, useValue: { list: () => Promise.resolve([{ id: 'p', name: 'Pensantus', kind: 1, playerUserId: 'u', classSummary: 'Mago 3', raceName: '', playerName: 'Vinicius' }]) } },
         { provide: AuthService, useValue: { state: () => ({ status: 'signed-in', user: { id: 'u', displayName: null } }) } },
         { provide: MatDialog, useValue: { open: dialogOpen } },
@@ -74,7 +77,7 @@ describe('ExperiencePanel (E7-09, E7-08)', () => {
     fixture.componentRef.setInput('campaignName', 'Mirathel');
     fixture.componentRef.setInput('isMaster', isMaster);
     fixture.detectChanges();
-    await store.load('camp-1', true);
+    await store.load('camp-1', true, isMaster);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -88,6 +91,7 @@ describe('ExperiencePanel (E7-09, E7-08)', () => {
     experience.mockReset();
     listAwards.mockReset();
     listMilestones.mockReset();
+    listTreasures.mockReset().mockResolvedValue(create(ListTreasuresToConvertResponseSchema, { treasures: [], total: 0 }));
     dialogOpen.mockReset().mockReturnValue({ afterClosed: () => of(undefined), afterDismissed: () => of(undefined) });
     // jsdom has no matchMedia: openSheet falls back to the dialog.
   });
@@ -185,5 +189,84 @@ describe('ExperiencePanel (E7-09, E7-08)', () => {
     expect(el.querySelector('.exp__status')?.textContent).toContain('350');
     expect(el.querySelector('.exp__status')?.textContent).toContain('116 para cada');
     expect(refresh).toHaveBeenCalled();
+  });
+
+  describe('"Voltar à cidade" (E9-09, MR-041)', () => {
+    const treasure = (id: string, name: string, valuePo: number, by: string) =>
+      create(TreasureToConvertSchema, { pointId: id, name, valuePo, foundBy: [{ characterId: id, characterName: by }] });
+    const THREE = [treasure('c', 'Baú de moedas', 250, 'Brisa'), treasure('b', 'Bolsa do capitão', 120, 'Toren'), treasure('i', 'Ídolo de prata', 50, 'Pensantus')];
+    const buttons = (el: HTMLElement) => Array.from(el.querySelectorAll('.exp__head button'), (b) => b.textContent?.replace('currency_exchange', '').trim());
+
+    it('puts "Voltar à cidade" beside "Dar XP" in a campaign by gold, and the strip with what waits', async () => {
+      respond(XpMode.GOLD);
+      listTreasures.mockResolvedValue(create(ListTreasuresToConvertResponseSchema, { treasures: THREE, total: 3 }));
+      const { el } = await setup(true);
+      expect(buttons(el)).toEqual(['Dar XP', 'Voltar à cidade']);
+      const strip = el.querySelector('app-treasure-strip')!;
+      expect(strip.textContent).toContain('Encontrado, ainda não convertido');
+      expect(strip.textContent).toContain(`3 tesouros · 420${nbsp}PO`);
+      expect(strip.textContent).toContain(`Baú de moedas, 250${nbsp}PO, de Brisa`);
+    });
+
+    it('opens the conversion with the treasures and who is alive', async () => {
+      respond(XpMode.GOLD);
+      listTreasures.mockResolvedValue(create(ListTreasuresToConvertResponseSchema, { treasures: THREE, total: 3 }));
+      const { el } = await setup(true);
+      Array.from(el.querySelectorAll<HTMLButtonElement>('.exp__head button')).find((b) => b.textContent?.includes('Voltar à cidade'))!.click();
+      expect(dialogOpen).toHaveBeenCalledTimes(1);
+      const config = dialogOpen.mock.calls[0][1];
+      expect(config.data.treasures).toHaveLength(3);
+      expect(config.data.total).toBe(3);
+      expect(config.data.rows).toHaveLength(3);
+    });
+
+    it('invites the next find when nothing waits, and keeps the button', async () => {
+      respond(XpMode.GOLD);
+      const { el } = await setup(true);
+      expect(el.querySelector('app-treasure-strip')?.textContent).toContain('Nenhum tesouro esperando.');
+      expect(buttons(el)).toContain('Voltar à cidade');
+    });
+
+    it('in a campaign by enemies there is no button, and the strip says why (when something was found)', async () => {
+      respond(XpMode.ENEMIES);
+      listTreasures.mockResolvedValue(create(ListTreasuresToConvertResponseSchema, { treasures: [THREE[0]], total: 1 }));
+      const { el } = await setup(true);
+      expect(buttons(el)).toEqual(['Dar XP']);
+      expect(el.querySelector('app-treasure-strip')?.textContent).toContain('Esta campanha dá XP por inimigos, então o tesouro não vira XP.');
+    });
+
+    it('in a campaign by enemies with nothing found there is no strip', async () => {
+      respond(XpMode.ENEMIES);
+      const { el } = await setup(true);
+      expect(el.querySelector('app-treasure-strip .strip')).toBeNull();
+    });
+
+    it('shows a player no strip and no button, and asks the server for no treasure', async () => {
+      respond(XpMode.GOLD);
+      const { el } = await setup(false);
+      expect(el.querySelector('app-treasure-strip')).toBeNull();
+      expect(el.querySelector('.exp__head button')).toBeNull();
+      expect(listTreasures).not.toHaveBeenCalled();
+    });
+
+    it('says what it did right after converting, and reads the XP and the treasures again', async () => {
+      respond(XpMode.GOLD);
+      const { fixture, el, store } = await setup(true);
+      const refresh = vi.spyOn(store, 'refresh').mockResolvedValue();
+      const award = create(XPAwardSchema, {
+        id: 'a1',
+        gold: 420,
+        treasureCount: 3,
+        totalXp: 420,
+        shares: [{ characterId: 'p', characterName: 'Pensantus', xp: 105 }, { characterId: 't', characterName: 'Toren', xp: 105 }],
+      });
+      fixture.debugElement.query((d) => d.name === 'app-xp-give-button').triggerEventHandler('given', { kind: 'xp', result: { award, xpEach: 105, lostXp: 0 } });
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(el.querySelector('.exp__status')?.textContent).toContain(
+        `Voltar à cidade: Pensantus e Toren receberam 105${nbsp}XP cada. Os 3 tesouros foram convertidos.`,
+      );
+      expect(refresh).toHaveBeenCalled();
+    });
   });
 });

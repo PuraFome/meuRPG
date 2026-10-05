@@ -3,6 +3,7 @@ import { createClient } from '@connectrpc/connect';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 
 import { PlayService } from '../../../gen/meurpg/play/v1/play_pb';
+import { HighlightKind } from '../../../gen/meurpg/play/v1/combat_pb';
 import type {
   SessionCharacterSummary,
   SessionSummary,
@@ -10,7 +11,7 @@ import type {
 import { type OwnNumber, highlightTiles, ownNumbers } from '../combat/combat-highlights';
 import type { HighlightTile } from '../combat/combat-highlights';
 import { CONNECT_TRANSPORT } from '../connect/transport';
-import { tight } from '../format/text';
+import { formatInt, tight } from '../format/text';
 import { formatClock } from '../../shared/session-time/session-time';
 import type { HighlightsTableRow } from '../../shared/highlights/highlights-table';
 
@@ -74,6 +75,25 @@ export function summaryTiles(summary: SessionSummary): HighlightTile[] {
   return highlightTiles(summary, tried);
 }
 
+/** The master's tiles leave out "Mais tesouro encontrado": it has its own block
+ * (`treasureRows`), with everyone who found something and not only the top. */
+export function masterTiles(summary: SessionSummary): HighlightTile[] {
+  return summaryTiles(summary).filter((t) => t.kind !== HighlightKind.TREASURE_FOUND);
+}
+
+/** The master's "Mais tesouro encontrado" block (E9-09): one row for every
+ * character that found treasure in the session, in the order they first
+ * appeared, with the PO (a find by two splits its value, rounded down). */
+export function treasureRows(summary: SessionSummary): HighlightsTableRow[] {
+  return summary.players
+    .filter((p) => p.treasureFoundPo > 0)
+    .map((p) => ({
+      id: p.highlights?.characterId ?? '',
+      name: p.highlights?.name ?? '',
+      cells: [`${formatInt(p.treasureFoundPo)}${NBSP}PO`],
+    }));
+}
+
 /** The master's per-player table: the checks each player passed of the ones tried,
  * zeros included. One row for every player the server lists (they fought or rolled a
  * check); one who tried no test reads "nenhum teste", muted, not "0 de 0". */
@@ -105,7 +125,7 @@ export function summaryOwn(mine: SessionCharacterSummary | undefined): OwnNumber
     own.push({ label: 'Testes passados fora do combate', value: checksRatio(mine.checksPassed, mine.checksTried) });
   }
   if (mine.treasureFoundPo > 0) {
-    own.push({ label: 'Tesouro encontrado', value: `${mine.treasureFoundPo}${NBSP}PO` });
+    own.push({ label: 'Tesouro encontrado', value: `${formatInt(mine.treasureFoundPo)}${NBSP}PO` });
   }
   return own;
 }

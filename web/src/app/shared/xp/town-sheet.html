@@ -1,0 +1,101 @@
+<app-sheet-frame
+  title="Voltar à cidade"
+  [subtitle]="
+    inSheet
+      ? 'Converte o ouro em XP, 1 XP por PO. Dá para desfazer.'
+      : 'Converte o ouro encontrado em XP, 1 XP por PO, num prêmio só. Dá para desfazer.'
+  "
+  titleId="sheet-t"
+  [phone]="inSheet"
+  (closed)="cancel()"
+>
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+
+  @if (treasures().length === 0) {
+    <p class="none">
+      Nenhum tesouro encontrado para converter. Quando o grupo achar um, o mestre marca no mapa e ele aparece aqui.
+    </p>
+  } @else {
+    <section aria-labelledby="town-t">
+      <h3 class="h" id="town-t">Tesouros para converter</h3>
+      <ul class="trows">
+        @for (t of treasures(); track t.pointId) {
+          <li class="trow">
+            <app-check-box
+              [checked]="checkedTreasures().has(t.pointId)"
+              [label]="'Converter ' + t.name"
+              (toggle)="toggleTreasure(t.pointId)"
+            />
+            <span class="trow__who">
+              <span class="trow__name">{{ t.name }}</span>
+              <span class="trow__sub">{{ foundLine(t) }}</span>
+              @if (!t.foundInSession) {
+                <span class="trow__sub">Encontrado fora de uma sessão: não conta em nenhum resumo de sessão.</span>
+              }
+            </span>
+            <span class="trow__po">{{ po(t.valuePo) }}</span>
+          </li>
+        }
+      </ul>
+      @if (more() > 0) {
+        <p class="note">Há mais {{ count(more()) }} encontrados, que ficam para a próxima vez.</p>
+      }
+    </section>
+
+    <section aria-labelledby="town-p">
+      <h3 class="h" id="town-p">Quem recebe</h3>
+      @if (data.rows.length === 0) {
+        <p class="note">Nenhum personagem de jogador vivo nesta campanha.</p>
+      } @else {
+        <ul class="people">
+          @for (r of data.rows; track r.id) {
+            <li class="person">
+              <app-check-box
+                [checked]="checkedPeople().has(r.id)"
+                [label]="'Marcar ' + r.name"
+                (toggle)="togglePerson(r.id)"
+              />
+              <span class="person__who">
+                <span class="person__name">{{ r.name }}</span>
+                <span class="person__sub">{{ r.sub }}</span>
+              </span>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+
+  }
+
+  <div foot class="foot">
+    @if (treasures().length > 0) {
+      @if (waiting()) {
+        <div class="calc calc--wait"><p class="calc__small">{{ waiting() }}</p></div>
+      } @else {
+        <div class="calc">
+          <p class="calc__small calc__sum">{{ calc().sum }}</p>
+          <p class="calc__big">{{ calc().big }}</p>
+          <p class="calc__small">{{ calc().left }}</p>
+        </div>
+      }
+      <p class="mr-visually-hidden" role="status" aria-live="polite">{{ announcement() }}</p>
+    }
+    <app-xp-actions
+      [primaryLabel]="primaryLabel()"
+      primaryIcon="currency_exchange"
+      [secondaryLabel]="treasures().length === 0 ? 'Fechar' : 'Cancelar'"
+      [primaryHidden]="treasures().length === 0"
+      [secondaryStyle]="inSheet ? 'text' : 'outlined'"
+      align="end"
+      [blocked]="treasures().length === 0 || !!waiting()"
+      [busy]="busy()"
+      (primary)="give()"
+      (secondary)="cancel()"
+    />
+  </div>
+</app-sheet-frame>

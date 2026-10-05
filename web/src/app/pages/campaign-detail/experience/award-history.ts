@@ -17,6 +17,7 @@ import { newKey } from '../../../core/connect/idempotency';
 import { ExperienceStore } from '../../../core/progression/experience-store';
 import { ProgressionClient } from '../../../core/progression/progression-client';
 import { xpAborted, xpErrorMessage } from '../../../core/progression/xp-errors';
+import { awardTitle, townUndoneText } from '../../../core/progression/treasure';
 import {
   awardEach,
   awardTotal,
@@ -56,6 +57,8 @@ export class AwardHistory {
   readonly campaignId = input.required<string>();
   /** XP numbers are not shown in a campaign that levels by milestones. */
   readonly milestones = input(false);
+  /** The master reads which awards can still be undone, and why not. */
+  readonly isMaster = input(false);
 
   protected readonly awards = this.store.awards;
   protected readonly hasMore = computed(() => this.store.nextPageToken() !== '');
@@ -76,6 +79,7 @@ export class AwardHistory {
   protected readonly tag = modeTag;
   protected readonly when = awardWhen;
   protected readonly given = givenLine;
+  protected readonly heading = awardTitle;
   protected readonly each = awardEach;
   protected readonly total = awardTotal;
   protected readonly undone = undoneLine;
@@ -121,7 +125,9 @@ export class AwardHistory {
       this.notice.set(
         award.mode === XPAwardMode.XP_AWARD_MODE_MILESTONE
           ? 'Marco desfeito.'
-          : 'XP desfeito: o histórico guarda o prêmio como “Desfeito”.',
+          : award.treasureCount > 0
+            ? townUndoneText(award)
+            : 'XP desfeito: o histórico guarda o prêmio como “Desfeito”.',
       );
       await this.store.refresh();
     } catch (err) {

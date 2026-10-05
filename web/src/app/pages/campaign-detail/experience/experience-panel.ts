@@ -4,7 +4,9 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { XpMode } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { ExperienceStore } from '../../../core/progression/experience-store';
+import { townGivenText } from '../../../core/progression/treasure';
 import { experienceLead, givenText, milestoneText } from '../../../core/progression/xp-labels';
+import { TreasureStrip } from '../../../shared/xp/treasure-strip';
 import { type GiveResult, XpGiveButton } from '../../../shared/xp/xp-give-button';
 import { MilestonesPanel } from '../milestones/milestones-panel';
 import { AwardHistory } from './award-history';
@@ -21,7 +23,7 @@ import { XpRows } from './xp-rows';
  */
 @Component({
   selector: 'app-experience-panel',
-  imports: [AwardHistory, MatButtonModule, MatIconModule, MilestonesPanel, XpGiveButton, XpRows],
+  imports: [AwardHistory, MatButtonModule, MatIconModule, MilestonesPanel, TreasureStrip, XpGiveButton, XpRows],
   templateUrl: './experience-panel.html',
   styleUrl: './experience-panel.scss',
 })
@@ -67,8 +69,9 @@ export class ExperiencePanel {
 
   protected async given(result: GiveResult): Promise<void> {
     if (result.kind === 'xp') {
+      const { award, xpEach, lostXp } = result.result;
       this.confirmation.set(
-        givenText(result.result.award.totalXp, result.result.xpEach, result.result.lostXp),
+        award.treasureCount > 0 ? townGivenText(award, xpEach, lostXp) : givenText(award.totalXp, xpEach, lostXp),
       );
     } else {
       this.confirmation.set(

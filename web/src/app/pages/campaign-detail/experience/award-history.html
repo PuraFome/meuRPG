@@ -47,10 +47,12 @@
           }
         </div>
         <div class="what">
-          <span class="what__title">{{ a.reason }}</span>
+          <span class="what__title">{{ heading(a) }}</span>
           <span class="what__sub">{{ given(a) }}</span>
           @if (a.undone) {
             <span class="what__sub">{{ undone(a) }}</span>
+          } @else if (isMaster() && a.treasureCount > 0 && !a.canUndo) {
+            <span class="what__sub">Só o último prêmio pode ser desfeito: desfaça os mais novos antes, e estes tesouros ficam livres.</span>
           }
         </div>
         @if (!milestones() && a.mode !== Mode.XP_AWARD_MODE_MILESTONE) {
@@ -65,7 +67,7 @@
             type="button"
             class="undo"
             [attr.data-undo]="a.id"
-            [attr.aria-label]="'Desfazer ' + a.reason"
+            [attr.aria-label]="'Desfazer ' + heading(a)"
             (click)="ask(a)"
           >
             <mat-icon aria-hidden="true">undo</mat-icon>Desfazer

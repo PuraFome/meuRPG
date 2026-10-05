@@ -5,7 +5,9 @@ import { XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import {
   CharacterExperienceSchema,
   GetCampaignExperienceResponseSchema,
+  ListTreasuresToConvertResponseSchema,
   ListXPAwardsResponseSchema,
+  TreasureToConvertSchema,
   XPAwardMode,
   XPAwardSchema,
 } from '../../../gen/meurpg/progression/v1/progression_pb';
@@ -142,5 +144,59 @@ describe('ExperienceStore', () => {
     expect(s.awardsState()).toBe('loading');
     await next;
     expect(api.experience).toHaveBeenLastCalledWith('c2');
+  });
+
+  describe('the treasures to convert (E9-09, master only)', () => {
+    const found = create(TreasureToConvertSchema, { pointId: 'c', name: 'Baú de moedas', valuePo: 250 });
+
+    function withTreasures(mode: XpMode) {
+      api.experience.mockResolvedValue({ ...experience(2600), xpMode: mode });
+      (api as Record<string, unknown>)['listTreasures'] = vi.fn().mockResolvedValue(
+        create(ListTreasuresToConvertResponseSchema, { treasures: [found], total: 130 }),
+      );
+      return (api as unknown as { listTreasures: ReturnType<typeof vi.fn> }).listTreasures;
+    }
+
+    it('reads them for the master in a campaign that counts XP, with the total the server holds', async () => {
+      const listTreasures = withTreasures(XpMode.GOLD);
+      const s = store();
+      await s.load('camp-1', true, true);
+      expect(listTreasures).toHaveBeenCalledWith('camp-1');
+      expect(s.treasures().map((t) => t.name)).toEqual(['Baú de moedas']);
+      expect(s.treasuresTotal()).toBe(130);
+      expect(s.treasuresState()).toBe('ready');
+    });
+
+    it('never asks for a player, nor in a campaign by milestones', async () => {
+      const listTreasures = withTreasures(XpMode.GOLD);
+      await store().load('camp-1', true);
+      expect(listTreasures).not.toHaveBeenCalled();
+      TestBed.resetTestingModule();
+      const miles = withTreasures(XpMode.MILESTONES);
+      await store().load('camp-1', true, true);
+      expect(miles).not.toHaveBeenCalled();
+    });
+
+    it('reads them again on refresh (after an award or an undo)', async () => {
+      const listTreasures = withTreasures(XpMode.GOLD);
+      const s = store();
+      await s.load('camp-1', false, true);
+      await s.refresh();
+      expect(listTreasures).toHaveBeenCalledTimes(2);
+    });
+
+    it('says it could not read them, and keeps what it had when a later read fails', async () => {
+      const listTreasures = withTreasures(XpMode.GOLD);
+      listTreasures.mockRejectedValueOnce(new Error('down'));
+      const s = store();
+      await s.load('camp-1', false, true);
+      expect(s.treasuresState()).toBe('error');
+      await s.loadTreasures();
+      expect(s.treasuresState()).toBe('ready');
+      listTreasures.mockRejectedValueOnce(new Error('down'));
+      await s.loadTreasures();
+      expect(s.treasures()).toHaveLength(1);
+      expect(s.treasuresState()).toBe('ready');
+    });
   });
 });

@@ -132,8 +132,9 @@ export class CampaignDetail {
       (state: PageState) => {
         this.state.set(state);
         if (state.status === 'ready') {
-          // Every member reads the XP; the history comes with it.
-          void this.experience.load(campaignId, true);
+          // Every member reads the XP; the history comes with it. Only the master
+          // reads the treasures waiting to be converted ("Voltar à cidade").
+          void this.experience.load(campaignId, true, state.campaign.myRole === Role.MASTER);
         }
       },
       (err: unknown) => {

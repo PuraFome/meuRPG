@@ -1,0 +1,101 @@
+:host {
+  display: block;
+}
+
+// The grey band of the artboards: the icon, the words, and (in "Dar XP") the
+// outlined button. A phone drops the button under the words, full width.
+.strip {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--mr-space-3);
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-ground);
+
+  @media (min-width: 768px) {
+    &:has(.strip__go) {
+      grid-template-columns: 24px minmax(0, 1fr) auto;
+    }
+  }
+}
+
+// The icon sits on the middle of the small label's first line.
+.strip__icon {
+  width: 24px;
+  height: 24px;
+  margin-top: -1px;
+  font-size: 24px;
+  color: var(--mr-ink);
+}
+
+.strip__body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.strip__label {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 18px;
+  color: var(--mr-ink-muted);
+}
+
+.strip__big {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 22px;
+  line-height: 28px;
+}
+
+.strip__line {
+  margin: 2px 0 0;
+  font-size: 16px;
+  line-height: 21px;
+}
+
+.strip__list {
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  line-height: 21px;
+  color: var(--mr-ink-muted);
+}
+
+.strip__more,
+.strip__why {
+  margin: 2px 0 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.strip__why {
+  margin-top: var(--mr-space-2);
+  color: var(--mr-ink);
+}
+
+.strip__retry {
+  --mat-button-text-label-text-color: var(--mr-accent-text);
+}
+
+.strip__go {
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-accent-text);
+  grid-column: 1 / -1;
+  width: 100%;
+  white-space: nowrap;
+
+  @media (min-width: 768px) {
+    --mat-button-outlined-container-height: 44px;
+    grid-column: auto;
+    width: 176px;
+    align-self: center;
+  }
+}
