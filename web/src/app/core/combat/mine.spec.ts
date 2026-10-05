@@ -1,6 +1,6 @@
 import { CombatantKind } from '../../../gen/meurpg/play/v1/combat_pb';
 import { combatant, encounter } from './combat-testing';
-import { CHARACTER_TAB, mineTabs, tabWord } from './mine';
+import { CHARACTER_TAB, actingTab, membersToEnd, mineTabs, tabWord, validTab } from './mine';
 
 const salvia = combatant({ id: 's', label: 'Sálvia', kind: CombatantKind.PLAYER, mine: true, controlledByMe: true, initiative: 13 });
 const wolf = (n: number, over = {}) =>
@@ -33,5 +33,24 @@ describe('the tabs of what a player plays', () => {
     const tabs = mineTabs(encounter({ combatants: [salvia, nanquim], currentCombatantId: 'n', turnGroupIds: ['n'] }));
     expect(tabs.map((t) => t.label)).toEqual(['Sálvia', 'Nanquim']);
     expect(tabs[1].state).toBe('turn');
+  });
+});
+
+describe('following the turn and ending a part', () => {
+  const joint = encounter({ combatants: [salvia, goblin, wolf(1), wolf(2)], currentCombatantId: 'w1', turnGroupIds: ['w1', 'w2'] });
+
+  it('the page follows the turn to the tab that acts, and goes back to the character when the creatures are gone', () => {
+    expect(actingTab(mineTabs(joint))).toBe('cast-1');
+    expect(actingTab(mineTabs(encounter({ combatants: [salvia, goblin, wolf(1), wolf(2)], currentCombatantId: 'g', turnGroupIds: ['g'] })))).toBe('');
+    expect(validTab(mineTabs(joint), 'cast-1')).toBe('cast-1');
+    // The wolves left (concentration lost): the tab is not there any more.
+    expect(validTab(mineTabs(encounter({ combatants: [salvia, goblin], currentCombatantId: 's' })), 'cast-1')).toBe(CHARACTER_TAB);
+  });
+
+  it('ends the part of each member that still acts, and never one that ended already', () => {
+    const tab = mineTabs(joint).find((t) => t.id === 'cast-1')!;
+    expect(membersToEnd(joint, tab).map((m) => m.id)).toEqual(['w1', 'w2']);
+    const one = encounter({ combatants: [salvia, goblin, wolf(1, { turnPartEnded: true }), wolf(2)], currentCombatantId: 'w1', turnGroupIds: ['w1', 'w2'] });
+    expect(membersToEnd(one, tab).map((m) => m.id)).toEqual(['w2']);
   });
 });

@@ -2,7 +2,7 @@ import { expect, type Page } from '@playwright/test';
 
 import { combatRPC, getEncounterRPC, setGridRPC, startEncounterRPC, toren, torenSheet, type CombatTable, type Encounter } from './combat-support';
 import { CAVE, CAVE_COLUMNS, caveImage, squareBp } from './fog-support';
-import { startSessionRPC } from './live-session-support';
+import { endOpenSessionRPC, startSessionRPC } from './live-session-support';
 import { createMapRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, uploadImageRPC } from './maps-support';
 import { callRPC, characterRpcBody, createCharacterRPC, pensantus, type CharacterBuild } from './support';
 
@@ -109,42 +109,63 @@ export async function tableForCreatureCombat(master: Page, heroPlayer: Page, tor
   expect(captain.ok(), await captain.text()).toBeTruthy();
   const captainId = (await captain.json()).character.id as string;
 
-  const sessionId = await startSessionRPC(master, campaignId);
-  await master.goto('/');
-  const image = await uploadImageRPC(master, campaignId, 'A caverna do Vale Seco', await caveImage(master));
-  const mapId = await createMapRPC(master, campaignId, 'A caverna do Vale Seco', image);
-  await revealMapRPC(master, campaignId, mapId);
-  await setCurrentMapRPC(master, campaignId, mapId);
-  await setGridRPC(master, campaignId, mapId, CAVE_COLUMNS);
-  const place = (id: string, col: number, row: number) => {
-    const { xBp, yBp } = squareBp(col, row);
-    return placeTokenRPC(master, campaignId, mapId, id, xBp, yBp);
-  };
-  await place(heroId, 5, 8);
-  await place(torenId, 6, 7);
-  for (const [id, col, row] of [[goblin1Id, 18, 5], [goblin2Id, 20, 7], [captainId, 21, 3]] as const) {
-    await place(id, col, row);
-    const shown = await callRPC(master, 'meurpg.maps.v1.MapService/SetMapTokenHidden', { campaignId, mapId, characterId: id, hidden: false });
-    expect(shown.ok(), await shown.text()).toBeTruthy();
-  }
+  // The session is open from here: a setup that fails after it still ends it, so no open session is left behind.
+  try {
+    const sessionId = await startSessionRPC(master, campaignId);
+    await master.goto('/');
+    const image = await uploadImageRPC(master, campaignId, 'A caverna do Vale Seco', await caveImage(master));
+    const mapId = await createMapRPC(master, campaignId, 'A caverna do Vale Seco', image);
+    await revealMapRPC(master, campaignId, mapId);
+    await setCurrentMapRPC(master, campaignId, mapId);
+    await setGridRPC(master, campaignId, mapId, CAVE_COLUMNS);
+    const place = (id: string, col: number, row: number) => {
+      const { xBp, yBp } = squareBp(col, row);
+      return placeTokenRPC(master, campaignId, mapId, id, xBp, yBp);
+    };
+    await place(heroId, 5, 8);
+    await place(torenId, 6, 7);
+    for (const [id, col, row] of [[goblin1Id, 18, 5], [goblin2Id, 20, 7], [captainId, 21, 3]] as const) {
+      await place(id, col, row);
+      const shown = await callRPC(master, 'meurpg.maps.v1.MapService/SetMapTokenHidden', { campaignId, mapId, characterId: id, hidden: false });
+      expect(shown.ok(), await shown.text()).toBeTruthy();
+    }
 
-  let familiarId: string | undefined;
-  if (options.nanquim) {
-    const cast = await callRPC(heroPlayer, 'meurpg.play.v1.PlayService/CastSummon', {
-      campaignId,
-      characterId: heroId,
-      spellKey: 'spell:find-familiar',
-      ritual: true,
-      summon: { option: 0, creatureKeys: ['monster:raven'], names: ['Nanquim'] },
-      idempotencyKey: crypto.randomUUID(),
-    });
-    expect(cast.ok(), await cast.text()).toBeTruthy();
-    familiarId = (await cast.json()).creatureIds[0] as string;
-    const { xBp, yBp } = squareBp(5, 9);
-    const placed = await callRPC(master, 'meurpg.maps.v1.MapService/PlaceMapToken', { campaignId, mapId, creatureId: familiarId, xBp, yBp });
-    expect(placed.ok(), await placed.text()).toBeTruthy();
+    let familiarId: string | undefined;
+    if (options.nanquim) {
+      const cast = await callRPC(heroPlayer, 'meurpg.play.v1.PlayService/CastSummon', {
+        campaignId,
+        characterId: heroId,
+        spellKey: 'spell:find-familiar',
+        ritual: true,
+        summon: { option: 0, creatureKeys: ['monster:raven'], names: ['Nanquim'] },
+        idempotencyKey: crypto.randomUUID(),
+      });
+      expect(cast.ok(), await cast.text()).toBeTruthy();
+      familiarId = (await cast.json()).creatureIds[0] as string;
+      const { xBp, yBp } = squareBp(5, 9);
+      const placed = await callRPC(master, 'meurpg.maps.v1.MapService/PlaceMapToken', { campaignId, mapId, creatureId: familiarId, xBp, yBp });
+      expect(placed.ok(), await placed.text()).toBeTruthy();
+    }
+    return { campaignId, sessionId, mapId, heroId, torenId, goblin1Id, goblin2Id, captainId, familiarId };
+  } catch (err) {
+    await endOpenSessionRPC(master, campaignId).catch(() => undefined);
+    throw err;
   }
-  return { campaignId, sessionId, mapId, heroId, torenId, goblin1Id, goblin2Id, captainId, familiarId };
+}
+
+/**
+ * The player taps "Encerrar turno" and waits until the server has really passed the turn on: the tap returns before the call
+ * is answered, and a spec that read the turn at once would see the old one still there and go on to the wrong screen.
+ */
+export async function endTurnOf(player: Page, master: Page, campaignId: string, label: string): Promise<void> {
+  await player.getByRole('button', { name: 'Encerrar turno' }).click();
+  await expect
+    .poll(async () => {
+      const e = await getEncounterRPC(master, campaignId);
+      const group = e.turnGroupIds?.length ? e.turnGroupIds : [e.currentCombatantId ?? ''];
+      return group.some((id) => e.combatants.find((c) => c.id === id)?.label === label);
+    })
+    .toBe(false);
 }
 
 /** The session page's route. */

@@ -12,7 +12,7 @@ import {
   PlayService,
   ShownImage,
 } from '../../../gen/meurpg/play/v1/play_pb';
-import { Recharge } from '../../../gen/meurpg/rules/v1/rules_pb';
+import { ContentService, Recharge } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { CONNECT_TRANSPORT } from '../../core/connect/transport';
 import { metersText } from '../../core/units';
 import {
@@ -119,6 +119,7 @@ export class LiveSessionSourceLive implements LiveSessionSource {
   private readonly play = createClient(PlayService, this.transport);
   private readonly characters = createClient(CharacterService, this.transport);
   private readonly campaigns = createClient(CampaignService, this.transport);
+  private readonly content = createClient(ContentService, this.transport);
 
   async getCampaign(campaignId: string): Promise<CampaignInfoVm> {
     const res = await this.campaigns.getCampaign({ campaignId });
@@ -295,6 +296,11 @@ export class LiveSessionSourceLive implements LiveSessionSource {
       summary: [classes, race].filter(Boolean).join(', '),
       senses: derived?.senses.map((s) => `${s.namePt}: ${metersText(s.rangeFt)}`) ?? [],
     };
+  }
+
+  async getCreatureArmorClass(campaignId: string, key: string): Promise<number | null> {
+    const res = await this.content.getCreature({ campaignId, key });
+    return res.creature?.armorClass ?? null;
   }
 
   async getPartyInfo(campaignId: string): Promise<ReadonlyMap<string, PartyMemberInfoVm>> {

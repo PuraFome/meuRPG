@@ -2,9 +2,10 @@ import { Component, computed, effect, inject, input, output, signal, untracked }
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import { type Combatant, CreatureAttack, type GetTurnOptionsResponse } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { type Combatant, CreatureAttack, type GetTurnOptionsResponse, type PendingDamage } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import type { ActionOption, AttackOption } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { attackDetail, attackName, reasonText } from '../../../../core/combat/combat-options';
+import { article } from '../../../../core/combat/combat-log';
 import { stateWord } from '../../../../core/combat/combat-view';
 import { CreaturesClient } from '../../../../core/creatures/creatures-client';
 import { tight } from '../../../../core/format/text';
@@ -44,6 +45,8 @@ export class CreatureBlock {
   readonly busy = input(false);
   /** Why nothing can be done now ("Esperando a reação do mestre"); empty when free. */
   readonly locked = input('');
+  /** A hit of this creature whose damage is not rolled yet (the sheet was closed): it blocks ending the turn. */
+  readonly pending = input<PendingDamage | null>(null);
 
   /** "Atacar": the attack's key. */
   readonly attack = output<string>();
@@ -52,6 +55,8 @@ export class CreatureBlock {
   /** A standard action, by key ("standard:dash"). */
   readonly action = output<string>();
   readonly move = output<void>();
+  /** "Rolar o dano" of the pending hit. */
+  readonly rollDamage = output<void>();
 
   /** The armor class of its book; the combat does not send one to a player (RN-20). */
   protected readonly ac = signal<number | null>(null);
@@ -70,7 +75,7 @@ export class CreatureBlock {
       return this.locked();
     }
     if (!this.acting()) {
-      return this.ended() ? 'Esta parte do turno já foi encerrada.' : 'Ainda não é a vez dela.';
+      return this.ended() ? 'Esta parte do turno já foi encerrada.' : `Ainda não é a vez ${article(this.creature().label) === 'a' ? 'dela' : 'dele'}.`;
     }
     return '';
   });
@@ -90,6 +95,8 @@ export class CreatureBlock {
     (this.options()?.options?.standardActions ?? []).filter((a) => !/^standard:(attack|cast-a-spell)$/.test(a.action?.key ?? '')),
   );
 
+  /** "do Lobo atroz 1", "da Cobra 2". */
+  protected readonly ofCreature = computed(() => `${article(this.creature().label) === 'a' ? 'da' : 'do'} ${this.creature().label}`);
   protected readonly attackName = attackName;
   protected readonly reasonText = reasonText;
   protected readonly reactionWhy = computed(() => (this.creature().reactionUsed ? 'Reação já usada' : ''));

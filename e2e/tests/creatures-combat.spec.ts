@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { combatRPC, getEncounterRPC, passTurnsTo, type Encounter } from './combat-support';
-import { beginCreatureCombat, hitAndApply, sessionRoute, tableForCreatureCombat, tapCaveSquare } from './creatures-combat-support';
+import { beginCreatureCombat, endTurnOf, hitAndApply, sessionRoute, tableForCreatureCombat, tapCaveSquare } from './creatures-combat-support';
 import { endOpenSessionRPC } from './live-session-support';
 import { callRPC, newSignedInContext } from './support';
 
@@ -21,7 +21,16 @@ async function tables(browser: import('@playwright/test').Browser, name: string,
   await m.goto('/');
   await p.goto('/');
   await t.goto('/');
-  const table = await tableForCreatureCombat(m, p, t, `${name} ${Date.now()}`, options);
+  let table: Awaited<ReturnType<typeof tableForCreatureCombat>>;
+  try {
+    // The session starts inside the helper's own try: a setup that fails after it ends the session there.
+    table = await tableForCreatureCombat(m, p, t, `${name} ${Date.now()}`, options);
+  } catch (err) {
+    await mc.close();
+    await pc.close();
+    await tc.close();
+    throw err;
+  }
   const done = async () => {
     await endOpenSessionRPC(m, table.campaignId);
     await mc.close();
@@ -51,13 +60,13 @@ test(
       // The dialog's name is its title, which changes to "Lobos atrozes conjurados" with the result.
     const sheet = p.getByRole('dialog');
       await expect(sheet.getByText('Escolha a criatura.')).toBeVisible();
-      await sheet.getByText('2 criaturas de ND 1 ou menos').click();
-      await sheet.getByRole('button', { name: 'Mais Lobo atroz' }).click();
+      await sheet.getByText('2 feras de ND 1 ou menos').click();
+      await sheet.getByRole('button', { name: 'Escolher Lobo atroz' }).click();
       await sheet.getByRole('button', { name: 'Mais Lobo atroz' }).click();
       await expect(sheet.getByText('Se você perder a concentração, os 2 Lobos atrozes somem.')).toBeVisible();
       await sheet.getByRole('button', { name: 'Digitar o d20 de um dado físico' }).click();
       await sheet.getByLabel('Role 1d20 para a iniciativa das criaturas').fill('8');
-      await sheet.getByRole('button', { name: 'Conjurar os animais' }).click();
+      await sheet.getByRole('button', { name: 'Conjurar Animais', exact: true }).click();
       await expect(sheet.getByRole('heading', { name: 'Lobos atrozes conjurados' })).toBeVisible();
       await expect(sheet.getByText('Os 2 Lobos atrozes entram no combate com iniciativa 10 (um d20 para os dois: 8 + 2). Eles agem juntos, depois da Sálvia.')).toBeVisible();
       await expect(sheet.getByText('CA 14 · PV 37 de 37 · 15 m')).toHaveCount(2);
@@ -67,7 +76,7 @@ test(
       const tabs = p.getByRole('tablist', { name: 'O que você joga' });
       await expect(tabs.getByRole('tab', { name: /Sálvia/ })).toHaveAttribute('aria-selected', 'true');
       await expect(tabs.getByRole('tab', { name: /Lobos atrozes \(2\)/ })).toContainText('Espera · vez 10');
-      await p.getByRole('button', { name: 'Encerrar turno' }).click();
+      await endTurnOf(p, m, campaignId, 'Sálvia');
 
       // The wolves' turn: the page follows the turn to their tab, one block each, one joint turn.
       await expect(p.getByRole('heading', { name: 'Vez dos seus Lobos atrozes' })).toBeVisible();
@@ -80,11 +89,16 @@ test(
       // Toren sees the group by name and the state words, never a number of theirs (RN-20).
       await t.goto(sessionRoute(campaignId));
       await expect(t.getByRole('heading', { name: 'Vez dos Lobos atrozes da Sálvia' })).toBeVisible();
-      await expect(t.getByText(/37 de 37/)).toHaveCount(0);
+      // The screen says no number of theirs either: not the hit points, the armor class, nor what they can do.
+      const page = t.locator('main');
+      for (const text of [/37 de 37/, /PV 37/, /CA 14/, /Atacar com/, /Mover o Lobo/, /Ainda tem/, /Mordida/]) {
+        await expect(page.getByText(text)).toHaveCount(0);
+      }
+      await expect(t.getByRole('button', { name: /Lobo atroz/ })).toHaveCount(0);
       const seen = await getEncounterRPC(t, campaignId);
       const wolfForToren = seen.combatants.find((c) => c.label === 'Lobo atroz 1') as unknown as Record<string, unknown>;
       expect(wolfForToren).toBeTruthy();
-      for (const field of ['hitPointsCurrent', 'hitPointsMax', 'armorClass', 'creatureAttack', 'summonGroupId', 'movementLeftDft']) {
+      for (const field of ['hitPointsCurrent', 'hitPointsMax', 'armorClass', 'creatureAttack', 'summonGroupId', 'movementLeftDft', 'creatureId', 'initiativeFace', 'initiativeBonus']) {
         expect(wolfForToren[field], field).toBeUndefined();
       }
       expect(wolfForToren['state']).toBe('COMBATANT_STATE_UNHURT');
@@ -100,18 +114,34 @@ test(
       await expect(blocks.nth(1).locator('.tile').nth(1)).toContainText('15,0 m');
 
       await p.getByRole('button', { name: 'Atacar com Mordida: Lobo atroz 2' }).click();
-      const attack = p.getByRole('dialog', { name: /Atacar com Mordida/ });
+      // The dialog's name is its title, which changes while a number is typed: the page has one dialog open.
+      const attack = p.getByRole('dialog');
       await attack.locator('label', { hasText: 'Goblin 1' }).click();
-      await attack.getByRole('button', { name: 'Rolar no app' }).click();
-      await expect(attack.getByText(/CA|Acertou|Errou/).first()).toBeVisible();
-      await attack.getByRole('button', { name: 'Fechar' }).last().click().catch(() => p.keyboard.press('Escape'));
+      // A physical die: 18 + 5 hits the goblin's 15.
+      await attack.getByRole('button', { name: 'Digitar o resultado' }).click();
+      await attack.getByLabel(/Role 1d20 para Mordida/).fill('18');
+      await attack.getByRole('button', { name: 'Confirmar 18' }).click();
+      await expect(attack.getByText('Acertou: role o dano.')).toBeVisible();
+      // The sheet is closed before the damage: the creature says it is owed, and it blocks its turn.
+      await attack.getByRole('button', { name: 'Fechar' }).first().click();
+      await expect(blocks.nth(1)).toContainText('Falta rolar o dano do ataque do Lobo atroz 2.');
+      await blocks.nth(1).getByRole('button', { name: 'Rolar o dano: Lobo atroz 2' }).click();
+      const damage = p.getByRole('dialog');
+      await damage.getByRole('button', { name: 'Digitar o resultado' }).click();
+      await damage.getByLabel(/Role 2d6/).fill('7');
+      await damage.getByRole('button', { name: 'Confirmar 7' }).click();
+      await expect(damage.getByText(/Goblin 1/).first()).toBeVisible();
+      await damage.getByRole('button', { name: 'Voltar à sua vez' }).click();
+      await expect(blocks.nth(1)).not.toContainText('Falta rolar o dano');
       await expect(blocks.nth(1).locator('.tile').first()).toContainText('Usada');
       await expect(blocks.first().locator('.tile').first()).toContainText('Disponível');
 
-      // One button ends both parts: it asks first, "Voltar" has the focus.
+      // One button ends both parts: it asks first, says what is left, "Voltar" has the focus and the tabs wait.
       await p.getByRole('button', { name: 'Encerrar a parte dos Lobos' }).click();
       const ask = p.getByRole('alertdialog');
       await expect(ask.getByRole('button', { name: 'Voltar' })).toBeFocused();
+      await expect(ask).toContainText('Os 2 Lobos ainda têm ação e movimento.');
+      await expect(p.locator('app-mine-tabs').first()).toHaveAttribute('inert', '');
       await ask.getByRole('button', { name: 'Encerrar a parte dos Lobos' }).click();
       await expect.poll(async () => {
         const e = await getEncounterRPC(m, campaignId);
@@ -122,13 +152,14 @@ test(
       await m.goto(sessionRoute(campaignId));
       const order = m.getByRole('region', { name: 'Ordem de iniciativa' });
       await expect(order.getByText('Lobos atrozes da Sálvia ·')).toBeVisible();
-      await expect(order.getByText('Criatura · CA 14 · da Sálvia')).toHaveCount(2);
-      await expect(order.getByText('Se concentra em Conjurar Animais · 2 Lobos atrozes')).toBeVisible();
+      await expect(order.getByText('CA 14 · da Sálvia')).toHaveCount(2);
+      await expect(order.getByText('Concentra em Conjurar Animais · 2 Lobos atrozes')).toBeVisible();
       await order.getByRole('button', { name: 'Perdeu a concentração' }).click();
-      const question = order.getByRole('alertdialog', { name: 'Perdeu a concentração: Sálvia' });
+      const question = order.getByRole('alertdialog', { name: 'A Sálvia perdeu a concentração?' });
       await expect(question.getByRole('button', { name: 'Voltar' })).toBeFocused();
-      await expect(question).toContainText('Conjurar Animais acaba e os 2 Lobos atrozes somem do combate, da ordem e do mapa. Isso não se desfaz.');
-      await question.getByRole('button', { name: 'Dispensar as criaturas' }).click();
+      await expect(question).toContainText('Conjurar Animais acaba e os 2 Lobos atrozes somem do combate, da ordem e do mapa.');
+      await expect(question).not.toContainText('Isso não se desfaz');
+      await question.getByRole('button', { name: 'Dispensar os Lobos' }).click();
       await expect(order.getByText('Lobo atroz 1')).toHaveCount(0);
 
       // Her phone says so and stays until touched; the tabs are gone.
@@ -196,7 +227,7 @@ test(
       await expect(notice).toHaveCount(0);
 
       // Next round her action is free again: back through the bonus action, with no notice for what she did herself.
-      await p.getByRole('button', { name: 'Encerrar turno' }).click();
+      await endTurnOf(p, m, campaignId, 'Sálvia');
       await passTurnsTo(m, campaignId, 'Sálvia');
       await expect(p.getByRole('heading', { name: 'Sua vez, Sálvia' })).toBeVisible();
       await p.getByRole('button', { name: 'Transformar: Forma Selvagem' }).click();

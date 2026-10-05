@@ -2,6 +2,7 @@ import { Component, computed, input, output, signal, viewChild, ElementRef } fro
 import { MatIconModule } from '@angular/material/icon';
 
 import type { Combatant } from '../../../gen/meurpg/play/v1/combat_pb';
+import { CreatureSize } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { DFT_PER_SQUARE, type Square, squareAt, squareCenter, stepSquare } from '../../core/combat/combat-grid';
 import type { MapLayers } from '../../core/maps/layers';
 import { conditionTags } from '../../core/combat/conditions';
@@ -126,6 +127,20 @@ export class CombatMap {
   protected readonly shown = computed(() =>
     this.combatants().filter((c) => c.placed && (this.isMaster() || !c.hidden)),
   );
+  /** The squares each token covers, for the "Vez" word: it goes where it covers none (a Large creature is drawn on 2 × 2). */
+  private readonly occupied = computed(() => {
+    const cells = new Set<string>();
+    for (const c of this.shown()) {
+      const at = this.anchor(c);
+      const n = this.span(c);
+      for (let dc = 0; dc < n; dc++) {
+        for (let dr = 0; dr < n; dr++) {
+          cells.add(`${at.col + dc},${at.row + dr}`);
+        }
+      }
+    }
+    return cells;
+  });
   protected readonly aspect = computed(() => `${this.image().width} / ${this.image().height}`);
   protected readonly widthPx = computed(() => {
     const cell = this.cellPx();
@@ -198,6 +213,63 @@ export class CombatMap {
 
   protected creature(c: Combatant): boolean {
     return isCreature(c);
+  }
+
+  /** How many squares a side of the token is drawn on: Large is 2, Huge 3, Gargantuan 4 (the picture only: the server still counts one square). */
+  protected span(c: Combatant): number {
+    const n = Math.max(1, Math.min(c.size >= CreatureSize.LARGE ? c.size - 2 : 1, this.columns(), this.rows()));
+    if (n === 1) {
+      return 1;
+    }
+    // Two big creatures side by side (two wolves) would be drawn over each other: where another token sits on the squares
+    // it would take, it is drawn on its own square.
+    const at = this.place(c);
+    const col = Math.max(0, Math.min(at.col, this.columns() - n));
+    const row = Math.max(0, Math.min(at.row, this.rows() - n));
+    const others = this.shown().filter((o) => o.id !== c.id);
+    const blocked = others.some((o) => {
+      const p = this.place(o);
+      return p.col >= col && p.col < col + n && p.row >= row && p.row < row + n;
+    });
+    return blocked ? 1 : n;
+  }
+
+  /** The top-left square of the drawing, pulled back so a big token stays on the map. */
+  private anchor(c: Combatant): Square {
+    const at = this.place(c);
+    const n = this.span(c);
+    return { col: Math.max(0, Math.min(at.col, this.columns() - n)), row: Math.max(0, Math.min(at.row, this.rows() - n)) };
+  }
+
+  /** The centre of the drawing, in percent of the map. */
+  protected centerX(c: Combatant): number {
+    return ((this.anchor(c).col + this.span(c) / 2) / this.columns()) * 100;
+  }
+
+  protected centerY(c: Combatant): number {
+    return ((this.anchor(c).row + this.span(c) / 2) / this.rows()) * 100;
+  }
+
+  /** Where the "Vez" word of the token on turn goes: above it, unless a token or the edge is there; then below, to the right, to the left. */
+  protected turnSide(c: Combatant): 'above' | 'below' | 'right' | 'left' {
+    const at = this.anchor(c);
+    const n = this.span(c);
+    const taken = this.occupied();
+    const free = (cells: [number, number][]) => cells.every(([col, row]) => col >= 0 && row >= 0 && col < this.columns() && row < this.rows() && !taken.has(`${col},${row}`));
+    const run = Array.from({ length: n }, (_, i) => i);
+    if (free(run.map((i) => [at.col + i, at.row - 1] as [number, number]))) {
+      return 'above';
+    }
+    if (free(run.map((i) => [at.col + i, at.row + n] as [number, number]))) {
+      return 'below';
+    }
+    if (free(run.map((i) => [at.col + n, at.row + i] as [number, number]))) {
+      return 'right';
+    }
+    if (free(run.map((i) => [at.col - 1, at.row + i] as [number, number]))) {
+      return 'left';
+    }
+    return 'above';
   }
 
   protected place(c: Combatant): Square {

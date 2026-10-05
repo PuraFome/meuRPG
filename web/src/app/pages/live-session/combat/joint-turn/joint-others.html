@@ -1,6 +1,7 @@
 @if (joint()) {
   <section class="mr-panel others" aria-labelledby="others-title">
     <h2 class="others__title" id="others-title">{{ title() }}</h2>
+    @if (blocks().length > 0) {
     <ul class="others__list">
       @for (m of blocks(); track m.id) {
         <li class="block">
@@ -40,5 +41,9 @@
         </li>
       }
     </ul>
+    }
+    @if (blocks().length > 0 && missing()) {
+      <p class="others__missing">{{ missing() }}</p>
+    }
   </section>
 }

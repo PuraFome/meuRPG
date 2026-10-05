@@ -1,6 +1,6 @@
 import { CreatureSource } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { Ability, type Creature, type CreatureSummary } from '../../../gen/meurpg/rules/v1/rules_pb';
-import { joinDots, tight } from '../format/text';
+import { joinDots, tieNumbers, tight } from '../format/text';
 import { metersText } from '../units';
 
 /** How the table says where a creature came from, under its name: "Familiar de Pensantus". */
@@ -67,7 +67,7 @@ export function formSubtitle(c: Creature): string {
 export function summarySubtitle(s: CreatureSummary, c?: Creature): string {
   const parts = [s.sizePt, s.typePt, challengeText(s.challengeRating)];
   if (c) {
-    parts.push(`CA ${c.armorClass}`, tight(`PV ${c.hitPoints}`));
+    parts.push(tieNumbers(`CA ${c.armorClass}`), tieNumbers(`PV ${c.hitPoints}`));
   }
   return joinDots(parts);
 }
@@ -98,22 +98,30 @@ const ABILITY_PT: Partial<Record<Ability, string>> = {
 export function beastLine(s: CreatureSummary, c?: Creature): string {
   const parts = [s.sizePt, challengeText(s.challengeRating)];
   if (c) {
-    parts.push(speedsText(c), `CA ${c.armorClass}`, tight(`PV ${c.hitPoints}`));
+    parts.push(speedsText(c), tieNumbers(`CA ${c.armorClass}`), tieNumbers(`PV ${c.hitPoints}`));
   }
   return joinDots(parts);
 }
 
-/** What a beast's attacks do, from its stat block: "Ataque +4 · 2d4 + 2 perfurante · Força CD 11" (the numbers are the book's). Empty when it has none. */
-export function beastAttacks(c: Creature): string {
-  const attacks = c.actions.filter((a) => a.hasAttack);
-  if (attacks.length === 0) {
-    return '';
-  }
-  return attacks
+/** One attack of a stat block as a line: its name, the numbers the book gives and the book's own text (English). */
+export interface AttackLine {
+  readonly name: string;
+  /** The name is the SRD's English one (the content has no Portuguese name for it): the page marks it `lang="en"`. */
+  readonly english: boolean;
+  /** "+4 · 2d4 + 2 perfurante · Força CD 11": the numbers are the book's. */
+  readonly detail: string;
+  /** The SRD's whole text of the action ("... or be knocked prone."), English, never translated here. */
+  readonly text: string;
+}
+
+/** What a beast's attacks do, from its stat block: each with its name (Portuguese when the content has it) and the book's text. Empty when it has none. */
+export function beastAttacks(c: Creature): readonly AttackLine[] {
+  return c.actions
+    .filter((a) => a.hasAttack)
     .map((a) => {
       const damage = a.damage.map((d) => `${d.dice.replace(/([+-])/g, ' $1 ').replace(/\s+/g, ' ').trim()} ${d.damageTypePt}`.trim()).join(' + ');
-      const save = a.save ? ` · ${ABILITY_PT[a.save.ability] ?? ''} CD ${a.save.dc}` : '';
-      return tight(joinDots([`Ataque ${signed(a.attackBonus)}`, damage]) + save);
-    })
-    .join(' e ');
+      // "Força CD 11" as one block: a line never breaks inside it.
+      const save = a.save ? ` · ${ABILITY_PT[a.save.ability] ?? ''}\u00a0CD\u00a0${a.save.dc}` : '';
+      return { name: a.namePt || a.name, english: !a.namePt, detail: tight(joinDots([signed(a.attackBonus), damage]) + save), text: a.text };
+    });
 }

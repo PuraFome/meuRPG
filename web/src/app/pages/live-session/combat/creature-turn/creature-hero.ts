@@ -1,8 +1,8 @@
 import { Component, ElementRef, computed, effect, input, output, viewChild } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import type { Combatant, Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { creatureTurnTitle, endLabel as endLabelOf, groupFeminine, groupName } from '../../../../core/combat/creature-names';
+import type { Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { creatureTurnTitle, endLabel as endLabelOf, groupFeminine, groupName, partLeftSentence } from '../../../../core/combat/creature-names';
 import { roundLabel, turnBanner } from '../../../../core/combat/combat-view';
 import { type MineTab } from '../../../../core/combat/mine';
 import { tieNumbers } from '../../../../core/format/text';
@@ -44,8 +44,9 @@ import { EndTurn } from '../turn-panel/end-turn';
               [heading]="endLabel() + '?'"
               [confirmLabel]="endLabel()"
               warning="Não dá para reabrir esta parte depois."
-              [left]="left()"
+              [detail]="left()"
               [busy]="busy()"
+              (asked)="asked.emit($event)"
               (endPart)="endPart.emit()"
             />
           } @else {
@@ -68,6 +69,8 @@ export class CreatureHero {
 
   /** "Encerrar a parte dos Lobos" / "Encerrar a vez do Nanquim": the whole tab ends. */
   readonly endPart = output<void>();
+  /** The question to end the part is open (the tabs above are inert until it is answered). */
+  readonly asked = output<boolean>();
 
   private readonly heading = viewChild<ElementRef<HTMLElement>>('hero');
   protected readonly desktop = mediaQuery('(min-width: 1024px)');
@@ -96,7 +99,7 @@ export class CreatureHero {
   });
   protected readonly endLabel = computed(() => endLabelOf(this.tab().members));
   /** What a part still has, for the question before ending it. */
-  protected readonly left = computed(() => (this.tab().acting.some((m: Combatant) => !m.actionUsed) ? 'ações' : ''));
+  protected readonly left = computed(() => partLeftSentence(this.tab().acting));
 
   constructor() {
     // Focus moves to the title when the turn arrives, once, so the next Tab reaches the blocks.

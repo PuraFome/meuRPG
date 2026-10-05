@@ -28,6 +28,8 @@ export interface Pool {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
+      // Two pools never stretch across a wide column: about 220 px each.
+      max-width: 456px;
       margin: 0;
 
       @media (max-width: 359.98px) {

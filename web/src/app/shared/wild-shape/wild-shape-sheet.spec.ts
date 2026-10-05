@@ -43,6 +43,36 @@ describe('WildShapeSheet (E9-11 state 2)', () => {
     expect(flat(el.querySelector('.row__title'))).toBe('Javali (Boar)');
   });
 
+  it('the rule line says what the level forbids: flying, swimming, both or neither', async () => {
+    for (const [wild, text] of [
+      [{ maxCr: '1/2', noFly: true, noSwim: true }, 'Feras de ND até 1/2, sem voo nem natação.'],
+      [{ maxCr: '1', noFly: true, noSwim: false }, 'Feras de ND até 1, sem voo.'],
+      [{ maxCr: '1/4', noFly: false, noSwim: true }, 'Feras de ND até 1/4, sem natação.'],
+      [{ maxCr: '1', noFly: false, noSwim: false }, 'Feras de ND até 1.'],
+    ] as const) {
+      TestBed.resetTestingModule();
+      const api = new FakeCreaturesClient();
+      api.wild = wild;
+      api.forms = [summary('monster:wolf', 'Lobo', { name: 'Wolf' })];
+      api.blocks.set('monster:wolf', raven({ speedWalkFt: 40 }));
+      TestBed.configureTestingModule({
+        providers: [
+          { provide: CreaturesClient, useValue: api },
+          { provide: MatDialogRef, useValue: { close: vi.fn() } },
+          { provide: MAT_DIALOG_DATA, useValue: { campaignId: 'c', characterId: 'ch', inCombat: true, uses: { left: 2, total: 2 } } },
+        ],
+      });
+      const fixture = TestBed.createComponent(WildShapeSheet);
+      for (let i = 0; i < 4; i++) {
+        fixture.detectChanges();
+        await fixture.whenStable();
+        await new Promise((r) => setTimeout(r));
+      }
+      fixture.detectChanges();
+      expect(flat(fixture.nativeElement.querySelector('.frame__sub'))).toBe(text);
+    }
+  });
+
   it('shows the numbers of the book and the cost before it is done, then turns the druid', async () => {
     const { el, api, close, settle } = await setup();
     el.querySelectorAll<HTMLInputElement>('input[type=radio]')[1].click();

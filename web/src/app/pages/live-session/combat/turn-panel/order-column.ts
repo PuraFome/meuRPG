@@ -74,7 +74,8 @@ export class OrderColumn {
 
   /** The conditions, "Aliado" and the master's cover mark under the name: what everyone who sees it may read. */
   protected tags(c: Combatant): string[] {
-    return [...conditionTags(c), ...coverMarkTags(c)];
+    // The concentration is public: everyone at the table sees who holds a spell (the spell's name stays with the sheet and the master).
+    return [...(c.concentrationSpell ? ['Concentração'] : []), ...conditionTags(c), ...coverMarkTags(c)];
   }
 
   protected npc(c: Combatant): boolean {

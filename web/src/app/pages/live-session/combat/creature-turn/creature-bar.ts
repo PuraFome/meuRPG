@@ -1,6 +1,6 @@
-import { Component, computed, input, output } from '@angular/core';
+import { Component, computed, input, output, signal } from '@angular/core';
 
-import { endLabel } from '../../../../core/combat/creature-names';
+import { endLabel, partLeftSentence } from '../../../../core/combat/creature-names';
 import { type MineTab } from '../../../../core/combat/mine';
 import { EndPart } from '../joint-turn/end-part';
 import { MineTabs } from '../mine-tabs/mine-tabs';
@@ -16,7 +16,7 @@ import { EndTurn } from '../turn-panel/end-turn';
   selector: 'app-creature-bar',
   imports: [EndPart, EndTurn, MineTabs],
   template: `
-    <app-mine-tabs [tabs]="tabs()" [selected]="tab().id" (select)="select.emit($event)" />
+    <app-mine-tabs [tabs]="tabs()" [selected]="tab().id" [inert]="asking()" (select)="select.emit($event)" />
     @if (tab().state === 'turn') {
       @if (tab().members.length > 1) {
         <app-end-part
@@ -24,8 +24,9 @@ import { EndTurn } from '../turn-panel/end-turn';
           [heading]="label() + '?'"
           [confirmLabel]="label()"
           warning="Não dá para reabrir esta parte depois."
-          [left]="left()"
+          [detail]="left()"
           [busy]="busy()"
+          (asked)="asking.set($event)"
           (endPart)="endPart.emit()"
         />
       } @else {
@@ -62,5 +63,7 @@ export class CreatureBar {
   readonly endPart = output<void>();
 
   protected readonly label = computed(() => endLabel(this.tab().members));
-  protected readonly left = computed(() => (this.tab().acting.some((m) => !m.actionUsed) ? 'ações' : ''));
+  /** The question to end the part is open: the tabs are inert until it is answered. */
+  protected readonly asking = signal(false);
+  protected readonly left = computed(() => partLeftSentence(this.tab().acting));
 }

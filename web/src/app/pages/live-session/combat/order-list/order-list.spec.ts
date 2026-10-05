@@ -143,7 +143,7 @@ describe('OrderList with a player\'s creatures (E9-12)', () => {
     expect(el.querySelectorAll('.row__token.tk--creature').length).toBe(2);
     expect(text(el.querySelector('.row--turn, .row'))).toBeTruthy();
     const rows = Array.from(el.querySelectorAll('.row__sub'), (n) => text(n));
-    expect(rows).toContain('Criatura · CA 14 · da Sálvia');
+    expect(rows).toContain('CA 14 · da Sálvia');
     expect(text(el.querySelector('app-order-group'))).toContain('Lobos atrozes da Sálvia');
     expect(text(el.querySelector('.legend'))).toBe('P Jogador C NPC N Criatura de um jogador');
   });
@@ -151,15 +151,33 @@ describe('OrderList with a player\'s creatures (E9-12)', () => {
   it('asks in place before the concentration is lost, with "Voltar" first, and says what goes with it', () => {
     const { el, ended, fixture } = setup();
     const open = Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) => b.textContent?.includes('Perdeu a concentração'))!;
-    expect(text(open.closest('.row__extra'))).toContain('Se concentra em Conjurar Animais · 2 Lobos atrozes');
+    expect(text(open.closest('.row__extra'))).toContain('Concentra em Conjurar Animais · 2 Lobos atrozes');
     open.click();
     fixture.detectChanges();
     const ask = el.querySelector('[role=alertdialog]')!;
-    expect(text(ask)).toContain('Sálvia perdeu a concentração?');
-    expect(text(ask)).toContain('Conjurar Animais acaba e os 2 Lobos atrozes somem do combate, da ordem e do mapa. Isso não se desfaz.');
+    expect(text(ask)).toContain('A Sálvia perdeu a concentração?');
+    expect(text(ask)).toContain('Conjurar Animais acaba e os 2 Lobos atrozes somem do combate, da ordem e do mapa.');
+    expect(text(ask)).not.toContain('Isso não se desfaz');
     const buttons = ask.querySelectorAll('button');
     expect(text(buttons[0])).toBe('Voltar');
+    expect(text(buttons[1])).toBe('Dispensar os Lobos');
     buttons[1].dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(ended).toEqual(['s']);
+  });
+
+  it('offers to dismiss only a caster that has creatures: an NPC on Teia has the line and no question', () => {
+    const fixture = TestBed.createComponent(OrderList);
+    const web = combatant({ id: 'cap', label: 'Capitão Goblin', concentrationSpell: 'spell:web', concentrationSpellNamePt: 'Teia', hitPointsCurrent: 20, hitPointsMax: 20 });
+    fixture.componentRef.setInput('encounter', encounter({ combatants: [web, salvia, wolf(1)], currentCombatantId: 'cap' }));
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const row = (name: string) => Array.from(el.querySelectorAll('li.row')).find((r) => r.textContent?.includes(name))!;
+    expect(text(row('Capitão Goblin').querySelector('.row__extra'))).toBe('Concentra em Teia');
+    expect(row('Capitão Goblin').textContent).not.toContain('Perdeu a concentração');
+    // The caster with a casting's creatures does.
+    expect(row('Sálvia').textContent).toContain('Perdeu a concentração');
+    // The pill is one solid "Concentração", not a dashed "Concentrado" chip.
+    expect(text(row('Capitão Goblin').querySelector('.row__conc'))).toContain('Concentração');
+    expect(el.textContent).not.toContain('Concentrado');
   });
 });

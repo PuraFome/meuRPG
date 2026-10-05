@@ -263,3 +263,24 @@
     margin-top: 1px;
   }
 }
+
+// A druid in a beast form: the two reserves where the hit points box is, and one line where the slots were.
+.top__pools {
+  min-width: 0;
+}
+
+.nospells {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}

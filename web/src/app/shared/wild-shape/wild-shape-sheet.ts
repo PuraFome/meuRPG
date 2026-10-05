@@ -10,6 +10,7 @@ import type { Encounter } from '../../../gen/meurpg/play/v1/combat_pb';
 import type { Creature, CreatureSummary } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { combatErrorMessage } from '../../core/combat/combat-errors';
 import { newKey } from '../../core/connect/idempotency';
+import { readBlocks } from '../../core/creatures/read-blocks';
 import { CreaturesClient } from '../../core/creatures/creatures-client';
 import { beastAttacks, beastLine } from '../../core/creatures/creature-format';
 import { tight } from '../../core/format/text';
@@ -79,7 +80,9 @@ export class WildShapeSheet {
     if (!f || f.maxCr === '') {
       return '';
     }
-    return tight(`Feras de ND até ${f.maxCr}, sem voo${f.noSwim ? ' nem natação' : ''}.`);
+    // What the level forbids, as the server says it: flying, swimming, both or neither.
+    const no = f.noFly && f.noSwim ? ', sem voo nem natação' : f.noFly ? ', sem voo' : f.noSwim ? ', sem natação' : '';
+    return tight(`Feras de ND até ${f.maxCr}${no}.`);
   });
   protected readonly count = computed(() => {
     const n = this.forms()?.forms.length ?? 0;
@@ -88,7 +91,7 @@ export class WildShapeSheet {
   protected readonly rows = computed<readonly ChoiceRow[]>(() =>
     (this.forms()?.forms ?? []).map((s) => {
       const block = this.blocks().get(s.key);
-      return { key: s.key, title: s.namePt, alias: s.name, subtitle: beastLine(s, block), extra: block ? beastAttacks(block) : '' };
+      return { key: s.key, title: s.namePt, alias: s.name, subtitle: beastLine(s, block), attacks: block ? beastAttacks(block) : undefined };
     }),
   );
   protected readonly beast = computed<CreatureSummary | null>(() => this.forms()?.forms.find((s) => s.key === this.chosen()) ?? null);
@@ -122,20 +125,8 @@ export class WildShapeSheet {
   }
 
   /** The numbers of each beast, six at a time: a row shows the book's summary first and its numbers as they arrive. */
-  private async readBlocks(keys: readonly string[]): Promise<void> {
-    let next = 0;
-    const worker = async () => {
-      while (next < keys.length) {
-        const key = keys[next++];
-        try {
-          const block = await this.client.statBlock(this.data.campaignId, key);
-          this.blocks.update((m) => new Map(m).set(key, block));
-        } catch {
-          // A beast whose numbers cannot be read keeps the summary line.
-        }
-      }
-    };
-    await Promise.all(Array.from({ length: 6 }, worker));
+  private readBlocks(keys: readonly string[]): Promise<void> {
+    return readBlocks(this.client, this.data.campaignId, keys, (key, block) => this.blocks.update((m) => new Map(m).set(key, block)));
   }
 
   protected pick(key: string): void {

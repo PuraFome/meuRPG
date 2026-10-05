@@ -116,9 +116,15 @@ import { MatIconModule } from '@angular/material/icon';
         gap: 2px;
       }
 
+      // The dots hang 10px outside their box as in the rows outside; the box's own padding is 4px narrower than a row's,
+      // so the dots and "Dano/Cura" line up with the rows outside (E8-01).
+      ::ng-deep .row {
+        padding-right: 12.5px;
+      }
+
       ::ng-deep .row__more,
       ::ng-deep .row__spacer {
-        margin-right: 0;
+        margin-right: -10px;
       }
     }
 

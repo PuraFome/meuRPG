@@ -57,7 +57,26 @@ const (
 // endsBySelf says a wild_shape_ended reason is part of the change that caused it,
 // written before that change's event: it is no action for an undo to take back.
 func endsBySelf(reason string) bool {
-	return reason == endedByDamage || reason == endedAtZero || reason == endedAsleep
+	return reason == endedByDamage || reason == endedAtZero || reason == endedAsleep || reason == endedByMaster
+}
+
+// shapeLine says where a form's end belongs in the combat log: the session's combat that is
+// running (not in SETUP) and the druid's combatant in it. Empty when there is none, and the
+// event then stays out of the log (it has no combat).
+func (s *Service) shapeLine(ctx context.Context, q *playdb.Queries, sessionID, characterID string) (encounterID string, round int32, actor string, hidden bool) {
+	enc, err := q.GetOpenEncounter(ctx, sessionID)
+	if err != nil || enc.Status != statusActive {
+		return "", 0, "", false
+	}
+	cs, err := q.ListCombatants(ctx, enc.ID)
+	if err != nil {
+		return "", 0, "", false
+	}
+	i := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.Kind == kindPlayer && c.CharacterID == characterID })
+	if i < 0 {
+		return "", 0, "", false
+	}
+	return enc.ID, enc.Round, cs[i].ID, cs[i].Hidden
 }
 
 // formEnds ends a druid's form where only the vitals are at hand (it fell to 0 hit
@@ -78,12 +97,17 @@ func (s *Service) formEnds(ctx context.Context, q *playdb.Queries, tx pgx.Tx, se
 	if err != nil {
 		return nil, fmt.Errorf("next event number: %w", err)
 	}
-	payload, err := json.Marshal(actionEvent{OwnerCharacter: characterID, Beast: beast, Reason: reason})
+	encID, round, actor, hidden := s.shapeLine(ctx, q, sessionID, characterID)
+	payload, err := json.Marshal(actionEvent{OwnerCharacter: characterID, Beast: beast, Reason: reason, EncounterID: encID, Round: round, Actor: actor, Secret: hidden})
 	if err != nil {
 		return nil, fmt.Errorf("encode the event payload: %w", err)
 	}
+	var encounterID *string
+	if encID != "" {
+		encounterID = &encID
+	}
 	if _, err := q.InsertSessionEvent(ctx, playdb.InsertSessionEventParams{
-		GameSessionID: sessionID, Seq: seq, Kind: eventWildShapeEnded, CharacterID: &characterID, Payload: payload, CreatedAt: s.now(),
+		GameSessionID: sessionID, Seq: seq, Kind: eventWildShapeEnded, CharacterID: &characterID, Payload: payload, CreatedAt: s.now(), EncounterID: encounterID,
 	}); err != nil {
 		return nil, fmt.Errorf("insert session event: %w", err)
 	}

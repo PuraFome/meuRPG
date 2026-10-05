@@ -75,7 +75,10 @@ import { CombatantTags } from '../combatant-tags/combatant-tags';
 
 .chip {
   display: flex;
-  flex: 0 0 104px;
+  // 104px, or as wide as its one tag needs ("Concentração"), up to 150px.
+  flex: 0 0 auto;
+  min-width: 104px;
+  max-width: 150px;
   flex-direction: column;
   gap: 3px;
   box-sizing: border-box;
@@ -176,7 +179,7 @@ export class OrderStrip {
   }
 
   protected tags(c: Combatant): string[] {
-    return [...conditionTags(c), ...coverMarkTags(c)];
+    return [...(c.concentrationSpell ? ['Concentração'] : []), ...conditionTags(c), ...coverMarkTags(c)];
   }
 
   protected readonly items = computed(() => orderItems(this.encounter(), false));

@@ -115,35 +115,8 @@ export function attackTitle(attack: Attack): string {
   return `${attack.namePt || attack.name} ${attack.attackBonus < 0 ? '−' : '+'}${Math.abs(attack.attackBonus)}`;
 }
 
-/** The SRD names of the attacks creatures make, in Portuguese: the server sends no `name_pt` for a creature's attack (its key is `monster:wolf#bite`). */
-const CREATURE_ATTACK_PT: Record<string, string> = {
-  bite: 'Mordida',
-  claw: 'Garra',
-  claws: 'Garras',
-  slam: 'Pancada',
-  tusk: 'Presa',
-  tusks: 'Presas',
-  hooves: 'Cascos',
-  beak: 'Bico',
-  talons: 'Garras',
-  gore: 'Chifrada',
-  horns: 'Chifres',
-  ram: 'Cabeçada',
-  sting: 'Ferrão',
-  constrict: 'Constrição',
-  tail: 'Cauda',
-  fist: 'Soco',
-  club: 'Clava',
-  rake: 'Garras traseiras',
-};
-
-/** An attack's name for a button and a sentence. */
+/** An attack's name for a button and a sentence: the server's Portuguese name (a creature's attacks included), the English one when there is none. */
 export function attackName(attack: Attack): string {
-  // A creature's attack comes with the English name in `name_pt` too: the known ones are translated.
-  const slug = attack.key.includes('#') ? attack.key.split('#')[1] : '';
-  if (slug && (!attack.namePt || attack.namePt === attack.name)) {
-    return CREATURE_ATTACK_PT[slug] ?? (attack.namePt || attack.name);
-  }
   return attack.namePt || attack.name;
 }
 

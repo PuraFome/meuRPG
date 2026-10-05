@@ -238,6 +238,8 @@ export abstract class LiveSessionSource {
   /** `TakeBackLeftImage`: the master takes an image back ("Tirar"). */
   abstract takeBackLeftImage(campaignId: string, imageId: string): Promise<void>;
   abstract getPlayerSheet(campaignId: string, characterId: string): Promise<PlayerSheetVm>;
+  /** The armor class of a creature's book (`GetCreature`), for a druid in a beast form; `null` when it cannot be read. */
+  abstract getCreatureArmorClass(campaignId: string, key: string): Promise<number | null>;
   abstract getPartyInfo(campaignId: string): Promise<ReadonlyMap<string, PartyMemberInfoVm>>;
   abstract classifyError(err: unknown): LiveErrorKind;
 }

@@ -220,6 +220,31 @@ func TestNamesPT(t *testing.T) {
 	}
 }
 
+// TestAttackNamesPT: every attack a character can have through a creature has
+// a Portuguese name: every beast up to CR 2 (Wild Shape, Conjurar Animais, the
+// familiar forms), the undead Animar os Mortos raises and the Pacto da Corrente
+// forms.
+func TestAttackNamesPT(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t).c
+	extra := map[string]bool{"monster:skeleton": true, "monster:zombie": true, "monster:imp": true, "monster:pseudodragon": true, "monster:quasit": true, "monster:sprite": true}
+	for _, key := range sortedKeys(c.monsters) {
+		m := c.monsters[key]
+		eighths, _ := crEighths(m.ChallengeRating)
+		if !extra[key] && (m.Type != "beast" || eighths > 16) {
+			continue
+		}
+		for _, a := range m.Actions {
+			if !a.HasAttack {
+				continue
+			}
+			if _, ok := c.namesPT["attack:"+slugOf(a.Name)]; !ok {
+				t.Errorf("%s: attack %q (attack:%s) has no Portuguese name in effects/names_pt.json", key, a.Name, slugOf(a.Name))
+			}
+		}
+	}
+}
+
 func keySet[T any](m map[string]T) map[string]bool {
 	out := make(map[string]bool, len(m))
 	for k := range m {

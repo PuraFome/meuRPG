@@ -90,6 +90,19 @@
   gap: 10px;
 }
 
+// A dialog (from a tablet up): the two buttons side by side, so the list keeps the room.
+@media (min-width: 768px) {
+  [foot] {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+
+    > :not(button),
+    > button:only-child {
+      grid-column: 1 / -1;
+    }
+  }
+}
+
 .line {
   display: flex;
   align-items: flex-start;
@@ -179,16 +192,17 @@
   line-height: 18px;
 }
 
-// The d20 of the group's initiative, typed from a physical die.
+// The d20 of the group's initiative, typed from a physical die: the label and the field on a row, the hint under them.
 .roll {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px;
   align-items: center;
-  gap: 12px;
+  gap: 4px 12px;
 }
 
 .roll__label {
-  flex: 1;
   font-size: 14px;
+  font-weight: 700;
   line-height: 19px;
 }
 
@@ -203,6 +217,25 @@
   font: inherit;
   font-size: 20px;
   text-align: center;
+
+  // Inside the field's own edge: a ring outside it is cut by the dialog's edge on a desktop.
+  &:focus-visible {
+    border-color: var(--mr-focus);
+    outline: 2px solid var(--mr-focus);
+    outline-offset: -3px;
+  }
+}
+
+.roll__hint {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 8px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
 }
 
 .roll__line {
@@ -219,6 +252,36 @@
 .roll__switch {
   min-height: 44px;
   padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mr-accent-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+// The slot and the quantity, folded once a creature is chosen: one line and "Mudar".
+.setup {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 4px 0 4px 12px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+}
+
+.setup__text {
+  font-weight: 700;
+  line-height: 20px;
+}
+
+.setup__edit {
+  min-width: 64px;
+  min-height: 44px;
+  padding: 0 12px;
   border: 0;
   background: none;
   color: var(--mr-accent-text);

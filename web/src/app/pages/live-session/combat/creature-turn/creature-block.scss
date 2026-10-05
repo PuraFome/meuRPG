@@ -180,3 +180,14 @@
     --mat-button-outlined-container-height: 44px;
   }
 }
+
+// A hit whose damage was not rolled: the same notice as the character's, wrapping on a narrow phone.
+.owed {
+  flex-wrap: wrap;
+  align-items: center;
+
+  p {
+    flex: 1 1 200px;
+    margin: 0;
+  }
+}

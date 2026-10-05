@@ -104,7 +104,7 @@
           (changeDice)="changeDice()"
         >
           @if (ownVitals(); as v) {
-            <app-player-vitals [vitals]="v" [sheet]="playerSheet()" [campaignId]="campaignId()" [compact]="true" />
+            <app-player-vitals [vitals]="v" [sheet]="playerSheet()" [beastAc]="beastAc()" [campaignId]="campaignId()" [compact]="true" />
           }
         </app-combat-view>
         <!-- The fog's tools stay during a combat (MR-036): the master's "Ver como" and the lights, the player's light. -->
@@ -255,7 +255,7 @@
           </div>
           <div class="board__side">
             @if (ownVitals(); as v) {
-              <app-player-vitals [vitals]="v" [sheet]="playerSheet()" [campaignId]="campaignId()" />
+              <app-player-vitals [vitals]="v" [sheet]="playerSheet()" [beastAc]="beastAc()" [campaignId]="campaignId()" />
             } @else {
               <div class="mr-notice mr-notice--neutral">
                 <mat-icon aria-hidden="true">person_off</mat-icon>

@@ -28,12 +28,21 @@
     <p class="why"><mat-icon aria-hidden="true">block</mat-icon>{{ why() }}</p>
   }
 
+  @if (pending()) {
+    <div class="mr-notice mr-notice--warning owed">
+      <mat-icon aria-hidden="true">warning</mat-icon>
+      <p><strong>Falta rolar o dano do ataque {{ ofCreature() }}.</strong> Role para poder encerrar a vez.</p>
+      <button mat-stroked-button type="button" [disabled]="busy()" [attr.aria-label]="'Rolar o dano: ' + c().label" (click)="rollDamage.emit()">Rolar o dano</button>
+    </div>
+  }
+
   @for (a of attacks(); track a.attack?.key) {
     @if (a.attack; as atk) {
       <app-action-row
         class="atk"
         [name]="attackName(atk)"
         [detail]="detail(a)"
+        [rider]="atk.notes"
         button="Atacar"
         [buttonLabel]="'Atacar com ' + attackName(atk) + ': ' + c().label"
         [off]="!a.enabled || off()"
@@ -51,10 +60,11 @@
         [name]="attackName(atk)"
         [tags]="['Reação']"
         [detail]="detail(a)"
+        [rider]="atk.notes"
         button="Atacar"
         [buttonLabel]="'Atacar com ' + attackName(atk) + ' como reação: ' + c().label"
-        [off]="c().reactionUsed || !!locked()"
-        [reason]="locked() || reactionWhy()"
+        [off]="!a.enabled || c().reactionUsed || !!locked()"
+        [reason]="locked() || reactionWhy() || reasonText(a.reason)"
         [busy]="busy()"
         (press)="reactionAttack.emit(atk.key)"
       />
@@ -66,6 +76,7 @@
     mat-stroked-button
     class="go"
     [class.go--off]="off() || c().movementLeftDft <= 0"
+    [class.mr-button--off]="off() || c().movementLeftDft <= 0"
     [disabled]="busy() || off() || c().movementLeftDft <= 0"
     disabledInteractive
     [attr.aria-label]="moveLabel()"
@@ -83,6 +94,7 @@
           mat-stroked-button
           class="std__btn"
           [class.std__btn--off]="!a.enabled || off()"
+          [class.mr-button--off]="!a.enabled || off()"
           [disabled]="!a.enabled || off() || busy()"
           disabledInteractive
           [attr.aria-label]="(a.action?.namePt ?? '') + ': ' + c().label"

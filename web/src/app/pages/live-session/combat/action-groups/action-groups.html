@@ -37,6 +37,7 @@
             [tags]="isCantrip(atk) ? ['Truque'] : []"
             [helpName]="isCantrip(atk) ? attackName(atk) : ''"
             [detail]="attackDetail(atk)"
+            [rider]="rider(atk)"
             [button]="asksSave(atk) ? 'Conjurar' : 'Atacar'"
             [buttonLabel]="(asksSave(atk) ? 'Conjurar ' : 'Atacar com ') + attackName(atk)"
             [off]="!a.enabled || !!locked()"
@@ -46,6 +47,23 @@
             (help)="describe.emit({ key: atk.key, name: attackName(atk) })"
           />
         }
+      }
+    }
+    @for (f of action_().features; track f.action?.key) {
+      @if (isWild(f)) {
+        <!-- A row of the Ação, right after the attacks (E9-11 1): it is how the druid becomes a beast. -->
+        <app-action-row
+          class="wild"
+          [name]="f.action?.namePt ?? ''"
+          [tags]="['Característica']"
+          [detail]="wild()?.detail ?? ''"
+          button="Transformar"
+          [buttonLabel]="'Transformar: ' + (f.action?.namePt ?? '')"
+          [off]="!!wild()?.reason || !!locked()"
+          [reason]="locked() || (wild()?.reason ?? '')"
+          [busy]="busy()"
+          (press)="transform.emit()"
+        />
       }
     }
     @if (beast()) {
@@ -82,33 +100,19 @@
         />
       }
     }
-    @if (action_().features.length) {
+    @if (otherFeatures().length) {
       <p class="group__sub">Habilidades</p>
-      @for (f of action_().features; track f.action?.key) {
-        @if (isWild(f)) {
-          <app-action-row
-            [name]="f.action?.namePt ?? ''"
-            [tags]="['Característica']"
-            [detail]="wild()?.detail ?? ''"
-            button="Transformar"
-            [buttonLabel]="'Transformar: ' + (f.action?.namePt ?? '')"
-            [off]="!!wild()?.reason || !!locked()"
-            [reason]="locked() || (wild()?.reason ?? '')"
-            [busy]="busy()"
-            (press)="transform.emit()"
-          />
-        } @else if (!beast() || !f.action?.key?.startsWith('feature:wild-shape')) {
-          <app-action-row
-            [name]="f.action?.namePt ?? ''"
-            [detail]="featureDetail(f)"
-            button="Usar"
-            [buttonLabel]="'Usar ' + (f.action?.namePt ?? '')"
-            [off]="featureOff(f) || !!locked()"
-            [reason]="locked() || reasonText(f.reason)"
-            [busy]="busy()"
-            (press)="feature.emit(f.action?.key ?? '')"
-          />
-        }
+      @for (f of otherFeatures(); track f.action?.key) {
+        <app-action-row
+          [name]="f.action?.namePt ?? ''"
+          [detail]="featureDetail(f)"
+          button="Usar"
+          [buttonLabel]="'Usar ' + (f.action?.namePt ?? '')"
+          [off]="featureOff(f) || !!locked()"
+          [reason]="locked() || reasonText(f.reason)"
+          [busy]="busy()"
+          (press)="feature.emit(f.action?.key ?? '')"
+        />
       }
     }
     @if (familiar(); as pet) {
@@ -136,6 +140,7 @@
           type="button"
           class="std__btn"
           [class.std__btn--off]="!a.enabled || !!locked()"
+          [class.mr-button--off]="!a.enabled || !!locked()"
           [disabled]="!a.enabled || !!locked() || busy()"
           disabledInteractive
           [attr.aria-describedby]="!a.enabled || locked() ? 'std-why' : null"
@@ -156,7 +161,7 @@
       @if (beast()) {
         <app-action-row
           name="Voltar à forma normal"
-          detail="Você volta a ser o personagem, com os seus PV, e perde os PV que sobraram da fera."
+          [detail]="leaveDetail()"
           button="Voltar"
           buttonLabel="Voltar à forma normal"
           [off]="own().bonusActionUsed || !!locked()"

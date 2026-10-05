@@ -13,6 +13,7 @@ import { mediaQuery } from '../../../../shared/map-view/media-query';
  */
 @Component({
   selector: 'app-mine-tabs',
+  host: { '[attr.inert]': "inert() ? '' : null" },
   template: `
     <div class="tabs" role="tablist" aria-label="O que você joga">
       @for (t of tabs(); track t.id) {
@@ -104,6 +105,8 @@ export class MineTabs {
   /** The id of the chosen tab. */
   readonly selected = input.required<string>();
   readonly select = output<string>();
+  /** A question is open (ending a part): the tabs do nothing until it is answered. */
+  readonly inert = input(false);
 
   private readonly buttons = viewChildren<ElementRef<HTMLButtonElement>>('tab');
   private readonly narrow = mediaQuery('(max-width: 359.98px)');

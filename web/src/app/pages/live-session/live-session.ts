@@ -148,6 +148,8 @@ export class LiveSession {
   protected readonly session = signal<LiveSessionVm | null>(null);
   protected readonly vitals = signal<readonly VitalsVm[]>([]);
   protected readonly playerSheet = signal<PlayerSheetVm | null>(null);
+  /** The armor class of the beast's book while the druid is a beast (the vitals show it in place of the druid's own). */
+  protected readonly beastAc = signal<number | null>(null);
   protected readonly partyInfo = signal<ReadonlyMap<string, PartyMemberInfoVm>>(new Map());
 
   /** The session's current map, the image on show, and the map itself. */
@@ -310,6 +312,22 @@ export class LiveSession {
           return;
         }
         void this.familiarEyes.name(campaignId, characterId, sight.creatureId).then((n) => this.familiarNameNow.set(n));
+      });
+    });
+
+    // The beast's armor class from its book, read once for each beast the druid becomes.
+    effect(() => {
+      const key = this.ownVitals()?.wildShape?.beastKey ?? '';
+      const campaignId = this.campaignId();
+      untracked(() => {
+        if (!key || this.isMaster()) {
+          this.beastAc.set(null);
+          return;
+        }
+        this.source.getCreatureArmorClass(campaignId, key).then(
+          (ac) => this.beastAc.set(ac),
+          () => this.beastAc.set(null),
+        );
       });
     });
 

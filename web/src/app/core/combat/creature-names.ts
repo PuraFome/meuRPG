@@ -113,3 +113,22 @@ export function endLabel(members: readonly Combatant[]): string {
   }
   return `Encerrar a vez ${groupFeminine(members) ? 'da' : 'do'} ${members[0].label}`;
 }
+
+/**
+ * What the part about to end still has, for its question: "Os 2 Lobos ainda têm ação e movimento.", "O Nanquim ainda tem
+ * movimento.". It is read from the creatures' own economy (the server's numbers); empty when nothing is left.
+ */
+export function partLeftSentence(acting: readonly Combatant[]): string {
+  if (acting.length === 0) {
+    return '';
+  }
+  const items = [...(acting.some((m) => !m.actionUsed) ? ['ação'] : []), ...(acting.some((m) => m.movementLeftDft > 0) ? ['movimento'] : [])];
+  if (items.length === 0) {
+    return '';
+  }
+  const who =
+    acting.length === 1
+      ? `${article(acting[0].label) === 'a' ? 'A' : 'O'} ${acting[0].label}`
+      : `${groupFeminine(acting) ? 'As' : 'Os'} ${acting.length} ${groupName(acting).split(' ')[0]}`;
+  return `${who} ainda ${acting.length === 1 ? 'tem' : 'têm'} ${items.join(' e ')}.`;
+}

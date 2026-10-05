@@ -25,7 +25,8 @@ import { CreatureArt } from '../../../shared/creatures/creature-art';
 import { newKey } from '../../../core/connect/idempotency';
 import { CreaturesClient } from '../../../core/creatures/creatures-client';
 import { creatureErrorMessage } from '../../../core/creatures/creature-errors';
-import { CREATURE_NAME_MAX, formSubtitle, nameCounter, summarySubtitle } from '../../../core/creatures/creature-format';
+import { CREATURE_NAME_MAX, beastAttacks, beastLine, formSubtitle, nameCounter } from '../../../core/creatures/creature-format';
+import { readBlocks } from '../../../core/creatures/read-blocks';
 import { FIND_FAMILIAR, castVerb, creaturesText, replacesText } from '../../../core/creatures/summon-labels';
 import { tight } from '../../../core/format/text';
 import { SlotPicker } from '../../live-session/combat/cast-sheet/slot-picker';
@@ -96,11 +97,14 @@ export class SummonSheet {
   /** The book's armor class of each creature of the result (the combat sends none to a player). */
   protected readonly resultAc = signal<ReadonlyMap<string, number>>(new Map());
   /** The group's initiative d20 typed from a physical die (a combat only). */
-  protected readonly typing = signal(false);
-  protected readonly typed = signal('');
   protected readonly canApp = this.combat ? this.combat.diceMode !== DiceMode.PHYSICAL : true;
   protected readonly canType = this.combat ? this.combat.diceMode !== DiceMode.APP : false;
   protected readonly preferApp = this.combat ? effectivePreference(this.combat.diceMode, this.combat.preference) === DicePreference.APP : true;
+  /** The group's initiative d20 comes from a physical die: the campaign allows no other (RN-18), or the player prefers it where both are allowed. */
+  protected readonly typing = signal(this.combat ? !this.canApp || (this.canType && !this.preferApp) : false);
+  protected readonly typed = signal('');
+  /** The face field shows, and the cast needs and sends the face. */
+  protected readonly needsFace = computed(() => !!this.combat && (this.typing() || !this.canApp));
   private readonly back = viewChild('back', { read: ElementRef<HTMLButtonElement> });
   protected readonly inSheet = this.sheet.inSheet;
   protected readonly max = CREATURE_NAME_MAX;
@@ -114,6 +118,10 @@ export class SummonSheet {
   protected readonly counts = signal<Readonly<Record<string, number>>>({});
   protected readonly forms = signal<readonly Creature[] | null>(null);
   protected readonly beasts = signal<readonly CreatureSummary[] | null>(null);
+  /** The book's numbers of each beast of the list (CA, PV, speed, attacks), as they are read. */
+  protected readonly beastBlocks = signal<ReadonlyMap<string, Creature>>(new Map());
+  /** "Mudar": the slot and the quantity open again after a creature was chosen. */
+  protected readonly editing = signal(false);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   private readonly frame = viewChild.required(SheetFrame);
@@ -173,6 +181,17 @@ export class SummonSheet {
   /** The one creature chosen, for the radios. */
   protected readonly single = computed(() => (this.several() ? '' : (Object.keys(this.counts())[0] ?? '')));
 
+  /** Is there a slot or a quantity to choose at all (a ritual of one creature has none)? */
+  protected readonly hasSetup = computed(() => !this.ritual() && (this.slotRows().length > 0 || this.circleOptions().length > 1));
+  /** A creature was chosen: the slot and the quantity fold into one line, so the list gets the room. */
+  protected readonly collapsed = computed(() => this.hasSetup() && this.total() > 0 && !this.editing());
+  /** "3º círculo · 2 feras de ND 1 ou menos". */
+  protected readonly setupLine = computed(() => {
+    const slot = this.slot();
+    const o = this.opt();
+    return tight(joinDotsOf([slot ? `${circleLabel(slot.level)}${slot.pact ? ' (pacto)' : ''}` : '', o ? (o.maxCr ? this.optionLabel(o) : creaturesText(o.count)) : '']));
+  });
+
   protected readonly replacesNote = computed(() => {
     const s = this.spell();
     return s ? replacesText(s.namePt, s.concentration, s.replaces) : '';
@@ -184,7 +203,10 @@ export class SummonSheet {
       return [];
     }
     if (o.forms.length === 0) {
-      return (this.beasts() ?? []).map((b) => ({ key: b.key, title: b.namePt, subtitle: summarySubtitle(b) }));
+      return (this.beasts() ?? []).map((b) => {
+        const block = this.beastBlocks().get(b.key);
+        return { key: b.key, title: b.namePt, subtitle: beastLine(b, block), attacks: block ? beastAttacks(block) : undefined };
+      });
     }
     const blocks = new Map((this.forms() ?? []).map((c) => [c.summary?.key ?? '', c]));
     return o.forms
@@ -229,7 +251,7 @@ export class SummonSheet {
     const text = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} e ${parts[parts.length - 1]}`;
     return `${text[0].toUpperCase()}${text.slice(1)}.`;
   });
-  protected readonly ready = computed(() => this.missing() === '' && !this.busy() && this.spell() !== null && (!this.typing() || this.face() !== null));
+  protected readonly ready = computed(() => this.missing() === '' && !this.busy() && this.spell() !== null && (!this.needsFace() || this.face() !== null));
 
   /** "Conjurar como ritual · 1 hora · sem gastar espaço", or what the slot costs. */
   protected readonly costLine = computed(() => {
@@ -304,6 +326,14 @@ export class SummonSheet {
       // An answer that arrives after another option was picked is for a list nobody looks at.
       if (seq === this.beastSeq) {
         this.beasts.set(found);
+        // The numbers of each beast, as they come: a row shows the book's summary first.
+        void readBlocks(
+          this.client,
+          this.data.campaignId,
+          found.map((b) => b.key),
+          (key, block) => this.beastBlocks.update((m) => new Map(m).set(key, block)),
+          () => seq === this.beastSeq,
+        );
       }
     } catch (err) {
       if (seq === this.beastSeq) {
@@ -314,6 +344,7 @@ export class SummonSheet {
   }
 
   protected pickSlot(row: SlotRow): void {
+    this.editing.set(false);
     this.slotKey.set(slotId(row));
     this.option.set(0);
     this.counts.set({});
@@ -321,6 +352,7 @@ export class SummonSheet {
   }
 
   protected pickOption(index: number): void {
+    this.editing.set(false);
     this.option.set(index);
     this.counts.set({});
     this.changed();
@@ -328,6 +360,7 @@ export class SummonSheet {
 
   /** One creature: the radio's choice. */
   protected pick(key: string): void {
+    this.editing.set(false);
     this.counts.set({ [key]: 1 });
     this.changed();
   }
@@ -338,6 +371,7 @@ export class SummonSheet {
     if (change.delta > 0 && this.total() >= this.count()) {
       return;
     }
+    this.editing.set(false);
     const counts = { ...this.counts(), [change.key]: next };
     if (next === 0) {
       delete counts[change.key];
@@ -353,7 +387,9 @@ export class SummonSheet {
 
   /** The chosen option's label: "4 criaturas de ND 1/2 ou menos". */
   protected optionLabel(o: SummonOption): string {
-    return tight(`${creaturesText(o.count)} de ND ${o.maxCr} ou menos`);
+    // The spell asks for beasts ("2 feras de ND 1 ou menos"); any other kind says "criaturas".
+    const what = o.type === 'beast' ? `${o.count} ${o.count === 1 ? 'fera' : 'feras'}` : creaturesText(o.count);
+    return tight(`${what} de ND ${o.maxCr} ou menos`);
   }
 
   /** A choice changed: the next cast is a new one (a new key). */
@@ -413,7 +449,7 @@ export class SummonSheet {
       return;
     }
     const face = this.face();
-    const die = this.typing() && face !== null ? { face } : { inApp: true as const };
+    const die = this.needsFace() && face !== null ? { face } : { inApp: true as const };
     const res = await this.combatApi.castSpell(
       this.data.campaignId,
       combat.encounterId,

@@ -56,10 +56,15 @@
   outline-offset: 2px;
 }
 
-// "You": the same ring thinner, so "whose turn" and "me" never look alike.
+// "You": an ink halo, never the garnet of the turn (the ring and the word "Vez"), so a wolf on its turn never reads as "you".
 :host(.tk--mine:not(.tk--current)) {
-  outline: 2px solid var(--mr-accent);
+  outline: 2px solid var(--mr-ink);
   outline-offset: 1px;
+}
+
+// The character's own turn: the garnet ring of the turn, and the ink halo inside it that says it is "you".
+:host(.tk--mine.tk--current) {
+  box-shadow: 0 0 0 1.5px var(--mr-ink);
 }
 
 .tk__x {
@@ -110,6 +115,14 @@
   border-color: var(--mr-map-token-surface);
   background: var(--mr-map-token-ink);
   color: var(--mr-map-token-surface);
+}
+
+:host(.tk--map.tk--mine:not(.tk--current)) {
+  outline-color: var(--mr-map-token-ink);
+}
+
+:host(.tk--map.tk--mine.tk--current) {
+  box-shadow: 0 0 0 1.5px var(--mr-map-token-ink);
 }
 
 :host(.tk--map.tk--creature) {

@@ -63,6 +63,8 @@ type logEntry struct {
 	returned, returnBlocked bool
 	// masterOnly is a line only the master gets, whatever the combatants.
 	masterOnly bool
+	// shapeStarted: a Wild Shape line is the druid becoming the beast, not leaving it.
+	shapeStarted bool
 	// hosts are the events the entry shows: an attack's own and the ones of its
 	// damage, so the entry of the last action is the one to undo.
 	hosts []string
@@ -275,6 +277,9 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 			// his history; the table sees nothing of it (RN-10).
 			entry.kind, entry.masterOnly = playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION, true
 			entry.ev.Key = "standard:search"
+		case eventWildShapeStarted, eventWildShapeEnded:
+			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_WILD_SHAPE
+			entry.shapeStarted = e.Kind == eventWildShapeStarted
 		case eventReactionUsed:
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION
 			// Escudo that stopped the attack takes its damage away; the hit waits for
@@ -460,6 +465,14 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 		out.Spell = e.spellView(v, byID)
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_TRAP_TRIGGERED:
 		out.Trap = e.trapEntry(ctx, v, byID, names)
+	case playv1.CombatLogKind_COMBAT_LOG_KIND_WILD_SHAPE:
+		out.WildShape = &playv1.CombatLogWildShape{BeastKey: e.ev.Beast, BeastNamePt: names.s.nameOf(e.ev.Beast), Started: e.shapeStarted}
+		if !e.shapeStarted {
+			out.WildShape.EndReason = wildShapeEndReasonProto[e.ev.Reason]
+			if v.master || v.owns(actor) { // the carried damage is the druid's player's and the master's (RN-20)
+				out.WildShape.CarriedDamage = e.ev.Carried
+			}
+		}
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION:
 		out.Spell = &playv1.CombatLogSpell{Slot: slotProto(e.ev.Slot)}
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_DEATH_SAVE:
@@ -689,4 +702,13 @@ func (n *keyNames) of(ctx context.Context, c playdb.Combatant, key string) strin
 		}
 	}
 	return ""
+}
+
+// wildShapeEndReasonProto reads the reason a wild_shape_ended event gives.
+var wildShapeEndReasonProto = map[string]playv1.WildShapeEndReason{
+	endedByLeaving: playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_LEFT,
+	endedByDamage:  playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_DAMAGE,
+	endedByMaster:  playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_MASTER,
+	endedAtZero:    playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_ZERO_HP,
+	endedAsleep:    playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_UNCONSCIOUS,
 }

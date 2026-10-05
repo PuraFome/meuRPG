@@ -845,7 +845,7 @@ test('condições e concentração: o mestre marca no menu, o jogador vê as eti
     await expect(sheet.getByText('Sua ação foi usada.')).toBeVisible();
     await sheet.getByRole('button', { name: 'Voltar à sua vez' }).click();
     await expect(p.getByText('Concentrado em Teia', { exact: true })).toBeVisible();
-    await expect(m.getByText('Concentrado: Teia')).toBeVisible();
+    await expect(m.getByText('Concentra em Teia')).toBeVisible();
     // The master sees it in the dialog too, with the same action.
     await m.getByRole('button', { name: 'Mais ações para Pensantus' }).click();
     await m.getByRole('menuitem', { name: 'Condições…' }).click();

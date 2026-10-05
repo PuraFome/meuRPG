@@ -262,7 +262,7 @@
           <div class="player" [class.player--mine]="(myTurn() && !!options()) || !!creatureTab()">
             <div class="player__turn">
               @if (laptop() && showTabs()) {
-                <app-mine-tabs [tabs]="tabs()" [selected]="tab()?.id ?? ''" (select)="tabId.set($event)" />
+                <app-mine-tabs [tabs]="tabs()" [selected]="tab()?.id ?? ''" [inert]="partAsking()" (select)="tabId.set($event)" />
               }
               @if (creatureTab(); as ct) {
                 <app-creature-hero
@@ -271,6 +271,7 @@
                   [busy]="busy()"
                   [waiting]="creatureLocked()"
                   [note]="moveNote()"
+                  (asked)="partAsking.set($event)"
                   (endPart)="endTab(ct)"
                 />
               } @else {
@@ -280,8 +281,6 @@
                   [attacksLeft]="attacksLeft()"
                   [attacksPerAction]="attacksPerAction()"
                   [hitPointsMax]="ownMaxHp()"
-                  [hitPointsNow]="hitPointsNow()"
-                  [beastAc]="beastAc()"
                   [opportunities]="opportunities()"
                   [waiting]="waiting()"
                   [moveNote]="moveNote()"
@@ -306,6 +305,8 @@
                     [joint]="ct.members.length > 1"
                     [busy]="busy()"
                     [locked]="creatureLocked()"
+                    [pending]="creaturePending(m.id)"
+                    (rollDamage)="rollCreatureDamage(m.id)"
                     (attack)="openCreatureAttack(m.id, $event)"
                     (reactionAttack)="openCreatureAttack(m.id, $event, true)"
                     (action)="takeActionFor(m.id, $event)"

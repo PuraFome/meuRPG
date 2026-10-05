@@ -1,6 +1,6 @@
 import { type Combatant, type Encounter } from '../../../gen/meurpg/play/v1/combat_pb';
 import { groupName, isCreature } from './creature-names';
-import { actingIds, turnMembers } from './joint-turn';
+import { acts, actingIds, turnMembers } from './joint-turn';
 
 /**
  * Everything a player moves in a combat (MR-037, E9-12): their own character and their creatures
@@ -88,4 +88,22 @@ export function tabWord(tab: MineTab, compact = false): string {
     default:
       return compact || n === undefined ? 'Espera' : `Espera · vez ${n}`;
   }
+}
+
+/** The tab whose turn it is, or `''`: the page follows it when it changes. */
+export function actingTab(tabs: readonly MineTab[]): string {
+  return tabs.find((t) => t.state === 'turn')?.id ?? '';
+}
+
+/** The tab the page may keep showing: the chosen one while it exists, else the character's (the creatures are gone, the tabs with them). */
+export function validTab(tabs: readonly MineTab[], chosen: string): string {
+  return tabs.length === 0 || tabs.some((t) => t.id === chosen) ? chosen : CHARACTER_TAB;
+}
+
+/** The members of a tab whose part still has to be ended now, read from the combat as it is (one call each): "Encerrar a parte dos Lobos" ends each one that acts. */
+export function membersToEnd(e: Encounter, tab: MineTab): Combatant[] {
+  return tab.members.filter((member) => {
+    const now = e.combatants.find((c) => c.id === member.id);
+    return !!now && acts(e, now);
+  });
 }

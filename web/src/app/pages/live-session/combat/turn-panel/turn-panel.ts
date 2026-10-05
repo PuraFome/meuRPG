@@ -20,7 +20,6 @@ import { isCreature } from '../../../../core/combat/creature-names';
 import { leftSentence, listNames, missingLine, passNote, playsBefore } from '../../../../core/combat/joint-turn';
 import { mediaQuery } from '../../../../shared/map-view/media-query';
 import { WildBand } from '../../../../shared/wild-shape/wild-band';
-import { WildPools } from '../../../../shared/wild-shape/wild-pools';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import { EndPart } from '../joint-turn/end-part';
 import { JointOthers } from '../joint-turn/joint-others';
@@ -45,7 +44,7 @@ import { ConcentrationLine, TurnReaction } from './turn-extras';
  */
 @Component({
   selector: 'app-turn-panel',
-  imports: [CombatantToken, ConcentrationLine, EndPart, EndTurn, JointOthers, JointPill, MatIconModule, NgTemplateOutlet, OrderStrip, TurnReaction, WildBand, WildPools],
+  imports: [CombatantToken, ConcentrationLine, EndPart, EndTurn, JointOthers, JointPill, MatIconModule, NgTemplateOutlet, OrderStrip, TurnReaction, WildBand],
   templateUrl: './turn-panel.html',
   styleUrl: './turn-panel.scss',
 })
@@ -58,10 +57,6 @@ export class TurnPanel {
   readonly attacksPerAction = input(1);
   /** The player's maximum hit points, for "com 0 de 24 pontos de vida". */
   readonly hitPointsMax = input<number | null>(null);
-  /** The character's own hit points now: with the beast's, the two reserves of a druid in Wild Shape (E9-11). */
-  readonly hitPointsNow = input<number | null>(null);
-  /** The beast's armor class from its book (a player never gets an armor class from the combat: RN-20). */
-  readonly beastAc = input<number | null>(null);
   /** The melee attacks an opportunity attack can use (off turn, reaction free). */
   readonly opportunities = input<readonly { key: string; name: string }[]>([]);
   /** An opportunity attack waits for an answer: the title ("Esperando a reação do mestre") and the line under it (E9-13). */
@@ -84,6 +79,11 @@ export class TurnPanel {
   protected readonly wide = mediaQuery('(min-width: 1280px)');
   protected readonly compact = computed(() => this.desktop() && this.banner().mine && !this.down());
   protected readonly banner = computed(() => turnBanner(this.encounter()));
+  /** The members of a joint turn that is all creatures (the wolves): the header draws each one's token. */
+  protected readonly groupTokens = computed<readonly Combatant[]>(() => {
+    const members = this.banner().joint?.members ?? [];
+    return members.length > 1 && members.every(isCreature) ? members : [];
+  });
   protected readonly round = computed(() => roundLabel(this.encounter().round));
   protected readonly own = computed(() => ownCombatant(this.encounter()));
   /** The beast the druid is in, with its own reserve of hit points (only the druid's player and the master get the numbers). */
@@ -91,24 +91,10 @@ export class TurnPanel {
     const c = this.own();
     return c?.wildShapeBeastKey ? { name: c.wildShapeBeastNamePt, current: c.wildShapeHitPointsCurrent, max: c.wildShapeHitPointsMax } : null;
   });
-  /** "Sem magias · CA 13 · 12,0 m". */
+  /** "Sem magias · 12,0 m": the beast's armor class is the one on the vitals card, once on the page. */
   protected readonly formDetail = computed(() => {
     const c = this.own();
-    const ac = this.beastAc();
-    return c?.wildShapeBeastKey ? joinDots(['Sem magias', ...(ac === null ? [] : [`CA ${ac}`]), tight(metersFixed(c.speedDft / 10))]) : '';
-  });
-  /** The two reserves, when the numbers are known. */
-  protected readonly pools = computed(() => {
-    const f = this.form();
-    const now = this.hitPointsNow();
-    const max = this.hitPointsMax();
-    if (!f || f.current === undefined || f.max === undefined || now === null || max === null) {
-      return null;
-    }
-    return {
-      beast: { label: `PV d${article(f.name) === 'a' ? 'a' : 'o'} ${f.name}`, current: f.current, max: f.max },
-      character: { label: `PV d${article(this.own()?.label ?? '') === 'a' ? 'a' : 'o'} ${this.own()?.label ?? ''}`, current: now, max },
-    };
+    return c?.wildShapeBeastKey ? joinDots(['Sem magias', tight(metersFixed(c.speedDft / 10))]) : '';
   });
   /** The player looks through their familiar's eyes: the character is blind and does not attack (the master resolves it, MR-036). */
   protected readonly blind = computed(() => !!this.own()?.familiarSightCreatureId);

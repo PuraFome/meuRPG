@@ -11,7 +11,7 @@ import { CreatureBlock } from './creature-block';
 function options(attacks: string[], standard: string[] = []) {
   return {
     options: {
-      attacks: attacks.map((key) => ({ enabled: true, attack: create(AttackSchema, { key, name: 'Bite', attackBonus: 5, damage: '2d6+3', damageTypePt: 'perfurante', kind: AttackKind.WEAPON, rangeFt: 5, melee: true }) })),
+      attacks: attacks.map((key) => ({ enabled: true, attack: create(AttackSchema, { key, name: 'Bite', namePt: 'Mordida', notes: 'Melee Weapon Attack: +5 to hit. Hit: 7 (2d6 + 3) piercing damage.', attackBonus: 5, damage: '2d6+3', damageTypePt: 'perfurante', kind: AttackKind.WEAPON, rangeFt: 5, melee: true }) })),
       standardActions: standard.map((k) => ({ enabled: true, action: { key: `standard:${k}`, namePt: k, economy: ActionEconomy.ACTION } })),
     },
   } as never;
@@ -46,7 +46,8 @@ describe('CreatureBlock (E9-12 states 3 and 6)', () => {
     expect(flat(el.querySelector('.head'))).toContain('Ainda age');
     expect(flat(el.querySelector('.eco'))).toContain('Ação Disponível');
     expect(flat(el.querySelector('.eco'))).toContain('Movimento 15,0 m de 15,0 m');
-    expect(flat(el.querySelector('.atk'))).toContain('Mordida +5 para acertar · 2d6 + 3 perfurante · corpo a corpo, 1,5 m Atacar');
+    expect(flat(el.querySelector('.atk'))).toContain('Mordida +5 para acertar · 2d6 + 3 perfurante · corpo a corpo, 1,5 m');
+    expect(flat(el.querySelector('.atk button'))).toBe('Atacar');
     expect(el.querySelector('.go')?.getAttribute('aria-label')).toBe('Mover o Lobo atroz 1');
   });
 
@@ -78,9 +79,39 @@ describe('CreatureBlock (E9-12 states 3 and 6)', () => {
 
   it('off its turn every button is off, with the reason in a line', () => {
     const { el } = setup({}, options(['monster:dire-wolf#bite']), { acting: false });
-    expect(flat(el.querySelector('.why'))).toBe('Ainda não é a vez dela.');
+    expect(flat(el.querySelector('.why'))).toBe('Ainda não é a vez dele.');
     expect(el.querySelector('.atk button')?.getAttribute('aria-disabled')).toBe('true');
     expect(el.querySelector('.go')?.getAttribute('aria-disabled')).toBe('true');
+  });
+
+  it('says the SRD text of an attack under it, in English, and the Portuguese name the server sent', () => {
+    const { el } = setup({}, options(['monster:dire-wolf#bite']));
+    const rider = el.querySelector('.atk .row__rider');
+    expect(rider?.getAttribute('lang')).toBe('en');
+    expect(flat(rider)).toBe('Melee Weapon Attack: +5 to hit. Hit: 7 (2d6 + 3) piercing damage.');
+    expect(flat(el.querySelector('.atk .row__name'))).toBe('Mordida');
+  });
+
+  it('a hit whose damage was not rolled is said, with "Rolar o dano", and the page rolls it', () => {
+    const { fixture, el } = setup({}, options(['monster:dire-wolf#bite']), { pending: { id: 'p1', attackKey: 'monster:dire-wolf#bite', attackerId: 'w1' } });
+    expect(flat(el.querySelector('.owed'))).toContain('Falta rolar o dano do ataque do Lobo atroz 1.');
+    let rolled = 0;
+    fixture.componentInstance.rollDamage.subscribe(() => rolled++);
+    Array.from(el.querySelectorAll<HTMLButtonElement>('.owed button')).find((b) => flat(b) === 'Rolar o dano')!.click();
+    expect(rolled).toBe(1);
+  });
+
+  it('the reaction row of the chain familiar follows what the server says: off when it says so', () => {
+    const base = options(['monster:imp#sting']) as { options: { attacks: { enabled: boolean }[] } };
+    base.options.attacks[0].enabled = false;
+    const { el } = setup({ creatureAttack: CreatureAttack.REACTION }, base);
+    expect(el.querySelector('.atk button')?.getAttribute('aria-disabled')).toBe('true');
+  });
+
+  it('the reaction row is off once the reaction is used, with the reason in words', () => {
+    const { el } = setup({ creatureAttack: CreatureAttack.REACTION, reactionUsed: true }, options(['monster:imp#sting']));
+    expect(el.querySelector('.atk button')?.getAttribute('aria-disabled')).toBe('true');
+    expect(flat(el.querySelector('.atk .row__why'))).toContain('Reação já usada');
   });
 
   it('another player never gets numbers: only the state word', () => {

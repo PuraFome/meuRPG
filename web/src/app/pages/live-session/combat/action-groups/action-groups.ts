@@ -11,6 +11,7 @@ import {
   type TurnOptions,
 } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { metersFixed, reachSquares, squaresText } from '../../../../core/units';
+import { article } from '../../../../core/combat/combat-log';
 import { tight } from '../../../../core/format/text';
 import {
   attackDetail,
@@ -107,6 +108,14 @@ export class ActionGroups {
   readonly familiarEyes = output<void>();
   /** The "?" of a spell: the key and the Portuguese name. */
   readonly describe = output<{ key: string; name: string }>();
+  /** "Você volta a ser a Sálvia, com os seus PV. Os PV que sobraram do Lobo se perdem.": the character and the beast, by name. */
+  protected readonly leaveDetail = computed(() => {
+    const name = this.own().label;
+    const beast = this.beast();
+    const a = (n: string) => (article(n) === 'a' ? 'a' : 'o');
+    return `Você volta a ser ${a(name)} ${name}, com os seus PV. Os PV que sobraram d${a(beast)} ${beast} se perdem.`;
+  });
+
   /** "Transformar": the page opens the list of beasts. */
   readonly transform = output<void>();
   /** "Voltar" (to the normal shape), a bonus action. */
@@ -209,6 +218,14 @@ export class ActionGroups {
   protected isWild(a: ActionOption): boolean {
     const wild = this.wild();
     return !!wild && a.action?.key === wild.key;
+  }
+
+  /** The features of the Ação but Wild Shape (a row of its own after the attacks), and none of it as a beast: the form's own way out is "Voltar à forma normal". */
+  protected readonly otherFeatures = computed(() => this.action_().features.filter((f) => !this.isWild(f) && !(this.beast() && f.action?.key?.startsWith('feature:wild-shape'))));
+
+  /** The SRD's own text of a creature's attack, under it (English); a character's attack has none shown. */
+  protected rider(a: Attack): string {
+    return a.key.includes('#') ? a.notes : '';
   }
 
   /** "1 uso", "2 usos": what is left of the feature's resource. */

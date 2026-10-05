@@ -11,6 +11,7 @@ import {
   SaveOutcome,
   SpellEffectKind,
   SpellEffectOutcome,
+  WildShapeEndReason,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { rollText } from './combat-dice';
 import { conditionName, listNames } from './conditions';
@@ -97,7 +98,8 @@ export interface LogGroup {
 /** "o" or "a" before a name: by its first word's ending, which is right for
  * the names this table uses (Brisa, Toren, Rapieira, Machado, Raio). */
 export function article(name: string): 'o' | 'a' {
-  const first = name.trim().split(/\s+/)[0].toLowerCase();
+  // "Aranha-lobo gigante" is read by "Aranha", the word the article agrees with.
+  const first = name.trim().split(/\s+/)[0].split('-')[0].toLowerCase();
   return /a$/.test(first) || /^(foice|rede|clava|mace)$/.test(first) ? 'a' : 'o';
 }
 
@@ -468,8 +470,35 @@ export function logLine(
     case CombatLogKind.TURN_PART_ENDED:
       // A member of a joint turn ended their part and the turn goes on.
       return { ...base, icon: 'flag', text: ` encerrou a parte ${article(e.actorLabel) === 'a' ? 'dela' : 'dele'}` };
+    case CombatLogKind.WILD_SHAPE:
+      return { ...base, icon: 'pets', text: wildShapeText(e) };
     default:
       return null;
+  }
+}
+
+/** "virou o Lobo", "voltou à forma normal": a druid's change of form. The damage that passed on to the druid is only in the
+ * entry the master and the druid's player get (RN-20); everyone else reads that the druid is back and why, with no number. */
+function wildShapeText(e: CombatLogEntry): string {
+  const w = e.wildShape;
+  if (!w) {
+    return ' mudou de forma';
+  }
+  if (w.started) {
+    return ` virou ${the(w.beastNamePt)}`;
+  }
+  const she = article(e.actorLabel) === 'a' ? 'ela' : 'ele';
+  switch (w.endReason) {
+    case WildShapeEndReason.DAMAGE:
+      return ` voltou à forma normal: ${the(w.beastNamePt)} caiu a 0 PV${w.carriedDamage > 0 ? ` e ${w.carriedDamage} de dano passaram para ${she}` : ''}`;
+    case WildShapeEndReason.MASTER:
+      return ` voltou à forma normal, porque o mestre levou ${the(w.beastNamePt)} a 0 PV`;
+    case WildShapeEndReason.ZERO_HP:
+      return ' voltou à forma normal, ao cair a 0 PV';
+    case WildShapeEndReason.UNCONSCIOUS:
+      return ' voltou à forma normal, ao ficar inconsciente';
+    default:
+      return ' voltou à forma normal';
   }
 }
 

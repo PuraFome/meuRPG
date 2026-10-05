@@ -1,4 +1,4 @@
-import { Component, ElementRef, Injector, afterNextRender, inject, input, output, signal, viewChild } from '@angular/core';
+import { Component, DestroyRef, ElementRef, Injector, afterNextRender, inject, input, output, signal, viewChild } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -19,15 +19,20 @@ import { MatIconModule } from '@angular/material/icon';
       <div #question class="ask" role="alertdialog" aria-labelledby="part-title" aria-describedby="part-text">
         <h3 class="ask__title" id="part-title">{{ heading() }}</h3>
         <p class="ask__text" id="part-text">
-          @if (left()) {
+          @if (detail()) {
+            {{ detail() }}
+          } @else if (left()) {
             Ainda sobram {{ left() }}.
           }
           {{ warning() }}
         </p>
-        <button #safe mat-stroked-button type="button" class="btn" (click)="back()">Voltar</button>
-        <button mat-stroked-button type="button" class="btn" [disabled]="busy()" (click)="confirm()">
-          {{ confirmLabel() }}
-        </button>
+        <!-- "Voltar" outlined, the answer filled: not the same button twice. -->
+        <div class="ask__buttons">
+          <button #safe mat-stroked-button type="button" class="btn btn--back" (click)="back()">Voltar</button>
+          <button mat-flat-button type="button" class="btn btn--go" [disabled]="busy()" (click)="confirm()">
+            {{ confirmLabel() }}
+          </button>
+        </div>
       </div>
     } @else {
       @if (note()) {
@@ -43,12 +48,29 @@ import { MatIconModule } from '@angular/material/icon';
       display: block;
     }
 
+    // The button that opens the question is the same as "Encerrar turno": an outline in the accent text.
     .btn {
       --mat-button-outlined-container-height: 48px;
-      --mat-button-outlined-label-text-color: var(--mr-ink);
+      --mat-button-outlined-label-text-color: var(--mr-accent-text);
       --mat-button-outlined-outline-color: var(--mr-control-line);
+      --mat-button-filled-container-height: 48px;
       width: 100%;
       white-space: nowrap;
+    }
+
+    .btn--back {
+      --mat-button-outlined-label-text-color: var(--mr-ink);
+    }
+
+    // The two answers: stacked on a phone, side by side from a tablet, never wider than a button needs.
+    .ask__buttons {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 10px;
+
+      @media (min-width: 768px) {
+        grid-template-columns: repeat(2, minmax(0, 240px));
+      }
     }
 
     .ask {
@@ -86,6 +108,15 @@ import { MatIconModule } from '@angular/material/icon';
 export class EndPart {
   private readonly injector = inject(Injector);
 
+  constructor() {
+    // The question goes away with the card (the turn moved on): whoever froze their tabs for it lets them go.
+    inject(DestroyRef).onDestroy(() => {
+      if (this.asking()) {
+        this.asked.emit(false);
+      }
+    });
+  }
+
   /** The button's words, and the question's: "Encerrar a parte dos Lobos" asks "Encerrar a parte dos Lobos?" (E9-12). */
   readonly label = input('Encerrar a minha parte');
   readonly heading = input('Encerrar a sua parte?');
@@ -93,6 +124,8 @@ export class EndPart {
   readonly warning = input('Não dá para reabrir a sua parte depois.');
   /** What is still left, "Ação, Ação bônus, Reação e 9 m · 6 quadrados"; empty when nothing. */
   readonly left = input('');
+  /** The whole sentence of what is left, when the caller has it better than a list ("Os 2 Lobos ainda têm ação e movimento."). */
+  readonly detail = input('');
   /** The line above the button: "O turno passa quando você e a Brisa encerrarem." */
   readonly note = input('');
   readonly busy = input(false);

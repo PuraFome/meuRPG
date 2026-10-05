@@ -64,6 +64,9 @@
           @if (inTurn(c)) {
             <app-part-state [ended]="c.turnPartEnded" />
           }
+          @if (c.concentrationSpell) {
+            <app-conc-pill class="row__conc" />
+          }
         </span>
         <span class="row__meta">
           <span class="row__sub">{{ sub(c) }}</span>
@@ -91,7 +94,7 @@
         @if (down(c)) {
           <app-death-row [successes]="c.deathSuccesses" [failures]="c.deathFailures" />
         }
-        <app-combatant-tags [names]="tags(c)" [concentration]="concentration(c)" [label]="c.label" />
+        <app-combatant-tags [names]="tags(c)" [label]="c.label" />
 
         @if (c.hitPointsMax !== undefined) {
           <span class="row__pv-inline">PV {{ c.hitPointsCurrent }} de {{ c.hitPointsMax }}@if (c.initiative !== undefined && !inGroup) { · iniciativa&nbsp;<b>{{ c.initiative }}</b>}</span>
@@ -200,17 +203,21 @@
       }
       @if (live() && c.concentrationSpell && losing() !== c.id && removing() !== c.id) {
         <div class="row__extra">
-          <p class="row__hidden-note"><mat-icon aria-hidden="true">hourglass_empty</mat-icon>Se concentra em <b>{{ concentration(c) }}</b>{{ held(c) }}</p>
-          <button mat-stroked-button type="button" class="row__lose" [disabled]="busy()" (click)="losing.set(c.id)">Perdeu a concentração</button>
+          <p class="row__hidden-note">Concentra em <b>{{ concentration(c) }}</b>{{ held(c) }}</p>
+          @if (heldBy(c).length > 0) {
+            <button mat-stroked-button type="button" class="row__lose" [disabled]="busy()" (click)="losing.set(c.id)">Perdeu a concentração</button>
+          }
         </div>
       }
       @if (losing() === c.id) {
-        <div class="row__confirm" role="alertdialog" [attr.aria-label]="'Perdeu a concentração: ' + c.label">
-          <p>{{ c.label }} perdeu a concentração?</p>
-          <p class="row__lose-text">{{ concentration(c) }} acaba{{ heldText(c) }} Isso não se desfaz.</p>
-          <button mat-stroked-button type="button" #back (click)="losing.set(null)">Voltar</button>
-          <button mat-stroked-button type="button" class="danger" (click)="confirmLose(c.id)">Dispensar as criaturas</button>
-        </div>
+        <app-lose-question
+          class="row__confirm"
+          [question]="loseQuestion(c)"
+          [text]="heldText(c)"
+          [answer]="dismissLabel(c)"
+          (cancel)="losing.set(null)"
+          (confirm)="confirmLose(c.id)"
+        />
       }
       @if (removing() === c.id) {
         <div class="row__confirm" role="alertdialog" [attr.aria-label]="'Remover ' + c.label">

@@ -32,6 +32,7 @@ import { endTurnIsPrimary } from '../../../../core/combat/combat-options';
         [class.end--filled]="primary()"
         [class.end--block]="block()"
         [class.end--off]="!!waiting()"
+        [class.mr-button--off]="!!waiting()"
         [disabled]="busy() || !!waiting()"
         disabledInteractive
         (click)="press()"

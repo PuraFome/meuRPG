@@ -30,4 +30,25 @@ describe('OrderColumn', () => {
     expect(rows[3]).toMatch(/^4.*Goblin 1 .*Derrotado$/);
     expect((fixture.nativeElement as HTMLElement).querySelector('.row--turn')?.textContent).toContain('Pensantus');
   });
+
+  it('says a creature of another player with only its owner and a state word, and the concentration to everyone', () => {
+    const fixture = TestBed.createComponent(OrderColumn);
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({
+        currentCombatantId: 'tor',
+        combatants: [
+          combatant({ id: 'sal', label: 'Sálvia', kind: CombatantKind.PLAYER, characterId: 'sc', concentrationSpell: 'spell:conjure-animals', concentrationSpellNamePt: 'Conjurar Animais' }),
+          combatant({ id: 'w1', label: 'Lobo atroz 1', kind: CombatantKind.CREATURE, characterId: '', ownerCharacterId: 'sc', state: CombatantState.HURT }),
+          combatant({ id: 'tor', label: 'Toren', kind: CombatantKind.PLAYER, mine: true }),
+        ],
+      }),
+    );
+    fixture.detectChanges();
+    const rows = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('.row'), (r) => r.textContent?.replace(/\s+/g, ' ').trim());
+    expect(rows[0]).toContain('Concentração');
+    // No numbers of its hit points, armor class or actions: the owner and a word.
+    expect(rows[1]).toMatch(/Lobo atroz 1 .*da Sálvia · Ferido/);
+    expect(rows[1]).not.toMatch(/PV|CA|\d+ de \d+/);
+  });
 });
