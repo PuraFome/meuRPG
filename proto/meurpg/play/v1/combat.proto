@@ -1599,7 +1599,8 @@ message Combatant {
   int32 movement_left_dft = 42;
   // The cover the master marked on it (SetCombatantCover): NONE or UNSPECIFIED
   // when there is none. It is no armor class and everyone who sees the combatant
-  // gets it. The cover from the map depends on who attacks, so it is on
+  // gets it. A move that takes it off also sends `encounter_changed`, since
+  // `combatant_moved` carries only the square. The cover from the map depends on who attacks, so it is on
   // TargetInReach, never here.
   CoverDegree cover_mark = 43;
   // A fly speed in feet, 0 for none. Same audience as `speed_ft`.

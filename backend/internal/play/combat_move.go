@@ -13,6 +13,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
@@ -238,6 +239,8 @@ func (s *Service) MoveCombatant(
 	var made actionEvent
 	var stoppedEarly bool // a creature the player does not see cut the move short
 	var logged bool       // the move is a line of the combat log
+	var offered []string  // the reactors the move offered an attack
+	var markCleared bool  // the move took the master's cover mark off
 	var th *trapHook      // the traps the move may fire (combat_traps.go, MR-035)
 	var moveID string     // the id of the opportunity offers the move made, if any
 	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventCombatantMoved, altKind: eventTrapTriggered, encounterID: encID}, func(c *combatTx) (any, error) {
@@ -283,6 +286,7 @@ func (s *Service) MoveCombatant(
 		th = s.newTrapHook(ctx, c.tx, m.CampaignID, c.enc, target)
 		from := moveStateOf(target)
 		made = actionEvent{Round: c.enc.Round, Secret: target.Hidden, Actor: target.ID, OnTurn: onTurn, From: from}
+		offered, markCleared = nil, false
 		to := grid.Square{Col: int(col), Row: int(row)}
 		if jump == playv1.JumpKind_JUMP_KIND_HIGH {
 			to = squareOfCombatant(target) // a high jump moves nobody
@@ -371,6 +375,7 @@ func (s *Service) MoveCombatant(
 		squareChanged := !placed(target) || to != squareOfCombatant(target)
 		coverMark := target.CoverMark
 		if squareChanged {
+			markCleared = coverMark != "" && coverMark != "none"
 			coverMark = "none"
 		}
 		made.StoppedEarly = stoppedEarly
@@ -390,7 +395,7 @@ func (s *Service) MoveCombatant(
 		// enemy is offered an attack. A high jump moves nobody; a placement out of
 		// turn, a forced move and a move that stays put offer nothing.
 		if jump != playv1.JumpKind_JUMP_KIND_HIGH && !forced && onTurn && placed(target) && squareChanged {
-			if moveID, err = s.offerOpportunities(ctx, c, cs, target, squareOfCombatant(target), to); err != nil {
+			if moveID, offered, err = s.offerOpportunities(ctx, c, cs, target, squareOfCombatant(target), to); err != nil {
 				return nil, err
 			}
 			made.MoveID = moveID
@@ -425,6 +430,16 @@ func (s *Service) MoveCombatant(
 	}
 	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
 		s.publishCombatantMoved(ctx, m.CampaignID, d.enc, moved, squareOfState(made.From))
+		if made.MoveID != "" { // the offers are in the combat, not in the move's hint
+			s.publishOffersMade(m.CampaignID, d, moved, offered)
+		}
+		if markCleared { // the mark is on the combatant, not in the move's hint: who saw it reads again
+			if moved.Hidden {
+				s.hub.Publish(m.CampaignID, live.Event{Audience: live.Audience{Master: true}, Message: encounterChangedMessage(d.enc)})
+			} else {
+				s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
+			}
+		}
 		s.positionChanged(ctx, m.CampaignID, d.enc, moved, squareOfState(made.From)) // the fog remembers what it showed
 		if logged {
 			s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !moved.Hidden)

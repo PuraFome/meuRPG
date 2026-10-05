@@ -812,7 +812,8 @@ export type Combatant = Message<"meurpg.play.v1.Combatant"> & {
   /**
    * The cover the master marked on it (SetCombatantCover): NONE or UNSPECIFIED
    * when there is none. It is no armor class and everyone who sees the combatant
-   * gets it. The cover from the map depends on who attacks, so it is on
+   * gets it. A move that takes it off also sends `encounter_changed`, since
+   * `combatant_moved` carries only the square. The cover from the map depends on who attacks, so it is on
    * TargetInReach, never here.
    *
    * @generated from field: meurpg.play.v1.CoverDegree cover_mark = 43;
