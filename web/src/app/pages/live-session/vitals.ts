@@ -88,8 +88,9 @@ export function partyRowSub(info: PartyMemberInfoVm | undefined): string {
   if (!info) {
     return '';
   }
-  const player = info.playerName ? `de ${info.playerName}` : 'jogador sem nome';
-  return info.classSummary ? `${info.classSummary}, ${player}` : player;
+  // A player with no display name is not written about: the class alone (a placeholder says nothing).
+  const player = info.playerName ? `de ${info.playerName}` : '';
+  return [info.classSummary, player].filter(Boolean).join(', ');
 }
 
 /** "Ana vê a mudança na hora." in the adjust sheet (only that character's

@@ -9,6 +9,12 @@ export function pointKindLabel(kind: number): string {
       return 'Submapa';
     case MapPointKind.SCENE:
       return 'Cena de RP';
+    case MapPointKind.TRAP:
+      return 'Armadilha';
+    case MapPointKind.TREASURE:
+      return 'Tesouro';
+    case MapPointKind.LIGHT:
+      return 'Luz';
     default:
       return 'Ponto';
   }
@@ -22,6 +28,12 @@ export function pointKindIcon(kind: number): string {
       return 'swords';
     case MapPointKind.SUBMAP:
       return 'stairs';
+    case MapPointKind.TRAP:
+      return 'warning';
+    case MapPointKind.TREASURE:
+      return 'inventory_2';
+    case MapPointKind.LIGHT:
+      return 'lightbulb';
     default:
       return 'chat_bubble';
   }

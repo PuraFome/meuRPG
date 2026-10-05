@@ -71,7 +71,7 @@
         <app-map-view
           [image]="frame()"
           [mapName]="mapName()"
-          [points]="points()"
+          [points]="markerPoints()"
           [tokens]="shownTokens()"
           [isMaster]="isMaster()"
           [mode]="mode()"
@@ -93,6 +93,9 @@
             (settledChange)="onSettled($event)"
             (loadingChange)="onLoading($event)"
           />
+          @if (pins()) {
+            <app-map-pins mapOverlay [points]="points()" [columns]="v.columns" [rows]="v.rows" [isMaster]="isMaster()" />
+          }
         </app-map-view>
       } @else {
         <span class="fm__wait" data-pending aria-hidden="true"></span>
@@ -158,6 +161,10 @@
           <li><span class="fm__mark"><span class="fm__creature" aria-hidden="true">{{ initial(pet) }}</span></span>Criatura</li>
         }
       </app-map-layers-legend>
+      @if (pins()) {
+        <!-- The trap, treasure and light marks name themselves right under the map's legend, not apart from it. -->
+        <app-map-pins-legend [points]="points()" [isMaster]="isMaster()" />
+      }
     }
     @if (caption() && !isMaster()) {
       @if (offMap()) {

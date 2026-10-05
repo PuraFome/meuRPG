@@ -13,6 +13,7 @@ import (
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/link"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
@@ -44,6 +45,9 @@ const (
 // by passing: 3 m, which is 10 ft, in tenths of a foot (our radius: the SRD says
 // only "in passing"). It is the distance between the squares' centers.
 const noticeRangeDFt = 100
+
+// noticeKey is one trap that one player's character noticed.
+type noticeKey struct{ point, user string }
 
 type trapNoticedEvent struct {
 	PointID      string   `json:"point_id"`
@@ -270,14 +274,14 @@ func (s *Service) Notice(ctx context.Context, campaignID, mapID string, who []li
 		return nil
 	}
 	var told []string
+	var noticed []noticeKey // the (trap, player) pairs that are new, in order
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
-		told = nil
+		told, noticed = nil, nil
 		now := s.now()
 		// One event for each trap and player: the actor is the one whose character noticed.
-		type key struct{ point, user string }
-		byKey := map[key][]string{}
-		var order []key
+		byKey := map[noticeKey][]string{}
+		var order []noticeKey
 		for _, f := range finds {
 			n, err := q.InsertPointReveal(ctx, mapsdb.InsertPointRevealParams{PointID: f.point, CharacterID: f.character, How: "noticed", At: now})
 			if err != nil {
@@ -286,7 +290,7 @@ func (s *Service) Notice(ctx context.Context, campaignID, mapID string, who []li
 			if n == 0 {
 				continue
 			}
-			k := key{f.point, f.user}
+			k := noticeKey{f.point, f.user}
 			if _, seen := byKey[k]; !seen {
 				order = append(order, k)
 			}
@@ -303,6 +307,7 @@ func (s *Service) Notice(ctx context.Context, campaignID, mapID string, who []li
 			if _, err := s.live.AppendEvent(ctx, tx, campaignID, eventTrapNoticed, k.user, payload, now); err != nil {
 				return fmt.Errorf("record the notice: %w", err)
 			}
+			noticed = append(noticed, k)
 		}
 		return nil
 	})
@@ -310,6 +315,7 @@ func (s *Service) Notice(ctx context.Context, campaignID, mapID string, who []li
 		return fmt.Errorf("notice a trap: %w", err)
 	}
 	s.tellUsers(ctx, campaignID, mapID, ts.row, told)
+	s.tellNoticers(ctx, campaignID, mapID, ts.row, noticed)
 	// The master's trap card and log have news: a hint with no content.
 	s.live.Publish(campaignID, false, mapChangedEvent(mapID))
 	return nil
@@ -328,6 +334,29 @@ func (s *Service) tellUsers(ctx context.Context, campaignID, mapID string, row m
 	}
 	if playersSee(mapID, row.RevealedAt, current) {
 		s.live.PublishToUsers(campaignID, users, mapChangedEvent(mapID))
+	}
+}
+
+// tellNoticers sends each player who just noticed a trap the `trap_noticed` hint
+// (E9-08 G: "Você notou uma armadilha."), under the same rule as tellUsers: only when
+// the map is one the players see, and only to that player (RN-10). The hint names the
+// map and the trap, which that player now knows; nobody else gets it.
+func (s *Service) tellNoticers(ctx context.Context, campaignID, mapID string, row mapsdb.Map, noticed []noticeKey) {
+	if len(noticed) == 0 {
+		return
+	}
+	current, err := s.currentMap(ctx, campaignID)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "maps: cannot tell the players about a trap", "error", err)
+		return
+	}
+	if !playersSee(mapID, row.RevealedAt, current) {
+		return
+	}
+	for _, n := range noticed {
+		s.live.PublishToUsers(campaignID, []string{n.user}, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_TrapNoticed_{
+			TrapNoticed: &playv1.WatchGameSessionResponse_TrapNoticed{MapId: mapID, PointId: n.point},
+		}})
 	}
 }
 
@@ -597,6 +626,9 @@ func (s *Service) GetTrapNoticers(
 				n.WouldNotice = spec.GetNoticeDc() > 0 && member.PassivePerception+sg.penalty >= int(spec.GetNoticeDc())
 			}
 		}
+		// What the score would do at the DC with the penalty reported here, wherever the character
+		// stands and whether or not it sees the squares: the screen shows it for the ones out of range.
+		n.PassesDc = spec.GetNoticeDc() > 0 && member.PassivePerception+int(n.LightPenalty) >= int(spec.GetNoticeDc())
 		out.Noticers = append(out.Noticers, n)
 	}
 	return connect.NewResponse(out), nil
@@ -698,6 +730,10 @@ type TrapFirer interface {
 	// combat runs on the map. It takes no caller: it runs after this package's own
 	// authorization (the master), and a failure is logged, never the master's.
 	TokenDropped(ctx context.Context, campaignID, mapID, characterID, actorUserID string, at grid.Square) error
+	// CreatureDropped is the same for a creature of a player's character: its token
+	// was dropped on a square, and the traps whose area holds it fire (the creature is
+	// caught with whoever stands there). Same terms as TokenDropped.
+	CreatureDropped(ctx context.Context, campaignID, mapID string, creature link.MapCreature, actorUserID string, at grid.Square) error
 }
 
 // SetTrapFirer connects the module that fires traps.
@@ -734,5 +770,31 @@ func (s *Service) tokenLanded(ctx context.Context, campaignID, actorUserID, mapI
 	}
 	if err := s.Notice(ctx, campaignID, mapID, []link.Observer{{CharacterID: character.GetId(), At: at}}); err != nil {
 		s.logger.ErrorContext(ctx, "maps: cannot notice a trap for a token", "error", err)
+	}
+}
+
+// creatureLanded is tokenLanded for a creature's token: a creature of a player's
+// character fires the traps whose area it lands in, on a map the players see, and it
+// never fails the move. It notices nothing: noticing is a character's, and in a combat
+// the creature's moves are the combat's (play.TrapBook.Notice is called there).
+func (s *Service) creatureLanded(ctx context.Context, campaignID, actorUserID, mapID string, token mapsdb.MapCreatureToken, creature link.MapCreature) {
+	if s.firer == nil {
+		return
+	}
+	ctx = context.WithoutCancel(ctx)
+	row, err := s.queries.GetMap(ctx, mapsdb.GetMapParams{CampaignID: campaignID, ID: mapID})
+	if err != nil {
+		return
+	}
+	current, err := s.currentMap(ctx, campaignID)
+	if err != nil || !playersSee(mapID, row.RevealedAt, current) {
+		return
+	}
+	g := s.gridOfMap(ctx, campaignID, mapID)
+	if !g.Valid() {
+		return
+	}
+	if err := s.firer.CreatureDropped(ctx, campaignID, mapID, creature, actorUserID, g.SquareOf(int(token.XBp), int(token.YBp))); err != nil {
+		s.logger.ErrorContext(ctx, "maps: cannot fire a trap for a creature's token", "error", err)
 	}
 }

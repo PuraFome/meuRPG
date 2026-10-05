@@ -1,0 +1,69 @@
+<p class="mr-visually-hidden" role="status" aria-live="polite">{{ announcement() }}</p>
+@for (w of waiting(); track w.d.id) {
+  <section class="td" [attr.aria-labelledby]="'td-' + w.d.id">
+    <header class="td__head">
+      <mat-icon class="td__icon" aria-hidden="true">arrow_downward</mat-icon>
+      <div>
+        <h3 class="td__title" [id]="'td-' + w.d.id">{{ w.title }}</h3>
+        <p class="td__sub">{{ w.formula }} · {{ w.sub }}</p>
+      </div>
+    </header>
+
+    @if (discarding() === w.d.id) {
+      <div class="td__ask" role="alertdialog" [attr.aria-label]="'Descartar o dano de ' + w.d.amount">
+        <p class="td__askt">Descartar o dano de {{ w.d.amount }}?</p>
+        <div class="td__pair">
+          <button #safe matButton="outlined" type="button" (click)="discarding.set(null)">Voltar</button>
+          <button matButton="outlined" type="button" class="td__danger" [disabled]="busy()" (click)="discard(w.d)">Descartar</button>
+        </div>
+      </div>
+    } @else {
+      <label class="td__field">
+        <span class="td__label">{{ w.label }}</span>
+        <input
+          class="td__input"
+          type="text"
+          inputmode="numeric"
+          maxlength="4"
+          autocomplete="off"
+          [value]="w.text"
+          [attr.aria-invalid]="w.amount === null"
+          [attr.aria-describedby]="'td-h-' + w.d.id"
+          (input)="type(w.d.id, $event)"
+          (keydown.enter)="apply(w.d, w.amount)"
+        />
+      </label>
+      <p class="td__hint" [id]="'td-h-' + w.d.id">
+        @if (w.amount === null) {
+          Digite um número de 0 a 1.000.
+        } @else {
+          Mude o número se houver resistência: o app não calcula.
+        }
+      </p>
+      @if (w.hp; as hp) {
+        <p class="td__hp">
+          {{ hp.name }}
+          <b>{{ hp.now }}</b> de {{ hp.max }}
+          <mat-icon aria-hidden="true">arrow_forward</mat-icon>
+          <b>{{ hp.after }}</b> de {{ hp.max }}
+          <span class="mr-visually-hidden">pontos de vida, antes e depois</span>
+        </p>
+      }
+      <div class="td__pair">
+        <button matButton="filled" type="button" [attr.aria-disabled]="busy() || w.amount === null" (click)="apply(w.d, w.amount)">
+          Aplicar {{ w.amount ?? '' }} de dano
+        </button>
+        <button matButton="outlined" type="button" [disabled]="busy()" (click)="askDiscard(w.d.id)">Não aplicar</button>
+      </div>
+    }
+  </section>
+}
+@if (done()) {
+  <p class="td__done" role="status"><mat-icon aria-hidden="true">check</mat-icon>{{ done() }}</p>
+}
+@if (error()) {
+  <div class="mr-notice mr-notice--danger" role="alert">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <p>{{ error() }}</p>
+  </div>
+}

@@ -1,0 +1,44 @@
+<h4 class="tn__h" id="tn-h">Quem notaria</h4>
+@if (failed()) {
+  <div class="mr-notice mr-notice--danger" role="alert">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <p>
+      <strong>Não deu para ler quem notaria.</strong>
+      <button matButton type="button" class="tn__retry" (click)="retry.emit()">Tentar de novo</button>
+    </p>
+  </div>
+} @else if (noticers(); as res) {
+  @if (res.noticeDc === 0) {
+    <p class="tn__lead">Ninguém nota esta armadilha sozinho: ela não tem CD para notar. Só se acha com Investigação.</p>
+  } @else {
+    <p class="tn__lead">
+      Percepção passiva contra a CD {{ res.noticeDc }} para notar, de quem está a até 3&nbsp;m e vê o quadrado. A penumbra tira 5 da passiva.
+    </p>
+    @if (rows().length === 0) {
+      <p class="tn__lead">Nenhum personagem de jogador vivo nesta campanha.</p>
+    } @else {
+      <ul class="tn" aria-labelledby="tn-h">
+        @for (r of rows(); track r.n.characterId) {
+          <li class="tn__row">
+            <span class="tn__who">
+              <b class="tn__name">{{ r.n.characterName }}</b>
+              <span class="tn__sub">{{ r.where }}@if (r.whereNote) { · {{ r.whereNote }} }</span>
+            </span>
+            <span class="tn__pass">
+              <span class="tn__cap">Percepção passiva</span>
+              <b class="tn__num">{{ r.n.passivePerception }}</b>
+              @if (r.penalty) {
+                <span class="tn__pen">({{ r.penalty }})</span>
+              }
+            </span>
+            <span class="tn__verdict" [class]="'tn__verdict tn__verdict--' + r.verdict">
+              <mat-icon aria-hidden="true">{{ r.verdict === 'yes' ? 'visibility' : r.verdict === 'knows' ? 'check' : 'close' }}</mat-icon>{{ r.verdictWord }}
+            </span>
+          </li>
+        }
+      </ul>
+    }
+  }
+} @else {
+  <p class="tn__lead" role="status">Lendo quem notaria...</p>
+}

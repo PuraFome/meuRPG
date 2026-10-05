@@ -681,9 +681,10 @@ WHERE encounter_id = $1 AND trap_point_id IS NOT NULL AND status = 'rolled'
 ORDER BY created_at, id;
 
 -- name: ListTrapEventsOfSession :many
--- The trap firings and searches of a session outside a combat, oldest first.
+-- The trap firings, searches and passive notices of a session outside a combat, oldest first.
+-- (A notice has no combat even in one: the maps module writes it after the move.)
 SELECT id, kind, character_id, payload, created_at FROM session_events
-WHERE game_session_id = $1 AND encounter_id IS NULL AND kind IN ('trap_triggered', 'trap_searched')
+WHERE game_session_id = $1 AND encounter_id IS NULL AND kind IN ('trap_triggered', 'trap_searched', 'trap_noticed')
 ORDER BY seq
 LIMIT 500;
 

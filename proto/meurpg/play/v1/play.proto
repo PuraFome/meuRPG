@@ -481,7 +481,8 @@ service PlayService {
 
   // ListTrapActivity reads what traps did in the open session outside a combat (MR-035,
   // RN-10): the firings, with each creature's attack, saving throw and damage (the
-  // conditions are a reminder), and the searches. The master gets all of it; a player
+  // conditions are a reminder), the searches and the traps a character noticed by passing
+  // near them (TrapActivity.notice). The master gets all of it; a player
   // only the lines of their own characters, with their own d20 and "passou" or
   // "falhou", never a DC and never a trap their characters do not know. In a combat the
   // same is in the combat log. Any member may call it. A player's search, and a firing
@@ -1111,6 +1112,21 @@ message WatchGameSessionResponse {
     // Only the master and the creatures' owner get it; during a combat
     // `encounter_changed` covers the creatures.
     CreaturesChanged creatures_changed = 20;
+    // The caller's character noticed a trap by passing near it (MR-035, D5): show
+    // "Você notou uma armadilha." and read the map again. Only the player whose
+    // character noticed it gets it; no other player, and the master never, hears of
+    // it (RN-10).
+    TrapNoticed trap_noticed = 21;
+  }
+
+  // TrapNoticed is the hint that a player's character passively noticed a trap. It
+  // names the trap to the one player who now knows it (the map read shows it to them
+  // alone); it carries no DC and no position, and no other member ever gets it.
+  message TrapNoticed {
+    // The map the trap is on (a UUID).
+    string map_id = 1;
+    // The trap's point (a UUID), readable now with MapService.GetMap.
+    string point_id = 2;
   }
 
   // VisionChanged is a hint for one player on a map with the fog of war on: what

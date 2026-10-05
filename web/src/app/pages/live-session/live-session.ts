@@ -34,6 +34,14 @@ import { NotesClient } from '../../core/notes/notes-client';
 import { NotesState } from '../../core/notes/notes-state';
 import type { CluePlayer } from '../../core/maps/scene-clues';
 import { XpChanges } from '../../core/progression/xp-changes';
+import { ToastQueue } from '../../core/traps/toast-queue';
+import { TrapBoard } from '../../core/traps/trap-board';
+import { foundToastTitle, TreasureWatch } from '../../core/traps/treasure-text';
+import { firstLine } from '../../core/traps/trap-text';
+import { TrapsClient } from '../../core/traps/traps-client';
+import { focusWithRing } from '../../core/creatures/focus-ring';
+import { LiveToast } from '../../shared/live-toast/live-toast';
+import type { PickRow } from '../../shared/person-pick/person-pick';
 import { MapsClient } from '../../core/maps/maps-client';
 import { SceneClient } from '../../core/play/scene-client';
 import { SceneState } from '../../core/play/scene-state';
@@ -71,6 +79,11 @@ import { LeftImagesBlock } from './left-images-block/left-images-block';
 import { ShownImageBlock } from './shown-image-block/shown-image-block';
 import { ShownImagePanel } from './shown-image-panel/shown-image-panel';
 import { applySnapshot, applyVitals, partyRowSub } from './vitals';
+import { FoundTreasures } from './treasure/found-treasures/found-treasures';
+import { TreasurePanel } from './treasure/treasure-panel/treasure-panel';
+import { TrapActivityList } from './traps/trap-activity/trap-activity';
+import { TrapPanel } from './traps/trap-panel/trap-panel';
+import { openTrapSearch } from './traps/trap-search-sheet/trap-search-sheet';
 
 /**
  * Where the page stands. `live` covers reconnecting too: the numbers stay
@@ -105,7 +118,9 @@ type Phase = 'loading' | 'live' | 'no-access' | 'no-session' | 'ended' | 'error'
     FamiliarBand,
     CombatLaunch,
     CombatView,
+    FoundTreasures,
     HighlightsCard,
+    LiveToast,
     PartyPanel,
     PlayerVitals,
     SessionBlocked,
@@ -116,6 +131,9 @@ type Phase = 'loading' | 'live' | 'no-access' | 'no-session' | 'ended' | 'error'
     SceneOpen,
     ScenePanel,
     ScenePlayer,
+    TrapActivityList,
+    TrapPanel,
+    TreasurePanel,
     LeftImagesBlock,
     ShownImageBlock,
     ShownImagePanel,
@@ -135,6 +153,7 @@ export class LiveSession {
   private readonly combatApi = inject(CombatClient);
   private readonly sceneApi = inject(SceneClient);
   private readonly notesApi = inject(NotesClient);
+  private readonly trapsApi = inject(TrapsClient);
   private readonly sessionNotes = inject(SessionNotes);
   private readonly openSessions = inject(OpenSessions);
   private readonly destroyRef = inject(DestroyRef);
@@ -163,6 +182,18 @@ export class LiveSession {
   protected readonly mapState = new MapState((mapId) =>
     this.mapsApi.get(this.campaignId(), mapId),
   );
+
+  /** What traps did and the damage that waits (MR-035): the master's panel and the players' "Registro". */
+  protected readonly trapBoard = new TrapBoard(
+    this.trapsApi,
+    this.mapsApi,
+    () => this.campaignId(),
+    () => this.currentMapId(),
+    () => this.isMaster(),
+  );
+  /** The player's toasts: a trap noticed, a treasure found (8 s each). */
+  protected readonly toasts = new ToastQueue();
+  private readonly treasureWatch = new TreasureWatch();
 
   /** What the viewer sees of the current map when it has the fog of war on (MR-036): the vision with its tiles and
    * the layers, read again on `vision_changed` and `map_changed`. The combat map draws the same one. */
@@ -258,6 +289,20 @@ export class LiveSession {
       })),
   );
 
+  /** The living player characters as rows to pick from ("Quem encontrou"): the class and the player under the name. */
+  protected readonly finderRows = computed<readonly PickRow[]>(() =>
+    this.vitals()
+      .filter((v) => v.playerUserId !== '')
+      .map((v) => {
+        const info = this.partyInfo().get(v.characterId);
+        return { id: v.characterId, name: v.name, sub: [info?.classSummary ?? '', info?.playerName ? `de ${info.playerName}` : ''].filter(Boolean).join(', ') };
+      }),
+  );
+  /** The player's bonuses for "Procurar armadilhas" (the derived sheet). */
+  protected readonly trapSkills = computed(() => this.playerSheet()?.skills ?? null);
+  /** The player may search the map for traps: a character of theirs, on a map with a grid. */
+  protected readonly searchable = computed(() => !this.isMaster() && this.ownVitals() !== null && (this.mapState.map()?.gridColumns ?? 0) > 0);
+
   /** The campaign of the current load; `null` once it turned out the page
    * can't show it (no access, a pending member, an error). */
   private campaignLoad: Promise<CampaignInfoVm | null> = Promise.resolve(null);
@@ -275,6 +320,7 @@ export class LiveSession {
         }
       });
     this.destroyRef.onDestroy(() => {
+      this.toasts.clear();
       clearTimeout(this.visionTimer);
       this.closeStream();
       this.sessionNotes.bar.set(null);
@@ -286,6 +332,21 @@ export class LiveSession {
       const show = this.phase() === 'live' && !this.isMaster();
       const bar = this.notesBar();
       untracked(() => this.sessionNotes.bar.set(show ? (bar ?? null) : null));
+    });
+
+    // A treasure the master marks found while the player looks at the map: a toast (E9-09 4). The first read
+    // of a map is the baseline, so a treasure found before they got here is not news.
+    effect(() => {
+      const map = this.mapState.status() === 'ready' ? this.mapState.map() : null;
+      const points = this.mapState.points();
+      untracked(() => {
+        const fresh = this.treasureWatch.newlyFound(map?.id ?? null, points);
+        if (!this.isMaster()) {
+          for (const p of fresh) {
+            this.toasts.push('inventory_2', foundToastTitle(p), firstLine(p.description));
+          }
+        }
+      });
     });
 
     // A map with the fog of war on: the vision is read when it is the current one, and closed when it is not.
@@ -344,6 +405,8 @@ export class LiveSession {
     this.highlightsClosed.set(null);
     this.scene.clear();
     this.notes.clear();
+    this.trapBoard.clear();
+    this.toasts.clear();
     this.loadedSheetFor = null;
     this.partyInfoIds = new Set();
 
@@ -384,6 +447,7 @@ export class LiveSession {
         onReady: () => {
           // A missed `xp_changed` while reconnecting leaves nothing stale.
           this.xpChanges.bump();
+          void this.trapBoard.refresh();
           void this.readSnapshot(campaignId, generation);
         },
         onVitals: (v) => {
@@ -422,6 +486,8 @@ export class LiveSession {
           if (!current || current.id !== change.encounterId || change.revision === 0 || change.revision > current.revision) {
             void this.loadCombat(generation);
           }
+          // A trap that fired in the combat leaves damage that waits for the master.
+          void this.trapBoard.refreshDamages();
         },
         onTurnChanged: (turn) => {
           if (!this.combat.applyTurn(turn)) {
@@ -434,7 +500,11 @@ export class LiveSession {
             void this.loadCombat(generation);
           }
         },
-        onCombatLogChanged: () => this.combat.touchLog(),
+        onCombatLogChanged: () => {
+          this.combat.touchLog();
+          void this.trapBoard.refreshDamages();
+        },
+        onTrapNoticed: (notice) => void this.trapNoticed(notice.mapId, notice.pointId),
         onXpChanged: () => this.xpChanges.bump(),
         onSceneChanged: () => void this.scene.refresh(),
         onNotesChanged: () => void this.notes.refresh(true),
@@ -642,13 +712,50 @@ export class LiveSession {
   }
 
   private mapChanged(mapId: string): void {
+    // The damage that waits covers the whole campaign (ListTrapDamages): a trap on another map may have fired.
+    void this.trapBoard.refreshDamages();
     if (mapId === this.currentMapId()) {
       void this.mapState.refresh();
+      // Something about the traps may have changed: a firing, a notice, a damage that waits.
+      void this.trapBoard.refresh();
       this.scheduleVision();
     }
     if (this.isMaster()) {
       void this.reloadMaps();
     }
+  }
+
+  /** `trap_noticed` (E9-08 G): this player's character noticed a trap. The map is read again (the trap is on it now,
+   * for them alone) and the toast names it. */
+  private async trapNoticed(mapId: string, pointId: string): Promise<void> {
+    if (mapId === this.currentMapId()) {
+      await this.mapState.refresh();
+    }
+    const name = this.mapState.points().find((p) => p.id === pointId)?.name;
+    this.toasts.push('visibility', 'Você notou uma armadilha.', name ? `${name}, no mapa.` : 'Ela já aparece no seu mapa.');
+    void this.trapBoard.refreshActivity();
+  }
+
+  /** "Procurar armadilhas": the player's search sheet (E9-08). */
+  protected searchTraps(): void {
+    const campaign = this.campaign();
+    if (!campaign) {
+      return;
+    }
+    const opener = this.document.activeElement as HTMLElement | null;
+    openTrapSearch(this.dialog, this.bottomSheet, {
+      campaignId: this.campaignId(),
+      skills: this.trapSkills(),
+      diceMode: campaign.diceMode,
+      preference: campaign.dicePreference,
+      state: this.mapState,
+      inCombat: false,
+    })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        focusWithRing(opener);
+        void this.trapBoard.refreshActivity();
+      });
   }
 
   /** `shown_image_changed`: the block appears, changes or goes away. */

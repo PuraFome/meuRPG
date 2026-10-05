@@ -169,4 +169,17 @@
       <p>{{ moveNote() }}</p>
     </div>
   }
+  @if (trapNote(); as fall) {
+    <!-- E9-08 E: what the trap did to this player's character, with their own dice and no DC. -->
+    <div class="mr-notice mr-notice--warning turn__notice" role="status">
+      <mat-icon aria-hidden="true">arrow_downward</mat-icon>
+      <p>
+        <strong>{{ fall.title }}</strong>
+        {{ fall.detail }}
+      </p>
+    </div>
+    @if (fall.waiting) {
+      <span class="mr-tag mr-tag--pending turn__wait"><mat-icon aria-hidden="true">info</mat-icon>Esperando o mestre aplicar o dano</span>
+    }
+  }
 </ng-template>

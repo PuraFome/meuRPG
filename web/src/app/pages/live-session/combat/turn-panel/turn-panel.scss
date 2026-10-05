@@ -310,3 +310,10 @@
 .turn__notice {
   margin-top: var(--mr-space-3);
 }
+
+// "Esperando o mestre aplicar o dano": the tag under the trap's notice.
+.turn__wait {
+  display: flex;
+  width: fit-content;
+  margin-top: var(--mr-space-2);
+}

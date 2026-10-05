@@ -1,0 +1,156 @@
+:host {
+  display: block;
+}
+
+.tc {
+  padding: 16px 18px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+}
+
+.tc__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-2) var(--mr-space-3);
+}
+
+.tc__name {
+  margin: 0;
+  font-family: var(--mr-font-display, inherit);
+  font-size: 20px;
+  line-height: 26px;
+  overflow-wrap: anywhere;
+}
+
+.tc__tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2);
+}
+
+.tc__sub {
+  margin: 2px 0 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+// The facts: label on the left, the value bold on the right; they stack under 480px.
+.tc__facts {
+  margin: var(--mr-space-3) 0 0;
+  padding-bottom: var(--mr-space-3);
+  border-bottom: 1px solid var(--mr-rule);
+
+  > div {
+    display: grid;
+    grid-template-columns: 9rem 1fr;
+    gap: 0 var(--mr-space-3);
+    padding: 2px 0;
+  }
+
+  dt {
+    color: var(--mr-ink-muted);
+  }
+
+  dd {
+    margin: 0;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+
+  @media (max-width: 479.98px) {
+    > div {
+      grid-template-columns: 1fr;
+    }
+  }
+}
+
+.tc__noticers {
+  margin-top: var(--mr-space-3);
+}
+
+// Three equal buttons, 44 px; on a phone they stack, 48 px, each as wide as the card.
+.tc__actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--mr-space-3);
+  margin-top: var(--mr-space-3);
+
+  button {
+    min-height: 44px;
+    white-space: nowrap;
+  }
+
+  &--one {
+    grid-template-columns: 1fr;
+  }
+
+  @media (max-width: 599.98px) {
+    grid-template-columns: 1fr;
+
+    button {
+      min-height: 48px;
+    }
+  }
+}
+
+.tc__why {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: var(--mr-space-3) 0 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.tc__closed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-2) var(--mr-space-3);
+  margin-top: var(--mr-space-3);
+}
+
+.tc__line {
+  flex: 1 1 14rem;
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+}
+
+// A text action that starts a line pulls its padding back so its words line up with the text above.
+.tc__openbtn,
+.tc__more,
+.tc__fold {
+  min-height: 44px;
+  --mat-button-text-container-height: 44px;
+}
+
+.tc__more {
+  margin-inline-start: -12px;
+  margin-top: var(--mr-space-2);
+}
+
+/* "Ver detalhes" and "Esconder detalhes" sit in the same place in both states: the right end of the card's last row. */
+.tc__fold {
+  display: flex;
+  width: fit-content;
+  margin-inline: auto -12px;
+  margin-top: var(--mr-space-2);
+}
+
+.tc__openbtn {
+  margin-inline-end: -12px;
+}

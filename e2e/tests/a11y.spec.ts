@@ -19,6 +19,7 @@ import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
 import { tableForCaster, tableForCreatures } from './creatures-support';
 import { awardXpRPC, createEnemyRPC, tableForXp, tableForXpCombat, winCombatRPC } from './xp-support';
 import { tableForGold, threeTreasuresRPC, treasureFoundRPC } from './gold-support';
+import { movePensantus, pensantusFirst, sq20, trapRPC, treasureRPC } from './trap-support';
 
 // docs/design.md#como-uma-tela-é-feita: every screen passes axe with no
 // serious or critical violation of WCAG 2.1 A and AA, in the light and the
@@ -2873,4 +2874,110 @@ test('a névoa no combate passa no axe e nas conferências de layout no tema cla
 test('a névoa no combate passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-036'] }, async ({ browser }) => {
   test.setTimeout(300_000);
   await scanFogCombatScreens(browser, 'dark', 390);
+});
+
+// Traps and treasure in the session (slice 9.14, MR-035, MR-041, E9-08, E9-09): the master's cards and
+// their dialogs, the damage that waits, the player's search sheet in each step, the toast and the treasure's
+// sheet. Every state goes through axe and the alignment checks.
+async function scanTrapScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade armadilhas ${Date.now()}`, true, true);
+    campaignId = table.campaignId;
+    await trapRPC(m, table, 'Fosso escondido', 6, 7, { noticeDc: 30, damage: '3' });
+    await trapRPC(m, table, 'Agulha envenenada', 15, 10, { manual: true, noticeDc: 0, findDc: 20 });
+    await trapRPC(m, table, 'Fosso fundo', 8, 7, { noticeDc: 30, damage: '3' });
+    await treasureRPC(m, table, 'Baú de moedas', 12, 7);
+    await openSessionPage(m, campaignId);
+    await openSessionPage(p, campaignId);
+
+    // The master's cards, the reveal and the fire dialogs.
+    const panel = m.getByRole('region', { name: 'Armadilhas do mapa' });
+    const card = panel.getByRole('article', { name: 'Fosso escondido' });
+    await expect(card).toContainText('Quem notaria');
+    await expectScreenPasses(m, `Armadilhas do mapa, o cartão aberto ${where}`);
+    await card.getByRole('button', { name: 'Revelar para…' }).click();
+    await expect(m.getByRole('dialog', { name: 'Revelar armadilha' })).toBeVisible();
+    await expectScreenPasses(m, `Revelar armadilha ${where}`);
+    await m.getByRole('dialog', { name: 'Revelar armadilha' }).getByRole('button', { name: 'Cancelar' }).click();
+    await card.getByRole('button', { name: 'Disparar…' }).click();
+    await expect(m.getByRole('dialog', { name: /Disparar/ })).toBeVisible();
+    await expectScreenPasses(m, `Disparar a armadilha ${where}`);
+    await m.getByRole('dialog', { name: /Disparar/ }).getByRole('button', { name: 'Disparar para quem está na área' }).click();
+    await expect(card).toContainText('Disparada');
+    await expectScreenPasses(m, `Armadilha disparada e o registro ${where}`);
+
+    // The treasure: hidden, the form in place, found, the question in place.
+    const chest = m.getByRole('region', { name: 'Tesouros do mapa' }).getByRole('article', { name: 'Baú de moedas' });
+    await expectScreenPasses(m, `Tesouros do mapa, escondido ${where}`);
+    await chest.getByRole('button', { name: 'Marcar o Baú de moedas como encontrado' }).click();
+    await expectScreenPasses(m, `Marcar como encontrado no lugar ${where}`);
+    await chest.locator('label', { hasText: 'Pensantus' }).click();
+    await chest.getByRole('button', { name: 'Marcar como encontrado' }).click();
+    await expect(chest).toContainText('Encontrado por Pensantus');
+    // The toast goes away on its own: scan the player's screen before the master's.
+    await expect(p.getByRole('status').filter({ hasText: 'Pensantus encontrou: Baú de moedas' })).toBeVisible();
+    await expectScreenPasses(p, `Aviso do tesouro achado, jogador ${where}`);
+    await expectScreenPasses(m, `Tesouro achado ${where}`);
+    await chest.getByRole('button', { name: 'Desmarcar' }).click();
+    await expectScreenPasses(m, `Desmarcar no lugar ${where}`);
+    await chest.getByRole('alertdialog').getByRole('button', { name: 'Voltar' }).click();
+
+    // The player: the toast, the row and sheet of the treasure, and the search in each step.
+    await p.getByRole('button', { name: /Baú de moedas, Tesouro/ }).click();
+    await expect(p.getByRole('dialog', { name: 'Baú de moedas' })).toBeVisible();
+    await expectScreenPasses(p, `Folha do tesouro, jogador ${where}`);
+    await p.getByRole('dialog', { name: 'Baú de moedas' }).getByRole('button', { name: 'Fechar', exact: true }).last().click();
+    await p.getByRole('button', { name: 'Procurar armadilhas' }).click();
+    const sheet = p.getByRole('dialog', { name: 'Procurar armadilhas' });
+    await expectScreenPasses(p, `Procurar armadilhas, como ${where}`);
+    await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await sheet.getByLabel(/Role 1d20 para/).fill('2');
+    await expectScreenPasses(p, `Procurar armadilhas, o dado ${where}`);
+    await sheet.getByRole('button', { name: /Confirmar 2/ }).click();
+    await expect(sheet).toContainText(/Você (achou|não encontrou)/);
+    await expectScreenPasses(p, `Procurar armadilhas, o resultado ${where}`);
+    await sheet.getByRole('button', { name: 'Fechar', exact: true }).last().click();
+
+    // In a combat: the damage that waits for the master, and the player's note.
+    await pensantusFirst(m, table);
+    await movePensantus(p, table, 9, 7);
+    await openSessionPage(m, campaignId);
+    await expectScreenPasses(m, `Combate com o dano de armadilha esperando ${where}`);
+    await expectScreenPasses(p, `Combate, a nota da queda, jogador ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('as armadilhas e os tesouros na sessão passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-035', '@MR-041'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanTrapScreens(browser, 'light', 1280);
+});
+
+test('as armadilhas e os tesouros na sessão passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-035', '@MR-041'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanTrapScreens(browser, 'dark', 390);
+});
+
+test('as armadilhas e os tesouros na sessão passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-035', '@MR-041'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanTrapScreens(browser, 'dark', 1024);
+});
+
+test('as armadilhas e os tesouros na sessão passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-035', '@MR-041'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanTrapScreens(browser, 'light', 320);
 });

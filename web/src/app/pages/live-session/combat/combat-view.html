@@ -83,6 +83,16 @@
               (end)="endCombat()"
             />
           }
+          @if (traps(); as board) {
+            <!-- A trap that fired in the combat: its damage waits for the master here (E9-08 4). -->
+            <app-trap-damages
+              [damages]="board.damages()"
+              [campaignId]="campaignId()"
+              [vitals]="vitals()"
+              [combat]="state()"
+              (settled)="board.settled($event)"
+            />
+          }
           <div class="active">
             <div class="active__map">
               @if (image(); as img) {
@@ -250,6 +260,7 @@
               [opportunities]="opportunities()"
               [waiting]="waiting()"
               [moveNote]="moveNote()"
+              [trapNote]="trapNote()"
               [concentration]="ownConcentration()"
               (endTurn)="nextTurn()"
               (opportunity)="openAttack($event, true)"
@@ -291,7 +302,7 @@
                     (cast)="openCast($event)"
                     (describe)="describeSpell($event.key, $event.name)"
                     (feature)="useFeature($event)"
-                    (action)="takeAction($event)"
+                    (action)="standardAction($event)"
                     (move)="openMove()"
                     (rollDamage)="rollPendingDamage()"
                   />

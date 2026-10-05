@@ -81,9 +81,7 @@ describe('party row words', () => {
   });
 
   it('never shows an empty name', () => {
-    expect(partyRowSub({ classSummary: 'Mago 3', playerName: null })).toBe(
-      'Mago 3, jogador sem nome',
-    );
+    expect(partyRowSub({ classSummary: 'Mago 3', playerName: null })).toBe('Mago 3');
     expect(whoSeesTheChange(null, 'Pensantus')).toBe(
       'Quem joga com Pensantus vê a mudança na hora.',
     );

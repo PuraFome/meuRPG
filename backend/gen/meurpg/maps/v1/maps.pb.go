@@ -5519,7 +5519,12 @@ type TrapNoticer struct {
 	WouldNotice bool `protobuf:"varint,8,opt,name=would_notice,json=wouldNotice,proto3" json:"would_notice,omitempty"`
 	// It already knows the trap (noticed, found, revealed by the master, or the trap
 	// is public).
-	Knows         bool `protobuf:"varint,9,opt,name=knows,proto3" json:"knows,omitempty"`
+	Knows bool `protobuf:"varint,9,opt,name=knows,proto3" json:"knows,omitempty"`
+	// Its passive_perception plus light_penalty reaches the DC to notice (false for
+	// a trap with no such DC), whether or not the character is on the map, within 3 m
+	// or sees the squares. The screen says "Se chegar a 3 m: nota" for a character out
+	// of range from it; the browser never compares the numbers itself.
+	PassesDc      bool `protobuf:"varint,10,opt,name=passes_dc,json=passesDc,proto3" json:"passes_dc,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5613,6 +5618,13 @@ func (x *TrapNoticer) GetWouldNotice() bool {
 func (x *TrapNoticer) GetKnows() bool {
 	if x != nil {
 		return x.Knows
+	}
+	return false
+}
+
+func (x *TrapNoticer) GetPassesDc() bool {
+	if x != nil {
+		return x.PassesDc
 	}
 	return false
 }
@@ -6858,7 +6870,7 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\bpoint_id\x18\x03 \x01(\tR\apointId\"o\n" +
 	"\x17GetTrapNoticersResponse\x127\n" +
 	"\bnoticers\x18\x01 \x03(\v2\x1b.meurpg.maps.v1.TrapNoticerR\bnoticers\x12\x1b\n" +
-	"\tnotice_dc\x18\x02 \x01(\x05R\bnoticeDc\"\xaa\x02\n" +
+	"\tnotice_dc\x18\x02 \x01(\x05R\bnoticeDc\"\xc7\x02\n" +
 	"\vTrapNoticer\x12!\n" +
 	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12%\n" +
 	"\x0echaracter_name\x18\x02 \x01(\tR\rcharacterName\x12-\n" +
@@ -6868,7 +6880,9 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\bin_range\x18\x06 \x01(\bR\ainRange\x12\x12\n" +
 	"\x04sees\x18\a \x01(\bR\x04sees\x12!\n" +
 	"\fwould_notice\x18\b \x01(\bR\vwouldNotice\x12\x14\n" +
-	"\x05knows\x18\t \x01(\bR\x05knows\"f\n" +
+	"\x05knows\x18\t \x01(\bR\x05knows\x12\x1b\n" +
+	"\tpasses_dc\x18\n" +
+	" \x01(\bR\bpassesDc\"f\n" +
 	"\x11DisarmTrapRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x15\n" +

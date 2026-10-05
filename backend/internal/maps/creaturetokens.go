@@ -128,6 +128,7 @@ func (s *Service) placeCreatureToken(ctx context.Context, m authz.Membership, re
 		return nil, s.dbError(ctx, "place a creature's token", err)
 	}
 	s.publishCreatureToken(ctx, m.CampaignID, mapRow, current)
+	s.creatureLanded(ctx, m.CampaignID, m.UserID, mapID, token, creature) // a trap may fire (MR-035)
 	return &mapsv1.PlaceMapTokenResponse{Token: creatureTokenToProto(token, creature, newViewer(m, current))}, nil
 }
 

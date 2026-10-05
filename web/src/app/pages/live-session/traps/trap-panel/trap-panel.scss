@@ -1,0 +1,43 @@
+// No box of its own: the panel and the "Registro" join the column they are in, and an empty one leaves no gap.
+:host {
+  display: contents;
+}
+
+.tp {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.tp__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+
+  .mr-panel__title {
+    margin: 0;
+  }
+}
+
+.tp__count {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.tp__note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}

@@ -1,0 +1,119 @@
+<app-sheet-frame
+  [title]="title"
+  titleId="trap-search-t"
+  [subtitle]="data.inCombat ? 'Você procura num raio de 3 m do seu personagem. Gasta a sua ação.' : 'Você procura num raio de 3 m do seu personagem.'"
+  [phone]="inSheet"
+  (closed)="cancel()"
+>
+  <ol class="steps" aria-label="Etapas da procura">
+    @for (s of steps; track s; let i = $index) {
+      <li class="steps__item" [attr.aria-current]="step() === i + 1 ? 'step' : null" [class.steps__item--done]="step() > i + 1" [class.steps__item--now]="step() === i + 1">
+        <span class="steps__dot" aria-hidden="true">
+          @if (step() > i + 1) {
+            <mat-icon>check</mat-icon>
+          } @else {
+            {{ i + 1 }}
+          }
+        </span>
+        <span class="steps__name">{{ s }}</span>
+      </li>
+    }
+  </ol>
+
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+
+  @if (result(); as r) {
+    <div class="res" role="status" aria-live="polite">
+      <span class="res__sum">{{ total() }}</span>
+      <span class="res__text">
+        @for (line of rolls(); track line) {
+          <span class="res__formula">{{ line }}</span>
+        }
+        <span class="mr-tag res__tag" [class.mr-tag--success]="r.names.length > 0">
+          <mat-icon aria-hidden="true">{{ r.names.length > 0 ? 'check' : 'close' }}</mat-icon>{{ r.names.length > 0 ? 'Achou' : 'Nada' }}
+        </span>
+      </span>
+    </div>
+    <div class="mr-notice" [class.mr-notice--success]="r.names.length > 0" [class.mr-notice--neutral]="r.names.length === 0" role="status">
+      <mat-icon aria-hidden="true">{{ r.names.length > 0 ? 'check' : 'info' }}</mat-icon>
+      <p>
+        <strong>{{ message().title }}</strong>
+        @if (message().detail) {
+          <span class="res__more">{{ message().detail }}</span>
+        }
+      </p>
+    </div>
+    @if (r.res.spentAction) {
+      <p class="note"><mat-icon aria-hidden="true">hourglass_empty</mat-icon>A procura gastou a sua ação.</p>
+    }
+  } @else {
+    @if (firstFace() === null) {
+      <fieldset class="how">
+        <legend class="how__legend">Como você procura</legend>
+        @for (o of options; track o.skill) {
+          <label class="opt" [class.opt--on]="skill() === o.skill">
+            <input type="radio" class="mr-visually-hidden" name="skill" [checked]="skill() === o.skill" (change)="pick(o.skill)" />
+            <span class="opt__radio" aria-hidden="true"></span>
+            <span class="opt__text">
+              <b>{{ o.title }}</b>
+              <span class="opt__sub">{{ o.detail }}</span>
+            </span>
+          </label>
+        }
+      </fieldset>
+      <p class="note"><mat-icon aria-hidden="true">info</mat-icon>Algumas armadilhas só se acham com Investigação.</p>
+    }
+    @if (typing() || firstFace() !== null) {
+      <div class="type">
+        <label class="type__label" for="trap-face">{{ label() }}</label>
+        <p class="type__hint">{{ hint() }}</p>
+        <input
+          #field
+          id="trap-face"
+          class="type__field"
+          type="text"
+          inputmode="numeric"
+          maxlength="4"
+          autocomplete="off"
+          [value]="text()"
+          [attr.aria-invalid]="invalid()"
+          (input)="onType($event)"
+          (keydown.enter)="confirmTyped()"
+        />
+        @if (invalid()) {
+          <p class="type__err" role="alert"><mat-icon aria-hidden="true">error</mat-icon>Digite um número de 1 a 20.</p>
+        }
+        <p class="type__sum" role="status">{{ typedLine() ? typedLine() + ' · dado físico' : 'O total aparece quando o número for de 1 a 20.' }}</p>
+      </div>
+    }
+  }
+
+  <div foot class="foot">
+    @if (result()) {
+      <button #done matButton="outlined" type="button" (click)="cancel()">Fechar</button>
+    } @else if (typing() || firstFace() !== null) {
+      <button matButton="filled" type="button" [class.foot__off]="face() === null" [attr.aria-disabled]="face() === null || busy()" (click)="confirmTyped()">
+        {{ confirmLabel() }}
+      </button>
+      @if (canApp && firstFace() === null) {
+        <button matButton="outlined" type="button" [disabled]="busy()" (click)="backToApp()">Rolar no app</button>
+      }
+      <button matButton="outlined" type="button" (click)="cancel()">Cancelar</button>
+    } @else {
+      @if (canApp) {
+        <button [matButton]="preferApp || !canType ? 'filled' : 'outlined'" type="button" [disabled]="busy()" (click)="rollWith({ inApp: true })">
+          <mat-icon aria-hidden="true">casino</mat-icon>Rolar no app
+        </button>
+      }
+      @if (canType) {
+        <button [matButton]="!preferApp && canApp ? 'filled' : 'outlined'" type="button" (click)="startTyping()">Digitar o resultado</button>
+      }
+      <button matButton="outlined" type="button" (click)="cancel()">Cancelar</button>
+    }
+  </div>
+</app-sheet-frame>
