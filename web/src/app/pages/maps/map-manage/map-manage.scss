@@ -20,3 +20,8 @@
     font-size: 18px;
   }
 }
+
+// The notice's title on its own line, above its words.
+.mr-notice strong {
+  display: block;
+}

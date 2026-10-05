@@ -7,7 +7,9 @@
 
 .sw__text {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
+  min-width: 0;
 }
 
 .sw__label {
@@ -73,5 +75,21 @@
     width: 16px;
     height: 16px;
     font-size: 16px;
+  }
+}
+
+// Cannot be changed now: a dashed, quiet track (the reason is a line beside it, never colour alone).
+.sw__track--off {
+  border-style: dashed;
+  background: none;
+  cursor: default;
+  opacity: 0.7;
+
+  &.sw__track--on {
+    border-color: var(--mr-control-line);
+  }
+
+  .sw__handle {
+    background: var(--mr-control-line);
   }
 }

@@ -30,7 +30,7 @@ import { MatIconModule } from '@angular/material/icon';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div #foot class="pf" [class.pf--stacked]="stacked()">
-      @if (stacked()) {
+      @if (stacked() ? !cancelFirstWhenStacked() : confirmFirst()) {
         <ng-container *ngTemplateOutlet="confirmBtn" />
         <ng-container *ngTemplateOutlet="cancelBtn" />
       } @else {
@@ -39,8 +39,10 @@ import { MatIconModule } from '@angular/material/icon';
       }
     </div>
     <ng-template #cancelBtn>
-      <button matButton="outlined" type="button" class="pf__cancel" [attr.data-initial-focus]="safe() ? '' : null" (click)="cancel.emit()">
-        {{ cancelLabel() }}
+      <button matButton="outlined" type="button" class="pf__cancel" [class.pf__danger]="cancelDanger()" [class.mr-button--off]="cancelOff()" [disabled]="cancelOff()" disabledInteractive [attr.aria-describedby]="cancelDescribedBy() || null" [attr.data-initial-focus]="safe() ? '' : null" (click)="cancel.emit()">
+        @if (cancelIcon()) {
+          <mat-icon aria-hidden="true">{{ cancelIcon() }}</mat-icon>
+        }{{ cancelLabel() }}
       </button>
     </ng-template>
     <ng-template #confirmBtn>
@@ -63,6 +65,16 @@ export class PairFoot {
   readonly cancelLabel = input('Cancelar');
   readonly confirmLabel = input.required<string>();
   readonly confirmIcon = input('');
+  readonly cancelIcon = input('');
+  /** The outlined button is a destructive one ("Apagar ponto"): its words in the danger ink. */
+  readonly cancelDanger = input(false);
+  /** The outlined button cannot act now: the app's dashed button, with the reason in a sentence its id points to. */
+  readonly cancelOff = input(false);
+  readonly cancelDescribedBy = input('');
+  /** Side by side, the filled button comes first (a form's "Salvar ponto" before "Apagar ponto"). */
+  readonly confirmFirst = input(false);
+  /** Stacked, the outlined button is on top (the question in place, "Voltar" first), instead of the filled one. */
+  readonly cancelFirstWhenStacked = input(false);
   /** The filled button can be pressed; false draws the dashed, disabled one. */
   readonly ready = input(true);
   readonly busy = input(false);
@@ -86,6 +98,10 @@ export class PairFoot {
       check();
       const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(check) : null;
       observer?.observe(foot);
+      // The room it has is the host's: a narrow column (the map editor's side panel) shrinks it without changing the pair's own size.
+      if (foot.parentElement) {
+        observer?.observe(foot.parentElement);
+      }
       destroyRef.onDestroy(() => observer?.disconnect());
       // A new label may fit or not.
       effect(
@@ -101,23 +117,28 @@ export class PairFoot {
   }
 }
 
-/** Whether either button's words need more than half of the footer: then the two stack. Measured on the
- * buttons' own content (icon and label), which has the same width side by side or one over the other.
- * Only a phone stacks; from a tablet up the pair is right-aligned and equal. */
+/** Whether the two buttons must stack. On a phone, when either button's words need more than half of the footer;
+ * from a tablet up, when the room the pair has is less than two equal buttons need (a narrow column). Measured on the
+ * buttons' own content (icon and label), which has the same width side by side or one over the other. */
 export function needsStack(foot: HTMLElement): boolean {
-  if (foot.ownerDocument.defaultView?.matchMedia?.('(min-width: 768px)').matches) {
-    return false;
-  }
   const buttons = Array.from(foot.querySelectorAll<HTMLElement>('button'));
   if (buttons.length < 2) {
     return false;
   }
   const gap = parseFloat(getComputedStyle(foot).columnGap) || 12;
-  const half = (foot.clientWidth - gap) / 2;
-  return buttons.some((button) => {
+  const need = (button: HTMLElement) => {
     const style = getComputedStyle(button);
     const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
-    const content = Array.from(button.children).reduce((sum, child) => sum + child.getBoundingClientRect().width, 0);
-    return content + padding > half;
-  });
+    // Only the words and the icon: the ripple, the focus indicator and the touch target of a Material button are as wide as the button.
+    const content = Array.from(button.querySelectorAll<HTMLElement>('.mdc-button__label, .mat-icon')).filter((el) => !el.parentElement?.closest('.mdc-button__label'));
+    return content.reduce((sum, child) => sum + child.getBoundingClientRect().width, 0) + padding;
+  };
+  if (foot.ownerDocument.defaultView?.matchMedia?.('(min-width: 768px)').matches) {
+    // From a tablet up the pair is right-aligned and equal (176 px at least each); it stacks only when the room it has
+    // (a narrow column) is less than the two need side by side.
+    const room = foot.parentElement?.clientWidth ?? 0;
+    return room > 0 && 2 * Math.max(176, ...buttons.map(need)) + gap > room;
+  }
+  const half = (foot.clientWidth - gap) / 2;
+  return buttons.some((button) => need(button) > half);
 }

@@ -1,0 +1,61 @@
+<section class="mr-panel lp" aria-labelledby="lp-title">
+  <div class="lp__head">
+    <h2 class="mr-panel__title" id="lp-title">Camadas</h2>
+    @if (active()) {
+      <span class="lp__status">
+        @switch (status()) {
+          @case ('saving') {
+            <span class="mr-tag mr-tag--pending"><mat-icon aria-hidden="true">sync</mat-icon>Salvando</span>
+          }
+          @case ('error') {
+            <span class="mr-tag mr-tag--danger"><mat-icon aria-hidden="true">error</mat-icon>Não salvou</span>
+          }
+          @default {
+            <span class="mr-tag mr-tag--success"><mat-icon aria-hidden="true">check</mat-icon>Tudo salvo</span>
+          }
+        }
+      </span>
+    }
+  </div>
+  <p class="mr-visually-hidden" role="status">{{ announced() }}</p>
+  @if (status() === 'error') {
+    <div class="lp__retry" role="alert">
+      <p>{{ problem() }}</p>
+      @if (retryable()) {
+        <button matButton type="button" class="lp__again" (click)="retry.emit()">Tentar de novo</button>
+      }
+    </div>
+  }
+  <p class="lp__lead">O que você pinta aparece só para você aqui; os jogadores veem terreno, paredes e cobertura onde o personagem enxerga.</p>
+  <ul class="lp__list">
+    @for (line of lines(); track line.tool) {
+      <li class="lp__row">
+        <app-reveal-switch [label]="line.name" [hint]="line.detail" [checked]="visible()[line.tool]" (checkedChange)="toggle(line.tool, $event)">
+          <span lead class="lp__sw" aria-hidden="true">
+            @switch (line.tool) {
+              @case ('terrain') {
+                <span class="mr-swatch mr-swatch--terrain"></span>
+              }
+              @case ('wall') {
+                <span class="mr-swatch mr-swatch--wall"></span>
+              }
+              @case ('cover') {
+                <span class="mr-swatch mr-swatch--half"></span>
+              }
+              @default {
+                <span class="mr-swatch lp__light"><mat-icon>contrast</mat-icon></span>
+              }
+            }
+          </span>
+        </app-reveal-switch>
+        @if (line.tool === 'light') {
+          <ul class="lp__glyphs" aria-label="Luz pintada">
+            @for (l of lights; track l) {
+              <li><span class="lp__chip" aria-hidden="true"><mat-icon>{{ lightIcon[l] }}</mat-icon></span>{{ lightLabel[l] }}</li>
+            }
+          </ul>
+        }
+      </li>
+    }
+  </ul>
+</section>

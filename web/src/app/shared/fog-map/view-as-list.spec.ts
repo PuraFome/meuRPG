@@ -80,9 +80,9 @@ describe('ViewAsList', () => {
 
   it('says "Visão do grupo" in words, on or off, and a line about the chosen view', () => {
     const off = create();
-    expect(plain(off.el.querySelector('.va__group'))).toBe('Visão do grupo Desligada neste mapa. Muda no editor do mapa.');
+    expect(plain(off.el.querySelector('.va__group'))).toBe('Visão do grupo: desligada neste mapa. Muda no editor do mapa.');
     const on = create({ groupVision: true, note: 'Toren vê 22 quadrados de 384 e nenhum inimigo.' });
-    expect(plain(on.el.querySelector('.va__group'))).toContain('Ligada neste mapa');
+    expect(plain(on.el.querySelector('.va__group'))).toContain('ligada neste mapa');
     expect(plain(on.el.querySelector('.va__note'))).toContain('Toren vê 22 quadrados');
   });
 });

@@ -1,5 +1,6 @@
 :host {
   display: block;
+  container-type: inline-size;
 }
 
 .tn__h {
@@ -90,14 +91,38 @@
   gap: 4px;
   font-weight: 700;
 
+  // The icon sits on the first line of the words, even when they wrap.
+  align-items: flex-start;
+
   .mat-icon {
     flex: none;
     width: 16px;
     height: 16px;
+    margin-top: 2px;
     font-size: 16px;
   }
 
   &--yes {
     color: var(--mr-success-ink);
+  }
+}
+
+// In the editor's side column the three cells would be about 90 px each: name and place, the passive score and the verdict go one under the other.
+@container (max-width: 440px) {
+  :host(.tn--panel) .tn__row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  :host(.tn--panel) .tn__pass {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 6px;
+    text-align: start;
+  }
+
+  :host(.tn--panel) .tn__cap {
+    display: inline;
   }
 }

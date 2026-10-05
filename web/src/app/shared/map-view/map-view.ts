@@ -25,9 +25,12 @@ import {
   clampTransform,
   distance,
   focusTransform,
+  Box,
   labelBounds,
-  labelShift,
   labelSide,
+  placeLabel,
+  squareKey,
+  unionBox,
   nudge,
   screenToBp,
   stepScale,
@@ -37,6 +40,7 @@ import {
   visibleTokens,
   zoomAround,
 } from './map-geometry';
+import { pointHidden } from './map-labels';
 import { MapMarker } from './map-marker/map-marker';
 import { MapToken } from './map-token/map-token';
 
@@ -62,6 +66,18 @@ export interface MapMove extends MapSelection {
   readonly xBp: number;
   readonly yBp: number;
 }
+
+/** The points on one square, named by one label. */
+interface LabelGroup {
+  readonly id: string;
+  readonly ids: readonly string[];
+  readonly text: string;
+  readonly hidden: boolean;
+  readonly at: { xBp: number; yBp: number };
+}
+
+/** On a map narrower than 520 px the names show from this zoom (below it they would cover the map). */
+const COMPACT_LABELS_FROM_SCALE = 1.5;
 
 /** A pointer movement under this many pixels is a click, not a drag. */
 const DRAG_THRESHOLD = 4;
@@ -119,6 +135,12 @@ export class MapView {
   readonly placing = input(false);
   /** NPCs as white rounded squares and creatures with a dashed ring (the fog map, MAP-LANGUAGE.md). */
   readonly kindShapes = input(false);
+  /** The screen draws traps, chests and lights itself (`app-map-pins`): their markers are then only hit areas. */
+  readonly pinsDrawn = input(false);
+  /** Names beside the points. Off while the master paints: the labels would cover what he paints. */
+  readonly labels = input(true);
+  /** Markers and tokens drawn at 40 %, so what is painted shows through (the editor while painting). */
+  readonly faded = input(false);
   /** The grid's columns, when the map has one: the tokens are then sized to the square (a fog map, MAP-LANGUAGE.md). */
   readonly squares = input(0);
   /** Opens zoomed in on this spot, once the view has its size (the phone's fog map: the party at 2x). Read again only when it changes to another spot. */
@@ -135,7 +157,7 @@ export class MapView {
   private readonly viewport = viewChild.required<ElementRef<HTMLElement>>('viewport');
 
   protected readonly transform = signal<ViewTransform>(IDENTITY);
-  private readonly size = signal({ width: 0, height: 0 });
+  protected readonly size = signal({ width: 0, height: 0 });
   /** What the pointer or the keyboard is moving right now. */
   private readonly override = signal<MapMove | null>(null);
   /** The last position this view reported (`moved`), until the parent's next
@@ -153,6 +175,31 @@ export class MapView {
 
   protected readonly shownPoints = computed(() => visiblePoints(this.points(), this.isMaster()));
   protected readonly shownTokens = computed(() => visibleTokens(this.tokens(), this.isMaster()));
+  /** One label per square: the names of the points that share it, side by side in one pill. */
+  protected readonly labelGroups = computed<readonly LabelGroup[]>(() => {
+    if (!this.labels()) {
+      return [];
+    }
+    const groups = new Map<string, ViewPoint[]>();
+    for (const p of this.shownPoints()) {
+      const at = this.pointAt(p) ?? p;
+      const key = squareKey(at.xBp, at.yBp, this.squares(), this.ratio());
+      groups.set(key, [...(groups.get(key) ?? []), p]);
+    }
+    // A small map (a phone) seen whole has no room for names: the markers and the legend say what is there, and the list under the map
+    // names each point. The name of the point you chose, and every name once you zoom in, still show.
+    const crowded = this.size().width > 0 && this.size().width < 520 && this.scale() < COMPACT_LABELS_FROM_SCALE;
+    const kept = crowded
+      ? [...groups.values()].filter((members) => members.some((p) => this.selectedKey() === 'point:' + p.id || this.raisedKey() === 'point:' + p.id))
+      : [...groups.values()];
+    return kept.map((members) => ({
+      id: members[0].id,
+      ids: members.map((p) => p.id),
+      text: members.map((p) => p.name).join(' · '),
+      hidden: members.every((p) => pointHidden(p)),
+      at: this.pointAt(members[0]) ?? members[0],
+    }));
+  });
   protected readonly interactive = computed(() => this.mode() !== 'preview');
   protected readonly pointsOpen = computed(() => this.interactive() && this.selectablePoints());
   protected readonly tokensMovable = computed(
@@ -202,28 +249,17 @@ export class MapView {
       }
     });
 
-    // Keep every label on the image: measure them all, then slide the ones
-    // that stick out (a long name near an edge of a narrow map). The pills
-    // are read and written directly: the shift is layout, not state.
+    // Put every label beside what it names, off the other labels, areas, markers and tokens, and on the image: measured on screen
+    // after each render, written straight to the pills (the place is layout, not state).
     afterRenderEffect(() => {
       this.size();
       this.transform();
-      this.shownPoints();
+      this.labelGroups();
+      this.shownTokens();
       this.settled();
       this.override();
-      const el = this.viewport().nativeElement;
-      const img = el.querySelector('.mv__img')?.getBoundingClientRect();
-      if (!img || img.width === 0) {
-        return;
-      }
-      const pills = Array.from(el.querySelectorAll<HTMLElement>('.lbl__pill'));
-      const { minLeft, maxRight } = labelBounds(img, el.getBoundingClientRect());
-      const shifts = pills.map((pill) => {
-        const now = parseFloat(pill.style.getPropertyValue('--lbl-shift')) || 0;
-        const r = pill.getBoundingClientRect();
-        return labelShift(r.left - now, r.right - now, minLeft, maxRight);
-      });
-      pills.forEach((pill, i) => pill.style.setProperty('--lbl-shift', `${shifts[i]}px`));
+      this.faded();
+      this.placeLabels();
     });
 
     // New points or tokens from the parent replace what this view last
@@ -265,6 +301,47 @@ export class MapView {
         ),
       );
     });
+  }
+
+  private placeLabels(): void {
+    const el = this.viewport().nativeElement;
+    const img = el.querySelector('.mv__img')?.getBoundingClientRect();
+    if (!img || img.width === 0) {
+      return;
+    }
+    const view = el.getBoundingClientRect();
+    const { minLeft, maxRight } = labelBounds(img, view);
+    const bounds = { minLeft, maxRight, minTop: Math.max(img.top, view.top) + 4, maxBottom: Math.min(img.bottom, view.bottom) - 4 };
+    const boxOf = (node: Element): Box | null => {
+      const r = node.getBoundingClientRect();
+      return r.width > 0 && r.height > 0 ? { left: r.left, top: r.top, right: r.right, bottom: r.bottom } : null;
+    };
+    const present = (list: (Box | null)[]): Box[] => list.filter((b): b is Box => b !== null);
+    // Everything a label must stay off: the drawn marks (not the hit areas), and then the labels placed so far.
+    const marks = Array.from(el.querySelectorAll<HTMLElement>('.pt__shape:not(.pt__shape--pin), .tk__disc, .area, .pin'));
+    const placed: Box[] = [];
+    for (const label of Array.from(el.querySelectorAll<HTMLElement>('.lbl'))) {
+      const pill = label.querySelector<HTMLElement>('.lbl__pill');
+      const ids = (label.getAttribute('data-ids') ?? '').split(' ');
+      if (!pill || ids.length === 0) {
+        continue;
+      }
+      const own = (node: HTMLElement): boolean => {
+        const pin = node.getAttribute('data-pin-of');
+        const marker = node.closest('app-map-marker')?.getAttribute('data-point');
+        return (pin !== null && ids.includes(pin)) || (marker != null && ids.includes(marker));
+      };
+      const anchor = unionBox(present(marks.filter(own).map((m) => boxOf(m))));
+      const origin = label.getBoundingClientRect();
+      const size = pill.getBoundingClientRect();
+      const around = anchor ?? { left: origin.left - 2, top: origin.top - 2, right: origin.left + 2, bottom: origin.top + 2 };
+      const others = [...present(marks.filter((m) => !own(m)).map((m) => boxOf(m))), ...placed];
+      const at = placeLabel(around, { width: size.width, height: size.height }, others, bounds);
+      pill.style.setProperty('--lbl-x', `${at.left - origin.left}px`);
+      pill.style.setProperty('--lbl-y', `${at.top - origin.top}px`);
+      label.setAttribute('data-placed', '');
+      placed.push({ left: at.left, top: at.top, right: at.left + size.width, bottom: at.top + size.height });
+    }
   }
 
   // ---- the toolbar's calls ----
@@ -340,17 +417,25 @@ export class MapView {
     return null;
   }
 
-  protected labelLeft(point: ViewPoint): number {
-    return bpToPercent(this.pointAt(point)?.xBp ?? point.xBp);
+  protected labelLeft(at: { xBp: number }): number {
+    return bpToPercent(at.xBp);
   }
 
-  protected labelTop(point: ViewPoint): number {
-    return bpToPercent(this.pointAt(point)?.yBp ?? point.yBp);
+  protected labelTop(at: { yBp: number }): number {
+    return bpToPercent(at.yBp);
   }
 
-  protected side(point: ViewPoint): string {
-    const at = this.pointAt(point) ?? point;
+  /** Where the label sits until it is measured (and in a test, which has no layout). */
+  protected side(at: { xBp: number; yBp: number }): string {
     return labelSide(at.xBp, at.yBp);
+  }
+
+  protected groupSelected(g: LabelGroup): boolean {
+    return g.ids.some((id) => this.selectedKey() === 'point:' + id);
+  }
+
+  protected groupRaised(g: LabelGroup): boolean {
+    return g.ids.some((id) => this.raisedKey() === 'point:' + id);
   }
 
   protected initial(token: ViewToken): string {

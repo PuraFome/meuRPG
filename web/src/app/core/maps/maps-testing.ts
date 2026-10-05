@@ -12,6 +12,9 @@ import {
   type GetMapLayersResponse,
   type GetMapResponse,
   type GetMapVisionResponse,
+  type GetTrapNoticersResponse,
+  type LightLevel,
+  type MapLayer,
   type SceneAction,
   SceneActionSchema,
   type SceneClue,
@@ -130,6 +133,63 @@ export class FakeMapsClient {
       this.layersResponse ??
       ({ $typeName: 'meurpg.maps.v1.GetMapLayersResponse', gridColumns: 0, gridRows: 0, difficultTerrain: new Uint8Array(), wall: new Uint8Array(), cover: new Uint8Array() } as unknown as GetMapLayersResponse)
     );
+  }
+
+  /** What `PaintMapCells` was asked: layer, value and the squares of each call, in order. */
+  paints: { layer: MapLayer; value: number; squares: { col: number; row: number }[] }[] = [];
+
+  async paint(_c: string, mapId: string, layer: MapLayer, value: number, squares: readonly { col: number; row: number }[]): Promise<{ layersRevision: number; changed: number }> {
+    this.record('paint', mapId, layer, value, squares.length);
+    this.paints.push({ layer, value, squares: squares.map((s) => ({ col: s.col, row: s.row })) });
+    return { layersRevision: this.paints.length, changed: squares.length };
+  }
+
+  /** The map the next `SetMapFog` and `SetMapGrid` answer with (set by the spec). */
+  mapAfter: MapMessage | null = null;
+
+  async setFog(_c: string, mapId: string, changes: { fogEnabled?: boolean; baseLight?: LightLevel; groupVision?: boolean }): Promise<MapMessage> {
+    this.record('setFog', mapId, JSON.stringify(changes));
+    return this.mapAfter ?? mapMessage(mapId, 'Mapa', { gridColumns: 24, gridRows: 16, ...changes });
+  }
+
+  async forgetVision(_c: string, mapId: string): Promise<void> {
+    this.record('forgetVision', mapId);
+  }
+
+  async setGrid(_c: string, mapId: string, columns: number): Promise<MapMessage> {
+    this.record('setGrid', mapId, columns);
+    return this.mapAfter ?? mapMessage(mapId, 'Mapa', { gridColumns: columns, gridRows: Math.round((columns * 1600) / 2400) });
+  }
+
+  /** What `GetTrapNoticers` answers. */
+  noticers: GetTrapNoticersResponse | null = null;
+
+  async getTrapNoticers(_c: string, mapId: string, pointId: string): Promise<GetTrapNoticersResponse> {
+    this.record('getTrapNoticers', mapId, pointId);
+    return this.noticers ?? ({ $typeName: 'meurpg.maps.v1.GetTrapNoticersResponse', noticers: [], noticeDc: 0 } as GetTrapNoticersResponse);
+  }
+
+  async markTreasureFound(_c: string, mapId: string, pointId: string, characterIds: readonly string[]): Promise<MapPoint> {
+    this.record('markTreasureFound', mapId, pointId, characterIds.join(','));
+    return mapPoint(pointId, 'Baú', { kind: MapPointKind.TREASURE, treasureFoundAt: { seconds: 1n, nanos: 0, $typeName: 'google.protobuf.Timestamp' } as never });
+  }
+
+  async unmarkTreasureFound(_c: string, mapId: string, pointId: string): Promise<MapPoint> {
+    this.record('unmarkTreasureFound', mapId, pointId);
+    return mapPoint(pointId, 'Baú', { kind: MapPointKind.TREASURE });
+  }
+
+  async createPoint(_c: string, mapId: string, point: { kind: MapPointKind; name: string; xBp: number; yBp: number }): Promise<MapPoint> {
+    this.record('createPoint', mapId, JSON.stringify(point));
+    return mapPoint('new-point', point.name, { kind: point.kind, xBp: point.xBp, yBp: point.yBp });
+  }
+
+  async deletePoint(_c: string, mapId: string, pointId: string): Promise<void> {
+    this.record('deletePoint', mapId, pointId);
+  }
+
+  async removeToken(_c: string, mapId: string, characterId: string): Promise<void> {
+    this.record('removeToken', mapId, characterId);
   }
 
   async setCarriedLight(_c: string, mapId: string, characterId: string, lightKey: string): Promise<MapToken> {

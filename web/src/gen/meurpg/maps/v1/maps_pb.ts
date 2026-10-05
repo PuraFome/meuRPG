@@ -568,7 +568,10 @@ export const TrapSpecSchema: GenMessage<TrapSpec> = /*@__PURE__*/
 export type LightSpec = Message<"meurpg.maps.v1.LightSpec"> & {
   /**
    * The key of the preset it was made from ("light:torch"), or empty for a
-   * custom light. Informational.
+   * custom light. A key sent with both radii at 0 takes the preset's radii (a
+   * new light is made by sending only the key); a key sent with radii keeps the
+   * master's own copy of them, and the key then only says where it started.
+   * An unknown key is invalid_argument.
    *
    * @generated from field: string preset_key = 1;
    */
@@ -583,7 +586,7 @@ export type LightSpec = Message<"meurpg.maps.v1.LightSpec"> & {
 
   /**
    * How much further its dim light goes, in feet: 0 to 120, a multiple of 5.
-   * Both radii may not be 0.
+   * Both radii may not be 0, unless a preset key supplies them.
    *
    * @generated from field: int32 dim_ft = 3;
    */

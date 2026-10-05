@@ -51,3 +51,52 @@ describe('MapLayersLegend', () => {
     expect((fixture.nativeElement as HTMLElement).querySelectorAll('li').length).toBe(0);
   });
 });
+
+describe('MapLayersOverlay: the editor\'s marks', () => {
+  const lit: MapLayers = {
+    ...layers,
+    light: { bright: [{ col: 1, row: 1 }], dim: [{ col: 2, row: 1 }], dark: [{ col: 3, row: 1 }] },
+  };
+
+  it('draws the painted light as a glyph in the square, a sun, a half moon and a moon, only when asked to', () => {
+    const fixture = TestBed.createComponent(MapLayersOverlay);
+    fixture.componentRef.setInput('layers', lit);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelectorAll('.sq--light')).toHaveLength(0);
+    fixture.componentRef.setInput('lightGlyphs', true);
+    fixture.detectChanges();
+    // One plain element a square (the font's ligature is drawn by its stylesheet): a sun, a half moon, a moon.
+    expect(Array.from(el.querySelectorAll('.sq--light .lg'), (g) => g.className)).toEqual(['lg lg--bright', 'lg lg--dim', 'lg lg--dark']);
+    // A glyph, never a texture: no hatch on the square.
+    expect(el.querySelector('.sq--light')?.classList.contains('sq--wall')).toBe(false);
+  });
+
+  it('draws no light for a map whose layers carry none (a player\'s)', () => {
+    const fixture = TestBed.createComponent(MapLayersOverlay);
+    fixture.componentRef.setInput('layers', layers);
+    fixture.componentRef.setInput('lightGlyphs', true);
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).querySelectorAll('.sq--light')).toHaveLength(0);
+  });
+
+  it('draws the brush cursor over the squares a stroke would paint, dashed when it erases', () => {
+    const fixture = TestBed.createComponent(MapLayersOverlay);
+    fixture.componentRef.setInput('layers', layers);
+    fixture.componentRef.setInput('cursor', { col: 2, row: 1, w: 3, h: 3 });
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const cursor = el.querySelector<HTMLElement>('.cursor')!;
+    expect(cursor.style.left).toBe('20%');
+    expect(cursor.style.top).toBe('20%');
+    expect(cursor.style.width).toBe('30%');
+    expect(cursor.style.height).toBe('60%');
+    expect(cursor.classList.contains('cursor--erase')).toBe(false);
+    fixture.componentRef.setInput('cursor', { col: 2, row: 1, w: 1, h: 1, erase: true });
+    fixture.detectChanges();
+    expect(el.querySelector('.cursor')?.classList.contains('cursor--erase')).toBe(true);
+    fixture.componentRef.setInput('cursor', null);
+    fixture.detectChanges();
+    expect(el.querySelector('.cursor')).toBeNull();
+  });
+});

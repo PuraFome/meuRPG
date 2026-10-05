@@ -1,0 +1,127 @@
+:host {
+  display: block;
+}
+
+.lp {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.lp__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+
+  .mr-panel__title {
+    margin: 0;
+  }
+}
+
+.lp__lead,
+.lp__retry p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.lp__again {
+  margin-inline-start: -8px;
+}
+
+.lp__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lp__row {
+  padding: var(--mr-space-3) 0;
+
+  & + & {
+    border-top: 1px solid var(--mr-rule);
+  }
+
+  &:first-child {
+    padding-top: 0;
+  }
+
+  &:last-child {
+    padding-bottom: 0;
+  }
+}
+
+.lp__sw {
+  display: flex;
+  flex: none;
+  width: 30px;
+
+  .mr-swatch {
+    width: 30px;
+    height: 30px;
+  }
+}
+
+.lp__light {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--mr-map-token-ink);
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+// The names of the light's three glyphs, under its row.
+.lp__glyphs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2) var(--mr-space-4);
+  margin: var(--mr-space-2) 0 0 42px;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+}
+
+.lp__chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  box-sizing: border-box;
+  border: 1px solid var(--mr-map-token-ink);
+  border-radius: 50%;
+  background: var(--mr-map-token-surface);
+  color: var(--mr-map-token-ink);
+
+  .mat-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+  }
+}
+
+.lp__retry {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--mr-space-1);
+
+  p {
+    margin: 0;
+  }
+}

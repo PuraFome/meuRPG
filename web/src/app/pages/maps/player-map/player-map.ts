@@ -2,11 +2,15 @@ import { Component, computed, effect, inject, input, signal, untracked, viewChil
 import { MatIconModule } from '@angular/material/icon';
 import { Router, RouterLink } from '@angular/router';
 
-import type { Map as MapMessage } from '../../../../gen/meurpg/maps/v1/maps_pb';
+import { type Map as MapMessage, MapPointKind } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { FogView } from '../../../core/maps/fog-view';
 import { MapState } from '../../../core/maps/map-state';
 import { MapsClient } from '../../../core/maps/maps-client';
+import { ChestIcon } from '../../../shared/chest-icon/chest-icon';
 import { FogMap } from '../../../shared/fog-map/fog-map';
+import { MapPinsLegend } from '../../../shared/map-pins/map-pins-legend';
+import { mapTokenInitial } from '../../../core/maps/token-initial';
+import { MapPins } from '../../../shared/map-pins/map-pins';
 import { MapLegend } from '../../../shared/map-view/map-legend/map-legend';
 import { pointKindIcon, pointKindLabel } from '../../../shared/map-view/map-labels';
 import { MapSelection, MapView } from '../../../shared/map-view/map-view';
@@ -31,7 +35,7 @@ import { PointSheet } from '../../../shared/point-sheet/point-sheet';
  */
 @Component({
   selector: 'app-player-map',
-  imports: [FogMap, MapLegend, MapView, MatIconModule, PointSheet, RouterLink],
+  imports: [ChestIcon, FogMap, MapLegend, MapPins, MapPinsLegend, MapView, MatIconModule, PointSheet, RouterLink],
   templateUrl: './player-map.html',
   styleUrl: './player-map.scss',
 })
@@ -55,6 +59,8 @@ export class PlayerMap {
   protected readonly view = viewChild(MapView);
   protected readonly selection = signal<MapSelection | null>(null);
 
+  protected readonly initialOf = mapTokenInitial;
+  protected readonly Treasure = MapPointKind.TREASURE;
   protected readonly icon = pointKindIcon;
   protected readonly kind = pointKindLabel;
 

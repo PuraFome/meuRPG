@@ -1,7 +1,9 @@
 import { Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { ViewToken, tokenInitial, tokenKey } from '../map-geometry';
+import { ViewPoint, ViewToken, tokenInitial, tokenKey } from '../map-geometry';
+import { pointHidden } from '../map-labels';
+import { MapToken } from '../map-token/map-token';
 
 /**
  * The legend under a map (README-B): the three marker shapes and, for the
@@ -12,41 +14,44 @@ import { ViewToken, tokenInitial, tokenKey } from '../map-geometry';
  */
 @Component({
   selector: 'app-map-legend',
-  imports: [MatIconModule],
+  imports: [MapToken, MatIconModule],
   template: `
-    @if (shapes()) {
+    @if (shapes() && (showBattle() || showSubmap() || showScene() || showRevealed() || showHidden())) {
       <ul class="lg" aria-label="Legenda do mapa">
-        <li>
-          <span class="lg__shape lg__shape--battle"><mat-icon>swords</mat-icon></span
-          >Batalha
-        </li>
-        <li>
-          <span class="lg__shape lg__shape--submap"><mat-icon>stairs</mat-icon></span
-          >Submapa
-        </li>
-        <li>
-          <span class="lg__shape lg__shape--scene"><mat-icon>chat_bubble</mat-icon></span
-          >Cena de RP
-        </li>
-        @if (states()) {
+        @if (showBattle()) {
+          <li>
+            <span class="lg__shape lg__shape--battle"><mat-icon>swords</mat-icon></span
+            >Batalha
+          </li>
+        }
+        @if (showSubmap()) {
+          <li>
+            <span class="lg__shape lg__shape--submap"><mat-icon>stairs</mat-icon></span
+            >Submapa
+          </li>
+        }
+        @if (showScene()) {
+          <li>
+            <span class="lg__shape lg__shape--scene"><mat-icon>chat_bubble</mat-icon></span
+            >Cena de RP
+          </li>
+        }
+        @if (showRevealed()) {
           <li><span class="lg__shape lg__shape--box"></span>Revelado</li>
+        }
+        @if (showHidden()) {
           <li><span class="lg__shape lg__shape--box lg__shape--dashed"></span>Escondido</li>
         }
       </ul>
     }
     @if (tokens().length > 0) {
       <ul class="lg" aria-label="Tokens no mapa">
-        @if (states()) {
+        @if (states() || tokensTitle()) {
           <li class="lg__title">Tokens</li>
         }
         @for (t of tokens(); track key(t)) {
           <li>
-            <span
-              class="lg__disc"
-              [class.lg__disc--hidden]="t.hidden"
-              [class.lg__disc--mine]="t.mine"
-              >{{ initial(t) }}</span
-            >
+            <app-map-token [token]="t" [initial]="initial(t)" [kindShapes]="kindShapes()" [legend]="true" />
             <span>{{ t.name }}{{ t.hidden ? ', escondido' : '' }}@if (t.mine) {<span class="lg__you">&nbsp;(você)</span>}</span>
           </li>
         }
@@ -62,10 +67,30 @@ export class MapLegend {
   readonly shapes = input(true);
   /** "Revelado" and "Escondido": only the master sees both states. */
   readonly states = input(false);
+  /** The points of the map: the legend then lists only the kinds and the states the map has (a legend names what is drawn). Without it, all of them. */
+  readonly points = input<readonly ViewPoint[] | null>(null);
+  /** Draws an NPC as the white rounded square, as the map does (`kindShapes` of the map). */
+  readonly kindShapes = input(false);
+  /** "Tokens" above the names, even where the states are not listed (the editor, painting). */
+  readonly tokensTitle = input(false);
+  /** The letter of a token, as the map writes it (`mapTokenInitial`: "G2", "C"). */
+  readonly initialOf = input<((token: ViewToken, all: readonly ViewToken[]) => string) | null>(null);
+
+  private has(kind: number): boolean {
+    const points = this.points();
+    return points === null || points.some((p) => p.kind === kind);
+  }
+  protected readonly showBattle = computed(() => this.has(1));
+  protected readonly showSubmap = computed(() => this.has(2));
+  protected readonly showScene = computed(() => this.points() === null || this.points()!.some((p) => p.kind === 3 || p.kind === 0));
+  /** The two states belong to the three plain kinds: a trap, a treasure and a light have their own marks in the pins' legend. */
+  private readonly plain = computed(() => (this.points() ?? []).filter((p) => p.kind <= 3));
+  protected readonly showRevealed = computed(() => this.states() && (this.points() === null || this.plain().some((p) => !pointHidden(p))));
+  protected readonly showHidden = computed(() => this.states() && (this.points() === null || this.plain().some((p) => pointHidden(p))));
 
   protected readonly key = tokenKey;
   private readonly all = computed(() => this.tokens());
   protected initial(token: ViewToken): string {
-    return tokenInitial(token, this.all());
+    return (this.initialOf() ?? tokenInitial)(token, this.all());
   }
 }

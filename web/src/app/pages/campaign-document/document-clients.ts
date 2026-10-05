@@ -6,10 +6,9 @@ import {
   CampaignDocumentService,
 } from '../../../gen/meurpg/campaigns/v1/campaign_document_pb';
 import { CharacterService } from '../../../gen/meurpg/characters/v1/characters_pb';
-import { MapService } from '../../../gen/meurpg/maps/v1/maps_pb';
+import { type MapPoint, MapService } from '../../../gen/meurpg/maps/v1/maps_pb';
 import { CONNECT_TRANSPORT } from '../../core/connect/transport';
 import { OpenSessionLookup, type OpenSessionMap } from '../../core/play/open-session';
-import { ViewPoint } from '../../shared/map-view/map-geometry';
 
 /** A map, as the document's dialogs show it. */
 export interface MapView {
@@ -20,7 +19,10 @@ export interface MapView {
   readonly image: { readonly url: string; readonly width: number; readonly height: number } | null;
   /** Every point, hidden ones too (only the master reads the document);
    * empty in a listing. */
-  readonly points: readonly ViewPoint[];
+  readonly points: readonly MapPoint[];
+  /** The grid, when the map has one: a trap's area is drawn on its squares. */
+  readonly gridColumns: number;
+  readonly gridRows: number;
 }
 
 export type { OpenSessionMap };
@@ -81,6 +83,8 @@ export class DocumentLinks {
         ? { url: m.image.url, width: m.image.width, height: m.image.height }
         : null,
       points: [],
+      gridColumns: m.gridColumns,
+      gridRows: m.gridRows,
     }));
   }
 
@@ -96,6 +100,8 @@ export class DocumentLinks {
       revealed: m.revealed,
       image: m.image ? { url: m.image.url, width: m.image.width, height: m.image.height } : null,
       points: res.points,
+      gridColumns: m.gridColumns,
+      gridRows: m.gridRows,
     };
   }
 

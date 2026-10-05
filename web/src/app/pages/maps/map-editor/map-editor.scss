@@ -2,85 +2,23 @@
   display: block;
 }
 
-.bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--mr-space-2) var(--mr-space-3);
-  margin-bottom: var(--mr-space-4);
-  padding: var(--mr-space-3);
-  border: 1px solid var(--mr-line);
-  border-radius: var(--mr-radius-lg);
-  background: var(--mr-surface);
-}
+.editor-notice {
+  margin-bottom: var(--mr-space-3);
 
-.bar__label {
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.bar__group,
-.bar__zoom {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--mr-space-2);
-}
-
-.bar__zoom {
-  margin-left: auto;
-}
-
-.bar__tool {
-  min-height: 44px;
-  color: var(--mr-ink);
-  --mat-button-outlined-label-text-color: var(--mr-ink);
-
-  &--on {
-    background: var(--mr-accent-soft);
-    font-weight: 700;
+  p {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
   }
 }
 
-.bar__sep {
-  width: 1px;
-  height: 28px;
-  background: var(--mr-line);
-}
-
-.bar__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  border: 1px solid var(--mr-control-line);
-  border-radius: var(--mr-radius-sm);
-  background: var(--mr-surface);
-  color: var(--mr-ink);
-  cursor: pointer;
-}
-
-.bar__scale {
-  min-width: 48px;
-  text-align: center;
-  color: var(--mr-ink-muted);
-}
-
-.bar__none {
-  margin: 0;
-  padding: var(--mr-space-3) var(--mr-space-4);
-  color: var(--mr-ink-muted);
-}
-
-// The point panel sits beside the map from 1200px; below that it goes under
-// it, full width (E7-01: at 1024×768 the panel with its actions is too tall
-// to share the row).
+// The point panel sits beside the map from 1200px; below that it goes under it, full width (E7-01: at 1024×768 the panel with its
+// actions is too tall to share the row).
 .layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--mr-space-4);
+  margin-top: var(--mr-space-4);
   align-items: start;
 
   @media (min-width: 1200px) {
@@ -88,8 +26,8 @@
   }
 }
 
-// The map stays on screen while the taller panel scrolls beside it, under the
-// 64px app bar.
+// The map stays on screen while the taller panel scrolls beside it, under the 64px app bar. Painting has short panels and the
+// fog settings under the map: no sticky there.
 .layout__map {
   display: flex;
   flex-direction: column;
@@ -102,23 +40,54 @@
   }
 }
 
+.layout--paint .layout__map {
+  position: static;
+}
+
 .layout__side {
   display: flex;
   flex-direction: column;
   gap: var(--mr-space-3);
+  min-width: 0;
 }
 
-.ask {
-  display: flex;
-  flex-direction: column;
-  gap: var(--mr-space-2);
+// What the legend lists beside the layers' own marks: the light's rings and its glyphs.
+.legend {
+  display: block;
+}
 
-  p {
-    margin: 0;
+.ring,
+
+.ring {
+  display: inline-flex;
+  flex: none;
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  border: 2.5px solid var(--mr-map-token-ink);
+  border-radius: 50%;
+  // The legend sits on the page, the rings on the map: a pale halo on both sides keeps the ink ring whole on either theme.
+  box-shadow:
+    0 0 0 1.5px var(--mr-map-token-surface),
+    inset 0 0 0 1.5px var(--mr-map-token-surface);
+
+  &--dim {
+    border-style: dashed;
   }
 }
 
-.ask__actions,
+.legend__note {
+  margin: var(--mr-space-2) 0 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.ask__discard {
+  align-self: flex-start;
+  color: var(--mr-danger-ink);
+}
+
 .tk__actions {
   display: flex;
   flex-wrap: wrap;
@@ -146,11 +115,6 @@
   margin: 0 0 var(--mr-space-3);
 }
 
-.tk__empty {
-  margin: 0;
-  color: var(--mr-ink-muted);
-}
-
 .tk__remove {
   color: var(--mr-danger-ink);
 }
@@ -159,4 +123,13 @@
   margin: var(--mr-space-3) 0 0;
   font-size: 14px;
   color: var(--mr-ink-muted);
+}
+
+.leave {
+  max-width: 32rem;
+  margin-bottom: var(--mr-space-3);
+}
+
+.leave__text {
+  margin: 0;
 }

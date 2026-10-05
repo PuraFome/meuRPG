@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
+import { MapPointKind, TrapState } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { mapPoint } from '../../../core/maps/maps-testing';
 import { DocumentLinks, type MapView, type OpenSessionMap } from '../document-clients';
 import { DocumentMapDialog } from './map-dialog';
@@ -13,6 +14,8 @@ class FakeLinks {
     name: 'Mirathel e arredores',
     revealed: true,
     image: IMAGE,
+    gridColumns: 24,
+    gridRows: 16,
     points: [
       mapPoint('p1', 'Emboscada na estrada', { revealed: true, kind: 1 }),
       mapPoint('p2', 'Covil dos goblins', { revealed: false, kind: 2 }),
@@ -68,6 +71,22 @@ describe('DocumentMapDialog (E5-29)', () => {
     el = await render();
     expect(el.querySelector('.doc-dialog__sub span')?.textContent).toBe('Escondido dos jogadores.');
     expect(el.querySelector('.doc-dialog__sub mat-icon')?.textContent).toBe('visibility_off');
+  });
+
+  it('draws a trap and a found treasure with the map\'s own marks, not a floating name: the pins, and a marker that is only a hit area', async () => {
+    links.map = {
+      ...links.map,
+      points: [
+        mapPoint('t1', 'Fosso escondido', { kind: MapPointKind.TRAP, revealed: true, xBp: 3000, yBp: 3000, trap: { state: TrapState.ARMED, areaSize: 2 } as never }),
+        mapPoint('c1', 'Baú de moedas', { kind: MapPointKind.TREASURE, revealed: false, treasureFoundAt: { seconds: 1n, nanos: 0 } as never, xBp: 7000, yBp: 7000 }),
+      ],
+    };
+    const el = await render();
+    expect(el.querySelector('app-map-pins .area')).not.toBeNull();
+    expect(el.querySelector('app-map-pins .pin--found')).not.toBeNull();
+    expect(el.querySelector('app-map-pins-legend')?.textContent).toContain('Tesouro encontrado');
+    // The marker draws no icon of its own on top of the pin.
+    expect(el.querySelectorAll('app-map-marker .pt__shape--pin')).toHaveLength(2);
   });
 
   it('draws every point, hidden ones too, and names them for a screen reader', async () => {

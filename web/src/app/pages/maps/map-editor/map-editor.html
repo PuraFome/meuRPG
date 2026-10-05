@@ -1,133 +1,273 @@
-<div class="bar" role="toolbar" aria-label="Ferramentas do mapa">
-  <span class="bar__label" id="bar-add">Adicionar ponto</span>
-  <div class="bar__group" role="group" aria-labelledby="bar-add">
-    @for (k of kinds; track k) {
-      <button
-        matButton="outlined"
-        type="button"
-        class="bar__tool"
-        [attr.aria-pressed]="placing() === k"
-        [class.bar__tool--on]="placing() === k"
-        (click)="toggleTool(k)"
-      >
-        <mat-icon aria-hidden="true">{{ kindIcon(k) }}</mat-icon>{{ kindLabel(k) }}
-      </button>
-    }
+@if (paint.leaving()) {
+  <div class="mr-panel leave">
+    <app-map-ask title="Há traços que o servidor não recebeu" confirmLabel="Sair e perder os traços" (cancel)="paint.answerLeave(false)" (confirm)="paint.answerLeave(true)">
+      <p class="leave__text">{{ paint.saveProblem() || 'Não deu para salvar o que você pintou.' }} Se você sair agora, esses traços se perdem.</p>
+    </app-map-ask>
   </div>
-  <span class="bar__sep" aria-hidden="true"></span>
-  <button matButton="outlined" type="button" class="bar__tool" [matMenuTriggerFor]="tokenMenu">
-    <mat-icon aria-hidden="true">person_add</mat-icon>Adicionar token
-    <mat-icon iconPositionEnd aria-hidden="true">expand_more</mat-icon>
-  </button>
-  <mat-menu #tokenMenu="matMenu">
-    @for (c of available(); track c.id) {
-      <button mat-menu-item type="button" (click)="addToken(c)">
-        {{ c.name }}{{ c.classSummary ? ' (' + c.classSummary + ')' : '' }}
-      </button>
-    } @empty {
-      <p class="bar__none">Todos os personagens já estão no mapa.</p>
-    }
-  </mat-menu>
-
-  <div class="bar__zoom" role="group" aria-label="Zoom do mapa">
-    <button type="button" class="bar__icon" aria-label="Reduzir" (click)="view()?.zoomOut()">
-      <mat-icon aria-hidden="true">remove</mat-icon>
-    </button>
-    <span class="bar__scale" aria-live="polite">{{ scaleLabel(view()?.scale() ?? 1) }}</span>
-    <button type="button" class="bar__icon" aria-label="Ampliar" (click)="view()?.zoomIn()">
-      <mat-icon aria-hidden="true">add</mat-icon>
-    </button>
-    <button matButton="outlined" type="button" class="bar__tool" (click)="view()?.fit()">
-      <mat-icon aria-hidden="true">fit_screen</mat-icon>Ajustar à tela
-    </button>
-  </div>
-</div>
-
-<div class="layout">
-  <div class="layout__map">
-    @if (image(); as img) {
-      <app-map-view
-        mode="edit"
-        controls="none"
-        [image]="img"
-        [mapName]="state().map()?.name ?? ''"
-        [points]="state().points()"
-        [tokens]="state().tokens()"
-        [isMaster]="true"
-        [selected]="selection()"
-        [placing]="placing() !== null"
-        [hint]="hint()"
-        (pointSelect)="requestSelect({ kind: 'point', id: $event })"
-        (tokenSelect)="requestSelect({ kind: 'token', id: $event })"
-        (emptyClick)="onEmptyClick($event)"
-        (moved)="onMoved($event)"
+}
+@if (viewAs(); as characterId) {
+  <!-- "Ver como": the map as one player gets it (MR-036); nothing changes for anyone. -->
+  <div class="layout">
+    <div class="layout__map">
+      <app-view-as-map
+        [campaignId]="campaignId()"
+        [mapId]="mapId()"
+        [mapName]="map()?.name ?? ''"
+        [characterId]="characterId"
+        [name]="viewAsPerson()?.name ?? 'o personagem'"
+        [playerName]="viewAsPerson()?.sub || null"
+        [imageWidth]="map()?.image?.width ?? 1"
+        [imageHeight]="map()?.image?.height ?? 1"
+        backTo="à sua vista"
+        (noteChange)="viewNote.set($event)"
+        (gone)="viewAsGone()"
+        (back)="setViewAs(null)"
       />
-    }
-    <app-map-legend [states]="true" [tokens]="state().tokens()" />
+    </div>
+    <aside class="layout__side" aria-label="Ver como">
+      <app-view-as-list
+        [people]="viewAsPeople()"
+        [counts]="counts.counts()"
+        [total]="counts.total()"
+        [selected]="viewAs()"
+        [groupVision]="map()?.groupVision ?? false"
+        [note]="viewNote()"
+        (choose)="setViewAs($event)"
+      />
+    </aside>
   </div>
-
-  <aside class="layout__side" aria-label="Item selecionado">
-    @if (pending()) {
-      <div class="mr-notice mr-notice--warning" role="alert">
-        <mat-icon aria-hidden="true">edit</mat-icon>
-        <div class="ask">
-          <p><strong>Salvar as mudanças em {{ pendingName() }}?</strong></p>
-          <div class="ask__actions">
-            <button matButton="outlined" type="button" (click)="saveAndContinue()">
-              Salvar e continuar
-            </button>
-            <button matButton type="button" (click)="discardAndContinue()">Descartar mudanças</button>
-            <button matButton type="button" (click)="pending.set(null)">Continuar editando</button>
-          </div>
-        </div>
-      </div>
+} @else {
+  @if (combatRunning()) {
+    <div class="mr-notice mr-notice--warning editor-notice">
+      <mat-icon aria-hidden="true">lock</mat-icon>
+      <p id="combat-why">
+        <strong>Combate em andamento</strong>
+        Um combate está em andamento neste mapa. Dá para pintar e apagar; a grade e a imagem só mudam depois dele.
+      </p>
+    </div>
+  }
+  <app-editor-bar
+    [mode]="mode()"
+    [settings]="paint.settings()"
+    [canPaint]="paint.canPaint()"
+    [placing]="placing()"
+    [available]="available()"
+    [scale]="view()?.scale() ?? 1"
+    [why]="mode() === 'paint' ? paint.why() : ''"
+    [whyIcon]="paint.hasGrid() ? 'sync_problem' : 'grid_on'"
+    (modeChange)="setMode($event)"
+    (settingsChange)="paint.settings.set($event)"
+    (toggleKind)="toggleKind($event)"
+    (addToken)="addToken($event)"
+    (zoomIn)="view()?.zoomIn()"
+    (zoomOut)="view()?.zoomOut()"
+    (fit)="view()?.fit()"
+  >
+    @if (paint.hasGrid() && paint.session.readiness() === 'failed') {
+      <button why matButton type="button" (click)="paint.retryRead()">Tentar de novo</button>
     }
+  </app-editor-bar>
 
-    @if (selectedPoint(); as point) {
-      @for (p of [point]; track p.id) {
-        <app-point-panel
-          [point]="p"
-          [campaignId]="campaignId()"
-          [maps]="maps()"
-          [players]="players()"
-          [saving]="saving()"
-          [error]="panelError()"
-          [focusName]="justCreated()"
-          (saveRequested)="save()"
-          (removeConfirmed)="remove()"
-          (sceneActionsChange)="setSceneActions(p, $event)"
-          (cluesChange)="setClues(p, $event)"
-          (showDcSaved)="setShowDc(p, $event)"
-          (dirtyChange)="dirty.set($event)"
-        />
+  <div class="layout" [class.layout--paint]="mode() === 'paint'">
+    <div class="layout__map">
+      @if (image(); as img) {
+        <app-map-view
+          [mode]="mode() === 'points' ? 'edit' : 'view'"
+          controls="none"
+          [image]="img"
+          [mapName]="map()?.name ?? ''"
+          [points]="state().points()"
+          [tokens]="state().tokens()"
+          [isMaster]="true"
+          [selected]="selection()"
+          [selectablePoints]="mode() === 'points'"
+          [placing]="placing() !== null"
+          [hint]="hint()"
+          [kindShapes]="true"
+          [pinsDrawn]="true"
+          [labels]="mode() === 'points'"
+          [faded]="mode() === 'paint'"
+          [squares]="paint.columns()"
+          [initialOf]="initialOf"
+          (pointSelect)="requestSelect({ kind: 'point', id: $event })"
+          (tokenSelect)="requestSelect({ kind: 'token', id: $event })"
+          (emptyClick)="onEmptyClick($event)"
+          (moved)="onMoved($event)"
+        >
+          <app-editor-overlay
+            mapOverlay
+            [columns]="paint.columns()"
+            [rows]="paint.rows()"
+            [layers]="paint.shown()"
+            [points]="state().points()"
+            [cursor]="paint.cursor()"
+            [lightReach]="lightReach()"
+            [faded]="mode() === 'paint'"
+            [selectedId]="selectedPoint()?.id ?? null"
+          />
+          @if (paint.painting()) {
+            <app-paint-surface
+              mapOverlay
+              [columns]="paint.columns()"
+              [rows]="paint.rows()"
+              [cursor]="paint.hover()"
+              (stroke)="paint.stroke($event, mapId())"
+              (strokeEnd)="paint.strokeEnd()"
+              (hover)="paint.hover.set($event)"
+              (leave)="leaveSurface()"
+            />
+          }
+        </app-map-view>
       }
-    } @else if (selectedToken(); as token) {
-      <section class="mr-panel tk" aria-labelledby="tk-title">
-        <p class="tk__eyebrow">Token selecionado</p>
-        <h2 class="tk__title" id="tk-title">{{ token.name }}</h2>
-        <p class="tk__state">
-          <mat-icon aria-hidden="true">{{ token.hidden ? 'visibility_off' : 'visibility' }}</mat-icon>
-          {{ token.hidden ? 'Escondido dos jogadores' : 'Visível aos jogadores' }}
-        </p>
-        <div class="tk__actions">
-          <button matButton="outlined" type="button" (click)="toggleTokenHidden()">
-            {{ token.hidden ? 'Revelar aos jogadores' : 'Esconder' }}
-          </button>
-          <button matButton type="button" class="tk__remove" (click)="removeToken()">
-            Remover do mapa
-          </button>
-        </div>
-      </section>
-    } @else {
-      <section class="mr-panel tk">
-        <h2 class="tk__title">Nada selecionado</h2>
-        <p class="tk__empty">
-          Escolha um tipo na barra e clique no mapa para pôr um ponto, ou clique num ponto ou token
-          para editá-lo.
-        </p>
-      </section>
-    }
-  </aside>
-</div>
+      <div class="legend">
+        <app-map-layers-legend [layers]="paint.shown()" [light]="paint.lightLevels()">
+          @if (lightReach()) {
+            <li><span class="ring ring--bright" aria-hidden="true"></span>Alcance da luz clara</li>
+            <li><span class="ring ring--dim" aria-hidden="true"></span>Alcance da penumbra</li>
+          }
+        </app-map-layers-legend>
+        @if (lightReach()) {
+          <p class="legend__note">As paredes cortam a luz; o alcance de verdade aparece em “Ver como”.</p>
+        }
+        <app-map-pins-legend [points]="state().points()" [isMaster]="true" />
+        <app-map-legend
+          [shapes]="mode() === 'points'"
+          [states]="mode() === 'points'"
+          [points]="state().points()"
+          [tokens]="state().tokens()"
+          [kindShapes]="true"
+          [initialOf]="initialOf"
+          [tokensTitle]="true"
+        />
+      </div>
+      @if (mode() === 'paint' && map(); as m) {
+        <app-fog-panel [campaignId]="campaignId()" [map]="m" (changed)="onMapChanged($event)" (forgotten)="onForgotten()" />
+      }
+    </div>
+
+    <aside class="layout__side" [attr.aria-label]="mode() === 'paint' ? 'Camadas e grade' : 'Item selecionado'">
+      @if (mode() === 'paint') {
+        @if (paint.painting() && paint.settings().tool === 'cover') {
+          <app-cover-degrees />
+        }
+        <app-layers-panel [layers]="paint.painted.layers()" [visible]="paint.visible()" [status]="paint.queue.status()" [active]="paint.canPaint()" [problem]="paint.saveProblem()" [retryable]="paint.queue.retryable()" (visibleChange)="paint.visible.set($event)" (retry)="paint.retrySave()" />
+        @if (map(); as m) {
+          <app-grid-panel [campaignId]="campaignId()" [map]="m" [erases]="paint.erases()" [combatRunning]="combatRunning()" (changed)="onMapChanged($event)" (blocked)="refreshFlags()" />
+        }
+      } @else {
+        @if (pending() || pendingMode()) {
+          <div class="mr-panel">
+            <app-map-ask
+              [title]="'Salvar as mudanças em ' + pendingName() + '?'"
+              cancelLabel="Continuar editando"
+              confirmLabel="Salvar e continuar"
+              (cancel)="keepEditing()"
+              (confirm)="saveAndContinue()"
+            >
+              <button extra matButton type="button" class="ask__discard" (click)="discardAndContinue()">Descartar mudanças</button>
+            </app-map-ask>
+          </div>
+        }
+
+        @if (selectedPoint(); as point) {
+          @for (p of [point]; track p.id) {
+            @switch (p.kind) {
+              @case (Trap) {
+                <app-trap-point-panel
+                  [point]="p"
+                  [campaignId]="campaignId()"
+                  [saving]="saving()"
+                  [error]="panelError()"
+                  [focusName]="justCreated()"
+                  (saveRequested)="save()"
+                  (removeConfirmed)="remove()"
+                  (dirtyChange)="dirty.set($event)"
+                />
+              }
+              @case (Treasure) {
+                <app-treasure-point-panel
+                  [point]="p"
+                  [campaignId]="campaignId()"
+                  [people]="finders()"
+                  [sessionNumber]="sessionNumber()"
+                  [saving]="saving()"
+                  [error]="panelError()"
+                  [focusName]="justCreated()"
+                  (saveRequested)="save()"
+                  (removeConfirmed)="remove()"
+                  (dirtyChange)="dirty.set($event)"
+                  (pointChange)="setPoint($event)"
+                />
+              }
+              @case (Light) {
+                <app-light-point-panel
+                  [point]="p"
+                  [campaignId]="campaignId()"
+                  [saving]="saving()"
+                  [error]="panelError()"
+                  [focusName]="justCreated()"
+                  (saveRequested)="save()"
+                  (removeConfirmed)="remove()"
+                  (dirtyChange)="dirty.set($event)"
+                  (reachChange)="lightReach.set($event)"
+                />
+              }
+              @default {
+                <app-point-panel
+                  [point]="p"
+                  [campaignId]="campaignId()"
+                  [maps]="maps()"
+                  [players]="players()"
+                  [saving]="saving()"
+                  [error]="panelError()"
+                  [focusName]="justCreated()"
+                  (saveRequested)="save()"
+                  (removeConfirmed)="remove()"
+                  (sceneActionsChange)="setSceneActions(p, $event)"
+                  (cluesChange)="setClues(p, $event)"
+                  (showDcSaved)="setShowDc(p, $event)"
+                  (dirtyChange)="dirty.set($event)"
+                />
+              }
+            }
+          }
+        } @else if (selectedToken(); as token) {
+          <section class="mr-panel tk" aria-labelledby="tk-title">
+            <p class="tk__eyebrow">Token selecionado</p>
+            <h2 class="tk__title" id="tk-title">{{ token.name }}</h2>
+            <p class="tk__state">
+              <mat-icon aria-hidden="true">{{ token.hidden ? 'visibility_off' : 'visibility' }}</mat-icon>
+              {{ token.hidden ? 'Escondido dos jogadores' : 'Visível aos jogadores' }}
+            </p>
+            <div class="tk__actions">
+              <button matButton="outlined" type="button" (click)="toggleTokenHidden()">
+                {{ token.hidden ? 'Revelar aos jogadores' : 'Esconder' }}
+              </button>
+              <button matButton type="button" class="tk__remove" (click)="removeToken()">Remover do mapa</button>
+            </div>
+          </section>
+        } @else {
+          @if (map()?.fogEnabled && viewAsPeople().length > 0) {
+            <app-view-as-list
+              [people]="viewAsPeople()"
+              [counts]="counts.counts()"
+              [total]="counts.total()"
+              [selected]="null"
+              [groupVision]="map()?.groupVision ?? false"
+              (choose)="setViewAs($event)"
+            />
+          }
+          <app-point-list [points]="state().points()" [selectedId]="null" [lightNames]="lightNames()" (pick)="requestSelect({ kind: 'point', id: $event })" />
+          @if (viewGone()) {
+            <p class="mr-notice mr-notice--warning" role="status">
+              <mat-icon aria-hidden="true">info</mat-icon>
+              <span>{{ viewGone() }}</span>
+            </p>
+          }
+        }
+      }
+    </aside>
+  </div>
+}
 
 <p class="msg" role="status">{{ message() }}</p>

@@ -13,7 +13,8 @@
     }
     <h1 class="mr-page-title">{{ m.name }}</h1>
     @if (phone() && !fogOn()) {
-      <app-map-legend [shapes]="false" [tokens]="state().tokens()" />
+      <app-map-pins-legend [points]="state().points()" />
+      <app-map-legend [shapes]="false" [tokens]="state().tokens()" [kindShapes]="true" [initialOf]="initialOf" />
     }
   </header>
 
@@ -41,12 +42,16 @@
           [points]="state().points()"
           [tokens]="state().tokens()"
           [selected]="selection()"
+          [pinsDrawn]="true"
           (pointSelect)="openPoint($event)"
           (emptyClick)="closeSheet()"
-        />
+        >
+          <app-map-pins mapOverlay [points]="state().points()" [columns]="m.gridColumns" [rows]="m.gridRows" [isMaster]="false" />
+        </app-map-view>
       }
       @if (!phone() && !fogOn()) {
-        <app-map-legend [tokens]="state().tokens()" />
+        <app-map-pins-legend [points]="state().points()" />
+        <app-map-legend [points]="state().points()" [tokens]="state().tokens()" [kindShapes]="true" [initialOf]="initialOf" />
       }
     </div>
 
@@ -100,7 +105,11 @@
               <li>
                 <button type="button" class="list__row" (click)="openPoint(p.id)">
                   <span class="list__glyph" aria-hidden="true">
-                    <mat-icon>{{ icon(p.kind) }}</mat-icon>
+                    @if (p.kind === Treasure) {
+                      <app-chest-icon />
+                    } @else {
+                      <mat-icon>{{ icon(p.kind) }}</mat-icon>
+                    }
                   </span>
                   <span class="list__text">
                     <span class="list__name">{{ p.name }}</span>

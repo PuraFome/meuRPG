@@ -32,7 +32,10 @@
             mode="preview"
             controls="none"
             [selectablePoints]="false"
-          />
+            [pinsDrawn]="true"
+          >
+            <app-map-pins mapOverlay [points]="s.value.points" [columns]="s.value.gridColumns" [rows]="s.value.gridRows" [isMaster]="true" />
+          </app-map-view>
         </div>
         @if (s.value.points.length > 0) {
           <ul class="mr-visually-hidden" aria-label="Pontos deste mapa">
@@ -49,7 +52,8 @@
   @if (s.status === 'ready') {
     <div dialogFooter class="foot">
       @if (s.value.image && s.value.points.length > 0) {
-        <app-map-legend class="legend" [states]="true" />
+        <app-map-pins-legend [points]="s.value.points" [isMaster]="true" />
+        <app-map-legend class="legend" [states]="true" [points]="s.value.points" />
       }
       <a matButton class="open" [routerLink]="['/campanhas', campaignId(), 'mapas', mapId()]">
         <mat-icon aria-hidden="true">edit</mat-icon>Abrir no editor de mapas
