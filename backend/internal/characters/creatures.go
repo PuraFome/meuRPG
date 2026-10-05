@@ -177,7 +177,7 @@ func creatureToProto(c rules.Creature) *rulesv1.Creature {
 		out.Senses = append(out.Senses, &rulesv1.Sense{Key: s.Source, NamePt: s.NamePT, RangeFt: i32(s.RangeFt), Sense: s.Key})
 	}
 	for _, a := range c.Actions {
-		act := &rulesv1.CreatureAction{Name: a.Name, Text: a.Text, Usage: a.Usage, HasAttack: a.HasAttack, AttackBonus: i32(a.AttackBonus)}
+		act := &rulesv1.CreatureAction{Name: a.Name, NamePt: a.NamePT, Text: a.Text, Usage: a.Usage, HasAttack: a.HasAttack, AttackBonus: i32(a.AttackBonus)}
 		for _, d := range a.Damage {
 			act.Damage = append(act.Damage, &rulesv1.CreatureDamagePart{Dice: d.Dice, DamageTypeKey: d.TypeKey, DamageTypePt: d.TypeNamePT})
 		}

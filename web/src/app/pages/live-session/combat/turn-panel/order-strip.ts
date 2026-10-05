@@ -5,10 +5,12 @@ import type { Combatant, Encounter } from '../../../../../gen/meurpg/play/v1/com
 import { conditionTags } from '../../../../core/combat/conditions';
 import { coverMarkTags, sideTags } from '../../../../core/combat/cover';
 import { combatantInitial, isPlayer, playerWord, stateWord } from '../../../../core/combat/combat-view';
+import { isCreature } from '../../../../core/combat/creature-names';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import { type OrderItem, jointTurn, listNames, orderItems } from '../../../../core/combat/joint-turn';
 import { OrderGroup } from '../joint-turn/order-group';
 import { CombatantTags } from '../combatant-tags/combatant-tags';
+import { FormTag } from '../combatant-tags/form-tag';
 
 /**
  * The order as a strip of chips (E6-05): a token, the name and one word. An
@@ -22,7 +24,7 @@ import { CombatantTags } from '../combatant-tags/combatant-tags';
  */
 @Component({
   selector: 'app-order-strip',
-  imports: [CombatantTags, CombatantToken, NgTemplateOutlet, OrderGroup],
+  imports: [CombatantTags, FormTag, CombatantToken, NgTemplateOutlet, OrderGroup],
   template: `
   <ol class="strip" aria-label="Ordem de iniciativa" tabindex="0">
     @for (item of items(); track key(item)) {
@@ -44,7 +46,7 @@ import { CombatantTags } from '../combatant-tags/combatant-tags';
   <ng-template #chipTpl let-c>
       <li class="chip" [class.chip--turn]="current(c)">
         <span class="chip__top">
-          <app-combatant-token [initial]="initial(c)" [npc]="npc(c)" [defeated]="c.defeated" [mine]="c.mine" [size]="24" />
+          <app-combatant-token [initial]="initial(c)" [npc]="npc(c)" [creature]="creature(c)" [defeated]="c.defeated" [mine]="c.mine" [size]="24" />
           @if (current(c)) {
             <span class="chip__word chip__word--turn">Vez</span>
           } @else if (c.mine) {
@@ -53,6 +55,9 @@ import { CombatantTags } from '../combatant-tags/combatant-tags';
         </span>
         <span class="chip__name" [class.chip__name--out]="c.defeated">{{ c.label }}</span>
         <span class="chip__sub">{{ word(c) }}</span>
+        @if (c.wildShapeBeastKey) {
+          <app-form-tag [beast]="c.wildShapeBeastNamePt" />
+        }
         <app-combatant-tags [names]="tags(c)" [label]="c.label" [compact]="true" />
       </li>
   </ng-template>
@@ -74,7 +79,10 @@ import { CombatantTags } from '../combatant-tags/combatant-tags';
 
 .chip {
   display: flex;
-  flex: 0 0 104px;
+  // 104px, or as wide as its one tag needs ("Concentração"), up to 150px.
+  flex: 0 0 auto;
+  min-width: 104px;
+  max-width: 150px;
   flex-direction: column;
   gap: 3px;
   box-sizing: border-box;
@@ -162,7 +170,11 @@ export class OrderStrip {
   }
 
   protected npc(c: Combatant): boolean {
-    return !isPlayer(c);
+    return !isPlayer(c) && !isCreature(c);
+  }
+
+  protected creature(c: Combatant): boolean {
+    return isCreature(c);
   }
 
   protected word(c: Combatant): string {
@@ -171,7 +183,7 @@ export class OrderStrip {
   }
 
   protected tags(c: Combatant): string[] {
-    return [...conditionTags(c), ...coverMarkTags(c)];
+    return [...(c.concentrationSpell ? ['Concentração'] : []), ...conditionTags(c), ...coverMarkTags(c)];
   }
 
   protected readonly items = computed(() => orderItems(this.encounter(), false));

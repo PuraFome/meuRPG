@@ -1,6 +1,6 @@
 import { CreatureSource } from '../../../gen/meurpg/characters/v1/characters_pb';
-import type { Creature, CreatureSummary } from '../../../gen/meurpg/rules/v1/rules_pb';
-import { joinDots, tight } from '../format/text';
+import { Ability, type Creature, type CreatureSummary } from '../../../gen/meurpg/rules/v1/rules_pb';
+import { joinDots, tieNumbers, tight } from '../format/text';
 import { metersText } from '../units';
 
 /** How the table says where a creature came from, under its name: "Familiar de Pensantus". */
@@ -67,7 +67,7 @@ export function formSubtitle(c: Creature): string {
 export function summarySubtitle(s: CreatureSummary, c?: Creature): string {
   const parts = [s.sizePt, s.typePt, challengeText(s.challengeRating)];
   if (c) {
-    parts.push(`CA ${c.armorClass}`, tight(`PV ${c.hitPoints}`));
+    parts.push(tieNumbers(`CA ${c.armorClass}`), tieNumbers(`PV ${c.hitPoints}`));
   }
   return joinDots(parts);
 }
@@ -84,3 +84,44 @@ export function nameCounter(length: number, max: number): string {
 
 /** The longest name a creature may have (`RenameCreature`, `GiveCreature`). */
 export const CREATURE_NAME_MAX = 40;
+
+const ABILITY_PT: Partial<Record<Ability, string>> = {
+  [Ability.STRENGTH]: 'Força',
+  [Ability.DEXTERITY]: 'Destreza',
+  [Ability.CONSTITUTION]: 'Constituição',
+  [Ability.INTELLIGENCE]: 'Inteligência',
+  [Ability.WISDOM]: 'Sabedoria',
+  [Ability.CHARISMA]: 'Carisma',
+};
+
+/** A beast's line in Wild Shape's list: "Médio · ND 1/4 · 12 m · CA 13 · PV 11"; only the book's summary until its stat block is read. */
+export function beastLine(s: CreatureSummary, c?: Creature): string {
+  const parts = [s.sizePt, challengeText(s.challengeRating)];
+  if (c) {
+    parts.push(speedsText(c), tieNumbers(`CA ${c.armorClass}`), tieNumbers(`PV ${c.hitPoints}`));
+  }
+  return joinDots(parts);
+}
+
+/** One attack of a stat block as a line: its name, the numbers the book gives and the book's own text (English). */
+export interface AttackLine {
+  readonly name: string;
+  /** The name is the SRD's English one (the content has no Portuguese name for it): the page marks it `lang="en"`. */
+  readonly english: boolean;
+  /** "+4 · 2d4 + 2 perfurante · Força CD 11": the numbers are the book's. */
+  readonly detail: string;
+  /** The SRD's whole text of the action ("... or be knocked prone."), English, never translated here. */
+  readonly text: string;
+}
+
+/** What a beast's attacks do, from its stat block: each with its name (Portuguese when the content has it) and the book's text. Empty when it has none. */
+export function beastAttacks(c: Creature): readonly AttackLine[] {
+  return c.actions
+    .filter((a) => a.hasAttack)
+    .map((a) => {
+      const damage = a.damage.map((d) => `${d.dice.replace(/([+-])/g, ' $1 ').replace(/\s+/g, ' ').trim()} ${d.damageTypePt}`.trim()).join(' + ');
+      // "Força CD 11" as one block: a line never breaks inside it.
+      const save = a.save ? ` · ${ABILITY_PT[a.save.ability] ?? ''}\u00a0CD\u00a0${a.save.dc}` : '';
+      return { name: a.namePt || a.name, english: !a.namePt, detail: tight(joinDots([signed(a.attackBonus), damage]) + save), text: a.text };
+    });
+}

@@ -1641,6 +1641,10 @@ message CreatureAction {
   // For the Multiattack action: the routines, of which the creature makes
   // one. Empty for any other action.
   repeated CreatureMultiattackRoutine multiattack = 8;
+  // The action's Portuguese name ("Mordida") for the attacks a character can have
+  // through a creature; empty when the content has none, and the screen then shows
+  // the English `name` as it is.
+  string name_pt = 9;
 }
 
 // CreatureDamagePart is one damage roll of an action.

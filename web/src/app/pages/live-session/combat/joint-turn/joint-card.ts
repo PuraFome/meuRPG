@@ -5,6 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import type { Combatant, Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { article } from '../../../../core/combat/combat-log';
 import { combatantInitial, isPlayer } from '../../../../core/combat/combat-view';
+import { isCreature, kindWord, ofOwner } from '../../../../core/combat/creature-names';
 import { type JointTurn, jointTurn, listNames, missingLine, partEconomy, turnMembers } from '../../../../core/combat/joint-turn';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import type { CombatantInfo } from '../combat-info';
@@ -67,12 +68,19 @@ export class JointCard {
   }
 
   protected npc(c: Combatant): boolean {
-    return !isPlayer(c);
+    return !isPlayer(c) && !isCreature(c);
+  }
+
+  protected creature(c: Combatant): boolean {
+    return isCreature(c);
   }
 
   protected sub(c: Combatant): string {
     const info = this.info().get(c.characterId);
     const ac = c.armorClass === undefined ? '' : `CA ${c.armorClass}`;
+    if (isCreature(c)) {
+      return [kindWord(c), ac, ofOwner(this.encounter(), c)].filter(Boolean).join(' · ');
+    }
     const first = isPlayer(c) ? (info?.classSummary ?? '') : (info?.kindLabel ?? 'NPC');
     return [first, ac].filter(Boolean).join(' · ');
   }

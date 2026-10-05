@@ -256,6 +256,13 @@ func TestCreatureByKey(t *testing.T) {
 		w.Actions[0].Damage[0].TypeNamePT == "" || len(w.Traits) != 2 {
 		t.Errorf("actions = %+v, traits = %+v", w.Actions, w.Traits)
 	}
+	// The attacks have a Portuguese name where the content has one, in the stat block and in the derived attack.
+	if w.Actions[0].NamePT != "Mordida" || w.Actions[0].Name != "Bite" {
+		t.Errorf("dire wolf bite = %q / %q, want Bite / Mordida", w.Actions[0].Name, w.Actions[0].NamePT)
+	}
+	if got := monsterDerived(t, c, "monster:dire-wolf").Attacks[0].NamePT; got != "Mordida" {
+		t.Errorf("dire wolf derived attack = %q, want Mordida", got)
+	}
 	sk, _ := c.CreatureByKey("monster:skeleton")
 	if len(sk.Vulnerabilities) != 1 || sk.Vulnerabilities[0].Types[0].Key != "damage-type:bludgeoning" || len(sk.ConditionImmunities) != 2 ||
 		len(sk.Senses) != 1 || sk.Senses[0].RangeFt != 60 || !strings.Contains(sk.ArmorClassNote, "armor scraps") {

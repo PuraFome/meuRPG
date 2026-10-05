@@ -12,10 +12,9 @@ export function castVerb(spellKey: string, namePt: string): string {
       return 'Convocar o familiar';
     case 'spell:animate-dead':
       return 'Animar os mortos';
-    case 'spell:conjure-animals':
-      return 'Conjurar os animais';
     default:
-      return `Conjurar ${namePt}`;
+      // A spell whose name already starts with the verb ("Conjurar Animais") is the button as it stands.
+      return namePt.startsWith('Conjurar ') ? namePt : `Conjurar ${namePt}`;
   }
 }
 

@@ -77,9 +77,13 @@ span.tk__hit {
   border-style: dashed;
 }
 
+// Round like a character, hollow with a dashed ink outline and its label, inside its own square: the same token as the
+// combat map's (`app-combatant-token`), so the two maps and their legends say one thing.
 :host(.tk--creature) .tk__disc {
-  outline: 2px dashed var(--mr-ink);
-  outline-offset: 3px;
+  border: 2px dashed var(--mr-ink);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  box-shadow: none;
 }
 
 :host(.tk--mine) .tk__disc {

@@ -93,9 +93,16 @@ export function barText(e: Encounter, playerName: (characterId: string) => strin
   return `Esperando a reação ${name ? `${ofThe([name])} (${other.reactorLabel})` : `do jogador de ${other.reactorLabel}`}`;
 }
 
-/** The player's question: "O Goblin 2 está saindo do seu alcance. Ataque de oportunidade?" */
-export function playerQuestion(offer: OpportunityOffer): string {
-  return `${capitalize(`${article(offer.moverLabel)} ${offer.moverLabel}`)} está saindo do seu alcance. Ataque de oportunidade?`;
+/** The player's question: "O Goblin 2 está saindo do seu alcance. Ataque de oportunidade?"; when the one who would react is one of
+ * their creatures, it is named ("…do alcance do Lobo atroz 1"), never "seu". */
+export function playerQuestion(offer: OpportunityOffer, reactorIsCharacter = true): string {
+  const reach = reactorIsCharacter ? 'seu alcance' : `alcance ${ofThe([offer.reactorLabel])}`;
+  return `${capitalize(`${article(offer.moverLabel)} ${offer.moverLabel}`)} está saindo do ${reach}. Ataque de oportunidade?`;
+}
+
+/** What the answer spends: "Gasta a sua reação." or "Gasta a reação do Lobo atroz 1.". */
+export function spendText(offer: OpportunityOffer, reactorIsCharacter = true): string {
+  return reactorIsCharacter ? 'Gasta a sua reação.' : `Gasta a reação ${ofThe([offer.reactorLabel])}.`;
 }
 
 /** The master's: "O Toren saiu do alcance do Goblin 2." */

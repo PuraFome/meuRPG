@@ -4,9 +4,10 @@ import { MatIconModule } from '@angular/material/icon';
 
 import type { GetTurnOptionsResponse, OpportunityOffer } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { CombatClient } from '../../../../core/combat/combat-client';
+import { ownCombatant } from '../../../../core/combat/combat-view';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
-import { type ReactorAttack, attackLabel, playerQuestion } from '../../../../core/combat/opportunity';
+import { type ReactorAttack, attackLabel, playerQuestion, spendText } from '../../../../core/combat/opportunity';
 import { tieNumbers } from '../../../../core/format/text';
 import { SheetFrame } from '../sheet-frame/sheet-frame';
 import { injectSheet } from '../sheet-host';
@@ -54,7 +55,7 @@ export type OpportunityAnswer = { readonly attackKey: string; readonly options: 
         <p class="what" role="status">O mestre respondeu por você: esse ataque de oportunidade não espera mais a sua resposta.</p>
       } @else {
         <p class="what">{{ question() }}</p>
-        <p class="small">Gasta a sua reação.</p>
+        <p class="small">{{ spend() }}</p>
         @if (attacks(); as list) {
           <ul class="weapons" aria-label="Seus ataques corpo a corpo">
             @for (a of list; track a.key) {
@@ -110,7 +111,14 @@ export class OpportunitySheet {
   private options: GetTurnOptionsResponse | null = null;
 
   protected readonly subtitle = computed(() => tieNumbers(`${this.data.offer.moverLabel} · Rodada ${this.data.round}`));
-  protected readonly question = computed(() => playerQuestion(this.data.offer));
+  /** The reactor is the player's character (not one of their creatures): the page's own combatant is the reactor. */
+  private readonly charReacts = computed(() => {
+    const e = this.data.state.encounter();
+    const own = e ? ownCombatant(e) : null;
+    return !own || own.id === this.data.offer.reactorId;
+  });
+  protected readonly question = computed(() => playerQuestion(this.data.offer, this.charReacts()));
+  protected readonly spend = computed(() => spendText(this.data.offer, this.charReacts()));
   /** The offer is no longer in the combat: the master (or the turn) answered it. */
   protected readonly gone = computed(
     () => !this.busy() && !(this.data.state.encounter()?.opportunityOffers ?? []).some((o) => o.id === this.data.offer.id),

@@ -6,6 +6,7 @@ import {
   brisa,
   brisaSheet,
   combatRPC,
+  endTurnOf,
   getEncounterRPC,
   passTurnsTo,
   pensantusCasting,
@@ -684,7 +685,7 @@ test('caído: o teste contra a morte (sucesso), e com três falhas só o mestre 
     await expect(p.getByRole('status').filter({ hasText: 'Teste contra a morte: 14 · dado físico. Sucesso.' })).toBeVisible();
     await expect(p.getByText('1 de 3').first()).toBeVisible();
     // The save is done: the one filled button is "Encerrar turno".
-    await p.getByRole('button', { name: 'Encerrar turno' }).click();
+    await endTurnOf(p, m, campaignId, 'Pensantus');
     // The master's log has the roll; the other players would read only the outcome.
     await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('Pensantus rola o teste contra a morte: 14 · dado físico, sucesso (1 sucesso, 0 falhas)');
 
@@ -694,7 +695,7 @@ test('caído: o teste contra a morte (sucesso), e com três falhas só o mestre 
     await p.getByLabel(/Role 1d20 para o teste contra a morte/).fill('1');
     await p.getByRole('button', { name: 'Confirmar 1' }).click();
     await expect(p.getByText(/Teste contra a morte: 1 · dado físico\. Falha: um 1 conta duas falhas\./)).toBeVisible();
-    await p.getByRole('button', { name: 'Encerrar turno' }).click();
+    await endTurnOf(p, m, campaignId, 'Pensantus');
     enc = await passTurnsTo(m, campaignId, 'Pensantus');
     await p.getByRole('button', { name: 'Digitar o resultado' }).click();
     await p.getByLabel(/Role 1d20 para o teste contra a morte/).fill('5');
@@ -845,7 +846,7 @@ test('condições e concentração: o mestre marca no menu, o jogador vê as eti
     await expect(sheet.getByText('Sua ação foi usada.')).toBeVisible();
     await sheet.getByRole('button', { name: 'Voltar à sua vez' }).click();
     await expect(p.getByText('Concentrado em Teia', { exact: true })).toBeVisible();
-    await expect(m.getByText('Concentrado: Teia')).toBeVisible();
+    await expect(m.getByText('Concentra em Teia')).toBeVisible();
     // The master sees it in the dialog too, with the same action.
     await m.getByRole('button', { name: 'Mais ações para Pensantus' }).click();
     await m.getByRole('menuitem', { name: 'Condições…' }).click();

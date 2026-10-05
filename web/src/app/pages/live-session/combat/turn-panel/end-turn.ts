@@ -21,7 +21,7 @@ import { endTurnIsPrimary } from '../../../../core/combat/combat-options';
         <p class="ask__text" id="end-ask">{{ question() }}</p>
         <button #safe mat-stroked-button type="button" class="ask__btn" (click)="asking.set(false)">Voltar</button>
         <button mat-stroked-button type="button" class="ask__btn ask__go" [disabled]="busy()" (click)="confirm()">
-          Encerrar turno
+          {{ label() }}
         </button>
       </div>
     } @else {
@@ -32,11 +32,12 @@ import { endTurnIsPrimary } from '../../../../core/combat/combat-options';
         [class.end--filled]="primary()"
         [class.end--block]="block()"
         [class.end--off]="!!waiting()"
+        [class.mr-button--off]="!!waiting()"
         [disabled]="busy() || !!waiting()"
         disabledInteractive
         (click)="press()"
       >
-        <mat-icon aria-hidden="true">flag</mat-icon>Encerrar turno
+        <mat-icon aria-hidden="true">flag</mat-icon>{{ label() }}
       </button>
     }
   `,
@@ -106,6 +107,8 @@ export class EndTurn {
   /** Extra Attack: the attacks left once the first spent the action. */
   readonly attacksLeft = input(0);
   readonly busy = input(false);
+  /** The button's words: "Encerrar turno", or "Encerrar a vez do Nanquim" for a creature of the player's (E9-12). */
+  readonly label = input('Encerrar turno');
   /** Full width (the phone's bar). */
   readonly block = input(false);
   /** An opportunity attack waits for an answer ("Esperando a reação do mestre"): the turn cannot end. */

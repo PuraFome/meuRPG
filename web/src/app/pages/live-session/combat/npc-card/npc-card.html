@@ -6,7 +6,7 @@
       @if (isNpc()) {
         <app-portrait [src]="subject().portraitUrl" [name]="subject().label" [size]="56" fit="cover" [decorative]="true" />
       } @else {
-        <app-combatant-token [initial]="initial()" [npc]="isNpc()" [current]="true" [size]="40" />
+        <app-combatant-token [initial]="initial()" [npc]="isNpc()" [creature]="isCreatureSubject()" [current]="true" [size]="40" />
       }
       <h2 class="card__title card__title--turn" id="npc-title">Vez do {{ subject().label }}</h2>
     </div>

@@ -10,6 +10,7 @@ import {
   CoverSource,
   JumpKind,
   PendingDamageStatus,
+  WildShapeEndReason,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { entryCount, latestLine, logGroups, logLine, undoLabel, undoableEntry } from './combat-log';
 
@@ -222,6 +223,19 @@ describe('the log of spells, reactions, the fallen and conditions (slice 6.5c)',
     expect(logLine(ended)?.text).toBe(' deixou de se concentrar');
     const cleared = entry({ kind: CombatLogKind.CONDITIONS_CHANGED, targetLabel: 'Toren', conditions: [] } as never);
     expect(logLine(cleared)?.text).toBe(' ficou sem condições');
+  });
+
+  it('writes the Wild Shape lines: the form, and why it ended, with the number only where the server sent it (RN-20)', () => {
+    const ws = (over: { started?: boolean; endReason?: WildShapeEndReason; carriedDamage?: number }) =>
+      entry({ kind: CombatLogKind.WILD_SHAPE, actorLabel: 'Sálvia', wildShape: { beastKey: 'monster:wolf', beastNamePt: 'Lobo', started: false, endReason: WildShapeEndReason.LEFT, carriedDamage: 0, ...over } } as never);
+    expect(logLine(ws({ started: true }))).toMatchObject({ actor: 'Sálvia', icon: 'pets', text: ' virou o Lobo' });
+    expect(logLine(ws({}))?.text).toBe(' voltou à forma normal');
+    // The owner's player and the master get the number; another player's line is the same sentence with none.
+    expect(logLine(ws({ endReason: WildShapeEndReason.DAMAGE, carriedDamage: 6 }))?.text).toBe(' voltou à forma normal: o Lobo caiu a 0 PV e 6 de dano passaram para ela');
+    expect(logLine(ws({ endReason: WildShapeEndReason.DAMAGE }))?.text).toBe(' voltou à forma normal: o Lobo caiu a 0 PV');
+    expect(logLine(ws({ endReason: WildShapeEndReason.MASTER }))?.text).toBe(' voltou à forma normal, porque o mestre levou o Lobo a 0 PV');
+    expect(logLine(ws({ endReason: WildShapeEndReason.ZERO_HP }))?.text).toBe(' voltou à forma normal, ao cair a 0 PV');
+    expect(logLine(ws({ endReason: WildShapeEndReason.UNCONSCIOUS }))?.text).toBe(' voltou à forma normal, ao ficar inconsciente');
   });
 
   it('names what an undo would take back', () => {

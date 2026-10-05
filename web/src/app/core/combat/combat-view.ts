@@ -6,6 +6,7 @@ import {
   type Encounter,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { article } from './combat-log';
+import { creatureTurnTitle, isCreature } from './creature-names';
 import { afterTurn, jointTurn, listNames, type JointTurn, npcPlural } from './joint-turn';
 
 /**
@@ -203,6 +204,10 @@ export function turnBanner(e: Encounter): TurnBanner {
     const labels = joint.members.map((m) => m.label);
     const named = joint.npcOnly ? npcPlural(labels) : null;
     let title = named ? `Vez d${named}` : `Vez de ${listNames(labels)}`;
+    // A player's creatures alone: "Vez dos Lobos atrozes da Sálvia" (their player's own tab says "dos seus").
+    if (!own && joint.members.every(isCreature)) {
+      title = creatureTurnTitle(e, joint.members, false);
+    }
     if (own && !own.turnPartEnded) {
       title = `Sua vez, ${own.label}`;
     } else if (own) {
@@ -224,7 +229,7 @@ export function turnBanner(e: Encounter): TurnBanner {
   const who = currentCombatant(e);
   const next = nextCombatant(e);
   return {
-    title: who ? (who.mine ? `Sua vez, ${who.label}` : `Vez do ${who.label}`) : 'Ninguém está na vez',
+    title: who ? (who.mine ? `Sua vez, ${who.label}` : who.kind === CombatantKind.CREATURE ? creatureTurnTitle(e, [who], false) : `Vez do ${who.label}`) : 'Ninguém está na vez',
     who,
     mine: who?.mine ?? false,
     masterTurn: false,

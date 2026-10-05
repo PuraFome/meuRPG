@@ -115,7 +115,7 @@ export function attackTitle(attack: Attack): string {
   return `${attack.namePt || attack.name} ${attack.attackBonus < 0 ? '−' : '+'}${Math.abs(attack.attackBonus)}`;
 }
 
-/** An attack's name for a button and a sentence. */
+/** An attack's name for a button and a sentence: the server's Portuguese name (a creature's attacks included), the English one when there is none. */
 export function attackName(attack: Attack): string {
   return attack.namePt || attack.name;
 }

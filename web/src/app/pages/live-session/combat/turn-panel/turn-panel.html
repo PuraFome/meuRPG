@@ -14,6 +14,10 @@
           · {{ afterPrefix() }}: <b>{{ after.name }}</b>
         }
       </p>
+      @if (form(); as f) {
+        <!-- Inside the card: the band is part of the turn, not a strip under it. -->
+        <app-wild-band class="banner__band" [beast]="f.name" [detail]="formDetail()" />
+      }
     </div>
     @if (banner().joint) {
       <div class="banner__end">
@@ -49,10 +53,18 @@
     {{ banner().mine || banner().ownEnded ? round() + ' · ' + encounter().name : 'Combate · ' + round() }}
   </span>
   <div class="turn__banner" role="status" aria-live="polite">
-    @if (banner().who; as who) {
+    @if (groupTokens().length > 1) {
+      <!-- A group of creatures on turn (the wolves): all its tokens, not the first alone. -->
+      <span class="turn__tokens">
+        @for (m of groupTokens(); track m.id) {
+          <app-combatant-token [initial]="initial(m)" [creature]="true" [current]="true" [size]="30" />
+        }
+      </span>
+    } @else if (banner().who; as who) {
       <app-combatant-token
         [initial]="initial(who)"
         [npc]="npc(who)"
+        [creature]="creature(who)"
         [current]="true"
         [size]="30"
       />
@@ -73,6 +85,9 @@
       <p class="turn__next">{{ afterPrefix() }}: <b>{{ after.name }}</b></p>
     }
     <ng-container *ngTemplateOutlet="notes" />
+    @if (form(); as f) {
+      <app-wild-band [beast]="f.name" [detail]="formDetail()" />
+    }
     <ul class="eco" aria-label="O que você tem neste turno">
       @for (t of tiles(); track t.name) {
         <li class="tile" [class.tile--used]="t.used">
@@ -148,7 +163,6 @@
   }
 </section>
 }
-
 <ng-template #notes>
   @if (waiting(); as w) {
     <div class="mr-notice mr-notice--warning turn__notice" role="status">

@@ -1,0 +1,202 @@
+:host {
+  display: block;
+}
+
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-sizing: border-box;
+  padding: 14px 14px 12px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.head__art {
+  --art-size: 48px;
+}
+
+.head__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.head__name {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 26px;
+  overflow-wrap: anywhere;
+}
+
+.head__sub {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+// A narrow phone: the state pill goes under the name, as the artboard draws it at 320 px.
+@media (max-width: 359.98px) {
+  .head {
+    flex-wrap: wrap;
+
+    app-part-state {
+      margin-left: 60px;
+    }
+  }
+}
+
+// Its action and its movement: two tiles, "Usada" dashed and muted.
+.eco {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-sizing: border-box;
+  min-height: 72px;
+  padding: 8px 12px;
+  border: 1.5px solid var(--mr-ink);
+  border-radius: var(--mr-radius-md);
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.tile--used {
+  border-style: dashed;
+  border-color: var(--mr-control-line);
+  color: var(--mr-ink-muted);
+}
+
+.tile__name {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.tile__num {
+  font-family: var(--mr-font-display);
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 26px;
+}
+
+.tile__num small {
+  font-family: var(--mr-font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--mr-ink-muted);
+}
+
+.tile__sub {
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--mr-ink-muted);
+}
+
+.why,
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+    font-size: 18px;
+  }
+}
+
+.atk {
+  border-top: 1px solid var(--mr-rule);
+  padding-top: 10px;
+}
+
+.go {
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-accent-text);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  width: 100%;
+  font-weight: 700;
+
+  @media (min-width: 768px) {
+    --mat-button-outlined-container-height: 44px;
+  }
+}
+
+.go--off,
+.std__btn--off {
+  --mat-button-outlined-label-text-color: var(--mr-ink-muted);
+  --mat-button-outlined-disabled-label-text-color: var(--mr-ink-muted);
+  --mat-button-outlined-disabled-outline-color: var(--mr-control-line);
+  border-style: dashed;
+  cursor: default;
+}
+
+.note {
+  padding-top: 10px;
+  border-top: 1px solid var(--mr-rule);
+}
+
+// The standard actions: two equal columns of 48 px buttons; one column at 320 px.
+.std {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+
+  @media (max-width: 359.98px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.std__btn {
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-accent-text);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  font-weight: 700;
+
+  @media (min-width: 768px) {
+    --mat-button-outlined-container-height: 44px;
+  }
+}
+
+// A hit whose damage was not rolled: the same notice as the character's, wrapping on a narrow phone.
+.owed {
+  flex-wrap: wrap;
+  align-items: center;
+
+  p {
+    flex: 1 1 200px;
+    margin: 0;
+  }
+}
+
+.trapped p {
+  margin: 0;
+}
+
+.trapped__wait {
+  display: flex;
+  width: fit-content;
+}

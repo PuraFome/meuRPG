@@ -8,6 +8,9 @@
   </div>
 
   <div class="top" [class.top--compact]="compact()">
+  @if (pools(); as p) {
+    <app-wild-pools class="top__pools" [beast]="p.beast" [character]="p.character" />
+  } @else {
   <div class="hp">
     <p class="hp__numbers">
       <span class="hp__current">{{ v.hitPointsCurrent }}</span>
@@ -20,15 +23,16 @@
       <div class="hp__fill" [style.width.%]="percent()"></div>
     </div>
   </div>
+  }
 
   <dl class="stats">
     <div class="shield">
-      <dt class="stats__label">Classe de Armadura</dt>
+      <dt class="stats__label">{{ acLabel() }}</dt>
       <dd class="shield__value">
         <svg class="shield__shape" width="96" height="112" viewBox="0 0 96 112" aria-hidden="true">
           <path d="M48 3 90 17v35c0 27-18 46-42 57C24 98 6 79 6 52V17L48 3z" />
         </svg>
-        <span class="shield__number">{{ sheet()?.armorClass ?? '–' }}</span>
+        <span class="shield__number">{{ armorClass() ?? '–' }}</span>
       </dd>
     </div>
     @if (!compact()) {
@@ -47,7 +51,9 @@
   </dl>
   </div>
 
-  @if (slotRows().length > 0) {
+  @if (pools()) {
+    <p class="mr-panel nospells"><mat-icon aria-hidden="true">block</mat-icon><span><b>Sem magias</b> na forma de fera.</span></p>
+  } @else if (slotRows().length > 0) {
     <section class="mr-panel slots" aria-labelledby="slots-heading">
       <h3 class="slots__title" id="slots-heading">Espaços de magia</h3>
       @for (row of slotRows(); track row.key) {

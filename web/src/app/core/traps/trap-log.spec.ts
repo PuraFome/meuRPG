@@ -39,6 +39,14 @@ describe('trap log', () => {
     expect(fallNote(firing, 'other')).toBeNull();
   });
 
+  it('names a creature of the player that a trap caught on its own part', () => {
+    const note = fallNote(firing, 'c1', 'Lobo atroz 1')!;
+    expect(note.title).toBe('O Lobo atroz 1 caiu na armadilha Fosso escondido.');
+    expect(note.waiting).toBe(true);
+    expect(fallNote(firing, 'c1', 'Nanquim')!.title).toBe('O Nanquim caiu na armadilha Fosso escondido.');
+    expect(fallNote(firing, 'c1', 'Cobra 2')!.title).toBe('A Cobra 2 caiu na armadilha Fosso escondido.');
+  });
+
   it('matches the caught by combatant: a familiar and its owner each get their own line', () => {
     const both = create(TrapFiringSchema, {
       name: 'Fosso',

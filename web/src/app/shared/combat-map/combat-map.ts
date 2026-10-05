@@ -2,10 +2,12 @@ import { Component, computed, input, output, signal, viewChild, ElementRef } fro
 import { MatIconModule } from '@angular/material/icon';
 
 import type { Combatant } from '../../../gen/meurpg/play/v1/combat_pb';
+import { CreatureSize } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { DFT_PER_SQUARE, type Square, squareAt, squareCenter, stepSquare } from '../../core/combat/combat-grid';
 import type { MapLayers } from '../../core/maps/layers';
 import { conditionTags } from '../../core/combat/conditions';
 import { combatantInitial, isPlayer } from '../../core/combat/combat-view';
+import { isCreature } from '../../core/combat/creature-names';
 import { CombatantToken } from '../combatant-token/combatant-token';
 import type { Vision } from '../../core/maps/vision';
 import { FogBase } from '../fog-map/fog-base';
@@ -125,6 +127,20 @@ export class CombatMap {
   protected readonly shown = computed(() =>
     this.combatants().filter((c) => c.placed && (this.isMaster() || !c.hidden)),
   );
+  /** The squares each token covers, for the "Vez" word: it goes where it covers none (a Large creature is drawn on 2 × 2). */
+  private readonly occupied = computed(() => {
+    const cells = new Set<string>();
+    for (const c of this.shown()) {
+      const at = this.anchor(c);
+      const n = this.span(c);
+      for (let dc = 0; dc < n; dc++) {
+        for (let dr = 0; dr < n; dr++) {
+          cells.add(`${at.col + dc},${at.row + dr}`);
+        }
+      }
+    }
+    return cells;
+  });
   protected readonly aspect = computed(() => `${this.image().width} / ${this.image().height}`);
   protected readonly widthPx = computed(() => {
     const cell = this.cellPx();
@@ -190,8 +206,58 @@ export class CombatMap {
     return combatantInitial(c.label);
   }
 
+  /** An NPC is the rounded square; a player's creature is round with a dashed outline (MAP-LANGUAGE.md). */
   protected npc(c: Combatant): boolean {
-    return !isPlayer(c);
+    return !isPlayer(c) && !isCreature(c);
+  }
+
+  protected creature(c: Combatant): boolean {
+    return isCreature(c);
+  }
+
+  /** How many squares a side of the token is drawn on: Large is 2, Huge 3, Gargantuan 4 (the picture only: the server still counts one square). */
+  protected span(c: Combatant): number {
+    const n = Math.max(1, Math.min(c.size >= CreatureSize.LARGE ? c.size - 2 : 1, this.columns(), this.rows()));
+    if (n === 1) {
+      return 1;
+    }
+    // Two big creatures side by side (two wolves) would be drawn over each other: where another token sits on the squares
+    // it would take, it is drawn on its own square.
+    const at = this.place(c);
+    const col = Math.max(0, Math.min(at.col, this.columns() - n));
+    const row = Math.max(0, Math.min(at.row, this.rows() - n));
+    const others = this.shown().filter((o) => o.id !== c.id);
+    const blocked = others.some((o) => {
+      const p = this.place(o);
+      return p.col >= col && p.col < col + n && p.row >= row && p.row < row + n;
+    });
+    return blocked ? 1 : n;
+  }
+
+  /** The top-left square of the drawing, pulled back so a big token stays on the map. */
+  private anchor(c: Combatant): Square {
+    const at = this.place(c);
+    const n = this.span(c);
+    return { col: Math.max(0, Math.min(at.col, this.columns() - n)), row: Math.max(0, Math.min(at.row, this.rows() - n)) };
+  }
+
+  /** The centre of the drawing, in percent of the map. */
+  protected centerX(c: Combatant): number {
+    return ((this.anchor(c).col + this.span(c) / 2) / this.columns()) * 100;
+  }
+
+  protected centerY(c: Combatant): number {
+    return ((this.anchor(c).row + this.span(c) / 2) / this.rows()) * 100;
+  }
+
+  /**
+   * Where the "Vez" word of the token on turn goes, so it is read as its own token's: the pill is wider than a square, so a side
+   * counts as free only when the squares along it, one more at each end, hold no other token (a token diagonally by is "beside"
+   * it). Above first, then below, then right, then left; when every side is taken, the side with the fewest neighbours (above on a
+   * tie), and the garnet ring carries the turn.
+   */
+  protected turnSide(c: Combatant): 'above' | 'below' | 'right' | 'left' {
+    return pillSide(this.anchor(c), this.span(c), this.occupied(), this.columns(), this.rows());
   }
 
   protected place(c: Combatant): Square {
@@ -318,4 +384,25 @@ export class CombatMap {
   protected onBlur(): void {
     this.cursor.set(null);
   }
+}
+
+/** The side of a token (its top-left square and its side in squares) where the "Vez" word goes; see `CombatMap.turnSide`. */
+export function pillSide(at: Square, n: number, taken: ReadonlySet<string>, columns: number, rows: number): 'above' | 'below' | 'right' | 'left' {
+  const sides: { side: 'above' | 'below' | 'right' | 'left'; cells: [number, number][] }[] = [
+    { side: 'above', cells: Array.from({ length: n + 2 }, (_, i) => [at.col - 1 + i, at.row - 1] as [number, number]) },
+    { side: 'below', cells: Array.from({ length: n + 2 }, (_, i) => [at.col - 1 + i, at.row + n] as [number, number]) },
+    { side: 'right', cells: Array.from({ length: n + 2 }, (_, i) => [at.col + n, at.row - 1 + i] as [number, number]) },
+    { side: 'left', cells: Array.from({ length: n + 2 }, (_, i) => [at.col - 1, at.row - 1 + i] as [number, number]) },
+  ];
+  const own = (col: number, row: number) => col >= at.col && col < at.col + n && row >= at.row && row < at.row + n;
+  const score = (cells: [number, number][]) => {
+    // The cell in the middle of the side (right against the token) is on the map or the pill has no room; the ends only count when a token is there.
+    const middle = cells.slice(1, -1);
+    if (middle.some(([col, row]) => col < 0 || row < 0 || col >= columns || row >= rows)) {
+      return 99;
+    }
+    return cells.filter(([col, row]) => !own(col, row) && taken.has(`${col},${row}`)).length;
+  };
+  const scored = sides.map((s) => ({ side: s.side, score: score(s.cells) }));
+  return scored.reduce((best, s) => (s.score < best.score ? s : best)).side;
 }

@@ -80,3 +80,20 @@ describe('TurnPanel', () => {
     expect(text({ currentCombatantId: 'pen' }).querySelector('[data-testid="familiar-blind"]')).toBeNull();
   });
 });
+
+describe('TurnPanel as a beast (MR-037, E9-11 state 3)', () => {
+  it('says the form and what changes (the two reserves and the armor class are on the vitals card)', () => {
+    const druid = combatant({ id: 'sal', label: 'Sálvia', kind: CombatantKind.PLAYER, mine: true, speedDft: 400, speedFt: 40, movementLeftDft: 400, movementLeftFt: 40, wildShapeBeastKey: 'monster:wolf', wildShapeBeastNamePt: 'Lobo', wildShapeHitPointsCurrent: 11, wildShapeHitPointsMax: 11 });
+    const fixture = TestBed.createComponent(TurnPanel);
+    fixture.componentRef.setInput('encounter', encounter({ combatants: [druid], currentCombatantId: 'sal' }));
+    fixture.componentRef.setInput('hitPointsMax', 38);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const flatText = (n: Element | null) => n?.textContent?.replace(/\s+/g, ' ').trim();
+    expect(flatText(el.querySelector('app-wild-band'))).toContain('Na forma de Lobo');
+    expect(flatText(el.querySelector('app-wild-band'))).toContain('Sem magias · 12,0');
+    // One armor class on the page, and it is the vitals card's: not in the band.
+    expect(flatText(el.querySelector('app-wild-band'))).not.toContain('CA');
+    expect(el.querySelector('app-wild-pools')).toBeNull();
+  });
+});

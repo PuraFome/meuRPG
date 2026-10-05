@@ -5,10 +5,12 @@ import { MatIconModule } from '@angular/material/icon';
 import type { Combatant, Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { CombatantState } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { combatantInitial, isDown, isPlayer, playerWord, stateWord } from '../../../../core/combat/combat-view';
+import { isCreature, ofOwner } from '../../../../core/combat/creature-names';
 import { type OrderItem, jointTurn, listNames, orderItems } from '../../../../core/combat/joint-turn';
 import { conditionTags } from '../../../../core/combat/conditions';
 import { coverMarkTags, sideTags } from '../../../../core/combat/cover';
 import { CombatantTags } from '../combatant-tags/combatant-tags';
+import { FormTag } from '../combatant-tags/form-tag';
 import { OrderGroup } from '../joint-turn/order-group';
 import { PartState } from '../joint-turn/part-state';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
@@ -22,7 +24,7 @@ import { CombatantToken } from '../../../../shared/combatant-token/combatant-tok
  */
 @Component({
   selector: 'app-order-column',
-  imports: [CombatantTags, CombatantToken, MatIconModule, NgTemplateOutlet, OrderGroup, PartState],
+  imports: [CombatantTags, FormTag, CombatantToken, MatIconModule, NgTemplateOutlet, OrderGroup, PartState],
   template: `
     <section class="panel" aria-labelledby="order-col-title">
       <h2 class="panel__title" id="order-col-title">Ordem</h2>
@@ -46,7 +48,7 @@ import { CombatantToken } from '../../../../shared/combatant-token/combatant-tok
       <ng-template #rowTpl let-c let-grouped="grouped">
         <li class="row" [class.row--turn]="current(c)">
           <span class="row__n" aria-hidden="true">{{ number(c) }}</span>
-          <app-combatant-token [initial]="initial(c)" [npc]="!player(c)" [defeated]="c.defeated" [mine]="c.mine" [current]="current(c)" [size]="30" />
+          <app-combatant-token [initial]="initial(c)" [npc]="npc(c)" [creature]="creature(c)" [defeated]="c.defeated" [mine]="c.mine" [current]="current(c)" [size]="30" />
           <span class="row__text">
             <span class="row__name" [class.row__name--out]="c.defeated">
               {{ c.label }}
@@ -56,6 +58,9 @@ import { CombatantToken } from '../../../../shared/combatant-token/combatant-tok
             <span class="row__word" [class.row__word--out]="c.defeated">
               @if (c.defeated) {<mat-icon aria-hidden="true">close</mat-icon>}{{ word(c) }}
             </span>
+            @if (c.wildShapeBeastKey) {
+              <app-form-tag [beast]="c.wildShapeBeastNamePt" />
+            }
             <app-combatant-tags [names]="tags(c)" [label]="c.label" />
           </span>
         </li>
@@ -73,11 +78,16 @@ export class OrderColumn {
 
   /** The conditions, "Aliado" and the master's cover mark under the name: what everyone who sees it may read. */
   protected tags(c: Combatant): string[] {
-    return [...conditionTags(c), ...coverMarkTags(c)];
+    // The concentration is public: everyone at the table sees who holds a spell (the spell's name stays with the sheet and the master).
+    return [...(c.concentrationSpell ? ['Concentração'] : []), ...conditionTags(c), ...coverMarkTags(c)];
   }
 
-  protected player(c: Combatant): boolean {
-    return isPlayer(c);
+  protected npc(c: Combatant): boolean {
+    return !isPlayer(c) && !isCreature(c);
+  }
+
+  protected creature(c: Combatant): boolean {
+    return isCreature(c);
   }
 
   /** Boxes only for groups that hold a player's character (RN-20). */
@@ -115,6 +125,10 @@ export class OrderColumn {
       return down ? `Você, ${down.toLowerCase()}` : 'Você';
     }
     const word = isPlayer(c) ? playerWord(c) : stateWord(c.state);
+    if (isCreature(c)) {
+      // "da Sálvia · Ileso": whose it is and how hurt, in a word (RN-20: never its hit points).
+      return [ofOwner(this.encounter(), c), word].filter(Boolean).join(' · ');
+    }
     return sideTags(c).length > 0 ? `${word} · Aliado` : word;
   }
 }

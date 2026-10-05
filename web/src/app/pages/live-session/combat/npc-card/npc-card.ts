@@ -23,6 +23,7 @@ import { joinDots } from '../../../../core/format/text';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { attackName } from '../../../../core/combat/combat-options';
 import { combatantInitial, isPlayer, roundLabel } from '../../../../core/combat/combat-view';
+import { isCreature } from '../../../../core/combat/creature-names';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import { Portrait } from '../../../../shared/portrait/portrait';
 import { NextTurn } from '../combat-bar/next-turn';
@@ -90,7 +91,8 @@ export class NpcCard {
 
   protected readonly round = computed(() => roundLabel(this.encounter().round));
   protected readonly initial = computed(() => combatantInitial(this.subject().label));
-  protected readonly isNpc = computed(() => !isPlayer(this.subject()));
+  protected readonly isCreatureSubject = computed(() => isCreature(this.subject()));
+  protected readonly isNpc = computed(() => !isPlayer(this.subject()) && !isCreature(this.subject()));
   protected readonly attacks = computed<Attack[]>(() =>
     (this.options()?.options?.attacks ?? []).flatMap((a) => (a.attack && a.attack.saveDc === 0 ? [a.attack] : [])),
   );

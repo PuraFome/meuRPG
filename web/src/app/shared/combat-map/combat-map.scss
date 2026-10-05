@@ -19,7 +19,8 @@
 .cm__surface {
   // Sized from the container (`.cm`), so they live on a child of it.
   --cm-sq: calc(100cqw / var(--cols));
-  --cm-tk: clamp(20px, calc(var(--cm-sq) * 0.82), 34px);
+  // A token is never bigger than its square (a Large one never bigger than its 2 × 2): no floor, so neighbours never overlap.
+  --cm-tk: min(calc(var(--cm-sq) * 0.86), 40px);
   position: relative;
   isolation: isolate;
   overflow: hidden;
@@ -256,4 +257,25 @@
   line-height: 15px;
   white-space: nowrap;
   transform: translateX(-50%);
+}
+
+// The word goes where it covers no token: below, or beside, when above is taken.
+.cm__turn--below {
+  top: calc(100% + 7px);
+  bottom: auto;
+}
+
+.cm__turn--right {
+  top: 50%;
+  bottom: auto;
+  left: calc(100% + 6px);
+  transform: translateY(-50%);
+}
+
+.cm__turn--left {
+  top: 50%;
+  right: calc(100% + 6px);
+  bottom: auto;
+  left: auto;
+  transform: translateY(-50%);
 }

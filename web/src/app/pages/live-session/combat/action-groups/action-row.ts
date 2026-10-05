@@ -37,6 +37,9 @@ let nextId = 0;
       @if (detail()) {
         <span class="row__detail">{{ detail() }}</span>
       }
+      @if (rider()) {
+        <span class="row__rider" lang="en">{{ rider() }}</span>
+      }
       @if (off() && reason()) {
         <span class="row__why" [id]="whyId"><mat-icon aria-hidden="true">block</mat-icon>{{ reason() }}</span>
       }
@@ -50,6 +53,7 @@ let nextId = 0;
         type="button"
         class="row__btn"
         [class.row__btn--off]="off()"
+        [class.mr-button--off]="off()"
         [disabled]="off() || busy()"
         disabledInteractive
         [attr.aria-label]="buttonLabel()"
@@ -70,6 +74,8 @@ export class ActionRow {
   /** The spell's name, when the row has the "?": it names the button ("Detalhes de Sono"). */
   readonly helpName = input('');
   readonly detail = input('');
+  /** The SRD's own text of a creature's attack (its rider), under the detail; English, as the book has it, and never translated here. */
+  readonly rider = input('');
   /** "Atacar", "Conjurar"; empty for a row with no button. */
   readonly button = input('');
   /** The button's accessible name: "Atacar com Raio de Fogo". */

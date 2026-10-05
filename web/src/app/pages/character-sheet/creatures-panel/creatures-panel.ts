@@ -16,6 +16,9 @@ import { castNotice, creaturesText } from '../../../core/creatures/summon-labels
 import { tight } from '../../../core/format/text';
 import { OpenSessions } from '../../../shell/live-notice/open-sessions';
 import { openSheet } from '../../live-session/combat/sheet-host';
+import { openWildShape } from '../../../shared/wild-shape/wild-shape-sheet';
+import { combatErrorMessage } from '../../../core/combat/combat-errors';
+import { newKey } from '../../../core/connect/idempotency';
 import { CreatureCard } from './creature-card';
 import type { EditMode } from './creature-edit';
 import { SummonSheet, type SummonSheetData, type SummonSheetResult } from './summon-sheet';
@@ -88,9 +91,71 @@ export class CreaturesPanel {
     return `Nenhuma criatura ainda. Use ${names.join(' ou ')} ou peça ao mestre para dar uma.`;
   });
 
+  /** Wild Shape on the sheet (E9-11): the beast the druid is now (`''` in its own shape), the uses and a refusal in words. */
+  protected readonly form = signal('');
+  protected readonly uses = signal<{ readonly left: number; readonly total: number; readonly recharge: string } | null>(null);
+  protected readonly wildError = signal('');
+  /** "restam 2 de 2 usos · volta no descanso curto ou longo", or what stops it outside a session. */
+  protected readonly wildLine = computed(() => {
+    const u = this.uses();
+    if (!this.live()) {
+      return 'Só durante um combate ou uma sessão.';
+    }
+    if (!u) {
+      return '';
+    }
+    const back = u.recharge === 'long_rest' ? 'volta no descanso longo' : 'volta no descanso curto ou longo';
+    return tight(u.left === 0 ? `Sem usos · ${back}` : `Restam ${u.left} de ${u.total} ${u.total === 1 ? 'uso' : 'usos'} · ${back}`);
+  });
+
+  private async loadWild(): Promise<void> {
+    if (!this.wildShape() || this.isMaster() || !this.live()) {
+      return;
+    }
+    try {
+      const v = await this.client.vitalsOf(this.campaignId(), this.characterId());
+      const r = v?.resources.find((x) => x.key === 'wild_shape');
+      this.uses.set(r ? { left: r.total - r.used, total: r.total, recharge: r.recharge === 2 ? 'long_rest' : 'short_rest' } : null);
+      this.form.set(v?.wildShape?.beastNamePt ?? '');
+    } catch {
+      this.uses.set(null);
+    }
+  }
+
+  protected transform(): void {
+    if (!this.live()) {
+      return;
+    }
+    this.wildError.set('');
+    openWildShape(this.dialog, this.bottomSheet, {
+      campaignId: this.campaignId(),
+      characterId: this.characterId(),
+      inCombat: false,
+      uses: this.uses() ? { left: this.uses()!.left, total: this.uses()!.total } : null,
+    }).subscribe((r) => {
+      if (r) {
+        void this.loadWild();
+        this.notice.set(`Você virou ${r.beastNamePt}. O mestre encerra a forma.`);
+      }
+    });
+  }
+
+  protected async leave(): Promise<void> {
+    this.wildError.set('');
+    try {
+      await this.client.leaveWildShape(this.campaignId(), this.characterId(), newKey());
+      this.notice.set('Você voltou à forma normal.');
+      await this.loadWild();
+    } catch (err) {
+      this.wildError.set(combatErrorMessage(err, 'voltar à forma normal'));
+    }
+  }
+
   constructor() {
     effect(() => {
       this.reload();
+      this.live();
+      untracked(() => void this.loadWild());
       const campaignId = this.campaignId();
       const characterId = this.characterId();
       untracked(() => void this.load(campaignId, characterId));

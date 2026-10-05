@@ -5,7 +5,9 @@ import {
   type CharacterCreature,
   CharacterService,
   type GetSummonOptionsResponse,
+  type ListWildShapeFormsResponse,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
+import type { Encounter } from '../../../gen/meurpg/play/v1/combat_pb';
 import { type CharacterVitals, PlayService } from '../../../gen/meurpg/play/v1/play_pb';
 import {
   type Creature,
@@ -61,6 +63,23 @@ export class CreaturesClient {
    * what a casting would send away. The server works all of it out (`GetSummonOptions`). */
   async summonOptions(campaignId: string, characterId: string): Promise<GetSummonOptionsResponse> {
     return this.characters.getSummonOptions({ campaignId, characterId });
+  }
+
+  /** The beasts the druid's Wild Shape allows now, by Portuguese name, with the limit that decided the list (`ListWildShapeForms`). */
+  async wildShapeForms(campaignId: string, characterId: string): Promise<ListWildShapeFormsResponse> {
+    return this.characters.listWildShapeForms({ campaignId, characterId });
+  }
+
+  /** "Virar Lobo": the action and one use (`AssumeWildShape`). The answer is the vitals with the form and, in a combat, the combat. */
+  async assumeWildShape(campaignId: string, characterId: string, beastKey: string, idempotencyKey: string): Promise<{ readonly vitals: CharacterVitals | undefined; readonly encounter: Encounter | undefined }> {
+    const res = await this.play.assumeWildShape({ campaignId, characterId, beastKey, idempotencyKey });
+    return { vitals: res.vitals, encounter: res.encounter };
+  }
+
+  /** "Voltar à forma normal" (`LeaveWildShape`): a bonus action in a combat. */
+  async leaveWildShape(campaignId: string, characterId: string, idempotencyKey: string): Promise<{ readonly vitals: CharacterVitals | undefined; readonly encounter: Encounter | undefined }> {
+    const res = await this.play.leaveWildShape({ campaignId, characterId, idempotencyKey });
+    return { vitals: res.vitals, encounter: res.encounter };
   }
 
   /** The master gives a character a creature; a blank name takes the Portuguese name of the kind. */

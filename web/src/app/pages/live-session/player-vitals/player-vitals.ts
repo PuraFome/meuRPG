@@ -2,6 +2,8 @@ import { Component, computed, effect, input, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 
+import { article } from '../../../core/combat/combat-log';
+import { WildPools } from '../../../shared/wild-shape/wild-pools';
 import { PlayerSheetVm, VitalsVm } from '../live-session.types';
 import { SlotDots } from '../slot-dots/slot-dots';
 import { freeWords, hitPointsPercent, slotLevelLabel, slotRowLabel, usedWords } from '../vitals';
@@ -23,7 +25,7 @@ interface SlotRowVm {
  */
 @Component({
   selector: 'app-player-vitals',
-  imports: [MatIconModule, RouterLink, SlotDots],
+  imports: [MatIconModule, RouterLink, SlotDots, WildPools],
   templateUrl: './player-vitals.html',
   styleUrl: './player-vitals.scss',
 })
@@ -32,9 +34,33 @@ export class PlayerVitals {
   /** From the character's sheet; `null` until it loads. */
   readonly sheet = input<PlayerSheetVm | null>(null);
   readonly campaignId = input.required<string>();
+  /** While the druid is a beast: the armor class of the beast's book, in place of the character's own (the server sends none). */
+  readonly beastAc = input<number | null>(null);
   /** The combat's version (E6-05): the PV box and the shield side by side,
    * then the slots; no temporary HP, hit dice or footer. */
   readonly compact = input(false);
+
+  /** The two reserves of a druid in a beast form, the beast's first: they take the place of the hit points box. */
+  protected readonly pools = computed(() => {
+    const v = this.vitals();
+    const w = v.wildShape;
+    if (!w) {
+      return null;
+    }
+    const of = (name: string) => `PV d${article(name) === 'a' ? 'a' : 'o'} ${name}`;
+    return {
+      beast: { label: of(w.beastNamePt), current: w.hitPointsCurrent, max: w.hitPointsMax },
+      character: { label: of(v.name), current: v.hitPointsCurrent, max: v.hitPointsMax },
+    };
+  });
+  /** The armor class on the shield: the beast's while it is one, else the sheet's. */
+  protected readonly armorClass = computed(() => (this.vitals().wildShape ? this.beastAc() : (this.sheet()?.armorClass ?? null)));
+
+  /** "Classe de Armadura", or "CA do Lobo" while a beast (the shield is narrow). */
+  protected readonly acLabel = computed(() => {
+    const w = this.vitals().wildShape;
+    return w ? `CA d${article(w.beastNamePt) === 'a' ? 'a' : 'o'} ${w.beastNamePt}` : 'Classe de Armadura';
+  });
 
   protected readonly usedWords = usedWords;
   protected readonly freeWords = freeWords;

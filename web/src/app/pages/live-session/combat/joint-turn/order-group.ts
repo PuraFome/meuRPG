@@ -17,6 +17,9 @@ import { MatIconModule } from '@angular/material/icon';
       <p class="head">
         <mat-icon aria-hidden="true">link</mat-icon>
         <b>Turno conjunto</b>
+        @if (names()) {
+          <span>{{ names() }} ·</span>
+        }
         <span>iniciativa {{ total() }}</span>
         @if (onTurn()) {
           <span class="vez">Vez</span>
@@ -113,9 +116,15 @@ import { MatIconModule } from '@angular/material/icon';
         gap: 2px;
       }
 
+      // The dots hang 10px outside their box as in the rows outside; the box's own padding is 4px narrower than a row's,
+      // so the dots and "Dano/Cura" line up with the rows outside (E8-01).
+      ::ng-deep .row {
+        padding-right: 12.5px;
+      }
+
       ::ng-deep .row__more,
       ::ng-deep .row__spacer {
-        margin-right: 0;
+        margin-right: -10px;
       }
     }
 
@@ -138,6 +147,8 @@ export class OrderGroup {
   readonly onTurn = input(false);
   /** For a screen reader: "Turno conjunto: Brisa e Toren, iniciativa 19". */
   readonly label = input('');
+  /** Who is in it, when the box names them ("Lobos atrozes da Sálvia"). */
+  readonly names = input('');
   /** The line after the total when the group is not on turn (the master's desktop). */
   readonly hint = input('');
 }

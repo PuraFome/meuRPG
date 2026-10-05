@@ -219,6 +219,28 @@ export async function adjustVitalsRPC(page: Page, campaignId: string, characterI
 }
 
 /** Passes the turn (as the master) until `label` is the one on turn. */
+/** Waits until the server has passed the turn on from the combatant called `label`. A click on "Encerrar turno"
+ * returns before the server answers, so an `EndTurn` sent right after it races the click's own (`aborted`). */
+export async function waitTurnLeaves(master: Page, campaignId: string, label: string): Promise<void> {
+  await expect
+    .poll(async () => {
+      const e = await getEncounterRPC(master, campaignId);
+      const group = e.turnGroupIds?.length ? e.turnGroupIds : [e.currentCombatantId ?? ''];
+      return group.some((id) => e.combatants.find((c) => c.id === id)?.label === label);
+    })
+    .toBe(false);
+}
+
+/**
+ * The player taps "Encerrar turno" and waits until the server has really passed the turn on from `label`: the tap returns
+ * before the call is answered, and a spec that read the turn at once would see the old one still there and go on to the
+ * wrong screen.
+ */
+export async function endTurnOf(player: Page, master: Page, campaignId: string, label: string): Promise<void> {
+  await player.getByRole('button', { name: 'Encerrar turno' }).click();
+  await waitTurnLeaves(master, campaignId, label);
+}
+
 export async function passTurnsTo(master: Page, campaignId: string, label: string): Promise<Encounter> {
   let enc = await getEncounterRPC(master, campaignId);
   for (let i = 0; i < 12; i++) {

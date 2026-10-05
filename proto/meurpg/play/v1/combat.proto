@@ -2790,6 +2790,40 @@ enum CombatLogKind {
   // the master's, so every player gets the line; the dice of the other creatures
   // and every DC stay with the master (RN-10, RN-20).
   COMBAT_LOG_KIND_TRAP_TRIGGERED = 20;
+  // A druid took a beast form or left it (MR-037): the actor and `wild_shape`.
+  // Everyone who sees the actor gets the line; the damage the beast's fall carried
+  // over to the druid is the druid's player's and the master's alone (RN-20).
+  COMBAT_LOG_KIND_WILD_SHAPE = 21;
+}
+
+// WildShapeEndReason says why a druid's beast form ended.
+enum WildShapeEndReason {
+  WILD_SHAPE_END_REASON_UNSPECIFIED = 0;
+  // The druid chose to ("Voltar à forma normal").
+  WILD_SHAPE_END_REASON_LEFT = 1;
+  // The beast fell to 0 hit points: the damage left over went to the druid.
+  WILD_SHAPE_END_REASON_DAMAGE = 2;
+  // The master's correction took the beast to 0 hit points.
+  WILD_SHAPE_END_REASON_MASTER = 3;
+  // The druid itself fell to 0 hit points.
+  WILD_SHAPE_END_REASON_ZERO_HP = 4;
+  // The druid fell unconscious (a sleep spell, the master's hand).
+  WILD_SHAPE_END_REASON_UNCONSCIOUS = 5;
+}
+
+// CombatLogWildShape is a druid's change of form, in the combat log.
+message CombatLogWildShape {
+  // The beast's content key ("monster:wolf") and Portuguese name ("Lobo").
+  string beast_key = 1;
+  string beast_name_pt = 2;
+  // True when the druid became the beast; false when the form ended.
+  bool started = 3;
+  // Why it ended. Unspecified when `started`.
+  WildShapeEndReason end_reason = 4;
+  // The damage that passed from the beast's fall to the druid (DAMAGE only).
+  // Only the master and the druid's own player; 0 for everyone else, who read
+  // that the druid is back in its own shape and no number (RN-20).
+  int32 carried_damage = 5;
 }
 
 // CombatLogEntry is one line of the combat log, as the caller may see it.
@@ -2867,6 +2901,8 @@ message CombatLogEntry {
   bool return_blocked = 35;
   // TRAP_TRIGGERED: what the trap did.
   TrapFiring trap = 40;
+  // WILD_SHAPE: the form change. The actor is the druid.
+  CombatLogWildShape wild_shape = 41;
 }
 
 // CombatLogSpell is a spell in the combat log: the cast, or a reaction.

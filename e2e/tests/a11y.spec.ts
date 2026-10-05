@@ -6,7 +6,7 @@ import { saveDocumentRPC, tableWithDocumentParts } from './document-support';
 import { expectAligned } from './layout';
 import { endOpenSessionRPC, endSessionRPC, openSessionPage, startSessionRPC, tableWithPensantus } from './live-session-support';
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
-import { adjustVitalsRPC, beginAttackCombatRPC, combatRPC, getEncounterRPC, passTurnsTo, pensantusCasting, tableForCombat, toren, torenSheet } from './combat-support';
+import { adjustVitalsRPC, beginAttackCombatRPC, combatRPC, getEncounterRPC, endTurnOf, passTurnsTo, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
 import { addActionRPC, cartActions, getOpenSceneRPC, openSceneRPC, rollSceneRPC, sceneActionIdsRPC, setAttemptsRPC, setShowDcRPC, tableForScenes } from './scene-support';
 import { addClueRPC, cartClues, cartHooks, createNoteRPC } from './notes-support';
 import { createCapitaoRPC, createMiraRPC, playedCombatRPC, putOnStageRPC, uploadPortrait } from './stage-support';
@@ -14,6 +14,7 @@ import { printRoute, tableForPrinting } from './print-support';
 import { tableForLevelUp } from './levelup-support';
 import { paintRPC, pickRadio } from './move-support';
 import { beginFogCombat, moveTo, sessionRoute, tableForFog } from './fog-support';
+import { beginCreatureCombat, hitAndApply, tableForCreatureCombat } from './creatures-combat-support';
 import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus } from './support';
 import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
 import { tableForCaster, tableForCreatures } from './creatures-support';
@@ -1128,6 +1129,7 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
     await expectScreenPasses(m, `Concentrado, a ordem do mestre ${where}`);
     // Teia used the action, so "Encerrar turno" ends the turn without asking.
     await p.getByRole('button', { name: 'Encerrar turno' }).last().click();
+    await waitTurnLeaves(m, campaignId, 'Pensantus');
     await passTurnsTo(m, campaignId, 'Capitão Goblin');
 
     // Off turn: "Ataque de oportunidade" opens the attack sheet with the dagger (a melee weapon).
@@ -1170,7 +1172,7 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
       if (i === 0) {
         await expectScreenPasses(p, `Caído, depois de rolar ${where}`);
       }
-      await p.getByRole('button', { name: 'Encerrar turno' }).click();
+      await endTurnOf(p, m, campaignId, 'Pensantus');
     }
     await expect(p.getByText('Pensantus está estável.')).toBeVisible();
     await expectScreenPasses(p, `Estável, fora da vez ${where}`);
@@ -1187,7 +1189,7 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
       await p.getByRole('button', { name: 'Digitar o resultado' }).click();
       await p.getByLabel(/Role 1d20 para o teste contra a morte/).fill(i === 0 ? '1' : '2');
       await p.getByRole('button', { name: i === 0 ? 'Confirmar 1' : 'Confirmar 2' }).click();
-      await p.getByRole('button', { name: 'Encerrar turno' }).click();
+      await endTurnOf(p, m, campaignId, 'Pensantus');
     }
     await expect(m.getByRole('alertdialog', { name: /Confirmar a morte/ })).toBeVisible();
     await expect(m.getByRole('alertdialog', { name: /Confirmar a morte/ })).toBeInViewport({ ratio: 1 });
@@ -2654,22 +2656,23 @@ async function scanCreatureScreens(browser: Browser, colorScheme: 'light' | 'dar
       const cast = p.getByRole('dialog', { name: 'Conjurar Animais' }).or(p.locator('mat-bottom-sheet-container'));
       await expect(cast.getByText('Quantas criaturas')).toBeVisible();
       await expectScreenPasses(p, `Conjurar Animais, as opções e o espaço ${where}`);
-      await cast.locator('label', { hasText: /2\s+criaturas\s+de\s+ND\s+1\s/ }).click();
-      await cast.getByRole('button', { name: 'Mais Lobo', exact: true }).click();
+      await cast.locator('label', { hasText: /2\s+feras\s+de\s+ND\s+1\s/ }).click();
+      // A row not chosen yet has only "Escolher"; once chosen it has "Menos" and "Mais".
+      await cast.getByRole('button', { name: 'Escolher Lobo', exact: true }).click();
       await cast.getByRole('button', { name: 'Mais Lobo', exact: true }).click();
       await expect(cast.locator('.line')).toContainText('2 criaturas · 1 ação · gasta um espaço de 3º círculo');
       await expectScreenPasses(p, `Conjurar Animais, a mistura pronta ${where}`);
-      await cast.getByRole('button', { name: 'Conjurar os animais' }).click();
+      await cast.getByRole('button', { name: 'Conjurar Animais', exact: true }).click();
       await expect(dpanel.getByText('2 criaturas chegaram.')).toBeVisible();
 
       await dpanel.getByRole('button', { name: 'Conjurar Animais' }).click();
       await expect(cast.getByText('Isso encerra Conjurar Animais e dispensa 2 criaturas')).toBeVisible();
       await expectScreenPasses(p, `Conjurar Animais, o aviso do que a concentração encerra ${where}`);
       // The session ends while the sheet is open: the server refuses, and the sheet says so, still open.
-      await cast.locator('label', { hasText: /1\s+criatura\s+de\s+ND\s+2\s/ }).click();
+      await cast.locator('label', { hasText: /1\s+fera\s+de\s+ND\s+2\s/ }).click();
       await cast.locator('app-creature-choice-list label.row').first().click();
       await endOpenSessionRPC(m, druidCampaign);
-      await cast.getByRole('button', { name: 'Conjurar os animais' }).click();
+      await cast.getByRole('button', { name: 'Conjurar Animais', exact: true }).click();
       await expect(cast.getByRole('alert')).toContainText('A sessão acabou');
       await expectScreenPasses(p, `Conjurar Animais, a recusa do servidor na folha ${where}`);
     } finally {
@@ -2982,6 +2985,129 @@ test('as armadilhas e os tesouros na sessão passam no axe e nas conferências d
 test('as armadilhas e os tesouros na sessão passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-035', '@MR-041'] }, async ({ browser }) => {
   test.setTimeout(420_000);
   await scanTrapScreens(browser, 'light', 320);
+});
+
+// ---- the creatures in combat and Wild Shape (MR-037, E9-11, E9-12) ----
+
+/** Taps a button of the page on a phone, where the pinned turn bar can cover half the screen: it is brought up under the app bar first. */
+async function tapAboveBar(button: import('@playwright/test').Locator): Promise<void> {
+  await button.evaluate((el) => {
+    el.scrollIntoView({ block: 'start' });
+    window.scrollBy(0, -140);
+  });
+  await button.click();
+}
+
+async function scanCreatureCombatScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width < 700 ? 800 : 900 };
+  const contexts = await Promise.all(
+    (['Mestre Teste', 'Jogador Teste', 'E-mail Não Verificado'] as const).map((user) =>
+      browser.newContext({ storageState: authStatePath(user), colorScheme, viewport }),
+    ),
+  );
+  const [m, p, t] = await Promise.all(contexts.map((c) => c.newPage()));
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await Promise.all([m.goto('/'), p.goto('/'), t.goto('/')]);
+    const table = await tableForCreatureCombat(m, p, t, `Acessibilidade criaturas ${Date.now()}`);
+    campaignId = table.campaignId;
+    await beginCreatureCombat(m, table, { Sálvia: p, Toren: t }, { Toren: 20, Sálvia: 13, 'Capitão Goblin': 5, 'Goblin 1': 4, 'Goblin 2': 4 }, { 'Capitão Goblin': [21, 3], 'Goblin 1': [6, 6], 'Goblin 2': [20, 7] });
+    await passTurnsTo(m, campaignId, 'Sálvia');
+    await p.goto(sessionRoute(campaignId));
+    await expect(p.getByRole('heading', { name: 'Sua vez, Sálvia' })).toBeVisible();
+    await expectScreenPasses(p, `A vez da Sálvia, com Forma Selvagem ${where}`);
+
+    // Wild Shape: the list of beasts, with one chosen.
+    await tapAboveBar(p.getByRole('button', { name: 'Transformar: Forma Selvagem' }));
+    const wild = p.getByRole('dialog', { name: 'Forma Selvagem' });
+    await expect(wild.getByText('Escolha uma fera.')).toBeVisible();
+    await expectScreenPasses(p, `Forma Selvagem, a lista ${where}`);
+    await wild.getByLabel('Buscar fera').fill('lobo');
+    await wild.locator('label', { hasText: '(Wolf)' }).click();
+    await expect(wild.locator('.row__sub').first()).toContainText('CA 13');
+    await expectScreenPasses(p, `Forma Selvagem, a fera escolhida ${where}`);
+    await wild.getByRole('button', { name: 'Virar Lobo' }).click();
+    await expect(p.getByText('Na forma de Lobo').first()).toBeVisible();
+    await expectScreenPasses(p, `A vez como Lobo ${where}`);
+
+    // The beast falls: the notice that stays.
+    await hitAndApply(m, campaignId, 'Goblin 1', 'Sálvia', 30);
+    await expect(p.getByTestId('form-ended')).toBeVisible();
+    await expectScreenPasses(p, `O aviso da fera que caiu ${where}`);
+    await p.getByTestId('form-ended').getByRole('button', { name: 'Entendi' }).click();
+    // Next round: her action is free again.
+    await endTurnOf(p, m, campaignId, 'Sálvia');
+    await passTurnsTo(m, campaignId, 'Sálvia');
+    await expect(p.getByRole('heading', { name: 'Sua vez, Sálvia' })).toBeVisible();
+
+    // Conjurar Animais: the sheet, then the result.
+    await tapAboveBar(p.getByRole('button', { name: 'Conjurar Conjurar Animais' }));
+    // The dialog's name is its title, which changes to "Lobos atrozes conjurados" with the result.
+    const sheet = p.getByRole('dialog');
+    await sheet.getByText('2 feras de ND 1 ou menos').click();
+    await sheet.getByRole('button', { name: 'Escolher Lobo atroz' }).click();
+    await sheet.getByRole('button', { name: 'Mais Lobo atroz' }).click();
+    await expectScreenPasses(p, `Conjurar Animais em combate ${where}`);
+    await sheet.getByRole('button', { name: 'Digitar o d20 de um dado físico' }).click();
+    await sheet.getByLabel('Role 1d20 para a iniciativa das criaturas').fill('8');
+    await expectScreenPasses(p, `Conjurar Animais, o d20 digitado ${where}`);
+    await sheet.getByRole('button', { name: 'Conjurar Animais', exact: true }).click();
+    await expect(sheet.getByRole('heading', { name: 'Lobos atrozes conjurados' })).toBeVisible();
+    await expectScreenPasses(p, `Os Lobos atrozes conjurados ${where}`);
+    await sheet.getByRole('button', { name: 'Fechar' }).last().click();
+    await expect(p.getByRole('tablist', { name: 'O que você joga' })).toBeVisible();
+    await expectScreenPasses(p, `As abas, a vez da Sálvia ${where}`);
+
+    // The wolves' turn, and what Toren sees.
+    await endTurnOf(p, m, campaignId, 'Sálvia');
+    await expect(p.getByRole('heading', { name: 'Vez dos seus Lobos atrozes' })).toBeVisible();
+    await expectScreenPasses(p, `A vez dos Lobos atrozes ${where}`);
+    await p.getByRole('button', { name: 'Encerrar a parte dos Lobos' }).click();
+    await expect(p.getByRole('alertdialog')).toBeVisible();
+    await expectScreenPasses(p, `Encerrar a parte dos Lobos, a pergunta ${where}`);
+    await p.getByRole('alertdialog').getByRole('button', { name: 'Voltar' }).click();
+    await t.goto(sessionRoute(campaignId));
+    await expect(t.getByRole('heading', { name: 'Vez dos Lobos atrozes da Sálvia' })).toBeVisible();
+    await expectScreenPasses(t, `A vez dos Lobos atrozes, vista por outro jogador ${where}`);
+
+    // The master: the order with the group box, the legend and the concentration question.
+    await m.goto(sessionRoute(campaignId));
+    const order = m.getByRole('region', { name: 'Ordem de iniciativa' });
+    await expect(order.getByText('Concentra em Conjurar Animais · 2 Lobos atrozes')).toBeVisible();
+    await expectScreenPasses(m, `A ordem do mestre com as criaturas ${where}`);
+    await order.getByRole('button', { name: 'Perdeu a concentração' }).click();
+    await expect(order.getByRole('alertdialog')).toBeVisible();
+    await expectScreenPasses(m, `Perdeu a concentração, a pergunta ${where}`);
+    await order.getByRole('alertdialog').getByRole('button', { name: 'Dispensar os Lobos' }).click();
+    await expect(p.getByTestId('concentration-lost')).toBeVisible();
+    await expectScreenPasses(p, `O aviso da concentração perdida ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await Promise.all(contexts.map((c) => c.close()));
+  }
+}
+
+test('as criaturas no combate e a Forma Selvagem passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
+  test.setTimeout(360_000);
+  await scanCreatureCombatScreens(browser, 'light', 1280);
+});
+
+test('as criaturas no combate e a Forma Selvagem passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
+  test.setTimeout(360_000);
+  await scanCreatureCombatScreens(browser, 'dark', 390);
+});
+
+test('as criaturas no combate e a Forma Selvagem passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
+  test.setTimeout(360_000);
+  await scanCreatureCombatScreens(browser, 'dark', 1024);
+});
+
+test('as criaturas no combate e a Forma Selvagem passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
+  test.setTimeout(360_000);
+  await scanCreatureCombatScreens(browser, 'light', 320);
 });
 
 // The map editor (slice 9.12, MR-034, MR-035, MR-036, MR-041, E9-01 and E9-02): painting with each tool, the in-place questions, the

@@ -87,7 +87,9 @@ describe('CreaturesPanel (E9-10, MR-037, RN-20)', () => {
   it('a druid without a spell or a creature is told to ask the master, with no cast button', async () => {
     const { el, flat } = await setup({ wildShape: true });
     expect(flat(el.querySelector('.empty'))).toBe('Nenhuma criatura ainda. Peça ao mestre para dar uma.');
-    expect(el.querySelector('.cast__btn')).toBeNull();
+    // No summoning spell to cast; the druid's Wild Shape is its own line (E9-11), off outside a session.
+    expect(el.querySelector('.js-cast')).toBeNull();
+    expect(flat(el.querySelector('.js-wild'))).toContain('Transformar: Forma Selvagem');
   });
 
   it('outside a session the button is dashed and says why, and does not open the sheet', async () => {

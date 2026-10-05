@@ -4,6 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import type { Combatant, Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { combatantInitial, isPlayer } from '../../../../core/combat/combat-view';
+import { isCreature } from '../../../../core/combat/creature-names';
 import { formatXp } from '../../../../core/format/text';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import type { VitalsVm } from '../../live-session.types';
@@ -90,6 +91,10 @@ export class CombatSummary {
 
   protected xp(c: Combatant): string {
     return formatXp(c.xpValue);
+  }
+
+  protected creature(c: Combatant): boolean {
+    return isCreature(c);
   }
 
   protected initial(c: Combatant): string {

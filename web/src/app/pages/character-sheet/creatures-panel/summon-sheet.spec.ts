@@ -58,7 +58,8 @@ describe('SummonSheet: casting a summon outside combat (E9-10, MR-037)', () => {
       await settle();
     };
     const plus = async (title: string) => {
-      el.querySelector<HTMLButtonElement>(`button[aria-label="Mais ${title}"]`)!.click();
+      // A row not chosen yet has only "Escolher"; a chosen one has "Menos" and "Mais".
+      (el.querySelector<HTMLButtonElement>(`button[aria-label="Mais ${title}"]`) ?? el.querySelector<HTMLButtonElement>(`button[aria-label="Escolher ${title}"]`))!.click();
       await settle();
     };
     return { fixture, el, button, pick, type, plus, settle };
@@ -152,7 +153,7 @@ describe('SummonSheet: casting a summon outside combat (E9-10, MR-037)', () => {
   });
 
   it('Animar os Mortos: the slot picker lists the circles with slots (a pact slot too), the count follows the slot, kinds mix', async () => {
-    const { el, button, plus, pick } = await setup('spell:animate-dead', [undeadSpell()], [[3, 2, 1], [5, 1, 1, true]]);
+    const { el, button, plus, pick, settle } = await setup('spell:animate-dead', [undeadSpell()], [[3, 2, 1], [5, 1, 1, true]]);
     const rows = Array.from(el.querySelectorAll('app-slot-picker .row')).map((r) => flat(r));
     expect(rows).toHaveLength(2);
     expect(rows[0]).toContain('3º círculo');
@@ -162,6 +163,11 @@ describe('SummonSheet: casting a summon outside combat (E9-10, MR-037)', () => {
     expect(flat(el.querySelector('.forms .cap'))).toBe('Criatura');
     await pick('Esqueleto');
     expect(flat(el.querySelector('.line'))).toBe('1 minuto · gasta um espaço de 3º círculo');
+    // A creature is chosen: the slot and the quantity fold into one line, with "Mudar" to open them again.
+    expect(el.querySelector('app-slot-picker')).toBeNull();
+    expect(flat(el.querySelector('.setup'))).toContain('3º círculo');
+    button('Mudar').click();
+    await settle();
     // The pact slot: five undead, any mix of the two kinds.
     await pick('5º círculo (pacto)');
     expect(flat(el.querySelector('.forms .cap'))).toBe('Criaturas · 0 de 5');
@@ -196,15 +202,15 @@ describe('SummonSheet: casting a summon outside combat (E9-10, MR-037)', () => {
     const { el, button, pick, plus, settle } = await setup('spell:conjure-animals', [beastSpell({ replaces: wolves })], [[3, 2, 2]]);
     expect(flat(el.querySelector('.mr-notice--warning'))).toBe('Isso encerra Conjurar Animais e dispensa 2 criaturas: Lobo 1 e Lobo 2.');
     const options = Array.from(el.querySelectorAll('.opt')).map((o) => flat(o));
-    expect(options).toEqual(['1 criatura de ND 2 ou menos', '2 criaturas de ND 1 ou menos', '4 criaturas de ND 1/2 ou menos', '8 criaturas de ND 1/4 ou menos']);
+    expect(options).toEqual(['1 fera de ND 2 ou menos', '2 feras de ND 1 ou menos', '4 feras de ND 1/2 ou menos', '8 feras de ND 1/4 ou menos']);
     expect(api.searches.at(-1)).toMatchObject({ type: 'beast', maxCr: '2' });
-    await pick('4 criaturas');
+    await pick('4 feras');
     expect(api.searches.at(-1)).toMatchObject({ type: 'beast', maxCr: '1/2' });
     await plus('Urso-negro');
     await plus('Urso-negro');
     await plus('Lobo');
     await plus('Lobo');
-    button('Conjurar os animais').click();
+    button('Conjurar Animais').click();
     await settle();
     expect(api.casts[0].summon.option).toBe(2);
     expect(api.casts[0].summon.creatureKeys).toEqual(['monster:wolf', 'monster:wolf', 'monster:bear', 'monster:bear']);
@@ -218,8 +224,8 @@ describe('SummonSheet: casting a summon outside combat (E9-10, MR-037)', () => {
       await slow;
       return { creatures: [summary('monster:old', 'Antigo')], total: 1 };
     });
-    await pick('2 criaturas');
-    await pick('4 criaturas');
+    await pick('2 feras');
+    await pick('4 feras');
     release();
     await settle();
     expect(Array.from(el.querySelectorAll('.row__title')).map((t) => flat(t))).not.toContain('Antigo');

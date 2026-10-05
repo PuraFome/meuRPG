@@ -11,7 +11,8 @@ describe('what the casting sheet says in words', () => {
   it('one verb for each spell, the same in every state', () => {
     expect(castVerb('spell:find-familiar', 'Encontrar Familiar')).toBe('Convocar o familiar');
     expect(castVerb('spell:animate-dead', 'Animar os Mortos')).toBe('Animar os mortos');
-    expect(castVerb('spell:conjure-animals', 'Conjurar Animais')).toBe('Conjurar os animais');
+    // The spell's own name: "Conjurar Animais" is already a verb phrase, so the button says just that.
+    expect(castVerb('spell:conjure-animals', 'Conjurar Animais')).toBe('Conjurar Animais');
     expect(castVerb('spell:other', 'Outra')).toBe('Conjurar Outra');
   });
 

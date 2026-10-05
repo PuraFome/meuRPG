@@ -2,7 +2,7 @@ import { Component, computed, input } from '@angular/core';
 
 /**
  * The condition tags under a combatant's name (E6-29): each condition as a
- * pill with its name written out, and the spell it concentrates on. They are
+ * pill with its name written out (the concentration is a pill of its own beside the name, in the order lists). They are
  * labels the master marked (RN-22); the app applies no effect. In the strip of
  * chips (`compact`) there is room for one: the first and "+2" for the rest, so
  * a chip keeps its height. A list with a name for screen readers; nothing is
@@ -11,16 +11,13 @@ import { Component, computed, input } from '@angular/core';
 @Component({
   selector: 'app-combatant-tags',
   template: `
-    @if (shown().length || concentration()) {
+    @if (shown().length) {
       <ul class="tags" [attr.aria-label]="'Condições de ' + label()">
         @for (t of shown(); track t) {
           <li class="tag">{{ t }}</li>
         }
         @if (more() > 0) {
           <li class="tag tag--more">+{{ more() }}</li>
-        }
-        @if (concentration() && !compact()) {
-          <li class="tag tag--conc">Concentrado: {{ concentration() }}</li>
         }
       </ul>
     }
@@ -51,11 +48,6 @@ import { Component, computed, input } from '@angular/core';
       overflow-wrap: anywhere;
     }
 
-    .tag--conc {
-      border-style: dashed;
-      font-weight: 500;
-    }
-
     .tag--more {
       border-color: var(--mr-control-line);
       color: var(--mr-ink-muted);
@@ -64,8 +56,6 @@ import { Component, computed, input } from '@angular/core';
 })
 export class CombatantTags {
   readonly names = input<readonly string[]>([]);
-  /** The spell it is concentrating on; empty when it is not. */
-  readonly concentration = input('');
   readonly label = input('');
   /** One tag only, with "+N" for the rest. */
   readonly compact = input(false);
