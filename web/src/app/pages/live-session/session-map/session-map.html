@@ -70,6 +70,7 @@
             [viewer]="viewer()"
             [isMaster]="isMaster()"
             [mode]="isMaster() && !phone() ? 'tokens' : 'view'"
+            [pins]="true"
             [senses]="senses()"
             [carried]="carriedName()"
             [familiar]="seeingName()"
@@ -93,6 +94,15 @@
           }
         }
         @if (!isMaster()) {
+          <div class="map__foot">
+            @if (searchable()) {
+              <div class="map__actions">
+                <button matButton="outlined" type="button" class="map__search" (click)="searchTraps.emit()">
+                  <mat-icon aria-hidden="true">search</mat-icon>Procurar armadilhas
+                </button>
+              </div>
+            }
+          </div>
           <app-fog-player-tools
             [campaignId]="campaignId()"
             [state]="state()"

@@ -1,8 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { openSessionPage } from './live-session-support';
-import { callRPC } from './support';
+import { endOpenSessionRPC, openSessionPage } from './live-session-support';
+import { callRPC, newSignedInContext } from './support';
 import { toren } from './combat-support';
+import { sessionRoute, squareBp, tableForFog } from './fog-support';
 import { movePensantus, pensantusFirst, pointNames, sq20, thirdPlayer, trapRPC, trapTable, treasureRPC } from './trap-support';
 
 // Traps and treasure in the session, on screen (Etapa 9, slice 9.14, MR-035, MR-041, RN-10, RN-02,
@@ -268,6 +269,72 @@ test(
     } finally {
       await third.close();
       await t.done();
+    }
+  },
+);
+
+test(
+  'num mapa com névoa, a armadilha achada aparece no mapa de quem a achou e não no do outro jogador, e a busca funciona',
+  { tag: ['@MR-035', '@MR-036', '@RN-10'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    const master = await newSignedInContext(browser, 'Mestre Teste');
+    const pensantus = await newSignedInContext(browser, 'Jogador Teste');
+    const torenCtx = await newSignedInContext(browser, 'E-mail Não Verificado');
+    const [mp, ap, bp] = await Promise.all([master.newPage(), pensantus.newPage(), torenCtx.newPage()]);
+    let campaignId = '';
+    try {
+      await Promise.all([mp.goto('/'), ap.goto('/'), bp.goto('/')]);
+      const table = await tableForFog(mp, ap, bp, `Névoa e armadilha ${Date.now()}`);
+      campaignId = table.campaignId;
+      const made = await callRPC(mp, 'meurpg.maps.v1.MapService/CreateMapPoint', {
+        campaignId,
+        mapId: table.mapId,
+        kind: 'MAP_POINT_KIND_TRAP',
+        name: 'Fosso na caverna',
+        description: 'No corredor',
+        ...squareBp(6, 8),
+        trap: {
+          noticeDc: 30,
+          findDc: 5,
+          areaSize: 1,
+          trigger: 'TRAP_TRIGGER_ENTER',
+          effect: { damage: [{ dice: '3', damageTypeKey: 'damage-type:bludgeoning' }] },
+        },
+      });
+      expect(made.ok(), await made.text()).toBeTruthy();
+      await Promise.all([mp.goto(sessionRoute(campaignId)), ap.goto(sessionRoute(campaignId)), bp.goto(sessionRoute(campaignId))]);
+      for (const page of [mp, ap, bp]) {
+        await expect(page.locator('app-fog-base').first()).toBeVisible({ timeout: 30_000 });
+      }
+      // The master's fog map draws it with the crossed eye ("Só você vê"); the players' maps hold nothing yet.
+      await expect(mp.locator('app-fog-map app-map-pins .area')).toHaveCount(1);
+      await expect(mp.locator('app-fog-map app-map-pins .area__eye')).toHaveCount(1);
+      await expect(mp.getByRole('list', { name: 'Marcas do mapa' })).toContainText('Armadilha');
+      await expect(ap.locator('app-fog-map app-map-pins .area')).toHaveCount(0);
+      await expect(bp.locator('app-fog-map app-map-pins .area')).toHaveCount(0);
+
+      // Pensantus searches, on the fog map, with a typed roll: the mark appears on his map and on no one else's.
+      await ap.getByRole('button', { name: 'Procurar armadilhas' }).click();
+      const sheet = ap.getByRole('dialog', { name: 'Procurar armadilhas' });
+      await sheet.locator('label', { hasText: 'Investigação' }).click();
+      await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+      await sheet.getByLabel(/Role 1d20 para Investigação/).fill('12');
+      await sheet.getByRole('button', { name: /Confirmar 12/ }).click();
+      await expect(sheet).toContainText('Você achou uma armadilha: Fosso na caverna.');
+      await sheet.getByRole('button', { name: 'Fechar', exact: true }).last().click();
+      await expect(ap.locator('app-fog-map app-map-pins .area')).toHaveCount(1);
+      await expect(ap.locator('app-fog-map app-map-pins .area__eye')).toHaveCount(0);
+      await expect(ap.getByRole('list', { name: 'Marcas do mapa' })).toContainText('Armadilha');
+      await bp.reload();
+      await expect(bp.locator('app-fog-base').first()).toBeVisible({ timeout: 30_000 });
+      await expect(bp.locator('app-fog-map app-map-pins .area')).toHaveCount(0);
+      await expect(bp.getByText('Fosso na caverna')).toHaveCount(0);
+    } finally {
+      if (campaignId) {
+        await endOpenSessionRPC(mp, campaignId);
+      }
+      await Promise.all([master.close(), pensantus.close(), torenCtx.close()]);
     }
   },
 );

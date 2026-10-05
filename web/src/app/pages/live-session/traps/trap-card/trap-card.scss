@@ -138,8 +138,19 @@
   --mat-button-text-container-height: 44px;
 }
 
-.tc__more,
-.tc__fold {
+.tc__more {
   margin-inline-start: -12px;
   margin-top: var(--mr-space-2);
+}
+
+/* "Ver detalhes" and "Esconder detalhes" sit in the same place in both states: the right end of the card's last row. */
+.tc__fold {
+  display: flex;
+  width: fit-content;
+  margin-inline: auto -12px;
+  margin-top: var(--mr-space-2);
+}
+
+.tc__openbtn {
+  margin-inline-end: -12px;
 }

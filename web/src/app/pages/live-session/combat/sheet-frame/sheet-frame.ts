@@ -73,6 +73,15 @@ export class SheetFrame {
         observer.observe(el);
         Array.from(el.children).forEach((child) => observer.observe(child));
         destroyRef.onDestroy(() => observer.disconnect());
+        // Content that shows up later (an `@if` block) is observed too, and the check runs again.
+        if (typeof MutationObserver === 'function') {
+          const mutations = new MutationObserver((records) => {
+            records.forEach((r) => r.addedNodes.forEach((n) => n instanceof Element && observer.observe(n)));
+            check();
+          });
+          mutations.observe(el, { childList: true });
+          destroyRef.onDestroy(() => mutations.disconnect());
+        }
       }
     });
   }

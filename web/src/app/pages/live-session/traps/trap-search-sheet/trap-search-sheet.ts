@@ -191,7 +191,8 @@ export class TrapSearchSheet {
     } catch (err) {
       if (needsTwoDice(err) && 'face' in die && this.firstFace() === null) {
         this.firstFace.set(die.face);
-        this.error.set(trapErrorMessage(err));
+        // Not an error: the step's own heading and text ask for the second die and say why.
+        this.error.set('');
       } else {
         this.error.set(trapErrorMessage(err, 'procurar armadilhas'));
       }
