@@ -232,6 +232,18 @@ describe('where a label goes', () => {
   });
 });
 
+describe('a label stays with its own point', () => {
+  const bounds = { minLeft: 0, maxRight: 400, minTop: 0, maxBottom: 300 };
+  it('takes the side away from a token that stands right beside the point', () => {
+    const anchor = { left: 150, top: 140, right: 190, bottom: 180 };
+    // A token touching the right of the point: the label goes elsewhere, not next to the token.
+    const token = { left: 192, top: 144, right: 218, bottom: 170 };
+    const at = placeLabel(anchor, { width: 100, height: 24 }, [token], bounds);
+    const label = { left: at.left, top: at.top, right: at.left + 100, bottom: at.top + 24 };
+    expect(overlapArea(label, { left: token.left - 12, top: token.top - 12, right: token.right + 12, bottom: token.bottom + 12 })).toBe(0);
+  });
+});
+
 describe('one label per square', () => {
   it('gives two points of one square the same key, and another square another', () => {
     expect(squareKey(5000, 5000, 20, 1.5)).toBe(squareKey(5100, 5040, 20, 1.5));

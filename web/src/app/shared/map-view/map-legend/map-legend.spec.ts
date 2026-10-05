@@ -73,15 +73,17 @@ describe('MapLegend', () => {
     it('draws a token as the map does: the same initial, an NPC as the white rounded square', () => {
       const goblin: ViewToken = { characterId: 'g', name: 'Goblin 2', mine: false, hidden: false, xBp: 0, yBp: 0, kind: 2 };
       const el = render({ tokens: [goblin], kindShapes: true, initialOf: () => 'G2' });
-      const disc = el.querySelector('.lg__disc')!;
-      expect(disc.textContent?.trim()).toBe('G2');
-      expect(disc.classList).toContain('lg__disc--npc');
+      // The legend uses the map's own token component, so the two cannot differ.
+      const token = el.querySelector('app-map-token')!;
+      expect(token.querySelector('.tk__disc')?.textContent?.trim()).toBe('G2');
+      expect(token.classList).toContain('tk--npc');
+      expect(token.classList).toContain('tk--legend');
     });
 
     it('draws a creature as the maps do: round and hollow, with a dashed outline', () => {
       const raven: ViewToken = { characterId: 'p', creatureId: 'r', name: 'Nanquim', mine: false, hidden: false, xBp: 0, yBp: 0 };
       const el = render({ tokens: [raven], kindShapes: true });
-      expect(el.querySelector('.lg__disc')?.classList).toContain('lg__disc--creature');
+      expect(el.querySelector('app-map-token')?.classList).toContain('tk--creature');
     });
 
     it('keeps "Tokens" above the names where asked, even without the states', () => {

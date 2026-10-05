@@ -55,8 +55,8 @@ export class ViewAsList {
   ]);
   protected readonly groupText = computed(() =>
     this.groupVision()
-      ? 'Ligada neste mapa: cada jogador vê o que o grupo todo vê.'
-      : 'Desligada neste mapa.',
+      ? 'ligada neste mapa: cada jogador vê o que o grupo todo vê.'
+      : 'desligada neste mapa.',
   );
 
   private selectedIndex(): number {

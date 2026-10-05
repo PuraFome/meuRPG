@@ -1,9 +1,9 @@
 import { Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { CharacterKind } from '../../../../gen/meurpg/characters/v1/characters_pb';
 import { ViewPoint, ViewToken, tokenInitial, tokenKey } from '../map-geometry';
 import { pointHidden } from '../map-labels';
+import { MapToken } from '../map-token/map-token';
 
 /**
  * The legend under a map (README-B): the three marker shapes and, for the
@@ -14,7 +14,7 @@ import { pointHidden } from '../map-labels';
  */
 @Component({
   selector: 'app-map-legend',
-  imports: [MatIconModule],
+  imports: [MapToken, MatIconModule],
   template: `
     @if (shapes() && (showBattle() || showSubmap() || showScene() || showRevealed() || showHidden())) {
       <ul class="lg" aria-label="Legenda do mapa">
@@ -51,14 +51,7 @@ import { pointHidden } from '../map-labels';
         }
         @for (t of tokens(); track key(t)) {
           <li>
-            <span
-              class="lg__disc"
-              [class.lg__disc--hidden]="t.hidden"
-              [class.lg__disc--mine]="t.mine"
-              [class.lg__disc--npc]="isNpc(t)"
-              [class.lg__disc--creature]="isCreature(t)"
-              >{{ initial(t) }}</span
-            >
+            <app-map-token [token]="t" [initial]="initial(t)" [kindShapes]="kindShapes()" [legend]="true" />
             <span>{{ t.name }}{{ t.hidden ? ', escondido' : '' }}@if (t.mine) {<span class="lg__you">&nbsp;(você)</span>}</span>
           </li>
         }
@@ -99,14 +92,5 @@ export class MapLegend {
   private readonly all = computed(() => this.tokens());
   protected initial(token: ViewToken): string {
     return (this.initialOf() ?? tokenInitial)(token, this.all());
-  }
-
-  /** A character's creature (a familiar, a summoned animal): round, hollow, with a dashed ink outline: the token's own look on the maps (9.17). */
-  protected isCreature(token: ViewToken): boolean {
-    return this.kindShapes() && !!token.creatureId;
-  }
-
-  protected isNpc(token: ViewToken): boolean {
-    return this.kindShapes() && !token.creatureId && token.kind !== undefined && token.kind !== CharacterKind.PLAYER && token.kind !== CharacterKind.UNSPECIFIED;
   }
 }

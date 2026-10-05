@@ -190,7 +190,7 @@ test(
       // The master chooses the current map (which also reveals it).
       await master.getByLabel('Mapa atual').selectOption({ label: 'Mirathel e arredores (escondido)' });
       await expect(player.getByRole('heading', { name: 'Mirathel e arredores', level: 2 })).toBeVisible();
-      const token = player.locator('app-map-token', { has: player.locator('.tk__disc', { hasText: 'P' }) });
+      const token = player.locator('app-map-view app-map-token', { has: player.locator('.tk__disc', { hasText: 'P' }) });
       await expect(token).toHaveAttribute('style', /left: 52%/);
 
       // The master moves the visible token (arrow keys, Shift: 5 %).

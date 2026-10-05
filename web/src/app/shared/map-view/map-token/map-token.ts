@@ -48,6 +48,7 @@ import { ViewToken, bpToPercent, tokenKey } from '../map-geometry';
     '[class.tk--creature]': 'creature()',
     '[class.tk--selected]': 'selected()',
     '[class.tk--raised]': 'raised()',
+    '[class.tk--legend]': 'legend()',
   },
 })
 export class MapToken {
@@ -59,6 +60,8 @@ export class MapToken {
   readonly raised = input(false);
   /** Draw an NPC as the white rounded square and a character's creature with a dashed ring (MAP-LANGUAGE.md; the fog map). */
   readonly kindShapes = input(false);
+  /** Drawn in a legend: in the flow of the line, at the legend's size, never positioned on a map. The drawing is the same one. */
+  readonly legend = input(false);
 
   protected readonly left = computed(() => bpToPercent(this.at()?.xBp ?? this.token().xBp));
   protected readonly top = computed(() => bpToPercent(this.at()?.yBp ?? this.token().yBp));
