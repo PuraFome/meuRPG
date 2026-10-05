@@ -1,6 +1,8 @@
 package play
 
 import (
+	"slices"
+
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
@@ -56,6 +58,17 @@ func coverAgainst(t grid.Terrain, attacker, target playdb.Combatant, cs []playdb
 		return coverView{degree: mapCover, source: playv1.CoverSource_COVER_SOURCE_MAP}
 	}
 	return coverView{}
+}
+
+// coverPool is the combatants whose bodies count as cover for what the viewer's
+// player does: all of them for the master, and for a player only the ones they see
+// (RN-10, MR-036): a creature in the dark, or hidden, between the two would
+// otherwise leak as "cover do mapa".
+func coverPool(cs []playdb.Combatant, v combatViewer) []playdb.Combatant {
+	if v.master {
+		return cs
+	}
+	return slices.DeleteFunc(slices.Clone(cs), func(o playdb.Combatant) bool { return !v.sees(o) })
 }
 
 // bonus is what the cover adds to the target's armor class and Dexterity saves:

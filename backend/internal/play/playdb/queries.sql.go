@@ -745,7 +745,7 @@ func (q *Queries) GetSessionEventByID(ctx context.Context, arg GetSessionEventBy
 }
 
 const getSessionEventByIdempotencyKey = `-- name: GetSessionEventByIdempotencyKey :one
-SELECT id, seq, kind, character_id, payload, created_at FROM session_events
+SELECT id, seq, kind, actor_user_id, character_id, payload, created_at FROM session_events
 WHERE game_session_id = $1 AND idempotency_key = $2
 `
 
@@ -758,6 +758,7 @@ type GetSessionEventByIdempotencyKeyRow struct {
 	ID          string
 	Seq         int32
 	Kind        string
+	ActorUserID *string
 	CharacterID *string
 	Payload     []byte
 	CreatedAt   time.Time
@@ -771,6 +772,7 @@ func (q *Queries) GetSessionEventByIdempotencyKey(ctx context.Context, arg GetSe
 		&i.ID,
 		&i.Seq,
 		&i.Kind,
+		&i.ActorUserID,
 		&i.CharacterID,
 		&i.Payload,
 		&i.CreatedAt,
@@ -2797,6 +2799,70 @@ type SetCombatantAttacksMadeParams struct {
 // The attacks the Attack action made this turn (Extra Attack), or its undo.
 func (q *Queries) SetCombatantAttacksMade(ctx context.Context, arg SetCombatantAttacksMadeParams) error {
 	_, err := q.db.Exec(ctx, setCombatantAttacksMade, arg.ID, arg.AttacksMade)
+	return err
+}
+
+const setCombatantBody = `-- name: SetCombatantBody :exec
+UPDATE combatants
+SET speed_ft = $2, speed_fly_ft = $3, size = $4, jump_long_dft = $5, jump_high_dft = $6
+WHERE id = $1
+`
+
+type SetCombatantBodyParams struct {
+	ID          string
+	SpeedFt     int32
+	SpeedFlyFt  int32
+	Size        string
+	JumpLongDft int32
+	JumpHighDft int32
+}
+
+// A character's numbers as a combatant change with its Wild Shape form (MR-037):
+// the beast's speed, fly speed, size and jumps while it lasts, the character's own
+// again when it ends.
+func (q *Queries) SetCombatantBody(ctx context.Context, arg SetCombatantBodyParams) error {
+	_, err := q.db.Exec(ctx, setCombatantBody,
+		arg.ID,
+		arg.SpeedFt,
+		arg.SpeedFlyFt,
+		arg.Size,
+		arg.JumpLongDft,
+		arg.JumpHighDft,
+	)
+	return err
+}
+
+const setCombatantBodyOfCharacter = `-- name: SetCombatantBodyOfCharacter :exec
+UPDATE combatants
+SET speed_ft = $1, speed_fly_ft = $2, size = $3,
+    jump_long_dft = $4, jump_high_dft = $5
+WHERE character_id = $6 AND kind = 'player'
+  AND encounter_id IN (SELECT e.id FROM encounters AS e WHERE e.game_session_id = $7 AND e.status <> 'ended')
+`
+
+type SetCombatantBodyOfCharacterParams struct {
+	SpeedFt       int32
+	SpeedFlyFt    int32
+	Size          string
+	JumpLongDft   int32
+	JumpHighDft   int32
+	CharacterID   string
+	GameSessionID string
+}
+
+// SetCombatantBody for a player's character, found by the character, in the session's
+// combat that is not ended: the form ended where only the vitals were at hand (the
+// druid fell to 0 hit points).
+func (q *Queries) SetCombatantBodyOfCharacter(ctx context.Context, arg SetCombatantBodyOfCharacterParams) error {
+	_, err := q.db.Exec(ctx, setCombatantBodyOfCharacter,
+		arg.SpeedFt,
+		arg.SpeedFlyFt,
+		arg.Size,
+		arg.JumpLongDft,
+		arg.JumpHighDft,
+		arg.CharacterID,
+		arg.GameSessionID,
+	)
 	return err
 }
 

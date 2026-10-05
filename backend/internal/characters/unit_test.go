@@ -130,6 +130,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["RenameCreature"] = c.RenameCreature(ctx, connect.NewRequest(&charactersv1.RenameCreatureRequest{CampaignId: id, CreatureId: id, Name: "Presa"}))
 	_, calls["DismissCreature"] = c.DismissCreature(ctx, connect.NewRequest(&charactersv1.DismissCreatureRequest{CampaignId: id, CreatureId: id}))
 	_, calls["AdjustCreatureHitPoints"] = c.AdjustCreatureHitPoints(ctx, connect.NewRequest(&charactersv1.AdjustCreatureHitPointsRequest{CampaignId: id, CreatureId: id}))
+	_, calls["ListWildShapeForms"] = c.ListWildShapeForms(ctx, connect.NewRequest(&charactersv1.ListWildShapeFormsRequest{CampaignId: id, CharacterId: id}))
 	_, calls["ListContent"] = content.ListContent(ctx, connect.NewRequest(&rulesv1.ListContentRequest{CampaignId: id}))
 	_, calls["GetSpellDetails"] = content.GetSpellDetails(ctx, connect.NewRequest(&rulesv1.GetSpellDetailsRequest{CampaignId: id, SpellKey: "spell:fire-bolt"}))
 	_, calls["ListCreatures"] = content.ListCreatures(ctx, connect.NewRequest(&rulesv1.ListCreaturesRequest{CampaignId: id}))
@@ -173,8 +174,8 @@ func TestReadsWithIDsArePostOnly(t *testing.T) {
 			}
 		}
 	}
-	if len(reads) != 13 {
-		t.Errorf("found %d reads, want 13 (GetCharacter, ListCharacters, GetMasterNotes, GetLevelUpOptions, PreviewLevelUp, ListLevelUps, ListCharacterCreatures, ListContent, GetSpellDetails, ListCreatures, GetCreature, ListTrapPresets, ListLightPresets)", len(reads))
+	if len(reads) != 14 {
+		t.Errorf("found %d reads, want 14 (GetCharacter, ListCharacters, GetMasterNotes, GetLevelUpOptions, PreviewLevelUp, ListLevelUps, ListCharacterCreatures, ListWildShapeForms, ListContent, GetSpellDetails, ListCreatures, GetCreature, ListTrapPresets, ListLightPresets)", len(reads))
 	}
 	for procedure, method := range reads {
 		opts, _ := method.Options().(*descriptorpb.MethodOptions)

@@ -212,6 +212,13 @@ func (s *Service) CastSummon(
 			return nil, connect.NewError(connect.CodePermissionDenied, errors.New("only the character's player or the master may cast for it"))
 		}
 		owner = chars[0].PlayerUserID
+		now, err := s.vitals.GetVitalsTx(ctx, c.tx, m.CampaignID, characterID)
+		if err != nil {
+			return nil, err
+		}
+		if err := noSpellsIn(now); err != nil { // no spells in a beast form (MR-037)
+			return nil, err
+		}
 
 		// In a combat the cast is CastSpell's, with the initiative roll.
 		if enc, err := c.q.GetOpenEncounter(ctx, c.session.ID); err == nil {
@@ -232,7 +239,7 @@ func (s *Service) CastSummon(
 		var slot *slotRef
 		circle := 0
 		if !ritual {
-			opts, err := s.roster.CombatTurnOptions(ctx, m.CampaignID, characterID, link.Turn{})
+			opts, err := s.roster.CombatTurnOptions(ctx, c.tx, m.CampaignID, characterID, link.Turn{})
 			if err != nil {
 				return nil, err
 			}
@@ -341,6 +348,7 @@ func (s *Service) EndConcentration(
 		if err != nil {
 			return nil, fmt.Errorf("list the combatants: %w", err)
 		}
+		v = c.viewer(m, cs) // the fog: an NPC the player does not see is not found
 		target, err := findCombatant(cs, combID, v)
 		if err != nil {
 			return nil, err
@@ -368,10 +376,10 @@ func (s *Service) EndConcentration(
 	if err != nil {
 		return nil, s.dbError(ctx, "end a concentration", err)
 	}
-	out, err := s.finish(ctx, m, res, func(d *encounterData) {
-		s.publishEncounterChanged(m.CampaignID, d.enc)
+	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
+		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
 		i := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == combID })
-		s.publishLogChanged(m.CampaignID, d.enc.ID, i >= 0 && !d.cs[i].Hidden)
+		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, i >= 0 && !d.cs[i].Hidden)
 		if i >= 0 && d.cs[i].UserID != nil {
 			s.publishCreaturesChanged(m.CampaignID, *d.cs[i].UserID)
 		}

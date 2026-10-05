@@ -456,6 +456,10 @@ func (noCharacters) PartyVision(context.Context, string) ([]link.PartyMember, er
 	return nil, errors.New("not in this test")
 }
 
+func (noCharacters) MapCreatures(context.Context, string, []string) ([]link.MapCreature, error) {
+	return nil, errors.New("not in this test")
+}
+
 type noLive struct{}
 
 func (noLive) OnScreen(context.Context, string) (string, string, error) {

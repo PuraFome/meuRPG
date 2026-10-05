@@ -14,6 +14,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -50,8 +51,9 @@ func (s *Service) AdjustCharacterVitals(
 	var after *playv1.CharacterVitals
 	var repeated bool
 	var touched *playdb.Encounter
+	visionMap, shapeChanged := "", false // the map whose fog the change touches
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		after, repeated, touched = nil, false, nil // a retry starts over
+		after, repeated, touched, visionMap, shapeChanged = nil, false, nil, "", false // a retry starts over
 		q := s.queries.WithTx(tx)
 		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -101,6 +103,32 @@ func (s *Service) AdjustCharacterVitals(
 		}); err != nil {
 			return fmt.Errorf("insert session event: %w", err)
 		}
+		// The master took a druid out of its beast form (the beast's hit points to 0):
+		// the character's own numbers are back on its combatant, and the history says
+		// so (MR-037). The event has no combat, so it is nothing for an undo to take back.
+		var ownBody *link.Character
+		shapeChanged = (before.GetWildShape() == nil) != (adjusted.GetWildShape() == nil)
+		visionMap = deref(session.CurrentMapID)
+		if before.GetWildShape() != nil && adjusted.GetWildShape() == nil && adjusted.GetHitPointsCurrent() > 0 {
+			var body link.Character
+			if adjusted, body, err = s.vitals.SetWildShape(ctx, tx, m.CampaignID, charText, "", 0); err != nil {
+				return err
+			}
+			ownBody = &body
+			seq, err := q.NextSessionEventSeq(ctx, session.ID)
+			if err != nil {
+				return fmt.Errorf("next event number: %w", err)
+			}
+			ended, err := json.Marshal(actionEvent{OwnerCharacter: charText, Beast: before.GetWildShape().GetBeastKey(), Reason: endedByMaster})
+			if err != nil {
+				return fmt.Errorf("encode the event payload: %w", err)
+			}
+			if _, err := q.InsertSessionEvent(ctx, playdb.InsertSessionEventParams{
+				GameSessionID: session.ID, Seq: seq, Kind: eventWildShapeEnded, ActorUserID: &m.UserID, CharacterID: &charText, Payload: ended, CreatedAt: s.now(),
+			}); err != nil {
+				return fmt.Errorf("insert session event: %w", err)
+			}
+		}
 		// A combat in progress with this character shows its state ("Caído", the
 		// healing) from the vitals: its revision goes up in the same transaction, so
 		// every screen reads it again.
@@ -109,7 +137,13 @@ func (s *Service) AdjustCharacterVitals(
 			if err != nil {
 				return fmt.Errorf("list the combatants: %w", err)
 			}
-			if slices.ContainsFunc(cs, func(c playdb.Combatant) bool { return c.CharacterID == charText }) {
+			if i := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.Kind == kindPlayer && c.CharacterID == charText }); i >= 0 {
+				if ownBody != nil {
+					if err := applyBody(ctx, &combatTx{q: q}, cs[i], *ownBody); err != nil {
+						return err
+					}
+				}
+				visionMap = deref(enc.MapID)
 				t, err := q.TouchEncounter(ctx, enc.ID)
 				if err != nil {
 					return fmt.Errorf("touch the encounter: %w", err)
@@ -141,7 +175,10 @@ func (s *Service) AdjustCharacterVitals(
 		}},
 	})
 	if touched != nil {
-		s.publishEncounterChanged(m.CampaignID, *touched)
+		s.publishEncounterChanged(ctx, m.CampaignID, *touched)
+	}
+	if shapeChanged { // the beast's senses went away: the fog hears of it (MR-036)
+		s.maps.VisionChanged(ctx, m.CampaignID, visionMap)
 	}
 	return connect.NewResponse(&playv1.AdjustCharacterVitalsResponse{Vitals: after}), nil
 }
@@ -157,6 +194,9 @@ type vitalsNumbers struct {
 	// ResourcesUsed are the uses spent of the class and race resources, by
 	// resource key (Etapa 6).
 	ResourcesUsed map[string]int32 `json:"resources_used,omitempty"`
+	// The beast of a Wild Shape form and its hit points (MR-037), when there is one.
+	WildShapeBeast string `json:"wild_shape_beast,omitempty"`
+	WildShapeHP    int32  `json:"wild_shape_hp,omitempty"`
 }
 
 func numbersOf(v *playv1.CharacterVitals) vitalsNumbers {
@@ -165,6 +205,8 @@ func numbersOf(v *playv1.CharacterVitals) vitalsNumbers {
 		HitPointsTemporary: v.GetHitPointsTemporary(),
 		PactSlotsUsed:      v.GetPactSlots().GetUsed(),
 		HitDiceUsed:        v.GetHitDiceUsed(),
+		WildShapeBeast:     v.GetWildShape().GetBeastKey(),
+		WildShapeHP:        v.GetWildShape().GetHitPointsCurrent(),
 	}
 	for _, r := range v.GetResources() {
 		if r.GetUsed() > 0 {

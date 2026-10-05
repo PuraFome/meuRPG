@@ -101,6 +101,9 @@ const (
 	// CharacterServiceListCharacterCreaturesProcedure is the fully-qualified name of the
 	// CharacterService's ListCharacterCreatures RPC.
 	CharacterServiceListCharacterCreaturesProcedure = "/meurpg.characters.v1.CharacterService/ListCharacterCreatures"
+	// CharacterServiceListWildShapeFormsProcedure is the fully-qualified name of the CharacterService's
+	// ListWildShapeForms RPC.
+	CharacterServiceListWildShapeFormsProcedure = "/meurpg.characters.v1.CharacterService/ListWildShapeForms"
 	// CharacterServiceGiveCreatureProcedure is the fully-qualified name of the CharacterService's
 	// GiveCreature RPC.
 	CharacterServiceGiveCreatureProcedure = "/meurpg.characters.v1.CharacterService/GiveCreature"
@@ -465,6 +468,22 @@ type CharacterServiceClient interface {
 	//   - `invalid_argument`: the character is an NPC (only a player's character
 	//     has creatures).
 	ListCharacterCreatures(context.Context, *connect.Request[v1.ListCharacterCreaturesRequest]) (*connect.Response[v1.ListCharacterCreaturesResponse], error)
+	// ListWildShapeForms lists the beasts a druid's Wild Shape allows now
+	// (MR-037, Etapa 9): the SRD beasts of the challenge rating, without the fly
+	// or swim speed, that the character's Wild Shape features give at its level
+	// (level 2: up to 1/4, no fly or swim; 4: up to 1/2, no fly; 8: up to 1),
+	// sorted by Portuguese name. Empty for a character without Wild Shape. The
+	// stat blocks are ContentService.GetCreature; AssumeWildShape
+	// (meurpg.play.v1.PlayService) takes one of these.
+	//
+	// The master reads any character's and the player their own; for everyone
+	// else the character is `not_found`, as always.
+	//
+	// Errors:
+	//   - `not_found`: the campaign or the character does not exist, or the
+	//     caller may not see the character (or character_id is not a UUID).
+	//   - `invalid_argument`: the character is an NPC.
+	ListWildShapeForms(context.Context, *connect.Request[v1.ListWildShapeFormsRequest]) (*connect.Response[v1.ListWildShapeFormsResponse], error)
 	// GiveCreature gives a character a creature (MR-037): any SRD creature, for a
 	// hireling, a pet or a house rule, whatever the character's class. The
 	// creature starts at full hit points, acts as any creature in a combat
@@ -639,6 +658,13 @@ func NewCharacterServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
+		listWildShapeForms: connect.NewClient[v1.ListWildShapeFormsRequest, v1.ListWildShapeFormsResponse](
+			httpClient,
+			baseURL+CharacterServiceListWildShapeFormsProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("ListWildShapeForms")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
 		giveCreature: connect.NewClient[v1.GiveCreatureRequest, v1.GiveCreatureResponse](
 			httpClient,
 			baseURL+CharacterServiceGiveCreatureProcedure,
@@ -685,6 +711,7 @@ type characterServiceClient struct {
 	levelUpCharacter        *connect.Client[v1.LevelUpCharacterRequest, v1.LevelUpCharacterResponse]
 	listLevelUps            *connect.Client[v1.ListLevelUpsRequest, v1.ListLevelUpsResponse]
 	listCharacterCreatures  *connect.Client[v1.ListCharacterCreaturesRequest, v1.ListCharacterCreaturesResponse]
+	listWildShapeForms      *connect.Client[v1.ListWildShapeFormsRequest, v1.ListWildShapeFormsResponse]
 	giveCreature            *connect.Client[v1.GiveCreatureRequest, v1.GiveCreatureResponse]
 	renameCreature          *connect.Client[v1.RenameCreatureRequest, v1.RenameCreatureResponse]
 	dismissCreature         *connect.Client[v1.DismissCreatureRequest, v1.DismissCreatureResponse]
@@ -774,6 +801,11 @@ func (c *characterServiceClient) ListLevelUps(ctx context.Context, req *connect.
 // ListCharacterCreatures calls meurpg.characters.v1.CharacterService.ListCharacterCreatures.
 func (c *characterServiceClient) ListCharacterCreatures(ctx context.Context, req *connect.Request[v1.ListCharacterCreaturesRequest]) (*connect.Response[v1.ListCharacterCreaturesResponse], error) {
 	return c.listCharacterCreatures.CallUnary(ctx, req)
+}
+
+// ListWildShapeForms calls meurpg.characters.v1.CharacterService.ListWildShapeForms.
+func (c *characterServiceClient) ListWildShapeForms(ctx context.Context, req *connect.Request[v1.ListWildShapeFormsRequest]) (*connect.Response[v1.ListWildShapeFormsResponse], error) {
+	return c.listWildShapeForms.CallUnary(ctx, req)
 }
 
 // GiveCreature calls meurpg.characters.v1.CharacterService.GiveCreature.
@@ -1147,6 +1179,22 @@ type CharacterServiceHandler interface {
 	//   - `invalid_argument`: the character is an NPC (only a player's character
 	//     has creatures).
 	ListCharacterCreatures(context.Context, *connect.Request[v1.ListCharacterCreaturesRequest]) (*connect.Response[v1.ListCharacterCreaturesResponse], error)
+	// ListWildShapeForms lists the beasts a druid's Wild Shape allows now
+	// (MR-037, Etapa 9): the SRD beasts of the challenge rating, without the fly
+	// or swim speed, that the character's Wild Shape features give at its level
+	// (level 2: up to 1/4, no fly or swim; 4: up to 1/2, no fly; 8: up to 1),
+	// sorted by Portuguese name. Empty for a character without Wild Shape. The
+	// stat blocks are ContentService.GetCreature; AssumeWildShape
+	// (meurpg.play.v1.PlayService) takes one of these.
+	//
+	// The master reads any character's and the player their own; for everyone
+	// else the character is `not_found`, as always.
+	//
+	// Errors:
+	//   - `not_found`: the campaign or the character does not exist, or the
+	//     caller may not see the character (or character_id is not a UUID).
+	//   - `invalid_argument`: the character is an NPC.
+	ListWildShapeForms(context.Context, *connect.Request[v1.ListWildShapeFormsRequest]) (*connect.Response[v1.ListWildShapeFormsResponse], error)
 	// GiveCreature gives a character a creature (MR-037): any SRD creature, for a
 	// hireling, a pet or a house rule, whatever the character's class. The
 	// creature starts at full hit points, acts as any creature in a combat
@@ -1317,6 +1365,13 @@ func NewCharacterServiceHandler(svc CharacterServiceHandler, opts ...connect.Han
 		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
+	characterServiceListWildShapeFormsHandler := connect.NewUnaryHandler(
+		CharacterServiceListWildShapeFormsProcedure,
+		svc.ListWildShapeForms,
+		connect.WithSchema(characterServiceMethods.ByName("ListWildShapeForms")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
 	characterServiceGiveCreatureHandler := connect.NewUnaryHandler(
 		CharacterServiceGiveCreatureProcedure,
 		svc.GiveCreature,
@@ -1377,6 +1432,8 @@ func NewCharacterServiceHandler(svc CharacterServiceHandler, opts ...connect.Han
 			characterServiceListLevelUpsHandler.ServeHTTP(w, r)
 		case CharacterServiceListCharacterCreaturesProcedure:
 			characterServiceListCharacterCreaturesHandler.ServeHTTP(w, r)
+		case CharacterServiceListWildShapeFormsProcedure:
+			characterServiceListWildShapeFormsHandler.ServeHTTP(w, r)
 		case CharacterServiceGiveCreatureProcedure:
 			characterServiceGiveCreatureHandler.ServeHTTP(w, r)
 		case CharacterServiceRenameCreatureProcedure:
@@ -1460,6 +1517,10 @@ func (UnimplementedCharacterServiceHandler) ListLevelUps(context.Context, *conne
 
 func (UnimplementedCharacterServiceHandler) ListCharacterCreatures(context.Context, *connect.Request[v1.ListCharacterCreaturesRequest]) (*connect.Response[v1.ListCharacterCreaturesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.ListCharacterCreatures is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) ListWildShapeForms(context.Context, *connect.Request[v1.ListWildShapeFormsRequest]) (*connect.Response[v1.ListWildShapeFormsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.ListWildShapeForms is not implemented"))
 }
 
 func (UnimplementedCharacterServiceHandler) GiveCreature(context.Context, *connect.Request[v1.GiveCreatureRequest]) (*connect.Response[v1.GiveCreatureResponse], error) {
