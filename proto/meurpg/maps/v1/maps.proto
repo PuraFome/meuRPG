@@ -1726,6 +1726,32 @@ message GetMapVisionResponse {
   // "Visão do grupo" is on for this map: the view is the union of every player
   // character's.
   bool group_vision = 7;
+  // The path of the viewer's image tiles (MR-036, RN-10): a player on a map with
+  // the fog on never receives the image whole, only its tiles of tile_squares x
+  // tile_squares squares, each with the pixels of the squares they see or
+  // remember and solid black elsewhere. A tile is GET <tiles_path><tx>/<ty>?r=<revision>
+  // (same origin, with the session cookie; the master adds &as=<character ID>
+  // to read as a player). The tile's pixels never change except by gaining squares:
+  // the app fetches a tile again only when its revision changed. A tile with no
+  // square the viewer knows is not in `tiles` and answers 404. Empty for the master
+  // (who reads the whole image), on a map without the fog, and while images are off.
+  string tiles_path = 8;
+  // How many squares a tile is on each side: 16.
+  int32 tile_squares = 9;
+  // The tiles that exist for the viewer, in row-major order.
+  repeated MapTile tiles = 10;
+}
+
+// MapTile is one tile of a map's image for a viewer on a map with the fog on.
+message MapTile {
+  // The tile's column and row, from 0: it covers the squares from column
+  // tx * tile_squares and row ty * tile_squares, up to the grid's edge.
+  int32 tx = 1;
+  int32 ty = 2;
+  // A number of the squares of this tile the viewer knows. It is the `r` of the
+  // tile's URL, and the tile's ETag: it changes when the tile gains a square
+  // (and when the map's image or grid changes).
+  int32 revision = 3;
 }
 
 // ForgetMapVisionRequest names a map of a campaign.

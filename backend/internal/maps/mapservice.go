@@ -395,6 +395,7 @@ func (s *Service) UpdateMap(
 	}
 	s.publishMapChanged(m.CampaignID, mapID, playersSee(mapID, updated.RevealedAt, current))
 	if cleared {
+		s.tiles.forget(mapID)
 		s.refreshVision(ctx, m.CampaignID, mapID) // the players' memory went with the layers
 	}
 	out, err := s.masterMap(ctx, m, mapID)
@@ -462,6 +463,7 @@ func (s *Service) DeleteMap(
 		return nil, s.dbError(ctx, "delete a map", err)
 	}
 	s.lits.forget(mapID)
+	s.tiles.forget(mapID)
 	s.seen.forget(mapID)
 	seen := playersSee(mapID, deleted.RevealedAt, current)
 	s.publishMapChanged(m.CampaignID, mapID, seen)
@@ -612,6 +614,7 @@ func (s *Service) SetMapGrid(
 	s.publishMapChanged(m.CampaignID, mapID, playersSee(mapID, updated.RevealedAt, current))
 	if cleared {
 		s.lits.forget(mapID)
+		s.tiles.forget(mapID)
 		s.refreshVision(ctx, m.CampaignID, mapID) // the players' memory went with the layers
 	}
 	out, err := s.masterMap(ctx, m, mapID)

@@ -708,6 +708,45 @@ func (q *Queries) GetMapPointInCampaign(ctx context.Context, arg GetMapPointInCa
 	return i, err
 }
 
+const getMapTileInfo = `-- name: GetMapTileInfo :one
+SELECT m.id, m.campaign_id, m.image_id, m.revealed_at, m.grid_columns, m.fog_enabled,
+       g.width AS image_width, g.height AS image_height, g.content_type AS image_content_type
+FROM maps AS m
+JOIN gallery_images AS g ON g.id = m.image_id
+WHERE m.id = $1
+`
+
+type GetMapTileInfoRow struct {
+	ID               string
+	CampaignID       string
+	ImageID          string
+	RevealedAt       *time.Time
+	GridColumns      *int32
+	FogEnabled       bool
+	ImageWidth       int32
+	ImageHeight      int32
+	ImageContentType string
+}
+
+// What the tile route needs of a map, in one read, from the map's ID alone: its
+// campaign, whether players see it, the fog and grid, and its image's size and type.
+func (q *Queries) GetMapTileInfo(ctx context.Context, id string) (GetMapTileInfoRow, error) {
+	row := q.db.QueryRow(ctx, getMapTileInfo, id)
+	var i GetMapTileInfoRow
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.ImageID,
+		&i.RevealedAt,
+		&i.GridColumns,
+		&i.FogEnabled,
+		&i.ImageWidth,
+		&i.ImageHeight,
+		&i.ImageContentType,
+	)
+	return i, err
+}
+
 const getMapTokenForUpdate = `-- name: GetMapTokenForUpdate :one
 SELECT map_id, character_id, x_bp, y_bp, hidden, updated_at, carried_light FROM map_tokens
 WHERE map_id = $1 AND character_id = $2
@@ -1574,7 +1613,7 @@ func (q *Queries) ListLeftImages(ctx context.Context, campaignID string) ([]Gall
 const listMapDetails = `-- name: ListMapDetails :many
 SELECT m.id, m.campaign_id, m.name, m.image_id, m.revealed_at, m.revision, m.created_at, m.updated_at, m.grid_columns,
        m.fog_enabled, m.base_light, m.group_vision, m.layers_revision, m.light_revision, m.vision_epoch,
-       g.name AS image_name, g.width AS image_width, g.height AS image_height,
+       g.name AS image_name, g.width AS image_width, g.height AS image_height, g.content_type AS image_content_type,
        (SELECT count(*) FROM map_points AS p WHERE p.map_id = m.id)::INT4 AS point_count,
        (SELECT count(*) FROM map_points AS p
         WHERE p.map_id = m.id AND p.kind <> 'light'
@@ -1604,6 +1643,7 @@ type ListMapDetailsRow struct {
 	ImageName          string
 	ImageWidth         int32
 	ImageHeight        int32
+	ImageContentType   string
 	PointCount         int32
 	RevealedPointCount int32
 }
@@ -1644,6 +1684,7 @@ func (q *Queries) ListMapDetails(ctx context.Context, campaignID string) ([]List
 			&i.ImageName,
 			&i.ImageWidth,
 			&i.ImageHeight,
+			&i.ImageContentType,
 			&i.PointCount,
 			&i.RevealedPointCount,
 		); err != nil {

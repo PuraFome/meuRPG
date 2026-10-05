@@ -237,6 +237,9 @@ type Service struct {
 	// once cannot take all the server's memory (package images bounds
 	// what one image may use).
 	processing chan struct{}
+
+	// tiles is the image of a fog map as tiles per player (tiles.go).
+	tiles *tileRenderer
 }
 
 // The compiler checks that Service implements both handlers.
@@ -275,6 +278,7 @@ func New(cfg Config) (*Service, error) {
 		maxMaps:    cfg.MaxMaps,
 		maxPoints:  cfg.MaxPointsPerMap,
 		processing: make(chan struct{}, 1),
+		tiles:      newTileRenderer(),
 	}
 	if s.logger == nil {
 		s.logger = slog.Default()
@@ -337,6 +341,7 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 	handle("POST "+UploadPath, route(s.handleUpload))
 	handle("GET "+ImagesPath+"{id}", route(s.handleImage))
 	handle("GET "+ImagesPath+"{id}/thumb", route(s.handleThumbnail))
+	handle("GET "+TilesPath+"{map}/tiles/{tx}/{ty}", route(s.handleTile))
 }
 
 // imagesOn answers 503 while images are off (no blob store), before
