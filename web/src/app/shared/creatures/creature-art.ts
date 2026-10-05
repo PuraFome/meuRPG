@@ -3,7 +3,7 @@ import { Component, computed, input } from '@angular/core';
 type Shape = 'bird' | 'dog' | 'paw';
 
 const BIRDS = new Set(['raven', 'hawk', 'owl', 'crow', 'eagle', 'giant-eagle', 'giant-owl', 'vulture', 'blood-hawk', 'swarm-of-ravens', 'giant-vulture']);
-const DOGS = new Set(['wolf', 'dire-wolf', 'mastiff', 'jackal', 'giant-wolf-spider', 'worg', 'winter-wolf']);
+const DOGS = new Set(['wolf', 'dire-wolf', 'mastiff', 'jackal', 'worg', 'winter-wolf']);
 
 /**
  * A creature's picture where the app has none: a flat silhouette (a bird, a dog's

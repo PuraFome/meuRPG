@@ -1,11 +1,15 @@
 :host {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: var(--mr-space-2);
-  min-height: 0;
+  // The least it needs: the search field (44 px) and two rows of the list (112 px) with the gap. A
+  // sheet that cannot give it this much scrolls as a whole instead of squeezing the list.
+  min-height: 164px;
 }
 
 .search {
+  flex: none;
   display: flex;
   align-items: center;
   gap: var(--mr-space-2);
@@ -46,11 +50,22 @@
 .rows {
   display: flex;
   flex-direction: column;
-  max-height: var(--list-max, none);
-  min-height: 0;
+  // Two rows always show; the rest scrolls inside the list, never the sheet around it.
+  flex: 1 1 auto;
+  min-height: 112px;
+  // At most as tall as its rows (the host says how many), and `contain: size` keeps the rows' own height
+  // out of the sheet's minimum: the sheet's body scrolls only when even these 112 px do not fit.
+  max-height: var(--rows-max, none);
+  contain: size;
   overflow-y: auto;
   border: 1px solid var(--mr-line);
   border-radius: var(--mr-radius-md);
+  scrollbar-width: thin;
+
+  // More below: the last row fades out.
+  &--more {
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+  }
 }
 
 .row {
@@ -68,6 +83,9 @@
   & + & {
     box-shadow: 0 -1px 0 var(--mr-rule);
   }
+
+  // A row never shrinks below its text (the list scrolls instead).
+  flex: none;
 
   &:has(input:focus-visible) {
     outline: 2px solid var(--mr-focus);
@@ -127,4 +145,45 @@
   padding: var(--mr-space-4);
   font-size: 15px;
   color: var(--mr-ink-muted);
+}
+
+// "−" 1 "+" for a casting that makes several creatures.
+.step {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+}
+
+.step__b {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  color: var(--mr-accent-text);
+  cursor: pointer;
+
+  &:disabled {
+    border-style: dashed;
+    color: var(--mr-ink-muted);
+    cursor: default;
+  }
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.step__n {
+  min-width: 24px;
+  font-family: var(--mr-font-display);
+  font-size: 20px;
+  font-weight: 800;
+  text-align: center;
 }

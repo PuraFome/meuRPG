@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -8,7 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import type { Creature, CreatureSummary } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { CreaturesClient } from '../../../core/creatures/creatures-client';
 import { creatureErrorMessage } from '../../../core/creatures/creature-errors';
-import { CREATURE_NAME_MAX, challengeText, nameCounter } from '../../../core/creatures/creature-format';
+import { CREATURE_NAME_MAX, challengeText, nameCounter, summarySubtitle } from '../../../core/creatures/creature-format';
 import { formatInt, joinDots } from '../../../core/format/text';
 import { SheetFrame } from '../../live-session/combat/sheet-frame/sheet-frame';
 import { injectSheet } from '../../live-session/combat/sheet-host';
@@ -35,6 +35,7 @@ const TYPES: readonly { value: string; label: string }[] = [
   { value: 'construct', label: 'Constructo' },
   { value: 'dragon', label: 'Dragão' },
   { value: 'elemental', label: 'Elemental' },
+  { value: 'swarm of Tiny beasts', label: 'Enxame de feras miúdas' },
   { value: 'fey', label: 'Fada' },
   { value: 'fiend', label: 'Ínfero' },
   { value: 'giant', label: 'Gigante' },
@@ -72,6 +73,7 @@ const CRS = ['0', '1/8', '1/4', '1/2', '1', '2', '3', '4', '5', '6', '8', '10', 
 export class GiveCreatureSheet {
   private readonly client = inject(CreaturesClient);
   private readonly sheet = injectSheet<GiveCreatureData, GiveCreatureResult>();
+  private readonly destroyRef = inject(DestroyRef);
   protected readonly data = this.sheet.data;
   protected readonly inSheet = this.sheet.inSheet;
   protected readonly types = TYPES;
@@ -99,7 +101,8 @@ export class GiveCreatureSheet {
       key: s.key,
       title: s.namePt,
       alias: s.name !== s.namePt ? s.name : undefined,
-      subtitle: joinDots([s.sizePt, s.typePt, challengeText(s.challengeRating)]),
+      // The picked row also says its armor class and hit points, from its stat block (the catalog row has neither).
+      subtitle: this.picked()?.key === s.key && this.block() ? summarySubtitle(s, this.block() ?? undefined) : joinDots([s.sizePt, s.typePt, challengeText(s.challengeRating)]),
       art: true,
     })),
   );
@@ -115,16 +118,26 @@ export class GiveCreatureSheet {
   });
   protected readonly note = computed(() => {
     const b = this.block();
+    const hp = b ? ` com os PV do livro (${b.hitPoints})` : '';
+    return `Vai para a ficha de ${this.data.characterName} e entra nos combates${hp}. Você corrige PV e condições depois.`;
+  });
+  /** Why the filled button cannot act yet, in a line near it. */
+  protected readonly missing = computed(() => {
     if (!this.picked()) {
       return 'Escolha uma criatura da lista.';
     }
-    const hp = b ? ` com os PV do livro (${b.hitPoints})` : '';
-    return `Vai para a ficha de ${this.data.characterName} e entra nos combates do personagem${hp}. Você corrige PV e condições depois.`;
+    return this.name().trim() === '' ? 'Dê um nome à criatura.' : '';
   });
   protected readonly ready = computed(() => !!this.picked() && this.name().trim() !== '' && !this.busy());
 
   constructor() {
     void this.search();
+    // A typing pause pending when the dialog closes must not fire into a closed dialog.
+    this.destroyRef.onDestroy(() => {
+      if (this.timer) {
+        clearTimeout(this.timer);
+      }
+    });
   }
 
   protected setQuery(v: string): void {

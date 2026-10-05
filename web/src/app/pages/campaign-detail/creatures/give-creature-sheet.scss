@@ -2,6 +2,19 @@
   display: block;
 }
 
+// The filters, the count, the name and the footer stay put; only the list scrolls (E9-10).
+.stack {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  min-height: 0;
+}
+
+.fixed {
+  flex: none;
+}
+
 .filters {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -80,6 +93,7 @@
 
 .list {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: 6px;
   min-height: 0;
@@ -133,12 +147,7 @@
 .go {
   max-width: 100%;
   --mat-button-filled-container-height: 44px;
-  --mat-button-filled-disabled-container-color: var(--mr-surface);
-  --mat-button-filled-disabled-label-text-color: var(--mr-ink-muted);
 
-  &[disabled] {
-    border: 1px dashed var(--mr-control-line);
-  }
 }
 
 .no {
@@ -155,4 +164,11 @@
     --mat-button-filled-container-height: 48px;
     --mat-button-outlined-container-height: 48px;
   }
+}
+
+.why {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
 }

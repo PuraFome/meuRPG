@@ -43,8 +43,9 @@ describe('StatBlock (E9-10, quadro 3)', () => {
     expect(flat(el.querySelector('.srd'))).toBe('Os textos abaixo são do livro de regras (SRD 5.1), em inglês.');
     const entries = Array.from(el.querySelectorAll('.entry'));
     expect(entries.map((e) => e.getAttribute('lang'))).toEqual(['en', 'en']);
-    expect(flat(entries[0].querySelector('h4'))).toBe('Mimicry');
-    expect(flat(el.querySelector('.group__t'))).toBe('Ações');
+    expect(flat(entries[0].querySelector('h3'))).toBe('Mimicry');
+    // The traits get a heading like the actions, and the headings go in order (h2, then h3 for each entry).
+    expect(Array.from(el.querySelectorAll('h2')).map((h) => flat(h))).toEqual(['Características', 'Ações']);
   });
 
   it('has no "Atacar" button: it is a page to read', () => {

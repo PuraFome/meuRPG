@@ -71,11 +71,9 @@
               <mat-icon aria-hidden="true">favorite</mat-icon>Corrigir PV
             </button>
           }
-          @if (canDismiss()) {
-            <button type="button" class="act act--danger js-dismiss" (click)="open('dismiss')">
-              <mat-icon aria-hidden="true">close</mat-icon>Dispensar
-            </button>
-          }
+          <button type="button" class="act act--danger js-dismiss" (click)="open('dismiss')">
+            <mat-icon aria-hidden="true">close</mat-icon>Dispensar
+          </button>
         </div>
       }
     </app-stat-block>

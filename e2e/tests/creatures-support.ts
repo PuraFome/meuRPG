@@ -2,7 +2,7 @@ import { expect, type Page } from '@playwright/test';
 
 import { startSessionRPC } from './live-session-support';
 import { tableForMaps, type MapsTable } from './maps-support';
-import { callRPC, pensantus } from './support';
+import { callRPC, pensantus, type CharacterBuild } from './support';
 
 // Setup for the creatures specs (Etapa 9, MR-037), through the API: these tests prove the
 // creature screens, not the campaign and character forms other specs cover. Every test
@@ -43,4 +43,26 @@ export async function giveCreatureRPC(master: Page, campaignId: string, characte
   const res = await callRPC(master, 'meurpg.characters.v1.CharacterService/GiveCreature', { campaignId, characterId, monsterKey, name });
   expect(res.ok()).toBeTruthy();
   return (await res.json()).creature.id as string;
+}
+
+/** A druid (level 5, Conjurar Animais prepared) or a cleric (level 5, Animar os Mortos prepared) with an open session. */
+export async function tableForCaster(master: Page, player: Page, name: string, caster: 'druid' | 'cleric'): Promise<CreaturesTable> {
+  const build: CharacterBuild = {
+    name: caster === 'druid' ? 'Sálvia' : 'Irmã Clara',
+    raceKey: 'race:human',
+    race: 'Humano',
+    classKey: caster === 'druid' ? 'class:druid' : 'class:cleric',
+    class: caster === 'druid' ? 'Druida' : 'Clérigo',
+    subclassKey: caster === 'cleric' ? 'subclass:life' : undefined,
+    level: 5,
+    backgroundKey: 'background:acolyte',
+    backgroundSkillKeys: [],
+    backgroundSkills: [],
+    extraSkillKeys: caster === 'druid' ? ['skill:nature', 'skill:perception'] : ['skill:medicine', 'skill:persuasion'],
+    extraSkills: [],
+    scores: { for: 10, des: 12, con: 14, int: 10, sab: 16, car: 12 },
+  };
+  const spells = caster === 'druid' ? ['spell:conjure-animals', 'spell:cure-wounds'] : ['spell:animate-dead', 'spell:bless'];
+  const base = await tableForMaps(master, player, name, false, { preparedSpellKeys: spells }, build);
+  return { ...base, sessionId: await startSessionRPC(master, base.campaignId) };
 }

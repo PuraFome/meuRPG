@@ -20,23 +20,25 @@ import { type CharacterCreature, CreatureSource } from '../../../../gen/meurpg/c
 import { CreaturesClient } from '../../../core/creatures/creatures-client';
 import { creatureErrorMessage } from '../../../core/creatures/creature-errors';
 import { CREATURE_NAME_MAX, nameCounter } from '../../../core/creatures/creature-format';
+import { focusWithRing } from '../../../core/creatures/focus-ring';
+import { tight } from '../../../core/format/text';
 
 /** What the card is asking: a new name, a dismissal, or (the master) the hit points. */
 export type EditMode = 'rename' | 'dismiss' | 'hp';
 
+let nextId = 0;
+
 /**
- * The questions a creature's card asks in place (E9-10, quadro 3), never in a
- * dialog:
- * - `rename`: the name, up to 40 characters, the counter at the right; one
- *   line only. The field takes the focus.
- * - `dismiss`: "Dispensar o Nanquim?" with what it costs in words, "Voltar" and
- *   "Dispensar o Nanquim" stacked and 48 px high; the focus starts on "Voltar"
- *   (an `alertdialog`, so a stray Enter never dismisses).
- * - `hp` (the master's correction outside a combat, RN-02): the hit points
- *   themselves, from 0 to the maximum; 0 sends the creature away, and the
- *   question says so.
- * The server decides everything; an error stays here, in words, and the
- * question stays open.
+ * The questions a creature's card asks in place (E9-10, quadro 3), never in a dialog:
+ * - `rename`: the name, up to 40 characters, the counter at the right; one line only. The field
+ *   takes the focus.
+ * - `dismiss`: "Dispensar Nanquim?" with what it costs in words, "Voltar" and "Dispensar Nanquim"
+ *   stacked and 48 px high; the focus starts on "Voltar" and shows its ring (an `alertdialog`, so a
+ *   stray Enter never dismisses).
+ * - `hp` (the master's correction outside a combat, RN-02): the hit points themselves, from 0 to the
+ *   maximum; 0 sends the creature away, and the question says so.
+ * The server decides everything; an error stays here, in words, and the question stays open. A button
+ * that cannot act yet is the dashed one (`mr-button--off`) with the reason in a line under it.
  */
 @Component({
   selector: 'app-creature-edit',
@@ -46,10 +48,8 @@ export type EditMode = 'rename' | 'dismiss' | 'hp';
     @switch (mode()) {
       @case ('dismiss') {
         <div class="ask" role="alertdialog" [attr.aria-labelledby]="id + '-t'" [attr.aria-describedby]="id + '-d'">
-          <p class="ask__t" [id]="id + '-t'"><mat-icon aria-hidden="true">warning</mat-icon>Dispensar {{ c.name }}?</p>
-          <p class="ask__d" [id]="id + '-d'">
-            {{ dismissText() }}
-          </p>
+          <p class="ask__t" [id]="id + '-t'"><mat-icon aria-hidden="true">warning</mat-icon><span>Dispensar {{ c.name }}?</span></p>
+          <p class="ask__d" [id]="id + '-d'">{{ dismissText() }}</p>
           @if (error()) {
             <p class="err" role="alert"><mat-icon aria-hidden="true">error</mat-icon>{{ error() }}</p>
           }
@@ -67,10 +67,11 @@ export type EditMode = 'rename' | 'dismiss' | 'hp';
           @if (error()) {
             <p class="err" role="alert"><mat-icon aria-hidden="true">error</mat-icon>{{ error() }}</p>
           }
-          <div class="pair">
-            <button type="submit" matButton="outlined" class="big" [disabled]="busy() || !canSave()">Salvar o nome</button>
-            <button type="button" matButton="outlined" class="big" [disabled]="busy()" (click)="closed.emit(false)">Cancelar</button>
-          </div>
+          <button type="submit" matButton="outlined" class="big" [class.mr-button--off]="!canSave()" [disabled]="busy() || !canSave()" disabledInteractive [attr.aria-describedby]="canSave() ? null : id + '-why'">Salvar o nome</button>
+          @if (!canSave()) {
+            <p class="why" [id]="id + '-why'">{{ renameWhy() }}</p>
+          }
+          <button type="button" matButton="outlined" class="big" [disabled]="busy()" (click)="closed.emit(false)">Cancelar</button>
         </form>
       }
       @case ('hp') {
@@ -83,10 +84,11 @@ export type EditMode = 'rename' | 'dismiss' | 'hp';
           @if (error()) {
             <p class="err" role="alert"><mat-icon aria-hidden="true">error</mat-icon>{{ error() }}</p>
           }
-          <div class="pair">
-            <button type="submit" matButton="outlined" class="big" [disabled]="busy() || !hpValid()">Aplicar</button>
-            <button type="button" matButton="outlined" class="big" [disabled]="busy()" (click)="closed.emit(false)">Cancelar</button>
-          </div>
+          <button type="submit" matButton="outlined" class="big" [class.mr-button--off]="!hpValid()" [disabled]="busy() || !hpValid()" disabledInteractive [attr.aria-describedby]="hpValid() ? null : id + '-why'">Corrigir os PV</button>
+          @if (!hpValid()) {
+            <p class="why" [id]="id + '-why'">Escreva um número inteiro de 0 a {{ c.hitPointsMax }}.</p>
+          }
+          <button type="button" matButton="outlined" class="big" [disabled]="busy()" (click)="closed.emit(false)">Cancelar</button>
         </form>
       }
     }
@@ -101,7 +103,7 @@ export class CreatureEdit {
   readonly campaignId = input.required<string>();
   readonly creature = input.required<CharacterCreature>();
   readonly mode = input.required<EditMode>();
-  /** Whose creature it is, for the sentence ("a sua ficha" or "a ficha de Pensantus"). */
+  /** Whose creature it is, for the sentence ("da sua ficha" or "da ficha de Pensantus"). */
   readonly ownerView = input(true);
   readonly ownerName = input('');
   /** Done: true when something changed (the list is read again), false when the person backed out. */
@@ -117,6 +119,7 @@ export class CreatureEdit {
 
   protected readonly counter = computed(() => nameCounter(this.name().length, this.max));
   protected readonly canSave = computed(() => this.name().trim().length > 0 && this.name().trim() !== this.creature().name);
+  protected readonly renameWhy = computed(() => (this.name().trim().length === 0 ? 'Escreva um nome.' : 'Escreva um nome diferente do atual.'));
   protected readonly hpValid = computed(() => {
     const v = this.hp();
     return v !== null && Number.isInteger(v) && v >= 0 && v <= this.creature().hitPointsMax;
@@ -130,25 +133,31 @@ export class CreatureEdit {
         // The whole question comes into view under the sticky bar, then the focus goes in without scrolling again.
         this.host.nativeElement.scrollIntoView({ block: 'nearest' });
         const el = this.first()?.nativeElement;
-        el?.focus({ preventScroll: true });
-        // The field's value is written a tick later (ngModel): select it then, so a new name replaces the old at once.
         if (el instanceof HTMLInputElement) {
+          el.focus({ preventScroll: true });
+          // The field's value is written a tick later (ngModel): select it then, so a new name replaces the old at once.
           setTimeout(() => el.select());
+        } else {
+          focusWithRing(el);
         }
       },
       { injector: this.injector },
     );
   }
 
+  /** What dismissing costs, by where the creature came from: a familiar is conjured again, a gift is given again. */
   protected dismissText(): string {
     const c = this.creature();
-    if (!this.ownerView()) {
-      return `${c.name} some da ficha de ${this.ownerName()} e do mapa. Para ter a criatura de novo, é preciso dá-la outra vez.`;
+    const from = this.ownerView() ? 'da sua ficha' : `da ficha de ${this.ownerName()}`;
+    const gone = `${c.name} some ${from} e do mapa.`;
+    switch (c.source) {
+      case CreatureSource.FAMILIAR:
+        return tight(`${gone} Para ter um familiar de novo, é preciso conjurar Encontrar Familiar outra vez (ritual de 1 hora).`);
+      case CreatureSource.MASTER:
+        return `${gone} Para ter essa criatura de novo, ${this.ownerView() ? 'é preciso pedir ao mestre' : 'é preciso dar a criatura outra vez'}.`;
+      default:
+        return `${gone} Para ter essa criatura de novo, é preciso conjurar a magia outra vez.`;
     }
-    if (c.source === CreatureSource.FAMILIAR) {
-      return `${c.name} some da sua ficha e do mapa. Para ter um familiar de novo, é preciso conjurar Encontrar Familiar outra vez (ritual de 1 hora).`;
-    }
-    return `${c.name} some da sua ficha e do mapa. Para ter uma criatura como essa de novo, é preciso conjurar a magia outra vez.`;
   }
 
   protected async rename(): Promise<void> {
@@ -182,5 +191,3 @@ export class CreatureEdit {
     }
   }
 }
-
-let nextId = 0;

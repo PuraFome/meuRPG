@@ -1,23 +1,20 @@
-import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { create } from '@bufbuild/protobuf';
+import { Component, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { FormsModule } from '@angular/forms';
+
+import { type GetSummonOptionsResponse, GetSummonOptionsResponseSchema, type SummonOption, SummonSlot, SummonSpellOptions } from '../../../../gen/meurpg/characters/v1/characters_pb';
 import type { Creature, CreatureSummary } from '../../../../gen/meurpg/rules/v1/rules_pb';
-import { circleLabel } from '../../../core/combat/combat-grid';
 import { type SlotRow, freeText } from '../../../core/combat/cast-flow';
+import { circleLabel } from '../../../core/combat/combat-grid';
 import { newKey } from '../../../core/connect/idempotency';
 import { CreaturesClient } from '../../../core/creatures/creatures-client';
 import { creatureErrorMessage } from '../../../core/creatures/creature-errors';
-import {
-  CREATURE_NAME_MAX,
-  formSubtitle,
-  nameCounter,
-  summarySubtitle,
-} from '../../../core/creatures/creature-format';
-import type { SummonCastVm } from '../../../core/creatures/summon-access';
-import { beastOptions, summonSpell, undeadCount } from '../../../core/creatures/summon-spells';
+import { CREATURE_NAME_MAX, formSubtitle, nameCounter, summarySubtitle } from '../../../core/creatures/creature-format';
+import { FIND_FAMILIAR, castVerb, creaturesText, replacesText } from '../../../core/creatures/summon-labels';
 import { tight } from '../../../core/format/text';
 import { SlotPicker } from '../../live-session/combat/cast-sheet/slot-picker';
 import { SheetFrame } from '../../live-session/combat/sheet-frame/sheet-frame';
@@ -28,32 +25,31 @@ import { type ChoiceRow, CreatureChoiceList } from '../../../shared/creatures/cr
 export interface SummonSheetData {
   readonly campaignId: string;
   readonly characterId: string;
-  readonly cast: SummonCastVm;
-  /** The name of the familiar the character has now, which a new one replaces. */
-  readonly replaces: string;
+  readonly spellKey: string;
 }
 
 /** What the sheet answers when it cast: for the panel's live notice. */
 export interface SummonSheetResult {
   readonly spellName: string;
   readonly ritual: boolean;
+  readonly castingTime: string;
   readonly names: readonly string[];
-  readonly replaced: boolean;
+  readonly count: number;
+  readonly dismissed: number;
 }
 
 /**
- * Casting a summoning spell outside a combat (E9-10, quadro 2): Encontrar
- * Familiar as a ritual (no slot: the name, then the 15 forms of the book, and
- * the Pact of the Chain's four), Animar os Mortos (the slot decides how many
- * undead, one kind for them all) and Conjurar Animais (the slot, one of the
- * four options with the count the slot makes, and the beast). The same frame
- * as the combat's sheets: the title and the footer (what it costs, the filled
- * button, "Cancelar") never scroll away, the list scrolls between them.
+ * Casting a summoning spell outside a combat (E9-10, quadro 2). The sheet reads what the character
+ * can do from the server (`GetSummonOptions`: the slots, what each circle may bring, what a casting
+ * would send away) and keeps no rule of its own: a ritual when the server says the character can
+ * cast it as one, otherwise the slot picker; the options and the creatures of the circle; a mix
+ * of kinds when the option counts several creatures ("−" 1 "+" for each kind, the total must equal the
+ * count). The same frame as the combat's sheets: the title, the name and search fields and the
+ * footer stay put, and only the list scrolls.
  *
- * The browser only offers what the table of `summon-spells.ts` lists; every
- * choice is checked by `CastSummon`, and a refusal stays here, in words, with
- * the sheet open. The key of the cast is made once and made anew whenever a
- * choice changes, so a tap repeated after a lost answer never casts twice.
+ * Before the cast it says what the casting would send away ("Isso encerra Conjurar Animais e dispensa 8
+ * criaturas"); a refusal by the server stays here, in words, with the sheet open. The key of the cast is
+ * made anew whenever a choice changes, so a tap repeated after a lost answer never casts twice.
  */
 @Component({
   selector: 'app-summon-sheet',
@@ -66,168 +62,233 @@ export class SummonSheet {
   private readonly sheet = injectSheet<SummonSheetData, SummonSheetResult>();
   protected readonly data = this.sheet.data;
   protected readonly inSheet = this.sheet.inSheet;
-  protected readonly def = summonSpell(this.data.cast.key)!;
   protected readonly max = CREATURE_NAME_MAX;
   protected readonly nameCounter = nameCounter;
 
-  protected readonly name = signal(this.data.replaces);
-  protected readonly slotLevel = signal(0);
-  protected readonly slotRows = signal<readonly SlotRow[] | null>(null);
+  protected readonly options = signal<GetSummonOptionsResponse | null>(null);
+  protected readonly name = signal('');
+  protected readonly slotKey = signal('');
   protected readonly option = signal(0);
-  protected readonly chosen = signal('');
+  /** How many of each creature kind: one kind with 1 for a single creature. */
+  protected readonly counts = signal<Readonly<Record<string, number>>>({});
   protected readonly forms = signal<readonly Creature[] | null>(null);
   protected readonly beasts = signal<readonly CreatureSummary[] | null>(null);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
+  private readonly frame = viewChild.required(SheetFrame);
   private key = newKey();
+  private beastSeq = 0;
 
-  /** A ritual spends no slot; otherwise the slot picker opens the sheet. */
-  protected readonly ritual = this.data.cast.ritual;
-  protected readonly kind = this.def.kind;
+  protected readonly spell = computed<SummonSpellOptions | null>(() => this.options()?.spells.find((s) => s.spellKey === this.data.spellKey) ?? null);
+  /** A ritual spends no slot: the server says whether the character can cast this one as one. */
+  protected readonly ritual = computed(() => this.spell()?.canRitual ?? false);
+  protected readonly familiar = computed(() => this.data.spellKey === FIND_FAMILIAR);
 
   protected readonly subtitle = computed(() => {
-    const ritual = this.ritual && this.def.kind === 'familiar' ? ' · ritual' : '';
-    return `Magia de ${circleLabel(this.def.level)}${ritual} · ${this.def.time}`;
+    const s = this.spell();
+    return s ? tight(`Magia de ${circleLabel(s.level)}${this.ritual() ? ' · ritual' : ''} · ${s.castingTimePt}`) : '';
   });
 
-  protected readonly slot = computed(() => this.slotRows()?.find((r) => r.level === this.slotLevel()) ?? null);
+  /** The slots this spell can use: from its circle up, only the circles the server lists for it. */
+  protected readonly slotRows = computed<readonly SlotRow[]>(() => {
+    const s = this.spell();
+    if (!s) {
+      return [];
+    }
+    return (this.options()?.slots ?? [])
+      .filter((sl) => sl.level >= s.level && sl.total > 0 && s.circles.some((c) => c.circle === sl.level))
+      .map((sl) => slotRow(sl));
+  });
+  protected readonly slot = computed(() => this.slotRows().find((r) => slotId(r) === this.slotKey()) ?? null);
   /** The circle the cast is made at: the slot's, or the spell's own for a ritual. */
-  protected readonly circle = computed(() => (this.ritual ? this.def.level : this.slotLevel()));
+  protected readonly circle = computed(() => (this.ritual() ? (this.spell()?.level ?? 0) : (this.slot()?.level ?? 0)));
+  protected readonly circleOptions = computed<readonly SummonOption[]>(() => this.spell()?.circles.find((c) => c.circle === this.circle())?.options ?? []);
+  protected readonly opt = computed<SummonOption | null>(() => this.circleOptions()[this.option()] ?? null);
+  protected readonly count = computed(() => this.opt()?.count ?? 0);
+  protected readonly total = computed(() => Object.values(this.counts()).reduce((a, b) => a + b, 0));
+  protected readonly several = computed(() => this.count() > 1);
+  /** The one creature chosen, for the radios. */
+  protected readonly single = computed(() => (this.several() ? '' : (Object.keys(this.counts())[0] ?? '')));
 
-  protected readonly options = computed(() => beastOptions(this.circle() || this.def.level));
-  protected readonly count = computed(() => {
-    if (this.kind === 'undead') {
-      return undeadCount(this.circle() || this.def.level);
-    }
-    if (this.kind === 'beasts') {
-      return this.options()[this.option()]?.count ?? 1;
-    }
-    return 1;
+  protected readonly replacesNote = computed(() => {
+    const s = this.spell();
+    return s ? replacesText(s.namePt, s.concentration, s.replaces) : '';
   });
 
   protected readonly rows = computed<readonly ChoiceRow[]>(() => {
-    if (this.kind === 'beasts') {
-      return (this.beasts() ?? []).map((s) => ({ key: s.key, title: s.namePt, subtitle: summarySubtitle(s) }));
+    const o = this.opt();
+    if (!o) {
+      return [];
     }
-    const list = (this.forms() ?? []).filter((c) => c.summary);
-    return [...list]
-      .sort((a, b) => (a.summary!.namePt).localeCompare(b.summary!.namePt, 'pt-BR'))
-      .map((c) => ({ key: c.summary!.key, title: c.summary!.namePt, subtitle: formSubtitle(c) }));
+    if (o.forms.length === 0) {
+      return (this.beasts() ?? []).map((b) => ({ key: b.key, title: b.namePt, subtitle: summarySubtitle(b) }));
+    }
+    const blocks = new Map((this.forms() ?? []).map((c) => [c.summary?.key ?? '', c]));
+    return o.forms
+      .map((f) => {
+        const block = blocks.get(f.monsterKey);
+        return { key: f.monsterKey, title: f.namePt, subtitle: block ? formSubtitle(block) : '' };
+      })
+      .sort((a, b) => a.title.localeCompare(b.title, 'pt-BR'));
   });
-  protected readonly loadingRows = computed(() => (this.kind === 'beasts' ? this.beasts() === null : this.forms() === null));
+  protected readonly loadingRows = computed(() => {
+    const o = this.opt();
+    return !!o && (o.forms.length === 0 ? this.beasts() === null : this.forms() === null);
+  });
+  protected readonly listLabel = computed(() => {
+    const n = this.rows().length;
+    if (this.familiar()) {
+      return `Forma · ${n} do livro`;
+    }
+    return this.several() ? `Criaturas · ${this.total()} de ${this.count()}` : 'Criatura';
+  });
 
-  protected readonly chosenRow = computed(() => this.rows().find((r) => r.key === this.chosen()) ?? null);
-
-  /** What is still missing, in words; empty when the cast is ready. */
+  /** What is still missing, in one sentence naming everything; empty when the cast is ready. */
   protected readonly missing = computed(() => {
-    if (!this.ritual && this.slotLevel() === 0) {
-      return 'Falta escolher o espaço de magia.';
+    const parts: string[] = [];
+    if (!this.ritual() && !this.slot()) {
+      parts.push('escolha o espaço de magia');
     }
-    if (this.kind === 'familiar' && this.name().trim() === '') {
-      return 'Falta dar um nome ao familiar.';
+    if (this.familiar() && this.name().trim() === '') {
+      parts.push('dê um nome ao familiar');
     }
-    if (!this.chosenRow()) {
-      return this.kind === 'beasts' ? 'Falta escolher o animal.' : this.kind === 'undead' ? 'Falta escolher o morto-vivo.' : 'Falta escolher a forma.';
+    const need = this.count() - this.total();
+    if (this.opt() && need > 0) {
+      parts.push(this.several() ? `escolha mais ${creaturesText(need)}` : this.familiar() ? 'escolha a forma' : 'escolha a criatura');
+    } else if (need < 0) {
+      parts.push(`tire ${creaturesText(-need)}`);
     }
-    return '';
+    if (parts.length === 0) {
+      return '';
+    }
+    // "Escolha a forma e dê um nome ao familiar.": the choice first, then the name.
+    parts.sort((a, b) => (a.startsWith('dê') ? 1 : 0) - (b.startsWith('dê') ? 1 : 0));
+    const text = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} e ${parts[parts.length - 1]}`;
+    return `${text[0].toUpperCase()}${text.slice(1)}.`;
   });
-  protected readonly ready = computed(() => this.missing() === '' && !this.busy());
+  protected readonly ready = computed(() => this.missing() === '' && !this.busy() && this.spell() !== null);
 
   /** "Conjurar como ritual · 1 hora · sem gastar espaço", or what the slot costs. */
   protected readonly costLine = computed(() => {
-    if (this.ritual) {
-      return `Conjurar como ritual · ${this.def.time} · sem gastar espaço`;
+    const s = this.spell();
+    if (!s) {
+      return '';
+    }
+    if (this.ritual()) {
+      return tight(`Conjurar como ritual · ${s.castingTimePt} · sem gastar espaço`);
     }
     const slot = this.slot();
-    const spend = slot ? `gasta um espaço de ${circleLabel(slot.level)}` : 'gasta um espaço de magia';
-    const made = this.kind === 'familiar' ? '' : `${this.count() === 1 ? '1 criatura' : this.count() + ' criaturas'} · `;
-    return tight(`${made}${this.def.time} · ${spend}`);
+    const spend = slot ? `gasta um espaço de ${circleLabel(slot.level)}${slot.pact ? ' (pacto)' : ''}` : 'gasta um espaço de magia';
+    const made = this.count() > 1 ? `${creaturesText(this.count())} · ` : '';
+    return tight(`${made}${s.castingTimePt} · ${spend}`);
   });
 
-  protected readonly buttonLabel = computed(() => {
-    const n = this.name().trim();
-    if (this.kind === 'familiar') {
-      return n ? `Convocar ${n}` : 'Convocar o familiar';
-    }
-    return this.kind === 'undead' ? `Animar ${this.count() === 1 ? '1 morto-vivo' : this.count() + ' mortos-vivos'}` : 'Conjurar os animais';
-  });
-
-  protected readonly beastCr = computed(() => this.options()[this.option()]?.maxCr ?? '');
+  protected readonly buttonLabel = computed(() => castVerb(this.data.spellKey, this.spell()?.namePt ?? ''));
 
   constructor() {
-    // The forms, and the slots, are read once when the sheet opens.
-    if (this.kind === 'beasts') {
-      effect(() => {
-        const cr = this.beastCr();
-        untracked(() => this.loadBeasts(cr));
+    void this.load();
+    // The forms (their numbers) are read once the spell is known; the beasts again when the option changes.
+    effect(() => {
+      const o = this.opt();
+      untracked(() => {
+        if (!o) {
+          return;
+        }
+        if (o.forms.length > 0) {
+          void this.loadForms(o);
+        } else {
+          void this.loadBeasts(o);
+        }
       });
-    } else {
-      void this.loadForms();
-    }
-    if (!this.ritual) {
-      void this.loadSlots();
-    }
+    });
   }
 
-  private async loadForms(): Promise<void> {
-    const keys = [...this.def.forms, ...(this.data.cast.chain ? this.def.extraForms : [])];
+  private async load(): Promise<void> {
     try {
-      this.forms.set(await Promise.all(keys.map((k) => this.client.statBlock(this.data.campaignId, k))));
-    } catch (err) {
-      this.forms.set([]);
-      this.error.set(creatureErrorMessage(err, 'read'));
-    }
-  }
-
-  private async loadBeasts(maxCr: string): Promise<void> {
-    this.beasts.set(null);
-    this.chosen.set('');
-    try {
-      this.beasts.set((await this.client.search(this.data.campaignId, { type: 'beast', maxCr: maxCr === '' ? undefined : maxCr })).creatures.filter((s) => s.challengeRating !== '' && withinCr(s.challengeRating, maxCr)));
-    } catch (err) {
-      this.beasts.set([]);
-      this.error.set(creatureErrorMessage(err, 'read'));
-    }
-  }
-
-  private async loadSlots(): Promise<void> {
-    try {
-      const vitals = await this.client.vitalsOf(this.data.campaignId, this.data.characterId);
-      const rows: SlotRow[] = (vitals?.spellSlots ?? [])
-        .filter((s) => s.level >= this.def.level && s.total > 0)
-        .map((s) => {
-          const free = s.total - s.used;
-          return { level: s.level, pact: false, free, total: s.total, used: s.used, enabled: free > 0, title: circleLabel(s.level), count: freeText(free, s.total) };
-        });
-      this.slotRows.set(rows);
-      const first = rows.find((r) => r.enabled);
-      if (first) {
-        this.slotLevel.set(first.level);
+      const options = await this.client.summonOptions(this.data.campaignId, this.data.characterId);
+      this.options.set(options);
+      const spell = options.spells.find((s) => s.spellKey === this.data.spellKey);
+      if (!spell) {
+        this.error.set('A ficha não conjura mais essa magia. Feche esta folha e olhe a ficha.');
+        return;
+      }
+      if (this.familiar() && spell.replaces[0]) {
+        this.name.set(spell.replaces[0].name);
+      }
+      const free = this.slotRows().find((r) => r.enabled);
+      if (free) {
+        this.slotKey.set(slotId(free));
       }
     } catch (err) {
-      this.slotRows.set([]);
-      this.error.set(creatureErrorMessage(err, 'cast'));
+      this.options.set(create(GetSummonOptionsResponseSchema, {}));
+      this.error.set(creatureErrorMessage(err, 'read'));
+    }
+  }
+
+  private async loadForms(o: SummonOption): Promise<void> {
+    // A form whose numbers cannot be read still shows its name; only the line under it is missing.
+    const read = await Promise.allSettled(o.forms.map((f) => this.client.statBlock(this.data.campaignId, f.monsterKey)));
+    this.forms.set(read.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : [])));
+  }
+
+  private async loadBeasts(o: SummonOption): Promise<void> {
+    const seq = ++this.beastSeq;
+    this.beasts.set(null);
+    try {
+      const found = (await this.client.search(this.data.campaignId, { type: o.type, maxCr: o.maxCr })).creatures;
+      // An answer that arrives after another option was picked is for a list nobody looks at.
+      if (seq === this.beastSeq) {
+        this.beasts.set(found);
+      }
+    } catch (err) {
+      if (seq === this.beastSeq) {
+        this.beasts.set([]);
+        this.error.set(creatureErrorMessage(err, 'read'));
+      }
     }
   }
 
   protected pickSlot(row: SlotRow): void {
-    this.slotLevel.set(row.level);
+    this.slotKey.set(slotId(row));
+    this.option.set(0);
+    this.counts.set({});
     this.changed();
   }
 
   protected pickOption(index: number): void {
     this.option.set(index);
+    this.counts.set({});
     this.changed();
   }
 
+  /** One creature: the radio's choice. */
   protected pick(key: string): void {
-    this.chosen.set(key);
+    this.counts.set({ [key]: 1 });
+    this.changed();
+  }
+
+  /** Several creatures: "−" and "+" of one kind. */
+  protected step(change: { key: string; delta: number }): void {
+    const next = Math.max(0, (this.counts()[change.key] ?? 0) + change.delta);
+    if (change.delta > 0 && this.total() >= this.count()) {
+      return;
+    }
+    const counts = { ...this.counts(), [change.key]: next };
+    if (next === 0) {
+      delete counts[change.key];
+    }
+    this.counts.set(counts);
     this.changed();
   }
 
   protected setName(value: string): void {
     this.name.set(value);
     this.changed();
+  }
+
+  /** The chosen option's label: "4 criaturas de ND 1/2 ou menos". */
+  protected optionLabel(o: SummonOption): string {
+    return tight(`${creaturesText(o.count)} de ND ${o.maxCr} ou menos`);
   }
 
   /** A choice changed: the next cast is a new one (a new key). */
@@ -237,30 +298,39 @@ export class SummonSheet {
   }
 
   protected async cast(): Promise<void> {
-    if (!this.ready()) {
+    const spell = this.spell();
+    if (!spell || !this.ready()) {
       return;
     }
     this.busy.set(true);
     this.error.set('');
-    const count = this.count();
-    const names = this.kind === 'familiar' ? [this.name().trim()] : [];
+    // The kinds in the list's order, each as many times as it was chosen.
+    const keys = this.rows().flatMap((r) => Array.from({ length: this.counts()[r.key] ?? 0 }, () => r.key));
+    // Only a familiar is named by the table; any other creature takes the book's name, numbered when several.
+    const names = this.familiar() && this.name().trim() !== '' ? [this.name().trim()] : [];
+    const slot = this.slot();
     try {
       const res = await this.client.castSummon({
         campaignId: this.data.campaignId,
         characterId: this.data.characterId,
-        spellKey: this.def.key,
-        ritual: this.ritual,
-        slot: this.ritual ? undefined : { level: this.slotLevel(), pact: false },
-        summon: {
-          option: this.kind === 'beasts' ? this.option() : 0,
-          creatureKeys: Array.from({ length: count }, () => this.chosen()),
-          names,
-        },
+        spellKey: spell.spellKey,
+        ritual: this.ritual(),
+        slot: this.ritual() || !slot ? undefined : { level: slot.level, pact: slot.pact },
+        summon: { option: this.option(), creatureKeys: keys, names },
         idempotencyKey: this.key,
       });
-      this.sheet.close({ spellName: this.def.name, ritual: this.ritual, names, replaced: res.replacedIds.length > 0 });
+      this.sheet.close({
+        spellName: spell.namePt,
+        ritual: this.ritual(),
+        castingTime: spell.castingTimePt,
+        names,
+        count: keys.length,
+        dismissed: res.replacedIds.length,
+      });
     } catch (err) {
       this.error.set(creatureErrorMessage(err, 'cast'));
+      // The refusal is at the top of the body: scroll there, where it is seen.
+      setTimeout(() => this.frame().scrollToTop());
     } finally {
       this.busy.set(false);
     }
@@ -271,12 +341,19 @@ export class SummonSheet {
   }
 }
 
-/** Whether a challenge rating ("1/4", "2") is at most `max`: the list is already cut by the server, this only keeps
- * a stale answer from showing a stronger beast. */
-function withinCr(cr: string, max: string): boolean {
-  const value = (s: string): number => {
-    const [a, b] = s.split('/');
-    return b ? Number(a) / Number(b) : Number(a);
+function slotId(r: SlotRow): string {
+  return `${r.level}${r.pact ? 'p' : ''}`;
+}
+
+function slotRow(sl: SummonSlot): SlotRow {
+  return {
+    level: sl.level,
+    pact: sl.pact,
+    free: sl.free,
+    total: sl.total,
+    used: sl.total - sl.free,
+    enabled: sl.free > 0,
+    title: sl.pact ? `${circleLabel(sl.level)} (pacto)` : circleLabel(sl.level),
+    count: freeText(sl.free, sl.total),
   };
-  return max === '' || value(cr) <= value(max);
 }

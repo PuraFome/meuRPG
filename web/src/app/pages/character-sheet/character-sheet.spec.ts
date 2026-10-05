@@ -9,7 +9,6 @@ import { OpenSessions, type OpenSessionVm } from '../../shell/live-notice/open-s
 import { CharacterSheetPage } from './character-sheet';
 import { NotesClient } from '../../core/notes/notes-client';
 import { CreaturesClient } from '../../core/creatures/creatures-client';
-import { NO_CREATURE_ACCESS } from '../../core/creatures/summon-access';
 import { XpWatcher } from './xp-watcher';
 import {
   BasicSheetVm,
@@ -133,7 +132,7 @@ function fullSheet(overrides: Partial<FullSheetVm> = {}): FullSheetVm {
     customFeaturesText: '',
     issues: [],
     hints: [],
-    creatureAccess: NO_CREATURE_ACCESS,
+    hasWildShape: false,
     contentVersion: 'srd51@test',
     ...overrides,
   };
@@ -219,7 +218,7 @@ function xpProviders() {
   return [
     { provide: NotesClient, useValue: notesApi },
     // No creatures: the panel stays out of these tests (its own spec covers it).
-    { provide: CreaturesClient, useValue: { list: () => Promise.resolve([]), statBlock: () => Promise.reject(new Error('none')) } },
+    { provide: CreaturesClient, useValue: { list: () => Promise.resolve([]), summonOptions: () => Promise.resolve({ spells: [], slots: [] }), statBlock: () => Promise.reject(new Error('none')) } },
     { provide: OpenSessions, useValue: { sessions: openSessions } },
     { provide: XpWatcher, useValue: xpWatcher },
   ];

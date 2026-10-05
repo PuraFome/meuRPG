@@ -2,6 +2,23 @@
   display: block;
 }
 
+// The sheet's body: everything above the list stays put, the list takes what is left and scrolls
+// inside itself (E9-10). If the sheet is too short for even two rows, the body scrolls as a last resort.
+.stack {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 14px;
+  // No `min-height: 0`: the stack never gets smaller than its parts' own minimums (the list keeps its
+  // 164 px), so a short sheet scrolls its body, as a last resort.
+  // The outlined field's floating label would be cut by the body's top edge.
+  padding-top: 8px;
+}
+
+.fixed {
+  flex: none;
+}
+
 .cap {
   font-size: 14px;
   font-weight: 500;
@@ -16,8 +33,11 @@
 
 .forms {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: 6px;
+  // The caption (20 px), the gap and the list's own minimum (164 px).
+  min-height: 190px;
 }
 
 .options {
@@ -62,8 +82,8 @@
   }
 }
 
-// The footer: what it costs (or what is missing) in words, the one filled button, then "Cancelar",
-// both 48 px and the full width, stacked (E9-10).
+// The footer: what it costs (or everything that is missing) in words, the one filled button, then
+// "Cancelar", both 48 px and the full width, stacked (E9-10).
 [foot] {
   display: flex;
   flex-direction: column;
@@ -82,7 +102,6 @@
     flex: none;
     width: 18px;
     height: 18px;
-    margin-top: 0;
     font-size: 18px;
   }
 }
@@ -95,13 +114,6 @@
 .go {
   --mat-button-filled-container-height: 48px;
   --mat-button-filled-focus-state-layer-opacity: 0;
-}
-
-.go--off {
-  --mat-button-filled-disabled-container-color: var(--mr-surface);
-  --mat-button-filled-disabled-label-text-color: var(--mr-ink-muted);
-  border: 1px dashed var(--mr-control-line);
-  cursor: default;
 }
 
 .no {

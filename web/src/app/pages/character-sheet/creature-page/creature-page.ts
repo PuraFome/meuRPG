@@ -8,12 +8,16 @@ import { type CharacterCreature, CreatureSource } from '../../../../gen/meurpg/c
 import type { Creature } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { CharacterSheetSource } from '../character-sheet.types';
 import { CreaturesClient } from '../../../core/creatures/creatures-client';
-import { creatureErrorMessage } from '../../../core/creatures/creature-errors';
+import { creatureErrorMessage, creaturesHidden } from '../../../core/creatures/creature-errors';
 import { sourcePhrase } from '../../../core/creatures/creature-format';
 import { joinDots } from '../../../core/format/text';
+import { focusWithRing } from '../../../core/creatures/focus-ring';
 import { CreatureArt } from '../../../shared/creatures/creature-art';
 import { StatBlock } from '../../../shared/creatures/stat-block';
 import { CreatureEdit, type EditMode } from '../creatures-panel/creature-edit';
+
+/** `CharacterCreature.attack`, which the proto sends as a number (1 none, 2 reaction, 3 full). */
+const CreatureAttack = { NONE: 1, REACTION: 2 } as const;
 
 type PageState =
   | { status: 'loading' }
@@ -30,9 +34,8 @@ type PageState =
  * `StatBlock`). A familiar does not attack (SRD): the page shows the book's
  * action with no "Atacar" and says why in one line.
  *
- * "Dispensar" asks in place and takes the person back to the sheet; the
- * player dismisses only what they conjured, the master any. "Renomear" is in
- * place too. RN-20: only the owner's player and the master read this; for
+ * "Dispensar" asks in place and takes the person back to the sheet; the character's player and the
+ * master may dismiss any creature (the server decides). "Renomear" is in place too. RN-20: only the owner's player and the master read this; for
  * anyone else the server says `not_found`.
  */
 @Component({
@@ -77,17 +80,13 @@ export class CreaturePage {
       return '';
     }
     const name = s.creature.name;
-    if (s.creature.source === CreatureSource.FAMILIAR && s.creature.attack === 1) {
-      return `Como familiar, ${name} não ataca. Ele pode fazer as outras ações e entregar magias de toque (livro de regras).`;
+    if (s.creature.source === CreatureSource.FAMILIAR && s.creature.attack === CreatureAttack.NONE) {
+      return `Como familiar, ${name} não ataca. Pode fazer as outras ações e entregar magias de toque (livro de regras).`;
     }
-    if (s.creature.attack === 2) {
+    if (s.creature.attack === CreatureAttack.REACTION) {
       return `${name} só ataca com a reação, quando alguém sai do alcance dele.`;
     }
     return '';
-  });
-  protected readonly canDismiss = computed(() => {
-    const s = this.state();
-    return s.status === 'ready' && (s.isMaster || s.creature.source !== CreatureSource.MASTER);
   });
 
   constructor() {
@@ -120,8 +119,8 @@ export class CreaturePage {
       ]);
       this.state.set({ status: 'ready', creature, block, ownerName: sheet.name, isMaster: sheet.isMaster });
     } catch (err) {
-      const message = creatureErrorMessage(err, 'read');
-      this.state.set(message.startsWith('Essa criatura não existe') ? { status: 'not-found' } : { status: 'error', message });
+      // A creature the viewer may not read (RN-20) or that is gone is the same page: "não encontrada".
+      this.state.set(creaturesHidden(err) ? { status: 'not-found' } : { status: 'error', message: creatureErrorMessage(err, 'read') });
     }
   }
 
@@ -134,13 +133,16 @@ export class CreaturePage {
     this.mode.set(null);
     if (!changed) {
       // Backing out: the focus goes back to the action that asked.
-      afterNextRender(() => this.host.nativeElement.querySelector<HTMLElement>(`.js-${was}`)?.focus(), { injector: this.injector });
+      afterNextRender(() => focusWithRing(this.host.nativeElement.querySelector<HTMLElement>(`.js-${was}`)), { injector: this.injector });
       return;
     }
     if (was === 'dismiss') {
       void this.router.navigate(this.back());
       return;
     }
-    void this.load(this.campaignId(), this.characterId(), this.creatureId());
+    // The question closed: the action that opened it is where the person was.
+    void this.load(this.campaignId(), this.characterId(), this.creatureId()).then(() =>
+      afterNextRender(() => focusWithRing(this.host.nativeElement.querySelector<HTMLElement>(`.js-${was}`)), { injector: this.injector }),
+    );
   }
 }

@@ -72,12 +72,16 @@ describe('GiveCreatureSheet: the master gives a creature (E9-10, MR-037)', () =>
   it('picking a creature names it with the book name, reads its hit points and the button says what happens', async () => {
     const { el, flat, button, fixture, settle } = await setup();
     expect(isOff(button('Dar a criatura'))).toBe(true);
+    expect(flat(el.querySelector('.why'))).toBe('Escolha uma criatura da lista.');
+    expect(button('Dar a criatura').classList).toContain('mr-button--off');
     const r = el.querySelectorAll<HTMLInputElement>('input[type=radio]')[0];
     r.checked = true;
     r.dispatchEvent(new Event('change'));
     await settle();
     expect(el.querySelector<HTMLInputElement>('input[name=name]')!.value).toBe('Mastim');
-    expect(flat(el.querySelector('.note'))).toBe('Vai para a ficha de Toren e entra nos combates do personagem com os PV do livro (5). Você corrige PV e condições depois.');
+    expect(flat(el.querySelector('.note'))).toBe('Vai para a ficha de Toren e entra nos combates com os PV do livro (5). Você corrige PV e condições depois.');
+    // The chosen row says its armor class and hit points, read from its stat block.
+    expect(flat(el.querySelector('.row--on .row__sub'))).toBe('Médio · fera · ND 1/8 · CA 12 · PV 5');
     expect(isOff(button('Dar Mastim a Toren'))).toBe(false);
     expect(fixture.nativeElement.querySelector('mat-hint').textContent).toContain('6 de 40');
   });
@@ -109,6 +113,18 @@ describe('GiveCreatureSheet: the master gives a creature (E9-10, MR-037)', () =>
     await settle();
     expect(close).not.toHaveBeenCalled();
     expect(flat(el.querySelector('[role=alert]'))).toBe('Você não pode fazer isso.');
+  });
+
+  it('a typing pause still pending when the dialog is destroyed never searches', async () => {
+    const { el, fixture, settle } = await setup();
+    const before = api.searches.length;
+    const q = el.querySelector<HTMLInputElement>('input[type=search]')!;
+    q.value = 'lobo';
+    q.dispatchEvent(new Event('input'));
+    fixture.destroy();
+    await new Promise((r) => setTimeout(r, 400));
+    expect(api.searches.length).toBe(before);
+    void settle;
   });
 
   it('Cancelar closes giving nothing', async () => {

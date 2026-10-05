@@ -4,6 +4,7 @@ import { createClient } from '@connectrpc/connect';
 import {
   type CharacterCreature,
   CharacterService,
+  type GetSummonOptionsResponse,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { type CharacterVitals, PlayService } from '../../../gen/meurpg/play/v1/play_pb';
 import {
@@ -54,6 +55,12 @@ export class CreaturesClient {
   /** The character's creatures, oldest first (the owner's player and the master; another player gets `not_found`). */
   async list(campaignId: string, characterId: string): Promise<readonly CharacterCreature[]> {
     return (await this.characters.listCharacterCreatures({ campaignId, characterId })).creatures;
+  }
+
+  /** What the character can summon from its sheet: the spells, what each brings at each circle, the slots,
+   * what a casting would send away. The server works all of it out (`GetSummonOptions`). */
+  async summonOptions(campaignId: string, characterId: string): Promise<GetSummonOptionsResponse> {
+    return this.characters.getSummonOptions({ campaignId, characterId });
   }
 
   /** The master gives a character a creature; a blank name takes the Portuguese name of the kind. */

@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import type { CharacterCreature } from '../../../../gen/meurpg/characters/v1/characters_pb';
 import { CreaturesClient } from '../../../core/creatures/creatures-client';
+import { focusWithRing } from '../../../core/creatures/focus-ring';
 import { sourceShort } from '../../../core/creatures/creature-format';
 import { CreatureArt } from '../../../shared/creatures/creature-art';
 import { CreatureEdit } from '../../character-sheet/creatures-panel/creature-edit';
@@ -46,6 +47,9 @@ export class CharacterCreatures {
   readonly given = output<string>();
 
   protected readonly creatures = signal<readonly CharacterCreature[] | null>(null);
+  /** The read failed and nothing was ever read: say so instead of "Nenhuma criatura". */
+  protected readonly failed = signal(false);
+  private seq = 0;
   /** The creature whose "Dispensar" question is open. */
   protected readonly asking = signal<string | null>(null);
   protected readonly sourceShort = sourceShort;
@@ -60,11 +64,19 @@ export class CharacterCreatures {
   }
 
   private async load(campaignId: string, characterId: string): Promise<void> {
+    const seq = ++this.seq;
     try {
-      this.creatures.set(await this.client.list(campaignId, characterId));
+      const list = await this.client.list(campaignId, characterId);
+      // A newer read started meanwhile: its answer is the one that counts.
+      if (seq === this.seq) {
+        this.creatures.set(list);
+        this.failed.set(false);
+      }
     } catch {
-      // Keep what is shown; a read that fails shows no creatures rather than a wrong list.
-      this.creatures.update((c) => c ?? []);
+      // Keep what is shown; with nothing shown yet, say the read failed.
+      if (seq === this.seq && this.creatures() === null) {
+        this.failed.set(true);
+      }
     }
   }
 
@@ -76,6 +88,8 @@ export class CharacterCreatures {
       width: '720px',
       focus: 'input[type=search]',
     }).subscribe((result) => {
+      // The dialog gives the focus back to the button that opened it; the ring is drawn here.
+      afterNextRender(() => focusWithRing(this.host.nativeElement.querySelector<HTMLElement>('.give')), { injector: this.injector });
       if (result) {
         void this.load(this.campaignId(), this.characterId());
         this.given.emit(result.name);
@@ -90,9 +104,12 @@ export class CharacterCreatures {
   protected closed(changed: boolean, id: string): void {
     this.asking.set(null);
     if (changed) {
-      void this.load(this.campaignId(), this.characterId());
+      // The dismissed line is gone: the focus goes to "Dar uma criatura", which is always there.
+      void this.load(this.campaignId(), this.characterId()).then(() =>
+        afterNextRender(() => focusWithRing(this.host.nativeElement.querySelector<HTMLElement>('.give')), { injector: this.injector }),
+      );
       return;
     }
-    afterNextRender(() => this.host.nativeElement.querySelector<HTMLElement>(`#dismiss-${id}`)?.focus(), { injector: this.injector });
+    afterNextRender(() => focusWithRing(this.host.nativeElement.querySelector<HTMLElement>(`#dismiss-${id}`)), { injector: this.injector });
   }
 }

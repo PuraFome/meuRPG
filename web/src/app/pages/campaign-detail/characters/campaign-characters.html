@@ -55,12 +55,15 @@
               }
             </p>
           } @else {
-            @if (giftNotice()) {
-              <div class="mr-notice mr-notice--success gift" role="status">
-                <mat-icon aria-hidden="true">check</mat-icon>
-                <p>{{ giftNotice() }}</p>
-              </div>
-            }
+            <!-- The live region is in the DOM before it has anything to say, so the notice is read out. -->
+            <div class="gift" role="status" aria-live="polite">
+              @if (giftNotice()) {
+                <div class="mr-notice mr-notice--success">
+                  <mat-icon aria-hidden="true">check</mat-icon>
+                  <p>{{ giftNotice() }}</p>
+                </div>
+              }
+            </div>
             <ul class="mr-list">
               @for (c of listed; track c.id) {
                 <li>

@@ -23,7 +23,7 @@ export class XpWatcher {
 
   /** Follows `campaignId` (its open session), or stops with `null`. `onChange`
    * runs on every `xp_changed`, and on a reconnection (an event may have been missed);
-   * `onCreatures`, when given, on every `creatures_changed`. */
+   * `onCreatures`, when given, on every `creatures_changed` and on a reconnection too. */
   follow(campaignId: string | null, onChange: () => void, onCreatures?: () => void): void {
     if (campaignId === this.campaignId) {
       return;
@@ -40,10 +40,12 @@ export class XpWatcher {
       classify: (err) => this.source.classifyError(err),
       document: this.document,
       handlers: {
-        // The page reads on load itself: only a later `ready` (a reconnection) reads again.
+        // The page reads on load itself: only a later `ready` (a reconnection, the tab back after a
+        // while) reads again, both the XP and the creatures: an event may have been missed.
         onReady: () => {
           if (!first) {
             onChange();
+            onCreatures?.();
           }
           first = false;
         },

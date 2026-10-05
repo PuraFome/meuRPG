@@ -26,6 +26,8 @@
       } @empty {
         <span class="none">Nenhuma criatura</span>
       }
+    } @else if (failed()) {
+      <span class="none">Não deu para ler as criaturas.</span>
     } @else {
       <span class="none" role="status">Lendo as criaturas…</span>
     }

@@ -1,7 +1,7 @@
 @if (visible()) {
-  <section class="mr-panel panel" aria-labelledby="criaturas-heading">
+  <section class="mr-panel panel" aria-labelledby="criaturas-heading" (click)="notice.set('')">
     <div class="panel__head">
-      <h2 id="criaturas-heading" class="mr-panel__title">Criaturas</h2>
+      <h2 id="criaturas-heading" class="mr-panel__title js-title" tabindex="-1">Criaturas</h2>
       @if (countText()) {
         <span class="panel__count">{{ countText() }}</span>
       }
@@ -17,7 +17,13 @@
       }
     </div>
 
-    @if (creatures().length === 0) {
+    @if (state() === 'failed') {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>Não deu para ler as criaturas agora.</p>
+      </div>
+      <button type="button" class="retry" (click)="retry()"><mat-icon aria-hidden="true">refresh</mat-icon>Tentar de novo</button>
+    } @else if (creatures().length === 0) {
       <p class="empty">{{ emptyText() }}</p>
     } @else {
       <ul class="cards">
@@ -29,26 +35,26 @@
               [ownerName]="characterName()"
               [creature]="c"
               [isMaster]="isMaster()"
-              (changed)="refresh()"
+              (changed)="changed(c.id, $event)"
             />
           </li>
         }
       </ul>
     }
 
-    @for (c of casts(); track c.key) {
+    @for (c of casts(); track c.spellKey) {
       <div class="cast">
         <button
           type="button"
           matButton="outlined"
-          class="cast__btn"
-          [class.cast__btn--off]="!live()"
+          class="cast__btn js-cast"
+          [class.mr-button--off]="!live()"
           [disabled]="!live()"
           disabledInteractive
           [attr.aria-describedby]="'cast-cost-' + $index"
           (click)="cast(c)"
         >
-          <mat-icon aria-hidden="true">auto_awesome</mat-icon>{{ c.name }}
+          <mat-icon aria-hidden="true">auto_awesome</mat-icon>{{ c.namePt }}
         </button>
         <p class="cast__cost" [id]="'cast-cost-' + $index">
           {{ costText(c) }}

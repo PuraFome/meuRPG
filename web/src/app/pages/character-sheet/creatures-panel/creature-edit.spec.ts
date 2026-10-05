@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import { CreaturesClient } from '../../../core/creatures/creatures-client';
-import { FakeCreaturesClient, creature, flat } from '../../../core/creatures/creatures-testing';
+import { FakeCreaturesClient, creature, flat, isOff } from '../../../core/creatures/creatures-testing';
 import { CreatureEdit, type EditMode } from './creature-edit';
 
 describe('CreatureEdit: the questions a card asks in place', () => {
@@ -71,12 +71,13 @@ describe('CreatureEdit: the questions a card asks in place', () => {
     expect(input.value).toBe('Nanquim');
     expect(input.maxLength).toBe(40);
     expect(el.querySelector('mat-hint')?.textContent).toContain('7 de 40');
-    expect(button('Salvar o nome').disabled).toBe(true);
+    expect(isOff(button('Salvar o nome'))).toBe(true);
+    expect(flat(el.querySelector('.why'))).toBe('Escreva um nome diferente do atual.');
     input.value = 'Tinta';
     input.dispatchEvent(new Event('input'));
     fixture.detectChanges();
     await settle();
-    expect(button('Salvar o nome').disabled).toBe(false);
+    expect(isOff(button('Salvar o nome'))).toBe(false);
     button('Salvar o nome').click();
     await settle();
     expect(api.rename).toHaveBeenCalledWith('camp-1', 'cr-1', 'Tinta');
@@ -91,13 +92,14 @@ describe('CreatureEdit: the questions a card asks in place', () => {
     input.dispatchEvent(new Event('input'));
     fixture.detectChanges();
     await settle();
-    expect(button('Aplicar').disabled).toBe(true);
+    expect(isOff(button('Corrigir os PV'))).toBe(true);
+    expect(flat(el.querySelector('.why'))).toBe('Escreva um número inteiro de 0 a 1.');
     input.value = '0';
     input.dispatchEvent(new Event('input'));
     fixture.detectChanges();
     await settle();
     api.setHitPoints.mockRejectedValueOnce(new ConnectError('x', Code.FailedPrecondition));
-    button('Aplicar').click();
+    button('Corrigir os PV').click();
     await settle();
     expect(api.setHitPoints).toHaveBeenCalledWith('camp-1', 'cr-1', 0);
     expect(closed).not.toHaveBeenCalled();

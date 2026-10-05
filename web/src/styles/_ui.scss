@@ -199,3 +199,20 @@ a.mr-list__row:hover .mr-list__name {
   white-space: nowrap;
   border: 0;
 }
+
+// A button that cannot act yet (MR-037, E9-10): dashed, quiet, still focusable (`disabledInteractive`),
+// with the reason in a line near it. One style for the filled and the outlined button.
+.mr-button--off.mat-mdc-button-base {
+  --mat-button-filled-disabled-container-color: var(--mr-surface);
+  --mat-button-filled-disabled-label-text-color: var(--mr-ink-muted);
+  --mat-button-outlined-disabled-label-text-color: var(--mr-ink-muted);
+  --mat-button-outlined-disabled-outline-color: var(--mr-control-line);
+  border: 1px dashed var(--mr-control-line);
+  cursor: default;
+}
+
+// The ring of an element the app moved the focus to (core/creatures/focus-ring.ts): 2 px, like the global one.
+[data-ring]:focus {
+  outline: 2px solid var(--mr-focus);
+  outline-offset: 2px;
+}

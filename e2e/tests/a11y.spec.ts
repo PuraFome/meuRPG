@@ -14,7 +14,7 @@ import { printRoute, tableForPrinting } from './print-support';
 import { tableForLevelUp } from './levelup-support';
 import { authStatePath, callRPC, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus } from './support';
 import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
-import { tableForCreatures } from './creatures-support';
+import { tableForCaster, tableForCreatures } from './creatures-support';
 import { awardXpRPC, createEnemyRPC, tableForXp, tableForXpCombat, winCombatRPC } from './xp-support';
 
 // docs/design.md#como-uma-tela-é-feita: every screen passes axe with no
@@ -2288,13 +2288,13 @@ async function scanCreatureScreens(browser: Browser, colorScheme: 'light' | 'dar
 
     await panel.getByRole('button', { name: 'Encontrar Familiar' }).click();
     const sheet = p.getByRole('dialog', { name: 'Encontrar Familiar' }).or(p.locator('mat-bottom-sheet-container'));
-    await expect(sheet.getByText('Falta dar um nome ao familiar.')).toBeVisible();
+    await expect(sheet.getByText('Escolha a forma e dê um nome ao familiar.')).toBeVisible();
     await expectScreenPasses(p, `Encontrar Familiar, faltando o nome ${where}`);
     await sheet.getByLabel('Nome do familiar').fill('Nanquim');
     await sheet.locator('label', { hasText: /Corvo/ }).click();
     await expect(sheet.getByText('Conjurar como ritual · 1 hora · sem gastar espaço')).toBeVisible();
     await expectScreenPasses(p, `Encontrar Familiar, pronto ${where}`);
-    await sheet.getByRole('button', { name: 'Convocar Nanquim' }).click();
+    await sheet.getByRole('button', { name: 'Convocar o familiar' }).click();
     await expect(panel.getByText('Nanquim chegou.')).toBeVisible();
     await expectScreenPasses(p, `Criaturas, com o Nanquim e o aviso ${where}`);
 
@@ -2307,7 +2307,7 @@ async function scanCreatureScreens(browser: Browser, colorScheme: 'light' | 'dar
     await expectScreenPasses(p, `Criaturas, dispensar pergunta ${where}`);
     await panel.getByRole('button', { name: 'Voltar' }).click();
 
-    await panel.getByRole('link', { name: 'Ver a ficha do Nanquim' }).click();
+    await panel.getByRole('link', { name: 'Ver a ficha de Nanquim' }).click();
     await expect(p.getByRole('heading', { name: 'Nanquim', level: 1 })).toBeVisible();
     await expectScreenPasses(p, `A ficha da criatura ${where}`);
     await p.getByRole('button', { name: 'Dispensar' }).click();
@@ -2344,6 +2344,44 @@ async function scanCreatureScreens(browser: Browser, colorScheme: 'light' | 'dar
     await mc.getByRole('button', { name: 'Corrigir PV' }).click();
     await expect(mc.getByLabel(/PV de /)).toBeFocused();
     await expectScreenPasses(m, `O mestre, corrigir os PV da criatura ${where}`);
+
+    // A creature that is not there (or that the viewer may not read): the page's not-found state.
+    await p.goto(`/campanhas/${campaignId}/personagens/${table.characterId}/criaturas/6f1c7a52-3b5e-4c55-9d0b-2a51f0c1e001`);
+    await expect(p.getByRole('heading', { name: 'Criatura não encontrada', level: 1 })).toBeVisible();
+    await expectScreenPasses(p, `A ficha da criatura, não encontrada ${where}`);
+
+    // A druid: the slot picker, "Quantas criaturas", the list with "−" and "+", the warning of what a new
+    // concentration ends, and a refusal of the server inside the sheet.
+    const druid = await tableForCaster(m, p, `Criaturas druida ${Date.now()}`, 'druid');
+    const druidCampaign = druid.campaignId;
+    try {
+      await p.goto(`/campanhas/${druidCampaign}/personagens/${druid.characterId}`);
+      const dpanel = p.locator('app-creatures-panel');
+      await dpanel.getByRole('button', { name: 'Conjurar Animais' }).click();
+      const cast = p.getByRole('dialog', { name: 'Conjurar Animais' }).or(p.locator('mat-bottom-sheet-container'));
+      await expect(cast.getByText('Quantas criaturas')).toBeVisible();
+      await expectScreenPasses(p, `Conjurar Animais, as opções e o espaço ${where}`);
+      await cast.locator('label', { hasText: /2\s+criaturas\s+de\s+ND\s+1\s/ }).click();
+      await cast.getByRole('button', { name: 'Mais Lobo', exact: true }).click();
+      await cast.getByRole('button', { name: 'Mais Lobo', exact: true }).click();
+      await expect(cast.locator('.line')).toContainText('2 criaturas · 1 ação · gasta um espaço de 3º círculo');
+      await expectScreenPasses(p, `Conjurar Animais, a mistura pronta ${where}`);
+      await cast.getByRole('button', { name: 'Conjurar os animais' }).click();
+      await expect(dpanel.getByText('2 criaturas chegaram.')).toBeVisible();
+
+      await dpanel.getByRole('button', { name: 'Conjurar Animais' }).click();
+      await expect(cast.getByText('Isso encerra Conjurar Animais e dispensa 2 criaturas')).toBeVisible();
+      await expectScreenPasses(p, `Conjurar Animais, o aviso do que a concentração encerra ${where}`);
+      // The session ends while the sheet is open: the server refuses, and the sheet says so, still open.
+      await cast.locator('label', { hasText: /1\s+criatura\s+de\s+ND\s+2\s/ }).click();
+      await cast.locator('app-creature-choice-list label.row').first().click();
+      await endOpenSessionRPC(m, druidCampaign);
+      await cast.getByRole('button', { name: 'Conjurar os animais' }).click();
+      await expect(cast.getByRole('alert')).toContainText('A sessão acabou');
+      await expectScreenPasses(p, `Conjurar Animais, a recusa do servidor na folha ${where}`);
+    } finally {
+      await endOpenSessionRPC(m, druidCampaign);
+    }
   } finally {
     if (campaignId) {
       await endOpenSessionRPC(m, campaignId);

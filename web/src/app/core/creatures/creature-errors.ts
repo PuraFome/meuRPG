@@ -46,12 +46,14 @@ export function creatureErrorMessage(err: unknown, action: CreatureAction): stri
           return 'Essa escolha não vale para o espaço que você usou. Mude a forma ou o espaço e tente de novo.';
         case EncounterBlockedReason.SUMMON_IN_COMBAT:
           return 'Há um combate em andamento. Conjure pela sua vez, na tela do combate.';
+        case EncounterBlockedReason.WILD_SHAPE_NO_SPELLS:
+          return 'Na Forma Selvagem não dá para conjurar. Volte à forma normal e tente de novo.';
         case EncounterBlockedReason.NO_SLOT:
           return blocked.minLevel > 0
             ? `Não há espaço de ${circleLabel(blocked.minLevel)} ou maior livre.`
             : 'Não há espaço de magia livre.';
         default:
-          return 'Não dá para fazer isso agora. A tela foi atualizada.';
+          return 'Não dá para fazer isso agora. Feche esta folha, olhe a ficha e tente de novo.';
       }
     }
     const reason = connectErr.findDetails(CharacterBlockedSchema)[0]?.reason;
@@ -70,7 +72,7 @@ export function creatureErrorMessage(err: unknown, action: CreatureAction): stri
       action === 'cast'
         ? 'A ficha não conjura essa magia desse jeito. Confira a forma, o nome e o espaço.'
         : `Não deu para ${WHAT[action]}: confira o nome (1 a 40 letras, numa linha só) e tente de novo.`,
-    [Code.NotFound]: 'Essa criatura não existe mais, ou você não a vê. A tela foi atualizada.',
+    [Code.NotFound]: 'Essa criatura não existe mais, ou você não a vê. Recarregue a página.',
     [Code.PermissionDenied]: 'Você não pode fazer isso.',
     [Code.Aborted]: 'Algo mudou enquanto você agia. Tente de novo.',
     [Code.Unavailable]: `Não deu para ${WHAT[action]}: o servidor não respondeu. Tente de novo.`,

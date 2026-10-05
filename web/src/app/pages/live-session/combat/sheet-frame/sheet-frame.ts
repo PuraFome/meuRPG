@@ -14,7 +14,7 @@ import { MatIconModule } from '@angular/material/icon';
   selector: 'app-sheet-frame',
   imports: [MatIconModule],
   template: `
-    <div class="frame" [class.frame--phone]="phone()">
+    <div class="frame" [class.frame--phone]="phone()" [style.height]="height() || null">
       @if (phone()) {
         <span class="frame__handle" aria-hidden="true"></span>
       }
@@ -53,6 +53,8 @@ export class SheetFrame {
   readonly phone = input(false);
   /** An alert dialog that must be answered has no close button. */
   readonly closable = input(true);
+  /** A fixed height (a CSS length) for a dialog whose list filters: it does not jump as the results change. */
+  readonly height = input('');
 
   readonly closed = output<void>();
 

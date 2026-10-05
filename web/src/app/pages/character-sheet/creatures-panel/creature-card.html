@@ -3,7 +3,7 @@
   <header class="head">
     <app-creature-art class="head__art" [monsterKey]="c.monsterKey" />
     <div class="head__text">
-      <h3 class="name" [id]="'creature-' + c.id">{{ c.name }}</h3>
+      <h3 class="name" tabindex="-1" [id]="'creature-' + c.id">{{ c.name }}</h3>
       <p class="sub">{{ subtitle() }}</p>
     </div>
   </header>
@@ -36,7 +36,7 @@
       (closed)="close($event)"
     />
   } @else {
-    <a matButton="outlined" class="see" [routerLink]="link()" [attr.aria-label]="'Ver a ficha do ' + c.name">
+    <a matButton="outlined" class="see" [routerLink]="link()" [attr.aria-label]="'Ver a ficha de ' + c.name">
       <mat-icon aria-hidden="true">menu_book</mat-icon>Ver a ficha
     </a>
     <div class="acts">
@@ -48,11 +48,9 @@
           <mat-icon aria-hidden="true">favorite</mat-icon>Corrigir PV
         </button>
       }
-      @if (canDismiss()) {
-        <button type="button" class="act act--danger js-dismiss" (click)="open('dismiss')">
-          <mat-icon aria-hidden="true">close</mat-icon>Dispensar
-        </button>
-      }
+      <button type="button" class="act act--danger js-dismiss" (click)="open('dismiss')">
+        <mat-icon aria-hidden="true">close</mat-icon>Dispensar
+      </button>
     </div>
   }
 </article>

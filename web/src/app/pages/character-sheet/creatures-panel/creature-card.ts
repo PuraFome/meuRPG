@@ -15,9 +15,10 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 
-import { type CharacterCreature, CreatureSource } from '../../../../gen/meurpg/characters/v1/characters_pb';
+import type { CharacterCreature } from '../../../../gen/meurpg/characters/v1/characters_pb';
 import type { Creature } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { CreaturesClient } from '../../../core/creatures/creatures-client';
+import { focusWithRing } from '../../../core/creatures/focus-ring';
 import { sourcePhrase } from '../../../core/creatures/creature-format';
 import { joinDots, tight } from '../../../core/format/text';
 import { metersText } from '../../../core/units';
@@ -35,10 +36,10 @@ import { CreatureEdit, type EditMode } from './creature-edit';
  * server answers `not_found` to everyone else, so the card never has to hide a
  * number.
  *
- * - "Ver a ficha do Nanquim": the stat block page. 48 px, outlined.
+ * - "Ver a ficha" (named "Ver a ficha de Nanquim" for a screen reader): the stat block page. 48 px, outlined.
  * - "Renomear": the name, in place.
- * - "Dispensar": asks in place. The player dismisses only what they conjured; a
- *   creature the master gave only the master dismisses (the artboard's rule).
+ * - "Dispensar": asks in place. The character's player and the master may dismiss any creature, a
+ *   gift included (the server decides, `DismissCreature`).
  * - "Corrigir PV": the master's correction outside a combat (RN-02).
  * The focus goes back to the action that opened a question when it closes.
  */
@@ -58,13 +59,11 @@ export class CreatureCard {
   readonly ownerName = input.required<string>();
   readonly creature = input.required<CharacterCreature>();
   readonly isMaster = input(false);
-  /** The creature changed (renamed, dismissed, corrected): the panel reads the list again. */
-  readonly changed = output<void>();
+  /** The creature changed (renamed, dismissed, corrected): the panel reads the list again, and says how. */
+  readonly changed = output<EditMode>();
 
   protected readonly block = signal<Creature | null>(null);
   protected readonly mode = signal<EditMode | null>(null);
-
-  protected readonly canDismiss = computed(() => this.isMaster() || this.creature().source !== CreatureSource.MASTER);
 
   protected readonly subtitle = computed(() => {
     const c = this.creature();
@@ -113,10 +112,10 @@ export class CreatureCard {
     const was = this.mode();
     this.mode.set(null);
     if (changed) {
-      this.changed.emit();
+      this.changed.emit(was ?? 'rename');
       return;
     }
     // Backing out: the focus goes back to the action that asked.
-    afterNextRender(() => this.host.nativeElement.querySelector<HTMLElement>(`.js-${was}`)?.focus(), { injector: this.injector });
+    afterNextRender(() => focusWithRing(this.host.nativeElement.querySelector<HTMLElement>(`.js-${was}`)), { injector: this.injector });
   }
 }

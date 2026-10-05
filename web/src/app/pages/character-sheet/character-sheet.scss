@@ -140,10 +140,6 @@
 
 .sheet__combat {
   grid-area: combat;
-  display: flex;
-  flex-direction: column;
-  gap: var(--mr-space-4);
-  min-width: 0;
 }
 
 .sheet__notes {

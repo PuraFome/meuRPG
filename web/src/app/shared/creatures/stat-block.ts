@@ -55,7 +55,15 @@ interface Tile {
         @for (l of lines(); track l.term) {
           <div class="line">
             <dt>{{ l.term }}</dt>
-            <dd [attr.lang]="l.en ? 'en' : null">{{ l.text }}</dd>
+            <dd>
+              @for (p of l.parts; track $index) {
+                @if (p.en) {
+                  <span lang="en">{{ p.text }}</span>
+                } @else {
+                  {{ p.text }}
+                }
+              }
+            </dd>
           </div>
         }
       </dl>
@@ -66,11 +74,11 @@ interface Tile {
       @for (g of groups(); track g.title) {
         <section class="group" [attr.aria-label]="g.title || 'Características'">
           @if (g.title) {
-            <h3 class="group__t">{{ g.title }}</h3>
+            <h2 class="group__t">{{ g.title }}</h2>
           }
           @for (e of g.entries; track $index) {
             <div class="entry" lang="en">
-              <h4 class="entry__n">{{ e.name }}@if (e.usage) { <span class="entry__u">({{ e.usage }})</span> }</h4>
+              <h3 class="entry__n">{{ e.name }}@if (e.usage) { <span class="entry__u">({{ e.usage }})</span> }</h3>
               <p class="entry__t">{{ e.text }}</p>
             </div>
           }
@@ -115,11 +123,12 @@ export class StatBlock {
 
   protected readonly lines = computed(() => {
     const c = this.creature();
-    const out: { term: string; text: string; en?: boolean }[] = [];
+    const out: { term: string; parts: { text: string; en?: boolean }[] }[] = [];
+    const line = (term: string, text: string, en = false) => out.push({ term, parts: [{ text, en }] });
     if (c.savingThrows.length > 0) {
-      out.push({ term: 'Salvaguardas', text: c.savingThrows.map((b) => `${b.namePt} ${signed(b.bonus)}`).join(', ') });
+      line('Salvaguardas', c.savingThrows.map((b) => `${b.namePt} ${signed(b.bonus)}`).join(', '));
     }
-    out.push({ term: 'Perícias', text: c.skills.map((b) => `${b.namePt} ${signed(b.bonus)}`).join(', ') || '—' });
+    line('Perícias', c.skills.map((b) => `${b.namePt} ${signed(b.bonus)}`).join(', ') || '—');
     const modifiers: [string, readonly CreatureDamageModifier[]][] = [
       ['Vulnerável a', c.vulnerabilities],
       ['Resistente a', c.resistances],
@@ -127,16 +136,17 @@ export class StatBlock {
     ];
     for (const [term, list] of modifiers) {
       if (list.length > 0) {
-        out.push({ term, text: list.map(modifierText).join('; ') });
+        // The damage types are ours, in Portuguese; the book's note ("from nonmagical weapons") stays English.
+        out.push({ term, parts: list.flatMap((m, i) => modifierParts(m, i > 0)) });
       }
     }
     if (c.conditionImmunities.length > 0) {
-      out.push({ term: 'Condições', text: `imune a ${c.conditionImmunities.map((k) => k.namePt).join(', ')}` });
+      line('Condições', `imune a ${c.conditionImmunities.map((k) => k.namePt).join(', ')}`);
     }
     const senses = c.senses.map((s) => tight(`${s.namePt} ${metersText(s.rangeFt)}`));
-    out.push({ term: 'Sentidos', text: [...senses, `Percepção passiva ${c.passivePerception}`].join(', ') });
-    out.push({ term: 'Idiomas', text: c.languages || '—', en: c.languages !== '' });
-    out.push({ term: 'Desafio', text: c.summary?.challengeRating ?? '0' });
+    line('Sentidos', [...senses, `Percepção passiva ${c.passivePerception}`].join(', '));
+    line('Idiomas', c.languages || '—', c.languages !== '');
+    line('Desafio', c.summary?.challengeRating ?? '0');
     return out;
   });
 
@@ -144,7 +154,7 @@ export class StatBlock {
     const c = this.creature();
     const groups: { title: string; entries: readonly { name: string; text: string; usage: string }[] }[] = [];
     if (c.traits.length > 0) {
-      groups.push({ title: '', entries: c.traits });
+      groups.push({ title: 'Características', entries: c.traits });
     }
     if (c.actions.length > 0) {
       groups.push({ title: 'Ações', entries: c.actions });
@@ -159,8 +169,15 @@ export class StatBlock {
   });
 }
 
-/** "Fogo, Gelo" plus the book's note ("from nonmagical weapons"). */
-function modifierText(m: CreatureDamageModifier): string {
+/** "Fogo, Gelo" (ours) plus the book's note ("from nonmagical weapons", in English), after "; " when it is not the first. */
+function modifierParts(m: CreatureDamageModifier, more: boolean): { text: string; en?: boolean }[] {
   const types = m.types.map((t) => t.namePt).join(', ');
-  return [types, m.note].filter((p) => p).join(' ');
+  const out: { text: string; en?: boolean }[] = [];
+  if (types) {
+    out.push({ text: `${more ? '; ' : ''}${types}${m.note ? ' ' : ''}` });
+  }
+  if (m.note) {
+    out.push({ text: `${types || !more ? '' : '; '}${m.note}`, en: true });
+  }
+  return out;
 }
