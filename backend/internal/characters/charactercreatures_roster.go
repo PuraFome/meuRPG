@@ -14,6 +14,7 @@ import (
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -479,4 +480,15 @@ func (s *Service) CreatureSave(monsterKey, ability string) link.Save {
 		}
 	}
 	return link.Save{}
+}
+
+// CreatureEyes implements play.CombatRoster: what a creature notices with, from
+// its stat block: the passive Perception it lists and its senses (MR-035, MR-037).
+// False for a key that is not an SRD creature.
+func (s *Service) CreatureEyes(monsterKey string) (maplink.Eyes, bool) {
+	d, ok := s.rules.MonsterDerived(monsterKey)
+	if !ok {
+		return maplink.Eyes{}, false
+	}
+	return maplink.Eyes{Passive: d.PassivePerception, Senses: sensesOf(d.Senses)}, true
 }

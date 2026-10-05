@@ -451,6 +451,15 @@ func TestMapServiceAuthorizationMatrix(t *testing.T) {
 			_, err := u.maps.RevealTrap(ctx, connect.NewRequest(&mapsv1.RevealTrapRequest{CampaignId: campaign, MapId: shown.GetId(), PointId: trap.GetId(), CharacterIds: []string{pc.GetId()}}))
 			return err
 		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		// The traps in play (MR-035): the master's "Quem notaria" and the disarm.
+		{"GetTrapNoticers", func(ctx context.Context, u *user) error {
+			_, err := u.maps.GetTrapNoticers(ctx, connect.NewRequest(&mapsv1.GetTrapNoticersRequest{CampaignId: campaign, MapId: shown.GetId(), PointId: trap.GetId()}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"DisarmTrap", func(ctx context.Context, u *user) error {
+			_, err := u.maps.DisarmTrap(ctx, connect.NewRequest(&mapsv1.DisarmTrapRequest{CampaignId: campaign, MapId: shown.GetId(), PointId: trap.GetId()}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 		{"MarkTreasureFound", func(ctx context.Context, u *user) error {
 			_, err := u.maps.MarkTreasureFound(ctx, connect.NewRequest(&mapsv1.MarkTreasureFoundRequest{CampaignId: campaign, MapId: shown.GetId(), PointId: treasure.GetId(), CharacterIds: []string{pc.GetId()}}))
 			return err

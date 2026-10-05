@@ -109,6 +109,11 @@ const (
 	MapServiceForgetMapVisionProcedure = "/meurpg.maps.v1.MapService/ForgetMapVision"
 	// MapServiceRevealTrapProcedure is the fully-qualified name of the MapService's RevealTrap RPC.
 	MapServiceRevealTrapProcedure = "/meurpg.maps.v1.MapService/RevealTrap"
+	// MapServiceGetTrapNoticersProcedure is the fully-qualified name of the MapService's
+	// GetTrapNoticers RPC.
+	MapServiceGetTrapNoticersProcedure = "/meurpg.maps.v1.MapService/GetTrapNoticers"
+	// MapServiceDisarmTrapProcedure is the fully-qualified name of the MapService's DisarmTrap RPC.
+	MapServiceDisarmTrapProcedure = "/meurpg.maps.v1.MapService/DisarmTrap"
 	// MapServiceMarkTreasureFoundProcedure is the fully-qualified name of the MapService's
 	// MarkTreasureFound RPC.
 	MapServiceMarkTreasureFoundProcedure = "/meurpg.maps.v1.MapService/MarkTreasureFound"
@@ -430,8 +435,10 @@ type MapServiceClient interface {
 	//
 	// Errors:
 	//   - `not_found`: the character is not a living character of the
-	//     campaign, the map is not in this campaign, the campaign does not
-	//     exist, or the caller is not a member of it.
+	//     campaign (or the creature is not one of its live creatures), the map
+	//     is not in this campaign, the campaign does not exist, or the caller is
+	//     not a member of it.
+	//   - `invalid_argument`: both or neither of character_id and creature_id.
 	//   - `permission_denied`: the caller is a player.
 	PlaceMapToken(context.Context, *connect.Request[v1.PlaceMapTokenRequest]) (*connect.Response[v1.PlaceMapTokenResponse], error)
 	// SetMapTokenHidden hides a token from the players, or shows it again
@@ -561,6 +568,35 @@ type MapServiceClient interface {
 	//     not a member of it.
 	//   - `permission_denied`: the caller is a player.
 	RevealTrap(context.Context, *connect.Request[v1.RevealTrapRequest]) (*connect.Response[v1.RevealTrapResponse], error)
+	// GetTrapNoticers is the master's "Quem notaria" on a trap's card (MR-035, D5):
+	// each living player character of the campaign with its passive Perception,
+	// and whether the light penalty applies at the trap's squares as that character
+	// sees them now (dim light, or darkness seen through darkvision, takes 5 from a
+	// passive check; dim light within darkvision counts as bright). The server
+	// works it out, so the browser does no rules math. Only the campaign's master
+	// may call it; a player never gets a trap's DCs (RN-10).
+	//
+	// Errors:
+	//   - `invalid_argument`: the point is not a TRAP.
+	//   - `not_found`: the point is not on this map, the map is not in this
+	//     campaign, the campaign does not exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	GetTrapNoticers(context.Context, *connect.Request[v1.GetTrapNoticersRequest]) (*connect.Response[v1.GetTrapNoticersResponse], error)
+	// DisarmTrap marks a trap "Desarmada" (MR-035, D5): the master calls it after
+	// the table resolved the thieves' tools check (the app rolls nothing). A
+	// disarmed trap never fires again until the master arms it again
+	// (UpdateMapPoint). With an open session a `trap_disarmed` event goes into its
+	// history (IDs only). A trap that is not revealed to everyone stays hidden from
+	// the players who do not know it; one that is public tells everyone who sees
+	// the map (`map_changed`). Disarming a trap that is already disarmed changes
+	// nothing. Only the campaign's master may call it.
+	//
+	// Errors:
+	//   - `invalid_argument`: the point is not a TRAP.
+	//   - `not_found`: the point is not on this map, the map is not in this
+	//     campaign, the campaign does not exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	DisarmTrap(context.Context, *connect.Request[v1.DisarmTrapRequest]) (*connect.Response[v1.DisarmTrapResponse], error)
 	// MarkTreasureFound marks a TREASURE point found, by one or more characters
 	// (MR-041, D8). Only the campaign's master may call it, with or without an
 	// open session. A found treasure is visible to everyone who sees the map,
@@ -807,6 +843,19 @@ func NewMapServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(mapServiceMethods.ByName("RevealTrap")),
 			connect.WithClientOptions(opts...),
 		),
+		getTrapNoticers: connect.NewClient[v1.GetTrapNoticersRequest, v1.GetTrapNoticersResponse](
+			httpClient,
+			baseURL+MapServiceGetTrapNoticersProcedure,
+			connect.WithSchema(mapServiceMethods.ByName("GetTrapNoticers")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
+		disarmTrap: connect.NewClient[v1.DisarmTrapRequest, v1.DisarmTrapResponse](
+			httpClient,
+			baseURL+MapServiceDisarmTrapProcedure,
+			connect.WithSchema(mapServiceMethods.ByName("DisarmTrap")),
+			connect.WithClientOptions(opts...),
+		),
 		markTreasureFound: connect.NewClient[v1.MarkTreasureFoundRequest, v1.MarkTreasureFoundResponse](
 			httpClient,
 			baseURL+MapServiceMarkTreasureFoundProcedure,
@@ -859,6 +908,8 @@ type mapServiceClient struct {
 	getMapVision        *connect.Client[v1.GetMapVisionRequest, v1.GetMapVisionResponse]
 	forgetMapVision     *connect.Client[v1.ForgetMapVisionRequest, v1.ForgetMapVisionResponse]
 	revealTrap          *connect.Client[v1.RevealTrapRequest, v1.RevealTrapResponse]
+	getTrapNoticers     *connect.Client[v1.GetTrapNoticersRequest, v1.GetTrapNoticersResponse]
+	disarmTrap          *connect.Client[v1.DisarmTrapRequest, v1.DisarmTrapResponse]
 	markTreasureFound   *connect.Client[v1.MarkTreasureFoundRequest, v1.MarkTreasureFoundResponse]
 	unmarkTreasureFound *connect.Client[v1.UnmarkTreasureFoundRequest, v1.UnmarkTreasureFoundResponse]
 	setCarriedLight     *connect.Client[v1.SetCarriedLightRequest, v1.SetCarriedLightResponse]
@@ -1007,6 +1058,16 @@ func (c *mapServiceClient) ForgetMapVision(ctx context.Context, req *connect.Req
 // RevealTrap calls meurpg.maps.v1.MapService.RevealTrap.
 func (c *mapServiceClient) RevealTrap(ctx context.Context, req *connect.Request[v1.RevealTrapRequest]) (*connect.Response[v1.RevealTrapResponse], error) {
 	return c.revealTrap.CallUnary(ctx, req)
+}
+
+// GetTrapNoticers calls meurpg.maps.v1.MapService.GetTrapNoticers.
+func (c *mapServiceClient) GetTrapNoticers(ctx context.Context, req *connect.Request[v1.GetTrapNoticersRequest]) (*connect.Response[v1.GetTrapNoticersResponse], error) {
+	return c.getTrapNoticers.CallUnary(ctx, req)
+}
+
+// DisarmTrap calls meurpg.maps.v1.MapService.DisarmTrap.
+func (c *mapServiceClient) DisarmTrap(ctx context.Context, req *connect.Request[v1.DisarmTrapRequest]) (*connect.Response[v1.DisarmTrapResponse], error) {
+	return c.disarmTrap.CallUnary(ctx, req)
 }
 
 // MarkTreasureFound calls meurpg.maps.v1.MapService.MarkTreasureFound.
@@ -1334,8 +1395,10 @@ type MapServiceHandler interface {
 	//
 	// Errors:
 	//   - `not_found`: the character is not a living character of the
-	//     campaign, the map is not in this campaign, the campaign does not
-	//     exist, or the caller is not a member of it.
+	//     campaign (or the creature is not one of its live creatures), the map
+	//     is not in this campaign, the campaign does not exist, or the caller is
+	//     not a member of it.
+	//   - `invalid_argument`: both or neither of character_id and creature_id.
 	//   - `permission_denied`: the caller is a player.
 	PlaceMapToken(context.Context, *connect.Request[v1.PlaceMapTokenRequest]) (*connect.Response[v1.PlaceMapTokenResponse], error)
 	// SetMapTokenHidden hides a token from the players, or shows it again
@@ -1465,6 +1528,35 @@ type MapServiceHandler interface {
 	//     not a member of it.
 	//   - `permission_denied`: the caller is a player.
 	RevealTrap(context.Context, *connect.Request[v1.RevealTrapRequest]) (*connect.Response[v1.RevealTrapResponse], error)
+	// GetTrapNoticers is the master's "Quem notaria" on a trap's card (MR-035, D5):
+	// each living player character of the campaign with its passive Perception,
+	// and whether the light penalty applies at the trap's squares as that character
+	// sees them now (dim light, or darkness seen through darkvision, takes 5 from a
+	// passive check; dim light within darkvision counts as bright). The server
+	// works it out, so the browser does no rules math. Only the campaign's master
+	// may call it; a player never gets a trap's DCs (RN-10).
+	//
+	// Errors:
+	//   - `invalid_argument`: the point is not a TRAP.
+	//   - `not_found`: the point is not on this map, the map is not in this
+	//     campaign, the campaign does not exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	GetTrapNoticers(context.Context, *connect.Request[v1.GetTrapNoticersRequest]) (*connect.Response[v1.GetTrapNoticersResponse], error)
+	// DisarmTrap marks a trap "Desarmada" (MR-035, D5): the master calls it after
+	// the table resolved the thieves' tools check (the app rolls nothing). A
+	// disarmed trap never fires again until the master arms it again
+	// (UpdateMapPoint). With an open session a `trap_disarmed` event goes into its
+	// history (IDs only). A trap that is not revealed to everyone stays hidden from
+	// the players who do not know it; one that is public tells everyone who sees
+	// the map (`map_changed`). Disarming a trap that is already disarmed changes
+	// nothing. Only the campaign's master may call it.
+	//
+	// Errors:
+	//   - `invalid_argument`: the point is not a TRAP.
+	//   - `not_found`: the point is not on this map, the map is not in this
+	//     campaign, the campaign does not exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	DisarmTrap(context.Context, *connect.Request[v1.DisarmTrapRequest]) (*connect.Response[v1.DisarmTrapResponse], error)
 	// MarkTreasureFound marks a TREASURE point found, by one or more characters
 	// (MR-041, D8). Only the campaign's master may call it, with or without an
 	// open session. A found treasure is visible to everyone who sees the map,
@@ -1707,6 +1799,19 @@ func NewMapServiceHandler(svc MapServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(mapServiceMethods.ByName("RevealTrap")),
 		connect.WithHandlerOptions(opts...),
 	)
+	mapServiceGetTrapNoticersHandler := connect.NewUnaryHandler(
+		MapServiceGetTrapNoticersProcedure,
+		svc.GetTrapNoticers,
+		connect.WithSchema(mapServiceMethods.ByName("GetTrapNoticers")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
+	mapServiceDisarmTrapHandler := connect.NewUnaryHandler(
+		MapServiceDisarmTrapProcedure,
+		svc.DisarmTrap,
+		connect.WithSchema(mapServiceMethods.ByName("DisarmTrap")),
+		connect.WithHandlerOptions(opts...),
+	)
 	mapServiceMarkTreasureFoundHandler := connect.NewUnaryHandler(
 		MapServiceMarkTreasureFoundProcedure,
 		svc.MarkTreasureFound,
@@ -1785,6 +1890,10 @@ func NewMapServiceHandler(svc MapServiceHandler, opts ...connect.HandlerOption) 
 			mapServiceForgetMapVisionHandler.ServeHTTP(w, r)
 		case MapServiceRevealTrapProcedure:
 			mapServiceRevealTrapHandler.ServeHTTP(w, r)
+		case MapServiceGetTrapNoticersProcedure:
+			mapServiceGetTrapNoticersHandler.ServeHTTP(w, r)
+		case MapServiceDisarmTrapProcedure:
+			mapServiceDisarmTrapHandler.ServeHTTP(w, r)
 		case MapServiceMarkTreasureFoundProcedure:
 			mapServiceMarkTreasureFoundHandler.ServeHTTP(w, r)
 		case MapServiceUnmarkTreasureFoundProcedure:
@@ -1914,6 +2023,14 @@ func (UnimplementedMapServiceHandler) ForgetMapVision(context.Context, *connect.
 
 func (UnimplementedMapServiceHandler) RevealTrap(context.Context, *connect.Request[v1.RevealTrapRequest]) (*connect.Response[v1.RevealTrapResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.RevealTrap is not implemented"))
+}
+
+func (UnimplementedMapServiceHandler) GetTrapNoticers(context.Context, *connect.Request[v1.GetTrapNoticersRequest]) (*connect.Response[v1.GetTrapNoticersResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.GetTrapNoticers is not implemented"))
+}
+
+func (UnimplementedMapServiceHandler) DisarmTrap(context.Context, *connect.Request[v1.DisarmTrapRequest]) (*connect.Response[v1.DisarmTrapResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.DisarmTrap is not implemented"))
 }
 
 func (UnimplementedMapServiceHandler) MarkTreasureFound(context.Context, *connect.Request[v1.MarkTreasureFoundRequest]) (*connect.Response[v1.MarkTreasureFoundResponse], error) {

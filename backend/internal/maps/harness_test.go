@@ -203,6 +203,10 @@ func newHarness(t *testing.T, configure ...func(*Config)) *harness {
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
+	// Every hint at once: a test reads the stream right after a change, and the
+	// gate's once-a-second timing (armed by the setup's own paints) would race it.
+	// TestMR036_APaintHeldByTheGateStillReachesThePlayers sets its own interval.
+	svc.layerHintEvery = 0
 	h.svc = svc
 	sessionMaps.SetService(svc)
 	portraits.SetService(svc)

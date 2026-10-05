@@ -89,6 +89,23 @@ const (
 	// PlayServiceRollSceneCheckProcedure is the fully-qualified name of the PlayService's
 	// RollSceneCheck RPC.
 	PlayServiceRollSceneCheckProcedure = "/meurpg.play.v1.PlayService/RollSceneCheck"
+	// PlayServiceSearchForTrapsProcedure is the fully-qualified name of the PlayService's
+	// SearchForTraps RPC.
+	PlayServiceSearchForTrapsProcedure = "/meurpg.play.v1.PlayService/SearchForTraps"
+	// PlayServiceFireTrapProcedure is the fully-qualified name of the PlayService's FireTrap RPC.
+	PlayServiceFireTrapProcedure = "/meurpg.play.v1.PlayService/FireTrap"
+	// PlayServiceListTrapActivityProcedure is the fully-qualified name of the PlayService's
+	// ListTrapActivity RPC.
+	PlayServiceListTrapActivityProcedure = "/meurpg.play.v1.PlayService/ListTrapActivity"
+	// PlayServiceListTrapDamagesProcedure is the fully-qualified name of the PlayService's
+	// ListTrapDamages RPC.
+	PlayServiceListTrapDamagesProcedure = "/meurpg.play.v1.PlayService/ListTrapDamages"
+	// PlayServiceApplyTrapDamageProcedure is the fully-qualified name of the PlayService's
+	// ApplyTrapDamage RPC.
+	PlayServiceApplyTrapDamageProcedure = "/meurpg.play.v1.PlayService/ApplyTrapDamage"
+	// PlayServiceDiscardTrapDamageProcedure is the fully-qualified name of the PlayService's
+	// DiscardTrapDamage RPC.
+	PlayServiceDiscardTrapDamageProcedure = "/meurpg.play.v1.PlayService/DiscardTrapDamage"
 	// PlayServiceGrantSceneAttemptProcedure is the fully-qualified name of the PlayService's
 	// GrantSceneAttempt RPC.
 	PlayServiceGrantSceneAttemptProcedure = "/meurpg.play.v1.PlayService/GrantSceneAttempt"
@@ -101,6 +118,18 @@ const (
 	PlayServiceSetSpeakerProcedure = "/meurpg.play.v1.PlayService/SetSpeaker"
 	// PlayServiceCastSummonProcedure is the fully-qualified name of the PlayService's CastSummon RPC.
 	PlayServiceCastSummonProcedure = "/meurpg.play.v1.PlayService/CastSummon"
+	// PlayServiceAssumeWildShapeProcedure is the fully-qualified name of the PlayService's
+	// AssumeWildShape RPC.
+	PlayServiceAssumeWildShapeProcedure = "/meurpg.play.v1.PlayService/AssumeWildShape"
+	// PlayServiceLeaveWildShapeProcedure is the fully-qualified name of the PlayService's
+	// LeaveWildShape RPC.
+	PlayServiceLeaveWildShapeProcedure = "/meurpg.play.v1.PlayService/LeaveWildShape"
+	// PlayServiceStartFamiliarSightProcedure is the fully-qualified name of the PlayService's
+	// StartFamiliarSight RPC.
+	PlayServiceStartFamiliarSightProcedure = "/meurpg.play.v1.PlayService/StartFamiliarSight"
+	// PlayServiceStopFamiliarSightProcedure is the fully-qualified name of the PlayService's
+	// StopFamiliarSight RPC.
+	PlayServiceStopFamiliarSightProcedure = "/meurpg.play.v1.PlayService/StopFamiliarSight"
 )
 
 // PlayServiceClient is a client for the meurpg.play.v1.PlayService service.
@@ -459,6 +488,88 @@ type PlayServiceClient interface {
 	//     NO_OPEN_SESSION); or SceneBlocked: NO_OPEN_SCENE, ALREADY_ROLLED (no
 	//     attempt left), WRONG_DICE_MODE, NO_CHARACTER.
 	RollSceneCheck(context.Context, *connect.Request[v1.RollSceneCheckRequest]) (*connect.Response[v1.RollSceneCheckResponse], error)
+	// SearchForTraps is the player's "Procurar armadilhas" (MR-035, D5, question
+	// 71): the caller's living character rolls Wisdom (Perception) against each trap's
+	// DC to notice it, or Intelligence (Investigation) against its DC to find it
+	// (RN-18: the app rolls the d20, or the player types a real die, as the
+	// campaign's dice setting allows). The server rolls against every armed trap
+	// within 3 m of the character's square whose square the character sees (with the
+	// fog, what it sees; without it, every square), that the character does not
+	// know yet. A pass reveals the trap to that character alone (the master's log
+	// gets `trap_searched`, with the roll and what it found, never the DC to a
+	// player). The answer reads the same when no trap is there and when the roll
+	// fell short.
+	//
+	// Outside a combat it costs nothing. While a combat runs on the map it is the
+	// SRD's Search action: only on the character's own turn, and it spends the
+	// action (ACTION_USED when it is spent already, NOT_YOUR_TURN, TRAP_SEARCH_NOT_NOW
+	// before the combat starts). Outside a combat a player may search again whenever
+	// they like.
+	//
+	// Errors:
+	//   - `invalid_argument`: skill unspecified; neither roll_in_app nor d20_face is
+	//     set; roll_in_app is false; d20_face is not 1 to 20; the key is not a UUID.
+	//   - `not_found`: the campaign does not exist, or the caller is not a member.
+	//   - `permission_denied`: the caller is the master.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION); SceneBlocked NO_CHARACTER (the caller has no living
+	//     character) or WRONG_DICE_MODE; EncounterBlocked TRAP_NOT_ON_MAP,
+	//     TRAP_SEARCH_NOT_NOW, NOT_YOUR_TURN, ACTION_USED.
+	SearchForTraps(context.Context, *connect.Request[v1.SearchForTrapsRequest]) (*connect.Response[v1.SearchForTrapsResponse], error)
+	// FireTrap is the master firing a trap by hand (MR-035, D5): the trap's
+	// "Manual" trigger, or any trap whenever he decides. Only during a session. The
+	// server rolls the trap's attack and damage and each caught creature's saving
+	// throw with its bonus, as it does for spell saves (see TrapFiring). The trap
+	// becomes "Disparada" and visible to everyone who sees the map; a `trap_triggered`
+	// event goes into the history. In a combat that runs on the map the damage on a
+	// combatant that is an NPC or a creature lands at once and the conditions go on
+	// the combatants; the damage on a player's character is a PendingDamage that waits
+	// for the master (RN-02), and CombatService.UndoLastAction takes the whole firing
+	// back. Outside a combat the damage on a player's character waits as a
+	// TrapDamage, an NPC's has only a log line and the conditions are a reminder.
+	// Only the campaign's master may call it.
+	//
+	// Errors:
+	//   - `invalid_argument`: a target is not valid for the map; the key is not a UUID.
+	//   - `not_found`: the point is not a trap of this map, the campaign does not
+	//     exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: no open session; EncounterBlocked TRAP_NOT_ARMED.
+	FireTrap(context.Context, *connect.Request[v1.FireTrapRequest]) (*connect.Response[v1.FireTrapResponse], error)
+	// ListTrapActivity reads what traps did in the open session outside a combat (MR-035,
+	// RN-10): the firings, with each creature's attack, saving throw and damage (the
+	// conditions are a reminder), and the searches. The master gets all of it; a player
+	// only the lines of their own characters, with their own d20 and "passou" or
+	// "falhou", never a DC and never a trap their characters do not know. In a combat the
+	// same is in the combat log. Any member may call it. A player's search, and a firing
+	// outside a combat, send the master a `map_changed` hint with no content.
+	//
+	// Errors: `not_found` (the campaign does not exist, or the caller is not a member),
+	// `failed_precondition` (no open session).
+	ListTrapActivity(context.Context, *connect.Request[v1.ListTrapActivityRequest]) (*connect.Response[v1.ListTrapActivityResponse], error)
+	// ListTrapDamages lists the trap damages that wait for the master (MR-035, RN-02):
+	// the open combat's, and every one outside a combat, from any session of the
+	// campaign, until the master applies or discards it (a combat that ends turns its
+	// waiting damage into one of these). Only the campaign's master may call it, with or
+	// without an open session.
+	//
+	// Errors: `not_found` (the campaign does not exist, or the caller is not a
+	// member), `permission_denied` (a player).
+	ListTrapDamages(context.Context, *connect.Request[v1.ListTrapDamagesRequest]) (*connect.Response[v1.ListTrapDamagesResponse], error)
+	// ApplyTrapDamage applies a trap damage that is not in a combat to the
+	// character's vitals: temporary hit points first, never below 0, as in a combat
+	// (RN-02). The master may change the amount first. A damage in a combat is
+	// applied with CombatService.ApplyPendingDamage. Only the master may call it.
+	//
+	// Errors: `invalid_argument` (amount outside 0 to 1000, key), `not_found` (the
+	// damage is not the session's, or the campaign), `permission_denied`,
+	// `failed_precondition` (EncounterBlocked DAMAGE_RESOLVED when it was applied or
+	// discarded already). It works with no session open (the damage outlives its session);
+	// a key reused for another damage is `invalid_argument`.
+	ApplyTrapDamage(context.Context, *connect.Request[v1.ApplyTrapDamageRequest]) (*connect.Response[v1.ApplyTrapDamageResponse], error)
+	// DiscardTrapDamage drops a trap damage that is not in a combat, applying
+	// nothing. Same errors as ApplyTrapDamage.
+	DiscardTrapDamage(context.Context, *connect.Request[v1.DiscardTrapDamageRequest]) (*connect.Response[v1.DiscardTrapDamageResponse], error)
 	// GrantSceneAttempt gives one character one more attempt at one action of
 	// the open scene: "Dar mais uma tentativa" (MR-015, question 55). Only the
 	// campaign's master may call it, and only while a scene is open. The
@@ -558,6 +669,73 @@ type PlayServiceClient interface {
 	//     NO_OPEN_SESSION); EncounterBlocked: SUMMON_CHOICE_INVALID,
 	//     NO_SLOT, SUMMON_IN_COMBAT.
 	CastSummon(context.Context, *connect.Request[v1.CastSummonRequest]) (*connect.Response[v1.CastSummonResponse], error)
+	// AssumeWildShape turns a druid into a beast (MR-037, Etapa 9, D7): during an
+	// open session, in a combat or out of it. It spends one use of the Forma
+	// Selvagem resource (2 per short rest) and, in a combat, the character's
+	// action, on its turn (the master may act again with the action used, as in
+	// TakeAction). The beast must be one ListWildShapeForms
+	// (meurpg.characters.v1.CharacterService) lists. The character takes the
+	// beast's armor class, hit points (a pool of its own: CharacterVitals.wild_shape),
+	// speeds, size, Strength, Dexterity and Constitution, attacks and senses, and
+	// keeps Intelligence, Wisdom, Charisma and its proficiencies; it cannot cast
+	// spells (CastSpell and CastSummon are refused with WILD_SHAPE_NO_SPELLS). The
+	// form lasts until the beast falls to 0 (the damage left over goes to the
+	// character), until LeaveWildShape, or until the master ends it; the app does not
+	// count its hours.
+	//
+	// The character's player may call it for their own character, and the master for
+	// any player's character. A `wild_shape_started` event (the beast's key, ids and
+	// numbers only) goes to the history. The master's undo of the action in a combat
+	// ends the form and gives the use and the action back. `vitals_changed` goes to
+	// the master and the player; in a combat `encounter_changed` goes to everyone.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist or the caller is not a member
+	//     of it, or the character is not a living player's character of the
+	//     campaign that the caller may see.
+	//   - `permission_denied`: the caller is a player and the character is not
+	//     theirs.
+	//   - `invalid_argument`: beast_key is not an SRD beast, or idempotency_key is
+	//     not a UUID.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION); EncounterBlocked: WILD_SHAPE_BEAST_NOT_ALLOWED (not one
+	//     of the beasts the level allows, or no Wild Shape), ALREADY_IN_WILD_SHAPE,
+	//     NO_USES, and in a combat the turn gates (NOT_ACTIVE, the turn is not
+	//     the character's, the action is used).
+	AssumeWildShape(context.Context, *connect.Request[v1.AssumeWildShapeRequest]) (*connect.Response[v1.AssumeWildShapeResponse], error)
+	// LeaveWildShape takes the druid back to its own shape ("Voltar à forma
+	// normal"): a bonus action in a combat, on its turn (the master's costs
+	// nothing). The beast's hit points are lost; the character keeps its own as they
+	// were. A `wild_shape_ended` event (reason "left") goes to the history; the
+	// master's undo of the action in a combat puts the form back. Same callers,
+	// streams and errors as AssumeWildShape, with NOT_IN_WILD_SHAPE for a character
+	// that is in its own shape.
+	LeaveWildShape(context.Context, *connect.Request[v1.LeaveWildShapeRequest]) (*connect.Response[v1.LeaveWildShapeResponse], error)
+	// StartFamiliarSight starts "Ver pelos olhos do familiar" (MR-036, Etapa 9, D6):
+	// the character's player sees what the character's familiar sees, with the
+	// familiar's senses (an owl's darkvision, a bat's blindsight), on a map with the
+	// fog of war on, and the character counts as blind and deaf until it stops
+	// (a reminder: in a combat the app gives the combatant the blinded and
+	// deafened conditions, and takes them away at the end). The familiar (a
+	// creature with source familiar) must be on the same map as the character and
+	// within 30 m (20 squares) when it starts, and the vision keeps only while it
+	// stays within 30 m. Out of a combat it lasts until StopFamiliarSight. In a
+	// combat it costs the character's action, on its turn, and ends at the start of
+	// the character's next turn, or earlier if the player stops it (the action is
+	// not given back); the master's undo of the start takes it back and returns the
+	// action. A `familiar_sight` event (ids only) goes to the history, and
+	// `vision_changed` to the players the map's view changed for.
+	//
+	// The player may call it for their own character, and the master for any
+	// player's character. Errors: as AssumeWildShape, with EncounterBlocked
+	// FAMILIAR_SIGHT_BLOCKED and the cause in `familiar_sight_reason`.
+	StartFamiliarSight(context.Context, *connect.Request[v1.StartFamiliarSightRequest]) (*connect.Response[v1.StartFamiliarSightResponse], error)
+	// StopFamiliarSight ends "Ver pelos olhos do familiar" before its time: the
+	// player looks through their own character's eyes again and the conditions go
+	// away. It costs nothing and refunds nothing. Same callers, streams and errors
+	// as StartFamiliarSight, with FAMILIAR_SIGHT_BLOCKED / NOT_SEEING when the
+	// character is not looking through its familiar.
+	StopFamiliarSight(context.Context, *connect.Request[v1.StopFamiliarSightRequest]) (*connect.Response[v1.StopFamiliarSightResponse], error)
 }
 
 // NewPlayServiceClient constructs a client for the meurpg.play.v1.PlayService service. By default,
@@ -673,6 +851,44 @@ func NewPlayServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(playServiceMethods.ByName("RollSceneCheck")),
 			connect.WithClientOptions(opts...),
 		),
+		searchForTraps: connect.NewClient[v1.SearchForTrapsRequest, v1.SearchForTrapsResponse](
+			httpClient,
+			baseURL+PlayServiceSearchForTrapsProcedure,
+			connect.WithSchema(playServiceMethods.ByName("SearchForTraps")),
+			connect.WithClientOptions(opts...),
+		),
+		fireTrap: connect.NewClient[v1.FireTrapRequest, v1.FireTrapResponse](
+			httpClient,
+			baseURL+PlayServiceFireTrapProcedure,
+			connect.WithSchema(playServiceMethods.ByName("FireTrap")),
+			connect.WithClientOptions(opts...),
+		),
+		listTrapActivity: connect.NewClient[v1.ListTrapActivityRequest, v1.ListTrapActivityResponse](
+			httpClient,
+			baseURL+PlayServiceListTrapActivityProcedure,
+			connect.WithSchema(playServiceMethods.ByName("ListTrapActivity")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
+		listTrapDamages: connect.NewClient[v1.ListTrapDamagesRequest, v1.ListTrapDamagesResponse](
+			httpClient,
+			baseURL+PlayServiceListTrapDamagesProcedure,
+			connect.WithSchema(playServiceMethods.ByName("ListTrapDamages")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
+		applyTrapDamage: connect.NewClient[v1.ApplyTrapDamageRequest, v1.ApplyTrapDamageResponse](
+			httpClient,
+			baseURL+PlayServiceApplyTrapDamageProcedure,
+			connect.WithSchema(playServiceMethods.ByName("ApplyTrapDamage")),
+			connect.WithClientOptions(opts...),
+		),
+		discardTrapDamage: connect.NewClient[v1.DiscardTrapDamageRequest, v1.DiscardTrapDamageResponse](
+			httpClient,
+			baseURL+PlayServiceDiscardTrapDamageProcedure,
+			connect.WithSchema(playServiceMethods.ByName("DiscardTrapDamage")),
+			connect.WithClientOptions(opts...),
+		),
 		grantSceneAttempt: connect.NewClient[v1.GrantSceneAttemptRequest, v1.GrantSceneAttemptResponse](
 			httpClient,
 			baseURL+PlayServiceGrantSceneAttemptProcedure,
@@ -703,6 +919,30 @@ func NewPlayServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(playServiceMethods.ByName("CastSummon")),
 			connect.WithClientOptions(opts...),
 		),
+		assumeWildShape: connect.NewClient[v1.AssumeWildShapeRequest, v1.AssumeWildShapeResponse](
+			httpClient,
+			baseURL+PlayServiceAssumeWildShapeProcedure,
+			connect.WithSchema(playServiceMethods.ByName("AssumeWildShape")),
+			connect.WithClientOptions(opts...),
+		),
+		leaveWildShape: connect.NewClient[v1.LeaveWildShapeRequest, v1.LeaveWildShapeResponse](
+			httpClient,
+			baseURL+PlayServiceLeaveWildShapeProcedure,
+			connect.WithSchema(playServiceMethods.ByName("LeaveWildShape")),
+			connect.WithClientOptions(opts...),
+		),
+		startFamiliarSight: connect.NewClient[v1.StartFamiliarSightRequest, v1.StartFamiliarSightResponse](
+			httpClient,
+			baseURL+PlayServiceStartFamiliarSightProcedure,
+			connect.WithSchema(playServiceMethods.ByName("StartFamiliarSight")),
+			connect.WithClientOptions(opts...),
+		),
+		stopFamiliarSight: connect.NewClient[v1.StopFamiliarSightRequest, v1.StopFamiliarSightResponse](
+			httpClient,
+			baseURL+PlayServiceStopFamiliarSightProcedure,
+			connect.WithSchema(playServiceMethods.ByName("StopFamiliarSight")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -724,11 +964,21 @@ type playServiceClient struct {
 	closeScene            *connect.Client[v1.CloseSceneRequest, v1.CloseSceneResponse]
 	getOpenScene          *connect.Client[v1.GetOpenSceneRequest, v1.GetOpenSceneResponse]
 	rollSceneCheck        *connect.Client[v1.RollSceneCheckRequest, v1.RollSceneCheckResponse]
+	searchForTraps        *connect.Client[v1.SearchForTrapsRequest, v1.SearchForTrapsResponse]
+	fireTrap              *connect.Client[v1.FireTrapRequest, v1.FireTrapResponse]
+	listTrapActivity      *connect.Client[v1.ListTrapActivityRequest, v1.ListTrapActivityResponse]
+	listTrapDamages       *connect.Client[v1.ListTrapDamagesRequest, v1.ListTrapDamagesResponse]
+	applyTrapDamage       *connect.Client[v1.ApplyTrapDamageRequest, v1.ApplyTrapDamageResponse]
+	discardTrapDamage     *connect.Client[v1.DiscardTrapDamageRequest, v1.DiscardTrapDamageResponse]
 	grantSceneAttempt     *connect.Client[v1.GrantSceneAttemptRequest, v1.GrantSceneAttemptResponse]
 	putOnStage            *connect.Client[v1.PutOnStageRequest, v1.PutOnStageResponse]
 	takeOffStage          *connect.Client[v1.TakeOffStageRequest, v1.TakeOffStageResponse]
 	setSpeaker            *connect.Client[v1.SetSpeakerRequest, v1.SetSpeakerResponse]
 	castSummon            *connect.Client[v1.CastSummonRequest, v1.CastSummonResponse]
+	assumeWildShape       *connect.Client[v1.AssumeWildShapeRequest, v1.AssumeWildShapeResponse]
+	leaveWildShape        *connect.Client[v1.LeaveWildShapeRequest, v1.LeaveWildShapeResponse]
+	startFamiliarSight    *connect.Client[v1.StartFamiliarSightRequest, v1.StartFamiliarSightResponse]
+	stopFamiliarSight     *connect.Client[v1.StopFamiliarSightRequest, v1.StopFamiliarSightResponse]
 }
 
 // StartGameSession calls meurpg.play.v1.PlayService.StartGameSession.
@@ -811,6 +1061,36 @@ func (c *playServiceClient) RollSceneCheck(ctx context.Context, req *connect.Req
 	return c.rollSceneCheck.CallUnary(ctx, req)
 }
 
+// SearchForTraps calls meurpg.play.v1.PlayService.SearchForTraps.
+func (c *playServiceClient) SearchForTraps(ctx context.Context, req *connect.Request[v1.SearchForTrapsRequest]) (*connect.Response[v1.SearchForTrapsResponse], error) {
+	return c.searchForTraps.CallUnary(ctx, req)
+}
+
+// FireTrap calls meurpg.play.v1.PlayService.FireTrap.
+func (c *playServiceClient) FireTrap(ctx context.Context, req *connect.Request[v1.FireTrapRequest]) (*connect.Response[v1.FireTrapResponse], error) {
+	return c.fireTrap.CallUnary(ctx, req)
+}
+
+// ListTrapActivity calls meurpg.play.v1.PlayService.ListTrapActivity.
+func (c *playServiceClient) ListTrapActivity(ctx context.Context, req *connect.Request[v1.ListTrapActivityRequest]) (*connect.Response[v1.ListTrapActivityResponse], error) {
+	return c.listTrapActivity.CallUnary(ctx, req)
+}
+
+// ListTrapDamages calls meurpg.play.v1.PlayService.ListTrapDamages.
+func (c *playServiceClient) ListTrapDamages(ctx context.Context, req *connect.Request[v1.ListTrapDamagesRequest]) (*connect.Response[v1.ListTrapDamagesResponse], error) {
+	return c.listTrapDamages.CallUnary(ctx, req)
+}
+
+// ApplyTrapDamage calls meurpg.play.v1.PlayService.ApplyTrapDamage.
+func (c *playServiceClient) ApplyTrapDamage(ctx context.Context, req *connect.Request[v1.ApplyTrapDamageRequest]) (*connect.Response[v1.ApplyTrapDamageResponse], error) {
+	return c.applyTrapDamage.CallUnary(ctx, req)
+}
+
+// DiscardTrapDamage calls meurpg.play.v1.PlayService.DiscardTrapDamage.
+func (c *playServiceClient) DiscardTrapDamage(ctx context.Context, req *connect.Request[v1.DiscardTrapDamageRequest]) (*connect.Response[v1.DiscardTrapDamageResponse], error) {
+	return c.discardTrapDamage.CallUnary(ctx, req)
+}
+
 // GrantSceneAttempt calls meurpg.play.v1.PlayService.GrantSceneAttempt.
 func (c *playServiceClient) GrantSceneAttempt(ctx context.Context, req *connect.Request[v1.GrantSceneAttemptRequest]) (*connect.Response[v1.GrantSceneAttemptResponse], error) {
 	return c.grantSceneAttempt.CallUnary(ctx, req)
@@ -834,6 +1114,26 @@ func (c *playServiceClient) SetSpeaker(ctx context.Context, req *connect.Request
 // CastSummon calls meurpg.play.v1.PlayService.CastSummon.
 func (c *playServiceClient) CastSummon(ctx context.Context, req *connect.Request[v1.CastSummonRequest]) (*connect.Response[v1.CastSummonResponse], error) {
 	return c.castSummon.CallUnary(ctx, req)
+}
+
+// AssumeWildShape calls meurpg.play.v1.PlayService.AssumeWildShape.
+func (c *playServiceClient) AssumeWildShape(ctx context.Context, req *connect.Request[v1.AssumeWildShapeRequest]) (*connect.Response[v1.AssumeWildShapeResponse], error) {
+	return c.assumeWildShape.CallUnary(ctx, req)
+}
+
+// LeaveWildShape calls meurpg.play.v1.PlayService.LeaveWildShape.
+func (c *playServiceClient) LeaveWildShape(ctx context.Context, req *connect.Request[v1.LeaveWildShapeRequest]) (*connect.Response[v1.LeaveWildShapeResponse], error) {
+	return c.leaveWildShape.CallUnary(ctx, req)
+}
+
+// StartFamiliarSight calls meurpg.play.v1.PlayService.StartFamiliarSight.
+func (c *playServiceClient) StartFamiliarSight(ctx context.Context, req *connect.Request[v1.StartFamiliarSightRequest]) (*connect.Response[v1.StartFamiliarSightResponse], error) {
+	return c.startFamiliarSight.CallUnary(ctx, req)
+}
+
+// StopFamiliarSight calls meurpg.play.v1.PlayService.StopFamiliarSight.
+func (c *playServiceClient) StopFamiliarSight(ctx context.Context, req *connect.Request[v1.StopFamiliarSightRequest]) (*connect.Response[v1.StopFamiliarSightResponse], error) {
+	return c.stopFamiliarSight.CallUnary(ctx, req)
 }
 
 // PlayServiceHandler is an implementation of the meurpg.play.v1.PlayService service.
@@ -1192,6 +1492,88 @@ type PlayServiceHandler interface {
 	//     NO_OPEN_SESSION); or SceneBlocked: NO_OPEN_SCENE, ALREADY_ROLLED (no
 	//     attempt left), WRONG_DICE_MODE, NO_CHARACTER.
 	RollSceneCheck(context.Context, *connect.Request[v1.RollSceneCheckRequest]) (*connect.Response[v1.RollSceneCheckResponse], error)
+	// SearchForTraps is the player's "Procurar armadilhas" (MR-035, D5, question
+	// 71): the caller's living character rolls Wisdom (Perception) against each trap's
+	// DC to notice it, or Intelligence (Investigation) against its DC to find it
+	// (RN-18: the app rolls the d20, or the player types a real die, as the
+	// campaign's dice setting allows). The server rolls against every armed trap
+	// within 3 m of the character's square whose square the character sees (with the
+	// fog, what it sees; without it, every square), that the character does not
+	// know yet. A pass reveals the trap to that character alone (the master's log
+	// gets `trap_searched`, with the roll and what it found, never the DC to a
+	// player). The answer reads the same when no trap is there and when the roll
+	// fell short.
+	//
+	// Outside a combat it costs nothing. While a combat runs on the map it is the
+	// SRD's Search action: only on the character's own turn, and it spends the
+	// action (ACTION_USED when it is spent already, NOT_YOUR_TURN, TRAP_SEARCH_NOT_NOW
+	// before the combat starts). Outside a combat a player may search again whenever
+	// they like.
+	//
+	// Errors:
+	//   - `invalid_argument`: skill unspecified; neither roll_in_app nor d20_face is
+	//     set; roll_in_app is false; d20_face is not 1 to 20; the key is not a UUID.
+	//   - `not_found`: the campaign does not exist, or the caller is not a member.
+	//   - `permission_denied`: the caller is the master.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION); SceneBlocked NO_CHARACTER (the caller has no living
+	//     character) or WRONG_DICE_MODE; EncounterBlocked TRAP_NOT_ON_MAP,
+	//     TRAP_SEARCH_NOT_NOW, NOT_YOUR_TURN, ACTION_USED.
+	SearchForTraps(context.Context, *connect.Request[v1.SearchForTrapsRequest]) (*connect.Response[v1.SearchForTrapsResponse], error)
+	// FireTrap is the master firing a trap by hand (MR-035, D5): the trap's
+	// "Manual" trigger, or any trap whenever he decides. Only during a session. The
+	// server rolls the trap's attack and damage and each caught creature's saving
+	// throw with its bonus, as it does for spell saves (see TrapFiring). The trap
+	// becomes "Disparada" and visible to everyone who sees the map; a `trap_triggered`
+	// event goes into the history. In a combat that runs on the map the damage on a
+	// combatant that is an NPC or a creature lands at once and the conditions go on
+	// the combatants; the damage on a player's character is a PendingDamage that waits
+	// for the master (RN-02), and CombatService.UndoLastAction takes the whole firing
+	// back. Outside a combat the damage on a player's character waits as a
+	// TrapDamage, an NPC's has only a log line and the conditions are a reminder.
+	// Only the campaign's master may call it.
+	//
+	// Errors:
+	//   - `invalid_argument`: a target is not valid for the map; the key is not a UUID.
+	//   - `not_found`: the point is not a trap of this map, the campaign does not
+	//     exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: no open session; EncounterBlocked TRAP_NOT_ARMED.
+	FireTrap(context.Context, *connect.Request[v1.FireTrapRequest]) (*connect.Response[v1.FireTrapResponse], error)
+	// ListTrapActivity reads what traps did in the open session outside a combat (MR-035,
+	// RN-10): the firings, with each creature's attack, saving throw and damage (the
+	// conditions are a reminder), and the searches. The master gets all of it; a player
+	// only the lines of their own characters, with their own d20 and "passou" or
+	// "falhou", never a DC and never a trap their characters do not know. In a combat the
+	// same is in the combat log. Any member may call it. A player's search, and a firing
+	// outside a combat, send the master a `map_changed` hint with no content.
+	//
+	// Errors: `not_found` (the campaign does not exist, or the caller is not a member),
+	// `failed_precondition` (no open session).
+	ListTrapActivity(context.Context, *connect.Request[v1.ListTrapActivityRequest]) (*connect.Response[v1.ListTrapActivityResponse], error)
+	// ListTrapDamages lists the trap damages that wait for the master (MR-035, RN-02):
+	// the open combat's, and every one outside a combat, from any session of the
+	// campaign, until the master applies or discards it (a combat that ends turns its
+	// waiting damage into one of these). Only the campaign's master may call it, with or
+	// without an open session.
+	//
+	// Errors: `not_found` (the campaign does not exist, or the caller is not a
+	// member), `permission_denied` (a player).
+	ListTrapDamages(context.Context, *connect.Request[v1.ListTrapDamagesRequest]) (*connect.Response[v1.ListTrapDamagesResponse], error)
+	// ApplyTrapDamage applies a trap damage that is not in a combat to the
+	// character's vitals: temporary hit points first, never below 0, as in a combat
+	// (RN-02). The master may change the amount first. A damage in a combat is
+	// applied with CombatService.ApplyPendingDamage. Only the master may call it.
+	//
+	// Errors: `invalid_argument` (amount outside 0 to 1000, key), `not_found` (the
+	// damage is not the session's, or the campaign), `permission_denied`,
+	// `failed_precondition` (EncounterBlocked DAMAGE_RESOLVED when it was applied or
+	// discarded already). It works with no session open (the damage outlives its session);
+	// a key reused for another damage is `invalid_argument`.
+	ApplyTrapDamage(context.Context, *connect.Request[v1.ApplyTrapDamageRequest]) (*connect.Response[v1.ApplyTrapDamageResponse], error)
+	// DiscardTrapDamage drops a trap damage that is not in a combat, applying
+	// nothing. Same errors as ApplyTrapDamage.
+	DiscardTrapDamage(context.Context, *connect.Request[v1.DiscardTrapDamageRequest]) (*connect.Response[v1.DiscardTrapDamageResponse], error)
 	// GrantSceneAttempt gives one character one more attempt at one action of
 	// the open scene: "Dar mais uma tentativa" (MR-015, question 55). Only the
 	// campaign's master may call it, and only while a scene is open. The
@@ -1291,6 +1673,73 @@ type PlayServiceHandler interface {
 	//     NO_OPEN_SESSION); EncounterBlocked: SUMMON_CHOICE_INVALID,
 	//     NO_SLOT, SUMMON_IN_COMBAT.
 	CastSummon(context.Context, *connect.Request[v1.CastSummonRequest]) (*connect.Response[v1.CastSummonResponse], error)
+	// AssumeWildShape turns a druid into a beast (MR-037, Etapa 9, D7): during an
+	// open session, in a combat or out of it. It spends one use of the Forma
+	// Selvagem resource (2 per short rest) and, in a combat, the character's
+	// action, on its turn (the master may act again with the action used, as in
+	// TakeAction). The beast must be one ListWildShapeForms
+	// (meurpg.characters.v1.CharacterService) lists. The character takes the
+	// beast's armor class, hit points (a pool of its own: CharacterVitals.wild_shape),
+	// speeds, size, Strength, Dexterity and Constitution, attacks and senses, and
+	// keeps Intelligence, Wisdom, Charisma and its proficiencies; it cannot cast
+	// spells (CastSpell and CastSummon are refused with WILD_SHAPE_NO_SPELLS). The
+	// form lasts until the beast falls to 0 (the damage left over goes to the
+	// character), until LeaveWildShape, or until the master ends it; the app does not
+	// count its hours.
+	//
+	// The character's player may call it for their own character, and the master for
+	// any player's character. A `wild_shape_started` event (the beast's key, ids and
+	// numbers only) goes to the history. The master's undo of the action in a combat
+	// ends the form and gives the use and the action back. `vitals_changed` goes to
+	// the master and the player; in a combat `encounter_changed` goes to everyone.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist or the caller is not a member
+	//     of it, or the character is not a living player's character of the
+	//     campaign that the caller may see.
+	//   - `permission_denied`: the caller is a player and the character is not
+	//     theirs.
+	//   - `invalid_argument`: beast_key is not an SRD beast, or idempotency_key is
+	//     not a UUID.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION); EncounterBlocked: WILD_SHAPE_BEAST_NOT_ALLOWED (not one
+	//     of the beasts the level allows, or no Wild Shape), ALREADY_IN_WILD_SHAPE,
+	//     NO_USES, and in a combat the turn gates (NOT_ACTIVE, the turn is not
+	//     the character's, the action is used).
+	AssumeWildShape(context.Context, *connect.Request[v1.AssumeWildShapeRequest]) (*connect.Response[v1.AssumeWildShapeResponse], error)
+	// LeaveWildShape takes the druid back to its own shape ("Voltar à forma
+	// normal"): a bonus action in a combat, on its turn (the master's costs
+	// nothing). The beast's hit points are lost; the character keeps its own as they
+	// were. A `wild_shape_ended` event (reason "left") goes to the history; the
+	// master's undo of the action in a combat puts the form back. Same callers,
+	// streams and errors as AssumeWildShape, with NOT_IN_WILD_SHAPE for a character
+	// that is in its own shape.
+	LeaveWildShape(context.Context, *connect.Request[v1.LeaveWildShapeRequest]) (*connect.Response[v1.LeaveWildShapeResponse], error)
+	// StartFamiliarSight starts "Ver pelos olhos do familiar" (MR-036, Etapa 9, D6):
+	// the character's player sees what the character's familiar sees, with the
+	// familiar's senses (an owl's darkvision, a bat's blindsight), on a map with the
+	// fog of war on, and the character counts as blind and deaf until it stops
+	// (a reminder: in a combat the app gives the combatant the blinded and
+	// deafened conditions, and takes them away at the end). The familiar (a
+	// creature with source familiar) must be on the same map as the character and
+	// within 30 m (20 squares) when it starts, and the vision keeps only while it
+	// stays within 30 m. Out of a combat it lasts until StopFamiliarSight. In a
+	// combat it costs the character's action, on its turn, and ends at the start of
+	// the character's next turn, or earlier if the player stops it (the action is
+	// not given back); the master's undo of the start takes it back and returns the
+	// action. A `familiar_sight` event (ids only) goes to the history, and
+	// `vision_changed` to the players the map's view changed for.
+	//
+	// The player may call it for their own character, and the master for any
+	// player's character. Errors: as AssumeWildShape, with EncounterBlocked
+	// FAMILIAR_SIGHT_BLOCKED and the cause in `familiar_sight_reason`.
+	StartFamiliarSight(context.Context, *connect.Request[v1.StartFamiliarSightRequest]) (*connect.Response[v1.StartFamiliarSightResponse], error)
+	// StopFamiliarSight ends "Ver pelos olhos do familiar" before its time: the
+	// player looks through their own character's eyes again and the conditions go
+	// away. It costs nothing and refunds nothing. Same callers, streams and errors
+	// as StartFamiliarSight, with FAMILIAR_SIGHT_BLOCKED / NOT_SEEING when the
+	// character is not looking through its familiar.
+	StopFamiliarSight(context.Context, *connect.Request[v1.StopFamiliarSightRequest]) (*connect.Response[v1.StopFamiliarSightResponse], error)
 }
 
 // NewPlayServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -1402,6 +1851,44 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(playServiceMethods.ByName("RollSceneCheck")),
 		connect.WithHandlerOptions(opts...),
 	)
+	playServiceSearchForTrapsHandler := connect.NewUnaryHandler(
+		PlayServiceSearchForTrapsProcedure,
+		svc.SearchForTraps,
+		connect.WithSchema(playServiceMethods.ByName("SearchForTraps")),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceFireTrapHandler := connect.NewUnaryHandler(
+		PlayServiceFireTrapProcedure,
+		svc.FireTrap,
+		connect.WithSchema(playServiceMethods.ByName("FireTrap")),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceListTrapActivityHandler := connect.NewUnaryHandler(
+		PlayServiceListTrapActivityProcedure,
+		svc.ListTrapActivity,
+		connect.WithSchema(playServiceMethods.ByName("ListTrapActivity")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceListTrapDamagesHandler := connect.NewUnaryHandler(
+		PlayServiceListTrapDamagesProcedure,
+		svc.ListTrapDamages,
+		connect.WithSchema(playServiceMethods.ByName("ListTrapDamages")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceApplyTrapDamageHandler := connect.NewUnaryHandler(
+		PlayServiceApplyTrapDamageProcedure,
+		svc.ApplyTrapDamage,
+		connect.WithSchema(playServiceMethods.ByName("ApplyTrapDamage")),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceDiscardTrapDamageHandler := connect.NewUnaryHandler(
+		PlayServiceDiscardTrapDamageProcedure,
+		svc.DiscardTrapDamage,
+		connect.WithSchema(playServiceMethods.ByName("DiscardTrapDamage")),
+		connect.WithHandlerOptions(opts...),
+	)
 	playServiceGrantSceneAttemptHandler := connect.NewUnaryHandler(
 		PlayServiceGrantSceneAttemptProcedure,
 		svc.GrantSceneAttempt,
@@ -1430,6 +1917,30 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 		PlayServiceCastSummonProcedure,
 		svc.CastSummon,
 		connect.WithSchema(playServiceMethods.ByName("CastSummon")),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceAssumeWildShapeHandler := connect.NewUnaryHandler(
+		PlayServiceAssumeWildShapeProcedure,
+		svc.AssumeWildShape,
+		connect.WithSchema(playServiceMethods.ByName("AssumeWildShape")),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceLeaveWildShapeHandler := connect.NewUnaryHandler(
+		PlayServiceLeaveWildShapeProcedure,
+		svc.LeaveWildShape,
+		connect.WithSchema(playServiceMethods.ByName("LeaveWildShape")),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceStartFamiliarSightHandler := connect.NewUnaryHandler(
+		PlayServiceStartFamiliarSightProcedure,
+		svc.StartFamiliarSight,
+		connect.WithSchema(playServiceMethods.ByName("StartFamiliarSight")),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceStopFamiliarSightHandler := connect.NewUnaryHandler(
+		PlayServiceStopFamiliarSightProcedure,
+		svc.StopFamiliarSight,
+		connect.WithSchema(playServiceMethods.ByName("StopFamiliarSight")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/meurpg.play.v1.PlayService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1466,6 +1977,18 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 			playServiceGetOpenSceneHandler.ServeHTTP(w, r)
 		case PlayServiceRollSceneCheckProcedure:
 			playServiceRollSceneCheckHandler.ServeHTTP(w, r)
+		case PlayServiceSearchForTrapsProcedure:
+			playServiceSearchForTrapsHandler.ServeHTTP(w, r)
+		case PlayServiceFireTrapProcedure:
+			playServiceFireTrapHandler.ServeHTTP(w, r)
+		case PlayServiceListTrapActivityProcedure:
+			playServiceListTrapActivityHandler.ServeHTTP(w, r)
+		case PlayServiceListTrapDamagesProcedure:
+			playServiceListTrapDamagesHandler.ServeHTTP(w, r)
+		case PlayServiceApplyTrapDamageProcedure:
+			playServiceApplyTrapDamageHandler.ServeHTTP(w, r)
+		case PlayServiceDiscardTrapDamageProcedure:
+			playServiceDiscardTrapDamageHandler.ServeHTTP(w, r)
 		case PlayServiceGrantSceneAttemptProcedure:
 			playServiceGrantSceneAttemptHandler.ServeHTTP(w, r)
 		case PlayServicePutOnStageProcedure:
@@ -1476,6 +1999,14 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 			playServiceSetSpeakerHandler.ServeHTTP(w, r)
 		case PlayServiceCastSummonProcedure:
 			playServiceCastSummonHandler.ServeHTTP(w, r)
+		case PlayServiceAssumeWildShapeProcedure:
+			playServiceAssumeWildShapeHandler.ServeHTTP(w, r)
+		case PlayServiceLeaveWildShapeProcedure:
+			playServiceLeaveWildShapeHandler.ServeHTTP(w, r)
+		case PlayServiceStartFamiliarSightProcedure:
+			playServiceStartFamiliarSightHandler.ServeHTTP(w, r)
+		case PlayServiceStopFamiliarSightProcedure:
+			playServiceStopFamiliarSightHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1549,6 +2080,30 @@ func (UnimplementedPlayServiceHandler) RollSceneCheck(context.Context, *connect.
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.RollSceneCheck is not implemented"))
 }
 
+func (UnimplementedPlayServiceHandler) SearchForTraps(context.Context, *connect.Request[v1.SearchForTrapsRequest]) (*connect.Response[v1.SearchForTrapsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.SearchForTraps is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) FireTrap(context.Context, *connect.Request[v1.FireTrapRequest]) (*connect.Response[v1.FireTrapResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.FireTrap is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) ListTrapActivity(context.Context, *connect.Request[v1.ListTrapActivityRequest]) (*connect.Response[v1.ListTrapActivityResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.ListTrapActivity is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) ListTrapDamages(context.Context, *connect.Request[v1.ListTrapDamagesRequest]) (*connect.Response[v1.ListTrapDamagesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.ListTrapDamages is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) ApplyTrapDamage(context.Context, *connect.Request[v1.ApplyTrapDamageRequest]) (*connect.Response[v1.ApplyTrapDamageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.ApplyTrapDamage is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) DiscardTrapDamage(context.Context, *connect.Request[v1.DiscardTrapDamageRequest]) (*connect.Response[v1.DiscardTrapDamageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.DiscardTrapDamage is not implemented"))
+}
+
 func (UnimplementedPlayServiceHandler) GrantSceneAttempt(context.Context, *connect.Request[v1.GrantSceneAttemptRequest]) (*connect.Response[v1.GrantSceneAttemptResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.GrantSceneAttempt is not implemented"))
 }
@@ -1567,4 +2122,20 @@ func (UnimplementedPlayServiceHandler) SetSpeaker(context.Context, *connect.Requ
 
 func (UnimplementedPlayServiceHandler) CastSummon(context.Context, *connect.Request[v1.CastSummonRequest]) (*connect.Response[v1.CastSummonResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.CastSummon is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) AssumeWildShape(context.Context, *connect.Request[v1.AssumeWildShapeRequest]) (*connect.Response[v1.AssumeWildShapeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.AssumeWildShape is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) LeaveWildShape(context.Context, *connect.Request[v1.LeaveWildShapeRequest]) (*connect.Response[v1.LeaveWildShapeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.LeaveWildShape is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) StartFamiliarSight(context.Context, *connect.Request[v1.StartFamiliarSightRequest]) (*connect.Response[v1.StartFamiliarSightResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.StartFamiliarSight is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) StopFamiliarSight(context.Context, *connect.Request[v1.StopFamiliarSightRequest]) (*connect.Response[v1.StopFamiliarSightResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.StopFamiliarSight is not implemented"))
 }

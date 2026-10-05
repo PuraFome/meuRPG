@@ -56,7 +56,7 @@ ORDER BY started_at DESC, id;
 
 -- name: GetSessionEventByIdempotencyKey :one
 -- The event a change with this key already wrote, if any.
-SELECT id, seq, kind, character_id, payload, created_at FROM session_events
+SELECT id, seq, kind, actor_user_id, character_id, payload, created_at FROM session_events
 WHERE game_session_id = $1 AND idempotency_key = $2;
 
 -- name: NextSessionEventSeq :one
@@ -247,6 +247,24 @@ WHERE id = $1;
 -- name: DeleteCombatant :exec
 DELETE FROM combatants
 WHERE id = $1;
+
+-- name: SetCombatantBody :exec
+-- A character's numbers as a combatant change with its Wild Shape form (MR-037):
+-- the beast's speed, fly speed, size and jumps while it lasts, the character's own
+-- again when it ends.
+UPDATE combatants
+SET speed_ft = $2, speed_fly_ft = $3, size = $4, jump_long_dft = $5, jump_high_dft = $6
+WHERE id = $1;
+
+-- name: SetCombatantBodyOfCharacter :exec
+-- SetCombatantBody for a player's character, found by the character, in the session's
+-- combat that is not ended: the form ended where only the vitals were at hand (the
+-- druid fell to 0 hit points).
+UPDATE combatants
+SET speed_ft = sqlc.arg(speed_ft), speed_fly_ft = sqlc.arg(speed_fly_ft), size = sqlc.arg(size),
+    jump_long_dft = sqlc.arg(jump_long_dft), jump_high_dft = sqlc.arg(jump_high_dft)
+WHERE character_id = sqlc.arg(character_id) AND kind = 'player'
+  AND encounter_id IN (SELECT e.id FROM encounters AS e WHERE e.game_session_id = sqlc.arg(game_session_id) AND e.status <> 'ended');
 
 -- name: SetCombatantHitPoints :exec
 -- An NPC's hit points, temporary hit points and defeated flag (damage, healing,
@@ -607,6 +625,79 @@ WHERE creature_id = sqlc.arg(creature_id)::UUID
   )
 RETURNING encounter_id;
 
+-- Trap damage (MR-035, Etapa 9, D5): the server rolls it when the trap fires.
+
+-- name: InsertTrapPendingDamage :one
+-- A trap's damage in a combat: no attacker, rolled already. 'rolled' for a
+-- player's character (waits for the master), 'applied' for an NPC or a creature
+-- (the caller put it on the combatant). amount is what lands, roll_total the roll
+-- before a half damage halves it.
+INSERT INTO pending_damages (
+    encounter_id, attacker_id, target_id, attack_key, status, critical,
+    dice_count, dice_sides, dice_bonus, damage_type, faces, amount, roll_total, half,
+    created_at, resolved_at, trap_point_id
+) VALUES (
+    $1, NULL, $2, 'trap', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, sqlc.narg(resolved_at), $14
+)
+RETURNING *;
+
+-- name: ListOpenTrapPendingDamages :many
+-- The trap damages of the session's combats that wait for the master, oldest
+-- first. A combat that ended takes its open damage with it: nothing can be applied
+-- there anymore.
+SELECT p.* FROM pending_damages AS p
+JOIN encounters AS e ON e.id = p.encounter_id
+WHERE e.game_session_id = $1 AND e.status <> 'ended' AND p.trap_point_id IS NOT NULL AND p.status = 'rolled'
+ORDER BY p.created_at, p.id;
+
+-- name: InsertTrapDamage :one
+-- A trap's damage to a player's character outside a combat.
+INSERT INTO trap_damages (
+    game_session_id, trap_point_id, fire_id, character_id, status, critical,
+    dice_count, dice_sides, dice_bonus, damage_type, faces, roll_total, half, amount, created_at
+) VALUES ($1, $2, $3, $4, 'rolled', $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+RETURNING *;
+
+-- name: ListCampaignTrapDamages :many
+-- The campaign's trap damages that wait for the master, outside a combat, from any
+-- session (they outlive it), with the session's number and start.
+SELECT d.*, g.session_number, g.started_at AS session_started_at FROM trap_damages AS d
+JOIN game_sessions AS g ON g.id = d.game_session_id
+WHERE g.campaign_id = $1 AND d.status = 'rolled'
+ORDER BY d.created_at, d.id;
+
+-- name: GetCampaignTrapDamageForUpdate :one
+-- One trap damage of the campaign, locked, with its session's number and start.
+SELECT d.*, g.session_number, g.started_at AS session_started_at FROM trap_damages AS d
+JOIN game_sessions AS g ON g.id = d.game_session_id
+WHERE g.campaign_id = $1 AND d.id = $2
+FOR UPDATE OF d;
+
+-- name: ListOpenTrapPendingDamagesOfEncounter :many
+-- The trap damages a combat still holds for the master: what its end turns into
+-- trap_damages rows.
+SELECT * FROM pending_damages
+WHERE encounter_id = $1 AND trap_point_id IS NOT NULL AND status = 'rolled'
+ORDER BY created_at, id;
+
+-- name: ListTrapEventsOfSession :many
+-- The trap firings and searches of a session outside a combat, oldest first.
+SELECT id, kind, character_id, payload, created_at FROM session_events
+WHERE game_session_id = $1 AND encounter_id IS NULL AND kind IN ('trap_triggered', 'trap_searched')
+ORDER BY seq
+LIMIT 500;
+
+-- name: GetSessionEventByID :one
+SELECT id, kind, encounter_id, payload FROM session_events
+WHERE game_session_id = $1 AND id = $2;
+
+-- name: SetTrapDamageStatus :one
+-- Applied (with the amount when it is not the rolled one) or discarded.
+UPDATE trap_damages
+SET status = $2, resolved_at = $3, applied_amount = $4
+WHERE id = $1
+RETURNING *;
+
 -- Opportunity offers (MR-034, RN-21): the right to one attack on a mover that
 -- left a reactor's reach.
 
@@ -656,3 +747,8 @@ LEFT JOIN pending_damages p ON p.id = o.attack_pending_id
 WHERE o.encounter_id = $1
   AND (o.state = 'pending' OR (o.state = 'attacked' AND p.status IN ('awaiting_reaction', 'awaiting_roll', 'rolled')))
 ORDER BY o.created_at, o.id;
+
+-- name: ListTrapDamageStatuses :many
+-- Where trap damages are now (applied by the master since the firing), by ID.
+SELECT id, status, applied_amount FROM trap_damages
+WHERE id = ANY($1::uuid[]);

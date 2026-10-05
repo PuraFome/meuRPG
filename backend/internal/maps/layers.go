@@ -44,10 +44,10 @@ import (
 // dragged, so the app sends small batches; this bounds what one call costs.
 const maxPaintSquares = 400
 
-// layerHintEvery is how often a map's layers may send their `map_changed`: a
-// drag paints dozens of batches a second, and each hint makes every watcher read
-// the layers again.
-const layerHintEvery = time.Second
+// defaultLayerHintEvery is how often a map's layers may send their `map_changed`
+// (Service.layerHintEvery): a drag paints dozens of batches a second, and each
+// hint makes every watcher read the layers again.
+const defaultLayerHintEvery = time.Second
 
 // errMapBlocked is MapService's `failed_precondition`, with the MapBlocked
 // detail that tells the app why.
@@ -260,7 +260,7 @@ func paintBit(l *grid.Layer, col, row int, on bool) bool {
 // know, and the hint of the walls and the light covers the squares they see.
 func (s *Service) layersChanged(ctx context.Context, campaignID string, mapRow mapsdb.Map, layer mapsv1.MapLayer) {
 	if fogged(mapRow) {
-		s.layerHints.fire(mapRow.ID, layerHintEvery, false, func(bool) {
+		s.layerHints.fire(mapRow.ID, s.layerHintEvery, false, func(bool) {
 			s.publishMapChanged(campaignID, mapRow.ID, false)
 			s.refreshVision(ctx, campaignID, mapRow.ID)
 		})
@@ -274,7 +274,7 @@ func (s *Service) layersChanged(ctx context.Context, campaignID string, mapRow m
 		}
 		players = playersSee(mapRow.ID, mapRow.RevealedAt, current)
 	}
-	s.layerHints.fire(mapRow.ID, layerHintEvery, players, func(players bool) {
+	s.layerHints.fire(mapRow.ID, s.layerHintEvery, players, func(players bool) {
 		s.publishMapChanged(campaignID, mapRow.ID, players)
 	})
 }

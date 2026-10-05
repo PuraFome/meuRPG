@@ -212,6 +212,13 @@ func (s *Service) CastSummon(
 			return nil, connect.NewError(connect.CodePermissionDenied, errors.New("only the character's player or the master may cast for it"))
 		}
 		owner = chars[0].PlayerUserID
+		now, err := s.vitals.GetVitalsTx(ctx, c.tx, m.CampaignID, characterID)
+		if err != nil {
+			return nil, err
+		}
+		if err := noSpellsIn(now); err != nil { // no spells in a beast form (MR-037)
+			return nil, err
+		}
 
 		// In a combat the cast is CastSpell's, with the initiative roll.
 		if enc, err := c.q.GetOpenEncounter(ctx, c.session.ID); err == nil {
@@ -232,7 +239,7 @@ func (s *Service) CastSummon(
 		var slot *slotRef
 		circle := 0
 		if !ritual {
-			opts, err := s.roster.CombatTurnOptions(ctx, m.CampaignID, characterID, link.Turn{})
+			opts, err := s.roster.CombatTurnOptions(ctx, c.tx, m.CampaignID, characterID, link.Turn{})
 			if err != nil {
 				return nil, err
 			}

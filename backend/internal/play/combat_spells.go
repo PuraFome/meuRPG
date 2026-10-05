@@ -254,6 +254,9 @@ func (s *Service) CastSpell(
 		if err := s.mustActNow(ctx, c, caster); err != nil {
 			return nil, err
 		}
+		if err := s.refuseInShape(ctx, c, caster); err != nil { // no spells in a beast form (MR-037)
+			return nil, err
+		}
 		targs := make([]playdb.Combatant, len(targets))
 		for i, t := range targets {
 			if targs[i], err = findCombatant(cs, t.id, v); err != nil {
@@ -266,7 +269,7 @@ func (s *Service) CastSpell(
 
 		// The spell must be one the caster may cast now; the master has the last
 		// word on the economy only.
-		opts, err := s.optionsOf(ctx, m.CampaignID, caster)
+		opts, err := s.optionsOf(ctx, c.tx, m.CampaignID, caster)
 		if err != nil {
 			return nil, err
 		}
@@ -278,7 +281,7 @@ func (s *Service) CastSpell(
 			// A summoning spell that takes too long is refused with a reason the screen
 			// can say ("Leva 1 hora: conjure fora do combate").
 			if cast.reason.GetCode() == rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_CASTING_TIME_TOO_LONG {
-				if long, err := s.roster.CombatSpell(ctx, m.CampaignID, caster.CharacterID, spellKey, int(cast.level)); err == nil && long.Summon {
+				if long, err := s.roster.CombatSpell(ctx, c.tx, m.CampaignID, caster.CharacterID, spellKey, int(cast.level)); err == nil && long.Summon {
 					return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CASTING_TIME_TOO_LONG,
 						"this spell takes too long to cast in a fight: cast it outside the combat")
 				}
@@ -295,7 +298,7 @@ func (s *Service) CastSpell(
 		if slot != nil {
 			slotLevel = int(slot.Level)
 		}
-		sp, err := s.roster.CombatSpell(ctx, m.CampaignID, caster.CharacterID, spellKey, slotLevel)
+		sp, err := s.roster.CombatSpell(ctx, c.tx, m.CampaignID, caster.CharacterID, spellKey, slotLevel)
 		if err != nil {
 			return nil, err
 		}
@@ -567,7 +570,7 @@ func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membersh
 	if err != nil {
 		return err
 	}
-	sheet, err := s.sheetOf(ctx, m.CampaignID, target)
+	sheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, target)
 	if err != nil {
 		return err
 	}
@@ -638,7 +641,7 @@ func (s *Service) openDarts(ctx context.Context, c *combatTx, sp link.Spell, cas
 	// has no cast id for them: each target's damage is its own roll.
 	dmg := link.Dice{Count: perDart.Count * n, Sides: perDart.Sides, Bonus: perDart.Bonus * n, DamageType: perDart.DamageType}
 	p, err := c.q.InsertPendingDamage(ctx, playdb.InsertPendingDamageParams{
-		EncounterID: c.enc.ID, AttackerID: caster.ID, TargetID: target.ID, AttackKey: sp.Key, Status: pendingAwaitingRoll,
+		EncounterID: c.enc.ID, AttackerID: &caster.ID, TargetID: target.ID, AttackKey: sp.Key, Status: pendingAwaitingRoll,
 		DiceCount: clamp32(dmg.Count, 0, 100), DiceSides: clamp32(dmg.Sides, 0, 100), DiceBonus: clamp32(dmg.Bonus, -1000, 1000), DamageType: dmg.DamageType,
 		CreatedAt: c.now,
 	})
@@ -655,7 +658,7 @@ func (s *Service) openDarts(ctx context.Context, c *combatTx, sp link.Spell, cas
 func (s *Service) openSpellPending(ctx context.Context, c *combatTx, sp link.Spell, dmg link.Dice, caster, target playdb.Combatant, healing, half bool, hit *castHit) error {
 	castID := c.castID
 	p, err := c.q.InsertPendingDamage(ctx, playdb.InsertPendingDamageParams{
-		EncounterID: c.enc.ID, AttackerID: caster.ID, TargetID: target.ID, AttackKey: sp.Key, Status: pendingAwaitingRoll,
+		EncounterID: c.enc.ID, AttackerID: &caster.ID, TargetID: target.ID, AttackKey: sp.Key, Status: pendingAwaitingRoll,
 		DiceCount: clamp32(dmg.Count, 0, 100), DiceSides: clamp32(dmg.Sides, 0, 100), DiceBonus: clamp32(dmg.Bonus, -1000, 1000), DamageType: dmg.DamageType,
 		CreatedAt: c.now, CastID: &castID, Healing: healing, Half: half,
 	})

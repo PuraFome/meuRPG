@@ -95,9 +95,14 @@ type CharacterDirectory interface {
 	ClearPortraits(ctx context.Context, tx pgx.Tx, campaignID, imageID string) (int64, error)
 	// PartyVision returns the campaign's living player characters that have a
 	// player, each with what it sees with (its derived darkvision, blindsight
-	// and truesight): the fog of war's viewers (MR-036). Slice 9.10 has it send
-	// a beast's senses in Wild Shape and a familiar's eyes.
+	// and truesight): the fog of war's viewers (MR-036). A beast's senses in Wild
+	// Shape replace the character's, and a familiar the player looks through comes
+	// as Eyes (MR-037).
 	PartyVision(ctx context.Context, campaignID string) ([]link.PartyMember, error)
+	// MapCreatures returns those of ids that are live creatures of a living
+	// player's character of the campaign, oldest first: the ones that may have a
+	// token on a map (MR-037).
+	MapCreatures(ctx context.Context, campaignID string, ids []string) ([]link.MapCreature, error)
 	// PortraitInUse says whether any NPC of the campaign has the gallery image as
 	// its portrait.
 	PortraitInUse(ctx context.Context, campaignID, imageID string) (bool, error)
@@ -216,7 +221,11 @@ type Service struct {
 	checks     SceneChecks
 	rules      Rules
 	combats    CombatMaps
+	firer      TrapFirer
 	layerHints hintGate
+	// layerHintEvery is the gate's interval (defaultLayerHintEvery); a test sets
+	// it on its own service to see every hint at once.
+	layerHintEvery time.Duration
 
 	// The fog of war (fog.go): the compiled scenes, the revision each player was
 	// last told, and the lock that makes a refresh and "Esquecer o que foi visto"
@@ -236,6 +245,9 @@ type Service struct {
 	// once cannot take all the server's memory (package images bounds
 	// what one image may use).
 	processing chan struct{}
+
+	// tiles is the image of a fog map as tiles per player (tiles.go).
+	tiles *tileRenderer
 }
 
 // The compiler checks that Service implements both handlers.
@@ -259,21 +271,23 @@ func New(cfg Config) (*Service, error) {
 		return nil, errors.New("maps: Combats is required")
 	}
 	s := &Service{
-		pool:       cfg.Pool,
-		queries:    mapsdb.New(cfg.Pool),
-		blobs:      cfg.Blobs,
-		characters: cfg.Characters,
-		live:       cfg.Live,
-		checks:     cfg.Rules,
-		rules:      cfg.Rules,
-		combats:    cfg.Combats,
-		logger:     cfg.Logger,
-		now:        cfg.Now,
-		maxImages:  cfg.MaxImages,
-		maxBytes:   cfg.MaxBytes,
-		maxMaps:    cfg.MaxMaps,
-		maxPoints:  cfg.MaxPointsPerMap,
-		processing: make(chan struct{}, 1),
+		layerHintEvery: defaultLayerHintEvery,
+		pool:           cfg.Pool,
+		queries:        mapsdb.New(cfg.Pool),
+		blobs:          cfg.Blobs,
+		characters:     cfg.Characters,
+		live:           cfg.Live,
+		checks:         cfg.Rules,
+		rules:          cfg.Rules,
+		combats:        cfg.Combats,
+		logger:         cfg.Logger,
+		now:            cfg.Now,
+		maxImages:      cfg.MaxImages,
+		maxBytes:       cfg.MaxBytes,
+		maxMaps:        cfg.MaxMaps,
+		maxPoints:      cfg.MaxPointsPerMap,
+		processing:     make(chan struct{}, 1),
+		tiles:          newTileRenderer(),
 	}
 	if s.logger == nil {
 		s.logger = slog.Default()
@@ -336,6 +350,7 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 	handle("POST "+UploadPath, route(s.handleUpload))
 	handle("GET "+ImagesPath+"{id}", route(s.handleImage))
 	handle("GET "+ImagesPath+"{id}/thumb", route(s.handleThumbnail))
+	handle("GET "+TilesPath+"{map}/tiles/{tx}/{ty}", route(s.handleTile))
 }
 
 // imagesOn answers 503 while images are off (no blob store), before

@@ -278,7 +278,6 @@ func TestMR036_PaintingTellsThePlayersWhoseLayersChanged(t *testing.T) {
 		m.setMapRevealed(c.campaign, c.probeMap, !m.mustGetMap(c.campaign, c.probeMap).GetMap().GetRevealed())
 		return ana.drain(c.probeMap), caio.drain(c.probeMap)
 	}
-	time.Sleep(1100 * time.Millisecond) // the setup painted just now: painting is announced once a second for a map
 	drain()
 	rev := c.ana.mustVision(c.campaign, c.mapID).GetRevision()
 	// Rubble on a square Pensantus sees (the entrance) and Toren does not.
@@ -293,11 +292,43 @@ func TestMR036_PaintingTellsThePlayersWhoseLayersChanged(t *testing.T) {
 	// Pensantus leaves; a wall painted on a square she only remembers is news.
 	m.placeAt(c.campaign, c.mapID, c.pens.GetId(), grid.Square{Col: 15, Row: 7})
 	drain()
-	time.Sleep(1100 * time.Millisecond) // painting is announced once a second for a map
 	m.mustPaint(c.campaign, c.mapID, mapsv1.MapLayer_MAP_LAYER_WALL, 1, [2]int32{3, 10})
 	a, k = drain()
 	if len(a) != 1 || a[0].GetVisionChanged() == nil || len(k) != 0 {
 		t.Errorf("after a wall on a remembered square: Ana got %v, Caio got %v; want one vision_changed and nothing", a, k)
+	}
+}
+
+// A paint the gate holds (painting is told at most once a second for a map) still
+// reaches the players when the gate lets it go, after its own request ended.
+func TestMR036_APaintHeldByTheGateStillReachesThePlayers(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	m := c.master
+	c.h.svc.layerHintEvery = 300 * time.Millisecond // the harness makes it 0
+	ana := c.ana.watch(c.campaign)
+	visionHints := func() int {
+		m.setMapRevealed(c.campaign, c.probeMap, !m.mustGetMap(c.campaign, c.probeMap).GetMap().GetRevealed())
+		n := 0
+		for _, ev := range ana.drain(c.probeMap) {
+			if ev.GetVisionChanged() != nil {
+				n++
+			}
+		}
+		return n
+	}
+	time.Sleep(400 * time.Millisecond) // the setup's own paints are past the gate
+	visionHints()
+	// Rubble on the entrance, which Pensantus sees: told at once.
+	m.mustPaint(c.campaign, c.mapID, mapsv1.MapLayer_MAP_LAYER_DIFFICULT_TERRAIN, 1, [2]int32{2, 7})
+	if got := visionHints(); got != 1 {
+		t.Fatalf("after the first paint Ana got %d vision_changed, want 1", got)
+	}
+	// The rubble cleared within the gate's interval: held, then told when it ends.
+	m.mustPaint(c.campaign, c.mapID, mapsv1.MapLayer_MAP_LAYER_DIFFICULT_TERRAIN, 0, [2]int32{2, 7})
+	time.Sleep(700 * time.Millisecond)
+	if got := visionHints(); got != 1 {
+		t.Errorf("after the held paint Ana got %d vision_changed, want 1", got)
 	}
 }
 

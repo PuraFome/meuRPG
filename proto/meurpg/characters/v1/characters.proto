@@ -448,6 +448,25 @@ service CharacterService {
     option idempotency_level = IDEMPOTENT;
   }
 
+  // ListWildShapeForms lists the beasts a druid's Wild Shape allows now
+  // (MR-037, Etapa 9): the SRD beasts of the challenge rating, without the fly
+  // or swim speed, that the character's Wild Shape features give at its level
+  // (level 2: up to 1/4, no fly or swim; 4: up to 1/2, no fly; 8: up to 1),
+  // sorted by Portuguese name. Empty for a character without Wild Shape. The
+  // stat blocks are ContentService.GetCreature; AssumeWildShape
+  // (meurpg.play.v1.PlayService) takes one of these.
+  //
+  // The master reads any character's and the player their own; for everyone
+  // else the character is `not_found`, as always.
+  //
+  // Errors:
+  //   - `not_found`: the campaign or the character does not exist, or the
+  //     caller may not see the character (or character_id is not a UUID).
+  //   - `invalid_argument`: the character is an NPC.
+  rpc ListWildShapeForms(ListWildShapeFormsRequest) returns (ListWildShapeFormsResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
   // GiveCreature gives a character a creature (MR-037): any SRD creature, for a
   // hireling, a pet or a house rule, whatever the character's class. The
   // creature starts at full hit points, acts as any creature in a combat
@@ -1732,4 +1751,24 @@ message AdjustCreatureHitPointsRequest {
 // A creature taken to 0 is dismissed: it is unset then.
 message AdjustCreatureHitPointsResponse {
   CharacterCreature creature = 1;
+}
+
+// ListWildShapeFormsRequest names a character.
+message ListWildShapeFormsRequest {
+  // The campaign (a UUID).
+  string campaign_id = 1;
+  // A player's character of the campaign (a UUID).
+  string character_id = 2;
+}
+
+// ListWildShapeFormsResponse lists the beasts the character may become.
+message ListWildShapeFormsResponse {
+  // The beasts, by Portuguese name; empty when the character has no Wild Shape.
+  repeated meurpg.rules.v1.CreatureSummary forms = 1;
+  // The limit that decided the list: the highest challenge rating ("1/4"), and
+  // whether the fly and the swim speed are left out. Empty and false when there
+  // is no Wild Shape.
+  string max_cr = 2;
+  bool no_fly = 3;
+  bool no_swim = 4;
 }

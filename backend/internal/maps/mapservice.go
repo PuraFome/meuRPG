@@ -212,6 +212,13 @@ func (s *Service) GetMap(
 		}
 		res.Tokens = append(res.Tokens, tokenToProto(t, c, v))
 	}
+	// The creatures' tokens come after the characters': party tokens, never kept
+	// from a player, fog or not (MR-037).
+	creatureTokens, err := s.creatureTokensOf(ctx, m.CampaignID, mapID, v)
+	if err != nil {
+		return nil, s.dbError(ctx, "list a map's creature tokens", err)
+	}
+	res.Tokens = append(res.Tokens, creatureTokens...)
 	return connect.NewResponse(res), nil
 }
 
@@ -395,6 +402,7 @@ func (s *Service) UpdateMap(
 	}
 	s.publishMapChanged(m.CampaignID, mapID, playersSee(mapID, updated.RevealedAt, current))
 	if cleared {
+		s.tiles.forget(mapID)
 		s.refreshVision(ctx, m.CampaignID, mapID) // the players' memory went with the layers
 	}
 	out, err := s.masterMap(ctx, m, mapID)
@@ -467,6 +475,7 @@ func (s *Service) DeleteMap(
 		return nil, s.dbError(ctx, "delete a map", err)
 	}
 	s.lits.forget(mapID)
+	s.tiles.forget(mapID)
 	s.seen.forget(mapID)
 	seen := playersSee(mapID, deleted.RevealedAt, current)
 	s.publishMapChanged(m.CampaignID, mapID, seen)
@@ -617,6 +626,7 @@ func (s *Service) SetMapGrid(
 	s.publishMapChanged(m.CampaignID, mapID, playersSee(mapID, updated.RevealedAt, current))
 	if cleared {
 		s.lits.forget(mapID)
+		s.tiles.forget(mapID)
 		s.refreshVision(ctx, m.CampaignID, mapID) // the players' memory went with the layers
 	}
 	out, err := s.masterMap(ctx, m, mapID)
@@ -1165,6 +1175,16 @@ func (s *Service) PlaceMapToken(
 	if err := checkPosition(req.Msg.GetXBp(), req.Msg.GetYBp()); err != nil {
 		return nil, err
 	}
+	if err := tokenSubject(req.Msg.GetCharacterId(), req.Msg.GetCreatureId()); err != nil {
+		return nil, err
+	}
+	if req.Msg.GetCreatureId() != "" {
+		res, err := s.placeCreatureToken(ctx, m, req.Msg, mapID)
+		if err != nil {
+			return nil, err
+		}
+		return connect.NewResponse(res), nil
+	}
 	character, err := s.livingCharacter(ctx, m.CampaignID, req.Msg.GetCharacterId())
 	if err != nil {
 		return nil, err
@@ -1218,6 +1238,7 @@ func (s *Service) PlaceMapToken(
 		before = &was
 	}
 	s.publishTokenWritten(ctx, m.CampaignID, mapRow, current, before, &token, isPlayerCharacter(character), !placed)
+	s.tokenLanded(ctx, m.CampaignID, m.UserID, mapID, token, character) // a trap may fire, or be noticed (MR-035)
 	return connect.NewResponse(&mapsv1.PlaceMapTokenResponse{Token: tokenToProto(token, character, newViewer(m, current))}), nil
 }
 
@@ -1287,6 +1308,15 @@ func (s *Service) RemoveMapToken(
 	mapID, ok := parseID(req.Msg.GetMapId())
 	if !ok {
 		return nil, errMapNotFound()
+	}
+	if err := tokenSubject(req.Msg.GetCharacterId(), req.Msg.GetCreatureId()); err != nil {
+		return nil, err
+	}
+	if req.Msg.GetCreatureId() != "" {
+		if err := s.removeCreatureToken(ctx, m, mapID, req.Msg.GetCreatureId()); err != nil {
+			return nil, err
+		}
+		return connect.NewResponse(&mapsv1.RemoveMapTokenResponse{}), nil
 	}
 	characterID, ok := parseID(req.Msg.GetCharacterId())
 	if !ok {

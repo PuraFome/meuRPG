@@ -139,6 +139,9 @@ func Process(data []byte) (*Result, error) {
 	if f == formatJPEG || (f == formatWebP && isOpaque(img)) {
 		contentType = JPEG
 	}
+	if contentType == PNG {
+		img = to8bit(img)
+	}
 	out, err := encode(contentType, img)
 	if err != nil {
 		return nil, err
@@ -249,8 +252,8 @@ func pngBytesPerPixel(m color.Model) float64 {
 		return 2
 	case color.RGBAModel, color.NRGBAModel:
 		return 4
-	default: // 16-bit color, or something unexpected: the worst case
-		return 8
+	default: // 16-bit color (8 bytes, and 4 more for the 8-bit copy Process stores), or something unexpected: the worst case
+		return 12
 	}
 }
 
@@ -260,6 +263,20 @@ func pngBytesPerPixel(m color.Model) float64 {
 // compression and filter: byte 28).
 func isInterlacedPNG(data []byte) bool {
 	return sniff(data) == formatPNG && len(data) > 28 && data[28] == 1
+}
+
+// to8bit returns img with 8 bits a channel when it has 16 (a 16-bit PNG): the
+// stored image never keeps them, so what is decoded later (the fog's tiles,
+// MR-036) costs 4 bytes a pixel, not 8. An image that is already 8-bit is returned as it is.
+func to8bit(img image.Image) image.Image {
+	switch img.(type) {
+	case *image.RGBA64, *image.NRGBA64, *image.Gray16:
+		b := img.Bounds()
+		out := image.NewNRGBA(b)
+		xdraw.Draw(out, b, img, b.Min, xdraw.Src)
+		return out
+	}
+	return img
 }
 
 // isOpaque reports whether img has no transparent pixel at all.

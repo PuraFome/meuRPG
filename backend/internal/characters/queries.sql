@@ -175,12 +175,16 @@ WHERE campaign_id = $1 AND character_id = $2;
 -- The vitals of the campaign's living, active player characters (RN-02),
 -- oldest first: the party at the table. A character without a
 -- character_vitals row has fresh vitals, so the columns from it may be NULL.
--- The sheet comes along because the maximums are derived from it.
+-- The sheet comes along because the maximums are derived from it. The Wild Shape
+-- form and the familiar's sight come along too (MR-037, MR-036).
 SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
-       v.pact_slots_used, v.hit_dice_used, v.resources_used, v.revision, v.updated_at
+       v.pact_slots_used, v.hit_dice_used, v.resources_used, v.revision, v.updated_at,
+       ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
+       v.familiar_sight_conditions
 FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
+LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID
   AND c.kind = 'player' AND c.status = 'active'
 ORDER BY c.created_at, c.id;
@@ -190,9 +194,12 @@ ORDER BY c.created_at, c.id;
 -- living, active player character of the campaign.
 SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
-       v.pact_slots_used, v.hit_dice_used, v.resources_used, v.revision, v.updated_at
+       v.pact_slots_used, v.hit_dice_used, v.resources_used, v.revision, v.updated_at,
+       ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
+       v.familiar_sight_conditions
 FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
+LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID AND c.id = sqlc.arg(id)
   AND c.kind = 'player' AND c.status = 'active';
 
@@ -233,19 +240,26 @@ ORDER BY kind <> 'player', created_at, id;
 -- The campaign's living, active player characters, oldest first: the party
 -- that fights (package play). The sheet comes along for the numbers a
 -- combatant starts with (initiative, speed).
-SELECT id, kind, name, player_user_id, sheet FROM characters
-WHERE campaign_id = sqlc.arg(campaign_id)::UUID
-  AND kind = 'player' AND status = 'active'
-ORDER BY created_at, id;
+-- The beast of a druid in Wild Shape comes along (MR-037): the combatant starts
+-- with the beast's speed and size.
+SELECT c.id, c.kind, c.name, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast
+FROM characters AS c
+LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
+WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID
+  AND c.kind = 'player' AND c.status = 'active'
+ORDER BY c.created_at, c.id;
 
 -- name: ListCombatCharacters :many
 -- Those of the given characters that may fight in a combat of the campaign:
 -- its living characters, players' and NPCs, oldest first (package play).
-SELECT id, kind, name, player_user_id, sheet FROM characters
-WHERE campaign_id = sqlc.arg(campaign_id)::UUID
-  AND id = ANY(sqlc.arg(ids)::UUID[])
-  AND status = 'active'
-ORDER BY created_at, id;
+-- The beast of a druid in Wild Shape comes along, as in ListCombatParty.
+SELECT c.id, c.kind, c.name, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast
+FROM characters AS c
+LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
+WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID
+  AND c.id = ANY(sqlc.arg(ids)::UUID[])
+  AND c.status = 'active'
+ORDER BY c.created_at, c.id;
 
 -- name: ListSessionCharacters :many
 -- Those of the given characters of the campaign, whatever their status: the
@@ -418,3 +432,67 @@ WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id)::UUID;
 -- The creature's hit points: the master's correction, or a combat's write-back.
 UPDATE character_creatures SET hp_current = sqlc.arg(hp_current)
 WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id)::UUID;
+
+-- name: SetWildShape :exec
+-- A druid's Wild Shape form (MR-037): the beast and its current hit points
+-- (1 or more). The caller also bumps the vitals' revision (TouchVitals).
+INSERT INTO character_wild_shapes (character_id, beast, hp, updated_at)
+VALUES (sqlc.arg(character_id), sqlc.arg(beast), sqlc.arg(hp), sqlc.arg(now))
+ON CONFLICT (character_id) DO UPDATE SET beast = excluded.beast, hp = excluded.hp, updated_at = excluded.updated_at;
+
+-- name: ClearWildShape :exec
+-- The druid is itself again.
+DELETE FROM character_wild_shapes WHERE character_id = $1;
+
+-- name: TouchVitals :one
+-- Bumps a character's vitals revision for a change made on a table of its own (the
+-- Wild Shape form): the first write creates the vitals row, as UpsertVitals does
+-- (hit_points_current is only for that insert).
+INSERT INTO character_vitals (character_id, hit_points_current, revision, updated_at)
+VALUES (sqlc.arg(character_id), sqlc.arg(hit_points_current), 1, sqlc.arg(now))
+ON CONFLICT (character_id) DO UPDATE SET
+    revision = character_vitals.revision + 1,
+    updated_at = excluded.updated_at
+RETURNING revision, updated_at;
+
+-- name: SetFamiliarSight :one
+-- "Ver pelos olhos do familiar" (MR-036): the familiar the player looks through
+-- (NULL for none), whether it started in a combat and the conditions it gave the
+-- combatant. The first write creates the vitals row, as TouchVitals does.
+INSERT INTO character_vitals (character_id, hit_points_current, familiar_sight_creature_id, familiar_sight_in_combat, familiar_sight_conditions, revision, updated_at)
+VALUES (sqlc.arg(character_id), sqlc.arg(hit_points_current), sqlc.narg(creature_id), sqlc.arg(in_combat), sqlc.arg(conditions)::TEXT[], 1, sqlc.arg(now))
+ON CONFLICT (character_id) DO UPDATE SET
+    familiar_sight_creature_id = excluded.familiar_sight_creature_id,
+    familiar_sight_in_combat = excluded.familiar_sight_in_combat,
+    familiar_sight_conditions = excluded.familiar_sight_conditions,
+    revision = character_vitals.revision + 1,
+    updated_at = excluded.updated_at
+RETURNING revision, updated_at;
+
+-- name: ListPartyVision :many
+-- The campaign's living, active player characters, oldest first, with what the
+-- fog needs to know of how each one sees (package maps): the sheet, the beast of
+-- a Wild Shape form, and the familiar the player looks through, if it is still with
+-- the character (MR-036, MR-037).
+SELECT c.id, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast,
+       cc.id AS familiar_id, cc.monster_key AS familiar_monster_key
+FROM characters AS c
+LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
+LEFT JOIN character_vitals AS v ON v.character_id = c.id
+LEFT JOIN character_creatures AS cc ON cc.id = v.familiar_sight_creature_id AND cc.dismissed_at IS NULL
+WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID
+  AND c.kind = 'player' AND c.status = 'active'
+ORDER BY c.created_at, c.id;
+
+-- name: ListMapCreatures :many
+-- The live creatures of the given IDs that belong to a living player's character
+-- of the campaign: the ones that may have a token on a map (package maps). Oldest
+-- first.
+SELECT cc.id, cc.character_id, cc.name, cc.monster_key, c.player_user_id
+FROM character_creatures AS cc
+JOIN characters AS c ON c.id = cc.character_id
+WHERE cc.campaign_id = sqlc.arg(campaign_id)::UUID
+  AND cc.id = ANY(sqlc.arg(ids)::UUID[])
+  AND cc.dismissed_at IS NULL
+  AND c.status = 'active'
+ORDER BY cc.created_at, cc.id;

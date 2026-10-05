@@ -27,7 +27,7 @@ import (
 var undoableKinds = []string{
 	eventAttackRolled, eventDamageRolled, eventDamageApplied, eventDamageDiscarded, eventActionTaken, eventHitPointsAdjusted,
 	eventSpellCast, eventReactionUsed, eventReactionDeclined, eventDeathSaveRolled, eventConditionsSet,
-	eventCombatantMoved,
+	eventCombatantMoved, eventTrapTriggered, eventWildShapeStarted, eventWildShapeEnded, eventFamiliarSight,
 }
 
 // recentEvents is how many of the session's latest events the search for the
@@ -60,6 +60,26 @@ func lastAction(recent []playdb.ListRecentSessionEventsRow, encounterID string) 
 		// way: the undo acts on the move.
 		if e.Kind == eventOpportunityOffered {
 			continue
+		}
+		// What the traps did that is not this combat's never closes the chain: a trap noticed
+		// after a move (the knowledge stays after an undo), a firing, a search or a disarm
+		// outside a combat or in another one, and the master settling a trap damage that
+		// has no combat (MR-035).
+		if trapOutsideTheChain(e, encounterID) {
+			continue
+		}
+		// A form that ended because the beast fell, and a sight that ended at a turn
+		// start or by the player's hand, are no action to undo: the first is part of the
+		// damage that did it (written before it), the others change nothing an undo
+		// can put back.
+		if e.Kind == eventWildShapeEnded || e.Kind == eventFamiliarSight {
+			ev, err := readEvent(e.Payload)
+			if err == nil && e.Kind == eventWildShapeEnded && endsBySelf(ev.Reason) {
+				continue
+			}
+			if err != nil || (e.Kind == eventFamiliarSight && ev.Sight != "start") {
+				return playdb.ListRecentSessionEventsRow{}, false
+			}
 		}
 		if slices.Contains(undoableKinds, e.Kind) && e.EncounterID != nil && *e.EncounterID == encounterID {
 			// A move written before the undo knew moves says where it came from
@@ -103,8 +123,9 @@ func (s *Service) UndoLastAction(
 	var undoneMove *actionEvent          // the move that was taken back, for the fog
 	var snapBack *grid.Square            // where a mover stood before the undo of the 0 hit points rule put it back
 	var snapped string                   // and who it is
+	var rearmed *trapFireEvent           // the trap an undone firing armed again
 	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventActionUndone, encounterID: encID}, func(c *combatTx) (any, error) {
-		vitals, undoneMove, snapBack, snapped = nil, nil, nil, ""
+		vitals, undoneMove, snapBack, snapped, rearmed = nil, nil, nil, "", nil
 		if err := notEnded(c.enc); err != nil {
 			return nil, err
 		}
@@ -139,6 +160,9 @@ func (s *Service) UndoLastAction(
 		if last.Kind == eventCombatantMoved {
 			undoneMove = &ev
 		}
+		if last.Kind == eventTrapTriggered {
+			rearmed = ev.Trap
+		}
 		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
 			return nil, fmt.Errorf("touch the encounter: %w", err)
 		}
@@ -167,6 +191,9 @@ func (s *Service) UndoLastAction(
 		}
 		for _, vit := range vitals {
 			s.publishVitals(m.CampaignID, vit)
+		}
+		if rearmed != nil && s.traps != nil {
+			s.traps.TrapChanged(ctx, m.CampaignID, rearmed.MapID, rearmed.PointID) // players who saw it fire lose it again
 		}
 	})
 	if err != nil {
@@ -245,7 +272,25 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		}
 		cur, temp := min(hp.HP, now.GetHitPointsMax()), min(hp.Temp, maxTempHitPoints)
 		_, after, err := s.vitalsOf(ctx, c, who.CharacterID, &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: &cur, HitPointsTemporary: &temp})
-		return after, err
+		if err != nil {
+			return nil, err
+		}
+		// The Wild Shape form as it was (MR-037): the beast and its hit points, or the
+		// druid's own shape, with the combatant's numbers.
+		have, want := after.GetWildShape(), hp.Shape
+		if (have == nil) == (want == nil) && (want == nil || (have.GetBeastKey() == want.Beast && have.GetHitPointsCurrent() == want.HP)) {
+			return after, nil
+		}
+		beast, beastHP := "", int32(0)
+		if want != nil {
+			beast, beastHP = want.Beast, want.HP
+		}
+		restored, body, err := s.vitals.SetWildShape(ctx, c.tx, c.session.CampaignID, who.CharacterID, beast, beastHP)
+		if err != nil {
+			return nil, err
+		}
+		c.told = append(c.told, restored)
+		return restored, applyBody(ctx, c, who, body)
 	}
 	var vitals []*playv1.CharacterVitals
 	keep := func(v *playv1.CharacterVitals) {
@@ -372,6 +417,14 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		if ev.MoveID != "" {
 			if err := c.q.DeleteOpportunityOffersOfMove(ctx, ev.MoveID); err != nil {
 				return nil, fmt.Errorf("take the opportunity offers away: %w", err)
+			}
+		}
+	case eventTrapTriggered:
+		// The trap armed again, the hit points and conditions it changed put back, and
+		// the pending damages it opened gone (MR-035).
+		if ev.Trap != nil {
+			if err := s.takeBackTrap(ctx, c, *ev.Trap, find); err != nil {
+				return nil, err
 			}
 		}
 	case eventActionTaken:
@@ -551,6 +604,14 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 				return nil, err
 			}
 		}
+	case eventWildShapeStarted, eventWildShapeEnded:
+		if err := s.shapeUndo(ctx, c, kind, ev, find, keep); err != nil {
+			return nil, err
+		}
+	case eventFamiliarSight:
+		if err := s.sightUndo(ctx, c, ev, find, keep); err != nil {
+			return nil, err
+		}
 	default:
 		return nil, fmt.Errorf("event kind %q cannot be undone", kind)
 	}
@@ -563,4 +624,20 @@ func nonNil(l []string) []string {
 		return []string{}
 	}
 	return l
+}
+
+// trapOutsideTheChain says an event is about traps and not this combat's: the undo
+// goes past it. `trap_noticed` is always so (it is written after the move that caused
+// it, with no combat); the others are when they belong to no combat or to another.
+func trapOutsideTheChain(e playdb.ListRecentSessionEventsRow, encounterID string) bool {
+	ours := e.EncounterID != nil && *e.EncounterID == encounterID
+	switch e.Kind {
+	case eventTrapNoticed:
+		return true
+	case eventTrapSearched, eventTrapTriggered, eventTrapDisarmed, eventTrapRevealed:
+		return !ours
+	case eventDamageApplied, eventDamageDiscarded:
+		return e.EncounterID == nil // ApplyTrapDamage: a damage with no combat
+	}
+	return false
 }

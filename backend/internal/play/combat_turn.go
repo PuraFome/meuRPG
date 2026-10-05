@@ -115,6 +115,13 @@ func startTurn(ctx context.Context, c *combatTx, ids []string, round int32) erro
 			return fmt.Errorf("reset the turn: %w", err)
 		}
 	}
+	// A character looking through its familiar's eyes since its last turn looks
+	// through its own again (MR-036).
+	if c.svc != nil {
+		if err := c.svc.endFamiliarSights(ctx, c, ids); err != nil {
+			return err
+		}
+	}
 	return setCurrent(ctx, c, ids[0], round)
 }
 

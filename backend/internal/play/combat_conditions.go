@@ -86,6 +86,10 @@ func (s *Service) SetCombatantConditions(
 			}
 			ev.CondSet, ev.Conditions, ev.CondBefore = true, conditions, target.Conditions
 			changed = true
+			// A druid that falls unconscious is itself again (SRD).
+			if err := s.endFormIfAsleep(ctx, c, target, conditions); err != nil {
+				return nil, err
+			}
 		}
 		if endConcentration && target.ConcentrationSpell != nil {
 			// The creatures that lasted only while it did leave with it (MR-037, RN-22).

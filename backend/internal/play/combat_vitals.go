@@ -28,6 +28,13 @@ func (s *Service) changeVitals(ctx context.Context, q *playdb.Queries, tx pgx.Tx
 	if err != nil {
 		return nil, nil, err
 	}
+	// A druid whose own hit points reach 0 is itself again (SRD): the beast form
+	// ends, whatever took them there (damage, the master's hand, a spell).
+	if after.GetWildShape() != nil && after.GetHitPointsMax() > 0 && after.GetHitPointsCurrent() == 0 {
+		if after, err = s.formEnds(ctx, q, tx, sessionID, campaignID, characterID, after.GetWildShape().GetBeastKey(), endedAtZero); err != nil {
+			return nil, nil, err
+		}
+	}
 	if before.GetHitPointsCurrent() > 0 && after.GetHitPointsCurrent() == 0 {
 		if err := q.MarkDeathSaveRolledOnTurn(ctx, playdb.MarkDeathSaveRolledOnTurnParams{CharacterID: characterID, GameSessionID: sessionID}); err != nil {
 			return nil, nil, fmt.Errorf("hold the death save to the next turn: %w", err)
@@ -43,7 +50,11 @@ func (s *Service) changeVitals(ctx context.Context, q *playdb.Queries, tx pgx.Tx
 
 // vitalsOf changes a character's vitals inside the combat's transaction.
 func (s *Service) vitalsOf(ctx context.Context, c *combatTx, characterID string, req *playv1.AdjustCharacterVitalsRequest) (before, after *playv1.CharacterVitals, err error) {
-	return s.changeVitals(ctx, c.q, c.tx, c.session.ID, c.session.CampaignID, characterID, req)
+	before, after, err = s.changeVitals(ctx, c.q, c.tx, c.session.ID, c.session.CampaignID, characterID, req)
+	if err == nil && before.GetWildShape() != nil && after.GetWildShape() == nil {
+		c.told = append(c.told, after) // the beast is gone: the streams and the fog hear of it
+	}
+	return before, after, err
 }
 
 // spendSlot spends one spell slot of a player's character (delta 1) or gives it

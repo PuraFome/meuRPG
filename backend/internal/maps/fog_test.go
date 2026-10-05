@@ -104,7 +104,7 @@ func newCaveWith(t *testing.T, visible bool) *cave {
 	c := &cave{h: h, master: h.newUser("Mestre"), ana: h.newUser("Ana"), caio: h.newUser("Caio"), bia: h.newUser("Bia"), dani: h.newUser("Dani")}
 	m := c.master
 	c.campaign = h.newCampaign(m, c.ana, c.caio, c.bia, c.dani)
-	c.imageID = m.mustUpload(c.campaign, "caverna.png", pngImage(t, 240, 160)).GetId()
+	c.imageID = m.mustUpload(c.campaign, "caverna.png", patternImage(t, 240, 160)).GetId()
 	c.mapID = m.createMap(c.campaign, "A caverna do Vale Seco", c.imageID).GetId()
 	if visible {
 		m.setMapRevealed(c.campaign, c.mapID, true)
@@ -333,6 +333,8 @@ func TestRN10_FogPlayersReceiveOnlyWhatTheirCharacterSees(t *testing.T) {
 		}
 		responses["GetLiveSession"] = asJSON(t, live.Msg)
 		for call, body := range responses {
+			// The one path to an image a player gets is their own tiles (9.5, tiles_test.go).
+			body = strings.ReplaceAll(body, TilesPath+c.mapID+"/tiles/", "")
 			for _, bad := range forbidden {
 				if strings.Contains(body, bad) {
 					t.Errorf("%s: %s's %s has %q:\n%s", t.Name(), p.name, call, bad, body)

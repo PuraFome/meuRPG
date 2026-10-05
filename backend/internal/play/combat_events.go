@@ -39,6 +39,25 @@ type hpState struct {
 	HP       int32 `json:"hp"`
 	Temp     int32 `json:"temp,omitempty"`
 	Defeated bool  `json:"defeated,omitempty"`
+	// Shape is the Wild Shape form the druid was in at that moment (nil: its own
+	// shape): the beast's pool is a number an undo puts back, like the hit points
+	// (MR-037). HP and Temp are the character's own, which wait while the form lasts.
+	Shape *shapeState `json:"shape,omitempty"`
+}
+
+// shapeState is a druid's beast form and the beast's hit points.
+type shapeState struct {
+	Beast string `json:"beast"`
+	HP    int32  `json:"hp"`
+}
+
+// hpStateOf is a player's character's hit points, and its form, in its vitals.
+func hpStateOf(v *playv1.CharacterVitals) hpState {
+	out := hpState{HP: v.GetHitPointsCurrent(), Temp: v.GetHitPointsTemporary()}
+	if w := v.GetWildShape(); w != nil {
+		out.Shape = &shapeState{Beast: w.GetBeastKey(), HP: w.GetHitPointsCurrent()}
+	}
+	return out
 }
 
 // slotRef is the spell slot a spell spent: its level, and whether it was a
@@ -333,6 +352,32 @@ type actionEvent struct {
 	Source         string     `json:"source,omitempty"`
 	Ritual         bool       `json:"ritual,omitempty"`
 	Reason         string     `json:"reason,omitempty"`
+
+	// Wild Shape and the familiar's eyes (MR-037, MR-036): the beast's key, the damage
+	// the beast's fall carried over to the character, the form before a change an
+	// undo puts back (ShapeBefore, with ShapeSet true even when it was the
+	// character's own shape), the creature the player looks through and "start" or
+	// "stop", the conditions the sight gave, and the combat the change was made in
+	// (empty outside one). IDs, keys and numbers only.
+	Beast       string      `json:"beast,omitempty"`
+	Carried     int32       `json:"carried_damage,omitempty"`
+	ShapeSet    bool        `json:"shape_set,omitempty"`
+	ShapeBefore *shapeState `json:"shape_before,omitempty"`
+	Creature    string      `json:"creature_id,omitempty"`
+	Sight       string      `json:"sight,omitempty"`
+	SightConds  []string    `json:"sight_conditions,omitempty"`
+	EncounterID string      `json:"encounter_id,omitempty"`
+	// Spent says the change spent the combatant's action or bonus action (the
+	// economy fields above are then what an undo puts back).
+	Spent bool `json:"spent,omitempty"`
+	// A trap that fired (`trap_triggered`, MR-035): what it did and what an undo
+	// puts back. A search (`trap_searched`) keeps its roll in the same fields as an
+	// attack (D20, Modifier, Total, Physical), Key the skill ("perception" or
+	// "investigation") and Found the traps it revealed (point IDs).
+	Trap *trapFireEvent `json:"trap,omitempty"`
+	// D20B is the second d20 of a Perception search with disadvantage.
+	D20B  int32    `json:"d20_b,omitempty"`
+	Found []string `json:"found,omitempty"`
 }
 
 // readEvent decodes an event's payload. A payload of this module never fails
@@ -357,7 +402,7 @@ func touchesHidden(cs []playdb.Combatant, pending []playdb.PendingDamage) bool {
 	for _, c := range cs {
 		hidden[c.ID] = c.Hidden
 	}
-	return slices.ContainsFunc(pending, func(p playdb.PendingDamage) bool { return hidden[p.AttackerID] || hidden[p.TargetID] })
+	return slices.ContainsFunc(pending, func(p playdb.PendingDamage) bool { return hidden[deref(p.AttackerID)] || hidden[p.TargetID] })
 }
 
 // hpOf is a combatant's hit points as the undo stores them.
@@ -380,7 +425,7 @@ func (c *combatTx) pendingOf(ctx context.Context, attackerID string) ([]playdb.P
 	if err != nil {
 		return nil, fmt.Errorf("list the pending damage: %w", err)
 	}
-	return slices.DeleteFunc(open, func(p playdb.PendingDamage) bool { return p.AttackerID != attackerID }), nil
+	return slices.DeleteFunc(open, func(p playdb.PendingDamage) bool { return deref(p.AttackerID) != attackerID }), nil
 }
 
 // publishLogChanged tells the streams to read the combat log again: the

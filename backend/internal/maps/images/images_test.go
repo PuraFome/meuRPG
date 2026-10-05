@@ -578,3 +578,32 @@ func TestExifOrientationIgnoresBrokenBlocks(t *testing.T) {
 		}
 	}
 }
+
+// A 16-bit PNG is stored with 8 bits a channel, so what decodes it later (the
+// fog's tiles) never needs 8 bytes a pixel.
+func TestProcessStoresPNGsAs8Bit(t *testing.T) {
+	t.Parallel()
+	src := image.NewRGBA64(image.Rect(0, 0, 40, 30))
+	for y := range 30 {
+		for x := range 40 {
+			src.SetRGBA64(x, y, color.RGBA64{R: uint16(x * 1500), G: uint16(y * 2000), B: 0x8000, A: uint16(0x8000 + x*100)})
+		}
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, src); err != nil {
+		t.Fatal(err)
+	}
+	res, err := Process(buf.Bytes())
+	if err != nil {
+		t.Fatalf("Process() error = %v", err)
+	}
+	out, err := png.Decode(bytes.NewReader(res.Data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	switch out.(type) {
+	case *image.NRGBA, *image.RGBA:
+	default:
+		t.Errorf("the stored PNG decodes to %T, want 8 bits a channel", out)
+	}
+}

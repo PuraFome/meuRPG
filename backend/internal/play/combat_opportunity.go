@@ -118,7 +118,7 @@ func (s *Service) opportunityReactors(ctx context.Context, tx pgx.Tx, campaignID
 		if down {
 			continue
 		}
-		sheet, err := s.sheetOf(ctx, campaignID, r)
+		sheet, err := s.sheetOf(ctx, tx, campaignID, r)
 		if connect.CodeOf(err) == connect.CodeNotFound {
 			continue
 		}
@@ -428,7 +428,7 @@ func (s *Service) opportunityOffers(ctx context.Context, m authz.Membership, d *
 		}
 		if answers {
 			offer.LeftCol, offer.LeftRow = o.LeftCol, o.LeftRow
-			if sheet, err := s.sheetOf(ctx, m.CampaignID, reactor); err == nil {
+			if sheet, err := s.sheetOf(ctx, nil, m.CampaignID, reactor); err == nil {
 				for _, a := range sheet.Attacks {
 					if meleeAttack(a) {
 						offer.Attacks = append(offer.Attacks, &playv1.OpportunityAttack{Key: a.Key, NamePt: a.Name})

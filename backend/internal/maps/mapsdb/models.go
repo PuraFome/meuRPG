@@ -38,6 +38,14 @@ type Map struct {
 	VisionEpoch    int32
 }
 
+type MapCreatureToken struct {
+	MapID      string
+	CreatureID string
+	XBp        int32
+	YBp        int32
+	UpdatedAt  time.Time
+}
+
 type MapLayer struct {
 	MapID            string
 	DifficultTerrain []byte
