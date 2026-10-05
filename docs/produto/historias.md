@@ -475,10 +475,11 @@ Prioridade decidida em 02/10/2026 (pergunta 20): primeiro o cadastro pelo mestre
 - **Dado** um mapa desenhado com quadrados de 3 m, **quando** o mestre diz "cada quadrado deste desenho vale 3 m", **então** o app conta quatro quadrados de 1,5 m em cada um, e o movimento, o alcance e a névoa seguem as regras de sempre (RN-25).
 - **Dado** um combate que o mestre começa sem mapa ("teatro da mente"), **quando** o jogador se move, **então** ele gasta o movimento por número ("Restam 6 m"), sem posição na grade, **e** o mestre julga o alcance (RN-25, ADR-0017).
 - **Dado** uma ficha que usa conteúdo da mesa, **quando** alguém tenta levá-la para outra campanha, **então** o app recusa e diz por quê.
+- **Dado** um personagem com antecedente de texto livre (o "Outro" do editor), **quando** o jogador o preenche, **então** escolhe, como na regra do SRD 5.1 "Personalizar um antecedente", duas perícias, duas ferramentas ou idiomas no total, uma característica (com o texto dele) e o equipamento, **e** a ficha calcula com isso (pergunta 82, respondida em 05/10/2026).
 
 #### Dúvidas
-- Perguntas 76 a 78 e 80 a 84 do documento de acompanhamento, com os nossos padrões: o app segue o padrão até o Samuel responder.
-- O personagem com antecedente ou subclasse de texto livre (o "Outro" do editor) continua valendo (pergunta 82).
+- Respondidas em 05/10/2026: as perguntas 77, 78, 80, 82 e 84 (ver [Perguntas em aberto](perguntas-em-aberto.md#respondidas-em-05102026)). Seguem em aberto a 76 (as regras da casa) e a 83 (o que os jogadores veem), com os nossos padrões.
+- O antecedente e a subclasse de texto livre (o "Outro" do editor) continuam valendo (pergunta 82); o antecedente ganha as escolhas do SRD 5.1, acima.
 - Ficam fora do MVP: copiar o conteúdo para outra campanha (MR-026), monstros e itens mágicos próprios, talentos fora do SRD, o flanqueamento e a grade hexagonal.
 
 ### MR-010: Gerar masmorras
@@ -789,12 +790,14 @@ Fatia 9.2 da Etapa 9, só as contas em Go (a ligação com o servidor vem nas fa
 - **Dado** uma masmorra gerada ([MR-010](#mr-010-gerar-masmorras)) ou a descrição de uma cena, **quando** o mestre pede uma imagem, com o texto e o estilo dele, **então** o app gera a imagem e a guarda na galeria da campanha, escondida dos jogadores.
 - **Dado** uma imagem gerada, **quando** o mestre escreve um novo pedido ("mais escura", "com uma ponte"), **então** o app a edita sabendo da cena, sem recomeçar do zero, **e** guarda a nova ao lado da anterior.
 - **Dado** que o limite do mês da campanha foi atingido, **quando** o mestre pede outra imagem, **então** o app recusa e diz por quê e quando volta.
-- **Dado** um pedido de imagem, **quando** o app o envia ao serviço de IA, **então** vão só o desenho da masmorra, a lista das salas e o texto do mestre, nunca dado pessoal (RN-28).
+- **Dado** uma cena com um mapa de combate e NPCs, **quando** o mestre pede uma imagem, **então** ele pode escolher na galeria imagens de referência para o modelo (o mapa onde o combate acontece, os retratos dos NPCs e inimigos em cena), **e** a imagem sai como arte da cena (pergunta 85).
+- **Dado** um pedido de imagem, **quando** o app o envia ao serviço de IA, **então** vão só o desenho da masmorra, a lista das salas, o texto do mestre e as referências que ele escolheu, nunca dado pessoal (RN-28).
+- **Dado** uma imagem feita a partir de uma masmorra com uma porta secreta, **quando** o mestre vai mostrá-la, **então** o app avisa que ela mostra também o que está atrás das portas secretas.
 - **Dado** que o serviço recusa um pedido ou não devolve imagem, **quando** o mestre espera a imagem, **então** o app diz isso em português ("O serviço não gerou uma imagem"), sem gastar a vaga do mês.
 
 #### Relacionadas
 - Usa a API do Gemini (o modelo de imagem, o "Nano Banana"), com uma chave do Google AI Studio, pelo servidor, atrás de uma interface pequena (ADR-0019, que substitui a ADR-0014, de 03/10/2026, que usava o Vertex AI). O modelo é configurável: `gemini-3.1-flash-image` por padrão (o `gemini-2.5-flash-image` foi desligado em 02/10/2026). O operador novo, o Google (API do Gemini), entra em [Privacidade](../privacidade.md); a chave é um segredo, e o custo e o limite ficam em [Operação](../operacao.md).
-- A imagem é arte da cena, não o mapa da batalha: o modelo devolve imagens em proporções fixas, que não casam com a grade. Pode ir para o fundo de um mapa, sabendo que os quadrados não vão bater (pergunta 85).
+- A imagem é arte da cena, não o mapa da batalha: o modelo devolve imagens em proporções fixas, que não casam com a grade. Pode ir para o fundo de um mapa, sabendo que os quadrados não vão bater (pergunta 85, respondida em 05/10/2026). Depois do MVP: usar o mapa como referência para uma vista isométrica dele, ou para o próprio mapa com textura, casando com a grade.
 
 #### Dúvidas
 - O número do limite por campanha por mês sai depois de medir o custo com a chave de verdade (US$ 0,067 por imagem de 1K no `gemini-3.1-flash-image`, em 05/10/2026).
@@ -867,7 +870,7 @@ Nova em 05/10/2026, no plano da Etapa 10: o Vinicius pediu as três ferramentas 
 - **Dado** uma criatura do bestiário, **quando** o mestre escolhe "Criar NPC", **então** o app faz uma ficha básica de NPC com os números dela, que o mestre pode renomear e editar.
 
 #### Dúvidas
-- Os PV ao pôr no combate (pergunta 81): o padrão é a média; o mestre pode rolar.
+- Os PV ao pôr no combate (pergunta 81, aceita em 05/10/2026): a média; o mestre pode rolar.
 - Monstros próprios ficam fora do MVP.
 
 ### MR-043: Gerar encontros
@@ -881,13 +884,13 @@ Nova em 05/10/2026, no plano da Etapa 10: o Vinicius pediu as três ferramentas 
 Nova em 05/10/2026, como a [MR-042](#mr-042-bestiário).
 
 #### Critérios de aceite
-- **Dado** o grupo de "Mirathel" (os personagens de jogador vivos da campanha), **quando** monto um encontro com criaturas do bestiário e as quantidades, **então** vejo o XP total e a dificuldade (baixa, moderada ou alta) contra o orçamento do grupo, com o rótulo "Guia de dificuldade do SRD 5.2.1 (regras de 2024)" e o aviso de que, com os monstros de 2014, o encontro tende a ficar um pouco mais fácil.
+- **Dado** o grupo de "Mirathel" (os personagens de jogador vivos da campanha, mais os NPCs que eu puser no grupo, com o nível que eu disser), **quando** monto um encontro com criaturas do bestiário e as quantidades, **então** vejo o XP total e a dificuldade (baixa, moderada ou alta) contra o orçamento do grupo, com o rótulo "Guia de dificuldade do SRD 5.2.1 (regras de 2024)" e o aviso de que, com os monstros de 2014, o encontro tende a ficar um pouco mais fácil.
 - **Dado** um encontro montado, **quando** o guardo num ponto de batalha do mapa, **então** "Começar este combate" põe os monstros dele no combate, como na [MR-042](#mr-042-bestiário).
 - **Dado** uma dificuldade e, se eu quiser, um tipo de criatura, **quando** peço "Gerar encontro", **então** o app monta um com criaturas do SRD, um líder e um grupo, que nunca passa do orçamento nem traz criatura de ND acima do nível do grupo mais 3; "Gerar outro" faz um novo, e posso trocar uma criatura.
 - **Dado** a mesma dificuldade, as mesmas opções e a mesma semente, **quando** gero duas vezes, **então** o resultado é o mesmo.
 
 #### Dúvidas
-- Quem é o grupo do encontro (pergunta 86): o padrão são os personagens de jogador vivos da campanha.
+- Quem é o grupo do encontro (pergunta 86, respondida em 05/10/2026): os personagens de jogador vivos da campanha, mais os NPCs que o mestre puser no grupo naquele momento da história.
 - A tabela de orçamento é a "XP Budget per Character" do SRD 5.2.1 (CC BY 4.0), com crédito no `NOTICE` e na página "Créditos"; o SRD 5.1 não tem tabela de dificuldade. Se ela combina com os monstros de 2014, a mesa vê depois de jogar (Vinicius, 05/10/2026).
 
 ### MR-044: Gerar tesouro

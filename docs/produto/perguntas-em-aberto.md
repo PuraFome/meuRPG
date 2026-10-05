@@ -112,21 +112,26 @@ O Vinicius respondeu pelo Samuel: a 66 como propusemos, e as de 67 a 75, da Etap
 - **Pergunta 74: as criaturas do personagem.** Entram a Forma Selvagem, Encontrar Familiar (e o Pacto da Corrente do bruxo), Animar os Mortos e Conjurar Animais, e o mestre pode dar qualquer criatura do SRD a um personagem. Encontrar Montaria fica para depois do MVP (pede as regras de combate montado). Decidido e feito na Etapa 9: o servidor das criaturas convocadas e dadas (fatia 9.9, PR #106) e o da Forma Selvagem (fatia 9.10, #112), e as telas, na ficha (fatia 9.16, #117) e no combate (fatia 9.17, #122). Ver [MR-037](historias.md#mr-037-criaturas-do-personagem).
 - **Pergunta 75: "Voltar à cidade".** O mestre escolhe os tesouros encontrados (todos marcados) e quem recebe (todos os personagens vivos marcados); o total vira XP, 1 por PO, dividido e arredondado para baixo, num prêmio só, que pode ser desfeito. Só em campanha por ouro; nas outras, o tesouro conta no resumo da sessão ("Mais tesouro encontrado"). Decidido e feito na Etapa 9: o servidor (fatia 9.11, PR #105) e as telas (fatia 9.18, #116). Ver [MR-041](historias.md#mr-041-tesouros-e-xp-por-ouro).
 
+## Respondidas em 05/10/2026
+
+O Vinicius respondeu pelo Samuel oito das perguntas da Etapa 10: seis como sugerimos, duas com acréscimos (82 e 85, e um detalhe na 86). As de 76, 79 e 83 pedem mais detalhe e seguem em aberto, abaixo.
+
+- **Pergunta 77: os PV ao subir de nível.** O jogador escolhe entre rolar e a média; o mestre pode deixar só um dos dois. Aceito como sugerimos. Ver [RN-24](regras.md).
+- **Pergunta 78: os jeitos de fazer os atributos.** Os quatro valem: o conjunto padrão, a compra por 27 pontos, 4d6 descartando o menor (rolados e guardados pelo servidor) e digitar. Aceito; o 4d6 já era o costume das mesas, e o SRD 5.2.1 só o pôs num texto aberto. Ver [RN-24](regras.md).
+- **Pergunta 80: a mudança no conteúdo da mesa vale nas fichas já travadas?** Sim, na hora; a ficha mostra "A classe mudou" quando algo fica fora das regras. Aceito. Ver [RN-23](regras.md).
+- **Pergunta 81: os PV de um monstro posto no combate.** Os médios; o mestre pode rolar. Aceito. Ver [MR-042](historias.md#mr-042-bestiário).
+- **Pergunta 82: o antecedente e a subclasse de texto livre.** Continuam os dois, com um acréscimo: um antecedente não é só uma descrição. O antecedente de texto livre segue a regra do SRD 5.1 "Personalizar um antecedente": além do nome, duas perícias (já é assim), duas ferramentas ou idiomas no total, uma característica (o texto de quem cria) e o equipamento. A fazer na Etapa 10. Ver [MR-025](historias.md#mr-025-cadastrar-conteúdo-da-mesa).
+- **Pergunta 84: a grade de 3 m.** Um mapa desenhado com quadrados de 3 m é calibrado e conta quatro quadrados de 1,5 m em cada um; não há quadrado de 1 m. Aceito. Os quadrados de 1,5 m (5 pés), como no Livro do Jogador, são o padrão desde a Etapa 6; o que é novo é o desenho com quadrados maiores. Ver [RN-25](regras.md).
+- **Pergunta 85: a imagem gerada por IA.** No MVP, é a arte da cena, e o mestre pode dar ao modelo referências da galeria: o mapa onde o combate acontece e os NPCs e inimigos em cena. Depois do MVP, a ideia é usar o mapa como referência para gerar uma vista isométrica dele, ou o próprio mapa com textura, casando com a grade. Ver [MR-039](historias.md#mr-039-imagens-geradas-para-masmorras-e-cenas).
+- **Pergunta 86: quem é o grupo de um encontro.** Os personagens de jogador vivos da campanha, e o mestre pode pôr no grupo os NPCs que acompanham os personagens naquele momento da história, com o nível que ele disser. Ver [MR-043](historias.md#mr-043-gerar-encontros).
+
 ## Em aberto
 
-As perguntas 76 a 86 são da Etapa 10 (05/10/2026) e estão no documento de acompanhamento, onde o Samuel responde. Cada uma tem um padrão nosso, que o app segue até a resposta; uma resposta diferente muda o app depois.
+As perguntas 76, 79 e 83 são da Etapa 10 (05/10/2026) e estão no documento de acompanhamento. Em 05/10/2026 o Vinicius pediu mais detalhe nas três (o estilo de cada mestre, as ideias de quebra-cabeça e o que exatamente os jogadores veem); até a resposta, o app segue o nosso padrão.
 
 - **Pergunta 76: as regras da casa.** Quais escolhas da página "Regras da mesa" a mesa quer (os PV ao subir de nível, os jeitos de fazer atributos, o crítico, quem vê os testes contra a morte, a poção como ação bônus). Padrão: todas existem, e cada campanha começa com as regras do SRD (a poção como ação, os testes contra a morte vistos por todos). Ver [RN-24](regras.md).
-- **Pergunta 77: os PV ao subir de nível.** Padrão: o jogador escolhe entre rolar e a média, como hoje. Ver [RN-24](regras.md) e [MR-040](historias.md#mr-040-subir-de-nível-pela-ficha).
-- **Pergunta 78: os jeitos de fazer os atributos.** Padrão: os quatro valem (o conjunto padrão, a compra por 27 pontos, 4d6 descartando o menor, rolados pelo servidor, e digitar). Ver [RN-24](regras.md).
 - **Pergunta 79: o que resolver um quebra-cabeça dá.** Padrão: o mestre é avisado e decide; não há teste de perícia automático. Ver [MR-038](historias.md#mr-038-quebra-cabeças).
-- **Pergunta 80: a mudança no conteúdo da mesa vale nas fichas já travadas, até durante uma sessão?** Padrão: sim, na hora; a ficha mostra "A classe mudou" quando algo fica fora das regras. Ver [RN-23](regras.md).
-- **Pergunta 81: os PV de um monstro posto no combate.** Padrão: os médios; o mestre pode rolar. Ver [MR-042](historias.md#mr-042-bestiário).
-- **Pergunta 82: o antecedente e a subclasse de texto livre.** Agora que a mesa cadastra os de verdade, o "Outro" do editor de personagem continua? Padrão: continua, os dois. Ver [MR-025](historias.md#mr-025-cadastrar-conteúdo-da-mesa).
 - **Pergunta 83: o que os jogadores veem do conteúdo da mesa.** Padrão: tudo o que um jogador pode escolher; uma magia, só para quem pode aprendê-la. A outra opção é uma marca "os jogadores veem isto" em cada entrada. Ver [RN-23](regras.md).
-- **Pergunta 84: a grade de 3 m.** Padrão: um mapa desenhado com quadrados de 3 m é calibrado e conta como quatro quadrados de 1,5 m; não há quadrado de 1 m. Ver [RN-25](regras.md).
-- **Pergunta 85: a imagem gerada por IA é o mapa da batalha ou a arte da cena?** Padrão: a arte da cena; ela pode ir para o fundo de um mapa, sabendo que os quadrados não vão bater. Ver [MR-039](historias.md#mr-039-imagens-geradas-para-masmorras-e-cenas).
-- **Pergunta 86: quem é o grupo de um encontro.** Padrão: os personagens de jogador vivos da campanha. Ver [MR-043](historias.md#mr-043-gerar-encontros).
 
 ## Ver também
 
