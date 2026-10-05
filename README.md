@@ -43,7 +43,7 @@ O MeuRPG está sendo reconstruído do zero: um servidor em Go que serve o app An
 
 ## O que já funciona
 
-As Etapas 1 a 8 do [roadmap](docs/roadmap.md) estão na `main`:
+As Etapas 1 a 9 do [roadmap](docs/roadmap.md) estão na `main`:
 
 - **Login** por OpenID Connect (o Google em produção), com sessão de até 30 dias no servidor.
 - **Campanhas e convites.** O mestre cria a campanha e gera convites com validade e número de usos. Quem recebe o link entra, logado ou fazendo login no caminho, e o convite pode pedir a aprovação do mestre.
@@ -59,8 +59,12 @@ As Etapas 1 a 8 do [roadmap](docs/roadmap.md) estão na `main`:
 - **XP.** O mestre dá XP no fim do combate, por ouro ou avulso, ou registra um marco, conforme o modo da campanha, e desfaz o último. Toda a campanha vê o histórico, e a ficha mostra "Pode subir de nível". Na campanha por marcos, o mestre escreve os marcos antes. Quando pode, o jogador sobe o nível pela própria ficha, passo a passo, acrescentando só o que o nível dá, e o mestre vê o que mudou.
 - **Resumo da sessão.** Quando o mestre encerra a sessão, todos veem os destaques, e o mestre vê também a tabela de cada jogador.
 - **Imprimir o mapa.** O mestre imprime um mapa com a grade na escala da mesa, escolhendo o tamanho do quadrado e o papel.
+- **O mapa a fundo.** O mestre pinta no mapa o terreno difícil, as paredes, a cobertura e a luz, e põe luzes, armadilhas e tesouros. Com a névoa de guerra ligada, cada jogador vê só o que o personagem dele enxerga, com a luz que carrega e a visão no escuro, e o que já viu fica escurecido e sem inimigos. O mestre vê o mapa como cada jogador vê.
+- **Armadilhas e tesouros.** O personagem nota uma armadilha ao passar perto ou procura com Percepção ou Investigação; o mestre revela, dispara e desarma, e aplica o dano. O tesouro achado vira XP em "Voltar à cidade", nas campanhas por ouro.
+- **Movimento como nas regras oficiais.** O alcance em círculo, o terreno difícil, o salto, a cobertura e o ataque de oportunidade, tudo decidido pelo servidor.
+- **As criaturas do personagem.** O familiar, os mortos-vivos e os animais convocados entram na ficha e no combate, cada um com a vez dele, e o druida vira fera na Forma Selvagem.
 
-Agora vem a Etapa 9, o combate e o mapa a fundo (movimento em círculo, armadilhas, névoa de guerra, criaturas do personagem e os tesouros no mapa, com o XP por ouro). O MVP termina na Etapa 10, quando a mesa joga a primeira sessão inteira pelo app; a 10 traz o conteúdo e a geração (regras da mesa, quebra-cabeças, gerador de masmorras e imagens geradas por IA). Ver [Roadmap](docs/roadmap.md).
+Agora vem a Etapa 10, a última antes do MVP: o conteúdo e a geração (as regras da própria mesa, os quebra-cabeças, o gerador de masmorras e as imagens geradas por IA). O MVP termina quando a mesa joga a primeira sessão inteira pelo app. Ver [Roadmap](docs/roadmap.md).
 
 ## O visual: a ficha de papel
 
