@@ -1,7 +1,9 @@
-import { Component, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import type { AttackRoll, PendingDamage } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { article } from '../../../../core/combat/combat-log';
+import { degreeWord } from '../../../../core/combat/cover';
 
 /**
  * What the attack sheet has shown so far, as a list of done steps (E6-07,
@@ -35,6 +37,9 @@ import type { AttackRoll, PendingDamage } from '../../../../../gen/meurpg/play/v
                 </span>
               }
             </span>
+            @if (coverLine()) {
+              <span class="part__line">{{ coverLine() }}</span>
+            }
           </div>
         </div>
       }
@@ -67,4 +72,14 @@ export class AttackResult {
   readonly showDamage = input(false);
   readonly damage = input<PendingDamage | null>(null);
   readonly damageLine = input('');
+  /** "O Goblin 2 estava com meia cobertura.": says why a miss missed, never by how much (RN-20). */
+  protected readonly coverLine = computed(() => {
+    const r = this.roll();
+    const word = r ? degreeWord(r.cover).toLowerCase() : '';
+    return word ? `${capitalize(`${article(this.targetLabel())} ${this.targetLabel()}`)} estava com ${word}.` : '';
+  });
+}
+
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }

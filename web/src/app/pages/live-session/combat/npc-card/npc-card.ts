@@ -9,14 +9,17 @@ import {
   type Encounter,
   type GetTurnOptionsResponse,
   type PendingDamage,
+  type TargetInReach,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import type { Attack } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { isHit, outcomeWord } from '../../../../core/combat/attack-flow';
 import { CombatClient, newKey } from '../../../../core/combat/combat-client';
+import { coverText } from '../../../../core/combat/cover';
 import { rollFormula } from '../../../../core/combat/combat-dice';
 import { article } from '../../../../core/combat/combat-log';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
-import { distanceText, metersText, reachSquares, squaresText } from '../../../../core/units';
+import { metersFixed, reachSquares, squaresText } from '../../../../core/units';
+import { joinDots } from '../../../../core/format/text';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { attackName } from '../../../../core/combat/combat-options';
 import { combatantInitial, isPlayer, roundLabel } from '../../../../core/combat/combat-view';
@@ -113,8 +116,8 @@ export class NpcCard {
     return {
       hp: c.hitPointsMax !== undefined ? { now: c.hitPointsCurrent ?? 0, max: c.hitPointsMax } : null,
       ac: c.armorClass,
-      speed: { meters: metersText(c.speedFt), squares: squaresText(reachSquares(c.speedFt)) },
-      movement: distanceText(c.movementLeftFt),
+      speed: { meters: metersFixed(c.speedDft / 10), squares: squaresText(reachSquares(c.speedFt)) },
+      movement: joinDots([metersFixed(c.movementLeftDft / 10), squaresText(reachSquares(c.movementLeftFt))]),
     };
   });
   protected readonly result = computed(() => {
@@ -190,10 +193,16 @@ export class NpcCard {
     this.key = newKey();
   }
 
+  /** " · Meia cobertura (do mapa)": the cover the target has against this attacker. */
+  protected coverNote(t: TargetInReach): string {
+    const text = coverText(t.cover, t.coverSource);
+    return text ? ` · ${text}` : '';
+  }
+
   protected distance(ft: number | undefined, tooFar: boolean): string {
     const parts: string[] = [];
     if (ft !== undefined) {
-      parts.push(`a ${metersText(ft)}`);
+      parts.push(`a ${metersFixed(ft)}`);
     }
     if (tooFar) {
       parts.push('fora do alcance');

@@ -53,6 +53,16 @@ export interface AttackSheetData {
    * one, and how many it makes. */
   readonly attacksLeft?: number;
   readonly attacksPerAction?: number;
+  /** The answer to an opportunity offer (E9-13): the target is the mover (so the
+   * sheet starts at "Rolar"), the reach is not checked (the attack comes right
+   * before it leaves), and the roll names the offer. `byMaster` when the master
+   * rolls it for an NPC. */
+  readonly opportunity?: {
+    readonly offerId: string;
+    readonly targetId: string;
+    readonly targetLabel: string;
+    readonly byMaster: boolean;
+  };
   /** A hit whose damage was never rolled (the sheet was closed): the sheet
    * opens at "Dano" with it. */
   readonly resume?: { readonly pending: PendingDamage; readonly targetLabel: string };
@@ -82,8 +92,8 @@ export class AttackSheet {
   protected readonly inSheet = this.sheet.inSheet;
   protected readonly attack = this.data.attack;
 
-  protected readonly stage = signal<AttackStage>(this.data.resume ? 'damage' : 'target');
-  protected readonly targetId = signal<string | null>(null);
+  protected readonly stage = signal<AttackStage>(this.data.resume ? 'damage' : this.data.opportunity ? 'roll' : 'target');
+  protected readonly targetId = signal<string | null>(this.data.opportunity?.targetId ?? null);
   protected readonly typing = signal(false);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
@@ -108,7 +118,9 @@ export class AttackSheet {
   protected readonly rangeText = metersText(this.data.asReaction ? 5 : this.attack.rangeFt);
   /** An opportunity attack reaches 5 ft, whatever range the weapon has when thrown. */
   protected readonly rows = computed(() =>
-    this.data.asReaction
+    this.data.opportunity
+      ? [{ id: this.data.opportunity.targetId, label: this.data.opportunity.targetLabel, sub: '', blocked: '', cover: '', coverMark: null }]
+      : this.data.asReaction
       ? targetRows(
           this.data.targets.map((t) => ({ ...t, tooFar: t.distanceFt === undefined || t.distanceFt > 5 }) as typeof t),
           5,
@@ -124,6 +136,7 @@ export class AttackSheet {
   protected readonly targetLabel = computed(
     () => this.target()?.label ?? this.data.resume?.targetLabel ?? '',
   );
+  protected readonly doneLabel = this.data.opportunity ? 'Fechar' : 'Voltar à sua vez';
   protected readonly canApp = this.data.diceMode !== DiceMode.PHYSICAL;
   protected readonly canType = this.data.diceMode !== DiceMode.APP;
   protected readonly preferApp =
@@ -168,6 +181,9 @@ export class AttackSheet {
   /** What the attack spent: the reaction, one of Extra Attack's attacks (the
    * action stays open for the rest) or the action. */
   protected readonly spent = computed(() => {
+    if (this.data.opportunity?.byMaster) {
+      return 'A reação dele foi usada.';
+    }
     if (this.data.asReaction) {
       return 'Sua reação foi usada.';
     }
@@ -257,6 +273,7 @@ export class AttackSheet {
         die,
         this.attackKey,
         this.data.asReaction ?? false,
+        this.data.opportunity?.offerId ?? '',
       );
       this.data.state.apply(res.encounter);
       this.roll.set(res.roll);

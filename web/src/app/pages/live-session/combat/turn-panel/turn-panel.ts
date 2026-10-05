@@ -1,8 +1,9 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, ElementRef, computed, effect, input, output, viewChild } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import { type Combatant, CombatantState, type Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { metersText, squaresFree } from '../../../../core/units';
+import { metersFixed, squaresFree } from '../../../../core/units';
 import { article } from '../../../../core/combat/combat-log';
 import {
   combatantInitial,
@@ -40,7 +41,7 @@ import { ConcentrationLine, TurnReaction } from './turn-extras';
  */
 @Component({
   selector: 'app-turn-panel',
-  imports: [CombatantToken, ConcentrationLine, EndPart, EndTurn, JointOthers, JointPill, MatIconModule, OrderStrip, TurnReaction],
+  imports: [CombatantToken, ConcentrationLine, EndPart, EndTurn, JointOthers, JointPill, MatIconModule, NgTemplateOutlet, OrderStrip, TurnReaction],
   templateUrl: './turn-panel.html',
   styleUrl: './turn-panel.scss',
 })
@@ -55,6 +56,10 @@ export class TurnPanel {
   readonly hitPointsMax = input<number | null>(null);
   /** The melee attacks an opportunity attack can use (off turn, reaction free). */
   readonly opportunities = input<readonly { key: string; name: string }[]>([]);
+  /** An opportunity attack waits for an answer: the title ("Esperando a reação do mestre") and the line under it (E9-13). */
+  readonly waiting = input<{ readonly title: string; readonly detail: string } | null>(null);
+  /** What the last move said when it stopped short ("Você parou antes: algo bloqueou o caminho."). */
+  readonly moveNote = input('');
   /** The name of the spell the player is concentrating on, or `''`. */
   readonly concentration = input('');
 
@@ -129,14 +134,15 @@ export class TurnPanel {
     const own = this.own();
     return own
       ? {
-          left: metersText(own.movementLeftFt),
-          total: metersText(own.speedFt * (own.dashed ? 2 : 1)),
+          // Tenths of a foot, metres with one decimal: "6,9 m de 9,0 m".
+          left: metersFixed(own.movementLeftDft / 10),
+          total: metersFixed(own.speedDft / 10),
           free: squaresFree(own.movementLeftFt),
-          used: own.movementUsedFt > 0 ? metersText(own.movementUsedFt) : '',
-          none: own.movementLeftFt <= 0,
+          used: own.movementUsedDft > 0 ? metersFixed(own.movementUsedDft / 10) : '',
+          none: own.movementLeftDft <= 0,
           percent: Math.max(
             0,
-            Math.min(100, (own.movementLeftFt / Math.max(1, own.speedFt * (own.dashed ? 2 : 1))) * 100),
+            Math.min(100, (own.movementLeftDft / Math.max(1, own.speedDft)) * 100),
           ),
         }
       : null;

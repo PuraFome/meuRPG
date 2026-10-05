@@ -182,3 +182,14 @@
 .mark--on {
   color: var(--mr-accent-text);
 }
+
+// The cover the target has against this attacker, with its pictogram.
+.cover {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}

@@ -11,6 +11,18 @@ describe('combat errors', () => {
     expect(blockedMessage({ reason: EncounterBlockedReason.SQUARE_OCCUPIED } as never)).toMatch(/Ocupado/);
   });
 
+  it('says how far, in tenths of a foot, and the limit of a jump that was too long (E9-06)', () => {
+    expect(blockedMessage({ reason: EncounterBlockedReason.TOO_FAR, missingDft: 29, missingFt: 3 } as never)).toBe(
+      'Esse caminho custa mais do que o movimento que sobra: faltam 0,9\u00a0m.',
+    );
+    expect(
+      blockedMessage({ reason: EncounterBlockedReason.TOO_FAR, missingDft: 50, jumpLimitDft: 160, jumpRunningStart: true } as never),
+    ).toBe('Longe demais para o seu salto: ele vai até 4,8\u00a0m com corrida. Faltam 1,5\u00a0m.');
+    expect(
+      blockedMessage({ reason: EncounterBlockedReason.TOO_FAR, missingDft: 50, jumpLimitDft: 80, jumpRunningStart: false } as never),
+    ).toContain('até 2,4\u00a0m parado');
+  });
+
   it('explains the refusals of walls, enemies and total cover (RN-21, MR-034)', () => {
     expect(blockedMessage({ reason: EncounterBlockedReason.MOVE_BLOCKED } as never)).toMatch(/parede ou outra criatura/);
     expect(blockedMessage({ reason: EncounterBlockedReason.ENEMY_IN_THE_WAY } as never)).toMatch(/inimigo está no caminho/);

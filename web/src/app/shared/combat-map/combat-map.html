@@ -30,6 +30,9 @@
       draggable="false"
       decoding="async"
     />
+    @if (layers(); as l) {
+      <app-map-layers [layers]="l" />
+    }
     <svg
       class="cm__grid"
       aria-hidden="true"
@@ -39,7 +42,7 @@
       <path [attr.d]="gridPath()" />
     </svg>
 
-    @if (reachBox(); as box) {
+    @if (reach(); as r) {
       @for (cell of reachCells(); track cell.row * 1000 + cell.col) {
         <span
           class="cm__cell"
@@ -48,14 +51,34 @@
           [style.top.%]="(cell.row / rows()) * 100"
         ></span>
       }
+      <svg
+        class="cm__ring"
+        aria-hidden="true"
+        preserveAspectRatio="none"
+        [attr.viewBox]="'0 0 ' + columns() + ' ' + rows()"
+      >
+        <ellipse class="under" [attr.cx]="r.origin.col + 0.5" [attr.cy]="r.origin.row + 0.5" [attr.rx]="ringRadius()" [attr.ry]="ringRadius()" />
+        <ellipse [attr.cx]="r.origin.col + 0.5" [attr.cy]="r.origin.row + 0.5" [attr.rx]="ringRadius()" [attr.ry]="ringRadius()" />
+      </svg>
+    }
+
+    @for (box of reactorBoxes(); track box.col * 1000 + box.row) {
       <span
-        class="cm__reach"
+        class="cm__reactor"
         aria-hidden="true"
         [style.left.%]="(box.col / columns()) * 100"
         [style.top.%]="(box.row / rows()) * 100"
-        [style.width.%]="(box.width / columns()) * 100"
-        [style.height.%]="(box.height / rows()) * 100"
       ></span>
+      @if (box.left; as at) {
+        <span
+          class="cm__left"
+          aria-hidden="true"
+          [style.left.%]="(at.col / columns()) * 100"
+          [style.top.%]="(at.row / rows()) * 100"
+        >
+          <span class="cm__tag" [class.cm__tag--right]="at.col * 2 > columns()" [class.cm__tag--above]="at.row + 2 >= rows()">Saiu do alcance aqui</span>
+        </span>
+      }
     }
 
     @if (mark(); as m) {
@@ -81,6 +104,9 @@
         [style.top.%]="(f.square.row / rows()) * 100"
       >
         <mat-icon>{{ f.refused ? 'block' : 'check' }}</mat-icon>
+        @if (f.label) {
+          <span class="cm__cost" [class.cm__cost--above]="f.square.row + 2 >= rows()">{{ f.label }}</span>
+        }
       </span>
     }
 
@@ -93,7 +119,7 @@
         [style.left.%]="left(place(c))"
         [style.top.%]="top(place(c))"
       >
-        @if (c.id === currentId()) {
+        @if (c.id === currentId() && showTurn()) {
           <span class="cm__turn">Vez</span>
         }
         <app-combatant-token

@@ -9,6 +9,12 @@
     <p class="groups__note" role="status"><mat-icon aria-hidden="true">check_circle</mat-icon>{{ note() }}</p>
   }
 
+  @if (own().disengaged) {
+    <p class="groups__note" role="status">
+      <mat-icon aria-hidden="true">check_circle</mat-icon>Você usou Desengajar. Seus movimentos deste turno não provocam ataque de oportunidade.
+    </p>
+  }
+
   @if (pendingRoll()) {
     <div class="mr-notice mr-notice--warning groups__pending">
       <mat-icon aria-hidden="true">warning</mat-icon>
@@ -33,8 +39,8 @@
             [detail]="attackDetail(atk)"
             [button]="asksSave(atk) ? 'Conjurar' : 'Atacar'"
             [buttonLabel]="(asksSave(atk) ? 'Conjurar ' : 'Atacar com ') + attackName(atk)"
-            [off]="!a.enabled"
-            [reason]="reasonText(a.reason)"
+            [off]="!a.enabled || !!locked()"
+            [reason]="locked() || reasonText(a.reason)"
             [busy]="busy()"
             (press)="asksSave(atk) ? cast.emit(atk.key) : attack.emit(atk.key)"
             (help)="describe.emit({ key: atk.key, name: attackName(atk) })"
@@ -65,8 +71,8 @@
           [detail]="spellLine(s)"
           [button]="spellButton()"
           [buttonLabel]="'Conjurar ' + spellName(s)"
-          [off]="!s.enabled"
-          [reason]="reasonText(s.reason)"
+          [off]="!s.enabled || !!locked()"
+          [reason]="locked() || reasonText(s.reason)"
           [busy]="busy()"
           (press)="cast.emit(s.spell?.key ?? '')"
           (help)="describe.emit({ key: s.spell?.key ?? '', name: spellName(s) })"
@@ -81,16 +87,16 @@
           [detail]="featureDetail(f)"
           button="Usar"
           [buttonLabel]="'Usar ' + (f.action?.namePt ?? '')"
-          [off]="featureOff(f)"
-          [reason]="reasonText(f.reason)"
+          [off]="featureOff(f) || !!locked()"
+          [reason]="locked() || reasonText(f.reason)"
           [busy]="busy()"
           (press)="feature.emit(f.action?.key ?? '')"
         />
       }
     }
     <p class="group__sub">Ações padrão</p>
-    @if (standardWhy()) {
-      <p class="group__why" id="std-why"><mat-icon aria-hidden="true">block</mat-icon>{{ standardWhy() }}</p>
+    @if (locked() || standardWhy()) {
+      <p class="group__why" id="std-why"><mat-icon aria-hidden="true">block</mat-icon>{{ locked() || standardWhy() }}</p>
     }
     <div class="std" role="group" aria-label="Ações padrão">
       @for (a of standard(); track a.action?.key) {
@@ -98,11 +104,11 @@
           mat-stroked-button
           type="button"
           class="std__btn"
-          [class.std__btn--off]="!a.enabled"
-          [disabled]="!a.enabled || busy()"
+          [class.std__btn--off]="!a.enabled || !!locked()"
+          [disabled]="!a.enabled || !!locked() || busy()"
           disabledInteractive
-          [attr.aria-describedby]="!a.enabled ? 'std-why' : null"
-          (click)="a.enabled && action.emit(a.action?.key ?? '')"
+          [attr.aria-describedby]="!a.enabled || locked() ? 'std-why' : null"
+          (click)="a.enabled && !locked() && action.emit(a.action?.key ?? '')"
         >
           {{ a.action?.namePt }}
         </button>
@@ -122,8 +128,8 @@
           [detail]="featureDetail(f)"
           button="Usar"
           [buttonLabel]="'Usar ' + (f.action?.namePt ?? '')"
-          [off]="featureOff(f)"
-          [reason]="reasonText(f.reason)"
+          [off]="featureOff(f) || !!locked()"
+          [reason]="locked() || reasonText(f.reason)"
           [busy]="busy()"
           (press)="feature.emit(f.action?.key ?? '')"
         />
@@ -141,8 +147,8 @@
         <app-action-row
           [name]="f.action?.namePt ?? ''"
           [detail]="featureDetail(f)"
-          [off]="featureOff(f)"
-          [reason]="reasonText(f.reason)"
+          [off]="featureOff(f) || !!locked()"
+          [reason]="locked() || reasonText(f.reason)"
         />
       }
     </section>
@@ -151,13 +157,15 @@
   <section class="group" aria-labelledby="g-move">
     <header class="group__head">
       <h3 class="group__name" id="g-move">Movimento</h3>
-      <app-group-state [word]="movement().pill" icon="arrow_forward" />
+      <app-group-state [word]="own().disengaged ? 'Desengajado' : movement().pill" [icon]="own().disengaged ? 'directions_run' : 'arrow_forward'" />
     </header>
     <app-action-row
       name=""
       [detail]="movement().text"
       [button]="movement().left <= 0 ? '' : 'Mover'"
       buttonLabel="Mover"
+      [off]="!!locked()"
+      [reason]="locked()"
       [busy]="busy()"
       (press)="move.emit()"
     />

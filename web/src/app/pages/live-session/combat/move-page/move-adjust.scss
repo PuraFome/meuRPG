@@ -1,0 +1,33 @@
+:host {
+  display: block;
+}
+
+.adj {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+}
+
+.adj__cap {
+  color: var(--mr-ink-muted);
+}
+
+.adj__btns {
+  display: flex;
+  gap: var(--mr-space-2);
+}
+
+.adj__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  cursor: pointer;
+}

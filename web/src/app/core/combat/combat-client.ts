@@ -6,11 +6,15 @@ import {
   type AttackRoll,
   CombatService,
   type DeathSave,
+  type CoverDegree,
+  type CombatantSide,
   type DiceRoll,
   type Encounter,
   type GetCombatHighlightsResponse,
+  type GetMoveOptionsResponse,
   type GetTurnOptionsResponse,
   type ListCombatLogResponse,
+  JumpKind,
   type ParticipantSchema,
   type PendingDamage,
   type ReactionOutcome,
@@ -48,6 +52,13 @@ export interface AttackResult {
   readonly encounter: Encounter;
   readonly roll: AttackRoll;
   readonly pending: PendingDamage | undefined;
+}
+
+/** What a move answers: the combat, and whether it stopped short or provoked. */
+export interface MoveResult {
+  readonly encounter: Encounter;
+  readonly stoppedEarly: boolean;
+  readonly provoked: boolean;
 }
 
 /** What a damage call answers: the combat and the damage as it is now. For an
@@ -202,13 +213,19 @@ export class CombatClient {
     return need(res.encounter, 'EndTurn');
   }
 
+  /** `MoveCombatant`: a walk to a square, or a jump (`jump`: a long one to the
+   * square, or a high one by `jumpHeightDft` tenths of a foot). `stoppedEarly`
+   * is "something you did not see stopped you"; `provoked` that an opportunity
+   * offer now waits. The master's drags are plain moves too: only `forced`
+   * (never sent from here) skips the offers. */
   async move(
     campaignId: string,
     encounterId: string,
     combatantId: string,
     col: number,
     row: number,
-  ): Promise<Encounter> {
+    jump?: { readonly kind: 'long' } | { readonly kind: 'high'; readonly heightDft: number },
+  ): Promise<MoveResult> {
     const res = await this.client.moveCombatant({
       campaignId,
       encounterId,
@@ -216,8 +233,40 @@ export class CombatClient {
       idempotencyKey: newKey(),
       col,
       row,
+      jump: jump ? (jump.kind === 'long' ? JumpKind.LONG : JumpKind.HIGH) : JumpKind.UNSPECIFIED,
+      jumpHeightDft: jump?.kind === 'high' ? jump.heightDft : 0,
     });
-    return need(res.encounter, 'MoveCombatant');
+    return { encounter: need(res.encounter, 'MoveCombatant'), stoppedEarly: res.stoppedEarly, provoked: res.provoked };
+  }
+
+  /** `GetMoveOptions`: where the combatant can go in one straight move, the
+   * cost of each square and why the others inside the circle are refused. */
+  moveOptions(campaignId: string, encounterId: string, combatantId: string): Promise<GetMoveOptionsResponse> {
+    return this.client.getMoveOptions({ campaignId, encounterId, combatantId });
+  }
+
+  /** The master's "Aliado" (PARTY) or back to enemy (ENEMY). */
+  async setSide(campaignId: string, encounterId: string, combatantId: string, side: CombatantSide): Promise<Encounter> {
+    const res = await this.client.setCombatantSide({ campaignId, encounterId, combatantId, idempotencyKey: newKey(), side });
+    return need(res.encounter, 'SetCombatantSide');
+  }
+
+  /** The master's "Marcar cobertura": the cover the map does not show. */
+  async setCover(campaignId: string, encounterId: string, combatantId: string, cover: CoverDegree): Promise<Encounter> {
+    const res = await this.client.setCombatantCover({ campaignId, encounterId, combatantId, idempotencyKey: newKey(), cover });
+    return need(res.encounter, 'SetCombatantCover');
+  }
+
+  /** "Não atacar": turns an opportunity offer down. */
+  async declineOpportunity(campaignId: string, encounterId: string, offerId: string): Promise<Encounter> {
+    const res = await this.client.declineOpportunity({ campaignId, encounterId, opportunityOfferId: offerId, idempotencyKey: newKey() });
+    return need(res.encounter, 'DeclineOpportunity');
+  }
+
+  /** The master's "Seguir sem esperar": passes over an offer nobody answers. */
+  async skipOpportunity(campaignId: string, encounterId: string, offerId: string): Promise<Encounter> {
+    const res = await this.client.skipOpportunity({ campaignId, encounterId, opportunityOfferId: offerId, idempotencyKey: newKey() });
+    return need(res.encounter, 'SkipOpportunity');
   }
 
   async setHidden(
@@ -281,6 +330,7 @@ export class CombatClient {
     die: AttackDie,
     key: string,
     asReaction = false,
+    opportunityOfferId = '',
   ): Promise<AttackResult> {
     const res = await this.client.rollAttack({
       campaignId,
@@ -291,6 +341,7 @@ export class CombatClient {
       idempotencyKey: key,
       roll: 'inApp' in die ? { case: 'rollInApp', value: true } : { case: 'd20Face', value: die.face },
       asReaction,
+      opportunityOfferId,
     });
     return {
       encounter: need(res.encounter, 'RollAttack'),

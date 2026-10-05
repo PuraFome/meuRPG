@@ -4,8 +4,9 @@ import {
   PendingDamageStatus,
   type TargetInReach,
 } from '../../../gen/meurpg/play/v1/combat_pb';
-import { metersText } from '../units';
+import { metersFixed, metersText } from '../units';
 import { joinDots, tight } from '../format/text';
+import { listing } from './cover';
 import { stateWord } from './combat-view';
 
 /**
@@ -66,26 +67,39 @@ export interface TargetRow {
   readonly sub: string;
   /** Why it can't be chosen: "Longe demais: alcance de 36 m". */
   readonly blocked: string;
+  /** The cover it has against this attacker, with its source ("Meia cobertura
+   * (do mapa)"), or `''`; and the pictogram that goes with it. */
+  readonly cover: string;
+  readonly coverMark: 'half' | 'three' | null;
 }
 
 /** The rows of the target list. `rangeFt` is the attack's reach, said when
  * a target is beyond it. */
 export function targetRows(targets: readonly TargetInReach[], rangeFt: number): TargetRow[] {
-  return targets.map((t) => {
+  return targets.flatMap((t) => {
+    const cover = listing(t);
+    // Total cover from the map leaves the target out: the list never says what stands in the way.
+    if (cover.kind === 'left-out') {
+      return [];
+    }
     const parts: string[] = [];
     const word = stateWord(t.state);
     if (word) {
       parts.push(word);
     }
     if (t.distanceFt !== undefined) {
-      parts.push(`a ${metersText(t.distanceFt)}`);
+      parts.push(`a ${metersFixed(t.distanceFt)}`);
     }
-    return {
-      id: t.combatantId,
-      label: t.label,
-      sub: tight(joinDots(parts)),
-      blocked: t.untargetable ? 'Atrás de cobertura total' : t.tooFar ? tight(`Longe demais: alcance de ${metersText(rangeFt)}`) : '',
-    };
+    return [
+      {
+        id: t.combatantId,
+        label: t.label,
+        sub: tight(joinDots(parts)),
+        blocked: cover.kind === 'blocked' ? cover.text : t.tooFar ? tight(`Longe demais: alcance de ${metersText(rangeFt)}`) : '',
+        cover: cover.kind === 'listed' ? cover.text : '',
+        coverMark: cover.kind === 'listed' ? cover.mark : null,
+      },
+    ];
   });
 }
 

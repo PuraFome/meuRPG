@@ -5,23 +5,32 @@ import { MatIconModule } from '@angular/material/icon';
 import type { Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { PHONE_QUERY, mediaQuery } from '../../../../shared/map-view/media-query';
 import { ownCombatant } from '../../../../core/combat/combat-view';
+import { metersFixed } from '../../../../core/units';
+import { type MapLayers, NO_LAYERS } from '../../../../core/maps/layers';
 import {
   CombatMap,
   type CombatMapImage,
+  type OfferMark,
   type Reach,
   type TokenDrop,
 } from '../../../../shared/combat-map/combat-map';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
+import { MapLayersLegend } from '../../../../shared/map-layers/map-layers-legend';
 
 /**
  * The map panel of a running combat or of its setup (E6-04, E6-05, E6-11):
  * the battle map with its legend. The master drags any token ("O mestre anda
- * sem limite"); a player drags their own inside the reach, on their turn.
- * The legend names every shape the map uses, so no meaning is colour alone.
+ * sem limite"); a player drags their own on their turn, which opens the "Mover" page on that square (the page asks, with its warnings; a drop never moves).
+ * The legend names every shape the map uses, so no meaning is colour alone: the
+ * layer marks the map has (`app-map-layers-legend`), then the tokens and, when
+ * they are drawn, the movement marks and the square of an opportunity attack's
+ * reactor. The master can turn the reach of whoever is on turn on and off
+ * ("Mostrar o alcance do Toren no mapa", E9-05): the server's `GetMoveOptions`
+ * answer, drawn as it comes.
  */
 @Component({
   selector: 'app-combat-map-card',
-  imports: [CombatMap, CombatantToken, MatButtonModule, MatIconModule],
+  imports: [CombatMap, CombatantToken, MapLayersLegend, MatButtonModule, MatIconModule],
   templateUrl: './combat-map-card.html',
   styleUrl: './combat-map-card.scss',
 })
@@ -33,7 +42,13 @@ export class CombatMapCard {
   /** The panel's title: "Mapa" for the master, the map's name for a player. */
   readonly title = input('Mapa');
   readonly reach = input<Reach | null>(null);
-  /** The player's own combatant may be dragged (their turn, desktop). */
+  /** The map's painted layers, once read. */
+  readonly layers = input<MapLayers | null>(null);
+  /** The reactors of pending opportunity offers the caller answers or waits on (E9-13). */
+  readonly offers = input<readonly OfferMark[]>([]);
+  /** The master's switch for the reach of whoever is on turn: its name, and whether it is on. */
+  readonly reachSwitch = input<{ readonly name: string; readonly on: boolean } | null>(null);
+  /** The player's own combatant may be dragged to pick a square (their turn, desktop): the drop opens "Mover" there. */
   readonly ownMovable = input(false);
   readonly hint = input(true);
   /** The legend of the shapes; the setup's small map says it in a note. */
@@ -45,6 +60,8 @@ export class CombatMapCard {
   readonly cropOnPhone = input(false);
 
   readonly tokenDrop = output<TokenDrop>();
+  /** The master turned the reach on or off. */
+  readonly reachChange = output<boolean>();
   /** "Ver mapa": the player's full-screen, read-only map. */
   readonly openMap = output<void>();
 
@@ -73,6 +90,8 @@ export class CombatMapCard {
     const e = this.encounter();
     return `${e.gridColumns} × ${e.gridRows} quadrados de 1,5 m`;
   });
+  protected readonly emptyLayers = NO_LAYERS;
+  protected readonly reachMeters = computed(() => metersFixed((this.reach()?.leftDft ?? 0) / 10));
   protected readonly hasHidden = computed(() => this.encounter().combatants.some((c) => c.hidden));
   protected readonly hasDefeated = computed(() => this.encounter().combatants.some((c) => c.defeated));
 }

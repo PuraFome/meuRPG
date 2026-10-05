@@ -326,9 +326,12 @@ export class LiveSession {
           }
         },
         onEncounterChanged: (change) => {
-          // Read again only when the news is newer than the copy on screen.
+          // Read again only when the news is newer than the copy on screen. A hint with no revision
+          // (0) is the server telling a player "read again" without counting: an opportunity offer
+          // made to them, or any change on a fog map, where each player has a revision of their own
+          // (ADR-0007). It is always read.
           const current = this.combat.encounter();
-          if (!current || current.id !== change.encounterId || change.revision > current.revision) {
+          if (!current || current.id !== change.encounterId || change.revision === 0 || change.revision > current.revision) {
             void this.loadCombat(generation);
           }
         },
