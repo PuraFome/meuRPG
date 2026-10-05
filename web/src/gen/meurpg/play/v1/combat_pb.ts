@@ -197,7 +197,10 @@ export type Encounter = Message<"meurpg.play.v1.Encounter"> & {
 
   /**
    * Goes up by one on every change. Of two copies of the same combat, the
-   * one with the larger revision is newer.
+   * one with the larger revision is newer. On a map with the fog of war a
+   * player gets their own number instead: how many events of the combat they
+   * could see, which never goes down and does not go up for what happens out
+   * of their sight (so they cannot count moves in the dark).
    *
    * @generated from field: int32 revision = 12;
    */
@@ -6495,7 +6498,8 @@ export const CombatService: GenService<{
    *
    * Errors:
    *   - `not_found`: the combat is not this campaign's, or the caller is a
-   *     player and may not see the combatant.
+   *     player and may not see the combatant (an NPC they do not see is not
+   *     found here either, as `expected_combatant_id`).
    *   - `permission_denied`: the caller is a player and the member is not
    *     their character, or nobody is acting.
    *   - `failed_precondition`: the combat is not ACTIVE, or nobody in it can

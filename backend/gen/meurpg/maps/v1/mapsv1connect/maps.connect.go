@@ -199,11 +199,15 @@ type MapServiceClient interface {
 	// Submap points of other maps that led to it lose their target, and if
 	// it was the session's current map, the session has no current map
 	// anymore (`current_map_changed` with an empty map_id). A map that holds a
-	// treasure that was found or turned into XP cannot be deleted.
+	// treasure that was found or turned into XP cannot be deleted, and neither
+	// can the map a combat that has not ended runs on (the fog of war's filter
+	// and the fight's terrain stand on it).
 	//
 	// Errors:
 	//   - `failed_precondition` (MapBlocked TREASURE_FOUND or
 	//     TREASURE_CONVERTED): the map holds such a treasure; unmark it first.
+	//   - `failed_precondition` (MapBlocked COMBAT_RUNNING): a combat that has not
+	//     ended runs on the map.
 	//   - `not_found`: the map is not in this campaign (or was already
 	//     deleted), the campaign does not exist, or the caller is not a member
 	//     of it.
@@ -1099,11 +1103,15 @@ type MapServiceHandler interface {
 	// Submap points of other maps that led to it lose their target, and if
 	// it was the session's current map, the session has no current map
 	// anymore (`current_map_changed` with an empty map_id). A map that holds a
-	// treasure that was found or turned into XP cannot be deleted.
+	// treasure that was found or turned into XP cannot be deleted, and neither
+	// can the map a combat that has not ended runs on (the fog of war's filter
+	// and the fight's terrain stand on it).
 	//
 	// Errors:
 	//   - `failed_precondition` (MapBlocked TREASURE_FOUND or
 	//     TREASURE_CONVERTED): the map holds such a treasure; unmark it first.
+	//   - `failed_precondition` (MapBlocked COMBAT_RUNNING): a combat that has not
+	//     ended runs on the map.
 	//   - `not_found`: the map is not in this campaign (or was already
 	//     deleted), the campaign does not exist, or the caller is not a member
 	//     of it.

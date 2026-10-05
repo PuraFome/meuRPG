@@ -10,6 +10,8 @@
 package link
 
 import (
+	"context"
+
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/vision"
 )
@@ -60,6 +62,9 @@ type CombatSight interface {
 	Sees(userID string, sq grid.Square) bool
 	// CanSee says whether a viewer standing on a square, with these senses (an
 	// NPC's darkvision, say), sees a creature standing on another square: the same
-	// light and walls the players' sight uses.
+	// light and walls the players' sight uses, worked out for that one pair.
 	CanSee(from grid.Square, senses vision.Senses, to grid.Square) bool
+	// KnownTerrain is the terrain the player knows: the walls, difficult terrain and
+	// cover of the squares they see now or remember, and plain floor elsewhere.
+	KnownTerrain(ctx context.Context, userID string) (grid.Terrain, error)
 }

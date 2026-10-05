@@ -43,12 +43,15 @@ func (s *Service) fogRow(ctx context.Context, campaignID, mapID string) (fogInpu
 	return fogInputOfRow(row, size.ImageWidth, size.ImageHeight), row, true, nil
 }
 
-// combatSight is link.CombatSight over a map's scene. A player's view is worked out
-// once, the first time it is asked for.
+// combatSight is link.CombatSight over a map's scene. A player's view and known
+// terrain are worked out once, the first time they are asked for.
 type combatSight struct {
+	s     *Service
+	in    fogInput
 	sg    *sight
 	mu    sync.Mutex
 	views map[string]*vision.View
+	known map[string]grid.Terrain
 }
 
 func (c *combatSight) Users() []string { return c.sg.users() }
@@ -70,13 +73,40 @@ func (c *combatSight) Sees(userID string, sq grid.Square) bool {
 	return c.view(userID).At(sq) >= vision.SeenGrey
 }
 
+// CanSee is a pair check, never a whole view: the light at the square for this
+// viewer's senses, and one line.
 func (c *combatSight) CanSee(from grid.Square, senses vision.Senses, to grid.Square) bool {
-	return c.sg.entry.see(vision.Viewer{At: from, Senses: senses}).At(to) >= vision.SeenGrey
+	return c.sg.entry.lit.CanSee(vision.Viewer{At: from, Senses: senses}, to)
+}
+
+// KnownTerrain is the terrain the player knows: the walls, the difficult terrain
+// and the cover of the squares they see now or remember, and plain floor
+// everywhere else (D1: the move is planned on what the player knows, and cut short
+// by what they do not).
+func (c *combatSight) KnownTerrain(ctx context.Context, userID string) (grid.Terrain, error) {
+	c.mu.Lock()
+	t, ok := c.known[userID]
+	c.mu.Unlock()
+	if ok {
+		return t, nil
+	}
+	memory, err := c.s.memoryOf(ctx, c.in, userID)
+	if err != nil {
+		return grid.Terrain{}, err
+	}
+	pv := c.sg.newView(userID, memory)
+	set := filterLayers(*pv.layers, pv)
+	t = grid.Terrain{Grid: c.in.g, Walls: set.walls, Difficult: set.terrain, Cover: set.cover}
+	c.mu.Lock()
+	c.known[userID] = t
+	c.mu.Unlock()
+	return t, nil
 }
 
 // CombatSight returns what the players see of the map now, for a combat on it,
 // or nil when the map has no fog of war (or is gone): then every player sees
-// every combatant that is not hidden, as before. It implements play.FogSource.
+// every combatant that is not hidden, as before. The party is read once, here. It
+// implements play.FogSource.
 func (s *Service) CombatSight(ctx context.Context, campaignID, mapID string) (link.CombatSight, error) {
 	in, row, on, err := s.fogRow(ctx, campaignID, mapID)
 	if err != nil || !on {
@@ -94,31 +124,5 @@ func (s *Service) CombatSight(ctx context.Context, campaignID, mapID string) (li
 	if err != nil {
 		return nil, err
 	}
-	return &combatSight{sg: sg, views: map[string]*vision.View{}}, nil
-}
-
-// KnownTerrain returns the terrain the player knows of the map: the walls, the
-// difficult terrain and the cover of the squares they see now or remember, and
-// plain floor everywhere else (D1: the move is planned on what the player knows,
-// and cut short by what they do not). The second answer is false when the map has
-// no fog, and the caller then uses the real terrain. It implements play.FogSource.
-func (s *Service) KnownTerrain(ctx context.Context, campaignID, mapID, userID string) (grid.Terrain, bool, error) {
-	in, row, on, err := s.fogRow(ctx, campaignID, mapID)
-	if err != nil || !on {
-		return grid.Terrain{}, false, err
-	}
-	points, err := s.queries.ListMapPoints(ctx, row.ID)
-	if err != nil {
-		return grid.Terrain{}, false, fmt.Errorf("list the points: %w", err)
-	}
-	tokens, err := s.queries.ListMapTokens(ctx, row.ID)
-	if err != nil {
-		return grid.Terrain{}, false, fmt.Errorf("list the tokens: %w", err)
-	}
-	pv, err := s.playerViewOf(ctx, in, points, tokens, userID)
-	if err != nil {
-		return grid.Terrain{}, false, err
-	}
-	set := filterLayers(*pv.layers, pv)
-	return grid.Terrain{Grid: in.g, Walls: set.walls, Difficult: set.terrain, Cover: set.cover}, true, nil
+	return &combatSight{s: s, in: in, sg: sg, views: map[string]*vision.View{}, known: map[string]grid.Terrain{}}, nil
 }

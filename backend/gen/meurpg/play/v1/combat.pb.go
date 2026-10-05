@@ -1642,7 +1642,10 @@ type Encounter struct {
 	// first; combatants without an initiative yet come last.
 	Combatants []*Combatant `protobuf:"bytes,11,rep,name=combatants,proto3" json:"combatants,omitempty"`
 	// Goes up by one on every change. Of two copies of the same combat, the
-	// one with the larger revision is newer.
+	// one with the larger revision is newer. On a map with the fog of war a
+	// player gets their own number instead: how many events of the combat they
+	// could see, which never goes down and does not go up for what happens out
+	// of their sight (so they cannot count moves in the dark).
 	Revision int32 `protobuf:"varint,12,opt,name=revision,proto3" json:"revision,omitempty"`
 	// When the combat began (BeginCombat). Unset in SETUP.
 	StartedAt *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`

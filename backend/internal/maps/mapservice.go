@@ -437,6 +437,11 @@ func (s *Service) DeleteMap(
 		if _, err := s.campaignMap(ctx, q, m.CampaignID, mapID); err != nil {
 			return err
 		}
+		// The map a combat that has not ended runs on cannot go: the fight stands on
+		// its layers, and the fog of war's filter on the combat's map link.
+		if err := s.refuseWhileCombat(ctx, tx, m.CampaignID, mapID); err != nil {
+			return err
+		}
 		// A map holding a treasure that was found or turned into XP cannot go:
 		// the treasure is part of the session's record (unmark it first).
 		locks, err := q.GetMapTreasureLocks(ctx, mapID)

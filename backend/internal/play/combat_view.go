@@ -16,6 +16,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
 // Who sees what in a combat (RN-10, RN-20). The master sees everything. A
@@ -42,6 +43,19 @@ type combatViewer struct {
 	// war on (combat_fog.go): for them they are like hidden combatants. Nil on a map
 	// without the fog, and for the master.
 	unseen map[string]bool
+	// sight is what the players see of the combat's map, for the viewer's own
+	// questions (seesAt); nil without the fog and for the master.
+	sight *fogSight
+}
+
+// seesAt says whether the viewer sees the combatant standing on the square, as it
+// stood there at some moment (an opportunity offer's square, a move's old one): a
+// combatant they see now, or an NPC whose square they see, whatever it is now.
+func (v combatViewer) seesAt(c playdb.Combatant, sq grid.Square) bool {
+	if v.sees(c) {
+		return true
+	}
+	return !c.Hidden && v.sight != nil && c.Kind == kindNPC && v.sight.sight.Sees(v.userID, sq)
 }
 
 func viewerOf(m authz.Membership) combatViewer {
@@ -395,6 +409,11 @@ func (s *Service) viewFor(ctx context.Context, m authz.Membership, d *encounterD
 		}
 	}
 	out := d.view(v, byCharacter, s.armorClasses(ctx, m, d), s.portraits(ctx, m, d), s.nameOf)
+	if v.sight != nil { // a fog map: the revision is what this player could see happen
+		if out.Revision, err = s.visibleRevision(ctx, d.enc.ID, v.userID); err != nil {
+			return nil, s.dbError(ctx, "count what the player could see", err)
+		}
+	}
 	prompts, err := s.reactionPrompts(ctx, m, d, v)
 	if err != nil {
 		return nil, err
@@ -495,8 +514,20 @@ func (s *Service) GetEncounter(
 // and turns, so each audience gets only what it may see.
 
 // publishEncounterChanged tells everyone to read the combat again.
-func (s *Service) publishEncounterChanged(campaignID string, e playdb.Encounter) {
-	s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Everyone: true}, Message: encounterChangedMessage(e)})
+//
+// On a map with the fog of war the revision is the master's alone: it goes up for
+// everything that happens, so a player who got it could count the moves in the dark.
+// The players' hint says 0, "read it again" (and so does the failure to tell).
+func (s *Service) publishEncounterChanged(ctx context.Context, campaignID string, e playdb.Encounter) {
+	msg := encounterChangedMessage(e)
+	f, err := s.fogSightOf(ctx, campaignID, e)
+	if err != nil || f != nil {
+		s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: msg})
+		blind := playdb.Encounter{ID: e.ID}
+		s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Players: true}, Message: encounterChangedMessage(blind)})
+		return
+	}
+	s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Everyone: true}, Message: msg})
 }
 
 // publishTurnChanged tells who is on turn: the master the real combatant,
@@ -510,12 +541,12 @@ func (s *Service) publishTurnChanged(ctx context.Context, campaignID string, d *
 // publishCombatantMoved tells the master always, and the players only when the
 // combatant is not hidden from them (on a map with the fog of war: when they see
 // its square, see publishMovedToPlayers).
-func (s *Service) publishCombatantMoved(ctx context.Context, campaignID string, e playdb.Encounter, c playdb.Combatant) {
+func (s *Service) publishCombatantMoved(ctx context.Context, campaignID string, e playdb.Encounter, c playdb.Combatant, from *grid.Square) {
 	if !placed(c) {
 		return
 	}
 	s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: combatantMovedMessage(e, c)})
 	if !c.Hidden {
-		s.publishMovedToPlayers(ctx, campaignID, e, c)
+		s.publishMovedToPlayers(ctx, campaignID, e, c, from)
 	}
 }

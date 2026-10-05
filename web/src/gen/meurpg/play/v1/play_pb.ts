@@ -1305,7 +1305,9 @@ export type WatchGameSessionResponse_EncounterChanged = Message<"meurpg.play.v1.
 
   /**
    * Its revision after the change. Read again when it is larger than the
-   * one on screen.
+   * one on screen. On a map with the fog of war a player's copy says 0 ("read
+   * it again"): the master's number goes up for everything that happens, and
+   * a player who got it could count the moves out of their sight.
    *
    * @generated from field: int32 revision = 2;
    */
@@ -1414,7 +1416,9 @@ export const WatchGameSessionResponse_CombatantMovedSchema: GenMessage<WatchGame
  * changed or went away, so the app reads it again
  * (CombatService.ListCombatLog). It carries no content. The master gets
  * every one; a player only the ones that touch an entry they may see, so a
- * hidden combatant's action never even pings a player's stream (RN-10).
+ * hidden combatant's action never even pings a player's stream (RN-10). On a
+ * map with the fog of war, a line goes only to the players who could see it
+ * when it happened.
  *
  * @generated from message meurpg.play.v1.WatchGameSessionResponse.CombatLogChanged
  */

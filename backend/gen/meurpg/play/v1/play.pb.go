@@ -3206,7 +3206,9 @@ type WatchGameSessionResponse_EncounterChanged struct {
 	// The combat (a UUID).
 	EncounterId string `protobuf:"bytes,1,opt,name=encounter_id,json=encounterId,proto3" json:"encounter_id,omitempty"`
 	// Its revision after the change. Read again when it is larger than the
-	// one on screen.
+	// one on screen. On a map with the fog of war a player's copy says 0 ("read
+	// it again"): the master's number goes up for everything that happens, and
+	// a player who got it could count the moves out of their sight.
 	Revision      int32 `protobuf:"varint,2,opt,name=revision,proto3" json:"revision,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -3413,7 +3415,9 @@ func (x *WatchGameSessionResponse_CombatantMoved) GetRow() int32 {
 // changed or went away, so the app reads it again
 // (CombatService.ListCombatLog). It carries no content. The master gets
 // every one; a player only the ones that touch an entry they may see, so a
-// hidden combatant's action never even pings a player's stream (RN-10).
+// hidden combatant's action never even pings a player's stream (RN-10). On a
+// map with the fog of war, a line goes only to the players who could see it
+// when it happened.
 type WatchGameSessionResponse_CombatLogChanged struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The combat (a UUID).

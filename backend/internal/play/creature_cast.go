@@ -369,10 +369,10 @@ func (s *Service) EndConcentration(
 	if err != nil {
 		return nil, s.dbError(ctx, "end a concentration", err)
 	}
-	out, err := s.finish(ctx, m, res, func(d *encounterData) {
-		s.publishEncounterChanged(m.CampaignID, d.enc)
+	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
+		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
 		i := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == combID })
-		s.publishLogChanged(m.CampaignID, d.enc.ID, i >= 0 && !d.cs[i].Hidden)
+		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, i >= 0 && !d.cs[i].Hidden)
 		if i >= 0 && d.cs[i].UserID != nil {
 			s.publishCreaturesChanged(m.CampaignID, *d.cs[i].UserID)
 		}

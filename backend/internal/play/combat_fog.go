@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"sync"
 
 	"github.com/jackc/pgx/v5"
 
@@ -51,10 +52,6 @@ type FogSource interface {
 	// CombatSight returns what the players see of the map now, or nil when the map
 	// has no fog of war (or is gone).
 	CombatSight(ctx context.Context, campaignID, mapID string) (maplink.CombatSight, error)
-	// KnownTerrain returns the terrain a player knows of the map (the squares they
-	// see now or remember) and true, or false when the map has no fog and the real
-	// terrain is the player's too.
-	KnownTerrain(ctx context.Context, campaignID, mapID, userID string) (grid.Terrain, bool, error)
 	// CombatMoved tells the fog that a combatant moved on the map: what the move
 	// showed is remembered and the players who see either square are told.
 	CombatMoved(ctx context.Context, campaignID, mapID string, npc bool, from, to grid.Square)
@@ -64,22 +61,63 @@ type FogSource interface {
 // cmd/api calls it once maps exists, before the server starts.
 func (s *Service) SetFog(f FogSource) { s.fog = f }
 
-// fogSight is the sight of one combat's map, read once for a request.
+// fogSight is the sight of one combat's map, read once and shared: the one a change
+// reads before its transaction, and the one a request reads after the commit.
 type fogSight struct {
 	sight maplink.CombatSight
+	// rev is the encounter's revision when the sight was read: a change checks it
+	// again once it holds the session lock, and reads the sight again when another
+	// change got in between (errSightStale), so what it stamps is what the table
+	// looked like when it happened.
+	rev int32
+}
+
+// fogMemo shares, inside one request, the sights its handler needs after the
+// commit: the one read before the change (who could see the old squares) and, once
+// asked for, the one read after it. The change's stamped event is here too, for the
+// log's hint.
+type fogMemo struct {
+	pre     *fogSight
+	stamped *actionEvent
+	mu      sync.Mutex
+	post    *fogSight
+	postErr error
+	done    bool
+}
+
+type fogMemoKey struct{}
+
+// withFogMemo gives a request's context the memo finish and the publishers share.
+func withFogMemo(ctx context.Context, pre *fogSight, stamped *actionEvent) context.Context {
+	return context.WithValue(ctx, fogMemoKey{}, &fogMemo{pre: pre, stamped: stamped})
+}
+
+func fogMemoOf(ctx context.Context) *fogMemo {
+	m, _ := ctx.Value(fogMemoKey{}).(*fogMemo)
+	return m
 }
 
 // fogSightOf reads what the players see of the encounter's map: nil when there is
 // no fog on it (nothing to filter), and an error when it cannot be told, which
-// fails the request rather than showing a player what they may not see.
+// fails the request rather than showing a player what they may not see. Inside a
+// request that shares a memo (after a change) it is read once.
 func (s *Service) fogSightOf(ctx context.Context, campaignID string, enc playdb.Encounter) (*fogSight, error) {
 	if s.fog == nil || enc.MapID == nil {
 		return nil, nil
 	}
-	return s.fogSightOfMap(ctx, campaignID, *enc.MapID)
+	if memo := fogMemoOf(ctx); memo != nil {
+		memo.mu.Lock()
+		defer memo.mu.Unlock()
+		if !memo.done {
+			memo.post, memo.postErr = s.fogSightOfMap(ctx, campaignID, *enc.MapID, enc.Revision)
+			memo.done = true
+		}
+		return memo.post, memo.postErr
+	}
+	return s.fogSightOfMap(ctx, campaignID, *enc.MapID, enc.Revision)
 }
 
-func (s *Service) fogSightOfMap(ctx context.Context, campaignID, mapID string) (*fogSight, error) {
+func (s *Service) fogSightOfMap(ctx context.Context, campaignID, mapID string, rev int32) (*fogSight, error) {
 	sight, err := s.fog.CombatSight(ctx, campaignID, mapID)
 	if err != nil {
 		return nil, fmt.Errorf("read what the players see: %w", err)
@@ -87,38 +125,56 @@ func (s *Service) fogSightOfMap(ctx context.Context, campaignID, mapID string) (
 	if sight == nil {
 		return nil, nil
 	}
-	return &fogSight{sight: sight}, nil
+	return &fogSight{sight: sight, rev: rev}, nil
 }
 
-// encounterMapOf is the map of the combat with the id, for a change that has not
-// opened its transaction yet; "" when the combat has none or is not the campaign's.
-func (s *Service) encounterMapOf(ctx context.Context, campaignID, encounterID string) (string, error) {
-	var mapID *string
-	err := s.pool.QueryRow(ctx, `
-		SELECT e.map_id FROM encounters AS e
+// encounterMapOf is the map and the revision of the combat with the id, for a change
+// that has not opened its transaction yet; "" when the combat has none or is not the
+// campaign's.
+func (s *Service) encounterMapOf(ctx context.Context, campaignID, encounterID string) (mapID string, rev int32, err error) {
+	var id *string
+	err = s.pool.QueryRow(ctx, `
+		SELECT e.map_id, e.revision FROM encounters AS e
 		JOIN game_sessions AS g ON g.id = e.game_session_id
-		WHERE e.id = $1 AND g.campaign_id = $2`, encounterID, campaignID).Scan(&mapID)
+		WHERE e.id = $1 AND g.campaign_id = $2`, encounterID, campaignID).Scan(&id, &rev)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return "", nil
+		return "", 0, nil
 	}
 	if err != nil {
-		return "", fmt.Errorf("read the combat's map: %w", err)
+		return "", 0, fmt.Errorf("read the combat's map: %w", err)
 	}
-	return deref(mapID), nil
+	return deref(id), rev, nil
 }
 
-// sightForWrite reads the sight a change needs: nil for a change that creates a
-// combat, one whose combat has no map, or a map with no fog.
+// sightForWrite reads the sight a change needs, with the revision it was read at: nil
+// for a change that creates a combat, one whose combat has no map, or a map with no
+// fog. The revision is read first, so a change that lands meanwhile shows.
 func (s *Service) sightForWrite(ctx context.Context, w combatWrite) (*fogSight, error) {
 	if s.fog == nil || w.encounterID == "" {
 		return nil, nil
 	}
-	mapID, err := s.encounterMapOf(ctx, w.m.CampaignID, w.encounterID)
+	mapID, rev, err := s.encounterMapOf(ctx, w.m.CampaignID, w.encounterID)
 	if err != nil || mapID == "" {
 		return nil, err
 	}
-	return s.fogSightOfMap(ctx, w.m.CampaignID, mapID)
+	f, err := s.fogSightOfMap(ctx, w.m.CampaignID, mapID, rev)
+	if err != nil || f == nil {
+		return f, err
+	}
+	// The player's known terrain is read now, outside the transaction, for the plan
+	// and the cover of the change.
+	if _, err := f.knownTerrain(ctx, viewerOf(w.m)); err != nil {
+		return nil, err
+	}
+	return f, nil
 }
+
+// errSightStale says another change got in between the moment the sight was read and
+// the moment the transaction held the session lock: write reads the sight again.
+var errSightStale = errors.New("the combat changed after the sight was read")
+
+// maxSightTries bounds how often a change reads the sight again.
+const maxSightTries = 3
 
 // seesNPC says whether the player sees the NPC combatant. An NPC with no square
 // (a combat in setup, an NPC the master has not placed) is seen by no player.
@@ -157,7 +213,7 @@ func (s *Service) viewerWith(ctx context.Context, m authz.Membership, enc playdb
 		return v, nil, err
 	}
 	if f != nil {
-		v.unseen = f.unseenFor(v.userID, cs)
+		v.unseen, v.sight = f.unseenFor(v.userID, cs), f
 	}
 	return v, f, nil
 }
@@ -168,27 +224,23 @@ func (s *Service) viewerWith(ctx context.Context, m authz.Membership, enc playdb
 func (c *combatTx) viewer(m authz.Membership, cs []playdb.Combatant) combatViewer {
 	v := viewerOf(m)
 	if !v.master && c.sight != nil {
-		v.unseen = c.sight.unseenFor(v.userID, cs)
+		v.unseen, v.sight = c.sight.unseenFor(v.userID, cs), c.sight
 	}
 	return v
 }
 
 // ---- the move: what a player plans on ----
 
-// knownTerrainOf reads the terrain a player knows of the combat's map (the squares
-// they see now or remember), or nil for the master, for a map without the fog and
-// for a combat without a map: they plan on the real terrain. It reads from the
-// pool, so a change calls it before its transaction opens.
-func (s *Service) knownTerrainOf(ctx context.Context, campaignID string, mapID *string, v combatViewer) (*grid.Terrain, error) {
-	if v.master || s.fog == nil || mapID == nil || v.userID == "" {
+// knownTerrain is the terrain the player knows of the map (the squares they see now
+// or remember), or nil for the master and for a map without the fog: they plan on
+// the real terrain.
+func (f *fogSight) knownTerrain(ctx context.Context, v combatViewer) (*grid.Terrain, error) {
+	if f == nil || v.master || v.userID == "" {
 		return nil, nil
 	}
-	known, fogged, err := s.fog.KnownTerrain(ctx, campaignID, *mapID, v.userID)
+	known, err := f.sight.KnownTerrain(ctx, v.userID)
 	if err != nil {
 		return nil, fmt.Errorf("read the terrain the player knows: %w", err)
-	}
-	if !fogged {
-		return nil, nil
 	}
 	return &known, nil
 }
@@ -208,15 +260,13 @@ func planOn(actual grid.Terrain, known *grid.Terrain) grid.Terrain {
 
 // reactorSees says whether an NPC or a creature that could make an opportunity
 // attack sees the mover (D1b). Without the fog everyone does (the hidden mover is
-// left out by the caller). With the fog: a player's character or creature sees
-// what its player sees; an NPC sees from its own square with its own senses
-// (darkvision, blindsight and truesight from the sheet or stat block; plain sight
-// when it gives none), in the light of the map. at is the square the mover stood
-// on, where it was when it left.
+// left out by the caller). With the fog every reactor, of any kind, sees from its
+// own square with its own senses (SRD: a creature perceives with its own eyes;
+// darkvision, blindsight and truesight from the sheet or stat block, plain sight when
+// it gives none), in the light of the map, whatever "Visão do grupo" shows its player.
+// It is a pair check, so the reach filter runs first and only the reactors a move
+// leaves are asked. at is the square the mover stood on, where it was when it left.
 func (f *fogSight) reactorSees(r playdb.Combatant, sheet link.Sheet, at grid.Square) bool {
-	if r.Kind != kindNPC {
-		return r.UserID != nil && f.sight.Sees(*r.UserID, at)
-	}
 	return f.sight.CanSee(squareOfCombatant(r), vision.Senses{
 		DarkvisionFt: sheet.Senses.DarkvisionFt, BlindsightFt: sheet.Senses.BlindsightFt, TruesightFt: sheet.Senses.TruesightFt,
 	}, at)
@@ -250,6 +300,11 @@ func (c *combatTx) stamp(ctx context.Context, kind string, ev actionEvent) (acti
 		}
 		if kind == eventCombatantMoved && id == ev.Actor && ev.From != nil && ev.From.Placed {
 			squares = append(squares, grid.Square{Col: int(ev.From.Col), Row: int(ev.From.Row)})
+		}
+		if kind == eventAttackRolled && ev.OfferID != "" && id == ev.Target {
+			// An opportunity attack is made at the mover on the square it left: the line
+			// is judged there, whatever the mover's square is now.
+			squares = []grid.Square{{Col: int(ev.Col), Row: int(ev.Row)}}
 		}
 		npcSquares = append(npcSquares, squares)
 	}
@@ -350,9 +405,10 @@ func (s *Service) publishTurnChangedToPlayers(ctx context.Context, campaignID st
 // publishMovedToPlayers tells the players that a combatant moved. A player's
 // character or creature, and any combatant on a map without the fog, go to every
 // player as before; an NPC of a fog map goes only to the players who see its new
-// square, and the others get the content-free encounter_changed, so one who saw it
-// leave reads the combat again and finds it gone.
-func (s *Service) publishMovedToPlayers(ctx context.Context, campaignID string, e playdb.Encounter, c playdb.Combatant) {
+// square. A player who saw the square it left (in the sight read before the change)
+// and not the new one gets the content-free encounter_changed, to read the combat
+// again and find it gone; the others hear nothing. from is where it stood.
+func (s *Service) publishMovedToPlayers(ctx context.Context, campaignID string, e playdb.Encounter, c playdb.Combatant, from *grid.Square) {
 	all := live.Event{Audience: live.Audience{Players: true}, Message: combatantMovedMessage(e, c)}
 	if c.Kind != kindNPC {
 		s.hub.Publish(campaignID, all)
@@ -362,16 +418,21 @@ func (s *Service) publishMovedToPlayers(ctx context.Context, campaignID string, 
 	switch {
 	case err != nil:
 		s.logger.ErrorContext(ctx, "play: cannot work out what the players see in a combat", "error", err)
-		s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Players: true}, Message: encounterChangedMessage(e)})
+		s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Players: true}, Message: encounterChangedMessage(playdb.Encounter{ID: e.ID})})
 	case f == nil:
 		s.hub.Publish(campaignID, all)
 	default:
+		var pre *fogSight
+		if memo := fogMemoOf(ctx); memo != nil {
+			pre = memo.pre
+		}
 		for _, u := range f.sight.Users() {
-			msg := encounterChangedMessage(e)
-			if f.seesNPC(u, c) {
-				msg = combatantMovedMessage(e, c)
+			switch {
+			case f.seesNPC(u, c):
+				s.hub.Publish(campaignID, live.Event{Audience: live.Audience{UserID: u}, Message: combatantMovedMessage(e, c)})
+			case pre != nil && from != nil && pre.sight.Sees(u, *from):
+				s.hub.Publish(campaignID, live.Event{Audience: live.Audience{UserID: u}, Message: encounterChangedMessage(playdb.Encounter{ID: e.ID})})
 			}
-			s.hub.Publish(campaignID, live.Event{Audience: live.Audience{UserID: u}, Message: msg})
 		}
 	}
 }
@@ -398,4 +459,110 @@ func squareOfState(st *moveState) *grid.Square {
 		return nil
 	}
 	return &grid.Square{Col: int(st.Col), Row: int(st.Row)}
+}
+
+// visibleRevision is the revision a player of a fog map reads: how many events of the
+// combat they could see (an event with no NPC in it, one written before the fog, or
+// one stamped with them in seen_by). It never goes down, and it does not go up for
+// what happens out of their sight, so it cannot be used to count moves in the dark.
+func (s *Service) visibleRevision(ctx context.Context, encounterID, userID string) (int32, error) {
+	var n int64
+	err := s.pool.QueryRow(ctx, `
+		SELECT count(*) FROM session_events
+		WHERE encounter_id = $1 AND (payload->'fogged' IS NULL OR payload->'seen_by' @> to_jsonb($2::STRING))`,
+		encounterID, userID).Scan(&n)
+	if err != nil {
+		return 0, fmt.Errorf("count the events a player could see: %w", err)
+	}
+	return clamp32(int(n), 0, 1<<30), nil
+}
+
+// ---- cover: what a player is told ----
+
+// coverPair is the cover of a target against an attacker, twice: the real one, which
+// sets the armor class and the saving throw (and goes only to the master as numbers),
+// and the one the player is told, worked out on the terrain they know and the
+// creatures they see. On a map without the fog they are the same.
+type coverPair struct {
+	real, shown coverView
+	// restricted says the map gave the real cover and only seenBy (user IDs) would be
+	// told the same: the event keeps both so a line is read for each player as they
+	// could know it (castHit.CoverRestricted, actionEvent.CoverRestricted).
+	restricted bool
+	seenBy     []string
+}
+
+// hiddenOut is the combatants as the cover counts them for the real roll: all for the
+// master, and for a player's attack the ones the master did not hide (a hidden body
+// would leak as "cover do mapa").
+func hiddenOut(cs []playdb.Combatant, v combatViewer) []playdb.Combatant {
+	if v.master {
+		return cs
+	}
+	return slices.DeleteFunc(slices.Clone(cs), func(o playdb.Combatant) bool { return o.Hidden })
+}
+
+// coverOf works out the cover for a change inside its transaction. known is the
+// terrain the caller's player knows (nil for the master and without the fog).
+func (c *combatTx) coverOf(ctx context.Context, v combatViewer, terrain grid.Terrain, known *grid.Terrain, attacker, target playdb.Combatant, cs []playdb.Combatant) (coverPair, error) {
+	cp := coverPair{real: coverAgainst(terrain, attacker, target, hiddenOut(cs, v))}
+	cp.shown = cp.real
+	if c.sight == nil {
+		return cp, nil
+	}
+	if !v.master {
+		cp.shown = coverAgainst(planOn(terrain, known), attacker, target, coverPool(cs, v))
+	}
+	if cp.real.degree == grid.CoverNone || cp.real.source != playv1.CoverSource_COVER_SOURCE_MAP {
+		return cp, nil
+	}
+	cp.restricted = true
+	for _, u := range c.sight.sight.Users() {
+		kt, err := c.sight.knownTerrain(ctx, combatViewer{userID: u})
+		if err != nil {
+			return cp, err
+		}
+		unseen := c.sight.unseenFor(u, cs)
+		pool := slices.DeleteFunc(slices.Clone(cs), func(o playdb.Combatant) bool { return o.Hidden || unseen[o.ID] })
+		if got := coverAgainst(planOn(terrain, kt), attacker, target, pool); got.degree == cp.real.degree && got.source == cp.real.source {
+			cp.seenBy = append(cp.seenBy, u)
+		}
+	}
+	return cp, nil
+}
+
+// coverFor is the cover an event tells the viewer: the master and a map without the
+// fog get the real one; a player gets a restricted cover only if they are in
+// seenBy, and none otherwise.
+func coverFor(v combatViewer, key, source string, restricted bool, seenBy []string) (string, string) {
+	if v.master || !restricted || slices.Contains(seenBy, v.userID) {
+		return key, source
+	}
+	return "", ""
+}
+
+func (ev actionEvent) coverFor(v combatViewer) (string, string) {
+	return coverFor(v, ev.Cover, ev.CoverSource, ev.CoverRestricted, ev.CoverSeenBy)
+}
+
+func (h castHit) coverFor(v combatViewer) (string, string) {
+	return coverFor(v, h.Cover, h.CoverSource, h.CoverRestricted, h.CoverSeenBy)
+}
+
+// viewerAfter is the viewer to build a change's answer with. A replay (the same
+// idempotency key) never ran the change's closure, so its viewer knows nothing of the
+// fog; this one is read again from the combat as it stands.
+func (s *Service) viewerAfter(ctx context.Context, m authz.Membership, res combatResult, v combatViewer) (combatViewer, error) {
+	if !res.repeated || v.master || res.encounterID == "" {
+		return v, nil
+	}
+	enc, err := s.queries.GetEncounterInSession(ctx, playdb.GetEncounterInSessionParams{GameSessionID: res.session.ID, ID: res.encounterID})
+	if err != nil {
+		return v, fmt.Errorf("find the encounter: %w", err)
+	}
+	cs, err := s.queries.ListCombatants(ctx, enc.ID)
+	if err != nil {
+		return v, fmt.Errorf("list the combatants: %w", err)
+	}
+	return s.viewerFor(ctx, m, enc, cs)
 }

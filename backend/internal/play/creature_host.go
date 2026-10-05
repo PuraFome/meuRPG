@@ -87,7 +87,7 @@ func (s *Service) PublishEncounterChanged(ctx context.Context, campaignID, encou
 	if err != nil {
 		return // the combat is gone: nothing to tell
 	}
-	s.publishEncounterChanged(campaignID, enc)
+	s.publishEncounterChanged(ctx, campaignID, enc)
 }
 
 // LockSession takes the open session's row (characters.CreatureHost): the lock

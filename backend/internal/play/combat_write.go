@@ -138,6 +138,8 @@ type combatTx struct {
 	// transaction opened (nil without the fog of war): it filters what the change
 	// tells its caller and stamps who could see the event (combat_fog.go).
 	sight *fogSight
+	// stamped is the last event insertEvent stamped with who could see it.
+	stamped *actionEvent
 }
 
 // combatResult is what a change leaves for the handler: the session, and
@@ -152,6 +154,11 @@ type combatResult struct {
 	// start, whose combat the retry does not know.
 	encounterID string
 	repeated    bool
+	// sight is what the players saw of the combat's map before the change (nil without
+	// the fog), and stamped the event the change wrote with who could see it: the
+	// publishers use both (withFogMemo).
+	sight   *fogSight
+	stamped *actionEvent
 }
 
 // write runs one change to a combat, as AdjustCharacterVitals runs a vitals
@@ -160,16 +167,38 @@ type combatResult struct {
 // do returns the event's payload, or nil when nothing changed, and then no
 // event is written. Only after the commit does the handler publish.
 func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx) (payload any, err error)) (combatResult, error) {
-	var res combatResult
 	// What the players see is read first, never inside the transaction: the maps
 	// module asks this one where the combatants stand, and that read would wait for
-	// the rows the change has already written.
-	sight, err := s.sightForWrite(ctx, w)
-	if err != nil {
-		return combatResult{}, s.dbError(ctx, "work out what the players see", err)
+	// the rows the change has already written. The sight is read with the combat's
+	// revision; once the transaction holds the session lock the revision is checked
+	// again, and a change that got in between makes the sight stale: it is read again
+	// (at most maxSightTries times, then the change is aborted).
+	for try := 1; ; try++ {
+		sight, err := s.sightForWrite(ctx, w)
+		if err != nil {
+			return combatResult{}, s.dbError(ctx, "work out what the players see", err)
+		}
+		if s.afterSightRead != nil {
+			s.afterSightRead(w.encounterID) // a test changes the combat here
+		}
+		res, err := s.writeOnce(ctx, w, sight, do)
+		if errors.Is(err, errSightStale) {
+			if try >= maxSightTries {
+				return combatResult{}, connect.NewError(connect.CodeAborted, errors.New("the combat keeps changing: try again"))
+			}
+			continue
+		}
+		return res, err
 	}
-	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		res = combatResult{encounterID: w.encounterID}
+}
+
+// writeOnce is one try of write, with the sight it was given.
+func (s *Service) writeOnce(ctx context.Context, w combatWrite, sight *fogSight, do func(c *combatTx) (payload any, err error)) (combatResult, error) {
+	var res combatResult
+	var last *actionEvent
+	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		res = combatResult{encounterID: w.encounterID, sight: sight}
+		last = nil
 		q := s.queries.WithTx(tx)
 		session, err := q.GetOpenGameSessionForUpdate(ctx, w.m.CampaignID)
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -204,6 +233,9 @@ func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx)
 			if err != nil {
 				return fmt.Errorf("find the encounter: %w", err)
 			}
+			if sight != nil && c.enc.Revision != sight.rev {
+				return errSightStale
+			}
 		}
 		payload, err := do(c)
 		if err != nil || payload == nil {
@@ -219,11 +251,17 @@ func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx)
 			return err
 		}
 		res.encounterID = c.enc.ID
-		return insertEvent(ctx, c, c.kind, &w.m.UserID, &w.key, payload)
+		c.stamped = nil
+		if err := insertEvent(ctx, c, c.kind, &w.m.UserID, &w.key, payload); err != nil {
+			return err
+		}
+		last = c.stamped
+		return nil
 	})
 	if err != nil {
 		return combatResult{}, err
 	}
+	res.stamped = last
 	return res, nil
 }
 
@@ -231,9 +269,13 @@ func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx)
 func insertEvent(ctx context.Context, c *combatTx, kind string, actor, key *string, payload any) error {
 	if ev, ok := payload.(actionEvent); ok {
 		var err error
-		if payload, err = c.stamp(ctx, kind, ev); err != nil { // who could see it, on a fog map
-			return err
+		if kind != eventActionUndone { // an undo is no line: its hint goes to every player
+			if ev, err = c.stamp(ctx, kind, ev); err != nil { // who could see it, on a fog map
+				return err
+			}
+			c.stamped = &ev
 		}
+		payload = ev
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
@@ -261,7 +303,7 @@ func insertEvent(ctx context.Context, c *combatTx, kind string, actor, key *stri
 // the change was about (the session's latest, for a retried start), lets
 // publish tell the streams (unless the call was a retry, which changed
 // nothing), and returns the combat as the caller sees it.
-func (s *Service) finish(ctx context.Context, m authz.Membership, res combatResult, publish func(d *encounterData)) (*playv1.Encounter, error) {
+func (s *Service) finish(ctx context.Context, m authz.Membership, res combatResult, publish func(ctx context.Context, d *encounterData)) (*playv1.Encounter, error) {
 	var enc playdb.Encounter
 	var err error
 	if res.encounterID != "" {
@@ -276,15 +318,18 @@ func (s *Service) finish(ctx context.Context, m authz.Membership, res combatResu
 	if err != nil {
 		return nil, s.dbError(ctx, "read the encounter", err)
 	}
+	// The sight read after the commit is read once for the publishers and the answer;
+	// the one read before it says who could see the old squares.
+	ctx = withFogMemo(ctx, res.sight, res.stamped)
 	if !res.repeated && publish != nil {
-		publish(d)
+		publish(ctx, d)
 	}
 	return s.viewFor(ctx, m, d)
 }
 
 // changed is the usual publish: a hint that the combat changed.
-func (s *Service) changed(campaignID string) func(d *encounterData) {
-	return func(d *encounterData) { s.publishEncounterChanged(campaignID, d.enc) }
+func (s *Service) changed(campaignID string) func(ctx context.Context, d *encounterData) {
+	return func(ctx context.Context, d *encounterData) { s.publishEncounterChanged(ctx, campaignID, d.enc) }
 }
 
 // parseKey reads an idempotency key.

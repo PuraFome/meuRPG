@@ -141,7 +141,7 @@ func (s *Service) AdjustCharacterVitals(
 		}},
 	})
 	if touched != nil {
-		s.publishEncounterChanged(m.CampaignID, *touched)
+		s.publishEncounterChanged(ctx, m.CampaignID, *touched)
 	}
 	return connect.NewResponse(&playv1.AdjustCharacterVitalsResponse{Vitals: after}), nil
 }

@@ -256,9 +256,9 @@ func (s *Service) UseReaction(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the reaction", err)
 	}
-	out, err := s.finish(ctx, m, res, func(d *encounterData) {
-		s.publishEncounterChanged(m.CampaignID, d.enc)
-		s.publishLogChanged(m.CampaignID, d.enc.ID, !ev.Secret)
+	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
+		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
+		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
 		s.publishVitals(m.CampaignID, vitals)
 	})
 	if err != nil {

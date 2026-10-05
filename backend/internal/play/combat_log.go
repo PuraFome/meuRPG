@@ -385,7 +385,8 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 		out.Outcome = outcomeToProto[e.ev.Outcome]
 		out.AsReaction = e.ev.AsReaction
 		out.ReturnedToReach, out.ReturnBlocked = e.returned, v.master && e.returnBlocked
-		out.Cover, out.CoverSource = coverDegreeProto(e.ev.Cover), coverSourceProto(e.ev.CoverSource)
+		coverKey, coverSource := e.ev.coverFor(v)
+		out.Cover, out.CoverSource = coverDegreeProto(coverKey), coverSourceProto(coverSource)
 		if v.master && e.ev.TargetAC > 0 { // "CA 17: 15 + 2 de meia cobertura": a player never gets an armor class (RN-20)
 			out.TargetArmorClass, out.CoverBonus = &e.ev.TargetAC, e.ev.CoverBonus
 		}
@@ -442,8 +443,9 @@ func (e *logEntry) spellView(v combatViewer, byID map[string]playdb.Combatant) *
 			TargetId: target.ID, TargetLabel: target.Label, Darts: h.Darts, Outcome: outcomeToProto[h.Outcome],
 			AttackRoll: attackRollView(h, v, caster), Save: saveView(h.Save, v, caster, target),
 			Effect: effectView(h, v, target),
-			Cover:  coverDegreeProto(h.Cover), CoverSource: coverSourceProto(h.CoverSource),
 		}
+		coverKey, coverSource := h.coverFor(v)
+		t.Cover, t.CoverSource = coverDegreeProto(coverKey), coverSourceProto(coverSource)
 		if v.master && h.TargetAC > 0 {
 			t.TargetArmorClass, t.CoverBonus = &h.TargetAC, h.CoverBonus
 		}

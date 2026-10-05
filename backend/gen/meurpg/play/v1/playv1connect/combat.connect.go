@@ -290,7 +290,8 @@ type CombatServiceClient interface {
 	//
 	// Errors:
 	//   - `not_found`: the combat is not this campaign's, or the caller is a
-	//     player and may not see the combatant.
+	//     player and may not see the combatant (an NPC they do not see is not
+	//     found here either, as `expected_combatant_id`).
 	//   - `permission_denied`: the caller is a player and the member is not
 	//     their character, or nobody is acting.
 	//   - `failed_precondition`: the combat is not ACTIVE, or nobody in it can
@@ -1555,7 +1556,8 @@ type CombatServiceHandler interface {
 	//
 	// Errors:
 	//   - `not_found`: the combat is not this campaign's, or the caller is a
-	//     player and may not see the combatant.
+	//     player and may not see the combatant (an NPC they do not see is not
+	//     found here either, as `expected_combatant_id`).
 	//   - `permission_denied`: the caller is a player and the member is not
 	//     their character, or nobody is acting.
 	//   - `failed_precondition`: the combat is not ACTIVE, or nobody in it can

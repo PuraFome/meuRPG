@@ -234,21 +234,6 @@ func (s *Service) MoveCombatant(
 		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("only the master may force a move"))
 	}
 
-	// What the player knows of the terrain, read before the change opens its
-	// transaction (a fog map's players plan a move on it, never on the real one).
-	var known *grid.Terrain
-	if !v.master {
-		mapID, err := s.encounterMapOf(ctx, m.CampaignID, encID)
-		if err != nil {
-			return nil, s.dbError(ctx, "read the combat's map", err)
-		}
-		if mapID != "" {
-			if known, err = s.knownTerrainOf(ctx, m.CampaignID, &mapID, v); err != nil {
-				return nil, s.dbError(ctx, "read the terrain the player knows", err)
-			}
-		}
-	}
-
 	var moved playdb.Combatant
 	var made actionEvent
 	var stoppedEarly bool // a creature the player does not see cut the move short
@@ -314,6 +299,10 @@ func (s *Service) MoveCombatant(
 			// what it was (D1): the answer only says it was cut short.
 			occ := occupantsFor(cs, target, v)
 			all := occupantsFor(cs, target, combatViewer{master: true})
+			known, err := c.sight.knownTerrain(ctx, v) // read before the transaction (sightForWrite)
+			if err != nil {
+				return nil, err
+			}
 			plan := planOn(terrain, known) // the walls and rubble the player knows; the rest is floor to them
 			mover, origin := moverOf(target), squareOfCombatant(target)
 			left := movementLeftDFt(target)
@@ -427,11 +416,11 @@ func (s *Service) MoveCombatant(
 	if err != nil {
 		return nil, s.dbError(ctx, "move a combatant", err)
 	}
-	out, err := s.finish(ctx, m, res, func(d *encounterData) {
-		s.publishCombatantMoved(ctx, m.CampaignID, d.enc, moved)
+	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
+		s.publishCombatantMoved(ctx, m.CampaignID, d.enc, moved, squareOfState(made.From))
 		s.positionChanged(ctx, m.CampaignID, d.enc, moved, squareOfState(made.From)) // the fog remembers what it showed
 		if logged {
-			s.publishLogChanged(m.CampaignID, d.enc.ID, !moved.Hidden)
+			s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !moved.Hidden)
 		}
 	})
 	if err != nil {
@@ -539,6 +528,11 @@ func (s *Service) GetMoveOptions(
 	if err := v.mayAct(who); err != nil {
 		return nil, err
 	}
+	if sight == nil && v.master { // the master's warning follows the same fog rule as the real offers
+		if sight, err = s.fogSightOf(ctx, m.CampaignID, enc); err != nil {
+			return nil, s.dbError(ctx, "work out what the players see", err)
+		}
+	}
 	if err := notEnded(enc); err != nil {
 		return nil, err
 	}
@@ -560,7 +554,7 @@ func (s *Service) GetMoveOptions(
 	// A player's reach is worked out on what they know: the squares they do not see
 	// are floor, so the reach may offer one that is really a wall, and the move is
 	// then cut short (D1). No refusal names a wall or a creature they do not see.
-	known, err := s.knownTerrainOf(ctx, m.CampaignID, enc.MapID, v)
+	known, err := sight.knownTerrain(ctx, v)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the terrain the player knows", err)
 	}
