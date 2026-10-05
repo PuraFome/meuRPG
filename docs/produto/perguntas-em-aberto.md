@@ -114,7 +114,7 @@ O Vinicius respondeu pelo Samuel: a 66 como propusemos, e as de 67 a 75, da Etap
 
 ## Respondidas em 05/10/2026
 
-O Vinicius respondeu pelo Samuel oito das perguntas da Etapa 10: seis como sugerimos, duas com acréscimos (82 e 85, e um detalhe na 86). As de 76, 79 e 83 pedem mais detalhe e seguem em aberto, abaixo.
+O Vinicius respondeu pelo Samuel oito das perguntas da Etapa 10: seis como sugerimos, duas com acréscimos (82 e 85, que ele ampliou no mesmo dia, e um detalhe na 86). As de 76, 79 e 83 pedem mais detalhe e seguem em aberto, abaixo.
 
 - **Pergunta 77: os PV ao subir de nível.** O jogador escolhe entre rolar e a média; o mestre pode deixar só um dos dois. Aceito como sugerimos. Ver [RN-24](regras.md).
 - **Pergunta 78: os jeitos de fazer os atributos.** Os quatro valem: o conjunto padrão, a compra por 27 pontos, 4d6 descartando o menor (rolados e guardados pelo servidor) e digitar. Aceito; o 4d6 já era o costume das mesas, e o SRD 5.2.1 só o pôs num texto aberto. Ver [RN-24](regras.md).
@@ -122,7 +122,7 @@ O Vinicius respondeu pelo Samuel oito das perguntas da Etapa 10: seis como suger
 - **Pergunta 81: os PV de um monstro posto no combate.** Os médios; o mestre pode rolar. Aceito. Ver [MR-042](historias.md#mr-042-bestiário).
 - **Pergunta 82: o antecedente e a subclasse de texto livre.** Continuam os dois, com um acréscimo: um antecedente não é só uma descrição. O antecedente de texto livre segue a regra do SRD 5.1 "Personalizar um antecedente": além do nome, duas perícias (já é assim), duas ferramentas ou idiomas no total, uma característica (o texto de quem cria) e o equipamento. A fazer na Etapa 10. Ver [MR-025](historias.md#mr-025-cadastrar-conteúdo-da-mesa).
 - **Pergunta 84: a grade de 3 m.** Um mapa desenhado com quadrados de 3 m é calibrado e conta quatro quadrados de 1,5 m em cada um; não há quadrado de 1 m. Aceito. Os quadrados de 1,5 m (5 pés), como no Livro do Jogador, são o padrão desde a Etapa 6; o que é novo é o desenho com quadrados maiores. Ver [RN-25](regras.md).
-- **Pergunta 85: a imagem gerada por IA.** No MVP, é a arte da cena, e o mestre pode dar ao modelo referências da galeria: o mapa onde o combate acontece e os NPCs e inimigos em cena. Depois do MVP, a ideia é usar o mapa como referência para gerar uma vista isométrica dele, ou o próprio mapa com textura, casando com a grade. Ver [MR-039](historias.md#mr-039-imagens-geradas-para-masmorras-e-cenas).
+- **Pergunta 85: a imagem gerada por IA.** No MVP, os três jeitos: a arte da cena, a vista isométrica de um mapa e o próprio mapa com textura, casando com a grade (o Vinicius corrigiu no mesmo dia: a vista isométrica e o mapa na grade entram no MVP, não depois). O mestre escolhe quais NPCs e inimigos aparecem, e pode dar outras referências da galeria (o mapa do combate, os retratos). Ver [MR-039](historias.md#mr-039-imagens-geradas-para-masmorras-e-cenas).
 - **Pergunta 86: quem é o grupo de um encontro.** Os personagens de jogador vivos da campanha, e o mestre pode pôr no grupo os NPCs que acompanham os personagens naquele momento da história, com o nível que ele disser. Ver [MR-043](historias.md#mr-043-gerar-encontros).
 
 ## Em aberto

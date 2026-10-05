@@ -493,7 +493,7 @@ Prioridade decidida em 02/10/2026 (pergunta 20): primeiro o cadastro pelo mestre
 #### Critérios de aceite
 - **Dado** que sou mestre de "Mirathel", **quando** peço uma masmorra com um tamanho (de 21 a 121 quadrados de lado, ou o que eu digitar), o formato (sem forma, anel, cruz, elipse, losango), o tamanho das salas, o jeito dos corredores (labirinto, sinuosos ou retos), a quantidade e o tipo das portas e as escadas, **então** o app gera um mapa com salas, corredores, portas e escadas, conectado: dá para chegar a todas as salas.
 - **Dado** o mesmo tamanho, as mesmas opções e a mesma semente, **quando** gero duas vezes, **então** o resultado é o mesmo.
-- **Dado** uma masmorra gerada, **quando** ela vira um mapa, **então** é um mapa da campanha como os outros, escondido dos jogadores (RN-10), com a grade, as paredes e as portas já pintadas nas camadas, as escadas como pontos de submapa e a lista das salas ao lado do mapa, só para o mestre, com "Pôr uma cena nesta sala".
+- **Dado** uma masmorra gerada, **quando** ela vira um mapa, **então** é um mapa da campanha como os outros, escondido dos jogadores (RN-10) e com a névoa de guerra ligada (assim, mesmo com a imagem com textura, a sala atrás de uma porta secreta só aparece para quem a vê), com a grade, as paredes e as portas já pintadas nas camadas, as escadas como pontos de submapa e a lista das salas ao lado do mapa, só para o mestre, com "Pôr uma cena nesta sala".
 - **Dado** uma masmorra gerada, **quando** eu a edito no editor do mapa (paredes, portas, terreno, pontos), **então** "Redesenhar" faz a imagem de novo a partir das paredes e das portas de agora, sem apagar o que eu pintei.
 - **Dado** uma porta fechada, **quando** um personagem anda até ela, **então** ela se abre, se não estiver trancada; uma porta secreta é parede para os jogadores até eu revelá-la (RN-26).
 - **Dado** a imagem gerada, **quando** os jogadores a veem, **então** ela tem só o chão e as paredes: as portas são desenhadas por cima, pela camada, e nenhum número de sala aparece.
@@ -780,7 +780,7 @@ Fatia 9.2 da Etapa 9, só as contas em Go (a ligação com o servidor vem nas fa
 
 ### MR-039: Imagens geradas para masmorras e cenas
 
-**Como** mestre, **quero** gerar uma imagem a partir da masmorra ou da descrição de uma cena, e pedir ajustes, **para** mostrar à mesa o lugar de que falo.
+**Como** mestre, **quero** gerar uma imagem a partir da masmorra, de um mapa ou da descrição de uma cena (a arte da cena, uma vista isométrica do mapa ou o próprio mapa com textura, casando com a grade) e pedir ajustes, **para** mostrar à mesa o lugar de que falo.
 
 - Prioridade: MVP (Etapa 10)
 - Regras: RN-10, RN-28
@@ -790,14 +790,17 @@ Fatia 9.2 da Etapa 9, só as contas em Go (a ligação com o servidor vem nas fa
 - **Dado** uma masmorra gerada ([MR-010](#mr-010-gerar-masmorras)) ou a descrição de uma cena, **quando** o mestre pede uma imagem, com o texto e o estilo dele, **então** o app gera a imagem e a guarda na galeria da campanha, escondida dos jogadores.
 - **Dado** uma imagem gerada, **quando** o mestre escreve um novo pedido ("mais escura", "com uma ponte"), **então** o app a edita sabendo da cena, sem recomeçar do zero, **e** guarda a nova ao lado da anterior.
 - **Dado** que o limite do mês da campanha foi atingido, **quando** o mestre pede outra imagem, **então** o app recusa e diz por quê e quando volta.
-- **Dado** uma cena com um mapa de combate e NPCs, **quando** o mestre pede uma imagem, **então** ele pode escolher na galeria imagens de referência para o modelo (o mapa onde o combate acontece, os retratos dos NPCs e inimigos em cena), **e** a imagem sai como arte da cena (pergunta 85).
+- **Dado** um mapa com grade (gerado ou desenhado), **quando** o mestre pede "O mapa com textura", **então** o app gera o próprio mapa visto de cima, com o chão e as paredes no lugar, recortado e ajustado para casar com a grade, **e** o mestre pode pô-lo como imagem do mapa sem apagar as camadas nem o que os jogadores já viram (pergunta 85).
+- **Dado** um mapa, **quando** o mestre pede "Vista isométrica", **então** o app gera a arte do mapa em perspectiva isométrica, que vai para a galeria como arte da cena.
+- **Dado** um mapa com tokens, um combate ou NPCs em cena, **quando** o mestre pede uma imagem, **então** ele escolhe quais NPCs e inimigos aparecem nela (os retratos da galeria vão como referência) **e** só esses aparecem; ele também pode escolher outras imagens da galeria como referência.
 - **Dado** um pedido de imagem, **quando** o app o envia ao serviço de IA, **então** vão só o desenho da masmorra, a lista das salas, o texto do mestre e as referências que ele escolheu, nunca dado pessoal (RN-28).
-- **Dado** uma imagem feita a partir de uma masmorra com uma porta secreta, **quando** o mestre vai mostrá-la, **então** o app avisa que ela mostra também o que está atrás das portas secretas.
+- **Dado** um mapa com uma porta secreta ainda não revelada, **quando** o app monta o desenho de referência do mapa com textura, **então** a porta vai como parede, **e** a imagem não mostra a passagem (RN-10, RN-26).
+- **Dado** uma arte da cena ou uma vista isométrica feita a partir de um mapa com uma sala secreta, **quando** o mestre vai mostrá-la, **então** o app avisa que ela mostra também o que está atrás das portas secretas.
 - **Dado** que o serviço recusa um pedido ou não devolve imagem, **quando** o mestre espera a imagem, **então** o app diz isso em português ("O serviço não gerou uma imagem"), sem gastar a vaga do mês.
 
 #### Relacionadas
 - Usa a API do Gemini (o modelo de imagem, o "Nano Banana"), com uma chave do Google AI Studio, pelo servidor, atrás de uma interface pequena (ADR-0019, que substitui a ADR-0014, de 03/10/2026, que usava o Vertex AI). O modelo é configurável: `gemini-3.1-flash-image` por padrão (o `gemini-2.5-flash-image` foi desligado em 02/10/2026). O operador novo, o Google (API do Gemini), entra em [Privacidade](../privacidade.md); a chave é um segredo, e o custo e o limite ficam em [Operação](../operacao.md).
-- A imagem é arte da cena, não o mapa da batalha: o modelo devolve imagens em proporções fixas, que não casam com a grade. Pode ir para o fundo de um mapa, sabendo que os quadrados não vão bater (pergunta 85, respondida em 05/10/2026). Depois do MVP: usar o mapa como referência para uma vista isométrica dele, ou para o próprio mapa com textura, casando com a grade.
+- Três jeitos, todos no MVP (pergunta 85, respondida e corrigida pelo Vinicius em 05/10/2026): a arte da cena, a vista isométrica de um mapa e o mapa com textura, que casa com a grade. O modelo devolve uma de 10 proporções fixas (1:1, 3:2, 2:3, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9 e 21:9, de 512 px a 4K), então o servidor manda o desenho do mapa (o chão e as paredes) na proporção mais próxima da grade, completado com rocha, recorta o mapa do resultado e o ajusta ao tamanho da grade. As camadas continuam sendo a verdade do jogo: se a imagem escorregar um pouco de uma parede, o mestre gera de novo. Cada pedido aceita até 10 imagens de objetos e 4 de personagens como referência (documentação do Gemini, conferida em 05/10/2026).
 
 #### Dúvidas
 - O número do limite por campanha por mês sai depois de medir o custo com a chave de verdade (US$ 0,067 por imagem de 1K no `gemini-3.1-flash-image`, em 05/10/2026).
