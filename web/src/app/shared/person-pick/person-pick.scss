@@ -1,0 +1,122 @@
+:host {
+  display: block;
+}
+
+.pp__legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 var(--mr-space-3);
+}
+
+.pp__h {
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 20px;
+}
+
+// "Marcar todos": a text action in a fixed 44px row, the same in both states.
+.pp__all {
+  flex: none;
+  height: 44px;
+  --mat-button-text-container-height: 44px;
+}
+
+.pp__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  margin: var(--mr-space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+// One character: a 56px bordered row; the checked one a thicker accent border and a soft fill.
+.pp__row {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  box-sizing: border-box;
+  min-height: 56px;
+  padding: 8px 14px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  cursor: pointer;
+
+  &:has(input:focus-visible) {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  &--on {
+    padding: 7px 13px;
+    border: 2px solid var(--mr-accent);
+    background: var(--mr-accent-soft);
+  }
+
+  &--has {
+    border-style: dashed;
+    color: var(--mr-ink-muted);
+    cursor: default;
+  }
+}
+
+.pp__box {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--mr-control-line);
+  border-radius: 5px;
+  color: transparent;
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+
+  .pp__row--on & {
+    border-color: var(--mr-accent);
+    background: var(--mr-accent);
+    color: var(--mr-on-accent);
+  }
+
+  &--has {
+    border-color: var(--mr-control-line);
+    background: var(--mr-control-line);
+    color: var(--mr-surface);
+  }
+}
+
+.pp__who {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pp__name {
+  font-size: 17px;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+
+.pp__sub {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.pp__none {
+  margin: var(--mr-space-3) 0 0;
+  font-size: 15px;
+  line-height: 20px;
+}

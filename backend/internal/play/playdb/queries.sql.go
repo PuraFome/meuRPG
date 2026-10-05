@@ -2580,7 +2580,7 @@ func (q *Queries) ListTrapDamageStatuses(ctx context.Context, dollar_1 []string)
 
 const listTrapEventsOfSession = `-- name: ListTrapEventsOfSession :many
 SELECT id, kind, character_id, payload, created_at FROM session_events
-WHERE game_session_id = $1 AND encounter_id IS NULL AND kind IN ('trap_triggered', 'trap_searched')
+WHERE game_session_id = $1 AND encounter_id IS NULL AND kind IN ('trap_triggered', 'trap_searched', 'trap_noticed')
 ORDER BY seq
 LIMIT 500
 `
@@ -2593,7 +2593,8 @@ type ListTrapEventsOfSessionRow struct {
 	CreatedAt   time.Time
 }
 
-// The trap firings and searches of a session outside a combat, oldest first.
+// The trap firings, searches and passive notices of a session outside a combat, oldest first.
+// (A notice has no combat even in one: the maps module writes it after the move.)
 func (q *Queries) ListTrapEventsOfSession(ctx context.Context, gameSessionID string) ([]ListTrapEventsOfSessionRow, error) {
 	rows, err := q.db.Query(ctx, listTrapEventsOfSession, gameSessionID)
 	if err != nil {

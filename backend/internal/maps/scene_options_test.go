@@ -13,6 +13,7 @@ import (
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
 // The scene options (MR-015, Etapa 8; Samuel's answers to questions 52 and
@@ -619,6 +620,7 @@ func wantSessionNotEnded(t *testing.T, call string, err error) {
 // with different keys, with one attempt, let exactly one through.
 func TestMR015_ReplayAndRaceOnTheLastAttempt(t *testing.T) {
 	t.Parallel()
+	dbtest.PoolSize(t, 4) // the racers must overlap: one connection would run them one by one
 	s := newScenes(t, true)
 	one := s.master.addAction(s.campaign, s.mapID, s.point.GetId(), "skill:investigation", "", 0)
 	s.master.mustOpenScene(s.campaign, s.point.GetId())

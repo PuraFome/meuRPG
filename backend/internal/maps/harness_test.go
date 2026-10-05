@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/protobuf/encoding/protojson"
 
@@ -549,8 +550,8 @@ func wantCode(t *testing.T, call string, err error, want connect.Code) {
 // testDice is play's DiceModes over the campaigns service, as cmd/api wires it.
 type testDice struct{ camps *campaigns.Service }
 
-func (d testDice) ForcedDice(ctx context.Context, campaignID, userID string) (play.DiceForce, error) {
-	mode, err := d.camps.CampaignDiceMode(ctx, campaignID, userID)
+func (d testDice) ForcedDice(ctx context.Context, tx pgx.Tx, campaignID, userID string) (play.DiceForce, error) {
+	mode, err := d.camps.CampaignDiceMode(ctx, tx, campaignID, userID)
 	switch mode {
 	case campaigns.DiceModeApp:
 		return play.DiceForcedInApp, err

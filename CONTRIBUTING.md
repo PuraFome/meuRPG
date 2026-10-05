@@ -59,6 +59,10 @@ Os testes de integração **reaproveitam bancos**: cada pacote cria uns poucos b
 - Cada pacote que usa banco tem um `TestMain` que chama `dbtest.Main(m)`: no fim da execução, ele apaga os bancos que o pacote criou. Um pacote novo com testes de integração precisa dele, ou os bancos ficam para trás.
 - Se uma execução é interrompida no meio, os bancos dela ficam no servidor (`meurpg_<pacote>_test_...`) e podem ser apagados à mão. Com o `make db-test-start`, desligar o banco dos testes apaga tudo.
 - As migrations em si continuam testadas do zero pelo pacote `migrations`.
+- Todo pool de teste tem **uma** conexão (`MaxConns = 1`) e um rastreador de `Acquire`. O teste em que uma leitura passa pelo pool de dentro de um `db.InTx` falha na hora, com a pilha, e o `Acquire` é cancelado. Uma espera de mais de 90 s por uma conexão (o caso que a pilha não enxerga) derruba o binário de testes do pacote inteiro, com a pilha de quem espera. Assim, a suíte de cada pacote é também a prova de que nenhuma escrita pega uma segunda conexão.
+  - Um teste que corre transações umas contra as outras pede um pool maior no começo: `dbtest.PoolSize(t, n)`, com `n` pelo menos o número de corredores. Com uma conexão elas rodariam uma de cada vez, e o teste passaria sem provar nada. Funciona com `t.Parallel`.
+  - Um teste que precisa segurar uma transação aberta enquanto o serviço trabalha usa `dbtest.SideConnection(t, pool).Begin(...)` (não `db.InTx` em volta de chamadas do serviço: o rastreador as acusaria).
+  - `MEURPG_TEST_POOL_MAX_CONNS=8` vale para o processo inteiro, e serve para listar todas as violações de uma vez. Em produção o pool abre no máximo 10 conexões (ver [Operação](docs/operacao.md#o-pool-de-conexões)).
 - No CI, o CockroachDB do job `go-db` também guarda os dados na memória e desliga o que só serve a um banco de longa duração (estatísticas automáticas, junção de faixas vazias, histórico de jobs), como o `make db-test-start`. Os pacotes rodam ao mesmo tempo contra ele, cada um com até 25 minutos (`go test -timeout 25m`, dentro dos 30 do job).
 
 ## Login local com um provedor OIDC
@@ -222,6 +226,7 @@ Para mudar uma query ou criar uma:
 1. Escreva o SQL em `queries.sql`, com um comentário `-- name: NomeDaQuery :one` (ou `:many`, `:exec`, `:execrows`) em cima.
 2. Rode `make sqlc` e faça commit do código gerado junto. O CI gera de novo e falha se aparecer diferença.
 3. Escrita passa por `db.InTx`, que repete a transação no erro `40001` do CockroachDB: `s.queries.WithTx(tx).NomeDaQuery(...)`.
+   - **Dentro do `InTx`, só `WithTx(tx)`.** Nenhuma leitura pelo pool (`s.queries.X`, `s.pool`, ou uma chamada a outro módulo que leia pelo pool): ela pega uma segunda conexão enquanto a transação segura a primeira, e poucas requisições assim travam o pool inteiro até o contexto acabar (PR #120). Uma chamada entre módulos que lê recebe o `tx` (primeiro argumento depois do `ctx`; `nil` fora de transação); o que não pode ficar dentro da transação é lido antes dela. Ver [Arquitetura → Transações e o pool de conexões](docs/arquitetura.md#transações-e-o-pool-de-conexões). O `dbtest` dá a todo teste um pool de **uma** conexão e falha o teste que fizer isso, com a pilha.
 
 O sqlc fica preso na versão **1.31.1**, porque a versão vai escrita em cada arquivo gerado. O `make sqlc` roda essa versão exata com `go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1`, sem instalar nada; a primeira vez leva cerca de um minuto para compilar. O `sqlc` do Homebrew na mesma versão gera o mesmo resultado.
 

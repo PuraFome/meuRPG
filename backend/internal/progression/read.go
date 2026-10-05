@@ -205,7 +205,7 @@ func (s *Service) GetCampaignExperience(
 	if err != nil {
 		return nil, err
 	}
-	mode, err := s.campaigns.CampaignXPMode(ctx, m.CampaignID)
+	mode, err := s.campaigns.CampaignXPMode(ctx, nil, m.CampaignID)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the campaign's XP mode", err)
 	}
@@ -246,14 +246,14 @@ func (s *Service) GetCampaignExperience(
 // LevelUpReason implements characters.LevelUps: why the character can go up a
 // level, from the sheet's numbers and the campaign's mode and milestones
 // (RN-12).
-func (s *Service) LevelUpReason(ctx context.Context, campaignID, characterID string, level, xp, nextLevelXP int32) (charactersv1.LevelUpReason, error) {
-	mode, err := s.campaigns.CampaignXPMode(ctx, campaignID)
+func (s *Service) LevelUpReason(ctx context.Context, tx pgx.Tx, campaignID, characterID string, level, xp, nextLevelXP int32) (charactersv1.LevelUpReason, error) {
+	mode, err := s.campaigns.CampaignXPMode(ctx, tx, campaignID)
 	if err != nil {
 		return charactersv1.LevelUpReason_LEVEL_UP_REASON_UNSPECIFIED, fmt.Errorf("read the campaign's XP mode: %w", err)
 	}
 	var mark int32
 	if mode == campaignsv1.XpMode_XP_MODE_MILESTONES {
-		if mark, err = s.queries.GetMilestoneMark(ctx, progressiondb.GetMilestoneMarkParams{CampaignID: campaignID, CharacterID: characterID}); err != nil {
+		if mark, err = s.queriesIn(tx).GetMilestoneMark(ctx, progressiondb.GetMilestoneMarkParams{CampaignID: campaignID, CharacterID: characterID}); err != nil {
 			return charactersv1.LevelUpReason_LEVEL_UP_REASON_UNSPECIFIED, fmt.Errorf("read the milestone mark: %w", err)
 		}
 	}

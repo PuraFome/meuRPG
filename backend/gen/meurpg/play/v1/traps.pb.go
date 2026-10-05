@@ -300,8 +300,10 @@ type FireTrapRequest struct {
 	MapId      string                 `protobuf:"bytes,2,opt,name=map_id,json=mapId,proto3" json:"map_id,omitempty"`
 	PointId    string                 `protobuf:"bytes,3,opt,name=point_id,json=pointId,proto3" json:"point_id,omitempty"`
 	// Who is caught: in a combat that runs on the map, combatant IDs; otherwise
-	// character IDs of tokens on the map. Empty: the creatures standing in the
-	// trap's area (up to 40).
+	// character IDs of tokens on the map. Empty: whoever stands in the
+	// trap's area (up to 40): the combatants of a combat, otherwise the characters and
+	// the creature tokens of their characters. Target IDs are characters (or combatants);
+	// a creature already standing in the area is caught by the empty list, not named here.
 	TargetIds []string `protobuf:"bytes,4,rep,name=target_ids,json=targetIds,proto3" json:"target_ids,omitempty"`
 	// A UUID the app makes for each firing.
 	IdempotencyKey string `protobuf:"bytes,5,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
@@ -987,7 +989,7 @@ func (x *ListTrapActivityRequest) GetCampaignId() string {
 
 // ListTrapActivityResponse is the trap activity of the open session outside a combat
 // (in a combat it is in the combat log), oldest first. The master gets every firing and
-// every search; a player gets only the lines of their own characters, with their own
+// every search and every notice; a player gets only the lines of their own characters, with their own
 // dice and "passou" or "falhou", never a DC and never a trap their characters do not
 // know (a trap that fired is public).
 type ListTrapActivityResponse struct {
@@ -1034,7 +1036,7 @@ func (x *ListTrapActivityResponse) GetActivity() []*TrapActivity {
 	return nil
 }
 
-// TrapActivity is one line: a firing or a search.
+// TrapActivity is one line: a firing, a search or a notice.
 type TrapActivity struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The event's ID (a UUID); for a firing, the ID to extend it with (FireTrapRequest).
@@ -1043,7 +1045,11 @@ type TrapActivity struct {
 	// Set for a firing: what it did. A player's copy holds only their own characters.
 	Firing *TrapFiring `protobuf:"bytes,3,opt,name=firing,proto3" json:"firing,omitempty"`
 	// Set for a search.
-	Search        *TrapSearchResult `protobuf:"bytes,4,opt,name=search,proto3" json:"search,omitempty"`
+	Search *TrapSearchResult `protobuf:"bytes,4,opt,name=search,proto3" json:"search,omitempty"`
+	// Set for a trap a character noticed by passing near it (the passive notice). The
+	// master reads every one; a player only their own characters', with the trap's name
+	// (they know it now) and never a DC.
+	Notice        *TrapNotice `protobuf:"bytes,5,opt,name=notice,proto3" json:"notice,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1106,6 +1112,88 @@ func (x *TrapActivity) GetSearch() *TrapSearchResult {
 	return nil
 }
 
+func (x *TrapActivity) GetNotice() *TrapNotice {
+	if x != nil {
+		return x.Notice
+	}
+	return nil
+}
+
+// TrapNotice is a passive notice: a character's passive Perception reached the trap's
+// DC to notice it when the character stopped near it (RN-10: told to that character's
+// player alone).
+type TrapNotice struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The characters (UUIDs) that noticed the trap at the same move, with their names;
+	// for a player, only their own. Always at least one.
+	CharacterIds   []string `protobuf:"bytes,1,rep,name=character_ids,json=characterIds,proto3" json:"character_ids,omitempty"`
+	CharacterNames []string `protobuf:"bytes,2,rep,name=character_names,json=characterNames,proto3" json:"character_names,omitempty"`
+	// The trap's point (a UUID) and its name; the name is empty when the trap was deleted
+	// since.
+	PointId       string `protobuf:"bytes,3,opt,name=point_id,json=pointId,proto3" json:"point_id,omitempty"`
+	TrapName      string `protobuf:"bytes,4,opt,name=trap_name,json=trapName,proto3" json:"trap_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TrapNotice) Reset() {
+	*x = TrapNotice{}
+	mi := &file_meurpg_play_v1_traps_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TrapNotice) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TrapNotice) ProtoMessage() {}
+
+func (x *TrapNotice) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_traps_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TrapNotice.ProtoReflect.Descriptor instead.
+func (*TrapNotice) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_traps_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *TrapNotice) GetCharacterIds() []string {
+	if x != nil {
+		return x.CharacterIds
+	}
+	return nil
+}
+
+func (x *TrapNotice) GetCharacterNames() []string {
+	if x != nil {
+		return x.CharacterNames
+	}
+	return nil
+}
+
+func (x *TrapNotice) GetPointId() string {
+	if x != nil {
+		return x.PointId
+	}
+	return ""
+}
+
+func (x *TrapNotice) GetTrapName() string {
+	if x != nil {
+		return x.TrapName
+	}
+	return ""
+}
+
 // TrapSearchResult is a search made outside a combat, as the viewer reads it.
 type TrapSearchResult struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -1125,7 +1213,7 @@ type TrapSearchResult struct {
 
 func (x *TrapSearchResult) Reset() {
 	*x = TrapSearchResult{}
-	mi := &file_meurpg_play_v1_traps_proto_msgTypes[14]
+	mi := &file_meurpg_play_v1_traps_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1137,7 +1225,7 @@ func (x *TrapSearchResult) String() string {
 func (*TrapSearchResult) ProtoMessage() {}
 
 func (x *TrapSearchResult) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_traps_proto_msgTypes[14]
+	mi := &file_meurpg_play_v1_traps_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1150,7 +1238,7 @@ func (x *TrapSearchResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrapSearchResult.ProtoReflect.Descriptor instead.
 func (*TrapSearchResult) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_traps_proto_rawDescGZIP(), []int{14}
+	return file_meurpg_play_v1_traps_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *TrapSearchResult) GetCharacterId() string {
@@ -1283,12 +1371,19 @@ const file_meurpg_play_v1_traps_proto_rawDesc = "" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\"T\n" +
 	"\x18ListTrapActivityResponse\x128\n" +
-	"\bactivity\x18\x01 \x03(\v2\x1c.meurpg.play.v1.TrapActivityR\bactivity\"\xb8\x01\n" +
+	"\bactivity\x18\x01 \x03(\v2\x1c.meurpg.play.v1.TrapActivityR\bactivity\"\xec\x01\n" +
 	"\fTrapActivity\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12*\n" +
 	"\x02at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x02at\x122\n" +
 	"\x06firing\x18\x03 \x01(\v2\x1a.meurpg.play.v1.TrapFiringR\x06firing\x128\n" +
-	"\x06search\x18\x04 \x01(\v2 .meurpg.play.v1.TrapSearchResultR\x06search\"\xc5\x02\n" +
+	"\x06search\x18\x04 \x01(\v2 .meurpg.play.v1.TrapSearchResultR\x06search\x122\n" +
+	"\x06notice\x18\x05 \x01(\v2\x1a.meurpg.play.v1.TrapNoticeR\x06notice\"\x92\x01\n" +
+	"\n" +
+	"TrapNotice\x12#\n" +
+	"\rcharacter_ids\x18\x01 \x03(\tR\fcharacterIds\x12'\n" +
+	"\x0fcharacter_names\x18\x02 \x03(\tR\x0echaracterNames\x12\x19\n" +
+	"\bpoint_id\x18\x03 \x01(\tR\apointId\x12\x1b\n" +
+	"\ttrap_name\x18\x04 \x01(\tR\btrapName\"\xc5\x02\n" +
 	"\x10TrapSearchResult\x12!\n" +
 	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12%\n" +
 	"\x0echaracter_name\x18\x02 \x01(\tR\rcharacterName\x125\n" +
@@ -1319,7 +1414,7 @@ func file_meurpg_play_v1_traps_proto_rawDescGZIP() []byte {
 }
 
 var file_meurpg_play_v1_traps_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_meurpg_play_v1_traps_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
+var file_meurpg_play_v1_traps_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_meurpg_play_v1_traps_proto_goTypes = []any{
 	(TrapSearchSkill)(0),              // 0: meurpg.play.v1.TrapSearchSkill
 	(*SearchForTrapsRequest)(nil),     // 1: meurpg.play.v1.SearchForTrapsRequest
@@ -1336,36 +1431,38 @@ var file_meurpg_play_v1_traps_proto_goTypes = []any{
 	(*ListTrapActivityRequest)(nil),   // 12: meurpg.play.v1.ListTrapActivityRequest
 	(*ListTrapActivityResponse)(nil),  // 13: meurpg.play.v1.ListTrapActivityResponse
 	(*TrapActivity)(nil),              // 14: meurpg.play.v1.TrapActivity
-	(*TrapSearchResult)(nil),          // 15: meurpg.play.v1.TrapSearchResult
-	(*DiceRoll)(nil),                  // 16: meurpg.play.v1.DiceRoll
-	(*TrapFiring)(nil),                // 17: meurpg.play.v1.TrapFiring
-	(PendingDamageStatus)(0),          // 18: meurpg.play.v1.PendingDamageStatus
-	(*timestamppb.Timestamp)(nil),     // 19: google.protobuf.Timestamp
+	(*TrapNotice)(nil),                // 15: meurpg.play.v1.TrapNotice
+	(*TrapSearchResult)(nil),          // 16: meurpg.play.v1.TrapSearchResult
+	(*DiceRoll)(nil),                  // 17: meurpg.play.v1.DiceRoll
+	(*TrapFiring)(nil),                // 18: meurpg.play.v1.TrapFiring
+	(PendingDamageStatus)(0),          // 19: meurpg.play.v1.PendingDamageStatus
+	(*timestamppb.Timestamp)(nil),     // 20: google.protobuf.Timestamp
 }
 var file_meurpg_play_v1_traps_proto_depIdxs = []int32{
 	0,  // 0: meurpg.play.v1.SearchForTrapsRequest.skill:type_name -> meurpg.play.v1.TrapSearchSkill
-	16, // 1: meurpg.play.v1.SearchForTrapsResponse.roll:type_name -> meurpg.play.v1.DiceRoll
-	16, // 2: meurpg.play.v1.SearchForTrapsResponse.second_roll:type_name -> meurpg.play.v1.DiceRoll
-	17, // 3: meurpg.play.v1.FireTrapResponse.firing:type_name -> meurpg.play.v1.TrapFiring
-	18, // 4: meurpg.play.v1.TrapDamage.status:type_name -> meurpg.play.v1.PendingDamageStatus
-	16, // 5: meurpg.play.v1.TrapDamage.roll:type_name -> meurpg.play.v1.DiceRoll
-	19, // 6: meurpg.play.v1.TrapDamage.created_at:type_name -> google.protobuf.Timestamp
-	19, // 7: meurpg.play.v1.TrapDamage.session_started_at:type_name -> google.protobuf.Timestamp
+	17, // 1: meurpg.play.v1.SearchForTrapsResponse.roll:type_name -> meurpg.play.v1.DiceRoll
+	17, // 2: meurpg.play.v1.SearchForTrapsResponse.second_roll:type_name -> meurpg.play.v1.DiceRoll
+	18, // 3: meurpg.play.v1.FireTrapResponse.firing:type_name -> meurpg.play.v1.TrapFiring
+	19, // 4: meurpg.play.v1.TrapDamage.status:type_name -> meurpg.play.v1.PendingDamageStatus
+	17, // 5: meurpg.play.v1.TrapDamage.roll:type_name -> meurpg.play.v1.DiceRoll
+	20, // 6: meurpg.play.v1.TrapDamage.created_at:type_name -> google.protobuf.Timestamp
+	20, // 7: meurpg.play.v1.TrapDamage.session_started_at:type_name -> google.protobuf.Timestamp
 	5,  // 8: meurpg.play.v1.ListTrapDamagesResponse.damages:type_name -> meurpg.play.v1.TrapDamage
 	5,  // 9: meurpg.play.v1.ApplyTrapDamageResponse.damage:type_name -> meurpg.play.v1.TrapDamage
 	5,  // 10: meurpg.play.v1.DiscardTrapDamageResponse.damage:type_name -> meurpg.play.v1.TrapDamage
 	14, // 11: meurpg.play.v1.ListTrapActivityResponse.activity:type_name -> meurpg.play.v1.TrapActivity
-	19, // 12: meurpg.play.v1.TrapActivity.at:type_name -> google.protobuf.Timestamp
-	17, // 13: meurpg.play.v1.TrapActivity.firing:type_name -> meurpg.play.v1.TrapFiring
-	15, // 14: meurpg.play.v1.TrapActivity.search:type_name -> meurpg.play.v1.TrapSearchResult
-	0,  // 15: meurpg.play.v1.TrapSearchResult.skill:type_name -> meurpg.play.v1.TrapSearchSkill
-	16, // 16: meurpg.play.v1.TrapSearchResult.roll:type_name -> meurpg.play.v1.DiceRoll
-	16, // 17: meurpg.play.v1.TrapSearchResult.second_roll:type_name -> meurpg.play.v1.DiceRoll
-	18, // [18:18] is the sub-list for method output_type
-	18, // [18:18] is the sub-list for method input_type
-	18, // [18:18] is the sub-list for extension type_name
-	18, // [18:18] is the sub-list for extension extendee
-	0,  // [0:18] is the sub-list for field type_name
+	20, // 12: meurpg.play.v1.TrapActivity.at:type_name -> google.protobuf.Timestamp
+	18, // 13: meurpg.play.v1.TrapActivity.firing:type_name -> meurpg.play.v1.TrapFiring
+	16, // 14: meurpg.play.v1.TrapActivity.search:type_name -> meurpg.play.v1.TrapSearchResult
+	15, // 15: meurpg.play.v1.TrapActivity.notice:type_name -> meurpg.play.v1.TrapNotice
+	0,  // 16: meurpg.play.v1.TrapSearchResult.skill:type_name -> meurpg.play.v1.TrapSearchSkill
+	17, // 17: meurpg.play.v1.TrapSearchResult.roll:type_name -> meurpg.play.v1.DiceRoll
+	17, // 18: meurpg.play.v1.TrapSearchResult.second_roll:type_name -> meurpg.play.v1.DiceRoll
+	19, // [19:19] is the sub-list for method output_type
+	19, // [19:19] is the sub-list for method input_type
+	19, // [19:19] is the sub-list for extension type_name
+	19, // [19:19] is the sub-list for extension extendee
+	0,  // [0:19] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_traps_proto_init() }
@@ -1386,7 +1483,7 @@ func file_meurpg_play_v1_traps_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_play_v1_traps_proto_rawDesc), len(file_meurpg_play_v1_traps_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   15,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

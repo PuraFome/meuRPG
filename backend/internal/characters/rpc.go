@@ -249,6 +249,30 @@ func (s *Service) UpdateCharacter(
 	if err != nil {
 		return nil, invalidArgument(err)
 	}
+	// The portrait is prepared before the transaction: a fog map's background is
+	// copied (its files now, its gallery row inside the transaction). It is
+	// prepared only for a caller the transaction would let save the sheet: the
+	// same checks, in the same order (visible, RN-01, kind), so nobody else makes
+	// the server copy files. A caller who fails one skips the preparation, and the
+	// transaction answers with that check's error. A character's kind never
+	// changes, so the row read here is the one the transaction reads. A read that
+	// fails is the request's failure: an unchecked portrait never goes through.
+	var portraitErr error
+	var portraitCopy PortraitCopy
+	if portraitOf(sheet) != "" {
+		pre, err := s.queries.GetCharacter(ctx, charactersdb.GetCharacterParams{CampaignID: m.CampaignID, ID: id})
+		switch {
+		case errors.Is(err, pgx.ErrNoRows):
+			// No such character: the transaction says so.
+		case err != nil:
+			return nil, s.dbError(ctx, "read a character to check its portrait", err)
+		case canSee(m, pre.Kind, pre.Status, pre.PlayerUserID) && mayEditSheet(m, pre) && checkSheetKind(pre.Kind, sheet) == nil:
+			var failure error
+			if portraitCopy, portraitErr, failure = s.preparePortrait(ctx, m.CampaignID, pre.Kind, sheet); failure != nil {
+				return nil, failure
+			}
+		}
+	}
 	sheetDoc, err := storeJSON.Marshal(sheet)
 	if err != nil {
 		return nil, s.dbError(ctx, "encode a sheet", err)
@@ -263,17 +287,22 @@ func (s *Service) UpdateCharacter(
 		}
 		// RN-01: after a game session starts, only the master edits the
 		// sheet. This comes before the revision: retrying would not help.
-		if state := characterState(current.Status, current.SheetLockedAt); !isMaster(m) && !playerEditsSheet(state) {
-			return errBlocked(blockedReason(state), current.ID)
+		if !mayEditSheet(m, current) {
+			return errBlocked(blockedReason(characterState(current.Status, current.SheetLockedAt)), current.ID)
 		}
 		if err := checkSheetKind(current.Kind, sheet); err != nil {
 			return invalidArgument(err)
 		}
-		if err := s.checkPortrait(ctx, m.CampaignID, current.Kind, sheet); err != nil {
-			return invalidArgument(err)
+		if portraitErr != nil {
+			return invalidArgument(portraitErr)
 		}
 		if current.Revision != revision {
 			return errStaleRevision()
+		}
+		if portraitCopy != nil { // the copy's gallery row, in this transaction
+			if err := portraitCopy.Insert(ctx, tx); err != nil {
+				return err
+			}
 		}
 		row, err = q.UpdateCharacterSheet(ctx, charactersdb.UpdateCharacterSheetParams{
 			CampaignID: m.CampaignID, ID: id, Revision: revision, Name: name, Sheet: sheetDoc, Now: s.now(),
@@ -287,6 +316,9 @@ func (s *Service) UpdateCharacter(
 		return nil
 	})
 	if err != nil {
+		if portraitCopy != nil {
+			portraitCopy.Discard(ctx) // no gallery row: the copy's files go
+		}
 		return nil, s.dbError(ctx, "update a character", err)
 	}
 	c, err := s.character(ctx, row, m)
@@ -534,6 +566,12 @@ func (s *Service) UpdateMasterNotes(
 		return nil, s.dbError(ctx, "update master notes", err)
 	}
 	return connect.NewResponse(res), nil
+}
+
+// mayEditSheet is RN-01: after a game session starts, only the master edits the
+// sheet. It comes before the revision: retrying would not help.
+func mayEditSheet(m authz.Membership, row charactersdb.Character) bool {
+	return isMaster(m) || playerEditsSheet(characterState(row.Status, row.SheetLockedAt))
 }
 
 // visibleForUpdate reads a character inside a transaction, locked until it

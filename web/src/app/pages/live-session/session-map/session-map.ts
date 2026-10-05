@@ -18,10 +18,13 @@ import { MoveSaves } from '../../../core/maps/move-saves';
 import { SceneClient } from '../../../core/play/scene-client';
 import { sceneErrorMessage } from '../../../core/play/scene-errors';
 import type { SceneState } from '../../../core/play/scene-state';
+import { isPinKind } from '../../../core/traps/trap-text';
 import { FogMap } from '../../../shared/fog-map/fog-map';
 import type { ViewAsPerson } from '../../../shared/fog-map/view-as-list';
 import { ViewAsMapView } from '../../../shared/fog-map/view-as-map';
 import { MapPointsList } from '../../../shared/map-lists/map-points-list';
+import { MapPins } from '../../../shared/map-pins/map-pins';
+import { MapPinsLegend } from '../../../shared/map-pins/map-pins-legend';
 import { MapLegend } from '../../../shared/map-view/map-legend/map-legend';
 import { MapMove, MapView } from '../../../shared/map-view/map-view';
 import { PHONE_QUERY, mediaQuery } from '../../../shared/map-view/media-query';
@@ -53,6 +56,8 @@ import { LiveSessionSource } from '../live-session.types';
     FogMap,
     FogPlayerTools,
     MapLegend,
+    MapPins,
+    MapPinsLegend,
     MapPointsList,
     MapView,
     MatButtonModule,
@@ -82,6 +87,9 @@ export class SessionMap {
   readonly maps = input<readonly MapMessage[]>([]);
   /** The session's RP scene, for "Abrir cena" on a scene point (master). */
   readonly scene = input<SceneState | null>(null);
+  /** The player may search this map for traps (they have a character on it and the map has a grid):
+   * "Procurar armadilhas" sits beside "Ver mapa" (MR-035, E9-08). */
+  readonly searchable = input(false);
   /** The player's own character, for the off-map notice and the light they carry. */
   readonly characterName = input('');
   readonly ownCharacterId = input('');
@@ -100,6 +108,8 @@ export class SessionMap {
   readonly creaturesTick = input(0);
   /** The master chose another map (or none): the page shows it. */
   readonly currentChanged = output<string | null>();
+  /** "Procurar armadilhas": the page opens the search sheet. */
+  readonly searchTraps = output<void>();
   /** "Ver como": the line about the view, and the ways back to "Todos". */
   readonly viewNoteChange = output<string>();
   readonly viewAsGone = output<void>();
@@ -117,6 +127,8 @@ export class SessionMap {
 
   protected readonly map = computed(() => this.state().map());
   protected readonly status = computed(() => this.state().status());
+  /** The points the old markers draw: traps, treasures and lights have their own marks, panels and legend. */
+  protected readonly markerPoints = computed(() => this.state().points().filter((p) => !isPinKind(p.kind)));
   protected readonly image = computed(() => {
     const image = this.map()?.image;
     return image ? { url: image.url, width: image.width, height: image.height } : null;

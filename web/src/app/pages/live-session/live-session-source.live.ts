@@ -216,6 +216,9 @@ export class LiveSessionSourceLive implements LiveSessionSource {
         case 'stageChanged':
           yield { kind: 'stageChanged' };
           break;
+        case 'trapNoticed':
+          yield { kind: 'trapNoticed', mapId: res.event.value.mapId, pointId: res.event.value.pointId };
+          break;
         case 'creaturesChanged':
           yield { kind: 'creaturesChanged' };
           break;
@@ -291,9 +294,11 @@ export class LiveSessionSourceLive implements LiveSessionSource {
     // The subrace's name already says the race ("Gnomo das Rochas"), as on
     // the sheet's header.
     const race = derived?.subraceNamePt || derived?.raceNamePt || '';
+    const skill = (key: string) => derived?.skills.find((k) => k.key === key)?.bonus ?? null;
     return {
       armorClass: derived ? derived.armorClass : null,
       summary: [classes, race].filter(Boolean).join(', '),
+      skills: derived ? { perception: skill('skill:perception'), investigation: skill('skill:investigation') } : undefined,
       senses: derived?.senses.map((s) => `${s.namePt}: ${metersText(s.rangeFt)}`) ?? [],
     };
   }

@@ -60,6 +60,11 @@
       />
       }
 
+      @if (!isMaster()) {
+        <!-- A trap noticed, a treasure found: over the page under the app bar, in a combat too (E9-08 G, E9-09 4). -->
+        <app-live-toast [toasts]="toasts.toasts()" (dismissed)="toasts.dismiss($event)" />
+      }
+
       @if (highlightsFor(); as ended) {
         <app-highlights-card
           [campaignId]="campaignId()"
@@ -100,6 +105,8 @@
           [armorClass]="playerSheet()?.armorClass ?? null"
           [diceMode]="campaign()?.diceMode ?? 1"
           [dicePreference]="campaign()?.dicePreference ?? 1"
+          [trapSkills]="trapSkills()"
+          [traps]="isMaster() ? trapBoard : null"
           (adjust)="adjust($event)"
           (changeDice)="changeDice()"
         >
@@ -138,6 +145,21 @@
             [showFamiliar]="false"
             [seeing]="seeingFamiliar()"
           />
+        }
+        @if (isMaster()) {
+          <!-- In a combat the master still reveals, fires and disarms (E9-08) and marks treasure (E9-09). -->
+          <div class="board__traps">
+            <app-trap-panel
+              [campaignId]="campaignId()"
+              [state]="mapState"
+              [board]="trapBoard"
+              [players]="cluePlayers()"
+              [vitals]="vitals()"
+              [combat]="combat"
+              [withDamages]="false"
+            />
+            <app-treasure-panel [campaignId]="campaignId()" [state]="mapState" [people]="finderRows()" />
+          </div>
         }
       } @else if (isMaster()) {
         <app-combat-launch
@@ -202,6 +224,17 @@
               (currentChanged)="showMap($event)"
             />
           </div>
+          <!-- The master's trap and treasure panels: under the map on a phone, across the whole width below the page from 1024px (E9-08, E9-09). -->
+          <div class="board__traps board__traps--row">
+            <app-trap-panel
+              [campaignId]="campaignId()"
+              [state]="mapState"
+              [board]="trapBoard"
+              [players]="cluePlayers()"
+              [vitals]="vitals()"
+            />
+            <app-treasure-panel [campaignId]="campaignId()" [state]="mapState" [people]="finderRows()" />
+          </div>
           @if (fogMaster()) {
             <app-fog-master-panel
               class="board__fog"
@@ -244,6 +277,8 @@
               [campaignId]="campaignId()"
               [state]="mapState"
               [mapId]="currentMapId()"
+              [searchable]="searchable()"
+              (searchTraps)="searchTraps()"
               [fog]="fog"
               [characterName]="ownCharacterName()"
               [ownCharacterId]="ownCharacterId()"
@@ -252,6 +287,8 @@
               [seeingFamiliar]="familiarNameNow()"
               [creaturesTick]="creaturesTick()"
             />
+            <app-found-treasures [points]="mapState.points()" [mapName]="mapState.map()?.name ?? ''" />
+            <app-trap-activity [activity]="trapBoard.activity()" />
           </div>
           <div class="board__side">
             @if (ownVitals(); as v) {

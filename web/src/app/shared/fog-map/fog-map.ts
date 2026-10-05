@@ -3,6 +3,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { CharacterKind } from '../../../gen/meurpg/characters/v1/characters_pb';
 import type { MapPoint, MapToken } from '../../../gen/meurpg/maps/v1/maps_pb';
+import { isPinKind } from '../../core/traps/trap-text';
 import { combatantInitial } from '../../core/combat/combat-view';
 import type { FogError, FogStatus } from '../../core/maps/fog-view';
 import { hasLayers, type MapLayers, NO_LAYERS } from '../../core/maps/layers';
@@ -13,6 +14,8 @@ import { MapLayersLegend } from '../map-layers/map-layers-legend';
 import { centroid, tokenInitial, ViewToken } from '../map-view/map-geometry';
 import { type MapMove, MapView } from '../map-view/map-view';
 import { PHONE_QUERY, mediaQuery } from '../map-view/media-query';
+import { MapPins } from '../map-pins/map-pins';
+import { MapPinsLegend } from '../map-pins/map-pins-legend';
 import { FogBase, type FogImage } from './fog-base';
 
 /** How a viewer is addressed: "Seu personagem" (their own), or, for the master, the character's name. */
@@ -45,7 +48,7 @@ export interface FogViewer {
  */
 @Component({
   selector: 'app-fog-map',
-  imports: [CombatantToken, FogBase, MapLayersLegend, MapView, MatIconModule],
+  imports: [CombatantToken, FogBase, MapLayersLegend, MapPins, MapPinsLegend, MapView, MatIconModule],
   templateUrl: './fog-map.html',
   styleUrl: './fog-map.scss',
 })
@@ -61,6 +64,11 @@ export class FogMap {
   readonly layers = input<MapLayers | null>(null);
   readonly tokens = input<readonly MapToken[]>([]);
   readonly points = input<readonly MapPoint[]>([]);
+  /**
+   * Draw the trap, treasure and light marks (`app-map-pins`) over the map, from `points` as the server sent them (a player
+   * gets only what they see or remember, `MapPoint.remembered`), and leave them out of the plain markers (9.14).
+   */
+  readonly pins = input(false);
   /** The master reading as this character ("Ver como"): the tiles' URLs say so. */
   readonly forCharacter = input<string | null>(null);
   /** The whole picture for a viewer that reads it whole; a player's map has none. */
@@ -97,6 +105,9 @@ export class FogMap {
   protected readonly frame = computed<FogImage>(() => ({ url: '', width: this.imageWidth(), height: this.imageHeight() }));
   protected readonly noLayers = NO_LAYERS;
   protected readonly layerSet = computed(() => this.layers() ?? NO_LAYERS);
+
+  /** The points the plain markers draw: with the pins on, the traps, chests and lights have their own drawing. */
+  protected readonly markerPoints = computed(() => (this.pins() ? this.points().filter((p) => !isPinKind(p.kind)) : this.points()));
 
   protected readonly rects = computed(() => {
     const v = this.vision();

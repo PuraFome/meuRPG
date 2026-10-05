@@ -10613,7 +10613,9 @@ func (x *TrapFiring) GetId() string {
 // TrapCaught is what one creature suffered.
 type TrapCaught struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The combatant (in a combat) or the character (outside one): a UUID.
+	// The combatant (in a combat) or the character (outside one): a UUID. A creature of
+	// a character (a familiar, a summon) is its own target: outside a combat its ID is the
+	// creature's, with `character_id` the owner's.
 	TargetId    string `protobuf:"bytes,1,opt,name=target_id,json=targetId,proto3" json:"target_id,omitempty"`
 	TargetLabel string `protobuf:"bytes,2,opt,name=target_label,json=targetLabel,proto3" json:"target_label,omitempty"`
 	// The player's character, or the NPC's character, the target stands for (a UUID).

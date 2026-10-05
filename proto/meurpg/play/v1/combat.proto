@@ -3089,7 +3089,9 @@ message TrapFiring {
 
 // TrapCaught is what one creature suffered.
 message TrapCaught {
-  // The combatant (in a combat) or the character (outside one): a UUID.
+  // The combatant (in a combat) or the character (outside one): a UUID. A creature of
+  // a character (a familiar, a summon) is its own target: outside a combat its ID is the
+  // creature's, with `character_id` the owner's.
   string target_id = 1;
   string target_label = 2;
   // The player's character, or the NPC's character, the target stands for (a UUID).

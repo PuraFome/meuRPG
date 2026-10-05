@@ -37,6 +37,7 @@ import { FogMap } from './fog-map';
       [layers]="view.fog.layers()"
       [tokens]="view.map.tokens()"
       [points]="view.map.points()"
+      [pins]="true"
       [forCharacter]="characterId()"
       [viewer]="viewer()"
       [badge]="badge()"

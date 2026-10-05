@@ -7,6 +7,8 @@ import { decodeVision, type Vision } from '../../core/maps/vision';
 import { visionResponse } from '../../core/maps/vision-testing';
 import { mapToken } from '../../core/maps/maps-testing';
 import type { MapLayers } from '../../core/maps/layers';
+import { create as protoCreate } from '@bufbuild/protobuf';
+import { MapPointKind, MapPointSchema, TrapState } from '../../../gen/meurpg/maps/v1/maps_pb';
 import { FogMap } from './fog-map';
 
 const plain = textOf;
@@ -236,5 +238,16 @@ describe('FogMap', () => {
     vi.stubGlobal('matchMedia', (query: string) => ({ matches: true, media: query, addEventListener: () => undefined, removeEventListener: () => undefined }));
     const { fixture } = create();
     expect(fixture.componentInstance['startAt']()).toEqual({ xBp: 2500, yBp: 2000 });
+  });
+  it('hosts the trap and chest marks over the map only when asked, drawing what the read sent (a remembered one darkened)', () => {
+    const trap = protoCreate(MapPointSchema, { id: 'a', kind: MapPointKind.TRAP, xBp: 4000, yBp: 4000, trap: { state: TrapState.ARMED, areaSize: 1 }, revealed: true });
+    const old = protoCreate(MapPointSchema, { id: 'b', kind: MapPointKind.TREASURE, xBp: 6000, yBp: 6000, remembered: true });
+    const without = create({ points: [trap, old] });
+    expect(without.el.querySelector('app-map-pins')).toBeNull();
+    const withPins = create({ points: [trap, old], pins: true });
+    expect(withPins.el.querySelectorAll('app-map-pins .area')).toHaveLength(1);
+    expect(withPins.el.querySelectorAll('app-map-pins .pin--remembered')).toHaveLength(1);
+    const none = create({ points: [], pins: true });
+    expect(none.el.querySelectorAll('app-map-pins .area, app-map-pins .pin')).toHaveLength(0);
   });
 });

@@ -371,7 +371,7 @@ func (s *Service) changePlanned(ctx context.Context, m authz.Membership, id stri
 // requireMilestonesMode refuses, with MODE_NOT_ALLOWED, a campaign that
 // counts XP: it has no milestones.
 func (s *Service) requireMilestonesMode(ctx context.Context, campaignID string) error {
-	mode, err := s.campaigns.CampaignXPMode(ctx, campaignID)
+	mode, err := s.campaigns.CampaignXPMode(ctx, nil, campaignID)
 	if err != nil {
 		return s.dbError(ctx, "read the campaign's XP mode", err)
 	}

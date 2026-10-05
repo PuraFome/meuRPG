@@ -162,7 +162,7 @@ func (s *Service) OpenScene(
 		return nil, errScenePointNotFound()
 	}
 	// The point must be a SCENE point of the campaign's maps, hidden or not.
-	scene, err := s.maps.ScenePoint(ctx, m.CampaignID, pointID.String())
+	scene, err := s.maps.ScenePoint(ctx, nil, m.CampaignID, pointID.String())
 	if err != nil {
 		return nil, s.dbError(ctx, "find the scene point", err)
 	}
@@ -296,7 +296,7 @@ func (s *Service) openSceneInfo(ctx context.Context, m authz.Membership) (*playv
 	if session.OpenScenePointID == nil {
 		return nil, nil
 	}
-	scene, err := s.maps.ScenePoint(ctx, m.CampaignID, *session.OpenScenePointID)
+	scene, err := s.maps.ScenePoint(ctx, nil, m.CampaignID, *session.OpenScenePointID)
 	if connect.CodeOf(err) == connect.CodeNotFound {
 		// The point stopped being a scene since it was opened (the master
 		// changed its kind): no scene is open.
@@ -310,11 +310,11 @@ func (s *Service) openSceneInfo(ctx context.Context, m authz.Membership) (*playv
 
 // myCharacter is the caller's own living character, if they have one: the
 // one that rolls for them.
-func (s *Service) myCharacter(ctx context.Context, m authz.Membership) (link.Character, bool, error) {
+func (s *Service) myCharacter(ctx context.Context, tx pgx.Tx, m authz.Membership) (link.Character, bool, error) {
 	if m.Role == authz.RoleMaster {
 		return link.Character{}, false, nil
 	}
-	party, err := s.roster.CombatParty(ctx, m.CampaignID)
+	party, err := s.roster.CombatParty(ctx, tx, m.CampaignID)
 	if err != nil {
 		return link.Character{}, false, err
 	}
@@ -335,7 +335,7 @@ func (s *Service) sceneInfo(ctx context.Context, m authz.Membership, session pla
 	sees := master || scene.ShowDC // who reads the DCs (the pass or fail follows each roll's own flag)
 	info := &playv1.OpenSceneInfo{PointId: scene.PointID, Name: scene.Name, Description: scene.Description, ShowDc: scene.ShowDC}
 
-	mine, hasMine, err := s.myCharacter(ctx, m)
+	mine, hasMine, err := s.myCharacter(ctx, nil, m)
 	if err != nil {
 		return nil, s.dbError(ctx, "find the caller's character", err)
 	}
@@ -345,7 +345,7 @@ func (s *Service) sceneInfo(ctx context.Context, m authz.Membership, session pla
 		for _, a := range scene.Actions {
 			keys = append(keys, a.Key)
 		}
-		if options, err = s.roster.SceneOptions(ctx, m.CampaignID, mine.ID, keys); err != nil {
+		if options, err = s.roster.SceneOptions(ctx, nil, m.CampaignID, mine.ID, keys); err != nil {
 			return nil, s.dbError(ctx, "work out the scene's bonuses", err)
 		}
 	}
@@ -415,7 +415,7 @@ func (s *Service) masterSceneNotes(ctx context.Context, campaignID string, scene
 	}
 	nameOf := map[string]string{}
 	if len(ids) > 0 {
-		chars, err := s.roster.CombatCharacters(ctx, campaignID, ids)
+		chars, err := s.roster.CombatCharacters(ctx, nil, campaignID, ids)
 		if err != nil {
 			return "", nil, s.dbError(ctx, "read the recipients' names", err)
 		}
@@ -458,7 +458,7 @@ func (s *Service) sceneRolls(ctx context.Context, m authz.Membership, scene link
 	}
 	names := map[string]string{}
 	if len(ids) > 0 {
-		chars, err := s.roster.CombatCharacters(ctx, m.CampaignID, ids)
+		chars, err := s.roster.CombatCharacters(ctx, nil, m.CampaignID, ids)
 		if err != nil {
 			return nil, s.dbError(ctx, "read the rollers' names", err)
 		}
@@ -629,12 +629,10 @@ func (s *Service) RollSceneCheck(
 		if session.OpenScenePointID == nil {
 			return errScene(playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_NO_OPEN_SCENE, "no scene is open")
 		}
-		// The scene is read through the maps module, outside this transaction
-		// (the interface takes none): a master's change to show_dc or to a limit
-		// that races this roll may be missed by it. The effect is one roll
-		// recorded with the old flag, so counted in the summary or not; the
-		// player's own attempts are safe, the session row is locked.
-		scene, err := s.maps.ScenePoint(ctx, m.CampaignID, *session.OpenScenePointID)
+		// The scene is read inside this transaction, like everything else it
+		// reads: a second connection from the pool would deadlock a few rolls at
+		// once. The player's own attempts are safe, the session row is locked.
+		scene, err := s.maps.ScenePoint(ctx, tx, m.CampaignID, *session.OpenScenePointID)
 		if connect.CodeOf(err) == connect.CodeNotFound {
 			return errScene(playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_NO_OPEN_SCENE, "no scene is open") // no longer a scene point
 		}
@@ -650,20 +648,20 @@ func (s *Service) RollSceneCheck(
 		// The player's own living character rolls (RN-18: how, as the campaign
 		// allows).
 		var has bool
-		if who, has, err = s.myCharacter(ctx, m); err != nil {
+		if who, has, err = s.myCharacter(ctx, tx, m); err != nil {
 			return err
 		}
 		if !has {
 			return errScene(playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_NO_CHARACTER, "you have no living character to roll for")
 		}
-		force, err := s.dice.ForcedDice(ctx, m.CampaignID, m.UserID)
+		force, err := s.dice.ForcedDice(ctx, tx, m.CampaignID, m.UserID)
 		if err != nil {
 			return err
 		}
 		if force.refuses(in.inApp) {
 			return errScene(playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_WRONG_DICE_MODE, "this is not how the campaign has you roll your dice")
 		}
-		options, err := s.roster.SceneOptions(ctx, m.CampaignID, who.ID, []string{action.Key})
+		options, err := s.roster.SceneOptions(ctx, tx, m.CampaignID, who.ID, []string{action.Key})
 		if err != nil {
 			return err
 		}
@@ -712,7 +710,7 @@ func (s *Service) RollSceneCheck(
 	if repeated {
 		// Written the first time: the character and the time are the event's.
 		characterID, name = deref(doneRow.CharacterID), ""
-		if chars, err := s.roster.CombatCharacters(ctx, m.CampaignID, []string{characterID}); err == nil && len(chars) == 1 {
+		if chars, err := s.roster.CombatCharacters(ctx, nil, m.CampaignID, []string{characterID}); err == nil && len(chars) == 1 {
 			name = chars[0].Name
 		}
 	} else {
@@ -782,7 +780,7 @@ func (s *Service) GrantSceneAttempt(
 		if session.OpenScenePointID == nil {
 			return errScene(playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_NO_OPEN_SCENE, "no scene is open")
 		}
-		scene, err := s.maps.ScenePoint(ctx, m.CampaignID, *session.OpenScenePointID)
+		scene, err := s.maps.ScenePoint(ctx, tx, m.CampaignID, *session.OpenScenePointID)
 		if connect.CodeOf(err) == connect.CodeNotFound {
 			return errScene(playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_NO_OPEN_SCENE, "no scene is open") // no longer a scene point
 		}
@@ -793,7 +791,7 @@ func (s *Service) GrantSceneAttempt(
 		if i < 0 {
 			return errSceneActionNotFound()
 		}
-		party, err := s.roster.CombatParty(ctx, m.CampaignID)
+		party, err := s.roster.CombatParty(ctx, tx, m.CampaignID)
 		if err != nil {
 			return err
 		}

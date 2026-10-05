@@ -323,3 +323,10 @@
   margin-top: 10px;
   align-self: flex-start;
 }
+
+// "Esperando o mestre aplicar o dano": the tag under the trap's notice.
+.turn__wait {
+  display: flex;
+  width: fit-content;
+  margin-top: var(--mr-space-2);
+}

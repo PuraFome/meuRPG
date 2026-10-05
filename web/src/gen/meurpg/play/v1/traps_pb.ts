@@ -24,7 +24,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/play/v1/traps.proto.
  */
 export const file_meurpg_play_v1_traps: GenFile = /*@__PURE__*/
-  fileDesc("ChptZXVycGcvcGxheS92MS90cmFwcy5wcm90bxIObWV1cnBnLnBsYXkudjEi0AEKFVNlYXJjaEZvclRyYXBzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIuCgVza2lsbBgCIAEoDjIfLm1ldXJwZy5wbGF5LnYxLlRyYXBTZWFyY2hTa2lsbBIVCgtyb2xsX2luX2FwcBgDIAEoCEgAEhIKCGQyMF9mYWNlGAQgASgFSAASFwoPaWRlbXBvdGVuY3lfa2V5GAUgASgJEhcKCmQyMF9mYWNlXzIYBiABKAVIAYgBAUIGCgRyb2xsQg0KC19kMjBfZmFjZV8yIp4BChZTZWFyY2hGb3JUcmFwc1Jlc3BvbnNlEiYKBHJvbGwYASABKAsyGC5tZXVycGcucGxheS52MS5EaWNlUm9sbBIXCg9mb3VuZF9wb2ludF9pZHMYAiADKAkSFAoMc3BlbnRfYWN0aW9uGAMgASgIEi0KC3NlY29uZF9yb2xsGAQgASgLMhgubWV1cnBnLnBsYXkudjEuRGljZVJvbGwijwEKD0ZpcmVUcmFwUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIOCgZtYXBfaWQYAiABKAkSEAoIcG9pbnRfaWQYAyABKAkSEgoKdGFyZ2V0X2lkcxgEIAMoCRIXCg9pZGVtcG90ZW5jeV9rZXkYBSABKAkSGAoQZXh0ZW5kX2ZpcmluZ19pZBgGIAEoCSI+ChBGaXJlVHJhcFJlc3BvbnNlEioKBmZpcmluZxgBIAEoCzIaLm1ldXJwZy5wbGF5LnYxLlRyYXBGaXJpbmciigQKClRyYXBEYW1hZ2USCgoCaWQYASABKAkSFAoMZW5jb3VudGVyX2lkGAIgASgJEhUKDXRyYXBfcG9pbnRfaWQYAyABKAkSEQoJdHJhcF9uYW1lGAQgASgJEhQKDGNoYXJhY3Rlcl9pZBgFIAEoCRIWCg5jaGFyYWN0ZXJfbmFtZRgGIAEoCRIUCgxjb21iYXRhbnRfaWQYByABKAkSMwoGc3RhdHVzGAggASgOMiMubWV1cnBnLnBsYXkudjEuUGVuZGluZ0RhbWFnZVN0YXR1cxImCgRyb2xsGAkgASgLMhgubWV1cnBnLnBsYXkudjEuRGljZVJvbGwSDgoGYW1vdW50GAogASgFEhcKD2RhbWFnZV90eXBlX2tleRgLIAEoCRIWCg5kYW1hZ2VfdHlwZV9wdBgMIAEoCRIMCgRoYWxmGA0gASgIEhAKCGNyaXRpY2FsGA4gASgIEhsKDmFwcGxpZWRfYW1vdW50GA8gASgFSACIAQESLgoKY3JlYXRlZF9hdBgQIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFgoOc2Vzc2lvbl9udW1iZXIYESABKAUSNgoSc2Vzc2lvbl9zdGFydGVkX2F0GBIgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIRCg9fYXBwbGllZF9hbW91bnQiLQoWTGlzdFRyYXBEYW1hZ2VzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCSJGChdMaXN0VHJhcERhbWFnZXNSZXNwb25zZRIrCgdkYW1hZ2VzGAEgAygLMhoubWV1cnBnLnBsYXkudjEuVHJhcERhbWFnZSJ+ChZBcHBseVRyYXBEYW1hZ2VSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhYKDnRyYXBfZGFtYWdlX2lkGAIgASgJEhMKBmFtb3VudBgDIAEoBUgAiAEBEhcKD2lkZW1wb3RlbmN5X2tleRgEIAEoCUIJCgdfYW1vdW50IkUKF0FwcGx5VHJhcERhbWFnZVJlc3BvbnNlEioKBmRhbWFnZRgBIAEoCzIaLm1ldXJwZy5wbGF5LnYxLlRyYXBEYW1hZ2UiYAoYRGlzY2FyZFRyYXBEYW1hZ2VSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhYKDnRyYXBfZGFtYWdlX2lkGAIgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgDIAEoCSJHChlEaXNjYXJkVHJhcERhbWFnZVJlc3BvbnNlEioKBmRhbWFnZRgBIAEoCzIaLm1ldXJwZy5wbGF5LnYxLlRyYXBEYW1hZ2UiLgoXTGlzdFRyYXBBY3Rpdml0eVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiSgoYTGlzdFRyYXBBY3Rpdml0eVJlc3BvbnNlEi4KCGFjdGl2aXR5GAEgAygLMhwubWV1cnBnLnBsYXkudjEuVHJhcEFjdGl2aXR5IqABCgxUcmFwQWN0aXZpdHkSCgoCaWQYASABKAkSJgoCYXQYAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEioKBmZpcmluZxgDIAEoCzIaLm1ldXJwZy5wbGF5LnYxLlRyYXBGaXJpbmcSMAoGc2VhcmNoGAQgASgLMiAubWV1cnBnLnBsYXkudjEuVHJhcFNlYXJjaFJlc3VsdCL1AQoQVHJhcFNlYXJjaFJlc3VsdBIUCgxjaGFyYWN0ZXJfaWQYASABKAkSFgoOY2hhcmFjdGVyX25hbWUYAiABKAkSLgoFc2tpbGwYAyABKA4yHy5tZXVycGcucGxheS52MS5UcmFwU2VhcmNoU2tpbGwSJgoEcm9sbBgEIAEoCzIYLm1ldXJwZy5wbGF5LnYxLkRpY2VSb2xsEi0KC3NlY29uZF9yb2xsGAUgASgLMhgubWV1cnBnLnBsYXkudjEuRGljZVJvbGwSFwoPZm91bmRfcG9pbnRfaWRzGAYgAygJEhMKC2ZvdW5kX25hbWVzGAcgAygJKnsKD1RyYXBTZWFyY2hTa2lsbBIhCh1UUkFQX1NFQVJDSF9TS0lMTF9VTlNQRUNJRklFRBAAEiAKHFRSQVBfU0VBUkNIX1NLSUxMX1BFUkNFUFRJT04QARIjCh9UUkFQX1NFQVJDSF9TS0lMTF9JTlZFU1RJR0FUSU9OEAJCuAEKEmNvbS5tZXVycGcucGxheS52MUIKVHJhcHNQcm90b1ABWjxnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvcGxheS92MTtwbGF5djGiAgNNUFiqAg5NZXVycGcuUGxheS5WMcoCDk1ldXJwZ1xQbGF5XFYx4gIaTWV1cnBnXFBsYXlcVjFcR1BCTWV0YWRhdGHqAhBNZXVycGc6OlBsYXk6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp, file_meurpg_play_v1_combat]);
+  fileDesc("ChptZXVycGcvcGxheS92MS90cmFwcy5wcm90bxIObWV1cnBnLnBsYXkudjEi0AEKFVNlYXJjaEZvclRyYXBzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIuCgVza2lsbBgCIAEoDjIfLm1ldXJwZy5wbGF5LnYxLlRyYXBTZWFyY2hTa2lsbBIVCgtyb2xsX2luX2FwcBgDIAEoCEgAEhIKCGQyMF9mYWNlGAQgASgFSAASFwoPaWRlbXBvdGVuY3lfa2V5GAUgASgJEhcKCmQyMF9mYWNlXzIYBiABKAVIAYgBAUIGCgRyb2xsQg0KC19kMjBfZmFjZV8yIp4BChZTZWFyY2hGb3JUcmFwc1Jlc3BvbnNlEiYKBHJvbGwYASABKAsyGC5tZXVycGcucGxheS52MS5EaWNlUm9sbBIXCg9mb3VuZF9wb2ludF9pZHMYAiADKAkSFAoMc3BlbnRfYWN0aW9uGAMgASgIEi0KC3NlY29uZF9yb2xsGAQgASgLMhgubWV1cnBnLnBsYXkudjEuRGljZVJvbGwijwEKD0ZpcmVUcmFwUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIOCgZtYXBfaWQYAiABKAkSEAoIcG9pbnRfaWQYAyABKAkSEgoKdGFyZ2V0X2lkcxgEIAMoCRIXCg9pZGVtcG90ZW5jeV9rZXkYBSABKAkSGAoQZXh0ZW5kX2ZpcmluZ19pZBgGIAEoCSI+ChBGaXJlVHJhcFJlc3BvbnNlEioKBmZpcmluZxgBIAEoCzIaLm1ldXJwZy5wbGF5LnYxLlRyYXBGaXJpbmciigQKClRyYXBEYW1hZ2USCgoCaWQYASABKAkSFAoMZW5jb3VudGVyX2lkGAIgASgJEhUKDXRyYXBfcG9pbnRfaWQYAyABKAkSEQoJdHJhcF9uYW1lGAQgASgJEhQKDGNoYXJhY3Rlcl9pZBgFIAEoCRIWCg5jaGFyYWN0ZXJfbmFtZRgGIAEoCRIUCgxjb21iYXRhbnRfaWQYByABKAkSMwoGc3RhdHVzGAggASgOMiMubWV1cnBnLnBsYXkudjEuUGVuZGluZ0RhbWFnZVN0YXR1cxImCgRyb2xsGAkgASgLMhgubWV1cnBnLnBsYXkudjEuRGljZVJvbGwSDgoGYW1vdW50GAogASgFEhcKD2RhbWFnZV90eXBlX2tleRgLIAEoCRIWCg5kYW1hZ2VfdHlwZV9wdBgMIAEoCRIMCgRoYWxmGA0gASgIEhAKCGNyaXRpY2FsGA4gASgIEhsKDmFwcGxpZWRfYW1vdW50GA8gASgFSACIAQESLgoKY3JlYXRlZF9hdBgQIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFgoOc2Vzc2lvbl9udW1iZXIYESABKAUSNgoSc2Vzc2lvbl9zdGFydGVkX2F0GBIgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIRCg9fYXBwbGllZF9hbW91bnQiLQoWTGlzdFRyYXBEYW1hZ2VzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCSJGChdMaXN0VHJhcERhbWFnZXNSZXNwb25zZRIrCgdkYW1hZ2VzGAEgAygLMhoubWV1cnBnLnBsYXkudjEuVHJhcERhbWFnZSJ+ChZBcHBseVRyYXBEYW1hZ2VSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhYKDnRyYXBfZGFtYWdlX2lkGAIgASgJEhMKBmFtb3VudBgDIAEoBUgAiAEBEhcKD2lkZW1wb3RlbmN5X2tleRgEIAEoCUIJCgdfYW1vdW50IkUKF0FwcGx5VHJhcERhbWFnZVJlc3BvbnNlEioKBmRhbWFnZRgBIAEoCzIaLm1ldXJwZy5wbGF5LnYxLlRyYXBEYW1hZ2UiYAoYRGlzY2FyZFRyYXBEYW1hZ2VSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhYKDnRyYXBfZGFtYWdlX2lkGAIgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgDIAEoCSJHChlEaXNjYXJkVHJhcERhbWFnZVJlc3BvbnNlEioKBmRhbWFnZRgBIAEoCzIaLm1ldXJwZy5wbGF5LnYxLlRyYXBEYW1hZ2UiLgoXTGlzdFRyYXBBY3Rpdml0eVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiSgoYTGlzdFRyYXBBY3Rpdml0eVJlc3BvbnNlEi4KCGFjdGl2aXR5GAEgAygLMhwubWV1cnBnLnBsYXkudjEuVHJhcEFjdGl2aXR5IswBCgxUcmFwQWN0aXZpdHkSCgoCaWQYASABKAkSJgoCYXQYAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEioKBmZpcmluZxgDIAEoCzIaLm1ldXJwZy5wbGF5LnYxLlRyYXBGaXJpbmcSMAoGc2VhcmNoGAQgASgLMiAubWV1cnBnLnBsYXkudjEuVHJhcFNlYXJjaFJlc3VsdBIqCgZub3RpY2UYBSABKAsyGi5tZXVycGcucGxheS52MS5UcmFwTm90aWNlImEKClRyYXBOb3RpY2USFQoNY2hhcmFjdGVyX2lkcxgBIAMoCRIXCg9jaGFyYWN0ZXJfbmFtZXMYAiADKAkSEAoIcG9pbnRfaWQYAyABKAkSEQoJdHJhcF9uYW1lGAQgASgJIvUBChBUcmFwU2VhcmNoUmVzdWx0EhQKDGNoYXJhY3Rlcl9pZBgBIAEoCRIWCg5jaGFyYWN0ZXJfbmFtZRgCIAEoCRIuCgVza2lsbBgDIAEoDjIfLm1ldXJwZy5wbGF5LnYxLlRyYXBTZWFyY2hTa2lsbBImCgRyb2xsGAQgASgLMhgubWV1cnBnLnBsYXkudjEuRGljZVJvbGwSLQoLc2Vjb25kX3JvbGwYBSABKAsyGC5tZXVycGcucGxheS52MS5EaWNlUm9sbBIXCg9mb3VuZF9wb2ludF9pZHMYBiADKAkSEwoLZm91bmRfbmFtZXMYByADKAkqewoPVHJhcFNlYXJjaFNraWxsEiEKHVRSQVBfU0VBUkNIX1NLSUxMX1VOU1BFQ0lGSUVEEAASIAocVFJBUF9TRUFSQ0hfU0tJTExfUEVSQ0VQVElPThABEiMKH1RSQVBfU0VBUkNIX1NLSUxMX0lOVkVTVElHQVRJT04QAkK4AQoSY29tLm1ldXJwZy5wbGF5LnYxQgpUcmFwc1Byb3RvUAFaPGdpdGh1Yi5jb20vUHVyYUZvbWUvbWV1UlBHL2JhY2tlbmQvZ2VuL21ldXJwZy9wbGF5L3YxO3BsYXl2MaICA01QWKoCDk1ldXJwZy5QbGF5LlYxygIOTWV1cnBnXFBsYXlcVjHiAhpNZXVycGdcUGxheVxWMVxHUEJNZXRhZGF0YeoCEE1ldXJwZzo6UGxheTo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp, file_meurpg_play_v1_combat]);
 
 /**
  * SearchForTrapsRequest is the player's "Procurar armadilhas".
@@ -167,8 +167,10 @@ export type FireTrapRequest = Message<"meurpg.play.v1.FireTrapRequest"> & {
 
   /**
    * Who is caught: in a combat that runs on the map, combatant IDs; otherwise
-   * character IDs of tokens on the map. Empty: the creatures standing in the
-   * trap's area (up to 40).
+   * character IDs of tokens on the map. Empty: whoever stands in the
+   * trap's area (up to 40): the combatants of a combat, otherwise the characters and
+   * the creature tokens of their characters. Target IDs are characters (or combatants);
+   * a creature already standing in the area is caught by the empty list, not named here.
    *
    * @generated from field: repeated string target_ids = 4;
    */
@@ -510,7 +512,7 @@ export const ListTrapActivityRequestSchema: GenMessage<ListTrapActivityRequest> 
 /**
  * ListTrapActivityResponse is the trap activity of the open session outside a combat
  * (in a combat it is in the combat log), oldest first. The master gets every firing and
- * every search; a player gets only the lines of their own characters, with their own
+ * every search and every notice; a player gets only the lines of their own characters, with their own
  * dice and "passou" or "falhou", never a DC and never a trap their characters do not
  * know (a trap that fired is public).
  *
@@ -531,7 +533,7 @@ export const ListTrapActivityResponseSchema: GenMessage<ListTrapActivityResponse
   messageDesc(file_meurpg_play_v1_traps, 12);
 
 /**
- * TrapActivity is one line: a firing or a search.
+ * TrapActivity is one line: a firing, a search or a notice.
  *
  * @generated from message meurpg.play.v1.TrapActivity
  */
@@ -561,6 +563,15 @@ export type TrapActivity = Message<"meurpg.play.v1.TrapActivity"> & {
    * @generated from field: meurpg.play.v1.TrapSearchResult search = 4;
    */
   search?: TrapSearchResult | undefined;
+
+  /**
+   * Set for a trap a character noticed by passing near it (the passive notice). The
+   * master reads every one; a player only their own characters', with the trap's name
+   * (they know it now) and never a DC.
+   *
+   * @generated from field: meurpg.play.v1.TrapNotice notice = 5;
+   */
+  notice?: TrapNotice | undefined;
 };
 
 /**
@@ -569,6 +580,48 @@ export type TrapActivity = Message<"meurpg.play.v1.TrapActivity"> & {
  */
 export const TrapActivitySchema: GenMessage<TrapActivity> = /*@__PURE__*/
   messageDesc(file_meurpg_play_v1_traps, 13);
+
+/**
+ * TrapNotice is a passive notice: a character's passive Perception reached the trap's
+ * DC to notice it when the character stopped near it (RN-10: told to that character's
+ * player alone).
+ *
+ * @generated from message meurpg.play.v1.TrapNotice
+ */
+export type TrapNotice = Message<"meurpg.play.v1.TrapNotice"> & {
+  /**
+   * The characters (UUIDs) that noticed the trap at the same move, with their names;
+   * for a player, only their own. Always at least one.
+   *
+   * @generated from field: repeated string character_ids = 1;
+   */
+  characterIds: string[];
+
+  /**
+   * @generated from field: repeated string character_names = 2;
+   */
+  characterNames: string[];
+
+  /**
+   * The trap's point (a UUID) and its name; the name is empty when the trap was deleted
+   * since.
+   *
+   * @generated from field: string point_id = 3;
+   */
+  pointId: string;
+
+  /**
+   * @generated from field: string trap_name = 4;
+   */
+  trapName: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.TrapNotice.
+ * Use `create(TrapNoticeSchema)` to create a new message.
+ */
+export const TrapNoticeSchema: GenMessage<TrapNotice> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_traps, 14);
 
 /**
  * TrapSearchResult is a search made outside a combat, as the viewer reads it.
@@ -622,7 +675,7 @@ export type TrapSearchResult = Message<"meurpg.play.v1.TrapSearchResult"> & {
  * Use `create(TrapSearchResultSchema)` to create a new message.
  */
 export const TrapSearchResultSchema: GenMessage<TrapSearchResult> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_traps, 14);
+  messageDesc(file_meurpg_play_v1_traps, 15);
 
 /**
  * TrapSearchSkill is the skill a search rolls (question 71).

@@ -1,4 +1,4 @@
-import { Component, ElementRef, input, output, viewChild } from '@angular/core';
+import { Component, DestroyRef, ElementRef, afterNextRender, inject, input, output, signal, viewChild } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 /**
@@ -36,7 +36,7 @@ import { MatIconModule } from '@angular/material/icon';
       @if (subtitle()) {
         <p class="frame__sub">{{ subtitle() }}</p>
       }
-      <div #body class="frame__body"><ng-content /></div>
+      <div #body class="frame__body" [class.frame__body--scrolls]="scrolls()"><ng-content /></div>
       <div class="frame__foot"><ng-content select="[foot]" /></div>
     </div>
   `,
@@ -59,6 +59,32 @@ export class SheetFrame {
   readonly closed = output<void>();
 
   private readonly body = viewChild.required<ElementRef<HTMLElement>>('body');
+  /** The body has more than fits: only then the shadows at its edges are drawn (a body that fits shows no stray line). */
+  protected readonly scrolls = signal(false);
+
+  constructor() {
+    const destroyRef = inject(DestroyRef);
+    afterNextRender(() => {
+      const el = this.body().nativeElement;
+      const check = () => this.scrolls.set(el.scrollHeight > el.clientHeight + 1);
+      check();
+      if (typeof ResizeObserver === 'function') {
+        const observer = new ResizeObserver(check);
+        observer.observe(el);
+        Array.from(el.children).forEach((child) => observer.observe(child));
+        destroyRef.onDestroy(() => observer.disconnect());
+        // Content that shows up later (an `@if` block) is observed too, and the check runs again.
+        if (typeof MutationObserver === 'function') {
+          const mutations = new MutationObserver((records) => {
+            records.forEach((r) => r.addedNodes.forEach((n) => n instanceof Element && observer.observe(n)));
+            check();
+          });
+          mutations.observe(el, { childList: true });
+          destroyRef.onDestroy(() => mutations.disconnect());
+        }
+      }
+    });
+  }
 
   /** An error opens at the top of the scrolling body, where it is seen. */
   scrollToTop(): void {

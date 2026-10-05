@@ -11,6 +11,7 @@ import (
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
 // Acceptance tests: one per acceptance criterion in
@@ -338,6 +339,7 @@ func TestMR006_AfterTheLockTheStoryNeedsTheMastersPermission(t *testing.T) {
 // atual morre. Also when the calls race: the unique index decides.
 func TestRN03_OneLivingCharacterPerPlayerPerCampaign(t *testing.T) {
 	t.Parallel()
+	dbtest.PoolSize(t, 8) // the racers must overlap: one connection would run them one by one
 	h := newHarness(t)
 	mestre, jogador, outra := h.newUser("Mestre"), h.newUser("Jogadora"), h.newUser("Outra")
 	campaign := h.newCampaign(mestre, "Mirathel", jogador, outra)

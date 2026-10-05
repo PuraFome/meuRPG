@@ -273,7 +273,7 @@ func (s *Service) RevealSceneClue(
 	// Each must be a living player character with a player: the clue goes to
 	// the player, who owns the notes. An NPC, a dead or pending character, or
 	// one whose player deleted the account is "not found", as a token's.
-	found, err := s.characters.MapCharacters(ctx, m.CampaignID, characterIDs)
+	found, err := s.characters.MapCharacters(ctx, nil, m.CampaignID, characterIDs)
 	if err != nil {
 		return nil, s.dbError(ctx, "find the characters", err)
 	}
@@ -461,7 +461,7 @@ func (s *Service) cluesToProto(ctx context.Context, campaignID string, rows []ma
 	}
 	nameOf := map[string]string{}
 	if len(ids) > 0 {
-		chars, err := s.characters.MapCharacters(ctx, campaignID, ids)
+		chars, err := s.characters.MapCharacters(ctx, nil, campaignID, ids)
 		if err != nil {
 			return nil, s.dbError(ctx, "read the recipients' names", err)
 		}
@@ -541,12 +541,12 @@ func (sm *SessionMaps) ReceivedClues(ctx context.Context, campaignID, userID str
 
 // sceneClues reads a scene point's clues with who has each, for the open scene
 // (the master's).
-func (sm *SessionMaps) sceneClues(ctx context.Context, pointID string) ([]link.SceneClue, error) {
-	rows, err := sm.queries.ListSceneClues(ctx, pointID)
+func (sm *SessionMaps) sceneClues(ctx context.Context, q *mapsdb.Queries, pointID string) ([]link.SceneClue, error) {
+	rows, err := q.ListSceneClues(ctx, pointID)
 	if err != nil {
 		return nil, fmt.Errorf("list the scene's clues: %w", err)
 	}
-	reveals, err := sm.queries.ListClueRevealsOfPoint(ctx, &pointID)
+	reveals, err := q.ListClueRevealsOfPoint(ctx, &pointID)
 	if err != nil {
 		return nil, fmt.Errorf("list who has each clue: %w", err)
 	}

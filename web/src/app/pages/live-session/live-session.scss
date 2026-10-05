@@ -38,8 +38,9 @@
       'main image'
       'main scene'
       'main party'
-      'main tokens';
-    grid-template-rows: auto auto auto auto 1fr;
+      'main tokens'
+      'traps traps';
+    grid-template-rows: auto auto auto auto auto auto;
 
     .board__fog {
       grid-area: fog;
@@ -64,6 +65,10 @@
     .board__tokens {
       grid-area: tokens;
     }
+
+    .board__traps--row {
+      grid-area: traps;
+    }
   }
 }
 
@@ -75,8 +80,9 @@
       'main fog'
       'main image'
       'main party'
-      'main tokens';
-    grid-template-rows: auto auto auto 1fr;
+      'main tokens'
+      'traps traps';
+    grid-template-rows: auto auto auto auto auto;
   }
 }
 
@@ -109,6 +115,18 @@
 .board__main {
   display: flex;
   flex-direction: column;
+}
+
+// The master's trap and treasure panels under a running combat.
+.board__traps {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+
+  &:not(.board__traps--row):has(.mr-panel) {
+    margin-top: var(--mr-space-6);
+  }
 }
 
 .board__party,

@@ -4,6 +4,7 @@ import { createClient } from '@connectrpc/connect';
 import {
   type GetMapLayersResponse,
   type GetMapResponse,
+  type GetTrapNoticersResponse,
   type GetMapVisionResponse,
   type Map as MapMessage,
   MapPointKind,
@@ -170,6 +171,51 @@ export class MapsClient {
 
   async removeToken(campaignId: string, mapId: string, characterId: string): Promise<void> {
     await this.client.removeMapToken({ campaignId, mapId, characterId });
+  }
+
+  /** `RevealTrap` (MR-035): the trap goes to the chosen characters' players, or to
+   * everyone. Answers with the point as the master sees it. */
+  async revealTrap(
+    campaignId: string,
+    mapId: string,
+    pointId: string,
+    to: { readonly characterIds: readonly string[] } | { readonly all: true },
+  ): Promise<MapPoint> {
+    const res = await this.client.revealTrap({
+      campaignId,
+      mapId,
+      pointId,
+      ...('all' in to ? { all: true } : { characterIds: [...to.characterIds] }),
+    });
+    return need(res.point, 'RevealTrap');
+  }
+
+  /** `GetTrapNoticers`: "Quem notaria", worked out by the server. */
+  getTrapNoticers(campaignId: string, mapId: string, pointId: string): Promise<GetTrapNoticersResponse> {
+    return this.client.getTrapNoticers({ campaignId, mapId, pointId });
+  }
+
+  /** `DisarmTrap`: "Desarmada", after the table resolved the check. */
+  async disarmTrap(campaignId: string, mapId: string, pointId: string): Promise<MapPoint> {
+    const res = await this.client.disarmTrap({ campaignId, mapId, pointId });
+    return need(res.point, 'DisarmTrap');
+  }
+
+  /** `MarkTreasureFound` (MR-041): by one or more characters. */
+  async markTreasureFound(
+    campaignId: string,
+    mapId: string,
+    pointId: string,
+    characterIds: readonly string[],
+  ): Promise<MapPoint> {
+    const res = await this.client.markTreasureFound({ campaignId, mapId, pointId, characterIds: [...characterIds] });
+    return need(res.point, 'MarkTreasureFound');
+  }
+
+  /** `UnmarkTreasureFound`: back to hidden (refused once it was turned into XP). */
+  async unmarkTreasureFound(campaignId: string, mapId: string, pointId: string): Promise<MapPoint> {
+    const res = await this.client.unmarkTreasureFound({ campaignId, mapId, pointId });
+    return need(res.point, 'UnmarkTreasureFound');
   }
 
   /** `AddSceneAction` (MR-015): one more check on a SCENE point, saved at

@@ -20,6 +20,7 @@ import { isCreature } from '../../../../core/combat/creature-names';
 import { leftSentence, listNames, missingLine, passNote, playsBefore } from '../../../../core/combat/joint-turn';
 import { mediaQuery } from '../../../../shared/map-view/media-query';
 import { WildBand } from '../../../../shared/wild-shape/wild-band';
+import type { FallNote } from '../../../../core/traps/trap-log';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import { EndPart } from '../joint-turn/end-part';
 import { JointOthers } from '../joint-turn/joint-others';
@@ -63,6 +64,8 @@ export class TurnPanel {
   readonly waiting = input<{ readonly title: string; readonly detail: string } | null>(null);
   /** What the last move said when it stopped short ("Você parou antes: algo bloqueou o caminho."). */
   readonly moveNote = input('');
+  /** What a trap did to this player's character this round (E9-08 E), or `null`. */
+  readonly trapNote = input<FallNote | null>(null);
   /** The name of the spell the player is concentrating on, or `''`. */
   readonly concentration = input('');
 

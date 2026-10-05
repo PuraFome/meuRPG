@@ -20,6 +20,7 @@ import { circleLabel } from './combat-options';
 import { countsSentence } from './death-saves';
 import { degreeWord, sourceWord } from './cover';
 import { effectWords, poolRollText, reasonWords } from './hp-effects';
+import { trapLogText } from '../traps/trap-log';
 
 /**
  * The combat log as the screens read it (E6-11, E6-14, E6-15): the server
@@ -467,6 +468,9 @@ export function logLine(
       return { ...base, actor: e.targetLabel || e.actorLabel, icon: 'close', text: ' morreu' };
     case CombatLogKind.CONDITIONS_CHANGED:
       return { ...base, actor: e.targetLabel || e.actorLabel, icon: 'label', text: conditionsText(e) };
+    case CombatLogKind.TRAP_TRIGGERED:
+      // A trap that fired is public: everyone reads the line (the dice stay with the master and the creature's player).
+      return { ...base, icon: 'warning', actor: '', text: trapLogText(e.trap, ctx.master) };
     case CombatLogKind.TURN_PART_ENDED:
       // A member of a joint turn ended their part and the turn goes on.
       return { ...base, icon: 'flag', text: ` encerrou a parte ${article(e.actorLabel) === 'a' ? 'dela' : 'dele'}` };

@@ -5119,7 +5119,9 @@ export const TrapFiringSchema: GenMessage<TrapFiring> = /*@__PURE__*/
  */
 export type TrapCaught = Message<"meurpg.play.v1.TrapCaught"> & {
   /**
-   * The combatant (in a combat) or the character (outside one): a UUID.
+   * The combatant (in a combat) or the character (outside one): a UUID. A creature of
+   * a character (a familiar, a summon) is its own target: outside a combat its ID is the
+   * creature's, with `character_id` the owner's.
    *
    * @generated from field: string target_id = 1;
    */

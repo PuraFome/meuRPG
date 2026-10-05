@@ -2,8 +2,9 @@ import { Component, ElementRef, afterNextRender, input, output, viewChild } from
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import type { MapPoint } from '../../../gen/meurpg/maps/v1/maps_pb';
+import { type MapPoint, MapPointKind } from '../../../gen/meurpg/maps/v1/maps_pb';
 import { pointKindIcon, pointKindLabel } from '../map-view/map-labels';
+import { TreasureFacts } from '../treasure-facts/treasure-facts';
 
 /**
  * What a player reads when they open a point (E5-25, E5-26): the kind's
@@ -20,7 +21,7 @@ import { pointKindIcon, pointKindLabel } from '../map-view/map-labels';
  */
 @Component({
   selector: 'app-point-sheet',
-  imports: [MatButtonModule, MatIconModule],
+  imports: [MatButtonModule, MatIconModule, TreasureFacts],
   template: `
     <header class="sheet__head">
       <span class="sheet__glyph" aria-hidden="true">
@@ -34,7 +35,10 @@ import { pointKindIcon, pointKindLabel } from '../map-view/map-labels';
         <mat-icon aria-hidden="true">close</mat-icon>
       </button>
     </header>
-    @if (point().description) {
+    @if (found()) {
+      <!-- A treasure that was found: who found it, its value and what is inside (E9-09 4). -->
+      <app-treasure-facts [point]="point()" />
+    } @else if (point().description) {
       <p class="sheet__text">{{ point().description }}</p>
     }
     @if (point().targetMap; as target) {
@@ -53,6 +57,7 @@ export class PointSheet {
   readonly open = output<string>();
 
   private readonly title = viewChild.required<ElementRef<HTMLElement>>('title');
+  protected found = () => this.point().kind === MapPointKind.TREASURE && this.point().treasureFoundAt !== undefined;
   protected icon = () => pointKindIcon(this.point().kind);
   protected kind = () => pointKindLabel(this.point().kind);
 
